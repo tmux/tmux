@@ -2561,28 +2561,45 @@ input_dcs_dispatch(struct input_ctx *ictx)
 	int			 p2;
 #endif
 
-	if (wp == NULL)
-		return (0);
-	oo = wp->options;
-
 	if (ictx->flags & INPUT_DISCARD) {
 		log_debug("%s: %zu bytes (discard)", __func__, len);
 		return (0);
 	}
 
 #ifdef ENABLE_SIXEL
-	w = wp->window;
+	/*
+	 * Handle sixel images for both panes (wp != NULL) and popups
+	 * (wp == NULL, but ictx->c is set). Get pixel dimensions from
+	 * the window if available, otherwise from the client's tty.
+	 */
 	if (buf[0] == 'q' && ictx->interm_len == 0) {
-		if (input_split(ictx) != 0)
-			return (0);
-		p2 = input_get(ictx, 1, 0, 0);
-		if (p2 == -1)
-			p2 = 0;
-		si = sixel_parse(buf, len, p2, w->xpixel, w->ypixel);
-		if (si != NULL)
-			screen_write_sixelimage(sctx, si, ictx->cell.cell.bg);
+		u_int	xpixel = 0, ypixel = 0;
+
+		if (wp != NULL) {
+			w = wp->window;
+			xpixel = w->xpixel;
+			ypixel = w->ypixel;
+		} else if (ictx->c != NULL) {
+			xpixel = ictx->c->tty.xpixel;
+			ypixel = ictx->c->tty.ypixel;
+		}
+		if (xpixel != 0 && ypixel != 0) {
+			if (input_split(ictx) != 0)
+				return (0);
+			p2 = input_get(ictx, 1, 0, 0);
+			if (p2 == -1)
+				p2 = 0;
+			si = sixel_parse(buf, len, p2, xpixel, ypixel);
+			if (si != NULL)
+				screen_write_sixelimage(sctx, si,
+				    ictx->cell.cell.bg);
+		}
 	}
 #endif
+
+	if (wp == NULL)
+		return (0);
+	oo = wp->options;
 
 	/* DCS sequences with intermediate byte '$' (includes DECRQSS). */
 	if (ictx->interm_len == 1 && ictx->interm_buf[0] == '$') {

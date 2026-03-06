@@ -26,6 +26,7 @@
 
 #include "tmux.h"
 
+
 struct popup_data {
 	struct client		 *c;
 	struct cmdq_item	 *item;
@@ -311,6 +312,26 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 		tty_draw_line(tty, &s, 0, i, pd->sx, px, py + i, &defaults,
 		    palette);
 	}
+
+#ifdef ENABLE_SIXEL
+	if (!TAILQ_EMPTY(&pd->s.images)) {
+		struct image	*im;
+		struct tty_ctx	 ttyctx;
+
+		TAILQ_FOREACH(im, &pd->s.images, entry) {
+			memset(&ttyctx, 0, sizeof ttyctx);
+			ttyctx.ocx = im->px;
+			ttyctx.ocy = im->py;
+			ttyctx.orupper = pd->s.rupper;
+			ttyctx.orlower = pd->s.rlower;
+			ttyctx.ptr = im;
+			ttyctx.arg = pd;
+			ttyctx.set_client_cb = popup_set_client_cb;
+			tty_write_one(tty_cmd_sixelimage, c, &ttyctx);
+		}
+	}
+#endif
+
 	screen_free(&s);
 	if (pd->md != NULL) {
 		c->overlay_check = NULL;
@@ -326,6 +347,59 @@ popup_free_cb(struct client *c, void *data)
 {
 	struct popup_data	*pd = data;
 	struct cmdq_item	*item = pd->item;
+
+#ifdef ENABLE_SIXEL
+	/*
+	 * If the popup had sixel images, clear stale pixels by overwriting
+	 * the popup area with spaces. Also try DECFRA rectangle fill if the
+	 * terminal supports it (note: DECFRA cannot clear to non-default
+	 * background colour). Force a full window redraw afterwards.
+	 */
+	if (!TAILQ_EMPTY(&pd->s.images)) {
+		struct tty	*tty = &c->tty;
+		struct image	*im;
+		u_int		 x, y;
+
+		/* Try DECFRA per image if supported. */
+		if (tty->term->flags & TERM_DECFRA) {
+			TAILQ_FOREACH(im, &pd->s.images, entry) {
+				u_int	ox, oy, sx, sy;
+				char	tmp[64];
+
+				if (pd->border_lines == BOX_LINES_NONE) {
+					ox = pd->px + im->px;
+					oy = pd->py + im->py;
+				} else {
+					ox = pd->px + 1 + im->px;
+					oy = pd->py + 1 + im->py;
+				}
+				sx = im->sx;
+				sy = im->sy;
+
+				xsnprintf(tmp, sizeof tmp,
+				    "\033[32;%u;%u;%u;%u$x",
+				    oy + 1, ox + 1,
+				    oy + sy, ox + sx);
+				tty_puts(tty, tmp);
+			}
+		}
+
+		/* Overwrite the entire popup area with spaces. */
+		for (y = 0; y < pd->sy; y++) {
+			if (pd->py + y >= tty->sy)
+				break;
+			tty_cursor(tty, pd->px, pd->py + y);
+			for (x = 0; x < pd->sx; x++) {
+				if (pd->px + x >= tty->sx)
+					break;
+				tty_putc(tty, ' ');
+			}
+		}
+
+		tty_invalidate(tty);
+		c->flags |= CLIENT_REDRAWWINDOW;
+	}
+#endif
 
 	if (pd->md != NULL)
 		menu_free_cb(c, pd->md);
