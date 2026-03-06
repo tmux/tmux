@@ -1826,49 +1826,38 @@ input_csi_dispatch(struct input_ctx *ictx)
 		break;
 	case INPUT_CSI_KITTY_QUERY: {
 		int flags;
-		flags = s->kitty_kbd.flags[s->kitty_kbd.idx] & KITTY_KBD_SUPPORTED;
+		flags = s->kitty_kbd.flags & KITTY_KBD_SUPPORTED;
 		input_reply(ictx, 1, "\033[?%du", flags);
 		break;
 	}
 	case INPUT_CSI_KITTY_PUSH: {
 		int flags, raw_flags, dropped;
-		u_int idx;
 		raw_flags = input_get(ictx, 0, 0, 0);
 		flags = raw_flags & KITTY_KBD_SUPPORTED;
 		dropped = raw_flags & ~KITTY_KBD_SUPPORTED;
 		if (dropped != 0)
 			log_debug("%s: dropping unsupported kitty push flags %#x",
 			    __func__, dropped);
-		idx = s->kitty_kbd.idx;
-		if (idx + 1 >= KITTY_KBD_STACK_MAX) {
-			/* Stack full - shift everything down (evict oldest). */
-			memmove(&s->kitty_kbd.flags[0], &s->kitty_kbd.flags[1],
-			    (KITTY_KBD_STACK_MAX - 1) * sizeof(int));
-			s->kitty_kbd.flags[KITTY_KBD_STACK_MAX - 1] = flags;
-		} else {
-			s->kitty_kbd.idx = idx + 1;
-			s->kitty_kbd.flags[idx + 1] = flags;
-		}
+		s->kitty_kbd.saved_flags = s->kitty_kbd.flags;
+		s->kitty_kbd.flags = flags;
 		break;
 	}
 	case INPUT_CSI_KITTY_POP: {
 		int count;
-		u_int idx;
 		count = input_get(ictx, 0, 1, 1);
-		idx = s->kitty_kbd.idx;
-		while (count > 0 && idx > 0) {
-			s->kitty_kbd.flags[idx] = 0;
-			idx--;
+		if (count > 0 && s->kitty_kbd.saved_flags != KITTY_KBD_SAVED_NONE) {
+			s->kitty_kbd.flags = s->kitty_kbd.saved_flags;
+			s->kitty_kbd.saved_flags = KITTY_KBD_SAVED_NONE;
 			count--;
 		}
-		if (count > 0)
-			s->kitty_kbd.flags[0] = 0;
-		s->kitty_kbd.idx = idx;
+		if (count > 0) {
+			s->kitty_kbd.flags = 0;
+			s->kitty_kbd.saved_flags = KITTY_KBD_SAVED_NONE;
+		}
 		break;
 	}
 	case INPUT_CSI_KITTY_SET: {
 		int flagset, mode, raw_flagset, dropped;
-		u_int idx;
 		raw_flagset = input_get(ictx, 0, 0, 0);
 		flagset = raw_flagset & KITTY_KBD_SUPPORTED;
 		dropped = raw_flagset & ~KITTY_KBD_SUPPORTED;
@@ -1876,19 +1865,18 @@ input_csi_dispatch(struct input_ctx *ictx)
 			log_debug("%s: dropping unsupported kitty set flags %#x",
 			    __func__, dropped);
 		mode = input_get(ictx, 1, 1, 1);
-		idx = s->kitty_kbd.idx;
 		switch (mode) {
 		case 1:
-			s->kitty_kbd.flags[idx] = flagset;
+			s->kitty_kbd.flags = flagset;
 			break;
 		case 2:
-			s->kitty_kbd.flags[idx] |= flagset;
+			s->kitty_kbd.flags |= flagset;
 			break;
 		case 3:
-			s->kitty_kbd.flags[idx] &= ~flagset;
+			s->kitty_kbd.flags &= ~flagset;
 			break;
 		}
-		s->kitty_kbd.flags[idx] &= KITTY_KBD_SUPPORTED;
+		s->kitty_kbd.flags &= KITTY_KBD_SUPPORTED;
 		break;
 	}
 

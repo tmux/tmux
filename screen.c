@@ -115,10 +115,12 @@ screen_reinit(struct screen *s)
 	if (options_get_number(global_options, "extended-keys") == 2)
 		s->mode = (s->mode & ~EXTENDED_KEY_MODES)|MODE_KEYS_EXTENDED;
 
-	memset(&s->kitty_kbd, 0, sizeof s->kitty_kbd);
-	memset(&s->saved_kitty_kbd, 0, sizeof s->saved_kitty_kbd);
+	s->kitty_kbd.flags = 0;
+	s->kitty_kbd.saved_flags = KITTY_KBD_SAVED_NONE;
+	s->saved_kitty_kbd.flags = 0;
+	s->saved_kitty_kbd.saved_flags = KITTY_KBD_SAVED_NONE;
 	if (options_get_number(global_options, "kitty-keys") == 2)
-		s->kitty_kbd.flags[0] = KITTY_KBD_DISAMBIGUATE;
+		s->kitty_kbd.flags = KITTY_KBD_DISAMBIGUATE;
 
 	if (SCREEN_IS_ALTERNATE(s))
 		screen_alternate_off(s, NULL, 0);
@@ -676,9 +678,10 @@ screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 
 	s->saved_flags = s->grid->flags;
 	s->saved_kitty_kbd = s->kitty_kbd;
-	memset(&s->kitty_kbd, 0, sizeof s->kitty_kbd);
+	s->kitty_kbd.flags = 0;
+	s->kitty_kbd.saved_flags = KITTY_KBD_SAVED_NONE;
 	if (options_get_number(global_options, "kitty-keys") == 2)
-		s->kitty_kbd.flags[0] = KITTY_KBD_DISAMBIGUATE;
+		s->kitty_kbd.flags = KITTY_KBD_DISAMBIGUATE;
 	s->grid->flags &= ~GRID_HISTORY;
 }
 
