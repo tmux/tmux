@@ -115,6 +115,13 @@ screen_reinit(struct screen *s)
 	if (options_get_number(global_options, "extended-keys") == 2)
 		s->mode = (s->mode & ~EXTENDED_KEY_MODES)|MODE_KEYS_EXTENDED;
 
+	s->kitty_kbd.flags = 0;
+	s->kitty_kbd.saved_flags = KITTY_KBD_SAVED_NONE;
+	s->saved_kitty_kbd.flags = 0;
+	s->saved_kitty_kbd.saved_flags = KITTY_KBD_SAVED_NONE;
+	if (options_get_number(global_options, "kitty-keys") == 2)
+		s->kitty_kbd.flags = KITTY_KBD_DISAMBIGUATE;
+
 	if (SCREEN_IS_ALTERNATE(s))
 		screen_alternate_off(s, NULL, 0);
 	s->saved_cx = UINT_MAX;
@@ -656,6 +663,11 @@ screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 	grid_view_clear(s->grid, 0, 0, sx, sy, 8);
 
 	s->saved_flags = s->grid->flags;
+	s->saved_kitty_kbd = s->kitty_kbd;
+	s->kitty_kbd.flags = 0;
+	s->kitty_kbd.saved_flags = KITTY_KBD_SAVED_NONE;
+	if (options_get_number(global_options, "kitty-keys") == 2)
+		s->kitty_kbd.flags = KITTY_KBD_DISAMBIGUATE;
 	s->grid->flags &= ~GRID_HISTORY;
 }
 
@@ -691,6 +703,7 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 			s->cy = screen_size_y(s) - 1;
 		return;
 	}
+	s->kitty_kbd = s->saved_kitty_kbd;
 
 	/* Restore the saved grid. */
 	grid_duplicate_lines(s->grid, screen_hsize(s), s->saved_grid, 0,

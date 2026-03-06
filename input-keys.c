@@ -500,7 +500,7 @@ input_key_vt10x(struct bufferevent *bev, key_code key)
 	 */
 	if (KEYC_IS_UNICODE(key)) {
 		utf8_to_data(key, &ud);
-                input_key_write(__func__, bev, ud.data, ud.size);
+		input_key_write(__func__, bev, ud.data, ud.size);
 		return (0);
 	}
 
@@ -569,6 +569,7 @@ input_key_mode1(struct bufferevent *bev, key_code key)
 	return (-1);
 }
 
+
 /* Translate a key code into an output key sequence. */
 int
 input_key(struct screen *s, struct bufferevent *bev, key_code key)
@@ -593,7 +594,8 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		newkey = options_get_number(global_options, "backspace");
 		log_debug("%s: key 0x%llx is backspace -> 0x%llx", __func__,
 		    key, newkey);
-		if ((key & KEYC_MASK_MODIFIERS) == 0) {
+		if ((key & KEYC_MASK_MODIFIERS) == 0 &&
+		    !(s->kitty_kbd.flags & KITTY_KBD_REPORT_ALL)) {
 			ud.data[0] = 255;
 			if ((newkey & KEYC_MASK_MODIFIERS) == 0)
 				ud.data[0] = newkey;
@@ -624,12 +626,21 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		}
 	}
 
+	/* Strip kitty-only modifiers for non-kitty applications. */
+	if (s->kitty_kbd.flags == 0) {
+		if (key & (KEYC_SUPER|KEYC_HYPER))
+			key |= (KEYC_META|KEYC_IMPLIED_META);
+		key &= ~(KEYC_SUPER|KEYC_HYPER|KEYC_CAPS_LOCK|KEYC_NUM_LOCK);
+	}
+
 	/*
 	 * A trivial case, that is a 7-bit key, excluding C0 control characters
 	 * that can't be entered from the keyboard, and no modifiers; or a UTF-8
-	 * key and no modifiers.
+	 * key and no modifiers. Skip this when kitty keyboard mode needs CSI u
+	 * encoding (disambiguate mode encodes ESC; report-all encodes everything).
 	 */
-	if (!(key & ~KEYC_MASK_KEY)) {
+	if (!(key & ~KEYC_MASK_KEY) &&
+	    s->kitty_kbd.flags == 0) {
 		if (key == C0_HT ||
 		    key == C0_CR ||
 		    key == C0_ESC ||
@@ -646,13 +657,22 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	}
 
 	/*
-	 * Look up the standard VT10x keys in the tree. If not in application
-	 * keypad or cursor mode, remove the respective flags from the key.
+	 * Strip keypad/cursor flags based on mode before any encoding.
 	 */
 	if (~s->mode & MODE_KKEYPAD)
 		key &= ~KEYC_KEYPAD;
 	if (~s->mode & MODE_KCURSOR)
 		key &= ~KEYC_CURSOR;
+
+	/* Kitty keyboard mode takes priority over VT10x tree and extended keys. */
+	if (s->kitty_kbd.flags != 0) {
+		if (input_key_kitty(s, bev, key) == 0)
+			return (0);
+	}
+
+	/*
+	 * Look up the standard VT10x keys in the tree.
+	 */
 	if (ike == NULL)
 		ike = input_key_get(key);
 	if (ike == NULL && (key & KEYC_META) && (~key & KEYC_IMPLIED_META))
@@ -752,7 +772,7 @@ input_key_get_mouse(struct screen *s, struct mouse_event *m, u_int x, u_int y,
 	 * the new SGR format, since the released button is unknown). Otherwise
 	 * pretend that tmux doesn't speak this extension, and fall back to the
 	 * UTF-8 (1005) extension if the application requested, or to the
-	 * legacy format.
+	 * X10 format.
 	 */
 	if (m->sgr_type != ' ' && (s->mode & MODE_MOUSE_SGR)) {
 		len = xsnprintf(buf, sizeof buf, "\033[<%u;%u;%u%c",
