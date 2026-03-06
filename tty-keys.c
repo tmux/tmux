@@ -1936,7 +1936,12 @@ static const struct {
 	{ 3,   KEYC_DC },
 	{ 5,   KEYC_PPAGE },
 	{ 6,   KEYC_NPAGE },
+	{ 7,   KEYC_HOME },
+	{ 8,   KEYC_END },
+	{ 11,  KEYC_F1 },
+	{ 12,  KEYC_F2 },
 	{ 13,  KEYC_F3 },
+	{ 14,  KEYC_F4 },
 	{ 15,  KEYC_F5 },
 	{ 17,  KEYC_F6 },
 	{ 18,  KEYC_F7 },
@@ -1945,7 +1950,7 @@ static const struct {
 	{ 21,  KEYC_F10 },
 	{ 23,  KEYC_F11 },
 	{ 24,  KEYC_F12 },
-	{ 57427, KEYC_KP_BEGIN },
+	{ 57427, KEYC_KP_BEGIN }
 };
 
 /* Map kitty modifier encoding to KEYC_* modifier bits. */
@@ -1985,6 +1990,7 @@ tty_keys_kitty(__unused struct tty *tty, const char *buf, size_t len,
 	key_code	 result;
 
 	*size = 0;
+	kitty_flags = tty->kitty_flags & KITTY_KBD_SUPPORTED;
 
 	/* Must start with CSI (\033[). */
 	if (buf[0] != '\033')
@@ -2026,7 +2032,7 @@ tty_keys_kitty(__unused struct tty *tty, const char *buf, size_t len,
 		/* Split by semicolons (up to 3 fields). */
 		field1 = strsep(&params, ";"); /* key code field */
 		field2 = strsep(&params, ";"); /* modifier field */
-		/* third field (text-as-codepoints) - ignored */
+		/* third field (text-as-codepoints) */
 
 		/* Parse key code (first sub-field before ':'). */
 		kf = field1;
@@ -2034,6 +2040,17 @@ tty_keys_kitty(__unused struct tty *tty, const char *buf, size_t len,
 		number = (u_int)strtoul(subfield, &endptr, 10);
 		if (*endptr != '\0')
 			return (-1);
+
+		if (kf != NULL && *kf != '\0' &&
+		    (~kitty_flags & KITTY_KBD_REPORT_ALTERNATES)) {
+			*size = consumed;
+			return (-2);
+		}
+		if (params != NULL && *params != '\0' &&
+		    (~kitty_flags & KITTY_KBD_REPORT_TEXT)) {
+			*size = consumed;
+			return (-2);
+		}
 
 		/* Parse modifiers and event type. */
 		modifiers = 0;
@@ -2051,7 +2068,10 @@ tty_keys_kitty(__unused struct tty *tty, const char *buf, size_t len,
 			}
 		}
 
-		/* Release events (event_type 3): discard. */
+		if (event_type != 1 && (~kitty_flags & KITTY_KBD_REPORT_EVENTS)) {
+			*size = consumed;
+			return (-2);
+		}
 		if (event_type == 3) {
 			*size = consumed;
 			return (-2);
@@ -2104,6 +2124,10 @@ tty_keys_kitty(__unused struct tty *tty, const char *buf, size_t len,
 			}
 		}
 
+		if (event_type != 1 && (~kitty_flags & KITTY_KBD_REPORT_EVENTS)) {
+			*size = consumed;
+			return (-2);
+		}
 		if (event_type == 3) {
 			*size = consumed;
 			return (-2);
@@ -2170,9 +2194,14 @@ tty_keys_kitty(__unused struct tty *tty, const char *buf, size_t len,
 			}
 		}
 
-(??)
+		if (event_type != 1 && (~kitty_flags & KITTY_KBD_REPORT_EVENTS)) {
+			*size = consumed;
 			return (-2);
-(??)
+		}
+		if (event_type == 3) {
+			*size = consumed;
+			return (-2);
+		}
 
 		result = tty_keys_kitty_modifiers(modifiers);
 
@@ -2211,7 +2240,7 @@ tty_keys_kitty(__unused struct tty *tty, const char *buf, size_t len,
 			return (-1);
 		}
 		*key = result;
-(??)
+		*size = consumed;
 		return (0);
 	}
 }
@@ -2260,13 +2289,18 @@ tty_keys_kitty_keyboard(struct tty *tty, const char *buf, size_t len,
 
 	log_debug("%s: kitty keyboard query response: flags=%u", c->name, n);
 
-	tty->kitty_flags = n;
+	tty->kitty_flags = n & KITTY_KBD_SUPPORTED;
+	if ((n & ~KITTY_KBD_SUPPORTED) != 0)
+		log_debug("%s: dropping unsupported kitty keyboard flags %#x",
+		    c->name, n & ~KITTY_KBD_SUPPORTED);
+	tty->flags |= TTY_HAVEDA_KITTY;
 
 	/* Add kitkeys terminal feature. */
 	tty_add_features(&c->term_features, "kitkeys", ",");
 
 	tty_update_features(tty);
-	tty->flags |= TTY_HAVEDA_KITTY;
+	if (tty->flags & TTY_KITTY_PUSHED)
+		tty->kitty_flags = KITTY_KBD_DISAMBIGUATE;
 
 	return (0);
 }

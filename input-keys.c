@@ -726,7 +726,7 @@ input_key_kitty(struct screen *s, struct bufferevent *bev, key_code key)
 	key_code	 onlykey;
 	u_int		 mod, number, i, flags;
 
-	flags = s->kitty_kbd.flags[s->kitty_kbd.idx];
+	flags = s->kitty_kbd.flags[s->kitty_kbd.idx] & KITTY_KBD_SUPPORTED;
 	if (flags == 0)
 		return (-1);
 
@@ -737,40 +737,15 @@ input_key_kitty(struct screen *s, struct bufferevent *bev, key_code key)
 	mod = input_key_kitty_modifiers(key);
 
 	/*
-	 * Tab, Enter, Backspace in disambiguate mode without modifiers:
-	 * use legacy encoding (raw bytes 0x09, 0x0d, 0x7f).
+	 * Without report-all-keys, Tab, Enter, and Backspace without
+	 * modifiers use legacy encoding (raw bytes 0x09, 0x0d, 0x7f).
 	 */
-	if (flags == KITTY_KBD_DISAMBIGUATE && mod == 0) {
+	if (!(flags & KITTY_KBD_REPORT_ALL) && mod == 0) {
 		if (onlykey == 9 || onlykey == 13 || onlykey == KEYC_BSPACE ||
 		    onlykey == 127 || onlykey == 8)
 			return (-1);
 	}
 
-	/*
-	 * In disambiguate mode, Ctrl+key combinations that map to
-	 * traditional C0 control codes (Ctrl+A=0x01 .. Ctrl+Z=0x1a,
-	 * Ctrl+[=ESC, etc.) use legacy encoding: send the raw byte.
-	 * Only applies when Ctrl is the sole modifier.
-	 */
-	if (flags == KITTY_KBD_DISAMBIGUATE) {
-		key_code mods;
-		u_char   c0;
-
-		mods = key & (KEYC_SHIFT|KEYC_META|KEYC_CTRL|
-		    KEYC_SUPER|KEYC_HYPER|KEYC_META_REAL);
-		if (mods == KEYC_CTRL) {
-			c0 = 0xff;
-			if (onlykey >= 0x40 && onlykey < 0x80)
-				c0 = onlykey & 0x1f;
-			else if (onlykey == 0x20)
-				c0 = 0x00;
-			if (c0 != 0xff) {
-				tmp[0] = c0;
-				input_key_write(__func__, bev, tmp, 1);
-				return (0);
-			}
-		}
-	}
 
 	/* Check if it's in the legacy table (arrows, F-keys, etc). */
 	for (i = 0; i < nitems(input_key_kitty_legacy); i++) {

@@ -779,6 +779,8 @@ enum tty_code_code {
 #define KITTY_KBD_REPORT_ALL		0x08
 #define KITTY_KBD_REPORT_TEXT		0x10
 #define KITTY_KBD_ALL			0x1f
+/* Subset currently implemented end-to-end by tmux. */
+#define KITTY_KBD_SUPPORTED		(KITTY_KBD_DISAMBIGUATE|KITTY_KBD_REPORT_ALL)
 
 /* Kitty keyboard mode stack (per screen). */
 #define KITTY_KBD_STACK_MAX 8
@@ -1791,10 +1793,12 @@ struct tty {
 #define TTY_WAITFG 0x2000
 #define TTY_WAITBG 0x4000
 #define TTY_HAVEDA_KITTY 0x8000
+#define TTY_KITTY_PUSHED 0x10000
 #define TTY_ALL_REQUEST_FLAGS \
 	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVEDA_KITTY)
 	int		 flags;
 	int		 kitty_flags;	/* kitty protocol flags from outer */
+	int		 kitty_saved_flags; /* kitty flags beneath tmux push */
 
 	struct tty_term	*term;
 

@@ -37,6 +37,8 @@ static int	tty_log_fd = -1;
 
 static void	tty_start_timer_callback(int, short, void *);
 static void	tty_clipboard_query_callback(int, short, void *);
+static int	tty_push_kitty(struct tty *);
+static void	tty_pop_kitty(struct tty *, int);
 static void	tty_set_italics(struct tty *);
 static int	tty_try_colour(struct tty *, int, const char *);
 static void	tty_force_cursor_colour(struct tty *, int);
@@ -327,6 +329,52 @@ tty_start_start_timer(struct tty *tty)
 	evtimer_add(&tty->start_timer, &tv);
 }
 
+static int
+tty_push_kitty(struct tty *tty)
+{
+	int	mode;
+
+	if (tty->flags & TTY_KITTY_PUSHED) {
+		tty->kitty_flags = KITTY_KBD_DISAMBIGUATE;
+		return (1);
+	}
+
+	mode = options_get_number(global_options, "kitty-keys");
+	if (tty_term_has(tty->term, TTYC_ENKITK))
+		tty_puts(tty, tty_term_string(tty->term, TTYC_ENKITK));
+	else if (mode == 2)
+		tty_puts(tty, "\033[>1u");
+	else
+		return (0);
+
+	tty->kitty_saved_flags = tty->kitty_flags;
+	tty->flags |= TTY_KITTY_PUSHED;
+	tty->kitty_flags = KITTY_KBD_DISAMBIGUATE;
+	return (1);
+}
+
+static void
+tty_pop_kitty(struct tty *tty, int raw)
+{
+	if (~tty->flags & TTY_KITTY_PUSHED)
+		return;
+
+	if (tty_term_has(tty->term, TTYC_DSKITK)) {
+		if (raw)
+			tty_raw(tty, tty_term_string(tty->term, TTYC_DSKITK));
+		else
+			tty_puts(tty, tty_term_string(tty->term, TTYC_DSKITK));
+	} else {
+		if (raw)
+			tty_raw(tty, "\033[<1u");
+		else
+			tty_puts(tty, "\033[<1u");
+	}
+	tty->flags &= ~TTY_KITTY_PUSHED;
+	tty->kitty_flags = tty->kitty_saved_flags;
+	tty->kitty_saved_flags = 0;
+}
+
 void
 tty_start_tty(struct tty *tty)
 {
@@ -488,8 +536,7 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, "\033[?7727l");
 	tty_raw(tty, tty_term_string(tty->term, TTYC_DSFCS));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_DSEKS));
-	if (tty_term_has(tty->term, TTYC_DSKITK))
-		tty_raw(tty, tty_term_string(tty->term, TTYC_DSKITK));
+	tty_pop_kitty(tty, 1);
 
 	if (tty_use_margin(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_DSMG));
@@ -545,15 +592,13 @@ tty_update_features(struct tty *tty)
 		if (tty_term_has(tty->term, TTYC_ENKITK))
 			tty_puts(tty, tty_term_string(tty->term, TTYC_ENKITK));
 		/*
-		 * Activate the kitty input parser if we pushed the
-		 * capability or the option is 'always'.  The query response
-		 * will refine kitty_flags when it arrives.
+		 * Push kitty keyboard mode onto the outer terminal once to avoid
+		 * stacking duplicate entries on repeated tty_update_features()
+		 * calls.
 		 */
-		if (tty->kitty_flags == 0 &&
-		    (tty_term_has(tty->term, TTYC_ENKITK) ||
-		     options_get_number(global_options, "kitty-keys") == 2))
-			tty->kitty_flags = KITTY_KBD_DISAMBIGUATE;
-	}
+		tty_push_kitty(tty);
+	} else
+		tty_pop_kitty(tty, 0);
 	if (options_get_number(global_options, "focus-events"))
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENFCS));
 	if (tty->term->flags & TERM_VT100LIKE)
