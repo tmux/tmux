@@ -390,7 +390,7 @@ enum {
 	KEYC_REPORT_LIGHT_THEME,
 
 
-	/* Extended function keys (kitty keyboard protocol). */
+	/* Extended function keys. */
 	KEYC_F13,
 	KEYC_F14,
 	KEYC_F15,
@@ -415,7 +415,7 @@ enum {
 	KEYC_F34,
 	KEYC_F35,
 
-	/* Special keys (kitty keyboard protocol). */
+	/* Special keys. */
 	KEYC_PRINT,
 	KEYC_PAUSE,
 	KEYC_MENU,
@@ -423,7 +423,7 @@ enum {
 	KEYC_SCROLL_LOCK,
 	KEYC_NUM_LOCK_KEY,
 
-	/* Additional keypad keys (kitty keyboard protocol). */
+	/* Additional keypad keys. */
 	KEYC_KP_BEGIN,
 	KEYC_KP_NUMLOCK,
 	KEYC_KP_EQUAL,
@@ -439,7 +439,7 @@ enum {
 	KEYC_KP_INSERT,
 	KEYC_KP_DELETE,
 
-	/* Media keys (kitty keyboard protocol). */
+	/* Media keys. */
 	KEYC_MEDIA_PLAY,
 	KEYC_MEDIA_PAUSE,
 	KEYC_MEDIA_PLAY_PAUSE,
@@ -454,7 +454,7 @@ enum {
 	KEYC_VOLUME_UP,
 	KEYC_VOLUME_MUTE,
 
-	/* Individual modifier keys (kitty keyboard protocol). */
+	/* Individual modifier keys. */
 	KEYC_LEFT_SHIFT,
 	KEYC_LEFT_CONTROL,
 	KEYC_LEFT_ALT,
@@ -757,11 +757,11 @@ enum tty_code_code {
 /* Subset currently implemented end-to-end by tmux. */
 #define KITTY_KBD_SUPPORTED		(KITTY_KBD_DISAMBIGUATE|KITTY_KBD_REPORT_ALL)
 
-/* Kitty keyboard mode stack (per screen). */
-#define KITTY_KBD_STACK_MAX 8
+/* Kitty keyboard mode state (current and one saved push level). */
+#define KITTY_KBD_SAVED_NONE (-1)
 struct kitty_kbd {
-	int		flags[KITTY_KBD_STACK_MAX];
-	u_int		idx;
+	int		flags;
+	int		saved_flags;
 };
 
 /* Mouse protocol constants. */
@@ -2811,12 +2811,15 @@ const struct utf8_data *tty_acs_double_borders(int);
 const struct utf8_data *tty_acs_heavy_borders(int);
 const struct utf8_data *tty_acs_rounded_borders(int);
 
-/* tty-keys.c */
+/* tty-keys.c and tty-kitty.c */
 void		tty_keys_build(struct tty *);
 void		tty_keys_free(struct tty *);
 int		tty_keys_next(struct tty *);
 int		tty_keys_colours(struct tty *, const char *, size_t, size_t *,
 		     int *, int *);
+int		tty_keys_kitty(struct tty *, const char *, size_t, size_t *,
+		     key_code *);
+int		tty_keys_kitty_keyboard(struct tty *, const char *, size_t, size_t *);
 
 /* arguments.c */
 void		 args_set(struct args *, u_char, struct args_value *, int);
@@ -3190,10 +3193,11 @@ void	 input_set_buffer_size(size_t);
 void	 input_request_reply(struct client *, enum input_request_type, void *);
 void	 input_cancel_requests(struct client *);
 
-/* input-key.c */
+/* input-key.c and input-kitty.c */
 void	 input_key_build(void);
 int	 input_key_pane(struct window_pane *, key_code, struct mouse_event *);
 int	 input_key(struct screen *, struct bufferevent *, key_code);
+int	 input_key_kitty(struct screen *, struct bufferevent *, key_code);
 int	 input_key_get_mouse(struct screen *, struct mouse_event *, u_int,
 	     u_int, const char **, size_t *);
 
