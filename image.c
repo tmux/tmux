@@ -176,33 +176,7 @@ image_store(struct screen *s, enum image_type type, void *data)
 #ifdef ENABLE_KITTY_IMAGES
 	case IMAGE_KITTY:
 		im->data.kitty = data;
-
-		/* Kitty images have size info in the structure */
-		im->sx = im->data.kitty->cols;
-		im->sy = im->data.kitty->rows;
-
-		/*
-		 * If cols/rows are 0, they mean "auto" - calculate from
-		 * pixel dimensions. The terminal will figure out the actual
-		 * size, but we need a reasonable estimate for our cache.
-		 */
-		if (im->sx == 0 && im->data.kitty->pixel_w > 0 &&
-		    im->data.kitty->xpixel > 0) {
-			im->sx = (im->data.kitty->pixel_w +
-			    im->data.kitty->xpixel - 1) /
-				im->data.kitty->xpixel;
-		}
-		if (im->sy == 0 && im->data.kitty->pixel_h > 0 &&
-		    im->data.kitty->ypixel > 0) {
-			im->sy = (im->data.kitty->pixel_h +
-			    im->data.kitty->ypixel - 1) / im->data.kitty->ypixel;
-		}
-
-		/* If still 0, use a reasonable default */
-		if (im->sx == 0)
-			im->sx = 10;
-		if (im->sy == 0)
-			im->sy = 10;
+		kitty_size_in_cells(im->data.kitty, &im->sx, &im->sy);
 		break;
 #endif
 	default:
@@ -288,7 +262,7 @@ image_scroll_up(struct screen *s, u_int lines)
 		case IMAGE_SIXEL:
 			sx = im->sx;
 			sy = (im->py + im->sy) - lines;
-			image_log(im, __func__, "3 sixel, lines=%u, sy=%u",
+			image_log(im, __func__, "sixel, lines=%u, sy=%u",
 			    lines, sy);
 
 			new = sixel_scale(im->data.sixel, 0, 0, 0, im->sy - sy,
@@ -311,10 +285,7 @@ image_scroll_up(struct screen *s, u_int lines)
 			 * owns the placement. Just adjust position and let
 			 * the terminal handle clipping.
 			 */
-			image_log(im, __func__,
-			    "3 kitty, lines=%u (no rescale)", lines);
 			im->py = 0;
-			/* Height remains the same - terminal will clip */
 			redraw = 1;
 			break;
 #endif

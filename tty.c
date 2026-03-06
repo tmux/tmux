@@ -2180,48 +2180,35 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 static int
 tty_has_kitty(struct tty *tty)
 {
-	return ((tty->term->flags & TERM_KITTY) ||
-	    tty_term_has(tty->term, TTYC_KTY));
+	return (tty->term->flags & TERM_KITTY);
 }
 
 void
 tty_cmd_kittyimage(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct image		*im = ctx->ptr;
-	struct kitty_image	*ki;
 	char			*data;
 	size_t			 size;
 	u_int			 cx = ctx->ocx, cy = ctx->ocy;
 	int			 fallback = 0;
 
-	log_debug("%s: called, im=%p", __func__, im);
-
-	if (im == NULL) {
-		log_debug("%s: NULL image pointer", __func__);
+	if (im == NULL || im->data.kitty == NULL)
 		return;
-	}
 
-	ki = im->data.kitty;
-	log_debug("%s: ki=%p, type=%d", __func__, ki, im->type);
-
-	if (ki == NULL) {
-		log_debug("%s: NULL kitty_image pointer", __func__);
-		return;
-	}
-
-	/* Check if this terminal supports kitty graphics */
+	/* Check if this terminal supports kitty graphics. */
 	if (!tty_has_kitty(tty))
 		fallback = 1;
 
-	log_debug("%s: image at %u,%u (fallback=%d)", __func__, cx, cy, fallback);
+	log_debug("%s: image at %u,%u (fallback=%d)", __func__, cx, cy,
+	    fallback);
 
 	if (fallback == 1) {
-		/* Use text fallback for non-kitty terminals */
+		/* Use text fallback for non-kitty terminals. */
 		data = xstrdup(im->fallback);
 		size = strlen(data);
 	} else {
-		/* Re-serialize the kitty image command */
-		data = kitty_print(ki, &size);
+		/* Re-serialize the kitty image command. */
+		data = kitty_print(im->data.kitty, &size);
 	}
 
 	if (data != NULL) {

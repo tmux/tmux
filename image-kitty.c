@@ -24,6 +24,41 @@
 #include "tmux.h"
 
 /*
+ * kitty_image stores the raw decoded pixel data and metadata from a kitty
+ * graphics protocol APC sequence. It is used to re-emit the sequence to the
+ * outer terminal on redraw.
+ */
+struct kitty_image {
+	/* Control-data fields parsed from the APC sequence. */
+	char		 action;      /* a=: 'T'=transmit+display, 't', 'p', 'd' */
+	u_int		 format;      /* f=: 32=RGBA, 24=RGB, 100=PNG */
+	char		 medium;      /* t=: 'd'=direct, 'f'=file, 't'=tmp, 's'=shm */
+	u_int		 pixel_w;     /* s=: source image pixel width */
+	u_int		 pixel_h;     /* v=: source image pixel height */
+	u_int		 cols;        /* c=: display columns (0=auto) */
+	u_int		 rows;        /* r=: display rows (0=auto) */
+	u_int		 image_id;    /* i=: image id (0=unassigned) */
+	u_int		 image_num;   /* I=: image number */
+	u_int		 placement_id; /* p=: placement id */
+	u_int		 more;        /* m=: 1=more chunks coming, 0=last */
+	u_int		 quiet;       /* q=: suppress responses */
+	int		 z_index;     /* z=: z-index */
+	char		 compression; /* o=: 'z'=zlib, 0=none */
+	char		 delete_what; /* d=: delete target (used with a=d) */
+
+	/* Cell size at the time of parsing (from the owning window). */
+	u_int		 xpixel;
+	u_int		 ypixel;
+
+	/* Original base64-encoded payload (concatenated across all chunks). */
+	char		*encoded;
+	size_t		 encodedlen;
+
+	char		*ctrl;
+	size_t		 ctrllen;
+};
+
+/*
  * Parse control-data key=value pairs from a kitty APC sequence.
  * Format: key=value,key=value,...
  */
@@ -191,6 +226,52 @@ kitty_free(struct kitty_image *ki)
 }
 
 /*
+ * Get the size in cells of a kitty image. If cols/rows are 0 (auto),
+ * calculate from pixel dimensions. Returns size via sx/sy pointers.
+ */
+void
+kitty_size_in_cells(struct kitty_image *ki, u_int *sx, u_int *sy)
+{
+	*sx = ki->cols;
+	*sy = ki->rows;
+
+	/*
+	 * If cols/rows are 0, they mean "auto" - calculate from
+	 * pixel dimensions.
+	 */
+	if (*sx == 0 && ki->pixel_w > 0 && ki->xpixel > 0) {
+		*sx = (ki->pixel_w + ki->xpixel - 1) / ki->xpixel;
+	}
+	if (*sy == 0 && ki->pixel_h > 0 && ki->ypixel > 0) {
+		*sy = (ki->pixel_h + ki->ypixel - 1) / ki->ypixel;
+	}
+
+	/* If still 0, use a reasonable default */
+	if (*sx == 0)
+		*sx = 10;
+	if (*sy == 0)
+		*sy = 10;
+}
+
+char
+kitty_get_action(struct kitty_image *ki)
+{
+	return (ki->action);
+}
+
+u_int
+kitty_get_image_id(struct kitty_image *ki)
+{
+	return (ki->image_id);
+}
+
+u_int
+kitty_get_rows(struct kitty_image *ki)
+{
+	return (ki->rows);
+}
+
+/*
  * Serialize a kitty_image back into an APC escape sequence for transmission
  * to the terminal. This recreates the original command that was parsed.
  */
@@ -238,9 +319,7 @@ kitty_delete_all(size_t *outlen)
 {
 	char	*out;
 
-	*outlen = 3 + 7 + 2;
-	out = xmalloc(*outlen + 1);
-	memcpy(out, "\033_Ga=d,d=a\033\\", *outlen);
-	out[*outlen] = '\0';
+	out = xstrdup("\033_Ga=d,d=a\033\\");
+	*outlen = strlen(out);
 	return (out);
 }

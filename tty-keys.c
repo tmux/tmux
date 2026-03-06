@@ -1836,6 +1836,7 @@ tty_keys_kitty_graphics(struct tty *tty, const char *buf, size_t len,
 {
 	struct client	*c = tty->client;
 	int		*features = &c->term_features;
+	const char	*semi;
 	size_t		 i;
 	char		 tmp[256];
 
@@ -1878,15 +1879,13 @@ tty_keys_kitty_graphics(struct tty *tty, const char *buf, size_t len,
 	 * Check if the message (after the semicolon) starts with "OK".
 	 * The format is: i=31;OK  or  i=31;ENOSYS:...
 	 */
-	{
-		const char	*semi = strchr(tmp, ';');
-		if (semi != NULL && strncmp(semi + 1, "OK", 2) == 0) {
-			log_debug("%s: kitty graphics supported", c->name);
-			tty_add_features(features, "kitty", ",");
-			tty_update_features(tty);
-		} else {
-			log_debug("%s: kitty graphics not supported", c->name);
-		}
+	semi = strchr(tmp, ';');
+	if (semi != NULL && strncmp(semi + 1, "OK", 2) == 0) {
+		log_debug("%s: kitty graphics supported", c->name);
+		tty_add_features(features, "kitty", ",");
+		tty_update_features(tty);
+	} else {
+		log_debug("%s: kitty graphics not supported", c->name);
 	}
 
 	return (0);

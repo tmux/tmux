@@ -181,6 +181,7 @@ static void	input_ground(struct input_ctx *);
 static void	input_enter_dcs(struct input_ctx *);
 static void	input_enter_osc(struct input_ctx *);
 static void	input_exit_osc(struct input_ctx *);
+static int	input_da1_has_sixel(struct input_ctx *);
 static void	input_enter_apc(struct input_ctx *);
 static void	input_exit_apc(struct input_ctx *);
 static void	input_enter_rename(struct input_ctx *);
@@ -1561,31 +1562,11 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case -1:
 			break;
 		case 0:
-		{
-			/*
-			 * Report sixel support only if outer terminal supports it.
-			 * This ensures applications choose the right protocol.
-			 */
-			int has_sixel = 0;
-#ifdef ENABLE_SIXEL_IMAGES
-			if (ictx->wp != NULL) {
-				struct client *c;
-				TAILQ_FOREACH(c, &clients, entry) {
-					if (c->session != NULL &&
-					    c->session->curw->window == ictx->wp->window &&
-					    (c->tty.term->flags & TERM_SIXEL)) {
-						has_sixel = 1;
-						break;
-					}
-				}
-			}
-#endif
-			if (has_sixel)
+			if (input_da1_has_sixel(ictx))
 				input_reply(ictx, 1, "\033[?1;2;4c");
 			else
 				input_reply(ictx, 1, "\033[?1;2c");
 			break;
-		}
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
 			break;
@@ -2740,16 +2721,85 @@ input_enter_apc(struct input_ctx *ictx)
 	ictx->flags &= ~INPUT_LAST;
 }
 
+/*
+ * Check if any client viewing this pane has an outer terminal that supports
+ * sixel, so we can report it in the DA1 response.
+ */
+static int
+input_da1_has_sixel(__unused struct input_ctx *ictx)
+{
+#ifdef ENABLE_SIXEL_IMAGES
+	struct window_pane	*wp = ictx->wp;
+	struct client		*c;
+
+	if (wp == NULL)
+		return (0);
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session == NULL)
+			continue;
+		if (c->session->curw->window != wp->window)
+			continue;
+		if (c->tty.term->flags & TERM_SIXEL)
+			return (1);
+	}
+#endif
+	return (0);
+}
+
+#ifdef ENABLE_KITTY_IMAGES
+/* Handle a kitty graphics APC sequence. */
+static void
+input_apc_kitty_image(struct input_ctx *ictx)
+{
+	struct screen_write_ctx	*sctx = &ictx->ctx;
+	struct window_pane	*wp = ictx->wp;
+	struct window		*w;
+	struct kitty_image	*ki;
+
+	if (wp == NULL)
+		return;
+
+	w = wp->window;
+	ki = kitty_parse(ictx->input_buf + 1, ictx->input_len - 1,
+	    w->xpixel, w->ypixel);
+	if (ki == NULL)
+		return;
+
+	/* Handle query commands. */
+	if (kitty_get_action(ki) == 'q') {
+		if (kitty_get_image_id(ki) != 0)
+			input_reply(ictx, 0, "\033_Gi=%u;OK\033\\",
+			    kitty_get_image_id(ki));
+		else
+			input_reply(ictx, 0, "\033_Ga=q;OK\033\\");
+		kitty_free(ki);
+		return;
+	}
+
+	/* Store image placements and trigger a redraw. */
+	if (kitty_get_action(ki) == 'T' || kitty_get_action(ki) == 't' ||
+	    kitty_get_action(ki) == 'p') {
+		screen_write_kittyimage(sctx, ki);
+	} else {
+		/* For other actions (delete, etc.), pass through. */
+		char	*apc;
+		size_t	 apclen;
+
+		apclen = xasprintf(&apc, "\033_%s\033\\", ictx->input_buf);
+		tty_kitty_passthrough(wp, apc, apclen, sctx->s->cx,
+		    sctx->s->cy);
+		free(apc);
+		kitty_free(ki);
+	}
+}
+#endif
+
 /* APC terminator (ST) received. */
 static void
 input_exit_apc(struct input_ctx *ictx)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct window_pane	*wp = ictx->wp;
-#ifdef ENABLE_KITTY_IMAGES
-	struct kitty_image	*ki;
-	struct window		*w;
-#endif
 
 	if (ictx->flags & INPUT_DISCARD)
 		return;
@@ -2757,64 +2807,10 @@ input_exit_apc(struct input_ctx *ictx)
 
 #ifdef ENABLE_KITTY_IMAGES
 	if (ictx->input_len >= 1 && ictx->input_buf[0] == 'G') {
-		if (wp == NULL)
-			return;
-
-		w = wp->window;
-		/*
-		 * Intercept only a=q (query) to reply OK ourselves.
-		 * Everything else — including a=T (transmit+display),
-		 * a=d (delete), a=p (place), multi-chunk sequences —
-		 * passes through verbatim to the outer terminal.
-		 * The outer terminal manages all image placement and
-		 * scrolling; tmux must not interfere.
-		 */
-		ki = kitty_parse(ictx->input_buf + 1,
-		    ictx->input_len - 1, w->xpixel, w->ypixel);
-		if (ki == NULL)
-			return;
-
-		/* Handle query commands */
-		if (ki->action == 'q') {
-			if (ki->image_id != 0)
-				input_reply(ictx, 0,
-				    "\033_Gi=%u;OK\033\\",
-				    ki->image_id);
-			else
-				input_reply(ictx, 0,
-				    "\033_Ga=q;OK\033\\");
-			kitty_free(ki);
-			return;
-		}
-
-		/*
-		 * Store the image and trigger a redraw.
-		 * Similar to sixel, we cache the image and let the
-		 * redraw mechanism handle sending it to terminals.
-		 */
-		if (ki->action == 'T' || ki->action == 't' || ki->action == 'p') {
-			screen_write_kittyimage(sctx, ki);
-		} else {
-			/* For other actions (delete, etc.), pass through */
-			char	*apc;
-			size_t	 apclen;
-
-			apclen = 2 + ictx->input_len + 2;
-			apc = xmalloc(apclen + 1);
-			apc[0] = '\033';
-			apc[1] = '_';
-			memcpy(apc + 2, ictx->input_buf, ictx->input_len);
-			apc[2 + ictx->input_len] = '\033';
-			apc[2 + ictx->input_len + 1] = '\\';
-			apc[apclen] = '\0';
-			tty_kitty_passthrough(wp, apc, apclen,
-			    sctx->s->cx, sctx->s->cy);
-			free(apc);
-			kitty_free(ki);
-		}
+		input_apc_kitty_image(ictx);
 		return;
 	}
-#endif /* ENABLE_KITTY_IMAGES */
+#endif
 
 	if (wp != NULL &&
 	    options_get_number(wp->options, "allow-set-title") &&
