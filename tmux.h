@@ -2508,11 +2508,10 @@ struct options_entry *options_set_number(struct options *, const char *,
 		     long long);
 struct options_entry *options_set_command(struct options *, const char *,
 		     struct cmd_list *);
-int		 options_scope_from_name(struct args *, int,
-		     const char *, struct cmd_find_state *, struct options **,
-		     char **);
+int		 options_scope_from_name(struct args *, int, const char *,
+		     struct cmdq_item *, struct options **, char **);
 int		 options_scope_from_flags(struct args *, int,
-		     struct cmd_find_state *, struct options **, char **);
+		     struct cmdq_item *, struct options **, char **);
 struct style	*options_string_to_style(struct options *, const char *,
 		     struct format_tree *);
 int		 options_from_string(struct options *,
@@ -2723,6 +2722,7 @@ char		*args_print(struct args *);
 char		*args_escape(const char *);
 int		 args_has(struct args *, u_char);
 const char	*args_get(struct args *, u_char);
+const char	*args_get_target(struct args *, struct cmdq_item *);
 u_char		 args_first(struct args *, struct args_entry **);
 u_char		 args_next(struct args_entry **);
 u_int		 args_count(struct args *);
