@@ -62,16 +62,12 @@ test_wformat "#{W:#{window_index}:#{prev_color} }" "0: 1:red "
 # Non-@ options are not propagated.
 test_wformat "#{W:#{next_automatic-rename}}" ""
 
-# Pre-expanded separator (window_status_separator)
-$TMUX set -g window-status-separator " | "
-test_wformat "#{W:#{window_index}#{?loop_last_flag,,#{window_status_separator}}}" "0 | 1"
-
-# Conditional separator using neighbor variables.
+# Conditional separator using neighbor variables via E: expansion.
 $TMUX set -g window-status-separator "#{?window_before_active,>,|}"
 $TMUX select-window -t :0
-test_wformat "#{W:#{window_index}#{?loop_last_flag,,#{window_status_separator}}}" "0|1"
+test_wformat "#{W:#{window_index}#{?loop_last_flag,,#{E:window-status-separator}}}" "0|1"
 $TMUX select-window -t :1
-test_wformat "#{W:#{window_index}#{?loop_last_flag,,#{window_status_separator}}}" "0>1"
+test_wformat "#{W:#{window_index}#{?loop_last_flag,,#{E:window-status-separator}}}" "0>1"
 
 # Three windows: middle window active
 $TMUX select-window -t :0
@@ -81,9 +77,9 @@ $TMUX set -wt :1 @bg "green"
 $TMUX set -wt :2 @bg "blue"
 $TMUX set -g window-status-separator "#{?next_window_active,>,|}"
 $TMUX select-window -t :1
-test_wformat "#{W:#{window_index}#{?loop_last_flag,,#{window_status_separator}}}" "0>1|2"
+test_wformat "#{W:#{window_index}#{?loop_last_flag,,#{E:window-status-separator}}}" "0>1|2"
 $TMUX select-window -t :0
-test_wformat "#{W:#{window_index}#{?loop_last_flag,,#{window_status_separator}}}" "0|1|2"
+test_wformat "#{W:#{window_index}#{?loop_last_flag,,#{E:window-status-separator}}}" "0|1|2"
 
 $TMUX kill-server 2>/dev/null
 exit 0

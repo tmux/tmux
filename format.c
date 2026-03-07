@@ -4532,13 +4532,10 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 	struct cmdq_item		 *item = ft->item;
 	struct format_tree		 *nft;
 	struct format_expand_state	  next;
-	struct format_expand_state	  sep_es;
 	char				 *all, *active, *use, *expanded, *value;
-	char				 *sep_expanded;
 	size_t				  valuelen;
 	struct winlink			 *wl, **l;
 	struct window			 *w;
-	const char			 *sep;
 	int				  i, n, last = 0;
 
 	if (ft->s == NULL) {
@@ -4578,16 +4575,6 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 			format_add_window_neighbor(nft, l[i + 1], ft->s, "next");
 		if (i > 0)
 			format_add_window_neighbor(nft, l[i - 1], ft->s, "prev");
-
-		/* Pre-expand the separator with neighbor data. */
-		sep = options_get_string(wl->window->options,
-		    "window-status-separator");
-		format_copy_state(&sep_es, es, FORMAT_EXPAND_NOJOBS);
-		sep_es.ft = nft;
-		sep_expanded = format_expand1(&sep_es, sep);
-		format_add(nft, "window_status_separator", "%s",
-		    sep_expanded);
-		free(sep_expanded);
 
 		format_copy_state(&next, es, 0);
 		next.ft = nft;
