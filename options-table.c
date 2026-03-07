@@ -733,7 +733,10 @@ const struct options_table_entry options_table[] = {
 	{ .name = "message-format",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "#[#{E:message-style}]#{message}",
+	  .default_str = "#[#{?#{command_prompt},"
+		  "#{E:message-command-style},"
+		  "#{E:message-style}}]"
+		  "#{message}",
 	  .text = "Format string for the prompt and message area. "
 		  "The '#{message}' placeholder is replaced with the content."
 	},
