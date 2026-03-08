@@ -36,6 +36,7 @@ static int	screen_write_overwrite(struct screen_write_ctx *,
 		    struct grid_cell *, u_int);
 static int	screen_write_combine(struct screen_write_ctx *,
 		    const struct grid_cell *);
+static int	screen_write_pane_obscured(struct window_pane *);
 
 struct screen_write_citem {
 	u_int				x;
@@ -1396,6 +1397,23 @@ screen_write_clearstartofline(struct screen_write_ctx *ctx, u_int bg)
 	screen_write_collect_insert(ctx, ci);
 }
 
+/* Clear part of a line from px for nx columns. */
+static void
+screen_write_clearpartofline(struct screen_write_ctx *ctx, u_int px, u_int nx,
+    u_int bg)
+{
+	struct screen_write_citem	*ci = ctx->item;
+
+	if (nx == 0)
+		return;
+
+	ci->x = px;
+	ci->used = nx;
+	ci->type = CLEAR;
+	ci->bg = bg;
+	screen_write_collect_insert(ctx, ci);
+}
+
 /* Move cursor to px,py. */
 void
 screen_write_cursormove(struct screen_write_ctx *ctx, int px, int py,
@@ -1578,10 +1596,13 @@ screen_write_carriagereturn(struct screen_write_ctx *ctx)
 void
 screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 {
-	struct screen	*s = ctx->s;
-	struct grid	*gd = s->grid;
-	struct tty_ctx	 ttyctx;
-	u_int		 sx = screen_size_x(s), sy = screen_size_y(s);
+	struct screen		*s = ctx->s;
+	struct grid		*gd = s->grid;
+	struct tty_ctx		 ttyctx;
+	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
+	u_int			 y, i, xoff, yoff, cx_save, cy_save;
+	struct visible_ranges	*r;
+	struct visible_range	*ri;
 
 #ifdef ENABLE_SIXEL
 	if (image_check_line(s, s->cy, sy - s->cy) && ctx->wp != NULL)
@@ -1606,16 +1627,64 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 
 	screen_write_collect_clear(ctx, s->cy + 1, sy - (s->cy + 1));
 	screen_write_collect_flush(ctx, 0, __func__);
-	tty_write(tty_cmd_clearendofscreen, &ttyctx);
+
+	if (! screen_write_pane_obscured(ctx->wp)) {
+		tty_write(tty_cmd_clearendofscreen, &ttyctx);
+		return;
+	}
+
+	/* Can't just clear screen, must avoid floating windows. */
+	cx_save = s->cx;
+	cy_save = s->cy;
+	if (ctx->wp != NULL) {
+		xoff = ctx->wp->xoff;
+		yoff = ctx->wp->yoff;
+	} else {
+		xoff = 0;
+		yoff = 0;
+	}
+
+	/* First line: visible ranges from the current cursor to end. */
+	if (s->cx <= sx - 1) {
+		r = screen_redraw_get_visible_ranges(ctx->wp,
+		    xoff + s->cx, yoff + s->cy, sx - s->cx, NULL);
+		for (i = 0; i < r->used; i++) {
+			ri = &r->ranges[i];
+			if (ri->nx == 0)
+				continue;
+			screen_write_clearpartofline(ctx,
+			    ri->px - xoff, ri->nx, bg);
+		}
+	}
+
+	/* Remaining lines: visible ranges across the full width. */
+	for (y = s->cy + 1; y < sy; y++) {
+		screen_write_set_cursor(ctx, 0, y);
+		r = screen_redraw_get_visible_ranges(ctx->wp,
+		    xoff, yoff + y, sx, NULL);
+		for (i = 0; i < r->used; i++) {
+			ri = &r->ranges[i];
+			if (ri->nx == 0)
+				continue;
+			screen_write_clearpartofline(ctx,
+			    ri->px - xoff, ri->nx, bg);
+		}
+	}
+
+	screen_write_collect_flush(ctx, 0, __func__);
+	screen_write_set_cursor(ctx, cx_save, cy_save);
 }
 
 /* Clear to start of screen. */
 void
 screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 {
-	struct screen	*s = ctx->s;
-	struct tty_ctx	 ttyctx;
-	u_int		 sx = screen_size_x(s);
+	struct screen		*s = ctx->s;
+	struct tty_ctx		 ttyctx;
+	u_int			 sx = screen_size_x(s);
+	u_int			 y, i, xoff, yoff, cx_save, cy_save;
+	struct visible_ranges	*r;
+	struct visible_range	*ri;
 
 #ifdef ENABLE_SIXEL
 	if (image_check_line(s, 0, s->cy - 1) && ctx->wp != NULL)
@@ -1634,16 +1703,62 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 
 	screen_write_collect_clear(ctx, 0, s->cy);
 	screen_write_collect_flush(ctx, 0, __func__);
-	tty_write(tty_cmd_clearstartofscreen, &ttyctx);
+
+	if (! screen_write_pane_obscured(ctx->wp)) {
+		tty_write(tty_cmd_clearstartofscreen, &ttyctx);
+		return;
+	}
+
+	/* Can't just clear screen, must avoid floating windows. */
+	cx_save = s->cx;
+	cy_save = s->cy;
+	if (ctx->wp != NULL) {
+		xoff = ctx->wp->xoff;
+		yoff = ctx->wp->yoff;
+	} else {
+		xoff = 0;
+		yoff = 0;
+	}
+
+	/* Lines 0 to cy-1: visible ranges across the full width. */
+	for (y = 0; y < s->cy; y++) {
+		screen_write_set_cursor(ctx, 0, y);
+		r = screen_redraw_get_visible_ranges(ctx->wp,
+		    xoff, yoff + y, sx, NULL);
+		for (i = 0; i < r->used; i++) {
+			ri = &r->ranges[i];
+			if (ri->nx == 0)
+				continue;
+			screen_write_clearpartofline(ctx,
+			    ri->px - xoff, ri->nx, bg);
+		}
+	}
+
+	/* Last line: visible ranges from 0 to cursor (inclusive). */
+	screen_write_set_cursor(ctx, 0, s->cy);
+	r = screen_redraw_get_visible_ranges(ctx->wp,
+	    xoff, yoff + cy_save, s->cx + 1, NULL);
+	for (i = 0; i < r->used; i++) {
+		ri = &r->ranges[i];
+		if (ri->nx == 0)
+			continue;
+		screen_write_clearpartofline(ctx, ri->px - xoff, ri->nx, bg);
+	}
+
+	screen_write_collect_flush(ctx, 0, __func__);
+	screen_write_set_cursor(ctx, cx_save, cy_save);
 }
 
 /* Clear entire screen. */
 void
 screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 {
-	struct screen	*s = ctx->s;
-	struct tty_ctx	 ttyctx;
-	u_int		 sx = screen_size_x(s), sy = screen_size_y(s);
+	struct screen		*s = ctx->s;
+	struct tty_ctx		 ttyctx;
+	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
+	u_int			 y, i, xoff, yoff, cx_save, cy_save;
+	struct visible_ranges	*r;
+	struct visible_range	*ri;
 
 #ifdef ENABLE_SIXEL
 	if (image_free_all(s) && ctx->wp != NULL)
@@ -1662,7 +1777,38 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 		grid_view_clear(s->grid, 0, 0, sx, sy, bg);
 
 	screen_write_collect_clear(ctx, 0, sy);
-	tty_write(tty_cmd_clearscreen, &ttyctx);
+
+	if (! screen_write_pane_obscured(ctx->wp)) {
+		tty_write(tty_cmd_clearscreen, &ttyctx);
+		return;
+	}
+
+	/* Can't just clear screen, must avoid floating windows. */
+	cx_save = s->cx;
+	cy_save = s->cy;
+	if (ctx->wp != NULL) {
+		xoff = ctx->wp->xoff;
+		yoff = ctx->wp->yoff;
+	} else {
+		xoff = 0;
+		yoff = 0;
+	}
+
+	for (y = 0; y < sy; y++) {
+		screen_write_set_cursor(ctx, 0, y);
+		r = screen_redraw_get_visible_ranges(ctx->wp,
+		    xoff, yoff + y, sx, NULL);
+		for (i = 0; i < r->used; i++) {
+			ri = &r->ranges[i];
+			if (ri->nx == 0)
+				continue;
+			screen_write_clearpartofline(ctx,
+			    ri->px - xoff, ri->nx, bg);
+		}
+	}
+
+	screen_write_collect_flush(ctx, 0, __func__);
+	screen_write_set_cursor(ctx, cx_save, cy_save);
 }
 
 /* Clear entire history. */
