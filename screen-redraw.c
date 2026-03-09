@@ -1438,7 +1438,7 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 	struct style		*sb_style = &wp->scrollbar_style;
 	u_int			 i, j, imin = 0, jmin = 0, imax, jmax;
 	u_int			 sb_w = sb_style->width, sb_pad = sb_style->pad;
-	int			 px, py, wx, wy, ox, oy, sx, sy;
+	int			 px, py, wx, wy, ox, oy, sx, sy, sb_tty_y;
 	int			 xoff = wp->xoff;
 	int			 yoff = wp->yoff;
 	struct visible_ranges	*r;
@@ -1477,22 +1477,29 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 			return;
 		imax = sx - sb_x;
 	}
-	if (sb_y > oy + sy)
+	/*
+	 * sb_y is a window coordinate; convert to tty coordinate by
+	 * subtracting the pan offset oy.
+	 */
+	sb_tty_y = sb_y - oy;	/* scrollbar top in tty coordinates */
+
+	if (sb_tty_y > (int)sy)
 		/* Whole sb off screen. */
 		return;
-	if (sb_y < 0)
-		/* Part of sb on screen. */
-		jmin = -sb_y;
-	if ((int)sb_h < oy)
+	if (sb_tty_y < 0)
+		/* Scrollbar starts above visible area; skip those rows. */
+		jmin = -sb_tty_y;
+	if (sb_tty_y + (int)sb_h <= 0)
+		/* Whole sb above visible area. */
 		return;
 	jmax = sb_h;
-	if ((int)jmax + sb_y > sy)
+	if (sb_tty_y + (int)jmax > (int)sy)
 		/* Clip to height of tty. */
-		jmax = sy - sb_y;
+		jmax = sy - sb_tty_y;
 
 	for (j = jmin; j < jmax; j++) {
-		py = sb_y + j;		/* tty y coordinate. */
-		wy = sb_y + j + oy;	/* window y coordinate. */
+		wy = sb_y + j;		/* window y coordinate. */
+		py = sb_tty_y + j;	/* tty y coordinate. */
 		r = tty_check_overlay_range(tty, sb_x, wy, imax);
 		r = screen_redraw_get_visible_ranges(wp, sb_x, wy, imax, r);
 		for (i = imin; i < imax; i++) {
