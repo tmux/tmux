@@ -495,7 +495,7 @@ static void
 grid_expand_line(struct grid *gd, u_int py, u_int sx, u_int bg)
 {
 	struct grid_line	*gl;
-	u_int			 xx, old_cellsize;
+	u_int			 xx;
 
 	gl = &gd->linedata[py];
 	if (sx <= gl->cellsize)
@@ -508,10 +508,13 @@ grid_expand_line(struct grid *gd, u_int py, u_int sx, u_int bg)
 	else if (gd->sx > sx)
 		sx = gd->sx;
 
-	old_cellsize = gl->cellsize;
-	gl->celldata = xrecallocarray(gl->celldata, old_cellsize, sx,
+	gl->celldata = xreallocarray(gl->celldata, sx,
 	    sizeof *gl->celldata);
-	for (xx = old_cellsize; xx < sx; xx++)
+	if (gl->cellsize < sx) {
+		memset(gl->celldata + gl->cellsize, 0,
+		    (sx - gl->cellsize) * sizeof *gl->celldata);
+	}
+	for (xx = gl->cellsize; xx < sx; xx++)
 		grid_clear_cell(gd, xx, py, bg);
 	gl->cellsize = sx;
 }

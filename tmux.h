@@ -1261,6 +1261,7 @@ struct window_pane {
 	enum client_theme last_theme;
 
 	int		 pipe_fd;
+	pid_t		 pipe_pid;
 	struct bufferevent *pipe_event;
 	struct window_pane_offset pipe_offset;
 
