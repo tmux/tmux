@@ -1319,7 +1319,7 @@ tty_clear_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 		if (wpl->yoff - 1 > (int)(py + ny) || wpl->yoff + wpl->sy + 1 < py)
 			continue;
 		overlap++;
-		if (overlap > 1) break;
+		if (overlap > 0) break;
 	}
 
 	/* If genuine BCE is available, can try escape sequences. */
