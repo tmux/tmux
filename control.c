@@ -1046,6 +1046,9 @@ control_check_subs_timer(__unused int fd, __unused short events, void *data)
 	log_debug("%s: timer fired", __func__);
 	evtimer_add(&cs->subs_timer, &tv);
 
+	if (s == NULL)
+		return;
+
 	/* Find which subscription types are present. */
 	RB_FOREACH(csub, control_subs, &cs->subs) {
 		switch (csub->type) {
