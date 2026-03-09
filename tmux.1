@@ -6127,6 +6127,21 @@ For example, to get a list of windows formatted like the status line:
 #{W:#{E:window-status-format} ,#{E:window-status-current-format} }
 .Ed
 .Pp
+Within the
+.Ql W:\&
+loop, user options
+.Po
+.Ql @name
+.Pc
+from neighboring windows are available with a
+.Ql next_
+or
+.Ql prev_
+prefix, for example a user option
+.Ql @color
+on the next window is available as
+.Ql next_@color .
+.Pp
 .Ql N:\&
 checks if a window (without any suffix or with the
 .Ql w
@@ -6295,6 +6310,8 @@ The following variables are available, where appropriate:
 .It Li "mouse_x" Ta "" Ta "Mouse X position, if any"
 .It Li "mouse_y" Ta "" Ta "Mouse Y position, if any"
 .It Li "next_session_id" Ta "" Ta "Unique session ID for next new session"
+.It Li "next_window_active" Ta "" Ta "1 if next window in W: loop is active"
+.It Li "next_window_index" Ta "" Ta "Index of next window in W: loop"
 .It Li "origin_flag" Ta "" Ta "Pane origin flag"
 .It Li "pane_active" Ta "" Ta "1 if active pane"
 .It Li "pane_at_bottom" Ta "" Ta "1 if pane is at the bottom of window"
@@ -6338,6 +6355,8 @@ The following variables are available, where appropriate:
 .It Li "pane_unseen_changes" Ta "" Ta "1 if there were changes in pane while in mode"
 .It Li "pane_width" Ta "" Ta "Width of pane"
 .It Li "pid" Ta "" Ta "Server PID"
+.It Li "prev_window_active" Ta "" Ta "1 if previous window in W: loop is active"
+.It Li "prev_window_index" Ta "" Ta "Index of previous window in W: loop"
 .It Li "rectangle_toggle" Ta "" Ta "1 if rectangle selection is activated"
 .It Li "scroll_position" Ta "" Ta "Scroll position in copy mode"
 .It Li "scroll_region_lower" Ta "" Ta "Bottom of scroll region in pane"
