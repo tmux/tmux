@@ -195,10 +195,6 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	sort_crit.reversed = args_has(args, 'r');
 
-	prefix = cmd_list_keys_get_prefix(args);
-	single = args_has(args, '1');
-	notes_only = args_has(args, 'N');
-
 	if ((tablename = args_get(args, 'T')) != NULL) {
 		table = key_bindings_get_table(tablename, 0);
 		if (table == NULL) {
@@ -206,6 +202,10 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_ERROR);
 		}
 	}
+
+	prefix = cmd_list_keys_get_prefix(args);
+	single = args_has(args, '1');
+	notes_only = args_has(args, 'N');
 
 	if ((template = args_get(args, 'F')) == NULL)
 		template = LIST_KEYS_TEMPLATE;
