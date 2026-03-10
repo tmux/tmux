@@ -647,7 +647,7 @@ status_message_redraw(struct client *c)
 	status_prompt_area(c, &ax, &aw);
 
 	ft = format_create_defaults(NULL, c, NULL, NULL, NULL);
-	style_apply(&gc, s->options, "message-style", ft);
+	memcpy(&gc, &grid_default_cell, sizeof gc);
 
 	/*
 	 * Set #{message} in the format tree. If styles should be ignored in
@@ -868,7 +868,7 @@ status_prompt_redraw(struct client *c)
 	u_int			 pcursor, pwidth, promptline;
 	u_int			 ax, aw;
 	struct grid_cell	 gc;
-	const char		*stylename, *msgfmt;
+	const char		*msgfmt;
 	char			*expanded, *prompt, *tmp;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
@@ -894,10 +894,9 @@ status_prompt_redraw(struct client *c)
 		promptline = lines - 1;
 
 	if (c->prompt_mode == PROMPT_COMMAND)
-		stylename = "message-command-style";
+		style_apply(&gc, s->options, "message-command-style", NULL);
 	else
-		stylename = "message-style";
-	style_apply(&gc, s->options, stylename, c->prompt_formats);
+		style_apply(&gc, s->options, "message-style", NULL);
 
 	status_prompt_area(c, &ax, &aw);
 
