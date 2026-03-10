@@ -875,9 +875,11 @@ have_event:
 	 * scrollbar.
 	 */
 	if (where == NOWHERE) {
-		if (c->tty.mouse_scrolling_flag)
+		if (c->tty.mouse_scrolling_flag) {
 			where = SCROLLBAR_SLIDER;
-		else {
+			m->wp = c->tty.mouse_wp->id;
+			m->w = c->tty.mouse_wp->window->id;
+		} else {
 			px = x;
 			if (m->statusat == 0 && y >= m->statuslines)
 				py = y - m->statuslines;

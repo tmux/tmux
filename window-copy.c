@@ -42,7 +42,7 @@ static void	window_copy_formats(struct window_mode_entry *,
 		    struct format_tree *);
 static struct screen *window_copy_get_screen(struct window_mode_entry *);
 static void	window_copy_scroll1(struct window_mode_entry *,
-		    struct window_pane *wp, int, u_int, int);
+		    struct window_pane *wp, int, u_int, u_int, int);
 static void	window_copy_pageup1(struct window_mode_entry *, int);
 static int	window_copy_pagedown1(struct window_mode_entry *, int, int);
 static void	window_copy_next_paragraph(struct window_mode_entry *);
@@ -596,19 +596,19 @@ window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 
 void
 window_copy_scroll(struct window_pane *wp, int sl_mpos, u_int my,
-    int scroll_exit)
+    u_int tty_oy, int scroll_exit)
 {
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
 
 	if (wme != NULL) {
 		window_set_active_pane(wp->window, wp, 0);
-		window_copy_scroll1(wme, wp, sl_mpos, my, scroll_exit);
+		window_copy_scroll1(wme, wp, sl_mpos, my, tty_oy, scroll_exit);
 	}
 }
 
 static void
 window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
-    int sl_mpos, u_int my, int scroll_exit)
+    int sl_mpos, u_int my, u_int tty_oy, int scroll_exit)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 ox, oy, px, py, n, offset, size;
@@ -616,21 +616,29 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 	u_int				 slider_height = wp->sb_slider_h;
 	u_int				 sb_height = wp->sy, sb_top = wp->yoff;
 	u_int				 sy = screen_size_y(data->backing);
+	u_int				 my_w;
 	int				 new_slider_y, delta;
 
 	/*
 	 * sl_mpos is where in the slider the user is dragging, mouse is
 	 * dragging this y point relative to top of slider.
+	 *
+	 * my is a raw tty y coordinate; sb_top (= wp->yoff) is a window
+	 * coordinate.  Convert my to window coordinates by adding tty_oy
+	 * (the window pan offset).  sl_mpos already has the statuslines
+	 * adjustment baked in (see server_client_check_mouse), so no further
+	 * statuslines correction is needed here.
 	 */
-	if (my <= sb_top + sl_mpos) {
+	my_w = my + tty_oy;
+	if (my_w <= sb_top + (u_int)sl_mpos) {
 		/* Slider banged into top. */
 		new_slider_y = sb_top - wp->yoff;
-	} else if (my - sl_mpos > sb_top + sb_height - slider_height) {
+	} else if (my_w - sl_mpos > sb_top + sb_height - slider_height) {
 		/* Slider banged into bottom. */
 		new_slider_y = sb_top - wp->yoff + (sb_height - slider_height);
 	} else {
 		/* Slider is somewhere in the middle. */
-		new_slider_y = my - wp->yoff - sl_mpos;
+		new_slider_y = my_w - wp->yoff - sl_mpos;
 	}
 
 	if (TAILQ_FIRST(&wp->modes) == NULL ||
@@ -1503,8 +1511,11 @@ window_copy_cmd_scroll_to_mouse(struct window_copy_cmd_state *cs)
 	struct client			*c = cs->c;
 	struct mouse_event		*m = cs->m;
 	int				 scroll_exit = args_has(cs->wargs, 'e');
+	u_int				 tty_ox, tty_oy, tty_sx, tty_sy;
 
-	window_copy_scroll(wp, c->tty.mouse_slider_mpos, m->y, scroll_exit);
+	tty_window_offset(&c->tty, &tty_ox, &tty_oy, &tty_sx, &tty_sy);
+	window_copy_scroll(wp, c->tty.mouse_slider_mpos, m->y, tty_oy,
+	    scroll_exit);
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -4705,7 +4716,7 @@ window_copy_write_lines(struct window_mode_entry *wme,
 	u_int	yy;
 
 	for (yy = py; yy < py + ny; yy++)
-		window_copy_write_line(wme, ctx, py);
+		window_copy_write_line(wme, ctx, yy);
 }
 
 static void

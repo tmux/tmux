@@ -575,6 +575,7 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 	struct grid		*gd = src->grid;
 	struct grid_cell	 gc;
 	u_int		 	 xx, yy, cx = s->cx, cy = s->cy;
+	int			 yoff = 0;
 	struct visible_ranges	*r;
 
 	if (nx == 0 || ny == 0)
@@ -584,9 +585,12 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 		if (yy >= gd->hsize + gd->sy)
 			break;
 		s->cx = cx;
-		if (wp != NULL)
-			screen_write_initctx(ctx, &ttyctx, 0);
-		r = screen_redraw_get_visible_ranges(wp, px, py, nx, NULL);
+		screen_write_initctx(ctx, &ttyctx, 0);
+		if (wp != NULL) {
+			yoff = wp->yoff;
+		}
+		r = screen_redraw_get_visible_ranges(wp, px, s->cy + yoff, nx,
+		    NULL);
 		for (xx = px; xx < px + nx; xx++) {
 			if (xx >= grid_get_line(gd, yy)->cellsize &&
 			    s->cx >= grid_get_line(ctx->s->grid,
@@ -2300,7 +2304,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
 	u_int		 	 width = ud->width, xx, not_wrap, i, n, vis;
-	int			 selected, skip = 1, redraw = 0;
+	int			 selected, skip = 1, redraw = 0, yoff = 0;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
@@ -2400,8 +2404,10 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	if (selected)
 		skip = 0;
 
-	/* xxx cache r in wp ? */
-	r = screen_redraw_get_visible_ranges(wp, s->cx, s->cy, width, NULL);
+	if (wp != NULL)
+		yoff = wp->yoff;
+	r = screen_redraw_get_visible_ranges(wp, s->cx, s->cy + yoff, width,
+	    NULL);
 
 	/*
 	 * Move the cursor. If not wrapping, stick at the last character and
@@ -2459,7 +2465,7 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct window_pane	*wp = ctx->wp;
 	struct grid		*gd = s->grid;
 	const struct utf8_data	*ud = &gc->data;
-	u_int			 i, n, cx = s->cx, cy = s->cy, vis;
+	u_int			 i, n, cx = s->cx, cy = s->cy, vis, yoff = 0;
 	struct grid_cell	 last;
 	struct tty_ctx		 ttyctx;
 	int			 force_wide = 0, zero_width = 0;
@@ -2556,7 +2562,9 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	 * be obscured in the middle, only on left or right, but there
 	 * could be an empty range in the visible ranges so we add them all up.
 	 */
-	r = screen_redraw_get_visible_ranges(wp, cx - n, cy, n, NULL);
+	if (wp != NULL)
+		yoff = wp->yoff;
+	r = screen_redraw_get_visible_ranges(wp, cx - n, cy + yoff, n, NULL);
 	for (i=0, vis=0; i < r->used; i++) vis += r->ranges[i].nx;
 	if (vis < n) {
 		/*
