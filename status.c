@@ -284,27 +284,12 @@ struct style_range *
 status_get_range(struct client *c, u_int x, u_int y)
 {
 	struct status_line	*sl = &c->status;
-	struct style_range	*sr;
+	struct style_ranges	*srs;
 
 	if (y >= nitems(sl->entries))
 		return (NULL);
-	TAILQ_FOREACH(sr, &sl->entries[y].ranges, entry) {
-		if (x >= sr->start && x < sr->end)
-			return (sr);
-	}
-	return (NULL);
-}
-
-/* Free all ranges. */
-static void
-status_free_ranges(struct style_ranges *srs)
-{
-	struct style_range	*sr, *sr1;
-
-	TAILQ_FOREACH_SAFE(sr, srs, entry, sr1) {
-		TAILQ_REMOVE(srs, sr, entry);
-		free(sr);
-	}
+	srs = &sl->entries[y].ranges;
+	return (style_ranges_get_range(srs, x));
 }
 
 /* Save old status line. */
@@ -341,7 +326,7 @@ status_init(struct client *c)
 	u_int			 i;
 
 	for (i = 0; i < nitems(sl->entries); i++)
-		TAILQ_INIT(&sl->entries[i].ranges);
+		style_ranges_init(&sl->entries[i].ranges);
 
 	screen_init(&sl->screen, c->tty.sx, 1, 0);
 	sl->active = &sl->screen;
@@ -355,7 +340,7 @@ status_free(struct client *c)
 	u_int			 i;
 
 	for (i = 0; i < nitems(sl->entries); i++) {
-		status_free_ranges(&sl->entries[i].ranges);
+		style_ranges_free_ranges(&sl->entries[i].ranges);
 		free((void *)sl->entries[i].expanded);
 	}
 
@@ -374,7 +359,7 @@ int
 status_redraw(struct client *c)
 {
 	struct status_line		*sl = &c->status;
-	struct status_line_entry	*sle;
+	struct style_line_entry		*sle;
 	struct session			*s = c->session;
 	struct screen_write_ctx		 ctx;
 	struct grid_cell		 gc;
@@ -454,7 +439,7 @@ status_redraw(struct client *c)
 				screen_write_putc(&ctx, &gc, ' ');
 			screen_write_cursormove(&ctx, 0, i, 0);
 
-			status_free_ranges(&sle->ranges);
+			style_ranges_free_ranges(&sle->ranges);
 			format_draw(&ctx, &gc, width, expanded, &sle->ranges,
 			    0);
 

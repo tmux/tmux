@@ -353,6 +353,7 @@ key_bindings_init(void)
 		"bind -N 'Minimise pane' _ { minimise-pane }",
 		/* Mouse button 1 double click on status line. */
 		"bind -n DoubleClick1Status { minimise-pane -t= }",
+		"bind -n MouseDown1Border { minimise-pane -t= }",
 
 		"bind -N 'Send the prefix key' C-b { send-prefix }",
 		"bind -N 'Rotate through the panes' C-o { rotate-window }",
@@ -465,10 +466,10 @@ key_bindings_init(void)
 		"bind -n TripleClick1Pane { select-pane -t=; if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { copy-mode -H; send -X select-line; run -d0.3; send -X copy-pipe-and-cancel } }",
 
 		/* Mouse button 1 on border. */
-		"bind -n MouseDown1Border { select-pane -M }",
+		"bind -n MouseDown1BorderDefault { select-pane -M }",
 
 		/* Mouse button 1 drag on border. */
-		"bind -n MouseDrag1Border { resize-pane -M }",
+		"bind -n MouseDrag1BorderDefault { resize-pane -M }",
 
 		/* Mouse button 1 down on status line. */
 		"bind -n MouseDown1Status { switch-client -t= }",

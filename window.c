@@ -649,6 +649,19 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 	}
 }
 
+struct style_range *
+border_get_range(struct window_pane *wp, u_int x)
+{
+	struct style_ranges	*srs;
+
+	if (wp == NULL)
+		return (NULL);
+	srs = &wp->border_status_line.ranges;
+
+	/* Hacky. Format offset for border status is off by 3. Figure out why */
+	return (style_ranges_get_range(srs, x - wp->xoff - 3));
+}
+
 struct window_pane *
 window_get_active_at(struct window *w, u_int x, u_int y)
 {
@@ -668,7 +681,7 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 			if ((int)x < xoff || x > xoff + sx)
 				continue;
 			if (status == PANE_STATUS_TOP) {
-				if ((int)y < yoff - 1 || y > yoff + sy)
+				if ((int)y < yoff - 1 || y > yoff + sy - 1)
 					continue;
 			} else {
 				if ((int)y < yoff || y > yoff + sy)
@@ -1092,6 +1105,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->screen = &wp->base;
 	window_pane_default_cursor(wp);
 
+	style_ranges_init(&wp->border_status_line.ranges);
 	screen_init(&wp->status_screen, 1, 1, 0);
 
 	if (gethostname(host, sizeof host) == 0)
@@ -1145,6 +1159,7 @@ window_pane_destroy(struct window_pane *wp)
 	free(wp->shell);
 	cmd_free_argv(wp->argc, wp->argv);
 	colour_palette_free(&wp->palette);
+	style_ranges_free_ranges(&wp->border_status_line.ranges);
 	free(wp);
 }
 

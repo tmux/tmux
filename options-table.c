@@ -109,6 +109,21 @@ static const char *options_table_allow_passthrough_list[] = {
 	"off", "on", "all", NULL
 };
 
+#define OPTIONS_TABLE_PANE_BORDER_STATUS_FORMAT \
+	"#[align=left default]" \
+	"#[push-default]" \
+	"#{?pane_active,#[reverse],}#{pane_index}#[default] \"#{pane_title}\"" \
+	"#[pop-default]" \
+	"#[norange default]" \
+	"#[list=on align=right]" \
+	"#{B:" \
+		"#[range=border|#{button_id} default]" \
+		"#[push-default]" \
+		"[#{button_face}]" \
+		"#[pop-default]" \
+		"#[norange default]" \
+	"}"
+
 /* Status line format. */
 #define OPTIONS_TABLE_STATUS_FORMAT1 \
 	"#[align=left range=left #{E:status-left-style}]" \
@@ -1302,9 +1317,17 @@ const struct options_table_entry options_table[] = {
 	{ .name = "pane-border-format",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
-	  .default_str = "#{?pane_active,#[reverse],}#{pane_index}#[default] "
-			 "\"#{pane_title}\"",
+	  .default_str = OPTIONS_TABLE_PANE_BORDER_STATUS_FORMAT,
 	  .text = "Format of text in the pane status lines."
+	},
+
+	{ .name = "pane-border-buttons",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .flags = OPTIONS_TABLE_IS_ARRAY,
+	  .default_str = "_,^,x,",
+	  .separator = ",",
+	  .text = "Faces of the buttons on the pane border."
 	},
 
 	{ .name = "pane-border-indicators",

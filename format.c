@@ -107,6 +107,7 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_NOT 0x80000
 #define FORMAT_NOT_NOT 0x100000
 #define FORMAT_REPEAT 0x200000
+#define FORMAT_BUTTONS 0x400000
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 100
@@ -1336,6 +1337,8 @@ format_cb_mouse_status_range(struct format_tree *ft)
 		return (xstrdup("left"));
 	case STYLE_RANGE_RIGHT:
 		return (xstrdup("right"));
+	case STYLE_RANGE_BORDER:
+		return (xstrdup("border"));
 	case STYLE_RANGE_PANE:
 		return (xstrdup("pane"));
 	case STYLE_RANGE_WINDOW:
@@ -4280,7 +4283,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 		}
 
 		/* Now try single character with arguments. */
-		if (strchr("mCLNPSst=pReqW", cp[0]) == NULL)
+		if (strchr("mBCLNPSst=pReqW", cp[0]) == NULL)
 			break;
 		c = cp[0];
 
@@ -4757,6 +4760,57 @@ format_loop_clients(struct format_expand_state *es, const char *fmt)
 	return (value);
 }
 
+/* Loop over buttons. */
+static char *
+format_loop_buttons(struct format_expand_state *es, const char *fmt)
+{
+	struct format_tree		 *ft = es->ft;
+	struct cmdq_item		 *item = ft->item;
+	struct format_tree		 *nft;
+	struct format_expand_state	  next;
+	struct options_entry		 *o;
+	union options_value		 *ov;
+	char				 *expanded, *value, *all, *active;
+	size_t				  valuelen;
+	int				  i;
+
+	if (ft->wp == NULL) {
+		format_log(es, "button loop but no window pane");
+		return (NULL);
+	}
+
+	if (format_choose(es, fmt, &all, &active, 0) != 0) {
+		all = xstrdup(fmt);
+		active = NULL;
+	}
+
+	value = xcalloc(1, 1);
+	valuelen = 1;
+
+	o = options_get(ft->wp->options, "pane-border-buttons");
+	if (o != NULL) {
+		for (i = 0; (ov = options_array_get(o, i)) != NULL; i++) {
+			format_log(es, "button loop: %d", i);
+			nft = format_create(ft->c, item, 0, ft->flags);
+			format_defaults(nft, ft->c, ft->s, ft->wl, ft->wp);
+			format_add(nft, "button_id", "%%%u", i);
+			format_add(nft, "button_face", "%s", ov->string);
+			format_copy_state(&next, es, 0);
+			next.ft = nft;
+			expanded = format_expand1(&next, fmt);
+			format_free(nft);
+
+			valuelen += strlen(expanded);
+			value = xrealloc(value, valuelen);
+
+			strlcat(value, expanded, valuelen);
+			free(expanded);
+		}
+	}
+
+	return (value);
+}
+
 static char *
 format_replace_expression(struct format_modifier *mexp,
     struct format_expand_state *es, const char *copy)
@@ -5104,6 +5158,9 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 				else
 					sc->reversed = 0;
 				break;
+			case 'B':
+				modifiers |= FORMAT_BUTTONS;
+				break;
 			case 'R':
 				modifiers |= FORMAT_REPEAT;
 				break;
@@ -5168,6 +5225,10 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			goto fail;
 	} else if (modifiers & FORMAT_CLIENTS) {
 		value = format_loop_clients(es, copy);
+		if (value == NULL)
+			goto fail;
+	} else if (modifiers & FORMAT_BUTTONS) {
+		value = format_loop_buttons(es, copy);
 		if (value == NULL)
 			goto fail;
 	} else if (modifiers & FORMAT_WINDOW_NAME) {
