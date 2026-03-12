@@ -329,6 +329,25 @@ window_buffer_sort(struct sort_criteria *sort_crit)
 		sort_crit->order = sort_crit->order_seq[0];
 }
 
+static const char* window_buffer_help_lines[] = {
+	"\r\033[1m      Enter \033[0m\016x\017 \033[0mPaste selected %1\n",
+	"\r\033[1m          p \033[0m\016x\017 \033[0mPaste selected %1\n",
+	"\r\033[1m          P \033[0m\016x\017 \033[0mPaste tagged %1s\n",
+	"\r\033[1m          d \033[0m\016x\017 \033[0mDelete selected %1\n",
+	"\r\033[1m          D \033[0m\016x\017 \033[0mDelete tagged %1s\n",
+	"\r\033[1m          e \033[0m\016x\017 \033[0mOpen %1 in editor\n",
+	"\r\033[1m          f \033[0m\016x\017 \033[0mEnter a filter\n",
+	NULL
+};
+
+static const char**
+window_buffer_help(u_int *width, const char **item)
+{
+	*width = 0;
+	*item = "buffer";
+	return (window_buffer_help_lines);
+}
+
 static struct screen *
 window_buffer_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
     struct args *args)
@@ -356,8 +375,8 @@ window_buffer_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 
 	data->data = mode_tree_start(wp, args, window_buffer_build,
 	    window_buffer_draw, window_buffer_search, window_buffer_menu, NULL,
-	    window_buffer_get_key, NULL, window_buffer_sort, data,
-	    window_buffer_menu_items, &s);
+	    window_buffer_get_key, NULL, window_buffer_sort, window_buffer_help,
+	    data, window_buffer_menu_items, &s);
 	mode_tree_zoom(data->data, args);
 
 	mode_tree_build(data->data);

@@ -868,6 +868,27 @@ window_customize_height(__unused void *modedata, __unused u_int height)
 	return (12);
 }
 
+static const char* window_customize_help_lines[] = {
+	"\r\033[1m   Enter, s \033[0m\016x\017 \033[0mSet %1 value\n",
+	"\r\033[1m          S \033[0m\016x\017 \033[0mSet global %1 value\n",
+	"\r\033[1m          w \033[0m\016x\017 \033[0mSet window %1 value\n",
+	"\r\033[1m          d \033[0m\016x\017 \033[0mSet to default value\n",
+	"\r\033[1m          D \033[0m\016x\017 \033[0mSet tagged %1s to default value\n",
+	"\r\033[1m          u \033[0m\016x\017 \033[0mUnset an %1\n",
+	"\r\033[1m          U \033[0m\016x\017 \033[0mUnset tagged %1s\n",
+	"\r\033[1m          f \033[0m\016x\017 \033[0mEnter a filter\n",
+	"\r\033[1m          v \033[0m\016x\017 \033[0mToggle information\n",
+	NULL
+};
+
+static const char**
+window_customize_help(u_int *width, const char **item)
+{
+	*width = 52;
+	*item = "option";
+	return (window_customize_help_lines);
+}
+
 static struct screen *
 window_customize_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
     struct args *args)
@@ -891,8 +912,8 @@ window_customize_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 
 	data->data = mode_tree_start(wp, args, window_customize_build,
 	    window_customize_draw, NULL, window_customize_menu,
-	    window_customize_height, NULL, NULL, NULL, data,
-	    window_customize_menu_items, &s);
+	    window_customize_height, NULL, NULL, NULL, window_customize_help,
+	    data, window_customize_menu_items, &s);
 	mode_tree_zoom(data->data, args);
 
 	mode_tree_build(data->data);
