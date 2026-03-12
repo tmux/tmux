@@ -4747,6 +4747,23 @@ For how to specify
 see the
 .Sx STYLES
 section.
+.It Ic message-format Ar string
+Set the format string for the prompt and message area.
+The special placeholder
+.Ql #{message}
+expands to the interactive prompt or message text and
+.Ql #{command_prompt}
+is set to 1 when the prompt is in command mode (vi).
+Style directives like
+.Ic fill ,
+.Ic align ,
+and
+.Ic width
+may be used in the format string.
+The default uses a conditional to select between
+.Ic message-style
+and
+.Ic message-command-style .
 .It Xo Ic message-line
 .Op Ic 0 | 1 | 2 | 3 | 4
 .Xc
@@ -4754,6 +4771,23 @@ Set line on which status line messages and the command prompt are shown.
 .It Ic message-style Ar style
 Set status line message style.
 This is used for messages and for the command prompt.
+The message is drawn on top of the existing status line.
+A
+.Ic width
+attribute (a fixed number of columns or a percentage such as
+.Ql 50% )
+constrains the prompt area width and an
+.Ic align
+attribute
+.Pq Ic left , centre , right
+sets its horizontal position.
+When the width is less than the full terminal width, the normal status
+bar content remains visible around the prompt area.
+The
+.Ic fill
+attribute is used by the default
+.Ic message-format
+to clear the background.
 For how to specify
 .Ar style ,
 see the
@@ -6524,6 +6558,11 @@ is the terminal alternate character set.
 Align text to the left, centre or right of the available space if appropriate.
 .It Ic fill=colour
 Fill the available space with a background colour if appropriate.
+.It Ic width=N
+Set the width of the styled area.
+.Ar N
+may be a column count or a percentage (for example
+.Ql 50% ) .
 .It Xo Ic list=on ,
 .Ic list=focus ,
 .Ic list=left-marker ,

@@ -363,7 +363,7 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 		name = menu->items[i].name;
 		if (name == NULL || *name == '-')
 			continue;
-		if (event->key == menu->items[i].key) {
+		if ((event->key & ~KEYC_MASK_FLAGS) == menu->items[i].key) {
 			md->choice = i;
 			goto chosen;
 		}
