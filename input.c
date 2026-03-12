@@ -949,7 +949,7 @@ input_set_state(struct input_ctx *ictx, const struct input_transition *itr)
 
 /* Parse data. */
 static void
-input_parse(struct input_ctx *ictx, u_char *buf, size_t len)
+input_parse(struct input_ctx *ictx, const u_char *buf, size_t len)
 {
 	struct screen_write_ctx		*sctx = &ictx->ctx;
 	const struct input_state	*state = NULL;
@@ -1020,7 +1020,7 @@ input_parse_pane(struct window_pane *wp)
 
 /* Parse given input. */
 void
-input_parse_buffer(struct window_pane *wp, u_char *buf, size_t len)
+input_parse_buffer(struct window_pane *wp, const u_char *buf, size_t len)
 {
 	struct input_ctx	*ictx = wp->ictx;
 	struct screen_write_ctx	*sctx = &ictx->ctx;
@@ -1051,7 +1051,7 @@ input_parse_buffer(struct window_pane *wp, u_char *buf, size_t len)
 /* Parse given input for screen. */
 void
 input_parse_screen(struct input_ctx *ictx, struct screen *s,
-    screen_write_init_ctx_cb cb, void *arg, u_char *buf, size_t len)
+    screen_write_init_ctx_cb cb, void *arg, const u_char *buf, size_t len)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 

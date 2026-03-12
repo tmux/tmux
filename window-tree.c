@@ -860,6 +860,30 @@ window_tree_sort(struct sort_criteria *sort_crit)
 		sort_crit->order = sort_crit->order_seq[0];
 }
 
+static const char* window_tree_help_lines[] = {
+	"\r\033[1m      Enter \033[0m\016x\017 \033[0mChoose selected item\n",
+	"\r\033[1m       S-Up \033[0m\016x\017 \033[0mSwap current and previous window\n",
+	"\r\033[1m     S-Down \033[0m\016x\017 \033[0mSwap current and next window\n",
+	"\r\033[1m          x \033[0m\016x\017 \033[0mKill selected item\n",
+	"\r\033[1m          X \033[0m\016x\017 \033[0mKill tagged items\n",
+	"\r\033[1m          < \033[0m\016x\017 \033[0mScroll previews left\n",
+	"\r\033[1m          > \033[0m\016x\017 \033[0mScroll previews right\n",
+	"\r\033[1m          m \033[0m\016x\017 \033[0mSet the marked pane\n",
+	"\r\033[1m          M \033[0m\016x\017 \033[0mClear the marked pane\n",
+	"\r\033[1m          : \033[0m\016x\017 \033[0mRun a command for each tagged item\n",
+	"\r\033[1m          f \033[0m\016x\017 \033[0mEnter a format\n",
+	"\r\033[1m          H \033[0m\016x\017 \033[0mJump to the starting pane\n",
+	NULL
+};
+
+static const char**
+window_tree_help(u_int *width, const char **item)
+{
+	*width = 51;
+	*item = "item";
+	return (window_tree_help_lines);
+}
+
 static struct screen *
 window_tree_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
     struct args *args)
@@ -898,8 +922,8 @@ window_tree_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 
 	data->data = mode_tree_start(wp, args, window_tree_build,
 	    window_tree_draw, window_tree_search, window_tree_menu, NULL,
-	    window_tree_get_key, window_tree_swap, window_tree_sort, data,
-	    window_tree_menu_items, &s);
+	    window_tree_get_key, window_tree_swap, window_tree_sort,
+	    window_tree_help, data, window_tree_menu_items, &s);
 	mode_tree_zoom(data->data, args);
 
 	mode_tree_build(data->data);

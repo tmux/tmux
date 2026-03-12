@@ -3027,9 +3027,9 @@ void	 input_free(struct input_ctx *);
 void	 input_reset(struct input_ctx *, int);
 struct evbuffer *input_pending(struct input_ctx *);
 void	 input_parse_pane(struct window_pane *);
-void	 input_parse_buffer(struct window_pane *, u_char *, size_t);
+void	 input_parse_buffer(struct window_pane *, const u_char *, size_t);
 void	 input_parse_screen(struct input_ctx *, struct screen *,
-	     screen_write_init_ctx_cb, void *, u_char *, size_t);
+	     screen_write_init_ctx_cb, void *, const u_char *, size_t);
 void	 input_reply_clipboard(struct bufferevent *, const char *, size_t,
 	     const char *, char);
 void	 input_set_buffer_size(size_t);
@@ -3413,6 +3413,7 @@ typedef key_code (*mode_tree_key_cb)(void *, void *, u_int);
 typedef int (*mode_tree_swap_cb)(void *, void *, struct sort_criteria *);
 typedef void (*mode_tree_sort_cb)(struct sort_criteria *);
 typedef void (*mode_tree_each_cb)(void *, void *, struct client *, key_code);
+typedef const char** (*mode_tree_help_cb)(u_int *, const char**);
 u_int	 mode_tree_count_tagged(struct mode_tree_data *);
 void	*mode_tree_get_current(struct mode_tree_data *);
 const char *mode_tree_get_current_name(struct mode_tree_data *);
@@ -3427,7 +3428,7 @@ int	 mode_tree_down(struct mode_tree_data *, int);
 struct mode_tree_data *mode_tree_start(struct window_pane *, struct args *,
 	     mode_tree_build_cb, mode_tree_draw_cb, mode_tree_search_cb,
 	     mode_tree_menu_cb, mode_tree_height_cb, mode_tree_key_cb,
-	     mode_tree_swap_cb, mode_tree_sort_cb, void *, 
+             mode_tree_swap_cb, mode_tree_sort_cb, mode_tree_help_cb, void *,
 	     const struct menu_item *, struct screen **);
 void	 mode_tree_zoom(struct mode_tree_data *, struct args *);
 void	 mode_tree_build(struct mode_tree_data *);
@@ -3645,6 +3646,7 @@ int		 menu_key_cb(struct client *, void *, struct key_event *);
 #define POPUP_CLOSEEXITZERO 0x2
 #define POPUP_INTERNAL 0x4
 #define POPUP_CLOSEANYKEY 0x8
+#define POPUP_NOJOB 0x10
 typedef void (*popup_close_cb)(int, void *);
 typedef void (*popup_finish_edit_cb)(char *, size_t, void *);
 int		 popup_display(int, enum box_lines, struct cmdq_item *, u_int,
@@ -3652,6 +3654,7 @@ int		 popup_display(int, enum box_lines, struct cmdq_item *, u_int,
                     char **, const char *, const char *, struct client *,
                     struct session *, const char *, const char *,
                     popup_close_cb, void *);
+void		 popup_write(struct client *, const char *, size_t);
 int		 popup_editor(struct client *, const char *, size_t,
 		    popup_finish_edit_cb, void *);
 int		 popup_present(struct client *);

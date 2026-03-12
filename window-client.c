@@ -240,6 +240,26 @@ window_client_sort(struct sort_criteria *sort_crit)
 		sort_crit->order = sort_crit->order_seq[0];
 }
 
+static const char* window_client_help_lines[] = {
+	"\r\033[1m      Enter \033[0m\016x\017 \033[0mChoose selected %1\n",
+	"\r\033[1m          d \033[0m\016x\017 \033[0mDetach selected %1\n",
+	"\r\033[1m          D \033[0m\016x\017 \033[0mDetach tagged %1s\n",
+	"\r\033[1m          x \033[0m\016x\017 \033[0mDetach selected %1\n",
+	"\r\033[1m          X \033[0m\016x\017 \033[0mDetach tagged %1s\n",
+	"\r\033[1m          z \033[0m\016x\017 \033[0mSuspend selected %1\n",
+	"\r\033[1m          Z \033[0m\016x\017 \033[0mSuspend tagged %1s\n",
+	"\r\033[1m          f \033[0m\016x\017 \033[0mEnter a filter\n",
+	NULL
+};
+
+static const char**
+window_client_help(u_int *width, const char **item)
+{
+	*width = 0;
+	*item = "client";
+	return (window_client_help_lines);
+}
+
 static struct screen *
 window_client_init(struct window_mode_entry *wme,
     __unused struct cmd_find_state *fs, struct args *args)
@@ -266,8 +286,8 @@ window_client_init(struct window_mode_entry *wme,
 
 	data->data = mode_tree_start(wp, args, window_client_build,
 	    window_client_draw, NULL, window_client_menu, NULL,
-	    window_client_get_key, NULL, window_client_sort, data,
-	    window_client_menu_items, &s);
+	    window_client_get_key, NULL, window_client_sort,
+	    window_client_help, data, window_client_menu_items, &s);
 	mode_tree_zoom(data->data, args);
 
 	mode_tree_build(data->data);

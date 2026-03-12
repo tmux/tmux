@@ -848,14 +848,33 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 	pd->psx = sx;
 	pd->psy = sy;
 
-	pd->job = job_run(shellcmd, argc, argv, env, s, cwd,
-	    popup_job_update_cb, popup_job_complete_cb, NULL, pd,
-	    JOB_NOWAIT|JOB_PTY|JOB_KEEPWRITE|JOB_DEFAULTSHELL, jx, jy);
-	pd->ictx = input_init(NULL, job_get_event(pd->job), &pd->palette, c);
+	if (flags & POPUP_NOJOB)
+		pd->ictx = input_init(NULL, NULL, &pd->palette, NULL);
+	else {
+		pd->job = job_run(shellcmd, argc, argv, env, s, cwd,
+		    popup_job_update_cb, popup_job_complete_cb, NULL, pd,
+		    JOB_NOWAIT|JOB_PTY|JOB_KEEPWRITE|JOB_DEFAULTSHELL, jx, jy);
+		pd->ictx = input_init(NULL, job_get_event(pd->job),
+		    &pd->palette, c);
+	}
 
 	server_client_set_overlay(c, 0, popup_check_cb, popup_mode_cb,
 	    popup_draw_cb, popup_key_cb, popup_free_cb, popup_resize_cb, pd);
 	return (0);
+}
+
+void
+popup_write(struct client *c, const char *data, size_t size)
+{
+	struct popup_data	*pd = c->overlay_data;
+
+	if (!popup_present(c))
+		return;
+	c->overlay_check = NULL;
+	c->overlay_data = NULL;
+	input_parse_screen(pd->ictx, &pd->s, popup_init_ctx_cb, pd, data, size);
+	c->overlay_check = popup_check_cb;
+	c->overlay_data = pd;
 }
 
 static void
