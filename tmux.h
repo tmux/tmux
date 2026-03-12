@@ -911,6 +911,7 @@ struct style {
 	char			range_string[16];
 
 	int			width;
+	int			width_percentage;
 	int			pad;
 
 	enum style_default_type	default_type;
