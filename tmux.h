@@ -952,6 +952,21 @@ enum screen_cursor_style {
 	SCREEN_CURSOR_BAR
 };
 
+
+/* Progress Bars, OSC 9;4. */
+enum progress_bar_state {
+	PROGRESS_BAR_HIDDEN = 0,
+	PROGRESS_BAR_NORMAL = 1,
+	PROGRESS_BAR_ERROR  = 2,
+	PROGRESS_BAR_INDETERMINATE = 3,
+	PROGRESS_BAR_PAUSED = 4,
+};
+
+struct progress_bar {
+	enum	progress_bar_state state;
+	int	progress;
+};
+
 /* Virtual screen. */
 struct screen_sel;
 struct screen_titles;
@@ -993,6 +1008,8 @@ struct screen {
 	struct screen_write_cline	*write_list;
 
 	struct hyperlinks		*hyperlinks;
+
+	struct progress_bar		progress_bar;
 };
 
 /* Screen write context. */
@@ -3287,6 +3304,8 @@ int	 screen_set_title(struct screen *, const char *);
 void	 screen_set_path(struct screen *, const char *);
 void	 screen_push_title(struct screen *);
 void	 screen_pop_title(struct screen *);
+void	 screen_set_progress_bar(struct screen *s, enum progress_bar_state pbs, 
+	     int p);
 void	 screen_resize(struct screen *, u_int, u_int, int);
 void	 screen_resize_cursor(struct screen *, u_int, u_int, int, int, int);
 void	 screen_set_selection(struct screen *, u_int, u_int, u_int, u_int,
