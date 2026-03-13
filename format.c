@@ -2250,6 +2250,39 @@ format_cb_pane_pipe_pid(struct format_tree *ft)
 	return (value);
 }
 
+/* Callback for pane_progress_bar_progress. */
+static void *
+format_cb_pane_progress_bar_progress(struct format_tree *ft)
+{
+	char    *value = NULL;
+
+	if (ft->wp != NULL) {
+		xasprintf(&value, "%d", ft->wp->base.progress_bar.progress);
+	}
+	return (value);
+}
+
+/* Callback for pane_progress_bar_state. */
+static void *
+format_cb_pane_progress_bar_state(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		switch (ft->wp->base.progress_bar.state) {
+			case PROGRESS_BAR_HIDDEN:
+				return xstrdup("hidden");
+			case PROGRESS_BAR_DEFAULT:
+				return xstrdup("normal");
+			case PROGRESS_BAR_ERROR:
+				return xstrdup("error");
+			case PROGRESS_BAR_INDETERMINATE:
+				return xstrdup("indeterminate");
+			case PROGRESS_BAR_PAUSED:
+				return xstrdup("paused");
+		}
+	}
+	return (NULL);
+}
+
 /* Callback for pane_right. */
 static void *
 format_cb_pane_right(struct format_tree *ft)
@@ -3342,6 +3375,12 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_pipe_pid", FORMAT_TABLE_STRING,
 	  format_cb_pane_pipe_pid
+	},
+	{ "pane_progress_bar_progress", FORMAT_TABLE_STRING,
+	  format_cb_pane_progress_bar_progress
+	},
+	{ "pane_progress_bar_state", FORMAT_TABLE_STRING,
+	  format_cb_pane_progress_bar_state
 	},
 	{ "pane_right", FORMAT_TABLE_STRING,
 	  format_cb_pane_right
