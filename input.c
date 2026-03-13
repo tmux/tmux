@@ -1450,6 +1450,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 	struct input_table_entry       *entry;
 	struct options		       *oo;
 	int				i, n, m, ek, set, p;
+	int				flags, raw_flags, dropped, count;
+	int				mode, flagset, raw_flagset;
 	u_int				cx, bg = ictx->cell.cell.bg;
 
 	if (ictx->flags & INPUT_DISCARD)
@@ -1824,14 +1826,11 @@ input_csi_dispatch(struct input_ctx *ictx)
 			    getversion());
 		}
 		break;
-	case INPUT_CSI_KITTY_QUERY: {
-		int flags;
+	case INPUT_CSI_KITTY_QUERY:
 		flags = s->kitty_kbd.flags & KITTY_KBD_SUPPORTED;
 		input_reply(ictx, 1, "\033[?%du", flags);
 		break;
-	}
-	case INPUT_CSI_KITTY_PUSH: {
-		int flags, raw_flags, dropped;
+	case INPUT_CSI_KITTY_PUSH:
 		raw_flags = input_get(ictx, 0, 0, 0);
 		flags = raw_flags & KITTY_KBD_SUPPORTED;
 		dropped = raw_flags & ~KITTY_KBD_SUPPORTED;
@@ -1841,9 +1840,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 		s->kitty_kbd.saved_flags = s->kitty_kbd.flags;
 		s->kitty_kbd.flags = flags;
 		break;
-	}
-	case INPUT_CSI_KITTY_POP: {
-		int count;
+	case INPUT_CSI_KITTY_POP:
 		count = input_get(ictx, 0, 1, 1);
 		if (count > 0 && s->kitty_kbd.saved_flags != KITTY_KBD_SAVED_NONE) {
 			s->kitty_kbd.flags = s->kitty_kbd.saved_flags;
@@ -1855,9 +1852,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 			s->kitty_kbd.saved_flags = KITTY_KBD_SAVED_NONE;
 		}
 		break;
-	}
-	case INPUT_CSI_KITTY_SET: {
-		int flagset, mode, raw_flagset, dropped;
+	case INPUT_CSI_KITTY_SET:
 		raw_flagset = input_get(ictx, 0, 0, 0);
 		flagset = raw_flagset & KITTY_KBD_SUPPORTED;
 		dropped = raw_flagset & ~KITTY_KBD_SUPPORTED;
@@ -1878,7 +1873,6 @@ input_csi_dispatch(struct input_ctx *ictx)
 		}
 		s->kitty_kbd.flags &= KITTY_KBD_SUPPORTED;
 		break;
-	}
 
 	}
 
