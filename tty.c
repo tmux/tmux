@@ -340,12 +340,9 @@ tty_push_kitty(struct tty *tty)
 	}
 
 	mode = options_get_number(global_options, "kitty-keys");
-	if (tty_term_has(tty->term, TTYC_ENKITK))
-		tty_puts(tty, tty_term_string(tty->term, TTYC_ENKITK));
-	else if (mode == 2)
-		tty_puts(tty, "\033[>1u");
-	else
+	if (mode != 2)
 		return (0);
+	tty_puts(tty, "\033[>1u");
 
 	tty->kitty_saved_flags = tty->kitty_flags;
 	tty->flags |= TTY_KITTY_PUSHED;
@@ -359,17 +356,10 @@ tty_pop_kitty(struct tty *tty, int raw)
 	if (~tty->flags & TTY_KITTY_PUSHED)
 		return;
 
-	if (tty_term_has(tty->term, TTYC_DSKITK)) {
-		if (raw)
-			tty_raw(tty, tty_term_string(tty->term, TTYC_DSKITK));
-		else
-			tty_puts(tty, tty_term_string(tty->term, TTYC_DSKITK));
-	} else {
-		if (raw)
-			tty_raw(tty, "\033[<1u");
-		else
-			tty_puts(tty, "\033[<1u");
-	}
+	if (raw)
+		tty_raw(tty, "\033[<1u");
+	else
+		tty_puts(tty, "\033[<1u");
 	tty->flags &= ~TTY_KITTY_PUSHED;
 	tty->kitty_flags = tty->kitty_saved_flags;
 	tty->kitty_saved_flags = 0;

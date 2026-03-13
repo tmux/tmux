@@ -491,8 +491,6 @@ tty_keys_kitty_keyboard(struct tty *tty, const char *buf, size_t len,
 		    c->name, n & ~KITTY_KBD_SUPPORTED);
 	tty->flags |= TTY_HAVEDA_KITTY;
 
-	/* Add kitkeys terminal feature. */
-	tty_add_features(&c->term_features, "kitkeys", ",");
 
 	tty_update_features(tty);
 	if (tty->flags & TTY_KITTY_PUSHED)
