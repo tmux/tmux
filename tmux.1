@@ -5098,9 +5098,14 @@ option is enabled.
 Set clock colour.
 .Pp
 .It Xo Ic clock-mode-style
-.Op Ic 12 | 24 | 12-with-seconds | 24-with-seconds
+.Op Ic 12 | 12-with-seconds | 12-with-timezone | 12-with-seconds-and-timezone | 24 | 24-with-seconds | 24-with-timezone | 24-with-seconds-and-timezone
 .Xc
 Set clock hour format.
+.Pp
+.It Xo Ic clock-mode-timezone
+.Op Ic TZ
+.Xc
+Set clock timezone.
 .Pp
 .It Ic fill-character Ar character
 Set the character used to fill areas of the terminal unused by a window.

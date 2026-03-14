@@ -3504,7 +3504,7 @@ extern const struct window_mode window_tree_mode;
 
 /* window-clock.c */
 extern const struct window_mode window_clock_mode;
-extern const char window_clock_table[14][5][5];
+extern const char window_clock_table[37][5][5];
 
 /* window-client.c */
 extern const struct window_mode window_client_mode;
