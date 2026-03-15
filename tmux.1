@@ -1816,7 +1816,7 @@ Append the selection to the top paste buffer.
 Append the selection to the top paste buffer and exit copy mode.
 .It Xo
 .Ic back\-to\-indentation
-(vi: \[ah])
+(vi: \[ha])
 (emacs: M\-m)
 .Xc
 Move the cursor back to the indentation.
@@ -3726,7 +3726,7 @@ to
 Ctrl keys may be prefixed with
 .Ql C\-
 or
-.Ql \[ah] ,
+.Ql \[ha] ,
 Shift keys with
 .Ql S\-
 and Alt (meta) with
@@ -4328,11 +4328,11 @@ This is the equivalent of the
 .Xr xterm 1
 resource.
 For example, C\-S\-a will be reported as
-.Ql \[ah][[27;6;65\[ti]
+.Ql \[ha][[27;6;65\[ti]
 when set to
 .Ic xterm ,
 and as
-.Ql \[ah][[65;6u
+.Ql \[ha][[65;6u
 when set to
 .Ic csi\-u .
 .It Xo Ic focus\-events
@@ -5972,7 +5972,7 @@ means to ignore case.
 For example:
 .Ql #{m:*foo*,#{host}}
 or
-.Ql #{m/ri:\[ah]A,MYVAR} .
+.Ql #{m/ri:\[ha]A,MYVAR} .
 A
 .Ql C
 performs a search for a
@@ -5987,7 +5987,7 @@ flag means search for a regular expression and
 .Ql i
 ignores case.
 For example:
-.Ql #{C/r:\[ah]Start}
+.Ql #{C/r:\[ha]Start}
 .Pp
 Numeric operators may be performed by prefixing two comma-separated alternatives
 with an
@@ -6843,9 +6843,9 @@ The flag is one of the following symbols appended to the window name:
 .It Li "\-" Ta "Marks the last window (previously selected)."
 .It Li "#" Ta "Window activity is monitored and activity has been detected."
 .It Li "\&!" Ta "Window bells are monitored and a bell has occurred in the window."
-.It Li "\[ti]" Ta "The window has been silent for the
+.It Li "\[ti]" Ta "The window has been silent for the"
 .Ic monitor\-silence
-interval."
+interval.
 .It Li "M" Ta "The window contains the marked pane."
 .It Li "Z" Ta "The window's active pane is zoomed."
 .El
