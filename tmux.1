@@ -76,7 +76,7 @@ Each session is persistent and will survive accidental disconnection
 (such as
 .Xr ssh 1
 connection timeout) or intentional detaching (with the
-.Ql C-b d
+.Ql C\-b d
 key strokes).
 .Nm
 may be reattached using:
@@ -265,17 +265,17 @@ is assumed, which defaults to
 .Nm
 may be controlled from an attached client by using a key combination of a
 prefix key,
-.Ql C-b
+.Ql C\-b
 (Ctrl-b) by default, followed by a command key.
 .Pp
 The default command key bindings are:
 .Pp
 .Bl -tag -width "XXXXXXXXXX" -offset indent -compact
-.It C-b
-Send the prefix key (C-b) through to the application.
-.It C-o
+.It C\-b
+Send the prefix key (C\-b) through to the application.
+.It C\-o
 Rotate the panes in the current window forwards.
-.It C-z
+.It C\-z
 Suspend the
 .Nm
 client.
@@ -374,7 +374,7 @@ Enter copy mode and scroll one page up.
 .It Left, Right
 Change to the pane above, below, to the left, or to the right of the current
 pane.
-.It M-1 to M-7
+.It M\-1 to M\-7
 Arrange panes in one of the seven preset layouts:
 even\-horizontal, even\-vertical,
 main\-horizontal, main\-horizontal\-mirrored,
@@ -382,17 +382,17 @@ main\-vertical, main\-vertical\-mirrored,
 or tiled.
 .It Space
 Arrange the current window in the next preset layout.
-.It M-n
+.It M\-n
 Move to the next window with a bell or activity marker.
-.It M-o
+.It M\-o
 Rotate the panes in the current window backwards.
-.It M-p
+.It M\-p
 Move to the previous window with a bell or activity marker.
-.It C-Up, C-Down
-.It C-Left, C-Right
+.It C\-Up, C\-Down
+.It C\-Left, C\-Right
 Resize the current pane in steps of one cell.
-.It M-Up, M-Down
-.It M-Left, M-Right
+.It M\-Up, M\-Down
+.It M\-Left, M\-Right
 Resize the current pane in steps of five cells.
 .El
 .Pp
@@ -1734,11 +1734,11 @@ flag) or vertically.
 Panes may be resized with the
 .Ic resize\-pane
 command (bound to
-.Ql C-Up ,
-.Ql C-Down
-.Ql C-Left
+.Ql C\-Up ,
+.Ql C\-Down
+.Ql C\-Left
 and
-.Ql C-Right
+.Ql C\-Right
 by default), the current pane may be changed with the
 .Ic select\-pane
 command and the
@@ -1817,13 +1817,13 @@ Append the selection to the top paste buffer and exit copy mode.
 .It Xo
 .Ic back\-to\-indentation
 (vi: \[ah])
-(emacs: M-m)
+(emacs: M\-m)
 .Xc
 Move the cursor back to the indentation.
 .It Xo
 .Ic begin\-selection
 (vi: Space)
-(emacs: C-Space)
+(emacs: C\-Space)
 .Xc
 Begin selection.
 .It Xo
@@ -1840,7 +1840,7 @@ Exit copy mode.
 .It Xo
 .Ic clear\-selection
 (vi: Escape)
-(emacs: C-g)
+(emacs: C\-g)
 .Xc
 Clear the current selection.
 .It Xo
@@ -1954,7 +1954,7 @@ but do not clear the selection.
 .Op Fl CP
 .Op Ar prefix
 (vi: Enter)
-(emacs: M-w)
+(emacs: M\-w)
 .Xc
 Copy the current selection and exit copy mode.
 .It Xo
@@ -1989,18 +1989,18 @@ Move the cursor right.
 Move the cursor up.
 .It Xo
 .Ic cursor\-centre\-vertical
-(emacs: C-l)
+(emacs: C\-l)
 .Xc
 Moves the cursor to the vertical centre of the pane.
 .It Xo
 .Ic cursor\-centre\-horizontal
-(emacs: M-l)
+(emacs: M\-l)
 .Xc
 Moves the cursor to the horizontal centre of the pane.
 .It Xo
 .Ic end\\-of\-line
 (vi: $)
-(emacs: C-e)
+(emacs: C\-e)
 .Xc
 Move the cursor to the end of the line.
 .It Xo
@@ -2012,8 +2012,8 @@ Move the cursor to the end of the line.
 Move the cursor to a specific line.
 .It Xo
 .Ic halfpage\-down
-(vi: C-d)
-(emacs: M-Down)
+(vi: C\-d)
+(emacs: M\-Down)
 .Xc
 Scroll down by half a page.
 .It Xo
@@ -2024,20 +2024,20 @@ Same as
 but also exit copy mode if reaching the bottom.
 .It Xo
 .Ic halfpage\-up
-(vi: C-u)
-(emacs: M-Up)
+(vi: C\-u)
+(emacs: M\-Up)
 .Xc
 Scroll up by half a page.
 .It Xo
 .Ic history\-bottom
 (vi: G)
-(emacs: M->)
+(emacs: M\->)
 .Xc
 Scroll to the bottom of the history.
 .It Xo
 .Ic history\-top
 (vi: g)
-(emacs: M-<)
+(emacs: M\-<)
 .Xc
 Scroll to the top of the history.
 .It Xo
@@ -2083,26 +2083,26 @@ Jump forward, but one character less, placing the cursor on the character
 before the target.
 .It Xo
 .Ic jump\-to\-mark
-(vi: M-x)
-(emacs: M-x)
+(vi: M\-x)
+(emacs: M\-x)
 .Xc
 Jump to the last mark.
 .It Xo
 .Ic middle\-line
 (vi: M)
-(emacs: M-r)
+(emacs: M\-r)
 .Xc
 Move to the middle line.
 .It Xo
 .Ic next\-matching\-bracket
 (vi: %)
-(emacs: M-C-f)
+(emacs: M\-C\-f)
 .Xc
 Move to the next matching bracket.
 .It Xo
 .Ic next\-paragraph
 (vi: })
-(emacs: M-})
+(emacs: M\-})
 .Xc
 Move to the next paragraph.
 .It Xo
@@ -2118,7 +2118,7 @@ Move to the next word.
 .It Xo
 .Ic next\-word\-end
 (vi: e)
-(emacs: M-f)
+(emacs: M\-f)
 .Xc
 Move to the end of the next word.
 .It Xo
@@ -2142,7 +2142,7 @@ but use a space alone as the word separator.
 Switch at which end of the selection the cursor sits.
 .It Xo
 .Ic page\-down
-(vi: C-f)
+(vi: C\-f)
 (emacs: PageDown)
 .Xc
 Scroll down by one page.
@@ -2154,7 +2154,7 @@ Same as
 but also exit copy mode if reaching the bottom.
 .It Xo
 .Ic page\-up
-(vi: C-b)
+(vi: C\-b)
 (emacs: PageUp)
 .Xc
 Scroll up by one page.
@@ -2182,13 +2182,13 @@ Same as
 but also exit copy mode.
 .It Xo
 .Ic previous\-matching\-bracket
-(emacs: M-C-b)
+(emacs: M\-C\-b)
 .Xc
 Move to the previous matching bracket.
 .It Xo
 .Ic previous\-paragraph
 (vi: {)
-(emacs: M-{)
+(emacs: M\-{)
 .Xc
 Move to the previous paragraph.
 .It Xo
@@ -2199,7 +2199,7 @@ Move to the previous prompt.
 .It Xo
 .Ic previous\-word
 (vi: b)
-(emacs: M-b)
+(emacs: M\-b)
 .Xc
 Move to the previous word.
 .It Xo
@@ -2236,8 +2236,8 @@ Scroll up until the current line is at the bottom while keeping the cursor on
 that line.
 .It Xo
 .Ic scroll\-down
-(vi: C-e)
-(emacs: C-Down)
+(vi: C\-e)
+(emacs: C\-Down)
 .Xc
 Scroll down.
 .It Xo
@@ -2278,8 +2278,8 @@ Scroll down until the current line is at the top while keeping the cursor on
 that line.
 .It Xo
 .Ic scroll\-up
-(vi: C-y)
-(emacs: C-Up)
+(vi: C\-y)
+(emacs: C\-Up)
 .Xc
 Scroll up.
 .It Xo
@@ -2297,7 +2297,7 @@ Search backwards for the specified text.
 .It Xo
 .Ic search\-backward\-incremental
 .Ar text
-(emacs: C-r)
+(emacs: C\-r)
 .Xc
 Search backwards incrementally for the specified text.
 Is expected to be used with the
@@ -2319,7 +2319,7 @@ Search forward for the specified text.
 .It Xo
 .Ic search\-forward\-incremental
 .Ar text
-(emacs: C-s)
+(emacs: C\-s)
 .Xc
 Search forward incrementally for the specified text.
 Is expected to be used with the
@@ -2362,7 +2362,7 @@ Mark the current line.
 .It Xo
 .Ic start-of-line
 (vi: 0)
-(emacs: C-a)
+(emacs: C\-a)
 .Xc
 Move the cursor to the start of the line.
 .It Xo
@@ -2378,7 +2378,7 @@ Toggle the visibility of the position indicator in the top right.
 .It Xo
 .Ic top-line
 (vi: H)
-(emacs: M-R)
+(emacs: M\-R)
 .Xc
 Move to the top line.
 .El
@@ -2404,9 +2404,9 @@ does the same but reverses the direction (forward becomes backward and backward
 becomes forward).
 .Pp
 The default incremental search key bindings,
-.Ql C-r
+.Ql C\-r
 and
-.Ql C-s ,
+.Ql C\-s ,
 are designed to emulate
 .Xr emacs 1 .
 When first pressed they allow a new search term to be entered; if pressed with
@@ -2705,12 +2705,12 @@ The following keys may be used in client mode:
 .It Li "Enter" Ta "Choose selected client"
 .It Li "Up" Ta "Select previous client"
 .It Li "Down" Ta "Select next client"
-.It Li "C-s" Ta "Search by name"
+.It Li "C\-s" Ta "Search by name"
 .It Li "n" Ta "Repeat last search forwards"
 .It Li "N" Ta "Repeat last search backwards"
 .It Li "t" Ta "Toggle if client is tagged"
 .It Li "T" Ta "Tag no clients"
-.It Li "C-t" Ta "Tag all clients"
+.It Li "C\-t" Ta "Tag all clients"
 .It Li "d" Ta "Detach selected client"
 .It Li "D" Ta "Detach tagged clients"
 .It Li "x" Ta "Detach and HUP selected client"
@@ -2721,7 +2721,7 @@ The following keys may be used in client mode:
 .It Li "O" Ta "Change sort order"
 .It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
-.It Li "F1 or C-h" Ta "Display help"
+.It Li "F1 or C\-h" Ta "Display help"
 .It Li "q" Ta "Exit mode"
 .El
 .Pp
@@ -2785,31 +2785,31 @@ The following keys may be used in tree mode:
 .It Li "Enter" Ta "Choose selected item"
 .It Li "Up" Ta "Select previous item"
 .It Li "Down" Ta "Select next item"
-.It Li "S-Up" Ta "Swap the current window with the previous one"
-.It Li "S-Down" Ta "Swap the current window with the next one"
+.It Li "S\-Up" Ta "Swap the current window with the previous one"
+.It Li "S\-Down" Ta "Swap the current window with the next one"
 .It Li "+" Ta "Expand selected item"
 .It Li "\-" Ta "Collapse selected item"
-.It Li "M-+" Ta "Expand all items"
-.It Li "M-\-" Ta "Collapse all items"
+.It Li "M\-+" Ta "Expand all items"
+.It Li "M\-\-" Ta "Collapse all items"
 .It Li "x" Ta "Kill selected item"
 .It Li "X" Ta "Kill tagged items"
 .It Li "<" Ta "Scroll list of previews left"
 .It Li ">" Ta "Scroll list of previews right"
-.It Li "C-s" Ta "Search by name"
+.It Li "C\-s" Ta "Search by name"
 .It Li "m" Ta "Set the marked pane"
 .It Li "M" Ta "Clear the marked pane"
 .It Li "n" Ta "Repeat last search forwards"
 .It Li "N" Ta "Repeat last search backwards"
 .It Li "t" Ta "Toggle if item is tagged"
 .It Li "T" Ta "Tag no items"
-.It Li "C-t" Ta "Tag all items"
+.It Li "C\-t" Ta "Tag all items"
 .It Li "\&:" Ta "Run a command for each tagged item"
 .It Li "f" Ta "Enter a format to filter items"
 .It Li "H" Ta "Jump to the starting pane"
 .It Li "O" Ta "Change sort order"
 .It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
-.It Li "F1 or C-h" Ta "Display help"
+.It Li "F1 or C\-h" Ta "Display help"
 .It Li "q" Ta "Exit mode"
 .El
 .Pp
@@ -2868,8 +2868,8 @@ The following keys may be used in customize mode:
 .It Li "Down" Ta "Select next item"
 .It Li "+" Ta "Expand selected item"
 .It Li "\-" Ta "Collapse selected item"
-.It Li "M-+" Ta "Expand all items"
-.It Li "M-\-" Ta "Collapse all items"
+.It Li "M\-+" Ta "Expand all items"
+.It Li "M\-\-" Ta "Collapse all items"
 .It Li "s" Ta "Set option value or key attribute"
 .It Li "S" Ta "Set global option value"
 .It Li "w" Ta "Set window option value, if option is for pane and window"
@@ -2877,15 +2877,15 @@ The following keys may be used in customize mode:
 .It Li "D" Ta "Set tagged options and tagged keys to the default"
 .It Li "u" Ta "Unset an option (set to default value if global) or unbind a key"
 .It Li "U" Ta "Unset tagged options and unbind tagged keys"
-.It Li "C-s" Ta "Search by name"
+.It Li "C\-s" Ta "Search by name"
 .It Li "n" Ta "Repeat last search forwards"
 .It Li "N" Ta "Repeat last search backwards"
 .It Li "t" Ta "Toggle if item is tagged"
 .It Li "T" Ta "Tag no items"
-.It Li "C-t" Ta "Tag all items"
+.It Li "C\-t" Ta "Tag all items"
 .It Li "f" Ta "Enter a format to filter items"
 .It Li "v" Ta "Toggle option information"
-.It Li "F1 or C-h" Ta "Display help"
+.It Li "F1 or C\-h" Ta "Display help"
 .It Li "q" Ta "Exit mode"
 .El
 .Pp
@@ -3326,7 +3326,7 @@ The
 option only opens a new pipe if no previous pipe exists, allowing a pipe to
 be toggled with a single key, for example:
 .Bd -literal -offset indent
-bind\-key C-p pipe\-pane \-o \[aq]cat >>\[ti]/output.#I\-#P\[aq]
+bind\-key C\-p pipe\-pane \-o \[aq]cat >>\[ti]/output.#I\-#P\[aq]
 .Ed
 .Tg prevl
 .It Xo Ic previous\-layout
@@ -3796,7 +3796,7 @@ is bound to
 in the
 .Em prefix
 table, so
-.Ql C-b c
+.Ql C\-b c
 creates a new window).
 The
 .Em root
@@ -3909,7 +3909,7 @@ Send a key or keys to a window or client.
 Each argument
 .Ar key
 is the name of the key (such as
-.Ql C-a
+.Ql C\-a
 or
 .Ql NPage )
 to send; if the string is not recognised as a key, it is sent as a series of
@@ -4327,7 +4327,7 @@ This is the equivalent of the
 .Ic formatOtherKeys
 .Xr xterm 1
 resource.
-For example, C-S-a will be reported as
+For example, C\-S\-a will be reported as
 .Ql \[ah][[27;6;65\[ti]
 when set to
 .Ic xterm ,
@@ -6984,21 +6984,21 @@ option:
 .Bl -column "FunctionXXXXXXXXXXXXXXXXXXXXXXXXX" "viXXXX" "emacsX" -offset indent
 .It Sy "Function" Ta Sy "vi" Ta Sy "emacs"
 .It Li "Cancel command prompt" Ta "q" Ta "Escape"
-.It Li "Delete from cursor to start of word" Ta "" Ta "C-w"
-.It Li "Delete entire command" Ta "d" Ta "C-u"
-.It Li "Delete from cursor to end" Ta "D" Ta "C-k"
+.It Li "Delete from cursor to start of word" Ta "" Ta "C\-w"
+.It Li "Delete entire command" Ta "d" Ta "C\-u"
+.It Li "Delete from cursor to end" Ta "D" Ta "C\-k"
 .It Li "Execute command" Ta "Enter" Ta "Enter"
 .It Li "Get next command from history" Ta "" Ta "Down"
 .It Li "Get previous command from history" Ta "" Ta "Up"
-.It Li "Insert top paste buffer" Ta "p" Ta "C-y"
+.It Li "Insert top paste buffer" Ta "p" Ta "C\-y"
 .It Li "Look for completions" Ta "Tab" Ta "Tab"
 .It Li "Move cursor left" Ta "h" Ta "Left"
 .It Li "Move cursor right" Ta "l" Ta "Right"
-.It Li "Move cursor to end" Ta "$" Ta "C-e"
-.It Li "Move cursor to next word" Ta "w" Ta "M-f"
-.It Li "Move cursor to previous word" Ta "b" Ta "M-b"
-.It Li "Move cursor to start" Ta "0" Ta "C-a"
-.It Li "Transpose characters" Ta "" Ta "C-t"
+.It Li "Move cursor to end" Ta "$" Ta "C\-e"
+.It Li "Move cursor to next word" Ta "w" Ta "M\-f"
+.It Li "Move cursor to previous word" Ta "b" Ta "M\-b"
+.It Li "Move cursor to start" Ta "0" Ta "C\-a"
+.It Li "Transpose characters" Ta "" Ta "C\-t"
 .El
 .Pp
 With
@@ -7265,7 +7265,7 @@ exited with success.
 allows any key to dismiss the popup instead of only
 .Ql Escape
 or
-.Ql C-c .
+.Ql C\-c .
 .Pp
 .Fl x
 and
@@ -7409,12 +7409,12 @@ The following keys may be used in buffer mode:
 .It Li "Enter" Ta "Paste selected buffer"
 .It Li "Up" Ta "Select previous buffer"
 .It Li "Down" Ta "Select next buffer"
-.It Li "C-s" Ta "Search by name or content"
+.It Li "C\-s" Ta "Search by name or content"
 .It Li "n" Ta "Repeat last search forwards"
 .It Li "N" Ta "Repeat last search backwards"
 .It Li "t" Ta "Toggle if buffer is tagged"
 .It Li "T" Ta "Tag no buffers"
-.It Li "C-t" Ta "Tag all buffers"
+.It Li "C\-t" Ta "Tag all buffers"
 .It Li "p" Ta "Paste selected buffer"
 .It Li "P" Ta "Paste tagged buffers"
 .It Li "d" Ta "Delete selected buffer"
@@ -7424,7 +7424,7 @@ The following keys may be used in buffer mode:
 .It Li "O" Ta "Change sort order"
 .It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
-.It Li "F1 or C-h" Ta "Display help"
+.It Li "F1 or C\-h" Ta "Display help"
 .It Li "q" Ta "Exit mode"
 .El
 .Pp
@@ -8170,7 +8170,7 @@ ambiguous command: n, could be: new\-session, new\-window, next\-window
 .Ed
 .Pp
 Within an active session, a new window may be created by typing
-.Ql C-b c
+.Ql C\-b c
 (Ctrl
 followed by the
 .Ql b
@@ -8180,17 +8180,17 @@ followed by the
 key).
 .Pp
 Windows may be navigated with:
-.Ql C-b 0
+.Ql C\-b 0
 (to select window 0),
-.Ql C-b 1
+.Ql C\-b 1
 (to select window 1), and so on;
-.Ql C-b n
+.Ql C\-b n
 to select the next window; and
-.Ql C-b p
+.Ql C\-b p
 to select the previous window.
 .Pp
 A session may be detached using
-.Ql C-b d
+.Ql C\-b d
 (or by an external event such as
 .Xr ssh 1
 disconnection) and reattached with:
@@ -8198,7 +8198,7 @@ disconnection) and reattached with:
 .Dl $ tmux attach\-session
 .Pp
 Typing
-.Ql C-b \&?
+.Ql C\-b \&?
 lists the current key bindings in the current window; up and down may be used
 to navigate the list or
 .Ql q
