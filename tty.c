@@ -366,6 +366,43 @@ tty_pop_kitty(struct tty *tty, int raw)
 }
 
 void
+tty_update_kitty(struct tty *tty, struct screen *s)
+{
+	char	tmp[32];
+	int	mode, flags;
+
+	mode = options_get_number(global_options, "kitty-keys");
+	if (mode == 0)
+		flags = 0;
+	else if (mode == 2)
+		flags = KITTY_KBD_DISAMBIGUATE;
+	else if (s != NULL && (tty->flags & TTY_HAVEDA_KITTY))
+		flags = s->kitty_kbd.flags & KITTY_KBD_SUPPORTED;
+	else
+		flags = 0;
+	if (mode == 2 && s != NULL)
+		flags |= s->kitty_kbd.flags & KITTY_KBD_SUPPORTED;
+
+	if (flags == 0) {
+		tty_pop_kitty(tty, 0);
+		return;
+	}
+	if (~tty->flags & TTY_KITTY_PUSHED) {
+		xsnprintf(tmp, sizeof tmp, "\033[>%uu", flags);
+		tty_puts(tty, tmp);
+		tty->kitty_saved_flags = tty->kitty_flags;
+		tty->flags |= TTY_KITTY_PUSHED;
+		tty->kitty_flags = flags;
+		return;
+	}
+	if (tty->kitty_flags == flags)
+		return;
+	xsnprintf(tmp, sizeof tmp, "\033[=%uu", flags);
+	tty_puts(tty, tmp);
+	tty->kitty_flags = flags;
+}
+
+void
 tty_start_tty(struct tty *tty)
 {
 	struct client	*c = tty->client;
