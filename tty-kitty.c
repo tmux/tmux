@@ -163,12 +163,6 @@ tty_keys_kitty_modifiers(u_int mods)
 		if (mods & 0x04) key |= KEYC_CTRL;
 		if (mods & 0x08) key |= KEYC_SUPER;
 		if (mods & 0x10) key |= KEYC_HYPER;
-		/*
-		 * Caps Lock and Num Lock are only meaningful when the
-		 * terminal is in report-all-keys mode (flag 8+).  We
-		 * only push disambiguate (flag 1), so strip these to
-		 * avoid injecting noise modifiers into key codes.
-		 */
 	}
 	return (key);
 }

@@ -547,6 +547,14 @@ try:
         if not expect_key_name(client_fd, seq, expected):
             failed = True
 
+    for seq, expected in [
+        (b"\x1b[99;9u", "Sp-c"),
+        (b"\x1b[99;17u", "Hy-c"),
+    ]:
+        if not expect_key_name(client_fd, seq, expected):
+            failed = True
+
+
     # Phase 2 parser determinism: unsupported progressive fields are discarded.
     for label, seq in [
         ("unsupported event field", b"\x1b[99;5:2u"),
@@ -596,6 +604,21 @@ try:
         lambda b: b == b"\x1b[99;7u",
     ):
         failed = True
+    if not expect_bytes(
+        "disambiguate Sp-c",
+        b"\x1b[=1u",
+        "Sp-c",
+        lambda b: b == b"\x1b[99;9u",
+    ):
+        failed = True
+    if not expect_bytes(
+        "disambiguate Hy-c",
+        b"\x1b[=1u",
+        "Hy-c",
+        lambda b: b == b"\x1b[99;17u",
+    ):
+        failed = True
+
 
     # Enter/Tab/Backspace VT10x exceptions when report-all is disabled.
     if not expect_bytes(

@@ -171,10 +171,6 @@ input_key_kitty_modifiers(key_code key)
 		mod |= 0x08;
 	if (key & KEYC_HYPER)
 		mod |= 0x10;
-	if (key & KEYC_CAPS_LOCK)
-		mod |= 0x40;
-	if (key & KEYC_NUM_LOCK)
-		mod |= 0x80;
 	return (mod == 0) ? 0 : mod + 1;
 }
 
@@ -193,9 +189,6 @@ input_key_kitty(struct screen *s, struct bufferevent *bev, key_code key)
 		return (-1);
 
 	onlykey = key & KEYC_MASK_KEY;
-	/* Only include caps/num lock if report-all-keys (flag 8+). */
-	if (!(flags & KITTY_KBD_REPORT_ALL))
-		key &= ~(KEYC_CAPS_LOCK|KEYC_NUM_LOCK);
 	mod = input_key_kitty_modifiers(key);
 
 	/*
