@@ -386,6 +386,133 @@ def expect_mode_push_pop(label, mode, expected_pushes, min_pops, max_pops=None):
             stderr=subprocess.DEVNULL,
         )
 
+def expect_requested_ctrl3(label):
+    sock = f"{SOCK}_ctrl3_{os.getpid()}_{int(time.time() * 1000)}"
+    client_pid = None
+    client_fd = None
+    target = None
+    mode_seq = b"\x1b[=1u"
+    code = (
+        "import os, select, sys, termios, time, tty\n"
+        f"mode = bytes.fromhex('{mode_seq.hex()}')\n"
+        "fd = sys.stdin.fileno()\n"
+        "old = termios.tcgetattr(fd)\n"
+        "try:\n"
+        "    tty.setraw(fd)\n"
+        "    os.write(sys.stdout.fileno(), mode)\n"
+        "    os.write(sys.stdout.fileno(), b'READY\\n')\n"
+        "    data = b''\n"
+        "    seen = False\n"
+        "    deadline = time.time() + 2\n"
+        "    while time.time() < deadline:\n"
+        "        r, _, _ = select.select([fd], [], [], 0.1)\n"
+        "        if not r:\n"
+        "            if seen:\n"
+        "                break\n"
+        "            continue\n"
+        "        chunk = os.read(fd, 1024)\n"
+        "        if not chunk:\n"
+        "            break\n"
+        "        data += chunk\n"
+        "        seen = True\n"
+        "    os.write(sys.stdout.fileno(), b'HEX:' + data.hex().encode() + b'\\n')\n"
+        "finally:\n"
+        "    termios.tcsetattr(fd, termios.TCSANOW, old)\n"
+    )
+
+    def capture_target():
+        out = run_socket(sock, "capture-pane", "-p", "-J", "-S", "-", "-t", target, check=False)
+        if out.returncode != 0:
+            return ""
+        return out.stdout
+
+    try:
+        run_socket(sock, "kill-server", check=False)
+        run_socket(sock, "-f/dev/null", "new", "-d")
+        run_socket(sock, "set", "-g", "kitty-keys", "on")
+        run_socket(sock, "set", "-g", "remain-on-exit", "on")
+        run_socket(sock, "set", "-g", "status", "off")
+
+        client_pid, client_fd = pty.fork()
+        if client_pid == 0:
+            os.execvp(TMUX, [TMUX, f"-L{sock}", "attach"])
+        time.sleep(0.5)
+        output = drain_client(client_fd, rounds=40)
+        for _ in range(5):
+            if b"\x1b[?u" in output:
+                os.write(client_fd, b"\x1b[?0u")
+                time.sleep(0.1)
+                output += drain_client(client_fd, rounds=40)
+                break
+            time.sleep(0.1)
+            output += drain_client(client_fd, rounds=40)
+        else:
+            print(f"[FAIL] {label} -> missing kitty query")
+            return False
+
+        target = run_socket(
+            sock, "new-window", "-P", "-F", "#{window_id}",
+            python_command(code),
+        ).stdout.strip()
+        deadline = time.time() + 3
+        while time.time() < deadline:
+            if "READY" in capture_target():
+                break
+            time.sleep(0.05)
+        else:
+            print(f"[FAIL] {label} -> probe not ready")
+            return False
+
+        output = drain_client(client_fd, rounds=40)
+        for _ in range(10):
+            if b"\x1b[>1u" in output:
+                break
+            time.sleep(0.1)
+            output += drain_client(client_fd, rounds=40)
+        saw_push = b"\x1b[>1u" in output
+        if saw_push:
+            os.write(client_fd, b"\x1b[51;5u")
+        else:
+            os.write(client_fd, b"\x1b")
+
+        deadline = time.time() + 5
+        text = ""
+        while time.time() < deadline:
+            text = capture_target()
+            if "HEX:" in text:
+                break
+            time.sleep(0.1)
+        else:
+            print(f"[FAIL] {label} -> missing HEX line")
+            return False
+
+        data = parse_hex_line(text)
+        if data is None:
+            print(f"[FAIL] {label} -> missing HEX line")
+            return False
+        if not saw_push:
+            print(f"[FAIL] {label} -> missing outer kitty push, got {data.hex()}")
+            return False
+        if data != b"\x1b[51;5u":
+            print(f"[FAIL] {label} -> unexpected bytes {data.hex()}")
+            return False
+        print(f"[PASS] {label} -> {data.hex()}")
+        return True
+    finally:
+        if target is not None:
+            run_socket(sock, "kill-window", "-t", target, check=False)
+        if client_pid is not None:
+            try:
+                os.kill(client_pid, signal.SIGHUP)
+            except ProcessLookupError:
+                pass
+        subprocess.run(
+            [TMUX, f"-L{sock}", "kill-server"],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
 
 failed = False
 client_pid = None
@@ -720,6 +847,9 @@ try:
         max_pops=0,
     ):
         failed = True
+    if not expect_requested_ctrl3("kitty-keys=on requested Ctrl-3"):
+        failed = True
+
 
     if failed:
         sys.exit(1)
