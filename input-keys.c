@@ -630,7 +630,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	if (s->kitty_kbd.flags == 0) {
 		if (key & (KEYC_SUPER|KEYC_HYPER))
 			key |= (KEYC_META|KEYC_IMPLIED_META);
-		key &= ~(KEYC_SUPER|KEYC_HYPER|KEYC_CAPS_LOCK|KEYC_NUM_LOCK);
+		key &= ~(KEYC_SUPER|KEYC_HYPER);
 	}
 
 	/*
