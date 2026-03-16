@@ -2700,7 +2700,7 @@ zooms the pane.
 .Fl y
 disables any confirmation prompts.
 The following keys may be used in client mode:
-.Bl -column "Key" "Function" -offset indent
+.Bl -column "KeyXXXXXX" "Function" -offset indent
 .It Sy "Key" Ta Sy "Function"
 .It Li "Enter" Ta "Choose selected client"
 .It Li "Up" Ta "Select previous client"
@@ -2721,6 +2721,7 @@ The following keys may be used in client mode:
 .It Li "O" Ta "Change sort order"
 .It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
+.It Li "F1 or C-h" Ta "Display help"
 .It Li "q" Ta "Exit mode"
 .El
 .Pp
@@ -2779,7 +2780,7 @@ zooms the pane.
 .Fl y
 disables any confirmation prompts.
 The following keys may be used in tree mode:
-.Bl -column "Key" "Function" -offset indent
+.Bl -column "KeyXXXXXX" "Function" -offset indent
 .It Sy "Key" Ta Sy "Function"
 .It Li "Enter" Ta "Choose selected item"
 .It Li "Up" Ta "Select previous item"
@@ -2808,6 +2809,7 @@ The following keys may be used in tree mode:
 .It Li "O" Ta "Change sort order"
 .It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
+.It Li "F1 or C-h" Ta "Display help"
 .It Li "q" Ta "Exit mode"
 .El
 .Pp
@@ -2859,7 +2861,7 @@ Option values in the list are shown for the active pane in the current window.
 .Fl Z
 zooms the pane.
 The following keys may be used in customize mode:
-.Bl -column "Key" "Function" -offset indent
+.Bl -column "KeyXXXXXX" "Function" -offset indent
 .It Sy "Key" Ta Sy "Function"
 .It Li "Enter" Ta "Set pane, window, session or global option value"
 .It Li "Up" Ta "Select previous item"
@@ -2883,6 +2885,7 @@ The following keys may be used in customize mode:
 .It Li "C-t" Ta "Tag all items"
 .It Li "f" Ta "Enter a format to filter items"
 .It Li "v" Ta "Toggle option information"
+.It Li "F1 or C-h" Ta "Display help"
 .It Li "q" Ta "Exit mode"
 .El
 .Pp
@@ -4747,6 +4750,23 @@ For how to specify
 see the
 .Sx STYLES
 section.
+.It Ic message-format Ar string
+Set the format string for the prompt and message area.
+The special placeholder
+.Ql #{message}
+expands to the interactive prompt or message text and
+.Ql #{command_prompt}
+is set to 1 when the prompt is in command mode (vi).
+Style directives like
+.Ic fill ,
+.Ic align ,
+and
+.Ic width
+may be used in the format string.
+The default uses a conditional to select between
+.Ic message-style
+and
+.Ic message-command-style .
 .It Xo Ic message-line
 .Op Ic 0 | 1 | 2 | 3 | 4
 .Xc
@@ -4754,6 +4774,23 @@ Set line on which status line messages and the command prompt are shown.
 .It Ic message-style Ar style
 Set status line message style.
 This is used for messages and for the command prompt.
+The message is drawn on top of the existing status line.
+A
+.Ic width
+attribute (a fixed number of columns or a percentage such as
+.Ql 50% )
+constrains the prompt area width and an
+.Ic align
+attribute
+.Pq Ic left , centre , right
+sets its horizontal position.
+When the width is less than the full terminal width, the normal status
+bar content remains visible around the prompt area.
+The
+.Ic fill
+attribute is used by the default
+.Ic message-format
+to clear the background.
 For how to specify
 .Ar style ,
 see the
@@ -6127,6 +6164,21 @@ For example, to get a list of windows formatted like the status line:
 #{W:#{E:window-status-format} ,#{E:window-status-current-format} }
 .Ed
 .Pp
+Within the
+.Ql W:\&
+loop, user options
+.Po
+.Ql @name
+.Pc
+from neighboring windows are available with a
+.Ql next_
+or
+.Ql prev_
+prefix, for example a user option
+.Ql @color
+on the next window is available as
+.Ql next_@color .
+.Pp
 .Ql N:\&
 checks if a window (without any suffix or with the
 .Ql w
@@ -6295,6 +6347,8 @@ The following variables are available, where appropriate:
 .It Li "mouse_x" Ta "" Ta "Mouse X position, if any"
 .It Li "mouse_y" Ta "" Ta "Mouse Y position, if any"
 .It Li "next_session_id" Ta "" Ta "Unique session ID for next new session"
+.It Li "next_window_active" Ta "" Ta "1 if next window in W: loop is active"
+.It Li "next_window_index" Ta "" Ta "Index of next window in W: loop"
 .It Li "origin_flag" Ta "" Ta "Pane origin flag"
 .It Li "pane_active" Ta "" Ta "1 if active pane"
 .It Li "pane_at_bottom" Ta "" Ta "1 if pane is at the bottom of window"
@@ -6339,6 +6393,8 @@ The following variables are available, where appropriate:
 .It Li "pane_unseen_changes" Ta "" Ta "1 if there were changes in pane while in mode"
 .It Li "pane_width" Ta "" Ta "Width of pane"
 .It Li "pid" Ta "" Ta "Server PID"
+.It Li "prev_window_active" Ta "" Ta "1 if previous window in W: loop is active"
+.It Li "prev_window_index" Ta "" Ta "Index of previous window in W: loop"
 .It Li "rectangle_toggle" Ta "" Ta "1 if rectangle selection is activated"
 .It Li "scroll_position" Ta "" Ta "Scroll position in copy mode"
 .It Li "scroll_region_lower" Ta "" Ta "Bottom of scroll region in pane"
@@ -6506,6 +6562,11 @@ is the terminal alternate character set.
 Align text to the left, centre or right of the available space if appropriate.
 .It Ic fill=colour
 Fill the available space with a background colour if appropriate.
+.It Ic width=N
+Set the width of the styled area.
+.Ar N
+may be a column count or a percentage (for example
+.Ql 50% ) .
 .It Xo Ic list=on ,
 .Ic list=focus ,
 .Ic list=left-marker ,
@@ -7336,7 +7397,7 @@ zooms the pane.
 .Fl y
 disables any confirmation prompts.
 The following keys may be used in buffer mode:
-.Bl -column "Key" "Function" -offset indent
+.Bl -column "KeyXXXXXX" "Function" -offset indent
 .It Sy "Key" Ta Sy "Function"
 .It Li "Enter" Ta "Paste selected buffer"
 .It Li "Up" Ta "Select previous buffer"
@@ -7356,6 +7417,7 @@ The following keys may be used in buffer mode:
 .It Li "O" Ta "Change sort order"
 .It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
+.It Li "F1 or C-h" Ta "Display help"
 .It Li "q" Ta "Exit mode"
 .El
 .Pp

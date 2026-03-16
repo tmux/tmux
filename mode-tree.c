@@ -58,6 +58,7 @@ struct mode_tree_data {
 	mode_tree_key_cb	  keycb;
 	mode_tree_swap_cb	  swapcb;
 	mode_tree_sort_cb	  sortcb;
+	mode_tree_help_cb	  helpcb;
 
 	struct mode_tree_list	  children;
 	struct mode_tree_list	  saved;
@@ -131,6 +132,36 @@ static const struct menu_item mode_tree_menu_items[] = {
 
 	{ NULL, KEYC_NONE, NULL }
 };
+
+static const char* mode_tree_help_start[] = {
+	"\r\033[1m      Up, k \033[0m\016x\017 \033[0mMove cursor up\n",
+	"\r\033[1m    Down, j \033[0m\016x\017 \033[0mMove cursor down\n",
+	"\r\033[1m          g \033[0m\016x\017 \033[0mGo to top\n",
+	"\r\033[1m          G \033[0m\016x\017 \033[0mGo to bottom\n",
+	"\r\033[1m PPage, C-b \033[0m\016x\017 \033[0mPage up\n",
+	"\r\033[1m NPage, C-f \033[0m\016x\017 \033[0mPage down\n",
+	"\r\033[1m    Left, h \033[0m\016x\017 \033[0mCollapse %1\n",
+	"\r\033[1m   Right, l \033[0m\016x\017 \033[0mExpand %1\n",
+	"\r\033[1m        M-- \033[0m\016x\017 \033[0mCollapse all %1s\n",
+	"\r\033[1m        M-+ \033[0m\016x\017 \033[0mExpand all %1s\n",
+	"\r\033[1m          t \033[0m\016x\017 \033[0mToggle %1 tag\n",
+	"\r\033[1m          T \033[0m\016x\017 \033[0mUntag all %1s\n",
+	"\r\033[1m        C-t \033[0m\016x\017 \033[0mTag all %1s\n",
+	"\r\033[1m        C-s \033[0m\016x\017 \033[0mSearch forward\n",
+	"\r\033[1m        C-r \033[0m\016x\017 \033[0mSearch backward\n",
+	"\r\033[1m          n \033[0m\016x\017 \033[0mRepeat search forward\n",
+	"\r\033[1m          N \033[0m\016x\017 \033[0mRepeat search backward\n",
+	"\r\033[1m          f \033[0m\016x\017 \033[0mFilter %1s\n",
+	"\r\033[1m          O \033[0m\016x\017 \033[0mChange sort order\n",
+	"\r\033[1m          r \033[0m\016x\017 \033[0mReverse sort order\n",
+	"\r\033[1m          v \033[0m\016x\017 \033[0mToggle preview\n",
+	NULL
+};
+static const char* mode_tree_help_end[] = {
+	"\r\033[1m  q, Escape \033[0m\016x\017 \033[0mExit mode\033[H",
+	NULL
+};
+#define MODE_TREE_HELP_DEFAULT_WIDTH 39
 
 static int
 mode_tree_is_lowercase(const char *ptr)
@@ -453,8 +484,9 @@ mode_tree_start(struct window_pane *wp, struct args *args,
     mode_tree_build_cb buildcb, mode_tree_draw_cb drawcb,
     mode_tree_search_cb searchcb, mode_tree_menu_cb menucb,
     mode_tree_height_cb heightcb, mode_tree_key_cb keycb,
-    mode_tree_swap_cb swapcb, mode_tree_sort_cb sortcb, void *modedata,
-    const struct menu_item *menu, struct screen **s)
+    mode_tree_swap_cb swapcb, mode_tree_sort_cb sortcb,
+    mode_tree_help_cb helpcb, void *modedata, const struct menu_item *menu,
+    struct screen **s)
 {
 	struct mode_tree_data	*mtd;
 
@@ -488,6 +520,7 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 	mtd->keycb = keycb;
 	mtd->swapcb = swapcb;
 	mtd->sortcb = sortcb;
+	mtd->helpcb = helpcb;
 
 	TAILQ_INIT(&mtd->children);
 
@@ -1123,6 +1156,57 @@ mode_tree_display_menu(struct mode_tree_data *mtd, struct client *c, u_int x,
 	}
 }
 
+static void
+mode_tree_display_help(__unused struct mode_tree_data *mtd, struct client *c)
+{
+	struct session	  *s = c->session;
+	u_int		  px, py, w, h = 0;
+	const char	**line, **lines = NULL, *item = "item";
+	char		 *new_line;
+
+	if (mtd->helpcb == NULL)
+		w = MODE_TREE_HELP_DEFAULT_WIDTH;
+	else {
+		lines = mtd->helpcb(&w, &item);
+		if (w < MODE_TREE_HELP_DEFAULT_WIDTH)
+			w = MODE_TREE_HELP_DEFAULT_WIDTH;
+	}
+	for (line = mode_tree_help_start; *line != NULL; line++)
+		h++;
+	for (line = lines; *line != NULL; line++)
+		h++;
+	for (line = mode_tree_help_end; *line != NULL; line++)
+		h++;
+
+	if (c->tty.sx < w || c->tty.sy < h)
+		return;
+	px = (c->tty.sx - w) / 2;
+	py = (c->tty.sy - h) / 2;
+
+	if (popup_display(POPUP_CLOSEANYKEY|POPUP_NOJOB, BOX_LINES_DEFAULT,
+	    NULL, px, py, w, h, NULL, NULL, 0, NULL, NULL, NULL, c, s, NULL,
+	    NULL, NULL, NULL) != 0)
+		return;
+
+	popup_write(c, "\033[H\033[?25l\033[?7l\033)0", 17);
+	for (line = mode_tree_help_start; *line != NULL; line++) {
+		new_line = cmd_template_replace(*line, item, 1);
+		popup_write(c, new_line, strlen(new_line));
+		free(new_line);
+	}
+	for (line = lines; *line != NULL; line++) {
+		new_line = cmd_template_replace(*line, item, 1);
+		popup_write(c, new_line, strlen(new_line));
+		free(new_line);
+	}
+	for (line = mode_tree_help_end; *line != NULL; line++) {
+		new_line = cmd_template_replace(*line, item, 1);
+		popup_write(c, new_line, strlen(new_line));
+		free(new_line);
+	}
+	popup_write(c, "\033[H", 3);
+}
+
 int
 mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
     struct mouse_event *m, u_int *xp, u_int *yp)
@@ -1193,6 +1277,10 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	case '\033': /* Escape */
 	case 'g'|KEYC_CTRL:
 		return (1);
+	case KEYC_F1:
+	case 'h'|KEYC_CTRL:
+		mode_tree_display_help(mtd, c);
+		break;
 	case KEYC_UP:
 	case 'k':
 	case KEYC_WHEELUP_PANE:

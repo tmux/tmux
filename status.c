@@ -551,6 +551,71 @@ status_message_callback(__unused int fd, __unused short event, void *data)
 	status_message_clear(c);
 }
 
+/*
+ * Calculate prompt/message area geometry from the style's width and align
+ * directives: x offset and available width within the status line.
+ */
+static void
+status_prompt_area(struct client *c, u_int *area_x, u_int *area_w)
+{
+	struct session		*s = c->session;
+	struct style		*sy;
+	u_int			 w;
+
+	/* Get width from message-style's width directive. */
+	sy = options_string_to_style(s->options, "message-style", NULL);
+	if (sy != NULL && sy->width >= 0) {
+		if (sy->width_percentage)
+			w = (c->tty.sx * (u_int)sy->width) / 100;
+		else
+			w = (u_int)sy->width;
+	} else
+		w = c->tty.sx;
+	if (w == 0 || w > c->tty.sx)
+		w = c->tty.sx;
+
+	/* Get horizontal position from message-style's align directive. */
+	if (sy != NULL) {
+		switch (sy->align) {
+		case STYLE_ALIGN_CENTRE:
+		case STYLE_ALIGN_ABSOLUTE_CENTRE:
+			*area_x = (c->tty.sx - w) / 2;
+			break;
+		case STYLE_ALIGN_RIGHT:
+			*area_x = c->tty.sx - w;
+			break;
+		default:
+			*area_x = 0;
+			break;
+		}
+	} else
+		*area_x = 0;
+
+	*area_w = w;
+}
+
+/* Escape # characters in a string so format_draw treats them as literal. */
+static char *
+status_prompt_escape(const char *s)
+{
+	const char	*cp;
+	char		*out, *p;
+	size_t		 n = 0;
+
+	for (cp = s; *cp != '\0'; cp++) {
+		if (*cp == '#')
+			n++;
+	}
+	p = out = xmalloc(strlen(s) + n + 1);
+	for (cp = s; *cp != '\0'; cp++) {
+		if (*cp == '#')
+			*p++ = '#';
+		*p++ = *cp;
+	}
+	*p = '\0';
+	return (out);
+}
+
 /* Draw client message on status line of present else on last line. */
 int
 status_message_redraw(struct client *c)
@@ -559,10 +624,12 @@ status_message_redraw(struct client *c)
 	struct screen_write_ctx	 ctx;
 	struct session		*s = c->session;
 	struct screen		 old_screen;
-	size_t			 len;
-	u_int			 lines, offset, messageline;
+	u_int			 lines, messageline;
+	u_int			 ax, aw;
 	struct grid_cell	 gc;
 	struct format_tree	*ft;
+	const char		*msgfmt;
+	char			*expanded, *msg;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
@@ -577,25 +644,35 @@ status_message_redraw(struct client *c)
 	if (messageline > lines - 1)
 		messageline = lines - 1;
 
-	len = screen_write_strlen("%s", c->message_string);
-	if (len > c->tty.sx)
-		len = c->tty.sx;
+	status_prompt_area(c, &ax, &aw);
 
 	ft = format_create_defaults(NULL, c, NULL, NULL, NULL);
-	style_apply(&gc, s->options, "message-style", ft);
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+
+	/*
+	 * Set #{message} in the format tree. If styles should be ignored in
+	 * the message content, escape # characters so format_draw treats them
+	 * as literal text.
+	 */
+	if (c->message_ignore_styles) {
+		msg = status_prompt_escape(c->message_string);
+		format_add(ft, "message", "%s", msg);
+		free(msg);
+	} else
+		format_add(ft, "message", "%s", c->message_string);
+	format_add(ft, "command_prompt", "%d", 0);
+
+	msgfmt = options_get_string(s->options, "message-format");
+	expanded = format_expand_time(ft, msgfmt);
 	format_free(ft);
 
 	screen_write_start(&ctx, sl->active);
 	screen_write_fast_copy(&ctx, &sl->screen, 0, 0, c->tty.sx, lines);
-	screen_write_cursormove(&ctx, 0, messageline, 0);
-	for (offset = 0; offset < c->tty.sx; offset++)
-		screen_write_putc(&ctx, &gc, ' ');
-	screen_write_cursormove(&ctx, 0, messageline, 0);
-	if (c->message_ignore_styles)
-		screen_write_nputs(&ctx, len, &gc, "%s", c->message_string);
-	else
-		format_draw(&ctx, &gc, c->tty.sx, c->message_string, NULL, 0);
+	screen_write_cursormove(&ctx, ax, messageline, 0);
+	format_draw(&ctx, &gc, aw, expanded, NULL, 0);
 	screen_write_stop(&ctx);
+
+	free(expanded);
 
 	if (grid_compare(sl->active->grid, old_screen.grid) == 0) {
 		screen_free(&old_screen);
@@ -789,9 +866,10 @@ status_prompt_redraw(struct client *c)
 	struct screen		 old_screen;
 	u_int			 i, lines, offset, left, start, width, n;
 	u_int			 pcursor, pwidth, promptline;
+	u_int			 ax, aw;
 	struct grid_cell	 gc;
-	struct format_tree	*ft = c->prompt_formats;
-	char			*prompt, *tmp;
+	const char		*msgfmt;
+	char			*expanded, *prompt, *tmp;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
@@ -816,29 +894,40 @@ status_prompt_redraw(struct client *c)
 		promptline = lines - 1;
 
 	if (c->prompt_mode == PROMPT_COMMAND)
-		style_apply(&gc, s->options, "message-command-style", ft);
+		style_apply(&gc, s->options, "message-command-style", NULL);
 	else
-		style_apply(&gc, s->options, "message-style", ft);
+		style_apply(&gc, s->options, "message-style", NULL);
+
+	status_prompt_area(c, &ax, &aw);
 
 	tmp = utf8_tocstr(c->prompt_buffer);
 	format_add(c->prompt_formats, "prompt-input", "%s", tmp);
 	prompt = format_expand_time(c->prompt_formats, c->prompt_string);
-	free (tmp);
+	free(tmp);
+
+	/*
+	 * Set #{message} to the prompt string and expand message-format.
+	 * format_draw handles fill, alignment, and decorations in one call.
+	 */
+	format_add(c->prompt_formats, "message", "%s", prompt);
+	format_add(c->prompt_formats, "command_prompt", "%d",
+	    c->prompt_mode == PROMPT_COMMAND);
+	msgfmt = options_get_string(s->options, "message-format");
+	expanded = format_expand_time(c->prompt_formats, msgfmt);
 
 	start = format_width(prompt);
-	if (start > c->tty.sx)
-		start = c->tty.sx;
+	if (start > aw)
+		start = aw;
 
 	screen_write_start(&ctx, sl->active);
 	screen_write_fast_copy(&ctx, &sl->screen, 0, 0, c->tty.sx, lines);
-	screen_write_cursormove(&ctx, 0, promptline, 0);
-	for (offset = 0; offset < c->tty.sx; offset++)
-		screen_write_putc(&ctx, &gc, ' ');
-	screen_write_cursormove(&ctx, 0, promptline, 0);
-	format_draw(&ctx, &gc, start, prompt, NULL, 0);
-	screen_write_cursormove(&ctx, start, promptline, 0);
+	screen_write_cursormove(&ctx, ax, promptline, 0);
+	format_draw(&ctx, &gc, aw, expanded, NULL, 0);
+	screen_write_cursormove(&ctx, ax + start, promptline, 0);
 
-	left = c->tty.sx - start;
+	free(expanded);
+
+	left = aw - start;
 	if (left == 0)
 		goto finished;
 
@@ -857,7 +946,7 @@ status_prompt_redraw(struct client *c)
 		offset = 0;
 	if (pwidth > left)
 		pwidth = left;
-	c->prompt_cursor = start + pcursor - offset;
+	c->prompt_cursor = ax + start + pcursor - offset;
 
 	width = 0;
 	for (i = 0; c->prompt_buffer[i].size != 0; i++) {
@@ -1831,7 +1920,7 @@ status_prompt_complete_list_menu(struct client *c, char **list, u_int size,
 	struct menu_item		 item;
 	struct status_prompt_menu	*spm;
 	u_int				 lines = status_line_size(c), height, i;
-	u_int				 py;
+	u_int				 py, ax, aw;
 
 	if (size <= 1)
 		return (0);
@@ -1859,11 +1948,13 @@ status_prompt_complete_list_menu(struct client *c, char **list, u_int size,
 		menu_add_item(menu, &item, NULL, c, NULL);
 	}
 
+	status_prompt_area(c, &ax, &aw);
 	if (options_get_number(c->session->options, "status-position") == 0)
 		py = lines;
 	else
 		py = c->tty.sy - 3 - height;
 	offset += utf8_cstrwidth(c->prompt_string);
+	offset += ax;
 	if (offset > 2)
 		offset -= 2;
 	else
@@ -1890,7 +1981,7 @@ status_prompt_complete_window_menu(struct client *c, struct session *s,
 	struct winlink			 *wl;
 	char				**list = NULL, *tmp;
 	u_int				  lines = status_line_size(c), height;
-	u_int				  py, size = 0, i;
+	u_int				  py, size = 0, i, ax, aw;
 
 	if (c->tty.sy - lines < 3)
 		return (NULL);
@@ -1955,11 +2046,13 @@ status_prompt_complete_window_menu(struct client *c, struct session *s,
 	spm->size = size;
 	spm->list = list;
 
+	status_prompt_area(c, &ax, &aw);
 	if (options_get_number(c->session->options, "status-position") == 0)
 		py = lines;
 	else
 		py = c->tty.sy - 3 - height;
 	offset += utf8_cstrwidth(c->prompt_string);
+	offset += ax;
 	if (offset > 2)
 		offset -= 2;
 	else

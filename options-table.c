@@ -141,7 +141,7 @@ static const char *options_table_allow_passthrough_list[] = {
 		"#{T:window-status-format}" \
 		"#[pop-default]" \
 		"#[norange default]" \
-		"#{?loop_last_flag,,#{window-status-separator}}" \
+		"#{?loop_last_flag,,#{E:window-status-separator}}" \
 	"," \
 		"#[range=window|#{window_index} list=focus " \
 			"#{?#{!=:#{E:window-status-current-style},default}," \
@@ -168,7 +168,7 @@ static const char *options_table_allow_passthrough_list[] = {
 		"#{T:window-status-current-format}" \
 		"#[pop-default]" \
 		"#[norange list=on default]" \
-		"#{?loop_last_flag,,#{window-status-separator}}" \
+		"#{?loop_last_flag,,#{E:window-status-separator}}" \
 	"}" \
 	"#[nolist align=right range=right #{E:status-right-style}]" \
 	"#[push-default]" \
@@ -723,11 +723,22 @@ const struct options_table_entry options_table[] = {
 	{ .name = "message-command-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "bg=black,fg=yellow",
+	  .default_str = "bg=black,fg=yellow,fill=black",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the command prompt when in command mode, if "
 		  "'mode-keys' is set to 'vi'."
+	},
+
+	{ .name = "message-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = "#[#{?#{command_prompt},"
+		  "#{E:message-command-style},"
+		  "#{E:message-style}}]"
+		  "#{message}",
+	  .text = "Format string for the prompt and message area. "
+		  "The '#{message}' placeholder is replaced with the content."
 	},
 
 	{ .name = "message-line",
@@ -741,10 +752,13 @@ const struct options_table_entry options_table[] = {
 	{ .name = "message-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "bg=yellow,fg=black",
+	  .default_str = "bg=yellow,fg=black,fill=yellow",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
-	  .text = "Style of messages and the command prompt."
+	  .text = "Style of messages and the command prompt. "
+		  "A 'fill' attribute controls background clearing and "
+		  "a 'width' attribute (fixed or percentage) constrains "
+		  "the prompt area width."
 	},
 
 	{ .name = "mouse",

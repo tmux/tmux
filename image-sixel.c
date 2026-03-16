@@ -357,7 +357,7 @@ sixel_parse(const char *buf, size_t len, u_int p2, u_int xpixel, u_int ypixel)
 	return (si);
 
 bad:
-	free(si);
+	sixel_free(si);
 	return (NULL);
 }
 
