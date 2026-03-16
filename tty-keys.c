@@ -842,8 +842,7 @@ tty_keys_next(struct tty *tty)
 	}
 
 	/* Is this a kitty keyboard protocol key? */
-	if (tty->kitty_flags != 0 ||
-	    options_get_number(global_options, "kitty-keys") == 2) {
+	if (tty->kitty_flags != 0) {
 		switch (tty_keys_kitty(tty, buf, len, &size, &key)) {
 		case 0:		/* yes */
 			goto complete_key;

@@ -95,6 +95,20 @@ def parse_hex_line(text):
     return bytes.fromhex(matches[-1])
 
 
+def negotiate_kitty_query(client_fd, label, reply, attempts=5):
+    output = drain_client(client_fd, rounds=40)
+    for _ in range(attempts):
+        if b"\x1b[?u" in output:
+            os.write(client_fd, reply)
+            time.sleep(0.1)
+            output += drain_client(client_fd, rounds=40)
+            return output
+        time.sleep(0.1)
+        output += drain_client(client_fd, rounds=40)
+    print(f"[FAIL] {label} -> missing kitty query")
+    return None
+
+
 def expect_bytes(label, mode_seq, tmux_key, checker):
     code = (
         "import os, select, sys, termios, time, tty\n"
@@ -438,17 +452,7 @@ def expect_requested_outer_input(label, sent, expected):
         if client_pid == 0:
             os.execvp(TMUX, [TMUX, f"-L{sock}", "attach"])
         time.sleep(0.5)
-        output = drain_client(client_fd, rounds=40)
-        for _ in range(5):
-            if b"\x1b[?u" in output:
-                os.write(client_fd, b"\x1b[?0u")
-                time.sleep(0.1)
-                output += drain_client(client_fd, rounds=40)
-                break
-            time.sleep(0.1)
-            output += drain_client(client_fd, rounds=40)
-        else:
-            print(f"[FAIL] {label} -> missing kitty query")
+        if negotiate_kitty_query(client_fd, label, b"\x1b[?0u") is None:
             return False
 
         target = run_socket(
@@ -518,7 +522,7 @@ client_fd = None
 try:
     run("kill-server", check=False)
     run("-f/dev/null", "new", "-d")
-    run("set", "-g", "kitty-keys", "always")
+    run("set", "-g", "kitty-keys", "on")
     run("set", "-g", "remain-on-exit", "on")
     run("set", "-g", "status", "off")
 
@@ -527,7 +531,10 @@ try:
         os.execvp(TMUX, [TMUX, f"-L{SOCK}", "attach"])
 
     time.sleep(0.5)
-    drain_client(client_fd)
+    if negotiate_kitty_query(client_fd, "shared server setup", b"\x1b[?9u") is None:
+        failed = True
+    else:
+        drain_client(client_fd, rounds=40)
 
     # Phase 1/3 parser coverage: function-key tilde aliases.
     for seq, expected in [
@@ -814,28 +821,51 @@ try:
         run_socket(_csock, "kill-server", check=False)
 
     # Phase 4: query replies while pushed must not clobber kitty parsing.
-    for label, reply in [
-        ("query reply 0 keeps kitty parsing", b"\x1b[?0u"),
-        ("query reply 9 keeps kitty parsing", b"\x1b[?9u"),
-    ]:
-        os.write(client_fd, reply)
-        time.sleep(0.05)
-        drain_client(client_fd)
-        if not expect_key_name(client_fd, b"\x1b[99;5u", "C-c", label):
+    push_target = run(
+        "new-window", "-P", "-F", "#{window_id}",
+        python_command(
+            "import os, sys, termios, time, tty\n"
+            "fd = sys.stdin.fileno()\n"
+            "old = termios.tcgetattr(fd)\n"
+            "try:\n"
+            "    tty.setraw(fd)\n"
+            "    os.write(sys.stdout.fileno(), b'\\x1b[=1u')\n"
+            "    os.write(sys.stdout.fileno(), b'READY\\n')\n"
+            "    time.sleep(5)\n"
+            "finally:\n"
+            "    termios.tcsetattr(fd, termios.TCSANOW, old)\n"
+        ),
+    ).stdout.strip()
+    if not wait_for_ready(push_target, "READY"):
+        print("[FAIL] phase 4 push probe -> not ready")
+        failed = True
+    else:
+        output = drain_client(client_fd, rounds=40)
+        for _ in range(10):
+            if b"\x1b[>1u" in output:
+                break
+            time.sleep(0.1)
+            output += drain_client(client_fd, rounds=40)
+        if b"\x1b[>1u" not in output:
+            print("[FAIL] phase 4 push probe -> missing outer kitty push")
             failed = True
+        else:
+            for label, reply in [
+                ("query reply 0 keeps kitty parsing", b"\x1b[?0u"),
+                ("query reply 9 keeps kitty parsing", b"\x1b[?9u"),
+            ]:
+                os.write(client_fd, reply)
+                time.sleep(0.05)
+                drain_client(client_fd)
+                if not expect_key_name(client_fd, b"\x1b[99;5u", "C-c", label):
+                    failed = True
 
-    # Phase 4: repeated query responses must not cause duplicate pushes.
-    if not expect_push_pop_balance(client_fd, client_pid):
-        failed = True
+            # Phase 4: repeated query responses must not cause duplicate pushes.
+            if not expect_push_pop_balance(client_fd, client_pid):
+                failed = True
+            client_pid = None
 
-    # Capability fallback behavior with Enkitk/Dskitk removed.
-    if not expect_mode_push_pop(
-        "kitty-keys=always fallback",
-        "always",
-        1,
-        1,
-    ):
-        failed = True
+    # Capability behavior with Enkitk/Dskitk removed.
     if not expect_mode_push_pop(
         "kitty-keys=on without capability",
         "on",
