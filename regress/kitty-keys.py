@@ -386,8 +386,8 @@ def expect_mode_push_pop(label, mode, expected_pushes, min_pops, max_pops=None):
             stderr=subprocess.DEVNULL,
         )
 
-def expect_requested_ctrl3(label):
-    sock = f"{SOCK}_ctrl3_{os.getpid()}_{int(time.time() * 1000)}"
+def expect_requested_outer_input(label, sent, expected):
+    sock = f"{SOCK}_requested_{os.getpid()}_{int(time.time() * 1000)}"
     client_pid = None
     client_fd = None
     target = None
@@ -430,6 +430,7 @@ def expect_requested_ctrl3(label):
         run_socket(sock, "kill-server", check=False)
         run_socket(sock, "-f/dev/null", "new", "-d")
         run_socket(sock, "set", "-g", "kitty-keys", "on")
+        run_socket(sock, "set", "-g", "extended-keys", "on")
         run_socket(sock, "set", "-g", "remain-on-exit", "on")
         run_socket(sock, "set", "-g", "status", "off")
 
@@ -469,11 +470,11 @@ def expect_requested_ctrl3(label):
                 break
             time.sleep(0.1)
             output += drain_client(client_fd, rounds=40)
-        saw_push = b"\x1b[>1u" in output
-        if saw_push:
-            os.write(client_fd, b"\x1b[51;5u")
-        else:
-            os.write(client_fd, b"\x1b")
+        if b"\x1b[>1u" not in output:
+            print(f"[FAIL] {label} -> missing outer kitty push")
+            return False
+
+        os.write(client_fd, sent)
 
         deadline = time.time() + 5
         text = ""
@@ -490,10 +491,7 @@ def expect_requested_ctrl3(label):
         if data is None:
             print(f"[FAIL] {label} -> missing HEX line")
             return False
-        if not saw_push:
-            print(f"[FAIL] {label} -> missing outer kitty push, got {data.hex()}")
-            return False
-        if data != b"\x1b[51;5u":
+        if data != expected:
             print(f"[FAIL] {label} -> unexpected bytes {data.hex()}")
             return False
         print(f"[PASS] {label} -> {data.hex()}")
@@ -512,7 +510,6 @@ def expect_requested_ctrl3(label):
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-
 
 failed = False
 client_pid = None
@@ -847,7 +844,13 @@ try:
         max_pops=0,
     ):
         failed = True
-    if not expect_requested_ctrl3("kitty-keys=on requested Ctrl-3"):
+    if not expect_requested_outer_input(
+        "kitty-keys=on requested Ctrl-3", b"\x1b[51;5u", b"\x1b[51;5u",
+    ):
+        failed = True
+    if not expect_requested_outer_input(
+        "kitty-keys=on requested UTF-8 text", b"\xc3\xa8", b"\xc3\xa8",
+    ):
         failed = True
 
 

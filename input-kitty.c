@@ -182,9 +182,11 @@ input_key_kitty_modifiers(key_code key)
 int
 input_key_kitty(struct screen *s, struct bufferevent *bev, key_code key)
 {
-	char		tmp[64];
+	char			tmp[64];
 	key_code	onlykey;
-	u_int		mod, number, i, flags;
+	struct utf8_data	ud;
+	wchar_t		wc;
+	u_int			mod, number, i, flags;
 
 	flags = s->kitty_kbd.flags & KITTY_KBD_SUPPORTED;
 	if (flags == 0)
@@ -262,14 +264,22 @@ input_key_kitty(struct screen *s, struct bufferevent *bev, key_code key)
 	/* Unicode/ASCII keys. */
 	if (KEYC_IS_UNICODE(key) || onlykey <= 0x7f) {
 		/*
-		 * In disambiguate-only mode, unmodified printable keys:
-		 * use VT10x encoding.
+		 * In disambiguate-only mode, keys that produce text still use raw
+		 * UTF-8 bytes. Only report-all upgrades them to CSI u.
 		 */
-		if (!(flags & KITTY_KBD_REPORT_ALL) && mod == 0 &&
-		    onlykey >= 0x20 && onlykey <= 0x7e)
-			return (-1);
+		if (!(flags & KITTY_KBD_REPORT_ALL) && mod == 0) {
+			if (KEYC_IS_UNICODE(key) ||
+			    (onlykey >= 0x20 && onlykey <= 0x7e))
+				return (-1);
+		}
 
-		number = (u_int)(onlykey & KEYC_MASK_KEY);
+		if (KEYC_IS_UNICODE(key)) {
+			utf8_to_data(key, &ud);
+			if (utf8_towc(&ud, &wc) != UTF8_DONE)
+				return (-1);
+			number = (u_int)wc;
+		} else
+			number = (u_int)onlykey;
 		if (mod > 0)
 			xsnprintf(tmp, sizeof tmp, "\033[%u;%uu",
 			    number, mod);
