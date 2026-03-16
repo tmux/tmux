@@ -3033,6 +3033,7 @@ void	tty_set_progress_bar(struct tty *, struct progress_bar *);
 void	tty_default_attributes(struct tty *, u_int,
 	    const struct tty_style_ctx *);
 void	tty_update_mode(struct tty *, int, struct screen *);
+void	tty_update_kitty(struct tty *, struct screen *);
 const struct grid_cell *tty_check_codeset(struct tty *,
 	    const struct grid_cell *);
 struct visible_ranges *tty_check_overlay_range(struct tty *, u_int, u_int,
