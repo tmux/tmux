@@ -3067,7 +3067,7 @@ server_client_reset_state(struct client *c)
 
 		if (!cursor)
 			mode &= ~MODE_CURSOR;
-	} else
+	} else if (c->overlay_mode == NULL || s == NULL)
 		mode &= ~MODE_CURSOR;
 
 	log_debug("%s: cursor to %u,%u", __func__, cx, cy);
