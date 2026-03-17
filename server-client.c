@@ -2747,8 +2747,9 @@ server_client_loop(void)
 {
 	struct client			*c;
 	struct window			*w;
-	struct window_pane		*wp;
+	struct window_pane		*wp, *twp;
 	struct window_mode_entry	*wme;
+	u_int				 bit;
 
 	/* Check for window resize. This is done before redrawing. */
 	RB_FOREACH(w, windows, &windows)
@@ -2785,6 +2786,42 @@ server_client_loop(void)
 			if (wp->fd != -1) {
 				server_client_check_pane_resize(wp);
 				server_client_check_pane_buffer(wp);
+			}
+			/*
+			 * If PANE_REDRAW was set during buffer processing
+			 * above, check_redraw has already run for this
+			 * iteration and will not see it.  Defer the redraw
+			 * to the next iteration via CLIENT_REDRAWPANES so
+			 * screen_redraw_pane fires once the grid is complete
+			 * (e.g. after the shell prompt has been written).
+			 */
+			if (wp->flags & PANE_REDRAW) {
+				bit = 0;
+				TAILQ_FOREACH(twp, &w->panes, entry) {
+					if (twp == wp) {
+						TAILQ_FOREACH(c, &clients,
+						    entry) {
+							if (c->session == NULL ||
+							    c->session->curw ==
+							    NULL ||
+							    c->session->curw->window
+							    != w)
+								continue;
+							if (bit < 64) {
+								c->redraw_panes
+								    |= (1ULL
+								    << bit);
+								c->flags |=
+								    CLIENT_REDRAWPANES;
+							} else
+								c->flags |=
+								    CLIENT_REDRAWWINDOW;
+						}
+						break;
+					}
+					if (++bit == 64)
+						break;
+				}
 			}
 			wp->flags &= ~(PANE_REDRAW|PANE_REDRAWSCROLLBAR);
 		}
