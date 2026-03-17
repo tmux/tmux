@@ -461,16 +461,16 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 			wp->scrollbar_style.pad;
 		if (sb_pos == PANE_SCROLLBARS_LEFT) {
 			if (~wp->flags & PANE_MINIMISED &&
-			    ((int)px >= wp->xoff - 1 - sb_w &&
+			    ((int)px >= (int)wp->xoff - 1 - sb_w &&
 			    (int)px <= wp->xoff + (int)wp->sx) &&
-			    ((int)py >= wp->yoff - 1 &&
+			    ((int)py >= (int)wp->yoff - 1 &&
 			    (int)py <= wp->yoff + (int)wp->sy))
 				break;
 		} else { /* PANE_SCROLLBARS_RIGHT or none. */
 			if (~wp->flags & PANE_MINIMISED &&
-			    ((int)px >= wp->xoff - 1 &&
+			    ((int)px >= (int)wp->xoff - 1 &&
 			    (int)px <= wp->xoff + (int)wp->sx + sb_w) &&
-			    ((int)py >= wp->yoff - 1 &&
+			    ((int)py >= (int)wp->yoff - 1 &&
 			    (int)py <= wp->yoff + (int)wp->sy))
 				break;
 		}
@@ -1178,7 +1178,7 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 			continue;
 		}
 
-		tb = wp->yoff - 1;
+		tb = (wp->yoff > 0) ? wp->yoff - 1 : 0;
 		bb = wp->yoff + wp->sy;
 		if (!found_self ||
 		    !window_pane_visible(wp) ||

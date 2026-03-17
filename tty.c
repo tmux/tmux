@@ -1095,12 +1095,17 @@ tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 	 * If region is large, schedule a redraw. In most cases this is likely
 	 * to be followed by some more scrolling.
 	 */
+	log_debug("%s: %s orlower=%u orupper=%u sy=%u large=%d", __func__,
+	    c->name, ctx->orlower, ctx->orupper, ctx->sy,
+	    tty_large_region(tty, ctx));
 	if (tty_large_region(tty, ctx)) {
 		log_debug("%s: %s large redraw", __func__, c->name);
 		ctx->redraw_cb(ctx);
 		return;
 	}
 
+	log_debug("%s: %s small redraw, drawing rows %u-%u", __func__,
+	    c->name, ctx->orupper, ctx->orlower);
 	for (i = ctx->orupper; i <= ctx->orlower; i++)
 		tty_draw_pane(tty, ctx, i);
 }
@@ -1314,9 +1319,9 @@ tty_clear_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 	TAILQ_FOREACH(wpl, &w->z_index, zentry) {
 		if (wpl == wp || ~wpl->flags & PANE_FLOATING)
 			continue;
-		if (wpl->xoff - 1 > (int)(px + nx) || wpl->xoff + wpl->sx + 1 < px)
+		if ((int)wpl->xoff - 1 > (int)(px + nx) || wpl->xoff + wpl->sx + 1 < px)
 			continue;
-		if (wpl->yoff - 1 > (int)(py + ny) || wpl->yoff + wpl->sy + 1 < py)
+		if ((int)wpl->yoff - 1 > (int)(py + ny) || wpl->yoff + wpl->sy + 1 < py)
 			continue;
 		overlap++;
 		if (overlap > 0) break;

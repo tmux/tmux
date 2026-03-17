@@ -1991,8 +1991,13 @@ screen_write_pane_obscured(struct window_pane *base_wp)
 		    ((wp->xoff >= base_wp->xoff &&
 		    wp->xoff <= base_wp->xoff + (int)base_wp->sx) ||
 		    (wp->xoff + (int)wp->sx >= base_wp->xoff &&
-		    wp->xoff + wp->sx <= base_wp->xoff + base_wp->sx)))
+		    wp->xoff + wp->sx <= base_wp->xoff + base_wp->sx))) {
+			log_debug("%s: base %%%u obscured by %%%u "
+			    "(xoff=%u sx=%u vs base xoff=%u sx=%u)", __func__,
+			    base_wp->id, wp->id,
+			    wp->xoff, wp->sx, base_wp->xoff, base_wp->sx);
 			return (1);
+		}
 		}
 	return (0);
 }
@@ -2037,7 +2042,12 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 		ttyctx.num = ctx->scrolled;
 		ttyctx.bg = ctx->bg;
 		ttyctx.obscured = screen_write_pane_obscured(wp);
+		log_debug("%s: obscured=%d for pane %%%u", __func__,
+		    ttyctx.obscured, wp != NULL ? wp->id : 0);
 		tty_write(tty_cmd_scrollup, &ttyctx);
+		if (wp != NULL)
+			log_debug("%s: after scrollup, PANE_REDRAW=%d for %%%u",
+			    __func__, !!(wp->flags & PANE_REDRAW), wp->id);
 
 		if (wp != NULL)
 			ctx->wp->flags |= PANE_REDRAWSCROLLBAR;
