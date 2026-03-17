@@ -109,7 +109,7 @@ systemd_move_to_new_cgroup(char **cause)
 	sd_bus_message		*m = NULL, *reply = NULL;
 	sd_bus 			*bus = NULL;
 	sd_bus_slot		*slot = NULL;
-	char			*name, *desc, *slice;
+	char			*name, *desc, *slice, *unit;
 	sd_id128_t		 uuid;
 	int			 r;
 	uint64_t		 elapsed_usec;
@@ -239,6 +239,25 @@ systemd_move_to_new_cgroup(char **cause)
 		xasprintf(cause, "failed to append to properties: %s",
 		    strerror(-r));
 		goto finish;
+	}
+
+	/*
+	 * Try locating systemd unit that started the server, and mark
+	 * pane units as dependent on it. Use "Before" to make sure
+	 * systemd will not try to kill them first.
+	 */
+	if (sd_pid_get_user_unit(parent_pid, &unit) == 0 ||
+	    sd_pid_get_unit(parent_pid, &unit) == 0) {
+		r = sd_bus_message_append(m, "(sv)", "Before", "as", 1, unit);
+		if (r >= 0)
+			r = sd_bus_message_append(m, "(sv)", "PartOf", "as", 1,
+			    unit);
+		free(unit);
+		if (r < 0) {
+			xasprintf(cause, "failed to append to properties: %s",
+			    strerror(-r));
+			goto finish;
+		}
 	}
 
 	/* End properties array. */
