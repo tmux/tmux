@@ -104,10 +104,10 @@ layout_append(struct layout_cell *lc, char *buf, size_t len)
 	if (lc == NULL)
 		return (0);
 	if (lc->wp != NULL) {
-		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%u,%u,%u",
+		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%d,%d,%u",
 		    lc->sx, lc->sy, lc->xoff, lc->yoff, lc->wp->id);
 	} else {
-		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%u,%u",
+		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%d,%d",
 		    lc->sx, lc->sy, lc->xoff, lc->yoff);
 	}
 	if (tmplen > (sizeof tmp) - 1)
@@ -349,12 +349,13 @@ static struct layout_cell *
 layout_construct_cell(struct layout_cell *lcparent, const char **layout)
 {
 	struct layout_cell     *lc;
-	u_int			sx, sy, xoff, yoff;
+	u_int			sx, sy;
+	int			xoff, yoff;
 	const char	       *saved;
 
 	if (!isdigit((u_char) **layout))
 		return (NULL);
-	if (sscanf(*layout, "%ux%u,%u,%u", &sx, &sy, &xoff, &yoff) != 4)
+	if (sscanf(*layout, "%ux%u,%d,%d", &sx, &sy, &xoff, &yoff) != 4)
 		return (NULL);
 
 	while (isdigit((u_char) **layout))

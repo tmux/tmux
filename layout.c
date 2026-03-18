@@ -61,8 +61,8 @@ layout_create_cell(struct layout_cell *lcparent)
 	lc->sx = UINT_MAX;
 	lc->sy = UINT_MAX;
 
-	lc->xoff = UINT_MAX;
-	lc->yoff = UINT_MAX;
+	lc->xoff = INT_MAX;
+	lc->yoff = INT_MAX;
 
 	lc->wp = NULL;
 
@@ -133,7 +133,7 @@ layout_print_cell(struct layout_cell *lc, const char *hdr, u_int n)
 		type = "UNKNOWN";
 		break;
 	}
-	log_debug("%s:%*s%p type %s [parent %p] wp=%p [%u,%u %ux%u]", hdr, n,
+	log_debug("%s:%*s%p type %s [parent %p] wp=%p [%d,%d %ux%u]", hdr, n,
 	    " ", lc, type, lc->parent, lc->wp, lc->xoff, lc->yoff, lc->sx,
 	    lc->sy);
 	switch (lc->type) {
@@ -154,8 +154,10 @@ layout_search_by_border(struct layout_cell *lc, u_int x, u_int y)
 	struct layout_cell	*lcchild, *last = NULL;
 
 	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-		if (x >= lcchild->xoff && x < lcchild->xoff + lcchild->sx &&
-		    y >= lcchild->yoff && y < lcchild->yoff + lcchild->sy) {
+		if ((int)x >= lcchild->xoff &&
+		    (int)x < lcchild->xoff + (int)lcchild->sx &&
+		    (int)y >= lcchild->yoff &&
+		    (int)y < lcchild->yoff + (int)lcchild->sy) {
 			/* Inside the cell - recurse. */
 			return (layout_search_by_border(lcchild, x, y));
 		}
@@ -167,11 +169,13 @@ layout_search_by_border(struct layout_cell *lc, u_int x, u_int y)
 
 		switch (lc->type) {
 		case LAYOUT_LEFTRIGHT:
-			if (x < lcchild->xoff && x >= last->xoff + last->sx)
+			if ((int)x < lcchild->xoff &&
+			    (int)x >= last->xoff + (int)last->sx)
 				return (last);
 			break;
 		case LAYOUT_TOPBOTTOM:
-			if (y < lcchild->yoff && y >= last->yoff + last->sy)
+			if ((int)y < lcchild->yoff &&
+			    (int)y >= last->yoff + (int)last->sy)
 				return (last);
 			break;
 		case LAYOUT_WINDOWPANE:
@@ -186,8 +190,8 @@ layout_search_by_border(struct layout_cell *lc, u_int x, u_int y)
 }
 
 void
-layout_set_size(struct layout_cell *lc, u_int sx, u_int sy, u_int xoff,
-    u_int yoff)
+layout_set_size(struct layout_cell *lc, u_int sx, u_int sy, int xoff,
+    int yoff)
 {
 	lc->sx = sx;
 	lc->sy = sy;
@@ -249,7 +253,7 @@ static void
 layout_fix_offsets1(struct layout_cell *lc)
 {
 	struct layout_cell	*lcchild;
-	u_int			 xoff, yoff;
+	int			 xoff, yoff;
 
 	if (lc->type == LAYOUT_LEFTRIGHT) {
 		xoff = lc->xoff;

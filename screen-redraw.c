@@ -443,7 +443,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 	int			 pane_status = ctx->pane_status;
 	u_int			 sx = w->sx, sy = w->sy;
 	int			 border, pane_scrollbars = ctx->pane_scrollbars;
-	u_int			 pane_status_line;
+	int			 pane_status_line;
 	int			 sb_pos = ctx->pane_scrollbars_pos;
 	int			 sb_w, left, right, tiled_only=0;
 
@@ -526,11 +526,11 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 			if (pane_status == PANE_STATUS_TOP)
 				pane_status_line = wp->yoff - 1;
 			else
-				pane_status_line = wp->yoff + wp->sy;
+				pane_status_line = wp->yoff + (int)wp->sy;
 			left = wp->xoff + 2;
-			right = wp->xoff + 2 + wp->status_size - 1;
+			right = wp->xoff + 2 + (int)wp->status_size - 1;
 
-			if (py == pane_status_line + ctx->oy && /* XXX unsure about adding oy here, needs more testing. */
+			if ((int)py == pane_status_line + (int)ctx->oy &&
 			    (int)px >= left && (int)px <= right)
 				return (CELL_INSIDE);
 		}
@@ -1289,8 +1289,8 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 
 	log_debug("%s: %s @%u %%%u", __func__, c->name, w->id, wp->id);
 
-	if (wp->xoff + (int)wp->sx <= ctx->ox ||
-	    wp->xoff >= ctx->ox + (int)ctx->sx)
+	if (wp->xoff + (int)wp->sx <= (int)ctx->ox ||
+	    wp->xoff >= (int)ctx->ox + (int)ctx->sx)
 		return;
 
 	/* woy is window y offset in tty. */
@@ -1300,8 +1300,8 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		woy = 0;
 
 	for (j = 0; j < wp->sy; j++) {
-		if (wp->yoff + (int)j < ctx->oy ||
-		    wp->yoff + j >= ctx->oy + ctx->sy)
+		if (wp->yoff + (int)j < (int)ctx->oy ||
+		    wp->yoff + (int)j >= (int)ctx->oy + (int)ctx->sy)
 			continue;
 		wy = wp->yoff + j;		/* y line within window w. */
 		py = woy + wy - ctx->oy;	/* y line within tty. */
@@ -1312,27 +1312,27 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		/* Note: i is apparenty not used now that the vr array
 		 *  returns where in s to read from.
 		 */
-		if (wp->xoff >= ctx->ox &&
-		    wp->xoff + wp->sx <= ctx->ox + ctx->sx) {
+		if (wp->xoff >= (int)ctx->ox &&
+		    wp->xoff + (int)wp->sx <= (int)ctx->ox + (int)ctx->sx) {
 			/* All visible. */
 			i = 0;
-			wx = wp->xoff - ctx->ox;
+			wx = (u_int)(wp->xoff - (int)ctx->ox);
 			width = wp->sx;
-		} else if (wp->xoff < ctx->ox &&
-		    wp->xoff + wp->sx > ctx->ox + ctx->sx) {
+		} else if (wp->xoff < (int)ctx->ox &&
+		    wp->xoff + (int)wp->sx > (int)ctx->ox + (int)ctx->sx) {
 			/* Both left and right not visible. */
 			i = ctx->ox;
 			wx = 0;
 			width = ctx->sx;
-		} else if (wp->xoff < ctx->ox) {
+		} else if (wp->xoff < (int)ctx->ox) {
 			/* Left not visible. */
-			i = ctx->ox - wp->xoff;
+			i = (u_int)((int)ctx->ox - wp->xoff);
 			wx = 0;
 			width = wp->sx - i;
 		} else {
 			/* Right not visible. */
 			i = 0;
-			wx = wp->xoff - ctx->ox;
+			wx = (u_int)(wp->xoff - (int)ctx->ox);
 			width = ctx->sx - wx;
 		}
 		log_debug("%s: %s %%%u line %u,%u at %u,%u, width %u",

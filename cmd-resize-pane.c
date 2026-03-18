@@ -164,7 +164,8 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 	struct window		*w;
 	struct window_pane	*wp;
 	struct layout_cell	*lc;
-	u_int			 y, ly, x, lx, new_sx, new_sy;
+	u_int			 y, ly, x, lx;
+	int			 new_sx, new_sy;
 	int			 new_xoff, new_yoff, resizes = 0;
 
 	wl = cmd_mouse_window(m, NULL);
@@ -188,83 +189,83 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 	wp = c->tty.mouse_wp;
 	lc = wp->layout_cell;
 
-	log_debug("%s: %%%u resize_pane xoff=%u sx=%u xy=%ux%u lxy=%ux%u",
+	log_debug("%s: %%%u resize_pane xoff=%d sx=%u xy=%ux%u lxy=%ux%u",
 	    __func__, wp->id, wp->xoff, wp->sx, x, y, lx, ly);
 	if ((((int)lx == wp->xoff - 1) || ((int)lx == wp->xoff)) &&
 	    ((int)ly == wp->yoff - 1)) {
 		/* Top left corner */
-		new_sx = lc->sx + (lx - x);
+		new_sx = (int)lc->sx + ((int)lx - (int)x);
 		if (new_sx < PANE_MINIMUM)
 			new_sx = PANE_MINIMUM;
-		new_sy = lc->sy + (ly - y);
+		new_sy = (int)lc->sy + ((int)ly - (int)y);
 		if (new_sy < PANE_MINIMUM)
 			new_sy = PANE_MINIMUM;
 		new_xoff = x + 1;  /* Because mouse is on border at xoff - 1 */
 		new_yoff = y + 1;
-		layout_set_size(lc, new_sx, new_sy, new_xoff, new_yoff);
+		layout_set_size(lc, (u_int)new_sx, (u_int)new_sy, new_xoff, new_yoff);
 		resizes++;
 	} else if ((((int)lx == wp->xoff + (int)wp->sx + 1) ||
 		    ((int)lx == wp->xoff + (int)wp->sx)) &&
 		   ((int)ly == wp->yoff - 1)) {
 		/* Top right corner */
-		new_sx = x - lc->xoff;
+		new_sx = (int)x - lc->xoff;
 		if (new_sx < PANE_MINIMUM)
 			new_sx = PANE_MINIMUM;
-		new_sy = lc->sy + (ly - y);
+		new_sy = (int)lc->sy + ((int)ly - (int)y);
 		if (new_sy < PANE_MINIMUM)
 			new_sy = PANE_MINIMUM;
 		new_yoff = y + 1;
-		layout_set_size(lc, new_sx, new_sy, lc->xoff, new_yoff);
+		layout_set_size(lc, (u_int)new_sx, (u_int)new_sy, lc->xoff, new_yoff);
 		resizes++;
 	} else if ((((int)lx == wp->xoff - 1) || ((int)lx == wp->xoff)) &&
 		   ((int)ly == wp->yoff + (int)wp->sy)) {
 		/* Bottom left corner */
-		new_sx = lc->sx + (lx - x);
+		new_sx = (int)lc->sx + ((int)lx - (int)x);
 		if (new_sx < PANE_MINIMUM)
 			new_sx = PANE_MINIMUM;
-		new_sy = y - lc->yoff;
+		new_sy = (int)y - lc->yoff;
 		if (new_sy < PANE_MINIMUM)
 			return;
 		new_xoff = x + 1;
-		layout_set_size(lc, new_sx, new_sy, new_xoff, lc->yoff);
+		layout_set_size(lc, (u_int)new_sx, (u_int)new_sy, new_xoff, lc->yoff);
 		resizes++;
 	} else if ((((int)lx == wp->xoff + (int)wp->sx + 1) ||
 		    ((int)lx == wp->xoff + (int)wp->sx)) &&
 		   ((int)ly == wp->yoff + (int)wp->sy)) {
 		/* Bottom right corner */
-		new_sx = x - lc->xoff;
+		new_sx = (int)x - lc->xoff;
 		if (new_sx < PANE_MINIMUM)
 			new_sx = PANE_MINIMUM;
-		new_sy = y - lc->yoff;
+		new_sy = (int)y - lc->yoff;
 		if (new_sy < PANE_MINIMUM)
 			new_sy = PANE_MINIMUM;
-		layout_set_size(lc, new_sx, new_sy, lc->xoff, lc->yoff);
+		layout_set_size(lc, (u_int)new_sx, (u_int)new_sy, lc->xoff, lc->yoff);
 		resizes++;
 	} else if ((int)lx == wp->xoff + (int)wp->sx + 1) {
 		/* Right border */
-		new_sx = x - lc->xoff;
+		new_sx = (int)x - lc->xoff;
 		if (new_sx < PANE_MINIMUM)
 			return;
-		layout_set_size(lc, new_sx, lc->sy, lc->xoff, lc->yoff);
+		layout_set_size(lc, (u_int)new_sx, lc->sy, lc->xoff, lc->yoff);
 		resizes++;
 	} else if ((int)lx == wp->xoff - 1) {
 		/* Left border */
-		new_sx = lc->sx + (lx - x);
+		new_sx = (int)lc->sx + ((int)lx - (int)x);
 		if (new_sx < PANE_MINIMUM)
 			return;
 		new_xoff = x + 1;
-		layout_set_size(lc, new_sx, lc->sy, new_xoff, lc->yoff);
+		layout_set_size(lc, (u_int)new_sx, lc->sy, new_xoff, lc->yoff);
 		resizes++;
 	} else if ((int)ly == wp->yoff + (int)wp->sy) {
 		/* Bottom border */
-		new_sy = y - lc->yoff;
+		new_sy = (int)y - lc->yoff;
 		if (new_sy < PANE_MINIMUM)
 			return;
-		layout_set_size(lc, lc->sx, new_sy, lc->xoff, lc->yoff);
+		layout_set_size(lc, lc->sx, (u_int)new_sy, lc->xoff, lc->yoff);
 		resizes++;
 	} else if ((int)ly == wp->yoff - 1) {
 		/* Top border (move instead of resize) */
-		new_xoff = lc->xoff + (x - lx);
+		new_xoff = lc->xoff + ((int)x - (int)lx);
 		new_yoff = y + 1;
 		layout_set_size(lc, lc->sx, lc->sy, new_xoff, new_yoff);
 		/*  To resize instead of move:
@@ -276,7 +277,7 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 		*/
 		resizes++;
 	} else {
-		log_debug("%s: %%%u resize_pane xoff=%u sx=%u xy=%ux%u lxy=%ux%u  <else>",
+		log_debug("%s: %%%u resize_pane xoff=%d sx=%u xy=%ux%u lxy=%ux%u  <else>",
 		    __func__, wp->id, wp->xoff, wp->sx, x, y, lx, ly);
 	}
 	if (resizes != 0) {

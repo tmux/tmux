@@ -1319,9 +1319,11 @@ tty_clear_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 	TAILQ_FOREACH(wpl, &w->z_index, zentry) {
 		if (wpl == wp || ~wpl->flags & PANE_FLOATING)
 			continue;
-		if ((int)wpl->xoff - 1 > (int)(px + nx) || wpl->xoff + wpl->sx + 1 < px)
+		if ((int)wpl->xoff - 1 > (int)(px + nx) ||
+		    wpl->xoff + (int)wpl->sx + 1 < (int)px)
 			continue;
-		if ((int)wpl->yoff - 1 > (int)(py + ny) || wpl->yoff + wpl->sy + 1 < py)
+		if ((int)wpl->yoff - 1 > (int)(py + ny) ||
+		    wpl->yoff + (int)wpl->sy + 1 < (int)py)
 			continue;
 		overlap++;
 		if (overlap > 0) break;

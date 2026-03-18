@@ -66,8 +66,9 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 	char			*cause = NULL, *cp;
 	struct args_value	*av;
 	u_int			 count = args_count(args);
-	u_int			 x, y, sx, sy, pct;
-	static u_int		 last_x = 0, last_y = 0;
+	int			 x, y;
+	u_int			 sx, sy, pct;
+	static int		 last_x = 0, last_y = 0;
 
 	if (args_has(args, 'f')) {
 		sx = w->sx;
@@ -96,7 +97,7 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 	if (args_has(args, 'w')) {
-		sx = args_strtonum_and_expand(args, 'w', 0, w->sx, item,
+		sx = args_strtonum_and_expand(args, 'w', 1, USHRT_MAX, item,
 		    &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "size %s", cause);
@@ -105,7 +106,7 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 	if (args_has(args, 'h')) {
-		sy = args_strtonum_and_expand(args, 'h', 0, w->sy, item,
+		sy = args_strtonum_and_expand(args, 'h', 1, USHRT_MAX, item,
 		    &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "size %s", cause);
@@ -114,8 +115,8 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 	if (args_has(args, 'x')) {
-		x = args_strtonum_and_expand(args, 'x', 0, w->sx, item,
-		    &cause);
+		x = args_strtonum_and_expand(args, 'x', SHRT_MIN, SHRT_MAX,
+		    item, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "size %s", cause);
 			free(cause);
@@ -126,13 +127,13 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 			x = 5;
 		} else {
 			x = (last_x += 5);
-			if (last_x > w->sx)
+			if (last_x > (int)w->sx)
 				x = 5;
 		}
 	}
 	if (args_has(args, 'y')) {
-		y = args_strtonum_and_expand(args, 'y', 0, w->sx, item,
-		    &cause);
+		y = args_strtonum_and_expand(args, 'y', SHRT_MIN, SHRT_MAX,
+		    item, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "size %s", cause);
 			free(cause);
@@ -143,7 +144,7 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 			y = 5;
 		} else {
 			y = (last_y += 5);
-			if (last_y > w->sy)
+			if (last_y > (int)w->sy)
 				y = 5;
 		}
 	}

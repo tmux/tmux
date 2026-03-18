@@ -1423,8 +1423,8 @@ struct layout_cell {
 	u_int		 sx;
 	u_int		 sy;
 
-	u_int		 xoff;
-	u_int		 yoff;
+	int		 xoff;
+	int		 yoff;
 
 	struct window_pane *wp;
 	struct layout_cells cells;
@@ -3439,8 +3439,7 @@ void		 layout_unminimise_cell(struct window *, struct layout_cell *);
 void		 layout_resize_layout(struct window *, struct layout_cell *,
 		     enum layout_type, int, int);
 struct layout_cell *layout_search_by_border(struct layout_cell *, u_int, u_int);
-void		 layout_set_size(struct layout_cell *, u_int, u_int, u_int,
-		     u_int);
+void		 layout_set_size(struct layout_cell *, u_int, u_int, int, int);
 void		 layout_make_leaf(struct layout_cell *, struct window_pane *);
 void		 layout_make_node(struct layout_cell *, enum layout_type);
 void		 layout_fix_zindexes(struct window *, struct layout_cell *);
