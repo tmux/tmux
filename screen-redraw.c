@@ -1100,7 +1100,8 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 	memcpy(&slgc, &gc, sizeof slgc);
 	slgc.fg = gc.bg;
 	slgc.bg = gc.fg;
-
+	if (sb_x >= (int)sx)
+		return;
 	imax = sb_w + sb_pad;
 	if ((int)imax + sb_x > sx)
 		imax = sx - sb_x;
