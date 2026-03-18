@@ -1098,8 +1098,8 @@ tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 	log_debug("%s: %s orlower=%u orupper=%u sy=%u large=%d", __func__,
 	    c->name, ctx->orlower, ctx->orupper, ctx->sy,
 	    tty_large_region(tty, ctx));
-	if (tty_large_region(tty, ctx)) {
-		log_debug("%s: %s large redraw", __func__, c->name);
+	if (tty_large_region(tty, ctx) && !ctx->obscured) {
+		log_debug("%s: %s large region redraw", __func__, c->name);
 		ctx->redraw_cb(ctx);
 		return;
 	}
@@ -1421,13 +1421,35 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 
 	if (!ctx->bigger) {
 		if (wp) {
-			r = tty_check_overlay_range(tty, 0, ctx->yoff + py, nx);
-			for (i=0; i < r->used; i++) {
-				ri = &r->ranges[i];
-				if (ri->nx == 0) continue;
-				tty_draw_line(tty, s, ri->px, py, ri->nx,
-				    ctx->xoff + ri->px, ctx->yoff + py,
-				    &ctx->defaults, ctx->palette);
+			if (ctx->obscured) {
+				/*
+				 * Floating pane is present: use physical
+				 * coordinates and clip to visible ranges to
+				 * avoid drawing over the floating pane.
+				 */
+				r = tty_check_overlay_range(tty, ctx->xoff,
+				    ctx->yoff + py, nx);
+				r = screen_redraw_get_visible_ranges(wp,
+				    ctx->xoff, ctx->yoff + py, nx, r);
+				for (i = 0; i < r->used; i++) {
+					ri = &r->ranges[i];
+					if (ri->nx == 0) continue;
+					tty_draw_line(tty, s,
+					    ri->px - ctx->xoff, py, ri->nx,
+					    ri->px, ctx->yoff + py,
+					    &ctx->defaults, ctx->palette);
+				}
+			} else {
+				r = tty_check_overlay_range(tty, 0,
+				    ctx->yoff + py, nx);
+				for (i = 0; i < r->used; i++) {
+					ri = &r->ranges[i];
+					if (ri->nx == 0) continue;
+					tty_draw_line(tty, s, ri->px, py,
+					    ri->nx, ctx->xoff + ri->px,
+					    ctx->yoff + py,
+					    &ctx->defaults, ctx->palette);
+				}
 			}
 		} else {
 			tty_draw_line(tty, s, 0, py, nx, ctx->xoff,
@@ -1664,7 +1686,8 @@ tty_cmd_insertcharacter(struct tty *tty, const struct tty_ctx *ctx)
 	    tty_fake_bce(tty, &ctx->defaults, ctx->bg) ||
 	    (!tty_term_has(tty->term, TTYC_ICH) &&
 	    !tty_term_has(tty->term, TTYC_ICH1)) ||
-	    c->overlay_check != NULL) {
+	    c->overlay_check != NULL ||
+	    ctx->obscured) {
 		tty_draw_pane(tty, ctx, ctx->ocy);
 		return;
 	}
@@ -1687,7 +1710,8 @@ tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
 	    tty_fake_bce(tty, &ctx->defaults, ctx->bg) ||
 	    (!tty_term_has(tty->term, TTYC_DCH) &&
 	    !tty_term_has(tty->term, TTYC_DCH1)) ||
-	    c->overlay_check != NULL) {
+	    c->overlay_check != NULL ||
+	    ctx->obscured) {
 		tty_draw_pane(tty, ctx, ctx->ocy);
 		return;
 	}
@@ -1721,7 +1745,8 @@ tty_cmd_insertline(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_IL1) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1 ||
-	    c->overlay_check != NULL) {
+	    c->overlay_check != NULL ||
+	    ctx->obscured) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1749,7 +1774,8 @@ tty_cmd_deleteline(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_DL1) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1 ||
-	    c->overlay_check != NULL) {
+	    c->overlay_check != NULL ||
+	    ctx->obscured) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1925,7 +1951,8 @@ tty_cmd_scrolldown(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_RIN)) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1 ||
-	    c->overlay_check != NULL) {
+	    c->overlay_check != NULL ||
+	    ctx->obscured) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -2256,6 +2283,10 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 	/* If this is a padding character, do nothing. */
 	if (gc->flags & GRID_FLAG_PADDING)
 		return;
+
+	/* Check if character is covered by overlay/floating pane. */
+	if (!tty_check_overlay(tty, tty->cx, tty->cy))
+		return;  /* Character obscured by floating pane. */
 
 	/* Check the output codeset and apply attributes. */
 	gcp = tty_check_codeset(tty, gc);
