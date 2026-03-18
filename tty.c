@@ -68,7 +68,7 @@ static void	tty_draw_pane(struct tty *, const struct tty_ctx *, u_int);
 static int	tty_check_overlay(struct tty *, u_int, u_int);
 
 #ifdef ENABLE_SIXEL
-static void	tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
+void		tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
 		    struct client *, struct tty_ctx *);
 #endif
 
@@ -1569,7 +1569,7 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 
 #ifdef ENABLE_SIXEL
 /* Only write to the incoming tty instead of every client. */
-static void
+void
 tty_write_one(void (*cmdfn)(struct tty *, const struct tty_ctx *),
     struct client *c, struct tty_ctx *ctx)
 {
