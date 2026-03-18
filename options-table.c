@@ -185,7 +185,7 @@ static const char *options_table_allow_passthrough_list[] = {
 			"#{E:pane-status-style}" \
 		"]" \
 		"#[push-default]" \
-		"#P[#{pane_width}x#{pane_height}]" \
+		"#{T:window-pane-status-format}" \
 		"#[pop-default]" \
 		"#[norange list=on default]  " \
 	"," \
@@ -196,7 +196,7 @@ static const char *options_table_allow_passthrough_list[] = {
 			"}" \
 		"]" \
 		"#[push-default]" \
-		"#P[#{pane_width}x#{pane_height}]*" \
+		"#{T:window-pane-current-status-format}" \
 		"#[pop-default]" \
 		"#[norange list=on default] " \
 	"}"
@@ -1456,6 +1456,21 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Default style of the active pane."
+	},
+
+	{ .name = "window-pane-current-status-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "#P:[#T]#{?pane_flags,#{pane_flags}, }",
+	  .text = "Format of the current window pane in the status line."
+	},
+
+	{ .name = "window-pane-status-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "#P:[#T]#{?pane_flags,#{pane_flags}, }",
+	  .text = "Format of window panes in the status line, except the "
+		  "current pane."
 	},
 
 	{ .name = "window-size",
