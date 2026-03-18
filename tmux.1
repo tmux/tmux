@@ -4239,9 +4239,10 @@ An array option allowing widths of Unicode codepoints to be overridden.
 Note the new width applies to all clients.
 Each entry is of the form
 .Em codepoint=width ,
-where codepoint may be a UTF-8 character or an identifier of the form
+where codepoint may be a UTF-8 character, an identifier of the form
 .Ql U+number
-where the number is a hexadecimal number.
+where the number is a hexadecimal number, or a range of the form
+.Ql U+number-U+number .
 .It Ic copy-command Ar shell-command
 Give the command to pipe to if the
 .Ic copy-pipe
