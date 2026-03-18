@@ -1230,6 +1230,7 @@ struct window_pane {
 #define PANE_REDRAWSCROLLBAR 0x8000
 #define PANE_FLOATING 0x10000
 #define PANE_MINIMISED 0x20000
+#define PANE_ZOOMED 0x40000
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
@@ -3396,6 +3397,7 @@ int		 window_pane_exited(struct window_pane *);
 u_int		 window_pane_search(struct window_pane *, const char *, int,
 		     int);
 const char	*window_printable_flags(struct winlink *, int);
+const char	*window_pane_printable_flags(struct window_pane *, int);
 struct window_pane *window_pane_find_up(struct window_pane *);
 struct window_pane *window_pane_find_down(struct window_pane *);
 struct window_pane *window_pane_find_left(struct window_pane *);

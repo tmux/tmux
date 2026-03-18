@@ -5613,6 +5613,20 @@ For how to specify
 see the
 .Sx STYLES
 section.
+.Pp
+.It Ic window-pane-status-format Ar string
+Set the format in which the window pane is displayed in the status line window
+pane list.
+See the
+.Sx FORMATS
+and
+.Sx STYLES
+sections.
+.Pp
+.It Ic window-pane-current-status-format Ar string
+Like
+.Ar window-status-format ,
+but is the format used when the window is the current window.
 .El
 .Sh HOOKS
 .Nm
@@ -6364,6 +6378,7 @@ The following variables are available, where appropriate:
 .It Li "pane_dead_status" Ta "" Ta "Exit status of process in dead pane"
 .It Li "pane_dead_time" Ta "" Ta "Exit time of process in dead pane"
 .It Li "pane_fg" Ta "" Ta "Pane foreground colour"
+.It Li "pane_flags" Ta "" Ta "Pane flags"
 .It Li "pane_floating_flag" Ta "" Ta "1 if pane is floating"
 .It Li "pane_format" Ta "" Ta "1 if format is for a pane"
 .It Li "pane_height" Ta "" Ta "Height of pane"
@@ -6376,6 +6391,7 @@ The following variables are available, where appropriate:
 .It Li "pane_left" Ta "" Ta "Left of pane"
 .It Li "pane_marked" Ta "" Ta "1 if this is the marked pane"
 .It Li "pane_marked_set" Ta "" Ta "1 if a marked pane is set"
+.It Li "pane_minimised_flag" Ta "" Ta "1 if pane is minimised"
 .It Li "pane_mode" Ta "" Ta "Name of pane mode, if any"
 .It Li "pane_path" Ta "" Ta "Path of pane (can be set by application)"
 .It Li "pane_pid" Ta "" Ta "PID of first process in pane"
@@ -6392,6 +6408,7 @@ The following variables are available, where appropriate:
 .It Li "pane_tty" Ta "" Ta "Pseudo terminal of pane"
 .It Li "pane_unseen_changes" Ta "" Ta "1 if there were changes in pane while in mode"
 .It Li "pane_width" Ta "" Ta "Width of pane"
+.It Li "pane_zoomed_flag" Ta "" Ta "1 if pane is zoomed"
 .It Li "pid" Ta "" Ta "Server PID"
 .It Li "prev_window_active" Ta "" Ta "1 if previous window in W: loop is active"
 .It Li "prev_window_index" Ta "" Ta "Index of previous window in W: loop"
