@@ -1729,7 +1729,13 @@ void *
 window_pane_get_new_data(struct window_pane *wp,
     struct window_pane_offset *wpo, size_t *size)
 {
-	size_t	used = wpo->used - wp->base_offset;
+	size_t	used;
+
+	if (wp->base_offset > wpo->used) {
+		*size = 0;
+		return (NULL);
+	}
+	used = wpo->used - wp->base_offset;
 
 	*size = EVBUFFER_LENGTH(wp->event->input) - used;
 	return (EVBUFFER_DATA(wp->event->input) + used);
@@ -1739,7 +1745,11 @@ void
 window_pane_update_used_data(struct window_pane *wp,
     struct window_pane_offset *wpo, size_t size)
 {
-	size_t	used = wpo->used - wp->base_offset;
+	size_t	used;
+
+	if (wp->base_offset > wpo->used)
+		return;
+	used = wpo->used - wp->base_offset;
 
 	if (size > EVBUFFER_LENGTH(wp->event->input) - used)
 		size = EVBUFFER_LENGTH(wp->event->input) - used;
