@@ -683,6 +683,20 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 		}
 		if (fwp != NULL)
 			return (BORDER);
+
+		/* In box mode, check if click is on any pane's border. */
+		if (window_pane_box_mode(wp)) {
+			if (py >= wp->yoff &&
+			    py <= wp->yoff + wp->sy - 1 &&
+			    px >= wp->xoff &&
+			    px <= wp->xoff + wp->sx - 1) {
+				if (py == wp->yoff ||
+				    py == wp->yoff + wp->sy - 1 ||
+				    px == wp->xoff ||
+				    px == wp->xoff + wp->sx - 1)
+					return (BORDER);
+			}
+		}
 	}
 	return (NOWHERE);
 }

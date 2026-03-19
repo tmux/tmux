@@ -633,12 +633,24 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (!window_pane_visible(wp))
 			continue;
-		window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
-		if (x < xoff || x > xoff + sx)
-			continue;
-		if (y < yoff || y > yoff + sy)
-			continue;
-		return (wp);
+		if (window_pane_box_mode(wp)) {
+			/*
+			 * Include box border area and adjacent separator
+			 * cells so that clicks on the separator (used for
+			 * resize dragging) still resolve to a pane.
+			 */
+			if (x >= wp->xoff && x <= wp->xoff + wp->sx &&
+			    y >= wp->yoff && y <= wp->yoff + wp->sy)
+				return (wp);
+		} else {
+			window_pane_full_size_offset(wp, &xoff, &yoff, &sx,
+			    &sy);
+			if (x < xoff || x > xoff + sx)
+				continue;
+			if (y < yoff || y > yoff + sy)
+				continue;
+			return (wp);
+		}
 	}
 	return (NULL);
 }
