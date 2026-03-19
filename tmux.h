@@ -1041,6 +1041,7 @@ enum pane_lines {
 #define PANE_BORDER_ARROWS 2
 #define PANE_BORDER_BOTH 3
 #define PANE_BORDER_BOX 4
+#define PANE_BORDER_BOX_ALL 5
 
 /* Mode returned by window_pane_mode function. */
 #define WINDOW_PANE_NO_MODE 0

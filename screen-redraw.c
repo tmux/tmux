@@ -890,6 +890,7 @@ screen_redraw_draw_borders(struct screen_redraw_ctx *ctx)
 	struct options		*oo = w->options;
 	struct window_pane	*wp;
 	u_int			 i, j;
+	int			 bi;
 
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
@@ -897,7 +898,8 @@ screen_redraw_draw_borders(struct screen_redraw_ctx *ctx)
 	 * Skip drawing pane separator borders when box mode is active,
 	 * since each pane has its own complete box border.
 	 */
-	if (options_get_number(oo, "pane-border-indicators") == PANE_BORDER_BOX &&
+	bi = options_get_number(oo, "pane-border-indicators");
+	if ((bi == PANE_BORDER_BOX || bi == PANE_BORDER_BOX_ALL) &&
 	    TAILQ_NEXT(TAILQ_FIRST(&w->panes), entry) != NULL)
 		return;
 
@@ -923,10 +925,15 @@ screen_redraw_draw_active_box(struct screen_redraw_ctx *ctx)
 	struct grid_cell	 gc, blank_gc;
 	struct format_tree	*ft;
 	u_int			 i, top, left, right, bottom, tty_top;
-	int			 is_active;
+	u_int			 tty_left, tty_right;
+	u_int			 sep_x, sep_y;
+	int			 is_active, draw_border;
+
+	int			 indicator;
 
 	/* Check if box mode is enabled. */
-	if (options_get_number(oo, "pane-border-indicators") != PANE_BORDER_BOX)
+	indicator = options_get_number(oo, "pane-border-indicators");
+	if (indicator != PANE_BORDER_BOX && indicator != PANE_BORDER_BOX_ALL)
 		return;
 	if (TAILQ_NEXT(TAILQ_FIRST(&w->panes), entry) == NULL)
 		return;
@@ -951,88 +958,144 @@ screen_redraw_draw_active_box(struct screen_redraw_ctx *ctx)
 		if (wp->sx < 3 || wp->sy < 3)
 			continue;
 
-		is_active = (wp == active_wp);
-
-		log_debug("%s: %s @%u %%%u active=%d", __func__, c->name,
-		    w->id, wp->id, is_active);
-
-		/* Calculate box position. */
+		/* Calculate absolute box coordinates. */
 		left = wp->xoff;
 		right = wp->xoff + wp->sx - 1;
 		top = wp->yoff;
 		bottom = wp->yoff + wp->sy - 1;
 
-		if (is_active) {
-			/* Set up grid cell with active border style. */
+		/* Skip if entirely outside viewport. */
+		if (right < ctx->ox || left >= ctx->ox + ctx->sx)
+			continue;
+		if (bottom < ctx->oy || top >= ctx->oy + ctx->sy)
+			continue;
+
+		/* Calculate terminal coordinates with viewport clipping. */
+		tty_left = (left >= ctx->ox) ? left - ctx->ox : 0;
+		tty_right = (right < ctx->ox + ctx->sx) ?
+		    right - ctx->ox : ctx->sx - 1;
+
+		is_active = (wp == active_wp);
+		draw_border = is_active || indicator == PANE_BORDER_BOX_ALL;
+
+
+		log_debug("%s: %s @%u %%%u active=%d draw=%d", __func__,
+		    c->name, w->id, wp->id, is_active, draw_border);
+
+		if (draw_border) {
+			/* Set up grid cell with border style. */
 			memcpy(&gc, &grid_default_cell, sizeof gc);
 			ft = format_create_defaults(NULL, c, s, s->curw, wp);
-			style_apply(&gc, oo, "pane-active-border-style", ft);
+			if (is_active)
+				style_apply(&gc, oo,
+				    "pane-active-border-style", ft);
+			else
+				style_apply(&gc, oo,
+				    "pane-border-style", ft);
 			format_free(ft);
 		}
 
-		/* Draw top border. */
-		for (i = left; i <= right; i++) {
-			if (is_active) {
-				if (i == left)
-					screen_redraw_border_set(w, wp,
-					    ctx->pane_lines, CELL_TOPLEFT, &gc);
-				else if (i == right)
-					screen_redraw_border_set(w, wp,
-					    ctx->pane_lines, CELL_TOPRIGHT, &gc);
-				else
-					screen_redraw_border_set(w, wp,
-					    ctx->pane_lines, CELL_LEFTRIGHT, &gc);
-				tty_cursor(tty, i, tty_top + top);
-				tty_cell(tty, &gc, &grid_default_cell, NULL, NULL);
-			} else {
-				tty_cursor(tty, i, tty_top + top);
-				tty_cell(tty, &blank_gc, &grid_default_cell, NULL, NULL);
+		/* Draw top border if visible. */
+		if (top >= ctx->oy && top < ctx->oy + ctx->sy) {
+			for (i = tty_left; i <= tty_right; i++) {
+				if (draw_border) {
+					if (i == tty_left && left >= ctx->ox)
+						screen_redraw_border_set(w, wp,
+						    ctx->pane_lines,
+						    CELL_TOPLEFT, &gc);
+					else if (i == tty_right &&
+					    right < ctx->ox + ctx->sx)
+						screen_redraw_border_set(w, wp,
+						    ctx->pane_lines,
+						    CELL_TOPRIGHT, &gc);
+					else
+						screen_redraw_border_set(w, wp,
+						    ctx->pane_lines,
+						    CELL_LEFTRIGHT, &gc);
+					tty_cursor(tty, i,
+					    tty_top + top - ctx->oy);
+					tty_cell(tty, &gc, &grid_default_cell,
+					    NULL, NULL);
+				} else {
+					tty_cursor(tty, i,
+					    tty_top + top - ctx->oy);
+					tty_cell(tty, &blank_gc,
+					    &grid_default_cell, NULL, NULL);
+				}
 			}
 		}
 
-		/* Draw bottom border. */
-		for (i = left; i <= right; i++) {
-			if (is_active) {
-				if (i == left)
-					screen_redraw_border_set(w, wp,
-					    ctx->pane_lines, CELL_BOTTOMLEFT, &gc);
-				else if (i == right)
-					screen_redraw_border_set(w, wp,
-					    ctx->pane_lines, CELL_BOTTOMRIGHT, &gc);
-				else
-					screen_redraw_border_set(w, wp,
-					    ctx->pane_lines, CELL_LEFTRIGHT, &gc);
-				tty_cursor(tty, i, tty_top + bottom);
-				tty_cell(tty, &gc, &grid_default_cell, NULL, NULL);
-			} else {
-				tty_cursor(tty, i, tty_top + bottom);
-				tty_cell(tty, &blank_gc, &grid_default_cell, NULL, NULL);
+		/* Draw bottom border if visible. */
+		if (bottom >= ctx->oy && bottom < ctx->oy + ctx->sy) {
+			for (i = tty_left; i <= tty_right; i++) {
+				if (draw_border) {
+					if (i == tty_left && left >= ctx->ox)
+						screen_redraw_border_set(w, wp,
+						    ctx->pane_lines,
+						    CELL_BOTTOMLEFT, &gc);
+					else if (i == tty_right &&
+					    right < ctx->ox + ctx->sx)
+						screen_redraw_border_set(w, wp,
+						    ctx->pane_lines,
+						    CELL_BOTTOMRIGHT, &gc);
+					else
+						screen_redraw_border_set(w, wp,
+						    ctx->pane_lines,
+						    CELL_LEFTRIGHT, &gc);
+					tty_cursor(tty, i,
+					    tty_top + bottom - ctx->oy);
+					tty_cell(tty, &gc, &grid_default_cell,
+					    NULL, NULL);
+				} else {
+					tty_cursor(tty, i,
+					    tty_top + bottom - ctx->oy);
+					tty_cell(tty, &blank_gc,
+					    &grid_default_cell, NULL, NULL);
+				}
 			}
 		}
 
-		/* Draw left border (excluding corners). */
-		for (i = top + 1; i < bottom; i++) {
-			if (is_active) {
-				screen_redraw_border_set(w, wp, ctx->pane_lines,
-				    CELL_TOPBOTTOM, &gc);
-				tty_cursor(tty, left, tty_top + i);
-				tty_cell(tty, &gc, &grid_default_cell, NULL, NULL);
-			} else {
-				tty_cursor(tty, left, tty_top + i);
-				tty_cell(tty, &blank_gc, &grid_default_cell, NULL, NULL);
+		/* Draw left border if visible (excluding corners). */
+		if (left >= ctx->ox && left < ctx->ox + ctx->sx) {
+			for (i = top + 1; i < bottom; i++) {
+				if (i < ctx->oy || i >= ctx->oy + ctx->sy)
+					continue;
+				if (draw_border) {
+					screen_redraw_border_set(w, wp,
+					    ctx->pane_lines, CELL_TOPBOTTOM,
+					    &gc);
+					tty_cursor(tty, tty_left,
+					    tty_top + i - ctx->oy);
+					tty_cell(tty, &gc, &grid_default_cell,
+					    NULL, NULL);
+				} else {
+					tty_cursor(tty, tty_left,
+					    tty_top + i - ctx->oy);
+					tty_cell(tty, &blank_gc,
+					    &grid_default_cell, NULL, NULL);
+				}
 			}
 		}
 
-		/* Draw right border (excluding corners). */
-		for (i = top + 1; i < bottom; i++) {
-			if (is_active) {
-				screen_redraw_border_set(w, wp, ctx->pane_lines,
-				    CELL_TOPBOTTOM, &gc);
-				tty_cursor(tty, right, tty_top + i);
-				tty_cell(tty, &gc, &grid_default_cell, NULL, NULL);
-			} else {
-				tty_cursor(tty, right, tty_top + i);
-				tty_cell(tty, &blank_gc, &grid_default_cell, NULL, NULL);
+		/* Draw right border if visible (excluding corners). */
+		if (right >= ctx->ox && right < ctx->ox + ctx->sx) {
+			for (i = top + 1; i < bottom; i++) {
+				if (i < ctx->oy || i >= ctx->oy + ctx->sy)
+					continue;
+				if (draw_border) {
+					screen_redraw_border_set(w, wp,
+					    ctx->pane_lines, CELL_TOPBOTTOM,
+					    &gc);
+					tty_cursor(tty, tty_right,
+					    tty_top + i - ctx->oy);
+					tty_cell(tty, &gc, &grid_default_cell,
+					    NULL, NULL);
+				} else {
+					tty_cursor(tty, tty_right,
+					    tty_top + i - ctx->oy);
+					tty_cell(tty, &blank_gc,
+					    &grid_default_cell, NULL, NULL);
+				}
 			}
 		}
 
@@ -1040,9 +1103,14 @@ screen_redraw_draw_active_box(struct screen_redraw_ctx *ctx)
 		 * Clear separator column to the right of this pane. This is
 		 * the column that normally holds the pane separator border.
 		 */
-		if (wp->xoff + wp->sx < w->sx) {
+		sep_x = wp->xoff + wp->sx;
+		if (sep_x < w->sx &&
+		    sep_x >= ctx->ox && sep_x < ctx->ox + ctx->sx) {
 			for (i = top; i <= bottom; i++) {
-				tty_cursor(tty, wp->xoff + wp->sx, tty_top + i);
+				if (i < ctx->oy || i >= ctx->oy + ctx->sy)
+					continue;
+				tty_cursor(tty, sep_x - ctx->ox,
+				    tty_top + i - ctx->oy);
 				tty_cell(tty, &blank_gc, &grid_default_cell,
 				    NULL, NULL);
 			}
@@ -1052,16 +1120,22 @@ screen_redraw_draw_active_box(struct screen_redraw_ctx *ctx)
 		 * Clear separator row below this pane. This is the row that
 		 * normally holds the pane separator border.
 		 */
-		if (wp->yoff + wp->sy < w->sy) {
+		sep_y = wp->yoff + wp->sy;
+		if (sep_y < w->sy &&
+		    sep_y >= ctx->oy && sep_y < ctx->oy + ctx->sy) {
 			for (i = left; i <= right; i++) {
-				tty_cursor(tty, i, tty_top + wp->yoff + wp->sy);
+				if (i < ctx->ox || i >= ctx->ox + ctx->sx)
+					continue;
+				tty_cursor(tty, i - ctx->ox,
+				    tty_top + sep_y - ctx->oy);
 				tty_cell(tty, &blank_gc, &grid_default_cell,
 				    NULL, NULL);
 			}
 			/* Also clear the corner where separators meet. */
-			if (wp->xoff + wp->sx < w->sx) {
-				tty_cursor(tty, wp->xoff + wp->sx,
-				    tty_top + wp->yoff + wp->sy);
+			if (sep_x < w->sx &&
+			    sep_x >= ctx->ox && sep_x < ctx->ox + ctx->sx) {
+				tty_cursor(tty, sep_x - ctx->ox,
+				    tty_top + sep_y - ctx->oy);
 				tty_cell(tty, &blank_gc, &grid_default_cell,
 				    NULL, NULL);
 			}

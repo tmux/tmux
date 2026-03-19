@@ -475,9 +475,11 @@ window_pane_box_mode(struct window_pane *wp)
 {
 	struct window	*w = wp->window;
 
+	int	indicator;
+
 	/* Must have box mode enabled. */
-	if (options_get_number(w->options, "pane-border-indicators") !=
-	    PANE_BORDER_BOX)
+	indicator = options_get_number(w->options, "pane-border-indicators");
+	if (indicator != PANE_BORDER_BOX && indicator != PANE_BORDER_BOX_ALL)
 		return (0);
 
 	/* Must have more than one pane. */
