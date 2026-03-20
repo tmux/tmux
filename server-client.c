@@ -4044,6 +4044,11 @@ server_client_remove_pane(struct window_pane *wp)
 			RB_REMOVE(client_windows, &c->windows, cw);
 			free(cw);
 		}
+		if (c->tty.mouse_wp == wp) {
+			c->tty.mouse_wp = NULL;
+			c->tty.mouse_drag_update = NULL;
+			c->tty.mouse_scrolling_flag = 0;
+		}
 	}
 }
 
