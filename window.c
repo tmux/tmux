@@ -738,6 +738,7 @@ window_zoom(struct window_pane *wp)
 
 	if (w->active != wp)
 		window_set_active_pane(w, wp, 1);
+	wp->flags |= PANE_ZOOMED;
 
 	/* Bring pane above other tiled panes and minimise floating panes. */
 	TAILQ_FOREACH(wp1, &w->z_index, zentry) {
@@ -791,6 +792,7 @@ window_unzoom(struct window *w, int notify)
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		wp->layout_cell = wp->saved_layout_cell;
 		wp->saved_layout_cell = NULL;
+		wp->flags &= ~PANE_ZOOMED;
 	}
 	layout_fix_panes(w, NULL);
 
@@ -1002,6 +1004,28 @@ window_printable_flags(struct winlink *wl, int escape)
 		flags[pos++] = 'M';
 	if (wl->window->flags & WINDOW_ZOOMED)
 		flags[pos++] = 'Z';
+	flags[pos] = '\0';
+	return (flags);
+}
+
+const char *
+window_pane_printable_flags(struct window_pane *wp, __unused int escape)
+{
+	static char	 flags[32];
+	struct window	*w = wp->window;
+	int		 pos = 0;
+
+	if (wp == w->active)
+		flags[pos++] = '*';
+	if (wp == TAILQ_FIRST(&w->last_panes))
+		flags[pos++] = '-';
+	if (wp->flags & PANE_ZOOMED)
+		flags[pos++] = 'Z';
+	if (wp->flags & PANE_FLOATING)
+		flags[pos++] = 'F';
+	if (wp->flags & PANE_MINIMISED)
+		flags[pos++] = 'm';
+
 	flags[pos] = '\0';
 	return (flags);
 }

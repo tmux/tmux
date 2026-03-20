@@ -1004,6 +1004,15 @@ format_cb_pane_fg(struct format_tree *ft)
 	return (xstrdup(colour_tostring(gc.fg)));
 }
 
+/* Callback for pane_flags. */
+static void *
+format_cb_pane_flags(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (xstrdup(window_pane_printable_flags(ft->wp, 1)));
+	return (NULL);
+}
+
 /* Callback for pane_floating_flag. */
 static void *
 format_cb_pane_floating_flag(struct format_tree *ft)
@@ -2205,6 +2214,21 @@ format_cb_pane_marked_set(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_minimised_flag. */
+static void *
+format_cb_pane_minimised_flag(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL) {
+		if (wp->flags & PANE_MINIMISED)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+
 /* Callback for pane_mode. */
 static void *
 format_cb_pane_mode(struct format_tree *ft)
@@ -2330,6 +2354,20 @@ format_cb_pane_width(struct format_tree *ft)
 {
 	if (ft->wp != NULL)
 		return (format_printf("%u", ft->wp->sx));
+	return (NULL);
+}
+
+/* Callback for pane_zoomed_flag. */
+static void *
+format_cb_pane_zoomed_flag(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL) {
+		if (wp->flags & PANE_ZOOMED)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
 	return (NULL);
 }
 
@@ -3309,6 +3347,9 @@ static const struct format_table_entry format_table[] = {
 	{ "pane_fg", FORMAT_TABLE_STRING,
 	  format_cb_pane_fg
 	},
+	{ "pane_flags", FORMAT_TABLE_STRING,
+	  format_cb_pane_flags
+	},
 	{ "pane_floating_flag", FORMAT_TABLE_STRING,
 	  format_cb_pane_floating_flag
 	},
@@ -3344,6 +3385,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_marked_set", FORMAT_TABLE_STRING,
 	  format_cb_pane_marked_set
+	},
+	{ "pane_minimised_flag", FORMAT_TABLE_STRING,
+	  format_cb_pane_minimised_flag
 	},
 	{ "pane_mode", FORMAT_TABLE_STRING,
 	  format_cb_pane_mode
@@ -3392,6 +3436,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_width", FORMAT_TABLE_STRING,
 	  format_cb_pane_width
+	},
+	{ "pane_zoomed_flag", FORMAT_TABLE_STRING,
+	  format_cb_pane_zoomed_flag
 	},
 	{ "pid", FORMAT_TABLE_STRING,
 	  format_cb_pid
