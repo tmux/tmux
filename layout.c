@@ -301,6 +301,8 @@ layout_cell_is_top(struct window *w, struct layout_cell *lc)
 
 	while (lc != w->layout_root) {
 		next = lc->parent;
+		if (next == NULL)
+			return (0);
 		if (next->type == LAYOUT_TOPBOTTOM &&
 		    lc != TAILQ_FIRST(&next->cells))
 			return (0);
@@ -317,6 +319,8 @@ layout_cell_is_bottom(struct window *w, struct layout_cell *lc)
 
 	while (lc != w->layout_root) {
 		next = lc->parent;
+		if (next == NULL)
+			return (0);
 		if (next->type == LAYOUT_TOPBOTTOM &&
 		    lc != TAILQ_LAST(&next->cells, layout_cells))
 			return (0);
