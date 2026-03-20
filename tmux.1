@@ -115,7 +115,7 @@ using the default shell.
 If necessary, the
 .Nm
 server will be started to retrieve the
-.Ic default-shell
+.Ic default\-shell
 option.
 This option is for compatibility with
 .Xr sh 1
@@ -127,7 +127,7 @@ Do not start the
 .Nm
 server as a daemon.
 This also turns the
-.Ic exit-empty
+.Ic exit\-empty
 option off.
 With
 .Fl D ,
@@ -150,7 +150,7 @@ commands which are executed in sequence when the server is first started.
 .Nm
 loads configuration files once when the server process has started.
 The
-.Ic source-file
+.Ic source\-file
 command may be used to load a file later.
 .Pp
 .Nm
@@ -174,13 +174,13 @@ servers to be run.
 Unlike
 .Fl S
 a full path is not necessary: the sockets are all created in a directory
-.Pa tmux-UID
+.Pa tmux\-UID
 under the directory given by
 .Ev TMUX_TMPDIR
 or in
 .Pa /tmp .
 The
-.Pa tmux-UID
+.Pa tmux\-UID
 directory is created by
 .Nm
 and must not be world readable, writable or executable.
@@ -197,9 +197,9 @@ This flag currently has no effect and is for compatibility with other shells
 when using tmux as a login shell.
 .It Fl N
 Do not start the server even if the command would normally do so (for example
-.Ic new-session
+.Ic new\-session
 or
-.Ic start-server ) .
+.Ic start\-server ) .
 .It Fl S Ar socket-path
 Specify a full alternative path to the server socket.
 If
@@ -211,17 +211,17 @@ flag is ignored.
 Set terminal features for the client.
 This is a comma-separated list of features.
 See the
-.Ic terminal-features
+.Ic terminal\-features
 option.
 .It Fl u
-Write UTF-8 output to the terminal even if the first environment
+Write UTF\-8 output to the terminal even if the first environment
 variable of
 .Ev LC_ALL ,
 .Ev LC_CTYPE ,
 or
 .Ev LANG
 that is set does not contain
-.Qq UTF-8
+.Qq UTF\-8
 or
 .Qq UTF8 .
 .It Fl V
@@ -231,16 +231,16 @@ version.
 .It Fl v
 Request verbose logging.
 Log messages will be saved into
-.Pa tmux-client-PID.log
+.Pa tmux\-client\-PID.log
 and
-.Pa tmux-server-PID.log
+.Pa tmux-server\-PID.log
 files in the current directory, where
 .Em PID
 is the PID of the server or client process.
 If
 .Fl v
 is specified twice, an additional
-.Pa tmux-out-PID.log
+.Pa tmux\-out\-PID.log
 file is generated with a copy of everything
 .Nm
 writes to the terminal.
@@ -257,9 +257,9 @@ This specifies one of a set of commands used to control
 .Nm ,
 as described in the following sections.
 If no commands are specified, the command in
-.Ic default-client-command
+.Ic default\-client\-command
 is assumed, which defaults to
-.Ic new-session .
+.Ic new\-session .
 .El
 .Sh DEFAULT KEY BINDINGS
 .Nm
@@ -300,7 +300,7 @@ Switch the attached client to the previous session.
 Switch the attached client to the next session.
 .It ,
 Rename the current window.
-.It -
+.It \-
 Delete the most recently copied buffer of text.
 .It .
 Prompt for an index to move the current window.
@@ -336,7 +336,7 @@ Display some information about the current window.
 Move to the previously selected window.
 .It m
 Mark the current pane (see
-.Ic select-pane
+.Ic select\-pane
 .Fl m ) .
 .It M
 Clear the marked pane.
@@ -376,9 +376,9 @@ Change to the pane above, below, to the left, or to the right of the current
 pane.
 .It M-1 to M-7
 Arrange panes in one of the seven preset layouts:
-even-horizontal, even-vertical,
-main-horizontal, main-horizontal-mirrored,
-main-vertical, main-vertical-mirrored,
+even\-horizontal, even\-vertical,
+main\-horizontal, main\-horizontal\-mirrored,
+main\-vertical, main\-vertical\-mirrored,
 or tiled.
 .It Space
 Arrange the current window in the next preset layout.
@@ -397,9 +397,9 @@ Resize the current pane in steps of five cells.
 .El
 .Pp
 Key bindings may be changed with the
-.Ic bind-key
+.Ic bind\-key
 and
-.Ic unbind-key
+.Ic unbind\-key
 commands.
 .Sh COMMAND PARSING AND EXECUTION
 .Nm
@@ -407,27 +407,27 @@ supports a large number of commands which can be used to control its
 behaviour.
 Each command is named and can accept zero or more flags and arguments.
 They may be bound to a key with the
-.Ic bind-key
+.Ic bind\-key
 command or run from the shell prompt, a shell script, a configuration file or
 the command prompt.
 For example, the same
-.Ic set-option
+.Ic set\-option
 command run from the shell prompt, from
 .Pa \[ti]/.tmux.conf
 and bound to a key may look like:
 .Bd -literal -offset indent
-$ tmux set-option -g status-style bg=cyan
+$ tmux set\-option -g status\-style bg=cyan
 
-set-option -g status-style bg=cyan
+set\-option -g status\-style bg=cyan
 
-bind-key C set-option -g status-style bg=cyan
+bind\-key C set\-option \-g status\-style bg=cyan
 .Ed
 .Pp
 Here, the command name is
-.Ql set-option ,
+.Ql set\-option ,
 .Ql Fl g
 is a flag and
-.Ql status-style
+.Ql status\-style
 and
 .Ql bg=cyan
 are arguments.
@@ -451,15 +451,15 @@ parses commands are:
 in a configuration file;
 .It
 typed at the command prompt (see
-.Ic command-prompt ) ;
+.Ic command\-prompt ) ;
 .It
 given to
-.Ic bind-key ;
+.Ic bind\-key ;
 .It
 passed as arguments to
-.Ic if-shell
+.Ic if\-shell
 or
-.Ic confirm-before .
+.Ic confirm\-before .
 .El
 .Pp
 To execute commands, each client has a
@@ -469,43 +469,43 @@ for configuration files like
 .Pa \[ti]/.tmux.conf .
 Parsed commands added to the queue are executed in order.
 Some commands, like
-.Ic if-shell
+.Ic if\-shell
 and
-.Ic confirm-before ,
+.Ic confirm\-before ,
 parse their argument to create a new command which is inserted immediately
 after themselves.
 This means that arguments can be parsed twice or more - once when the parent
 command (such as
-.Ic if-shell )
+.Ic if\-shell )
 is parsed and again when it parses and executes its command.
 Commands like
-.Ic if-shell ,
-.Ic run-shell
+.Ic if\-shell ,
+.Ic run\-shell
 and
-.Ic display-panes
+.Ic display\-panes
 stop execution of subsequent commands on the queue until something happens -
-.Ic if-shell
+.Ic if\-shell
 and
-.Ic run-shell
+.Ic run\-shell
 until a shell command finishes and
-.Ic display-panes
+.Ic display\-panes
 until a key is pressed.
 For example, the following commands:
 .Bd -literal -offset indent
-new-session; new-window
-if-shell "true" "split-window"
-kill-session
+new\-session; new\-window
+if-shell "true" "split\-window"
+kill\-session
 .Ed
 .Pp
 Will execute
-.Ic new-session ,
-.Ic new-window ,
-.Ic if-shell ,
+.Ic new\-session ,
+.Ic new\-window ,
+.Ic if\-shell ,
 the shell command
 .Xr true 1 ,
-.Ic split-window
+.Ic split\-window
 and
-.Ic kill-session
+.Ic kill\-session
 in that order.
 .Pp
 The
@@ -585,8 +585,8 @@ $ tmux neww foo\e\e\e; bar
 Semicolons that are not individual tokens or trailing another token should only
 be escaped once according to shell conventions; for example:
 .Bd -literal -offset indent
-$ tmux neww \[aq]foo-;-bar\[aq]
-$ tmux neww foo-\e;-bar
+$ tmux neww \[aq]foo\-;\-bar\[aq]
+$ tmux neww foo\-\e;\-bar
 .Ed
 .El
 .Pp
@@ -641,21 +641,21 @@ They are designed to avoid the need for additional escaping when passing a
 group of
 .Nm
 commands as an argument (for example to
-.Ic if-shell ) .
+.Ic if\-shell ) .
 These two examples produce an identical command - note that no escaping is
 needed when using {}:
 .Bd -literal -offset indent
-if-shell true {
-    display -p \[aq]brace-dollar-foo: }$foo\[aq]
+if\-shell true {
+    display \-p \[aq]brace\-dollar\-foo: }$foo\[aq]
 }
 
-if-shell true "display -p \[aq]brace-dollar-foo: }\e$foo\[aq]"
+if\-shell true "display \-p \[aq]brace\-dollar\-foo: }\e$foo\[aq]"
 .Ed
 .Pp
 Braces may be enclosed inside braces, for example:
 .Bd -literal -offset indent
-bind x if-shell "true" {
-    if-shell "true" {
+bind x if\-shell "true" {
+    if\-shell "true" {
         display "true!"
     }
 }
@@ -700,11 +700,11 @@ or
 For example:
 .Bd -literal -offset indent
 %if "#{==:#{host},myhost}"
-set -g status-style bg=red
+set \-g status\-style bg=red
 %elif "#{==:#{host},myotherhost}"
-set -g status-style bg=green
+set \-g status\-style bg=green
 %else
-set -g status-style bg=blue
+set \-g status\-style bg=blue
 %endif
 .Ed
 .Pp
@@ -715,7 +715,7 @@ green if running on
 or blue if running on another host.
 Conditionals may be given on one line, for example:
 .Bd -literal -offset indent
-%if #{==:#{host},myhost} set -g status-style bg=red %endif
+%if #{==:#{host},myhost} set \-g status\-style bg=red %endif
 .Ed
 .Sh COMMANDS
 This section describes the commands supported by
@@ -747,7 +747,7 @@ If no client is specified,
 attempts to work out the client currently in use; if that fails, an error is
 reported.
 Clients may be listed with the
-.Ic list-clients
+.Ic list\-clients
 command.
 .Pp
 .Ar target-session
@@ -757,7 +757,7 @@ is tried as, in order:
 A session ID prefixed with a $.
 .It
 An exact name of a session (as listed by the
-.Ic list-sessions
+.Ic list\-sessions
 command).
 .It
 The start of a session name, for example
@@ -824,9 +824,9 @@ Like sessions, a
 prefix will do an exact match only.
 An empty window name specifies the next unused index if appropriate (for
 example the
-.Ic new-window
+.Ic new\-window
 and
-.Ic link-window
+.Ic link\-window
 commands)
 otherwise the current window in
 .Em session
@@ -836,11 +836,11 @@ The following special tokens are available to indicate particular windows.
 Each has a single-character alternative form.
 .Bl -column "XXXXXXXXXX" "X"
 .It Sy "Token" Ta Sy "" Ta Sy "Meaning"
-.It Li "{start}" Ta "^" Ta "The lowest-numbered window"
+.It Li "{start}" Ta "\[ha]" Ta "The lowest-numbered window"
 .It Li "{end}" Ta "$" Ta "The highest-numbered window"
 .It Li "{last}" Ta "!" Ta "The last (previously current) window"
 .It Li "{next}" Ta "+" Ta "The next window by number"
-.It Li "{previous}" Ta "-" Ta "The previous window by number"
+.It Li "{previous}" Ta "\-" Ta "The previous window by number"
 .It Li "{current}" Ta "@" Ta "The current window"
 .El
 .Pp
@@ -861,29 +861,29 @@ The following special tokens are available for the pane index:
 .It Sy "Token" Ta Sy "" Ta Sy "Meaning"
 .It Li "{last}" Ta "!" Ta "The last (previously active) pane"
 .It Li "{next}" Ta "+" Ta "The next pane by number"
-.It Li "{previous}" Ta "-" Ta "The previous pane by number"
+.It Li "{previous}" Ta "\-" Ta "The previous pane by number"
 .It Li "{top}" Ta "" Ta "The top pane"
 .It Li "{bottom}" Ta "" Ta "The bottom pane"
 .It Li "{left}" Ta "" Ta "The leftmost pane"
 .It Li "{right}" Ta "" Ta "The rightmost pane"
-.It Li "{top-left}" Ta "" Ta "The top-left pane"
-.It Li "{top-right}" Ta "" Ta "The top-right pane"
-.It Li "{bottom-left}" Ta "" Ta "The bottom-left pane"
-.It Li "{bottom-right}" Ta "" Ta "The bottom-right pane"
-.It Li "{up-of}" Ta "" Ta "The pane above the active pane"
-.It Li "{down-of}" Ta "" Ta "The pane below the active pane"
-.It Li "{left-of}" Ta "" Ta "The pane to the left of the active pane"
-.It Li "{right-of}" Ta "" Ta "The pane to the right of the active pane"
+.It Li "{top\-left}" Ta "" Ta "The top-left pane"
+.It Li "{top\-right}" Ta "" Ta "The top-right pane"
+.It Li "{bottom\-left}" Ta "" Ta "The bottom-left pane"
+.It Li "{bottom\-right}" Ta "" Ta "The bottom-right pane"
+.It Li "{up\-of}" Ta "" Ta "The pane above the active pane"
+.It Li "{down\-of}" Ta "" Ta "The pane below the active pane"
+.It Li "{left\-of}" Ta "" Ta "The pane to the left of the active pane"
+.It Li "{right\-of}" Ta "" Ta "The pane to the right of the active pane"
 .It Li "{active}" Ta "@" Ta "The active pane"
 .El
 .Pp
 The tokens
 .Ql +
 and
-.Ql -
+.Ql \-
 may be followed by an offset, for example:
 .Bd -literal -offset indent
-select-window -t:+2
+select\-window \-t:+2
 .Ed
 .Pp
 In addition,
@@ -929,11 +929,11 @@ or
 formats (see the
 .Sx FORMATS
 section) and the
-.Ic display-message ,
-.Ic list-sessions ,
-.Ic list-windows
+.Ic display\-message ,
+.Ic list\-sessions ,
+.Ic list\-windows
 or
-.Ic list-panes
+.Ic list\-panes
 commands.
 .Pp
 .Ar shell-command
@@ -942,25 +942,25 @@ arguments are
 commands.
 This may be a single argument passed to the shell, for example:
 .Bd -literal -offset indent
-new-window \[aq]vi \[ti]/.tmux.conf\[aq]
+new\-window \[aq]vi \[ti]/.tmux.conf\[aq]
 .Ed
 .Pp
 Will run:
 .Bd -literal -offset indent
-/bin/sh -c \[aq]vi \[ti]/.tmux.conf\[aq]
+/bin/sh \-c \[aq]vi \[ti]/.tmux.conf\[aq]
 .Ed
 .Pp
 Additionally, the
-.Ic new-window ,
-.Ic new-session ,
-.Ic split-window ,
-.Ic respawn-window
+.Ic new\-window ,
+.Ic new\-session ,
+.Ic split\-window ,
+.Ic respawn\-window
 and
-.Ic respawn-pane
+.Ic respawn\-pane
 commands allow
 .Ar shell-command
 to be given as multiple arguments and executed directly (without
-.Ql sh -c ) .
+.Ql sh \-c ) .
 This can avoid issues with shell quoting.
 For example:
 .Bd -literal -offset indent
@@ -977,40 +977,40 @@ refers to a
 .Nm
 command, either passed with the command and arguments separately, for example:
 .Bd -literal -offset indent
-bind-key F1 set-option status off
+bind\-key F1 set\-option status off
 .Ed
 .Pp
 Or passed as a single string argument in
 .Pa .tmux.conf ,
 for example:
 .Bd -literal -offset indent
-bind-key F1 { set-option status off }
+bind\-key F1 { set\-option status off }
 .Ed
 .Pp
 Example
 .Nm
 commands include:
 .Bd -literal -offset indent
-refresh-client -t/dev/ttyp2
+refresh\-client \-t/dev/ttyp2
 
-rename-session -tfirst newname
+rename\-session \-tfirst newname
 
-set-option -wt:0 monitor-activity on
+set\-option \-wt:0 monitor\-activity on
 
-new-window ; split-window -d
+new\-window ; split\-window \-d
 
-bind-key R source-file \[ti]/.tmux.conf \e; \e
-	display-message "source-file done"
+bind\-key R source\-file \[ti]/.tmux.conf \e; \e
+	display\-message "source-file done"
 .Ed
 .Pp
 Or from
 .Xr sh 1 :
 .Bd -literal -offset indent
-$ tmux kill-window -t :1
+$ tmux kill\-window \-t :1
 
-$ tmux new-window \e; split-window -d
+$ tmux new\-window \e; split\-window \-d
 
-$ tmux new-session -d \[aq]vi \[ti]/.tmux.conf\[aq] \e; split-window -d \e; attach
+$ tmux new\-session \-d \[aq]vi \[ti]/.tmux.conf\[aq] \e; split\-window \-d \e; attach
 .Ed
 .Sh CLIENTS AND SESSIONS
 The
@@ -1018,9 +1018,9 @@ The
 server manages clients, sessions, windows and panes.
 Clients are attached to sessions to interact with them, either
 when they are created with the
-.Ic new-session
+.Ic new\-session
 command, or later with the
-.Ic attach-session
+.Ic attach\-session
 command.
 Each session has one or more windows
 .Em linked
@@ -1037,7 +1037,7 @@ section.
 The following commands are available to manage clients and sessions:
 .Bl -tag -width Ds
 .Tg attach
-.It Xo Ic attach-session
+.It Xo Ic attach\-session
 .Op Fl dErx
 .Op Fl c Ar working-directory
 .Op Fl f Ar flags
@@ -1051,7 +1051,7 @@ attach to
 in the current terminal.
 .Ar target-session
 must already exist - to create a new session, see the
-.Ic new-session
+.Ic new\-session
 command (with
 .Fl A
 to create or attach).
@@ -1070,22 +1070,22 @@ detaching the client, typically causing it to exit.
 sets a comma-separated list of client flags.
 The flags are:
 .Bl -tag -width Ds
-.It active-pane
+.It active\-pane
 the client has an independent active pane
-.It ignore-size
+.It ignore\-size
 the client does not affect the size of other clients
-.It no-detach-on-destroy
+.It no\-detach\-on\-destroy
 do not detach the client when the session it is attached to is destroyed if
 there are any other sessions
-.It no-output
+.It no\-output
 the client does not receive pane output in control mode
-.It pause-after=seconds
+.It pause\-after=seconds
 output is paused once the pane is
 .Ar seconds
 behind in control mode
-.It read-only
+.It read\-only
 the client is read-only
-.It wait-exit
+.It wait\-exit
 wait for an empty line input before exiting in control mode
 .El
 .Pp
@@ -1095,14 +1095,14 @@ turns a flag off if the client is already attached.
 .Fl r
 is an alias for
 .Fl f
-.Ar read-only,ignore-size .
+.Ar read\-only,ignore\-size .
 When a client is read-only, only keys bound to the
-.Ic detach-client
+.Ic detach\-client
 or
-.Ic switch-client
+.Ic switch\-client
 commands have any effect.
 A client with the
-.Ar active-pane
+.Ar active\-pane
 flag allows the active pane to be selected independently of the window's active
 pane used by clients without the flag.
 This only affects the cursor position and commands issued from the client;
@@ -1110,14 +1110,14 @@ other features such as hooks and styles continue to use the window's active
 pane.
 .Pp
 If no server is started,
-.Ic attach-session
+.Ic attach\-session
 will attempt to start it; this will fail unless sessions are created in the
 configuration file.
 .Pp
 The
-.Ar target-session
+.Ar target\-session
 rules for
-.Ic attach-session
+.Ic attach\-session
 are slightly adjusted: if
 .Nm
 needs to select the most recently used session, it will prefer the most
@@ -1132,10 +1132,10 @@ will set the session working directory (used for new windows) to
 If
 .Fl E
 is used, the
-.Ic update-environment
+.Ic update\-environment
 option will not be applied.
 .Tg detach
-.It Xo Ic detach-client
+.It Xo Ic detach\-client
 .Op Fl aP
 .Op Fl E Ar shell-command
 .Op Fl s Ar target-session
@@ -1162,15 +1162,15 @@ run
 .Ar shell-command
 to replace the client.
 .Tg has
-.It Ic has-session Op Fl t Ar target-session
+.It Ic has\-session Op Fl t Ar target-session
 .D1 Pq alias: Ic has
 Report an error and exit with 1 if the specified session does not exist.
 If it does exist, exit with 0.
-.It Ic kill-server
+.It Ic kill\-server
 Kill the
 .Nm
 server and clients and destroy all sessions.
-.It Xo Ic kill-session
+.It Xo Ic kill\-session
 .Op Fl aC
 .Op Fl t Ar target-session
 .Xc
@@ -1184,7 +1184,7 @@ The
 flag clears alerts (bell, activity, or silence) in all windows linked to the
 session.
 .Tg lsc
-.It Xo Ic list-clients
+.It Xo Ic list\-clients
 .Op Fl r
 .Op Fl F Ar format
 .Op Fl f Ar filter
@@ -1215,7 +1215,7 @@ If
 .Ar target-session
 is specified, list only clients connected to that session.
 .Tg lscm
-.It Xo Ic list-commands
+.It Xo Ic list\-commands
 .Op Fl F Ar format
 .Op Ar command
 .Xc
@@ -1225,7 +1225,7 @@ List the syntax of
 or - if omitted - of all commands supported by
 .Nm .
 .Tg ls
-.It Xo Ic list-sessions
+.It Xo Ic list\-sessions
 .Op Fl r
 .Op Fl F Ar format
 .Op Fl f Ar filter
@@ -1252,20 +1252,20 @@ specifies the sort order: one of
 .Fl r
 reverses the sort order.
 .Tg lockc
-.It Ic lock-client Op Fl t Ar target-client
+.It Ic lock\-client Op Fl t Ar target-client
 .D1 Pq alias: Ic lockc
 Lock
 .Ar target-client ,
 see the
-.Ic lock-server
+.Ic lock\-server
 command.
 .Tg locks
-.It Ic lock-session Op Fl t Ar target-session
+.It Ic lock\-session Op Fl t Ar target-session
 .D1 Pq alias: Ic locks
 Lock all clients attached to
 .Ar target-session .
 .Tg new
-.It Xo Ic new-session
+.It Xo Ic new\-session
 .Op Fl AdDEPX
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
@@ -1292,24 +1292,24 @@ are the name of and shell command to execute in the initial window.
 With
 .Fl d ,
 the initial size comes from the global
-.Ic default-size
+.Ic default\-size
 option;
 .Fl x
 and
 .Fl y
 can be used to specify a different size.
-.Ql -
+.Ql \-
 uses the size of the current client if any.
 If
 .Fl x
 or
 .Fl y
 is given, the
-.Ic default-size
+.Ic default\-size
 option is set for the session.
 .Fl f
 sets a comma-separated list of client flags (see
-.Ic attach-session ) .
+.Ic attach\-session ) .
 .Pp
 If run from a terminal, any
 .Xr termios 4
@@ -1318,9 +1318,9 @@ special characters are saved and used for new windows in the new session.
 The
 .Fl A
 flag makes
-.Ic new-session
+.Ic new\-session
 behave like
-.Ic attach-session
+.Ic attach\-session
 if
 .Ar session-name
 already exists;
@@ -1331,13 +1331,13 @@ is given,
 behaves like
 .Fl d
 to
-.Ic attach-session ,
+.Ic attach\-session ,
 and
 .Fl X
 behaves like
 .Fl x
 to
-.Ic attach-session .
+.Ic attach\-session .
 .Pp
 If
 .Fl t
@@ -1380,7 +1380,7 @@ but a different format may be specified with
 If
 .Fl E
 is used, the
-.Ic update-environment
+.Ic update\-environment
 option will not be applied.
 .Fl e
 takes the form
@@ -1388,7 +1388,7 @@ takes the form
 and sets an environment variable for the newly created session; it may be
 specified multiple times.
 .Tg refresh
-.It Xo Ic refresh-client
+.It Xo Ic refresh\-client
 .Op Fl cDlLRSU
 .Op Fl A Ar pane:state
 .Op Fl B Ar name:what:format
@@ -1467,7 +1467,7 @@ If
 .Ql continue ,
 .Nm
 will return to sending output to the pane if it was paused (manually or with the
-.Ar pause-after
+.Ar pause\-after
 flag).
 If
 .Ql pause ,
@@ -1486,7 +1486,7 @@ is a type of item to subscribe to;
 .Ar format
 is the format.
 After a subscription is added, changes to the format are reported with the
-.Ic %subscription-changed
+.Ic %subscription\-changed
 notification, at most once a second.
 If only the name is given, the subscription is removed.
 .Ar what
@@ -1503,7 +1503,7 @@ for all windows in the attached session.
 .Pp
 .Fl f
 sets a comma-separated list of client flags, see
-.Ic attach-session .
+.Ic attach\-session .
 .Fl r
 allows a control mode client to provide information about a pane via a report
 (such as the response to OSC 10).
@@ -1528,17 +1528,17 @@ if the window is larger than the client.
 .Fl c
 resets so that the position follows the cursor.
 See the
-.Ic window-size
+.Ic window\-size
 option.
 .Tg rename
-.It Xo Ic rename-session
+.It Xo Ic rename\-session
 .Op Fl t Ar target-session
 .Ar new-name
 .Xc
 .D1 Pq alias: Ic rename
 Rename the session to
 .Ar new-name .
-.It Xo Ic server-access
+.It Xo Ic server\-access
 .Op Fl adlrw
 .Op Ar user
 .Xc
@@ -1577,14 +1577,14 @@ These permissions must be changed manually.
 Great care should be taken not to allow access to untrusted users even
 read-only.
 .Tg showmsgs
-.It Xo Ic show-messages
+.It Xo Ic show\-messages
 .Op Fl JT
 .Op Fl t Ar target-client
 .Xc
 .D1 Pq alias: Ic showmsgs
 Show server messages or information.
 Messages are stored, up to a maximum of the limit set by the
-.Ar message-limit
+.Ar message\-limit
 server option.
 .Fl J
 and
@@ -1618,7 +1618,7 @@ the file is parsed but no commands are executed.
 .Fl v
 shows the parsed commands and line numbers if possible.
 .Tg start
-.It Ic start-server
+.It Ic start\-server
 .D1 Pq alias: Ic start
 Start the
 .Nm
@@ -1629,14 +1629,14 @@ Note that as by default the
 server will exit with no sessions, this is only useful if a session is created
 in
 .Pa \[ti]/.tmux.conf ,
-.Ic exit-empty
+.Ic exit\-empty
 is turned off, or another command is run as part of the same command sequence.
 For example:
 .Bd -literal -offset indent
-$ tmux start \\; show -g
+$ tmux start \\; show \-g
 .Ed
 .Tg suspendc
-.It Xo Ic suspend-client
+.It Xo Ic suspend\-client
 .Op Fl t Ar target-client
 .Xc
 .D1 Pq alias: Ic suspendc
@@ -1644,7 +1644,7 @@ Suspend a client by sending
 .Dv SIGTSTP
 (tty stop).
 .Tg switchc
-.It Xo Ic switch-client
+.It Xo Ic switch\-client
 .Op Fl ElnprZ
 .Op Fl c Ar target-client
 .Op Fl O Ar sort-order
@@ -1688,17 +1688,17 @@ to specify the field to sort on: one of
 (time).
 .Fl r
 toggles the client
-.Ic read-only
+.Ic read\-only
 and
-.Ic ignore-size
+.Ic ignore\-size
 flags (see the
-.Ic attach-session
+.Ic attach\-session
 command).
 .Pp
 If
 .Fl E
 is used,
-.Ic update-environment
+.Ic update\-environment
 option will not be applied.
 .Pp
 .Fl T
@@ -1711,12 +1711,12 @@ sequences of keys.
 For example, to make typing
 .Ql abc
 run the
-.Ic list-keys
+.Ic list\-keys
 command:
 .Bd -literal -offset indent
-bind-key -Ttable2 c list-keys
-bind-key -Ttable1 b switch-client -Ttable2
-bind-key -Troot   a switch-client -Ttable1
+bind\-key \-Ttable2 c list\-keys
+bind\-key \-Ttable1 b switch\-client \-Ttable2
+bind\-key \-Troot   a switch\-client \-Ttable1
 .Ed
 .El
 .Sh WINDOWS AND PANES
@@ -1726,13 +1726,13 @@ may be split into one or more
 .Em panes ;
 each pane takes up a certain area of the display and is a separate terminal.
 A window may be split into panes using the
-.Ic split-window
+.Ic split\-window
 command.
 Windows may be split horizontally (with the
 .Fl h
 flag) or vertically.
 Panes may be resized with the
-.Ic resize-pane
+.Ic resize\-pane
 command (bound to
 .Ql C-Up ,
 .Ql C-Down
@@ -1740,11 +1740,11 @@ command (bound to
 and
 .Ql C-Right
 by default), the current pane may be changed with the
-.Ic select-pane
+.Ic select\-pane
 command and the
-.Ic rotate-window
+.Ic rotate\-window
 and
-.Ic swap-pane
+.Ic swap\-pane
 commands may be used to swap panes without changing their position.
 Panes are numbered beginning from zero in the order they are created.
 .Pp
@@ -1759,27 +1759,27 @@ history to be copied to a
 .Em paste buffer
 for later insertion into another window.
 This mode is entered with the
-.Ic copy-mode
+.Ic copy\-mode
 command, bound to
 .Ql \&[
 by default.
 Copied text can be pasted with the
-.Ic paste-buffer
+.Ic paste\-buffer
 command, bound to
 .Ql \&] .
 .It
 View mode, which is like copy mode but is entered when a command that produces
 output, such as
-.Ic list-keys ,
+.Ic list\-keys ,
 is executed from a key binding.
 .It
 Choose mode, which allows an item to be chosen from a list.
 This may be a client, a session or window or pane, or a buffer.
 This mode is entered with the
-.Ic choose-buffer ,
-.Ic choose-client
+.Ic choose\-buffer ,
+.Ic choose\-client
 and
-.Ic choose-tree
+.Ic choose\-tree
 commands.
 .El
 .Pp
@@ -1789,45 +1789,45 @@ the current position and the number of lines in the history.
 Commands are sent to copy mode using the
 .Fl X
 flag to the
-.Ic send-keys
+.Ic send\-keys
 command.
 When a key is pressed, copy mode automatically uses one of two key tables,
 depending on the
-.Ic mode-keys
+.Ic mode\-keys
 option:
-.Ic copy-mode
+.Ic copy\-mode
 for emacs, or
-.Ic copy-mode-vi
+.Ic copy\-mode\-vi
 for vi.
 Key tables may be viewed with the
-.Ic list-keys
+.Ic list\-keys
 command.
 .Pp
 The following commands are supported in copy mode:
 .Bl -tag -width Ds
 .It Xo
-.Ic append-selection
+.Ic append\-selection
 .Xc
 Append the selection to the top paste buffer.
 .It Xo
-.Ic append-selection-and-cancel
+.Ic append\-selection\-and\-cancel
 (vi: A)
 .Xc
 Append the selection to the top paste buffer and exit copy mode.
 .It Xo
-.Ic back-to-indentation
-(vi: ^)
+.Ic back\-to\-indentation
+(vi: \[ah])
 (emacs: M-m)
 .Xc
 Move the cursor back to the indentation.
 .It Xo
-.Ic begin-selection
+.Ic begin\-selection
 (vi: Space)
 (emacs: C-Space)
 .Xc
 Begin selection.
 .It Xo
-.Ic bottom-line
+.Ic bottom\-line
 (vi: L)
 .Xc
 Move to the bottom line.
@@ -1838,13 +1838,13 @@ Move to the bottom line.
 .Xc
 Exit copy mode.
 .It Xo
-.Ic clear-selection
+.Ic clear\-selection
 (vi: Escape)
 (emacs: C-g)
 .Xc
 Clear the current selection.
 .It Xo
-.Ic copy-end-of-line
+.Ic copy\-end\-of\-line
 .Op Fl CP
 .Op Ar prefix
 .Xc
@@ -1852,13 +1852,13 @@ Copy from the cursor position to the end of the line.
 .Ar prefix
 is used to name the new paste buffer.
 .It Xo
-.Ic copy-end-of-line-and-cancel
+.Ic copy\-end\-of\-line\-and\-cancel
 .Op Fl CP
 .Op Ar prefix
 .Xc
 Copy from the cursor position and exit copy mode.
 .It Xo
-.Ic copy-pipe-end-of-line
+.Ic copy\-pipe\-end\-of\-line
 .Op Fl CP
 .Op Ar command
 .Op Ar prefix
@@ -1868,28 +1868,28 @@ Copy from the cursor position to the end of the line and pipe the text to
 .Ar prefix
 is used to name the new paste buffer.
 .It Xo
-.Ic copy-pipe-end-of-line-and-cancel
+.Ic copy\-pipe\-end\-of\-line\-and\-cancel
 .Op Fl CP
 .Op Ar command
 .Op Ar prefix
 .Xc
 Same as
-.Ic copy-pipe-end-of-line
+.Ic copy\-pipe\-end\-of\-line
 but also exit copy mode.
 .It Xo
-.Ic copy-line
+.Ic copy\-line
 .Op Fl CP
 .Op Ar prefix
 .Xc
 Copy the entire line.
 .It Xo
-.Ic copy-line-and-cancel
+.Ic copy\-line\-and\-cancel
 .Op Fl CP
 .Op Ar prefix
 .Xc
 Copy the entire line and exit copy mode.
 .It Xo
-.Ic copy-pipe-line
+.Ic copy\-pipe\-line
 .Op Fl CP
 .Op Ar command
 .Op Ar prefix
@@ -1899,16 +1899,16 @@ Copy the entire line and pipe the text to
 .Ar prefix
 is used to name the new paste buffer.
 .It Xo
-.Ic copy-pipe-line-and-cancel
+.Ic copy\-pipe\-line\-and\-cancel
 .Op Fl CP
 .Op Ar command
 .Op Ar prefix
 .Xc
 Same as
-.Ic copy-pipe-line
+.Ic copy\-pipe\-line
 but also exit copy mode.
 .It Xo
-.Ic copy-pipe
+.Ic copy\-pipe
 .Op Fl CP
 .Op Ar command
 .Op Ar prefix
@@ -1918,39 +1918,39 @@ Copy the selection, clear it and pipe its text to
 .Ar prefix
 is used to name the new paste buffer.
 .It Xo
-.Ic copy-pipe-no-clear
+.Ic copy\-pipe\-no\-clear
 .Op Fl CP
 .Op Ar command
 .Op Ar prefix
 .Xc
 Same as
-.Ic copy-pipe
+.Ic copy\-pipe
 but do not clear the selection.
 .It Xo
-.Ic copy-pipe-and-cancel
+.Ic copy\-pipe\-and\-cancel
 .Op Fl CP
 .Op Ar command
 .Op Ar prefix
 .Xc
 Same as
-.Ic copy-pipe
+.Ic copy\-pipe
 but also exit copy mode.
 .It Xo
-.Ic copy-selection
+.Ic copy\-selection
 .Op Fl CP
 .Op Ar prefix
 .Xc
 Copies the current selection.
 .It Xo
-.Ic copy-selection-no-clear
+.Ic copy\-selection\-no\-clear
 .Op Fl CP
 .Op Ar prefix
 .Xc
 Same as
-.Ic copy-selection
+.Ic copy\-selection
 but do not clear the selection.
 .It Xo
-.Ic copy-selection-and-cancel
+.Ic copy\-selection\-and\-cancel
 .Op Fl CP
 .Op Ar prefix
 (vi: Enter)
@@ -1958,202 +1958,202 @@ but do not clear the selection.
 .Xc
 Copy the current selection and exit copy mode.
 .It Xo
-.Ic cursor-down
+.Ic cursor\-down
 (vi: j)
 (emacs: Down)
 .Xc
 Move the cursor down.
 .It Xo
-.Ic cursor-down-and-cancel
+.Ic cursor\-down\-and\-cancel
 .Xc
 Same as
-.Ic cursor-down
+.Ic cursor\-down
 but also exit copy mode if reaching the bottom.
 .It Xo
-.Ic cursor-left
+.Ic cursor\-left
 (vi: h)
 (emacs: Left)
 .Xc
 Move the cursor left.
 .It Xo
-.Ic cursor-right
+.Ic cursor\-right
 (vi: l)
 (emacs: Right)
 .Xc
 Move the cursor right.
 .It Xo
-.Ic cursor-up
+.Ic cursor\-up
 (vi: k)
 (emacs: Up)
 .Xc
 Move the cursor up.
 .It Xo
-.Ic cursor-centre-vertical
+.Ic cursor\-centre\-vertical
 (emacs: C-l)
 .Xc
 Moves the cursor to the vertical centre of the pane.
 .It Xo
-.Ic cursor-centre-horizontal
+.Ic cursor\-centre\-horizontal
 (emacs: M-l)
 .Xc
 Moves the cursor to the horizontal centre of the pane.
 .It Xo
-.Ic end-of-line
+.Ic end\\-of\-line
 (vi: $)
 (emacs: C-e)
 .Xc
 Move the cursor to the end of the line.
 .It Xo
-.Ic goto-line
+.Ic goto\-line
 .Ar line
 (vi: :)
 (emacs: g)
 .Xc
 Move the cursor to a specific line.
 .It Xo
-.Ic halfpage-down
+.Ic halfpage\-down
 (vi: C-d)
 (emacs: M-Down)
 .Xc
 Scroll down by half a page.
 .It Xo
-.Ic halfpage-down-and-cancel
+.Ic halfpage\-down\-and\-cancel
 .Xc
 Same as
-.Ic halfpage-down
+.Ic halfpage\-down
 but also exit copy mode if reaching the bottom.
 .It Xo
-.Ic halfpage-up
+.Ic halfpage\-up
 (vi: C-u)
 (emacs: M-Up)
 .Xc
 Scroll up by half a page.
 .It Xo
-.Ic history-bottom
+.Ic history\-bottom
 (vi: G)
 (emacs: M->)
 .Xc
 Scroll to the bottom of the history.
 .It Xo
-.Ic history-top
+.Ic history\-top
 (vi: g)
 (emacs: M-<)
 .Xc
 Scroll to the top of the history.
 .It Xo
-.Ic jump-again
+.Ic jump\-again
 (vi: ;)
 (emacs: ;)
 .Xc
 Repeat the last jump.
 .It Xo
-.Ic jump-backward
+.Ic jump\-backward
 .Ar to
 (vi: F)
 (emacs: F)
 .Xc
 Jump backwards to the specified text.
 .It Xo
-.Ic jump-forward
+.Ic jump\-forward
 .Ar to
 (vi: f)
 (emacs: f)
 .Xc
 Jump forward to the specified text.
 .It Xo
-.Ic jump-reverse
+.Ic jump\-reverse
 (vi: ,)
 (emacs: ,)
 .Xc
 Repeat the last jump in the reverse direction (forward becomes backward and
 backward becomes forward).
 .It Xo
-.Ic jump-to-backward
+.Ic jump\-to\-backward
 .Ar to
 (vi: T)
 .Xc
 Jump backwards, but one character less, placing the cursor on the character
 after the target.
 .It Xo
-.Ic jump-to-forward
+.Ic jump\-to\-forward
 .Ar to
 (vi: t)
 .Xc
 Jump forward, but one character less, placing the cursor on the character
 before the target.
 .It Xo
-.Ic jump-to-mark
+.Ic jump\-to\-mark
 (vi: M-x)
 (emacs: M-x)
 .Xc
 Jump to the last mark.
 .It Xo
-.Ic middle-line
+.Ic middle\-line
 (vi: M)
 (emacs: M-r)
 .Xc
 Move to the middle line.
 .It Xo
-.Ic next-matching-bracket
+.Ic next\-matching\-bracket
 (vi: %)
 (emacs: M-C-f)
 .Xc
 Move to the next matching bracket.
 .It Xo
-.Ic next-paragraph
+.Ic next\-paragraph
 (vi: })
 (emacs: M-})
 .Xc
 Move to the next paragraph.
 .It Xo
-.Ic next-prompt
+.Ic next\-prompt
 .Op Fl o
 .Xc
 Move to the next prompt.
 .It Xo
-.Ic next-word
+.Ic next\-word
 (vi: w)
 .Xc
 Move to the next word.
 .It Xo
-.Ic next-word-end
+.Ic next\-word\-end
 (vi: e)
 (emacs: M-f)
 .Xc
 Move to the end of the next word.
 .It Xo
-.Ic next-space
+.Ic next\-space
 (vi: W)
 .Xc
 Same as
-.Ic next-word
+.Ic next\-word
 but use a space alone as the word separator.
 .It Xo
-.Ic next-space-end
+.Ic next\-space\-end
 (vi: E)
 .Xc
 Same as
-.Ic next-word-end
+.Ic next\-word\-end
 but use a space alone as the word separator.
 .It Xo
-.Ic other-end
+.Ic other\-end
 (vi: o)
 .Xc
 Switch at which end of the selection the cursor sits.
 .It Xo
-.Ic page-down
+.Ic page\-down
 (vi: C-f)
 (emacs: PageDown)
 .Xc
 Scroll down by one page.
 .It Xo
-.Ic page-down-and-cancel
+.Ic page\-down\-and\-cancel
 .Xc
 Same as
-.Ic page-down
+.Ic page\-down
 but also exit copy mode if reaching the bottom.
 .It Xo
-.Ic page-up
+.Ic page\-up
 (vi: C-b)
 (emacs: PageUp)
 .Xc
@@ -2166,14 +2166,14 @@ Pipe the selected text to
 .Ar command
 and clear the selection.
 .It Xo
-.Ic pipe-no-clear
+.Ic pipe\-no\-clear
 .Op Ar command
 .Xc
 Same as
 .Ic pipe
 but do not clear the selection.
 .It Xo
-.Ic pipe-and-cancel
+.Ic pipe\-and\-cancel
 .Op Ar command
 .Op Ar prefix
 .Xc
@@ -2181,121 +2181,121 @@ Same as
 .Ic pipe
 but also exit copy mode.
 .It Xo
-.Ic previous-matching-bracket
+.Ic previous\-matching\-bracket
 (emacs: M-C-b)
 .Xc
 Move to the previous matching bracket.
 .It Xo
-.Ic previous-paragraph
+.Ic previous\-paragraph
 (vi: {)
 (emacs: M-{)
 .Xc
 Move to the previous paragraph.
 .It Xo
-.Ic previous-prompt
+.Ic previous\-prompt
 .Op Fl o
 .Xc
 Move to the previous prompt.
 .It Xo
-.Ic previous-word
+.Ic previous\-word
 (vi: b)
 (emacs: M-b)
 .Xc
 Move to the previous word.
 .It Xo
-.Ic previous-space
+.Ic previous\-space
 (vi: B)
 .Xc
 Same as
-.Ic previous-word
+.Ic previous\-word
 but use a space alone as the word separator.
 .It Xo
-.Ic rectangle-on
+.Ic rectangle\-on
 .Xc
 Turn on rectangle selection mode.
 .It Xo
-.Ic rectangle-off
+.Ic rectangle\-off
 .Xc
 Turn off rectangle selection mode.
 .It Xo
-.Ic rectangle-toggle
+.Ic rectangle\-toggle
 (vi: v)
 (emacs: R)
 .Xc
 Toggle rectangle selection mode.
 .It Xo
-.Ic refresh-from-pane
+.Ic refresh\-from\-pane
 (vi: r)
 (emacs: r)
 .Xc
 Refresh the content from the pane.
 .It Xo
-.Ic scroll-bottom
+.Ic scroll\-bottom
 .Xc
 Scroll up until the current line is at the bottom while keeping the cursor on
 that line.
 .It Xo
-.Ic scroll-down
+.Ic scroll\-down
 (vi: C-e)
 (emacs: C-Down)
 .Xc
 Scroll down.
 .It Xo
-.Ic scroll-down-and-cancel
+.Ic scroll\-down\-and\-cancel
 .Xc
 Same as
-.Ic scroll-down
+.Ic scroll\-down
 but also exit copy mode if the cursor reaches the bottom.
 .It Xo
-.Ic scroll-exit-on
+.Ic scroll\-exit\-on
 .Xc
 Turn on exiting copy mode when scrolling to the end of the buffer.
 .It Xo
-.Ic scroll-exit-off
+.Ic scroll\-exit\-off
 .Xc
 Turn off exiting copy mode when scrolling to the end of the buffer.
 .It Xo
-.Ic scroll-exit-toggle
+.Ic scroll\-exit\-toggle
 .Xc
 Toggle exiting copy mode when scrolling to the end of the buffer.
 .It Xo
-.Ic scroll-middle
+.Ic scroll\-middle
 (vi: z)
 .Xc
 Scroll so that the current line becomes the middle one while keeping the
 cursor on that line.
 .It Xo
-.Ic scroll-to-mouse
+.Ic scroll\-to\-mouse
 .Xc
 Scroll pane in copy-mode when bound to a mouse drag event.
 .Fl e
 causes copy mode to exit when at the bottom.
 .Pp
 .It Xo
-.Ic scroll-top
+.Ic scroll\-top
 .Xc
 Scroll down until the current line is at the top while keeping the cursor on
 that line.
 .It Xo
-.Ic scroll-up
+.Ic scroll\-up
 (vi: C-y)
 (emacs: C-Up)
 .Xc
 Scroll up.
 .It Xo
-.Ic search-again
+.Ic search\-again
 (vi: n)
 (emacs: n)
 .Xc
 Repeat the last search.
 .It Xo
-.Ic search-backward
+.Ic search\-backward
 .Ar text
 (vi: ?)
 .Xc
 Search backwards for the specified text.
 .It Xo
-.Ic search-backward-incremental
+.Ic search\-backward\-incremental
 .Ar text
 (emacs: C-r)
 .Xc
@@ -2303,21 +2303,21 @@ Search backwards incrementally for the specified text.
 Is expected to be used with the
 .Fl i
 flag to the
-.Ic command-prompt
+.Ic command\-prompt
 command.
 .It Xo
-.Ic search-backward-text
+.Ic search\-backward\-text
 .Ar text
 .Xc
 Search backwards for the specified plain text.
 .It Xo
-.Ic search-forward
+.Ic search\-forward
 .Ar text
 (vi: /)
 .Xc
 Search forward for the specified text.
 .It Xo
-.Ic search-forward-incremental
+.Ic search\-forward\-incremental
 .Ar text
 (emacs: C-s)
 .Xc
@@ -2325,7 +2325,7 @@ Search forward incrementally for the specified text.
 Is expected to be used with the
 .Fl i
 flag to the
-.Ic command-prompt
+.Ic command\-prompt
 command.
 .It Xo
 .Ic search-forward-text
@@ -2395,11 +2395,11 @@ variants search for a plain text string rather than a regular expression;
 perform an incremental search and expect to be used with the
 .Fl i
 flag to the
-.Ic command-prompt
+.Ic command\-prompt
 command.
-.Ql search-again
+.Ql search\-again
 repeats the last search and
-.Ql search-reverse
+.Ql search\-reverse
 does the same but reverses the direction (forward becomes backward and backward
 becomes forward).
 .Pp
@@ -2413,9 +2413,9 @@ When first pressed they allow a new search term to be entered; if pressed with
 an empty search term they repeat the previously used search term.
 .Pp
 The
-.Ql next-prompt
+.Ql next\-prompt
 and
-.Ql previous-prompt
+.Ql previous\-prompt
 move between shell prompts, but require the shell to emit an escape sequence
 (\e033]133;A\e033\e\e) to tell
 .Nm
@@ -2437,13 +2437,13 @@ so buffers are named
 and so on).
 Pipe commands take a command argument which is the command to which the
 selected text is piped.
-.Ql copy-pipe
+.Ql copy\-pipe
 variants also copy the selection.
 The
-.Ql -and-cancel
+.Ql \-and\-cancel
 variants of some commands exit copy mode after they have completed (for copy
 commands) or when the cursor reaches the bottom (for scrolling commands).
-.Ql -no-clear
+.Ql \-no\-clear
 variants do not clear the selection.
 All the copy commands can take the
 .Fl C
@@ -2459,14 +2459,14 @@ flag suppresses adding a paste buffer with the text.
 The next and previous word keys skip over whitespace and treat consecutive
 runs of either word separators or other letters as words.
 Word separators can be customized with the
-.Em word-separators
+.Em word\-separators
 session option.
 Next word moves to the start of the next word, next word end to the end of the
 next word and previous word to the start of the previous word.
 The three next and previous space keys work similarly but use a space alone as
 the word separator.
 Setting
-.Em word-separators
+.Em word\-separators
 to the empty string makes next/previous word equivalent to next/previous space.
 .Pp
 The jump commands enable quick movement within a line.
@@ -2486,10 +2486,10 @@ With vi key bindings, a prefix is entered using the number keys; with
 emacs, the Alt (meta) key and a number begins prefix entry.
 .Pp
 The synopsis for the
-.Ic copy-mode
+.Ic copy\-mode
 command is:
 .Bl -tag -width Ds
-.It Xo Ic copy-mode
+.It Xo Ic copy\-mode
 .Op Fl deHMqSu
 .Op Fl s Ar src-pane
 .Op Fl t Ar target-pane
@@ -2511,7 +2511,7 @@ begins a mouse drag (only valid if bound to a mouse key binding, see
 .Pp
 .Fl S
 enters copy-mode and scrolls when bound to a mouse drag event; See
-.Ic scroll-to-mouse .
+.Ic scroll\-to\-mouse .
 .Pp
 .Fl s
 copies from
@@ -2527,17 +2527,17 @@ disable this behaviour.
 This is intended to allow fast scrolling through a pane's history, for
 example with:
 .Bd -literal -offset indent
-bind PageUp copy-mode -eu
-bind PageDown copy-mode -ed
+bind PageUp copy\-mode \-eu
+bind PageDown copy\-mode \-ed
 .Ed
 .El
 .Pp
 A number of preset arrangements of panes are available, these are called
 layouts.
 These may be selected with the
-.Ic select-layout
+.Ic select\-layout
 command or cycled with
-.Ic next-layout
+.Ic next\-layout
 (bound to
 .Ql Space
 by default); once a layout is chosen, panes within it may be moved and resized
@@ -2545,29 +2545,29 @@ as normal.
 .Pp
 The following layouts are supported:
 .Bl -tag -width Ds
-.It Ic even-horizontal
+.It Ic even\-horizontal
 Panes are spread out evenly from left to right across the window.
-.It Ic even-vertical
+.It Ic even\-vertical
 Panes are spread evenly from top to bottom.
-.It Ic main-horizontal
+.It Ic main\-horizontal
 A large (main) pane is shown at the top of the window and the remaining panes
 are spread from left to right in the leftover space at the bottom.
 Use the
-.Em main-pane-height
+.Em main\-pane\-height
 window option to specify the height of the top pane.
-.It Ic main-horizontal-mirrored
+.It Ic main\-horizontal\-mirrored
 The same as
-.Ic main-horizontal
+.Ic main\-horizontal
 but mirrored so the main pane is at the bottom of the window.
-.It Ic main-vertical
+.It Ic main\-vertical
 A large (main) pane is shown on the left of the window and the remaining panes
 are spread from top to bottom in the leftover space on the right.
 Use the
-.Em main-pane-width
+.Em main\-pane\-width
 window option to specify the width of the left pane.
-.It Ic main-vertical-mirrored
+.It Ic main\-vertical\-mirrored
 The same as
-.Ic main-vertical
+.Ic main\-vertical
 but mirrored so the main pane is on the right of the window.
 .It Ic tiled
 Panes are spread out as evenly as possible over the window in both rows and
@@ -2575,17 +2575,17 @@ columns.
 .El
 .Pp
 In addition,
-.Ic select-layout
+.Ic select\-layout
 may be used to apply a previously used layout - the
-.Ic list-windows
+.Ic list\-windows
 command displays the layout of each window in a form suitable for use with
-.Ic select-layout .
+.Ic select\-layout .
 For example:
 .Bd -literal -offset indent
-$ tmux list-windows
+$ tmux list\-windows
 0: ksh [159x48]
     layout: bb62,159x48,0,0{79x48,0,0,79x48,80,0}
-$ tmux select-layout \[aq]bb62,159x48,0,0{79x48,0,0,79x48,80,0}\[aq]
+$ tmux select\-layout \[aq]bb62,159x48,0,0{79x48,0,0,79x48,80,0}\[aq]
 .Ed
 .Pp
 .Nm
@@ -2596,7 +2596,7 @@ from which the layout was originally defined.
 Commands related to windows and panes are as follows:
 .Bl -tag -width Ds
 .Tg breakp
-.It Xo Ic break-pane
+.It Xo Ic break\-pane
 .Op Fl abdP
 .Op Fl F Ar format
 .Op Fl n Ar window-name
@@ -2625,7 +2625,7 @@ By default, it uses the format
 but a different format may be specified with
 .Fl F .
 .Tg capturep
-.It Xo Ic capture-pane
+.It Xo Ic capture\-pane
 .Op Fl aepPqCJMN
 .Op Fl b Ar buffer-name
 .Op Fl E Ar end-line
@@ -2672,7 +2672,7 @@ and
 .Fl E
 specify the starting and ending line numbers, zero is the first line of the
 visible pane and negative numbers are lines in the history.
-.Ql -
+.Ql \-
 to
 .Fl S
 is the start of the history and to
@@ -2680,7 +2680,7 @@ is the start of the history and to
 the end of the visible pane.
 The default is to capture only the visible contents of the pane.
 .It Xo
-.Ic choose-client
+.Ic choose\-client
 .Op Fl NryZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
@@ -2732,7 +2732,7 @@ is replaced by the client name in
 and the result executed as a command.
 If
 .Ar template
-is not given, "detach-client -t \[aq]%%\[aq]" is used.
+is not given, "detach\-client \-t \[aq]%%\[aq]" is used.
 .Pp
 .Fl O
 specifies the initial sort order: one of
@@ -2756,7 +2756,7 @@ a format for each shortcut key; both are evaluated once for each line.
 starts without the preview or if given twice with the larger preview.
 This command works only if at least one client is attached.
 .It Xo
-.Ic choose-tree
+.Ic choose\-tree
 .Op Fl GNrswyZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
@@ -2788,9 +2788,9 @@ The following keys may be used in tree mode:
 .It Li "S-Up" Ta "Swap the current window with the previous one"
 .It Li "S-Down" Ta "Swap the current window with the next one"
 .It Li "+" Ta "Expand selected item"
-.It Li "-" Ta "Collapse selected item"
+.It Li "\-" Ta "Collapse selected item"
 .It Li "M-+" Ta "Expand all items"
-.It Li "M--" Ta "Collapse all items"
+.It Li "M-\-" Ta "Collapse all items"
 .It Li "x" Ta "Kill selected item"
 .It Li "X" Ta "Kill tagged items"
 .It Li "<" Ta "Scroll list of previews left"
@@ -2822,7 +2822,7 @@ are replaced by the target in
 and the result executed as a command.
 If
 .Ar template
-is not given, "switch-client -t \[aq]%%\[aq]" is used.
+is not given, "switch\-client \-t \[aq]%%\[aq]" is used.
 .Pp
 .Fl O
 specifies the initial sort order: one of
@@ -2848,7 +2848,7 @@ includes all sessions in any session groups in the tree rather than only the
 first.
 This command works only if at least one client is attached.
 .It Xo
-.Ic customize-mode
+.Ic customize\-mode
 .Op Fl NZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
@@ -2867,9 +2867,9 @@ The following keys may be used in customize mode:
 .It Li "Up" Ta "Select previous item"
 .It Li "Down" Ta "Select next item"
 .It Li "+" Ta "Expand selected item"
-.It Li "-" Ta "Collapse selected item"
+.It Li "\-" Ta "Collapse selected item"
 .It Li "M-+" Ta "Expand all items"
-.It Li "M--" Ta "Collapse all items"
+.It Li "M-\-" Ta "Collapse all items"
 .It Li "s" Ta "Set option value or key attribute"
 .It Li "S" Ta "Set global option value"
 .It Li "w" Ta "Set window option value, if option is for pane and window"
@@ -2900,7 +2900,7 @@ starts without the option information.
 This command works only if at least one client is attached.
 .It Xo
 .Tg displayp
-.Ic display-panes
+.Ic display\-panes
 .Op Fl bN
 .Op Fl d Ar duration
 .Op Fl t Ar target-client
@@ -2910,9 +2910,9 @@ This command works only if at least one client is attached.
 Display a visible indicator of each pane shown by
 .Ar target-client .
 See the
-.Ic display-panes-colour
+.Ic display\-panes\-colour
 and
-.Ic display-panes-active-colour
+.Ic display\-panes\-active\-colour
 session options.
 The indicator is closed when a key is pressed (unless
 .Fl N
@@ -2922,7 +2922,7 @@ milliseconds have passed.
 If
 .Fl d
 is not given,
-.Ic display-panes-time
+.Ic display\-panes\-time
 is used.
 A duration of zero means the indicator stays until a key is pressed.
 While the indicator is on screen, a pane may be chosen with the
@@ -2936,14 +2936,14 @@ to be executed as a command with
 substituted by the pane ID.
 The default
 .Ar template
-is "select-pane -t \[aq]%%\[aq]".
+is "select\-pane \-t \[aq]%%\[aq]".
 With
 .Fl b ,
 other commands are not blocked from running until the indicator is closed.
 .Tg findw
-.It Xo Ic find-window
+.It Xo Ic find\-window
 .Op Fl iCNrTZ
-.Op Fl t Ar target-pane
+.Op Fl t Ar target\-pane
 .Ar match-string
 .Xc
 .D1 Pq alias: Ic findw
@@ -2952,7 +2952,7 @@ Search for a
 pattern or, with
 .Fl r ,
 regular expression
-.Ar match-string
+.Ar match\-string
 in window names, titles, and visible content (but not history).
 The flags control matching behavior:
 .Fl C
@@ -2970,7 +2970,7 @@ zooms the pane.
 .Pp
 This command works only if at least one client is attached.
 .Tg joinp
-.It Xo Ic join-pane
+.It Xo Ic join\-pane
 .Op Fl bdfhv
 .Op Fl l Ar size
 .Op Fl s Ar src-pane
@@ -2978,14 +2978,14 @@ This command works only if at least one client is attached.
 .Xc
 .D1 Pq alias: Ic joinp
 Like
-.Ic split-window ,
+.Ic split\-window ,
 but instead of splitting
 .Ar dst-pane
 and creating a new pane, split it and move
 .Ar src-pane
 into the space.
 This can be used to reverse
-.Ic break-pane .
+.Ic break\-pane .
 The
 .Fl b
 option causes
@@ -2996,11 +2996,11 @@ to be joined to left of or above
 If
 .Fl s
 is omitted and a marked pane is present (see
-.Ic select-pane
+.Ic select\-pane
 .Fl m ) ,
 the marked pane is used rather than the current pane.
 .Tg killp
-.It Xo Ic kill-pane
+.It Xo Ic kill\-pane
 .Op Fl a
 .Op Fl t Ar target-pane
 .Xc
@@ -3012,7 +3012,7 @@ The
 option kills all but the pane given with
 .Fl t .
 .Tg killw
-.It Xo Ic kill-window
+.It Xo Ic kill\-window
 .Op Fl a
 .Op Fl t Ar target-window
 .Xc
@@ -3025,7 +3025,7 @@ The
 option kills all but the window given with
 .Fl t .
 .Tg lastp
-.It Xo Ic last-pane
+.It Xo Ic last\-pane
 .Op Fl deZ
 .Op Fl t Ar target-window
 .Xc
@@ -3038,14 +3038,14 @@ enables or
 .Fl d
 disables input to the pane.
 .Tg last
-.It Ic last-window Op Fl t Ar target-session
+.It Ic last\-window Op Fl t Ar target-session
 .D1 Pq alias: Ic last
 Select the last (previously selected) window.
 If no
 .Ar target-session
 is specified, select the last window of the current session.
 .Tg link
-.It Xo Ic link-window
+.It Xo Ic link\-window
 .Op Fl abdk
 .Op Fl s Ar src-window
 .Op Fl t Ar dst-window
@@ -3076,7 +3076,7 @@ If
 .Fl d
 is given, the newly linked window is not selected.
 .Tg lsp
-.It Xo Ic list-panes
+.It Xo Ic list\-panes
 .Op Fl ars
 .Op Fl F Ar format
 .Op Fl f Ar filter
@@ -3119,7 +3119,7 @@ specifies the sort order: one of
 .Fl r
 reverses the sort order.
 .Tg lsw
-.It Xo Ic list-windows
+.It Xo Ic list\-windows
 .Op Fl ar
 .Op Fl F Ar format
 .Op Fl f Ar filter
@@ -3154,7 +3154,7 @@ or
 .Fl r
 reverses the sort order.
 .Tg movep
-.It Xo Ic move-pane
+.It Xo Ic move\-pane
 .Op Fl bdfhv
 .Op Fl l Ar size
 .Op Fl s Ar src-pane
@@ -3162,16 +3162,16 @@ reverses the sort order.
 .Xc
 .D1 Pq alias: Ic movep
 Does the same as
-.Ic join-pane .
+.Ic join\-pane .
 .Tg movew
-.It Xo Ic move-window
+.It Xo Ic move\-window
 .Op Fl abrdk
 .Op Fl s Ar src-window
 .Op Fl t Ar dst-window
 .Xc
 .D1 Pq alias: Ic movew
 This is similar to
-.Ic link-window ,
+.Ic link\-window ,
 except the window at
 .Ar src-window
 is moved to
@@ -3180,10 +3180,10 @@ With
 .Fl r ,
 all windows in the session are renumbered in sequential order, respecting
 the
-.Ic base-index
+.Ic base\-index
 option.
 .Tg neww
-.It Xo Ic new-window
+.It Xo Ic new\-window
 .Op Fl abdkPS
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
@@ -3226,14 +3226,14 @@ is the command to execute.
 If
 .Ar shell-command
 is not specified, the value of the
-.Ic default-command
+.Ic default\-command
 option is used.
 .Fl c
 specifies the working directory in which the new window is created.
 .Pp
 When the shell command completes, the window closes.
 See the
-.Ic remain-on-exit
+.Ic remain\-on\-exit
 option to change this behaviour.
 .Pp
 .Fl e
@@ -3254,7 +3254,7 @@ for all programs running
 New windows will automatically have
 .Ql TERM=screen
 added to their environment, but care must be taken not to reset this in shell
-start-up files or by the
+startup files or by the
 .Fl e
 option.
 .Pp
@@ -3266,11 +3266,11 @@ By default, it uses the format
 but a different format may be specified with
 .Fl F .
 .Tg nextl
-.It Ic next-layout Op Fl t Ar target-window
+.It Ic next\-layout Op Fl t Ar target-window
 .D1 Pq alias: Ic nextl
 Move a window to the next layout and rearrange the panes to fit.
 .Tg next
-.It Xo Ic next-window
+.It Xo Ic next\-window
 .Op Fl a
 .Op Fl t Ar target-session
 .Xc
@@ -3280,7 +3280,7 @@ If
 .Fl a
 is used, move to the next window with an alert.
 .Tg pipep
-.It Xo Ic pipe-pane
+.It Xo Ic pipe\-pane
 .Op Fl IOo
 .Op Fl t Ar target-pane
 .Op Ar shell-command
@@ -3296,7 +3296,7 @@ is executed.
 The
 .Ar shell-command
 string may contain the special character sequences supported by the
-.Ic status-left
+.Ic status\-left
 option.
 If no
 .Ar shell-command
@@ -3326,16 +3326,16 @@ The
 option only opens a new pipe if no previous pipe exists, allowing a pipe to
 be toggled with a single key, for example:
 .Bd -literal -offset indent
-bind-key C-p pipe-pane -o \[aq]cat >>\[ti]/output.#I-#P\[aq]
+bind\-key C-p pipe\-pane \-o \[aq]cat >>\[ti]/output.#I\-#P\[aq]
 .Ed
 .Tg prevl
-.It Xo Ic previous-layout
+.It Xo Ic previous\-layout
 .Op Fl t Ar target-window
 .Xc
 .D1 Pq alias: Ic prevl
 Move to the previous layout in the session.
 .Tg prev
-.It Xo Ic previous-window
+.It Xo Ic previous\-window
 .Op Fl a
 .Op Fl t Ar target-session
 .Xc
@@ -3345,7 +3345,7 @@ With
 .Fl a ,
 move to the previous window with an alert.
 .Tg renamew
-.It Xo Ic rename-window
+.It Xo Ic rename\-window
 .Op Fl t Ar target-window
 .Ar new-name
 .Xc
@@ -3355,7 +3355,7 @@ Rename the current window, or the window at
 if specified, to
 .Ar new-name .
 .Tg resizep
-.It Xo Ic resize-pane
+.It Xo Ic resize\-pane
 .Op Fl DLMRTUZ
 .Op Fl t Ar target-pane
 .Op Fl x Ar width
@@ -3386,7 +3386,7 @@ and
 may be a given as a number of lines or columns or followed by
 .Ql %
 for a percentage of the window size (for example
-.Ql -x 10% ) .
+.Ql \-x 10% ) .
 With
 .Fl Z ,
 the active pane is toggled between zoomed (occupying the whole of the window)
@@ -3400,7 +3400,7 @@ begins mouse resizing (only valid if bound to a mouse key binding, see
 trims all lines below the current cursor position and moves lines out of the
 history to replace them.
 .Tg resizew
-.It Xo Ic resize-window
+.It Xo Ic resize\-window
 .Op Fl aADLRU
 .Op Fl t Ar target-window
 .Op Fl x Ar width
@@ -3433,7 +3433,7 @@ This command will automatically set
 .Ic window-size
 to manual in the window options.
 .Tg respawnp
-.It Xo Ic respawn-pane
+.It Xo Ic respawn\-pane
 .Op Fl k
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
@@ -3442,7 +3442,7 @@ to manual in the window options.
 .Xc
 .D1 Pq alias: Ic respawnp
 Reactivate a pane in which the command has exited (see the
-.Ic remain-on-exit
+.Ic remain\-on\-exit
 window option).
 If
 .Ar shell-command
@@ -3456,10 +3456,10 @@ specifies a new working directory for the pane.
 The
 .Fl e
 option has the same meaning as for the
-.Ic new-window
+.Ic new\-window
 command.
 .Tg respawnw
-.It Xo Ic respawn-window
+.It Xo Ic respawn\-window
 .Op Fl k
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
@@ -3468,7 +3468,7 @@ command.
 .Xc
 .D1 Pq alias: Ic respawnw
 Reactivate a window in which the command has exited (see the
-.Ic remain-on-exit
+.Ic remain\-on\-exit
 window option).
 If
 .Ar shell-command
@@ -3482,10 +3482,10 @@ specifies a new working directory for the window.
 The
 .Fl e
 option has the same meaning as for the
-.Ic new-window
+.Ic new\-window
 command.
 .Tg rotatew
-.It Xo Ic rotate-window
+.It Xo Ic rotate\-window
 .Op Fl DUZ
 .Op Fl t Ar target-window
 .Xc
@@ -3497,7 +3497,7 @@ or downward (numerically higher).
 .Fl Z
 keeps the window zoomed if it was zoomed.
 .Tg selectl
-.It Xo Ic select-layout
+.It Xo Ic select\-layout
 .Op Fl Enop
 .Op Fl t Ar target-pane
 .Op Ar layout-name
@@ -3511,16 +3511,16 @@ is not given, the last preset layout used (if any) is reapplied.
 and
 .Fl p
 are equivalent to the
-.Ic next-layout
+.Ic next\-layout
 and
-.Ic previous-layout
+.Ic previous\-layout
 commands.
 .Fl o
 applies the last set layout if possible (undoes the most recent layout change).
 .Fl E
 spreads the current pane and any panes next to it out evenly.
 .Tg selectp
-.It Xo Ic select-pane
+.It Xo Ic select\-pane
 .Op Fl DdeLlMmRUZ
 .Op Fl T Ar title
 .Op Fl t Ar target-pane
@@ -3541,7 +3541,7 @@ target pane is used.
 keeps the window zoomed if it was zoomed.
 .Fl l
 is the same as using the
-.Ic last-pane
+.Ic last\-pane
 command.
 .Fl e
 enables or
@@ -3559,13 +3559,13 @@ There is one marked pane at a time, setting a new marked pane clears the last.
 The marked pane is the default target for
 .Fl s
 to
-.Ic join-pane ,
-.Ic move-pane ,
-.Ic swap-pane
+.Ic join\-pane ,
+.Ic move\-pane ,
+.Ic swap\-pane
 and
-.Ic swap-window .
+.Ic swap\-window .
 .Tg selectw
-.It Xo Ic select-window
+.It Xo Ic select\-window
 .Op Fl lnpT
 .Op Fl t Ar target-window
 .Xc
@@ -3577,18 +3577,18 @@ Select the window at
 and
 .Fl p
 are equivalent to the
-.Ic last-window ,
-.Ic next-window
+.Ic last\-window ,
+.Ic next\-window
 and
-.Ic previous-window
+.Ic previous\-window
 commands.
 If
 .Fl T
 is given and the selected window is already the current window,
 the command behaves like
-.Ic last-window .
+.Ic last\-window .
 .Tg splitw
-.It Xo Ic split-window
+.It Xo Ic split\-window
 .Op Fl bdfhIvPZ
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
@@ -3632,7 +3632,7 @@ An empty
 .Ar shell-command
 (\[aq]\[aq]) will create a pane with no command running in it.
 Output can be sent to such a pane with the
-.Ic display-message
+.Ic display\-message
 command.
 The
 .Fl I
@@ -3642,14 +3642,14 @@ is not specified or empty)
 will create an empty pane and forward any output from stdin to it.
 For example:
 .Bd -literal -offset indent
-$ make 2>&1|tmux splitw -dI &
+$ make 2>&1|tmux splitw \-dI &
 .Ed
 .Pp
 All other options have the same meaning as for the
-.Ic new-window
+.Ic new\-window
 command.
 .Tg swapp
-.It Xo Ic swap-pane
+.It Xo Ic swap\-pane
 .Op Fl dDUZ
 .Op Fl s Ar src-pane
 .Op Fl t Ar dst-pane
@@ -3674,18 +3674,18 @@ keeps the window zoomed if it was zoomed.
 If
 .Fl s
 is omitted and a marked pane is present (see
-.Ic select-pane
+.Ic select\-pane
 .Fl m ) ,
 the marked pane is used rather than the current pane.
 .Tg swapw
-.It Xo Ic swap-window
+.It Xo Ic swap\-window
 .Op Fl d
 .Op Fl s Ar src-window
 .Op Fl t Ar dst-window
 .Xc
 .D1 Pq alias: Ic swapw
 This is similar to
-.Ic link-window ,
+.Ic link\-window ,
 except the source and destination windows are swapped.
 It is an error if no window exists at
 .Ar src-window .
@@ -3696,11 +3696,11 @@ is given, the new window does not become the current window.
 If
 .Fl s
 is omitted and a marked pane is present (see
-.Ic select-pane
+.Ic select\-pane
 .Fl m ) ,
 the window containing the marked pane is used rather than the current window.
 .Tg unlinkw
-.It Xo Ic unlink-window
+.It Xo Ic unlink\-window
 .Op Fl k
 .Op Fl t Ar target-window
 .Xc
@@ -3724,13 +3724,13 @@ When specifying keys, most represent themselves (for example
 to
 .Ql Z ) .
 Ctrl keys may be prefixed with
-.Ql C-
+.Ql C\-
 or
-.Ql ^ ,
+.Ql \[ah] ,
 Shift keys with
-.Ql S-
+.Ql S\-
 and Alt (meta) with
-.Ql M- .
+.Ql M\- .
 In addition, the following special key names are accepted:
 .Em Up ,
 .Em Down ,
@@ -3760,8 +3760,8 @@ or
 .Ql \[aq]
 keys, quotation marks are necessary, for example:
 .Bd -literal -offset indent
-bind-key \[aq]"\[aq] split-window
-bind-key "\[aq]" new-window
+bind\-key \[aq]"\[aq] split\-window
+bind\-key "\[aq]" new\-window
 .Ed
 .Pp
 A command bound to the
@@ -3771,7 +3771,7 @@ key will execute for all keys which do not have a more specific binding.
 Commands related to key bindings are as follows:
 .Bl -tag -width Ds
 .Tg bind
-.It Xo Ic bind-key
+.It Xo Ic bind\-key
 .Op Fl nr
 .Op Fl N Ar note
 .Op Fl T Ar key-table
@@ -3784,7 +3784,7 @@ Bind key
 to
 .Ar command .
 Keys are bound in a key table.
-By default (without -T), the key is bound in
+By default (without \-T), the key is bound in
 the
 .Em prefix
 key table.
@@ -3792,7 +3792,7 @@ This table is used for keys pressed after the prefix key (for example,
 by default
 .Ql c
 is bound to
-.Ic new-window
+.Ic new\-window
 in the
 .Em prefix
 table, so
@@ -3803,7 +3803,7 @@ The
 table is used for keys pressed without the prefix key: binding
 .Ql c
 to
-.Ic new-window
+.Ic new\-window
 in the
 .Em root
 table (not recommended) means a plain
@@ -3814,19 +3814,19 @@ is an alias
 for
 .Fl T Ar root .
 Keys may also be bound in custom key tables and the
-.Ic switch-client
+.Ic switch\-client
 .Fl T
 command used to switch to them from a key binding.
 The
 .Fl r
 flag indicates this key may repeat, see the
-.Ic initial-repeat-time
+.Ic initial\-repeat\-time
 and
-.Ic repeat-time
+.Ic repeat\-time
 options.
 .Fl N
 attaches a note to the key (shown with
-.Ic list-keys
+.Ic list\-keys
 .Fl N ) ,
 which can be cleared by passing an empty string.
 The
@@ -3838,10 +3838,10 @@ flags can be used without
 to alter an existing binding.
 .Pp
 To view the default bindings and possible commands, see the
-.Ic list-keys
+.Ic list\-keys
 command.
 .Tg lsk
-.It Xo Ic list-keys
+.It Xo Ic list\-keys
 .Op Fl 1aNr
 .Op Fl F Ar format
 .Op Fl O Ar sort-order
@@ -3874,7 +3874,7 @@ reverses the sort order.
 If no
 .Ar format
 is given, there are two forms: the default lists keys as
-.Ic bind-key
+.Ic bind\-key
 commands;
 .Fl N
 lists only keys with attached notes and shows only the key and note for each
@@ -3897,7 +3897,7 @@ specifies a prefix to print before each key.
 .Fl a
 lists the command for keys that do not have a note rather than skipping them.
 .Tg send
-.It Xo Ic send-keys
+.It Xo Ic send\-keys
 .Op Fl FHKlMRX
 .Op Fl c Ar target-client
 .Op Fl N Ar repeat-count
@@ -3925,7 +3925,7 @@ If no keys are given and the command is bound to a key, then that key is used.
 .Pp
 The
 .Fl l
-flag disables key name lookup and processes the keys as literal UTF-8
+flag disables key name lookup and processes the keys as literal UTF\-8
 characters.
 The
 .Fl H
@@ -3948,7 +3948,7 @@ section.
 specifies a repeat count and
 .Fl F
 expands formats in arguments where appropriate.
-.It Xo Ic send-prefix
+.It Xo Ic send\-prefix
 .Op Fl 2
 .Op Fl t Ar target-pane
 .Xc
@@ -3956,7 +3956,7 @@ Send the prefix key, or with
 .Fl 2
 the secondary prefix key, to a window as if it was pressed.
 .Tg unbind
-.It Xo Ic unbind-key
+.It Xo Ic unbind\-key
 .Op Fl anq
 .Op Fl T Ar key-table
 .Ar key
@@ -3968,7 +3968,7 @@ Unbind the command bound to
 and
 .Fl T
 are the same as for
-.Ic bind-key .
+.Ic bind\-key .
 If
 .Fl a
 is present, all key bindings are removed.
@@ -4024,10 +4024,10 @@ The
 server has a set of global server options which do not apply to any particular
 window or session or pane.
 These are altered with the
-.Ic set-option
+.Ic set\-option
 .Fl s
 command, or displayed with the
-.Ic show-options
+.Ic show\-options
 .Fl s
 command.
 .Pp
@@ -4036,12 +4036,12 @@ there is a separate set of global session options.
 Sessions which do not have a particular option configured inherit the value
 from the global session options.
 Session options are set or unset with the
-.Ic set-option
+.Ic set\-option
 command and may be listed with the
-.Ic show-options
+.Ic show\-options
 command.
 The available server and session options are listed under the
-.Ic set-option
+.Ic set\-option
 command.
 .Pp
 Similarly, a set of window options is attached to each window and a set of pane
@@ -4051,19 +4051,19 @@ This means any pane option may be set as a window option to apply the option to
 all panes in the window without the option set, for example these commands will
 set the background colour to red for all panes except pane 0:
 .Bd -literal -offset indent
-set -w window-style bg=red
-set -pt:.0 window-style bg=blue
+set \-w window\-style bg=red
+set \-pt:.0 window\-style bg=blue
 .Ed
 .Pp
 There is also a set of global window options from which any unset window or
 pane options are inherited.
 Window and pane options are altered with
-.Ic set-option
+.Ic set\-option
 .Fl w
 and
 .Fl p
 commands and displayed with
-.Ic show-option
+.Ic show\-option
 .Fl w
 and
 .Fl p .
@@ -4076,15 +4076,15 @@ User options may have any name, so long as they are prefixed with
 and be set to any string.
 For example:
 .Bd -literal -offset indent
-$ tmux set -wq @foo "abc123"
-$ tmux show -wv @foo
+$ tmux set \-wq @foo "abc123"
+$ tmux show \-wv @foo
 abc123
 .Ed
 .Pp
 Options are managed with these commands:
 .Bl -tag -width Ds
 .Tg set
-.It Xo Ic set-option
+.It Xo Ic set\-option
 .Op Fl aFgopqsuUw
 .Op Fl t Ar target-pane
 .Ar option
@@ -4142,16 +4142,16 @@ and if the option expects a string or a style,
 is appended to the existing setting.
 For example:
 .Bd -literal -offset indent
-set -g status-left "foo"
-set -ag status-left "bar"
+set \-g status\-left "foo"
+set \-ag status\-left "bar"
 .Ed
 .Pp
 Will result in
 .Ql foobar .
 And:
 .Bd -literal -offset indent
-set -g status-style "bg=red"
-set -ag status-style "fg=blue"
+set \-g status\-style "bg=red"
+set \-ag status\-style "fg=blue"
 .Ed
 .Pp
 Will result in a red background
@@ -4161,7 +4161,7 @@ Without
 .Fl a ,
 the result would be the default background and a blue foreground.
 .Tg show
-.It Xo Ic show-options
+.It Xo Ic show\-options
 .Op Fl AgHpqsvw
 .Op Fl t Ar target-pane
 .Op Ar option
@@ -4208,11 +4208,11 @@ Available server options are:
 Set the key sent by
 .Nm
 for backspace.
-.It Ic buffer-limit Ar number
+.It Ic buffer\-limit Ar number
 Set the number of buffers; as new buffers are added to the top of the stack,
 old ones are removed from the bottom if necessary to maintain this maximum
 length.
-.It Xo Ic command-alias[]
+.It Xo Ic command\-alias[]
 .Ar name=value
 .Xc
 This is an array of custom aliases for commands.
@@ -4222,38 +4222,38 @@ it is replaced with
 .Ar value .
 For example, after:
 .Pp
-.Dl set -s command-alias[100] zoom=\[aq]resize-pane -Z\[aq]
+.Dl set \-s command\-alias[100] zoom=\[aq]resize\-pane \-Z\[aq]
 .Pp
 Using:
 .Pp
-.Dl zoom -t:.1
+.Dl zoom \-t:.1
 .Pp
 Is equivalent to:
 .Pp
-.Dl resize-pane -Z -t:.1
+.Dl resize\-pane \-Z \-t:.1
 .Pp
 Note that aliases are expanded when a command is parsed rather than when it is
 executed, so binding an alias with
-.Ic bind-key
+.Ic bind\-key
 will bind the expanded form.
-.It Ic codepoint-widths[] Ar string
+.It Ic codepoint\-widths[] Ar string
 An array option allowing widths of Unicode codepoints to be overridden.
 Note the new width applies to all clients.
 Each entry is of the form
 .Em codepoint=width ,
-where codepoint may be a UTF-8 character, an identifier of the form
+where codepoint may be a UTF\-8 character, an identifier of the form
 .Ql U+number
 where the number is a hexadecimal number, or a range of the form
-.Ql U+number-U+number .
-.It Ic copy-command Ar shell-command
+.Ql U+number\-U+number .
+.It Ic copy\-command Ar shell-command
 Give the command to pipe to if the
-.Ic copy-pipe
+.Ic copy\-pipe
 copy mode command is used without arguments.
-.It Ic default-client-command Ar command
+.It Ic default\-client\-command Ar command
 Set the default command to run when tmux is called without a command.
 The default is
-.Ic new-session .
-.It Ic default-terminal Ar terminal
+.Ic new\-session .
+.It Ic default\-terminal Ar terminal
 Set the default terminal for new windows created in this session - the
 default value of the
 .Ev TERM
@@ -4266,7 +4266,7 @@ be set to
 .Ql screen ,
 .Ql tmux
 or a derivative of them.
-.It Ic escape-time Ar time
+.It Ic escape\-time Ar time
 Set the time in milliseconds for which
 .Nm
 waits after an escape is input to determine if it is part of a function or meta
@@ -4275,16 +4275,16 @@ key sequences.
 Set the command used when
 .Nm
 runs an editor.
-.It Xo Ic exit-empty
+.It Xo Ic exit\-empty
 .Op Ic on | off
 .Xc
 If enabled (the default), the server will exit when there are no active
 sessions.
-.It Xo Ic exit-unattached
+.It Xo Ic exit\-unattached
 .Op Ic on | off
 .Xc
 If enabled, the server will exit when there are no attached clients.
-.It Xo Ic extended-keys
+.It Xo Ic extended\-keys
 .Op Ic on | off | always
 .Xc
 Controls how modified keys (keys pressed together with Control, Meta, or Shift)
@@ -4312,14 +4312,14 @@ will always request extended keys itself if the terminal supports them.
 See also the
 .Ic extkeys
 feature for the
-.Ic terminal-features
+.Ic terminal\-features
 option, the
-.Ic extended-keys-format
+.Ic extended\-keys\-format
 option and the
 .Ic pane_key_mode
 variable.
-.It Xo Ic extended-keys-format
-.Op Ic csi-u | xterm
+.It Xo Ic extended\-keys\-format
+.Op Ic csi\-u | xterm
 .Xc
 Selects one of the two possible formats for reporting modified keys to
 applications.
@@ -4328,14 +4328,14 @@ This is the equivalent of the
 .Xr xterm 1
 resource.
 For example, C-S-a will be reported as
-.Ql ^[[27;6;65~
+.Ql \[ah][[27;6;65\[ti]
 when set to
 .Ic xterm ,
 and as
-.Ql ^[[65;6u
+.Ql \[ah][[65;6u
 when set to
-.Ic csi-u .
-.It Xo Ic focus-events
+.Ic csi\-u .
+.It Xo Ic focus\-events
 .Op Ic on | off
 .Xc
 When enabled, focus events are requested from the terminal if supported and
@@ -4343,13 +4343,13 @@ passed through to applications running in
 .Nm .
 Attached clients should be detached and attached again after changing this
 option.
-.It Xo Ic focus-follows-mouse
+.It Xo Ic focus\-follows\-mouse
 .Op Ic on | off
 .Xc
 When enabled and
 .Ic mouse
 is on, moving the mouse into a pane selects it.
-.It Xo Ic get-clipboard
+.It Xo Ic get\-clipboard
 .Op Ic both | request | buffer | off
 .Xc
 Controls the behaviour when an application requests the clipboard from
@@ -4373,22 +4373,22 @@ is the same as
 but also creates a paste buffer.
 .Pp
 See also the
-.Ic set-clipboard
+.Ic set\-clipboard
 option.
-.It Ic history-file Ar path
+.It Ic history\-file Ar path
 If not empty, a file to which
 .Nm
 will write command prompt history on exit and load it from on start.
-.It Ic input-buffer-size Ar bytes
+.It Ic input\-buffer\-size Ar bytes
 Maximum of bytes allowed to read in escape and control sequences.
 Once reached, the sequence will be discarded.
-.It Ic message-limit Ar number
+.It Ic message\-limit Ar number
 Set the number of error or information messages to save in the message log for
 each client.
-.It Ic prompt-history-limit Ar number
+.It Ic prompt\-history\-limit Ar number
 Set the number of history items to save in the history file for each type of
 command prompt.
-.It Xo Ic set-clipboard
+.It Xo Ic set\-clipboard
 .Op Ic on | external | off
 .Xc
 Attempt to set the terminal clipboard content using the
@@ -4429,7 +4429,7 @@ disallowedWindowOps: 20,21,SetXprop
 Or changing this property from the
 .Xr xterm 1
 interactive menu when required.
-.It Ic terminal-features[] Ar string
+.It Ic terminal\-features[] Ar string
 Set terminal features for terminal types read from
 .Xr terminfo 5 .
 .Nm
@@ -4442,11 +4442,11 @@ entry in use.
 can detect features for a few common terminals; this option can be used to
 easily tell tmux about features supported by terminals it cannot detect.
 The
-.Ic terminal-overrides
+.Ic terminal\-overrides
 option allows individual
 .Xr terminfo 5
 capabilities to be set instead,
-.Ic terminal-features
+.Ic terminal\-features
 is intended for classes of functionality supported in a standard way but not
 reported by
 .Xr terminfo 5 .
@@ -4506,7 +4506,7 @@ title setting.
 .It usstyle
 Allows underscore style and colour to be set.
 .El
-.It Ic terminal-overrides[] Ar string
+.It Ic terminal\-overrides[] Ar string
 Allow terminal descriptions read using
 .Xr terminfo 5
 to be overridden.
@@ -4531,7 +4531,7 @@ for all terminal types matching
 The terminal entry value is passed through
 .Xr strunvis 3
 before interpretation.
-.It Ic user-keys[] Ar key
+.It Ic user\-keys[] Ar key
 Set list of user-defined key escape sequences.
 Each item is associated with a key named
 .Ql User0 ,
@@ -4540,10 +4540,10 @@ and so on.
 .Pp
 For example:
 .Bd -literal -offset indent
-set -s user-keys[0] "\ee[5;30012\[ti]"
-bind User0 resize-pane -L 3
+set \-s user\-keys[0] "\ee[5;30012\[ti]"
+bind User0 resize\-pane \-L 3
 .Ed
-.It Xo Ic variation-selector-always-wide
+.It Xo Ic variation\-selector\-always\-wide
 .Op Ic on | off
 .Xc
 Always treat Unicode variation selector 16 as marking a wide character.
@@ -4552,45 +4552,45 @@ This is a feature of some terminals as part of their Unicode 14 support.
 .Pp
 Available session options are:
 .Bl -tag -width Ds
-.It Xo Ic activity-action
+.It Xo Ic activity\-action
 .Op Ic any | none | current | other
 .Xc
 Set action on window activity when
-.Ic monitor-activity
+.Ic monitor\-activity
 is on.
 .Ic any
 means activity in any window linked to a session causes a bell or message
 (depending on
-.Ic visual-activity )
+.Ic visual\-activity )
 in the current window of that session,
 .Ic none
 means all activity is ignored (equivalent to
-.Ic monitor-activity
+.Ic monitor\-activity
 being off),
 .Ic current
 means only activity in windows other than the current window are ignored and
 .Ic other
 means activity in the current window is ignored but not those in other windows.
-.It Ic assume-paste-time Ar milliseconds
+.It Ic assume\-paste\-time Ar milliseconds
 If keys are entered faster than one in
 .Ar milliseconds ,
 they are assumed to have been pasted rather than typed and
 .Nm
 key bindings are not processed.
 The default is one millisecond and zero disables.
-.It Ic base-index Ar index
+.It Ic base\-index Ar index
 Set the base index from which an unused index should be searched when a new
 window is created.
 The default is zero.
-.It Xo Ic bell-action
+.It Xo Ic bell\-action
 .Op Ic any | none | current | other
 .Xc
 Set action on a bell in a window when
-.Ic monitor-bell
+.Ic monitor\-bell
 is on.
 The values are the same as those for
-.Ic activity-action .
-.It Ic default-command Ar shell-command
+.Ic activity\-action .
+.It Ic default\-command Ar shell-command
 Set the command used for new windows (if not specified when the window is
 created) to
 .Ar shell-command ,
@@ -4600,12 +4600,12 @@ command.
 The default is an empty string, which instructs
 .Nm
 to create a login shell using the value of the
-.Ic default-shell
+.Ic default\-shell
 option.
-.It Ic default-shell Ar path
+.It Ic default\-shell Ar path
 Specify the default shell.
 This is used as the login shell for new windows when the
-.Ic default-command
+.Ic default\-command
 option is set to empty, and must be the full path of the executable.
 When started
 .Nm
@@ -4618,18 +4618,18 @@ or
 This option should be configured when
 .Nm
 is used as a login shell.
-.It Ic default-size Ar XxY
+.It Ic default\-size Ar XxY
 Set the default size of new windows when the
-.Ic window-size
+.Ic window\-size
 option is set to manual or when a session is created with
-.Ic new-session
+.Ic new\-session
 .Fl d .
 The value is the width and height separated by an
 .Ql x
 character.
 The default is 80x24.
-.It Xo Ic destroy-unattached
-.Op Ic off | on | keep-last | keep-group
+.It Xo Ic destroy\-unattached
+.Op Ic off | on | keep\-last | keep\-group
 .Xc
 If
 .Ic on ,
@@ -4638,15 +4638,15 @@ If
 .Ic off
 (the default), leave the session orphaned.
 If
-.Ic keep-last ,
+.Ic keep\-last ,
 destroy the session only if it is in a group and has other sessions in that
 group.
 If
-.Ic keep-group ,
+.Ic keep\-group ,
 destroy the session unless it is in a group and is the only session in that
 group.
-.It Xo Ic detach-on-destroy
-.Op Ic off | on | no-detached | previous | next
+.It Xo Ic detach\-on\-destroy
+.Op Ic off | on | no\-detached | previous | next
 .Xc
 If
 .Ic on
@@ -4657,7 +4657,7 @@ If
 the client is switched to the most recently active of the remaining
 sessions.
 If
-.Ic no-detached ,
+.Ic no\-detached ,
 the client is detached only if there are no detached sessions; if detached
 sessions exist, the client is switched to the most recently active.
 If
@@ -4665,83 +4665,83 @@ If
 or
 .Ic next ,
 the client is switched to the previous or next session in alphabetical order.
-.It Ic display-panes-active-colour Ar colour
+.It Ic display\-panes\-active\-colour Ar colour
 Set the colour used by the
-.Ic display-panes
+.Ic display\-panes
 command to show the indicator for the active pane.
-.It Ic display-panes-colour Ar colour
+.It Ic display\-panes\-colour Ar colour
 Set the colour used by the
-.Ic display-panes
+.Ic display\-panes
 command to show the indicators for inactive panes.
-.It Ic display-panes-time Ar time
+.It Ic display\-panes\-time Ar time
 Set the time in milliseconds for which the indicators shown by the
-.Ic display-panes
+.Ic display\-panes
 command appear.
-.It Ic display-time Ar time
+.It Ic display\-time Ar time
 Set the amount of time for which status line messages and other on-screen
 indicators are displayed.
 If set to 0, messages and indicators are displayed until a key is pressed.
 .Ar time
 is in milliseconds.
-.It Ic history-limit Ar lines
+.It Ic history\-limit Ar lines
 Set the maximum number of lines held in pane history.
-.It Ic initial-repeat-time Ar time
+.It Ic initial\-repeat\-time Ar time
 Set the time in milliseconds for the initial repeat when a key is bound with the
 .Fl r
 flag.
 This allows multiple commands to be entered without pressing the prefix key
 again.
 See also the
-.Ic repeat-time
+.Ic repeat\-time
 option.
 If
-.Ic initial-repeat-time
+.Ic initial\-repeat\-time
 is zero,
-.Ic repeat-time
+.Ic repeat\-time
 is used for the first key press.
-.It Ic key-table Ar key-table
+.It Ic key\-table Ar key-table
 Set the default key table to
 .Ar key-table
 instead of
 .Em root .
-.It Ic lock-after-time Ar number
+.It Ic lock\-after\-time Ar number
 Lock the session (like the
-.Ic lock-session
+.Ic lock\-session
 command) after
 .Ar number
 seconds of inactivity.
 The default is not to lock (set to 0).
-.It Ic lock-command Ar shell-command
+.It Ic lock\-command Ar shell-command
 Command to run when locking each client.
 The default is to run
 .Xr lock 1
 with
 .Fl np .
-.It Ic menu-style Ar style
+.It Ic menu\-style Ar style
 Set the menu style.
 See the
 .Sx STYLES
 section on how to specify
 .Ar style .
-.It Ic menu-selected-style Ar style
+.It Ic menu\-selected\-style Ar style
 Set the selected menu item style.
 See the
 .Sx STYLES
 section on how to specify
 .Ar style .
-.It Ic menu-border-style Ar style
+.It Ic menu\-border\-style Ar style
 Set the menu border style.
 See the
 .Sx STYLES
 section on how to specify
 .Ar style .
-.It Ic menu-border-lines Ar type
+.It Ic menu\-border\-lines Ar type
 Set the type of characters used for drawing menu borders.
 See
-.Ic popup-border-lines
+.Ic popup\-border\-lines
 for possible values for
-.Ar border-lines .
-.It Ic message-command-style Ar style
+.Ar border\-lines .
+.It Ic message\-command\-style Ar style
 Set status line message command style.
 This is used for the command prompt with
 .Xr vi 1
@@ -4751,7 +4751,7 @@ For how to specify
 see the
 .Sx STYLES
 section.
-.It Ic message-format Ar string
+.It Ic message\-format Ar string
 Set the format string for the prompt and message area.
 The special placeholder
 .Ql #{message}
@@ -4765,14 +4765,14 @@ and
 .Ic width
 may be used in the format string.
 The default uses a conditional to select between
-.Ic message-style
+.Ic message\-style
 and
-.Ic message-command-style .
-.It Xo Ic message-line
+.Ic message\-command\-style .
+.It Xo Ic message\-line
 .Op Ic 0 | 1 | 2 | 3 | 4
 .Xc
 Set line on which status line messages and the command prompt are shown.
-.It Ic message-style Ar style
+.It Ic message\-style Ar style
 Set status line message style.
 This is used for messages and for the command prompt.
 The message is drawn on top of the existing status line.
@@ -4790,7 +4790,7 @@ bar content remains visible around the prompt area.
 The
 .Ic fill
 attribute is used by the default
-.Ic message-format
+.Ic message\-format
 to clear the background.
 For how to specify
 .Ar style ,
@@ -4821,36 +4821,36 @@ Like
 .Ic prefix2
 can be set to
 .Ql None .
-.It Ic prefix-timeout Ar time
+.It Ic prefix\-timeout Ar time
 Set the time in milliseconds for which
 .Nm
 waits after
 .Ic prefix
 is input before dismissing it.
 Can be set to zero to disable any timeout.
-.It Ic prompt-cursor-colour Ar colour
+.It Ic prompt\-cursor\-colour Ar colour
 Set the colour of the cursor in the command prompt.
-.It Ic prompt-cursor-style Ar style
+.It Ic prompt\-cursor\-style Ar style
 Set the style of the cursor in the command prompt.
 See the
-.Ic cursor-style
+.Ic cursor\-style
 options for available styles.
-.It Ic prompt-command-cursor-style Ar style
+.It Ic prompt\-command\-cursor\-style Ar style
 Set the style of the cursor in the command prompt when vi keys are enabled and
 the prompt is in command mode.
 See the
-.Ic cursor-style
+.Ic cursor\-style
 options for available styles.
-.It Xo Ic renumber-windows
+.It Xo Ic renumber\-windows
 .Op Ic on | off
 .Xc
 If on, when a window is closed in a session, automatically renumber the other
 windows in numerical order.
 This respects the
-.Ic base-index
+.Ic base\-index
 option if it has been set.
 If off, do not renumber the windows.
-.It Ic repeat-time Ar time
+.It Ic repeat\-time Ar time
 Allow multiple commands to be entered without pressing the prefix key again
 in the specified
 .Ar time
@@ -4858,14 +4858,14 @@ milliseconds (the default is 500).
 Whether a key repeats may be set when it is bound using the
 .Fl r
 flag to
-.Ic bind-key .
+.Ic bind\-key .
 Repeat is enabled for the default keys bound to the
-.Ic resize-pane
+.Ic resize\-pane
 command.
 See also the
-.Ic initial-repeat-time
+.Ic initial\-repeat\-time
 option.
-.It Xo Ic set-titles
+.It Xo Ic set\-titles
 .Op Ic on | off
 .Xc
 Attempt to set the client terminal title using the
@@ -4879,21 +4879,21 @@ automatically sets these to the \ee]0;...\e007 sequence if
 the terminal appears to be
 .Xr xterm 1 .
 This option is off by default.
-.It Ic set-titles-string Ar string
+.It Ic set\-titles\-string Ar string
 String used to set the client terminal title if
-.Ic set-titles
+.Ic set\-titles
 is on.
 Formats are expanded, see the
 .Sx FORMATS
 section.
-.It Xo Ic silence-action
+.It Xo Ic silence\-action
 .Op Ic any | none | current | other
 .Xc
 Set action on window silence when
-.Ic monitor-silence
+.Ic monitor\-silence
 is on.
 The values are the same as those for
-.Ic activity-action .
+.Ic activity\-action .
 .It Xo Ic status
 .Op Ic off | on | 2 | 3 | 4 | 5
 .Xc
@@ -4907,23 +4907,23 @@ gives a status line one row in height;
 or
 .Ic 5
 more rows.
-.It Ic status-format[] Ar format
+.It Ic status\-format[] Ar format
 Specify the format to be used for each line of the status line.
 The default builds the top status line from the various individual status
 options below.
-.It Ic status-interval Ar interval
+.It Ic status\-interval Ar interval
 Update the status line every
 .Ar interval
 seconds.
 By default, updates will occur every 15 seconds.
 A setting of zero disables redrawing at interval.
-.It Xo Ic status-justify
-.Op Ic left | centre | right | absolute-centre
+.It Xo Ic status\-justify
+.Op Ic left | centre | right | absolute\-centre
 .Xc
 Set the position of the window list in the status line: left, centre or right.
 centre puts the window list in the relative centre of the available free space;
-absolute-centre uses the centre of the entire horizontal space.
-.It Xo Ic status-keys
+absolute\-centre uses the centre of the entire horizontal space.
+.It Xo Ic status\-keys
 .Op Ic vi | emacs
 .Xc
 Use vi or emacs-style
@@ -4934,7 +4934,7 @@ or
 .Ev EDITOR
 environment variables are set and contain the string
 .Ql vi .
-.It Ic status-left Ar string
+.It Ic status\-left Ar string
 Display
 .Ar string
 (by default the session name) to the left of the status line.
@@ -4954,91 +4954,91 @@ section.
 Examples are:
 .Bd -literal -offset indent
 #(sysctl vm.loadavg)
-#[fg=yellow,bold]#(apm -l)%%#[default] [#S]
+#[fg=yellow,bold]#(apm \-l)%%#[default] [#S]
 .Ed
 .Pp
 The default is
 .Ql "[#S] " .
-.It Ic status-left-length Ar length
+.It Ic status\-left\-length Ar length
 Set the maximum
 .Ar length
 of the left component of the status line.
 The default is 10.
-.It Ic status-left-style Ar style
+.It Ic status\-left\-style Ar style
 Set the style of the left part of the status line.
 For how to specify
 .Ar style ,
 see the
 .Sx STYLES
 section.
-.It Xo Ic status-position
+.It Xo Ic status\-position
 .Op Ic top | bottom
 .Xc
 Set the position of the status line.
-.It Ic status-right Ar string
+.It Ic status\-right Ar string
 Display
 .Ar string
 to the right of the status line.
 By default, the current pane title in double quotes, the date and the time
 are shown.
 As with
-.Ic status-left ,
+.Ic status\-left ,
 .Ar string
 will be passed to
 .Xr strftime 3
 and character pairs are replaced.
-.It Ic status-right-length Ar length
+.It Ic status\-right\-length Ar length
 Set the maximum
 .Ar length
 of the right component of the status line.
 The default is 40.
-.It Ic status-right-style Ar style
+.It Ic status\-right\-style Ar style
 Set the style of the right part of the status line.
 For how to specify
 .Ar style ,
 see the
 .Sx STYLES
 section.
-.It Ic status-style Ar style
+.It Ic status\-style Ar style
 Set status line style.
 For how to specify
 .Ar style ,
 see the
 .Sx STYLES
 section.
-.It Ic update-environment[] Ar variable
+.It Ic update\-environment[] Ar variable
 Set list of environment variables to be copied into the session environment
 when a new session is created or an existing session is attached.
 Any variables that do not exist in the source environment are set to be
 removed from the session environment (as if
 .Fl r
 was given to the
-.Ic set-environment
+.Ic set\-environment
 command).
-.It Xo Ic visual-activity
+.It Xo Ic visual\-activity
 .Op Ic on | off | both
 .Xc
 If on, display a message instead of sending a bell when activity occurs in a
 window for which the
-.Ic monitor-activity
+.Ic monitor\-activity
 window option is enabled.
 If set to both, a bell and a message are produced.
-.It Xo Ic visual-bell
+.It Xo Ic visual\-bell
 .Op Ic on | off | both
 .Xc
 If on, a message is shown on a bell in a window for which the
-.Ic monitor-bell
+.Ic monitor\-bell
 window option is enabled instead of it being passed through to the
 terminal (which normally makes a sound).
 If set to both, a bell and a message are produced.
 Also see the
-.Ic bell-action
+.Ic bell\-action
 option.
-.It Xo Ic visual-silence
+.It Xo Ic visual\-silence
 .Op Ic on | off | both
 .Xc
 If
-.Ic monitor-silence
+.Ic monitor\-silence
 is enabled, prints a message after the interval has expired on a given window
 instead of sending a bell.
 If set to both, a bell and a message are produced.
@@ -5051,7 +5051,7 @@ copy mode.
 Available window options are:
 .Pp
 .Bl -tag -width Ds -compact
-.It Xo Ic aggressive-resize
+.It Xo Ic aggressive\-resize
 .Op Ic on | off
 .Xc
 Aggressively resize the chosen window.
@@ -5059,7 +5059,7 @@ This means that
 .Nm
 will resize the window to the size of the smallest or largest session
 (see the
-.Ic window-size
+.Ic window\-size
 option) for which it is the current window, rather than the session to
 which it is attached.
 The window may resize when the current window is changed on another
@@ -5067,59 +5067,59 @@ session; this option is good for full-screen programs which support
 .Dv SIGWINCH
 and poor for interactive programs such as shells.
 .Pp
-.It Xo Ic automatic-rename
+.It Xo Ic automatic\-rename
 .Op Ic on | off
 .Xc
 Control automatic window renaming.
 When this setting is enabled,
 .Nm
 will rename the window automatically using the format specified by
-.Ic automatic-rename-format .
+.Ic automatic\-rename\-format .
 This flag is automatically disabled for an individual window when a name
 is specified at creation with
-.Ic new-window
+.Ic new\-window
 or
-.Ic new-session ,
+.Ic new\-session ,
 or later with
-.Ic rename-window ,
+.Ic rename\-window ,
 or with a terminal escape sequence.
 It may be switched off globally with:
 .Bd -literal -offset indent
-set-option -wg automatic-rename off
+set\-option \-wg automatic\-rename off
 .Ed
 .Pp
-.It Ic automatic-rename-format Ar format
+.It Ic automatic\-rename\-format Ar format
 The format (see
 .Sx FORMATS )
 used when the
-.Ic automatic-rename
+.Ic automatic\-rename
 option is enabled.
 .Pp
-.It Ic clock-mode-colour Ar colour
+.It Ic clock\-mode\-colour Ar colour
 Set clock colour.
 .Pp
-.It Xo Ic clock-mode-style
-.Op Ic 12 | 24 | 12-with-seconds | 24-with-seconds
+.It Xo Ic clock\-mode\-style
+.Op Ic 12 | 24 | 12\-with\-seconds | 24\-with\-seconds
 .Xc
 Set clock hour format.
 .Pp
-.It Ic fill-character Ar character
+.It Ic fill\-character Ar character
 Set the character used to fill areas of the terminal unused by a window.
 .Pp
-.It Ic main-pane-height Ar height
-.It Ic main-pane-width Ar width
+.It Ic main\-pane\-height Ar height
+.It Ic main\-pane\-width Ar width
 Set the width or height of the main (left or top) pane in the
-.Ic main-horizontal ,
-.Ic main-horizontal-mirrored ,
-.Ic main-vertical ,
+.Ic main\-horizontal ,
+.Ic main\-horizontal\-mirrored ,
+.Ic main\-vertical ,
 or
-.Ic main-vertical-mirrored
+.Ic main\-vertical\-mirrored
 layouts.
 If suffixed by
 .Ql % ,
 this is a percentage of the window size.
 .Pp
-.It Ic copy-mode-match-style Ar style
+.It Ic copy\-mode\-match\-style Ar style
 Set the style of search matches in copy mode.
 For how to specify
 .Ar style ,
@@ -5127,7 +5127,7 @@ see the
 .Sx STYLES
 section.
 .Pp
-.It Ic copy-mode-mark-style Ar style
+.It Ic copy\-mode\-mark\-style Ar style
 Set the style of the line containing the mark in copy mode.
 For how to specify
 .Ar style ,
@@ -5135,7 +5135,7 @@ see the
 .Sx STYLES
 section.
 .Pp
-.It Ic copy-mode-current-match-style Ar style
+.It Ic copy\-mode\-current\-match\-style Ar style
 Set the style of the current search match in copy mode.
 For how to specify
 .Ar style ,
@@ -5143,10 +5143,10 @@ see the
 .Sx STYLES
 section.
 .Pp
-.It Ic copy-mode-position-format Ar format
+.It Ic copy\-mode\-position\-format Ar format
 Format of the position indicator in copy mode.
 .Pp
-.It Xo Ic mode-keys
+.It Xo Ic mode\-keys
 .Op Ic vi | emacs
 .Xc
 Use vi or emacs-style key bindings in copy mode.
@@ -5157,7 +5157,7 @@ or
 contains
 .Ql vi .
 .Pp
-.It Ic copy-mode-position-style Ar style
+.It Ic copy\-mode\-position\-style Ar style
 Set the style of the position indicator in copy mode.
 For how to specify
 .Ar style ,
@@ -5165,7 +5165,7 @@ see the
 .Sx STYLES
 section.
 .Pp
-.It Ic copy-mode-selection-style Ar style
+.It Ic copy\-mode\-selection\-style Ar style
 Set the style of the selection in copy mode.
 For how to specify
 .Ar style ,
@@ -5173,7 +5173,7 @@ see the
 .Sx STYLES
 section.
 .Pp
-.It Ic mode-style Ar style
+.It Ic mode\-style Ar style
 Set window modes style.
 For how to specify
 .Ar style ,
@@ -5181,19 +5181,19 @@ see the
 .Sx STYLES
 section.
 .Pp
-.It Xo Ic monitor-activity
+.It Xo Ic monitor\-activity
 .Op Ic on | off
 .Xc
 Monitor for activity in the window.
 Windows with activity are highlighted in the status line.
 .Pp
-.It Xo Ic monitor-bell
+.It Xo Ic monitor\-bell
 .Op Ic on | off
 .Xc
 Monitor for a bell in the window.
 Windows with a bell are highlighted in the status line.
 .Pp
-.It Xo Ic monitor-silence
+.It Xo Ic monitor\-silence
 .Op Ic interval
 .Xc
 Monitor for silence (no activity) in the window within
@@ -5203,33 +5203,33 @@ Windows that have been silent for the interval are highlighted in the
 status line.
 An interval of zero disables the monitoring.
 .Pp
-.It Ic other-pane-height Ar height
+.It Ic other\-pane\-height Ar height
 Set the height of the other panes (not the main pane) in the
-.Ic main-horizontal
+.Ic main\-horizontal
 and
-.Ic main-horizontal-mirrored
+.Ic main\-horizontal\-mirrored
 layouts.
 If this option is set to 0 (the default), it will have no effect.
 If both the
-.Ic main-pane-height
+.Ic main\-pane\-height
 and
-.Ic other-pane-height
+.Ic other\-pane\-height
 options are set, the main pane will grow taller to make the other panes the
 specified height, but will never shrink to do so.
 If suffixed by
 .Ql % ,
 this is a percentage of the window size.
 .Pp
-.It Ic other-pane-width Ar width
+.It Ic other\-pane\-width Ar width
 Like
-.Ic other-pane-height ,
+.Ic other\-pane\-height ,
 but set the width of other panes in the
-.Ic main-vertical
+.Ic main\-vertical
 and
-.Ic main-vertical-mirrored
+.Ic main\-vertical\-mirrored
 layouts.
 .Pp
-.It Ic pane-active-border-style Ar style
+.It Ic pane\-active\-border\-style Ar style
 Set the pane border style for the currently active pane.
 For how to specify
 .Ar style ,
@@ -5238,31 +5238,31 @@ see the
 section.
 Attributes are ignored.
 .Pp
-.It Ic pane-base-index Ar index
+.It Ic pane\-base\-index Ar index
 Like
-.Ic base-index ,
+.Ic base\-index ,
 but set the starting index for pane numbers.
 .Pp
-.It Ic pane-border-format Ar format
+.It Ic pane\-border\-format Ar format
 Set the text shown in pane border status lines.
 .Pp
-.It Xo Ic pane-border-indicators
+.It Xo Ic pane\-border\-indicators
 .Op Ic off | colour | arrows | both
 .Xc
 Indicate active pane by colouring only half of the border in windows with
 exactly two panes, by displaying arrow markers, by drawing both or neither.
 .Pp
-.It Ic pane-border-lines Ar type
+.It Ic pane\-border\-lines Ar type
 Set the type of characters used for drawing pane borders.
 .Ar type
 may be one of:
 .Bl -tag -width Ds
 .It single
-single lines using ACS or UTF-8 characters
+single lines using ACS or UTF\-8 characters
 .It double
-double lines using UTF-8 characters
+double lines using UTF\-8 characters
 .It heavy
-heavy lines using UTF-8 characters
+heavy lines using UTF\-8 characters
 .It simple
 simple ASCII characters
 .It number
@@ -5274,14 +5274,14 @@ space characters
 .Ql double
 and
 .Ql heavy
-will fall back to standard ACS line drawing when UTF-8 is not supported.
+will fall back to standard ACS line drawing when UTF\-8 is not supported.
 .Pp
-.It Xo Ic pane-border-status
+.It Xo Ic pane\-border\-status
 .Op Ic off | top | bottom
 .Xc
 Turn pane border status lines off or set their position.
 .Pp
-.It Ic pane-border-style Ar style
+.It Ic pane\-border\-style Ar style
 Set the pane border style for panes aside from the active pane.
 For how to specify
 .Ar style ,
@@ -5290,7 +5290,7 @@ see the
 section.
 Attributes are ignored.
 .Pp
-.It Ic popup-style Ar style
+.It Ic popup\-style Ar style
 Set the popup style.
 See the
 .Sx STYLES
@@ -5298,7 +5298,7 @@ section on how to specify
 .Ar style .
 Attributes are ignored.
 .Pp
-.It Ic popup-border-style Ar style
+.It Ic popup\-border\-style Ar style
 Set the popup border style.
 See the
 .Sx STYLES
@@ -5306,19 +5306,19 @@ section on how to specify
 .Ar style .
 Attributes are ignored.
 .Pp
-.It Ic popup-border-lines Ar type
+.It Ic popup\-border\-lines Ar type
 Set the type of characters used for drawing popup borders.
 .Ar type
 may be one of:
 .Bl -tag -width Ds
 .It single
-single lines using ACS or UTF-8 characters (default)
+single lines using ACS or UTF\-8 characters (default)
 .It rounded
-variation of single with rounded corners using UTF-8 characters
+variation of single with rounded corners using UTF\-8 characters
 .It double
-double lines using UTF-8 characters
+double lines using UTF\-8 characters
 .It heavy
-heavy lines using UTF-8 characters
+heavy lines using UTF\-8 characters
 .It simple
 simple ASCII characters
 .It padded
@@ -5330,9 +5330,9 @@ no border
 .Ql double
 and
 .Ql heavy
-will fall back to standard ACS line drawing when UTF-8 is not supported.
+will fall back to standard ACS line drawing when UTF\-8 is not supported.
 .Pp
-.It Xo Ic pane-scrollbars
+.It Xo Ic pane\-scrollbars
 .Op Ic off | modal | on
 .Xc
 When enabled, a character based scrollbar appears on the left or right
@@ -5354,9 +5354,9 @@ If set to
 the pane is narrowed only when the scrollbar is visible.
 .Pp
 See also
-.Ic pane-scrollbars-style .
+.Ic pane\-scrollbars\-style .
 .Pp
-.It Ic pane-scrollbars-style Ar style
+.It Ic pane\-scrollbars\-style Ar style
 Set the scrollbars style.
 For how to specify
 .Ar style ,
@@ -5372,12 +5372,12 @@ attribute sets the width of the scrollbar and the
 attribute the padding between the scrollbar and the pane.
 Other attributes are ignored.
 .Pp
-.It Xo Ic pane-scrollbars-position
+.It Xo Ic pane\-scrollbars\-position
 .Op Ic left | right
 .Xc
 Sets which side of the pane to display pane scrollbars on.
 .Pp
-.It Ic pane-status-current-style Ar style
+.It Ic pane\-status\-current\-style Ar style
 Set status line style for the currently active pane.
 For how to specify
 .Ar style ,
@@ -5385,7 +5385,7 @@ see the
 .Sx STYLES
 section.
 .Pp
-.It Ic pane-status-style Ar style
+.It Ic pane\-status\-style Ar style
 Set status line style for a single pane.
 For how to specify
 .Ar style ,
@@ -5393,7 +5393,7 @@ see the
 .Sx STYLES
 section.
 .Pp
-.It Ic session-status-current-style Ar style
+.It Ic session\-status\-current\-style Ar style
 Set status line style for the currently active session.
 For how to specify
 .Ar style ,
@@ -5401,7 +5401,7 @@ see the
 .Sx STYLES
 section.
 .Pp
-.It Ic session-status-style Ar style
+.It Ic session\-status\-style Ar style
 Set status line style for a single session.
 For how to specify
 .Ar style ,
@@ -5409,7 +5409,7 @@ see the
 .Sx STYLES
 section.
 .Pp
-.It Ic tiled-layout-max-columns Ar number
+.It Ic tiled\-layout\-max\-columns Ar number
 Set the maximum number of columns in the
 .Ic tiled
 layout.
@@ -5417,7 +5417,7 @@ A value of 0 (the default) means no limit.
 When a limit is set, panes are arranged to not exceed this number of columns,
 with additional panes stacked in extra rows.
 .Pp
-.It Ic window-status-activity-style Ar style
+.It Ic window\-status\-activity\-style Ar style
 Set status line style for windows with an activity alert.
 For how to specify
 .Ar style ,
@@ -5425,7 +5425,7 @@ see the
 .Sx STYLES
 section.
 .Pp
-.It Ic window-status-bell-style Ar style
+.It Ic window\-status\-bell\-style Ar style
 Set status line style for windows with a bell alert.
 For how to specify
 .Ar style ,
@@ -5433,12 +5433,12 @@ see the
 .Sx STYLES
 section.
 .Pp
-.It Ic window-status-current-format Ar string
+.It Ic window\-status\-current\-format Ar string
 Like
-.Ar window-status-format ,
+.Ar window\-status\-format ,
 but is the format used when the window is the current window.
 .Pp
-.It Ic window-status-current-style Ar style
+.It Ic window\-status\-current\-style Ar style
 Set status line style for the currently active window.
 For how to specify
 .Ar style ,
@@ -5446,7 +5446,7 @@ see the
 .Sx STYLES
 section.
 .Pp
-.It Ic window-status-format Ar string
+.It Ic window\-status\-format Ar string
 Set the format in which the window is displayed in the status line window list.
 See the
 .Sx FORMATS
@@ -5454,7 +5454,7 @@ and
 .Sx STYLES
 sections.
 .Pp
-.It Ic window-status-last-style Ar style
+.It Ic window\-status\-last\-style Ar style
 Set status line style for the last active window.
 For how to specify
 .Ar style ,
@@ -5462,11 +5462,11 @@ see the
 .Sx STYLES
 section.
 .Pp
-.It Ic window-status-separator Ar string
+.It Ic window\-status\-separator Ar string
 Sets the separator drawn between windows in the status line.
 The default is a single space character.
 .Pp
-.It Ic window-status-style Ar style
+.It Ic window\-status\-style Ar style
 Set status line style for a single window.
 For how to specify
 .Ar style ,
@@ -5474,7 +5474,7 @@ see the
 .Sx STYLES
 section.
 .Pp
-.It Xo Ic window-size
+.It Xo Ic window\-size
 .Ar largest | Ar smallest | Ar manual | Ar latest
 .Xc
 Configure how
@@ -5488,19 +5488,19 @@ the size of the smallest.
 If
 .Ar manual ,
 the size of a new window is set from the
-.Ic default-size
+.Ic default\-size
 option and windows are resized automatically.
 With
 .Ar latest ,
 .Nm
 uses the size of the client that had the most recent activity.
 See also the
-.Ic resize-window
+.Ic resize\-window
 command and the
-.Ic aggressive-resize
+.Ic aggressive\-resize
 option.
 .Pp
-.It Xo Ic wrap-search
+.It Xo Ic wrap\-search
 .Op Ic on | off
 .Xc
 If this option is set, searches will wrap around the end of the pane contents.
@@ -5510,7 +5510,7 @@ The default is on.
 Available pane options are:
 .Pp
 .Bl -tag -width Ds -compact
-.It Xo Ic allow-passthrough
+.It Xo Ic allow\-passthrough
 .Op Ic on | off | all
 .Xc
 Allow programs in the pane to bypass
@@ -5523,19 +5523,19 @@ If set to
 .Ic all ,
 they will be allowed even if the pane is invisible.
 .Pp
-.It Xo Ic allow-rename
+.It Xo Ic allow\-rename
 .Op Ic on | off
 .Xc
 Allow programs in the pane to change the window name using a terminal escape
 sequence (\eek...\ee\e\e).
 .Pp
-.It Xo Ic allow-set-title
+.It Xo Ic allow\-set\-title
 .Op Ic on | off
 .Xc
 Allow programs in the pane to change the title using the terminal escape
 sequences (\ee]2;...\ee\e\e or \ee]0;...\ee\e\e).
 .Pp
-.It Xo Ic alternate-screen
+.It Xo Ic alternate\-screen
 .Op Ic on | off
 .Xc
 This option configures whether programs running inside the pane may use the
@@ -5549,28 +5549,28 @@ The alternate screen feature preserves the contents of the window when an
 interactive application starts and restores it on exit, so that any output
 visible before the application starts reappears unchanged after it exits.
 .Pp
-.It Ic cursor-colour Ar colour
+.It Ic cursor\-colour Ar colour
 Set the colour of the cursor.
 .Pp
-.It Ic cursor-style Ar style
+.It Ic cursor\-style Ar style
 Set the style of the cursor.
 Available styles are:
 .Ic default ,
-.Ic blinking-block ,
+.Ic blinking\-block ,
 .Ic block ,
-.Ic blinking-underline ,
+.Ic blinking\-underline ,
 .Ic underline ,
-.Ic blinking-bar ,
+.Ic blinking\-bar ,
 .Ic bar .
 .Pp
-.It Ic pane-colours[] Ar colour
+.It Ic pane\-colours[] Ar colour
 The default colour palette.
 Each entry in the array defines the colour
 .Nm
 uses when the colour with that index is requested.
 The index may be from zero to 255.
 .Pp
-.It Xo Ic remain-on-exit
+.It Xo Ic remain\-on\-exit
 .Op Ic on | off | failed
 .Xc
 A pane with this flag set is not destroyed when the program running in it
@@ -5579,27 +5579,27 @@ If set to
 .Ic failed ,
 then only when the program exit status is not zero.
 The pane may be reactivated with the
-.Ic respawn-pane
+.Ic respawn\-pane
 command.
 .Pp
-.It Ic remain-on-exit-format Ar string
+.It Ic remain\-on\-exit\-format Ar string
 Set the text shown at the bottom of exited panes when
-.Ic remain-on-exit
+.Ic remain\-on\-exit
 is enabled.
 .Pp
-.It Xo Ic scroll-on-clear
+.It Xo Ic scroll\-on\-clear
 .Op Ic on | off
 .Xc
 When the entire screen is cleared and this option is on, scroll the contents of
 the screen into history before clearing it.
 .Pp
-.It Xo Ic synchronize-panes
+.It Xo Ic synchronize\-panes
 .Op Ic on | off
 .Xc
 Duplicate input to all other panes in the same window where this option is also
 on (only for panes that are not in any mode).
 .Pp
-.It Ic window-active-style Ar style
+.It Ic window\-active\-style Ar style
 Set the pane style when it is the active pane.
 For how to specify
 .Ar style ,
@@ -5607,7 +5607,7 @@ see the
 .Sx STYLES
 section.
 .Pp
-.It Ic window-style Ar style
+.It Ic window\-style Ar style
 Set the pane style.
 For how to specify
 .Ar style ,
@@ -5630,18 +5630,18 @@ order when the hook is triggered.
 Like options different hooks may be global or belong to a session, window or
 pane.
 Hooks may be configured with the
-.Ic set-hook
+.Ic set\-hook
 or
-.Ic set-option
+.Ic set\-option
 commands and displayed with
-.Ic show-hooks
+.Ic show\-hooks
 or
-.Ic show-options
+.Ic show\-options
 .Fl H .
 The following two commands are equivalent:
 .Bd -literal -offset indent.
-set-hook -g pane-mode-changed[42] \[aq]set -g status-left-style bg=red\[aq]
-set-option -g pane-mode-changed[42] \[aq]set -g status-left-style bg=red\[aq]
+set\-hook \-g pane\-mode\-changed[42] \[aq]set \-g status\-left\-style bg=red\[aq]
+set\-option \-g pane\-mode\-changed[42] \[aq]set \-g status\-left\-style bg=red\[aq]
 .Ed
 .Pp
 Setting a hook without specifying an array index clears the hook and sets the
@@ -5651,13 +5651,13 @@ A command's after
 hook is run after it completes, except when the command is run as part of a hook
 itself.
 They are named with an
-.Ql after-
+.Ql after\-
 prefix.
-For example, the following command adds a hook to select the even-vertical
+For example, the following command adds a hook to select the even\-vertical
 layout after every
-.Ic split-window :
+.Ic split\-window :
 .Bd -literal -offset indent
-set-hook -g after-split-window "selectl even-vertical"
+set\-hook \-g after\-split\-window "selectl even\-vertical"
 .Ed
 .Pp
 If a command fails, the
@@ -5665,7 +5665,7 @@ If a command fails, the
 hook will be fired.
 For example, this could be used to write to a log file:
 .Bd -literal -offset indent
-set-hook -g command-error "run-shell \\"echo 'a tmux command failed' >>/tmp/log\\""
+set\-hook \-g command\-error "run\-shell \\"echo 'a tmux command failed' >>/tmp/log\\""
 .Ed
 .Pp
 All the notifications listed in the
@@ -5674,83 +5674,83 @@ section are hooks (without any arguments), except
 .Ic %exit .
 The following additional hooks are available:
 .Bl -tag -width "XXXXXXXXXXXXXXXXXXXXXX"
-.It alert-activity
+.It alert\-activity
 Run when a window has activity.
 See
-.Ic monitor-activity .
-.It alert-bell
+.Ic monitor\-activity .
+.It alert\-bell
 Run when a window has received a bell.
 See
-.Ic monitor-bell .
-.It alert-silence
+.Ic monitor\-bell .
+.It alert\-silence
 Run when a window has been silent.
 See
-.Ic monitor-silence .
-.It client-active
+.Ic monitor\-silence .
+.It client\-active
 Run when a client becomes the latest active client of its session.
-.It client-attached
+.It client\-attached
 Run when a client is attached.
-.It client-detached
+.It client\-detached
 Run when a client is detached
-.It client-focus-in
+.It client\-focus\-in
 Run when focus enters a client
-.It client-focus-out
+.It client\-focus\-out
 Run when focus exits a client
-.It client-resized
+.It client\-resized
 Run when a client is resized.
-.It client-session-changed
+.It client\-session\-changed
 Run when a client's attached session is changed.
-.It client-light-theme
+.It client\-light\-theme
 Run when a client switches to a light theme.
-.It client-dark-theme
+.It client\-dark\-theme
 Run when a client switches to a dark theme.
-.It command-error
+.It command\-error
 Run when a command fails.
-.It pane-died
+.It pane\-died
 Run when the program running in a pane exits, but
-.Ic remain-on-exit
+.Ic remain\-on\-exit
 is on so the pane has not closed.
-.It pane-exited
+.It pane\-exited
 Run when the program running in a pane exits.
-.It pane-focus-in
+.It pane\-focus\-in
 Run when the focus enters a pane, if the
-.Ic focus-events
+.Ic focus\-events
 option is on.
-.It pane-focus-out
+.It pane\-focus\-out
 Run when the focus exits a pane, if the
-.Ic focus-events
+.Ic focus\-events
 option is on.
-.It pane-set-clipboard
+.It pane\-set\-clipboard
 Run when the terminal clipboard is set using the
 .Xr xterm 1
 escape sequence.
-.It session-created
+.It session\-created
 Run when a new session created.
-.It session-closed
+.It session\-closed
 Run when a session closed.
-.It session-renamed
+.It session\-renamed
 Run when a session is renamed.
-.It window-layout-changed
+.It window\-layout\-changed
 Run when a window layout is changed.
-.It window-linked
+.It window\-linked
 Run when a window is linked into a session.
-.It window-renamed
+.It window\-renamed
 Run when a window is renamed.
-.It window-resized
+.It window\-resized
 Run when a window is resized.
 This may be after the
-.Ar client-resized
+.Ar client\-resized
 hook is run.
-.It window-unlinked
+.It window\-unlinked
 Run when a window is unlinked from a session.
 .El
 .Pp
 Hooks are managed with these commands:
 .Bl -tag -width Ds
-.It Xo Ic set-hook
+.It Xo Ic set\-hook
 .Op Fl agpRuw
-.Op Fl t Ar target-pane
-.Ar hook-name
+.Op Fl t Ar target\-pane
+.Ar hook\-name
 .Op Ar command
 .Xc
 Without
@@ -5758,25 +5758,25 @@ Without
 sets (or with
 .Fl u
 unsets) hook
-.Ar hook-name
+.Ar hook\-name
 to
 .Ar command .
 The flags are the same as for
-.Ic set-option .
+.Ic set\-option .
 .Pp
 With
 .Fl R ,
 run
 .Ar hook-name
 immediately.
-.It Xo Ic show-hooks
+.It Xo Ic show\-hooks
 .Op Fl gpw
 .Op Fl t Ar target-pane
 .Op Ar hook
 .Xc
 Shows hooks.
 The flags are the same as for
-.Ic show-options .
+.Ic show\-options .
 .El
 .Sh MOUSE SUPPORT
 If the
@@ -5839,7 +5839,7 @@ binding, or the pane over which the wheel was scrolled for a
 binding).
 .Pp
 The
-.Ic send-keys
+.Ic send\-keys
 .Fl M
 flag may be used to forward a mouse event to a pane.
 .Pp
@@ -5892,15 +5892,15 @@ will include the string
 if the session is attached and the string
 .Ql not attached
 if it is unattached, or
-.Ql #{?automatic-rename,yes,no}
+.Ql #{?automatic\-rename,yes,no}
 will include
 .Ql yes
 if
-.Ic automatic-rename
+.Ic automatic\-rename
 is enabled, or
 .Ql no
 if not.
-.Ql #{?#{n:window_name},#{window_name} - }
+.Ql #{?#{n:window_name},#{window_name} \- }
 will include the window name with a dash separator if there is a window name, or
 the empty string if the window name is empty.
 .Ql #{?session_format,format1,window_format,format2,format3}
@@ -5972,7 +5972,7 @@ means to ignore case.
 For example:
 .Ql #{m:*foo*,#{host}}
 or
-.Ql #{m/ri:^A,MYVAR} .
+.Ql #{m/ri:\[ah]A,MYVAR} .
 A
 .Ql C
 performs a search for a
@@ -5987,7 +5987,7 @@ flag means search for a regular expression and
 .Ql i
 ignores case.
 For example:
-.Ql #{C/r:^Start}
+.Ql #{C/r:\[ah]Start}
 .Pp
 Numeric operators may be performed by prefixing two comma-separated alternatives
 with an
@@ -6003,7 +6003,7 @@ The available operators are:
 addition
 .Ql + ,
 subtraction
-.Ql - ,
+.Ql \- ,
 multiplication
 .Ql * ,
 division
@@ -6049,7 +6049,7 @@ Positive numbers count from the start of the string and negative from the end,
 so
 .Ql #{=5:pane_title}
 will include at most the first five characters of the pane title, or
-.Ql #{=-5:pane_title}
+.Ql #{=\-5:pane_title}
 the last five characters.
 A suffix or prefix may be given as a second argument - if provided then it is
 appended or prepended to the string if the length has been trimmed, for example
@@ -6097,7 +6097,7 @@ must be escaped as
 if the format is separately being passed through
 .Xr strftime 3 ,
 for example in the
-.Ic status-left
+.Ic status\-left
 option):
 .Ql #{t/f/%%H#:%%M:window_activity} ,
 see
@@ -6123,9 +6123,9 @@ becomes
 .Ql ## ) .
 .Ql E:\&
 will expand the format twice, for example
-.Ql #{E:status-left}
+.Ql #{E:status\-left}
 is the result of expanding the content of the
-.Ic status-left
+.Ic status\-left
 option rather than the option itself.
 .Ql T:\&
 is like
@@ -6162,7 +6162,7 @@ For each, two comma-separated formats may be given:
 the second is used for the current window, active pane, or active session.
 For example, to get a list of windows formatted like the status line:
 .Bd -literal -offset indent
-#{W:#{E:window-status-format} ,#{E:window-status-current-format} }
+#{W:#{E:window\-status\-format} ,#{E:window\-status\-current\-format} }
 .Ed
 .Pp
 Within the
@@ -6218,7 +6218,7 @@ with
 throughout.
 .Pp
 Multiple modifiers may be separated with a semicolon (;) as in
-.Ql #{T;=10:status-left} ,
+.Ql #{T;=10:status\-left} ,
 which limits the resulting
 .Xr strftime 3 -expanded
 string to at most 10 characters.
@@ -6285,7 +6285,7 @@ The following variables are available, where appropriate:
 .It Li "client_tty" Ta "" Ta "Pseudo terminal of client"
 .It Li "client_uid" Ta "" Ta "UID of client process"
 .It Li "client_user" Ta "" Ta "User of client process"
-.It Li "client_utf8" Ta "" Ta "1 if client supports UTF-8"
+.It Li "client_utf8" Ta "" Ta "1 if client supports UTF\-8"
 .It Li "client_width" Ta "" Ta "Width of client"
 .It Li "client_written" Ta "" Ta "Bytes written to client"
 .It Li "command" Ta "" Ta "Name of command in use, if any"
@@ -6343,7 +6343,7 @@ The following variables are available, where appropriate:
 .It Li "mouse_standard_flag" Ta "" Ta "Pane mouse standard flag"
 .It Li "mouse_status_line" Ta "" Ta "Status line on which mouse event took place"
 .It Li "mouse_status_range" Ta "" Ta "Range type or argument of mouse event on status line"
-.It Li "mouse_utf8_flag" Ta "" Ta "Pane mouse UTF-8 flag"
+.It Li "mouse_utf8_flag" Ta "" Ta "Pane mouse UTF\-8 flag"
 .It Li "mouse_word" Ta "" Ta "Word under mouse, if any"
 .It Li "mouse_x" Ta "" Ta "Mouse X position, if any"
 .It Li "mouse_y" Ta "" Ta "Mouse Y position, if any"
@@ -6483,10 +6483,10 @@ The following variables are available, where appropriate:
 .Nm
 offers various options to specify the colour and attributes of aspects of the
 interface, for example
-.Ic status-style
+.Ic status\-style
 for the status line.
 In addition, embedded styles may be specified in format options, such as
-.Ic status-left ,
+.Ic status\-left ,
 by enclosing them in
 .Ql #[
 and
@@ -6495,7 +6495,7 @@ and
 A style may be the single term
 .Ql default
 to specify the default style (which may come from an option, for example
-.Ic status-style
+.Ic status\-style
 in the status line) or a space
 or comma separated list of the following:
 .Bl -tag -width Ds
@@ -6542,10 +6542,10 @@ Set no attributes (turn off any active attributes).
 .Ic italics ,
 .Ic overline ,
 .Ic strikethrough ,
-.Ic double-underscore ,
-.Ic curly-underscore ,
-.Ic dotted-underscore ,
-.Ic dashed-underscore
+.Ic double\-underscore ,
+.Ic curly\-underscore ,
+.Ic dotted\-underscore ,
+.Ic dashed\-underscore
 .Xc
 Set an attribute.
 Any of the attributes may be prefixed with
@@ -6569,38 +6569,38 @@ may be a column count or a percentage (for example
 .Ql 50% ) .
 .It Xo Ic list=on ,
 .Ic list=focus ,
-.Ic list=left-marker ,
-.Ic list=right-marker ,
+.Ic list=left\-marker ,
+.Ic list=right\-marker ,
 .Ic nolist
 .Xc
 Mark the position of the various window list components in the
-.Ic status-format
+.Ic status\-format
 option:
 .Ic list=on
 marks the start of the list;
 .Ic list=focus
 is the part of the list that should be kept in focus if the entire list won't
 fit in the available space (typically the current window);
-.Ic list=left-marker
+.Ic list=left\-marker
 and
-.Ic list=right-marker
+.Ic list=right\-marker
 mark the text to be used to mark that text has been trimmed from the left or
 right of the list if there is not enough space.
 .It Ic noattr
 Do not copy attributes from the default style.
-.It Xo Ic push-default ,
-.Ic pop-default
+.It Xo Ic push\-default ,
+.Ic pop\-default
 .Xc
 Store the current colours and attributes as the default or reset to the previous
 default.
 A
-.Ic push-default
+.Ic push\-default
 affects any subsequent use of the
 .Ic default
 term until a
-.Ic pop-default .
+.Ic pop\-default .
 Only one default may be pushed (each
-.Ic push-default
+.Ic push\-default
 replaces the previous saved default).
 .It Xo Ic range=left ,
 .Ic range=right ,
@@ -6611,7 +6611,7 @@ replaces the previous saved default).
 .Ic norange
 .Xc
 Mark a range for mouse events in the
-.Ic status-format
+.Ic status\-format
 option.
 When a mouse event occurs in the
 .Ic range=left
@@ -6654,7 +6654,7 @@ will be available in the
 format variable.
 .Ql X
 must be at most 15 bytes in length.
-.It Ic set-default
+.It Ic set\-default
 Set the current colours and attributes as the default, overwriting any previous
 default.
 The previous default cannot be restored.
@@ -6683,13 +6683,13 @@ active pane.
 .Nm
 itself may set the title of the terminal in which the client is running, see
 the
-.Ic set-titles
+.Ic set\-titles
 option.
 .Pp
 A session's name is set with the
-.Ic new-session
+.Ic new\-session
 and
-.Ic rename-session
+.Ic rename\-session
 commands.
 A window's name is set with one of:
 .Bl -enum -width Ds
@@ -6697,12 +6697,12 @@ A window's name is set with one of:
 A command argument (such as
 .Fl n
 for
-.Ic new-window
+.Ic new\-window
 or
-.Ic new-session ) .
+.Ic new\-session ) .
 .It
 An escape sequence (if the
-.Ic allow-rename
+.Ic allow\-rename
 option is turned on):
 .Bd -literal -offset indent
 $ printf \[aq]\e033kWINDOW_NAME\e033\e\e\[aq]
@@ -6711,7 +6711,7 @@ $ printf \[aq]\e033kWINDOW_NAME\e033\e\e\[aq]
 Automatic renaming, which sets the name to the active command in the window's
 active pane.
 See the
-.Ic automatic-rename
+.Ic automatic\-rename
 option.
 .El
 .Pp
@@ -6722,7 +6722,7 @@ $ printf \[aq]\e033]2;My Title\e033\e\e\[aq]
 .Ed
 .Pp
 It can also be modified with the
-.Ic select-pane
+.Ic select\-pane
 .Fl T
 command.
 .Sh GLOBAL AND SESSION ENVIRONMENT
@@ -6737,7 +6737,7 @@ If a variable exists in both, the value from the session environment is used.
 The result is the initial environment passed to the new process.
 .Pp
 The
-.Ic update-environment
+.Ic update\-environment
 session option may be used to update the session environment from the client
 when a new session is created or an old reattached.
 .Nm
@@ -6758,7 +6758,7 @@ section).
 Commands to alter and view the environment are:
 .Bl -tag -width Ds
 .Tg setenv
-.It Xo Ic set-environment
+.It Xo Ic set\-environment
 .Op Fl Fhgru
 .Op Fl t Ar target-session
 .Ar variable Op Ar value
@@ -6784,7 +6784,7 @@ new process.
 .Fl h
 marks the variable as hidden.
 .Tg showenv
-.It Xo Ic show-environment
+.It Xo Ic show\-environment
 .Op Fl hgs
 .Op Fl t Ar target-session
 .Op Ar variable
@@ -6798,7 +6798,7 @@ If
 .Ar variable
 is omitted, all variables are shown.
 Variables removed from the environment are prefixed with
-.Ql - .
+.Ql \- .
 If
 .Fl s
 is used, the output is formatted as a set of Bourne shell commands.
@@ -6818,58 +6818,60 @@ session in square brackets; the window list; the title of the active pane
 in double quotes; and the time and date.
 .Pp
 Each line of the status line is configured with the
-.Ic status-format
+.Ic status\-format
 option.
 The default is made of three parts: configurable left and right sections (which
 may contain dynamic content such as the time or output from a shell command,
 see the
-.Ic status-left ,
-.Ic status-left-length ,
-.Ic status-right ,
+.Ic status\-left ,
+.Ic status\-left\-length ,
+.Ic status\-right ,
 and
-.Ic status-right-length
+.Ic status\-right\-length
 options below), and a central window list.
 By default, the window list shows the index, name and (if any) flag of the
 windows present in the current session in ascending numerical order.
 It may be customised with the
-.Ar window-status-format
+.Ar window\-status\-format
 and
-.Ar window-status-current-format
+.Ar window\-status\-current\-format
 options.
 The flag is one of the following symbols appended to the window name:
 .Bl -column "Symbol" "Meaning" -offset indent
 .It Sy "Symbol" Ta Sy "Meaning"
 .It Li "*" Ta "Denotes the current window."
-.It Li "-" Ta "Marks the last window (previously selected)."
+.It Li "\-" Ta "Marks the last window (previously selected)."
 .It Li "#" Ta "Window activity is monitored and activity has been detected."
 .It Li "\&!" Ta "Window bells are monitored and a bell has occurred in the window."
-.It Li "\[ti]" Ta "The window has been silent for the monitor-silence interval."
+.It Li "\[ti]" Ta "The window has been silent for the
+.Ic monitor\-silence
+interval."
 .It Li "M" Ta "The window contains the marked pane."
 .It Li "Z" Ta "The window's active pane is zoomed."
 .El
 .Pp
 The # symbol relates to the
-.Ic monitor-activity
+.Ic monitor\-activity
 window option.
 The window name is printed in inverted colours if an alert (bell, activity or
 silence) is present.
 .Pp
 The colour and attributes of the status line may be configured, the entire
 status line using the
-.Ic status-style
+.Ic status\-style
 session option and individual windows using the
-.Ic window-status-style
+.Ic window\-status\-style
 window option.
 .Pp
 The status line is automatically refreshed at interval if it has changed, the
 interval may be controlled with the
-.Ic status-interval
+.Ic status\-interval
 session option.
 .Pp
 Commands related to the status line are as follows:
 .Bl -tag -width Ds
 .Tg clearphist
-.It Xo Ic clear-prompt-history
+.It Xo Ic clear\-prompt\-history
 .Op Fl T Ar prompt-type
 .Xc
 .D1 Pq alias: Ic clearphist
@@ -6879,10 +6881,10 @@ If
 .Fl T
 is omitted, then clear history for all types.
 See
-.Ic command-prompt
+.Ic command\-prompt
 for possible values for
 .Ar prompt-type .
-.It Xo Ic command-prompt
+.It Xo Ic command\-prompt
 .Op Fl 1beFiklN
 .Op Fl I Ar inputs
 .Op Fl p Ar prompts
@@ -6977,7 +6979,7 @@ and
 .Pp
 The following keys have a special meaning in the command prompt, depending
 on the value of the
-.Ic status-keys
+.Ic status\-keys
 option:
 .Bl -column "FunctionXXXXXXXXXXXXXXXXXXXXXXXXX" "viXXXX" "emacsX" -offset indent
 .It Sy "Function" Ta Sy "vi" Ta Sy "emacs"
@@ -7004,7 +7006,7 @@ With
 the prompt is shown in the background and the invoking client does not exit
 until it is dismissed.
 .Tg confirm
-.It Xo Ic confirm-before
+.It Xo Ic confirm\-before
 .Op Fl by
 .Op Fl c Ar confirm-key
 .Op Fl p Ar prompt
@@ -7021,7 +7023,7 @@ is given,
 is the prompt to display; otherwise a prompt is constructed from
 .Ar command .
 It may contain the special character sequences supported by the
-.Ic status-left
+.Ic status\-left
 option.
 With
 .Fl b ,
@@ -7036,7 +7038,7 @@ changes the confirmation key to
 the default is
 .Ql y .
 .Tg menu
-.It Xo Ic display-menu
+.It Xo Ic display\-menu
 .Op Fl OM
 .Op Fl b Ar border-lines
 .Op Fl c Ar target-client
@@ -7067,7 +7069,7 @@ The name and command are formats, see the
 and
 .Sx STYLES
 sections.
-If the name begins with a hyphen (-), then the item is disabled (shown dim) and
+If the name begins with a hyphen (\-), then the item is disabled (shown dim) and
 may not be chosen.
 The name may be empty for a separator line, in which case both the key and
 command should be omitted.
@@ -7075,7 +7077,7 @@ command should be omitted.
 .Fl b
 sets the type of characters used for drawing menu borders.
 See
-.Ic popup-border-lines
+.Ic popup\-border\-lines
 for possible values for
 .Ar border-lines .
 .Pp
@@ -7160,7 +7162,7 @@ The following keys are available in menus:
 .It Li "q" Ta "Exit menu"
 .El
 .Tg display
-.It Xo Ic display-message
+.It Xo Ic display\-message
 .Op Fl aCIlNpv
 .Op Fl c Ar target-client
 .Op Fl d Ar delay
@@ -7179,7 +7181,7 @@ milliseconds.
 If
 .Ar delay
 is not given, the
-.Ic display-time
+.Ic display\-time
 option is used; a delay of zero waits for a key press.
 .Ql N
 ignores key presses and closes only after the delay expires.
@@ -7210,7 +7212,7 @@ lists the format variables and their values.
 forwards any input read from stdin to the empty pane given by
 .Ar target-pane .
 .Tg popup
-.It Xo Ic display-popup
+.It Xo Ic display\-popup
 .Op Fl BCEkN
 .Op Fl b Ar border-lines
 .Op Fl c Ar target-client
@@ -7269,7 +7271,7 @@ or
 and
 .Fl y
 give the position of the popup, they have the same meaning as for the
-.Ic display-menu
+.Ic display\-menu
 command.
 .Fl w
 and
@@ -7289,7 +7291,7 @@ is specified, the
 .Fl b
 option is ignored.
 See
-.Ic popup-border-lines
+.Ic popup\-border\-lines
 for possible values for
 .Ar border-lines .
 .Pp
@@ -7314,9 +7316,14 @@ The
 flag closes any popup on the client.
 .Pp
 .Fl N
-disables any previously specified -E, -EE, or -k option.
+disables any previously specified
+.Fl E ,
+.Fl EE ,
+or
+.Fl k
+option.
 .Tg showphist
-.It Xo Ic show-prompt-history
+.It Xo Ic show\-prompt\-history
 .Op Fl T Ar prompt-type
 .Xc
 .D1 Pq alias: Ic showphist
@@ -7326,7 +7333,7 @@ If
 .Fl T
 is omitted, then show history for all types.
 See
-.Ic command-prompt
+.Ic command\-prompt
 for possible values for
 .Ar prompt-type .
 .El
@@ -7336,48 +7343,48 @@ maintains a set of named
 .Em paste buffers .
 Each buffer may be either explicitly or automatically named.
 Explicitly named buffers are named when created with the
-.Ic set-buffer
+.Ic set\-buffer
 or
-.Ic load-buffer
+.Ic load\-buffer
 commands, or by renaming an automatically named buffer with
-.Ic set-buffer
+.Ic set\-buffer
 .Fl n .
 Automatically named buffers are given a name such as
 .Ql buffer0001 ,
 .Ql buffer0002
 and so on.
 When the
-.Ic buffer-limit
+.Ic buffer\-limit
 option is reached, the oldest automatically named buffer is deleted.
 Explicitly named buffers are not subject to
-.Ic buffer-limit
+.Ic buffer\-limit
 and may be deleted with the
-.Ic delete-buffer
+.Ic delete\-buffer
 command.
 .Pp
 Buffers may be added using
-.Ic copy-mode
+.Ic copy\-mode
 or the
-.Ic set-buffer
+.Ic set\-buffer
 and
-.Ic load-buffer
+.Ic load\-buffer
 commands, and pasted into a window using the
-.Ic paste-buffer
+.Ic paste\-buffer
 command.
 If a buffer command is used and no buffer is specified, the most
 recently added automatically named buffer is assumed.
 .Pp
 A configurable history buffer is also maintained for each window.
 By default, up to 2000 lines are kept; this can be altered with the
-.Ic history-limit
+.Ic history\-limit
 option (see the
-.Ic set-option
+.Ic set\-option
 command above).
 .Pp
 The buffer commands are as follows:
 .Bl -tag -width Ds
 .It Xo
-.Ic choose-buffer
+.Ic choose\-buffer
 .Op Fl NryZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
@@ -7428,7 +7435,7 @@ is replaced by the buffer name in
 and the result executed as a command.
 If
 .Ar template
-is not given, "paste-buffer -p -b \[aq]%%\[aq]" is used.
+is not given, "paste\-buffer \-p \-b \[aq]%%\[aq]" is used.
 .Pp
 .Fl O
 specifies the initial sort order: one of
@@ -7451,7 +7458,7 @@ a format for each shortcut key; both are evaluated once for each line.
 starts without the preview.
 This command works only if at least one client is attached.
 .Tg clearhist
-.It Xo Ic clear-history
+.It Xo Ic clear\-history
 .Op Fl H
 .Op Fl t Ar target-pane
 .Xc
@@ -7460,13 +7467,13 @@ Remove and free the history for the specified pane.
 .Fl H
 also removes all hyperlinks.
 .Tg deleteb
-.It Ic delete-buffer Op Fl b Ar buffer-name
+.It Ic delete\-buffer Op Fl b Ar buffer-name
 .D1 Pq alias: Ic deleteb
 Delete the buffer named
 .Ar buffer-name ,
 or the most recently added automatically named buffer if not specified.
 .Tg lsb
-.It Xo Ic list-buffers
+.It Xo Ic list\-buffers
 .Op Fl r
 .Op Fl F Ar format
 .Op Fl f Ar filter
@@ -7491,7 +7498,7 @@ or
 (time).
 .Fl r
 reverses the sort order.
-.It Xo Ic load-buffer
+.It Xo Ic load\-buffer
 .Op Fl w
 .Op Fl b Ar buffer-name
 .Op Fl t Ar target-client
@@ -7511,10 +7518,10 @@ escape sequence, if possible.
 If
 .Ar path
 is
-.Ql - ,
+.Ql \- ,
 the contents are read from stdin.
 .Tg pasteb
-.It Xo Ic paste-buffer
+.It Xo Ic paste\-buffer
 .Op Fl dprS
 .Op Fl b Ar buffer-name
 .Op Fl s Ar separator
@@ -7544,7 +7551,7 @@ If
 is specified, paste bracket control codes are inserted around the
 buffer if the application has requested bracketed paste mode.
 .Tg saveb
-.It Xo Ic save-buffer
+.It Xo Ic save\-buffer
 .Op Fl a
 .Op Fl b Ar buffer-name
 .Ar path
@@ -7558,14 +7565,14 @@ option appends to rather than overwriting the file.
 If
 .Ar path
 is
-.Ql - ,
+.Ql \- ,
 the contents are written to stdout.
-.It Xo Ic set-buffer
+.It Xo Ic set\-buffer
 .Op Fl aw
 .Op Fl b Ar buffer-name
 .Op Fl t Ar target-client
 .Tg setb
-.Op Fl n Ar new-buffer-name
+.Op Fl n Ar new\-buffer\-name
 .Ar data
 .Xc
 .D1 Pq alias: Ic setb
@@ -7586,7 +7593,7 @@ The
 option renames the buffer to
 .Ar new-buffer-name .
 .Tg showb
-.It Xo Ic show-buffer
+.It Xo Ic show\-buffer
 .Op Fl b Ar buffer-name
 .Xc
 .D1 Pq alias: Ic showb
@@ -7595,10 +7602,10 @@ Display the contents of the specified buffer.
 .Sh MISCELLANEOUS
 Miscellaneous commands are as follows:
 .Bl -tag -width Ds
-.It Ic clock-mode Op Fl t Ar target-pane
+.It Ic clock\-mode Op Fl t Ar target-pane
 Display a large clock.
 .Tg if
-.It Xo Ic if-shell
+.It Xo Ic if\-shell
 .Op Fl bF
 .Op Fl t Ar target-pane
 .Ar shell-command command
@@ -7632,13 +7639,13 @@ is given,
 is not executed but considered success if neither empty nor zero (after formats
 are expanded).
 .Tg lock
-.It Ic lock-server
+.It Ic lock\-server
 .D1 Pq alias: Ic lock
 Lock each client individually by running the command specified by the
-.Ic lock-command
+.Ic lock\-command
 option.
 .Tg run
-.It Xo Ic run-shell
+.It Xo Ic run\-shell
 .Op Fl bCE
 .Op Fl c Ar start-directory
 .Op Fl d Ar delay
@@ -7681,20 +7688,20 @@ specified by
 or the current pane if omitted) after the command finishes.
 If the command fails, the exit status is also displayed.
 .Tg wait
-.It Xo Ic wait-for
+.It Xo Ic wait\-for
 .Op Fl L | S | U
 .Ar channel
 .Xc
 .D1 Pq alias: Ic wait
 When used without options, prevents the client from exiting until woken using
-.Ic wait-for
+.Ic wait\-for
 .Fl S
 with the same channel.
 When
 .Fl L
 is used, the channel is locked and any clients that try to lock the same
 channel are made to wait until the channel is unlocked with
-.Ic wait-for
+.Ic wait\-for
 .Fl U .
 .El
 .Sh EXIT MESSAGES
@@ -7709,7 +7716,7 @@ The client was detached normally.
 The client was detached and its parent sent the
 .Dv SIGHUP
 signal (for example with
-.Ic detach-client
+.Ic detach\-client
 .Fl P ) .
 .It lost tty
 The client's
@@ -7736,7 +7743,7 @@ The server crashed or otherwise exited without telling the client the reason.
 understands some unofficial extensions to
 .Xr terminfo 5 .
 It is not normally necessary to set these manually, instead the
-.Ic terminal-features
+.Ic terminal\-features
 option should be used.
 .Bl -tag -width Ds
 .It Em \&AX
@@ -7848,7 +7855,7 @@ capability.
 .It Em \&Ms
 Store the current buffer in the host terminal's selection (clipboard).
 See the
-.Em set-clipboard
+.Em set\-clipboard
 option above and the
 .Xr xterm 1
 man page.
@@ -7892,7 +7899,7 @@ For example:
 .Ed
 .Pp
 The
-.Ic refresh-client
+.Ic refresh\-client
 .Fl C
 command may be used to set the size of a client in control mode.
 .Pp
@@ -7903,20 +7910,20 @@ A notification will never occur inside an output block.
 .Pp
 The following notifications are defined:
 .Bl -tag -width Ds
-.It Ic %client-detached Ar client
+.It Ic %client\-detached Ar client
 The client has detached.
-.It Ic %client-session-changed Ar client session-id name
+.It Ic %client\-session\-changed Ar client session-id name
 The client is now attached to the session with ID
 .Ar session-id ,
 which is named
 .Ar name .
-.It Ic %config-error Ar error
+.It Ic %config\-error Ar error
 An error has happened in a configuration file.
 .It Ic %continue Ar pane-id
 The pane has been continued after being paused (if the
-.Ar pause-after
+.Ar pause\-after
 flag is set, see
-.Ic refresh-client
+.Ic refresh\-client
 .Fl A ) .
 .It Ic %exit Op Ar reason
 The
@@ -7926,11 +7933,11 @@ or an error occurred.
 If present,
 .Ar reason
 describes why the client exited.
-.It Ic %extended-output Ar pane-id Ar age Ar ... \&  : Ar value
+.It Ic %extended\-output Ar pane-id Ar age Ar ... \&  : Ar value
 New form of
 .Ic %output
 sent when the
-.Ar pause-after
+.Ar pause\-after
 flag is set.
 .Ar age
 is the time in milliseconds for which tmux had buffered the output before it
@@ -7938,7 +7945,7 @@ was sent.
 Any subsequent arguments up until a single
 .Ql \&:
 are for future use and should be ignored.
-.It Xo Ic %layout-change
+.It Xo Ic %layout\-change
 .Ar window-id
 .Ar window-layout
 .Ar window-visible-layout
@@ -7955,44 +7962,44 @@ and the window flags are
 .Ar window-flags .
 .It Ic %message Ar message
 A message sent with the
-.Ic display-message
+.Ic display\-message
 command.
 .It Ic %output Ar pane-id Ar value
 A window pane produced output.
 .Ar value
 escapes non-printable characters and backslash as octal \\xxx.
-.It Ic %pane-mode-changed Ar pane-id
+.It Ic %pane\-mode\-changed Ar pane-id
 The pane with ID
 .Ar pane-id
 has changed mode.
-.It Ic %paste-buffer-changed Ar name
+.It Ic %paste\-buffer\-changed Ar name
 Paste buffer
 .Ar name
 has been changed.
-.It Ic %paste-buffer-deleted Ar name
+.It Ic %paste\-buffer\-deleted Ar name
 Paste buffer
 .Ar name
 has been deleted.
 .It Ic %pause Ar pane-id
 The pane has been paused (if the
-.Ar pause-after
+.Ar pause\-after
 flag is set).
-.It Ic %session-changed Ar session-id Ar name
+.It Ic %session\-changed Ar session-id Ar name
 The client is now attached to the session with ID
 .Ar session-id ,
 which is named
 .Ar name .
-.It Ic %session-renamed Ar name
+.It Ic %session\-renamed Ar name
 The current session was renamed to
 .Ar name .
-.It Ic %session-window-changed Ar session-id Ar window-id
+.It Ic %session\-window\-changed Ar session-id Ar window-id
 The session with ID
 .Ar session-id
 changed its active window to the window with ID
 .Ar window-id .
-.It Ic %sessions-changed
+.It Ic %sessions\-changed
 A session was created or destroyed.
-.It Xo Ic %subscription-changed
+.It Xo Ic %subscription\-changed
 .Ar name
 .Ar session-id
 .Ar window-id
@@ -8005,39 +8012,39 @@ The value of the format associated with subscription
 has changed to
 .Ar value .
 See
-.Ic refresh-client
+.Ic refresh\-client
 .Fl B .
 Any arguments after
 .Ar pane-id
 up until a single
 .Ql \&:
 are for future use and should be ignored.
-.It Ic %unlinked-window-add Ar window-id
+.It Ic %unlinked\-window\-add Ar window-id
 The window with ID
 .Ar window-id
 was created but is not linked to the current session.
-.It Ic %unlinked-window-close Ar window-id
+.It Ic %unlinked\-window\-close Ar window-id
 The window with ID
 .Ar window-id ,
 which is not linked to the current session, was closed.
-.It Ic %unlinked-window-renamed Ar window-id
+.It Ic %unlinked\-window\-renamed Ar window-id
 The window with ID
 .Ar window-id ,
 which is not linked to the current session, was renamed.
-.It Ic %window-add Ar window-id
+.It Ic %window\-add Ar window-id
 The window with ID
 .Ar window-id
 was linked to the current session.
-.It Ic %window-close Ar window-id
+.It Ic %window\-close Ar window-id
 The window with ID
 .Ar window-id
 closed.
-.It Ic %window-pane-changed Ar window-id Ar pane-id
+.It Ic %window\-pane\-changed Ar window-id Ar pane-id
 The active pane in the window with ID
 .Ar window-id
 changed to the pane with ID
 .Ar pane-id .
-.It Ic %window-renamed Ar window-id Ar name
+.It Ic %window\-renamed Ar window-id Ar name
 The window with ID
 .Ar window-id
 was renamed to
@@ -8055,9 +8062,9 @@ and
 .Ev VISUAL
 is unset, use vi-style key bindings.
 Overridden by the
-.Ic mode-keys
+.Ic mode\-keys
 and
-.Ic status-keys
+.Ic status\-keys
 options.
 .It Ev HOME
 The user's login directory.
@@ -8068,12 +8075,12 @@ database is consulted.
 The character encoding
 .Xr locale 1 .
 It is used for two separate purposes.
-For output to the terminal, UTF-8 is used if the
+For output to the terminal, UTF\-8 is used if the
 .Fl u
 option is given or if
 .Ev LC_CTYPE
 contains
-.Qq UTF-8
+.Qq UTF\-8
 or
 .Qq UTF8 .
 Otherwise, only ASCII characters are written and non-ASCII characters
@@ -8081,18 +8088,18 @@ are replaced with underscores
 .Pq Ql _ .
 For input,
 .Nm
-always runs with a UTF-8 locale.
-If en_US.UTF-8 is provided by the operating system, it is used and
+always runs with a UTF\-8 locale.
+If en_US.UTF\-8 is provided by the operating system, it is used and
 .Ev LC_CTYPE
 is ignored for input.
 Otherwise,
 .Ev LC_CTYPE
 tells
 .Nm
-what the UTF-8 locale is called on the current system.
+what the UTF\-8 locale is called on the current system.
 If the locale specified by
 .Ev LC_CTYPE
-is not available or is not a UTF-8 locale,
+is not available or is not a UTF\-8 locale,
 .Nm
 exits with an error message.
 .It Ev LC_TIME
@@ -8111,7 +8118,7 @@ is used instead.
 .It Ev SHELL
 The absolute path to the default shell for new windows.
 See the
-.Ic default-shell
+.Ic default\-shell
 option for details.
 .It Ev TMUX_TMPDIR
 The parent directory of the directory containing the server sockets.
@@ -8123,9 +8130,9 @@ If the command specified in this variable contains the string
 .Ql vi ,
 use vi-style key bindings.
 Overridden by the
-.Ic mode-keys
+.Ic mode\-keys
 and
-.Ic status-keys
+.Ic status\-keys
 options.
 .El
 .Sh FILES
@@ -8145,10 +8152,12 @@ To create a new
 session running
 .Xr vi 1 :
 .Pp
-.Dl $ tmux new-session vi
+.Dl $ tmux new\-session vi
 .Pp
 Most commands have a shorter form, known as an alias.
-For new-session, this is
+For
+.Ic new\-session ,
+this is
 .Ic new :
 .Pp
 .Dl $ tmux new vi
@@ -8157,7 +8166,7 @@ Alternatively, the shortest unambiguous form of a command is accepted.
 If there are several options, they are listed:
 .Bd -literal -offset indent
 $ tmux n
-ambiguous command: n, could be: new-session, new-window, next-window
+ambiguous command: n, could be: new\-session, new\-window, next\-window
 .Ed
 .Pp
 Within an active session, a new window may be created by typing
@@ -8186,7 +8195,7 @@ A session may be detached using
 .Xr ssh 1
 disconnection) and reattached with:
 .Pp
-.Dl $ tmux attach-session
+.Dl $ tmux attach\-session
 .Pp
 Typing
 .Ql C-b \&?
@@ -8204,29 +8213,29 @@ Common examples include:
 .Pp
 Changing the default prefix key:
 .Bd -literal -offset indent
-set-option -g prefix C-a
-unbind-key C-b
-bind-key C-a send-prefix
+set\-option \-g prefix C\-a
+unbind\-key C\-b
+bind\-key C\-a send\-prefix
 .Ed
 .Pp
 Turning the status line off, or changing its colour:
 .Bd -literal -offset indent
-set-option -g status off
-set-option -g status-style bg=blue
+set\-option \-g status off
+set\-option \-g status\-style bg=blue
 .Ed
 .Pp
 Setting other options, such as the default command,
 or locking after 30 minutes of inactivity:
 .Bd -literal -offset indent
-set-option -g default-command "exec /bin/ksh"
-set-option -g lock-after-time 1800
+set\-option \-g default\-command "exec /bin/ksh"
+set\-option \-g lock\-after\-time 1800
 .Ed
 .Pp
 Creating new key bindings:
 .Bd -literal -offset indent
-bind-key b set-option status
-bind-key / command-prompt "split-window \[aq]exec man %%\[aq]"
-bind-key S command-prompt "new-window -n %1 \[aq]ssh %1\[aq]"
+bind\-key b set\-option status
+bind\-key / command\-prompt "split\-window \[aq]exec man %%\[aq]"
+bind\-key S command\-prompt "new\-window \-n %1 \[aq]ssh %1\[aq]"
 .Ed
 .Sh SEE ALSO
 .Xr pty 4
