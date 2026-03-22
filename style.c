@@ -168,9 +168,9 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 				sy->range_argument = 0;
 				style_set_range_string(sy, "");
 			} else if (strcasecmp(tmp + 6, "control") == 0) {
-				if (found != NULL)
+				if (found == NULL)
 					goto error;
-				n = strtonum(tmp + 6 + 7, 0, 9, &errstr);
+				n = strtonum(found, 0, 9, &errstr);
 				if (errstr != NULL)
 					goto error;
 				sy->range_type = style_get_control_range(n);
