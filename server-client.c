@@ -945,6 +945,23 @@ have_event:
 		c->tty.mouse_drag_release = NULL;
 		c->tty.mouse_scrolling_flag = 0;
 
+#define MOUSE_DRAG_END_CASES(n)					\
+	if (where == PANE)					\
+		key = KEYC_MOUSEDRAGEND##n##_PANE;	     	\
+	if (where == STATUS)			       		\
+		key = KEYC_MOUSEDRAGEND##n##_STATUS;       	\
+	if (where == STATUS_LEFT)		       		\
+		key = KEYC_MOUSEDRAGEND##n##_STATUS_LEFT;  	\
+	if (where == STATUS_RIGHT)		       		\
+		key = KEYC_MOUSEDRAGEND##n##_STATUS_RIGHT; 	\
+	if (where == STATUS_DEFAULT)		       		\
+		key = KEYC_MOUSEDRAGEND##n##_STATUS_DEFAULT;	\
+	if (where == SCROLLBAR_SLIDER)				\
+		key = KEYC_MOUSEDRAGEND##n##_SCROLLBAR_SLIDER;	\
+	if (where == BORDER)					\
+		key = KEYC_MOUSEDRAGEND##n##_BORDER;		\
+	break
+
 		/*
 		 * End a mouse drag by passing a MouseDragEnd key corresponding
 		 * to the button that started the drag.
