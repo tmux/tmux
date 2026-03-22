@@ -51,6 +51,36 @@ style_set_range_string(struct style *sy, const char *s)
 	strlcpy(sy->range_string, s, sizeof sy->range_string);
 }
 
+/* Get control style number */
+static enum style_range_type
+style_get_control_range(u_int n)
+{
+	switch (n) {
+	case 0:
+		return (STYLE_RANGE_CONTROL0);
+	case 1:
+		return (STYLE_RANGE_CONTROL1);
+	case 2:
+		return (STYLE_RANGE_CONTROL2);
+	case 3:
+		return (STYLE_RANGE_CONTROL3);
+	case 4:
+		return (STYLE_RANGE_CONTROL4);
+	case 5:
+		return (STYLE_RANGE_CONTROL5);
+	case 6:
+		return (STYLE_RANGE_CONTROL6);
+	case 7:
+		return (STYLE_RANGE_CONTROL7);
+	case 8:
+		return (STYLE_RANGE_CONTROL8);
+	case 9:
+		return (STYLE_RANGE_CONTROL9);
+	default:
+		return (STYLE_RANGE_NONE); /* unreachable */
+	}
+}
+
 /*
  * Parse an embedded style of the form "fg=colour,bg=colour,bright,...".  Note
  * that this adds onto the given style, so it must have been initialized
@@ -135,6 +165,15 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 				if (found != NULL)
 					goto error;
 				sy->range_type = STYLE_RANGE_RIGHT;
+				sy->range_argument = 0;
+				style_set_range_string(sy, "");
+			} else if (strcasecmp(tmp + 6, "control") == 0) {
+				if (found != NULL)
+					goto error;
+				n = strtonum(tmp + 6 + 7, 0, 9, &errstr);
+				if (errstr != NULL)
+					goto error;
+				sy->range_type = style_get_control_range(n);
 				sy->range_argument = 0;
 				style_set_range_string(sy, "");
 			} else if (strcasecmp(tmp + 6, "pane") == 0) {
