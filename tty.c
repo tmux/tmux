@@ -2199,20 +2199,169 @@ tty_cmd_rawstring(struct tty *tty, const struct tty_ctx *ctx)
 }
 
 #ifdef ENABLE_SIXEL
+/*
+ * Render one sub-rectangle of a sixel image at tty position (dst_x, dst_y).
+ * Caller must have set tty->flags |= TTY_NOBLOCK and called tty_region_off
+ * and tty_margin_off.  After the call, tty->cx and tty->cy are UINT_MAX
+ * because the cursor position after a sixel DCS sequence is terminal-defined.
+ */
+static void
+tty_sixel_subrect(struct tty *tty, struct sixel_image *si,
+    u_int src_i, u_int src_j, u_int src_rx, u_int src_ry,
+    u_int dst_x, u_int dst_y)
+{
+	struct sixel_image	*sub;
+	char			*data;
+	size_t			 size;
+
+	if (src_rx == 0 || src_ry == 0)
+		return;
+	sub = sixel_scale(si, tty->xpixel, tty->ypixel,
+	    src_i, src_j, src_rx, src_ry, 0);
+	if (sub == NULL)
+		return;
+	data = sixel_print(sub, si, &size);
+	sixel_free(sub);
+	if (data == NULL)
+		return;
+	tty_cursor(tty, dst_x, dst_y);
+	tty_add(tty, data, size);
+	tty->cx = tty->cy = UINT_MAX;
+	free(data);
+}
+
+/*
+ * Render the clamped region of sixel image si, split into sub-rectangles
+ * that avoid cells obscured by floating panes above this one.
+ *
+ * Row breakpoints are computed from each floating pane's top/bottom border
+ * row.  Between breakpoints the visible column ranges are constant, so each
+ * strip is rendered with one set of sub-rectangles.  When no floating panes
+ * overlap the sixel the loop produces a single strip and one sub-rect equal
+ * to the full clamped rectangle.
+ *
+ * i, j  : source cell offset (top-left of visible portion after viewport clip)
+ * rx, ry: rendered size in cells
+ * x, y  : tty destination position
+ */
+static void
+tty_sixelimage_draw(struct tty *tty, const struct tty_ctx *ctx,
+    struct sixel_image *si, u_int i, u_int j, u_int rx, u_int ry,
+    u_int x, u_int y)
+{
+	struct window_pane	*wp, *fp;
+	struct window		*w;
+	struct visible_ranges	*vr;
+	struct visible_range	*ri;
+	u_int			 sixel_wx0, sixel_wx1, sixel_y0;
+	u_int			 breaks[64], nb, b, s, tmp;
+	u_int			 strip_start, strip_end, strip_h;
+	u_int			 seg_wx0, seg_wx1, seg_w;
+	u_int			 src_i2, src_j2, dst_x2;
+	int			 fp_tb, fp_bb1, r_top, r_bot;
+
+	tty->flags |= TTY_NOBLOCK;
+	tty_region_off(tty);
+	tty_margin_off(tty);
+
+	wp = ctx->arg;
+	if (wp == NULL) {
+		/* Overlay/popup: no pane context, render the full clamped rect. */
+		tty_sixel_subrect(tty, si, i, j, rx, ry, x, y);
+		tty_invalidate(tty);
+		return;
+	}
+
+	/*
+	 * sixel_y0 is the window y-coordinate of the first rendered row.
+	 * Derived from tty_clamp_area: y = ctx->yoff + ocy + j - ctx->woy,
+	 * so y + ctx->woy = ctx->yoff + ocy + j.
+	 */
+	w = wp->window;
+	sixel_wx0 = x + ctx->wox;
+	sixel_wx1 = sixel_wx0 + rx;
+	sixel_y0  = y + ctx->woy;
+
+	nb = 0;
+	breaks[nb++] = 0;
+	breaks[nb++] = ry;
+
+	TAILQ_FOREACH(fp, &w->z_index, zentry) {
+		if (~fp->flags & PANE_FLOATING)
+			continue;
+		fp_tb  = (int)((fp->yoff > 0) ? fp->yoff - 1 : 0);
+		fp_bb1 = (int)fp->yoff + (int)fp->sy + 1;
+		r_top  = fp_tb  - (int)sixel_y0;
+		r_bot  = fp_bb1 - (int)sixel_y0;
+		if (r_top > 0 && (u_int)r_top < ry && nb < 62)
+			breaks[nb++] = (u_int)r_top;
+		if (r_bot > 0 && (u_int)r_bot < ry && nb < 62)
+			breaks[nb++] = (u_int)r_bot;
+	}
+
+	/* Sort breakpoints (insertion sort; small array). */
+	for (b = 1; b < nb; b++) {
+		tmp = breaks[b];
+		s = b;
+		while (s > 0 && breaks[s - 1] > tmp) {
+			breaks[s] = breaks[s - 1];
+			s--;
+		}
+		breaks[s] = tmp;
+	}
+
+	if (nb > 2)
+		log_debug("%s: sixel %%%u clipped around floating panes",
+		    __func__, wp->id);
+
+	for (b = 0; b + 1 < nb; b++) {
+		strip_start = breaks[b];
+		strip_end   = breaks[b + 1];
+		if (strip_end == strip_start)
+			continue;
+		strip_h = strip_end - strip_start;
+
+		vr = screen_redraw_get_visible_ranges(wp, ctx->xoff,
+		    sixel_y0 + strip_start, wp->sx, NULL);
+
+		for (s = 0; s < vr->used; s++) {
+			ri = &vr->ranges[s];
+			if (ri->nx == 0)
+				continue;
+			seg_wx0 = ri->px;
+			seg_wx1 = ri->px + ri->nx;
+			if (seg_wx0 < sixel_wx0)
+				seg_wx0 = sixel_wx0;
+			if (seg_wx1 > sixel_wx1)
+				seg_wx1 = sixel_wx1;
+			if (seg_wx1 <= seg_wx0)
+				continue;
+			seg_w  = seg_wx1 - seg_wx0;
+			src_i2 = i + (seg_wx0 - sixel_wx0);
+			src_j2 = j + strip_start;
+			dst_x2 = seg_wx0 - ctx->wox;
+			tty_sixel_subrect(tty, si, src_i2, src_j2,
+			    seg_w, strip_h, dst_x2, y + strip_start);
+		}
+	}
+
+	tty_invalidate(tty);
+}
+
 void
 tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct image		*im = ctx->ptr;
 	struct sixel_image	*si = im->data;
-	struct sixel_image	*new;
 	char			*data;
 	size_t			 size;
 	u_int			 cx = ctx->ocx, cy = ctx->ocy, sx, sy;
 	u_int			 i, j, x, y, rx, ry;
-	int			 fallback = 0;
+	int			 fallback;
 
+	fallback = 0;
 	if ((~tty->term->flags & TERM_SIXEL) &&
-            !tty_term_has(tty->term, TTYC_SXL))
+	    !tty_term_has(tty->term, TTYC_SXL))
 		fallback = 1;
 	if (tty->xpixel == 0 || tty->ypixel == 0)
 		fallback = 1;
@@ -2223,30 +2372,20 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 	log_debug("%s: clamping to %u,%u-%u,%u", __func__, i, j, rx, ry);
 
-	if (fallback == 1) {
+	if (fallback) {
 		data = xstrdup(im->fallback);
 		size = strlen(data);
-	} else {
-		new = sixel_scale(si, tty->xpixel, tty->ypixel, i, j, rx, ry, 0);
-		if (new == NULL)
-			return;
-
-		data = sixel_print(new, si, &size);
-	}
-	if (data != NULL) {
-		log_debug("%s: %zu bytes: %s", __func__, size, data);
+		tty->flags |= TTY_NOBLOCK;
 		tty_region_off(tty);
 		tty_margin_off(tty);
 		tty_cursor(tty, x, y);
-
-		tty->flags |= TTY_NOBLOCK;
 		tty_add(tty, data, size);
 		tty_invalidate(tty);
 		free(data);
+		return;
 	}
 
-	if (fallback == 0)
-		sixel_free(new);
+	tty_sixelimage_draw(tty, ctx, si, i, j, rx, ry, x, y);
 }
 #endif
 
