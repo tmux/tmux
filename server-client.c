@@ -630,7 +630,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 	if (((pane_status != PANE_STATUS_OFF &&
 	    (int)py != pane_status_line && py != wp->yoff + wp->sy) ||
 	    (wp->yoff == 0 && py < wp->sy) ||
-	    (py >= wp->yoff && py < wp->yoff + wp->sy)) &&
+	    ((int)py >= wp->yoff && (int)py < wp->yoff + (int)wp->sy)) &&
 	    ((sb_pos == PANE_SCROLLBARS_RIGHT &&
 	    (int)px < (int)wp->xoff + (int)wp->sx + sb_pad + sb_w) ||
 	    (sb_pos == PANE_SCROLLBARS_LEFT &&
