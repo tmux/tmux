@@ -30,21 +30,35 @@
 
 static enum cmd_retval	cmd_new_pane_exec(struct cmd *,
 			    struct cmdq_item *);
+static int		cmd_new_pane_set_style(struct window_pane *,
+			    const char *, const char *, char **);
 
 const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
 	.alias = "newp",
 
-	.args = { "bc:de:fF:h:Il:p:Pt:w:x:y:Z", 0, -1, NULL },
+	.args = { "bc:de:fF:h:Il:p:Ps:S:t:w:x:y:Z", 0, -1, NULL },
 	.usage = "[-bdefhIPvZ] [-c start-directory] [-e environment] "
-		 "[-F format] [-l size] " CMD_TARGET_PANE_USAGE
-		 " [shell-command [argument ...]]",
+		 "[-F format] [-l size] [-s style] [-S border-style] "
+		 CMD_TARGET_PANE_USAGE " [shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = 0,
 	.exec = cmd_new_pane_exec
 };
+
+static int
+cmd_new_pane_set_style(struct window_pane *wp, const char *name,
+    const char *value, char **cause)
+{
+	struct options_entry	*o = options_get(wp->options, name);
+	if (o == NULL)
+		return (-1);
+
+	return (options_from_string(wp->options, options_table_entry(o), name,
+	    value, 0, cause));
+}
 
 
 static enum cmd_retval
@@ -63,6 +77,8 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	 fs;
 	int			 flags, input;
 	const char		*template;
+	const char		*style = args_get(args, 's');
+	const char		*border_style = args_get(args, 'S');
 	char			*cause = NULL, *cp;
 	struct args_value	*av;
 	u_int			 count = args_count(args);
@@ -204,6 +220,23 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 		environ_free(sc.environ);
 		return (CMD_RETURN_ERROR);
 	}
+	if ((style != NULL &&
+	    cmd_new_pane_set_style(new_wp, "pane-floating-style", style,
+	                           &cause) != 0) ||
+	    (border_style != NULL &&
+	     cmd_new_pane_set_style(new_wp, "pane-floating-border-style",
+	                            border_style, &cause) != 0)) {
+		server_client_remove_pane(new_wp);
+		window_remove_pane(wp->window, new_wp);
+		cmdq_error(item, "%s", cause);
+		free(cause);
+		if (sc.argv != NULL)
+			cmd_free_argv(sc.argc, sc.argv);
+		environ_free(sc.environ);
+		return (CMD_RETURN_ERROR);
+	}
+	if (style != NULL || border_style != NULL)
+		new_wp->flags |= PANE_STYLECHANGED;
 	if (input) {
 		switch (window_pane_start_input(new_wp, item, &cause)) {
 		case -1:

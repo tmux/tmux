@@ -1342,6 +1342,24 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of the pane status lines."
 	},
 
+	{ .name = "pane-floating-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of floating panes."
+	},
+
+	{ .name = "pane-floating-border-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of floating pane borders."
+	},
+
 	{ .name = "pane-colours",
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
