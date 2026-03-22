@@ -786,6 +786,38 @@ have_event:
 	m->wp = -1;
 	m->ignore = ignore;
 
+#define CONTROL_CASES			\
+	STYLE_RANGE_CONTROL0:		\
+		where = CONTROL0;	\
+		break;			\
+	case STYLE_RANGE_CONTROL1:	\
+		where = CONTROL1;	\
+		break;			\
+	case STYLE_RANGE_CONTROL2:	\
+		where = CONTROL2;	\
+		break;			\
+	case STYLE_RANGE_CONTROL3:	\
+		where = CONTROL3;	\
+		break;			\
+	case STYLE_RANGE_CONTROL4:	\
+		where = CONTROL4;	\
+		break;			\
+	case STYLE_RANGE_CONTROL5:	\
+		where = CONTROL5;	\
+		break;			\
+	case STYLE_RANGE_CONTROL6:	\
+		where = CONTROL6;	\
+		break;			\
+	case STYLE_RANGE_CONTROL7:	\
+		where = CONTROL7;	\
+		break;			\
+	case STYLE_RANGE_CONTROL8:	\
+		where = CONTROL8;	\
+		break;			\
+	case STYLE_RANGE_CONTROL9:	\
+		where = CONTROL9;	\
+		break
+
 	/* Is this on the status line? */
 	m->statusat = status_at_line(c);
 	m->statuslines = status_line_size(c);

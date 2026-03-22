@@ -1993,7 +1993,6 @@ window_pane_border_status_get_range(struct window_pane *wp, u_int x, u_int y)
 
 	if (wp == NULL)
 		return (NULL);
-	srs = &wp->border_status_line.ranges;
 
 	pane_status = options_get_number(wo, "pane-border-status");
 	if (pane_status == PANE_STATUS_TOP)
