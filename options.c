@@ -1226,6 +1226,11 @@ options_push_changes(const char *name)
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
 			wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
 	}
+	if (strcmp(name, "pane-floating-style") == 0 ||
+	    strcmp(name, "pane-floating-border-style") == 0) {
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
+			wp->flags |= PANE_STYLECHANGED;
+	}
 	if (*name == '@') {
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
 			wp->flags |= PANE_STYLECHANGED;

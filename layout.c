@@ -203,12 +203,20 @@ layout_set_size(struct layout_cell *lc, u_int sx, u_int sy, int xoff,
 void
 layout_make_leaf(struct layout_cell *lc, struct window_pane *wp)
 {
+	int	was_floating;
+
 	lc->type = LAYOUT_WINDOWPANE;
 
 	TAILQ_INIT(&lc->cells);
 
 	wp->layout_cell = lc;
 	lc->wp = wp;
+
+	was_floating = wp->flags & PANE_FLOATING;
+	if (lc->parent != NULL && lc->parent->type != LAYOUT_FLOATING)
+		wp->flags &= ~PANE_FLOATING;
+	if (was_floating != !!(wp->flags & PANE_FLOATING))
+		wp->flags |= PANE_STYLECHANGED;
 }
 
 void

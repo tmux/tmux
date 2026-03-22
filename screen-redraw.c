@@ -894,7 +894,10 @@ screen_redraw_draw_borders_style(struct screen_redraw_ctx *ctx, u_int x,
 
 	ft = format_create_defaults(NULL, c, s, s->curw, wp);
 
-	if (screen_redraw_check_is(ctx, x, y, active))
+	if (wp->flags & PANE_FLOATING)
+		style_apply(&wp->border_gc, wp->options,
+		    "pane-floating-border-style", ft);
+	else if (screen_redraw_check_is(ctx, x, y, active))
 		style_apply(&wp->border_gc, oo, "pane-active-border-style", ft);
 	else
 		style_apply(&wp->border_gc, oo, "pane-border-style", ft);

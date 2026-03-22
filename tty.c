@@ -3096,9 +3096,17 @@ tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 		    FORMAT_NOJOBS);
 		format_defaults(ft, NULL, NULL, NULL, wp);
 		tty_window_default_style(&wp->cached_active_gc, wp);
-		style_add(&wp->cached_active_gc, oo, "window-active-style", ft);
 		tty_window_default_style(&wp->cached_gc, wp);
-		style_add(&wp->cached_gc, oo, "window-style", ft);
+		if (wp->flags & PANE_FLOATING) {
+			style_add(&wp->cached_active_gc, oo,
+			    "pane-floating-style", ft);
+			style_add(&wp->cached_gc, oo, "pane-floating-style",
+			    ft);
+		} else {
+			style_add(&wp->cached_active_gc, oo,
+			    "window-active-style", ft);
+			style_add(&wp->cached_gc, oo, "window-style", ft);
+		}
 		format_free(ft);
 	}
 
