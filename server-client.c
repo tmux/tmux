@@ -798,6 +798,38 @@ have_event:
 	m->wp = -1;
 	m->ignore = ignore;
 
+#define CONTROL_CASES			\
+	STYLE_RANGE_CONTROL0:		\
+		where = CONTROL0;	\
+		break;			\
+	case STYLE_RANGE_CONTROL1:	\
+		where = CONTROL1;	\
+		break;			\
+	case STYLE_RANGE_CONTROL2:	\
+		where = CONTROL2;	\
+		break;			\
+	case STYLE_RANGE_CONTROL3:	\
+		where = CONTROL3;	\
+		break;			\
+	case STYLE_RANGE_CONTROL4:	\
+		where = CONTROL4;	\
+		break;			\
+	case STYLE_RANGE_CONTROL5:	\
+		where = CONTROL5;	\
+		break;			\
+	case STYLE_RANGE_CONTROL6:	\
+		where = CONTROL6;	\
+		break;			\
+	case STYLE_RANGE_CONTROL7:	\
+		where = CONTROL7;	\
+		break;			\
+	case STYLE_RANGE_CONTROL8:	\
+		where = CONTROL8;	\
+		break;			\
+	case STYLE_RANGE_CONTROL9:	\
+		where = CONTROL9;	\
+		break
+
 	/* Is this on the status line? */
 	m->statusat = status_at_line(c);
 	m->statuslines = status_line_size(c);
@@ -850,6 +882,7 @@ have_event:
 			case STYLE_RANGE_USER:
 				where = STATUS;
 				break;
+			case CONTROL_CASES;
 			}
 		}
 	}
@@ -888,9 +921,18 @@ have_event:
 			if (where == PANE) {
 				log_debug("mouse %u,%u on pane %%%u", x, y,
 				    wp->id);
-			} else if (where == BORDER)
+			} else if (where == BORDER) {
+				sr = window_pane_border_status_get_range(wp, px,
+				    py);
+				if (sr != NULL) {
+					switch (sr->type) {
+					case CONTROL_CASES;
+					default:
+						break;
+					}
+				}
 				log_debug("mouse on pane %%%u border", wp->id);
-			else if (where == SCROLLBAR_UP ||
+			} else if (where == SCROLLBAR_UP ||
 			    where == SCROLLBAR_SLIDER ||
 			    where == SCROLLBAR_DOWN) {
 				log_debug("mouse on pane %%%u scrollbar",

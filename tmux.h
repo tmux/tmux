@@ -900,7 +900,17 @@ enum style_range_type {
 	STYLE_RANGE_PANE,
 	STYLE_RANGE_WINDOW,
 	STYLE_RANGE_SESSION,
-	STYLE_RANGE_USER
+	STYLE_RANGE_USER,
+	STYLE_RANGE_CONTROL0,
+	STYLE_RANGE_CONTROL1,
+	STYLE_RANGE_CONTROL2,
+	STYLE_RANGE_CONTROL3,
+	STYLE_RANGE_CONTROL4,
+	STYLE_RANGE_CONTROL5,
+	STYLE_RANGE_CONTROL6,
+	STYLE_RANGE_CONTROL7,
+	STYLE_RANGE_CONTROL8,
+	STYLE_RANGE_CONTROL9
 };
 struct style_range {
 	enum style_range_type	 type;
@@ -3429,7 +3439,7 @@ int		 window_get_bg_client(struct window_pane *);
 enum client_theme window_pane_get_theme(struct window_pane *);
 void		 window_pane_send_theme_update(struct window_pane *);
 struct style_range *window_pane_border_status_get_range(struct window_pane *,
-			u_int);
+			u_int, u_int);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);

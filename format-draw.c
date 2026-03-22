@@ -49,6 +49,16 @@ format_is_type(struct format_range *fr, struct style *sy)
 	case STYLE_RANGE_NONE:
 	case STYLE_RANGE_LEFT:
 	case STYLE_RANGE_RIGHT:
+	case STYLE_RANGE_CONTROL0:
+	case STYLE_RANGE_CONTROL1:
+	case STYLE_RANGE_CONTROL2:
+	case STYLE_RANGE_CONTROL3:
+	case STYLE_RANGE_CONTROL4:
+	case STYLE_RANGE_CONTROL5:
+	case STYLE_RANGE_CONTROL6:
+	case STYLE_RANGE_CONTROL7:
+	case STYLE_RANGE_CONTROL8:
+	case STYLE_RANGE_CONTROL9:
 		return (1);
 	case STYLE_RANGE_PANE:
 	case STYLE_RANGE_WINDOW:
@@ -1064,6 +1074,46 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 		case STYLE_RANGE_USER:
 			log_debug("%s: range user|%u at %u-%u", __func__,
 			    sr->argument, sr->start, sr->end);
+			break;
+		case STYLE_RANGE_CONTROL0:
+			log_debug("%s: range control0 at %u-%u", __func__,
+			    sr->start, sr->end);
+			break;
+		case STYLE_RANGE_CONTROL1:
+			log_debug("%s: range control1 at %u-%u", __func__,
+			    sr->start, sr->end);
+			break;
+		case STYLE_RANGE_CONTROL2:
+			log_debug("%s: range control2 at %u-%u", __func__,
+			    sr->start, sr->end);
+			break;
+		case STYLE_RANGE_CONTROL3:
+			log_debug("%s: range control3 at %u-%u", __func__,
+			    sr->start, sr->end);
+			break;
+		case STYLE_RANGE_CONTROL4:
+			log_debug("%s: range control4 at %u-%u", __func__,
+			    sr->start, sr->end);
+			break;
+		case STYLE_RANGE_CONTROL5:
+			log_debug("%s: range control5 at %u-%u", __func__,
+			    sr->start, sr->end);
+			break;
+		case STYLE_RANGE_CONTROL6:
+			log_debug("%s: range control6 at %u-%u", __func__,
+			    sr->start, sr->end);
+			break;
+		case STYLE_RANGE_CONTROL7:
+			log_debug("%s: range control7 at %u-%u", __func__,
+			    sr->start, sr->end);
+			break;
+		case STYLE_RANGE_CONTROL8:
+			log_debug("%s: range control8 at %u-%u", __func__,
+			    sr->start, sr->end);
+			break;
+		case STYLE_RANGE_CONTROL9:
+			log_debug("%s: range control9 at %u-%u", __func__,
+			    sr->start, sr->end);
 			break;
 		}
 		format_free_range(&frs, fr);

@@ -1972,14 +1972,26 @@ window_pane_send_theme_update(struct window_pane *wp)
 }
 
 struct style_range *
-window_pane_border_status_get_range(struct window_pane *wp, u_int x)
+window_pane_border_status_get_range(struct window_pane *wp, u_int x, u_int y)
 {
 	struct style_ranges	*srs;
+	struct window		*w = wp->window;
+	struct options		*wo = w->options;
+	u_int			 line;
+	int			 pane_status;
 
 	if (wp == NULL)
 		return (NULL);
-	srs = &wp->border_status_line.ranges;
 
+	pane_status = options_get_number(wo, "pane-border-status");
+	if (pane_status == PANE_STATUS_TOP)
+		line = wp->yoff - 1;
+	else if (pane_status == PANE_STATUS_BOTTOM)
+		line = wp->yoff + wp->sy;
+	if (pane_status == PANE_STATUS_OFF || line != y)
+		return (NULL);
+
+	srs = &wp->border_status_line.ranges;
 	/* Hacky. Format offset for border status is off by 3. Figure out why */
 	return (style_ranges_get_range(srs, x - wp->xoff - 3));
 }
