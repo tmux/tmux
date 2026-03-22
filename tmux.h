@@ -894,6 +894,11 @@ struct style_range {
 };
 TAILQ_HEAD(style_ranges, style_range);
 
+struct style_line_entry {
+	char			*expanded;
+	struct style_ranges	 ranges;
+};
+
 /* Default style width and pad. */
 #define STYLE_WIDTH_DEFAULT -1
 #define STYLE_PAD_DEFAULT -1
@@ -1244,6 +1249,7 @@ struct window_pane {
 	struct grid_cell cached_active_gc;
 	struct colour_palette palette;
 	enum client_theme last_theme;
+	struct style_line_entry border_status_line;
 
 	int		 pipe_fd;
 	pid_t		 pipe_pid;
@@ -1872,10 +1878,6 @@ struct cmd_entry {
 
 /* Status line. */
 #define STATUS_LINES_LIMIT 5
-struct status_line_entry {
-	char			*expanded;
-	struct style_ranges	 ranges;
-};
 struct status_line {
 	struct event		 timer;
 
@@ -1884,7 +1886,7 @@ struct status_line {
 	int			 references;
 
 	struct grid_cell	 style;
-	struct status_line_entry entries[STATUS_LINES_LIMIT];
+	struct style_line_entry entries[STATUS_LINES_LIMIT];
 };
 
 /* Prompt type. */
@@ -3406,6 +3408,8 @@ int		 window_pane_get_bg_control_client(struct window_pane *);
 int		 window_get_bg_client(struct window_pane *);
 enum client_theme window_pane_get_theme(struct window_pane *);
 void		 window_pane_send_theme_update(struct window_pane *);
+struct style_range *window_pane_border_status_get_range(struct window_pane *,
+			u_int);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);
@@ -3723,6 +3727,9 @@ void		 style_set(struct style *, const struct grid_cell *);
 void		 style_copy(struct style *, struct style *);
 void		 style_set_scrollbar_style_from_option(struct style *,
 		     struct options *);
+void		 style_ranges_init(struct style_ranges *);
+void		 style_ranges_free(struct style_ranges *);
+struct style_range *style_ranges_get_range(struct style_ranges *, u_int);
 
 /* spawn.c */
 struct winlink	*spawn_window(struct spawn_context *, char **);

@@ -446,3 +446,34 @@ style_set_scrollbar_style_from_option(struct style *sb_style, struct options *oo
 		utf8_set(&sb_style->gc.data, PANE_SCROLLBARS_CHARACTER);
 	}
 }
+
+void
+style_ranges_init(struct style_ranges *ranges)
+{
+	TAILQ_INIT(ranges);
+}
+
+void
+style_ranges_free(struct style_ranges *srs)
+{
+	struct style_range	*sr, *sr1;
+
+	TAILQ_FOREACH_SAFE(sr, srs, entry, sr1) {
+		TAILQ_REMOVE(srs, sr, entry);
+		free(sr);
+	}
+}
+
+struct style_range *
+style_ranges_get_range(struct style_ranges *ranges, u_int x)
+{
+	struct style_range	*sr;
+
+	if (ranges == NULL)
+		return (NULL);
+	TAILQ_FOREACH(sr, ranges, entry) {
+		if (x >= sr->start && x < sr->end)
+			return (sr);
+	}
+	return (NULL);
+}

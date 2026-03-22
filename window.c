@@ -1018,6 +1018,7 @@ window_pane_destroy(struct window_pane *wp)
 	free(wp->shell);
 	cmd_free_argv(wp->argc, wp->argv);
 	colour_palette_free(&wp->palette);
+	style_ranges_free(&wp->border_status_line.ranges);
 	free(wp);
 }
 
@@ -1968,4 +1969,17 @@ window_pane_send_theme_update(struct window_pane *wp)
 		log_debug("%s: %%%u unknown theme", __func__, wp->id);
 		break;
 	}
+}
+
+struct style_range *
+window_pane_border_status_get_range(struct window_pane *wp, u_int x)
+{
+	struct style_ranges	*srs;
+
+	if (wp == NULL)
+		return (NULL);
+	srs = &wp->border_status_line.ranges;
+
+	/* Hacky. Format offset for border status is off by 3. Figure out why */
+	return (style_ranges_get_range(srs, x - wp->xoff - 3));
 }
