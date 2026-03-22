@@ -194,7 +194,17 @@ struct winlink;
 	KEYC_ ## name ## _SCROLLBAR_UP,	    \
 	KEYC_ ## name ## _SCROLLBAR_SLIDER, \
 	KEYC_ ## name ## _SCROLLBAR_DOWN,   \
-	KEYC_ ## name ## _BORDER
+	KEYC_ ## name ## _BORDER,	    \
+	KEYC_ ## name ## _CONTROL0,	    \
+	KEYC_ ## name ## _CONTROL1,	    \
+	KEYC_ ## name ## _CONTROL2,	    \
+	KEYC_ ## name ## _CONTROL3,	    \
+	KEYC_ ## name ## _CONTROL4,	    \
+	KEYC_ ## name ## _CONTROL5,	    \
+	KEYC_ ## name ## _CONTROL6,	    \
+	KEYC_ ## name ## _CONTROL7,	    \
+	KEYC_ ## name ## _CONTROL8,	    \
+	KEYC_ ## name ## _CONTROL9
 #define KEYC_MOUSE_STRING(name, s)				      \
 	{ #s "Pane", KEYC_ ## name ## _PANE },			      \
 	{ #s "Status", KEYC_ ## name ## _STATUS },		      \
@@ -204,7 +214,17 @@ struct winlink;
 	{ #s "ScrollbarUp", KEYC_ ## name ## _SCROLLBAR_UP },         \
 	{ #s "ScrollbarSlider", KEYC_ ## name ## _SCROLLBAR_SLIDER }, \
 	{ #s "ScrollbarDown", KEYC_ ## name ## _SCROLLBAR_DOWN },     \
-	{ #s "Border", KEYC_ ## name ## _BORDER }
+	{ #s "Border", KEYC_ ## name ## _BORDER },		      \
+	{ #s "Control0", KEYC_ ## name ## _CONTROL0 },		      \
+	{ #s "Control1", KEYC_ ## name ## _CONTROL1 },		      \
+	{ #s "Control2", KEYC_ ## name ## _CONTROL2 },		      \
+	{ #s "Control3", KEYC_ ## name ## _CONTROL3 },		      \
+	{ #s "Control4", KEYC_ ## name ## _CONTROL4 },		      \
+	{ #s "Control5", KEYC_ ## name ## _CONTROL5 },		      \
+	{ #s "Control6", KEYC_ ## name ## _CONTROL6 },		      \
+	{ #s "Control7", KEYC_ ## name ## _CONTROL7 },		      \
+	{ #s "Control8", KEYC_ ## name ## _CONTROL8 },		      \
+	{ #s "Control9", KEYC_ ## name ## _CONTROL9 }
 
 /*
  * A single key. This can be ASCII or Unicode or one of the keys between

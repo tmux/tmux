@@ -39,7 +39,17 @@ enum mouse_where {
 	BORDER,
 	SCROLLBAR_UP,
 	SCROLLBAR_SLIDER,
-	SCROLLBAR_DOWN
+	SCROLLBAR_DOWN,
+	CONTROL0,
+	CONTROL1,
+	CONTROL2,
+	CONTROL3,
+	CONTROL4,
+	CONTROL5,
+	CONTROL6,
+	CONTROL7,
+	CONTROL8,
+	CONTROL9
 };
 
 static void	server_client_free(int, short, void *);
@@ -1000,6 +1010,26 @@ have_event:
 		key = KEYC_##t##n##_SCROLLBAR_DOWN;	\
 	if (where == BORDER)				\
 		key = KEYC_##t##n##_BORDER;		\
+	if (where == CONTROL0)				\
+		key = KEYC_##t##n##_CONTROL0;		\
+	if (where == CONTROL1)				\
+		key = KEYC_##t##n##_CONTROL1;		\
+	if (where == CONTROL2)				\
+		key = KEYC_##t##n##_CONTROL2;		\
+	if (where == CONTROL3)				\
+		key = KEYC_##t##n##_CONTROL3;		\
+	if (where == CONTROL4)				\
+		key = KEYC_##t##n##_CONTROL4;		\
+	if (where == CONTROL5)				\
+		key = KEYC_##t##n##_CONTROL5;		\
+	if (where == CONTROL6)				\
+		key = KEYC_##t##n##_CONTROL6;		\
+	if (where == CONTROL7)				\
+		key = KEYC_##t##n##_CONTROL7;		\
+	if (where == CONTROL8)				\
+		key = KEYC_##t##n##_CONTROL8;		\
+	if (where == CONTROL9)				\
+		key = KEYC_##t##n##_CONTROL9;		\
 	break
 
 	/* Convert to a key binding. */
