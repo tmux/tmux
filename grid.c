@@ -1117,7 +1117,8 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 		if (gc.flags & GRID_FLAG_PADDING)
 			continue;
 
-		if (flags & GRID_STRING_WITH_SEQUENCES) {
+		if (lastgc != NULL &&
+		    (flags & GRID_STRING_WITH_SEQUENCES)) {
 			grid_string_cells_code(*lastgc, &gc, code, sizeof code,
 			    flags, s, &has_link);
 			codelen = strlen(code);
@@ -1370,6 +1371,8 @@ grid_reflow_split(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 	int			 flags = gl->flags;
 
 	/* How many lines do we need to insert? We know we need at least two. */
+	if (sx == 0)
+		return;
 	if (~gl->flags & GRID_LINE_EXTENDED)
 		lines = 1 + (gl->cellused - 1) / sx;
 	else {
