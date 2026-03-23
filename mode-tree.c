@@ -1173,7 +1173,7 @@ mode_tree_display_help(__unused struct mode_tree_data *mtd, struct client *c)
 	}
 	for (line = mode_tree_help_start; *line != NULL; line++)
 		h++;
-	for (line = lines; *line != NULL; line++)
+	for (line = lines; line != NULL && *line != NULL; line++)
 		h++;
 	for (line = mode_tree_help_end; *line != NULL; line++)
 		h++;
@@ -1194,7 +1194,7 @@ mode_tree_display_help(__unused struct mode_tree_data *mtd, struct client *c)
 		popup_write(c, new_line, strlen(new_line));
 		free(new_line);
 	}
-	for (line = lines; *line != NULL; line++) {
+	for (line = lines; line != NULL && *line != NULL; line++) {
 		new_line = cmd_template_replace(*line, item, 1);
 		popup_write(c, new_line, strlen(new_line));
 		free(new_line);
@@ -1214,7 +1214,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	struct mode_tree_line	*line;
 	struct mode_tree_item	*current, *parent, *mti;
 	u_int			 i, x, y;
-	int			 choice;
+	int			 choice, preview;
 
 	if (KEYC_IS_MOUSE(*key) && m != NULL) {
 		if (cmd_mouse_at(mtd->wp, m, &x, &y, 0) != 0) {
@@ -1226,9 +1226,10 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		if (yp != NULL)
 			*yp = y;
 		if (x > mtd->width || y > mtd->height) {
+			preview = mtd->preview;
 			if (*key == KEYC_MOUSEDOWN3_PANE)
 				mode_tree_display_menu(mtd, c, x, y, 1);
-			if (mtd->preview == MODE_TREE_PREVIEW_OFF)
+			if (preview == MODE_TREE_PREVIEW_OFF)
 				*key = KEYC_NONE;
 			return (0);
 		}
