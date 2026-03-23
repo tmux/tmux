@@ -1117,7 +1117,7 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 		if (gc.flags & GRID_FLAG_PADDING)
 			continue;
 
-		if (flags & GRID_STRING_WITH_SEQUENCES) {
+		if (lastgc != NULL && (flags & GRID_STRING_WITH_SEQUENCES)) {
 			grid_string_cells_code(*lastgc, &gc, code, sizeof code,
 			    flags, s, &has_link);
 			codelen = strlen(code);
