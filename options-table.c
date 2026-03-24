@@ -36,7 +36,7 @@ static const char *options_table_mode_keys_list[] = {
 	"emacs", "vi", NULL
 };
 static const char *options_table_clock_mode_style_list[] = {
-	"12", "24", "12-with-seconds", "24-with-seconds", NULL
+	"12", "12-with-seconds", "12-with-timezone", "12-with-seconds-and-timezone", "24", "24-with-seconds", "24-with-timezone", "24-with-seconds-and-timezone", NULL
 };
 static const char *options_table_status_list[] = {
 	"off", "on", "2", "3", "4", "5", NULL
@@ -1130,17 +1130,24 @@ const struct options_table_entry options_table[] = {
 
 	{ .name = "clock-mode-colour",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_num = 4,
 	  .text = "Colour of the clock in clock mode."
 	},
 
 	{ .name = "clock-mode-style",
 	  .type = OPTIONS_TABLE_CHOICE,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .choices = options_table_clock_mode_style_list,
 	  .default_num = 1,
 	  .text = "Time format of the clock in clock mode."
+	},
+
+	{ .name = "clock-mode-timezone",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_str = "GMT",
+	  .text = "Timezone of the clock in clock mode."
 	},
 
 	{ .name = "copy-mode-match-style",

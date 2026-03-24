@@ -48,9 +48,10 @@ struct window_clock_mode_data {
 	struct screen		screen;
 	time_t			tim;
 	struct event		timer;
+	int 			style;
 };
 
-const char window_clock_table[14][5][5] = {
+const char window_clock_table[37][5][5] = {
 	{ { 1,1,1,1,1 }, /* 0 */
 	  { 1,0,0,0,1 },
 	  { 1,0,0,0,1 },
@@ -111,16 +112,131 @@ const char window_clock_table[14][5][5] = {
 	  { 1,1,1,1,1 },
 	  { 1,0,0,0,1 },
 	  { 1,0,0,0,1 } },
-	{ { 1,1,1,1,1 }, /* P */
+	{ { 1,1,1,1,0 }, /* B */
 	  { 1,0,0,0,1 },
-	  { 1,1,1,1,1 },
+	  { 1,1,1,1,0 },
+	  { 1,0,0,0,1 },
+	  { 1,1,1,1,0 } },
+	{ { 1,1,1,1,1 }, /* C */
+	  { 1,0,0,0,0 },
+	  { 1,0,0,0,0 },
+	  { 1,0,0,0,0 },
+	  { 1,1,1,1,1 } },
+	{ { 1,1,1,1,0 }, /* D */
+	  { 1,0,0,0,1 },
+	  { 1,0,0,0,1 },
+	  { 1,0,0,0,1 },
+	  { 1,1,1,1,0 } },
+	{ { 1,1,1,1,1 }, /* E */
+	  { 1,0,0,0,0 },
+	  { 1,1,1,1,0 },
+	  { 1,0,0,0,0 },
+	  { 1,1,1,1,1 } },
+	{ { 1,1,1,1,1 }, /* F */
+	  { 1,0,0,0,0 },
+	  { 1,1,1,1,0 },
 	  { 1,0,0,0,0 },
 	  { 1,0,0,0,0 } },
+	{ { 1,1,1,1,1 }, /* G */
+	  { 1,0,0,0,0 },
+	  { 1,0,1,1,1 },
+	  { 1,0,0,0,1 },
+	  { 1,1,1,1,1 } },
+	{ { 1,0,0,0,1 }, /* H */
+	  { 1,0,0,0,1 },
+	  { 1,1,1,1,1 },
+	  { 1,0,0,0,1 },
+	  { 1,0,0,0,1 } },
+	{ { 1,1,1,1,1 }, /* I */
+	  { 0,0,1,0,0 },
+	  { 0,0,1,0,0 },
+	  { 0,0,1,0,0 },
+	  { 1,1,1,1,1 } },
+	{ { 0,0,0,0,1 }, /* J */
+	  { 0,0,0,0,1 },
+	  { 0,0,0,0,1 },
+	  { 1,0,0,0,1 },
+	  { 0,1,1,1,0 } },
+	{ { 1,0,0,0,1 }, /* K */
+	  { 1,0,0,1,0 },
+	  { 1,1,1,0,0 },
+	  { 1,0,0,1,0 },
+	  { 1,0,0,0,1 } },
+	{ { 1,0,0,0,0 }, /* L */
+	  { 1,0,0,0,0 },
+	  { 1,0,0,0,0 },
+	  { 1,0,0,0,0 },
+	  { 1,1,1,1,1 } },
 	{ { 1,0,0,0,1 }, /* M */
 	  { 1,1,0,1,1 },
 	  { 1,0,1,0,1 },
 	  { 1,0,0,0,1 },
 	  { 1,0,0,0,1 } },
+	{ { 1,0,0,0,1 }, /* N */
+	  { 1,1,0,0,1 },
+	  { 1,0,1,0,1 },
+	  { 1,0,0,1,1 },
+	  { 1,0,0,0,1 } },
+	{ { 1,1,1,1,1 }, /* O */
+	  { 1,0,0,0,1 },
+	  { 1,0,0,0,1 },
+	  { 1,0,0,0,1 },
+	  { 1,1,1,1,1 } },
+	{ { 1,1,1,1,1 }, /* P */
+	  { 1,0,0,0,1 },
+	  { 1,1,1,1,1 },
+	  { 1,0,0,0,0 },
+	  { 1,0,0,0,0 } },
+	{ { 1,1,1,1,1 }, /* Q */
+	  { 1,0,0,0,1 },
+	  { 1,0,1,0,1 },
+	  { 1,0,0,1,1 },
+	  { 1,1,1,1,1 } },
+	{ { 1,1,1,1,1 }, /* R */
+	  { 1,0,0,0,1 },
+	  { 1,1,1,1,1 },
+	  { 1,0,0,1,0 },
+	  { 1,0,0,0,1 } },
+	{ { 1,1,1,1,1 }, /* S */
+	  { 1,0,0,0,0 },
+	  { 1,1,1,1,1 },
+	  { 0,0,0,0,1 },
+	  { 1,1,1,1,1 } },
+	{ { 1,1,1,1,1 }, /* T */
+	  { 0,0,1,0,0 },
+	  { 0,0,1,0,0 },
+	  { 0,0,1,0,0 },
+	  { 0,0,1,0,0 } },
+	{ { 1,0,0,0,1 }, /* U */
+	  { 1,0,0,0,1 },
+	  { 1,0,0,0,1 },
+	  { 1,0,0,0,1 },
+	  { 1,1,1,1,1 } },
+	{ { 1,0,0,0,1 }, /* V */
+	  { 1,0,0,0,1 },
+	  { 1,0,0,0,1 },
+	  { 0,1,0,1,0 },
+	  { 0,0,1,0,0 } },
+	{ { 1,0,0,0,1 }, /* W */
+	  { 1,0,0,0,1 },
+	  { 1,0,1,0,1 },
+	  { 1,1,0,1,1 },
+	  { 1,0,0,0,1 } },
+	{ { 1,0,0,0,1 }, /* X */
+	  { 0,1,0,1,0 },
+	  { 0,0,1,0,0 },
+	  { 0,1,0,1,0 },
+	  { 1,0,0,0,1 } },
+	{ { 1,0,0,0,1 }, /* Y */
+	  { 0,1,0,1,0 },
+	  { 0,0,1,0,0 },
+	  { 0,0,1,0,0 },
+	  { 0,0,1,0,0 } },
+	{ { 1,1,1,1,1 }, /* Z */
+	  { 0,0,0,1,0 },
+	  { 0,0,1,0,0 },
+	  { 0,1,0,0,0 },
+	  { 1,1,1,1,1 } },
 };
 
 static void
@@ -227,33 +343,47 @@ window_clock_draw_screen(struct window_mode_entry *wme)
 	int				 colour, style;
 	struct screen			*s = &data->screen;
 	struct grid_cell		 gc;
-	char				 tim[64], *ptr;
-	time_t				 t;
-	struct tm			*tm;
+	char				 tim[64], *ptr, *old_tz;
+	const char			*timeformat, *timezone;
+	struct tm			 tm_buf;
 	u_int				 i, j, x, y, idx;
 
-	colour = options_get_number(wp->window->options, "clock-mode-colour");
-	style = options_get_number(wp->window->options, "clock-mode-style");
+	colour = options_get_number(wp->options, "clock-mode-colour");
+	style = options_get_number(wp->options, "clock-mode-style");
+	timezone = options_get_string(wp->options, "clock-mode-timezone");
 
 	screen_write_start(&ctx, s);
 
-	t = time(NULL);
-	tm = localtime(&t);
-	if (style == 0 || style == 2) {
-		if (style == 2)
-			strftime(tim, sizeof tim, "%l:%M:%S ", localtime(&t));
-		else
-			strftime(tim, sizeof tim, "%l:%M ", localtime(&t));
-		if (tm->tm_hour >= 12)
-			strlcat(tim, "PM", sizeof tim);
-		else
-			strlcat(tim, "AM", sizeof tim);
-	} else {
-		if (style == 3)
-			strftime(tim, sizeof tim, "%H:%M:%S", tm);
-		else
-			strftime(tim, sizeof tim, "%H:%M", tm);
+	old_tz = getenv("TZ");
+	if (old_tz != NULL)
+		old_tz = xstrdup(old_tz);
+	if (timezone != NULL && *timezone != '\0')
+		setenv("TZ", timezone, 1);
+	else
+		unsetenv("TZ");
+	tzset();
+
+	localtime_r(&data->tim, &tm_buf);
+	switch (style) {
+		case 0: timeformat = "%l:%M %p";        break;
+		case 1: timeformat = "%l:%M:%S %p";     break;
+		case 2: timeformat = "%l:%M %p %Z";     break;
+		case 3: timeformat = "%l:%M:%S %p %Z";  break;
+		case 4: timeformat = "%H:%M";           break;
+		case 5: timeformat = "%H:%M:%S";        break;
+		case 6: timeformat = "%H:%M %Z";        break;
+		case 7: timeformat = "%H:%M:%S %Z";     break;
+		default: timeformat = "%H:%M";
 	}
+
+	strftime(tim, sizeof tim, timeformat, &tm_buf);
+
+	if (old_tz != NULL) {
+		setenv("TZ", old_tz, 1);
+		free(old_tz);
+	} else
+		unsetenv("TZ");
+	tzset();
 
 	screen_write_clearscreen(&ctx, 8);
 
@@ -284,12 +414,8 @@ window_clock_draw_screen(struct window_mode_entry *wme)
 			idx = *ptr - '0';
 		else if (*ptr == ':')
 			idx = 10;
-		else if (*ptr == 'A')
-			idx = 11;
-		else if (*ptr == 'P')
-			idx = 12;
-		else if (*ptr == 'M')
-			idx = 13;
+		else if (*ptr >= 'A' && *ptr <= 'Z')
+			idx = 11 + (*ptr - 'A');
 		else {
 			x += 6;
 			continue;
