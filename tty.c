@@ -991,6 +991,12 @@ tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 		cx = wp->xoff + wp->screen->cx;
 		cy = wp->yoff + wp->screen->cy;
 
+		/* Account for box mode offset. */
+		if (window_pane_box_mode(wp)) {
+			cx += 1;
+			cy += 1;
+		}
+
 		if (cx < *sx)
 			*ox = 0;
 		else if (cx > w->sx - *sx)

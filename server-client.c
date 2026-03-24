@@ -683,6 +683,20 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 		}
 		if (fwp != NULL)
 			return (BORDER);
+
+		/* In box mode, check if click is on any pane's border. */
+		if (window_pane_box_mode(wp)) {
+			if (py >= wp->yoff &&
+			    py <= wp->yoff + wp->sy - 1 &&
+			    px >= wp->xoff &&
+			    px <= wp->xoff + wp->sx - 1) {
+				if (py == wp->yoff ||
+				    py == wp->yoff + wp->sy - 1 ||
+				    px == wp->xoff ||
+				    px == wp->xoff + wp->sx - 1)
+					return (BORDER);
+			}
+		}
 	}
 	return (NOWHERE);
 }
@@ -3009,14 +3023,25 @@ server_client_reset_state(struct client *c)
 		}
 		cx = c->prompt_cursor;
 	} else if (c->overlay_draw == NULL) {
+		u_int	pxoff, pyoff;
+
 		cursor = 0;
 		tty_window_offset(tty, &ox, &oy, &sx, &sy);
-		if (wp->xoff + s->cx >= ox && wp->xoff + s->cx <= ox + sx &&
-		    wp->yoff + s->cy >= oy && wp->yoff + s->cy <= oy + sy) {
+
+		/* Account for box mode offset. */
+		pxoff = wp->xoff;
+		pyoff = wp->yoff;
+		if (window_pane_box_mode(wp)) {
+			pxoff += 1;
+			pyoff += 1;
+		}
+
+		if (pxoff + s->cx >= ox && pxoff + s->cx <= ox + sx &&
+		    pyoff + s->cy >= oy && pyoff + s->cy <= oy + sy) {
 			cursor = 1;
 
-			cx = wp->xoff + s->cx - ox;
-			cy = wp->yoff + s->cy - oy;
+			cx = pxoff + s->cx - ox;
+			cy = pyoff + s->cy - oy;
 
 			if (status_at_line(c) == 0)
 				cy += status_line_size(c);
