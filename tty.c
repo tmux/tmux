@@ -1556,7 +1556,7 @@ tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	ttyctx->bigger = tty_window_offset(&c->tty, &ttyctx->wox, &ttyctx->woy,
 	    &ttyctx->wsx, &ttyctx->wsy);
 
-	ttyctx->yoff = ttyctx->ryoff = wp->yoff;  /* xxxx find another way to do this */
+	ttyctx->yoff = ttyctx->ryoff = wp->yoff;
 	if (status_at_line(c) == 0)
 		ttyctx->yoff += status_line_size(c);
 
@@ -1584,7 +1584,7 @@ tty_draw_images(struct client *c, struct window_pane *wp, struct screen *s)
 		ttyctx.sy = wp->sy;
 
 		ttyctx.ptr = im;
-		ttyctx.arg = wp;  /* xxx remove this */
+		ttyctx.arg = wp;
 		ttyctx.set_client_cb = tty_set_client_cb;
 		ttyctx.allow_invisible_panes = 1;
 		tty_write_one(tty_cmd_sixelimage, c, &ttyctx);
@@ -2081,7 +2081,6 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 
 	if (ctx->num == 2) {
-		/* xxxx need to check visible range */
 		tty_draw_line(tty, s, 0, s->cy, screen_size_x(s),
 		    ctx->xoff - ctx->wox, py, &ctx->defaults, ctx->palette);
 		return;
