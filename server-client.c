@@ -689,6 +689,35 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 	return (KEYC_MOUSE_LOCATION_NOWHERE);
 }
 
+static enum mouse_where
+server_client_control_where(u_int n)
+{
+	switch (n) {
+	case 0:
+		return CONTROL0;
+	case 1:
+		return CONTROL1;
+	case 2:
+		return CONTROL2;
+	case 3:
+		return CONTROL3;
+	case 4:
+		return CONTROL4;
+	case 5:
+		return CONTROL5;
+	case 6:
+		return CONTROL6;
+	case 7:
+		return CONTROL7;
+	case 8:
+		return CONTROL8;
+	case 9:
+		return CONTROL9;
+	default:
+		return NOWHERE;  /* unreachable */
+	}
+}
+
 /* Check for mouse keys. */
 static key_code
 server_client_check_mouse(struct client *c, struct key_event *event)
@@ -785,38 +814,6 @@ have_event:
 	m->w = -1;
 	m->wp = -1;
 	m->ignore = ignore;
-
-#define CONTROL_CASES			\
-	STYLE_RANGE_CONTROL0:		\
-		where = CONTROL0;	\
-		break;			\
-	case STYLE_RANGE_CONTROL1:	\
-		where = CONTROL1;	\
-		break;			\
-	case STYLE_RANGE_CONTROL2:	\
-		where = CONTROL2;	\
-		break;			\
-	case STYLE_RANGE_CONTROL3:	\
-		where = CONTROL3;	\
-		break;			\
-	case STYLE_RANGE_CONTROL4:	\
-		where = CONTROL4;	\
-		break;			\
-	case STYLE_RANGE_CONTROL5:	\
-		where = CONTROL5;	\
-		break;			\
-	case STYLE_RANGE_CONTROL6:	\
-		where = CONTROL6;	\
-		break;			\
-	case STYLE_RANGE_CONTROL7:	\
-		where = CONTROL7;	\
-		break;			\
-	case STYLE_RANGE_CONTROL8:	\
-		where = CONTROL8;	\
-		break;			\
-	case STYLE_RANGE_CONTROL9:	\
-		where = CONTROL9;	\
-		break
 
 	/* Is this on the status line? */
 	m->statusat = status_at_line(c);
@@ -977,21 +974,21 @@ have_event:
 		c->tty.mouse_drag_release = NULL;
 		c->tty.mouse_scrolling_flag = 0;
 
-#define MOUSE_DRAG_END_CASES(n)					\
-	if (where == PANE)					\
-		key = KEYC_MOUSEDRAGEND##n##_PANE;	     	\
-	if (where == STATUS)			       		\
-		key = KEYC_MOUSEDRAGEND##n##_STATUS;       	\
-	if (where == STATUS_LEFT)		       		\
-		key = KEYC_MOUSEDRAGEND##n##_STATUS_LEFT;  	\
-	if (where == STATUS_RIGHT)		       		\
-		key = KEYC_MOUSEDRAGEND##n##_STATUS_RIGHT; 	\
-	if (where == STATUS_DEFAULT)		       		\
-		key = KEYC_MOUSEDRAGEND##n##_STATUS_DEFAULT;	\
-	if (where == SCROLLBAR_SLIDER)				\
-		key = KEYC_MOUSEDRAGEND##n##_SCROLLBAR_SLIDER;	\
-	if (where == BORDER)					\
-		key = KEYC_MOUSEDRAGEND##n##_BORDER;		\
+#define MOUSE_DRAG_END_CASES(b)						\
+	if (where == PANE)						\
+		key = KEYC_MOUSEDRAGEND ## b ## _PANE;			\
+	if (where == STATUS)						\
+		key = KEYC_MOUSEDRAGEND ## b ## _STATUS;		\
+	if (where == STATUS_LEFT)					\
+		key = KEYC_MOUSEDRAGEND ## b ## _STATUS_LEFT;		\
+	if (where == STATUS_RIGHT)					\
+		key = KEYC_MOUSEDRAGEND ## b ## _STATUS_RIGHT;		\
+	if (where == STATUS_DEFAULT)					\
+		key = KEYC_MOUSEDRAGEND ## b ## _STATUS_DEFAULT;	\
+	if (where == SCROLLBAR_SLIDER)					\
+		key = KEYC_MOUSEDRAGEND ## b ## _SCROLLBAR_SLIDER;	\
+	if (where == BORDER)						\
+		key = KEYC_MOUSEDRAGEND ## b ## _BORDER;		\
 	break
 
 		/*
