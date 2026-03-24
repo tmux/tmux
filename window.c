@@ -950,14 +950,17 @@ window_pane_index(struct window_pane *wp, u_int *i)
 }
 
 u_int
-window_count_panes(struct window *w)
+window_count_panes(struct window *w, int inc_floating)
 {
 	struct window_pane	*wp;
 	u_int			 n;
 
 	n = 0;
-	TAILQ_FOREACH(wp, &w->panes, entry)
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if ((inc_floating == 0) && (wp->flags & PANE_FLOATING))
+			continue;
 		n++;
+	}
 	return (n);
 }
 

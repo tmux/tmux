@@ -2886,7 +2886,7 @@ static void *
 format_cb_window_panes(struct format_tree *ft)
 {
 	if (ft->w != NULL)
-		return (format_printf("%u", window_count_panes(ft->w)));
+		return (format_printf("%u", window_count_panes(ft->w, 1)));
 	return (NULL);
 }
 

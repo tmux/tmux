@@ -184,7 +184,7 @@ server_kill_pane(struct window_pane *wp)
 {
 	struct window	*w = wp->window;
 
-	if (window_count_panes(w) == 1) {
+	if (window_count_panes(w, 1) == 1) {
 		server_kill_window(w, 1);
 		recalculate_sizes();
 	} else {
