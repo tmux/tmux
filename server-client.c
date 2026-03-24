@@ -630,7 +630,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 	if (((pane_status != PANE_STATUS_OFF &&
 	    (int)py != pane_status_line && py != wp->yoff + wp->sy) ||
 	    (wp->yoff == 0 && py < wp->sy) ||
-	    ((int)py >= wp->yoff && (int)py < wp->yoff + (int)wp->sy)) &&
+	    (py >= wp->yoff && py < wp->yoff + wp->sy)) &&
 	    ((sb_pos == PANE_SCROLLBARS_RIGHT &&
 	    (int)px < (int)wp->xoff + (int)wp->sx + sb_pad + sb_w) ||
 	    (sb_pos == PANE_SCROLLBARS_LEFT &&
@@ -687,35 +687,6 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 			return (KEYC_MOUSE_LOCATION_BORDER);
 	}
 	return (KEYC_MOUSE_LOCATION_NOWHERE);
-}
-
-static enum mouse_where
-server_client_control_where(u_int n)
-{
-	switch (n) {
-	case 0:
-		return CONTROL0;
-	case 1:
-		return CONTROL1;
-	case 2:
-		return CONTROL2;
-	case 3:
-		return CONTROL3;
-	case 4:
-		return CONTROL4;
-	case 5:
-		return CONTROL5;
-	case 6:
-		return CONTROL6;
-	case 7:
-		return CONTROL7;
-	case 8:
-		return CONTROL8;
-	case 9:
-		return CONTROL9;
-	default:
-		return NOWHERE;  /* unreachable */
-	}
 }
 
 /* Check for mouse keys. */
@@ -973,23 +944,6 @@ have_event:
 		c->tty.mouse_drag_update = NULL;
 		c->tty.mouse_drag_release = NULL;
 		c->tty.mouse_scrolling_flag = 0;
-
-#define MOUSE_DRAG_END_CASES(b)						\
-	if (where == PANE)						\
-		key = KEYC_MOUSEDRAGEND ## b ## _PANE;			\
-	if (where == STATUS)						\
-		key = KEYC_MOUSEDRAGEND ## b ## _STATUS;		\
-	if (where == STATUS_LEFT)					\
-		key = KEYC_MOUSEDRAGEND ## b ## _STATUS_LEFT;		\
-	if (where == STATUS_RIGHT)					\
-		key = KEYC_MOUSEDRAGEND ## b ## _STATUS_RIGHT;		\
-	if (where == STATUS_DEFAULT)					\
-		key = KEYC_MOUSEDRAGEND ## b ## _STATUS_DEFAULT;	\
-	if (where == SCROLLBAR_SLIDER)					\
-		key = KEYC_MOUSEDRAGEND ## b ## _SCROLLBAR_SLIDER;	\
-	if (where == BORDER)						\
-		key = KEYC_MOUSEDRAGEND ## b ## _BORDER;		\
-	break
 
 		/*
 		 * End a mouse drag by passing a MouseDragEnd key corresponding
