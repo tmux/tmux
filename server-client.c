@@ -710,6 +710,35 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 	return (NOWHERE);
 }
 
+static enum mouse_where
+server_client_control_where(u_int n)
+{
+	switch (n) {
+	case 0:
+		return CONTROL0;
+	case 1:
+		return CONTROL1;
+	case 2:
+		return CONTROL2;
+	case 3:
+		return CONTROL3;
+	case 4:
+		return CONTROL4;
+	case 5:
+		return CONTROL5;
+	case 6:
+		return CONTROL6;
+	case 7:
+		return CONTROL7;
+	case 8:
+		return CONTROL8;
+	case 9:
+		return CONTROL9;
+	default:
+		return NOWHERE;  /* unreachable */
+	}
+}
+
 /* Check for mouse keys. */
 static key_code
 server_client_check_mouse(struct client *c, struct key_event *event)
@@ -719,7 +748,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	struct window		*w = s->curw->window;
 	struct winlink		*fwl;
 	struct window_pane	*wp, *fwp;
-	u_int			 x, y, b, sx, sy, px, py, sl_mpos = 0;
+	u_int			 x, y, b, sx, sy, px, py, n, sl_mpos = 0;
 	int			 ignore = 0;
 	key_code		 key;
 	struct timeval		 tv;
@@ -811,38 +840,6 @@ have_event:
 	m->wp = -1;
 	m->ignore = ignore;
 
-#define CONTROL_CASES			\
-	STYLE_RANGE_CONTROL0:		\
-		where = CONTROL0;	\
-		break;			\
-	case STYLE_RANGE_CONTROL1:	\
-		where = CONTROL1;	\
-		break;			\
-	case STYLE_RANGE_CONTROL2:	\
-		where = CONTROL2;	\
-		break;			\
-	case STYLE_RANGE_CONTROL3:	\
-		where = CONTROL3;	\
-		break;			\
-	case STYLE_RANGE_CONTROL4:	\
-		where = CONTROL4;	\
-		break;			\
-	case STYLE_RANGE_CONTROL5:	\
-		where = CONTROL5;	\
-		break;			\
-	case STYLE_RANGE_CONTROL6:	\
-		where = CONTROL6;	\
-		break;			\
-	case STYLE_RANGE_CONTROL7:	\
-		where = CONTROL7;	\
-		break;			\
-	case STYLE_RANGE_CONTROL8:	\
-		where = CONTROL8;	\
-		break;			\
-	case STYLE_RANGE_CONTROL9:	\
-		where = CONTROL9;	\
-		break
-
 	/* Is this on the status line? */
 	m->statusat = status_at_line(c);
 	m->statuslines = status_line_size(c);
@@ -895,7 +892,10 @@ have_event:
 			case STYLE_RANGE_USER:
 				where = STATUS;
 				break;
-			case CONTROL_CASES;
+			case STYLE_RANGE_CONTROL:
+				n = sr->argument;
+				where = server_client_control_where(n);
+				break;
 			}
 		}
 	}
@@ -939,7 +939,9 @@ have_event:
 				    py);
 				if (sr != NULL) {
 					switch (sr->type) {
-					case CONTROL_CASES;
+					case STYLE_RANGE_CONTROL:
+						n = sr->argument;
+						where = server_client_control_where(n);
 					default:
 						break;
 					}
@@ -997,21 +999,21 @@ have_event:
 		c->tty.mouse_drag_release = NULL;
 		c->tty.mouse_scrolling_flag = 0;
 
-#define MOUSE_DRAG_END_CASES(n)					\
-	if (where == PANE)					\
-		key = KEYC_MOUSEDRAGEND##n##_PANE;	     	\
-	if (where == STATUS)			       		\
-		key = KEYC_MOUSEDRAGEND##n##_STATUS;       	\
-	if (where == STATUS_LEFT)		       		\
-		key = KEYC_MOUSEDRAGEND##n##_STATUS_LEFT;  	\
-	if (where == STATUS_RIGHT)		       		\
-		key = KEYC_MOUSEDRAGEND##n##_STATUS_RIGHT; 	\
-	if (where == STATUS_DEFAULT)		       		\
-		key = KEYC_MOUSEDRAGEND##n##_STATUS_DEFAULT;	\
-	if (where == SCROLLBAR_SLIDER)				\
-		key = KEYC_MOUSEDRAGEND##n##_SCROLLBAR_SLIDER;	\
-	if (where == BORDER)					\
-		key = KEYC_MOUSEDRAGEND##n##_BORDER;		\
+#define MOUSE_DRAG_END_CASES(b)						\
+	if (where == PANE)						\
+		key = KEYC_MOUSEDRAGEND ## b ## _PANE;			\
+	if (where == STATUS)						\
+		key = KEYC_MOUSEDRAGEND ## b ## _STATUS;		\
+	if (where == STATUS_LEFT)					\
+		key = KEYC_MOUSEDRAGEND ## b ## _STATUS_LEFT;		\
+	if (where == STATUS_RIGHT)					\
+		key = KEYC_MOUSEDRAGEND ## b ## _STATUS_RIGHT;		\
+	if (where == STATUS_DEFAULT)					\
+		key = KEYC_MOUSEDRAGEND ## b ## _STATUS_DEFAULT;	\
+	if (where == SCROLLBAR_SLIDER)					\
+		key = KEYC_MOUSEDRAGEND ## b ## _SCROLLBAR_SLIDER;	\
+	if (where == BORDER)						\
+		key = KEYC_MOUSEDRAGEND ## b ## _BORDER;		\
 	break
 
 		/*
@@ -1046,45 +1048,45 @@ have_event:
 		goto out;
 	}
 
-#define MOUSE_ALL_CASES(t, n)				\
-	if (where == PANE)				\
-		key = KEYC_##t##n##_PANE;		\
-	if (where == STATUS)			       	\
-		key = KEYC_##t##n##_STATUS;       	\
-	if (where == STATUS_LEFT)		       	\
-		key = KEYC_##t##n##_STATUS_LEFT;  	\
-	if (where == STATUS_RIGHT)		       	\
-		key = KEYC_##t##n##_STATUS_RIGHT; 	\
-	if (where == STATUS_DEFAULT)		       	\
-		key = KEYC_##t##n##_STATUS_DEFAULT;	\
-	if (where == SCROLLBAR_UP)			\
-		key = KEYC_##t##n##_SCROLLBAR_UP;	\
-	if (where == SCROLLBAR_SLIDER)			\
-		key = KEYC_##t##n##_SCROLLBAR_SLIDER;	\
-	if (where == SCROLLBAR_DOWN)			\
-		key = KEYC_##t##n##_SCROLLBAR_DOWN;	\
-	if (where == BORDER)				\
-		key = KEYC_##t##n##_BORDER;		\
-	if (where == CONTROL0)				\
-		key = KEYC_##t##n##_CONTROL0;		\
-	if (where == CONTROL1)				\
-		key = KEYC_##t##n##_CONTROL1;		\
-	if (where == CONTROL2)				\
-		key = KEYC_##t##n##_CONTROL2;		\
-	if (where == CONTROL3)				\
-		key = KEYC_##t##n##_CONTROL3;		\
-	if (where == CONTROL4)				\
-		key = KEYC_##t##n##_CONTROL4;		\
-	if (where == CONTROL5)				\
-		key = KEYC_##t##n##_CONTROL5;		\
-	if (where == CONTROL6)				\
-		key = KEYC_##t##n##_CONTROL6;		\
-	if (where == CONTROL7)				\
-		key = KEYC_##t##n##_CONTROL7;		\
-	if (where == CONTROL8)				\
-		key = KEYC_##t##n##_CONTROL8;		\
-	if (where == CONTROL9)				\
-		key = KEYC_##t##n##_CONTROL9;		\
+#define MOUSE_ALL_CASES(m, b)					\
+	if (where == PANE)			       		\
+		key = KEYC_ ## m ## b ## _PANE;	       		\
+	if (where == STATUS)			       		\
+		key = KEYC_ ## m ## b ## _STATUS;       	\
+	if (where == STATUS_LEFT)		       		\
+		key = KEYC_ ## m ## b ## _STATUS_LEFT; 		\
+	if (where == STATUS_RIGHT)		       		\
+		key = KEYC_ ## m ## b ## _STATUS_RIGHT;		\
+	if (where == STATUS_DEFAULT)				\
+		key = KEYC_ ## m ## b ## _STATUS_DEFAULT;	\
+	if (where == SCROLLBAR_UP)				\
+		key = KEYC_ ## m ## b ## _SCROLLBAR_UP;		\
+	if (where == SCROLLBAR_SLIDER)				\
+		key = KEYC_ ## m ## b ## _SCROLLBAR_SLIDER;	\
+	if (where == SCROLLBAR_DOWN)				\
+		key = KEYC_ ## m ## b ## _SCROLLBAR_DOWN;	\
+	if (where == BORDER)					\
+		key = KEYC_ ## m ## b ## _BORDER;		\
+	if (where == CONTROL0)					\
+		key = KEYC_ ## m ## b ## _CONTROL0;		\
+	if (where == CONTROL1)					\
+		key = KEYC_ ## m ## b ## _CONTROL1;		\
+	if (where == CONTROL2)					\
+		key = KEYC_ ## m ## b ## _CONTROL2;		\
+	if (where == CONTROL3)					\
+		key = KEYC_ ## m ## b ## _CONTROL3;		\
+	if (where == CONTROL4)					\
+		key = KEYC_ ## m ## b ## _CONTROL4;		\
+	if (where == CONTROL5)					\
+		key = KEYC_ ## m ## b ## _CONTROL5;		\
+	if (where == CONTROL6)					\
+		key = KEYC_ ## m ## b ## _CONTROL6;		\
+	if (where == CONTROL7)					\
+		key = KEYC_ ## m ## b ## _CONTROL7;		\
+	if (where == CONTROL8)					\
+		key = KEYC_ ## m ## b ## _CONTROL8;		\
+	if (where == CONTROL9)					\
+		key = KEYC_ ## m ## b ## _CONTROL9;		\
 	break
 
 	/* Convert to a key binding. */

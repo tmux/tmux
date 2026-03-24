@@ -1321,26 +1321,8 @@ format_cb_mouse_status_range(struct format_tree *ft)
 		return (xstrdup("session"));
 	case STYLE_RANGE_USER:
 		return (xstrdup(sr->string));
-	case STYLE_RANGE_CONTROL0:
-		return (xstrdup("control0"));
-	case STYLE_RANGE_CONTROL1:
-		return (xstrdup("control1"));
-	case STYLE_RANGE_CONTROL2:
-		return (xstrdup("control2"));
-	case STYLE_RANGE_CONTROL3:
-		return (xstrdup("control3"));
-	case STYLE_RANGE_CONTROL4:
-		return (xstrdup("control4"));
-	case STYLE_RANGE_CONTROL5:
-		return (xstrdup("control5"));
-	case STYLE_RANGE_CONTROL6:
-		return (xstrdup("control6"));
-	case STYLE_RANGE_CONTROL7:
-		return (xstrdup("control7"));
-	case STYLE_RANGE_CONTROL8:
-		return (xstrdup("control8"));
-	case STYLE_RANGE_CONTROL9:
-		return (xstrdup("control9"));
+	case STYLE_RANGE_CONTROL:
+		return (xstrdup("control"));
 	}
 	return (NULL);
 }
