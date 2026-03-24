@@ -3278,8 +3278,9 @@ but a different format may be specified with
 .Op Fl l Ar size
 .Op Fl m Ar message
 .Op Fl p Ar percentage
+.Op Fl R Ar inactive-border-style
 .Op Fl s Ar style
-.Op Fl S Ar border-style
+.Op Fl S Ar active-border-style
 .Op Fl t Ar target-pane
 .Op Fl w Ar width
 .Op Fl x Ar x-position
@@ -3337,9 +3338,11 @@ is not specified or empty)
 will create an empty pane and forward any output from stdin to it.
 .Pp
 .Fl s
-sets the style for the pane and
+sets the style for the pane content.
 .Fl S
-sets the style for the pane border (see
+sets the border style when the pane is active and
+.Fl R
+sets the border style when the pane is inactive (see
 .Sx STYLES ) .
 .Pp
 All other options have the same meaning as for the

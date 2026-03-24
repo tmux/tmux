@@ -35,9 +35,10 @@ const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
 	.alias = "newp",
 
-	.args = { "bc:de:fF:h:Iklm:p:Ps:S:t:w:x:y:Z", 0, -1, NULL },
+	.args = { "bc:de:fF:h:Iklm:p:PR:s:S:t:w:x:y:Z", 0, -1, NULL },
 	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
-		 "[-F format] [-l size] [-m message] [-s style] [-S border-style] "
+		 "[-F format] [-l size] [-m message] "
+		 "[-R inactive-border-style] [-s style] [-S active-border-style] "
 		 CMD_TARGET_PANE_USAGE " [shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -217,13 +218,19 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	style = args_get(args, 'S');
 	if (style != NULL) {
-		if (options_set_string(new_wp->options, "pane-border-style", 0,
-		    "%s", style) == NULL) {
-			cmdq_error(item, "bad border style: %s", style);
+		if (options_set_string(new_wp->options,
+		    "pane-active-border-style", 0, "%s", style) == NULL) {
+			cmdq_error(item, "bad active border style: %s", style);
 			return (CMD_RETURN_ERROR);
 		}
-		options_set_string(new_wp->options, "pane-active-border-style",
-		    0, "%s", style);
+	}
+	style = args_get(args, 'R');
+	if (style != NULL) {
+		if (options_set_string(new_wp->options, "pane-border-style", 0,
+		    "%s", style) == NULL) {
+			cmdq_error(item, "bad inactive border style: %s", style);
+			return (CMD_RETURN_ERROR);
+		}
 	}
 	if (args_has(args, 'k') || args_has(args, 'm')) {
 		options_set_number(new_wp->options, "remain-on-exit", 3);
