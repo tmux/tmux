@@ -298,6 +298,8 @@ Prompt for a window index to select.
 Switch the attached client to the previous session.
 .It \&)
 Switch the attached client to the next session.
+.It *
+Create a new floating pane.
 .It ,
 Rename the current window.
 .It -
@@ -3265,6 +3267,76 @@ By default, it uses the format
 .Ql #{session_name}:#{window_index}
 but a different format may be specified with
 .Fl F .
+.Tg newp
+.It Xo Ic new-pane
+.Op Fl bdefIPZ
+.Op Fl c Ar start-directory
+.Op Fl e Ar environment
+.Op Fl F Ar format
+.Op Fl h Ar height
+.Op Fl k
+.Op Fl l Ar size
+.Op Fl m Ar message
+.Op Fl p Ar percentage
+.Op Fl t Ar target-pane
+.Op Fl w Ar width
+.Op Fl x Ar x-position
+.Op Fl y Ar y-position
+.Op Ar shell-command Op Ar argument ...
+.Xc
+.D1 Pq alias: Ic newp
+Create a new floating pane.
+The
+.Fl w ,
+.Fl h ,
+.Fl x ,
+and
+.Fl y
+options set the width, height, and position of the pane; if not given,
+the pane is sized to half the window dimensions and offset from the
+previous floating pane.
+The
+.Fl l
+and
+.Fl p
+options set the size in lines or as a percentage.
+The
+.Fl f
+option uses the full window dimensions.
+.Pp
+If
+.Fl d
+is given, the session does not make the new pane the current pane.
+.Fl Z
+zooms if the window is not zoomed.
+.Pp
+.Fl k
+keeps the pane open after the shell command exits and waits for a
+keypress (any non-mouse key) before closing it.
+The message shown is controlled by the
+.Ic remain-on-exit-format
+option.
+.Fl m Ar message
+is equivalent to
+.Fl k
+but also sets the
+.Ic remain-on-exit-format
+option for this pane to
+.Ar message .
+.Pp
+An empty
+.Ar shell-command
+(\[aq]\[aq]) will create a pane with no command running in it.
+The
+.Fl I
+flag (if
+.Ar shell-command
+is not specified or empty)
+will create an empty pane and forward any output from stdin to it.
+.Pp
+All other options have the same meaning as for the
+.Ic new-window
+command.
 .Tg nextl
 .It Ic next-layout Op Fl t Ar target-window
 .D1 Pq alias: Ic nextl
@@ -5571,13 +5643,17 @@ uses when the colour with that index is requested.
 The index may be from zero to 255.
 .Pp
 .It Xo Ic remain-on-exit
-.Op Ic on | off | failed
+.Op Ic on | off | failed | keypress
 .Xc
 A pane with this flag set is not destroyed when the program running in it
 exits.
 If set to
 .Ic failed ,
 then only when the program exit status is not zero.
+If set to
+.Ic keypress ,
+the pane stays open and closes when the user presses any key (other than
+a mouse button or paste).
 The pane may be reactivated with the
 .Ic respawn-pane
 command.
