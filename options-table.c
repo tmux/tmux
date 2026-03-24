@@ -91,7 +91,7 @@ static const char *options_table_window_size_list[] = {
 	"largest", "smallest", "manual", "latest", NULL
 };
 static const char *options_table_remain_on_exit_list[] = {
-	"off", "on", "failed", NULL
+	"off", "on", "failed", "keypress", NULL
 };
 static const char *options_table_destroy_unattached_list[] = {
 	"off", "on", "keep-last", "keep-group", NULL
@@ -1414,7 +1414,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "remain-on-exit-format",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
-	  .default_str = "Pane is dead ("
+	  .default_str = "Command exited ("
 			 "#{?#{!=:#{pane_dead_status},},"
 			 "status #{pane_dead_status},}"
 			 "#{?#{!=:#{pane_dead_signal},},"

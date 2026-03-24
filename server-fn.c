@@ -339,8 +339,11 @@ server_destroy_pane(struct window_pane *wp, int notify)
 	switch (remain_on_exit) {
 	case 0:
 		break;
+	case 3: /* keypress — fall through to draw remain-on-exit-format message */
+		/* FALLTHROUGH */
 	case 2:
-		if (WIFEXITED(wp->status) && WEXITSTATUS(wp->status) == 0)
+		if (remain_on_exit == 2 &&
+		    WIFEXITED(wp->status) && WEXITSTATUS(wp->status) == 0)
 			break;
 		/* FALLTHROUGH */
 	case 1:

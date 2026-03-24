@@ -35,9 +35,9 @@ const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
 	.alias = "newp",
 
-	.args = { "bc:de:fF:h:Il:p:Pt:w:x:y:Z", 0, -1, NULL },
-	.usage = "[-bdefhIPvZ] [-c start-directory] [-e environment] "
-		 "[-F format] [-l size] " CMD_TARGET_PANE_USAGE
+	.args = { "bc:de:fF:h:Iklm:p:Pt:w:x:y:Z", 0, -1, NULL },
+	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
+		 "[-F format] [-l size] [-m message] " CMD_TARGET_PANE_USAGE
 		 " [shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -203,6 +203,12 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 			cmd_free_argv(sc.argc, sc.argv);
 		environ_free(sc.environ);
 		return (CMD_RETURN_ERROR);
+	}
+	if (args_has(args, 'k') || args_has(args, 'm')) {
+		options_set_number(new_wp->options, "remain-on-exit", 3);
+		if (args_has(args, 'm'))
+			options_set_string(new_wp->options, "remain-on-exit-format",
+			    0, "%s", args_get(args, 'm'));
 	}
 	if (input) {
 		switch (window_pane_start_input(new_wp, item, &cause)) {

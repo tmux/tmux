@@ -2665,6 +2665,14 @@ try_again:
 forward_key:
 	if (c->flags & CLIENT_READONLY)
 		goto out;
+	if (wp != NULL &&
+	    options_get_number(wp->options, "remain-on-exit") == 3 &&
+	    (wp->flags & PANE_EXITED) &&
+	    !KEYC_IS_MOUSE(key) && !KEYC_IS_PASTE(key)) {
+		options_set_number(wp->options, "remain-on-exit", 0);
+		server_destroy_pane(wp, 0);
+		goto out;
+	}
 	if (wp != NULL)
 		window_pane_key(wp, c, s, wl, key, m);
 	goto out;
