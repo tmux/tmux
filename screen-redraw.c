@@ -600,7 +600,7 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 {
 	struct window		*w = wp->window;
 	struct grid_cell	 gc;
-	const char		*fmt;
+	const char		*fmt, *border_opt;
 	struct format_tree	*ft;
 	char			*expanded;
 	int			 pane_status = rctx->pane_status, sb_w = 0;
@@ -616,10 +616,19 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 	ft = format_create(c, NULL, FORMAT_PANE|wp->id, FORMAT_STATUS);
 	format_defaults(ft, c, c->session, c->session->curw, wp);
 
-	if (wp == server_client_get_pane(c))
-		style_apply(&gc, w->options, "pane-active-border-style", ft);
-	else
-		style_apply(&gc, w->options, "pane-border-style", ft);
+	border_opt = (wp == server_client_get_pane(c)) ?
+	    "pane-active-border-style" : "pane-border-style";
+
+	/* Window-level baseline. */
+	style_apply(&gc, w->options, border_opt, ft);
+
+	/* Floating pane window default overrides window baseline. */
+	if (wp->flags & PANE_FLOATING)
+		style_add(&gc, w->options, "floating-pane-border-style", ft);
+
+	/* Per-pane override (set via new-pane -S or set-option -p). */
+	if (options_get_only(wp->options, border_opt) != NULL)
+		style_add(&gc, wp->options, border_opt, ft);
 	fmt = options_get_string(wp->options, "pane-border-format");
 
 	expanded = format_expand_time(ft, fmt);
@@ -885,7 +894,8 @@ screen_redraw_draw_borders_style(struct screen_redraw_ctx *ctx, u_int x,
 	struct session		*s = c->session;
 	struct window		*w = s->curw->window;
 	struct window_pane	*active = server_client_get_pane(c);
-	struct options		*oo = w->options;
+	struct options		*wo = w->options;
+	const char		*border_opt;
 	struct format_tree	*ft;
 
 	if (wp->border_gc_set)
@@ -894,12 +904,21 @@ screen_redraw_draw_borders_style(struct screen_redraw_ctx *ctx, u_int x,
 
 	ft = format_create_defaults(NULL, c, s, s->curw, wp);
 
-	if (screen_redraw_check_is(ctx, x, y, active))
-		style_apply(&wp->border_gc, oo, "pane-active-border-style", ft);
-	else
-		style_apply(&wp->border_gc, oo, "pane-border-style", ft);
-	format_free(ft);
+	border_opt = screen_redraw_check_is(ctx, x, y, active) ?
+	    "pane-active-border-style" : "pane-border-style";
 
+	/* Window-level baseline. */
+	style_apply(&wp->border_gc, wo, border_opt, ft);
+
+	/* Floating pane window default overrides window baseline. */
+	if (wp->flags & PANE_FLOATING)
+		style_add(&wp->border_gc, wo, "floating-pane-border-style", ft);
+
+	/* Per-pane override (set via new-pane -S or set-option -p). */
+	if (options_get_only(wp->options, border_opt) != NULL)
+		style_add(&wp->border_gc, wp->options, border_opt, ft);
+
+	format_free(ft);
 	return (&wp->border_gc);
 }
 

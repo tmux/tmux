@@ -3221,7 +3221,8 @@ tty_window_default_style(struct grid_cell *gc, struct window_pane *wp)
 void
 tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 {
-	struct options		*oo = wp->options;
+	struct window		*w = wp->window;
+	struct options		*wo = w->options;
 	struct format_tree	*ft;
 
 	memcpy(gc, &grid_default_cell, sizeof *gc);
@@ -3233,10 +3234,30 @@ tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 		ft = format_create(NULL, NULL, FORMAT_PANE|wp->id,
 		    FORMAT_NOJOBS);
 		format_defaults(ft, NULL, NULL, NULL, wp);
+
+		/* Window-level baseline. */
 		tty_window_default_style(&wp->cached_active_gc, wp);
-		style_add(&wp->cached_active_gc, oo, "window-active-style", ft);
+		style_add(&wp->cached_active_gc, wo, "window-active-style", ft);
+		/* Floating pane window default overrides window baseline. */
+		if (wp->flags & PANE_FLOATING)
+			style_add(&wp->cached_active_gc, wo,
+			    "floating-pane-style", ft);
+		/* Per-pane override (set via new-pane -s or select-pane -P). */
+		if (options_get_only(wp->options, "window-active-style") != NULL)
+			style_add(&wp->cached_active_gc, wp->options,
+			    "window-active-style", ft);
+
+		/* Window-level baseline. */
 		tty_window_default_style(&wp->cached_gc, wp);
-		style_add(&wp->cached_gc, oo, "window-style", ft);
+		style_add(&wp->cached_gc, wo, "window-style", ft);
+		/* Floating pane window default overrides window baseline. */
+		if (wp->flags & PANE_FLOATING)
+			style_add(&wp->cached_gc, wo, "floating-pane-style", ft);
+		/* Per-pane override (set via new-pane -s or select-pane -P). */
+		if (options_get_only(wp->options, "window-style") != NULL)
+			style_add(&wp->cached_gc, wp->options,
+			    "window-style", ft);
+
 		format_free(ft);
 	}
 

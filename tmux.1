@@ -3278,6 +3278,8 @@ but a different format may be specified with
 .Op Fl l Ar size
 .Op Fl m Ar message
 .Op Fl p Ar percentage
+.Op Fl s Ar style
+.Op Fl S Ar border-style
 .Op Fl t Ar target-pane
 .Op Fl w Ar width
 .Op Fl x Ar x-position
@@ -3333,6 +3335,12 @@ flag (if
 .Ar shell-command
 is not specified or empty)
 will create an empty pane and forward any output from stdin to it.
+.Pp
+.Fl s
+sets the style for the pane and
+.Fl S
+sets the style for the pane border (see
+.Sx STYLES ) .
 .Pp
 All other options have the same meaning as for the
 .Ic new-window
@@ -5177,6 +5185,42 @@ Set clock hour format.
 .Pp
 .It Ic fill-character Ar character
 Set the character used to fill areas of the terminal unused by a window.
+.Pp
+.It Ic floating-pane-border-style Ar style
+Set the default border style for all floating panes in the window.
+This overrides
+.Ic pane-border-style
+for floating panes.
+A per-pane style set with
+.Fl S
+on the
+.Ic new-pane
+command or with
+.Ic set-option Fl p
+takes priority over this option.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
+.It Ic floating-pane-style Ar style
+Set the default content style for all floating panes in the window.
+This overrides
+.Ic window-style
+for floating panes.
+A per-pane style set with
+.Fl s
+on the
+.Ic new-pane
+command or with
+.Ic select-pane Fl P
+takes priority over this option.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
 .Pp
 .It Ic main-pane-height Ar height
 .It Ic main-pane-width Ar width
