@@ -29,17 +29,33 @@
 
 #include "tmux.h"
 
+#include <assert.h>
+
+/* Do not reorder */
 enum mouse_where {
-	NOWHERE,
 	PANE,
 	STATUS,
 	STATUS_LEFT,
 	STATUS_RIGHT,
 	STATUS_DEFAULT,
-	BORDER,
 	SCROLLBAR_UP,
 	SCROLLBAR_SLIDER,
-	SCROLLBAR_DOWN
+	SCROLLBAR_DOWN,
+	BORDER,
+	NOWHERE
+};
+
+/* Do not reorder */
+enum mouse_type {
+	MOVE,
+	WHEEL,
+	DRAG,
+	UP,
+	DOWN,
+	SECOND,
+	DOUBLE,
+	TRIPLE,
+	NOTYPE
 };
 
 static void	server_client_free(int, short, void *);
@@ -47,6 +63,8 @@ static void	server_client_check_pane_resize(struct window_pane *);
 static void	server_client_check_pane_buffer(struct window_pane *);
 static void	server_client_check_window_resize(struct window *);
 static key_code	server_client_check_mouse(struct client *, struct key_event *);
+static key_code	server_client_lookup_keycode(u_int b, enum mouse_where,
+		    enum mouse_type);
 static void	server_client_repeat_timer(int, short, void *);
 static void	server_client_click_timer(int, short, void *);
 static void	server_client_check_exit(struct client *);
@@ -701,15 +719,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	key_code		 key;
 	struct timeval		 tv;
 	struct style_range	*sr;
-	enum { NOTYPE,
-	       MOVE,
-	       DOWN,
-	       UP,
-	       DRAG,
-	       WHEEL,
-	       SECOND,
-	       DOUBLE,
-	       TRIPLE } type = NOTYPE;
+	enum mouse_type type = NOTYPE;
 	enum mouse_where where = NOWHERE;
 
 	log_debug("%s mouse %02x at %u,%u (last %u,%u) (%d)", c->name, m->b,
@@ -1092,1186 +1102,42 @@ have_event:
 
 	/* Convert to a key binding. */
 	key = KEYC_UNKNOWN;
-	switch (type) {
-	case NOTYPE:
-		break;
-	case MOVE:
-		if (where == PANE) {
-			key = KEYC_MOUSEMOVE_PANE;
-			if (wp != NULL &&
-			    wp != w->active &&
-			    options_get_number(s->options, "focus-follows-mouse")) {
-				window_set_active_pane(w, wp, 1);
-				server_redraw_window_borders(w);
-				server_status_window(w);
-			}
+	if (type == MOVE && where == PANE) {
+		key = KEYC_MOUSEMOVE_PANE;
+		if (wp != NULL &&
+			wp != w->active &&
+			options_get_number(s->options, "focus-follows-mouse")) {
+			window_set_active_pane(w, wp, 1);
+			server_redraw_window_borders(w);
+			server_status_window(w);
 		}
-		if (where == STATUS)
-			key = KEYC_MOUSEMOVE_STATUS;
-		if (where == STATUS_LEFT)
-			key = KEYC_MOUSEMOVE_STATUS_LEFT;
-		if (where == STATUS_RIGHT)
-			key = KEYC_MOUSEMOVE_STATUS_RIGHT;
-		if (where == STATUS_DEFAULT)
-			key = KEYC_MOUSEMOVE_STATUS_DEFAULT;
-		if (where == BORDER)
-			key = KEYC_MOUSEMOVE_BORDER;
-		break;
-	case DRAG:
-		if (c->tty.mouse_drag_update != NULL)
-			key = KEYC_DRAGGING;
-		else {
-			switch (MOUSE_BUTTONS(b)) {
-			case MOUSE_BUTTON_1:
-				if (where == PANE)
-					key = KEYC_MOUSEDRAG1_PANE;
-				if (where == STATUS)
-					key = KEYC_MOUSEDRAG1_STATUS;
-				if (where == STATUS_LEFT)
-					key = KEYC_MOUSEDRAG1_STATUS_LEFT;
-				if (where == STATUS_RIGHT)
-					key = KEYC_MOUSEDRAG1_STATUS_RIGHT;
-				if (where == STATUS_DEFAULT)
-					key = KEYC_MOUSEDRAG1_STATUS_DEFAULT;
-				if (where == SCROLLBAR_UP)
-					key = KEYC_MOUSEDRAG1_SCROLLBAR_UP;
-				if (where == SCROLLBAR_SLIDER)
-					key = KEYC_MOUSEDRAG1_SCROLLBAR_SLIDER;
-				if (where == SCROLLBAR_DOWN)
-					key = KEYC_MOUSEDRAG1_SCROLLBAR_DOWN;
-				if (where == BORDER)
-					key = KEYC_MOUSEDRAG1_BORDER;
-				break;
-			case MOUSE_BUTTON_2:
-				if (where == PANE)
-					key = KEYC_MOUSEDRAG2_PANE;
-				if (where == STATUS)
-					key = KEYC_MOUSEDRAG2_STATUS;
-				if (where == STATUS_LEFT)
-					key = KEYC_MOUSEDRAG2_STATUS_LEFT;
-				if (where == STATUS_RIGHT)
-					key = KEYC_MOUSEDRAG2_STATUS_RIGHT;
-				if (where == STATUS_DEFAULT)
-					key = KEYC_MOUSEDRAG2_STATUS_DEFAULT;
-				if (where == SCROLLBAR_UP)
-					key = KEYC_MOUSEDRAG2_SCROLLBAR_UP;
-				if (where == SCROLLBAR_SLIDER)
-					key = KEYC_MOUSEDRAG2_SCROLLBAR_SLIDER;
-				if (where == SCROLLBAR_DOWN)
-					key = KEYC_MOUSEDRAG2_SCROLLBAR_DOWN;
-				if (where == BORDER)
-					key = KEYC_MOUSEDRAG2_BORDER;
-				break;
-			case MOUSE_BUTTON_3:
-				if (where == PANE)
-					key = KEYC_MOUSEDRAG3_PANE;
-				if (where == STATUS)
-					key = KEYC_MOUSEDRAG3_STATUS;
-				if (where == STATUS_LEFT)
-					key = KEYC_MOUSEDRAG3_STATUS_LEFT;
-				if (where == STATUS_RIGHT)
-					key = KEYC_MOUSEDRAG3_STATUS_RIGHT;
-				if (where == STATUS_DEFAULT)
-					key = KEYC_MOUSEDRAG3_STATUS_DEFAULT;
-				if (where == SCROLLBAR_UP)
-					key = KEYC_MOUSEDRAG3_SCROLLBAR_UP;
-				if (where == SCROLLBAR_SLIDER)
-					key = KEYC_MOUSEDRAG3_SCROLLBAR_SLIDER;
-				if (where == SCROLLBAR_DOWN)
-					key = KEYC_MOUSEDRAG3_SCROLLBAR_DOWN;
-				if (where == BORDER)
-					key = KEYC_MOUSEDRAG3_BORDER;
-				break;
-			case MOUSE_BUTTON_6:
-				if (where == PANE)
-					key = KEYC_MOUSEDRAG6_PANE;
-				if (where == STATUS)
-					key = KEYC_MOUSEDRAG6_STATUS;
-				if (where == STATUS_LEFT)
-					key = KEYC_MOUSEDRAG6_STATUS_LEFT;
-				if (where == STATUS_RIGHT)
-					key = KEYC_MOUSEDRAG6_STATUS_RIGHT;
-				if (where == STATUS_DEFAULT)
-					key = KEYC_MOUSEDRAG6_STATUS_DEFAULT;
-				if (where == SCROLLBAR_UP)
-					key = KEYC_MOUSEDRAG6_SCROLLBAR_UP;
-				if (where == SCROLLBAR_SLIDER)
-					key = KEYC_MOUSEDRAG6_SCROLLBAR_SLIDER;
-				if (where == SCROLLBAR_DOWN)
-					key = KEYC_MOUSEDRAG6_SCROLLBAR_DOWN;
-				if (where == BORDER)
-					key = KEYC_MOUSEDRAG6_BORDER;
-				break;
-			case MOUSE_BUTTON_7:
-				if (where == PANE)
-					key = KEYC_MOUSEDRAG7_PANE;
-				if (where == STATUS)
-					key = KEYC_MOUSEDRAG7_STATUS;
-				if (where == STATUS_LEFT)
-					key = KEYC_MOUSEDRAG7_STATUS_LEFT;
-				if (where == STATUS_RIGHT)
-					key = KEYC_MOUSEDRAG7_STATUS_RIGHT;
-				if (where == STATUS_DEFAULT)
-					key = KEYC_MOUSEDRAG7_STATUS_DEFAULT;
-				if (where == SCROLLBAR_UP)
-					key = KEYC_MOUSEDRAG7_SCROLLBAR_UP;
-				if (where == SCROLLBAR_SLIDER)
-					key = KEYC_MOUSEDRAG7_SCROLLBAR_SLIDER;
-				if (where == SCROLLBAR_DOWN)
-					key = KEYC_MOUSEDRAG7_SCROLLBAR_DOWN;
-				if (where == BORDER)
-					key = KEYC_MOUSEDRAG7_BORDER;
-				break;
-			case MOUSE_BUTTON_8:
-				if (where == PANE)
-					key = KEYC_MOUSEDRAG8_PANE;
-				if (where == STATUS)
-					key = KEYC_MOUSEDRAG8_STATUS;
-				if (where == STATUS_LEFT)
-					key = KEYC_MOUSEDRAG8_STATUS_LEFT;
-				if (where == STATUS_RIGHT)
-					key = KEYC_MOUSEDRAG8_STATUS_RIGHT;
-				if (where == STATUS_DEFAULT)
-					key = KEYC_MOUSEDRAG8_STATUS_DEFAULT;
-				if (where == SCROLLBAR_UP)
-					key = KEYC_MOUSEDRAG8_SCROLLBAR_UP;
-				if (where == SCROLLBAR_SLIDER)
-					key = KEYC_MOUSEDRAG8_SCROLLBAR_SLIDER;
-				if (where == SCROLLBAR_DOWN)
-					key = KEYC_MOUSEDRAG8_SCROLLBAR_DOWN;
-				if (where == BORDER)
-					key = KEYC_MOUSEDRAG8_BORDER;
-				break;
-			case MOUSE_BUTTON_9:
-				if (where == PANE)
-					key = KEYC_MOUSEDRAG9_PANE;
-				if (where == STATUS)
-					key = KEYC_MOUSEDRAG9_STATUS;
-				if (where == STATUS_LEFT)
-					key = KEYC_MOUSEDRAG9_STATUS_LEFT;
-				if (where == STATUS_RIGHT)
-					key = KEYC_MOUSEDRAG9_STATUS_RIGHT;
-				if (where == STATUS_DEFAULT)
-					key = KEYC_MOUSEDRAG9_STATUS_DEFAULT;
-				if (where == SCROLLBAR_UP)
-					key = KEYC_MOUSEDRAG9_SCROLLBAR_UP;
-				if (where == SCROLLBAR_SLIDER)
-					key = KEYC_MOUSEDRAG9_SCROLLBAR_SLIDER;
-				if (where == SCROLLBAR_DOWN)
-					key = KEYC_MOUSEDRAG9_SCROLLBAR_DOWN;
-				if (where == BORDER)
-					key = KEYC_MOUSEDRAG9_BORDER;
-				break;
-			case MOUSE_BUTTON_10:
-				if (where == PANE)
-					key = KEYC_MOUSEDRAG10_PANE;
-				if (where == STATUS)
-					key = KEYC_MOUSEDRAG10_STATUS;
-				if (where == STATUS_LEFT)
-					key = KEYC_MOUSEDRAG10_STATUS_LEFT;
-				if (where == STATUS_RIGHT)
-					key = KEYC_MOUSEDRAG10_STATUS_RIGHT;
-				if (where == STATUS_DEFAULT)
-					key = KEYC_MOUSEDRAG10_STATUS_DEFAULT;
-				if (where == SCROLLBAR_UP)
-					key = KEYC_MOUSEDRAG10_SCROLLBAR_UP;
-				if (where == SCROLLBAR_SLIDER)
-					key = KEYC_MOUSEDRAG10_SCROLLBAR_SLIDER;
-				if (where == SCROLLBAR_DOWN)
-					key = KEYC_MOUSEDRAG10_SCROLLBAR_DOWN;
-				if (where == BORDER)
-					key = KEYC_MOUSEDRAG10_BORDER;
-				break;
-			case MOUSE_BUTTON_11:
-				if (where == PANE)
-					key = KEYC_MOUSEDRAG11_PANE;
-				if (where == STATUS)
-					key = KEYC_MOUSEDRAG11_STATUS;
-				if (where == STATUS_LEFT)
-					key = KEYC_MOUSEDRAG11_STATUS_LEFT;
-				if (where == STATUS_RIGHT)
-					key = KEYC_MOUSEDRAG11_STATUS_RIGHT;
-				if (where == STATUS_DEFAULT)
-					key = KEYC_MOUSEDRAG11_STATUS_DEFAULT;
-				if (where == SCROLLBAR_UP)
-					key = KEYC_MOUSEDRAG11_SCROLLBAR_UP;
-				if (where == SCROLLBAR_SLIDER)
-					key = KEYC_MOUSEDRAG11_SCROLLBAR_SLIDER;
-				if (where == SCROLLBAR_DOWN)
-					key = KEYC_MOUSEDRAG11_SCROLLBAR_DOWN;
-				if (where == BORDER)
-					key = KEYC_MOUSEDRAG11_BORDER;
-				break;
-			}
-		}
-
-		/*
-		 * Begin a drag by setting the flag to a non-zero value that
-		 * corresponds to the mouse button in use. If starting to drag
-		 * the scrollbar, store the relative position in the slider
-		 * where the user grabbed.
-		 */
-		c->tty.mouse_drag_flag = MOUSE_BUTTONS(b) + 1;
-		if (c->tty.mouse_scrolling_flag == 0 &&
-		    where == SCROLLBAR_SLIDER) {
-			c->tty.mouse_scrolling_flag = 1;
-			if (m->statusat == 0) {
-				c->tty.mouse_slider_mpos = sl_mpos +
-				    m->statuslines;
-			} else
-				c->tty.mouse_slider_mpos = sl_mpos;
-		}
-		break;
-	case WHEEL:
-		if (MOUSE_BUTTONS(b) == MOUSE_WHEEL_UP) {
-			if (where == PANE)
-				key = KEYC_WHEELUP_PANE;
-			if (where == STATUS)
-				key = KEYC_WHEELUP_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_WHEELUP_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_WHEELUP_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_WHEELUP_STATUS_DEFAULT;
-			if (where == BORDER)
-				key = KEYC_WHEELUP_BORDER;
-		} else {
-			if (where == PANE)
-				key = KEYC_WHEELDOWN_PANE;
-			if (where == STATUS)
-				key = KEYC_WHEELDOWN_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_WHEELDOWN_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_WHEELDOWN_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_WHEELDOWN_STATUS_DEFAULT;
-			if (where == BORDER)
-				key = KEYC_WHEELDOWN_BORDER;
-		}
-		break;
-	case UP:
-		switch (MOUSE_BUTTONS(b)) {
-		case MOUSE_BUTTON_1:
-			if (where == PANE)
-				key = KEYC_MOUSEUP1_PANE;
-			if (where == STATUS)
-				key = KEYC_MOUSEUP1_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEUP1_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEUP1_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEUP1_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_MOUSEUP1_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_MOUSEUP1_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEUP1_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_MOUSEUP1_BORDER;
-			break;
-		case MOUSE_BUTTON_2:
-			if (where == PANE)
-				key = KEYC_MOUSEUP2_PANE;
-			if (where == STATUS)
-				key = KEYC_MOUSEUP2_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEUP2_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEUP2_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEUP2_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_MOUSEUP2_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_MOUSEUP2_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEUP2_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_MOUSEUP2_BORDER;
-			break;
-		case MOUSE_BUTTON_3:
-			if (where == PANE)
-				key = KEYC_MOUSEUP3_PANE;
-			if (where == STATUS)
-				key = KEYC_MOUSEUP3_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEUP3_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEUP3_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEUP3_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_MOUSEUP3_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_MOUSEUP3_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEUP3_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_MOUSEUP3_BORDER;
-			break;
-		case MOUSE_BUTTON_6:
-			if (where == PANE)
-				key = KEYC_MOUSEUP6_PANE;
-			if (where == STATUS)
-				key = KEYC_MOUSEUP6_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEUP6_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEUP6_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEUP6_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_MOUSEUP6_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_MOUSEUP6_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEUP6_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_MOUSEUP6_BORDER;
-			break;
-		case MOUSE_BUTTON_7:
-			if (where == PANE)
-				key = KEYC_MOUSEUP7_PANE;
-			if (where == STATUS)
-				key = KEYC_MOUSEUP7_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEUP7_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEUP7_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEUP7_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_MOUSEUP7_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_MOUSEUP7_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEUP7_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_MOUSEUP7_BORDER;
-			break;
-		case MOUSE_BUTTON_8:
-			if (where == PANE)
-				key = KEYC_MOUSEUP8_PANE;
-			if (where == STATUS)
-				key = KEYC_MOUSEUP8_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEUP8_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEUP8_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEUP8_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_MOUSEUP8_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_MOUSEUP8_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEUP8_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_MOUSEUP8_BORDER;
-			break;
-		case MOUSE_BUTTON_9:
-			if (where == PANE)
-				key = KEYC_MOUSEUP9_PANE;
-			if (where == STATUS)
-				key = KEYC_MOUSEUP9_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEUP9_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEUP9_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEUP9_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_MOUSEUP9_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_MOUSEUP9_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEUP9_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_MOUSEUP9_BORDER;
-			break;
-		case MOUSE_BUTTON_10:
-			if (where == PANE)
-				key = KEYC_MOUSEUP1_PANE;
-			if (where == STATUS)
-				key = KEYC_MOUSEUP1_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEUP1_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEUP1_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEUP10_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_MOUSEUP10_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_MOUSEUP10_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEUP1_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_MOUSEUP1_BORDER;
-			break;
-		case MOUSE_BUTTON_11:
-			if (where == PANE)
-				key = KEYC_MOUSEUP11_PANE;
-			if (where == STATUS)
-				key = KEYC_MOUSEUP11_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEUP11_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEUP11_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEUP11_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_MOUSEUP11_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_MOUSEUP11_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEUP11_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_MOUSEUP11_BORDER;
-			break;
-		}
-		break;
-	case DOWN:
-		switch (MOUSE_BUTTONS(b)) {
-		case MOUSE_BUTTON_1:
-			if (where == PANE)
-				key = KEYC_MOUSEDOWN1_PANE;
-			if (where == STATUS)
-				key = KEYC_MOUSEDOWN1_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEDOWN1_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEDOWN1_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEDOWN1_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_MOUSEDOWN1_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_MOUSEDOWN1_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEDOWN1_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_MOUSEDOWN1_BORDER;
-			break;
-		case MOUSE_BUTTON_2:
-			if (where == PANE)
-				key = KEYC_MOUSEDOWN2_PANE;
-			if (where == STATUS)
-				key = KEYC_MOUSEDOWN2_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEDOWN2_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEDOWN2_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEDOWN2_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_MOUSEDOWN2_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_MOUSEDOWN2_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEDOWN2_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_MOUSEDOWN2_BORDER;
-			break;
-		case MOUSE_BUTTON_3:
-			if (where == PANE)
-				key = KEYC_MOUSEDOWN3_PANE;
-			if (where == STATUS)
-				key = KEYC_MOUSEDOWN3_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEDOWN3_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEDOWN3_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEDOWN3_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_MOUSEDOWN3_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_MOUSEDOWN3_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEDOWN3_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_MOUSEDOWN3_BORDER;
-			break;
-		case MOUSE_BUTTON_6:
-			if (where == PANE)
-				key = KEYC_MOUSEDOWN6_PANE;
-			if (where == STATUS)
-				key = KEYC_MOUSEDOWN6_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEDOWN6_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEDOWN6_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEDOWN6_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_MOUSEDOWN6_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_MOUSEDOWN6_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEDOWN6_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_MOUSEDOWN6_BORDER;
-			break;
-		case MOUSE_BUTTON_7:
-			if (where == PANE)
-				key = KEYC_MOUSEDOWN7_PANE;
-			if (where == STATUS)
-				key = KEYC_MOUSEDOWN7_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEDOWN7_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEDOWN7_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEDOWN7_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_MOUSEDOWN7_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_MOUSEDOWN7_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEDOWN7_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_MOUSEDOWN7_BORDER;
-			break;
-		case MOUSE_BUTTON_8:
-			if (where == PANE)
-				key = KEYC_MOUSEDOWN8_PANE;
-			if (where == STATUS)
-				key = KEYC_MOUSEDOWN8_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEDOWN8_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEDOWN8_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEDOWN8_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_MOUSEDOWN8_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_MOUSEDOWN8_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEDOWN8_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_MOUSEDOWN8_BORDER;
-			break;
-		case MOUSE_BUTTON_9:
-			if (where == PANE)
-				key = KEYC_MOUSEDOWN9_PANE;
-			if (where == STATUS)
-				key = KEYC_MOUSEDOWN9_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEDOWN9_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEDOWN9_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEDOWN9_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_MOUSEDOWN9_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_MOUSEDOWN9_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEDOWN9_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_MOUSEDOWN9_BORDER;
-			break;
-		case MOUSE_BUTTON_10:
-			if (where == PANE)
-				key = KEYC_MOUSEDOWN10_PANE;
-			if (where == STATUS)
-				key = KEYC_MOUSEDOWN10_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEDOWN10_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEDOWN10_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEDOWN10_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_MOUSEDOWN10_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_MOUSEDOWN10_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEDOWN10_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_MOUSEDOWN10_BORDER;
-			break;
-		case MOUSE_BUTTON_11:
-			if (where == PANE)
-				key = KEYC_MOUSEDOWN11_PANE;
-			if (where == STATUS)
-				key = KEYC_MOUSEDOWN11_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEDOWN11_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEDOWN11_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEDOWN11_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_MOUSEDOWN11_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_MOUSEDOWN11_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEDOWN11_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_MOUSEDOWN11_BORDER;
-			break;
-		}
-		break;
-	case SECOND:
-		switch (MOUSE_BUTTONS(b)) {
-		case MOUSE_BUTTON_1:
-			if (where == PANE)
-				key = KEYC_SECONDCLICK1_PANE;
-			if (where == STATUS)
-				key = KEYC_SECONDCLICK1_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_SECONDCLICK1_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_SECONDCLICK1_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_SECONDCLICK1_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_SECONDCLICK1_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_SECONDCLICK1_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_SECONDCLICK1_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_SECONDCLICK1_BORDER;
-			break;
-		case MOUSE_BUTTON_2:
-			if (where == PANE)
-				key = KEYC_SECONDCLICK2_PANE;
-			if (where == STATUS)
-				key = KEYC_SECONDCLICK2_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_SECONDCLICK2_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_SECONDCLICK2_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_SECONDCLICK2_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_SECONDCLICK2_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_SECONDCLICK2_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_SECONDCLICK2_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_SECONDCLICK2_BORDER;
-			break;
-		case MOUSE_BUTTON_3:
-			if (where == PANE)
-				key = KEYC_SECONDCLICK3_PANE;
-			if (where == STATUS)
-				key = KEYC_SECONDCLICK3_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_SECONDCLICK3_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_SECONDCLICK3_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_SECONDCLICK3_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_SECONDCLICK3_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_SECONDCLICK3_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_SECONDCLICK3_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_SECONDCLICK3_BORDER;
-			break;
-		case MOUSE_BUTTON_6:
-			if (where == PANE)
-				key = KEYC_SECONDCLICK6_PANE;
-			if (where == STATUS)
-				key = KEYC_SECONDCLICK6_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_SECONDCLICK6_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_SECONDCLICK6_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_SECONDCLICK6_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_SECONDCLICK6_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_SECONDCLICK6_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_SECONDCLICK6_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_SECONDCLICK6_BORDER;
-			break;
-		case MOUSE_BUTTON_7:
-			if (where == PANE)
-				key = KEYC_SECONDCLICK7_PANE;
-			if (where == STATUS)
-				key = KEYC_SECONDCLICK7_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_SECONDCLICK7_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_SECONDCLICK7_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_SECONDCLICK7_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_SECONDCLICK7_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_SECONDCLICK7_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_SECONDCLICK7_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_SECONDCLICK7_BORDER;
-			break;
-		case MOUSE_BUTTON_8:
-			if (where == PANE)
-				key = KEYC_SECONDCLICK8_PANE;
-			if (where == STATUS)
-				key = KEYC_SECONDCLICK8_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_SECONDCLICK8_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_SECONDCLICK8_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_SECONDCLICK8_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_SECONDCLICK8_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_SECONDCLICK8_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_SECONDCLICK8_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_SECONDCLICK8_BORDER;
-			break;
-		case MOUSE_BUTTON_9:
-			if (where == PANE)
-				key = KEYC_SECONDCLICK9_PANE;
-			if (where == STATUS)
-				key = KEYC_SECONDCLICK9_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_SECONDCLICK9_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_SECONDCLICK9_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_SECONDCLICK9_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_SECONDCLICK9_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_SECONDCLICK9_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_SECONDCLICK9_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_SECONDCLICK9_BORDER;
-			break;
-		case MOUSE_BUTTON_10:
-			if (where == PANE)
-				key = KEYC_SECONDCLICK10_PANE;
-			if (where == STATUS)
-				key = KEYC_SECONDCLICK10_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_SECONDCLICK10_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_SECONDCLICK10_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_SECONDCLICK10_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_SECONDCLICK10_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_SECONDCLICK10_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_SECONDCLICK10_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_SECONDCLICK10_BORDER;
-			break;
-		case MOUSE_BUTTON_11:
-			if (where == PANE)
-				key = KEYC_SECONDCLICK11_PANE;
-			if (where == STATUS)
-				key = KEYC_SECONDCLICK11_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_SECONDCLICK11_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_SECONDCLICK11_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_SECONDCLICK11_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_SECONDCLICK11_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_SECONDCLICK11_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_SECONDCLICK11_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_SECONDCLICK11_BORDER;
-			break;
-		}
-		break;
-	case DOUBLE:
-		switch (MOUSE_BUTTONS(b)) {
-		case MOUSE_BUTTON_1:
-			if (where == PANE)
-				key = KEYC_DOUBLECLICK1_PANE;
-			if (where == STATUS)
-				key = KEYC_DOUBLECLICK1_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_DOUBLECLICK1_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_DOUBLECLICK1_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_DOUBLECLICK1_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_DOUBLECLICK1_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_DOUBLECLICK1_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_DOUBLECLICK1_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_DOUBLECLICK1_BORDER;
-			break;
-		case MOUSE_BUTTON_2:
-			if (where == PANE)
-				key = KEYC_DOUBLECLICK2_PANE;
-			if (where == STATUS)
-				key = KEYC_DOUBLECLICK2_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_DOUBLECLICK2_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_DOUBLECLICK2_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_DOUBLECLICK2_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_DOUBLECLICK2_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_DOUBLECLICK2_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_DOUBLECLICK2_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_DOUBLECLICK2_BORDER;
-			break;
-		case MOUSE_BUTTON_3:
-			if (where == PANE)
-				key = KEYC_DOUBLECLICK3_PANE;
-			if (where == STATUS)
-				key = KEYC_DOUBLECLICK3_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_DOUBLECLICK3_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_DOUBLECLICK3_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_DOUBLECLICK3_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_DOUBLECLICK3_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_DOUBLECLICK3_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_DOUBLECLICK3_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_DOUBLECLICK3_BORDER;
-			break;
-		case MOUSE_BUTTON_6:
-			if (where == PANE)
-				key = KEYC_DOUBLECLICK6_PANE;
-			if (where == STATUS)
-				key = KEYC_DOUBLECLICK6_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_DOUBLECLICK6_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_DOUBLECLICK6_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_DOUBLECLICK6_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_DOUBLECLICK6_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_DOUBLECLICK6_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_DOUBLECLICK6_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_DOUBLECLICK6_BORDER;
-			break;
-		case MOUSE_BUTTON_7:
-			if (where == PANE)
-				key = KEYC_DOUBLECLICK7_PANE;
-			if (where == STATUS)
-				key = KEYC_DOUBLECLICK7_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_DOUBLECLICK7_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_DOUBLECLICK7_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_DOUBLECLICK7_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_DOUBLECLICK7_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_DOUBLECLICK7_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_DOUBLECLICK7_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_DOUBLECLICK7_BORDER;
-			break;
-		case MOUSE_BUTTON_8:
-			if (where == PANE)
-				key = KEYC_DOUBLECLICK8_PANE;
-			if (where == STATUS)
-				key = KEYC_DOUBLECLICK8_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_DOUBLECLICK8_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_DOUBLECLICK8_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_DOUBLECLICK8_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_DOUBLECLICK8_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_DOUBLECLICK8_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_DOUBLECLICK8_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_DOUBLECLICK8_BORDER;
-			break;
-		case MOUSE_BUTTON_9:
-			if (where == PANE)
-				key = KEYC_DOUBLECLICK9_PANE;
-			if (where == STATUS)
-				key = KEYC_DOUBLECLICK9_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_DOUBLECLICK9_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_DOUBLECLICK9_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_DOUBLECLICK9_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_DOUBLECLICK9_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_DOUBLECLICK9_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_DOUBLECLICK9_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_DOUBLECLICK9_BORDER;
-			break;
-		case MOUSE_BUTTON_10:
-			if (where == PANE)
-				key = KEYC_DOUBLECLICK10_PANE;
-			if (where == STATUS)
-				key = KEYC_DOUBLECLICK10_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_DOUBLECLICK10_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_DOUBLECLICK10_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_DOUBLECLICK10_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_DOUBLECLICK10_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_DOUBLECLICK10_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_DOUBLECLICK10_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_DOUBLECLICK10_BORDER;
-			break;
-		case MOUSE_BUTTON_11:
-			if (where == PANE)
-				key = KEYC_DOUBLECLICK11_PANE;
-			if (where == STATUS)
-				key = KEYC_DOUBLECLICK11_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_DOUBLECLICK11_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_DOUBLECLICK11_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_DOUBLECLICK11_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_DOUBLECLICK11_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_DOUBLECLICK11_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_DOUBLECLICK11_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_DOUBLECLICK11_BORDER;
-			break;
-		}
-		break;
-	case TRIPLE:
-		switch (MOUSE_BUTTONS(b)) {
-		case MOUSE_BUTTON_1:
-			if (where == PANE)
-				key = KEYC_TRIPLECLICK1_PANE;
-			if (where == STATUS)
-				key = KEYC_TRIPLECLICK1_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_TRIPLECLICK1_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_TRIPLECLICK1_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_TRIPLECLICK1_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_TRIPLECLICK1_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_TRIPLECLICK1_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_TRIPLECLICK1_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_TRIPLECLICK1_BORDER;
-			break;
-		case MOUSE_BUTTON_2:
-			if (where == PANE)
-				key = KEYC_TRIPLECLICK2_PANE;
-			if (where == STATUS)
-				key = KEYC_TRIPLECLICK2_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_TRIPLECLICK2_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_TRIPLECLICK2_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_TRIPLECLICK2_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_TRIPLECLICK2_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_TRIPLECLICK2_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_TRIPLECLICK2_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_TRIPLECLICK2_BORDER;
-			break;
-		case MOUSE_BUTTON_3:
-			if (where == PANE)
-				key = KEYC_TRIPLECLICK3_PANE;
-			if (where == STATUS)
-				key = KEYC_TRIPLECLICK3_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_TRIPLECLICK3_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_TRIPLECLICK3_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_TRIPLECLICK3_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_TRIPLECLICK3_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_TRIPLECLICK3_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_TRIPLECLICK3_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_TRIPLECLICK3_BORDER;
-			break;
-		case MOUSE_BUTTON_6:
-			if (where == PANE)
-				key = KEYC_TRIPLECLICK6_PANE;
-			if (where == STATUS)
-				key = KEYC_TRIPLECLICK6_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_TRIPLECLICK6_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_TRIPLECLICK6_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_TRIPLECLICK6_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_TRIPLECLICK6_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_TRIPLECLICK6_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_TRIPLECLICK6_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_TRIPLECLICK6_BORDER;
-			break;
-		case MOUSE_BUTTON_7:
-			if (where == PANE)
-				key = KEYC_TRIPLECLICK7_PANE;
-			if (where == STATUS)
-				key = KEYC_TRIPLECLICK7_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_TRIPLECLICK7_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_TRIPLECLICK7_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_TRIPLECLICK7_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_TRIPLECLICK7_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_TRIPLECLICK7_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_TRIPLECLICK7_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_TRIPLECLICK7_BORDER;
-			break;
-		case MOUSE_BUTTON_8:
-			if (where == PANE)
-				key = KEYC_TRIPLECLICK8_PANE;
-			if (where == STATUS)
-				key = KEYC_TRIPLECLICK8_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_TRIPLECLICK8_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_TRIPLECLICK8_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_TRIPLECLICK8_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_TRIPLECLICK8_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_TRIPLECLICK8_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_TRIPLECLICK8_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_TRIPLECLICK8_BORDER;
-			break;
-		case MOUSE_BUTTON_9:
-			if (where == PANE)
-				key = KEYC_TRIPLECLICK9_PANE;
-			if (where == STATUS)
-				key = KEYC_TRIPLECLICK9_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_TRIPLECLICK9_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_TRIPLECLICK9_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_TRIPLECLICK9_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_TRIPLECLICK9_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_TRIPLECLICK9_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_TRIPLECLICK9_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_TRIPLECLICK9_BORDER;
-			break;
-		case MOUSE_BUTTON_10:
-			if (where == PANE)
-				key = KEYC_TRIPLECLICK10_PANE;
-			if (where == STATUS)
-				key = KEYC_TRIPLECLICK10_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_TRIPLECLICK10_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_TRIPLECLICK10_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_TRIPLECLICK10_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_TRIPLECLICK10_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_TRIPLECLICK10_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_TRIPLECLICK10_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_TRIPLECLICK10_BORDER;
-			break;
-		case MOUSE_BUTTON_11:
-			if (where == PANE)
-				key = KEYC_TRIPLECLICK11_PANE;
-			if (where == STATUS)
-				key = KEYC_TRIPLECLICK11_STATUS;
-			if (where == STATUS_LEFT)
-				key = KEYC_TRIPLECLICK11_STATUS_LEFT;
-			if (where == STATUS_RIGHT)
-				key = KEYC_TRIPLECLICK11_STATUS_RIGHT;
-			if (where == STATUS_DEFAULT)
-				key = KEYC_TRIPLECLICK11_STATUS_DEFAULT;
-			if (where == SCROLLBAR_UP)
-				key = KEYC_TRIPLECLICK11_SCROLLBAR_UP;
-			if (where == SCROLLBAR_SLIDER)
-				key = KEYC_TRIPLECLICK11_SCROLLBAR_SLIDER;
-			if (where == SCROLLBAR_DOWN)
-				key = KEYC_TRIPLECLICK11_SCROLLBAR_DOWN;
-			if (where == BORDER)
-				key = KEYC_TRIPLECLICK11_BORDER;
-			break;
-		}
-		break;
 	}
+	if (type == DRAG) {
+		if (c->tty.mouse_drag_update != NULL) {
+			key = KEYC_DRAGGING;
+			goto out;
+		} else {
+			/*
+			* Begin a drag by setting the flag to a non-zero value
+			* that corresponds to the mouse button in use. If
+			* starting to drag the scrollbar, store the relative
+			* position in the slider where the user grabbed.
+			*/
+			c->tty.mouse_drag_flag = MOUSE_BUTTONS(b) + 1;
+			if (c->tty.mouse_scrolling_flag == 0 &&
+			where == SCROLLBAR_SLIDER) {
+				c->tty.mouse_scrolling_flag = 1;
+				if (m->statusat == 0) {
+					c->tty.mouse_slider_mpos = sl_mpos +
+					m->statuslines;
+				} else
+					c->tty.mouse_slider_mpos = sl_mpos;
+			}
+
+		}
+	}
+
+	key = server_client_lookup_keycode(b, where, type);
 	if (key == KEYC_UNKNOWN)
 		return (KEYC_UNKNOWN);
 
@@ -4044,4 +2910,116 @@ server_client_report_theme(struct client *c, enum client_theme theme)
 	 * panes until a response is received.
 	 */
 	tty_repeat_requests(&c->tty, 1);
+}
+
+static key_code
+server_client_lookup_keycode(u_int b, enum mouse_where where,
+    enum mouse_type type)
+{
+	u_int			num_btns, num_where, is_down, i, idx = 0;
+	int			btn;
+	static const int	btns[] = {
+					/* Do not reorder */
+					MOUSE_BUTTON_1,
+					MOUSE_BUTTON_2,
+					MOUSE_BUTTON_3,
+					MOUSE_BUTTON_6,
+					MOUSE_BUTTON_7,
+					MOUSE_BUTTON_8,
+					MOUSE_BUTTON_9,
+					MOUSE_BUTTON_10,
+					MOUSE_BUTTON_11 };
+	static const key_code	keycode_lookup[] = {
+					/* Do not reorder */
+					KEYC_MOUSE_KEY(MOUSEMOVE),
+					KEYC_MOUSE_KEY(WHEELUP),
+					KEYC_MOUSE_KEY(WHEELDOWN),
+					KEYC_MOUSE_KEY(MOUSEDRAG1),
+					KEYC_MOUSE_KEY(MOUSEDRAG2),
+					KEYC_MOUSE_KEY(MOUSEDRAG3),
+					KEYC_MOUSE_KEY(MOUSEDRAG6),
+					KEYC_MOUSE_KEY(MOUSEDRAG7),
+					KEYC_MOUSE_KEY(MOUSEDRAG8),
+					KEYC_MOUSE_KEY(MOUSEDRAG9),
+					KEYC_MOUSE_KEY(MOUSEDRAG10),
+					KEYC_MOUSE_KEY(MOUSEDRAG11),
+					KEYC_MOUSE_KEY(MOUSEUP1),
+					KEYC_MOUSE_KEY(MOUSEUP2),
+					KEYC_MOUSE_KEY(MOUSEUP3),
+					KEYC_MOUSE_KEY(MOUSEUP6),
+					KEYC_MOUSE_KEY(MOUSEUP7),
+					KEYC_MOUSE_KEY(MOUSEUP8),
+					KEYC_MOUSE_KEY(MOUSEUP9),
+					KEYC_MOUSE_KEY(MOUSEUP10),
+					KEYC_MOUSE_KEY(MOUSEUP11),
+					KEYC_MOUSE_KEY(MOUSEDOWN1),
+					KEYC_MOUSE_KEY(MOUSEDOWN2),
+					KEYC_MOUSE_KEY(MOUSEDOWN3),
+					KEYC_MOUSE_KEY(MOUSEDOWN6),
+					KEYC_MOUSE_KEY(MOUSEDOWN7),
+					KEYC_MOUSE_KEY(MOUSEDOWN8),
+					KEYC_MOUSE_KEY(MOUSEDOWN9),
+					KEYC_MOUSE_KEY(MOUSEDOWN10),
+					KEYC_MOUSE_KEY(MOUSEDOWN11),
+					KEYC_MOUSE_KEY(SECONDCLICK1),
+					KEYC_MOUSE_KEY(SECONDCLICK2),
+					KEYC_MOUSE_KEY(SECONDCLICK3),
+					KEYC_MOUSE_KEY(SECONDCLICK6),
+					KEYC_MOUSE_KEY(SECONDCLICK7),
+					KEYC_MOUSE_KEY(SECONDCLICK8),
+					KEYC_MOUSE_KEY(SECONDCLICK9),
+					KEYC_MOUSE_KEY(SECONDCLICK10),
+					KEYC_MOUSE_KEY(SECONDCLICK11),
+					KEYC_MOUSE_KEY(DOUBLECLICK1),
+					KEYC_MOUSE_KEY(DOUBLECLICK2),
+					KEYC_MOUSE_KEY(DOUBLECLICK3),
+					KEYC_MOUSE_KEY(DOUBLECLICK6),
+					KEYC_MOUSE_KEY(DOUBLECLICK7),
+					KEYC_MOUSE_KEY(DOUBLECLICK8),
+					KEYC_MOUSE_KEY(DOUBLECLICK9),
+					KEYC_MOUSE_KEY(DOUBLECLICK10),
+					KEYC_MOUSE_KEY(DOUBLECLICK11),
+					KEYC_MOUSE_KEY(TRIPLECLICK1),
+					KEYC_MOUSE_KEY(TRIPLECLICK2),
+					KEYC_MOUSE_KEY(TRIPLECLICK3),
+					KEYC_MOUSE_KEY(TRIPLECLICK6),
+					KEYC_MOUSE_KEY(TRIPLECLICK7),
+					KEYC_MOUSE_KEY(TRIPLECLICK8),
+					KEYC_MOUSE_KEY(TRIPLECLICK9),
+					KEYC_MOUSE_KEY(TRIPLECLICK10),
+					KEYC_MOUSE_KEY(TRIPLECLICK11) };
+
+	if (type == NOTYPE)
+		return (KEYC_UNKNOWN);
+
+	num_where = NOWHERE;
+	if (type == MOVE) {
+		idx = where;
+		goto out;
+	}
+	idx += num_where;
+
+	if (type == WHEEL) {
+		is_down = MOUSE_BUTTONS(b) == MOUSE_WHEEL_DOWN;
+		idx += num_where * is_down + where;
+		goto out;
+	}
+	idx += num_where * 2;
+
+	num_btns = nitems(btns);
+	btn = MOUSE_BUTTONS(b);
+	for (i = 0;; i++) {
+		if (i == num_btns)
+			return KEYC_UNKNOWN;
+		if (btn == btns[i])
+			break;
+	}
+	idx += (type - (WHEEL + 1)) * (num_btns * num_where);
+	idx += i * (num_where);
+	idx += where;
+
+out:
+	if (idx >= nitems(keycode_lookup))
+		return (KEYC_UNKNOWN);
+	return (keycode_lookup[idx]);
 }
