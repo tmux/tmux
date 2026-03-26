@@ -1170,6 +1170,9 @@ tty_clear_line(struct tty *tty, const struct grid_cell *defaults, u_int py,
     u_int px, u_int nx, u_int bg)
 {
 	struct client		*c = tty->client;
+	struct visible_ranges	*r;
+	struct visible_range	*rr;
+	u_int			 i;
 
 	log_debug("%s: %s, %u at %u,%u", __func__, c->name, nx, px, py);
 
@@ -1205,8 +1208,14 @@ tty_clear_line(struct tty *tty, const struct grid_cell *defaults, u_int py,
 	 * Couldn't use an escape sequence, use spaces. Clear only the visible
 	 * bit if there is an overlay.
 	 */
-	tty_cursor(tty, px, py);
-	tty_repeat_space(tty, nx);
+	r = tty_check_overlay_range(tty, px, py, nx);
+	for (i = 0; i < r->used; i++) {
+		rr = &r->ranges[i];
+		if (rr->nx != 0) {
+			tty_cursor(tty, rr->px, py);
+			tty_repeat_space(tty, rr->nx);
+		}
+	}
 }
 
 /* Clear a line, adjusting to visible part of pane. */

@@ -1476,14 +1476,12 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 		oy += ctx->statuslines;		/* Top of window in tty. */
 	}
 
-
-	/* Set up style for slider. */
 	gc = sb_style->gc;
 	memcpy(&slgc, &gc, sizeof slgc);
 	slgc.fg = gc.bg;
 	slgc.bg = gc.fg;
 
-	if (sb_x + (int)sb_w < 0)
+	if (sb_x + (int)sb_w < 0 || sb_x >= sx || sb_y >= sy)
 		/* Whole sb off screen. */
 		return;
 	if (sb_x < 0)
