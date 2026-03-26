@@ -301,6 +301,8 @@ mode_tree_clear_tagged(struct mode_tree_list *mtl)
 void
 mode_tree_up(struct mode_tree_data *mtd, int wrap)
 {
+	if (mtd->line_size == 0)
+		return;
 	if (mtd->current == 0) {
 		if (wrap) {
 			mtd->current = mtd->line_size - 1;
@@ -317,6 +319,8 @@ mode_tree_up(struct mode_tree_data *mtd, int wrap)
 int
 mode_tree_down(struct mode_tree_data *mtd, int wrap)
 {
+	if (mtd->line_size == 0)
+		return (0);
 	if (mtd->current == mtd->line_size - 1) {
 		if (wrap) {
 			mtd->current = 0;
@@ -433,6 +437,8 @@ mode_tree_set_current(struct mode_tree_data *mtd, uint64_t tag)
 		return (1);
 	}
 	if (mtd->current >= mtd->line_size) {
+		if (mtd->line_size == 0)
+			return (0);
 		mtd->current = mtd->line_size - 1;
 		if (mtd->current > mtd->height - 1)
 			mtd->offset = mtd->current - mtd->height + 1;
