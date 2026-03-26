@@ -165,7 +165,7 @@ cmd_minimise_pane_minimise(struct window *w, struct window_pane *wp)
 
 	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
-	
+
 	return (CMD_RETURN_NORMAL);
 }
 
