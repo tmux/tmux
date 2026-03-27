@@ -367,6 +367,8 @@ mode_tree_swap(struct mode_tree_data *mtd, int direction)
 void *
 mode_tree_get_current(struct mode_tree_data *mtd)
 {
+	if (mtd->line_size == 0)
+		return (NULL);
 	return (mtd->line_list[mtd->current].item->itemdata);
 }
 
