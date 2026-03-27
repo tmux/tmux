@@ -49,6 +49,7 @@ format_is_type(struct format_range *fr, struct style *sy)
 	case STYLE_RANGE_NONE:
 	case STYLE_RANGE_LEFT:
 	case STYLE_RANGE_RIGHT:
+	case STYLE_RANGE_CONTROL:
 		return (1);
 	case STYLE_RANGE_PANE:
 	case STYLE_RANGE_WINDOW:
@@ -1064,6 +1065,10 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 		case STYLE_RANGE_USER:
 			log_debug("%s: range user|%u at %u-%u", __func__,
 			    sr->argument, sr->start, sr->end);
+			break;
+		case STYLE_RANGE_CONTROL:
+			log_debug("%s: range control at %u-%u", __func__,
+			    sr->start, sr->end);
 			break;
 		}
 		format_free_range(&frs, fr);

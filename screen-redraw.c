@@ -450,6 +450,7 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 	struct grid_cell	 gc;
 	const char		*fmt;
 	struct format_tree	*ft;
+	struct style_line_entry	*sle;
 	char			*expanded;
 	int			 pane_status = rctx->pane_status, sb_w = 0;
 	int			 pane_scrollbars = rctx->pane_scrollbars;
@@ -494,10 +495,13 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 	gc.attr &= ~GRID_ATTR_CHARSET;
 
 	screen_write_cursormove(&ctx, 0, 0, 0);
-	format_draw(&ctx, &gc, width, expanded, NULL, 0);
-	screen_write_stop(&ctx);
+	sle = &wp->border_status_line;
+	style_ranges_free(&sle->ranges);
+	format_draw(&ctx, &gc, width, expanded, &sle->ranges, 0);
+	free(sle->expanded);
+	sle->expanded = expanded;
 
-	free(expanded);
+	screen_write_stop(&ctx);
 	format_free(ft);
 
 	if (grid_compare(wp->status_screen.grid, old.grid) == 0) {

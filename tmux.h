@@ -194,7 +194,17 @@ struct winlink;
 	KEYC_ ## name ## _SCROLLBAR_UP,	    \
 	KEYC_ ## name ## _SCROLLBAR_SLIDER, \
 	KEYC_ ## name ## _SCROLLBAR_DOWN,   \
-	KEYC_ ## name ## _BORDER
+	KEYC_ ## name ## _BORDER,	    \
+	KEYC_ ## name ## _CONTROL0,	    \
+	KEYC_ ## name ## _CONTROL1,	    \
+	KEYC_ ## name ## _CONTROL2,	    \
+	KEYC_ ## name ## _CONTROL3,	    \
+	KEYC_ ## name ## _CONTROL4,	    \
+	KEYC_ ## name ## _CONTROL5,	    \
+	KEYC_ ## name ## _CONTROL6,	    \
+	KEYC_ ## name ## _CONTROL7,	    \
+	KEYC_ ## name ## _CONTROL8,	    \
+	KEYC_ ## name ## _CONTROL9
 #define KEYC_MOUSE_STRING(name, s)				      \
 	{ #s "Pane", KEYC_ ## name ## _PANE },			      \
 	{ #s "Status", KEYC_ ## name ## _STATUS },		      \
@@ -204,7 +214,17 @@ struct winlink;
 	{ #s "ScrollbarUp", KEYC_ ## name ## _SCROLLBAR_UP },         \
 	{ #s "ScrollbarSlider", KEYC_ ## name ## _SCROLLBAR_SLIDER }, \
 	{ #s "ScrollbarDown", KEYC_ ## name ## _SCROLLBAR_DOWN },     \
-	{ #s "Border", KEYC_ ## name ## _BORDER }
+	{ #s "Border", KEYC_ ## name ## _BORDER },		      \
+	{ #s "Control0", KEYC_ ## name ## _CONTROL0 },		      \
+	{ #s "Control1", KEYC_ ## name ## _CONTROL1 },		      \
+	{ #s "Control2", KEYC_ ## name ## _CONTROL2 },		      \
+	{ #s "Control3", KEYC_ ## name ## _CONTROL3 },		      \
+	{ #s "Control4", KEYC_ ## name ## _CONTROL4 },		      \
+	{ #s "Control5", KEYC_ ## name ## _CONTROL5 },		      \
+	{ #s "Control6", KEYC_ ## name ## _CONTROL6 },		      \
+	{ #s "Control7", KEYC_ ## name ## _CONTROL7 },		      \
+	{ #s "Control8", KEYC_ ## name ## _CONTROL8 },		      \
+	{ #s "Control9", KEYC_ ## name ## _CONTROL9 }
 
 /*
  * A single key. This can be ASCII or Unicode or one of the keys between
@@ -880,7 +900,8 @@ enum style_range_type {
 	STYLE_RANGE_PANE,
 	STYLE_RANGE_WINDOW,
 	STYLE_RANGE_SESSION,
-	STYLE_RANGE_USER
+	STYLE_RANGE_USER,
+	STYLE_RANGE_CONTROL
 };
 struct style_range {
 	enum style_range_type	 type;
@@ -893,6 +914,11 @@ struct style_range {
 	TAILQ_ENTRY(style_range) entry;
 };
 TAILQ_HEAD(style_ranges, style_range);
+
+struct style_line_entry {
+	char			*expanded;
+	struct style_ranges	 ranges;
+};
 
 /* Default style width and pad. */
 #define STYLE_WIDTH_DEFAULT -1
@@ -1244,6 +1270,7 @@ struct window_pane {
 	struct grid_cell cached_active_gc;
 	struct colour_palette palette;
 	enum client_theme last_theme;
+	struct style_line_entry border_status_line;
 
 	int		 pipe_fd;
 	pid_t		 pipe_pid;
@@ -1872,10 +1899,6 @@ struct cmd_entry {
 
 /* Status line. */
 #define STATUS_LINES_LIMIT 5
-struct status_line_entry {
-	char			*expanded;
-	struct style_ranges	 ranges;
-};
 struct status_line {
 	struct event		 timer;
 
@@ -1884,7 +1907,7 @@ struct status_line {
 	int			 references;
 
 	struct grid_cell	 style;
-	struct status_line_entry entries[STATUS_LINES_LIMIT];
+	struct style_line_entry entries[STATUS_LINES_LIMIT];
 };
 
 /* Prompt type. */
@@ -3406,6 +3429,8 @@ int		 window_pane_get_bg_control_client(struct window_pane *);
 int		 window_get_bg_client(struct window_pane *);
 enum client_theme window_pane_get_theme(struct window_pane *);
 void		 window_pane_send_theme_update(struct window_pane *);
+struct style_range *window_pane_border_status_get_range(struct window_pane *,
+			u_int, u_int);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);
@@ -3723,6 +3748,9 @@ void		 style_set(struct style *, const struct grid_cell *);
 void		 style_copy(struct style *, struct style *);
 void		 style_set_scrollbar_style_from_option(struct style *,
 		     struct options *);
+void		 style_ranges_init(struct style_ranges *);
+void		 style_ranges_free(struct style_ranges *);
+struct style_range *style_ranges_get_range(struct style_ranges *, u_int);
 
 /* spawn.c */
 struct winlink	*spawn_window(struct spawn_context *, char **);

@@ -596,16 +596,24 @@ struct window_pane *
 window_get_active_at(struct window *w, u_int x, u_int y)
 {
 	struct window_pane	*wp;
-	u_int			 xoff, yoff, sx, sy;
+	int			 pane_status, xoff, yoff;
+	u_int			 sx, sy;
+
+	pane_status = options_get_number(w->options, "pane-border-status");
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (!window_pane_visible(wp))
 			continue;
 		window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
-		if (x < xoff || x > xoff + sx)
+		if ((int)x < xoff || x > xoff + sx)
 			continue;
-		if (y < yoff || y > yoff + sy)
-			continue;
+		if (pane_status == PANE_STATUS_TOP) {
+			if ((int)y <= yoff - 2 || y > yoff + sy - 1)
+				continue;
+		} else {
+			if ((int)y < yoff || y > yoff + sy)
+				continue;
+		}
 		return (wp);
 	}
 	return (NULL);
@@ -966,6 +974,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	window_pane_default_cursor(wp);
 
 	screen_init(&wp->status_screen, 1, 1, 0);
+	style_ranges_init(&wp->border_status_line.ranges);
 
 	if (gethostname(host, sizeof host) == 0)
 		screen_set_title(&wp->base, host);
@@ -1018,6 +1027,7 @@ window_pane_destroy(struct window_pane *wp)
 	free(wp->shell);
 	cmd_free_argv(wp->argc, wp->argv);
 	colour_palette_free(&wp->palette);
+	style_ranges_free(&wp->border_status_line.ranges);
 	free(wp);
 }
 
@@ -1968,4 +1978,30 @@ window_pane_send_theme_update(struct window_pane *wp)
 		log_debug("%s: %%%u unknown theme", __func__, wp->id);
 		break;
 	}
+}
+
+struct style_range *
+window_pane_border_status_get_range(struct window_pane *wp, u_int x, u_int y)
+{
+	struct style_ranges	*srs;
+	struct window		*w = wp->window;
+	struct options		*wo = w->options;
+	u_int			 line;
+	int			 pane_status;
+
+	if (wp == NULL)
+		return (NULL);
+
+	pane_status = options_get_number(wo, "pane-border-status");
+	if (pane_status == PANE_STATUS_TOP)
+		line = wp->yoff - 1;
+	else if (pane_status == PANE_STATUS_BOTTOM)
+		line = wp->yoff + wp->sy;
+	if (pane_status == PANE_STATUS_OFF || line != y)
+		return (NULL);
+
+	srs = &wp->border_status_line.ranges;
+	/* Hacky. The border formats start 2 off but that isn't reflected in
+	   the stored bounds of the range. */
+	return (style_ranges_get_range(srs, x - wp->xoff - 2));
 }

@@ -137,6 +137,15 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 				sy->range_type = STYLE_RANGE_RIGHT;
 				sy->range_argument = 0;
 				style_set_range_string(sy, "");
+			} else if (strcasecmp(tmp + 6, "control") == 0) {
+				if (found == NULL)
+					goto error;
+				n = strtonum(found, 0, 9, &errstr);
+				if (errstr != NULL)
+					goto error;
+				sy->range_type = STYLE_RANGE_CONTROL;
+				sy->range_argument = n;
+				style_set_range_string(sy, "");
 			} else if (strcasecmp(tmp + 6, "pane") == 0) {
 				if (found == NULL)
 					goto error;
@@ -445,4 +454,35 @@ style_set_scrollbar_style_from_option(struct style *sb_style, struct options *oo
 			sb_style->pad = PANE_SCROLLBARS_DEFAULT_PADDING;
 		utf8_set(&sb_style->gc.data, PANE_SCROLLBARS_CHARACTER);
 	}
+}
+
+void
+style_ranges_init(struct style_ranges *ranges)
+{
+	TAILQ_INIT(ranges);
+}
+
+void
+style_ranges_free(struct style_ranges *srs)
+{
+	struct style_range	*sr, *sr1;
+
+	TAILQ_FOREACH_SAFE(sr, srs, entry, sr1) {
+		TAILQ_REMOVE(srs, sr, entry);
+		free(sr);
+	}
+}
+
+struct style_range *
+style_ranges_get_range(struct style_ranges *ranges, u_int x)
+{
+	struct style_range	*sr;
+
+	if (ranges == NULL)
+		return (NULL);
+	TAILQ_FOREACH(sr, ranges, entry) {
+		if (x >= sr->start && x < sr->end)
+			return (sr);
+	}
+	return (NULL);
 }
