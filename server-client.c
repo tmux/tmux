@@ -3050,6 +3050,9 @@ server_client_reset_state(struct client *c)
 	if (c->overlay_draw == NULL && c->prompt_string != NULL)
 		mode &= ~MODE_BRACKETPASTE;
 
+	/* Mirror the visible screen's kitty mode onto the outer terminal. */
+	tty_update_kitty(tty, s);
+
 	/* Set the terminal mode and reset attributes. */
 	tty_update_mode(tty, mode, s);
 	tty_reset(tty);
