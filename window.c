@@ -541,7 +541,7 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 
 	if (wp->flags & PANE_MINIMISED) {
 		wp->flags &= ~PANE_MINIMISED;
-		if (w->layout_root != NULL) {
+		if (w->layout_root != NULL && wp->saved_layout_cell != NULL) {
 			wp->layout_cell = wp->saved_layout_cell;
 			wp->saved_layout_cell = NULL;
 			layout_unminimise_cell(w, wp->layout_cell);
@@ -791,7 +791,10 @@ window_unzoom(struct window *w, int notify)
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		wp->layout_cell = wp->saved_layout_cell;
-		wp->saved_layout_cell = NULL;
+		if (wp->flags & PANE_MINIMISED)
+			wp->saved_layout_cell = wp->layout_cell;
+		else
+			wp->saved_layout_cell = NULL;
 		wp->flags &= ~PANE_ZOOMED;
 	}
 	layout_fix_panes(w, NULL);

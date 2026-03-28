@@ -628,6 +628,8 @@ layout_unminimise_cell(struct window *w, struct layout_cell *lc)
 {
 	struct layout_cell     *lcother, *lcparent;
 
+	if (lc == NULL)
+		return;
 	lcparent = lc->parent;
 	if (lcparent == NULL) {
 		return;

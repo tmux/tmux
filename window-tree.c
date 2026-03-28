@@ -249,7 +249,7 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	struct window_tree_itemdata	*item;
 	struct mode_tree_item		*mti;
 	char				*name, *text;
-	struct window_pane		*wp, **l;
+	struct window_pane		*wp, *fwp, **l;
 	u_int				 n, i;
 	int				 expanded;
 	struct format_tree		*ft;
@@ -267,9 +267,21 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	format_free(ft);
 
 	if (data->type == WINDOW_TREE_SESSION ||
-	    data->type == WINDOW_TREE_WINDOW)
+	    data->type == WINDOW_TREE_WINDOW) {
 		expanded = 0;
-	else
+		/* Without this, the only way to reach a minimised
+		 * floating pane would be to first expand the window
+		 * manually (with the right-arrow key) and then press
+		 * its number — which is non-obvious and breaks the
+		 * expected workflow.
+		 */
+		TAILQ_FOREACH(fwp, &wl->window->panes, entry) {
+			if (fwp->flags & PANE_FLOATING) {
+				expanded = 1;
+				break;
+			}
+		}
+	} else
 		expanded = 1;
 	mti = mode_tree_add(data->data, parent, item, (uint64_t)wl, name, text,
 	    expanded);
