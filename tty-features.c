@@ -357,6 +357,18 @@ static const struct tty_feature tty_feature_sixel = {
 	TERM_SIXEL
 };
 
+/* Terminal supports the OSC 9;4 progress bar. */
+static const char *const tty_feature_progressbar_capabilities[] = {
+	"Spb=\\E]9;4;%p1%d;%p2%d\\E\\\\",
+	NULL
+};
+static const struct tty_feature tty_feature_progressbar = {
+	"progressbar",
+	tty_feature_progressbar_capabilities,
+	0
+};
+
+
 /* Available terminal features. */
 static const struct tty_feature *const tty_features[] = {
 	&tty_feature_256,
@@ -372,6 +384,7 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_mouse,
 	&tty_feature_osc7,
 	&tty_feature_overline,
+	&tty_feature_progressbar,
 	&tty_feature_rectfill,
 	&tty_feature_rgb,
 	&tty_feature_sixel,
@@ -490,7 +503,8 @@ tty_default_features(int *feat, const char *name, u_int version)
 		              "focus,"
 		              "overline,"
 		              "usstyle,"
-		              "hyperlinks"
+		              "hyperlinks,"
+		              "progressbar"	
 		},
 		{ .name = "rxvt-unicode",
 		  .features = "256,"
@@ -508,7 +522,8 @@ tty_default_features(int *feat, const char *name, u_int version)
 		              "margins,"
 		              "usstyle,"
 		              "sync,"
-		              "osc7,hyperlinks"
+		              "osc7,hyperlinks,"
+		              "progressbar"
 		},
 		{ .name = "foot",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
