@@ -364,6 +364,7 @@ key_bindings_init(void)
 		"bind -N 'Kill current window' & { confirm-before -p\"kill-window #W? (y/n)\" kill-window }",
 		"bind -N 'Prompt for window index to select' \"'\" { command-prompt -T window-target -pindex { select-window -t ':%%' } }",
 		"bind -N 'New floating pane' * { new-pane }",
+		"bind -N 'Toggle pane between floating and tiled' @ { if -F '#{pane_floating_flag}' { tile-pane } { float-pane } }",
 		"bind -N 'Switch to previous client' ( { switch-client -p }",
 		"bind -N 'Switch to next client' ) { switch-client -n }",
 		"bind -N 'Rename current window' , { command-prompt -I'#W' { rename-window -- '%%' } }",

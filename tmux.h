@@ -1231,6 +1231,13 @@ struct window_pane {
 #define PANE_FLOATING 0x10000
 #define PANE_MINIMISED 0x20000
 #define PANE_ZOOMED 0x40000
+#define PANE_SAVED_FLOAT 0x80000	/* saved_float_* fields are valid */
+
+	/* Last floating position/size, saved when the pane is tiled. */
+	int		 saved_float_xoff;
+	int		 saved_float_yoff;
+	u_int		 saved_float_sx;
+	u_int		 saved_float_sy;
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;

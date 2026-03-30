@@ -292,6 +292,8 @@ Rename the current session.
 Split the current pane into two, left and right.
 .It &
 Kill the current window.
+.It @
+Toggle the current pane between floating and tiled.
 .It \[aq]
 Prompt for a window index to select.
 .It \&(
@@ -2971,6 +2973,41 @@ The default is
 zooms the pane.
 .Pp
 This command works only if at least one client is attached.
+.Tg floatp
+.It Xo Ic float\-pane
+.Op Fl h Ar height
+.Op Fl w Ar width
+.Op Fl x Ar x
+.Op Fl y Ar y
+.Op Fl t Ar target\-pane
+.Xc
+Lift
+.Ar target\-pane
+out of the tiled layout and make it a floating pane.
+The
+.Fl w
+and
+.Fl h
+options set the width and height of the floating pane in columns and lines
+respectively; the default is half the window width and height.
+The
+.Fl x
+and
+.Fl y
+options set the position of the upper-left corner of the pane;
+if omitted, new floating panes are cascaded from the top-left of the window.
+If
+.Fl x ,
+.Fl y ,
+.Fl w ,
+and
+.Fl h
+are all omitted and the pane was previously returned to the tiled layout
+with
+.Ic tile\-pane ,
+its last floating position and size are restored.
+The pane must not already be floating or minimised, and the window must not
+be zoomed.
 .Tg joinp
 .It Xo Ic join\-pane
 .Op Fl bdfhv
@@ -3782,6 +3819,20 @@ is omitted and a marked pane is present (see
 .Ic select\-pane
 .Fl m ) ,
 the window containing the marked pane is used rather than the current window.
+.Tg tilep
+.It Xo Ic tile\-pane
+.Op Fl t Ar target\-pane
+.Xc
+Insert a floating
+.Ar target\-pane
+back into the tiled layout.
+The pane is placed by splitting the active tiled pane (or the most recently
+active tiled pane, or any visible tiled pane if none is active).
+The current floating position and size are saved so they can be restored by
+a subsequent
+.Ic float\-pane
+command with no geometry options.
+The pane must be floating and the window must not be zoomed.
 .Tg unlinkw
 .It Xo Ic unlink\-window
 .Op Fl k

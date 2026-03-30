@@ -730,8 +730,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 			width = size - x;
 		}
 
-		r = tty_check_overlay_range(&c->tty, x, yoff, width);
-		r = screen_redraw_get_visible_ranges(wp, x, yoff, width, r);
+		r = screen_redraw_get_visible_ranges(wp, x, yoff, width, NULL);
 
 		if (ctx->statustop)
 			yoff += ctx->statuslines;
