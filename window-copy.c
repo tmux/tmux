@@ -1026,6 +1026,8 @@ window_copy_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 
 	screen_resize(s, sx, sy, 0);
 	cx = data->cx;
+	if (data->oy > gd->hsize + data->cy)
+		data->oy = gd->hsize + data->cy;
 	cy = gd->hsize + data->cy - data->oy;
 	reflow = (gd->sx != sx);
 	if (reflow)
@@ -2736,6 +2738,8 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 
 	if (data->viewmode)
 		return (WINDOW_COPY_CMD_NOTHING);
+	if (data->oy > screen_hsize(data->backing))
+		data->oy = screen_hsize(data->backing);
 	oy_from_top = screen_hsize(data->backing) - data->oy;
 
 	screen_free(data->backing);
