@@ -37,6 +37,7 @@ static int	tty_log_fd = -1;
 
 static void	tty_start_timer_callback(int, short, void *);
 static void	tty_clipboard_query_callback(int, short, void *);
+static void	tty_pop_kitty(struct tty *, int);
 static void	tty_set_italics(struct tty *);
 static int	tty_try_colour(struct tty *, int, const char *);
 static void	tty_force_cursor_colour(struct tty *, int);
@@ -327,6 +328,54 @@ tty_start_start_timer(struct tty *tty)
 	evtimer_add(&tty->start_timer, &tv);
 }
 
+static void
+tty_pop_kitty(struct tty *tty, int raw)
+{
+	if (~tty->flags & TTY_KITTY_PUSHED)
+		return;
+
+	if (raw)
+		tty_raw(tty, "\033[<1u");
+	else
+		tty_puts(tty, "\033[<1u");
+	tty->flags &= ~TTY_KITTY_PUSHED;
+	tty->kitty_flags = tty->kitty_saved_flags;
+	tty->kitty_saved_flags = 0;
+}
+
+void
+tty_update_kitty(struct tty *tty, struct screen *s)
+{
+	char	tmp[32];
+	int	mode, flags;
+
+	mode = options_get_number(global_options, "kitty-keys");
+	if (mode == 0)
+		flags = 0;
+	else if (s != NULL && (tty->flags & TTY_HAVEDA_KITTY))
+		flags = s->kitty_kbd.flags & KITTY_KBD_SUPPORTED;
+	else
+		flags = 0;
+
+	if (flags == 0) {
+		tty_pop_kitty(tty, 0);
+		return;
+	}
+	if (~tty->flags & TTY_KITTY_PUSHED) {
+		xsnprintf(tmp, sizeof tmp, "\033[>%uu", flags);
+		tty_puts(tty, tmp);
+		tty->kitty_saved_flags = tty->kitty_flags;
+		tty->flags |= TTY_KITTY_PUSHED;
+		tty->kitty_flags = flags;
+		return;
+	}
+	if (tty->kitty_flags == flags)
+		return;
+	xsnprintf(tmp, sizeof tmp, "\033[=%uu", flags);
+	tty_puts(tty, tmp);
+	tty->kitty_flags = flags;
+}
+
 void
 tty_start_tty(struct tty *tty)
 {
@@ -391,6 +440,8 @@ tty_send_requests(struct tty *tty)
 		return;
 
 	if (tty->term->flags & TERM_VT100LIKE) {
+		if (~tty->flags & TTY_HAVEDA_KITTY)
+			tty_puts(tty, "\033[?u");
 		if (~tty->flags & TTY_HAVEDA)
 			tty_puts(tty, "\033[c");
 		if (~tty->flags & TTY_HAVEDA2)
@@ -486,6 +537,7 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, "\033[?7727l");
 	tty_raw(tty, tty_term_string(tty->term, TTYC_DSFCS));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_DSEKS));
+	tty_pop_kitty(tty, 1);
 
 	if (tty_use_margin(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_DSMG));
@@ -537,6 +589,8 @@ tty_update_features(struct tty *tty)
 		tty_putcode(tty, TTYC_ENMG);
 	if (options_get_number(global_options, "extended-keys"))
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENEKS));
+	if (!options_get_number(global_options, "kitty-keys"))
+		tty_pop_kitty(tty, 0);
 	if (options_get_number(global_options, "focus-events"))
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENFCS));
 	if (tty->term->flags & TERM_VT100LIKE)

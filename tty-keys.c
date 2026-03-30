@@ -759,6 +759,17 @@ tty_keys_next(struct tty *tty)
 		goto partial_key;
 	}
 
+	/* Is this a kitty keyboard query response? */
+	switch (tty_keys_kitty_keyboard(tty, buf, len, &size)) {
+	case 0:		/* yes */
+		key = KEYC_UNKNOWN;
+		goto complete_key;
+	case -1:	/* no, or not valid */
+		break;
+	case 1:		/* partial */
+		goto partial_key;
+	}
+
 	/* Is this a primary device attributes response? */
 	switch (tty_keys_device_attributes(tty, buf, len, &size)) {
 	case 0:		/* yes */
@@ -828,6 +839,21 @@ tty_keys_next(struct tty *tty)
 		goto discard_key;
 	case 1:		/* partial */
 		goto partial_key;
+	}
+
+	/* Is this a kitty keyboard protocol key? */
+	if (tty->kitty_flags != 0) {
+		switch (tty_keys_kitty(tty, buf, len, &size, &key)) {
+		case 0:		/* yes */
+			goto complete_key;
+		case -1:	/* no, or not valid */
+			break;
+		case 1:		/* partial */
+			goto partial_key;
+		case -2:	/* release event, discard */
+			key = KEYC_UNKNOWN;
+			goto complete_key;
+		}
 	}
 
 	/* Is this an extended key press? */
@@ -1795,3 +1821,4 @@ tty_keys_palette(struct tty *tty, const char *buf, size_t len, size_t *size)
 
 	return (0);
 }
+

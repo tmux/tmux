@@ -188,7 +188,87 @@ static const struct {
 	KEYC_MOUSE_STRING(TRIPLECLICK8, TripleClick8),
 	KEYC_MOUSE_STRING(TRIPLECLICK9, TripleClick9),
 	KEYC_MOUSE_STRING(TRIPLECLICK10, TripleClick10),
-	KEYC_MOUSE_STRING(TRIPLECLICK11, TripleClick11)
+	KEYC_MOUSE_STRING(TRIPLECLICK11, TripleClick11),
+
+	/* Extended function keys. */
+	{ "F13",		KEYC_F13 },
+	{ "F14",		KEYC_F14 },
+	{ "F15",		KEYC_F15 },
+	{ "F16",		KEYC_F16 },
+	{ "F17",		KEYC_F17 },
+	{ "F18",		KEYC_F18 },
+	{ "F19",		KEYC_F19 },
+	{ "F20",		KEYC_F20 },
+	{ "F21",		KEYC_F21 },
+	{ "F22",		KEYC_F22 },
+	{ "F23",		KEYC_F23 },
+	{ "F24",		KEYC_F24 },
+	{ "F25",		KEYC_F25 },
+	{ "F26",		KEYC_F26 },
+	{ "F27",		KEYC_F27 },
+	{ "F28",		KEYC_F28 },
+	{ "F29",		KEYC_F29 },
+	{ "F30",		KEYC_F30 },
+	{ "F31",		KEYC_F31 },
+	{ "F32",		KEYC_F32 },
+	{ "F33",		KEYC_F33 },
+	{ "F34",		KEYC_F34 },
+	{ "F35",		KEYC_F35 },
+
+	/* Special keys. */
+	{ "Print",		KEYC_PRINT },
+	{ "Pause",		KEYC_PAUSE },
+	{ "Menu",		KEYC_MENU },
+	{ "CapsLock",		KEYC_CAPS_LOCK_KEY },
+	{ "ScrollLock",		KEYC_SCROLL_LOCK },
+	{ "NumLock",		KEYC_NUM_LOCK_KEY },
+
+	/* Extended numeric keypad. */
+	{ "KPBegin",		KEYC_KP_BEGIN|KEYC_KEYPAD },
+	{ "KPNumLock",		KEYC_KP_NUMLOCK|KEYC_KEYPAD },
+	{ "KPEqual",		KEYC_KP_EQUAL|KEYC_KEYPAD },
+	{ "KPSeparator",	KEYC_KP_SEPARATOR|KEYC_KEYPAD },
+	{ "KPLeft",		KEYC_KP_LEFT|KEYC_KEYPAD },
+	{ "KPRight",		KEYC_KP_RIGHT|KEYC_KEYPAD },
+	{ "KPUp",		KEYC_KP_UP|KEYC_KEYPAD },
+	{ "KPDown",		KEYC_KP_DOWN|KEYC_KEYPAD },
+	{ "KPPageUp",		KEYC_KP_PAGE_UP|KEYC_KEYPAD },
+	{ "KPPageDown",		KEYC_KP_PAGE_DOWN|KEYC_KEYPAD },
+	{ "KPHome",		KEYC_KP_HOME|KEYC_KEYPAD },
+	{ "KPEnd",		KEYC_KP_END|KEYC_KEYPAD },
+	{ "KPInsert",		KEYC_KP_INSERT|KEYC_KEYPAD },
+	{ "KPDelete",		KEYC_KP_DELETE|KEYC_KEYPAD },
+
+	/* Media keys. */
+	{ "MediaPlay",		KEYC_MEDIA_PLAY },
+	{ "MediaPause",		KEYC_MEDIA_PAUSE },
+	{ "MediaPlayPause",	KEYC_MEDIA_PLAY_PAUSE },
+	{ "MediaReverse",	KEYC_MEDIA_REVERSE },
+	{ "MediaStop",		KEYC_MEDIA_STOP },
+	{ "MediaFastForward",	KEYC_MEDIA_FAST_FORWARD },
+	{ "MediaRewind",	KEYC_MEDIA_REWIND },
+	{ "MediaNext",		KEYC_MEDIA_NEXT },
+	{ "MediaPrevious",	KEYC_MEDIA_PREVIOUS },
+	{ "MediaRecord",	KEYC_MEDIA_RECORD },
+	{ "VolumeDown",		KEYC_VOLUME_DOWN },
+	{ "VolumeUp",		KEYC_VOLUME_UP },
+	{ "VolumeMute",		KEYC_VOLUME_MUTE },
+
+	/* Modifier keys. */
+	{ "LeftShift",		KEYC_LEFT_SHIFT },
+	{ "LeftControl",	KEYC_LEFT_CONTROL },
+	{ "LeftAlt",		KEYC_LEFT_ALT },
+	{ "LeftSuper",		KEYC_LEFT_SUPER },
+	{ "LeftHyper",		KEYC_LEFT_HYPER },
+	{ "LeftMeta",		KEYC_LEFT_META },
+	{ "RightShift",		KEYC_RIGHT_SHIFT },
+	{ "RightControl",	KEYC_RIGHT_CONTROL },
+	{ "RightAlt",		KEYC_RIGHT_ALT },
+	{ "RightSuper",		KEYC_RIGHT_SUPER },
+	{ "RightHyper",		KEYC_RIGHT_HYPER },
+	{ "RightMeta",		KEYC_RIGHT_META },
+	{ "ISOLevel3Shift",	KEYC_ISO_LEVEL3_SHIFT },
+	{ "ISOLevel5Shift",	KEYC_ISO_LEVEL5_SHIFT },
 };
 
 /* Find key string in table. */
@@ -215,7 +295,21 @@ key_string_get_modifiers(const char **string)
 	key_code	modifiers;
 
 	modifiers = 0;
-	while (((*string)[0] != '\0') && (*string)[1] == '-') {
+	while ((*string)[0] != '\0') {
+		/* Check multicharacter modifier prefixes first. */
+		if (strncasecmp(*string, "Sp-", 3) == 0) {
+			modifiers |= KEYC_SUPER;
+			*string += 3;
+			continue;
+		}
+		if (strncasecmp(*string, "Hy-", 3) == 0) {
+			modifiers |= KEYC_HYPER;
+			*string += 3;
+			continue;
+		}
+		/* Single-char prefix: X- where X is C/M/S. */
+		if ((*string)[1] != '-')
+			break;
 		switch ((*string)[0]) {
 		case 'C':
 		case 'c':
@@ -343,6 +437,10 @@ key_string_lookup_key(key_code key, int with_flags)
 	}
 
 	/* Fill in the modifiers. */
+	if (key & KEYC_SUPER)
+		strlcat(out, "Sp-", sizeof out);
+	if (key & KEYC_HYPER)
+		strlcat(out, "Hy-", sizeof out);
 	if (key & KEYC_CTRL)
 		strlcat(out, "C-", sizeof out);
 	if (key & KEYC_META)
