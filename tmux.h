@@ -242,7 +242,7 @@ enum key_code_mouse_location {
          ((unsigned long long)(l) << KEYC_MOUSE_LOCATION_SHIFT))
 #define KEYC_MOUSE_STRING(name, s)				      \
 	{ #s "Pane", KEYC_ ## name ## _PANE },			      \
-	{ #s "Status", KEYC_ ## name ## _STATUSLINE },		      \
+	{ #s "Status", KEYC_ ## name ## _STATUS },		      \
 	{ #s "StatusLeft", KEYC_ ## name ## _STATUS_LEFT },	      \
 	{ #s "StatusRight", KEYC_ ## name ## _STATUS_RIGHT },	      \
 	{ #s "StatusDefault", KEYC_ ## name ## _STATUS_DEFAULT },     \
