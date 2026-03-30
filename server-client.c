@@ -1292,7 +1292,7 @@ try_again:
 	 * application requests, so don't let them exit the prefix table.
 	 */
 	if (key == KEYC_MOUSEMOVE_PANE ||
-	    key == KEYC_MOUSEMOVE_STATUS ||
+	    key == KEYC_MOUSEMOVE_STATUSLINE ||
 	    key == KEYC_MOUSEMOVE_STATUS_LEFT ||
 	    key == KEYC_MOUSEMOVE_STATUS_RIGHT ||
 	    key == KEYC_MOUSEMOVE_STATUS_DEFAULT ||
