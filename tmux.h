@@ -293,7 +293,7 @@ enum {
 	C0_US
 };
 
-/* Special key codes */
+/* Special key codes. */
 enum {
 	/* User key code range. */
 	KEYC_USER = KEYC_SHIFT_TYPE(KEYC_TYPE_USER),
