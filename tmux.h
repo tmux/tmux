@@ -129,18 +129,6 @@ struct winlink;
 #define VISUAL_ON 1
 #define VISUAL_BOTH 2
 
-/* No key or unknown key. */
-#define KEYC_NONE            0x000ff000000000ULL
-#define KEYC_UNKNOWN         0x000fe000000000ULL
-
-/*
- * Base for special (that is, not Unicode) keys. An enum must be at most a
- * signed int, so these are based in the highest Unicode PUA.
- */
-#define KEYC_BASE            0x0000000010e000ULL
-#define KEYC_USER            0x0000000010f000ULL
-#define KEYC_USER_END	     (KEYC_USER + KEYC_NUSER)
-
 /* Key modifier bits. */
 #define KEYC_META            0x00100000000000ULL
 #define KEYC_CTRL            0x00200000000000ULL
@@ -156,45 +144,102 @@ struct winlink;
 #define KEYC_SENT	     0x40000000000000ULL
 
 /* Masks for key bits. */
-#define KEYC_MASK_MODIFIERS  0x00f00000000000ULL
+#define KEYC_MASK_TYPE       0x0000ff00000000ULL
+#define KEYC_MASK_MODIFIERS  0x00ff0000000000ULL
 #define KEYC_MASK_FLAGS      0xff000000000000ULL
-#define KEYC_MASK_KEY        0x000fffffffffffULL
+#define KEYC_MASK_KEY        0x0000ffffffffffULL
 
-/* Available user keys. */
-#define KEYC_NUSER 1000
+#define KEYC_NUSER           1000
+#define KEYC_SHIFT_TYPE(t)   ((unsigned long long)(t) << 32)
+#define KEYC_IS_TYPE(k, t)   (((k) & KEYC_MASK_TYPE) == KEYC_SHIFT_TYPE(t))
+enum key_code_type {
+	KEYC_TYPE_UNICODE,
+	KEYC_TYPE_USER,
+	KEYC_TYPE_FUNCTION,
+	KEYC_TYPE_MOUSEMOVE,
+	KEYC_TYPE_MOUSEDOWN,
+	KEYC_TYPE_MOUSEUP,
+	KEYC_TYPE_MOUSEDRAG,
+	KEYC_TYPE_MOUSEDRAGEND,
+	KEYC_TYPE_WHEELDOWN,
+	KEYC_TYPE_WHEELUP,
+	KEYC_TYPE_SECONDCLICK,
+	KEYC_TYPE_DOUBLECLICK,
+	KEYC_TYPE_TRIPLECLICK,
+	KEYC_TYPE_NOTYPE /* end */
+};
 
-/* Is this a mouse key? */
-#define KEYC_IS_MOUSE(key) \
-	(((key) & KEYC_MASK_KEY) >= KEYC_MOUSE && \
-	 ((key) & KEYC_MASK_KEY) < KEYC_BSPACE)
+enum key_code_mouse_location {
+	KEYC_MOUSE_LOCATION_PANE,
+	KEYC_MOUSE_LOCATION_STATUS,
+	KEYC_MOUSE_LOCATION_STATUS_LEFT,
+	KEYC_MOUSE_LOCATION_STATUS_RIGHT,
+	KEYC_MOUSE_LOCATION_STATUS_DEFAULT,
+	KEYC_MOUSE_LOCATION_BORDER,
+	KEYC_MOUSE_LOCATION_SCROLLBAR_UP,
+	KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER,
+	KEYC_MOUSE_LOCATION_SCROLLBAR_DOWN,
+	KEYC_MOUSE_LOCATION_NOWHERE /* end */
+};
 
 /* Is this a Unicode key? */
 #define KEYC_IS_UNICODE(key) \
-	(((key) & KEYC_MASK_KEY) > 0x7f && \
-	 (((key) & KEYC_MASK_KEY) < KEYC_BASE || \
-	  ((key) & KEYC_MASK_KEY) >= KEYC_BASE_END) && \
-	 (((key) & KEYC_MASK_KEY) < KEYC_USER || \
-	  ((key) & KEYC_MASK_KEY) >= KEYC_USER_END))
+	(((key) & KEYC_MASK_TYPE) == KEYC_SHIFT_TYPE(KEYC_TYPE_UNICODE) && \
+	 ((key) & KEYC_MASK_KEY) > 0x7f)
+
+/* Is this a user key? */
+#define KEYC_IS_USER(key) \
+	(((key) & KEYC_MASK_TYPE) == KEYC_SHIFT_TYPE(KEYC_TYPE_USER))
+
+/* Is this a function key? */
+#define KEYC_IS_SPECIAL(key) \
+	(((key) & KEYC_MASK_TYPE) == KEYC_SHIFT_TYPE(KEYC_TYPE_FUNCTION))
+
+/* Is this a mouse key? */
+#define KEYC_IS_MOUSE(key) \
+	(((key) & KEYC_MASK_KEY) == KEYC_MOUSE || \
+	 (((key) & KEYC_MASK_TYPE) >= KEYC_SHIFT_TYPE(KEYC_TYPE_MOUSEMOVE) && \
+	  ((key) & KEYC_MASK_TYPE) <= KEYC_SHIFT_TYPE(KEYC_TYPE_TRIPLECLICK)))
 
 /* Is this a paste key? */
 #define KEYC_IS_PASTE(key) \
-	(((key) & KEYC_MASK_KEY) == KEYC_PASTE_START || \
-	 ((key) & KEYC_MASK_KEY) == KEYC_PASTE_END)
+	(((key) & KEYC_MASK_TYPE) == KEYC_SHIFT_TYPE(KEYC_TYPE_FUNCTION) && \
+	 (((key) & KEYC_MASK_KEY) == KEYC_PASTE_START || \
+	 ((key) & KEYC_MASK_KEY) == KEYC_PASTE_END))
 
 /* Multiple click timeout. */
 #define KEYC_CLICK_TIMEOUT 300
 
+/* Bit shift for mouse events. */
+#define KEYC_MOUSE_LOCATION_SHIFT  0
+#define KEYC_MOUSE_BUTTON_SHIFT 8
+
 /* Mouse key codes. */
-#define KEYC_MOUSE_KEY(name)		    \
-	KEYC_ ## name ## _PANE,		    \
-	KEYC_ ## name ## _STATUS,	    \
-	KEYC_ ## name ## _STATUS_LEFT,	    \
-	KEYC_ ## name ## _STATUS_RIGHT,	    \
-	KEYC_ ## name ## _STATUS_DEFAULT,   \
-	KEYC_ ## name ## _SCROLLBAR_UP,	    \
-	KEYC_ ## name ## _SCROLLBAR_SLIDER, \
-	KEYC_ ## name ## _SCROLLBAR_DOWN,   \
-	KEYC_ ## name ## _BORDER
+#define KEYC_MOUSE_KEYS(t)                                             \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, PANE),             \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS),           \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS_LEFT),      \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS_RIGHT),     \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS_DEFAULT),   \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, BORDER),           \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_UP),     \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_SLIDER), \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_DOWN)
+#define KEYC_MOUSE_KEY(p, t, l)                                                \
+	p ## _ ## l = KEYC_MAKE_MOUSE_KEY(t, 0, KEYC_MOUSE_LOCATION_ ## l),    \
+	p ## 1_ ## l = KEYC_MAKE_MOUSE_KEY(t, 1, KEYC_MOUSE_LOCATION_ ## l),   \
+	p ## 2_ ## l = KEYC_MAKE_MOUSE_KEY(t, 2, KEYC_MOUSE_LOCATION_ ## l),   \
+	p ## 3_ ## l = KEYC_MAKE_MOUSE_KEY(t, 3, KEYC_MOUSE_LOCATION_ ## l),   \
+	p ## 6_ ## l = KEYC_MAKE_MOUSE_KEY(t, 6, KEYC_MOUSE_LOCATION_ ## l),   \
+	p ## 7_ ## l = KEYC_MAKE_MOUSE_KEY(t, 7, KEYC_MOUSE_LOCATION_ ## l),   \
+	p ## 8_ ## l = KEYC_MAKE_MOUSE_KEY(t, 8, KEYC_MOUSE_LOCATION_ ## l),   \
+	p ## 9_ ## l = KEYC_MAKE_MOUSE_KEY(t, 9, KEYC_MOUSE_LOCATION_ ## l),   \
+	p ## 10_ ## l = KEYC_MAKE_MOUSE_KEY(t, 10, KEYC_MOUSE_LOCATION_ ## l), \
+	p ## 11_ ## l = KEYC_MAKE_MOUSE_KEY(t, 11, KEYC_MOUSE_LOCATION_ ## l)
+#define KEYC_MAKE_MOUSE_KEY(t, b, l)                            \
+	((KEYC_SHIFT_TYPE(t)) |                                 \
+	 ((unsigned long long)(b) << KEYC_MOUSE_BUTTON_SHIFT) |	\
+         ((unsigned long long)(l) << KEYC_MOUSE_LOCATION_SHIFT))
 #define KEYC_MOUSE_STRING(name, s)				      \
 	{ #s "Pane", KEYC_ ## name ## _PANE },			      \
 	{ #s "Status", KEYC_ ## name ## _STATUS },		      \
@@ -250,8 +295,15 @@ enum {
 
 /* Special key codes. */
 enum {
+	/* User key code range. */
+	KEYC_USER = KEYC_SHIFT_TYPE(KEYC_TYPE_USER),
+
+	/* Functional key code range. */
+	KEYC_NONE = KEYC_SHIFT_TYPE(KEYC_TYPE_FUNCTION),
+	KEYC_UNKNOWN,
+
 	/* Focus events. */
-	KEYC_FOCUS_IN = KEYC_BASE,
+	KEYC_FOCUS_IN,
 	KEYC_FOCUS_OUT,
 
 	/* "Any" key, used if not found in key table. */
@@ -260,77 +312,6 @@ enum {
 	/* Paste brackets. */
 	KEYC_PASTE_START,
 	KEYC_PASTE_END,
-
-	/* Mouse keys. */
-	KEYC_MOUSE, /* unclassified mouse event */
-	KEYC_DRAGGING, /* dragging in progress */
-	KEYC_DOUBLECLICK, /* double click complete */
-	KEYC_MOUSE_KEY(MOUSEMOVE),
-	KEYC_MOUSE_KEY(MOUSEDOWN1),
-	KEYC_MOUSE_KEY(MOUSEDOWN2),
-	KEYC_MOUSE_KEY(MOUSEDOWN3),
-	KEYC_MOUSE_KEY(MOUSEDOWN6),
-	KEYC_MOUSE_KEY(MOUSEDOWN7),
-	KEYC_MOUSE_KEY(MOUSEDOWN8),
-	KEYC_MOUSE_KEY(MOUSEDOWN9),
-	KEYC_MOUSE_KEY(MOUSEDOWN10),
-	KEYC_MOUSE_KEY(MOUSEDOWN11),
-	KEYC_MOUSE_KEY(MOUSEUP1),
-	KEYC_MOUSE_KEY(MOUSEUP2),
-	KEYC_MOUSE_KEY(MOUSEUP3),
-	KEYC_MOUSE_KEY(MOUSEUP6),
-	KEYC_MOUSE_KEY(MOUSEUP7),
-	KEYC_MOUSE_KEY(MOUSEUP8),
-	KEYC_MOUSE_KEY(MOUSEUP9),
-	KEYC_MOUSE_KEY(MOUSEUP10),
-	KEYC_MOUSE_KEY(MOUSEUP11),
-	KEYC_MOUSE_KEY(MOUSEDRAG1),
-	KEYC_MOUSE_KEY(MOUSEDRAG2),
-	KEYC_MOUSE_KEY(MOUSEDRAG3),
-	KEYC_MOUSE_KEY(MOUSEDRAG6),
-	KEYC_MOUSE_KEY(MOUSEDRAG7),
-	KEYC_MOUSE_KEY(MOUSEDRAG8),
-	KEYC_MOUSE_KEY(MOUSEDRAG9),
-	KEYC_MOUSE_KEY(MOUSEDRAG10),
-	KEYC_MOUSE_KEY(MOUSEDRAG11),
-	KEYC_MOUSE_KEY(MOUSEDRAGEND1),
-	KEYC_MOUSE_KEY(MOUSEDRAGEND2),
-	KEYC_MOUSE_KEY(MOUSEDRAGEND3),
-	KEYC_MOUSE_KEY(MOUSEDRAGEND6),
-	KEYC_MOUSE_KEY(MOUSEDRAGEND7),
-	KEYC_MOUSE_KEY(MOUSEDRAGEND8),
-	KEYC_MOUSE_KEY(MOUSEDRAGEND9),
-	KEYC_MOUSE_KEY(MOUSEDRAGEND10),
-	KEYC_MOUSE_KEY(MOUSEDRAGEND11),
-	KEYC_MOUSE_KEY(WHEELUP),
-	KEYC_MOUSE_KEY(WHEELDOWN),
-	KEYC_MOUSE_KEY(SECONDCLICK1),
-	KEYC_MOUSE_KEY(SECONDCLICK2),
-	KEYC_MOUSE_KEY(SECONDCLICK3),
-	KEYC_MOUSE_KEY(SECONDCLICK6),
-	KEYC_MOUSE_KEY(SECONDCLICK7),
-	KEYC_MOUSE_KEY(SECONDCLICK8),
-	KEYC_MOUSE_KEY(SECONDCLICK9),
-	KEYC_MOUSE_KEY(SECONDCLICK10),
-	KEYC_MOUSE_KEY(SECONDCLICK11),
-	KEYC_MOUSE_KEY(DOUBLECLICK1),
-	KEYC_MOUSE_KEY(DOUBLECLICK2),
-	KEYC_MOUSE_KEY(DOUBLECLICK3),
-	KEYC_MOUSE_KEY(DOUBLECLICK6),
-	KEYC_MOUSE_KEY(DOUBLECLICK7),
-	KEYC_MOUSE_KEY(DOUBLECLICK8),
-	KEYC_MOUSE_KEY(DOUBLECLICK9),
-	KEYC_MOUSE_KEY(DOUBLECLICK10),
-	KEYC_MOUSE_KEY(DOUBLECLICK11),
-	KEYC_MOUSE_KEY(TRIPLECLICK1),
-	KEYC_MOUSE_KEY(TRIPLECLICK2),
-	KEYC_MOUSE_KEY(TRIPLECLICK3),
-	KEYC_MOUSE_KEY(TRIPLECLICK6),
-	KEYC_MOUSE_KEY(TRIPLECLICK7),
-	KEYC_MOUSE_KEY(TRIPLECLICK8),
-	KEYC_MOUSE_KEY(TRIPLECLICK9),
-	KEYC_MOUSE_KEY(TRIPLECLICK10),
-	KEYC_MOUSE_KEY(TRIPLECLICK11),
 
 	/* Backspace key. */
 	KEYC_BSPACE,
@@ -384,8 +365,22 @@ enum {
 	KEYC_REPORT_DARK_THEME,
 	KEYC_REPORT_LIGHT_THEME,
 
-	/* End of special keys. */
-	KEYC_BASE_END
+	/* Mouse state. */
+	KEYC_MOUSE, /* unclassified mouse event */
+	KEYC_DRAGGING, /* dragging in progress */
+	KEYC_DOUBLECLICK, /* double click complete */
+
+	/* Mouse key code ranges. Must be at the end. */
+	KEYC_MOUSE_KEYS(MOUSEMOVE),
+	KEYC_MOUSE_KEYS(WHEELDOWN),
+	KEYC_MOUSE_KEYS(WHEELUP),
+	KEYC_MOUSE_KEYS(MOUSEDOWN),
+	KEYC_MOUSE_KEYS(MOUSEUP),
+	KEYC_MOUSE_KEYS(MOUSEDRAG),
+	KEYC_MOUSE_KEYS(MOUSEDRAGEND),
+	KEYC_MOUSE_KEYS(SECONDCLICK),
+	KEYC_MOUSE_KEYS(DOUBLECLICK),
+	KEYC_MOUSE_KEYS(TRIPLECLICK),
 };
 
 /* Termcap codes. */
@@ -1989,7 +1984,7 @@ struct client {
 	struct event		 repeat_timer;
 
 	struct event		 click_timer;
-	int			 click_where;
+	int			 click_loc;
 	int			 click_wp;
 	u_int			 click_button;
 	struct mouse_event	 click_event;

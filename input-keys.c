@@ -673,8 +673,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	}
 
 	/* Ignore internal function key codes. */
-	if ((key >= KEYC_BASE && key < KEYC_BASE_END) ||
-	    (key >= KEYC_USER && key < KEYC_USER_END)) {
+	if (KEYC_IS_USER(key) || KEYC_IS_SPECIAL(key) || KEYC_IS_MOUSE(key)) {
 		log_debug("%s: ignoring key 0x%llx", __func__, key);
 		return (0);
 	}
