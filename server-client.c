@@ -926,6 +926,7 @@ have_event:
 		 * End a mouse drag by passing a MouseDragEnd key corresponding
 		 * to the button that started the drag.
 		 */
+		type = KEYC_TYPE_MOUSEDRAGEND;
 		c->tty.mouse_drag_flag = 0;
 		c->tty.mouse_slider_mpos = -1;
 	}
@@ -934,8 +935,8 @@ have_event:
 	if (type == KEYC_TYPE_MOUSEMOVE && loc == KEYC_MOUSE_LOCATION_PANE) {
 		key = KEYC_MOUSEMOVE_PANE;
 		if (wp != NULL &&
-			wp != w->active &&
-			options_get_number(s->options, "focus-follows-mouse")) {
+		    wp != w->active &&
+		    options_get_number(s->options, "focus-follows-mouse")) {
 			window_set_active_pane(w, wp, 1);
 			server_redraw_window_borders(w);
 			server_status_window(w);
@@ -964,24 +965,24 @@ have_event:
 	}
 
 	if (key == KEYC_UNKNOWN) {
-		/* Adjust the button number */
-		if (b == MOUSE_BUTTON_1)
+		/* Adjust the button number. */
+		if (MOUSE_BUTTONS(b) == MOUSE_BUTTON_1)
 			bn = 1;
-		else if (b == MOUSE_BUTTON_2)
+		else if (MOUSE_BUTTONS(b) == MOUSE_BUTTON_2)
 			bn = 2;
-		else if (b == MOUSE_BUTTON_3)
+		else if (MOUSE_BUTTONS(b) == MOUSE_BUTTON_3)
 			bn = 3;
-		else if (b == MOUSE_BUTTON_6)
+		else if (MOUSE_BUTTONS(b) == MOUSE_BUTTON_6)
 			bn = 6;
-		else if (b == MOUSE_BUTTON_7)
+		else if (MOUSE_BUTTONS(b) == MOUSE_BUTTON_7)
 			bn = 7;
-		else if (b == MOUSE_BUTTON_8)
+		else if (MOUSE_BUTTONS(b) == MOUSE_BUTTON_8)
 			bn = 8;
-		else if (b == MOUSE_BUTTON_9)
+		else if (MOUSE_BUTTONS(b) == MOUSE_BUTTON_9)
 			bn = 9;
-		else if (b == MOUSE_BUTTON_10)
+		else if (MOUSE_BUTTONS(b) == MOUSE_BUTTON_10)
 			bn = 10;
-		else if (b == MOUSE_BUTTON_11)
+		else if (MOUSE_BUTTONS(b) == MOUSE_BUTTON_11)
 			bn = 11;
 		else
 			bn = 0;
