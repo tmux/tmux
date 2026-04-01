@@ -50,6 +50,7 @@ static key_code	server_client_check_mouse(struct client *, struct key_event *);
 static void	server_client_repeat_timer(int, short, void *);
 static void	server_client_click_timer(int, short, void *);
 static void	server_client_check_exit(struct client *);
+static void	server_client_check_fg_pids(struct client *);
 static void	server_client_check_redraw(struct client *);
 static void	server_client_check_modes(struct client *);
 static void	server_client_set_title(struct client *);
@@ -2784,6 +2785,7 @@ server_client_loop(void)
 		server_client_check_exit(c);
 		if (c->session != NULL && c->session->curw != NULL) {
 			server_client_check_modes(c);
+			server_client_check_fg_pids(c);
 			server_client_check_redraw(c);
 			server_client_reset_state(c);
 		}
@@ -3271,6 +3273,27 @@ server_client_check_modes(struct client *c)
 		wme = TAILQ_FIRST(&wp->modes);
 		if (wme != NULL && wme->mode->update != NULL)
 			wme->mode->update(wme);
+	}
+}
+
+/* Check for client foregroup pid changes in client's panes. Used for
+ * triggering a status redraw.
+ */
+static void
+server_client_check_fg_pids(struct client *c)
+{
+	struct session		*s = c->session;
+	struct winlink		*wl = s->curw;
+	struct window		*w = wl->window;
+	struct window_pane	*wp;
+	pid_t			 pid;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if ((pid = tcgetpgrp(wp->fd)) != wp->fg_pid) {
+			wp->fg_pid = pid;
+			c->flags |= CLIENT_REDRAWSTATUS;
+			return;
+		}
 	}
 }
 
