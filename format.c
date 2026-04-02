@@ -5444,7 +5444,7 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 			buf[off++] = *fmt++;
 			continue;
 		}
-		if (*fmt++ == '\0')
+		if (*++fmt == '\0')
 			break;
 
 		ch = (u_char)*fmt++;
