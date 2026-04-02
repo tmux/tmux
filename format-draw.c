@@ -1116,7 +1116,7 @@ format_width(const char *expanded)
 /*
  * Trim on the left, taking #[] into account.  Note, we copy the whole set of
  * unescaped #s, but only add their escaped size to width. This is because the
- * format_draw function will actually do the escaping when it runs
+ * format_draw function will actually do the escaping.
  */
 char *
 format_trim_left(const char *expanded, u_int limit)
