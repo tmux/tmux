@@ -68,6 +68,8 @@ regsub(const char *pattern, const char *with, const char *text, int flags)
 
 	if (*text == '\0')
 		return (xstrdup(""));
+	if (*pattern == '\0')
+		return (xstrdup(text));
 	if (regcomp(&r, pattern, flags) != 0)
 		return (NULL);
 
