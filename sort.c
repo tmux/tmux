@@ -505,6 +505,7 @@ sort_get_panes_session(struct session *s, u_int *n,
 
 	i = 0;
 	RB_FOREACH(wl, winlinks, &s->windows)  {
+		w = wl->window;
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (lsz <= i) {
 				lsz += 100;
