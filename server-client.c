@@ -533,6 +533,7 @@ server_client_free(__unused int fd, __unused short events, void *arg)
 
 	if (c->references == 0) {
 		free((void *)c->name);
+		free(c->peer_user);
 		free(c);
 	}
 }

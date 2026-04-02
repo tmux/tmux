@@ -1605,9 +1605,13 @@ format_cb_client_user(struct format_tree *ft)
 	struct passwd	*pw;
 
 	if (ft->c != NULL) {
+		if (ft->c->peer_user != NULL)
+			return (xstrdup(ft->c->peer_user));
 		uid = proc_get_peer_uid(ft->c->peer);
-		if (uid != (uid_t)-1 && (pw = getpwuid(uid)) != NULL)
-			return (xstrdup(pw->pw_name));
+		if (uid != (uid_t)-1 && (pw = getpwuid(uid)) != NULL) {
+			ft->c->peer_user = xstrdup(pw->pw_name);
+			return (xstrdup(ft->c->peer_user));
+		}
 	}
 	return (NULL);
 }
@@ -3023,10 +3027,15 @@ format_cb_uid(__unused struct format_tree *ft)
 static void *
 format_cb_user(__unused struct format_tree *ft)
 {
+	static char	*cached;
 	struct passwd	*pw;
 
-	if ((pw = getpwuid(getuid())) != NULL)
-		return (xstrdup(pw->pw_name));
+	if (cached == NULL) {
+		if ((pw = getpwuid(getuid())) != NULL)
+			cached = xstrdup(pw->pw_name);
+	}
+	if (cached != NULL)
+		return (xstrdup(cached));
 	return (NULL);
 }
 

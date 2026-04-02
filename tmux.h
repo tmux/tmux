@@ -1944,6 +1944,7 @@ typedef void (*overlay_resize_cb)(struct client *, void *);
 struct client {
 	const char		*name;
 	struct tmuxpeer		*peer;
+	char			*peer_user;
 	struct cmdq_list	*queue;
 
 	struct client_windows	 windows;
