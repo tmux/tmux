@@ -1383,7 +1383,7 @@ tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size)
 	copy[end] = '\0';
 
 	/* Convert from base64. */
-	needed = (end / 4) * 3;
+	needed = ((end + 3) / 4) * 3;
 	if (needed == 0) {
 		free(copy);
 		return (0);

@@ -164,6 +164,7 @@ static void	input_reset_cell(struct input_ctx *);
 static void	input_report_current_theme(struct input_ctx *);
 static void	input_osc_4(struct input_ctx *, const char *);
 static void	input_osc_8(struct input_ctx *, const char *);
+static void	input_osc_9(struct input_ctx *, const char *);
 static void	input_osc_10(struct input_ctx *, const char *);
 static void	input_osc_11(struct input_ctx *, const char *);
 static void	input_osc_12(struct input_ctx *, const char *);
@@ -2673,6 +2674,9 @@ input_exit_osc(struct input_ctx *ictx)
 	case 8:
 		input_osc_8(ictx, p);
 		break;
+	case 9:
+		input_osc_9(ictx, p);
+		break;
 	case 10:
 		input_osc_10(ictx, p);
 		break;
@@ -2941,6 +2945,57 @@ bad:
 	free(id);
 }
 
+/* Helper to handle setting the progress bar and redrawing. */
+static void
+input_set_progress_bar(struct input_ctx *ictx, enum progress_bar_state state,
+    int p)
+{
+	screen_set_progress_bar(ictx->ctx.s, state, p);
+ 	if (ictx->wp != NULL) {
+		server_redraw_window_borders(ictx->wp->window);
+		server_status_window(ictx->wp->window);
+	}
+}
+
+/* Handle the OSC 9;4 sequence for progress bars. */
+static void
+input_osc_9(struct input_ctx *ictx, const char *p)
+{
+	const char		*pb = p;
+	enum progress_bar_state	 state;
+	int			 progress = 0;
+
+	if (*pb++ != '4')
+		return;
+	if (*pb == '\0' || (*pb == ';' && pb[1] == '\0'))
+		return;
+
+	if (*pb++ != ';')
+		return;
+	if (*pb < '0' || *pb > '4')
+		goto bad;
+	state = *pb++ - '0';
+
+	if (*pb == '\0' || (*pb == ';' && pb[1] == '\0')) {
+		input_set_progress_bar(ictx, state, -1);
+		return;
+	}
+
+	if (*pb++ != ';')
+		goto bad;
+	while (*pb >= '0' && *pb <= '9') {
+		if (progress > 100)
+			goto bad;
+		progress = progress * 10 + *pb++ - '0';
+	}
+	if (*pb != '\0' || progress < 0 || progress > 100)
+		goto bad;
+	input_set_progress_bar(ictx, state, progress);
+	return;
+
+bad:
+	log_debug("bad OSC 9;4 %s", p);
+}
 
 /* Handle the OSC 10 sequence for setting and querying foreground colour. */
 static void
@@ -3151,7 +3206,7 @@ input_osc_52_parse(struct input_ctx *ictx, const char *p, u_char **out,
 		return (0);
 	}
 
-	len = (strlen(end) / 4) * 3;
+	len = ((strlen(end) + 3) / 4) * 3;
 	if (len == 0)
 		return (0);
 

@@ -131,6 +131,7 @@ screen_reinit(struct screen *s)
 	image_free_all(s);
 #endif
 
+	screen_set_progress_bar(s, PROGRESS_BAR_HIDDEN, 0);
 	screen_reset_hyperlinks(s);
 }
 
@@ -295,6 +296,19 @@ screen_pop_title(struct screen *s)
 		free(title_entry);
 	}
 }
+
+/*
+ * Set the progress bar state and progress. The progress will not be updated
+ * if p is negative.
+ */
+void
+screen_set_progress_bar(struct screen *s, enum progress_bar_state pbs, int p)
+{
+	s->progress_bar.state = pbs;
+	if (p >= 0 && pbs != PROGRESS_BAR_INDETERMINATE)
+		s->progress_bar.progress = p;
+}
+
 
 /* Resize screen with options. */
 void
