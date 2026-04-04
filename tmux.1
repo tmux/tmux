@@ -5569,13 +5569,16 @@ uses when the colour with that index is requested.
 The index may be from zero to 255.
 .Pp
 .It Xo Ic remain\-on\-exit
-.Op Ic on | off | failed
+.Op Ic on | off | failed | key
 .Xc
 A pane with this flag set is not destroyed when the program running in it
 exits.
 If set to
 .Ic failed ,
 then only when the program exit status is not zero.
+If set to
+.Ic key ,
+the pane stays open and closes when a key is pressed.
 The pane may be reactivated with the
 .Ic respawn\-pane
 command.

@@ -92,7 +92,7 @@ static const char *options_table_window_size_list[] = {
 	"largest", "smallest", "manual", "latest", NULL
 };
 static const char *options_table_remain_on_exit_list[] = {
-	"off", "on", "failed", NULL
+	"off", "on", "failed", "key", NULL
 };
 static const char *options_table_destroy_unattached_list[] = {
 	"off", "on", "keep-last", "keep-group", NULL
@@ -1408,8 +1408,9 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .choices = options_table_remain_on_exit_list,
 	  .default_num = 0,
-	  .text = "Whether panes should remain ('on') or be automatically "
-		  "killed ('off' or 'failed') when the program inside exits."
+	  .text = "Whether panes should remain ('on'), remain until a key is "
+		  "pressed ('key') or be automatically killed ('off' or "
+		  "'failed') when the program inside exits."
 	},
 
 	{ .name = "remain-on-exit-format",
