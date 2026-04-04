@@ -1218,7 +1218,7 @@ struct window_pane {
 #define PANE_FOCUSED 0x4
 #define PANE_VISITED 0x8
 #define PANE_ZOOMED 0x10
-/* 0x20 unused */
+#define PANE_FLOATING 0x20
 #define PANE_INPUTOFF 0x40
 #define PANE_CHANGED 0x80
 #define PANE_EXITED 0x100
@@ -3372,6 +3372,7 @@ int		 window_pane_exited(struct window_pane *);
 u_int		 window_pane_search(struct window_pane *, const char *, int,
 		     int);
 const char	*window_printable_flags(struct winlink *, int);
+const char      *window_pane_printable_flags(struct window_pane *);
 struct window_pane *window_pane_find_up(struct window_pane *);
 struct window_pane *window_pane_find_down(struct window_pane *);
 struct window_pane *window_pane_find_left(struct window_pane *);
@@ -3439,7 +3440,7 @@ int		 layout_spread_cell(struct window *, struct layout_cell *);
 void		 layout_spread_out(struct window_pane *);
 
 /* layout-custom.c */
-char		*layout_dump(struct layout_cell *);
+char		*layout_dump(struct window *, struct layout_cell *);
 int		 layout_parse(struct window *, const char *, char **);
 
 /* layout-set.c */

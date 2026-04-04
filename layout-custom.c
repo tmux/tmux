@@ -58,7 +58,7 @@ layout_checksum(const char *layout)
 
 /* Dump layout as a string. */
 char *
-layout_dump(struct layout_cell *root)
+layout_dump(__unused struct window *w, struct layout_cell *root)
 {
 	char	layout[8192], *out;
 
