@@ -4489,6 +4489,8 @@ mouse sequences.
 Supports the OSC 7 working directory extension.
 .It overline
 Supports the overline SGR attribute.
+.It progressbar
+Supports the OSC 9;4 progress bar extension.
 .It rectfill
 Supports the DECFRA rectangle fill escape sequence.
 .It RGB
@@ -7852,6 +7854,8 @@ $ printf \[aq]\e033[4 q\[aq]
 If
 .Em Se
 is not set, \&Ss with argument 0 will be used to reset the cursor style instead.
+.It Em \&Spb
+Set the state and progress for OSC9;4 progress bar.
 .It Em \&Swd
 Set the opening sequence for the working directory notification.
 The sequence is terminated using the standard
