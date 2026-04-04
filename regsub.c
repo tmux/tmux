@@ -41,7 +41,7 @@ regsub_expand(char **buf, ssize_t *len, const char *with, const char *text,
 	u_int		 i;
 
 	for (cp = with; *cp != '\0'; cp++) {
-		if (*cp == '\\') {
+		if (cp[0] == '\\' && cp[1] != '\0') {
 			cp++;
 			if (*cp >= '0' && *cp <= '9') {
 				i = *cp - '0';

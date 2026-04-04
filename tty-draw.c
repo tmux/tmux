@@ -143,6 +143,14 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	log_debug("%s: px=%u py=%u nx=%u atx=%u aty=%u", __func__, px, py, nx,
 	    atx, aty);
 
+	/* There is no point in drawing more than the end of the terminal. */
+	if (atx >= tty->sx)
+		return;
+	if (atx + nx >= tty->sx)
+		nx = tty->sx - atx;
+	if (nx == 0)
+		return;
+
 	/*
 	 * Clamp the width to cellsize - note this is not cellused, because
 	 * there may be empty background cells after it (from BCE).
@@ -150,18 +158,23 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	cellsize = grid_get_line(gd, gd->hsize + py)->cellsize;
 	if (screen_size_x(s) > cellsize)
 		ex = cellsize;
-	else {
+	else
 		ex = screen_size_x(s);
-		if (px > ex)
-			return;
-		if (px + nx > ex)
-			nx = ex - px;
-	}
-	if (ex < nx)
-		ex = nx;
 	log_debug("%s: drawing %u-%u,%u (end %u) at %u,%u; defaults: fg=%d, "
 	    "bg=%d", __func__, px, px + nx, py, ex, atx, aty, defaults->fg,
 	    defaults->bg);
+
+	/* Turn off cursor while redrawing and reset region and margins. */
+	flags = (tty->flags & TTY_NOCURSOR);
+	tty->flags |= TTY_NOCURSOR;
+	tty_update_mode(tty, tty->mode, s);
+	tty_region_off(tty);
+	tty_margin_off(tty);
+
+	/* Start with the default cell as the last cell. */
+	memcpy(&last, &grid_default_cell, sizeof last);
+	last.bg = defaults->bg;
+	tty_default_attributes(tty, defaults, palette, 8, s->hyperlinks);
 
 	/*
 	 * If there is padding at the start, we must have truncated a wide
@@ -195,7 +208,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		log_debug("%s: clearing %u padding cells", __func__, cx);
 		tty_draw_line_clear(tty, atx, aty, cx, defaults, bg, 0);
 		if (cx == ex)
-			return;
+			goto out;
 		atx += cx;
 		px += cx;
 		nx -= cx;
@@ -208,18 +221,6 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		if (gl->flags & GRID_LINE_WRAPPED)
 			wrapped = 1;
 	}
-
-	/* Turn off cursor while redrawing and reset region and margins. */
-	flags = (tty->flags & TTY_NOCURSOR);
-	tty->flags |= TTY_NOCURSOR;
-	tty_update_mode(tty, tty->mode, s);
-	tty_region_off(tty);
-	tty_margin_off(tty);
-
-	/* Start with the default cell as the last cell. */
-	memcpy(&last, &grid_default_cell, sizeof last);
-	last.bg = defaults->bg;
-	tty_default_attributes(tty, defaults, palette, 8, s->hyperlinks);
 
 	/* Loop over each character in the range. */
 	last_i = i = 0;
@@ -252,7 +253,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			}
 
 			/* Work out the the empty width. */
-			if (i >= ex)
+			if (px >= ex || i >= ex - px)
 				empty = 1;
 			else if (gcp->bg != last.bg)
 				empty = 0;
@@ -331,6 +332,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			i += gcp->data.width;
 	}
 
+out:
 	tty->flags = (tty->flags & ~TTY_NOCURSOR)|flags;
 	tty_update_mode(tty, tty->mode, s);
 }

@@ -5797,7 +5797,12 @@ and a location suffix, one of the following:
 .It Li "ScrollbarSlider" Ta "the scrollbar slider"
 .It Li "ScrollbarUp" Ta "above the scrollbar slider"
 .It Li "ScrollbarDown" Ta "below the scrollbar slider"
+.It Li "ControlN" Ta "on control range N"
 .El
+.Pp
+See the
+.Sx STYLES
+section for information on control ranges.
 .Pp
 The following mouse events are available:
 .Bl -column "MouseDown1" "MouseDrag1" "WheelDown" -offset indent
@@ -6611,6 +6616,7 @@ replaces the previous saved default).
 .Ic range=window|X ,
 .Ic range=pane|X ,
 .Ic range=user|X ,
+.Ic range=control|N ,
 .Ic norange
 .Xc
 Mark a range for mouse events in the
@@ -6657,6 +6663,19 @@ will be available in the
 format variable.
 .Ql X
 must be at most 15 bytes in length.
+.Pp
+.Ic range=control|N
+is a set of ranges for users to define custom behavior.
+.Ql N
+can be 0 through 9.
+When a mouse event occurs in the
+.Ic range=control|N
+range, the
+.Ql ControlN
+key binding is triggered.
+See
+.Sx MOUSE SUPPORT
+for details.
 .It Ic set\-default
 Set the current colours and attributes as the default, overwriting any previous
 default.
