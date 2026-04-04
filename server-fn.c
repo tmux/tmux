@@ -344,6 +344,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 			break;
 		/* FALLTHROUGH */
 	case 1:
+	case 3:
 		if (wp->flags & PANE_STATUSDRAWN)
 			return;
 		wp->flags |= PANE_STATUSDRAWN;

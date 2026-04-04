@@ -889,9 +889,8 @@ window_printable_flags(struct winlink *wl, int escape)
 {
 	struct session	*s = wl->session;
 	static char	 flags[32];
-	int		 pos;
+	u_int		 pos = 0;
 
-	pos = 0;
 	if (wl->flags & WINLINK_ACTIVITY) {
 		flags[pos++] = '#';
 		if (escape)
@@ -909,6 +908,25 @@ window_printable_flags(struct winlink *wl, int escape)
 		flags[pos++] = 'M';
 	if (wl->window->flags & WINDOW_ZOOMED)
 		flags[pos++] = 'Z';
+	flags[pos] = '\0';
+	return (flags);
+}
+
+const char *
+window_pane_printable_flags(struct window_pane *wp)
+{
+	struct window	*w = wp->window;
+	static char	 flags[32];
+	u_int		 pos = 0;
+
+	if (wp == w->active)
+		flags[pos++] = '*';
+	if (wp == TAILQ_FIRST(&w->last_panes))
+		flags[pos++] = '-';
+	if (wp->flags & PANE_ZOOMED)
+		flags[pos++] = 'Z';
+	if (wp->flags & PANE_FLOATING)
+		flags[pos++] = 'F';
 	flags[pos] = '\0';
 	return (flags);
 }

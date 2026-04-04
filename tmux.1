@@ -5571,13 +5571,16 @@ uses when the colour with that index is requested.
 The index may be from zero to 255.
 .Pp
 .It Xo Ic remain\-on\-exit
-.Op Ic on | off | failed
+.Op Ic on | off | failed | key
 .Xc
 A pane with this flag set is not destroyed when the program running in it
 exits.
 If set to
 .Ic failed ,
 then only when the program exit status is not zero.
+If set to
+.Ic key ,
+the pane stays open and closes when a key is pressed.
 The pane may be reactivated with the
 .Ic respawn\-pane
 command.
@@ -6371,6 +6374,8 @@ The following variables are available, where appropriate:
 .It Li "pane_dead_status" Ta "" Ta "Exit status of process in dead pane"
 .It Li "pane_dead_time" Ta "" Ta "Exit time of process in dead pane"
 .It Li "pane_fg" Ta "" Ta "Pane foreground colour"
+.It Li "pane_flags" Ta "" Ta "Pane flags"
+.It Li "pane_floating_flag" Ta "" Ta "1 if pane is floating"
 .It Li "pane_format" Ta "" Ta "1 if format is for a pane"
 .It Li "pane_height" Ta "" Ta "Height of pane"
 .It Li "pane_id" Ta "#D" Ta "Unique pane ID"
@@ -6400,6 +6405,7 @@ The following variables are available, where appropriate:
 .It Li "pane_tty" Ta "" Ta "Pseudo terminal of pane"
 .It Li "pane_unseen_changes" Ta "" Ta "1 if there were changes in pane while in mode"
 .It Li "pane_width" Ta "" Ta "Width of pane"
+.It Li "pane_floating_flag" Ta "" Ta "1 if pane is floating"
 .It Li "pid" Ta "" Ta "Server PID"
 .It Li "prev_window_active" Ta "" Ta "1 if previous window in W: loop is active"
 .It Li "prev_window_index" Ta "" Ta "Index of previous window in W: loop"

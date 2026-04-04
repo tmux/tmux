@@ -825,8 +825,8 @@ format_cb_window_layout(struct format_tree *ft)
 		return (NULL);
 
 	if (w->saved_layout_root != NULL)
-		return (layout_dump(w->saved_layout_root));
-	return (layout_dump(w->layout_root));
+		return (layout_dump(w, w->saved_layout_root));
+	return (layout_dump(w, w->layout_root));
 }
 
 /* Callback for window_visible_layout. */
@@ -838,7 +838,7 @@ format_cb_window_visible_layout(struct format_tree *ft)
 	if (w == NULL)
 		return (NULL);
 
-	return (layout_dump(w->layout_root));
+	return (layout_dump(w, w->layout_root));
 }
 
 /* Callback for pane_start_command. */
@@ -1002,6 +1002,29 @@ format_cb_pane_fg(struct format_tree *ft)
 
 	tty_default_colours(&gc, wp);
 	return (xstrdup(colour_tostring(gc.fg)));
+}
+
+/* Callback for pane_flags. */
+static void *
+format_cb_pane_flags(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (xstrdup(window_pane_printable_flags(ft->wp)));
+	return (NULL);
+}
+
+/* Callback for pane_floating_flag. */
+static void *
+format_cb_pane_floating_flag(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL) {
+		if (wp->flags & PANE_FLOATING)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
 }
 
 /* Callback for pane_bg. */
@@ -1607,9 +1630,13 @@ format_cb_client_user(struct format_tree *ft)
 	struct passwd	*pw;
 
 	if (ft->c != NULL) {
+		if (ft->c->user != NULL)
+			return (xstrdup(ft->c->user));
 		uid = proc_get_peer_uid(ft->c->peer);
-		if (uid != (uid_t)-1 && (pw = getpwuid(uid)) != NULL)
-			return (xstrdup(pw->pw_name));
+		if (uid != (uid_t)-1 && (pw = getpwuid(uid)) != NULL) {
+			ft->c->user = xstrdup(pw->pw_name);
+			return (xstrdup(ft->c->user));
+		}
 	}
 	return (NULL);
 }
@@ -2365,6 +2392,20 @@ format_cb_pane_width(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_zoomed_flag. */
+static void *
+format_cb_pane_zoomed_flag(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL) {
+		if (wp->flags & PANE_ZOOMED)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
 /* Callback for scroll_region_lower. */
 static void *
 format_cb_scroll_region_lower(struct format_tree *ft)
@@ -3057,10 +3098,13 @@ format_cb_uid(__unused struct format_tree *ft)
 static void *
 format_cb_user(__unused struct format_tree *ft)
 {
+	static char	*cached;
 	struct passwd	*pw;
 
-	if ((pw = getpwuid(getuid())) != NULL)
-		return (xstrdup(pw->pw_name));
+	if (cached == NULL && (pw = getpwuid(getuid())) != NULL)
+		cached = xstrdup(pw->pw_name);
+	if (cached != NULL)
+		return (xstrdup(cached));
 	return (NULL);
 }
 
@@ -3344,6 +3388,12 @@ static const struct format_table_entry format_table[] = {
 	{ "pane_fg", FORMAT_TABLE_STRING,
 	  format_cb_pane_fg
 	},
+	{ "pane_flags", FORMAT_TABLE_STRING,
+	  format_cb_pane_flags
+	},
+	{ "pane_floating_flag", FORMAT_TABLE_STRING,
+	  format_cb_pane_floating_flag
+	},
 	{ "pane_format", FORMAT_TABLE_STRING,
 	  format_cb_pane_format
 	},
@@ -3430,6 +3480,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_width", FORMAT_TABLE_STRING,
 	  format_cb_pane_width
+	},
+	{ "pane_zoomed_flag", FORMAT_TABLE_STRING,
+	  format_cb_pane_zoomed_flag
 	},
 	{ "pid", FORMAT_TABLE_STRING,
 	  format_cb_pid

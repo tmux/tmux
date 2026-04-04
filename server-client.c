@@ -533,6 +533,7 @@ server_client_free(__unused int fd, __unused short events, void *arg)
 
 	if (c->references == 0) {
 		free((void *)c->name);
+		free((void *)c->user);
 		free(c);
 	}
 }
@@ -1355,6 +1356,15 @@ try_again:
 	}
 
 forward_key:
+	if (wp != NULL &&
+	    (wp->flags & PANE_EXITED) &&
+	    !KEYC_IS_MOUSE(key) &&
+	    !KEYC_IS_PASTE(key) &&
+	    options_get_number(wp->options, "remain-on-exit") == 3) {
+		options_set_number(wp->options, "remain-on-exit", 0);
+		server_destroy_pane(wp, 0);
+		goto out;
+	}
 	if (c->flags & CLIENT_READONLY)
 		goto out;
 	if (wp != NULL)
