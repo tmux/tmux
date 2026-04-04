@@ -164,6 +164,18 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	    "bg=%d", __func__, px, px + nx, py, ex, atx, aty, defaults->fg,
 	    defaults->bg);
 
+	/* Turn off cursor while redrawing and reset region and margins. */
+	flags = (tty->flags & TTY_NOCURSOR);
+	tty->flags |= TTY_NOCURSOR;
+	tty_update_mode(tty, tty->mode, s);
+	tty_region_off(tty);
+	tty_margin_off(tty);
+
+	/* Start with the default cell as the last cell. */
+	memcpy(&last, &grid_default_cell, sizeof last);
+	last.bg = defaults->bg;
+	tty_default_attributes(tty, defaults, palette, 8, s->hyperlinks);
+
 	/*
 	 * If there is padding at the start, we must have truncated a wide
 	 * character. Clear it.
@@ -196,7 +208,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		log_debug("%s: clearing %u padding cells", __func__, cx);
 		tty_draw_line_clear(tty, atx, aty, cx, defaults, bg, 0);
 		if (cx == ex)
-			return;
+			goto out;
 		atx += cx;
 		px += cx;
 		nx -= cx;
@@ -209,18 +221,6 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		if (gl->flags & GRID_LINE_WRAPPED)
 			wrapped = 1;
 	}
-
-	/* Turn off cursor while redrawing and reset region and margins. */
-	flags = (tty->flags & TTY_NOCURSOR);
-	tty->flags |= TTY_NOCURSOR;
-	tty_update_mode(tty, tty->mode, s);
-	tty_region_off(tty);
-	tty_margin_off(tty);
-
-	/* Start with the default cell as the last cell. */
-	memcpy(&last, &grid_default_cell, sizeof last);
-	last.bg = defaults->bg;
-	tty_default_attributes(tty, defaults, palette, 8, s->hyperlinks);
 
 	/* Loop over each character in the range. */
 	last_i = i = 0;
@@ -332,6 +332,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			i += gcp->data.width;
 	}
 
+out:
 	tty->flags = (tty->flags & ~TTY_NOCURSOR)|flags;
 	tty_update_mode(tty, tty->mode, s);
 }
