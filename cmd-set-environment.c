@@ -75,7 +75,7 @@ cmd_set_environment_exec(struct cmd *self, struct cmdq_item *item)
 		env = global_environ;
 	else {
 		if (target->s == NULL) {
-			tflag = args_get(args, 't');
+			tflag = args_get_target(args, item);
 			if (tflag != NULL)
 				cmdq_error(item, "no such session: %s", tflag);
 			else

@@ -683,6 +683,32 @@ args_get(struct args *args, u_char flag)
 	return (TAILQ_LAST(&entry->values, args_values)->string);
 }
 
+/* Get arguement target value. Will be NULL if it isn't present */
+const char *
+args_get_target(struct args *args, struct cmdq_item *item)
+{
+	char			*target;
+	u_int			 len;
+	static char		*t = NULL;
+	static u_int		 tsz = 0;
+
+	target = format_single_from_target(item, args_get(args, 't'));
+	if (*target == '\0') {
+		free(target);
+		return (NULL);
+	}
+
+	len = strlen(target);
+	if (tsz <= len) {
+		tsz = len + 100;
+		t = xreallocarray(t, sizeof *t, tsz);
+	}
+	memcpy(t, target, len);
+	t[len] = '\0';
+	free(target);
+	return (t);
+}
+
 /* Get first argument. */
 u_char
 args_first(struct args *args, struct args_entry **entry)
