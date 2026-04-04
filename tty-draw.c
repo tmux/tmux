@@ -143,6 +143,14 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	log_debug("%s: px=%u py=%u nx=%u atx=%u aty=%u", __func__, px, py, nx,
 	    atx, aty);
 
+	/* There is no point in drawing more than the end of the terminal. */
+	if (atx >= tty->sx)
+		return;
+	if (atx + nx >= tty->sx)
+		nx = tty->sx - atx;
+	if (nx == 0)
+		return;
+
 	/*
 	 * Clamp the width to cellsize - note this is not cellused, because
 	 * there may be empty background cells after it (from BCE).
@@ -150,15 +158,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	cellsize = grid_get_line(gd, gd->hsize + py)->cellsize;
 	if (screen_size_x(s) > cellsize)
 		ex = cellsize;
-	else {
+	else
 		ex = screen_size_x(s);
-		if (px > ex)
-			return;
-		if (px + nx > ex)
-			nx = ex - px;
-	}
-	if (ex < nx)
-		ex = nx;
 	log_debug("%s: drawing %u-%u,%u (end %u) at %u,%u; defaults: fg=%d, "
 	    "bg=%d", __func__, px, px + nx, py, ex, atx, aty, defaults->fg,
 	    defaults->bg);
@@ -252,7 +253,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			}
 
 			/* Work out the the empty width. */
-			if (i >= ex)
+			if (px >= ex || i >= ex - px)
 				empty = 1;
 			else if (gcp->bg != last.bg)
 				empty = 0;
