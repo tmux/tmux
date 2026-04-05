@@ -786,8 +786,9 @@ screen_mode_to_string(int mode)
 	return (tmp);
 }
 
+/* Convert screen to a string. */
 const char *
-screen_print(struct screen *s)
+screen_print(struct screen *s, int line)
 {
 	static char		*buf;
 	static size_t		 len = 16384;
@@ -803,6 +804,8 @@ screen_print(struct screen *s)
 		buf = xmalloc(len);
 
 	for (y = 0; y < screen_hsize(s) + s->grid->sy; y++) {
+		if (line >= 0 && y != (u_int)line)
+			continue;
 		n = snprintf(buf + last, len - last, "%.4d \"", y);
 		if (n <= 0 || (u_int)n >= len - last)
 			goto out;
