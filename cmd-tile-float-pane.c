@@ -36,11 +36,6 @@
 static enum cmd_retval	cmd_float_pane_exec(struct cmd *, struct cmdq_item *);
 static enum cmd_retval	cmd_tile_pane_exec(struct cmd *, struct cmdq_item *);
 
-static enum cmd_retval	do_float_pane(struct window *, struct window_pane *,
-			    int, int, u_int, u_int);
-static enum cmd_retval	do_tile_pane(struct window *, struct window_pane *,
-			    struct cmdq_item *);
-
 const struct cmd_entry cmd_float_pane_entry = {
 	.name = "float-pane",
 	.alias = NULL,
@@ -76,7 +71,7 @@ const struct cmd_entry cmd_tile_pane_entry = {
  * caller's statics.
  */
 static int
-parse_float_geometry(struct args *args, struct cmdq_item *item,
+cmd_float_pane_parse_geometry(struct args *args, struct cmdq_item *item,
     struct window *w, int *out_x, int *out_y, u_int *out_sx, u_int *out_sy,
     int *last_x, int *last_y)
 {
@@ -162,6 +157,7 @@ cmd_float_pane_exec(struct cmd *self, struct cmdq_item *item)
 	static int		 last_x = 0, last_y = 0;
 	int			 x, y;
 	u_int			 sx, sy;
+	struct layout_cell	*lc;
 
 	if (wp->flags & PANE_FLOATING) {
 		cmdq_error(item, "pane is already floating");
@@ -188,39 +184,10 @@ cmd_float_pane_exec(struct cmd *self, struct cmdq_item *item)
 		sx = wp->saved_float_sx;
 		sy = wp->saved_float_sy;
 	} else {
-		if (parse_float_geometry(args, item, w, &x, &y, &sx, &sy,
-		    &last_x, &last_y) != 0)
+		if (cmd_float_pane_parse_geometry(args, item, w, &x, &y, &sx,
+		    &sy, &last_x, &last_y) != 0)
 			return (CMD_RETURN_ERROR);
 	}
-
-	return (do_float_pane(w, wp, x, y, sx, sy));
-}
-
-static enum cmd_retval
-cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
-{
-	__attribute((unused)) struct args	*args = cmd_get_args(self);
-	struct cmd_find_state			*target = cmdq_get_target(item);
-	struct window				*w = target->wl->window;
-	struct window_pane			*wp = target->wp;
-
-	if (!(wp->flags & PANE_FLOATING)) {
-		cmdq_error(item, "pane is not floating");
-		return (CMD_RETURN_ERROR);
-	}
-	if (w->flags & WINDOW_ZOOMED) {
-		cmdq_error(item, "can't tile a pane while window is zoomed");
-		return (CMD_RETURN_ERROR);
-	}
-
-	return (do_tile_pane(w, wp, item));
-}
-
-static enum cmd_retval
-do_float_pane(struct window *w, struct window_pane *wp, int x, int y,
-    u_int sx, u_int sy)
-{
-	struct layout_cell	*lc;
 
 	/*
 	 * Remove the pane from the tiled layout tree so neighbours reclaim
@@ -254,10 +221,26 @@ do_float_pane(struct window *w, struct window_pane *wp, int x, int y,
 }
 
 static enum cmd_retval
-do_tile_pane(struct window *w, struct window_pane *wp, struct cmdq_item *item)
+cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct window_pane	*target_wp;
+	__attribute((unused)) struct args	*args = cmd_get_args(self);
+	struct cmd_find_state			*target = cmdq_get_target(item);
+	struct window				*w = target->wl->window;
+	struct window_pane			*wp = target->wp;
+	struct window_pane	*target_wp, *wpiter;
 	struct layout_cell	*float_lc, *lc;
+	int			 was_minimised;
+
+	if (!(wp->flags & PANE_FLOATING)) {
+		cmdq_error(item, "pane is not floating");
+		return (CMD_RETURN_ERROR);
+	}
+	if (w->flags & WINDOW_ZOOMED) {
+		cmdq_error(item, "can't tile a pane while window is zoomed");
+		return (CMD_RETURN_ERROR);
+	}
+
+	was_minimised = (wp->flags & PANE_MINIMISED) != 0;
 
 	/*
 	 * Save the floating geometry so we can restore it next time this pane
@@ -271,36 +254,57 @@ do_tile_pane(struct window *w, struct window_pane *wp, struct cmdq_item *item)
 	wp->flags |= PANE_SAVED_FLOAT;
 
 	/*
+	 * If the pane is also minimised, clear saved_layout_cell before
+	 * freeing the floating cell — otherwise the pointer would dangle.
+	 */
+	if (was_minimised)
+		wp->saved_layout_cell = NULL;
+
+	/*
 	 * Free the detached floating cell.  Clear its wp pointer first so
 	 * layout_free_cell's WINDOWPANE case does not corrupt wp->layout_cell.
 	 */
 	float_lc->wp = NULL;
-	layout_free_cell(float_lc);		/* wp->layout_cell already NULL */
+	layout_free_cell(float_lc);
 	wp->layout_cell = NULL;
 
 	/*
-	 * Find the best tiled pane to split after: prefer the active pane
-	 * (if tiled), then the most-recently-visited tiled pane, then any
-	 * visible tiled pane.
+	 * Find the best tiled pane to split after, prefer a visible (non-
+	 * minimised) tiled pane.  If all tiled panes are minimised, fall back
+	 * to any tiled pane so the new pane enters the existing tree rather
+	 * than becoming a disconnected root.
 	 */
 	target_wp = NULL;
-	if (w->active != NULL && !(w->active->flags & PANE_FLOATING))
+	if (w->active != NULL && !(w->active->flags & PANE_FLOATING) &&
+	    !(w->active->flags & PANE_MINIMISED))
 		target_wp = w->active;
 	if (target_wp == NULL) {
-		TAILQ_FOREACH(target_wp, &w->last_panes, sentry) {
-			if (!(target_wp->flags & PANE_FLOATING) &&
-			    window_pane_visible(target_wp))
+		TAILQ_FOREACH(wpiter, &w->last_panes, sentry) {
+			if (!(wpiter->flags & (PANE_FLOATING|PANE_MINIMISED)) &&
+			    window_pane_visible(wpiter)) {
+				target_wp = wpiter;
 				break;
+			}
 		}
 	}
 	if (target_wp == NULL) {
-		TAILQ_FOREACH(target_wp, &w->panes, entry) {
-			if (!(target_wp->flags & PANE_FLOATING) &&
-			    window_pane_visible(target_wp))
+		TAILQ_FOREACH(wpiter, &w->panes, entry) {
+			if (!(wpiter->flags & (PANE_FLOATING|PANE_MINIMISED)) &&
+			    window_pane_visible(wpiter)) {
+				target_wp = wpiter;
 				break;
+			}
 		}
 	}
-
+	/* Fall back to any tiled pane (even minimised) to stay in the tree. */
+	if (target_wp == NULL) {
+		TAILQ_FOREACH(wpiter, &w->panes, entry) {
+			if (!(wpiter->flags & PANE_FLOATING)) {
+				target_wp = wpiter;
+				break;
+			}
+		}
+	}
 	if (target_wp != NULL) {
 		lc = layout_split_pane(target_wp, LAYOUT_TOPBOTTOM, -1, 0);
 		if (lc == NULL)
@@ -311,6 +315,14 @@ do_tile_pane(struct window *w, struct window_pane *wp, struct cmdq_item *item)
 			return (CMD_RETURN_ERROR);
 		}
 		layout_assign_pane(lc, wp, 0);
+		/*
+		 * Redistribute space equally among all visible panes at this
+		 * level, so the new pane gets an equal share rather than just
+		 * half of the split target.
+		 */
+		if (wp->layout_cell != NULL && wp->layout_cell->parent != NULL)
+			layout_redistribute_cells(w, wp->layout_cell->parent,
+			    wp->layout_cell->parent->type);
 	} else {
 		/*
 		 * No tiled panes at all: make this pane the sole tiled pane
@@ -325,11 +337,19 @@ do_tile_pane(struct window *w, struct window_pane *wp, struct cmdq_item *item)
 		layout_make_leaf(lc, wp);
 	}
 
+	/*
+	 * If the pane was minimised while floating, record its new tiled cell
+	 * as the saved cell so unminimise can restore it correctly.
+	 */
+	if (was_minimised)
+		wp->saved_layout_cell = wp->layout_cell;
+
 	wp->flags &= ~PANE_FLOATING;
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
 	TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 
-	window_set_active_pane(w, wp, 1);
+	if (!(wp->flags & PANE_MINIMISED))
+		window_set_active_pane(w, wp, 1);
 
 	if (w->layout_root != NULL)
 		layout_fix_offsets(w);

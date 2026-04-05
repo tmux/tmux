@@ -3445,6 +3445,8 @@ void		 layout_destroy_cell(struct window *, struct layout_cell *,
 		     struct layout_cell **);
 void		 layout_minimise_cell(struct window *, struct layout_cell *);
 void		 layout_unminimise_cell(struct window *, struct layout_cell *);
+void		 layout_redistribute_cells(struct window *, struct layout_cell *,
+		     enum layout_type);
 void		 layout_resize_layout(struct window *, struct layout_cell *,
 		     enum layout_type, int, int);
 struct layout_cell *layout_search_by_border(struct layout_cell *, u_int, u_int);
