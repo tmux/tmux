@@ -84,6 +84,12 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 	return (strcmp(fj1->cmd, fj2->cmd));
 }
 
+/* Maimum pad and trim width. */
+#define FORMAT_MAX_WIDTH 10000
+
+/* Maimum repeat size. */
+#define FORMAT_MAX_REPEAT 10000
+
 /* Format modifiers. */
 #define FORMAT_TIMESTRING 0x1
 #define FORMAT_BASENAME 0x2
@@ -4989,8 +4995,8 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			case '=':
 				if (fm->argc < 1)
 					break;
-				limit = strtonum(fm->argv[0], INT_MIN + 1,
-				    INT_MAX, &errstr);
+				limit = strtonum(fm->argv[0], -FORMAT_MAX_WIDTH,
+				    FORMAT_MAX_WIDTH, &errstr);
 				if (errstr != NULL)
 					limit = 0;
 				if (fm->argc >= 2 && fm->argv[1] != NULL)
@@ -4999,8 +5005,8 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			case 'p':
 				if (fm->argc < 1)
 					break;
-				width = strtonum(fm->argv[0], INT_MIN + 1,
-				    INT_MAX, &errstr);
+				width = strtonum(fm->argv[0], -FORMAT_MAX_WIDTH,
+				    FORMAT_MAX_WIDTH, &errstr);
 				if (errstr != NULL)
 					width = 0;
 				break;
@@ -5223,7 +5229,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			format_log(es, "repeat syntax error: %s", copy);
 			goto fail;
 		}
-		nrep = strtonum(right, 1, 10000, &errstr);
+		nrep = strtonum(right, 1, FORMAT_MAX_REPEAT, &errstr);
 		if (errstr != NULL)
 			value = xstrdup("");
 		else {
