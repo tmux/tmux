@@ -474,23 +474,46 @@ tty_default_features(int *feat, const char *name, u_int version)
 #define TTY_FEATURES_BASE_MODERN_XTERM \
 	"256,RGB,bpaste,clipboard,mouse,strikethrough,title"
 		{ .name = "mintty",
-		  .features = TTY_FEATURES_BASE_MODERN_XTERM
-			      ",ccolour,cstyle,extkeys,margins,overline,usstyle"
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
+		              "ccolour,"
+		              "cstyle,"
+		              "extkeys,"
+		              "margins,"
+		              "overline,"
+		              "usstyle"
 		},
 		{ .name = "tmux",
-		  .features = TTY_FEATURES_BASE_MODERN_XTERM
-			      ",ccolour,cstyle,focus,overline,usstyle,hyperlinks"
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
+		              "ccolour,"
+		              "cstyle,"
+		              "extkeys,"
+		              "focus,"
+		              "overline,"
+		              "usstyle,"
+		              "hyperlinks"
 		},
 		{ .name = "rxvt-unicode",
-		  .features = "256,bpaste,ccolour,cstyle,mouse,title,ignorefkeys"
+		  .features = "256,"
+		              "bpaste,"
+		              "ccolour,"
+		              "cstyle,"
+		              "mouse,"
+		              "title,"
+		              "ignorefkeys"
 		},
 		{ .name = "iTerm2",
-		  .features = TTY_FEATURES_BASE_MODERN_XTERM
-			      ",cstyle,extkeys,margins,usstyle,sync,osc7,hyperlinks"
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
+		              "cstyle,"
+		              "extkeys,"
+		              "margins,"
+		              "usstyle,"
+		              "sync,"
+		              "osc7,hyperlinks"
 		},
 		{ .name = "foot",
-		  .features = TTY_FEATURES_BASE_MODERN_XTERM
-		              ",cstyle,extkeys"
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
+		              "cstyle,"
+		              "extkeys"
 		},
 		{ .name = "XTerm",
 		  /*
@@ -498,8 +521,11 @@ tty_default_features(int *feat, const char *name, u_int version)
 		   * disabled so not set it here - they will be added if
 		   * secondary DA shows VT420.
 		   */
-		  .features = TTY_FEATURES_BASE_MODERN_XTERM
-			      ",ccolour,cstyle,extkeys,focus"
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
+		              "ccolour,"
+		              "cstyle,"
+		              "extkeys,"
+		              "focus"
 		}
 	};
 	u_int	i;
