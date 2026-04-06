@@ -42,8 +42,8 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	.name = "command-prompt",
 	.alias = NULL,
 
-	.args = { "1beFiklI:Np:t:T:", 0, 1, cmd_command_prompt_args_parse },
-	.usage = "[-1beFiklN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE
+	.args = { "1CbeFiklI:Np:t:T:", 0, 1, cmd_command_prompt_args_parse },
+	.usage = "[-1CbeFiklN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE
 		 " [-T prompt-type] [template]",
 
 	.flags = CMD_CLIENT_TFLAG,
@@ -165,6 +165,8 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->flags |= PROMPT_KEY;
 	else if (args_has(args, 'e'))
 		cdata->flags |= PROMPT_BSPACE_EXIT;
+	if (args_has(args, 'C'))
+		cdata->flags |= PROMPT_NOFREEZE;
 	status_prompt_set(tc, target, cdata->prompts[0].prompt,
 	    cdata->prompts[0].input, cmd_command_prompt_callback,
 	    cmd_command_prompt_free, cdata, cdata->flags, cdata->prompt_type);
