@@ -145,7 +145,6 @@ dist_tmux_SOURCES = \
 	cmd-show-options.c \
 	cmd-show-prompt-history.c \
 	cmd-source-file.c \
-	cmd-split-window.c \
 	cmd-swap-pane.c \
 	cmd-tile-float-pane.c \
 	cmd-swap-window.c \
