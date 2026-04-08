@@ -857,6 +857,12 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 		pd->job = job_run(shellcmd, argc, argv, env, s, cwd,
 		    popup_job_update_cb, popup_job_complete_cb, NULL, pd,
 		    JOB_NOWAIT|JOB_PTY|JOB_KEEPWRITE|JOB_DEFAULTSHELL, jx, jy);
+
+    if(pd->job == NULL) {
+      popup_free_cb(c, pd);
+      return (-1);
+    }
+
 		pd->ictx = input_init(NULL, job_get_event(pd->job),
 		    &pd->palette, c);
 	}
