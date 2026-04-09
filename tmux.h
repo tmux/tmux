@@ -3533,6 +3533,7 @@ int		 utf8_strvis(char *, const char *, size_t, int);
 int		 utf8_stravis(char **, const char *, int);
 int		 utf8_stravisx(char **, const char *, size_t, int);
 char		*utf8_sanitize(const char *);
+char		*utf8_sanitize_osc(const char *);
 size_t		 utf8_strlen(const struct utf8_data *);
 u_int		 utf8_strwidth(const struct utf8_data *, ssize_t);
 struct utf8_data *utf8_fromcstr(const char *);

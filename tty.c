@@ -724,25 +724,33 @@ tty_set_italics(struct tty *tty)
 void
 tty_set_title(struct tty *tty, const char *title)
 {
+	char	*sanitized;
+
 	if (!tty_term_has(tty->term, TTYC_TSL) ||
 	    !tty_term_has(tty->term, TTYC_FSL))
 		return;
 
+	sanitized = utf8_sanitize_osc(title);
 	tty_putcode(tty, TTYC_TSL);
-	tty_puts(tty, title);
+	tty_puts(tty, sanitized);
 	tty_putcode(tty, TTYC_FSL);
+	free(sanitized);
 }
 
 void
 tty_set_path(struct tty *tty, const char *title)
 {
+	char	*sanitized;
+
 	if (!tty_term_has(tty->term, TTYC_SWD) ||
 	    !tty_term_has(tty->term, TTYC_FSL))
 		return;
 
+	sanitized = utf8_sanitize_osc(title);
 	tty_putcode(tty, TTYC_SWD);
-	tty_puts(tty, title);
+	tty_puts(tty, sanitized);
 	tty_putcode(tty, TTYC_FSL);
+	free(sanitized);
 }
 
 static void
