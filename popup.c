@@ -858,10 +858,19 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 		    popup_job_update_cb, popup_job_complete_cb, NULL, pd,
 		    JOB_NOWAIT|JOB_PTY|JOB_KEEPWRITE|JOB_DEFAULTSHELL, jx, jy);
 
-    if(pd->job == NULL) {
-      popup_free_cb(c, pd);
-      return (-1);
-    }
+		if (pd->job == NULL) {
+			server_client_unref(pd->c);
+			screen_free(&pd->s);
+			colour_palette_free(&pd->palette);
+			free(pd->or[0].ranges);
+			free(pd->or[1].ranges);
+			free(pd->r.ranges);
+			free(pd->title);
+			free(pd->style);
+			free(pd->border_style);
+			free(pd);
+			return (-1);
+		}
 
 		pd->ictx = input_init(NULL, job_get_event(pd->job),
 		    &pd->palette, c);
