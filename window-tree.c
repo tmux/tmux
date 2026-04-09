@@ -46,7 +46,7 @@ static void		 window_tree_key(struct window_mode_entry *,
 		"#{window_name}#{window_flags}" \
 		"#{?#{&&:#{==:#{window_panes},1},#{&&:#{pane_title},#{!=:#{pane_title},#{host_short}}}},: \"#{pane_title}\",}" \
 	"," \
-		"#{session_windows} windows" \
+		"#{session_windows} #{?#{==:#{session_windows},1},window,windows}" \
 		"#{?session_grouped, " \
 			"(group #{session_group}: " \
 			"#{session_group_list})," \
