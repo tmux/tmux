@@ -950,7 +950,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	struct grid_cell	 defaults;
 	struct visible_ranges	*r;
 	struct visible_range	*rr;
-	u_int			 i, j, k, top, x, y, width;
+	u_int			 i, j, k, top, x, y, width, used;
 
 	if (wp->base.mode & MODE_SYNC)
 		screen_write_stop_sync(wp);
@@ -997,13 +997,16 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		tty_default_colours(&defaults, wp);
 
 		r = tty_check_overlay_range(tty, x, y, width);
-		for (k = 0; k < r->used; k++) {
-			rr = &r->ranges[k];
-			if (rr->nx != 0) {
-				tty_draw_line(tty, s, rr->px - wp->xoff, j,
-				    rr->nx, rr->px, y, &defaults, palette);
+		used = r->used;
+		rr = xcalloc(used, sizeof(struct visible_range));
+		memcpy(rr, r->ranges, used * sizeof(struct visible_range));
+		for (k = 0; k < used; k++) {
+			if (rr[k].nx != 0) {
+				tty_draw_line(tty, s, rr[k].px - wp->xoff, j,
+				    rr[k].nx, rr[k].px, y, &defaults, palette);
 			}
 		}
+		free(rr);
 	}
 
 #ifdef ENABLE_SIXEL
