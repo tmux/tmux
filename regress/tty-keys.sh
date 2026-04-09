@@ -60,6 +60,31 @@ assert_key () {
 
 }
 
+assert_prompt () {
+	flags=$1
+	keys=$2
+	expected=$3
+
+	$TMUX2 command-prompt $flags 'display-message -pl "%1"' > "$TMP" &
+	sleep 0.05
+
+	$TMUX send-keys $keys
+
+	wait
+
+	keys=$(printf '%s' "$keys" | sed -e 's/Escape/\\\\033/g' | tr -d '[:space:]')
+	actual=$(tr -d '[:space:]' < "$TMP")
+
+	if [ "$actual" = "$expected" ]; then
+		if [ -n "$VERBOSE" ]; then
+			echo "[PASS] $keys -> $actual"
+		fi
+	else
+		echo "[FAIL] $keys -> $expected (Got: '$actual')"
+		exit_status=1
+	fi
+}
+
 assert_key 0x00 'C-Space' # -- 'Escape 0x00' 'C-M-Space'
 assert_key 0x01 'C-a'	  -- 'Escape 0x01' 'C-M-a'
 assert_key 0x02 'C-b'	  -- 'Escape 0x02' 'C-M-b'
@@ -206,6 +231,9 @@ assert_key 'Escape Ov' 'KP6'	 -- 'Escape Escape Ov' 'M-KP6'
 assert_key 'Escape Ow' 'KP7'	 -- 'Escape Escape Ow' 'M-KP7'
 assert_key 'Escape Ox' 'KP8'	 -- 'Escape Escape Ox' 'M-KP8'
 assert_key 'Escape Oy' 'KP9'	 -- 'Escape Escape Oy' 'M-KP9'
+assert_prompt '' 'Escape Oq Escape Or Enter' '12'
+assert_prompt '-N' 'Escape Oq Escape Or Enter' '12'
+assert_prompt '-1' 'Escape Oq 2' '1'
 
 # Arrow keys
 assert_key 'Escape OA' 'Up'    -- 'Escape Escape OA' 'M-Up'
