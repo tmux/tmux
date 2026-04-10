@@ -1390,6 +1390,8 @@ status_prompt_key(struct client *c, key_code key)
 		c->prompt_inputcb(c, c->prompt_data, s, 1);
 		status_prompt_clear(c);
 		free(s);
+		if (key == '\r' || key == '\n')
+			return (0);
 		return (1);
 	}
 	key &= ~KEYC_MASK_FLAGS;

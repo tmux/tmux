@@ -60,6 +60,35 @@ assert_key () {
 
 }
 
+assert_numeric_prompt () {
+	keys=$1
+	expected_prompt=$2
+	expected_pane=$3
+
+	W=$($TMUX2 new-window -P -- sh -c 'stty raw -echo && cat -v')
+	$TMUX2 command-prompt -N 'display-message -p "%%"' > "$TMP" &
+	sleep 0.05
+
+	$TMUX send-keys $keys
+
+	wait
+	sleep 0.05
+
+	actual_prompt=$(tr -d '[:space:]' < "$TMP")
+	actual_pane=$($TMUX2 capturep -pt$W | tr -d '[:space:]')
+	$TMUX2 kill-window -t$W || exit 1
+
+	if [ "$actual_prompt" = "$expected_prompt" ] &&
+	    [ "$actual_pane" = "$expected_pane" ]; then
+		if [ -n "$VERBOSE" ]; then
+			echo "[PASS] $keys -> $actual_prompt / $actual_pane"
+		fi
+	else
+		echo "[FAIL] $keys -> $expected_prompt / $expected_pane (Got: '$actual_prompt' / '$actual_pane')"
+		exit_status=1
+	fi
+}
+
 assert_key 0x00 'C-Space' # -- 'Escape 0x00' 'C-M-Space'
 assert_key 0x01 'C-a'	  -- 'Escape 0x01' 'C-M-a'
 assert_key 0x02 'C-b'	  -- 'Escape 0x02' 'C-M-b'
@@ -206,6 +235,8 @@ assert_key 'Escape Ov' 'KP6'	 -- 'Escape Escape Ov' 'M-KP6'
 assert_key 'Escape Ow' 'KP7'	 -- 'Escape Escape Ow' 'M-KP7'
 assert_key 'Escape Ox' 'KP8'	 -- 'Escape Escape Ox' 'M-KP8'
 assert_key 'Escape Oy' 'KP9'	 -- 'Escape Escape Oy' 'M-KP9'
+assert_numeric_prompt '1 2 3 Enter' '123' ''
+assert_numeric_prompt '1 2 3 j' '123' 'j'
 
 # Arrow keys
 assert_key 'Escape OA' 'Up'    -- 'Escape Escape OA' 'M-Up'
