@@ -730,7 +730,7 @@ tty_set_title(struct tty *tty, const char *title)
 	    !tty_term_has(tty->term, TTYC_FSL))
 		return;
 
-	sanitized = utf8_sanitize_osc(title);
+	utf8_stravis(&sanitized, title, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
 	tty_putcode(tty, TTYC_TSL);
 	tty_puts(tty, sanitized);
 	tty_putcode(tty, TTYC_FSL);
@@ -746,7 +746,7 @@ tty_set_path(struct tty *tty, const char *title)
 	    !tty_term_has(tty->term, TTYC_FSL))
 		return;
 
-	sanitized = utf8_sanitize_osc(title);
+	utf8_stravis(&sanitized, title, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
 	tty_putcode(tty, TTYC_SWD);
 	tty_puts(tty, sanitized);
 	tty_putcode(tty, TTYC_FSL);

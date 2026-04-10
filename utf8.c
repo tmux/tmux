@@ -780,45 +780,6 @@ utf8_sanitize(const char *src)
 	return (dst);
 }
 
-/*
- * Sanitize a string for safe embedding in an OSC escape sequence. Valid UTF-8
- * is preserved. C0 control characters and DEL are stripped to prevent escape
- * sequence injection or premature termination of the OSC.
- */
-char *
-utf8_sanitize_osc(const char *src)
-{
-	char		*dst = NULL;
-	size_t		 n = 0;
-	enum utf8_state	 more;
-	struct utf8_data ud;
-	u_int		 i;
-
-	while (*src != '\0') {
-		if ((more = utf8_open(&ud, *src)) == UTF8_MORE) {
-			while (*++src != '\0' && more == UTF8_MORE)
-				more = utf8_append(&ud, *src);
-			if (more == UTF8_DONE) {
-				dst = xreallocarray(dst,
-				    n + ud.size + 1, sizeof *dst);
-				for (i = 0; i < ud.size; i++)
-					dst[n++] = ud.data[i];
-				continue;
-			}
-			src -= ud.have;
-		}
-		if (*src > 0x1f && *src < 0x7f) {
-			dst = xreallocarray(dst, n + 2, sizeof *dst);
-			dst[n++] = *src;
-		}
-		src++;
-	}
-	if (dst == NULL)
-		dst = xmalloc(1);
-	dst[n] = '\0';
-	return (dst);
-}
-
 /* Get UTF-8 buffer length. */
 size_t
 utf8_strlen(const struct utf8_data *s)
