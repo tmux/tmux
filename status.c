@@ -728,7 +728,7 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 	c->prompt_type = prompt_type;
 	c->prompt_mode = PROMPT_ENTRY;
 
-	if (~flags & PROMPT_INCREMENTAL)
+	if ((~flags & PROMPT_INCREMENTAL) && (~flags & PROMPT_NOFREEZE))
 		c->tty.flags |= TTY_FREEZE;
 	c->flags |= CLIENT_REDRAWSTATUS;
 
