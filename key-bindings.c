@@ -467,7 +467,7 @@ key_bindings_init(void)
 		"bind -n C-MouseDown1Status { swap-window -t@ }",
 
 		/* Mouse button 1 down on default pane-border-format */
-		"bind -n MouseDown1Control9 { kill-pane -t= }",
+		"bind -n MouseDown1Control9 { display-menu -t= -xM -yM -O 'Confim kill pane?' 'y' { kill-pane -t= } 'No' 'n' {}}",
 
 		/* Mouse wheel down on status line. */
 		"bind -n WheelDownStatus { next-window }",

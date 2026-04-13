@@ -1304,7 +1304,7 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "#{?pane_active,#[reverse],}#{pane_index}#[default] "
 			 "\"#{pane_title}\""
-			 "#{?#{mouse_on},"
+			 "#{?#{==:#{mouse},1},"
 				"#[align=right]"
 				"#[range=control|9][x]#[norange]"
 			",}",
