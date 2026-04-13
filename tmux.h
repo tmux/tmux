@@ -1093,12 +1093,23 @@ enum pane_lines {
 #define WINDOW_PANE_COPY_MODE 1
 #define WINDOW_PANE_VIEW_MODE 2
 
+/* Status position constants. */
+#define STATUS_POSITION_TOP    0
+#define STATUS_POSITION_BOTTOM 1
+#define STATUS_POSITION_LEFT   2
+#define STATUS_POSITION_RIGHT  3
+#define status_is_vertical(pos) ((pos) == STATUS_POSITION_LEFT || \
+    (pos) == STATUS_POSITION_RIGHT)
+
 /* Screen redraw context. */
 struct screen_redraw_ctx {
 	struct client	*c;
 
 	u_int		 statuslines;
 	int		 statustop;
+
+	u_int		 statuscols;
+	int		 statusleft;
 
 	int		 pane_status;
 	enum pane_lines	 pane_lines;
@@ -1497,6 +1508,8 @@ struct session {
 
 	int		 statusat;
 	u_int		 statuslines;
+	int		 statuspos;
+	u_int		 statuscols;
 
 	struct options	*options;
 
@@ -1929,6 +1942,9 @@ struct status_line {
 
 	struct grid_cell	 style;
 	struct style_line_entry entries[STATUS_LINES_LIMIT];
+
+	/* Ranges for vertical column mode (row -> window mapping). */
+	struct style_ranges	 vertical_ranges;
 };
 
 /* Prompt type. */
@@ -3082,6 +3098,8 @@ void	 status_update_cache(struct session *);
 u_int	 status_prompt_line_at(struct client *);
 int	 status_at_line(struct client *);
 u_int	 status_line_size(struct client *);
+u_int	 status_column_size(struct client *);
+int	 status_at_column(struct client *);
 struct style_range *status_get_range(struct client *, u_int, u_int);
 void	 status_init(struct client *);
 void	 status_free(struct client *);

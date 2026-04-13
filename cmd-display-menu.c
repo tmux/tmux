@@ -131,7 +131,34 @@ cmd_display_menu_get_pos(struct client *tc, struct cmdq_item *item,
 	 * status line position.
 	 */
 	top = status_at_line(tc);
-	if (top != -1) {
+	if (status_at_column(tc) != -1) {
+		/*
+		 * Vertical column mode: find this window's row in the column
+		 * and expose its y-coordinate for popup positioning.
+		 */
+		TAILQ_FOREACH(sr, &tc->status.vertical_ranges, entry) {
+			if (sr->type == STYLE_RANGE_WINDOW &&
+			    sr->argument == (u_int)wl->idx)
+				break;
+		}
+		if (sr != NULL) {
+			int	cxstart = status_at_column(tc);
+			u_int	cw = status_column_size(tc);
+
+			if (cxstart == 0) {
+				/* Left column: popup to the right of it. */
+				format_add(ft, "popup_window_status_line_x",
+				    "%u", cw);
+			} else {
+				/* Right column: popup to the left of it. */
+				format_add(ft, "popup_window_status_line_x",
+				    "%u", (cxstart > (int)w) ? cxstart - w : 0);
+			}
+			format_add(ft, "popup_window_status_line_y", "%u",
+			    sr->start);
+		}
+		top = 0;
+	} else if (top != -1) {
 		lines = status_line_size(tc);
 		if (top == 0)
 			top = lines;

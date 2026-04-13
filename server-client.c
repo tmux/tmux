@@ -790,6 +790,71 @@ have_event:
 	/* Is this on the status line? */
 	m->statusat = status_at_line(c);
 	m->statuslines = status_line_size(c);
+
+	/*
+	 * Check for vertical status column first. In vertical mode, the column
+	 * occupies all rows but only a band of columns on the left or right.
+	 * Use y as the row-index into the column's window list.
+	 */
+	{
+		int	statuscolat = status_at_column(c);
+		u_int	statuscols = status_column_size(c);
+
+		if (statuscolat != -1 &&
+		    x >= (u_int)statuscolat &&
+		    x < (u_int)statuscolat + statuscols) {
+			sr = status_get_range(c, x, y);
+			if (sr == NULL) {
+				loc = KEYC_MOUSE_LOCATION_STATUS_DEFAULT;
+			} else {
+				switch (sr->type) {
+				case STYLE_RANGE_NONE:
+					return (KEYC_UNKNOWN);
+				case STYLE_RANGE_LEFT:
+				case STYLE_RANGE_RIGHT:
+					loc = KEYC_MOUSE_LOCATION_STATUS_DEFAULT;
+					break;
+				case STYLE_RANGE_PANE:
+					fwp = window_pane_find_by_id(sr->argument);
+					if (fwp == NULL)
+						return (KEYC_UNKNOWN);
+					m->wp = sr->argument;
+					log_debug("mouse vert col: pane %%%u",
+					    m->wp);
+					loc = KEYC_MOUSE_LOCATION_STATUS;
+					break;
+				case STYLE_RANGE_WINDOW:
+					fwl = winlink_find_by_index(&s->windows,
+					    sr->argument);
+					if (fwl == NULL)
+						return (KEYC_UNKNOWN);
+					m->w = fwl->window->id;
+					log_debug("mouse vert col: window @%u",
+					    m->w);
+					loc = KEYC_MOUSE_LOCATION_STATUS;
+					break;
+				case STYLE_RANGE_SESSION:
+					fs = session_find_by_id(sr->argument);
+					if (fs == NULL)
+						return (KEYC_UNKNOWN);
+					m->s = sr->argument;
+					log_debug("mouse vert col: session $%u",
+					    m->s);
+					loc = KEYC_MOUSE_LOCATION_STATUS;
+					break;
+				case STYLE_RANGE_USER:
+					loc = KEYC_MOUSE_LOCATION_STATUS;
+					break;
+				case STYLE_RANGE_CONTROL:
+					n = sr->argument;
+					loc = KEYC_MOUSE_LOCATION_CONTROL0 + n;
+					break;
+				}
+			}
+			goto have_location;
+		}
+	}
+
 	if (m->statusat != -1 &&
 	    y >= (u_int)m->statusat &&
 	    y < m->statusat + m->statuslines) {
@@ -849,6 +914,7 @@ have_event:
 		}
 	}
 
+have_location:
 	/*
 	 * Not on status line. Adjust position and check for border, pane, or
 	 * scrollbar.
@@ -857,7 +923,14 @@ have_event:
 		if (c->tty.mouse_scrolling_flag)
 			loc = KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER;
 		else {
-			px = x;
+			/*
+			 * In vertical column mode, offset px past the left
+			 * status column so pane coordinates are correct.
+			 */
+			if (status_at_column(c) == 0)
+				px = x - status_column_size(c);
+			else
+				px = x;
 			if (m->statusat == 0 && y >= m->statuslines)
 				py = y - m->statuslines;
 			else if (m->statusat > 0 && y >= (u_int)m->statusat)
@@ -1766,6 +1839,8 @@ server_client_reset_state(struct client *c)
 
 			if (status_at_line(c) == 0)
 				cy += status_line_size(c);
+			if (status_at_column(c) == 0)
+				cx += status_column_size(c);
 		}
 		if (!cursor)
 			mode &= ~MODE_CURSOR;
