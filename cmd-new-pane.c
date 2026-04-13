@@ -38,11 +38,13 @@ const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
 	.alias = "newp",
 
-	.args = { "bc:de:fF:h:Iklm:p:PR:s:S:t:T:w:x:y:Z", 0, -1, NULL },
+	.args = { "bc:de:fF:hH:Ikl:m:p:PR:s:S:t:T:w:x:y:vZ", 0, -1, NULL },
 	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
-		 "[-F format] [-l size] [-m message] "
-		 "[-R inactive-border-style] [-s style] [-S active-border-style] "
-		 CMD_TARGET_PANE_USAGE " [shell-command [argument ...]]",
+		 "[-F format] [-H height] [-l size] [-m message] "
+		 "[-R inactive-border-style] [-s style] "
+		 "[-S active-border-style] [-w width] [-x x-position] "
+		 "[-y y-position]" CMD_TARGET_PANE_USAGE "[-T type] "
+		 " [shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -54,9 +56,12 @@ const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
 	.alias = "splitw",
 
-	.args = { "bc:de:fF:hIl:p:Pt:T:vZ", 0, -1, NULL },
-	.usage = "[-bdefhIPvZ] [-c start-directory] [-e environment] "
-		 "[-F format] [-l size] " CMD_TARGET_PANE_USAGE
+	.args = { "bc:de:fF:hH:Ikl:m:p:PR:s:S:t:T:w:x:y:vZ", 0, -1, NULL },
+	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
+		 "[-F format] [-H height] [-l size] [-m message] "
+		 "[-R inactive-border-style] [-s style] "
+		 "[-S active-border-style] [-w width] [-x x-position] "
+		 "[-y y-position]" CMD_TARGET_PANE_USAGE "[-T type] "
 		 " [shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -84,53 +89,41 @@ cmd_new_pane_get_type(const char* val)
 }
 
 static struct layout_cell *
-cmd_new_pane_get_float_layout_cell(struct cmdq_item *item, struct args *args,
+cmd_new_pane_get_floating_layout_cell(struct cmdq_item *item, struct args *args,
     struct window *w)
 {
 	struct layout_cell	*lc = NULL;
 	char			*cause = NULL;
 	int			 x, y;
-	u_int			 sx, sy, pct;
+	u_int			 sx = w->sx / 2, sy = w->sy / 2;
 	static int		 last_x = 0, last_y = 0;
 
-	if (args_has(args, 'f')) {
-		sx = w->sx;
-		sy = w->sy;
+	if (last_x == 0) {
+		x = 4;
 	} else {
-		if (args_has(args, 'l')) {
-			sx = args_percentage_and_expand(args, 'l', 0, INT_MAX, w->sx,
-			    item, &cause);
-			sy = args_percentage_and_expand(args, 'l', 0, INT_MAX, w->sy,
-			    item, &cause);
-		} else if (args_has(args, 'p')) {
-			pct = args_strtonum_and_expand(args, 'p', 0, 100, item,
-			    &cause);
-			if (cause == NULL) {
-				sx = w->sx * pct / 100;
-				sy = w->sy * pct / 100;
-			}
-		} else if (cause == NULL) {
-			sx = w->sx / 2;
-			sy = w->sy / 2;
-		}
-		if (cause != NULL) {
-			cmdq_error(item, "size %s", cause);
-			free(cause);
-			return (NULL);
-		}
+		x = (last_x += 4);
+		if (last_x > (int)w->sx)
+			x = 4;
+	}
+	if (last_y == 0) {
+		y = 2;
+	} else {
+		y = (last_y += 2);
+		if (last_y > (int)w->sy)
+			y = 2;
 	}
 	if (args_has(args, 'w')) {
-		sx = args_strtonum_and_expand(args, 'w', 1, USHRT_MAX, item,
-		    &cause);
+		sx = args_percentage_and_expand(args, 'w', 0, USHRT_MAX, w->sx,
+			item, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "size %s", cause);
 			free(cause);
 			return (NULL);
 		}
 	}
-	if (args_has(args, 'h')) {
-		sy = args_strtonum_and_expand(args, 'h', 1, USHRT_MAX, item,
-		    &cause);
+	if (args_has(args, 'H')) {
+		sy = args_percentage_and_expand(args, 'H', 0, USHRT_MAX, w->sy,
+		    item, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "size %s", cause);
 			free(cause);
@@ -138,37 +131,21 @@ cmd_new_pane_get_float_layout_cell(struct cmdq_item *item, struct args *args,
 		}
 	}
 	if (args_has(args, 'x')) {
-		x = args_strtonum_and_expand(args, 'x', SHRT_MIN, SHRT_MAX,
+		x = args_percentage_and_expand(args, 'x', 0, USHRT_MAX, w->sx,
 		    item, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "size %s", cause);
 			free(cause);
 			return (NULL);
-		}
-	} else {
-		if (last_x == 0) {
-			x = 5;
-		} else {
-			x = (last_x += 5);
-			if (last_x > (int)w->sx)
-				x = 5;
 		}
 	}
 	if (args_has(args, 'y')) {
-		y = args_strtonum_and_expand(args, 'y', SHRT_MIN, SHRT_MAX,
+		y = args_percentage_and_expand(args, 'y', 0, USHRT_MAX, w->sy,
 		    item, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "size %s", cause);
 			free(cause);
 			return (NULL);
-		}
-	} else {
-		if (last_y == 0) {
-			y = 5;
-		} else {
-			y = (last_y += 5);
-			if (last_y > (int)w->sy)
-				y = 5;
 		}
 	}
 
@@ -186,50 +163,8 @@ cmd_new_pane_get_float_layout_cell(struct cmdq_item *item, struct args *args,
 	return (lc);
 }
 
-static int
-cmd_new_pane_style_floating_pane(struct cmdq_item *item, struct args *args,
-    struct window_pane *new_wp)
-{
-	const char	*style;
-
-	style = args_get(args, 's');
-	if (style != NULL) {
-		if (options_set_string(new_wp->options, "window-style", 0,
-		    "%s", style) == NULL) {
-			cmdq_error(item, "bad style: %s", style);
-			return (-1);
-		}
-		options_set_string(new_wp->options, "window-active-style", 0,
-		    "%s", style);
-		new_wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED|PANE_THEMECHANGED);
-	}
-	style = args_get(args, 'S');
-	if (style != NULL) {
-		if (options_set_string(new_wp->options,
-		    "pane-active-border-style", 0, "%s", style) == NULL) {
-			cmdq_error(item, "bad active border style: %s", style);
-			return (-1);
-		}
-	}
-	style = args_get(args, 'R');
-	if (style != NULL) {
-		if (options_set_string(new_wp->options, "pane-border-style", 0,
-		    "%s", style) == NULL) {
-			cmdq_error(item, "bad inactive border style: %s", style);
-			return (-1);
-		}
-	}
-	if (args_has(args, 'k') || args_has(args, 'm')) {
-		options_set_number(new_wp->options, "remain-on-exit", 3);
-		if (args_has(args, 'm'))
-			options_set_string(new_wp->options, "remain-on-exit-format",
-			    0, "%s", args_get(args, 'm'));
-	}
-	return (0);
-}
-
 static struct layout_cell *
-cmd_new_pane_get_split_layout_cell(struct cmdq_item *item, struct args *args,
+cmd_new_pane_get_tiled_layout_cell(struct cmdq_item *item, struct args *args,
     struct window *w, struct window_pane *wp, int flags)
 {
 	enum layout_type	 type;
@@ -301,7 +236,7 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct layout_cell	*lc = NULL;
 	struct cmd_find_state	 fs;
 	int			 flags, input;
-	const char		*template;
+	const char		*template, *style;
 	char			*cause = NULL, *cp;
 	struct args_value	*av;
 	u_int			 count = args_count(args);
@@ -328,10 +263,9 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 
 	if (pane_type == FLOATING) {
-		// return (cmd_new_pane_exec(self, item));
-		lc = cmd_new_pane_get_float_layout_cell(item, args, w);
+		lc = cmd_new_pane_get_floating_layout_cell(item, args, w);
 	} else if (pane_type == TILED)
-		lc = cmd_new_pane_get_split_layout_cell(item, args, w, wp,
+		lc = cmd_new_pane_get_tiled_layout_cell(item, args, w, wp,
 			flags);
 	else
 		cmdq_error(item, "unrecognized pane type '%s'", args_get(args, 'T'));
@@ -372,9 +306,40 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-	if (pane_type == FLOATING)
-		if (cmd_new_pane_style_floating_pane(item, args, new_wp) != 0)
+	style = args_get(args, 's');
+	if (style != NULL) {
+		if (options_set_string(new_wp->options, "window-style", 0,
+		    "%s", style) == NULL) {
+			cmdq_error(item, "bad style: %s", style);
 			return (CMD_RETURN_ERROR);
+		}
+		options_set_string(new_wp->options, "window-active-style", 0,
+		    "%s", style);
+		new_wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED|PANE_THEMECHANGED);
+	}
+	style = args_get(args, 'S');
+	if (style != NULL) {
+		if (options_set_string(new_wp->options,
+		    "pane-active-border-style", 0, "%s", style) == NULL) {
+			cmdq_error(item, "bad active border style: %s", style);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+	style = args_get(args, 'R');
+	if (style != NULL) {
+		if (options_set_string(new_wp->options, "pane-border-style", 0,
+		    "%s", style) == NULL) {
+			cmdq_error(item, "bad inactive border style: %s", style);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+	if (args_has(args, 'k') || args_has(args, 'm')) {
+		options_set_number(new_wp->options, "remain-on-exit", 3);
+		if (args_has(args, 'm'))
+			options_set_string(new_wp->options,
+				"remain-on-exit-format",
+				0, "%s", args_get(args, 'm'));
+	}
 
 	if (input) {
 		switch (window_pane_start_input(new_wp, item, &cause)) {
