@@ -24,7 +24,8 @@
 #include "tmux.h"
 
 #define CONTROL_SHOULD_NOTIFY_CLIENT(c) \
-	((c) != NULL && ((c)->flags & CLIENT_CONTROL))
+	((c) != NULL && ((c)->flags & CLIENT_CONTROL) && \
+	 (c)->control_state != NULL)
 
 void
 control_notify_pane_mode_changed(int pane)
