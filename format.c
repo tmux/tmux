@@ -5047,8 +5047,10 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 				if (strchr(fm->argv[0], 'p') != NULL)
 					modifiers |= FORMAT_PRETTY;
 				else if (fm->argc >= 2 &&
-				    strchr(fm->argv[0], 'f') != NULL)
+				    strchr(fm->argv[0], 'f') != NULL) {
+					free(time_format);
 					time_format = format_strip(fm->argv[1]);
+				}
 				break;
 			case 'q':
 				if (fm->argc < 1)
