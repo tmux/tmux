@@ -30,6 +30,7 @@
 	" ''" \
 	" 'Renumber' 'N' {move-window -r}" \
 	" 'Rename' 'r' {command-prompt -I \"#S\" {rename-session -- '%%'}}" \
+	" 'Detach' 'd' {detach-client}" \
 	" ''" \
 	" 'New Session' 's' {new-session}" \
 	" 'New Window' 'w' {new-window}"
