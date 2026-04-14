@@ -27,70 +27,58 @@
 #include "tmux.h"
 
 /*
- * Split a window (add a new pane).
+ * Create a new pane.
  */
 
 #define NEW_PANE_TEMPLATE "#{session_name}:#{window_index}.#{pane_index}"
 
-static enum cmd_retval	cmd_new_pane_exec(struct cmd *, struct cmdq_item *);
+static enum cmd_retval	cmd_split_window_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
 	.alias = "newp",
 
-	.args = { "bc:de:fF:hH:Ikl:m:p:PR:s:S:t:T:w:x:y:vZ", 0, -1, NULL },
+	.args = { "bc:de:fF:hH:Ikl:m:M:p:PR:s:S:t:w:x:y:vZ", 0, -1, NULL },
 	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-H height] [-l size] [-m message] "
-		 "[-R inactive-border-style] [-s style] "
+		 "[-M mode] [-R inactive-border-style] [-s style] "
 		 "[-S active-border-style] [-w width] [-x x-position] "
-		 "[-y y-position]" CMD_TARGET_PANE_USAGE "[-T type] "
-		 " [shell-command [argument ...]]",
+		 "[-y y-position]" CMD_TARGET_PANE_USAGE
+		 "[shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = 0,
-	.exec = cmd_new_pane_exec
+	.exec = cmd_split_window_exec
 };
 
 const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
 	.alias = "splitw",
 
-	.args = { "bc:de:fF:hH:Ikl:m:p:PR:s:S:t:T:w:x:y:vZ", 0, -1, NULL },
+	.args = { "bc:de:fF:hH:Ikl:m:M:p:PR:s:S:t:w:x:y:vZ", 0, -1, NULL },
 	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-H height] [-l size] [-m message] "
-		 "[-R inactive-border-style] [-s style] "
+		 "[-M mode] [-R inactive-border-style] [-s style] "
 		 "[-S active-border-style] [-w width] [-x x-position] "
-		 "[-y y-position]" CMD_TARGET_PANE_USAGE "[-T type] "
-		 " [shell-command [argument ...]]",
+		 "[-y y-position]" CMD_TARGET_PANE_USAGE
+		 "[shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = 0,
-	.exec = cmd_new_pane_exec
+	.exec = cmd_split_window_exec
 };
 
-enum new_pane_type {
+enum new_pane_mode {
 	FLOATING,
 	TILED,
 	NONE,
 };
 
-static enum new_pane_type
-cmd_new_pane_get_type(const char* val)
-{
-	if (strncmp(val, "floating", (sizeof "floating") - 1) == 0 ||
-	    strncmp(val, "f", (sizeof "f") - 1) == 0)
-		return FLOATING;
-	if (strncmp(val, "tiled", (sizeof "tiled") - 1) == 0 ||
-	    strncmp(val, "t", (sizeof "t") - 1) == 0)
-		return TILED;
-	return NONE;
-}
-
 static struct layout_cell *
-cmd_new_pane_get_floating_layout_cell(struct cmdq_item *item, struct args *args,
-    struct window *w)
+cmd_split_window_get_floating_layout_cell(struct cmdq_item *item,
+    struct args *args, struct window *w)
 {
 	struct layout_cell	*lc = NULL;
 	char			*cause = NULL;
@@ -164,8 +152,8 @@ cmd_new_pane_get_floating_layout_cell(struct cmdq_item *item, struct args *args,
 }
 
 static struct layout_cell *
-cmd_new_pane_get_tiled_layout_cell(struct cmdq_item *item, struct args *args,
-    struct window *w, struct window_pane *wp, int flags)
+cmd_split_window_get_tiled_layout_cell(struct cmdq_item *item,
+    struct args *args, struct window *w, struct window_pane *wp, int flags)
 {
 	enum layout_type	 type;
 	struct layout_cell	*lc = NULL;
@@ -222,7 +210,7 @@ cmd_new_pane_get_tiled_layout_cell(struct cmdq_item *item, struct args *args,
 }
 
 static enum cmd_retval
-cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
+cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*current = cmdq_get_current(item);
@@ -240,20 +228,25 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 	char			*cause = NULL, *cp;
 	struct args_value	*av;
 	u_int			 count = args_count(args);
-	enum new_pane_type	 pane_type = NONE;
+	enum new_pane_mode	 pane_mode = NONE;
 
-	if (args_has(args, 'T')) {
-		pane_type = cmd_new_pane_get_type(args_get(args, 'T'));
+	if (args_has(args, 'M')) {
+		if (strcasecmp(args_get(args, 'M'), "f") == 0)
+			pane_mode = FLOATING;
+		else if (strcasecmp(args_get(args, 'M'), "t") == 0)
+			pane_mode = TILED;
+		else
+			pane_mode = NONE;
 	} else {
 		if (cmd_get_entry(self) == &cmd_new_pane_entry)
-			pane_type = FLOATING;
+			pane_mode = FLOATING;
 		else
-			pane_type = TILED;
+			pane_mode = TILED;
 	}
 
 	input = (args_has(args, 'I') && count == 0);
 
-	flags = pane_type == FLOATING ? SPAWN_FLOATING : 0;
+	flags = pane_mode == FLOATING ? SPAWN_FLOATING : 0;
 	if (args_has(args, 'b'))
 		flags |= SPAWN_BEFORE;
 	if (args_has(args, 'f'))
@@ -262,13 +255,16 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 		flags |= SPAWN_EMPTY;
 
 
-	if (pane_type == FLOATING) {
-		lc = cmd_new_pane_get_floating_layout_cell(item, args, w);
-	} else if (pane_type == TILED)
-		lc = cmd_new_pane_get_tiled_layout_cell(item, args, w, wp,
+	if (pane_mode == FLOATING)
+		lc = cmd_split_window_get_floating_layout_cell(item, args, w);
+	else if (pane_mode == TILED)
+		lc = cmd_split_window_get_tiled_layout_cell(item, args, w, wp,
 			flags);
-	else
-		cmdq_error(item, "unrecognized pane type '%s'", args_get(args, 'T'));
+	else {
+		cmdq_error(item, "unrecognized pane mode '%s'",
+		    args_get(args, 'M'));
+		return (CMD_RETURN_ERROR);
+	}
 	if (lc == NULL)
 		return (CMD_RETURN_ERROR);
 
@@ -345,7 +341,7 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 		switch (window_pane_start_input(new_wp, item, &cause)) {
 		case -1:
 			server_client_remove_pane(new_wp);
-			if (pane_type == TILED)
+			if (pane_mode == TILED)
 				layout_close_pane(new_wp);
 			window_remove_pane(wp->window, new_wp);
 			cmdq_error(item, "%s", cause);

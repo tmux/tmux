@@ -1030,7 +1030,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 				fs->w = fs->wl->window;
 				fs->wp = fs->w->active;
 			}
-			break;
+			goto found;
 		}
 		if (fs->wp == NULL) {
 			if (~flags & CMD_FIND_QUIET)

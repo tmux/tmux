@@ -115,7 +115,6 @@ dist_tmux_SOURCES = \
 	cmd-lock-server.c \
 	cmd-minimise-pane.c \
 	cmd-move-window.c \
-	cmd-new-pane.c \
 	cmd-new-session.c \
 	cmd-new-window.c \
 	cmd-parse.y \
@@ -145,6 +144,7 @@ dist_tmux_SOURCES = \
 	cmd-show-options.c \
 	cmd-show-prompt-history.c \
 	cmd-source-file.c \
+	cmd-split-window.c \
 	cmd-swap-pane.c \
 	cmd-tile-float-pane.c \
 	cmd-swap-window.c \
