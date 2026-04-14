@@ -829,6 +829,9 @@ control_stop(struct client *c)
 	struct control_block	*cb, *cb1;
 	struct control_sub	*csub, *csub1;
 
+	if (cs == NULL)
+		return;
+
 	if (~c->flags & CLIENT_CONTROLCONTROL)
 		bufferevent_free(cs->write_event);
 	bufferevent_free(cs->read_event);
@@ -842,6 +845,7 @@ control_stop(struct client *c)
 		control_free_block(cs, cb);
 	control_reset_offsets(c);
 
+	c->control_state = NULL;
 	free(cs);
 }
 
