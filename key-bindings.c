@@ -29,7 +29,7 @@
 	" 'Previous' 'p' {switch-client -p}" \
 	" ''" \
 	" 'Renumber' 'N' {move-window -r}" \
-	" 'Rename' 'n' {command-prompt -I \"#S\" {rename-session -- '%%'}}" \
+	" 'Rename' 'r' {command-prompt -I \"#S\" {rename-session -- '%%'}}" \
 	" ''" \
 	" 'New Session' 's' {new-session}" \
 	" 'New Window' 'w' {new-window}"
