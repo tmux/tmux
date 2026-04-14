@@ -468,6 +468,7 @@ key_bindings_init(void)
 
 		/* Mouse button 1 down on default pane-border-format */
 		"bind -n MouseDown1Control9 { display-menu -t= -xM -yM -O -T 'Kill pane #{pane_index}?' 'Yes' 'y' { kill-pane -t= } 'No' 'n' {}}",
+		"bind -n MouseDown1Control8 { resize-pane -Z }",
 
 		/* Mouse wheel down on status line. */
 		"bind -n WheelDownStatus { next-window }",

@@ -1306,6 +1306,7 @@ const struct options_table_entry options_table[] = {
 			 "\"#{pane_title}\""
 			 "#{?#{mouse},"
 				"#[align=right]"
+				"#[range=control|8][^]#[norange]"
 				"#[range=control|9][x]#[norange]"
 			",}",
 	  .text = "Format of text in the pane status lines."
