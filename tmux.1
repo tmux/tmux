@@ -3335,13 +3335,16 @@ but a different format may be specified with
 .Op Fl s Ar style
 .Op Fl S Ar active-border-style
 .Op Fl t Ar target-pane
+.Op Fl T Ar type
 .Op Fl w Ar width
 .Op Fl x Ar x-position
 .Op Fl y Ar y-position
 .Op Ar shell-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic newp
-Create a new pane. The new pane may be floating by specifying the type with
+Create a new pane. The new pane may be floating by specifying the
+.Ar type
+with
 .Fl Tf
 /
 .Fl Tfloating ,
@@ -3351,8 +3354,10 @@ or tiled into the layout by splitting an existing pane with
 .Fl Ttiled .
 When creating a tiled pane, a target pane may be specified with
 .Fl t .
-Note that some options are related to dimensions/layout and so will only affect
-one pane type. Those options will be in their own sections.
+Note that some options are related to dimensions/layout. Those options will
+only affect one creation 
+.Ar type
+and will be in their own sections.
 .Pp
 If
 .Fl d
