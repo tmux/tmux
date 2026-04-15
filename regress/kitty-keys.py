@@ -249,6 +249,13 @@ def run_socket(sock, *args, check=True):
     )
 
 
+def configure_extended_keys(mode="on", fmt="kitty", sock=None):
+    runner = run if sock is None else (
+        lambda *args, check=True: run_socket(sock, *args, check=check)
+    )
+    runner("set", "-g", "extended-keys", mode)
+    runner("set", "-g", "extended-keys-format", fmt)
+
 def expect_key_name(client_fd, seq, expected, label=None):
     display = label if label is not None else repr(seq)
     proc = subprocess.Popen(
@@ -336,8 +343,8 @@ def expect_push_pop_balance(client_fd, client_pid):
     return ok
 
 
-def expect_mode_push_pop(label, mode, expected_pushes, min_pops, max_pops=None):
-    sock = f"{SOCK}_{mode}_{os.getpid()}_{int(time.time() * 1000)}"
+def expect_mode_push_pop(label, fmt, expected_pushes, min_pops, max_pops=None):
+    sock = f"{SOCK}_{fmt}_{os.getpid()}_{int(time.time() * 1000)}"
     client_pid = None
     client_fd = None
     output = b""
@@ -346,7 +353,7 @@ def expect_mode_push_pop(label, mode, expected_pushes, min_pops, max_pops=None):
     try:
         run_socket(sock, "kill-server", check=False)
         run_socket(sock, "-f/dev/null", "new", "-d")
-        run_socket(sock, "set", "-g", "kitty-keys", mode)
+        configure_extended_keys("on", fmt, sock=sock)
         run_socket(sock, "set", "-g", "remain-on-exit", "on")
         run_socket(sock, "set", "-g", "status", "off")
         run_socket(sock, "set", "-as", "terminal-overrides", ",*:Enkitk@:Dskitk@")
@@ -400,12 +407,12 @@ def expect_mode_push_pop(label, mode, expected_pushes, min_pops, max_pops=None):
             stderr=subprocess.DEVNULL,
         )
 
-def expect_requested_outer_input(label, sent, expected):
+def expect_requested_outer_input(label, sent, expected, *, fmt="kitty",
+        mode_seq=b"\x1b[=1u", terminal_override=None, mode="on"):
     sock = f"{SOCK}_requested_{os.getpid()}_{int(time.time() * 1000)}"
     client_pid = None
     client_fd = None
     target = None
-    mode_seq = b"\x1b[=1u"
     code = (
         "import os, select, sys, termios, time, tty\n"
         f"mode = bytes.fromhex('{mode_seq.hex()}')\n"
@@ -443,17 +450,21 @@ def expect_requested_outer_input(label, sent, expected):
     try:
         run_socket(sock, "kill-server", check=False)
         run_socket(sock, "-f/dev/null", "new", "-d")
-        run_socket(sock, "set", "-g", "kitty-keys", "on")
-        run_socket(sock, "set", "-g", "extended-keys", "on")
+        configure_extended_keys(mode, fmt, sock=sock)
         run_socket(sock, "set", "-g", "remain-on-exit", "on")
         run_socket(sock, "set", "-g", "status", "off")
+        if terminal_override is not None:
+            run_socket(sock, "set", "-as", "terminal-overrides", terminal_override)
 
         client_pid, client_fd = pty.fork()
         if client_pid == 0:
             os.execvp(TMUX, [TMUX, f"-L{sock}", "attach"])
         time.sleep(0.5)
-        if negotiate_kitty_query(client_fd, label, b"\x1b[?0u") is None:
-            return False
+        if fmt == "kitty" and terminal_override is None:
+            if negotiate_kitty_query(client_fd, label, b"\x1b[?0u") is None:
+                return False
+        else:
+            drain_client(client_fd, rounds=40)
 
         target = run_socket(
             sock, "new-window", "-P", "-F", "#{window_id}",
@@ -468,15 +479,16 @@ def expect_requested_outer_input(label, sent, expected):
             print(f"[FAIL] {label} -> probe not ready")
             return False
 
-        output = drain_client(client_fd, rounds=40)
-        for _ in range(10):
-            if b"\x1b[>1u" in output:
-                break
-            time.sleep(0.1)
-            output += drain_client(client_fd, rounds=40)
-        if b"\x1b[>1u" not in output:
-            print(f"[FAIL] {label} -> missing outer kitty push")
-            return False
+        if fmt == "kitty" and terminal_override is None:
+            output = drain_client(client_fd, rounds=40)
+            for _ in range(10):
+                if b"\x1b[>1u" in output:
+                    break
+                time.sleep(0.1)
+                output += drain_client(client_fd, rounds=40)
+            if b"\x1b[>1u" not in output:
+                print(f"[FAIL] {label} -> missing outer kitty push")
+                return False
 
         os.write(client_fd, sent)
 
@@ -522,7 +534,7 @@ client_fd = None
 try:
     run("kill-server", check=False)
     run("-f/dev/null", "new", "-d")
-    run("set", "-g", "kitty-keys", "on")
+    configure_extended_keys("on", "kitty")
     run("set", "-g", "remain-on-exit", "on")
     run("set", "-g", "status", "off")
 
@@ -731,16 +743,10 @@ try:
         failed = True
 
 
-    # Combined kitty+extended-keys: when extended-keys=always forces
-    # MODE_KEYS_EXTENDED on the pane screen and the inner application also
-    # requests kitty DISAMBIGUATE, unmodified keys must still reach the pane
-    # as raw bytes via VT10x fallback, not be silently dropped by the
-    # extended-keys encoder which cannot handle keys without modifiers.
-    # Uses an isolated server to avoid disturbing the main client's state.
-    _csock = f"{SOCK}_combined_{os.getpid()}"
-    def _combined_run(*args, check=True):
-        return run_socket(_csock, *args, check=check)
-    def _combined_test(label, mode_seq, tmux_key, checker):
+    # Mutual exclusion and pane_key_mode reporting.
+    def expect_protocol_output(label, fmt, mode, mode_seq, tmux_key, checker, expected_mode):
+        sock = f"{SOCK}_{fmt}_{os.getpid()}_{int(time.time() * 1000)}"
+        target = None
         code = (
             "import os, select, sys, termios, time, tty\n"
             f"mode = bytes.fromhex('{mode_seq.hex()}')\n"
@@ -765,21 +771,24 @@ try:
             "            break\n"
             "        data += chunk\n"
             "        seen = True\n"
-            "    os.write(sys.stdout.fileno(),"
-            "  b'HEX:' + data.hex().encode() + b'\\n')\n"
+            "    os.write(sys.stdout.fileno(), b'HEX:' + data.hex().encode() + b'\\n')\n"
             "finally:\n"
             "    termios.tcsetattr(fd, termios.TCSANOW, old)\n"
         )
-        target = _combined_run(
-            "new-window", "-d", "-P", "-F", "#{window_id}",
-            python_command(code),
-        ).stdout.strip()
-        ok = False
         try:
+            run_socket(sock, "kill-server", check=False)
+            run_socket(sock, "-f/dev/null", "new", "-d")
+            configure_extended_keys(mode, fmt, sock=sock)
+            run_socket(sock, "set", "-g", "remain-on-exit", "on")
+            run_socket(sock, "set", "-g", "status", "off")
+            target = run_socket(
+                sock, "new-window", "-d", "-P", "-F", "#{window_id}",
+                python_command(code),
+            ).stdout.strip()
             deadline = time.time() + 3
             while time.time() < deadline:
-                out = _combined_run(
-                    "capture-pane", "-p", "-J", "-S", "-",
+                out = run_socket(
+                    sock, "capture-pane", "-p", "-J", "-S", "-",
                     "-t", target, check=False,
                 )
                 if out.returncode == 0 and "READY" in out.stdout:
@@ -788,11 +797,25 @@ try:
             else:
                 print(f"[FAIL] {label} -> probe not ready")
                 return False
-            _combined_run("send-keys", "-t", target, tmux_key)
+
+            actual_mode = run_socket(
+                sock, "display-message", "-p", "-t", target, "#{pane_key_mode}",
+                check=False,
+            )
+            if actual_mode.returncode != 0:
+                print(f"[FAIL] {label} -> pane_key_mode query failed")
+                return False
+            mode_name = actual_mode.stdout.strip()
+            if mode_name != expected_mode:
+                print(f"[FAIL] {label} -> expected pane_key_mode {expected_mode}, got {mode_name}")
+                return False
+            print(f"[PASS] {label} pane_key_mode -> {mode_name}")
+
+            run_socket(sock, "send-keys", "-t", target, tmux_key)
             deadline = time.time() + 5
             while time.time() < deadline:
-                out = _combined_run(
-                    "display-message", "-p", "-t", target,
+                out = run_socket(
+                    sock, "display-message", "-p", "-t", target,
                     "#{pane_dead}", check=False,
                 )
                 if out.returncode != 0 or out.stdout.strip() == "1":
@@ -801,8 +824,9 @@ try:
             else:
                 print(f"[FAIL] {label} -> probe did not exit")
                 return False
-            out = _combined_run(
-                "capture-pane", "-p", "-J", "-S", "-",
+
+            out = run_socket(
+                sock, "capture-pane", "-p", "-J", "-S", "-",
                 "-t", target, check=False,
             )
             data = parse_hex_line(out.stdout if out.returncode == 0 else "")
@@ -816,32 +840,50 @@ try:
                 print(f"[FAIL] {label} -> unexpected bytes {data.hex()}")
             return ok
         finally:
-            _combined_run("kill-window", "-t", target, check=False)
-    try:
-        run_socket(_csock, "kill-server", check=False)
-        run_socket(_csock, "-f/dev/null", "new", "-d")
-        run_socket(_csock, "set", "-g", "kitty-keys", "off")
-        run_socket(_csock, "set", "-g", "extended-keys", "always")
-        run_socket(_csock, "set", "-g", "remain-on-exit", "on")
-        run_socket(_csock, "set", "-g", "status", "off")
-        for label, tmux_key, exp in [
-            ("combined kitty+extkeys printable 'a'", "a", b"a"),
-            ("combined kitty+extkeys Tab", "Tab", b"\t"),
-            ("combined kitty+extkeys Enter", "Enter", b"\r"),
-            ("combined kitty+extkeys Space", "Space", b" "),
-        ]:
-            if not _combined_test(
-                label, b"\x1b[=1u", tmux_key,
-                lambda b, e=exp: b == e,
-            ):
-                failed = True
-        if not _combined_test(
-            "combined kitty+extkeys C-c", b"\x1b[=1u", "C-c",
-            lambda b: b == b"\x1b[99;5u",
-        ):
-            failed = True
-    finally:
-        run_socket(_csock, "kill-server", check=False)
+            if target is not None:
+                run_socket(sock, "kill-window", "-t", target, check=False)
+            run_socket(sock, "kill-server", check=False)
+
+    if not expect_protocol_output(
+        "kitty format ignores modifyOtherKeys",
+        "kitty",
+        "always",
+        b"\x1b[>4;2m",
+        "C-c",
+        lambda b: b == b"\x1b[99;5u",
+        "Kitty",
+    ):
+        failed = True
+    if not expect_protocol_output(
+        "xterm format ignores kitty report-all",
+        "xterm",
+        "always",
+        b"\x1b[=8u",
+        "Tab",
+        lambda b: b == b"\t",
+        "Ext 1",
+    ):
+        failed = True
+    if not expect_protocol_output(
+        "xterm format mode 2 reports Ext 2",
+        "xterm",
+        "on",
+        b"\x1b[>4;2m",
+        "C-Tab",
+        lambda b: b == b"\x1b[27;5;9~",
+        "Ext 2",
+    ):
+        failed = True
+    if not expect_protocol_output(
+        "extended-keys off reports VT10x",
+        "xterm",
+        "off",
+        b"\x1b[>4;2m",
+        "C-c",
+        lambda b: b == b"\x03",
+        "VT10x",
+    ):
+        failed = True
 
     # Phase 4: query replies while pushed must not clobber kitty parsing.
     push_target = run(
@@ -888,21 +930,38 @@ try:
                 failed = True
             client_pid = None
 
-    # Capability behavior with Enkitk/Dskitk removed.
+    # Capability behavior and fallback when clients do not support the selected protocol.
     if not expect_mode_push_pop(
-        "kitty-keys=on without capability",
-        "on",
+        "extended-keys-format=kitty without capability",
+        "kitty",
         0,
         0,
         max_pops=0,
     ):
         failed = True
     if not expect_requested_outer_input(
-        "kitty-keys=on requested Ctrl-3", b"\x1b[51;5u", b"\x1b[51;5u",
+        "extended-keys-format=kitty requested Ctrl-3", b"\x1b[51;5u", b"\x1b[51;5u",
     ):
         failed = True
     if not expect_requested_outer_input(
-        "kitty-keys=on requested UTF-8 text", b"\xc3\xa8", b"\xc3\xa8",
+        "extended-keys-format=kitty requested UTF-8 text", b"\xc3\xa8", b"\xc3\xa8",
+    ):
+        failed = True
+    if not expect_requested_outer_input(
+        "extended-keys-format=kitty legacy Ctrl-c fallback",
+        b"\x03",
+        b"\x03",
+        terminal_override=",*:Enkitk@:Dskitk@",
+    ):
+        failed = True
+    if not expect_requested_outer_input(
+        "extended-keys-format=xterm legacy Ctrl-c fallback",
+        b"\x03",
+        b"\x03",
+        fmt="xterm",
+        mode_seq=b"\x1b[>4;2m",
+        terminal_override=",*:Eneks@:Dseks@",
+        mode="always",
     ):
         failed = True
 

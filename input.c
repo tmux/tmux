@@ -1478,7 +1478,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	struct options			*oo;
 	int				 i, n, m, ek, set, p;
 	int				 flags, raw_flags, dropped, count;
-	int				 mode, flagset, raw_flagset;
+	int				 mode, flagset, raw_flagset, format;
 	u_int				 cx, bg = ictx->cell.cell.bg;
 
 	if (ictx->flags & INPUT_DISCARD)
@@ -1542,12 +1542,15 @@ input_csi_dispatch(struct input_ctx *ictx)
 
 		/*
 		 * Set the extended key reporting mode as per the client
-		 * request, unless "extended-keys" is set to "off".
+		 * request, unless a different enhanced key protocol is selected.
 		 */
 		ek = options_get_number(global_options, "extended-keys");
-		if (ek == 0)
-			break;
+		format = options_get_number(global_options, "extended-keys-format");
 		screen_write_mode_clear(sctx, EXTENDED_KEY_MODES);
+		if (ek == 0 || format == EXTENDED_KEYS_FORMAT_KITTY)
+			break;
+		s->kitty_kbd.flags = 0;
+		s->kitty_kbd.saved_flags = KITTY_KBD_SAVED_NONE;
 		if (m == 2)
 			screen_write_mode_set(sctx, MODE_KEYS_EXTENDED_2);
 		else if (m == 1 || ek == 2)
@@ -1560,11 +1563,18 @@ input_csi_dispatch(struct input_ctx *ictx)
 
 		/*
 		 * Clear the extended key reporting mode as per the client
-		 * request, unless "extended-keys always" forces into mode 1.
+		 * request, unless a different enhanced key protocol is selected or
+		 * extended-keys always forces mode 1.
 		 */
+		ek = options_get_number(global_options, "extended-keys");
+		format = options_get_number(global_options, "extended-keys-format");
 		screen_write_mode_clear(sctx,
 		    MODE_KEYS_EXTENDED|MODE_KEYS_EXTENDED_2);
-		if (options_get_number(global_options, "extended-keys") == 2)
+		if (ek == 0 || format == EXTENDED_KEYS_FORMAT_KITTY)
+			break;
+		s->kitty_kbd.flags = 0;
+		s->kitty_kbd.saved_flags = KITTY_KBD_SAVED_NONE;
+		if (ek == 2)
 			screen_write_mode_set(sctx, MODE_KEYS_EXTENDED);
 		break;
 	case INPUT_CSI_WINOPS:
@@ -1900,10 +1910,27 @@ input_csi_dispatch(struct input_ctx *ictx)
 		}
 		break;
 	case INPUT_CSI_KITTY_QUERY:
+		ek = options_get_number(global_options, "extended-keys");
+		format = options_get_number(global_options, "extended-keys-format");
+		if (ek == 0 || format != EXTENDED_KEYS_FORMAT_KITTY) {
+			s->kitty_kbd.flags = 0;
+			s->kitty_kbd.saved_flags = KITTY_KBD_SAVED_NONE;
+			input_reply(ictx, 1, "\033[?0u");
+			break;
+		}
+		screen_write_mode_clear(sctx, EXTENDED_KEY_MODES);
 		flags = s->kitty_kbd.flags & KITTY_KBD_SUPPORTED;
 		input_reply(ictx, 1, "\033[?%du", flags);
 		break;
 	case INPUT_CSI_KITTY_PUSH:
+		ek = options_get_number(global_options, "extended-keys");
+		format = options_get_number(global_options, "extended-keys-format");
+		if (ek == 0 || format != EXTENDED_KEYS_FORMAT_KITTY) {
+			s->kitty_kbd.flags = 0;
+			s->kitty_kbd.saved_flags = KITTY_KBD_SAVED_NONE;
+			break;
+		}
+		screen_write_mode_clear(sctx, EXTENDED_KEY_MODES);
 		raw_flags = input_get(ictx, 0, 0, 0);
 		flags = raw_flags & KITTY_KBD_SUPPORTED;
 		dropped = raw_flags & ~KITTY_KBD_SUPPORTED;
@@ -1912,8 +1939,18 @@ input_csi_dispatch(struct input_ctx *ictx)
 			    __func__, dropped);
 		s->kitty_kbd.saved_flags = s->kitty_kbd.flags;
 		s->kitty_kbd.flags = flags;
+		if (ek == 2)
+			s->kitty_kbd.flags |= KITTY_KBD_DISAMBIGUATE;
 		break;
 	case INPUT_CSI_KITTY_POP:
+		ek = options_get_number(global_options, "extended-keys");
+		format = options_get_number(global_options, "extended-keys-format");
+		if (ek == 0 || format != EXTENDED_KEYS_FORMAT_KITTY) {
+			s->kitty_kbd.flags = 0;
+			s->kitty_kbd.saved_flags = KITTY_KBD_SAVED_NONE;
+			break;
+		}
+		screen_write_mode_clear(sctx, EXTENDED_KEY_MODES);
 		count = input_get(ictx, 0, 1, 1);
 		if (count > 0 && s->kitty_kbd.saved_flags != KITTY_KBD_SAVED_NONE) {
 			s->kitty_kbd.flags = s->kitty_kbd.saved_flags;
@@ -1924,8 +1961,18 @@ input_csi_dispatch(struct input_ctx *ictx)
 			s->kitty_kbd.flags = 0;
 			s->kitty_kbd.saved_flags = KITTY_KBD_SAVED_NONE;
 		}
+		if (ek == 2)
+			s->kitty_kbd.flags |= KITTY_KBD_DISAMBIGUATE;
 		break;
 	case INPUT_CSI_KITTY_SET:
+		ek = options_get_number(global_options, "extended-keys");
+		format = options_get_number(global_options, "extended-keys-format");
+		if (ek == 0 || format != EXTENDED_KEYS_FORMAT_KITTY) {
+			s->kitty_kbd.flags = 0;
+			s->kitty_kbd.saved_flags = KITTY_KBD_SAVED_NONE;
+			break;
+		}
+		screen_write_mode_clear(sctx, EXTENDED_KEY_MODES);
 		raw_flagset = input_get(ictx, 0, 0, 0);
 		flagset = raw_flagset & KITTY_KBD_SUPPORTED;
 		dropped = raw_flagset & ~KITTY_KBD_SUPPORTED;
@@ -1945,6 +1992,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 			break;
 		}
 		s->kitty_kbd.flags &= KITTY_KBD_SUPPORTED;
+		if (ek == 2)
+			s->kitty_kbd.flags |= KITTY_KBD_DISAMBIGUATE;
 		break;
 
 	}
