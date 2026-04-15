@@ -4287,28 +4287,25 @@ If enabled, the server will exit when there are no attached clients.
 .It Xo Ic extended\-keys
 .Op Ic on | off | always
 .Xc
-Controls how modified keys (keys pressed together with Control, Meta, or Shift)
-are reported.
-This is the equivalent of the
-.Ic modifyOtherKeys
-.Xr xterm 1
-resource.
+Controls how tmux exposes enhanced modified-key reporting to applications.
+The selected enhanced key protocol is chosen with the
+.Ic extended\-keys\-format
+option; tmux exposes only that protocol to panes and attached clients.
+Clients that do not support the selected protocol fall back to standard key reporting.
 .Pp
 When set to
 .Ic on ,
-the program inside the pane can request one of two modes: mode 1 which changes
-the sequence for only keys which lack an existing well-known representation; or
-mode 2 which changes the sequence for all keys.
+the program inside the pane may request enhanced key reporting using the selected
+protocol.
 When set to
 .Ic always ,
-modes 1 and 2 can still be requested by applications, but mode 1 will be forced
-instead of the standard mode.
+tmux forces a baseline enhanced mode even if the application does not request it:
+xterm and csi-u formats force xterm modifyOtherKeys mode 1, while kitty forces
+kitty keyboard disambiguation mode.
 When set to
 .Ic off ,
-this feature is disabled and only standard keys are reported.
+enhanced key reporting is disabled and only standard keys are reported.
 .Pp
-.Nm
-will always request extended keys itself if the terminal supports them.
 See also the
 .Ic extkeys
 feature for the
@@ -4319,9 +4316,9 @@ option and the
 .Ic pane_key_mode
 variable.
 .It Xo Ic extended\-keys\-format
-.Op Ic csi\-u | xterm
+.Op Ic csi\-u | xterm | kitty
 .Xc
-Selects one of the two possible formats for reporting modified keys to
+Selects one of the possible formats for reporting modified keys to
 applications.
 This is the equivalent of the
 .Ic formatOtherKeys
@@ -4335,6 +4332,9 @@ and as
 .Ql \[ha][[65;6u
 when set to
 .Ic csi\-u .
+The
+.Ic kitty
+format uses the kitty keyboard protocol.
 .It Xo Ic focus\-events
 .Op Ic on | off
 .Xc

@@ -103,10 +103,7 @@ static const char *options_table_extended_keys_list[] = {
 	"off", "on", "always", NULL
 };
 static const char *options_table_extended_keys_format_list[] = {
-	"csi-u", "xterm", NULL
-};
-static const char *options_table_kitty_keys_list[] = {
-	"off", "on", NULL
+	"csi-u", "xterm", "kitty", NULL
 };
 static const char *options_table_allow_passthrough_list[] = {
 	"off", "on", "all", NULL
@@ -392,8 +389,8 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .choices = options_table_extended_keys_list,
 	  .default_num = 0,
-	  .text = "Whether to request extended key sequences from terminals "
-		  "that support it."
+	  .text = "Whether to request the selected enhanced key protocol from "
+		  "terminals that support it."
 	},
 
 	{ .name = "extended-keys-format",
@@ -401,7 +398,7 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .choices = options_table_extended_keys_format_list,
 	  .default_num = 1,
-	  .text = "The format of emitted extended key sequences."
+	  .text = "The protocol used for emitted enhanced key sequences."
 	},
 
 	{ .name = "focus-events",
@@ -438,15 +435,6 @@ const struct options_table_entry options_table[] = {
 	  .maximum = UINT_MAX,
 	  .default_num = INPUT_BUF_DEFAULT_SIZE,
 	  .text = "Number of bytes accepted in a single input before dropping."
-	},
-
-	{ .name = "kitty-keys",
-	  .type = OPTIONS_TABLE_CHOICE,
-	  .scope = OPTIONS_TABLE_SERVER,
-	  .choices = options_table_kitty_keys_list,
-	  .default_num = 0,
-	  .text = "Whether to request kitty keyboard protocol from terminals "
-		  "that support it."
 	},
 
 	{ .name = "menu-style",

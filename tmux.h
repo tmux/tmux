@@ -767,6 +767,12 @@ enum tty_code_code {
 #define CURSOR_MODES (MODE_CURSOR|MODE_CURSOR_BLINKING|MODE_CURSOR_VERY_VISIBLE)
 #define EXTENDED_KEY_MODES (MODE_KEYS_EXTENDED|MODE_KEYS_EXTENDED_2)
 
+enum extended_keys_format {
+	EXTENDED_KEYS_FORMAT_CSI_U,
+	EXTENDED_KEYS_FORMAT_XTERM,
+	EXTENDED_KEYS_FORMAT_KITTY
+};
+
 /* Kitty keyboard protocol progressive enhancement flags. */
 #define KITTY_KBD_DISAMBIGUATE		0x01
 #define KITTY_KBD_REPORT_EVENTS	0x02
@@ -3239,8 +3245,9 @@ void	 input_cancel_requests(struct client *);
 
 /* input-key.c and input-kitty.c */
 void	 input_key_build(void);
-int	 input_key_pane(struct window_pane *, key_code, struct mouse_event *);
-int	 input_key(struct screen *, struct bufferevent *, key_code);
+int	 input_key_pane(struct window_pane *, key_code, struct mouse_event *, int);
+int	 input_key(struct screen *, struct bufferevent *, key_code, int);
+int	 input_key_is_legacy_client(struct client *, key_code);
 int	 input_key_kitty(struct screen *, struct bufferevent *, key_code);
 int	 input_key_get_mouse(struct screen *, struct mouse_event *, u_int,
 	     u_int, const char **, size_t *);

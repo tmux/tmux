@@ -347,10 +347,11 @@ void
 tty_update_kitty(struct tty *tty, struct screen *s)
 {
 	char	tmp[32];
-	int	mode, flags;
+	int	ek, flags, format;
 
-	mode = options_get_number(global_options, "kitty-keys");
-	if (mode == 0)
+	ek = options_get_number(global_options, "extended-keys");
+	format = options_get_number(global_options, "extended-keys-format");
+	if (ek == 0 || format != EXTENDED_KEYS_FORMAT_KITTY)
 		flags = 0;
 	else if (s != NULL && (tty->flags & TTY_HAVEDA_KITTY))
 		flags = s->kitty_kbd.flags & KITTY_KBD_SUPPORTED;
@@ -581,15 +582,21 @@ void
 tty_update_features(struct tty *tty)
 {
 	struct client	*c = tty->client;
+	int		 ek, format;
+
+	ek = options_get_number(global_options, "extended-keys");
+	format = options_get_number(global_options, "extended-keys-format");
 
 	if (tty_apply_features(tty->term, c->term_features))
 		tty_term_apply_overrides(tty->term);
 
 	if (tty_use_margin(tty))
 		tty_putcode(tty, TTYC_ENMG);
-	if (options_get_number(global_options, "extended-keys"))
+	if (ek != 0 && format != EXTENDED_KEYS_FORMAT_KITTY)
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENEKS));
-	if (!options_get_number(global_options, "kitty-keys"))
+	else
+		tty_puts(tty, tty_term_string(tty->term, TTYC_DSEKS));
+	if (ek == 0 || format != EXTENDED_KEYS_FORMAT_KITTY)
 		tty_pop_kitty(tty, 0);
 	if (options_get_number(global_options, "focus-events"))
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENFCS));
