@@ -30,7 +30,7 @@
  * Create a new pane.
  */
 
-#define NEW_PANE_TEMPLATE "#{session_name}:#{window_index}.#{pane_index}"
+#define SPLIT_WINDOW_TEMPLATE "#{session_name}:#{window_index}.#{pane_index}"
 
 static enum cmd_retval	cmd_split_window_exec(struct cmd *, struct cmdq_item *);
 
@@ -363,7 +363,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
-			template = NEW_PANE_TEMPLATE;
+			template = SPLIT_WINDOW_TEMPLATE;
 		cp = format_single(item, template, tc, s, wl, new_wp);
 		cmdq_print(item, "%s", cp);
 		free(cp);
