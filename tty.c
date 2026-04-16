@@ -3053,3 +3053,12 @@ tty_clipboard_query(struct tty *tty)
 		evtimer_add(&tty->clipboard_timer, &tv);
 	}
 }
+
+void
+tty_set_progress_bar(struct tty *tty, struct progress_bar pb)
+{
+	if (!tty_term_has(tty->term, TTYC_SPB))
+		return;
+
+	tty_putcode_ii(tty, TTYC_SPB, pb.state, pb.progress);
+}
