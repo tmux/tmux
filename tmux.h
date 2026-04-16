@@ -1293,6 +1293,7 @@ struct window_pane {
 	char		*cwd;
 
 	pid_t		 pid;
+	pid_t		 fg_pid;
 	char		 tty[TTY_NAME_MAX];
 	int		 status;
 	struct timeval	 dead_time;
