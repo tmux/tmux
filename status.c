@@ -228,13 +228,27 @@ status_timer_start_all(void)
 void
 status_update_cache(struct session *s)
 {
-	s->statuslines = options_get_number(s->options, "status");
-	if (s->statuslines == 0)
+	int	pos;
+
+	pos = options_get_number(s->options, "status-position");
+	s->statuspos = pos;
+
+	if (status_is_vertical(pos)) {
+		/* Vertical mode: no horizontal status rows. */
+		s->statuslines = 0;
 		s->statusat = -1;
-	else if (options_get_number(s->options, "status-position") == 0)
-		s->statusat = 0;
-	else
-		s->statusat = 1;
+		/* Column count is computed per-client in status_column_size(). */
+		s->statuscols = 1; /* non-zero sentinel; real width per client */
+	} else {
+		s->statuscols = 0;
+		s->statuslines = options_get_number(s->options, "status");
+		if (s->statuslines == 0)
+			s->statusat = -1;
+		else if (pos == STATUS_POSITION_TOP)
+			s->statusat = 0;
+		else
+			s->statusat = 1;
+	}
 }
 
 /* Get screen line of status line. -1 means off. */
@@ -263,6 +277,77 @@ status_line_size(struct client *c)
 	return (s->statuslines);
 }
 
+/*
+ * Get width of the vertical status column for client's session.
+ * Returns 0 when status is top/bottom/off or client is a control client.
+ */
+u_int
+status_column_size(struct client *c)
+{
+	struct session		*s = c->session;
+	struct winlink		*wl;
+	struct format_tree	*ft;
+	const char		*fmt;
+	char			*expanded;
+	u_int			 col_w, max_w, cap;
+
+	if (c->flags & (CLIENT_STATUSOFF|CLIENT_CONTROL))
+		return (0);
+	if (s == NULL)
+		return (0);
+	if (!status_is_vertical(s->statuspos))
+		return (0);
+
+	cap = options_get_number(s->options, "status-column-width");
+	fmt = options_get_string(s->options, "status-column-format");
+
+	max_w = 0;
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		if (wl->window == NULL)
+			continue; /* skip partially-initialized winlinks */
+		ft = format_create(NULL, NULL, FORMAT_NONE, 0);
+		format_defaults(ft, c, s, wl, NULL);
+		expanded = format_expand(ft, fmt);
+		col_w = utf8_cstrwidth(expanded);
+		free(expanded);
+		format_free(ft);
+		if (col_w > max_w)
+			max_w = col_w;
+	}
+
+	if (max_w == 0)
+		max_w = 1;
+	if (cap > 0 && max_w > cap)
+		max_w = cap;
+
+	return (max_w);
+}
+
+/*
+ * Get terminal x-offset of the vertical status column. -1 means not active.
+ * Returns 0 when status is on the left, tty.sx - width when on the right.
+ */
+int
+status_at_column(struct client *c)
+{
+	u_int	col_w;
+
+	if (c->flags & (CLIENT_STATUSOFF|CLIENT_CONTROL))
+		return (-1);
+	if (c->session == NULL)
+		return (-1);
+	if (!status_is_vertical(c->session->statuspos))
+		return (-1);
+
+	col_w = status_column_size(c);
+	if (col_w == 0)
+		return (-1);
+
+	if (c->session->statuspos == STATUS_POSITION_RIGHT)
+		return ((int)(c->tty.sx - col_w));
+	return (0); /* left */
+}
+
 /* Get the prompt line number for client's session. 1 means at the bottom. */
 u_int
 status_prompt_line_at(struct client *c)
@@ -285,6 +370,15 @@ status_get_range(struct client *c, u_int x, u_int y)
 {
 	struct status_line	*sl = &c->status;
 
+	if (c->session != NULL && status_is_vertical(c->session->statuspos)) {
+		/*
+		 * In vertical column mode, y is the row in the status column.
+		 * Ranges are stored in vertical_ranges with start=row, end=row+1.
+		 * We ignore x (the whole row selects the window).
+		 */
+		return (style_ranges_get_range(&sl->vertical_ranges, y));
+	}
+
 	if (y >= nitems(sl->entries))
 		return (NULL);
 	return (style_ranges_get_range(&sl->entries[y].ranges, x));
@@ -294,11 +388,19 @@ status_get_range(struct client *c, u_int x, u_int y)
 static void
 status_push_screen(struct client *c)
 {
-	struct status_line *sl = &c->status;
+	struct status_line	*sl = &c->status;
+	u_int			 lines;
 
 	if (sl->active == &sl->screen) {
 		sl->active = xmalloc(sizeof *sl->active);
-		screen_init(sl->active, c->tty.sx, status_line_size(c), 0);
+		/*
+		 * In vertical mode there is no horizontal status row, so use
+		 * a single-row screen for the message/prompt overlay.
+		 */
+		lines = status_line_size(c);
+		if (lines == 0)
+			lines = 1;
+		screen_init(sl->active, c->tty.sx, lines, 0);
 	}
 	sl->references++;
 }
@@ -325,6 +427,7 @@ status_init(struct client *c)
 
 	for (i = 0; i < nitems(sl->entries); i++)
 		style_ranges_init(&sl->entries[i].ranges);
+	style_ranges_init(&sl->vertical_ranges);
 
 	screen_init(&sl->screen, c->tty.sx, 1, 0);
 	sl->active = &sl->screen;
@@ -341,6 +444,7 @@ status_free(struct client *c)
 		style_ranges_free(&sl->entries[i].ranges);
 		free((void *)sl->entries[i].expanded);
 	}
+	style_ranges_free(&sl->vertical_ranges);
 
 	if (event_initialized(&sl->timer))
 		evtimer_del(&sl->timer);
@@ -350,6 +454,115 @@ status_free(struct client *c)
 		free(sl->active);
 	}
 	screen_free(&sl->screen);
+}
+
+/* Draw the vertical status column (window list on left or right). */
+static int
+status_redraw_vertical(struct client *c)
+{
+	struct status_line		*sl = &c->status;
+	struct session			*s = c->session;
+	struct options			*wo = s->curw->window->options;
+	struct screen_write_ctx		 ctx;
+	struct grid_cell		 gc, wgc;
+	struct winlink			*wl;
+	struct format_tree		*ft;
+	struct style_ranges		 row_srs;
+	struct style_range		*sr;
+	char				*expanded;
+	const char			*fmt;
+	u_int				 col_w, row, n, flags;
+	int				 force = 0, changed = 0;
+
+	/* Shouldn't get here if not the active screen. */
+	if (sl->active != &sl->screen)
+		fatalx("not the active screen");
+
+	col_w = status_column_size(c);
+	if (c->tty.sy == 0 || col_w == 0)
+		return (1);
+
+	/* Create base format tree and resolve style. */
+	flags = FORMAT_STATUS;
+	if (c->flags & CLIENT_STATUSFORCE)
+		flags |= FORMAT_FORCE;
+	ft = format_create(c, NULL, FORMAT_NONE, flags);
+	format_defaults(ft, c, NULL, NULL, NULL);
+	style_apply(&gc, s->options, "status-style", ft);
+	format_free(ft);
+
+	if (!grid_cells_equal(&gc, &sl->style)) {
+		force = 1;
+		memcpy(&sl->style, &gc, sizeof sl->style);
+	}
+
+	/* Resize the status screen to a tall, narrow column. */
+	if (screen_size_x(&sl->screen) != col_w ||
+	    screen_size_y(&sl->screen) != c->tty.sy) {
+		screen_resize(&sl->screen, col_w, c->tty.sy, 0);
+		changed = force = 1;
+	}
+	screen_write_start(&ctx, &sl->screen);
+
+	/* Fill background. */
+	screen_write_cursormove(&ctx, 0, 0, 0);
+	for (n = 0; n < col_w * c->tty.sy; n++)
+		screen_write_putc(&ctx, &gc, ' ');
+
+	/* Rebuild vertical_ranges from scratch. */
+	style_ranges_free(&sl->vertical_ranges);
+
+	fmt = options_get_string(s->options, "status-column-format");
+
+	row = 0;
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		if (row >= c->tty.sy)
+			break;
+		if (wl->window == NULL)
+			continue; /* skip partially-initialized winlinks */
+
+		/* Per-window format tree. */
+		ft = format_create(c, NULL, FORMAT_NONE, flags);
+		format_defaults(ft, c, s, wl, NULL);
+
+		/* Determine cell style for this window. */
+		wgc = gc;
+		if (wl == s->curw)
+			style_apply(&wgc, wo, "window-status-current-style", ft);
+		else
+			style_apply(&wgc, wo, "window-status-style", ft);
+
+		expanded = format_expand_time(ft, fmt);
+		format_free(ft);
+
+		/* Draw this window's row. Clear first, then draw. */
+		screen_write_cursormove(&ctx, 0, row, 0);
+		for (n = 0; n < col_w; n++)
+			screen_write_putc(&ctx, &wgc, ' ');
+		screen_write_cursormove(&ctx, 0, row, 0);
+
+		style_ranges_init(&row_srs);
+		format_draw(&ctx, &wgc, col_w, expanded, &row_srs, 0);
+		style_ranges_free(&row_srs);
+
+		free(expanded);
+
+		/* Track row → window mapping for mouse clicks. */
+		sr = xcalloc(1, sizeof *sr);
+		sr->type = STYLE_RANGE_WINDOW;
+		sr->argument = wl->idx;
+		sr->start = row;
+		sr->end = row + 1;
+		TAILQ_INSERT_TAIL(&sl->vertical_ranges, sr, entry);
+
+		row++;
+		changed = 1;
+	}
+
+	screen_write_stop(&ctx);
+
+	log_debug("%s exit: force=%d, changed=%d", __func__, force, changed);
+	return (force || changed);
 }
 
 /* Draw status line for client. */
@@ -369,6 +582,10 @@ status_redraw(struct client *c)
 	char				*expanded;
 
 	log_debug("%s enter", __func__);
+
+	/* Vertical column mode has its own redraw path. */
+	if (s != NULL && status_is_vertical(s->statuspos))
+		return (status_redraw_vertical(c));
 
 	/* Shouldn't get here if not the active screen. */
 	if (sl->active != &sl->screen)
@@ -650,7 +867,12 @@ status_message_redraw(struct client *c)
 	format_free(ft);
 
 	screen_write_start(&ctx, sl->active);
-	screen_write_fast_copy(&ctx, &sl->screen, 0, 0, c->tty.sx, lines);
+	/*
+	 * In vertical column mode, the column and the message row are drawn
+	 * separately; do not copy the column screen as background here.
+	 */
+	if (s == NULL || !status_is_vertical(s->statuspos))
+		screen_write_fast_copy(&ctx, &sl->screen, 0, 0, c->tty.sx, lines);
 	screen_write_cursormove(&ctx, ax, messageline, 0);
 	format_draw(&ctx, &gc, aw, expanded, NULL, 0);
 	screen_write_stop(&ctx);
@@ -903,7 +1125,8 @@ status_prompt_redraw(struct client *c)
 		start = aw;
 
 	screen_write_start(&ctx, sl->active);
-	screen_write_fast_copy(&ctx, &sl->screen, 0, 0, c->tty.sx, lines);
+	if (s == NULL || !status_is_vertical(s->statuspos))
+		screen_write_fast_copy(&ctx, &sl->screen, 0, 0, c->tty.sx, lines);
 	screen_write_cursormove(&ctx, ax, promptline, 0);
 	format_draw(&ctx, &gc, aw, expanded, NULL, 0);
 	screen_write_cursormove(&ctx, ax + start, promptline, 0);

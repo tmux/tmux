@@ -567,6 +567,8 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 
 		if (ctx->statustop)
 			yoff += ctx->statuslines;
+		if (ctx->statusleft)
+			x += ctx->statuscols;
 		tty_draw_line(tty, s, i, 0, width, x, yoff - ctx->oy,
 		    &grid_default_cell, NULL);
 	}
@@ -618,16 +620,35 @@ screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 	struct window	*w = s->curw->window;
 	struct options	*wo = w->options;
 	u_int		 lines;
+	int		 pos;
 
 	memset(ctx, 0, sizeof *ctx);
 	ctx->c = c;
 
-	lines = status_line_size(c);
-	if (c->message_string != NULL || c->prompt_string != NULL)
-		lines = (lines == 0) ? 1 : lines;
-	if (lines != 0 && options_get_number(oo, "status-position") == 0)
-		ctx->statustop = 1;
-	ctx->statuslines = lines;
+	pos = options_get_number(oo, "status-position");
+	if (status_is_vertical(pos)) {
+		/* Vertical column mode: reserve columns, no horizontal rows. */
+		ctx->statuscols = status_column_size(c);
+		ctx->statusleft = (pos == STATUS_POSITION_LEFT) ? 1 : 0;
+		ctx->statustop = 0;
+		/*
+		 * When a message or prompt is active, reserve one row at the
+		 * bottom for it (the column remains for the window list).
+		 */
+		if (c->message_string != NULL || c->prompt_string != NULL)
+			ctx->statuslines = 1;
+		else
+			ctx->statuslines = 0;
+	} else {
+		lines = status_line_size(c);
+		if (c->message_string != NULL || c->prompt_string != NULL)
+			lines = (lines == 0) ? 1 : lines;
+		if (lines != 0 && pos == STATUS_POSITION_TOP)
+			ctx->statustop = 1;
+		ctx->statuslines = lines;
+		ctx->statuscols = 0;
+		ctx->statusleft = 0;
+	}
 
 	ctx->pane_status = options_get_number(wo, "pane-border-status");
 	ctx->pane_lines = options_get_number(wo, "pane-border-lines");
@@ -638,9 +659,11 @@ screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 
 	tty_window_offset(&c->tty, &ctx->ox, &ctx->oy, &ctx->sx, &ctx->sy);
 
-	log_debug("%s: %s @%u ox=%u oy=%u sx=%u sy=%u %u/%d", __func__, c->name,
-	    w->id, ctx->ox, ctx->oy, ctx->sx, ctx->sy, ctx->statuslines,
-	    ctx->statustop);
+	log_debug("%s: %s @%u ox=%u oy=%u sx=%u sy=%u lines=%u top=%d "
+	    "cols=%u left=%d", __func__, c->name, w->id,
+	    ctx->ox, ctx->oy, ctx->sx, ctx->sy,
+	    ctx->statuslines, ctx->statustop,
+	    ctx->statuscols, ctx->statusleft);
 }
 
 /* Redraw entire screen. */
@@ -674,7 +697,7 @@ screen_redraw_screen(struct client *c)
 		screen_redraw_draw_panes(&ctx);
 		screen_redraw_draw_pane_scrollbars(&ctx);
 	}
-	if (ctx.statuslines != 0 &&
+	if ((ctx.statuslines != 0 || ctx.statuscols != 0) &&
 	    (flags & (CLIENT_REDRAWSTATUS|CLIENT_REDRAWSTATUSALWAYS))) {
 		log_debug("%s: redrawing status", c->name);
 		screen_redraw_draw_status(&ctx);
@@ -866,9 +889,10 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 		isolates = 0;
 
 	if (ctx->statustop)
-		tty_cursor(tty, i, ctx->statuslines + j);
+		tty_cursor(tty, ctx->statuscols * ctx->statusleft + i,
+		    ctx->statuslines + j);
 	else
-		tty_cursor(tty, i, j);
+		tty_cursor(tty, ctx->statuscols * ctx->statusleft + i, j);
 	if (isolates)
 		tty_puts(tty, END_ISOLATE);
 
@@ -887,15 +911,18 @@ screen_redraw_draw_borders(struct screen_redraw_ctx *ctx)
 	struct session		*s = c->session;
 	struct window		*w = s->curw->window;
 	struct window_pane	*wp;
-	u_int			 i, j;
+	u_int			 i, j, sx;
 
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
 	TAILQ_FOREACH(wp, &w->panes, entry)
 		wp->border_gc_set = 0;
 
+	/* Pane area width excludes any vertical status column. */
+	sx = c->tty.sx - ctx->statuscols;
+
 	for (j = 0; j < c->tty.sy - ctx->statuslines; j++) {
-		for (i = 0; i < c->tty.sx; i++)
+		for (i = 0; i < sx; i++)
 			screen_redraw_draw_borders_cell(ctx, i, j);
 	}
 }
@@ -916,7 +943,7 @@ screen_redraw_draw_panes(struct screen_redraw_ctx *ctx)
 	}
 }
 
-/* Draw the status line. */
+/* Draw the status line (horizontal or vertical). */
 static void
 screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
 {
@@ -924,9 +951,32 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
 	struct window	*w = c->session->curw->window;
 	struct tty	*tty = &c->tty;
 	struct screen	*s = c->status.active;
-	u_int		 i, y;
+	u_int		 i, x, y;
 
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
+
+	if (ctx->statuscols > 0) {
+		/*
+		 * Vertical column: each row of the main column screen maps to
+		 * one TTY row at the left or right edge.  Always draw from
+		 * the main screen (c->status.screen), not the pushed overlay,
+		 * since the overlay is for the horizontal prompt row below.
+		 */
+		x = ctx->statusleft ? 0 : (c->tty.sx - ctx->statuscols);
+		for (i = 0; i < c->tty.sy; i++) {
+			tty_draw_line(tty, &c->status.screen, 0, i,
+			    ctx->statuscols, x, i, &grid_default_cell, NULL);
+		}
+		/*
+		 * If a message or prompt is active, draw it as a single row at
+		 * the bottom of the terminal (statuslines == 1 in this case).
+		 */
+		if (ctx->statuslines != 0 && c->status.active != &c->status.screen) {
+			tty_draw_line(tty, c->status.active, 0, 0, UINT_MAX,
+			    0, c->tty.sy - 1, &grid_default_cell, NULL);
+		}
+		return;
+	}
 
 	if (ctx->statustop)
 		y = 0;
@@ -950,7 +1000,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	struct grid_cell	 defaults;
 	struct visible_ranges	*r;
 	struct visible_range	*rr;
-	u_int			 i, j, k, top, x, y, width;
+	u_int			 i, j, k, top, x, y, width, left_offset;
 
 	if (wp->base.mode & MODE_SYNC)
 		screen_write_stop_sync(wp);
@@ -963,6 +1013,11 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		top = ctx->statuslines;
 	else
 		top = 0;
+	/*
+	 * left_offset shifts TTY x-coordinates when the status column is on
+	 * the left side, to leave room for the vertical status strip.
+	 */
+	left_offset = ctx->statusleft ? ctx->statuscols : 0;
 	for (j = 0; j < wp->sy; j++) {
 		if (wp->yoff + j < ctx->oy || wp->yoff + j >= ctx->oy + ctx->sy)
 			continue;
@@ -972,24 +1027,24 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		    wp->xoff + wp->sx <= ctx->ox + ctx->sx) {
 			/* All visible. */
 			i = 0;
-			x = wp->xoff - ctx->ox;
+			x = wp->xoff - ctx->ox + left_offset;
 			width = wp->sx;
 		} else if (wp->xoff < ctx->ox &&
 		    wp->xoff + wp->sx > ctx->ox + ctx->sx) {
 			/* Both left and right not visible. */
 			i = ctx->ox;
-			x = 0;
+			x = left_offset;
 			width = ctx->sx;
 		} else if (wp->xoff < ctx->ox) {
 			/* Left not visible. */
 			i = ctx->ox - wp->xoff;
-			x = 0;
+			x = left_offset;
 			width = wp->sx - i;
 		} else {
 			/* Right not visible. */
 			i = 0;
-			x = wp->xoff - ctx->ox;
-			width = ctx->sx - x;
+			x = wp->xoff - ctx->ox + left_offset;
+			width = ctx->sx - (x - left_offset);
 		}
 		log_debug("%s: %s %%%u line %u,%u at %u,%u, width %u",
 		    __func__, c->name, wp->id, i, j, x, y, width);
@@ -1000,8 +1055,9 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		for (k = 0; k < r->used; k++) {
 			rr = &r->ranges[k];
 			if (rr->nx != 0) {
-				tty_draw_line(tty, s, rr->px - wp->xoff, j,
-				    rr->nx, rr->px, y, &defaults, palette);
+				tty_draw_line(tty, s, rr->px - wp->xoff -
+				    left_offset, j, rr->nx, rr->px, y,
+				    &defaults, palette);
 			}
 		}
 	}
@@ -1065,6 +1121,9 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
 		sb_x = xoff - sb_w - sb_pad - ox;
 	else
 		sb_x = xoff + wp->sx - ox;
+	/* Shift scrollbar x when the vertical status column is on the left. */
+	if (ctx->statusleft)
+		sb_x += (int)ctx->statuscols;
 
 	if (slider_h < 1)
 		slider_h = 1;
@@ -1097,6 +1156,11 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 	if (ctx->statustop) {
 		sb_y += ctx->statuslines;
 		sy += ctx->statuslines;
+	}
+	if (ctx->statusleft) {
+		sb_x += ctx->statuscols;
+		/* Adjust the sx bound to reflect the full TTY width. */
+		sx += ctx->statuscols;
 	}
 
 	gc = sb_style->gc;

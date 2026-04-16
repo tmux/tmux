@@ -51,7 +51,7 @@ static const char *options_table_status_justify_list[] = {
 	"left", "centre", "right", "absolute-centre", NULL
 };
 static const char *options_table_status_position_list[] = {
-	"top", "bottom", NULL
+	"top", "bottom", "left", "right", NULL
 };
 static const char *options_table_bell_action_list[] = {
 	"none", "any", "current", "other", NULL
@@ -912,12 +912,33 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of the left side of the status line."
 	},
 
+	{ .name = "status-column-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = "#{window_index}:#{window_name}#{window_flags}",
+	  .text = "Format for each row of the vertical status column "
+		  "(used when status-position is \"left\" or \"right\")."
+	},
+
+	{ .name = "status-column-width",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .minimum = 0,
+	  .maximum = SHRT_MAX,
+	  .default_num = 0,
+	  .text = "Maximum width of the vertical status column "
+		  "(used when status-position is \"left\" or \"right\"). "
+		  "0 means auto-fit to the longest window name."
+	},
+
 	{ .name = "status-position",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .choices = options_table_status_position_list,
 	  .default_num = 1,
-	  .text = "Position of the status line."
+	  .text = "Position of the status line. "
+		  "\"left\" and \"right\" place a vertical window list column "
+		  "at the left or right edge."
 	},
 
 	{ .name = "status-right",
