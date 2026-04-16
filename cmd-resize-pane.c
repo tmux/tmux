@@ -42,6 +42,7 @@ const struct cmd_entry cmd_resize_pane_entry = {
 
 	.args = { "DLm:MRTt:u:Ux:y:Z", 0, 1, NULL },
 	.usage = "[-DLmMRTUZ] [-x width] [-y height] [-m minimise] "
+		 "[-u unminimise] "
 		 CMD_TARGET_PANE_USAGE " [adjustment]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },

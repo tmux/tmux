@@ -3192,23 +3192,6 @@ or
 (time).
 .Fl r
 reverses the sort order.
-.Tg minp
-.It Xo Ic minimise\-pane
-.Op Fl a
-.Op Fl t Ar target\-pane
-.Xc
-.D1 Pq alias: Ic minimize\-pane
-Hide
-.Ar target\-pane
-from the tiled layout without closing it.
-The pane continues to run but is no longer visible and does not occupy any
-screen space.
-Minimised panes are shown in the status line and can be restored with
-.Ic unminimise\-pane .
-With
-.Fl a ,
-all visible panes in the window are minimised.
-The pane must not already be minimised.
 .Tg movep
 .It Xo Ic move\-pane
 .Op Fl bdfhv
@@ -3539,7 +3522,9 @@ if specified, to
 .Tg resizep
 .It Xo Ic resize\-pane
 .Op Fl DLMRTUZ
+.Op Fl m Ar minimise
 .Op Fl t Ar target\-pane
+.Op Fl u Ar unminimise
 .Op Fl x Ar width
 .Op Fl y Ar height
 .Op Ar adjustment
@@ -3581,6 +3566,25 @@ begins mouse resizing (only valid if bound to a mouse key binding, see
 .Fl T
 trims all lines below the current cursor position and moves lines out of the
 history to replace them.
+.Pp
+The
+.Fl m
+and
+.Fl u
+options minimise or unminimise a pane respectively.
+They must be followed by one of the following special values:
+.Bl -column "XXXXX" -offset indent
+.It Sy "Value" Ta Sy "Meaning"
+.It Li "a" Ta "affects all panes"
+.It Li "1" Ta "affects a single pane"
+.El
+.Pp
+If
+.Fl m
+is followed by
+.Ar a ,
+.Ar target_pane
+is not minimised.
 .Tg resizew
 .It Xo Ic resize\-window
 .Op Fl aADLRU
@@ -3863,17 +3867,6 @@ a subsequent
 .Ic float\-pane
 command with no geometry options.
 The pane must be floating and the window must not be zoomed.
-.Tg unminp
-.It Xo Ic unminimise\-pane
-.Op Fl t Ar target\-pane
-.Xc
-.D1 Pq alias: Ic unminimize\-pane
-Restore a minimised
-.Ar target\-pane
-to the tiled layout.
-Space is redistributed equally among all visible panes at the same layout
-level after the pane is restored.
-The pane must be minimised.
 .Tg unlinkw
 .It Xo Ic unlink\-window
 .Op Fl k
