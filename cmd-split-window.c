@@ -38,12 +38,12 @@ const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
 	.alias = "newp",
 
-	.args = { "bc:de:fF:hH:Ikl:m:M:p:PR:s:S:t:w:x:y:vZ", 0, -1, NULL },
+	.args = { "bc:de:fF:hIkl:m:M:p:PR:s:S:t:x:X:y:Y:vZ", 0, -1, NULL },
 	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
-		 "[-F format] [-H height] [-l size] [-m message] "
-		 "[-M mode] [-R inactive-border-style] [-s style] "
-		 "[-S active-border-style] [-w width] [-x x-position] "
-		 "[-y y-position]" CMD_TARGET_PANE_USAGE
+		 "[-F format] [-l size] [-m message] [-M mode] "
+		 "[-R inactive-border-style] [-s style] "
+		 "[-S active-border-style] [-x width] [-X x-position]"
+		 "[-y length] [-Y y-position]" CMD_TARGET_PANE_USAGE
 		 "[shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -56,12 +56,12 @@ const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
 	.alias = "splitw",
 
-	.args = { "bc:de:fF:hH:Ikl:m:M:p:PR:s:S:t:w:x:y:vZ", 0, -1, NULL },
+	.args = { "bc:de:fF:hIkl:m:M:p:PR:s:S:t:x:X:y:Y:vZ", 0, -1, NULL },
 	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
-		 "[-F format] [-H height] [-l size] [-m message] "
-		 "[-M mode] [-R inactive-border-style] [-s style] "
-		 "[-S active-border-style] [-w width] [-x x-position] "
-		 "[-y y-position]" CMD_TARGET_PANE_USAGE
+		 "[-F format] [-l size] [-m message] [-M mode] "
+		 "[-R inactive-border-style] [-s style] "
+		 "[-S active-border-style] [-x width] [-X x-position]"
+		 "[-y length] [-Y y-position]" CMD_TARGET_PANE_USAGE
 		 "[shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -100,8 +100,8 @@ cmd_split_window_get_floating_layout_cell(struct cmdq_item *item,
 		if (last_y > (int)w->sy)
 			y = 2;
 	}
-	if (args_has(args, 'w')) {
-		sx = args_percentage_and_expand(args, 'w', 0, USHRT_MAX, w->sx,
+	if (args_has(args, 'x')) {
+		sx = args_percentage_and_expand(args, 'x', 0, USHRT_MAX, w->sx,
 			item, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "size %s", cause);
@@ -109,26 +109,26 @@ cmd_split_window_get_floating_layout_cell(struct cmdq_item *item,
 			return (NULL);
 		}
 	}
-	if (args_has(args, 'H')) {
-		sy = args_percentage_and_expand(args, 'H', 0, USHRT_MAX, w->sy,
-		    item, &cause);
-		if (cause != NULL) {
-			cmdq_error(item, "size %s", cause);
-			free(cause);
-			return (NULL);
-		}
-	}
-	if (args_has(args, 'x')) {
-		x = args_percentage_and_expand(args, 'x', 0, USHRT_MAX, w->sx,
-		    item, &cause);
-		if (cause != NULL) {
-			cmdq_error(item, "size %s", cause);
-			free(cause);
-			return (NULL);
-		}
-	}
 	if (args_has(args, 'y')) {
-		y = args_percentage_and_expand(args, 'y', 0, USHRT_MAX, w->sy,
+		sy = args_percentage_and_expand(args, 'y', 0, USHRT_MAX, w->sy,
+		    item, &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "size %s", cause);
+			free(cause);
+			return (NULL);
+		}
+	}
+	if (args_has(args, 'X')) {
+		x = args_percentage_and_expand(args, 'X', 0, USHRT_MAX, w->sx,
+		    item, &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "size %s", cause);
+			free(cause);
+			return (NULL);
+		}
+	}
+	if (args_has(args, 'Y')) {
+		y = args_percentage_and_expand(args, 'Y', 0, USHRT_MAX, w->sy,
 		    item, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "size %s", cause);
