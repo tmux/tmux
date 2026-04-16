@@ -7,9 +7,10 @@ TERM=screen
 TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
 sleep 1
-$TMUX -f/dev/null new -x20 -y2 -d || exit 1
+$TMUX -f/dev/null new -x20 -y2 -d \; set -g escape-time 0 || exit 1
 sleep 1
-$TMUX set -g escape-time 0
+W=$($TMUX new-window -P -- sh -c 'stty raw -echo && cat -tv')
+sleep 1
 
 exit_status=0
 
@@ -17,14 +18,13 @@ assert_key () {
 	key=$1
 	expected_code=$2
 
-	W=$($TMUX new-window -P -- sh -c 'stty raw -echo && cat -tv')
-	$TMUX send-keys -t$W "$key" 'EOL' || exit 1
-	sleep 0.2
+	$TMUX send-keys -t$W -R \; \
+	      clear-history -t$W \; \
+	      send-keys -t$W "$key" 'EOL' || exit 1
 
 	actual_code=$($TMUX capturep -pt$W | \
 			      head -1 | \
 			      sed -e 's/EOL.*$//')
-	$TMUX kill-window -t$W || exit 1
 
 	if [ "$actual_code" = "$expected_code" ]; then
 		if [ -n "$VERBOSE" ]; then

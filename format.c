@@ -90,6 +90,9 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 /* Maimum repeat size. */
 #define FORMAT_MAX_REPEAT 10000
 
+/* Maimum precision. */
+#define FORMAT_MAX_PRECISION 100
+
 /* Format modifiers. */
 #define FORMAT_TIMESTRING 0x1
 #define FORMAT_BASENAME 0x2
@@ -4886,7 +4889,8 @@ format_replace_expression(struct format_modifier *mexp,
 
 	/* The third argument may be precision. */
 	if (argc >= 3) {
-		prec = strtonum(mexp->argv[2], INT_MIN + 1, INT_MAX, &errstr);
+		prec = strtonum(mexp->argv[2], -FORMAT_MAX_PRECISION,
+		    FORMAT_MAX_PRECISION, &errstr);
 		if (errstr != NULL) {
 			format_log(es, "expression precision %s: %s", errstr,
 			    mexp->argv[2]);
@@ -5079,8 +5083,10 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 				if (strchr(fm->argv[0], 'p') != NULL)
 					modifiers |= FORMAT_PRETTY;
 				else if (fm->argc >= 2 &&
-				    strchr(fm->argv[0], 'f') != NULL)
+				    strchr(fm->argv[0], 'f') != NULL) {
+					free(time_format);
 					time_format = format_strip(fm->argv[1]);
+				}
 				break;
 			case 'q':
 				if (fm->argc < 1)

@@ -414,10 +414,10 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_get_clipboard_list,
 	  .default_num = 1,
 	  .text = "When an application requests the clipboard, whether to "
-	          "ignore the request ('off'); respond with the newest buffer "
-	          "('buffer'); request the clipboard from the most recently "
-	          "used terminal ('request'); or to request the clipboard, "
-	          "create a buffer, and send it to the application ('both')."
+		  "ignore the request ('off'); respond with the newest buffer "
+		  "('buffer'); request the clipboard from the most recently "
+		  "used terminal ('request'); or to request the clipboard, "
+		  "create a buffer, and send it to the application ('both')."
 	},
 
 	{ .name = "history-file",
@@ -1024,7 +1024,8 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .flags = OPTIONS_TABLE_IS_ARRAY,
 	  .default_str = "DISPLAY KRB5CCNAME MSYSTEM SSH_ASKPASS SSH_AUTH_SOCK "
-			 "SSH_AGENT_PID SSH_CONNECTION WINDOWID XAUTHORITY",
+			 "SSH_AGENT_PID SSH_CONNECTION WAYLAND_DISPLAY "
+			 "WINDOWID XAUTHORITY",
 	  .text = "List of environment variables to update in the session "
 		  "environment when a client is attached."
 	},
