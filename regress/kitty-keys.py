@@ -310,6 +310,31 @@ def expect_no_key(client_fd, seq, label, timeout=0.5):
         return True
 
 
+def expect_binding_hit(client_fd, tmux_key, seq, label):
+    wait_name = f"kitty-binding-hit-{os.getpid()}-{time.time_ns()}"
+    proc = subprocess.Popen(
+        [TMUX, f"-L{SOCK}", "wait-for", wait_name],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    run("bind-key", "-n", tmux_key, "wait-for", "-S", wait_name)
+    drain_client(client_fd)
+    os.write(client_fd, seq)
+
+    try:
+        proc.communicate(timeout=2)
+        print(f"[PASS] {label} -> binding fired")
+        return True
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.communicate()
+        print(f"[FAIL] {label} -> binding did not fire")
+        return False
+    finally:
+        run("unbind-key", "-n", tmux_key, check=False)
+
+
 def expect_push_pop_balance(client_fd, client_pid):
     output = drain_client(client_fd)
     for _ in range(3):
@@ -343,7 +368,8 @@ def expect_push_pop_balance(client_fd, client_pid):
     return ok
 
 
-def expect_mode_push_pop(label, fmt, expected_pushes, min_pops, max_pops=None):
+def expect_mode_push_pop(label, fmt, expected_pushes, min_pops, max_pops=None,
+        reply=b"\x1b[?0u"):
     sock = f"{SOCK}_{fmt}_{os.getpid()}_{int(time.time() * 1000)}"
     client_pid = None
     client_fd = None
@@ -356,7 +382,6 @@ def expect_mode_push_pop(label, fmt, expected_pushes, min_pops, max_pops=None):
         configure_extended_keys("on", fmt, sock=sock)
         run_socket(sock, "set", "-g", "remain-on-exit", "on")
         run_socket(sock, "set", "-g", "status", "off")
-        run_socket(sock, "set", "-as", "terminal-overrides", ",*:Enkitk@:Dskitk@")
 
         client_pid, client_fd = pty.fork()
         if client_pid == 0:
@@ -364,10 +389,11 @@ def expect_mode_push_pop(label, fmt, expected_pushes, min_pops, max_pops=None):
 
         time.sleep(0.5)
         output = drain_client(client_fd)
-        for _ in range(3):
-            os.write(client_fd, b"\x1b[?0u")
-            time.sleep(0.1)
-            output += drain_client(client_fd)
+        if reply is not None:
+            for _ in range(3):
+                os.write(client_fd, reply)
+                time.sleep(0.1)
+                output += drain_client(client_fd)
 
         try:
             os.kill(client_pid, signal.SIGHUP)
@@ -408,7 +434,8 @@ def expect_mode_push_pop(label, fmt, expected_pushes, min_pops, max_pops=None):
         )
 
 def expect_requested_outer_input(label, sent, expected, *, fmt="kitty",
-        mode_seq=b"\x1b[=1u", terminal_override=None, mode="on"):
+        mode_seq=b"\x1b[=1u", terminal_override=None, mode="on",
+        expected_mode=None):
     sock = f"{SOCK}_requested_{os.getpid()}_{int(time.time() * 1000)}"
     client_pid = None
     client_fd = None
@@ -460,8 +487,10 @@ def expect_requested_outer_input(label, sent, expected, *, fmt="kitty",
         if client_pid == 0:
             os.execvp(TMUX, [TMUX, f"-L{sock}", "attach"])
         time.sleep(0.5)
+        output = b""
         if fmt == "kitty" and terminal_override is None:
-            if negotiate_kitty_query(client_fd, label, b"\x1b[?0u") is None:
+            output = negotiate_kitty_query(client_fd, label, b"\x1b[?0u")
+            if output is None:
                 return False
         else:
             drain_client(client_fd, rounds=40)
@@ -480,7 +509,7 @@ def expect_requested_outer_input(label, sent, expected, *, fmt="kitty",
             return False
 
         if fmt == "kitty" and terminal_override is None:
-            output = drain_client(client_fd, rounds=40)
+            output += drain_client(client_fd, rounds=40)
             for _ in range(10):
                 if b"\x1b[>1u" in output:
                     break
@@ -489,6 +518,20 @@ def expect_requested_outer_input(label, sent, expected, *, fmt="kitty",
             if b"\x1b[>1u" not in output:
                 print(f"[FAIL] {label} -> missing outer kitty push")
                 return False
+
+        if expected_mode is not None:
+            actual_mode = run_socket(
+                sock, "display-message", "-p", "-t", target,
+                "#{pane_key_mode}", check=False,
+            )
+            if actual_mode.returncode != 0:
+                print(f"[FAIL] {label} -> pane_key_mode query failed")
+                return False
+            mode_name = actual_mode.stdout.strip()
+            if mode_name != expected_mode:
+                print(f"[FAIL] {label} -> expected pane_key_mode {expected_mode}, got {mode_name}")
+                return False
+            print(f"[PASS] {label} pane_key_mode -> {mode_name}")
 
         os.write(client_fd, sent)
 
@@ -543,10 +586,23 @@ try:
         os.execvp(TMUX, [TMUX, f"-L{SOCK}", "attach"])
 
     time.sleep(0.5)
-    if negotiate_kitty_query(client_fd, "shared server setup", b"\x1b[?9u") is None:
+    setup_output = negotiate_kitty_query(client_fd, "shared server setup", b"\x1b[?0u")
+    if setup_output is None:
+        failed = True
+    elif b"\x1b[>1u" not in setup_output:
+        print("[FAIL] shared server setup -> missing outer kitty push")
         failed = True
     else:
+        print("[PASS] shared server setup -> outer kitty push")
         drain_client(client_fd, rounds=40)
+
+    if not expect_binding_hit(
+        client_fd,
+        "Pause",
+        b"\x1b[57362u",
+        "Pause binding before pane request",
+    ):
+        failed = True
 
     # Phase 1/3 parser coverage: function-key tilde aliases.
     for seq, expected in [
@@ -555,6 +611,7 @@ try:
         (b"\x1b[11~", "F1"),
         (b"\x1b[12~", "F2"),
         (b"\x1b[14~", "F4"),
+        (b"\x1b[57362u", "Pause"),
     ]:
         if not expect_key_name(client_fd, seq, expected):
             failed = True
@@ -845,17 +902,17 @@ try:
             run_socket(sock, "kill-server", check=False)
 
     if not expect_protocol_output(
-        "kitty format ignores modifyOtherKeys",
-        "kitty",
-        "always",
-        b"\x1b[>4;2m",
+        "xterm format ignores kitty request",
+        "xterm",
+        "on",
+        b"\x1b[=8u",
         "C-c",
-        lambda b: b == b"\x1b[99;5u",
-        "Kitty",
+        lambda b: b == b"\x03",
+        "VT10x",
     ):
         failed = True
     if not expect_protocol_output(
-        "xterm format ignores kitty report-all",
+        "xterm always ignores kitty request",
         "xterm",
         "always",
         b"\x1b[=8u",
@@ -886,49 +943,20 @@ try:
         failed = True
 
     # Phase 4: query replies while pushed must not clobber kitty parsing.
-    push_target = run(
-        "new-window", "-P", "-F", "#{window_id}",
-        python_command(
-            "import os, sys, termios, time, tty\n"
-            "fd = sys.stdin.fileno()\n"
-            "old = termios.tcgetattr(fd)\n"
-            "try:\n"
-            "    tty.setraw(fd)\n"
-            "    os.write(sys.stdout.fileno(), b'\\x1b[=1u')\n"
-            "    os.write(sys.stdout.fileno(), b'READY\\n')\n"
-            "    time.sleep(5)\n"
-            "finally:\n"
-            "    termios.tcsetattr(fd, termios.TCSANOW, old)\n"
-        ),
-    ).stdout.strip()
-    if not wait_for_ready(push_target, "READY"):
-        print("[FAIL] phase 4 push probe -> not ready")
-        failed = True
-    else:
-        output = drain_client(client_fd, rounds=40)
-        for _ in range(10):
-            if b"\x1b[>1u" in output:
-                break
-            time.sleep(0.1)
-            output += drain_client(client_fd, rounds=40)
-        if b"\x1b[>1u" not in output:
-            print("[FAIL] phase 4 push probe -> missing outer kitty push")
+    for label, reply in [
+        ("query reply 0 keeps kitty parsing", b"\x1b[?0u"),
+        ("query reply 9 keeps kitty parsing", b"\x1b[?9u"),
+    ]:
+        os.write(client_fd, reply)
+        time.sleep(0.05)
+        drain_client(client_fd)
+        if not expect_key_name(client_fd, b"\x1b[99;5u", "C-c", label):
             failed = True
-        else:
-            for label, reply in [
-                ("query reply 0 keeps kitty parsing", b"\x1b[?0u"),
-                ("query reply 9 keeps kitty parsing", b"\x1b[?9u"),
-            ]:
-                os.write(client_fd, reply)
-                time.sleep(0.05)
-                drain_client(client_fd)
-                if not expect_key_name(client_fd, b"\x1b[99;5u", "C-c", label):
-                    failed = True
 
-            # Phase 4: repeated query responses must not cause duplicate pushes.
-            if not expect_push_pop_balance(client_fd, client_pid):
-                failed = True
-            client_pid = None
+    # Phase 4: repeated query responses must not cause duplicate pushes.
+    if not expect_push_pop_balance(client_fd, client_pid):
+        failed = True
+    client_pid = None
 
     # Capability behavior and fallback when clients do not support the selected protocol.
     if not expect_mode_push_pop(
@@ -937,21 +965,46 @@ try:
         0,
         0,
         max_pops=0,
+        reply=None,
     ):
         failed = True
     if not expect_requested_outer_input(
-        "extended-keys-format=kitty requested Ctrl-3", b"\x1b[51;5u", b"\x1b[51;5u",
-    ):
-        failed = True
-    if not expect_requested_outer_input(
-        "extended-keys-format=kitty requested UTF-8 text", b"\xc3\xa8", b"\xc3\xa8",
-    ):
-        failed = True
-    if not expect_requested_outer_input(
-        "extended-keys-format=kitty legacy Ctrl-c fallback",
+        "extended-keys-format=kitty baseline downgrades Ctrl-c",
+        b"\x1b[99;5u",
         b"\x03",
+        mode_seq=b"",
+        expected_mode="VT10x",
+    ):
+        failed = True
+    if not expect_requested_outer_input(
+        "kitty format ignores modifyOtherKeys",
+        b"\x1b[99;5u",
         b"\x03",
-        terminal_override=",*:Enkitk@:Dskitk@",
+        mode_seq=b"\x1b[>4;2m",
+        expected_mode="VT10x",
+    ):
+        failed = True
+    if not expect_requested_outer_input(
+        "kitty always ignores modifyOtherKeys",
+        b"\x1b[99;5u",
+        b"\x1b[99;5u",
+        mode_seq=b"\x1b[>4;2m",
+        mode="always",
+        expected_mode="Kitty",
+    ):
+        failed = True
+    if not expect_requested_outer_input(
+        "extended-keys-format=kitty requested Ctrl-3",
+        b"\x1b[51;5u",
+        b"\x1b[51;5u",
+        expected_mode="Kitty",
+    ):
+        failed = True
+    if not expect_requested_outer_input(
+        "extended-keys-format=kitty requested UTF-8 text",
+        b"\xc3\xa8",
+        b"\xc3\xa8",
+        expected_mode="Kitty",
     ):
         failed = True
     if not expect_requested_outer_input(

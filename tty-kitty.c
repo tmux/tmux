@@ -180,7 +180,7 @@ tty_keys_kitty(struct tty *tty, const char *buf, size_t len,
 	key_code	 result;
 
 	*size = 0;
-	kitty_flags = tty->kitty_flags & KITTY_KBD_SUPPORTED;
+	kitty_flags = tty->kitty_enabled_flags & KITTY_KBD_SUPPORTED;
 
 	/* Must start with CSI (\033[). */
 	if (buf[0] != '\033')
@@ -440,7 +440,7 @@ tty_keys_kitty_keyboard(struct tty *tty, const char *buf, size_t len,
     size_t *size)
 {
 	struct client	*c = tty->client;
-	u_int		 i, n, pushed_flags;
+	u_int		 i, n, current_flags;
 	char		 tmp[64];
 
 	*size = 0;
@@ -478,17 +478,20 @@ tty_keys_kitty_keyboard(struct tty *tty, const char *buf, size_t len,
 	sscanf(tmp, "%u", &n);
 
 	log_debug("%s: kitty keyboard query response: flags=%u", c->name, n);
-
-	pushed_flags = tty->kitty_flags;
-	tty->kitty_flags = n & KITTY_KBD_SUPPORTED;
+	current_flags = n & KITTY_KBD_SUPPORTED;
+	/*
+	 * A valid query reply means the outer terminal speaks tmux's kitty
+	 * subset. Preserve its current state until tmux pushes over it.
+	 */
+	tty->kitty_supported_flags = KITTY_KBD_SUPPORTED;
+	if (~tty->flags & TTY_KITTY_PUSHED)
+		tty->kitty_enabled_flags = current_flags;
 	if ((n & ~KITTY_KBD_SUPPORTED) != 0)
-		log_debug("%s: dropping unsupported kitty keyboard flags %#x",
+		log_debug("%s: ignoring unsupported kitty keyboard flags %#x",
 		    c->name, n & ~KITTY_KBD_SUPPORTED);
 	tty->flags |= TTY_HAVEDA_KITTY;
 
 	tty_update_features(tty);
-	if (tty->flags & TTY_KITTY_PUSHED)
-		tty->kitty_flags = pushed_flags;
 
 	return (0);
 }
