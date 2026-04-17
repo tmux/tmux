@@ -1798,8 +1798,9 @@ struct tty {
 #define TTY_ALL_REQUEST_FLAGS \
 	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVEDA_KITTY)
 	int		 flags;
-	int		 kitty_flags;	/* kitty protocol flags from outer */
+	int		 kitty_enabled_flags; /* kitty protocol flags currently enabled on outer */
 	int		 kitty_saved_flags; /* kitty flags beneath tmux push */
+	int		 kitty_supported_flags; /* kitty flags outer terminal supports */
 
 	struct tty_term	*term;
 
@@ -3159,6 +3160,7 @@ void	 server_client_set_flags(struct client *, const char *);
 const char *server_client_get_flags(struct client *);
 struct client_window *server_client_get_client_window(struct client *, u_int);
 struct client_window *server_client_add_client_window(struct client *, u_int);
+struct screen *server_client_get_screen(struct client *, u_int *, u_int *);
 struct window_pane *server_client_get_pane(struct client *);
 void	 server_client_set_pane(struct client *, struct window_pane *);
 void	 server_client_remove_pane(struct window_pane *);

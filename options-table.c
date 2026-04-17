@@ -390,7 +390,8 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_extended_keys_list,
 	  .default_num = 0,
 	  .text = "Whether to request the selected enhanced key protocol from "
-		  "terminals that support it."
+		  "terminals that support it. With extended-keys on, tmux may "
+		  "enable it for its own key bindings before a pane requests it."
 	},
 
 	{ .name = "extended-keys-format",
@@ -398,7 +399,8 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .choices = options_table_extended_keys_format_list,
 	  .default_num = 1,
-	  .text = "The protocol used for emitted enhanced key sequences."
+	  .text = "The protocol tmux uses for emitted enhanced key sequences. "
+		  "Requests for other enhanced key protocols are ignored."
 	},
 
 	{ .name = "focus-events",
