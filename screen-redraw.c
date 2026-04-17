@@ -600,8 +600,9 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 {
 	struct window		*w = wp->window;
 	struct grid_cell	 gc;
-	const char		*fmt;
+	const char		*fmt, *border_opt;
 	struct format_tree	*ft;
+	struct style_line_entry	*sle = &wp->border_status_line;
 	char			*expanded;
 	int			 pane_status = rctx->pane_status, sb_w = 0;
 	int			 pane_scrollbars = rctx->pane_scrollbars;
@@ -616,10 +617,19 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 	ft = format_create(c, NULL, FORMAT_PANE|wp->id, FORMAT_STATUS);
 	format_defaults(ft, c, c->session, c->session->curw, wp);
 
-	if (wp == server_client_get_pane(c))
-		style_apply(&gc, w->options, "pane-active-border-style", ft);
-	else
-		style_apply(&gc, w->options, "pane-border-style", ft);
+	border_opt = (wp == server_client_get_pane(c)) ?
+	    "pane-active-border-style" : "pane-border-style";
+
+	/* Window-level baseline. */
+	style_apply(&gc, w->options, border_opt, ft);
+
+	/* Floating pane window default overrides window baseline. */
+	if (wp->flags & PANE_FLOATING)
+		style_add(&gc, w->options, "floating-pane-border-style", ft);
+
+	/* Per-pane override (set via new-pane -S or set-option -p). */
+	if (options_get_only(wp->options, border_opt) != NULL)
+		style_add(&gc, wp->options, border_opt, ft);
 	fmt = options_get_string(wp->options, "pane-border-format");
 
 	expanded = format_expand_time(ft, fmt);
@@ -651,11 +661,14 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 	gc.attr &= ~GRID_ATTR_CHARSET;
 
 	screen_write_cursormove(&ctx, 0, 0, 0);
-	format_draw(&ctx, &gc, width, expanded, NULL, 0);
-	screen_write_stop(&ctx);
+	style_ranges_free(&sle->ranges);
+	format_draw(&ctx, &gc, width, expanded, &sle->ranges, 0);
 
-	free(expanded);
+	screen_write_stop(&ctx);
 	format_free(ft);
+
+	free(sle->expanded);
+	sle->expanded = expanded;
 
 	if (grid_compare(wp->status_screen.grid, old.grid) == 0) {
 		screen_free(&old);
@@ -721,8 +734,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 			width = size - x;
 		}
 
-		r = tty_check_overlay_range(&c->tty, x, yoff, width);
-		r = screen_redraw_get_visible_ranges(wp, x, yoff, width, r);
+		r = screen_redraw_get_visible_ranges(wp, x, yoff, width, NULL);
 
 		if (ctx->statustop)
 			yoff += ctx->statuslines;
@@ -885,7 +897,8 @@ screen_redraw_draw_borders_style(struct screen_redraw_ctx *ctx, u_int x,
 	struct session		*s = c->session;
 	struct window		*w = s->curw->window;
 	struct window_pane	*active = server_client_get_pane(c);
-	struct options		*oo = w->options;
+	struct options		*wo = w->options;
+	const char		*border_opt;
 	struct format_tree	*ft;
 
 	if (wp->border_gc_set)
@@ -894,15 +907,21 @@ screen_redraw_draw_borders_style(struct screen_redraw_ctx *ctx, u_int x,
 
 	ft = format_create_defaults(NULL, c, s, s->curw, wp);
 
-	if (wp->flags & PANE_FLOATING)
-		style_apply(&wp->border_gc, wp->options,
-		    "pane-floating-border-style", ft);
-	else if (screen_redraw_check_is(ctx, x, y, active))
-		style_apply(&wp->border_gc, oo, "pane-active-border-style", ft);
-	else
-		style_apply(&wp->border_gc, oo, "pane-border-style", ft);
-	format_free(ft);
+	border_opt = screen_redraw_check_is(ctx, x, y, active) ?
+	    "pane-active-border-style" : "pane-border-style";
 
+	/* Window-level baseline. */
+	style_apply(&wp->border_gc, wo, border_opt, ft);
+
+	/* Floating pane window default overrides window baseline. */
+	if (wp->flags & PANE_FLOATING)
+		style_add(&wp->border_gc, wo, "floating-pane-border-style", ft);
+
+	/* Per-pane override (set via new-pane -S or set-option -p). */
+	if (options_get_only(wp->options, border_opt) != NULL)
+		style_add(&wp->border_gc, wp->options, border_opt, ft);
+
+	format_free(ft);
 	return (&wp->border_gc);
 }
 
@@ -1460,14 +1479,12 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 		oy += ctx->statuslines;		/* Top of window in tty. */
 	}
 
-
-	/* Set up style for slider. */
 	gc = sb_style->gc;
 	memcpy(&slgc, &gc, sizeof slgc);
 	slgc.fg = gc.bg;
 	slgc.bg = gc.fg;
 
-	if (sb_x + (int)sb_w < 0)
+	if (sb_x + (int)sb_w < 0 || sb_x >= sx || sb_y >= sy)
 		/* Whole sb off screen. */
 		return;
 	if (sb_x < 0)

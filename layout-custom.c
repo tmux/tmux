@@ -213,7 +213,7 @@ layout_parse(struct window *w, const char *layout, char **cause)
 
 	/* Check this window will fit into the layout. */
 	for (;;) {
-		npanes = window_count_panes(w);
+		npanes = window_count_panes(w, 1);
 		ncells = layout_count_cells(tiled_lc);
 		ncells += layout_count_cells(floating_lc);
 		if (npanes > ncells) {

@@ -184,7 +184,7 @@ server_kill_pane(struct window_pane *wp)
 {
 	struct window	*w = wp->window;
 
-	if (window_count_panes(w) == 1) {
+	if (window_count_panes(w, 1) == 1) {
 		server_kill_window(w, 1);
 		recalculate_sizes();
 	} else {
@@ -340,10 +340,12 @@ server_destroy_pane(struct window_pane *wp, int notify)
 	case 0:
 		break;
 	case 2:
-		if (WIFEXITED(wp->status) && WEXITSTATUS(wp->status) == 0)
+		if (remain_on_exit == 2 &&
+		    WIFEXITED(wp->status) && WEXITSTATUS(wp->status) == 0)
 			break;
 		/* FALLTHROUGH */
 	case 1:
+	case 3:
 		if (wp->flags & PANE_STATUSDRAWN)
 			return;
 		wp->flags |= PANE_STATUSDRAWN;

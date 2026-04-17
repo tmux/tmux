@@ -143,6 +143,10 @@ cmd_minimise_pane_minimise(struct window *w, struct window_pane *wp)
 {
 	struct window_pane	*wp2;
 
+	/* Ignore if already minimised to prevent double-redistribution. */
+	if (wp->flags & PANE_MINIMISED)
+		return (CMD_RETURN_NORMAL);
+
 	wp->flags |= PANE_MINIMISED;
 	window_deactivate_pane(w, wp, 1);
 
@@ -165,7 +169,7 @@ cmd_minimise_pane_minimise(struct window *w, struct window_pane *wp)
 
 	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
-	
+
 	return (CMD_RETURN_NORMAL);
 }
 

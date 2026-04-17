@@ -131,6 +131,7 @@ screen_reinit(struct screen *s)
 	image_free_all(s);
 #endif
 
+	screen_set_progress_bar(s, PROGRESS_BAR_HIDDEN, 0);
 	screen_reset_hyperlinks(s);
 }
 
@@ -295,6 +296,19 @@ screen_pop_title(struct screen *s)
 		free(title_entry);
 	}
 }
+
+/*
+ * Set the progress bar state and progress. The progress will not be updated
+ * if p is negative.
+ */
+void
+screen_set_progress_bar(struct screen *s, enum progress_bar_state pbs, int p)
+{
+	s->progress_bar.state = pbs;
+	if (p >= 0 && pbs != PROGRESS_BAR_INDETERMINATE)
+		s->progress_bar.progress = p;
+}
+
 
 /* Resize screen with options. */
 void
@@ -772,8 +786,9 @@ screen_mode_to_string(int mode)
 	return (tmp);
 }
 
+/* Convert screen to a string. */
 const char *
-screen_print(struct screen *s)
+screen_print(struct screen *s, int line)
 {
 	static char		*buf;
 	static size_t		 len = 16384;
@@ -789,6 +804,8 @@ screen_print(struct screen *s)
 		buf = xmalloc(len);
 
 	for (y = 0; y < screen_hsize(s) + s->grid->sy; y++) {
+		if (line >= 0 && y != (u_int)line)
+			continue;
 		n = snprintf(buf + last, len - last, "%.4d \"", y);
 		if (n <= 0 || (u_int)n >= len - last)
 			goto out;

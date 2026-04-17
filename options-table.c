@@ -91,7 +91,7 @@ static const char *options_table_window_size_list[] = {
 	"largest", "smallest", "manual", "latest", NULL
 };
 static const char *options_table_remain_on_exit_list[] = {
-	"off", "on", "failed", NULL
+	"off", "on", "failed", "key", NULL
 };
 static const char *options_table_destroy_unattached_list[] = {
 	"off", "on", "keep-last", "keep-group", NULL
@@ -414,10 +414,10 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_get_clipboard_list,
 	  .default_num = 1,
 	  .text = "When an application requests the clipboard, whether to "
-	          "ignore the request ('off'); respond with the newest buffer "
-	          "('buffer'); request the clipboard from the most recently "
-	          "used terminal ('request'); or to request the clipboard, "
-	          "create a buffer, and send it to the application ('both')."
+		  "ignore the request ('off'); respond with the newest buffer "
+		  "('buffer'); request the clipboard from the most recently "
+		  "used terminal ('request'); or to request the clipboard, "
+		  "create a buffer, and send it to the application ('both')."
 	},
 
 	{ .name = "history-file",
@@ -1024,7 +1024,8 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .flags = OPTIONS_TABLE_IS_ARRAY,
 	  .default_str = "DISPLAY KRB5CCNAME MSYSTEM SSH_ASKPASS SSH_AUTH_SOCK "
-			 "SSH_AGENT_PID SSH_CONNECTION WINDOWID XAUTHORITY",
+			 "SSH_AGENT_PID SSH_CONNECTION WAYLAND_DISPLAY "
+			 "WINDOWID XAUTHORITY",
 	  .text = "List of environment variables to update in the session "
 		  "environment when a client is attached."
 	},
@@ -1207,6 +1208,28 @@ const struct options_table_entry options_table[] = {
 	  .text = "Character used to fill unused parts of window."
 	},
 
+	{ .name = "floating-pane-border-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Default border style for floating panes. "
+		  "Overrides pane-border-style for floating panes unless "
+		  "a per-pane style is set."
+	},
+
+	{ .name = "floating-pane-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Default content style for floating panes. "
+		  "Overrides window-style for floating panes unless "
+		  "a per-pane style is set."
+	},
+
 	{ .name = "main-pane-height",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
@@ -1283,7 +1306,7 @@ const struct options_table_entry options_table[] = {
 
 	{ .name = "pane-active-border-style",
 	  .type = OPTIONS_TABLE_STRING,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "#{?pane_in_mode,fg=yellow,#{?synchronize-panes,fg=red,fg=green}}",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
@@ -1335,7 +1358,7 @@ const struct options_table_entry options_table[] = {
 
 	{ .name = "pane-border-style",
 	  .type = OPTIONS_TABLE_STRING,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "default",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
@@ -1425,14 +1448,15 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .choices = options_table_remain_on_exit_list,
 	  .default_num = 0,
-	  .text = "Whether panes should remain ('on') or be automatically "
-		  "killed ('off' or 'failed') when the program inside exits."
+	  .text = "Whether panes should remain ('on'), remain until a key is "
+		  "pressed ('key') or be automatically killed ('off' or "
+		  "'failed') when the program inside exits."
 	},
 
 	{ .name = "remain-on-exit-format",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
-	  .default_str = "Pane is dead ("
+	  .default_str = "Command exited ("
 			 "#{?#{!=:#{pane_dead_status},},"
 			 "status #{pane_dead_status},}"
 			 "#{?#{!=:#{pane_dead_signal},},"

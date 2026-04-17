@@ -202,7 +202,7 @@ key_string_search_table(const char *string)
 			return (key_string_table[i].key);
 	}
 
-	if (sscanf(string, "User%u", &user) == 1 && user < KEYC_NUSER)
+	if (sscanf(string, "User%u", &user) == 1 && user <= KEYC_NUSER)
 		return (KEYC_USER + user);
 
 	return (KEYC_UNKNOWN);
@@ -418,7 +418,7 @@ key_string_lookup_key(key_code key, int with_flags)
 		s = "MouseMoveBorder";
 		goto append;
 	}
-	if (key >= KEYC_USER && key < KEYC_USER_END) {
+	if (KEYC_IS_USER(key)) {
 		snprintf(tmp, sizeof tmp, "User%u", (u_int)(key - KEYC_USER));
 		strlcat(out, tmp, sizeof out);
 		goto out;

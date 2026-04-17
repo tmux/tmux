@@ -1034,6 +1034,8 @@ window_copy_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 
 	screen_resize(s, sx, sy, 0);
 	cx = data->cx;
+	if (data->oy > gd->hsize + data->cy)
+		data->oy = gd->hsize + data->cy;
 	cy = gd->hsize + data->cy - data->oy;
 	reflow = (gd->sx != sx);
 	if (reflow)
@@ -2747,6 +2749,8 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 
 	if (data->viewmode)
 		return (WINDOW_COPY_CMD_NOTHING);
+	if (data->oy > screen_hsize(data->backing))
+		data->oy = screen_hsize(data->backing);
 	oy_from_top = screen_hsize(data->backing) - data->oy;
 
 	screen_free(data->backing);
@@ -3340,7 +3344,7 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 	enum window_copy_cmd_clear	 clear = WINDOW_COPY_CMD_CLEAR_NEVER;
 	const char			*command;
 	u_int				 i, count = args_count(args);
-	int				 keys;
+	int				 keys, flags;
 	char				*error = NULL;
 
 	if (count == 0)
@@ -3362,9 +3366,10 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 	action = WINDOW_COPY_CMD_NOTHING;
 	for (i = 0; i < nitems(window_copy_cmd_table); i++) {
 		if (strcmp(window_copy_cmd_table[i].command, command) == 0) {
-			if (c->flags & CLIENT_READONLY &&
-			    (~window_copy_cmd_table[i].flags &
-			    WINDOW_COPY_CMD_FLAG_READONLY)) {
+			flags = window_copy_cmd_table[i].flags;
+			if (c != NULL &&
+			    c->flags & CLIENT_READONLY &&
+			    (~flags & WINDOW_COPY_CMD_FLAG_READONLY)) {
 				status_message_set(c, -1, 1, 0, 0,
 				    "client is read-only");
 				return;

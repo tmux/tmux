@@ -1990,7 +1990,6 @@ screen_write_pane_obscured(struct window_pane *base_wp)
 		return(0);
 	w = base_wp->window;
 
-	/* Check if there is a floating pane. xxxx borders? scrollbars? */
 	TAILQ_FOREACH_REVERSE(wp, &w->z_index, window_panes_zindex, zentry) {
 		if (wp == base_wp) {
 			found_self = 1;

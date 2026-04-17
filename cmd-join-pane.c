@@ -170,7 +170,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	} else
 		server_status_session(dst_s);
 
-	if (window_count_panes(src_w) == 0)
+	if (window_count_panes(src_w, 1) == 0)
 		server_kill_window(src_w, 1);
 	else
 		notify_window("window-layout-changed", src_w);

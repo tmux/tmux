@@ -1170,6 +1170,9 @@ tty_clear_line(struct tty *tty, const struct grid_cell *defaults, u_int py,
     u_int px, u_int nx, u_int bg)
 {
 	struct client		*c = tty->client;
+	struct visible_ranges	*r;
+	struct visible_range	*rr;
+	u_int			 i;
 
 	log_debug("%s: %s, %u at %u,%u", __func__, c->name, nx, px, py);
 
@@ -1205,8 +1208,14 @@ tty_clear_line(struct tty *tty, const struct grid_cell *defaults, u_int py,
 	 * Couldn't use an escape sequence, use spaces. Clear only the visible
 	 * bit if there is an overlay.
 	 */
-	tty_cursor(tty, px, py);
-	tty_repeat_space(tty, nx);
+	r = tty_check_overlay_range(tty, px, py, nx);
+	for (i = 0; i < r->used; i++) {
+		rr = &r->ranges[i];
+		if (rr->nx != 0) {
+			tty_cursor(tty, rr->px, py);
+			tty_repeat_space(tty, rr->nx);
+		}
+	}
 }
 
 /* Clear a line, adjusting to visible part of pane. */
@@ -1556,7 +1565,7 @@ tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	ttyctx->bigger = tty_window_offset(&c->tty, &ttyctx->wox, &ttyctx->woy,
 	    &ttyctx->wsx, &ttyctx->wsy);
 
-	ttyctx->yoff = ttyctx->ryoff = wp->yoff;  /* xxxx find another way to do this */
+	ttyctx->yoff = ttyctx->ryoff = wp->yoff;
 	if (status_at_line(c) == 0)
 		ttyctx->yoff += status_line_size(c);
 
@@ -1584,7 +1593,7 @@ tty_draw_images(struct client *c, struct window_pane *wp, struct screen *s)
 		ttyctx.sy = wp->sy;
 
 		ttyctx.ptr = im;
-		ttyctx.arg = wp;  /* xxx remove this */
+		ttyctx.arg = wp;
 		ttyctx.set_client_cb = tty_set_client_cb;
 		ttyctx.allow_invisible_panes = 1;
 		tty_write_one(tty_cmd_sixelimage, c, &ttyctx);
@@ -2081,7 +2090,6 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 
 	if (ctx->num == 2) {
-		/* xxxx need to check visible range */
 		tty_draw_line(tty, s, 0, s->cy, screen_size_x(s),
 		    ctx->xoff - ctx->wox, py, &ctx->defaults, ctx->palette);
 		return;
@@ -2199,20 +2207,169 @@ tty_cmd_rawstring(struct tty *tty, const struct tty_ctx *ctx)
 }
 
 #ifdef ENABLE_SIXEL
+/*
+ * Render one sub-rectangle of a sixel image at tty position (dst_x, dst_y).
+ * Caller must have set tty->flags |= TTY_NOBLOCK and called tty_region_off
+ * and tty_margin_off.  After the call, tty->cx and tty->cy are UINT_MAX
+ * because the cursor position after a sixel DCS sequence is terminal-defined.
+ */
+static void
+tty_sixel_subrect(struct tty *tty, struct sixel_image *si,
+    u_int src_i, u_int src_j, u_int src_rx, u_int src_ry,
+    u_int dst_x, u_int dst_y)
+{
+	struct sixel_image	*sub;
+	char			*data;
+	size_t			 size;
+
+	if (src_rx == 0 || src_ry == 0)
+		return;
+	sub = sixel_scale(si, tty->xpixel, tty->ypixel,
+	    src_i, src_j, src_rx, src_ry, 0);
+	if (sub == NULL)
+		return;
+	data = sixel_print(sub, si, &size);
+	sixel_free(sub);
+	if (data == NULL)
+		return;
+	tty_cursor(tty, dst_x, dst_y);
+	tty_add(tty, data, size);
+	tty->cx = tty->cy = UINT_MAX;
+	free(data);
+}
+
+/*
+ * Render the clamped region of sixel image si, split into sub-rectangles
+ * that avoid cells obscured by floating panes above this one.
+ *
+ * Row breakpoints are computed from each floating pane's top/bottom border
+ * row.  Between breakpoints the visible column ranges are constant, so each
+ * strip is rendered with one set of sub-rectangles.  When no floating panes
+ * overlap the sixel the loop produces a single strip and one sub-rect equal
+ * to the full clamped rectangle.
+ *
+ * i, j  : source cell offset (top-left of visible portion after viewport clip)
+ * rx, ry: rendered size in cells
+ * x, y  : tty destination position
+ */
+static void
+tty_sixelimage_draw(struct tty *tty, const struct tty_ctx *ctx,
+    struct sixel_image *si, u_int i, u_int j, u_int rx, u_int ry,
+    u_int x, u_int y)
+{
+	struct window_pane	*wp, *fp;
+	struct window		*w;
+	struct visible_ranges	*vr;
+	struct visible_range	*ri;
+	u_int			 sixel_wx0, sixel_wx1, sixel_y0;
+	u_int			 breaks[64], nb, b, s, tmp;
+	u_int			 strip_start, strip_end, strip_h;
+	u_int			 seg_wx0, seg_wx1, seg_w;
+	u_int			 src_i2, src_j2, dst_x2;
+	int			 fp_tb, fp_bb1, r_top, r_bot;
+
+	tty->flags |= TTY_NOBLOCK;
+	tty_region_off(tty);
+	tty_margin_off(tty);
+
+	wp = ctx->arg;
+	if (wp == NULL) {
+		/* Overlay/popup: no pane context, render the full clamped rect. */
+		tty_sixel_subrect(tty, si, i, j, rx, ry, x, y);
+		tty_invalidate(tty);
+		return;
+	}
+
+	/*
+	 * sixel_y0 is the window y-coordinate of the first rendered row.
+	 * Derived from tty_clamp_area: y = ctx->yoff + ocy + j - ctx->woy,
+	 * so y + ctx->woy = ctx->yoff + ocy + j.
+	 */
+	w = wp->window;
+	sixel_wx0 = x + ctx->wox;
+	sixel_wx1 = sixel_wx0 + rx;
+	sixel_y0  = y + ctx->woy;
+
+	nb = 0;
+	breaks[nb++] = 0;
+	breaks[nb++] = ry;
+
+	TAILQ_FOREACH(fp, &w->z_index, zentry) {
+		if (~fp->flags & PANE_FLOATING)
+			continue;
+		fp_tb  = (int)((fp->yoff > 0) ? fp->yoff - 1 : 0);
+		fp_bb1 = (int)fp->yoff + (int)fp->sy + 1;
+		r_top  = fp_tb  - (int)sixel_y0;
+		r_bot  = fp_bb1 - (int)sixel_y0;
+		if (r_top > 0 && (u_int)r_top < ry && nb < 62)
+			breaks[nb++] = (u_int)r_top;
+		if (r_bot > 0 && (u_int)r_bot < ry && nb < 62)
+			breaks[nb++] = (u_int)r_bot;
+	}
+
+	/* Sort breakpoints (insertion sort; small array). */
+	for (b = 1; b < nb; b++) {
+		tmp = breaks[b];
+		s = b;
+		while (s > 0 && breaks[s - 1] > tmp) {
+			breaks[s] = breaks[s - 1];
+			s--;
+		}
+		breaks[s] = tmp;
+	}
+
+	if (nb > 2)
+		log_debug("%s: sixel %%%u clipped around floating panes",
+		    __func__, wp->id);
+
+	for (b = 0; b + 1 < nb; b++) {
+		strip_start = breaks[b];
+		strip_end   = breaks[b + 1];
+		if (strip_end == strip_start)
+			continue;
+		strip_h = strip_end - strip_start;
+
+		vr = screen_redraw_get_visible_ranges(wp, ctx->xoff,
+		    sixel_y0 + strip_start, wp->sx, NULL);
+
+		for (s = 0; s < vr->used; s++) {
+			ri = &vr->ranges[s];
+			if (ri->nx == 0)
+				continue;
+			seg_wx0 = ri->px;
+			seg_wx1 = ri->px + ri->nx;
+			if (seg_wx0 < sixel_wx0)
+				seg_wx0 = sixel_wx0;
+			if (seg_wx1 > sixel_wx1)
+				seg_wx1 = sixel_wx1;
+			if (seg_wx1 <= seg_wx0)
+				continue;
+			seg_w  = seg_wx1 - seg_wx0;
+			src_i2 = i + (seg_wx0 - sixel_wx0);
+			src_j2 = j + strip_start;
+			dst_x2 = seg_wx0 - ctx->wox;
+			tty_sixel_subrect(tty, si, src_i2, src_j2,
+			    seg_w, strip_h, dst_x2, y + strip_start);
+		}
+	}
+
+	tty_invalidate(tty);
+}
+
 void
 tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct image		*im = ctx->ptr;
 	struct sixel_image	*si = im->data;
-	struct sixel_image	*new;
 	char			*data;
 	size_t			 size;
 	u_int			 cx = ctx->ocx, cy = ctx->ocy, sx, sy;
 	u_int			 i, j, x, y, rx, ry;
-	int			 fallback = 0;
+	int			 fallback;
 
+	fallback = 0;
 	if ((~tty->term->flags & TERM_SIXEL) &&
-            !tty_term_has(tty->term, TTYC_SXL))
+	    !tty_term_has(tty->term, TTYC_SXL))
 		fallback = 1;
 	if (tty->xpixel == 0 || tty->ypixel == 0)
 		fallback = 1;
@@ -2223,30 +2380,20 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 	log_debug("%s: clamping to %u,%u-%u,%u", __func__, i, j, rx, ry);
 
-	if (fallback == 1) {
+	if (fallback) {
 		data = xstrdup(im->fallback);
 		size = strlen(data);
-	} else {
-		new = sixel_scale(si, tty->xpixel, tty->ypixel, i, j, rx, ry, 0);
-		if (new == NULL)
-			return;
-
-		data = sixel_print(new, si, &size);
-	}
-	if (data != NULL) {
-		log_debug("%s: %zu bytes: %s", __func__, size, data);
+		tty->flags |= TTY_NOBLOCK;
 		tty_region_off(tty);
 		tty_margin_off(tty);
 		tty_cursor(tty, x, y);
-
-		tty->flags |= TTY_NOBLOCK;
 		tty_add(tty, data, size);
 		tty_invalidate(tty);
 		free(data);
+		return;
 	}
 
-	if (fallback == 0)
-		sixel_free(new);
+	tty_sixelimage_draw(tty, ctx, si, i, j, rx, ry, x, y);
 }
 #endif
 
@@ -3083,7 +3230,8 @@ tty_window_default_style(struct grid_cell *gc, struct window_pane *wp)
 void
 tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 {
-	struct options		*oo = wp->options;
+	struct window		*w = wp->window;
+	struct options		*wo = w->options;
 	struct format_tree	*ft;
 
 	memcpy(gc, &grid_default_cell, sizeof *gc);
@@ -3095,18 +3243,30 @@ tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 		ft = format_create(NULL, NULL, FORMAT_PANE|wp->id,
 		    FORMAT_NOJOBS);
 		format_defaults(ft, NULL, NULL, NULL, wp);
+
+		/* Window-level baseline. */
 		tty_window_default_style(&wp->cached_active_gc, wp);
-		tty_window_default_style(&wp->cached_gc, wp);
-		if (wp->flags & PANE_FLOATING) {
-			style_add(&wp->cached_active_gc, oo,
-			    "pane-floating-style", ft);
-			style_add(&wp->cached_gc, oo, "pane-floating-style",
-			    ft);
-		} else {
-			style_add(&wp->cached_active_gc, oo,
+		style_add(&wp->cached_active_gc, wo, "window-active-style", ft);
+		/* Floating pane window default overrides window baseline. */
+		if (wp->flags & PANE_FLOATING)
+			style_add(&wp->cached_active_gc, wo,
+			    "floating-pane-style", ft);
+		/* Per-pane override (set via new-pane -s or select-pane -P). */
+		if (options_get_only(wp->options, "window-active-style") != NULL)
+			style_add(&wp->cached_active_gc, wp->options,
 			    "window-active-style", ft);
-			style_add(&wp->cached_gc, oo, "window-style", ft);
-		}
+
+		/* Window-level baseline. */
+		tty_window_default_style(&wp->cached_gc, wp);
+		style_add(&wp->cached_gc, wo, "window-style", ft);
+		/* Floating pane window default overrides window baseline. */
+		if (wp->flags & PANE_FLOATING)
+			style_add(&wp->cached_gc, wo, "floating-pane-style", ft);
+		/* Per-pane override (set via new-pane -s or select-pane -P). */
+		if (options_get_only(wp->options, "window-style") != NULL)
+			style_add(&wp->cached_gc, wp->options,
+			    "window-style", ft);
+
 		format_free(ft);
 	}
 
