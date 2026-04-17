@@ -30,6 +30,8 @@
 
 static enum cmd_retval	cmd_new_pane_exec(struct cmd *,
 			    struct cmdq_item *);
+static int		cmd_new_pane_set_style(struct window_pane *,
+			    const char *, const char *, char **);
 
 const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
@@ -46,6 +48,18 @@ const struct cmd_entry cmd_new_pane_entry = {
 	.flags = 0,
 	.exec = cmd_new_pane_exec
 };
+
+static int
+cmd_new_pane_set_style(struct window_pane *wp, const char *name,
+    const char *value, char **cause)
+{
+	struct options_entry	*o = options_get(wp->options, name);
+	if (o == NULL)
+		return (-1);
+
+	return (options_from_string(wp->options, options_table_entry(o), name,
+	    value, 0, cause));
+}
 
 
 static enum cmd_retval

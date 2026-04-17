@@ -333,6 +333,7 @@ layout_assign(struct window_pane **wp, struct layout_cell *lc, int floating)
 		layout_make_leaf(lc, *wp);
 		if (floating) {
 			(*wp)->flags |= PANE_FLOATING;
+			(*wp)->flags |= PANE_STYLECHANGED;
 		}
 		*wp = TAILQ_NEXT(*wp, entry);
 		return;
