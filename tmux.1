@@ -4287,28 +4287,29 @@ If enabled, the server will exit when there are no attached clients.
 .It Xo Ic extended\-keys
 .Op Ic on | off | always
 .Xc
-Controls how modified keys (keys pressed together with Control, Meta, or Shift)
-are reported.
-This is the equivalent of the
-.Ic modifyOtherKeys
-.Xr xterm 1
-resource.
+Controls how tmux exposes enhanced modified-key reporting to applications.
+The selected enhanced key protocol is chosen with the
+.Ic extended\-keys\-format
+option; tmux exposes only that protocol to panes and attached clients.
+Clients that do not support the selected protocol fall back to standard key reporting.
 .Pp
 When set to
 .Ic on ,
-the program inside the pane can request one of two modes: mode 1 which changes
-the sequence for only keys which lack an existing well-known representation; or
-mode 2 which changes the sequence for all keys.
+the program inside the pane may request enhanced key reporting using the selected
+protocol.
+With
+.Ic on ,
+tmux may also enable the selected protocol on the outer terminal early enough for
+its own key bindings to work, even before the pane requests it.
 When set to
 .Ic always ,
-modes 1 and 2 can still be requested by applications, but mode 1 will be forced
-instead of the standard mode.
+tmux forces a baseline enhanced mode for panes even if the application does not
+request it: xterm and csi-u formats force xterm modifyOtherKeys mode 1, while
+kitty forces kitty keyboard disambiguation mode.
 When set to
 .Ic off ,
-this feature is disabled and only standard keys are reported.
+enhanced key reporting is disabled and only standard keys are reported.
 .Pp
-.Nm
-will always request extended keys itself if the terminal supports them.
 See also the
 .Ic extkeys
 feature for the
@@ -4319,9 +4320,9 @@ option and the
 .Ic pane_key_mode
 variable.
 .It Xo Ic extended\-keys\-format
-.Op Ic csi\-u | xterm
+.Op Ic csi\-u | xterm | kitty
 .Xc
-Selects one of the two possible formats for reporting modified keys to
+Selects the single enhanced key protocol tmux uses for reporting modified keys to
 applications.
 This is the equivalent of the
 .Ic formatOtherKeys
@@ -4335,6 +4336,11 @@ and as
 .Ql \[ha][[65;6u
 when set to
 .Ic csi\-u .
+The
+.Ic kitty
+format uses the kitty keyboard protocol.
+If a pane requests a different enhanced key protocol, the request is ignored and
+the pane keeps its current key reporting mode.
 .It Xo Ic focus\-events
 .Op Ic on | off
 .Xc
@@ -6382,7 +6388,7 @@ The following variables are available, where appropriate:
 .It Li "pane_in_mode" Ta "" Ta "Number of modes pane is in"
 .It Li "pane_index" Ta "#P" Ta "Index of pane"
 .It Li "pane_input_off" Ta "" Ta "1 if input to pane is disabled"
-.It Li "pane_key_mode" Ta "" Ta "Extended key reporting mode in this pane"
+.It Li "pane_key_mode" Ta "" Ta "Enhanced key reporting mode active for this pane"
 .It Li "pane_last" Ta "" Ta "1 if last pane"
 .It Li "pane_left" Ta "" Ta "Left of pane"
 .It Li "pane_marked" Ta "" Ta "1 if this is the marked pane"

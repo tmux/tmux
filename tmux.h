@@ -133,6 +133,8 @@ struct winlink;
 #define KEYC_META            0x00100000000000ULL
 #define KEYC_CTRL            0x00200000000000ULL
 #define KEYC_SHIFT           0x00400000000000ULL
+#define KEYC_SUPER           0x00800000000000ULL
+#define KEYC_HYPER           0x80000000000000ULL
 
 /* Key flag bits. */
 #define KEYC_LITERAL	     0x01000000000000ULL
@@ -145,9 +147,9 @@ struct winlink;
 
 /* Masks for key bits. */
 #define KEYC_MASK_TYPE       0x0000ff00000000ULL
-#define KEYC_MASK_MODIFIERS  0x00ff0000000000ULL
-#define KEYC_MASK_FLAGS      0xff000000000000ULL
-#define KEYC_MASK_KEY        0x0000ffffffffffULL
+#define KEYC_MASK_MODIFIERS  0x80f00000000000ULL
+#define KEYC_MASK_FLAGS      0x7f000000000000ULL
+#define KEYC_MASK_KEY        0x000fffffffffffULL
 
 #define KEYC_NUSER           1000
 #define KEYC_SHIFT_TYPE(t)   ((unsigned long long)(t) << 32)
@@ -394,6 +396,86 @@ enum {
 	/* Theme reporting. */
 	KEYC_REPORT_DARK_THEME,
 	KEYC_REPORT_LIGHT_THEME,
+
+	/* Extended function keys. */
+	KEYC_F13,
+	KEYC_F14,
+	KEYC_F15,
+	KEYC_F16,
+	KEYC_F17,
+	KEYC_F18,
+	KEYC_F19,
+	KEYC_F20,
+	KEYC_F21,
+	KEYC_F22,
+	KEYC_F23,
+	KEYC_F24,
+	KEYC_F25,
+	KEYC_F26,
+	KEYC_F27,
+	KEYC_F28,
+	KEYC_F29,
+	KEYC_F30,
+	KEYC_F31,
+	KEYC_F32,
+	KEYC_F33,
+	KEYC_F34,
+	KEYC_F35,
+
+	/* Special keys. */
+	KEYC_PRINT,
+	KEYC_PAUSE,
+	KEYC_MENU,
+	KEYC_CAPS_LOCK_KEY,
+	KEYC_SCROLL_LOCK,
+	KEYC_NUM_LOCK_KEY,
+
+	/* Additional keypad keys. */
+	KEYC_KP_BEGIN,
+	KEYC_KP_NUMLOCK,
+	KEYC_KP_EQUAL,
+	KEYC_KP_SEPARATOR,
+	KEYC_KP_LEFT,
+	KEYC_KP_RIGHT,
+	KEYC_KP_UP,
+	KEYC_KP_DOWN,
+	KEYC_KP_PAGE_UP,
+	KEYC_KP_PAGE_DOWN,
+	KEYC_KP_HOME,
+	KEYC_KP_END,
+	KEYC_KP_INSERT,
+	KEYC_KP_DELETE,
+
+	/* Media keys. */
+	KEYC_MEDIA_PLAY,
+	KEYC_MEDIA_PAUSE,
+	KEYC_MEDIA_PLAY_PAUSE,
+	KEYC_MEDIA_REVERSE,
+	KEYC_MEDIA_STOP,
+	KEYC_MEDIA_FAST_FORWARD,
+	KEYC_MEDIA_REWIND,
+	KEYC_MEDIA_NEXT,
+	KEYC_MEDIA_PREVIOUS,
+	KEYC_MEDIA_RECORD,
+	KEYC_VOLUME_DOWN,
+	KEYC_VOLUME_UP,
+	KEYC_VOLUME_MUTE,
+
+	/* Individual modifier keys. */
+	KEYC_LEFT_SHIFT,
+	KEYC_LEFT_CONTROL,
+	KEYC_LEFT_ALT,
+	KEYC_LEFT_SUPER,
+	KEYC_LEFT_HYPER,
+	KEYC_LEFT_META,
+	KEYC_RIGHT_SHIFT,
+	KEYC_RIGHT_CONTROL,
+	KEYC_RIGHT_ALT,
+	KEYC_RIGHT_SUPER,
+	KEYC_RIGHT_HYPER,
+	KEYC_RIGHT_META,
+	KEYC_ISO_LEVEL3_SHIFT,
+	KEYC_ISO_LEVEL5_SHIFT,
 
 	/* Mouse state. */
 	KEYC_MOUSE, /* unclassified mouse event */
@@ -684,6 +766,29 @@ enum tty_code_code {
 #define MOTION_MOUSE_MODES (MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
 #define CURSOR_MODES (MODE_CURSOR|MODE_CURSOR_BLINKING|MODE_CURSOR_VERY_VISIBLE)
 #define EXTENDED_KEY_MODES (MODE_KEYS_EXTENDED|MODE_KEYS_EXTENDED_2)
+
+enum extended_keys_format {
+	EXTENDED_KEYS_FORMAT_CSI_U,
+	EXTENDED_KEYS_FORMAT_XTERM,
+	EXTENDED_KEYS_FORMAT_KITTY
+};
+
+/* Kitty keyboard protocol progressive enhancement flags. */
+#define KITTY_KBD_DISAMBIGUATE		0x01
+#define KITTY_KBD_REPORT_EVENTS	0x02
+#define KITTY_KBD_REPORT_ALTERNATES	0x04
+#define KITTY_KBD_REPORT_ALL		0x08
+#define KITTY_KBD_REPORT_TEXT		0x10
+#define KITTY_KBD_ALL			0x1f
+/* Subset currently implemented end-to-end by tmux. */
+#define KITTY_KBD_SUPPORTED		(KITTY_KBD_DISAMBIGUATE|KITTY_KBD_REPORT_ALL)
+
+/* Kitty keyboard mode state (current and one saved push level). */
+#define KITTY_KBD_SAVED_NONE (-1)
+struct kitty_kbd {
+	int		flags;
+	int		saved_flags;
+};
 
 /* Mouse protocol constants. */
 #define MOUSE_PARAM_MAX 0xff
@@ -1021,6 +1126,9 @@ struct screen {
 
 	int				 mode;
 	int				 default_mode;
+
+	struct kitty_kbd		 kitty_kbd;
+	struct kitty_kbd		 saved_kitty_kbd;
 
 	u_int				 saved_cx;
 	u_int				 saved_cy;
@@ -1685,9 +1793,14 @@ struct tty {
 #define TTY_WINSIZEQUERY 0x1000
 #define TTY_WAITFG 0x2000
 #define TTY_WAITBG 0x4000
+#define TTY_HAVEDA_KITTY 0x8000
+#define TTY_KITTY_PUSHED 0x10000
 #define TTY_ALL_REQUEST_FLAGS \
-	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA)
+	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVEDA_KITTY)
 	int		 flags;
+	int		 kitty_enabled_flags; /* kitty protocol flags currently enabled on outer */
+	int		 kitty_saved_flags; /* kitty flags beneath tmux push */
+	int		 kitty_supported_flags; /* kitty flags outer terminal supports */
 
 	struct tty_term	*term;
 
@@ -2658,6 +2771,7 @@ void	tty_set_path(struct tty *, const char *);
 void	tty_default_attributes(struct tty *, const struct grid_cell *,
 	    struct colour_palette *, u_int, struct hyperlinks *);
 void	tty_update_mode(struct tty *, int, struct screen *);
+void	tty_update_kitty(struct tty *, struct screen *);
 const struct grid_cell *tty_check_codeset(struct tty *,
 	    const struct grid_cell *);
 struct visible_ranges *tty_check_overlay_range(struct tty *, u_int, u_int,
@@ -2748,12 +2862,15 @@ const struct utf8_data *tty_acs_double_borders(int);
 const struct utf8_data *tty_acs_heavy_borders(int);
 const struct utf8_data *tty_acs_rounded_borders(int);
 
-/* tty-keys.c */
+/* tty-keys.c and tty-kitty.c */
 void		tty_keys_build(struct tty *);
 void		tty_keys_free(struct tty *);
 int		tty_keys_next(struct tty *);
 int		tty_keys_colours(struct tty *, const char *, size_t, size_t *,
 		     int *, int *);
+int		tty_keys_kitty(struct tty *, const char *, size_t, size_t *,
+		     key_code *);
+int		tty_keys_kitty_keyboard(struct tty *, const char *, size_t, size_t *);
 
 /* arguments.c */
 void		 args_set(struct args *, u_char, struct args_value *, int);
@@ -3043,6 +3160,7 @@ void	 server_client_set_flags(struct client *, const char *);
 const char *server_client_get_flags(struct client *);
 struct client_window *server_client_get_client_window(struct client *, u_int);
 struct client_window *server_client_add_client_window(struct client *, u_int);
+struct screen *server_client_get_screen(struct client *, u_int *, u_int *);
 struct window_pane *server_client_get_pane(struct client *);
 void	 server_client_set_pane(struct client *, struct window_pane *);
 void	 server_client_remove_pane(struct window_pane *);
@@ -3127,10 +3245,12 @@ void	 input_set_buffer_size(size_t);
 void	 input_request_reply(struct client *, enum input_request_type, void *);
 void	 input_cancel_requests(struct client *);
 
-/* input-key.c */
+/* input-key.c and input-kitty.c */
 void	 input_key_build(void);
-int	 input_key_pane(struct window_pane *, key_code, struct mouse_event *);
-int	 input_key(struct screen *, struct bufferevent *, key_code);
+int	 input_key_pane(struct window_pane *, key_code, struct mouse_event *, int);
+int	 input_key(struct screen *, struct bufferevent *, key_code, int);
+int	 input_key_is_legacy_client(struct client *, key_code);
+int	 input_key_kitty(struct screen *, struct bufferevent *, key_code);
 int	 input_key_get_mouse(struct screen *, struct mouse_event *, u_int,
 	     u_int, const char **, size_t *);
 

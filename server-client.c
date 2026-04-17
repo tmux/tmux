@@ -1695,6 +1695,35 @@ out:
 		bufferevent_enable(wp->event, EV_READ);
 }
 
+/* Get the screen currently visible to a client. */
+struct screen *
+server_client_get_screen(struct client *c, u_int *cx, u_int *cy)
+{
+	struct window_pane	*wp;
+	struct screen		*s = NULL;
+	u_int			 dummyx = 0, dummyy = 0;
+
+	if (cx == NULL)
+		cx = &dummyx;
+	if (cy == NULL)
+		cy = &dummyy;
+	*cx = 0;
+	*cy = 0;
+
+	if (c == NULL || c->session == NULL)
+		return (NULL);
+	wp = server_client_get_pane(c);
+
+	if (c->overlay_draw != NULL) {
+		if (c->overlay_mode != NULL)
+			s = c->overlay_mode(c, c->overlay_data, cx, cy);
+	} else if (c->prompt_string == NULL && wp != NULL)
+		s = wp->screen;
+	else
+		s = c->status.active;
+	return (s);
+}
+
 /*
  * Update cursor position and mode settings. The scroll region and attributes
  * are cleared when idle (waiting for an event) as this is the most likely time
@@ -1710,7 +1739,7 @@ server_client_reset_state(struct client *c)
 	struct tty		*tty = &c->tty;
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp = server_client_get_pane(c), *loop;
-	struct screen		*s = NULL;
+	struct screen		*s;
 	struct options		*oo = c->session->options;
 	int			 mode = 0, cursor, flags;
 	u_int			 cx = 0, cy = 0, ox, oy, sx, sy, n;
@@ -1722,14 +1751,8 @@ server_client_reset_state(struct client *c)
 	flags = (tty->flags & TTY_BLOCK);
 	tty->flags &= ~TTY_BLOCK;
 
-	/* Get mode from overlay if any, else from screen. */
-	if (c->overlay_draw != NULL) {
-		if (c->overlay_mode != NULL)
-			s = c->overlay_mode(c, c->overlay_data, &cx, &cy);
-	} else if (c->prompt_string == NULL)
-		s = wp->screen;
-	else
-		s = c->status.active;
+	/* Get mode from the current visible screen. */
+	s = server_client_get_screen(c, &cx, &cy);
 	if (s != NULL)
 		mode = s->mode;
 	if (log_get_level() != 0) {
@@ -1795,6 +1818,9 @@ server_client_reset_state(struct client *c)
 	/* Clear bracketed paste mode if at the prompt. */
 	if (c->overlay_draw == NULL && c->prompt_string != NULL)
 		mode &= ~MODE_BRACKETPASTE;
+
+	/* Apply the outer kitty mode tmux needs for bindings and the visible pane. */
+	tty_update_kitty(tty, s);
 
 	/* Set the terminal mode and reset attributes. */
 	tty_update_mode(tty, mode, s);

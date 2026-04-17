@@ -246,7 +246,6 @@ static const struct tty_feature tty_feature_extkeys = {
 	tty_feature_extkeys_capabilities,
 	0
 };
-
 /* Terminal supports DECSLRM margins. */
 static const char *const tty_feature_margins_capabilities[] = {
 	"Enmg=\\E[?69h",
