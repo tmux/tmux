@@ -83,23 +83,13 @@ cmd_split_window_get_floating_layout_cell(struct cmdq_item *item,
 	struct layout_cell	*lc = NULL;
 	char			*cause = NULL;
 	int			 x, y;
-	u_int			 sx = w->sx / 2, sy = w->sy / 2;
+	u_int			 sx, sy;
 	static int		 last_x = 0, last_y = 0;
 
-	if (last_x == 0) {
-		x = 4;
-	} else {
-		x = (last_x += 4);
-		if (last_x > (int)w->sx)
-			x = 4;
-	}
-	if (last_y == 0) {
-		y = 2;
-	} else {
-		y = (last_y += 2);
-		if (last_y > (int)w->sy)
-			y = 2;
-	}
+	/* Default size. */
+	sx = w->sx / 2;
+	sy = w->sy / 2;
+
 	if (args_has(args, 'x')) {
 		sx = args_percentage_and_expand(args, 'x', 0, USHRT_MAX, w->sx,
 			item, &cause);
@@ -118,6 +108,8 @@ cmd_split_window_get_floating_layout_cell(struct cmdq_item *item,
 			return (NULL);
 		}
 	}
+
+	/* If a position is not defined, it defaults to cascading. */
 	if (args_has(args, 'X')) {
 		x = args_percentage_and_expand(args, 'X', 0, USHRT_MAX, w->sx,
 		    item, &cause);
@@ -126,6 +118,12 @@ cmd_split_window_get_floating_layout_cell(struct cmdq_item *item,
 			free(cause);
 			return (NULL);
 		}
+	} else if (last_x == 0)
+		x = 4;
+	else {
+		x = (last_x += 4);
+		if (last_x > (int)w->sx)
+			x = 4;
 	}
 	if (args_has(args, 'Y')) {
 		y = args_percentage_and_expand(args, 'Y', 0, USHRT_MAX, w->sy,
@@ -135,6 +133,12 @@ cmd_split_window_get_floating_layout_cell(struct cmdq_item *item,
 			free(cause);
 			return (NULL);
 		}
+	} else if (last_y == 0)
+		y = 2;
+	else {
+		y = (last_y += 2);
+		if (last_y > (int)w->sy)
+			y = 2;
 	}
 
 	/* Floating panes sit in layout cells which are not in the layout_root
