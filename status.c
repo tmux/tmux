@@ -972,6 +972,49 @@ status_prompt_space(const struct utf8_data *ud)
 	return (*ud->data == ' ');
 }
 
+static key_code
+status_prompt_keypad_key(key_code key)
+{
+	if (key & KEYC_MASK_MODIFIERS)
+		return (key);
+
+	switch (key) {
+	case KEYC_KP_SLASH:
+		return ('/');
+	case KEYC_KP_STAR:
+		return ('*');
+	case KEYC_KP_MINUS:
+		return ('-');
+	case KEYC_KP_SEVEN:
+		return ('7');
+	case KEYC_KP_EIGHT:
+		return ('8');
+	case KEYC_KP_NINE:
+		return ('9');
+	case KEYC_KP_PLUS:
+		return ('+');
+	case KEYC_KP_FOUR:
+		return ('4');
+	case KEYC_KP_FIVE:
+		return ('5');
+	case KEYC_KP_SIX:
+		return ('6');
+	case KEYC_KP_ONE:
+		return ('1');
+	case KEYC_KP_TWO:
+		return ('2');
+	case KEYC_KP_THREE:
+		return ('3');
+	case KEYC_KP_ENTER:
+		return ('\r');
+	case KEYC_KP_ZERO:
+		return ('0');
+	case KEYC_KP_PERIOD:
+		return ('.');
+	}
+	return (key);
+}
+
 /*
  * Translate key from vi to emacs. Return 0 to drop key, 1 to process the key
  * as an emacs key; return 2 to append to the buffer.
@@ -1383,6 +1426,9 @@ status_prompt_key(struct client *c, key_code key)
 	}
 	size = utf8_strlen(c->prompt_buffer);
 
+	key &= ~KEYC_MASK_FLAGS;
+	key = status_prompt_keypad_key(key);
+
 	if (c->prompt_flags & PROMPT_NUMERIC) {
 		if (key >= '0' && key <= '9')
 			goto append_key;
@@ -1392,7 +1438,6 @@ status_prompt_key(struct client *c, key_code key)
 		free(s);
 		return (1);
 	}
-	key &= ~KEYC_MASK_FLAGS;
 
 	if (c->prompt_flags & (PROMPT_SINGLE|PROMPT_QUOTENEXT)) {
 		if ((key & KEYC_MASK_KEY) == KEYC_BSPACE)
