@@ -187,7 +187,7 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 	ttyctx->orlower = s->rlower;
 	ttyctx->orupper = s->rupper;
 
-	memcpy(&ttyctx->defaults, &grid_default_cell, sizeof ttyctx->defaults);
+	ttyctx->defaults = grid_default_cell;
 	if (ctx->init_ctx_cb != NULL) {
 		ctx->init_ctx_cb(ctx, ttyctx);
 		if (ttyctx->palette != NULL) {
