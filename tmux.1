@@ -1822,10 +1822,14 @@ Append the selection to the top paste buffer and exit copy mode.
 Move the cursor back to the indentation.
 .It Xo
 .Ic begin\-selection
+.Op Fl r
 (vi: Space)
 (emacs: C\-Space)
 .Xc
 Begin selection.
+If
+.Fl r
+is given, the selection is rectangular.
 .It Xo
 .Ic bottom\-line
 (vi: L)
@@ -2490,7 +2494,7 @@ The synopsis for the
 command is:
 .Bl -tag -width Ds
 .It Xo Ic copy\-mode
-.Op Fl deHMqSu
+.Op Fl deHMqrSu
 .Op Fl s Ar src\-pane
 .Op Fl t Ar target\-pane
 .Xc
@@ -2512,6 +2516,9 @@ begins a mouse drag (only valid if bound to a mouse key binding, see
 .Fl S
 enters copy\-mode and scrolls when bound to a mouse drag event; See
 .Ic scroll\-to\-mouse .
+.Pp
+.Fl r
+starts copy mode in rectangular selection mode.
 .Pp
 .Fl s
 copies from
