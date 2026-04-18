@@ -448,6 +448,8 @@ window_copy_init(struct window_mode_entry *wme,
 	u_int				 i, cx, cy;
 
 	data = window_copy_common_init(wme);
+	if (args != NULL && args_has(args, 'r'))
+		data->rectflag = 1;
 	data->backing = window_copy_clone_screen(base, &data->screen, &cx, &cy,
 	    wme->swp != wme->wp);
 
@@ -1125,6 +1127,9 @@ window_copy_cmd_begin_selection(struct window_copy_cmd_state *cs)
 	struct client			*c = cs->c;
 	struct mouse_event		*m = cs->m;
 	struct window_copy_mode_data	*data = wme->data;
+
+	if (args_has(cs->wargs, 'r'))
+		data->rectflag = 1;
 
 	if (m != NULL) {
 		window_copy_start_drag(c, m);
@@ -2789,7 +2794,7 @@ static const struct {
 	  .f = window_copy_cmd_back_to_indentation
 	},
 	{ .command = "begin-selection",
-	  .args = { "", 0, 0, NULL },
+	  .args = { "r", 0, 0, NULL },
 	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_begin_selection
