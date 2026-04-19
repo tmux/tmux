@@ -1758,11 +1758,15 @@ server_client_reset_state(struct client *c)
 	} else if (c->overlay_draw == NULL) {
 		cursor = 0;
 		tty_window_offset(tty, &ox, &oy, &sx, &sy);
-		if (wp->xoff + s->cx >= ox && wp->xoff + s->cx <= ox + sx &&
+		if (wp->xoff + window_copy_cursor_offset(wp, s->cx,
+		    screen_size_x(s)) >= ox &&
+		    wp->xoff + window_copy_cursor_offset(wp, s->cx,
+		    screen_size_x(s)) <= ox + sx &&
 		    wp->yoff + s->cy >= oy && wp->yoff + s->cy <= oy + sy) {
 			cursor = 1;
 
-			cx = wp->xoff + s->cx - ox;
+			cx = wp->xoff + window_copy_cursor_offset(wp, s->cx,
+			    screen_size_x(s)) - ox;
 			cy = wp->yoff + s->cy - oy;
 
 			if (status_at_line(c) == 0)
