@@ -463,8 +463,10 @@ window_copy_init(struct window_mode_entry *wme,
 	data->scroll_exit = args_has(args, 'e');
 	data->hide_position = args_has(args, 'H');
 
-	if (base->hyperlinks != NULL)
+	if (base->hyperlinks != NULL) {
+		hyperlinks_free(data->screen.hyperlinks);
 		data->screen.hyperlinks = hyperlinks_copy(base->hyperlinks);
+	}
 	data->screen.cx = data->cx;
 	data->screen.cy = data->cy;
 	data->mx = data->cx;
