@@ -2626,12 +2626,9 @@ input_exit_osc(struct input_ctx *ictx)
 		input_osc_4(ictx, p);
 		break;
 	case 7:
-		if (utf8_isvalid(p)) {
-			screen_set_path(sctx->s, p);
-			if (wp != NULL) {
-				server_redraw_window_borders(wp->window);
-				server_status_window(wp->window);
-			}
+		if (screen_set_path(sctx->s, p) && wp != NULL) {
+			server_redraw_window_borders(wp->window);
+			server_status_window(wp->window);
 		}
 		break;
 	case 8:
