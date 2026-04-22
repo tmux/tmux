@@ -1305,7 +1305,14 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "#{?pane_active,#[reverse],}#{pane_index}#[default] "
-			 "\"#{pane_title}\"",
+			 "\"#{pane_title}\""
+			 "#{?#{mouse},"
+				"#[align=right]"
+				"#[range=control|8]["
+					"#{?#{window_zoomed_flag},u,z}"
+				"]#[norange]"
+				"#[range=control|9][x]#[norange]"
+			",}",
 	  .text = "Format of text in the pane status lines."
 	},
 
