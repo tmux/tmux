@@ -6807,8 +6807,7 @@ The
 .Fl u
 flag unsets a variable.
 .Fl r
-indicates the variable is to be removed from the environment before starting a
-new process.
+marks the variable to be excluded from the environment passed to a forked child process; it does not delete the variable from the tmux session.
 .Fl h
 marks the variable as hidden.
 .Tg showenv
