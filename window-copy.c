@@ -207,6 +207,13 @@ enum window_copy_cmd_clear {
 	WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 };
 
+enum window_copy_line_numbers {
+	WINDOW_COPY_LINE_NUMBERS_OFF,
+	WINDOW_COPY_LINE_NUMBERS_ABSOLUTE,
+	WINDOW_COPY_LINE_NUMBERS_RELATIVE,
+	WINDOW_COPY_LINE_NUMBERS_HYBRID,
+};
+
 struct window_copy_cmd_state {
 	struct window_mode_entry	*wme;
 	struct args			*args;
@@ -264,6 +271,7 @@ struct window_copy_mode_data {
 	int		 rectflag;	/* in rectangle copy mode? */
 	int		 scroll_exit;	/* exit on scroll to end? */
 	int		 hide_position;	/* hide position marker */
+	int		 line_numbers;
 
 	enum {
 		SEL_CHAR,		/* select one char at a time */
@@ -427,6 +435,7 @@ window_copy_common_init(struct window_mode_entry *wme)
 
 	data->jumptype = WINDOW_COPY_OFF;
 	data->jumpchar = NULL;
+	data->line_numbers = 1;
 
 	screen_init(&data->screen, screen_size_x(base), screen_size_y(base), 0);
 	screen_set_default_cursor(&data->screen, global_w_options);
@@ -4637,6 +4646,133 @@ window_copy_write_one(struct window_mode_entry *wme,
 			screen_write_cell(ctx, &gc);
 		}
 	}
+}
+
+int
+window_copy_line_numbers_active(struct window_pane *wp)
+{
+	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
+	struct window_copy_mode_data	*data;
+	int				 mode;
+
+	if (wme == NULL)
+		return (0);
+	if (wme->mode != &window_copy_mode)
+		return (0);
+	data = wme->data;
+	if (data == NULL)
+		return (0);
+	if (!data->line_numbers)
+		return (0);
+
+	mode = options_get_number(wp->window->options,
+	    "copy-mode-line-numbers");
+	return (mode != WINDOW_COPY_LINE_NUMBERS_OFF);
+}
+
+u_int
+window_copy_line_number_width(struct window_pane *wp)
+{
+	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
+	struct window_copy_mode_data	*data;
+	u_int				 lines, digits;
+
+	if (!window_copy_line_numbers_active(wp))
+		return (0);
+	data = wme->data;
+
+	lines = screen_hsize(data->backing) + screen_size_y(data->backing) + 1;
+	digits = 1;
+	while (lines >= 10) {
+		lines /= 10;
+		digits++;
+	}
+	if (digits < 3)
+		digits = 3;
+	return (digits + 1);
+}
+
+int
+window_copy_get_line_number(struct window_pane *wp, u_int py, u_int *width,
+    u_int *value, int *current)
+{
+	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
+	struct window_copy_mode_data	*data;
+	u_int				 absolute;
+	int				 mode;
+
+	if (!window_copy_line_numbers_active(wp))
+		return (0);
+	data = wme->data;
+
+	mode = options_get_number(wp->window->options,
+	    "copy-mode-line-numbers");
+	if (width != NULL)
+		*width = window_copy_line_number_width(wp);
+	*current = (py == data->cy);
+	absolute = screen_hsize(data->backing) - data->oy + py + 1;
+	if (mode == WINDOW_COPY_LINE_NUMBERS_ABSOLUTE)
+		*value = absolute;
+	else if (mode == WINDOW_COPY_LINE_NUMBERS_HYBRID && *current)
+		*value = absolute;
+	else if (py > data->cy)
+		*value = py - data->cy;
+	else
+		*value = data->cy - py;
+	return (1);
+}
+
+u_int
+window_copy_cursor_offset(struct window_pane *wp, u_int cx, u_int sx)
+{
+	u_int	width = window_copy_line_number_width(wp);
+	u_int	content;
+
+	if (width == 0)
+		return (cx);
+	if (width >= sx)
+		content = 1;
+	else
+		content = sx - width;
+	if (cx >= content)
+		return (sx - 1);
+	return (width + cx);
+}
+
+u_int
+window_copy_cursor_unoffset(struct window_pane *wp, u_int vx, u_int sx)
+{
+	u_int	width = window_copy_line_number_width(wp);
+	u_int	content;
+
+	if (width == 0)
+		return (vx);
+	if (width >= sx)
+		content = 1;
+	else
+		content = sx - width;
+	if (vx < width)
+		return (0);
+	vx -= width;
+	if (vx >= content)
+		return (content - 1);
+	return (vx);
+}
+
+void
+window_copy_set_line_numbers(struct window_pane *wp, int enabled)
+{
+	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
+	struct window_copy_mode_data	*data;
+
+	if (wme == NULL)
+		return;
+	if (wme->mode != &window_copy_mode)
+		return;
+	data = wme->data;
+	if (data == NULL)
+		return;
+	data->line_numbers = enabled;
 }
 
 int
