@@ -3323,53 +3323,63 @@ but a different format may be specified with
 .Fl F .
 .Tg newp
 .It Xo Ic new-pane
-.Op Fl bdefIPZ
+.Op Fl bdefhIkPvZ
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
-.Op Fl h Ar height
-.Op Fl k
 .Op Fl l Ar size
 .Op Fl m Ar message
+.Op Fl M Ar mode
 .Op Fl p Ar percentage
 .Op Fl R Ar inactive-border-style
 .Op Fl s Ar style
 .Op Fl S Ar active-border-style
 .Op Fl t Ar target-pane
-.Op Fl w Ar width
-.Op Fl x Ar x-position
-.Op Fl y Ar y-position
+.Op Fl x Ar width
+.Op Fl X Ar x-position
+.Op Fl y Ar length
+.Op Fl Y Ar y-position
 .Op Ar shell-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic newp
-Create a new floating pane.
-The
-.Fl w ,
-.Fl h ,
-.Fl x ,
-and
-.Fl y
-options set the width, height, and position of the pane; if not given,
-the pane is sized to half the window dimensions and offset from the
-previous floating pane.
-The
-.Fl l
-and
-.Fl p
-options set the size in lines or as a percentage.
-The
-.Fl f
-option uses the full window dimensions.
+Create a new pane.
+A
+.Ar mode
+may be specified with the
+.Fl M
+option and must be followed by one of the following special values:
+.Bl -column "XXXXX" -offset indent
+.It Sy "Value" Ta Sy "Meaning"
+.It Li "f" Ta "floating pane above the current layout"
+.It Li "t" Ta "tiled into the layout by splitting a pane"
+.El
+.Pp
+If no
+.Ar mode
+is specified,
+.Ic f
+is assumed.
+When creating a tiled pane, a target pane may be specified with
+.Fl t .
+Note that some options will only affect one
+.Ar mode .
 .Pp
 If
 .Fl d
 is given, the session does not make the new pane the current pane.
 .Fl Z
-zooms if the window is not zoomed.
-.Pp
+zooms if the window is not zoomed, or keeps it zoomed if already zoomed.
+.Fl s
+sets the style for the pane content.
+.Fl S
+sets the border style when the pane is active and
+.Fl R
+sets the border style when the pane is inactive (see
+.Sx STYLES ) .
 .Fl k
-keeps the pane open after the shell command exits and waits for a
-keypress (any non-mouse key) before closing it.
+keeps the pane open after the optional
+.Ar shell-command
+exits and waits for a keypress (any non-mouse key) before closing it.
 The message shown is controlled by the
 .Ic remain-on-exit-format
 option.
@@ -3380,7 +3390,6 @@ but also sets the
 .Ic remain-on-exit-format
 option for this pane to
 .Ar message .
-.Pp
 An empty
 .Ar shell-command
 (\[aq]\[aq]) will create a pane with no command running in it.
@@ -3390,14 +3399,50 @@ flag (if
 .Ar shell-command
 is not specified or empty)
 will create an empty pane and forward any output from stdin to it.
+For example:
+.Bd -literal -offset indent
+$ make 2>&1|tmux splitw \-dI &
+.Ed
 .Pp
-.Fl s
-sets the style for the pane content.
-.Fl S
-sets the border style when the pane is active and
-.Fl R
-sets the border style when the pane is inactive (see
-.Sx STYLES ) .
+For floating panes, the following options are availible:
+The
+.Fl x ,
+.Fl y ,
+.Fl X ,
+and
+.Fl Y
+options set the width, height, and position of the pane.
+If not given, the pane is sized to half the window dimensions and offset from
+the previous floating pane.
+These four options may be followed by '%' to specify a percentage of the
+current window dimensions.
+.Pp
+For tiled panes, the following options are availible:
+.Fl h
+does a horizontal split and
+.Fl v
+a vertical split; if neither is specified,
+.Fl v
+is assumed.
+The
+.Fl l
+option specifies the size of the new pane in lines (for vertical split) or in
+columns (for horizontal split);
+.Ar size
+may be followed by
+.Ql %
+to specify a percentage of the available space.
+The
+.Fl b
+option causes the new pane to be created to the left of or above
+.Ar target\-pane .
+The
+.Fl f
+option creates a new pane spanning the full window height (with
+.Fl h )
+or full window width (with
+.Fl v ) ,
+instead of splitting the active pane.
 .Pp
 All other options have the same meaning as for the
 .Ic new-window
@@ -3726,65 +3771,33 @@ the command behaves like
 .Ic last\-window .
 .Tg splitw
 .It Xo Ic split\-window
-.Op Fl bdfhIvPZ
-.Op Fl c Ar start\-directory
+.Op Fl bdefhIkPvZ
+.Op Fl c Ar start-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
+.Op Fl H Ar height
 .Op Fl l Ar size
-.Op Fl t Ar target\-pane
-.Op Ar shell\-command Op Ar argument ...
+.Op Fl m Ar message
+.Op Fl M Ar mode
+.Op Fl p Ar percentage
+.Op Fl R Ar inactive-border-style
+.Op Fl s Ar style
+.Op Fl S Ar active-border-style
+.Op Fl t Ar target-pane
+.Op Fl w Ar width
+.Op Fl x Ar x-position
+.Op Fl y Ar y-position
+.Op Ar shell-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic splitw
-Create a new pane by splitting
-.Ar target\-pane :
-.Fl h
-does a horizontal split and
-.Fl v
-a vertical split; if neither is specified,
-.Fl v
-is assumed.
-The
-.Fl l
-option specifies the size of the new pane in lines (for vertical split) or in
-columns (for horizontal split);
-.Ar size
-may be followed by
-.Ql %
-to specify a percentage of the available space.
-The
-.Fl b
-option causes the new pane to be created to the left of or above
-.Ar target\-pane .
-The
-.Fl f
-option creates a new pane spanning the full window height (with
-.Fl h )
-or full window width (with
-.Fl v ) ,
-instead of splitting the active pane.
-.Fl Z
-zooms if the window is not zoomed, or keeps it zoomed if already zoomed.
+Creates a new pane.
+Default behavior is to split the pane in a tiled layout.
+Shares behavior with
+.Ic new-pane .
 .Pp
-An empty
-.Ar shell\-command
-(\[aq]\[aq]) will create a pane with no command running in it.
-Output can be sent to such a pane with the
-.Ic display\-message
-command.
-The
-.Fl I
-flag (if
-.Ar shell\-command
-is not specified or empty)
-will create an empty pane and forward any output from stdin to it.
-For example:
-.Bd -literal -offset indent
-$ make 2>&1|tmux splitw \-dI &
-.Ed
-.Pp
-All other options have the same meaning as for the
-.Ic new\-window
-command.
+See
+.Ic new-pane
+for more details.
 .Tg swapp
 .It Xo Ic swap\-pane
 .Op Fl dDUZ
