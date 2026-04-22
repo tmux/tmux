@@ -63,6 +63,7 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*c = cmdq_get_client(item);
 	struct session		*s;
 	struct window_pane	*wp = target->wp, *swp;
+	int			 line_numbers;
 
 	if (args_has(args, 'q')) {
 		window_pane_reset_mode_all(wp);
@@ -85,10 +86,15 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 		swp = source->wp;
 	else
 		swp = wp;
+	line_numbers = 1;
+	if (event != NULL && KEYC_IS_MOUSE(event->key))
+		line_numbers = 0;
 	if (!window_pane_set_mode(wp, swp, &window_copy_mode, NULL, args)) {
+		window_copy_set_line_numbers(wp, line_numbers);
 		if (args_has(args, 'M'))
 			window_copy_start_drag(c, &event->m);
-	}
+	} else
+		window_copy_set_line_numbers(wp, line_numbers);
 	if (args_has(args, 'u'))
 		window_copy_pageup(wp, 0);
 	if (args_has(args, 'd'))

@@ -6163,18 +6163,22 @@ window_copy_move_mouse(struct mouse_event *m)
 	struct window_mode_entry	*wme;
 	u_int				 x, y;
 
+	struct window_copy_mode_data	*data;
+
 	wp = cmd_mouse_pane(m, NULL, NULL);
 	if (wp == NULL)
 		return;
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme == NULL)
 		return;
-	if (wme->mode != &window_copy_mode && wme->mode != &window_view_mode)
+	if (wme->mode != &window_copy_mode)
 		return;
 
 	if (cmd_mouse_at(wp, m, &x, &y, 0) != 0)
 		return;
 
+	data = wme->data;
+	x = window_copy_cursor_unoffset(wp, x, screen_size_x(&data->screen));
 	window_copy_update_cursor(wme, x, y);
 }
 
@@ -6195,7 +6199,7 @@ window_copy_start_drag(struct client *c, struct mouse_event *m)
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme == NULL)
 		return;
-	if (wme->mode != &window_copy_mode && wme->mode != &window_view_mode)
+	if (wme->mode != &window_copy_mode)
 		return;
 
 	if (cmd_mouse_at(wp, m, &x, &y, 1) != 0)
@@ -6205,6 +6209,7 @@ window_copy_start_drag(struct client *c, struct mouse_event *m)
 	c->tty.mouse_drag_release = window_copy_drag_release;
 
 	data = wme->data;
+	x = window_copy_cursor_unoffset(wp, x, screen_size_x(&data->screen));
 	yg = screen_hsize(data->backing) + y - data->oy;
 	if (x < data->selrx || x > data->endselrx || yg != data->selry)
 		data->selflag = SEL_CHAR;
@@ -6251,7 +6256,7 @@ window_copy_drag_update(struct client *c, struct mouse_event *m)
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme == NULL)
 		return;
-	if (wme->mode != &window_copy_mode && wme->mode != &window_view_mode)
+	if (wme->mode != &window_copy_mode)
 		return;
 
 	data = wme->data;
@@ -6259,6 +6264,7 @@ window_copy_drag_update(struct client *c, struct mouse_event *m)
 
 	if (cmd_mouse_at(wp, m, &x, &y, 0) != 0)
 		return;
+	x = window_copy_cursor_unoffset(wp, x, screen_size_x(&data->screen));
 	old_cx = data->cx;
 	old_cy = data->cy;
 
@@ -6292,10 +6298,12 @@ window_copy_drag_release(struct client *c, struct mouse_event *m)
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme == NULL)
 		return;
-	if (wme->mode != &window_copy_mode && wme->mode != &window_view_mode)
+	if (wme->mode != &window_copy_mode)
 		return;
 
 	data = wme->data;
+	if (window_copy_line_numbers_active(wp))
+		window_copy_drag_update(c, m);
 	evtimer_del(&data->dragtimer);
 }
 
