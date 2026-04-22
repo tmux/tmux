@@ -465,45 +465,54 @@ tty_default_features(int *feat, const char *name, u_int version)
 	"256,RGB,bpaste,clipboard,mouse,strikethrough,title"
 		{ .name = "mintty",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
-		              "ccolour,"
-		              "cstyle,"
-		              "extkeys,"
-		              "margins,"
-		              "overline,"
-		              "usstyle"
+			      "ccolour,"
+			      "cstyle,"
+			      "extkeys,"
+			      "margins,"
+			      "overline,"
+			      "usstyle"
 		},
 		{ .name = "tmux",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
-		              "ccolour,"
-		              "cstyle,"
-		              "extkeys,"
-		              "focus,"
-		              "overline,"
-		              "usstyle,"
-		              "hyperlinks"
+			      "ccolour,"
+			      "cstyle,"
+			      "extkeys,"
+			      "focus,"
+			      "overline,"
+			      "usstyle,"
+			      "hyperlinks"
 		},
 		{ .name = "rxvt-unicode",
 		  .features = "256,"
-		              "bpaste,"
-		              "ccolour,"
-		              "cstyle,"
-		              "mouse,"
-		              "title,"
-		              "ignorefkeys"
+			      "bpaste,"
+			      "ccolour,"
+			      "cstyle,"
+			      "mouse,"
+			      "title,"
+			      "ignorefkeys"
 		},
 		{ .name = "iTerm2",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
-		              "cstyle,"
-		              "extkeys,"
-		              "margins,"
-		              "usstyle,"
-		              "sync,"
-		              "osc7,hyperlinks"
+			      "cstyle,"
+			      "extkeys,"
+			      "margins,"
+			      "usstyle,"
+			      "sync,"
+			      "osc7,"
+			      "hyperlinks"
 		},
 		{ .name = "foot",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
-		              "cstyle,"
-		              "extkeys"
+			      "cstyle,"
+			      "extkeys"
+		},
+		{ .name = "WezTerm",
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
+			      "ccolour,"
+			      "cstyle,"
+			      "extkeys,"
+			      "focus,"
+			      "usstyle"
 		},
 		{ .name = "XTerm",
 		  /*
@@ -512,10 +521,10 @@ tty_default_features(int *feat, const char *name, u_int version)
 		   * secondary DA shows VT420.
 		   */
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
-		              "ccolour,"
-		              "cstyle,"
-		              "extkeys,"
-		              "focus"
+			      "ccolour,"
+			      "cstyle,"
+			      "extkeys,"
+			      "focus"
 		}
 	};
 	u_int	i;
