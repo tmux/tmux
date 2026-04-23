@@ -807,7 +807,7 @@ file_read_cancel(struct client_files *files, struct imsg *imsg)
 }
 
 /* Handle a write ready message (server). */
-void
+int
 file_write_ready(struct client_files *files, struct imsg *imsg)
 {
 	struct msg_write_ready	*msg = imsg->data;
@@ -815,19 +815,20 @@ file_write_ready(struct client_files *files, struct imsg *imsg)
 	struct client_file	 find, *cf;
 
 	if (msglen != sizeof *msg)
-		fatalx("bad MSG_WRITE_READY size");
+		return (-1);
 	find.stream = msg->stream;
 	if ((cf = RB_FIND(client_files, files, &find)) == NULL)
-		return;
+		return (0);
 	if (msg->error != 0) {
 		cf->error = msg->error;
 		file_fire_done(cf);
 	} else
 		file_push(cf);
+	return (0);
 }
 
 /* Handle read data message (server). */
-void
+int
 file_read_data(struct client_files *files, struct imsg *imsg)
 {
 	struct msg_read_data	*msg = imsg->data;
@@ -837,10 +838,10 @@ file_read_data(struct client_files *files, struct imsg *imsg)
 	size_t			 bsize = msglen - sizeof *msg;
 
 	if (msglen < sizeof *msg)
-		fatalx("bad MSG_READ_DATA size");
+		return (-1);
 	find.stream = msg->stream;
 	if ((cf = RB_FIND(client_files, files, &find)) == NULL)
-		return;
+		return (0);
 
 	log_debug("file %d read %zu bytes", cf->stream, bsize);
 	if (cf->error == 0 && !cf->closed) {
@@ -850,10 +851,11 @@ file_read_data(struct client_files *files, struct imsg *imsg)
 		} else
 			file_fire_read(cf);
 	}
+	return (0);
 }
 
 /* Handle a read done message (server). */
-void
+int
 file_read_done(struct client_files *files, struct imsg *imsg)
 {
 	struct msg_read_done	*msg = imsg->data;
@@ -861,12 +863,13 @@ file_read_done(struct client_files *files, struct imsg *imsg)
 	struct client_file	 find, *cf;
 
 	if (msglen != sizeof *msg)
-		fatalx("bad MSG_READ_DONE size");
+		return (-1);
 	find.stream = msg->stream;
 	if ((cf = RB_FIND(client_files, files, &find)) == NULL)
-		return;
+		return (0);
 
 	log_debug("file %d read done", cf->stream);
 	cf->error = msg->error;
 	file_fire_done(cf);
+	return (0);
 }
