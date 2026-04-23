@@ -5032,8 +5032,26 @@ window_copy_update_cursor(struct window_mode_entry *wme, u_int cx, u_int cy)
 
 	old_cx = data->cx; old_cy = data->cy;
 	data->cx = cx; data->cy = cy;
-	if (window_copy_line_number_width(wp) != 0) {
-		window_copy_redraw_screen(wme);
+	if (window_copy_line_numbers_active(wp)) {
+		u_int width = window_copy_line_number_width(wp);
+		u_int content_sx;
+
+		if (s->sel != NULL || data->lineflag != LINE_SEL_NONE ||
+		    old_cy != data->cy) {
+			window_copy_redraw_screen(wme);
+			return;
+		}
+		if (width >= screen_size_x(s))
+			content_sx = 1;
+		else
+			content_sx = screen_size_x(s) - width;
+		if (old_cx >= content_sx || data->cx >= content_sx) {
+			window_copy_redraw_screen(wme);
+			return;
+		}
+		screen_write_start_pane(&ctx, wp, NULL);
+		screen_write_cursormove(&ctx, data->cx, data->cy, 0);
+		screen_write_stop(&ctx);
 		return;
 	}
 	if (old_cx == screen_size_x(s))
@@ -6080,8 +6098,21 @@ window_copy_scroll_up(struct window_mode_entry *wme, u_int ny)
 	if (data->searchmark != NULL && !data->timeout)
 		window_copy_search_marks(wme, NULL, data->searchregex, 1);
 	window_copy_update_selection(wme, 0, 0);
-	if (window_copy_line_number_width(wp) != 0) {
-		window_copy_redraw_screen(wme);
+	if (window_copy_line_numbers_active(wp)) {
+		screen_write_start(&ctx, &data->screen);
+		screen_write_cursormove(&ctx, 0, 0, 0);
+		screen_write_deleteline(&ctx, ny, 8);
+		window_copy_write_lines(wme, &ctx, screen_size_y(s) - ny, ny);
+		window_copy_write_line(wme, &ctx, 0);
+		if (screen_size_y(s) > 1)
+			window_copy_write_line(wme, &ctx, 1);
+		if (screen_size_y(s) > 3)
+			window_copy_write_line(wme, &ctx, screen_size_y(s) - 2);
+		if (s->sel != NULL && screen_size_y(s) > ny)
+			window_copy_write_line(wme, &ctx, screen_size_y(s) - ny - 1);
+		screen_write_cursormove(&ctx, data->cx, data->cy, 0);
+		screen_write_stop(&ctx);
+		wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR);
 		return;
 	}
 
@@ -6121,8 +6152,18 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 	if (data->searchmark != NULL && !data->timeout)
 		window_copy_search_marks(wme, NULL, data->searchregex, 1);
 	window_copy_update_selection(wme, 0, 0);
-	if (window_copy_line_number_width(wp) != 0) {
-		window_copy_redraw_screen(wme);
+	if (window_copy_line_numbers_active(wp)) {
+		screen_write_start(&ctx, &data->screen);
+		screen_write_cursormove(&ctx, 0, 0, 0);
+		screen_write_insertline(&ctx, ny, 8);
+		window_copy_write_lines(wme, &ctx, 0, ny);
+		if (s->sel != NULL && screen_size_y(s) > ny)
+			window_copy_write_line(wme, &ctx, ny);
+		else if (ny == 1)
+			window_copy_write_line(wme, &ctx, 1);
+		screen_write_cursormove(&ctx, data->cx, data->cy, 0);
+		screen_write_stop(&ctx);
+		wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR);
 		return;
 	}
 
