@@ -931,7 +931,8 @@ tty_window_bigger(struct tty *tty)
 	struct client	*c = tty->client;
 	struct window	*w = c->session->curw->window;
 
-	return (tty->sx < w->sx || tty->sy - status_line_size(c) < w->sy);
+	return (tty->sx - status_column_size(c) < w->sx ||
+	    tty->sy - status_line_size(c) < w->sy);
 }
 
 /* What offset should this window be drawn at? */
@@ -955,9 +956,12 @@ tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 	struct window_pane	*wp = server_client_get_pane(c);
 	u_int			 cx, cy, lines;
 
-	lines = status_line_size(c);
+	u_int	cols;
 
-	if (tty->sx >= w->sx && tty->sy - lines >= w->sy) {
+	lines = status_line_size(c);
+	cols = status_column_size(c);
+
+	if (tty->sx - cols >= w->sx && tty->sy - lines >= w->sy) {
 		*ox = 0;
 		*oy = 0;
 		*sx = w->sx;
@@ -967,7 +971,7 @@ tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 		return (0);
 	}
 
-	*sx = tty->sx;
+	*sx = tty->sx - cols;
 	*sy = tty->sy - lines;
 
 	if (c->pan_window == w) {
@@ -1483,9 +1487,12 @@ tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	ttyctx->bigger = tty_window_offset(&c->tty, &ttyctx->wox, &ttyctx->woy,
 	    &ttyctx->wsx, &ttyctx->wsy);
 
+	ttyctx->xoff = ttyctx->rxoff = wp->xoff;
 	ttyctx->yoff = ttyctx->ryoff = wp->yoff;
 	if (status_at_line(c) == 0)
 		ttyctx->yoff += status_line_size(c);
+	if (status_at_column(c) == 0)
+		ttyctx->xoff += status_column_size(c);
 
 	return (1);
 }
