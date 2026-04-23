@@ -52,6 +52,10 @@ static void	window_copy_redraw_lines(struct window_mode_entry *, u_int,
 		    u_int);
 static void	window_copy_redraw_screen(struct window_mode_entry *);
 static void	window_copy_style_changed(struct window_mode_entry *);
+static int	window_copy_line_numbers_active(struct window_pane *);
+static u_int	window_copy_line_number_width(struct window_pane *);
+static u_int	window_copy_cursor_offset(struct window_pane *, u_int, u_int);
+static u_int	window_copy_cursor_unoffset(struct window_pane *, u_int, u_int);
 static void	window_copy_write_line(struct window_mode_entry *,
 		    struct screen_write_ctx *, u_int);
 static void	window_copy_write_lines(struct window_mode_entry *,
@@ -476,7 +480,8 @@ window_copy_init(struct window_mode_entry *wme,
 		hyperlinks_free(data->screen.hyperlinks);
 		data->screen.hyperlinks = hyperlinks_copy(base->hyperlinks);
 	}
-	data->screen.cx = data->cx;
+	data->screen.cx = window_copy_cursor_offset(wp, data->cx,
+	    screen_size_x(&data->screen));
 	data->screen.cy = data->cy;
 	data->mx = data->cx;
 	data->my = screen_hsize(data->backing) + data->cy - data->oy;
@@ -485,7 +490,9 @@ window_copy_init(struct window_mode_entry *wme,
 	screen_write_start(&ctx, &data->screen);
 	for (i = 0; i < screen_size_y(&data->screen); i++)
 		window_copy_write_line(wme, &ctx, i);
-	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
+	screen_write_cursormove(&ctx,
+	    window_copy_cursor_offset(wp, data->cx, screen_size_x(&data->screen)),
+	    data->cy, 0);
 	screen_write_stop(&ctx);
 
 	return (&data->screen);
@@ -4628,7 +4635,7 @@ window_copy_update_style(struct window_mode_entry *wme, u_int fx, u_int fy,
 
 static void
 window_copy_write_one(struct window_mode_entry *wme,
-    struct screen_write_ctx *ctx, u_int py, u_int fy, u_int nx,
+    struct screen_write_ctx *ctx, u_int px, u_int py, u_int fy, u_int nx,
     const struct grid_cell *mgc, const struct grid_cell *cgc,
     const struct grid_cell *mkgc)
 {
@@ -4637,7 +4644,7 @@ window_copy_write_one(struct window_mode_entry *wme,
 	struct grid_cell		 gc;
 	u_int		 		 fx;
 
-	screen_write_cursormove(ctx, 0, py, 0);
+	screen_write_cursormove(ctx, px, py, 0);
 	for (fx = 0; fx < nx; fx++) {
 		grid_get_cell(gd, fx, fy, &gc);
 		if (fx + gc.data.width <= nx) {
@@ -4648,7 +4655,7 @@ window_copy_write_one(struct window_mode_entry *wme,
 	}
 }
 
-int
+static int
 window_copy_line_numbers_active(struct window_pane *wp)
 {
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
@@ -4670,7 +4677,7 @@ window_copy_line_numbers_active(struct window_pane *wp)
 	return (mode != WINDOW_COPY_LINE_NUMBERS_OFF);
 }
 
-u_int
+static u_int
 window_copy_line_number_width(struct window_pane *wp)
 {
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
@@ -4692,37 +4699,7 @@ window_copy_line_number_width(struct window_pane *wp)
 	return (digits + 1);
 }
 
-int
-window_copy_get_line_number(struct window_pane *wp, u_int py, u_int *width,
-    u_int *value, int *current)
-{
-	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
-	struct window_copy_mode_data	*data;
-	u_int				 absolute;
-	int				 mode;
-
-	if (!window_copy_line_numbers_active(wp))
-		return (0);
-	data = wme->data;
-
-	mode = options_get_number(wp->window->options,
-	    "copy-mode-line-numbers");
-	if (width != NULL)
-		*width = window_copy_line_number_width(wp);
-	*current = (py == data->cy);
-	absolute = screen_hsize(data->backing) - data->oy + py + 1;
-	if (mode == WINDOW_COPY_LINE_NUMBERS_ABSOLUTE)
-		*value = absolute;
-	else if (mode == WINDOW_COPY_LINE_NUMBERS_HYBRID && *current)
-		*value = absolute;
-	else if (py > data->cy)
-		*value = py - data->cy;
-	else
-		*value = data->cy - py;
-	return (1);
-}
-
-u_int
+static u_int
 window_copy_cursor_offset(struct window_pane *wp, u_int cx, u_int sx)
 {
 	u_int	width = window_copy_line_number_width(wp);
@@ -4739,7 +4716,7 @@ window_copy_cursor_offset(struct window_pane *wp, u_int cx, u_int sx)
 	return (width + cx);
 }
 
-u_int
+static u_int
 window_copy_cursor_unoffset(struct window_pane *wp, u_int vx, u_int sx)
 {
 	u_int	width = window_copy_line_number_width(wp);
@@ -4800,14 +4777,15 @@ window_copy_write_line(struct window_mode_entry *wme,
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*s = &data->screen;
 	struct options			*oo = wp->window->options;
-	struct grid_cell		 gc, mgc, cgc, mkgc;
+	struct grid_cell		 gc, mgc, cgc, mkgc, ln_gc, cur_ln_gc;
 	u_int				 sx = screen_size_x(s);
 	u_int				 hsize = screen_hsize(data->backing);
 	u_int				 width = window_copy_line_number_width(wp);
-	u_int				 content_sx;
+	u_int				 absolute, line_number, content_sx;
 	const char			*value;
 	char				*expanded;
 	struct format_tree		*ft;
+	int				 current, mode;
 
 	if (width >= sx)
 		content_sx = 1;
@@ -4826,16 +4804,37 @@ window_copy_write_line(struct window_mode_entry *wme,
 	cgc.flags |= GRID_FLAG_NOPALETTE;
 	style_apply(&mkgc, oo, "copy-mode-mark-style", ft);
 	mkgc.flags |= GRID_FLAG_NOPALETTE;
+	if (width != 0) {
+		style_apply(&ln_gc, oo, "copy-mode-line-number-style", ft);
+		ln_gc.flags |= GRID_FLAG_NOPALETTE;
+		style_apply(&cur_ln_gc, oo,
+		    "copy-mode-current-line-number-style", ft);
+		cur_ln_gc.flags |= GRID_FLAG_NOPALETTE;
+		current = (py == data->cy);
+		absolute = hsize - data->oy + py + 1;
+		mode = options_get_number(oo, "copy-mode-line-numbers");
+		if (mode == WINDOW_COPY_LINE_NUMBERS_ABSOLUTE)
+			line_number = absolute;
+		else if (mode == WINDOW_COPY_LINE_NUMBERS_HYBRID && current)
+			line_number = absolute;
+		else if (py > data->cy)
+			line_number = py - data->cy;
+		else
+			line_number = data->cy - py;
+		screen_write_cursormove(ctx, 0, py, 0);
+		screen_write_nputs(ctx, width, current ? &cur_ln_gc : &ln_gc,
+		    "%*u ", (int)width - 1, line_number);
+	}
 
-	window_copy_write_one(wme, ctx, py, hsize - data->oy + py,
-	    screen_size_x(s), &mgc, &cgc, &mkgc);
+	window_copy_write_one(wme, ctx, width, py, hsize - data->oy + py,
+	    content_sx, &mgc, &cgc, &mkgc);
 
 	if (py == 0 && s->rupper < s->rlower && !data->hide_position) {
 		value = options_get_string(oo, "copy-mode-position-format");
 		if (*value != '\0') {
 			expanded = format_expand(ft, value);
 			if (*expanded != '\0') {
-				screen_write_cursormove(ctx, 0, 0, 0);
+				screen_write_cursormove(ctx, width, 0, 0);
 				format_draw(ctx, &gc, content_sx, expanded, NULL, 0);
 			}
 			free(expanded);
@@ -4843,7 +4842,8 @@ window_copy_write_line(struct window_mode_entry *wme,
 	}
 
 	if (py == data->cy && data->cx >= content_sx) {
-		screen_write_cursormove(ctx, content_sx - 1, py, 0);
+		screen_write_cursormove(ctx,
+		    window_copy_cursor_offset(wp, data->cx, screen_size_x(s)), py, 0);
 		screen_write_putc(ctx, &grid_default_cell, '$');
 	}
 
@@ -4893,6 +4893,7 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 {
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
+	struct screen			*s = &data->screen;
 	struct screen_write_ctx 	 ctx;
 	u_int				 i;
 
@@ -4900,7 +4901,9 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 		screen_write_start(&ctx, &data->screen);
 		for (i = py; i < py + ny; i++)
 			window_copy_write_line(wme, &ctx, i);
-		screen_write_cursormove(&ctx, data->cx, data->cy, 0);
+		screen_write_cursormove(&ctx,
+		    window_copy_cursor_offset(wp, data->cx, screen_size_x(s)),
+		    data->cy, 0);
 		screen_write_stop(&ctx);
 		wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR);
 		return;
@@ -4909,7 +4912,9 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 	screen_write_start_pane(&ctx, wp, NULL);
 	for (i = py; i < py + ny; i++)
 		window_copy_write_line(wme, &ctx, i);
-	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
+	screen_write_cursormove(&ctx,
+	    window_copy_cursor_offset(wp, data->cx, screen_size_x(s)), data->cy,
+	    0);
 	screen_write_stop(&ctx);
 
 	wp->flags |= PANE_REDRAWSCROLLBAR;
@@ -5050,7 +5055,9 @@ window_copy_update_cursor(struct window_mode_entry *wme, u_int cx, u_int cy)
 			return;
 		}
 		screen_write_start_pane(&ctx, wp, NULL);
-		screen_write_cursormove(&ctx, data->cx, data->cy, 0);
+		screen_write_cursormove(&ctx,
+		    window_copy_cursor_offset(wp, data->cx, screen_size_x(s)),
+		    data->cy, 0);
 		screen_write_stop(&ctx);
 		return;
 	}
@@ -5060,7 +5067,9 @@ window_copy_update_cursor(struct window_mode_entry *wme, u_int cx, u_int cy)
 		window_copy_redraw_lines(wme, data->cy, 1);
 	else {
 		screen_write_start_pane(&ctx, wp, NULL);
-		screen_write_cursormove(&ctx, data->cx, data->cy, 0);
+		screen_write_cursormove(&ctx,
+		    window_copy_cursor_offset(wp, data->cx, screen_size_x(s)),
+		    data->cy, 0);
 		screen_write_stop(&ctx);
 	}
 }
@@ -5163,6 +5172,10 @@ window_copy_set_selection(struct window_mode_entry *wme, int may_redraw,
 	style_apply(&gc, oo, "copy-mode-selection-style", ft);
 	gc.flags |= GRID_FLAG_NOPALETTE;
 	format_free(ft);
+	if (window_copy_line_numbers_active(wp)) {
+		sx = window_copy_cursor_offset(wp, sx, screen_size_x(s));
+		endsx = window_copy_cursor_offset(wp, endsx, screen_size_x(s));
+	}
 	screen_set_selection(s, sx, sy, endsx, endsy, data->rectflag,
 	    data->modekeys, &gc);
 
@@ -6118,7 +6131,9 @@ window_copy_scroll_up(struct window_mode_entry *wme, u_int ny)
 			window_copy_write_line(wme, &ctx, screen_size_y(s) - 2);
 		if (s->sel != NULL && screen_size_y(s) > ny)
 			window_copy_write_line(wme, &ctx, screen_size_y(s) - ny - 1);
-		screen_write_cursormove(&ctx, data->cx, data->cy, 0);
+		screen_write_cursormove(&ctx,
+		    window_copy_cursor_offset(wp, data->cx, screen_size_x(s)),
+		    data->cy, 0);
 		screen_write_stop(&ctx);
 		wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR);
 		return;
@@ -6135,7 +6150,9 @@ window_copy_scroll_up(struct window_mode_entry *wme, u_int ny)
 		window_copy_write_line(wme, &ctx, screen_size_y(s) - 2);
 	if (s->sel != NULL && screen_size_y(s) > ny)
 		window_copy_write_line(wme, &ctx, screen_size_y(s) - ny - 1);
-	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
+	screen_write_cursormove(&ctx,
+	    window_copy_cursor_offset(wp, data->cx, screen_size_x(s)), data->cy,
+	    0);
 	screen_write_stop(&ctx);
 	wp->flags |= PANE_REDRAWSCROLLBAR;
 }
@@ -6169,7 +6186,9 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 			window_copy_write_line(wme, &ctx, ny);
 		else if (ny == 1)
 			window_copy_write_line(wme, &ctx, 1);
-		screen_write_cursormove(&ctx, data->cx, data->cy, 0);
+		screen_write_cursormove(&ctx,
+		    window_copy_cursor_offset(wp, data->cx, screen_size_x(s)),
+		    data->cy, 0);
 		screen_write_stop(&ctx);
 		wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR);
 		return;
@@ -6183,7 +6202,9 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 		window_copy_write_line(wme, &ctx, ny);
 	else if (ny == 1) /* nuke position */
 		window_copy_write_line(wme, &ctx, 1);
-	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
+	screen_write_cursormove(&ctx,
+	    window_copy_cursor_offset(wp, data->cx, screen_size_x(s)), data->cy,
+	    0);
 	screen_write_stop(&ctx);
 	wp->flags |= PANE_REDRAWSCROLLBAR;
 }

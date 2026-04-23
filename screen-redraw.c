@@ -947,33 +947,18 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	struct tty		*tty = &c->tty;
 	struct screen		*s = wp->screen;
 	struct colour_palette	*palette = &wp->palette;
-	struct grid_cell	 defaults, ln_gc, cur_ln_gc;
+	struct grid_cell	 defaults;
 	struct visible_ranges	*r;
 	struct visible_range	*rr;
-	struct format_tree	*ft = NULL;
 	u_int			 i, j, k, top, x, y, width;
-	u_int			 gutter = window_copy_line_number_width(wp);
-	char			 buf[64];
-	int			 have_gutter = 0;
 
 	if (wp->base.mode & MODE_SYNC)
 		screen_write_stop_sync(wp);
 
 	log_debug("%s: %s @%u %%%u", __func__, c->name, w->id, wp->id);
 
-	if (gutter != 0) {
-		ft = format_create_defaults(NULL, c, c->session, c->session->curw,
-		    wp);
-		style_apply(&ln_gc, w->options, "copy-mode-line-number-style", ft);
-		ln_gc.flags |= GRID_FLAG_NOPALETTE;
-		style_apply(&cur_ln_gc, w->options,
-		    "copy-mode-current-line-number-style", ft);
-		cur_ln_gc.flags |= GRID_FLAG_NOPALETTE;
-		have_gutter = 1;
-	}
-
 	if (wp->xoff + wp->sx <= ctx->ox || wp->xoff >= ctx->ox + ctx->sx)
-		goto out;
+		return;
 	if (ctx->statustop)
 		top = ctx->statuslines;
 	else
@@ -985,19 +970,23 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 
 		if (wp->xoff >= ctx->ox &&
 		    wp->xoff + wp->sx <= ctx->ox + ctx->sx) {
+			/* All visible. */
 			i = 0;
 			x = wp->xoff - ctx->ox;
 			width = wp->sx;
 		} else if (wp->xoff < ctx->ox &&
 		    wp->xoff + wp->sx > ctx->ox + ctx->sx) {
+			/* Both left and right not visible. */
 			i = ctx->ox;
 			x = 0;
 			width = ctx->sx;
 		} else if (wp->xoff < ctx->ox) {
+			/* Left not visible. */
 			i = ctx->ox - wp->xoff;
 			x = 0;
 			width = wp->sx - i;
 		} else {
+			/* Right not visible. */
 			i = 0;
 			x = wp->xoff - ctx->ox;
 			width = ctx->sx - x;
@@ -1006,63 +995,16 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		    __func__, c->name, wp->id, i, j, x, y, width);
 
 		tty_default_colours(&defaults, wp);
+
 		r = tty_check_overlay_range(tty, x, y, width);
 		for (k = 0; k < r->used; k++) {
 			rr = &r->ranges[k];
-			if (rr->nx == 0)
-				continue;
-			if (!have_gutter) {
-				tty_draw_line(tty, s, rr->px - wp->xoff, j, rr->nx,
-				    rr->px, y, &defaults, palette);
-				continue;
-			}
-
-			{
-				u_int pane_start = rr->px - wp->xoff;
-				u_int pane_end = pane_start + rr->nx;
-				u_int draw_width, line_value;
-				u_int gutter_start, gutter_end, content_start;
-				int current;
-				const struct grid_cell *gc;
-
-				if (window_copy_get_line_number(wp, j, NULL,
-				    &line_value, &current)) {
-					xsnprintf(buf, sizeof buf, "%*u ", (int)gutter - 1,
-					    line_value);
-					gc = current ? &cur_ln_gc : &ln_gc;
-					gutter_start = pane_start;
-					if (gutter_start > gutter)
-						gutter_start = gutter;
-					gutter_end = pane_end;
-					if (gutter_end > gutter)
-						gutter_end = gutter;
-					if (gutter_start < gutter_end) {
-						draw_width = gutter_end - gutter_start;
-						tty_attributes(tty, gc, &defaults, palette,
-						    s->hyperlinks);
-						tty_cursor(tty, rr->px, y);
-						tty_putn(tty, buf + gutter_start, draw_width,
-						    draw_width);
-					}
-				}
-
-				content_start = pane_start;
-				if (content_start < gutter)
-					content_start = gutter;
-				if (content_start < pane_end) {
-					draw_width = pane_end - content_start;
-					tty_draw_line(tty, s, content_start - gutter, j,
-					    draw_width,
-					    rr->px + (content_start - pane_start), y,
-					    &defaults, palette);
-				}
+			if (rr->nx != 0) {
+				tty_draw_line(tty, s, rr->px - wp->xoff, j,
+				    rr->nx, rr->px, y, &defaults, palette);
 			}
 		}
 	}
-
-out:
-	if (ft != NULL)
-		format_free(ft);
 
 #ifdef ENABLE_SIXEL
 	tty_draw_images(c, wp, s);
