@@ -41,6 +41,7 @@ static void	server_client_check_redraw(struct client *);
 static void	server_client_check_modes(struct client *);
 static void	server_client_set_title(struct client *);
 static void	server_client_set_path(struct client *);
+static void	server_client_set_progress_bar(struct client *);
 static void	server_client_reset_state(struct client *);
 static void	server_client_update_latest(struct client *);
 static void	server_client_dispatch(struct imsg *, void *);
@@ -2056,6 +2057,7 @@ server_client_check_redraw(struct client *c)
 			server_client_set_title(c);
 			server_client_set_path(c);
 		}
+		server_client_set_progress_bar(c);
 		screen_redraw_screen(c);
 	}
 
@@ -2120,6 +2122,23 @@ server_client_set_path(struct client *c)
 		c->path = xstrdup(path);
 		tty_set_path(&c->tty, c->path);
 	}
+}
+
+/* Set client progress bar. */
+static void
+server_client_set_progress_bar(struct client *c)
+{
+	struct session		*s = c->session;
+	struct progress_bar	*pane_pb;
+
+	if (s->curw == NULL)
+		return;
+	pane_pb = &s->curw->window->active->base.progress_bar;
+	if (pane_pb->state == c->progress_bar.state &&
+	    pane_pb->progress == c->progress_bar.progress)
+		return;
+	memcpy(&c->progress_bar, pane_pb, sizeof c->progress_bar);
+	tty_set_progress_bar(&c->tty, &c->progress_bar);
 }
 
 /* Dispatch message from client. */

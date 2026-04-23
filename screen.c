@@ -245,19 +245,28 @@ screen_set_cursor_colour(struct screen *s, int colour)
 int
 screen_set_title(struct screen *s, const char *title)
 {
-	if (!utf8_isvalid(title))
+	char	*new_title;
+
+	new_title = clean_name(title, "#");
+	if (new_title == NULL)
 		return (0);
 	free(s->title);
-	s->title = xstrdup(title);
+	s->title = new_title;
 	return (1);
 }
 
 /* Set screen path. */
-void
+int
 screen_set_path(struct screen *s, const char *path)
 {
+	char	*new_path;
+
+	new_path = clean_name(path, "#");
+	if (new_path == NULL)
+		return (0);
 	free(s->path);
-	utf8_stravis(&s->path, path, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
+	s->path = new_path;
+	return (1);
 }
 
 /* Push the current title onto the stack. */

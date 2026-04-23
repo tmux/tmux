@@ -4489,6 +4489,8 @@ mouse sequences.
 Supports the OSC 7 working directory extension.
 .It overline
 Supports the overline SGR attribute.
+.It progressbar
+Supports the OSC 9;4 progress bar extension.
 .It rectfill
 Supports the DECFRA rectangle fill escape sequence.
 .It RGB
@@ -7267,7 +7269,6 @@ Display a popup running
 when omitted) on
 .Ar target\-client .
 A popup is a rectangular box drawn over the top of any panes.
-Panes are not updated while a popup is present.
 If the command is run inside an existing popup, that popup is modified.
 Only the
 .Fl b ,
@@ -7855,6 +7856,8 @@ $ printf \[aq]\e033[4 q\[aq]
 If
 .Em Se
 is not set, \&Ss with argument 0 will be used to reset the cursor style instead.
+.It Em \&Spb
+Set the state and progress for the OSC9;4 progress bar.
 .It Em \&Swd
 Set the opening sequence for the working directory notification.
 The sequence is terminated using the standard
