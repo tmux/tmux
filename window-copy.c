@@ -5320,12 +5320,20 @@ window_copy_copy_buffer(struct window_mode_entry *wme, const char *prefix,
 {
 	struct window_pane	*wp = wme->wp;
 	struct screen_write_ctx	 ctx;
+	int			 redraw = 0;
 
 	if (set_clip &&
 	    options_get_number(global_options, "set-clipboard") != 0) {
+		if (window_copy_line_numbers_active(wp) &&
+		    (wp->flags & PANE_REDRAW)) {
+			/* Clear PANE_REDRAW so clipboard write is not skipped. */
+			redraw = PANE_REDRAW;
+			wp->flags &= ~PANE_REDRAW;
+		}
 		screen_write_start_pane(&ctx, wp, NULL);
 		screen_write_setselection(&ctx, "", buf, len);
 		screen_write_stop(&ctx);
+		wp->flags |= redraw;
 		notify_pane("pane-set-clipboard", wp);
 	}
 
