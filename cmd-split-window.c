@@ -43,7 +43,7 @@ const struct cmd_entry cmd_new_pane_entry = {
 		 "[-F format] [-l size] [-m message] [-M mode] "
 		 "[-R inactive-border-style] [-s style] "
 		 "[-S active-border-style] [-x width] [-X x-position]"
-		 "[-y length] [-Y y-position]" CMD_TARGET_PANE_USAGE
+		 "[-y height] [-Y y-position]" CMD_TARGET_PANE_USAGE
 		 "[shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -61,7 +61,7 @@ const struct cmd_entry cmd_split_window_entry = {
 		 "[-F format] [-l size] [-m message] [-M mode] "
 		 "[-R inactive-border-style] [-s style] "
 		 "[-S active-border-style] [-x width] [-X x-position]"
-		 "[-y length] [-Y y-position]" CMD_TARGET_PANE_USAGE
+		 "[-y height] [-Y y-position]" CMD_TARGET_PANE_USAGE
 		 "[shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
