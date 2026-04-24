@@ -1387,6 +1387,9 @@ struct window {
 	u_int			 new_xpixel;
 	u_int			 new_ypixel;
 
+	u_int			 last_new_pane_x;
+	u_int			 last_new_pane_y;
+
 	struct utf8_data	*fill_character;
 	int			 flags;
 #define WINDOW_BELL 0x1
@@ -3437,6 +3440,12 @@ void		 window_pane_move(struct window_pane *, int, int);
 int		 window_pane_set_mode(struct window_pane *,
 		     struct window_pane *, const struct window_mode *,
 		     struct cmd_find_state *, struct args *);
+int		 window_pane_tile_geometry(struct window *, struct window_pane *,
+		     int *, int *, enum layout_type *, struct cmdq_item *,
+		     struct args *, char **);
+int		 window_pane_float_geometry(struct window *, struct window_pane *,
+		     u_int *, u_int *, u_int *, u_int *, struct cmdq_item *,
+		     struct args *, char **);
 void		 window_pane_reset_mode(struct window_pane *);
 void		 window_pane_reset_mode_all(struct window_pane *);
 int		 window_pane_key(struct window_pane *, struct client *,

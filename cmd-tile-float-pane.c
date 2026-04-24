@@ -40,8 +40,8 @@ const struct cmd_entry cmd_float_pane_entry = {
 	.name = "float-pane",
 	.alias = NULL,
 
-	.args = { "t:x:y:w:h:", 0, 0, NULL },
-	.usage = "[-h height] [-w width] [-x x] [-y y] "
+	.args = { "t:x:X:y:Y:", 0, 0, NULL },
+	.usage = "[-x width] [-X x-position] [-y height] [-Y y-position] "
 		 CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -67,83 +67,20 @@ const struct cmd_entry cmd_tile_pane_entry = {
  * Parse geometry arguments for float-pane.
  * Returns 0 on success, -1 on error (error message already set on item).
  * x/y/sx/sy are set to parsed values or cascade defaults.
- * last_x/last_y are the static cascade counters; pass the address of the
- * caller's statics.
  */
 static int
-cmd_float_pane_parse_geometry(struct args *args, struct cmdq_item *item,
-    struct window *w, int *out_x, int *out_y, u_int *out_sx, u_int *out_sy,
-    int *last_x, int *last_y)
+cmd_float_pane_parse_geometry(struct window *w, int *out_x, int *out_y,
+    u_int *out_sx, u_int *out_sy, struct cmdq_item *item, struct args *args)
 {
 	char	*cause = NULL;
-	int	 x, y;
-	u_int	 sx, sy;
 
-	/* Default size: half the window. */
-	sx = w->sx / 2;
-	sy = w->sy / 2;
-
-	if (args_has(args, 'w')) {
-		sx = args_strtonum_and_expand(args, 'w', 1, USHRT_MAX, item,
-		    &cause);
-		if (cause != NULL) {
-			cmdq_error(item, "width %s", cause);
-			free(cause);
-			return (-1);
-		}
-	}
-	if (args_has(args, 'h')) {
-		sy = args_strtonum_and_expand(args, 'h', 1, USHRT_MAX, item,
-		    &cause);
-		if (cause != NULL) {
-			cmdq_error(item, "height %s", cause);
-			free(cause);
-			return (-1);
-		}
+	if (window_pane_float_geometry(w, out_x, out_y, out_sx, out_sy, item,
+	    args, &cause) != 0) {
+		cmdq_error(item, "invalid float geometry %s", cause);
+		free(cause);
+		return (-1);
 	}
 
-	/* Default position: cascade from (5,5), step +5, wrap at window edge. */
-	if (args_has(args, 'x')) {
-		x = args_strtonum_and_expand(args, 'x', SHRT_MIN, SHRT_MAX,
-		    item, &cause);
-		if (cause != NULL) {
-			cmdq_error(item, "x %s", cause);
-			free(cause);
-			return (-1);
-		}
-	} else {
-		if (*last_x == 0) {
-			x = 5;
-		} else {
-			x = (*last_x += 5);
-			if (*last_x > (int)w->sx)
-				x = *last_x = 5;
-		}
-	}
-	if (args_has(args, 'y')) {
-		y = args_strtonum_and_expand(args, 'y', SHRT_MIN, SHRT_MAX,
-		    item, &cause);
-		if (cause != NULL) {
-			cmdq_error(item, "y %s", cause);
-			free(cause);
-			return (-1);
-		}
-	} else {
-		if (*last_y == 0) {
-			y = 5;
-		} else {
-			y = (*last_y += 5);
-			if (*last_y > (int)w->sy)
-				y = *last_y = 5;
-		}
-	}
-
-	*last_x = x;
-	*last_y = y;
-	*out_x = x;
-	*out_y = y;
-	*out_sx = sx;
-	*out_sy = sy;
 	return (0);
 }
 
@@ -154,7 +91,6 @@ cmd_float_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct window		*w = target->wl->window;
 	struct window_pane	*wp = target->wp;
-	static int		 last_x = 0, last_y = 0;
 	int			 x, y;
 	u_int			 sx, sy;
 	struct layout_cell	*lc;
@@ -178,14 +114,14 @@ cmd_float_pane_exec(struct cmd *self, struct cmdq_item *item)
 	 */
 	if ((wp->flags & PANE_SAVED_FLOAT) &&
 	    !args_has(args, 'x') && !args_has(args, 'y') &&
-	    !args_has(args, 'w') && !args_has(args, 'h')) {
+	    !args_has(args, 'X') && !args_has(args, 'Y')) {
 		x  = wp->saved_float_xoff;
 		y  = wp->saved_float_yoff;
 		sx = wp->saved_float_sx;
 		sy = wp->saved_float_sy;
 	} else {
-		if (cmd_float_pane_parse_geometry(args, item, w, &x, &y, &sx,
-		    &sy, &last_x, &last_y) != 0)
+		if (cmd_float_pane_parse_geometry(w, &x, &y, &sx, &sy, item,
+		    args) != 0)
 			return (CMD_RETURN_ERROR);
 	}
 

@@ -104,6 +104,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	w = wp->window = window_create(w->sx, w->sy, w->xpixel, w->ypixel);
 	options_set_parent(wp->options, w->options);
 	wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
+	wp->flags &= ~PANE_FLOATING;
 	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 	TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
 	w->active = wp;

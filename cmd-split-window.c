@@ -70,75 +70,19 @@ const struct cmd_entry cmd_split_window_entry = {
 	.exec = cmd_split_window_exec
 };
 
-enum new_pane_mode {
-	FLOATING,
-	TILED,
-	NONE,
-};
-
 static struct layout_cell *
 cmd_split_window_get_floating_layout_cell(struct cmdq_item *item,
-    struct args *args, struct window *w)
+    struct args *args, struct window *w, struct window_pane *wp)
 {
 	struct layout_cell	*lc = NULL;
 	char			*cause = NULL;
-	int			 x, y;
-	u_int			 sx, sy;
-	static int		 last_x = 0, last_y = 0;
+	u_int			 x, y, sx, sy;
 
-	/* Default size. */
-	sx = w->sx / 2;
-	sy = w->sy / 2;
-
-	if (args_has(args, 'x')) {
-		sx = args_percentage_and_expand(args, 'x', 0, USHRT_MAX, w->sx,
-			item, &cause);
-		if (cause != NULL) {
-			cmdq_error(item, "size %s", cause);
-			free(cause);
-			return (NULL);
-		}
-	}
-	if (args_has(args, 'y')) {
-		sy = args_percentage_and_expand(args, 'y', 0, USHRT_MAX, w->sy,
-		    item, &cause);
-		if (cause != NULL) {
-			cmdq_error(item, "size %s", cause);
-			free(cause);
-			return (NULL);
-		}
-	}
-
-	/* If a position is not defined, it defaults to cascading. */
-	if (args_has(args, 'X')) {
-		x = args_percentage_and_expand(args, 'X', 0, USHRT_MAX, w->sx,
-		    item, &cause);
-		if (cause != NULL) {
-			cmdq_error(item, "size %s", cause);
-			free(cause);
-			return (NULL);
-		}
-	} else if (last_x == 0)
-		x = 4;
-	else {
-		x = (last_x += 4);
-		if (last_x > (int)w->sx)
-			x = 4;
-	}
-	if (args_has(args, 'Y')) {
-		y = args_percentage_and_expand(args, 'Y', 0, USHRT_MAX, w->sy,
-		    item, &cause);
-		if (cause != NULL) {
-			cmdq_error(item, "size %s", cause);
-			free(cause);
-			return (NULL);
-		}
-	} else if (last_y == 0)
-		y = 2;
-	else {
-		y = (last_y += 2);
-		if (last_y > (int)w->sy)
-			y = 2;
+	if (window_pane_float_geometry(w, wp, &x, &y, &sx, &sy, item, args, &cause)
+	    != 0) {
+		cmdq_error(item, "invalid float geometry %s", cause);
+		free(cause);
+		return (NULL);
 	}
 
 	/* Floating panes sit in layout cells which are not in the layout_root
@@ -149,8 +93,6 @@ cmd_split_window_get_floating_layout_cell(struct cmdq_item *item,
 	lc->yoff = y;
 	lc->sx = sx;
 	lc->sy = sy;
-	last_x = x;	/* Statically save last xoff & yoff so that new */
-	last_y = y;	/* floating panes offset so they don't overlap. */
 
 	return (lc);
 }
@@ -163,44 +105,15 @@ cmd_split_window_get_tiled_layout_cell(struct cmdq_item *item,
 	struct layout_cell	*lc = NULL;
 	char			*cause = NULL;
 	int			 size;
-	u_int			 curval = 0;
 
 	if (wp->flags & PANE_FLOATING) {
 		cmdq_error(item, "can't split a floating pane");
 		return (NULL);
 	}
 
-	type = LAYOUT_TOPBOTTOM;
-	if (args_has(args, 'h'))
-		type = LAYOUT_LEFTRIGHT;
-
-	/* If the 'p' flag is dropped then this bit can be moved into 'l'. */
-	if (args_has(args, 'l') || args_has(args, 'p')) {
-		if (args_has(args, 'f')) {
-			if (type == LAYOUT_TOPBOTTOM)
-				curval = w->sy;
-			else
-				curval = w->sx;
-		} else {
-			if (type == LAYOUT_TOPBOTTOM)
-				curval = wp->sy;
-			else
-				curval = wp->sx;
-		}
-	}
-
-	size = -1;
-	if (args_has(args, 'l')) {
-		size = args_percentage_and_expand(args, 'l', 0, INT_MAX, curval,
-		    item, &cause);
-	} else if (args_has(args, 'p')) {
-		size = args_strtonum_and_expand(args, 'p', 0, 100, item,
-		    &cause);
-		if (cause == NULL)
-			size = curval * size / 100;
-	}
-	if (cause != NULL) {
-		cmdq_error(item, "size %s", cause);
+	if (window_pane_tile_geometry(w, wp, &size, &flags, &type, item, args,
+	    &cause) != 0) {
+		cmdq_error(item, "invalid tiled geometry %s", cause);
 		free(cause);
 		return (NULL);
 	}
@@ -227,30 +140,22 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*wp = target->wp, *new_wp;
 	struct layout_cell	*lc = NULL;
 	struct cmd_find_state	 fs;
-	int			 flags, input;
+	int			 input, flags = 0, is_floating = 0;
 	const char		*template, *style;
 	char			*cause = NULL, *cp;
 	struct args_value	*av;
 	u_int			 count = args_count(args);
-	enum new_pane_mode	 pane_mode = NONE;
 
 	if (args_has(args, 'M')) {
-		if (strcasecmp(args_get(args, 'M'), "f") == 0)
-			pane_mode = FLOATING;
-		else if (strcasecmp(args_get(args, 'M'), "t") == 0)
-			pane_mode = TILED;
-		else
-			pane_mode = NONE;
+		is_floating = strcasecmp(args_get(args, 'M'), "f") == 0;
 	} else {
 		if (cmd_get_entry(self) == &cmd_new_pane_entry)
-			pane_mode = FLOATING;
-		else
-			pane_mode = TILED;
+			is_floating = 1; /* default new-pane */
 	}
 
 	input = (args_has(args, 'I') && count == 0);
 
-	flags = pane_mode == FLOATING ? SPAWN_FLOATING : 0;
+	flags = is_floating ? SPAWN_FLOATING : 0;
 	if (args_has(args, 'b'))
 		flags |= SPAWN_BEFORE;
 	if (args_has(args, 'f'))
@@ -258,17 +163,12 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (input || (count == 1 && *args_string(args, 0) == '\0'))
 		flags |= SPAWN_EMPTY;
 
-
-	if (pane_mode == FLOATING)
-		lc = cmd_split_window_get_floating_layout_cell(item, args, w);
-	else if (pane_mode == TILED)
+	if (is_floating)
+		lc = cmd_split_window_get_floating_layout_cell(item, args, w,
+			wp);
+	else
 		lc = cmd_split_window_get_tiled_layout_cell(item, args, w, wp,
 			flags);
-	else {
-		cmdq_error(item, "unrecognized pane mode '%s'",
-		    args_get(args, 'M'));
-		return (CMD_RETURN_ERROR);
-	}
 	if (lc == NULL)
 		return (CMD_RETURN_ERROR);
 
@@ -345,7 +245,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		switch (window_pane_start_input(new_wp, item, &cause)) {
 		case -1:
 			server_client_remove_pane(new_wp);
-			if (pane_mode == TILED)
+			if (!is_floating)
 				layout_close_pane(new_wp);
 			window_remove_pane(wp->window, new_wp);
 			cmdq_error(item, "%s", cause);
