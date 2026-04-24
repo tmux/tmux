@@ -658,6 +658,9 @@ void
 screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 {
 	u_int	sx, sy;
+#ifdef ENABLE_SIXEL
+	struct image	*im;
+#endif
 
 	if (SCREEN_IS_ALTERNATE(s))
 		return;
@@ -674,6 +677,8 @@ screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 
 #ifdef ENABLE_SIXEL
 	TAILQ_CONCAT(&s->saved_images, &s->images, entry);
+	TAILQ_FOREACH(im, &s->saved_images, entry)
+		im->queue = &s->saved_images;
 #endif
 
 	grid_view_clear(s->grid, 0, 0, sx, sy, 8);
@@ -687,6 +692,9 @@ void
 screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 {
 	u_int	sx = screen_size_x(s), sy = screen_size_y(s);
+#ifdef ENABLE_SIXEL
+	struct image	*im;
+#endif
 
 	/*
 	 * If the current size is different, temporarily resize to the old size
@@ -733,6 +741,8 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 #ifdef ENABLE_SIXEL
 	image_free_all(s);
 	TAILQ_CONCAT(&s->images, &s->saved_images, entry);
+	TAILQ_FOREACH(im, &s->images, entry)
+		im->queue = &s->images;
 #endif
 
 	if (s->cx > screen_size_x(s) - 1)

@@ -53,14 +53,12 @@ image_log(struct image *im, const char* from, const char* fmt, ...)
 static void
 image_free(struct image *im)
 {
-	struct screen	*s = im->s;
-
 	image_log(im, __func__, NULL);
 
 	TAILQ_REMOVE(&all_images, im, all_entry);
 	all_images_count--;
 
-	TAILQ_REMOVE(&s->images, im, entry);
+	TAILQ_REMOVE(im->queue, im, entry);
 	sixel_free(im->data);
 	free(im->fallback);
 	free(im);
@@ -128,6 +126,7 @@ image_store(struct screen *s, struct sixel_image *si)
 
 	im = xcalloc(1, sizeof *im);
 	im->s = s;
+	im->queue = &s->images;
 	im->data = si;
 
 	im->px = s->cx;

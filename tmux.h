@@ -963,6 +963,7 @@ struct style {
 /* Image. */
 struct image {
 	struct screen		*s;
+	struct images		*queue;
 	struct sixel_image	*data;
 	char			*fallback;
 
