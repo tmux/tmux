@@ -52,6 +52,7 @@ static void	window_copy_redraw_lines(struct window_mode_entry *, u_int,
 		    u_int);
 static void	window_copy_redraw_screen(struct window_mode_entry *);
 static void	window_copy_style_changed(struct window_mode_entry *);
+static int	window_copy_line_number_mode(struct window_mode_entry *);
 static int	window_copy_line_numbers_active(struct window_mode_entry *);
 static u_int	window_copy_line_number_width(struct window_mode_entry *);
 static u_int	window_copy_cursor_offset(struct window_mode_entry *, u_int, u_int);
@@ -4657,18 +4658,22 @@ window_copy_write_one(struct window_mode_entry *wme,
 }
 
 static int
-window_copy_line_numbers_active(struct window_mode_entry *wme)
+window_copy_line_number_mode(struct window_mode_entry *wme)
 {
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
-	int				 mode;
 
 	if (!data->line_numbers)
-		return (0);
+		return (WINDOW_COPY_LINE_NUMBERS_OFF);
+	return (options_get_number(wp->window->options,
+	    "copy-mode-line-numbers"));
+}
 
-	mode = options_get_number(wp->window->options,
-	    "copy-mode-line-numbers");
-	return (mode != WINDOW_COPY_LINE_NUMBERS_OFF);
+static int
+window_copy_line_numbers_active(struct window_mode_entry *wme)
+{
+	return (window_copy_line_number_mode(wme) !=
+	    WINDOW_COPY_LINE_NUMBERS_OFF);
 }
 
 static u_int
@@ -4804,7 +4809,7 @@ window_copy_write_line(struct window_mode_entry *wme,
 		cur_ln_gc.flags |= GRID_FLAG_NOPALETTE;
 		current = (py == data->cy);
 		absolute = hsize - data->oy + py + 1;
-		mode = options_get_number(oo, "copy-mode-line-numbers");
+		mode = window_copy_line_number_mode(wme);
 		if (mode == WINDOW_COPY_LINE_NUMBERS_ABSOLUTE)
 			line_number = absolute;
 		else if (mode == WINDOW_COPY_LINE_NUMBERS_HYBRID && current)
@@ -6111,6 +6116,11 @@ window_copy_scroll_up(struct window_mode_entry *wme, u_int ny)
 		window_copy_search_marks(wme, NULL, data->searchregex, 1);
 	window_copy_update_selection(wme, 0, 0);
 	if (window_copy_line_numbers_active(wme)) {
+		if (window_copy_line_number_mode(wme) !=
+		    WINDOW_COPY_LINE_NUMBERS_ABSOLUTE) {
+			window_copy_redraw_screen(wme);
+			return;
+		}
 		screen_write_start(&ctx, &data->screen);
 		screen_write_cursormove(&ctx, 0, 0, 0);
 		screen_write_deleteline(&ctx, ny, 8);
@@ -6169,6 +6179,11 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 		window_copy_search_marks(wme, NULL, data->searchregex, 1);
 	window_copy_update_selection(wme, 0, 0);
 	if (window_copy_line_numbers_active(wme)) {
+		if (window_copy_line_number_mode(wme) !=
+		    WINDOW_COPY_LINE_NUMBERS_ABSOLUTE) {
+			window_copy_redraw_screen(wme);
+			return;
+		}
 		screen_write_start(&ctx, &data->screen);
 		screen_write_cursormove(&ctx, 0, 0, 0);
 		screen_write_insertline(&ctx, ny, 8);
