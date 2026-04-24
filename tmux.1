@@ -3265,6 +3265,94 @@ By default, it uses the format
 .Ql #{session_name}:#{window_index}
 but a different format may be specified with
 .Fl F .
+.Tg newp
+.It Xo Ic new-pane
+.Op Fl bdefhIkPvZ
+.Op Fl c Ar start-directory
+.Op Fl e Ar environment
+.Op Fl F Ar format
+.Op Fl l Ar size
+.Op Fl m Ar message
+.Op Fl p Ar percentage
+.Op Fl R Ar inactive-border-style
+.Op Fl s Ar style
+.Op Fl S Ar active-border-style
+.Op Fl t Ar target-pane
+.Op Ar shell-command Op Ar argument ...
+.Xc
+.D1 Pq alias: Ic newp
+Create a new pane.
+The current behavior is to split
+.Ar target-pane .
+If
+.Fl d
+is given, the session does not make the new pane the current pane.
+.Fl Z
+zooms if the window is not zoomed, or keeps it zoomed if already zoomed.
+.Fl s
+sets the style for the pane content.
+.Fl S
+sets the border style when the pane is active and
+.Fl R
+sets the border style when the pane is inactive (see
+.Sx STYLES ) .
+.Fl k
+keeps the pane open after the optional
+.Ar shell-command
+exits and waits for a keypress (any non-mouse key) before closing it.
+The message shown is controlled by the
+.Ic remain-on-exit-format
+option.
+.Fl m Ar message
+is equivalent to
+.Fl k
+but also sets the
+.Ic remain-on-exit-format
+option for this pane to
+.Ar message .
+An empty
+.Ar shell-command
+(\[aq]\[aq]) will create a pane with no command running in it.
+The
+.Fl I
+flag (if
+.Ar shell-command
+is not specified or empty)
+will create an empty pane and forward any output from stdin to it.
+For example:
+.Bd -literal -offset indent
+$ make 2>&1|tmux splitw \-dI &
+.Ed
+.Pp
+.Fl h
+does a horizontal split and
+.Fl v
+a vertical split; if neither is specified,
+.Fl v
+is assumed.
+The
+.Fl l
+option specifies the size of the new pane in lines (for vertical split) or in
+columns (for horizontal split);
+.Ar size
+may be followed by
+.Ql %
+to specify a percentage of the available space.
+The
+.Fl b
+option causes the new pane to be created to the left of or above
+.Ar target\-pane .
+The
+.Fl f
+option creates a new pane spanning the full window height (with
+.Fl h )
+or full window width (with
+.Fl v ) ,
+instead of splitting the active pane.
+.Pp
+All other options have the same meaning as for the
+.Ic new-window
+command.
 .Tg nextl
 .It Ic next\-layout Op Fl t Ar target\-window
 .D1 Pq alias: Ic nextl
@@ -3589,65 +3677,29 @@ the command behaves like
 .Ic last\-window .
 .Tg splitw
 .It Xo Ic split\-window
-.Op Fl bdfhIvPZ
-.Op Fl c Ar start\-directory
+.Op Fl bdefhIkPvZ
+.Op Fl c Ar start-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
 .Op Fl l Ar size
-.Op Fl t Ar target\-pane
-.Op Ar shell\-command Op Ar argument ...
+.Op Fl m Ar message
+.Op Fl p Ar percentage
+.Op Fl R Ar inactive-border-style
+.Op Fl s Ar style
+.Op Fl S Ar active-border-style
+.Op Fl t Ar target-pane
+.Op Ar shell-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic splitw
-Create a new pane by splitting
-.Ar target\-pane :
-.Fl h
-does a horizontal split and
-.Fl v
-a vertical split; if neither is specified,
-.Fl v
-is assumed.
-The
-.Fl l
-option specifies the size of the new pane in lines (for vertical split) or in
-columns (for horizontal split);
-.Ar size
-may be followed by
-.Ql %
-to specify a percentage of the available space.
-The
-.Fl b
-option causes the new pane to be created to the left of or above
-.Ar target\-pane .
-The
-.Fl f
-option creates a new pane spanning the full window height (with
-.Fl h )
-or full window width (with
-.Fl v ) ,
-instead of splitting the active pane.
-.Fl Z
-zooms if the window is not zoomed, or keeps it zoomed if already zoomed.
+Creates a new pane.
+Default behavior is to split
+.Ar target-pane .
+Shares behavior with
+.Ic new-pane .
 .Pp
-An empty
-.Ar shell\-command
-(\[aq]\[aq]) will create a pane with no command running in it.
-Output can be sent to such a pane with the
-.Ic display\-message
-command.
-The
-.Fl I
-flag (if
-.Ar shell\-command
-is not specified or empty)
-will create an empty pane and forward any output from stdin to it.
-For example:
-.Bd -literal -offset indent
-$ make 2>&1|tmux splitw \-dI &
-.Ed
-.Pp
-All other options have the same meaning as for the
-.Ic new\-window
-command.
+See
+.Ic new-pane
+for more details.
 .Tg swapp
 .It Xo Ic swap\-pane
 .Op Fl dDUZ
