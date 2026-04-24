@@ -1215,7 +1215,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "copy-mode-line-number-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "fg=colour243",
+	  .default_str = "fg=white,dim",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of line numbers in copy mode."
