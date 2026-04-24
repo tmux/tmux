@@ -63,6 +63,7 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*c = cmdq_get_client(item);
 	struct session		*s;
 	struct window_pane	*wp = target->wp, *swp;
+	struct args		*new_args = NULL;
 	int			 line_numbers;
 
 	if (args_has(args, 'q')) {
@@ -87,8 +88,12 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		swp = wp;
 	line_numbers = 1;
-	if (event != NULL && KEYC_IS_MOUSE(event->key))
+	if (event != NULL && KEYC_IS_MOUSE(event->key)) {
 		line_numbers = 0;
+		new_args = args_copy(args, 0, NULL);
+		args_set(new_args, 'm', NULL, 0);
+		args = new_args;
+	}
 	if (!window_pane_set_mode(wp, swp, &window_copy_mode, NULL, args)) {
 		window_copy_set_line_numbers(wp, line_numbers);
 		if (args_has(args, 'M'))
@@ -102,8 +107,12 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'S')) {
 		window_copy_scroll(wp, c->tty.mouse_slider_mpos, event->m.y,
 		    args_has(args, 'e'));
+		if (new_args != NULL)
+			args_free(new_args);
 		return (CMD_RETURN_NORMAL);
 	}
 
+	if (new_args != NULL)
+		args_free(new_args);
 	return (CMD_RETURN_NORMAL);
 }
