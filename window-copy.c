@@ -951,12 +951,22 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 hsize = screen_hsize(data->backing);
+	u_int				 position, limit;
 	struct grid_line		*gl;
 
 	gl = grid_get_line(data->backing->grid, hsize - data->oy);
 	format_add(ft, "top_line_time", "%llu", (unsigned long long)gl->time);
 
 	format_add(ft, "scroll_position", "%d", data->oy);
+	if (window_copy_line_number_is_absolute(wme)) {
+		position = hsize - data->oy + 1;
+		limit = hsize + screen_size_y(data->backing);
+	} else {
+		position = data->oy;
+		limit = hsize;
+	}
+	format_add(ft, "copy_position", "%u", position);
+	format_add(ft, "copy_position_limit", "%u", limit);
 	format_add(ft, "rectangle_toggle", "%d", data->rectflag);
 
 	format_add(ft, "copy_cursor_x", "%d", data->cx);

@@ -1179,7 +1179,7 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "#[align=right]"
 			 "#{t/p:top_line_time}#{?#{e|>:#{top_line_time},0}, ,}"
-			 "[#{scroll_position}/#{history_size}]"
+			 "[#{copy_position}/#{copy_position_limit}]"
 			 "#{?search_timed_out, (timed out),"
 			 "#{?search_count, (#{search_count}"
 			 "#{?search_count_partial,+,} results),}}",
