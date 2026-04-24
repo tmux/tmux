@@ -413,7 +413,7 @@ window_set_name(struct window *w, const char *new_name)
 	name = clean_name(new_name, "#");
 	if (name != NULL) {
 		free(w->name);
-		utf8_stravis(&w->name, new_name, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
+		w->name = name;
 		notify_window("window-renamed", w);
 	}
 }
