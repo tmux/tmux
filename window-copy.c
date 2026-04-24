@@ -5024,13 +5024,12 @@ window_copy_update_cursor(struct window_mode_entry *wme, u_int cx, u_int cy)
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx		 ctx;
-	u_int				 old_cx, old_cy;
+	u_int				 old_cx, old_cy, width, content_sx;
 
 	old_cx = data->cx; old_cy = data->cy;
 	data->cx = cx; data->cy = cy;
 	if (window_copy_line_numbers_active(wme)) {
-		u_int width = window_copy_line_number_width(wme);
-		u_int content_sx;
+		width = window_copy_line_number_width(wme);
 
 		if (s->sel != NULL || data->lineflag != LINE_SEL_NONE ||
 		    old_cy != data->cy) {
