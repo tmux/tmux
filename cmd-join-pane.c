@@ -35,8 +35,9 @@ const struct cmd_entry cmd_join_pane_entry = {
 	.name = "join-pane",
 	.alias = "joinp",
 
-	.args = { "bdfhvp:l:s:t:", 0, 0, NULL },
-	.usage = "[-bdfhv] [-l size] " CMD_SRCDST_PANE_USAGE,
+	.args = { "bdfhvM:p:l:s:t:x:X:y:Y:", 0, 0, NULL },
+	.usage = "[-bdfFhv] [-l size] [-x width] [-X x-position] [-y height] "
+		 "[-Y y-position] " CMD_SRCDST_PANE_USAGE,
 
 	.source = { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -49,8 +50,9 @@ const struct cmd_entry cmd_move_pane_entry = {
 	.name = "move-pane",
 	.alias = "movep",
 
-	.args = { "bdfhvp:l:s:t:", 0, 0, NULL },
-	.usage = "[-bdfhv] [-l size] " CMD_SRCDST_PANE_USAGE,
+	.args = { "bdfhvM:p:l:s:t:x:X:y:Y:", 0, 0, NULL },
+	.usage = "[-bdfFhv] [-l size] [-x width] [-X x-position] [-y height] "
+		 "[-Y y-position] " CMD_SRCDST_PANE_USAGE,
 
 	.source = { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -72,10 +74,10 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*src_wp, *dst_wp;
 	char			*cause = NULL;
 	int			 size, dst_idx;
-	int			 flags;
+	int			 flags = 0, is_floating = 0;
 	enum layout_type	 type;
 	struct layout_cell	*lc;
-	u_int			 curval = 0;
+	u_int			 x, y, sx, sy;
 
 	dst_s = target->s;
 	dst_wl = target->wl;
@@ -89,56 +91,61 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	src_w = src_wl->window;
 	server_unzoom_window(src_w);
 
-	if (src_wp == dst_wp) {
-		cmdq_error(item, "source and target panes must be different");
-		return (CMD_RETURN_ERROR);
+	if (args_has(args, 'M')) {
+		is_floating = strcasecmp(args_get(args, 'M'), "f") == 0;
 	}
-
-	type = LAYOUT_TOPBOTTOM;
-	if (args_has(args, 'h'))
-		type = LAYOUT_LEFTRIGHT;
-
-	/* If the 'p' flag is dropped then this bit can be moved into 'l'. */
-	if (args_has(args, 'l') || args_has(args, 'p')) {
-		if (args_has(args, 'f')) {
-			if (type == LAYOUT_TOPBOTTOM)
-				curval = dst_w->sy;
-			else
-				curval = dst_w->sx;
-		} else {
-			if (type == LAYOUT_TOPBOTTOM)
-				curval = dst_wp->sy;
-			else
-				curval = dst_wp->sx;
+	if (is_floating) {
+		if (window_pane_float_geometry(dst_w, src_wp, &x, &y, &sx, &sy,
+		    item, args, &cause) != 0) {
+			cmdq_error(item, "invalid floating geometry %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
 		}
-	}
+		src_wp->flags |= PANE_FLOATING;
+		lc = layout_create_cell(NULL);
+		lc->xoff = x;
+		lc->yoff = y;
+		lc->sx = sx;
+		lc->sy = sy;
+	} else {
+		if (src_wp == dst_wp) {
+			cmdq_error(item, "source and target must be different");
+			return (CMD_RETURN_ERROR);
+		}
+		if (src_wp->flags & PANE_MINIMISED) {
+			cmdq_error(item, "cannot move a minimised pane");
+			return (CMD_RETURN_ERROR);
+		}
 
-	size = -1;
-	if (args_has(args, 'l')) {
-		size = args_percentage_and_expand(args, 'l', 0, INT_MAX, curval,
-			   item, &cause);
-	} else if (args_has(args, 'p')) {
-		size = args_strtonum_and_expand(args, 'l', 0, 100, item,
-			   &cause);
-		if (cause == NULL)
-			size = curval * size / 100;
-	}
-	if (cause != NULL) {
-		cmdq_error(item, "size %s", cause);
-		free(cause);
-		return (CMD_RETURN_ERROR);
-	}
+		if (window_pane_tile_geometry(dst_w, dst_wp, &size, &flags,
+		    &type, item, args, &cause) != 0) {
+			cmdq_error(item, "invalid tiling geometry %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
 
-	flags = 0;
-	if (args_has(args, 'b'))
-		flags |= SPAWN_BEFORE;
-	if (args_has(args, 'f'))
-		flags |= SPAWN_FULLSIZE;
+		lc = layout_split_pane(dst_wp, type, size, flags);
+		if (lc == NULL) {
+			cmdq_error(item, "create pane failed: pane too small");
+			return (CMD_RETURN_ERROR);
+		}
 
-	lc = layout_split_pane(dst_wp, type, size, flags);
-	if (lc == NULL) {
-		cmdq_error(item, "create pane failed: pane too small");
-		return (CMD_RETURN_ERROR);
+		if (src_wp->flags & PANE_FLOATING) {
+			src_wp->saved_float_xoff = src_wp->layout_cell->xoff;
+			src_wp->saved_float_yoff = src_wp->layout_cell->yoff;
+			src_wp->saved_float_sx   = src_wp->layout_cell->sx;
+			src_wp->saved_float_sy   = src_wp->layout_cell->sy;
+			src_wp->flags |= PANE_SAVED_FLOAT;
+			/*
+			* Free the detached floating cell.
+			* Clear its wp pointer first so layout_free_cell's
+			* WINDOWPANE case does not corrupt wp->layout_cell.
+			*/
+			src_wp->layout_cell->wp = NULL;
+			layout_free_cell(src_wp->layout_cell);
+			src_wp->layout_cell = NULL;
+		}
+		src_wp->flags &= ~PANE_FLOATING;
 	}
 
 	layout_close_pane(src_wp);
@@ -151,7 +158,12 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	src_wp->window = dst_w;
 	options_set_parent(src_wp->options, dst_w->options);
 	src_wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
-	if (flags & SPAWN_BEFORE) {
+	if (src_wp->flags & PANE_FLOATING) {
+		TAILQ_INSERT_TAIL(&dst_w->panes, src_wp, entry);
+		TAILQ_INSERT_HEAD(&dst_w->z_index, src_wp, zentry);
+		if (dst_w->layout_root != NULL)
+			layout_fix_offsets(dst_w);
+	} else if (flags & SPAWN_BEFORE) {
 		TAILQ_INSERT_BEFORE(dst_wp, src_wp, entry);
 		TAILQ_INSERT_BEFORE(dst_wp, src_wp, zentry);
 	} else {
