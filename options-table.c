@@ -109,7 +109,7 @@ static const char *options_table_allow_passthrough_list[] = {
 	"off", "on", "all", NULL
 };
 static const char *options_table_copy_mode_line_numbers_list[] = {
-	"off", "absolute", "relative", "hybrid", NULL
+	"off", "default", "absolute", "relative", "hybrid", NULL
 };
 
 /* Status line format. */

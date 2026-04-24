@@ -53,6 +53,7 @@ static void	window_copy_redraw_lines(struct window_mode_entry *, u_int,
 static void	window_copy_redraw_screen(struct window_mode_entry *);
 static void	window_copy_style_changed(struct window_mode_entry *);
 static int	window_copy_line_number_mode(struct window_mode_entry *);
+static int	window_copy_line_number_is_absolute(struct window_mode_entry *);
 static int	window_copy_line_numbers_active(struct window_mode_entry *);
 static u_int	window_copy_line_number_width(struct window_mode_entry *);
 static u_int	window_copy_cursor_offset(struct window_mode_entry *, u_int, u_int);
@@ -214,6 +215,7 @@ enum window_copy_cmd_clear {
 
 enum window_copy_line_numbers {
 	WINDOW_COPY_LINE_NUMBERS_OFF,
+	WINDOW_COPY_LINE_NUMBERS_DEFAULT,
 	WINDOW_COPY_LINE_NUMBERS_ABSOLUTE,
 	WINDOW_COPY_LINE_NUMBERS_RELATIVE,
 	WINDOW_COPY_LINE_NUMBERS_HYBRID,
@@ -4480,15 +4482,28 @@ window_copy_goto_line(struct window_mode_entry *wme, const char *linestr)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	const char			*errstr;
+	u_int				 hsize = screen_hsize(data->backing);
+	u_int				 line;
 	int				 lineno;
 
 	lineno = strtonum(linestr, -1, INT_MAX, &errstr);
 	if (errstr != NULL)
 		return;
-	if (lineno < 0 || (u_int)lineno > screen_hsize(data->backing))
-		lineno = screen_hsize(data->backing);
 
-	data->oy = lineno;
+	if (window_copy_line_number_is_absolute(wme)) {
+		if (lineno <= 0)
+			line = 1;
+		else if ((u_int)lineno > hsize + 1)
+			line = hsize + 1;
+		else
+			line = lineno;
+		data->oy = hsize - (line - 1);
+	} else {
+		if (lineno < 0 || (u_int)lineno > hsize)
+			lineno = hsize;
+		data->oy = lineno;
+	}
+
 	window_copy_update_selection(wme, 1, 0);
 	window_copy_redraw_screen(wme);
 }
@@ -4670,6 +4685,21 @@ window_copy_line_number_mode(struct window_mode_entry *wme)
 }
 
 static int
+window_copy_line_number_is_absolute(struct window_mode_entry *wme)
+{
+	switch (window_copy_line_number_mode(wme)) {
+	case WINDOW_COPY_LINE_NUMBERS_ABSOLUTE:
+	case WINDOW_COPY_LINE_NUMBERS_RELATIVE:
+	case WINDOW_COPY_LINE_NUMBERS_HYBRID:
+		return (1);
+	case WINDOW_COPY_LINE_NUMBERS_OFF:
+	case WINDOW_COPY_LINE_NUMBERS_DEFAULT:
+		return (0);
+	}
+	fatalx("bad line number mode");
+}
+
+static int
 window_copy_line_numbers_active(struct window_mode_entry *wme)
 {
 	return (window_copy_line_number_mode(wme) !=
@@ -4813,7 +4843,9 @@ window_copy_write_line(struct window_mode_entry *wme,
 		current = (py == data->cy);
 		absolute = hsize - data->oy + py + 1;
 		mode = window_copy_line_number_mode(wme);
-		if (mode == WINDOW_COPY_LINE_NUMBERS_ABSOLUTE)
+		if (mode == WINDOW_COPY_LINE_NUMBERS_DEFAULT)
+			line_number = data->oy + py;
+		else if (mode == WINDOW_COPY_LINE_NUMBERS_ABSOLUTE)
 			line_number = absolute;
 		else if (mode == WINDOW_COPY_LINE_NUMBERS_HYBRID && current)
 			line_number = absolute;
