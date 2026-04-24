@@ -3322,7 +3322,7 @@ By default, it uses the format
 but a different format may be specified with
 .Fl F .
 .Tg newp
-.It Xo Ic new-pane
+.It Xo Ic new\-pane
 .Op Fl bdefhIkPvZ
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
@@ -3337,7 +3337,7 @@ but a different format may be specified with
 .Op Fl t Ar target-pane
 .Op Fl x Ar width
 .Op Fl X Ar x-position
-.Op Fl y Ar length
+.Op Fl y Ar height
 .Op Fl Y Ar y-position
 .Op Ar shell-command Op Ar argument ...
 .Xc
@@ -3775,7 +3775,6 @@ the command behaves like
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
-.Op Fl H Ar height
 .Op Fl l Ar size
 .Op Fl m Ar message
 .Op Fl M Ar mode
@@ -3784,19 +3783,20 @@ the command behaves like
 .Op Fl s Ar style
 .Op Fl S Ar active-border-style
 .Op Fl t Ar target-pane
-.Op Fl w Ar width
-.Op Fl x Ar x-position
-.Op Fl y Ar y-position
+.Op Fl x Ar width
+.Op Fl X Ar x-position
+.Op Fl y Ar height
+.Op Fl Y Ar y-position
 .Op Ar shell-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic splitw
 Creates a new pane.
 Default behavior is to split the pane in a tiled layout.
 Shares behavior with
-.Ic new-pane .
+.Ic new\-pane .
 .Pp
 See
-.Ic new-pane
+.Ic new\-pane
 for more details.
 .Tg swapp
 .It Xo Ic swap\-pane
@@ -5289,7 +5289,7 @@ for floating panes.
 A per-pane style set with
 .Fl S
 on the
-.Ic new-pane
+.Ic new\-pane
 command or with
 .Ic set-option Fl p
 takes priority over this option.
@@ -5307,7 +5307,7 @@ for floating panes.
 A per-pane style set with
 .Fl s
 on the
-.Ic new-pane
+.Ic new\-pane
 command or with
 .Ic select-pane Fl P
 takes priority over this option.
