@@ -146,14 +146,18 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	server_client_remove_pane(src_wp);
 	window_lost_pane(src_w, src_wp);
 	TAILQ_REMOVE(&src_w->panes, src_wp, entry);
+	TAILQ_REMOVE(&src_w->z_index, src_wp, zentry);
 
 	src_wp->window = dst_w;
 	options_set_parent(src_wp->options, dst_w->options);
 	src_wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
-	if (flags & SPAWN_BEFORE)
+	if (flags & SPAWN_BEFORE) {
 		TAILQ_INSERT_BEFORE(dst_wp, src_wp, entry);
-	else
+		TAILQ_INSERT_BEFORE(dst_wp, src_wp, zentry);
+	} else {
 		TAILQ_INSERT_AFTER(&dst_w->panes, dst_wp, src_wp, entry);
+		TAILQ_INSERT_AFTER(&dst_w->z_index, dst_wp, src_wp, zentry);
+	}
 	layout_assign_pane(lc, src_wp, 0);
 	colour_palette_from_option(&src_wp->palette, src_wp->options);
 
