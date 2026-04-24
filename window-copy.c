@@ -476,8 +476,6 @@ window_copy_init(struct window_mode_entry *wme,
 
 	data->scroll_exit = args_has(args, 'e');
 	data->hide_position = args_has(args, 'H');
-	if (args != NULL && args_has(args, 'm'))
-		data->line_numbers = 0;
 
 	if (base->hyperlinks != NULL) {
 		hyperlinks_free(data->screen.hyperlinks);
@@ -4748,7 +4746,10 @@ window_copy_set_line_numbers(struct window_pane *wp, int enabled)
 	data = wme->data;
 	if (data == NULL)
 		return;
+	if (data->line_numbers == enabled)
+		return;
 	data->line_numbers = enabled;
+	window_copy_redraw_screen(wme);
 }
 
 int
