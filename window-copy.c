@@ -5140,7 +5140,7 @@ window_copy_set_selection(struct window_mode_entry *wme, int may_redraw,
 	struct screen			*s = &data->screen;
 	struct options			*oo = wp->window->options;
 	struct grid_cell		 gc;
-	u_int				 sx, sy, cy, endsx, endsy;
+	u_int				 sx, sy, cy, endsx, endsy, clipx;
 	int				 startrelpos, endrelpos;
 	struct format_tree		*ft;
 
@@ -5168,12 +5168,15 @@ window_copy_set_selection(struct window_mode_entry *wme, int may_redraw,
 	style_apply(&gc, oo, "copy-mode-selection-style", ft);
 	gc.flags |= GRID_FLAG_NOPALETTE;
 	format_free(ft);
+	clipx = window_copy_line_number_width(wme);
+	if (clipx >= screen_size_x(s))
+		clipx = screen_size_x(s) - 1;
 	if (window_copy_line_numbers_active(wme)) {
 		sx = window_copy_cursor_offset(wme, sx, screen_size_x(s));
 		endsx = window_copy_cursor_offset(wme, endsx, screen_size_x(s));
 	}
 	screen_set_selection(s, sx, sy, endsx, endsy, data->rectflag,
-	    data->modekeys, &gc);
+	    clipx, data->modekeys, &gc);
 
 	if (data->rectflag && may_redraw) {
 		/*
