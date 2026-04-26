@@ -2994,9 +2994,9 @@ void	 file_write_data(struct client_files *, struct imsg *);
 void	 file_write_close(struct client_files *, struct imsg *);
 void	 file_read_open(struct client_files *, struct tmuxpeer *, struct imsg *,
 	     int, int, client_file_cb, void *);
-void	 file_write_ready(struct client_files *, struct imsg *);
-void	 file_read_data(struct client_files *, struct imsg *);
-void	 file_read_done(struct client_files *, struct imsg *);
+int	 file_write_ready(struct client_files *, struct imsg *);
+int	 file_read_data(struct client_files *, struct imsg *);
+int	 file_read_done(struct client_files *, struct imsg *);
 void	 file_read_cancel(struct client_files *, struct imsg *);
 
 /* server.c */
