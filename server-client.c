@@ -1497,6 +1497,7 @@ server_client_loop(void)
 	struct window_pane		*wp, *twp;
 	struct window_mode_entry	*wme;
 	u_int				 bit;
+	pid_t				 pid;
 
 	/* Check for window resize. This is done before redrawing. */
 	RB_FOREACH(w, windows, &windows)
@@ -1533,6 +1534,10 @@ server_client_loop(void)
 			if (wp->fd != -1) {
 				server_client_check_pane_resize(wp);
 				server_client_check_pane_buffer(wp);
+			}
+			if ((pid = tcgetpgrp(wp->fd)) != wp->fg_pid) {
+				wp->fg_pid = pid;
+				wp->flags |= PANE_CHANGED;
 			}
 			/*
 			 * If PANE_REDRAW was set during buffer processing
