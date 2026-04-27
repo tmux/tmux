@@ -971,8 +971,10 @@ struct image {
 	u_int			 sx;
 	u_int			 sy;
 
-	TAILQ_ENTRY (image)	 all_entry;
+	struct images		*list;
 	TAILQ_ENTRY (image)	 entry;
+
+	TAILQ_ENTRY (image)	 all_entry;
 };
 TAILQ_HEAD(images, image);
 #endif
