@@ -129,6 +129,8 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 		sigprocmask(SIG_SETMASK, &oldset, NULL);
 		cmdq_error(item, "fork error: %s", strerror(errno));
 
+		close(pipe_fd[0]);
+		close(pipe_fd[1]);
 		free(cmd);
 		return (CMD_RETURN_ERROR);
 	case 0:
