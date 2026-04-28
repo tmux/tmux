@@ -1053,6 +1053,7 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 			*new_key = key;
 			return (1);
 		case '\033': /* Escape */
+		case '['|KEYC_CTRL:
 			c->prompt_mode = PROMPT_COMMAND;
 			if (c->prompt_index != 0)
 				c->prompt_index--;
@@ -1085,6 +1086,7 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 		c->flags |= CLIENT_REDRAWSTATUS;
 		return (0);
 	case '\033': /* Escape */
+	case '['|KEYC_CTRL:
 		return (0);
 	}
 
@@ -1652,6 +1654,7 @@ process_key:
 		free(s);
 		break;
 	case '\033': /* Escape */
+	case '['|KEYC_CTRL:
 	case 'c'|KEYC_CTRL:
 	case 'g'|KEYC_CTRL:
 		if (c->prompt_inputcb(c, c->prompt_data, NULL, 1) == 0)
