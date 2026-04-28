@@ -292,8 +292,6 @@ Rename the current session.
 Split the current pane into two, left and right.
 .It &
 Kill the current window.
-.It @
-Toggle the current pane between floating and tiled.
 .It \[aq]
 Prompt for a window index to select.
 .It \&(
@@ -2973,71 +2971,21 @@ The default is
 zooms the pane.
 .Pp
 This command works only if at least one client is attached.
-.Tg floatp
-.It Xo Ic float\-pane
-.Op Fl h Ar height
-.Op Fl w Ar width
-.Op Fl x Ar x
-.Op Fl y Ar y
-.Op Fl t Ar target\-pane
-.Xc
-Lift
-.Ar target\-pane
-out of the tiled layout and make it a floating pane.
-The
-.Fl w
-and
-.Fl h
-options set the width and height of the floating pane in columns and lines
-respectively; the default is half the window width and height.
-The
-.Fl x
-and
-.Fl y
-options set the position of the upper-left corner of the pane;
-if omitted, new floating panes are cascaded from the top-left of the window.
-If
-.Fl x ,
-.Fl y ,
-.Fl w ,
-and
-.Fl h
-are all omitted and the pane was previously returned to the tiled layout
-with
-.Ic tile\-pane ,
-its last floating position and size are restored.
-The pane must not already be floating or minimised, and the window must not
-be zoomed.
 .Tg joinp
 .It Xo Ic join\-pane
 .Op Fl bdfhv
 .Op Fl l Ar size
+.Op Fl M Ar mode
 .Op Fl s Ar src\-pane
 .Op Fl t Ar dst\-pane
+.Op Fl x Ar width
+.Op Fl X Ar x-position
+.Op Fl y Ar height
+.Op Fl Y Ar y-position
 .Xc
 .D1 Pq alias: Ic joinp
-Like
-.Ic split\-window ,
-but instead of splitting
-.Ar dst\-pane
-and creating a new pane, split it and move
-.Ar src\-pane
-into the space.
-This can be used to reverse
-.Ic break\-pane .
-The
-.Fl b
-option causes
-.Ar src\-pane
-to be joined to left of or above
-.Ar dst\-pane .
-.Pp
-If
-.Fl s
-is omitted and a marked pane is present (see
-.Ic select\-pane
-.Fl m ) ,
-the marked pane is used rather than the current pane.
+Does the same as
+.Ic move\-pane .
 .Tg killp
 .It Xo Ic kill\-pane
 .Op Fl a
@@ -3196,12 +3144,68 @@ reverses the sort order.
 .It Xo Ic move\-pane
 .Op Fl bdfhv
 .Op Fl l Ar size
+.Op Fl M Ar mode
 .Op Fl s Ar src\-pane
 .Op Fl t Ar dst\-pane
+.Op Fl x Ar width
+.Op Fl X Ar x\-position
+.Op Fl y Ar height
+.Op Fl Y Ar y\-position
 .Xc
 .D1 Pq alias: Ic movep
-Does the same as
-.Ic join\-pane .
+Like
+.Ic new\-pane
+but moves an existing pane instead.
+Can either move a
+.Ar src\-pane
+into the layout relative to
+.Ar dst\-pane ,
+or float
+.Ar src\-pane
+above the layout.
+Can be used to "undo" the effects of
+.Ic break\-pane .
+A
+.Ar mode
+may be specified with the
+.Fl M
+option, and must be followed by one of the following special values:
+.Bl -column "XXXXX" -offset indent
+.It Sy "Value" Ta Sy "Meaning"
+.It Li "f" Ta "floating pane above the current layout"
+.It Li "t" Ta "tiled into the layout by splitting a pane"
+.El
+.Pp
+If no
+.Ar mode
+is specified,
+.Ic t
+is assumed.
+When floating a pane,
+.Ar dst-pane
+is ignored.
+Note that some options will only affect one mode.
+.Pp
+If
+.Fl s
+is omitted and a marked pane is present (see
+.Ic select\-pane
+.Fl m ) ,
+the marked pane is used rather than
+the current pane.
+The
+.Fl b
+option causes
+.Ar src\-pane
+to be joined to left of or above
+.Ar dst\-pane .
+If
+.Fl d
+is given, the session does not make the new pane the current pane.
+.Pp
+All other options have the same meaning as for the
+.Ic new\-pane
+command.
 .Tg movew
 .It Xo Ic move\-window
 .Op Fl abrdk
@@ -3307,22 +3311,22 @@ but a different format may be specified with
 .Tg newp
 .It Xo Ic new\-pane
 .Op Fl bdefhIkPvZ
-.Op Fl c Ar start-directory
+.Op Fl c Ar start\-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
 .Op Fl l Ar size
 .Op Fl m Ar message
 .Op Fl M Ar mode
 .Op Fl p Ar percentage
-.Op Fl R Ar inactive-border-style
+.Op Fl R Ar inactive\-border\-style
 .Op Fl s Ar style
-.Op Fl S Ar active-border-style
-.Op Fl t Ar target-pane
+.Op Fl S Ar active\-border\-style
+.Op Fl t Ar target\-pane
 .Op Fl x Ar width
-.Op Fl X Ar x-position
+.Op Fl X Ar x\-position
 .Op Fl y Ar height
-.Op Fl Y Ar y-position
-.Op Ar shell-command Op Ar argument ...
+.Op Fl Y Ar y\-position
+.Op Ar shell\-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic newp
 Create a new pane.
@@ -3361,25 +3365,25 @@ sets the border style when the pane is inactive (see
 .Sx STYLES ) .
 .Fl k
 keeps the pane open after the optional
-.Ar shell-command
+.Ar shell\-command
 exits and waits for a keypress (any non-mouse key) before closing it.
 The message shown is controlled by the
-.Ic remain-on-exit-format
+.Ic remain\-on\-exit\-format
 option.
 .Fl m Ar message
 is equivalent to
 .Fl k
 but also sets the
-.Ic remain-on-exit-format
+.Ic remain\-on\-exit\-format
 option for this pane to
 .Ar message .
 An empty
-.Ar shell-command
+.Ar shell\-command
 (\[aq]\[aq]) will create a pane with no command running in it.
 The
 .Fl I
 flag (if
-.Ar shell-command
+.Ar shell\-command
 is not specified or empty)
 will create an empty pane and forward any output from stdin to it.
 For example:
@@ -3428,7 +3432,7 @@ or full window width (with
 instead of splitting the active pane.
 .Pp
 All other options have the same meaning as for the
-.Ic new-window
+.Ic new\-window
 command.
 .Tg nextl
 .It Ic next\-layout Op Fl t Ar target\-window
@@ -3853,20 +3857,6 @@ is omitted and a marked pane is present (see
 .Ic select\-pane
 .Fl m ) ,
 the window containing the marked pane is used rather than the current window.
-.Tg tilep
-.It Xo Ic tile\-pane
-.Op Fl t Ar target\-pane
-.Xc
-Insert a floating
-.Ar target\-pane
-back into the tiled layout.
-The pane is placed by splitting the active tiled pane (or the most recently
-active tiled pane, or any visible tiled pane if none is active).
-The current floating position and size are saved so they can be restored by
-a subsequent
-.Ic float\-pane
-command with no geometry options.
-The pane must be floating and the window must not be zoomed.
 .Tg unlinkw
 .It Xo Ic unlink\-window
 .Op Fl k
