@@ -1276,6 +1276,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	switch (*key) {
 	case 'q':
 	case '\033': /* Escape */
+	case '['|KEYC_CTRL:
 	case 'g'|KEYC_CTRL:
 		return (1);
 	case KEYC_F1:
