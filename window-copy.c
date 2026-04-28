@@ -4853,9 +4853,12 @@ window_copy_write_line(struct window_mode_entry *wme,
 		current = (py == data->cy);
 		absolute = hsize - data->oy + py + 1;
 		mode = window_copy_line_number_mode(wme);
-		if (mode == WINDOW_COPY_LINE_NUMBERS_DEFAULT)
-			line_number = data->oy + py;
-		else if (mode == WINDOW_COPY_LINE_NUMBERS_ABSOLUTE)
+		if (mode == WINDOW_COPY_LINE_NUMBERS_DEFAULT) {
+			if (py < data->oy)
+				line_number = data->oy - py;
+			else
+				line_number = py - data->oy;
+		} else if (mode == WINDOW_COPY_LINE_NUMBERS_ABSOLUTE)
 			line_number = absolute;
 		else if (mode == WINDOW_COPY_LINE_NUMBERS_HYBRID && current)
 			line_number = absolute;
