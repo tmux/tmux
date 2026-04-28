@@ -198,8 +198,17 @@ cmd_run_shell_timer(__unused int fd, __unused short events, void* arg)
 		}
 		if (job_run(cmd, 0, NULL, NULL, cdata->s, cdata->cwd, NULL,
 		    cmd_run_shell_callback, cmd_run_shell_free, cdata,
-		    cdata->flags, -1, -1) == NULL)
+		    cdata->flags, -1, -1) == NULL) {
+			if (cdata->item == NULL)
+				status_message_set(c, -1, 1, 0, 0,
+				    "failed to run command: %s", cmd);
+			else {
+				cmdq_error(cdata->item,
+				    "failed to run command: %s", cmd);
+				cmdq_continue(cdata->item);
+			}
 			cmd_run_shell_free(cdata);
+		}
 		return;
 	}
 
