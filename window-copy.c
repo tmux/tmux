@@ -4244,13 +4244,19 @@ window_copy_visible_lines(struct window_copy_mode_data *data, u_int *start,
 {
 	struct grid		*gd = data->backing->grid;
 	const struct grid_line	*gl;
+	u_int			 base;
 
-	for (*start = gd->hsize - data->oy; *start > 0; (*start)--) {
+	if (data->oy > gd->hsize)
+		base = 0;
+	else
+		base = gd->hsize - data->oy;
+
+	for (*start = base; *start > 0; (*start)--) {
 		gl = grid_peek_line(gd, (*start) - 1);
 		if (gl == NULL || ~gl->flags & GRID_LINE_WRAPPED)
 			break;
 	}
-	*end = gd->hsize - data->oy + gd->sy;
+	*end = base + gd->sy;
 }
 
 static int
@@ -4259,12 +4265,18 @@ window_copy_search_mark_at(struct window_copy_mode_data *data, u_int px,
 {
 	struct screen	*s = data->backing;
 	struct grid	*gd = s->grid;
+	u_int		 base;
 
-	if (py < gd->hsize - data->oy)
+	if (data->oy > gd->hsize)
+		base = 0;
+	else
+		base = gd->hsize - data->oy;
+
+	if (py < base)
 		return (-1);
-	if (py > gd->hsize - data->oy + gd->sy - 1)
+	if (py > base + gd->sy - 1)
 		return (-1);
-	*at = ((py - (gd->hsize - data->oy)) * gd->sx) + px;
+	*at = ((py - base) * gd->sx) + px;
 	return (0);
 }
 
@@ -4480,8 +4492,13 @@ window_copy_match_start_end(struct window_copy_mode_data *data, u_int at,
     u_int *start, u_int *end)
 {
 	struct grid	*gd = data->backing->grid;
-	u_int		 last = (gd->sy * gd->sx) - 1;
+	u_int		 last;
 	u_char		 mark = data->searchmark[at];
+
+	if (gd->sy == 0 || gd->sx == 0)
+		last = 0;
+	else
+		last = (gd->sy * gd->sx) - 1;
 
 	*start = *end = at;
 	while (*start != 0 && data->searchmark[*start] == mark)
@@ -4682,6 +4699,10 @@ window_copy_write_line(struct window_mode_entry *wme,
 	style_apply(&mkgc, oo, "copy-mode-mark-style", ft);
 	mkgc.flags |= GRID_FLAG_NOPALETTE;
 
+	if (data->oy > hsize) {
+		format_free(ft);
+		return;
+	}
 	window_copy_write_one(wme, ctx, py, hsize - data->oy + py,
 	    screen_size_x(s), &mgc, &cgc, &mkgc);
 
@@ -5865,8 +5886,14 @@ window_copy_cursor_prompt(struct window_mode_entry *wme, int direction,
 	struct screen			*s = data->backing;
 	struct grid			*gd = s->grid;
 	u_int				 end_line;
-	u_int				 line = gd->hsize - data->oy + data->cy;
+	u_int				 base, line;
 	int				 add, line_flag;
+
+	if (data->oy > gd->hsize)
+		base = 0;
+	else
+		base = gd->hsize - data->oy;
+	line = base + data->cy;
 
 	if (start_output)
 		line_flag = GRID_LINE_START_OUTPUT;
