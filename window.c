@@ -2009,13 +2009,15 @@ struct style_range *
 window_pane_border_status_get_range(struct window_pane *wp, u_int x, u_int y)
 {
 	struct style_ranges	*srs;
-	struct window		*w = wp->window;
-	struct options		*wo = w->options;
+	struct window		*w;
+	struct options		*wo;
 	u_int			 line;
 	int			 pane_status;
 
 	if (wp == NULL)
 		return (NULL);
+	w = wp->window;
+	wo = w->options;
 	srs = &wp->border_status_line.ranges;
 
 	pane_status = options_get_number(wo, "pane-border-status");
