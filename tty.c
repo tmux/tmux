@@ -1728,7 +1728,11 @@ tty_cmd_clearline(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_clearendofline(struct tty *tty, const struct tty_ctx *ctx)
 {
-	u_int	nx = ctx->sx - ctx->ocx;
+	u_int	nx;
+
+	if (ctx->ocx >= ctx->sx)
+		return;
+	nx = ctx->sx - ctx->ocx;
 
 	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
 	    ctx->s->hyperlinks);
@@ -1906,18 +1910,22 @@ tty_cmd_clearendofscreen(struct tty *tty, const struct tty_ctx *ctx)
 	tty_region_pane(tty, ctx, 0, ctx->sy - 1);
 	tty_margin_off(tty);
 
-	px = 0;
-	nx = ctx->sx;
-	py = ctx->ocy + 1;
-	ny = ctx->sy - ctx->ocy - 1;
+	if (ctx->ocy + 1 < ctx->sy) {
+		px = 0;
+		nx = ctx->sx;
+		py = ctx->ocy + 1;
+		ny = ctx->sy - ctx->ocy - 1;
 
-	tty_clear_pane_area(tty, ctx, py, ny, px, nx, ctx->bg);
+		tty_clear_pane_area(tty, ctx, py, ny, px, nx, ctx->bg);
+	}
 
-	px = ctx->ocx;
-	nx = ctx->sx - ctx->ocx;
-	py = ctx->ocy;
+	if (ctx->ocx < ctx->sx) {
+		px = ctx->ocx;
+		nx = ctx->sx - ctx->ocx;
+		py = ctx->ocy;
 
-	tty_clear_pane_line(tty, ctx, py, px, nx, ctx->bg);
+		tty_clear_pane_line(tty, ctx, py, px, nx, ctx->bg);
+	}
 }
 
 void
