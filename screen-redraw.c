@@ -974,7 +974,7 @@ screen_redraw_draw_border_arrows(struct screen_redraw_ctx *ctx, u_int i,
 	}
 	if ((int)j == wp->yoff + 1) {
 		if (border == SCREEN_REDRAW_OUTSIDE) {
-			if (screen_redraw_two_panes(wp->window, 0)) {
+			if (screen_redraw_two_panes(wp->window, &type)) {
 				if (active == TAILQ_FIRST(&w->panes))
 					border = SCREEN_REDRAW_BORDER_RIGHT;
 				else
