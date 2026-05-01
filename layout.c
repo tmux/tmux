@@ -262,6 +262,7 @@ layout_fix_offsets1(struct layout_cell *lc)
 		xoff = lc->xoff;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			if (lcchild->type == LAYOUT_WINDOWPANE &&
+			    lcchild->wp != NULL &&
 			    lcchild->wp->flags & PANE_MINIMISED)
 				continue;
 			lcchild->xoff = xoff;
@@ -274,6 +275,7 @@ layout_fix_offsets1(struct layout_cell *lc)
 		yoff = lc->yoff;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			if (lcchild->type == LAYOUT_WINDOWPANE &&
+			    lcchild->wp != NULL &&
 			    lcchild->wp->flags & PANE_MINIMISED)
 				continue;
 			lcchild->xoff = lc->xoff;
