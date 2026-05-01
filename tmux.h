@@ -3292,7 +3292,7 @@ void	 screen_set_progress_bar(struct screen *, enum progress_bar_state, int);
 void	 screen_resize(struct screen *, u_int, u_int, int);
 void	 screen_resize_cursor(struct screen *, u_int, u_int, int, int, int);
 void	 screen_set_selection(struct screen *, u_int, u_int, u_int, u_int,
-	     u_int, int, struct grid_cell *);
+	     u_int, u_int, int, struct grid_cell *);
 void	 screen_clear_selection(struct screen *);
 void	 screen_hide_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);
@@ -3530,6 +3530,7 @@ char		*window_copy_get_line(struct window_pane *, u_int);
 int		 window_copy_get_current_offset(struct window_pane *, u_int *,
 		     u_int *);
 char		*window_copy_get_hyperlink(struct window_pane *, u_int, u_int);
+void		 window_copy_set_line_numbers(struct window_pane *, int);
 
 /* window-option.c */
 extern const struct window_mode window_customize_mode;

@@ -5173,6 +5173,52 @@ see the
 .Sx STYLES
 section.
 .Pp
+.It Ic copy\-mode\-current\-line\-number\-style Ar style
+Set style of current line number in copy mode.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
+.It Ic copy\-mode\-line\-number\-style Ar style
+Set style of line numbers in copy mode.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
+.It Xo Ic copy\-mode\-line\-numbers
+.Op Ic off | default | absolute | relative | hybrid
+.Xc
+Show line numbers in copy mode.
+.Ic off
+hides line numbers,
+.Ic default
+shows line numbers matching the copy mode position indicator and
+.Ic goto\-line ,
+.Ic absolute
+shows absolute line numbers,
+.Ic relative
+shows line numbers relative to the cursor, and
+.Ic hybrid
+shows the current line number as absolute and other line numbers as
+relative.
+With
+.Ic off
+or
+.Ic default ,
+the position indicator and
+.Ic goto\-line
+use the same numbering;
+with
+.Ic absolute ,
+.Ic relative
+and
+.Ic hybrid ,
+they use absolute line numbers.
+.Pp
 .It Ic mode\-style Ar style
 Set window modes style.
 For how to specify
@@ -6308,6 +6354,8 @@ The following variables are available, where appropriate:
 .It Li "copy_cursor_word" Ta "" Ta "Word under cursor in copy mode"
 .It Li "copy_cursor_x" Ta "" Ta "Cursor X position in copy mode"
 .It Li "copy_cursor_y" Ta "" Ta "Cursor Y position in copy mode"
+.It Li "copy_position" Ta "" Ta "Position shown in the copy mode indicator"
+.It Li "copy_position_limit" Ta "" Ta "Limit shown in the copy mode indicator"
 .It Li "current_file" Ta "" Ta "Current configuration file"
 .It Li "cursor_character" Ta "" Ta "Character at cursor in pane"
 .It Li "cursor_colour" Ta "" Ta "Cursor colour in pane"
