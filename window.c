@@ -1292,6 +1292,138 @@ window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
 	return (0);
 }
 
+int
+window_pane_tile_geometry(struct window *w, struct window_pane *wp, int *out_size,
+    int *out_flags, enum layout_type *out_type, struct cmdq_item *item,
+    struct args *args, char **cause)
+{
+	int			size, flags = *out_flags;
+	enum layout_type	type;
+	u_int			curval = 0;
+
+	type = LAYOUT_TOPBOTTOM;
+	if (args_has(args, 'h'))
+		type = LAYOUT_LEFTRIGHT;
+
+	/* If the 'p' flag is dropped then this bit can be moved into 'l'. */
+	if (args_has(args, 'l') || args_has(args, 'p')) {
+		if (args_has(args, 'f')) {
+			if (type == LAYOUT_TOPBOTTOM)
+				curval = w->sy;
+			else
+				curval = w->sx;
+		} else {
+			if (type == LAYOUT_TOPBOTTOM)
+				curval = wp->sy;
+			else
+				curval = wp->sx;
+		}
+	}
+
+	size = -1;
+	if (args_has(args, 'l')) {
+		size = args_percentage_and_expand(args, 'l', 0, INT_MAX, curval,
+		    item, cause);
+	} else if (args_has(args, 'p')) {
+		size = args_strtonum_and_expand(args, 'p', 0, 100, item,
+		    cause);
+		if (cause == NULL)
+			size = curval * (size) / 100;
+	}
+	if (*cause != NULL) {
+		return (-1);
+	}
+	if (args_has(args, 'b'))
+		flags |= SPAWN_BEFORE;
+	if (args_has(args, 'f'))
+		flags |= SPAWN_FULLSIZE;
+
+	*out_size = size;
+	*out_flags = flags;
+	*out_type = type;
+
+	return (0);
+}
+
+int
+window_pane_float_geometry(struct window *w, struct window_pane *wp,
+    u_int *out_x, u_int *out_y, u_int *out_sx, u_int *out_sy,
+    struct cmdq_item *item, struct args *args, char **cause)
+{
+	u_int		x, y, sx, sy;
+	const u_int	casc_x = 4, casc_y = 2;
+
+	if ((wp->flags & PANE_SAVED_FLOAT) &&
+	    !args_has(args, 'x') && !args_has(args, 'y') &&
+	    !args_has(args, 'X') && !args_has(args, 'Y')) {
+		x  = wp->saved_float_xoff;
+		y  = wp->saved_float_yoff;
+		sx = wp->saved_float_sx;
+		sy = wp->saved_float_sy;
+		goto out;
+	}
+
+	/* Default size */
+	sx = w->sx / 2;
+	sy = w->sy / 2;
+
+	if (args_has(args, 'x')) {
+		sx = args_percentage_and_expand(args, 'x', 0, USHRT_MAX, w->sx,
+			item, cause);
+		if (*cause != NULL) {
+			return (-1);
+		}
+	}
+	if (args_has(args, 'y')) {
+		sy = args_percentage_and_expand(args, 'y', 0, USHRT_MAX, w->sy,
+		    item, cause);
+		if (*cause != NULL) {
+			return (-1);
+		}
+	}
+
+	/* Position defaults to cascading when not defined */
+	if (args_has(args, 'X')) {
+		x = args_percentage_and_expand(args, 'X', 0, USHRT_MAX, w->sx,
+		    item, cause);
+		if (*cause != NULL) {
+			return (-1);
+		}
+	} else {
+		if (w->last_new_pane_x == 0)
+			x = casc_x;
+		else {
+			x = w->last_new_pane_x + casc_x;
+			if (w->last_new_pane_x > w->sx)
+				x = casc_x;
+		}
+		w->last_new_pane_x = x;
+	}
+	if (args_has(args, 'Y')) {
+		y = args_percentage_and_expand(args, 'Y', 0, USHRT_MAX, w->sy,
+		    item, cause);
+		if (*cause != NULL) {
+			return (-1);
+		}
+	} else {
+		if (w->last_new_pane_y == 0)
+			y = casc_y;
+		else {
+			y = w->last_new_pane_y + casc_y;
+			if (w->last_new_pane_y > w->sy)
+				y = casc_y;
+		}
+		w->last_new_pane_y = y;
+	}
+
+out:
+	*out_x = x;
+	*out_y = y;
+	*out_sx = sx;
+	*out_sy = sy;
+	return (0);
+}
+
 void
 window_pane_reset_mode(struct window_pane *wp)
 {
@@ -1425,6 +1557,64 @@ window_pane_visible(struct window_pane *wp)
 		return (1);
 
 	return (wp == wp->window->active);
+}
+
+int
+window_pane_minimise(struct window_pane *wp)
+{
+	struct window		*w = wp->window;
+	struct window_pane	*wp2;
+
+	/* Ignore if already minimised to prevent double-redistribution. */
+	if (wp->flags & PANE_MINIMISED)
+		return (-1);
+
+	wp->flags |= PANE_MINIMISED;
+	window_deactivate_pane(w, wp, 1);
+
+	/* Fix pane offsets and sizes. */
+	if (w->layout_root != NULL) {
+		wp->saved_layout_cell = wp->layout_cell;
+		layout_minimise_cell(w, wp->layout_cell);
+		layout_fix_offsets(w);
+		layout_fix_panes(w, NULL);
+	}
+
+	/* Find next visible window in z-index. */
+	TAILQ_FOREACH(wp2, &w->z_index, zentry) {
+		if (!window_pane_visible(wp2))
+			continue;
+		break;
+	}
+	if (wp2 != NULL)
+		window_set_active_pane(w, wp2, 1);
+
+	notify_window("window-layout-changed", w);
+	return (0);
+}
+
+int
+window_pane_unminimise(struct window_pane *wp)
+{
+	struct window	*w = wp->window;
+
+	if (~wp->flags & PANE_MINIMISED)
+		return (-1);
+	wp->flags &= ~PANE_MINIMISED;
+
+	/* Fix pane offsets and sizes. */
+	if (w->layout_root != NULL && wp->saved_layout_cell != NULL) {
+		wp->layout_cell = wp->saved_layout_cell;
+		wp->saved_layout_cell = NULL;
+		layout_unminimise_cell(w, wp->layout_cell);
+		layout_fix_offsets(w);
+		layout_fix_panes(w, NULL);
+	}
+
+	window_set_active_pane(w, wp, 1);
+
+	notify_window("window-layout-changed", w);
+	return (0);
 }
 
 int

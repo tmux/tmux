@@ -33,14 +33,17 @@ static void	cmd_resize_pane_mouse_update_floating(struct client *,
 		    struct mouse_event *);
 static void	cmd_resize_pane_mouse_update_tiled(struct client *,
 		    struct mouse_event *);
+static void	cmd_resize_pane_minimise(struct window_pane *, const char *);
+static void	cmd_resize_pane_unminimise(struct window_pane *, const char *);
 
 const struct cmd_entry cmd_resize_pane_entry = {
 	.name = "resize-pane",
 	.alias = "resizep",
 
-	.args = { "DLMRTt:Ux:y:Z", 0, 1, NULL },
-	.usage = "[-DLMRTUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
-		 "[adjustment]",
+	.args = { "DLm:MRTt:u:Ux:y:Z", 0, 1, NULL },
+	.usage = "[-DLmMRTUZ] [-x width] [-y height] [-m minimise] "
+		 "[-u unminimise] "
+		 CMD_TARGET_PANE_USAGE " [adjustment]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -103,6 +106,16 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 	server_unzoom_window(w);
+
+	if (args_has(args, 'm')) {
+		cmd_resize_pane_minimise(wp, args_get(args, 'm'));
+		server_redraw_window(w);
+		return (CMD_RETURN_NORMAL);
+	} else if (args_has(args, 'u')) {
+		cmd_resize_pane_unminimise(wp, args_get(args, 'u'));
+		server_redraw_window(w);
+		return (CMD_RETURN_NORMAL);
+	}
 
 	if (args_count(args) == 0)
 		adjust = 1;
@@ -351,4 +364,40 @@ cmd_resize_pane_mouse_update_tiled(struct client *c, struct mouse_event *m)
 	}
 	if (resizes != 0)
 		server_redraw_window(w);
+}
+
+static void
+cmd_resize_pane_minimise(struct window_pane *wp, const char* param)
+{
+	struct window		 *w = wp->window;
+	struct window_pane	**l = NULL;
+	struct sort_criteria	  sc = { SORT_ORDER, 0, NULL };
+	u_int			  n, i;
+
+	if (strcasecmp(param, "a") == 0) {
+		l = sort_get_panes_window(w, &n, &sc);
+		for (i = 0; i < n; i++) {
+			if (wp == l[i])
+				continue;
+			window_pane_minimise(l[i]);
+		}
+	} else if (strcasecmp(param, "1") == 0)
+		window_pane_minimise(wp);
+}
+
+static void
+cmd_resize_pane_unminimise(struct window_pane *wp, const char* param)
+{
+	struct window		 *w = wp->window;
+	struct window_pane	**l = NULL;
+	struct sort_criteria	  sc = { SORT_ORDER, 0, NULL };
+	u_int			  n, i;
+
+	if (strcasecmp(param, "a") == 0) {
+		l = sort_get_panes_window(w, &n, &sc);
+		for (i = 0; i < n; i++) {
+			window_pane_unminimise(l[i]);
+		}
+	} else if (strcasecmp(param, "1") == 0)
+		window_pane_unminimise(wp);
 }
