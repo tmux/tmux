@@ -2296,7 +2296,7 @@ format_cb_pane_pipe_pid(struct format_tree *ft)
 static void *
 format_cb_pane_pb_progress(struct format_tree *ft)
 {
-	char    *value = NULL;
+	char	*value = NULL;
 
 	if (ft->wp != NULL)
 		xasprintf(&value, "%d", ft->wp->base.progress_bar.progress);
@@ -4225,6 +4225,20 @@ format_choose(struct format_expand_state *es, const char *s, char **left,
 	return (0);
 }
 
+/* Check format has not taken too lon. */
+static int
+format_check_time(struct format_expand_state *es)
+{
+	uint64_t t = get_timer();
+
+	if (t - es->start_time < FORMAT_TIME_LIMIT)
+		return (1);
+	t -= es->start_time;
+
+	format_log(es, "reached time limit (%llu)", (unsigned long long)t);
+	return (0);
+}
+
 /* Is this true? */
 int
 format_true(const char *s)
@@ -5247,6 +5261,8 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 		else {
 			value = xstrdup("");
 			for (i = 0; i < nrep; i++) {
+				if (!format_check_time(es))
+					goto fail;
 				xasprintf(&new, "%s%s", value, left);
 				free(value);
 				value = new;
@@ -5520,16 +5536,10 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 	size_t			 off, len, n, outlen;
 	int			 ch, brackets;
 	char			 expanded[8192];
-	uint64_t		 t = get_timer();
 
-	if (fmt == NULL || *fmt == '\0')
+	if (fmt == NULL || *fmt == '\0' || !format_check_time(es))
 		return (xstrdup(""));
 
-	if (t - es->start_time >= FORMAT_TIME_LIMIT) {
-		format_log(es, "reached time limit (%llu)",
-		    (unsigned long long)(t - es->start_time));
-		return (xstrdup(""));
-	}
 	if (es->loop == FORMAT_LOOP_LIMIT) {
 		format_log(es, "reached loop limit (%u)", FORMAT_LOOP_LIMIT);
 		return (xstrdup(""));
