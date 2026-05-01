@@ -959,8 +959,8 @@ partial_key:
 	    (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS) ||
 	    !TAILQ_EMPTY(&c->input_requests)) {
 		log_debug("%s: increasing delay for active query", c->name);
-		if (delay < 500)
-			delay = 500;
+		int min_delay = len == 1 && *buf == '\033' ? 100 : 500;
+		delay = MAX(min_delay, delay);
 	}
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
