@@ -329,8 +329,17 @@ screen_write_reset(struct screen_write_ctx *ctx)
 
 	s->mode = MODE_CURSOR|MODE_WRAP;
 
-	if (options_get_number(global_options, "extended-keys") == 2)
-		s->mode = (s->mode & ~EXTENDED_KEY_MODES)|MODE_KEYS_EXTENDED;
+	s->kitty_kbd.flags = 0;
+	s->kitty_kbd.saved_flags = KITTY_KBD_SAVED_NONE;
+	s->saved_kitty_kbd.flags = 0;
+	s->saved_kitty_kbd.saved_flags = KITTY_KBD_SAVED_NONE;
+	if (options_get_number(global_options, "extended-keys") == 2) {
+		if (options_get_number(global_options, "extended-keys-format") ==
+		    EXTENDED_KEYS_FORMAT_KITTY)
+			s->kitty_kbd.flags = KITTY_KBD_DISAMBIGUATE;
+		else
+			s->mode = (s->mode & ~EXTENDED_KEY_MODES)|MODE_KEYS_EXTENDED;
+	}
 
 	screen_write_clearscreen(ctx, 8);
 	screen_write_set_cursor(ctx, 0, 0);

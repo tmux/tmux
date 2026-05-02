@@ -2190,6 +2190,14 @@ static void *
 format_cb_pane_key_mode(struct format_tree *ft)
 {
 	if (ft->wp != NULL && ft->wp->screen != NULL) {
+		if (options_get_number(global_options, "extended-keys") == 0)
+			return (xstrdup("VT10x"));
+		if (options_get_number(global_options, "extended-keys-format") ==
+		    EXTENDED_KEYS_FORMAT_KITTY) {
+			if (ft->wp->screen->kitty_kbd.flags != 0)
+				return (xstrdup("Kitty"));
+			return (xstrdup("VT10x"));
+		}
 		switch (ft->wp->screen->mode & EXTENDED_KEY_MODES) {
 		case MODE_KEYS_EXTENDED:
 			return (xstrdup("Ext 1"));

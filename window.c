@@ -1238,10 +1238,11 @@ window_pane_copy_paste(struct window_pane *wp, char *buf, size_t len)
 	}
 }
 
+
 static void
-window_pane_copy_key(struct window_pane *wp, key_code key)
+window_pane_copy_key(struct window_pane *wp, key_code key, int force_legacy)
 {
- 	struct window_pane	*loop;
+	struct window_pane	*loop;
 
 	TAILQ_FOREACH(loop, &wp->window->panes, entry) {
 		if (loop != wp &&
@@ -1250,7 +1251,7 @@ window_pane_copy_key(struct window_pane *wp, key_code key)
 		    (~loop->flags & PANE_INPUTOFF) &&
 		    window_pane_visible(loop) &&
 		    options_get_number(loop->options, "synchronize-panes"))
-			input_key_pane(loop, key, NULL);
+			input_key_pane(loop, key, NULL, force_legacy);
 	}
 }
 
@@ -1278,6 +1279,7 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
     struct winlink *wl, key_code key, struct mouse_event *m)
 {
 	struct window_mode_entry	*wme;
+	int			 force_legacy;
 
 	if (KEYC_IS_MOUSE(key) && m == NULL)
 		return (-1);
@@ -1294,13 +1296,14 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 	if (wp->fd == -1 || wp->flags & PANE_INPUTOFF)
 		return (0);
 
-	if (input_key_pane(wp, key, m) != 0)
+	force_legacy = input_key_is_legacy_client(c, key);
+	if (input_key_pane(wp, key, m, force_legacy) != 0)
 		return (-1);
 
 	if (KEYC_IS_MOUSE(key))
 		return (0);
 	if (options_get_number(wp->options, "synchronize-panes"))
-		window_pane_copy_key(wp, key);
+		window_pane_copy_key(wp, key, force_legacy);
 	return (0);
 }
 

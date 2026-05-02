@@ -188,6 +188,8 @@ assert_key 0x7C '|'	  -- 'Escape 0x7C' 'M-|'
 assert_key 0x7D '}'	  -- 'Escape 0x7D' 'M-}'
 assert_key 0x7E '~'	  -- 'Escape 0x7E' 'M-~'
 assert_key 0x7F 'BSpace'  -- 'Escape 0x7F' 'M-BSpace'
+assert_key 'Sp-c' 'M-c'
+assert_key 'Hy-c' 'M-c'
 
 # Numeric keypad
 assert_key 'Escape OM' 'KPEnter' -- 'Escape Escape OM' 'M-KPEnter'

@@ -37,6 +37,7 @@ static int	tty_log_fd = -1;
 
 static void	tty_start_timer_callback(int, short, void *);
 static void	tty_clipboard_query_callback(int, short, void *);
+static void	tty_pop_kitty(struct tty *, int);
 static void	tty_set_italics(struct tty *);
 static int	tty_try_colour(struct tty *, int, const char *);
 static void	tty_force_cursor_colour(struct tty *, int);
@@ -327,6 +328,69 @@ tty_start_start_timer(struct tty *tty)
 	evtimer_add(&tty->start_timer, &tv);
 }
 
+static void
+tty_pop_kitty(struct tty *tty, int raw)
+{
+	if (~tty->flags & TTY_KITTY_PUSHED)
+		return;
+
+	if (raw)
+		tty_raw(tty, "\033[<1u");
+	else
+		tty_puts(tty, "\033[<1u");
+	tty->flags &= ~TTY_KITTY_PUSHED;
+	tty->kitty_enabled_flags = tty->kitty_saved_flags;
+	tty->kitty_saved_flags = 0;
+}
+
+/*
+ * Enable kitty keyboard disambiguation on the outer terminal for tmux itself,
+ * then add any kitty flags requested by the visible pane.
+ */
+static int
+tty_want_kitty(struct tty *tty, struct screen *s)
+{
+	int	ek, flags, format;
+
+	ek = options_get_number(global_options, "extended-keys");
+	format = options_get_number(global_options, "extended-keys-format");
+	if (ek == 0 || format != EXTENDED_KEYS_FORMAT_KITTY)
+		return (0);
+	if (~tty->flags & TTY_HAVEDA_KITTY)
+		return (0);
+
+	flags = KITTY_KBD_DISAMBIGUATE;
+	if (s != NULL)
+		flags |= s->kitty_kbd.flags & KITTY_KBD_SUPPORTED;
+	return (flags & tty->kitty_supported_flags);
+}
+
+void
+tty_update_kitty(struct tty *tty, struct screen *s)
+{
+	char	tmp[32];
+	int	flags;
+
+	flags = tty_want_kitty(tty, s);
+	if (flags == 0) {
+		tty_pop_kitty(tty, 0);
+		return;
+	}
+	if (~tty->flags & TTY_KITTY_PUSHED) {
+		xsnprintf(tmp, sizeof tmp, "\033[>%uu", flags);
+		tty_puts(tty, tmp);
+		tty->kitty_saved_flags = tty->kitty_enabled_flags;
+		tty->flags |= TTY_KITTY_PUSHED;
+		tty->kitty_enabled_flags = flags;
+		return;
+	}
+	if (tty->kitty_enabled_flags == flags)
+		return;
+	xsnprintf(tmp, sizeof tmp, "\033[=%uu", flags);
+	tty_puts(tty, tmp);
+	tty->kitty_enabled_flags = flags;
+}
+
 void
 tty_start_tty(struct tty *tty)
 {
@@ -391,6 +455,8 @@ tty_send_requests(struct tty *tty)
 		return;
 
 	if (tty->term->flags & TERM_VT100LIKE) {
+		if (~tty->flags & TTY_HAVEDA_KITTY)
+			tty_puts(tty, "\033[?u");
 		if (~tty->flags & TTY_HAVEDA)
 			tty_puts(tty, "\033[c");
 		if (~tty->flags & TTY_HAVEDA2)
@@ -486,6 +552,7 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, "\033[?7727l");
 	tty_raw(tty, tty_term_string(tty->term, TTYC_DSFCS));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_DSEKS));
+	tty_pop_kitty(tty, 1);
 
 	if (tty_use_margin(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_DSMG));
@@ -529,14 +596,22 @@ void
 tty_update_features(struct tty *tty)
 {
 	struct client	*c = tty->client;
+	struct screen	*s = server_client_get_screen(c, NULL, NULL);
+	int		 ek, format;
+
+	ek = options_get_number(global_options, "extended-keys");
+	format = options_get_number(global_options, "extended-keys-format");
 
 	if (tty_apply_features(tty->term, c->term_features))
 		tty_term_apply_overrides(tty->term);
 
 	if (tty_use_margin(tty))
 		tty_putcode(tty, TTYC_ENMG);
-	if (options_get_number(global_options, "extended-keys"))
+	if (ek != 0 && format != EXTENDED_KEYS_FORMAT_KITTY)
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENEKS));
+	else
+		tty_puts(tty, tty_term_string(tty->term, TTYC_DSEKS));
+	tty_update_kitty(tty, s);
 	if (options_get_number(global_options, "focus-events"))
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENFCS));
 	if (tty->term->flags & TERM_VT100LIKE)

@@ -395,7 +395,8 @@ input_key_build(void)
 
 /* Translate a key code into an output key sequence for a pane. */
 int
-input_key_pane(struct window_pane *wp, key_code key, struct mouse_event *m)
+input_key_pane(struct window_pane *wp, key_code key, struct mouse_event *m,
+	int force_legacy)
 {
 	if (log_get_level() != 0) {
 		log_debug("writing key 0x%llx (%s) to %%%u", key,
@@ -407,7 +408,25 @@ input_key_pane(struct window_pane *wp, key_code key, struct mouse_event *m)
 			input_key_mouse(wp, m);
 		return (0);
 	}
-	return (input_key(wp->screen, wp->event, key));
+	return (input_key(wp->screen, wp->event, key, force_legacy));
+}
+
+int
+input_key_is_legacy_client(struct client *c, key_code key)
+{
+	struct tty	*tty;
+	int		 format;
+
+	if (c == NULL || (key & KEYC_SENT))
+		return (0);
+	if (options_get_number(global_options, "extended-keys") == 0)
+		return (1);
+
+	tty = &c->tty;
+	format = options_get_number(global_options, "extended-keys-format");
+	if (format == EXTENDED_KEYS_FORMAT_KITTY)
+		return (~tty->flags & TTY_HAVEDA_KITTY);
+	return (!tty_term_has(tty->term, TTYC_ENEKS));
 }
 
 static void
@@ -464,7 +483,8 @@ input_key_extended(struct bufferevent *bev, key_code key)
 	} else
 		key &= KEYC_MASK_KEY;
 
-	if (options_get_number(global_options, "extended-keys-format") == 1)
+	if (options_get_number(global_options, "extended-keys-format") ==
+	    EXTENDED_KEYS_FORMAT_XTERM)
 		xsnprintf(tmp, sizeof tmp, "\033[27;%c;%llu~", modifier, key);
 	else
 		xsnprintf(tmp, sizeof tmp, "\033[%llu;%cu", key, modifier);
@@ -500,7 +520,7 @@ input_key_vt10x(struct bufferevent *bev, key_code key)
 	 */
 	if (KEYC_IS_UNICODE(key)) {
 		utf8_to_data(key, &ud);
-                input_key_write(__func__, bev, ud.data, ud.size);
+		input_key_write(__func__, bev, ud.data, ud.size);
 		return (0);
 	}
 
@@ -569,13 +589,16 @@ input_key_mode1(struct bufferevent *bev, key_code key)
 	return (-1);
 }
 
+
 /* Translate a key code into an output key sequence. */
 int
-input_key(struct screen *s, struct bufferevent *bev, key_code key)
+input_key(struct screen *s, struct bufferevent *bev, key_code key,
+    int force_legacy)
 {
 	struct input_key_entry	*ike = NULL;
 	key_code		 newkey;
 	struct utf8_data	 ud;
+	int			 ek, format, kitty;
 
 	/* Mouse keys need a pane. */
 	if (KEYC_IS_MOUSE(key))
@@ -588,12 +611,26 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		return (0);
 	}
 
+	if (force_legacy) {
+		ek = 0;
+		format = EXTENDED_KEYS_FORMAT_XTERM;
+		kitty = 0;
+	} else {
+		ek = options_get_number(global_options, "extended-keys");
+		format = options_get_number(global_options, "extended-keys-format");
+		if (ek != 0 && format == EXTENDED_KEYS_FORMAT_KITTY)
+			kitty = s->kitty_kbd.flags;
+		else
+			kitty = 0;
+	}
+
 	/* Is this backspace? */
 	if ((key & KEYC_MASK_KEY) == KEYC_BSPACE) {
 		newkey = options_get_number(global_options, "backspace");
 		log_debug("%s: key 0x%llx is backspace -> 0x%llx", __func__,
 		    key, newkey);
-		if ((key & KEYC_MASK_MODIFIERS) == 0) {
+		if ((key & KEYC_MASK_MODIFIERS) == 0 &&
+		    !(kitty & KITTY_KBD_REPORT_ALL)) {
 			ud.data[0] = 255;
 			if ((newkey & KEYC_MASK_MODIFIERS) == 0)
 				ud.data[0] = newkey;
@@ -615,7 +652,8 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 
 	/* Is this backtab? */
 	if ((key & KEYC_MASK_KEY) == KEYC_BTAB) {
-		if (s->mode & MODE_KEYS_EXTENDED_2) {
+		if (ek != 0 && format != EXTENDED_KEYS_FORMAT_KITTY &&
+		    (s->mode & MODE_KEYS_EXTENDED_2)) {
 			/* When in xterm extended mode, remap into S-Tab. */
 			key = '\011' | (key & ~KEYC_MASK_KEY) | KEYC_SHIFT;
 		} else {
@@ -624,12 +662,21 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		}
 	}
 
+	/* Strip kitty-only modifiers for non-kitty applications. */
+	if (kitty == 0) {
+		if (key & (KEYC_SUPER|KEYC_HYPER))
+			key |= (KEYC_META|KEYC_IMPLIED_META);
+		key &= ~(KEYC_SUPER|KEYC_HYPER);
+	}
+
 	/*
 	 * A trivial case, that is a 7-bit key, excluding C0 control characters
 	 * that can't be entered from the keyboard, and no modifiers; or a UTF-8
-	 * key and no modifiers.
+	 * key and no modifiers. Skip this when kitty keyboard mode needs CSI u
+	 * encoding (disambiguate mode encodes ESC; report-all encodes everything).
 	 */
-	if (!(key & ~KEYC_MASK_KEY)) {
+	if (!(key & ~KEYC_MASK_KEY) &&
+	    kitty == 0) {
 		if (key == C0_HT ||
 		    key == C0_CR ||
 		    key == C0_ESC ||
@@ -646,13 +693,22 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	}
 
 	/*
-	 * Look up the standard VT10x keys in the tree. If not in application
-	 * keypad or cursor mode, remove the respective flags from the key.
+	 * Strip keypad/cursor flags based on mode before any encoding.
 	 */
 	if (~s->mode & MODE_KKEYPAD)
 		key &= ~KEYC_KEYPAD;
 	if (~s->mode & MODE_KCURSOR)
 		key &= ~KEYC_CURSOR;
+
+	/* Use kitty encoding only when kitty is the selected enhanced protocol. */
+	if (kitty != 0) {
+		if (input_key_kitty(s, bev, key) == 0)
+			return (0);
+	}
+
+	/*
+	 * Look up the standard VT10x keys in the tree.
+	 */
 	if (ike == NULL)
 		ike = input_key_get(key);
 	if (ike == NULL && (key & KEYC_META) && (~key & KEYC_IMPLIED_META))
@@ -677,6 +733,18 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		log_debug("%s: ignoring key 0x%llx", __func__, key);
 		return (0);
 	}
+
+	/*
+	 * When kitty keyboard mode is active, keys it didn't handle
+	 * (unmodified printable, Tab, CR, etc.) use VT10x raw-byte
+	 * encoding. Kitty protocol is a superset of CSI u; routing
+	 * through the extended-keys path would silently drop any key
+	 * without modifiers because that encoder has no case for it.
+	 */
+	if (kitty != 0)
+		return (input_key_vt10x(bev, key));
+	if (ek == 0 || format == EXTENDED_KEYS_FORMAT_KITTY)
+		return (input_key_vt10x(bev, key));
 
 	/*
 	 * No builtin key sequence; construct an extended key sequence
@@ -751,7 +819,7 @@ input_key_get_mouse(struct screen *s, struct mouse_event *m, u_int x, u_int y,
 	 * the new SGR format, since the released button is unknown). Otherwise
 	 * pretend that tmux doesn't speak this extension, and fall back to the
 	 * UTF-8 (1005) extension if the application requested, or to the
-	 * legacy format.
+	 * X10 format.
 	 */
 	if (m->sgr_type != ' ' && (s->mode & MODE_MOUSE_SGR)) {
 		len = xsnprintf(buf, sizeof buf, "\033[<%u;%u;%u%c",
