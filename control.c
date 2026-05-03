@@ -352,6 +352,9 @@ control_set_pane_off(struct client *c, struct window_pane *wp)
 	struct control_pane	*cp;
 
 	cp = control_add_pane(c, wp);
+	control_discard_pane(c, cp);
+	memcpy(&cp->offset, &wp->offset, sizeof cp->offset);
+	memcpy(&cp->queued, &wp->offset, sizeof cp->queued);
 	cp->flags |= CONTROL_PANE_OFF;
 }
 
