@@ -2790,7 +2790,7 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
-window_copy_cmd_recenter_top_bottom(struct window_copy_cmd_state *cs)
+window_copy_cmd_recentre_top_bottom(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
@@ -2799,17 +2799,27 @@ window_copy_cmd_recenter_top_bottom(struct window_copy_cmd_state *cs)
 	u_int sy = screen_size_y(&data->screen) - 1;
 	u_int sm = sy / 2;
 	
-	if (cy == 0) {
-		window_copy_scroll_down(wme, sy - cy);
+	if (cy == sm) {
+		window_copy_scroll_up(wme, cy);
+		data->cy = 0;
+	}
+	else if (cy == 0) {
+		window_copy_scroll_down(wme, sy);
 		data->cy = sy;
 	}
 	else if (cy == sy) {
-		window_copy_scroll_up(wme, sy - sm);
+		window_copy_scroll_up(wme, sy- sm);
 		data->cy = sm;
 	}
 	else {
-		window_copy_scroll_up(wme, cy);
-		data->cy = 0;
+		if (cy < sm) {
+			window_copy_scroll_down(wme, sm - cy);
+			data->cy = sm;
+		}
+		else {
+			window_copy_scroll_up(wme, cy - sm);
+			data->cy = sm;
+		}
 	}
 	
 	return (WINDOW_COPY_CMD_REDRAW);
@@ -3376,11 +3386,11 @@ static const struct {
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_top_line
 	},
-	{ .command = "recenter-top-bottom",
+	{ .command = "recentre-top-bottom",
 	  .args = { "", 0, 0, NULL },
 	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  .f = window_copy_cmd_recenter_top_bottom
+	  .f = window_copy_cmd_recentre_top_bottom
 	},
 };
 
