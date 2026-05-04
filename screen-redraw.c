@@ -1427,7 +1427,7 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
 		total_height = cm_size + sb_h;
 		percent_view = (double)sb_h / (cm_size + sb_h);
 		slider_h = (double)sb_h * percent_view;
-		slider_y = (sb_h + 1) * ((double)cm_y / (total_height));
+		slider_y = sb_h * ((double)cm_y / total_height);
 	}
 
 	if (sb_pos == PANE_SCROLLBARS_LEFT)
