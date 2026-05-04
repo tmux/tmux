@@ -3525,10 +3525,8 @@ if specified, to
 .Ar new\-name .
 .Tg resizep
 .It Xo Ic resize\-pane
-.Op Fl DLMRTUZ
-.Op Fl m Ar minimise
+.Op Fl aDLmMRTUZ
 .Op Fl t Ar target\-pane
-.Op Fl u Ar unminimise
 .Op Fl x Ar width
 .Op Fl y Ar height
 .Op Ar adjustment
@@ -3571,24 +3569,17 @@ begins mouse resizing (only valid if bound to a mouse key binding, see
 trims all lines below the current cursor position and moves lines out of the
 history to replace them.
 .Pp
-The
 .Fl m
-and
-.Fl u
-options minimise or unminimise a pane respectively.
-They must be followed by one of the following special values:
-.Bl -column "XXXXX" -offset indent
-.It Sy "Value" Ta Sy "Meaning"
-.It Li "a" Ta "affects all panes"
-.It Li "1" Ta "affects a single pane"
-.El
-.Pp
+toggles minimising a pane.
 If
-.Fl m
-is followed by
-.Ar a ,
-.Ar target_pane
-is not minimised.
+.Fl a
+is given then all panes are affected.
+If
+.Ar target-pane
+is not minimised,
+.Fl a
+will minimise all panes other than
+.Ar target_pane .
 .Tg resizew
 .It Xo Ic resize\-window
 .Op Fl aADLRU
