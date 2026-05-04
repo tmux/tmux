@@ -807,7 +807,17 @@ screen_mode_to_string(int mode)
 		strlcat(tmp, "KEYS_EXTENDED_2,", sizeof tmp);
 	if (mode & MODE_THEME_UPDATES)
 		strlcat(tmp, "THEME_UPDATES,", sizeof tmp);
-	tmp[strlen(tmp) - 1] = '\0';
+	/*
+	 * Trim the trailing comma left by the strlcat chain above.  Guard the
+	 * empty case: when mode is non-zero but matches none of the listed
+	 * MODE_* flags, no strlcat ran and tmp stays "".  strlen(tmp) is then
+	 * 0 and the unguarded tmp[strlen(tmp) - 1] would compute tmp[(size_t)-1]
+	 * and write one byte before the buffer.  The currently-exercised case
+	 * is MODE_CURSOR_BLINKING_SET (0x20000), passed alone from input.c when
+	 * handling DECSCUSR (Ps=0), DECRST ?12, and DECSET ?12.
+	 */
+	if (tmp[0] != '\0')
+		tmp[strlen(tmp) - 1] = '\0';
 	return (tmp);
 }
 
