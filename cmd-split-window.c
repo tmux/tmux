@@ -38,13 +38,12 @@ const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
 	.alias = "newp",
 
-	.args = { "bc:de:fF:hIkl:m:M:p:PR:s:S:t:x:X:y:Y:vZ", 0, -1, NULL },
+	.args = { "bc:de:fF:hIkl:m:p:PR:s:S:t:vVx:X:y:Y:Z", 0, -1, NULL },
 	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
-		 "[-F format] [-l size] [-m message] [-M mode] "
-		 "[-R inactive-border-style] [-s style] "
-		 "[-S active-border-style] [-x width] [-X x-position]"
-		 "[-y height] [-Y y-position]" CMD_TARGET_PANE_USAGE
-		 "[shell-command [argument ...]]",
+		 "[-F format] [-l size] [-m message] [-p percentage] [-s style] "
+		 "[-S active-border-style] [-R inactive-border-style] "
+		 "[-x width] [-y height] [-X x-position] [-Y y-position] "
+		 CMD_TARGET_PANE_USAGE " [shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -56,13 +55,11 @@ const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
 	.alias = "splitw",
 
-	.args = { "bc:de:fF:hIkl:m:M:p:PR:s:S:t:x:X:y:Y:vZ", 0, -1, NULL },
+	.args = { "bc:de:fF:hIkl:m:p:PR:s:S:t:vZ", 0, -1, NULL },
 	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
-		 "[-F format] [-l size] [-m message] [-M mode] "
-		 "[-R inactive-border-style] [-s style] "
-		 "[-S active-border-style] [-x width] [-X x-position]"
-		 "[-y height] [-Y y-position]" CMD_TARGET_PANE_USAGE
-		 "[shell-command [argument ...]]",
+		 "[-F format] [-l size] [-m message] [-p percentage] [-s style] "
+		 "[-S active-border-style] [-R inactive-border-style] "
+		 CMD_TARGET_PANE_USAGE " [shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -140,18 +137,16 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*wp = target->wp, *new_wp;
 	struct layout_cell	*lc = NULL;
 	struct cmd_find_state	 fs;
-	int			 input, flags = 0, is_floating = 0;
+	int			 input, is_floating, flags = 0;
 	const char		*template, *style;
 	char			*cause = NULL, *cp;
 	struct args_value	*av;
 	u_int			 count = args_count(args);
 
-	if (args_has(args, 'M')) {
-		is_floating = strcasecmp(args_get(args, 'M'), "f") == 0;
-	} else {
-		if (cmd_get_entry(self) == &cmd_new_pane_entry)
-			is_floating = 1; /* default new-pane */
-	}
+	if (cmd_get_entry(self) == &cmd_new_pane_entry)
+		is_floating = !args_has(args, 'V');
+	else
+		is_floating = 0;
 
 	input = (args_has(args, 'I') && count == 0);
 

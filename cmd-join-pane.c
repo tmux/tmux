@@ -35,9 +35,9 @@ const struct cmd_entry cmd_join_pane_entry = {
 	.name = "join-pane",
 	.alias = "joinp",
 
-	.args = { "bdfhvM:p:l:s:t:x:X:y:Y:", 0, 0, NULL },
-	.usage = "[-bdfFhv] [-l size] [-x width] [-X x-position] [-y height] "
-		 "[-Y y-position] " CMD_SRCDST_PANE_USAGE,
+	.args = { "bdfhvp:l:s:t:", 0, 0, NULL },
+	.usage = "[-bdfFhv] [-l size] [-p percentage] "
+		 CMD_SRCDST_PANE_USAGE,
 
 	.source = { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -50,9 +50,10 @@ const struct cmd_entry cmd_move_pane_entry = {
 	.name = "move-pane",
 	.alias = "movep",
 
-	.args = { "bdfhvM:p:l:s:t:x:X:y:Y:", 0, 0, NULL },
-	.usage = "[-bdfFhv] [-l size] [-x width] [-X x-position] [-y height] "
-		 "[-Y y-position] " CMD_SRCDST_PANE_USAGE,
+	.args = { "bdfhvp:l:s:t:Vx:X:y:Y:", 0, 0, NULL },
+	.usage = "[-bdfFhv] [-l size] [-p percentage] "
+		 "[-x width] [-y height] [-X x-position] [-Y y-position] "
+		 CMD_SRCDST_PANE_USAGE,
 
 	.source = { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -74,7 +75,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*src_wp, *dst_wp;
 	char			*cause = NULL;
 	int			 size, dst_idx;
-	int			 flags = 0, is_floating = 0;
+	int			 is_floating, flags = 0;
 	enum layout_type	 type;
 	struct layout_cell	*lc;
 	u_int			 x, y, sx, sy;
@@ -91,9 +92,10 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	src_w = src_wl->window;
 	server_unzoom_window(src_w);
 
-	if (args_has(args, 'M')) {
-		is_floating = strcasecmp(args_get(args, 'M'), "f") == 0;
-	}
+	if (cmd_get_entry(self) == &cmd_join_pane_entry || args_has(args, 'V'))
+		is_floating = 0;
+	else
+		is_floating = 1;
 	if (is_floating) {
 		if (window_pane_float_geometry(dst_w, src_wp, &x, &y, &sx, &sy,
 		    item, args, &cause) != 0) {
