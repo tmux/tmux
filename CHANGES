@@ -1,5 +1,8 @@
 CHANGES FROM 3.6 TO 3.6a
 
+* Add a copy-mode-virtual-edit window option (off or onemore) to control
+  whether copy mode cursor-right can move one cell past end of line.
+
 * Fix a buffer overread and an infinite loop in format processing (reported by
   Giorgi Kobakhia, issue 4735).
 
