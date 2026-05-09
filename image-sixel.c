@@ -122,19 +122,13 @@ sixel_set_pixel(struct sixel_image *si, u_int x, u_int y, u_int c)
 static int
 sixel_parse_write(struct sixel_image *si, u_int ch)
 {
-	struct sixel_line	*sl;
 	u_int			 i;
 
-	if (sixel_parse_expand_lines(si, si->dy + 6) != 0)
-		return (1);
-	sl = &si->lines[si->dy];
-
 	for (i = 0; i < 6; i++) {
-		if (sixel_parse_expand_line(si, sl, si->dx + 1) != 0)
-			return (1);
-		if (ch & (1 << i))
-			sl->data[si->dx] = si->dc;
-		sl++;
+		if (ch & (1 << i)) {
+			if (sixel_set_pixel(si, si->dx, si->dy + i, si->dc))
+				return (1);
+		}
 	}
 	return (0);
 }
