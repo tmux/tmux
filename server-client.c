@@ -2217,7 +2217,7 @@ server_client_set_progress_bar(struct client *c)
 	struct session		*s = c->session;
 	struct progress_bar	*pane_pb;
 
-	if (s->curw == NULL)
+	if (s->curw == NULL || s->curw->window->active == NULL)
 		return;
 	pane_pb = &s->curw->window->active->base.progress_bar;
 	if (pane_pb->state == c->progress_bar.state &&
