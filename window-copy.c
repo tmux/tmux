@@ -5689,7 +5689,8 @@ window_copy_cursor_limit(struct window_mode_entry *wme, u_int py,
 	u_int				 len;
 
 	len = window_copy_find_length(wme, py);
-	if (allow_onemore || options_get_number(oo, "copy-mode-virtual-edit") != 0)
+	if (allow_onemore ||
+	    options_get_number(oo, "mode-keys") != MODEKEY_VI)
 		return (len);
 	if (len == 0)
 		return (0);
@@ -5848,7 +5849,7 @@ window_copy_cursor_right(struct window_mode_entry *wme, int all)
 	hsize = screen_hsize(back_s);
 	py = hsize + data->cy - data->oy;
 	oldy = data->cy;
-	onemore = (options_get_number(oo, "copy-mode-virtual-edit") != 0);
+	onemore = (options_get_number(oo, "mode-keys") != MODEKEY_VI);
 
 	grid_reader_start(&gr, back_s->grid, px, py);
 	grid_reader_cursor_right(&gr, 1, all, onemore);
@@ -6076,7 +6077,7 @@ window_copy_cursor_jump_to_back(struct window_mode_entry *wme)
 	hsize = screen_hsize(back_s);
 	py = hsize + data->cy - data->oy;
 	oldy = data->cy;
-	onemore = (options_get_number(oo, "copy-mode-virtual-edit") != 0);
+	onemore = (options_get_number(oo, "mode-keys") != MODEKEY_VI);
 
 	grid_reader_start(&gr, back_s->grid, px, py);
 	grid_reader_cursor_left(&gr, 0);
@@ -6129,8 +6130,7 @@ window_copy_cursor_next_word_end_pos(struct window_mode_entry *wme,
 	grid_reader_start(&gr, back_s->grid, px, py);
 	if (options_get_number(oo, "mode-keys") == MODEKEY_VI) {
 		if (!grid_reader_in_set(&gr, WHITESPACE))
-			grid_reader_cursor_right(&gr, 0, 0,
-			    options_get_number(oo, "copy-mode-virtual-edit") != 0);
+			grid_reader_cursor_right(&gr, 0, 0, 0);
 		grid_reader_cursor_next_word_end(&gr, separators);
 		grid_reader_cursor_left(&gr, 1);
 	} else
@@ -6160,8 +6160,7 @@ window_copy_cursor_next_word_end(struct window_mode_entry *wme,
 	grid_reader_start(&gr, back_s->grid, px, py);
 	if (options_get_number(oo, "mode-keys") == MODEKEY_VI) {
 		if (!grid_reader_in_set(&gr, WHITESPACE))
-			grid_reader_cursor_right(&gr, 0, 0,
-			    options_get_number(oo, "copy-mode-virtual-edit") != 0);
+			grid_reader_cursor_right(&gr, 0, 0, 0);
 		grid_reader_cursor_next_word_end(&gr, separators);
 		grid_reader_cursor_left(&gr, 1);
 	} else

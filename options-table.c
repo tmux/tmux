@@ -111,9 +111,6 @@ static const char *options_table_allow_passthrough_list[] = {
 static const char *options_table_copy_mode_line_numbers_list[] = {
 	"off", "default", "absolute", "relative", "hybrid", NULL
 };
-static const char *options_table_copy_mode_virtual_edit_list[] = {
-	"off", "onemore", NULL
-};
 
 /* Status line format. */
 #define OPTIONS_TABLE_STATUS_FORMAT1 \
@@ -1231,14 +1228,6 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_copy_mode_line_numbers_list,
 	  .default_num = 0,
 	  .text = "Line number mode in copy mode."
-	},
-
-	{ .name = "copy-mode-virtual-edit",
-	  .type = OPTIONS_TABLE_CHOICE,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .choices = options_table_copy_mode_virtual_edit_list,
-	  .default_num = 1,
-	  .text = "Whether copy mode cursor may move one cell past end of line."
 	},
 
 	{ .name = "fill-character",
