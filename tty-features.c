@@ -527,8 +527,13 @@ tty_default_features(int *feat, const char *name, u_int version)
 		},
 		{ .name = "foot",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
+			      "ccolour,"
 			      "cstyle,"
-			      "extkeys"
+			      "extkeys,"
+			      "usstyle,"
+			      "sync,"
+			      "osc7,"
+			      "hyperlinks"
 		},
 		{ .name = "WezTerm",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
