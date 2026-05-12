@@ -207,10 +207,12 @@ control_free_sub(struct control_state *cs, struct control_sub *csub)
 
 	RB_FOREACH_SAFE(csp, control_sub_panes, &csub->panes, csp1) {
 		RB_REMOVE(control_sub_panes, &csub->panes, csp);
+		free(csp->last);
 		free(csp);
 	}
 	RB_FOREACH_SAFE(csw, control_sub_windows, &csub->windows, csw1) {
 		RB_REMOVE(control_sub_windows, &csub->windows, csw);
+		free(csw->last);
 		free(csw);
 	}
 	free(csub->last);
@@ -298,6 +300,7 @@ control_reset_offsets(struct client *c)
 	struct control_pane	*cp, *cp1;
 
 	RB_FOREACH_SAFE(cp, control_panes, &cs->panes, cp1) {
+		control_discard_pane(c, cp);
 		RB_REMOVE(control_panes, &cs->panes, cp);
 		free(cp);
 	}
@@ -352,6 +355,9 @@ control_set_pane_off(struct client *c, struct window_pane *wp)
 	struct control_pane	*cp;
 
 	cp = control_add_pane(c, wp);
+	control_discard_pane(c, cp);
+	memcpy(&cp->offset, &wp->offset, sizeof cp->offset);
+	memcpy(&cp->queued, &wp->offset, sizeof cp->queued);
 	cp->flags |= CONTROL_PANE_OFF;
 }
 

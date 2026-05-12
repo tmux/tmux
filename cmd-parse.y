@@ -37,6 +37,8 @@ static void printflike(1,2)	 yyerror(const char *, ...);
 static char			*yylex_token(int);
 static char			*yylex_format(void);
 
+#define CMD_PARSE_MAX_ENVIRON_LEN 16384
+
 struct cmd_parse_scope {
 	int				 flag;
 	TAILQ_ENTRY (cmd_parse_scope)	 entry;
@@ -232,6 +234,10 @@ assignment	: EQUALS
 					flag = flag && scope->flag;
 			}
 
+			if (strlen($1) > CMD_PARSE_MAX_ENVIRON_LEN) {
+				yyerror("environment variable is too long");
+				YYABORT;
+			}
 			if ((~flags & CMD_PARSE_PARSEONLY) && flag)
 				environ_put(global_environ, $1, 0);
 			free($1);
@@ -250,6 +256,10 @@ hidden_assignment : HIDDEN EQUALS
 					flag = flag && scope->flag;
 			}
 
+			if (strlen($2) > CMD_PARSE_MAX_ENVIRON_LEN) {
+				yyerror("environment variable is too long");
+				YYABORT;
+			}
 			if ((~flags & CMD_PARSE_PARSEONLY) && flag)
 				environ_put(global_environ, $2, ENVIRON_HIDDEN);
 			free($2);

@@ -689,10 +689,13 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 
 	server_client_clear_overlay(c);
 
-	if (fs != NULL)
+	if (fs != NULL) {
 		ft = format_create_from_state(NULL, c, fs);
-	else
+		cmd_find_copy_state(&c->prompt_state, fs);
+	} else {
 		ft = format_create_defaults(NULL, c, NULL, NULL, NULL);
+		cmd_find_clear_state(&c->prompt_state, 0);
+	}
 
 	if (input == NULL)
 		input = "";
@@ -701,7 +704,6 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 	status_prompt_clear(c);
 	status_push_screen(c);
 
-	c->prompt_formats = ft;
 	c->prompt_string = xstrdup (msg);
 
 	if (flags & PROMPT_NOFORMAT)
@@ -737,6 +739,7 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 
 	if ((flags & PROMPT_SINGLE) && (flags & PROMPT_ACCEPT))
 		cmdq_append(c, cmdq_get_callback(status_prompt_accept, c));
+	format_free(ft);
 }
 
 /* Remove status line prompt. */
@@ -751,9 +754,6 @@ status_prompt_clear(struct client *c)
 
 	free(c->prompt_last);
 	c->prompt_last = NULL;
-
-	format_free(c->prompt_formats);
-	c->prompt_formats = NULL;
 
 	free(c->prompt_string);
 	c->prompt_string = NULL;
@@ -774,13 +774,19 @@ status_prompt_clear(struct client *c)
 void
 status_prompt_update(struct client *c, const char *msg, const char *input)
 {
-	char	*tmp;
+	struct format_tree	*ft;
+	char			*tmp;
+
+	if (cmd_find_valid_state(&c->prompt_state))
+ 		ft = format_create_from_state(NULL, c, &c->prompt_state);
+	else
+ 		ft = format_create_defaults(NULL, c, NULL, NULL, NULL);
 
 	free(c->prompt_string);
 	c->prompt_string = xstrdup(msg);
 
 	free(c->prompt_buffer);
-	tmp = format_expand_time(c->prompt_formats, input);
+	tmp = format_expand_time(ft, input);
 	c->prompt_buffer = utf8_fromcstr(tmp);
 	c->prompt_index = utf8_strlen(c->prompt_buffer);
 	free(tmp);
@@ -788,6 +794,7 @@ status_prompt_update(struct client *c, const char *msg, const char *input)
 	memset(c->prompt_hindex, 0, sizeof c->prompt_hindex);
 
 	c->flags |= CLIENT_REDRAWSTATUS;
+	format_free(ft);
 }
 
 /* Redraw character. Return 1 if can continue redrawing, 0 otherwise. */
@@ -846,11 +853,13 @@ status_prompt_redraw(struct client *c)
 	struct status_line	*sl = &c->status;
 	struct screen_write_ctx	 ctx;
 	struct session		*s = c->session;
+	struct options		*oo = s->options;
 	struct screen		 old_screen;
 	u_int			 i, lines, offset, left, start, width, n;
 	u_int			 pcursor, pwidth, promptline;
 	u_int			 ax, aw;
 	struct grid_cell	 gc;
+	struct format_tree	*ft;
 	const char		*msgfmt;
 	char			*expanded, *prompt, *tmp;
 
@@ -863,12 +872,17 @@ status_prompt_redraw(struct client *c)
 		lines = 1;
 	screen_init(sl->active, c->tty.sx, lines, 0);
 
+	if (cmd_find_valid_state(&c->prompt_state))
+ 		ft = format_create_from_state(NULL, c, &c->prompt_state);
+	else
+ 		ft = format_create_defaults(NULL, c, NULL, NULL, NULL);
+
 	n = options_get_number(s->options, "prompt-cursor-colour");
 	sl->active->default_ccolour = n;
 	if (c->prompt_mode == PROMPT_COMMAND)
-		n = options_get_number(s->options, "prompt-command-cursor-style");
+		n = options_get_number(oo, "prompt-command-cursor-style");
 	else
-		n = options_get_number(s->options, "prompt-cursor-style");
+		n = options_get_number(oo, "prompt-cursor-style");
 	screen_set_cursor_style(n, &sl->active->default_cstyle,
 	    &sl->active->default_mode);
 
@@ -877,28 +891,29 @@ status_prompt_redraw(struct client *c)
 		promptline = lines - 1;
 
 	if (c->prompt_mode == PROMPT_COMMAND)
-		style_apply(&gc, s->options, "message-command-style", NULL);
+		style_apply(&gc, oo, "message-command-style", NULL);
 	else
-		style_apply(&gc, s->options, "message-style", NULL);
+		style_apply(&gc, oo, "message-style", NULL);
 
 	status_prompt_area(c, &ax, &aw);
 
 	tmp = utf8_tocstr(c->prompt_buffer);
-	format_add(c->prompt_formats, "prompt-input", "%s", tmp);
-	prompt = format_expand_time(c->prompt_formats, c->prompt_string);
+	format_add(ft, "prompt-input", "%s", tmp);
+	prompt = format_expand_time(ft, c->prompt_string);
 	free(tmp);
 
 	/*
 	 * Set #{message} to the prompt string and expand message-format.
 	 * format_draw handles fill, alignment, and decorations in one call.
 	 */
-	format_add(c->prompt_formats, "message", "%s", prompt);
-	format_add(c->prompt_formats, "command_prompt", "%d",
+	format_add(ft, "message", "%s", prompt);
+	format_add(ft, "command_prompt", "%d",
 	    c->prompt_mode == PROMPT_COMMAND);
-	msgfmt = options_get_string(s->options, "message-format");
-	expanded = format_expand_time(c->prompt_formats, msgfmt);
+	msgfmt = options_get_string(oo, "message-format");
+	expanded = format_expand_time(ft, msgfmt);
+	free(prompt);
 
-	start = format_width(prompt);
+	start = format_width(expanded);
 	if (start > aw)
 		start = aw;
 
@@ -972,6 +987,49 @@ status_prompt_space(const struct utf8_data *ud)
 	return (*ud->data == ' ');
 }
 
+static key_code
+status_prompt_keypad_key(key_code key)
+{
+	if (key & KEYC_MASK_MODIFIERS)
+		return (key);
+
+	switch (key) {
+	case KEYC_KP_SLASH:
+		return ('/');
+	case KEYC_KP_STAR:
+		return ('*');
+	case KEYC_KP_MINUS:
+		return ('-');
+	case KEYC_KP_SEVEN:
+		return ('7');
+	case KEYC_KP_EIGHT:
+		return ('8');
+	case KEYC_KP_NINE:
+		return ('9');
+	case KEYC_KP_PLUS:
+		return ('+');
+	case KEYC_KP_FOUR:
+		return ('4');
+	case KEYC_KP_FIVE:
+		return ('5');
+	case KEYC_KP_SIX:
+		return ('6');
+	case KEYC_KP_ONE:
+		return ('1');
+	case KEYC_KP_TWO:
+		return ('2');
+	case KEYC_KP_THREE:
+		return ('3');
+	case KEYC_KP_ENTER:
+		return ('\r');
+	case KEYC_KP_ZERO:
+		return ('0');
+	case KEYC_KP_PERIOD:
+		return ('.');
+	}
+	return (key);
+}
+
 /*
  * Translate key from vi to emacs. Return 0 to drop key, 1 to process the key
  * as an emacs key; return 2 to append to the buffer.
@@ -1010,6 +1068,7 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 			*new_key = key;
 			return (1);
 		case '\033': /* Escape */
+		case '['|KEYC_CTRL:
 			c->prompt_mode = PROMPT_COMMAND;
 			if (c->prompt_index != 0)
 				c->prompt_index--;
@@ -1042,6 +1101,7 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 		c->flags |= CLIENT_REDRAWSTATUS;
 		return (0);
 	case '\033': /* Escape */
+	case '['|KEYC_CTRL:
 		return (0);
 	}
 
@@ -1383,6 +1443,9 @@ status_prompt_key(struct client *c, key_code key)
 	}
 	size = utf8_strlen(c->prompt_buffer);
 
+	key &= ~KEYC_MASK_FLAGS;
+	key = status_prompt_keypad_key(key);
+
 	if (c->prompt_flags & PROMPT_NUMERIC) {
 		if (key >= '0' && key <= '9')
 			goto append_key;
@@ -1392,7 +1455,6 @@ status_prompt_key(struct client *c, key_code key)
 		free(s);
 		return (1);
 	}
-	key &= ~KEYC_MASK_FLAGS;
 
 	if (c->prompt_flags & (PROMPT_SINGLE|PROMPT_QUOTENEXT)) {
 		if ((key & KEYC_MASK_KEY) == KEYC_BSPACE)
@@ -1607,6 +1669,7 @@ process_key:
 		free(s);
 		break;
 	case '\033': /* Escape */
+	case '['|KEYC_CTRL:
 	case 'c'|KEYC_CTRL:
 	case 'g'|KEYC_CTRL:
 		if (c->prompt_inputcb(c, c->prompt_data, NULL, 1) == 0)

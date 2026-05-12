@@ -471,6 +471,7 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 	case '\r':
 		goto chosen;
 	case '\033': /* Escape */
+	case '['|KEYC_CTRL:
 	case 'c'|KEYC_CTRL:
 	case 'g'|KEYC_CTRL:
 	case 'q':

@@ -357,6 +357,17 @@ static const struct tty_feature tty_feature_sixel = {
 	TERM_SIXEL
 };
 
+/* Terminal supports the OSC 9;4 progress bar. */
+static const char *const tty_feature_progressbar_capabilities[] = {
+	"Spb=\\E]9;4;%p1%d;%p2%d\\E\\\\",
+	NULL
+};
+static const struct tty_feature tty_feature_progressbar = {
+	"progressbar",
+	tty_feature_progressbar_capabilities,
+	0
+};
+
 /* Available terminal features. */
 static const struct tty_feature *const tty_features[] = {
 	&tty_feature_256,
@@ -372,6 +383,7 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_mouse,
 	&tty_feature_osc7,
 	&tty_feature_overline,
+	&tty_feature_progressbar,
 	&tty_feature_rectfill,
 	&tty_feature_rgb,
 	&tty_feature_sixel,
@@ -475,45 +487,56 @@ tty_default_features(int *feat, const char *name, u_int version)
 	"256,RGB,bpaste,clipboard,mouse,strikethrough,title"
 		{ .name = "mintty",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
-		              "ccolour,"
-		              "cstyle,"
-		              "extkeys,"
-		              "margins,"
-		              "overline,"
-		              "usstyle"
+			      "ccolour,"
+			      "cstyle,"
+			      "extkeys,"
+			      "margins,"
+			      "overline,"
+			      "usstyle"
 		},
 		{ .name = "tmux",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
-		              "ccolour,"
-		              "cstyle,"
-		              "extkeys,"
-		              "focus,"
-		              "overline,"
-		              "usstyle,"
-		              "hyperlinks"
+			      "ccolour,"
+			      "cstyle,"
+			      "extkeys,"
+			      "focus,"
+			      "overline,"
+			      "usstyle,"
+			      "hyperlinks,"
+		  	      "progressbar"
 		},
 		{ .name = "rxvt-unicode",
 		  .features = "256,"
-		              "bpaste,"
-		              "ccolour,"
-		              "cstyle,"
-		              "mouse,"
-		              "title,"
-		              "ignorefkeys"
+			      "bpaste,"
+			      "ccolour,"
+			      "cstyle,"
+			      "mouse,"
+			      "title,"
+			      "ignorefkeys"
 		},
 		{ .name = "iTerm2",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
-		              "cstyle,"
-		              "extkeys,"
-		              "margins,"
-		              "usstyle,"
-		              "sync,"
-		              "osc7,hyperlinks"
+			      "cstyle,"
+			      "extkeys,"
+			      "margins,"
+			      "usstyle,"
+			      "sync,"
+			      "osc7,"
+			      "hyperlinks,"
+		  	      "progressbar"
 		},
 		{ .name = "foot",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
-		              "cstyle,"
-		              "extkeys"
+			      "cstyle,"
+			      "extkeys"
+		},
+		{ .name = "WezTerm",
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
+			      "ccolour,"
+			      "cstyle,"
+			      "extkeys,"
+			      "focus,"
+			      "usstyle"
 		},
 		{ .name = "XTerm",
 		  /*
@@ -522,10 +545,10 @@ tty_default_features(int *feat, const char *name, u_int version)
 		   * secondary DA shows VT420.
 		   */
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
-		              "ccolour,"
-		              "cstyle,"
-		              "extkeys,"
-		              "focus"
+			      "ccolour,"
+			      "cstyle,"
+			      "extkeys,"
+			      "focus"
 		}
 	};
 	u_int	i;

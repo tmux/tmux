@@ -739,7 +739,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 		if (ctx->statustop)
 			yoff += ctx->statuslines;
 
-		for (i=0; i < r->used; i++) {
+		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
 			if (ri->nx == 0)
 				continue;

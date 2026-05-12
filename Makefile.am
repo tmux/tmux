@@ -41,6 +41,10 @@ endif
 AM_CPPFLAGS += -DDEBUG
 endif
 AM_CPPFLAGS += -iquote.
+if IS_ASAN
+AM_CFLAGS += -fsanitize=address
+AM_LDFLAGS += -fsanitize=address
+endif
 endif
 
 # Set flags for Solaris.

@@ -474,6 +474,10 @@ key_bindings_init(void)
 		"bind -n MouseDown1Status { if -F '#{&&:#{pane_active},#{!#{pane_minimised_flag}}}' { minimise-pane -t= } { switch-client -t= } }",
 		"bind -n C-MouseDown1Status { swap-window -t@ }",
 
+		/* Mouse button 1 down on default pane-border-format */
+		"bind -n MouseDown1Control9 { display-menu -t= -xM -yM -O -T 'Kill pane #{pane_index}?' 'Yes' 'y' { kill-pane -t= } 'No' 'n' {}}",
+		"bind -n MouseDown1Control8 { resize-pane -Z }",
+
 		/* Mouse wheel down on status line. */
 		"bind -n WheelDownStatus { next-window }",
 
@@ -506,7 +510,7 @@ key_bindings_init(void)
 		"bind -Tcopy-mode C-b { send -X cursor-left }",
 		"bind -Tcopy-mode C-g { send -X clear-selection }",
 		"bind -Tcopy-mode C-k { send -X copy-pipe-end-of-line-and-cancel }",
-		"bind -Tcopy-mode C-l { send -X cursor-centre-vertical }",
+		"bind -Tcopy-mode C-l { send -X recentre-top-bottom }",
 		"bind -Tcopy-mode M-l { send -X cursor-centre-horizontal }",
 		"bind -Tcopy-mode C-n { send -X cursor-down }",
 		"bind -Tcopy-mode C-p { send -X cursor-up }",
@@ -515,6 +519,7 @@ key_bindings_init(void)
 		"bind -Tcopy-mode C-v { send -X page-down }",
 		"bind -Tcopy-mode C-w { send -X copy-pipe-and-cancel }",
 		"bind -Tcopy-mode Escape { send -X cancel }",
+		"bind -Tcopy-mode C-[ { send -X cancel }",
 		"bind -Tcopy-mode Space { send -X page-down }",
 		"bind -Tcopy-mode , { send -X jump-reverse }",
 		"bind -Tcopy-mode \\; { send -X jump-again }",
@@ -588,6 +593,7 @@ key_bindings_init(void)
 		"bind -Tcopy-mode-vi C-v { send -X rectangle-toggle }",
 		"bind -Tcopy-mode-vi C-y { send -X scroll-up }",
 		"bind -Tcopy-mode-vi Escape { send -X clear-selection }",
+		"bind -Tcopy-mode-vi C-[ { send -X clear-selection }",
 		"bind -Tcopy-mode-vi Space { send -X begin-selection }",
 		"bind -Tcopy-mode-vi '$' { send -X end-of-line }",
 		"bind -Tcopy-mode-vi , { send -X jump-reverse }",

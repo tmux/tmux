@@ -36,6 +36,8 @@ struct screen_sel {
 	u_int		 ex;
 	u_int		 ey;
 
+	u_int		 clipx;
+
 	struct grid_cell cell;
 };
 
@@ -245,19 +247,28 @@ screen_set_cursor_colour(struct screen *s, int colour)
 int
 screen_set_title(struct screen *s, const char *title)
 {
-	if (!utf8_isvalid(title))
+	char	*new_title;
+
+	new_title = clean_name(title, "#");
+	if (new_title == NULL)
 		return (0);
 	free(s->title);
-	s->title = xstrdup(title);
+	s->title = new_title;
 	return (1);
 }
 
 /* Set screen path. */
-void
+int
 screen_set_path(struct screen *s, const char *path)
 {
+	char	*new_path;
+
+	new_path = clean_name(path, "#");
+	if (new_path == NULL)
+		return (0);
 	free(s->path);
-	utf8_stravis(&s->path, path, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
+	s->path = new_path;
+	return (1);
 }
 
 /* Push the current title onto the stack. */
@@ -266,6 +277,16 @@ screen_push_title(struct screen *s)
 {
 	struct screen_title_entry *title_entry;
 
+	log_debug("%s: %u", __func__, s->ntitles);
+
+	while (s->ntitles >= 10) {
+		title_entry = TAILQ_LAST(s->titles, screen_titles);
+		free(title_entry->text);
+		TAILQ_REMOVE(s->titles, title_entry, entry);
+		free(title_entry);
+		s->ntitles--;
+	}
+
 	if (s->titles == NULL) {
 		s->titles = xmalloc(sizeof *s->titles);
 		TAILQ_INIT(s->titles);
@@ -273,6 +294,7 @@ screen_push_title(struct screen *s)
 	title_entry = xmalloc(sizeof *title_entry);
 	title_entry->text = xstrdup(s->title);
 	TAILQ_INSERT_HEAD(s->titles, title_entry, entry);
+	s->ntitles++;
 }
 
 /*
@@ -286,14 +308,15 @@ screen_pop_title(struct screen *s)
 
 	if (s->titles == NULL)
 		return;
+	log_debug("%s: %u", __func__, s->ntitles);
 
 	title_entry = TAILQ_FIRST(s->titles);
 	if (title_entry != NULL) {
-		screen_set_title(s, title_entry->text);
-
+		free(s->title);
+		s->title = title_entry->text;
 		TAILQ_REMOVE(s->titles, title_entry, entry);
-		free(title_entry->text);
 		free(title_entry);
+		s->ntitles--;
 	}
 }
 
@@ -456,7 +479,8 @@ screen_resize_y(struct screen *s, u_int sy, int eat_empty, u_int *cy)
 /* Set selection. */
 void
 screen_set_selection(struct screen *s, u_int sx, u_int sy,
-    u_int ex, u_int ey, u_int rectangle, int modekeys, struct grid_cell *gc)
+    u_int ex, u_int ey, u_int rectangle, u_int clipx, int modekeys,
+    struct grid_cell *gc)
 {
 	if (s->sel == NULL)
 		s->sel = xcalloc(1, sizeof *s->sel);
@@ -470,6 +494,7 @@ screen_set_selection(struct screen *s, u_int sx, u_int sy,
 	s->sel->sy = sy;
 	s->sel->ex = ex;
 	s->sel->ey = ey;
+	s->sel->clipx = clipx;
 }
 
 /* Clear selection. */
@@ -496,6 +521,8 @@ screen_check_selection(struct screen *s, u_int px, u_int py)
 	u_int			 xx;
 
 	if (sel == NULL || sel->hidden)
+		return (0);
+	if (px < sel->clipx)
 		return (0);
 
 	if (sel->rectangle) {
@@ -648,7 +675,10 @@ screen_reflow(struct screen *s, u_int new_x, u_int *cx, u_int *cy, int cursor)
 void
 screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 {
-	u_int	sx, sy;
+	u_int		 sx, sy;
+#ifdef ENABLE_SIXEL
+	struct image	*im;
+#endif
 
 	if (SCREEN_IS_ALTERNATE(s))
 		return;
@@ -665,6 +695,8 @@ screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 
 #ifdef ENABLE_SIXEL
 	TAILQ_CONCAT(&s->saved_images, &s->images, entry);
+	TAILQ_FOREACH(im, &s->saved_images, entry)
+	    im->list = &s->saved_images;
 #endif
 
 	grid_view_clear(s->grid, 0, 0, sx, sy, 8);
@@ -677,7 +709,10 @@ screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 void
 screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 {
-	u_int	sx = screen_size_x(s), sy = screen_size_y(s);
+	u_int		 sx = screen_size_x(s), sy = screen_size_y(s);
+#ifdef ENABLE_SIXEL
+	struct image	*im;
+#endif
 
 	/*
 	 * If the current size is different, temporarily resize to the old size
@@ -724,6 +759,8 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 #ifdef ENABLE_SIXEL
 	image_free_all(s);
 	TAILQ_CONCAT(&s->images, &s->saved_images, entry);
+	TAILQ_FOREACH(im, &s->images, entry)
+	    im->list = &s->images;
 #endif
 
 	if (s->cx > screen_size_x(s) - 1)
@@ -762,6 +799,8 @@ screen_mode_to_string(int mode)
 		strlcat(tmp, "CURSOR_BLINKING,", sizeof tmp);
 	if (mode & MODE_CURSOR_VERY_VISIBLE)
 		strlcat(tmp, "CURSOR_VERY_VISIBLE,", sizeof tmp);
+	if (mode & MODE_CURSOR_BLINKING_SET)
+		strlcat(tmp, "CURSOR_BLINKING_SET,", sizeof tmp);
 	if (mode & MODE_MOUSE_UTF8)
 		strlcat(tmp, "MOUSE_UTF8,", sizeof tmp);
 	if (mode & MODE_MOUSE_SGR)
@@ -782,7 +821,10 @@ screen_mode_to_string(int mode)
 		strlcat(tmp, "KEYS_EXTENDED_2,", sizeof tmp);
 	if (mode & MODE_THEME_UPDATES)
 		strlcat(tmp, "THEME_UPDATES,", sizeof tmp);
-	tmp[strlen(tmp) - 1] = '\0';
+	if (mode & MODE_SYNC)
+		strlcat(tmp, "SYNC,", sizeof tmp);
+	if (*tmp != '\0')
+		tmp[strlen(tmp) - 1] = '\0';
 	return (tmp);
 }
 

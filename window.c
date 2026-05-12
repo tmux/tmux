@@ -407,9 +407,14 @@ window_remove_ref(struct window *w, const char *from)
 void
 window_set_name(struct window *w, const char *new_name)
 {
-	free(w->name);
-	utf8_stravis(&w->name, new_name, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
-	notify_window("window-renamed", w);
+	char	*name;
+
+	name = clean_name(new_name, "#");
+	if (name != NULL) {
+		free(w->name);
+		w->name = name;
+		notify_window("window-renamed", w);
+	}
 }
 
 void
@@ -2132,13 +2137,15 @@ struct style_range *
 window_pane_border_status_get_range(struct window_pane *wp, u_int x, u_int y)
 {
 	struct style_ranges	*srs;
-	struct window		*w = wp->window;
-	struct options		*wo = w->options;
+	struct window		*w;
+	struct options		*wo;
 	u_int			 line;
 	int			 pane_status;
 
 	if (wp == NULL)
 		return (NULL);
+	w = wp->window;
+	wo = w->options;
 	srs = &wp->border_status_line.ranges;
 
 	pane_status = options_get_number(wo, "pane-border-status");
