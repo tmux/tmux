@@ -3412,8 +3412,6 @@ struct window_pane *window_find_string(struct window *, const char *);
 int		 window_has_pane(struct window *, struct window_pane *);
 int		 window_set_active_pane(struct window *, struct window_pane *,
 		     int);
-int		 window_deactivate_pane(struct window *, struct window_pane *,
-		     int);
 void		 window_update_focus(struct window *);
 void		 window_pane_update_focus(struct window_pane *);
 void		 window_redraw_active_switch(struct window *,

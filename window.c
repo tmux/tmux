@@ -570,32 +570,6 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 	return (1);
 }
 
-int
-window_deactivate_pane(struct window *w, struct window_pane *wp, int notify)
-{
-	struct window_pane *lastwp;
-
-	log_debug("%s: pane %%%u", __func__, wp->id);
-
-	if (w->flags & WINDOW_ZOOMED)
-		window_unzoom(w, 1);
-	lastwp = w->active;
-
-	window_pane_stack_remove(&w->last_panes, wp);
-	window_pane_stack_push(&w->last_panes, lastwp);
-
-	w->active = NULL;
-
-	if (options_get_number(global_options, "focus-events")) {
-		window_pane_update_focus(lastwp);
-	}
-
-	tty_update_window_offset(w);
-
-	if (notify)
-		notify_window("window-pane-changed", w);
-	return (1);
-}
 
 static int
 window_pane_get_palette(struct window_pane *wp, int c)

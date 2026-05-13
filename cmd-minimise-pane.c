@@ -30,7 +30,8 @@
 static enum cmd_retval cmd_minimise_pane_minimise_exec(struct cmd *, struct cmdq_item *);
 static enum cmd_retval cmd_minimise_pane_unminimise_exec(struct cmd *, struct cmdq_item *);
 
-static enum cmd_retval cmd_minimise_pane_minimise(struct window *, struct window_pane *);
+static enum cmd_retval cmd_minimise_pane_minimise(struct window *, struct window_pane *,
+    struct cmdq_item *);
 static enum cmd_retval cmd_minimise_pane_unminimise(struct window *, struct window_pane *);
 
 const struct cmd_entry cmd_minimise_pane_entry = {
@@ -73,12 +74,13 @@ cmd_minimise_pane_minimise_exec(struct cmd *self, struct cmdq_item *item)
 	enum cmd_retval				 rv;
 
 	if (args_has(args, 'a')) {
+		struct window_pane *active_pane = w->active;
 		TAILQ_FOREACH(wp, &w->z_index, zentry) {
-			if (!window_pane_visible(wp))
+			if (!window_pane_visible(wp) || wp == active_pane)
 				continue;
-			rv = cmd_minimise_pane_minimise(w, wp);
+			rv = cmd_minimise_pane_minimise(w, wp, item);
 			if (rv != CMD_RETURN_NORMAL)
-				return(rv);
+				return (rv);
 		}
 		return (CMD_RETURN_NORMAL);
 	} else {
@@ -95,7 +97,7 @@ cmd_minimise_pane_minimise_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "No target pane to miminise.");
 			return (CMD_RETURN_ERROR);
 		}
-		return(cmd_minimise_pane_minimise(w, wp));
+		return (cmd_minimise_pane_minimise(w, wp, item));
 	}
 }
 
@@ -117,7 +119,7 @@ cmd_minimise_pane_unminimise_exec(struct cmd *self, struct cmdq_item *item)
 				continue;
 			rv = cmd_minimise_pane_unminimise(w, wp);
 			if (rv != CMD_RETURN_NORMAL)
-				return(rv);
+				return (rv);
 		}
 		return (CMD_RETURN_NORMAL);
 	} else {
@@ -134,23 +136,42 @@ cmd_minimise_pane_unminimise_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "No target pane to unmiminise.");
 			return (CMD_RETURN_ERROR);
 		}
-		return(cmd_minimise_pane_unminimise(w, wp));
+		return (cmd_minimise_pane_unminimise(w, wp));
 	}
 }
 
 static enum cmd_retval
-cmd_minimise_pane_minimise(struct window *w, struct window_pane *wp)
+cmd_minimise_pane_minimise(struct window *w, struct window_pane *wp,
+    __attribute__((unused)) struct cmdq_item *item)
 {
-	struct window_pane	*wp2;
+	struct window_pane	*pwp = NULL;
 
-	/* Ignore if already minimised to prevent double-redistribution. */
 	if (wp->flags & PANE_MINIMISED)
 		return (CMD_RETURN_NORMAL);
 
-	wp->flags |= PANE_MINIMISED;
-	window_deactivate_pane(w, wp, 1);
+	if (wp == w->active) {
+		/*
+		 * Unzoom before searching: under zoom, window_pane_visible
+		 * returns false for every non-active pane.
+		 */
+		if (w->flags & WINDOW_ZOOMED)
+			window_unzoom(w, 1);
+		/* Find previous active pane. */
+		TAILQ_FOREACH(pwp, &w->last_panes, sentry) {
+			if (pwp != wp && window_pane_visible(pwp))
+				break;
+		}
+		if (pwp == NULL) {
+			TAILQ_FOREACH(pwp, &w->z_index, zentry) {
+				if (pwp != wp &&
+				    window_pane_visible(pwp))
+					break;
+			}
+		}
+	}
 
-	/* Fix pane offsets and sizes. */
+	wp->flags |= PANE_MINIMISED;
+
 	if (w->layout_root != NULL) {
 		wp->saved_layout_cell = wp->layout_cell;
 		layout_minimise_cell(w, wp->layout_cell);
@@ -158,17 +179,22 @@ cmd_minimise_pane_minimise(struct window *w, struct window_pane *wp)
 		layout_fix_panes(w, NULL);
 	}
 
-	/* Find next visible window in z-index. */
-	TAILQ_FOREACH(wp2, &w->z_index, zentry) {
-		if (!window_pane_visible(wp2))
-			continue;
-		break;
+	window_pane_stack_remove(&w->last_panes, wp);
+	if (pwp != NULL) {
+		window_set_active_pane(w, pwp, 1);
+	} else if (wp == w->active) {
+		/* No visible previous active pane; null active pane
+		 * to show dots background. */
+		w->active = NULL;
+		if (options_get_number(global_options, "focus-events"))
+			window_pane_update_focus(wp);
+		notify_window("window-pane-changed", w);
+		notify_window("window-layout-changed", w);
+		server_redraw_window(w);
+	} else {
+		notify_window("window-layout-changed", w);
+		server_redraw_window(w);
 	}
-	if (wp2 != NULL)
-		window_set_active_pane(w, wp2, 1);
-
-	notify_window("window-layout-changed", w);
-	server_redraw_window(w);
 
 	return (CMD_RETURN_NORMAL);
 }
