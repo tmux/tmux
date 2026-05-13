@@ -328,8 +328,10 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		memcpy(&last, gcp, sizeof last);
 		if (empty != 0)
 			i += empty;
-		else
+		else if (gcp->data.width > 0)
 			i += gcp->data.width;
+		else
+			i += 1;	/* Orphan PADDING; advance to avoid infinite loop. */
 	}
 
 out:
