@@ -238,6 +238,35 @@ tty_block_maybe(struct tty *tty)
 	return (1);
 }
 
+/*
+ * Force c->fd non-blocking just before writing to it.
+ *
+ * c->fd is a dup of the client's stdin received via SCM_RIGHTS, so it
+ * shares its O_NONBLOCK state with the client process (and the parent
+ * shell) through the underlying struct file. tty_stop_tty() restores
+ * blocking mode on the way out for shell etiquette, and other paths
+ * may flip the flag without us noticing. If c->fd is blocking when
+ * the kernel TTY buffer fills (e.g. the master-side reader is dead
+ * or paused), writev() will park in n_tty_write() and never return -
+ * freezing the entire single-threaded server.
+ *
+ * Forcing non-blocking just before the write turns that wedge into a
+ * clean EAGAIN. The race window where the client's stdin would also
+ * read as non-blocking is bounded to one writev() call, which is
+ * acceptable for tty stdin (cooked-mode reads are paced by VMIN/VTIME,
+ * not O_NONBLOCK).
+ */
+static void
+tty_force_nonblock(int fd)
+{
+	int mode;
+
+	if (fd == -1)
+		return;
+	if ((mode = fcntl(fd, F_GETFL)) != -1 && !(mode & O_NONBLOCK))
+		fcntl(fd, F_SETFL, mode | O_NONBLOCK);
+}
+
 static void
 tty_write_callback(__unused int fd, __unused short events, void *data)
 {
@@ -246,6 +275,7 @@ tty_write_callback(__unused int fd, __unused short events, void *data)
 	size_t		 size = EVBUFFER_LENGTH(tty->out);
 	int		 nwrite;
 
+	tty_force_nonblock(c->fd);
 	nwrite = evbuffer_write(tty->out, c->fd);
 	if (nwrite == -1)
 		return;
@@ -558,6 +588,7 @@ tty_raw(struct tty *tty, const char *s)
 	ssize_t		 n, slen;
 	u_int		 i;
 
+	tty_force_nonblock(c->fd);
 	slen = strlen(s);
 	for (i = 0; i < 5; i++) {
 		n = write(c->fd, s, slen);
