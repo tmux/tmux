@@ -44,6 +44,7 @@ static struct tty_key *tty_keys_find1(struct tty_key *, const char *, size_t,
 		    size_t *);
 static struct tty_key *tty_keys_find(struct tty *, const char *, size_t,
 		    size_t *);
+static int	tty_keys_paste_end_partial(const char *, size_t);
 static int	tty_keys_next1(struct tty *, const char *, size_t, key_code *,
 		    size_t *, int);
 static void	tty_keys_callback(int, short, void *);
@@ -605,6 +606,17 @@ tty_keys_find1(struct tty_key *tk, const char *buf, size_t len, size_t *size)
 	return (tty_keys_find1(tk, buf, len, size));
 }
 
+static int
+tty_keys_paste_end_partial(const char *buf, size_t len)
+{
+	static const char	paste_end[] = "\033[201~";
+	size_t			paste_end_len = (sizeof paste_end) - 1;
+
+	if (len == 0 || len >= paste_end_len)
+		return (0);
+	return (memcmp(buf, paste_end, len) == 0);
+}
+
 /* Look up part of the next key. */
 static int
 tty_keys_next1(struct tty *tty, const char *buf, size_t len, key_code *key,
@@ -630,6 +642,10 @@ tty_keys_next1(struct tty *tty, const char *buf, size_t len, key_code *key,
 		if (tk->next != NULL && !expired)
 			return (1);
 		*key = tk->key;
+		if ((*key & KEYC_MASK_KEY) == KEYC_PASTE_START)
+			tty->flags |= TTY_BRACKETPASTE;
+		else if ((*key & KEYC_MASK_KEY) == KEYC_PASTE_END)
+			tty->flags &= ~TTY_BRACKETPASTE;
 		return (0);
 	}
 
@@ -955,6 +971,11 @@ partial_key:
 	delay = options_get_number(global_options, "escape-time");
 	if (delay == 0)
 		delay = 1;
+	if ((tty->flags & TTY_BRACKETPASTE) &&
+	    tty_keys_paste_end_partial(buf, len)) {
+		if (delay < 500)
+			delay = 500;
+	}
 	if ((tty->flags & (TTY_WAITFG|TTY_WAITBG) ||
 	    (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS) ||
 	    !TAILQ_EMPTY(&c->input_requests)) {
@@ -1429,8 +1450,6 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	char		 tmp[128], *endptr, p[32] = { 0 }, *cp, *next;
 
 	*size = 0;
-	if (tty->flags & TTY_HAVEDA)
-		return (-1);
 
 	/* First three bytes are always \033[?. */
 	if (buf[0] != '\033')
@@ -1492,6 +1511,8 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		break;
 	}
 	log_debug("%s: received primary DA %.*s", c->name, (int)*size, buf);
+	if (tty->flags & TTY_HAVEDA)
+		return (0);
 
 	tty_update_features(tty);
 	tty->flags |= TTY_HAVEDA;
@@ -1513,8 +1534,6 @@ tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
 	char		 tmp[128], *endptr, p[32] = { 0 }, *cp, *next;
 
 	*size = 0;
-	if (tty->flags & TTY_HAVEDA2)
-		return (-1);
 
 	/* First three bytes are always \033[>. */
 	if (buf[0] != '\033')
@@ -1572,6 +1591,8 @@ tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
 		break;
 	}
 	log_debug("%s: received secondary DA %.*s", c->name, (int)*size, buf);
+	if (tty->flags & TTY_HAVEDA2)
+		return (0);
 
 	tty_update_features(tty);
 	tty->flags |= TTY_HAVEDA2;
