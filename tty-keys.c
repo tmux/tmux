@@ -1450,6 +1450,8 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	char		 tmp[128], *endptr, p[32] = { 0 }, *cp, *next;
 
 	*size = 0;
+	if (tty->flags & TTY_HAVEDA)
+		return (-1);
 
 	/* First three bytes are always \033[?. */
 	if (buf[0] != '\033')
@@ -1511,8 +1513,6 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		break;
 	}
 	log_debug("%s: received primary DA %.*s", c->name, (int)*size, buf);
-	if (tty->flags & TTY_HAVEDA)
-		return (0);
 
 	tty_update_features(tty);
 	tty->flags |= TTY_HAVEDA;
@@ -1534,6 +1534,8 @@ tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
 	char		 tmp[128], *endptr, p[32] = { 0 }, *cp, *next;
 
 	*size = 0;
+	if (tty->flags & TTY_HAVEDA2)
+		return (-1);
 
 	/* First three bytes are always \033[>. */
 	if (buf[0] != '\033')
@@ -1591,8 +1593,6 @@ tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
 		break;
 	}
 	log_debug("%s: received secondary DA %.*s", c->name, (int)*size, buf);
-	if (tty->flags & TTY_HAVEDA2)
-		return (0);
 
 	tty_update_features(tty);
 	tty->flags |= TTY_HAVEDA2;
