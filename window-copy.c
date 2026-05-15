@@ -1166,14 +1166,24 @@ window_copy_cmd_begin_selection(struct window_copy_cmd_state *cs)
 	struct client			*c = cs->c;
 	struct mouse_event		*m = cs->m;
 	struct window_copy_mode_data	*data = wme->data;
+	u_int				 yy;
 
 	if (m != NULL) {
 		window_copy_start_drag(c, m);
 		return (WINDOW_COPY_CMD_NOTHING);
 	}
 
-	data->lineflag = LINE_SEL_NONE;
-	data->selflag = SEL_CHAR;
+	if (data->selflag != SEL_LINE) {
+		data->lineflag = LINE_SEL_NONE;
+		data->selflag = SEL_CHAR;
+	}
+	if (data->selflag == SEL_LINE) {
+		yy = screen_hsize(data->backing) + data->cy - data->oy;
+		data->selrx = 0;
+		data->selry = yy;
+		data->endselrx = window_copy_find_length(wme, yy);
+		data->endselry = yy;
+	}
 	window_copy_start_selection(wme);
 	return (WINDOW_COPY_CMD_REDRAW);
 }
@@ -2034,9 +2044,7 @@ window_copy_cmd_other_end(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	u_int				 np = wme->prefix;
-	struct window_copy_mode_data	*data = wme->data;
 
-	data->selflag = SEL_CHAR;
 	if ((np % 2) != 0)
 		window_copy_other_end(wme);
 	return (WINDOW_COPY_CMD_NOTHING);
@@ -2055,8 +2063,42 @@ window_copy_cmd_selection_mode(struct window_copy_cmd_state *cs)
 	else if (strcasecmp(s, "word") == 0 || strcasecmp(s, "w") == 0) {
 		data->separators = options_get_string(so, "word-separators");
 		data->selflag = SEL_WORD;
-	} else if (strcasecmp(s, "line") == 0 || strcasecmp(s, "l") == 0)
+		data->dx = data->cx;
+		data->dy = screen_hsize(data->backing) + data->cy - data->oy;
+		if (data->screen.sel != NULL || data->lineflag != LINE_SEL_NONE) {
+			data->lineflag = LINE_SEL_LEFT_RIGHT;
+			data->selrx = data->selx;
+			data->selry = data->sely;
+			data->endselrx = data->endselx;
+			data->endselry = data->endsely;
+		} else {
+			data->lineflag = LINE_SEL_LEFT_RIGHT;
+			data->selrx = data->dx;
+			data->selry = data->dy;
+			data->endselrx = data->dx;
+			data->endselry = data->dy;
+		}
+	} else if (strcasecmp(s, "line") == 0 || strcasecmp(s, "l") == 0) {
 		data->selflag = SEL_LINE;
+		data->rectflag = 0;
+		data->dx = data->cx;
+		data->dy = screen_hsize(data->backing) + data->cy - data->oy;
+		if (data->screen.sel != NULL || data->lineflag != LINE_SEL_NONE) {
+			data->lineflag = LINE_SEL_LEFT_RIGHT;
+			data->selrx = 0;
+			data->selry = data->sely;
+			data->endselrx = window_copy_find_length(wme,
+			    data->endsely);
+			data->endselry = data->endsely;
+		} else {
+			data->lineflag = LINE_SEL_LEFT_RIGHT;
+			data->selrx = 0;
+			data->selry = data->dy;
+			data->endselrx = window_copy_find_length(wme,
+			    data->dy);
+			data->endselry = data->dy;
+		}
+	}
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 

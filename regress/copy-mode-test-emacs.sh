@@ -112,5 +112,39 @@ $TMUX send-keys -X next-space-end
 $TMUX send-keys -X copy-selection
 [ "$($TMUX show-buffer)" = "500xyz" ] || exit 1
 
+# Test that selection-mode line works after begin-selection.
+$TMUX send-keys -X history-top
+$TMUX send-keys -X start-of-line
+$TMUX send-keys -X cursor-down
+$TMUX send-keys -X cursor-down
+$TMUX send-keys -X begin-selection
+$TMUX send-keys -X selection-mode line
+$TMUX send-keys -X cursor-down
+$TMUX send-keys -X copy-selection
+[ "$($TMUX show-buffer)" = "$(printf "Another line...\n... @nd then \$ym_bols[]{}")" ] || exit 1
+
+# Test that other-end preserves selection-mode line.
+$TMUX send-keys -X history-top
+$TMUX send-keys -X start-of-line
+$TMUX send-keys -X cursor-down
+$TMUX send-keys -X cursor-down
+$TMUX send-keys -X begin-selection
+$TMUX send-keys -X selection-mode line
+$TMUX send-keys -X other-end
+$TMUX send-keys -X cursor-down
+$TMUX send-keys -X copy-selection
+[ "$($TMUX show-buffer)" = "$(printf "Another line...\n... @nd then \$ym_bols[]{}")" ] || exit 1
+
+# Test that selection-mode line works before begin-selection.
+$TMUX send-keys -X history-top
+$TMUX send-keys -X start-of-line
+$TMUX send-keys -X cursor-down
+$TMUX send-keys -X cursor-down
+$TMUX send-keys -X selection-mode line
+$TMUX send-keys -X begin-selection
+$TMUX send-keys -X cursor-down
+$TMUX send-keys -X copy-selection
+[ "$($TMUX show-buffer)" = "$(printf "Another line...\n... @nd then \$ym_bols[]{}")" ] || exit 1
+
 $TMUX kill-server 2>/dev/null
 exit 0
