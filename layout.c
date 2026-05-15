@@ -531,15 +531,15 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 
 /*
  * Return the nearest sibling of lc that is not a minimised WINDOWPANE leaf,
- * walking forward (forward=1) or backward (forward=0) in the parent's list.
+ * walking forward (direction=1) or backward (direction=0) in the parent's list.
  * Container cells (TOPBOTTOM/LEFTRIGHT) are never skipped.
  */
 static struct layout_cell *
-layout_active_neighbour(struct layout_cell *lc, int forward)
+layout_active_neighbour(struct layout_cell *lc, int direction)
 {
 	struct layout_cell	*lcother;
 
-	if (forward)
+	if (direction)
 		lcother = TAILQ_NEXT(lc, entry);
 	else
 		lcother = TAILQ_PREV(lc, layout_cells, entry);
@@ -548,10 +548,10 @@ layout_active_neighbour(struct layout_cell *lc, int forward)
 		if (lcother->type != LAYOUT_WINDOWPANE)
 			return (lcother);		/* container — not skipped */
 		if (lcother->wp == NULL ||
-		    !(lcother->wp->flags & PANE_MINIMISED))
+		    (~lcother->wp->flags & PANE_MINIMISED))
 			return (lcother);		/* visible leaf */
 		/* minimised leaf — keep walking */
-		if (forward)
+		if (direction)
 			lcother = TAILQ_NEXT(lcother, entry);
 		else
 			lcother = TAILQ_PREV(lcother, layout_cells, entry);
@@ -621,6 +621,8 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
     struct layout_cell **lcroot)
 {
 	struct layout_cell     *lcother, *lcparent;
+	int			direction;
+	int			is_minimised;
 
 	/*
 	 * If no parent, this is either a floating pane or the last
@@ -637,14 +639,15 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 
 	/* In tiled layouts, merge the space into the previous or next cell. */
 	if (lcparent->type != LAYOUT_FLOATING) {
-		int	forward;
-		forward = (lc == TAILQ_FIRST(&lcparent->cells)) ? 1 : 0;
-		lcother = layout_active_neighbour(lc, forward);
+		is_minimised = (lc->wp != NULL && (lc->wp->flags & PANE_MINIMISED));
+		direction = (lc == TAILQ_FIRST(&lcparent->cells)) ? 1 : 0;
+		lcother = layout_active_neighbour(lc, direction);
 		if (lcother == NULL)
-			lcother = layout_active_neighbour(lc, !forward);
-		if (lcother != NULL && lcparent->type == LAYOUT_LEFTRIGHT)
+			lcother = layout_active_neighbour(lc, !direction);
+		if (lcother != NULL && lcparent->type == LAYOUT_LEFTRIGHT &&
+		    !is_minimised)
 			layout_resize_adjust(w, lcother, lcparent->type, lc->sx + 1);
-		else if (lcother != NULL)
+		else if (lcother != NULL && !is_minimised)
 			layout_resize_adjust(w, lcother, lcparent->type, lc->sy + 1);
 	}
 
@@ -693,6 +696,7 @@ layout_minimise_cell(struct window *w, struct layout_cell *lc)
 {
 	struct layout_cell     *lcother, *lcparent, *lcchild;
 	u_int			space = 0;
+	int			direction;
 
 	lcparent = lc->parent;
 	if (lcparent == NULL ||
@@ -702,11 +706,10 @@ layout_minimise_cell(struct window *w, struct layout_cell *lc)
 
 	/* Merge the space into the nearest non-minimised sibling. */
 	{
-		int	forward;
-		forward = (lc == TAILQ_FIRST(&lcparent->cells)) ? 1 : 0;
-		lcother = layout_active_neighbour(lc, forward);
+		direction = (lc == TAILQ_FIRST(&lcparent->cells)) ? 1 : 0;
+		lcother = layout_active_neighbour(lc, direction);
 		if (lcother == NULL)
-			lcother = layout_active_neighbour(lc, !forward);
+			lcother = layout_active_neighbour(lc, !direction);
 	}
 	if (lcother != NULL && lcparent->type == LAYOUT_LEFTRIGHT)
 		layout_resize_adjust(w, lcother, lcparent->type, lc->sx + 1);
