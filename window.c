@@ -444,6 +444,10 @@ window_pane_send_resize(struct window_pane *wp, u_int sx, u_int sy)
 
 	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, sx, sy);
 
+	if (ioctl(wp->fd, TIOCGWINSZ, &ws) != -1 &&
+	    ws.ws_col == sx && ws.ws_row == sy)
+		return;
+
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = sx;
 	ws.ws_row = sy;
