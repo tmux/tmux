@@ -898,9 +898,9 @@ window_copy_get_line(struct window_pane *wp, u_int y)
 {
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
 	struct window_copy_mode_data	*data = wme->data;
-	struct grid			*gd = data->screen.grid;
+	struct grid			*gd = data->backing->grid;
 
-	return (format_grid_line(gd, gd->hsize + y));
+	return (format_grid_line(gd, gd->hsize + y - data->oy));
 }
 
 char *
@@ -5588,13 +5588,15 @@ window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
 	 * on screen.
 	 */
 	gl = grid_get_line(gd, sy);
-	if (gl->flags & GRID_LINE_WRAPPED && gl->cellsize <= gd->sx)
+	if (gl->flags & GRID_LINE_WRAPPED)
 		wrapped = 1;
 
 	/* If the line was wrapped, don't strip spaces (use the full length). */
-	if (wrapped)
+	if (wrapped) {
 		xx = gl->cellsize;
-	else
+		if (xx > gd->sx)
+			xx = gd->sx;
+	} else
 		xx = window_copy_find_length(wme, sy);
 	if (ex > xx)
 		ex = xx;
