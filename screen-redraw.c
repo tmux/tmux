@@ -571,7 +571,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 			/* Right not visible. */
 			i = 0;
 			x = xoff - ctx->ox;
-			width = size - x;
+			width = ctx->sx - x;
 		}
 
 		if (ctx->statustop)
