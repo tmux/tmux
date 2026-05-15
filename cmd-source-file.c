@@ -17,6 +17,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/stat.h>
 
 #include <ctype.h>
 #include <errno.h>
@@ -166,6 +167,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 	char				*pattern, *cwd, *expanded = NULL;
 	const char			*path, *error;
 	glob_t				 g;
+	struct stat				 sb;
 	int				 result, parse_flags;
 	u_int				 i, j;
 
@@ -236,8 +238,15 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		free(pattern);
 
-		for (j = 0; j < g.gl_pathc; j++)
+		for (j = 0; j < g.gl_pathc; j++) {
+			if (stat(g.gl_pathv[j], &sb) == 0 && S_ISDIR(sb.st_mode)) {
+				cmdq_error(item, "%s: %s", strerror(EISDIR),
+				    g.gl_pathv[j]);
+				retval = CMD_RETURN_ERROR;
+				continue;
+			}
 			cmd_source_file_add(cdata, g.gl_pathv[j]);
+		}
 		globfree(&g);
 	}
 	free(expanded);
