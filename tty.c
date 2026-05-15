@@ -1587,6 +1587,11 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 				break;
 			if (state == 0)
 				continue;
+			if (ctx->s != NULL && (ctx->s->mode & MODE_SYNC) &&
+			    cmdfn != tty_cmd_syncstart &&
+			    cmdfn != tty_cmd_setselection &&
+			    cmdfn != tty_cmd_rawstring)
+				continue;
 			cmdfn(&c->tty, ctx);
 		}
 	}
