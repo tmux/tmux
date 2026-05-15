@@ -37,7 +37,7 @@ const struct cmd_entry cmd_send_keys_entry = {
 	.usage = "[-FHKlMRX] [-c target-client] [-N repeat-count] "
 	         CMD_TARGET_PANE_USAGE " [key ...]",
 
-	.target = { 't', CMD_FIND_PANE, 0 },
+	.target = { 't', CMD_FIND_WINDOW, 0 },
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_CFLAG|CMD_CLIENT_CANFAIL|
 		 CMD_READONLY,
@@ -51,7 +51,7 @@ const struct cmd_entry cmd_send_prefix_entry = {
 	.args = { "2t:", 0, 0, NULL },
 	.usage = "[-2] " CMD_TARGET_PANE_USAGE,
 
-	.target = { 't', CMD_FIND_PANE, 0 },
+	.target = { 't', CMD_FIND_WINDOW, 0 },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_send_keys_exec
