@@ -633,6 +633,14 @@ tty_keys_next1(struct tty *tty, const char *buf, size_t len, key_code *key,
 		return (0);
 	}
 
+	/*
+	 * Is this a partial key? If we have matched a prefix of a known key,
+	 * wait for more data. Do not wait for a lone escape.
+	 */
+	if (tk != NULL && tk->key == KEYC_UNKNOWN && tk->next != NULL &&
+	    !expired && *size > 1)
+		return (1);
+
 	/* Is this valid UTF-8? */
 	more = utf8_open(&ud, (u_char)*buf);
 	if (more == UTF8_MORE) {
