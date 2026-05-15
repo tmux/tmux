@@ -3271,19 +3271,19 @@ By default, it uses the format
 but a different format may be specified with
 .Fl F .
 .Tg newp
-.It Xo Ic new-pane
+.It Xo Ic new\-pane
 .Op Fl bdefhIkPvZ
-.Op Fl c Ar start-directory
+.Op Fl c Ar start\-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
 .Op Fl l Ar size
 .Op Fl m Ar message
 .Op Fl p Ar percentage
-.Op Fl R Ar inactive-border-style
+.Op Fl R Ar inactive\-border\-style
 .Op Fl s Ar style
-.Op Fl S Ar active-border-style
+.Op Fl S Ar active\-border\-style
 .Op Fl t Ar target-pane
-.Op Ar shell-command Op Ar argument ...
+.Op Ar shell\-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic newp
 Create a new pane.
@@ -3303,25 +3303,25 @@ sets the border style when the pane is inactive (see
 .Sx STYLES ) .
 .Fl k
 keeps the pane open after the optional
-.Ar shell-command
+.Ar shell\-command
 exits and waits for a keypress (any non-mouse key) before closing it.
 The message shown is controlled by the
-.Ic remain-on-exit-format
+.Ic remain\-on\-exit\-format
 option.
 .Fl m Ar message
 is equivalent to
 .Fl k
 but also sets the
-.Ic remain-on-exit-format
+.Ic remain\-on\-exit\-format
 option for this pane to
 .Ar message .
 An empty
-.Ar shell-command
+.Ar shell\-command
 (\[aq]\[aq]) will create a pane with no command running in it.
 The
 .Fl I
 flag (if
-.Ar shell-command
+.Ar shell\-command
 is not specified or empty)
 will create an empty pane and forward any output from stdin to it.
 For example:
@@ -3685,27 +3685,26 @@ the command behaves like
 .Tg splitw
 .It Xo Ic split\-window
 .Op Fl bdefhIkPvZ
-.Op Fl c Ar start-directory
+.Op Fl c Ar start\-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
 .Op Fl l Ar size
 .Op Fl m Ar message
 .Op Fl p Ar percentage
-.Op Fl R Ar inactive-border-style
+.Op Fl R Ar inactive\-border\-style
 .Op Fl s Ar style
-.Op Fl S Ar active-border-style
-.Op Fl t Ar target-pane
-.Op Ar shell-command Op Ar argument ...
+.Op Fl S Ar active\-border\-style
+.Op Fl t Ar target\-pane
+.Op Ar shell\-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic splitw
-Creates a new pane.
-Default behavior is to split
-.Ar target-pane .
+Creates a new pane by splitting
+.Ar target\-pane .
 Shares behavior with
-.Ic new-pane .
+.Ic new\-pane .
 .Pp
 See
-.Ic new-pane
+.Ic new\-pane
 for more details.
 .Tg swapp
 .It Xo Ic swap\-pane
