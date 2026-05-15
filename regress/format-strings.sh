@@ -231,4 +231,9 @@ test_format "#{l:#{#}}}" "#{#}}"
 #test_format "#{l:#{}" ""
 #test_format "#{l:#{#}}" ""
 
+# Substitution modifier with escaped colons in pattern and replacement.
+$TMUX set @colon 'foo:bar' || exit 1
+test_format "#{s/#:/_/:@colon}" "foo_bar"
+test_format "#{s/o/#:/:@colon}" "f:::bar"
+
 exit 0

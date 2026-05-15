@@ -4327,7 +4327,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 {
 	const char		*cp = *s, *end;
 	struct format_modifier	*list = NULL;
-	char			 c, last[] = "X;:", **argv, *value;
+	char			 c, last[] = "X;:", **argv, *value, *unescaped;
 	int			 argc;
 
 	/*
@@ -4394,8 +4394,10 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 
 			argv = xcalloc(1, sizeof *argv);
 			value = xstrndup(cp + 1, end - (cp + 1));
-			argv[0] = format_expand1(es, value);
+			unescaped = format_unescape(es, value);
 			free(value);
+			argv[0] = format_expand1(es, unescaped);
+			free(unescaped);
 			argc = 1;
 
 			format_add_modifier(&list, count, &c, 1, argv, argc);
@@ -4418,8 +4420,10 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 
 			argv = xreallocarray(argv, argc + 1, sizeof *argv);
 			value = xstrndup(cp, end - cp);
-			argv[argc++] = format_expand1(es, value);
+			unescaped = format_unescape(es, value);
 			free(value);
+			argv[argc++] = format_expand1(es, unescaped);
+			free(unescaped);
 
 			cp = end;
 		} while (!format_is_end(cp[0]));
