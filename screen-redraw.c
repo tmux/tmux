@@ -1164,7 +1164,7 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 	u_int				 lb, rb, tb, bb;
 	u_int				 i, s;
 
-	if (base_wp == NULL) {
+	if (base_wp == NULL || base_wp->flags & PANE_MINIMISED) {
 		if (r != NULL) {
 			return (r);
 		} else {
@@ -1195,6 +1195,8 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 
 	found_self = 0;
 	TAILQ_FOREACH_REVERSE(wp, &w->z_index, window_panes_zindex, zentry) {
+		if (wp->flags & PANE_MINIMISED)
+			continue;
 		if (wp == base_wp) {
 			found_self = 1;
 			continue;
