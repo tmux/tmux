@@ -3287,7 +3287,7 @@ but a different format may be specified with
 .Xc
 .D1 Pq alias: Ic newp
 Create a new pane.
-The current behavior is to split
+The new pane is created by splitting
 .Ar target-pane .
 If
 .Fl d
@@ -3343,6 +3343,8 @@ columns (for horizontal split);
 may be followed by
 .Ql %
 to specify a percentage of the available space.
+.Fl p
+is a shorthand option for this.
 The
 .Fl b
 option causes the new pane to be created to the left of or above
