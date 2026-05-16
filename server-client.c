@@ -35,6 +35,7 @@ static void	server_client_check_pane_buffer(struct window_pane *);
 static void	server_client_check_window_resize(struct window *);
 static key_code	server_client_check_mouse(struct client *, struct key_event *);
 static void	server_client_repeat_timer(int, short, void *);
+static void	server_client_paste_timer(int, short, void *);
 static void	server_client_click_timer(int, short, void *);
 static void	server_client_check_exit(struct client *);
 static void	server_client_check_redraw(struct client *);
@@ -318,6 +319,7 @@ server_client_create(int fd)
 	c->keytable->references++;
 
 	evtimer_set(&c->repeat_timer, server_client_repeat_timer, c);
+	evtimer_set(&c->paste_timer, server_client_paste_timer, c);
 	evtimer_set(&c->click_timer, server_client_click_timer, c);
 
 	c->click_wp = -1;
@@ -478,6 +480,7 @@ server_client_lost(struct client *c)
 	free((void *)c->cwd);
 
 	evtimer_del(&c->repeat_timer);
+	evtimer_del(&c->paste_timer);
 	evtimer_del(&c->click_timer);
 
 	key_bindings_unref_table(c->keytable);
@@ -1031,15 +1034,26 @@ have_event:
 static int
 server_client_is_bracket_paste(struct client *c, key_code key)
 {
+	struct timeval	tv;
+
 	if ((key & KEYC_MASK_KEY) == KEYC_PASTE_START) {
 		c->flags |= CLIENT_BRACKETPASTING;
 		log_debug("%s: bracket paste on", c->name);
+
+		tv.tv_sec = 5;
+		tv.tv_usec = 0;
+		evtimer_del(&c->paste_timer);
+		evtimer_add(&c->paste_timer, &tv);
+
 		return (0);
 	}
 
 	if ((key & KEYC_MASK_KEY) == KEYC_PASTE_END) {
 		c->flags &= ~CLIENT_BRACKETPASTING;
 		log_debug("%s: bracket paste off", c->name);
+
+		evtimer_del(&c->paste_timer);
+
 		return (0);
 	}
 
@@ -1818,6 +1832,18 @@ server_client_repeat_timer(__unused int fd, __unused short events, void *data)
 		server_client_set_key_table(c, NULL);
 		c->flags &= ~CLIENT_REPEAT;
 		server_status_client(c);
+	}
+}
+
+/* Bracket paste timeout callback. */
+static void
+server_client_paste_timer(__unused int fd, __unused short events, void *data)
+{
+	struct client	*c = data;
+
+	if (c->flags & CLIENT_BRACKETPASTING) {
+		c->flags &= ~CLIENT_BRACKETPASTING;
+		log_debug("%s: bracket paste off (timeout)", c->name);
 	}
 }
 
