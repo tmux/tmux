@@ -1087,10 +1087,20 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
 	if (slider_y >= sb_h)
 		slider_y = sb_h - 1;
 
+	if (ctx->statustop)
+		sb_y += ctx->statuslines;
+
+	/* Skip redraw if scrollbar position and slider have not changed. */
+	if (sb_x == wp->sb_x && sb_y == wp->sb_y &&
+	    slider_y == wp->sb_slider_y && slider_h == wp->sb_slider_h)
+		return;
+
 	screen_redraw_draw_scrollbar(ctx, wp, sb_pos, sb_x, sb_y, sb_h,
 	    slider_h, slider_y);
 
 	/* Store current position and height of the slider */
+	wp->sb_x = sb_x;
+	wp->sb_y = sb_y;
 	wp->sb_slider_y = slider_y;  /* top of slider y pos in scrollbar */
 	wp->sb_slider_h = slider_h;  /* height of slider */
 }

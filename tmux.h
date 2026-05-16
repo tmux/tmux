@@ -1281,6 +1281,8 @@ struct window_pane {
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
+	int		 sb_x;
+	int		 sb_y;
 
 	int		 argc;
 	char	       **argv;
@@ -2037,6 +2039,7 @@ struct client {
 	size_t			 redraw;
 
 	struct event		 repeat_timer;
+	struct event		 paste_timer;
 
 	struct event		 click_timer;
 	int			 click_loc;
@@ -3132,6 +3135,10 @@ void	 input_reply_clipboard(struct bufferevent *, const char *, size_t,
 	     const char *, char);
 void	 input_set_buffer_size(size_t);
 void	 input_request_reply(struct client *, enum input_request_type, void *);
+int	 input_reflow_start(struct input_ctx *, struct grid *, u_int, u_int,
+	     u_int *, u_int *);
+void	 input_reflow_finish(struct input_ctx *, struct grid *, u_int, u_int,
+	     u_int, u_int);
 void	 input_cancel_requests(struct client *);
 
 /* input-key.c */

@@ -1244,6 +1244,8 @@ options_push_changes(const char *name)
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
 			style_set_scrollbar_style_from_option(
 			    &wp->scrollbar_style, wp->options);
+			wp->sb_x = wp->sb_y = wp->sb_slider_y =
+			    wp->sb_slider_h = 0;
 		}
 		RB_FOREACH(w, windows, &windows)
 			layout_fix_panes(w, NULL);
