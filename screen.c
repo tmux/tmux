@@ -339,6 +339,7 @@ screen_resize_cursor(struct screen *s, u_int sx, u_int sy, int reflow,
     int eat_empty, int cursor)
 {
 	u_int	cx = s->cx, cy = s->grid->hsize + s->cy;
+	u_int	old_sx = screen_size_x(s);
 
 	if (s->write_list != NULL)
 		screen_write_free_list(s);
@@ -365,8 +366,15 @@ screen_resize_cursor(struct screen *s, u_int sx, u_int sy, int reflow,
 	image_free_all(s);
 #endif
 
-	if (reflow)
+	if (reflow) {
+		if (cursor && cx == old_sx) {
+			log_debug("%s: reset pending wrap for cursor", __func__);
+			cx = old_sx - 1;
+		}
 		screen_reflow(s, sx, &cx, &cy, cursor);
+		if (cursor && cx == sx)
+			cx = sx - 1;
+	}
 
 	if (cy >= s->grid->hsize) {
 		s->cx = cx;

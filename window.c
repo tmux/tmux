@@ -1114,6 +1114,9 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
 	struct window_mode_entry	*wme;
 	struct window_pane_resize	*r;
+	u_int				 wx = 0, wy = 0;
+	u_int				 old_sx;
+	int				 saved_reflow = 0;
 
 	if (sx == wp->sx && sy == wp->sy)
 		return;
@@ -1131,7 +1134,19 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	wp->sy = sy;
 
 	log_debug("%s: %%%u resize %ux%u", __func__, wp->id, sx, sy);
+
+	old_sx = screen_size_x(&wp->base);
+	if (wp->ictx != NULL) {
+		saved_reflow = input_reflow_start(wp->ictx, wp->base.grid, old_sx,
+		    wp->base.grid->hsize, &wx, &wy);
+	}
+
 	screen_resize(&wp->base, sx, sy, wp->base.saved_grid == NULL);
+
+	if (saved_reflow) {
+		input_reflow_finish(wp->ictx, wp->base.grid, sx,
+		    wp->base.grid->hsize, wx, wy);
+	}
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL && wme->mode->resize != NULL)

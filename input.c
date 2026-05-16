@@ -853,6 +853,50 @@ input_restore_state(struct input_ctx *ictx)
 	screen_write_cursormove(sctx, ictx->old_cx, ictx->old_cy, 0);
 }
 
+/*
+ * Start reflowing the saved cursor. Returns 1 if there is a saved cursor to
+ * reflow and fills wx,wy with the wrapped position. Returns 0 if not.
+ */
+int
+input_reflow_start(struct input_ctx *ictx, struct grid *gd, u_int old_sx,
+    u_int hsize, u_int *wx, u_int *wy)
+{
+	u_int	old_cx, old_cy;
+
+	if (ictx->old_cx == UINT_MAX || ictx->old_cy == UINT_MAX)
+		return (0);
+
+	old_cx = ictx->old_cx;
+	old_cy = hsize + ictx->old_cy;
+	if (old_cx == old_sx)
+		old_cx = old_sx - 1;
+
+	grid_wrap_position(gd, old_cx, old_cy, wx, wy);
+	return (1);
+}
+
+/*
+ * Finish reflowing the saved cursor after the grid has been resized. wx,wy is
+ * the wrapped position from input_reflow_start.
+ */
+void
+input_reflow_finish(struct input_ctx *ictx, struct grid *gd, u_int sx,
+    u_int hsize, u_int wx, u_int wy)
+{
+	u_int	old_cx, old_cy;
+
+	grid_unwrap_position(gd, &old_cx, &old_cy, wx, wy);
+	if (old_cy >= hsize) {
+		ictx->old_cx = old_cx;
+		ictx->old_cy = old_cy - hsize;
+	} else {
+		ictx->old_cx = 0;
+		ictx->old_cy = 0;
+	}
+	if (ictx->old_cx >= sx)
+		ictx->old_cx = sx - 1;
+}
+
 /* Initialise input parser. */
 struct input_ctx *
 input_init(struct window_pane *wp, struct bufferevent *bev,
