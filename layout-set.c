@@ -133,7 +133,7 @@ layout_set_even(struct window *w, enum layout_type type)
 	layout_print_cell(w->layout_root, __func__, 1);
 
 	/* Get number of panes. */
-	n = window_count_panes(w);
+	n = window_count_panes(w, 0);
 	if (n <= 1)
 		return;
 
@@ -201,7 +201,7 @@ layout_set_main_h(struct window *w)
 	layout_print_cell(w->layout_root, __func__, 1);
 
 	/* Get number of panes. */
-	n = window_count_panes(w);
+	n = window_count_panes(w, 0);
 	if (n <= 1)
 		return;
 	n--;	/* take off main pane */
@@ -299,7 +299,7 @@ layout_set_main_h_mirrored(struct window *w)
 	layout_print_cell(w->layout_root, __func__, 1);
 
 	/* Get number of panes. */
-	n = window_count_panes(w);
+	n = window_count_panes(w, 0);
 	if (n <= 1)
 		return;
 	n--;	/* take off main pane */
@@ -397,7 +397,7 @@ layout_set_main_v(struct window *w)
 	layout_print_cell(w->layout_root, __func__, 1);
 
 	/* Get number of panes. */
-	n = window_count_panes(w);
+	n = window_count_panes(w, 0);
 	if (n <= 1)
 		return;
 	n--;	/* take off main pane */
@@ -495,7 +495,7 @@ layout_set_main_v_mirrored(struct window *w)
 	layout_print_cell(w->layout_root, __func__, 1);
 
 	/* Get number of panes. */
-	n = window_count_panes(w);
+	n = window_count_panes(w, 0);
 	if (n <= 1)
 		return;
 	n--;	/* take off main pane */
@@ -593,7 +593,7 @@ layout_set_tiled(struct window *w)
 	layout_print_cell(w->layout_root, __func__, 1);
 
 	/* Get number of panes. */
-	n = window_count_panes(w);
+	n = window_count_panes(w, 0);
 	if (n <= 1)
 		return;
 

@@ -73,7 +73,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	server_unzoom_window(w);
 
-	if (window_count_panes(w) == 1) {
+	if (window_count_panes(w, 1) == 1) {
 		if (server_link_window(src_s, wl, dst_s, idx, 0,
 		    !args_has(args, 'd'), &cause) != 0) {
 			cmdq_error(item, "%s", cause);

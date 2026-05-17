@@ -150,6 +150,7 @@ fatal(const char *msg, ...)
 	log_vwrite(msg, ap, tmp);
 	va_end(ap);
 
+	abort ();//XXX
 	exit(1);
 }
 
@@ -163,5 +164,6 @@ fatalx(const char *msg, ...)
 	log_vwrite(msg, ap, "fatal: ");
 	va_end(ap);
 
+	abort ();//XXX
 	exit(1);
 }

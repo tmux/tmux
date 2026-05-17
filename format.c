@@ -2046,7 +2046,7 @@ static void *
 format_cb_pane_bottom(struct format_tree *ft)
 {
 	if (ft->wp != NULL)
-		return (format_printf("%u", ft->wp->yoff + ft->wp->sy - 1));
+		return (format_printf("%d", ft->wp->yoff + ft->wp->sy - 1));
 	return (NULL);
 }
 
@@ -2205,7 +2205,7 @@ static void *
 format_cb_pane_left(struct format_tree *ft)
 {
 	if (ft->wp != NULL)
-		return (format_printf("%u", ft->wp->xoff));
+		return (format_printf("%d", ft->wp->xoff));
 	return (NULL);
 }
 
@@ -2329,7 +2329,7 @@ static void *
 format_cb_pane_right(struct format_tree *ft)
 {
 	if (ft->wp != NULL)
-		return (format_printf("%u", ft->wp->xoff + ft->wp->sx - 1));
+		return (format_printf("%d", ft->wp->xoff + ft->wp->sx - 1));
 	return (NULL);
 }
 
@@ -2371,7 +2371,7 @@ static void *
 format_cb_pane_top(struct format_tree *ft)
 {
 	if (ft->wp != NULL)
-		return (format_printf("%u", ft->wp->yoff));
+		return (format_printf("%d", ft->wp->yoff));
 	return (NULL);
 }
 
@@ -2918,7 +2918,7 @@ static void *
 format_cb_window_panes(struct format_tree *ft)
 {
 	if (ft->w != NULL)
-		return (format_printf("%u", window_count_panes(ft->w)));
+		return (format_printf("%u", window_count_panes(ft->w, 1)));
 	return (NULL);
 }
 
