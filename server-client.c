@@ -1037,6 +1037,7 @@ server_client_is_bracket_paste(struct client *c, key_code key)
 {
 	if ((key & KEYC_MASK_KEY) == KEYC_PASTE_START) {
 		c->flags |= CLIENT_BRACKETPASTING;
+		c->paste_time = current_time;
 		log_debug("%s: bracket paste on", c->name);
 		return (0);
 	}
@@ -1070,6 +1071,7 @@ server_client_is_assume_paste(struct client *c)
 		if (c->flags & CLIENT_ASSUMEPASTING)
 			return (1);
 		c->flags |= CLIENT_ASSUMEPASTING;
+		c->paste_time = current_time;
 		log_debug("%s: assume paste on", c->name);
 		return (0);
 	}
@@ -2502,6 +2504,13 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		if (c->out_fd != -1)
 			close(c->out_fd);
 		c->out_fd = -1;
+	}
+
+	/* If pasting has taken too long, turn it off. */
+	if (c->flags & (CLIENT_BRACKETPASTING|CLIENT_ASSUMEPASTING) &&
+	    current_time - c->paste_time > CLIENT_PASTE_TIME_LIMIT) {
+		log_debug("%s: paste time limit exceeded", c->name);
+		c->flags &= ~(CLIENT_BRACKETPASTING|CLIENT_ASSUMEPASTING);
 	}
 
 	/*
