@@ -3412,6 +3412,9 @@ enum client_theme window_pane_get_theme(struct window_pane *);
 void		 window_pane_send_theme_update(struct window_pane *);
 struct style_range *window_pane_border_status_get_range(struct window_pane *,
 			u_int, u_int);
+int		 window_pane_tile_geometry(struct window *,
+		     struct window_pane *, int *, int *, enum layout_type *,
+		     struct cmdq_item *, struct args *, char **);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);
