@@ -3418,9 +3418,6 @@ void		 window_pane_resize(struct window_pane *, u_int, u_int);
 int		 window_pane_set_mode(struct window_pane *,
 		     struct window_pane *, const struct window_mode *,
 		     struct cmd_find_state *, struct args *);
-int		 window_pane_tile_geometry(struct window *,
-		     struct window_pane *, int *, int *, enum layout_type *,
-		     struct cmdq_item *, struct args *, char **);
 void		 window_pane_reset_mode(struct window_pane *);
 void		 window_pane_reset_mode_all(struct window_pane *);
 int		 window_pane_key(struct window_pane *, struct client *,
@@ -3466,6 +3463,9 @@ enum client_theme window_pane_get_theme(struct window_pane *);
 void		 window_pane_send_theme_update(struct window_pane *);
 struct style_range *window_pane_border_status_get_range(struct window_pane *,
 			u_int, u_int);
+int		 window_pane_tile_geometry(struct window *,
+		     struct window_pane *, int *, int *, enum layout_type *,
+		     struct cmdq_item *, struct args *, char **);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);

@@ -1177,59 +1177,6 @@ window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
 	return (0);
 }
 
-int
-window_pane_tile_geometry(struct window *w, struct window_pane *wp, int *out_size,
-    int *out_flags, enum layout_type *out_type, struct cmdq_item *item,
-    struct args *args, char **cause)
-{
-	int			size, flags = *out_flags;
-	enum layout_type	type;
-	u_int			curval = 0;
-
-	type = LAYOUT_TOPBOTTOM;
-	if (args_has(args, 'h'))
-		type = LAYOUT_LEFTRIGHT;
-
-	/* If the 'p' flag is dropped then this bit can be moved into 'l'. */
-	if (args_has(args, 'l') || args_has(args, 'p')) {
-		if (args_has(args, 'f')) {
-			if (type == LAYOUT_TOPBOTTOM)
-				curval = w->sy;
-			else
-				curval = w->sx;
-		} else {
-			if (type == LAYOUT_TOPBOTTOM)
-				curval = wp->sy;
-			else
-				curval = wp->sx;
-		}
-	}
-
-	size = -1;
-	if (args_has(args, 'l')) {
-		size = args_percentage_and_expand(args, 'l', 0, INT_MAX, curval,
-		    item, cause);
-	} else if (args_has(args, 'p')) {
-		size = args_strtonum_and_expand(args, 'p', 0, 100, item,
-		    cause);
-		if (cause == NULL)
-			size = curval * (size) / 100;
-	}
-	if (*cause != NULL) {
-		return (-1);
-	}
-	if (args_has(args, 'b'))
-		flags |= SPAWN_BEFORE;
-	if (args_has(args, 'f'))
-		flags |= SPAWN_FULLSIZE;
-
-	*out_size = size;
-	*out_flags = flags;
-	*out_type = type;
-
-	return (0);
-}
-
 void
 window_pane_reset_mode(struct window_pane *wp)
 {
@@ -2084,4 +2031,57 @@ window_pane_border_status_get_range(struct window_pane *wp, u_int x, u_int y)
 	 * the stored bounds of the range.
 	 */
 	return (style_ranges_get_range(srs, x - wp->xoff - 2));
+}
+
+int
+window_pane_tile_geometry(struct window *w, struct window_pane *wp, int *out_size,
+    int *out_flags, enum layout_type *out_type, struct cmdq_item *item,
+    struct args *args, char **cause)
+{
+	int			size, flags = *out_flags;
+	enum layout_type	type;
+	u_int			curval = 0;
+
+	type = LAYOUT_TOPBOTTOM;
+	if (args_has(args, 'h'))
+		type = LAYOUT_LEFTRIGHT;
+
+	/* If the 'p' flag is dropped then this bit can be moved into 'l'. */
+	if (args_has(args, 'l') || args_has(args, 'p')) {
+		if (args_has(args, 'f')) {
+			if (type == LAYOUT_TOPBOTTOM)
+				curval = w->sy;
+			else
+				curval = w->sx;
+		} else {
+			if (type == LAYOUT_TOPBOTTOM)
+				curval = wp->sy;
+			else
+				curval = wp->sx;
+		}
+	}
+
+	size = -1;
+	if (args_has(args, 'l')) {
+		size = args_percentage_and_expand(args, 'l', 0, INT_MAX, curval,
+		    item, cause);
+	} else if (args_has(args, 'p')) {
+		size = args_strtonum_and_expand(args, 'p', 0, 100, item,
+		    cause);
+		if (cause == NULL)
+			size = curval * (size) / 100;
+	}
+	if (*cause != NULL) {
+		return (-1);
+	}
+	if (args_has(args, 'b'))
+		flags |= SPAWN_BEFORE;
+	if (args_has(args, 'f'))
+		flags |= SPAWN_FULLSIZE;
+
+	*out_size = size;
+	*out_flags = flags;
+	*out_type = type;
+
+	return (0);
 }
