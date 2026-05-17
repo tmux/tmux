@@ -167,6 +167,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 			if ((int)py == wp->yoff + (int)wp->sy)
 				return (SCREEN_REDRAW_BORDER_BOTTOM);
 		}
+		return (SCREEN_REDRAW_OUTSIDE);
 	}
 
 	/* Get pane indicator. */
