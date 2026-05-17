@@ -175,7 +175,7 @@ utf8_should_combine(const struct utf8_data *with, const struct utf8_data *add)
 			return (1);
 		break;
 	}
-	return 0;
+	return (0);
 }
 
 static enum hanguljamo_subclass

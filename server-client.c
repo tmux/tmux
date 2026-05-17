@@ -1091,6 +1091,8 @@ server_client_is_assume_paste(struct client *c)
 		return (0);
 	if ((t = options_get_number(s->options, "assume-paste-time")) == 0)
 		return (0);
+	if (tty_term_has(c->tty.term, TTYC_ENBP))
+		return (0);
 
 	timersub(&c->activity_time, &c->last_activity_time, &tv);
 	if (tv.tv_sec == 0 && tv.tv_usec < t * 1000) {
