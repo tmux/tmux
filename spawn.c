@@ -379,7 +379,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		goto complete;
 	}
 
-    /* Store current working directory and change to new one. */
+	/* Store current working directory and change to new one. */
 	if (getcwd(path, sizeof path) != NULL) {
 		if (chdir(new_wp->cwd) == 0)
 			actual_cwd = new_wp->cwd;
