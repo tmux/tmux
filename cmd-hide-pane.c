@@ -1,7 +1,7 @@
 /* $OpenBSD$ */
 
 /*
- * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
+ * Copyright (c) 2026 Michael Grant <mgrant@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -24,19 +24,19 @@
 #include "tmux.h"
 
 /*
- * Increase or decrease pane size.
+ * Hide or show panes.
  */
 
-static enum cmd_retval cmd_minimise_pane_minimise_exec(struct cmd *, struct cmdq_item *);
-static enum cmd_retval cmd_minimise_pane_unminimise_exec(struct cmd *, struct cmdq_item *);
+static enum cmd_retval cmd_hide_pane_hide_exec(struct cmd *, struct cmdq_item *);
+static enum cmd_retval cmd_hide_pane_show_exec(struct cmd *, struct cmdq_item *);
 
-static enum cmd_retval cmd_minimise_pane_minimise(struct window *, struct window_pane *,
+static enum cmd_retval cmd_hide_pane_hide(struct window *, struct window_pane *,
     struct cmdq_item *);
-static enum cmd_retval cmd_minimise_pane_unminimise(struct window *, struct window_pane *);
+static enum cmd_retval cmd_hide_pane_show(struct window *, struct window_pane *);
 
-const struct cmd_entry cmd_minimise_pane_entry = {
-	.name = "minimise-pane",
-	.alias = "minimize-pane",
+const struct cmd_entry cmd_hide_pane_entry = {
+	.name = "hide-pane",
+	.alias = "hidep",
 
 	.args = { "at:", 0, 1, NULL },
 	.usage = "[-a] " CMD_TARGET_PANE_USAGE,
@@ -44,12 +44,12 @@ const struct cmd_entry cmd_minimise_pane_entry = {
 	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = CMD_AFTERHOOK,
-	.exec = cmd_minimise_pane_minimise_exec
+	.exec = cmd_hide_pane_hide_exec
 };
 
-const struct cmd_entry cmd_unminimise_pane_entry = {
-	.name = "unminimise-pane",
-	.alias = "unminimize-pane",
+const struct cmd_entry cmd_show_pane_entry = {
+	.name = "show-pane",
+	.alias = "showp",
 
 	.args = { "at:", 0, 1, NULL },
 	.usage = "[-a] " CMD_TARGET_PANE_USAGE,
@@ -57,28 +57,27 @@ const struct cmd_entry cmd_unminimise_pane_entry = {
 	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = CMD_AFTERHOOK,
-	.exec = cmd_minimise_pane_unminimise_exec
+	.exec = cmd_hide_pane_show_exec
 };
 
 
 static enum cmd_retval
-cmd_minimise_pane_minimise_exec(struct cmd *self, struct cmdq_item *item)
+cmd_hide_pane_hide_exec(struct cmd *self, struct cmdq_item *item)
 {
-	__attribute((unused)) struct args	*args = cmd_get_args(self);
-	struct cmd_find_state			*target = cmdq_get_target(item);
-	struct winlink				*wl = target->wl;
-	struct window				*w = wl->window;
-	struct window_pane			*wp;
-	u_int					 id;
-	char					*cause = NULL;
-	enum cmd_retval				 rv;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct winlink		*wl = target->wl;
+	struct window		*w = wl->window;
+	struct window_pane	*wp, *active_pane = w->active;
+	u_int			 id;
+	char			*cause = NULL;
+	enum cmd_retval		 rv;
 
 	if (args_has(args, 'a')) {
-		struct window_pane *active_pane = w->active;
 		TAILQ_FOREACH(wp, &w->z_index, zentry) {
 			if (!window_pane_visible(wp) || wp == active_pane)
 				continue;
-			rv = cmd_minimise_pane_minimise(w, wp, item);
+			rv = cmd_hide_pane_hide(w, wp, item);
 			if (rv != CMD_RETURN_NORMAL)
 				return (rv);
 		}
@@ -86,7 +85,8 @@ cmd_minimise_pane_minimise_exec(struct cmd *self, struct cmdq_item *item)
 	} else {
 		wp = target->wp;
 		if (wp == NULL) {
-			id = args_strtonum_and_expand(args, 't', 0, INT_MAX, item, &cause);
+			id = args_strtonum_and_expand(args, 't', 0, INT_MAX,
+			    item, &cause);
 			if (cause != NULL) {
 				cmdq_error(item, "%s target pane", cause);
 				return (CMD_RETURN_ERROR);
@@ -94,30 +94,30 @@ cmd_minimise_pane_minimise_exec(struct cmd *self, struct cmdq_item *item)
 			wp = window_pane_find_by_id(id);
 		}
 		if (wp == NULL) {
-			cmdq_error(item, "No target pane to miminise.");
+			cmdq_error(item, "No target pane to hide.");
 			return (CMD_RETURN_ERROR);
 		}
-		return (cmd_minimise_pane_minimise(w, wp, item));
+		return (cmd_hide_pane_hide(w, wp, item));
 	}
 }
 
 static enum cmd_retval
-cmd_minimise_pane_unminimise_exec(struct cmd *self, struct cmdq_item *item)
+cmd_hide_pane_show_exec(struct cmd *self, struct cmdq_item *item)
 {
-	__attribute((unused)) struct args	*args = cmd_get_args(self);
-	struct cmd_find_state			*target = cmdq_get_target(item);
-	struct winlink				*wl = target->wl;
-	struct window				*w = wl->window;
-	struct window_pane			*wp;
-	u_int					 id;
-	char					*cause = NULL;
-	enum cmd_retval				 rv;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct winlink		*wl = target->wl;
+	struct window		*w = wl->window;
+	struct window_pane	*wp;
+	u_int			 id;
+	char			*cause = NULL;
+	enum cmd_retval		 rv;
 
 	if (args_has(args, 'a')) {
 		TAILQ_FOREACH(wp, &w->z_index, zentry) {
 			if (!window_pane_visible(wp))
 				continue;
-			rv = cmd_minimise_pane_unminimise(w, wp);
+			rv = cmd_hide_pane_show(w, wp);
 			if (rv != CMD_RETURN_NORMAL)
 				return (rv);
 		}
@@ -125,7 +125,8 @@ cmd_minimise_pane_unminimise_exec(struct cmd *self, struct cmdq_item *item)
 	} else {
 		wp = target->wp;
 		if (wp == NULL) {
-			id = args_strtonum_and_expand(args, 't', 0, INT_MAX, item, &cause);
+			id = args_strtonum_and_expand(args, 't', 0, INT_MAX,
+			    item, &cause);
 			if (cause != NULL) {
 				cmdq_error(item, "%s target pane", cause);
 				return (CMD_RETURN_ERROR);
@@ -133,20 +134,20 @@ cmd_minimise_pane_unminimise_exec(struct cmd *self, struct cmdq_item *item)
 			wp = window_pane_find_by_id(id);
 		}
 		if (wp == NULL) {
-			cmdq_error(item, "No target pane to unmiminise.");
+			cmdq_error(item, "No target pane to show.");
 			return (CMD_RETURN_ERROR);
 		}
-		return (cmd_minimise_pane_unminimise(w, wp));
+		return (cmd_hide_pane_show(w, wp));
 	}
 }
 
 static enum cmd_retval
-cmd_minimise_pane_minimise(struct window *w, struct window_pane *wp,
-    __attribute__((unused)) struct cmdq_item *item)
+cmd_hide_pane_hide(struct window *w, struct window_pane *wp,
+    __unused struct cmdq_item *item)
 {
 	struct window_pane	*pwp = NULL;
 
-	if (wp->flags & PANE_MINIMISED)
+	if (wp->flags & PANE_HIDDEN)
 		return (CMD_RETURN_NORMAL);
 
 	if (wp == w->active) {
@@ -170,11 +171,11 @@ cmd_minimise_pane_minimise(struct window *w, struct window_pane *wp,
 		}
 	}
 
-	wp->flags |= PANE_MINIMISED;
+	wp->flags |= PANE_HIDDEN;
 
 	if (w->layout_root != NULL) {
 		wp->saved_layout_cell = wp->layout_cell;
-		layout_minimise_cell(w, wp->layout_cell);
+		layout_hide_cell(w, wp->layout_cell);
 		layout_fix_offsets(w);
 		layout_fix_panes(w, NULL);
 	}
@@ -200,15 +201,15 @@ cmd_minimise_pane_minimise(struct window *w, struct window_pane *wp,
 }
 
 static enum cmd_retval
-cmd_minimise_pane_unminimise(struct window *w, struct window_pane *wp)
+cmd_hide_pane_show(struct window *w, struct window_pane *wp)
 {
-	wp->flags &= ~PANE_MINIMISED;
+	wp->flags &= ~PANE_HIDDEN;
 
 	/* Fix pane offsets and sizes. */
 	if (w->layout_root != NULL && wp->saved_layout_cell != NULL) {
 		wp->layout_cell = wp->saved_layout_cell;
 		wp->saved_layout_cell = NULL;
-		layout_unminimise_cell(w, wp->layout_cell);
+		layout_show_cell(w, wp->layout_cell);
 		layout_fix_offsets(w);
 		layout_fix_panes(w, NULL);
 	}

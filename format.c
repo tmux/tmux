@@ -2249,14 +2249,14 @@ format_cb_pane_marked_set(struct format_tree *ft)
 	return (NULL);
 }
 
-/* Callback for pane_minimised_flag. */
+/* Callback for pane_hidden_flag. */
 static void *
-format_cb_pane_minimised_flag(struct format_tree *ft)
+format_cb_pane_hidden_flag(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
 
 	if (wp != NULL) {
-		if (wp->flags & PANE_MINIMISED)
+		if (wp->flags & PANE_HIDDEN)
 			return (xstrdup("1"));
 		return (xstrdup("0"));
 	}
@@ -3460,8 +3460,8 @@ static const struct format_table_entry format_table[] = {
 	{ "pane_marked_set", FORMAT_TABLE_STRING,
 	  format_cb_pane_marked_set
 	},
-	{ "pane_minimised_flag", FORMAT_TABLE_STRING,
-	  format_cb_pane_minimised_flag
+	{ "pane_hidden_flag", FORMAT_TABLE_STRING,
+	  format_cb_pane_hidden_flag
 	},
 	{ "pane_mode", FORMAT_TABLE_STRING,
 	  format_cb_pane_mode

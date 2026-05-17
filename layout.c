@@ -270,7 +270,7 @@ layout_fix_offsets1(struct layout_cell *lc)
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			if (lcchild->type == LAYOUT_WINDOWPANE &&
 			    lcchild->wp != NULL &&
-			    lcchild->wp->flags & PANE_MINIMISED)
+			    lcchild->wp->flags & PANE_HIDDEN)
 				continue;
 			lcchild->xoff = xoff;
 			lcchild->yoff = lc->yoff;
@@ -283,7 +283,7 @@ layout_fix_offsets1(struct layout_cell *lc)
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			if (lcchild->type == LAYOUT_WINDOWPANE &&
 			    lcchild->wp != NULL &&
-			    lcchild->wp->flags & PANE_MINIMISED)
+			    lcchild->wp->flags & PANE_HIDDEN)
 				continue;
 			lcchild->xoff = lc->xoff;
 			lcchild->yoff = yoff;
@@ -536,7 +536,7 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 }
 
 /*
- * Return the nearest sibling of lc that is not a minimised WINDOWPANE leaf,
+ * Return the nearest sibling of lc that is not a hidden WINDOWPANE leaf,
  * walking forward (direction=1) or backward (direction=0) in the parent's list.
  * Container cells (TOPBOTTOM/LEFTRIGHT) are never skipped.
  */
@@ -554,9 +554,9 @@ layout_active_neighbour(struct layout_cell *lc, int direction)
 		if (lcother->type != LAYOUT_WINDOWPANE)
 			return (lcother);		/* container — not skipped */
 		if (lcother->wp == NULL ||
-		    (~lcother->wp->flags & PANE_MINIMISED))
+		    (~lcother->wp->flags & PANE_HIDDEN))
 			return (lcother);		/* visible leaf */
-		/* minimised leaf — keep walking */
+		/* hidden leaf — keep walking */
 		if (direction)
 			lcother = TAILQ_NEXT(lcother, entry);
 		else
@@ -566,12 +566,12 @@ layout_active_neighbour(struct layout_cell *lc, int direction)
 }
 
 /*
- * Redistribute space equally among all visible (non-minimised WINDOWPANE)
- * children of lcparent in the given direction.  Minimised WINDOWPANE leaves
+ * Redistribute space equally among all visible (non-hidden WINDOWPANE)
+ * children of lcparent in the given direction.  Hidden WINDOWPANE leaves
  * are skipped; their stored sizes are left untouched.  Container children
  * have their own children resized proportionally via layout_resize_child_cells.
  *
- * If all children happen to be minimised (n==0), nothing is done.
+ * If all children happen to be hidden (n==0), nothing is done.
  */
 void
 layout_redistribute_cells(struct window *w, struct layout_cell *lcparent,
@@ -585,7 +585,7 @@ layout_redistribute_cells(struct window *w, struct layout_cell *lcparent,
 	TAILQ_FOREACH(lc, &lcparent->cells, entry) {
 		if (lc->type == LAYOUT_WINDOWPANE &&
 		    lc->wp != NULL &&
-		    (lc->wp->flags & PANE_MINIMISED))
+		    (lc->wp->flags & PANE_HIDDEN))
 			continue;
 		n++;
 	}
@@ -608,7 +608,7 @@ layout_redistribute_cells(struct window *w, struct layout_cell *lcparent,
 	TAILQ_FOREACH(lc, &lcparent->cells, entry) {
 		if (lc->type == LAYOUT_WINDOWPANE &&
 		    lc->wp != NULL &&
-		    (lc->wp->flags & PANE_MINIMISED))
+		    (lc->wp->flags & PANE_HIDDEN))
 			continue;
 		target = each + (i < rem ? 1 : 0);
 		if (type == LAYOUT_LEFTRIGHT)
@@ -628,7 +628,7 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 {
 	struct layout_cell     *lcother, *lcparent;
 	int			direction;
-	int			is_minimised;
+	int			is_hidden;
 
 	/*
 	 * If no parent, this is either a floating pane or the last
@@ -652,15 +652,15 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 
 	/* In tiled layouts, merge the space into the previous or next cell. */
 	if (lcparent->type != LAYOUT_FLOATING) {
-		is_minimised = (lc->wp != NULL && (lc->wp->flags & PANE_MINIMISED));
+		is_hidden = (lc->wp != NULL && (lc->wp->flags & PANE_HIDDEN));
 		direction = (lc == TAILQ_FIRST(&lcparent->cells)) ? 1 : 0;
 		lcother = layout_active_neighbour(lc, direction);
 		if (lcother == NULL)
 			lcother = layout_active_neighbour(lc, !direction);
 		if (lcother != NULL && lcparent->type == LAYOUT_LEFTRIGHT &&
-		    !is_minimised)
+		    !is_hidden)
 			layout_resize_adjust(w, lcother, lcparent->type, lc->sx + 1);
-		else if (lcother != NULL && !is_minimised)
+		else if (lcother != NULL && !is_hidden)
 			layout_resize_adjust(w, lcother, lcparent->type, lc->sy + 1);
 	}
 
@@ -685,15 +685,15 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 			lc->yoff = 0;
 
 			/*
-			 * If the sole remaining child is a minimised
+			 * If the sole remaining child is a hidden
 			 * WINDOWPANE, its stored size may be stale (it never
 			 * received the space that was given to the removed
-			 * cell). Restore the full window size so that
-			 * unminimise can reclaim the correct amount.
+			 * cell).  Restore the full window size so that
+			 * 'show' can reclaim the correct amount.
 			 */
 			if (lc->type == LAYOUT_WINDOWPANE &&
 			    lc->wp != NULL &&
-			    (lc->wp->flags & PANE_MINIMISED)) {
+			    (lc->wp->flags & PANE_HIDDEN)) {
 				lc->sx = lcparent->sx;
 				lc->sy = lcparent->sy;
 			}
@@ -705,9 +705,9 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 	}
 }
 
-/* Minimise a cell and redistribute the space in tiled cells. */
+/* Hide a cell and redistribute the space in tiled cells. */
 void
-layout_minimise_cell(struct window *w, struct layout_cell *lc)
+layout_hide_cell(struct window *w, struct layout_cell *lc)
 {
 	struct layout_cell     *lcother, *lcparent, *lcchild;
 	u_int			space = 0;
@@ -719,7 +719,7 @@ layout_minimise_cell(struct window *w, struct layout_cell *lc)
 		return;
 	}
 
-	/* Merge the space into the nearest non-minimised sibling. */
+	/* Merge the space into the nearest non-hidden sibling. */
 	{
 		direction = (lc == TAILQ_FIRST(&lcparent->cells)) ? 1 : 0;
 		lcother = layout_active_neighbour(lc, direction);
@@ -731,11 +731,11 @@ layout_minimise_cell(struct window *w, struct layout_cell *lc)
 	else if (lcother != NULL)
 		layout_resize_adjust(w, lcother, lcparent->type, lc->sy + 1);
 
-	/* If the parent cells are all minimised, minimise it too. */
+	/* If the parent cells are all hidden, hide it too. */
 	if (lcparent != NULL) {
 		TAILQ_FOREACH(lcchild, &lcparent->cells, entry) {
 			if (lcchild->wp == NULL ||
-			    lcchild->wp->flags & PANE_MINIMISED)
+			    lcchild->wp->flags & PANE_HIDDEN)
 				continue;
 			if (lcparent->type == LAYOUT_LEFTRIGHT) {
 				space += lcchild->sx;
@@ -744,13 +744,13 @@ layout_minimise_cell(struct window *w, struct layout_cell *lc)
 			}
 		}
 		if (space == 0)
-			layout_minimise_cell(w, lcparent);
+			layout_hide_cell(w, lcparent);
 	}
 }
 
-/* Unminimise a cell and redistribute the space in tiled cells. */
+/* Show a cell and redistribute the space in tiled cells. */
 void
-layout_unminimise_cell(struct window *w, struct layout_cell *lc)
+layout_show_cell(struct window *w, struct layout_cell *lc)
 {
 	struct layout_cell	*lcparent;
 
@@ -762,7 +762,7 @@ layout_unminimise_cell(struct window *w, struct layout_cell *lc)
 
 	/*
 	 * Redistribute the parent's space equally among all visible (non-
-	 * minimised) children, including lc which has just been unminimised.
+	 * hidden) children, including lc which has just been shown.
 	 * This ensures every pane at this level gets an equal share rather
 	 * than one pane losing most of its space to the restored pane.
 	 */

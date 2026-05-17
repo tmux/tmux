@@ -70,7 +70,7 @@ extern const struct cmd_entry cmd_lock_client_entry;
 extern const struct cmd_entry cmd_lock_server_entry;
 extern const struct cmd_entry cmd_lock_session_entry;
 extern const struct cmd_entry cmd_float_pane_entry;
-extern const struct cmd_entry cmd_minimise_pane_entry;
+extern const struct cmd_entry cmd_hide_pane_entry;
 extern const struct cmd_entry cmd_move_pane_entry;
 extern const struct cmd_entry cmd_move_window_entry;
 extern const struct cmd_entry cmd_new_pane_entry;
@@ -108,6 +108,7 @@ extern const struct cmd_entry cmd_show_environment_entry;
 extern const struct cmd_entry cmd_show_hooks_entry;
 extern const struct cmd_entry cmd_show_messages_entry;
 extern const struct cmd_entry cmd_show_options_entry;
+extern const struct cmd_entry cmd_show_pane_entry;
 extern const struct cmd_entry cmd_show_prompt_history_entry;
 extern const struct cmd_entry cmd_show_window_options_entry;
 extern const struct cmd_entry cmd_source_file_entry;
@@ -120,7 +121,6 @@ extern const struct cmd_entry cmd_switch_client_entry;
 extern const struct cmd_entry cmd_unbind_key_entry;
 extern const struct cmd_entry cmd_unlink_window_entry;
 extern const struct cmd_entry cmd_tile_pane_entry;
-extern const struct cmd_entry cmd_unminimise_pane_entry;
 extern const struct cmd_entry cmd_wait_for_entry;
 
 const struct cmd_entry *cmd_table[] = {
@@ -167,7 +167,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_lock_server_entry,
 	&cmd_lock_session_entry,
 	&cmd_float_pane_entry,
-	&cmd_minimise_pane_entry,
+	&cmd_hide_pane_entry,
 	&cmd_move_pane_entry,
 	&cmd_move_window_entry,
 	&cmd_new_pane_entry,
@@ -205,6 +205,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_show_hooks_entry,
 	&cmd_show_messages_entry,
 	&cmd_show_options_entry,
+	&cmd_show_pane_entry,
 	&cmd_show_prompt_history_entry,
 	&cmd_show_window_options_entry,
 	&cmd_source_file_entry,
@@ -217,7 +218,6 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_unbind_key_entry,
 	&cmd_unlink_window_entry,
 	&cmd_tile_pane_entry,
-	&cmd_unminimise_pane_entry,
 	&cmd_wait_for_entry,
 	NULL
 };

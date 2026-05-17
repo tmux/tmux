@@ -110,8 +110,8 @@ cmd_split_window_get_tiled_cell(struct cmdq_item *item, struct args *args,
 		return (NULL);
 	}
 
-	if (wp->flags & PANE_MINIMISED) {
-		cmdq_error(item, "can't split a minimised pane");
+	if (wp->flags & PANE_HIDDEN) {
+		cmdq_error(item, "can't split a hidden pane");
 		return (NULL);
 	}
 
