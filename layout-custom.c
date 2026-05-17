@@ -70,7 +70,7 @@ layout_dump(struct window *w, struct layout_cell *root)
 		return (NULL);
 
 	TAILQ_FOREACH(wp, &w->z_index, zentry) {
-		if (~wp->flags & PANE_FLOATING)
+		if (!window_pane_is_floating(wp))
 			break;
 		if (!bracket) {
 			strlcat(layout, "<", sizeof layout);
@@ -127,7 +127,6 @@ layout_append(struct layout_cell *lc, char *buf, size_t len)
 		}
 		buf[strlen(buf) - 1] = brackets[0];
 		break;
-	case LAYOUT_FLOATING:
 	case LAYOUT_WINDOWPANE:
 		break;
 	}
@@ -143,7 +142,6 @@ layout_check(struct layout_cell *lc)
 	u_int			 n = 0;
 
 	switch (lc->type) {
-	case LAYOUT_FLOATING:
 	case LAYOUT_WINDOWPANE:
 		break;
 	case LAYOUT_LEFTRIGHT:
@@ -257,9 +255,6 @@ layout_parse(struct window *w, const char *layout, char **cause)
 			sy += lcchild->sy + 1;
 		}
 		break;
-	case LAYOUT_FLOATING:
-		*cause = xstrdup("invalid layout");
-		goto fail;
 	}
 	if (tiled_lc->type != LAYOUT_WINDOWPANE &&
 	    (tiled_lc->sx != sx || tiled_lc->sy != sy)) {
@@ -286,7 +281,7 @@ layout_parse(struct window *w, const char *layout, char **cause)
 	if (tiled_lc != NULL)
 		layout_assign(&wp, tiled_lc, 0);
 	if (floating_lc != NULL)
-		layout_assign(&wp, floating_lc, PANE_FLOATING);
+		layout_assign(&wp, floating_lc, LAYOUT_CELL_FLOATING);
 
         /* Fix pane z-indexes. */
         while (!TAILQ_EMPTY(&w->z_index)) {
@@ -328,12 +323,11 @@ layout_assign(struct window_pane **wp, struct layout_cell *lc, int flags)
 	switch (lc->type) {
 	case LAYOUT_WINDOWPANE:
 		layout_make_leaf(lc, *wp);
-		(*wp)->flags |= flags;
+		lc->flags |= flags;
 		*wp = TAILQ_NEXT(*wp, entry);
 		return;
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
-	case LAYOUT_FLOATING:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
 			layout_assign(wp, lcchild, flags);
 		return;
@@ -399,7 +393,7 @@ static int
 layout_construct(struct layout_cell *lcparent, const char **layout,
     struct layout_cell **lc, struct layout_cell **floating_lc)
 {
-	struct layout_cell	*lcchild, *saved_lc;
+	struct layout_cell	*lcchild;
 
 	*lc = layout_construct_cell(lcparent, layout);
 
@@ -415,11 +409,6 @@ layout_construct(struct layout_cell *lcparent, const char **layout,
 		break;
 	case '[':
 		(*lc)->type = LAYOUT_TOPBOTTOM;
-		break;
-	case '<':
-		saved_lc = *lc;
-		*lc = layout_create_cell(lcparent);
-		(*lc)->type = LAYOUT_FLOATING;
 		break;
 	default:
 		goto fail;
@@ -440,12 +429,6 @@ layout_construct(struct layout_cell *lcparent, const char **layout,
 	case LAYOUT_TOPBOTTOM:
 		if (**layout != ']')
 			goto fail;
-		break;
-	case LAYOUT_FLOATING:
-		if (**layout != '>')
-			goto fail;
-		*floating_lc = *lc;
-		*lc = saved_lc;
 		break;
 	default:
 		goto fail;

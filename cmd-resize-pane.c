@@ -58,9 +58,11 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*wp = target->wp;
 	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
+	struct layout_cell	*lc = wp->layout_cell;
+	enum layout_type	 type = LAYOUT_TOPBOTTOM;
 	const char		*errstr;
 	char			*cause;
-	u_int			 adjust;
+	u_int			 adjust, shift = 0;
 	int			 x, y, status;
 	struct grid		*gd = wp->base.grid;
 
@@ -106,7 +108,10 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-		layout_resize_pane_to(wp, LAYOUT_LEFTRIGHT, x);
+		if (window_pane_is_floating(wp))
+			lc->sx = x;
+		else
+			layout_resize_pane_to(wp, LAYOUT_LEFTRIGHT, x);
 	}
 	if (args_has(args, 'y')) {
 		y = args_percentage(args, 'y', 0, INT_MAX, w->sy, &cause);
@@ -126,18 +131,40 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 				y++;
 			break;
 		}
-		layout_resize_pane_to(wp, LAYOUT_TOPBOTTOM, y);
+		if (window_pane_is_floating(wp))
+			lc->sy = y;
+		else
+			layout_resize_pane_to(wp, LAYOUT_TOPBOTTOM, y);
 	}
 
-	if (args_has(args, 'L'))
-		layout_resize_pane(wp, LAYOUT_LEFTRIGHT, -adjust, 1);
-	else if (args_has(args, 'R'))
-		layout_resize_pane(wp, LAYOUT_LEFTRIGHT, adjust, 1);
-	else if (args_has(args, 'U'))
-		layout_resize_pane(wp, LAYOUT_TOPBOTTOM, -adjust, 1);
-	else if (args_has(args, 'D'))
-		layout_resize_pane(wp, LAYOUT_TOPBOTTOM, adjust, 1);
-	server_redraw_window(wl->window);
+	if (args_has(args, 'L') || args_has(args, 'R'))
+		type = LAYOUT_LEFTRIGHT;
+
+	if (window_pane_is_floating(wp)) {
+		if (args_has(args, 'L') || args_has(args, 'U'))
+			shift = 1;
+
+		if (type == LAYOUT_LEFTRIGHT) {
+			lc->sx += adjust;
+			if (shift)
+				lc->xoff -= adjust;
+		} else {
+			lc->sy += adjust;
+			if (shift)
+				lc->yoff -= adjust;
+		}
+	} else {
+		if (args_has(args, 'L') || args_has(args, 'U'))
+			adjust = -adjust;
+		layout_resize_pane(wp, type, adjust, 1);
+	}
+
+
+	if (lc->parent != NULL)
+		layout_fix_offsets(w);
+	layout_fix_panes(w, NULL);
+	notify_window("window-layout-changed", w);
+	server_redraw_window(w);
 
 	return (CMD_RETURN_NORMAL);
 }
@@ -159,7 +186,7 @@ cmd_resize_pane_mouse_update(__unused struct cmd *self, struct cmdq_item *item)
 	if (wp == NULL || c == NULL || c->session != s)
 		return (CMD_RETURN_NORMAL);
 
-	if (~wp->flags & PANE_FLOATING) {
+	if (!window_pane_is_floating(wp)) {
 		c->tty.mouse_drag_update = cmd_resize_pane_mouse_update_tiled;
 		cmd_resize_pane_mouse_update_tiled(c, &event->m);
 		return (CMD_RETURN_NORMAL);

@@ -146,6 +146,9 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	if (wp->layout_cell == NULL)
 		return (0);
 
+	if (window_pane_is_hidden(wp))
+		return (0);
+
 	if (wp->flags & (PANE_REDRAW|PANE_DROP))
 		return (-1);
 	if (c->flags & CLIENT_REDRAWPANES) {
@@ -198,7 +201,7 @@ screen_write_pane_is_obscured(struct screen_write_ctx *ctx)
 	}
 
 	while ((wp = TAILQ_PREV(wp, window_panes, zentry)) != NULL) {
-		if ((wp->flags & PANE_FLOATING) &&
+		if (window_pane_is_floating(wp) &&
 		    ((wp->yoff >= ctx->wp->yoff &&
 		    wp->yoff <= ctx->wp->yoff + (int)ctx->wp->sy) ||
 		    (wp->yoff + (int)wp->sy >= ctx->wp->yoff &&

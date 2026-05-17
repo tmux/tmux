@@ -106,7 +106,7 @@ screen_redraw_two_panes(struct window *w, enum layout_type *type)
 	u_int			 count = 0;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (wp->flags & PANE_FLOATING || wp->layout_cell == NULL)
+		if (window_pane_is_floating(wp) || wp->layout_cell == NULL)
 			continue;
 		count++;
 		if (count > 2 || wp->layout_cell->parent == NULL)
@@ -144,7 +144,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
 
 	/* Floating pane borders. */
-	if (wp->flags & PANE_FLOATING) {
+	if (window_pane_is_floating(wp)) {
 		if (py >= wp->yoff - 1 && py <= wp->yoff + sy) {
 			if (sb_pos == PANE_SCROLLBARS_LEFT) {
 				if (px == wp->xoff - 1 - sb_w)
@@ -261,7 +261,7 @@ screen_redraw_cell_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	if (ctx->pane_status == PANE_STATUS_BOTTOM)
 		sy--;
 
-	floating = (wp->flags & PANE_FLOATING);
+	floating = (window_pane_is_floating(wp));
 	if (!floating) {
 		/* Outside the window? */
 		if (px > sx || py > sy)
@@ -285,7 +285,7 @@ screen_redraw_cell_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	/* Check all the panes. */
 	TAILQ_FOREACH(wp2, &w->z_index, zentry) {
 		if (!window_pane_visible(wp2) ||
-		    (!floating && (wp2->flags & PANE_FLOATING)) ||
+		    (!floating && window_pane_is_floating(wp2)) ||
 		    (floating && wp2 != wp))
 			continue;
 		if (sb_pos == PANE_SCROLLBARS_LEFT) {
@@ -338,7 +338,7 @@ screen_redraw_type_of_cell(struct screen_redraw_ctx *ctx,
 	 *		   8 + 4
 	 *		     1
 	 */
-	if (~wp->flags & PANE_FLOATING) {
+	if (!window_pane_is_floating(wp)) {
 		if (px == 0 || screen_redraw_cell_border(ctx, wp, px - 1, py))
 			borders |= 8;
 		if (px <= sx && screen_redraw_cell_border(ctx, wp, px + 1, py))
@@ -442,7 +442,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, int px, int py,
 
 	/* Find pane higest in z-index at this point. */
 	TAILQ_FOREACH(wp, &w->z_index, zentry) {
-		if (wp->flags & PANE_FLOATING && (px >= sx || py >= sy)) {
+		if (window_pane_is_floating(wp) && (px >= sx || py >= sy)) {
 			/* Clip floating panes to window. */
 			continue;
 		}
@@ -477,11 +477,11 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, int px, int py,
 	 * necessary if there are two side-by-side or top-bottom panes with a
 	 * shared border and half the shared border is the active border.
 	 */
-	if (~wp->flags & PANE_FLOATING)
+	if (!window_pane_is_floating(wp))
 		tiled_only = 1;
 	do { /* Loop until back to wp == start.*/
 		if (!window_pane_visible(wp) ||
-		    (tiled_only && (wp->flags & PANE_FLOATING)))
+		    (tiled_only && window_pane_is_floating(wp)))
 			goto next;
 		*wpp = wp;
 
@@ -1189,7 +1189,7 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 		    (u_int)py < tb ||
 		    (u_int)py > bb)
 			continue;
-		if (~wp->flags & PANE_FLOATING && (u_int)py == bb)
+		if (!window_pane_is_floating(wp) && (u_int)py == bb)
 			continue;
 
 		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;

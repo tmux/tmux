@@ -278,6 +278,11 @@ spawn_pane(struct spawn_context *sc, char **cause)
 			layout_assign_pane(sc->lc, new_wp, 1);
 		else
 			layout_assign_pane(sc->lc, new_wp, 0);
+
+		if (sc->flags & SPAWN_FLOATING) {
+			new_wp->layout_cell->flags |= LAYOUT_CELL_FLOATING;
+			layout_make_placeholder(w, new_wp, NULL);
+		}
 	}
 
 	/*

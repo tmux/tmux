@@ -269,7 +269,7 @@ format_log1(struct format_expand_state *es, const char *from, const char *fmt,
 {
 	struct format_tree	*ft = es->ft;
 	va_list			 ap;
-	char			*s;
+	char			*s = NULL;
 	static const char	 spaces[] = "          ";
 
 	if (!format_logging(ft))
@@ -1035,7 +1035,7 @@ format_cb_pane_floating_flag(struct format_tree *ft)
 	struct window_pane	*wp = ft->wp;
 
 	if (wp != NULL) {
-		if (wp->flags & PANE_FLOATING)
+		if (window_pane_is_floating(wp))
 			return (xstrdup("1"));
 		return (xstrdup("0"));
 	}
@@ -2249,6 +2249,20 @@ format_cb_pane_marked_set(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_hidden_flag. */
+static void *
+format_cb_pane_hidden_flag(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL) {
+		if (window_pane_is_hidden(wp))
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
 /* Callback for pane_mode. */
 static void *
 format_cb_pane_mode(struct format_tree *ft)
@@ -2418,7 +2432,7 @@ format_cb_pane_zoomed_flag(struct format_tree *ft)
 	struct window_pane	*wp = ft->wp;
 
 	if (wp != NULL) {
-		if (wp->flags & PANE_ZOOMED)
+		if (window_pane_is_zoomed(wp))
 			return (xstrdup("1"));
 		return (xstrdup("0"));
 	}
@@ -3445,6 +3459,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_marked_set", FORMAT_TABLE_STRING,
 	  format_cb_pane_marked_set
+	},
+	{ "pane_hidden_flag", FORMAT_TABLE_STRING,
+	  format_cb_pane_hidden_flag
 	},
 	{ "pane_mode", FORMAT_TABLE_STRING,
 	  format_cb_pane_mode

@@ -79,8 +79,13 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (src_wp == dst_wp)
 		goto out;
 
-	if ((src_wp->flags & PANE_FLOATING) &&
-	    (dst_wp->flags & PANE_FLOATING)) {
+	/*
+	 * The logic is 'or' until this command implements the new layouts.
+	 * TODO: Implement the placholder swapping for floating panes, then
+	 * change the condition back to 'and.'
+	 */
+	if (window_pane_is_floating(src_wp) ||
+	    window_pane_is_floating(dst_wp)) {
 		cmdq_error(item, "cannot swap floating panes");
 		return (CMD_RETURN_ERROR);
 	}
@@ -114,9 +119,9 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	dst_wp->layout_cell = src_lc;
 	dst_lc->wp = src_wp;
 	src_wp->layout_cell = dst_lc;
-	if ((src_wp->flags ^ dst_wp->flags) & PANE_FLOATING) {
-		src_wp->flags ^= PANE_FLOATING;
-		dst_wp->flags ^= PANE_FLOATING;
+	if (window_pane_is_floating(src_wp) != window_pane_is_floating(dst_wp)) {
+		src_wp->layout_cell->flags ^= LAYOUT_CELL_FLOATING;
+		dst_wp->layout_cell->flags ^= LAYOUT_CELL_FLOATING;
 	}
 
 	src_wp->window = dst_w;
