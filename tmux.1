@@ -934,6 +934,37 @@ or
 .Ic list\-panes
 commands.
 .Pp
+.Em target\-session ,
+.Em target\-window
+or
+.Em target\-pane
+each denote the
+.Ql type
+of target the command needs to work on.
+If a target is not explicitly qualified using
+.Ql \&:
+and
+.Ql \&. ,
+.Nm
+will pick what seems to be the best choice available.
+For example, if a
+.Em target-pane
+of
+.Ql 1
+is used with a current window that has only one pane,
+.Nm
+knows that the
+.Ql 1
+cannot mean a pane, so it will look for the active pane in window 1, or the
+active pane in the current window in session 1.
+Only if none of these are present will it report an error.
+If it is important that a specific pane, window or session always be used,
+such as from a script, the target should be fully qualified (for example a
+.Em target-pane
+of
+.Ql -t:.1 ) ,
+or pane, window or session IDs should be used.
+.Pp
 .Ar shell\-command
 arguments are
 .Xr sh 1
