@@ -2165,9 +2165,9 @@ window_pane_tile_geometry(struct window *w, struct window_pane *wp, int *out_siz
 		if (cause == NULL)
 			size = curval * (size) / 100;
 	}
-	if (*cause != NULL) {
+	if (*cause != NULL)
 		return (-1);
-	}
+
 	if (args_has(args, 'b'))
 		flags |= SPAWN_BEFORE;
 	if (args_has(args, 'f'))
@@ -2205,25 +2205,22 @@ window_pane_float_geometry(struct window *w, struct window_pane *wp,
 	if (args_has(args, 'x')) {
 		sx = args_percentage_and_expand(args, 'x', 0, USHRT_MAX, w->sx,
 			item, cause);
-		if (*cause != NULL) {
+		if (*cause != NULL)
 			return (-1);
-		}
 	}
 	if (args_has(args, 'y')) {
 		sy = args_percentage_and_expand(args, 'y', 0, USHRT_MAX, w->sy,
 		    item, cause);
-		if (*cause != NULL) {
+		if (*cause != NULL)
 			return (-1);
-		}
 	}
 
 	/* Position defaults to cascading when not defined */
 	if (args_has(args, 'X')) {
 		x = args_percentage_and_expand(args, 'X', 0, USHRT_MAX, w->sx,
 		    item, cause);
-		if (*cause != NULL) {
+		if (*cause != NULL)
 			return (-1);
-		}
 	} else {
 		if (w->last_new_pane_x == 0)
 			x = cx;
@@ -2237,9 +2234,8 @@ window_pane_float_geometry(struct window *w, struct window_pane *wp,
 	if (args_has(args, 'Y')) {
 		y = args_percentage_and_expand(args, 'Y', 0, USHRT_MAX, w->sy,
 		    item, cause);
-		if (*cause != NULL) {
+		if (*cause != NULL)
 			return (-1);
-		}
 	} else {
 		if (w->last_new_pane_y == 0)
 			y = cy;
