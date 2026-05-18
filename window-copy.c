@@ -119,6 +119,8 @@ static void	window_copy_copy_line(struct window_mode_entry *, char **,
 static int	window_copy_in_set(struct window_mode_entry *, u_int, u_int,
 		    const char *);
 static u_int	window_copy_find_length(struct window_mode_entry *, u_int);
+static u_int	window_copy_cursor_limit(struct window_mode_entry *, u_int,
+		    int);
 static void	window_copy_cursor_start_of_line(struct window_mode_entry *);
 static void	window_copy_cursor_back_to_indentation(
 		    struct window_mode_entry *);
@@ -898,9 +900,9 @@ window_copy_get_line(struct window_pane *wp, u_int y)
 {
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
 	struct window_copy_mode_data	*data = wme->data;
-	struct grid			*gd = data->screen.grid;
+	struct grid			*gd = data->backing->grid;
 
-	return (format_grid_line(gd, gd->hsize + y));
+	return (format_grid_line(gd, gd->hsize + y - data->oy));
 }
 
 char *
@@ -1662,7 +1664,7 @@ window_copy_cmd_history_bottom(struct window_copy_cmd_state *cs)
 		window_copy_other_end(wme);
 
 	data->cy = screen_size_y(&data->screen) - 1;
-	data->cx = window_copy_find_length(wme, screen_hsize(s) + data->cy);
+	data->cx = window_copy_cursor_limit(wme, screen_hsize(s) + data->cy, 0);
 	data->oy = 0;
 
 	if (data->searchmark != NULL && !data->timeout)
@@ -2683,6 +2685,8 @@ window_copy_cmd_search_backward_incremental(struct window_copy_cmd_state *cs)
 		data->cx = data->searchx;
 		data->cy = data->searchy;
 		data->oy = data->searcho;
+		data->cx = window_copy_cursor_limit(wme,
+		    screen_hsize(data->backing) + data->cy - data->oy, 0);
 		action = WINDOW_COPY_CMD_REDRAW;
 	}
 	if (*arg0 == '\0') {
@@ -2738,6 +2742,8 @@ window_copy_cmd_search_forward_incremental(struct window_copy_cmd_state *cs)
 		data->cx = data->searchx;
 		data->cy = data->searchy;
 		data->oy = data->searcho;
+		data->cx = window_copy_cursor_limit(wme,
+		    screen_hsize(data->backing) + data->cy - data->oy, 0);
 		action = WINDOW_COPY_CMD_REDRAW;
 	}
 	if (*arg0 == '\0') {
@@ -5151,7 +5157,17 @@ window_copy_update_cursor(struct window_mode_entry *wme, u_int cx, u_int cy)
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx		 ctx;
-	u_int				 old_cx, old_cy, width, content_sx;
+	u_int				 old_cx, old_cy, py, width, content_sx;
+	u_int				 maxx;
+	int				 allow_onemore;
+
+	allow_onemore = (data->screen.sel != NULL && data->rectflag);
+	if (cy < screen_size_y(s)) {
+		py = screen_hsize(data->backing) + cy - data->oy;
+		maxx = window_copy_cursor_limit(wme, py, allow_onemore);
+		if (cx > maxx)
+			cx = maxx;
+	}
 
 	old_cx = data->cx; old_cy = data->cy;
 	data->cx = cx; data->cy = cy;
@@ -5644,7 +5660,7 @@ window_copy_clear_selection(struct window_mode_entry *wme)
 	data->selflag = SEL_CHAR;
 
 	py = screen_hsize(data->backing) + data->cy - data->oy;
-	px = window_copy_find_length(wme, py);
+	px = window_copy_cursor_limit(wme, py, data->rectflag);
 	if (data->cx > px)
 		window_copy_update_cursor(wme, px, data->cy);
 }
@@ -5664,6 +5680,22 @@ window_copy_find_length(struct window_mode_entry *wme, u_int py)
 	struct window_copy_mode_data	*data = wme->data;
 
 	return (grid_line_length(data->backing->grid, py));
+}
+
+static u_int
+window_copy_cursor_limit(struct window_mode_entry *wme, u_int py,
+    int allow_onemore)
+{
+	struct options			*oo = wme->wp->window->options;
+	u_int				 len;
+
+	len = window_copy_find_length(wme, py);
+	if (allow_onemore ||
+	    options_get_number(oo, "mode-keys") != MODEKEY_VI)
+		return (len);
+	if (len == 0)
+		return (0);
+	return (len - 1);
 }
 
 static void
@@ -5723,6 +5755,8 @@ window_copy_cursor_end_of_line(struct window_mode_entry *wme)
 	else
 		grid_reader_cursor_end_of_line(&gr, 1, 0);
 	grid_reader_get_cursor(&gr, &px, &py);
+	if (data->screen.sel == NULL || !data->rectflag)
+		px = window_copy_cursor_limit(wme, py, 0);
 	window_copy_acquire_cursor_down(wme, hsize, screen_size_y(back_s),
 	    data->oy, oldy, px, py, 0);
 }
@@ -5773,6 +5807,10 @@ window_copy_other_end(struct window_mode_entry *wme)
 		data->cy = screen_size_y(s) - 1;
 	} else
 		data->cy = cy + sely - yy;
+	yy = screen_hsize(data->backing) + data->cy - data->oy;
+	hsize = window_copy_cursor_limit(wme, yy, data->rectflag);
+	if (data->cx > hsize)
+		data->cx = hsize;
 
 	window_copy_update_selection(wme, 1, 1);
 	window_copy_redraw_screen(wme);
@@ -5800,18 +5838,22 @@ window_copy_cursor_left(struct window_mode_entry *wme)
 static void
 window_copy_cursor_right(struct window_mode_entry *wme, int all)
 {
+	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
+	struct options			*oo = wp->window->options;
 	struct screen			*back_s = data->backing;
 	struct grid_reader		 gr;
 	u_int				 px, py, oldy, hsize;
+	int				 onemore;
 
 	px = data->cx;
 	hsize = screen_hsize(back_s);
 	py = hsize + data->cy - data->oy;
 	oldy = data->cy;
+	onemore = (options_get_number(oo, "mode-keys") != MODEKEY_VI);
 
 	grid_reader_start(&gr, back_s->grid, px, py);
-	grid_reader_cursor_right(&gr, 1, all);
+	grid_reader_cursor_right(&gr, 1, all, onemore);
 	grid_reader_get_cursor(&gr, &px, &py);
 	window_copy_acquire_cursor_down(wme, hsize, screen_size_y(back_s),
 	    data->oy, oldy, px, py, 0);
@@ -6026,20 +6068,23 @@ static void
 window_copy_cursor_jump_to_back(struct window_mode_entry *wme)
 {
 	struct window_copy_mode_data	*data = wme->data;
+	struct options			*oo = wme->wp->window->options;
 	struct screen			*back_s = data->backing;
 	struct grid_reader		 gr;
 	u_int				 px, py, oldy, hsize;
+	int				 onemore;
 
 	px = data->cx;
 	hsize = screen_hsize(back_s);
 	py = hsize + data->cy - data->oy;
 	oldy = data->cy;
+	onemore = (options_get_number(oo, "mode-keys") != MODEKEY_VI);
 
 	grid_reader_start(&gr, back_s->grid, px, py);
 	grid_reader_cursor_left(&gr, 0);
 	grid_reader_cursor_left(&gr, 0);
 	if (grid_reader_cursor_jump_back(&gr, data->jumpchar)) {
-		grid_reader_cursor_right(&gr, 1, 0);
+		grid_reader_cursor_right(&gr, 1, 0, onemore);
 		grid_reader_get_cursor(&gr, &px, &py);
 		window_copy_acquire_cursor_up(wme, hsize, data->oy, oldy, px,
 		    py);
@@ -6086,7 +6131,7 @@ window_copy_cursor_next_word_end_pos(struct window_mode_entry *wme,
 	grid_reader_start(&gr, back_s->grid, px, py);
 	if (options_get_number(oo, "mode-keys") == MODEKEY_VI) {
 		if (!grid_reader_in_set(&gr, WHITESPACE))
-			grid_reader_cursor_right(&gr, 0, 0);
+			grid_reader_cursor_right(&gr, 0, 0, 0);
 		grid_reader_cursor_next_word_end(&gr, separators);
 		grid_reader_cursor_left(&gr, 1);
 	} else
@@ -6116,7 +6161,7 @@ window_copy_cursor_next_word_end(struct window_mode_entry *wme,
 	grid_reader_start(&gr, back_s->grid, px, py);
 	if (options_get_number(oo, "mode-keys") == MODEKEY_VI) {
 		if (!grid_reader_in_set(&gr, WHITESPACE))
-			grid_reader_cursor_right(&gr, 0, 0);
+			grid_reader_cursor_right(&gr, 0, 0, 0);
 		grid_reader_cursor_next_word_end(&gr, separators);
 		grid_reader_cursor_left(&gr, 1);
 	} else
@@ -6350,7 +6395,7 @@ window_copy_rectangle_set(struct window_mode_entry *wme, int rectflag)
 	data->rectflag = rectflag;
 
 	py = screen_hsize(data->backing) + data->cy - data->oy;
-	px = window_copy_find_length(wme, py);
+	px = window_copy_cursor_limit(wme, py, data->rectflag);
 	if (data->cx > px)
 		window_copy_update_cursor(wme, px, data->cy);
 

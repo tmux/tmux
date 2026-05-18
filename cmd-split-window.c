@@ -27,28 +27,69 @@
 #include "tmux.h"
 
 /*
- * Split a window (add a new pane).
+ * Create a new pane.
  */
 
 #define SPLIT_WINDOW_TEMPLATE "#{session_name}:#{window_index}.#{pane_index}"
 
-static enum cmd_retval	cmd_split_window_exec(struct cmd *,
-			    struct cmdq_item *);
+static enum cmd_retval	cmd_split_window_exec(struct cmd *, struct cmdq_item *);
 
-const struct cmd_entry cmd_split_window_entry = {
-	.name = "split-window",
-	.alias = "splitw",
+const struct cmd_entry cmd_new_pane_entry = {
+	.name = "new-pane",
+	.alias = "newp",
 
-	.args = { "bc:de:fF:hIl:p:Pt:vZ", 0, -1, NULL },
-	.usage = "[-bdefhIPvZ] [-c start-directory] [-e environment] "
-		 "[-F format] [-l size] " CMD_TARGET_PANE_USAGE
-		 " [shell-command [argument ...]]",
+	.args = { "bc:de:fF:hIkl:m:p:PR:s:S:t:vZ", 0, -1, NULL },
+	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
+		 "[-F format] [-l size] [-m message] [-p percentage] "
+	         "[-s style] [-S active-border-style] "
+	         "[-R inactive-border-style] " CMD_TARGET_PANE_USAGE " "
+	         "[shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = 0,
 	.exec = cmd_split_window_exec
 };
+
+const struct cmd_entry cmd_split_window_entry = {
+	.name = "split-window",
+	.alias = "splitw",
+
+	.args = { "bc:de:fF:hIkl:m:p:PR:s:S:t:vZ", 0, -1, NULL },
+	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
+		 "[-F format] [-l size] [-m message] [-p percentage] "
+	         "[-s style] [-S active-border-style] "
+	         "[-R inactive-border-style] " CMD_TARGET_PANE_USAGE " "
+	         "[shell-command [argument ...]]",
+
+	.target = { 't', CMD_FIND_PANE, 0 },
+
+	.flags = 0,
+	.exec = cmd_split_window_exec
+};
+
+static struct layout_cell *
+cmd_split_window_get_tiled_layout_cell(struct cmdq_item *item,
+    struct args *args, struct window *w, struct window_pane *wp, int flags)
+{
+	enum layout_type	 type;
+	struct layout_cell	*lc = NULL;
+	char			*cause = NULL;
+	int			 size;
+
+	if (window_pane_tile_geometry(w, wp, &size, &flags, &type, item, args,
+	    &cause) != 0) {
+		cmdq_error(item, "invalid tiled geometry %s", cause);
+		free(cause);
+		return (NULL);
+	}
+
+	window_push_zoom(wp->window, 1, args_has(args, 'Z'));
+	lc = layout_split_pane(wp, type, size, flags);
+	if (lc == NULL)
+		cmdq_error(item, "no space for new pane");
+	return (lc);
+}
 
 static enum cmd_retval
 cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
@@ -62,51 +103,14 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
 	struct window_pane	*wp = target->wp, *new_wp;
-	enum layout_type	 type;
-	struct layout_cell	*lc;
+	struct layout_cell	*lc = NULL;
 	struct cmd_find_state	 fs;
-	int			 size, flags, input;
-	const char		*template;
+	int			 flags, input;
+	const char		*template, *style;
 	char			*cause = NULL, *cp;
 	struct args_value	*av;
-	u_int			 count = args_count(args), curval = 0;
+	u_int			 count = args_count(args);
 
-	type = LAYOUT_TOPBOTTOM;
-	if (args_has(args, 'h'))
-		type = LAYOUT_LEFTRIGHT;
-
-	/* If the 'p' flag is dropped then this bit can be moved into 'l'. */
-	if (args_has(args, 'l') || args_has(args, 'p')) {
-		if (args_has(args, 'f')) {
-			if (type == LAYOUT_TOPBOTTOM)
-				curval = w->sy;
-			else
-				curval = w->sx;
-		} else {
-			if (type == LAYOUT_TOPBOTTOM)
-				curval = wp->sy;
-			else
-				curval = wp->sx;
-		}
-	}
-
-	size = -1;
-	if (args_has(args, 'l')) {
-		size = args_percentage_and_expand(args, 'l', 0, INT_MAX, curval,
-		    item, &cause);
-	} else if (args_has(args, 'p')) {
-		size = args_strtonum_and_expand(args, 'p', 0, 100, item,
-		    &cause);
-		if (cause == NULL)
-			size = curval * size / 100;
-	}
-	if (cause != NULL) {
-		cmdq_error(item, "size %s", cause);
-		free(cause);
-		return (CMD_RETURN_ERROR);
-	}
-
-	window_push_zoom(wp->window, 1, args_has(args, 'Z'));
 	input = (args_has(args, 'I') && count == 0);
 
 	flags = 0;
@@ -117,11 +121,9 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (input || (count == 1 && *args_string(args, 0) == '\0'))
 		flags |= SPAWN_EMPTY;
 
-	lc = layout_split_pane(wp, type, size, flags);
-	if (lc == NULL) {
-		cmdq_error(item, "no space for new pane");
+	lc = cmd_split_window_get_tiled_layout_cell(item, args, w, wp, flags);
+	if (lc == NULL)
 		return (CMD_RETURN_ERROR);
-	}
 
 	sc.item = item;
 	sc.s = s;
@@ -156,6 +158,44 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		environ_free(sc.environ);
 		return (CMD_RETURN_ERROR);
 	}
+
+	style = args_get(args, 's');
+	if (style != NULL) {
+		if (options_set_string(new_wp->options, "window-style", 0,
+		    "%s", style) == NULL) {
+			cmdq_error(item, "bad style: %s", style);
+			return (CMD_RETURN_ERROR);
+		}
+		options_set_string(new_wp->options, "window-active-style", 0,
+		    "%s", style);
+		new_wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED
+		    |PANE_THEMECHANGED);
+	}
+	style = args_get(args, 'S');
+	if (style != NULL) {
+		if (options_set_string(new_wp->options,
+		    "pane-active-border-style", 0, "%s", style) == NULL) {
+			cmdq_error(item, "bad active border style: %s", style);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+	style = args_get(args, 'R');
+	if (style != NULL) {
+		if (options_set_string(new_wp->options, "pane-border-style", 0,
+		    "%s", style) == NULL) {
+			cmdq_error(item, "bad inactive border style: %s",
+			    style);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+	if (args_has(args, 'k') || args_has(args, 'm')) {
+		options_set_number(new_wp->options, "remain-on-exit", 3);
+		if (args_has(args, 'm'))
+			options_set_string(new_wp->options,
+				"remain-on-exit-format",
+				0, "%s", args_get(args, 'm'));
+	}
+
 	if (input) {
 		switch (window_pane_start_input(new_wp, item, &cause)) {
 		case -1:

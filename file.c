@@ -399,6 +399,10 @@ file_read(struct client *c, const char *path, client_file_cb cb, void *cbdata)
 		}
 		for (;;) {
 			size = fread(buffer, 1, sizeof buffer, f);
+			if (ferror(f)) {
+				cf->error = errno;
+				goto done;
+			}
 			if (evbuffer_add(cf->buffer, buffer, size) != 0) {
 				cf->error = ENOMEM;
 				goto done;
@@ -671,7 +675,7 @@ file_write_close(struct client_files *files, struct imsg *imsg)
 
 /* Client file read error callback. */
 static void
-file_read_error_callback(__unused struct bufferevent *bev, __unused short what,
+file_read_error_callback(__unused struct bufferevent *bev, short what,
     void *arg)
 {
 	struct client_file	*cf = arg;
@@ -680,7 +684,7 @@ file_read_error_callback(__unused struct bufferevent *bev, __unused short what,
 	log_debug("read error file %d", cf->stream);
 
 	msg.stream = cf->stream;
-	msg.error = 0;
+	msg.error = (what & EVBUFFER_ERROR) ? EIO : 0;
 	proc_send(cf->peer, MSG_READ_DONE, -1, &msg, sizeof msg);
 
 	bufferevent_free(cf->event);

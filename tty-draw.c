@@ -29,7 +29,6 @@ enum tty_draw_line_state {
 	TTY_DRAW_LINE_NEW2,
 	TTY_DRAW_LINE_EMPTY,
 	TTY_DRAW_LINE_SAME,
-	TTY_DRAW_LINE_PAD,
 	TTY_DRAW_LINE_DONE
 };
 static const char* tty_draw_line_states[] = {
@@ -39,7 +38,6 @@ static const char* tty_draw_line_states[] = {
 	"NEW2",
 	"EMPTY",
 	"SAME",
-	"PAD",
 	"DONE"
 };
 
@@ -98,25 +96,6 @@ tty_draw_line_clear(struct tty *tty, u_int px, u_int py, u_int nx,
 				tty_repeat_space(tty, rr->nx);
 		}
 	}
-}
-
-/* Is this cell empty? */
-static u_int
-tty_draw_line_get_empty(const struct grid_cell *gc, u_int nx)
-{
-	u_int	empty = 0;
-
-	if (gc->data.width != 1 && gc->data.width > nx)
-		empty = nx;
-	else if (gc->attr == 0 && gc->link == 0) {
-		if (gc->flags & GRID_FLAG_CLEARED)
-			empty = 1;
-		else if (gc->flags & GRID_FLAG_TAB)
-			empty = gc->data.width;
-		else if (gc->data.size == 1 && *gc->data.data == ' ')
-			empty = 1;
-	}
-	return (empty);
 }
 
 /* Draw a line from screen to tty. */
@@ -239,6 +218,9 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			next_state = TTY_DRAW_LINE_DONE;
 			gcp = &grid_default_cell;
 		} else {
+			if (i > nx)
+				fatalx("position %u > width %u", i, nx);
+
 			/* Get the current cell. */
 			grid_view_get_cell(gd, px + i, py, &gc);
 
@@ -253,20 +235,36 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			}
 
 			/* Work out the the empty width. */
-			if (px >= ex || i >= ex - px)
+			empty = 0;
+			if (px >= ex || i >= ex - px) {
+				/* Outside the area being drawn. */
 				empty = 1;
-			else if (gcp->bg != last.bg)
-				empty = 0;
-			else
-				empty = tty_draw_line_get_empty(gcp, nx - i);
+			} else if (gcp->data.width > nx - i) {
+				/* Wide character that has been truncated. */
+				empty = nx - i;
+			} else if (gcp->flags & GRID_FLAG_PADDING) {
+				/* Orphan padding cell. */
+				empty = 1;
+			} else if (gcp->bg == last.bg && gcp->attr == 0 &&
+			    gcp->link == 0) {
+				/*
+				 * No attributes - empty if cleared, tab or
+				 * space.
+				 */
+				if (gcp->flags & GRID_FLAG_CLEARED)
+					empty = 1;
+				else if (gcp->flags & GRID_FLAG_TAB)
+					empty = gcp->data.width;
+				else if (gcp->data.size == 1 &&
+				    *gcp->data.data == ' ')
+					empty = 1;
+			}
 
 			/* Work out the next state. */
 			if (empty != 0)
 				next_state = TTY_DRAW_LINE_EMPTY;
 			else if (current_state == TTY_DRAW_LINE_FIRST)
 				next_state = TTY_DRAW_LINE_SAME;
-			else if (gcp->flags & GRID_FLAG_PADDING)
-				next_state = TTY_DRAW_LINE_PAD;
 			else if (grid_cells_look_equal(gcp, &last)) {
 				if (gcp->data.size > (sizeof buf) - len)
 					next_state = TTY_DRAW_LINE_FLUSH;
@@ -312,8 +310,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		}
 
 		/* Append the cell if it is not empty and not padding. */
-		if (next_state != TTY_DRAW_LINE_EMPTY &&
-		    next_state != TTY_DRAW_LINE_PAD) {
+		if (next_state != TTY_DRAW_LINE_EMPTY) {
 			memcpy(buf + len, gcp->data.data, gcp->data.size);
 			len += gcp->data.size;
 			width += gcp->data.width;

@@ -1336,9 +1336,11 @@ struct window_pane {
 
 	TAILQ_ENTRY(window_pane) entry;  /* link in list of all panes */
 	TAILQ_ENTRY(window_pane) sentry; /* link in list of last visited */
+        TAILQ_ENTRY(window_pane) zentry; /* z-index link in list of all panes */
 	RB_ENTRY(window_pane) tree_entry;
 };
 TAILQ_HEAD(window_panes, window_pane);
+TAILQ_HEAD(window_panes_zindex, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
 
 /* Window structure. */
@@ -1358,6 +1360,7 @@ struct window {
 
 	struct window_pane	*active;
 	struct window_panes 	 last_panes;
+	struct window_panes      z_index;
 	struct window_panes	 panes;
 
 	int			 lastlayout;
@@ -1451,6 +1454,7 @@ TAILQ_HEAD(winlink_stack, winlink);
 enum layout_type {
 	LAYOUT_LEFTRIGHT,
 	LAYOUT_TOPBOTTOM,
+	LAYOUT_FLOATING,
 	LAYOUT_WINDOWPANE
 };
 
@@ -1466,8 +1470,8 @@ struct layout_cell {
 	u_int		 sx;
 	u_int		 sy;
 
-	u_int		 xoff;
-	u_int		 yoff;
+	int		 xoff;
+	int		 yoff;
 
 	struct window_pane *wp;
 	struct layout_cells cells;
@@ -1747,10 +1751,10 @@ struct tty_ctx {
 	u_int			 orlower;
 
 	/* Target region (usually pane) offset and size. */
-	u_int			 xoff;
-	u_int			 yoff;
-	u_int			 rxoff;
-	u_int			 ryoff;
+	int			 xoff;
+	int			 yoff;
+	int			 rxoff;
+	int			 ryoff;
 	u_int			 sx;
 	u_int			 sy;
 
@@ -1982,6 +1986,9 @@ struct client_window {
 };
 RB_HEAD(client_windows, client_window);
 
+/* Maximum time to be pasting. */
+#define CLIENT_PASTE_TIME_LIMIT 5
+
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
@@ -2121,6 +2128,7 @@ struct client {
 
 	struct key_table	*keytable;
 	key_code		 last_key;
+	time_t			 paste_time;
 
 	uint64_t		 redraw_panes;
 	uint64_t		 redraw_scrollbars;
@@ -2317,6 +2325,7 @@ struct spawn_context {
 #define SPAWN_FULLSIZE 0x20
 #define SPAWN_EMPTY 0x40
 #define SPAWN_ZOOM 0x80
+#define SPAWN_FLOATING 0x100
 };
 
 /* Paste buffer. */
@@ -3206,7 +3215,7 @@ void	 grid_reader_start(struct grid_reader *, struct grid *, u_int, u_int);
 void	 grid_reader_get_cursor(struct grid_reader *, u_int *, u_int *);
 u_int	 grid_reader_line_length(struct grid_reader *);
 int	 grid_reader_in_set(struct grid_reader *, const char *);
-void	 grid_reader_cursor_right(struct grid_reader *, int, int);
+void	 grid_reader_cursor_right(struct grid_reader *, int, int, int);
 void	 grid_reader_cursor_left(struct grid_reader *, int);
 void	 grid_reader_cursor_down(struct grid_reader *);
 void	 grid_reader_cursor_up(struct grid_reader *);
@@ -3409,7 +3418,7 @@ struct window_pane *window_pane_next_by_number(struct window *,
 struct window_pane *window_pane_previous_by_number(struct window *,
 			struct window_pane *, u_int);
 int		 window_pane_index(struct window_pane *, u_int *);
-u_int		 window_count_panes(struct window *);
+u_int		 window_count_panes(struct window *, int);
 void		 window_destroy_panes(struct window *);
 struct window_pane *window_pane_find_by_id_str(const char *);
 struct window_pane *window_pane_find_by_id(u_int);
@@ -3463,6 +3472,9 @@ enum client_theme window_pane_get_theme(struct window_pane *);
 void		 window_pane_send_theme_update(struct window_pane *);
 struct style_range *window_pane_border_status_get_range(struct window_pane *,
 			u_int, u_int);
+int		 window_pane_tile_geometry(struct window *,
+		     struct window_pane *, int *, int *, enum layout_type *,
+		     struct cmdq_item *, struct args *, char **);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);
@@ -3474,8 +3486,7 @@ void		 layout_destroy_cell(struct window *, struct layout_cell *,
 void		 layout_resize_layout(struct window *, struct layout_cell *,
 		     enum layout_type, int, int);
 struct layout_cell *layout_search_by_border(struct layout_cell *, u_int, u_int);
-void		 layout_set_size(struct layout_cell *, u_int, u_int, u_int,
-		     u_int);
+void             layout_set_size(struct layout_cell *, u_int, u_int, int, int);
 void		 layout_make_leaf(struct layout_cell *, struct window_pane *);
 void		 layout_make_node(struct layout_cell *, enum layout_type);
 void		 layout_fix_offsets(struct window *);
