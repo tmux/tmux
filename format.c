@@ -2059,8 +2059,10 @@ format_cb_pane_at_right(struct format_tree *ft)
 static void *
 format_cb_pane_bottom(struct format_tree *ft)
 {
-	if (ft->wp != NULL)
-		return (format_printf("%d", ft->wp->yoff + (int)ft->wp->sy - 1));
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL)
+		return (format_printf("%d", wp->yoff + (int)wp->sy - 1));
 	return (NULL);
 }
 
@@ -2357,8 +2359,10 @@ format_cb_pane_pb_state(struct format_tree *ft)
 static void *
 format_cb_pane_right(struct format_tree *ft)
 {
-	if (ft->wp != NULL)
-		return (format_printf("%d", ft->wp->xoff + (int)ft->wp->sx - 1));
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL)
+		return (format_printf("%d", wp->xoff + (int)wp->sx - 1));
 	return (NULL);
 }
 

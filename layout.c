@@ -50,6 +50,7 @@ static struct layout_cell *layout_active_neighbour(struct layout_cell *, int);
 void		layout_redistribute_cells(struct window *, struct layout_cell *,
 		    enum layout_type);
 
+/* Create a new layout cell. */
 struct layout_cell *
 layout_create_cell(struct layout_cell *lcparent)
 {
@@ -72,6 +73,7 @@ layout_create_cell(struct layout_cell *lcparent)
 	return (lc);
 }
 
+/* Free a layout cell. */
 void
 layout_free_cell(struct layout_cell *lc)
 {
@@ -87,11 +89,11 @@ layout_free_cell(struct layout_cell *lc)
 		}
 		break;
 	case LAYOUT_FLOATING:
-		/* A Floating layout cell is only used temporarily
-		 * while select-layout constructs a layout.
-		 * Cleave the children from the temp layout, then
-		 * free temp floating layout cell.  Each floating
-		 * pane has stub layout.
+		/*
+		 * A floating layout cell is only used temporarily while
+		 * select-layout constructs a layout. Remove the children from
+		 * the temporary layout, then free temporary floating layout
+		 * cell. Each floating pane has stub layout.
 		 */
 		while (!TAILQ_EMPTY(&lc->cells)) {
 			lcchild = TAILQ_FIRST(&lc->cells);
@@ -110,6 +112,7 @@ layout_free_cell(struct layout_cell *lc)
 	free(lc);
 }
 
+/* Log a cell. */
 void
 layout_print_cell(struct layout_cell *lc, const char *hdr, u_int n)
 {
@@ -151,6 +154,7 @@ layout_print_cell(struct layout_cell *lc, const char *hdr, u_int n)
 	}
 }
 
+/* Search for a cell by the border position. */
 struct layout_cell *
 layout_search_by_border(struct layout_cell *lc, u_int x, u_int y)
 {
@@ -192,9 +196,9 @@ layout_search_by_border(struct layout_cell *lc, u_int x, u_int y)
 	return (NULL);
 }
 
+/* Set cell size. */
 void
-layout_set_size(struct layout_cell *lc, u_int sx, u_int sy, int xoff,
-    int yoff)
+layout_set_size(struct layout_cell *lc, u_int sx, u_int sy, int xoff, int yoff)
 {
 	lc->sx = sx;
 	lc->sy = sy;
@@ -203,6 +207,7 @@ layout_set_size(struct layout_cell *lc, u_int sx, u_int sy, int xoff,
 	lc->yoff = yoff;
 }
 
+/* Make a cell a leaf cell. */
 void
 layout_make_leaf(struct layout_cell *lc, struct window_pane *wp)
 {
@@ -214,6 +219,7 @@ layout_make_leaf(struct layout_cell *lc, struct window_pane *wp)
 	lc->wp = wp;
 }
 
+/* Make a cell a node cell. */
 void
 layout_make_node(struct layout_cell *lc, enum layout_type type)
 {
@@ -372,7 +378,7 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		sx = lc->sx;
 		sy = lc->sy;
 
-		if (~wp->flags & PANE_FLOATING &&
+		if ((~wp->flags & PANE_FLOATING) &&
 		    layout_add_horizontal_border(w, lc, status)) {
 			if (status == PANE_STATUS_TOP)
 				wp->yoff++;
@@ -412,7 +418,7 @@ u_int
 layout_count_cells(struct layout_cell *lc)
 {
 	struct layout_cell	*lcchild;
-	u_int			 count;
+	u_int			 count = 0;
 
 	switch (lc->type) {
 	case LAYOUT_WINDOWPANE:
@@ -420,7 +426,6 @@ layout_count_cells(struct layout_cell *lc)
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
 	case LAYOUT_FLOATING:
-		count = 0;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
 			count += layout_count_cells(lcchild);
 		return (count);
@@ -637,6 +642,13 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 		return;
 	}
 
+	/* A floating cell need only be removed from the parent. */
+	if (lcparent->type == LAYOUT_FLOATING) {
+		TAILQ_REMOVE(&lcparent->cells, lc, entry);
+		layout_free_cell(lc);
+		return;
+	}
+
 	/* In tiled layouts, merge the space into the previous or next cell. */
 	if (lcparent->type != LAYOUT_FLOATING) {
 		is_minimised = (lc->wp != NULL && (lc->wp->flags & PANE_MINIMISED));
@@ -668,12 +680,14 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 
 		lc->parent = lcparent->parent;
 		if (lc->parent == NULL) {
-			lc->xoff = 0; lc->yoff = 0;
+			lc->xoff = 0;
+			lc->yoff = 0;
+
 			/*
 			 * If the sole remaining child is a minimised
 			 * WINDOWPANE, its stored size may be stale (it never
 			 * received the space that was given to the removed
-			 * cell).  Restore the full window size so that
+			 * cell). Restore the full window size so that
 			 * unminimise can reclaim the correct amount.
 			 */
 			if (lc->type == LAYOUT_WINDOWPANE &&
@@ -754,6 +768,7 @@ layout_unminimise_cell(struct window *w, struct layout_cell *lc)
 	layout_redistribute_cells(w, lcparent, lcparent->type);
 }
 
+/* Initialize layout for pane. */
 void
 layout_init(struct window *w, struct window_pane *wp)
 {
@@ -765,6 +780,7 @@ layout_init(struct window *w, struct window_pane *wp)
 	layout_fix_panes(w, NULL);
 }
 
+/* Free layout for pane. */
 void
 layout_free(struct window *w)
 {

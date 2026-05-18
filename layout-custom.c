@@ -62,29 +62,26 @@ char *
 layout_dump(struct window *w, struct layout_cell *root)
 {
 	char			 layout[8192], *out;
-	int			 braket;
+	int			 bracket = 0;
 	struct window_pane	*wp;
 
 	*layout = '\0';
 	if (layout_append(root, layout, sizeof layout) != 0)
 		return (NULL);
 
-	braket = 0;
 	TAILQ_FOREACH(wp, &w->z_index, zentry) {
 		if (~wp->flags & PANE_FLOATING)
 			break;
-		if (!braket) {
-			strcat(layout, "<");
-			braket = 1;
+		if (!bracket) {
+			strlcat(layout, "<", sizeof layout);
+			bracket = 1;
 		}
 		if (layout_append(wp->layout_cell, layout, sizeof layout) != 0)
 			return (NULL);
-		strcat(layout, ",");
+		strlcat(layout, ",", sizeof layout);
 	}
-	if (braket) {
-		/* Overwrite the trailing ','. */
+	if (bracket)
 		layout[strlen(layout) - 1] = '>';
-	}
 
 	xasprintf(&out, "%04hx,%s", layout_checksum(layout), layout);
 	return (out);
@@ -146,8 +143,8 @@ layout_check(struct layout_cell *lc)
 	u_int			 n = 0;
 
 	switch (lc->type) {
-	case LAYOUT_WINDOWPANE:
 	case LAYOUT_FLOATING:
+	case LAYOUT_WINDOWPANE:
 		break;
 	case LAYOUT_LEFTRIGHT:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
@@ -213,10 +210,11 @@ layout_parse(struct window *w, const char *layout, char **cause)
 	}
 
 	/* Check this window will fit into the layout. */
+	npanes = window_count_panes(w, 1);
 	for (;;) {
-		npanes = window_count_panes(w, 1);
 		ncells = layout_count_cells(tiled_lc);
-		ncells += layout_count_cells(floating_lc);
+		if (floating_lc != NULL)
+			ncells += layout_count_cells(floating_lc);
 		if (npanes > ncells) {
 			/* Modify this to open a new pane */
 			xasprintf(cause, "have %u panes but need %u", npanes,
@@ -228,9 +226,9 @@ layout_parse(struct window *w, const char *layout, char **cause)
 
 		/*
 		 * Fewer panes than cells - close floating panes first
-		 * then close the bottom right until.
+		 * then close the bottom right until none remain.
 		 */
-		if (floating_lc && ! TAILQ_EMPTY(&floating_lc->cells)) {
+		if (floating_lc != NULL && !TAILQ_EMPTY(&floating_lc->cells)) {
 			lcchild = TAILQ_FIRST(&floating_lc->cells);
 			layout_destroy_cell(w, lcchild, &floating_lc);
 		} else {
@@ -266,8 +264,6 @@ layout_parse(struct window *w, const char *layout, char **cause)
 	}
 	if (tiled_lc->type != LAYOUT_WINDOWPANE &&
 	    (tiled_lc->sx != sx || tiled_lc->sy != sy)) {
-		log_debug("fix layout %u,%u to %u,%u", tiled_lc->sx,
-		    tiled_lc->sy, sx,sy);
 		layout_print_cell(tiled_lc, __func__, 0);
 		tiled_lc->sx = sx - 1; tiled_lc->sy = sy - 1;
 	}
@@ -288,27 +284,29 @@ layout_parse(struct window *w, const char *layout, char **cause)
 
 	/* Assign the panes into the cells. */
 	wp = TAILQ_FIRST(&w->panes);
-	layout_assign(&wp, tiled_lc, 0);
-	layout_assign(&wp, floating_lc, 1);
+	if (tiled_lc != NULL)
+		layout_assign(&wp, tiled_lc, 0);
+	if (floating_lc != NULL)
+		layout_assign(&wp, floating_lc, PANE_FLOATING);
 
-	/* Fix z_indexes. */
+	/* Fix z indexes. */
 	while (!TAILQ_EMPTY(&w->z_index)) {
 		wp = TAILQ_FIRST(&w->z_index);
 		TAILQ_REMOVE(&w->z_index, wp, zentry);
 	}
-	layout_fix_zindexes(w, floating_lc);
+	if (floating_lc != NULL)
+		layout_fix_zindexes(w, floating_lc);
 	layout_fix_zindexes(w, tiled_lc);
 
 	/* Update pane offsets and sizes. */
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 	recalculate_sizes();
-
 	layout_print_cell(tiled_lc, __func__, 0);
-	layout_print_cell(floating_lc, __func__, 0);
 
 	/* Free the floating layout cell, no longer needed. */
-	layout_free_cell(floating_lc);
+	if (floating_lc != NULL)
+		layout_free_cell(floating_lc);
 
 	notify_window("window-layout-changed", w);
 
@@ -322,7 +320,7 @@ fail:
 
 /* Assign panes into cells. */
 static void
-layout_assign(struct window_pane **wp, struct layout_cell *lc, int floating)
+layout_assign(struct window_pane **wp, struct layout_cell *lc, int flags)
 {
 	struct layout_cell	*lcchild;
 
@@ -332,16 +330,14 @@ layout_assign(struct window_pane **wp, struct layout_cell *lc, int floating)
 	switch (lc->type) {
 	case LAYOUT_WINDOWPANE:
 		layout_make_leaf(lc, *wp);
-		if (floating) {
-			(*wp)->flags |= PANE_FLOATING;
-		}
+		(*wp)->flags |= flags;
 		*wp = TAILQ_NEXT(*wp, entry);
 		return;
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
 	case LAYOUT_FLOATING:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
-			layout_assign(wp, lcchild, 1);
+			layout_assign(wp, lcchild, PANE_FLOATING);
 		return;
 	}
 }
@@ -393,7 +389,6 @@ layout_construct_cell(struct layout_cell *lcparent, const char **layout)
 
 	return (lc);
 }
-
 
 /*
  * Given a character string layout, recursively construct cells.

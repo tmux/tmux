@@ -935,16 +935,14 @@ window_pane_index(struct window_pane *wp, u_int *i)
 }
 
 u_int
-window_count_panes(struct window *w, int inc_floating)
+window_count_panes(struct window *w, int with_floating)
 {
 	struct window_pane	*wp;
-	u_int			 n;
+	u_int			 n = 0;
 
-	n = 0;
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if ((inc_floating == 0) && (wp->flags & PANE_FLOATING))
-			continue;
-		n++;
+                if (with_floating || ~wp->flags & PANE_FLOATING)
+			n++;
 	}
 	return (n);
 }
@@ -1516,11 +1514,9 @@ window_pane_find_up(struct window_pane *wp)
 {
 	struct window		*w;
 	struct window_pane	*next, *best, **list;
-	int			 edge, left, right, end;
-	u_int			 size;
-	int			 status, found;
+	int			 edge, left, right, end, status, found;
 	int			 xoff, yoff;
-	u_int			 sx, sy;
+	u_int			 size, sx, sy;
 
 	if (wp == NULL)
 		return (NULL);
@@ -1579,11 +1575,9 @@ window_pane_find_down(struct window_pane *wp)
 {
 	struct window		*w;
 	struct window_pane	*next, *best, **list;
-	int			 edge, left, right, end;
-	u_int			 size;
-	int			 status, found;
+	int			 edge, left, right, end, status, found;
 	int			 xoff, yoff;
-	u_int			 sx, sy;
+	u_int			 size, sx, sy;
 
 	if (wp == NULL)
 		return (NULL);
@@ -1642,11 +1636,9 @@ window_pane_find_left(struct window_pane *wp)
 {
 	struct window		*w;
 	struct window_pane	*next, *best, **list;
-	int			 edge, top, bottom, end;
-	u_int			 size;
-	int			 found;
+	int			 edge, top, bottom, end, found;
 	int			 xoff, yoff;
-	u_int			 sx, sy;
+	u_int			 size, sx, sy;
 
 	if (wp == NULL)
 		return (NULL);
@@ -1696,11 +1688,9 @@ window_pane_find_right(struct window_pane *wp)
 {
 	struct window		*w;
 	struct window_pane	*next, *best, **list;
-	int			 edge, top, bottom, end;
-	u_int			 size;
-	int			 found;
+	int			 edge, top, bottom, end, found;
 	int			 xoff, yoff;
-	u_int			 sx, sy;
+	u_int			 size, sx, sy;
 
 	if (wp == NULL)
 		return (NULL);
@@ -1744,6 +1734,7 @@ window_pane_find_right(struct window_pane *wp)
 	return (best);
 }
 
+/* Add window to stack. */
 void
 window_pane_stack_push(struct window_panes *stack, struct window_pane *wp)
 {
@@ -1754,6 +1745,7 @@ window_pane_stack_push(struct window_panes *stack, struct window_pane *wp)
 	}
 }
 
+/* Remove window from stack. */
 void
 window_pane_stack_remove(struct window_panes *stack, struct window_pane *wp)
 {
@@ -2133,4 +2125,54 @@ window_pane_border_status_get_range(struct window_pane *wp, u_int x, u_int y)
 	 * the stored bounds of the range.
 	 */
 	return (style_ranges_get_range(srs, x - wp->xoff - 2));
+}
+
+int
+window_pane_tile_geometry(struct window *w, struct window_pane *wp,
+    int *out_size, int *out_flags, enum layout_type *out_type,
+    struct cmdq_item *item, struct args *args, char **cause)
+{
+	int			size = -1, flags = *out_flags;
+	enum layout_type	type;
+	u_int			curval = 0;
+
+	type = LAYOUT_TOPBOTTOM;
+	if (args_has(args, 'h'))
+		type = LAYOUT_LEFTRIGHT;
+
+	if (args_has(args, 'l') || args_has(args, 'p')) {
+		if (args_has(args, 'f')) {
+			if (type == LAYOUT_TOPBOTTOM)
+				curval = w->sy;
+			else
+				curval = w->sx;
+		} else {
+			if (type == LAYOUT_TOPBOTTOM)
+				curval = wp->sy;
+			else
+				curval = wp->sx;
+		}
+	}
+
+	if (args_has(args, 'l')) {
+		size = args_percentage_and_expand(args, 'l', 0, INT_MAX, curval,
+		    item, cause);
+	} else if (args_has(args, 'p')) {
+		size = args_strtonum_and_expand(args, 'p', 0, 100, item,
+		    cause);
+		if (cause == NULL)
+			size = curval * size / 100;
+	}
+	if (*cause != NULL)
+		return (-1);
+
+	if (args_has(args, 'b'))
+		flags |= SPAWN_BEFORE;
+	if (args_has(args, 'f'))
+		flags |= SPAWN_FULLSIZE;
+
+	*out_size = size;
+	*out_flags = flags;
+	*out_type = type;
+	return (0);
 }

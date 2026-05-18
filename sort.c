@@ -56,8 +56,8 @@ sort_buffer_cmp(const void *a0, const void *b0)
 	struct sort_criteria			*sort_crit = sort_criteria;
 	const struct paste_buffer *const	*a = a0;
 	const struct paste_buffer *const	*b = b0;
-	const struct paste_buffer 		*pa = *a;
-	const struct paste_buffer 		*pb = *b;
+	const struct paste_buffer		*pa = *a;
+	const struct paste_buffer		*pb = *b;
 	int					 result = 0;
 
 	switch (sort_crit->order) {
@@ -92,8 +92,8 @@ sort_client_cmp(const void *a0, const void *b0)
 	struct sort_criteria		*sort_crit = sort_criteria;
 	const struct client *const	*a = a0;
 	const struct client *const	*b = b0;
-	const struct client 		*ca = *a;
-	const struct client 		*cb = *b;
+	const struct client		*ca = *a;
+	const struct client		*cb = *b;
 	int				 result = 0;
 
 	switch (sort_crit->order) {
@@ -425,7 +425,11 @@ sort_get_clients(u_int *n, struct sort_criteria *sort_crit)
 
 	i = 0;
 	TAILQ_FOREACH(c, &clients, entry) {
-		if (lsz <= i) {
+	       if (c->flags & CLIENT_UNATTACHEDFLAGS)
+		       continue;
+	       if (~c->flags & CLIENT_ATTACHED)
+		       continue;
+	       if (lsz <= i) {
 			lsz += 100;
 			l = xreallocarray(l, lsz, sizeof *l);
 		}
@@ -468,7 +472,7 @@ sort_get_panes(u_int *n, struct sort_criteria *sort_crit)
 	struct winlink			 *wl;
 	struct window			 *w;
 	struct window_pane		 *wp;
-	u_int		 		  i;
+	u_int				  i;
 	static struct window_pane	**l = NULL;
 	static u_int			  lsz = 0;
 
@@ -499,7 +503,7 @@ sort_get_panes_session(struct session *s, u_int *n,
 	struct winlink			 *wl = NULL;
 	struct window			 *w = NULL;
 	struct window_pane		 *wp = NULL;
-	u_int		 		  i;
+	u_int				  i;
 	static struct window_pane	**l = NULL;
 	static u_int			  lsz = 0;
 
@@ -526,7 +530,7 @@ sort_get_panes_window(struct window *w, u_int *n,
     struct sort_criteria *sort_crit)
 {
 	struct window_pane		 *wp;
-	u_int		 		  i;
+	u_int				  i;
 	static struct window_pane	**l = NULL;
 	static u_int			  lsz = 0;
 

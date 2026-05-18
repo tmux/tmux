@@ -70,12 +70,6 @@ const struct cmd_entry cmd_split_window_entry = {
 	.exec = cmd_split_window_exec
 };
 
-enum new_pane_mode {
-	FLOATING,
-	TILED,
-	NONE,
-};
-
 static struct layout_cell *
 cmd_split_window_get_floating_layout_cell(struct cmdq_item *item,
     struct args *args, struct window *w)
@@ -163,53 +157,23 @@ cmd_split_window_get_tiled_layout_cell(struct cmdq_item *item,
 	struct layout_cell	*lc = NULL;
 	char			*cause = NULL;
 	int			 size;
-	u_int			 curval = 0;
 
 	if (wp->flags & PANE_FLOATING) {
 		cmdq_error(item, "can't split a floating pane");
 		return (NULL);
 	}
 
-	type = LAYOUT_TOPBOTTOM;
-	if (args_has(args, 'h'))
-		type = LAYOUT_LEFTRIGHT;
-
-	/* If the 'p' flag is dropped then this bit can be moved into 'l'. */
-	if (args_has(args, 'l') || args_has(args, 'p')) {
-		if (args_has(args, 'f')) {
-			if (type == LAYOUT_TOPBOTTOM)
-				curval = w->sy;
-			else
-				curval = w->sx;
-		} else {
-			if (type == LAYOUT_TOPBOTTOM)
-				curval = wp->sy;
-			else
-				curval = wp->sx;
-		}
-	}
-
-	size = -1;
-	if (args_has(args, 'l')) {
-		size = args_percentage_and_expand(args, 'l', 0, INT_MAX, curval,
-		    item, &cause);
-	} else if (args_has(args, 'p')) {
-		size = args_strtonum_and_expand(args, 'p', 0, 100, item,
-		    &cause);
-		if (cause == NULL)
-			size = curval * size / 100;
-	}
-	if (cause != NULL) {
-		cmdq_error(item, "size %s", cause);
+	if (window_pane_tile_geometry(w, wp, &size, &flags, &type, item, args,
+	    &cause) != 0) {
+		cmdq_error(item, "invalid tiled geometry %s", cause);
 		free(cause);
 		return (NULL);
 	}
 
 	window_push_zoom(wp->window, 1, args_has(args, 'Z'));
 	lc = layout_split_pane(wp, type, size, flags);
-	if (lc == NULL) 
+	if (lc == NULL)
 		cmdq_error(item, "no space for new pane");
-
 	return (lc);
 }
 
@@ -232,7 +196,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	char			*cause = NULL, *cp;
 	struct args_value	*av;
 	u_int			 count = args_count(args);
-	enum new_pane_mode	 pane_mode = NONE;
+	enum { FLOATING, TILED, NONE } pane_mode;
 
 	if (args_has(args, 'M')) {
 		if (strcasecmp(args_get(args, 'M'), "f") == 0)
@@ -250,7 +214,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	input = (args_has(args, 'I') && count == 0);
 
-	flags = pane_mode == FLOATING ? SPAWN_FLOATING : 0;
+	flags = (pane_mode == FLOATING) ? SPAWN_FLOATING : 0;
 	if (args_has(args, 'b'))
 		flags |= SPAWN_BEFORE;
 	if (args_has(args, 'f'))
@@ -258,13 +222,12 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (input || (count == 1 && *args_string(args, 0) == '\0'))
 		flags |= SPAWN_EMPTY;
 
-
 	if (pane_mode == FLOATING)
 		lc = cmd_split_window_get_floating_layout_cell(item, args, w);
-	else if (pane_mode == TILED)
+	else if (pane_mode == TILED) {
 		lc = cmd_split_window_get_tiled_layout_cell(item, args, w, wp,
 			flags);
-	else {
+	} else {
 		cmdq_error(item, "unrecognized pane mode '%s'",
 		    args_get(args, 'M'));
 		return (CMD_RETURN_ERROR);
@@ -315,7 +278,8 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		options_set_string(new_wp->options, "window-active-style", 0,
 		    "%s", style);
-		new_wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED|PANE_THEMECHANGED);
+		new_wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED|
+		    PANE_THEMECHANGED);
 	}
 	style = args_get(args, 'S');
 	if (style != NULL) {
@@ -329,7 +293,8 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (style != NULL) {
 		if (options_set_string(new_wp->options, "pane-border-style", 0,
 		    "%s", style) == NULL) {
-			cmdq_error(item, "bad inactive border style: %s", style);
+			cmdq_error(item, "bad inactive border style: %s",
+			    style);
 			return (CMD_RETURN_ERROR);
 		}
 	}
