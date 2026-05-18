@@ -2128,11 +2128,11 @@ window_pane_border_status_get_range(struct window_pane *wp, u_int x, u_int y)
 }
 
 int
-window_pane_tile_geometry(struct window *w, struct window_pane *wp,
-    int *out_size, int *out_flags, enum layout_type *out_type,
-    struct cmdq_item *item, struct args *args, char **cause)
+window_pane_tile_geometry(struct window *w, struct window_pane *wp, int *out_size,
+    int *out_flags, enum layout_type *out_type, struct cmdq_item *item,
+    struct args *args, char **cause)
 {
-	int			size = -1, flags = *out_flags;
+	int			size, flags = *out_flags;
 	enum layout_type	type;
 	u_int			curval = 0;
 
@@ -2140,6 +2140,7 @@ window_pane_tile_geometry(struct window *w, struct window_pane *wp,
 	if (args_has(args, 'h'))
 		type = LAYOUT_LEFTRIGHT;
 
+	/* If the 'p' flag is dropped then this bit can be moved into 'l'. */
 	if (args_has(args, 'l') || args_has(args, 'p')) {
 		if (args_has(args, 'f')) {
 			if (type == LAYOUT_TOPBOTTOM)
@@ -2154,6 +2155,7 @@ window_pane_tile_geometry(struct window *w, struct window_pane *wp,
 		}
 	}
 
+	size = -1;
 	if (args_has(args, 'l')) {
 		size = args_percentage_and_expand(args, 'l', 0, INT_MAX, curval,
 		    item, cause);
@@ -2161,7 +2163,7 @@ window_pane_tile_geometry(struct window *w, struct window_pane *wp,
 		size = args_strtonum_and_expand(args, 'p', 0, 100, item,
 		    cause);
 		if (cause == NULL)
-			size = curval * size / 100;
+			size = curval * (size) / 100;
 	}
 	if (*cause != NULL)
 		return (-1);
@@ -2174,5 +2176,81 @@ window_pane_tile_geometry(struct window *w, struct window_pane *wp,
 	*out_size = size;
 	*out_flags = flags;
 	*out_type = type;
+
+	return (0);
+}
+
+int
+window_pane_float_geometry(struct window *w, struct window_pane *wp,
+    u_int *out_x, u_int *out_y, u_int *out_sx, u_int *out_sy,
+    struct cmdq_item *item, struct args *args, char **cause)
+{
+	u_int		x, y, sx, sy;
+	const u_int	cx = 4, cy = 2;
+
+	if ((wp->flags & PANE_SAVED_FLOAT) &&
+	    !args_has(args, 'x') && !args_has(args, 'y') &&
+	    !args_has(args, 'X') && !args_has(args, 'Y')) {
+		x  = wp->saved_float_xoff;
+		y  = wp->saved_float_yoff;
+		sx = wp->saved_float_sx;
+		sy = wp->saved_float_sy;
+		goto out;
+	}
+
+	/* Default size */
+	sx = w->sx / 2;
+	sy = w->sy / 2;
+
+	if (args_has(args, 'x')) {
+		sx = args_percentage_and_expand(args, 'x', 0, USHRT_MAX, w->sx,
+			item, cause);
+		if (*cause != NULL)
+			return (-1);
+	}
+	if (args_has(args, 'y')) {
+		sy = args_percentage_and_expand(args, 'y', 0, USHRT_MAX, w->sy,
+		    item, cause);
+		if (*cause != NULL)
+			return (-1);
+	}
+
+	/* Position defaults to cascading when not defined */
+	if (args_has(args, 'X')) {
+		x = args_percentage_and_expand(args, 'X', 0, USHRT_MAX, w->sx,
+		    item, cause);
+		if (*cause != NULL)
+			return (-1);
+	} else {
+		if (w->last_new_pane_x == 0)
+			x = cx;
+		else {
+			x = w->last_new_pane_x + cx;
+			if (w->last_new_pane_x > w->sx)
+				x = cx;
+		}
+		w->last_new_pane_x = x;
+	}
+	if (args_has(args, 'Y')) {
+		y = args_percentage_and_expand(args, 'Y', 0, USHRT_MAX, w->sy,
+		    item, cause);
+		if (*cause != NULL)
+			return (-1);
+	} else {
+		if (w->last_new_pane_y == 0)
+			y = cy;
+		else {
+			y = w->last_new_pane_y + cy;
+			if (w->last_new_pane_y > w->sy)
+				y = cy;
+		}
+		w->last_new_pane_y = y;
+	}
+
+out:
+	*out_x = x;
+	*out_y = y;
+	*out_sx = sx;
+	*out_sy = sy;
 	return (0);
 }
