@@ -555,7 +555,6 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 	return (1);
 }
 
-
 static int
 window_pane_get_palette(struct window_pane *wp, int c)
 {
@@ -2075,7 +2074,7 @@ window_pane_tiled_geometry(struct window *w, struct window_pane *wp,
     int *out_size, int *out_flags, enum layout_type *out_type,
     struct cmdq_item *item, struct args *args, char **cause)
 {
-	int			size, flags = *out_flags;
+	int			size = -1, flags = *out_flags;
 	enum layout_type	type;
 	u_int			curval = 0;
 
@@ -2083,7 +2082,6 @@ window_pane_tiled_geometry(struct window *w, struct window_pane *wp,
 	if (args_has(args, 'h'))
 		type = LAYOUT_LEFTRIGHT;
 
-	/* If the 'p' flag is dropped then this bit can be moved into 'l'. */
 	if (args_has(args, 'l') || args_has(args, 'p')) {
 		if (args_has(args, 'f')) {
 			if (type == LAYOUT_TOPBOTTOM)
@@ -2098,7 +2096,6 @@ window_pane_tiled_geometry(struct window *w, struct window_pane *wp,
 		}
 	}
 
-	size = -1;
 	if (args_has(args, 'l')) {
 		size = args_percentage_and_expand(args, 'l', 0, INT_MAX, curval,
 		    item, cause);
@@ -2106,7 +2103,7 @@ window_pane_tiled_geometry(struct window *w, struct window_pane *wp,
 		size = args_strtonum_and_expand(args, 'p', 0, 100, item,
 		    cause);
 		if (cause == NULL)
-			size = curval * (size) / 100;
+			size = curval * size / 100;
 	}
 	if (*cause != NULL)
 		return (-1);
@@ -2119,7 +2116,6 @@ window_pane_tiled_geometry(struct window *w, struct window_pane *wp,
 	*out_size = size;
 	*out_flags = flags;
 	*out_type = type;
-
 	return (0);
 }
 
