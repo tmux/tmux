@@ -146,7 +146,7 @@ layout_print_cell(struct layout_cell *lc, const char *hdr, u_int n)
 	case LAYOUT_TOPBOTTOM:
 	case LAYOUT_FLOATING:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
-		    	layout_print_cell(lcchild, hdr, n + 1);
+			layout_print_cell(lcchild, hdr, n + 1);
 		break;
 	case LAYOUT_WINDOWPANE:
 		break;
@@ -245,15 +245,15 @@ layout_fix_zindexes(struct window *w, struct layout_cell *lc)
 	switch (lc->type) {
 	case LAYOUT_WINDOWPANE:
 		TAILQ_INSERT_TAIL(&w->z_index, lc->wp, zentry);
-	        break;
+		break;
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
 	case LAYOUT_FLOATING:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
-	                layout_fix_zindexes(w, lcchild);
-	        return;
+			layout_fix_zindexes(w, lcchild);
+		return;
 	default:
-	        fatalx("bad layout type");
+		fatalx("bad layout type");
 	}
 }
 
@@ -289,7 +289,7 @@ layout_fix_offsets1(struct layout_cell *lc)
 void
 layout_fix_offsets(struct window *w)
 {
-	struct layout_cell      *lc = w->layout_root;
+	struct layout_cell	*lc = w->layout_root;
 
 	lc->xoff = 0;
 	lc->yoff = 0;
