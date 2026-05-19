@@ -2188,7 +2188,7 @@ window_pane_float_geometry(struct window *w, struct window_pane *wp,
 	u_int		x, y, sx, sy;
 	const u_int	cx = 4, cy = 2;
 
-	if ((wp->flags & PANE_SAVED_FLOAT) &&
+	if (wp != NULL && (wp->flags & PANE_SAVED_FLOAT) &&
 	    !args_has(args, 'x') && !args_has(args, 'y') &&
 	    !args_has(args, 'X') && !args_has(args, 'Y')) {
 		x  = wp->saved_float_xoff;
@@ -2198,7 +2198,7 @@ window_pane_float_geometry(struct window *w, struct window_pane *wp,
 		goto out;
 	}
 
-	/* Default size */
+	/* Default size. */
 	sx = w->sx / 2;
 	sy = w->sy / 2;
 
@@ -2215,7 +2215,7 @@ window_pane_float_geometry(struct window *w, struct window_pane *wp,
 			return (-1);
 	}
 
-	/* Position defaults to cascading when not defined */
+	/* Position defaults to cascading when not defined. */
 	if (args_has(args, 'X')) {
 		x = args_percentage_and_expand(args, 'X', 0, USHRT_MAX, w->sx,
 		    item, cause);
