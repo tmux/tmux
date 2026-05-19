@@ -108,11 +108,6 @@ cmd_split_window_get_tiled_layout_cell(struct cmdq_item *item,
 		return (NULL);
 	}
 
-	if (wp->flags & PANE_MINIMISED) {
-		cmdq_error(item, "can't split a minimised pane");
-		return (NULL);
-	}
-
 	if (window_pane_tile_geometry(w, wp, &size, &flags, &type, item, args,
 	    &cause) != 0) {
 		cmdq_error(item, "invalid tiled geometry %s", cause);

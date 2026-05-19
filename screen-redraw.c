@@ -461,15 +461,13 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 		sb_w = wp->scrollbar_style.width +
 			wp->scrollbar_style.pad;
 		if (sb_pos == PANE_SCROLLBARS_LEFT) {
-			if (~wp->flags & PANE_MINIMISED &&
-			    ((int)px >= (int)wp->xoff - 1 - sb_w &&
+			if (((int)px >= (int)wp->xoff - 1 - sb_w &&
 			    (int)px <= wp->xoff + (int)wp->sx) &&
 			    ((int)py >= (int)wp->yoff - 1 &&
 			    (int)py <= wp->yoff + (int)wp->sy))
 				break;
 		} else { /* PANE_SCROLLBARS_RIGHT or none. */
-			if (~wp->flags & PANE_MINIMISED &&
-			    ((int)px >= (int)wp->xoff - 1 &&
+			if (((int)px >= (int)wp->xoff - 1 &&
 			    (int)px <= wp->xoff + (int)wp->sx + sb_w) &&
 			    ((int)py >= (int)wp->yoff - 1 &&
 			    (int)py <= wp->yoff + (int)wp->sy))
@@ -1165,7 +1163,7 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 	u_int				 lb, rb, tb, bb;
 	u_int				 i, s;
 
-	if (base_wp == NULL || base_wp->flags & PANE_MINIMISED) {
+	if (base_wp == NULL) {
 		if (r != NULL) {
 			return (r);
 		} else {
@@ -1196,8 +1194,6 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 
 	found_self = 0;
 	TAILQ_FOREACH_REVERSE(wp, &w->z_index, window_panes_zindex, zentry) {
-		if (wp->flags & PANE_MINIMISED)
-			continue;
 		if (wp == base_wp) {
 			found_self = 1;
 			continue;

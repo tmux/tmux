@@ -351,8 +351,6 @@ key_bindings_init(void)
 {
 	static const char *const defaults[] = {
 		/* Prefix keys. */
-		"bind -N 'Minimise pane' _ { minimise-pane }",
-
 		"bind -N 'Send the prefix key' C-b { send-prefix }",
 		"bind -N 'Rotate through the panes' C-o { rotate-window }",
 		"bind -N 'Suspend the current client' C-z { suspend-client }",
@@ -365,7 +363,6 @@ key_bindings_init(void)
 		"bind -N 'Kill current window' & { confirm-before -p\"kill-window #W? (y/n)\" kill-window }",
 		"bind -N 'Prompt for window index to select' \"'\" { command-prompt -T window-target -pindex { select-window -t ':%%' } }",
 		"bind -N 'New floating pane' * { new-pane }",
-		"bind -N 'Toggle pane between floating and tiled' @ { if -F '#{pane_floating_flag}' { tile-pane } { float-pane } }",
 		"bind -N 'Switch to previous client' ( { switch-client -p }",
 		"bind -N 'Switch to next client' ) { switch-client -n }",
 		"bind -N 'Rename current window' , { command-prompt -I'#W' { rename-window -- '%%' } }",
@@ -471,7 +468,7 @@ key_bindings_init(void)
 		"bind -n MouseDrag1Border { resize-pane -M }",
 
 		/* Mouse button 1 down on status line. */
-		"bind -n MouseDown1Status { if -F '#{&&:#{pane_active},#{!#{pane_minimised_flag}}}' { minimise-pane -t= } { switch-client -t= } }",
+	        "bind -n MouseDown1Status { switch-client -t= }",
 		"bind -n C-MouseDown1Status { swap-window -t@ }",
 
 		/* Mouse button 1 down on default pane-border-format */

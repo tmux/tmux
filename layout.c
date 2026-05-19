@@ -46,7 +46,6 @@ static int	layout_set_size_check(struct window *, struct layout_cell *,
 		    enum layout_type, int);
 static void	layout_resize_child_cells(struct window *,
 		    struct layout_cell *);
-static struct layout_cell *layout_active_neighbour(struct layout_cell *, int);
 void		layout_redistribute_cells(struct window *, struct layout_cell *,
 		    enum layout_type);
 
@@ -147,7 +146,7 @@ layout_print_cell(struct layout_cell *lc, const char *hdr, u_int n)
 	case LAYOUT_TOPBOTTOM:
 	case LAYOUT_FLOATING:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
-		    	layout_print_cell(lcchild, hdr, n + 1);
+			layout_print_cell(lcchild, hdr, n + 1);
 		break;
 	case LAYOUT_WINDOWPANE:
 		break;
@@ -234,6 +233,7 @@ layout_make_node(struct layout_cell *lc, enum layout_type type)
 	lc->wp = NULL;
 }
 
+/* Fix Z indexes. */
 void
 layout_fix_zindexes(struct window *w, struct layout_cell *lc)
 {
@@ -267,10 +267,6 @@ layout_fix_offsets1(struct layout_cell *lc)
 	if (lc->type == LAYOUT_LEFTRIGHT) {
 		xoff = lc->xoff;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (lcchild->type == LAYOUT_WINDOWPANE &&
-			    lcchild->wp != NULL &&
-			    lcchild->wp->flags & PANE_MINIMISED)
-				continue;
 			lcchild->xoff = xoff;
 			lcchild->yoff = lc->yoff;
 			if (lcchild->type != LAYOUT_WINDOWPANE)
@@ -280,10 +276,6 @@ layout_fix_offsets1(struct layout_cell *lc)
 	} else {
 		yoff = lc->yoff;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (lcchild->type == LAYOUT_WINDOWPANE &&
-			    lcchild->wp != NULL &&
-			    lcchild->wp->flags & PANE_MINIMISED)
-				continue;
 			lcchild->xoff = lc->xoff;
 			lcchild->yoff = yoff;
 			if (lcchild->type != LAYOUT_WINDOWPANE)
@@ -297,7 +289,7 @@ layout_fix_offsets1(struct layout_cell *lc)
 void
 layout_fix_offsets(struct window *w)
 {
-	struct layout_cell      *lc = w->layout_root;
+	struct layout_cell	*lc = w->layout_root;
 
 	lc->xoff = 0;
 	lc->yoff = 0;
@@ -534,100 +526,12 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 	}
 }
 
-/*
- * Return the nearest sibling of lc that is not a minimised WINDOWPANE leaf,
- * walking forward (direction=1) or backward (direction=0) in the parent's list.
- * Container cells (TOPBOTTOM/LEFTRIGHT) are never skipped.
- */
-static struct layout_cell *
-layout_active_neighbour(struct layout_cell *lc, int direction)
-{
-	struct layout_cell	*lcother;
-
-	if (direction)
-		lcother = TAILQ_NEXT(lc, entry);
-	else
-		lcother = TAILQ_PREV(lc, layout_cells, entry);
-
-	while (lcother != NULL) {
-		if (lcother->type != LAYOUT_WINDOWPANE)
-			return (lcother);		/* container — not skipped */
-		if (lcother->wp == NULL ||
-		    (~lcother->wp->flags & PANE_MINIMISED))
-			return (lcother);		/* visible leaf */
-		/* minimised leaf — keep walking */
-		if (direction)
-			lcother = TAILQ_NEXT(lcother, entry);
-		else
-			lcother = TAILQ_PREV(lcother, layout_cells, entry);
-	}
-	return (NULL);
-}
-
-/*
- * Redistribute space equally among all visible (non-minimised WINDOWPANE)
- * children of lcparent in the given direction.  Minimised WINDOWPANE leaves
- * are skipped; their stored sizes are left untouched.  Container children
- * have their own children resized proportionally via layout_resize_child_cells.
- *
- * If all children happen to be minimised (n==0), nothing is done.
- */
-void
-layout_redistribute_cells(struct window *w, struct layout_cell *lcparent,
-    enum layout_type type)
-{
-	struct layout_cell	*lc;
-	u_int			 n, total, each, rem, i, target;
-
-	/* Count visible cells at this level. */
-	n = 0;
-	TAILQ_FOREACH(lc, &lcparent->cells, entry) {
-		if (lc->type == LAYOUT_WINDOWPANE &&
-		    lc->wp != NULL &&
-		    (lc->wp->flags & PANE_MINIMISED))
-			continue;
-		n++;
-	}
-	if (n == 0)
-		return;
-
-	total = (type == LAYOUT_LEFTRIGHT) ? lcparent->sx : lcparent->sy;
-	if (total + 1 < n)	/* can't fit even the minimum borders */
-		return;
-
-	/*
-	 * each * n + (n-1) borders = total
-	 * → each = (total - (n-1)) / n,  rem = (total - (n-1)) % n
-	 * The first `rem` visible cells get (each+1) to consume the remainder.
-	 */
-	each = (total - (n - 1)) / n;
-	rem  = (total - (n - 1)) % n;
-
-	i = 0;
-	TAILQ_FOREACH(lc, &lcparent->cells, entry) {
-		if (lc->type == LAYOUT_WINDOWPANE &&
-		    lc->wp != NULL &&
-		    (lc->wp->flags & PANE_MINIMISED))
-			continue;
-		target = each + (i < rem ? 1 : 0);
-		if (type == LAYOUT_LEFTRIGHT)
-			lc->sx = target;
-		else
-			lc->sy = target;
-		if (lc->type != LAYOUT_WINDOWPANE)
-			layout_resize_child_cells(w, lc);
-		i++;
-	}
-}
-
-/* Destroy a cell and redistribute the space in tiled cells. */
+/* Destroy a cell and redistribute the space. */
 void
 layout_destroy_cell(struct window *w, struct layout_cell *lc,
     struct layout_cell **lcroot)
 {
 	struct layout_cell     *lcother, *lcparent;
-	int			direction;
-	int			is_minimised;
 
 	/*
 	 * If no parent, this is either a floating pane or the last
@@ -649,30 +553,23 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 		return;
 	}
 
-	/* In tiled layouts, merge the space into the previous or next cell. */
-	if (lcparent->type != LAYOUT_FLOATING) {
-		is_minimised = (lc->wp != NULL && (lc->wp->flags & PANE_MINIMISED));
-		direction = (lc == TAILQ_FIRST(&lcparent->cells)) ? 1 : 0;
-		lcother = layout_active_neighbour(lc, direction);
-		if (lcother == NULL)
-			lcother = layout_active_neighbour(lc, !direction);
-		if (lcother != NULL && lcparent->type == LAYOUT_LEFTRIGHT &&
-		    !is_minimised)
-			layout_resize_adjust(w, lcother, lcparent->type, lc->sx + 1);
-		else if (lcother != NULL && !is_minimised)
-			layout_resize_adjust(w, lcother, lcparent->type, lc->sy + 1);
-	}
+	/* Merge the space into the previous or next cell. */
+	if (lc == TAILQ_FIRST(&lcparent->cells))
+		lcother = TAILQ_NEXT(lc, entry);
+	else
+		lcother = TAILQ_PREV(lc, layout_cells, entry);
+	if (lcother != NULL && lcparent->type == LAYOUT_LEFTRIGHT)
+		layout_resize_adjust(w, lcother, lcparent->type, lc->sx + 1);
+	else if (lcother != NULL)
+		layout_resize_adjust(w, lcother, lcparent->type, lc->sy + 1);
 
 	/* Remove this from the parent's list. */
 	TAILQ_REMOVE(&lcparent->cells, lc, entry);
 	layout_free_cell(lc);
 
-	if (lcparent->type == LAYOUT_FLOATING)
-		return;
-
 	/*
-	 * In tiled layouts, if the parent now has one cell, remove
-	 * the parent from the tree and replace it by that cell.
+	 * If the parent now has one cell, remove the parent from the tree and
+	 * replace it by that cell.
 	 */
 	lc = TAILQ_FIRST(&lcparent->cells);
 	if (lc != NULL && TAILQ_NEXT(lc, entry) == NULL) {
@@ -682,90 +579,12 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 		if (lc->parent == NULL) {
 			lc->xoff = 0;
 			lc->yoff = 0;
-
-			/*
-			 * If the sole remaining child is a minimised
-			 * WINDOWPANE, its stored size may be stale (it never
-			 * received the space that was given to the removed
-			 * cell). Restore the full window size so that
-			 * unminimise can reclaim the correct amount.
-			 */
-			if (lc->type == LAYOUT_WINDOWPANE &&
-			    lc->wp != NULL &&
-			    (lc->wp->flags & PANE_MINIMISED)) {
-				lc->sx = lcparent->sx;
-				lc->sy = lcparent->sy;
-			}
 			*lcroot = lc;
 		} else
 			TAILQ_REPLACE(&lc->parent->cells, lcparent, lc, entry);
 
 		layout_free_cell(lcparent);
 	}
-}
-
-/* Minimise a cell and redistribute the space in tiled cells. */
-void
-layout_minimise_cell(struct window *w, struct layout_cell *lc)
-{
-	struct layout_cell     *lcother, *lcparent, *lcchild;
-	u_int			space = 0;
-	int			direction;
-
-	lcparent = lc->parent;
-	if (lcparent == NULL ||
-	    lcparent->type == LAYOUT_FLOATING) {
-		return;
-	}
-
-	/* Merge the space into the nearest non-minimised sibling. */
-	{
-		direction = (lc == TAILQ_FIRST(&lcparent->cells)) ? 1 : 0;
-		lcother = layout_active_neighbour(lc, direction);
-		if (lcother == NULL)
-			lcother = layout_active_neighbour(lc, !direction);
-	}
-	if (lcother != NULL && lcparent->type == LAYOUT_LEFTRIGHT)
-		layout_resize_adjust(w, lcother, lcparent->type, lc->sx + 1);
-	else if (lcother != NULL)
-		layout_resize_adjust(w, lcother, lcparent->type, lc->sy + 1);
-
-	/* If the parent cells are all minimised, minimise it too. */
-	if (lcparent != NULL) {
-		TAILQ_FOREACH(lcchild, &lcparent->cells, entry) {
-			if (lcchild->wp == NULL ||
-			    lcchild->wp->flags & PANE_MINIMISED)
-				continue;
-			if (lcparent->type == LAYOUT_LEFTRIGHT) {
-				space += lcchild->sx;
-			} else if (lcparent->type == LAYOUT_TOPBOTTOM) {
-				space += lcchild->sy;
-			}
-		}
-		if (space == 0)
-			layout_minimise_cell(w, lcparent);
-	}
-}
-
-/* Unminimise a cell and redistribute the space in tiled cells. */
-void
-layout_unminimise_cell(struct window *w, struct layout_cell *lc)
-{
-	struct layout_cell	*lcparent;
-
-	if (lc == NULL)
-		return;
-	lcparent = lc->parent;
-	if (lcparent == NULL || lcparent->type == LAYOUT_FLOATING)
-		return;
-
-	/*
-	 * Redistribute the parent's space equally among all visible (non-
-	 * minimised) children, including lc which has just been unminimised.
-	 * This ensures every pane at this level gets an equal share rather
-	 * than one pane losing most of its space to the restored pane.
-	 */
-	layout_redistribute_cells(w, lcparent, lcparent->type);
 }
 
 /* Initialize layout for pane. */

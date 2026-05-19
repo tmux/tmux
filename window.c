@@ -542,26 +542,13 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 	w->active->active_point = next_active_point++;
 	w->active->flags |= PANE_CHANGED;
 
-	if (wp->flags & PANE_MINIMISED) {
-		wp->flags &= ~PANE_MINIMISED;
-		if (w->layout_root != NULL && wp->saved_layout_cell != NULL) {
-			wp->layout_cell = wp->saved_layout_cell;
-			wp->saved_layout_cell = NULL;
-			layout_unminimise_cell(w, wp->layout_cell);
-			layout_fix_offsets(w);
-			layout_fix_panes(w, NULL);
-		}
-	}
-	notify_window("window-layout-changed", w);
-	server_redraw_window(w);
-
-
 	if (options_get_number(global_options, "focus-events")) {
 		window_pane_update_focus(lastwp);
 		window_pane_update_focus(w->active);
 	}
 
 	tty_update_window_offset(w);
+	server_redraw_window(w);
 
 	if (notify)
 		notify_window("window-pane-changed", w);
@@ -722,21 +709,6 @@ window_zoom(struct window_pane *wp)
 		window_set_active_pane(w, wp, 1);
 	wp->flags |= PANE_ZOOMED;
 
-	/* Bring pane above other tiled panes and minimise floating panes. */
-	TAILQ_FOREACH(wp1, &w->z_index, zentry) {
-		if (wp1 == wp) {
-			wp1->saved_flags |= (wp1->flags & PANE_MINIMISED);
-			wp1->flags &= ~PANE_MINIMISED;
-			continue;
-		}
-		if (wp1->flags & PANE_FLOATING) {
-			wp1->saved_flags |= (wp1->flags & PANE_MINIMISED);
-			wp1->flags |= PANE_MINIMISED;
-			continue;
-		}
-		break;
-	}
-
 	TAILQ_FOREACH(wp1, &w->panes, entry) {
 		wp1->saved_layout_cell = wp1->layout_cell;
 		wp1->layout_cell = NULL;
@@ -763,20 +735,9 @@ window_unzoom(struct window *w, int notify)
 	w->layout_root = w->saved_layout_root;
 	w->saved_layout_root = NULL;
 
-	TAILQ_FOREACH(wp, &w->z_index, zentry) {
-		if (wp->flags & PANE_FLOATING) {
-			wp->flags &= ~PANE_MINIMISED | (wp->saved_flags & PANE_MINIMISED);
-			continue;
-		}
-		break;
-	}
-
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		wp->layout_cell = wp->saved_layout_cell;
-		if (wp->flags & PANE_MINIMISED)
-			wp->saved_layout_cell = wp->layout_cell;
-		else
-			wp->saved_layout_cell = NULL;
+		wp->saved_layout_cell = NULL;
 		wp->flags &= ~PANE_ZOOMED;
 	}
 	layout_fix_panes(w, NULL);
@@ -996,8 +957,8 @@ window_printable_flags(struct winlink *wl, int escape)
 const char *
 window_pane_printable_flags(struct window_pane *wp)
 {
-	static char	 flags[32];
 	struct window	*w = wp->window;
+	static char	 flags[32];
 	int		 pos = 0;
 
 	if (wp == w->active)
@@ -1008,9 +969,6 @@ window_pane_printable_flags(struct window_pane *wp)
 		flags[pos++] = 'Z';
 	if (wp->flags & PANE_FLOATING)
 		flags[pos++] = 'F';
-	if (wp->flags & PANE_MINIMISED)
-		flags[pos++] = 'm';
-
 	flags[pos] = '\0';
 	return (flags);
 }
@@ -1386,10 +1344,8 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 int
 window_pane_visible(struct window_pane *wp)
 {
-	if (~wp->window->flags & WINDOW_ZOOMED &&
-	    ~wp->flags & PANE_MINIMISED)
+	if (~wp->window->flags & WINDOW_ZOOMED)
 		return (1);
-
 	return (wp == wp->window->active);
 }
 
@@ -2178,16 +2134,6 @@ window_pane_float_geometry(struct window *w, struct window_pane *wp,
 {
 	u_int		x, y, sx, sy;
 	const u_int	cx = 4, cy = 2;
-
-	if (wp != NULL && (wp->flags & PANE_SAVED_FLOAT) &&
-	    !args_has(args, 'x') && !args_has(args, 'y') &&
-	    !args_has(args, 'X') && !args_has(args, 'Y')) {
-		x  = wp->saved_float_xoff;
-		y  = wp->saved_float_yoff;
-		sx = wp->saved_float_sx;
-		sy = wp->saved_float_sy;
-		goto out;
-	}
 
 	/* Default size. */
 	sx = w->sx / 2;
