@@ -340,8 +340,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 	case 0:
 		break;
 	case 2:
-		if (remain_on_exit == 2 &&
-		    WIFEXITED(wp->status) && WEXITSTATUS(wp->status) == 0)
+		if (WIFEXITED(wp->status) && WEXITSTATUS(wp->status) == 0)
 			break;
 		/* FALLTHROUGH */
 	case 1:
