@@ -288,6 +288,15 @@ layout_parse(struct window *w, const char *layout, char **cause)
 	if (floating_lc != NULL)
 		layout_assign(&wp, floating_lc, PANE_FLOATING);
 
+        /* Fix pane Z indexes. */
+        while (!TAILQ_EMPTY(&w->z_index)) {
+                wp = TAILQ_FIRST(&w->z_index);
+		TAILQ_REMOVE(&w->z_index, wp, zentry);
+	}
+	if (floating_lc != NULL)
+		layout_fix_zindexes(w, floating_lc);
+	layout_fix_zindexes(w, tiled_lc);
+
 	/* Update pane offsets and sizes. */
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);

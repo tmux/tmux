@@ -585,6 +585,14 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 					wp->flags |= PANE_REDRAW;
 			}
 		}
+
+		/* If the pane is floating, move to the front. */
+		if (wp->flags & PANE_FLOATING) {
+			TAILQ_REMOVE(&w->z_index, wp, zentry);
+			TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
+			wp->flags |= PANE_REDRAW;
+		}
+
 		if (wp == w->active)
 			break;
 		wp = w->active;
@@ -600,18 +608,32 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 
 	pane_status = options_get_number(w->options, "pane-border-status");
 
-	TAILQ_FOREACH(wp, &w->panes, entry) {
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
 		if (!window_pane_visible(wp))
 			continue;
 		window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
-		if ((int)x < xoff || x > xoff + sx)
-			continue;
-		if (pane_status == PANE_STATUS_TOP) {
-			if ((int)y <= yoff - 2 || y > yoff + sy - 1)
+		if (~wp->flags & PANE_FLOATING) {
+			/* Tiled - to and including bottom or right border.  */
+			if ((int)x < xoff || x > xoff + sx)
 				continue;
+			if (pane_status == PANE_STATUS_TOP) {
+				if ((int)y < yoff - 1 || y > yoff + sy)
+					continue;
+			} else {
+				if ((int)y < yoff || y > yoff + sy)
+					continue;
+			}
 		} else {
-			if ((int)y < yoff || y > yoff + sy)
+			/* Floating - include top or or left border. */
+			if ((int)x < xoff - 1 || x > xoff + sx)
 				continue;
+			if (pane_status == PANE_STATUS_TOP) {
+				if ((int)y <= yoff - 2 || y > yoff + sy - 1)
+					continue;
+			} else {
+				if ((int)y < yoff - 1 || y > yoff + sy)
+					continue;
+			}
 		}
 		return (wp);
 	}
@@ -762,6 +784,12 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 		else
 			TAILQ_INSERT_AFTER(&w->panes, other, wp, entry);
 	}
+	if (~flags & SPAWN_FLOATING)
+		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
+	else {
+		TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
+		wp->flags |= PANE_FLOATING;
+	}
 	return (wp);
 }
 
@@ -794,8 +822,8 @@ void
 window_remove_pane(struct window *w, struct window_pane *wp)
 {
 	window_lost_pane(w, wp);
-
 	TAILQ_REMOVE(&w->panes, wp, entry);
+	TAILQ_REMOVE(&w->z_index, wp, zentry);
 	window_pane_destroy(wp);
 }
 
@@ -861,7 +889,7 @@ window_count_panes(struct window *w, int with_floating)
 	u_int			 n = 0;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-                if (with_floating || ~wp->flags & PANE_FLOATING)
+		if (with_floating || ~wp->flags & PANE_FLOATING)
 			n++;
 	}
 	return (n);
@@ -880,6 +908,7 @@ window_destroy_panes(struct window *w)
 	while (!TAILQ_EMPTY(&w->panes)) {
 		wp = TAILQ_FIRST(&w->panes);
 		TAILQ_REMOVE(&w->panes, wp, entry);
+		TAILQ_REMOVE(&w->z_index, wp, zentry);
 		window_pane_destroy(wp);
 	}
 }
@@ -1214,7 +1243,7 @@ window_pane_reset_mode_all(struct window_pane *wp)
 static void
 window_pane_copy_paste(struct window_pane *wp, char *buf, size_t len)
 {
- 	struct window_pane	*loop;
+	struct window_pane	*loop;
 
 	TAILQ_FOREACH(loop, &wp->window->panes, entry) {
 		if (loop != wp &&
@@ -1232,7 +1261,7 @@ window_pane_copy_paste(struct window_pane *wp, char *buf, size_t len)
 static void
 window_pane_copy_key(struct window_pane *wp, key_code key)
 {
- 	struct window_pane	*loop;
+	struct window_pane	*loop;
 
 	TAILQ_FOREACH(loop, &wp->window->panes, entry) {
 		if (loop != wp &&
