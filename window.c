@@ -562,6 +562,7 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 	}
 
 	tty_update_window_offset(w);
+	server_redraw_window(w);
 
 	if (notify)
 		notify_window("window-pane-changed", w);
@@ -610,10 +611,7 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 		if (wp == w->active)
 			break;
 
-		/* If you want tiled planes to be able to bury
-		 * floating planes then do this regardless of
-		 * wp->flags & PANE_FLOATING or not.  A new option?
-		 */
+		/* If the pane is floating, move to the front. */
 		if (wp->flags & PANE_FLOATING) {
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
@@ -640,8 +638,7 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 			continue;
 		window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
 		if (~wp->flags & PANE_FLOATING) {
-			/* Tiled, select up to including bottom or
-			   right border. */
+			/* Tiled - to and including bottom or right border. */
 			if ((int)x < xoff || x > xoff + sx)
 				continue;
 			if (pane_status == PANE_STATUS_TOP) {
@@ -652,7 +649,7 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 					continue;
 			}
 		} else {
-			/* Floating, include top or or left border. */
+			/* Floating - include top or or left border. */
 			if ((int)x < xoff - 1 || x > xoff + sx)
 				continue;
 			if (pane_status == PANE_STATUS_TOP) {
@@ -660,7 +657,7 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 					continue;
 			} else {
 				if ((int)y < yoff - 1 || y > yoff + sy)
-				continue;
+					continue;
 			}
 		}
 		return (wp);
@@ -835,12 +832,12 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 		else
 			TAILQ_INSERT_AFTER(&w->panes, other, wp, entry);
 	}
-	/* Floating panes are created above tiled planes. */
-	if (flags & SPAWN_FLOATING) {
+	if (~flags & SPAWN_FLOATING)
+		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
+	else {
 		wp->flags |= PANE_FLOATING;
 		TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
-	} else
-		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
+	}
 	return (wp);
 }
 
@@ -873,7 +870,6 @@ void
 window_remove_pane(struct window *w, struct window_pane *wp)
 {
 	window_lost_pane(w, wp);
-
 	TAILQ_REMOVE(&w->panes, wp, entry);
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
 	window_pane_destroy(wp);
@@ -941,7 +937,7 @@ window_count_panes(struct window *w, int with_floating)
 	u_int			 n = 0;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-                if (with_floating || ~wp->flags & PANE_FLOATING)
+		if (with_floating || ~wp->flags & PANE_FLOATING)
 			n++;
 	}
 	return (n);
@@ -996,8 +992,8 @@ window_printable_flags(struct winlink *wl, int escape)
 const char *
 window_pane_printable_flags(struct window_pane *wp)
 {
-	static char	 flags[32];
 	struct window	*w = wp->window;
+	static char	 flags[32];
 	int		 pos = 0;
 
 	if (wp == w->active)
@@ -1302,7 +1298,7 @@ window_pane_reset_mode_all(struct window_pane *wp)
 static void
 window_pane_copy_paste(struct window_pane *wp, char *buf, size_t len)
 {
- 	struct window_pane	*loop;
+	struct window_pane	*loop;
 
 	TAILQ_FOREACH(loop, &wp->window->panes, entry) {
 		if (loop != wp &&
@@ -1320,7 +1316,7 @@ window_pane_copy_paste(struct window_pane *wp, char *buf, size_t len)
 static void
 window_pane_copy_key(struct window_pane *wp, key_code key)
 {
- 	struct window_pane	*loop;
+	struct window_pane	*loop;
 
 	TAILQ_FOREACH(loop, &wp->window->panes, entry) {
 		if (loop != wp &&
@@ -2118,10 +2114,11 @@ window_pane_border_status_get_range(struct window_pane *wp, u_int x, u_int y)
 	return (style_ranges_get_range(srs, x - wp->xoff - 2));
 }
 
+/* Work out geometry for tiled panes. */
 int
-window_pane_tile_geometry(struct window *w, struct window_pane *wp, int *out_size,
-    int *out_flags, enum layout_type *out_type, struct cmdq_item *item,
-    struct args *args, char **cause)
+window_pane_tiled_geometry(struct window *w, struct window_pane *wp,
+    int *out_size, int *out_flags, enum layout_type *out_type,
+    struct cmdq_item *item, struct args *args, char **cause)
 {
 	int			size, flags = *out_flags;
 	enum layout_type	type;
@@ -2239,6 +2236,65 @@ window_pane_float_geometry(struct window *w, struct window_pane *wp,
 	}
 
 out:
+	*out_x = x;
+	*out_y = y;
+	*out_sx = sx;
+	*out_sy = sy;
+	return (0);
+}
+
+/* Work out geometry for floating panes. */
+int
+window_pane_floating_geometry(struct window *w, __unused struct window_pane *wp,
+    u_int *out_x, u_int *out_y, u_int *out_sx, u_int *out_sy,
+    struct cmdq_item *item, struct args *args, char **cause)
+{
+	u_int	x, y, sx = w->sx / 2, sy = w->sy / 2;
+
+	if (args_has(args, 'x')) {
+		sx = args_percentage_and_expand(args, 'x', 0, USHRT_MAX, w->sx,
+		    item, cause);
+		if (*cause != NULL)
+			return (-1);
+	}
+	if (args_has(args, 'y')) {
+		sy = args_percentage_and_expand(args, 'y', 0, USHRT_MAX, w->sy,
+		    item, cause);
+		if (*cause != NULL)
+			return (-1);
+	}
+
+	if (args_has(args, 'X')) {
+		x = args_percentage_and_expand(args, 'X', 0, USHRT_MAX, w->sx,
+		    item, cause);
+		if (*cause != NULL)
+			return (-1);
+	} else {
+		if (w->last_new_pane_x == 0)
+			x = 4;
+		else {
+			x = w->last_new_pane_x + 4;
+			if (w->last_new_pane_x > w->sx)
+				x = 4;
+		}
+		w->last_new_pane_x = x;
+	}
+	if (args_has(args, 'Y')) {
+		y = args_percentage_and_expand(args, 'Y', 0, USHRT_MAX, w->sy,
+		    item, cause);
+		if (*cause != NULL)
+			return (-1);
+	} else {
+		if (w->last_new_pane_y == 0)
+			y = 2;
+		else {
+			y = w->last_new_pane_y + 2;
+			if (w->last_new_pane_y > w->sy)
+				y = 2;
+		}
+		w->last_new_pane_y = y;
+	}
+
 	*out_x = x;
 	*out_y = y;
 	*out_sx = sx;

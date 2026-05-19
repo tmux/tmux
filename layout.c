@@ -234,6 +234,7 @@ layout_make_node(struct layout_cell *lc, enum layout_type type)
 	lc->wp = NULL;
 }
 
+/* Fix Z indexes. */
 void
 layout_fix_zindexes(struct window *w, struct layout_cell *lc)
 {
@@ -245,15 +246,15 @@ layout_fix_zindexes(struct window *w, struct layout_cell *lc)
 	switch (lc->type) {
 	case LAYOUT_WINDOWPANE:
 		TAILQ_INSERT_TAIL(&w->z_index, lc->wp, zentry);
-		break;
+	        break;
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
 	case LAYOUT_FLOATING:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
-			layout_fix_zindexes(w, lcchild);
-		return;
+	                layout_fix_zindexes(w, lcchild);
+	        return;
 	default:
-		fatalx("bad layout type");
+	        fatalx("bad layout type");
 	}
 }
 

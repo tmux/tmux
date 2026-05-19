@@ -40,10 +40,11 @@ const struct cmd_entry cmd_new_pane_entry = {
 
 	.args = { "bc:de:fF:hIkl:Lm:p:PR:s:S:t:vx:X:y:Y:Z", 0, -1, NULL },
 	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
-		 "[-F format] [-l size] [-m message] [-p percentage] [-s style] "
-		 "[-S active-border-style] [-R inactive-border-style] "
-		 "[-x width] [-y height] [-X x-position] [-Y y-position] "
-		 CMD_TARGET_PANE_USAGE " [shell-command [argument ...]]",
+		 "[-F format] [-l size] [-m message] [-p percentage] "
+	         "[-s style] [-S active-border-style] "
+	         "[-R inactive-border-style] [-x width] [-y height] "
+	         "[-X x-position] [-Y y-position] " CMD_TARGET_PANE_USAGE " "
+	         "[shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -68,21 +69,22 @@ const struct cmd_entry cmd_split_window_entry = {
 };
 
 static struct layout_cell *
-cmd_split_window_get_floating_layout_cell(struct cmdq_item *item,
-    struct args *args, struct window *w, struct window_pane *wp)
+cmd_split_window_get_floating_cell(struct cmdq_item *item, struct args *args,
+    struct window *w, struct window_pane *wp)
 {
 	struct layout_cell	*lc = NULL;
 	char			*cause = NULL;
 	u_int			 x, y, sx, sy;
 
-	if (window_pane_float_geometry(w, wp, &x, &y, &sx, &sy, item, args, &cause)
-	    != 0) {
-		cmdq_error(item, "invalid float geometry %s", cause);
+	if (window_pane_floating_geometry(w, wp, &x, &y, &sx, &sy, item, args,
+	    &cause) != 0) {
+		cmdq_error(item, "invalid floating pane geometry %s", cause);
 		free(cause);
 		return (NULL);
 	}
 
-	/* Floating panes sit in layout cells which are not in the layout_root
+	/*
+	 * Floating panes sit in layout cells which are not in the layout_root
 	 * tree so we call it with parent == NULL.
 	 */
 	lc = layout_create_cell(NULL);
@@ -95,8 +97,8 @@ cmd_split_window_get_floating_layout_cell(struct cmdq_item *item,
 }
 
 static struct layout_cell *
-cmd_split_window_get_tiled_layout_cell(struct cmdq_item *item,
-    struct args *args, struct window *w, struct window_pane *wp, int flags)
+cmd_split_window_get_tiled_cell(struct cmdq_item *item, struct args *args,
+    struct window *w, struct window_pane *wp, int flags)
 {
 	enum layout_type	 type;
 	struct layout_cell	*lc = NULL;
@@ -113,7 +115,7 @@ cmd_split_window_get_tiled_layout_cell(struct cmdq_item *item,
 		return (NULL);
 	}
 
-	if (window_pane_tile_geometry(w, wp, &size, &flags, &type, item, args,
+	if (window_pane_tiled_geometry(w, wp, &size, &flags, &type, item, args,
 	    &cause) != 0) {
 		cmdq_error(item, "invalid tiled geometry %s", cause);
 		free(cause);
@@ -124,6 +126,7 @@ cmd_split_window_get_tiled_layout_cell(struct cmdq_item *item,
 	lc = layout_split_pane(wp, type, size, flags);
 	if (lc == NULL)
 		cmdq_error(item, "no space for new pane");
+
 	return (lc);
 }
 
@@ -151,7 +154,6 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		is_floating = !args_has(args, 'L');
 	else
 		is_floating = 0;
-
 	input = (args_has(args, 'I') && count == 0);
 
 	flags = is_floating ? SPAWN_FLOATING : 0;
@@ -163,11 +165,9 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		flags |= SPAWN_EMPTY;
 
 	if (is_floating)
-		lc = cmd_split_window_get_floating_layout_cell(item, args, w,
-			wp);
+		lc = cmd_split_window_get_floating_cell(item, args, w, wp);
 	else
-		lc = cmd_split_window_get_tiled_layout_cell(item, args, w, wp,
-			flags);
+		lc = cmd_split_window_get_tiled_cell(item, args, w, wp, flags);
 	if (lc == NULL)
 		return (CMD_RETURN_ERROR);
 
