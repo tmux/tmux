@@ -1380,6 +1380,9 @@ struct window {
 	u_int			 new_xpixel;
 	u_int			 new_ypixel;
 
+	u_int			 last_new_pane_x;
+	u_int			 last_new_pane_y;
+
 	struct utf8_data	*fill_character;
 	int			 flags;
 #define WINDOW_BELL 0x1
@@ -3472,8 +3475,11 @@ enum client_theme window_pane_get_theme(struct window_pane *);
 void		 window_pane_send_theme_update(struct window_pane *);
 struct style_range *window_pane_border_status_get_range(struct window_pane *,
 			u_int, u_int);
-int		 window_pane_tile_geometry(struct window *,
+int              window_pane_tiled_geometry(struct window *,
 		     struct window_pane *, int *, int *, enum layout_type *,
+		     struct cmdq_item *, struct args *, char **);
+int              window_pane_floating_geometry(struct window *,
+		     struct window_pane *, u_int *, u_int *, u_int *, u_int *,
 		     struct cmdq_item *, struct args *, char **);
 
 /* layout.c */
@@ -3489,6 +3495,7 @@ struct layout_cell *layout_search_by_border(struct layout_cell *, u_int, u_int);
 void             layout_set_size(struct layout_cell *, u_int, u_int, int, int);
 void		 layout_make_leaf(struct layout_cell *, struct window_pane *);
 void		 layout_make_node(struct layout_cell *, enum layout_type);
+void		 layout_fix_zindexes(struct window *, struct layout_cell *);
 void		 layout_fix_offsets(struct window *);
 void		 layout_fix_panes(struct window *, struct window_pane *);
 void		 layout_resize_adjust(struct window *, struct layout_cell *,

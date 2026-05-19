@@ -548,6 +548,7 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 	}
 
 	tty_update_window_offset(w);
+	server_redraw_window(w);
 
 	if (notify)
 		notify_window("window-pane-changed", w);
@@ -594,7 +595,17 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 		}
 		if (wp == w->active)
 			break;
+
+		/* If the pane is floating, move to the front. */
+		if (wp->flags & PANE_FLOATING) {
+			TAILQ_REMOVE(&w->z_index, wp, zentry);
+			TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
+			wp->flags |= PANE_REDRAW;
+		}
+
 		wp = w->active;
+		if (wp == NULL)
+			break;
 	}
 }
 
@@ -607,18 +618,32 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 
 	pane_status = options_get_number(w->options, "pane-border-status");
 
-	TAILQ_FOREACH(wp, &w->panes, entry) {
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
 		if (!window_pane_visible(wp))
 			continue;
 		window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
-		if ((int)x < xoff || x > xoff + sx)
-			continue;
-		if (pane_status == PANE_STATUS_TOP) {
-			if ((int)y <= yoff - 2 || y > yoff + sy - 1)
+		if (~wp->flags & PANE_FLOATING) {
+			/* Tiled - to and including bottom or right border. */
+			if ((int)x < xoff || x > xoff + sx)
 				continue;
+			if (pane_status == PANE_STATUS_TOP) {
+				if ((int)y < yoff - 1 || y > yoff + sy)
+					continue;
+			} else {
+				if ((int)y < yoff || y > yoff + sy)
+					continue;
+			}
 		} else {
-			if ((int)y < yoff || y > yoff + sy)
+			/* Floating - include top or or left border. */
+			if ((int)x < xoff - 1 || x > xoff + sx)
 				continue;
+			if (pane_status == PANE_STATUS_TOP) {
+				if ((int)y <= yoff - 2 || y > yoff + sy - 1)
+					continue;
+			} else {
+				if ((int)y < yoff - 1 || y > yoff + sy)
+					continue;
+			}
 		}
 		return (wp);
 	}
@@ -674,7 +699,6 @@ window_zoom(struct window_pane *wp)
 
 	if (w->flags & WINDOW_ZOOMED)
 		return (-1);
-
 	if (window_count_panes(w, 1) == 1)
 		return (-1);
 
@@ -711,7 +735,7 @@ window_unzoom(struct window *w, int notify)
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		wp->layout_cell = wp->saved_layout_cell;
 		wp->saved_layout_cell = NULL;
-		wp->flags ^= PANE_ZOOMED;
+		wp->flags &= ~PANE_ZOOMED;
 	}
 	layout_fix_panes(w, NULL);
 
@@ -764,10 +788,16 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 			TAILQ_INSERT_BEFORE(other, wp, entry);
 	} else {
 		log_debug("%s: @%u after %%%u", __func__, w->id, wp->id);
-		if (flags & SPAWN_FULLSIZE)
+		if (flags & (SPAWN_FULLSIZE|SPAWN_FLOATING))
 			TAILQ_INSERT_TAIL(&w->panes, wp, entry);
 		else
 			TAILQ_INSERT_AFTER(&w->panes, other, wp, entry);
+	}
+	if (~flags & SPAWN_FLOATING)
+		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
+	else {
+		wp->flags |= PANE_FLOATING;
+		TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
 	}
 	return (wp);
 }
@@ -801,8 +831,8 @@ void
 window_remove_pane(struct window *w, struct window_pane *wp)
 {
 	window_lost_pane(w, wp);
-
 	TAILQ_REMOVE(&w->panes, wp, entry);
+	TAILQ_REMOVE(&w->z_index, wp, zentry);
 	window_pane_destroy(wp);
 }
 
@@ -868,7 +898,7 @@ window_count_panes(struct window *w, int with_floating)
 	u_int			 n = 0;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-                if (with_floating || ~wp->flags & PANE_FLOATING)
+		if (with_floating || ~wp->flags & PANE_FLOATING)
 			n++;
 	}
 	return (n);
@@ -887,6 +917,7 @@ window_destroy_panes(struct window *w)
 	while (!TAILQ_EMPTY(&w->panes)) {
 		wp = TAILQ_FIRST(&w->panes);
 		TAILQ_REMOVE(&w->panes, wp, entry);
+		TAILQ_REMOVE(&w->z_index, wp, zentry);
 		window_pane_destroy(wp);
 	}
 }
@@ -924,7 +955,7 @@ window_pane_printable_flags(struct window_pane *wp)
 {
 	struct window	*w = wp->window;
 	static char	 flags[32];
-	u_int		 pos = 0;
+	int		 pos = 0;
 
 	if (wp == w->active)
 		flags[pos++] = '*';
@@ -1225,7 +1256,7 @@ window_pane_reset_mode_all(struct window_pane *wp)
 static void
 window_pane_copy_paste(struct window_pane *wp, char *buf, size_t len)
 {
- 	struct window_pane	*loop;
+	struct window_pane	*loop;
 
 	TAILQ_FOREACH(loop, &wp->window->panes, entry) {
 		if (loop != wp &&
@@ -1243,7 +1274,7 @@ window_pane_copy_paste(struct window_pane *wp, char *buf, size_t len)
 static void
 window_pane_copy_key(struct window_pane *wp, key_code key)
 {
- 	struct window_pane	*loop;
+	struct window_pane	*loop;
 
 	TAILQ_FOREACH(loop, &wp->window->panes, entry) {
 		if (loop != wp &&
@@ -2039,8 +2070,9 @@ window_pane_border_status_get_range(struct window_pane *wp, u_int x, u_int y)
 	return (style_ranges_get_range(srs, x - wp->xoff - 2));
 }
 
+/* Work out geometry for tiled panes. */
 int
-window_pane_tile_geometry(struct window *w, struct window_pane *wp,
+window_pane_tiled_geometry(struct window *w, struct window_pane *wp,
     int *out_size, int *out_flags, enum layout_type *out_type,
     struct cmdq_item *item, struct args *args, char **cause)
 {
@@ -2086,5 +2118,64 @@ window_pane_tile_geometry(struct window *w, struct window_pane *wp,
 	*out_size = size;
 	*out_flags = flags;
 	*out_type = type;
+	return (0);
+}
+
+/* Work out geometry for floating panes. */
+int
+window_pane_floating_geometry(struct window *w, __unused struct window_pane *wp,
+    u_int *out_x, u_int *out_y, u_int *out_sx, u_int *out_sy,
+    struct cmdq_item *item, struct args *args, char **cause)
+{
+	u_int	x, y, sx = w->sx / 2, sy = w->sy / 2;
+
+	if (args_has(args, 'x')) {
+		sx = args_percentage_and_expand(args, 'x', 0, USHRT_MAX, w->sx,
+		    item, cause);
+		if (*cause != NULL)
+			return (-1);
+	}
+	if (args_has(args, 'y')) {
+		sy = args_percentage_and_expand(args, 'y', 0, USHRT_MAX, w->sy,
+		    item, cause);
+		if (*cause != NULL)
+			return (-1);
+	}
+
+	if (args_has(args, 'X')) {
+		x = args_percentage_and_expand(args, 'X', 0, USHRT_MAX, w->sx,
+		    item, cause);
+		if (*cause != NULL)
+			return (-1);
+	} else {
+		if (w->last_new_pane_x == 0)
+			x = 4;
+		else {
+			x = w->last_new_pane_x + 4;
+			if (w->last_new_pane_x > w->sx)
+				x = 4;
+		}
+		w->last_new_pane_x = x;
+	}
+	if (args_has(args, 'Y')) {
+		y = args_percentage_and_expand(args, 'Y', 0, USHRT_MAX, w->sy,
+		    item, cause);
+		if (*cause != NULL)
+			return (-1);
+	} else {
+		if (w->last_new_pane_y == 0)
+			y = 2;
+		else {
+			y = w->last_new_pane_y + 2;
+			if (w->last_new_pane_y > w->sy)
+				y = 2;
+		}
+		w->last_new_pane_y = y;
+	}
+
+	*out_x = x;
+	*out_y = y;
+	*out_sx = sx;
+	*out_sy = sy;
 	return (0);
 }
