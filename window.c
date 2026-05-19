@@ -699,6 +699,8 @@ window_zoom(struct window_pane *wp)
 
 	if (w->flags & WINDOW_ZOOMED)
 		return (-1);
+       if (window_count_panes(w, 1) == 1)
+	       return (-1);
 
 	if (w->active != wp)
 		window_set_active_pane(w, wp, 1);
