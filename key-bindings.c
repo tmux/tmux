@@ -468,7 +468,7 @@ key_bindings_init(void)
 		"bind -n MouseDrag1Border { resize-pane -M }",
 
 		/* Mouse button 1 down on status line. */
-	        "bind -n MouseDown1Status { switch-client -t= }",
+		"bind -n MouseDown1Status { switch-client -t= }",
 		"bind -n C-MouseDown1Status { swap-window -t@ }",
 
 		/* Mouse button 1 down on default pane-border-format */
