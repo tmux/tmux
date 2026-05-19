@@ -1386,9 +1386,6 @@ struct window {
 	u_int			 xpixel;
 	u_int			 ypixel;
 
-	u_int			 last_new_pane_x;
-	u_int			 last_new_pane_y;
-
 	u_int			 new_sx;
 	u_int			 new_sy;
 	u_int			 new_xpixel;
