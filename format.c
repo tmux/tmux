@@ -2263,7 +2263,6 @@ format_cb_pane_minimised_flag(struct format_tree *ft)
 	return (NULL);
 }
 
-
 /* Callback for pane_mode. */
 static void *
 format_cb_pane_mode(struct format_tree *ft)
@@ -4235,7 +4234,6 @@ format_strip(struct format_expand_state *es, const char *s)
 	*cp = '\0';
 	return (out);
 }
-
 
 /* Skip until end. */
 static const char *
