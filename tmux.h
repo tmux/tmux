@@ -1334,6 +1334,8 @@ struct window_pane {
 
 	struct style	 scrollbar_style;
 
+	struct visible_ranges r;
+
 	TAILQ_ENTRY(window_pane) entry;  /* link in list of all panes */
 	TAILQ_ENTRY(window_pane) sentry; /* link in list of last visited */
         TAILQ_ENTRY(window_pane) zentry; /* z-index link in list of all panes */
@@ -3338,6 +3340,9 @@ void	 screen_write_alternateoff(struct screen_write_ctx *,
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *);
 void	 screen_redraw_pane(struct client *, struct window_pane *, int);
+int	 screen_redraw_is_visible(struct visible_ranges *, u_int);
+struct visible_ranges *screen_redraw_get_visible_ranges(struct window_pane *,
+	     u_int, u_int, u_int, struct visible_ranges *);
 
 /* screen.c */
 void	 screen_init(struct screen *, u_int, u_int, u_int);

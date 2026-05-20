@@ -1313,7 +1313,7 @@ const struct options_table_entry options_table[] = {
 
 	{ .name = "pane-active-border-style",
 	  .type = OPTIONS_TABLE_STRING,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "#{?pane_in_mode,fg=yellow,#{?synchronize-panes,fg=red,fg=green}}",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
@@ -1372,7 +1372,7 @@ const struct options_table_entry options_table[] = {
 
 	{ .name = "pane-border-style",
 	  .type = OPTIONS_TABLE_STRING,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "default",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",

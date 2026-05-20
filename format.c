@@ -4218,7 +4218,6 @@ format_strip(struct format_expand_state *es, const char *s)
 	return (out);
 }
 
-
 /* Skip until end. */
 static const char *
 format_skip1(struct format_expand_state *es, const char *s, const char *end)
