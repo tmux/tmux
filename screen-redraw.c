@@ -115,7 +115,6 @@ screen_redraw_two_panes(struct window *w, enum layout_type *type)
 	}
 	if (count <= 1)
 		return (0);
-
 	return (1);
 }
 
@@ -920,7 +919,7 @@ screen_redraw_draw_border_arrows(struct screen_redraw_ctx *ctx, int i,
 
 	if (wp == NULL)
 		return;
-	if ((int)i != wp->xoff + 1 && (int)j != wp->yoff + 1)
+	if (i != wp->xoff + 1 && j != wp->yoff + 1)
 		return;
 
 	value = options_get_number(oo, "pane-border-indicators");
@@ -931,7 +930,7 @@ screen_redraw_draw_border_arrows(struct screen_redraw_ctx *ctx, int i,
 	if (border == SCREEN_REDRAW_INSIDE)
 		return;
 
-	if ((int)i == wp->xoff + 1) {
+	if (i == wp->xoff + 1) {
 		if (border == SCREEN_REDRAW_OUTSIDE) {
 			if (screen_redraw_two_panes(wp->window, &type)) {
 				if (active == TAILQ_FIRST(&w->panes))
@@ -951,7 +950,7 @@ screen_redraw_draw_border_arrows(struct screen_redraw_ctx *ctx, int i,
 				arrows = 1;
 		}
 	}
-	if ((int)j == wp->yoff + 1) {
+	if (j == wp->yoff + 1) {
 		if (border == SCREEN_REDRAW_OUTSIDE) {
 			if (screen_redraw_two_panes(wp->window, &type)) {
 				if (active == TAILQ_FIRST(&w->panes))
