@@ -28,7 +28,7 @@
  * tile-pane: insert a floating pane back into the tiled layout.
  *
  * saved_layout_cell is reused to remember the pane's tiled slot while it is
- * floating, using the same mechanism as minimise-pane.  The cell's wp pointer
+ * floating, using the same mechanism as hide-pane.  The cell's wp pointer
  * is cleared while the pane is floating so that layout helpers treat the slot
  * as empty.
  */
@@ -163,8 +163,8 @@ cmd_float_pane_exec(struct cmd *self, struct cmdq_item *item)
 		cmdq_error(item, "pane is already floating");
 		return (CMD_RETURN_ERROR);
 	}
-	if (wp->flags & PANE_MINIMISED) {
-		cmdq_error(item, "can't float a minimised pane");
+	if (wp->flags & PANE_HIDDEN) {
+		cmdq_error(item, "can't float a hidden pane");
 		return (CMD_RETURN_ERROR);
 	}
 	if (w->flags & WINDOW_ZOOMED) {
@@ -229,7 +229,7 @@ cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane			*wp = target->wp;
 	struct window_pane	*target_wp, *wpiter;
 	struct layout_cell	*float_lc, *lc;
-	int			 was_minimised;
+	int			 was_hidden;
 
 	if (!(wp->flags & PANE_FLOATING)) {
 		cmdq_error(item, "pane is not floating");
@@ -240,7 +240,7 @@ cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-	was_minimised = (wp->flags & PANE_MINIMISED) != 0;
+	was_hidden = (wp->flags & PANE_HIDDEN) != 0;
 
 	/*
 	 * Save the floating geometry so we can restore it next time this pane
@@ -254,10 +254,10 @@ cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 	wp->flags |= PANE_SAVED_FLOAT;
 
 	/*
-	 * If the pane is also minimised, clear saved_layout_cell before
+	 * If the pane is also hidden, clear saved_layout_cell before
 	 * freeing the floating cell — otherwise the pointer would dangle.
 	 */
-	if (was_minimised)
+	if (was_hidden)
 		wp->saved_layout_cell = NULL;
 
 	/*
@@ -270,17 +270,17 @@ cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	/*
 	 * Find the best tiled pane to split after, prefer a visible (non-
-	 * minimised) tiled pane.  If all tiled panes are minimised, fall back
+	 * hidden) tiled pane.  If all tiled panes are hidden, fall back
 	 * to any tiled pane so the new pane enters the existing tree rather
 	 * than becoming a disconnected root.
 	 */
 	target_wp = NULL;
 	if (w->active != NULL && !(w->active->flags & PANE_FLOATING) &&
-	    !(w->active->flags & PANE_MINIMISED))
+	    !(w->active->flags & PANE_HIDDEN))
 		target_wp = w->active;
 	if (target_wp == NULL) {
 		TAILQ_FOREACH(wpiter, &w->last_panes, sentry) {
-			if (!(wpiter->flags & (PANE_FLOATING|PANE_MINIMISED)) &&
+			if (!(wpiter->flags & (PANE_FLOATING|PANE_HIDDEN)) &&
 			    window_pane_visible(wpiter)) {
 				target_wp = wpiter;
 				break;
@@ -289,14 +289,14 @@ cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	if (target_wp == NULL) {
 		TAILQ_FOREACH(wpiter, &w->panes, entry) {
-			if (!(wpiter->flags & (PANE_FLOATING|PANE_MINIMISED)) &&
+			if (!(wpiter->flags & (PANE_FLOATING|PANE_HIDDEN)) &&
 			    window_pane_visible(wpiter)) {
 				target_wp = wpiter;
 				break;
 			}
 		}
 	}
-	/* Fall back to any tiled pane (even minimised) to stay in the tree. */
+	/* Fall back to any tiled pane (even hidden) to stay in the tree. */
 	if (target_wp == NULL) {
 		TAILQ_FOREACH(wpiter, &w->panes, entry) {
 			if (!(wpiter->flags & PANE_FLOATING)) {
@@ -338,17 +338,17 @@ cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	/*
-	 * If the pane was minimised while floating, record its new tiled cell
-	 * as the saved cell so unminimise can restore it correctly.
+	 * If the pane was hidden while floating, record its new tiled cell
+	 * as the saved cell so 'show' can restore it correctly.
 	 */
-	if (was_minimised)
+	if (was_hidden)
 		wp->saved_layout_cell = wp->layout_cell;
 
 	wp->flags &= ~PANE_FLOATING;
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
 	TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 
-	if (!(wp->flags & PANE_MINIMISED))
+	if (!(wp->flags & PANE_HIDDEN))
 		window_set_active_pane(w, wp, 1);
 
 	if (w->layout_root != NULL)

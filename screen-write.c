@@ -145,7 +145,7 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	if (wp->layout_cell == NULL)
 		return (0);
 
-	if (wp->flags & PANE_MINIMISED)
+	if (wp->flags & PANE_HIDDEN)
 		return (0);
 
 	if (wp->flags & (PANE_REDRAW|PANE_DROP))
@@ -1999,7 +1999,7 @@ screen_write_pane_obscured(struct window_pane *base_wp)
 			continue;
 		}
 		if (found_self && wp->flags & PANE_FLOATING &&
-		    ! (wp->flags & PANE_MINIMISED) &&
+		    ! (wp->flags & PANE_HIDDEN) &&
 		    ((wp->yoff >= base_wp->yoff &&
 		    wp->yoff <= base_wp->yoff + (int)base_wp->sy) ||
 		    (wp->yoff + (int)wp->sy >= base_wp->yoff &&

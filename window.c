@@ -542,12 +542,12 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 	w->active->active_point = next_active_point++;
 	w->active->flags |= PANE_CHANGED;
 
-	if (wp->flags & PANE_MINIMISED) {
-		wp->flags &= ~PANE_MINIMISED;
+	if (wp->flags & PANE_HIDDEN) {
+		wp->flags &= ~PANE_HIDDEN;
 		if (w->layout_root != NULL && wp->saved_layout_cell != NULL) {
 			wp->layout_cell = wp->saved_layout_cell;
 			wp->saved_layout_cell = NULL;
-			layout_unminimise_cell(w, wp->layout_cell);
+			layout_show_cell(w, wp->layout_cell);
 			layout_fix_offsets(w);
 			layout_fix_panes(w, NULL);
 		}
@@ -718,16 +718,16 @@ window_zoom(struct window_pane *wp)
 		window_set_active_pane(w, wp, 1);
 	wp->flags |= PANE_ZOOMED;
 
-	/* Bring pane above other tiled panes and minimise floating panes. */
+	/* Bring pane above other tiled panes and hide floating panes. */
 	TAILQ_FOREACH(wp1, &w->z_index, zentry) {
 		if (wp1 == wp) {
-			wp1->saved_flags |= (wp1->flags & PANE_MINIMISED);
-			wp1->flags &= ~PANE_MINIMISED;
+			wp1->saved_flags |= (wp1->flags & PANE_HIDDEN);
+			wp1->flags &= ~PANE_HIDDEN;
 			continue;
 		}
 		if (wp1->flags & PANE_FLOATING) {
-			wp1->saved_flags |= (wp1->flags & PANE_MINIMISED);
-			wp1->flags |= PANE_MINIMISED;
+			wp1->saved_flags |= (wp1->flags & PANE_HIDDEN);
+			wp1->flags |= PANE_HIDDEN;
 			continue;
 		}
 		break;
@@ -761,7 +761,7 @@ window_unzoom(struct window *w, int notify)
 
 	TAILQ_FOREACH(wp, &w->z_index, zentry) {
 		if (wp->flags & PANE_FLOATING) {
-			wp->flags &= ~PANE_MINIMISED | (wp->saved_flags & PANE_MINIMISED);
+			wp->flags &= ~PANE_HIDDEN | (wp->saved_flags & PANE_HIDDEN);
 			continue;
 		}
 		break;
@@ -769,7 +769,7 @@ window_unzoom(struct window *w, int notify)
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		wp->layout_cell = wp->saved_layout_cell;
-		if (wp->flags & PANE_MINIMISED)
+		if (wp->flags & PANE_HIDDEN)
 			wp->saved_layout_cell = wp->layout_cell;
 		else
 			wp->saved_layout_cell = NULL;
@@ -1003,7 +1003,7 @@ window_pane_printable_flags(struct window_pane *wp)
 		flags[pos++] = 'Z';
 	if (wp->flags & PANE_FLOATING)
 		flags[pos++] = 'F';
-	if (wp->flags & PANE_MINIMISED)
+	if (wp->flags & PANE_HIDDEN)
 		flags[pos++] = 'm';
 
 	flags[pos] = '\0';
@@ -1382,7 +1382,7 @@ int
 window_pane_visible(struct window_pane *wp)
 {
 	if (~wp->window->flags & WINDOW_ZOOMED &&
-	    ~wp->flags & PANE_MINIMISED)
+	    ~wp->flags & PANE_HIDDEN)
 		return (1);
 
 	return (wp == wp->window->active);

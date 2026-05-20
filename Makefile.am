@@ -102,6 +102,7 @@ dist_tmux_SOURCES = \
 	cmd-display-panes.c \
 	cmd-find-window.c \
 	cmd-find.c \
+	cmd-hide-pane.c \
 	cmd-if-shell.c \
 	cmd-join-pane.c \
 	cmd-kill-pane.c \
@@ -117,7 +118,6 @@ dist_tmux_SOURCES = \
 	cmd-list-windows.c \
 	cmd-load-buffer.c \
 	cmd-lock-server.c \
-	cmd-minimise-pane.c \
 	cmd-move-window.c \
 	cmd-new-session.c \
 	cmd-new-window.c \

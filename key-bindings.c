@@ -351,7 +351,7 @@ key_bindings_init(void)
 {
 	static const char *const defaults[] = {
 		/* Prefix keys. */
-		"bind -N 'Minimise pane' _ { minimise-pane }",
+		"bind -N 'Hide pane' _ { hide-pane }",
 
 		"bind -N 'Send the prefix key' C-b { send-prefix }",
 		"bind -N 'Rotate through the panes' C-o { rotate-window }",
@@ -471,7 +471,7 @@ key_bindings_init(void)
 		"bind -n MouseDrag1Border { resize-pane -M }",
 
 		/* Mouse button 1 down on status line. */
-		"bind -n MouseDown1Status { if -F '#{&&:#{pane_active},#{!#{pane_minimised_flag}}}' { minimise-pane -t= } { switch-client -t= } }",
+		"bind -n MouseDown1Status { if -F '#{&&:#{pane_active},#{!#{pane_hidden_flag}}}' { hide-pane -t= } { switch-client -t= } }",
 		"bind -n C-MouseDown1Status { swap-window -t@ }",
 
 		/* Mouse button 1 down on default pane-border-format */
