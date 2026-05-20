@@ -336,7 +336,7 @@ layout_assign(struct window_pane **wp, struct layout_cell *lc, int flags)
 	case LAYOUT_TOPBOTTOM:
 	case LAYOUT_FLOATING:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
-			layout_assign(wp, lcchild, 1);
+			layout_assign(wp, lcchild, PANE_FLOATING);
 		return;
 	}
 }
