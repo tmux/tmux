@@ -805,25 +805,40 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 void
 window_lost_pane(struct window *w, struct window_pane *wp)
 {
+	struct window_pane	*wpp, *twpp;
+
 	log_debug("%s: @%u pane %%%u", __func__, w->id, wp->id);
 
 	if (wp == marked_pane.wp)
 		server_clear_marked();
 
 	window_pane_stack_remove(&w->last_panes, wp);
-	if (wp == w->active) {
-		w->active = TAILQ_FIRST(&w->last_panes);
-		if (w->active == NULL) {
-			w->active = TAILQ_PREV(wp, window_panes, entry);
-			if (w->active == NULL)
-				w->active = TAILQ_NEXT(wp, entry);
+	if (wp != w->active)
+		return;
+
+	/* Try to find a good fit. */
+	wpp = TAILQ_FIRST(&w->last_panes);
+	if (wpp == NULL || wpp->flags & PANE_HIDDEN) {
+		wpp = TAILQ_PREV(wp, window_panes, entry);
+		if (wpp == NULL || wpp->flags & PANE_HIDDEN)
+			wpp = TAILQ_NEXT(wp, entry);
+	}
+	/* Try to find any fit. */
+	if (wpp == NULL || (wpp->flags & PANE_HIDDEN)) {
+		TAILQ_FOREACH_SAFE(wpp, &w->panes, entry, twpp) {
+			if (wpp != wp && (~wpp->flags & PANE_HIDDEN))
+				break;
 		}
-		if (w->active != NULL) {
-			window_pane_stack_remove(&w->last_panes, w->active);
-			w->active->flags |= PANE_CHANGED;
-			notify_window("window-pane-changed", w);
-			window_update_focus(w);
-		}
+	}
+	if (wpp != NULL && (wpp->flags & PANE_HIDDEN))
+		wpp = NULL;
+
+	w->active = wpp;
+	if (w->active != NULL) {
+		window_pane_stack_remove(&w->last_panes, w->active);
+		w->active->flags |= PANE_CHANGED;
+		notify_window("window-pane-changed", w);
+		window_update_focus(w);
 	}
 }
 
