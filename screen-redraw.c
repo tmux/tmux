@@ -322,7 +322,7 @@ screen_redraw_type_of_cell(struct screen_redraw_ctx *ctx,
 	struct client	*c = ctx->c;
 	struct window	*w = c->session->curw->window;
 	int		 pane_status = ctx->pane_status, borders = 0;
-	int		 sx = w->sx, sy = w->sy;;
+	int		 sx = w->sx, sy = w->sy;
 
 	/* Is this outside the window? */
 	if (pane_status == PANE_STATUS_BOTTOM)
@@ -480,7 +480,6 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, int px, int py,
 	if (~wp->flags & PANE_FLOATING)
 		tiled_only = 1;
 	do { /* Loop until back to wp == start.*/
-
 		if (!window_pane_visible(wp) ||
 		    (tiled_only && (wp->flags & PANE_FLOATING)))
 			goto next;

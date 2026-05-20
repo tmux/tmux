@@ -41,10 +41,10 @@ const struct cmd_entry cmd_new_pane_entry = {
 	.args = { "bc:de:fF:hIkl:Lm:p:PR:s:S:t:vx:X:y:Y:Z", 0, -1, NULL },
 	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-l size] [-m message] [-p percentage] "
-	         "[-s style] [-S active-border-style] "
-	         "[-R inactive-border-style] [-x width] [-y height] "
-	         "[-X x-position] [-Y y-position] " CMD_TARGET_PANE_USAGE " "
-	         "[shell-command [argument ...]]",
+		 "[-s style] [-S active-border-style] "
+		 "[-R inactive-border-style] [-x width] [-y height] "
+		 "[-X x-position] [-Y y-position] " CMD_TARGET_PANE_USAGE " "
+		 "[shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -59,9 +59,9 @@ const struct cmd_entry cmd_split_window_entry = {
 	.args = { "bc:de:fF:hIkl:m:p:PR:s:S:t:vZ", 0, -1, NULL },
 	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-l size] [-m message] [-p percentage] "
-	         "[-s style] [-S active-border-style] "
-	         "[-R inactive-border-style] " CMD_TARGET_PANE_USAGE " "
-	         "[shell-command [argument ...]]",
+		 "[-s style] [-S active-border-style] "
+		 "[-R inactive-border-style] " CMD_TARGET_PANE_USAGE " "
+		 "[shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 

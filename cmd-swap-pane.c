@@ -79,6 +79,12 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (src_wp == dst_wp)
 		goto out;
 
+	if ((src_wp->flags & PANE_FLOATING) &&
+	    (dst_wp->flags & PANE_FLOATING)) {
+		cmdq_error(item, "cannot swap floating panes");
+		return (CMD_RETURN_ERROR);
+	}
+
 	server_client_remove_pane(src_wp);
 	server_client_remove_pane(dst_wp);
 
@@ -98,6 +104,10 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	dst_wp->layout_cell = src_lc;
 	dst_lc->wp = src_wp;
 	src_wp->layout_cell = dst_lc;
+	if ((src_wp->flags ^ dst_wp->flags) & PANE_FLOATING) {
+		src_wp->flags ^= PANE_FLOATING;
+		dst_wp->flags ^= PANE_FLOATING;
+	}
 
 	src_wp->window = dst_w;
 	options_set_parent(src_wp->options, dst_w->options);
