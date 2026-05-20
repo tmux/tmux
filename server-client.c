@@ -718,7 +718,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	struct session			*s = c->session, *fs;
 	struct window			*w = s->curw->window;
 	struct winlink			*fwl;
-	struct window_pane		*wp, *fwp;
+	struct window_pane		*wp, *fwp, *lwp = NULL;
 	u_int				 x, y, sx, sy, px, py, n, sl_mpos = 0;
 	u_int				 b, bn;
 	int				 ignore = 0;
@@ -730,6 +730,13 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 
 	log_debug("%s mouse %02x at %u,%u (last %u,%u) (%d)", c->name, m->b,
 	    m->x, m->y, m->lx, m->ly, c->tty.mouse_drag_flag);
+
+	/* Find last pane, if any. */
+	if (c->tty.mouse_last_pane != -1) {
+		lwp = window_pane_find_by_id(c->tty.mouse_last_pane);
+		if (lwp != NULL)
+			log_debug("%s mouse last pane %%%u", c->name, lwp->id);
+	}
 
 	/* What type of event is this? */
 	if (event->key == KEYC_DOUBLECLICK) {
@@ -875,9 +882,11 @@ have_event:
 	 */
 	if (loc == KEYC_MOUSE_LOCATION_NOWHERE) {
 		if (c->tty.mouse_scrolling_flag) {
-			loc = KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER;
-			m->wp = c->tty.mouse_wp->id;
-			m->w = c->tty.mouse_wp->window->id;
+			if (lwp != NULL) {
+				loc = KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER;
+				m->wp = lwp->id;
+				m->w = lwp->window->id;
+			}
 		} else {
 			px = x;
 			if (m->statusat == 0 && y >= m->statuslines)
@@ -895,13 +904,13 @@ have_event:
 			px = px + m->ox;
 			py = py + m->oy;
 
-			if (type == KEYC_TYPE_MOUSEDRAG &&
-			    c->tty.mouse_wp != NULL)
+			if (type == KEYC_TYPE_MOUSEDRAG && lwp != NULL) {
 				/* Use pane from last mouse event. */
-				wp = c->tty.mouse_wp;
-			else
+				wp = lwp;
+			} else {
 				/* Try inside the pane. */
 				wp = window_get_active_at(w, px, py);
+			}
 			if (wp == NULL)
 				return (KEYC_UNKNOWN);
 			loc = server_client_check_mouse_in_pane(wp, px, py,
@@ -979,8 +988,8 @@ have_event:
 		 */
 		type = KEYC_TYPE_MOUSEDRAGEND;
 		c->tty.mouse_drag_flag = 0;
-		c->tty.mouse_wp = NULL;
 		c->tty.mouse_slider_mpos = -1;
+        c->tty.mouse_last_pane = -1;
 	}
 
 	/* Convert to a key binding. */
@@ -1006,10 +1015,11 @@ have_event:
 		 * where the user grabbed.
 		 */
 		c->tty.mouse_drag_flag = MOUSE_BUTTONS(b) + 1;
+
 		/* Only change pane if not already dragging a pane border. */
-		if (c->tty.mouse_wp == NULL) {
-			wp = window_get_active_at(w, px, py);
-			c->tty.mouse_wp = wp;
+		if (lwp == NULL) {
+			lwp = wp = window_get_active_at(w, px, py);
+			c->tty.mouse_last_pane = wp->id;
 		}
 		if (c->tty.mouse_scrolling_flag == 0 &&
 		    loc == KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER) {
@@ -2820,8 +2830,8 @@ server_client_remove_pane(struct window_pane *wp)
 			RB_REMOVE(client_windows, &c->windows, cw);
 			free(cw);
 		}
-		if (c->tty.mouse_wp == wp) {
-			c->tty.mouse_wp = NULL;
+		if (c->tty.mouse_last_pane == (int)wp->id) {
+			c->tty.mouse_last_pane = -1;
 			c->tty.mouse_drag_update = NULL;
 			c->tty.mouse_scrolling_flag = 0;
 		}

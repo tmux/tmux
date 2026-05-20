@@ -6507,10 +6507,7 @@ window_copy_drag_update(struct client *c, struct mouse_event *m)
 	if (c == NULL)
 		return;
 
-	if (c->tty.mouse_wp != NULL)
-		wp = c->tty.mouse_wp;
-	else
-		wp = cmd_mouse_pane(m, NULL, NULL);
+	wp = cmd_mouse_pane(m, NULL, NULL);
 	if (wp == NULL)
 		return;
 	wme = TAILQ_FIRST(&wp->modes);

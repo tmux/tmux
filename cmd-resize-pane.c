@@ -78,13 +78,14 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(args, 'M')) {
-		if (!event->m.valid || cmd_mouse_window(&event->m, &s) == NULL)
+		if (!event->m.valid)
 			return (CMD_RETURN_NORMAL);
-		if (c == NULL || c->session != s)
+		wp = cmd_mouse_pane(&event->m, &s, NULL);
+		if (wp == NULL || c == NULL || c->session != s)
 			return (CMD_RETURN_NORMAL);
-		if (c->tty.mouse_wp->flags & PANE_FLOATING) {
-			window_redraw_active_switch(w, c->tty.mouse_wp);
-			window_set_active_pane(w, c->tty.mouse_wp, 1);
+		if (wp->flags & PANE_FLOATING) {
+			window_redraw_active_switch(w, wp);
+			window_set_active_pane(w, wp, 1);
 			c->tty.mouse_drag_update = cmd_resize_pane_mouse_update_floating;
 			cmd_resize_pane_mouse_update_floating(c, &event->m);
 		} else {
@@ -168,12 +169,13 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 	int			 new_sx, new_sy;
 	int			 new_xoff, new_yoff, resizes = 0;
 
-	wl = cmd_mouse_window(m, NULL);
-	if (wl == NULL) {
+	wp = cmd_mouse_pane(m, NULL, &wl);
+	if (wp == NULL) {
 		c->tty.mouse_drag_update = NULL;
 		return;
 	}
 	w = wl->window;
+	lc = wp->layout_cell;
 
 	y = m->y + m->oy; x = m->x + m->ox;
 	if (m->statusat == 0 && y >= m->statuslines)
@@ -185,9 +187,6 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 		ly -= m->statuslines;
 	else if (m->statusat > 0 && ly >= (u_int)m->statusat)
 		ly = m->statusat - 1;
-
-	wp = c->tty.mouse_wp;
-	lc = wp->layout_cell;
 
 	log_debug("%s: %%%u resize_pane xoff=%d sx=%u xy=%ux%u lxy=%ux%u",
 	    __func__, wp->id, wp->xoff, wp->sx, x, y, lx, ly);
