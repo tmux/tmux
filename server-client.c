@@ -599,7 +599,7 @@ server_client_exec(struct client *c, const char *cmd)
 }
 
 static enum key_code_mouse_location
-server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
+server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
     u_int *sl_mpos)
 {
 	struct window		*w = wp->window;
@@ -630,36 +630,35 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 
 	/* Check if point is within the pane or scrollbar. */
 	if (((pane_status != PANE_STATUS_OFF &&
-	    (int)py != pane_status_line && (int)py != wp->yoff + (int)wp->sy) ||
-	    (wp->yoff == 0 && py < wp->sy) ||
-	    ((int)py >= wp->yoff && (int)py < wp->yoff + (int)wp->sy)) &&
+	    py != pane_status_line && py != wp->yoff + (int)wp->sy) ||
+	    (wp->yoff == 0 && py < (int)wp->sy) ||
+	    (py >= wp->yoff && py < wp->yoff + (int)wp->sy)) &&
 	    ((sb_pos == PANE_SCROLLBARS_RIGHT &&
-	    (int)px < (int)wp->xoff + (int)wp->sx + sb_pad + sb_w) ||
+	    px < wp->xoff + (int)wp->sx + sb_pad + sb_w) ||
 	    (sb_pos == PANE_SCROLLBARS_LEFT &&
-	    (int)px < (int)wp->xoff + (int)wp->sx - sb_pad - sb_w))) {
+	    px < wp->xoff + (int)wp->sx - sb_pad - sb_w))) {
 		/* Check if in the scrollbar. */
 		if ((sb_pos == PANE_SCROLLBARS_RIGHT &&
-		    ((int)px >= (int)wp->xoff + (int)wp->sx + sb_pad &&
-		    (int)px < (int)wp->xoff + (int)wp->sx + sb_pad + sb_w)) ||
+		    (px >= wp->xoff + (int)wp->sx + sb_pad &&
+		    px < wp->xoff + (int)wp->sx + sb_pad + sb_w)) ||
 		    (sb_pos == PANE_SCROLLBARS_LEFT &&
-		    ((int)px >= (int)wp->xoff - sb_pad - sb_w &&
-		    (int)px < (int)wp->xoff - sb_pad))) {
+		    (px >= wp->xoff - sb_pad - sb_w &&
+		    px < wp->xoff - sb_pad))) {
 			/* Check where inside the scrollbar. */
 			sl_top = wp->yoff + wp->sb_slider_y;
 			sl_bottom = (wp->yoff + wp->sb_slider_y +
 			    wp->sb_slider_h - 1);
-			if ((int)py < sl_top)
+			if (py < sl_top)
 				return (KEYC_MOUSE_LOCATION_SCROLLBAR_UP);
-			else if ((int)py >= sl_top &&
-				 (int)py <= sl_bottom) {
+			else if (py >= sl_top && py <= sl_bottom) {
 				*sl_mpos = (py - wp->sb_slider_y - wp->yoff);
 				return (KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER);
 			} else /* py > sl_bottom */
 				return (KEYC_MOUSE_LOCATION_SCROLLBAR_DOWN);
 		} else if (wp->flags & PANE_FLOATING &&
-			   ((int)px == wp->xoff - 1 ||
-			    (int)py == wp->yoff - 1 ||
-			    (int)py == wp->yoff + (int)wp->sy)) {
+		    (px == wp->xoff - 1 ||
+		    py == wp->yoff - 1 ||
+		    py == wp->yoff + (int)wp->sy)) {
 			/* Floating pane left, bottom or top border. */
 			return (KEYC_MOUSE_LOCATION_BORDER);
 		} else {
@@ -673,33 +672,33 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 			    (~fwp->flags & PANE_ZOOMED))
 				continue;
 			bdr_top = fwp->yoff - 1;
-			bdr_bottom = fwp->yoff + (int)fwp->sy;
+			bdr_bottom = fwp->yoff + fwp->sy;
 			if (sb_pos == PANE_SCROLLBARS_LEFT)
-				bdr_right = fwp->xoff + (int)fwp->sx;
-			else
+				bdr_right = fwp->xoff + fwp->sx;
+			else {
 				/* PANE_SCROLLBARS_RIGHT or none. */
-				bdr_right = fwp->xoff + (int)fwp->sx +
-				    sb_pad + sb_w;
-			if ((int)py >= fwp->yoff - 1 &&
-			    (int)py <= fwp->yoff + (int)fwp->sy) {
-				if ((int)px == bdr_right)
+				bdr_right = fwp->xoff + fwp->sx + sb_pad + sb_w;
+			}
+			if (py >= fwp->yoff - 1 &&
+			    py <= fwp->yoff + (int)fwp->sy) {
+				if (px == bdr_right)
 					break;
 				if (wp->flags & PANE_FLOATING) {
-					/* Floating pane, check if left border. */
+					/* Floating pane, check left border. */
 					bdr_left = fwp->xoff - 1;
-					if ((int)px == bdr_left)
+					if (px == bdr_left)
 						break;
 				}
 			}
-			if ((int)px >= fwp->xoff - 1 &&
-			    (int)px <= fwp->xoff + (int)fwp->sx) {
-				bdr_bottom = fwp->yoff + (int)fwp->sy;
-				if ((int)py == bdr_bottom)
+			if (px >= fwp->xoff - 1 &&
+			    px <= fwp->xoff + (int)fwp->sx) {
+				bdr_bottom = fwp->yoff + fwp->sy;
+				if (py == bdr_bottom)
 					break;
 				if (wp->flags & PANE_FLOATING) {
-					/* Floating pane, check if top border. */
+					/* Floating pane, check top border. */
 					bdr_top = fwp->yoff - 1;
-					if ((int)py == bdr_top)
+					if (py == bdr_top)
 						break;
 				}
 			}
@@ -989,7 +988,7 @@ have_event:
 		type = KEYC_TYPE_MOUSEDRAGEND;
 		c->tty.mouse_drag_flag = 0;
 		c->tty.mouse_slider_mpos = -1;
-        c->tty.mouse_last_pane = -1;
+		c->tty.mouse_last_pane = -1;
 	}
 
 	/* Convert to a key binding. */
@@ -998,7 +997,7 @@ have_event:
 		if (wp != NULL &&
 		    wp != w->active &&
 		    options_get_number(s->options, "focus-follows-mouse")) {
-			window_redraw_active_switch(w, wp); /* xxx needed? */
+			window_redraw_active_switch(w, wp);
 			window_set_active_pane(w, wp, 1);
 			server_redraw_window_borders(w);
 			server_status_window(w);
@@ -1415,14 +1414,6 @@ forward_key:
 	}
 	if (c->flags & CLIENT_READONLY)
 		goto out;
-	if (wp != NULL &&
-	    options_get_number(wp->options, "remain-on-exit") == 3 &&
-	    (wp->flags & PANE_EXITED) &&
-	    !KEYC_IS_MOUSE(key) && !KEYC_IS_PASTE(key)) {
-		options_set_number(wp->options, "remain-on-exit", 0);
-		server_destroy_pane(wp, 0);
-		goto out;
-	}
 	if (wp != NULL)
 		window_pane_key(wp, c, s, wl, key, m);
 	goto out;
@@ -1807,6 +1798,7 @@ server_client_reset_state(struct client *c)
 	struct options		*oo = c->session->options;
 	int			 mode = 0, cursor, flags;
 	u_int			 cx = 0, cy = 0, ox, oy, sx, sy, n;
+	struct visible_ranges	*r;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
@@ -1856,14 +1848,14 @@ server_client_reset_state(struct client *c)
 		    wp->yoff + (int)s->cy <= (int)oy + (int)sy) {
 			cursor = 1;
 
-			cx = (u_int)(wp->xoff + (int)s->cx - (int)ox);
-			cy = (u_int)(wp->yoff + (int)s->cy - (int)oy);
+			cx = wp->xoff + (int)s->cx - (int)ox;
+			cy = wp->yoff + (int)s->cy - (int)oy;
 
 			if (status_at_line(c) == 0)
 				cy += status_line_size(c);
 		}
-		if (!screen_redraw_is_visible(
-		    screen_redraw_get_visible_ranges(wp, cx, cy, 1, NULL), cx))
+		r = screen_redraw_get_visible_ranges(wp, cx, cy, 1, NULL);
+		if (!screen_redraw_is_visible(r, cx))
 			cursor = 0;
 
 		if (!cursor)
