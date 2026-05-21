@@ -605,6 +605,17 @@ tty_keys_find1(struct tty_key *tk, const char *buf, size_t len, size_t *size)
 	return (tty_keys_find1(tk, buf, len, size));
 }
 
+static int
+tty_keys_partial_paste_end(const char *buf, size_t len)
+{
+	static const char	paste_end[] = "\033[201~";
+	size_t			paste_end_len = (sizeof paste_end) - 1;
+
+	if (len == 0 || len >= paste_end_len)
+		return (0);
+	return (memcmp(buf, paste_end, len) == 0);
+}
+
 /* Look up part of the next key. */
 static int
 tty_keys_next1(struct tty *tty, const char *buf, size_t len, key_code *key,
@@ -630,6 +641,10 @@ tty_keys_next1(struct tty *tty, const char *buf, size_t len, key_code *key,
 		if (tk->next != NULL && !expired)
 			return (1);
 		*key = tk->key;
+		if ((*key & KEYC_MASK_KEY) == KEYC_PASTE_START)
+			tty->flags |= TTY_BRACKETPASTE;
+		else if ((*key & KEYC_MASK_KEY) == KEYC_PASTE_END)
+			tty->flags &= ~TTY_BRACKETPASTE;
 		return (0);
 	}
 
@@ -955,10 +970,16 @@ partial_key:
 	delay = options_get_number(global_options, "escape-time");
 	if (delay == 0)
 		delay = 1;
+	if ((tty->flags & TTY_BRACKETPASTE) &&
+	    tty_keys_partial_paste_end(buf, len)) {
+		log_debug("%s: increasing delay (partial paste end)", c->name);
+		if (delay < 500)
+			delay = 500;
+	}
 	if ((tty->flags & (TTY_WAITFG|TTY_WAITBG) ||
 	    (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS) ||
 	    !TAILQ_EMPTY(&c->input_requests)) {
-		log_debug("%s: increasing delay for active query", c->name);
+		log_debug("%s: increasing delay (active query)", c->name);
 		if (delay < 500)
 			delay = 500;
 	}

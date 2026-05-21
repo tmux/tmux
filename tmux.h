@@ -1707,6 +1707,7 @@ struct tty {
 #define TTY_WINSIZEQUERY 0x1000
 #define TTY_WAITFG 0x2000
 #define TTY_WAITBG 0x4000
+#define TTY_BRACKETPASTE 0x8000
 #define TTY_ALL_REQUEST_FLAGS \
 	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA)
 	int		 flags;
@@ -1719,7 +1720,7 @@ struct tty {
 	int		 mouse_drag_flag;
 	int		 mouse_scrolling_flag;
 	int		 mouse_slider_mpos;
-	int		 mouse_last_pane;
+	int              mouse_last_pane;
 	void		(*mouse_drag_update)(struct client *,
 			    struct mouse_event *);
 	void		(*mouse_drag_release)(struct client *,
