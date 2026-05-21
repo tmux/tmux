@@ -599,7 +599,7 @@ server_client_exec(struct client *c, const char *cmd)
 }
 
 static enum key_code_mouse_location
-server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
+server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
     u_int *sl_mpos)
 {
 	struct window		*w = wp->window;
@@ -607,7 +607,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 	struct window_pane	*fwp;
 	int			 pane_status, sb, sb_pos, sb_w, sb_pad;
 	int			 pane_status_line, sl_top, sl_bottom;
-	int			 bdr_bottom, bdr_top, bdr_right;
+	int			 bdr_bottom, bdr_top, bdr_left, bdr_right;
 
 	sb = options_get_number(wo, "pane-scrollbars");
 	sb_pos = options_get_number(wo, "pane-scrollbars-position");
@@ -630,32 +630,37 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 
 	/* Check if point is within the pane or scrollbar. */
 	if (((pane_status != PANE_STATUS_OFF &&
-	    (int)py != pane_status_line && py != wp->yoff + wp->sy) ||
-	    (wp->yoff == 0 && py < wp->sy) ||
-	    ((int)py >= wp->yoff && py < wp->yoff + wp->sy)) &&
+	    py != pane_status_line && py != wp->yoff + (int)wp->sy) ||
+	    (wp->yoff == 0 && py < (int)wp->sy) ||
+	    (py >= wp->yoff && py < wp->yoff + (int)wp->sy)) &&
 	    ((sb_pos == PANE_SCROLLBARS_RIGHT &&
-	    (int)px < (int)wp->xoff + (int)wp->sx + sb_pad + sb_w) ||
+	    px < wp->xoff + (int)wp->sx + sb_pad + sb_w) ||
 	    (sb_pos == PANE_SCROLLBARS_LEFT &&
-	    (int)px < (int)wp->xoff + (int)wp->sx - sb_pad - sb_w))) {
+	    px < wp->xoff + (int)wp->sx - sb_pad - sb_w))) {
 		/* Check if in the scrollbar. */
 		if ((sb_pos == PANE_SCROLLBARS_RIGHT &&
-		    ((int)px >= (int)wp->xoff + (int)wp->sx + sb_pad &&
-		    (int)px < (int)wp->xoff + (int)wp->sx + sb_pad + sb_w)) ||
+		    (px >= wp->xoff + (int)wp->sx + sb_pad &&
+		    px < wp->xoff + (int)wp->sx + sb_pad + sb_w)) ||
 		    (sb_pos == PANE_SCROLLBARS_LEFT &&
-		    ((int)px >= (int)wp->xoff - sb_pad - sb_w &&
-		    (int)px < (int)wp->xoff - sb_pad))) {
+		    (px >= wp->xoff - sb_pad - sb_w &&
+		    px < wp->xoff - sb_pad))) {
 			/* Check where inside the scrollbar. */
 			sl_top = wp->yoff + wp->sb_slider_y;
 			sl_bottom = (wp->yoff + wp->sb_slider_y +
 			    wp->sb_slider_h - 1);
-			if ((int)py < sl_top)
+			if (py < sl_top)
 				return (KEYC_MOUSE_LOCATION_SCROLLBAR_UP);
-			else if ((int)py >= sl_top &&
-				 (int)py <= sl_bottom) {
+			else if (py >= sl_top && py <= sl_bottom) {
 				*sl_mpos = (py - wp->sb_slider_y - wp->yoff);
 				return (KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER);
 			} else /* py > sl_bottom */
 				return (KEYC_MOUSE_LOCATION_SCROLLBAR_DOWN);
+		} else if (wp->flags & PANE_FLOATING &&
+		    (px == wp->xoff - 1 ||
+		    py == wp->yoff - 1 ||
+		    py == wp->yoff + (int)wp->sy)) {
+			/* Floating pane left, bottom or top border. */
+			return (KEYC_MOUSE_LOCATION_BORDER);
 		} else {
 			/* Must be inside the pane. */
 			return (KEYC_MOUSE_LOCATION_PANE);
@@ -667,22 +672,35 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 			    (~fwp->flags & PANE_ZOOMED))
 				continue;
 			bdr_top = fwp->yoff - 1;
-			bdr_bottom = fwp->yoff + (int)fwp->sy;
+			bdr_bottom = fwp->yoff + fwp->sy;
 			if (sb_pos == PANE_SCROLLBARS_LEFT)
-				bdr_right = fwp->xoff + (int)fwp->sx;
-			else
+				bdr_right = fwp->xoff + fwp->sx;
+			else {
 				/* PANE_SCROLLBARS_RIGHT or none. */
-				bdr_right = fwp->xoff + (int)fwp->sx +
-				    sb_pad + sb_w;
-			if ((int)py >= (int)fwp->yoff - 1 &&
-			    py <= fwp->yoff + fwp->sy) {
-				if ((int)px == bdr_right)
-					break;
+				bdr_right = fwp->xoff + fwp->sx + sb_pad + sb_w;
 			}
-			if ((int)px >= (int)fwp->xoff - 1 &&
-			    px <= fwp->xoff + fwp->sx) {
-				if ((int)py == bdr_bottom || (int)py == bdr_top)
+			if (py >= fwp->yoff - 1 &&
+			    py <= fwp->yoff + (int)fwp->sy) {
+				if (px == bdr_right)
 					break;
+				if (wp->flags & PANE_FLOATING) {
+					/* Floating pane, check left border. */
+					bdr_left = fwp->xoff - 1;
+					if (px == bdr_left)
+						break;
+				}
+			}
+			if (px >= fwp->xoff - 1 &&
+			    px <= fwp->xoff + (int)fwp->sx) {
+				bdr_bottom = fwp->yoff + fwp->sy;
+				if (py == bdr_bottom)
+					break;
+				if (wp->flags & PANE_FLOATING) {
+					/* Floating pane, check top border. */
+					bdr_top = fwp->yoff - 1;
+					if (py == bdr_top)
+						break;
+				}
 			}
 		}
 		if (fwp != NULL)
@@ -699,7 +717,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	struct session			*s = c->session, *fs;
 	struct window			*w = s->curw->window;
 	struct winlink			*fwl;
-	struct window_pane		*wp, *fwp;
+	struct window_pane		*wp, *fwp, *lwp = NULL;
 	u_int				 x, y, sx, sy, px, py, n, sl_mpos = 0;
 	u_int				 b, bn;
 	int				 ignore = 0;
@@ -711,6 +729,13 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 
 	log_debug("%s mouse %02x at %u,%u (last %u,%u) (%d)", c->name, m->b,
 	    m->x, m->y, m->lx, m->ly, c->tty.mouse_drag_flag);
+
+	/* Find last pane, if any. */
+	if (c->tty.mouse_last_pane != -1) {
+		lwp = window_pane_find_by_id(c->tty.mouse_last_pane);
+		if (lwp != NULL)
+			log_debug("%s mouse last pane %%%u", c->name, lwp->id);
+	}
 
 	/* What type of event is this? */
 	if (event->key == KEYC_DOUBLECLICK) {
@@ -855,9 +880,13 @@ have_event:
 	 * scrollbar.
 	 */
 	if (loc == KEYC_MOUSE_LOCATION_NOWHERE) {
-		if (c->tty.mouse_scrolling_flag)
-			loc = KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER;
-		else {
+		if (c->tty.mouse_scrolling_flag) {
+			if (lwp != NULL) {
+				loc = KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER;
+				m->wp = lwp->id;
+				m->w = lwp->window->id;
+			}
+		} else {
 			px = x;
 			if (m->statusat == 0 && y >= m->statuslines)
 				py = y - m->statuslines;
@@ -874,8 +903,13 @@ have_event:
 			px = px + m->ox;
 			py = py + m->oy;
 
-			/* Try inside the pane. */
-			wp = window_get_active_at(w, px, py);
+			if (type == KEYC_TYPE_MOUSEDRAG && lwp != NULL) {
+				/* Use pane from last mouse event. */
+				wp = lwp;
+			} else {
+				/* Try inside the pane. */
+				wp = window_get_active_at(w, px, py);
+			}
 			if (wp == NULL)
 				return (KEYC_UNKNOWN);
 			loc = server_client_check_mouse_in_pane(wp, px, py,
@@ -954,6 +988,7 @@ have_event:
 		type = KEYC_TYPE_MOUSEDRAGEND;
 		c->tty.mouse_drag_flag = 0;
 		c->tty.mouse_slider_mpos = -1;
+		c->tty.mouse_last_pane = -1;
 	}
 
 	/* Convert to a key binding. */
@@ -962,6 +997,7 @@ have_event:
 		if (wp != NULL &&
 		    wp != w->active &&
 		    options_get_number(s->options, "focus-follows-mouse")) {
+			window_redraw_active_switch(w, wp);
 			window_set_active_pane(w, wp, 1);
 			server_redraw_window_borders(w);
 			server_status_window(w);
@@ -978,6 +1014,12 @@ have_event:
 		 * where the user grabbed.
 		 */
 		c->tty.mouse_drag_flag = MOUSE_BUTTONS(b) + 1;
+
+		/* Only change pane if not already dragging a pane border. */
+		if (lwp == NULL) {
+			lwp = wp = window_get_active_at(w, px, py);
+			c->tty.mouse_last_pane = wp->id;
+		}
 		if (c->tty.mouse_scrolling_flag == 0 &&
 		    loc == KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER) {
 			c->tty.mouse_scrolling_flag = 1;
@@ -1719,6 +1761,7 @@ server_client_reset_state(struct client *c)
 	struct options		*oo = c->session->options;
 	int			 mode = 0, cursor, flags;
 	u_int			 cx = 0, cy = 0, ox, oy, sx, sy, n;
+	struct visible_ranges	*r;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
@@ -1731,7 +1774,7 @@ server_client_reset_state(struct client *c)
 	if (c->overlay_draw != NULL) {
 		if (c->overlay_mode != NULL)
 			s = c->overlay_mode(c, c->overlay_data, &cx, &cy);
-	} else if (c->prompt_string == NULL)
+	} else if (wp != NULL && c->prompt_string == NULL)
 		s = wp->screen;
 	else
 		s = c->status.active;
@@ -1759,22 +1802,30 @@ server_client_reset_state(struct client *c)
 				cy = tty->sy - 1;
 		}
 		cx = c->prompt_cursor;
-	} else if (c->overlay_draw == NULL) {
+	} else if (wp != NULL && c->overlay_draw == NULL) {
 		cursor = 0;
 		tty_window_offset(tty, &ox, &oy, &sx, &sy);
-		if (wp->xoff + s->cx >= ox && wp->xoff + s->cx <= ox + sx &&
-		    wp->yoff + s->cy >= oy && wp->yoff + s->cy <= oy + sy) {
+		if (wp->xoff + (int)s->cx >= (int)ox &&
+		    wp->xoff + (int)s->cx <= (int)ox + (int)sx &&
+		    wp->yoff + (int)s->cy >= (int)oy &&
+		    wp->yoff + (int)s->cy <= (int)oy + (int)sy) {
 			cursor = 1;
 
-			cx = wp->xoff + s->cx - ox;
-			cy = wp->yoff + s->cy - oy;
+			cx = wp->xoff + (int)s->cx - (int)ox;
+			cy = wp->yoff + (int)s->cy - (int)oy;
 
 			if (status_at_line(c) == 0)
 				cy += status_line_size(c);
 		}
+		r = screen_redraw_get_visible_ranges(wp, cx, cy, 1, NULL);
+		if (!screen_redraw_is_visible(r, cx))
+			cursor = 0;
+
 		if (!cursor)
 			mode &= ~MODE_CURSOR;
-	}
+	} else if (c->overlay_mode == NULL || s == NULL)
+		mode &= ~MODE_CURSOR;
+
 	log_debug("%s: cursor to %u,%u", __func__, cx, cy);
 	tty_cursor(tty, cx, cy);
 
@@ -2115,7 +2166,7 @@ server_client_set_path(struct client *c)
 	struct session	*s = c->session;
 	const char	*path;
 
-	if (s->curw == NULL)
+	if (s->curw == NULL || s->curw->window->active == NULL)
 		return;
 	if (s->curw->window->active->base.path == NULL)
 		path = "";
@@ -2733,6 +2784,11 @@ server_client_remove_pane(struct window_pane *wp)
 		if (cw != NULL && cw->pane == wp) {
 			RB_REMOVE(client_windows, &c->windows, cw);
 			free(cw);
+		}
+		if (c->tty.mouse_last_pane == (int)wp->id) {
+			c->tty.mouse_last_pane = -1;
+			c->tty.mouse_drag_update = NULL;
+			c->tty.mouse_scrolling_flag = 0;
 		}
 	}
 }
