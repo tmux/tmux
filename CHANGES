@@ -1,3 +1,8 @@
+CHANGES FROM 3.6a TO 3.6b
+
+* Remove images from the correct list when they are removed while in the
+  alternate screen (reported by xlabai at tencent dot com).
+
 CHANGES FROM 3.6 TO 3.6a
 
 * Fix a buffer overread and an infinite loop in format processing (reported by
