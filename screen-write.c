@@ -2144,8 +2144,8 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 					ttyctx.cell = &ci->gc;
 					if (ci->wrapped)
 						ttyctx.flags |= TTY_CTX_WRAPPED;
-					ttyctx.ptr = cl->data + wr_start;
-					ttyctx.n = wr_length;
+					ttyctx.data.data = cl->data + wr_start;
+					ttyctx.data.size = wr_length;
 					tty_write(tty_cmd_cells, &ttyctx);
 				}
 				items++;
