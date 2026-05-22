@@ -1989,6 +1989,14 @@ screen_write_pane_is_obscured(struct screen_write_ctx *ctx)
 
         if (ctx->wp == NULL)
                 return (0);
+
+	if (ctx->flags & SCREEN_WRITE_CHECKED_IF_OBSCURED) {
+		if (ctx->flags & SCREEN_WRITE_OBSCURED)
+			return (1);
+		return (0);
+	}
+	ctx->flags |= SCREEN_WRITE_CHECKED_IF_OBSCURED;
+
         while ((wp = TAILQ_PREV(wp, window_panes, zentry)) != NULL) {
                 if ((wp->flags & PANE_FLOATING) &&
                     ((wp->yoff >= ctx->wp->yoff &&
@@ -1998,8 +2006,10 @@ screen_write_pane_is_obscured(struct screen_write_ctx *ctx)
                     ((wp->xoff >= ctx->wp->xoff &&
                     wp->xoff <= ctx->wp->xoff + (int)ctx->wp->sx) ||
                     (wp->xoff + (int)wp->sx >= ctx->wp->xoff &&
-                    wp->xoff + wp->sx <= ctx->wp->xoff + ctx->wp->sx)))
+                    wp->xoff + wp->sx <= ctx->wp->xoff + ctx->wp->sx))) {
+			ctx->flags |= SCREEN_WRITE_OBSCURED;
                         return (1);
+		}
         }
         return (0);
 }
