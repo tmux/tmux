@@ -1055,6 +1055,8 @@ struct screen_write_ctx {
 
 	int				 flags;
 #define SCREEN_WRITE_SYNC 0x1
+#define SCREEN_WRITE_OBSCURED 0x2
+#define SCREEN_WRITE_CHECKED_IF_OBSCURED 0x4
 
 	screen_write_init_ctx_cb	 init_ctx_cb;
 	void				*arg;
@@ -1733,18 +1735,19 @@ struct tty_ctx {
 	void			*arg;
 
 	const struct grid_cell	*cell;
-	int			 wrapped;
+	int                      flags;
+#define TTY_CTX_WRAPPED 0x1
+#define TTY_CTX_INVISIBLE_PANES 0x2
+#define TTY_CTX_WINDOW_BIGGER 0x4
+#define TTY_CTX_SYNC 0x8
+#define TTY_CTX_OVERLAY_SYNC 0x10
+#define TTY_CTX_CELL_DRAW_LINE 0x20
+#define TTY_CTX_CELL_INVALIDATE 0x40
+#define TTY_CTX_PANE_OBSCURED 0x80
 
-	u_int			 num;
-	void			*ptr;
-	void			*ptr2;
-
-	/*
-	 * Whether this command should be sent even when the pane is not
-	 * visible (used for a passthrough sequence when allow-passthrough is
-	 * "all").
-	 */
-	int			 allow_invisible_panes;
+	u_int		 num;
+	void		*ptr;
+	void		*ptr2;
 
 	/*
 	 * Cursor and region position before the screen was updated - this is
@@ -1773,14 +1776,10 @@ struct tty_ctx {
 	struct colour_palette	*palette;
 
 	/* Containing region (usually window) offset and size. */
-	int			 bigger;
 	u_int			 wox;
 	u_int			 woy;
 	u_int			 wsx;
 	u_int			 wsy;
-
-	/* tty partly obscured, it will need to be surgically scrolled. */
-	u_int			 obscured;
 };
 
 /* Saved message entry. */
