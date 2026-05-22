@@ -1131,7 +1131,7 @@ screen_write_insertcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 	grid_view_insert_cells(s->grid, s->cx, s->cy, nx, bg);
 
 	screen_write_collect_flush(ctx, 0, __func__);
-	ttyctx.num = nx;
+	ttyctx.n = nx;
 	tty_write(tty_cmd_insertcharacter, &ttyctx);
 }
 
@@ -1164,7 +1164,7 @@ screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 	grid_view_delete_cells(s->grid, s->cx, s->cy, nx, bg);
 
 	screen_write_collect_flush(ctx, 0, __func__);
-	ttyctx.num = nx;
+	ttyctx.n = nx;
 	tty_write(tty_cmd_deletecharacter, &ttyctx);
 }
 
@@ -1197,7 +1197,7 @@ screen_write_clearcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 	grid_view_clear(s->grid, s->cx, s->cy, nx, 1, bg);
 
 	screen_write_collect_flush(ctx, 0, __func__);
-	ttyctx.num = nx;
+	ttyctx.n = nx;
 	tty_write(tty_cmd_clearcharacter, &ttyctx);
 }
 
@@ -1233,7 +1233,7 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 		grid_view_insert_lines(gd, s->cy, ny, bg);
 
 		screen_write_collect_flush(ctx, 0, __func__);
-		ttyctx.num = ny;
+		ttyctx.n = ny;
 		tty_write(tty_cmd_insertline, &ttyctx);
 		return;
 	}
@@ -1253,7 +1253,7 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 
 	screen_write_collect_flush(ctx, 0, __func__);
 
-	ttyctx.num = ny;
+	ttyctx.n = ny;
 	tty_write(tty_cmd_insertline, &ttyctx);
 }
 
@@ -1286,7 +1286,7 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 		grid_view_delete_lines(gd, s->cy, ny, bg);
 
 		screen_write_collect_flush(ctx, 0, __func__);
-		ttyctx.num = ny;
+		ttyctx.n = ny;
 		tty_write(tty_cmd_deleteline, &ttyctx);
 		return;
 	}
@@ -1305,7 +1305,7 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 		grid_view_delete_lines_region(gd, s->rlower, s->cy, ny, bg);
 
 	screen_write_collect_flush(ctx, 0, __func__);
-	ttyctx.num = ny;
+	ttyctx.n = ny;
 	tty_write(tty_cmd_deleteline, &ttyctx);
 }
 
@@ -1567,7 +1567,7 @@ screen_write_scrolldown(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 		grid_view_scroll_region_down(gd, s->rupper, s->rlower, bg);
 
 	screen_write_collect_flush(ctx, 0, __func__);
-	ttyctx.num = lines;
+	ttyctx.n = lines;
 	tty_write(tty_cmd_scrolldown, &ttyctx);
 }
 
@@ -1847,7 +1847,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 			ctx->scrolled = s->rlower - s->rupper + 1;
 
 		screen_write_initctx(ctx, &ttyctx, 1);
-		ttyctx.num = ctx->scrolled;
+		ttyctx.n = ctx->scrolled;
 		ttyctx.bg = ctx->bg;
 		tty_write(tty_cmd_scrollup, &ttyctx);
 
@@ -1875,15 +1875,15 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 			if (ci->type == CLEAR) {
 				screen_write_initctx(ctx, &ttyctx, 1);
 				ttyctx.bg = ci->bg;
-				ttyctx.num = ci->used;
+				ttyctx.n = ci->used;
 				tty_write(tty_cmd_clearcharacter, &ttyctx);
 			} else {
 				screen_write_initctx(ctx, &ttyctx, 0);
 				ttyctx.cell = &ci->gc;
 				if (ci->wrapped)
 					ttyctx.flags |= TTY_CTX_WRAPPED;
-				ttyctx.ptr = cl->data + ci->x;
-				ttyctx.num = ci->used;
+				ttyctx.data.data = cl->data + ci->x;
+				ttyctx.data.size = ci->used;
 				tty_write(tty_cmd_cells, &ttyctx);
 			}
 			items++;
@@ -2176,7 +2176,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	/* Create space for character in insert mode. */
 	if (s->mode & MODE_INSERT) {
 		screen_write_collect_flush(ctx, 0, __func__);
-		ttyctx.num = width;
+		ttyctx.n = width;
 		tty_write(tty_cmd_insertcharacter, &ttyctx);
 	}
 
@@ -2388,9 +2388,9 @@ screen_write_setselection(struct screen_write_ctx *ctx, const char *clip,
 	struct tty_ctx	ttyctx;
 
 	screen_write_initctx(ctx, &ttyctx, 0);
-	ttyctx.ptr = str;
-	ttyctx.ptr2 = (void *)clip;
-	ttyctx.num = len;
+	ttyctx.sel.clip = clip;
+	ttyctx.sel.data = str;
+	ttyctx.sel.size = len;
 
 	tty_write(tty_cmd_setselection, &ttyctx);
 }
@@ -2405,8 +2405,8 @@ screen_write_rawstring(struct screen_write_ctx *ctx, u_char *str, u_int len,
 	screen_write_initctx(ctx, &ttyctx, 0);
 	if (allow_invisible_panes)
 		ttyctx.flags |= TTY_CTX_INVISIBLE_PANES;
-	ttyctx.ptr = str;
-	ttyctx.num = len;
+	ttyctx.data.data = str;
+	ttyctx.data.size = len;
 
 	tty_write(tty_cmd_rawstring, &ttyctx);
 }
