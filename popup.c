@@ -185,7 +185,6 @@ popup_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	if (pd->c->flags & CLIENT_REDRAWOVERLAY)
 		return (0);
 
-	ttyctx->bigger = 0;
 	ttyctx->wox = 0;
 	ttyctx->woy = 0;
 	ttyctx->wsx = c->tty.sx;
@@ -208,6 +207,7 @@ popup_init_ctx_cb(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx)
 	struct popup_data	*pd = ctx->arg;
 
 	memcpy(&ttyctx->defaults, &pd->defaults, sizeof ttyctx->defaults);
+	ttyctx->flags &= ~TTY_CTX_WINDOW_BIGGER;
 	ttyctx->palette = &pd->palette;
 	ttyctx->redraw_cb = popup_redraw_cb;
 	ttyctx->set_client_cb = popup_set_client_cb;
