@@ -1704,9 +1704,20 @@ struct tty_ctx {
 #define TTY_CTX_CELL_DRAW_LINE 0x20
 #define TTY_CTX_CELL_INVALIDATE 0x40
 
-	u_int		 num;
-	void		*ptr;
-	void		*ptr2;
+	union {
+		u_int			 n;
+
+		struct {
+			const char	*data;
+			size_t		 size;
+		} data;
+
+		struct {
+			const char	*clip;
+			const char	*data;
+			size_t		 size;
+		} sel;
+	};
 
 	/*
 	 * Cursor and region position before the screen was updated - this is
