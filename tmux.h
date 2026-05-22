@@ -1055,6 +1055,8 @@ struct screen_write_ctx {
 
 	int				 flags;
 #define SCREEN_WRITE_SYNC 0x1
+#define SCREEN_WRITE_OBSCURED 0x2
+#define SCREEN_WRITE_CHECKED_IF_OBSCURED 0x4
 
 	screen_write_init_ctx_cb	 init_ctx_cb;
 	void				*arg;
@@ -1740,6 +1742,7 @@ struct tty_ctx {
 #define TTY_CTX_OVERLAY_SYNC 0x10
 #define TTY_CTX_CELL_DRAW_LINE 0x20
 #define TTY_CTX_CELL_INVALIDATE 0x40
+#define TTY_CTX_PANE_OBSCURED 0x80
 
 	union {
 		u_int			 n;
