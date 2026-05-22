@@ -1966,11 +1966,8 @@ screen_write_collect_clear(struct screen_write_ctx *ctx, u_int y, u_int n)
 	struct screen_write_cline	*cl;
 	u_int				 i;
 
-	log_debug("%s: clearing rows %u..%u", __func__, y, y + n - 1);
 	for (i = y; i < y + n; i++) {
 		cl = &ctx->s->write_list[i];
-		if (!TAILQ_EMPTY(&cl->items))
-			log_debug("%s: row %u had items!", __func__, i);
 		TAILQ_CONCAT(&screen_write_citem_freelist, &cl->items, entry);
 	}
 }
@@ -1985,8 +1982,8 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx, u_int bg)
 	char				*saved;
 	struct screen_write_citem	*ci;
 
-	log_debug("%s: at %u,%u (region %u-%u) cy=%u", __func__, s->cx, s->cy,
-	    s->rupper, s->rlower, s->cy);
+	log_debug("%s: at %u,%u (region %u-%u)", __func__, s->cx, s->cy,
+	    s->rupper, s->rlower);
 
 	screen_write_collect_clear(ctx, s->rupper, 1);
 	saved = ctx->s->write_list[s->rupper].data;
@@ -2046,9 +2043,6 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 		ttyctx.n = ctx->scrolled;
 		ttyctx.bg = ctx->bg;
 		tty_write(tty_cmd_scrollup, &ttyctx);
-		if (wp != NULL)
-			log_debug("%s: after scrollup, PANE_REDRAW=%d for %%%u",
-			    __func__, !!(wp->flags & PANE_REDRAW), wp->id);
 
 		if (wp != NULL)
 			ctx->wp->flags |= PANE_REDRAWSCROLLBAR;
@@ -2084,16 +2078,6 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 		    NULL);
 
 		last = UINT_MAX;
-		if (y == (u_int)s->cy || !TAILQ_EMPTY(&cl->items)) {
-			u_int dbg_cnt = 0;
-			struct screen_write_citem *dbg_ci;
-			TAILQ_FOREACH(dbg_ci, &cl->items, entry) dbg_cnt++;
-			log_debug("%s: row y=%u has %u items (wp_xoff=%d yoff=%d wsx=%u)",
-			    __func__, y, dbg_cnt,
-			    wp ? (int)wp->xoff : -1,
-			    wp ? (int)wp->yoff : -1,
-			    wsx);
-		}
 		TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
 			log_debug("collect list: x=%u (last %u), y=%u, used=%u",
 			    ci->x, last, y, ci->used);
