@@ -1004,10 +1004,7 @@ tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 		else if (cy > w->sy - *sy)
 			*oy = w->sy - *sy;
 		else
-			/* cy-sy/2 was causing panned panes to scroll
-			 * when the cursor was half way down the pane.
-			 */
-			*oy = cy - *sy + 1; /* cy - *sy / 2; */
+			*oy = cy - *sy + 1;
 	}
 
 	c->pan_window = NULL;
@@ -1096,17 +1093,14 @@ tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 	 * If region is large, schedule a redraw. In most cases this is likely
 	 * to be followed by some more scrolling.
 	 */
-	log_debug("%s: %s orlower=%u orupper=%u sy=%u large=%d", __func__,
-	    c->name, ctx->orlower, ctx->orupper, ctx->sy,
-	    tty_large_region(tty, ctx));
 	if (tty_large_region(tty, ctx) && ~ctx->flags & TTY_CTX_PANE_OBSCURED) {
 		log_debug("%s: %s large region redraw", __func__, c->name);
 		ctx->redraw_cb(ctx);
 		return;
 	}
 
-	log_debug("%s: %s small redraw, drawing rows %u-%u", __func__,
-	    c->name, ctx->orupper, ctx->orlower);
+	log_debug("%s: %s small region redraw (%u-%u)", __func__, c->name,
+	    ctx->orupper, ctx->orlower);
 	for (i = ctx->orupper; i <= ctx->orlower; i++)
 		tty_draw_pane(tty, ctx, i);
 }
@@ -1233,7 +1227,7 @@ tty_clear_pane_line(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 
 	if (tty_clamp_line(tty, ctx, px, py, nx, &l, &x, &rx, &ry)) {
 		r = tty_check_overlay_range(tty, x, ry, rx);
-		for (i=0; i < r->used; i++) {
+		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
 			if (ri->nx == 0)
 				continue;
@@ -1316,7 +1310,7 @@ tty_clear_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 	struct window_pane	*wpl, *wp = ctx->arg;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
-	u_int			 i, yy, overlap = 0, oy = 0;
+	u_int			 i, yy, region = 1, oy = 0;
 	char			 tmp[64];
 
 	log_debug("%s: %s, %u,%u at %u,%u", __func__, c->name, nx, ny, px, py);
@@ -1325,23 +1319,30 @@ tty_clear_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 	if (nx == 0 || ny == 0)
 		return;
 
-	/* Verify there's nothing overlapping in z-index before using BCE. */
-	TAILQ_FOREACH(wpl, &w->z_index, zentry) {
-		if (wpl == wp || ~wpl->flags & PANE_FLOATING)
-			continue;
-		if ((int)wpl->xoff - 1 > (int)(px + nx) ||
-		    wpl->xoff + (int)wpl->sx + 1 < (int)px)
-			continue;
-		if ((int)wpl->yoff - 1 > (int)(py + ny) ||
-		    wpl->yoff + (int)wpl->sy + 1 < (int)py)
-			continue;
-		overlap++;
-		if (overlap > 0) break;
+	/*
+	 * If there is an overlay or BCE is not available, cannot clear as a
+	 * region.
+	 */
+	if (c->overlay_check != NULL || tty_fake_bce(tty, defaults, bg))
+		region = 0;
+	else {
+		/* Any overlapping pane also means no region. */
+		TAILQ_FOREACH(wpl, &w->z_index, zentry) {
+			if (wpl == wp || ~wpl->flags & PANE_FLOATING)
+				continue;
+			if ((int)wpl->xoff - 1 > (int)(px + nx) ||
+			    wpl->xoff + (int)wpl->sx + 1 < (int)px)
+				continue;
+			if ((int)wpl->yoff - 1 > (int)(py + ny) ||
+			    wpl->yoff + (int)wpl->sy + 1 < (int)py)
+				continue;
+			region = 0;
+			break;
+		}
 	}
 
-	/* If genuine BCE is available, can try escape sequences. */
-	if (!overlap && c->overlay_check == NULL &&
-	    !tty_fake_bce(tty, defaults, bg)) {
+	/* Clear as a region if possible. */
+	if (region) {
 		/* Use ED if clearing off the bottom of the terminal. */
 		if (px == 0 &&
 		    px + nx >= tty->sx &&
@@ -1392,15 +1393,15 @@ tty_clear_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 		}
 	}
 
-	if (c->session->statusat == 0)
-		oy = c->session->statuslines;
-
 	/* Couldn't use an escape sequence, loop over the lines. */
+	if (c->session->statusat == 0)
+               oy = c->session->statuslines;
 	for (yy = py; yy < py + ny; yy++) {
 		r = tty_check_overlay_range(tty, px, yy - oy, nx);
-		for (i=0; i < r->used; i++) {
+		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
-			if (ri->nx == 0) continue;
+			if (ri->nx == 0)
+				continue;
 			tty_clear_line(tty, defaults, yy, ri->px, ri->nx, bg);
 		}
 	}
