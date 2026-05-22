@@ -1766,6 +1766,10 @@ struct tty_ctx {
 			const char	*data;
 			size_t		 size;
 		} sel;
+
+#ifdef ENABLE_SIXEL
+		struct image		*image;
+#endif
 	};
 
 	/*
