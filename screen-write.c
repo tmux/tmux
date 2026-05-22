@@ -36,7 +36,7 @@ static int	screen_write_overwrite(struct screen_write_ctx *,
 		    struct grid_cell *, u_int);
 static int	screen_write_combine(struct screen_write_ctx *,
 		    const struct grid_cell *);
-static int	screen_write_pane_obscured(struct window_pane *);
+static int	screen_write_pane_is_obscured(struct window_pane *);
 
 struct screen_write_citem {
 	u_int				x;
@@ -604,7 +604,7 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 				break;
 			grid_view_set_cell(ctx->s->grid, s->cx, s->cy, &gc);
 			if (wp != NULL) {
-				if (! screen_redraw_is_visible(r, px))
+				if (!screen_redraw_is_visible(r, px))
 					break;
 				ttyctx.cell = &gc;
 				tty_write(tty_cmd_cell, &ttyctx);
@@ -1131,7 +1131,7 @@ screen_write_insertcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 
 	screen_write_initctx(ctx, &ttyctx, 0);
 	ttyctx.bg = bg;
-	ttyctx.obscured = screen_write_pane_obscured(ctx->wp);
+	ttyctx.obscured = screen_write_pane_is_obscured(ctx->wp);
 
 	grid_view_insert_cells(s->grid, s->cx, s->cy, nx, bg);
 
@@ -1165,7 +1165,7 @@ screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 
 	screen_write_initctx(ctx, &ttyctx, 0);
 	ttyctx.bg = bg;
-	ttyctx.obscured = screen_write_pane_obscured(ctx->wp);
+	ttyctx.obscured = screen_write_pane_is_obscured(ctx->wp);
 
 	grid_view_delete_cells(s->grid, s->cx, s->cy, nx, bg);
 
@@ -1235,7 +1235,7 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 
 		screen_write_initctx(ctx, &ttyctx, 1);
 		ttyctx.bg = bg;
-		ttyctx.obscured = screen_write_pane_obscured(ctx->wp);
+		ttyctx.obscured = screen_write_pane_is_obscured(ctx->wp);
 
 		grid_view_insert_lines(gd, s->cy, ny, bg);
 
@@ -1252,7 +1252,7 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 
 	screen_write_initctx(ctx, &ttyctx, 1);
 	ttyctx.bg = bg;
-	ttyctx.obscured = screen_write_pane_obscured(ctx->wp);
+	ttyctx.obscured = screen_write_pane_is_obscured(ctx->wp);
 	log_debug("%s: obscured=%d for pane %%%u", __func__,
 	    ttyctx.obscured, ctx->wp != NULL ? ctx->wp->id : 0);
 
@@ -1292,7 +1292,7 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 
 		screen_write_initctx(ctx, &ttyctx, 1);
 		ttyctx.bg = bg;
-		ttyctx.obscured = screen_write_pane_obscured(ctx->wp);
+		ttyctx.obscured = screen_write_pane_is_obscured(ctx->wp);
 
 		grid_view_delete_lines(gd, s->cy, ny, bg);
 
@@ -1309,7 +1309,7 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 
 	screen_write_initctx(ctx, &ttyctx, 1);
 	ttyctx.bg = bg;
-	ttyctx.obscured = screen_write_pane_obscured(ctx->wp);
+	ttyctx.obscured = screen_write_pane_is_obscured(ctx->wp);
 	log_debug("%s: obscured=%d for pane %%%u", __func__,
 	    ttyctx.obscured, ctx->wp != NULL ? ctx->wp->id : 0);
 
@@ -1583,7 +1583,7 @@ screen_write_scrolldown(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 
 	screen_write_initctx(ctx, &ttyctx, 1);
 	ttyctx.bg = bg;
-	ttyctx.obscured = screen_write_pane_obscured(ctx->wp);
+	ttyctx.obscured = screen_write_pane_is_obscured(ctx->wp);
 
 	if (lines == 0)
 		lines = 1;
@@ -1646,7 +1646,7 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 	screen_write_collect_clear(ctx, s->cy + 1, sy - (s->cy + 1));
 	screen_write_collect_flush(ctx, 0, __func__);
 
-	if (! screen_write_pane_obscured(ctx->wp)) {
+	if (!screen_write_pane_is_obscured(ctx->wp)) {
 		tty_write(tty_cmd_clearendofscreen, &ttyctx);
 		return;
 	}
@@ -1722,7 +1722,7 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 	screen_write_collect_clear(ctx, 0, s->cy);
 	screen_write_collect_flush(ctx, 0, __func__);
 
-	if (! screen_write_pane_obscured(ctx->wp)) {
+	if (!screen_write_pane_is_obscured(ctx->wp)) {
 		tty_write(tty_cmd_clearstartofscreen, &ttyctx);
 		return;
 	}
@@ -1796,7 +1796,7 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 
 	screen_write_collect_clear(ctx, 0, sy);
 
-	if (! screen_write_pane_obscured(ctx->wp)) {
+	if (!screen_write_pane_is_obscured(ctx->wp)) {
 		tty_write(tty_cmd_clearscreen, &ttyctx);
 		return;
 	}
@@ -1983,39 +1983,25 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx, u_int bg)
 
 /* Return 1 if there is a floating window pane overlapping this pane. */
 static int
-screen_write_pane_obscured(struct window_pane *base_wp)
+screen_write_pane_is_obscured(struct window_pane *base_wp)
 {
-	struct window_pane	*wp;
-	struct window		*w;
-	int			 found_self = 0;
+        struct window_pane	*wp = base_wp;
 
-	if (base_wp == NULL)
-		return(0);
-	w = base_wp->window;
-
-	TAILQ_FOREACH_REVERSE(wp, &w->z_index, window_panes_zindex, zentry) {
-		if (wp == base_wp) {
-			found_self = 1;
-			continue;
-		}
-		if (found_self && wp->flags & PANE_FLOATING &&
-		    ! (wp->flags & PANE_HIDDEN) &&
-		    ((wp->yoff >= base_wp->yoff &&
-		    wp->yoff <= base_wp->yoff + (int)base_wp->sy) ||
-		    (wp->yoff + (int)wp->sy >= base_wp->yoff &&
-		    wp->yoff + wp->sy <= base_wp->yoff + base_wp->sy)) &&
-		    ((wp->xoff >= base_wp->xoff &&
-		    wp->xoff <= base_wp->xoff + (int)base_wp->sx) ||
-		    (wp->xoff + (int)wp->sx >= base_wp->xoff &&
-		    wp->xoff + wp->sx <= base_wp->xoff + base_wp->sx))) {
-			log_debug("%s: base %%%u obscured by %%%u "
-			    "(xoff=%u sx=%u vs base xoff=%u sx=%u)", __func__,
-			    base_wp->id, wp->id,
-			    wp->xoff, wp->sx, base_wp->xoff, base_wp->sx);
-			return (1);
-		}
-		}
-	return (0);
+        if (base_wp == NULL)
+                return (0);
+        while ((wp = TAILQ_PREV(wp, window_panes, zentry)) != NULL) {
+                if ((wp->flags & PANE_FLOATING) &&
+                    ((wp->yoff >= base_wp->yoff &&
+                    wp->yoff <= base_wp->yoff + (int)base_wp->sy) ||
+                    (wp->yoff + (int)wp->sy >= base_wp->yoff &&
+                    wp->yoff + wp->sy <= base_wp->yoff + base_wp->sy)) &&
+                    ((wp->xoff >= base_wp->xoff &&
+                    wp->xoff <= base_wp->xoff + (int)base_wp->sx) ||
+                    (wp->xoff + (int)wp->sx >= base_wp->xoff &&
+                    wp->xoff + wp->sx <= base_wp->xoff + base_wp->sx)))
+                        return (1);
+        }
+        return (0);
 }
 
 /* Flush collected lines. */
@@ -2058,7 +2044,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 			 ttyctx.orlower -= (wp->yoff + wp->sy - wp->window->sy);
 		ttyctx.num = ctx->scrolled;
 		ttyctx.bg = ctx->bg;
-		ttyctx.obscured = screen_write_pane_obscured(wp);
+		ttyctx.obscured = screen_write_pane_is_obscured(wp);
 		log_debug("%s: obscured=%d for pane %%%u", __func__,
 		    ttyctx.obscured, wp != NULL ? wp->id : 0);
 		tty_write(tty_cmd_scrollup, &ttyctx);
