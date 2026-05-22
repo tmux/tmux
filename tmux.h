@@ -1751,6 +1751,7 @@ struct tty_ctx {
 #define TTY_CTX_OVERLAY_SYNC 0x10
 #define TTY_CTX_CELL_DRAW_LINE 0x20
 #define TTY_CTX_CELL_INVALIDATE 0x40
+#define TTY_CTX_PANE_OBSCURED 0x80
 
 	u_int		 num;
 	void		*ptr;
@@ -1787,9 +1788,6 @@ struct tty_ctx {
 	u_int			 woy;
 	u_int			 wsx;
 	u_int			 wsy;
-
-	/* tty partly obscured, it will need to be surgically scrolled. */
-	u_int			 obscured;
 };
 
 /* Saved message entry. */

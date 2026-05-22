@@ -1099,7 +1099,7 @@ tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 	log_debug("%s: %s orlower=%u orupper=%u sy=%u large=%d", __func__,
 	    c->name, ctx->orlower, ctx->orupper, ctx->sy,
 	    tty_large_region(tty, ctx));
-	if (tty_large_region(tty, ctx) && !ctx->obscured) {
+	if (tty_large_region(tty, ctx) && ~ctx->flags & TTY_CTX_PANE_OBSCURED) {
 		log_debug("%s: %s large region redraw", __func__, c->name);
 		ctx->redraw_cb(ctx);
 		return;
@@ -1433,7 +1433,7 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 
 	if (~ctx->flags & TTY_CTX_WINDOW_BIGGER) {
 		if (wp) {
-			if (ctx->obscured) {
+			if (ctx->flags & TTY_CTX_PANE_OBSCURED) {
 				/*
 				 * Floating pane is present: use physical
 				 * coordinates and clip to visible ranges to
@@ -1693,13 +1693,12 @@ tty_cmd_insertcharacter(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct client	*c = tty->client;
 
-	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
+	if ((ctx->flags & (TTY_CTX_WINDOW_BIGGER|TTY_CTX_PANE_OBSCURED)) ||
 	    !tty_full_width(tty, ctx) ||
 	    tty_fake_bce(tty, &ctx->defaults, ctx->bg) ||
 	    (!tty_term_has(tty->term, TTYC_ICH) &&
 	    !tty_term_has(tty->term, TTYC_ICH1)) ||
-	    c->overlay_check != NULL ||
-	    ctx->obscured) {
+	    c->overlay_check != NULL) {
 		tty_draw_pane(tty, ctx, ctx->ocy);
 		return;
 	}
@@ -1717,13 +1716,12 @@ tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct client	*c = tty->client;
 
-	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
+	if (ctx->flags & (TTY_CTX_WINDOW_BIGGER|TTY_CTX_PANE_OBSCURED) ||
 	    !tty_full_width(tty, ctx) ||
 	    tty_fake_bce(tty, &ctx->defaults, ctx->bg) ||
 	    (!tty_term_has(tty->term, TTYC_DCH) &&
 	    !tty_term_has(tty->term, TTYC_DCH1)) ||
-	    c->overlay_check != NULL ||
-	    ctx->obscured) {
+	    c->overlay_check != NULL) {
 		tty_draw_pane(tty, ctx, ctx->ocy);
 		return;
 	}
@@ -1750,15 +1748,14 @@ tty_cmd_insertline(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct client	*c = tty->client;
 
-	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
+	if ((ctx->flags & (TTY_CTX_WINDOW_BIGGER|TTY_CTX_PANE_OBSCURED)) ||
 	    !tty_full_width(tty, ctx) ||
 	    tty_fake_bce(tty, &ctx->defaults, ctx->bg) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    !tty_term_has(tty->term, TTYC_IL1) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1 ||
-	    c->overlay_check != NULL ||
-	    ctx->obscured) {
+	    c->overlay_check != NULL) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1779,15 +1776,14 @@ tty_cmd_deleteline(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct client	*c = tty->client;
 
-	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
+	if (ctx->flags & (TTY_CTX_WINDOW_BIGGER|TTY_CTX_PANE_OBSCURED) ||
 	    !tty_full_width(tty, ctx) ||
 	    tty_fake_bce(tty, &ctx->defaults, ctx->bg) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    !tty_term_has(tty->term, TTYC_DL1) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1 ||
-	    c->overlay_check != NULL ||
-	    ctx->obscured) {
+	    c->overlay_check != NULL) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1915,14 +1911,13 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 	struct client		*c = tty->client;
 	u_int			 i;
 
-	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
+	if (ctx->flags & (TTY_CTX_WINDOW_BIGGER|TTY_CTX_PANE_OBSCURED) ||
 	    (!tty_full_width(tty, ctx) && !tty_use_margin(tty)) ||
 	    tty_fake_bce(tty, &ctx->defaults, 8) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1 ||
-	    c->overlay_check != NULL ||
-	    ctx->obscured) {
+	    c->overlay_check != NULL) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1955,7 +1950,7 @@ tty_cmd_scrolldown(struct tty *tty, const struct tty_ctx *ctx)
 	u_int		 i;
 	struct client	*c = tty->client;
 
-	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
+	if (ctx->flags & (TTY_CTX_WINDOW_BIGGER|TTY_CTX_PANE_OBSCURED) ||
 	    (!tty_full_width(tty, ctx) && !tty_use_margin(tty)) ||
 	    tty_fake_bce(tty, &ctx->defaults, 8) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
@@ -1963,8 +1958,7 @@ tty_cmd_scrolldown(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_RIN)) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1 ||
-	    c->overlay_check != NULL ||
-	    ctx->obscured) {
+	    c->overlay_check != NULL) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -2058,7 +2052,7 @@ tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 {
 	u_int	i, j;
 
-	if (ctx->flags & TTY_CTX_WINDOW_BIGGER) {
+	if (ctx->flags & (TTY_CTX_WINDOW_BIGGER|TTY_CTX_PANE_OBSCURED)) {
 		ctx->redraw_cb(ctx);
 		return;
 	}
