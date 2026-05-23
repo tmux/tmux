@@ -5709,22 +5709,12 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 		default:
 			s = NULL;
 			if (ch >= '1' && ch <= '9') {
-				char	 numkey[2] = { ch, '\0' };
-				char	*numval;
+				char	numkey[2] = { ch, '\0' };
 
-				numval = format_find(ft, numkey, 0, NULL);
-				if (numval != NULL) {
-					format_log(es, "found #%c: %s", ch,
-					    numval);
-					if (format_replace(es, numval,
-					    strlen(numval), &buf, &len,
-					    &off) != 0) {
-						free(numval);
-						break;
-					}
-					free(numval);
-					continue;
-				}
+				if (format_replace(es, numkey, 1, &buf, &len,
+				    &off) != 0)
+					break;
+				continue;
 			}
 			if (fmt > style_end) { /* skip inside #[] */
 				if (ch >= 'A' && ch <= 'Z')
