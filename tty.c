@@ -1306,11 +1306,9 @@ tty_clear_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 {
 	struct client		*c = tty->client;
 	const struct grid_cell	*defaults = &ctx->defaults;
-	struct window		*w = c->session->curw->window;
-	struct window_pane	*wpl, *wp = ctx->arg;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
-	u_int			 i, yy, region = 1, oy = 0;
+	u_int			 i, yy, oy = 0;
 	char			 tmp[64];
 
 	log_debug("%s: %s, %u,%u at %u,%u", __func__, c->name, nx, ny, px, py);
@@ -1323,26 +1321,7 @@ tty_clear_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 	 * If there is an overlay or BCE is not available, cannot clear as a
 	 * region.
 	 */
-	if (c->overlay_check != NULL || tty_fake_bce(tty, defaults, bg))
-		region = 0;
-	else {
-		/* Any overlapping pane also means no region. */
-		TAILQ_FOREACH(wpl, &w->z_index, zentry) {
-			if (wpl == wp || ~wpl->flags & PANE_FLOATING)
-				continue;
-			if ((int)wpl->xoff - 1 > (int)(px + nx) ||
-			    wpl->xoff + (int)wpl->sx + 1 < (int)px)
-				continue;
-			if ((int)wpl->yoff - 1 > (int)(py + ny) ||
-			    wpl->yoff + (int)wpl->sy + 1 < (int)py)
-				continue;
-			region = 0;
-			break;
-		}
-	}
-
-	/* Clear as a region if possible. */
-	if (region) {
+	if (c->overlay_check == NULL && !tty_fake_bce(tty, defaults, bg)) {
 		/* Use ED if clearing off the bottom of the terminal. */
 		if (px == 0 &&
 		    px + nx >= tty->sx &&
@@ -1839,7 +1818,7 @@ tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 	if (ctx->ocy != ctx->orupper)
 		return;
 
-	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
+	if (ctx->flags & (TTY_CTX_WINDOW_BIGGER|TTY_CTX_PANE_OBSCURED) ||
 	    (!tty_full_width(tty, ctx) && !tty_use_margin(tty)) ||
 	    tty_fake_bce(tty, &ctx->defaults, 8) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
@@ -2053,9 +2032,11 @@ tty_cmd_clearscreen(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 {
-	u_int	i, j;
+	struct client	*c = tty->client;
+	u_int		 i, j;
 
-	if (ctx->flags & (TTY_CTX_WINDOW_BIGGER|TTY_CTX_PANE_OBSCURED)) {
+	if (ctx->flags & (TTY_CTX_WINDOW_BIGGER|TTY_CTX_PANE_OBSCURED) ||
+	    c->overlay_check != NULL) {
 		ctx->redraw_cb(ctx);
 		return;
 	}
