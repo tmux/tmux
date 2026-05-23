@@ -233,7 +233,7 @@ layout_make_node(struct layout_cell *lc, enum layout_type type)
 	lc->wp = NULL;
 }
 
-/* Fix Z indexes. */
+/* Fix z-indexes. */
 void
 layout_fix_zindexes(struct window *w, struct layout_cell *lc)
 {
