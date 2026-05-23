@@ -61,6 +61,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 	struct window_pane	*wp;
 	char			*cwd, *cause;
 	enum msgtype		 msgtype;
+	uid_t			 uid;
 
 	if (RB_EMPTY(&sessions)) {
 		cmdq_error(item, "no sessions");
@@ -106,8 +107,16 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 	}
 	if (fflag)
 		server_client_set_flags(c, fflag);
-	if (rflag)
+	if (rflag) {
+		if (c->flags & CLIENT_READONLY) {
+			uid = proc_get_peer_uid(c->peer);
+			if (uid != getuid()) {
+				cmdq_error(item, "client is read-only");
+				return (CMD_RETURN_ERROR);
+			}
+		}
 		c->flags |= (CLIENT_READONLY|CLIENT_IGNORESIZE);
+	}
 
 	c->last_session = c->session;
 	if (c->session != NULL) {

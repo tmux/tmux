@@ -1753,9 +1753,24 @@ struct tty_ctx {
 #define TTY_CTX_CELL_INVALIDATE 0x40
 #define TTY_CTX_PANE_OBSCURED 0x80
 
-	u_int		 num;
-	void		*ptr;
-	void		*ptr2;
+	union {
+		u_int			 n;
+
+		struct {
+			const char	*data;
+			size_t		 size;
+		} data;
+
+		struct {
+			const char	*clip;
+			const char	*data;
+			size_t		 size;
+		} sel;
+
+#ifdef ENABLE_SIXEL
+		struct image		*image;
+#endif
+	};
 
 	/*
 	 * Cursor and region position before the screen was updated - this is
@@ -2733,11 +2748,9 @@ void	tty_cmd_scrolldown(struct tty *, const struct tty_ctx *);
 void	tty_cmd_reverseindex(struct tty *, const struct tty_ctx *);
 void	tty_cmd_setselection(struct tty *, const struct tty_ctx *);
 void	tty_cmd_rawstring(struct tty *, const struct tty_ctx *);
-
 #ifdef ENABLE_SIXEL
 void	tty_cmd_sixelimage(struct tty *, const struct tty_ctx *);
 #endif
-
 void	tty_cmd_syncstart(struct tty *, const struct tty_ctx *);
 void	tty_default_colours(struct grid_cell *, struct window_pane *);
 

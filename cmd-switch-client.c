@@ -20,6 +20,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
@@ -53,6 +54,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*tflag = args_get(args, 't');
 	enum cmd_find_type	 type;
 	int			 flags;
+	struct client		*c = cmdq_get_client(item);
 	struct client		*tc = cmdq_get_target_client(item);
 	struct session		*s;
 	struct winlink		*wl;
@@ -61,6 +63,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*tablename;
 	struct key_table	*table;
 	struct sort_criteria	 sort_crit;
+	uid_t			 uid;
 
 	if (tflag != NULL &&
 	    (tflag[strcspn(tflag, ":.%")] != '\0' || strcmp(tflag, "=") == 0)) {
@@ -77,6 +80,13 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	wp = target.wp;
 
 	if (args_has(args, 'r')) {
+		if (tc->flags & CLIENT_READONLY) {
+			uid = proc_get_peer_uid(c->peer);
+			if (uid != getuid()) {
+				cmdq_error(item, "client is read-only");
+				return (CMD_RETURN_ERROR);
+			}
+		}
 		if (tc->flags & CLIENT_READONLY)
 			tc->flags &= ~(CLIENT_READONLY|CLIENT_IGNORESIZE);
 		else
