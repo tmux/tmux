@@ -1471,12 +1471,12 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 	}
 	if (tty_clamp_line(tty, ctx, 0, py, nx, &px, &x, &rx, &ry)) {
 		if (wp) {
-			r = tty_check_overlay_range(tty, i, py, rx);
+			r = tty_check_overlay_range(tty, px, py, rx);
 			for (i=0; i < r->used; i++) {
 				ri = &r->ranges[i];
 				if (ri->nx == 0)
 					continue;
-				tty_draw_line(tty, s, i, py, ri->nx,
+				tty_draw_line(tty, s, ri->px, py, ri->nx,
 				    x + ri->px, ry, &ctx->defaults,
 				    ctx->palette);
 			}
