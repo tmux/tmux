@@ -304,8 +304,7 @@ layout_parse(struct window *w, const char *layout, char **cause)
 	layout_print_cell(tiled_lc, __func__, 0);
 
 	/* Free the floating layout cell, no longer needed. */
-	if (floating_lc != NULL)
-		layout_free_cell(floating_lc);
+	layout_free_cell(floating_lc);
 
 	notify_window("window-layout-changed", w);
 

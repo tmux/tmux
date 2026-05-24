@@ -78,6 +78,9 @@ layout_free_cell(struct layout_cell *lc)
 {
 	struct layout_cell	*lcchild;
 
+	if (lc == NULL)
+		return;
+
 	switch (lc->type) {
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
