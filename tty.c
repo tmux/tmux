@@ -2051,11 +2051,11 @@ tty_cmd_clearscreen(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct visible_ranges	*r;
-	struct visible_range	*ri;
-	u_int			 i, j, k, px, py, cx;
+	struct client	*c = tty->client;
+	u_int		 i, j;
 
-	if (ctx->flags & (TTY_CTX_WINDOW_BIGGER|TTY_CTX_PANE_OBSCURED)) {
+	if (ctx->flags & (TTY_CTX_WINDOW_BIGGER|TTY_CTX_PANE_OBSCURED) ||
+	    c->overlay_check != NULL) {
 		ctx->redraw_cb(ctx);
 		return;
 	}
@@ -2066,21 +2066,10 @@ tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 	tty_region_pane(tty, ctx, 0, ctx->sy - 1);
 	tty_margin_off(tty);
 
-	/* Get tty position from pane position for overlay check. */
-	px = ctx->xoff - ctx->wox;
-
 	for (j = 0; j < ctx->sy; j++) {
-		py = ctx->yoff + j - ctx->woy;
-		r = tty_check_overlay_range(tty, px, py, ctx->sx);
-		for (i = 0; i < r->used; i++) {
-			ri = &r->ranges[i];
-			if (ri->nx == 0)
-				continue;
-			cx = ri->px - ctx->xoff + ctx->wox;
-			tty_cursor_pane(tty, ctx, cx, j);
-			for (k = 0; k < ri->nx; k++)
-				tty_putc(tty, 'E');
-		}
+		tty_cursor_pane(tty, ctx, 0, j);
+		for (i = 0; i < ctx->sx; i++)
+			tty_putc(tty, 'E');
 	}
 }
 
