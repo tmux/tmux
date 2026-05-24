@@ -140,9 +140,6 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 				xsnprintf(key, sizeof key, "%u", i);
 				format_add(ft, key, "%s",
 				    args_string(args, i));
-				xsnprintf(key, sizeof key, "argument%u", i);
-				format_add(ft, key, "%s",
-				    args_string(args, i));
 			}
 			cdata->cmd = format_expand(ft, cmd);
 			format_free(ft);

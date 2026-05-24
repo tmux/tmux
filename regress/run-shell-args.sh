@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# run-shell argument interpolation: #1, #{1}, #{argumentN}
+# run-shell argument interpolation: #1, #{1}
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -22,12 +22,6 @@ $TMUX kill-server 2>/dev/null
 $TMUX -f/dev/null new-session -d -s main \; \
     run-shell "echo #{1} >$TMP" world || exit 1
 sleep 1 && [ "$(cat $TMP)" = "world" ] || exit 1
-$TMUX kill-server 2>/dev/null
-
-# #{argument1} named form
-$TMUX -f/dev/null new-session -d -s main \; \
-    run-shell "echo #{argument1} >$TMP" named || exit 1
-sleep 1 && [ "$(cat $TMP)" = "named" ] || exit 1
 $TMUX kill-server 2>/dev/null
 
 # multiple arguments: #1 and #2
