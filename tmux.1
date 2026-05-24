@@ -7852,14 +7852,14 @@ section.
 If
 .Ar argument
 values are given, they are added to the format tree as
-.Ql argument1 ,
-.Ql argument2 ,
+.Ql 1 ,
+.Ql 2 ,
 and so on, and may be referenced as
 .Ql #1 ,
 .Ql #2 ,
 or using the standard format syntax
 .Ql #{1} ,
-.Ql #{argument1} .
+.Ql #{2} .
 For example:
 .Bd -literal -offset indent
 run-shell 'myscript.sh #1 #2' foo bar
