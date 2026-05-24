@@ -1273,7 +1273,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	struct screen		*s = wp->screen;
 	struct colour_palette	*palette = &wp->palette;
 	struct grid_cell	 defaults;
-	u_int			 i, j, woy, wx, wy, px, py, width;
+	u_int			 i, j, woy, wx, wy, py, width;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
@@ -1337,6 +1337,10 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 			    ri->px, py, &defaults, palette);
 		}
 	}
+
+#ifdef ENABLE_SIXEL
+	tty_draw_images(c, wp, s);
+#endif
 }
 
 /* Draw the panes scrollbars */
