@@ -1306,9 +1306,7 @@ tty_clear_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 {
 	struct client		*c = tty->client;
 	const struct grid_cell	*defaults = &ctx->defaults;
-	struct visible_ranges	*r;
-	struct visible_range	*ri;
-	u_int			 i, yy, oy = 0;
+	u_int			 yy;
 	char			 tmp[64];
 
 	log_debug("%s: %s, %u,%u at %u,%u", __func__, c->name, nx, ny, px, py);

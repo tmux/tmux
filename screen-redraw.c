@@ -1276,7 +1276,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	struct screen		*s = wp->screen;
 	struct colour_palette	*palette = &wp->palette;
 	struct grid_cell	 defaults;
-	u_int			 i, j, woy, wx, wy, py, width;
+	u_int			 i, j, k, woy, wx, wy, py, width;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
@@ -1333,8 +1333,8 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		r = tty_check_overlay_range(tty, wx, wy, width);
 		r = screen_redraw_get_visible_ranges(wp, wx, wy, width, r);
 		tty_default_colours(&defaults, wp);
-		for (i = 0; i < r->used; i++) {
-			ri = &r->ranges[i];
+		for (k = 0; k < r->used; k++) {
+			ri = &r->ranges[k];
 			if (ri->nx == 0)
 				continue;
 			tty_draw_line(tty, s, ri->px - wp->xoff, j, ri->nx,

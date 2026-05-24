@@ -46,10 +46,6 @@ static void
 tty_draw_line_clear(struct tty *tty, u_int px, u_int py, u_int nx,
     const struct grid_cell *defaults, u_int bg, int wrapped)
 {
-	struct visible_ranges	*r;
-	struct visible_range	*rr;
-	u_int			 i;
-
 	/* Nothing to clear. */
 	if (nx == 0)
 		return;
@@ -82,20 +78,14 @@ tty_draw_line_clear(struct tty *tty, u_int px, u_int py, u_int nx,
 	}
 
         /* Couldn't use an escape sequence, use spaces. */
-	r = tty_check_overlay_range(tty, px, py, nx);
-	for (i = 0; i < r->used; i++) {
-		rr = &r->ranges[i];
-		if (rr->nx != 0) {
-			if (rr->px != 0 || !wrapped)
-				tty_cursor(tty, rr->px, py);
-			if (rr->nx == 1)
-				tty_putc(tty, ' ');
-			else if (rr->nx == 2)
-				tty_putn(tty, "  ", 2, 2);
-			else
-				tty_repeat_space(tty, rr->nx);
-		}
-	}
+	if (px != 0 || !wrapped)
+		tty_cursor(tty, px, py);
+	if (nx == 1)
+		tty_putc(tty, ' ');
+	else if (nx == 2)
+		tty_putn(tty, "  ", 2, 2);
+	else
+		tty_repeat_space(tty, nx);
 }
 
 /* Draw a line from screen to tty. */
