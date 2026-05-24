@@ -1337,6 +1337,10 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 			    ri->px, py, &defaults, palette);
 		}
 	}
+
+#ifdef ENABLE_SIXEL
+	tty_draw_images(c, wp, s);
+#endif
 }
 
 /* Draw the panes scrollbars */
