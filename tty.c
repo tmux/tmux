@@ -1394,17 +1394,8 @@ tty_clear_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 	}
 
 	/* Couldn't use an escape sequence, loop over the lines. */
-	if (c->session->statusat == 0)
-               oy = c->session->statuslines;
-	for (yy = py; yy < py + ny; yy++) {
-		r = tty_check_overlay_range(tty, px, yy - oy, nx);
-		for (i = 0; i < r->used; i++) {
-			ri = &r->ranges[i];
-			if (ri->nx == 0)
-				continue;
-			tty_clear_line(tty, defaults, yy, ri->px, ri->nx, bg);
-		}
-	}
+	for (yy = py; yy < py + ny; yy++)
+		tty_clear_line(tty, defaults, yy, px, nx, bg);
 }
 
 /* Clear an area in a pane. */

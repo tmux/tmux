@@ -1498,13 +1498,13 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 	}
 
 	for (j = jmin; j < jmax; j++) {
-		wy = sb_y + j;	   /* window y coordinate */
-		py = sb_tty_y + j;/* tty y coordinate */
+		wy = sb_y + j; /* window y coordinate */
+		py = sb_tty_y + j; /* tty y coordinate */
 		r = tty_check_overlay_range(tty, sb_x, wy, imax);
 		r = screen_redraw_get_visible_ranges(wp, sb_x, wy, imax, r);
 		for (i = imin; i < imax; i++) {
 			px = sb_x + ox + i; /* tty x coordinate */
-			wx = sb_x + i;	    /* window x coordinate */
+			wx = sb_x + i; /* window x coordinate */
 			if (wx < xoff - (int)sb_w - (int)sb_pad ||
 			    px >= sx || px < 0 ||
 			    wy < yoff - 1 ||
