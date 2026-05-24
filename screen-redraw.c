@@ -712,7 +712,8 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 			width = size - x;
 		}
 
-		r = screen_redraw_get_visible_ranges(wp, x, yoff, width, NULL);
+		r = tty_check_overlay_range(tty, x, yoff, width);
+		r = screen_redraw_get_visible_ranges(wp, x, yoff, width, r);
 		if (ctx->statustop)
 			yoff += ctx->statuslines;
 		for (i = 0; i < r->used; i++) {
@@ -1329,7 +1330,8 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		    __func__, c->name, wp->id, i, j, wx, wy, width);
 
 		/* Get visible ranges of line before we draw it. */
-		r = screen_redraw_get_visible_ranges(wp, wx, wy, width, NULL);
+		r = tty_check_overlay_range(tty, wx, wy, width);
+		r = screen_redraw_get_visible_ranges(wp, wx, wy, width, r);
 		tty_default_colours(&defaults, wp);
 		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
