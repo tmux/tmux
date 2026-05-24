@@ -1115,7 +1115,9 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 	struct screen		*s = ctx->s;
 	struct tty_ctx	 	 ttyctx;
 	struct grid_cell       	 gc;
-	u_int			 xx, yy;
+	u_int			 xx, yy, sx, xoff, yoff, cx, i, n;
+	struct visible_ranges	*r;
+	struct visible_range	*ri;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	utf8_set(&gc.data, 'E');
@@ -1138,15 +1140,45 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 
 	screen_write_collect_clear(ctx, 0, screen_size_y(s) - 1);
-	tty_write(tty_cmd_alignmenttest, &ttyctx);
+
+	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
+		tty_write(tty_cmd_alignmenttest, &ttyctx);
+		return;
+	}
+
+	sx = screen_size_x(s);
+	xoff = ctx->wp->xoff;
+	yoff = ctx->wp->yoff;
+
+	for (yy = 0; yy < screen_size_y(s); yy++) {
+		r = screen_redraw_get_visible_ranges(ctx->wp,
+		    xoff, yoff + yy, sx, NULL);
+		for (i = 0; i < r->used; i++) {
+			ri = &r->ranges[i];
+			if (ri->nx == 0)
+				continue;
+
+			cx = ri->px - xoff;
+			for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
+				ttyctx.ocx = cx;
+				ttyctx.ocy = yy;
+				ttyctx.cell = &gc;
+				tty_write(tty_cmd_cell, &ttyctx);
+			}
+		}
+	}
 }
 
 /* Insert nx characters. */
 void
 screen_write_insertcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 {
-	struct screen	*s = ctx->s;
-	struct tty_ctx	 ttyctx;
+	struct screen		*s = ctx->s;
+	struct tty_ctx		 ttyctx;
+	u_int			 sx, xoff, yoff, cx, n, i;
+	struct visible_ranges	*r;
+	struct visible_range	*ri;
+	struct grid_cell	 gc;
 
 	if (nx == 0)
 		nx = 1;
@@ -1171,15 +1203,44 @@ screen_write_insertcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 
 	screen_write_collect_flush(ctx, 0, __func__);
 	ttyctx.n = nx;
-	tty_write(tty_cmd_insertcharacter, &ttyctx);
+
+	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
+		tty_write(tty_cmd_insertcharacter, &ttyctx);
+		return;
+	}
+
+	xoff = ctx->wp->xoff;
+	yoff = ctx->wp->yoff;
+	sx = screen_size_x(s);
+
+	r = screen_redraw_get_visible_ranges(ctx->wp,
+	    xoff + s->cx, yoff + s->cy, sx - s->cx, NULL);
+
+	for (i = 0; i < r->used; i++) {
+		ri = &r->ranges[i];
+		if (ri->nx == 0)
+			continue;
+
+		cx = ri->px - xoff;
+		for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
+			grid_view_get_cell(s->grid, cx, s->cy, &gc);
+			screen_write_set_cursor(ctx, cx, -1);
+			ttyctx.cell = &gc;
+			tty_write(tty_cmd_cell, &ttyctx);
+		}
+	}
 }
 
 /* Delete nx characters. */
 void
 screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 {
-	struct screen	*s = ctx->s;
-	struct tty_ctx	 ttyctx;
+	struct screen		*s = ctx->s;
+	struct tty_ctx		 ttyctx;
+	u_int			 sx, xoff, yoff, cx, n, i;
+	struct visible_ranges	*r;
+	struct visible_range	*ri;
+	struct grid_cell	 gc;
 
 	if (nx == 0)
 		nx = 1;
@@ -1204,15 +1265,44 @@ screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 
 	screen_write_collect_flush(ctx, 0, __func__);
 	ttyctx.n = nx;
-	tty_write(tty_cmd_deletecharacter, &ttyctx);
+
+	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
+		tty_write(tty_cmd_deletecharacter, &ttyctx);
+		return;
+	}
+
+	xoff = ctx->wp->xoff;
+	yoff = ctx->wp->yoff;
+	sx = screen_size_x(s);
+
+	r = screen_redraw_get_visible_ranges(ctx->wp,
+	    xoff + s->cx, yoff + s->cy, sx - s->cx, NULL);
+
+	for (i = 0; i < r->used; i++) {
+		ri = &r->ranges[i];
+		if (ri->nx == 0)
+			continue;
+
+		cx = ri->px - xoff;
+		for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
+			grid_view_get_cell(s->grid, cx, s->cy, &gc);
+			screen_write_set_cursor(ctx, cx, -1);
+			ttyctx.cell = &gc;
+			tty_write(tty_cmd_cell, &ttyctx);
+		}
+	}
 }
 
 /* Clear nx characters. */
 void
 screen_write_clearcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 {
-	struct screen	*s = ctx->s;
-	struct tty_ctx	 ttyctx;
+	struct screen		*s = ctx->s;
+	struct tty_ctx		 ttyctx;
+	u_int			 sx, xoff, yoff, cx, n, i;
+	struct visible_ranges	*r;
+	struct visible_range	*ri;
+	struct grid_cell	 gc;
 
 	if (nx == 0)
 		nx = 1;
@@ -1230,26 +1320,57 @@ screen_write_clearcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 		ctx->wp->flags |= PANE_REDRAW;
 #endif
 
-	screen_write_initctx(ctx, &ttyctx, 0, 0);
+	screen_write_initctx(ctx, &ttyctx, 0, 1);
 	ttyctx.bg = bg;
 
 	grid_view_clear(s->grid, s->cx, s->cy, nx, 1, bg);
 
 	screen_write_collect_flush(ctx, 0, __func__);
 	ttyctx.n = nx;
-	tty_write(tty_cmd_clearcharacter, &ttyctx);
+
+	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
+		tty_write(tty_cmd_clearcharacter, &ttyctx);
+		return;
+	}
+
+	xoff = ctx->wp->xoff;
+	yoff = ctx->wp->yoff;
+	sx = screen_size_x(s);
+
+	r = screen_redraw_get_visible_ranges(ctx->wp,
+	    xoff + s->cx, yoff + s->cy, sx - s->cx, NULL);
+
+	for (i = 0; i < r->used; i++) {
+		ri = &r->ranges[i];
+		if (ri->nx == 0)
+			continue;
+
+		cx = ri->px - xoff;
+		for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
+			grid_view_get_cell(s->grid, cx, s->cy, &gc);
+			screen_write_set_cursor(ctx, cx, -1);
+			ttyctx.cell = &gc;
+			tty_write(tty_cmd_cell, &ttyctx);
+		}
+	}
 }
 
 /* Insert ny lines. */
 void
 screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 {
-	struct screen	*s = ctx->s;
-	struct grid	*gd = s->grid;
-	struct tty_ctx	 ttyctx;
+	struct screen		*s = ctx->s;
+	struct grid		*gd = s->grid;
+	struct tty_ctx		 ttyctx;
+	u_int			 sx, sy, xoff, yoff, y, cx, i, n;
+	struct visible_ranges	*r;
+	struct visible_range	*ri;
+	struct grid_cell	 gc;
 
 #ifdef ENABLE_SIXEL
-	u_int		 sy = screen_size_y(s);
+	sy = screen_size_y(s);
+#else
+	sy = screen_size_y(s);
 #endif
 
 	if (ny == 0)
@@ -1273,7 +1394,34 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 
 		screen_write_collect_flush(ctx, 0, __func__);
 		ttyctx.n = ny;
-		tty_write(tty_cmd_insertline, &ttyctx);
+
+		if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
+			tty_write(tty_cmd_insertline, &ttyctx);
+			return;
+		}
+
+		sx = screen_size_x(s);
+		xoff = ctx->wp->xoff;
+		yoff = ctx->wp->yoff;
+
+		for (y = s->cy; y < sy; y++) {
+			screen_write_set_cursor(ctx, 0, y);
+			r = screen_redraw_get_visible_ranges(ctx->wp,
+			    xoff, yoff + y, sx, NULL);
+			for (i = 0; i < r->used; i++) {
+				ri = &r->ranges[i];
+				if (ri->nx == 0)
+					continue;
+
+				cx = ri->px - xoff;
+				for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
+					grid_view_get_cell(gd, cx, y, &gc);
+					screen_write_set_cursor(ctx, cx, -1);
+					ttyctx.cell = &gc;
+					tty_write(tty_cmd_cell, &ttyctx);
+				}
+			}
+		}
 		return;
 	}
 
@@ -1293,17 +1441,49 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 	screen_write_collect_flush(ctx, 0, __func__);
 
 	ttyctx.n = ny;
-	tty_write(tty_cmd_insertline, &ttyctx);
+
+	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
+		tty_write(tty_cmd_insertline, &ttyctx);
+		return;
+	}
+
+	sx = screen_size_x(s);
+	xoff = ctx->wp->xoff;
+	yoff = ctx->wp->yoff;
+
+	for (y = s->cy; y <= s->rlower; y++) {
+		screen_write_set_cursor(ctx, 0, y);
+		r = screen_redraw_get_visible_ranges(ctx->wp,
+		    xoff, yoff + y, sx, NULL);
+		for (i = 0; i < r->used; i++) {
+			ri = &r->ranges[i];
+			if (ri->nx == 0)
+				continue;
+
+			cx = ri->px - xoff;
+			for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
+				grid_view_get_cell(gd, cx, y, &gc);
+				screen_write_set_cursor(ctx, cx, -1);
+				ttyctx.cell = &gc;
+				tty_write(tty_cmd_cell, &ttyctx);
+			}
+		}
+	}
 }
 
 /* Delete ny lines. */
 void
 screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 {
-	struct screen	*s = ctx->s;
-	struct grid	*gd = s->grid;
-	struct tty_ctx	 ttyctx;
-	u_int		 sy = screen_size_y(s);
+	struct screen		*s = ctx->s;
+	struct grid		*gd = s->grid;
+	struct tty_ctx		 ttyctx;
+	u_int			 sx, sy, xoff, yoff, y, cx, i, n;
+	struct visible_ranges	*r;
+	struct visible_range	*ri;
+	struct grid_cell	 gc;
+
+	sy = screen_size_y(s);
 
 	if (ny == 0)
 		ny = 1;
@@ -1326,7 +1506,34 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 
 		screen_write_collect_flush(ctx, 0, __func__);
 		ttyctx.n = ny;
-		tty_write(tty_cmd_deleteline, &ttyctx);
+
+		if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
+			tty_write(tty_cmd_deleteline, &ttyctx);
+			return;
+		}
+
+		sx = screen_size_x(s);
+		xoff = ctx->wp->xoff;
+		yoff = ctx->wp->yoff;
+
+		for (y = s->cy; y < sy; y++) {
+			screen_write_set_cursor(ctx, 0, y);
+			r = screen_redraw_get_visible_ranges(ctx->wp,
+			    xoff, yoff + y, sx, NULL);
+			for (i = 0; i < r->used; i++) {
+				ri = &r->ranges[i];
+				if (ri->nx == 0)
+					continue;
+
+				cx = ri->px - xoff;
+				for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
+					grid_view_get_cell(gd, cx, y, &gc);
+					screen_write_set_cursor(ctx, cx, -1);
+					ttyctx.cell = &gc;
+					tty_write(tty_cmd_cell, &ttyctx);
+				}
+			}
+		}
 		return;
 	}
 
@@ -1345,7 +1552,34 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 
 	screen_write_collect_flush(ctx, 0, __func__);
 	ttyctx.n = ny;
-	tty_write(tty_cmd_deleteline, &ttyctx);
+
+	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
+		tty_write(tty_cmd_deleteline, &ttyctx);
+		return;
+	}
+
+	sx = screen_size_x(s);
+	xoff = ctx->wp->xoff;
+	yoff = ctx->wp->yoff;
+
+	for (y = s->cy; y <= s->rlower; y++) {
+		screen_write_set_cursor(ctx, 0, y);
+		r = screen_redraw_get_visible_ranges(ctx->wp,
+		    xoff, yoff + y, sx, NULL);
+		for (i = 0; i < r->used; i++) {
+			ri = &r->ranges[i];
+			if (ri->nx == 0)
+				continue;
+
+			cx = ri->px - xoff;
+			for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
+				grid_view_get_cell(gd, cx, y, &gc);
+				screen_write_set_cursor(ctx, cx, -1);
+				ttyctx.cell = &gc;
+				tty_write(tty_cmd_cell, &ttyctx);
+			}
+		}
+	}
 }
 
 /* Clear line at cursor. */
@@ -1483,8 +1717,12 @@ screen_write_cursormove(struct screen_write_ctx *ctx, int px, int py,
 void
 screen_write_reverseindex(struct screen_write_ctx *ctx, u_int bg)
 {
-	struct screen	*s = ctx->s;
-	struct tty_ctx	 ttyctx;
+	struct screen		*s = ctx->s;
+	struct tty_ctx		 ttyctx;
+	u_int			 sx, xoff, yoff, cx, i, n;
+	struct visible_ranges	*r;
+	struct visible_range	*ri;
+	struct grid_cell	 gc;
 
 	if (s->cy == s->rupper) {
 #ifdef ENABLE_SIXEL
@@ -1498,10 +1736,33 @@ screen_write_reverseindex(struct screen_write_ctx *ctx, u_int bg)
 		screen_write_initctx(ctx, &ttyctx, 1, 0);
 		ttyctx.bg = bg;
 
-		tty_write(tty_cmd_reverseindex, &ttyctx);
+		if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
+			tty_write(tty_cmd_reverseindex, &ttyctx);
+			return;
+		}
+
+		sx = screen_size_x(s);
+		xoff = ctx->wp->xoff;
+		yoff = ctx->wp->yoff;
+
+		screen_write_set_cursor(ctx, 0, s->rupper);
+		r = screen_redraw_get_visible_ranges(ctx->wp,
+		    xoff, yoff + s->rupper, sx, NULL);
+		for (i = 0; i < r->used; i++) {
+			ri = &r->ranges[i];
+			if (ri->nx == 0)
+				continue;
+
+			cx = ri->px - xoff;
+			for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
+				grid_view_get_cell(s->grid, cx, s->rupper, &gc);
+				screen_write_set_cursor(ctx, cx, -1);
+				ttyctx.cell = &gc;
+				tty_write(tty_cmd_cell, &ttyctx);
+			}
+		}
 	} else if (s->cy > 0)
 		screen_write_set_cursor(ctx, -1, s->cy - 1);
-
 }
 
 /* Set scroll region. */
@@ -1601,10 +1862,13 @@ screen_write_scrollup(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 void
 screen_write_scrolldown(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 {
-	struct screen	*s = ctx->s;
-	struct grid	*gd = s->grid;
-	struct tty_ctx	 ttyctx;
-	u_int		 i;
+	struct screen		*s = ctx->s;
+	struct grid		*gd = s->grid;
+	struct tty_ctx		 ttyctx;
+	u_int			 sx, xoff, yoff, y, cx, i, n;
+	struct visible_ranges	*r;
+	struct visible_range	*ri;
+	struct grid_cell	 gc;
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
@@ -1624,7 +1888,34 @@ screen_write_scrolldown(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 
 	screen_write_collect_flush(ctx, 0, __func__);
 	ttyctx.n = lines;
-	tty_write(tty_cmd_scrolldown, &ttyctx);
+
+	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
+		tty_write(tty_cmd_scrolldown, &ttyctx);
+		return;
+	}
+
+	sx = screen_size_x(s);
+	xoff = ctx->wp->xoff;
+	yoff = ctx->wp->yoff;
+
+	for (y = s->rupper; y <= s->rlower; y++) {
+		screen_write_set_cursor(ctx, 0, y);
+		r = screen_redraw_get_visible_ranges(ctx->wp,
+		    xoff, yoff + y, sx, NULL);
+		for (i = 0; i < r->used; i++) {
+			ri = &r->ranges[i];
+			if (ri->nx == 0)
+				continue;
+
+			cx = ri->px - xoff;
+			for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
+				grid_view_get_cell(gd, cx, y, &gc);
+				screen_write_set_cursor(ctx, cx, -1);
+				ttyctx.cell = &gc;
+				tty_write(tty_cmd_cell, &ttyctx);
+			}
+		}
+	}
 }
 
 /* Carriage return (cursor to start of line). */
@@ -2755,8 +3046,13 @@ screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
 	}
 	screen_write_collect_flush(ctx, 0, __func__);
 
-	screen_write_initctx(ctx, &ttyctx, 0, 0);
+	screen_write_initctx(ctx, &ttyctx, 0, 1);
 	ttyctx.image = image_store(s, si);
+
+	if ((ttyctx.flags & TTY_CTX_PANE_OBSCURED) && ctx->wp != NULL) {
+		ctx->wp->flags |= PANE_REDRAW;
+		return;
+	}
 
 	tty_write(tty_cmd_sixelimage, &ttyctx);
 

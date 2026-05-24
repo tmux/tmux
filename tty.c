@@ -1421,8 +1421,6 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 				 */
 				r = tty_check_overlay_range(tty, ctx->xoff,
 				    ctx->yoff + py, nx);
-				r = screen_redraw_get_visible_ranges(wp,
-				    ctx->xoff, ctx->yoff + py, nx, r);
 				for (i = 0; i < r->used; i++) {
 					ri = &r->ranges[i];
 					if (ri->nx == 0) continue;
@@ -1451,12 +1449,12 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 	}
 	if (tty_clamp_line(tty, ctx, 0, py, nx, &px, &x, &rx, &ry)) {
 		if (wp) {
-			r = tty_check_overlay_range(tty, i, py, rx);
+			r = tty_check_overlay_range(tty, px, py, rx);
 			for (i=0; i < r->used; i++) {
 				ri = &r->ranges[i];
 				if (ri->nx == 0)
 					continue;
-				tty_draw_line(tty, s, i, py, ri->nx,
+				tty_draw_line(tty, s, ri->px, py, ri->nx,
 				    x + ri->px, ry, &ctx->defaults,
 				    ctx->palette);
 			}
@@ -2094,8 +2092,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	tty_margin_off(tty);
 	tty_cursor_pane_unless_wrap(tty, ctx, ctx->ocx, ctx->ocy);
 
-	if (screen_redraw_is_visible(r, px))
-	    tty_cell(tty, ctx->cell, &ctx->defaults, ctx->palette,
+	tty_cell(tty, ctx->cell, &ctx->defaults, ctx->palette,
 		ctx->s->hyperlinks);
 
 	if (ctx->flags & TTY_CTX_CELL_INVALIDATE)
