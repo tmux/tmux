@@ -1386,9 +1386,7 @@ tty_clear_pane_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 		tty_clear_area(tty, ctx, y, ry, x, rx, bg);
 }
 
-/* Redraw a line at py of a screen taking into account obscured ranges.
- * Menus and popups are always on top, ctx->arg == NULL.
- */
+/* Redraw a line of a screen at py. */
 static void
 tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 {
@@ -1454,6 +1452,7 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 	}
 }
 
+/* Check if character needs to be mapped for codeset. */
 const struct grid_cell *
 tty_check_codeset(struct tty *tty, const struct grid_cell *gc)
 {
@@ -2402,9 +2401,9 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 	if (gc->flags & GRID_FLAG_PADDING)
 		return;
 
-	/* Check if character is covered by overlay/floating pane. */
+	/* Check if character is covered by overlay or floating pane. */
 	if (!tty_check_overlay(tty, tty->cx, tty->cy))
-		return;  /* Character obscured by floating pane. */
+		return;
 
 	/* Check the output codeset and apply attributes. */
 	gcp = tty_check_codeset(tty, gc);
@@ -2519,15 +2518,19 @@ tty_margin_off(struct tty *tty)
 static void
 tty_margin_pane(struct tty *tty, const struct tty_ctx *ctx)
 {
-	int l, r;
+	int	l, r;
 
 	l = ctx->xoff - ctx->wox;
 	r = ctx->xoff + ctx->sx - 1 - ctx->wox;
 
-	if (l < 0) l = 0;
-	if (l > (int)ctx->wsx) l = ctx->wsx;
-	if (r < 0) r = 0;
-	if (r > (int)ctx->wsx) r = ctx->wsx;
+	if (l < 0)
+		l = 0;
+	if (l > (int)ctx->wsx)
+		l = ctx->wsx;
+	if (r < 0)
+		r = 0;
+	if (r > (int)ctx->wsx)
+		r = ctx->wsx;
 
 	tty_margin(tty, l, r);
 }

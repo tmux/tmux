@@ -1280,7 +1280,9 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
-	/* There are 3 coordinate spaces:
+	/*
+	 * There are 3 coordinate spaces:
+	 *
 	 * window: (0 to w->sx-1, 0 to w->sy-1)
 	 * tty: (0 to tty->sx-1, 0 to tty->sy-1)
 	 * pane: (0 to wp->sx-1, 0 to wp->sy-1)
