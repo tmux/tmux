@@ -1264,7 +1264,6 @@ struct window_pane {
 	int		 yoff;
 
 	int		 flags;
-	int		 saved_flags;
 #define PANE_REDRAW 0x1
 #define PANE_DROP 0x2
 #define PANE_FOCUSED 0x4

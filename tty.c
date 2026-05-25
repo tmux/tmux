@@ -1380,7 +1380,7 @@ static void
 tty_clear_pane_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
     u_int ny, u_int px, u_int nx, u_int bg)
 {
-	u_int			 i, j, x, y, rx, ry;
+	u_int	i, j, x, y, rx, ry;
 
 	if (tty_clamp_area(tty, ctx, px, py, nx, ny, &i, &j, &x, &y, &rx, &ry))
 		tty_clear_area(tty, ctx, y, ry, x, rx, bg);
@@ -2045,7 +2045,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 {
 	const struct grid_cell	*gcp = ctx->cell;
 	struct screen		*s = ctx->s;
-	struct visible_ranges	*r = NULL;
+	struct visible_ranges	*r;
 	u_int			 px, py, i, vis = 0;
 
 	px = ctx->xoff + ctx->ocx - ctx->wox;
@@ -2081,7 +2081,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	tty_cursor_pane_unless_wrap(tty, ctx, ctx->ocx, ctx->ocy);
 
 	tty_cell(tty, ctx->cell, &ctx->defaults, ctx->palette,
-		ctx->s->hyperlinks);
+	    ctx->s->hyperlinks);
 
 	if (ctx->flags & TTY_CTX_CELL_INVALIDATE)
 		tty_invalidate(tty);
