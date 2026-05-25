@@ -215,14 +215,14 @@ cmd_display_menu_get_pos(struct client *tc, struct cmdq_item *item,
 
 	/* Position in pane. */
 	tty_window_offset(&tc->tty, &ox, &oy, &sx, &sy);
-	n = top + wp->yoff - oy + h;
+	n = top + wp->oy - oy + h;
 	if (n >= tty->sy)
 		format_add(ft, "popup_pane_top", "%u", tty->sy - h);
 	else
 		format_add(ft, "popup_pane_top", "%ld", n);
-	format_add(ft, "popup_pane_bottom", "%u", top + wp->yoff + wp->sy - oy);
-	format_add(ft, "popup_pane_left", "%u", wp->xoff - ox);
-	n = (long)wp->xoff + wp->sx - ox - w;
+	format_add(ft, "popup_pane_bottom", "%u", top + wp->oy + wp->sy - oy);
+	format_add(ft, "popup_pane_left", "%u", wp->ox - ox);
+	n = (long)wp->ox + wp->sx - ox - w;
 	if (n < 0)
 		format_add(ft, "popup_pane_right", "%u", 0);
 	else

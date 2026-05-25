@@ -118,11 +118,11 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		status = options_get_number(w->options, "pane-border-status");
 		switch (status) {
 		case PANE_STATUS_TOP:
-			if (y != INT_MAX && wp->yoff == 1)
+			if (y != INT_MAX && wp->oy == 1)
 				y++;
 			break;
 		case PANE_STATUS_BOTTOM:
-			if (y != INT_MAX && wp->yoff + wp->sy == w->sy - 1)
+			if (y != INT_MAX && wp->oy + wp->sy == w->sy - 1)
 				y++;
 			break;
 		}
@@ -181,7 +181,7 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 	struct window_pane	*wp;
 	struct layout_cell	*lc;
 	int			 y, ly, x, lx, sx, sy, new_sx, new_sy;
-	int			 new_xoff, new_yoff, resizes = 0;
+	int			 new_ox, new_oy, resizes = 0;
 
 	wp = cmd_mouse_pane(m, NULL, &wl);
 	if (wp == NULL) {
@@ -204,7 +204,7 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 	else if (m->statusat > 0 && ly >= m->statusat)
 		ly = m->statusat - 1;
 
-	if ((lx == wp->xoff - 1 || lx == wp->xoff) && ly == wp->yoff - 1) {
+	if ((lx == wp->ox - 1 || lx == wp->ox) && ly == wp->oy - 1) {
 		/* Top left corner. */
 		new_sx = lc->sx + (lx - x);
 		if (new_sx < PANE_MINIMUM)
@@ -212,72 +212,72 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 		new_sy = lc->sy + (ly - y);
 		if (new_sy < PANE_MINIMUM)
 			new_sy = PANE_MINIMUM;
-		new_xoff = x + 1; /* because mouse is on border at xoff - 1 */
-		new_yoff = y + 1;
-		layout_set_size(lc, new_sx, new_sy, new_xoff, new_yoff);
+		new_ox = x + 1; /* because mouse is on border at ox - 1 */
+		new_oy = y + 1;
+		layout_set_size(lc, new_sx, new_sy, new_ox, new_oy);
 		resizes++;
-	} else if ((lx == wp->xoff + sx + 1 || lx == wp->xoff + sx) &&
-	    ly == wp->yoff - 1) {
+	} else if ((lx == wp->ox + sx + 1 || lx == wp->ox + sx) &&
+	    ly == wp->oy - 1) {
 		/* Top right corner. */
-		new_sx = x - lc->xoff;
+		new_sx = x - lc->ox;
 		if (new_sx < PANE_MINIMUM)
 			new_sx = PANE_MINIMUM;
 		new_sy = lc->sy + (ly - y);
 		if (new_sy < PANE_MINIMUM)
 			new_sy = PANE_MINIMUM;
-		new_yoff = y + 1;
-		layout_set_size(lc, new_sx, new_sy, lc->xoff, new_yoff);
+		new_oy = y + 1;
+		layout_set_size(lc, new_sx, new_sy, lc->ox, new_oy);
 		resizes++;
-	} else if ((lx == wp->xoff - 1 || lx == wp->xoff) &&
-	    ly == wp->yoff + sy) {
+	} else if ((lx == wp->ox - 1 || lx == wp->ox) &&
+	    ly == wp->oy + sy) {
 		/* Bottom left corner. */
 		new_sx = lc->sx + (lx - x);
 		if (new_sx < PANE_MINIMUM)
 			new_sx = PANE_MINIMUM;
-		new_sy = y - lc->yoff;
+		new_sy = y - lc->oy;
 		if (new_sy < PANE_MINIMUM)
 			return;
-		new_xoff = x + 1;
-		layout_set_size(lc, new_sx, new_sy, new_xoff, lc->yoff);
+		new_ox = x + 1;
+		layout_set_size(lc, new_sx, new_sy, new_ox, lc->oy);
 		resizes++;
-	} else if ((lx == wp->xoff + sx + 1 || lx == wp->xoff + sx) &&
-	    ly == wp->yoff + sy) {
+	} else if ((lx == wp->ox + sx + 1 || lx == wp->ox + sx) &&
+	    ly == wp->oy + sy) {
 		/* Bottom right corner. */
-		new_sx = x - lc->xoff;
+		new_sx = x - lc->ox;
 		if (new_sx < PANE_MINIMUM)
 			new_sx = PANE_MINIMUM;
-		new_sy = y - lc->yoff;
+		new_sy = y - lc->oy;
 		if (new_sy < PANE_MINIMUM)
 			new_sy = PANE_MINIMUM;
-		layout_set_size(lc, new_sx, new_sy, lc->xoff, lc->yoff);
+		layout_set_size(lc, new_sx, new_sy, lc->ox, lc->oy);
 		resizes++;
-	} else if (lx == wp->xoff + sx + 1) {
+	} else if (lx == wp->ox + sx + 1) {
 		/* Right border. */
-		new_sx = x - lc->xoff;
+		new_sx = x - lc->ox;
 		if (new_sx < PANE_MINIMUM)
 			return;
-		layout_set_size(lc, new_sx, lc->sy, lc->xoff, lc->yoff);
+		layout_set_size(lc, new_sx, lc->sy, lc->ox, lc->oy);
 		resizes++;
-	} else if (lx == wp->xoff - 1) {
+	} else if (lx == wp->ox - 1) {
 		/* Left border. */
 		new_sx = lc->sx + (lx - x);
 		if (new_sx < PANE_MINIMUM)
 			return;
-		new_xoff = x + 1;
-		layout_set_size(lc, new_sx, lc->sy, new_xoff, lc->yoff);
+		new_ox = x + 1;
+		layout_set_size(lc, new_sx, lc->sy, new_ox, lc->oy);
 		resizes++;
-	} else if (ly == wp->yoff + sy) {
+	} else if (ly == wp->oy + sy) {
 		/* Bottom border. */
-		new_sy = y - lc->yoff;
+		new_sy = y - lc->oy;
 		if (new_sy < PANE_MINIMUM)
 			return;
-		layout_set_size(lc, lc->sx, new_sy, lc->xoff, lc->yoff);
+		layout_set_size(lc, lc->sx, new_sy, lc->ox, lc->oy);
 		resizes++;
-	} else if (ly == wp->yoff - 1) {
+	} else if (ly == wp->oy - 1) {
 		/* Top border (move instead of resize). */
-		new_xoff = lc->xoff + (x - lx);
-		new_yoff = y + 1;
-		layout_set_size(lc, lc->sx, lc->sy, new_xoff, new_yoff);
+		new_ox = lc->ox + (x - lx);
+		new_oy = y + 1;
+		layout_set_size(lc, lc->sx, lc->sy, new_ox, new_oy);
 		resizes++;
 	}
 	if (resizes != 0) {

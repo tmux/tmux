@@ -1260,8 +1260,8 @@ struct window_pane {
 	u_int		 sx;
 	u_int		 sy;
 
-	int		 xoff;
-	int		 yoff;
+	int		 ox;
+	int		 oy;
 
 	int		 flags;
 	int		 saved_flags;
@@ -1285,8 +1285,8 @@ struct window_pane {
 #define PANE_SAVED_FLOAT 0x80000	/* saved_float_* fields are valid */
 
 	/* Last floating position/size, saved when the pane is tiled. */
-	int		 saved_float_xoff;
-	int		 saved_float_yoff;
+	int		 saved_float_ox;
+	int		 saved_float_oy;
 	u_int		 saved_float_sx;
 	u_int		 saved_float_sy;
 
@@ -1486,8 +1486,8 @@ struct layout_cell {
 	u_int		 sx;
 	u_int		 sy;
 
-	int		 xoff;
-	int		 yoff;
+	int		 ox;
+	int		 oy;
 
 	struct window_pane *wp;
 	struct layout_cells cells;
@@ -1784,10 +1784,10 @@ struct tty_ctx {
 	u_int			 orlower;
 
 	/* Target region (usually pane) offset and size. */
-	int			 xoff;
-	int			 yoff;
-	int			 rxoff;
-	int			 ryoff;
+	int			 ox;
+	int			 oy;
+	int			 rox;
+	int			 roy;
 	u_int			 sx;
 	u_int			 sy;
 

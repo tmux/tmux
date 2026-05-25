@@ -647,7 +647,7 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 	u_int				 ox, oy, px, py, n, offset, size;
 	u_int				 new_offset;
 	u_int				 slider_height = wp->sb_slider_h;
-	u_int				 sb_height = wp->sy, sb_top = wp->yoff;
+	u_int				 sb_height = wp->sy, sb_top = wp->oy;
 	u_int				 sy = screen_size_y(data->backing);
 	u_int				 my_w;
 	int				 new_slider_y, delta;
@@ -656,7 +656,7 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 	 * sl_mpos is where in the slider the user is dragging, mouse is
 	 * dragging this y point relative to top of slider.
 	 *
-	 * my is a raw tty y coordinate; sb_top (= wp->yoff) is a window
+	 * my is a raw tty y coordinate; sb_top (= wp->oy) is a window
 	 * coordinate.  Convert my to window coordinates by adding tty_oy
 	 * (the window pan offset).  sl_mpos already has the statuslines
 	 * adjustment baked in (see server_client_check_mouse), so no further
@@ -665,13 +665,13 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 	my_w = my + tty_oy;
 	if (my_w <= sb_top + (u_int)sl_mpos) {
 		/* Slider banged into top. */
-		new_slider_y = sb_top - wp->yoff;
+		new_slider_y = sb_top - wp->oy;
 	} else if (my_w - sl_mpos > sb_top + sb_height - slider_height) {
 		/* Slider banged into bottom. */
-		new_slider_y = sb_top - wp->yoff + (sb_height - slider_height);
+		new_slider_y = sb_top - wp->oy + (sb_height - slider_height);
 	} else {
 		/* Slider is somewhere in the middle. */
-		new_slider_y = my_w - wp->yoff - sl_mpos;
+		new_slider_y = my_w - wp->oy - sl_mpos;
 	}
 
 	if (TAILQ_FIRST(&wp->modes) == NULL ||

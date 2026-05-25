@@ -65,56 +65,56 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 	struct options		*oo = s->options;
 	struct window		*w = wp->window;
 	struct grid_cell	 fgc, bgc;
-	u_int			 pane, idx, px, py, i, j, xoff, yoff, sx, sy;
+	u_int			 pane, idx, px, py, i, j, ox, oy, sx, sy;
 	int			 colour, active_colour;
 	char			 buf[16], lbuf[16], rbuf[16], *ptr;
 	size_t			 len, llen, rlen;
 
-	if (wp->xoff + (int)wp->sx <= ctx->ox ||
-	    wp->xoff >= ctx->ox + (int)ctx->sx ||
-	    wp->yoff + (int)wp->sy <= ctx->oy ||
-	    wp->yoff >= ctx->oy + (int)ctx->sy)
+	if (wp->ox + (int)wp->sx <= ctx->ox ||
+	    wp->ox >= ctx->ox + (int)ctx->sx ||
+	    wp->oy + (int)wp->sy <= ctx->oy ||
+	    wp->oy >= ctx->oy + (int)ctx->sy)
 		return;
 
-	if (wp->xoff >= ctx->ox && wp->xoff + wp->sx <= ctx->ox + ctx->sx) {
+	if (wp->ox >= ctx->ox && wp->ox + wp->sx <= ctx->ox + ctx->sx) {
 		/* All visible. */
-		xoff = wp->xoff - ctx->ox;
+		ox = wp->ox - ctx->ox;
 		sx = wp->sx;
-	} else if (wp->xoff < ctx->ox &&
-	    wp->xoff + wp->sx > ctx->ox + ctx->sx) {
+	} else if (wp->ox < ctx->ox &&
+	    wp->ox + wp->sx > ctx->ox + ctx->sx) {
 		/* Both left and right not visible. */
-		xoff = 0;
+		ox = 0;
 		sx = ctx->sx;
-	} else if (wp->xoff < ctx->ox) {
+	} else if (wp->ox < ctx->ox) {
 		/* Left not visible. */
-		xoff = 0;
-		sx = wp->sx - (ctx->ox - wp->xoff);
+		ox = 0;
+		sx = wp->sx - (ctx->ox - wp->ox);
 	} else {
 		/* Right not visible. */
-		xoff = wp->xoff - ctx->ox;
-		sx = wp->sx - xoff;
+		ox = wp->ox - ctx->ox;
+		sx = wp->sx - ox;
 	}
-	if (wp->yoff >= ctx->oy && wp->yoff + wp->sy <= ctx->oy + ctx->sy) {
+	if (wp->oy >= ctx->oy && wp->oy + wp->sy <= ctx->oy + ctx->sy) {
 		/* All visible. */
-		yoff = wp->yoff - ctx->oy;
+		oy = wp->oy - ctx->oy;
 		sy = wp->sy;
-	} else if (wp->yoff < ctx->oy &&
-	    wp->yoff + wp->sy > ctx->oy + ctx->sy) {
+	} else if (wp->oy < ctx->oy &&
+	    wp->oy + wp->sy > ctx->oy + ctx->sy) {
 		/* Both top and bottom not visible. */
-		yoff = 0;
+		oy = 0;
 		sy = ctx->sy;
-	} else if (wp->yoff < ctx->oy) {
+	} else if (wp->oy < ctx->oy) {
 		/* Top not visible. */
-		yoff = 0;
-		sy = wp->sy - (ctx->oy - wp->yoff);
+		oy = 0;
+		sy = wp->sy - (ctx->oy - wp->oy);
 	} else {
 		/* Bottom not visible. */
-		yoff = wp->yoff - ctx->oy;
-		sy = wp->sy - yoff;
+		oy = wp->oy - ctx->oy;
+		sy = wp->sy - oy;
 	}
 
 	if (ctx->statustop)
-		yoff += ctx->statuslines;
+		oy += ctx->statuslines;
 	px = sx / 2;
 	py = sy / 2;
 
@@ -147,12 +147,12 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 		tty_attributes(tty, &fgc, &grid_default_cell, NULL, NULL);
 		if (sx >= len + llen + 1) {
 			len += llen + 1;
-			tty_cursor(tty, xoff + px - len / 2, yoff + py);
+			tty_cursor(tty, ox + px - len / 2, oy + py);
 			tty_putn(tty, buf, len,	 len);
 			tty_putn(tty, " ", 1, 1);
 			tty_putn(tty, lbuf, llen, llen);
 		} else {
-			tty_cursor(tty, xoff + px - len / 2, yoff + py);
+			tty_cursor(tty, ox + px - len / 2, oy + py);
 			tty_putn(tty, buf, len, len);
 		}
 		goto out;
@@ -169,7 +169,7 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 
 		for (j = 0; j < 5; j++) {
 			for (i = px; i < px + 5; i++) {
-				tty_cursor(tty, xoff + i, yoff + py + j);
+				tty_cursor(tty, ox + i, oy + py + j);
 				if (window_clock_table[idx][j][i - px])
 					tty_putc(tty, ' ');
 			}
@@ -181,12 +181,12 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 		goto out;
 	tty_attributes(tty, &fgc, &grid_default_cell, NULL, NULL);
 	if (rlen != 0 && sx >= rlen) {
-		tty_cursor(tty, xoff + sx - rlen, yoff);
+		tty_cursor(tty, ox + sx - rlen, oy);
 		tty_putn(tty, rbuf, rlen, rlen);
 	}
 	if (llen != 0) {
-		tty_cursor(tty, xoff + sx / 2 + len * 3 - llen - 1,
-		    yoff + py + 5);
+		tty_cursor(tty, ox + sx / 2 + len * 3 - llen - 1,
+		    oy + py + 5);
 		tty_putn(tty, lbuf, llen, llen);
 	}
 

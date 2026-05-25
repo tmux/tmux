@@ -75,7 +75,7 @@ static void	tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
 #define tty_use_margin(tty) \
 	(tty->term->flags & TERM_DECSLRM)
 #define tty_full_width(tty, ctx) \
-	((ctx)->xoff == 0 && (ctx)->sx >= (tty)->sx)
+	((ctx)->ox == 0 && (ctx)->sx >= (tty)->sx)
 
 #define TTY_BLOCK_INTERVAL (100000 /* 100 milliseconds */)
 #define TTY_BLOCK_START(tty) (1 + ((tty)->sx * (tty)->sy) * 8)
@@ -989,8 +989,8 @@ tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 		*ox = 0;
 		*oy = 0;
 	} else {
-		cx = wp->xoff + wp->screen->cx;
-		cy = wp->yoff + wp->screen->cy;
+		cx = wp->ox + wp->screen->cx;
+		cy = wp->oy + wp->screen->cy;
 
 		if (cx < *sx)
 			*ox = 0;
@@ -1110,13 +1110,13 @@ static int
 tty_is_visible(__unused struct tty *tty, const struct tty_ctx *ctx, u_int px,
     u_int py, u_int nx, u_int ny)
 {
-	u_int	xoff = ctx->rxoff + px, yoff = ctx->ryoff + py;
+	u_int	ox = ctx->rox + px, oy = ctx->roy + py;
 
 	if (~ctx->flags & TTY_CTX_WINDOW_BIGGER)
 		return (1);
 
-	if (xoff + nx <= ctx->wox || xoff >= ctx->wox + ctx->wsx ||
-	    yoff + ny <= ctx->woy || yoff >= ctx->woy + ctx->wsy)
+	if (ox + nx <= ctx->wox || ox >= ctx->wox + ctx->wsx ||
+	    oy + ny <= ctx->woy || oy >= ctx->woy + ctx->wsy)
 		return (0);
 	return (1);
 }
@@ -1126,31 +1126,31 @@ static int
 tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
     u_int nx, u_int *i, u_int *x, u_int *rx, u_int *ry)
 {
-	int	xoff = ctx->rxoff + px;
+	int	ox = ctx->rox + px;
 
 	if (!tty_is_visible(tty, ctx, px, py, nx, 1))
 		return (0);
-	*ry = ctx->yoff + py - ctx->woy;
+	*ry = ctx->oy + py - ctx->woy;
 
-	if (xoff >= (int)ctx->wox && xoff + nx <= ctx->wox + ctx->wsx) {
+	if (ox >= (int)ctx->wox && ox + nx <= ctx->wox + ctx->wsx) {
 		/* All visible. */
 		*i = 0;
-		*x = ctx->xoff + px - ctx->wox;
+		*x = ctx->ox + px - ctx->wox;
 		*rx = nx;
-	} else if (xoff < (int)ctx->wox && xoff + nx > ctx->wox + ctx->wsx) {
+	} else if (ox < (int)ctx->wox && ox + nx > ctx->wox + ctx->wsx) {
 		/* Both left and right not visible. */
 		*i = ctx->wox;
 		*x = 0;
 		*rx = ctx->wsx;
-	} else if (xoff < (int)ctx->wox) {
+	} else if (ox < (int)ctx->wox) {
 		/* Left not visible. */
-		*i = ctx->wox - (ctx->xoff + px);
+		*i = ctx->wox - (ctx->ox + px);
 		*x = 0;
 		*rx = nx - *i;
 	} else {
 		/* Right not visible. */
 		*i = 0;
-		*x = (ctx->xoff + px) - ctx->wox;
+		*x = (ctx->ox + px) - ctx->wox;
 		*rx = ctx->wsx - *x;
 	}
 	if (*rx > nx)
@@ -1243,54 +1243,54 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
     u_int nx, u_int ny, u_int *i, u_int *j, u_int *x, u_int *y, u_int *rx,
     u_int *ry)
 {
-	u_int	xoff = ctx->rxoff + px, yoff = ctx->ryoff + py;
+	u_int	ox = ctx->rox + px, oy = ctx->roy + py;
 
 	if (!tty_is_visible(tty, ctx, px, py, nx, ny))
 		return (0);
 
-	if (xoff >= ctx->wox && xoff + nx <= ctx->wox + ctx->wsx) {
+	if (ox >= ctx->wox && ox + nx <= ctx->wox + ctx->wsx) {
 		/* All visible. */
 		*i = 0;
-		*x = ctx->xoff + px - ctx->wox;
+		*x = ctx->ox + px - ctx->wox;
 		*rx = nx;
-	} else if (xoff < ctx->wox && xoff + nx > ctx->wox + ctx->wsx) {
+	} else if (ox < ctx->wox && ox + nx > ctx->wox + ctx->wsx) {
 		/* Both left and right not visible. */
 		*i = ctx->wox;
 		*x = 0;
 		*rx = ctx->wsx;
-	} else if (xoff < ctx->wox) {
+	} else if (ox < ctx->wox) {
 		/* Left not visible. */
-		*i = ctx->wox - (ctx->xoff + px);
+		*i = ctx->wox - (ctx->ox + px);
 		*x = 0;
 		*rx = nx - *i;
 	} else {
 		/* Right not visible. */
 		*i = 0;
-		*x = (ctx->xoff + px) - ctx->wox;
+		*x = (ctx->ox + px) - ctx->wox;
 		*rx = ctx->wsx - *x;
 	}
 	if (*rx > nx)
 		fatalx("%s: x too big, %u > %u", __func__, *rx, nx);
 
-	if (yoff >= ctx->woy && yoff + ny <= ctx->woy + ctx->wsy) {
+	if (oy >= ctx->woy && oy + ny <= ctx->woy + ctx->wsy) {
 		/* All visible. */
 		*j = 0;
-		*y = ctx->yoff + py - ctx->woy;
+		*y = ctx->oy + py - ctx->woy;
 		*ry = ny;
-	} else if (yoff < ctx->woy && yoff + ny > ctx->woy + ctx->wsy) {
+	} else if (oy < ctx->woy && oy + ny > ctx->woy + ctx->wsy) {
 		/* Both top and bottom not visible. */
 		*j = ctx->woy;
 		*y = 0;
 		*ry = ctx->wsy;
-	} else if (yoff < ctx->woy) {
+	} else if (oy < ctx->woy) {
 		/* Top not visible. */
-		*j = ctx->woy - (ctx->yoff + py);
+		*j = ctx->woy - (ctx->oy + py);
 		*y = 0;
 		*ry = ny - *j;
 	} else {
 		/* Bottom not visible. */
 		*j = 0;
-		*y = (ctx->yoff + py) - ctx->woy;
+		*y = (ctx->oy + py) - ctx->woy;
 		*ry = ctx->wsy - *y;
 	}
 	if (*ry > ny)
@@ -1408,31 +1408,31 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 				 * coordinates and clip to visible ranges to
 				 * avoid drawing over the floating pane.
 				 */
-				r = tty_check_overlay_range(tty, ctx->xoff,
-				    ctx->yoff + py, nx);
+				r = tty_check_overlay_range(tty, ctx->ox,
+				    ctx->oy + py, nx);
 				for (i = 0; i < r->used; i++) {
 					ri = &r->ranges[i];
 					if (ri->nx == 0) continue;
 					tty_draw_line(tty, s,
-					    ri->px - ctx->xoff, py, ri->nx,
-					    ri->px, ctx->yoff + py,
+					    ri->px - ctx->ox, py, ri->nx,
+					    ri->px, ctx->oy + py,
 					    &ctx->defaults, ctx->palette);
 				}
 			} else {
 				r = tty_check_overlay_range(tty, 0,
-				    ctx->yoff + py, nx);
+				    ctx->oy + py, nx);
 				for (i = 0; i < r->used; i++) {
 					ri = &r->ranges[i];
 					if (ri->nx == 0) continue;
 					tty_draw_line(tty, s, ri->px, py,
-					    ri->nx, ctx->xoff + ri->px,
-					    ctx->yoff + py,
+					    ri->nx, ctx->ox + ri->px,
+					    ctx->oy + py,
 					    &ctx->defaults, ctx->palette);
 				}
 			}
 		} else {
-			tty_draw_line(tty, s, 0, py, nx, ctx->xoff,
-			    ctx->yoff + py, &ctx->defaults, ctx->palette);
+			tty_draw_line(tty, s, 0, py, nx, ctx->ox,
+			    ctx->oy + py, &ctx->defaults, ctx->palette);
 		}
 		return;
 	}
@@ -1535,9 +1535,9 @@ tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	else
 		ttyctx->flags &= ~TTY_CTX_WINDOW_BIGGER;
 
-	ttyctx->yoff = ttyctx->ryoff = wp->yoff;
+	ttyctx->oy = ttyctx->roy = wp->oy;
 	if (status_at_line(c) == 0)
-		ttyctx->yoff += status_line_size(c);
+		ttyctx->oy += status_line_size(c);
 
 	return (1);
 }
@@ -1558,7 +1558,7 @@ tty_draw_images(struct client *c, struct window_pane *wp, struct screen *s)
 		ttyctx.orlower = s->rlower;
 		ttyctx.orupper = s->rupper;
 
-		ttyctx.xoff = ttyctx.rxoff = wp->xoff;
+		ttyctx.ox = ttyctx.rox = wp->ox;
 		ttyctx.sx = wp->sx;
 		ttyctx.sy = wp->sy;
 
@@ -1863,11 +1863,11 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	 * this and insert extra spaces, so only use the right if margins are
 	 * enabled.
 	 */
-	if (ctx->xoff + ctx->ocx > tty->rright) {
+	if (ctx->ox + ctx->ocx > tty->rright) {
 		if (!tty_use_margin(tty))
-			tty_cursor(tty, 0, ctx->yoff + ctx->ocy);
+			tty_cursor(tty, 0, ctx->oy + ctx->ocy);
 		else
-			tty_cursor(tty, tty->rright, ctx->yoff + ctx->ocy);
+			tty_cursor(tty, tty->rright, ctx->oy + ctx->ocy);
 	} else
 		tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
@@ -2049,15 +2049,15 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	struct visible_ranges	*r = NULL;
 	u_int			 px, py, i, vis = 0;
 
-	px = ctx->xoff + ctx->ocx - ctx->wox;
-	py = ctx->yoff + ctx->ocy - ctx->woy;
+	px = ctx->ox + ctx->ocx - ctx->wox;
+	py = ctx->oy + ctx->ocy - ctx->woy;
 	if (!tty_is_visible(tty, ctx, ctx->ocx, ctx->ocy, 1, 1) ||
 	    (gcp->data.width == 1 && !tty_check_overlay(tty, px, py)))
 		return;
 
 	if (ctx->flags & TTY_CTX_CELL_DRAW_LINE) {
 		tty_draw_line(tty, s, 0, s->cy, screen_size_x(s),
-		    ctx->xoff - ctx->wox, py, &ctx->defaults, ctx->palette);
+		    ctx->ox - ctx->wox, py, &ctx->defaults, ctx->palette);
 		return;
 	}
 
@@ -2073,7 +2073,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 		}
 	}
 
-	if (ctx->xoff + ctx->ocx - ctx->wox > tty->sx - 1 &&
+	if (ctx->ox + ctx->ocx - ctx->wox > tty->sx - 1 &&
 	    ctx->ocy == ctx->orlower &&
 	    tty_full_width(tty, ctx))
 		tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
@@ -2101,13 +2101,13 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 
 	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) &&
-	    (ctx->xoff + ctx->ocx < ctx->wox ||
-	    ctx->xoff + ctx->ocx + n > ctx->wox + ctx->wsx)) {
+	    (ctx->ox + ctx->ocx < ctx->wox ||
+	    ctx->ox + ctx->ocx + n > ctx->wox + ctx->wsx)) {
 		if ((~ctx->flags & TTY_CTX_WRAPPED) ||
 		    !tty_full_width(tty, ctx) ||
 		    (tty->term->flags & TERM_NOAM) ||
-		    ctx->xoff + ctx->ocx != 0 ||
-		    ctx->yoff + ctx->ocy != tty->cy + 1 ||
+		    ctx->ox + ctx->ocx != 0 ||
+		    ctx->oy + ctx->ocy != tty->cy + 1 ||
 		    tty->cx < tty->sx ||
 		    tty->cy == tty->rlower)
 			tty_draw_pane(tty, ctx, ctx->ocy);
@@ -2122,14 +2122,14 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 	    ctx->s->hyperlinks);
 
 	/* Get tty position from pane position for overlay check. */
-	px = ctx->xoff + ctx->ocx - ctx->wox;
-	py = ctx->yoff + ctx->ocy - ctx->woy;
+	px = ctx->ox + ctx->ocx - ctx->wox;
+	py = ctx->oy + ctx->ocy - ctx->woy;
 
 	r = tty_check_overlay_range(tty, px, py, n);
 	for (i = 0; i < r->used; i++) {
 		ri = &r->ranges[i];
 		if (ri->nx != 0) {
-			cx = ri->px - ctx->xoff + ctx->wox;
+			cx = ri->px - ctx->ox + ctx->wox;
 			tty_cursor_pane_unless_wrap(tty, ctx, cx, ctx->ocy);
 			tty_putn(tty, cp + ri->px - px, ri->nx, ri->nx);
 		}
@@ -2248,8 +2248,8 @@ tty_sixelimage_draw(struct tty *tty, const struct tty_ctx *ctx,
 
 	/*
 	 * sixel_y0 is the window y-coordinate of the first rendered row.
-	 * Derived from tty_clamp_area: y = ctx->yoff + ocy + j - ctx->woy,
-	 * so y + ctx->woy = ctx->yoff + ocy + j.
+	 * Derived from tty_clamp_area: y = ctx->oy + ocy + j - ctx->woy,
+	 * so y + ctx->woy = ctx->oy + ocy + j.
 	 */
 	w = wp->window;
 	sixel_wx0 = x + ctx->wox;
@@ -2263,8 +2263,8 @@ tty_sixelimage_draw(struct tty *tty, const struct tty_ctx *ctx,
 	TAILQ_FOREACH(fp, &w->z_index, zentry) {
 		if (~fp->flags & PANE_FLOATING)
 			continue;
-		fp_tb  = (int)((fp->yoff > 0) ? fp->yoff - 1 : 0);
-		fp_bb1 = (int)fp->yoff + (int)fp->sy + 1;
+		fp_tb  = (int)((fp->oy > 0) ? fp->oy - 1 : 0);
+		fp_bb1 = (int)fp->oy + (int)fp->sy + 1;
 		r_top  = fp_tb  - (int)sixel_y0;
 		r_bot  = fp_bb1 - (int)sixel_y0;
 		if (r_top > 0 && (u_int)r_top < ry && nb < 62)
@@ -2295,7 +2295,7 @@ tty_sixelimage_draw(struct tty *tty, const struct tty_ctx *ctx,
 			continue;
 		strip_h = strip_end - strip_start;
 
-		vr = screen_redraw_get_visible_ranges(wp, ctx->xoff,
+		vr = screen_redraw_get_visible_ranges(wp, ctx->ox,
 		    sixel_y0 + strip_start, wp->sx, NULL);
 
 		for (s = 0; s < vr->used; s++) {
@@ -2475,8 +2475,8 @@ static void
 tty_region_pane(struct tty *tty, const struct tty_ctx *ctx, u_int rupper,
     u_int rlower)
 {
-	tty_region(tty, ctx->yoff + rupper - ctx->woy,
-	    ctx->yoff + rlower - ctx->woy);
+	tty_region(tty, ctx->oy + rupper - ctx->woy,
+	    ctx->oy + rlower - ctx->woy);
 }
 
 /* Set region at absolute position. */
@@ -2521,8 +2521,8 @@ tty_margin_pane(struct tty *tty, const struct tty_ctx *ctx)
 {
 	int l, r;
 
-	l = ctx->xoff - ctx->wox;
-	r = ctx->xoff + ctx->sx - 1 - ctx->wox;
+	l = ctx->ox - ctx->wox;
+	r = ctx->ox + ctx->sx - 1 - ctx->wox;
 
 	if (l < 0) l = 0;
 	if (l > (int)ctx->wsx) l = ctx->wsx;
@@ -2564,8 +2564,8 @@ tty_cursor_pane_unless_wrap(struct tty *tty, const struct tty_ctx *ctx,
 	if ((~ctx->flags & TTY_CTX_WRAPPED) ||
 	    !tty_full_width(tty, ctx) ||
 	    (tty->term->flags & TERM_NOAM) ||
-	    ctx->xoff + cx != 0 ||
-	    ctx->yoff + cy != tty->cy + 1 ||
+	    ctx->ox + cx != 0 ||
+	    ctx->oy + cy != tty->cy + 1 ||
 	    tty->cx < tty->sx ||
 	    tty->cy == tty->rlower)
 		tty_cursor_pane(tty, ctx, cx, cy);
@@ -2577,7 +2577,7 @@ tty_cursor_pane_unless_wrap(struct tty *tty, const struct tty_ctx *ctx,
 static void
 tty_cursor_pane(struct tty *tty, const struct tty_ctx *ctx, u_int cx, u_int cy)
 {
-	tty_cursor(tty, ctx->xoff + cx - ctx->wox, ctx->yoff + cy - ctx->woy);
+	tty_cursor(tty, ctx->ox + cx - ctx->wox, ctx->oy + cy - ctx->woy);
 }
 
 /* Move cursor to absolute position. */

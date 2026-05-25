@@ -191,11 +191,11 @@ popup_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	ttyctx->wsy = c->tty.sy;
 
 	if (pd->border_lines == BOX_LINES_NONE) {
-		ttyctx->xoff = ttyctx->rxoff = pd->px;
-		ttyctx->yoff = ttyctx->ryoff = pd->py;
+		ttyctx->ox = ttyctx->rox = pd->px;
+		ttyctx->oy = ttyctx->roy = pd->py;
 	} else {
-		ttyctx->xoff = ttyctx->rxoff = pd->px + 1;
-		ttyctx->yoff = ttyctx->ryoff = pd->py + 1;
+		ttyctx->ox = ttyctx->rox = pd->px + 1;
+		ttyctx->oy = ttyctx->roy = pd->py + 1;
 	}
 
 	return (1);

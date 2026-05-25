@@ -622,43 +622,43 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 	}
 
 	if (pane_status == PANE_STATUS_TOP)
-		pane_status_line = wp->yoff - 1;
+		pane_status_line = wp->oy - 1;
 	else if (pane_status == PANE_STATUS_BOTTOM)
-		pane_status_line = wp->yoff + wp->sy;
+		pane_status_line = wp->oy + wp->sy;
 	else
 		pane_status_line = -1; /* not used */
 
 	/* Check if point is within the pane or scrollbar. */
 	if (((pane_status != PANE_STATUS_OFF &&
-	    py != pane_status_line && py != wp->yoff + (int)wp->sy) ||
-	    (wp->yoff == 0 && py < (int)wp->sy) ||
-	    (py >= wp->yoff && py < wp->yoff + (int)wp->sy)) &&
+	    py != pane_status_line && py != wp->oy + (int)wp->sy) ||
+	    (wp->oy == 0 && py < (int)wp->sy) ||
+	    (py >= wp->oy && py < wp->oy + (int)wp->sy)) &&
 	    ((sb_pos == PANE_SCROLLBARS_RIGHT &&
-	    px < wp->xoff + (int)wp->sx + sb_pad + sb_w) ||
+	    px < wp->ox + (int)wp->sx + sb_pad + sb_w) ||
 	    (sb_pos == PANE_SCROLLBARS_LEFT &&
-	    px < wp->xoff + (int)wp->sx - sb_pad - sb_w))) {
+	    px < wp->ox + (int)wp->sx - sb_pad - sb_w))) {
 		/* Check if in the scrollbar. */
 		if ((sb_pos == PANE_SCROLLBARS_RIGHT &&
-		    (px >= wp->xoff + (int)wp->sx + sb_pad &&
-		    px < wp->xoff + (int)wp->sx + sb_pad + sb_w)) ||
+		    (px >= wp->ox + (int)wp->sx + sb_pad &&
+		    px < wp->ox + (int)wp->sx + sb_pad + sb_w)) ||
 		    (sb_pos == PANE_SCROLLBARS_LEFT &&
-		    (px >= wp->xoff - sb_pad - sb_w &&
-		    px < wp->xoff - sb_pad))) {
+		    (px >= wp->ox - sb_pad - sb_w &&
+		    px < wp->ox - sb_pad))) {
 			/* Check where inside the scrollbar. */
-			sl_top = wp->yoff + wp->sb_slider_y;
-			sl_bottom = (wp->yoff + wp->sb_slider_y +
+			sl_top = wp->oy + wp->sb_slider_y;
+			sl_bottom = (wp->oy + wp->sb_slider_y +
 			    wp->sb_slider_h - 1);
 			if (py < sl_top)
 				return (KEYC_MOUSE_LOCATION_SCROLLBAR_UP);
 			else if (py >= sl_top && py <= sl_bottom) {
-				*sl_mpos = (py - wp->sb_slider_y - wp->yoff);
+				*sl_mpos = (py - wp->sb_slider_y - wp->oy);
 				return (KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER);
 			} else /* py > sl_bottom */
 				return (KEYC_MOUSE_LOCATION_SCROLLBAR_DOWN);
 		} else if (wp->flags & PANE_FLOATING &&
-		    (px == wp->xoff - 1 ||
-		    py == wp->yoff - 1 ||
-		    py == wp->yoff + (int)wp->sy)) {
+		    (px == wp->ox - 1 ||
+		    py == wp->oy - 1 ||
+		    py == wp->oy + (int)wp->sy)) {
 			/* Floating pane left, bottom or top border. */
 			return (KEYC_MOUSE_LOCATION_BORDER);
 		} else {
@@ -671,33 +671,33 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 			if ((w->flags & WINDOW_ZOOMED) &&
 			    (~fwp->flags & PANE_ZOOMED))
 				continue;
-			bdr_top = fwp->yoff - 1;
-			bdr_bottom = fwp->yoff + fwp->sy;
+			bdr_top = fwp->oy - 1;
+			bdr_bottom = fwp->oy + fwp->sy;
 			if (sb_pos == PANE_SCROLLBARS_LEFT)
-				bdr_right = fwp->xoff + fwp->sx;
+				bdr_right = fwp->ox + fwp->sx;
 			else {
 				/* PANE_SCROLLBARS_RIGHT or none. */
-				bdr_right = fwp->xoff + fwp->sx + sb_pad + sb_w;
+				bdr_right = fwp->ox + fwp->sx + sb_pad + sb_w;
 			}
-			if (py >= fwp->yoff - 1 &&
-			    py <= fwp->yoff + (int)fwp->sy) {
+			if (py >= fwp->oy - 1 &&
+			    py <= fwp->oy + (int)fwp->sy) {
 				if (px == bdr_right)
 					break;
 				if (wp->flags & PANE_FLOATING) {
 					/* Floating pane, check left border. */
-					bdr_left = fwp->xoff - 1;
+					bdr_left = fwp->ox - 1;
 					if (px == bdr_left)
 						break;
 				}
 			}
-			if (px >= fwp->xoff - 1 &&
-			    px <= fwp->xoff + (int)fwp->sx) {
-				bdr_bottom = fwp->yoff + fwp->sy;
+			if (px >= fwp->ox - 1 &&
+			    px <= fwp->ox + (int)fwp->sx) {
+				bdr_bottom = fwp->oy + fwp->sy;
 				if (py == bdr_bottom)
 					break;
 				if (wp->flags & PANE_FLOATING) {
 					/* Floating pane, check top border. */
-					bdr_top = fwp->yoff - 1;
+					bdr_top = fwp->oy - 1;
 					if (py == bdr_top)
 						break;
 				}
@@ -1842,14 +1842,14 @@ server_client_reset_state(struct client *c)
 	} else if (wp != NULL && c->overlay_draw == NULL) {
 		cursor = 0;
 		tty_window_offset(tty, &ox, &oy, &sx, &sy);
-		if (wp->xoff + (int)s->cx >= (int)ox &&
-		    wp->xoff + (int)s->cx <= (int)ox + (int)sx &&
-		    wp->yoff + (int)s->cy >= (int)oy &&
-		    wp->yoff + (int)s->cy <= (int)oy + (int)sy) {
+		if (wp->ox + (int)s->cx >= (int)ox &&
+		    wp->ox + (int)s->cx <= (int)ox + (int)sx &&
+		    wp->oy + (int)s->cy >= (int)oy &&
+		    wp->oy + (int)s->cy <= (int)oy + (int)sy) {
 			cursor = 1;
 
-			cx = wp->xoff + (int)s->cx - (int)ox;
-			cy = wp->yoff + (int)s->cy - (int)oy;
+			cx = wp->ox + (int)s->cx - (int)ox;
+			cy = wp->oy + (int)s->cy - (int)oy;
 
 			if (status_at_line(c) == 0)
 				cy += status_line_size(c);

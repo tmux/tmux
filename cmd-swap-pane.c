@@ -51,7 +51,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window		*src_w, *dst_w;
 	struct window_pane	*tmp_wp, *src_wp, *dst_wp;
 	struct layout_cell	*src_lc, *dst_lc;
-	u_int			 sx, sy, xoff, yoff;
+	u_int			 sx, sy, ox, oy;
 
 	dst_w = target->wl->window;
 	dst_wp = target->wp;
@@ -124,10 +124,10 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	dst_wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
 
 	sx = src_wp->sx; sy = src_wp->sy;
-	xoff = src_wp->xoff; yoff = src_wp->yoff;
-	src_wp->xoff = dst_wp->xoff; src_wp->yoff = dst_wp->yoff;
+	ox = src_wp->ox; oy = src_wp->oy;
+	src_wp->ox = dst_wp->ox; src_wp->oy = dst_wp->oy;
 	window_pane_resize(src_wp, dst_wp->sx, dst_wp->sy);
-	dst_wp->xoff = xoff; dst_wp->yoff = yoff;
+	dst_wp->ox = ox; dst_wp->oy = oy;
 	window_pane_resize(dst_wp, sx, sy);
 
 	if (!args_has(args, 'd')) {

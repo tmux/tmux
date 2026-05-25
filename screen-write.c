@@ -166,11 +166,11 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	else
 		ttyctx->flags &= ~TTY_CTX_WINDOW_BIGGER;
 
-	ttyctx->xoff = ttyctx->rxoff = wp->xoff;
-	ttyctx->yoff = ttyctx->ryoff = wp->yoff;
+	ttyctx->ox = ttyctx->rox = wp->ox;
+	ttyctx->oy = ttyctx->roy = wp->oy;
 
 	if (status_at_line(c) == 0)
-		ttyctx->yoff += status_line_size(c);
+		ttyctx->oy += status_line_size(c);
 
 	return (1);
 }
@@ -193,14 +193,14 @@ screen_write_pane_is_obscured(struct screen_write_ctx *ctx)
 
         while ((wp = TAILQ_PREV(wp, window_panes, zentry)) != NULL) {
                 if ((wp->flags & PANE_FLOATING) &&
-                    ((wp->yoff >= ctx->wp->yoff &&
-                    wp->yoff <= ctx->wp->yoff + (int)ctx->wp->sy) ||
-                    (wp->yoff + (int)wp->sy >= ctx->wp->yoff &&
-                    wp->yoff + wp->sy <= ctx->wp->yoff + ctx->wp->sy)) &&
-                    ((wp->xoff >= ctx->wp->xoff &&
-                    wp->xoff <= ctx->wp->xoff + (int)ctx->wp->sx) ||
-                    (wp->xoff + (int)wp->sx >= ctx->wp->xoff &&
-                    wp->xoff + wp->sx <= ctx->wp->xoff + ctx->wp->sx))) {
+                    ((wp->oy >= ctx->wp->oy &&
+                    wp->oy <= ctx->wp->oy + (int)ctx->wp->sy) ||
+                    (wp->oy + (int)wp->sy >= ctx->wp->oy &&
+                    wp->oy + wp->sy <= ctx->wp->oy + ctx->wp->sy)) &&
+                    ((wp->ox >= ctx->wp->ox &&
+                    wp->ox <= ctx->wp->ox + (int)ctx->wp->sx) ||
+                    (wp->ox + (int)wp->sx >= ctx->wp->ox &&
+                    wp->ox + wp->sx <= ctx->wp->ox + ctx->wp->sx))) {
 			ctx->flags |= SCREEN_WRITE_OBSCURED;
                         return (1);
 		}
@@ -319,7 +319,7 @@ screen_write_start_pane(struct screen_write_ctx *ctx, struct window_pane *wp,
 	if (log_get_level() != 0) {
 		log_debug("%s: size %ux%u, pane %%%u (at %u,%u)",
 		    __func__, screen_size_x(ctx->s), screen_size_y(ctx->s),
-		    wp->id, wp->xoff, wp->yoff);
+		    wp->id, wp->ox, wp->oy);
 	}
 }
 
@@ -618,7 +618,7 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 	struct grid_line	*gl, *sgl;
 	struct grid_cell	 gc;
 	u_int		 	 xx, yy, cx = s->cx, cy = s->cy;
-	int			 yoff = 0;
+	int			 oy = 0;
 	struct visible_ranges	*r;
 
 	if (nx == 0 || ny == 0)
@@ -630,8 +630,8 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 		s->cx = cx;
 		screen_write_initctx(ctx, &ttyctx, 0, 0);
 		if (wp != NULL)
-			yoff = wp->yoff;
-		r = screen_redraw_get_visible_ranges(wp, px, s->cy + yoff, nx,
+			oy = wp->oy;
+		r = screen_redraw_get_visible_ranges(wp, px, s->cy + oy, nx,
 		    NULL);
 		for (xx = px; xx < px + nx; xx++) {
 			gl = grid_get_line(gd, yy);
@@ -1118,7 +1118,7 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 	struct screen		*s = ctx->s;
 	struct tty_ctx	 	 ttyctx;
 	struct grid_cell       	 gc;
-	u_int			 xx, yy, sx, xoff, yoff, cx, i, n;
+	u_int			 xx, yy, sx, ox, oy, cx, i, n;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
@@ -1150,18 +1150,18 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 	}
 
 	sx = screen_size_x(s);
-	xoff = ctx->wp->xoff;
-	yoff = ctx->wp->yoff;
+	ox = ctx->wp->ox;
+	oy = ctx->wp->oy;
 
 	for (yy = 0; yy < screen_size_y(s); yy++) {
 		r = screen_redraw_get_visible_ranges(ctx->wp,
-		    xoff, yoff + yy, sx, NULL);
+		    ox, oy + yy, sx, NULL);
 		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
 			if (ri->nx == 0)
 				continue;
 
-			cx = ri->px - xoff;
+			cx = ri->px - ox;
 			for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
 				ttyctx.ocx = cx;
 				ttyctx.ocy = yy;
@@ -1178,7 +1178,7 @@ screen_write_insertcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 {
 	struct screen		*s = ctx->s;
 	struct tty_ctx		 ttyctx;
-	u_int			 sx, xoff, yoff, cx, n, i;
+	u_int			 sx, ox, oy, cx, n, i;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 	struct grid_cell	 gc;
@@ -1212,19 +1212,19 @@ screen_write_insertcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 		return;
 	}
 
-	xoff = ctx->wp->xoff;
-	yoff = ctx->wp->yoff;
+	ox = ctx->wp->ox;
+	oy = ctx->wp->oy;
 	sx = screen_size_x(s);
 
 	r = screen_redraw_get_visible_ranges(ctx->wp,
-	    xoff + s->cx, yoff + s->cy, sx - s->cx, NULL);
+	    ox + s->cx, oy + s->cy, sx - s->cx, NULL);
 
 	for (i = 0; i < r->used; i++) {
 		ri = &r->ranges[i];
 		if (ri->nx == 0)
 			continue;
 
-		cx = ri->px - xoff;
+		cx = ri->px - ox;
 		for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
 			grid_view_get_cell(s->grid, cx, s->cy, &gc);
 			screen_write_set_cursor(ctx, cx, -1);
@@ -1240,7 +1240,7 @@ screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 {
 	struct screen		*s = ctx->s;
 	struct tty_ctx		 ttyctx;
-	u_int			 sx, xoff, yoff, cx, n, i;
+	u_int			 sx, ox, oy, cx, n, i;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 	struct grid_cell	 gc;
@@ -1274,19 +1274,19 @@ screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 		return;
 	}
 
-	xoff = ctx->wp->xoff;
-	yoff = ctx->wp->yoff;
+	ox = ctx->wp->ox;
+	oy = ctx->wp->oy;
 	sx = screen_size_x(s);
 
 	r = screen_redraw_get_visible_ranges(ctx->wp,
-	    xoff + s->cx, yoff + s->cy, sx - s->cx, NULL);
+	    ox + s->cx, oy + s->cy, sx - s->cx, NULL);
 
 	for (i = 0; i < r->used; i++) {
 		ri = &r->ranges[i];
 		if (ri->nx == 0)
 			continue;
 
-		cx = ri->px - xoff;
+		cx = ri->px - ox;
 		for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
 			grid_view_get_cell(s->grid, cx, s->cy, &gc);
 			screen_write_set_cursor(ctx, cx, -1);
@@ -1302,7 +1302,7 @@ screen_write_clearcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 {
 	struct screen		*s = ctx->s;
 	struct tty_ctx		 ttyctx;
-	u_int			 sx, xoff, yoff, cx, n, i;
+	u_int			 sx, ox, oy, cx, n, i;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 	struct grid_cell	 gc;
@@ -1336,19 +1336,19 @@ screen_write_clearcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 		return;
 	}
 
-	xoff = ctx->wp->xoff;
-	yoff = ctx->wp->yoff;
+	ox = ctx->wp->ox;
+	oy = ctx->wp->oy;
 	sx = screen_size_x(s);
 
 	r = screen_redraw_get_visible_ranges(ctx->wp,
-	    xoff + s->cx, yoff + s->cy, sx - s->cx, NULL);
+	    ox + s->cx, oy + s->cy, sx - s->cx, NULL);
 
 	for (i = 0; i < r->used; i++) {
 		ri = &r->ranges[i];
 		if (ri->nx == 0)
 			continue;
 
-		cx = ri->px - xoff;
+		cx = ri->px - ox;
 		for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
 			grid_view_get_cell(s->grid, cx, s->cy, &gc);
 			screen_write_set_cursor(ctx, cx, -1);
@@ -1365,7 +1365,7 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct tty_ctx		 ttyctx;
-	u_int			 sx, sy, xoff, yoff, y, cx, i, n;
+	u_int			 sx, sy, ox, oy, y, cx, i, n;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 	struct grid_cell	 gc;
@@ -1404,19 +1404,19 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 		}
 
 		sx = screen_size_x(s);
-		xoff = ctx->wp->xoff;
-		yoff = ctx->wp->yoff;
+		ox = ctx->wp->ox;
+		oy = ctx->wp->oy;
 
 		for (y = s->cy; y < sy; y++) {
 			screen_write_set_cursor(ctx, 0, y);
 			r = screen_redraw_get_visible_ranges(ctx->wp,
-			    xoff, yoff + y, sx, NULL);
+			    ox, oy + y, sx, NULL);
 			for (i = 0; i < r->used; i++) {
 				ri = &r->ranges[i];
 				if (ri->nx == 0)
 					continue;
 
-				cx = ri->px - xoff;
+				cx = ri->px - ox;
 				for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
 					grid_view_get_cell(gd, cx, y, &gc);
 					screen_write_set_cursor(ctx, cx, -1);
@@ -1451,19 +1451,19 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 	}
 
 	sx = screen_size_x(s);
-	xoff = ctx->wp->xoff;
-	yoff = ctx->wp->yoff;
+	ox = ctx->wp->ox;
+	oy = ctx->wp->oy;
 
 	for (y = s->cy; y <= s->rlower; y++) {
 		screen_write_set_cursor(ctx, 0, y);
 		r = screen_redraw_get_visible_ranges(ctx->wp,
-		    xoff, yoff + y, sx, NULL);
+		    ox, oy + y, sx, NULL);
 		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
 			if (ri->nx == 0)
 				continue;
 
-			cx = ri->px - xoff;
+			cx = ri->px - ox;
 			for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
 				grid_view_get_cell(gd, cx, y, &gc);
 				screen_write_set_cursor(ctx, cx, -1);
@@ -1481,7 +1481,7 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct tty_ctx		 ttyctx;
-	u_int			 sx, sy, xoff, yoff, y, cx, i, n;
+	u_int			 sx, sy, ox, oy, y, cx, i, n;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 	struct grid_cell	 gc;
@@ -1516,19 +1516,19 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 		}
 
 		sx = screen_size_x(s);
-		xoff = ctx->wp->xoff;
-		yoff = ctx->wp->yoff;
+		ox = ctx->wp->ox;
+		oy = ctx->wp->oy;
 
 		for (y = s->cy; y < sy; y++) {
 			screen_write_set_cursor(ctx, 0, y);
 			r = screen_redraw_get_visible_ranges(ctx->wp,
-			    xoff, yoff + y, sx, NULL);
+			    ox, oy + y, sx, NULL);
 			for (i = 0; i < r->used; i++) {
 				ri = &r->ranges[i];
 				if (ri->nx == 0)
 					continue;
 
-				cx = ri->px - xoff;
+				cx = ri->px - ox;
 				for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
 					grid_view_get_cell(gd, cx, y, &gc);
 					screen_write_set_cursor(ctx, cx, -1);
@@ -1562,19 +1562,19 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 	}
 
 	sx = screen_size_x(s);
-	xoff = ctx->wp->xoff;
-	yoff = ctx->wp->yoff;
+	ox = ctx->wp->ox;
+	oy = ctx->wp->oy;
 
 	for (y = s->cy; y <= s->rlower; y++) {
 		screen_write_set_cursor(ctx, 0, y);
 		r = screen_redraw_get_visible_ranges(ctx->wp,
-		    xoff, yoff + y, sx, NULL);
+		    ox, oy + y, sx, NULL);
 		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
 			if (ri->nx == 0)
 				continue;
 
-			cx = ri->px - xoff;
+			cx = ri->px - ox;
 			for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
 				grid_view_get_cell(gd, cx, y, &gc);
 				screen_write_set_cursor(ctx, cx, -1);
@@ -1722,7 +1722,7 @@ screen_write_reverseindex(struct screen_write_ctx *ctx, u_int bg)
 {
 	struct screen		*s = ctx->s;
 	struct tty_ctx		 ttyctx;
-	u_int			 sx, xoff, yoff, cx, i, n;
+	u_int			 sx, ox, oy, cx, i, n;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 	struct grid_cell	 gc;
@@ -1745,18 +1745,18 @@ screen_write_reverseindex(struct screen_write_ctx *ctx, u_int bg)
 		}
 
 		sx = screen_size_x(s);
-		xoff = ctx->wp->xoff;
-		yoff = ctx->wp->yoff;
+		ox = ctx->wp->ox;
+		oy = ctx->wp->oy;
 
 		screen_write_set_cursor(ctx, 0, s->rupper);
 		r = screen_redraw_get_visible_ranges(ctx->wp,
-		    xoff, yoff + s->rupper, sx, NULL);
+		    ox, oy + s->rupper, sx, NULL);
 		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
 			if (ri->nx == 0)
 				continue;
 
-			cx = ri->px - xoff;
+			cx = ri->px - ox;
 			for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
 				grid_view_get_cell(s->grid, cx, s->rupper, &gc);
 				screen_write_set_cursor(ctx, cx, -1);
@@ -1868,7 +1868,7 @@ screen_write_scrolldown(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct tty_ctx		 ttyctx;
-	u_int			 sx, xoff, yoff, y, cx, i, n;
+	u_int			 sx, ox, oy, y, cx, i, n;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 	struct grid_cell	 gc;
@@ -1898,19 +1898,19 @@ screen_write_scrolldown(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 	}
 
 	sx = screen_size_x(s);
-	xoff = ctx->wp->xoff;
-	yoff = ctx->wp->yoff;
+	ox = ctx->wp->ox;
+	oy = ctx->wp->oy;
 
 	for (y = s->rupper; y <= s->rlower; y++) {
 		screen_write_set_cursor(ctx, 0, y);
 		r = screen_redraw_get_visible_ranges(ctx->wp,
-		    xoff, yoff + y, sx, NULL);
+		    ox, oy + y, sx, NULL);
 		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
 			if (ri->nx == 0)
 				continue;
 
-			cx = ri->px - xoff;
+			cx = ri->px - ox;
 			for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
 				grid_view_get_cell(gd, cx, y, &gc);
 				screen_write_set_cursor(ctx, cx, -1);
@@ -1936,7 +1936,7 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct grid		*gd = s->grid;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
-	u_int			 y, i, xoff, yoff, cx_save, cy_save;
+	u_int			 y, i, ox, oy, cx_save, cy_save;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
@@ -1973,23 +1973,23 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 	cx_save = s->cx;
 	cy_save = s->cy;
 	if (ctx->wp != NULL) {
-		xoff = ctx->wp->xoff;
-		yoff = ctx->wp->yoff;
+		ox = ctx->wp->ox;
+		oy = ctx->wp->oy;
 	} else {
-		xoff = 0;
-		yoff = 0;
+		ox = 0;
+		oy = 0;
 	}
 
 	/* First line: visible ranges from the current cursor to end. */
 	if (s->cx <= sx - 1) {
 		r = screen_redraw_get_visible_ranges(ctx->wp,
-		    xoff + s->cx, yoff + s->cy, sx - s->cx, NULL);
+		    ox + s->cx, oy + s->cy, sx - s->cx, NULL);
 		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
 			if (ri->nx == 0)
 				continue;
 			screen_write_clearpartofline(ctx,
-			    ri->px - xoff, ri->nx, bg);
+			    ri->px - ox, ri->nx, bg);
 		}
 	}
 
@@ -1997,13 +1997,13 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 	for (y = s->cy + 1; y < sy; y++) {
 		screen_write_set_cursor(ctx, 0, y);
 		r = screen_redraw_get_visible_ranges(ctx->wp,
-		    xoff, yoff + y, sx, NULL);
+		    ox, oy + y, sx, NULL);
 		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
 			if (ri->nx == 0)
 				continue;
 			screen_write_clearpartofline(ctx,
-			    ri->px - xoff, ri->nx, bg);
+			    ri->px - ox, ri->nx, bg);
 		}
 	}
 
@@ -2018,7 +2018,7 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct screen		*s = ctx->s;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s);
-	u_int			 y, i, xoff, yoff, cx_save, cy_save;
+	u_int			 y, i, ox, oy, cx_save, cy_save;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
@@ -2049,36 +2049,36 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 	cx_save = s->cx;
 	cy_save = s->cy;
 	if (ctx->wp != NULL) {
-		xoff = ctx->wp->xoff;
-		yoff = ctx->wp->yoff;
+		ox = ctx->wp->ox;
+		oy = ctx->wp->oy;
 	} else {
-		xoff = 0;
-		yoff = 0;
+		ox = 0;
+		oy = 0;
 	}
 
 	/* Lines 0 to cy-1: visible ranges across the full width. */
 	for (y = 0; y < s->cy; y++) {
 		screen_write_set_cursor(ctx, 0, y);
 		r = screen_redraw_get_visible_ranges(ctx->wp,
-		    xoff, yoff + y, sx, NULL);
+		    ox, oy + y, sx, NULL);
 		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
 			if (ri->nx == 0)
 				continue;
 			screen_write_clearpartofline(ctx,
-			    ri->px - xoff, ri->nx, bg);
+			    ri->px - ox, ri->nx, bg);
 		}
 	}
 
 	/* Last line: visible ranges from 0 to cursor (inclusive). */
 	screen_write_set_cursor(ctx, 0, s->cy);
 	r = screen_redraw_get_visible_ranges(ctx->wp,
-	    xoff, yoff + cy_save, s->cx + 1, NULL);
+	    ox, oy + cy_save, s->cx + 1, NULL);
 	for (i = 0; i < r->used; i++) {
 		ri = &r->ranges[i];
 		if (ri->nx == 0)
 			continue;
-		screen_write_clearpartofline(ctx, ri->px - xoff, ri->nx, bg);
+		screen_write_clearpartofline(ctx, ri->px - ox, ri->nx, bg);
 	}
 
 	screen_write_collect_flush(ctx, 0, __func__);
@@ -2092,7 +2092,7 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct screen		*s = ctx->s;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
-	u_int			 y, i, xoff, yoff, cx_save, cy_save;
+	u_int			 y, i, ox, oy, cx_save, cy_save;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
@@ -2123,23 +2123,23 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 	cx_save = s->cx;
 	cy_save = s->cy;
 	if (ctx->wp != NULL) {
-		xoff = ctx->wp->xoff;
-		yoff = ctx->wp->yoff;
+		ox = ctx->wp->ox;
+		oy = ctx->wp->oy;
 	} else {
-		xoff = 0;
-		yoff = 0;
+		ox = 0;
+		oy = 0;
 	}
 
 	for (y = 0; y < sy; y++) {
 		screen_write_set_cursor(ctx, 0, y);
 		r = screen_redraw_get_visible_ranges(ctx->wp,
-		    xoff, yoff + y, sx, NULL);
+		    ox, oy + y, sx, NULL);
 		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
 			if (ri->nx == 0)
 				continue;
 			screen_write_clearpartofline(ctx,
-			    ri->px - xoff, ri->nx, bg);
+			    ri->px - ox, ri->nx, bg);
 		}
 	}
 
@@ -2311,7 +2311,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	u_int				 wr_start, wr_end, wr_length, wsx, wsy;
 	int				 written;
 	int				 r_start, r_end, ci_start, ci_end;
-	int				 xoff, yoff;
+	int				 ox, oy;
 	struct tty_ctx			 ttyctx;
 	struct visible_ranges		*r;
 	struct visible_range		*ri;
@@ -2335,8 +2335,8 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 			ctx->scrolled = s->rlower - s->rupper + 1;
 
 		screen_write_initctx(ctx, &ttyctx, 1, 1);
-		if (wp != NULL && wp->yoff + wp->sy > wp->window->sy)
-			 ttyctx.orlower -= (wp->yoff + wp->sy - wp->window->sy);
+		if (wp != NULL && wp->oy + wp->sy > wp->window->sy)
+			 ttyctx.orlower -= (wp->oy + wp->sy - wp->window->sy);
 		ttyctx.n = ctx->scrolled;
 		ttyctx.bg = ctx->bg;
 		tty_write(tty_cmd_scrollup, &ttyctx);
@@ -2355,26 +2355,26 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 
 	cx = s->cx; cy = s->cy;
 
-	/* The xoff and width of window pane relative to the window we
+	/* The ox and width of window pane relative to the window we
 	 * are writing to relative to the visible_ranges array. */
 	if (wp != NULL) {
 		wsx = wp->window->sx;
 		wsy = wp->window->sy;
-		xoff = wp->xoff;
-		yoff = wp->yoff;
+		ox = wp->ox;
+		oy = wp->oy;
 	} else {
 		wsx = screen_size_x(s);
 		wsy = screen_size_y(s);
-		xoff = 0;
-		yoff = 0;
+		ox = 0;
+		oy = 0;
 	}
 
 	for (y = 0; y < screen_size_y(s); y++) {
-		if (y + yoff >= wsy)
+		if (y + oy >= wsy)
 			continue;
 		cl = &ctx->s->write_list[y];
 
-		r = screen_redraw_get_visible_ranges(wp, 0, y + yoff, wsx,
+		r = screen_redraw_get_visible_ranges(wp, 0, y + oy, wsx,
 		    NULL);
 
 		last = UINT_MAX;
@@ -2382,10 +2382,10 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 			u_int dbg_cnt = 0;
 			struct screen_write_citem *dbg_ci;
 			TAILQ_FOREACH(dbg_ci, &cl->items, entry) dbg_cnt++;
-			log_debug("%s: row y=%u has %u items (wp_xoff=%d yoff=%d wsx=%u)",
+			log_debug("%s: row y=%u has %u items (wp_ox=%d oy=%d wsx=%u)",
 			    __func__, y, dbg_cnt,
-			    wp ? (int)wp->xoff : -1,
-			    wp ? (int)wp->yoff : -1,
+			    wp ? (int)wp->ox : -1,
+			    wp ? (int)wp->oy : -1,
 			    wsx);
 		}
 		TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
@@ -2405,18 +2405,18 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 				ci_start = ci->x;
 				ci_end = ci->x + ci->used;
 
-				if (ci_start + xoff > r_end ||
-				    ci_end + xoff < r_start)
+				if (ci_start + ox > r_end ||
+				    ci_end + ox < r_start)
 					continue;
 
-				if (r_start > ci_start + xoff)
+				if (r_start > ci_start + ox)
 					wr_start = ci_start +
-					    (r_start - (ci_start + xoff));
+					    (r_start - (ci_start + ox));
 				else
 					wr_start = ci_start;
-				if (ci_end + xoff > r_end)
+				if (ci_end + ox > r_end)
 					wr_end = ci_end -
-					    ((ci_end + xoff) - r_end);
+					    ((ci_end + ox) - r_end);
 				else
 					wr_end = ci_end;
 				wr_length = wr_end - wr_start;
@@ -2623,7 +2623,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
 	u_int		 	 width = ud->width, xx, not_wrap, i, n, vis;
-	int			 selected, skip = 1, redraw = 0, yoff = 0;
+	int			 selected, skip = 1, redraw = 0, oy = 0;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
@@ -2724,8 +2724,8 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		skip = 0;
 
 	if (wp != NULL)
-		yoff = wp->yoff;
-	r = screen_redraw_get_visible_ranges(wp, s->cx, s->cy + yoff, width,
+		oy = wp->oy;
+	r = screen_redraw_get_visible_ranges(wp, s->cx, s->cy + oy, width,
 	    NULL);
 
 	/*
@@ -2785,7 +2785,7 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct window_pane	*wp = ctx->wp;
 	struct grid		*gd = s->grid;
 	const struct utf8_data	*ud = &gc->data;
-	u_int			 i, n, cx = s->cx, cy = s->cy, vis, yoff = 0;
+	u_int			 i, n, cx = s->cx, cy = s->cy, vis, oy = 0;
 	struct grid_cell	 last;
 	struct tty_ctx		 ttyctx;
 	int			 force_wide = 0, zero_width = 0;
@@ -2883,8 +2883,8 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	 * could be an empty range in the visible ranges so we add them all up.
 	 */
 	if (wp != NULL)
-		yoff = wp->yoff;
-	r = screen_redraw_get_visible_ranges(wp, cx - n, cy + yoff, n, NULL);
+		oy = wp->oy;
+	r = screen_redraw_get_visible_ranges(wp, cx - n, cy + oy, n, NULL);
 	for (i=0, vis=0; i < r->used; i++) vis += r->ranges[i].nx;
 	if (vis < n) {
 		/*

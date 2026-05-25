@@ -65,8 +65,8 @@ layout_create_cell(struct layout_cell *lcparent)
 	lc->sx = UINT_MAX;
 	lc->sy = UINT_MAX;
 
-	lc->xoff = INT_MAX;
-	lc->yoff = INT_MAX;
+	lc->ox = INT_MAX;
+	lc->oy = INT_MAX;
 
 	lc->wp = NULL;
 
@@ -143,7 +143,7 @@ layout_print_cell(struct layout_cell *lc, const char *hdr, u_int n)
 		break;
 	}
 	log_debug("%s:%*s%p type %s [parent %p] wp=%p [%d,%d %ux%u]", hdr, n,
-	    " ", lc, type, lc->parent, lc->wp, lc->xoff, lc->yoff, lc->sx,
+	    " ", lc, type, lc->parent, lc->wp, lc->ox, lc->oy, lc->sx,
 	    lc->sy);
 	switch (lc->type) {
 	case LAYOUT_LEFTRIGHT:
@@ -164,10 +164,10 @@ layout_search_by_border(struct layout_cell *lc, u_int x, u_int y)
 	struct layout_cell	*lcchild, *last = NULL;
 
 	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-		if ((int)x >= lcchild->xoff &&
-		    (int)x < lcchild->xoff + (int)lcchild->sx &&
-		    (int)y >= lcchild->yoff &&
-		    (int)y < lcchild->yoff + (int)lcchild->sy) {
+		if ((int)x >= lcchild->ox &&
+		    (int)x < lcchild->ox + (int)lcchild->sx &&
+		    (int)y >= lcchild->oy &&
+		    (int)y < lcchild->oy + (int)lcchild->sy) {
 			/* Inside the cell - recurse. */
 			return (layout_search_by_border(lcchild, x, y));
 		}
@@ -179,13 +179,13 @@ layout_search_by_border(struct layout_cell *lc, u_int x, u_int y)
 
 		switch (lc->type) {
 		case LAYOUT_LEFTRIGHT:
-			if ((int)x < lcchild->xoff &&
-			    (int)x >= last->xoff + (int)last->sx)
+			if ((int)x < lcchild->ox &&
+			    (int)x >= last->ox + (int)last->sx)
 				return (last);
 			break;
 		case LAYOUT_TOPBOTTOM:
-			if ((int)y < lcchild->yoff &&
-			    (int)y >= last->yoff + (int)last->sy)
+			if ((int)y < lcchild->oy &&
+			    (int)y >= last->oy + (int)last->sy)
 				return (last);
 			break;
 		case LAYOUT_WINDOWPANE:
@@ -201,13 +201,13 @@ layout_search_by_border(struct layout_cell *lc, u_int x, u_int y)
 
 /* Set cell size. */
 void
-layout_set_size(struct layout_cell *lc, u_int sx, u_int sy, int xoff, int yoff)
+layout_set_size(struct layout_cell *lc, u_int sx, u_int sy, int ox, int oy)
 {
 	lc->sx = sx;
 	lc->sy = sy;
 
-	lc->xoff = xoff;
-	lc->yoff = yoff;
+	lc->ox = ox;
+	lc->oy = oy;
 }
 
 /* Make a cell a leaf cell. */
@@ -266,33 +266,33 @@ static void
 layout_fix_offsets1(struct layout_cell *lc)
 {
 	struct layout_cell	*lcchild;
-	int			 xoff, yoff;
+	int			 ox, oy;
 
 	if (lc->type == LAYOUT_LEFTRIGHT) {
-		xoff = lc->xoff;
+		ox = lc->ox;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			if (lcchild->type == LAYOUT_WINDOWPANE &&
 			    lcchild->wp != NULL &&
 			    lcchild->wp->flags & PANE_HIDDEN)
 				continue;
-			lcchild->xoff = xoff;
-			lcchild->yoff = lc->yoff;
+			lcchild->ox = ox;
+			lcchild->oy = lc->oy;
 			if (lcchild->type != LAYOUT_WINDOWPANE)
 				layout_fix_offsets1(lcchild);
-			xoff += lcchild->sx + 1;
+			ox += lcchild->sx + 1;
 		}
 	} else {
-		yoff = lc->yoff;
+		oy = lc->oy;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			if (lcchild->type == LAYOUT_WINDOWPANE &&
 			    lcchild->wp != NULL &&
 			    lcchild->wp->flags & PANE_HIDDEN)
 				continue;
-			lcchild->xoff = lc->xoff;
-			lcchild->yoff = yoff;
+			lcchild->ox = lc->ox;
+			lcchild->oy = oy;
 			if (lcchild->type != LAYOUT_WINDOWPANE)
 				layout_fix_offsets1(lcchild);
-			yoff += lcchild->sy + 1;
+			oy += lcchild->sy + 1;
 		}
 	}
 }
@@ -303,8 +303,8 @@ layout_fix_offsets(struct window *w)
 {
 	struct layout_cell	*lc = w->layout_root;
 
-	lc->xoff = 0;
-	lc->yoff = 0;
+	lc->ox = 0;
+	lc->oy = 0;
 
 	layout_fix_offsets1(lc);
 }
@@ -377,15 +377,15 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		if ((lc = wp->layout_cell) == NULL || wp == skip)
 			continue;
 
-		wp->xoff = lc->xoff;
-		wp->yoff = lc->yoff;
+		wp->ox = lc->ox;
+		wp->oy = lc->oy;
 		sx = lc->sx;
 		sy = lc->sy;
 
 		if ((~wp->flags & PANE_FLOATING) &&
 		    layout_add_horizontal_border(w, lc, status)) {
 			if (status == PANE_STATUS_TOP)
-				wp->yoff++;
+				wp->oy++;
 			sy--;
 		}
 
@@ -398,12 +398,12 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 				sb_pad = 0;
 			if (sb_pos == PANE_SCROLLBARS_LEFT) {
 				if ((int)sx - sb_w < PANE_MINIMUM) {
-					wp->xoff = wp->xoff +
+					wp->ox = wp->ox +
 					    (int)sx - PANE_MINIMUM;
 					sx = PANE_MINIMUM;
 				} else {
 					sx = sx - sb_w - sb_pad;
-					wp->xoff = wp->xoff + sb_w + sb_pad;
+					wp->ox = wp->ox + sb_w + sb_pad;
 				}
 			} else /* sb_pos == PANE_SCROLLBARS_RIGHT */
 				if ((int)sx - sb_w - sb_pad < PANE_MINIMUM)
@@ -684,8 +684,8 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 
 		lc->parent = lcparent->parent;
 		if (lc->parent == NULL) {
-			lc->xoff = 0;
-			lc->yoff = 0;
+			lc->ox = 0;
+			lc->oy = 0;
 
 			/*
 			 * If the sole remaining child is a hidden
@@ -1143,7 +1143,7 @@ layout_resize_child_cells(struct window *w, struct layout_cell *lc)
 	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 		if (lc->type == LAYOUT_TOPBOTTOM) {
 			lcchild->sx = lc->sx;
-			lcchild->xoff = lc->xoff;
+			lcchild->ox = lc->ox;
 		} else {
 			lcchild->sx = layout_new_pane_size(w, previous, lcchild,
 			    lc->type, lc->sx, count - idx, available);
@@ -1171,7 +1171,7 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 {
 	struct layout_cell	*lc, *lcparent, *lcnew, *lc1, *lc2;
 	struct style		*sb_style = &wp->scrollbar_style;
-	u_int			 sx, sy, xoff, yoff, size1, size2, minimum;
+	u_int			 sx, sy, ox, oy, size1, size2, minimum;
 	u_int			 new_size, saved_size, resize_first = 0;
 	int			 full_size = (flags & SPAWN_FULLSIZE), status;
 	int			 scrollbars;
@@ -1190,8 +1190,8 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 	/* Copy the old cell size. */
 	sx = lc->sx;
 	sy = lc->sy;
-	xoff = lc->xoff;
-	yoff = lc->yoff;
+	ox = lc->ox;
+	oy = lc->oy;
 
 	/* Check there is enough space for the two new panes. */
 	switch (type) {
@@ -1294,7 +1294,7 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 		/* Create and insert the replacement parent. */
 		lcparent = layout_create_cell(lc->parent);
 		layout_make_node(lcparent, type);
-		layout_set_size(lcparent, sx, sy, xoff, yoff);
+		layout_set_size(lcparent, sx, sy, ox, oy);
 		if (lc->parent == NULL)
 			wp->window->layout_root = lcparent;
 		else
@@ -1324,11 +1324,11 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 	 * bottom/right.
 	 */
 	if (!resize_first && type == LAYOUT_LEFTRIGHT) {
-		layout_set_size(lc1, size1, sy, xoff, yoff);
-		layout_set_size(lc2, size2, sy, xoff + lc1->sx + 1, yoff);
+		layout_set_size(lc1, size1, sy, ox, oy);
+		layout_set_size(lc2, size2, sy, ox + lc1->sx + 1, oy);
 	} else if (!resize_first && type == LAYOUT_TOPBOTTOM) {
-		layout_set_size(lc1, sx, size1, xoff, yoff);
-		layout_set_size(lc2, sx, size2, xoff, yoff + lc1->sy + 1);
+		layout_set_size(lc1, sx, size1, ox, oy);
+		layout_set_size(lc2, sx, size2, ox, oy + lc1->sy + 1);
 	}
 	if (full_size) {
 		if (!resize_first)

@@ -76,7 +76,7 @@ cmd_float_pane_parse_geometry(struct args *args, struct cmdq_item *item,
     int *last_x, int *last_y)
 {
 	char	*cause = NULL;
-	int	 x, y;
+	int	 ox, oy;
 	u_int	 sx, sy;
 
 	/* Default size: half the window. */
@@ -104,7 +104,7 @@ cmd_float_pane_parse_geometry(struct args *args, struct cmdq_item *item,
 
 	/* Default position: cascade from (5,5), step +5, wrap at window edge. */
 	if (args_has(args, 'x')) {
-		x = args_strtonum_and_expand(args, 'x', SHRT_MIN, SHRT_MAX,
+		ox = args_strtonum_and_expand(args, 'x', SHRT_MIN, SHRT_MAX,
 		    item, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "x %s", cause);
@@ -113,15 +113,15 @@ cmd_float_pane_parse_geometry(struct args *args, struct cmdq_item *item,
 		}
 	} else {
 		if (*last_x == 0) {
-			x = 5;
+			ox = 5;
 		} else {
-			x = (*last_x += 5);
+			ox = (*last_x += 5);
 			if (*last_x > (int)w->sx)
-				x = *last_x = 5;
+				ox = *last_x = 5;
 		}
 	}
 	if (args_has(args, 'y')) {
-		y = args_strtonum_and_expand(args, 'y', SHRT_MIN, SHRT_MAX,
+		oy = args_strtonum_and_expand(args, 'y', SHRT_MIN, SHRT_MAX,
 		    item, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "y %s", cause);
@@ -130,18 +130,18 @@ cmd_float_pane_parse_geometry(struct args *args, struct cmdq_item *item,
 		}
 	} else {
 		if (*last_y == 0) {
-			y = 5;
+			oy = 5;
 		} else {
-			y = (*last_y += 5);
+			oy = (*last_y += 5);
 			if (*last_y > (int)w->sy)
-				y = *last_y = 5;
+				oy = *last_y = 5;
 		}
 	}
 
-	*last_x = x;
-	*last_y = y;
-	*out_x = x;
-	*out_y = y;
+	*last_x = ox;
+	*last_y = oy;
+	*out_x = ox;
+	*out_y = oy;
 	*out_sx = sx;
 	*out_sy = sy;
 	return (0);
@@ -155,7 +155,7 @@ cmd_float_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window		*w = target->wl->window;
 	struct window_pane	*wp = target->wp;
 	static int		 last_x = 0, last_y = 0;
-	int			 x, y;
+	int			 ox, oy;
 	u_int			 sx, sy;
 	struct layout_cell	*lc;
 
@@ -179,12 +179,12 @@ cmd_float_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if ((wp->flags & PANE_SAVED_FLOAT) &&
 	    !args_has(args, 'x') && !args_has(args, 'y') &&
 	    !args_has(args, 'w') && !args_has(args, 'h')) {
-		x  = wp->saved_float_xoff;
-		y  = wp->saved_float_yoff;
+		ox  = wp->saved_float_ox;
+		oy  = wp->saved_float_oy;
 		sx = wp->saved_float_sx;
 		sy = wp->saved_float_sy;
 	} else {
-		if (cmd_float_pane_parse_geometry(args, item, w, &x, &y, &sx,
+		if (cmd_float_pane_parse_geometry(args, item, w, &ox, &oy, &sx,
 		    &sy, &last_x, &last_y) != 0)
 			return (CMD_RETURN_ERROR);
 	}
@@ -201,8 +201,8 @@ cmd_float_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	/* Create a detached floating cell with the requested geometry. */
 	lc = layout_create_cell(NULL);
-	lc->xoff = x;
-	lc->yoff = y;
+	lc->ox = ox;
+	lc->oy = oy;
 	lc->sx = sx;
 	lc->sy = sy;
 	layout_make_leaf(lc, wp);	/* sets wp->layout_cell = lc, lc->wp = wp */
@@ -247,8 +247,8 @@ cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 	 * is floated without an explicit position/size.
 	 */
 	float_lc = wp->layout_cell;
-	wp->saved_float_xoff = float_lc->xoff;
-	wp->saved_float_yoff = float_lc->yoff;
+	wp->saved_float_ox = float_lc->ox;
+	wp->saved_float_oy = float_lc->oy;
 	wp->saved_float_sx   = float_lc->sx;
 	wp->saved_float_sy   = float_lc->sy;
 	wp->flags |= PANE_SAVED_FLOAT;
@@ -331,8 +331,8 @@ cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 		lc = layout_create_cell(NULL);
 		lc->sx = w->sx;
 		lc->sy = w->sy;
-		lc->xoff = 0;
-		lc->yoff = 0;
+		lc->ox = 0;
+		lc->oy = 0;
 		w->layout_root = lc;
 		layout_make_leaf(lc, wp);
 	}

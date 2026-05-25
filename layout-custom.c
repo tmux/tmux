@@ -102,10 +102,10 @@ layout_append(struct layout_cell *lc, char *buf, size_t len)
 		return (0);
 	if (lc->wp != NULL) {
 		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%d,%d,%u",
-		    lc->sx, lc->sy, lc->xoff, lc->yoff, lc->wp->id);
+		    lc->sx, lc->sy, lc->ox, lc->oy, lc->wp->id);
 	} else {
 		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%d,%d",
-		    lc->sx, lc->sy, lc->xoff, lc->yoff);
+		    lc->sx, lc->sy, lc->ox, lc->oy);
 	}
 	if (tmplen > (sizeof tmp) - 1)
 		return (-1);
@@ -346,12 +346,12 @@ layout_construct_cell(struct layout_cell *lcparent, const char **layout)
 {
 	struct layout_cell     *lc;
 	u_int			sx, sy;
-	int			xoff, yoff;
+	int			ox, oy;
 	const char	       *saved;
 
 	if (!isdigit((u_char) **layout))
 		return (NULL);
-	if (sscanf(*layout, "%ux%u,%d,%d", &sx, &sy, &xoff, &yoff) != 4)
+	if (sscanf(*layout, "%ux%u,%d,%d", &sx, &sy, &ox, &oy) != 4)
 		return (NULL);
 
 	while (isdigit((u_char) **layout))
@@ -383,8 +383,8 @@ layout_construct_cell(struct layout_cell *lcparent, const char **layout)
 	lc = layout_create_cell(lcparent);
 	lc->sx = sx;
 	lc->sy = sy;
-	lc->xoff = xoff;
-	lc->yoff = yoff;
+	lc->ox = ox;
+	lc->oy = oy;
 
 	return (lc);
 }

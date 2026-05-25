@@ -89,8 +89,8 @@ cmd_split_window_get_floating_cell(struct cmdq_item *item, struct args *args,
 	 * tree so we call it with parent == NULL.
 	 */
 	lc = layout_create_cell(NULL);
-	lc->xoff = x;
-	lc->yoff = y;
+	lc->ox = x;
+	lc->oy = y;
 	lc->sx = sx;
 	lc->sy = sy;
 

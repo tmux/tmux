@@ -1162,9 +1162,9 @@ format_cb_pane_at_top(struct format_tree *ft)
 
 	status = options_get_number(w->options, "pane-border-status");
 	if (status == PANE_STATUS_TOP)
-		flag = (wp->yoff == 1);
+		flag = (wp->oy == 1);
 	else
-		flag = (wp->yoff == 0);
+		flag = (wp->oy == 0);
 	xasprintf(&value, "%d", flag);
 	return (value);
 }
@@ -1184,9 +1184,9 @@ format_cb_pane_at_bottom(struct format_tree *ft)
 
 	status = options_get_number(w->options, "pane-border-status");
 	if (status == PANE_STATUS_BOTTOM)
-		flag = (wp->yoff + (int)wp->sy == (int)w->sy - 1);
+		flag = (wp->oy + (int)wp->sy == (int)w->sy - 1);
 	else
-		flag = (wp->yoff + (int)wp->sy == (int)w->sy);
+		flag = (wp->oy + (int)wp->sy == (int)w->sy);
 	xasprintf(&value, "%d", flag);
 	return (value);
 }
@@ -2036,7 +2036,7 @@ static void *
 format_cb_pane_at_left(struct format_tree *ft)
 {
 	if (ft->wp != NULL) {
-		if (ft->wp->xoff == 0)
+		if (ft->wp->ox == 0)
 			return (xstrdup("1"));
 		return (xstrdup("0"));
 	}
@@ -2048,7 +2048,7 @@ static void *
 format_cb_pane_at_right(struct format_tree *ft)
 {
 	if (ft->wp != NULL) {
-		if (ft->wp->xoff + (int)ft->wp->sx == (int)ft->wp->window->sx)
+		if (ft->wp->ox + (int)ft->wp->sx == (int)ft->wp->window->sx)
 			return (xstrdup("1"));
 		return (xstrdup("0"));
 	}
@@ -2062,7 +2062,7 @@ format_cb_pane_bottom(struct format_tree *ft)
 	struct window_pane	*wp = ft->wp;
 
 	if (wp != NULL)
-		return (format_printf("%d", wp->yoff + (int)wp->sy - 1));
+		return (format_printf("%d", wp->oy + (int)wp->sy - 1));
 	return (NULL);
 }
 
@@ -2221,7 +2221,7 @@ static void *
 format_cb_pane_left(struct format_tree *ft)
 {
 	if (ft->wp != NULL)
-		return (format_printf("%d", ft->wp->xoff));
+		return (format_printf("%d", ft->wp->ox));
 	return (NULL);
 }
 
@@ -2361,7 +2361,7 @@ format_cb_pane_right(struct format_tree *ft)
 	struct window_pane	*wp = ft->wp;
 
 	if (wp != NULL)
-		return (format_printf("%d", wp->xoff + (int)wp->sx - 1));
+		return (format_printf("%d", wp->ox + (int)wp->sx - 1));
 	return (NULL);
 }
 
@@ -2403,7 +2403,7 @@ static void *
 format_cb_pane_top(struct format_tree *ft)
 {
 	if (ft->wp != NULL)
-		return (format_printf("%d", ft->wp->yoff));
+		return (format_printf("%d", ft->wp->oy));
 	return (NULL);
 }
 

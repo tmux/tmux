@@ -50,7 +50,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct window		*w = wl->window;
 	struct window_pane	*wp, *wp2;
 	struct layout_cell	*lc;
-	u_int			 sx, sy, xoff, yoff;
+	u_int			 sx, sy, ox, oy;
 
 	window_push_zoom(w, 0, args_has(args, 'Z'));
 
@@ -60,7 +60,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 		TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 
 		lc = wp->layout_cell;
-		xoff = wp->xoff; yoff = wp->yoff;
+		ox = wp->ox; oy = wp->oy;
 		sx = wp->sx; sy = wp->sy;
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if ((wp2 = TAILQ_NEXT(wp, entry)) == NULL)
@@ -68,13 +68,13 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 			wp->layout_cell = wp2->layout_cell;
 			if (wp->layout_cell != NULL)
 				wp->layout_cell->wp = wp;
-			wp->xoff = wp2->xoff; wp->yoff = wp2->yoff;
+			wp->ox = wp2->ox; wp->oy = wp2->oy;
 			window_pane_resize(wp, wp2->sx, wp2->sy);
 		}
 		wp->layout_cell = lc;
 		if (wp->layout_cell != NULL)
 			wp->layout_cell->wp = wp;
-		wp->xoff = xoff; wp->yoff = yoff;
+		wp->ox = ox; wp->oy = oy;
 		window_pane_resize(wp, sx, sy);
 
 		if ((wp = TAILQ_PREV(w->active, window_panes, entry)) == NULL)
@@ -85,7 +85,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 		TAILQ_INSERT_TAIL(&w->panes, wp, entry);
 
 		lc = wp->layout_cell;
-		xoff = wp->xoff; yoff = wp->yoff;
+		ox = wp->ox; oy = wp->oy;
 		sx = wp->sx; sy = wp->sy;
 		TAILQ_FOREACH_REVERSE(wp, &w->panes, window_panes, entry) {
 			if ((wp2 = TAILQ_PREV(wp, window_panes, entry)) == NULL)
@@ -93,13 +93,13 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 			wp->layout_cell = wp2->layout_cell;
 			if (wp->layout_cell != NULL)
 				wp->layout_cell->wp = wp;
-			wp->xoff = wp2->xoff; wp->yoff = wp2->yoff;
+			wp->ox = wp2->ox; wp->oy = wp2->oy;
 			window_pane_resize(wp, wp2->sx, wp2->sy);
 		}
 		wp->layout_cell = lc;
 		if (wp->layout_cell != NULL)
 			wp->layout_cell->wp = wp;
-		wp->xoff = xoff; wp->yoff = yoff;
+		wp->ox = ox; wp->oy = oy;
 		window_pane_resize(wp, sx, sy);
 
 		if ((wp = TAILQ_NEXT(w->active, entry)) == NULL)
