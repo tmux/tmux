@@ -704,7 +704,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 			/* Left not visible. */
 			l = ctx->ox - xoff;
 			x = 0;
-			width = size - i;
+			width = size - l;
 		} else {
 			/* Right not visible. */
 			l = 0;
@@ -1276,15 +1276,40 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	struct screen		*s = wp->screen;
 	struct colour_palette	*palette = &wp->palette;
 	struct grid_cell	 defaults;
-	u_int			 i, j, k, woy, wx, wy, py, width;
+	u_int			 j, k, woy, wx, wy, py, width;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
+
+	/* There are 3 coordinate spaces:
+	 * window: (0 to w->sx-1, 0 to w->sy-1)
+	 * tty: (0 to tty->sx-1, 0 to tty->sy-1)
+	 * pane: (0 to wp->sx-1, 0 to wp->sy-1)
+	 *
+	 * Transformations:
+	 * window <-> tty (x-axis):
+	 *   window_x = tty_x + ctx->ox
+	 *   tty_x = window_x - ctx->ox
+	 *
+	 * window <-> tty (y-axis):
+	 *   woy = (ctx->statustop) ? ctx->statuslines : 0
+	 *   window_y = tty_y + ctx->oy - woy
+	 *   tty_y = woy + window_y - ctx->oy
+	 *
+	 * window <-> pane (x-axis):
+	 *   window_x = pane_x + wp->xoff
+	 *   pane_x = window_x - wp->xoff
+	 *
+	 * window <-> pane (y-axis):
+	 *   window_y = pane_y + wp->yoff
+	 *   pane_y = window_y - wp->yoff
+	 */
 
 	if (wp->base.mode & MODE_SYNC)
 		screen_write_stop_sync(wp);
 
 	log_debug("%s: %s @%u %%%u", __func__, c->name, w->id, wp->id);
 
+	/* Check if pane completely not visible. */
 	if (wp->xoff + (int)wp->sx <= ctx->ox ||
 	    wp->xoff >= (int)ctx->ox + (int)ctx->sx)
 		return;
@@ -1306,28 +1331,22 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		if (wp->xoff >= (int)ctx->ox &&
 		    wp->xoff + (int)wp->sx <= (int)ctx->ox + (int)ctx->sx) {
 			/* All visible. */
-			i = 0;
 			wx = (u_int)(wp->xoff - (int)ctx->ox);
 			width = wp->sx;
 		} else if (wp->xoff < (int)ctx->ox &&
 		    wp->xoff + (int)wp->sx > (int)ctx->ox + (int)ctx->sx) {
 			/* Both left and right not visible. */
-			i = ctx->ox;
 			wx = 0;
 			width = ctx->sx;
 		} else if (wp->xoff < (int)ctx->ox) {
 			/* Left not visible. */
-			i = (u_int)((int)ctx->ox - wp->xoff);
 			wx = 0;
-			width = wp->sx - i;
+			width = wp->sx - ((u_int)((int)ctx->ox - wp->xoff));
 		} else {
 			/* Right not visible. */
-			i = 0;
 			wx = (u_int)(wp->xoff - (int)ctx->ox);
 			width = ctx->sx - wx;
 		}
-		log_debug("%s: %s %%%u line %u,%u at %u,%u, width %u",
-		    __func__, c->name, wp->id, i, j, wx, wy, width);
 
 		/* Get visible ranges of line before we draw it. */
 		r = tty_check_overlay_range(tty, wx, wy, width);
@@ -1337,7 +1356,11 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 			ri = &r->ranges[k];
 			if (ri->nx == 0)
 				continue;
-			tty_draw_line(tty, s, ri->px - wp->xoff, j, ri->nx,
+			log_debug("%s: %s %%%u range pane (%u,%u) width %u, tty (%u,%u) width %u",
+			    __func__, c->name, wp->id,
+			    ri->px + (int)ctx->ox - wp->xoff, j, ri->nx,
+			    ri->px, py, ri->nx);
+			tty_draw_line(tty, s, ri->px + (int)ctx->ox - wp->xoff, j, ri->nx,
 			    ri->px, py, &defaults, palette);
 		}
 	}
