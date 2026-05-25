@@ -109,13 +109,6 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 		dst_wp->flags ^= PANE_FLOATING;
 	}
 
-	/* Swap PANE_FLOATING flag to keep each pane consistent with its new
-	 * layout cell (floating cells have parent == NULL). */
-	if ((src_wp->flags ^ dst_wp->flags) & PANE_FLOATING) {
-		src_wp->flags ^= PANE_FLOATING;
-		dst_wp->flags ^= PANE_FLOATING;
-	}
-
 	src_wp->window = dst_w;
 	options_set_parent(src_wp->options, dst_w->options);
 	src_wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
