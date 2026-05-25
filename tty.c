@@ -1306,9 +1306,7 @@ tty_clear_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 {
 	struct client		*c = tty->client;
 	const struct grid_cell	*defaults = &ctx->defaults;
-	struct visible_ranges	*r;
-	struct visible_range	*ri;
-	u_int			 i, yy, oy = 0;
+	u_int			 yy;
 	char			 tmp[64];
 
 	log_debug("%s: %s, %u,%u at %u,%u", __func__, c->name, nx, ny, px, py);
@@ -1373,17 +1371,8 @@ tty_clear_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 	}
 
 	/* Couldn't use an escape sequence, loop over the lines. */
-	if (c->session->statusat == 0)
-               oy = c->session->statuslines;
-	for (yy = py; yy < py + ny; yy++) {
-		r = tty_check_overlay_range(tty, px, yy - oy, nx);
-		for (i = 0; i < r->used; i++) {
-			ri = &r->ranges[i];
-			if (ri->nx == 0)
-				continue;
-			tty_clear_line(tty, defaults, yy, ri->px, ri->nx, bg);
-		}
-	}
+	for (yy = py; yy < py + ny; yy++)
+		tty_clear_line(tty, defaults, yy, px, nx, bg);
 }
 
 /* Clear an area in a pane. */
