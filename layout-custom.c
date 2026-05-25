@@ -216,7 +216,6 @@ layout_parse(struct window *w, const char *layout, char **cause)
 		if (floating_lc != NULL)
 			ncells += layout_count_cells(floating_lc);
 		if (npanes > ncells) {
-			/* Modify this to open a new pane */
 			xasprintf(cause, "have %u panes but need %u", npanes,
 			    ncells);
 			goto fail;
