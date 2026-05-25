@@ -3046,13 +3046,8 @@ screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
 	}
 	screen_write_collect_flush(ctx, 0, __func__);
 
-	screen_write_initctx(ctx, &ttyctx, 0, 1);
+	screen_write_initctx(ctx, &ttyctx, 0, 0);
 	ttyctx.image = image_store(s, si);
-
-	if ((ttyctx.flags & TTY_CTX_PANE_OBSCURED) && ctx->wp != NULL) {
-		ctx->wp->flags |= PANE_REDRAW;
-		return;
-	}
 
 	tty_write(tty_cmd_sixelimage, &ttyctx);
 
