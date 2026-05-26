@@ -1121,7 +1121,6 @@ screen_write_redraw_line(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
-
 	r = screen_redraw_get_visible_ranges(wp, xoff, yoff + yy, sx, NULL);
 	for (i = 0; i < r->used; i++) {
 		ri = &r->ranges[i];
@@ -1130,7 +1129,7 @@ screen_write_redraw_line(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 
 		cx = ri->px - xoff;
 		for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
-			grid_view_get_cell(s->grid, cx, s->cy, &gc);
+			grid_view_get_cell(s->grid, cx, yy, &gc);
 			ttyctx->ocx = cx;
 			ttyctx->ocy = yy;
 			ttyctx->cell = &gc;
@@ -2103,6 +2102,7 @@ static void
 screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
     const char *from)
 {
+	struct window_pane		*wp = ctx->wp;
 	struct screen			*s = ctx->s;
 	struct screen_write_citem	*ci, *tmp;
 	struct screen_write_cline	*cl;
@@ -2114,34 +2114,30 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	struct tty_ctx			 ttyctx;
 	struct visible_ranges		*r;
 	struct visible_range		*ri;
-	struct window_pane		*wp = ctx->wp;
 
-	if (s->mode & MODE_SYNC) {
-		for (y = 0; y < screen_size_y(s); y++) {
-			cl = &ctx->s->write_list[y];
-			TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
-				TAILQ_REMOVE(&cl->items, ci, entry);
-				screen_write_free_citem(ci);
-			}
-		}
-		return;
-	}
+	if (s->mode & MODE_SYNC)
+		goto discard;
 
 	if (ctx->scrolled != 0) {
+		screen_write_initctx(ctx, &ttyctx, 1, 1);
+		if (ttyctx.flags & TTY_CTX_PANE_OBSCURED && wp != NULL) {
+			screen_write_redraw_pane(ctx, &ttyctx);
+			goto discard;
+		}
+
 		log_debug("%s: scrolled %u (region %u-%u)", __func__,
 		    ctx->scrolled, s->rupper, s->rlower);
 		if (ctx->scrolled > s->rlower - s->rupper + 1)
 			ctx->scrolled = s->rlower - s->rupper + 1;
 
-		screen_write_initctx(ctx, &ttyctx, 1, 1);
 		if (wp != NULL && wp->yoff + wp->sy > wp->window->sy)
-			 ttyctx.orlower -= (wp->yoff + wp->sy - wp->window->sy);
+			ttyctx.orlower -= (wp->yoff + wp->sy - wp->window->sy);
 		ttyctx.n = ctx->scrolled;
 		ttyctx.bg = ctx->bg;
 		tty_write(tty_cmd_scrollup, &ttyctx);
 
 		if (wp != NULL)
-			ctx->wp->flags |= PANE_REDRAWSCROLLBAR;
+			wp->flags |= PANE_REDRAWSCROLLBAR;
 	}
 	ctx->scrolled = 0;
 	ctx->bg = 8;
@@ -2239,6 +2235,18 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	s->cx = cx; s->cy = cy;
 
 	log_debug("%s: flushed %u items (%s)", __func__, items, from);
+	return;
+
+discard:
+	for (y = 0; y < screen_size_y(s); y++) {
+		cl = &ctx->s->write_list[y];
+		TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
+			TAILQ_REMOVE(&cl->items, ci, entry);
+			screen_write_free_citem(ci);
+		}
+	}
+	ctx->scrolled = 0;
+	ctx->bg = 8;
 }
 
 /* Insert an item on current line. */
