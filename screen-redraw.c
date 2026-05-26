@@ -1155,6 +1155,10 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 		return (&sr);
 	}
 
+	w = base_wp->window;
+	if (px + width > w->sx)
+		width = w->sx - px;
+
 	if (r == NULL) {
 		/* Start with the entire width of the range. */
 		server_client_ensure_ranges(&base_wp->r, 1);
@@ -1164,7 +1168,6 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 		r->used = 1;
 	}
 
-	w = base_wp->window;
 	sb = options_get_number(w->options, "pane-scrollbars");
 	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
 
