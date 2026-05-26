@@ -1429,8 +1429,6 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	char		 tmp[128], *endptr, p[32] = { 0 }, *cp, *next;
 
 	*size = 0;
-	if (tty->flags & TTY_HAVEDA)
-		return (-1);
 
 	/* First three bytes are always \033[?. */
 	if (buf[0] != '\033')
@@ -1460,6 +1458,19 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		return (-1);
 	tmp[i] = '\0';
 	*size = 4 + i;
+
+	/*
+	 * If we have already processed a primary DA response, still consume
+	 * this one so the bytes do not fall through to the generic key parser
+	 * and leak to the active pane. A duplicate response can arrive when a
+	 * program run before tmux (a shell prompt or similar) queried DA, or
+	 * when the terminal sends one unsolicited.
+	 */
+	if (tty->flags & TTY_HAVEDA) {
+		log_debug("%s: ignoring duplicate primary DA %.*s", c->name,
+		    (int)*size, buf);
+		return (0);
+	}
 
 	/* Convert all arguments to numbers. */
 	cp = tmp;
@@ -1513,8 +1524,6 @@ tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
 	char		 tmp[128], *endptr, p[32] = { 0 }, *cp, *next;
 
 	*size = 0;
-	if (tty->flags & TTY_HAVEDA2)
-		return (-1);
 
 	/* First three bytes are always \033[>. */
 	if (buf[0] != '\033')
@@ -1544,6 +1553,16 @@ tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
 		return (-1);
 	tmp[i] = '\0';
 	*size = 4 + i;
+
+	/*
+	 * Consume duplicate secondary DA responses so the bytes do not fall
+	 * through to the generic key parser and leak to the active pane.
+	 */
+	if (tty->flags & TTY_HAVEDA2) {
+		log_debug("%s: ignoring duplicate secondary DA %.*s", c->name,
+		    (int)*size, buf);
+		return (0);
+	}
 
 	/* Convert all arguments to numbers. */
 	cp = tmp;
@@ -1593,8 +1612,6 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 	char		 tmp[128];
 
 	*size = 0;
-	if (tty->flags & TTY_HAVEXDA)
-		return (-1);
 
 	/* First four bytes are always \033P>|. */
 	if (buf[0] != '\033')
@@ -1628,6 +1645,16 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 	if (i == 0)
 		return (0);
 	tmp[i - 1] = '\0';
+
+	/*
+	 * Consume duplicate extended DA responses so the bytes do not fall
+	 * through to the generic key parser and leak to the active pane.
+	 */
+	if (tty->flags & TTY_HAVEXDA) {
+		log_debug("%s: ignoring duplicate extended DA %.*s", c->name,
+		    (int)*size, buf);
+		return (0);
+	}
 
 	/* Add terminal features. */
 	if (strncmp(tmp, "iTerm2 ", 7) == 0)
