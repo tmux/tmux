@@ -181,7 +181,6 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		atx += cx;
 		px += cx;
 		nx -= cx;
-		ex -= cx;
 	}
 
 	/* Did the previous line wrap on to this one? */
