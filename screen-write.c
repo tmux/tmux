@@ -624,33 +624,39 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 	struct grid_line	*gl, *sgl;
 	struct grid_cell	 gc;
 	u_int			 xx, yy, cx = s->cx, cy = s->cy;
+	int			 yoff = 0;
+	struct visible_ranges	*r;
 
 	if (nx == 0 || ny == 0)
 		return;
+	if (wp != NULL)
+		yoff = wp->yoff;
 
 	for (yy = py; yy < py + ny; yy++) {
 		if (yy >= gd->hsize + gd->sy)
 			break;
 		s->cx = cx;
-		if (wp != NULL)
-			screen_write_initctx(ctx, &ttyctx, 0, 0);
+		screen_write_initctx(ctx, &ttyctx, 0, 0);
+		r = screen_redraw_get_visible_ranges(wp, px, s->cy + yoff, nx,
+		    NULL);
 		for (xx = px; xx < px + nx; xx++) {
 			gl = grid_get_line(gd, yy);
-			sgl = grid_get_line(ctx->s->grid, s->cy);
+			sgl = grid_get_line(s->grid, s->cy);
 			if (xx >= gl->cellsize && s->cx >= sgl->cellsize)
 				break;
+
 			grid_get_cell(gd, xx, yy, &gc);
 			if (xx + gc.data.width > px + nx)
 				break;
-			grid_view_set_cell(ctx->s->grid, s->cx, s->cy, &gc);
-			if (wp == NULL) {
-				s->cx++;
-				continue;
-			}
+			grid_view_set_cell(s->grid, s->cx, s->cy, &gc);
+
+			if (!screen_redraw_is_visible(r, px))
+				break;
 			ttyctx.cell = &gc;
 			ttyctx.flags &= (TTY_CTX_OVERLAY_SYNC|TTY_CTX_SYNC);
 			tty_write(tty_cmd_cell, &ttyctx);
 			ttyctx.ocx++;
+
 			s->cx++;
 		}
 		s->cy++;
@@ -2260,10 +2266,10 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	const struct utf8_data	*ud = &gc->data;
 	struct grid_line	*gl;
 	struct grid_cell_entry	*gce;
-	struct grid_cell 	 tmp_gc, now_gc;
+	struct grid_cell	 tmp_gc, now_gc;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
-	u_int		 	 width = ud->width, xx, not_wrap;
+	u_int			 width = ud->width, xx, not_wrap;
 	int			 selected, skip = 1, redraw = 0;
 
 	/* Ignore padding cells. */
