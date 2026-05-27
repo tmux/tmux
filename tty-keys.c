@@ -955,8 +955,9 @@ partial_key:
 	delay = options_get_number(global_options, "escape-time");
 	if (delay == 0)
 		delay = 1;
-	if ((tty->flags & (TTY_WAITFG|TTY_WAITBG) ||
-	    (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS) ||
+	if ((tty->flags & (TTY_WAITFG|TTY_WAITBG)) ||
+	    (!(tty->flags & TTY_DA_QUERIESDONE) &&
+	     (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS) ||
 	    !TAILQ_EMPTY(&c->input_requests)) {
 		log_debug("%s: increasing delay for active query", c->name);
 		if (delay < 500)
