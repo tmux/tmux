@@ -647,16 +647,19 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 			sgl = grid_get_line(s->grid, s->cy);
 			if (xx >= gl->cellsize && s->cx >= sgl->cellsize)
 				break;
+
 			grid_get_cell(gd, xx, yy, &gc);
 			if (xx + gc.data.width > px + nx)
 				break;
 			grid_view_set_cell(s->grid, s->cx, s->cy, &gc);
+
 			if (!screen_redraw_is_visible(r, px))
 				break;
 			ttyctx.cell = &gc;
 			ttyctx.flags &= (TTY_CTX_OVERLAY_SYNC|TTY_CTX_SYNC);
 			tty_write(tty_cmd_cell, &ttyctx);
 			ttyctx.ocx++;
+
 			s->cx++;
 		}
 		s->cy++;
