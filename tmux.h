@@ -1339,6 +1339,8 @@ struct window_pane {
 
 	int		 border_gc_set;
 	struct grid_cell border_gc;
+	int		 active_border_gc_set;
+	struct grid_cell active_border_gc;
 
 	int		 control_bg;
 	int		 control_fg;

@@ -181,11 +181,10 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 static int
 screen_write_pane_is_obscured(struct screen_write_ctx *ctx)
 {
-        struct window_pane	*wp = ctx->wp;
+	struct window_pane	*wp = ctx->wp;
 
-        if (ctx->wp == NULL)
-                return (0);
-
+	if (ctx->wp == NULL)
+		return (0);
 	if (ctx->flags & SCREEN_WRITE_CHECKED_IF_OBSCURED) {
 		if (ctx->flags & SCREEN_WRITE_OBSCURED)
 			return (1);
@@ -202,20 +201,20 @@ screen_write_pane_is_obscured(struct screen_write_ctx *ctx)
 	}
 
 	while ((wp = TAILQ_PREV(wp, window_panes, zentry)) != NULL) {
-                if ((wp->flags & PANE_FLOATING) &&
-                    ((wp->yoff >= ctx->wp->yoff &&
-                    wp->yoff <= ctx->wp->yoff + (int)ctx->wp->sy) ||
-                    (wp->yoff + (int)wp->sy >= ctx->wp->yoff &&
-                    wp->yoff + wp->sy <= ctx->wp->yoff + ctx->wp->sy)) &&
-                    ((wp->xoff >= ctx->wp->xoff &&
-                    wp->xoff <= ctx->wp->xoff + (int)ctx->wp->sx) ||
-                    (wp->xoff + (int)wp->sx >= ctx->wp->xoff &&
-                    wp->xoff + wp->sx <= ctx->wp->xoff + ctx->wp->sx))) {
+		if ((wp->flags & PANE_FLOATING) &&
+		    ((wp->yoff >= ctx->wp->yoff &&
+		    wp->yoff <= ctx->wp->yoff + (int)ctx->wp->sy) ||
+		    (wp->yoff + (int)wp->sy >= ctx->wp->yoff &&
+		    wp->yoff + wp->sy <= ctx->wp->yoff + ctx->wp->sy)) &&
+		    ((wp->xoff >= ctx->wp->xoff &&
+		    wp->xoff <= ctx->wp->xoff + (int)ctx->wp->sx) ||
+		    (wp->xoff + (int)wp->sx >= ctx->wp->xoff &&
+		    wp->xoff + wp->sx <= ctx->wp->xoff + ctx->wp->sx))) {
 			ctx->flags |= SCREEN_WRITE_OBSCURED;
-                        return (1);
+			return (1);
 		}
-        }
-        return (0);
+	}
+	return (0);
 }
 
 /* Set up context for TTY command. */
@@ -407,9 +406,9 @@ size_t
 screen_write_strlen(const char *fmt, ...)
 {
 	va_list			ap;
-	char   	       	       *msg;
+	char		       *msg;
 	struct utf8_data	ud;
-	u_char 	      	       *ptr;
+	u_char		       *ptr;
 	size_t			left, size = 0;
 	enum utf8_state		more;
 
@@ -562,9 +561,9 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 {
 	struct grid_cell	gc;
 	struct utf8_data       *ud = &gc.data;
-	char   		       *msg;
-	u_char 		       *ptr;
-	size_t		 	left, size = 0;
+	char		       *msg;
+	u_char		       *ptr;
+	size_t			left, size = 0;
 	enum utf8_state		more;
 
 	memcpy(&gc, gcp, sizeof gc);
@@ -623,11 +622,11 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 {
 	struct screen		*s = ctx->s;
 	struct window_pane	*wp = ctx->wp;
-	struct tty_ctx	 	 ttyctx;
+	struct tty_ctx		 ttyctx;
 	struct grid		*gd = src->grid;
 	struct grid_line	*gl, *sgl;
 	struct grid_cell	 gc;
-	u_int		 	 xx, yy, cx = s->cx, cy = s->cy;
+	u_int			 xx, yy, cx = s->cx, cy = s->cy;
 	int			 yoff = 0;
 	struct visible_ranges	*r;
 
@@ -673,28 +672,28 @@ screen_write_box_border_set(enum box_lines lines, int cell_type,
     struct grid_cell *gc)
 {
 	switch (lines) {
-        case BOX_LINES_NONE:
+	case BOX_LINES_NONE:
 		break;
-        case BOX_LINES_DOUBLE:
-                gc->attr &= ~GRID_ATTR_CHARSET;
-                utf8_copy(&gc->data, tty_acs_double_borders(cell_type));
+	case BOX_LINES_DOUBLE:
+		gc->attr &= ~GRID_ATTR_CHARSET;
+		utf8_copy(&gc->data, tty_acs_double_borders(cell_type));
 		break;
-        case BOX_LINES_HEAVY:
-                gc->attr &= ~GRID_ATTR_CHARSET;
-                utf8_copy(&gc->data, tty_acs_heavy_borders(cell_type));
+	case BOX_LINES_HEAVY:
+		gc->attr &= ~GRID_ATTR_CHARSET;
+		utf8_copy(&gc->data, tty_acs_heavy_borders(cell_type));
 		break;
-        case BOX_LINES_ROUNDED:
-                gc->attr &= ~GRID_ATTR_CHARSET;
-                utf8_copy(&gc->data, tty_acs_rounded_borders(cell_type));
+	case BOX_LINES_ROUNDED:
+		gc->attr &= ~GRID_ATTR_CHARSET;
+		utf8_copy(&gc->data, tty_acs_rounded_borders(cell_type));
 		break;
-        case BOX_LINES_SIMPLE:
-                gc->attr &= ~GRID_ATTR_CHARSET;
-                utf8_set(&gc->data, SIMPLE_BORDERS[cell_type]);
-                break;
-        case BOX_LINES_PADDED:
-                gc->attr &= ~GRID_ATTR_CHARSET;
-                utf8_set(&gc->data, PADDED_BORDERS[cell_type]);
-                break;
+	case BOX_LINES_SIMPLE:
+		gc->attr &= ~GRID_ATTR_CHARSET;
+		utf8_set(&gc->data, SIMPLE_BORDERS[cell_type]);
+		break;
+	case BOX_LINES_PADDED:
+		gc->attr &= ~GRID_ATTR_CHARSET;
+		utf8_set(&gc->data, PADDED_BORDERS[cell_type]);
+		break;
 	case BOX_LINES_SINGLE:
 	case BOX_LINES_DEFAULT:
 		gc->attr |= GRID_ATTR_CHARSET;
@@ -822,7 +821,7 @@ screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
     enum box_lines lines, const struct grid_cell *gcp, const char *title)
 {
 	struct screen		*s = ctx->s;
-	struct grid_cell         gc;
+	struct grid_cell	 gc;
 	u_int			 cx, cy, i;
 
 	cx = s->cx;
@@ -1128,8 +1127,8 @@ screen_write_redraw_line(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = ctx->s;
-	struct grid_cell       	 gc;
-	u_int		         sx = screen_size_x(s),cx, i, n;
+	struct grid_cell	 gc;
+	u_int			 sx = screen_size_x(s), cx, i, n;
 	u_int			 xoff = wp->xoff, yoff = wp->yoff;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
@@ -1167,8 +1166,8 @@ void
 screen_write_alignmenttest(struct screen_write_ctx *ctx)
 {
 	struct screen		*s = ctx->s;
-	struct tty_ctx	 	 ttyctx;
-	struct grid_cell       	 gc;
+	struct tty_ctx		 ttyctx;
+	struct grid_cell	 gc;
 	u_int			 xx, yy;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
@@ -2424,10 +2423,10 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	const struct utf8_data	*ud = &gc->data;
 	struct grid_line	*gl;
 	struct grid_cell_entry	*gce;
-	struct grid_cell 	 tmp_gc, now_gc;
+	struct grid_cell	 tmp_gc, now_gc;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
-	u_int		 	 width = ud->width, xx, not_wrap, i, n, vis;
+	u_int			 width = ud->width, xx, not_wrap, i, n, vis;
 	int			 selected, skip = 1, redraw = 0, yoff = 0;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
