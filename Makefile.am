@@ -27,7 +27,7 @@ else
 AM_CFLAGS += -O0
 endif
 if IS_DEBUG
-AM_CFLAGS += -g
+AM_CFLAGS += -g3 -ggdb
 AM_CFLAGS += -Wno-long-long -Wall -W -Wformat=2 -Wno-use-after-free
 AM_CFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 AM_CFLAGS += -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare

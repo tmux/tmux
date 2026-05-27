@@ -2697,18 +2697,19 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		grid_view_set_padding(gd, cx - 1, cy);
 
 	/*
-	 * Check if all of this character is visible.  No character will
-	 * be obscured in the middle, only on left or right, but there
-	 * could be an empty range in the visible ranges so we add them all up.
+	 * Check if all of this character is visible. No character will be
+	 * obscured in the middle, only on left or right, but there could be an
+	 * empty range in the visible ranges so we add them all up.
 	 */
 	if (wp != NULL)
 		yoff = wp->yoff;
 	r = screen_redraw_get_visible_ranges(wp, cx - n, cy + yoff, n, NULL);
-	for (i=0, vis=0; i < r->used; i++) vis += r->ranges[i].nx;
+	for (i = 0, vis = 0; i < r->used; i++)
+		vis += r->ranges[i].nx;
 	if (vis < n) {
 		/*
-		 * Part of this character is obscured. Return 1
-		 * and let screen_write_cell write a space.
+		 * Part of this character is obscured. Return 1 and let
+		 * screen_write_cell write a space.
 		 */
 		return (1);
 	}
