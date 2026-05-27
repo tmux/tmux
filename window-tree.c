@@ -267,21 +267,9 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	format_free(ft);
 
 	if (data->type == WINDOW_TREE_SESSION ||
-	    data->type == WINDOW_TREE_WINDOW) {
-		expanded = 0;
-		/* Without this, the only way to reach a hidden
-		 * floating pane would be to first expand the window
-		 * manually (with the right-arrow key) and then press
-		 * its number — which is non-obvious and breaks the
-		 * expected workflow.
-		 */
-		TAILQ_FOREACH(fwp, &wl->window->panes, entry) {
-			if (fwp->flags & PANE_FLOATING) {
-				expanded = 1;
-				break;
-			}
-		}
-	} else
+	    data->type == WINDOW_TREE_WINDOW)
+		expanded = window_has_floating_panes(wl->window);
+	else
 		expanded = 1;
 	mti = mode_tree_add(data->data, parent, item, (uint64_t)wl, name, text,
 	    expanded);
