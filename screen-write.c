@@ -27,6 +27,8 @@ static struct screen_write_citem *screen_write_collect_trim(
 		    struct screen_write_ctx *, u_int, u_int, u_int, int *);
 static void	screen_write_collect_insert(struct screen_write_ctx *,
 		    struct screen_write_citem *);
+static void	screen_write_collect_insert_clear(struct screen_write_ctx *,
+		    u_int, u_int, u_int);
 static void	screen_write_collect_clear(struct screen_write_ctx *, u_int,
 		    u_int);
 static void	screen_write_collect_scroll(struct screen_write_ctx *, u_int);
@@ -1535,23 +1537,6 @@ screen_write_clearstartofline(struct screen_write_ctx *ctx, u_int bg)
 	screen_write_collect_insert(ctx, ci);
 }
 
-/* Clear part of a line from px for nx columns. */
-static void
-screen_write_clearpartofline(struct screen_write_ctx *ctx, u_int px, u_int nx,
-    u_int bg)
-{
-	struct screen_write_citem	*ci = ctx->item;
-
-	if (nx == 0)
-		return;
-
-	ci->x = px;
-	ci->used = nx;
-	ci->type = CLEAR;
-	ci->bg = bg;
-	screen_write_collect_insert(ctx, ci);
-}
-
 /* Move cursor to px,py. */
 void
 screen_write_cursormove(struct screen_write_ctx *ctx, int px, int py,
@@ -1748,7 +1733,7 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct grid		*gd = s->grid;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
-	u_int			 y, i, xoff, yoff, cx_save, cy_save;
+	u_int			 y, i, xoff, yoff, ocx, ocy;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
@@ -1782,8 +1767,8 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 	}
 
 	/* Can't just clear screen, must avoid floating windows. */
-	cx_save = s->cx;
-	cy_save = s->cy;
+	ocx = s->cx;
+	ocy = s->cy;
 	if (ctx->wp != NULL) {
 		xoff = ctx->wp->xoff;
 		yoff = ctx->wp->yoff;
@@ -1792,35 +1777,33 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 		yoff = 0;
 	}
 
-	/* First line: visible ranges from the current cursor to end. */
+	/* First line (containing the cursor). */
 	if (s->cx <= sx - 1) {
-		r = screen_redraw_get_visible_ranges(ctx->wp,
-		    xoff + s->cx, yoff + s->cy, sx - s->cx, NULL);
+		r = screen_redraw_get_visible_ranges(ctx->wp, xoff + s->cx,
+		    yoff + s->cy, sx - s->cx, NULL);
 		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
 			if (ri->nx == 0)
 				continue;
-			screen_write_clearpartofline(ctx,
-			    ri->px - xoff, ri->nx, bg);
+			screen_write_collect_insert_clear(ctx, ri->px - xoff,
+			    ri->nx, bg);
 		}
 	}
 
-	/* Remaining lines: visible ranges across the full width. */
+	/* Below cursor to bottom. */
 	for (y = s->cy + 1; y < sy; y++) {
 		screen_write_set_cursor(ctx, 0, y);
-		r = screen_redraw_get_visible_ranges(ctx->wp,
-		    xoff, yoff + y, sx, NULL);
+		r = screen_redraw_get_visible_ranges(ctx->wp, xoff, yoff + y,
+		    sx, NULL);
 		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
 			if (ri->nx == 0)
 				continue;
-			screen_write_clearpartofline(ctx,
-			    ri->px - xoff, ri->nx, bg);
+			screen_write_collect_insert_clear(ctx, ri->px - xoff,
+			    ri->nx, bg);
 		}
 	}
-
-	screen_write_collect_flush(ctx, 0, __func__);
-	screen_write_set_cursor(ctx, cx_save, cy_save);
+	screen_write_set_cursor(ctx, ocx, ocy);
 }
 
 /* Clear to start of screen. */
@@ -1830,7 +1813,7 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct screen		*s = ctx->s;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s);
-	u_int			 y, i, xoff, yoff, cx_save, cy_save;
+	u_int			 y, i, xoff, yoff, ocx, ocy;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
@@ -1858,8 +1841,8 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 	}
 
 	/* Can't just clear screen, must avoid floating windows. */
-	cx_save = s->cx;
-	cy_save = s->cy;
+	ocx = s->cx;
+	ocy = s->cy;
 	if (ctx->wp != NULL) {
 		xoff = ctx->wp->xoff;
 		yoff = ctx->wp->yoff;
@@ -1868,33 +1851,32 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 		yoff = 0;
 	}
 
-	/* Lines 0 to cy-1: visible ranges across the full width. */
+	/* Top to above the cursor. */
 	for (y = 0; y < s->cy; y++) {
 		screen_write_set_cursor(ctx, 0, y);
-		r = screen_redraw_get_visible_ranges(ctx->wp,
-		    xoff, yoff + y, sx, NULL);
+		r = screen_redraw_get_visible_ranges(ctx->wp, xoff, yoff + y,
+		    sx, NULL);
 		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
 			if (ri->nx == 0)
 				continue;
-			screen_write_clearpartofline(ctx,
-			    ri->px - xoff, ri->nx, bg);
+			screen_write_collect_insert_clear(ctx, ri->px - xoff,
+			    ri->nx, bg);
 		}
 	}
 
-	/* Last line: visible ranges from 0 to cursor (inclusive). */
+	/* Last line (containing the cursor). */
 	screen_write_set_cursor(ctx, 0, s->cy);
-	r = screen_redraw_get_visible_ranges(ctx->wp,
-	    xoff, yoff + cy_save, s->cx + 1, NULL);
+	r = screen_redraw_get_visible_ranges(ctx->wp, xoff, yoff + ocy,
+	    s->cx + 1, NULL);
 	for (i = 0; i < r->used; i++) {
 		ri = &r->ranges[i];
 		if (ri->nx == 0)
 			continue;
-		screen_write_clearpartofline(ctx, ri->px - xoff, ri->nx, bg);
+		screen_write_collect_insert_clear(ctx, ri->px - xoff, ri->nx,
+		    bg);
 	}
-
-	screen_write_collect_flush(ctx, 0, __func__);
-	screen_write_set_cursor(ctx, cx_save, cy_save);
+	screen_write_set_cursor(ctx, ocx, ocy);
 }
 
 /* Clear entire screen. */
@@ -1904,7 +1886,7 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct screen		*s = ctx->s;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
-	u_int			 y, i, xoff, yoff, cx_save, cy_save;
+	u_int			 y, i, xoff, yoff, ocx, ocy;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
@@ -1932,8 +1914,8 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 	}
 
 	/* Can't just clear screen, must avoid floating windows. */
-	cx_save = s->cx;
-	cy_save = s->cy;
+	ocx = s->cx;
+	ocy = s->cy;
 	if (ctx->wp != NULL) {
 		xoff = ctx->wp->xoff;
 		yoff = ctx->wp->yoff;
@@ -1942,21 +1924,20 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 		yoff = 0;
 	}
 
+	/* Clear every line. */
 	for (y = 0; y < sy; y++) {
 		screen_write_set_cursor(ctx, 0, y);
-		r = screen_redraw_get_visible_ranges(ctx->wp,
-		    xoff, yoff + y, sx, NULL);
+		r = screen_redraw_get_visible_ranges(ctx->wp, xoff, yoff + y,
+		    sx, NULL);
 		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
 			if (ri->nx == 0)
 				continue;
-			screen_write_clearpartofline(ctx,
-			    ri->px - xoff, ri->nx, bg);
+			screen_write_collect_insert_clear(ctx, ri->px - xoff,
+			    ri->nx, bg);
 		}
 	}
-
-	screen_write_collect_flush(ctx, 0, __func__);
-	screen_write_set_cursor(ctx, cx_save, cy_save);
+	screen_write_set_cursor(ctx, ocx, ocy);
 }
 
 /* Clear entire history. */
@@ -2264,7 +2245,7 @@ discard:
 }
 
 /* Insert an item on current line. */
-void
+static void
 screen_write_collect_insert(struct screen_write_ctx *ctx,
     struct screen_write_citem *ci)
 {
@@ -2279,6 +2260,22 @@ screen_write_collect_insert(struct screen_write_ctx *ctx,
 	else
 		TAILQ_INSERT_BEFORE(before, ci, entry);
 	ctx->item = screen_write_get_citem();
+}
+
+/* Clear part of a line from px for nx columns. */
+static void
+screen_write_collect_insert_clear(struct screen_write_ctx *ctx, u_int px,
+    u_int nx, u_int bg)
+{
+	struct screen_write_citem	*ci = ctx->item;
+
+	if (nx != 0) {
+		ci->x = px;
+		ci->used = nx;
+		ci->type = CLEAR;
+		ci->bg = bg;
+		screen_write_collect_insert(ctx, ci);
+	}
 }
 
 /* Finish and store collected cells. */
