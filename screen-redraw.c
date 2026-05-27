@@ -1351,12 +1351,13 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 			ri = &r->ranges[k];
 			if (ri->nx == 0)
 				continue;
-			log_debug("%s: %s %%%u range pane (%u,%u) width %u, tty (%u,%u) width %u",
-			    __func__, c->name, wp->id,
+			log_debug("%s: %s %%%u range %u (%u,%u) width %u, "
+			    "tty (%u,%u) width %u",
+			    __func__, c->name, wp->id, k,
 			    ri->px + (int)ctx->ox - wp->xoff, j, ri->nx,
 			    ri->px, py, ri->nx);
-			tty_draw_line(tty, s, ri->px + (int)ctx->ox - wp->xoff, j, ri->nx,
-			    ri->px, py, &defaults, palette);
+			tty_draw_line(tty, s, ri->px + (int)ctx->ox - wp->xoff,
+			    j, ri->nx, ri->px, py, &defaults, palette);
 		}
 	}
 
