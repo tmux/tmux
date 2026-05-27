@@ -2261,7 +2261,7 @@ screen_write_collect_insert(struct screen_write_ctx *ctx,
 	ctx->item = screen_write_get_citem();
 }
 
-/* Clear part of a line from px for nx columns. */
+/* Insert a clear for part of a line. */
 static void
 screen_write_collect_insert_clear(struct screen_write_ctx *ctx, u_int px,
     u_int nx, u_int bg)
