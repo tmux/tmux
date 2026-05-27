@@ -604,8 +604,6 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 	else
 		border_option = "pane-border-style";
 	style_apply(&gc, w->options, border_option, ft);
-	if (wp->flags & PANE_FLOATING)
-		style_add(&gc, w->options, "floating-pane-border-style", ft);
 	if (options_get_only(wp->options, border_option) != NULL)
 		style_add(&gc, wp->options, border_option, ft);
 	fmt = options_get_string(wp->options, "pane-border-format");
