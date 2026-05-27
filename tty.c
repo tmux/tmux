@@ -3060,55 +3060,42 @@ tty_window_default_style(struct grid_cell *gc, struct window_pane *wp)
 	gc->bg = wp->palette.bg;
 }
 
+static void
+tty_style_changed(struct window_pane *wp)
+{
+	struct options		*oo = wp->options;
+	struct format_tree	*ft;
+
+	log_debug("%%%u: style changed", wp->id);
+	wp->flags &= ~PANE_STYLECHANGED;
+
+	ft = format_create(NULL, NULL, FORMAT_PANE|wp->id, FORMAT_NOJOBS);
+	format_defaults(ft, NULL, NULL, NULL, wp);
+
+	tty_window_default_style(&wp->cached_active_gc, wp);
+	style_add(&wp->cached_active_gc, oo, "window-active-style", ft);
+
+	tty_window_default_style(&wp->cached_gc, wp);
+	style_add(&wp->cached_gc, oo, "window-style", ft);
+
+	format_free(ft);
+}
+
 void
 tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 {
-	struct window		*w = wp->window;
-	struct options		*wo = w->options;
-	struct format_tree	*ft;
+	if (wp->flags & PANE_STYLECHANGED)
+		tty_style_changed (wp);
 
 	memcpy(gc, &grid_default_cell, sizeof *gc);
-
-	if (wp->flags & PANE_STYLECHANGED) {
-		log_debug("%%%u: style changed", wp->id);
-		wp->flags &= ~PANE_STYLECHANGED;
-
-		ft = format_create(NULL, NULL, FORMAT_PANE|wp->id,
-		    FORMAT_NOJOBS);
-		format_defaults(ft, NULL, NULL, NULL, wp);
-
-		/* Window-level baseline. */
-		tty_window_default_style(&wp->cached_active_gc, wp);
-		style_add(&wp->cached_active_gc, wo, "window-active-style", ft);
-		/* Per-pane override (set via new-pane -s or select-pane -P). */
-		if (options_get_only(wp->options, "window-active-style") != NULL)
-			style_add(&wp->cached_active_gc, wp->options,
-			    "window-active-style", ft);
-
-		/* Window-level baseline. */
-		tty_window_default_style(&wp->cached_gc, wp);
-		style_add(&wp->cached_gc, wo, "window-style", ft);
-		/* Per-pane override (set via new-pane -s or select-pane -P). */
-		if (options_get_only(wp->options, "window-style") != NULL)
-			style_add(&wp->cached_gc, wp->options,
-			    "window-style", ft);
-
-		format_free(ft);
-	}
-
-	if (gc->fg == 8) {
-		if (wp == wp->window->active && wp->cached_active_gc.fg != 8)
-			gc->fg = wp->cached_active_gc.fg;
-		else
-			gc->fg = wp->cached_gc.fg;
-	}
-
-	if (gc->bg == 8) {
-		if (wp == wp->window->active && wp->cached_active_gc.bg != 8)
-			gc->bg = wp->cached_active_gc.bg;
-		else
-			gc->bg = wp->cached_gc.bg;
-	}
+	if (wp == wp->window->active && wp->cached_active_gc.fg != 8)
+		gc->fg = wp->cached_active_gc.fg;
+	else
+		gc->fg = wp->cached_gc.fg;
+	if (wp == wp->window->active && wp->cached_active_gc.bg != 8)
+		gc->bg = wp->cached_active_gc.bg;
+	else
+		gc->bg = wp->cached_gc.bg;
 }
 
 void
