@@ -425,11 +425,11 @@ sort_get_clients(u_int *n, struct sort_criteria *sort_crit)
 
 	i = 0;
 	TAILQ_FOREACH(c, &clients, entry) {
-	       if (c->flags & CLIENT_UNATTACHEDFLAGS)
-		       continue;
-	       if (~c->flags & CLIENT_ATTACHED)
-		       continue;
-	       if (lsz <= i) {
+		if (c->flags & CLIENT_UNATTACHEDFLAGS)
+			continue;
+		if (~c->flags & CLIENT_ATTACHED)
+			continue;
+		if (lsz <= i) {
 			lsz += 100;
 			l = xreallocarray(l, lsz, sizeof *l);
 		}
