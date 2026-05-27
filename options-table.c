@@ -1474,7 +1474,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "remain-on-exit-format",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
-	  .default_str = "Command exited ("
+	  .default_str = "Pane is dead ("
 			 "#{?#{!=:#{pane_dead_status},},"
 			 "status #{pane_dead_status},}"
 			 "#{?#{!=:#{pane_dead_signal},},"
