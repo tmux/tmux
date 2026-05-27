@@ -249,7 +249,7 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	struct window_tree_itemdata	*item;
 	struct mode_tree_item		*mti;
 	char				*name, *text;
-	struct window_pane		*wp, *fwp, **l;
+	struct window_pane		*wp, **l;
 	u_int				 n, i;
 	int				 expanded;
 	struct format_tree		*ft;
