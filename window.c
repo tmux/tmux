@@ -462,6 +462,18 @@ window_pane_send_resize(struct window_pane *wp, u_int sx, u_int sy)
 }
 
 int
+window_has_floating_panes(struct window *w)
+{
+	struct window_pane	*wp;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp->flags & PANE_FLOATING)
+			return (1);
+	}
+	return (0);
+}
+
+int
 window_has_pane(struct window *w, struct window_pane *wp)
 {
 	struct window_pane	*wp1;

@@ -249,7 +249,7 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	struct window_tree_itemdata	*item;
 	struct mode_tree_item		*mti;
 	char				*name, *text;
-	struct window_pane		*wp, *fwp, **l;
+	struct window_pane		*wp, **l;
 	u_int				 n, i;
 	int				 expanded;
 	struct format_tree		*ft;
@@ -267,15 +267,9 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	format_free(ft);
 
 	if (data->type == WINDOW_TREE_SESSION ||
-	    data->type == WINDOW_TREE_WINDOW) {
+	    data->type == WINDOW_TREE_WINDOW)
 		expanded = 0;
-		TAILQ_FOREACH(fwp, &wl->window->panes, entry) {
-			if (fwp->flags & PANE_FLOATING) {
-				expanded = 1;
-				break;
-			}
-		}
-	} else
+	else
 		expanded = 1;
 	mti = mode_tree_add(data->data, parent, item, (uint64_t)wl, name, text,
 	    expanded);
