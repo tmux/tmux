@@ -1310,10 +1310,6 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 	struct tty_ctx	 ttyctx;
 	u_int		 sy = screen_size_y(s);
 
-#ifdef ENABLE_SIXEL
-	u_int		 sy = screen_size_y(s);
-#endif
-
 	if (ny == 0)
 		ny = 1;
 
