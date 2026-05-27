@@ -614,8 +614,10 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 	else
 		width = wp->sx + sb_w - 2;
 	max_width = (int)w->sx - (wp->xoff + 2) - sb_w;
-	if (max_width < 0) max_width = 0;
-	if (width > (u_int)max_width) width = (u_int)max_width;
+	if (max_width < 0)
+		max_width = 0;
+	if (width > (u_int)max_width)
+		width = (u_int)max_width;
 	wp->status_size = width;
 
 	memcpy(&old, &wp->status_screen, sizeof old);
@@ -864,40 +866,40 @@ screen_redraw_pane(struct client *c, struct window_pane *wp,
 }
 
 /* Get border cell style. */
-static const struct grid_cell *
+static void
 screen_redraw_draw_borders_style(struct screen_redraw_ctx *ctx, u_int x,
-    u_int y, struct window_pane *wp)
+    u_int y, struct window_pane *wp, struct grid_cell *ngc)
 {
 	struct client		*c = ctx->c;
 	struct session		*s = c->session;
 	struct window		*w = s->curw->window;
 	struct window_pane	*active = server_client_get_pane(c);
-	struct options		*wo = w->options;
-	const char		*border_opt;
+	struct grid_cell	*gc;
+	const char		*border_option;
 	struct format_tree	*ft;
+	int			*flag;
 
-	if (wp->border_gc_set)
-		return (&wp->border_gc);
-	wp->border_gc_set = 1;
+	if (screen_redraw_check_is(ctx, x, y, active)) {
+		flag = &wp->active_border_gc_set;
+		gc = &wp->active_border_gc;
+		border_option = "pane-active-border-style";
+	} else {
+		flag = &wp->border_gc_set;
+		gc = &wp->border_gc;
+		border_option = "pane-border-style";
+	}
 
-	ft = format_create_defaults(NULL, c, s, s->curw, wp);
+	if (!*flag) {
+		ft = format_create_defaults(NULL, c, s, s->curw, wp);
 
-	border_opt = screen_redraw_check_is(ctx, x, y, active) ?
-	    "pane-active-border-style" : "pane-border-style";
+		style_apply(gc, w->options, border_option, ft);
+		if (options_get_only(wp->options, border_option) != NULL)
+			style_add(gc, wp->options, border_option, ft);
 
-	/* Window-level baseline. */
-	style_apply(&wp->border_gc, wo, border_opt, ft);
-
-	/* Floating pane window default overrides window baseline. */
-	if (wp->flags & PANE_FLOATING)
-		style_add(&wp->border_gc, wo, "floating-pane-border-style", ft);
-
-	/* Per-pane override (set via new-pane -S or set-option -p). */
-	if (options_get_only(wp->options, border_opt) != NULL)
-		style_add(&wp->border_gc, wp->options, border_opt, ft);
-
-	format_free(ft);
-	return (&wp->border_gc);
+		format_free(ft);
+		*flag = 1;
+	}
+	memcpy(ngc, gc, sizeof *ngc);
 }
 
 /* Draw arrow indicator if enabled. */
@@ -985,7 +987,6 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 	struct format_tree	*ft;
 	struct window_pane	*wp, *active = server_client_get_pane(c);
 	struct grid_cell	 gc;
-	const struct grid_cell	*tmp;
 	u_int			 cell_type;
 	u_int			 x = ctx->ox + i, y = ctx->oy + j;
 	int			 isolates;
@@ -1012,11 +1013,7 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 		}
 		memcpy(&gc, &ctx->no_pane_gc, sizeof gc);
 	} else {
-		tmp = screen_redraw_draw_borders_style(ctx, x, y, wp);
-		if (tmp == NULL)
-			return;
-		memcpy(&gc, tmp, sizeof gc);
-
+		screen_redraw_draw_borders_style(ctx, x, y, wp, &gc);
 		if (server_is_marked(s, s->curw, marked_pane.wp) &&
 		    screen_redraw_check_is(ctx, x, y, marked_pane.wp))
 			gc.attr ^= GRID_ATTR_REVERSE;
@@ -1056,8 +1053,10 @@ screen_redraw_draw_borders(struct screen_redraw_ctx *ctx)
 
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
-	TAILQ_FOREACH(wp, &w->panes, entry)
+	TAILQ_FOREACH(wp, &w->panes, entry) {
 		wp->border_gc_set = 0;
+		wp->active_border_gc_set = 0;
+	}
 
 	for (j = 0; j < c->tty.sy - ctx->statuslines; j++) {
 		for (i = 0; i < c->tty.sx; i++)
@@ -1322,7 +1321,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		if (wp->yoff + (int)j < (int)ctx->oy ||
 		    wp->yoff + (int)j >= (int)ctx->oy + (int)ctx->sy)
 			continue;
-		wy = wp->yoff + j;       /* y line within window w */
+		wy = wp->yoff + j; /* y line within window w */
 		py = woy + wy - ctx->oy; /* y line within tty */
 		if (py > tty->sy) {
 			/* Continue if this line is off of tty. */
@@ -1399,7 +1398,7 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
 	int		 sb_w = wp->scrollbar_style.width;
 	int		 sb_pad = wp->scrollbar_style.pad;
 	int		 cm_y, cm_size, xoff = wp->xoff;
-	int		 sb_x, sb_y = (int)(wp->yoff); /* sb top */
+	int		 sb_x, sb_y = (int)wp->yoff; /* sb top */
 
 	if (window_pane_mode(wp) == WINDOW_PANE_NO_MODE) {
 		if (sb == PANE_SCROLLBARS_MODAL)
