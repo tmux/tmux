@@ -603,11 +603,9 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 		border_option = "pane-active-border-style";
 	else
 		border_option = "pane-border-style";
-	style_apply(&gc, w->options, border_option, ft);
+	style_apply(&gc, wp->options, border_option, ft);
 	if (wp->flags & PANE_FLOATING)
-		style_add(&gc, w->options, "floating-pane-border-style", ft);
-	if (options_get_only(wp->options, border_option) != NULL)
-		style_add(&gc, wp->options, border_option, ft);
+		style_add(&gc, wp->options, "floating-pane-border-style", ft);
 	fmt = options_get_string(wp->options, "pane-border-format");
 
 	expanded = format_expand_time(ft, fmt);
@@ -874,7 +872,6 @@ screen_redraw_draw_borders_style(struct screen_redraw_ctx *ctx, u_int x,
 {
 	struct client		*c = ctx->c;
 	struct session		*s = c->session;
-	struct window		*w = s->curw->window;
 	struct window_pane	*active = server_client_get_pane(c);
 	struct grid_cell	*gc;
 	const char		*border_option;
@@ -893,11 +890,7 @@ screen_redraw_draw_borders_style(struct screen_redraw_ctx *ctx, u_int x,
 
 	if (!*flag) {
 		ft = format_create_defaults(NULL, c, s, s->curw, wp);
-
-		style_apply(gc, w->options, border_option, ft);
-		if (options_get_only(wp->options, border_option) != NULL)
-			style_add(gc, wp->options, border_option, ft);
-
+		style_apply(gc, wp->options, border_option, ft);
 		format_free(ft);
 		*flag = 1;
 	}
