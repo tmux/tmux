@@ -2008,79 +2008,152 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx, u_int bg)
 	TAILQ_INSERT_TAIL(&ctx->s->write_list[s->rlower].items, ci, entry);
 }
 
-/* Flush collected lines. */
-static void
-screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
-    const char *from)
+/* Flush collected scrolling. */
+static int
+screen_write_collect_flush_scrolled(struct screen_write_ctx *ctx)
+{
+	struct window_pane	*wp = ctx->wp;
+	struct screen		*s = ctx->s;
+	struct tty_ctx		 ttyctx;
+
+	screen_write_initctx(ctx, &ttyctx, 1, 1);
+	if (ttyctx.flags & TTY_CTX_PANE_OBSCURED && wp != NULL) {
+		screen_write_redraw_pane(ctx, &ttyctx);
+		return 0;
+	}
+
+	log_debug("%s: scrolled %u (region %u-%u)", __func__, ctx->scrolled,
+	    s->rupper, s->rlower);
+	if (ctx->scrolled > s->rlower - s->rupper + 1)
+		ctx->scrolled = s->rlower - s->rupper + 1;
+
+	if (wp != NULL && wp->yoff + wp->sy > wp->window->sy)
+		ttyctx.orlower -= (wp->yoff + wp->sy - wp->window->sy);
+	ttyctx.n = ctx->scrolled;
+	ttyctx.bg = ctx->bg;
+	tty_write(tty_cmd_scrollup, &ttyctx);
+
+	if (wp != NULL)
+		wp->flags |= PANE_REDRAWSCROLLBAR;
+	return 1;
+}
+
+/* Flush a collected line. */
+static u_int
+screen_write_collect_flush_line(struct screen_write_ctx *ctx, u_int y)
 {
 	struct window_pane		*wp = ctx->wp;
 	struct screen			*s = ctx->s;
 	struct screen_write_citem	*ci, *tmp;
-	struct screen_write_cline	*cl;
-	u_int				 y, cx, cy, last, items = 0;
+	struct screen_write_cline	*cl = &s->write_list[y];
+	u_int				 last = UINT_MAX, items = 0, wsx, wsy;
+	u_int				 w_start, w_end, w_length, i;
+	int				 xoff, yoff, written;
+	int				 r_start, r_end, c_start, c_end;
 	struct tty_ctx			 ttyctx;
+	struct visible_ranges		*r;
+	struct visible_range		*ri;
 
-	if (s->mode & MODE_SYNC)
-		goto discard;
-
-	if (ctx->scrolled != 0) {
-		screen_write_initctx(ctx, &ttyctx, 1, 1);
-		if (ttyctx.flags & TTY_CTX_PANE_OBSCURED && wp != NULL) {
-			screen_write_redraw_pane(ctx, &ttyctx);
-			goto discard;
-		}
-
-		log_debug("%s: scrolled %u (region %u-%u)", __func__,
-		    ctx->scrolled, s->rupper, s->rlower);
-		if (ctx->scrolled > s->rlower - s->rupper + 1)
-			ctx->scrolled = s->rlower - s->rupper + 1;
-
-		ttyctx.n = ctx->scrolled;
-		ttyctx.bg = ctx->bg;
-		tty_write(tty_cmd_scrollup, &ttyctx);
-
-		if (wp != NULL)
-			wp->flags |= PANE_REDRAWSCROLLBAR;
+	if (wp != NULL) {
+		wsx = wp->window->sx;
+		wsy = wp->window->sy;
+		xoff = wp->xoff;
+		yoff = wp->yoff;
+	} else {
+		wsx = screen_size_x(s);
+		wsy = screen_size_y(s);
+		xoff = 0;
+		yoff = 0;
 	}
-	ctx->scrolled = 0;
-	ctx->bg = 8;
+	if (y + yoff >= wsy)
+		return (0);
 
-	if (scroll_only)
-		return;
+	r = screen_redraw_get_visible_ranges(wp, 0, y + yoff, wsx, NULL);
+	TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
+		log_debug("collect list: x=%u (last %u), y=%u, used=%u", ci->x,
+		    last, y, ci->used);
+		if (last != UINT_MAX && ci->x <= last)
+			fatalx("collect list bad order: %u <= %u", ci->x, last);
 
-	cx = s->cx; cy = s->cy;
-	for (y = 0; y < screen_size_y(s); y++) {
-		cl = &ctx->s->write_list[y];
-		last = UINT_MAX;
-		TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
-			log_debug("collect list: x=%u (last %u), y=%u, used=%u",
-			    ci->x, last, y, ci->used);
-			if (last != UINT_MAX && ci->x <= last) {
-				fatalx("collect list not in order: %u <= %u",
-				    ci->x, last);
-			}
-			screen_write_set_cursor(ctx, ci->x, y);
+		w_length = 0;
+		written = 0;
+		for (i = 0; i < r->used; i++) {
+			ri = &r->ranges[i];
+			if (ri->nx == 0)
+				continue;
+
+			r_start = ri->px;
+			r_end = ri->px + ri->nx;
+			c_start = ci->x;
+			c_end = ci->x + ci->used;
+
+			if (c_start + xoff > r_end || c_end + xoff < r_start)
+				continue;
+			if (r_start > c_start + xoff)
+				w_start = c_start + (r_start - c_start + xoff);
+			else
+				w_start = c_start;
+			if (c_end + xoff > r_end)
+				w_end = c_end - (c_end + xoff - r_end);
+			else
+				w_end = c_end;
+			w_length = w_end - w_start;
+			if (w_length <= 0)
+				continue;
+
+			screen_write_set_cursor(ctx, w_start, y);
 			if (ci->type == CLEAR) {
 				screen_write_initctx(ctx, &ttyctx, 1, 0);
 				ttyctx.bg = ci->bg;
-				ttyctx.n = ci->used;
+				ttyctx.n = w_length;
 				tty_write(tty_cmd_clearcharacter, &ttyctx);
 			} else {
 				screen_write_initctx(ctx, &ttyctx, 0, 0);
 				ttyctx.cell = &ci->gc;
 				if (ci->wrapped)
 					ttyctx.flags |= TTY_CTX_WRAPPED;
-				ttyctx.data.data = cl->data + ci->x;
-				ttyctx.data.size = ci->used;
+				ttyctx.data.data = cl->data + w_start;
+				ttyctx.data.size = w_length;
 				tty_write(tty_cmd_cells, &ttyctx);
 			}
 			items++;
-
+			written = 1;
+		}
+		if (written) {
+			last = ci->x;
 			TAILQ_REMOVE(&cl->items, ci, entry);
 			screen_write_free_citem(ci);
-			last = ci->x;
 		}
 	}
+	return (items);
+}
+
+/* Flush collected lines. */
+static void
+screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
+    const char *from)
+{
+	struct screen			*s = ctx->s;
+	u_int				 y, cx, cy, items = 0;
+	struct screen_write_citem	*ci, *tmp;
+	struct screen_write_cline	*cl;
+
+	if (s->mode & MODE_SYNC)
+		goto discard;
+
+	if (ctx->scrolled != 0) {
+		if (!screen_write_collect_flush_scrolled(ctx))
+			goto discard;
+		ctx->scrolled = 0;
+	}
+	ctx->bg = 8;
+
+	if (scroll_only)
+		return;
+
+	cx = s->cx; cy = s->cy;
+	for (y = 0; y < screen_size_y(s); y++)
+		items += screen_write_collect_flush_line(ctx, y);
 	s->cx = cx; s->cy = cy;
 
 	log_debug("%s: flushed %u items (%s)", __func__, items, from);
@@ -2088,7 +2161,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 
 discard:
 	for (y = 0; y < screen_size_y(s); y++) {
-		cl = &ctx->s->write_list[y];
+		cl = &s->write_list[y];
 		TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
 			TAILQ_REMOVE(&cl->items, ci, entry);
 			screen_write_free_citem(ci);
