@@ -462,6 +462,18 @@ window_pane_send_resize(struct window_pane *wp, u_int sx, u_int sy)
 }
 
 int
+window_has_floating_panes(struct window *w)
+{
+	struct window_pane	*wp;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp->flags & PANE_FLOATING)
+			return (1);
+	}
+	return (0);
+}
+
+int
 window_has_pane(struct window *w, struct window_pane *wp)
 {
 	struct window_pane	*wp1;
@@ -2102,7 +2114,7 @@ window_pane_tiled_geometry(struct window *w, struct window_pane *wp,
 	} else if (args_has(args, 'p')) {
 		size = args_strtonum_and_expand(args, 'p', 0, 100, item,
 		    cause);
-		if (cause == NULL)
+		if (*cause == NULL)
 			size = curval * size / 100;
 	}
 	if (*cause != NULL)

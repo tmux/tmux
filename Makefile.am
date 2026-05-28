@@ -27,7 +27,7 @@ else
 AM_CFLAGS += -O0
 endif
 if IS_DEBUG
-AM_CFLAGS += -g
+AM_CFLAGS += -g3 -ggdb
 AM_CFLAGS += -Wno-long-long -Wall -W -Wformat=2 -Wno-use-after-free
 AM_CFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 AM_CFLAGS += -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
@@ -240,6 +240,7 @@ if ENABLE_SIXEL
 dist_tmux_SOURCES += image.c image-sixel.c
 endif
 
+# Add bits for fuzzing if enabled.
 if NEED_FUZZING
 check_PROGRAMS = \
 	fuzz/input-fuzzer \
@@ -268,3 +269,7 @@ install-exec-hook:
 	$(mkdir_p) $(DESTDIR)$(mandir)/man1
 	$(INSTALL_DATA) $(srcdir)/tmux.1.@MANFORMAT@ \
 		$(DESTDIR)$(mandir)/man1/tmux.1
+
+# And uninstall it.
+uninstall-hook:
+	rm -f $(DESTDIR)$(mandir)/man1/tmux.1

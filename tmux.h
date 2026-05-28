@@ -1330,6 +1330,8 @@ struct window_pane {
 
 	int		 border_gc_set;
 	struct grid_cell border_gc;
+	int		 active_border_gc_set;
+	struct grid_cell active_border_gc;
 
 	int		 control_bg;
 	int		 control_fg;
@@ -1740,9 +1742,8 @@ struct tty_ctx {
 #define TTY_CTX_WINDOW_BIGGER 0x4
 #define TTY_CTX_SYNC 0x8
 #define TTY_CTX_OVERLAY_SYNC 0x10
-#define TTY_CTX_CELL_DRAW_LINE 0x20
-#define TTY_CTX_CELL_INVALIDATE 0x40
-#define TTY_CTX_PANE_OBSCURED 0x80
+#define TTY_CTX_CELL_INVALIDATE 0x20
+#define TTY_CTX_PANE_OBSCURED 0x40
 
 	union {
 		u_int			 n;
@@ -3419,6 +3420,7 @@ struct window	*window_create(u_int, u_int, u_int, u_int);
 void		 window_pane_set_event(struct window_pane *);
 struct window_pane *window_get_active_at(struct window *, u_int, u_int);
 struct window_pane *window_find_string(struct window *, const char *);
+int		 window_has_floating_panes(struct window *);
 int		 window_has_pane(struct window *, struct window_pane *);
 int		 window_set_active_pane(struct window *, struct window_pane *,
 		     int);
