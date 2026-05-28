@@ -1093,7 +1093,7 @@ tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 	 * If region is large, schedule a redraw. In most cases this is likely
 	 * to be followed by some more scrolling.
 	 */
-	if (tty_large_region(tty, ctx) && ~ctx->flags & TTY_CTX_PANE_OBSCURED) {
+	if (tty_large_region(tty, ctx) || ctx->flags & TTY_CTX_PANE_OBSCURED) {
 		log_debug("%s: %s large region redraw", __func__, c->name);
 		ctx->redraw_cb(ctx);
 		return;
@@ -1127,6 +1127,17 @@ tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
     u_int nx, u_int *i, u_int *x, u_int *rx, u_int *ry)
 {
 	int	xoff = ctx->rxoff + px;
+
+	/*
+	 * px = x position in pane
+	 * py = y position in pane
+	 * nx = width
+	 *
+	 * i = new x position in pane
+	 * x = x position on terminal
+	 * rx = new width
+	 * ry = y position on terminal
+	 */
 
 	if (!tty_is_visible(tty, ctx, px, py, nx, 1))
 		return (0);
@@ -1390,8 +1401,8 @@ tty_clear_pane_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 static void
 tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 {
-	struct screen	*s = ctx->s;
-	u_int		 nx = ctx->sx, i, x, rx, ry, j;
+	struct screen		*s = ctx->s;
+	u_int			 nx = ctx->sx, i, x, rx, ry, j;
 	struct visible_ranges	*r;
 	struct visible_range	*rr;
 
@@ -1401,11 +1412,11 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 		r = tty_check_overlay_range(tty, ctx->xoff, ctx->yoff + py, nx);
 		for (j = 0; j < r->used; j++) {
 			rr = &r->ranges[j];
-			if (rr->nx != 0) {
-				tty_draw_line(tty, s, rr->px - ctx->xoff, py,
-				    rr->nx, rr->px, ctx->yoff + py,
-				    &ctx->defaults, ctx->palette);
-			}
+			if (rr->nx == 0)
+				continue;
+			tty_draw_line(tty, s, rr->px, py, rr->nx,
+			    ctx->xoff + rr->px, ctx->yoff + py, &ctx->defaults,
+			    ctx->palette);
 		}
 		return;
 	}
@@ -1413,11 +1424,10 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 		r = tty_check_overlay_range(tty, x, ry, rx);
 		for (j = 0; j < r->used; j++) {
 			rr = &r->ranges[j];
-			if (rr->nx != 0) {
-				tty_draw_line(tty, s, i + (rr->px - x), py,
-				    rr->nx, rr->px, ry, &ctx->defaults,
-				    ctx->palette);
-			}
+			if (rr->nx == 0)
+				continue;
+			tty_draw_line(tty, s, i + rr->px, py, rr->nx,
+			    x + rr->px, ry, &ctx->defaults, ctx->palette);
 		}
 	}
 }
@@ -2191,21 +2201,21 @@ tty_cmd_syncstart(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct client	*c = tty->client;
 
-        if ((ctx->flags & TTY_CTX_OVERLAY_SYNC) &&
-            (ctx->flags & TTY_CTX_SYNC)) {
-                /*
-                 * This is an overlay and a command that moves the cursor so
-                 * start synchronized updates.
-                 */
-                tty_sync_start(tty);
-        } else if (~ctx->flags & TTY_CTX_OVERLAY_SYNC) {
-                /*
-                 * This is a pane. If there is an overlay, always start;
-                 * otherwise, only if requested.
-                 */
-                if ((ctx->flags & TTY_CTX_SYNC) || c->overlay_draw != NULL)
-                        tty_sync_start(tty);
-        }
+	if ((ctx->flags & TTY_CTX_OVERLAY_SYNC) &&
+	    (ctx->flags & TTY_CTX_SYNC)) {
+		/*
+		 * This is an overlay and a command that moves the cursor so
+		 * start synchronized updates.
+		 */
+		tty_sync_start(tty);
+	} else if (~ctx->flags & TTY_CTX_OVERLAY_SYNC) {
+		/*
+		 * This is a pane. If there is an overlay, always start;
+		 * otherwise, only if requested.
+		 */
+		if ((ctx->flags & TTY_CTX_SYNC) || c->overlay_draw != NULL)
+			tty_sync_start(tty);
+	}
 }
 
 void
