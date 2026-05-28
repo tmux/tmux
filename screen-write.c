@@ -191,8 +191,8 @@ screen_write_pane_is_obscured(struct screen_write_ctx *ctx)
 
 	if (ctx->wp->xoff < 0 ||
 	    ctx->wp->yoff < 0 ||
-	    ctx->wp->xoff + ctx->wp->sx >= ctx->wp->window->sx ||
-	    ctx->wp->yoff + ctx->wp->sy >= ctx->wp->window->sy) {
+	    ctx->wp->xoff + ctx->wp->sx > ctx->wp->window->sx ||
+	    ctx->wp->yoff + ctx->wp->sy > ctx->wp->window->sy) {
 		ctx->flags |= SCREEN_WRITE_OBSCURED;
 		return (1);
 	}
