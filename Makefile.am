@@ -242,6 +242,7 @@ if ENABLE_SIXEL
 dist_tmux_SOURCES += image.c image-sixel.c
 endif
 
+# Add bits for fuzzing if enabled.
 if NEED_FUZZING
 check_PROGRAMS = \
 	fuzz/input-fuzzer \
@@ -270,3 +271,7 @@ install-exec-hook:
 	$(mkdir_p) $(DESTDIR)$(mandir)/man1
 	$(INSTALL_DATA) $(srcdir)/tmux.1.@MANFORMAT@ \
 		$(DESTDIR)$(mandir)/man1/tmux.1
+
+# And uninstall it.
+uninstall-hook:
+	rm -f $(DESTDIR)$(mandir)/man1/tmux.1
