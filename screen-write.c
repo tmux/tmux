@@ -2441,7 +2441,8 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
 	u_int			 width = ud->width, xx, not_wrap, i, n, vis;
-	int			 selected, skip = 1, redraw = 0, yoff = 0;
+	int			 selected, skip = 1, redraw = 0;
+	int			 yoff = 0, xoff = 0;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
@@ -2542,10 +2543,12 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		skip = 0;
 
 	/* Get visible ranges for the character before moving the cursor. */
-	if (wp != NULL)
+	if (wp != NULL) {
+		xoff = wp->xoff;
 		yoff = wp->yoff;
-	r = screen_redraw_get_visible_ranges(wp, s->cx, s->cy + yoff, width,
-	    NULL);
+	}
+	r = screen_redraw_get_visible_ranges(wp, xoff + s->cx, s->cy + yoff,
+	    width, NULL);
 
 	/*
 	 * Move the cursor. If not wrapping, stick at the last character and
