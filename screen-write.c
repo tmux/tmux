@@ -2047,8 +2047,8 @@ screen_write_collect_flush_line(struct screen_write_ctx *ctx, u_int y)
 	struct screen_write_citem	*ci, *tmp;
 	struct screen_write_cline	*cl = &s->write_list[y];
 	u_int				 last = UINT_MAX, items = 0, wsx, wsy;
-	u_int				 w_start, w_end, w_length, i;
-	int				 xoff, yoff, written;
+	u_int				 w_length, i;
+	int				 w_start, w_end, xoff, yoff, written;
 	int				 r_start, r_end, c_start, c_end;
 	struct tty_ctx			 ttyctx;
 	struct visible_ranges		*r;
@@ -2087,7 +2087,7 @@ screen_write_collect_flush_line(struct screen_write_ctx *ctx, u_int y)
 			c_start = ci->x;
 			c_end = ci->x + ci->used;
 
-			if (c_start + xoff > r_end || c_end + xoff < r_start)
+			if (c_start + xoff >= r_end || c_end + xoff <= r_start)
 				continue;
 			if (r_start > c_start + xoff)
 				w_start = r_start - xoff;
@@ -2100,6 +2100,8 @@ screen_write_collect_flush_line(struct screen_write_ctx *ctx, u_int y)
 			if (w_end <= w_start)
 				continue;
 			w_length = w_end - w_start;
+			if (w_length <= 0)
+				continue;
 
 			screen_write_set_cursor(ctx, w_start, y);
 			if (ci->type == CLEAR) {
