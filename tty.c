@@ -2029,10 +2029,11 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 
 	px = ctx->xoff + ctx->ocx - ctx->wox;
 	py = ctx->yoff + ctx->ocy - ctx->woy;
-	if (!tty_is_visible(tty, ctx, ctx->ocx, ctx->ocy, 1, 1) ||
-	    (gcp->data.width == 1 && !tty_check_overlay(tty, px, py)))
+	if (!tty_is_visible(tty, ctx, ctx->ocx, ctx->ocy, 1, 1))
 		return;
 
+	if (gcp->data.width == 1 && !tty_check_overlay(tty, px, py))
+		return;
 	if (gcp->data.width > 1) { /* could be partially obscured */
 		r = tty_check_overlay_range(tty, px, py, gcp->data.width);
 		for (i = 0; i < r->used; i++)

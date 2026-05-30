@@ -1119,11 +1119,11 @@ screen_redraw_is_visible(struct visible_ranges *r, u_int px)
 
 /*
  * Construct ranges array for the line at starting at px,py of width cells of
- * base_wp that are unobsructed.
+ * base_wp that are unobsructed. All ranges are in window coordinates.
  */
 struct visible_ranges *
-screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
-    u_int py, u_int width, struct visible_ranges *r)
+screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
+    int py, u_int width, struct visible_ranges *r)
 {
 	struct window_pane		*wp;
 	struct window			*w;
@@ -1133,11 +1133,25 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 	u_int				 lb, rb, tb, bb;
 	u_int				 i, s;
 
+	if (px + width <= 0 || py < 0) {
+		if (r == NULL) {
+			if (sr.ranges == NULL)
+				sr.ranges = xcalloc(1, sizeof *sr.ranges);
+			sr.size = 1;
+			sr.used = 0;
+			return (&sr);
+		}
+		r->used = 0;
+		return (r);
+	}
+	if (px < 0) {
+		px = 0;
+		width += px;
+	}
+
 	if (base_wp == NULL) {
 		if (r != NULL)
 			return (r);
-
-		/* Return static range as last resort. */
 		if (sr.ranges == NULL)
 			sr.ranges = xcalloc(1, sizeof *sr.ranges);
 		sr.ranges[0].px = px;
@@ -1174,10 +1188,10 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 		bb = wp->yoff + wp->sy;
 		if (!found_self ||
 		    !window_pane_visible(wp) ||
-		    py < tb ||
-		    py > bb)
+		    (u_int)py < tb ||
+		    (u_int)py > bb)
 			continue;
-		if (~wp->flags & PANE_FLOATING && py == bb)
+		if (~wp->flags & PANE_FLOATING && (u_int)py == bb)
 			continue;
 
 		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
