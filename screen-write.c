@@ -2176,16 +2176,16 @@ screen_write_collect_flush_line(struct screen_write_ctx *ctx, u_int y)
 			if (c_start + xoff > r_end || c_end + xoff < r_start)
 				continue;
 			if (r_start > c_start + xoff)
-				w_start = c_start + (r_start - c_start + xoff);
+				w_start = r_start - xoff;
 			else
 				w_start = c_start;
 			if (c_end + xoff > r_end)
-				w_end = c_end - (c_end + xoff - r_end);
+				w_end = r_end - xoff;
 			else
 				w_end = c_end;
-			w_length = w_end - w_start;
-			if (w_length <= 0)
+			if (w_end <= w_start)
 				continue;
+			w_length = w_end - w_start;
 
 			screen_write_set_cursor(ctx, w_start, y);
 			if (ci->type == CLEAR) {
