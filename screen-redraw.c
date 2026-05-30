@@ -1131,17 +1131,8 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 	u_int				 lb, rb, tb, bb;
 	u_int				 i, s;
 
-	if (px + width <= 0 || py < 0) {
-		if (r == NULL) {
-			if (sr.ranges == NULL)
-				sr.ranges = xcalloc(1, sizeof *sr.ranges);
-			sr.size = 1;
-			sr.used = 0;
-			return (&sr);
-		}
-		r->used = 0;
-		return (r);
-	}
+	if (px + width <= 0 || py < 0)
+		goto empty;
 	if (px < 0) {
 		px = 0;
 		width += px;
@@ -1160,6 +1151,8 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 	}
 
 	w = base_wp->window;
+	if ((u_int)py >= w->sy)
+		goto empty;
 	if (px + width > w->sx)
 		width = w->sx - px;
 
@@ -1271,6 +1264,17 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 		}
 	}
 	return (r);
+
+empty:
+	if (r == NULL) {
+		if (sr.ranges == NULL)
+			sr.ranges = xcalloc(1, sizeof *sr.ranges);
+		sr.size = 1;
+		sr.used = 0;
+		return (&sr);
+	}
+	r->used = 0;
+	return (r);
 }
 
 /* Draw one pane. */
@@ -1300,7 +1304,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	 *   tty_x = window_x - ctx->ox
 	 *
 	 * window <-> tty (y-axis):
-	 *   woy = (ctx->statustop) ? ctx->statuslines : 0
+	 *   woy = ctx->statustop ? ctx->statuslines : 0
 	 *   window_y = tty_y + ctx->oy - woy
 	 *   tty_y = woy + window_y - ctx->oy
 	 *
