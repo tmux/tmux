@@ -56,6 +56,27 @@ cmd_display_panes_args_parse(__unused struct args *args, __unused u_int idx,
 }
 
 static void
+cmd_display_panes_put(struct screen_redraw_ctx *ctx,
+    struct window_pane *wp, u_int cx, u_int cy, const char *buf, size_t len)
+{
+	struct client		*c = ctx->c;
+	struct tty		*tty = &c->tty;
+	struct visible_ranges	*r;
+	struct visible_range	*ri;
+	u_int			 i, j;
+
+	r = screen_redraw_get_visible_ranges(wp, ctx->ox + cx, ctx->oy + cy,
+	    len, NULL);
+	for (i = 0; i < r->used; i++) {
+		ri = &r->ranges[i];
+		for (j = ri->px; j < ri->px + ri->nx; j++) {
+			tty_cursor(tty, j - ctx->ox, cy);
+			tty_putn(tty, &buf[j - ri->px], 1, 1);
+		}
+	}
+}
+
+static void
 cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
     struct window_pane *wp)
 {
@@ -66,6 +87,7 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 	struct window		*w = wp->window;
 	struct grid_cell	 fgc, bgc;
 	u_int			 pane, idx, px, py, i, j, xoff, yoff, sx, sy;
+	u_int			 cx, cy;
 	int			 colour, active_colour;
 	char			 buf[16], lbuf[16], rbuf[16], *ptr;
 	size_t			 len, llen, rlen;
@@ -147,13 +169,17 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 		tty_attributes(tty, &fgc, &grid_default_cell, NULL, NULL);
 		if (sx >= len + llen + 1) {
 			len += llen + 1;
-			tty_cursor(tty, xoff + px - len / 2, yoff + py);
-			tty_putn(tty, buf, len,	 len);
-			tty_putn(tty, " ", 1, 1);
-			tty_putn(tty, lbuf, llen, llen);
+			cx = xoff + px - len / 2;
+			cy = yoff + py;
+			cmd_display_panes_put(ctx, wp, cx, cy, buf, len);
+			cx += len;
+			cmd_display_panes_put(ctx, wp, cx, cy, " ", 1);
+			cx++;
+			cmd_display_panes_put(ctx, wp, cx, cy, lbuf, llen);
 		} else {
-			tty_cursor(tty, xoff + px - len / 2, yoff + py);
-			tty_putn(tty, buf, len, len);
+			cx = xoff + px - len / 2;
+			cy = yoff + py;
+			cmd_display_panes_put(ctx, wp, cx, cy, buf, len);
 		}
 		goto out;
 	}
@@ -169,9 +195,11 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 
 		for (j = 0; j < 5; j++) {
 			for (i = px; i < px + 5; i++) {
-				tty_cursor(tty, xoff + i, yoff + py + j);
-				if (window_clock_table[idx][j][i - px])
-					tty_putc(tty, ' ');
+				if (!window_clock_table[idx][j][i - px])
+					continue;
+				cx = xoff + i;
+				cy = yoff + py + j;
+				cmd_display_panes_put(ctx, wp, cx, cy, " ", 1);
 			}
 		}
 		px += 6;
@@ -181,13 +209,14 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 		goto out;
 	tty_attributes(tty, &fgc, &grid_default_cell, NULL, NULL);
 	if (rlen != 0 && sx >= rlen) {
-		tty_cursor(tty, xoff + sx - rlen, yoff);
-		tty_putn(tty, rbuf, rlen, rlen);
+		cx = xoff + sx - rlen;
+		cy = yoff;
+		cmd_display_panes_put(ctx, wp, cx, cy, rbuf, rlen);
 	}
 	if (llen != 0) {
-		tty_cursor(tty, xoff + sx / 2 + len * 3 - llen - 1,
-		    yoff + py + 5);
-		tty_putn(tty, lbuf, llen, llen);
+		cx = xoff + sx / 2 + len * 3 - llen - 1;
+		cy = yoff + py + 5;
+		cmd_display_panes_put(ctx, wp, cx, cy, lbuf, llen);
 	}
 
 out:
