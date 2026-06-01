@@ -2411,6 +2411,45 @@ format_cb_pane_width(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_x. */
+static void *
+format_cb_pane_x(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%d", ft->wp->xoff));
+	return (NULL);
+}
+
+/* Callback for pane_y. */
+static void *
+format_cb_pane_y(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%d", ft->wp->yoff));
+	return (NULL);
+}
+
+/* Callback for pane_z. */
+static void *
+format_cb_pane_z(struct format_tree *ft)
+{
+	struct window_pane	*wp;
+	u_int			 n = 0;
+
+	if (ft->wp != NULL) {
+		if (~ft->wp->flags & PANE_FLOATING)
+			return (xstrdup("0"));
+		TAILQ_FOREACH(wp, &ft->wp->window->z_index, zentry) {
+			if (wp->flags & PANE_FLOATING)
+				n++;
+			if (wp == ft->wp)
+				return (format_printf("%u", n));
+		}
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
 /* Callback for pane_zoomed_flag. */
 static void *
 format_cb_pane_zoomed_flag(struct format_tree *ft)
@@ -3499,6 +3538,15 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_width", FORMAT_TABLE_STRING,
 	  format_cb_pane_width
+	},
+	{ "pane_x", FORMAT_TABLE_STRING,
+	  format_cb_pane_x
+	},
+	{ "pane_y", FORMAT_TABLE_STRING,
+	  format_cb_pane_y
+	},
+	{ "pane_z", FORMAT_TABLE_STRING,
+	  format_cb_pane_z
 	},
 	{ "pane_zoomed_flag", FORMAT_TABLE_STRING,
 	  format_cb_pane_zoomed_flag
