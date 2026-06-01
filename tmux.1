@@ -7846,7 +7846,7 @@ option.
 .Op Fl c Ar start\-directory
 .Op Fl d Ar delay
 .Op Fl t Ar target\-pane
-.Op Ar shell\-command
+.Op Ar shell\-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic run
 Execute
@@ -7863,6 +7863,20 @@ Before being executed,
 is expanded using the rules specified in the
 .Sx FORMATS
 section.
+If
+.Ar argument
+values are given, they are available as
+.Ql #1 ,
+.Ql #2
+or
+.Ql #{1} ,
+.Ql #{2}
+and so on.
+For example:
+.Bd -literal -offset indent
+run-shell 'myscript.sh #1 #2' foo bar
+.Ed
+.Pp
 With
 .Fl b ,
 the command is run in the background.
