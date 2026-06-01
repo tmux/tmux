@@ -2433,20 +2433,10 @@ format_cb_pane_y(struct format_tree *ft)
 static void *
 format_cb_pane_z(struct format_tree *ft)
 {
-	struct window_pane	*wp;
-	u_int			 n = 0;
+	u_int	idx;
 
-	if (ft->wp != NULL) {
-		if (~ft->wp->flags & PANE_FLOATING)
-			return (xstrdup("0"));
-		TAILQ_FOREACH(wp, &ft->wp->window->z_index, zentry) {
-			if (wp->flags & PANE_FLOATING)
-				n++;
-			if (wp == ft->wp)
-				return (format_printf("%u", n));
-		}
-		return (xstrdup("0"));
-	}
+	if (ft->wp != NULL && window_pane_zindex(ft->wp, &idx) == 0)
+		return (format_printf("%u", idx));
 	return (NULL);
 }
 
