@@ -46,8 +46,6 @@ static int	layout_set_size_check(struct window *, struct layout_cell *,
 		    enum layout_type, int);
 static void	layout_resize_child_cells(struct window *,
 		    struct layout_cell *);
-void		layout_redistribute_cells(struct window *, struct layout_cell *,
-		    enum layout_type);
 
 /* Create a new layout cell. */
 struct layout_cell *
@@ -252,6 +250,8 @@ layout_fix_offsets1(struct layout_cell *lc)
 	if (lc->type == LAYOUT_LEFTRIGHT) {
 		xoff = lc->xoff;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+			if (lcchild->flags & LAYOUT_CELL_FLOATING)
+				continue;
 			lcchild->xoff = xoff;
 			lcchild->yoff = lc->yoff;
 			if (lcchild->type != LAYOUT_WINDOWPANE)
@@ -261,6 +261,8 @@ layout_fix_offsets1(struct layout_cell *lc)
 	} else {
 		yoff = lc->yoff;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+			if (lcchild->flags & LAYOUT_CELL_FLOATING)
+				continue;
 			lcchild->xoff = lc->xoff;
 			lcchild->yoff = yoff;
 			if (lcchild->type != LAYOUT_WINDOWPANE)
@@ -275,6 +277,10 @@ void
 layout_fix_offsets(struct window *w)
 {
 	struct layout_cell	*lc = w->layout_root;
+
+	/* Root consists of a single floating cell */
+	if (lc->flags & LAYOUT_CELL_FLOATING)
+		return;
 
 	lc->xoff = 0;
 	lc->yoff = 0;
@@ -484,8 +490,11 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 
 	/* Child cell runs in a different direction. */
 	if (lc->type != type) {
-		TAILQ_FOREACH(lcchild, &lc->cells, entry)
+		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+			if (lcchild->flags & LAYOUT_CELL_FLOATING)
+				continue;
 			layout_resize_adjust(w, lcchild, type, change);
+		}
 		return;
 	}
 
@@ -497,6 +506,8 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			if (change == 0)
 				break;
+			if (lcchild->flags & LAYOUT_CELL_FLOATING)
+				continue;
 			if (change > 0) {
 				layout_resize_adjust(w, lcchild, type, 1);
 				change--;
@@ -515,7 +526,7 @@ void
 layout_destroy_cell(struct window *w, struct layout_cell *lc,
     struct layout_cell **lcroot)
 {
-	struct layout_cell     *lcother, *lcparent;
+	struct layout_cell     *lcother = NULL, *lcparent;
 
 	/*
 	 * If no parent, this is either a floating pane or the last
@@ -530,11 +541,13 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 		return;
 	}
 
-	/* Merge the space into the previous or next cell. */
-	if (lc == TAILQ_FIRST(&lcparent->cells))
-		lcother = TAILQ_NEXT(lc, entry);
-	else
-		lcother = TAILQ_PREV(lc, layout_cells, entry);
+	if (~lc->flags & LAYOUT_CELL_FLOATING) {
+		/* Merge the space into the previous or next cell. */
+		if (lc == TAILQ_FIRST(&lcparent->cells))
+			lcother = TAILQ_NEXT(lc, entry);
+		else
+			lcother = TAILQ_PREV(lc, layout_cells, entry);
+	}
 	if (lcother != NULL && lcparent->type == LAYOUT_LEFTRIGHT)
 		layout_resize_adjust(w, lcother, lcparent->type, lc->sx + 1);
 	else if (lcother != NULL)
@@ -603,6 +616,8 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 	 * out proportionately - this should leave the layout fitting the new
 	 * window size.
 	 */
+	if (lc->type == LAYOUT_WINDOWPANE && (lc->flags & LAYOUT_CELL_FLOATING))
+		return;
 	xchange = sx - lc->sx;
 	xlimit = layout_resize_check(w, lc, LAYOUT_LEFTRIGHT);
 	if (xchange < 0 && xchange < -xlimit)
@@ -915,6 +930,8 @@ layout_resize_child_cells(struct window *w, struct layout_cell *lc)
 	count = 0;
 	previous = 0;
 	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+		if (lcchild->flags & LAYOUT_CELL_FLOATING)
+			continue;
 		count++;
 		if (lc->type == LAYOUT_LEFTRIGHT)
 			previous += lcchild->sx;
@@ -933,6 +950,8 @@ layout_resize_child_cells(struct window *w, struct layout_cell *lc)
 	/* Resize children into the new size. */
 	idx = 0;
 	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+		if (lcchild->flags & LAYOUT_CELL_FLOATING)
+			continue;
 		if (lc->type == LAYOUT_TOPBOTTOM) {
 			lcchild->sx = lc->sx;
 			lcchild->xoff = lc->xoff;
@@ -941,9 +960,10 @@ layout_resize_child_cells(struct window *w, struct layout_cell *lc)
 			    lc->type, lc->sx, count - idx, available);
 			available -= (lcchild->sx + 1);
 		}
-		if (lc->type == LAYOUT_LEFTRIGHT)
+		if (lc->type == LAYOUT_LEFTRIGHT) {
 			lcchild->sy = lc->sy;
-		else {
+			lcchild->yoff = lc->yoff;
+		} else {
 			lcchild->sy = layout_new_pane_size(w, previous, lcchild,
 			    lc->type, lc->sy, count - idx, available);
 			available -= (lcchild->sy + 1);
@@ -1132,6 +1152,39 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 	return (lcnew);
 }
 
+/*
+ * Creates a cell for a new floating pane. This must be followed by
+ * layout_assign_pane before much else happens!
+ */
+struct layout_cell *
+layout_floating_pane(struct window *w, u_int sx, u_int sy, int ox, int oy)
+{
+	struct layout_cell	*lc = w->layout_root, *lcnew, *lcparent;
+
+	if (lc->type == LAYOUT_WINDOWPANE) {
+		/*
+		* Adding a pane to a root that doesn't have a container. Must
+		* create and insert a new root.
+		*/
+		lcparent = layout_create_cell(NULL);
+		layout_make_node(lcparent, LAYOUT_TOPBOTTOM);
+		layout_set_size(lcparent, w->sx, w->sy, 0, 0);
+		w->layout_root = lcparent;
+
+		/* Insert the old cell. */
+		lc->parent = lcparent;
+		TAILQ_INSERT_HEAD(&lcparent->cells, lc, entry);
+	} else
+		lcparent = w->layout_root;
+
+	lcnew = layout_create_cell(lcparent);
+	TAILQ_INSERT_TAIL(&lcparent->cells, lcnew, entry);
+	lcnew->flags |= LAYOUT_CELL_FLOATING;
+	layout_set_size(lcnew, sx, sy, ox, oy);
+
+	return (lcnew);
+}
+
 /* Destroy the cell associated with a pane. */
 void
 layout_close_pane(struct window_pane *wp)
@@ -1143,6 +1196,7 @@ layout_close_pane(struct window_pane *wp)
 
 	/* Remove the cell. */
 	layout_destroy_cell(w, wp->layout_cell, &w->layout_root);
+	wp->layout_cell = NULL;
 
 	/* Fix pane offsets and sizes. */
 	if (w->layout_root != NULL) {
@@ -1296,52 +1350,43 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 	return (lc);
 }
 
-/* Get a new floating cell. */
+/*
+ * Get a new floating cell. A window pane may be given to anchor the
+ * new cell in the layout.
+ */
 struct layout_cell *
 layout_get_floating_cell(struct cmdq_item *item, struct args *args,
-    struct window *w, __unused struct window_pane *wp, struct layout_cell *lc,
-    char **cause)
+    struct window *w, __unused struct window_pane *wp, char **cause)
 {
-	u_int	sx, sy;
-	int	ox, oy, new = 0;
-
-	if (lc == NULL) {
-		lc = layout_create_cell(NULL);
-		new = 1;
-	}
-
-	sx = lc->sx; sy = lc->sy;
-	ox = lc->xoff; oy = lc->yoff;
+	struct layout_cell	*lcnew;
+	u_int			 sx = w->sx / 2, sy = w->sy / 4;
+	int			 ox = INT_MAX, oy = INT_MAX;
 
 	if (args_has(args, 'x')) {
 		sx = args_percentage_and_expand(args, 'x', 0, USHRT_MAX, w->sx,
 		    item, cause);
 		if (*cause != NULL)
-			goto error;
+			return (NULL);
 	}
 	if (args_has(args, 'y')) {
 		sy = args_percentage_and_expand(args, 'y', 0, USHRT_MAX, w->sy,
 		    item, cause);
 		if (*cause != NULL)
-			goto error;
+			return (NULL);
 	}
 	if (args_has(args, 'X')) {
 		ox = args_percentage_and_expand(args, 'X', -USHRT_MAX, USHRT_MAX,
 		    w->sx, item, cause);
 		if (*cause != NULL)
-			goto error;
+			return (NULL);
 	}
 	if (args_has(args, 'Y')) {
 		oy = args_percentage_and_expand(args, 'Y', -USHRT_MAX, USHRT_MAX,
 		    w->sy, item, cause);
 		if (*cause != NULL)
-			goto error;
+			return (NULL);
 	}
 
-	if (sx == UINT_MAX)
-		sx = w->sx / 2;
-	if (sy == UINT_MAX)
-		sy = w->sy / 4;
 	if (ox == INT_MAX) {
 		if (w->last_new_pane_x == 0)
 			ox = 4;
@@ -1362,13 +1407,7 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 		}
 		w->last_new_pane_y = oy;
 	}
-	layout_set_size(lc, sx, sy, ox, oy);
-	lc->flags |= LAYOUT_CELL_FLOATING;
 
-	return (lc);
-
-error:
-	if (new)
-		layout_destroy_cell(w, lc, &w->layout_root);
-	return (NULL);
+	lcnew = layout_floating_pane(w, sx, sy, ox, oy);
+	return (lcnew);
 }

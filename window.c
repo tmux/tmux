@@ -1035,7 +1035,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 
 	TAILQ_INIT(&wp->modes);
 
-	TAILQ_INIT (&wp->resize_queue);
+	TAILQ_INIT(&wp->resize_queue);
 
 	wp->sx = sx;
 	wp->sy = sy;

@@ -104,7 +104,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		flags |= SPAWN_EMPTY;
 
 	if (is_floating)
-		lc = layout_get_floating_cell(item, args, w, wp, lc, &cause);
+		lc = layout_get_floating_cell(item, args, w, wp, &cause);
 	else
 		lc = layout_get_tiled_cell(item, args, w, wp, flags, &cause);
 	if (cause != NULL) {
