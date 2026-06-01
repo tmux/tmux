@@ -64,7 +64,7 @@ struct input_request {
 
 	enum input_request_type		 type;
 	uint64_t			 t;
-	enum input_end_type              end;
+	enum input_end_type		 end;
 
 	int				 idx;
 	void				*data;
@@ -149,7 +149,7 @@ struct input_ctx {
 
 /* Helper functions. */
 struct input_transition;
-static void 	input_request_timer_callback(int, short, void *);
+static void	input_request_timer_callback(int, short, void *);
 static void	input_start_request_timer(struct input_ctx *);
 static struct input_request *input_make_request(struct input_ctx *,
 		    enum input_request_type);
@@ -281,6 +281,7 @@ enum input_csi_type {
 	INPUT_CSI_IL,
 	INPUT_CSI_MODOFF,
 	INPUT_CSI_MODSET,
+	INPUT_CSI_QUERY,
 	INPUT_CSI_QUERY_PRIVATE,
 	INPUT_CSI_RCP,
 	INPUT_CSI_REP,
@@ -336,6 +337,7 @@ static const struct input_table_entry input_csi_table[] = {
 	{ 'n', "",  INPUT_CSI_DSR },
 	{ 'n', ">", INPUT_CSI_MODOFF },
 	{ 'n', "?", INPUT_CSI_DSR_PRIVATE },
+	{ 'p', "$",  INPUT_CSI_QUERY },
 	{ 'p', "?$", INPUT_CSI_QUERY_PRIVATE },
 	{ 'q', " ", INPUT_CSI_DECSCUSR },
 	{ 'q', ">", INPUT_CSI_XDA },
@@ -1608,8 +1610,34 @@ input_csi_dispatch(struct input_ctx *ictx)
 			break;
 		}
 		break;
+	case INPUT_CSI_QUERY:
+		m = input_get(ictx, 0, 0, 0);
+		switch (m) {
+		case 4:		/* IRM */
+			n = (s->mode & MODE_INSERT) ? 1 : 2;
+			break;
+		default:
+			n = 0;
+			break;
+		}
+		if (m > 0)
+			input_reply(ictx, 1, "\033[%d;%d$y", m, n);
+		break;
 	case INPUT_CSI_QUERY_PRIVATE:
-		switch (input_get(ictx, 0, 0, 0)) {
+		m = input_get(ictx, 0, 0, 0);
+		switch (m) {
+		case 1:		/* DECCKM */
+			n = (s->mode & MODE_KCURSOR) ? 1 : 2;
+			break;
+		case 3:		/* DECCOLM: always reset */
+			n = 4;
+			break;
+		case 6:		/* DECOM */
+			n = (s->mode & MODE_ORIGIN) ? 1 : 2;
+			break;
+		case 7:		/* DECAWM */
+			n = (s->mode & MODE_WRAP) ? 1 : 2;
+			break;
 		case 12: /* cursor blink: 1 = blink, 2 = steady */
 			if (s->cstyle != SCREEN_CURSOR_DEFAULT ||
 			    s->mode & MODE_CURSOR_BLINKING_SET)
@@ -1622,30 +1650,50 @@ input_csi_dispatch(struct input_ctx *ictx)
 				p = options_get_number(oo, "cursor-style");
 
 				/* blink for 1,3,5; steady for 0,2,4,6 */
- 				n = (p == 1 || p == 3 || p == 5) ? 1 : 2;
+				n = (p == 1 || p == 3 || p == 5) ? 1 : 2;
 			}
-			input_reply(ictx, 1, "\033[?12;%d$y", n);
 			break;
-		case 1004: /* focus reporting */
+		case 25:	/* DECTCEM */
+			n = (s->mode & MODE_CURSOR) ? 1 : 2;
+			break;
+		case 47:
+		case 1047:
+		case 1049:	/* alternate screen */
+			n = SCREEN_IS_ALTERNATE(s) ? 1 : 2;
+			break;
+		case 1000:	/* mouse: normal tracking */
+			n = (s->mode & MODE_MOUSE_STANDARD) ? 1 : 2;
+			break;
+		case 1002:	/* mouse: button-event tracking */
+			n = (s->mode & MODE_MOUSE_BUTTON) ? 1 : 2;
+			break;
+		case 1003:	/* mouse: any-event tracking */
+			n = (s->mode & MODE_MOUSE_ALL) ? 1 : 2;
+			break;
+		case 1004:	/* focus reporting */
 			n = (s->mode & MODE_FOCUSON) ? 1 : 2;
-			input_reply(ictx, 1, "\033[?1004;%d$y", n);
 			break;
-		case 1006: /* SGR mouse */
+		case 1005:	/* mouse: UTF-8 */
+			n = (s->mode & MODE_MOUSE_UTF8) ? 1 : 2;
+			break;
+		case 1006:	/* mouse: SGR */
 			n = (s->mode & MODE_MOUSE_SGR) ? 1 : 2;
-			input_reply(ictx, 1, "\033[?1006;%d$y", n);
 			break;
-		case 2004: /* bracketed paste */
+		case 2004:	/* bracketed paste */
 			n = (s->mode & MODE_BRACKETPASTE) ? 1 : 2;
-			input_reply(ictx, 1, "\033[?2004;%d$y", n);
 			break;
-		case 2026: /* synchronized output */
+		case 2026:	/* synchronized output */
 			n = (s->mode & MODE_SYNC) ? 1 : 2;
-			input_reply(ictx, 1, "\033[?2026;%d$y", n);
 			break;
-		case 2031:
-			input_reply(ictx, 1, "\033[?2031;2$y");
+		case 2031:	/* theme update notifications */
+			n = (s->mode & MODE_THEME_UPDATES) ? 1 : 2;
+			break;
+		default:
+			n = 0;
 			break;
 		}
+		if (m > 0)
+			input_reply(ictx, 1, "\033[?%d;%d$y", m, n);
 		break;
 	case INPUT_CSI_DSR:
 		switch (input_get(ictx, 0, 0, 0)) {
@@ -2948,7 +2996,7 @@ input_set_progress_bar(struct input_ctx *ictx, enum progress_bar_state state,
     int p)
 {
 	screen_set_progress_bar(ictx->ctx.s, state, p);
- 	if (ictx->wp != NULL) {
+	if (ictx->wp != NULL) {
 		server_redraw_window_borders(ictx->wp->window);
 		server_status_window(ictx->wp->window);
 	}
@@ -3222,7 +3270,7 @@ static void
 input_osc_52(struct input_ctx *ictx, const char *p)
 {
 	struct window_pane	*wp = ictx->wp;
-	struct screen_write_ctx  ctx;
+	struct screen_write_ctx	 ctx;
 	u_char			*out;
 	int			 outlen;
 	char			 clip[sizeof "cpqs01234567"] = "";
