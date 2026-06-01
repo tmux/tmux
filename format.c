@@ -5578,7 +5578,7 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 	const char		*ptr, *s, *style_end = NULL;
 	size_t			 off, len, n, outlen;
 	int			 ch, brackets;
-	char			 expanded[8192];
+	char			 expanded[8192], number[2] = { 0 };
 
 	if (fmt == NULL || *fmt == '\0' || !format_check_time(es))
 		return (xstrdup(""));
@@ -5708,6 +5708,13 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 			continue;
 		default:
 			s = NULL;
+			if (ch >= '1' && ch <= '9') {
+				number[0] = ch;
+				if (format_replace(es, number, 1, &buf, &len,
+				    &off) != 0)
+					break;
+				continue;
+			}
 			if (fmt > style_end) { /* skip inside #[] */
 				if (ch >= 'A' && ch <= 'Z')
 					s = format_upper[ch - 'A'];
