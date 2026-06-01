@@ -658,16 +658,11 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 					continue;
 			}
 		} else {
-			/* Floating - include top or or left border. */
+			/* Floating - include all borders. */
 			if ((int)x < xoff - 1 || x > xoff + sx)
 				continue;
-			if (pane_status == PANE_STATUS_TOP) {
-				if ((int)y <= yoff - 2 || y > yoff + sy - 1)
-					continue;
-			} else {
-				if ((int)y < yoff - 1 || y > yoff + sy)
-					continue;
-			}
+			if ((int)y < yoff - 1 || y > yoff + sy)
+				continue;
 		}
 		return (wp);
 	}
