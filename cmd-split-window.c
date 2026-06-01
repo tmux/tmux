@@ -106,7 +106,7 @@ cmd_split_window_get_tiled_cell(struct cmdq_item *item, struct args *args,
 	char			*cause = NULL;
 	int			 size;
 
-	if (wp->flags & PANE_FLOATING) {
+	if (window_pane_is_floating(wp)) {
 		cmdq_error(item, "can't split a floating pane");
 		return (NULL);
 	}

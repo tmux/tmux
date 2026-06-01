@@ -57,6 +57,7 @@ layout_create_cell(struct layout_cell *lcparent)
 
 	lc = xmalloc(sizeof *lc);
 	lc->type = LAYOUT_WINDOWPANE;
+	lc->flags = 0;
 	lc->parent = lcparent;
 
 	TAILQ_INIT(&lc->cells);
@@ -354,7 +355,7 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		sx = lc->sx;
 		sy = lc->sy;
 
-		if ((~wp->flags & PANE_FLOATING) &&
+		if (!window_pane_is_floating(wp) &&
 		    layout_add_horizontal_border(w, lc, status)) {
 			if (status == PANE_STATUS_TOP)
 				wp->yoff++;
@@ -523,7 +524,7 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 	 */
 	lcparent = lc->parent;
 	if (lcparent == NULL) {
-		if (lc->wp != NULL && ~lc->wp->flags & PANE_FLOATING)
+		if (lc->wp != NULL && !window_pane_is_floating(lc->wp))
 			*lcroot = NULL;
 		layout_free_cell(lc);
 		return;

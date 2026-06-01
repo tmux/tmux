@@ -280,6 +280,8 @@ spawn_pane(struct spawn_context *sc, char **cause)
 			else
 				layout_assign_pane(sc->lc, new_wp, 0);
 		}
+		if (sc->flags & SPAWN_FLOATING)
+			new_wp->layout_cell->flags |= LAYOUT_CELL_FLOATING;
 
 		/*
 		 * If window currently zoomed, window_set_active_pane calls
