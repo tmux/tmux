@@ -136,6 +136,7 @@ static enum sort_order window_tree_order_seq[] = {
 	SORT_INDEX,
 	SORT_NAME,
 	SORT_ACTIVITY,
+	SORT_Z,
 	SORT_END,
 };
 
