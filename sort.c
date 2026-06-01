@@ -74,6 +74,7 @@ sort_buffer_cmp(const void *a0, const void *b0)
 	case SORT_INDEX:
 	case SORT_MODIFIER:
 	case SORT_ORDER:
+	case SORT_Z:
 	case SORT_END:
 		break;
 	}
@@ -120,6 +121,7 @@ sort_client_cmp(const void *a0, const void *b0)
 	case SORT_INDEX:
 	case SORT_MODIFIER:
 	case SORT_ORDER:
+	case SORT_Z:
 	case SORT_END:
 		break;
 	}
@@ -172,6 +174,7 @@ sort_session_cmp(const void *a0, const void *b0)
 	case SORT_MODIFIER:
 	case SORT_ORDER:
 	case SORT_SIZE:
+	case SORT_Z:
 	case SORT_END:
 		break;
 	}
@@ -210,6 +213,11 @@ sort_pane_cmp(const void *a0, const void *b0)
 		break;
 	case SORT_NAME:
 		result = strcmp(a->screen->title, b->screen->title);
+		break;
+	case SORT_Z:
+		window_pane_zindex(a, &ai);
+		window_pane_zindex(b, &bi);
+		result = ai - bi;
 		break;
 	case SORT_MODIFIER:
 	case SORT_ORDER:
@@ -269,6 +277,7 @@ sort_winlink_cmp(const void *a0, const void *b0)
 		break;
 	case SORT_MODIFIER:
 	case SORT_ORDER:
+	case SORT_Z:
 	case SORT_END:
 		break;
 	}
@@ -304,6 +313,7 @@ sort_key_binding_cmp(const void *a0, const void *b0)
 	case SORT_CREATION:
 	case SORT_ORDER:
 	case SORT_SIZE:
+	case SORT_Z:
 	case SORT_END:
 		break;
 	}
@@ -358,6 +368,8 @@ sort_order_from_string(const char* order)
 			return (SORT_ORDER);
 		if (strcasecmp(order, "size") == 0)
 			return (SORT_SIZE);
+		if (strcasecmp(order, "z") == 0)
+			return (SORT_Z);
 	}
 	return (SORT_END);
 }
@@ -379,6 +391,8 @@ sort_order_to_string(enum sort_order order)
 		return "order";
 	if (order == SORT_SIZE)
 		return "size";
+	if (order == SORT_Z)
+		return "z";
 	return (NULL);
 }
 
