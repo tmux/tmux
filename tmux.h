@@ -1429,7 +1429,6 @@ TAILQ_HEAD(winlink_stack, winlink);
 enum layout_type {
 	LAYOUT_LEFTRIGHT,
 	LAYOUT_TOPBOTTOM,
-	LAYOUT_FLOATING,
 	LAYOUT_WINDOWPANE
 };
 
