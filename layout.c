@@ -90,19 +90,6 @@ layout_free_cell(struct layout_cell *lc)
 			layout_free_cell(lcchild);
 		}
 		break;
-	case LAYOUT_FLOATING:
-		/*
-		 * A floating layout cell is only used temporarily while
-		 * select-layout constructs a layout. Remove the children from
-		 * the temporary layout, then free temporary floating layout
-		 * cell. Each floating pane has stub layout.
-		 */
-		while (!TAILQ_EMPTY(&lc->cells)) {
-			lcchild = TAILQ_FIRST(&lc->cells);
-			TAILQ_REMOVE(&lc->cells, lcchild, entry);
-			lcchild->parent = NULL;
-		}
-		break;
 	case LAYOUT_WINDOWPANE:
 		if (lc->wp != NULL) {
 			lc->wp->layout_cell->parent = NULL;
@@ -131,9 +118,6 @@ layout_print_cell(struct layout_cell *lc, const char *hdr, u_int n)
 	case LAYOUT_TOPBOTTOM:
 		type = "TOPBOTTOM";
 		break;
-	case LAYOUT_FLOATING:
-		type = "FLOATING";
-		break;
 	case LAYOUT_WINDOWPANE:
 		type = "WINDOWPANE";
 		break;
@@ -147,7 +131,6 @@ layout_print_cell(struct layout_cell *lc, const char *hdr, u_int n)
 	switch (lc->type) {
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
-	case LAYOUT_FLOATING:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
 			layout_print_cell(lcchild, hdr, n + 1);
 		break;
@@ -188,7 +171,6 @@ layout_search_by_border(struct layout_cell *lc, u_int x, u_int y)
 				return (last);
 			break;
 		case LAYOUT_WINDOWPANE:
-		case LAYOUT_FLOATING:
 			break;
 		}
 
@@ -251,7 +233,6 @@ layout_fix_zindexes(struct window *w, struct layout_cell *lc)
 		break;
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
-	case LAYOUT_FLOATING:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
 			layout_fix_zindexes(w, lcchild);
 		return;
@@ -420,7 +401,6 @@ layout_count_cells(struct layout_cell *lc)
 		return (1);
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
-	case LAYOUT_FLOATING:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
 			count += layout_count_cells(lcchild);
 		return (count);
@@ -545,13 +525,6 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 	if (lcparent == NULL) {
 		if (lc->wp != NULL && ~lc->wp->flags & PANE_FLOATING)
 			*lcroot = NULL;
-		layout_free_cell(lc);
-		return;
-	}
-
-	/* A floating cell need only be removed from the parent. */
-	if (lcparent->type == LAYOUT_FLOATING) {
-		TAILQ_REMOVE(&lcparent->cells, lc, entry);
 		layout_free_cell(lc);
 		return;
 	}
