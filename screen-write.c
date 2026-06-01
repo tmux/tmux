@@ -2574,7 +2574,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		return;
 
 	/* Do a full line redraw if needed. */
-	if (redraw) {
+	if (redraw && wp != NULL) {
 		screen_write_redraw_line(ctx, &ttyctx, s->cy);
 		return;
 	}
