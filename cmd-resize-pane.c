@@ -59,7 +59,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
 	struct layout_cell	*lc = wp->layout_cell;
-	enum layout_type	 type;
+	enum layout_type	 type = LAYOUT_TOPBOTTOM;
 	const char		*errstr, *argval;
 	char			*cause;
 	u_int			 adjust, shift = 0;
