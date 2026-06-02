@@ -129,7 +129,7 @@ layout_first_tiled(struct window *w)
 	struct window_pane	*wp;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (window_pane_is_floating(wp))
+		if (!window_pane_is_floating(wp))
 			return (wp);
 	}
 	return (NULL);
