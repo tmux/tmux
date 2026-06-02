@@ -1035,7 +1035,7 @@ format_cb_pane_floating_flag(struct format_tree *ft)
 	struct window_pane	*wp = ft->wp;
 
 	if (wp != NULL) {
-		if (wp->flags & PANE_FLOATING)
+		if (window_pane_is_floating(wp))
 			return (xstrdup("1"));
 		return (xstrdup("0"));
 	}

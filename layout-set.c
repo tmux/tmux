@@ -129,7 +129,7 @@ layout_first_tiled(struct window *w)
 	struct window_pane	*wp;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (~wp->flags & PANE_FLOATING)
+		if (!window_pane_is_floating(wp))
 			return (wp);
 	}
 	return (NULL);
@@ -168,7 +168,7 @@ layout_set_even(struct window *w, enum layout_type type)
 
 	/* Build new leaf cells. */
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (wp->flags & PANE_FLOATING)
+		if (window_pane_is_floating(wp))
 			continue;
 		lcnew = layout_create_cell(lc);
 		layout_make_leaf(lcnew, wp);
@@ -272,7 +272,7 @@ layout_set_main_h(struct window *w)
 	layout_set_size(lcother, sx, otherh, 0, 0);
 	if (n == 1) {
 		wp = TAILQ_NEXT(layout_first_tiled(w), entry);
-		while (wp != NULL && (wp->flags & PANE_FLOATING))
+		while (wp != NULL && window_pane_is_floating(wp))
 			wp = TAILQ_NEXT(wp, entry);
 		layout_make_leaf(lcother, wp);
 		TAILQ_INSERT_TAIL(&lc->cells, lcother, entry);
@@ -282,7 +282,7 @@ layout_set_main_h(struct window *w)
 
 		/* Add the remaining panes as children. */
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (wp->flags & PANE_FLOATING)
+			if (window_pane_is_floating(wp))
 				continue;
 			if (wp == layout_first_tiled(w))
 				continue;
@@ -368,7 +368,7 @@ layout_set_main_h_mirrored(struct window *w)
 	layout_set_size(lcother, sx, otherh, 0, 0);
 	if (n == 1) {
 		wp = TAILQ_NEXT(layout_first_tiled(w), entry);
-		while (wp != NULL && (wp->flags & PANE_FLOATING))
+		while (wp != NULL && window_pane_is_floating(wp))
 			wp = TAILQ_NEXT(wp, entry);
 		layout_make_leaf(lcother, wp);
 		TAILQ_INSERT_TAIL(&lc->cells, lcother, entry);
@@ -378,7 +378,7 @@ layout_set_main_h_mirrored(struct window *w)
 
 		/* Add the remaining panes as children. */
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (wp->flags & PANE_FLOATING)
+			if (window_pane_is_floating(wp))
 				continue;
 			if (wp == layout_first_tiled(w))
 				continue;
@@ -476,7 +476,7 @@ layout_set_main_v(struct window *w)
 	layout_set_size(lcother, otherw, sy, 0, 0);
 	if (n == 1) {
 		wp = TAILQ_NEXT(layout_first_tiled(w), entry);
-		while (wp != NULL && (wp->flags & PANE_FLOATING))
+		while (wp != NULL && window_pane_is_floating(wp))
 			wp = TAILQ_NEXT(wp, entry);
 		layout_make_leaf(lcother, wp);
 		TAILQ_INSERT_TAIL(&lc->cells, lcother, entry);
@@ -486,7 +486,7 @@ layout_set_main_v(struct window *w)
 
 		/* Add the remaining panes as children. */
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (wp->flags & PANE_FLOATING)
+			if (window_pane_is_floating(wp))
 				continue;
 			if (wp == layout_first_tiled(w))
 				continue;
@@ -572,7 +572,7 @@ layout_set_main_v_mirrored(struct window *w)
 	layout_set_size(lcother, otherw, sy, 0, 0);
 	if (n == 1) {
 		wp = TAILQ_NEXT(layout_first_tiled(w), entry);
-		while (wp != NULL && (wp->flags & PANE_FLOATING))
+		while (wp != NULL && window_pane_is_floating(wp))
 			wp = TAILQ_NEXT(wp, entry);
 		layout_make_leaf(lcother, wp);
 		TAILQ_INSERT_TAIL(&lc->cells, lcother, entry);
@@ -582,7 +582,7 @@ layout_set_main_v_mirrored(struct window *w)
 
 		/* Add the remaining panes as children. */
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (wp->flags & PANE_FLOATING)
+			if (window_pane_is_floating(wp))
 				continue;
 			if (wp == layout_first_tiled(w))
 				continue;
@@ -661,7 +661,7 @@ layout_set_tiled(struct window *w)
 
 	/* Create a grid of the cells, skipping any floating panes. */
 	wp = TAILQ_FIRST(&w->panes);
-	while (wp != NULL && (wp->flags & PANE_FLOATING))
+	while (wp != NULL && window_pane_is_floating(wp))
 		wp = TAILQ_NEXT(wp, entry);
 	for (j = 0; j < rows; j++) {
 		/* If this is the last cell, all done. */
@@ -677,7 +677,7 @@ layout_set_tiled(struct window *w)
 		if (n - (j * columns) == 1 || columns == 1) {
 			layout_make_leaf(lcrow, wp);
 			wp = TAILQ_NEXT(wp, entry);
-			while (wp != NULL && (wp->flags & PANE_FLOATING))
+			while (wp != NULL && window_pane_is_floating(wp))
 				wp = TAILQ_NEXT(wp, entry);
 			continue;
 		}
@@ -693,7 +693,7 @@ layout_set_tiled(struct window *w)
 
 			/* Move to the next non-floating cell. */
 			wp = TAILQ_NEXT(wp, entry);
-			while (wp != NULL && (wp->flags & PANE_FLOATING))
+			while (wp != NULL && window_pane_is_floating(wp))
 				wp = TAILQ_NEXT(wp, entry);
 			if (wp == NULL)
 				break;
