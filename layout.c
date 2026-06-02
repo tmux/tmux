@@ -1152,6 +1152,7 @@ layout_close_pane(struct window_pane *wp)
 	notify_window("window-layout-changed", w);
 }
 
+/* Spread out cells inside a parent cell. */
 int
 layout_spread_cell(struct window *w, struct layout_cell *parent)
 {
@@ -1180,6 +1181,7 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 	each = (size - (number - 1)) / number;
 	if (each == 0)
 		return (0);
+
 	/*
 	 * Remaining space after assigning that which can be evenly
 	 * distributed.
@@ -1214,6 +1216,7 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 	return (changed);
 }
 
+/* Spread out cells evenly. */
 void
 layout_spread_out(struct window_pane *wp)
 {
@@ -1231,4 +1234,141 @@ layout_spread_out(struct window_pane *wp)
 			break;
 		}
 	} while ((parent = parent->parent) != NULL);
+}
+
+/* Get a new tiled cell. */
+struct layout_cell *
+layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
+    struct window *w, struct window_pane *wp, int flags, char **cause)
+{
+	struct layout_cell	*lc;
+	enum layout_type	 type;
+	u_int			 curval;
+	int			 size = -1;
+
+	if (window_pane_is_floating(wp)) {
+		*cause = xstrdup("can't split a floating pane");
+		return (NULL);
+	}
+
+	type = LAYOUT_TOPBOTTOM;
+	if (args_has(args, 'h'))
+		type = LAYOUT_LEFTRIGHT;
+
+	if (args_has(args, 'l') || args_has(args, 'p')) {
+		if (args_has(args, 'f')) {
+			if (type == LAYOUT_TOPBOTTOM)
+				curval = w->sy;
+			else
+				curval = w->sx;
+		} else {
+			if (type == LAYOUT_TOPBOTTOM)
+				curval = wp->sy;
+			else
+				curval = wp->sx;
+		}
+	}
+
+	if (args_has(args, 'l')) {
+		size = args_percentage_and_expand(args, 'l', 0, INT_MAX, curval,
+		    item, cause);
+	} else if (args_has(args, 'p')) {
+		size = args_strtonum_and_expand(args, 'p', 0, 100, item,
+		    cause);
+		if (*cause == NULL)
+			size = curval * size / 100;
+	}
+	if (*cause != NULL) {
+		*cause = xstrdup("invalid tiled geometry");
+		return (NULL);
+	}
+
+	if (args_has(args, 'b'))
+		flags |= SPAWN_BEFORE;
+	if (args_has(args, 'f'))
+		flags |= SPAWN_FULLSIZE;
+
+	window_push_zoom(wp->window, 1, args_has(args, 'Z'));
+	lc = layout_split_pane(wp, type, size, flags);
+	if (lc == NULL)
+		*cause = xstrdup("no space for a new pane");
+
+	return (lc);
+}
+
+/* Get a new floating cell. */
+struct layout_cell *
+layout_get_floating_cell(struct cmdq_item *item, struct args *args,
+    struct window *w, __unused struct window_pane *wp, struct layout_cell *lc,
+    char **cause)
+{
+	u_int	sx, sy, ox, oy;
+	int	new = 0;
+
+	if (lc == NULL) {
+		lc = layout_create_cell(NULL);
+		new = 1;
+	}
+
+	sx = lc->sx; sy = lc->sy;
+	ox = lc->xoff; oy = lc->yoff;
+
+	if (args_has(args, 'x')) {
+		sx = args_percentage_and_expand(args, 'x', 0, USHRT_MAX, w->sx,
+		    item, cause);
+		if (*cause != NULL)
+			goto error;
+	}
+	if (args_has(args, 'y')) {
+		sy = args_percentage_and_expand(args, 'y', 0, USHRT_MAX, w->sy,
+		    item, cause);
+		if (*cause != NULL)
+			goto error;
+	}
+	if (args_has(args, 'X')) {
+		ox = args_percentage_and_expand(args, 'X', 0, USHRT_MAX, w->sx,
+		    item, cause);
+		if (*cause != NULL)
+			goto error;
+	}
+	if (args_has(args, 'Y')) {
+		oy = args_percentage_and_expand(args, 'Y', 0, USHRT_MAX, w->sy,
+		    item, cause);
+		if (*cause != NULL)
+			goto error;
+	}
+
+	if (sx == UINT_MAX)
+		sx = w->sx / 2;
+	if (sy == UINT_MAX)
+		sy = w->sy / 4;
+	if (ox == INT_MAX) {
+		if (w->last_new_pane_x == 0)
+			ox = 4;
+		else {
+			ox = w->last_new_pane_x + 4;
+			if (w->last_new_pane_x > w->sx)
+				ox = 4;
+		}
+		w->last_new_pane_x = ox;
+	}
+	if (oy == INT_MAX) {
+		if (w->last_new_pane_y == 0)
+			oy = 2;
+		else {
+			oy = w->last_new_pane_y + 2;
+			if (w->last_new_pane_y > w->sy)
+				oy = 2;
+		}
+		w->last_new_pane_y = oy;
+	}
+	layout_set_size(lc, sx, sy, ox, oy);
+	lc->flags |= LAYOUT_CELL_FLOATING;
+
+	return (lc);
+
+error:
+	if (new)
+		layout_destroy_cell(w, lc, &w->layout_root);
+	return (NULL);
 }
