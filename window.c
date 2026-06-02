@@ -908,7 +908,7 @@ window_pane_zindex(struct window_pane *wp, u_int *i)
 				(*i)++;
 			return (0);
 		}
-		if (window_pane_is_floating(wp))
+		if (window_pane_is_floating(wq))
 			(*i)++;
 	}
 
