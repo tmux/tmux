@@ -60,10 +60,10 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window		*w = wl->window;
 	struct layout_cell	*lc = wp->layout_cell;
 	enum layout_type	 type;
-	const char		*errstr;
+	const char		*errstr, *argval;
 	char			*cause;
 	u_int			 adjust, shift = 0;
-	int			 x, y, status;
+	int			 x, y, status, neg = 0;
 	struct grid		*gd = wp->base.grid;
 
 	if (args_has(args, 'T')) {
@@ -94,11 +94,18 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_count(args) == 0)
 		adjust = 1;
 	else {
-		adjust = strtonum(args_string(args, 0), 1, INT_MAX, &errstr);
+		argval = args_string(args, 0);
+		if (argval[0] == 'n') {
+			neg = 1;
+			argval = argval + 1;
+		}
+		adjust = strtonum(argval, 1, INT_MAX, &errstr);
 		if (errstr != NULL) {
 			cmdq_error(item, "adjustment %s", errstr);
 			return (CMD_RETURN_ERROR);
 		}
+		if (neg)
+			adjust = -adjust;
 	}
 
 	if (args_has(args, 'x')) {
