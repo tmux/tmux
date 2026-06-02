@@ -460,7 +460,7 @@ window_has_floating_panes(struct window *w)
 	struct window_pane	*wp;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (wp->flags & PANE_FLOATING)
+		if (window_pane_is_floating(wp))
 			return (1);
 	}
 	return (0);
@@ -600,7 +600,7 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 			break;
 
 		/* If the pane is floating, move to the front. */
-		if (wp->flags & PANE_FLOATING) {
+		if (window_pane_is_floating(wp)) {
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
 			wp->flags |= PANE_REDRAW;
@@ -625,7 +625,7 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 		if (!window_pane_visible(wp))
 			continue;
 		window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
-		if (~wp->flags & PANE_FLOATING) {
+		if (!window_pane_is_floating(wp)) {
 			/* Tiled - to and including bottom or right border. */
 			if ((int)x < xoff || x > xoff + sx)
 				continue;
@@ -794,7 +794,6 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 	if (~flags & SPAWN_FLOATING)
 		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 	else {
-		wp->flags |= PANE_FLOATING;
 		TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
 	}
 	return (wp);
@@ -898,11 +897,11 @@ window_pane_zindex(struct window_pane *wp, u_int *i)
 	*i = 0;
 	TAILQ_FOREACH(wq, &w->z_index, zentry) {
 		if (wq == wp) {
-			if (~wp->flags & PANE_FLOATING)
+			if (!window_pane_is_floating(wp))
 				(*i)++;
 			return (0);
 		}
-		if (wq->flags & PANE_FLOATING)
+		if (window_pane_is_floating(wq))
 			(*i)++;
 	}
 
@@ -916,7 +915,7 @@ window_count_panes(struct window *w, int with_floating)
 	u_int			 n = 0;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (with_floating || ~wp->flags & PANE_FLOATING)
+		if (with_floating || !window_pane_is_floating(wp))
 			n++;
 	}
 	return (n);
@@ -981,7 +980,7 @@ window_pane_printable_flags(struct window_pane *wp)
 		flags[pos++] = '-';
 	if (wp->flags & PANE_ZOOMED)
 		flags[pos++] = 'Z';
-	if (wp->flags & PANE_FLOATING)
+	if (window_pane_is_floating(wp))
 		flags[pos++] = 'F';
 	flags[pos] = '\0';
 	return (flags);
@@ -2200,4 +2199,14 @@ window_pane_floating_geometry(struct window *w, __unused struct window_pane *wp,
 	*out_sx = sx;
 	*out_sy = sy;
 	return (0);
+}
+
+int
+window_pane_is_floating(struct window_pane *wp)
+{
+	struct layout_cell	*lc = wp->layout_cell;
+
+	if (lc == NULL || (lc->flags & LAYOUT_CELL_FLOATING) == 0)
+		return (0);
+	return (1);
 }
