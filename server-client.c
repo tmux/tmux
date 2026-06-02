@@ -655,7 +655,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 				return (KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER);
 			} else /* py > sl_bottom */
 				return (KEYC_MOUSE_LOCATION_SCROLLBAR_DOWN);
-		} else if (wp->flags & PANE_FLOATING &&
+		} else if (window_pane_is_floating(wp) &&
 		    (px == wp->xoff - 1 ||
 		    py == wp->yoff - 1 ||
 		    py == wp->yoff + (int)wp->sy)) {
@@ -683,7 +683,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 			    py <= fwp->yoff + (int)fwp->sy) {
 				if (px == bdr_right)
 					break;
-				if (wp->flags & PANE_FLOATING) {
+				if (window_pane_is_floating(wp)) {
 					/* Floating pane, check left border. */
 					bdr_left = fwp->xoff - 1;
 					if (px == bdr_left)
@@ -695,7 +695,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 				bdr_bottom = fwp->yoff + fwp->sy;
 				if (py == bdr_bottom)
 					break;
-				if (wp->flags & PANE_FLOATING) {
+				if (window_pane_is_floating(wp)) {
 					/* Floating pane, check top border. */
 					bdr_top = fwp->yoff - 1;
 					if (py == bdr_top)

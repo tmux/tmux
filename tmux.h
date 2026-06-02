@@ -1270,7 +1270,7 @@ struct window_pane {
 #define PANE_FOCUSED 0x4
 #define PANE_VISITED 0x8
 #define PANE_ZOOMED 0x10
-#define PANE_FLOATING 0x20
+/* unused 0x20 */
 #define PANE_INPUTOFF 0x40
 #define PANE_CHANGED 0x80
 #define PANE_EXITED 0x100
@@ -1481,6 +1481,10 @@ TAILQ_HEAD(layout_cells, layout_cell);
 /* Layout cell. */
 struct layout_cell {
 	enum layout_type type;
+
+/* unused 0x1 */
+#define LAYOUT_CELL_FLOATING 0x2
+	int		 flags;
 
 	struct layout_cell *parent;
 
@@ -3508,12 +3512,7 @@ enum client_theme window_pane_get_theme(struct window_pane *);
 void		 window_pane_send_theme_update(struct window_pane *);
 struct style_range *window_pane_border_status_get_range(struct window_pane *,
 			u_int, u_int);
-int              window_pane_tiled_geometry(struct window *,
-		     struct window_pane *, int *, int *, enum layout_type *,
-		     struct cmdq_item *, struct args *, char **);
-int              window_pane_floating_geometry(struct window *,
-		     struct window_pane *, u_int *, u_int *, u_int *, u_int *,
-		     struct cmdq_item *, struct args *, char **);
+int		 window_pane_is_floating(struct window_pane *);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);
@@ -3551,6 +3550,11 @@ struct layout_cell *layout_split_pane(struct window_pane *, enum layout_type,
 void		 layout_close_pane(struct window_pane *);
 int		 layout_spread_cell(struct window *, struct layout_cell *);
 void		 layout_spread_out(struct window_pane *);
+struct layout_cell *layout_get_floating_cell(struct cmdq_item *, struct args *,
+		     struct window *, struct window_pane *, struct layout_cell *,
+		     char **);
+struct layout_cell *layout_get_tiled_cell(struct cmdq_item *, struct args *,
+		     struct window *, struct window_pane *, int, char **);
 
 /* layout-custom.c */
 char		*layout_dump(struct window *, struct layout_cell *);

@@ -69,68 +69,6 @@ const struct cmd_entry cmd_split_window_entry = {
 	.exec = cmd_split_window_exec
 };
 
-static struct layout_cell *
-cmd_split_window_get_floating_cell(struct cmdq_item *item, struct args *args,
-    struct window *w, struct window_pane *wp)
-{
-	struct layout_cell	*lc = NULL;
-	char			*cause = NULL;
-	u_int			 x, y, sx, sy;
-
-	if (window_pane_floating_geometry(w, wp, &x, &y, &sx, &sy, item, args,
-	    &cause) != 0) {
-		cmdq_error(item, "invalid floating pane geometry %s", cause);
-		free(cause);
-		return (NULL);
-	}
-
-	/*
-	 * Floating panes sit in layout cells which are not in the layout_root
-	 * tree so we call it with parent == NULL.
-	 */
-	lc = layout_create_cell(NULL);
-	lc->xoff = x;
-	lc->yoff = y;
-	lc->sx = sx;
-	lc->sy = sy;
-
-	return (lc);
-}
-
-static struct layout_cell *
-cmd_split_window_get_tiled_cell(struct cmdq_item *item, struct args *args,
-    struct window *w, struct window_pane *wp, int flags)
-{
-	enum layout_type	 type;
-	struct layout_cell	*lc = NULL;
-	char			*cause = NULL;
-	int			 size;
-
-	if (wp->flags & PANE_FLOATING) {
-		cmdq_error(item, "can't split a floating pane");
-		return (NULL);
-	}
-
-	if (wp->flags & PANE_HIDDEN) {
-		cmdq_error(item, "can't split a hidden pane");
-		return (NULL);
-	}
-
-	if (window_pane_tiled_geometry(w, wp, &size, &flags, &type, item, args,
-	    &cause) != 0) {
-		cmdq_error(item, "invalid tiled geometry %s", cause);
-		free(cause);
-		return (NULL);
-	}
-
-	window_push_zoom(wp->window, 1, args_has(args, 'Z'));
-	lc = layout_split_pane(wp, type, size, flags);
-	if (lc == NULL)
-		cmdq_error(item, "no space for new pane");
-
-	return (lc);
-}
-
 static enum cmd_retval
 cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -166,11 +104,13 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		flags |= SPAWN_EMPTY;
 
 	if (is_floating)
-		lc = cmd_split_window_get_floating_cell(item, args, w, wp);
+		lc = layout_get_floating_cell(item, args, w, wp, lc, &cause);
 	else
-		lc = cmd_split_window_get_tiled_cell(item, args, w, wp, flags);
-	if (lc == NULL)
+		lc = layout_get_tiled_cell(item, args, w, wp, flags, &cause);
+	if (cause != NULL) {
+		cmdq_error(item, "could not create cell: %s", cause);
 		return (CMD_RETURN_ERROR);
+	}
 
 	sc.item = item;
 	sc.s = s;
