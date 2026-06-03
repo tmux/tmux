@@ -40,7 +40,7 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.name = "resize-pane",
 	.alias = "resizep",
 
-	.args = { "DLMRTt:Ux:y:Z", 0, 1, NULL },
+	.args = { "D:L:MR:Tt:U:x:y:Z", 0, 1, NULL },
 	.usage = "[-DLMRTUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
 		 "[adjustment]",
 
@@ -59,11 +59,13 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
 	struct layout_cell	*lc = wp->layout_cell;
-	enum layout_type	 type = LAYOUT_TOPBOTTOM;
+	enum layout_type	 type;
 	const char		*errstr, *argval;
 	char			*cause;
+	char			 flag, flags[4] = { 'U', 'D', 'L', 'R' };
 	u_int			 adjust, shift = 0;
-	int			 x, y, status, neg = 0;
+	int			 x, y, status, neg;
+	long unsigned		 i;
 	struct grid		*gd = wp->base.grid;
 
 	if (args_has(args, 'T')) {
@@ -90,23 +92,6 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 	server_unzoom_window(w);
-
-	if (args_count(args) == 0)
-		adjust = 1;
-	else {
-		argval = args_string(args, 0);
-		if (argval[0] == 'n') {
-			neg = 1;
-			argval = argval + 1;
-		}
-		adjust = strtonum(argval, 1, INT_MAX, &errstr);
-		if (errstr != NULL) {
-			cmdq_error(item, "adjustment %s", errstr);
-			return (CMD_RETURN_ERROR);
-		}
-		if (neg)
-			adjust = -adjust;
-	}
 
 	if (args_has(args, 'x')) {
 		x = args_percentage(args, 'x', 0, INT_MAX, w->sx, &cause);
@@ -144,26 +129,51 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			layout_resize_pane_to(wp, LAYOUT_TOPBOTTOM, y);
 	}
 
-	if (args_has(args, 'L') || args_has(args, 'R'))
-		type = LAYOUT_LEFTRIGHT;
+	for (i = 0; i < nitems(flags); i++) {
+		flag = flags[i];
+		if (!args_has(args, flag))
+			continue;
 
-	if (window_pane_is_floating(wp)) {
-		if (args_has(args, 'L') || args_has(args, 'U'))
-			shift = 1;
+		argval = args_get(args, flag);
 
-		if (type == LAYOUT_LEFTRIGHT) {
-			lc->sx += adjust;
-			if (shift)
-				lc->xoff -= adjust;
-		} else {
-			lc->sy += adjust;
-			if (shift)
-				lc->yoff -= adjust;
+		neg = 0;
+		if (argval[0] == '-') {
+			argval++;
+			neg = 1;
 		}
-	} else {
-		if (args_has(args, 'L') || args_has(args, 'U'))
+
+		adjust = strtonum(argval, 1, INT_MAX, &errstr);
+		if (errstr != NULL) {
+			cmdq_error(item, "adjustment %s", errstr);
+			return (CMD_RETURN_ERROR);
+		}
+
+		if (neg)
 			adjust = -adjust;
-		layout_resize_pane(wp, type, adjust, 1);
+
+		type = LAYOUT_TOPBOTTOM;
+		if (flag == 'L' || flag == 'R')
+			type = LAYOUT_LEFTRIGHT;
+
+		if (window_pane_is_floating(wp)) {
+			shift = 0;
+			if (flag == 'L' || flag == 'U')
+				shift = 1;
+
+			if (type == LAYOUT_LEFTRIGHT) {
+				lc->sx += adjust;
+				if (shift)
+					lc->xoff -= adjust;
+			} else {
+				lc->sy += adjust;
+				if (shift)
+					lc->yoff -= adjust;
+			}
+		} else {
+			if (flag == 'L' || flag == 'U')
+				adjust = -adjust;
+			layout_resize_pane(wp, type, adjust, 1);
+		}
 	}
 
 	if (lc->parent != NULL)
