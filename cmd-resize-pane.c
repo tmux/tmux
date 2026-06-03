@@ -40,7 +40,7 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.name = "resize-pane",
 	.alias = "resizep",
 
-	.args = { "D:L:MR:Tt:U:x:y:Z", 0, 1, NULL },
+	.args = { "D::L::MR::Tt:U::x:y:Z", 0, 1, NULL },
 	.usage = "[-DLMRTUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
 		 "[adjustment]",
 
@@ -135,6 +135,8 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			continue;
 
 		argval = args_get(args, flag);
+		if (argval == NULL)
+			argval = "1";
 
 		neg = 0;
 		if (argval[0] == '-') {

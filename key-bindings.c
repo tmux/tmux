@@ -433,10 +433,10 @@ key_bindings_init(void)
 		"bind -N 'Resize the pane down by 5' -r M-Down { resize-pane -D 5 }",
 		"bind -N 'Resize the pane left by 5' -r M-Left { resize-pane -L 5 }",
 		"bind -N 'Resize the pane right by 5' -r M-Right { resize-pane -R 5 }",
-		"bind -N 'Resize the pane up' -r C-Up { resize-pane -U 1 }",
-		"bind -N 'Resize the pane down' -r C-Down { resize-pane -D 1 }",
-		"bind -N 'Resize the pane left' -r C-Left { resize-pane -L 1 }",
-		"bind -N 'Resize the pane right' -r C-Right { resize-pane -R 1 }",
+		"bind -N 'Resize the pane up' -r C-Up { resize-pane -U }",
+		"bind -N 'Resize the pane down' -r C-Down { resize-pane -D }",
+		"bind -N 'Resize the pane left' -r C-Left { resize-pane -L }",
+		"bind -N 'Resize the pane right' -r C-Right { resize-pane -R }",
 
 		/* Menu keys */
 		"bind -N 'Display window menu' < { display-menu -xW -yW -T '#[align=centre]#{window_index}:#{window_name}' " DEFAULT_WINDOW_MENU " }",
