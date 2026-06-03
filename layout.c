@@ -1302,8 +1302,8 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
     struct window *w, __unused struct window_pane *wp, struct layout_cell *lc,
     char **cause)
 {
-	u_int	sx, sy, ox, oy;
-	int	new = 0;
+	u_int	sx, sy;
+	int	ox, oy, new = 0;
 
 	if (lc == NULL) {
 		lc = layout_create_cell(NULL);
@@ -1326,14 +1326,14 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 			goto error;
 	}
 	if (args_has(args, 'X')) {
-		ox = args_percentage_and_expand(args, 'X', 0, USHRT_MAX, w->sx,
-		    item, cause);
+		ox = args_percentage_and_expand(args, 'X', -USHRT_MAX, USHRT_MAX,
+		    w->sx, item, cause);
 		if (*cause != NULL)
 			goto error;
 	}
 	if (args_has(args, 'Y')) {
-		oy = args_percentage_and_expand(args, 'Y', 0, USHRT_MAX, w->sy,
-		    item, cause);
+		oy = args_percentage_and_expand(args, 'Y', -USHRT_MAX, USHRT_MAX,
+		    w->sy, item, cause);
 		if (*cause != NULL)
 			goto error;
 	}
