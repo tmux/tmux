@@ -159,7 +159,7 @@ cmd_float_pane_exec(struct cmd *self, struct cmdq_item *item)
 	u_int			 sx, sy;
 	struct layout_cell	*lc;
 
-	if (wp->flags & PANE_FLOATING) {
+	if (window_pane_is_floating(wp)) {
 		cmdq_error(item, "pane is already floating");
 		return (CMD_RETURN_ERROR);
 	}
@@ -207,7 +207,7 @@ cmd_float_pane_exec(struct cmd *self, struct cmdq_item *item)
 	lc->sy = sy;
 	layout_make_leaf(lc, wp);	/* sets wp->layout_cell = lc, lc->wp = wp */
 
-	wp->flags |= PANE_FLOATING;
+	lc->flags |= LAYOUT_CELL_FLOATING;
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
 	TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
 
@@ -231,7 +231,7 @@ cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct layout_cell	*float_lc, *lc;
 	int			 was_hidden;
 
-	if (!(wp->flags & PANE_FLOATING)) {
+	if (!window_pane_is_floating(wp)) {
 		cmdq_error(item, "pane is not floating");
 		return (CMD_RETURN_ERROR);
 	}
@@ -275,12 +275,13 @@ cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 	 * than becoming a disconnected root.
 	 */
 	target_wp = NULL;
-	if (w->active != NULL && !(w->active->flags & PANE_FLOATING) &&
+	if (w->active != NULL && !window_pane_is_floating(w->active) &&
 	    !(w->active->flags & PANE_HIDDEN))
 		target_wp = w->active;
 	if (target_wp == NULL) {
 		TAILQ_FOREACH(wpiter, &w->last_panes, sentry) {
-			if (!(wpiter->flags & (PANE_FLOATING|PANE_HIDDEN)) &&
+			if (!(wpiter->flags & PANE_HIDDEN) &&
+			    !window_pane_is_floating(wpiter) &&
 			    window_pane_visible(wpiter)) {
 				target_wp = wpiter;
 				break;
@@ -289,7 +290,8 @@ cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	if (target_wp == NULL) {
 		TAILQ_FOREACH(wpiter, &w->panes, entry) {
-			if (!(wpiter->flags & (PANE_FLOATING|PANE_HIDDEN)) &&
+			if (!(wpiter->flags & PANE_HIDDEN) &&
+			    !window_pane_is_floating(wpiter) &&
 			    window_pane_visible(wpiter)) {
 				target_wp = wpiter;
 				break;
@@ -299,7 +301,7 @@ cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 	/* Fall back to any tiled pane (even hidden) to stay in the tree. */
 	if (target_wp == NULL) {
 		TAILQ_FOREACH(wpiter, &w->panes, entry) {
-			if (!(wpiter->flags & PANE_FLOATING)) {
+			if (!window_pane_is_floating(wpiter)) {
 				target_wp = wpiter;
 				break;
 			}
@@ -344,7 +346,7 @@ cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (was_hidden)
 		wp->saved_layout_cell = wp->layout_cell;
 
-	wp->flags &= ~PANE_FLOATING;
+	lc->flags &= ~LAYOUT_CELL_FLOATING;
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
 	TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 

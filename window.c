@@ -730,7 +730,7 @@ window_zoom(struct window_pane *wp)
 			wp1->flags &= ~PANE_HIDDEN;
 			continue;
 		}
-		if (wp1->flags & PANE_FLOATING) {
+		if (window_pane_is_floating(wp1)) {
 			wp1->saved_flags |= (wp1->flags & PANE_HIDDEN);
 			wp1->flags |= PANE_HIDDEN;
 			continue;
@@ -765,7 +765,7 @@ window_unzoom(struct window *w, int notify)
 	w->saved_layout_root = NULL;
 
 	TAILQ_FOREACH(wp, &w->z_index, zentry) {
-		if (wp->flags & PANE_FLOATING) {
+		if (window_pane_is_floating(wp)) {
 			wp->flags &= ~PANE_HIDDEN | (wp->saved_flags & PANE_HIDDEN);
 			continue;
 		}

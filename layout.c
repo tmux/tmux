@@ -611,8 +611,6 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
     struct layout_cell **lcroot)
 {
 	struct layout_cell     *lcother, *lcparent;
-	int			direction;
-	int			is_hidden;
 
 	/*
 	 * If no parent, this is either a floating pane or the last
@@ -640,9 +638,6 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 	/* Remove this from the parent's list. */
 	TAILQ_REMOVE(&lcparent->cells, lc, entry);
 	layout_free_cell(lc);
-
-	if (lcparent->type == LAYOUT_FLOATING)
-		return;
 
 	/*
 	 * In tiled layouts, if the parent now has one cell, remove
@@ -687,10 +682,8 @@ layout_hide_cell(struct window *w, struct layout_cell *lc)
 	int			direction;
 
 	lcparent = lc->parent;
-	if (lcparent == NULL ||
-	    lcparent->type == LAYOUT_FLOATING) {
+	if (lcparent == NULL)
 		return;
-	}
 
 	/* Merge the space into the nearest non-hidden sibling. */
 	{
@@ -730,7 +723,7 @@ layout_show_cell(struct window *w, struct layout_cell *lc)
 	if (lc == NULL)
 		return;
 	lcparent = lc->parent;
-	if (lcparent == NULL || lcparent->type == LAYOUT_FLOATING)
+	if (lcparent == NULL)
 		return;
 
 	/*
