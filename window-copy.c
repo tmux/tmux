@@ -42,7 +42,7 @@ static void	window_copy_formats(struct window_mode_entry *,
 		    struct format_tree *);
 static struct screen *window_copy_get_screen(struct window_mode_entry *);
 static void	window_copy_scroll1(struct window_mode_entry *,
-		    struct window_pane *wp, int, u_int, u_int, int);
+		    struct window_pane *, int, u_int, u_int, int);
 static void	window_copy_pageup1(struct window_mode_entry *, int);
 static int	window_copy_pagedown1(struct window_mode_entry *, int, int);
 static void	window_copy_next_paragraph(struct window_mode_entry *);
@@ -657,10 +657,10 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 	 * dragging this y point relative to top of slider.
 	 *
 	 * my is a raw tty y coordinate; sb_top (= wp->yoff) is a window
-	 * coordinate.  Convert my to window coordinates by adding tty_oy
-	 * (the window pan offset).  sl_mpos already has the statuslines
-	 * adjustment baked in (see server_client_check_mouse), so no further
-	 * statuslines correction is needed here.
+	 * coordinate. Convert my to window coordinates by adding tty_oy (the
+	 * window pan offset). sl_mpos already has the status lines adjustment
+	 * baked in (see server_client_check_mouse), so no further status lines
+	 * correction is needed here.
 	 */
 	my_w = my + tty_oy;
 	if (my_w <= sb_top + (u_int)sl_mpos) {
