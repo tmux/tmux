@@ -2233,7 +2233,7 @@ tty_sixelimage_draw(struct tty *tty, const struct tty_ctx *ctx,
 	breaks[nb++] = ry;
 
 	TAILQ_FOREACH(fp, &w->z_index, zentry) {
-		if (~fp->flags & PANE_FLOATING)
+		if (!window_pane_is_floating(fp))
 			continue;
 		fp_tb  = (int)((fp->yoff > 0) ? fp->yoff - 1 : 0);
 		fp_bb1 = (int)fp->yoff + (int)fp->sy + 1;
@@ -3186,12 +3186,12 @@ tty_style_changed(struct window_pane *wp)
 
 	tty_window_default_style(&wp->cached_active_gc, wp);
 	style_add(&wp->cached_active_gc, oo, "window-active-style", ft);
-	if (wp->flags & PANE_FLOATING)
+	if (window_pane_is_floating(wp))
 		style_add(&wp->cached_active_gc, oo, "floating-pane-style", ft);
 
 	tty_window_default_style(&wp->cached_gc, wp);
 	style_add(&wp->cached_gc, oo, "window-style", ft);
-	if (wp->flags & PANE_FLOATING)
+	if (window_pane_is_floating(wp))
 		style_add(&wp->cached_active_gc, oo, "floating-pane-style", ft);
 
 	format_free(ft);
