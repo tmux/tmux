@@ -378,6 +378,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 
 	server_unzoom_window(w);
 	server_client_remove_pane(wp);
+	animation_window_pane_layout_begin(w, wp);
 	layout_close_pane(wp);
 	window_remove_pane(w, wp);
 
@@ -385,6 +386,8 @@ server_destroy_pane(struct window_pane *wp, int notify)
 		server_kill_window(w, 1);
 	else
 		server_redraw_window(w);
+
+	animation_window_pane_layout_commit(w);
 }
 
 static void

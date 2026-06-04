@@ -138,7 +138,10 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'Z'))
 		sc.flags |= SPAWN_ZOOM;
 
+	animation_begin_pane_layout(cmdq_get_client(item), wp->window, NULL);
+
 	if ((new_wp = spawn_pane(&sc, &cause)) == NULL) {
+		animation_commit_pane_layout(cmdq_get_client(item), wp->window);
 		cmdq_error(item, "create pane failed: %s", cause);
 		free(cause);
 		if (sc.argv != NULL)
@@ -225,6 +228,9 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (sc.argv != NULL)
 		cmd_free_argv(sc.argc, sc.argv);
 	environ_free(sc.environ);
+
+	animation_commit_pane_layout(cmdq_get_client(item), wp->window);
+
 	if (input)
 		return (CMD_RETURN_WAIT);
 	return (CMD_RETURN_NORMAL);

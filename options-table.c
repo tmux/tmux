@@ -111,6 +111,12 @@ static const char *options_table_allow_passthrough_list[] = {
 static const char *options_table_copy_mode_line_numbers_list[] = {
 	"off", "default", "absolute", "relative", "hybrid", NULL
 };
+static const char *options_table_animation_window_switch_list[] = {
+	"off", "slide", NULL
+};
+static const char *options_table_animation_easing_list[] = {
+	"smoothdamp", "linear", "ease-in-out", NULL
+};
 
 /* Status line format. */
 #define OPTIONS_TABLE_STATUS_FORMAT1 \
@@ -277,6 +283,79 @@ const struct options_name_map options_other_names[] = {
 /* Top-level options. */
 const struct options_table_entry options_table[] = {
 	/* Server options. */
+	{ .name = "animation-duration",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .minimum = 0,
+	  .maximum = 5000,
+	  .default_num = 120,
+	  .text = "Total duration in ms of animated transitions."
+	},
+
+	{ .name = "animation-easing",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_animation_easing_list,
+	  .default_num = 0,
+	  .text = "Easing curve for animated transitions."
+	},
+
+	{ .name = "animation-enable",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_num = 1,
+	  .text = "Master switch enabling animated transitions."
+	},
+
+	{ .name = "animation-frame-interval",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .minimum = 1,
+	  .maximum = 1000,
+	  .default_num = 8,
+	  .text = "Target frame interval in ms for animated transitions."
+	},
+
+	{ .name = "animation-status-highlight",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_num = 1,
+	  .text = "Animate the active-window highlight in the status bar."
+	},
+
+	{ .name = "animation-tau",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .minimum = 1,
+	  .maximum = 5000,
+	  .default_num = 40,
+	  .text = "Smoothdamp time constant (tau) in ms."
+	},
+
+	{ .name = "animation-window-switch",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_animation_window_switch_list,
+	  .default_num = 1,
+	  .text = "How to animate window switching."
+	},
+
+	{ .name = "animation-pane-layout",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_num = 1,
+	  .text = "Animate pane resize, split, and kill."
+	},
+
+	{ .name = "animation-pane-duration",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .minimum = 0,
+	  .maximum = 5000,
+	  .default_num = 80,
+	  .text = "Duration in ms of pane layout animations."
+	},
+
 	{ .name = "backspace",
 	  .type = OPTIONS_TABLE_KEY,
 	  .scope = OPTIONS_TABLE_SERVER,

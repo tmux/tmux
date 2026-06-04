@@ -1477,9 +1477,13 @@ server_client_handle_key(struct client *c, struct key_event *event)
 			case 1:
 				server_client_clear_overlay(c);
 				return (0);
+			case 2:
+				/* Passthrough: keep overlay, dispatch key. */
+				goto overlay_passthrough;
 			}
 		}
 		server_client_clear_overlay(c);
+overlay_passthrough:
 		if (c->prompt_string != NULL) {
 			if (status_prompt_key(c, event->key) == 0)
 				return (0);

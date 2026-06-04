@@ -38,6 +38,7 @@
 
 extern char   **environ;
 
+struct animation;
 struct args;
 struct args_command_state;
 struct client;
@@ -2210,6 +2211,10 @@ struct client {
 	void			*overlay_data;
 	struct event		 overlay_timer;
 
+	struct animation	*animation;
+	struct event		 animation_timer;
+	void			*animation_capture;
+
 	struct client_files	 files;
 	u_int			 source_file_depth;
 
@@ -2674,6 +2679,8 @@ void	tty_margin_off(struct tty *);
 void	tty_cursor(struct tty *, u_int, u_int);
 int	tty_fake_bce(const struct tty *, const struct grid_cell *, u_int);
 void	tty_repeat_space(struct tty *, u_int);
+void	tty_clear_line(struct tty *, const struct grid_cell *, u_int, u_int,
+	    u_int, u_int);
 void	tty_clipboard_query(struct tty *);
 void	tty_putcode(struct tty *, enum tty_code_code);
 void	tty_putcode_i(struct tty *, enum tty_code_code, int);
@@ -3055,6 +3062,20 @@ void	 server_update_socket(void);
 void	 server_add_accept(int);
 void printflike(1, 2) server_add_message(const char *, ...);
 int	 server_create_socket(uint64_t, char **);
+
+/* animation.c */
+void	 animation_begin_window_switch(struct client *, struct winlink *,
+	     struct winlink *);
+void	 animation_retarget(struct client *, struct winlink *);
+void	 animation_cancel(struct client *);
+int	 animation_active(struct client *);
+void	 animation_begin_pane_layout(struct client *, struct window *,
+	     struct window_pane *);
+void	 animation_commit_pane_layout(struct client *, struct window *);
+void	 animation_capture_dying_pane(struct window_pane *);
+void	 animation_window_pane_layout_begin(struct window *,
+	     struct window_pane *);
+void	 animation_window_pane_layout_commit(struct window *);
 
 /* server-client.c */
 RB_PROTOTYPE(client_windows, client_window, entry, server_client_window_cmp);

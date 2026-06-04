@@ -66,6 +66,8 @@ cmd_kill_pane_exec(struct cmd *self, struct cmdq_item *item)
 		cmdq_error(item, "no active pane to kill");
 		return (CMD_RETURN_ERROR);
 	}
+	animation_begin_pane_layout(cmdq_get_client(item), wl->window, wp);
 	server_kill_pane(wp);
+	animation_commit_pane_layout(cmdq_get_client(item), wl->window);
 	return (CMD_RETURN_NORMAL);
 }

@@ -99,6 +99,8 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
+	animation_begin_pane_layout(cmdq_get_client(item), w, NULL);
+
 	if (args_has(args, 'x')) {
 		x = args_percentage(args, 'x', 0, INT_MAX, w->sx, &cause);
 		if (cause != NULL) {
@@ -138,6 +140,8 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	else if (args_has(args, 'D'))
 		layout_resize_pane(wp, LAYOUT_TOPBOTTOM, adjust, 1);
 	server_redraw_window(wl->window);
+
+	animation_commit_pane_layout(cmdq_get_client(item), w);
 
 	return (CMD_RETURN_NORMAL);
 }
