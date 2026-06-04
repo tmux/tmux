@@ -1004,7 +1004,7 @@ tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 		else if (cy > w->sy - *sy)
 			*oy = w->sy - *sy;
 		else
-			*oy = cy - *sy / 2;
+			*oy = cy - *sy + 1;
 	}
 
 	c->pan_window = NULL;
