@@ -155,7 +155,7 @@ cmd_list_keys_format_add_key_binding(struct format_tree *ft,
 	format_add(ft, "key_prefix", "%s", prefix);
 	format_add(ft, "key_table", "%s", bd->tablename);
 
-	format_add(ft, "key_string", "%s", key_string_lookup_key(bd->key, 0));
+	format_add(ft, "key_string", "%s", args_escape(key_string_lookup_key(bd->key, 0)));
 
 	s = cmd_list_print(bd->cmdlist, CMD_LIST_PRINT_ESCAPED|
 	    CMD_LIST_PRINT_NO_GROUPS);
