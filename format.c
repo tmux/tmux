@@ -116,6 +116,7 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_NOT 0x80000
 #define FORMAT_NOT_NOT 0x100000
 #define FORMAT_REPEAT 0x200000
+#define FORMAT_QUOTE_ARGUMENTS 0x400000
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 100
@@ -4182,6 +4183,11 @@ found:
 		found = format_quote_style(saved);
 		free(saved);
 	}
+	if (modifiers & FORMAT_QUOTE_ARGUMENTS) {
+		saved = found;
+		found = args_escape(saved);
+		free(saved);
+	}
 	return (found);
 }
 
@@ -5155,6 +5161,8 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 				else if (strchr(fm->argv[0], 'e') != NULL ||
 				    strchr(fm->argv[0], 'h') != NULL)
 					modifiers |= FORMAT_QUOTE_STYLE;
+				else if (strchr(fm->argv[0], 'a') != NULL)
+					modifiers |= FORMAT_QUOTE_ARGUMENTS;
 				break;
 			case 'E':
 				modifiers |= FORMAT_EXPAND;
