@@ -1465,7 +1465,7 @@ server_client_handle_key(struct client *c, struct key_event *event)
 	 * immediately rather than queued.
 	 */
 	if (~c->flags & CLIENT_READONLY) {
-		if (c->message_string != NULL) {
+		if (c->message_string != NULL && !c->message_passthru_keys) {
 			if (c->message_ignore_keys)
 				return (0);
 			status_message_clear(c);

@@ -3479,7 +3479,7 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 			if (c != NULL &&
 			    c->flags & CLIENT_READONLY &&
 			    (~flags & WINDOW_COPY_CMD_FLAG_READONLY)) {
-				status_message_set(c, -1, 1, 0, 0,
+				status_message_set(c, -1, 1, 0, 0, 0,
 				    "client is read-only");
 				return;
 			}

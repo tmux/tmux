@@ -238,7 +238,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 
 		line = format_expand(ft, template);
 		if ((single && tc != NULL) || n == 1)
-			status_message_set(tc, -1, 1, 0, 0, "%s", line);
+			status_message_set(tc, -1, 1, 0, 0, 0, "%s", line);
 		else if (*line != '\0')
 			cmdq_print(item, "%s", line);
 		free(line);
