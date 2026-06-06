@@ -821,17 +821,25 @@ cmd_find_from_nothing(struct cmd_find_state *fs, int flags)
 	cmd_find_clear_state(fs, flags);
 
 	fs->s = cmd_find_best_session(NULL, 0, flags);
-	if (fs->s == NULL) {
-		cmd_find_clear_state(fs, flags);
-		return (-1);
-	}
+	if (fs->s == NULL)
+		goto fail;
 	fs->wl = fs->s->curw;
-	fs->idx = fs->wl->idx;
+	if (fs->wl == NULL)
+		goto fail;
 	fs->w = fs->wl->window;
+	if (fs->w == NULL)
+		goto fail;
+	fs->idx = fs->wl->idx;
 	fs->wp = fs->w->active;
+	if (fs->wp == NULL)
+		goto fail;
 
 	cmd_find_log_state(__func__, fs);
 	return (0);
+
+fail:
+	cmd_find_clear_state(fs, flags);
+	return (-1);
 }
 
 /* Find state from mouse. */
