@@ -633,14 +633,17 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 			continue;
 		window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
 		if (!window_pane_is_floating(wp)) {
-			/* Tiled - to and including bottom or right border. */
+			/*
+			 * Tiled - to and including the right border, excluding
+			 * the bottom border.
+			 */
 			if ((int)x < xoff || x > xoff + sx)
 				continue;
 			if (pane_status == PANE_STATUS_TOP) {
-				if ((int)y < yoff - 1 || y > yoff + sy)
+				if ((int)y < yoff - 1 || y > yoff + sy - 1)
 					continue;
 			} else {
-				if ((int)y < yoff || y > yoff + sy)
+				if ((int)y < yoff || y > yoff + sy - 1)
 					continue;
 			}
 		} else {
