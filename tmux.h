@@ -1269,7 +1269,7 @@ struct window_pane {
 #define PANE_FOCUSED 0x4
 #define PANE_VISITED 0x8
 #define PANE_ZOOMED 0x10
-/* unused 0x20 */
+/* 0x20 unused */
 #define PANE_INPUTOFF 0x40
 #define PANE_CHANGED 0x80
 #define PANE_EXITED 0x100
@@ -1473,8 +1473,7 @@ TAILQ_HEAD(layout_cells, layout_cell);
 struct layout_cell {
 	enum layout_type type;
 
-/* unused 0x1 */
-#define LAYOUT_CELL_FLOATING 0x2
+#define LAYOUT_CELL_FLOATING 0x1
 	int		 flags;
 
 	struct layout_cell *parent;
@@ -3534,12 +3533,13 @@ void		 layout_assign_pane(struct layout_cell *, struct window_pane *,
 		     int);
 struct layout_cell *layout_split_pane(struct window_pane *, enum layout_type,
 		     int, int);
+struct layout_cell *layout_floating_pane(struct window *, u_int, u_int, int,
+		     int);
 void		 layout_close_pane(struct window_pane *);
 int		 layout_spread_cell(struct window *, struct layout_cell *);
 void		 layout_spread_out(struct window_pane *);
 struct layout_cell *layout_get_floating_cell(struct cmdq_item *, struct args *,
-		     struct window *, struct window_pane *, struct layout_cell *,
-		     char **);
+		     struct window *, struct window_pane *, char **);
 struct layout_cell *layout_get_tiled_cell(struct cmdq_item *, struct args *,
 		     struct window *, struct window_pane *, int, char **);
 

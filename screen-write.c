@@ -624,21 +624,23 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 	struct grid_line	*gl, *sgl;
 	struct grid_cell	 gc;
 	u_int			 xx, yy, cx = s->cx, cy = s->cy;
-	int			 yoff = 0;
+	int			 xoff = 0, yoff = 0;
 	struct visible_ranges	*r;
 
 	if (nx == 0 || ny == 0)
 		return;
-	if (wp != NULL)
+	if (wp != NULL) {
+		xoff = wp->xoff;
 		yoff = wp->yoff;
+	}
 
 	for (yy = py; yy < py + ny; yy++) {
 		if (yy >= gd->hsize + gd->sy)
 			break;
 		s->cx = cx;
 		screen_write_initctx(ctx, &ttyctx, 0, 0);
-		r = screen_redraw_get_visible_ranges(wp, px, s->cy + yoff, nx,
-		    NULL);
+		r = screen_redraw_get_visible_ranges(wp, xoff + s->cx,
+		    s->cy + yoff, nx, NULL);
 		for (xx = px; xx < px + nx; xx++) {
 			gl = grid_get_line(gd, yy);
 			sgl = grid_get_line(s->grid, s->cy);
@@ -650,7 +652,7 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 				break;
 			grid_view_set_cell(s->grid, s->cx, s->cy, &gc);
 
-			if (!screen_redraw_is_visible(r, px))
+			if (!screen_redraw_is_visible(r, xoff + s->cx))
 				break;
 			ttyctx.cell = &gc;
 			ttyctx.flags &= (TTY_CTX_OVERLAY_SYNC|TTY_CTX_SYNC);
