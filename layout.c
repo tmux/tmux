@@ -529,9 +529,7 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 	struct layout_cell     *lcother = NULL, *lcparent;
 
 	/*
-	 * If no parent, this is either a floating pane or the last
-	 * pane so window close is imminent and there is no need to
-	 * resize anything.
+	 * If no parent, this is the last pane in a window.
 	 */
 	lcparent = lc->parent;
 	if (lcparent == NULL) {
@@ -548,10 +546,14 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 		else
 			lcother = TAILQ_PREV(lc, layout_cells, entry);
 	}
-	if (lcother != NULL && lcparent->type == LAYOUT_LEFTRIGHT)
-		layout_resize_adjust(w, lcother, lcparent->type, lc->sx + 1);
-	else if (lcother != NULL)
-		layout_resize_adjust(w, lcother, lcparent->type, lc->sy + 1);
+	if (lcother != NULL && (~lcother->flags & LAYOUT_CELL_FLOATING)) {
+		if (lcparent->type == LAYOUT_LEFTRIGHT)
+			layout_resize_adjust(w, lcother, lcparent->type,
+			    lc->sx + 1);
+		else
+			layout_resize_adjust(w, lcother, lcparent->type,
+			    lc->sy + 1);
+	}
 
 	/* Remove this from the parent's list. */
 	TAILQ_REMOVE(&lcparent->cells, lc, entry);
@@ -567,8 +569,10 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 
 		lc->parent = lcparent->parent;
 		if (lc->parent == NULL) {
-			lc->xoff = 0;
-			lc->yoff = 0;
+			if (~lc->flags & LAYOUT_CELL_FLOATING) {
+				lc->xoff = 0;
+				lc->yoff = 0;
+			}
 			*lcroot = lc;
 		} else
 			TAILQ_REPLACE(&lc->parent->cells, lcparent, lc, entry);
