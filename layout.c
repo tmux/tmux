@@ -533,7 +533,7 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 	 */
 	lcparent = lc->parent;
 	if (lcparent == NULL) {
-		if (lc->wp != NULL && !window_pane_is_floating(lc->wp))
+		if (lc->wp != NULL)
 			*lcroot = NULL;
 		layout_free_cell(lc);
 		return;
