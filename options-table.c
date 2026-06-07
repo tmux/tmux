@@ -1028,7 +1028,8 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_ARRAY,
 	  .default_str = "DISPLAY KRB5CCNAME MSYSTEM SSH_ASKPASS SSH_AUTH_SOCK "
 			 "SSH_AGENT_PID SSH_CONNECTION WAYLAND_DISPLAY "
-			 "WINDOWID XAUTHORITY",
+			 "WINDOWID XAUTHORITY XDG_CURRENT_DESKTOP "
+			 "XDG_SESSION_DESKTOP XDG_SESSION_TYPE",
 	  .text = "List of environment variables to update in the session "
 		  "environment when a client is attached."
 	},

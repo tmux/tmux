@@ -97,6 +97,8 @@ CHANGES FROM 3.6b TO 3.7
 * Add WAYLAND_DISPLAY to default update-environment, issue 4965 from wgh at
   torlan dot ru.
 
+* Add XDG session variables to default update-environment, issue 5169.
+
 * Add -C flag to command-prompt to match display-message -C (do not freeze
   panes) (from Barrett Ruth in issue 4978).
 
