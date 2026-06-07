@@ -285,9 +285,8 @@ static void
 grid_free_line(struct grid *gd, u_int py)
 {
 	free(gd->linedata[py].celldata);
-	gd->linedata[py].celldata = NULL;
 	free(gd->linedata[py].extddata);
-	gd->linedata[py].extddata = NULL;
+	memset(&gd->linedata[py], 0, sizeof gd->linedata[py]);
 }
 
 /* Free several lines. */
@@ -332,9 +331,7 @@ void
 grid_destroy(struct grid *gd)
 {
 	grid_free_lines(gd, 0, gd->hsize + gd->sy);
-
 	free(gd->linedata);
-
 	free(gd);
 }
 
@@ -414,12 +411,14 @@ grid_collect_history(struct grid *gd, int all)
 void
 grid_remove_history(struct grid *gd, u_int ny)
 {
-	u_int	yy;
+	u_int	yy, start;
 
 	if (ny > gd->hsize)
 		return;
+	start = gd->hsize + gd->sy - ny;
 	for (yy = 0; yy < ny; yy++)
-		grid_free_line(gd, gd->hsize + gd->sy - 1 - yy);
+		grid_free_line(gd, start + yy);
+	memset(&gd->linedata[start], 0, ny * sizeof *gd->linedata);
 	gd->hsize -= ny;
 }
 
