@@ -33,8 +33,8 @@ const struct cmd_entry cmd_kill_session_entry = {
 	.name = "kill-session",
 	.alias = NULL,
 
-	.args = { "aCt:", 0, 0, NULL },
-	.usage = "[-aC] " CMD_TARGET_SESSION_USAGE,
+	.args = { "aCgt:", 0, 0, NULL },
+	.usage = "[-aCg] " CMD_TARGET_SESSION_USAGE,
 
 	.target = { 't', CMD_FIND_SESSION, 0 },
 
@@ -48,6 +48,7 @@ cmd_kill_session_exec(struct cmd *self, struct cmdq_item *item)
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct session		*s = target->s, *sloop, *stmp;
+	struct session_group	*sg;
 	struct winlink		*wl;
 
 	if (args_has(args, 'C')) {
@@ -62,6 +63,12 @@ cmd_kill_session_exec(struct cmd *self, struct cmdq_item *item)
 				server_destroy_session(sloop);
 				session_destroy(sloop, 1, __func__);
 			}
+		}
+	} else if (args_has(args, 'g') &&
+	    (sg = session_group_contains(s)) != NULL) {
+		TAILQ_FOREACH_SAFE(sloop, &sg->sessions, gentry, stmp) {
+			server_destroy_session(sloop);
+			session_destroy(sloop, 1, __func__);
 		}
 	} else {
 		server_destroy_session(s);

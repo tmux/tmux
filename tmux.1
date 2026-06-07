@@ -1202,7 +1202,7 @@ Kill the
 .Nm
 server and clients and destroy all sessions.
 .It Xo Ic kill\-session
-.Op Fl aC
+.Op Fl aCg
 .Op Fl t Ar target\-session
 .Xc
 Destroy the given session, closing any windows linked to it and no other
@@ -1210,6 +1210,10 @@ sessions, and detaching all clients attached to it.
 If
 .Fl a
 is given, all sessions but the specified one is killed.
+If
+.Fl g
+is given and the session is in a session group, all sessions in the group are
+killed.
 The
 .Fl C
 flag clears alerts (bell, activity, or silence) in all windows linked to the
