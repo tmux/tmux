@@ -102,12 +102,17 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		flags |= SPAWN_FULLSIZE;
 
 	input = args_has(args, 'I');
-	empty = (count == 1 && *args_string(args, 0) == '\0');
-	if (!empty && (input || args_has(args, 'E'))) {
+	if (input)
+		empty = 1;
+	else
+		empty = args_has(args, 'E');
+	if (empty &&
+	    count != 0 &&
+	    (count != 1 || *args_string(args, 0) != '\0')) {
 		cmdq_error(item, "command cannot be given for empty pane");
 		return (CMD_RETURN_ERROR);
 	}
-	if (input || empty || args_has(args, 'E'))
+	if (empty)
 		flags |= SPAWN_EMPTY;
 
 	if (is_floating)
