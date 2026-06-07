@@ -18,6 +18,9 @@ CHANGES FROM 3.6b TO 3.7
 * Allow run-shell arguments after a shell command to be expanded as #{1}, #{2}
   and so on (from Rasmus Thystrup Karstensen in issue 5121).
 
+* Add -g to kill-session to kill all sessions in a session group (issue 5157
+  from github at jiku dot jp).
+
 * Tighten up read-only checks on attach-session, detach-client and
   switch-client so that a user should be able to only detach their own client
   (reported by John Walker).
@@ -94,8 +97,8 @@ CHANGES FROM 3.6b TO 3.7
   memory, reported by z1281552865 at gmail dot com. Also various other similar
   changes, mostly found by OSS-Fuzz.
 
-* Add WAYLAND_DISPLAY to default update-environment, issue 4965 from wgh at
-  torlan dot ru.
+* Add WAYLAND_DISPLAY to default update-environment (issue 4965). Also some
+  additional XDG_* variables (issue 5169).
 
 * Add -C flag to command-prompt to match display-message -C (do not freeze
   panes) (from Barrett Ruth in issue 4978).
