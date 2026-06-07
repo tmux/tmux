@@ -2666,7 +2666,7 @@ but a different format may be specified with
 .Fl F .
 .Tg capturep
 .It Xo Ic capture\-pane
-.Op Fl aepPqCJMN
+.Op Fl aeFLpPqCJMN
 .Op Fl b Ar buffer\-name
 .Op Fl E Ar end\-line
 .Op Fl S Ar start\-line
@@ -2706,6 +2706,20 @@ implies
 .Fl P
 captures only any output that the pane has received that is the beginning of an
 as-yet incomplete escape sequence.
+.Fl L
+includes the line number at the start of each line and
+.Fl F
+includes the flags (where
+.Ql -
+is no flags,
+.Ql D
+is an unused line,
+.Ql O
+is a line marked as output,
+.Ql P
+is a line marked as a prompt and
+.Ql X
+is a line containing extended cells).
 .Pp
 .Fl S
 and

@@ -39,8 +39,8 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	.name = "capture-pane",
 	.alias = "capturep",
 
-	.args = { "ab:CeE:JMNpPqS:Tt:", 0, 0, NULL },
-	.usage = "[-aCeJMNpPqT] " CMD_BUFFER_USAGE " [-E end-line] "
+	.args = { "ab:CeE:FJLMNpPqS:Tt:", 0, 0, NULL },
+	.usage = "[-aCeFJLMNpPqT] " CMD_BUFFER_USAGE " [-E end-line] "
 		 "[-S start-line] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -112,9 +112,10 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 	struct screen			*s;
 	struct grid_cell		*gc = NULL;
 	struct window_mode_entry	*wme;
-	int				 n, join_lines, flags = 0;
+	int				 n, join_lines, number_lines, flags = 0;
+	int				 show_flags;
 	u_int				 i, sx, top, bottom, tmp;
-	char				*cause, *buf, *line;
+	char				*cause, *buf, *line, b[64], *cp;
 	const char			*Sflag, *Eflag;
 	size_t				 linelen;
 
@@ -152,7 +153,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 		if (cause != NULL) {
 			top = gd->hsize;
 			free(cause);
-		} else if (n < 0 && (u_int) -n > gd->hsize)
+		} else if (n < 0 && (u_int)-n > gd->hsize)
 			top = 0;
 		else
 			top = gd->hsize + n;
@@ -169,7 +170,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 		if (cause != NULL) {
 			bottom = gd->hsize + gd->sy - 1;
 			free(cause);
-		} else if (n < 0 && (u_int) -n > gd->hsize)
+		} else if (n < 0 && (u_int)-n > gd->hsize)
 			bottom = 0;
 		else
 			bottom = gd->hsize + n;
@@ -192,12 +193,44 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 		flags |= GRID_STRING_EMPTY_CELLS;
 	if (!join_lines && !args_has(args, 'N'))
 		flags |= GRID_STRING_TRIM_SPACES;
+	number_lines = args_has(args, 'L');
+	show_flags = args_has(args, 'F');
 
 	buf = NULL;
 	for (i = top; i <= bottom; i++) {
 		line = grid_string_cells(gd, 0, i, sx, &gc, flags, s);
 		linelen = strlen(line);
 
+		if (number_lines) {
+			if (i >= gd->hsize)
+				n = i - gd->hsize;
+			else
+				n = (int)i - (int)gd->hsize;
+			n = snprintf(b, sizeof b, "%d ", n);
+			if (n >= 0)
+				buf = cmd_capture_pane_append(buf, len, b, n);
+		}
+		if (show_flags) {
+			cp = b;
+			*cp = '\0';
+
+			gl = grid_peek_line(gd, i);
+			if (gl->flags & GRID_LINE_DEAD)
+				*cp++ = 'D';
+			if (gl->flags & GRID_LINE_START_OUTPUT)
+				*cp++ = 'O';
+			if (gl->flags & GRID_LINE_START_PROMPT)
+				*cp++ = 'P';
+			if (gl->flags & GRID_LINE_WRAPPED)
+				*cp++ = 'W';
+			if (gl->flags & GRID_LINE_EXTENDED)
+				*cp++ = 'X';
+			if (b == cp)
+				*cp++ = '-';
+			*cp++ = ' ';
+			*cp = '\0';
+			buf = cmd_capture_pane_append(buf, len, b, strlen (b));
+		}
 		buf = cmd_capture_pane_append(buf, len, line, linelen);
 
 		gl = grid_peek_line(gd, i);
