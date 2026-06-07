@@ -1180,6 +1180,8 @@ struct window_mode_entry {
 	struct screen			*screen;
 	u_int				 prefix;
 
+	int				 kill;
+
 	TAILQ_ENTRY(window_mode_entry)	 entry;
 };
 
