@@ -354,6 +354,8 @@ window_tree_build(void *modedata, struct sort_criteria *sort_crit,
 	struct window_tree_modedata	*data = modedata;
 	struct session			*s, **l;
 	struct session_group		*sg, *current;
+	struct window			*w;
+	struct window_pane		*lastwp;
 	u_int				 n, i;
 
 	current = session_group_contains(data->fs.s);
@@ -390,7 +392,15 @@ window_tree_build(void *modedata, struct sort_criteria *sort_crit,
 	case WINDOW_TREE_PANE:
 		if (window_count_panes(data->fs.wl->window, 1) == 1)
 			*tag = (uint64_t)data->fs.wl;
-		else
+		else if (window_pane_is_floating(data->fs.wp)) {
+			w = data->fs.wl->window;
+			TAILQ_FOREACH(lastwp, &w->last_panes, sentry) {
+				if (!window_pane_is_floating(lastwp))
+					break;
+			}
+			*tag = (lastwp != NULL) ?
+			    (uint64_t)lastwp : (uint64_t)data->fs.wl;
+		} else
 			*tag = (uint64_t)data->fs.wp;
 		break;
 	}
