@@ -1359,30 +1359,30 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
     struct window *w, __unused struct window_pane *wp, char **cause)
 {
 	struct layout_cell	*lcnew;
-	u_int			 sx = w->sx / 2, sy = w->sy / 4;
+	int			 sx = w->sx / 2, sy = w->sy / 4;
 	int			 ox = INT_MAX, oy = INT_MAX;
 
 	if (args_has(args, 'x')) {
-		sx = args_percentage_and_expand(args, 'x', 0, USHRT_MAX, w->sx,
+		sx = args_percentage_and_expand(args, 'x', 0, w->sx - 1, w->sx,
 		    item, cause);
 		if (*cause != NULL)
 			return (NULL);
 	}
 	if (args_has(args, 'y')) {
-		sy = args_percentage_and_expand(args, 'y', 0, USHRT_MAX, w->sy,
+		sy = args_percentage_and_expand(args, 'y', 0, w->sy - 1, w->sy,
 		    item, cause);
 		if (*cause != NULL)
 			return (NULL);
 	}
 	if (args_has(args, 'X')) {
-		ox = args_percentage_and_expand(args, 'X', 0, USHRT_MAX, w->sx,
-		    item, cause);
+		ox = args_percentage_and_expand(args, 'X', -sx, w->sx,
+		    w->sx, item, cause);
 		if (*cause != NULL)
 			return (NULL);
 	}
 	if (args_has(args, 'Y')) {
-		oy = args_percentage_and_expand(args, 'Y', 0, USHRT_MAX, w->sy,
-		    item, cause);
+		oy = args_percentage_and_expand(args, 'Y', -sy, w->sy,
+		    w->sy, item, cause);
 		if (*cause != NULL)
 			return (NULL);
 	}
