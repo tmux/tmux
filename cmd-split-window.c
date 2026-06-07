@@ -220,7 +220,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		window_pop_zoom(wp->window);
 		server_redraw_window(wp->window);
 	}
-	server_status_session(s);
+	server_redraw_session(s);
 
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
