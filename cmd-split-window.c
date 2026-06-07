@@ -90,7 +90,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	u_int			 count = args_count(args);
 
 	if (cmd_get_entry(self) == &cmd_new_pane_entry)
-		is_floating = 0; /* !args_has(args, 'L'); */
+		is_floating = !args_has(args, 'L');
 	else
 		is_floating = 0;
 	input = (args_has(args, 'I') && count == 0);
