@@ -3377,15 +3377,16 @@ but also sets the
 option for this pane to
 .Ar message .
 .Pp
-An empty
-.Ar shell\-command
-(\[aq]\[aq]) will create a pane with no command running in it.
+.Fl E ,
+or an empty
+.Ar shell\-command ,
+(\[aq]\[aq]) will create an empty pane with no command running in it;
+.Ic display-message
+.Fl I
+can write to an empty pane.
 The
 .Fl I
-flag (if
-.Ar shell\-command
-is not specified or empty)
-will create an empty pane and forward any output from stdin to it.
+flag will create an empty pane and forward any output from stdin to it.
 For example:
 .Bd -literal -offset indent
 $ make 2>&1|tmux splitw \-dI &
