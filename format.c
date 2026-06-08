@@ -117,6 +117,7 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_NOT_NOT 0x100000
 #define FORMAT_REPEAT 0x200000
 #define FORMAT_QUOTE_ARGUMENTS 0x400000
+#define FORMAT_RELATIVE 0x800000
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 100
@@ -4063,6 +4064,50 @@ format_pretty_time(time_t t, int seconds)
 	return (xstrdup(s));
 }
 
+/* Make a relative time. */
+static char *
+format_relative_time(time_t t)
+{
+	time_t	now, age;
+	u_int	d, h, m, s;
+	char	out[32], sign;
+
+	time(&now);
+	if (t == now)
+		return (xstrdup("0s"));
+	if (t > now) {
+		sign = '+';
+		age = t - now;
+	} else {
+		sign = '-';
+		age = now - t;
+	}
+
+	d = age / 86400;
+	h = (age % 86400) / 3600;
+	m = (age % 3600) / 60;
+	s = age % 60;
+
+	if (d != 0) {
+		if (h != 0)
+			xsnprintf(out, sizeof out, "%c%ud%uh", sign, d, h);
+		else
+			xsnprintf(out, sizeof out, "%c%ud", sign, d);
+	} else if (h != 0) {
+		if (m != 0)
+			xsnprintf(out, sizeof out, "%c%uh%um", sign, h, m);
+		else
+			xsnprintf(out, sizeof out, "%c%uh", sign, h);
+	} else if (m != 0) {
+		if (s != 0)
+			xsnprintf(out, sizeof out, "%c%um%us", sign, m, s);
+		else
+			xsnprintf(out, sizeof out, "%c%um", sign, m);
+	} else
+		xsnprintf(out, sizeof out, "%c%us", sign, s);
+	return (xstrdup(out));
+}
+
 /* Find a format entry. */
 static char *
 format_find(struct format_tree *ft, const char *key, int modifiers,
@@ -4144,7 +4189,9 @@ found:
 		}
 		if (t == 0)
 			return (NULL);
-		if (modifiers & FORMAT_PRETTY)
+		if (modifiers & FORMAT_RELATIVE)
+			found = format_relative_time(t);
+		else if (modifiers & FORMAT_PRETTY)
 			found = format_pretty_time(t, 0);
 		else {
 			if (time_format != NULL) {
@@ -5149,6 +5196,8 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 					break;
 				if (strchr(fm->argv[0], 'p') != NULL)
 					modifiers |= FORMAT_PRETTY;
+				else if (strchr(fm->argv[0], 'r') != NULL)
+					modifiers |= FORMAT_RELATIVE;
 				else if (fm->argc >= 2 &&
 				    strchr(fm->argv[0], 'f') != NULL) {
 					free(time_format);
