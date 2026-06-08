@@ -355,6 +355,7 @@ window_tree_build(void *modedata, struct sort_criteria *sort_crit,
     uint64_t *tag, const char *filter)
 {
 	struct window_tree_modedata	*data = modedata;
+	int				 squash_groups = data->squash_groups;
 	struct session			*s, **l;
 	struct session_group		*sg, *current;
 	u_int				 n, i;
@@ -370,15 +371,14 @@ window_tree_build(void *modedata, struct sort_criteria *sort_crit,
 	l = sort_get_sessions(&n, sort_crit);
 	if (n == 0)
 		return;
-	s = l[n - 1];
 	for (i = 0; i < n; i++) {
-		if (data->squash_groups &&
-		    (sg = session_group_contains(s)) != NULL) {
+		s = l[i];
+		if (squash_groups && (sg = session_group_contains(s)) != NULL) {
 			if ((sg == current && s != data->fs.s) ||
 			    (sg != current && s != TAILQ_FIRST(&sg->sessions)))
 				continue;
 		}
-		window_tree_build_session(l[i], modedata, sort_crit, filter);
+		window_tree_build_session(s, modedata, sort_crit, filter);
 	}
 
 	switch (data->type) {
