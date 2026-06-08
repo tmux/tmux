@@ -1576,35 +1576,57 @@ option.
 Rename the session to
 .Ar new\-name .
 .It Xo Ic server\-access
-.Op Fl adlrw
-.Op Ar user
+.Op Fl adglrw
+.Op Ar user | group
 .Xc
 Change the access or read/write permission of
-.Ar user .
+.Ar user
+or
+.Ar group .
 The user running the
 .Nm
 server (its owner) and the root user cannot be changed and are always
 permitted access.
+.Fl g
+changes a group rather than a user.
 .Pp
 .Fl a
 and
 .Fl d
-are used to give or revoke access for the specified user.
-If the user is already attached, the
+are used to give or revoke access for the specified user or group.
+If a client is already attached, the
 .Fl d
-flag causes their clients to be detached.
+flag causes it to be detached unless it is still permitted by another entry.
 .Pp
 .Fl r
 and
 .Fl w
 change the permissions for
-.Ar user :
+.Ar user
+or
+.Ar group :
 .Fl r
-makes their clients read-only and
+makes matching clients read-only and
 .Fl w
 writable.
 .Fl l
 lists current access permissions.
+User entries are shown with
+.Ql U ,
+group entries with
+.Ql G ,
+and read-only or writable entries with
+.Ql R
+or
+.Ql W ,
+for example
+.Ql user1 (U,W)
+or
+.Ql testgroup (G,R) .
+If both a user and group entry match a client, the user entry takes
+precedence.
+Only the effective group ID of the client is used, not its supplementary
+groups.
 .Pp
 By default, the access list is empty and
 .Nm

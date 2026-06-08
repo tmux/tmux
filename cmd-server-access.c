@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <grp.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <string.h>
@@ -37,67 +38,71 @@ const struct cmd_entry cmd_server_access_entry = {
 	.name = "server-access",
 	.alias = NULL,
 
-	.args = { "adlrw", 0, 1, NULL },
-	.usage = "[-adlrw] " CMD_TARGET_PANE_USAGE " [user]",
+	.args = { "adglrw", 0, 1, NULL },
+	.usage = "[-adglrw] " CMD_TARGET_PANE_USAGE " [user|group]",
 
 	.flags = CMD_CLIENT_CANFAIL,
 	.exec = cmd_server_access_exec
 };
 
 static enum cmd_retval
-cmd_server_access_deny(struct cmdq_item *item, struct passwd *pw)
+cmd_server_access_deny(struct cmdq_item *item, id_t id, int flags,
+    const char *type, const char *name)
 {
-	struct client		*loop;
-	struct server_acl_user	*user;
-	uid_t			 uid;
-
-	if ((user = server_acl_user_find(pw->pw_uid)) == NULL) {
-		cmdq_error(item, "user %s not found", pw->pw_name);
+	if (!server_acl_find(id, flags)) {
+		cmdq_error(item, "%s %s not found", type, name);
 		return (CMD_RETURN_ERROR);
 	}
-	TAILQ_FOREACH(loop, &clients, entry) {
-		uid = proc_get_peer_uid(loop->peer);
-		if (uid == server_acl_get_uid(user)) {
-			loop->exit_message = xstrdup("access not allowed");
-			loop->flags |= CLIENT_EXIT;
-		}
-	}
-	server_acl_user_deny(pw->pw_uid);
-
+	server_acl_deny(id, flags);
 	return (CMD_RETURN_NORMAL);
 }
 
 static enum cmd_retval
 cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
 {
-
 	struct args	*args = cmd_get_args(self);
 	struct client	*c = cmdq_get_target_client(item);
-	char		*name;
-	struct passwd	*pw = NULL;
+	char		*arg;
+	const char	*name, *type = NULL;
+	struct passwd	*pw;
+	struct group	*gr;
+	id_t		 id;
+	int		 flags = 0;
 
 	if (args_has(args, 'l')) {
 		server_acl_display(item);
 		return (CMD_RETURN_NORMAL);
 	}
 	if (args_count(args) == 0) {
-		cmdq_error(item, "missing user argument");
+		cmdq_error(item, "missing user or group argument");
 		return (CMD_RETURN_ERROR);
 	}
 
-	name = format_single(item, args_string(args, 0), c, NULL, NULL, NULL);
-	if (*name != '\0')
-		pw = getpwnam(name);
-	if (pw == NULL) {
-		cmdq_error(item, "unknown user: %s", name);
-		free(name);
+	arg = format_single(item, args_string(args, 0), c, NULL, NULL, NULL);
+	if (args_has(args, 'g')) {
+		if ((gr = getgrnam(arg)) != NULL) {
+			type = "group";
+			id = gr->gr_gid;
+			name = gr->gr_name;
+			flags |= SERVER_ACL_IS_GROUP;
+		}
+	} else {
+		if ((pw = getpwnam(arg)) != NULL) {
+			type = "user";
+			id = pw->pw_uid;
+			name = pw->pw_name;
+		}
+	}
+	if (type == NULL) {
+		cmdq_error(item, "unknown %s: %s", type, arg);
+		free(arg);
 		return (CMD_RETURN_ERROR);
 	}
-	free(name);
+	free(arg);
 
-	if (pw->pw_uid == 0 || pw->pw_uid == getuid()) {
+	if ((~flags & SERVER_ACL_IS_GROUP) && (id == 0 || id == getuid())) {
 		cmdq_error(item, "%s owns the server, can't change access",
-		    pw->pw_name);
+		    name);
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -111,36 +116,35 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(args, 'd'))
-		return (cmd_server_access_deny(item, pw));
+		return (cmd_server_access_deny(item, id, flags, type, name));
 	if (args_has(args, 'a')) {
-		if (server_acl_user_find(pw->pw_uid) != NULL) {
-			cmdq_error(item, "user %s is already added",
-			    pw->pw_name);
+		if (server_acl_find(id, flags)) {
+			cmdq_error(item, "%s %s is already added", type, name);
 			return (CMD_RETURN_ERROR);
 		}
-		server_acl_user_allow(pw->pw_uid);
+		server_acl_allow(id, flags);
 		/* Do not return - allow -r or -w with -a. */
 	} else if (args_has(args, 'r') || args_has(args, 'w')) {
-		/* -r or -w implies -a if user does not exist. */
-		if (server_acl_user_find(pw->pw_uid) == NULL)
-			server_acl_user_allow(pw->pw_uid);
+		/* -r or -w implies -a if the entry does not exist. */
+		if (!server_acl_find(id, flags))
+			server_acl_allow(id, flags);
 	}
 
 	if (args_has(args, 'w')) {
-		if (server_acl_user_find(pw->pw_uid) == NULL) {
-			cmdq_error(item, "user %s not found", pw->pw_name);
+		if (!server_acl_find(id, flags)) {
+			cmdq_error(item, "%s %s not found", type, name);
 			return (CMD_RETURN_ERROR);
 		}
-		server_acl_user_allow_write(pw->pw_uid);
+		server_acl_allow_write(id, flags);
 		return (CMD_RETURN_NORMAL);
 	}
 
 	if (args_has(args, 'r')) {
-		if (server_acl_user_find(pw->pw_uid) == NULL) {
-			cmdq_error(item, "user %s not found", pw->pw_name);
+		if (!server_acl_find(id, flags)) {
+			cmdq_error(item, "%s %s not found", type, name);
 			return (CMD_RETURN_ERROR);
 		}
-		server_acl_user_deny_write(pw->pw_uid);
+		server_acl_deny_write(id, flags);
 		return (CMD_RETURN_NORMAL);
 	}
 
