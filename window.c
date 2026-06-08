@@ -628,6 +628,23 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 
 	pane_status = options_get_number(w->options, "pane-border-status");
 
+	if (pane_status == PANE_STATUS_TOP) {
+		/*
+		 * Prefer a pane's top border status line over the pane above's
+		 * bottom border.
+		 */
+		TAILQ_FOREACH(wp, &w->z_index, zentry) {
+			if (!window_pane_visible(wp) || window_pane_is_floating(wp))
+				continue;
+
+			window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
+			if ((int)x < xoff || x > xoff + sx)
+				continue;
+			if ((int)y == yoff - 1)
+				return (wp);
+		}
+	}
+
 	TAILQ_FOREACH(wp, &w->z_index, zentry) {
 		if (!window_pane_visible(wp))
 			continue;
@@ -640,10 +657,10 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 			if ((int)x < xoff || x > xoff + sx)
 				continue;
 			if (pane_status == PANE_STATUS_TOP) {
-				if ((int)y < yoff - 1 || y > yoff + sy - 1)
+				if ((int)y < yoff - 1 || y > yoff + sy)
 					continue;
 			} else {
-				if ((int)y < yoff || y > yoff + sy - 1)
+				if ((int)y < yoff || y > yoff + sy)
 					continue;
 			}
 		} else {
