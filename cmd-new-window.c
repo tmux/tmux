@@ -71,6 +71,15 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	 * name already exists, select it.
 	 */
 	name = args_get(args, 'n');
+	if (name != NULL) {
+		expanded = format_single(item, name, c, s, NULL, NULL);
+		if (!check_name(expanded, ":.")) {
+			cmdq_error(item, "invalid window name: %s", expanded);
+			free(expanded);
+			return (CMD_RETURN_ERROR);
+		}
+		free(expanded);
+	}
 	if (args_has(args, 'S') && name != NULL && target->idx == -1) {
 		expanded = format_single(item, name, c, s, NULL, NULL);
 		RB_FOREACH(wl, winlinks, &s->windows) {

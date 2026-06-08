@@ -401,11 +401,11 @@ window_remove_ref(struct window *w, const char *from)
 }
 
 void
-window_set_name(struct window *w, const char *new_name)
+window_set_name(struct window *w, const char *new_name, const char *forbid)
 {
 	char	*name;
 
-	name = clean_name(new_name, "#");
+	name = clean_name(new_name, forbid);
 	if (name != NULL) {
 		free(w->name);
 		w->name = name;
@@ -1059,7 +1059,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	style_ranges_init(&wp->border_status_line.ranges);
 
 	if (gethostname(host, sizeof host) == 0)
-		screen_set_title(&wp->base, host);
+		screen_set_title(&wp->base, host, "");
 
 	return (wp);
 }

@@ -245,11 +245,11 @@ screen_set_cursor_colour(struct screen *s, int colour)
 
 /* Set screen title. */
 int
-screen_set_title(struct screen *s, const char *title)
+screen_set_title(struct screen *s, const char *title, const char *forbid)
 {
 	char	*new_title;
 
-	new_title = clean_name(title, "#");
+	new_title = clean_name(title, forbid);
 	if (new_title == NULL)
 		return (0);
 	free(s->title);

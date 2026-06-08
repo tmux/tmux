@@ -2701,7 +2701,7 @@ input_exit_osc(struct input_ctx *ictx)
 	case 2:
 		if (wp != NULL &&
 		    options_get_number(wp->options, "allow-set-title") &&
-		    screen_set_title(sctx->s, p)) {
+		    screen_set_title(sctx->s, p, "#")) {
 			notify_pane("pane-title-changed", wp);
 			server_redraw_window_borders(wp->window);
 			server_status_window(wp->window);
@@ -2779,7 +2779,7 @@ input_exit_apc(struct input_ctx *ictx)
 
 	if (wp != NULL &&
 	    options_get_number(wp->options, "allow-set-title") &&
-	    screen_set_title(sctx->s, ictx->input_buf)) {
+	    screen_set_title(sctx->s, ictx->input_buf, "#")) {
 		notify_pane("pane-title-changed", wp);
 		server_redraw_window_borders(wp->window);
 		server_status_window(wp->window);
@@ -2822,10 +2822,10 @@ input_exit_rename(struct input_ctx *ictx)
 		if (o != NULL)
 			options_remove_or_default(o, -1, NULL);
 		if (!options_get_number(w->options, "automatic-rename"))
-			window_set_name(w, "");
+			window_set_name(w, "", ":.#");
 	} else {
 		options_set_number(w->options, "automatic-rename", 0);
-		window_set_name(w, ictx->input_buf);
+		window_set_name(w, ictx->input_buf, ":.#");
 	}
 	server_redraw_window_borders(w);
 	server_status_window(w);

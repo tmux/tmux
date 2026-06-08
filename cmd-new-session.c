@@ -99,15 +99,26 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-	tmp = args_get(args, 's');
+	tmp = args_get(args, 'n');
 	if (tmp != NULL) {
 		name = format_single(item, tmp, c, NULL, NULL, NULL);
-		newname = clean_name(name, "#:.");
-		if (newname == NULL) {
-			cmdq_error(item, "invalid session: %s", name);
+		if (!check_name(name, ":.")) {
+			cmdq_error(item, "invalid window name: %s", name);
 			free(name);
 			return (CMD_RETURN_ERROR);
 		}
+		free(name);
+	}
+
+	tmp = args_get(args, 's');
+	if (tmp != NULL) {
+		name = format_single(item, tmp, c, NULL, NULL, NULL);
+		if (!check_name(name, ":.")) {
+			cmdq_error(item, "invalid session name: %s", name);
+			free(name);
+			return (CMD_RETURN_ERROR);
+		}
+		newname = clean_name(name, ":.");
 		free(name);
 	}
 	if (args_has(args, 'A')) {
@@ -142,12 +153,12 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		else if (groupwith != NULL)
 			prefix = xstrdup(groupwith->name);
 		else {
-			prefix = clean_name(group, "#:.");
-			if (prefix == NULL) {
-				cmdq_error(item, "invalid session group: %s",
-				    group);
+			if (!check_name(group, ":.")) {
+				cmdq_error(item,
+				    "invalid session group name: %s", group);
 				goto fail;
 			}
+			prefix = clean_name(group, ":.");
 		}
 	}
 

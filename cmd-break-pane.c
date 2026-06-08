@@ -62,6 +62,14 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	int			 idx = target->idx, before;
 	const char		*template;
 
+	if (args_has(args, 'n')) {
+		if (!check_name(args_get(args, 'n'), ":.")) {
+			cmdq_error(item, "invalid window name: %s",
+			    args_get(args, 'n'));
+			return (CMD_RETURN_ERROR);
+		}
+	}
+
 	before = args_has(args, 'b');
 	if (args_has(args, 'a') || before) {
 		if (target->wl != NULL)
@@ -81,7 +89,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_ERROR);
 		}
 		if (args_has(args, 'n')) {
-			window_set_name(w, args_get(args, 'n'));
+			window_set_name(w, args_get(args, 'n'), ":.");
 			options_set_number(w->options, "automatic-rename", 0);
 		}
 		server_unlink_window(src_s, wl);
@@ -111,10 +119,10 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (!args_has(args, 'n')) {
 		name = default_window_name(w);
-		window_set_name(w, name);
+		window_set_name(w, name, ":.");
 		free(name);
 	} else {
-		window_set_name(w, args_get(args, 'n'));
+		window_set_name(w, args_get(args, 'n'), ":.");
 		options_set_number(w->options, "automatic-rename", 0);
 	}
 

@@ -182,7 +182,7 @@ spawn_window(struct spawn_context *sc, char **cause)
 		free(w->name);
 		if (sc->name != NULL) {
 			name = format_single(item, sc->name, c, s, NULL, NULL);
-			w->name = clean_name(name, "#");
+			w->name = clean_name(name, ":.");
 			free(name);
 			if (w->name == NULL)
 				w->name = xstrdup("");
