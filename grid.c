@@ -292,7 +292,7 @@ grid_free_line(struct grid *gd, u_int py)
 }
 
 /* Free several lines. */
-static void
+void
 grid_free_lines(struct grid *gd, u_int py, u_int ny)
 {
 	u_int	yy;
@@ -319,6 +319,10 @@ grid_create(u_int sx, u_int sy, u_int hlimit)
 	gd->hscrolled = 0;
 	gd->hsize = 0;
 	gd->hlimit = hlimit;
+
+	gd->scroll_added = 0;
+	gd->scroll_collected = 0;
+	gd->scroll_generation = 0;
 
 	if (gd->sy != 0)
 		gd->linedata = xcalloc(gd->sy, sizeof *gd->linedata);
@@ -405,6 +409,7 @@ grid_collect_history(struct grid *gd, int all)
 	grid_trim_history(gd, ny);
 
 	gd->hsize -= ny;
+	gd->scroll_collected += ny;
 	if (gd->hscrolled > gd->hsize)
 		gd->hscrolled = gd->hsize;
 }
@@ -442,6 +447,7 @@ grid_scroll_history(struct grid *gd, u_int bg)
 	grid_compact_line(&gd->linedata[gd->hsize]);
 	gd->linedata[gd->hsize].time = current_time;
 	gd->hsize++;
+	gd->scroll_added++;
 }
 
 /* Clear the history. */
@@ -452,6 +458,7 @@ grid_clear_history(struct grid *gd)
 
 	gd->hscrolled = 0;
 	gd->hsize = 0;
+	gd->scroll_generation++;
 
 	gd->linedata = xreallocarray(gd->linedata, gd->sy,
 	    sizeof *gd->linedata);
@@ -489,6 +496,7 @@ grid_scroll_history_region(struct grid *gd, u_int upper, u_int lower, u_int bg)
 	/* Move the history offset down over the line. */
 	gd->hscrolled++;
 	gd->hsize++;
+	gd->scroll_added++;
 }
 
 /* Expand line to fit to cell. */
@@ -1510,6 +1518,7 @@ grid_reflow(struct grid *gd, u_int sx)
 	free(gd->linedata);
 	gd->linedata = target->linedata;
 	free(target);
+	gd->scroll_generation++;
 }
 
 /* Convert to position based on wrapped lines. */
