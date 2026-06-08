@@ -2386,6 +2386,7 @@ void	proc_flush_peer(struct tmuxpeer *);
 void	proc_toggle_log(struct tmuxproc *);
 pid_t	proc_fork_and_daemon(int *);
 uid_t	proc_get_peer_uid(struct tmuxpeer *);
+gid_t	proc_get_peer_gid(struct tmuxpeer *);
 
 /* cfg.c */
 extern int cfg_finished;
@@ -3787,15 +3788,16 @@ struct window_pane *spawn_pane(struct spawn_context *, char **);
 char		*regsub(const char *, const char *, const char *, int);
 
 /* server-acl.c */
+#define SERVER_ACL_READONLY 0x1
+#define SERVER_ACL_IS_GROUP 0x2
 void			 server_acl_init(void);
-struct server_acl_user	*server_acl_user_find(uid_t);
+int			 server_acl_find(id_t, int);
 void 			 server_acl_display(struct cmdq_item *);
-void			 server_acl_user_allow(uid_t);
-void			 server_acl_user_deny(uid_t);
-void			 server_acl_user_allow_write(uid_t);
-void			 server_acl_user_deny_write(uid_t);
+void			 server_acl_allow(id_t, int);
+void			 server_acl_deny(id_t, int);
+void			 server_acl_allow_write(id_t, int);
+void			 server_acl_deny_write(id_t, int);
 int			 server_acl_join(struct client *);
-uid_t			 server_acl_get_uid(struct server_acl_user *);
 
 /* hyperlink.c */
 u_int	 		 hyperlinks_put(struct hyperlinks *, const char *,
