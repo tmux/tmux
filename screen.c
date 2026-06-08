@@ -655,13 +655,13 @@ screen_reflow(struct screen *s, u_int new_x, u_int *cx, u_int *cy, int cursor)
  * Enter alternative screen mode. A copy of the visible screen is saved and the
  * history is not updated.
  */
-void
+int
 screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 {
 	u_int	sx, sy;
 
 	if (SCREEN_IS_ALTERNATE(s))
-		return;
+		return 0;
 	sx = screen_size_x(s);
 	sy = screen_size_y(s);
 
@@ -677,10 +677,12 @@ screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 
 	s->saved_flags = s->grid->flags;
 	s->grid->flags &= ~GRID_HISTORY;
+
+	return 1;
 }
 
 /* Exit alternate screen mode and restore the copied grid. */
-void
+int
 screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 {
 	u_int	sx = screen_size_x(s), sy = screen_size_y(s);
@@ -709,7 +711,7 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 			s->cx = screen_size_x(s) - 1;
 		if (s->cy > screen_size_y(s) - 1)
 			s->cy = screen_size_y(s) - 1;
-		return;
+		return 0;
 	}
 
 	/* Restore the saved grid. */
@@ -731,6 +733,8 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 		s->cx = screen_size_x(s) - 1;
 	if (s->cy > screen_size_y(s) - 1)
 		s->cy = screen_size_y(s) - 1;
+
+	return 1;
 }
 
 /* Get mode as a string. */
