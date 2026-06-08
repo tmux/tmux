@@ -1224,6 +1224,11 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	u_int			 i, x, y;
 	int			 choice, preview;
 
+	if (mtd->line_size == 0) {
+		*key = KEYC_NONE;
+		return (1);
+	}
+
 	if (KEYC_IS_MOUSE(*key) && m != NULL) {
 		if (cmd_mouse_at(mtd->wp, m, &x, &y, 0) != 0) {
 			*key = KEYC_NONE;
