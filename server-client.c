@@ -699,12 +699,8 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 				bdr_bottom = fwp->yoff + fwp->sy;
 				if (py == bdr_bottom)
 					break;
-				if (window_pane_is_floating(wp)) {
-					/* Floating pane, check top border. */
-					bdr_top = fwp->yoff - 1;
-					if (py == bdr_top)
-						break;
-				}
+				if (py == bdr_top)
+					break;
 			}
 		}
 		if (fwp != NULL)
