@@ -3330,7 +3330,7 @@ but a different format may be specified with
 .Fl F .
 .Tg newp
 .It Xo Ic new\-pane
-.Op Fl bdefhIkPvZ
+.Op Fl bBdefhIkPvZ
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
@@ -3402,6 +3402,22 @@ but also sets the
 .Ic remain\-on\-exit\-format
 option for this pane to
 .Ar message .
+.Pp
+.Fl B
+blocks until the
+.Ar shell\-command
+running in the new pane exits, then returns its exit status as the exit
+code of the issuing client.
+This makes it possible to run a command in a pane from a script and act on
+its result, for example a
+.Xr whiptail 1
+dialog.
+Only the command queue of the issuing client waits; the server and other
+clients are unaffected and the new pane remains interactive.
+If the pane is killed or terminated by a signal, the status is
+.Li 128
+plus the signal number, as for
+.Ic run\-shell .
 .Pp
 .Fl E ,
 or an empty

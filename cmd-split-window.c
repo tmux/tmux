@@ -38,8 +38,8 @@ const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
 	.alias = "newp",
 
-	.args = { "bc:de:EfF:hIkl:Lm:p:PR:s:S:t:vx:X:y:Y:Z", 0, -1, NULL },
-	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
+	.args = { "bBc:de:EfF:hIkl:Lm:p:PR:s:S:t:vx:X:y:Y:Z", 0, -1, NULL },
+	.usage = "[-bBdefhIklPvZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-l size] [-m message] [-p percentage] "
 		 "[-s style] [-S active-border-style] "
 		 "[-R inactive-border-style] [-x width] [-y height] "
@@ -238,5 +238,15 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	environ_free(sc.environ);
 	if (input)
 		return (CMD_RETURN_WAIT);
+
+	/*
+	 * With -B, block this command queue item until the pane's command
+	 * exits; window_pane_block_finish() then sets the client return code
+	 * and continues the queue (see server_child_exited()).
+	 */
+	if (args_has(args, 'B')) {
+		new_wp->block_item = item;
+		return (CMD_RETURN_WAIT);
+	}
 	return (CMD_RETURN_NORMAL);
 }

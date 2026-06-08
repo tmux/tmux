@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 #include <sys/ioctl.h>
+#include <sys/wait.h>
 
 #include <ctype.h>
 #include <errno.h>
@@ -379,6 +380,15 @@ window_pane_destroy_ready(struct window_pane *wp)
 		return (0);
 
 	if (~wp->flags & PANE_EXITED)
+		return (0);
+
+	/*
+	 * If a command queue item is blocked on this pane (new-pane -B), wait
+	 * for the child's exit status to be reaped before destroying it, so
+	 * the correct return code is reported. The PTY EOF and SIGCHLD paths
+	 * otherwise race and the pane could be freed with no status.
+	 */
+	if (wp->block_item != NULL && (~wp->flags & PANE_STATUSREADY))
 		return (0);
 	return (1);
 }
@@ -1064,11 +1074,42 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	return (wp);
 }
 
+/*
+ * Finish a new-pane -B wait: if this pane has a blocked command queue item,
+ * set the issuing client's return code from the pane's exit status and continue
+ * the queue. Idempotent and safe to call from any pane teardown path.
+ */
+void
+window_pane_block_finish(struct window_pane *wp)
+{
+	struct cmdq_item	*item = wp->block_item;
+	struct client		*c;
+	int			 retcode = 0;
+
+	if (item == NULL)
+		return;
+	wp->block_item = NULL;
+
+	if (wp->flags & PANE_STATUSREADY) {
+		if (WIFEXITED(wp->status))
+			retcode = WEXITSTATUS(wp->status);
+		else if (WIFSIGNALED(wp->status))
+			retcode = WTERMSIG(wp->status) + 128;
+	}
+
+	c = cmdq_get_client(item);
+	if (c != NULL && c->session == NULL)
+		c->retval = retcode;
+	cmdq_continue(item);
+}
+
 static void
 window_pane_destroy(struct window_pane *wp)
 {
 	struct window_pane_resize	*r;
 	struct window_pane_resize	*r1;
+
+	window_pane_block_finish(wp);
 
 	window_pane_reset_mode_all(wp);
 	free(wp->searchstr);
