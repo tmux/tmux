@@ -255,6 +255,10 @@ struct window_copy_mode_data {
 	int		 backing_written; /* backing display started */
 	struct input_ctx *ictx;
 
+	u_int		 sync_added;	/* snapshot of backing grid counters */
+	u_int		 sync_collected;
+	u_int		 sync_generation;
+
 	int		 viewmode;	/* view mode entered */
 
 	u_int		 oy;		/* number of lines scrolled up */
@@ -424,6 +428,116 @@ window_copy_clone_screen(struct screen *src, struct screen *hint, u_int *cx,
 	return (dst);
 }
 
+/*
+ * Snapshot the source grid's monotonic scroll counters so the next incremental
+ * sync can tell how much history was added or collected since this point.
+ */
+static void
+window_copy_sync_snapshot(struct window_copy_mode_data *data, struct grid *src)
+{
+	data->sync_added = src->scroll_added;
+	data->sync_collected = src->scroll_collected;
+	data->sync_generation = src->scroll_generation;
+}
+
+/*
+ * Reconcile the backing screen with the live pane grid in place, copying only
+ * the history that scrolled in or was collected since the last snapshot rather
+ * than cloning the whole scrollback. The result is identical to a fresh
+ * window_copy_clone_screen, so the caller repositions and redraws the same way
+ * for both paths. Returns 1 on success, or 0 if the caller must fall back to a
+ * full clone (different source pane, geometry or generation change, or counter
+ * deltas that do not add up).
+ */
+static int
+window_copy_sync_backing(struct window_mode_entry *wme)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct window_pane		*wp = wme->swp;
+	struct screen			*src = &wp->base;
+	struct screen			*dst = data->backing;
+	struct grid			*sg = src->grid;
+	struct grid			*dg = dst->grid;
+	u_int				 sy = sg->sy;
+	u_int				 old_hsize = dg->hsize;
+	u_int				 new_hsize = sg->hsize;
+	u_int				 added, collected, kept;
+
+	/*
+	 * Only a pane's own live grid is tracked incrementally. A different
+	 * source pane (copy-mode -s) goes through clone_screen, which also
+	 * trims trailing blank lines that this path does not.
+	 */
+	if (data->viewmode || wme->swp != wme->wp)
+		return (0);
+
+	/* Indices only line up at the same size and generation. */
+	if (sg->sx != dg->sx || sg->sy != dg->sy ||
+	    sg->scroll_generation != data->sync_generation)
+		return (0);
+
+	added = sg->scroll_added - data->sync_added;
+	collected = sg->scroll_collected - data->sync_collected;
+
+	/*
+	 * Reject anything that does not balance: counter wrap, a history-limit
+	 * change that collected past the snapshot, or arithmetic that does not
+	 * reproduce the new history size.
+	 */
+	if (added > (u_int)INT_MAX || collected > (u_int)INT_MAX ||
+	    collected > old_hsize || old_hsize + added < collected ||
+	    old_hsize + added - collected != new_hsize)
+		return (0);
+
+	kept = old_hsize - collected;
+
+	if (added == 0 && collected == 0) {
+		/* History is unchanged; only the viewport can have mutated. */
+		grid_duplicate_lines(dg, dg->hsize, sg, sg->hsize, sy);
+	} else {
+		/* Drop the oldest lines and shift the rest down. */
+		if (collected > 0) {
+			grid_free_lines(dg, 0, collected);
+			memmove(&dg->linedata[0], &dg->linedata[collected],
+			    (old_hsize + sy - collected) * sizeof *dg->linedata);
+			memset(&dg->linedata[old_hsize + sy - collected], 0,
+			    collected * sizeof *dg->linedata);
+		}
+
+		/* Resize linedata to the new history plus viewport. */
+		if (new_hsize + sy != old_hsize + sy - collected) {
+			dg->linedata = xreallocarray(dg->linedata,
+			    new_hsize + sy, sizeof *dg->linedata);
+			memset(&dg->linedata[old_hsize + sy - collected], 0,
+			    (new_hsize - kept) * sizeof *dg->linedata);
+		}
+
+		/*
+		 * Set hsize before copying so grid_duplicate_lines does not
+		 * clamp the count to the old, smaller grid size.
+		 */
+		dg->hsize = new_hsize;
+
+		/* Copy the newly scrolled history, then refresh the viewport. */
+		if (added > 0)
+			grid_duplicate_lines(dg, kept, sg, kept, added);
+		grid_duplicate_lines(dg, new_hsize, sg, new_hsize, sy);
+	}
+
+	dg->hscrolled = sg->hscrolled;
+
+	/* Match clone_screen's backing cursor placement. */
+	if (src->cy > dg->sy - 1) {
+		dst->cx = 0;
+		dst->cy = dg->sy - 1;
+	} else {
+		dst->cx = src->cx;
+		dst->cy = src->cy;
+	}
+
+	return (1);
+}
+
 static struct window_copy_mode_data *
 window_copy_common_init(struct window_mode_entry *wme)
 {
@@ -475,6 +589,7 @@ window_copy_init(struct window_mode_entry *wme,
 	data = window_copy_common_init(wme);
 	data->backing = window_copy_clone_screen(base, &data->screen, &cx, &cy,
 	    wme->swp != wme->wp);
+	window_copy_sync_snapshot(data, base->grid);
 
 	data->cx = cx;
 	if (cy < screen_hsize(data->backing)) {
@@ -2800,10 +2915,12 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 		data->oy = screen_hsize(data->backing);
 	oy_from_top = screen_hsize(data->backing) - data->oy;
 
-	screen_free(data->backing);
-	free(data->backing);
-	data->backing = window_copy_clone_screen(&wp->base, &data->screen, NULL,
-	    NULL, wme->swp != wme->wp);
+	if (!window_copy_sync_backing(wme)) {
+		screen_free(data->backing);
+		free(data->backing);
+		data->backing = window_copy_clone_screen(&wp->base,
+		    &data->screen, NULL, NULL, wme->swp != wme->wp);
+	}
 
 	if (oy_from_top <= screen_hsize(data->backing))
 		data->oy = screen_hsize(data->backing) - oy_from_top;
@@ -2812,6 +2929,7 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 		data->oy = screen_hsize(data->backing);
 	}
 
+	window_copy_sync_snapshot(data, wp->base.grid);
 	window_copy_size_changed(wme);
 	return (WINDOW_COPY_CMD_REDRAW);
 }
