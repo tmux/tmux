@@ -33,8 +33,8 @@ const struct cmd_entry cmd_choose_tree_entry = {
 	.name = "choose-tree",
 	.alias = NULL,
 
-	.args = { "F:f:GK:NO:rst:wyZ", 0, 1, cmd_choose_tree_args_parse },
-	.usage = "[-GNrswZ] [-F format] [-f filter] [-K key-format] "
+	.args = { "F:f:GhK:NO:rst:wyZ", 0, 1, cmd_choose_tree_args_parse },
+	.usage = "[-GhNrswZ] [-F format] [-f filter] [-K key-format] "
 		 "[-O sort-order] " CMD_TARGET_PANE_USAGE " [template]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -47,8 +47,8 @@ const struct cmd_entry cmd_choose_client_entry = {
 	.name = "choose-client",
 	.alias = NULL,
 
-	.args = { "F:f:K:NO:rt:yZ", 0, 1, cmd_choose_tree_args_parse },
-	.usage = "[-NrZ] [-F format] [-f filter] [-K key-format] "
+	.args = { "F:f:hK:NO:rt:yZ", 0, 1, cmd_choose_tree_args_parse },
+	.usage = "[-hNrZ] [-F format] [-f filter] [-K key-format] "
 		 "[-O sort-order] " CMD_TARGET_PANE_USAGE " [template]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
