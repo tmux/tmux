@@ -2668,7 +2668,7 @@ but a different format may be specified with
 .Fl F .
 .Tg capturep
 .It Xo Ic capture\-pane
-.Op Fl aeFLpPqCJMN
+.Op Fl aeFHLpPqCJMN
 .Op Fl b Ar buffer\-name
 .Op Fl E Ar end\-line
 .Op Fl S Ar start\-line
@@ -2719,9 +2719,15 @@ is an unused line,
 .Ql O
 is a line marked as output,
 .Ql P
-is a line marked as a prompt and
+is a line marked as a prompt,
 .Ql X
-is a line containing extended cells).
+is a line containing extended cells and
+.Ql H
+is a line with hyperlinks).
+With
+.Fl H ,
+only hyperlinks in the specified lines are captured.
+Multiple hyperlinks on the same line are separated by spaces.
 .Pp
 .Fl S
 and

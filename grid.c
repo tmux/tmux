@@ -125,6 +125,8 @@ grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 	else if (gce->offset >= gl->extdsize)
 		fatalx("offset too big");
 	gl->flags |= GRID_LINE_EXTENDED;
+	if (gc->link != 0)
+		gl->flags |= GRID_LINE_HYPERLINK;
 
 	if (gc->flags & GRID_FLAG_TAB)
 		uc = gc->data.width;
