@@ -38,11 +38,11 @@ const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
 	.alias = "newp",
 
-	.args = { "bc:de:fF:hIkl:Lm:p:PR:s:S:t:vx:X:y:Y:Z", 0, -1, NULL },
+	.args = { "bc:de:EfF:hIkl:Lm:p:PR:s:S:t:T:vx:X:y:Y:Z", 0, -1, NULL },
 	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-l size] [-m message] [-p percentage] "
 		 "[-s style] [-S active-border-style] "
-		 "[-R inactive-border-style] [-x width] [-y height] "
+		 "[-R inactive-border-style] [-T title] [-x width] [-y height] "
 		 "[-X x-position] [-Y y-position] " CMD_TARGET_PANE_USAGE " "
 		 "[shell-command [argument ...]]",
 
@@ -56,11 +56,11 @@ const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
 	.alias = "splitw",
 
-	.args = { "bc:de:fF:hIkl:m:p:PR:s:S:t:vZ", 0, -1, NULL },
+	.args = { "bc:de:EfF:hIkl:m:p:PR:s:S:t:T:vZ", 0, -1, NULL },
 	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-l size] [-m message] [-p percentage] "
 		 "[-s style] [-S active-border-style] "
-		 "[-R inactive-border-style] " CMD_TARGET_PANE_USAGE " "
+		 "[-R inactive-border-style] [-T title] " CMD_TARGET_PANE_USAGE " "
 		 "[shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -83,9 +83,9 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*wp = target->wp, *new_wp;
 	struct layout_cell	*lc = NULL;
 	struct cmd_find_state	 fs;
-	int			 input, is_floating, flags = 0;
+	int			 input, empty, is_floating, flags = 0;
 	const char		*template, *style;
-	char			*cause = NULL, *cp;
+	char			*cause = NULL, *cp, *title;
 	struct args_value	*av;
 	u_int			 count = args_count(args);
 
@@ -93,22 +93,33 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		is_floating = !args_has(args, 'L');
 	else
 		is_floating = 0;
-	input = (args_has(args, 'I') && count == 0);
 
 	flags = is_floating ? SPAWN_FLOATING : 0;
 	if (args_has(args, 'b'))
 		flags |= SPAWN_BEFORE;
 	if (args_has(args, 'f'))
 		flags |= SPAWN_FULLSIZE;
-	if (input || (count == 1 && *args_string(args, 0) == '\0'))
+
+	input = args_has(args, 'I');
+	if (input)
+		empty = 1;
+	else
+		empty = args_has(args, 'E');
+	if (empty &&
+	    count != 0 &&
+	    (count != 1 || *args_string(args, 0) != '\0')) {
+		cmdq_error(item, "command cannot be given for empty pane");
+		return (CMD_RETURN_ERROR);
+	}
+	if (empty)
 		flags |= SPAWN_EMPTY;
 
 	if (is_floating)
-		lc = layout_get_floating_cell(item, args, w, wp, lc, &cause);
+		lc = layout_get_floating_cell(item, args, w, wp, &cause);
 	else
 		lc = layout_get_tiled_cell(item, args, w, wp, flags, &cause);
 	if (cause != NULL) {
-		cmdq_error(item, "%s", cause);
+		cmdq_error(item, "size or position %s", cause);
 		free(cause);
 		return (CMD_RETURN_ERROR);
 	}
@@ -183,6 +194,12 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 				"remain-on-exit-format",
 				0, "%s", args_get(args, 'm'));
 	}
+	if (args_has(args, 'T')) {
+		title = format_single_from_target(item, args_get(args, 'T'));
+		screen_set_title(&new_wp->base, title);
+		notify_pane("pane-title-changed", new_wp);
+		free(title);
+	}
 
 	if (input) {
 		switch (window_pane_start_input(new_wp, item, &cause)) {
@@ -209,7 +226,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		window_pop_zoom(wp->window);
 		server_redraw_window(wp->window);
 	}
-	server_status_session(s);
+	server_redraw_session(s);
 
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)

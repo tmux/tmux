@@ -5,14 +5,14 @@
 PATH=/bin:/usr/bin
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -Ltest"
+TMUX="$TEST_TMUX -Ltest -f/dev/null"
 $TMUX kill-server 2>/dev/null
 
 TERM=$($TMUX start \; show -gv default-terminal)
 TMP=$(mktemp)
 OUT=$(mktemp)
 SCRIPT=$(mktemp)
-#trap "rm -f $TMP $OUT $SCRIPT" 0 1 15
+trap "rm -f $TMP $OUT $SCRIPT" 0 1 15
 
 cat <<EOF >$SCRIPT
 (

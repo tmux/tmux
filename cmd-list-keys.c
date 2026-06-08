@@ -35,7 +35,7 @@
 	","							\
 	"bind-key #{?key_has_repeat,#{?key_repeat,-r,  },} "	\
 	"-T #{p|#{key_table_width}:key_table} "			\
-	"#{p|#{key_string_width}:key_string} "			\
+	"#{p|#{key_string_width}:#{q|a:key_string}} "		\
 	"#{key_command}}"
 
 static enum cmd_retval cmd_list_keys_exec(struct cmd *, struct cmdq_item *);

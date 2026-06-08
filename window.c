@@ -1280,6 +1280,7 @@ window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
 		TAILQ_INSERT_HEAD(&wp->modes, wme, entry);
 		wme->screen = wme->mode->init(wme, fs, args);
 	}
+	wme->kill = args_has(args, 'k');
 	wp->screen = wme->screen;
 
 	wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR|PANE_CHANGED);
@@ -1297,11 +1298,13 @@ window_pane_reset_mode(struct window_pane *wp)
 {
 	struct window_mode_entry	*wme, *next;
 	struct window			*w = wp->window;
+	int				 kill;
 
 	if (TAILQ_EMPTY(&wp->modes))
 		return;
 
 	wme = TAILQ_FIRST(&wp->modes);
+	kill = wme->kill;
 	TAILQ_REMOVE(&wp->modes, wme, entry);
 	wme->mode->free(wme);
 	free(wme);
@@ -1324,6 +1327,9 @@ window_pane_reset_mode(struct window_pane *wp)
 	server_redraw_window_borders(wp->window);
 	server_status_window(wp->window);
 	notify_pane("pane-mode-changed", wp);
+
+	if (kill)
+		server_kill_pane(wp);
 }
 
 void

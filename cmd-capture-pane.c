@@ -29,18 +29,21 @@
 
 static enum cmd_retval	cmd_capture_pane_exec(struct cmd *, struct cmdq_item *);
 
-static char	*cmd_capture_pane_append(char *, size_t *, char *, size_t);
+static char	*cmd_capture_pane_append(char *, size_t *, const char *,
+		     size_t);
 static char	*cmd_capture_pane_pending(struct args *, struct window_pane *,
 		     size_t *);
 static char	*cmd_capture_pane_history(struct args *, struct cmdq_item *,
 		     struct window_pane *, size_t *);
+static char	*cmd_capture_pane_hyperlinks(struct grid *, struct screen *,
+		     u_int, u_int *, u_int *, size_t *);
 
 const struct cmd_entry cmd_capture_pane_entry = {
 	.name = "capture-pane",
 	.alias = "capturep",
 
-	.args = { "ab:CeE:JMNpPqS:Tt:", 0, 0, NULL },
-	.usage = "[-aCeJMNpPqT] " CMD_BUFFER_USAGE " [-E end-line] "
+	.args = { "ab:CeE:FHJLMNpPqS:Tt:", 0, 0, NULL },
+	.usage = "[-aCeFHJLMNpPqT] " CMD_BUFFER_USAGE " [-E end-line] "
 		 "[-S start-line] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -63,7 +66,8 @@ const struct cmd_entry cmd_clear_history_entry = {
 };
 
 static char *
-cmd_capture_pane_append(char *buf, size_t *len, char *line, size_t linelen)
+cmd_capture_pane_append(char *buf, size_t *len, const char *line,
+    size_t linelen)
 {
 	buf = xrealloc(buf, *len + linelen + 1);
 	memcpy(buf + *len, line, linelen);
@@ -104,6 +108,46 @@ cmd_capture_pane_pending(struct args *args, struct window_pane *wp,
 }
 
 static char *
+cmd_capture_pane_hyperlinks(struct grid *gd, struct screen *s, u_int py,
+    u_int *links, u_int *nlinks, size_t *len)
+{
+	const struct grid_line	*gl = grid_peek_line(gd, py);
+	struct grid_cell	 gc;
+	const char		*uri;
+	char			*line = xstrdup("");
+	u_int			 i, j;
+
+	*len = 0;
+
+	if (s->hyperlinks == NULL || (~gl->flags & GRID_LINE_HYPERLINK))
+		return (line);
+
+	for (i = 0; i < gl->cellused; i++) {
+		grid_get_cell(gd, i, py, &gc);
+		if (gc.link == 0)
+			continue;
+		for (j = 0; j < *nlinks; j++) {
+			if (links[j] == gc.link)
+				break;
+		}
+		if (j != *nlinks)
+			continue;
+
+		if (!hyperlinks_get(s->hyperlinks, gc.link, &uri, NULL, NULL))
+			continue;
+
+		if (*nlinks == gd->sx)
+			break;
+		links[(*nlinks)++] = gc.link;
+
+		if (*len != 0)
+			line = cmd_capture_pane_append(line, len, " ", 1);
+		line = cmd_capture_pane_append(line, len, uri, strlen(uri));
+	}
+	return (line);
+}
+
+static char *
 cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
     struct window_pane *wp, size_t *len)
 {
@@ -112,9 +156,11 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 	struct screen			*s;
 	struct grid_cell		*gc = NULL;
 	struct window_mode_entry	*wme;
-	int				 n, join_lines, flags = 0;
+	int				 n, join_lines, number_lines, flags = 0;
+	int				 show_flags, hyperlinks;
+	u_int				*links = NULL, nlinks = 0;
 	u_int				 i, sx, top, bottom, tmp;
-	char				*cause, *buf, *line;
+	char				*cause, *buf = NULL, *line, b[64], *cp;
 	const char			*Sflag, *Eflag;
 	size_t				 linelen;
 
@@ -152,7 +198,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 		if (cause != NULL) {
 			top = gd->hsize;
 			free(cause);
-		} else if (n < 0 && (u_int) -n > gd->hsize)
+		} else if (n < 0 && (u_int)-n > gd->hsize)
 			top = 0;
 		else
 			top = gd->hsize + n;
@@ -169,7 +215,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 		if (cause != NULL) {
 			bottom = gd->hsize + gd->sy - 1;
 			free(cause);
-		} else if (n < 0 && (u_int) -n > gd->hsize)
+		} else if (n < 0 && (u_int)-n > gd->hsize)
 			bottom = 0;
 		else
 			bottom = gd->hsize + n;
@@ -192,12 +238,57 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 		flags |= GRID_STRING_EMPTY_CELLS;
 	if (!join_lines && !args_has(args, 'N'))
 		flags |= GRID_STRING_TRIM_SPACES;
+	number_lines = args_has(args, 'L');
+	show_flags = args_has(args, 'F');
+	hyperlinks = args_has(args, 'H');
+	if (hyperlinks)
+		links = xreallocarray(NULL, gd->sx, sizeof *links);
 
-	buf = NULL;
 	for (i = top; i <= bottom; i++) {
-		line = grid_string_cells(gd, 0, i, sx, &gc, flags, s);
-		linelen = strlen(line);
+		if (hyperlinks) {
+			line = cmd_capture_pane_hyperlinks(gd, s, i, links,
+			    &nlinks, &linelen);
+		} else {
+			line = grid_string_cells(gd, 0, i, sx, &gc, flags, s);
+			linelen = strlen(line);
+		}
+		if (hyperlinks && linelen == 0) {
+			free(line);
+			continue;
+		}
 
+		if (number_lines) {
+			if (i >= gd->hsize)
+				n = i - gd->hsize;
+			else
+				n = (int)i - (int)gd->hsize;
+			n = snprintf(b, sizeof b, "%d ", n);
+			if (n >= 0)
+				buf = cmd_capture_pane_append(buf, len, b, n);
+		}
+		if (show_flags) {
+			cp = b;
+			*cp = '\0';
+
+			gl = grid_peek_line(gd, i);
+			if (gl->flags & GRID_LINE_DEAD)
+				*cp++ = 'D';
+			if (gl->flags & GRID_LINE_HYPERLINK)
+				*cp++ = 'H';
+			if (gl->flags & GRID_LINE_START_OUTPUT)
+				*cp++ = 'O';
+			if (gl->flags & GRID_LINE_START_PROMPT)
+				*cp++ = 'P';
+			if (gl->flags & GRID_LINE_WRAPPED)
+				*cp++ = 'W';
+			if (gl->flags & GRID_LINE_EXTENDED)
+				*cp++ = 'X';
+			if (b == cp)
+				*cp++ = '-';
+			*cp++ = ' ';
+			*cp = '\0';
+			buf = cmd_capture_pane_append(buf, len, b, strlen (b));
+		}
 		buf = cmd_capture_pane_append(buf, len, line, linelen);
 
 		gl = grid_peek_line(gd, i);
@@ -206,6 +297,9 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 
 		free(line);
 	}
+	free(links);
+	if (buf == NULL)
+		buf = xstrdup("");
 	return (buf);
 }
 
@@ -228,7 +322,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	len = 0;
-	if (args_has(args, 'P'))
+	if (args_has(args, 'P') && !args_has(args, 'H'))
 		buf = cmd_capture_pane_pending(args, wp, &len);
 	else
 		buf = cmd_capture_pane_history(args, item, wp, &len);
