@@ -113,6 +113,7 @@ struct window_tree_modedata {
 	char				 *key_format;
 	char				 *command;
 	int				  squash_groups;
+	int				  hide_preview_this_pane;
 	int				  prompt_flags;
 
 	struct window_tree_itemdata	**item_list;
@@ -289,6 +290,8 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	if (n == 0)
 		goto empty;
 	for (i = 0; i < n; i++) {
+		if (data->hide_preview_this_pane && l[i] == data->wp)
+			continue;
 		if (window_tree_filter_pane(s, wl, l[i], filter))
 			window_tree_build_pane(s, wl, l[i], modedata, mti);
 	}
@@ -580,6 +583,10 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 	struct options		*oo;
 
 	total = window_count_panes(w, 1);
+	if (data->hide_preview_this_pane && data->wp->window == w)
+		total--;
+	if (total == 0)
+		return;
 
 	if (sx / total < 24) {
 		visible = sx / 24;
@@ -590,6 +597,8 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 
 	current = 0;
 	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (data->hide_preview_this_pane && wp == data->wp)
+			continue;
 		if (wp == w->active)
 			break;
 		current++;
@@ -653,6 +662,8 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 
 	i = loop = 0;
 	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (data->hide_preview_this_pane && wp == data->wp)
+			continue;
 		if (loop == end)
 			break;
 		if (loop < start) {
@@ -704,6 +715,7 @@ static void
 window_tree_draw(void *modedata, void *itemdata, struct screen_write_ctx *ctx,
     u_int sx, u_int sy)
 {
+	struct window_tree_modedata	*data = modedata;
 	struct window_tree_itemdata	*item = itemdata;
 	struct session			*sp;
 	struct winlink			*wl;
@@ -723,7 +735,8 @@ window_tree_draw(void *modedata, void *itemdata, struct screen_write_ctx *ctx,
 		window_tree_draw_window(modedata, sp, wl, ctx, sx, sy);
 		break;
 	case WINDOW_TREE_PANE:
-		screen_write_preview(ctx, &wp->base, sx, sy);
+		if (!data->hide_preview_this_pane || wp != data->wp)
+			screen_write_preview(ctx, &wp->base, sx, sy);
 		break;
 	}
 }
@@ -932,6 +945,7 @@ window_tree_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 	else
 		data->command = xstrdup(args_string(args, 0));
 	data->squash_groups = !args_has(args, 'G');
+	data->hide_preview_this_pane = args_has(args, 'h');
 	if (args_has(args, 'y'))
 		data->prompt_flags = PROMPT_ACCEPT;
 
