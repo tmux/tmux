@@ -2310,7 +2310,6 @@ cursor on that line.
 Scroll pane in copy\-mode when bound to a mouse drag event.
 .Fl e
 causes copy mode to exit when at the bottom.
-.Pp
 .It Xo
 .Ic scroll\-top
 .Xc
@@ -2741,7 +2740,7 @@ the end of the visible pane.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose\-client
-.Op Fl kNryZ
+.Op Fl hkNryZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key\-format
@@ -2812,14 +2811,20 @@ If a filter would lead to an empty list, it is ignored.
 specifies the format for each item in the list and
 .Fl K
 a format for each shortcut key; both are evaluated once for each line.
+.Pp
 .Fl N
 starts without the preview or if given twice with the larger preview.
+.Fl h
+hides the pane containing the mode.
 .Fl k
 kills the pane when the mode is exited.
-This command works only if at least one client is attached.
+.Pp
+The
+.Ic choose-client
+command works only if at least one client is attached.
 .It Xo
 .Ic choose\-tree
-.Op Fl GkNrswyZ
+.Op Fl GhkNrswyZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key\-format
@@ -2904,14 +2909,27 @@ If a filter would lead to an empty list, it is ignored.
 specifies the format for each item in the tree and
 .Fl K
 a format for each shortcut key; both are evaluated once for each line.
-.Fl N
-starts without the preview or if given twice with the larger preview.
 .Fl G
 includes all sessions in any session groups in the tree rather than only the
 first.
+.Pp
+.Fl N
+starts without the preview or if given twice with the larger preview.
+.Fl h
+hides the pane containing the mode.
 .Fl k
 kills the pane when the mode is exited.
-This command works only if at least one client is attached.
+.Fl h
+and
+.Fl k
+are intended to ease use of the mode in a floating pane; for example:
+.Bd -literal -offset indent
+bind s 'new-pane -x50% -y50% -E; choose-tree -hks'
+.Ed
+.Pp
+The
+.Ic choose-tree
+command works only if at least one client is attached.
 .It Xo
 .Ic customize\-mode
 .Op Fl kNZ
@@ -2960,11 +2978,15 @@ the item in the list is not shown, otherwise it is shown.
 If a filter would lead to an empty list, it is ignored.
 .Fl F
 specifies the format for each item in the tree.
+.Pp
 .Fl N
 starts without the option information.
 .Fl k
 kills the pane when the mode is exited.
-This command works only if at least one client is attached.
+.Pp
+The
+.Ic customize-mode
+command works only if at least one client is attached.
 .It Xo
 .Tg displayp
 .Ic display\-panes
@@ -3035,7 +3057,9 @@ The default is
 .Fl Z
 zooms the pane.
 .Pp
-This command works only if at least one client is attached.
+The
+.Ic find-window
+command works only if at least one client is attached.
 .Tg joinp
 .It Xo Ic join\-pane
 .Op Fl bdfhv
@@ -7704,7 +7728,9 @@ a format for each shortcut key; both are evaluated once for each line.
 starts without the preview.
 .Fl k
 kills the pane when the mode is exited.
-This command works only if at least one client is attached.
+The
+.Ic choose-buffer
+command works only if at least one client is attached.
 .Tg clearhist
 .It Xo Ic clear\-history
 .Op Fl H

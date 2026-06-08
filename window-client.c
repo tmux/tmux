@@ -82,6 +82,7 @@ struct window_client_modedata {
 	char				 *format;
 	char				 *key_format;
 	char				 *command;
+	int				  hide_preview_this_pane;
 
 	struct window_client_itemdata	**item_list;
 	u_int				  item_size;
@@ -162,9 +163,10 @@ window_client_build(void *modedata, struct sort_criteria *sort_crit,
 }
 
 static void
-window_client_draw(__unused void *modedata, void *itemdata,
+window_client_draw(void *modedata, void *itemdata,
     struct screen_write_ctx *ctx, u_int sx, u_int sy)
 {
+	struct window_client_modedata	*data = modedata;
 	struct window_client_itemdata	*item = itemdata;
 	struct client			*c = item->c;
 	struct screen			*s = ctx->s;
@@ -174,6 +176,12 @@ window_client_draw(__unused void *modedata, void *itemdata,
 	if (c->session == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
 		return;
 	wp = c->session->curw->window->active;
+	if (data->hide_preview_this_pane && wp == data->wp) {
+		if (!TAILQ_EMPTY(&c->session->curw->window->last_panes))
+			wp = TAILQ_FIRST(&c->session->curw->window->last_panes);
+		else
+			wp = NULL;
+	}
 
 	lines = status_line_size(c);
 	if (lines >= sy)
@@ -184,7 +192,8 @@ window_client_draw(__unused void *modedata, void *itemdata,
 		at = 0;
 
 	screen_write_cursormove(ctx, cx, cy + at, 0);
-	screen_write_preview(ctx, &wp->base, sx, sy - 2 - lines);
+	if (wp != NULL)
+		screen_write_preview(ctx, &wp->base, sx, sy - 2 - lines);
 
 	if (at != 0)
 		screen_write_cursormove(ctx, cx, cy + 2, 0);
@@ -270,6 +279,7 @@ window_client_init(struct window_mode_entry *wme,
 
 	wme->data = data = xcalloc(1, sizeof *data);
 	data->wp = wp;
+	data->hide_preview_this_pane = args != NULL && args_has(args, 'h');
 
 	if (args == NULL || !args_has(args, 'F'))
 		data->format = xstrdup(WINDOW_CLIENT_DEFAULT_FORMAT);
