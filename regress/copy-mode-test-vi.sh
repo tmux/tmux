@@ -34,14 +34,17 @@ $TMUX send-keys -X previous-word
 $TMUX send-keys -X copy-selection
 [ "$($TMUX show-buffer)" = "line" ] || exit 1
 
-# Test that `next-word-end` wraps around indented line breaks.
+# Test that `next-word-end` stops at the end of the line.
 $TMUX send-keys -X next-word
 $TMUX send-keys -X next-word
 $TMUX send-keys -X begin-selection
 $TMUX send-keys -X next-word-end
 $TMUX send-keys -X next-word-end
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "$(printf "words\n\tIndented")" ] || exit 1
+[ "$($TMUX show-buffer)" = "words" ] || exit 1
+
+# Move to the next word for the following tests.
+$TMUX send-keys -X next-word
 
 # Test that `next-word` wraps around un-indented line breaks.
 $TMUX send-keys -X next-word

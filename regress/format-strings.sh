@@ -6,7 +6,7 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -Ltest"
+TMUX="$TEST_TMUX -Ltest -f/dev/null"
 
 # test_format $format $expected_result
 test_format()

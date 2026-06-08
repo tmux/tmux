@@ -780,6 +780,7 @@ struct colour_palette {
 #define GRID_LINE_DEAD 0x4
 #define GRID_LINE_START_PROMPT 0x8
 #define GRID_LINE_START_OUTPUT 0x10
+#define GRID_LINE_HYPERLINK 0x20
 
 /* Grid string flags. */
 #define GRID_STRING_WITH_SEQUENCES 0x1
@@ -1180,6 +1181,8 @@ struct window_mode_entry {
 	struct screen			*screen;
 	u_int				 prefix;
 
+	int				 kill;
+
 	TAILQ_ENTRY(window_mode_entry)	 entry;
 };
 
@@ -1270,7 +1273,7 @@ struct window_pane {
 #define PANE_FOCUSED 0x4
 #define PANE_VISITED 0x8
 #define PANE_ZOOMED 0x10
-/* unused 0x20 */
+/* 0x20 unused */
 #define PANE_INPUTOFF 0x40
 #define PANE_CHANGED 0x80
 #define PANE_EXITED 0x100
@@ -1482,8 +1485,7 @@ TAILQ_HEAD(layout_cells, layout_cell);
 struct layout_cell {
 	enum layout_type type;
 
-/* unused 0x1 */
-#define LAYOUT_CELL_FLOATING 0x2
+#define LAYOUT_CELL_FLOATING 0x1
 	int		 flags;
 
 	struct layout_cell *parent;
@@ -3397,8 +3399,8 @@ void	 screen_hide_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);
 int	 screen_select_cell(struct screen *, struct grid_cell *,
 	     const struct grid_cell *);
-void	 screen_alternate_on(struct screen *, struct grid_cell *, int);
-void	 screen_alternate_off(struct screen *, struct grid_cell *, int);
+int	 screen_alternate_on(struct screen *, struct grid_cell *, int);
+int	 screen_alternate_off(struct screen *, struct grid_cell *, int);
 const char *screen_mode_to_string(int);
 const char *screen_print(struct screen *, int);
 
@@ -3547,12 +3549,13 @@ void		 layout_assign_pane(struct layout_cell *, struct window_pane *,
 		     int);
 struct layout_cell *layout_split_pane(struct window_pane *, enum layout_type,
 		     int, int);
+struct layout_cell *layout_floating_pane(struct window *, u_int, u_int, int,
+		     int);
 void		 layout_close_pane(struct window_pane *);
 int		 layout_spread_cell(struct window *, struct layout_cell *);
 void		 layout_spread_out(struct window_pane *);
 struct layout_cell *layout_get_floating_cell(struct cmdq_item *, struct args *,
-		     struct window *, struct window_pane *, struct layout_cell *,
-		     char **);
+		     struct window *, struct window_pane *, char **);
 struct layout_cell *layout_get_tiled_cell(struct cmdq_item *, struct args *,
 		     struct window *, struct window_pane *, int, char **);
 

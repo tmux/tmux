@@ -125,6 +125,8 @@ grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 	else if (gce->offset >= gl->extdsize)
 		fatalx("offset too big");
 	gl->flags |= GRID_LINE_EXTENDED;
+	if (gc->link != 0)
+		gl->flags |= GRID_LINE_HYPERLINK;
 
 	if (gc->flags & GRID_FLAG_TAB)
 		uc = gc->data.width;
@@ -285,9 +287,8 @@ static void
 grid_free_line(struct grid *gd, u_int py)
 {
 	free(gd->linedata[py].celldata);
-	gd->linedata[py].celldata = NULL;
 	free(gd->linedata[py].extddata);
-	gd->linedata[py].extddata = NULL;
+	memset(&gd->linedata[py], 0, sizeof gd->linedata[py]);
 }
 
 /* Free several lines. */
@@ -332,9 +333,7 @@ void
 grid_destroy(struct grid *gd)
 {
 	grid_free_lines(gd, 0, gd->hsize + gd->sy);
-
 	free(gd->linedata);
-
 	free(gd);
 }
 
@@ -414,12 +413,14 @@ grid_collect_history(struct grid *gd, int all)
 void
 grid_remove_history(struct grid *gd, u_int ny)
 {
-	u_int	yy;
+	u_int	yy, start;
 
 	if (ny > gd->hsize)
 		return;
+	start = gd->hsize + gd->sy - ny;
 	for (yy = 0; yy < ny; yy++)
-		grid_free_line(gd, gd->hsize + gd->sy - 1 - yy);
+		grid_free_line(gd, start + yy);
+	memset(&gd->linedata[start], 0, ny * sizeof *gd->linedata);
 	gd->hsize -= ny;
 }
 

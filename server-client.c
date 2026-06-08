@@ -1623,10 +1623,7 @@ server_client_resize_timer(__unused int fd, __unused short events, void *data)
 static void
 server_client_check_pane_resize(struct window_pane *wp)
 {
-	struct window_pane_resize	*r;
-	struct window_pane_resize	*r1;
-	struct window_pane_resize	*first;
-	struct window_pane_resize	*last;
+	struct window_pane_resize	*r, *r1, *first, *last;
 	struct timeval			 tv = { .tv_usec = 250000 };
 
 	if (TAILQ_EMPTY(&wp->resize_queue))
@@ -1852,12 +1849,13 @@ server_client_reset_state(struct client *c)
 			cx = wp->xoff + (int)s->cx - (int)ox;
 			cy = wp->yoff + (int)s->cy - (int)oy;
 
+			r = screen_redraw_get_visible_ranges(wp, cx, cy, 1, NULL);
+			if (!screen_redraw_is_visible(r, cx))
+				cursor = 0;
+
 			if (status_at_line(c) == 0)
 				cy += status_line_size(c);
 		}
-		r = screen_redraw_get_visible_ranges(wp, cx, cy, 1, NULL);
-		if (!screen_redraw_is_visible(r, cx))
-			cursor = 0;
 
 		if (!cursor)
 			mode &= ~MODE_CURSOR;

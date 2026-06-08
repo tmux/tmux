@@ -1206,7 +1206,7 @@ Kill the
 .Nm
 server and clients and destroy all sessions.
 .It Xo Ic kill\-session
-.Op Fl aC
+.Op Fl aCg
 .Op Fl t Ar target\-session
 .Xc
 Destroy the given session, closing any windows linked to it and no other
@@ -1214,6 +1214,10 @@ sessions, and detaching all clients attached to it.
 If
 .Fl a
 is given, all sessions but the specified one is killed.
+If
+.Fl g
+is given and the session is in a session group, all sessions in the group are
+killed.
 The
 .Fl C
 flag clears alerts (bell, activity, or silence) in all windows linked to the
@@ -2310,7 +2314,6 @@ cursor on that line.
 Scroll pane in copy\-mode when bound to a mouse drag event.
 .Fl e
 causes copy mode to exit when at the bottom.
-.Pp
 .It Xo
 .Ic scroll\-top
 .Xc
@@ -2666,7 +2669,7 @@ but a different format may be specified with
 .Fl F .
 .Tg capturep
 .It Xo Ic capture\-pane
-.Op Fl aepPqCJMN
+.Op Fl aeFHLpPqCJMN
 .Op Fl b Ar buffer\-name
 .Op Fl E Ar end\-line
 .Op Fl S Ar start\-line
@@ -2706,6 +2709,26 @@ implies
 .Fl P
 captures only any output that the pane has received that is the beginning of an
 as-yet incomplete escape sequence.
+.Fl L
+includes the line number at the start of each line and
+.Fl F
+includes the flags (where
+.Ql -
+is no flags,
+.Ql D
+is an unused line,
+.Ql O
+is a line marked as output,
+.Ql P
+is a line marked as a prompt,
+.Ql X
+is a line containing extended cells and
+.Ql H
+is a line with hyperlinks).
+With
+.Fl H ,
+only hyperlinks in the specified lines are captured.
+Multiple hyperlinks on the same line are separated by spaces.
 .Pp
 .Fl S
 and
@@ -2721,7 +2744,7 @@ the end of the visible pane.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose\-client
-.Op Fl NryZ
+.Op Fl hkNryZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key\-format
@@ -2792,12 +2815,20 @@ If a filter would lead to an empty list, it is ignored.
 specifies the format for each item in the list and
 .Fl K
 a format for each shortcut key; both are evaluated once for each line.
+.Pp
 .Fl N
 starts without the preview or if given twice with the larger preview.
-This command works only if at least one client is attached.
+.Fl h
+hides the pane containing the mode.
+.Fl k
+kills the pane when the mode is exited.
+.Pp
+The
+.Ic choose-client
+command works only if at least one client is attached.
 .It Xo
 .Ic choose\-tree
-.Op Fl GNrswyZ
+.Op Fl GhkNrswyZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key\-format
@@ -2882,15 +2913,30 @@ If a filter would lead to an empty list, it is ignored.
 specifies the format for each item in the tree and
 .Fl K
 a format for each shortcut key; both are evaluated once for each line.
-.Fl N
-starts without the preview or if given twice with the larger preview.
 .Fl G
 includes all sessions in any session groups in the tree rather than only the
 first.
-This command works only if at least one client is attached.
+.Pp
+.Fl N
+starts without the preview or if given twice with the larger preview.
+.Fl h
+hides the pane containing the mode.
+.Fl k
+kills the pane when the mode is exited.
+.Fl h
+and
+.Fl k
+are intended to ease use of the mode in a floating pane; for example:
+.Bd -literal -offset indent
+bind s 'new-pane -x50% -y50% -E; choose-tree -hks'
+.Ed
+.Pp
+The
+.Ic choose-tree
+command works only if at least one client is attached.
 .It Xo
 .Ic customize\-mode
-.Op Fl NZ
+.Op Fl kNZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl t Ar target\-pane
@@ -2936,9 +2982,15 @@ the item in the list is not shown, otherwise it is shown.
 If a filter would lead to an empty list, it is ignored.
 .Fl F
 specifies the format for each item in the tree.
+.Pp
 .Fl N
 starts without the option information.
-This command works only if at least one client is attached.
+.Fl k
+kills the pane when the mode is exited.
+.Pp
+The
+.Ic customize-mode
+command works only if at least one client is attached.
 .It Xo
 .Tg displayp
 .Ic display\-panes
@@ -3009,7 +3061,9 @@ The default is
 .Fl Z
 zooms the pane.
 .Pp
-This command works only if at least one client is attached.
+The
+.Ic find-window
+command works only if at least one client is attached.
 .Tg floatp
 .It Xo Ic float\-pane
 .Op Fl h Ar height
@@ -3371,6 +3425,7 @@ but a different format may be specified with
 .Op Fl s Ar style
 .Op Fl S Ar active\-border\-style
 .Op Fl t Ar target\-pane
+.Op Fl T Ar title
 .Op Ar shell\-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic newp
@@ -3389,6 +3444,8 @@ sets the border style when the pane is active and
 .Fl R
 sets the border style when the pane is inactive (see
 .Sx STYLES ) .
+.Fl T
+sets the pane title.
 .Pp
 .Fl h
 does a horizontal split and
@@ -3433,15 +3490,16 @@ but also sets the
 option for this pane to
 .Ar message .
 .Pp
-An empty
-.Ar shell\-command
-(\[aq]\[aq]) will create a pane with no command running in it.
+.Fl E ,
+or an empty
+.Ar shell\-command ,
+(\[aq]\[aq]) will create an empty pane with no command running in it;
+.Ic display-message
+.Fl I
+can write to an empty pane.
 The
 .Fl I
-flag (if
-.Ar shell\-command
-is not specified or empty)
-will create an empty pane and forward any output from stdin to it.
+flag will create an empty pane and forward any output from stdin to it.
 For example:
 .Bd -literal -offset indent
 $ make 2>&1|tmux splitw \-dI &
@@ -3785,6 +3843,7 @@ the command behaves like
 .Op Fl s Ar style
 .Op Fl S Ar active\-border\-style
 .Op Fl t Ar target\-pane
+.Op Fl T Ar title
 .Op Ar shell\-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic splitw
@@ -4848,6 +4907,12 @@ command to show the indicator for the active pane.
 Set the colour used by the
 .Ic display\-panes
 command to show the indicators for inactive panes.
+.It Ic display\-panes\-format Ar format
+Set the
+.Ar format
+of the text shown by the
+.Ic display\-panes
+command, expanded for each pane.
 .It Ic display\-panes\-time Ar time
 Set the time in milliseconds for which the indicators shown by the
 .Ic display\-panes
@@ -6375,9 +6440,15 @@ gives
 gives
 .Ql Sun Oct 25 09:25:02 2015 .
 Adding
-.Ql p (
-.Ql `t/p` )
+.Ql p
+.Pq Ql t/p
 will use shorter but less accurate time format for times in the past.
+.Ql r
+.Pq Ql t/r
+will show the time relative to the current time, for example
+.Ql \-1m
+or
+.Ql +2m23s .
 A custom format may be given using an
 .Ql f
 suffix (note that
@@ -6405,12 +6476,17 @@ of the variable respectively.
 .Ql q:\&
 will escape
 .Xr sh 1
-special characters or with a
+special characters; with a
 .Ql h
 suffix, escape hash characters (so
 .Ql #
 becomes
-.Ql ## ) .
+.Ql ## ) ;
+or with
+.Ql a
+escape
+.Nm
+command arguments.
 .Ql E:\&
 will expand the format twice, for example
 .Ql #{E:status\-left}
@@ -7703,7 +7779,7 @@ The buffer commands are as follows:
 .Bl -tag -width Ds
 .It Xo
 .Ic choose\-buffer
-.Op Fl NryZ
+.Op Fl kNryZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key\-format
@@ -7774,7 +7850,11 @@ specifies the format for each item in the list and
 a format for each shortcut key; both are evaluated once for each line.
 .Fl N
 starts without the preview.
-This command works only if at least one client is attached.
+.Fl k
+kills the pane when the mode is exited.
+The
+.Ic choose-buffer
+command works only if at least one client is attached.
 .Tg clearhist
 .It Xo Ic clear\-history
 .Op Fl H
