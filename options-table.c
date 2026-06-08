@@ -647,6 +647,14 @@ const struct options_table_entry options_table[] = {
 	  .text = "Colour of not active panes for 'display-panes'."
 	},
 
+	{ .name = "display-panes-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = "#[align=right]#{pane_width}x#{pane_height}",
+	  .text = "Format of text shown by 'display-panes', expanded for each "
+		  "pane."
+	},
+
 	{ .name = "display-panes-time",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_SESSION,

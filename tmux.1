@@ -2743,7 +2743,7 @@ the end of the visible pane.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose\-client
-.Op Fl NryZ
+.Op Fl kNryZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key\-format
@@ -2816,10 +2816,12 @@ specifies the format for each item in the list and
 a format for each shortcut key; both are evaluated once for each line.
 .Fl N
 starts without the preview or if given twice with the larger preview.
+.Fl k
+kills the pane when the mode is exited.
 This command works only if at least one client is attached.
 .It Xo
 .Ic choose\-tree
-.Op Fl GNrswyZ
+.Op Fl GkNrswyZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key\-format
@@ -2909,10 +2911,12 @@ starts without the preview or if given twice with the larger preview.
 .Fl G
 includes all sessions in any session groups in the tree rather than only the
 first.
+.Fl k
+kills the pane when the mode is exited.
 This command works only if at least one client is attached.
 .It Xo
 .Ic customize\-mode
-.Op Fl NZ
+.Op Fl kNZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl t Ar target\-pane
@@ -2960,6 +2964,8 @@ If a filter would lead to an empty list, it is ignored.
 specifies the format for each item in the tree.
 .Fl N
 starts without the option information.
+.Fl k
+kills the pane when the mode is exited.
 This command works only if at least one client is attached.
 .It Xo
 .Tg displayp
@@ -3341,6 +3347,7 @@ but a different format may be specified with
 .Op Fl s Ar style
 .Op Fl S Ar active\-border\-style
 .Op Fl t Ar target\-pane
+.Op Fl T Ar title
 .Op Ar shell\-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic newp
@@ -3359,6 +3366,8 @@ sets the border style when the pane is active and
 .Fl R
 sets the border style when the pane is inactive (see
 .Sx STYLES ) .
+.Fl T
+sets the pane title.
 .Pp
 .Fl h
 does a horizontal split and
@@ -3756,6 +3765,7 @@ the command behaves like
 .Op Fl s Ar style
 .Op Fl S Ar active\-border\-style
 .Op Fl t Ar target\-pane
+.Op Fl T Ar title
 .Op Ar shell\-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic splitw
@@ -4794,6 +4804,12 @@ command to show the indicator for the active pane.
 Set the colour used by the
 .Ic display\-panes
 command to show the indicators for inactive panes.
+.It Ic display\-panes\-format Ar format
+Set the
+.Ar format
+of the text shown by the
+.Ic display\-panes
+command, expanded for each pane.
 .It Ic display\-panes\-time Ar time
 Set the time in milliseconds for which the indicators shown by the
 .Ic display\-panes
@@ -7617,7 +7633,7 @@ The buffer commands are as follows:
 .Bl -tag -width Ds
 .It Xo
 .Ic choose\-buffer
-.Op Fl NryZ
+.Op Fl kNryZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key\-format
@@ -7688,6 +7704,8 @@ specifies the format for each item in the list and
 a format for each shortcut key; both are evaluated once for each line.
 .Fl N
 starts without the preview.
+.Fl k
+kills the pane when the mode is exited.
 This command works only if at least one client is attached.
 .Tg clearhist
 .It Xo Ic clear\-history

@@ -77,6 +77,40 @@ cmd_display_panes_put(struct screen_redraw_ctx *ctx,
 }
 
 static void
+cmd_display_panes_draw_format(struct screen_redraw_ctx *ctx,
+    struct window_pane *wp, u_int xoff, u_int yoff, u_int sx,
+    const struct grid_cell *gc)
+{
+	struct client		*c = ctx->c;
+	struct tty		*tty = &c->tty;
+	struct session		*s = c->session;
+	struct screen		 screen;
+	struct screen_write_ctx	 sctx;
+	struct visible_ranges	*r;
+	struct visible_range	*ri;
+	const char		*format;
+	char			*expanded;
+	u_int			 i, px = ctx->ox + xoff;
+
+	format = options_get_string(s->options, "display-panes-format");
+	expanded = format_single(NULL, format, c, s, s->curw, wp);
+
+	screen_init(&screen, sx, 1, 0);
+	screen_write_start(&sctx, &screen);
+	format_draw(&sctx, gc, sx, expanded, NULL, 0);
+	screen_write_stop(&sctx);
+	free(expanded);
+
+	r = screen_redraw_get_visible_ranges(wp, px, wp->yoff, sx, NULL);
+	for (i = 0; i < r->used; i++) {
+		ri = &r->ranges[i];
+		tty_draw_line(tty, &screen, ri->px - px, 0, ri->nx,
+		    ri->px - ctx->ox, yoff, gc, NULL);
+	}
+	screen_free(&screen);
+}
+
+static void
 cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
     struct window_pane *wp)
 {
@@ -89,8 +123,8 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 	u_int			 pane, idx, px, py, i, j, xoff, yoff, sx, sy;
 	u_int			 cx, cy;
 	int			 colour, active_colour;
-	char			 buf[16], lbuf[16], rbuf[16], *ptr;
-	size_t			 len, llen, rlen;
+	char			 buf[16], lbuf[16], *ptr;
+	size_t			 len, llen;
 
 	if (wp->xoff + (int)wp->sx <= ctx->ox ||
 	    wp->xoff >= ctx->ox + (int)ctx->sx ||
@@ -159,7 +193,6 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 		bgc.bg = colour;
 	}
 
-	rlen = xsnprintf(rbuf, sizeof rbuf, "%ux%u", wp->sx, wp->sy);
 	if (pane > 9 && pane < 35)
 		llen = xsnprintf(lbuf, sizeof lbuf, "%c", 'a' + (pane - 10));
 	else
@@ -207,13 +240,9 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 
 	if (sy <= 6)
 		goto out;
-	tty_attributes(tty, &fgc, &grid_default_cell, NULL, NULL);
-	if (rlen != 0 && sx >= rlen) {
-		cx = xoff + sx - rlen;
-		cy = yoff;
-		cmd_display_panes_put(ctx, wp, cx, cy, rbuf, rlen);
-	}
+	cmd_display_panes_draw_format(ctx, wp, xoff, yoff, sx, &fgc);
 	if (llen != 0) {
+		tty_attributes(tty, &fgc, &grid_default_cell, NULL, NULL);
 		cx = xoff + sx / 2 + len * 3 - llen - 1;
 		cy = yoff + py + 5;
 		cmd_display_panes_put(ctx, wp, cx, cy, lbuf, llen);

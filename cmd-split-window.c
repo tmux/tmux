@@ -38,11 +38,11 @@ const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
 	.alias = "newp",
 
-	.args = { "bc:de:EfF:hIkl:Lm:p:PR:s:S:t:vx:X:y:Y:Z", 0, -1, NULL },
+	.args = { "bc:de:EfF:hIkl:Lm:p:PR:s:S:t:T:vx:X:y:Y:Z", 0, -1, NULL },
 	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-l size] [-m message] [-p percentage] "
 		 "[-s style] [-S active-border-style] "
-		 "[-R inactive-border-style] [-x width] [-y height] "
+		 "[-R inactive-border-style] [-T title] [-x width] [-y height] "
 		 "[-X x-position] [-Y y-position] " CMD_TARGET_PANE_USAGE " "
 		 "[shell-command [argument ...]]",
 
@@ -56,11 +56,11 @@ const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
 	.alias = "splitw",
 
-	.args = { "bc:de:EfF:hIkl:m:p:PR:s:S:t:vZ", 0, -1, NULL },
+	.args = { "bc:de:EfF:hIkl:m:p:PR:s:S:t:T:vZ", 0, -1, NULL },
 	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-l size] [-m message] [-p percentage] "
 		 "[-s style] [-S active-border-style] "
-		 "[-R inactive-border-style] " CMD_TARGET_PANE_USAGE " "
+		 "[-R inactive-border-style] [-T title] " CMD_TARGET_PANE_USAGE " "
 		 "[shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -85,7 +85,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	 fs;
 	int			 input, empty, is_floating, flags = 0;
 	const char		*template, *style;
-	char			*cause = NULL, *cp;
+	char			*cause = NULL, *cp, *title;
 	struct args_value	*av;
 	u_int			 count = args_count(args);
 
@@ -193,6 +193,12 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 			options_set_string(new_wp->options,
 				"remain-on-exit-format",
 				0, "%s", args_get(args, 'm'));
+	}
+	if (args_has(args, 'T')) {
+		title = format_single_from_target(item, args_get(args, 'T'));
+		screen_set_title(&new_wp->base, title);
+		notify_pane("pane-title-changed", new_wp);
+		free(title);
 	}
 
 	if (input) {

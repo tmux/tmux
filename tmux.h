@@ -1181,6 +1181,8 @@ struct window_mode_entry {
 	struct screen			*screen;
 	u_int				 prefix;
 
+	int				 kill;
+
 	TAILQ_ENTRY(window_mode_entry)	 entry;
 };
 
@@ -3388,8 +3390,8 @@ void	 screen_hide_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);
 int	 screen_select_cell(struct screen *, struct grid_cell *,
 	     const struct grid_cell *);
-void	 screen_alternate_on(struct screen *, struct grid_cell *, int);
-void	 screen_alternate_off(struct screen *, struct grid_cell *, int);
+int	 screen_alternate_on(struct screen *, struct grid_cell *, int);
+int	 screen_alternate_off(struct screen *, struct grid_cell *, int);
 const char *screen_mode_to_string(int);
 const char *screen_print(struct screen *, int);
 
