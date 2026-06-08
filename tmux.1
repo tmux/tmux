@@ -2816,10 +2816,18 @@ specifies the format for each item in the list and
 a format for each shortcut key; both are evaluated once for each line.
 .Fl N
 starts without the preview or if given twice with the larger preview.
+.Fl h
+hides the pane that is in choose\-client mode.  Useful if opening
+choose\-client in a new\-pane (floating pane) to avoid showing an empty
+preview for the empty floating pane. For example:
+.Bd -literal -offset indent
+bind D 'new-pane -x50% -y50% -E; choose-client -h'
+.Ed
+.Pp
 This command works only if at least one client is attached.
 .It Xo
 .Ic choose\-tree
-.Op Fl GNrswyZ
+.Op Fl GhNrswyZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key\-format
@@ -2909,6 +2917,14 @@ starts without the preview or if given twice with the larger preview.
 .Fl G
 includes all sessions in any session groups in the tree rather than only the
 first.
+.Fl h
+hides the pane that is in choose\-tree mode.  Useful if opening
+choose\-tree in a new\-pane (floating pane) to avoid showing an empty
+preview for the empty floating pane. For example:
+.Bd -literal -offset indent
+bind s 'new-pane -x50% -y50% -E; choose-tree -h'
+.Ed
+.Pp
 This command works only if at least one client is attached.
 .It Xo
 .Ic customize\-mode
