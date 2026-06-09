@@ -63,7 +63,7 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
 	struct args	*args = cmd_get_args(self);
 	struct client	*c = cmdq_get_target_client(item);
 	char		*arg;
-	const char	*name, *type = NULL;
+	const char	*name = NULL, *type;
 	struct passwd	*pw;
 	struct group	*gr;
 	id_t		 id;
@@ -80,20 +80,20 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
 
 	arg = format_single(item, args_string(args, 0), c, NULL, NULL, NULL);
 	if (args_has(args, 'g')) {
+		type = "group";
 		if ((gr = getgrnam(arg)) != NULL) {
-			type = "group";
 			id = gr->gr_gid;
 			name = gr->gr_name;
 			flags |= SERVER_ACL_IS_GROUP;
 		}
 	} else {
+		type = "user";
 		if ((pw = getpwnam(arg)) != NULL) {
-			type = "user";
 			id = pw->pw_uid;
 			name = pw->pw_name;
 		}
 	}
-	if (type == NULL) {
+	if (name == NULL) {
 		cmdq_error(item, "unknown %s: %s", type, arg);
 		free(arg);
 		return (CMD_RETURN_ERROR);
