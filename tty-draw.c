@@ -22,6 +22,7 @@
 
 #include "tmux.h"
 
+/* Current state when drawing line. */
 enum tty_draw_line_state {
 	TTY_DRAW_LINE_FIRST,
 	TTY_DRAW_LINE_FLUSH,
@@ -91,8 +92,7 @@ tty_draw_line_clear(struct tty *tty, u_int px, u_int py, u_int nx,
 /* Draw a line from screen to tty. */
 void
 tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
-    u_int atx, u_int aty, const struct grid_cell *defaults,
-    struct colour_palette *palette)
+    u_int atx, u_int aty, const struct tty_style_ctx *style_ctx)
 {
 	struct grid		*gd = s->grid;
 	const struct grid_cell	*gcp;
@@ -104,6 +104,14 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	char			 buf[1000];
 	size_t			 len;
 	enum tty_draw_line_state current_state, next_state;
+	struct tty_style_ctx	 default_style_ctx = { 0 };
+
+
+	if (style_ctx == NULL) {
+		default_style_ctx.defaults = &grid_default_cell;
+		default_style_ctx.hyperlinks = s->hyperlinks;
+		style_ctx = &default_style_ctx;
+	}
 
 	/*
 	 * py is the line in the screen to draw. px is the start x and nx is
@@ -130,8 +138,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	else
 		ex = screen_size_x(s);
 	log_debug("%s: drawing %u-%u,%u (end %u) at %u,%u; defaults: fg=%d, "
-	    "bg=%d", __func__, px, px + nx, py, ex, atx, aty, defaults->fg,
-	    defaults->bg);
+	    "bg=%d", __func__, px, px + nx, py, ex, atx, aty,
+	    style_ctx->defaults->fg, style_ctx->defaults->bg);
 
 	/* Turn off cursor while redrawing and reset region and margins. */
 	flags = (tty->flags & TTY_NOCURSOR);
@@ -142,8 +150,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 
 	/* Start with the default cell as the last cell. */
 	memcpy(&last, &grid_default_cell, sizeof last);
-	last.bg = defaults->bg;
-	tty_default_attributes(tty, defaults, palette, 8, s->hyperlinks);
+	last.bg = style_ctx->defaults->bg;
+	tty_default_attributes(tty, 8, style_ctx);
 
 	/*
 	 * If there is padding at the start, we must have truncated a wide
@@ -164,7 +172,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				break;
 		}
 		if (i == 0)
-			bg = defaults->bg;
+			bg = style_ctx->defaults->bg;
 		else {
 			bg = gc.bg;
 			if (gc.flags & GRID_FLAG_SELECTED) {
@@ -173,9 +181,9 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 					bg = ngc.bg;
 			}
 		}
-		tty_attributes(tty, &last, defaults, palette, s->hyperlinks);
+			tty_attributes(tty, &last, style_ctx);
 		log_debug("%s: clearing %u padding cells", __func__, cx);
-		tty_draw_line_clear(tty, atx, aty, cx, defaults, bg, 0);
+		tty_draw_line_clear(tty, atx, aty, cx, style_ctx->defaults, bg, 0);
 		if (cx == ex)
 			goto out;
 		atx += cx;
@@ -274,15 +282,14 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		/* If the state has changed, flush any collected data. */
 		if (next_state != current_state) {
 			if (current_state == TTY_DRAW_LINE_EMPTY) {
-				tty_attributes(tty, &last, defaults, palette,
-				    s->hyperlinks);
+				tty_attributes(tty, &last, style_ctx);
 				tty_draw_line_clear(tty, atx + last_i, aty,
-				    i - last_i, defaults, last.bg, wrapped);
+				    i - last_i, style_ctx->defaults, last.bg,
+				    wrapped);
 				wrapped = 0;
 			} else if (next_state != TTY_DRAW_LINE_SAME &&
 			    len != 0) {
-				tty_attributes(tty, &last, defaults, palette,
-				    s->hyperlinks);
+				tty_attributes(tty, &last, style_ctx);
 				if (atx + i - width != 0 || !wrapped)
 					tty_cursor(tty, atx + i - width, aty);
 				if (~last.attr & GRID_ATTR_CHARSET)
@@ -322,4 +329,3 @@ out:
 	tty->flags = (tty->flags & ~TTY_NOCURSOR)|flags;
 	tty_update_mode(tty, tty->mode, s);
 }
-

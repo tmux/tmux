@@ -219,7 +219,8 @@ static void
 screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
     int is_sync, int check_obscured)
 {
-	struct screen	*s = ctx->s;
+	struct screen		*s = ctx->s;
+	struct colour_palette	*palette = NULL;
 
 	memset(ttyctx, 0, sizeof *ttyctx);
 
@@ -236,19 +237,23 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 		ttyctx->flags |= TTY_CTX_PANE_OBSCURED;
 
 	memcpy(&ttyctx->defaults, &grid_default_cell, sizeof ttyctx->defaults);
+	ttyctx->style_ctx.defaults = &ttyctx->defaults;
+	ttyctx->style_ctx.hyperlinks = ctx->s->hyperlinks;
+
 	if (ctx->init_ctx_cb != NULL) {
 		ctx->init_ctx_cb(ctx, ttyctx);
-		if (ttyctx->palette != NULL) {
+		if (ttyctx->style_ctx.palette != NULL) {
+			palette = ttyctx->style_ctx.palette;
 			if (ttyctx->defaults.fg == 8)
-				ttyctx->defaults.fg = ttyctx->palette->fg;
+				ttyctx->defaults.fg = palette->fg;
 			if (ttyctx->defaults.bg == 8)
-				ttyctx->defaults.bg = ttyctx->palette->bg;
+				ttyctx->defaults.bg = palette->bg;
 		}
 	} else {
 		ttyctx->redraw_cb = screen_write_redraw_cb;
 		if (ctx->wp != NULL) {
 			tty_default_colours(&ttyctx->defaults, ctx->wp);
-			ttyctx->palette = &ctx->wp->palette;
+			ttyctx->style_ctx.palette = &ctx->wp->palette;
 			ttyctx->set_client_cb = screen_write_set_client_cb;
 			ttyctx->arg = ctx->wp;
 		}

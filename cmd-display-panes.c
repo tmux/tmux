@@ -91,6 +91,7 @@ cmd_display_panes_draw_format(struct screen_redraw_ctx *ctx,
 	const char		*format;
 	char			*expanded;
 	u_int			 i, px = ctx->ox + xoff;
+	struct tty_style_ctx	 style_ctx = { .defaults = gc };
 
 	format = options_get_string(s->options, "display-panes-format");
 	expanded = format_single(NULL, format, c, s, s->curw, wp);
@@ -105,7 +106,7 @@ cmd_display_panes_draw_format(struct screen_redraw_ctx *ctx,
 	for (i = 0; i < r->used; i++) {
 		ri = &r->ranges[i];
 		tty_draw_line(tty, &screen, ri->px - px, 0, ri->nx,
-		    ri->px - ctx->ox, yoff, gc, NULL);
+		    ri->px - ctx->ox, yoff, &style_ctx);
 	}
 	screen_free(&screen);
 }
@@ -199,7 +200,7 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 		llen = 0;
 
 	if (sx < len * 6 || sy < 5) {
-		tty_attributes(tty, &fgc, &grid_default_cell, NULL, NULL);
+		tty_attributes(tty, &fgc, NULL);
 		if (sx >= len + llen + 1) {
 			len += llen + 1;
 			cx = xoff + px - len / 2;
@@ -220,7 +221,7 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 	px -= len * 3;
 	py -= 2;
 
-	tty_attributes(tty, &bgc, &grid_default_cell, NULL, NULL);
+	tty_attributes(tty, &bgc, NULL);
 	for (ptr = buf; *ptr != '\0'; ptr++) {
 		if (*ptr < '0' || *ptr > '9')
 			continue;
@@ -242,7 +243,7 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 		goto out;
 	cmd_display_panes_draw_format(ctx, wp, xoff, yoff, sx, &fgc);
 	if (llen != 0) {
-		tty_attributes(tty, &fgc, &grid_default_cell, NULL, NULL);
+		tty_attributes(tty, &fgc, NULL);
 		cx = xoff + sx / 2 + len * 3 - llen - 1;
 		cy = yoff + py + 5;
 		cmd_display_panes_put(ctx, wp, cx, cy, lbuf, llen);

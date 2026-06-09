@@ -50,8 +50,6 @@ cmd_kill_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*target = cmdq_get_target(item);
-	struct session		*s = target->s;
-	struct winlink		*wl = target->wl;
 	struct window_pane	*wp = target->wp;
 	const char		*filter = args_get(args, 'f');
 
