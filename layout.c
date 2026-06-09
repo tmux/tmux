@@ -288,6 +288,10 @@ layout_fix_offsets(struct window *w)
 	layout_fix_offsets1(lc);
 }
 
+/*
+ * Not all cells are drawn within the tiled grid of a layout. This predicate
+ * isolates that logic.
+ */
 int
 layout_cell_is_tiled(struct layout_cell *lc)
 {
