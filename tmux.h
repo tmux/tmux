@@ -1486,7 +1486,8 @@ TAILQ_HEAD(layout_cells, layout_cell);
 struct layout_cell {
 	enum layout_type type;
 
-#define LAYOUT_CELL_FLOATING 0x1
+#define LAYOUT_CELL_FLOATING	0x1
+#define LAYOUT_CELL_HIDDEN	0x2
 	int		 flags;
 
 	struct layout_cell *parent;
@@ -3538,9 +3539,11 @@ void		 layout_make_leaf(struct layout_cell *, struct window_pane *);
 void		 layout_make_node(struct layout_cell *, enum layout_type);
 void		 layout_fix_zindexes(struct window *, struct layout_cell *);
 void		 layout_fix_offsets(struct window *);
+int		 layout_cell_is_tiled(struct layout_cell *);
 void		 layout_fix_panes(struct window *, struct window_pane *);
 void		 layout_resize_adjust(struct window *, struct layout_cell *,
 		     enum layout_type, int);
+struct layout_cell *layout_cell_get_neighbour(struct layout_cell *);
 void		 layout_init(struct window *, struct window_pane *);
 void		 layout_free(struct window *);
 void		 layout_resize(struct window *, u_int, u_int);

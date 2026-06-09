@@ -250,10 +250,7 @@ layout_fix_offsets1(struct layout_cell *lc)
 	if (lc->type == LAYOUT_LEFTRIGHT) {
 		xoff = lc->xoff;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (lcchild->flags & LAYOUT_CELL_FLOATING ||
-			    (lcchild->type == LAYOUT_WINDOWPANE &&
-			    lcchild->wp != NULL &&
-			    (lcchild->wp->flags & PANE_HIDDEN)))
+			if (!layout_cell_is_tiled(lcchild))
 				continue;
 			lcchild->xoff = xoff;
 			lcchild->yoff = lc->yoff;
@@ -264,10 +261,7 @@ layout_fix_offsets1(struct layout_cell *lc)
 	} else {
 		yoff = lc->yoff;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (lcchild->flags & LAYOUT_CELL_FLOATING ||
-			    (lcchild->type == LAYOUT_WINDOWPANE &&
-			    lcchild->wp != NULL &&
-			    (lcchild->wp->flags & PANE_HIDDEN)))
+			if (!layout_cell_is_tiled(lcchild))
 				continue;
 			lcchild->xoff = lc->xoff;
 			lcchild->yoff = yoff;
@@ -294,6 +288,29 @@ layout_fix_offsets(struct window *w)
 	layout_fix_offsets1(lc);
 }
 
+int
+layout_cell_is_tiled(struct layout_cell *lc)
+{
+	return ((~lc->flags & LAYOUT_CELL_HIDDEN) &&
+	    (~lc->flags & LAYOUT_CELL_FLOATING));
+}
+
+static int
+layout_cell_is_first_tiled(struct layout_cell *lc)
+{
+	struct layout_cell	*lcchild, *lcparent = lc->parent;
+
+	if (lcparent == NULL)
+		return (layout_cell_is_tiled(lc));
+
+	TAILQ_FOREACH(lcchild, &lcparent->cells, entry) {
+		if (layout_cell_is_tiled(lcchild))
+			break;
+	}
+
+	return (lcchild == lc);
+}
+
 /* Is this a top cell? */
 static int
 layout_cell_is_top(struct window *w, struct layout_cell *lc)
@@ -305,7 +322,7 @@ layout_cell_is_top(struct window *w, struct layout_cell *lc)
 		if (next == NULL)
 			return (0);
 		if (next->type == LAYOUT_TOPBOTTOM &&
-		    lc != TAILQ_FIRST(&next->cells))
+		    !layout_cell_is_first_tiled(lc))
 			return (0);
 		lc = next;
 	}
@@ -497,7 +514,7 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 	/* Child cell runs in a different direction. */
 	if (lc->type != type) {
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (lcchild->flags & LAYOUT_CELL_FLOATING)
+			if (!layout_cell_is_tiled(lcchild))
 				continue;
 			layout_resize_adjust(w, lcchild, type, change);
 		}
@@ -512,7 +529,7 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			if (change == 0)
 				break;
-			if (lcchild->flags & LAYOUT_CELL_FLOATING)
+			if (!layout_cell_is_tiled(lcchild))
 				continue;
 			if (change > 0) {
 				layout_resize_adjust(w, lcchild, type, 1);
@@ -525,36 +542,6 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 			}
 		}
 	}
-}
-
-/*
- * Return the nearest sibling of lc that is not a hidden WINDOWPANE leaf,
- * walking forward (direction=1) or backward (direction=0) in the parent's list.
- * Container cells (TOPBOTTOM/LEFTRIGHT) are never skipped.
- */
-static struct layout_cell *
-layout_active_neighbour(struct layout_cell *lc, int direction)
-{
-	struct layout_cell	*lcother;
-
-	if (direction)
-		lcother = TAILQ_NEXT(lc, entry);
-	else
-		lcother = TAILQ_PREV(lc, layout_cells, entry);
-
-	while (lcother != NULL) {
-		if (lcother->type != LAYOUT_WINDOWPANE)
-			return (lcother);		/* container — not skipped */
-		if (lcother->wp == NULL ||
-		    (~lcother->wp->flags & PANE_HIDDEN))
-			return (lcother);		/* visible leaf */
-		/* hidden leaf — keep walking */
-		if (direction)
-			lcother = TAILQ_NEXT(lcother, entry);
-		else
-			lcother = TAILQ_PREV(lcother, layout_cells, entry);
-	}
-	return (NULL);
 }
 
 /*
@@ -613,14 +600,62 @@ layout_redistribute_cells(struct window *w, struct layout_cell *lcparent,
 	}
 }
 
-/* Destroy a cell and redistribute the space in tiled cells. */
+/* Helper function for layout_cell_get_neighbour. */
+static struct layout_cell *
+layout_cell_get_neighbour_direction(struct layout_cell *lc, int direction)
+{
+	struct layout_cell	*lcother = lc;
+
+	while (1) {
+		if (direction)
+			lcother = TAILQ_NEXT(lcother, entry);
+		else
+			lcother = TAILQ_PREV(lcother, layout_cells, entry);
+
+		if (lcother == NULL || layout_cell_is_tiled(lcother))
+			return (lcother);
+	}
+}
+
+/*
+ * Finds the nearest visible neighbour. A neighbour is a sibling cell drawn
+ * within the tiled layout. Prefers cells "before" the specified cell.
+ * This behavior defines how cell dimensions are redistributed when a cell is
+ * hidden/shown and floated/tiled.
+ */
+struct layout_cell *
+layout_cell_get_neighbour(struct layout_cell *lc)
+{
+	struct layout_cell	*lcother, *lcparent = lc->parent;
+	int			 direction = 0;
+
+	if (lcparent == NULL)
+		return (NULL);
+
+	if (lc == TAILQ_FIRST(&lcparent->cells))
+		direction = 1;
+
+	lcother = layout_cell_get_neighbour_direction(lc, direction);
+	if (lcother == NULL)
+		lcother = layout_cell_get_neighbour_direction(lc, !direction);
+
+	return lcother;
+}
+
+
+/* Destroy a cell and redistribute the space if the cell was tiled. */
 void
 layout_destroy_cell(struct window *w, struct layout_cell *lc,
     struct layout_cell **lcroot)
 {
-	struct layout_cell     *lcother = NULL, *lcparent;
+	struct layout_cell     *lcother, *lcparent;
+	int			val;
 
-	/* If no parent, this is the last pane in a window. */
+	/*
+	 * If no parent, this is either a floating pane or the last
+	 * pane so window close is imminent and there is no need to
+	 * resize anything.
+	 */
 	lcparent = lc->parent;
 	if (lcparent == NULL) {
 		if (lc->wp != NULL)
@@ -629,30 +664,30 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 		return;
 	}
 
-	if (~lc->flags & LAYOUT_CELL_FLOATING) {
-		/* Merge the space into the previous or next cell. */
-		if (lc == TAILQ_FIRST(&lcparent->cells))
-			lcother = TAILQ_NEXT(lc, entry);
+	if (!layout_cell_is_tiled(lc)) {
+		TAILQ_REMOVE(&lcparent->cells, lc, entry);
+		layout_free_cell(lc);
+		goto out;
+	}
+
+	lcother = layout_cell_get_neighbour(lc);
+	if (lcother != NULL) {
+		if (lcparent->type == LAYOUT_LEFTRIGHT)
+			val = lc->sx + 1;
 		else
-			lcother = TAILQ_PREV(lc, layout_cells, entry);
-	}
-	if (lcother != NULL && (~lcother->flags & LAYOUT_CELL_FLOATING)) {
-		if (lcparent->type == LAYOUT_LEFTRIGHT) {
-			layout_resize_adjust(w, lcother, lcparent->type,
-			    lc->sx + 1);
-		} else {
-			layout_resize_adjust(w, lcother, lcparent->type,
-			    lc->sy + 1);
-		}
-	}
+			val = lc->sy + 1;
+		layout_resize_adjust(w, lcother, lcparent->type, val);
+	} else
+		layout_hide_cell(w, lcparent);
 
 	/* Remove this from the parent's list. */
 	TAILQ_REMOVE(&lcparent->cells, lc, entry);
 	layout_free_cell(lc);
 
+out:
 	/*
-	 * In tiled layouts, if the parent now has one cell, remove
-	 * the parent from the tree and replace it by that cell.
+	 * If the parent now has one cell, remove the parent from the tree and
+	 * replace it by that cell.
 	 */
 	lc = TAILQ_FIRST(&lcparent->cells);
 	if (lc != NULL && TAILQ_NEXT(lc, entry) == NULL) {
@@ -660,24 +695,8 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 
 		lc->parent = lcparent->parent;
 		if (lc->parent == NULL) {
-			if (~lc->flags & LAYOUT_CELL_FLOATING) {
-				lc->xoff = 0;
-				lc->yoff = 0;
-			}
-
-			/*
-			 * If the sole remaining child is a hidden
-			 * WINDOWPANE, its stored size may be stale (it never
-			 * received the space that was given to the removed
-			 * cell).  Restore the full window size so that
-			 * 'show' can reclaim the correct amount.
-			 */
-			if (lc->type == LAYOUT_WINDOWPANE &&
-			    lc->wp != NULL &&
-			    (lc->wp->flags & PANE_HIDDEN)) {
-				lc->sx = lcparent->sx;
-				lc->sy = lcparent->sy;
-			}
+			if (layout_cell_is_tiled(lc))
+				layout_set_size(lc, w->sx, w->sy, 0, 0);
 			*lcroot = lc;
 		} else
 			TAILQ_REPLACE(&lc->parent->cells, lcparent, lc, entry);
@@ -686,43 +705,46 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 	}
 }
 
-/* Hide a cell and redistribute the space in tiled cells. */
+
+/* Hide a cell. Space is redistributed to the nearest neighbour if the cell was
+ * tiled.
+ */
 void
 layout_hide_cell(struct window *w, struct layout_cell *lc)
 {
-	struct layout_cell     *lcother, *lcparent, *lcchild;
-	u_int			space = 0;
-	int			direction;
+	struct layout_cell	*lcother, *lcparent, *lcchild;
+	u_int			 shown_children = 0;
+	int			 val;
 
-	lcparent = lc->parent;
-	if (lcparent == NULL)
+	if (lc == NULL)
 		return;
 
-	/* Merge the space into the nearest non-hidden sibling. */
-	{
-		direction = (lc == TAILQ_FIRST(&lcparent->cells)) ? 1 : 0;
-		lcother = layout_active_neighbour(lc, direction);
-		if (lcother == NULL)
-			lcother = layout_active_neighbour(lc, !direction);
-	}
-	if (lcother != NULL && lcparent->type == LAYOUT_LEFTRIGHT)
-		layout_resize_adjust(w, lcother, lcparent->type, lc->sx + 1);
-	else if (lcother != NULL)
-		layout_resize_adjust(w, lcother, lcparent->type, lc->sy + 1);
+	lcparent = lc->parent;
+	lc->flags |= LAYOUT_CELL_HIDDEN;
 
-	/* If the parent cells are all hidden, hide it too. */
+	/* Merge the space into the nearest neighbour. */
+	lcother = layout_cell_get_neighbour(lc);
+
+	if (lcother != NULL) {
+		if (lcparent->type == LAYOUT_LEFTRIGHT)
+			val = lc->sx + 1;
+		else
+			val = lc->sy + 1;
+		layout_resize_adjust(w, lcother, lcparent->type, val);
+	}
+
+	if (layout_cell_is_tiled(lc))
+		layout_set_size(lc, 0, 0, 0, 0);
+
+	/* If no children are tiled, hide the parent. */
 	if (lcparent != NULL) {
 		TAILQ_FOREACH(lcchild, &lcparent->cells, entry) {
-			if (lcchild->wp == NULL ||
-			    lcchild->wp->flags & PANE_HIDDEN)
-				continue;
-			if (lcparent->type == LAYOUT_LEFTRIGHT) {
-				space += lcchild->sx;
-			} else if (lcparent->type == LAYOUT_TOPBOTTOM) {
-				space += lcchild->sy;
+			if (layout_cell_is_tiled(lcchild)) {
+				shown_children = 1;
+				break;
 			}
 		}
-		if (space == 0)
+		if (shown_children == 0)
 			layout_hide_cell(w, lcparent);
 	}
 }
@@ -787,7 +809,7 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 	 * out proportionately - this should leave the layout fitting the new
 	 * window size.
 	 */
-	if (lc->type == LAYOUT_WINDOWPANE && (lc->flags & LAYOUT_CELL_FLOATING))
+	if (lc->type == LAYOUT_WINDOWPANE && !layout_cell_is_tiled(lc))
 		return;
 	xchange = sx - lc->sx;
 	xlimit = layout_resize_check(w, lc, LAYOUT_LEFTRIGHT);
@@ -1101,7 +1123,7 @@ layout_resize_child_cells(struct window *w, struct layout_cell *lc)
 	count = 0;
 	previous = 0;
 	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-		if (lcchild->flags & LAYOUT_CELL_FLOATING)
+		if (!layout_cell_is_tiled(lcchild))
 			continue;
 		count++;
 		if (lc->type == LAYOUT_LEFTRIGHT)
@@ -1121,7 +1143,7 @@ layout_resize_child_cells(struct window *w, struct layout_cell *lc)
 	/* Resize children into the new size. */
 	idx = 0;
 	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-		if (lcchild->flags & LAYOUT_CELL_FLOATING)
+		if (!layout_cell_is_tiled(lcchild))
 			continue;
 		if (lc->type == LAYOUT_TOPBOTTOM) {
 			lcchild->sx = lc->sx;

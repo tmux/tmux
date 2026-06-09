@@ -751,21 +751,6 @@ window_zoom(struct window_pane *wp)
 		window_set_active_pane(w, wp, 1);
 	wp->flags |= PANE_ZOOMED;
 
-	/* Bring pane above other tiled panes and hide floating panes. */
-	TAILQ_FOREACH(wp1, &w->z_index, zentry) {
-		if (wp1 == wp) {
-			wp1->saved_flags |= (wp1->flags & PANE_HIDDEN);
-			wp1->flags &= ~PANE_HIDDEN;
-			continue;
-		}
-		if (window_pane_is_floating(wp1)) {
-			wp1->saved_flags |= (wp1->flags & PANE_HIDDEN);
-			wp1->flags |= PANE_HIDDEN;
-			continue;
-		}
-		break;
-	}
-
 	TAILQ_FOREACH(wp1, &w->panes, entry) {
 		wp1->saved_layout_cell = wp1->layout_cell;
 		wp1->layout_cell = NULL;
@@ -792,20 +777,9 @@ window_unzoom(struct window *w, int notify)
 	w->layout_root = w->saved_layout_root;
 	w->saved_layout_root = NULL;
 
-	TAILQ_FOREACH(wp, &w->z_index, zentry) {
-		if (window_pane_is_floating(wp)) {
-			wp->flags &= ~PANE_HIDDEN | (wp->saved_flags & PANE_HIDDEN);
-			continue;
-		}
-		break;
-	}
-
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		wp->layout_cell = wp->saved_layout_cell;
-		if (wp->flags & PANE_HIDDEN)
-			wp->saved_layout_cell = wp->layout_cell;
-		else
-			wp->saved_layout_cell = NULL;
+		wp->saved_layout_cell = NULL;
 		wp->flags &= ~PANE_ZOOMED;
 	}
 	layout_fix_panes(w, NULL);
