@@ -3382,7 +3382,7 @@ but a different format may be specified with
 .Fl F .
 .Tg newp
 .It Xo Ic new\-pane
-.Op Fl bdefhIkPvZ
+.Op Fl bBdefhIkPvZ
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
@@ -3457,6 +3457,17 @@ but also sets the
 .Ic remain\-on\-exit\-format
 option for this pane to
 .Ar message .
+.Pp
+.Fl B
+blocks until
+.Ar shell\-command
+exits, then returns its exit status.
+For example:
+.Bd -literal -offset indent
+$ tmux new-pane -B 'vi afile'
+$ echo $?
+0
+.Ed
 .Pp
 .Fl E ,
 or an empty
