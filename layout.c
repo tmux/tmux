@@ -1328,7 +1328,8 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
  * layout_assign_pane before much else happens!
  */
 struct layout_cell *
-layout_floating_pane(struct window *w, u_int sx, u_int sy, int ox, int oy)
+layout_floating_pane(struct window *w, struct layout_cell *lc, u_int sx,
+    u_int sy, int ox, int oy)
 {
 	struct layout_cell	*lc = w->layout_root, *lcnew, *lcparent;
 
