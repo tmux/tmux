@@ -2051,6 +2051,8 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 		tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 
 	tty_margin_off(tty);
+	if (ctx->flags & TTY_CTX_CELL_INVALIDATE)
+		tty_invalidate(tty);
 	tty_cursor_pane_unless_wrap(tty, ctx, ctx->ocx, ctx->ocy);
 
 	tty_cell(tty, ctx->cell, &ctx->defaults, ctx->palette,

@@ -82,6 +82,23 @@ utf8_is_hangul_filler(const struct utf8_data *ud)
 	return (memcmp(ud->data, "\343\205\244", 3) == 0);
 }
 
+/* Count regional indicator characters. */
+static u_int
+utf8_regional_count(const struct utf8_data *ud)
+{
+	u_int	count = 0, i;
+
+	for (i = 0; i + 4 <= ud->size; i++) {
+		if (ud->data[i] == 0xf0 &&
+		    ud->data[i + 1] == 0x9f &&
+		    ud->data[i + 2] == 0x87 &&
+		    ud->data[i + 3] >= 0xa6 &&
+		    ud->data[i + 3] <= 0xbf)
+			count++;
+	}
+	return (count);
+}
+
 /* Should these two characters combine? */
 int
 utf8_should_combine(const struct utf8_data *with, const struct utf8_data *add)
@@ -94,8 +111,13 @@ utf8_should_combine(const struct utf8_data *with, const struct utf8_data *add)
 		return (0);
 
 	/* Regional indicators. */
-	if ((a >= 0x1F1E6 && a <= 0x1F1FF) && (w >= 0x1F1E6 && w <= 0x1F1FF))
+	if ((a >= 0x1F1E6 && a <= 0x1F1FF) && (w >= 0x1F1E6 && w <= 0x1F1FF)) {
+		if (utf8_regional_count(with) != 1)
+			return (0);
+		if (utf8_regional_count(add) != 1)
+			return (0);
 		return (1);
+	}
 
 	/* Emoji skin tone modifiers. */
 	switch (a) {
