@@ -84,20 +84,21 @@ cmd_display_panes_draw_format(struct screen_redraw_ctx *ctx,
 	struct client		*c = ctx->c;
 	struct tty		*tty = &c->tty;
 	struct session		*s = c->session;
-	struct screen		 screen;
+	struct screen		*sc = wp->screen, screen;
 	struct screen_write_ctx	 sctx;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 	const char		*format;
 	char			*expanded;
 	u_int			 i, px = ctx->ox + xoff;
-	struct tty_style_ctx	 style_ctx = { .defaults = gc };
 
 	format = options_get_string(s->options, "display-panes-format");
 	expanded = format_single(NULL, format, c, s, s->curw, wp);
 
 	screen_init(&screen, sx, 1, 0);
 	screen_write_start(&sctx, &screen);
+	screen_write_fast_copy(&sctx, sc, 0, sc->grid->hsize, sx, 1);
+	screen_write_cursormove(&sctx, 0, 0, 0);
 	format_draw(&sctx, gc, sx, expanded, NULL, 0);
 	screen_write_stop(&sctx);
 	free(expanded);
@@ -106,7 +107,7 @@ cmd_display_panes_draw_format(struct screen_redraw_ctx *ctx,
 	for (i = 0; i < r->used; i++) {
 		ri = &r->ranges[i];
 		tty_draw_line(tty, &screen, ri->px - px, 0, ri->nx,
-		    ri->px - ctx->ox, yoff, &style_ctx);
+		    ri->px - ctx->ox, yoff, NULL);
 	}
 	screen_free(&screen);
 }
