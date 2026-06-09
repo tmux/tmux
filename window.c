@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 #include <sys/ioctl.h>
+#include <sys/wait.h>
 
 #include <ctype.h>
 #include <errno.h>
@@ -380,6 +381,13 @@ window_pane_destroy_ready(struct window_pane *wp)
 
 	if (~wp->flags & PANE_EXITED)
 		return (0);
+
+	/*
+	 * If a command queue item is blocked on this pane, wait for the
+	 * child's exit status before destroying it.
+	 */
+	if (wp->block_item != NULL && (~wp->flags & PANE_STATUSREADY))
+		return (0);
 	return (1);
 }
 
@@ -642,12 +650,32 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 
 	pane_status = options_get_number(w->options, "pane-border-status");
 
+	if (pane_status == PANE_STATUS_TOP) {
+		/*
+		 * Prefer a pane's top border status line over the pane above's
+		 * bottom border.
+		 */
+		TAILQ_FOREACH(wp, &w->z_index, zentry) {
+			if (!window_pane_visible(wp) || window_pane_is_floating(wp))
+				continue;
+
+			window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
+			if ((int)x < xoff || x > xoff + sx)
+				continue;
+			if ((int)y == yoff - 1)
+				return (wp);
+		}
+	}
+
 	TAILQ_FOREACH(wp, &w->z_index, zentry) {
 		if (!window_pane_visible(wp))
 			continue;
 		window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
 		if (!window_pane_is_floating(wp)) {
-			/* Tiled - to and including bottom or right border. */
+			/*
+			 * Tiled - to and including the right border, excluding
+			 * the bottom border.
+			 */
 			if ((int)x < xoff || x > xoff + sx)
 				continue;
 			if (pane_status == PANE_STATUS_TOP) {
@@ -1120,11 +1148,37 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	return (wp);
 }
 
+void
+window_pane_block_finish(struct window_pane *wp)
+{
+	struct cmdq_item	*item = wp->block_item;
+	struct client		*c;
+	int			 retval = 0;
+
+	if (item == NULL)
+		return;
+	wp->block_item = NULL;
+
+	if (wp->flags & PANE_STATUSREADY) {
+		if (WIFEXITED(wp->status))
+			retval = WEXITSTATUS(wp->status);
+		else if (WIFSIGNALED(wp->status))
+			retval = WTERMSIG(wp->status) + 128;
+	}
+
+	c = cmdq_get_client(item);
+	if (c != NULL && c->session == NULL)
+		c->retval = retval;
+	cmdq_continue(item);
+}
+
 static void
 window_pane_destroy(struct window_pane *wp)
 {
 	struct window_pane_resize	*r;
 	struct window_pane_resize	*r1;
+
+	window_pane_block_finish(wp);
 
 	window_pane_reset_mode_all(wp);
 	free(wp->searchstr);
@@ -1280,7 +1334,7 @@ window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
 		TAILQ_INSERT_HEAD(&wp->modes, wme, entry);
 		wme->screen = wme->mode->init(wme, fs, args);
 	}
-	wme->kill = args_has(args, 'k');
+	wme->kill = args != NULL ? args_has(args, 'k') : 0;
 	wp->screen = wme->screen;
 
 	wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR|PANE_CHANGED);
