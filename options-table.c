@@ -738,7 +738,7 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the command prompt when in command mode, if "
-		  "'mode-keys' is set to 'vi'."
+		  "'status-keys' is set to 'vi'."
 	},
 
 	{ .name = "message-format",

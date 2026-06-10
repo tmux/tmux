@@ -871,6 +871,10 @@ struct grid {
 	u_int			 hsize;
 	u_int			 hlimit;
 
+	u_int			 scroll_added;
+	u_int			 scroll_collected;
+	u_int			 scroll_generation;
+
 	struct grid_line	*linedata;
 };
 
@@ -1305,7 +1309,7 @@ struct window_pane {
 	char		 tty[TTY_NAME_MAX];
 	int		 status;
 	struct timeval	 dead_time;
-	struct cmdq_item *block_item;	/* new-pane -B: waiting for pane exit */
+	struct cmdq_item *wait_item;	/* new-pane -W: waiting for pane exit */
 
 	int		 fd;
 	struct bufferevent *event;
@@ -1654,6 +1658,13 @@ struct tty_term {
 };
 LIST_HEAD(tty_terms, tty_term);
 
+/* Terminal style context. */
+struct tty_style_ctx {
+	const struct grid_cell	*defaults;
+	struct colour_palette	*palette;
+	struct hyperlinks	*hyperlinks;
+};
+
 /* Client terminal. */
 struct tty {
 	struct client	*client;
@@ -1804,7 +1815,7 @@ struct tty_ctx {
 
 	/* The default colours and palette. */
 	struct grid_cell	 defaults;
-	struct colour_palette	*palette;
+	struct tty_style_ctx	 style_ctx;
 
 	/* Containing region (usually window) offset and size. */
 	u_int			 wox;
@@ -2672,6 +2683,10 @@ void	environ_push(struct environ *);
 void printflike(2, 3) environ_log(struct environ *, const char *, ...);
 struct environ *environ_for_session(struct session *, int);
 
+/* tty-draw.c */
+void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int,
+	    u_int, u_int, const struct tty_style_ctx *);
+
 /* tty.c */
 void	tty_create_log(void);
 int	tty_window_bigger(struct tty *);
@@ -2680,8 +2695,7 @@ void	tty_update_window_offset(struct window *);
 void	tty_update_client_offset(struct client *);
 void	tty_raw(struct tty *, const char *);
 void	tty_attributes(struct tty *, const struct grid_cell *,
-	    const struct grid_cell *, struct colour_palette *,
-	    struct hyperlinks *);
+	    const struct tty_style_ctx *);
 void	tty_reset(struct tty *);
 void	tty_region_off(struct tty *);
 void	tty_margin_off(struct tty *);
@@ -2700,8 +2714,7 @@ void	tty_puts(struct tty *, const char *);
 void	tty_putc(struct tty *, u_char);
 void	tty_putn(struct tty *, const void *, size_t, u_int);
 void	tty_cell(struct tty *, const struct grid_cell *,
-	    const struct grid_cell *, struct colour_palette *,
-	    struct hyperlinks *);
+	    const struct tty_style_ctx *);
 int	tty_init(struct tty *, struct client *);
 void	tty_resize(struct tty *);
 void	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
@@ -2713,22 +2726,13 @@ void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_set_path(struct tty *, const char *);
 void	tty_set_progress_bar(struct tty *, struct progress_bar *);
-void	tty_default_attributes(struct tty *, const struct grid_cell *,
-	    struct colour_palette *, u_int, struct hyperlinks *);
+void	tty_default_attributes(struct tty *, u_int,
+	    const struct tty_style_ctx *);
 void	tty_update_mode(struct tty *, int, struct screen *);
 const struct grid_cell *tty_check_codeset(struct tty *,
 	    const struct grid_cell *);
 struct visible_ranges *tty_check_overlay_range(struct tty *, u_int, u_int,
 	    u_int);
-
-/* tty-draw.c */
-void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int,
-	    u_int, u_int, const struct grid_cell *, struct colour_palette *);
-
-#ifdef ENABLE_SIXEL
-void	tty_draw_images(struct client *, struct window_pane *, struct screen *);
-#endif
-
 void	tty_sync_start(struct tty *);
 void	tty_sync_end(struct tty *);
 int	tty_open(struct tty *, char **);
@@ -2760,6 +2764,7 @@ void	tty_cmd_setselection(struct tty *, const struct tty_ctx *);
 void	tty_cmd_rawstring(struct tty *, const struct tty_ctx *);
 #ifdef ENABLE_SIXEL
 void	tty_cmd_sixelimage(struct tty *, const struct tty_ctx *);
+void	tty_draw_images(struct client *, struct window_pane *, struct screen *);
 #endif
 void	tty_cmd_syncstart(struct tty *, const struct tty_ctx *);
 void	tty_default_colours(struct grid_cell *, struct window_pane *);
@@ -3222,6 +3227,7 @@ int	 grid_cells_look_equal(const struct grid_cell *,
 	     const struct grid_cell *);
 struct grid *grid_create(u_int, u_int, u_int);
 void	 grid_destroy(struct grid *);
+void	 grid_free_lines(struct grid *, u_int, u_int);
 int	 grid_compare(struct grid *, struct grid *);
 void	 grid_collect_history(struct grid *, int);
 void	 grid_remove_history(struct grid *, u_int );
@@ -3436,7 +3442,7 @@ struct window	*window_find_by_id(u_int);
 void		 window_update_activity(struct window *);
 struct window	*window_create(u_int, u_int, u_int, u_int);
 void		 window_pane_set_event(struct window_pane *);
-void            window_pane_block_finish(struct window_pane *);
+void		 window_pane_wait_finish(struct window_pane *);
 struct window_pane *window_get_active_at(struct window *, u_int, u_int);
 struct window_pane *window_find_string(struct window *, const char *);
 int		 window_has_floating_panes(struct window *);

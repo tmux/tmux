@@ -281,10 +281,8 @@ menu_draw_cb(struct client *c, void *data,
 	    &md->style_gc, &md->border_style_gc, &md->selected_style_gc);
 	screen_write_stop(&ctx);
 
-	for (i = 0; i < screen_size_y(&md->s); i++) {
-		tty_draw_line(tty, s, 0, i, menu->width + 4, px, py + i,
-		    &grid_default_cell, NULL);
-	}
+	for (i = 0; i < screen_size_y(&md->s); i++)
+		tty_draw_line(tty, s, 0, i, menu->width + 4, px, py + i, NULL);
 }
 
 void

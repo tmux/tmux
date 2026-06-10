@@ -38,8 +38,8 @@ const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
 	.alias = "newp",
 
-	.args = { "bBc:de:EfF:hIkl:Lm:p:PR:s:S:t:T:vx:X:y:Y:Z", 0, -1, NULL },
-	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
+	.args = { "bc:de:EfF:hIkl:Lm:p:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
+	.usage = "[-bdefhIklPvWZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-l size] [-m message] [-p percentage] "
 		 "[-s style] [-S active-border-style] "
 		 "[-R inactive-border-style] [-T title] [-x width] [-y height] "
@@ -56,8 +56,8 @@ const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
 	.alias = "splitw",
 
-	.args = { "bBc:de:EfF:hIkl:m:p:PR:s:S:t:T:vZ", 0, -1, NULL },
-	.usage = "[-bdefhIklPvZ] [-c start-directory] [-e environment] "
+	.args = { "bc:de:EfF:hIkl:m:p:PR:s:S:t:T:vWZ", 0, -1, NULL },
+	.usage = "[-bdefhIklPvWZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-l size] [-m message] [-p percentage] "
 		 "[-s style] [-S active-border-style] "
 		 "[-R inactive-border-style] [-T title] " CMD_TARGET_PANE_USAGE " "
@@ -245,13 +245,13 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (input)
 		return (CMD_RETURN_WAIT);
 
-	if (args_has(args, 'B')) {
+	if (args_has(args, 'W')) {
 		/*
-		 * With -B, block this command queue item until the pane's
-		 * command exits; window_pane_block_finish will be called to
+		 * With -W, block this command queue item until the pane's
+		 * command exits; window_pane_wait_finish will be called to
 		 * continue it.
 		 */
-		new_wp->block_item = item;
+		new_wp->wait_item = item;
 		return (CMD_RETURN_WAIT);
 	}
 	return (CMD_RETURN_NORMAL);
