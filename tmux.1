@@ -2295,11 +2295,22 @@ Toggle rectangle selection mode.
 .Xc
 Cycles the current line between centre, top, and bottom.
 .It Xo
-.Ic refresh\-from\-pane
+.Ic refresh\-on
+.Xc
+Turn on automatic refresh of the content from the pane, so that new output
+appears while in copy mode.
+Automatic refresh is off by default; it will scroll only while the cursor is at
+the bottom and is paused while a selection is in progress.
+.It Xo
+.Ic refresh\-off
+.Xc
+Turn off automatic refresh of the content from the pane.
+.It Xo
+.Ic refresh\-toggle
 (vi: r)
 (emacs: r)
 .Xc
-Refresh the content from the pane.
+Toggle automatic refresh of the content from the pane.
 .It Xo
 .Ic scroll\-bottom
 .Xc
