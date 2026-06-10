@@ -2673,10 +2673,6 @@ struct environ *environ_for_session(struct session *, int);
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int,
 	    u_int, u_int, const struct tty_style_ctx *);
 
-#ifdef ENABLE_SIXEL
-void	tty_draw_images(struct client *, struct window_pane *, struct screen *);
-#endif
-
 /* tty.c */
 void	tty_create_log(void);
 int	tty_window_bigger(struct tty *);
@@ -2754,6 +2750,7 @@ void	tty_cmd_setselection(struct tty *, const struct tty_ctx *);
 void	tty_cmd_rawstring(struct tty *, const struct tty_ctx *);
 #ifdef ENABLE_SIXEL
 void	tty_cmd_sixelimage(struct tty *, const struct tty_ctx *);
+void	tty_draw_images(struct client *, struct window_pane *, struct screen *);
 #endif
 void	tty_cmd_syncstart(struct tty *, const struct tty_ctx *);
 void	tty_default_colours(struct grid_cell *, struct window_pane *);
