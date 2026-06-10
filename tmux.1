@@ -3612,10 +3612,10 @@ if specified, to
 .It Xo Ic resize\-pane
 .Op Fl MTZ
 .Op Fl t Ar target\-pane
-.Op Fl U Ar up
-.Op Fl D Ar down
-.Op Fl L Ar left
-.Op Fl R Ar right
+.Op Fl U Ar lines
+.Op Fl D Ar lines
+.Op Fl L Ar columns
+.Op Fl R Ar columns
 .Op Fl x Ar width
 .Op Fl y Ar height
 .Xc
@@ -3632,11 +3632,19 @@ with
 .Fl x
 or
 .Fl y .
-The adjustment is given in lines or columns (the default is 1);
+The adjustment is given in
+.Ar lines
+or
+.Ar columns
+(the default is 1);
 .Fl x
 and
 .Fl y
-may be a given as a number of lines or columns or followed by
+may be a given as a number of
+.Ar lines
+or
+.Ar columns
+or followed by
 .Ql %
 for a percentage of the window size (for example
 .Ql \-x 10% ) .

@@ -41,7 +41,7 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.alias = "resizep",
 
 	.args = { "D::L::MR::Tt:U::x:y:Z", 0, 1, NULL },
-	.usage = "[-MTZ] [-U up] [-D down] [-L left] [-R right] "
+	.usage = "[-MTZ] [-U lines] [-D lines] [-L columns] [-R columns] "
 		 "[-x width] [-y height] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -61,10 +61,10 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct layout_cell	*lc = wp->layout_cell;
 	enum layout_type	 type;
 	const char		*errstr, *argval;
-	char			*cause;
-	char			 flag, flags[4] = { 'U', 'D', 'L', 'R' };
-	u_int			 adjust, shift = 0;
-	int			 x, y, status;
+	const char		 flags[4] = { 'U', 'D', 'L', 'R' };
+	char			*cause = NULL, flag;
+	u_int			 opposite = 0;
+	int			 adjust, x, y, status;
 	long unsigned		 i;
 	struct grid		*gd = wp->base.grid;
 
@@ -72,7 +72,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		if (!TAILQ_EMPTY(&wp->modes))
 			return (CMD_RETURN_NORMAL);
 		adjust = screen_size_y(&wp->base) - 1 - wp->base.cy;
-		if (adjust > gd->hsize)
+		if (adjust > (int)gd->hsize)
 			adjust = gd->hsize;
 		grid_remove_history(gd, adjust);
 		wp->base.cy += adjust;
@@ -100,9 +100,15 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-		if (window_pane_is_floating(wp))
-			lc->sx = x;
-		else
+		if (window_pane_is_floating(wp)) {
+			layout_resize_floating_pane_to(wp, LAYOUT_LEFTRIGHT, x,
+			    &cause);
+			if (cause != NULL) {
+				cmdq_error(item, "size %s", cause);
+				free(cause);
+				return (CMD_RETURN_ERROR);
+			}
+		} else
 			layout_resize_pane_to(wp, LAYOUT_LEFTRIGHT, x);
 	}
 	if (args_has(args, 'y')) {
@@ -123,9 +129,15 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 				y++;
 			break;
 		}
-		if (window_pane_is_floating(wp))
-			lc->sy = y;
-		else
+		if (window_pane_is_floating(wp)) {
+			layout_resize_floating_pane_to(wp, LAYOUT_TOPBOTTOM, y,
+			    &cause);
+			if (cause != NULL) {
+				cmdq_error(item, "size %s", cause);
+				free(cause);
+				return (CMD_RETURN_ERROR);
+			}
+		} else
 			layout_resize_pane_to(wp, LAYOUT_TOPBOTTOM, y);
 	}
 
@@ -149,18 +161,16 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			type = LAYOUT_LEFTRIGHT;
 
 		if (window_pane_is_floating(wp)) {
-			shift = 0;
 			if (flag == 'L' || flag == 'U')
-				shift = 1;
+				opposite = 1;
 
-			if (type == LAYOUT_LEFTRIGHT) {
-				lc->sx += adjust;
-				if (shift)
-					lc->xoff -= adjust;
-			} else {
-				lc->sy += adjust;
-				if (shift)
-					lc->yoff -= adjust;
+			layout_resize_floating_pane(wp, type, adjust, opposite,
+			    &cause);
+			if (cause != NULL) {
+				cmdq_error(item, "floating adjust %s", adjust,
+				    cause);
+				free(cause);
+				return (CMD_RETURN_ERROR);
 			}
 		} else {
 			if (flag == 'L' || flag == 'U')
