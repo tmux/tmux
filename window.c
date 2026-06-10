@@ -2208,3 +2208,13 @@ window_pane_is_floating(struct window_pane *wp)
 		return (0);
 	return (1);
 }
+
+int
+window_pane_is_hidden(struct window_pane *wp)
+{
+	struct layout_cell	*lc = wp->layout_cell;
+
+	if (lc == NULL || (lc->flags & LAYOUT_CELL_HIDDEN) == 0)
+		return (0);
+	return (1);
+}
