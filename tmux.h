@@ -862,6 +862,10 @@ struct grid {
 	u_int			 hsize;
 	u_int			 hlimit;
 
+	u_int			 scroll_added;
+	u_int			 scroll_collected;
+	u_int			 scroll_generation;
+
 	struct grid_line	*linedata;
 };
 
@@ -3168,6 +3172,7 @@ int	 grid_cells_look_equal(const struct grid_cell *,
 	     const struct grid_cell *);
 struct grid *grid_create(u_int, u_int, u_int);
 void	 grid_destroy(struct grid *);
+void	 grid_free_lines(struct grid *, u_int, u_int);
 int	 grid_compare(struct grid *, struct grid *);
 void	 grid_collect_history(struct grid *, int);
 void	 grid_remove_history(struct grid *, u_int );
