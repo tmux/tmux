@@ -208,7 +208,8 @@ popup_init_ctx_cb(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx)
 
 	memcpy(&ttyctx->defaults, &pd->defaults, sizeof ttyctx->defaults);
 	ttyctx->flags &= ~TTY_CTX_WINDOW_BIGGER;
-	ttyctx->palette = &pd->palette;
+	ttyctx->style_ctx.defaults = &ttyctx->defaults;
+	ttyctx->style_ctx.palette = &pd->palette;
 	ttyctx->redraw_cb = popup_redraw_cb;
 	ttyctx->set_client_cb = popup_set_client_cb;
 	ttyctx->arg = pd;
@@ -294,8 +295,8 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	struct screen		 s;
 	struct screen_write_ctx	 ctx;
 	u_int			 i, px = pd->px, py = pd->py;
-	struct colour_palette	*palette = &pd->palette;
 	struct grid_cell	 defaults;
+	struct tty_style_ctx	 style_ctx;
 
 	popup_reapply_styles(pd);
 
@@ -321,9 +322,12 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 
 	memcpy(&defaults, &pd->defaults, sizeof defaults);
 	if (defaults.fg == 8)
-		defaults.fg = palette->fg;
+		defaults.fg = pd->palette.fg;
 	if (defaults.bg == 8)
-		defaults.bg = palette->bg;
+		defaults.bg = pd->palette.bg;
+	style_ctx.defaults = &defaults;
+	style_ctx.palette = &pd->palette;
+	style_ctx.hyperlinks = s.hyperlinks;
 
 	if (pd->md != NULL) {
 		c->overlay_check = menu_check_cb;
@@ -332,10 +336,8 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 		c->overlay_check = NULL;
 		c->overlay_data = NULL;
 	}
-	for (i = 0; i < pd->sy; i++) {
-		tty_draw_line(tty, &s, 0, i, pd->sx, px, py + i, &defaults,
-		    palette);
-	}
+	for (i = 0; i < pd->sy; i++)
+		tty_draw_line(tty, &s, 0, i, pd->sx, px, py + i, &style_ctx);
 	screen_free(&s);
 	if (pd->md != NULL) {
 		c->overlay_check = NULL;

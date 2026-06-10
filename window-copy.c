@@ -567,13 +567,8 @@ window_copy_add(struct window_pane *wp, int parse, const char *fmt, ...)
 
 static void
 window_copy_init_ctx_cb(__unused struct screen_write_ctx *ctx,
-    struct tty_ctx *ttyctx)
+    __unused struct tty_ctx *ttyctx)
 {
-	memcpy(&ttyctx->defaults, &grid_default_cell, sizeof ttyctx->defaults);
-	ttyctx->palette = NULL;
-	ttyctx->redraw_cb = NULL;
-	ttyctx->set_client_cb = NULL;
-	ttyctx->arg = NULL;
 }
 
 void

@@ -725,8 +725,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 			if (ri->nx == 0)
 				continue;
 			tty_draw_line(tty, s, l + (ri->px - x), 0, ri->nx,
-			    ri->px, yoff - ctx->oy,
-			    &grid_default_cell, NULL);
+			    ri->px, yoff - ctx->oy, NULL);
 		}
 	}
 	tty_cursor(tty, 0, 0);
@@ -1044,7 +1043,7 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 
 	screen_redraw_draw_border_arrows(ctx, i, j, cell_type, wp, active, &gc);
 
-	tty_cell(tty, &gc, &grid_default_cell, NULL, NULL);
+	tty_cell(tty, &gc, NULL);
 	if (isolates)
 		tty_puts(tty, START_ISOLATE);
 }
@@ -1104,10 +1103,8 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
 		y = 0;
 	else
 		y = c->tty.sy - ctx->statuslines;
-	for (i = 0; i < ctx->statuslines; i++) {
-		tty_draw_line(tty, s, 0, i, UINT_MAX, 0, y + i,
-		    &grid_default_cell, NULL);
-	}
+	for (i = 0; i < ctx->statuslines; i++)
+		tty_draw_line(tty, s, 0, i, UINT_MAX, 0, y + i, NULL);
 }
 
 /*
@@ -1302,6 +1299,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	struct screen		*s = wp->screen;
 	struct colour_palette	*palette = &wp->palette;
 	struct grid_cell	 defaults;
+	struct tty_style_ctx	 style_ctx;
 	u_int			 j, k, woy, wx, wy, py, width;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
@@ -1376,10 +1374,15 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 			width = ctx->sx - wx;
 		}
 
+		/* Set up the default style. */
+		tty_default_colours(&defaults, wp);
+		style_ctx.defaults = &defaults;
+		style_ctx.palette = palette;
+		style_ctx.hyperlinks = s->hyperlinks;
+
 		/* Get visible ranges of line before we draw it. */
 		r = tty_check_overlay_range(tty, wx, wy, width);
 		r = screen_redraw_get_visible_ranges(wp, wx, wy, width, r);
-		tty_default_colours(&defaults, wp);
 		for (k = 0; k < r->used; k++) {
 			ri = &r->ranges[k];
 			if (ri->nx == 0)
@@ -1390,7 +1393,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 			    ri->px + (int)ctx->ox - wp->xoff, j, ri->nx,
 			    ri->px, py, ri->nx);
 			tty_draw_line(tty, s, ri->px + (int)ctx->ox - wp->xoff,
-			    j, ri->nx, ri->px, py, &defaults, palette);
+			    j, ri->nx, ri->px, py, &style_ctx);
 		}
 	}
 
@@ -1567,16 +1570,14 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 			if ((sb_pos == PANE_SCROLLBARS_LEFT &&
 			    i >= sb_w && i < sb_w + sb_pad) ||
 			    (sb_pos == PANE_SCROLLBARS_RIGHT &&
-			    i < sb_pad)) {
-				tty_cell(tty, &grid_default_cell,
-				    &grid_default_cell, NULL, NULL);
-			} else {
+			    i < sb_pad))
+				tty_cell(tty, &grid_default_cell, NULL);
+			else {
 				if (j >= slider_y && j < slider_y + slider_h)
 					gcp = &slgc;
 				else
 					gcp = &gc;
-				tty_cell(tty, gcp, &grid_default_cell, NULL,
-				    NULL);
+				tty_cell(tty, gcp, NULL);
 			}
 		}
 	}

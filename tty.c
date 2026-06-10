@@ -84,6 +84,10 @@ static void	tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
 #define TTY_QUERY_TIMEOUT 5
 #define TTY_REQUEST_LIMIT 30
 
+static struct tty_style_ctx tty_default_style_ctx = {
+	&grid_default_cell, NULL, NULL
+};
+
 void
 tty_create_log(void)
 {
@@ -1415,7 +1419,7 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 			if (rr->nx == 0)
 				continue;
 			tty_draw_line(tty, s, rr->px - ctx->xoff, py, rr->nx,
-			    rr->px, ctx->yoff + py, &ctx->defaults, ctx->palette);
+			    rr->px, ctx->yoff + py, &ctx->style_ctx);
 		}
 		return;
 	}
@@ -1426,7 +1430,7 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 			if (rr->nx == 0)
 				continue;
 			tty_draw_line(tty, s, i + rr->px - x, py, rr->nx,
-			    rr->px, ry, &ctx->defaults, ctx->palette);
+			    rr->px, ry, &ctx->style_ctx);
 		}
 	}
 }
@@ -1650,8 +1654,7 @@ tty_cmd_insertcharacter(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 	}
 
-	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
-	    ctx->s->hyperlinks);
+	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
@@ -1673,8 +1676,7 @@ tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 	}
 
-	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
-	    ctx->s->hyperlinks);
+	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
@@ -1684,8 +1686,7 @@ tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_clearcharacter(struct tty *tty, const struct tty_ctx *ctx)
 {
-	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
-	    ctx->s->hyperlinks);
+	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_clear_pane_line(tty, ctx, ctx->ocy, ctx->ocx, ctx->n, ctx->bg);
 }
@@ -1707,8 +1708,7 @@ tty_cmd_insertline(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 	}
 
-	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
-	    ctx->s->hyperlinks);
+	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 	tty_margin_off(tty);
@@ -1735,8 +1735,7 @@ tty_cmd_deleteline(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 	}
 
-	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
-	    ctx->s->hyperlinks);
+	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 	tty_margin_off(tty);
@@ -1749,8 +1748,7 @@ tty_cmd_deleteline(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_clearline(struct tty *tty, const struct tty_ctx *ctx)
 {
-	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
-	    ctx->s->hyperlinks);
+	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_clear_pane_line(tty, ctx, ctx->ocy, 0, ctx->sx, ctx->bg);
 }
@@ -1760,8 +1758,7 @@ tty_cmd_clearendofline(struct tty *tty, const struct tty_ctx *ctx)
 {
 	u_int	nx = ctx->sx - ctx->ocx;
 
-	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
-	    ctx->s->hyperlinks);
+	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_clear_pane_line(tty, ctx, ctx->ocy, ctx->ocx, nx, ctx->bg);
 }
@@ -1769,8 +1766,7 @@ tty_cmd_clearendofline(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_clearstartofline(struct tty *tty, const struct tty_ctx *ctx)
 {
-	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
-	    ctx->s->hyperlinks);
+	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_clear_pane_line(tty, ctx, ctx->ocy, 0, ctx->ocx + 1, ctx->bg);
 }
@@ -1796,8 +1792,7 @@ tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 	}
 
-	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
-	    ctx->s->hyperlinks);
+	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 	tty_margin_pane(tty, ctx);
@@ -1828,8 +1823,7 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 	}
 
-	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
-	    ctx->s->hyperlinks);
+	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 	tty_margin_pane(tty, ctx);
@@ -1869,8 +1863,7 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 	}
 
-	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
-	    ctx->s->hyperlinks);
+	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 	tty_margin_pane(tty, ctx);
@@ -1910,8 +1903,7 @@ tty_cmd_scrolldown(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 	}
 
-	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
-	    ctx->s->hyperlinks);
+	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 	tty_margin_pane(tty, ctx);
@@ -1930,8 +1922,7 @@ tty_cmd_clearendofscreen(struct tty *tty, const struct tty_ctx *ctx)
 {
 	u_int	px, py, nx, ny;
 
-	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
-	    ctx->s->hyperlinks);
+	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, 0, ctx->sy - 1);
 	tty_margin_off(tty);
@@ -1955,8 +1946,7 @@ tty_cmd_clearstartofscreen(struct tty *tty, const struct tty_ctx *ctx)
 {
 	u_int	px, py, nx, ny;
 
-	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
-	    ctx->s->hyperlinks);
+	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, 0, ctx->sy - 1);
 	tty_margin_off(tty);
@@ -1980,8 +1970,7 @@ tty_cmd_clearscreen(struct tty *tty, const struct tty_ctx *ctx)
 {
 	u_int	px, py, nx, ny;
 
-	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
-	    ctx->s->hyperlinks);
+	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, 0, ctx->sy - 1);
 	tty_margin_off(tty);
@@ -2006,8 +1995,7 @@ tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 	}
 
-	tty_attributes(tty, &grid_default_cell, &ctx->defaults, ctx->palette,
-	    ctx->s->hyperlinks);
+	tty_attributes(tty, &grid_default_cell, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, 0, ctx->sy - 1);
 	tty_margin_off(tty);
@@ -2040,7 +2028,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 			vis += r->ranges[i].nx;
 		if (vis < gcp->data.width) {
 			tty_draw_line(tty, s, s->cx, s->cy, gcp->data.width,
-			    px, py, &ctx->defaults, ctx->palette);
+			    px, py, &ctx->style_ctx);
 			return;
 		}
 	}
@@ -2055,8 +2043,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 		tty_invalidate(tty);
 	tty_cursor_pane_unless_wrap(tty, ctx, ctx->ocx, ctx->ocy);
 
-	tty_cell(tty, ctx->cell, &ctx->defaults, ctx->palette,
-	    ctx->s->hyperlinks);
+	tty_cell(tty, ctx->cell, &ctx->style_ctx);
 
 	if (ctx->flags & TTY_CTX_CELL_INVALIDATE)
 		tty_invalidate(tty);
@@ -2092,8 +2079,7 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_margin_off(tty);
 	tty_cursor_pane_unless_wrap(tty, ctx, ctx->ocx, ctx->ocy);
-	tty_attributes(tty, ctx->cell, &ctx->defaults, ctx->palette,
-	    ctx->s->hyperlinks);
+	tty_attributes(tty, ctx->cell, &ctx->style_ctx);
 
 	/* Get tty position from pane position for overlay check. */
 	px = ctx->xoff + ctx->ocx - ctx->wox;
@@ -2222,8 +2208,7 @@ tty_cmd_syncstart(struct tty *tty, const struct tty_ctx *ctx)
 
 void
 tty_cell(struct tty *tty, const struct grid_cell *gc,
-    const struct grid_cell *defaults, struct colour_palette *palette,
-    struct hyperlinks *hl)
+    const struct tty_style_ctx *style_ctx)
 {
 	const struct grid_cell	*gcp;
 
@@ -2243,7 +2228,7 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 
 	/* Check the output codeset and apply attributes. */
 	gcp = tty_check_codeset(tty, gc);
-	tty_attributes(tty, gcp, defaults, palette, hl);
+	tty_attributes(tty, gcp, style_ctx);
 
 	/* If it is a single character, write with putc to handle ACS. */
 	if (gcp->data.size == 1) {
@@ -2588,19 +2573,22 @@ tty_hyperlink(struct tty *tty, const struct grid_cell *gc,
 
 void
 tty_attributes(struct tty *tty, const struct grid_cell *gc,
-    const struct grid_cell *defaults, struct colour_palette *palette,
-    struct hyperlinks *hl)
+    const struct tty_style_ctx *style_ctx)
 {
 	struct grid_cell	*tc = &tty->cell, gc2;
 	int			 changed;
+
+	/* Use default style if not given. */
+	if (style_ctx == NULL)
+		style_ctx = &tty_default_style_ctx;
 
 	/* Copy cell and update default colours. */
 	memcpy(&gc2, gc, sizeof gc2);
 	if (~gc->flags & GRID_FLAG_NOPALETTE) {
 		if (gc2.fg == 8)
-			gc2.fg = defaults->fg;
+			gc2.fg = style_ctx->defaults->fg;
 		if (gc2.bg == 8)
-			gc2.bg = defaults->bg;
+			gc2.bg = style_ctx->defaults->bg;
 	}
 
 	/* Ignore cell if it is the same as the last one. */
@@ -2627,9 +2615,9 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	}
 
 	/* Fix up the colours if necessary. */
-	tty_check_fg(tty, palette, &gc2);
-	tty_check_bg(tty, palette, &gc2);
-	tty_check_us(tty, palette, &gc2);
+	tty_check_fg(tty, style_ctx->palette, &gc2);
+	tty_check_bg(tty, style_ctx->palette, &gc2);
+	tty_check_us(tty, style_ctx->palette, &gc2);
 
 	/*
 	 * If any bits are being cleared or the underline colour is now default,
@@ -2685,7 +2673,7 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 		tty_putcode(tty, TTYC_SMACS);
 
 	/* Set hyperlink if any. */
-	tty_hyperlink(tty, gc, hl);
+	tty_hyperlink(tty, gc, style_ctx->hyperlinks);
 
 	memcpy(&tty->last_cell, &gc2, sizeof tty->last_cell);
 }
@@ -2707,8 +2695,9 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 	 */
 	if (COLOUR_DEFAULT(gc->fg) || COLOUR_DEFAULT(gc->bg)) {
 		/*
-		 * If don't have AX, send sgr0. This resets both colours to default.
-		 * Otherwise, try to set the default colour only as needed.
+		 * If don't have AX, send sgr0. This resets both colours to
+		 * default. Otherwise, try to set the default colour only as
+		 * needed.
 		 */
 		if (!tty_term_flag(tty->term, TTYC_AX))
 			tty_reset(tty);
@@ -3074,14 +3063,14 @@ tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 }
 
 void
-tty_default_attributes(struct tty *tty, const struct grid_cell *defaults,
-    struct colour_palette *palette, u_int bg, struct hyperlinks *hl)
+tty_default_attributes(struct tty *tty, u_int bg,
+    const struct tty_style_ctx *style_ctx)
 {
 	struct grid_cell	gc;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.bg = bg;
-	tty_attributes(tty, &gc, defaults, palette, hl);
+	tty_attributes(tty, &gc, style_ctx);
 }
 
 static void
