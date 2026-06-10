@@ -41,8 +41,8 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.alias = "resizep",
 
 	.args = { "D::L::MR::Tt:U::x:y:Z", 0, 1, NULL },
-	.usage = "[-DLMRTUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
-		 "[adjustment]",
+	.usage = "[-MTZ] [-U up] [-D down] [-L left] [-R right] "
+		 "[-x width] [-y height] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
