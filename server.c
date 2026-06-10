@@ -497,7 +497,7 @@ server_child_exited(pid_t pid, int status)
 				log_debug("%%%u exited", wp->id);
 				wp->flags |= PANE_EXITED;
 
-				window_pane_block_finish(wp);
+				window_pane_wait_finish(wp);
 
 				if (window_pane_destroy_ready(wp))
 					server_destroy_pane(wp, 1);

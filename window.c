@@ -386,7 +386,7 @@ window_pane_destroy_ready(struct window_pane *wp)
 	 * If a command queue item is blocked on this pane, wait for the
 	 * child's exit status before destroying it.
 	 */
-	if (wp->block_item != NULL && (~wp->flags & PANE_STATUSREADY))
+	if (wp->wait_item != NULL && (~wp->flags & PANE_STATUSREADY))
 		return (0);
 	return (1);
 }
@@ -1093,15 +1093,15 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 }
 
 void
-window_pane_block_finish(struct window_pane *wp)
+window_pane_wait_finish(struct window_pane *wp)
 {
-	struct cmdq_item	*item = wp->block_item;
+	struct cmdq_item	*item = wp->wait_item;
 	struct client		*c;
 	int			 retval = 0;
 
 	if (item == NULL)
 		return;
-	wp->block_item = NULL;
+	wp->wait_item = NULL;
 
 	if (wp->flags & PANE_STATUSREADY) {
 		if (WIFEXITED(wp->status))
@@ -1122,7 +1122,7 @@ window_pane_destroy(struct window_pane *wp)
 	struct window_pane_resize	*r;
 	struct window_pane_resize	*r1;
 
-	window_pane_block_finish(wp);
+	window_pane_wait_finish(wp);
 
 	window_pane_reset_mode_all(wp);
 	free(wp->searchstr);
