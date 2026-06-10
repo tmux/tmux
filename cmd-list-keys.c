@@ -237,7 +237,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 		cmd_list_keys_format_add_key_binding(ft, l[i], prefix);
 
 		line = format_expand(ft, template);
-		if ((single && tc != NULL) || n == 1)
+		if (single && tc != NULL && (~tc->flags & CLIENT_CONTROL))
 			status_message_set(tc, -1, 1, 0, 0, "%s", line);
 		else if (*line != '\0')
 			cmdq_print(item, "%s", line);
