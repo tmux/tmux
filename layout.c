@@ -1796,7 +1796,7 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 }
 
 int
-layout_cell_remove_tile(struct window *w, struct layout_cell *lc)
+layout_remove_tile(struct window *w, struct layout_cell *lc)
 {
 	struct layout_cell	*lcother, *lcparent;
 	enum layout_type	 type;
@@ -1807,7 +1807,7 @@ layout_cell_remove_tile(struct window *w, struct layout_cell *lc)
 
 	lcother = layout_cell_get_neighbour(lc);
 	if (lcother == NULL) {
-		layout_cell_remove_tile(w, lc->parent);
+		layout_remove_tile(w, lc->parent);
 	} else if ((lcparent = lcother->parent) != NULL) {
 		type = lcparent->type;
 		if (type == LAYOUT_TOPBOTTOM)
@@ -1822,7 +1822,7 @@ layout_cell_remove_tile(struct window *w, struct layout_cell *lc)
 }
 
 int
-layout_cell_insert_tile(struct window *w, struct layout_cell *lc)
+layout_insert_tile(struct window *w, struct layout_cell *lc)
 {
 	struct window_pane	*wp;
 	struct layout_cell	*lcother, *lcparent = lc->parent;
@@ -1845,7 +1845,7 @@ layout_cell_insert_tile(struct window *w, struct layout_cell *lc)
 		 * This is now the only revealed cell in the parent. Reveal the
 		 * parent, then set the child's 'type' dimension.
 		 */
-		layout_cell_insert_tile(w, lcparent);
+		layout_insert_tile(w, lcparent);
 		if (type == LAYOUT_LEFTRIGHT)
 			size1 = lcparent->sx;
 		else 

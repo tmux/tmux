@@ -3593,8 +3593,8 @@ struct layout_cell *layout_get_floating_cell(struct cmdq_item *, struct args *,
 struct layout_cell *layout_get_tiled_cell(struct cmdq_item *, struct args *,
 		     struct window *, struct window_pane *, int, char **);
 int		 layout_cell_is_tiled(struct layout_cell *);
-int		 layout_cell_remove_tile(struct window *, struct layout_cell *);
-int		 layout_cell_insert_tile(struct window *, struct layout_cell *);
+int		 layout_remove_tile(struct window *, struct layout_cell *);
+int		 layout_insert_tile(struct window *, struct layout_cell *);
 
 /* layout-custom.c */
 char		*layout_dump(struct window *, struct layout_cell *);

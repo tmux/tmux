@@ -88,7 +88,7 @@ cmd_float_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-	layout_cell_remove_tile(w, lc);
+	layout_remove_tile(w, lc);
 	layout_cell_floating_args(item, args, w, &sx, &sy, &ox, &oy, &cause);
 	if (cause != NULL) {
 		cmdq_error(item, "failed to float pane: %s", cause);
@@ -134,7 +134,7 @@ cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	layout_save_size(lc);
-	if (layout_cell_insert_tile(w, lc) == 0)
+	if (layout_insert_tile(w, lc) == 0)
 		return (CMD_RETURN_ERROR);
 
 
