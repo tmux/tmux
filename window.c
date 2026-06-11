@@ -1119,9 +1119,6 @@ window_pane_wait_finish(struct window_pane *wp)
 static void
 window_pane_destroy(struct window_pane *wp)
 {
-	struct window_pane_resize	*r;
-	struct window_pane_resize	*r1;
-
 	window_pane_wait_finish(wp);
 
 	window_pane_reset_mode_all(wp);
@@ -1151,10 +1148,7 @@ window_pane_destroy(struct window_pane *wp)
 		event_del(&wp->resize_timer);
 	if (event_initialized(&wp->sync_timer))
 		event_del(&wp->sync_timer);
-	TAILQ_FOREACH_SAFE(r, &wp->resize_queue, entry, r1) {
-		TAILQ_REMOVE(&wp->resize_queue, r, entry);
-		free(r);
-	}
+	window_pane_clear_resizes(wp, NULL);
 
 	RB_REMOVE(window_pane_tree, &all_window_panes, wp);
 
@@ -1220,6 +1214,19 @@ window_pane_set_event(struct window_pane *wp)
 	wp->ictx = input_init(wp, wp->event, &wp->palette, NULL);
 
 	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
+}
+
+void
+window_pane_clear_resizes(struct window_pane *wp, struct window_pane_resize *except)
+{
+	struct window_pane_resize	*r, *r1;
+
+	TAILQ_FOREACH_SAFE(r, &wp->resize_queue, entry, r1) {
+		if (r == except)
+			continue;
+		TAILQ_REMOVE(&wp->resize_queue, r, entry);
+		free(r);
+	}
 }
 
 void

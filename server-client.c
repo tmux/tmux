@@ -1582,7 +1582,7 @@ server_client_resize_timer(__unused int fd, __unused short events, void *data)
 static void
 server_client_check_pane_resize(struct window_pane *wp)
 {
-	struct window_pane_resize	*r, *r1, *first, *last;
+	struct window_pane_resize	*r, *first, *last;
 	struct timeval			 tv = { .tv_usec = 250000 };
 
 	if (TAILQ_EMPTY(&wp->resize_queue))
@@ -1622,10 +1622,7 @@ server_client_check_pane_resize(struct window_pane *wp)
 	} else if (last->sx != first->osx || last->sy != first->osy) {
 		/* Multiple resizes ending up with a different size. */
 		window_pane_send_resize(wp, last->sx, last->sy);
-		TAILQ_FOREACH_SAFE(r, &wp->resize_queue, entry, r1) {
-			TAILQ_REMOVE(&wp->resize_queue, r, entry);
-			free(r);
-		}
+		window_pane_clear_resizes(wp, NULL);
 	} else {
 		/*
 		 * Multiple resizes ending up with the same size. There will
@@ -1636,12 +1633,7 @@ server_client_check_pane_resize(struct window_pane *wp)
 		 */
 		r = TAILQ_PREV(last, window_pane_resizes, entry);
 		window_pane_send_resize(wp, r->sx, r->sy);
-		TAILQ_FOREACH_SAFE(r, &wp->resize_queue, entry, r1) {
-			if (r == last)
-				break;
-			TAILQ_REMOVE(&wp->resize_queue, r, entry);
-			free(r);
-		}
+		window_pane_clear_resizes(wp, last);
 		tv.tv_usec = 10000;
 	}
 	evtimer_add(&wp->resize_timer, &tv);

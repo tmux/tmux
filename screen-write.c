@@ -2923,7 +2923,6 @@ screen_write_alternateon(struct screen_write_ctx *ctx, struct grid_cell *gc,
 {
 	struct tty_ctx			 ttyctx;
 	struct window_pane		*wp = ctx->wp;
-	struct window_pane_resize	*r, *r1;
 
 	if (wp != NULL && !options_get_number(wp->options, "alternate-screen"))
 		return;
@@ -2933,10 +2932,7 @@ screen_write_alternateon(struct screen_write_ctx *ctx, struct grid_cell *gc,
 		return;
 
 	if (wp != NULL) {
-		TAILQ_FOREACH_SAFE (r, &wp->resize_queue, entry, r1) {
-			TAILQ_REMOVE(&wp->resize_queue, r, entry);
-			free(r);
-		}
+		window_pane_clear_resizes(wp, NULL);
 		layout_fix_panes(wp->window, NULL);
 		server_redraw_window_borders(wp->window);
 	}
