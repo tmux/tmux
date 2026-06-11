@@ -65,7 +65,7 @@
 	" ''" \
 	" '#{?#{&&:#{!:#{pane_floating_flag}},#{>:#{window_panes},1}},Swap Up,}' 'u' {swap-pane -U}" \
 	" '#{?#{&&:#{!:#{pane_floating_flag}},#{>:#{window_panes},1}},Swap Down,}' 'd' {swap-pane -D}" \
-	" '#{?pane_marked_set,,-}Swap Marked' 's' {swap-pane}" \
+	" '#{?#{!:#{pane_floating_flag}},#{?pane_marked_set,,-}Swap Marked,}' 's' {swap-pane}" \
 	" ''" \
 	" 'Kill' 'X' {kill-pane}" \
 	" 'Respawn' 'R' {respawn-pane -k}" \
