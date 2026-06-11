@@ -146,7 +146,7 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	if (wp->layout_cell == NULL)
 		return (0);
 
-	if (wp->flags & PANE_HIDDEN)
+	if (window_pane_is_hidden(wp))
 		return (0);
 
 	if (wp->flags & (PANE_REDRAW|PANE_DROP))

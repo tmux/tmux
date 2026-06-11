@@ -543,7 +543,8 @@ window_pane_update_focus(struct window_pane *wp)
 int
 window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 {
-	struct window_pane *lastwp;
+	struct window_pane	*lastwp;
+	struct layout_cell	*lc;
 
 	log_debug("%s: pane %%%u", __func__, wp->id);
 
@@ -557,18 +558,15 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 	window_pane_stack_push(&w->last_panes, lastwp);
 
 	w->active = wp;
-	w->active->active_point = next_active_point++;
-	w->active->flags |= PANE_CHANGED;
+	wp->active_point = next_active_point++;
+	wp->flags |= PANE_CHANGED;
+	lc = wp->layout_cell;
 
-	if (wp->flags & PANE_HIDDEN) {
-		wp->flags &= ~PANE_HIDDEN;
-		if (w->layout_root != NULL && wp->saved_layout_cell != NULL) {
-			wp->layout_cell = wp->saved_layout_cell;
-			wp->saved_layout_cell = NULL;
-			layout_show_cell(w, wp->layout_cell);
-			layout_fix_offsets(w);
-			layout_fix_panes(w, NULL);
-		}
+	if (window_pane_is_hidden(wp)) {
+		lc->flags &= ~LAYOUT_CELL_HIDDEN;
+		layout_insert_tile(w, lc);
+		layout_fix_offsets(w);
+		layout_fix_panes(w, NULL);
 	}
 	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
@@ -864,19 +862,19 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 
 	/* Try to find a good fit. */
 	wpp = TAILQ_FIRST(&w->last_panes);
-	if (wpp == NULL || wpp->flags & PANE_HIDDEN) {
+	if (wpp == NULL || window_pane_is_hidden(wpp)) {
 		wpp = TAILQ_PREV(wp, window_panes, entry);
-		if (wpp == NULL || wpp->flags & PANE_HIDDEN)
+		if (wpp == NULL || window_pane_is_hidden(wpp))
 			wpp = TAILQ_NEXT(wp, entry);
 	}
 	/* Try to find any fit. */
-	if (wpp == NULL || (wpp->flags & PANE_HIDDEN)) {
+	if (wpp == NULL || window_pane_is_hidden(wpp)) {
 		TAILQ_FOREACH_SAFE(wpp, &w->panes, entry, twpp) {
-			if (wpp != wp && (~wpp->flags & PANE_HIDDEN))
+			if (wpp != wp && !window_pane_is_hidden(wpp))
 				break;
 		}
 	}
-	if (wpp != NULL && (wpp->flags & PANE_HIDDEN))
+	if (wpp != NULL && window_pane_is_hidden(wpp))
 		wpp = NULL;
 
 	w->active = wpp;
@@ -1046,7 +1044,7 @@ window_pane_printable_flags(struct window_pane *wp)
 		flags[pos++] = 'Z';
 	if (window_pane_is_floating(wp))
 		flags[pos++] = 'F';
-	if (wp->flags & PANE_HIDDEN)
+	if (window_pane_is_hidden(wp))
 		flags[pos++] = 'm';
 
 	flags[pos] = '\0';
@@ -1463,8 +1461,9 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 int
 window_pane_visible(struct window_pane *wp)
 {
-	if (~wp->window->flags & WINDOW_ZOOMED &&
-	    ~wp->flags & PANE_HIDDEN)
+	if (window_pane_is_hidden(wp))
+		return (0);
+	if (~wp->window->flags & WINDOW_ZOOMED)
 		return (1);
 
 	return (wp == wp->window->active);
@@ -2202,19 +2201,11 @@ window_get_pane_status(struct window *w)
 int
 window_pane_is_floating(struct window_pane *wp)
 {
-	struct layout_cell	*lc = wp->layout_cell;
-
-	if (lc == NULL || (lc->flags & LAYOUT_CELL_FLOATING) == 0)
-		return (0);
-	return (1);
+	return (wp->layout_cell->flags & LAYOUT_CELL_FLOATING);
 }
 
 int
 window_pane_is_hidden(struct window_pane *wp)
 {
-	struct layout_cell	*lc = wp->layout_cell;
-
-	if ((lc->flags & LAYOUT_CELL_HIDDEN) == 0)
-		return (0);
-	return (1);
+	return (wp->layout_cell->flags & LAYOUT_CELL_HIDDEN);
 }

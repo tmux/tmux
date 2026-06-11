@@ -27,12 +27,8 @@
  * Hide or show panes.
  */
 
-static enum cmd_retval cmd_hide_pane_hide_exec(struct cmd *, struct cmdq_item *);
-static enum cmd_retval cmd_hide_pane_show_exec(struct cmd *, struct cmdq_item *);
-
-static enum cmd_retval cmd_hide_pane_hide(struct window *, struct window_pane *,
-    struct cmdq_item *);
-static enum cmd_retval cmd_hide_pane_show(struct window *, struct window_pane *);
+static enum cmd_retval cmd_hide_pane_exec(struct cmd *, struct cmdq_item *);
+static enum cmd_retval cmd_show_pane_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_hide_pane_entry = {
 	.name = "hide-pane",
@@ -44,7 +40,7 @@ const struct cmd_entry cmd_hide_pane_entry = {
 	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = CMD_AFTERHOOK,
-	.exec = cmd_hide_pane_hide_exec
+	.exec = cmd_hide_pane_exec
 };
 
 const struct cmd_entry cmd_show_pane_entry = {
@@ -57,12 +53,61 @@ const struct cmd_entry cmd_show_pane_entry = {
 	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = CMD_AFTERHOOK,
-	.exec = cmd_hide_pane_show_exec
+	.exec = cmd_show_pane_exec
 };
 
+static enum cmd_retval
+cmd_hide_pane_hide(struct window *w, struct window_pane *wp)
+{
+	struct window_pane	*wpp = NULL;
+	struct layout_cell	*lc = wp->layout_cell;
+
+	if (window_pane_is_hidden(wp))
+		return (CMD_RETURN_NORMAL);
+
+	if (wp == w->active) {
+		/* Find previous active pane. */
+		TAILQ_FOREACH(wpp, &w->last_panes, sentry) {
+			if (wpp != wp && window_pane_visible(wpp))
+				break;
+		}
+		if (wpp == NULL) {
+			TAILQ_FOREACH(wpp, &w->z_index, zentry) {
+				if (wpp != wp &&
+				    window_pane_visible(wpp))
+					break;
+			}
+		}
+	}
+
+	lc->flags |= LAYOUT_CELL_HIDDEN;
+
+	layout_remove_tile(w, lc);
+	layout_fix_offsets(w);
+	layout_fix_panes(w, NULL);
+
+	window_pane_stack_remove(&w->last_panes, wp);
+	if (wpp != NULL) {
+		window_set_active_pane(w, wpp, 1);
+	} else if (wp == w->active) {
+		/* No visible previous active pane; null active pane
+		 * to show dots background. */
+		w->active = NULL;
+		if (options_get_number(global_options, "focus-events"))
+			window_pane_update_focus(wp);
+		notify_window("window-pane-changed", w);
+		notify_window("window-layout-changed", w);
+		server_redraw_window(w);
+	} else {
+		notify_window("window-layout-changed", w);
+		server_redraw_window(w);
+	}
+
+	return (CMD_RETURN_NORMAL);
+}
 
 static enum cmd_retval
-cmd_hide_pane_hide_exec(struct cmd *self, struct cmdq_item *item)
+cmd_hide_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*target = cmdq_get_target(item);
@@ -73,11 +118,13 @@ cmd_hide_pane_hide_exec(struct cmd *self, struct cmdq_item *item)
 	char			*cause = NULL;
 	enum cmd_retval		 rv;
 
+	window_unzoom(w, 1);
+
 	if (args_has(args, 'a')) {
 		TAILQ_FOREACH(wp, &w->z_index, zentry) {
 			if (!window_pane_visible(wp) || wp == active_pane)
 				continue;
-			rv = cmd_hide_pane_hide(w, wp, item);
+			rv = cmd_hide_pane_hide(w, wp);
 			if (rv != CMD_RETURN_NORMAL)
 				return (rv);
 		}
@@ -97,12 +144,34 @@ cmd_hide_pane_hide_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "No target pane to hide.");
 			return (CMD_RETURN_ERROR);
 		}
-		return (cmd_hide_pane_hide(w, wp, item));
+		return (cmd_hide_pane_hide(w, wp));
 	}
 }
 
 static enum cmd_retval
-cmd_hide_pane_show_exec(struct cmd *self, struct cmdq_item *item)
+cmd_hide_pane_show(struct window *w, struct window_pane *wp)
+{
+	struct layout_cell	*lc = wp->layout_cell;
+
+	if (!window_pane_is_hidden(wp))
+		return (CMD_RETURN_NORMAL);
+
+	lc->flags &= ~LAYOUT_CELL_HIDDEN;
+
+	layout_insert_tile(w, lc);
+	layout_fix_offsets(w);
+	layout_fix_panes(w, NULL);
+
+	window_set_active_pane(w, wp, 1);
+
+	notify_window("window-layout-changed", w);
+	server_redraw_window(w);
+
+	return (CMD_RETURN_NORMAL);
+}
+
+static enum cmd_retval
+cmd_show_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*target = cmdq_get_target(item);
@@ -112,6 +181,8 @@ cmd_hide_pane_show_exec(struct cmd *self, struct cmdq_item *item)
 	u_int			 id;
 	char			*cause = NULL;
 	enum cmd_retval		 rv;
+
+	window_unzoom(w, 1);
 
 	if (args_has(args, 'a')) {
 		TAILQ_FOREACH(wp, &w->z_index, zentry) {
@@ -139,85 +210,4 @@ cmd_hide_pane_show_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		return (cmd_hide_pane_show(w, wp));
 	}
-}
-
-static enum cmd_retval
-cmd_hide_pane_hide(struct window *w, struct window_pane *wp,
-    __unused struct cmdq_item *item)
-{
-	struct window_pane	*pwp = NULL;
-
-	if (wp->flags & PANE_HIDDEN)
-		return (CMD_RETURN_NORMAL);
-
-	if (wp == w->active) {
-		/*
-		 * Unzoom before searching: under zoom, window_pane_visible
-		 * returns false for every non-active pane.
-		 */
-		if (w->flags & WINDOW_ZOOMED)
-			window_unzoom(w, 1);
-		/* Find previous active pane. */
-		TAILQ_FOREACH(pwp, &w->last_panes, sentry) {
-			if (pwp != wp && window_pane_visible(pwp))
-				break;
-		}
-		if (pwp == NULL) {
-			TAILQ_FOREACH(pwp, &w->z_index, zentry) {
-				if (pwp != wp &&
-				    window_pane_visible(pwp))
-					break;
-			}
-		}
-	}
-
-	wp->flags |= PANE_HIDDEN;
-
-	if (w->layout_root != NULL) {
-		wp->saved_layout_cell = wp->layout_cell;
-		layout_hide_cell(w, wp->layout_cell);
-		layout_fix_offsets(w);
-		layout_fix_panes(w, NULL);
-	}
-
-	window_pane_stack_remove(&w->last_panes, wp);
-	if (pwp != NULL) {
-		window_set_active_pane(w, pwp, 1);
-	} else if (wp == w->active) {
-		/* No visible previous active pane; null active pane
-		 * to show dots background. */
-		w->active = NULL;
-		if (options_get_number(global_options, "focus-events"))
-			window_pane_update_focus(wp);
-		notify_window("window-pane-changed", w);
-		notify_window("window-layout-changed", w);
-		server_redraw_window(w);
-	} else {
-		notify_window("window-layout-changed", w);
-		server_redraw_window(w);
-	}
-
-	return (CMD_RETURN_NORMAL);
-}
-
-static enum cmd_retval
-cmd_hide_pane_show(struct window *w, struct window_pane *wp)
-{
-	wp->flags &= ~PANE_HIDDEN;
-
-	/* Fix pane offsets and sizes. */
-	if (w->layout_root != NULL && wp->saved_layout_cell != NULL) {
-		wp->layout_cell = wp->saved_layout_cell;
-		wp->saved_layout_cell = NULL;
-		layout_show_cell(w, wp->layout_cell);
-		layout_fix_offsets(w);
-		layout_fix_panes(w, NULL);
-	}
-
-	window_set_active_pane(w, wp, 1);
-
-	notify_window("window-layout-changed", w);
-	server_redraw_window(w);
-
-	return (CMD_RETURN_NORMAL);
 }

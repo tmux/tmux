@@ -2155,7 +2155,7 @@ format_cb_pane_hidden_flag(struct format_tree *ft)
 	struct window_pane	*wp = ft->wp;
 
 	if (wp != NULL) {
-		if (wp->flags & PANE_HIDDEN)
+		if (window_pane_is_hidden(wp))
 			return (xstrdup("1"));
 		return (xstrdup("0"));
 	}
