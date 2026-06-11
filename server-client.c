@@ -1168,11 +1168,11 @@ server_client_repeat_time(struct client *c, struct key_binding *bd)
 static enum cmd_retval
 server_client_key_callback(struct cmdq_item *item, void *data)
 {
-	struct client			*c = cmdq_get_client(item);
 	struct key_event		*event = data;
+	struct client			*c, *ec = event->client;
 	key_code			 key = event->key;
 	struct mouse_event		*m = &event->m;
-	struct session			*s = c->session;
+	struct session			*s;
 	struct winlink			*wl;
 	struct window_pane		*wp;
 	struct window_mode_entry	*wme;
@@ -1183,6 +1183,12 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	uint64_t			 flags, prefix_delay;
 	struct cmd_find_state		 fs;
 	key_code			 key0, prefix, prefix2;
+
+	if (ec != NULL)
+		c = ec;
+	else
+		c = cmdq_get_client(item);
+	s = c->session;
 
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
@@ -1430,14 +1436,17 @@ paste_key:
 out:
 	if (s != NULL && key != KEYC_FOCUS_OUT)
 		server_client_update_latest(c);
+	if (ec != NULL)
+		server_client_unref(ec);
 	free(event->buf);
 	free(event);
 	return (CMD_RETURN_NORMAL);
 }
 
 /* Handle a key event. */
-int
-server_client_handle_key(struct client *c, struct key_event *event)
+static int
+server_client_handle_key0(struct client *c, struct key_event *event,
+    struct cmdq_item *after, struct cmdq_item **next)
 {
 	struct session		*s = c->session;
 	struct cmdq_item	*item;
@@ -1491,8 +1500,29 @@ server_client_handle_key(struct client *c, struct key_event *event)
 	 * previous keys.
 	 */
 	item = cmdq_get_callback(server_client_key_callback, event);
+	if (after != NULL) {
+		event->client = c;
+		c->references++;
+		item = cmdq_insert_after(after, item);
+		if (next != NULL)
+			*next = item;
+		return (1);
+	}
 	cmdq_append(c, item);
 	return (1);
+}
+
+int
+server_client_handle_key(struct client *c, struct key_event *event)
+{
+	return (server_client_handle_key0(c, event, NULL, NULL));
+}
+
+int
+server_client_handle_key_after(struct client *c, struct key_event *event,
+    struct cmdq_item *after, struct cmdq_item **next)
+{
+	return (server_client_handle_key0(c, event, after, next));
 }
 
 /* Client functions that need to happen every loop. */
