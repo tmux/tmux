@@ -686,6 +686,63 @@ layout_resize_pane_to(struct window_pane *wp, enum layout_type type,
 	layout_resize_pane(wp, type, change, 1);
 }
 
+/* Resize a floating pane to an absolute size. */
+void
+layout_resize_floating_pane_to(struct window_pane *wp, enum layout_type type,
+    u_int size, char **cause)
+{
+	struct layout_cell	*lc = wp->layout_cell;
+
+	if (~lc->flags & LAYOUT_CELL_FLOATING) {
+		*cause = xstrdup("pane is not floating");
+		return;
+	}
+
+	if (size < PANE_MINIMUM || size > PANE_MAXIMUM) {
+		*cause = xstrdup("size is too big or too small");
+		return;
+	}
+
+	if (type == LAYOUT_TOPBOTTOM)
+		lc->sy = size;
+	else
+		lc->sx = size;
+}
+
+/* Resize a floating pane relative to its current size. */
+void
+layout_resize_floating_pane(struct window_pane *wp, enum layout_type type,
+    int change, int opposite, char **cause)
+{
+	struct layout_cell	*lc = wp->layout_cell;
+	u_int			 size;
+
+	if (~lc->flags & LAYOUT_CELL_FLOATING) {
+		*cause = xstrdup("pane is not floating");
+		return;
+	}
+
+	if (type == LAYOUT_TOPBOTTOM) {
+		size = lc->sy + change;
+		if (size < PANE_MINIMUM || size > PANE_MAXIMUM) {
+			*cause = xstrdup("change is too big or too small");
+			return;
+		}
+		lc->sy = size;
+		if (opposite)
+			lc->yoff -= change;
+	} else {
+		size = lc->sx + change;
+		if (size < PANE_MINIMUM || size > PANE_MAXIMUM) {
+			*cause = xstrdup("change is too big or too small");
+			return;
+		}
+		lc->sx = size;
+		if (opposite)
+			lc->xoff -= change;
+	}
+}
+
 void
 layout_resize_layout(struct window *w, struct layout_cell *lc,
     enum layout_type type, int change, int opposite)
@@ -719,9 +776,7 @@ void
 layout_resize_pane(struct window_pane *wp, enum layout_type type, int change,
     int opposite)
 {
-	struct layout_cell	*lc, *lcparent;
-
-	lc = wp->layout_cell;
+	struct layout_cell	*lc = wp->layout_cell, *lcparent;
 
 	/* Find next parent of the same type. */
 	lcparent = lc->parent;
@@ -1406,6 +1461,15 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 				oy = 2;
 		}
 		w->last_new_pane_y = oy;
+	}
+
+	if (sx < PANE_MINIMUM || sx > PANE_MAXIMUM) {
+		*cause = xstrdup("invalid width");
+		return (NULL);
+	}
+	if (sy < PANE_MINIMUM || sy > PANE_MAXIMUM) {
+		*cause = xstrdup("invalid height");
+		return (NULL);
 	}
 
 	lcnew = layout_floating_pane(w, sx, sy, ox, oy);
