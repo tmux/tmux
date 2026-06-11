@@ -96,8 +96,9 @@ struct winlink;
 #define TMUX_LOCK_CMD "lock -np"
 #endif
 
-/* Minimum layout cell size, NOT including border lines. */
+/* Minimum and maximum layout cell size, NOT including border lines. */
 #define PANE_MINIMUM 1
+#define PANE_MAXIMUM 10000
 
 /* Minimum and maximum window size. */
 #define WINDOW_MINIMUM PANE_MINIMUM
@@ -3541,6 +3542,10 @@ void		 layout_resize_pane(struct window_pane *, enum layout_type,
 		     int, int);
 void		 layout_resize_pane_to(struct window_pane *, enum layout_type,
 		     u_int);
+void		 layout_resize_floating_pane(struct window_pane *,
+		     enum layout_type, int, int, char **);
+void		 layout_resize_floating_pane_to(struct window_pane *,
+		     enum layout_type, u_int, char **);
 void		 layout_assign_pane(struct layout_cell *, struct window_pane *,
 		     int);
 struct layout_cell *layout_split_pane(struct window_pane *, enum layout_type,

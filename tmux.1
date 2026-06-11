@@ -3610,16 +3610,17 @@ if specified, to
 .Ar new\-name .
 .Tg resizep
 .It Xo Ic resize\-pane
-.Op Fl DLMRTUZ
+.Op Fl MTZ
 .Op Fl t Ar target\-pane
+.Op Fl U Ar lines
+.Op Fl D Ar lines
+.Op Fl L Ar columns
+.Op Fl R Ar columns
 .Op Fl x Ar width
 .Op Fl y Ar height
-.Op Ar adjustment
 .Xc
 .D1 Pq alias: Ic resizep
-Resize a pane, up, down, left or right by
-.Ar adjustment
-with
+Resize a pane, up, down, left or right by a specified adjustment with
 .Fl U ,
 .Fl D ,
 .Fl L
@@ -3631,16 +3632,31 @@ with
 .Fl x
 or
 .Fl y .
-The
-.Ar adjustment
-is given in lines or columns (the default is 1);
+The adjustment is given in
+.Ar lines
+or
+.Ar columns
+(the default is 1);
 .Fl x
 and
 .Fl y
-may be a given as a number of lines or columns or followed by
+may be a given as a number of
+.Ar lines
+or
+.Ar columns
+or followed by
 .Ql %
 for a percentage of the window size (for example
 .Ql \-x 10% ) .
+If
+.Ar target\-pane
+is floating,
+.Fl U ,
+.Fl D ,
+.Fl L ,
+and
+.Fl R
+target their respective borders, and negative values may be given.
 With
 .Fl Z ,
 the active pane is toggled between zoomed (occupying the whole of the window)

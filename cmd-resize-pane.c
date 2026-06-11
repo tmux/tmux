@@ -40,9 +40,9 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.name = "resize-pane",
 	.alias = "resizep",
 
-	.args = { "DLMRTt:Ux:y:Z", 0, 1, NULL },
-	.usage = "[-DLMRTUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
-		 "[adjustment]",
+	.args = { "D::L::MR::Tt:U::x:y:Z", 0, 1, NULL },
+	.usage = "[-MTZ] [-U lines] [-D lines] [-L columns] [-R columns] "
+		 "[-x width] [-y height] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -58,17 +58,21 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*wp = target->wp;
 	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
-	const char		*errstr;
-	char			*cause;
-	u_int			 adjust;
-	int			 x, y, status;
+	struct layout_cell	*lc = wp->layout_cell;
+	enum layout_type	 type;
+	const char		*errstr, *argval;
+	const char		 flags[4] = { 'U', 'D', 'L', 'R' };
+	char			*cause = NULL, flag;
+	u_int			 opposite = 0;
+	int			 adjust, x, y, status;
+	long unsigned		 i;
 	struct grid		*gd = wp->base.grid;
 
 	if (args_has(args, 'T')) {
 		if (!TAILQ_EMPTY(&wp->modes))
 			return (CMD_RETURN_NORMAL);
 		adjust = screen_size_y(&wp->base) - 1 - wp->base.cy;
-		if (adjust > gd->hsize)
+		if (adjust > (int)gd->hsize)
 			adjust = gd->hsize;
 		grid_remove_history(gd, adjust);
 		wp->base.cy += adjust;
@@ -89,16 +93,6 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	server_unzoom_window(w);
 
-	if (args_count(args) == 0)
-		adjust = 1;
-	else {
-		adjust = strtonum(args_string(args, 0), 1, INT_MAX, &errstr);
-		if (errstr != NULL) {
-			cmdq_error(item, "adjustment %s", errstr);
-			return (CMD_RETURN_ERROR);
-		}
-	}
-
 	if (args_has(args, 'x')) {
 		x = args_percentage(args, 'x', 0, INT_MAX, w->sx, &cause);
 		if (cause != NULL) {
@@ -106,7 +100,16 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-		layout_resize_pane_to(wp, LAYOUT_LEFTRIGHT, x);
+		if (window_pane_is_floating(wp)) {
+			layout_resize_floating_pane_to(wp, LAYOUT_LEFTRIGHT, x,
+			    &cause);
+			if (cause != NULL) {
+				cmdq_error(item, "size %s", cause);
+				free(cause);
+				return (CMD_RETURN_ERROR);
+			}
+		} else
+			layout_resize_pane_to(wp, LAYOUT_LEFTRIGHT, x);
 	}
 	if (args_has(args, 'y')) {
 		y = args_percentage(args, 'y', 0, INT_MAX, w->sy, &cause);
@@ -126,18 +129,60 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 				y++;
 			break;
 		}
-		layout_resize_pane_to(wp, LAYOUT_TOPBOTTOM, y);
+		if (window_pane_is_floating(wp)) {
+			layout_resize_floating_pane_to(wp, LAYOUT_TOPBOTTOM, y,
+			    &cause);
+			if (cause != NULL) {
+				cmdq_error(item, "size %s", cause);
+				free(cause);
+				return (CMD_RETURN_ERROR);
+			}
+		} else
+			layout_resize_pane_to(wp, LAYOUT_TOPBOTTOM, y);
 	}
 
-	if (args_has(args, 'L'))
-		layout_resize_pane(wp, LAYOUT_LEFTRIGHT, -adjust, 1);
-	else if (args_has(args, 'R'))
-		layout_resize_pane(wp, LAYOUT_LEFTRIGHT, adjust, 1);
-	else if (args_has(args, 'U'))
-		layout_resize_pane(wp, LAYOUT_TOPBOTTOM, -adjust, 1);
-	else if (args_has(args, 'D'))
-		layout_resize_pane(wp, LAYOUT_TOPBOTTOM, adjust, 1);
-	server_redraw_window(wl->window);
+	for (i = 0; i < nitems(flags); i++) {
+		flag = flags[i];
+		if (!args_has(args, flag))
+			continue;
+
+		argval = args_get(args, flag);
+		if (argval == NULL)
+			argval = "1";
+
+		adjust = strtonum(argval, INT_MIN, INT_MAX, &errstr);
+		if (errstr != NULL) {
+			cmdq_error(item, "adjustment %s", errstr);
+			return (CMD_RETURN_ERROR);
+		}
+
+		type = LAYOUT_TOPBOTTOM;
+		if (flag == 'L' || flag == 'R')
+			type = LAYOUT_LEFTRIGHT;
+
+		if (window_pane_is_floating(wp)) {
+			if (flag == 'L' || flag == 'U')
+				opposite = 1;
+
+			layout_resize_floating_pane(wp, type, adjust, opposite,
+			    &cause);
+			if (cause != NULL) {
+				cmdq_error(item, "adjustment %s", cause);
+				free(cause);
+				return (CMD_RETURN_ERROR);
+			}
+		} else {
+			if (flag == 'L' || flag == 'U')
+				adjust = -adjust;
+			layout_resize_pane(wp, type, adjust, 1);
+		}
+	}
+
+	if (lc->parent != NULL)
+		layout_fix_offsets(w);
+	layout_fix_panes(w, NULL);
+	notify_window("window-layout-changed", w);
+	server_redraw_window(w);
 
 	return (CMD_RETURN_NORMAL);
 }
