@@ -1779,7 +1779,7 @@ server_client_reset_state(struct client *c)
 	struct window_pane	*wp = server_client_get_pane(c), *loop;
 	struct screen		*s = NULL;
 	struct options		*oo = c->session->options;
-	int			 mode = 0, cursor, flags;
+	int			 mode = 0, cursor, flags, pane_mode = 0;
 	u_int			 cx = 0, cy = 0, ox, oy, sx, sy, n;
 	struct visible_ranges	*r;
 
@@ -1824,6 +1824,8 @@ server_client_reset_state(struct client *c)
 		cx = c->prompt_cursor;
 	} else if (wp != NULL && c->overlay_draw == NULL) {
 		cursor = 0;
+		pane_mode = wp->base.mode;
+
 		tty_window_offset(tty, &ox, &oy, &sx, &sy);
 		if (wp->xoff + (int)s->cx >= (int)ox &&
 		    wp->xoff + (int)s->cx <= (int)ox + (int)sx &&
@@ -1842,13 +1844,14 @@ server_client_reset_state(struct client *c)
 				cy += status_line_size(c);
 		}
 
-		if (!cursor)
+		if ((pane_mode & MODE_SYNC) || !cursor)
 			mode &= ~MODE_CURSOR;
 	} else if (c->overlay_mode == NULL || s == NULL)
 		mode &= ~MODE_CURSOR;
-
-	log_debug("%s: cursor to %u,%u", __func__, cx, cy);
-	tty_cursor(tty, cx, cy);
+	if (~pane_mode & MODE_SYNC) {
+		log_debug("%s: cursor to %u,%u", __func__, cx, cy);
+		tty_cursor(tty, cx, cy);
+	}
 
 	/*
 	 * Set mouse mode if requested. To support dragging, always use button
