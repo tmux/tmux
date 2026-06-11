@@ -1779,6 +1779,19 @@ server_client_reset_state(struct client *c)
 		    screen_mode_to_string(mode));
 	}
 
+	/*
+	 * If the pane is in the middle of a synchronized update, do not
+	 * touch the tty: the redraw scheduled when the update ends will
+	 * reset everything. Resetting now would write cursor movement and
+	 * mode changes to the tty outside any synchronized update block,
+	 * so the terminal would show the cursor walking around the screen
+	 * while the application is still drawing.
+	 */
+	if (mode & MODE_SYNC) {
+		tty->flags |= flags;
+		return;
+	}
+
 	/* Reset region and margin. */
 	tty_region_off(tty);
 	tty_margin_off(tty);

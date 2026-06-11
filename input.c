@@ -1959,9 +1959,7 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 				ictx->wp->flags &= ~PANE_THEMECHANGED;
 			break;
 		case 2026:	/* synchronized output */
-			screen_write_stop_sync(ictx->wp);
-			if (ictx->wp != NULL)
-				ictx->wp->flags |= PANE_REDRAW;
+			screen_write_end_sync(sctx);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);

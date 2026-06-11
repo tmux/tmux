@@ -1330,8 +1330,17 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	 *   pane_y = window_y - wp->yoff
 	 */
 
-	if (wp->base.mode & MODE_SYNC)
-		screen_write_stop_sync(wp);
+	/*
+	 * If the pane is in the middle of a synchronized update, do not
+	 * draw it now: the screen may be partially updated (for example
+	 * just cleared), so drawing it would show a partial update. ESU
+	 * (or the sync timeout) sets PANE_REDRAW, so the pane will be
+	 * drawn when the update ends.
+	 */
+	if (wp->base.mode & MODE_SYNC) {
+		wp->flags |= PANE_REDRAW;
+		return;
+	}
 
 	log_debug("%s: %s @%u %%%u", __func__, c->name, w->id, wp->id);
 

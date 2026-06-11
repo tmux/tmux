@@ -1009,6 +1009,29 @@ screen_write_stop_sync(struct window_pane *wp)
 	log_debug("%s: %%%u stopped sync mode", __func__, wp->id);
 }
 
+/*
+ * Stop sync mode in response to ESU from the application. Any collected
+ * items are discarded first (the flush takes the discard path while
+ * MODE_SYNC is still set): they have already been applied to the screen
+ * and the full redraw scheduled below will draw them. If they were left
+ * queued, they would be flushed to the tty at the end of input
+ * processing, outside the redraw's synchronized update block, so the
+ * terminal would still paint a partial update.
+ */
+void
+screen_write_end_sync(struct screen_write_ctx *ctx)
+{
+	struct window_pane	*wp = ctx->wp;
+
+	if (wp == NULL)
+		return;
+
+	if (wp->base.mode & MODE_SYNC)
+		screen_write_collect_flush(ctx, 0, __func__);
+	screen_write_stop_sync(wp);
+	wp->flags |= PANE_REDRAW;
+}
+
 /* Cursor up by ny. */
 void
 screen_write_cursorup(struct screen_write_ctx *ctx, u_int ny)
