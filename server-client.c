@@ -598,6 +598,75 @@ server_client_exec(struct client *c, const char *cmd)
 	free(msg);
 }
 
+/*
+ * Resolve a style range under the mouse to a location, filling the mouse
+ * event with the window, pane or session the range refers to. Returns -1
+ * when the event should be ignored.
+ */
+static int
+server_client_resolve_mouse_range(struct session *s, struct mouse_event *m,
+    struct style_range *sr, enum key_code_mouse_location *loc)
+{
+	struct winlink		*fwl;
+	struct window_pane	*fwp;
+	struct session		*fs;
+	u_int			 n;
+
+	if (sr == NULL) {
+		*loc = KEYC_MOUSE_LOCATION_STATUS_DEFAULT;
+		return (0);
+	}
+	switch (sr->type) {
+	case STYLE_RANGE_NONE:
+		return (-1);
+	case STYLE_RANGE_LEFT:
+		log_debug("mouse range: left");
+		*loc = KEYC_MOUSE_LOCATION_STATUS_LEFT;
+		break;
+	case STYLE_RANGE_RIGHT:
+		log_debug("mouse range: right");
+		*loc = KEYC_MOUSE_LOCATION_STATUS_RIGHT;
+		break;
+	case STYLE_RANGE_PANE:
+		fwp = window_pane_find_by_id(sr->argument);
+		if (fwp == NULL)
+			return (-1);
+		m->wp = sr->argument;
+
+		log_debug("mouse range: pane %%%u", m->wp);
+		*loc = KEYC_MOUSE_LOCATION_STATUS;
+		break;
+	case STYLE_RANGE_WINDOW:
+		fwl = winlink_find_by_index(&s->windows, sr->argument);
+		if (fwl == NULL)
+			return (-1);
+		m->w = fwl->window->id;
+
+		log_debug("mouse range: window @%u", m->w);
+		*loc = KEYC_MOUSE_LOCATION_STATUS;
+		break;
+	case STYLE_RANGE_SESSION:
+		fs = session_find_by_id(sr->argument);
+		if (fs == NULL)
+			return (-1);
+		m->s = sr->argument;
+
+		log_debug("mouse range: session $%u", m->s);
+		*loc = KEYC_MOUSE_LOCATION_STATUS;
+		break;
+	case STYLE_RANGE_USER:
+		log_debug("mouse range: user");
+		*loc = KEYC_MOUSE_LOCATION_STATUS;
+		break;
+	case STYLE_RANGE_CONTROL:
+		n = sr->argument; /* parsing keeps this < 10 */
+		log_debug("mouse range: control %u", n);
+		*loc = KEYC_MOUSE_LOCATION_CONTROL0 + n;
+		break;
+	}
+	return (0);
+}
+
 static enum key_code_mouse_location
 server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
     u_int *sl_mpos)
@@ -710,10 +779,9 @@ static key_code
 server_client_check_mouse(struct client *c, struct key_event *event)
 {
 	struct mouse_event		*m = &event->m;
-	struct session			*s = c->session, *fs;
+	struct session			*s = c->session;
 	struct window			*w = s->curw->window;
-	struct winlink			*fwl;
-	struct window_pane		*wp, *fwp, *lwp = NULL;
+	struct window_pane		*wp, *lwp = NULL;
 	u_int				 x, y, sx, sy, px, py, n, sl_mpos = 0;
 	u_int				 b, bn, vx, vy, vsx, vsy;
 	int				 ignore = 0;
@@ -816,59 +884,8 @@ have_event:
 	    y >= (u_int)m->statusat &&
 	    y < m->statusat + m->statuslines) {
 		sr = status_get_range(c, x, y - m->statusat);
-		if (sr == NULL) {
-			loc = KEYC_MOUSE_LOCATION_STATUS_DEFAULT;
-		} else {
-			switch (sr->type) {
-			case STYLE_RANGE_NONE:
-				return (KEYC_UNKNOWN);
-			case STYLE_RANGE_LEFT:
-				log_debug("mouse range: left");
-				loc = KEYC_MOUSE_LOCATION_STATUS_LEFT;
-				break;
-			case STYLE_RANGE_RIGHT:
-				log_debug("mouse range: right");
-				loc = KEYC_MOUSE_LOCATION_STATUS_RIGHT;
-				break;
-			case STYLE_RANGE_PANE:
-				fwp = window_pane_find_by_id(sr->argument);
-				if (fwp == NULL)
-					return (KEYC_UNKNOWN);
-				m->wp = sr->argument;
-
-				log_debug("mouse range: pane %%%u", m->wp);
-				loc = KEYC_MOUSE_LOCATION_STATUS;
-				break;
-			case STYLE_RANGE_WINDOW:
-				fwl = winlink_find_by_index(&s->windows,
-				    sr->argument);
-				if (fwl == NULL)
-					return (KEYC_UNKNOWN);
-				m->w = fwl->window->id;
-
-				log_debug("mouse range: window @%u", m->w);
-				loc = KEYC_MOUSE_LOCATION_STATUS;
-				break;
-			case STYLE_RANGE_SESSION:
-				fs = session_find_by_id(sr->argument);
-				if (fs == NULL)
-					return (KEYC_UNKNOWN);
-				m->s = sr->argument;
-
-				log_debug("mouse range: session $%u", m->s);
-				loc = KEYC_MOUSE_LOCATION_STATUS;
-				break;
-			case STYLE_RANGE_USER:
-				log_debug("mouse range: user");
-				loc = KEYC_MOUSE_LOCATION_STATUS;
-				break;
-			case STYLE_RANGE_CONTROL:
-				n = sr->argument; /* parsing keeps this < 10 */
-				log_debug("mouse range: control %u", n);
-				loc = KEYC_MOUSE_LOCATION_CONTROL0 + n;
-				break;
-			}
-		}
+		if (server_client_resolve_mouse_range(s, m, sr, &loc) != 0)
+			return (KEYC_UNKNOWN);
 	}
 
 	/*
