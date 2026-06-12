@@ -293,7 +293,6 @@ u_int
 status_column_width(struct client *c)
 {
 	struct session	*s = c->session;
-	struct options	*oo = (s != NULL) ? s->options : global_s_options;
 	u_int		 width;
 
 	if (c->flags & (CLIENT_STATUSOFF|CLIENT_CONTROL))
@@ -303,10 +302,6 @@ status_column_width(struct client *c)
 	else
 		width = s->statuscolumn;
 	if (width == 0)
-		return (0);
-
-	/* XXX The left side is activated by a later commit. */
-	if (options_get_number(oo, "status-column-position") == 0)
 		return (0);
 
 	/* Hide the column when it would leave no window columns. */
