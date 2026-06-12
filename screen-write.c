@@ -134,6 +134,7 @@ static int
 screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 {
 	struct window_pane	*wp = ttyctx->arg;
+	u_int			 vx, vy, vsx, vsy;
 
 	if (ttyctx->flags & TTY_CTX_INVISIBLE_PANES) {
 		if (session_has(c->session, wp->window))
@@ -165,11 +166,11 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	else
 		ttyctx->flags &= ~TTY_CTX_WINDOW_BIGGER;
 
-	ttyctx->xoff = ttyctx->rxoff = wp->xoff;
-	ttyctx->yoff = ttyctx->ryoff = wp->yoff;
-
-	if (status_at_line(c) == 0)
-		ttyctx->yoff += status_line_size(c);
+	status_get_client_viewport(c, &vx, &vy, &vsx, &vsy);
+	ttyctx->rxoff = wp->xoff;
+	ttyctx->xoff = wp->xoff + vx;
+	ttyctx->ryoff = wp->yoff;
+	ttyctx->yoff = wp->yoff + vy;
 
 	return (1);
 }

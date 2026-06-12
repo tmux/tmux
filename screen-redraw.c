@@ -725,7 +725,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 			if (ri->nx == 0)
 				continue;
 			tty_draw_line(tty, s, l + (ri->px - x), 0, ri->nx,
-			    ri->px, yoff - ctx->oy, NULL);
+			    ctx->vx + ri->px, yoff - ctx->oy, NULL);
 		}
 	}
 	tty_cursor(tty, 0, 0);
@@ -786,6 +786,9 @@ screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 	if (lines != 0 && options_get_number(oo, "status-position") == 0)
 		ctx->statustop = 1;
 	ctx->statuslines = lines;
+
+	status_get_client_viewport(c, &ctx->vx, &ctx->vy, &ctx->vsx,
+	    &ctx->vsy);
 
 	ctx->pane_status = options_get_number(wo, "pane-border-status");
 	ctx->pane_lines = options_get_number(wo, "pane-border-lines");
@@ -1035,9 +1038,9 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 		isolates = 0;
 
 	if (ctx->statustop)
-		tty_cursor(tty, i, ctx->statuslines + j);
+		tty_cursor(tty, ctx->vx + i, ctx->statuslines + j);
 	else
-		tty_cursor(tty, i, j);
+		tty_cursor(tty, ctx->vx + i, j);
 	if (isolates)
 		tty_puts(tty, END_ISOLATE);
 
@@ -1066,7 +1069,7 @@ screen_redraw_draw_borders(struct screen_redraw_ctx *ctx)
 	}
 
 	for (j = 0; j < c->tty.sy - ctx->statuslines; j++) {
-		for (i = 0; i < c->tty.sx; i++)
+		for (i = 0; i < ctx->vsx; i++)
 			screen_redraw_draw_borders_cell(ctx, i, j);
 	}
 }
@@ -1391,9 +1394,9 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 			    "tty (%u,%u) width %u",
 			    __func__, c->name, wp->id, k,
 			    ri->px + (int)ctx->ox - wp->xoff, j, ri->nx,
-			    ri->px, py, ri->nx);
+			    ctx->vx + ri->px, py, ri->nx);
 			tty_draw_line(tty, s, ri->px + (int)ctx->ox - wp->xoff,
-			    j, ri->nx, ri->px, py, &style_ctx);
+			    j, ri->nx, ctx->vx + ri->px, py, &style_ctx);
 		}
 	}
 
@@ -1566,7 +1569,7 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 			    py >= sy || py < 0 ||
 			    !screen_redraw_is_visible(r, wx))
 				continue;
-			tty_cursor(tty, px, py);
+			tty_cursor(tty, ctx->vx + px, py);
 			if ((sb_pos == PANE_SCROLLBARS_LEFT &&
 			    i >= sb_w && i < sb_w + sb_pad) ||
 			    (sb_pos == PANE_SCROLLBARS_RIGHT &&

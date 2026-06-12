@@ -935,8 +935,10 @@ tty_window_bigger(struct tty *tty)
 {
 	struct client	*c = tty->client;
 	struct window	*w = c->session->curw->window;
+	u_int		 vx, vy, vsx, vsy;
 
-	return (tty->sx < w->sx || tty->sy - status_line_size(c) < w->sy);
+	status_get_client_viewport(c, &vx, &vy, &vsx, &vsy);
+	return (vsx < w->sx || vsy < w->sy);
 }
 
 /* What offset should this window be drawn at? */
@@ -958,11 +960,11 @@ tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 	struct client		*c = tty->client;
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp = server_client_get_pane(c);
-	u_int			 cx, cy, lines;
+	u_int			 cx, cy, vx, vy, vsx, vsy;
 
-	lines = status_line_size(c);
+	status_get_client_viewport(c, &vx, &vy, &vsx, &vsy);
 
-	if (tty->sx >= w->sx && tty->sy - lines >= w->sy) {
+	if (vsx >= w->sx && vsy >= w->sy) {
 		*ox = 0;
 		*oy = 0;
 		*sx = w->sx;
@@ -972,8 +974,8 @@ tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 		return (0);
 	}
 
-	*sx = tty->sx;
-	*sy = tty->sy - lines;
+	*sx = vsx;
+	*sy = vsy;
 
 	if (c->pan_window == w) {
 		if (*sx >= w->sx)
@@ -1130,7 +1132,7 @@ static int
 tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
     u_int nx, u_int *i, u_int *x, u_int *rx, u_int *ry)
 {
-	int	xoff = ctx->rxoff + px;
+	int	xoff = ctx->rxoff + px, vx = ctx->xoff - ctx->rxoff;
 
 	/*
 	 * px = x position in pane
@@ -1141,6 +1143,9 @@ tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 	 * x = x position on terminal
 	 * rx = new width
 	 * ry = y position on terminal
+	 *
+	 * vx is the left edge of the window viewport on the terminal (zero
+	 * unless the status column is on the left).
 	 */
 
 	if (!tty_is_visible(tty, ctx, px, py, nx, 1))
@@ -1155,18 +1160,18 @@ tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 	} else if (xoff < (int)ctx->wox && xoff + nx > ctx->wox + ctx->wsx) {
 		/* Both left and right not visible. */
 		*i = ctx->wox;
-		*x = 0;
+		*x = vx;
 		*rx = ctx->wsx;
 	} else if (xoff < (int)ctx->wox) {
 		/* Left not visible. */
-		*i = ctx->wox - (ctx->xoff + px);
-		*x = 0;
+		*i = ctx->wox - xoff;
+		*x = vx;
 		*rx = nx - *i;
 	} else {
 		/* Right not visible. */
 		*i = 0;
 		*x = (ctx->xoff + px) - ctx->wox;
-		*rx = ctx->wsx - *x;
+		*rx = ctx->wsx - (*x - vx);
 	}
 	if (*rx > nx)
 		fatalx("%s: x too big, %u > %u", __func__, *rx, nx);
@@ -1259,6 +1264,7 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
     u_int *ry)
 {
 	u_int	xoff = ctx->rxoff + px, yoff = ctx->ryoff + py;
+	u_int	vx = ctx->xoff - ctx->rxoff;
 
 	if (!tty_is_visible(tty, ctx, px, py, nx, ny))
 		return (0);
@@ -1271,18 +1277,18 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 	} else if (xoff < ctx->wox && xoff + nx > ctx->wox + ctx->wsx) {
 		/* Both left and right not visible. */
 		*i = ctx->wox;
-		*x = 0;
+		*x = vx;
 		*rx = ctx->wsx;
 	} else if (xoff < ctx->wox) {
 		/* Left not visible. */
-		*i = ctx->wox - (ctx->xoff + px);
-		*x = 0;
+		*i = ctx->wox - xoff;
+		*x = vx;
 		*rx = nx - *i;
 	} else {
 		/* Right not visible. */
 		*i = 0;
 		*x = (ctx->xoff + px) - ctx->wox;
-		*rx = ctx->wsx - *x;
+		*rx = ctx->wsx - (*x - vx);
 	}
 	if (*rx > nx)
 		fatalx("%s: x too big, %u > %u", __func__, *rx, nx);
@@ -1505,6 +1511,7 @@ static int
 tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 {
 	struct window_pane	*wp = ttyctx->arg;
+	u_int			 vx, vy, vsx, vsy;
 
 	if (c->session->curw->window != wp->window)
 		return (0);
@@ -1517,9 +1524,11 @@ tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	else
 		ttyctx->flags &= ~TTY_CTX_WINDOW_BIGGER;
 
-	ttyctx->yoff = ttyctx->ryoff = wp->yoff;
-	if (status_at_line(c) == 0)
-		ttyctx->yoff += status_line_size(c);
+	status_get_client_viewport(c, &vx, &vy, &vsx, &vsy);
+	ttyctx->rxoff = wp->xoff;
+	ttyctx->xoff = wp->xoff + vx;
+	ttyctx->ryoff = wp->yoff;
+	ttyctx->yoff = wp->yoff + vy;
 
 	return (1);
 }
@@ -2062,8 +2071,8 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 
 	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) &&
-	    (ctx->xoff + ctx->ocx < ctx->wox ||
-	    ctx->xoff + ctx->ocx + n > ctx->wox + ctx->wsx)) {
+	    (ctx->rxoff + ctx->ocx < ctx->wox ||
+	    ctx->rxoff + ctx->ocx + n > ctx->wox + ctx->wsx)) {
 		if ((~ctx->flags & TTY_CTX_WRAPPED) ||
 		    !tty_full_width(tty, ctx) ||
 		    (tty->term->flags & TERM_NOAM) ||
@@ -2339,19 +2348,28 @@ tty_margin_off(struct tty *tty)
 static void
 tty_margin_pane(struct tty *tty, const struct tty_ctx *ctx)
 {
-	int	l, r;
+	int	l, r, vx = ctx->xoff - ctx->rxoff;
 
+	/*
+	 * l and r are terminal-absolute columns (ctx->xoff includes the left
+	 * status-column reservation vx), so the clamp window must be shifted by
+	 * vx as well: the window viewport occupies terminal columns
+	 * [vx, vx + wsx]. Clamping against the bare wsx left the right margin vx
+	 * columns short, so the rightmost vx columns of a pane were excluded
+	 * from the hardware scroll region and kept stale content (a vertical
+	 * tear) until a full redraw.
+	 */
 	l = ctx->xoff - ctx->wox;
 	r = ctx->xoff + ctx->sx - 1 - ctx->wox;
 
-	if (l < 0)
-		l = 0;
-	if (l > (int)ctx->wsx)
-		l = ctx->wsx;
-	if (r < 0)
-		r = 0;
-	if (r > (int)ctx->wsx)
-		r = ctx->wsx;
+	if (l < vx)
+		l = vx;
+	if (l > vx + (int)ctx->wsx)
+		l = vx + ctx->wsx;
+	if (r < vx)
+		r = vx;
+	if (r > vx + (int)ctx->wsx)
+		r = vx + ctx->wsx;
 
 	tty_margin(tty, l, r);
 }

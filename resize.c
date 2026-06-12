@@ -118,7 +118,7 @@ clients_calculate_size(int type, int current, struct client *c,
 {
 	struct client		*loop;
 	struct client_window	*cw;
-	u_int			 cx, cy, n = 0;
+	u_int			 cx, cy, vx, vy, n = 0;
 
 	/*
 	 * Start comparing with 0 for largest and UINT_MAX for smallest or
@@ -182,10 +182,8 @@ clients_calculate_size(int type, int current, struct client *c,
 		if (cw != NULL && cw->sx != 0 && cw->sy != 0) {
 			cx = cw->sx;
 			cy = cw->sy;
-		} else {
-			cx = loop->tty.sx;
-			cy = loop->tty.sy - status_line_size(loop);
-		}
+		} else
+			status_get_client_viewport(loop, &vx, &vy, &cx, &cy);
 
 		/*
 		 * If it is larger or smaller than the best so far, update the
@@ -279,6 +277,7 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 	u_int *sx, u_int *sy, u_int *xpixel, u_int *ypixel, int type)
 {
 	const char	*value;
+	u_int		 vx, vy;
 
 	/* Get type if not provided. */
 	if (type == -1)
@@ -289,8 +288,7 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 	 * client and no window, use the default size as for manual type.
 	 */
 	if (type == WINDOW_SIZE_LATEST && c != NULL && !ignore_client_size(c)) {
-		*sx = c->tty.sx;
-		*sy = c->tty.sy - status_line_size(c);
+		status_get_client_viewport(c, &vx, &vy, sx, sy);
 		*xpixel = c->tty.xpixel;
 		*ypixel = c->tty.ypixel;
 		log_debug("%s: using %ux%u from %s", __func__, *sx, *sy,

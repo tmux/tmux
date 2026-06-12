@@ -293,6 +293,45 @@ status_column_width(__unused struct client *c)
 	return (0);
 }
 
+/*
+ * Get the rectangle of the terminal visible to the window for a client: the
+ * terminal size less any rows used by the status line and any columns used
+ * by the status column. This is the single choke point for window viewport
+ * arithmetic; all window-geometry call sites should use it rather than
+ * subtracting status sizes themselves.
+ *
+ * This deliberately does not look at message or prompt state: messages and
+ * prompts overlay the status line (or the last terminal line), they do not
+ * resize the window.
+ */
+void
+status_get_client_viewport(struct client *c, u_int *x, u_int *y, u_int *sx,
+    u_int *sy)
+{
+	u_int	width = status_column_width(c), lines = status_line_size(c);
+
+	/*
+	 * The client may not have a session yet (when working out the size for
+	 * a new session); then only the sizes matter, not the offsets.
+	 */
+	if (c->session != NULL && status_column_at(c) == 0)
+		*x = width;
+	else
+		*x = 0;
+	if (c->session != NULL && status_at_line(c) == 0)
+		*y = lines;
+	else
+		*y = 0;
+	if (width < c->tty.sx)
+		*sx = c->tty.sx - width;
+	else
+		*sx = 0;
+	if (lines < c->tty.sy)
+		*sy = c->tty.sy - lines;
+	else
+		*sy = 0;
+}
+
 /* Get the prompt line number for client's session. 1 means at the bottom. */
 u_int
 status_prompt_line_at(struct client *c)
