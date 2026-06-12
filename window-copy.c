@@ -3749,10 +3749,12 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 		if (clear == WINDOW_COPY_CMD_CLEAR_EMACS_ONLY &&
 		    keys == MODEKEY_VI)
 			clear = WINDOW_COPY_CMD_CLEAR_NEVER;
+		data->searchall = 1;
 		if (clear != WINDOW_COPY_CMD_CLEAR_NEVER) {
 			window_copy_clear_marks(wme);
 			data->searchx = data->searchy = -1;
 		} else if (data->searchindexshown != -1) {
+			data->searchindex = -1;
 			data->searchindexshown = -1;
 			action = WINDOW_COPY_CMD_REDRAW;
 		}

@@ -32,6 +32,18 @@ $TMUX send-keys -X search-again || exit 1
 index=$($TMUX display-message -p '#{search_index}/#{search_count}')
 [ "$index" = "3/3" ] || exit 1
 
+$TMUX send-keys -X clear-selection || exit 1
+$TMUX send-keys -X history-top || exit 1
+$TMUX send-keys -X search-again || exit 1
+index=$($TMUX display-message -p '#{search_index}/#{search_count}')
+[ "$index" = "1/3" ] || exit 1
+
+$TMUX send-keys -X clear-selection || exit 1
+$TMUX send-keys -X history-bottom || exit 1
+$TMUX send-keys -X search-reverse || exit 1
+index=$($TMUX display-message -p '#{search_index}/#{search_count}')
+[ "$index" = "3/3" ] || exit 1
+
 $TMUX send-keys -X search-reverse || exit 1
 index=$($TMUX display-message -p '#{search_index}/#{search_count}')
 [ "$index" = "2/3" ] || exit 1
