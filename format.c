@@ -1340,6 +1340,8 @@ format_cb_mouse_status_column(struct format_tree *ft)
 		return (NULL);
 	if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines)
 		return (NULL);
+	if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat)
+		return (NULL);
 
 	if (ft->m.statusat == 0)
 		y = ft->m.y - ft->m.statuslines;
