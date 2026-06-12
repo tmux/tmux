@@ -1990,6 +1990,20 @@ struct status_line {
 	struct style_line_entry entries[STATUS_LINES_LIMIT];
 };
 
+/*
+ * Status column (vertical status line). Unlike the status line this never
+ * hosts message or prompt overlays so there is no active/references
+ * push-pop. One style_line_entry per screen row.
+ */
+struct status_column {
+	struct screen		 screen;
+	char			*expanded;
+
+	struct grid_cell	 style;
+	struct style_line_entry	*entries;
+	u_int			 nentries;
+};
+
 /* Prompt type. */
 #define PROMPT_NTYPES 4
 enum prompt_type {
@@ -2103,6 +2117,7 @@ struct client {
 	struct mouse_event	 click_event;
 
 	struct status_line	 status;
+	struct status_column	 status_column;
 	enum client_theme	 theme;
 
 	struct input_requests	 input_requests;
@@ -3156,6 +3171,7 @@ struct style_range *status_get_range(struct client *, u_int, u_int);
 void	 status_init(struct client *);
 void	 status_free(struct client *);
 int	 status_redraw(struct client *);
+int	 status_column_redraw(struct client *);
 void printflike(6, 7) status_message_set(struct client *, int, int, int, int,
 	     const char *, ...);
 void	 status_message_clear(struct client *);

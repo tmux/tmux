@@ -748,6 +748,8 @@ screen_redraw_update(struct screen_redraw_ctx *ctx, uint64_t flags)
 		redraw = status_prompt_redraw(c);
 	else
 		redraw = status_redraw(c);
+	if (status_column_redraw(c))
+		redraw = 1;
 	if (!redraw && (~flags & CLIENT_REDRAWSTATUSALWAYS))
 		flags &= ~CLIENT_REDRAWSTATUS;
 
@@ -1096,20 +1098,14 @@ screen_redraw_draw_panes(struct screen_redraw_ctx *ctx)
 	}
 }
 
-/*
- * Draw the status column. This is a placeholder painting the reserved
- * columns in the status style; the formatted contents arrive with the
- * format_draw_vertical machinery in a later commit.
- */
+/* Draw the status column. */
 static void
 screen_redraw_draw_status_column(struct screen_redraw_ctx *ctx)
 {
-	struct client		*c = ctx->c;
-	struct session		*s = c->session;
-	struct tty		*tty = &c->tty;
-	struct grid_cell	 gc;
-	u_int			 i, x, width = status_column_width(c);
-	int			 fg, bg;
+	struct client	*c = ctx->c;
+	struct tty	*tty = &c->tty;
+	struct screen	*s = &c->status_column.screen;
+	u_int		 i, x, width = status_column_width(c);
 
 	if (width == 0)
 		return;
@@ -1117,19 +1113,8 @@ screen_redraw_draw_status_column(struct screen_redraw_ctx *ctx)
 
 	log_debug("%s: %s at %u width %u", __func__, c->name, x, width);
 
-	style_apply(&gc, s->options, "status-style", NULL);
-	fg = options_get_number(s->options, "status-fg");
-	if (!COLOUR_DEFAULT(fg))
-		gc.fg = fg;
-	bg = options_get_number(s->options, "status-bg");
-	if (!COLOUR_DEFAULT(bg))
-		gc.bg = bg;
-
-	for (i = 0; i < ctx->vsy; i++) {
-		tty_cursor(tty, x, ctx->vy + i);
-		tty_attributes(tty, &gc, NULL);
-		tty_repeat_space(tty, width);
-	}
+	for (i = 0; i < ctx->vsy && i < screen_size_y(s); i++)
+		tty_draw_line(tty, s, 0, i, width, x, ctx->vy + i, NULL);
 }
 
 /* Draw the status line. */

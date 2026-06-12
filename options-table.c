@@ -246,7 +246,7 @@ static const char *options_table_status_format_default[] = {
  * list is clipped.
  */
 #define OPTIONS_TABLE_STATUS_COLUMN_FORMAT \
-	"#[list=on]" \
+	"#[list=on align=left]" \
 	"#[list=left-marker]^#[list=right-marker]v#[list=on]" \
 	"#{W:" \
 		"#[range=window|#{window_index} " \

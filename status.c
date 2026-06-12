@@ -407,6 +407,7 @@ void
 status_init(struct client *c)
 {
 	struct status_line	*sl = &c->status;
+	struct status_column	*sc = &c->status_column;
 	u_int			 i;
 
 	for (i = 0; i < nitems(sl->entries); i++)
@@ -414,6 +415,8 @@ status_init(struct client *c)
 
 	screen_init(&sl->screen, c->tty.sx, 1, 0);
 	sl->active = &sl->screen;
+
+	screen_init(&sc->screen, 1, 1, 0);
 }
 
 /* Free status line. */
@@ -421,6 +424,7 @@ void
 status_free(struct client *c)
 {
 	struct status_line	*sl = &c->status;
+	struct status_column	*sc = &c->status_column;
 	u_int			 i;
 
 	for (i = 0; i < nitems(sl->entries); i++) {
@@ -436,6 +440,14 @@ status_free(struct client *c)
 		free(sl->active);
 	}
 	screen_free(&sl->screen);
+
+	for (i = 0; i < sc->nentries; i++) {
+		style_ranges_free(&sc->entries[i].ranges);
+		free((void *)sc->entries[i].expanded);
+	}
+	free(sc->entries);
+	free(sc->expanded);
+	screen_free(&sc->screen);
 }
 
 /* Draw status line for client. */
@@ -537,6 +549,96 @@ status_redraw(struct client *c)
 	format_free(ft);
 
 	/* Return if the status line has changed. */
+	log_debug("%s exit: force=%d, changed=%d", __func__, force, changed);
+	return (force || changed);
+}
+
+/* Draw the status column for a client. */
+int
+status_column_redraw(struct client *c)
+{
+	struct status_column	*sc = &c->status_column;
+	struct session		*s = c->session;
+	struct screen_write_ctx	 ctx;
+	struct grid_cell	 gc;
+	u_int			 width = status_column_width(c), i;
+	u_int			 vx, vy, vsx, vsy;
+	int			 flags, force = 0, changed = 0, fg, bg;
+	struct format_tree	*ft;
+	char			*expanded;
+
+	log_debug("%s enter", __func__);
+
+	/* No status column? */
+	if (width == 0)
+		return (0);
+	status_get_client_viewport(c, &vx, &vy, &vsx, &vsy);
+	if (vsy == 0)
+		return (0);
+
+	/* Create format tree. */
+	flags = FORMAT_STATUS;
+	if (c->flags & CLIENT_STATUSFORCE)
+		flags |= FORMAT_FORCE;
+	ft = format_create(c, NULL, FORMAT_NONE, flags);
+	format_defaults(ft, c, NULL, NULL, NULL);
+
+	/* Set up the default colour, as for the status line. */
+	style_apply(&gc, s->options, "status-style", ft);
+	fg = options_get_number(s->options, "status-fg");
+	if (!COLOUR_DEFAULT(fg))
+		gc.fg = fg;
+	bg = options_get_number(s->options, "status-bg");
+	if (!COLOUR_DEFAULT(bg))
+		gc.bg = bg;
+	if (!grid_cells_equal(&gc, &sc->style)) {
+		force = 1;
+		memcpy(&sc->style, &gc, sizeof sc->style);
+	}
+
+	/* Resize the target screen and the row entries. */
+	if (screen_size_x(&sc->screen) != width ||
+	    screen_size_y(&sc->screen) != vsy) {
+		screen_resize(&sc->screen, width, vsy, 0);
+		changed = force = 1;
+	}
+	if (sc->nentries != vsy) {
+		for (i = vsy; i < sc->nentries; i++) {
+			style_ranges_free(&sc->entries[i].ranges);
+			free((void *)sc->entries[i].expanded);
+		}
+		sc->entries = xreallocarray(sc->entries, vsy,
+		    sizeof *sc->entries);
+		for (i = sc->nentries; i < vsy; i++) {
+			memset(&sc->entries[i], 0, sizeof sc->entries[i]);
+			style_ranges_init(&sc->entries[i].ranges);
+		}
+		sc->nentries = vsy;
+	}
+
+	/* Expand the format and short-circuit if unchanged. */
+	expanded = format_expand_time(ft,
+	    options_get_string(s->options, "status-column-format"));
+	format_free(ft);
+	if (!force &&
+	    sc->expanded != NULL &&
+	    strcmp(expanded, sc->expanded) == 0) {
+		free(expanded);
+		log_debug("%s exit: unchanged", __func__);
+		return (changed);
+	}
+	changed = 1;
+
+	/* Draw the rows, rebuilding the per-row ranges. */
+	for (i = 0; i < sc->nentries; i++)
+		style_ranges_free(&sc->entries[i].ranges);
+	screen_write_start(&ctx, &sc->screen);
+	format_draw_vertical(&ctx, &gc, width, vsy, expanded, sc->entries, 0);
+	screen_write_stop(&ctx);
+
+	free(sc->expanded);
+	sc->expanded = expanded;
+
 	log_debug("%s exit: force=%d, changed=%d", __func__, force, changed);
 	return (force || changed);
 }

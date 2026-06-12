@@ -1,5 +1,15 @@
 CHANGES FROM 3.6b TO 3.7
 
+* Add a vertical status column showing a full status format on the left or
+  right edge of the terminal, with one window per row by default. Enabled by
+  setting the new status-column option (the width in cells) and placed with
+  status-column-position; the contents are the status-column-format option, a
+  single format where rows are separated with the new #[newline] style
+  directive. Rows trim like the horizontal window list, keeping the current
+  window visible with markers on the boundary rows, and mouse ranges work per
+  row. The column is independent of the horizontal status line: either or
+  both may be enabled.
+
 * Add floating panes. These are panes which sit above the layout ("tiled
   panes") like popups but unlike popups are not modal and behave like panes (so
   the same escape sequence support). Floating panes are created with the
