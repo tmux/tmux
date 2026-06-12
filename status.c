@@ -269,28 +269,50 @@ status_line_size(struct client *c)
  * off (or hidden for this client). Like status_at_line() this is per-client:
  * the configured width is per-session but visibility depends on the client
  * terminal size.
- *
- * The status column is not yet drawn or reserved anywhere; this returns off
- * until the geometry is activated by a later commit.
  */
 int
-status_column_at(__unused struct client *c)
+status_column_at(struct client *c)
 {
-	return (-1);
+	struct session	*s = c->session;
+	struct options	*oo = (s != NULL) ? s->options : global_s_options;
+	u_int		 width = status_column_width(c);
+
+	if (width == 0)
+		return (-1);
+	if (options_get_number(oo, "status-column-position") == 0)
+		return (0);
+	return (c->tty.sx - width);
 }
 
 /*
  * Get the width of the status column for a client. 0 means off or hidden
  * (when the configured width would leave no window columns, the column is
  * hidden for this client, like the status line on a one-row terminal).
- *
- * The status column is not yet drawn or reserved anywhere; this returns off
- * until the geometry is activated by a later commit.
  */
 u_int
-status_column_width(__unused struct client *c)
+status_column_width(struct client *c)
 {
-	return (0);
+	struct session	*s = c->session;
+	struct options	*oo = (s != NULL) ? s->options : global_s_options;
+	u_int		 width;
+
+	if (c->flags & (CLIENT_STATUSOFF|CLIENT_CONTROL))
+		return (0);
+	if (s == NULL)
+		width = options_get_number(global_s_options, "status-column");
+	else
+		width = s->statuscolumn;
+	if (width == 0)
+		return (0);
+
+	/* XXX The left side is activated by a later commit. */
+	if (options_get_number(oo, "status-column-position") == 0)
+		return (0);
+
+	/* Hide the column when it would leave no window columns. */
+	if (width >= c->tty.sx)
+		return (0);
+	return (width);
 }
 
 /*

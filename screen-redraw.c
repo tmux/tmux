@@ -26,6 +26,7 @@
 static void	screen_redraw_draw_borders(struct screen_redraw_ctx *);
 static void	screen_redraw_draw_panes(struct screen_redraw_ctx *);
 static void	screen_redraw_draw_status(struct screen_redraw_ctx *);
+static void	screen_redraw_draw_status_column(struct screen_redraw_ctx *);
 static void	screen_redraw_draw_pane(struct screen_redraw_ctx *,
 		    struct window_pane *);
 static void	screen_redraw_set_context(struct client *,
@@ -840,6 +841,11 @@ screen_redraw_screen(struct client *c)
 		log_debug("%s: redrawing status", c->name);
 		screen_redraw_draw_status(&ctx);
 	}
+	if (flags & (CLIENT_REDRAWWINDOW|CLIENT_REDRAWBORDERS|
+	    CLIENT_REDRAWSTATUS|CLIENT_REDRAWSTATUSALWAYS)) {
+		log_debug("%s: redrawing status column", c->name);
+		screen_redraw_draw_status_column(&ctx);
+	}
 	if (c->overlay_draw != NULL && (flags & CLIENT_REDRAWOVERLAY)) {
 		log_debug("%s: redrawing overlay", c->name);
 		c->overlay_draw(c, c->overlay_data, &ctx);
@@ -1087,6 +1093,42 @@ screen_redraw_draw_panes(struct screen_redraw_ctx *ctx)
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (window_pane_visible(wp))
 			screen_redraw_draw_pane(ctx, wp);
+	}
+}
+
+/*
+ * Draw the status column. This is a placeholder painting the reserved
+ * columns in the status style; the formatted contents arrive with the
+ * format_draw_vertical machinery in a later commit.
+ */
+static void
+screen_redraw_draw_status_column(struct screen_redraw_ctx *ctx)
+{
+	struct client		*c = ctx->c;
+	struct session		*s = c->session;
+	struct tty		*tty = &c->tty;
+	struct grid_cell	 gc;
+	u_int			 i, x, width = status_column_width(c);
+	int			 fg, bg;
+
+	if (width == 0)
+		return;
+	x = status_column_at(c);
+
+	log_debug("%s: %s at %u width %u", __func__, c->name, x, width);
+
+	style_apply(&gc, s->options, "status-style", NULL);
+	fg = options_get_number(s->options, "status-fg");
+	if (!COLOUR_DEFAULT(fg))
+		gc.fg = fg;
+	bg = options_get_number(s->options, "status-bg");
+	if (!COLOUR_DEFAULT(bg))
+		gc.bg = bg;
+
+	for (i = 0; i < ctx->vsy; i++) {
+		tty_cursor(tty, x, ctx->vy + i);
+		tty_attributes(tty, &gc, NULL);
+		tty_repeat_space(tty, width);
 	}
 }
 
