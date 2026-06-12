@@ -888,6 +888,21 @@ have_event:
 			return (KEYC_UNKNOWN);
 	}
 
+	/* Is this on the status column? */
+	m->statuscolat = status_column_at(c);
+	m->statuscolwidth = status_column_width(c);
+	status_get_client_viewport(c, &vx, &vy, &vsx, &vsy);
+	if (loc == KEYC_MOUSE_LOCATION_NOWHERE &&
+	    m->statuscolat != -1 &&
+	    x >= (u_int)m->statuscolat &&
+	    x < m->statuscolat + m->statuscolwidth &&
+	    y >= vy &&
+	    y < vy + vsy) {
+		sr = status_column_get_range(c, x - m->statuscolat, y - vy);
+		if (server_client_resolve_mouse_range(s, m, sr, &loc) != 0)
+			return (KEYC_UNKNOWN);
+	}
+
 	/*
 	 * Not on status line. Adjust position and check for border, pane, or
 	 * scrollbar.

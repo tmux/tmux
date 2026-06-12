@@ -773,6 +773,21 @@ cmd_mouse_at(struct window_pane *wp, struct mouse_event *m, u_int *xp,
 	}
 	log_debug("%s: x=%u, y=%u%s", __func__, x, y, last ? " (last)" : "");
 
+	/*
+	 * The window viewport is shifted right by the status column (sidebar)
+	 * when it sits on the left, so terminal x is offset from window x by the
+	 * reserved column width plus its separator. Subtract it to get back into
+	 * window coordinates, mirroring the status line adjustment on y below.
+	 */
+	if (m->statuscolat == 0 && m->statuscolwidth > 0) {
+		u_int	reserved = m->statuscolwidth + 1; /* +1 separator */
+
+		if (x >= reserved)
+			x -= reserved;
+		else
+			x = 0;
+	}
+
 	if (m->statusat == 0 && y >= m->statuslines)
 		y -= m->statuslines;
 

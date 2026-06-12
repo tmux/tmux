@@ -1322,6 +1322,33 @@ format_cb_mouse_status_line(struct format_tree *ft)
 
 }
 
+/* Callback for mouse_status_column. */
+static void *
+format_cb_mouse_status_column(struct format_tree *ft)
+{
+	char	*value;
+	u_int	 y;
+
+	if (!ft->m.valid)
+		return (NULL);
+	if (ft->c == NULL || (~ft->c->tty.flags & TTY_STARTED))
+		return (NULL);
+
+	if (ft->m.statuscolat == -1 ||
+	    ft->m.x < (u_int)ft->m.statuscolat ||
+	    ft->m.x >= ft->m.statuscolat + ft->m.statuscolwidth)
+		return (NULL);
+	if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines)
+		return (NULL);
+
+	if (ft->m.statusat == 0)
+		y = ft->m.y - ft->m.statuslines;
+	else
+		y = ft->m.y;
+	xasprintf(&value, "%u", y);
+	return (value);
+}
+
 /* Callback for mouse_status_range. */
 static void *
 format_cb_mouse_status_range(struct format_tree *ft)
@@ -1337,13 +1364,22 @@ format_cb_mouse_status_range(struct format_tree *ft)
 	if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines) {
 		x = ft->m.x;
 		y = ft->m.y;
+		sr = status_get_range(ft->c, x, y);
 	} else if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat) {
 		x = ft->m.x;
 		y = ft->m.y - ft->m.statusat;
+		sr = status_get_range(ft->c, x, y);
+	} else if (ft->m.statuscolat != -1 &&
+	    ft->m.x >= (u_int)ft->m.statuscolat &&
+	    ft->m.x < ft->m.statuscolat + ft->m.statuscolwidth) {
+		x = ft->m.x - ft->m.statuscolat;
+		if (ft->m.statusat == 0)
+			y = ft->m.y - ft->m.statuslines;
+		else
+			y = ft->m.y;
+		sr = status_column_get_range(ft->c, x, y);
 	} else
 		return (NULL);
-
-	sr = status_get_range(ft->c, x, y);
 	if (sr == NULL)
 		return (NULL);
 	switch (sr->type) {
@@ -3371,6 +3407,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "mouse_standard_flag", FORMAT_TABLE_STRING,
 	  format_cb_mouse_standard_flag
+	},
+	{ "mouse_status_column", FORMAT_TABLE_STRING,
+	  format_cb_mouse_status_column
 	},
 	{ "mouse_status_line", FORMAT_TABLE_STRING,
 	  format_cb_mouse_status_line

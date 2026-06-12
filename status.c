@@ -376,6 +376,40 @@ status_get_range(struct client *c, u_int x, u_int y)
 	return (style_ranges_get_range(&sl->entries[y].ranges, x));
 }
 
+/* Get range at position in the status column. y is the column row. */
+struct style_range *
+status_column_get_range(struct client *c, u_int x, u_int y)
+{
+	struct status_column	*sc = &c->status_column;
+	struct style_ranges	*srs;
+	struct style_range	*sr;
+
+	if (y >= sc->nentries)
+		return (NULL);
+	srs = &sc->entries[y].ranges;
+
+	sr = style_ranges_get_range(srs, x);
+	if (sr != NULL)
+		return (sr);
+
+	/*
+	 * A tab's range only spans its rendered text, so a click on the
+	 * padding beside it misses. Widen the hit area to the whole row only
+	 * when that row is a tab: exactly one range and it is a window range.
+	 * Both conditions matter. Multiple ranges mean no single owner, so
+	 * guessing would dispatch the wrong action. A lone non-window range
+	 * (e.g. a narrow #[range=control] followed by plain text) does not own
+	 * the row either; widening it would fire its action on unrelated
+	 * padding. In both cases padding falls through to the default location.
+	 */
+	sr = TAILQ_FIRST(srs);
+	if (sr != NULL &&
+	    sr == TAILQ_LAST(srs, style_ranges) &&
+	    sr->type == STYLE_RANGE_WINDOW)
+		return (sr);
+	return (NULL);
+}
+
 /* Save old status line. */
 static void
 status_push_screen(struct client *c)

@@ -238,12 +238,33 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 	sx = wp->sx;
 	sy = wp->sy;
 
-	y = m->y + m->oy; x = m->x + m->ox;
+	/*
+	 * Convert the terminal column to a viewport-relative one before adding
+	 * the horizontal pan offset. A left status column reserves its width
+	 * plus the separator, so clicks inside the column or on the separator
+	 * clamp to the viewport's left edge (and thus the leftmost visible pane
+	 * column once panned). Doing the subtraction after adding m->ox would
+	 * deduct the sidebar from a panned coordinate and land on the wrong
+	 * column. This mirrors the pane translation in server-client.c.
+	 */
+	y = m->y + m->oy; x = m->x;
+	if (m->statuscolat == 0 && m->statuscolwidth > 0) {
+		int	reserved = (int)m->statuscolwidth + 1; /* +1 separator */
+
+		x = (x >= reserved) ? x - reserved : 0;
+	}
+	x += m->ox;
 	if (m->statusat == 0 && y >= (int)m->statuslines)
 		y -= m->statuslines;
 	else if (m->statusat > 0 && y >= m->statusat)
 		y = m->statusat - 1;
-	ly = m->ly + m->oy; lx = m->lx + m->ox;
+	ly = m->ly + m->oy; lx = m->lx;
+	if (m->statuscolat == 0 && m->statuscolwidth > 0) {
+		int	reserved = (int)m->statuscolwidth + 1; /* +1 separator */
+
+		lx = (lx >= reserved) ? lx - reserved : 0;
+	}
+	lx += m->ox;
 	if (m->statusat == 0 && ly >= (int)m->statuslines)
 		ly -= m->statuslines;
 	else if (m->statusat > 0 && ly >= m->statusat)
@@ -352,12 +373,29 @@ cmd_resize_pane_mouse_update_tiled(struct client *c, struct mouse_event *m)
 	}
 	w = wl->window;
 
-	y = m->y + m->oy; x = m->x + m->ox;
+	/*
+	 * Convert to viewport-relative columns before adding the pan offset, so
+	 * a left status column is deducted from the terminal coordinate rather
+	 * than a panned one. See the matching comment in the floating path.
+	 */
+	y = m->y + m->oy; x = m->x;
+	if (m->statuscolat == 0 && m->statuscolwidth > 0) {
+		u_int	reserved = m->statuscolwidth + 1; /* +1 separator */
+
+		x = (x >= reserved) ? x - reserved : 0;
+	}
+	x += m->ox;
 	if (m->statusat == 0 && y >= m->statuslines)
 		y -= m->statuslines;
 	else if (m->statusat > 0 && y >= (u_int)m->statusat)
 		y = m->statusat - 1;
-	ly = m->ly + m->oy; lx = m->lx + m->ox;
+	ly = m->ly + m->oy; lx = m->lx;
+	if (m->statuscolat == 0 && m->statuscolwidth > 0) {
+		u_int	reserved = m->statuscolwidth + 1; /* +1 separator */
+
+		lx = (lx >= reserved) ? lx - reserved : 0;
+	}
+	lx += m->ox;
 	if (m->statusat == 0 && ly >= m->statuslines)
 		ly -= m->statuslines;
 	else if (m->statusat > 0 && ly >= (u_int)m->statusat)
