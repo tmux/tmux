@@ -5149,6 +5149,28 @@ gives a status line one row in height;
 or
 .Ic 5
 more rows.
+.It Ic status\-column Ar width
+Set the width in cells of the vertical status column and reserve that many
+columns at one edge of the terminal for it, see the
+.Ic status\-column\-position
+option.
+Zero (the default) disables the status column.
+If the configured width would leave no space for the window, the column is
+temporarily hidden for that client.
+The status column is independent of the status line: either or both may be
+enabled.
+.It Ic status\-column\-format Ar format
+Specify the format to be used for the vertical status column.
+This is a single format where each row is separated with the
+.Ql #[newline]
+directive, see the
+.Sx STYLES
+section.
+The default shows one window per row.
+.It Xo Ic status\-column\-position
+.Op Ic left | right
+.Xc
+Set the position of the vertical status column.
 .It Ic status\-format[] Ar format
 Specify the format to be used for each line of the status line.
 The default builds the top status line from the various individual status

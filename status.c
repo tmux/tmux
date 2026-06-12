@@ -235,6 +235,7 @@ status_update_cache(struct session *s)
 		s->statusat = 0;
 	else
 		s->statusat = 1;
+	s->statuscolumn = options_get_number(s->options, "status-column");
 }
 
 /* Get screen line of status line. -1 means off. */
@@ -261,6 +262,35 @@ status_line_size(struct client *c)
 	if (s == NULL)
 		return (options_get_number(global_s_options, "status"));
 	return (s->statuslines);
+}
+
+/*
+ * Get the first screen column of the status column. -1 means the column is
+ * off (or hidden for this client). Like status_at_line() this is per-client:
+ * the configured width is per-session but visibility depends on the client
+ * terminal size.
+ *
+ * The status column is not yet drawn or reserved anywhere; this returns off
+ * until the geometry is activated by a later commit.
+ */
+int
+status_column_at(__unused struct client *c)
+{
+	return (-1);
+}
+
+/*
+ * Get the width of the status column for a client. 0 means off or hidden
+ * (when the configured width would leave no window columns, the column is
+ * hidden for this client, like the status line on a one-row terminal).
+ *
+ * The status column is not yet drawn or reserved anywhere; this returns off
+ * until the geometry is activated by a later commit.
+ */
+u_int
+status_column_width(__unused struct client *c)
+{
+	return (0);
 }
 
 /* Get the prompt line number for client's session. 1 means at the bottom. */
