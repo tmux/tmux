@@ -107,6 +107,7 @@ cmd_display_menu_get_pos(struct client *tc, struct cmdq_item *item,
 	char			*p;
 	int			 top;
 	u_int			 line, ox, oy, sx, sy, lines, position;
+	u_int			 vx, vy, vsx, vsy;
 	long			 n;
 	struct format_tree	*ft;
 
@@ -215,14 +216,15 @@ cmd_display_menu_get_pos(struct client *tc, struct cmdq_item *item,
 
 	/* Position in pane. */
 	tty_window_offset(&tc->tty, &ox, &oy, &sx, &sy);
+	status_get_client_viewport(tc, &vx, &vy, &vsx, &vsy);
 	n = top + wp->yoff - oy + h;
 	if (n >= tty->sy)
 		format_add(ft, "popup_pane_top", "%u", tty->sy - h);
 	else
 		format_add(ft, "popup_pane_top", "%ld", n);
 	format_add(ft, "popup_pane_bottom", "%u", top + wp->yoff + wp->sy - oy);
-	format_add(ft, "popup_pane_left", "%u", wp->xoff - ox);
-	n = (long)wp->xoff + wp->sx - ox - w;
+	format_add(ft, "popup_pane_left", "%u", vx + wp->xoff - ox);
+	n = (long)vx + wp->xoff + wp->sx - ox - w;
 	if (n < 0)
 		format_add(ft, "popup_pane_right", "%u", 0);
 	else

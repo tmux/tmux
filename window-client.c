@@ -172,6 +172,7 @@ window_client_draw(void *modedata, void *itemdata,
 	struct screen			*s = ctx->s;
 	struct window_pane		*wp;
 	u_int				 cx = s->cx, cy = s->cy, lines, at;
+	u_int				 width, colat, rows;
 
 	if (c->session == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
 		return;
@@ -191,9 +192,27 @@ window_client_draw(void *modedata, void *itemdata,
 	else
 		at = 0;
 
-	screen_write_cursormove(ctx, cx, cy + at, 0);
+	width = status_column_width(c);
+	if (width >= sx)
+		width = 0;
+	if (width != 0 && status_column_at(c) == 0)
+		colat = width;
+	else
+		colat = 0;
+
+	screen_write_cursormove(ctx, cx + colat, cy + at, 0);
 	if (wp != NULL)
-		screen_write_preview(ctx, &wp->base, sx, sy - 2 - lines);
+		screen_write_preview(ctx, &wp->base, sx - width, sy - 2 - lines);
+
+	if (width != 0) {
+		rows = screen_size_y(&c->status_column.screen);
+		if (rows > sy - 2 - lines)
+			rows = sy - 2 - lines;
+		screen_write_cursormove(ctx,
+		    cx + (colat != 0 ? 0 : sx - width), cy + at, 0);
+		screen_write_fast_copy(ctx, &c->status_column.screen, 0, 0,
+		    width, rows);
+	}
 
 	if (at != 0)
 		screen_write_cursormove(ctx, cx, cy + 2, 0);
