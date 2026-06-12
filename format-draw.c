@@ -1083,6 +1083,459 @@ out:
 	screen_write_cursormove(octx, ocx, ocy, 0);
 }
 
+/* A row produced by splitting a format on #[newline]. */
+struct format_vertical_row {
+	char	*text;		/* row format, prefixed with carried style */
+	size_t	 len;
+	size_t	 size;
+
+	int	 in_list;	/* row contains list content */
+	int	 focus;		/* row contains the list focus */
+	int	 content;	/* row has any literal characters */
+};
+
+/* Splitter state for format_draw_vertical(). */
+struct format_vertical {
+	struct format_vertical_row	*rows;
+	u_int				 nrows;
+
+	char				*top_marker;
+	size_t				 top_len;
+	size_t				 top_size;
+	char				*bottom_marker;
+	size_t				 bottom_len;
+	size_t				 bottom_size;
+
+	/*
+	 * Where literal text currently goes: the current row or one of the
+	 * markers.
+	 */
+	enum {
+		FORMAT_VERTICAL_ROW,
+		FORMAT_VERTICAL_TOP_MARKER,
+		FORMAT_VERTICAL_BOTTOM_MARKER,
+		FORMAT_VERTICAL_DISCARD
+	} target;
+};
+
+/* Is this #[] block exactly the newline directive? */
+static int
+format_is_newline(const char *tmp)
+{
+	const char	delimiters[] = " ,\n";
+	size_t		 n;
+
+	tmp += strspn(tmp, delimiters);
+	if (strncasecmp(tmp, "newline", 7) != 0)
+		return (0);
+	tmp += 7;
+	n = strspn(tmp, delimiters);
+	return (tmp[n] == '\0');
+}
+
+/* Append to a sized buffer. */
+static void
+format_vertical_put(char **buf, size_t *len, size_t *size, const char *s,
+    size_t n)
+{
+	if (*len + n + 1 > *size) {
+		*size = (*size == 0) ? 256 : *size * 2;
+		while (*len + n + 1 > *size)
+			*size *= 2;
+		*buf = xrealloc(*buf, *size);
+	}
+	memcpy(*buf + *len, s, n);
+	*len += n;
+	(*buf)[*len] = '\0';
+}
+
+/* Append text to the current splitter target. */
+static void
+format_vertical_append(struct format_vertical *fv, const char *s, size_t n)
+{
+	struct format_vertical_row	*row;
+
+	if (n == 0)
+		return;
+	switch (fv->target) {
+	case FORMAT_VERTICAL_ROW:
+		row = &fv->rows[fv->nrows - 1];
+		format_vertical_put(&row->text, &row->len, &row->size, s, n);
+		break;
+	case FORMAT_VERTICAL_TOP_MARKER:
+		format_vertical_put(&fv->top_marker, &fv->top_len,
+		    &fv->top_size, s, n);
+		break;
+	case FORMAT_VERTICAL_BOTTOM_MARKER:
+		format_vertical_put(&fv->bottom_marker, &fv->bottom_len,
+		    &fv->bottom_size, s, n);
+		break;
+	case FORMAT_VERTICAL_DISCARD:
+		break;
+	}
+}
+
+/* Start a new row, taking the in-effect style as a carried-over prefix. */
+static void
+format_vertical_add_row(struct format_vertical *fv, struct style *sy)
+{
+	struct format_vertical_row	*row;
+	const char			*prefix;
+
+	fv->rows = xreallocarray(fv->rows, fv->nrows + 1, sizeof *fv->rows);
+	row = &fv->rows[fv->nrows++];
+	memset(row, 0, sizeof *row);
+
+	fv->target = FORMAT_VERTICAL_ROW;
+
+	if (sy == NULL)
+		return;
+
+	/*
+	 * Carry the style in effect over the row boundary: styles persist
+	 * and an open range or list is reopened, so a range spanning rows
+	 * becomes one range per row.
+	 */
+	prefix = style_tostring(sy);
+	format_vertical_append(fv, "#[", 2);
+	format_vertical_append(fv, prefix, strlen(prefix));
+	format_vertical_append(fv, "]", 1);
+
+	if (sy->list == STYLE_LIST_ON || sy->list == STYLE_LIST_FOCUS) {
+		row->in_list = 1;
+		if (sy->list == STYLE_LIST_FOCUS)
+			row->focus = 1;
+	}
+}
+
+/* Close an open range at a row boundary (or the end of the format). */
+static void
+format_vertical_close_range(struct format_vertical *fv, struct style *sy)
+{
+	if (sy->range_type == STYLE_RANGE_NONE)
+		return;
+	if (fv->target != FORMAT_VERTICAL_ROW)
+		return;
+
+	/*
+	 * format_draw() discards a range still open when the format ends, so
+	 * close it explicitly to keep the row's part of the range.
+	 */
+	format_vertical_append(fv, "#[norange]", 10);
+}
+
+/*
+ * Split a format into rows on the #[newline] directive. No new format or
+ * style parser is written here: this is a tokenizer over #[] boundaries
+ * which tracks the style state with style_parse() exactly as format_draw()
+ * does, and copies everything else through verbatim for the per-row
+ * format_draw() calls to interpret.
+ */
+static void
+format_vertical_split(struct format_vertical *fv, const struct grid_cell *base,
+    const char *expanded)
+{
+	struct style			 sy, saved_sy;
+	struct grid_cell		 current_default;
+	struct format_vertical_row	*row;
+	const char			*cp, *end;
+	char				*tmp;
+	u_int				 n;
+	int				 even;
+
+	memcpy(&current_default, base, sizeof current_default);
+	style_set(&sy, &current_default);
+
+	format_vertical_add_row(fv, NULL);
+
+	cp = expanded;
+	while (*cp != '\0') {
+		/* Handle sequences of # the same way format_draw() does. */
+		if (cp[0] == '#' && cp[1] != '[' && cp[1] != '\0') {
+			for (n = 1; cp[n] == '#'; n++)
+				 /* nothing */;
+			even = ((n % 2) == 0);
+			if (cp[n] != '[') {
+				format_vertical_append(fv, cp, n);
+				if (fv->target == FORMAT_VERTICAL_ROW)
+					fv->rows[fv->nrows - 1].content = 1;
+				cp += n;
+				continue;
+			}
+			if (even) {
+				/* All #s escaped: literal #s and a [. */
+				format_vertical_append(fv, cp, n + 1);
+				if (fv->target == FORMAT_VERTICAL_ROW)
+					fv->rows[fv->nrows - 1].content = 1;
+				cp += n + 1;
+				continue;
+			}
+			/* A style after escaped #s. */
+			format_vertical_append(fv, cp, n - 1);
+			if (n > 1 && fv->target == FORMAT_VERTICAL_ROW)
+				fv->rows[fv->nrows - 1].content = 1;
+			cp += n - 1;
+			continue;
+		}
+
+		/* Not a style: copy the byte through. */
+		if (cp[0] != '#' || cp[1] != '[' || sy.ignore) {
+			format_vertical_append(fv, cp, 1);
+			if (fv->target == FORMAT_VERTICAL_ROW &&
+			    (*cp < 0 || *cp >= 0x20))
+				fv->rows[fv->nrows - 1].content = 1;
+			cp++;
+			continue;
+		}
+
+		/* A style block. Find the end and check for #[newline]. */
+		end = format_skip(cp + 2, "]");
+		if (end == NULL) {
+			/* No terminating ]: copy the rest through. */
+			format_vertical_append(fv, cp, strlen(cp));
+			break;
+		}
+		tmp = xstrndup(cp + 2, end - (cp + 2));
+
+		if (format_is_newline(tmp)) {
+			format_vertical_close_range(fv, &sy);
+			format_vertical_add_row(fv, &sy);
+			free(tmp);
+			cp = end + 1;
+			continue;
+		}
+
+		/* Track the style state, mirroring format_draw(). */
+		style_copy(&saved_sy, &sy);
+		if (style_parse(&sy, &current_default, tmp) != 0) {
+			/* Invalid style: format_draw() will ignore it too. */
+			format_vertical_append(fv, cp, end + 1 - cp);
+			free(tmp);
+			cp = end + 1;
+			continue;
+		}
+		free(tmp);
+
+		if (sy.default_type == STYLE_DEFAULT_PUSH) {
+			memcpy(&current_default, &saved_sy.gc,
+			    sizeof current_default);
+			sy.default_type = STYLE_DEFAULT_BASE;
+		} else if (sy.default_type == STYLE_DEFAULT_POP) {
+			memcpy(&current_default, base, sizeof current_default);
+			sy.default_type = STYLE_DEFAULT_BASE;
+		} else if (sy.default_type == STYLE_DEFAULT_SET) {
+			memcpy(&current_default, &saved_sy.gc,
+			    sizeof current_default);
+			sy.default_type = STYLE_DEFAULT_BASE;
+		}
+
+		/*
+		 * Markers are captured for use as the top and bottom clip
+		 * markers and stripped from the row text; everything else is
+		 * copied through verbatim.
+		 */
+		switch (sy.list) {
+		case STYLE_LIST_LEFT_MARKER:
+			if (fv->top_len == 0)
+				fv->target = FORMAT_VERTICAL_TOP_MARKER;
+			else
+				fv->target = FORMAT_VERTICAL_DISCARD;
+			break;
+		case STYLE_LIST_RIGHT_MARKER:
+			if (fv->bottom_len == 0)
+				fv->target = FORMAT_VERTICAL_BOTTOM_MARKER;
+			else
+				fv->target = FORMAT_VERTICAL_DISCARD;
+			break;
+		default:
+			fv->target = FORMAT_VERTICAL_ROW;
+			format_vertical_append(fv, cp, end + 1 - cp);
+			break;
+		}
+
+		row = &fv->rows[fv->nrows - 1];
+		if (sy.list == STYLE_LIST_ON || sy.list == STYLE_LIST_FOCUS) {
+			row->in_list = 1;
+			if (sy.list == STYLE_LIST_FOCUS)
+				row->focus = 1;
+		}
+
+		cp = end + 1;
+	}
+	format_vertical_close_range(fv, &sy);
+
+	/* A trailing #[newline] does not add an empty final row. */
+	if (fv->nrows > 1 && !fv->rows[fv->nrows - 1].content) {
+		free(fv->rows[fv->nrows - 1].text);
+		fv->nrows--;
+	}
+}
+
+/* Free splitter state. */
+static void
+format_vertical_free(struct format_vertical *fv)
+{
+	u_int	i;
+
+	for (i = 0; i < fv->nrows; i++)
+		free(fv->rows[i].text);
+	free(fv->rows);
+	free(fv->top_marker);
+	free(fv->bottom_marker);
+}
+
+/* Draw one row at the given screen row. */
+static void
+format_vertical_draw_row(struct screen_write_ctx *octx,
+    const struct grid_cell *base, u_int width, u_int y,
+    struct format_vertical_row *row, struct style_line_entry *entries,
+    int default_colours)
+{
+	struct style_ranges	*srs = NULL;
+
+	if (entries != NULL)
+		srs = &entries[y].ranges;
+	screen_write_cursormove(octx, 0, y, 0);
+	format_draw(octx, base, width, row->text == NULL ? "" : row->text,
+	    srs, default_colours);
+}
+
+/* Draw a clip marker over the start of a boundary row. */
+static void
+format_vertical_draw_marker(struct screen_write_ctx *octx,
+    const struct grid_cell *base, u_int width, u_int y, const char *marker,
+    int default_colours)
+{
+	u_int	marker_width;
+
+	if (marker == NULL || *marker == '\0')
+		return;
+	marker_width = format_width(marker);
+	if (marker_width == 0 || marker_width > width)
+		return;
+	screen_write_cursormove(octx, 0, y, 0);
+	format_draw(octx, base, marker_width, marker, NULL, default_colours);
+}
+
+/*
+ * Draw a format to a rectangle, splitting rows on the #[newline] directive.
+ * Each row is rendered by format_draw() so per-row alignment, trimming,
+ * styles and ranges work exactly as on the horizontal status line. If the
+ * list rows do not fit in the space left by the rows outside the list, a
+ * window of them is chosen to keep the focus visible and the list left and
+ * right markers are drawn as top and bottom markers on the boundary rows.
+ */
+void
+format_draw_vertical(struct screen_write_ctx *octx,
+    const struct grid_cell *base, u_int width, u_int height,
+    const char *expanded, struct style_line_entry *entries,
+    int default_colours)
+{
+	struct format_vertical	 fv;
+	u_int			 i, y, n, first_list, last_list, nlist, nfixed;
+	u_int			 start, avail, focus_centre;
+	int			 first_focus = -1, last_focus = -1;
+
+	log_debug("%s: %ux%u %s", __func__, width, height, expanded);
+
+	if (height == 0 || width == 0)
+		return;
+
+	memset(&fv, 0, sizeof fv);
+	format_vertical_split(&fv, base, expanded);
+
+	/* Clear the whole area to the base style. */
+	for (y = 0; y < height; y++) {
+		screen_write_cursormove(octx, 0, y, 0);
+		for (n = 0; n < width; n++)
+			screen_write_putc(octx, base, ' ');
+	}
+
+	/* Find the list block and the focus rows. */
+	first_list = last_list = 0;
+	nlist = 0;
+	for (i = 0; i < fv.nrows; i++) {
+		if (!fv.rows[i].in_list)
+			continue;
+		if (nlist == 0)
+			first_list = i;
+		last_list = i;
+		nlist = last_list - first_list + 1;
+		if (fv.rows[i].focus) {
+			if (first_focus == -1)
+				first_focus = i - first_list;
+			last_focus = i - first_list;
+		}
+	}
+	nfixed = fv.nrows - nlist;
+
+	if (fv.nrows <= height) {
+		/* Everything fits; draw all rows in order. */
+		for (i = 0; i < fv.nrows; i++) {
+			format_vertical_draw_row(octx, base, width, i,
+			    &fv.rows[i], entries, default_colours);
+		}
+		goto out;
+	}
+
+	if (nlist == 0 || nfixed >= height) {
+		/*
+		 * No list to scroll (or no room left for it): draw what fits
+		 * from the top.
+		 */
+		for (i = 0; i < height; i++) {
+			format_vertical_draw_row(octx, base, width, i,
+			    &fv.rows[i], entries, default_colours);
+		}
+		goto out;
+	}
+
+	/*
+	 * The list rows do not fit: choose a window of them keeping the
+	 * focus visible, like format_draw_put_list() does with cells.
+	 */
+	avail = height - nfixed;
+	if (first_focus == -1)
+		focus_centre = 0;
+	else
+		focus_centre = first_focus + (last_focus - first_focus) / 2;
+	if (focus_centre < avail / 2)
+		start = 0;
+	else
+		start = focus_centre - avail / 2;
+	if (start + avail > nlist)
+		start = nlist - avail;
+
+	y = 0;
+	for (i = 0; i < first_list; i++) {
+		format_vertical_draw_row(octx, base, width, y++,
+		    &fv.rows[i], entries, default_colours);
+	}
+	for (i = 0; i < avail; i++) {
+		format_vertical_draw_row(octx, base, width, y++,
+		    &fv.rows[first_list + start + i], entries,
+		    default_colours);
+	}
+	for (i = last_list + 1; i < fv.nrows; i++) {
+		format_vertical_draw_row(octx, base, width, y++,
+		    &fv.rows[i], entries, default_colours);
+	}
+
+	/* Draw markers over the boundary rows where the list is clipped. */
+	if (start != 0) {
+		format_vertical_draw_marker(octx, base, width, first_list,
+		    fv.top_marker, default_colours);
+	}
+	if (start + avail < nlist) {
+		format_vertical_draw_marker(octx, base, width,
+		    first_list + avail - 1, fv.bottom_marker,
+		    default_colours);
+	}
+
+out:
+	format_vertical_free(&fv);
+}
+
 /* Get width, taking #[] into account. */
 u_int
 format_width(const char *expanded)

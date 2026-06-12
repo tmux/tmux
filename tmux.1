@@ -6951,6 +6951,21 @@ and
 .Ic list=right\-marker
 mark the text to be used to mark that text has been trimmed from the left or
 right of the list if there is not enough space.
+In the
+.Ic status\-column\-format
+option, the list is trimmed by whole rows and the markers are drawn as top
+and bottom markers on the boundary rows.
+.It Ic newline
+End the current row and start the next in the
+.Ic status\-column\-format
+option.
+This must appear alone in its
+.Ql #[]
+block.
+Consecutive directives produce empty rows; a trailing directive does not add
+an empty final row.
+Styles and ranges in effect continue across the row boundary.
+It is ignored on the horizontal status line.
 .It Ic noattr
 Do not copy attributes from the default style.
 .It Xo Ic push\-default ,

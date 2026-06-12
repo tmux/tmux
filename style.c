@@ -184,6 +184,14 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 				sy->range_argument = 0;
 				style_set_range_string(sy, found);
 			}
+		} else if (strcasecmp(tmp, "newline") == 0) {
+			/*
+			 * Row break directive, only meaningful to
+			 * format_draw_vertical() and only when alone in its
+			 * #[] block. It is accepted (and ignored) here so
+			 * that it does not invalidate a style it is
+			 * mistakenly combined with.
+			 */
 		} else if (strcasecmp(tmp, "noalign") == 0)
 			sy->align = style_default.align;
 		else if (end > 6 && strncasecmp(tmp, "align=", 6) == 0) {
