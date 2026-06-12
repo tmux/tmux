@@ -63,7 +63,7 @@ tmux -vv -Ltest -f/dev/null new
 
 Or if you need your configuration:
 
-~~~base
+~~~bash
 tmux kill-server
 tmux -vv new
 ~~~
