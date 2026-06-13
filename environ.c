@@ -152,7 +152,8 @@ environ_clear(struct environ *env, const char *name)
 void
 environ_put(struct environ *env, const char *var, int flags)
 {
-	char	*name, *value;
+	char		*name;
+	const char	*value;
 
 	value = strchr(var, '=');
 	if (value == NULL)
