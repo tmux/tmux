@@ -3306,6 +3306,7 @@ reverses the sort order.
 .Op Fl bdfhv
 .Op Fl D Op Ar lines
 .Op Fl L Op Ar columns
+.Op Fl P Ar position
 .Op Fl R Op Ar columns
 .Op Fl U Op Ar lines
 .Op Fl X Ar x\-position
@@ -3318,20 +3319,52 @@ reverses the sort order.
 Does the same as
 .Ic join\-pane ,
 except if given
-.Fl U ,
 .Fl D ,
-.Fl L
+.Fl L ,
+.Fl P ,
+.Fl R ,
+.Fl U ,
+.Fl X
 or
+.Fl Y
+in which case move the target floating pane.
+.Fl D ,
+.Fl L ,
 .Fl R
-in which case move the target floating pane up, down, left or right by
+and
+.Fl U
+move it down, left, right or up by
 .Ar lines
 or
 .Ar columns
 (one if omitted);
+.Fl P
+moves it to
+.Ar position ,
+which may be
+.Ql top-left ,
+.Ql top-centre ,
+.Ql top-right ,
+.Ql centre-left ,
+.Ql centre ,
+.Ql centre-right ,
+.Ql bottom-left ,
+.Ql bottom-centre ,
+.Ql bottom-right ,
+.Ql top-left-centre ,
+.Ql top-right-centre ,
+.Ql bottom-left-centre
+or
+.Ql bottom-right-centre ;
+for each
+.Ql centre
+position,
+.Ql center
+is accepted as an alias.
 .Fl X
 and
 .Fl Y
-move to the an absolute position.
+move it to an absolute position.
 .Tg movew
 .It Xo Ic move\-window
 .Op Fl abrdk
