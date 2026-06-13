@@ -3337,30 +3337,34 @@ move it down, left, right or up by
 .Ar lines
 or
 .Ar columns
-(one if omitted);
+(one if omitted).
 .Fl P
 moves it to
 .Ar position ,
-which may be
-.Ql top-left ,
-.Ql top-centre ,
-.Ql top-right ,
-.Ql centre-left ,
-.Ql centre ,
-.Ql centre-right ,
-.Ql bottom-left ,
-.Ql bottom-centre ,
-.Ql bottom-right ,
-.Ql top-left-centre ,
-.Ql top-right-centre ,
-.Ql bottom-left-centre
-or
-.Ql bottom-right-centre ;
-for each
-.Ql centre
-position,
-.Ql center
-is accepted as an alias.
+which may be one of:
+.Bl -column "XXXXXXXXXXXXXXXXXX" "X"
+.It Sy "Position" Ta Sy "Meaning"
+.It Li "top-left" Ta "Top left"
+.It Li "top-centre" Ta "Top and horizontal centre"
+.It Li "top-right" Ta "Top right"
+.It Li "centre-left" Ta "Vertical centre and left"
+.It Li "centre" Ta "Centre"
+.It Li "centre-right" Ta "Vertical centre and right"
+.It Li "bottom-left" Ta "Bottom left"
+.It Li "bottom-centre" Ta "Bottom and horizontal centre"
+.It Li "bottom-right" Ta "Bottom right"
+.It Li "top-left-centre" Ta "Centre of top-left quadrant"
+.It Li "top-right-centre" Ta "Centre of top-right quadrant"
+.It Li "bottom-left-centre" Ta "Centre of bottom-left quadrant"
+.It Li "bottom-right-centre" Ta "Centre of botton-right quadrant"
+.It Li "front" Ta "Front of floating panes"
+.It Li "back" Ta "Back of floating panes"
+.It Li "forward" Ta "Forward one floating pane"
+.It Li "backward" Ta "Backward one floating pane"
+.It Li "forward-loop" Ta "Forward but back if already at front"
+.It Li "backward-loop" Ta "Backward but front if already at back"
+.El
+.Pp
 .Fl X
 and
 .Fl Y
