@@ -49,10 +49,10 @@ const struct cmd_entry cmd_move_pane_entry = {
 	.name = "move-pane",
 	.alias = "movep",
 
-	.args = { "D::L::P:R::U::X:Y:bdfhvp:l:s:t:", 0, 0, NULL },
-	.usage = "[-bdfhv] [-D lines] [-L columns] [-P position] "
-		 "[-R columns] [-U lines] [-X x-position] "
-		 "[-Y y-position] [-l size] " CMD_SRCDST_PANE_USAGE,
+	.args = { "bdfhvl:L::P:R::s:t:U::X:Y:z:", 0, 0, NULL },
+	.usage = "[-bdfhv] [-D lines] [-l size] [-L columns] [-P position] "
+	         "[-R columns] " CMD_SRCDST_PANE_USAGE " [-U lines] "
+	         "[-X x-position] [-Y y-position] [-z z-index]",
 
 	.source = { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -177,8 +177,8 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 		lc->xoff = xoff;
 		lc->yoff = yoff;
 		layout_fix_panes(w, NULL);
-		notify_window("window-layout-changed", w);
 	}
+	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
 
 	return (CMD_RETURN_NORMAL);
@@ -251,6 +251,42 @@ cmd_join_pane_move(struct cmdq_item *item, struct args *args,
 }
 
 static enum cmd_retval
+cmd_join_pane_zindex(struct cmdq_item *item, struct winlink *wl,
+    struct window_pane *wp, const char *s)
+{
+	struct window		*w = wl->window;
+	struct window_pane	*owp;
+	const char		*errstr;
+	u_int			 n, z;
+
+	z = strtonum(s, 0, UINT_MAX, &errstr);
+	if (errstr != NULL) {
+		cmdq_error(item, "z-index %s", errstr);
+		return (CMD_RETURN_ERROR);
+	}
+	TAILQ_REMOVE(&w->z_index, wp, zentry);
+
+	n = 0;
+	TAILQ_FOREACH(owp, &w->z_index, zentry) {
+		if (!window_pane_is_floating(owp))
+			break;
+		if (n >= z)
+			break;
+		n++;
+	}
+
+	if (owp != NULL)
+		TAILQ_INSERT_BEFORE(owp, wp, zentry);
+	else
+		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
+
+	notify_window("window-layout-changed", w);
+	server_redraw_window(w);
+
+	return (CMD_RETURN_NORMAL);
+}
+
+static enum cmd_retval
 cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
@@ -280,6 +316,8 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		if ((s = args_get(args, 'P')) != NULL)
 			return (cmd_join_pane_place(item, dst_wl, dst_wp, s));
+		if ((s = args_get(args, 'z')) != NULL)
+			return (cmd_join_pane_zindex(item, dst_wl, dst_wp, s));
 		if (args_has(args, 'X') ||
 		    args_has(args, 'Y') ||
 		    args_has(args, 'U') ||
