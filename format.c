@@ -4070,18 +4070,14 @@ format_relative_time(time_t t)
 {
 	time_t	now, age;
 	u_int	d, h, m, s;
-	char	out[32], sign;
+	char	out[32];
 
 	time(&now);
+	if (t > now)
+		return (NULL);
 	if (t == now)
 		return (xstrdup("0s"));
-	if (t > now) {
-		sign = '+';
-		age = t - now;
-	} else {
-		sign = '-';
-		age = now - t;
-	}
+	age = now - t;
 
 	d = age / 86400;
 	h = (age % 86400) / 3600;
@@ -4090,21 +4086,21 @@ format_relative_time(time_t t)
 
 	if (d != 0) {
 		if (h != 0)
-			xsnprintf(out, sizeof out, "%c%ud%uh", sign, d, h);
+			xsnprintf(out, sizeof out, "%ud%uh", d, h);
 		else
-			xsnprintf(out, sizeof out, "%c%ud", sign, d);
+			xsnprintf(out, sizeof out, "%ud", d);
 	} else if (h != 0) {
 		if (m != 0)
-			xsnprintf(out, sizeof out, "%c%uh%um", sign, h, m);
+			xsnprintf(out, sizeof out, "%uh%um", h, m);
 		else
-			xsnprintf(out, sizeof out, "%c%uh", sign, h);
+			xsnprintf(out, sizeof out, "%uh", h);
 	} else if (m != 0) {
 		if (s != 0)
-			xsnprintf(out, sizeof out, "%c%um%us", sign, m, s);
+			xsnprintf(out, sizeof out, "%um%us", m, s);
 		else
-			xsnprintf(out, sizeof out, "%c%um", sign, m);
+			xsnprintf(out, sizeof out, "%um", m);
 	} else
-		xsnprintf(out, sizeof out, "%c%us", sign, s);
+		xsnprintf(out, sizeof out, "%us", s);
 	return (xstrdup(out));
 }
 
@@ -5201,7 +5197,8 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 				else if (fm->argc >= 2 &&
 				    strchr(fm->argv[0], 'f') != NULL) {
 					free(time_format);
-					time_format = format_strip(es, fm->argv[1]);
+					time_format = format_strip(es,
+					    fm->argv[1]);
 				}
 				break;
 			case 'q':
