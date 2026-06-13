@@ -30,6 +30,8 @@
  */
 
 static enum cmd_retval	cmd_join_pane_exec(struct cmd *, struct cmdq_item *);
+static enum cmd_retval	cmd_join_pane_move(struct cmdq_item *, struct args *,
+			    struct winlink *, struct window_pane *);
 
 const struct cmd_entry cmd_join_pane_entry = {
 	.name = "join-pane",
@@ -49,8 +51,10 @@ const struct cmd_entry cmd_move_pane_entry = {
 	.name = "move-pane",
 	.alias = "movep",
 
-	.args = { "bdfhvp:l:s:t:", 0, 0, NULL },
-	.usage = "[-bdfhv] [-l size] " CMD_SRCDST_PANE_USAGE,
+	.args = { "D::L::R::U::X:Y:bdfhvp:l:s:t:", 0, 0, NULL },
+	.usage = "[-bdfhv] [-D lines] [-L columns] [-R columns] "
+		 "[-U lines] [-X x-position] [-Y y-position] [-l size] "
+		 CMD_SRCDST_PANE_USAGE,
 
 	.source = { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -58,6 +62,78 @@ const struct cmd_entry cmd_move_pane_entry = {
 	.flags = 0,
 	.exec = cmd_join_pane_exec
 };
+
+static enum cmd_retval
+cmd_join_pane_move(struct cmdq_item *item, struct args *args, struct winlink *wl,
+    struct window_pane *wp)
+{
+	struct window		*w = wl->window;
+	struct layout_cell	*lc = wp->layout_cell;
+	const char		*errstr, *argval;
+	const char		 flags[] = { 'U', 'D', 'L', 'R' };
+	char			*cause = NULL, flag;
+	int			 xoff, yoff, adjust;
+	u_int			 i;
+
+	if (!window_pane_is_floating(wp)) {
+		cmdq_error(item, "pane is not floating");
+		return (CMD_RETURN_ERROR);
+	}
+
+	xoff = lc->xoff;
+	yoff = lc->yoff;
+
+	if (args_has(args, 'X')) {
+		xoff = args_percentage_and_expand(args, 'X', -(int)lc->sx,
+		    w->sx, w->sx, item, &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "position %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+	if (args_has(args, 'Y')) {
+		yoff = args_percentage_and_expand(args, 'Y', -(int)lc->sy,
+		    w->sy, w->sy, item, &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "position %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+
+	for (i = 0; i < nitems(flags); i++) {
+		flag = flags[i];
+		if (!args_has(args, flag))
+			continue;
+
+		argval = args_get(args, flag);
+		if (argval == NULL)
+			argval = "1";
+		adjust = strtonum(argval, INT_MIN, INT_MAX, &errstr);
+		if (errstr != NULL) {
+			cmdq_error(item, "offset %s", errstr);
+			return (CMD_RETURN_ERROR);
+		}
+
+		if (flag == 'U')
+			yoff -= adjust;
+		else if (flag == 'D')
+			yoff += adjust;
+		else if (flag == 'L')
+			xoff -= adjust;
+		else
+			xoff += adjust;
+	}
+
+	lc->xoff = xoff;
+	lc->yoff = yoff;
+	layout_fix_panes(w, NULL);
+	notify_window("window-layout-changed", w);
+	server_redraw_window(w);
+
+	return (CMD_RETURN_NORMAL);
+}
 
 static enum cmd_retval
 cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
@@ -80,6 +156,16 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	dst_w = dst_wl->window;
 	dst_idx = dst_wl->idx;
 	server_unzoom_window(dst_w);
+
+	if (cmd_get_entry(self) == &cmd_move_pane_entry) {
+		if (args_has(args, 'X') ||
+		    args_has(args, 'Y') ||
+		    args_has(args, 'U') ||
+		    args_has(args, 'D') ||
+		    args_has(args, 'L') ||
+		    args_has(args, 'R'))
+			return (cmd_join_pane_move(item, args, dst_wl, dst_wp));
+	}
 
 	src_wl = source->wl;
 	src_wp = source->wp;

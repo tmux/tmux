@@ -3306,13 +3306,34 @@ reverses the sort order.
 .Tg movep
 .It Xo Ic move\-pane
 .Op Fl bdfhv
+.Op Fl D Op Ar lines
+.Op Fl L Op Ar columns
+.Op Fl R Op Ar columns
+.Op Fl U Op Ar lines
+.Op Fl X Ar x\-position
+.Op Fl Y Ar y\-position
 .Op Fl l Ar size
 .Op Fl s Ar src\-pane
 .Op Fl t Ar dst\-pane
 .Xc
 .D1 Pq alias: Ic movep
 Does the same as
-.Ic join\-pane .
+.Ic join\-pane ,
+except if given
+.Fl U ,
+.Fl D ,
+.Fl L
+or
+.Fl R
+in which case move the target floating pane up, down, left or right by
+.Ar lines
+or
+.Ar columns
+(one if omitted);
+.Fl X
+and
+.Fl Y
+move to the an absolute position.
 .Tg movew
 .It Xo Ic move\-window
 .Op Fl abrdk
@@ -3614,13 +3635,13 @@ if specified, to
 .Tg resizep
 .It Xo Ic resize\-pane
 .Op Fl MTZ
-.Op Fl t Ar target\-pane
-.Op Fl U Ar lines
 .Op Fl D Ar lines
 .Op Fl L Ar columns
 .Op Fl R Ar columns
+.Op Fl U Ar lines
 .Op Fl x Ar width
 .Op Fl y Ar height
+.Op Fl t Ar target\-pane
 .Xc
 .D1 Pq alias: Ic resizep
 Resize a pane, up, down, left or right by a specified adjustment with
@@ -3628,10 +3649,8 @@ Resize a pane, up, down, left or right by a specified adjustment with
 .Fl D ,
 .Fl L
 or
-.Fl R ,
-or
-to an absolute size
-with
+.Fl R ;
+or to an absolute size with
 .Fl x
 or
 .Fl y .
