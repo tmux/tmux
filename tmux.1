@@ -3305,15 +3305,16 @@ reverses the sort order.
 .It Xo Ic move\-pane
 .Op Fl bdfhv
 .Op Fl D Op Ar lines
+.Op Fl l Ar size
 .Op Fl L Op Ar columns
 .Op Fl P Ar position
 .Op Fl R Op Ar columns
+.Op Fl s Ar src\-pane
+.Op Fl t Ar dst\-pane
 .Op Fl U Op Ar lines
 .Op Fl X Ar x\-position
 .Op Fl Y Ar y\-position
-.Op Fl l Ar size
-.Op Fl s Ar src\-pane
-.Op Fl t Ar dst\-pane
+.Op Fl z Ar z\-index
 .Xc
 .D1 Pq alias: Ic movep
 Does the same as
@@ -3324,9 +3325,10 @@ except if given
 .Fl P ,
 .Fl R ,
 .Fl U ,
-.Fl X
-or
+.Fl X ,
 .Fl Y
+or
+.Fl z
 in which case move the target floating pane.
 .Fl D ,
 .Fl L ,
@@ -3369,6 +3371,10 @@ which may be one of:
 and
 .Fl Y
 move it to an absolute position.
+.Fl z
+moves the pane to the given
+.Ar z-index ,
+where zero is the front.
 .Tg movew
 .It Xo Ic move\-window
 .Op Fl abrdk
