@@ -118,6 +118,9 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_REPEAT 0x200000
 #define FORMAT_QUOTE_ARGUMENTS 0x400000
 #define FORMAT_RELATIVE 0x800000
+#define FORMAT_CLIENT_TERMCAP 0x1000000
+#define FORMAT_CLIENT_TERMFEAT 0x2000000
+#define FORMAT_CLIENT_ENVIRON 0x4000000
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 100
@@ -4404,7 +4407,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 
 	/*
 	 * Modifiers are a ; separated list of the forms:
-	 *	l,m,C,a,b,c,d,n,t,w,q,E,T,S,W,P,R,<,>
+	 *	l,m,C,a,b,c,d,I,n,t,w,q,E,T,S,W,P,R,<,>
 	 *	=a
 	 *	=/a
 	 *	=/a/
@@ -4445,7 +4448,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 		}
 
 		/* Now try single character with arguments. */
-		if (strchr("mCLNPSst=pReqW", cp[0]) == NULL)
+		if (strchr("ImCLNPSst=pReqW", cp[0]) == NULL)
 			break;
 		c = cp[0];
 
@@ -5086,6 +5089,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	struct format_modifier		 *bool_op_n = NULL;
 	u_int				  i, count, nsub = 0, nrep;
 	struct format_expand_state	  next;
+	struct environ_entry		 *envent;
 
 	/* Set sorting defaults. */
 	sc->order = SORT_ORDER;
@@ -5167,6 +5171,16 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 				break;
 			case 'n':
 				modifiers |= FORMAT_LENGTH;
+				break;
+			case 'I':
+				if (fm->argc < 1)
+					break;
+				if (strchr(fm->argv[0], 'f') != NULL)
+					modifiers |= FORMAT_CLIENT_TERMFEAT;
+				if (strchr(fm->argv[0], 'c') != NULL)
+					modifiers |= FORMAT_CLIENT_TERMCAP;
+				if (strchr(fm->argv[0], 'e') != NULL)
+					modifiers |= FORMAT_CLIENT_ENVIRON;
 				break;
 			case 't':
 				modifiers |= FORMAT_TIMESTRING;
@@ -5293,6 +5307,38 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			    strcmp(fm->modifier, "<=") == 0)
 				cmp = fm;
 		}
+	}
+
+	/* Look up client capability, feature or environment. */
+	if ((modifiers & FORMAT_CLIENT_TERMCAP) ||
+	    (modifiers & FORMAT_CLIENT_TERMFEAT) ||
+	    (modifiers & FORMAT_CLIENT_ENVIRON)) {
+		if (ft->c == NULL ||
+		    ft->c->tty.term == NULL ||
+		    ft->c->flags & CLIENT_UNATTACHEDFLAGS) {
+			value = xstrdup("");
+			goto done;
+		}
+		if (modifiers & FORMAT_CLIENT_TERMCAP) {
+			if (tty_term_has_name(ft->c->tty.term, copy))
+				value = xstrdup("1");
+			else
+				value = xstrdup("0");
+		}
+		if (modifiers & FORMAT_CLIENT_TERMFEAT) {
+			if (tty_feature_present(ft->c->tty.term, copy))
+				value = xstrdup("1");
+			else
+				value = xstrdup("0");
+		}
+		if (modifiers & FORMAT_CLIENT_ENVIRON) {
+			envent = environ_find(ft->c->environ, copy);
+			if (envent != NULL && envent->value != NULL)
+				value = xstrdup(envent->value);
+			else
+				value = xstrdup("");
+		}
+		goto done;
 	}
 
 	/* Is this a literal string? */
