@@ -1416,30 +1416,43 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 	struct layout_cell	*lcnew;
 	int			 sx = w->sx / 2, sy = w->sy / 4;
 	int			 ox = INT_MAX, oy = INT_MAX;
+	char			*error;
 
 	if (args_has(args, 'x')) {
 		sx = args_percentage_and_expand(args, 'x', 0, w->sx - 1, w->sx,
-		    item, cause);
-		if (*cause != NULL)
+		    item, &error);
+		if (error != NULL) {
+			xasprintf(cause, "position %s", error);
+			free(error);
 			return (NULL);
+		}
 	}
 	if (args_has(args, 'y')) {
 		sy = args_percentage_and_expand(args, 'y', 0, w->sy - 1, w->sy,
-		    item, cause);
-		if (*cause != NULL)
+		    item, &error);
+		if (error != NULL) {
+			xasprintf(cause, "position %s", error);
+			free(error);
 			return (NULL);
+		}
 	}
 	if (args_has(args, 'X')) {
 		ox = args_percentage_and_expand(args, 'X', -sx, w->sx,
-		    w->sx, item, cause);
-		if (*cause != NULL)
+		    w->sx, item, &error);
+		if (error != NULL) {
+			xasprintf(cause, "size %s", error);
+			free(error);
 			return (NULL);
+		}
 	}
 	if (args_has(args, 'Y')) {
 		oy = args_percentage_and_expand(args, 'Y', -sy, w->sy,
-		    w->sy, item, cause);
-		if (*cause != NULL)
+		    w->sy, item, &error);
+		if (error != NULL) {
+			xasprintf(cause, "size %s", error);
+			free(error);
 			return (NULL);
+		}
 	}
 
 	if (ox == INT_MAX) {
