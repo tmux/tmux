@@ -776,6 +776,18 @@ tty_term_has(struct tty_term *term, enum tty_code_code code)
 	return (term->codes[code].type != TTYCODE_NONE);
 }
 
+int
+tty_term_has_name(struct tty_term *term, const char *name)
+{
+	u_int	i;
+
+	for (i = 0; i < tty_term_ncodes(); i++) {
+		if (strcmp(tty_term_codes[i].name, name) == 0)
+			return (tty_term_has(term, i));
+	}
+	return (0);
+}
+
 const char *
 tty_term_string(struct tty_term *term, enum tty_code_code code)
 {
