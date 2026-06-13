@@ -2864,7 +2864,7 @@ The
 command works only if at least one client is attached.
 .It Xo
 .Ic choose\-tree
-.Op Fl GhkNrswyZ
+.Op Fl GhikNrswyZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key\-format
@@ -2916,6 +2916,7 @@ The following keys may be used in tree mode:
 .It Li "O" Ta "Change sort order"
 .It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
+.It Li "i" Ta "Change view (preview and client information)"
 .It Li "F1 or C\-h" Ta "Display help"
 .It Li "q" Ta "Exit mode"
 .El
@@ -2955,6 +2956,8 @@ first.
 .Pp
 .Fl N
 starts without the preview or if given twice with the larger preview.
+.Fl i
+starts showing client information instead of the preview.
 .Fl h
 hides the pane containing the mode.
 .Fl k
