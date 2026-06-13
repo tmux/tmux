@@ -175,7 +175,7 @@ window_clock_init(struct window_mode_entry *wme,
 	struct window_clock_mode_data	*data;
 	struct screen			*s;
 
-	wme->data = data = xmalloc(sizeof *data);
+	wme->data = data = xcalloc(1, sizeof *data);
 	data->tim = time(NULL);
 
 	evtimer_set(&data->timer, window_clock_timer_callback, wme);
