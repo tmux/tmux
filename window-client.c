@@ -61,7 +61,7 @@ static const char *window_client_info_lines[] = {
 	"#{t:client_created} "
 	"#[dim](#{t/r:client_created})#[default]",
 	"Activity Time #[acs]x#[default] "
-	"#{t:client_created} "
+	"#{t:client_activity} "
 	"#[dim](#{t/r:client_created})#[default]",
 	"Terminal Type #[acs]x#[default] "
 	"#{?client_termtype,#{client_termtype},Unknown}",
