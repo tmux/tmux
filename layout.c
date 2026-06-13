@@ -743,6 +743,7 @@ layout_resize_floating_pane(struct window_pane *wp, enum layout_type type,
 	}
 }
 
+/* Resize a layout cell. */
 void
 layout_resize_layout(struct window *w, struct layout_cell *lc,
     enum layout_type type, int change, int opposite)
@@ -788,8 +789,11 @@ layout_resize_pane(struct window_pane *wp, enum layout_type type, int change,
 		return;
 
 	/* If this is the last cell, move back one. */
-	if (lc == TAILQ_LAST(&lcparent->cells, layout_cells))
-		lc = TAILQ_PREV(lc, layout_cells, entry);
+	if (lc == TAILQ_LAST(&lcparent->cells, layout_cells)) {
+		do
+			lc = TAILQ_PREV(lc, layout_cells, entry);
+		while (lc->flags & LAYOUT_CELL_FLOATING);
+	}
 
 	layout_resize_layout(wp->window, lc, type, change, opposite);
 }
