@@ -3614,6 +3614,7 @@ void	 mode_tree_resize(struct mode_tree_data *, u_int, u_int);
 struct mode_tree_item *mode_tree_add(struct mode_tree_data *,
 	     struct mode_tree_item *, void *, uint64_t, const char *,
 	     const char *, int);
+void	 mode_tree_view_name(struct mode_tree_data *, const char *);
 void	 mode_tree_draw_as_parent(struct mode_tree_item *);
 void	 mode_tree_no_tag(struct mode_tree_item *);
 void	 mode_tree_align(struct mode_tree_item *, int);
@@ -3655,7 +3656,7 @@ int		 window_copy_get_current_offset(struct window_pane *, u_int *,
 char		*window_copy_get_hyperlink(struct window_pane *, u_int, u_int);
 void		 window_copy_set_line_numbers(struct window_pane *, int);
 
-/* window-option.c */
+/* window-customize.c */
 extern const struct window_mode window_customize_mode;
 
 /* names.c */
