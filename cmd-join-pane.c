@@ -30,8 +30,6 @@
  */
 
 static enum cmd_retval	cmd_join_pane_exec(struct cmd *, struct cmdq_item *);
-static enum cmd_retval	cmd_join_pane_move(struct cmdq_item *, struct args *,
-			    struct winlink *, struct window_pane *);
 
 const struct cmd_entry cmd_join_pane_entry = {
 	.name = "join-pane",
@@ -51,10 +49,10 @@ const struct cmd_entry cmd_move_pane_entry = {
 	.name = "move-pane",
 	.alias = "movep",
 
-	.args = { "D::L::R::U::X:Y:bdfhvp:l:s:t:", 0, 0, NULL },
-	.usage = "[-bdfhv] [-D lines] [-L columns] [-R columns] "
-		 "[-U lines] [-X x-position] [-Y y-position] [-l size] "
-		 CMD_SRCDST_PANE_USAGE,
+	.args = { "D::L::P:R::U::X:Y:bdfhvp:l:s:t:", 0, 0, NULL },
+	.usage = "[-bdfhv] [-D lines] [-L columns] [-P position] "
+		 "[-R columns] [-U lines] [-X x-position] "
+		 "[-Y y-position] [-l size] " CMD_SRCDST_PANE_USAGE,
 
 	.source = { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -64,24 +62,87 @@ const struct cmd_entry cmd_move_pane_entry = {
 };
 
 static enum cmd_retval
-cmd_join_pane_move(struct cmdq_item *item, struct args *args, struct winlink *wl,
-    struct window_pane *wp)
+cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
+    struct window_pane *wp, const char *position)
+{
+	struct window		*w = wl->window;
+	struct layout_cell	*lc = wp->layout_cell;
+	int			 wx = w->sx, wy = w->sy, px = lc->sx;
+	int			 py = lc->sy, xoff, yoff;
+
+	if (strcmp(position, "top-left") == 0) {
+		xoff = 1;
+		yoff = 1;
+	} else if (strcmp(position, "top-centre") == 0 ||
+	    strcmp(position, "top-center") == 0) {
+		xoff = (wx - px) / 2;
+		yoff = 1;
+	} else if (strcmp(position, "top-right") == 0) {
+		xoff = wx - px - 1;
+		yoff = 1;
+	} else if (strcmp(position, "centre-left") == 0 ||
+	    strcmp(position, "center-left") == 0) {
+		xoff = 1;
+		yoff = (wy - py) / 2;
+	} else if (strcmp(position, "centre") == 0 ||
+	    strcmp(position, "center") == 0) {
+		xoff = (wx - px) / 2;
+		yoff = (wy - py) / 2;
+	} else if (strcmp(position, "centre-right") == 0 ||
+	    strcmp(position, "center-right") == 0) {
+		xoff = wx - px - 1;
+		yoff = (wy - py) / 2;
+	} else if (strcmp(position, "bottom-left") == 0) {
+		xoff = 1;
+		yoff = wy - py - 1;
+	} else if (strcmp(position, "bottom-centre") == 0 ||
+	    strcmp(position, "bottom-center") == 0) {
+		xoff = (wx - px) / 2;
+		yoff = wy - py - 1;
+	} else if (strcmp(position, "bottom-right") == 0) {
+		xoff = wx - px - 1;
+		yoff = wy - py - 1;
+	} else if (strcmp(position, "top-left-centre") == 0 ||
+	    strcmp(position, "top-left-center") == 0) {
+		xoff = wx / 4 - px / 2;
+		yoff = wy / 4 - py / 2;
+	} else if (strcmp(position, "top-right-centre") == 0 ||
+	    strcmp(position, "top-right-center") == 0) {
+		xoff = (3 * wx) / 4 - px / 2;
+		yoff = wy / 4 - py / 2;
+	} else if (strcmp(position, "bottom-left-centre") == 0 ||
+	    strcmp(position, "bottom-left-center") == 0) {
+		xoff = wx / 4 - px / 2;
+		yoff = (3 * wy) / 4 - py / 2;
+	} else if (strcmp(position, "bottom-right-centre") == 0 ||
+	    strcmp(position, "bottom-right-center") == 0) {
+		xoff = (3 * wx) / 4 - px / 2;
+		yoff = (3 * wy) / 4 - py / 2;
+	} else {
+		cmdq_error(item, "unknown position: %s", position);
+		return (CMD_RETURN_ERROR);
+	}
+
+	lc->xoff = xoff;
+	lc->yoff = yoff;
+	layout_fix_panes(w, NULL);
+	notify_window("window-layout-changed", w);
+	server_redraw_window(w);
+
+	return (CMD_RETURN_NORMAL);
+}
+
+static enum cmd_retval
+cmd_join_pane_move(struct cmdq_item *item, struct args *args,
+    struct winlink *wl, struct window_pane *wp)
 {
 	struct window		*w = wl->window;
 	struct layout_cell	*lc = wp->layout_cell;
 	const char		*errstr, *argval;
 	const char		 flags[] = { 'U', 'D', 'L', 'R' };
 	char			*cause = NULL, flag;
-	int			 xoff, yoff, adjust;
+	int			 xoff = lc->xoff, yoff = lc->yoff, adjust;
 	u_int			 i;
-
-	if (!window_pane_is_floating(wp)) {
-		cmdq_error(item, "pane is not floating");
-		return (CMD_RETURN_ERROR);
-	}
-
-	xoff = lc->xoff;
-	yoff = lc->yoff;
 
 	if (args_has(args, 'X')) {
 		xoff = args_percentage_and_expand(args, 'X', -(int)lc->sx,
@@ -126,11 +187,13 @@ cmd_join_pane_move(struct cmdq_item *item, struct args *args, struct winlink *wl
 			xoff += adjust;
 	}
 
-	lc->xoff = xoff;
-	lc->yoff = yoff;
-	layout_fix_panes(w, NULL);
-	notify_window("window-layout-changed", w);
-	server_redraw_window(w);
+	if (xoff != lc->xoff || yoff != lc->yoff) {
+		lc->xoff = xoff;
+		lc->yoff = yoff;
+		layout_fix_panes(w, NULL);
+		notify_window("window-layout-changed", w);
+		server_redraw_window(w);
+	}
 
 	return (CMD_RETURN_NORMAL);
 }
@@ -146,6 +209,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*src_wl, *dst_wl;
 	struct window		*src_w, *dst_w;
 	struct window_pane	*src_wp, *dst_wp;
+	const char		*s;
 	char			*cause = NULL;
 	int			 flags = 0, dst_idx;
 	struct layout_cell	*lc;
@@ -158,6 +222,12 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	server_unzoom_window(dst_w);
 
 	if (cmd_get_entry(self) == &cmd_move_pane_entry) {
+		if (!window_pane_is_floating(dst_wp)) {
+			cmdq_error(item, "pane is not floating");
+			return (CMD_RETURN_ERROR);
+		}
+		if ((s = args_get(args, 'P')) != NULL)
+			return (cmd_join_pane_place(item, dst_wl, dst_wp, s));
 		if (args_has(args, 'X') ||
 		    args_has(args, 'Y') ||
 		    args_has(args, 'U') ||
