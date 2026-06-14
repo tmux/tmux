@@ -211,7 +211,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	}
 
 	/* Top/bottom borders. */
-	if (vsplit && pane_status == PANE_STATUS_OFF && sb_w == 0) {
+	if (vsplit && pane_status == PANE_STATUS_OFF) {
 		if (wp->yoff == 0 && py == sy && px <= sx / 2)
 			return (SCREEN_REDRAW_BORDER_BOTTOM);
 		if (wp->yoff != 0 && py == wp->yoff - 1 && px > sx / 2)
@@ -220,9 +220,10 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 		if (sb_pos == PANE_SCROLLBARS_LEFT) {
 			if ((wp->xoff - sb_w == 0 || px >= wp->xoff - sb_w) &&
 			    (px <= ex || (sb_w != 0 && px < ex + sb_w))) {
-				if (wp->yoff != 0 && py == wp->yoff - 1)
+				if (pane_status != PANE_STATUS_BOTTOM &&
+				    wp->yoff != 0 && py == wp->yoff - 1)
 					return (SCREEN_REDRAW_BORDER_TOP);
-				if (py == ey)
+				if (pane_status != PANE_STATUS_TOP && py == ey)
 					return (SCREEN_REDRAW_BORDER_BOTTOM);
 			}
 		} else { /* sb_pos == PANE_SCROLLBARS_RIGHT */
@@ -617,7 +618,7 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 		width = 0;
 	else
 		width = wp->sx + sb_w - 2;
-	max_width = (int)w->sx - (wp->xoff + 2) - sb_w;
+	max_width = (int)w->sx - (wp->xoff + 2);
 	if (max_width < 0)
 		max_width = 0;
 	if (width > (u_int)max_width)
@@ -701,7 +702,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 			width = size;
 		} else if (xoff < ctx->ox && xoff + size > ctx->ox + ctx->sx) {
 			/* Both left and right not visible. */
-			l = ctx->ox;
+			l = ctx->ox - xoff;
 			x = 0;
 			width = ctx->sx;
 		} else if (xoff < ctx->ox) {
@@ -1124,7 +1125,7 @@ screen_redraw_is_visible(struct visible_ranges *r, u_int px)
 		return (1);
 	for (i = 0; i < r->used; i++) {
 		ri = &r->ranges[i];
-		if (ri->nx != 0 && px >= ri->px && px <= ri->px + ri->nx)
+		if (ri->nx != 0 && px >= ri->px && px < ri->px + ri->nx)
 			return (1);
 	}
 	return (0);
@@ -1146,11 +1147,13 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 	u_int				 lb, rb, tb, bb;
 	u_int				 i, s;
 
-	if (px + width <= 0 || py < 0)
+	if (py < 0 || width == 0)
 		goto empty;
 	if (px < 0) {
+		if ((u_int)-px >= width)
+			goto empty;
+		width -= (u_int)-px;
 		px = 0;
-		width += px;
 	}
 
 	if (base_wp == NULL) {
@@ -1197,7 +1200,8 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 		    (u_int)py < tb ||
 		    (u_int)py > bb)
 			continue;
-		if (!window_pane_is_floating(wp) && (u_int)py == bb)
+		if (!window_pane_is_floating(wp) &&
+		    ((u_int)py == tb || (u_int)py == bb))
 			continue;
 
 		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
