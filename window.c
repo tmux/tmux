@@ -634,7 +634,7 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 	int			 pane_status, xoff, yoff;
 	u_int			 sx, sy;
 
-	pane_status = options_get_number(w->options, "pane-border-status");
+	pane_status = window_get_pane_status(w);
 
 	if (pane_status == PANE_STATUS_TOP) {
 		/*
@@ -642,10 +642,12 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 		 * bottom border.
 		 */
 		TAILQ_FOREACH(wp, &w->z_index, zentry) {
-			if (!window_pane_visible(wp) || window_pane_is_floating(wp))
+			if (!window_pane_visible(wp) ||
+			    window_pane_is_floating(wp))
 				continue;
 
-			window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
+			window_pane_full_size_offset(wp, &xoff, &yoff, &sx,
+			    &sy);
 			if ((int)x < xoff || x > xoff + sx)
 				continue;
 			if ((int)y == yoff - 1)
@@ -692,7 +694,7 @@ window_find_string(struct window *w, const char *s)
 	x = w->sx / 2;
 	y = w->sy / 2;
 
-	status = options_get_number(w->options, "pane-border-status");
+	status = window_get_pane_status(w);
 	if (status == PANE_STATUS_TOP)
 		top++;
 	else if (status == PANE_STATUS_BOTTOM)
@@ -1555,7 +1557,7 @@ window_pane_find_up(struct window_pane *wp)
 	if (wp == NULL)
 		return (NULL);
 	w = wp->window;
-	status = options_get_number(w->options, "pane-border-status");
+	status = window_get_pane_status(w);
 
 	list = NULL;
 	size = 0;
@@ -1616,7 +1618,7 @@ window_pane_find_down(struct window_pane *wp)
 	if (wp == NULL)
 		return (NULL);
 	w = wp->window;
-	status = options_get_number(w->options, "pane-border-status");
+	status = window_get_pane_status(w);
 
 	list = NULL;
 	size = 0;
@@ -2132,21 +2134,19 @@ window_pane_send_theme_update(struct window_pane *wp)
 }
 
 struct style_range *
-window_pane_border_status_get_range(struct window_pane *wp, u_int x, u_int y)
+window_pane_status_get_range(struct window_pane *wp, u_int x, u_int y)
 {
 	struct style_ranges	*srs;
 	struct window		*w;
-	struct options		*wo;
 	u_int			 line;
 	int			 pane_status;
 
 	if (wp == NULL)
 		return (NULL);
 	w = wp->window;
-	wo = w->options;
 	srs = &wp->border_status_line.ranges;
 
-	pane_status = options_get_number(wo, "pane-border-status");
+	pane_status = window_get_pane_status(w);
 	if (pane_status == PANE_STATUS_TOP)
 		line = wp->yoff - 1;
 	else if (pane_status == PANE_STATUS_BOTTOM)
@@ -2159,6 +2159,12 @@ window_pane_border_status_get_range(struct window_pane *wp, u_int x, u_int y)
 	 * the stored bounds of the range.
 	 */
 	return (style_ranges_get_range(srs, x - wp->xoff - 2));
+}
+
+int
+window_get_pane_status(struct window *w)
+{
+       return (options_get_number(w->options, "pane-border-status"));
 }
 
 int

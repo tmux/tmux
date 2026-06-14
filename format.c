@@ -1165,7 +1165,7 @@ format_cb_pane_at_top(struct format_tree *ft)
 		return (NULL);
 	w = wp->window;
 
-	status = options_get_number(w->options, "pane-border-status");
+	status = window_get_pane_status(w);
 	if (status == PANE_STATUS_TOP)
 		flag = (wp->yoff == 1);
 	else

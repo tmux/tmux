@@ -603,15 +603,14 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
     u_int *sl_mpos)
 {
 	struct window		*w = wp->window;
-	struct options		*wo = w->options;
 	struct window_pane	*fwp;
 	int			 pane_status, sb, sb_pos, sb_w, sb_pad;
 	int			 pane_status_line, sl_top, sl_bottom;
 	int			 bdr_bottom, bdr_top, bdr_left, bdr_right;
 
-	sb = options_get_number(wo, "pane-scrollbars");
-	sb_pos = options_get_number(wo, "pane-scrollbars-position");
-	pane_status = options_get_number(wo, "pane-border-status");
+	sb = options_get_number(w->options, "pane-scrollbars");
+	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
+	pane_status = window_get_pane_status(w);
 
 	if (window_pane_show_scrollbar(wp, sb)) {
 		sb_w = wp->scrollbar_style.width;
@@ -915,8 +914,7 @@ have_event:
 				log_debug("mouse %u,%u on pane %%%u", x, y,
 				    wp->id);
 			} else if (loc == KEYC_MOUSE_LOCATION_BORDER) {
-				sr = window_pane_border_status_get_range(wp, px,
-					py);
+				sr = window_pane_status_get_range(wp, px, py);
 				if (sr != NULL) {
 					n = sr->argument;
 					loc = KEYC_MOUSE_LOCATION_CONTROL0 + n;

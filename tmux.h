@@ -3521,8 +3521,9 @@ int		 window_pane_get_bg_control_client(struct window_pane *);
 int		 window_get_bg_client(struct window_pane *);
 enum client_theme window_pane_get_theme(struct window_pane *);
 void		 window_pane_send_theme_update(struct window_pane *);
-struct style_range *window_pane_border_status_get_range(struct window_pane *,
-			u_int, u_int);
+int		 window_get_pane_status(struct window *);
+struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
+		     u_int);
 int		 window_pane_is_floating(struct window_pane *);
 
 /* layout.c */

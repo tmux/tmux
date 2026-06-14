@@ -774,7 +774,6 @@ screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 	struct session	*s = c->session;
 	struct options	*oo = s->options;
 	struct window	*w = s->curw->window;
-	struct options	*wo = w->options;
 	u_int		 lines;
 
 	memset(ctx, 0, sizeof *ctx);
@@ -787,11 +786,12 @@ screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 		ctx->statustop = 1;
 	ctx->statuslines = lines;
 
-	ctx->pane_status = options_get_number(wo, "pane-border-status");
-	ctx->pane_lines = options_get_number(wo, "pane-border-lines");
+	ctx->pane_status = window_get_pane_status(w);
+	ctx->pane_lines = options_get_number(w->options, "pane-border-lines");
 
-	ctx->pane_scrollbars = options_get_number(wo, "pane-scrollbars");
-	ctx->pane_scrollbars_pos = options_get_number(wo,
+	ctx->pane_scrollbars = options_get_number(w->options,
+	    "pane-scrollbars");
+	ctx->pane_scrollbars_pos = options_get_number(w->options,
 	    "pane-scrollbars-position");
 
 	tty_window_offset(&c->tty, &ctx->ox, &ctx->oy, &ctx->sx, &ctx->sy);
