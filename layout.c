@@ -292,15 +292,22 @@ layout_fix_offsets(struct window *w)
 static int
 layout_cell_is_top(struct window *w, struct layout_cell *lc)
 {
-	struct layout_cell	*next;
+	struct layout_cell	*next, *edge;
 
 	while (lc != w->layout_root) {
 		next = lc->parent;
 		if (next == NULL)
 			return (0);
-		if (next->type == LAYOUT_TOPBOTTOM &&
-		    lc != TAILQ_FIRST(&next->cells))
-			return (0);
+		if (next->type == LAYOUT_TOPBOTTOM) {
+			edge = TAILQ_FIRST(&next->cells);
+			while (edge != NULL) {
+				if (~edge->flags & LAYOUT_CELL_FLOATING)
+					break;
+				edge = TAILQ_NEXT(edge, entry);
+			}
+			if (lc != edge)
+				return (0);
+		}
 		lc = next;
 	}
 	return (1);
@@ -310,15 +317,22 @@ layout_cell_is_top(struct window *w, struct layout_cell *lc)
 static int
 layout_cell_is_bottom(struct window *w, struct layout_cell *lc)
 {
-	struct layout_cell	*next;
+	struct layout_cell	*next, *edge;
 
 	while (lc != w->layout_root) {
 		next = lc->parent;
 		if (next == NULL)
 			return (0);
-		if (next->type == LAYOUT_TOPBOTTOM &&
-		    lc != TAILQ_LAST(&next->cells, layout_cells))
-			return (0);
+		if (next->type == LAYOUT_TOPBOTTOM) {
+			edge = TAILQ_LAST(&next->cells, layout_cells);
+			while (edge != NULL) {
+				if (~edge->flags & LAYOUT_CELL_FLOATING)
+					break;
+				edge = TAILQ_PREV(edge, layout_cells, entry);
+			}
+			if (lc != edge)
+				return (0);
+		}
 		lc = next;
 	}
 	return (1);
