@@ -598,6 +598,7 @@ server_client_exec(struct client *c, const char *cmd)
 	free(msg);
 }
 
+/* Is the mouse inside a pane? */
 static enum key_code_mouse_location
 server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
     u_int *sl_mpos)
@@ -655,6 +656,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 			} else /* py > sl_bottom */
 				return (KEYC_MOUSE_LOCATION_SCROLLBAR_DOWN);
 		} else if (window_pane_is_floating(wp) &&
+		    window_pane_get_pane_lines(wp) != PANE_LINES_NONE &&
 		    (px == wp->xoff - 1 ||
 		    py == wp->yoff - 1 ||
 		    py == wp->yoff + (int)wp->sy)) {
@@ -669,6 +671,9 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 		TAILQ_FOREACH(fwp, &w->panes, entry) {
 			if ((w->flags & WINDOW_ZOOMED) &&
 			    (~fwp->flags & PANE_ZOOMED))
+				continue;
+			if (window_pane_is_floating(fwp) &&
+			    window_pane_get_pane_lines(fwp) == PANE_LINES_NONE)
 				continue;
 			bdr_top = fwp->yoff - 1;
 			bdr_bottom = fwp->yoff + fwp->sy;
@@ -1506,12 +1511,14 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 	return (1);
 }
 
+/* Handle key and insert at end of queue. */
 int
 server_client_handle_key(struct client *c, struct key_event *event)
 {
 	return (server_client_handle_key0(c, event, NULL, NULL));
 }
 
+/* Handle key and insert after another item. */
 int
 server_client_handle_key_after(struct client *c, struct key_event *event,
     struct cmdq_item *after, struct cmdq_item **next)

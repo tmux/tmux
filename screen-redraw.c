@@ -87,6 +87,7 @@ screen_redraw_border_set(struct window *w, struct window_pane *wp,
 		gc->attr &= ~GRID_ATTR_CHARSET;
 		utf8_set(&gc->data, SIMPLE_BORDERS[cell_type]);
 		break;
+	case PANE_LINES_NONE:
 	case PANE_LINES_SPACES:
 		gc->attr &= ~GRID_ATTR_CHARSET;
 		utf8_set(&gc->data, ' ');
@@ -139,6 +140,10 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	/* Inside pane. */
 	if (px >= wp->xoff && px < ex && py >= wp->yoff && py < ey)
 		return (SCREEN_REDRAW_INSIDE);
+
+	if (window_pane_is_floating(wp) &&
+	    window_pane_get_pane_lines(wp) == PANE_LINES_NONE)
+		return (SCREEN_REDRAW_OUTSIDE);
 
 	/* Are scrollbars enabled? */
 	if (window_pane_show_scrollbar(wp, pane_scrollbars))
@@ -1153,7 +1158,7 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 	struct window			*w;
 	struct visible_range		*ri;
 	static struct visible_ranges	 sr = { NULL, 0, 0 };
-	int				 found_self, sb, sb_w, sb_pos;
+	int				 found_self, sb, sb_w, sb_pos, no_border;
 	int				 lb, rb, tb, bb, sx, ex;
 	u_int				 i, s;
 
@@ -1203,8 +1208,18 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 			continue;
 		}
 
-		tb = wp->yoff > 0 ? wp->yoff - 1 : 0;
-		bb = wp->yoff + wp->sy;
+		if (window_pane_is_floating(wp) &&
+		    window_pane_get_pane_lines(wp) == PANE_LINES_NONE)
+			no_border = 1;
+		else
+			no_border = 0;
+		if (no_border) {
+			tb = wp->yoff;
+			bb = wp->yoff + (int)wp->sy - 1;
+		} else {
+			tb = wp->yoff > 0 ? wp->yoff - 1 : 0;
+			bb = wp->yoff + (int)wp->sy;
+		}
 		if (!found_self ||
 		    !window_pane_visible(wp) ||
 		    py < tb ||
@@ -1219,7 +1234,10 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 
 		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
-			if (sb_pos == PANE_SCROLLBARS_LEFT) {
+			if (no_border) {
+				lb = wp->xoff;
+				rb = wp->xoff + (int)wp->sx - 1;
+			} else if (sb_pos == PANE_SCROLLBARS_LEFT) {
 				if (wp->xoff > sb_w)
 					lb = wp->xoff - 1 - sb_w;
 				else
@@ -1230,11 +1248,19 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 				else
 					lb = 0;
 			}
-			if (sb_pos == PANE_SCROLLBARS_LEFT)
-				rb = wp->xoff + wp->sx;
-			else /* PANE_SCROLLBARS_RIGHT or none. */
-				rb = wp->xoff + wp->sx + sb_w;
-			if (rb > (int)w->sx)
+			if (!no_border) {
+				if (sb_pos == PANE_SCROLLBARS_LEFT)
+					rb = wp->xoff + (int)wp->sx;
+				else /* PANE_SCROLLBARS_RIGHT or none. */
+					rb = wp->xoff + (int)wp->sx + sb_w;
+			}
+			if (lb < 0)
+				lb = 0;
+			if (rb < 0)
+				continue;
+			if (no_border && rb >= (int)w->sx)
+				rb = w->sx - 1;
+			else if (!no_border && rb > (int)w->sx)
 				rb = w->sx - 1;
 
 			sx = ri->px;

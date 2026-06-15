@@ -70,20 +70,24 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 	struct window_pane	*owp;
 	int			 wx = w->sx, wy = w->sy, px = lc->sx;
 	int			 py = lc->sy, xoff = lc->xoff, yoff = lc->yoff;
+	int			 border = 1;
+
+	if (window_pane_get_pane_lines(wp) == PANE_LINES_NONE)
+		border = 0;
 
 	if (strcmp(position, "top-left") == 0) {
-		xoff = 1;
-		yoff = 1;
+		xoff = border;
+		yoff = border;
 	} else if (strcmp(position, "top-centre") == 0 ||
 	    strcmp(position, "top-center") == 0) {
 		xoff = (wx - px) / 2;
-		yoff = 1;
+		yoff = border;
 	} else if (strcmp(position, "top-right") == 0) {
-		xoff = wx - px - 1;
-		yoff = 1;
+		xoff = wx - px - border;
+		yoff = border;
 	} else if (strcmp(position, "centre-left") == 0 ||
 	    strcmp(position, "center-left") == 0) {
-		xoff = 1;
+		xoff = border;
 		yoff = (wy - py) / 2;
 	} else if (strcmp(position, "centre") == 0 ||
 	    strcmp(position, "center") == 0) {
@@ -91,18 +95,18 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 		yoff = (wy - py) / 2;
 	} else if (strcmp(position, "centre-right") == 0 ||
 	    strcmp(position, "center-right") == 0) {
-		xoff = wx - px - 1;
+		xoff = wx - px - border;
 		yoff = (wy - py) / 2;
 	} else if (strcmp(position, "bottom-left") == 0) {
-		xoff = 1;
-		yoff = wy - py - 1;
+		xoff = border;
+		yoff = wy - py - border;
 	} else if (strcmp(position, "bottom-centre") == 0 ||
 	    strcmp(position, "bottom-center") == 0) {
 		xoff = (wx - px) / 2;
-		yoff = wy - py - 1;
+		yoff = wy - py - border;
 	} else if (strcmp(position, "bottom-right") == 0) {
-		xoff = wx - px - 1;
-		yoff = wy - py - 1;
+		xoff = wx - px - border;
+		yoff = wy - py - border;
 	} else if (strcmp(position, "top-left-centre") == 0 ||
 	    strcmp(position, "top-left-center") == 0) {
 		xoff = wx / 4 - px / 2;
