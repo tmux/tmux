@@ -1674,11 +1674,12 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
     struct window *w, struct window_pane *wp, char **cause)
 {
 	struct layout_cell	*lcnew;
-	u_int			 sx, sy;
-	int			 ox, oy;
+	u_int			 sx = UINT_MAX, sy = UINT_MAX;
+	int			 ox = INT_MAX, oy = INT_MAX;
 
-	layout_cell_floating_args_parse(item, args, w, &sx, &sy, &ox, &oy, cause);
-	if (cause != NULL) {
+	layout_cell_floating_args_parse(item, args, w, &sx, &sy, &ox, &oy,
+	    cause);
+	if (*cause != NULL) {
 		return (NULL);
 	}
 
