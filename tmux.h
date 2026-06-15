@@ -2697,6 +2697,7 @@ void	tty_write(void (*)(struct tty *, const struct tty_ctx *),
 void	tty_cmd_alignmenttest(struct tty *, const struct tty_ctx *);
 void	tty_cmd_cell(struct tty *, const struct tty_ctx *);
 void	tty_cmd_cells(struct tty *, const struct tty_ctx *);
+void	tty_cmd_redrawline(struct tty *, const struct tty_ctx *);
 void	tty_cmd_clearendofline(struct tty *, const struct tty_ctx *);
 void	tty_cmd_clearendofscreen(struct tty *, const struct tty_ctx *);
 void	tty_cmd_clearline(struct tty *, const struct tty_ctx *);

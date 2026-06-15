@@ -1127,6 +1127,25 @@ screen_write_backspace(struct screen_write_ctx *ctx)
 	screen_write_set_cursor(ctx, cx, cy);
 }
 
+/* Is this cell a single ASCII character? */
+static int
+screen_write_cell_is_single(const struct grid_cell *gc)
+{
+	if (gc->data.width != 1)
+		return (0);
+	if (gc->data.size != 1)
+		return (0);
+	if (*gc->data.data < 0x20 || *gc->data.data == 0x7f)
+		return (0);
+	if (gc->flags & GRID_FLAG_CLEARED)
+		return (0);
+	if (gc->flags & GRID_FLAG_PADDING)
+		return (0);
+	if (gc->flags & GRID_FLAG_TAB)
+		return (0);
+	return (1);
+}
+
 /* Redraw all visible cells on a line. */
 static void
 screen_write_redraw_line(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
@@ -1135,10 +1154,13 @@ screen_write_redraw_line(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = ctx->s;
 	struct grid_cell	 gc, ngc;
-	u_int			 sx = screen_size_x(s), cx, i, n;
+	u_int			 sx = screen_size_x(s), cx, i;
 	int			 xoff = wp->xoff, yoff = wp->yoff;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
+
+	if (s->mode & MODE_SYNC)
+		return;
 
 	r = screen_redraw_get_visible_ranges(wp, xoff, yoff + yy, sx, NULL);
 	for (i = 0; i < r->used; i++) {
@@ -1147,20 +1169,34 @@ screen_write_redraw_line(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 			continue;
 
 		cx = ri->px - xoff;
-		for (n = 0; n < ri->nx && cx < sx; n++, cx++) {
-			grid_view_get_cell(s->grid, cx, yy, &gc);
-			if (~gc.flags & GRID_FLAG_SELECTED)
-				ttyctx->cell = &gc;
-			else {
-				screen_select_cell(s, &ngc, &gc);
-				ttyctx->cell = &ngc;
-			}
+		if (cx >= sx)
+			continue;
+		if (cx + ri->nx > sx)
+			ttyctx->n = sx - cx;
+		else
+			ttyctx->n = ri->nx;
+		if (ttyctx->n == 0)
+			continue;
+		ttyctx->ocx = cx;
+		ttyctx->ocy = yy;
 
-			ttyctx->ocx = cx;
-			ttyctx->ocy = yy;
-			if (~s->mode & MODE_SYNC)
-				tty_write(tty_cmd_cell, ttyctx);
+		if (ttyctx->n != 1) {
+			tty_write(tty_cmd_redrawline, ttyctx);
+			continue;
 		}
+
+		grid_view_get_cell(s->grid, cx, yy, &gc);
+		if (!screen_write_cell_is_single(&gc)) {
+			tty_write(tty_cmd_redrawline, ttyctx);
+			continue;
+		}
+		if (~gc.flags & GRID_FLAG_SELECTED)
+			ttyctx->cell = &gc;
+		else {
+			screen_select_cell(s, &ngc, &gc);
+			ttyctx->cell = &ngc;
+		}
+		tty_write(tty_cmd_cell, ttyctx);
 	}
 }
 
