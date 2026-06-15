@@ -435,7 +435,8 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if ((lc = wp->layout_cell) == NULL || wp == skip)
+		if ((lc = wp->layout_cell) == NULL || wp == skip ||
+		    !window_pane_visible(wp))
 			continue;
 
 		wp->xoff = lc->xoff;
@@ -625,62 +626,6 @@ layout_resize_set_size(struct window *w, struct layout_cell *lc,
 	layout_resize_adjust(w, lc, type, change);
 }
 
-/*
- * Redistribute space equally among all visible (non-hidden WINDOWPANE)
- * children of lcparent in the given direction.  Hidden WINDOWPANE leaves
- * are skipped; their stored sizes are left untouched.  Container children
- * have their own children resized proportionally via layout_resize_child_cells.
- *
- * If all children happen to be hidden (n==0), nothing is done.
- */
-void
-layout_redistribute_cells(struct window *w, struct layout_cell *lcparent,
-    enum layout_type type)
-{
-	struct layout_cell	*lc;
-	u_int			 n, total, each, rem, i, target;
-
-	/* Count visible cells at this level. */
-	n = 0;
-	TAILQ_FOREACH(lc, &lcparent->cells, entry) {
-		if (lc->type == LAYOUT_WINDOWPANE &&
-		    lc->wp != NULL &&
-		    (lc->wp->flags & PANE_HIDDEN))
-			continue;
-		n++;
-	}
-	if (n == 0)
-		return;
-
-	total = (type == LAYOUT_LEFTRIGHT) ? lcparent->sx : lcparent->sy;
-	if (total + 1 < n)	/* can't fit even the minimum borders */
-		return;
-
-	/*
-	 * each * n + (n-1) borders = total
-	 * → each = (total - (n-1)) / n,  rem = (total - (n-1)) % n
-	 * The first `rem` visible cells get (each+1) to consume the remainder.
-	 */
-	each = (total - (n - 1)) / n;
-	rem  = (total - (n - 1)) % n;
-
-	i = 0;
-	TAILQ_FOREACH(lc, &lcparent->cells, entry) {
-		if (lc->type == LAYOUT_WINDOWPANE &&
-		    lc->wp != NULL &&
-		    (lc->wp->flags & PANE_HIDDEN))
-			continue;
-		target = each + (i < rem ? 1 : 0);
-		if (type == LAYOUT_LEFTRIGHT)
-			lc->sx = target;
-		else
-			lc->sy = target;
-		if (lc->type != LAYOUT_WINDOWPANE)
-			layout_resize_child_cells(w, lc);
-		i++;
-	}
-}
-
 /* Find and return the nearest neighbour to a cell in a specific direction. */
 static struct layout_cell *
 layout_cell_get_neighbour_direction(struct layout_cell *lc, int direction)
@@ -788,71 +733,6 @@ out:
 
 		layout_free_cell(lcparent);
 	}
-}
-
-
-/* Hide a cell. Space is redistributed to the nearest neighbour if the cell was
- * tiled.
- */
-void
-layout_hide_cell(struct window *w, struct layout_cell *lc)
-{
-	struct layout_cell	*lcother, *lcparent, *lcchild;
-	u_int			 shown_children = 0;
-	int			 val;
-
-	if (lc == NULL)
-		return;
-
-	lcparent = lc->parent;
-	lc->flags |= LAYOUT_CELL_HIDDEN;
-
-	/* Merge the space into the nearest neighbour. */
-	lcother = layout_cell_get_neighbour(lc);
-
-	if (lcother != NULL) {
-		if (lcparent->type == LAYOUT_LEFTRIGHT)
-			val = lc->sx + 1;
-		else
-			val = lc->sy + 1;
-		layout_resize_adjust(w, lcother, lcparent->type, val);
-	}
-
-	if (layout_cell_is_tiled(lc))
-		layout_set_size(lc, 0, 0, 0, 0);
-
-	/* If no children are tiled, hide the parent. */
-	if (lcparent != NULL) {
-		TAILQ_FOREACH(lcchild, &lcparent->cells, entry) {
-			if (layout_cell_is_tiled(lcchild)) {
-				shown_children = 1;
-				break;
-			}
-		}
-		if (shown_children == 0)
-			layout_hide_cell(w, lcparent);
-	}
-}
-
-/* Show a cell and redistribute the space in tiled cells. */
-void
-layout_show_cell(struct window *w, struct layout_cell *lc)
-{
-	struct layout_cell	*lcparent;
-
-	if (lc == NULL)
-		return;
-	lcparent = lc->parent;
-	if (lcparent == NULL)
-		return;
-
-	/*
-	 * Redistribute the parent's space equally among all visible (non-
-	 * hidden) children, including lc which has just been shown.
-	 * This ensures every pane at this level gets an equal share rather
-	 * than one pane losing most of its space to the restored pane.
-	 */
-	layout_redistribute_cells(w, lcparent, lcparent->type);
 }
 
 /* Initialize layout for pane. */
@@ -1865,6 +1745,9 @@ layout_insert_tile(struct window *w, struct layout_cell *lc)
 
 	if (lc == NULL)
 		fatalx("layout cell cannot be null when tiling");
+
+	if (lc->flags & LAYOUT_CELL_FLOATING)
+		return (1);
 
 	if (lcparent == NULL) {
 		/* Only pane in the layout. */

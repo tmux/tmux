@@ -1289,7 +1289,6 @@ struct window_pane {
 #define PANE_THEMECHANGED 0x2000
 #define PANE_UNSEENCHANGES 0x4000
 #define PANE_REDRAWSCROLLBAR 0x8000
-#define PANE_HIDDEN 0x20000
 
 	/* Last floating position/size, saved when the pane is tiled. */
 	int		 saved_float_xoff;
@@ -3545,8 +3544,6 @@ void		 layout_destroy_cell(struct window *, struct layout_cell *,
 		     struct layout_cell **);
 void		 layout_hide_cell(struct window *, struct layout_cell *);
 void		 layout_show_cell(struct window *, struct layout_cell *);
-void		 layout_redistribute_cells(struct window *, struct layout_cell *,
-		     enum layout_type);
 void		 layout_resize_layout(struct window *, struct layout_cell *,
 		     enum layout_type, int, int);
 struct layout_cell *layout_search_by_border(struct layout_cell *, u_int, u_int);
