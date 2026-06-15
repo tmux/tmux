@@ -1449,7 +1449,7 @@ tty_cmd_redrawline(struct tty *tty, const struct tty_ctx *ctx)
 			rr = &r->ranges[j];
 			if (rr->nx == 0)
 				continue;
-			tty_draw_line(tty, ctx->s, i + rr->px - x,
+			tty_draw_line(tty, ctx->s, ctx->ocx + i + rr->px - x,
 			    ctx->ocy, rr->nx, rr->px, ry, &ctx->style_ctx);
 		}
 	}
