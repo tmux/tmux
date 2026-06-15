@@ -1154,7 +1154,7 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 	struct visible_range		*ri;
 	static struct visible_ranges	 sr = { NULL, 0, 0 };
 	int				 found_self, sb, sb_w, sb_pos;
-	u_int				 lb, rb, tb, bb;
+	int				 lb, rb, tb, bb, sx, ex;
 	u_int				 i, s;
 
 	if (py < 0 || width == 0)
@@ -1207,11 +1207,10 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 		bb = wp->yoff + wp->sy;
 		if (!found_self ||
 		    !window_pane_visible(wp) ||
-		    (u_int)py < tb ||
-		    (u_int)py > bb)
+		    py < tb ||
+		    py > bb)
 			continue;
-		if (!window_pane_is_floating(wp) &&
-		    ((u_int)py == tb || (u_int)py == bb))
+		if (!window_pane_is_floating(wp) && (py == tb || py == bb))
 			continue;
 
 		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
@@ -1235,34 +1234,29 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 				rb = wp->xoff + wp->sx;
 			else /* PANE_SCROLLBARS_RIGHT or none. */
 				rb = wp->xoff + wp->sx + sb_w;
-			if (rb > w->sx)
+			if (rb > (int)w->sx)
 				rb = w->sx - 1;
 
-			if (lb > ri->px &&
-			    lb < ri->px + ri->nx &&
-			    rb >= ri->px + ri->nx)
-			{
+			sx = ri->px;
+			ex = sx + ri->nx - 1;
+			if (lb > sx && lb <= ex && rb > ex) {
 				/*
 				 * If the left edge of floating pane falls
 				 * inside this range and right edge covers up
 				 * to right of range, then shrink left edge of
 				 * range.
 				 */
-				ri->nx = lb - ri->px;
-			}
-			else if (rb >= ri->px &&
-			    rb < ri->px + ri->nx &&
-			    lb <= ri->px) {
+				ri->nx = lb - sx;
+			} else if (rb >= sx && rb <= ex && lb <= sx) {
 				/*
 				 * Else if the right edge of floating pane falls
 				 * inside of this range and left edge covers
 				 * the left of range, then move px forward to
 				 * right edge of pane.
 				 */
-				ri->nx = ri->nx - (rb + 1 - ri->px);
-				ri->px = ri->px + (rb + 1 - ri->px);
-			}
-			else if (lb > ri->px && rb < ri->px + ri->nx) {
+				ri->nx = ex - rb;
+				ri->px = rb + 1;
+			} else if (lb > sx && rb <= ex) {
 				/*
 				 * Else if pane fully inside range then split
 				 * into 2 ranges.
@@ -1274,11 +1268,11 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 				}
 				ri = &r->ranges[i];
 				r->ranges[i + 1].px = rb + 1;
-				r->ranges[i + 1].nx = ri->px + ri->nx - (rb + 1);
+				r->ranges[i + 1].nx = ex - rb;
 				/* ri->px was copied, unchanged. */
-				ri->nx = lb - ri->px;
+				ri->nx = lb - sx;
 				r->used++;
-			} else if (lb <= ri->px && rb >= ri->px + ri->nx) {
+			} else if (lb <= sx && rb > ex) {
 				/*
 				 * If floating pane completely covers this range
 				 * then delete it (make it 0 length).
