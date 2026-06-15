@@ -3490,6 +3490,7 @@ but a different format may be specified with
 .Tg newp
 .It Xo Ic new\-pane
 .Op Fl bdefhIkPvWZ
+.Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
@@ -3521,6 +3522,9 @@ sets the border style when the pane is inactive (see
 .Sx STYLES ) .
 .Fl T
 sets the pane title.
+.Fl B
+sets the pane border lines for floating panes; see
+.Ic pane\-border\-lines .
 .Pp
 .Fl h
 does a horizontal split and
