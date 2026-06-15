@@ -245,11 +245,14 @@ screen_set_cursor_colour(struct screen *s, int colour)
 
 /* Set screen title. */
 int
-screen_set_title(struct screen *s, const char *title)
+screen_set_title(struct screen *s, const char *title, int untrusted)
 {
 	char	*new_title;
 
-	new_title = clean_name(title, "#");
+	if (untrusted)
+		new_title = clean_name(title, "#");
+	else
+		new_title = clean_name(title, "");
 	if (new_title == NULL)
 		return (0);
 	free(s->title);
@@ -259,11 +262,14 @@ screen_set_title(struct screen *s, const char *title)
 
 /* Set screen path. */
 int
-screen_set_path(struct screen *s, const char *path)
+screen_set_path(struct screen *s, const char *path, int untrusted)
 {
 	char	*new_path;
 
-	new_path = clean_name(path, "#");
+	if (untrusted)
+		new_path = clean_name(path, "#");
+	else
+		new_path = clean_name(path, "");
 	if (new_path == NULL)
 		return (0);
 	free(s->path);

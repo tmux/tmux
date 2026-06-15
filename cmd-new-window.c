@@ -61,7 +61,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*s = target->s;
 	struct winlink		*wl = target->wl, *new_wl = NULL;
 	int			 idx = target->idx, before;
-	char			*cause = NULL, *cp, *expanded;
+	char			*cause = NULL, *cp, *expanded, *wname;
 	const char		*template, *name;
 	struct cmd_find_state	 fs;
 	struct args_value	*av;
@@ -71,8 +71,18 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	 * name already exists, select it.
 	 */
 	name = args_get(args, 'n');
-	if (args_has(args, 'S') && name != NULL && target->idx == -1) {
+	if (name != NULL) {
 		expanded = format_single(item, name, c, s, NULL, NULL);
+		if (!check_name(expanded, WINDOW_NAME_FORBID)) {
+			cmdq_error(item, "invalid window name: %s", expanded);
+			free(expanded);
+			return (CMD_RETURN_ERROR);
+		}
+		wname = clean_name(expanded, WINDOW_NAME_FORBID);
+		free(expanded);
+	}
+	if (args_has(args, 'S') && wname != NULL && target->idx == -1) {
+		expanded = format_single(item, wname, c, s, NULL, NULL);
 		RB_FOREACH(wl, winlinks, &s->windows) {
 			if (strcmp(wl->window->name, expanded) != 0)
 				continue;
@@ -80,12 +90,14 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 				new_wl = wl;
 				continue;
 			}
-			cmdq_error(item, "multiple windows named %s", name);
+			cmdq_error(item, "multiple windows named %s", wname);
+			free(wname);
 			free(expanded);
 			return (CMD_RETURN_ERROR);
 		}
 		free(expanded);
 		if (new_wl != NULL) {
+			free(wname);
 			if (args_has(args, 'd'))
 				return (CMD_RETURN_NORMAL);
 			if (session_set_current(s, new_wl) == 0)
@@ -108,7 +120,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	sc.s = s;
 	sc.tc = tc;
 
-	sc.name = args_get(args, 'n');
+	sc.name = wname;
 	args_to_vector(args, &sc.argc, &sc.argv);
 	sc.environ = environ_create();
 
@@ -130,10 +142,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	if ((new_wl = spawn_window(&sc, &cause)) == NULL) {
 		cmdq_error(item, "create window failed: %s", cause);
 		free(cause);
-		if (sc.argv != NULL)
-			cmd_free_argv(sc.argc, sc.argv);
-		environ_free(sc.environ);
-		return (CMD_RETURN_ERROR);
+		goto fail;
 	}
 	if (!args_has(args, 'd') || new_wl == s->curw) {
 		cmd_find_from_winlink(current, new_wl, 0);
@@ -156,5 +165,13 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (sc.argv != NULL)
 		cmd_free_argv(sc.argc, sc.argv);
 	environ_free(sc.environ);
+	free(wname);
 	return (CMD_RETURN_NORMAL);
+
+fail:
+	if (sc.argv != NULL)
+		cmd_free_argv(sc.argc, sc.argv);
+	environ_free(sc.environ);
+	free(wname);
+	return (CMD_RETURN_ERROR);
 }
