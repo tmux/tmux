@@ -89,7 +89,7 @@ cmd_float_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	layout_remove_tile(w, lc);
-	layout_cell_floating_args(item, args, w, &sx, &sy, &ox, &oy, &cause);
+	layout_cell_floating_args_parse(item, args, w, &sx, &sy, &ox, &oy, &cause);
 	if (cause != NULL) {
 		cmdq_error(item, "failed to float pane: %s", cause);
 		free(cause);
@@ -134,11 +134,12 @@ cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	layout_save_size(lc);
-	if (layout_insert_tile(w, lc) == 0)
-		return (CMD_RETURN_ERROR);
-
-
 	lc->flags &= ~LAYOUT_CELL_FLOATING;
+	if (layout_insert_tile(w, lc) == 0) {
+		cmdq_error(item, "can't tile a pane that is already tiled");
+		return (CMD_RETURN_ERROR);
+	}
+
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
 	TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 

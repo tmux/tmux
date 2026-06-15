@@ -3559,7 +3559,7 @@ void		 layout_fix_offsets(struct window *);
 void		 layout_fix_panes(struct window *, struct window_pane *);
 void		 layout_resize_adjust(struct window *, struct layout_cell *,
 		     enum layout_type, int);
-void		 layout_resize_set(struct window *, struct layout_cell *,
+void		 layout_resize_set_size(struct window *, struct layout_cell *,
 		     enum layout_type, u_int);
 struct layout_cell *layout_cell_get_neighbour(struct layout_cell *);
 void		 layout_init(struct window *, struct window_pane *);
@@ -3586,7 +3586,7 @@ struct layout_cell *layout_floating_pane(struct window *, struct window_pane *,
 void		 layout_close_pane(struct window_pane *);
 int		 layout_spread_cell(struct window *, struct layout_cell *);
 void		 layout_spread_out(struct window_pane *);
-void		 layout_cell_floating_args(struct cmdq_item *, struct args *,
+void		 layout_cell_floating_args_parse(struct cmdq_item *, struct args *,
 		     struct window *, u_int *, u_int *, int *, int *, char **);
 struct layout_cell *layout_get_floating_cell(struct cmdq_item *, struct args *,
 		     struct window *, struct window_pane *, char **);
