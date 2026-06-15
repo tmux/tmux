@@ -1435,6 +1435,26 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 	}
 }
 
+void
+tty_cmd_redrawline(struct tty *tty, const struct tty_ctx *ctx)
+{
+	u_int			 i, x, rx, ry, j;
+	struct visible_ranges	*r;
+	struct visible_range	*rr;
+
+	if (tty_clamp_line(tty, ctx, ctx->ocx, ctx->ocy, ctx->n,
+	    &i, &x, &rx, &ry)) {
+		r = tty_check_overlay_range(tty, x, ry, rx);
+		for (j = 0; j < r->used; j++) {
+			rr = &r->ranges[j];
+			if (rr->nx == 0)
+				continue;
+			tty_draw_line(tty, ctx->s, i + rr->px - x,
+			    ctx->ocy, rr->nx, rr->px, ry, &ctx->style_ctx);
+		}
+	}
+}
+
 /* Check if character needs to be mapped for codeset. */
 const struct grid_cell *
 tty_check_codeset(struct tty *tty, const struct grid_cell *gc)
