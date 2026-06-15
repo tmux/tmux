@@ -316,7 +316,7 @@ screen_redraw_cell_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	 * single z-index.
 	 */
 	TAILQ_FOREACH(wp2, &w->z_index, zentry) {
-		if (!window_pane_visible(wp2) || window_pane_is_floating(wp2))
+		if (!window_pane_is_visible(wp2) || window_pane_is_floating(wp2))
 			continue;
 		n = screen_redraw_cell_border1(ctx, sb_pos, sb_w, wp2, px, py);
 		if (n != -1)
@@ -493,7 +493,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, int px, int py,
 	if (!window_pane_is_floating(wp))
 		tiled_only = 1;
 	do { /* loop until back to wp == start */
-		if (!window_pane_visible(wp))
+		if (!window_pane_is_visible(wp))
 			goto next;
 		if (tiled_only && window_pane_is_floating(wp))
 			goto next;
@@ -694,7 +694,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (!window_pane_visible(wp))
+		if (!window_pane_is_visible(wp))
 			continue;
 		s = &wp->status_screen;
 
@@ -868,7 +868,7 @@ screen_redraw_pane(struct client *c, struct window_pane *wp,
 {
 	struct screen_redraw_ctx	ctx;
 
-	if (!window_pane_visible(wp))
+	if (!window_pane_is_visible(wp))
 		return;
 
 	screen_redraw_set_context(c, &ctx);
@@ -1103,7 +1103,7 @@ screen_redraw_draw_panes(struct screen_redraw_ctx *ctx)
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (window_pane_visible(wp))
+		if (window_pane_is_visible(wp))
 			screen_redraw_draw_pane(ctx, wp);
 	}
 }
@@ -1223,7 +1223,7 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 			bb = wp->yoff + (int)wp->sy;
 		}
 		if (!found_self ||
-		    !window_pane_visible(wp) ||
+		    !window_pane_is_visible(wp) ||
 		    py < tb ||
 		    py > bb)
 			continue;
@@ -1453,7 +1453,7 @@ screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx)
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (window_pane_show_scrollbar(wp, ctx->pane_scrollbars) &&
-		    window_pane_visible(wp))
+		    window_pane_is_visible(wp))
 			screen_redraw_draw_pane_scrollbar(ctx, wp);
 	}
 }

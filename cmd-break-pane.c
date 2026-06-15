@@ -58,9 +58,14 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*dst_s = target->s;
 	struct window_pane	*wp = source->wp;
 	struct window		*w = wl->window;
-	char			*name, *cause, *cp;
+	char			*newname, *cause, *cp;
 	int			 idx = target->idx, before;
-	const char		*template;
+	const char		*template, *name = args_get(args, 'n');
+
+	if (name != NULL && !check_name(name, WINDOW_NAME_FORBID)) {
+		cmdq_error(item, "invalid window name: %s", name);
+		return (CMD_RETURN_ERROR);
+	}
 
 	before = args_has(args, 'b');
 	if (args_has(args, 'a') || before) {
@@ -80,8 +85,8 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-		if (args_has(args, 'n')) {
-			window_set_name(w, args_get(args, 'n'));
+		if (name != NULL) {
+			window_set_name(w, name, WINDOW_NAME_FORBID);
 			options_set_number(w->options, "automatic-rename", 0);
 		}
 		server_unlink_window(src_s, wl);
@@ -109,12 +114,12 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	w->active = wp;
 	w->latest = tc;
 
-	if (!args_has(args, 'n')) {
-		name = default_window_name(w);
-		window_set_name(w, name);
-		free(name);
+	if (name != NULL) {
+		newname = default_window_name(w);
+		window_set_name(w, newname, WINDOW_NAME_FORBID);
+		free(newname);
 	} else {
-		window_set_name(w, args_get(args, 'n'));
+		window_set_name(w, name, 0);
 		options_set_number(w->options, "automatic-rename", 0);
 	}
 

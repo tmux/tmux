@@ -52,12 +52,12 @@ cmd_rename_session_exec(struct cmd *self, struct cmdq_item *item)
 	char			*newname, *tmp;
 
 	tmp = format_single_from_target(item, args_string(args, 0));
-	newname = clean_name(tmp, "#:.");
-	if (newname == NULL) {
-		cmdq_error(item, "invalid session: %s", tmp);
+	if (!check_name(tmp, SESSION_NAME_FORBID)) {
+		cmdq_error(item, "invalid session name: %s", tmp);
 		free(tmp);
 		return (CMD_RETURN_ERROR);
 	}
+	newname = clean_name(tmp, SESSION_NAME_FORBID);
 	free(tmp);
 	if (strcmp(newname, s->name) == 0) {
 		free(newname);

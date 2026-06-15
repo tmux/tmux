@@ -176,7 +176,6 @@ paste_add(const char *prefix, char *data, size_t size)
 	}
 
 	pb = xmalloc(sizeof *pb);
-
 	pb->name = NULL;
 	do {
 		free(pb->name);
@@ -296,7 +295,6 @@ paste_set(char *data, size_t size, const char *name, char **cause)
 	}
 
 	pb = xmalloc(sizeof *pb);
-
 	pb->name = newname;
 
 	pb->data = data;
