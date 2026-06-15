@@ -2047,8 +2047,13 @@ server_client_check_redraw(struct client *c)
 			}
 		}
 	}
-	if (needed && (left = EVBUFFER_LENGTH(tty->out)) != 0) {
-		log_debug("%s: redraw deferred (%zu left)", c->name, left);
+	left = EVBUFFER_LENGTH(tty->out);
+	if (needed && (left != 0 || (tty->flags & TTY_BLOCK))) {
+		if (left != 0) {
+			log_debug("%s: redraw deferred (%zu left)", c->name,
+			    left);
+		} else
+			log_debug("%s: redraw deferred (blocked)", c->name);
 		if (!evtimer_initialized(&ev))
 			evtimer_set(&ev, server_client_redraw_timer, NULL);
 		if (!evtimer_pending(&ev, NULL)) {

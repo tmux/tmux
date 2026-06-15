@@ -2678,7 +2678,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		if (ri->nx == 0)
 			continue;
 		for (n = 0; n < ri->nx; n++) {
-			ttyctx.ocx = ri->px + n;
+			ttyctx.ocx = (int)ri->px - xoff + (int)n;
 			tty_write(tty_cmd_cell, &ttyctx);
 		}
 	}
