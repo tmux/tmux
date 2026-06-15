@@ -1003,6 +1003,7 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 	struct format_tree	*ft;
 	struct window_pane	*wp, *active = server_client_get_pane(c);
 	struct grid_cell	 gc;
+	enum pane_lines		 pane_lines;
 	u_int			 cell_type;
 	u_int			 x = ctx->ox + i, y = ctx->oy + j;
 	int			 isolates;
@@ -1034,7 +1035,11 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 		    screen_redraw_check_is(ctx, x, y, marked_pane.wp))
 			gc.attr ^= GRID_ATTR_REVERSE;
 	}
-	screen_redraw_border_set(w, wp, ctx->pane_lines, cell_type, &gc);
+	if (wp == NULL)
+		pane_lines = ctx->pane_lines;
+	else
+		pane_lines = window_pane_get_pane_lines(wp);
+	screen_redraw_border_set(w, wp, pane_lines, cell_type, &gc);
 
 	if (cell_type == CELL_TOPBOTTOM &&
 	    (c->flags & CLIENT_UTF8) &&

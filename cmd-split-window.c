@@ -38,9 +38,10 @@ const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
 	.alias = "newp",
 
-	.args = { "bc:de:EfF:hIkl:Lm:p:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
-	.usage = "[-bdefhIklPvWZ] [-c start-directory] [-e environment] "
-		 "[-F format] [-l size] [-m message] [-p percentage] "
+	.args = { "bB:c:de:EfF:hIkl:Lm:p:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
+	.usage = "[-bdefhIklPvWZ] [-B border-lines] "
+		  "[-c start-directory] [-e environment] "
+		  "[-F format] [-l size] [-m message] [-p percentage] "
 		 "[-s style] [-S active-border-style] "
 		 "[-R inactive-border-style] [-T title] [-x width] [-y height] "
 		 "[-X x-position] [-Y y-position] " CMD_TARGET_PANE_USAGE " "
@@ -84,9 +85,11 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct layout_cell	*lc = NULL;
 	struct cmd_find_state	 fs;
 	int			 input, empty, is_floating, flags = 0;
-	const char		*template, *style;
+	const char		*template, *style, *value;
 	char			*cause = NULL, *cp, *title;
+	struct options_entry	*oe;
 	struct args_value	*av;
+	enum pane_lines		 lines;
 	u_int			 count = args_count(args);
 
 	if (cmd_get_entry(self) == &cmd_new_pane_entry)
@@ -186,6 +189,19 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 			    style);
 			return (CMD_RETURN_ERROR);
 		}
+	}
+	value = args_get(args, 'B');
+	if (value != NULL) {
+		oe = options_get(new_wp->options, "pane-border-lines");
+		lines = options_find_choice(options_table_entry(oe), value,
+		    &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "pane-border-lines %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+		options_set_number(new_wp->options, "pane-border-lines",
+		    lines);
 	}
 	if (args_has(args, 'k') || args_has(args, 'm')) {
 		options_set_number(new_wp->options, "remain-on-exit", 3);

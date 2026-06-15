@@ -2159,6 +2159,18 @@ window_pane_status_get_range(struct window_pane *wp, u_int x, u_int y)
 	return (style_ranges_get_range(srs, x - wp->xoff - 2));
 }
 
+enum pane_lines
+window_pane_get_pane_lines(struct window_pane *wp)
+{
+	struct options	*oo;
+
+	if (!window_pane_is_floating(wp))
+		oo = wp->window->options;
+	else
+		oo = wp->options;
+	return (options_get_number(oo, "pane-border-lines"));
+}
+
 int
 window_get_pane_status(struct window *w)
 {
