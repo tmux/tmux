@@ -38,10 +38,10 @@ static enum cmd_retval	cmd_tile_pane_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_float_pane_entry = {
 	.name = "float-pane",
-	.alias = NULL,
+	.alias = "floatp",
 
-	.args = { "t:x:y:w:h:", 0, 0, NULL },
-	.usage = "[-h height] [-w width] [-x x] [-y y] "
+	.args = { "dt:x:X:y:Y:", 0, 0, NULL },
+	.usage = "[-x height] [-y width] [-X x-position] [-Y y-position] "
 		 CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -52,9 +52,9 @@ const struct cmd_entry cmd_float_pane_entry = {
 
 const struct cmd_entry cmd_tile_pane_entry = {
 	.name = "tile-pane",
-	.alias = NULL,
+	.alias = "tilep",
 
-	.args = { "t:", 0, 0, NULL },
+	.args = { "dt:", 0, 0, NULL },
 	.usage = CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -63,90 +63,6 @@ const struct cmd_entry cmd_tile_pane_entry = {
 	.exec = cmd_tile_pane_exec
 };
 
-/*
- * Parse geometry arguments for float-pane.
- * Returns 0 on success, -1 on error (error message already set on item).
- * x/y/sx/sy are set to parsed values or cascade defaults.
- * last_x/last_y are the static cascade counters; pass the address of the
- * caller's statics.
- */
-static int
-cmd_float_pane_parse_geometry(struct args *args, struct cmdq_item *item,
-    struct window *w, int *out_x, int *out_y, u_int *out_sx, u_int *out_sy,
-    int *last_x, int *last_y)
-{
-	char	*cause = NULL;
-	int	 x, y;
-	u_int	 sx, sy;
-
-	/* Default size: half the window. */
-	sx = w->sx / 2;
-	sy = w->sy / 2;
-
-	if (args_has(args, 'w')) {
-		sx = args_strtonum_and_expand(args, 'w', 1, USHRT_MAX, item,
-		    &cause);
-		if (cause != NULL) {
-			cmdq_error(item, "width %s", cause);
-			free(cause);
-			return (-1);
-		}
-	}
-	if (args_has(args, 'h')) {
-		sy = args_strtonum_and_expand(args, 'h', 1, USHRT_MAX, item,
-		    &cause);
-		if (cause != NULL) {
-			cmdq_error(item, "height %s", cause);
-			free(cause);
-			return (-1);
-		}
-	}
-
-	/* Default position: cascade from (5,5), step +5, wrap at window edge. */
-	if (args_has(args, 'x')) {
-		x = args_strtonum_and_expand(args, 'x', SHRT_MIN, SHRT_MAX,
-		    item, &cause);
-		if (cause != NULL) {
-			cmdq_error(item, "x %s", cause);
-			free(cause);
-			return (-1);
-		}
-	} else {
-		if (*last_x == 0) {
-			x = 5;
-		} else {
-			x = (*last_x += 5);
-			if (*last_x > (int)w->sx)
-				x = *last_x = 5;
-		}
-	}
-	if (args_has(args, 'y')) {
-		y = args_strtonum_and_expand(args, 'y', SHRT_MIN, SHRT_MAX,
-		    item, &cause);
-		if (cause != NULL) {
-			cmdq_error(item, "y %s", cause);
-			free(cause);
-			return (-1);
-		}
-	} else {
-		if (*last_y == 0) {
-			y = 5;
-		} else {
-			y = (*last_y += 5);
-			if (*last_y > (int)w->sy)
-				y = *last_y = 5;
-		}
-	}
-
-	*last_x = x;
-	*last_y = y;
-	*out_x = x;
-	*out_y = y;
-	*out_sx = sx;
-	*out_sy = sy;
-	return (0);
-}
-
 static enum cmd_retval
 cmd_float_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -154,16 +70,16 @@ cmd_float_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct window		*w = target->wl->window;
 	struct window_pane	*wp = target->wp;
-	static int		 last_x = 0, last_y = 0;
-	int			 x, y;
-	u_int			 sx, sy;
-	struct layout_cell	*lc;
+	struct layout_cell	*lc = wp->layout_cell;
+	u_int			 sx = lc->saved_sx, sy = lc->saved_sy;
+	int			 ox = lc->saved_xoff, oy = lc->saved_yoff;
+	char			*cause = NULL;
 
 	if (window_pane_is_floating(wp)) {
 		cmdq_error(item, "pane is already floating");
 		return (CMD_RETURN_ERROR);
 	}
-	if (wp->flags & PANE_HIDDEN) {
+	if (window_pane_is_hidden(wp)) {
 		cmdq_error(item, "can't float a hidden pane");
 		return (CMD_RETURN_ERROR);
 	}
@@ -172,47 +88,22 @@ cmd_float_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-	/*
-	 * If no geometry was given explicitly and we have a saved floating
-	 * position from a previous tile-pane, restore it.
-	 */
-	if ((wp->flags & PANE_SAVED_FLOAT) &&
-	    !args_has(args, 'x') && !args_has(args, 'y') &&
-	    !args_has(args, 'w') && !args_has(args, 'h')) {
-		x  = wp->saved_float_xoff;
-		y  = wp->saved_float_yoff;
-		sx = wp->saved_float_sx;
-		sy = wp->saved_float_sy;
-	} else {
-		if (cmd_float_pane_parse_geometry(args, item, w, &x, &y, &sx,
-		    &sy, &last_x, &last_y) != 0)
-			return (CMD_RETURN_ERROR);
+	layout_remove_tile(w, lc);
+	layout_cell_floating_args_parse(item, args, w, &sx, &sy, &ox, &oy, &cause);
+	if (cause != NULL) {
+		cmdq_error(item, "failed to float pane: %s", cause);
+		free(cause);
+		return (CMD_RETURN_ERROR);
 	}
-
-	/*
-	 * Remove the pane from the tiled layout tree so neighbours reclaim
-	 * the space.  layout_close_pane calls layout_destroy_cell which frees
-	 * the tiled layout_cell and sets wp->layout_cell = NULL via
-	 * layout_free_cell.  It also calls layout_fix_offsets/fix_panes and
-	 * notify_window, which is fine to do here before we set up the
-	 * floating cell.
-	 */
-	layout_close_pane(wp);		/* wp->layout_cell is NULL afterwards */
-
-	/* Create a detached floating cell with the requested geometry. */
-	lc = layout_create_cell(NULL);
-	lc->xoff = x;
-	lc->yoff = y;
-	lc->sx = sx;
-	lc->sy = sy;
-	layout_make_leaf(lc, wp);	/* sets wp->layout_cell = lc, lc->wp = wp */
+	layout_set_size(lc, sx, sy, ox, oy);
 
 	lc->flags |= LAYOUT_CELL_FLOATING;
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
 	TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
 
-	if (w->layout_root != NULL)
-		layout_fix_offsets(w);
+	if (!args_has(args, 'd'))
+		window_set_active_pane(w, wp, 1);
+	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
@@ -223,16 +114,18 @@ cmd_float_pane_exec(struct cmd *self, struct cmdq_item *item)
 static enum cmd_retval
 cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
-	__attribute((unused)) struct args	*args = cmd_get_args(self);
-	struct cmd_find_state			*target = cmdq_get_target(item);
-	struct window				*w = target->wl->window;
-	struct window_pane			*wp = target->wp;
-	struct window_pane	*target_wp, *wpiter;
-	struct layout_cell	*float_lc, *lc;
-	int			 was_hidden;
+	__unused struct args	*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct window		*w = target->wl->window;
+	struct window_pane	*wp = target->wp;
+	struct layout_cell	*lc = wp->layout_cell;
 
 	if (!window_pane_is_floating(wp)) {
 		cmdq_error(item, "pane is not floating");
+		return (CMD_RETURN_ERROR);
+	}
+	if (window_pane_is_hidden(wp)) {
+		cmdq_error(item, "can't tile a hidden pane");
 		return (CMD_RETURN_ERROR);
 	}
 	if (w->flags & WINDOW_ZOOMED) {
@@ -240,121 +133,19 @@ cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-	was_hidden = (wp->flags & PANE_HIDDEN) != 0;
-
-	/*
-	 * Save the floating geometry so we can restore it next time this pane
-	 * is floated without an explicit position/size.
-	 */
-	float_lc = wp->layout_cell;
-	wp->saved_float_xoff = float_lc->xoff;
-	wp->saved_float_yoff = float_lc->yoff;
-	wp->saved_float_sx   = float_lc->sx;
-	wp->saved_float_sy   = float_lc->sy;
-	wp->flags |= PANE_SAVED_FLOAT;
-
-	/*
-	 * If the pane is also hidden, clear saved_layout_cell before
-	 * freeing the floating cell — otherwise the pointer would dangle.
-	 */
-	if (was_hidden)
-		wp->saved_layout_cell = NULL;
-
-	/*
-	 * Free the detached floating cell.  Clear its wp pointer first so
-	 * layout_free_cell's WINDOWPANE case does not corrupt wp->layout_cell.
-	 */
-	float_lc->wp = NULL;
-	layout_free_cell(float_lc);
-	wp->layout_cell = NULL;
-
-	/*
-	 * Find the best tiled pane to split after, prefer a visible (non-
-	 * hidden) tiled pane.  If all tiled panes are hidden, fall back
-	 * to any tiled pane so the new pane enters the existing tree rather
-	 * than becoming a disconnected root.
-	 */
-	target_wp = NULL;
-	if (w->active != NULL && !window_pane_is_floating(w->active) &&
-	    !(w->active->flags & PANE_HIDDEN))
-		target_wp = w->active;
-	if (target_wp == NULL) {
-		TAILQ_FOREACH(wpiter, &w->last_panes, sentry) {
-			if (!(wpiter->flags & PANE_HIDDEN) &&
-			    !window_pane_is_floating(wpiter) &&
-			    window_pane_visible(wpiter)) {
-				target_wp = wpiter;
-				break;
-			}
-		}
-	}
-	if (target_wp == NULL) {
-		TAILQ_FOREACH(wpiter, &w->panes, entry) {
-			if (!(wpiter->flags & PANE_HIDDEN) &&
-			    !window_pane_is_floating(wpiter) &&
-			    window_pane_visible(wpiter)) {
-				target_wp = wpiter;
-				break;
-			}
-		}
-	}
-	/* Fall back to any tiled pane (even hidden) to stay in the tree. */
-	if (target_wp == NULL) {
-		TAILQ_FOREACH(wpiter, &w->panes, entry) {
-			if (!window_pane_is_floating(wpiter)) {
-				target_wp = wpiter;
-				break;
-			}
-		}
-	}
-	if (target_wp != NULL) {
-		lc = layout_split_pane(target_wp, LAYOUT_TOPBOTTOM, -1, 0);
-		if (lc == NULL)
-			lc = layout_split_pane(target_wp, LAYOUT_LEFTRIGHT,
-			    -1, 0);
-		if (lc == NULL) {
-			cmdq_error(item, "not enough space to tile pane");
-			return (CMD_RETURN_ERROR);
-		}
-		layout_assign_pane(lc, wp, 0);
-		/*
-		 * Redistribute space equally among all visible panes at this
-		 * level, so the new pane gets an equal share rather than just
-		 * half of the split target.
-		 */
-		if (wp->layout_cell != NULL && wp->layout_cell->parent != NULL)
-			layout_redistribute_cells(w, wp->layout_cell->parent,
-			    wp->layout_cell->parent->type);
-	} else {
-		/*
-		 * No tiled panes at all: make this pane the sole tiled pane
-		 * (new layout root).
-		 */
-		lc = layout_create_cell(NULL);
-		lc->sx = w->sx;
-		lc->sy = w->sy;
-		lc->xoff = 0;
-		lc->yoff = 0;
-		w->layout_root = lc;
-		layout_make_leaf(lc, wp);
-	}
-
-	/*
-	 * If the pane was hidden while floating, record its new tiled cell
-	 * as the saved cell so 'show' can restore it correctly.
-	 */
-	if (was_hidden)
-		wp->saved_layout_cell = wp->layout_cell;
-
+	layout_save_size(lc);
 	lc->flags &= ~LAYOUT_CELL_FLOATING;
+	if (layout_insert_tile(w, lc) == 0) {
+		cmdq_error(item, "can't tile a pane that is already tiled");
+		return (CMD_RETURN_ERROR);
+	}
+
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
 	TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 
-	if (!(wp->flags & PANE_HIDDEN))
+	if (!args_has(args, 'd'))
 		window_set_active_pane(w, wp, 1);
-
-	if (w->layout_root != NULL)
-		layout_fix_offsets(w);
+	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 	notify_window("window-layout-changed", w);
 	server_redraw_window(w);

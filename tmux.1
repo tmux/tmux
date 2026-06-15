@@ -3119,37 +3119,43 @@ The
 command works only if at least one client is attached.
 .Tg floatp
 .It Xo Ic float\-pane
-.Op Fl h Ar height
-.Op Fl w Ar width
-.Op Fl x Ar x
-.Op Fl y Ar y
+.Op Fl d
+.Op Fl x Ar width
+.Op Fl y Ar height
+.Op Fl X Ar x\-position
+.Op Fl y Ar y\-position
 .Op Fl t Ar target\-pane
 .Xc
+.D1 Pq alias: Ic floatp
 Lift
 .Ar target\-pane
-out of the tiled layout and make it a floating pane.
-The
-.Fl w
-and
-.Fl h
-options set the width and height of the floating pane in columns and lines
-respectively; the default is half the window width and height.
+out of the tiled layout and make it floating.
 The
 .Fl x
 and
 .Fl y
-options set the position of the upper-left corner of the pane;
-if omitted, new floating panes are cascaded from the top-left of the window.
-If
+options set the width and height of the floating pane in columns and lines
+respectively.
+The default is half the window width and a quarter the window height.
+The
+.Fl X
+and
+.Fl Y
+options set the position of the upper-left corner of the pane.
+If omitted, new floating panes are cascaded from the top-left of the window.
+.Pp
+If the pane had previously been floating, the position and sizes are restored
+from the saved values not specified by the
 .Fl x ,
 .Fl y ,
-.Fl w ,
+.Fl X ,
 and
-.Fl h
-are all omitted and the pane was previously returned to the tiled layout
-with
-.Ic tile\-pane ,
-its last floating position and size are restored.
+.Fl Y
+options.
+.Pp
+If
+.Fl d
+is given, the active pane is not changed.
 The pane must not already be floating or hidden, and the window must not
 be zoomed.
 .Tg joinp
@@ -4064,18 +4070,23 @@ is omitted and a marked pane is present (see
 the window containing the marked pane is used rather than the current window.
 .Tg tilep
 .It Xo Ic tile\-pane
+.Op Fl d
 .Op Fl t Ar target\-pane
 .Xc
-Insert a floating
+.D1 Pq alias: Ic tilep
+Return a floating
 .Ar target\-pane
-back into the tiled layout.
-The pane is placed by splitting the active tiled pane (or the most recently
-active tiled pane, or any visible tiled pane if none is active).
-The current floating position and size are saved so they can be restored by
-a subsequent
-.Ic float\-pane
-command with no geometry options.
-The pane must be floating and the window must not be zoomed.
+back to the tiled layout.
+The location in the layout is preserved.
+Half the space from the nearest tiled pane in the layout is given to
+.Ar target\-pane .
+The floating position and sizes are saved so they can be restored by future
+calls to
+.Ic float\-pane .
+If
+.Fl d
+is given, the active pane is not changed.
+The pane must be floating, not hidden, and the window must not be zoomed.
 .Tg showp
 .It Xo Ic show\-pane
 .Op Fl t Ar target\-pane
