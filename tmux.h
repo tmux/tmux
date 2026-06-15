@@ -1091,7 +1091,8 @@ enum pane_lines {
 	PANE_LINES_HEAVY,
 	PANE_LINES_SIMPLE,
 	PANE_LINES_NUMBER,
-	PANE_LINES_SPACES
+	PANE_LINES_SPACES,
+	PANE_LINES_NONE
 };
 
 /* Pane border indicator option. */
@@ -1112,7 +1113,6 @@ struct screen_redraw_ctx {
 	u_int		 statuslines;
 	int		 statustop;
 
-	int		 pane_status;
 	enum pane_lines	 pane_lines;
 
 	int		 pane_scrollbars;
@@ -1457,6 +1457,8 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_STATUS_OFF 0
 #define PANE_STATUS_TOP 1
 #define PANE_STATUS_BOTTOM 2
+#define PANE_STATUS_TOP_FLOATING 3
+#define PANE_STATUS_BOTTOM_FLOATING 4
 
 /* Pane scrollbars option. */
 #define PANE_SCROLLBARS_OFF 0
@@ -2746,6 +2748,7 @@ void	tty_write(void (*)(struct tty *, const struct tty_ctx *),
 void	tty_cmd_alignmenttest(struct tty *, const struct tty_ctx *);
 void	tty_cmd_cell(struct tty *, const struct tty_ctx *);
 void	tty_cmd_cells(struct tty *, const struct tty_ctx *);
+void	tty_cmd_redrawline(struct tty *, const struct tty_ctx *);
 void	tty_cmd_clearendofline(struct tty *, const struct tty_ctx *);
 void	tty_cmd_clearendofscreen(struct tty *, const struct tty_ctx *);
 void	tty_cmd_clearline(struct tty *, const struct tty_ctx *);
@@ -3529,7 +3532,9 @@ int		 window_pane_get_bg_control_client(struct window_pane *);
 int		 window_get_bg_client(struct window_pane *);
 enum client_theme window_pane_get_theme(struct window_pane *);
 void		 window_pane_send_theme_update(struct window_pane *);
+enum pane_lines	 window_pane_get_pane_lines(struct window_pane *);
 int		 window_get_pane_status(struct window *);
+int		 window_pane_get_pane_status(struct window_pane *);
 struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
 		     u_int);
 int		 window_pane_is_floating(struct window_pane *);

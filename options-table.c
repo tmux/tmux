@@ -70,13 +70,13 @@ static const char *options_table_pane_scrollbars_position_list[] = {
 	"right", "left", NULL
 };
 static const char *options_table_pane_status_list[] = {
-	"off", "top", "bottom", NULL
+	"off", "top", "bottom", "top-floating", "bottom-floating", NULL
 };
 static const char *options_table_pane_border_indicators_list[] = {
 	"off", "colour", "arrows", "both", NULL
 };
 static const char *options_table_pane_border_lines_list[] = {
-	"single", "double", "heavy", "simple", "number", "spaces", NULL
+	"single", "double", "heavy", "simple", "number", "spaces", "none", NULL
 };
 static const char *options_table_popup_border_lines_list[] = {
 	"single", "double", "heavy", "simple", "rounded", "padded", "none", NULL
@@ -1386,7 +1386,7 @@ const struct options_table_entry options_table[] = {
 
 	{ .name = "pane-border-lines",
 	  .type = OPTIONS_TABLE_CHOICE,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .choices = options_table_pane_border_lines_list,
 	  .default_num = PANE_LINES_SINGLE,
 	  .text = "Type of characters used to draw pane border lines. Some of "
@@ -1395,7 +1395,7 @@ const struct options_table_entry options_table[] = {
 
 	{ .name = "pane-border-status",
 	  .type = OPTIONS_TABLE_CHOICE,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .choices = options_table_pane_status_list,
 	  .default_num = PANE_STATUS_OFF,
 	  .text = "Position of the pane status lines."
