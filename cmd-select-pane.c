@@ -135,7 +135,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(args, 'm') || args_has(args, 'M')) {
-		if (args_has(args, 'm') && !window_pane_visible(wp))
+		if (args_has(args, 'm') && !window_pane_is_visible(wp))
 			return (CMD_RETURN_NORMAL);
 		if (server_check_marked())
 			lastwp = marked_pane.wp;
