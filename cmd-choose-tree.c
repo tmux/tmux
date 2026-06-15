@@ -47,8 +47,8 @@ const struct cmd_entry cmd_choose_client_entry = {
 	.name = "choose-client",
 	.alias = NULL,
 
-	.args = { "F:f:hK:kNO:rt:yZ", 0, 1, cmd_choose_tree_args_parse },
-	.usage = "[-hkNrZ] [-F format] [-f filter] [-K key-format] "
+	.args = { "F:f:hiK:kNO:rt:yZ", 0, 1, cmd_choose_tree_args_parse },
+	.usage = "[-hikNrZ] [-F format] [-f filter] [-K key-format] "
 		 "[-O sort-order] " CMD_TARGET_PANE_USAGE " [template]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },

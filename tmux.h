@@ -2784,6 +2784,7 @@ int		 tty_term_read_list(const char *, int, char ***, u_int *,
 		     char **);
 void		 tty_term_free_list(char **, u_int);
 int		 tty_term_has(struct tty_term *, enum tty_code_code);
+int		 tty_term_has_name(struct tty_term *, const char *);
 const char	*tty_term_string(struct tty_term *, enum tty_code_code);
 const char	*tty_term_string_i(struct tty_term *, enum tty_code_code, int);
 const char	*tty_term_string_ii(struct tty_term *, enum tty_code_code, int,
@@ -2801,6 +2802,7 @@ const char	*tty_term_describe(struct tty_term *, enum tty_code_code);
 /* tty-features.c */
 void		 tty_add_features(int *, const char *, const char *);
 const char	*tty_get_features(int);
+int		 tty_feature_present(struct tty_term *, const char *);
 int		 tty_apply_features(struct tty_term *, int);
 void		 tty_default_features(int *, const char *, u_int);
 
@@ -3529,8 +3531,9 @@ int		 window_pane_get_bg_control_client(struct window_pane *);
 int		 window_get_bg_client(struct window_pane *);
 enum client_theme window_pane_get_theme(struct window_pane *);
 void		 window_pane_send_theme_update(struct window_pane *);
-struct style_range *window_pane_border_status_get_range(struct window_pane *,
-			u_int, u_int);
+int		 window_get_pane_status(struct window *);
+struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
+		     u_int);
 int		 window_pane_is_floating(struct window_pane *);
 
 /* layout.c */
@@ -3628,6 +3631,7 @@ void	 mode_tree_resize(struct mode_tree_data *, u_int, u_int);
 struct mode_tree_item *mode_tree_add(struct mode_tree_data *,
 	     struct mode_tree_item *, void *, uint64_t, const char *,
 	     const char *, int);
+void	 mode_tree_view_name(struct mode_tree_data *, const char *);
 void	 mode_tree_draw_as_parent(struct mode_tree_item *);
 void	 mode_tree_no_tag(struct mode_tree_item *);
 void	 mode_tree_align(struct mode_tree_item *, int);
@@ -3669,7 +3673,7 @@ int		 window_copy_get_current_offset(struct window_pane *, u_int *,
 char		*window_copy_get_hyperlink(struct window_pane *, u_int, u_int);
 void		 window_copy_set_line_numbers(struct window_pane *, int);
 
-/* window-option.c */
+/* window-customize.c */
 extern const struct window_mode window_customize_mode;
 
 /* names.c */

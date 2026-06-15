@@ -5102,14 +5102,10 @@ window_copy_set_line_numbers(struct window_pane *wp, int enabled)
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
 	struct window_copy_mode_data	*data;
 
-	if (wme == NULL)
-		return;
-	if (wme->mode != &window_copy_mode)
+	if (wme == NULL || wme->mode != &window_copy_mode)
 		return;
 	data = wme->data;
-	if (data == NULL)
-		return;
-	if (data->line_numbers == enabled)
+	if (data == NULL || data->line_numbers == enabled)
 		return;
 	data->line_numbers = enabled;
 	window_copy_redraw_screen(wme);
@@ -6109,6 +6105,7 @@ static void
 window_copy_cursor_up(struct window_mode_entry *wme, int scroll_only)
 {
 	struct window_copy_mode_data	*data = wme->data;
+	struct options			*oo = wme->wp->window->options;
 	struct screen			*s = &data->screen;
 	u_int				 ox, oy, px, py;
 	int				 norectsel;
@@ -6123,6 +6120,11 @@ window_copy_cursor_up(struct window_mode_entry *wme, int scroll_only)
 
 	if (data->lineflag == LINE_SEL_LEFT_RIGHT && oy == data->sely)
 		window_copy_other_end(wme);
+
+	if (scroll_only && options_get_number(oo, "mode-keys") == MODEKEY_VI) {
+		if (data->cy < screen_size_y(s) - 1)
+			window_copy_update_cursor(wme, data->cx, data->cy + 1);
+	}
 
 	if (scroll_only || data->cy == 0) {
 		if (norectsel)
@@ -6183,6 +6185,7 @@ static void
 window_copy_cursor_down(struct window_mode_entry *wme, int scroll_only)
 {
 	struct window_copy_mode_data	*data = wme->data;
+	struct options			*oo = wme->wp->window->options;
 	struct screen			*s = &data->screen;
 	u_int				 ox, oy, px, py;
 	int				 norectsel;
@@ -6197,6 +6200,11 @@ window_copy_cursor_down(struct window_mode_entry *wme, int scroll_only)
 
 	if (data->lineflag == LINE_SEL_RIGHT_LEFT && oy == data->endsely)
 		window_copy_other_end(wme);
+
+	if (scroll_only && options_get_number(oo, "mode-keys") == MODEKEY_VI) {
+		if (data->cy > 0)
+			window_copy_update_cursor(wme, data->cx, data->cy - 1);
+	}
 
 	if (scroll_only || data->cy == screen_size_y(s) - 1) {
 		if (norectsel)

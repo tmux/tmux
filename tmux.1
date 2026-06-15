@@ -2324,6 +2324,11 @@ that line.
 (emacs: C\-Down)
 .Xc
 Scroll down.
+If
+.Ic mode\-keys
+is
+.Ic vi ,
+the cursor is fixed relative to the text.
 .It Xo
 .Ic scroll\-down\-and\-cancel
 .Xc
@@ -2365,6 +2370,11 @@ that line.
 (emacs: C\-Up)
 .Xc
 Scroll up.
+If
+.Ic mode\-keys
+is
+.Ic vi ,
+the cursor is fixed relative to the text.
 .It Xo
 .Ic search\-again
 (vi: n)
@@ -2868,7 +2878,7 @@ The
 command works only if at least one client is attached.
 .It Xo
 .Ic choose\-tree
-.Op Fl GhkNrswyZ
+.Op Fl GhikNrswyZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key\-format
@@ -2920,6 +2930,7 @@ The following keys may be used in tree mode:
 .It Li "O" Ta "Change sort order"
 .It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
+.It Li "i" Ta "Change view (preview and client information)"
 .It Li "F1 or C\-h" Ta "Display help"
 .It Li "q" Ta "Exit mode"
 .El
@@ -2959,6 +2970,8 @@ first.
 .Pp
 .Fl N
 starts without the preview or if given twice with the larger preview.
+.Fl i
+starts showing client information instead of the preview.
 .Fl h
 hides the pane containing the mode.
 .Fl k
@@ -3357,13 +3370,77 @@ The pane must not already be hidden.
 .Tg movep
 .It Xo Ic move\-pane
 .Op Fl bdfhv
+.Op Fl D Op Ar lines
 .Op Fl l Ar size
+.Op Fl L Op Ar columns
+.Op Fl P Ar position
+.Op Fl R Op Ar columns
 .Op Fl s Ar src\-pane
 .Op Fl t Ar dst\-pane
+.Op Fl U Op Ar lines
+.Op Fl X Ar x\-position
+.Op Fl Y Ar y\-position
+.Op Fl z Ar z\-index
 .Xc
 .D1 Pq alias: Ic movep
 Does the same as
-.Ic join\-pane .
+.Ic join\-pane ,
+except if given
+.Fl D ,
+.Fl L ,
+.Fl P ,
+.Fl R ,
+.Fl U ,
+.Fl X ,
+.Fl Y
+or
+.Fl z
+in which case move the target floating pane.
+.Fl D ,
+.Fl L ,
+.Fl R
+and
+.Fl U
+move it down, left, right or up by
+.Ar lines
+or
+.Ar columns
+(one if omitted).
+.Fl P
+moves it to
+.Ar position ,
+which may be one of:
+.Bl -column "XXXXXXXXXXXXXXXXXX" "X"
+.It Sy "Position" Ta Sy "Meaning"
+.It Li "top-left" Ta "Top left"
+.It Li "top-centre" Ta "Top and horizontal centre"
+.It Li "top-right" Ta "Top right"
+.It Li "centre-left" Ta "Vertical centre and left"
+.It Li "centre" Ta "Centre"
+.It Li "centre-right" Ta "Vertical centre and right"
+.It Li "bottom-left" Ta "Bottom left"
+.It Li "bottom-centre" Ta "Bottom and horizontal centre"
+.It Li "bottom-right" Ta "Bottom right"
+.It Li "top-left-centre" Ta "Centre of top-left quadrant"
+.It Li "top-right-centre" Ta "Centre of top-right quadrant"
+.It Li "bottom-left-centre" Ta "Centre of bottom-left quadrant"
+.It Li "bottom-right-centre" Ta "Centre of botton-right quadrant"
+.It Li "front" Ta "Front of floating panes"
+.It Li "back" Ta "Back of floating panes"
+.It Li "forward" Ta "Forward one floating pane"
+.It Li "backward" Ta "Backward one floating pane"
+.It Li "forward-loop" Ta "Forward but back if already at front"
+.It Li "backward-loop" Ta "Backward but front if already at back"
+.El
+.Pp
+.Fl X
+and
+.Fl Y
+move it to an absolute position.
+.Fl z
+moves the pane to the given
+.Ar z-index ,
+where zero is the front.
 .Tg movew
 .It Xo Ic move\-window
 .Op Fl abrdk
@@ -3665,13 +3742,13 @@ if specified, to
 .Tg resizep
 .It Xo Ic resize\-pane
 .Op Fl MTZ
-.Op Fl t Ar target\-pane
-.Op Fl U Ar lines
 .Op Fl D Ar lines
 .Op Fl L Ar columns
 .Op Fl R Ar columns
+.Op Fl U Ar lines
 .Op Fl x Ar width
 .Op Fl y Ar height
+.Op Fl t Ar target\-pane
 .Xc
 .D1 Pq alias: Ic resizep
 Resize a pane, up, down, left or right by a specified adjustment with
@@ -3679,10 +3756,8 @@ Resize a pane, up, down, left or right by a specified adjustment with
 .Fl D ,
 .Fl L
 or
-.Fl R ,
-or
-to an absolute size
-with
+.Fl R ;
+or to an absolute size with
 .Fl x
 or
 .Fl y .
@@ -6527,9 +6602,9 @@ will use shorter but less accurate time format for times in the past.
 .Ql r
 .Pq Ql t/r
 will show the time relative to the current time, for example
-.Ql \-1m
+.Ql \1m
 or
-.Ql +2m23s .
+.Ql 2m23s .
 A custom format may be given using an
 .Ql f
 suffix (note that
@@ -6544,6 +6619,24 @@ option):
 .Ql #{t/f/%%H#:%%M:window_activity} ,
 see
 .Xr strftime 3 .
+.Pp
+The
+.Ql I:\&
+prefix will interrogate the client.
+.Ql I/f
+will be true if
+.Nm
+believes that the client supports the given terminal feature, for example
+.Ql I/f:RGB ,
+.Ql I/c
+will be true if a client has the given
+.Xr terminfo 3
+capability, for example
+.Ql I/c:smcup ,
+and
+.Ql I/e
+gives the value of a client environment variable, for example
+.Ql #{I/e:FOO} .
 .Pp
 The
 .Ql b:\&
