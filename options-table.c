@@ -71,7 +71,7 @@ static const char *options_table_pane_scrollbars_position_list[] = {
 	"right", "left", NULL
 };
 static const char *options_table_pane_status_list[] = {
-	"off", "top", "bottom", NULL
+	"off", "top", "bottom", "top-floating", "bottom-floating", NULL
 };
 static const char *options_table_pane_border_indicators_list[] = {
 	"off", "colour", "arrows", "both", NULL
@@ -1374,7 +1374,7 @@ const struct options_table_entry options_table[] = {
 
 	{ .name = "pane-border-status",
 	  .type = OPTIONS_TABLE_CHOICE,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .choices = options_table_pane_status_list,
 	  .default_num = PANE_STATUS_OFF,
 	  .text = "Position of the pane status lines."

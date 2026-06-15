@@ -125,7 +125,8 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 {
 	struct options	*oo = wp->window->options;
 	int		 ex = wp->xoff + wp->sx, ey = wp->yoff + wp->sy;
-	int		 hsplit = 0, vsplit = 0, pane_status = ctx->pane_status;
+	int		 hsplit = 0, vsplit = 0;
+	int		 pane_status = window_pane_get_pane_status(wp);
 	int		 pane_scrollbars = ctx->pane_scrollbars, sb_w = 0;
 	int		 sb_pos, sx = wp->sx, sy = wp->sy;
 	enum layout_type split_type;
@@ -296,7 +297,7 @@ screen_redraw_cell_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	}
 
 	/* Outside the window or on the window border? */
-	if (ctx->pane_status == PANE_STATUS_BOTTOM)
+	if (window_pane_get_pane_status(wp) == PANE_STATUS_BOTTOM)
 		sy--;
 	if (px > sx || py > sy)
 		return (0);
@@ -327,7 +328,8 @@ screen_redraw_type_of_cell(struct screen_redraw_ctx *ctx,
 {
 	struct client	*c = ctx->c;
 	struct window	*w = c->session->curw->window;
-	int		 pane_status = ctx->pane_status, borders = 0;
+	int		 pane_status = window_pane_get_pane_status(wp);
+	int		 borders = 0;
 	int		 sx = w->sx, sy = w->sy;
 
 	/* Is this outside the window? */
@@ -435,7 +437,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, int px, int py,
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp, *start;
 	int			 sx = w->sx, sy = w->sy;
-	int			 pane_status = ctx->pane_status;
+	int			 pane_status;
 	int			 border, pane_scrollbars = ctx->pane_scrollbars;
 	int			 pane_status_line, tiled_only = 0, left, right;
 	int			 sb_pos = ctx->pane_scrollbars_pos, sb_w;
@@ -511,6 +513,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, int px, int py,
 		 * Pane border status inside top/bottom border is CELL_INSIDE
 		 * so it doesn't get overdrawn by a border line.
 		 */
+		pane_status = window_pane_get_pane_status(wp);
 		if (pane_status != PANE_STATUS_OFF) {
 			if (pane_status == PANE_STATUS_TOP)
 				pane_status_line = wp->yoff - 1;
@@ -593,12 +596,18 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 	struct format_tree	*ft;
 	struct style_line_entry	*sle = &wp->border_status_line;
 	char			*expanded;
-	int			 pane_status = rctx->pane_status, sb_w = 0;
+	int			 pane_status = window_pane_get_pane_status(wp);
+	int			 sb_w = 0;
 	int			 pane_scrollbars = rctx->pane_scrollbars;
 	int			 max_width;
 	u_int			 width, i, cell_type, px, py;
 	struct screen_write_ctx	 ctx;
 	struct screen		 old;
+
+	if (pane_status == PANE_STATUS_OFF) {
+		wp->status_size = 0;
+		return (0);
+	}
 
 	if (window_pane_show_scrollbar(wp, pane_scrollbars))
 		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
@@ -673,7 +682,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 	u_int			 i, l, x, width, size;
-	int			 xoff, yoff;
+	int			 xoff, yoff, pane_status;
 
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
@@ -683,7 +692,10 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 		s = &wp->status_screen;
 
 		size = wp->status_size;
-		if (ctx->pane_status == PANE_STATUS_TOP)
+		pane_status = window_pane_get_pane_status(wp);
+		if (pane_status == PANE_STATUS_OFF)
+			continue;
+		if (pane_status == PANE_STATUS_TOP)
 			yoff = wp->yoff - 1;
 		else
 			yoff = wp->yoff + wp->sy;
@@ -754,16 +766,14 @@ screen_redraw_update(struct screen_redraw_ctx *ctx, uint64_t flags)
 	if (c->overlay_draw != NULL)
 		flags |= CLIENT_REDRAWOVERLAY;
 
-	if (ctx->pane_status != PANE_STATUS_OFF) {
-		lines = ctx->pane_lines;
-		redraw = 0;
-		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (screen_redraw_make_pane_status(c, wp, ctx, lines))
-				redraw = 1;
-		}
-		if (redraw)
-			flags |= CLIENT_REDRAWBORDERS;
+	lines = ctx->pane_lines;
+	redraw = 0;
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (screen_redraw_make_pane_status(c, wp, ctx, lines))
+			redraw = 1;
 	}
+	if (redraw)
+		flags |= CLIENT_REDRAWBORDERS;
 
 	return (flags);
 }
@@ -787,7 +797,6 @@ screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 		ctx->statustop = 1;
 	ctx->statuslines = lines;
 
-	ctx->pane_status = window_get_pane_status(w);
 	ctx->pane_lines = options_get_number(w->options, "pane-border-lines");
 
 	ctx->pane_scrollbars = options_get_number(w->options,
@@ -824,8 +833,7 @@ screen_redraw_screen(struct client *c)
 	if (flags & (CLIENT_REDRAWWINDOW|CLIENT_REDRAWBORDERS)) {
 		log_debug("%s: redrawing borders", c->name);
 		screen_redraw_draw_borders(&ctx);
-		if (ctx.pane_status != PANE_STATUS_OFF)
-			screen_redraw_draw_pane_status(&ctx);
+		screen_redraw_draw_pane_status(&ctx);
 		screen_redraw_draw_pane_scrollbars(&ctx);
 	}
 	if (flags & CLIENT_REDRAWWINDOW) {
