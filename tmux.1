@@ -5640,9 +5640,14 @@ and
 will fall back to standard ACS line drawing when UTF\-8 is not supported.
 .Pp
 .It Xo Ic pane\-border\-status
-.Op Ic off | top | bottom
+.Op Ic off | top | bottom | top\-floating | bottom\-floating
 .Xc
 Turn pane border status lines off or set their position.
+If set to
+.Ic top\-floating
+or
+.Ic bottom\-floating ,
+status lines are shown only on floating panes.
 .Pp
 .It Ic pane\-border\-style Ar style
 Set the pane border style for panes aside from the active pane.

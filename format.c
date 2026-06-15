@@ -1157,15 +1157,13 @@ static void *
 format_cb_pane_at_top(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
-	struct window		*w;
 	int			 status, flag;
 	char			*value;
 
 	if (wp == NULL)
 		return (NULL);
-	w = wp->window;
 
-	status = window_get_pane_status(w);
+	status = window_pane_get_pane_status(wp);
 	if (status == PANE_STATUS_TOP)
 		flag = (wp->yoff == 1);
 	else
@@ -1187,7 +1185,7 @@ format_cb_pane_at_bottom(struct format_tree *ft)
 		return (NULL);
 	w = wp->window;
 
-	status = options_get_number(w->options, "pane-border-status");
+	status = window_pane_get_pane_status(wp);
 	if (status == PANE_STATUS_BOTTOM)
 		flag = (wp->yoff + (int)wp->sy == (int)w->sy - 1);
 	else

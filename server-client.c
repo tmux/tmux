@@ -610,7 +610,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 
 	sb = options_get_number(w->options, "pane-scrollbars");
 	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
-	pane_status = window_get_pane_status(w);
+	pane_status = window_pane_get_pane_status(wp);
 
 	if (window_pane_show_scrollbar(wp, sb)) {
 		sb_w = wp->scrollbar_style.width;
