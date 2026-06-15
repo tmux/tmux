@@ -642,7 +642,7 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 		 * bottom border.
 		 */
 		TAILQ_FOREACH(wp, &w->z_index, zentry) {
-			if (!window_pane_visible(wp) ||
+			if (!window_pane_is_visible(wp) ||
 			    window_pane_is_floating(wp))
 				continue;
 
@@ -656,7 +656,7 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 	}
 
 	TAILQ_FOREACH(wp, &w->z_index, zentry) {
-		if (!window_pane_visible(wp))
+		if (!window_pane_is_visible(wp))
 			continue;
 		window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
 		if (!window_pane_is_floating(wp)) {
@@ -1363,7 +1363,7 @@ window_pane_copy_paste(struct window_pane *wp, char *buf, size_t len)
 		    TAILQ_EMPTY(&loop->modes) &&
 		    loop->fd != -1 &&
 		    (~loop->flags & PANE_INPUTOFF) &&
-		    window_pane_visible(loop) &&
+		    window_pane_is_visible(loop) &&
 		    options_get_number(loop->options, "synchronize-panes")) {
 			log_debug("%s: %.*s", __func__, (int)len, buf);
 			bufferevent_write(loop->event, buf, len);
@@ -1381,7 +1381,7 @@ window_pane_copy_key(struct window_pane *wp, key_code key)
 		    TAILQ_EMPTY(&loop->modes) &&
 		    loop->fd != -1 &&
 		    (~loop->flags & PANE_INPUTOFF) &&
-		    window_pane_visible(loop) &&
+		    window_pane_is_visible(loop) &&
 		    options_get_number(loop->options, "synchronize-panes"))
 			input_key_pane(loop, key, NULL);
 	}
@@ -1438,7 +1438,7 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 }
 
 int
-window_pane_visible(struct window_pane *wp)
+window_pane_is_visible(struct window_pane *wp)
 {
 	if (~wp->window->flags & WINDOW_ZOOMED)
 		return (1);
