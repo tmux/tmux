@@ -164,6 +164,9 @@ struct redraw_build_cell {
 	struct redraw_span_data	 data;
 };
 
+static struct redraw_build_cell	*screen_redraw_cells;
+static size_t			 screen_redraw_ncells;
+
 /* Context for building the scene. */
 struct redraw_build_ctx {
 	struct client				*c;
@@ -864,22 +867,24 @@ screen_redraw_make_scene(struct client *c)
 	if (bctx.sx != 0 && bctx.sy > SIZE_MAX / bctx.sx)
 		fatalx("%s: too many cells", __func__);
 	ncells = (size_t)bctx.sx * bctx.sy;
-	if (ncells > SIZE_MAX / sizeof *bctx.cells)
-		fatalx("%s: too many cells", __func__);
-	bctx.cells = xmalloc(ncells * sizeof *bctx.cells);
+	if (ncells > screen_redraw_ncells) {
+		screen_redraw_cells = xreallocarray(screen_redraw_cells, ncells,
+		    sizeof *screen_redraw_cells);
+		screen_redraw_ncells = ncells;
+	}
+	bctx.cells = screen_redraw_cells;
 	for (y = 0; y < bctx.sy; y++) {
 		for (x = 0; x < bctx.sx; x++)
 			screen_redraw_reset_cell(&bctx, x, y);
 	}
 
 	TAILQ_FOREACH_REVERSE(wp, &bctx.w->z_index, window_panes_zindex, zentry)
-	    screen_redraw_mark_pane(&bctx, wp);
+		screen_redraw_mark_pane(&bctx, wp);
 
 	screen_redraw_mark_two_pane_colours(&bctx);
 	screen_redraw_finish_scene(&bctx, scene);
 	log_debug("%s: finished @%u scene build", c->name, scene->w->id);
 
-	free(bctx.cells);
 	return (scene);
 }
 
@@ -1463,8 +1468,10 @@ screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		}
 	}
 
-	log_debug("%s: starting @%u redraw (%s)", c->name, w->id,
-	    screen_redraw_flags_string(flags));
+	if (log_get_level() != 0) {
+		log_debug("%s: starting @%u redraw (%s)", c->name, w->id,
+		    screen_redraw_flags_string(flags));
+	}
 
 	scene = screen_redraw_get_scene(c);
 	if (scene == NULL)

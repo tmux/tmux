@@ -405,7 +405,8 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 	struct window_pane	*wp;
 	struct layout_cell	*lc;
 	int			 status, scrollbars, sb_pos, sb_w, sb_pad;
-	u_int			 sx, sy;
+	int			 old_xoff, old_yoff, changed = 0;
+	u_int			 sx, sy, old_sx, old_sy;
 
 	status = window_get_pane_status(w);
 	scrollbars = options_get_number(w->options, "pane-scrollbars");
@@ -414,6 +415,11 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if ((lc = wp->layout_cell) == NULL || wp == skip)
 			continue;
+
+		old_xoff = wp->xoff;
+		old_yoff = wp->yoff;
+		old_sx = wp->sx;
+		old_sy = wp->sy;
 
 		wp->xoff = lc->xoff;
 		wp->yoff = lc->yoff;
@@ -452,8 +458,15 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		}
 
 		window_pane_resize(wp, sx, sy);
+
+		if (wp->xoff != old_xoff ||
+		    wp->yoff != old_yoff ||
+		    wp->sx != old_sx ||
+		    wp->sy != old_sy)
+			changed = 1;
 	}
-	screen_redraw_invalidate_scene(w);
+	if (changed)
+		screen_redraw_invalidate_scene(w);
 }
 
 /* Count the number of available cells in a layout. */
@@ -774,10 +787,15 @@ layout_resize_floating_pane_to(struct window_pane *wp, enum layout_type type,
 		return;
 	}
 
-	if (type == LAYOUT_TOPBOTTOM)
+	if (type == LAYOUT_TOPBOTTOM) {
+		if (lc->sy == size)
+			return;
 		lc->sy = size;
-	else
+	} else {
+		if (lc->sx == size)
+			return;
 		lc->sx = size;
+	}
 	screen_redraw_invalidate_scene(wp->window);
 }
 
@@ -793,6 +811,8 @@ layout_resize_floating_pane(struct window_pane *wp, enum layout_type type,
 		*cause = xstrdup("pane is not floating");
 		return;
 	}
+	if (change == 0)
+		return;
 
 	if (type == LAYOUT_TOPBOTTOM) {
 		size = lc->sy + change;
