@@ -226,6 +226,7 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 	struct window_pane	*wp;
 	struct layout_cell	*lc;
 	int			 y, ly, x, lx, sx, sy, new_sx, new_sy;
+	int			 scrollbars, sb_pos, left, right;
 	int			 new_xoff, new_yoff, resizes = 0;
 
 	wp = cmd_mouse_pane(m, NULL, &wl);
@@ -237,6 +238,17 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 	lc = wp->layout_cell;
 	sx = wp->sx;
 	sy = wp->sy;
+	scrollbars = options_get_number(w->options, "pane-scrollbars");
+	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
+	left = wp->xoff - 1;
+	right = wp->xoff + sx;
+	if (window_pane_show_scrollbar(wp, scrollbars) &&
+	    sb_pos == PANE_SCROLLBARS_LEFT) {
+		left -= wp->scrollbar_style.width + wp->scrollbar_style.pad;
+	} else if (window_pane_show_scrollbar(wp, scrollbars) &&
+	    sb_pos == PANE_SCROLLBARS_RIGHT) {
+		right += wp->scrollbar_style.width + wp->scrollbar_style.pad;
+	}
 
 	y = m->y + m->oy; x = m->x + m->ox;
 	if (m->statusat == 0 && y >= (int)m->statuslines)
@@ -249,7 +261,7 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 	else if (m->statusat > 0 && ly >= m->statusat)
 		ly = m->statusat - 1;
 
-	if ((lx == wp->xoff - 1 || lx == wp->xoff) && ly == wp->yoff - 1) {
+	if ((lx == left || lx == left + 1) && ly == wp->yoff - 1) {
 		/* Top left corner. */
 		new_sx = lc->sx + (lx - x);
 		if (new_sx < PANE_MINIMUM)
@@ -261,7 +273,7 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 		new_yoff = y + 1;
 		layout_set_size(lc, new_sx, new_sy, new_xoff, new_yoff);
 		resizes++;
-	} else if ((lx == wp->xoff + sx + 1 || lx == wp->xoff + sx) &&
+	} else if ((lx == right + 1 || lx == right) &&
 	    ly == wp->yoff - 1) {
 		/* Top right corner. */
 		new_sx = x - lc->xoff;
@@ -273,7 +285,7 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 		new_yoff = y + 1;
 		layout_set_size(lc, new_sx, new_sy, lc->xoff, new_yoff);
 		resizes++;
-	} else if ((lx == wp->xoff - 1 || lx == wp->xoff) &&
+	} else if ((lx == left || lx == left + 1) &&
 	    ly == wp->yoff + sy) {
 		/* Bottom left corner. */
 		new_sx = lc->sx + (lx - x);
@@ -285,7 +297,7 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 		new_xoff = x + 1;
 		layout_set_size(lc, new_sx, new_sy, new_xoff, lc->yoff);
 		resizes++;
-	} else if ((lx == wp->xoff + sx + 1 || lx == wp->xoff + sx) &&
+	} else if ((lx == right + 1 || lx == right) &&
 	    ly == wp->yoff + sy) {
 		/* Bottom right corner. */
 		new_sx = x - lc->xoff;
@@ -296,14 +308,14 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 			new_sy = PANE_MINIMUM;
 		layout_set_size(lc, new_sx, new_sy, lc->xoff, lc->yoff);
 		resizes++;
-	} else if (lx == wp->xoff + sx + 1) {
+	} else if (lx == right) {
 		/* Right border. */
 		new_sx = x - lc->xoff;
 		if (new_sx < PANE_MINIMUM)
 			return;
 		layout_set_size(lc, new_sx, lc->sy, lc->xoff, lc->yoff);
 		resizes++;
-	} else if (lx == wp->xoff - 1) {
+	} else if (lx == left) {
 		/* Left border. */
 		new_sx = lc->sx + (lx - x);
 		if (new_sx < PANE_MINIMUM)
