@@ -501,7 +501,7 @@ screen_redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
 /* Mark area available for pane status line. */
 static void
 screen_redraw_mark_border_status(struct redraw_build_ctx *bctx,
-    struct window_pane *wp, int left, int right, int top, int bottom)
+    struct window_pane *wp, __unused int left, int right, int top, int bottom)
 {
 	struct redraw_build_cell	*bc;
 	u_int				 x, y, off = 0;
@@ -515,13 +515,8 @@ screen_redraw_mark_border_status(struct redraw_build_ctx *bctx,
 	else
 		wy = bottom;
 
-	sx = left + 1;
+	sx = wp->xoff + 2;
 	ex = right - 1;
-	if (bctx->ind == PANE_BORDER_ARROWS || bctx->ind == PANE_BORDER_BOTH) {
-		wx = wp->xoff + 1;
-		if (wx >= sx && wx <= ex)
-			sx = wx + 1;
-	}
 	if (sx > ex)
 		return;
 
