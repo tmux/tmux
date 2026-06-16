@@ -436,7 +436,7 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if ((lc = wp->layout_cell) == NULL || wp == skip ||
-		    !window_pane_visible(wp))
+		    !window_pane_is_visible(wp))
 			continue;
 
 		wp->xoff = lc->xoff;
