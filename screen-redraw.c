@@ -905,17 +905,80 @@ screen_redraw_draw_status_span(struct redraw_scene *scene,
 		tty_putc(tty, 's');
 }
 
-/* Draw a span. */
+/* Draw a scrollbar span. */
 static void
 screen_redraw_draw_scrollbar_span(struct redraw_scene *scene,
     struct redraw_span *span, u_int x, u_int y, u_int n)
 {
-	struct client	*c = scene->c;
-	struct tty	*tty = &c->tty;
+	struct window_pane	*wp = span->data.sb.wp;
+	struct screen		*s = wp->screen;
+	struct tty		*tty = &scene->c->tty;
+	struct style		*sb_style = &wp->scrollbar_style;
+	struct grid_cell	 gc, slgc, *gcp;
+	double			 pct_view;
+	u_int			 total_height, slider_h, slider_y;
+	u_int			 sb_h = span->data.sb.height;
+	u_int			 sb_y = span->data.sb.y;
+	u_int			 i, off, sb_w, sb_pad;
+	int			 cm_y, cm_size;
+
+	if (window_pane_mode(wp) == WINDOW_PANE_NO_MODE) {
+		total_height = screen_size_y(s) + screen_hsize(s);
+		if (total_height == 0)
+			return;
+		pct_view = (double)sb_h / total_height;
+		slider_h = (double)sb_h * pct_view;
+		slider_y = sb_h - slider_h;
+	} else {
+		if (TAILQ_FIRST(&wp->modes) == NULL)
+			return;
+		if (window_copy_get_current_offset(wp, &cm_y, &cm_size) == 0)
+			return;
+		total_height = cm_size + sb_h;
+		if (total_height == 0)
+			return;
+		pct_view = (double)sb_h / total_height;
+		slider_h = (double)sb_h * pct_view;
+		slider_y = (sb_h + 1) * ((double)cm_y / total_height);
+	}
+
+	if (slider_h < 1)
+		slider_h = 1;
+	if (slider_y >= sb_h)
+		slider_y = sb_h - 1;
+
+	wp->sb_slider_y = slider_y;
+	wp->sb_slider_h = slider_h;
+
+	gc = sb_style->gc;
+	memcpy(&slgc, &gc, sizeof slgc);
+	slgc.fg = gc.bg;
+	slgc.bg = gc.fg;
+
+	sb_w = sb_style->width;
+	sb_pad = sb_style->pad;
+	off = x - span->x;
 
 	tty_cursor(tty, x, y);
-	for (x = 0; x < n; x++)
-		tty_putc(tty, '|');
+	for (i = 0; i < n; i++) {
+		if (span->data.sb.flags & REDRAW_SCROLLBAR_LEFT) {
+			if (off + i >= sb_w && off + i < sb_w + sb_pad) {
+				tty_cell(tty, &grid_default_cell, NULL);
+				continue;
+			}
+		} else {
+			if (off + i < sb_pad) {
+				tty_cell(tty, &grid_default_cell, NULL);
+				continue;
+			}
+		}
+
+		if (sb_y >= slider_y && sb_y < slider_y + slider_h)
+			gcp = &slgc;
+		else
+			gcp = &gc;
+		tty_cell(tty, gcp, NULL);
+	}
 }
 
 /* Draw a span. */
