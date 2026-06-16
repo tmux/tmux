@@ -1847,8 +1847,8 @@ server_client_reset_state(struct client *c)
 			cx = wp->xoff + (int)s->cx - (int)ox;
 			cy = wp->yoff + (int)s->cy - (int)oy;
 
-			r = screen_redraw_get_visible_ranges(wp, cx, cy, 1, NULL);
-			if (!screen_redraw_is_visible(r, cx))
+			r = window_visible_ranges(wp, cx, cy, 1, NULL);
+			if (!window_position_is_visible(r, cx))
 				cursor = 0;
 
 			if (status_at_line(c) == 0)
