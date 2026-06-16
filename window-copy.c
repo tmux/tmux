@@ -5403,8 +5403,12 @@ window_copy_update_cursor(struct window_mode_entry *wme, u_int cx, u_int cy)
 	u_int				 maxx;
 	int				 allow_onemore;
 
-	allow_onemore = (data->screen.sel != NULL && data->rectflag);
-	if (cy < screen_size_y(s)) {
+	/*
+	 * Allow rectangle selection to extend past end of current line to
+	 * behave the same as vi with virtualedit=block set.
+	 */
+	if (!data->rectflag && cy < screen_size_y(s)) {
+		allow_onemore = (data->screen.sel != NULL && data->rectflag);
 		py = screen_hsize(data->backing) + cy - data->oy;
 		maxx = window_copy_cursor_limit(wme, py, allow_onemore);
 		if (cx > maxx)
