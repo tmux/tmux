@@ -3396,9 +3396,6 @@ void	 screen_write_alternateoff(struct screen_write_ctx *,
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *);
 void	 screen_redraw_pane(struct client *, struct window_pane *, int);
-int	 screen_redraw_is_visible(struct visible_ranges *, u_int);
-struct visible_ranges *screen_redraw_get_visible_ranges(struct window_pane *,
-	     int, int, u_int, struct visible_ranges *);
 
 /* screen.c */
 void	 screen_init(struct screen *, u_int, u_int, u_int);
@@ -3546,6 +3543,11 @@ struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
 		     u_int);
 int		 window_pane_is_floating(struct window_pane *);
 int		 window_pane_is_hidden(struct window_pane *);
+
+/* window-visible.c */
+int		 window_position_is_visible(struct visible_ranges *, u_int);
+struct visible_ranges *window_visible_ranges(struct window_pane *, int, int,
+		     u_int, struct visible_ranges *);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);

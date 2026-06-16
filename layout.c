@@ -28,10 +28,10 @@
  * left-right container for a list of cells, a top-bottom container for a list
  * of cells, or a container for a window pane. 'Node' will be used to refer to
  * a cell which contains a list of cells, and 'leaf' to refer to a cell that
- * contains a window pane. A leaf is considered to be tiled if it is to be drawn
- * as a part of the tiled layout. A 'neighbour' is a sibling that is also tiled.
- * A cell's 'split' size refers to the side that is shortened when splitting it,
- * determined by the parent's type.
+ * contains a window pane. A leaf is considered to be 'tiled' if it is to be
+ * drawn as a part of the tiled layout. A 'neighbour' is a sibling that is also
+ * tiled. A cell's 'split' size refers to the side that is shortened when
+ * splitting it, determined by the parent's type.
  *
  * Each window has a pointer to the root of its layout tree (containing its
  * panes), every pane has a pointer back to the cell containing it, and each
@@ -263,6 +263,49 @@ layout_fix_zindexes(struct window *w, struct layout_cell *lc)
 		fatalx("bad layout type");
 	}
 }
+
+static int
+layout_cell_is_tiled(struct layout_cell *lc)
+{
+	int	is_leaf = lc->type == LAYOUT_WINDOWPANE;
+	int	is_floating = lc->flags & LAYOUT_CELL_FLOATING;
+
+	return is_leaf && !is_floating;
+}
+
+static int
+layout_cell_has_tiled_child(struct layout_cell *lc)
+{
+	struct layout_cell      *lcchild;
+
+	if (lc->type == LAYOUT_WINDOWPANE)
+		return (0);
+
+	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+		if (layout_cell_is_tiled(lcchild) ||
+		    layout_cell_has_tiled_child(lcchild))
+			return (1);
+	}
+	return (0);
+}
+
+static int
+layout_cell_is_first_tiled(struct layout_cell *lc)
+{
+	struct layout_cell      *lcchild, *lcparent = lc->parent;
+
+	if (lcparent == NULL)
+		return (layout_cell_is_tiled(lc));
+
+	TAILQ_FOREACH(lcchild, &lcparent->cells, entry) {
+		if (layout_cell_is_tiled(lcchild) ||
+		    layout_cell_has_tiled_child(lcchild))
+			break;
+	}
+
+	return (lcchild == lc);
+}
+
 
 /* Fix cell offsets for a child cell. */
 static void
@@ -725,8 +768,10 @@ out:
 		lc->parent = lcparent->parent;
 
 		if (lc->parent == NULL) {
-			if (layout_cell_is_tiled(lc))
-				layout_set_size(lc, w->sx, w->sy, 0, 0);
+			if (layout_cell_is_tiled(lc)) {
+				lc->xoff = 0;
+				lc->yoff = 0;
+			}
 			*lcroot = lc;
 		} else
 			TAILQ_REPLACE(&lc->parent->cells, lcparent, lc, entry);
