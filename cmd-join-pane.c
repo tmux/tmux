@@ -451,7 +451,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (src_wp == dst_wp) {
 		cmdq_error(item, "source and target panes must be different");
-		return (CMD_RETURN_ERROR);                                    
+		return (CMD_RETURN_ERROR);
 	}
 
 	lc = layout_get_tiled_cell(item, args, dst_w, dst_wp, flags, &cause);
