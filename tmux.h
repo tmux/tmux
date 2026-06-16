@@ -3387,7 +3387,8 @@ void	 screen_write_alternateoff(struct screen_write_ctx *,
 
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *);
-void	 screen_redraw_pane(struct client *, struct window_pane *, int);
+void	 screen_redraw_pane(struct client *, struct window_pane *);
+void	 screen_redraw_pane_scrollbar(struct client *, struct window_pane *);
 
 /* screen.c */
 void	 screen_init(struct screen *, u_int, u_int, u_int);

@@ -2140,7 +2140,10 @@ server_client_check_redraw(struct client *c)
 				log_debug("%s: redrawing pane %%%u", __func__,
 				    wp->id);
 			}
-			screen_redraw_pane(c, wp, redraw_scrollbar_only);
+			if (redraw_scrollbar_only)
+				screen_redraw_pane_scrollbar(c, wp);
+			else
+				screen_redraw_pane(c, wp);
 		}
 		c->redraw_panes = 0;
 		c->redraw_scrollbars = 0;
