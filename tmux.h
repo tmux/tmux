@@ -1113,24 +1113,6 @@ enum pane_lines {
 #define WINDOW_PANE_COPY_MODE 1
 #define WINDOW_PANE_VIEW_MODE 2
 
-/* Screen redraw context. */
-struct screen_redraw_ctx {
-	struct client	*c;
-
-	u_int		 statuslines;
-	int		 statustop;
-
-	enum pane_lines	 pane_lines;
-
-	int		 pane_scrollbars;
-	int		 pane_scrollbars_pos;
-
-	u_int		 sx;
-	u_int		 sy;
-	int		 ox;
-	int		 oy;
-};
-
 /* Screen size. */
 #define screen_size_x(s) ((s)->grid->sx)
 #define screen_size_y(s) ((s)->grid->sy)
@@ -1281,7 +1263,7 @@ struct window_pane {
 #define PANE_FOCUSED 0x4
 #define PANE_VISITED 0x8
 #define PANE_ZOOMED 0x10
-/* 0x20 unused */
+#define PANE_STATUSDIRTY 0x20
 #define PANE_INPUTOFF 0x40
 #define PANE_CHANGED 0x80
 #define PANE_EXITED 0x100
@@ -2041,12 +2023,11 @@ RB_HEAD(client_windows, client_window);
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
-typedef struct visible_ranges *(*overlay_check_cb)(struct client*, void *,
+typedef struct visible_ranges *(*overlay_check_cb)(struct client *, void *,
     u_int, u_int, u_int);
 typedef struct screen *(*overlay_mode_cb)(struct client *, void *, u_int *,
     u_int *);
-typedef void (*overlay_draw_cb)(struct client *, void *,
-    struct screen_redraw_ctx *);
+typedef void (*overlay_draw_cb)(struct client *, void *);
 typedef int (*overlay_key_cb)(struct client *, void *, struct key_event *);
 typedef void (*overlay_free_cb)(struct client *, void *);
 typedef void (*overlay_resize_cb)(struct client *, void *);
@@ -3541,7 +3522,7 @@ void		 window_pane_get_border_cell(struct window_pane *, int,
 		     struct grid_cell *);
 void		 window_pane_get_border_style(struct window_pane *,
 		     struct client *, struct grid_cell *);
-void		 window_make_pane_status(struct window_pane *, struct client *,
+int		 window_make_pane_status(struct window_pane *, struct client *,
 		     u_int, struct redraw_span *);
 
 /* window-visible.c */
@@ -3839,8 +3820,7 @@ int		 menu_display(struct menu *, int, int, struct cmdq_item *,
 struct screen	*menu_mode_cb(struct client *, void *, u_int *, u_int *);
 struct visible_ranges *menu_check_cb(struct client *, void *, u_int, u_int,
 		    u_int);
-void		 menu_draw_cb(struct client *, void *,
-		    struct screen_redraw_ctx *);
+void		 menu_draw_cb(struct client *, void *);
 void		 menu_free_cb(struct client *, void *);
 int		 menu_key_cb(struct client *, void *, struct key_event *);
 

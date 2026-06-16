@@ -112,7 +112,7 @@ window_pane_get_border_style(struct window_pane *wp, struct client *c,
 }
 
 /* Build pane status line. */
-void
+int
 window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
     struct redraw_span *span)
 {
@@ -121,6 +121,7 @@ window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
 	struct format_tree	*ft;
 	struct style_line_entry	*sle = &wp->border_status_line;
 	struct screen_write_ctx	 ctx;
+	struct screen		 old;
 	char			*expanded;
 	u_int			 i;
 	int			 pane_status, cell_type;
@@ -132,7 +133,6 @@ window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
 	ft = format_create(c, NULL, FORMAT_PANE|wp->id, FORMAT_STATUS);
 	format_defaults(ft, c, c->session, c->session->curw, wp);
 
-
 	fmt = options_get_string(wp->options, "pane-border-format");
 	expanded = format_expand_time(ft, fmt);
 
@@ -140,6 +140,7 @@ window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
 	screen_init(&wp->status_screen, width, 1, 0);
 	wp->status_screen.mode = 0;
 
+	memcpy(&old, &wp->status_screen, sizeof old);
 	screen_write_start(&ctx, &wp->status_screen);
 
 	window_pane_get_border_style(wp, c, &gc);
@@ -159,4 +160,11 @@ window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
 
 	free(sle->expanded);
 	sle->expanded = expanded;
+
+	if (grid_compare(wp->status_screen.grid, old.grid) == 0) {
+		screen_free(&old);
+		return (0);
+	}
+	screen_free(&old);
+	return (1);
 }
