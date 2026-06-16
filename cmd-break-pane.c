@@ -114,7 +114,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	w->active = wp;
 	w->latest = tc;
 
-	if (name != NULL) {
+	if (name == NULL) {
 		newname = default_window_name(w);
 		window_set_name(w, newname, WINDOW_NAME_FORBID);
 		free(newname);
