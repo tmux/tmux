@@ -61,7 +61,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*s = target->s;
 	struct winlink		*wl = target->wl, *new_wl = NULL;
 	int			 idx = target->idx, before;
-	char			*cause = NULL, *cp, *expanded, *wname;
+	char			*cause = NULL, *cp, *expanded, *wname = NULL;
 	const char		*template, *name;
 	struct cmd_find_state	 fs;
 	struct args_value	*av;
