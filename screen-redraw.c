@@ -47,13 +47,18 @@ enum redraw_span_type {
 #define REDRAW_SCROLLBAR_RIGHT 0x4
 
 /* Draw operations. */
-#define REDRAW_ALL 0x1
-#define REDRAW_PANE 0x2
-#define REDRAW_PANE_BORDER 0x4
-#define REDRAW_PANE_STATUS 0x8
-#define REDRAW_PANE_SCROLLBAR 0x10
-#define REDRAW_STATUS 0x20
-#define REDRAW_OVERLAY 0x40
+#define REDRAW_PANE 0x1
+#define REDRAW_OUTSIDE 0x2
+#define REDRAW_EMPTY 0x4
+#define REDRAW_PANE_BORDER 0x8
+#define REDRAW_PANE_STATUS 0x10
+#define REDRAW_PANE_SCROLLBAR 0x20
+#define REDRAW_STATUS 0x40
+#define REDRAW_OVERLAY 0x80
+
+/* Draw everything. */
+#define REDRAW_ALL 0x7fffffff
+#define REDRAW_IS_ALL(flags) ((flags) == REDRAW_ALL)
 
 /* UTF-8 isolate characters. */
 #define REDRAW_START_ISOLATE "\342\201\246"
@@ -605,8 +610,7 @@ screen_redraw_mark_pane_borders(struct redraw_build_ctx *bctx,
 			if (wx < right)
 				mask |= REDRAW_BORDER_R;
 			screen_redraw_mark_border_cell(bctx, wx, bottom, wp,
-			    1, 0, ((wx > left) ? REDRAW_BORDER_L : 0) |
-			    ((wx < right) ? REDRAW_BORDER_R : 0));
+			    1, 0, mask);
 		}
 	}
 	if (draw_left) {
@@ -1133,14 +1137,15 @@ screen_redraw_draw_span(struct redraw_draw_ctx *dctx, struct redraw_span *span,
     u_int y)
 {
 	struct redraw_scene	*scene = dctx->scene;
+	struct redraw_span_data	*data = &span->data;
+	enum redraw_span_type	 type = data->type;
 	struct client		*c = scene->c;
 	struct tty		*tty = &c->tty;
 	struct visible_ranges	*r;
 	struct visible_range	*rr;
 	u_int			 i, x, n;
 
-	if (span->data.type == REDRAW_SPAN_STATUS &&
-	    (~span->data.st.wp->flags & PANE_STATUSDIRTY))
+	if (type == REDRAW_SPAN_STATUS && ~data->st.wp->flags & PANE_NEWSTATUS)
 		return;
 
 	r = tty_check_overlay_range(tty, span->x, y, span->width);
@@ -1179,17 +1184,16 @@ screen_redraw_draw_pane_lines(struct redraw_draw_ctx *dctx,
 	struct redraw_line	*line;
 	struct redraw_spans	*spans;
 	struct redraw_span	*span;
-	u_int			 y, cy, top, bottom;
+	u_int			 cy;
+	int			 y, top, bottom;
 
-	if (wp->yoff < (int)scene->oy)
+	top = wp->yoff - (int)scene->oy;
+	if (top < 0)
 		top = 0;
-	else
-		top = wp->yoff - scene->oy;
-	if (wp->yoff + wp->sy <= scene->oy)
+	bottom = wp->yoff + (int)wp->sy - (int)scene->oy;
+	if (bottom < 0)
 		bottom = 0;
-	else
-		bottom = wp->yoff + wp->sy - scene->oy;
-	if (bottom > scene->sy)
+	if (bottom > (int)scene->sy)
 		bottom = scene->sy;
 
 	for (y = top; y < bottom; y++) {
@@ -1232,10 +1236,18 @@ screen_redraw_draw_lines(struct redraw_draw_ctx *dctx, int flags)
 		else
 			cy = y;
 		for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
-			if (~flags & REDRAW_ALL) {
+			if (!REDRAW_IS_ALL(flags)) {
 				switch (type) {
 				case REDRAW_SPAN_PANE:
 					if (~flags & REDRAW_PANE)
+						continue;
+					break;
+				case REDRAW_SPAN_OUTSIDE:
+					if (~flags & REDRAW_OUTSIDE)
+						continue;
+					break;
+				case REDRAW_SPAN_EMPTY:
+					if (~flags & REDRAW_EMPTY)
 						continue;
 					break;
 				case REDRAW_SPAN_BORDER:
@@ -1329,7 +1341,7 @@ screen_redraw_set_draw_context(struct redraw_draw_ctx *dctx,
 	dctx->active = server_client_get_pane(c);
 
 	lines = status_line_size(c);
-	if (lines != 0 && options_get_number(oo, "status-position") == 0)
+	if (options_get_number(oo, "status-position") == 0)
 		dctx->flags |= REDRAW_STATUS_TOP;
 	dctx->status_lines = lines;
 
@@ -1343,34 +1355,49 @@ screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
 {
 	struct redraw_draw_ctx	 dctx;
 	struct tty		*tty = &c->tty;
-	struct screen		*sl = c->status.active;
+	struct screen		*sl;
 	struct redraw_scene	*scene;
 	struct window_pane	*loop;
-	u_int			 width, i, y;
+	u_int			 width, i, y, lines;
 	struct redraw_span	*first;
 	int			 redraw;
 
 	if (c->flags & CLIENT_SUSPENDED)
 		return;
 
-	scene = screen_redraw_make_scene(c); //XXX
-	if (scene == NULL)
-		return;
-	screen_redraw_set_draw_context(&dctx, scene);
-
-	if (flags & (REDRAW_ALL|REDRAW_STATUS|REDRAW_PANE_STATUS)) {
+	if (flags & REDRAW_STATUS) {
 		if (c->message_string != NULL)
 			redraw = status_message_redraw(c);
 		else if (c->prompt_string != NULL)
 			redraw = status_prompt_redraw(c);
 		else
 			redraw = status_redraw(c);
-		if (!redraw)
+		if (!redraw && !REDRAW_IS_ALL(flags)) {
 			flags &= ~REDRAW_STATUS;
+			if (flags == 0)
+				return;
+		}
+	}
 
+	scene = screen_redraw_make_scene(c); //XXX
+	if (scene == NULL)
+		return;
+	screen_redraw_set_draw_context(&dctx, scene);
+
+	if (flags & (REDRAW_PANE_BORDER|REDRAW_PANE_STATUS)) {
+		TAILQ_FOREACH(loop, &scene->w->panes, entry) {
+			loop->border_gc_set = 0;
+			loop->active_border_gc_set = 0;
+		}
+	}
+
+	if (flags & REDRAW_PANE_STATUS) {
 		redraw = 0;
 		TAILQ_FOREACH(loop, &scene->w->panes, entry) {
-			loop->flags &= ~PANE_STATUSDIRTY;
+			if (REDRAW_IS_ALL(flags))
+				loop->flags |= PANE_NEWSTATUS;
+			else
+				loop->flags &= ~PANE_NEWSTATUS;
 
 			width = screen_redraw_pane_status_width(&dctx, loop,
 			    &first);
@@ -1378,22 +1405,20 @@ screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
 				continue;
 
 			if (window_make_pane_status(loop, c, width, first)) {
-				loop->flags |= PANE_STATUSDIRTY;
+				loop->flags |= PANE_NEWSTATUS;
 				redraw = 1;
 			}
 		}
-		if (!redraw)
+		if (!redraw && !REDRAW_IS_ALL(flags)) {
 			flags &= ~REDRAW_PANE_STATUS;
-	}
-
-	if (flags & (REDRAW_ALL|REDRAW_PANE_BORDER|REDRAW_PANE_STATUS)) {
-		TAILQ_FOREACH(loop, &scene->w->panes, entry) {
-			loop->border_gc_set = 0;
-			loop->active_border_gc_set = 0;
+			if (flags == 0) {
+				screen_redraw_free_scene(scene);
+				return;
+			}
 		}
 	}
 
-	if (flags & (REDRAW_ALL|REDRAW_PANE)) {
+	if (flags & REDRAW_PANE) {
 		if (wp != NULL) {
 			if (wp->base.mode & MODE_SYNC)
 				screen_write_stop_sync(wp);
@@ -1414,19 +1439,20 @@ screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	else
 		screen_redraw_draw_lines(&dctx, flags);
 
-	if (c->overlay_draw != NULL &&
-	    (flags & (REDRAW_ALL|REDRAW_OVERLAY)))
-		c->overlay_draw(c, c->overlay_data);
-
-
-	if (flags & (REDRAW_ALL|REDRAW_STATUS)) {
+	if (flags & REDRAW_STATUS) {
+		lines = dctx.status_lines;
+		if (c->message_string != NULL || c->prompt_string != NULL)
+			lines = (lines == 0 ? 1 : lines);
 		if (dctx.flags & REDRAW_STATUS_TOP)
 			y = 0;
 		else
-			y = c->tty.sy - dctx.status_lines;
-		for (i = 0; i < dctx.status_lines; i++)
+			y = c->tty.sy - lines;
+		sl = c->status.active;
+		for (i = 0; i < lines; i++)
 			tty_draw_line(tty, sl, 0, i, UINT_MAX, 0, y + i, NULL);
 	}
+	if (c->overlay_draw != NULL && (flags & REDRAW_OVERLAY))
+		c->overlay_draw(c, c->overlay_data);
 
 	tty_reset(tty);
 	tty_sync_end(tty);
