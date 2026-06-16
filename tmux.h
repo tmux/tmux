@@ -63,6 +63,7 @@ struct mouse_event;
 struct options;
 struct options_array_item;
 struct options_entry;
+struct redraw_scene;
 struct redraw_span;
 struct screen_write_citem;
 struct screen_write_cline;
@@ -1380,6 +1381,8 @@ struct window {
 	u_int			 new_xpixel;
 	u_int			 new_ypixel;
 
+	uint64_t		 redraw_scene_generation;
+
 	u_int			 last_new_pane_x;
 	u_int			 last_new_pane_y;
 
@@ -2072,6 +2075,8 @@ struct client {
 	size_t			 written;
 	size_t			 discarded;
 	size_t			 redraw;
+
+	struct redraw_scene	*redraw_scene;
 
 	struct event		 repeat_timer;
 
@@ -3367,6 +3372,9 @@ void	 screen_write_alternateoff(struct screen_write_ctx *,
 void	 screen_redraw_screen(struct client *);
 void	 screen_redraw_pane(struct client *, struct window_pane *);
 void	 screen_redraw_pane_scrollbar(struct client *, struct window_pane *);
+void	 screen_redraw_free_scene(struct redraw_scene *);
+void	 screen_redraw_invalidate_scene(struct window *);
+void	 screen_redraw_invalidate_all_scenes(void);
 int	 screen_redraw_get_span_cell_type(struct redraw_span **, u_int);
 
 /* screen.c */

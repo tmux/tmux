@@ -149,6 +149,8 @@ struct redraw_scene {
 	struct client		*c;
 	struct window		*w;
 
+	uint64_t		 generation;
+
 	u_int			 sx;
 	u_int			 sy;
 	u_int			 ox;
@@ -818,6 +820,7 @@ screen_redraw_make_scene(struct client *c)
 	scene = xcalloc(1, sizeof *scene);
 	scene->c = c;
 	scene->w = bctx.w;
+	scene->generation = bctx.w->redraw_scene_generation;
 	scene->sx = bctx.sx;
 	scene->sy = bctx.sy;
 	scene->ox = bctx.ox;
@@ -851,12 +854,15 @@ screen_redraw_make_scene(struct client *c)
 }
 
 /* Free a scene. */
-static void
+void
 screen_redraw_free_scene(struct redraw_scene *scene)
 {
 	struct redraw_spans	*spans;
 	struct redraw_span	*span, *span1;
 	u_int			 y, type;
+
+	if (scene == NULL)
+		return;
 
 	for (y = 0; y < scene->sy; y++) {
 		for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
@@ -869,6 +875,46 @@ screen_redraw_free_scene(struct redraw_scene *scene)
 	}
 	free(scene->lines);
 	free(scene);
+}
+
+/* Mark a window's cached redraw scenes as out of date. */
+void
+screen_redraw_invalidate_scene(struct window *w)
+{
+	w->redraw_scene_generation++;
+}
+
+/* Mark all cached redraw scenes as out of date. */
+void
+screen_redraw_invalidate_all_scenes(void)
+{
+	struct window	*w;
+
+	RB_FOREACH(w, windows, &windows)
+		screen_redraw_invalidate_scene(w);
+}
+
+/* Get the cached redraw scene, rebuilding it if needed. */
+static struct redraw_scene *
+screen_redraw_get_scene(struct client *c)
+{
+	struct redraw_scene	*scene = c->redraw_scene;
+	struct window		*w = c->session->curw->window;
+	u_int			 ox, oy, sx, sy;
+
+	tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
+	if (scene == NULL ||
+	    scene->w != w ||
+	    scene->generation != w->redraw_scene_generation ||
+	    scene->ox != ox ||
+	    scene->oy != oy ||
+	    scene->sx != sx ||
+	    scene->sy != sy) {
+		screen_redraw_free_scene(scene);
+		scene = screen_redraw_make_scene(c);
+		c->redraw_scene = scene;
+	}
+	return (scene);
 }
 
 /* Is this span adjacent to this pane? */
@@ -1379,7 +1425,9 @@ screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		}
 	}
 
-	scene = screen_redraw_make_scene(c); //XXX
+	scene = screen_redraw_get_scene(c);
+	if (scene == NULL)
+		return;
 	if (scene == NULL)
 		return;
 	screen_redraw_set_draw_context(&dctx, scene);
@@ -1411,10 +1459,8 @@ screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		}
 		if (!redraw && !REDRAW_IS_ALL(flags)) {
 			flags &= ~REDRAW_PANE_STATUS;
-			if (flags == 0) {
-				screen_redraw_free_scene(scene);
+			if (flags == 0)
 				return;
-			}
 		}
 	}
 
@@ -1457,7 +1503,6 @@ screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	tty_reset(tty);
 	tty_sync_end(tty);
 
-	screen_redraw_free_scene(scene); //XXX
 }
 
 /* Get cell type for offset from span. */

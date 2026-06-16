@@ -530,6 +530,7 @@ server_client_free(__unused int fd, __unused short events, void *arg)
 
 	log_debug("free client %p (%d references)", c, c->references);
 
+	screen_redraw_free_scene(c->redraw_scene);
 	cmdq_free(c->queue);
 
 	if (c->references == 0) {
