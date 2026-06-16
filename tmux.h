@@ -3540,7 +3540,7 @@ void		 window_get_border_cell(struct window *, struct window_pane *,
 void		 window_pane_get_border_cell(struct window_pane *, int,
 		     struct grid_cell *);
 void		 window_pane_get_border_style(struct window_pane *,
-		     struct client *, int, struct grid_cell *);
+		     struct client *, struct grid_cell *);
 void		 window_make_pane_status(struct window_pane *, struct client *,
 		     u_int, struct redraw_span *);
 

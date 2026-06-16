@@ -935,20 +935,6 @@ screen_redraw_draw_get_style_pane(struct redraw_scene *scene,
 	return (NULL);
 }
 
-/* Should this span use the active style? */
-static int
-screen_redraw_draw_border_active(struct redraw_scene *scene,
-    struct redraw_span *span)
-{
-	struct window_pane	*active = server_client_get_pane(scene->c);
-
-	if (span->data.type != REDRAW_SPAN_BORDER || active == NULL)
-		return (0);
-	if (span->data.b.style_wp != NULL)
-		return (span->data.b.style_wp == active);
-	return (screen_redraw_span_has_pane(span, active));
-}
-
 /* Draw arrow indicator if this border span is an arrow cell. */
 static void
 screen_redraw_draw_border_arrow(struct redraw_scene *scene,
@@ -991,7 +977,7 @@ screen_redraw_draw_border_span(struct redraw_scene *scene,
 	struct grid_cell	 gc;
 	enum pane_lines		 pane_lines;
 	u_int			 i, cell_type;
-	int			 isolates = 0, active;
+	int			 isolates = 0;
 
 	if (span->data.type != REDRAW_SPAN_BORDER)
 		cell_type = CELL_OUTSIDE;
@@ -1002,11 +988,10 @@ screen_redraw_draw_border_span(struct redraw_scene *scene,
 
 	if (wp == NULL) {
 		pane_lines = options_get_number(oo, "pane-border-lines");
-		window_get_border_cell(w, NULL, pane_lines, cell_type, &gc);
 		screen_redraw_draw_get_default_style(scene, &gc);
+		window_get_border_cell(w, NULL, pane_lines, cell_type, &gc);
 	} else {
-		active = screen_redraw_draw_border_active(scene, span);
-		window_pane_get_border_style(wp, c, active, &gc);
+		window_pane_get_border_style(wp, c, &gc);
 		window_pane_get_border_cell(wp, cell_type, &gc);
 	}
 
@@ -1353,10 +1338,15 @@ screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
 int
 screen_redraw_get_span_cell_type(struct redraw_span *span, u_int x)
 {
-	u_int	start, end;
+	struct window_pane	*wp = span->data.st.wp;
+	u_int			 start, end;
 
+	if (span->data.type != REDRAW_SPAN_STATUS)
+		return (CELL_LEFTRIGHT);
 	for (; span != NULL; span = TAILQ_NEXT(span, entry)) {
 		if (span->data.type != REDRAW_SPAN_STATUS)
+			continue;
+		if (span->data.st.wp != wp)
 			continue;
 
 		start = span->data.st.offset;

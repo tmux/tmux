@@ -18,6 +18,8 @@
 
 #include <sys/types.h>
 
+#include <string.h>
+
 #include "tmux.h"
 
 /* Get border cell. */
@@ -82,7 +84,7 @@ window_pane_get_border_cell(struct window_pane *wp, int cell_type,
 /* Get pane border style. */
 void
 window_pane_get_border_style(struct window_pane *wp, struct client *c,
-    int active, struct grid_cell *gc)
+    struct grid_cell *gc)
 {
 	struct session		*s = c->session;
 	struct format_tree	*ft;
@@ -90,7 +92,7 @@ window_pane_get_border_style(struct window_pane *wp, struct client *c,
 	struct grid_cell	*saved;
 	int			*flag;
 
-	if (active) {
+	if (wp == server_client_get_pane(c)) {
 		flag = &wp->active_border_gc_set;
 		saved = &wp->active_border_gc;
 		option = "pane-active-border-style";
@@ -115,7 +117,7 @@ window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
     struct redraw_span *span)
 {
 	struct grid_cell	 gc;
-	const char		*fmt, *border_option;
+	const char		*fmt;
 	struct format_tree	*ft;
 	struct style_line_entry	*sle = &wp->border_status_line;
 	struct screen_write_ctx	 ctx;
@@ -130,20 +132,17 @@ window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
 	ft = format_create(c, NULL, FORMAT_PANE|wp->id, FORMAT_STATUS);
 	format_defaults(ft, c, c->session, c->session->curw, wp);
 
-	if (wp == server_client_get_pane(c))
-		border_option = "pane-active-border-style";
-	else
-		border_option = "pane-border-style";
-	style_apply(&gc, wp->options, border_option, ft);
 
 	fmt = options_get_string(wp->options, "pane-border-format");
 	expanded = format_expand_time(ft, fmt);
 
+	screen_free(&wp->status_screen);
 	screen_init(&wp->status_screen, width, 1, 0);
 	wp->status_screen.mode = 0;
 
 	screen_write_start(&ctx, &wp->status_screen);
 
+	window_pane_get_border_style(wp, c, &gc);
 	for (i = 0; i < width; i++) {
 		cell_type = screen_redraw_get_span_cell_type(span, i);
 		window_pane_get_border_cell(wp, cell_type, &gc);
