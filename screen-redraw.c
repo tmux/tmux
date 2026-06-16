@@ -29,10 +29,11 @@ enum redraw_span_type {
 	REDRAW_SPAN_PANE,	/* inside a pane */
 	REDRAW_SPAN_OUTSIDE,	/* outside the window */
 	REDRAW_SPAN_EMPTY,	/* inside the window but nothing visible */
+	REDRAW_SPAN_STATUS,	/* pane status line */
 	REDRAW_SPAN_BORDER,	/* pane border */
 	REDRAW_SPAN_SCROLLBAR,	/* pane scrollbar */
 };
-#define REDRAW_SPAN_TYPES 5
+#define REDRAW_SPAN_TYPES 6
 
 /* Border connections to adjacent cells. */
 #define REDRAW_BORDER_L 0x1
@@ -41,10 +42,16 @@ enum redraw_span_type {
 #define REDRAW_BORDER_D 0x8
 
 /* Span flags. */
-#define REDRAW_BORDER_STATUS_LINE 0x1
-#define REDRAW_BORDER_IS_ARROW 0x2
-#define REDRAW_SCROLLBAR_LEFT 0x4
-#define REDRAW_SCROLLBAR_RIGHT 0x8
+#define REDRAW_BORDER_IS_ARROW 0x1
+#define REDRAW_SCROLLBAR_LEFT 0x2
+#define REDRAW_SCROLLBAR_RIGHT 0x4
+
+/* Draw operations. */
+#define REDRAW_DRAW_PANE 0x1
+#define REDRAW_DRAW_BORDER 0x2
+#define REDRAW_DRAW_STATUS 0x4
+#define REDRAW_DRAW_SCROLLBAR 0x8
+#define REDRAW_DRAW_ALL 0xff
 
 /* Data for a span. */
 struct redraw_span_data {
@@ -74,13 +81,6 @@ struct redraw_span_data {
 			 */
 			struct window_pane	*style_wp;
 
-			/*
-			 * If this span is for a status line, the pane and the
-			 * offset into the status line.
-			 */
-			struct window_pane	*status_wp;
-			u_int			 status_offset;
-
 			/* Cell type for this span. */
 			int			 cell_type;
 			int			 cell_mask;
@@ -94,6 +94,12 @@ struct redraw_span_data {
 			/* Flags for this span. */
 			int			 flags;
 		} b;
+
+		struct {
+			/* The pane and the offset into the status line. */
+			struct window_pane	*wp;
+			u_int			 offset;
+		} st;
 
 		struct {
 			/* Pane this span belongs to. */
@@ -466,9 +472,9 @@ screen_redraw_mark_border_status(struct redraw_build_ctx *bctx,
 		bc = screen_redraw_cell(bctx, x, y);
 		if (bc->data.type != REDRAW_SPAN_BORDER)
 			continue;
-		bc->data.b.flags |= REDRAW_BORDER_STATUS_LINE;
-		bc->data.b.status_wp = wp;
-		bc->data.b.status_offset = offset;
+		bc->data.type = REDRAW_SPAN_STATUS;
+		bc->data.st.wp = wp;
+		bc->data.st.offset = offset;
 	}
 }
 
@@ -690,7 +696,6 @@ screen_redraw_data_cmp(struct redraw_build_cell *a, struct redraw_build_cell *b)
 		    ad->b.left_wp != bd->b.left_wp ||
 		    ad->b.right_wp != bd->b.right_wp ||
 		    ad->b.style_wp != bd->b.style_wp ||
-		    ad->b.status_wp != bd->b.status_wp ||
 		    ad->b.top_lines != bd->b.top_lines ||
 		    ad->b.bottom_lines != bd->b.bottom_lines ||
 		    ad->b.left_lines != bd->b.left_lines ||
@@ -701,8 +706,10 @@ screen_redraw_data_cmp(struct redraw_build_cell *a, struct redraw_build_cell *b)
 			return (0);
 		if (ad->b.flags & REDRAW_BORDER_IS_ARROW)
 			return (0);
-		if (ad->b.status_wp != NULL &&
-		    ad->b.status_offset + 1 != bd->b.status_offset)
+		return (1);
+	case REDRAW_SPAN_STATUS:
+		if (ad->st.wp != bd->st.wp ||
+		    ad->st.offset + 1 != bd->st.offset)
 			return (0);
 		return (1);
 	case REDRAW_SPAN_SCROLLBAR:
@@ -846,106 +853,258 @@ screen_redraw_span_has_pane(struct redraw_span *span, struct window_pane *wp)
 	return (0);
 }
 
-/* Draw scene to client. */
+/* Draw a pane span. */
 static void
-screen_redraw_draw_scene(struct redraw_scene *scene)
+screen_redraw_draw_pane_span(struct redraw_scene *scene,
+    struct redraw_span *span, u_int x, u_int y, u_int n)
 {
-	struct client		*c;
-	struct session		*s;
-	struct window		*w;
-	struct tty		*tty;
+	struct client		*c = scene->c;
+	struct tty		*tty = &c->tty;
+	struct window_pane	*wp = span->data.p.wp;
+	struct screen		*s = wp->screen;
+	struct grid_cell	 defaults;
+	struct tty_style_ctx	 style_ctx;
+	u_int			 px, py;
+
+	//XXX sync?
+
+	tty_default_colours(&defaults, wp);
+	style_ctx.defaults = &defaults;
+	style_ctx.palette = &wp->palette;
+	style_ctx.hyperlinks = s->hyperlinks;
+
+	px = span->data.p.px + (x - span->x);
+	py = span->data.p.py;
+
+	tty_draw_line(tty, s, px, py, n, x, y, &style_ctx);
+}
+
+/* Draw a border span. */
+static void
+screen_redraw_draw_border_span(struct redraw_scene *scene,
+    struct redraw_span *span, u_int x, u_int y, u_int n)
+{
+	struct client	*c = scene->c;
+	struct tty	*tty = &c->tty;
+
+	tty_cursor(tty, x, y);
+	for (x = 0; x < n; x++)
+		tty_putc(tty, '-');
+}
+
+/* Draw a status span. */
+static void
+screen_redraw_draw_status_span(struct redraw_scene *scene,
+    struct redraw_span *span, u_int x, u_int y, u_int n)
+{
+	struct client	*c = scene->c;
+	struct tty	*tty = &c->tty;
+
+	tty_cursor(tty, x, y);
+	for (x = 0; x < n; x++)
+		tty_putc(tty, 's');
+}
+
+/* Draw a span. */
+static void
+screen_redraw_draw_scrollbar_span(struct redraw_scene *scene,
+    struct redraw_span *span, u_int x, u_int y, u_int n)
+{
+	struct client	*c = scene->c;
+	struct tty	*tty = &c->tty;
+
+	tty_cursor(tty, x, y);
+	for (x = 0; x < n; x++)
+		tty_putc(tty, '|');
+}
+
+/* Draw a span. */
+static void
+screen_redraw_draw_span(struct redraw_scene *scene, struct redraw_span *span,
+    u_int y)
+{
+	struct client		*c = scene->c;
+	struct tty		*tty = &c->tty;
+	struct visible_ranges	*r;
+	struct visible_range	*rr;
+	u_int			 i, x, n;
+
+	r = tty_check_overlay_range(tty, span->x, y, span->width);
+	for (i = 0; i < r->used; i++) {
+		rr = &r->ranges[i];
+		if (rr->nx == 0)
+			continue;
+		x = rr->px;
+		n = rr->nx;
+
+		switch (span->data.type) {
+		case REDRAW_SPAN_PANE:
+			screen_redraw_draw_pane_span(scene, span, x, y, n);
+			break;
+		case REDRAW_SPAN_BORDER:
+		case REDRAW_SPAN_EMPTY:
+		case REDRAW_SPAN_OUTSIDE:
+			screen_redraw_draw_border_span(scene, span, x, y, n);
+			break;
+		case REDRAW_SPAN_STATUS:
+			screen_redraw_draw_status_span(scene, span, x, y, n);
+			break;
+		case REDRAW_SPAN_SCROLLBAR:
+			screen_redraw_draw_scrollbar_span(scene, span, x, y, n);
+			break;
+		}
+	}
+}
+
+/* Draw pane lines. */
+static void
+screen_redraw_draw_pane_lines(struct redraw_scene *scene, u_int status_lines,
+    struct window_pane *wp, int flags)
+{
+	struct redraw_line	*line;
+	struct redraw_spans	*spans;
 	struct redraw_span	*span;
-	char			*line, ch;
-	u_int			 y, type, x;
+	u_int			 y, cy, top, bottom;
 
-	if (scene == NULL || scene->c == NULL)
-		return;
-	c = scene->c;
-	if (c->flags & CLIENT_SUSPENDED)
-		return;
-	s = c->session;
-	w = s->curw->window;
-	tty = &c->tty;
+	if (wp->yoff < (int)scene->oy)
+		top = 0;
+	else
+		top = wp->yoff - scene->oy;
+	if (wp->yoff + wp->sy <= scene->oy)
+		bottom = 0;
+	else
+		bottom = wp->yoff + wp->sy - scene->oy;
+	if (bottom > scene->sy)
+		bottom = scene->sy;
 
-	line = xmalloc(scene->sx + 1);
-
-	tty_sync_start(tty);
-	tty_reset(tty);
-
-	for (y = 0; y < scene->sy; y++) {
-		memset(line, '?', scene->sx);
-		line[scene->sx] = '\0';
-
-		for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
-			TAILQ_FOREACH(span, &scene->lines[y].spans[type], entry) {
-				ch = '!';
-				switch (span->data.type) {
-				case REDRAW_SPAN_PANE:
-					ch = '0' + (span->data.p.wp->id % 10);
-					break;
-				case REDRAW_SPAN_OUTSIDE:
-					ch = '.';
-					break;
-				case REDRAW_SPAN_EMPTY:
-					ch = ',';
-					break;
-				case REDRAW_SPAN_BORDER:
-					if (span->data.b.flags & REDRAW_BORDER_STATUS_LINE)
-						ch = 's';
-					else if (span->data.b.flags & REDRAW_BORDER_IS_ARROW)
-						ch = 'A';
-					else {
-						if (span->data.b.style_wp == w->active)
-							ch = '*';
-						else if (screen_redraw_span_has_pane(span, w->active))
-							ch = '+';
-						else
-							ch = '-';
-					}
-					break;
-				case REDRAW_SPAN_SCROLLBAR:
-					if (span->data.sb.flags & REDRAW_SCROLLBAR_LEFT)
-						ch = '\\';
-					else if (span->data.sb.flags & REDRAW_SCROLLBAR_RIGHT)
-						ch = '/';
-					else
-						ch = '|';
-					break;
-				}
-				for (x = span->x; x < span->x + span->width && x < scene->sx; x++)
-					line[x] = ch;
+	for (y = top; y < bottom; y++) {
+		line = &scene->lines[y];
+		cy = status_lines + y;
+		if (flags & REDRAW_DRAW_PANE) {
+			spans = &line->spans[REDRAW_SPAN_PANE];
+			TAILQ_FOREACH(span, spans, entry) {
+				if (span->data.p.wp != wp)
+					continue;
+				screen_redraw_draw_span(scene, span, cy);
 			}
 		}
-
-		tty_cursor(tty, 0, y);
-		for (x = 0; x < scene->sx; x++)
-			tty_putc(tty, line[x]);
+		if (flags & REDRAW_DRAW_SCROLLBAR) {
+			spans = &line->spans[REDRAW_SPAN_SCROLLBAR];
+			TAILQ_FOREACH(span, spans, entry) {
+				if (span->data.sb.wp != wp)
+					continue;
+				cy = status_lines + y;
+				screen_redraw_draw_span(scene, span, cy);
+			}
+		}
 	}
+}
+
+/* Draw lines. */
+static void
+screen_redraw_draw_lines(struct redraw_scene *scene, u_int status_lines,
+    int flags)
+{
+	struct redraw_line	*line;
+	struct redraw_spans	*spans;
+	struct redraw_span	*span;
+	u_int			 y, cy, type;
+
+	for (y = 0; y < scene->sy; y++) {
+		line = &scene->lines[y];
+		cy = status_lines + y;
+		for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
+			if (flags != REDRAW_DRAW_ALL) {
+				switch (type) {
+				case REDRAW_SPAN_PANE:
+					if (~flags & REDRAW_DRAW_PANE)
+						continue;
+					break;
+				case REDRAW_SPAN_BORDER:
+					if (~flags & REDRAW_DRAW_BORDER)
+						continue;
+					break;
+				case REDRAW_SPAN_STATUS:
+					if (~flags & REDRAW_DRAW_STATUS)
+						continue;
+					break;
+				case REDRAW_SPAN_SCROLLBAR:
+					if (~flags & REDRAW_DRAW_SCROLLBAR)
+						continue;
+					break;
+				default:
+					continue;
+				}
+			}
+			spans = &line->spans[type];
+			TAILQ_FOREACH(span, spans, entry)
+				screen_redraw_draw_span(scene, span, cy);
+		}
+	}
+}
+
+/* Draw scene to client. */
+static void
+screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
+{
+	struct session		*s = c->session;
+	struct tty		*tty = &c->tty;
+	struct redraw_scene	*scene;
+	u_int			 status_lines = 0;
+
+	if (c->flags & CLIENT_SUSPENDED)
+		return;
+
+	scene = screen_redraw_make_scene(c); //XXX
+	if (scene == NULL)
+		return;
+
+	if (options_get_number(s->options, "status-position") == 0)
+		status_lines = status_line_size(c);
+
+	tty_sync_start(tty);
+	tty_update_mode(tty, 0, NULL);
+
+	if (wp != NULL)
+		screen_redraw_draw_pane_lines(scene, status_lines, wp, flags);
+	else
+		screen_redraw_draw_lines(scene, status_lines, flags);
 
 	tty_reset(tty);
 	tty_sync_end(tty);
 
-	free(line);
+	screen_redraw_free_scene(scene); //XXX
 }
 
+/* Draw screen. */
 void
 screen_redraw_screen(struct client *c)
 {
-	struct redraw_scene	*scene;
+	int	flags = 0;
 
-	scene = screen_redraw_make_scene(c);
-	screen_redraw_draw_scene(scene);
-	screen_redraw_free_scene(scene);
+	if (c->flags & CLIENT_REDRAWWINDOW)
+		screen_redraw_draw(c, NULL, REDRAW_DRAW_ALL);
+	else {
+		if (c->flags & CLIENT_REDRAWBORDERS)
+			flags |= (REDRAW_DRAW_BORDER|REDRAW_DRAW_STATUS);
+		if (c->flags & CLIENT_REDRAWSTATUS)
+			flags |= REDRAW_DRAW_STATUS;
+		screen_redraw_draw(c, NULL, flags);
+	}
+	//XXX client status line
+	//XXX overlays
 }
 
+/* Draw a single pane. */
 void
-screen_redraw_pane(struct client *c, __unused struct window_pane *wp)
+screen_redraw_pane(struct client *c, struct window_pane *wp)
 {
-	screen_redraw_screen(c);
+	screen_redraw_draw(c, wp, REDRAW_DRAW_PANE|REDRAW_DRAW_SCROLLBAR);
 }
 
+/* Draw a pane's scrollbar. */
 void
-screen_redraw_pane_scrollbar(struct client *c, __unused struct window_pane *wp)
+screen_redraw_pane_scrollbar(struct client *c, struct window_pane *wp)
 {
-	screen_redraw_screen(c);
+	screen_redraw_draw(c, wp, REDRAW_DRAW_SCROLLBAR);
 }
