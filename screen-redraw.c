@@ -62,7 +62,7 @@ enum redraw_span_type {
 
 /* UTF-8 isolate characters. */
 #define REDRAW_START_ISOLATE "\342\201\246"
-#define REDRAW_END_ISOLATE   "\342\201\251"
+#define REDRAW_END_ISOLATE "\342\201\251"
 
 /* Data for a span. */
 struct redraw_span_data {
