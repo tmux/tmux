@@ -627,6 +627,9 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 		pane_status_line = wp->yoff + wp->sy;
 	else
 		pane_status_line = -1; /* not used */
+	bdr_left = wp->xoff - 1;
+	if (sb_pos == PANE_SCROLLBARS_LEFT)
+		bdr_left -= sb_pad + sb_w;
 
 	/* Check if point is within the pane or scrollbar. */
 	if (((pane_status != PANE_STATUS_OFF &&
@@ -657,7 +660,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 				return (KEYC_MOUSE_LOCATION_SCROLLBAR_DOWN);
 		} else if (window_pane_is_floating(wp) &&
 		    window_pane_get_pane_lines(wp) != PANE_LINES_NONE &&
-		    (px == wp->xoff - 1 ||
+		    (px == bdr_left ||
 		    py == wp->yoff - 1 ||
 		    py == wp->yoff + (int)wp->sy)) {
 			/* Floating pane left, bottom or top border. */
@@ -675,11 +678,20 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 			if (window_pane_is_floating(fwp) &&
 			    window_pane_get_pane_lines(fwp) == PANE_LINES_NONE)
 				continue;
+			if (window_pane_show_scrollbar(fwp, sb)) {
+				sb_w = fwp->scrollbar_style.width;
+				sb_pad = fwp->scrollbar_style.pad;
+			} else {
+				sb_w = 0;
+				sb_pad = 0;
+			}
 			bdr_top = fwp->yoff - 1;
 			bdr_bottom = fwp->yoff + fwp->sy;
-			if (sb_pos == PANE_SCROLLBARS_LEFT)
+			bdr_left = fwp->xoff - 1;
+			if (sb_pos == PANE_SCROLLBARS_LEFT) {
+				bdr_left -= sb_pad + sb_w;
 				bdr_right = fwp->xoff + fwp->sx;
-			else {
+			} else {
 				/* PANE_SCROLLBARS_RIGHT or none. */
 				bdr_right = fwp->xoff + fwp->sx + sb_pad + sb_w;
 			}
@@ -689,13 +701,11 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 					break;
 				if (window_pane_is_floating(wp)) {
 					/* Floating pane, check left border. */
-					bdr_left = fwp->xoff - 1;
 					if (px == bdr_left)
 						break;
 				}
 			}
-			if (px >= fwp->xoff - 1 &&
-			    px <= fwp->xoff + (int)fwp->sx) {
+			if (px >= bdr_left && px <= fwp->xoff + (int)fwp->sx) {
 				bdr_bottom = fwp->yoff + fwp->sy;
 				if (py == bdr_bottom)
 					break;
