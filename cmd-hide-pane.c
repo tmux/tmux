@@ -68,13 +68,13 @@ cmd_hide_pane_hide(struct window *w, struct window_pane *wp)
 	if (wp == w->active) {
 		/* Find previous active pane. */
 		TAILQ_FOREACH(wpp, &w->last_panes, sentry) {
-			if (wpp != wp && window_pane_visible(wpp))
+			if (wpp != wp && window_pane_is_visible(wpp))
 				break;
 		}
 		if (wpp == NULL) {
 			TAILQ_FOREACH(wpp, &w->z_index, zentry) {
 				if (wpp != wp &&
-				    window_pane_visible(wpp))
+				    window_pane_is_visible(wpp))
 					break;
 			}
 		}
@@ -122,7 +122,7 @@ cmd_hide_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (args_has(args, 'a')) {
 		TAILQ_FOREACH(wp, &w->z_index, zentry) {
-			if (!window_pane_visible(wp) || wp == active_pane)
+			if (!window_pane_is_visible(wp) || wp == active_pane)
 				continue;
 			rv = cmd_hide_pane_hide(w, wp);
 			if (rv != CMD_RETURN_NORMAL)
@@ -186,7 +186,7 @@ cmd_show_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (args_has(args, 'a')) {
 		TAILQ_FOREACH(wp, &w->z_index, zentry) {
-			if (!window_pane_visible(wp))
+			if (!window_pane_is_visible(wp))
 				continue;
 			rv = cmd_hide_pane_show(w, wp);
 			if (rv != CMD_RETURN_NORMAL)
