@@ -197,6 +197,32 @@ struct redraw_draw_ctx {
 #define REDRAW_STATUS_TOP 0x4
 };
 
+/* Make redraw flags into a string. */
+static const char *
+screen_redraw_flags_string(int flags)
+{
+	static char	s[128];
+
+	*s = '\0';
+	if (flags & REDRAW_STATUS)
+		strlcat(s, "status ", sizeof s);
+	if (flags & REDRAW_PANE)
+		strlcat(s, "pane ", sizeof s);
+	if (flags & REDRAW_PANE_BORDER)
+		strlcat(s, "border ", sizeof s);
+	if (flags & REDRAW_PANE_STATUS)
+		strlcat(s, "pane-status ", sizeof s);
+	if (flags & REDRAW_PANE_SCROLLBAR)
+		strlcat(s, "scrollbar ", sizeof s);
+	if (flags & REDRAW_OVERLAY)
+		strlcat(s, "overlay ", sizeof s);
+	if (REDRAW_IS_ALL(flags))
+		strlcat(s, "all ", sizeof s);
+	if (*s != '\0')
+		s[strlen(s) - 1] = '\0';
+	return (s);
+}
+
 /* Initialize the context for building scene. */
 static void
 screen_redraw_set_context(struct client *c, struct redraw_build_ctx *bctx)
@@ -826,6 +852,9 @@ screen_redraw_make_scene(struct client *c)
 	scene->ox = bctx.ox;
 	scene->oy = bctx.oy;
 
+	log_debug("%s: starting @%u scene build (%ux%u %u,%u, generation %llu)",
+	    c->name, scene->w->id, scene->sx, scene->sy, scene->ox, scene->oy,
+	    (unsigned long long)scene->generation);
 	scene->lines = xcalloc(scene->sy, sizeof *scene->lines);
 	for (y = 0; y < scene->sy; y++) {
 		for (type = 0; type < REDRAW_SPAN_TYPES; type++)
@@ -848,6 +877,7 @@ screen_redraw_make_scene(struct client *c)
 
 	screen_redraw_mark_two_pane_colours(&bctx);
 	screen_redraw_finish_scene(&bctx, scene);
+	log_debug("%s: finished @%u scene build", c->name, scene->w->id);
 
 	free(bctx.cells);
 	return (scene);
@@ -900,16 +930,22 @@ screen_redraw_get_scene(struct client *c)
 {
 	struct redraw_scene	*scene = c->redraw_scene;
 	struct window		*w = c->session->curw->window;
+	const char		*reason = NULL;
 	u_int			 ox, oy, sx, sy;
 
 	tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
-	if (scene == NULL ||
-	    scene->w != w ||
-	    scene->generation != w->redraw_scene_generation ||
-	    scene->ox != ox ||
-	    scene->oy != oy ||
-	    scene->sx != sx ||
-	    scene->sy != sy) {
+	if (scene == NULL)
+		reason = "missing";
+	else if (scene->w != w)
+		reason = "window changed";
+	else if (scene->generation != w->redraw_scene_generation)
+		reason = "generation changed";
+	else if (scene->ox != ox || scene->oy != oy)
+		reason = "offset changed";
+	else if (scene->sx != sx || scene->sy != sy)
+		reason = "size changed";
+	if (reason != NULL) {
+		log_debug("%s: @%u scene invalid: %s", c->name, w->id, reason);
 		screen_redraw_free_scene(scene);
 		scene = screen_redraw_make_scene(c);
 		c->redraw_scene = scene;
@@ -1400,6 +1436,8 @@ static void
 screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
 {
 	struct redraw_draw_ctx	 dctx;
+	struct session		*s = c->session;
+	struct window		*w = s->curw->window;
 	struct tty		*tty = &c->tty;
 	struct screen		*sl;
 	struct redraw_scene	*scene;
@@ -1424,6 +1462,9 @@ screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
 				return;
 		}
 	}
+
+	log_debug("%s: starting @%u redraw (%s)", c->name, w->id,
+	    screen_redraw_flags_string(flags));
 
 	scene = screen_redraw_get_scene(c);
 	if (scene == NULL)
@@ -1502,6 +1543,8 @@ screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
 
 	tty_reset(tty);
 	tty_sync_end(tty);
+
+	log_debug("%s: finished @%u redraw", c->name, scene->w->id);
 
 }
 
