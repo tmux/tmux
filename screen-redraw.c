@@ -1462,13 +1462,15 @@ screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
 
 /* Get cell type for offset from span. */
 int
-screen_redraw_get_span_cell_type(struct redraw_span *span, u_int x)
+screen_redraw_get_span_cell_type(struct redraw_span **spanp, u_int x)
 {
-	struct window_pane	*wp = span->data.st.wp;
+	struct redraw_span	*span = *spanp;
+	struct window_pane	*wp;
 	u_int			 start, end;
 
-	if (span->data.type != REDRAW_SPAN_STATUS)
+	if (span == NULL || span->data.type != REDRAW_SPAN_STATUS)
 		return (CELL_LEFTRIGHT);
+	wp = span->data.st.wp;
 	for (; span != NULL; span = TAILQ_NEXT(span, entry)) {
 		if (span->data.type != REDRAW_SPAN_STATUS)
 			continue;
@@ -1477,12 +1479,18 @@ screen_redraw_get_span_cell_type(struct redraw_span *span, u_int x)
 
 		start = span->data.st.offset;
 		end = start + span->width;
-		if (x >= start && x < end)
+		if (x >= start && x < end) {
+			*spanp = span;
 			return (span->data.st.cell_type);
+		}
 
-		if (start > x)
+		if (start > x) {
+			*spanp = span;
 			break;
+		}
 	}
+	if (span == NULL)
+		*spanp = NULL;
 	return (CELL_LEFTRIGHT);
 }
 

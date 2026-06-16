@@ -3367,7 +3367,7 @@ void	 screen_write_alternateoff(struct screen_write_ctx *,
 void	 screen_redraw_screen(struct client *);
 void	 screen_redraw_pane(struct client *, struct window_pane *);
 void	 screen_redraw_pane_scrollbar(struct client *, struct window_pane *);
-int	 screen_redraw_get_span_cell_type(struct redraw_span *, u_int);
+int	 screen_redraw_get_span_cell_type(struct redraw_span **, u_int);
 
 /* screen.c */
 void	 screen_init(struct screen *, u_int, u_int, u_int);
