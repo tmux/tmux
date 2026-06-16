@@ -215,6 +215,7 @@ dist_tmux_SOURCES = \
 	window-copy.c \
 	window-customize.c \
 	window-tree.c \
+	window-visible.c \
 	window.c \
 	xmalloc.c \
 	xmalloc.h
