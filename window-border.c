@@ -124,11 +124,12 @@ window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
 	struct screen		 old;
 	char			*expanded;
 	u_int			 i;
+	enum pane_lines		 pane_lines;
 	int			 pane_status, cell_type;
 
 	pane_status = window_pane_get_pane_status(wp);
 	if (pane_status == PANE_STATUS_OFF || width == 0)
-		return;
+		return (0);
 
 	ft = format_create(c, NULL, FORMAT_PANE|wp->id, FORMAT_STATUS);
 	format_defaults(ft, c, c->session, c->session->curw, wp);
@@ -136,17 +137,16 @@ window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
 	fmt = options_get_string(wp->options, "pane-border-format");
 	expanded = format_expand_time(ft, fmt);
 
-	screen_free(&wp->status_screen);
+	memcpy(&old, &wp->status_screen, sizeof old);
 	screen_init(&wp->status_screen, width, 1, 0);
 	wp->status_screen.mode = 0;
-
-	memcpy(&old, &wp->status_screen, sizeof old);
 	screen_write_start(&ctx, &wp->status_screen);
 
 	window_pane_get_border_style(wp, c, &gc);
+	pane_lines = window_pane_get_pane_lines(wp);
 	for (i = 0; i < width; i++) {
 		cell_type = screen_redraw_get_span_cell_type(span, i);
-		window_pane_get_border_cell(wp, cell_type, &gc);
+		window_get_border_cell(wp->window, wp, pane_lines, cell_type, &gc);
 		screen_write_cell(&ctx, &gc);
 	}
 	gc.attr &= ~GRID_ATTR_CHARSET;

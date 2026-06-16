@@ -270,6 +270,7 @@ cmd_display_panes_draw(struct client *c, __unused void *data)
 	struct window			*w = s->curw->window;
 	struct window_pane		*wp;
 	struct cmd_display_panes_ctx	 ctx;
+	u_int				 lines;
 
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
@@ -277,7 +278,10 @@ cmd_display_panes_draw(struct client *c, __unused void *data)
 	ctx.c = c;
 	tty_window_offset(&c->tty, &ctx.ox, &ctx.oy, &ctx.sx, &ctx.sy);
 	if (options_get_number(s->options, "status-position") == 0) {
-		ctx.statuslines = status_line_size(c);
+		lines = status_line_size(c);
+		if (c->message_string != NULL || c->prompt_string != NULL)
+			lines = (lines == 0 ? 1 : lines);
+		ctx.statuslines = lines;
 		ctx.statustop = 1;
 	}
 
