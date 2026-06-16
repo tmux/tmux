@@ -2690,11 +2690,15 @@ Commands related to windows and panes are as follows:
 .Bl -tag -width Ds
 .Tg breakp
 .It Xo Ic break\-pane
-.Op Fl abdP
+.Op Fl abdPW
 .Op Fl F Ar format
 .Op Fl n Ar window\-name
 .Op Fl s Ar src\-pane
 .Op Fl t Ar dst\-window
+.Op Fl x Ar width
+.Op Fl y Ar height
+.Op Fl X Ar x-position
+.Op Fl Y Ar y-position
 .Xc
 .D1 Pq alias: Ic breakp
 Break
@@ -2717,6 +2721,40 @@ By default, it uses the format
 .Ql #{session_name}:#{window_index}.#{pane_index}
 but a different format may be specified with
 .Fl F .
+.Pp
+If the
+.Fl W
+option is given,
+.Ar src\-pane
+is lifted out of the tiled layout and made floating.
+The
+.Fl x
+and
+.Fl y
+options set the width and height of the floating pane in columns and lines
+respectively.
+The default is half the window width and a quarter the window height.
+The
+.Fl X
+and
+.Fl Y
+options set the position of the upper-left corner of the pane.
+If omitted, new floating panes are cascaded from the top-left of the window.
+.Pp
+If the pane had previously been floating, the position and sizes are restored
+from the saved values not specified by the
+.Fl x ,
+.Fl y ,
+.Fl X ,
+and
+.Fl Y
+options.
+.Pp
+If
+.Fl d
+is given, the active pane is not changed.
+The pane must not already be floating or hidden, and the window must not
+be zoomed.
 .Tg capturep
 .It Xo Ic capture\-pane
 .Op Fl aeFHLpPqCJMN
@@ -3188,6 +3226,21 @@ is omitted and a marked pane is present (see
 .Ic select\-pane
 .Fl m ) ,
 the marked pane is used rather than the current pane.
+.Pp
+If
+.Ar dst\-pane
+is not specified and
+.Ar src\-pane
+is floating, return the pane back to the tiled layout.
+Half the space from the nearest tiled pane in the layout tree is given to
+.Ar src\-pane .
+The floating position and sizes are saved so they can be restored if
+.Ar src\-pane
+is floated again.
+If
+.Fl d
+is given, the active pane is not changed.
+The pane must be floating, not hidden, and the window must not be zoomed.
 .Tg killp
 .It Xo Ic kill\-pane
 .Op Fl a
