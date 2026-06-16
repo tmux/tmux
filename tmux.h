@@ -63,6 +63,7 @@ struct mouse_event;
 struct options;
 struct options_array_item;
 struct options_entry;
+struct redraw_span;
 struct screen_write_citem;
 struct screen_write_cline;
 struct screen_write_ctx;
@@ -1124,9 +1125,6 @@ struct screen_redraw_ctx {
 	int		 pane_scrollbars;
 	int		 pane_scrollbars_pos;
 
-	struct grid_cell no_pane_gc;
-	int		 no_pane_gc_set;
-
 	u_int		 sx;
 	u_int		 sy;
 	int		 ox;
@@ -1336,7 +1334,6 @@ struct window_pane {
 	struct screen	 base;
 
 	struct screen	 status_screen;
-	size_t		 status_size;
 
 	TAILQ_HEAD(, window_mode_entry) modes;
 
@@ -3389,6 +3386,7 @@ void	 screen_write_alternateoff(struct screen_write_ctx *,
 void	 screen_redraw_screen(struct client *);
 void	 screen_redraw_pane(struct client *, struct window_pane *);
 void	 screen_redraw_pane_scrollbar(struct client *, struct window_pane *);
+int	 screen_redraw_get_span_cell_type(struct redraw_span *, u_int);
 
 /* screen.c */
 void	 screen_init(struct screen *, u_int, u_int, u_int);
@@ -3535,6 +3533,16 @@ int		 window_pane_get_pane_status(struct window_pane *);
 struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
 		     u_int);
 int		 window_pane_is_floating(struct window_pane *);
+
+/* window-border.c */
+void		 window_get_border_cell(struct window *, struct window_pane *,
+		     enum pane_lines, int, struct grid_cell *);
+void		 window_pane_get_border_cell(struct window_pane *, int,
+		     struct grid_cell *);
+void		 window_pane_get_border_style(struct window_pane *,
+		     struct client *, int, struct grid_cell *);
+void		 window_make_pane_status(struct window_pane *, struct client *,
+		     u_int, struct redraw_span *);
 
 /* window-visible.c */
 int		 window_position_is_visible(struct visible_ranges *, u_int);
