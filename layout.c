@@ -264,7 +264,7 @@ layout_fix_zindexes(struct window *w, struct layout_cell *lc)
 	}
 }
 
-static int
+int
 layout_cell_is_tiled(struct layout_cell *lc)
 {
 	int	is_leaf = lc->type == LAYOUT_WINDOWPANE;
@@ -355,55 +355,6 @@ layout_fix_offsets(struct window *w)
 	lc->yoff = 0;
 
 	layout_fix_offsets1(lc);
-}
-
-/*
- * Not all cells are drawn within the tiled grid of a layout. This predicate
- * isolates that logic. Nodes are not considered tiled.
- */
-int
-layout_cell_is_tiled(struct layout_cell *lc)
-{
-	int	is_leaf, is_floating, is_hidden;
-
-	is_leaf = lc->type == LAYOUT_WINDOWPANE;
-	is_floating = lc->flags & LAYOUT_CELL_FLOATING;
-	is_hidden = lc->flags & LAYOUT_CELL_HIDDEN;
-
-	return is_leaf && !(is_floating || is_hidden);
-}
-
-static int
-layout_cell_has_tiled_child(struct layout_cell *lc)
-{
-	struct layout_cell	*lcchild;
-
-	if (lc->type == LAYOUT_WINDOWPANE)
-		return (0);
-
-	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-		if (layout_cell_is_tiled(lcchild) ||
-		    layout_cell_has_tiled_child(lcchild))
-			return (1);
-	}
-	return (0);
-}
-
-static int
-layout_cell_is_first_tiled(struct layout_cell *lc)
-{
-	struct layout_cell	*lcchild, *lcparent = lc->parent;
-
-	if (lcparent == NULL)
-		return (layout_cell_is_tiled(lc));
-
-	TAILQ_FOREACH(lcchild, &lcparent->cells, entry) {
-		if (layout_cell_is_tiled(lcchild) ||
-		    layout_cell_has_tiled_child(lcchild))
-			break;
-	}
-
-	return (lcchild == lc);
 }
 
 /* Is this a top cell? */
