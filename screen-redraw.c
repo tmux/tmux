@@ -1470,8 +1470,6 @@ screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	scene = screen_redraw_get_scene(c);
 	if (scene == NULL)
 		return;
-	if (scene == NULL)
-		return;
 	screen_redraw_set_draw_context(&dctx, scene);
 
 	if (flags & (REDRAW_PANE_BORDER|REDRAW_PANE_STATUS)) {
