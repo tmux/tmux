@@ -3315,7 +3315,7 @@ or
 reverses the sort order.
 .Tg movep
 .It Xo Ic move\-pane
-.Op Fl bdfhv
+.Op Fl bdfhMv
 .Op Fl D Op Ar lines
 .Op Fl l Ar size
 .Op Fl L Op Ar columns
@@ -3387,6 +3387,10 @@ move it to an absolute position.
 moves the pane to the given
 .Ar z-index ,
 where zero is the front.
+.Pp
+.Fl M
+begins a mouse drag (only valid if bound to a mouse key binding, see
+.Sx MOUSE SUPPORT ) .
 .Tg movew
 .It Xo Ic move\-window
 .Op Fl abrdk
