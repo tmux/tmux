@@ -2097,11 +2097,11 @@ server_client_check_redraw(struct client *c)
 			if (wp->flags & PANE_REDRAW) {
 				log_debug("%s: redraw pane %%%u", __func__,
 				    wp->id);
-				screen_redraw_pane(c, wp, 0);
+				screen_redraw_pane(c, wp);
 			} else if (wp->flags & PANE_REDRAWSCROLLBAR) {
 				log_debug("%s: redraw scrollbar %%%u", __func__,
 				    wp->id);
-				screen_redraw_pane(c, wp, 1);
+				screen_redraw_pane_scrollbar(c, wp);
 			}
 		}
 	}

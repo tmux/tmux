@@ -354,7 +354,7 @@ screen_redraw_two_panes(struct window *w, enum layout_type *type)
 
 /* Clear the cells covered by a floating pane. */
 static void
-screen_redraw_clear_floating_pane(struct redraw_build_ctx *bctx,
+screen_redraw_reset_floating_pane_cells(struct redraw_build_ctx *bctx,
     struct window_pane *wp, int	sb_w, int sb_left)
 {
 	enum pane_lines	 pane_lines;
@@ -535,7 +535,6 @@ screen_redraw_mark_border_status(struct redraw_build_ctx *bctx,
 	}
 }
 
-
 /* Mark where indicator arrows will go, if enabled. */
 static void
 screen_redraw_mark_border_arrows(struct redraw_build_ctx *bctx,
@@ -683,7 +682,7 @@ screen_redraw_mark_pane(struct redraw_build_ctx *bctx, struct window_pane *wp)
 	if (sb_w != 0 && bctx->sbp == PANE_SCROLLBARS_LEFT)
 		sb_left = 1;
 
-	screen_redraw_clear_floating_pane(bctx, wp, sb_w, sb_left);
+	screen_redraw_reset_floating_pane_cells(bctx, wp, sb_w, sb_left);
 	screen_redraw_mark_pane_inside(bctx, wp);
 	screen_redraw_mark_pane_borders(bctx, wp, sb_w, sb_left);
 	screen_redraw_mark_pane_scrollbar(bctx, wp, sb_w, sb_left);
