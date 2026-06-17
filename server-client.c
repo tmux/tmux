@@ -2083,11 +2083,11 @@ server_client_check_redraw(struct client *c)
 				if (wp->flags & (PANE_REDRAW)) {
 					log_debug("%s: pane %%%u needs redraw",
 					    c->name, wp->id);
-					c->redraw_panes |= (1 << bit);
+					c->redraw_panes |= (1ULL << bit);
 				} else if (wp->flags & PANE_REDRAWSCROLLBAR) {
 					log_debug("%s: pane %%%u scrollbar "
 					    "needs redraw", c->name, wp->id);
-					c->redraw_scrollbars |= (1 << bit);
+					c->redraw_scrollbars |= (1ULL << bit);
 				}
 				if (++bit == 64) {
 					/*
@@ -2124,12 +2124,13 @@ server_client_check_redraw(struct client *c)
 			if (wp->flags & PANE_REDRAW)
 				redraw_pane = 1;
 			else if (c->flags & CLIENT_REDRAWPANES) {
-				if (c->redraw_panes & (1 << bit))
+				if (c->redraw_panes & (1ULL << bit))
 					redraw_pane = 1;
-			} else if (c->flags & CLIENT_REDRAWSCROLLBARS) {
-				if (c->redraw_scrollbars & (1 << bit))
-					redraw_scrollbar_only = 1;
 			}
+			if (!redraw_pane &&
+			    (c->flags & CLIENT_REDRAWSCROLLBARS) &&
+			    (c->redraw_scrollbars & (1ULL << bit)))
+				redraw_scrollbar_only = 1;
 			bit++;
 			if (!redraw_pane && !redraw_scrollbar_only)
 				continue;
