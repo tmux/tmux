@@ -31,9 +31,9 @@ static enum cmd_retval	cmd_resize_pane_exec(struct cmd *, struct cmdq_item *);
 
 static enum cmd_retval	cmd_resize_pane_mouse_update(struct cmd *,
 			    struct cmdq_item *);
-static void		cmd_resize_pane_mouse_update_floating(struct client *,
-			    struct mouse_event *);
-static void		cmd_resize_pane_mouse_update_tiled(struct client *,
+static void		cmd_resize_pane_mouse_resize_move_floating(
+			    struct client *, struct mouse_event *);
+static void		cmd_resize_pane_mouse_resize_tiled(struct client *,
 			    struct mouse_event *);
 
 const struct cmd_entry cmd_resize_pane_entry = {
@@ -205,21 +205,29 @@ cmd_resize_pane_mouse_update(__unused struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 
 	if (!window_pane_is_floating(wp)) {
-		c->tty.mouse_drag_update = cmd_resize_pane_mouse_update_tiled;
-		cmd_resize_pane_mouse_update_tiled(c, &event->m);
+		c->tty.mouse_drag_update = cmd_resize_pane_mouse_resize_tiled;
+		cmd_resize_pane_mouse_resize_tiled(c, &event->m);
 		return (CMD_RETURN_NORMAL);
 	}
 
 	window_redraw_active_switch(w, wp);
 	window_set_active_pane(w, wp, 1);
 
-	c->tty.mouse_drag_update = cmd_resize_pane_mouse_update_floating;
-	cmd_resize_pane_mouse_update_floating(c, &event->m);
+	c->tty.mouse_drag_update = cmd_resize_pane_mouse_resize_move_floating;
+	cmd_resize_pane_mouse_resize_move_floating(c, &event->m);
 	return (CMD_RETURN_NORMAL);
 }
 
+/*
+ * Resizes or moves the pane by dragging. Resize a floating pane by dragging
+ * the borders or corners. Grabbing an edge only resizes that axis (special
+ * case). Moves the pane if dragging the top border. Since characters are
+ * generally rectangular, to make it easier to grab the corner, the character
+ * next to the corner is also considered the corner.
+ */
 static void
-cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
+cmd_resize_pane_mouse_resize_move_floating(struct client *c,
+    struct mouse_event *m)
 {
 	struct winlink		*wl;
 	struct window		*w;
@@ -345,7 +353,7 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 }
 
 static void
-cmd_resize_pane_mouse_update_tiled(struct client *c, struct mouse_event *m)
+cmd_resize_pane_mouse_resize_tiled(struct client *c, struct mouse_event *m)
 {
 	struct winlink		*wl;
 	struct window		*w;
