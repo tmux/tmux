@@ -592,18 +592,17 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 static struct layout_cell *
 layout_cell_get_neighbour_direction(struct layout_cell *lc, int direction)
 {
-	struct layout_cell	*lcneighbour = lc;
+	struct layout_cell	*lcn = lc;
 
 	while (1) {
 		if (direction)
-			lcneighbour = TAILQ_NEXT(lcneighbour, entry);
+			lcn = TAILQ_NEXT(lcn, entry);
 		else
-			lcneighbour = TAILQ_PREV(lcneighbour, layout_cells,
-			    entry);
+			lcn = TAILQ_PREV(lcn, layout_cells, entry);
 
-		if (lcneighbour == NULL || layout_cell_is_tiled(lcneighbour) ||
-		    layout_cell_has_tiled_child(lcneighbour))
-			return (lcneighbour);
+		if (lcn == NULL || layout_cell_is_tiled(lcn) ||
+		    layout_cell_has_tiled_child(lcn))
+			return (lcn);
 	}
 }
 
@@ -628,7 +627,7 @@ layout_cell_get_neighbour(struct layout_cell *lc)
 	if (lcother == NULL)
 		lcother = layout_cell_get_neighbour_direction(lc, !direction);
 
-	return lcother;
+	return (lcother);
 }
 
 
@@ -1611,8 +1610,8 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 }
 
 /*
- * Removes a cell from the tiled layout by giving the cells space to the nearest
- * neighbour.
+ * Removes a cell from the tiled layout by giving the cell's space to the
+ * nearest neighbour.
  */
 int
 layout_remove_tile(struct window *w, struct layout_cell *lc)
