@@ -2022,31 +2022,23 @@ server_client_check_redraw(struct client *c)
 	struct tty		*tty = &c->tty;
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp;
-	int			 needed, tty_flags, mode = tty->mode;
+	int			 needed, tflags, mode = tty->mode;
 	uint64_t		 client_flags = 0;
-	int			 redraw_pane, redraw_scrollbar_only;
-	u_int			 bit = 0;
 	struct timeval		 tv = { .tv_usec = 1000 };
 	static struct event	 ev;
-	size_t			 left;
+	size_t			 n;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
 	if (c->flags & CLIENT_ALLREDRAWFLAGS) {
-		log_debug("%s: redraw%s%s%s%s%s%s", c->name,
+		log_debug("%s: redraw%s%s%s%s", c->name,
 		    (c->flags & CLIENT_REDRAWWINDOW) ? " window" : "",
 		    (c->flags & CLIENT_REDRAWSTATUS) ? " status" : "",
 		    (c->flags & CLIENT_REDRAWBORDERS) ? " borders" : "",
-		    (c->flags & CLIENT_REDRAWOVERLAY) ? " overlay" : "",
-		    (c->flags & CLIENT_REDRAWPANES) ? " panes" : "",
-		    (c->flags & CLIENT_REDRAWSCROLLBARS) ? " scrollbars" : "");
+		    (c->flags & CLIENT_REDRAWOVERLAY) ? " overlay" : "");
 	}
 
-	/*
-	 * If there is outstanding data, defer the redraw until it has been
-	 * consumed. We can just add a timer to get out of the event loop and
-	 * end up back here.
-	 */
+	/* Work out if a redraw is actually needed. */
 	needed = 0;
 	if (c->flags & CLIENT_ALLREDRAWFLAGS)
 		needed = 1;
@@ -2054,22 +2046,31 @@ server_client_check_redraw(struct client *c)
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->flags & PANE_REDRAW) {
 				needed = 1;
-				client_flags |= CLIENT_REDRAWPANES;
+				client_flags |= CLIENT_REDRAWWINDOW;
 				break;
 			}
 			if (wp->flags & PANE_REDRAWSCROLLBAR) {
 				needed = 1;
-				client_flags |= CLIENT_REDRAWSCROLLBARS;
+				client_flags |= CLIENT_REDRAWWINDOW;
 				/* no break - later panes may need redraw */
 			}
 		}
 	}
-	left = EVBUFFER_LENGTH(tty->out);
-	if (needed && (left != 0 || (tty->flags & TTY_BLOCK))) {
-		if (left != 0) {
-			log_debug("%s: redraw deferred (%zu left)", c->name,
-			    left);
-		} else
+	if (!needed) {
+		c->flags &= ~CLIENT_STATUSFORCE;
+		return;
+	}
+
+	/*
+	 * If there is outstanding data, defer the redraw until it has been
+	 * consumed. We can just add a timer to get out of the event loop and
+	 * end up back here.
+	 */
+	n = EVBUFFER_LENGTH(tty->out);
+	if (n != 0 || (tty->flags & TTY_BLOCK)) {
+		if (n != 0)
+			log_debug("%s: redraw deferred (%zu left)", c->name, n);
+		else
 			log_debug("%s: redraw deferred (blocked)", c->name);
 		if (!evtimer_initialized(&ev))
 			evtimer_set(&ev, server_client_redraw_timer, NULL);
@@ -2077,76 +2078,37 @@ server_client_check_redraw(struct client *c)
 			log_debug("redraw timer started");
 			evtimer_add(&ev, &tv);
 		}
-
-		if (~c->flags & CLIENT_REDRAWWINDOW) {
-			TAILQ_FOREACH(wp, &w->panes, entry) {
-				if (wp->flags & (PANE_REDRAW)) {
-					log_debug("%s: pane %%%u needs redraw",
-					    c->name, wp->id);
-					c->redraw_panes |= (1 << bit);
-				} else if (wp->flags & PANE_REDRAWSCROLLBAR) {
-					log_debug("%s: pane %%%u scrollbar "
-					    "needs redraw", c->name, wp->id);
-					c->redraw_scrollbars |= (1 << bit);
-				}
-				if (++bit == 64) {
-					/*
-					 * If more that 64 panes, give up and
-					 * just redraw the window.
-					 */
-					client_flags &= ~(CLIENT_REDRAWPANES|
-					    CLIENT_REDRAWSCROLLBARS);
-					client_flags |= CLIENT_REDRAWWINDOW;
-					break;
-				}
-			}
-			if (c->redraw_panes != 0)
-				c->flags |= CLIENT_REDRAWPANES;
-			if (c->redraw_scrollbars != 0)
-				c->flags |= CLIENT_REDRAWSCROLLBARS;
-		}
 		c->flags |= client_flags;
 		return;
-	} else if (needed)
-		log_debug("%s: redraw needed", c->name);
-
-	tty_flags = tty->flags & (TTY_BLOCK|TTY_FREEZE|TTY_NOCURSOR);
-	tty->flags = (tty->flags & ~(TTY_BLOCK|TTY_FREEZE))|TTY_NOCURSOR;
-
-	if (~c->flags & CLIENT_REDRAWWINDOW) {
-		/*
-		 * If not redrawing the entire window, check whether each pane
-		 * needs to be redrawn.
-		 */
-		TAILQ_FOREACH(wp, &w->panes, entry) {
-			redraw_pane = 0;
-			redraw_scrollbar_only = 0;
-			if (wp->flags & PANE_REDRAW)
-				redraw_pane = 1;
-			else if (c->flags & CLIENT_REDRAWPANES) {
-				if (c->redraw_panes & (1 << bit))
-					redraw_pane = 1;
-			} else if (c->flags & CLIENT_REDRAWSCROLLBARS) {
-				if (c->redraw_scrollbars & (1 << bit))
-					redraw_scrollbar_only = 1;
-			}
-			bit++;
-			if (!redraw_pane && !redraw_scrollbar_only)
-				continue;
-			if (redraw_scrollbar_only) {
-				log_debug("%s: redrawing (scrollbar only) pane "
-				    "%%%u", __func__, wp->id);
-			} else {
-				log_debug("%s: redrawing pane %%%u", __func__,
-				    wp->id);
-			}
-			screen_redraw_pane(c, wp, redraw_scrollbar_only);
-		}
-		c->redraw_panes = 0;
-		c->redraw_scrollbars = 0;
-		c->flags &= ~(CLIENT_REDRAWPANES|CLIENT_REDRAWSCROLLBARS);
 	}
 
+	/* Unfreeze the tty and turn off the cursor. */
+	log_debug("%s: redraw needed", c->name);
+	tflags = tty->flags & (TTY_BLOCK|TTY_FREEZE|TTY_NOCURSOR);
+	tty->flags = (tty->flags & ~(TTY_BLOCK|TTY_FREEZE))|TTY_NOCURSOR;
+
+	/*
+	 * If not redrawing the entire window, check whether each pane needs to
+	 * be redrawn.
+	 */
+	if (~c->flags & CLIENT_REDRAWWINDOW) {
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (wp->flags & PANE_REDRAW) {
+				log_debug("%s: redraw pane %%%u", __func__,
+				    wp->id);
+				screen_redraw_pane(c, wp, 0);
+			} else if (wp->flags & PANE_REDRAWSCROLLBAR) {
+				log_debug("%s: redraw scrollbar %%%u", __func__,
+				    wp->id);
+				screen_redraw_pane(c, wp, 1);
+			}
+		}
+	}
+
+	/*
+	 * Set titles etc and do the redraw if there are redraw flags (and we
+	 * aren't here just to redraw panes).
+	 */
 	if (c->flags & CLIENT_ALLREDRAWFLAGS) {
 		if (options_get_number(s->options, "set-titles")) {
 			server_client_set_title(c);
@@ -2156,22 +2118,18 @@ server_client_check_redraw(struct client *c)
 		screen_redraw_screen(c);
 	}
 
-	tty->flags = (tty->flags & ~TTY_NOCURSOR)|(tty_flags & TTY_NOCURSOR);
+	/* Put the tty back how it was. */
+	tty->flags = (tty->flags & ~TTY_NOCURSOR)|(tflags & TTY_NOCURSOR);
 	tty_update_mode(tty, mode, NULL);
-	tty->flags = (tty->flags & ~(TTY_BLOCK|TTY_FREEZE|TTY_NOCURSOR))|
-	    tty_flags;
+	tty->flags = (tty->flags & ~(TTY_BLOCK|TTY_FREEZE|TTY_NOCURSOR))|tflags;
 
+	/*
+	 * All the redraw flags can now be cleared. Also record how many bytes
+	 * were written.
+	 */
 	c->flags &= ~(CLIENT_ALLREDRAWFLAGS|CLIENT_STATUSFORCE);
-
-	if (needed) {
-		/*
-		 * We would have deferred the redraw unless the output buffer
-		 * was empty, so we can record how many bytes the redraw
-		 * generated.
-		 */
-		c->redraw = EVBUFFER_LENGTH(tty->out);
-		log_debug("%s: redraw added %zu bytes", c->name, c->redraw);
-	}
+	c->redraw = EVBUFFER_LENGTH(tty->out);
+	log_debug("%s: redraw added %zu bytes", c->name, c->redraw);
 }
 
 /* Set client title. */
