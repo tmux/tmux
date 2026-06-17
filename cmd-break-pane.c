@@ -36,8 +36,8 @@ const struct cmd_entry cmd_break_pane_entry = {
 
 	.args = { "abdPF:n:s:t:Wx:X:y:Y:", 0, 0, NULL },
 	.usage = "[-abdPW] [-F format] [-n window-name] [-s src-pane] "
-		 "[-t dst-window] [x width] [y height] [X x-position] "
-		 "[Y y-position]",
+		 "[-t dst-window] [-x width] [-y height] [-X x-position] "
+		 "[-Y y-position]",
 
 	.source = { 's', CMD_FIND_PANE, 0 },
 	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_WINDOW_INDEX },
