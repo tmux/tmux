@@ -559,7 +559,7 @@ format_cb_session_attached_list(struct format_tree *ft)
 	}
 
 	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
-		xasprintf(&value, "%.*s", size, EVBUFFER_DATA(buffer));
+		value = xmemdup(EVBUFFER_DATA(buffer), size);
 	evbuffer_free(buffer);
 	return (value);
 }
@@ -698,7 +698,7 @@ format_cb_window_linked_sessions_list(struct format_tree *ft)
 	}
 
 	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
-		xasprintf(&value, "%.*s", size, EVBUFFER_DATA(buffer));
+		value = xmemdup(EVBUFFER_DATA(buffer), size);
 	evbuffer_free(buffer);
 	return (value);
 }
@@ -752,7 +752,7 @@ format_cb_window_active_sessions_list(struct format_tree *ft)
 	}
 
 	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
-		xasprintf(&value, "%.*s", size, EVBUFFER_DATA(buffer));
+		value = xmemdup(EVBUFFER_DATA(buffer), size);
 	evbuffer_free(buffer);
 	return (value);
 }
@@ -816,7 +816,7 @@ format_cb_window_active_clients_list(struct format_tree *ft)
 	}
 
 	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
-		xasprintf(&value, "%.*s", size, EVBUFFER_DATA(buffer));
+		value = xmemdup(EVBUFFER_DATA(buffer), size);
 	evbuffer_free(buffer);
 	return (value);
 }
@@ -991,7 +991,7 @@ format_cb_pane_tabs(struct format_tree *ft)
 		evbuffer_add_printf(buffer, "%u", i);
 	}
 	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
-		xasprintf(&value, "%.*s", size, EVBUFFER_DATA(buffer));
+		value = xmemdup(EVBUFFER_DATA(buffer), size);
 	evbuffer_free(buffer);
 	return (value);
 }
@@ -1075,7 +1075,7 @@ format_cb_session_group_list(struct format_tree *ft)
 	}
 
 	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
-		xasprintf(&value, "%.*s", size, EVBUFFER_DATA(buffer));
+		value = xmemdup(EVBUFFER_DATA(buffer), size);
 	evbuffer_free(buffer);
 	return (value);
 }
@@ -1115,7 +1115,7 @@ format_cb_session_group_attached_list(struct format_tree *ft)
 	}
 
 	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
-		xasprintf(&value, "%.*s", size, EVBUFFER_DATA(buffer));
+		value = xmemdup(EVBUFFER_DATA(buffer), size);
 	evbuffer_free(buffer);
 	return (value);
 }
@@ -4653,7 +4653,8 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 	struct format_tree		 *nft;
 	struct format_expand_state	  next;
 	char				 *all, *active, *use, *expanded, *value;
-	size_t				  valuelen;
+	struct evbuffer			 *buffer;
+	size_t				  size;
 	struct session			 *s, **l;
 	int				  i, n, last = 0;
 
@@ -4662,8 +4663,9 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 		active = NULL;
 	}
 
-	value = xcalloc(1, 1);
-	valuelen = 1;
+	buffer = evbuffer_new();
+	if (buffer == NULL)
+		fatalx("out of memory");
 
 	l = sort_get_sessions(&n, sc);
 	for (i = 0; i < n; i++) {
@@ -4684,16 +4686,18 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 		expanded = format_expand1(&next, use);
 		format_free(next.ft);
 
-		valuelen += strlen(expanded);
-		value = xrealloc(value, valuelen);
-
-		strlcat(value, expanded, valuelen);
+		evbuffer_add(buffer, expanded, strlen(expanded));
 		free(expanded);
 	}
 
 	free(active);
 	free(all);
 
+	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
+		value = xmemdup(EVBUFFER_DATA(buffer), size);
+	else
+		value = xstrdup("");
+	evbuffer_free(buffer);
 	return (value);
 }
 
@@ -4763,7 +4767,8 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 	struct format_tree		 *nft;
 	struct format_expand_state	  next;
 	char				 *all, *active, *use, *expanded, *value;
-	size_t				  valuelen;
+	struct evbuffer			 *buffer;
+	size_t				  size;
 	struct winlink			 *wl, **l;
 	struct window			 *w;
 	int				  i, n, last = 0;
@@ -4778,8 +4783,9 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 		active = NULL;
 	}
 
-	value = xcalloc(1, 1);
-	valuelen = 1;
+	buffer = evbuffer_new();
+	if (buffer == NULL)
+		fatalx("out of memory");
 
 	l = sort_get_winlinks_session(ft->s, &n, sc);
 	for (i = 0; i < n; i++) {
@@ -4811,16 +4817,18 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 		expanded = format_expand1(&next, use);
 		format_free(nft);
 
-		valuelen += strlen(expanded);
-		value = xrealloc(value, valuelen);
-
-		strlcat(value, expanded, valuelen);
+		evbuffer_add(buffer, expanded, strlen(expanded));
 		free(expanded);
 	}
 
 	free(active);
 	free(all);
 
+	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
+		value = xmemdup(EVBUFFER_DATA(buffer), size);
+	else
+		value = xstrdup("");
+	evbuffer_free(buffer);
 	return (value);
 }
 
@@ -4835,7 +4843,8 @@ format_loop_panes(struct format_expand_state *es, const char *fmt)
 	struct format_tree		*nft;
 	struct format_expand_state	 next;
 	char				*all, *active, *use, *expanded, *value;
-	size_t				 valuelen;
+	struct evbuffer			*buffer;
+	size_t				 size;
 	struct window_pane		*wp, **l;
 	int				  i, n, last = 0;
 
@@ -4849,8 +4858,9 @@ format_loop_panes(struct format_expand_state *es, const char *fmt)
 		active = NULL;
 	}
 
-	value = xcalloc(1, 1);
-	valuelen = 1;
+	buffer = evbuffer_new();
+	if (buffer == NULL)
+		fatalx("out of memory");
 
 	l = sort_get_panes_window(ft->w, &n, sc);
 	for (i = 0; i < n; i++) {
@@ -4870,16 +4880,18 @@ format_loop_panes(struct format_expand_state *es, const char *fmt)
 		expanded = format_expand1(&next, use);
 		format_free(nft);
 
-		valuelen += strlen(expanded);
-		value = xrealloc(value, valuelen);
-
-		strlcat(value, expanded, valuelen);
+		evbuffer_add(buffer, expanded, strlen(expanded));
 		free(expanded);
 	}
 
 	free(active);
 	free(all);
 
+	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
+		value = xmemdup(EVBUFFER_DATA(buffer), size);
+	else
+		value = xstrdup("");
+	evbuffer_free(buffer);
 	return (value);
 }
 
@@ -4894,11 +4906,13 @@ format_loop_clients(struct format_expand_state *es, const char *fmt)
 	struct format_tree		 *nft;
 	struct format_expand_state	  next;
 	char				 *expanded, *value;
-	size_t				  valuelen;
+	struct evbuffer			 *buffer;
+	size_t				  size;
 	int				  i, n, last = 0;
 
-	value = xcalloc(1, 1);
-	valuelen = 1;
+	buffer = evbuffer_new();
+	if (buffer == NULL)
+		fatalx("out of memory");
 
 	l = sort_get_clients(&n, sc);
 	for (i = 0; i < n; i++) {
@@ -4913,13 +4927,15 @@ format_loop_clients(struct format_expand_state *es, const char *fmt)
 		expanded = format_expand1(&next, fmt);
 		format_free(nft);
 
-		valuelen += strlen(expanded);
-		value = xrealloc(value, valuelen);
-
-		strlcat(value, expanded, valuelen);
+		evbuffer_add(buffer, expanded, strlen(expanded));
 		free(expanded);
 	}
 
+	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
+		value = xmemdup(EVBUFFER_DATA(buffer), size);
+	else
+		value = xstrdup("");
+	evbuffer_free(buffer);
 	return (value);
 }
 
