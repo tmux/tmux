@@ -24,6 +24,41 @@
 
 #include "tmux.h"
 
+/*
+ * Draw the visible area of a window to a client.
+ *
+ * A scene is built for the client and cached (in struct client). It is
+ * invalidated when the offset or size of the visible part of the window
+ * changes, or at various other points such as when a pane is moved or resized,
+ * through a generation number. The scene only includes the part of the client
+ * used for the window: panes, pane status lines, scrollbars, and any area
+ * outside the window. The status line and overlay are not included.
+ *
+ * A scene is made from spans. A span is a horizontal run of cells on one
+ * visible line that can be drawn in the same way. Each span has a type, for
+ * example: pane content or pane border cells or pane status line. A span type
+ * includes enough additional data to draw it, but does not include the style -
+ * that is determined when it is drawn.
+ *
+ * Scenes are built in two stages:
+ *
+ * 1) redraw_build_cells fills a temporary grid of struct redraw_build_cell
+ *    objects, one per visible cell. It marks pane contents, scrollbars,
+ *    borders, pane status lines and any cells outside the window. Border cells
+ *    may belong to multiple panes, so they may be marked multiple times, with
+ *    each pane adding its own state.
+ *
+ * 2) redraw_make_scene takes the grid of struct redraw_build_cell objects and
+ *    converts them into spans by joining adjacent cells that have the same
+ *    type and data. These spans together make up the scene (struct
+ *    redraw_scene).
+ *
+ * Once generated, a scene is redrawn by looping over some or all of the spans
+ * (in redraw_draw), working out the style and content, and writing to the
+ * client terminal. Until it is invalidated, the scene may be redrawn multiple
+ * times without being rebuilt.
+ */
+
 /* Type of span in the scene. */
 enum redraw_span_type {
 	REDRAW_SPAN_PANE,	/* inside a pane */
