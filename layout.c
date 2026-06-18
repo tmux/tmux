@@ -30,8 +30,9 @@
  * a cell which contains a list of cells, and 'leaf' to refer to a cell that
  * contains a window pane. A leaf is considered to be 'tiled' if it is to be
  * drawn as a part of the tiled layout. A 'neighbour' is a sibling that is also
- * tiled. A cell's 'split' size refers to the side that is shortened when
- * splitting it, determined by the parent's type.
+ * tiled or a node that contains a tiled leaf in a subtree. A cell's 'split'
+ * size refers to the side that is shortened when splitting it, determined by
+ * the parent's type.
  *
  * Each window has a pointer to the root of its layout tree (containing its
  * panes), every pane has a pointer back to the cell containing it, and each
@@ -306,6 +307,27 @@ layout_cell_is_first_tiled(struct layout_cell *lc)
 	return (lcchild == lc);
 }
 
+static struct layout_cell *
+layout_cell_get_first_tiled(struct layout_cell *lc)
+{
+	struct layout_cell	*lcchild, *lcchild2;
+
+	if (layout_cell_is_tiled(lc))
+		return (lc);
+	if (lc->type == LAYOUT_WINDOWPANE)
+		return (NULL);
+
+	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+		if (layout_cell_is_tiled(lcchild))
+			return (lcchild);
+		if (lcchild->type != LAYOUT_WINDOWPANE) {
+			lcchild2 = layout_cell_get_first_tiled(lcchild);
+			if (lcchild2 != NULL)
+				return (lcchild2);
+		}
+	}
+	return (NULL);
+}
 
 /* Fix cell offsets for a child cell. */
 static void
@@ -1734,8 +1756,7 @@ layout_remove_tile(struct window *w, struct layout_cell *lc)
 int
 layout_insert_tile(struct window *w, struct layout_cell *lc)
 {
-	struct window_pane	*wp;
-	struct layout_cell	*lcneighbour, *lcparent = lc->parent;
+	struct layout_cell	*lcneighbour, *lctiled, *lcparent = lc->parent;
 	enum layout_type	 type;
 	u_int			 size1, size2, saved_size;
 
@@ -1766,18 +1787,11 @@ layout_insert_tile(struct window *w, struct layout_cell *lc)
 		layout_resize_set_size(w, lc, type, size1);
 	} else {
 		/*
-		 * In order to determine if there is enough space to retile the
-		 * pane, information is needed from window and window pane
-		 * options. First get a neightbour window pane...
+		 * If the neighbour is a node, a tiled child in the subtree of
+		 * the neighbour is needed to check for space.
 		 */
-		if (~lcneighbour->type & LAYOUT_WINDOWPANE)
-			wp = TAILQ_FIRST(&lcneighbour->cells)->wp;
-		else
-			wp = lcneighbour->wp;
-		/*
-		 * ...and then check if there is enough room to tile.
-		 */
-		if (!layout_split_check_space(wp, lcneighbour, type))
+		lctiled = layout_cell_get_first_tiled(lcneighbour);
+		if (!layout_split_check_space(lctiled->wp, lcneighbour, type))
 			return (0);
 
 		layout_split_sizes(lcneighbour, -1, 0, type, &size1, &size2,
@@ -1787,15 +1801,14 @@ layout_insert_tile(struct window *w, struct layout_cell *lc)
 	}
 
 	/* Setting opposite of the 'split' size to that of the parent. */
-	if (lcparent != NULL) {
-		if (lcparent->type == LAYOUT_LEFTRIGHT) {
-			size1 = lcparent->sy;
-			type = LAYOUT_TOPBOTTOM;
-		} else {
-			size1 = lcparent->sx;
-			type = LAYOUT_LEFTRIGHT;
-		}
-		layout_resize_set_size(w, lc, type, size1);
+	if (lcparent->type == LAYOUT_LEFTRIGHT) {
+		size1 = lcparent->sy;
+		type = LAYOUT_TOPBOTTOM;
+	} else {
+		size1 = lcparent->sx;
+		type = LAYOUT_LEFTRIGHT;
 	}
+	layout_resize_set_size(w, lc, type, size1);
+
 	return (1);
 }
