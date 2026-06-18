@@ -1212,7 +1212,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		}
 
 		/* Set up the default style. */
-		tty_default_colours(&defaults, wp);
+		tty_default_colours(&defaults, wp, &style_ctx.dim);
 		style_ctx.defaults = &defaults;
 		style_ctx.palette = palette;
 		style_ctx.hyperlinks = s->hyperlinks;

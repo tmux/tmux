@@ -327,6 +327,7 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 		defaults.bg = pd->palette.bg;
 	style_ctx.defaults = &defaults;
 	style_ctx.palette = &pd->palette;
+	style_ctx.dim = 0;
 	style_ctx.hyperlinks = s.hyperlinks;
 
 	if (pd->md != NULL) {

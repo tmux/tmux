@@ -85,7 +85,7 @@ static void	tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
 #define TTY_REQUEST_LIMIT 30
 
 static struct tty_style_ctx tty_default_style_ctx = {
-	&grid_default_cell, NULL, NULL
+	&grid_default_cell, NULL, 0, NULL
 };
 
 void
@@ -2591,16 +2591,39 @@ tty_hyperlink(struct tty *tty, const struct grid_cell *gc,
 		tty_putcode_ss(tty, TTYC_HLS, id, uri);
 }
 
+static int
+tty_dim_default_colour(struct tty *tty, int c, int foreground)
+{
+	enum client_theme	 theme;
+
+	if (!COLOUR_DEFAULT(c))
+		return (c);
+
+	if (foreground && tty->fg != -1)
+		return (tty->fg);
+	if (!foreground && tty->bg != -1)
+		return (tty->bg);
+
+	theme = tty->client->theme;
+	if (theme == THEME_DARK)
+		return (foreground ? 7 : 0);
+	if (theme == THEME_LIGHT)
+		return (foreground ? 0 : 7);
+	return (c);
+}
+
 void
 tty_attributes(struct tty *tty, const struct grid_cell *gc,
     const struct tty_style_ctx *style_ctx)
 {
 	struct grid_cell	*tc = &tty->cell, gc2;
+	struct colour_palette	*palette;
 	int			 changed;
 
 	/* Use default style if not given. */
 	if (style_ctx == NULL)
 		style_ctx = &tty_default_style_ctx;
+	palette = style_ctx->palette;
 
 	/* Copy cell and update default colours. */
 	memcpy(&gc2, gc, sizeof gc2);
@@ -2609,6 +2632,24 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 			gc2.fg = style_ctx->defaults->fg;
 		if (gc2.bg == 8)
 			gc2.bg = style_ctx->defaults->bg;
+		if (palette != NULL) {
+			changed = colour_palette_get(palette, gc2.fg);
+			if (changed != -1)
+				gc2.fg = changed;
+			changed = colour_palette_get(palette, gc2.bg);
+			if (changed != -1)
+				gc2.bg = changed;
+		}
+	}
+	if (style_ctx->dim != 0) {
+		gc2.fg = tty_dim_default_colour(tty, gc2.fg, 1);
+		gc2.bg = tty_dim_default_colour(tty, gc2.bg, 0);
+		changed = colour_dim(gc2.fg, style_ctx->dim);
+		if (changed != -1)
+			gc2.fg = changed;
+		changed = colour_dim(gc2.bg, style_ctx->dim);
+		if (changed != -1)
+			gc2.bg = changed;
 	}
 
 	/* Ignore cell if it is the same as the last one. */
@@ -2635,9 +2676,9 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	}
 
 	/* Fix up the colours if necessary. */
-	tty_check_fg(tty, style_ctx->palette, &gc2);
-	tty_check_bg(tty, style_ctx->palette, &gc2);
-	tty_check_us(tty, style_ctx->palette, &gc2);
+	tty_check_fg(tty, palette, &gc2);
+	tty_check_bg(tty, palette, &gc2);
+	tty_check_us(tty, palette, &gc2);
 
 	/*
 	 * If any bits are being cleared or the underline colour is now default,
@@ -3049,6 +3090,7 @@ tty_style_changed(struct window_pane *wp)
 {
 	struct options		*oo = wp->options;
 	struct format_tree	*ft;
+	struct style		*sy;
 
 	log_debug("%%%u: style changed", wp->id);
 	wp->flags &= ~PANE_STYLECHANGED;
@@ -3057,16 +3099,18 @@ tty_style_changed(struct window_pane *wp)
 	format_defaults(ft, NULL, NULL, NULL, wp);
 
 	tty_window_default_style(&wp->cached_active_gc, wp);
-	style_add(&wp->cached_active_gc, oo, "window-active-style", ft);
+	sy = style_add(&wp->cached_active_gc, oo, "window-active-style", ft);
+	wp->cached_active_dim = sy->dim;
 
 	tty_window_default_style(&wp->cached_gc, wp);
-	style_add(&wp->cached_gc, oo, "window-style", ft);
+	sy = style_add(&wp->cached_gc, oo, "window-style", ft);
+	wp->cached_dim = sy->dim;
 
 	format_free(ft);
 }
 
 void
-tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
+tty_default_colours(struct grid_cell *gc, struct window_pane *wp, u_int *dim)
 {
 	if (wp->flags & PANE_STYLECHANGED)
 		tty_style_changed (wp);
@@ -3080,6 +3124,13 @@ tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 		gc->bg = wp->cached_active_gc.bg;
 	else
 		gc->bg = wp->cached_gc.bg;
+
+	if (dim != NULL) {
+		if (wp == wp->window->active)
+			*dim = wp->cached_active_dim;
+		else
+			*dim = wp->cached_dim;
+	}
 }
 
 void
