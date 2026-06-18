@@ -385,44 +385,6 @@ redraw_check_two_pane_colours(struct window *w, enum layout_type *type)
 	return (count == 2);
 }
 
-
-/* Clear the cells covered by a floating pane. */
-static void
-redraw_reset_floating_pane_cells(struct redraw_build_ctx *bctx,
-    struct window_pane *wp, int sb_w, int sb_left)
-{
-	enum pane_lines	 pane_lines;
-	u_int		 x, y;
-	int		 left, right, top, bottom, wx, wy;
-
-	if (!window_pane_is_floating(wp))
-		return;
-
-	pane_lines = window_pane_get_pane_lines(wp);
-	if (pane_lines == PANE_LINES_NONE) {
-		left = wp->xoff;
-		right = wp->xoff + (int)wp->sx - 1;
-		top = wp->yoff;
-		bottom = wp->yoff + (int)wp->sy - 1;
-	} else {
-		left = wp->xoff - 1;
-		right = wp->xoff + (int)wp->sx;
-		top = wp->yoff - 1;
-		bottom = wp->yoff + (int)wp->sy;
-	}
-	if (sb_left)
-		left -= sb_w;
-	else
-		right += sb_w;
-
-	for (wy = top; wy <= bottom; wy++) {
-		for (wx = left; wx <= right; wx++) {
-			if (redraw_window_to_scene(bctx, wx, wy, &x, &y))
-				redraw_reset_cell(bctx, x, y);
-		}
-	}
-}
-
 /* Mark pane inside data. */
 static void
 redraw_mark_pane_inside(struct redraw_build_ctx *bctx, struct window_pane *wp)
@@ -491,7 +453,8 @@ redraw_mark_pane_scrollbar(struct redraw_build_ctx *bctx,
  */
 static void
 redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
-    struct window_pane *wp, int top_owner, int bottom_owner, int mask)
+    struct window_pane *wp, int top_owner, int bottom_owner, int mask,
+    int floating)
 {
 	struct redraw_build_cell	*bc;
 	enum pane_lines			 pane_lines;
@@ -502,7 +465,7 @@ redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
 	bc = redraw_get_build_cell(bctx, x, y);
 
 	if (bc->data.type != REDRAW_SPAN_BORDER) {
-		if (bc->data.type != REDRAW_SPAN_EMPTY)
+		if (bc->data.type != REDRAW_SPAN_EMPTY && !floating)
 			return;
 		memset(bc, 0, sizeof *bc);
 		bc->data.type = REDRAW_SPAN_BORDER;
@@ -625,8 +588,9 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 	enum pane_lines pane_lines = window_pane_get_pane_lines(wp);
 	int		pane_status, left, right, top, bottom, wx, wy;
 	int		draw_top, draw_bottom, draw_left, draw_right, mask = 0;
+	int		floating = window_pane_is_floating(wp);
 
-	if (window_pane_is_floating(wp) && pane_lines == PANE_LINES_NONE)
+	if (floating && pane_lines == PANE_LINES_NONE)
 		return;
 	pane_status = window_pane_get_pane_status(wp);
 
@@ -646,7 +610,7 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 	draw_top = (top >= 0);
 	draw_bottom = (bottom <= (int)bctx->w->sy);
 
-	if (!window_pane_is_floating(wp)) {
+	if (!floating) {
 		if (pane_status == PANE_STATUS_TOP)
 			draw_bottom = 0;
 		else if (pane_status == PANE_STATUS_BOTTOM)
@@ -660,7 +624,8 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 				mask |= REDRAW_BORDER_L;
 			if (wx < right)
 				mask |= REDRAW_BORDER_R;
-			redraw_mark_border_cell(bctx, wx, top, wp, 0, 1, mask);
+			redraw_mark_border_cell(bctx, wx, top, wp, 0, 1, mask,
+			    floating);
 		}
 	}
 	if (draw_bottom) {
@@ -671,7 +636,7 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 			if (wx < right)
 				mask |= REDRAW_BORDER_R;
 			redraw_mark_border_cell(bctx, wx, bottom, wp, 1, 0,
-			    mask);
+			    mask, floating);
 		}
 	}
 	if (draw_left) {
@@ -681,7 +646,8 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 				mask |= REDRAW_BORDER_U;
 			if (wy < bottom)
 				mask |= REDRAW_BORDER_D;
-			redraw_mark_border_cell(bctx, left, wy, wp, 0, 0, mask);
+			redraw_mark_border_cell(bctx, left, wy, wp, 0, 0, mask,
+			    floating);
 		}
 	}
 	if (draw_right) {
@@ -691,8 +657,8 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 				mask |= REDRAW_BORDER_U;
 			if (wy < bottom)
 				mask |= REDRAW_BORDER_D;
-			redraw_mark_border_cell(bctx, right, wy, wp, 0, 0,
-			    mask);
+			redraw_mark_border_cell(bctx, right, wy, wp, 0, 0, mask,
+			    floating);
 		}
 	}
 
@@ -717,7 +683,6 @@ redraw_mark_pane(struct redraw_build_ctx *bctx, struct window_pane *wp)
 	if (sb_w != 0 && bctx->sbp == PANE_SCROLLBARS_LEFT)
 		sb_left = 1;
 
-	redraw_reset_floating_pane_cells(bctx, wp, sb_w, sb_left);
 	redraw_mark_pane_inside(bctx, wp);
 	redraw_mark_pane_borders(bctx, wp, sb_w, sb_left);
 	redraw_mark_pane_scrollbar(bctx, wp, sb_w, sb_left);
