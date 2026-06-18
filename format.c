@@ -4258,22 +4258,24 @@ format_check_time(struct format_expand_state *es, u_int *check)
 
 /* Unescape escaped characters. */
 static char *
-format_unescape(struct format_expand_state *es, const char *s)
+format_unescape(struct format_expand_state *es, const char *s, size_t n)
 {
-	char	*out, *cp;
-	int	 brackets = 0;
-	u_int	 check = 0;
+	const char	*end = s + n;
+	char		*out, *cp;
+	int		 brackets = 0;
+	u_int		 check = 0;
 
-	cp = out = xmalloc(strlen(s) + 1);
-	for (; *s != '\0'; s++) {
+	cp = out = xmalloc(n + 1);
+	for (; s != end; s++) {
 		if (!format_check_time(es, &check)) {
 			free(out);
 			return (xstrdup(""));
 		}
-		if (*s == '#' && s[1] == '{')
+		if (*s == '#' && s + 1 != end && s[1] == '{')
 			brackets++;
 		if (brackets == 0 &&
 		    *s == '#' &&
+		    s + 1 != end &&
 		    strchr(",#{}:", s[1]) != NULL) {
 			*cp++ = *++s;
 			continue;
@@ -4494,7 +4496,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 				break;
 
 			argv = xcalloc(1, sizeof *argv);
-			value = xstrndup(cp + 1, end - (cp + 1));
+			value = format_unescape(es, cp + 1, end - (cp + 1));
 			argv[0] = format_expand1(es, value);
 			free(value);
 			argc = 1;
@@ -4518,7 +4520,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 			cp++;
 
 			argv = xreallocarray(argv, argc + 1, sizeof *argv);
-			value = xstrndup(cp, end - cp);
+			value = format_unescape(es, cp, end - cp);
 			argv[argc++] = format_expand1(es, value);
 			free(value);
 
@@ -5386,7 +5388,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	/* Is this a literal string? */
 	if (modifiers & FORMAT_LITERAL) {
 		format_log(es, "literal string is '%s'", copy);
-		value = format_unescape(es, copy);
+		value = format_unescape(es, copy, strlen(copy));
 		goto done;
 	}
 
