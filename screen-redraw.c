@@ -537,8 +537,8 @@ redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
  * drawing.
  */
 static void
-redraw_mark_border_status(struct redraw_build_ctx *bctx,
-    struct window_pane *wp, __unused int left, int right, int top, int bottom)
+redraw_mark_border_status(struct redraw_build_ctx *bctx, struct window_pane *wp,
+    __unused int left, int right, int top, int bottom)
 {
 	struct redraw_build_cell	*bc;
 	u_int				 x, y, off = 0;
@@ -574,8 +574,8 @@ redraw_mark_border_status(struct redraw_build_ctx *bctx,
 
 /* Mark existing border cells where indicator arrows will be drawn. */
 static void
-redraw_mark_border_arrows(struct redraw_build_ctx *bctx,
-    struct window_pane *wp, int left, int right, int top, int bottom)
+redraw_mark_border_arrows(struct redraw_build_ctx *bctx, struct window_pane *wp,
+    int left, int right, int top, int bottom)
 {
 	struct redraw_build_cell	*bc;
 	u_int				 x, y;
@@ -619,8 +619,8 @@ redraw_mark_border_arrows(struct redraw_build_ctx *bctx,
 
 /* Mark pane borders. */
 static void
-redraw_mark_pane_borders(struct redraw_build_ctx *bctx,
-    struct window_pane *wp, int sb_w, int sb_left)
+redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
+    int sb_w, int sb_left)
 {
 	enum pane_lines pane_lines = window_pane_get_pane_lines(wp);
 	int		pane_status, left, right, top, bottom, wx, wy;
