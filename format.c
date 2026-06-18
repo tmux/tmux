@@ -1006,7 +1006,7 @@ format_cb_pane_fg(struct format_tree *ft)
 	if (wp == NULL)
 		return (NULL);
 
-	tty_default_colours(&gc, wp);
+	tty_default_colours(&gc, wp, NULL);
 	return (xstrdup(colour_tostring(gc.fg)));
 }
 
@@ -1043,7 +1043,7 @@ format_cb_pane_bg(struct format_tree *ft)
 	if (wp == NULL)
 		return (NULL);
 
-	tty_default_colours(&gc, wp);
+	tty_default_colours(&gc, wp, NULL);
 	return (xstrdup(colour_tostring(gc.bg)));
 }
 
