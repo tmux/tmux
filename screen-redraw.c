@@ -38,8 +38,8 @@
  * A scene is made from spans. A span is a horizontal run of cells on one
  * visible line that can be drawn in the same way. Each span has a type, for
  * example: pane content or pane border cells or pane status line. A span also
- * includes enough additional data to draw it, but does not include the style -
- * that is determined when it is drawn.
+ * includes enough additional data to draw it, but does not include items such
+ * as the style and content - those are determined when it is drawn.
  *
  * Scenes are built in two stages:
  *
@@ -112,7 +112,7 @@ struct redraw_span_data {
 			/* Position of span inside the pane. */
 			u_int			 px;
 			u_int			 py;
-		} p;
+		} p; /* pane */
 
 		struct {
 			/* Adjacent panes on each side. */
@@ -140,14 +140,14 @@ struct redraw_span_data {
 
 			/* Flags for this span. */
 			int			 flags;
-		} b;
+		} b; /* pane border */
 
 		struct {
 			/* The pane and the offset into the status line. */
 			struct window_pane	*wp;
 			u_int			 offset;
 			int			 cell_type;
-		} st;
+		} st; /* pane status line */
 
 		struct {
 			/* Pane this span belongs to. */
@@ -161,7 +161,7 @@ struct redraw_span_data {
 
 			/* Flags for this span. */
 			int			 flags;
-		} sb;
+		} sb; /* pane scrollbar */
 	};
 };
 
@@ -260,6 +260,20 @@ redraw_flags_string(int flags)
 	return (s);
 }
 
+/* Expand size to cover any part of the client outside the window. */
+static void
+redraw_expand_size(struct client *c, u_int *sx, u_int *sy)
+{
+	u_int	tty_sx, tty_sy;
+
+	tty_sx = c->tty.sx;
+	tty_sy = c->tty.sy - status_line_size(c);
+	if (*sx < tty_sx)
+		*sx = tty_sx;
+	if (*sy < tty_sy)
+		*sy = tty_sy;
+}
+
 /* Initialize the context for building scene. */
 static void
 redraw_set_context(struct client *c, struct redraw_build_ctx *bctx)
@@ -272,6 +286,7 @@ redraw_set_context(struct client *c, struct redraw_build_ctx *bctx)
 	bctx->c = c;
 	bctx->w = w;
 	tty_window_offset(&c->tty, &bctx->ox, &bctx->oy, &bctx->sx, &bctx->sy);
+	redraw_expand_size(c, &bctx->sx, &bctx->sy);
 
 	bctx->sb = options_get_number(oo, "pane-scrollbars");
 	bctx->sbp = options_get_number(oo, "pane-scrollbars-position");
@@ -936,6 +951,7 @@ redraw_get_scene(struct client *c)
 	u_int			 ox, oy, sx, sy;
 
 	tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
+	redraw_expand_size(c, &sx, &sy);
 	if (scene == NULL)
 		reason = "missing";
 	else if (scene->w != w)
