@@ -148,15 +148,13 @@ struct redraw_line {
 struct redraw_scene {
 	struct client		*c;
 	struct window		*w;
+	struct redraw_line	*lines;
 
 	uint64_t		 generation;
-
 	u_int			 sx;
 	u_int			 sy;
 	u_int			 ox;
 	u_int			 oy;
-
-	struct redraw_line	*lines;
 };
 
 /* Cell for building the scene. */
@@ -782,41 +780,33 @@ redraw_data_cmp(struct redraw_build_cell *a, struct redraw_build_cell *b)
 	return (0);
 }
 
-/* Convert the cells into spans. */
+/* Build the temporary cells for a redraw scene. */
 static void
-redraw_finish_scene(struct redraw_build_ctx *bctx, struct redraw_scene *scene)
+redraw_build_cells(struct redraw_build_ctx *bctx)
 {
-	struct redraw_build_cell	*bc, *last;
-	struct redraw_line		*line;
-	struct redraw_span		*span;
-	enum redraw_span_type		 type;
-	u_int				 x, y, x0;
+	struct window		*w = bctx->w;
+	struct window_pane	*wp;
+	size_t			 ncells;
+	u_int			 x, y;
 
-	for (y = 0; y < bctx->sy; y++) {
-		line = &scene->lines[y];
-		x = 0;
-		while (x < bctx->sx) {
-			x0 = x;
-			last = redraw_get_build_cell(bctx, x, y);
-			x++;
-
-			while (x < bctx->sx) {
-				bc = redraw_get_build_cell(bctx, x, y);
-				if (!redraw_data_cmp(last, bc))
-					break;
-				last = bc;
-				x++;
-			}
-			bc = redraw_get_build_cell(bctx, x0, y);
-			type = bc->data.type;
-
-			span = xcalloc(1, sizeof *span);
-			span->x = x0;
-			span->width = x - x0;
-			span->data = bc->data;
-			TAILQ_INSERT_TAIL(&line->spans[type], span, entry);
-		}
+	if (bctx->sx != 0 && bctx->sy > SIZE_MAX / bctx->sx)
+		fatalx("%s: too many cells", __func__);
+	ncells = (size_t)bctx->sx * bctx->sy;
+	if (ncells > redraw_ncells) {
+		redraw_cells = xreallocarray(redraw_cells, ncells,
+		    sizeof *redraw_cells);
+		redraw_ncells = ncells;
 	}
+
+	bctx->cells = redraw_cells;
+	for (y = 0; y < bctx->sy; y++) {
+		for (x = 0; x < bctx->sx; x++)
+			redraw_reset_cell(bctx, x, y);
+	}
+
+	TAILQ_FOREACH_REVERSE(wp, &w->z_index, window_panes_zindex, zentry)
+		redraw_mark_pane(bctx, wp);
+	redraw_mark_two_pane_colours(bctx);
 }
 
 /*
@@ -826,55 +816,68 @@ redraw_finish_scene(struct redraw_build_ctx *bctx, struct redraw_scene *scene)
 static struct redraw_scene *
 redraw_make_scene(struct client *c)
 {
-	struct redraw_build_ctx	 bctx;
-	struct redraw_scene	*scene;
-	struct window_pane	*wp;
-	u_int			 x, y, type;
-	size_t			 ncells;
+	struct session			*s = c->session;
+	struct window			*w = s->curw->window;
+	struct redraw_build_ctx		 bctx;
+	struct redraw_scene		*scene;
+	struct redraw_build_cell	*bc, *last;
+	struct redraw_line		*line;
+	struct redraw_span		*span;
+	enum redraw_span_type		 type;
+	u_int				 x, y, x0;
 
 	if (c->flags & CLIENT_SUSPENDED)
 		return (NULL);
+
 	redraw_set_context(c, &bctx);
+
+	log_debug("%s: building @%u scene (%ux%u %u,%u; generation %llu)",
+	    c->name, w->id, bctx.sx, bctx.sy, bctx.ox, bctx.oy,
+	    (unsigned long long)w->redraw_scene_generation);
+
+	redraw_build_cells(&bctx);
 
 	scene = xcalloc(1, sizeof *scene);
 	scene->c = c;
-	scene->w = bctx.w;
-	scene->generation = bctx.w->redraw_scene_generation;
+	scene->w = w;
+	scene->lines = xcalloc(bctx.sy, sizeof *scene->lines);
+	scene->generation = w->redraw_scene_generation;
 	scene->sx = bctx.sx;
 	scene->sy = bctx.sy;
 	scene->ox = bctx.ox;
 	scene->oy = bctx.oy;
 
-	log_debug("%s: starting @%u scene build (%ux%u %u,%u, generation %llu)",
-	    c->name, scene->w->id, scene->sx, scene->sy, scene->ox, scene->oy,
-	    (unsigned long long)scene->generation);
-	scene->lines = xcalloc(scene->sy, sizeof *scene->lines);
-	for (y = 0; y < scene->sy; y++) {
-		for (type = 0; type < REDRAW_SPAN_TYPES; type++)
-			TAILQ_INIT(&scene->lines[y].spans[type]);
-	}
-
-	if (bctx.sx != 0 && bctx.sy > SIZE_MAX / bctx.sx)
-		fatalx("%s: too many cells", __func__);
-	ncells = (size_t)bctx.sx * bctx.sy;
-	if (ncells > redraw_ncells) {
-		redraw_cells = xreallocarray(redraw_cells, ncells,
-		    sizeof *redraw_cells);
-		redraw_ncells = ncells;
-	}
-	bctx.cells = redraw_cells;
 	for (y = 0; y < bctx.sy; y++) {
-		for (x = 0; x < bctx.sx; x++)
-			redraw_reset_cell(&bctx, x, y);
+		line = &scene->lines[y];
+		for (type = 0; type < REDRAW_SPAN_TYPES; type++)
+			TAILQ_INIT(&line->spans[type]);
+
+		x = 0;
+		while (x < bctx.sx) {
+			x0 = x;
+			last = redraw_get_build_cell(&bctx, x, y);
+			x++;
+
+			while (x < bctx.sx) {
+				bc = redraw_get_build_cell(&bctx, x, y);
+				if (!redraw_data_cmp(last, bc))
+					break;
+				last = bc;
+				x++;
+			}
+			bc = redraw_get_build_cell(&bctx, x0, y);
+			type = bc->data.type;
+
+			span = xcalloc(1, sizeof *span);
+			span->x = x0;
+			span->width = x - x0;
+			span->data = bc->data;
+
+			TAILQ_INSERT_TAIL(&line->spans[type], span, entry);
+		}
 	}
 
-	TAILQ_FOREACH_REVERSE(wp, &bctx.w->z_index, window_panes_zindex, zentry)
-		redraw_mark_pane(&bctx, wp);
-
-	redraw_mark_two_pane_colours(&bctx);
-	redraw_finish_scene(&bctx, scene);
-	log_debug("%s: finished @%u scene build", c->name, scene->w->id);
-
+	log_debug("%s: finished building @%u scene", c->name, w->id);
 	return (scene);
 }
 
