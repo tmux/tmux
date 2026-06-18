@@ -798,20 +798,23 @@ struct colour_palette {
 #define GRID_STRING_USED_ONLY 0x8
 #define GRID_STRING_EMPTY_CELLS 0x10
 
-/* Cell positions. */
+/*
+ * Cell border characters. Border cells are named for the directions they
+ * connect to: U for up, D for down, L for left and R for right.
+ */
 #define CELL_INSIDE 0
-#define CELL_TOPBOTTOM 1
-#define CELL_LEFTRIGHT 2
-#define CELL_TOPLEFT 3
-#define CELL_TOPRIGHT 4
-#define CELL_BOTTOMLEFT 5
-#define CELL_BOTTOMRIGHT 6
-#define CELL_TOPJOIN 7
-#define CELL_BOTTOMJOIN 8
-#define CELL_LEFTJOIN 9
-#define CELL_RIGHTJOIN 10
-#define CELL_JOIN 11
-#define CELL_OUTSIDE 12
+#define CELL_UD 1
+#define CELL_LR 2
+#define CELL_RD 3
+#define CELL_LD 4
+#define CELL_RU 5
+#define CELL_LU 6
+#define CELL_LRD 7
+#define CELL_LRU 8
+#define CELL_URD 9
+#define CELL_ULD 10
+#define CELL_LRUD 11
+#define CELL_NONE 12
 #define CELL_SCROLLBAR 13
 
 /* Cell borders. */
@@ -3370,7 +3373,7 @@ void	 screen_redraw_pane_scrollbar(struct client *, struct window_pane *);
 void	 screen_redraw_free_scene(struct redraw_scene *);
 void	 screen_redraw_invalidate_scene(struct window *);
 void	 screen_redraw_invalidate_all_scenes(void);
-int	 screen_redraw_get_span_cell_type(struct redraw_span **, u_int);
+int	 screen_redraw_get_status_border_cell_type(struct redraw_span **, u_int);
 
 /* screen.c */
 void	 screen_init(struct screen *, u_int, u_int, u_int);

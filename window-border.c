@@ -29,16 +29,16 @@ window_get_border_cell(struct window *w, struct window_pane *wp,
 {
 	u_int	idx;
 
-	if (cell_type == CELL_OUTSIDE && w->fill_character != NULL) {
+	if (cell_type == CELL_NONE && w->fill_character != NULL) {
 		utf8_copy(&gc->data, &w->fill_character[0]);
 		return;
 	}
 
 	switch (pane_lines) {
 	case PANE_LINES_NUMBER:
-		if (cell_type == CELL_OUTSIDE) {
+		if (cell_type == CELL_NONE) {
 			gc->attr |= GRID_ATTR_CHARSET;
-			utf8_set(&gc->data, CELL_BORDERS[CELL_OUTSIDE]);
+			utf8_set(&gc->data, CELL_BORDERS[CELL_NONE]);
 			break;
 		}
 		gc->attr &= ~GRID_ATTR_CHARSET;
@@ -145,7 +145,7 @@ window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
 	window_pane_get_border_style(wp, c, &gc);
 	pane_lines = window_pane_get_pane_lines(wp);
 	for (i = 0; i < width; i++) {
-		cell_type = screen_redraw_get_span_cell_type(&span, i);
+		cell_type = screen_redraw_get_status_border_cell_type(&span, i);
 		window_get_border_cell(wp->window, wp, pane_lines, cell_type, &gc);
 		screen_write_cell(&ctx, &gc);
 	}
