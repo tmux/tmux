@@ -124,6 +124,9 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 /* Limit on time taken (milliseconds). */
 #define FORMAT_TIME_LIMIT 100
 
+/* How often to check the time in long loops. */
+#define FORMAT_TIME_LOOP_CHECK 10000
+
 /* Format expand flags. */
 #define FORMAT_EXPAND_TIME 0x1
 #define FORMAT_EXPAND_NOJOBS 0x2
@@ -4193,10 +4196,14 @@ found:
 
 /* Check if format has not taken too long. */
 static int
-format_check_time(struct format_expand_state *es)
+format_check_time(struct format_expand_state *es, u_int *check)
 {
-	uint64_t t = get_timer();
+	uint64_t t;
 
+	if (check != NULL && ++*check % FORMAT_TIME_LOOP_CHECK != 0)
+		return (1);
+
+	t = get_timer();
 	if (t - es->start_time < FORMAT_TIME_LIMIT)
 		return (1);
 	t -= es->start_time;
@@ -4211,10 +4218,11 @@ format_unescape(struct format_expand_state *es, const char *s)
 {
 	char	*out, *cp;
 	int	 brackets = 0;
+	u_int	 check = 0;
 
 	cp = out = xmalloc(strlen(s) + 1);
 	for (; *s != '\0'; s++) {
-		if (!format_check_time(es)){
+		if (!format_check_time(es, &check)) {
 			free(out);
 			return (xstrdup(""));
 		}
@@ -4240,10 +4248,11 @@ format_strip(struct format_expand_state *es, const char *s)
 {
 	char	*out, *cp;
 	int	 brackets = 0;
+	u_int	 check = 0;
 
 	cp = out = xmalloc(strlen(s) + 1);
 	for (; *s != '\0'; s++) {
-		if (!format_check_time(es)){
+		if (!format_check_time(es, &check)) {
 			free(out);
 			return (xstrdup(""));
 		}
@@ -4267,9 +4276,10 @@ static const char *
 format_skip1(struct format_expand_state *es, const char *s, const char *end)
 {
 	int	brackets = 0;
+	u_int	check = 0;
 
 	for (; *s != '\0'; s++) {
-		if (es != NULL && !format_check_time(es))
+		if (es != NULL && !format_check_time(es, &check))
 			return (NULL);
 		if (*s == '#' && s[1] == '{')
 			brackets++;
@@ -5059,7 +5069,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	struct format_modifier		 *list, *cmp = NULL, *search = NULL;
 	struct format_modifier		**sub = NULL, *mexp = NULL, *fm;
 	struct format_modifier		 *bool_op_n = NULL;
-	u_int				  i, count, nsub = 0, nrep;
+	u_int				  i, count, nsub = 0, nrep, check = 0;
 	struct format_expand_state	  next;
 
 	/* Set sorting defaults. */
@@ -5346,7 +5356,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 		else {
 			value = xstrdup("");
 			for (i = 0; i < nrep; i++) {
-				if (!format_check_time(es)) {
+				if (!format_check_time(es, &check)) {
 					free(right);
 					free(left);
 					free(value);
@@ -5626,7 +5636,7 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 	int			 ch, brackets;
 	char			 expanded[8192];
 
-	if (fmt == NULL || *fmt == '\0' || !format_check_time(es))
+	if (fmt == NULL || *fmt == '\0' || !format_check_time(es, NULL))
 		return (xstrdup(""));
 
 	if (es->loop == FORMAT_LOOP_LIMIT) {
