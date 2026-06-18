@@ -246,7 +246,7 @@ redraw_set_context(struct client *c, struct redraw_build_ctx *bctx)
 
 /* Return a cell. */
 static struct redraw_build_cell *
-redraw_cell(struct redraw_build_ctx *bctx, u_int x, u_int y)
+redraw_get_build_cell(struct redraw_build_ctx *bctx, u_int x, u_int y)
 {
 	return (&bctx->cells[(y * bctx->sx) + x]);
 }
@@ -255,7 +255,7 @@ redraw_cell(struct redraw_build_ctx *bctx, u_int x, u_int y)
 static void
 redraw_reset_cell(struct redraw_build_ctx *bctx, u_int x, u_int y)
 {
-	struct redraw_build_cell	*bc = redraw_cell(bctx, x, y);
+	struct redraw_build_cell	*bc = redraw_get_build_cell(bctx, x, y);
 	struct window			*w = bctx->w;
 
 	memset(bc, 0, sizeof *bc);
@@ -400,7 +400,7 @@ redraw_mark_pane_inside(struct redraw_build_ctx *bctx, struct window_pane *wp)
 		for (px = 0; px < wp->sx; px++) {
 			if (!redraw_pane_to_scene(bctx, wp, px, py, &x, &y))
 				continue;
-			bc = redraw_cell(bctx, x, y);
+			bc = redraw_get_build_cell(bctx, x, y);
 			memset(bc, 0, sizeof *bc);
 			bc->data.type = REDRAW_SPAN_PANE;
 			bc->data.p.wp = wp;
@@ -437,7 +437,7 @@ redraw_mark_pane_scrollbar(struct redraw_build_ctx *bctx,
 			if (!redraw_window_to_scene(bctx, wx, wy, &x,
 			    &y))
 				continue;
-			bc = redraw_cell(bctx, x, y);
+			bc = redraw_get_build_cell(bctx, x, y);
 			memset(bc, 0, sizeof *bc);
 			bc->data.type = REDRAW_SPAN_SCROLLBAR;
 			bc->data.sb.wp = wp;
@@ -465,7 +465,7 @@ redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
 
 	if (!redraw_window_to_scene(bctx, wx, wy, &x, &y))
 		return;
-	bc = redraw_cell(bctx, x, y);
+	bc = redraw_get_build_cell(bctx, x, y);
 
 	if (bc->data.type != REDRAW_SPAN_BORDER) {
 		if (bc->data.type != REDRAW_SPAN_EMPTY)
@@ -523,7 +523,7 @@ redraw_mark_border_status(struct redraw_build_ctx *bctx,
 	for (wx = sx; wx <= ex; wx++, off++) {
 		if (!redraw_window_to_scene(bctx, wx, wy, &x, &y))
 			continue;
-		bc = redraw_cell(bctx, x, y);
+		bc = redraw_get_build_cell(bctx, x, y);
 		if (bc->data.type != REDRAW_SPAN_BORDER)
 			continue;
 		cell_type = bc->data.b.cell_type;
@@ -551,13 +551,13 @@ redraw_mark_border_arrows(struct redraw_build_ctx *bctx,
 	if (wx >= left && wx <= right) {
 		wy = top;
 		if (redraw_window_to_scene(bctx, wx, wy, &x, &y)) {
-			bc = redraw_cell(bctx, x, y);
+			bc = redraw_get_build_cell(bctx, x, y);
 			if (bc->data.type == REDRAW_SPAN_BORDER)
 				bc->data.b.flags |= REDRAW_BORDER_IS_ARROW;
 		}
 		wy = bottom;
 		if (redraw_window_to_scene(bctx, wx, wy, &x, &y)) {
-			bc = redraw_cell(bctx, x, y);
+			bc = redraw_get_build_cell(bctx, x, y);
 			if (bc->data.type == REDRAW_SPAN_BORDER)
 				bc->data.b.flags |= REDRAW_BORDER_IS_ARROW;
 		}
@@ -567,13 +567,13 @@ redraw_mark_border_arrows(struct redraw_build_ctx *bctx,
 	if (wy >= top && wy <= bottom) {
 		wx = left;
 		if (redraw_window_to_scene(bctx, wx, wy, &x, &y)) {
-			bc = redraw_cell(bctx, x, y);
+			bc = redraw_get_build_cell(bctx, x, y);
 			if (bc->data.type == REDRAW_SPAN_BORDER)
 				bc->data.b.flags |= REDRAW_BORDER_IS_ARROW;
 		}
 		wx = right;
 		if (redraw_window_to_scene(bctx, wx, wy, &x, &y)) {
-			bc = redraw_cell(bctx, x, y);
+			bc = redraw_get_build_cell(bctx, x, y);
 			if (bc->data.type == REDRAW_SPAN_BORDER)
 				bc->data.b.flags |= REDRAW_BORDER_IS_ARROW;
 		}
@@ -702,7 +702,7 @@ redraw_mark_two_pane_colours(struct redraw_build_ctx *bctx)
 
 	for (y = 0; y < bctx->sy; y++) {
 		for (x = 0; x < bctx->sx; x++) {
-			bc = redraw_cell(bctx, x, y);
+			bc = redraw_get_build_cell(bctx, x, y);
 			if (bc->data.type != REDRAW_SPAN_BORDER)
 				continue;
 			sd = &bc->data;
@@ -797,17 +797,17 @@ redraw_finish_scene(struct redraw_build_ctx *bctx, struct redraw_scene *scene)
 		x = 0;
 		while (x < bctx->sx) {
 			x0 = x;
-			last = redraw_cell(bctx, x, y);
+			last = redraw_get_build_cell(bctx, x, y);
 			x++;
 
 			while (x < bctx->sx) {
-				bc = redraw_cell(bctx, x, y);
+				bc = redraw_get_build_cell(bctx, x, y);
 				if (!redraw_data_cmp(last, bc))
 					break;
 				last = bc;
 				x++;
 			}
-			bc = redraw_cell(bctx, x0, y);
+			bc = redraw_get_build_cell(bctx, x0, y);
 			type = bc->data.type;
 
 			span = xcalloc(1, sizeof *span);
