@@ -27,13 +27,13 @@
 /*
  * Draw the visible area of a window to a client.
  *
- * A scene is built for the client and cached (in struct client). It is
- * invalidated when the offset or size of the visible part of the window
- * changes, or at various other points such as when a pane is moved or resized,
- * through a generation number. The scene only includes the part of the client
- * used for the window: panes, pane status lines, borders, scrollbars, and any
- * area outside the window. The client status line and overlay are not
- * included.
+ * A scene is built for the client and cached (in struct client). When the
+ * offset or size of the visible part of the window changes, the scene is
+ * invalidated. It is also invalidated when the generation number is increased;
+ * this is done at various points, such as when a pane is moved or resized. The
+ * scene only includes the part of the client used for the window: panes, pane
+ * status lines, borders, scrollbars, and any area outside the window. The
+ * client status line and overlay are not included.
  *
  * A scene is made from spans. A span is a horizontal run of cells on one
  * visible line that can be drawn in the same way. Each span has a type, for
