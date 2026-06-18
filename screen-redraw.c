@@ -31,8 +31,9 @@
  * invalidated when the offset or size of the visible part of the window
  * changes, or at various other points such as when a pane is moved or resized,
  * through a generation number. The scene only includes the part of the client
- * used for the window: panes, pane status lines, scrollbars, and any area
- * outside the window. The status line and overlay are not included.
+ * used for the window: panes, pane status lines, borders, scrollbars, and any
+ * area outside the window. The client status line and overlay are not
+ * included.
  *
  * A scene is made from spans. A span is a horizontal run of cells on one
  * visible line that can be drawn in the same way. Each span has a type, for
