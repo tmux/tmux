@@ -296,7 +296,7 @@ redraw_pane_to_scene(struct redraw_build_ctx *bctx, struct window_pane *wp,
 	return (redraw_window_to_scene(bctx, wx, wy, x, y));
 }
 
-/* Convert redraw border mask to a cell type. */
+/* Convert redraw border mask to a border cell type. */
 static int
 redraw_get_cell_type(int mask)
 {
@@ -331,9 +331,9 @@ redraw_get_cell_type(int mask)
 	return (CELL_NONE);
 }
 
-/* Return if this cell has exactly two panes with a shared border. */
+/* Return if there are two panes for the border colour indicator. */
 static int
-redraw_two_panes(struct window *w, enum layout_type *type)
+redraw_check_two_pane_colours(struct window *w, enum layout_type *type)
 {
 	struct window_pane	*wp;
 	u_int			 count = 0;
@@ -450,8 +450,8 @@ redraw_mark_pane_scrollbar(struct redraw_build_ctx *bctx,
 }
 
 /*
- * Mark one border cell. If a non-border cell is being marked as a border,
- * replace it. If it is already a border, merge it.
+ * Mark one border cell. If a non-border cell is marked as a border, replace
+ * it. If it is already a border, merge the border mask and pane ownership.
  */
 static void
 redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
@@ -496,7 +496,10 @@ redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
 	bc->data.b.cell_type = redraw_get_cell_type(mask);
 }
 
-/* Mark area available for pane status line. */
+/*
+ * Mark border cells for a pane status line, keeping the border cell type for
+ * drawing.
+ */
 static void
 redraw_mark_border_status(struct redraw_build_ctx *bctx,
     struct window_pane *wp, __unused int left, int right, int top, int bottom)
@@ -533,7 +536,7 @@ redraw_mark_border_status(struct redraw_build_ctx *bctx,
 	}
 }
 
-/* Mark where indicator arrows will go, if enabled. */
+/* Mark existing border cells where indicator arrows will be drawn. */
 static void
 redraw_mark_border_arrows(struct redraw_build_ctx *bctx,
     struct window_pane *wp, int left, int right, int top, int bottom)
@@ -684,7 +687,7 @@ redraw_mark_pane(struct redraw_build_ctx *bctx, struct window_pane *wp)
 	redraw_mark_pane_scrollbar(bctx, wp, sb_w, sb_left);
 }
 
-/* Mark the indicator. */
+/* Choose the pane that will provide the border style for two-pane layouts. */
 static void
 redraw_mark_two_pane_colours(struct redraw_build_ctx *bctx)
 {
@@ -695,7 +698,7 @@ redraw_mark_two_pane_colours(struct redraw_build_ctx *bctx)
 
 	if (bctx->ind != PANE_BORDER_COLOUR && bctx->ind != PANE_BORDER_BOTH)
 		return;
-	if (!redraw_two_panes(bctx->w, &type))
+	if (!redraw_check_two_pane_colours(bctx->w, &type))
 		return;
 
 	for (y = 0; y < bctx->sy; y++) {
@@ -727,7 +730,7 @@ redraw_mark_two_pane_colours(struct redraw_build_ctx *bctx)
 	}
 }
 
-/* Return true if two adjacent build data can be coalesced into one span. */
+/* Return true if two adjacent build cells can be joined into one span. */
 static int
 redraw_data_cmp(struct redraw_build_cell *a, struct redraw_build_cell *b)
 {
@@ -990,7 +993,7 @@ redraw_draw_pane_span(struct redraw_draw_ctx *dctx,
 	tty_draw_line(tty, s, px, py, n, x, y, &style_ctx);
 }
 
-/* Get style for cells without a pane. */
+/* Get default border style for spans without a pane. */
 static void
 redraw_get_default_border_style(struct redraw_draw_ctx *dctx,
     struct grid_cell *gc)
