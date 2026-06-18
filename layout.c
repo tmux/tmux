@@ -588,12 +588,57 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 	}
 }
 
+/* Find and return the nearest neighbour to a cell in a specific direction. */
+static struct layout_cell *
+layout_cell_get_neighbour_direction(struct layout_cell *lc, int direction)
+{
+	struct layout_cell	*lcn = lc;
+
+	while (1) {
+		if (direction)
+			lcn = TAILQ_NEXT(lcn, entry);
+		else
+			lcn = TAILQ_PREV(lcn, layout_cells, entry);
+
+		if (lcn == NULL ||
+		    layout_cell_is_tiled(lcn) ||
+		    layout_cell_has_tiled_child(lcn))
+			return (lcn);
+	}
+}
+
+/*
+ * Find and return the nearest neighbour. Prefers cells "after" the specified
+ * cell. This behavior defines how cell dimensions are redistributed when a cell
+ * is hidden/shown and floated/tiled.
+ */
+struct layout_cell *
+layout_cell_get_neighbour(struct layout_cell *lc)
+{
+	struct layout_cell	*lcother, *lcparent = lc->parent;
+	int			 direction = 1;
+
+	if (lcparent == NULL)
+		return (NULL);
+
+	if (lc == TAILQ_LAST(&lcparent->cells, layout_cells))
+		direction = !direction;
+
+	lcother = layout_cell_get_neighbour_direction(lc, direction);
+	if (lcother == NULL)
+		lcother = layout_cell_get_neighbour_direction(lc, !direction);
+
+	return (lcother);
+}
+
+
 /* Destroy a cell and redistribute the space. */
 void
 layout_destroy_cell(struct window *w, struct layout_cell *lc,
     struct layout_cell **lcroot)
 {
-	struct layout_cell     *lcother = NULL, *lcparent;
+	struct layout_cell	*lcother = NULL, *lcparent;
+	int			 change;
 
 	/* If no parent, this is the last pane in a window. */
 	lcparent = lc->parent;
@@ -604,27 +649,27 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 		return;
 	}
 
-	if (~lc->flags & LAYOUT_CELL_FLOATING) {
-		/* Merge the space into the previous or next cell. */
-		if (lc == TAILQ_FIRST(&lcparent->cells))
-			lcother = TAILQ_NEXT(lc, entry);
+	if (!layout_cell_is_tiled(lc)) {
+		TAILQ_REMOVE(&lcparent->cells, lc, entry);
+		layout_free_cell(lc);
+		goto out;
+	}
+
+	lcother = layout_cell_get_neighbour(lc);
+	if (lcother != NULL) {
+		if (lcparent->type == LAYOUT_LEFTRIGHT)
+			change = lc->sx + 1;
 		else
-			lcother = TAILQ_PREV(lc, layout_cells, entry);
-	}
-	if (lcother != NULL && (~lcother->flags & LAYOUT_CELL_FLOATING)) {
-		if (lcparent->type == LAYOUT_LEFTRIGHT) {
-			layout_resize_adjust(w, lcother, lcparent->type,
-			    lc->sx + 1);
-		} else {
-			layout_resize_adjust(w, lcother, lcparent->type,
-			    lc->sy + 1);
-		}
-	}
+			change = lc->sy + 1;
+		layout_resize_adjust(w, lcother, lcparent->type, change);
+	} else
+		layout_remove_tile(w, lcparent);
 
 	/* Remove this from the parent's list. */
 	TAILQ_REMOVE(&lcparent->cells, lc, entry);
 	layout_free_cell(lc);
 
+out:
 	/*
 	 * If the parent now has one cell, remove the parent from the tree and
 	 * replace it by that cell.
@@ -1563,4 +1608,40 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 
 	lcnew = layout_floating_pane(w, sx, sy, ox, oy);
 	return (lcnew);
+}
+
+/*
+ * Removes a cell from the tiled layout by giving the cell's space to the
+ * nearest neighbour.
+ */
+int
+layout_remove_tile(struct window *w, struct layout_cell *lc)
+{
+	struct layout_cell	*lcneighbour, *lcparent;
+	enum layout_type	 type;
+	int			 change;
+
+	if (lc->flags & LAYOUT_CELL_FLOATING)
+		return (0);
+
+	lcneighbour = layout_cell_get_neighbour(lc);
+	if (lcneighbour == NULL) {
+		if (lc->parent != NULL)
+			layout_remove_tile(w, lc->parent);
+	} else if ((lcparent = lcneighbour->parent) != NULL) {
+		type = lcparent->type;
+		/*
+		 * Adding the size of the layout cell plus its border to the
+		 * neighbour.
+		 */
+		if (type == LAYOUT_TOPBOTTOM)
+			change = lc->sy + 1;
+		else
+			change = lc->sx + 1;
+		layout_resize_adjust(w, lcneighbour, type, change);
+	}
+
+	/* Zeroing out the cell geometry until the cell is retiled. */
+	layout_set_size(lc, 0, 0, 0, 0);
+	return (1);
 }
