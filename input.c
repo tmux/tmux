@@ -3055,7 +3055,7 @@ input_osc_10(struct input_ctx *ictx, const char *p)
 			return;
 		c = window_pane_get_fg_control_client(wp);
 		if (c == -1) {
-			tty_default_colours(&defaults, wp);
+			tty_default_colours(&defaults, wp, NULL);
 			if (COLOUR_DEFAULT(defaults.fg))
 				c = window_pane_get_fg(wp);
 			else

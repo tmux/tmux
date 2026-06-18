@@ -624,18 +624,18 @@ layout_resize_set_size(struct window *w, struct layout_cell *lc,
 static struct layout_cell *
 layout_cell_get_neighbour_direction(struct layout_cell *lc, int direction)
 {
-	struct layout_cell	*lcneighbour = lc;
+	struct layout_cell	*lcn = lc;
 
 	while (1) {
 		if (direction)
-			lcneighbour = TAILQ_NEXT(lcneighbour, entry);
+			lcn = TAILQ_NEXT(lcn, entry);
 		else
-			lcneighbour = TAILQ_PREV(lcneighbour, layout_cells,
-			    entry);
+			lcn = TAILQ_PREV(lcn, layout_cells, entry);
 
-		if (lcneighbour == NULL || layout_cell_is_tiled(lcneighbour) ||
-		    layout_cell_has_tiled_child(lcneighbour))
-			return (lcneighbour);
+		if (lcn == NULL ||
+		    layout_cell_is_tiled(lcn) ||
+		    layout_cell_has_tiled_child(lcn))
+			return (lcn);
 	}
 }
 
@@ -660,19 +660,17 @@ layout_cell_get_neighbour(struct layout_cell *lc)
 	if (lcother == NULL)
 		lcother = layout_cell_get_neighbour_direction(lc, !direction);
 
-	return lcother;
+	return (lcother);
 }
 
-/*
- * Destroy a cell and redistribute the space if the cell was tiled. Assumes
- * to be called on a leaf cell.
- */
+
+/* Destroy a cell and redistribute the space. */
 void
 layout_destroy_cell(struct window *w, struct layout_cell *lc,
     struct layout_cell **lcroot)
 {
-	struct layout_cell     *lcother, *lcparent;
-	int			val;
+	struct layout_cell	*lcother = NULL, *lcparent;
+	int			 change;
 
 	/*
 	 * If no parent, this is either a floating pane or the last
@@ -696,10 +694,10 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 	lcother = layout_cell_get_neighbour(lc);
 	if (lcother != NULL) {
 		if (lcparent->type == LAYOUT_LEFTRIGHT)
-			val = lc->sx + 1;
+			change = lc->sx + 1;
 		else
-			val = lc->sy + 1;
-		layout_resize_adjust(w, lcother, lcparent->type, val);
+			change = lc->sy + 1;
+		layout_resize_adjust(w, lcother, lcparent->type, change);
 	} else
 		layout_remove_tile(w, lcparent);
 
@@ -1694,7 +1692,7 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 }
 
 /*
- * Removes a cell from the tiled layout by giving half the cells space to the
+ * Removes a cell from the tiled layout by giving the cell's space to the
  * nearest neighbour.
  */
 int

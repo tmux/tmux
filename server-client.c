@@ -2014,16 +2014,32 @@ server_client_check_modes(struct client *c)
 	}
 }
 
+/* Check if any panes need to be redrawn. */
+static int
+server_client_any_pane_redraw(struct client *c)
+{
+	struct session		*s = c->session;
+	struct window		*w = s->curw->window;
+	struct window_pane	*wp;
+
+	if (c->flags & CLIENT_REDRAWWINDOW)
+		return (1);
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp->flags & (PANE_REDRAW|PANE_REDRAWSCROLLBAR))
+			return (1);
+	}
+	return (0);
+}
+
 /* Check for client redraws. */
 static void
 server_client_check_redraw(struct client *c)
 {
 	struct session		*s = c->session;
 	struct tty		*tty = &c->tty;
-	struct window		*w = c->session->curw->window;
+	struct window		*w = s->curw->window;
 	struct window_pane	*wp;
 	int			 needed, tflags, mode = tty->mode;
-	uint64_t		 client_flags = 0;
 	struct timeval		 tv = { .tv_usec = 1000 };
 	static struct event	 ev;
 	size_t			 n;
@@ -2042,20 +2058,8 @@ server_client_check_redraw(struct client *c)
 	needed = 0;
 	if (c->flags & CLIENT_ALLREDRAWFLAGS)
 		needed = 1;
-	else {
-		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (wp->flags & PANE_REDRAW) {
-				needed = 1;
-				client_flags |= CLIENT_REDRAWWINDOW;
-				break;
-			}
-			if (wp->flags & PANE_REDRAWSCROLLBAR) {
-				needed = 1;
-				client_flags |= CLIENT_REDRAWWINDOW;
-				/* no break - later panes may need redraw */
-			}
-		}
-	}
+	else if (server_client_any_pane_redraw(c))
+		needed = 1;
 	if (!needed) {
 		c->flags &= ~CLIENT_STATUSFORCE;
 		return;
@@ -2078,7 +2082,8 @@ server_client_check_redraw(struct client *c)
 			log_debug("redraw timer started");
 			evtimer_add(&ev, &tv);
 		}
-		c->flags |= client_flags;
+		if (server_client_any_pane_redraw(c))
+			c->flags |= CLIENT_REDRAWWINDOW;
 		return;
 	}
 
