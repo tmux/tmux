@@ -37,7 +37,7 @@
  *
  * A scene is made from spans. A span is a horizontal run of cells on one
  * visible line that can be drawn in the same way. Each span has a type, for
- * example: pane content or pane border cells or pane status line. A span type
+ * example: pane content or pane border cells or pane status line. A span also
  * includes enough additional data to draw it, but does not include the style -
  * that is determined when it is drawn.
  *
