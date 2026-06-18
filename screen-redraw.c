@@ -337,13 +337,32 @@ redraw_window_to_scene(struct redraw_build_ctx *bctx, int wx, int wy,
 	return (1);
 }
 
-/* Convert pane position to scene position. Return 0 if outside the scene. */
+/*
+ * Convert pane position to scene position. Return 0 if outside the scene. A
+ * floating pane is clipped to the window edge.
+ */
 static int
 redraw_pane_to_scene(struct redraw_build_ctx *bctx, struct window_pane *wp,
     int px, int py, u_int *x, u_int *y)
 {
 	int	wx = wp->xoff + px, wy = wp->yoff + py;
+	int	left, right, top, bottom;
 
+	if (window_pane_is_floating(wp)) {
+		left = wp->xoff - 1;
+		right = wp->xoff + wp->sx;
+		top = wp->yoff - 1;
+		bottom = wp->yoff + wp->sy;
+
+		if (left < 0 && wx <= 0)
+			return (0);
+		if (right > (int)bctx->w->sx && wx >= (int)bctx->w->sx)
+			return (0);
+		if (top < 0 && wy <= 0)
+			return (0);
+		if (bottom > (int)bctx->w->sy && wy >= (int)bctx->w->sy)
+			return (0);
+	}
 	return (redraw_window_to_scene(bctx, wx, wy, x, y));
 }
 
@@ -463,8 +482,27 @@ redraw_mark_pane_scrollbar(struct redraw_build_ctx *bctx,
 }
 
 /*
+ * Return if span data belongs to pane, that is: is the cell adjacent to this
+ * pane?
+ */
+static int
+redraw_data_has_pane(struct redraw_span_data *data, struct window_pane *wp)
+{
+	if (data->b.top_wp == wp)
+		return (1);
+	if (data->b.bottom_wp == wp)
+		return (1);
+	if (data->b.left_wp == wp)
+		return (1);
+	if (data->b.right_wp == wp)
+		return (1);
+	return (0);
+}
+
+/*
  * Mark one border cell. If a non-border cell is marked as a border, replace
- * it. If it is already a border, merge the border mask and pane ownership.
+ * it. If it is already a border and this is not a floating pane, merge the
+ * border mask and pane ownership.
  */
 static void
 redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
@@ -474,17 +512,25 @@ redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
 	struct redraw_build_cell	*bc;
 	enum pane_lines			 pane_lines;
 	u_int				 x, y;
+	int				 reset = 0;
 
 	if (!redraw_window_to_scene(bctx, wx, wy, &x, &y))
 		return;
 	bc = redraw_get_build_cell(bctx, x, y);
 
-	if (bc->data.type != REDRAW_SPAN_BORDER) {
-		if (bc->data.type != REDRAW_SPAN_EMPTY && !floating)
+	if (bc->data.type == REDRAW_SPAN_BORDER) {
+		if (floating && !redraw_data_has_pane(&bc->data, wp))
+			reset = 1;
+	} else {
+		if (!floating && bc->data.type != REDRAW_SPAN_EMPTY)
 			return;
+		reset = 1;
+	}
+	if (reset) {
 		memset(bc, 0, sizeof *bc);
 		bc->data.type = REDRAW_SPAN_BORDER;
 	}
+
 	pane_lines = window_pane_get_pane_lines(wp);
 	if (top_owner) {
 		bc->data.b.top_wp = wp;
@@ -602,7 +648,7 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 {
 	enum pane_lines pane_lines = window_pane_get_pane_lines(wp);
 	int		pane_status, left, right, top, bottom, wx, wy;
-	int		draw_top, draw_bottom, draw_left, draw_right, mask = 0;
+	int		mark_top, mark_bottom, mark_left, mark_right, mask = 0;
 	int		floating = window_pane_is_floating(wp);
 
 	if (floating && pane_lines == PANE_LINES_NONE)
@@ -610,7 +656,7 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 	pane_status = window_pane_get_pane_status(wp);
 
 	left = wp->xoff - 1;
-	right = wp->xoff + (int)wp->sx;
+	right = wp->xoff + wp->sx;
 	if (sb_w != 0) {
 		if (sb_left)
 			left -= sb_w;
@@ -618,21 +664,30 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 			right += sb_w;
 	}
 	top = wp->yoff - 1;
-	bottom = wp->yoff + (int)wp->sy;
+	bottom = wp->yoff + wp->sy;
 
-	draw_left = (left >= 0);
-	draw_right = (right <= (int)bctx->w->sx);
-	draw_top = (top >= 0);
-	draw_bottom = (bottom <= (int)bctx->w->sy);
+	mark_left = (left >= 0);
+	mark_right = (right <= (int)bctx->w->sx);
+	mark_top = (top >= 0);
+	mark_bottom = (bottom <= (int)bctx->w->sy);
 
-	if (!floating) {
+	if (floating) {
+		if (left < 0)
+			left = 1;
+		if (right > (int)bctx->w->sx)
+			right = (int)bctx->w->sx - 1;
+		if (top < 0)
+			top = 1;
+		if (bottom > (int)bctx->w->sy)
+			bottom = (int)bctx->w->sy - 1;
+	} else {
 		if (pane_status == PANE_STATUS_TOP)
-			draw_bottom = 0;
+			mark_bottom = 0;
 		else if (pane_status == PANE_STATUS_BOTTOM)
-			draw_top = 0;
+			mark_top = 0;
 	}
 
-	if (draw_top) {
+	if (mark_top) {
 		for (wx = left; wx <= right; wx++) {
 			mask = 0;
 			if (wx > left)
@@ -643,7 +698,7 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 			    floating);
 		}
 	}
-	if (draw_bottom) {
+	if (mark_bottom) {
 		for (wx = left; wx <= right; wx++) {
 			mask = 0;
 			if (wx > left)
@@ -654,7 +709,7 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 			    mask, floating);
 		}
 	}
-	if (draw_left) {
+	if (mark_left) {
 		for (wy = top; wy <= bottom; wy++) {
 			mask = 0;
 			if (wy > top)
@@ -665,7 +720,7 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 			    floating);
 		}
 	}
-	if (draw_right) {
+	if (mark_right) {
 		for (wy = top; wy <= bottom; wy++) {
 			mask = 0;
 			if (wy > top)
@@ -971,21 +1026,6 @@ redraw_get_scene(struct client *c)
 	return (scene);
 }
 
-/* Is this span adjacent to this pane? */
-static int
-redraw_span_has_pane(struct redraw_span *span, struct window_pane *wp)
-{
-	if (span->data.b.top_wp == wp)
-		return (1);
-	if (span->data.b.bottom_wp == wp)
-		return (1);
-	if (span->data.b.left_wp == wp)
-		return (1);
-	if (span->data.b.right_wp == wp)
-		return (1);
-	return (0);
-}
-
 /* Draw a pane span. */
 static void
 redraw_draw_pane_span(struct redraw_draw_ctx *dctx,
@@ -1047,7 +1087,7 @@ redraw_get_pane_for_border_style(struct redraw_draw_ctx *dctx,
 
 	if (span->data.b.style_wp != NULL)
 		return (span->data.b.style_wp);
-	if (active != NULL && redraw_span_has_pane(span, active))
+	if (active != NULL && redraw_data_has_pane(&span->data, active))
 		return (active);
 
 	if (span->data.b.top_wp != NULL)
@@ -1123,7 +1163,7 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 
 	if (span->data.type == REDRAW_SPAN_BORDER &&
 	    dctx->marked != NULL &&
-	    redraw_span_has_pane(span, dctx->marked))
+	    redraw_data_has_pane(&span->data, dctx->marked))
 		gc.attr ^= GRID_ATTR_REVERSE;
 	redraw_draw_border_arrow(dctx, span, &gc);
 
