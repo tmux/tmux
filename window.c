@@ -758,7 +758,7 @@ window_zoom(struct window_pane *wp)
 	w->flags |= WINDOW_ZOOMED;
 	notify_window("window-layout-changed", w);
 
-	screen_redraw_invalidate_scene(w);
+	redraw_invalidate_scene(w);
 	return (0);
 }
 
@@ -785,7 +785,7 @@ window_unzoom(struct window *w, int notify)
 	if (notify)
 		notify_window("window-layout-changed", w);
 
-	screen_redraw_invalidate_scene(w);
+	redraw_invalidate_scene(w);
 	return (0);
 }
 
@@ -842,7 +842,7 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 	else {
 		TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
 	}
-	screen_redraw_invalidate_scene(w);
+	redraw_invalidate_scene(w);
 	return (wp);
 }
 
@@ -869,7 +869,7 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 			window_update_focus(w);
 		}
 	}
-	screen_redraw_invalidate_scene(w);
+	redraw_invalidate_scene(w);
 }
 
 void
@@ -878,7 +878,7 @@ window_remove_pane(struct window *w, struct window_pane *wp)
 	window_lost_pane(w, wp);
 	TAILQ_REMOVE(&w->panes, wp, entry);
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
-	screen_redraw_invalidate_scene(w);
+	redraw_invalidate_scene(w);
 	window_pane_destroy(wp);
 }
 

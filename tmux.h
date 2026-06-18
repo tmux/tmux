@@ -3367,13 +3367,13 @@ void	 screen_write_alternateoff(struct screen_write_ctx *,
 	     struct grid_cell *, int);
 
 /* screen-redraw.c */
-void	 screen_redraw_screen(struct client *);
-void	 screen_redraw_pane(struct client *, struct window_pane *);
-void	 screen_redraw_pane_scrollbar(struct client *, struct window_pane *);
-void	 screen_redraw_free_scene(struct redraw_scene *);
-void	 screen_redraw_invalidate_scene(struct window *);
-void	 screen_redraw_invalidate_all_scenes(void);
-int	 screen_redraw_get_status_border_cell_type(struct redraw_span **, u_int);
+void	 redraw_screen(struct client *);
+void	 redraw_pane(struct client *, struct window_pane *);
+void	 redraw_pane_scrollbar(struct client *, struct window_pane *);
+void	 redraw_free_scene(struct redraw_scene *);
+void	 redraw_invalidate_scene(struct window *);
+void	 redraw_invalidate_all_scenes(void);
+int	 redraw_get_status_border_cell_type(struct redraw_span **, u_int);
 
 /* screen.c */
 void	 screen_init(struct screen *, u_int, u_int, u_int);

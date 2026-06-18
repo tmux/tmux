@@ -1227,7 +1227,7 @@ options_push_changes(const char *name)
 	    strcmp(name, "pane-scrollbars") == 0 ||
 	    strcmp(name, "pane-scrollbars-position") == 0 ||
 	    strcmp(name, "pane-scrollbars-style") == 0)
-		screen_redraw_invalidate_all_scenes();
+		redraw_invalidate_all_scenes();
 	if (strcmp(name, "monitor-silence") == 0)
 		alerts_reset_all();
 	if (strcmp(name, "window-style") == 0 ||

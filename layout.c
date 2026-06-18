@@ -466,7 +466,7 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 			changed = 1;
 	}
 	if (changed)
-		screen_redraw_invalidate_scene(w);
+		redraw_invalidate_scene(w);
 }
 
 /* Count the number of available cells in a layout. */
@@ -841,7 +841,7 @@ layout_resize_floating_pane_to(struct window_pane *wp, enum layout_type type,
 			return;
 		lc->sx = size;
 	}
-	screen_redraw_invalidate_scene(wp->window);
+	redraw_invalidate_scene(wp->window);
 }
 
 /* Resize a floating pane relative to its current size. */
@@ -878,7 +878,7 @@ layout_resize_floating_pane(struct window_pane *wp, enum layout_type type,
 		if (opposite)
 			lc->xoff -= change;
 	}
-	screen_redraw_invalidate_scene(wp->window);
+	redraw_invalidate_scene(wp->window);
 }
 
 /* Resize a layout cell. */

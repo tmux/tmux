@@ -145,7 +145,7 @@ window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
 	window_pane_get_border_style(wp, c, &gc);
 	pane_lines = window_pane_get_pane_lines(wp);
 	for (i = 0; i < width; i++) {
-		cell_type = screen_redraw_get_status_border_cell_type(&span, i);
+		cell_type = redraw_get_status_border_cell_type(&span, i);
 		window_get_border_cell(wp->window, wp, pane_lines, cell_type, &gc);
 		screen_write_cell(&ctx, &gc);
 	}

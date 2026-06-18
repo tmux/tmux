@@ -164,8 +164,8 @@ struct redraw_build_cell {
 	struct redraw_span_data	 data;
 };
 
-static struct redraw_build_cell	*screen_redraw_cells;
-static size_t			 screen_redraw_ncells;
+static struct redraw_build_cell	*redraw_cells;
+static size_t			 redraw_ncells;
 
 /* Context for building the scene. */
 struct redraw_build_ctx {
@@ -202,7 +202,7 @@ struct redraw_draw_ctx {
 
 /* Make redraw flags into a string. */
 static const char *
-screen_redraw_flags_string(int flags)
+redraw_flags_string(int flags)
 {
 	static char	s[128];
 
@@ -228,7 +228,7 @@ screen_redraw_flags_string(int flags)
 
 /* Initialize the context for building scene. */
 static void
-screen_redraw_set_context(struct client *c, struct redraw_build_ctx *bctx)
+redraw_set_context(struct client *c, struct redraw_build_ctx *bctx)
 {
 	struct session	*s = c->session;
 	struct window	*w = s->curw->window;
@@ -246,16 +246,16 @@ screen_redraw_set_context(struct client *c, struct redraw_build_ctx *bctx)
 
 /* Return a cell. */
 static struct redraw_build_cell *
-screen_redraw_cell(struct redraw_build_ctx *bctx, u_int x, u_int y)
+redraw_cell(struct redraw_build_ctx *bctx, u_int x, u_int y)
 {
 	return (&bctx->cells[(y * bctx->sx) + x]);
 }
 
 /* Reset cell to either empty or outside the window. */
 static void
-screen_redraw_reset_cell(struct redraw_build_ctx *bctx, u_int x, u_int y)
+redraw_reset_cell(struct redraw_build_ctx *bctx, u_int x, u_int y)
 {
-	struct redraw_build_cell	*bc = screen_redraw_cell(bctx, x, y);
+	struct redraw_build_cell	*bc = redraw_cell(bctx, x, y);
 	struct window			*w = bctx->w;
 
 	memset(bc, 0, sizeof *bc);
@@ -267,7 +267,7 @@ screen_redraw_reset_cell(struct redraw_build_ctx *bctx, u_int x, u_int y)
 
 /* Convert window position to scene position. Return 0 if outside the scene. */
 static int
-screen_redraw_window_to_scene(struct redraw_build_ctx *bctx, int wx, int wy,
+redraw_window_to_scene(struct redraw_build_ctx *bctx, int wx, int wy,
     u_int *x, u_int *y)
 {
 	if (wx < 0 || wy < 0)
@@ -290,17 +290,17 @@ screen_redraw_window_to_scene(struct redraw_build_ctx *bctx, int wx, int wy,
 
 /* Convert pane position to scene position. Return 0 if outside the scene. */
 static int
-screen_redraw_pane_to_scene(struct redraw_build_ctx *bctx,
-    struct window_pane *wp, int px, int py, u_int *x, u_int *y)
+redraw_pane_to_scene(struct redraw_build_ctx *bctx, struct window_pane *wp,
+    int px, int py, u_int *x, u_int *y)
 {
 	int	wx = wp->xoff + px, wy = wp->yoff + py;
 
-	return (screen_redraw_window_to_scene(bctx, wx, wy, x, y));
+	return (redraw_window_to_scene(bctx, wx, wy, x, y));
 }
 
 /* Convert redraw border mask to a cell type. */
 static int
-screen_redraw_get_cell_type(int mask)
+redraw_get_cell_type(int mask)
 {
 	switch (mask) {
 	case REDRAW_BORDER_L|REDRAW_BORDER_R|REDRAW_BORDER_U|REDRAW_BORDER_D:
@@ -335,7 +335,7 @@ screen_redraw_get_cell_type(int mask)
 
 /* Return if this cell has exactly two panes with a shared border. */
 static int
-screen_redraw_two_panes(struct window *w, enum layout_type *type)
+redraw_two_panes(struct window *w, enum layout_type *type)
 {
 	struct window_pane	*wp;
 	u_int			 count = 0;
@@ -354,8 +354,8 @@ screen_redraw_two_panes(struct window *w, enum layout_type *type)
 
 /* Clear the cells covered by a floating pane. */
 static void
-screen_redraw_reset_floating_pane_cells(struct redraw_build_ctx *bctx,
-    struct window_pane *wp, int	sb_w, int sb_left)
+redraw_reset_floating_pane_cells(struct redraw_build_ctx *bctx,
+    struct window_pane *wp, int sb_w, int sb_left)
 {
 	enum pane_lines	 pane_lines;
 	u_int		 x, y;
@@ -383,26 +383,24 @@ screen_redraw_reset_floating_pane_cells(struct redraw_build_ctx *bctx,
 
 	for (wy = top; wy <= bottom; wy++) {
 		for (wx = left; wx <= right; wx++) {
-			if (screen_redraw_window_to_scene(bctx, wx, wy, &x, &y))
-				screen_redraw_reset_cell(bctx, x, y);
+			if (redraw_window_to_scene(bctx, wx, wy, &x, &y))
+				redraw_reset_cell(bctx, x, y);
 		}
 	}
 }
 
 /* Mark pane inside data. */
 static void
-screen_redraw_mark_pane_inside(struct redraw_build_ctx *bctx,
-    struct window_pane *wp)
+redraw_mark_pane_inside(struct redraw_build_ctx *bctx, struct window_pane *wp)
 {
 	struct redraw_build_cell	*bc;
 	u_int				 px, py, x, y;
 
 	for (py = 0; py < wp->sy; py++) {
 		for (px = 0; px < wp->sx; px++) {
-			if (!screen_redraw_pane_to_scene(bctx, wp, px, py, &x,
-			    &y))
+			if (!redraw_pane_to_scene(bctx, wp, px, py, &x, &y))
 				continue;
-			bc = screen_redraw_cell(bctx, x, y);
+			bc = redraw_cell(bctx, x, y);
 			memset(bc, 0, sizeof *bc);
 			bc->data.type = REDRAW_SPAN_PANE;
 			bc->data.p.wp = wp;
@@ -414,13 +412,13 @@ screen_redraw_mark_pane_inside(struct redraw_build_ctx *bctx,
 
 /* Mark scrollbar data. */
 static void
-screen_redraw_mark_pane_scrollbar(struct redraw_build_ctx *bctx,
+redraw_mark_pane_scrollbar(struct redraw_build_ctx *bctx,
     struct window_pane *wp, int sb_w, int sb_left)
 {
 	struct redraw_build_cell	*bc;
-	u_int			 x, y;
-	int			 wx, wy, sx, ex;
-	u_int			 sy;
+	u_int				 x, y;
+	int				 wx, wy, sx, ex;
+	u_int				 sy;
 
 	if (sb_w == 0)
 		return;
@@ -436,10 +434,10 @@ screen_redraw_mark_pane_scrollbar(struct redraw_build_ctx *bctx,
 	for (sy = 0; sy < wp->sy; sy++) {
 		wy = wp->yoff + (int)sy;
 		for (wx = sx; wx <= ex; wx++) {
-			if (!screen_redraw_window_to_scene(bctx, wx, wy, &x,
+			if (!redraw_window_to_scene(bctx, wx, wy, &x,
 			    &y))
 				continue;
-			bc = screen_redraw_cell(bctx, x, y);
+			bc = redraw_cell(bctx, x, y);
 			memset(bc, 0, sizeof *bc);
 			bc->data.type = REDRAW_SPAN_SCROLLBAR;
 			bc->data.sb.wp = wp;
@@ -458,16 +456,16 @@ screen_redraw_mark_pane_scrollbar(struct redraw_build_ctx *bctx,
  * replace it. If it is already a border, merge it.
  */
 static void
-screen_redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
+redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
     struct window_pane *wp, int top_owner, int bottom_owner, int mask)
 {
 	struct redraw_build_cell	*bc;
 	enum pane_lines			 pane_lines;
 	u_int				 x, y;
 
-	if (!screen_redraw_window_to_scene(bctx, wx, wy, &x, &y))
+	if (!redraw_window_to_scene(bctx, wx, wy, &x, &y))
 		return;
-	bc = screen_redraw_cell(bctx, x, y);
+	bc = redraw_cell(bctx, x, y);
 
 	if (bc->data.type != REDRAW_SPAN_BORDER) {
 		if (bc->data.type != REDRAW_SPAN_EMPTY)
@@ -497,12 +495,12 @@ screen_redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
 
 	mask |= bc->data.b.cell_mask;
 	bc->data.b.cell_mask = mask;
-	bc->data.b.cell_type = screen_redraw_get_cell_type(mask);
+	bc->data.b.cell_type = redraw_get_cell_type(mask);
 }
 
 /* Mark area available for pane status line. */
 static void
-screen_redraw_mark_border_status(struct redraw_build_ctx *bctx,
+redraw_mark_border_status(struct redraw_build_ctx *bctx,
     struct window_pane *wp, __unused int left, int right, int top, int bottom)
 {
 	struct redraw_build_cell	*bc;
@@ -523,9 +521,9 @@ screen_redraw_mark_border_status(struct redraw_build_ctx *bctx,
 		return;
 
 	for (wx = sx; wx <= ex; wx++, off++) {
-		if (!screen_redraw_window_to_scene(bctx, wx, wy, &x, &y))
+		if (!redraw_window_to_scene(bctx, wx, wy, &x, &y))
 			continue;
-		bc = screen_redraw_cell(bctx, x, y);
+		bc = redraw_cell(bctx, x, y);
 		if (bc->data.type != REDRAW_SPAN_BORDER)
 			continue;
 		cell_type = bc->data.b.cell_type;
@@ -539,7 +537,7 @@ screen_redraw_mark_border_status(struct redraw_build_ctx *bctx,
 
 /* Mark where indicator arrows will go, if enabled. */
 static void
-screen_redraw_mark_border_arrows(struct redraw_build_ctx *bctx,
+redraw_mark_border_arrows(struct redraw_build_ctx *bctx,
     struct window_pane *wp, int left, int right, int top, int bottom)
 {
 	struct redraw_build_cell	*bc;
@@ -552,14 +550,14 @@ screen_redraw_mark_border_arrows(struct redraw_build_ctx *bctx,
 	wx = wp->xoff + 1;
 	if (wx >= left && wx <= right) {
 		wy = top;
-		if (screen_redraw_window_to_scene(bctx, wx, wy, &x, &y)) {
-			bc = screen_redraw_cell(bctx, x, y);
+		if (redraw_window_to_scene(bctx, wx, wy, &x, &y)) {
+			bc = redraw_cell(bctx, x, y);
 			if (bc->data.type == REDRAW_SPAN_BORDER)
 				bc->data.b.flags |= REDRAW_BORDER_IS_ARROW;
 		}
 		wy = bottom;
-		if (screen_redraw_window_to_scene(bctx, wx, wy, &x, &y)) {
-			bc = screen_redraw_cell(bctx, x, y);
+		if (redraw_window_to_scene(bctx, wx, wy, &x, &y)) {
+			bc = redraw_cell(bctx, x, y);
 			if (bc->data.type == REDRAW_SPAN_BORDER)
 				bc->data.b.flags |= REDRAW_BORDER_IS_ARROW;
 		}
@@ -568,14 +566,14 @@ screen_redraw_mark_border_arrows(struct redraw_build_ctx *bctx,
 	wy = wp->yoff + 1;
 	if (wy >= top && wy <= bottom) {
 		wx = left;
-		if (screen_redraw_window_to_scene(bctx, wx, wy, &x, &y)) {
-			bc = screen_redraw_cell(bctx, x, y);
+		if (redraw_window_to_scene(bctx, wx, wy, &x, &y)) {
+			bc = redraw_cell(bctx, x, y);
 			if (bc->data.type == REDRAW_SPAN_BORDER)
 				bc->data.b.flags |= REDRAW_BORDER_IS_ARROW;
 		}
 		wx = right;
-		if (screen_redraw_window_to_scene(bctx, wx, wy, &x, &y)) {
-			bc = screen_redraw_cell(bctx, x, y);
+		if (redraw_window_to_scene(bctx, wx, wy, &x, &y)) {
+			bc = redraw_cell(bctx, x, y);
 			if (bc->data.type == REDRAW_SPAN_BORDER)
 				bc->data.b.flags |= REDRAW_BORDER_IS_ARROW;
 		}
@@ -584,7 +582,7 @@ screen_redraw_mark_border_arrows(struct redraw_build_ctx *bctx,
 
 /* Mark pane borders. */
 static void
-screen_redraw_mark_pane_borders(struct redraw_build_ctx *bctx,
+redraw_mark_pane_borders(struct redraw_build_ctx *bctx,
     struct window_pane *wp, int sb_w, int sb_left)
 {
 	enum pane_lines pane_lines = window_pane_get_pane_lines(wp);
@@ -625,8 +623,7 @@ screen_redraw_mark_pane_borders(struct redraw_build_ctx *bctx,
 				mask |= REDRAW_BORDER_L;
 			if (wx < right)
 				mask |= REDRAW_BORDER_R;
-			screen_redraw_mark_border_cell(bctx, wx, top, wp,
-			    0, 1, mask);
+			redraw_mark_border_cell(bctx, wx, top, wp, 0, 1, mask);
 		}
 	}
 	if (draw_bottom) {
@@ -636,8 +633,8 @@ screen_redraw_mark_pane_borders(struct redraw_build_ctx *bctx,
 				mask |= REDRAW_BORDER_L;
 			if (wx < right)
 				mask |= REDRAW_BORDER_R;
-			screen_redraw_mark_border_cell(bctx, wx, bottom, wp,
-			    1, 0, mask);
+			redraw_mark_border_cell(bctx, wx, bottom, wp, 1, 0,
+			    mask);
 		}
 	}
 	if (draw_left) {
@@ -647,8 +644,7 @@ screen_redraw_mark_pane_borders(struct redraw_build_ctx *bctx,
 				mask |= REDRAW_BORDER_U;
 			if (wy < bottom)
 				mask |= REDRAW_BORDER_D;
-			screen_redraw_mark_border_cell(bctx, left, wy, wp,
-			    0, 0, mask);
+			redraw_mark_border_cell(bctx, left, wy, wp, 0, 0, mask);
 		}
 	}
 	if (draw_right) {
@@ -658,13 +654,13 @@ screen_redraw_mark_pane_borders(struct redraw_build_ctx *bctx,
 				mask |= REDRAW_BORDER_U;
 			if (wy < bottom)
 				mask |= REDRAW_BORDER_D;
-			screen_redraw_mark_border_cell(bctx, right, wy, wp,
-			    0, 0, mask);
+			redraw_mark_border_cell(bctx, right, wy, wp, 0, 0,
+			    mask);
 		}
 	}
 
-	screen_redraw_mark_border_status(bctx, wp, left, right, top, bottom);
-	screen_redraw_mark_border_arrows(bctx, wp, left, right, top, bottom);
+	redraw_mark_border_status(bctx, wp, left, right, top, bottom);
+	redraw_mark_border_arrows(bctx, wp, left, right, top, bottom);
 }
 
 /*
@@ -672,7 +668,7 @@ screen_redraw_mark_pane_borders(struct redraw_build_ctx *bctx,
  * already below them.
  */
 static void
-screen_redraw_mark_pane(struct redraw_build_ctx *bctx, struct window_pane *wp)
+redraw_mark_pane(struct redraw_build_ctx *bctx, struct window_pane *wp)
 {
 	int	sb_w = 0, sb_left = 0;
 
@@ -684,15 +680,15 @@ screen_redraw_mark_pane(struct redraw_build_ctx *bctx, struct window_pane *wp)
 	if (sb_w != 0 && bctx->sbp == PANE_SCROLLBARS_LEFT)
 		sb_left = 1;
 
-	screen_redraw_reset_floating_pane_cells(bctx, wp, sb_w, sb_left);
-	screen_redraw_mark_pane_inside(bctx, wp);
-	screen_redraw_mark_pane_borders(bctx, wp, sb_w, sb_left);
-	screen_redraw_mark_pane_scrollbar(bctx, wp, sb_w, sb_left);
+	redraw_reset_floating_pane_cells(bctx, wp, sb_w, sb_left);
+	redraw_mark_pane_inside(bctx, wp);
+	redraw_mark_pane_borders(bctx, wp, sb_w, sb_left);
+	redraw_mark_pane_scrollbar(bctx, wp, sb_w, sb_left);
 }
 
 /* Mark the indicator. */
 static void
-screen_redraw_mark_two_pane_colours(struct redraw_build_ctx *bctx)
+redraw_mark_two_pane_colours(struct redraw_build_ctx *bctx)
 {
 	struct redraw_build_cell	*bc;
 	struct redraw_span_data		*sd;
@@ -701,12 +697,12 @@ screen_redraw_mark_two_pane_colours(struct redraw_build_ctx *bctx)
 
 	if (bctx->ind != PANE_BORDER_COLOUR && bctx->ind != PANE_BORDER_BOTH)
 		return;
-	if (!screen_redraw_two_panes(bctx->w, &type))
+	if (!redraw_two_panes(bctx->w, &type))
 		return;
 
 	for (y = 0; y < bctx->sy; y++) {
 		for (x = 0; x < bctx->sx; x++) {
-			bc = screen_redraw_cell(bctx, x, y);
+			bc = redraw_cell(bctx, x, y);
 			if (bc->data.type != REDRAW_SPAN_BORDER)
 				continue;
 			sd = &bc->data;
@@ -735,7 +731,7 @@ screen_redraw_mark_two_pane_colours(struct redraw_build_ctx *bctx)
 
 /* Return true if two adjacent build data can be coalesced into one span. */
 static int
-screen_redraw_data_cmp(struct redraw_build_cell *a, struct redraw_build_cell *b)
+redraw_data_cmp(struct redraw_build_cell *a, struct redraw_build_cell *b)
 {
 	struct redraw_span_data	*ad = &a->data, *bd = &b->data;
 
@@ -788,8 +784,7 @@ screen_redraw_data_cmp(struct redraw_build_cell *a, struct redraw_build_cell *b)
 
 /* Convert the cells into spans. */
 static void
-screen_redraw_finish_scene(struct redraw_build_ctx *bctx,
-    struct redraw_scene *scene)
+redraw_finish_scene(struct redraw_build_ctx *bctx, struct redraw_scene *scene)
 {
 	struct redraw_build_cell	*bc, *last;
 	struct redraw_line		*line;
@@ -802,17 +797,17 @@ screen_redraw_finish_scene(struct redraw_build_ctx *bctx,
 		x = 0;
 		while (x < bctx->sx) {
 			x0 = x;
-			last = screen_redraw_cell(bctx, x, y);
+			last = redraw_cell(bctx, x, y);
 			x++;
 
 			while (x < bctx->sx) {
-				bc = screen_redraw_cell(bctx, x, y);
-				if (!screen_redraw_data_cmp(last, bc))
+				bc = redraw_cell(bctx, x, y);
+				if (!redraw_data_cmp(last, bc))
 					break;
 				last = bc;
 				x++;
 			}
-			bc = screen_redraw_cell(bctx, x0, y);
+			bc = redraw_cell(bctx, x0, y);
 			type = bc->data.type;
 
 			span = xcalloc(1, sizeof *span);
@@ -826,10 +821,10 @@ screen_redraw_finish_scene(struct redraw_build_ctx *bctx,
 
 /*
  * Build and return a redraw scene for a client. The caller owns the scene and
- * must free it with screen_redraw_free_scene.
+ * must free it with redraw_free_scene.
  */
 static struct redraw_scene *
-screen_redraw_make_scene(struct client *c)
+redraw_make_scene(struct client *c)
 {
 	struct redraw_build_ctx	 bctx;
 	struct redraw_scene	*scene;
@@ -839,7 +834,7 @@ screen_redraw_make_scene(struct client *c)
 
 	if (c->flags & CLIENT_SUSPENDED)
 		return (NULL);
-	screen_redraw_set_context(c, &bctx);
+	redraw_set_context(c, &bctx);
 
 	scene = xcalloc(1, sizeof *scene);
 	scene->c = c;
@@ -862,22 +857,22 @@ screen_redraw_make_scene(struct client *c)
 	if (bctx.sx != 0 && bctx.sy > SIZE_MAX / bctx.sx)
 		fatalx("%s: too many cells", __func__);
 	ncells = (size_t)bctx.sx * bctx.sy;
-	if (ncells > screen_redraw_ncells) {
-		screen_redraw_cells = xreallocarray(screen_redraw_cells, ncells,
-		    sizeof *screen_redraw_cells);
-		screen_redraw_ncells = ncells;
+	if (ncells > redraw_ncells) {
+		redraw_cells = xreallocarray(redraw_cells, ncells,
+		    sizeof *redraw_cells);
+		redraw_ncells = ncells;
 	}
-	bctx.cells = screen_redraw_cells;
+	bctx.cells = redraw_cells;
 	for (y = 0; y < bctx.sy; y++) {
 		for (x = 0; x < bctx.sx; x++)
-			screen_redraw_reset_cell(&bctx, x, y);
+			redraw_reset_cell(&bctx, x, y);
 	}
 
 	TAILQ_FOREACH_REVERSE(wp, &bctx.w->z_index, window_panes_zindex, zentry)
-		screen_redraw_mark_pane(&bctx, wp);
+		redraw_mark_pane(&bctx, wp);
 
-	screen_redraw_mark_two_pane_colours(&bctx);
-	screen_redraw_finish_scene(&bctx, scene);
+	redraw_mark_two_pane_colours(&bctx);
+	redraw_finish_scene(&bctx, scene);
 	log_debug("%s: finished @%u scene build", c->name, scene->w->id);
 
 	return (scene);
@@ -885,7 +880,7 @@ screen_redraw_make_scene(struct client *c)
 
 /* Free a scene. */
 void
-screen_redraw_free_scene(struct redraw_scene *scene)
+redraw_free_scene(struct redraw_scene *scene)
 {
 	struct redraw_spans	*spans;
 	struct redraw_span	*span, *span1;
@@ -909,24 +904,24 @@ screen_redraw_free_scene(struct redraw_scene *scene)
 
 /* Mark a window's cached redraw scenes as out of date. */
 void
-screen_redraw_invalidate_scene(struct window *w)
+redraw_invalidate_scene(struct window *w)
 {
 	w->redraw_scene_generation++;
 }
 
 /* Mark all cached redraw scenes as out of date. */
 void
-screen_redraw_invalidate_all_scenes(void)
+redraw_invalidate_all_scenes(void)
 {
 	struct window	*w;
 
 	RB_FOREACH(w, windows, &windows)
-		screen_redraw_invalidate_scene(w);
+		redraw_invalidate_scene(w);
 }
 
 /* Get the cached redraw scene, rebuilding it if needed. */
 static struct redraw_scene *
-screen_redraw_get_scene(struct client *c)
+redraw_get_scene(struct client *c)
 {
 	struct redraw_scene	*scene = c->redraw_scene;
 	struct window		*w = c->session->curw->window;
@@ -946,8 +941,8 @@ screen_redraw_get_scene(struct client *c)
 		reason = "size changed";
 	if (reason != NULL) {
 		log_debug("%s: @%u scene invalid: %s", c->name, w->id, reason);
-		screen_redraw_free_scene(scene);
-		scene = screen_redraw_make_scene(c);
+		redraw_free_scene(scene);
+		scene = redraw_make_scene(c);
 		c->redraw_scene = scene;
 	}
 	return (scene);
@@ -955,7 +950,7 @@ screen_redraw_get_scene(struct client *c)
 
 /* Is this span adjacent to this pane? */
 static int
-screen_redraw_span_has_pane(struct redraw_span *span, struct window_pane *wp)
+redraw_span_has_pane(struct redraw_span *span, struct window_pane *wp)
 {
 	if (span->data.b.top_wp == wp)
 		return (1);
@@ -970,7 +965,7 @@ screen_redraw_span_has_pane(struct redraw_span *span, struct window_pane *wp)
 
 /* Draw a pane span. */
 static void
-screen_redraw_draw_pane_span(struct redraw_draw_ctx *dctx,
+redraw_draw_pane_span(struct redraw_draw_ctx *dctx,
     struct redraw_span *span, u_int x, u_int y, u_int n)
 {
 	struct redraw_scene	*scene = dctx->scene;
@@ -994,7 +989,7 @@ screen_redraw_draw_pane_span(struct redraw_draw_ctx *dctx,
 
 /* Get style for cells without a pane. */
 static void
-screen_redraw_get_default_border_style(struct redraw_draw_ctx *dctx,
+redraw_get_default_border_style(struct redraw_draw_ctx *dctx,
     struct grid_cell *gc)
 {
 	struct redraw_scene	*scene = dctx->scene;
@@ -1019,7 +1014,7 @@ screen_redraw_get_default_border_style(struct redraw_draw_ctx *dctx,
  * then any adjacent pane.
  */
 static struct window_pane *
-screen_redraw_get_pane_for_border_style(struct redraw_draw_ctx *dctx,
+redraw_get_pane_for_border_style(struct redraw_draw_ctx *dctx,
     struct redraw_span *span)
 {
 	struct window_pane	*active = dctx->active;
@@ -1029,7 +1024,7 @@ screen_redraw_get_pane_for_border_style(struct redraw_draw_ctx *dctx,
 
 	if (span->data.b.style_wp != NULL)
 		return (span->data.b.style_wp);
-	if (active != NULL && screen_redraw_span_has_pane(span, active))
+	if (active != NULL && redraw_span_has_pane(span, active))
 		return (active);
 
 	if (span->data.b.top_wp != NULL)
@@ -1045,7 +1040,7 @@ screen_redraw_get_pane_for_border_style(struct redraw_draw_ctx *dctx,
 
 /* Draw arrow indicator if this border span is an arrow cell. */
 static void
-screen_redraw_draw_border_arrow(struct redraw_draw_ctx *dctx,
+redraw_draw_border_arrow(struct redraw_draw_ctx *dctx,
     struct redraw_span *span, struct grid_cell *gc)
 {
 	struct window_pane	*active = dctx->active;
@@ -1073,7 +1068,7 @@ screen_redraw_draw_border_arrow(struct redraw_draw_ctx *dctx,
 
 /* Draw a border span. */
 static void
-screen_redraw_draw_border_span(struct redraw_draw_ctx *dctx,
+redraw_draw_border_span(struct redraw_draw_ctx *dctx,
     struct redraw_span *span, u_int x, u_int y, u_int n)
 {
 	struct redraw_scene	*scene = dctx->scene;
@@ -1090,13 +1085,13 @@ screen_redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 	if (span->data.type != REDRAW_SPAN_BORDER)
 		cell_type = CELL_NONE;
 	else {
-		wp = screen_redraw_get_pane_for_border_style(dctx, span);
+		wp = redraw_get_pane_for_border_style(dctx, span);
 		cell_type = span->data.b.cell_type;
 	}
 
 	if (wp == NULL) {
 		pane_lines = options_get_number(oo, "pane-border-lines");
-		screen_redraw_get_default_border_style(dctx, &gc);
+		redraw_get_default_border_style(dctx, &gc);
 		window_get_border_cell(w, NULL, pane_lines, cell_type, &gc);
 	} else {
 		window_pane_get_border_style(wp, c, &gc);
@@ -1105,9 +1100,9 @@ screen_redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 
 	if (span->data.type == REDRAW_SPAN_BORDER &&
 	    dctx->marked != NULL &&
-	    screen_redraw_span_has_pane(span, dctx->marked))
+	    redraw_span_has_pane(span, dctx->marked))
 		gc.attr ^= GRID_ATTR_REVERSE;
-	screen_redraw_draw_border_arrow(dctx, span, &gc);
+	redraw_draw_border_arrow(dctx, span, &gc);
 
 	if (cell_type == CELL_UD && (dctx->flags & REDRAW_ISOLATES))
 		isolates = 1;
@@ -1122,7 +1117,7 @@ screen_redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 
 /* Draw a pane status span. */
 static void
-screen_redraw_draw_status_span(struct redraw_draw_ctx *dctx,
+redraw_draw_status_span(struct redraw_draw_ctx *dctx,
     struct redraw_span *span, u_int x, u_int y, u_int n)
 {
 	struct redraw_scene	*scene = dctx->scene;
@@ -1142,7 +1137,7 @@ screen_redraw_draw_status_span(struct redraw_draw_ctx *dctx,
 
 /* Draw a scrollbar span. */
 static void
-screen_redraw_draw_scrollbar_span(struct redraw_draw_ctx *dctx,
+redraw_draw_scrollbar_span(struct redraw_draw_ctx *dctx,
     struct redraw_span *span, u_int x, u_int y, u_int n)
 {
 	struct redraw_scene	*scene = dctx->scene;
@@ -1219,7 +1214,7 @@ screen_redraw_draw_scrollbar_span(struct redraw_draw_ctx *dctx,
 
 /* Draw a span. */
 static void
-screen_redraw_draw_span(struct redraw_draw_ctx *dctx, struct redraw_span *span,
+redraw_draw_span(struct redraw_draw_ctx *dctx, struct redraw_span *span,
     u_int y)
 {
 	struct redraw_scene	*scene = dctx->scene;
@@ -1244,18 +1239,18 @@ screen_redraw_draw_span(struct redraw_draw_ctx *dctx, struct redraw_span *span,
 
 		switch (span->data.type) {
 		case REDRAW_SPAN_PANE:
-			screen_redraw_draw_pane_span(dctx, span, x, y, n);
+			redraw_draw_pane_span(dctx, span, x, y, n);
 			break;
 		case REDRAW_SPAN_BORDER:
 		case REDRAW_SPAN_EMPTY:
 		case REDRAW_SPAN_OUTSIDE:
-			screen_redraw_draw_border_span(dctx, span, x, y, n);
+			redraw_draw_border_span(dctx, span, x, y, n);
 			break;
 		case REDRAW_SPAN_STATUS:
-			screen_redraw_draw_status_span(dctx, span, x, y, n);
+			redraw_draw_status_span(dctx, span, x, y, n);
 			break;
 		case REDRAW_SPAN_SCROLLBAR:
-			screen_redraw_draw_scrollbar_span(dctx, span, x, y, n);
+			redraw_draw_scrollbar_span(dctx, span, x, y, n);
 			break;
 		}
 	}
@@ -1263,8 +1258,8 @@ screen_redraw_draw_span(struct redraw_draw_ctx *dctx, struct redraw_span *span,
 
 /* Draw pane lines. */
 static void
-screen_redraw_draw_pane_lines(struct redraw_draw_ctx *dctx,
-    struct window_pane *wp, int flags)
+redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
+    int flags)
 {
 	struct redraw_scene	*scene = dctx->scene;
 	struct redraw_line	*line;
@@ -1292,14 +1287,14 @@ screen_redraw_draw_pane_lines(struct redraw_draw_ctx *dctx,
 			spans = &line->spans[REDRAW_SPAN_PANE];
 			TAILQ_FOREACH(span, spans, entry) {
 				if (span->data.p.wp == wp)
-					screen_redraw_draw_span(dctx, span, cy);
+					redraw_draw_span(dctx, span, cy);
 			}
 		}
 		if (flags & REDRAW_PANE_SCROLLBAR) {
 			spans = &line->spans[REDRAW_SPAN_SCROLLBAR];
 			TAILQ_FOREACH(span, spans, entry) {
 				if (span->data.sb.wp == wp)
-					screen_redraw_draw_span(dctx, span, cy);
+					redraw_draw_span(dctx, span, cy);
 			}
 		}
 	}
@@ -1307,7 +1302,7 @@ screen_redraw_draw_pane_lines(struct redraw_draw_ctx *dctx,
 
 /* Draw lines. */
 static void
-screen_redraw_draw_lines(struct redraw_draw_ctx *dctx, int flags)
+redraw_draw_lines(struct redraw_draw_ctx *dctx, int flags)
 {
 	struct redraw_scene	*scene = dctx->scene;
 	struct redraw_line	*line;
@@ -1354,14 +1349,14 @@ screen_redraw_draw_lines(struct redraw_draw_ctx *dctx, int flags)
 			}
 			spans = &line->spans[type];
 			TAILQ_FOREACH(span, spans, entry)
-				screen_redraw_draw_span(dctx, span, cy);
+				redraw_draw_span(dctx, span, cy);
 		}
 	}
 }
 
 /* Get line for pane status line. */
 static int
-screen_redraw_pane_status_line(struct redraw_draw_ctx *dctx,
+redraw_pane_status_line(struct redraw_draw_ctx *dctx,
     struct window_pane *wp, u_int *line)
 {
 	struct redraw_scene	*scene = dctx->scene;
@@ -1385,14 +1380,14 @@ screen_redraw_pane_status_line(struct redraw_draw_ctx *dctx,
 
 /* Get available width for pane status line. */
 static u_int
-screen_redraw_pane_status_width(struct redraw_draw_ctx *dctx,
+redraw_pane_status_width(struct redraw_draw_ctx *dctx,
     struct window_pane *wp, struct redraw_span **first)
 {
 	struct redraw_scene	*scene = dctx->scene;
 	struct redraw_span	*span;
 	u_int			 y, width = 0, end;
 
-	if (!screen_redraw_pane_status_line(dctx, wp, &y))
+	if (!redraw_pane_status_line(dctx, wp, &y))
 		return (0);
 
 	*first = NULL;
@@ -1410,7 +1405,7 @@ screen_redraw_pane_status_width(struct redraw_draw_ctx *dctx,
 
 /* Set up draw context. */
 static void
-screen_redraw_set_draw_context(struct redraw_draw_ctx *dctx,
+redraw_set_draw_context(struct redraw_draw_ctx *dctx,
     struct redraw_scene *scene)
 {
 	struct client	*c = scene->c;
@@ -1437,7 +1432,7 @@ screen_redraw_set_draw_context(struct redraw_draw_ctx *dctx,
 
 /* Draw scene to client. */
 static void
-screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
+redraw_draw(struct client *c, struct window_pane *wp, int flags)
 {
 	struct redraw_draw_ctx	 dctx;
 	struct session		*s = c->session;
@@ -1469,13 +1464,13 @@ screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
 
 	if (log_get_level() != 0) {
 		log_debug("%s: starting @%u redraw (%s)", c->name, w->id,
-		    screen_redraw_flags_string(flags));
+		    redraw_flags_string(flags));
 	}
 
-	scene = screen_redraw_get_scene(c);
+	scene = redraw_get_scene(c);
 	if (scene == NULL)
 		return;
-	screen_redraw_set_draw_context(&dctx, scene);
+	redraw_set_draw_context(&dctx, scene);
 
 	if (flags & (REDRAW_PANE_BORDER|REDRAW_PANE_STATUS)) {
 		TAILQ_FOREACH(loop, &scene->w->panes, entry) {
@@ -1492,7 +1487,7 @@ screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
 			else
 				loop->flags &= ~PANE_NEWSTATUS;
 
-			width = screen_redraw_pane_status_width(&dctx, loop,
+			width = redraw_pane_status_width(&dctx, loop,
 			    &first);
 			if (width == 0)
 				continue;
@@ -1526,9 +1521,9 @@ screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	tty_update_mode(tty, 0, NULL);
 
 	if (wp != NULL)
-		screen_redraw_draw_pane_lines(&dctx, wp, flags);
+		redraw_draw_pane_lines(&dctx, wp, flags);
 	else
-		screen_redraw_draw_lines(&dctx, flags);
+		redraw_draw_lines(&dctx, flags);
 
 	if (flags & REDRAW_STATUS) {
 		lines = dctx.status_lines;
@@ -1554,7 +1549,7 @@ screen_redraw_draw(struct client *c, struct window_pane *wp, int flags)
 
 /* Get border cell type beneath status cell at offset x in pane status line. */
 int
-screen_redraw_get_status_border_cell_type(struct redraw_span **spanp, u_int x)
+redraw_get_status_border_cell_type(struct redraw_span **spanp, u_int x)
 {
 	struct redraw_span	*span = *spanp;
 	struct window_pane	*wp;
@@ -1588,12 +1583,12 @@ screen_redraw_get_status_border_cell_type(struct redraw_span **spanp, u_int x)
 
 /* Draw screen. */
 void
-screen_redraw_screen(struct client *c)
+redraw_screen(struct client *c)
 {
 	int	flags = 0;
 
 	if (c->flags & CLIENT_REDRAWWINDOW)
-		screen_redraw_draw(c, NULL, REDRAW_ALL);
+		redraw_draw(c, NULL, REDRAW_ALL);
 	else {
 		if (c->flags & CLIENT_REDRAWBORDERS)
 			flags |= (REDRAW_PANE_BORDER|REDRAW_PANE_STATUS);
@@ -1602,20 +1597,20 @@ screen_redraw_screen(struct client *c)
 		if (c->flags & CLIENT_REDRAWOVERLAY)
 			flags |= REDRAW_OVERLAY;
 		if (flags != 0)
-			screen_redraw_draw(c, NULL, flags);
+			redraw_draw(c, NULL, flags);
 	}
 }
 
 /* Draw a single pane. */
 void
-screen_redraw_pane(struct client *c, struct window_pane *wp)
+redraw_pane(struct client *c, struct window_pane *wp)
 {
-	screen_redraw_draw(c, wp, REDRAW_PANE|REDRAW_PANE_SCROLLBAR);
+	redraw_draw(c, wp, REDRAW_PANE|REDRAW_PANE_SCROLLBAR);
 }
 
 /* Draw a pane's scrollbar. */
 void
-screen_redraw_pane_scrollbar(struct client *c, struct window_pane *wp)
+redraw_pane_scrollbar(struct client *c, struct window_pane *wp)
 {
-	screen_redraw_draw(c, wp, REDRAW_PANE_SCROLLBAR);
+	redraw_draw(c, wp, REDRAW_PANE_SCROLLBAR);
 }
