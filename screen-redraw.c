@@ -1051,7 +1051,7 @@ redraw_draw_pane_span(struct redraw_draw_ctx *dctx,
 	struct tty_style_ctx	 style_ctx;
 	u_int			 px, py;
 
-	tty_default_colours(&defaults, wp);
+	tty_default_colours(&defaults, wp, &style_ctx.dim);
 	style_ctx.defaults = &defaults;
 	style_ctx.palette = &wp->palette;
 	style_ctx.hyperlinks = s->hyperlinks;
