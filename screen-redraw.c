@@ -236,7 +236,7 @@ struct redraw_draw_ctx {
 
 /* Make redraw flags into a string. */
 static const char *
-redraw_flags_string(int flags)
+redraw_flags_to_string(int flags)
 {
 	static char	s[128];
 
@@ -321,21 +321,22 @@ static int
 redraw_window_to_scene(struct redraw_build_ctx *bctx, int wx, int wy,
     u_int *x, u_int *y)
 {
+	int	sx, sy;
+
 	if (wx < 0 || wy < 0)
 		return (0);
 	if ((u_int)wx > bctx->w->sx || (u_int)wy > bctx->w->sy)
 		return (0);
 	if (wx < (int)bctx->ox || wy < (int)bctx->oy)
 		return (0);
-	wx -= bctx->ox;
-	wy -= bctx->oy;
 
-	if (wx < 0 || wy < 0)
+	sx = wx - (int)bctx->ox;
+	sy = wy - (int)bctx->oy;
+
+	if ((u_int)sx >= bctx->sx || (u_int)sy >= bctx->sy)
 		return (0);
-	if ((u_int)wx >= bctx->sx || (u_int)wy >= bctx->sy)
-		return (0);
-	*x = wx;
-	*y = wy;
+	*x = sx;
+	*y = sy;
 	return (1);
 }
 
@@ -1538,7 +1539,7 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 
 	if (log_get_level() != 0) {
 		log_debug("%s: starting @%u redraw (%s)", c->name, w->id,
-		    redraw_flags_string(flags));
+		    redraw_flags_to_string(flags));
 	}
 
 	scene = redraw_get_scene(c);
