@@ -144,4 +144,19 @@ compare cache-window-b
 $TMUX2 selectw -t$A || exit 1
 compare cache-window-a-again
 
+# --- Size change: the client (and so the scene) is resized. ---
+
+# With window-size latest the inner window tracks the client size, so resizing
+# the outer window resizes the inner client and the scene. The cached scene must
+# be rebuilt at the new size (the scene->sx/sy mismatch path in
+# redraw_get_scene), not drawn at the old size.
+$TMUX2 set -g window-size latest || exit 1
+$TMUX2 neww -d "sh -c 'exec sleep 100'" || exit 1
+$TMUX2 selectw -t:\$ || exit 1
+$TMUX2 splitw -v "$C" || exit 1
+compare cache-resizeclient-before
+
+$TMUX resizew -x30 -y10 || exit 1
+compare cache-resizeclient-after
+
 exit 0

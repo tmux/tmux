@@ -177,4 +177,13 @@ $TMUX2 setw pane-border-status top || exit 1
 title_all p
 compare pane-status-2x2-top
 
+# A zoomed pane: the active pane fills the whole window and the other panes and
+# their borders are not drawn at all (a single full-window pane scene).
+new_scene
+$TMUX2 splitw -h "$C" || exit 1
+$TMUX2 splitw -v "$C" || exit 1
+$TMUX2 selectp -t0 || exit 1
+$TMUX2 resize-pane -Z || exit 1
+compare zoomed-pane
+
 exit 0
