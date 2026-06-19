@@ -816,7 +816,7 @@ redraw_mark_two_pane_colours(struct redraw_build_ctx *bctx)
 
 /* Return true if two adjacent build cells can be joined into one span. */
 static int
-redraw_data_cmp(struct redraw_build_cell *a, struct redraw_build_cell *b)
+redraw_compare_data(struct redraw_build_cell *a, struct redraw_build_cell *b)
 {
 	struct redraw_span_data	*ad = &a->data, *bd = &b->data;
 
@@ -947,7 +947,7 @@ redraw_make_scene(struct client *c)
 
 			while (x < bctx.sx) {
 				bc = redraw_get_build_cell(&bctx, x, y);
-				if (!redraw_data_cmp(last, bc))
+				if (!redraw_compare_data(last, bc))
 					break;
 				last = bc;
 				x++;
