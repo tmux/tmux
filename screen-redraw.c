@@ -520,13 +520,23 @@ redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
 		return;
 	bc = redraw_get_build_cell(bctx, x, y);
 
-	if (bc->data.type == REDRAW_SPAN_BORDER) {
-		if (floating && !redraw_data_has_pane(&bc->data, wp))
+	/*
+	 * If this is a tiled pane, only empty and border cells may be marked.
+	 * Border cells are merged and empty cells are updated.
+	 *
+	 * Floating panes may mark any existing cell type. All cells are reset
+	 * except borders that already belong to this pane, they need to be
+	 * merged.
+	 */
+	if (!floating) {
+		if (bc->data.type == REDRAW_SPAN_EMPTY)
 			reset = 1;
-	} else {
-		if (!floating && bc->data.type != REDRAW_SPAN_EMPTY)
+		else if (bc->data.type != REDRAW_SPAN_BORDER)
 			return;
-		reset = 1;
+	} else {
+		if (bc->data.type != REDRAW_SPAN_BORDER ||
+		    !redraw_data_has_pane(&bc->data, wp))
+			reset = 1;
 	}
 	if (reset) {
 		memset(bc, 0, sizeof *bc);
