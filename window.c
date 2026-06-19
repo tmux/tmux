@@ -388,6 +388,8 @@ window_pane_destroy_ready(struct window_pane *wp)
 	 */
 	if (wp->wait_item != NULL && (~wp->flags & PANE_STATUSREADY))
 		return (0);
+	if (wp->editor != NULL && (~wp->flags & PANE_STATUSREADY))
+		return (0);
 	return (1);
 }
 
@@ -1131,6 +1133,7 @@ static void
 window_pane_destroy(struct window_pane *wp)
 {
 	window_pane_wait_finish(wp);
+	spawn_editor_finish(wp);
 
 	window_pane_reset_mode_all(wp);
 	free(wp->searchstr);

@@ -1309,6 +1309,7 @@ struct window_pane {
 	int		 status;
 	struct timeval	 dead_time;
 	struct cmdq_item *wait_item;	/* new-pane -W: waiting for pane exit */
+	struct spawn_editor_state *editor;
 
 	int		 fd;
 	struct bufferevent *event;
@@ -3840,19 +3841,13 @@ int		 menu_key_cb(struct client *, void *, struct key_event *);
 /* popup.c */
 #define POPUP_CLOSEEXIT 0x1
 #define POPUP_CLOSEEXITZERO 0x2
-#define POPUP_INTERNAL 0x4
-#define POPUP_CLOSEANYKEY 0x8
-#define POPUP_NOJOB 0x10
+#define POPUP_CLOSEANYKEY 0x4
 typedef void (*popup_close_cb)(int, void *);
-typedef void (*popup_finish_edit_cb)(char *, size_t, void *);
 int		 popup_display(int, enum box_lines, struct cmdq_item *, u_int,
                     u_int, u_int, u_int, struct environ *, const char *, int,
                     char **, const char *, const char *, struct client *,
                     struct session *, const char *, const char *,
                     popup_close_cb, void *);
-void		 popup_write(struct client *, const char *, size_t);
-int		 popup_editor(struct client *, const char *, size_t,
-		    popup_finish_edit_cb, void *);
 int		 popup_present(struct client *);
 int		 popup_modify(struct client *, const char *, const char *,
 		    const char *, enum box_lines, int);
@@ -3876,6 +3871,12 @@ struct style_range *style_ranges_get_range(struct style_ranges *, u_int);
 /* spawn.c */
 struct winlink	*spawn_window(struct spawn_context *, char **);
 struct window_pane *spawn_pane(struct spawn_context *, char **);
+typedef void (*spawn_finish_edit_cb)(char *, size_t, void *);
+struct spawn_editor_state *spawn_editor(struct client *, const char *, size_t,
+		     spawn_finish_edit_cb, void *);
+void		 spawn_cancel_editor(struct spawn_editor_state *);
+pid_t		 spawn_get_editor_pid(struct spawn_editor_state *);
+void		 spawn_editor_finish(struct window_pane *);
 
 /* regsub.c */
 char		*regsub(const char *, const char *, const char *, int);
