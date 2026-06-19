@@ -889,18 +889,18 @@ window_tree_sort(struct sort_criteria *sort_crit)
 }
 
 static const char* window_tree_help_lines[] = {
-	"\r\033[1m      Enter \033[0m\016x\017 \033[0mChoose selected item\n",
-	"\r\033[1m       S-Up \033[0m\016x\017 \033[0mSwap current and previous window\n",
-	"\r\033[1m     S-Down \033[0m\016x\017 \033[0mSwap current and next window\n",
-	"\r\033[1m          x \033[0m\016x\017 \033[0mKill selected item\n",
-	"\r\033[1m          X \033[0m\016x\017 \033[0mKill tagged items\n",
-	"\r\033[1m          < \033[0m\016x\017 \033[0mScroll previews left\n",
-	"\r\033[1m          > \033[0m\016x\017 \033[0mScroll previews right\n",
-	"\r\033[1m          m \033[0m\016x\017 \033[0mSet the marked pane\n",
-	"\r\033[1m          M \033[0m\016x\017 \033[0mClear the marked pane\n",
-	"\r\033[1m          : \033[0m\016x\017 \033[0mRun a command for each tagged item\n",
-	"\r\033[1m          f \033[0m\016x\017 \033[0mEnter a format\n",
-	"\r\033[1m          H \033[0m\016x\017 \033[0mJump to the starting pane\n",
+	"#[bold]      Enter #[default]#[acs]x#[default] Choose selected item",
+	"#[bold]       S-Up #[default]#[acs]x#[default] Swap current and previous window",
+	"#[bold]     S-Down #[default]#[acs]x#[default] Swap current and next window",
+	"#[bold]          x #[default]#[acs]x#[default] Kill selected item",
+	"#[bold]          X #[default]#[acs]x#[default] Kill tagged items",
+	"#[bold]          < #[default]#[acs]x#[default] Scroll previews left",
+	"#[bold]          > #[default]#[acs]x#[default] Scroll previews right",
+	"#[bold]          m #[default]#[acs]x#[default] Set the marked pane",
+	"#[bold]          M #[default]#[acs]x#[default] Clear the marked pane",
+	"#[bold]          : #[default]#[acs]x#[default] Run a command for each tagged item",
+	"#[bold]          f #[default]#[acs]x#[default] Enter a format",
+	"#[bold]          H #[default]#[acs]x#[default] Jump to the starting pane",
 	NULL
 };
 

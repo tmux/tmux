@@ -330,13 +330,13 @@ window_buffer_sort(struct sort_criteria *sort_crit)
 }
 
 static const char* window_buffer_help_lines[] = {
-	"\r\033[1m      Enter \033[0m\016x\017 \033[0mPaste selected %1\n",
-	"\r\033[1m          p \033[0m\016x\017 \033[0mPaste selected %1\n",
-	"\r\033[1m          P \033[0m\016x\017 \033[0mPaste tagged %1s\n",
-	"\r\033[1m          d \033[0m\016x\017 \033[0mDelete selected %1\n",
-	"\r\033[1m          D \033[0m\016x\017 \033[0mDelete tagged %1s\n",
-	"\r\033[1m          e \033[0m\016x\017 \033[0mOpen %1 in editor\n",
-	"\r\033[1m          f \033[0m\016x\017 \033[0mEnter a filter\n",
+	"#[bold]      Enter #[default]#[acs]x#[default] Paste selected %1",
+	"#[bold]          p #[default]#[acs]x#[default] Paste selected %1",
+	"#[bold]          P #[default]#[acs]x#[default] Paste tagged %1s",
+	"#[bold]          d #[default]#[acs]x#[default] Delete selected %1",
+	"#[bold]          D #[default]#[acs]x#[default] Delete tagged %1s",
+	"#[bold]          e #[default]#[acs]x#[default] Open %1 in editor",
+	"#[bold]          f #[default]#[acs]x#[default] Enter a filter",
 	NULL
 };
 
