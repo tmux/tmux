@@ -260,11 +260,14 @@ redraw_flags_string(int flags)
 	return (s);
 }
 
-/* Expand size to cover any part of the client outside the window. */
+/* Get window offset and expand size to cover any part outside the window. */
 static void
-redraw_expand_size(struct client *c, u_int *sx, u_int *sy)
+redraw_get_window_offset(struct client *c, u_int *ox, u_int *oy, u_int *sx,
+    u_int *sy)
 {
 	u_int	tty_sx, tty_sy;
+
+	tty_window_offset(&c->tty, ox, oy, sx, sy);
 
 	tty_sx = c->tty.sx;
 	tty_sy = c->tty.sy - status_line_size(c);
@@ -285,8 +288,7 @@ redraw_set_context(struct client *c, struct redraw_build_ctx *bctx)
 	memset(bctx, 0, sizeof *bctx);
 	bctx->c = c;
 	bctx->w = w;
-	tty_window_offset(&c->tty, &bctx->ox, &bctx->oy, &bctx->sx, &bctx->sy);
-	redraw_expand_size(c, &bctx->sx, &bctx->sy);
+	redraw_get_window_offset(c, &bctx->ox, &bctx->oy, &bctx->sx, &bctx->sy);
 
 	bctx->sb = options_get_number(oo, "pane-scrollbars");
 	bctx->sbp = options_get_number(oo, "pane-scrollbars-position");
@@ -1005,8 +1007,7 @@ redraw_get_scene(struct client *c)
 	const char		*reason = NULL;
 	u_int			 ox, oy, sx, sy;
 
-	tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
-	redraw_expand_size(c, &sx, &sy);
+	redraw_get_window_offset(c, &ox, &oy, &sx, &sy);
 	if (scene == NULL)
 		reason = "missing";
 	else if (scene->w != w)
