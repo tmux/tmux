@@ -511,10 +511,9 @@ redraw_data_has_pane(struct redraw_span_data *data, struct window_pane *wp)
 static void
 redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
     struct window_pane *wp, int top_owner, int bottom_owner, int mask,
-    int floating)
+    enum pane_lines pane_lines, int floating)
 {
 	struct redraw_build_cell	*bc;
-	enum pane_lines			 pane_lines;
 	u_int				 x, y;
 	int				 reset = 0;
 
@@ -545,7 +544,6 @@ redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
 		bc->data.type = REDRAW_SPAN_BORDER;
 	}
 
-	pane_lines = window_pane_get_pane_lines(wp);
 	if (top_owner) {
 		bc->data.b.top_wp = wp;
 		bc->data.b.top_lines = pane_lines;
@@ -709,7 +707,7 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 			if (wx < right)
 				mask |= REDRAW_BORDER_R;
 			redraw_mark_border_cell(bctx, wx, top, wp, 0, 1, mask,
-			    floating);
+			    pane_lines, floating);
 		}
 	}
 	if (mark_bottom) {
@@ -720,7 +718,7 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 			if (wx < right)
 				mask |= REDRAW_BORDER_R;
 			redraw_mark_border_cell(bctx, wx, bottom, wp, 1, 0,
-			    mask, floating);
+			    mask, pane_lines, floating);
 		}
 	}
 	if (mark_left) {
@@ -731,7 +729,7 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 			if (wy < bottom)
 				mask |= REDRAW_BORDER_D;
 			redraw_mark_border_cell(bctx, left, wy, wp, 0, 0, mask,
-			    floating);
+			    pane_lines, floating);
 		}
 	}
 	if (mark_right) {
@@ -742,7 +740,7 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 			if (wy < bottom)
 				mask |= REDRAW_BORDER_D;
 			redraw_mark_border_cell(bctx, right, wy, wp, 0, 0, mask,
-			    floating);
+			    pane_lines, floating);
 		}
 	}
 
