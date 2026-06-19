@@ -369,15 +369,15 @@ window_client_sort(struct sort_criteria *sort_crit)
 }
 
 static const char* window_client_help_lines[] = {
-	"\r\033[1m          i \033[0m\016x\017 \033[0mToggle info view\n",
-	"\r\033[1m      Enter \033[0m\016x\017 \033[0mChoose selected %1\n",
-	"\r\033[1m          d \033[0m\016x\017 \033[0mDetach selected %1\n",
-	"\r\033[1m          D \033[0m\016x\017 \033[0mDetach tagged %1s\n",
-	"\r\033[1m          x \033[0m\016x\017 \033[0mDetach selected %1\n",
-	"\r\033[1m          X \033[0m\016x\017 \033[0mDetach tagged %1s\n",
-	"\r\033[1m          z \033[0m\016x\017 \033[0mSuspend selected %1\n",
-	"\r\033[1m          Z \033[0m\016x\017 \033[0mSuspend tagged %1s\n",
-	"\r\033[1m          f \033[0m\016x\017 \033[0mEnter a filter\n",
+	"#[bold]          i #[default]#[acs]x#[default] Toggle info view",
+	"#[bold]      Enter #[default]#[acs]x#[default] Choose selected %1",
+	"#[bold]          d #[default]#[acs]x#[default] Detach selected %1",
+	"#[bold]          D #[default]#[acs]x#[default] Detach tagged %1s",
+	"#[bold]          x #[default]#[acs]x#[default] Detach selected %1",
+	"#[bold]          X #[default]#[acs]x#[default] Detach tagged %1s",
+	"#[bold]          z #[default]#[acs]x#[default] Suspend selected %1",
+	"#[bold]          Z #[default]#[acs]x#[default] Suspend tagged %1s",
+	"#[bold]          f #[default]#[acs]x#[default] Enter a filter",
 	NULL
 };
 

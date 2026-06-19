@@ -869,15 +869,15 @@ window_customize_height(__unused void *modedata, __unused u_int height)
 }
 
 static const char* window_customize_help_lines[] = {
-	"\r\033[1m   Enter, s \033[0m\016x\017 \033[0mSet %1 value\n",
-	"\r\033[1m          S \033[0m\016x\017 \033[0mSet global %1 value\n",
-	"\r\033[1m          w \033[0m\016x\017 \033[0mSet window %1 value\n",
-	"\r\033[1m          d \033[0m\016x\017 \033[0mSet to default value\n",
-	"\r\033[1m          D \033[0m\016x\017 \033[0mSet tagged %1s to default value\n",
-	"\r\033[1m          u \033[0m\016x\017 \033[0mUnset an %1\n",
-	"\r\033[1m          U \033[0m\016x\017 \033[0mUnset tagged %1s\n",
-	"\r\033[1m          f \033[0m\016x\017 \033[0mEnter a filter\n",
-	"\r\033[1m          v \033[0m\016x\017 \033[0mToggle information\n",
+	"#[bold]   Enter, s #[default]#[acs]x#[default] Set %1 value",
+	"#[bold]          S #[default]#[acs]x#[default] Set global %1 value",
+	"#[bold]          w #[default]#[acs]x#[default] Set window %1 value",
+	"#[bold]          d #[default]#[acs]x#[default] Set to default value",
+	"#[bold]          D #[default]#[acs]x#[default] Set tagged %1s to default value",
+	"#[bold]          u #[default]#[acs]x#[default] Unset an %1",
+	"#[bold]          U #[default]#[acs]x#[default] Unset tagged %1s",
+	"#[bold]          f #[default]#[acs]x#[default] Enter a filter",
+	"#[bold]          v #[default]#[acs]x#[default] Toggle information",
 	NULL
 };
 
