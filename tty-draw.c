@@ -89,6 +89,30 @@ tty_draw_line_clear(struct tty *tty, u_int px, u_int py, u_int nx,
 		tty_repeat_space(tty, nx);
 }
 
+/* Is this cell empty? */
+static u_int
+tty_draw_line_get_empty(const struct grid_cell *gc,
+    const struct grid_cell *last, u_int nx)
+{
+	u_int	empty = 0;
+
+	if (gc->data.width > nx)
+		empty = nx;
+	else if (gc->flags & GRID_FLAG_PADDING)
+		empty = 1;
+	else if (gc->flags & GRID_FLAG_SELECTED)
+		empty = 0;
+	else if (gc->bg == last->bg && gc->attr == 0 && gc->link == 0) {
+		if (gc->flags & GRID_FLAG_CLEARED)
+			empty = 1;
+		else if (gc->flags & GRID_FLAG_TAB)
+			empty = gc->data.width;
+		else if (gc->data.size == 1 && *gc->data.data == ' ')
+			empty = 1;
+	}
+	return (empty);
+}
+
 /* Draw a line from screen to tty. */
 void
 tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
@@ -219,43 +243,31 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			if (i > nx)
 				fatalx("position %u > width %u", i, nx);
 
-			/* Get the current cell. */
-			grid_view_get_cell(gd, px + i, py, &gc);
-
-			/* Update for codeset if needed. */
-			gcp = tty_check_codeset(tty, &gc);
-
-			/* And for selection. */
-			if (gcp->flags & GRID_FLAG_SELECTED) {
-				memcpy(&ngc, gcp, sizeof ngc);
-				if (screen_select_cell(s, &ngc, gcp))
-					gcp = &ngc;
-			}
-
-			/* Work out the the empty width. */
-			empty = 0;
 			if (px >= ex || i >= ex - px) {
 				/* Outside the area being drawn. */
-				empty = 1;
-			} else if (gcp->data.width > nx - i) {
-				/* Wide character that has been truncated. */
 				empty = nx - i;
-			} else if (gcp->flags & GRID_FLAG_PADDING) {
-				/* Orphan padding cell. */
-				empty = 1;
-			} else if (gcp->bg == last.bg && gcp->attr == 0 &&
-			    gcp->link == 0) {
-				/*
-				 * No attributes - empty if cleared, tab or
-				 * space.
-				 */
-				if (gcp->flags & GRID_FLAG_CLEARED)
-					empty = 1;
-				else if (gcp->flags & GRID_FLAG_TAB)
-					empty = gcp->data.width;
-				else if (gcp->data.size == 1 &&
-				    *gcp->data.data == ' ')
-					empty = 1;
+				gcp = &grid_default_cell;
+			} else {
+				/* Get the current cell. */
+				grid_view_get_cell(gd, px + i, py, &gc);
+
+				/* Work out empty cells. */
+				empty = tty_draw_line_get_empty(&gc, &last,
+				    nx - i);
+				if (empty != 0)
+					gcp = &gc;
+				else {
+					/* Update for codeset if needed. */
+					gcp = tty_check_codeset(tty, &gc);
+
+					/* And for selection. */
+					if (gcp->flags & GRID_FLAG_SELECTED) {
+						memcpy(&ngc, gcp, sizeof ngc);
+						if (screen_select_cell(s, &ngc,
+						    gcp))
+							gcp = &ngc;
+					}
+				}
 			}
 
 			/* Work out the next state. */
