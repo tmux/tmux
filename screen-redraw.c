@@ -226,6 +226,7 @@ struct redraw_draw_ctx {
 	struct window_pane	*marked;
 
 	u_int			 status_lines;
+	enum pane_lines		 pane_lines;
 	struct grid_cell	 default_gc;
 
 	int			 flags;
@@ -1065,22 +1066,25 @@ redraw_draw_pane_span(struct redraw_draw_ctx *dctx,
 /* Get default border style for spans without a pane. */
 static void
 redraw_get_default_border_style(struct redraw_draw_ctx *dctx,
-    struct grid_cell *gc)
+    struct grid_cell *gc, enum pane_lines *pane_lines)
 {
 	struct redraw_scene	*scene = dctx->scene;
 	struct client		*c = scene->c;
 	struct session		*s = c->session;
+	struct options		*oo = scene->w->options;
 	struct format_tree	*ft;
 	struct grid_cell	*dgc = &dctx->default_gc;
 
 	if (~dctx->flags & REDRAW_DEFAULT_SET) {
 		ft = format_create_defaults(NULL, c, s, s->curw, NULL);
 		memcpy(dgc, &grid_default_cell, sizeof *dgc);
-		style_add(dgc, scene->w->options, "pane-border-style", ft);
+		style_add(dgc, oo, "pane-border-style", ft);
 		format_free(ft);
+		dctx->pane_lines = options_get_number(oo, "pane-border-lines");
 		dctx->flags |= REDRAW_DEFAULT_SET;
 	}
 	memcpy(gc, dgc, sizeof *gc);
+	*pane_lines = dctx->pane_lines;
 }
 
 /*
@@ -1150,7 +1154,6 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 	struct client		*c = scene->c;
 	struct tty		*tty = &c->tty;
 	struct window		*w = scene->w;
-	struct options		*oo = w->options;
 	struct window_pane	*wp = NULL;
 	struct grid_cell	 gc;
 	enum pane_lines		 pane_lines;
@@ -1165,8 +1168,7 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 	}
 
 	if (wp == NULL) {
-		pane_lines = options_get_number(oo, "pane-border-lines");
-		redraw_get_default_border_style(dctx, &gc);
+		redraw_get_default_border_style(dctx, &gc, &pane_lines);
 		window_get_border_cell(w, NULL, pane_lines, cell_type, &gc);
 	} else {
 		window_pane_get_border_style(wp, c, &gc);
