@@ -106,6 +106,27 @@ $TMUX2 setw pane-scrollbars-style "bg=black,fg=white,width=1,pad=0" || exit 1
 $TMUX2 new-pane -x20 -y6 -X8 -Y3 "sh -c 'printf FLOAT; exec sleep 100'" || exit 1
 compare scrollbar-floating
 
+# Two tiled panes side by side, each with a right scrollbar. The left pane's
+# scrollbar sits between its content and the shared border, so the border is
+# extended outward over the scrollbar gap (the right += sb_w path in
+# redraw_mark_pane_borders) and must still join cleanly. The right pane's
+# scrollbar abuts the window edge.
+new_scene
+$TMUX2 setw pane-scrollbars-position right || exit 1
+$TMUX2 setw pane-scrollbars-style "bg=black,fg=white,width=1,pad=0" || exit 1
+$TMUX2 splitw -h "sh -c 'printf base; exec sleep 100'" || exit 1
+$TMUX2 selectp -t0 || exit 1
+compare scrollbar-split-right
+
+# Same split with the scrollbars on the left: the right pane's scrollbar now sits
+# between the shared border and its content (the left -= sb_w path).
+new_scene
+$TMUX2 setw pane-scrollbars-position left || exit 1
+$TMUX2 setw pane-scrollbars-style "bg=black,fg=white,width=1,pad=0" || exit 1
+$TMUX2 splitw -h "sh -c 'printf base; exec sleep 100'" || exit 1
+$TMUX2 selectp -t0 || exit 1
+compare scrollbar-split-left
+
 # Scrollbar slider in copy mode: with scrollback the slider is shorter than the
 # track, so this exercises the slider geometry (which only runs when the pane is
 # in a mode). copy-mode -H hides the position indicator, which is not stable.

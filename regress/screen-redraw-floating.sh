@@ -95,6 +95,13 @@ $TMUX2 new-pane -x28 -y8 -X4 -Y1 -B double \
 	"sh -c 'printf FLOAT; exec sleep 100'" || exit 1
 compare floating-border-double
 
+# Floating pane with no border lines: redraw_mark_pane_borders returns early so
+# the float has no border at all, only its (clipped) content over the base pane.
+new_scene 40 12
+$TMUX2 new-pane -x20 -y6 -X10 -Y3 -B none \
+	"sh -c 'printf NOBORDER; exec sleep 100'" || exit 1
+compare floating-noborder
+
 # Floating pane positioned past the right and bottom edges: must clip.
 new_scene 40 12
 $TMUX2 new-pane -x20 -y6 -X30 -Y8 "sh -c 'printf CLIP; exec sleep 100'" || exit 1

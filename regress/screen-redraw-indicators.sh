@@ -125,6 +125,42 @@ $TMUX2 splitw -v "$C" || exit 1
 $TMUX2 selectp -t0 || exit 1
 compare two-pane-colour-horizontal -e
 
+# The colour split only applies with exactly two tiled panes. With three panes
+# the split is suppressed: the whole border uses the active pane's colour and
+# there is no coloured half (redraw_check_two_pane_colours returns 0).
+new_scene
+$TMUX2 setw pane-active-border-style fg=red || exit 1
+$TMUX2 setw pane-border-style fg=green || exit 1
+$TMUX2 splitw -h "$C" || exit 1
+$TMUX2 selectp -t0 || exit 1
+$TMUX2 splitw -h "$C" || exit 1
+$TMUX2 selectp -t0 || exit 1
+compare colour-three-suppressed -e
+
+# A floating pane is ignored by the two-pane count, so two tiled panes plus a
+# float still split. The float itself is never coloured by the indicator.
+new_scene
+$TMUX2 setw pane-active-border-style fg=red || exit 1
+$TMUX2 setw pane-border-style fg=green || exit 1
+$TMUX2 splitw -h "$C" || exit 1
+$TMUX2 selectp -t0 || exit 1
+$TMUX2 new-pane -x16 -y6 -X10 -Y2 "$C" || exit 1
+$TMUX2 selectp -t0 || exit 1
+compare colour-two-plus-float -e
+
+# --- Both indicators together. ---
+
+# pane-border-indicators both enables the arrow and the colour split at once
+# (it satisfies both the arrow and the colour branches). Two panes so the colour
+# split also applies.
+$TMUX2 set -g pane-border-indicators both || exit 1
+new_scene
+$TMUX2 setw pane-active-border-style fg=red || exit 1
+$TMUX2 setw pane-border-style fg=green || exit 1
+$TMUX2 splitw -h "$C" || exit 1
+$TMUX2 selectp -t0 || exit 1
+compare indicators-both -e
+
 # --- Marked pane. ---
 
 # A marked pane (select-pane -m) has its border drawn reversed. Captured with -e
