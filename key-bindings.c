@@ -578,6 +578,8 @@ key_bindings_init(void)
 		"bind -Tcopy-mode M-Down { send -X halfpage-down }",
 		"bind -Tcopy-mode C-Up { send -X scroll-up }",
 		"bind -Tcopy-mode C-Down { send -X scroll-down }",
+		"bind -Tcopy-mode M-C-Up { send -X previous-prompt }",
+		"bind -Tcopy-mode M-C-Down { send -X next-prompt }",
 
 		/* Copy mode (vi) keys. */
 		"bind -Tcopy-mode-vi '#' { send -FX search-backward -- '#{copy_cursor_word}' }",
