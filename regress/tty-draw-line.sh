@@ -77,6 +77,10 @@ $TMUX2 neww -d \
 	"printf 'abcdefghijklmnopqrst\r\033[KXYZ\nnext'; exec sleep 100" || exit 1
 $TMUX2 neww -d \
 	"printf 'ab\tcdefghijklmnopqrstuvwxyz'; printf '\033[H'; exec sleep 100" || exit 1
+$TMUX2 neww -d \
+	"printf '\033(0x\033(B'; exec sleep 100" || exit 1
+$TMUX2 neww -d \
+	"awk 'BEGIN { for (i = 0; i < 1100; i++) printf \"a\" }'; exec sleep 100" || exit 1
 $TMUX2 selectw -t:0 || exit 1
 
 $TMUX -f/dev/null new -d -x20 -y6 || exit 1
@@ -224,5 +228,21 @@ check_line 2 "next"
 captureen
 sed -n 1p $TMP | grep -q "$esc" || \
 	fail "selected short-line tail did not draw attributes"
+
+# ACS/charset cells should be redrawn correctly.
+$TMUX resizew -x20 -y6 || exit 1
+$TMUX2 selectw -t:11 || exit 1
+sleep 1
+capture
+check_line 1 "│"
+
+# A long run with the same attributes should flush the internal draw buffer.
+$TMUX resizew -x1100 -y6 || exit 1
+$TMUX2 resizew -t:12 -x1100 -y6 || exit 1
+$TMUX2 selectw -t:12 || exit 1
+sleep 1
+capture
+len=$(sed -n 1p $TMP | wc -c)
+[ "$len" -ge 1100 ] || fail "long same-style line was truncated"
 
 exit 0
