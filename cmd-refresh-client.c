@@ -168,6 +168,7 @@ cmd_refresh_report(struct tty *tty, const char *value)
 {
 	struct window_pane	*wp;
 	u_int			 pane;
+	int			 fg, bg;
 	size_t			 size = 0;
 	char			*copy, *split;
 
@@ -184,8 +185,14 @@ cmd_refresh_report(struct tty *tty, const char *value)
 	if (wp == NULL)
 		goto out;
 
-	tty_keys_colours(tty, split, strlen(split), &size, &wp->control_fg,
-	    &wp->control_bg);
+	fg = wp->control_fg;
+	bg = wp->control_bg;
+	if (tty_keys_colours(tty, split, strlen(split), &size, &fg, &bg) == 0) {
+		if (bg != wp->control_bg)
+			wp->flags |= PANE_THEMECHANGED;
+		wp->control_fg = fg;
+	        wp->control_bg = bg;
+	}
 
 out:
 	free(copy);

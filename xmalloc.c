@@ -105,6 +105,18 @@ xstrndup(const char *str, size_t maxlen)
 	return cp;
 }
 
+char *
+xmemdup(const void *ptr, size_t len)
+{
+	char *cp;
+
+	cp = xmalloc(len + 1);
+	if (len != 0)
+		memcpy(cp, ptr, len);
+	cp[len] = '\0';
+	return cp;
+}
+
 int
 xasprintf(char **ret, const char *fmt, ...)
 {

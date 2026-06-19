@@ -32,6 +32,7 @@
 static struct style style_default = {
 	{ { { ' ' }, 0, 1, 1 }, 0, 0, 8, 8, 0, 0 },
 	0,
+	0,
 
 	8,
 	STYLE_ALIGN_DEFAULT,
@@ -201,6 +202,13 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 			if ((value = colour_fromstring(tmp + 5)) == -1)
 				goto error;
 			sy->fill = value;
+		} else if (end > 4 && strncasecmp(tmp, "dim=", 4) == 0) {
+			if (tmp[end - 1] == '%')
+				tmp[end - 1] = '\0';
+			n = strtonum(tmp + 4, 0, 100, &errstr);
+			if (errstr != NULL)
+				goto error;
+			sy->dim = n;
 		} else if (end > 3 && strncasecmp(tmp + 1, "g=", 2) == 0) {
 			if ((value = colour_fromstring(tmp + 3)) == -1)
 				goto error;
@@ -346,6 +354,11 @@ style_tostring(struct style *sy)
 		    colour_tostring(sy->fill));
 		comma = ",";
 	}
+	if (sy->dim != 0) {
+		off += xsnprintf(s + off, sizeof s - off, "%sdim=%d%%", comma,
+		    sy->dim);
+		comma = ",";
+	}
 	if (gc->fg != 8) {
 		off += xsnprintf(s + off, sizeof s - off, "%sfg=%s", comma,
 		    colour_tostring(gc->fg));
@@ -386,7 +399,7 @@ style_tostring(struct style *sy)
 }
 
 /* Apply a style on top of the given style. */
-void
+struct style *
 style_add(struct grid_cell *gc, struct options *oo, const char *name,
     struct format_tree *ft)
 {
@@ -409,6 +422,7 @@ style_add(struct grid_cell *gc, struct options *oo, const char *name,
 
 	if (ft0 != NULL)
 		format_free(ft0);
+	return (sy);
 }
 
 /* Apply a style on top of the default style. */

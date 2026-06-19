@@ -120,6 +120,28 @@ colour_force_rgb(int c)
 	return (-1);
 }
 
+/* Dim colour by a percentage. */
+int
+colour_dim(int c, u_int dim)
+{
+	u_char	r, g, b;
+
+	if (dim == 0 || COLOUR_DEFAULT(c))
+		return (c);
+	if (dim >= 100)
+		return (colour_join_rgb(0, 0, 0));
+
+	c = colour_force_rgb(c);
+	if (c == -1)
+		return (-1);
+	colour_split_rgb(c, &r, &g, &b);
+
+	r = (r * (100 - dim)) / 100;
+	g = (g * (100 - dim)) / 100;
+	b = (b * (100 - dim)) / 100;
+	return (colour_join_rgb(r, g, b));
+}
+
 /* Convert colour to a string. */
 const char *
 colour_tostring(int c)

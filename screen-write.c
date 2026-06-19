@@ -252,7 +252,8 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 	} else {
 		ttyctx->redraw_cb = screen_write_redraw_cb;
 		if (ctx->wp != NULL) {
-			tty_default_colours(&ttyctx->defaults, ctx->wp);
+			tty_default_colours(&ttyctx->defaults, ctx->wp,
+			    &ttyctx->style_ctx.dim);
 			ttyctx->style_ctx.palette = &ctx->wp->palette;
 			ttyctx->set_client_cb = screen_write_set_client_cb;
 			ttyctx->arg = ctx->wp;
