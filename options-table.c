@@ -1416,7 +1416,7 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .minimum = 0,
 	  .maximum = INT_MAX,
-	  .default_num = 1000,
+	  .default_num = 500,
 	  .unit = "milliseconds",
 	  .text = "Time before auto-hidden pane scrollbars disappear."
 	},
