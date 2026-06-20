@@ -1237,6 +1237,8 @@ options_push_changes(const char *name)
 	    strcmp(name, "pane-border-lines") == 0 ||
 	    strcmp(name, "pane-border-status") == 0 ||
 	    strcmp(name, "pane-scrollbars") == 0 ||
+	    strcmp(name, "pane-scrollbars-auto-hide") == 0 ||
+	    strcmp(name, "pane-scrollbars-auto-hide-timeout") == 0 ||
 	    strcmp(name, "pane-scrollbars-position") == 0 ||
 	    strcmp(name, "pane-scrollbars-style") == 0)
 		redraw_invalidate_all_scenes();
@@ -1257,9 +1259,14 @@ options_push_changes(const char *name)
 	}
 	if (strcmp(name, "pane-border-status") == 0 ||
 	    strcmp(name, "pane-scrollbars") == 0 ||
+	    strcmp(name, "pane-scrollbars-auto-hide") == 0 ||
 	    strcmp(name, "pane-scrollbars-position") == 0) {
 		RB_FOREACH(w, windows, &windows)
 			layout_fix_panes(w, NULL);
+	}
+	if (strcmp(name, "pane-scrollbars-auto-hide") == 0) {
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
+			window_pane_scrollbar_hide(wp);
 	}
 	if (strcmp(name, "pane-scrollbars-style") == 0) {
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {

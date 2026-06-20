@@ -48,6 +48,8 @@ static void	server_client_dispatch(struct imsg *, void *);
 static int	server_client_dispatch_command(struct client *, struct imsg *);
 static int	server_client_dispatch_identify(struct client *, struct imsg *);
 static int	server_client_dispatch_shell(struct client *);
+static void	server_client_update_scrollbar_hover(struct client *, int, int,
+		    int);
 static void	server_client_report_theme(struct client *, enum client_theme);
 
 /* Compare client windows. */
@@ -599,6 +601,60 @@ server_client_exec(struct client *c, const char *cmd)
 	free(msg);
 }
 
+/* Is this point inside the auto-hide scrollbar interaction area? */
+static int
+server_client_in_scrollbar_area(struct window_pane *wp, int px, int py)
+{
+	struct window	*w = wp->window;
+	u_int		 width, pad, total;
+	int		 sb, sb_pos, start, end;
+
+	sb = options_get_number(w->options, "pane-scrollbars");
+	if (!window_pane_scrollbar_overlay(wp, sb))
+		return (0);
+	if (py < wp->yoff || py >= wp->yoff + (int)wp->sy)
+		return (0);
+
+	width = wp->scrollbar_style.width;
+	pad = wp->scrollbar_style.pad;
+	total = width + pad;
+	if (total == 0 || total > wp->sx)
+		total = wp->sx;
+
+	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
+	if (sb_pos == PANE_SCROLLBARS_LEFT) {
+		start = wp->xoff;
+		end = wp->xoff + (int)total - 1;
+	} else {
+		end = wp->xoff + (int)wp->sx - 1;
+		start = end - (int)total + 1;
+	}
+	return (px >= start && px <= end);
+}
+
+/* Update auto-hide scrollbars for a mouse movement. */
+static void
+server_client_update_scrollbar_hover(struct client *c, int type, int px, int py)
+{
+	struct window		*w = c->session->curw->window;
+	struct window_pane	*wp;
+
+	if (type != KEYC_TYPE_MOUSEMOVE)
+		return;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (!window_pane_is_visible(wp))
+			continue;
+		if (server_client_in_scrollbar_area(wp, px, py)) {
+			wp->sb_auto_hover = 1;
+			window_pane_scrollbar_show(wp, 0);
+		} else {
+			wp->sb_auto_hover = 0;
+			window_pane_scrollbar_start_timer(wp);
+		}
+	}
+}
+
 /* Is the mouse inside a pane? */
 static enum key_code_mouse_location
 server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
@@ -606,17 +662,21 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 {
 	struct window		*w = wp->window;
 	struct window_pane	*fwp;
-	int			 pane_status, sb, sb_pos, sb_w, sb_pad;
+	int			 pane_status, sb, sb_pos, sb_w, sb_pad, sb_overlay;
 	int			 pane_status_line, sl_top, sl_bottom;
 	int			 bdr_bottom, bdr_top, bdr_left, bdr_right;
+	int			 sb_start, sb_end;
 
 	sb = options_get_number(w->options, "pane-scrollbars");
 	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
 	pane_status = window_pane_get_pane_status(wp);
+	sb_overlay = window_pane_scrollbar_overlay(wp, sb);
 
-	if (window_pane_show_scrollbar(wp, sb)) {
+	if (window_pane_scrollbar_visible(wp, sb)) {
 		sb_w = wp->scrollbar_style.width;
 		sb_pad = wp->scrollbar_style.pad;
+		if (sb_overlay && sb_w > (int)wp->sx)
+			sb_w = wp->sx;
 	} else {
 		sb_w = 0;
 		sb_pad = 0;
@@ -629,8 +689,33 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 	else
 		pane_status_line = -1; /* not used */
 	bdr_left = wp->xoff - 1;
-	if (sb_pos == PANE_SCROLLBARS_LEFT)
+	if (!sb_overlay && sb_pos == PANE_SCROLLBARS_LEFT)
 		bdr_left -= sb_pad + sb_w;
+
+	if (sb_overlay && sb_w != 0 &&
+	    py >= wp->yoff && py < wp->yoff + (int)wp->sy &&
+	    px >= wp->xoff && px < wp->xoff + (int)wp->sx) {
+		if (sb_pos == PANE_SCROLLBARS_LEFT) {
+			sb_start = wp->xoff;
+			sb_end = sb_start + sb_w - 1;
+		} else {
+			sb_end = wp->xoff + (int)wp->sx - 1;
+			sb_start = sb_end - sb_w + 1;
+		}
+		if (px >= sb_start && px <= sb_end) {
+			sl_top = wp->yoff + wp->sb_slider_y;
+			sl_bottom = (wp->yoff + wp->sb_slider_y +
+			    wp->sb_slider_h - 1);
+			if (py < sl_top)
+				return (KEYC_MOUSE_LOCATION_SCROLLBAR_UP);
+			else if (py >= sl_top && py <= sl_bottom) {
+				*sl_mpos = (py - wp->sb_slider_y - wp->yoff);
+				return (KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER);
+			} else
+				return (KEYC_MOUSE_LOCATION_SCROLLBAR_DOWN);
+		}
+		return (KEYC_MOUSE_LOCATION_PANE);
+	}
 
 	/* Check if point is within the pane or scrollbar. */
 	if (((pane_status != PANE_STATUS_OFF &&
@@ -679,7 +764,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 			if (window_pane_is_floating(fwp) &&
 			    window_pane_get_pane_lines(fwp) == PANE_LINES_NONE)
 				continue;
-			if (window_pane_show_scrollbar(fwp, sb)) {
+			if (window_pane_scrollbar_reserve(fwp, sb)) {
 				sb_w = fwp->scrollbar_style.width;
 				sb_pad = fwp->scrollbar_style.pad;
 			} else {
@@ -909,10 +994,14 @@ have_event:
 			tty_window_offset(&c->tty, &m->ox, &m->oy, &sx, &sy);
 			log_debug("mouse window @%u at %u,%u (%ux%u)",
 				  w->id, m->ox, m->oy, sx, sy);
-			if (px > sx || py > sy)
+			if (px > sx || py > sy) {
+				server_client_update_scrollbar_hover(c, type,
+				    -1, -1);
 				return (KEYC_UNKNOWN);
+			}
 			px = px + m->ox;
 			py = py + m->oy;
+			server_client_update_scrollbar_hover(c, type, px, py);
 
 			if (type == KEYC_TYPE_MOUSEDRAG && lwp != NULL) {
 				/* Use pane from last mouse event. */
@@ -945,7 +1034,8 @@ have_event:
 			m->wp = wp->id;
 			m->w = wp->window->id;
 		}
-	}
+	} else
+		server_client_update_scrollbar_hover(c, type, -1, -1);
 
 	/* Reset click type or add a click timer if needed. */
 	if (type == KEYC_TYPE_MOUSEDOWN ||
@@ -1884,7 +1974,8 @@ server_client_reset_state(struct client *c)
 					mode |= MODE_MOUSE_ALL;
 			}
 		}
-		if (options_get_number(oo, "focus-follows-mouse"))
+		if (options_get_number(oo, "focus-follows-mouse") ||
+		    options_get_number(w->options, "pane-scrollbars-auto-hide"))
 			mode |= MODE_MOUSE_ALL;
 		else if (~mode & MODE_MOUSE_ALL)
 			mode |= MODE_MOUSE_BUTTON;

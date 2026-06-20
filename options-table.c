@@ -1404,6 +1404,23 @@ const struct options_table_entry options_table[] = {
 	  .text = "Pane scrollbar state."
 	},
 
+	{ .name = "pane-scrollbars-auto-hide",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_num = 0,
+	  .text = "Whether pane scrollbars are hidden when not in use."
+	},
+
+	{ .name = "pane-scrollbars-auto-hide-timeout",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .minimum = 0,
+	  .maximum = INT_MAX,
+	  .default_num = 1000,
+	  .unit = "milliseconds",
+	  .text = "Time before auto-hidden pane scrollbars disappear."
+	},
+
 	{ .name = "pane-scrollbars-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,

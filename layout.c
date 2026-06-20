@@ -434,7 +434,7 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 			sy--;
 		}
 
-		if (window_pane_show_scrollbar(wp, scrollbars)) {
+		if (window_pane_scrollbar_reserve(wp, scrollbars)) {
 			sb_w = wp->scrollbar_style.width;
 			sb_pad = wp->scrollbar_style.pad;
 			if (sb_w < 1)
@@ -507,7 +507,8 @@ layout_resize_check(struct window *w, struct layout_cell *lc,
 		/* Space available in this cell only. */
 		if (type == LAYOUT_LEFTRIGHT) {
 			available = lc->sx;
-			if (scrollbars)
+			if (scrollbars && !options_get_number(w->options,
+			    "pane-scrollbars-auto-hide"))
 				minimum = PANE_MINIMUM + sb_style->width +
 				    sb_style->pad;
 			else
@@ -1211,7 +1212,8 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 	/* Check there is enough space for the two new panes. */
 	switch (type) {
 	case LAYOUT_LEFTRIGHT:
-		if (scrollbars) {
+		if (scrollbars && !options_get_number(wp->window->options,
+		    "pane-scrollbars-auto-hide")) {
 			minimum = PANE_MINIMUM * 2 + sb_style->width +
 			    sb_style->pad;
 		} else
