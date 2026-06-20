@@ -1282,6 +1282,9 @@ struct window_pane {
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
+	int		 sb_auto_visible;
+	int		 sb_auto_hover;
+	struct event	 sb_auto_timer;
 
 	int		 argc;
 	char	       **argv;
@@ -3512,6 +3515,12 @@ void		 window_set_fill_character(struct window *);
 void		 window_pane_default_cursor(struct window_pane *);
 int		 window_pane_mode(struct window_pane *);
 int		 window_pane_show_scrollbar(struct window_pane *, int);
+int		 window_pane_scrollbar_reserve(struct window_pane *, int);
+int		 window_pane_scrollbar_visible(struct window_pane *, int);
+int		 window_pane_scrollbar_overlay(struct window_pane *, int);
+void		 window_pane_scrollbar_show(struct window_pane *, int);
+void		 window_pane_scrollbar_hide(struct window_pane *);
+void		 window_pane_scrollbar_start_timer(struct window_pane *);
 int		 window_pane_get_bg(struct window_pane *);
 int		 window_pane_get_fg(struct window_pane *);
 int		 window_pane_get_fg_control_client(struct window_pane *);
