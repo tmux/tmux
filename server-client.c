@@ -1882,7 +1882,7 @@ server_client_reset_state(struct client *c)
 	struct screen		*s = NULL;
 	struct options		*oo = c->session->options;
 	int			 mode = 0, cursor, flags, pane_mode = 0;
-	u_int			 cx = 0, cy = 0, ox, oy, sx, sy, n;
+	u_int			 cx = 0, cy = 0, ox, oy, sx, sy, n, sb_w;
 	struct visible_ranges	*r;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
@@ -1941,6 +1941,21 @@ server_client_reset_state(struct client *c)
 			r = window_visible_ranges(wp, cx, cy, 1, NULL);
 			if (!window_position_is_visible(r, cx))
 				cursor = 0;
+
+			if (window_pane_scrollbar_overlay_visible(wp)) {
+				sb_w = wp->scrollbar_style.width;
+				if (sb_w > wp->sx)
+					sb_w = wp->sx;
+				if (sb_w != 0 &&
+				    options_get_number(w->options,
+				    "pane-scrollbars-position") ==
+				    PANE_SCROLLBARS_LEFT) {
+					if (s->cx < sb_w)
+						cursor = 0;
+				} else if (sb_w != 0 &&
+				    s->cx >= wp->sx - sb_w)
+					cursor = 0;
+			}
 
 			if (status_at_line(c) == 0)
 				cy += status_line_size(c);

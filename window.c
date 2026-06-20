@@ -1151,8 +1151,28 @@ window_pane_scrollbar_auto_hide(struct window_pane *wp)
 	    "pane-scrollbars-auto-hide"));
 }
 
-static void
+int
+window_pane_scrollbar_overlay_visible(struct window_pane *wp)
+{
+	int	sb;
+
+	sb = options_get_number(wp->window->options, "pane-scrollbars");
+	return (window_pane_scrollbar_overlay(wp, sb) &&
+	    window_pane_scrollbar_visible(wp, sb));
+}
+
+void
 window_pane_scrollbar_redraw(struct window_pane *wp)
+{
+	if (window_pane_scrollbar_overlay_visible(wp)) {
+		wp->flags |= PANE_REDRAW;
+		return;
+	}
+	wp->flags |= PANE_REDRAWSCROLLBAR;
+}
+
+static void
+window_pane_scrollbar_redraw_visibility(struct window_pane *wp)
 {
 	redraw_invalidate_scene(wp->window);
 	wp->flags |= PANE_REDRAW;
@@ -2066,7 +2086,7 @@ window_pane_scrollbar_show(struct window_pane *wp, int start_timer)
 	if (start_timer)
 		window_pane_scrollbar_start_timer(wp);
 	if (changed)
-		window_pane_scrollbar_redraw(wp);
+		window_pane_scrollbar_redraw_visibility(wp);
 }
 
 void
@@ -2078,7 +2098,7 @@ window_pane_scrollbar_hide(struct window_pane *wp)
 	if (!wp->sb_auto_visible)
 		return;
 	wp->sb_auto_visible = 0;
-	window_pane_scrollbar_redraw(wp);
+	window_pane_scrollbar_redraw_visibility(wp);
 }
 
 int
