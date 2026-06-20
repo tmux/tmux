@@ -136,7 +136,7 @@ cmd_tile_pane_exec(struct cmd *self, struct cmdq_item *item)
 	layout_save_size(lc);
 	lc->flags &= ~LAYOUT_CELL_FLOATING;
 	if (layout_insert_tile(w, lc) == 0) {
-		cmdq_error(item, "can't tile a pane that is already tiled");
+		cmdq_error(item, "no space for a new pane");
 		return (CMD_RETURN_ERROR);
 	}
 

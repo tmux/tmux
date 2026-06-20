@@ -359,6 +359,45 @@ cmd_join_pane_zindex(struct cmdq_item *item, struct winlink *wl,
 }
 
 static enum cmd_retval
+cmd_join_pane_tile(struct cmdq_item *item, struct args *args, struct window *w,
+    struct window_pane *wp)
+{
+	struct layout_cell	*lc = wp->layout_cell;
+
+	if (!window_pane_is_floating(wp)) {
+		cmdq_error(item, "pane is not floating");
+		return (CMD_RETURN_ERROR);
+	}
+	if (window_pane_is_hidden(wp)) {
+		cmdq_error(item, "can't tile a hidden pane");
+		return (CMD_RETURN_ERROR);
+	}
+	if (w->flags & WINDOW_ZOOMED) {
+		cmdq_error(item, "can't tile a pane while window is zoomed");
+		return (CMD_RETURN_ERROR);
+	}
+
+	layout_save_size(lc);
+	lc->flags &= ~LAYOUT_CELL_FLOATING;
+	if (layout_insert_tile(w, lc) == 0) {
+		cmdq_error(item, "no space for a new pane");
+		return (CMD_RETURN_ERROR);
+	}
+
+	TAILQ_REMOVE(&w->z_index, wp, zentry);
+	TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
+
+	if (!args_has(args, 'd'))
+		window_set_active_pane(w, wp, 1);
+	layout_fix_offsets(w);
+	layout_fix_panes(w, NULL);
+	notify_window("window-layout-changed", w);
+	server_redraw_window(w);
+
+	return (CMD_RETURN_NORMAL);
+}
+
+static enum cmd_retval
 cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
@@ -372,7 +411,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*s;
 	char			*cause = NULL;
 	int			 flags = 0, dst_idx;
-	struct layout_cell	*lc;
+	struct layout_cell	*lc, *src_lc;
 
 	dst_s = target->s;
 	dst_wl = target->wl;
@@ -403,8 +442,12 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	src_wl = source->wl;
 	src_wp = source->wp;
+	src_lc = src_wp->layout_cell;
 	src_w = src_wl->window;
 	server_unzoom_window(src_w);
+
+	if (!args_has(args, 't') && window_pane_is_floating(src_wp))
+		return (cmd_join_pane_tile(item, args, src_w, src_wp));
 
 	if (src_wp == dst_wp) {
 		cmdq_error(item, "source and target panes must be different");
@@ -416,6 +459,12 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 		cmdq_error(item, "size or position %s", cause);
 		free(cause);
 		return (CMD_RETURN_ERROR);
+	}
+	if (window_pane_is_floating(src_wp)) {
+		lc->saved_sx = src_lc->sx;
+		lc->saved_sy = src_lc->sy;
+		lc->saved_xoff = src_lc->xoff;
+		lc->saved_yoff = src_lc->yoff;
 	}
 
 	layout_close_pane(src_wp);
