@@ -660,7 +660,7 @@ spawn_editor(struct client *c, const char *buf, size_t len,
 	px = w->sx / 2 - sx / 2;
 	py = w->sy / 2 - sy / 2;
 	window_push_zoom(w, 1, 0);
-	lc = layout_floating_pane(w, sx, sy, px, py);
+	lc = layout_floating_pane(w, NULL, sx, sy, px, py);
 	if (lc == NULL) {
 		spawn_editor_free(es);
 		return (NULL);
