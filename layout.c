@@ -1339,9 +1339,11 @@ struct layout_cell *
 layout_floating_pane(struct window *w, struct window_pane *wp, u_int sx,
     u_int sy, int ox, int oy)
 {
-	struct layout_cell	*lc = wp->layout_cell, *lcnew, *lcparent;
+	struct layout_cell	*lc, *lcnew, *lcparent;
 
-	if (lc == NULL)
+	if (wp == NULL)
+		lc = w->layout_root;
+	else
 		lc = w->layout_root;
 	lcparent = lc->parent;
 
