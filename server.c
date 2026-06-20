@@ -498,6 +498,7 @@ server_child_exited(pid_t pid, int status)
 				wp->flags |= PANE_EXITED;
 
 				window_pane_wait_finish(wp);
+				spawn_editor_finish(wp);
 
 				if (window_pane_destroy_ready(wp))
 					server_destroy_pane(wp, 1);
