@@ -5284,7 +5284,10 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 		return;
 	}
 
-	screen_write_start_pane(&ctx, wp, NULL);
+	if (window_pane_scrollbar_overlay_visible(wp))
+		screen_write_start(&ctx, &data->screen);
+	else
+		screen_write_start_pane(&ctx, wp, NULL);
 	for (i = py; i < py + ny; i++)
 		window_copy_write_line(wme, &ctx, i);
 	screen_write_cursormove(&ctx,
@@ -5292,7 +5295,7 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 	    0);
 	screen_write_stop(&ctx);
 
-	wp->flags |= PANE_REDRAWSCROLLBAR;
+	window_pane_scrollbar_redraw(wp);
 }
 
 static void
@@ -6580,7 +6583,10 @@ window_copy_scroll_up(struct window_mode_entry *wme, u_int ny)
 		return;
 	}
 
-	screen_write_start_pane(&ctx, wp, NULL);
+	if (window_pane_scrollbar_overlay_visible(wp))
+		screen_write_start(&ctx, &data->screen);
+	else
+		screen_write_start_pane(&ctx, wp, NULL);
 	screen_write_cursormove(&ctx, 0, 0, 0);
 	screen_write_deleteline(&ctx, ny, 8);
 	window_copy_write_lines(wme, &ctx, screen_size_y(s) - ny, ny);
@@ -6595,7 +6601,7 @@ window_copy_scroll_up(struct window_mode_entry *wme, u_int ny)
 	    window_copy_cursor_offset(wme, data->cx, screen_size_x(s)), data->cy,
 	    0);
 	screen_write_stop(&ctx);
-	wp->flags |= PANE_REDRAWSCROLLBAR;
+	window_pane_scrollbar_redraw(wp);
 }
 
 static void
@@ -6641,7 +6647,10 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 		return;
 	}
 
-	screen_write_start_pane(&ctx, wp, NULL);
+	if (window_pane_scrollbar_overlay_visible(wp))
+		screen_write_start(&ctx, &data->screen);
+	else
+		screen_write_start_pane(&ctx, wp, NULL);
 	screen_write_cursormove(&ctx, 0, 0, 0);
 	screen_write_insertline(&ctx, ny, 8);
 	window_copy_write_lines(wme, &ctx, 0, ny);
@@ -6652,7 +6661,7 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 	screen_write_cursormove(&ctx, window_copy_cursor_offset(wme, data->cx,
 	    screen_size_x(s)), data->cy, 0);
 	screen_write_stop(&ctx);
-	wp->flags |= PANE_REDRAWSCROLLBAR;
+	window_pane_scrollbar_redraw(wp);
 }
 
 static void
