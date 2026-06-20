@@ -69,7 +69,6 @@ extern const struct cmd_entry cmd_load_buffer_entry;
 extern const struct cmd_entry cmd_lock_client_entry;
 extern const struct cmd_entry cmd_lock_server_entry;
 extern const struct cmd_entry cmd_lock_session_entry;
-extern const struct cmd_entry cmd_float_pane_entry;
 extern const struct cmd_entry cmd_hide_pane_entry;
 extern const struct cmd_entry cmd_move_pane_entry;
 extern const struct cmd_entry cmd_move_window_entry;
@@ -120,7 +119,6 @@ extern const struct cmd_entry cmd_swap_window_entry;
 extern const struct cmd_entry cmd_switch_client_entry;
 extern const struct cmd_entry cmd_unbind_key_entry;
 extern const struct cmd_entry cmd_unlink_window_entry;
-extern const struct cmd_entry cmd_tile_pane_entry;
 extern const struct cmd_entry cmd_wait_for_entry;
 
 const struct cmd_entry *cmd_table[] = {
@@ -166,7 +164,6 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_lock_client_entry,
 	&cmd_lock_server_entry,
 	&cmd_lock_session_entry,
-	&cmd_float_pane_entry,
 	&cmd_hide_pane_entry,
 	&cmd_move_pane_entry,
 	&cmd_move_window_entry,
@@ -217,7 +214,6 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_switch_client_entry,
 	&cmd_unbind_key_entry,
 	&cmd_unlink_window_entry,
-	&cmd_tile_pane_entry,
 	&cmd_wait_for_entry,
 	NULL
 };

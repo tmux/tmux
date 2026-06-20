@@ -150,7 +150,6 @@ dist_tmux_SOURCES = \
 	cmd-source-file.c \
 	cmd-split-window.c \
 	cmd-swap-pane.c \
-	cmd-tile-float-pane.c \
 	cmd-swap-window.c \
 	cmd-switch-client.c \
 	cmd-unbind-key.c \
