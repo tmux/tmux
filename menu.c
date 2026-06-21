@@ -438,7 +438,7 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 					break;
 			}
 		}
-		while (name == NULL || *name == '-') {
+		while ((name == NULL || *name == '-') && md->choice != 0) {
 			md->choice--;
 			name = menu->items[md->choice].name;
 		}
@@ -448,7 +448,7 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 	case KEYC_HOME:
 		md->choice = 0;
 		name = menu->items[md->choice].name;
-		while (name == NULL || *name == '-') {
+		while ((name == NULL || *name == '-') && md->choice != count - 1) {
 			md->choice++;
 			name = menu->items[md->choice].name;
 		}
@@ -458,7 +458,7 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 	case KEYC_END:
 		md->choice = count - 1;
 		name = menu->items[md->choice].name;
-		while (name == NULL || *name == '-') {
+		while ((name == NULL || *name == '-') && md->choice != 0) {
 			md->choice--;
 			name = menu->items[md->choice].name;
 		}
