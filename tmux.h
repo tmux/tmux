@@ -3842,6 +3842,7 @@ int		 menu_key_cb(struct client *, void *, struct key_event *);
 #define POPUP_CLOSEEXIT 0x1
 #define POPUP_CLOSEEXITZERO 0x2
 #define POPUP_CLOSEANYKEY 0x4
+#define POPUP_CLOSEOUTSIDE 0x8
 typedef void (*popup_close_cb)(int, void *);
 int		 popup_display(int, enum box_lines, struct cmdq_item *, u_int,
                     u_int, u_int, u_int, struct environ *, const char *, int,

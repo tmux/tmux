@@ -7689,7 +7689,7 @@ forwards any input read from stdin to the empty pane given by
 .Ar target\-pane .
 .Tg popup
 .It Xo Ic display\-popup
-.Op Fl BCEkN
+.Op Fl BCEkNO
 .Op Fl b Ar border\-lines
 .Op Fl c Ar target\-client
 .Op Fl d Ar start\-directory
@@ -7721,6 +7721,7 @@ Only the
 .Fl EE ,
 .Fl K ,
 .Fl N ,
+.Fl O ,
 .Fl s ,
 and
 .Fl S
@@ -7741,6 +7742,8 @@ allows any key to dismiss the popup instead of only
 .Ql Escape
 or
 .Ql C\-c .
+.Fl O
+dismisses the popup when the mouse is clicked outside of it.
 .Pp
 .Fl x
 and

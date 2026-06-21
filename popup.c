@@ -578,6 +578,10 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 		    m->y > pd->py + pd->sy - 1) {
 			if (MOUSE_BUTTONS(m->b) == MOUSE_BUTTON_3)
 				goto menu;
+			if ((pd->flags & POPUP_CLOSEOUTSIDE) &&
+			    !MOUSE_DRAG(m->b) && !MOUSE_WHEEL(m->b) &&
+			    !MOUSE_RELEASE(m->b))
+				return (1);
 			return (0);
 		}
 		if (pd->border_lines != BOX_LINES_NONE) {
