@@ -1484,6 +1484,7 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 	enum layout_type	 type;
 	u_int			 curval;
 	int			 size = -1;
+	char			*error = NULL;
 
 	if (window_pane_is_floating(wp)) {
 		*cause = xstrdup("can't split a floating pane");
@@ -1510,15 +1511,16 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 
 	if (args_has(args, 'l')) {
 		size = args_percentage_and_expand(args, 'l', 0, INT_MAX, curval,
-		    item, cause);
+		    item, &error);
 	} else if (args_has(args, 'p')) {
 		size = args_strtonum_and_expand(args, 'p', 0, 100, item,
-		    cause);
-		if (*cause == NULL)
+		    &error);
+		if (error == NULL)
 			size = curval * size / 100;
 	}
-	if (*cause != NULL) {
-		*cause = xstrdup("invalid tiled geometry");
+	if (error != NULL) {
+		xasprintf(cause, "invalid tiled geometry %s", error);
+		free(error);
 		return (NULL);
 	}
 
