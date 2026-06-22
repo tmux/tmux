@@ -155,10 +155,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if ((new_wp = spawn_pane(&sc, &cause)) == NULL) {
 		cmdq_error(item, "create pane failed: %s", cause);
 		free(cause);
-		if (sc.argv != NULL)
-			cmd_free_argv(sc.argc, sc.argv);
-		environ_free(sc.environ);
-		return (CMD_RETURN_ERROR);
+		goto fail;
 	}
 
 	style = args_get(args, 's');
@@ -166,7 +163,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		if (options_set_string(new_wp->options, "window-style", 0,
 		    "%s", style) == NULL) {
 			cmdq_error(item, "bad style: %s", style);
-			return (CMD_RETURN_ERROR);
+			goto fail;
 		}
 		options_set_string(new_wp->options, "window-active-style", 0,
 		    "%s", style);
@@ -178,7 +175,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		if (options_set_string(new_wp->options,
 		    "pane-active-border-style", 0, "%s", style) == NULL) {
 			cmdq_error(item, "bad active border style: %s", style);
-			return (CMD_RETURN_ERROR);
+			goto fail;
 		}
 	}
 	style = args_get(args, 'R');
@@ -187,7 +184,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		    "%s", style) == NULL) {
 			cmdq_error(item, "bad inactive border style: %s",
 			    style);
-			return (CMD_RETURN_ERROR);
+			goto fail;
 		}
 	}
 	value = args_get(args, 'B');
@@ -198,7 +195,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		if (cause != NULL) {
 			cmdq_error(item, "pane-border-lines %s", cause);
 			free(cause);
-			return (CMD_RETURN_ERROR);
+			goto fail;
 		}
 		options_set_number(new_wp->options, "pane-border-lines",
 		    lines);
@@ -227,10 +224,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 			window_remove_pane(wp->window, new_wp);
 			cmdq_error(item, "%s", cause);
 			free(cause);
-			if (sc.argv != NULL)
-				cmd_free_argv(sc.argc, sc.argv);
-			environ_free(sc.environ);
-			return (CMD_RETURN_ERROR);
+			goto fail;
 		case 1:
 			input = 0;
 			break;
@@ -272,4 +266,13 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_WAIT);
 	}
 	return (CMD_RETURN_NORMAL);
+
+fail:
+	if (sc.argv != NULL)
+		cmd_free_argv(sc.argc, sc.argv);
+	environ_free(sc.environ);
+	layout_destroy_cell(w, lc, &w->layout_root);
+
+	return (CMD_RETURN_ERROR);
+
 }
