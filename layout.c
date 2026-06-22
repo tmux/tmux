@@ -1185,6 +1185,32 @@ layout_resize_child_cells(struct window *w, struct layout_cell *lc)
 }
 
 /*
+ * Replaces the provided layout cell with a new node of the specified type and
+ * inserts the cell into it. Used when creating new cells requires a different
+ * layout type, or when the root layout is a window pane.
+ */
+static struct layout_cell *
+layout_replace_with_node(struct window *w, struct layout_cell *lc,
+    enum layout_type type)
+{
+	struct layout_cell	*lcparent;
+
+	lcparent = layout_create_cell(lc->parent);
+	layout_make_node(lcparent, type);
+	layout_set_size(lcparent, lc->sx, lc->sy, lc->xoff, lc->yoff);
+	if (lc->parent == NULL)
+		w->layout_root = lcparent;
+	else
+		TAILQ_REPLACE(&lc->parent->cells, lc, lcparent, entry);
+
+	/* Insert the old cell. */
+	lc->parent = lcparent;
+	TAILQ_INSERT_HEAD(&lcparent->cells, lc, entry);
+
+	return (lcparent);
+}
+
+/*
  * Split a pane into two. size is a hint, or -1 for default half/half
  * split. This must be followed by layout_assign_pane before much else happens!
  */
@@ -1315,17 +1341,7 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 		 */
 
 		/* Create and insert the replacement parent. */
-		lcparent = layout_create_cell(lc->parent);
-		layout_make_node(lcparent, type);
-		layout_set_size(lcparent, sx, sy, xoff, yoff);
-		if (lc->parent == NULL)
-			wp->window->layout_root = lcparent;
-		else
-			TAILQ_REPLACE(&lc->parent->cells, lc, lcparent, entry);
-
-		/* Insert the old cell. */
-		lc->parent = lcparent;
-		TAILQ_INSERT_HEAD(&lcparent->cells, lc, entry);
+		lcparent = layout_replace_with_node(wp->window, lc, type);
 
 		/* Create the new child cell. */
 		lcnew = layout_create_cell(lcparent);
@@ -1384,15 +1400,9 @@ layout_floating_pane(struct window *w, struct window_pane *wp, u_int sx,
 		* Adding a pane to a root that isn't node. Must create and
 		* insert a new root.
 		*/
-		lcparent = layout_create_cell(NULL);
-		layout_make_node(lcparent, LAYOUT_TOPBOTTOM);
-		layout_set_size(lcparent, w->sx, w->sy, 0, 0);
-		w->layout_root = lcparent;
-
-		/* Insert the old cell. */
-		lc->parent = lcparent;
-		TAILQ_INSERT_HEAD(&lcparent->cells, lc, entry);
-	}
+		lcparent = layout_replace_with_node(w, lc, LAYOUT_TOPBOTTOM);
+	} else
+		lcparent = w->layout_root;
 
 	lcnew = layout_create_cell(lcparent);
 	TAILQ_INSERT_AFTER(&lcparent->cells, lc, lcnew, entry);
@@ -1512,15 +1522,34 @@ struct layout_cell *
 layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
     struct window *w, struct window_pane *wp, int flags, char **cause)
 {
-	struct layout_cell	*lc;
+	struct layout_cell	*lcnew, *lc = wp->layout_cell;
+	struct layout_cell	*lcroot = w->layout_root;
 	enum layout_type	 type;
 	u_int			 curval;
 	int			 size = -1;
 	char			*error = NULL;
 
 	if (window_pane_is_floating(wp)) {
-		*cause = xstrdup("can't split a floating pane");
-		return (NULL);
+		if (layout_cell_has_tiled_child(lcroot)) {
+			*cause = xstrdup("can't split a floating pane");
+			return (NULL);
+		}
+		/*
+		 * When no panes are tiled, a new cell is created and inserted
+		 * at the top of the root node. A new root node is created if
+		 * necessary.
+		 */
+		lcnew = layout_create_cell(NULL);
+		layout_set_size(lcnew, w->sx, w->sy, 0, 0);
+		if (lcroot->type == LAYOUT_WINDOWPANE) {
+			layout_replace_with_node(w, lcnew, LAYOUT_TOPBOTTOM);
+			TAILQ_INSERT_TAIL(&lcroot->cells, lc, entry);
+			lc->parent = lcroot;
+		} else {
+			lcnew->parent = lcroot;
+			TAILQ_INSERT_HEAD(&lcroot->cells, lcnew, entry);
+		}
+		return (lcnew);
 	}
 
 	type = LAYOUT_TOPBOTTOM;
@@ -1562,11 +1591,11 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 		flags |= SPAWN_FULLSIZE;
 
 	window_push_zoom(wp->window, 1, args_has(args, 'Z'));
-	lc = layout_split_pane(wp, type, size, flags);
-	if (lc == NULL)
+	lcnew = layout_split_pane(wp, type, size, flags);
+	if (lcnew == NULL)
 		*cause = xstrdup("no space for a new pane");
 
-	return (lc);
+	return (lcnew);
 }
 
 struct layout_cell *
@@ -1712,7 +1741,11 @@ layout_remove_tile(struct window *w, struct layout_cell *lc)
 		layout_resize_adjust(w, lcneighbour, type, change);
 	}
 
-	/* Zeroing out the cell geometry until the cell is retiled. */
-	layout_set_size(lc, 0, 0, 0, 0);
+	/*
+	 * Zeroing out the cell geometry until the cell is retiled unless this
+	 * is the top level node.
+	 */
+	if (lc->parent != NULL)
+		layout_set_size(lc, 0, 0, 0, 0);
 	return (1);
 }
