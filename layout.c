@@ -1567,39 +1567,13 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 	return (lc);
 }
 
-/* Get a new floating cell. */
-struct layout_cell *
-layout_get_floating_cell(struct cmdq_item *item, struct args *args,
-    enum pane_lines lines, struct window *w, struct window_pane *wp,
-    char **cause)
-{
-	struct layout_cell	*lcnew;
-	u_int			 sx = UINT_MAX, sy = UINT_MAX;
-	int			 ox = INT_MAX, oy = INT_MAX;
-
-	layout_floating_args_parse(item, args, w, &sx, &sy, &ox, &oy, cause);
-	if (*cause != NULL) {
-		return (NULL);
-	}
-
-	if (sx < PANE_MINIMUM || sx > PANE_MAXIMUM) {
-		*cause = xstrdup("invalid width");
-		return (NULL);
-	}
-	if (sy < PANE_MINIMUM || sy > PANE_MAXIMUM) {
-		*cause = xstrdup("invalid height");
-		return (NULL);
-	}
-
-	lcnew = layout_floating_pane(w, wp, sx, sy, ox, oy);
-	return (lcnew);
-}
-
 void
 layout_floating_args_parse(struct cmdq_item *item, struct args *args,
-    struct window *w, u_int *sxp, u_int *syp, int *oxp, int *oyp, char **cause)
+    enum pane_lines lines, struct window *w, u_int *sxp, u_int *syp, int *oxp,
+    int *oyp, char **cause)
 {
-	int	sx, sy, ox, oy;
+	int	 sx, sy, ox, oy;
+	char	*error = NULL;
 
 	sx = *sxp == UINT_MAX ? w->sx / 2 : *sxp;
 	sy = *syp == UINT_MAX ? w->sy / 4 : *syp;
@@ -1612,7 +1586,7 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 		if (error != NULL) {
 			xasprintf(cause, "position %s", error);
 			free(error);
-			return (NULL);
+			return;
 		}
 		if (lines != PANE_LINES_NONE)
 			sx -= 2;
@@ -1623,22 +1597,28 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 		if (error != NULL) {
 			xasprintf(cause, "position %s", error);
 			free(error);
-			return (NULL);
+			return;
 		}
 		if (lines != PANE_LINES_NONE)
 			sy -= 2;
 	}
 	if (args_has(args, 'X')) {
 		ox = args_percentage_and_expand(args, 'X', -(int)w->sx, w->sx,
-		    w->sx, item, cause);
-		if (*cause != NULL)
+		    w->sx, item, &error);
+		if (error != NULL) {
+			xasprintf(cause, "position %s", error);
+			free(error);
 			return;
+		}
 	}
 	if (args_has(args, 'Y')) {
 		oy = args_percentage_and_expand(args, 'Y', -(int)w->sy, w->sy,
-		    w->sy, item, cause);
-		if (*cause != NULL)
+		    w->sy, item, &error);
+		if (error != NULL) {
+			xasprintf(cause, "position %s", error);
+			free(error);
 			return;
+		}
 	}
 
 	if (ox == INT_MAX) {
@@ -1668,11 +1648,11 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 
 	if (sx < PANE_MINIMUM || sx > PANE_MAXIMUM) {
 		*cause = xstrdup("invalid width");
-		return (NULL);
+		return;
 	}
 	if (sy < PANE_MINIMUM || sy > PANE_MAXIMUM) {
 		*cause = xstrdup("invalid height");
-		return (NULL);
+		return;
 	}
 
 	*sxp = sx;

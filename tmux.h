@@ -3594,7 +3594,8 @@ void		 layout_spread_out(struct window_pane *);
 struct layout_cell *layout_get_tiled_cell(struct cmdq_item *, struct args *,
 		     struct window *, struct window_pane *, int, char **);
 void		 layout_floating_args_parse(struct cmdq_item *, struct args *,
-		     struct window *, u_int *, u_int *, int *, int *, char **);
+		     enum pane_lines, struct window *, u_int *, u_int *, int *,
+		     int *, char **);
 int		 layout_remove_tile(struct window *, struct layout_cell *);
 
 /* layout-custom.c */

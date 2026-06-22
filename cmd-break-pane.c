@@ -54,6 +54,7 @@ cmd_break_pane_float(struct cmdq_item *item, struct args *args,
 	u_int			 sx = lc->saved_sx, sy = lc->saved_sy;
 	int			 ox = lc->saved_xoff, oy = lc->saved_yoff;
 	char			*cause = NULL;
+	enum pane_lines		 lines = window_get_pane_lines(w);
 
 	if (window_pane_is_floating(wp)) {
 		cmdq_error(item, "pane is already floating");
@@ -64,13 +65,14 @@ cmd_break_pane_float(struct cmdq_item *item, struct args *args,
 		return (CMD_RETURN_ERROR);
 	}
 
-	layout_remove_tile(w, lc);
-	layout_floating_args_parse(item, args, w, &sx, &sy, &ox, &oy, &cause);
+	layout_floating_args_parse(item, args, lines, w, &sx, &sy, &ox, &oy,
+	    &cause);
 	if (cause != NULL) {
 		cmdq_error(item, "failed to float pane: %s", cause);
 		free(cause);
 		return (CMD_RETURN_ERROR);
 	}
+	layout_remove_tile(w, lc);
 	layout_set_size(lc, sx, sy, ox, oy);
 
 	lc->flags |= LAYOUT_CELL_FLOATING;
