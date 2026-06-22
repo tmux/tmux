@@ -1424,6 +1424,22 @@ status_prompt_backward_word(struct client *c, const char *separators)
 	c->prompt_index = idx;
 }
 
+/* Should this key exit incremental prompt? */
+static int
+status_prompt_incremental_exit_key(key_code key)
+{
+	switch (key) {
+	case KEYC_UP:
+	case KEYC_DOWN:
+	case KEYC_LEFT:
+	case KEYC_RIGHT:
+	case KEYC_PPAGE:
+	case KEYC_NPAGE:
+		return (1);
+	}
+	return (0);
+}
+
 /* Handle keys in prompt. */
 int
 status_prompt_key(struct client *c, key_code key)
@@ -1482,6 +1498,15 @@ status_prompt_key(struct client *c, key_code key)
 	}
 
 process_key:
+	if ((c->prompt_flags & PROMPT_INCREMENTAL) &&
+	    status_prompt_incremental_exit_key(key)) {
+		s = utf8_tocstr(c->prompt_buffer);
+		c->prompt_inputcb(c, c->prompt_data, s, 1);
+		status_prompt_clear(c);
+		free(s);
+		return (1);
+	}
+
 	switch (key) {
 	case KEYC_LEFT:
 	case 'b'|KEYC_CTRL:
