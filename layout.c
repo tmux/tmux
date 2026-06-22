@@ -1544,11 +1544,12 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 	struct layout_cell	*lcnew;
 	int			 sx = w->sx / 2, sy = w->sy / 4;
 	int			 ox = INT_MAX, oy = INT_MAX;
-	int			 borders;
 	char			*error;
 	const char		*barg = args_get(args, 'B');
+	enum pane_lines		 lines = window_pane_get_pane_lines(wp);
+	int			 borders = lines != PANE_LINES_NONE;
 
-	borders = !barg || strcmp(barg, "none") != 0;
+	borders = borders && (!barg || strcmp(barg, "none") != 0);
 	if (args_has(args, 'x')) {
 		sx = args_percentage_and_expand(args, 'x', 0, PANE_MAXIMUM,
 		    w->sx, item, &error);
