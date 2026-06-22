@@ -1490,6 +1490,12 @@ struct layout_cell {
 	int		 xoff;
 	int		 yoff;
 
+	u_int		 saved_sx;
+	u_int		 saved_sy;
+
+	int		 saved_xoff;
+	int		 saved_yoff;
+
 	struct window_pane *wp;
 	struct layout_cells cells;
 
@@ -3587,9 +3593,8 @@ int		 layout_spread_cell(struct window *, struct layout_cell *);
 void		 layout_spread_out(struct window_pane *);
 struct layout_cell *layout_get_tiled_cell(struct cmdq_item *, struct args *,
 		     struct window *, struct window_pane *, int, char **);
-struct layout_cell *layout_get_floating_cell(struct cmdq_item *, struct args *,
-		     enum pane_lines, struct window *, struct window_pane *,
-		     char **);
+void		 layout_floating_args_parse(struct cmdq_item *, struct args *,
+		     struct window *, u_int *, u_int *, int *, int *, char **);
 int		 layout_remove_tile(struct window *, struct layout_cell *);
 
 /* layout-custom.c */
