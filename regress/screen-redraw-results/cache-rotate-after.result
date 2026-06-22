@@ -1,0 +1,14 @@
+── BBB ───┬── CCC ──┬── AAA ────────────
+PANE00 abc│cdefghij │BASE01 abcdefghij
+defghij   │PANE03 ab│BASE02 abcdefghij
+PANE01 abc│cdefghij │BASE03 abcdefghij
+defghij   │PANE04 ab│BASE04 abcdefghij
+PANE02 abc│cdefghij │BASE05 abcdefghij
+defghij   │         │BASE06 abcdefghij
+PANE03 abc│         │BASE07 abcdefghij
+defghij   │         │BASE08 abcdefghij
+PANE04 abc│         │BASE09 abcdefghij
+defghij   │         │BASE10 abcdefghij
+          │         │BASE11 abcdefghij
+          │         │BASE12 abcdefghij
+          │         │

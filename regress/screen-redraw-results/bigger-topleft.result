@@ -1,0 +1,14 @@
+OUT11 abcdefghij             │PAN00 abcd
+OUT12 abcdefghij             │PAN01 abcd
+OUT13 abcdefghij             │PAN02 abcd
+OUT14 abcdefghij             │PAN03 abcd
+OUT15 abcdefghij             │PAN04 abcd
+OUT16 abcdefghij             │PAN05 abcd
+OUT17 abcdefghij             │PAN06 abcd
+OUT18 abcdefghij             │PAN07 abcd
+                             │
+─────────────────────────────┼──────────
+PAN00 abcdefghij             │PAN00 abcd
+PAN01 abcdefghij             │PAN01 abcd
+PAN02 abcdefghij             │PAN02 abcd
+PAN03 abcdefghij             │PAN03 abcd
