@@ -3530,6 +3530,7 @@ int		 window_get_bg_client(struct window_pane *);
 enum client_theme window_pane_get_theme(struct window_pane *);
 void		 window_pane_send_theme_update(struct window_pane *);
 enum pane_lines	 window_pane_get_pane_lines(struct window_pane *);
+enum pane_lines	 window_get_pane_lines(struct window *);
 int		 window_get_pane_status(struct window *);
 int		 window_pane_get_pane_status(struct window_pane *);
 struct style_range *window_pane_status_get_range(struct window_pane *, u_int,

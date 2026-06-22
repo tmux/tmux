@@ -1544,12 +1544,30 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 	struct layout_cell	*lcnew;
 	int			 sx = w->sx / 2, sy = w->sy / 4;
 	int			 ox = INT_MAX, oy = INT_MAX;
+	int			 borders;
 	char			*error;
-	const char		*barg = args_get(args, 'B');
-	enum pane_lines		 lines = window_pane_get_pane_lines(wp);
-	int			 borders = lines != PANE_LINES_NONE;
+	const char		*value = args_get(args, 'B');
+	enum pane_lines		 arglines, lines = window_get_pane_lines(w);
+	struct options_entry	*oe;
 
-	borders = borders && (!barg || strcmp(barg, "none") != 0);
+	/*
+	 * The position and sizes of floating panes need to be adjusted
+	 * depending upon the border type. A floating pane with PANE_LINES_NONE
+	 * can be grown and offset to occupy the border space.
+	 */
+	if (value) {
+		oe = options_get(w->options, "pane-border-lines");
+		arglines = options_find_choice(options_table_entry(oe), value,
+		    &error);
+		if (*cause != NULL) {
+			xasprintf(cause, "pane-border-lines %s", error);
+			free(error);
+			return (NULL);
+		}
+	} else
+		arglines = lines;
+
+	borders = arglines != PANE_LINES_NONE && lines != PANE_LINES_NONE;
 	if (args_has(args, 'x')) {
 		sx = args_percentage_and_expand(args, 'x', 0, PANE_MAXIMUM,
 		    w->sx, item, &error);
