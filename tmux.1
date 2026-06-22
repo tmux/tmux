@@ -6379,13 +6379,19 @@ An optional argument specifies flags:
 .Ql r
 means the pattern is a regular expression instead of the default
 .Xr glob 7
-pattern, and
+pattern,
+.Ql z
+means the pattern is a fuzzy match, that is, it matches if its characters
+appear in the string in order but not necessarily consecutively,
+and
 .Ql i
 means to ignore case.
 For example:
 .Ql #{m:*foo*,#{host}}
 or
-.Ql #{m/ri:\[ha]A,MYVAR} .
+.Ql #{m/ri:\[ha]A,MYVAR}
+or
+.Ql #{m/z:abc,aXbXc} .
 A
 .Ql C
 performs a search for a

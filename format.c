@@ -4507,6 +4507,25 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 	return (list);
 }
 
+/* Fuzzy match strings. */
+static int
+format_fuzzy_match(const char *pattern, const char *text, int icase)
+{
+	while (*pattern != '\0') {
+		if (*text == '\0')
+			return (0);
+		if (icase) {
+			if (tolower((u_char)*pattern) == tolower((u_char)*text))
+				pattern++;
+		} else {
+			if (*pattern == *text)
+				pattern++;
+		}
+		text++;
+	}
+	return (1);
+}
+
 /* Match against an fnmatch(3) pattern or regular expression. */
 static char *
 format_match(struct format_modifier *fm, const char *pattern, const char *text)
@@ -4517,7 +4536,10 @@ format_match(struct format_modifier *fm, const char *pattern, const char *text)
 
 	if (fm->argc >= 1)
 		s = fm->argv[0];
-	if (strchr(s, 'r') == NULL) {
+	if (strchr(s, 'z') != NULL) {
+		if (!format_fuzzy_match(pattern, text, strchr(s, 'i') != NULL))
+			return (xstrdup("0"));
+	} else if (strchr(s, 'r') == NULL) {
 		if (strchr(s, 'i') != NULL)
 			flags |= FNM_CASEFOLD;
 		if (fnmatch(pattern, text, flags) != 0)
