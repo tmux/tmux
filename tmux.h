@@ -3575,8 +3575,8 @@ void		 layout_assign_pane(struct layout_cell *, struct window_pane *,
 		     int);
 struct layout_cell *layout_split_pane(struct window_pane *, enum layout_type,
 		     int, int);
-struct layout_cell *layout_floating_pane(struct window *, u_int, u_int, int,
-		     int);
+struct layout_cell *layout_floating_pane(struct window *, struct window_pane *,
+		     u_int, u_int, int, int);
 void		 layout_close_pane(struct window_pane *);
 int		 layout_spread_cell(struct window *, struct layout_cell *);
 void		 layout_spread_out(struct window_pane *);
