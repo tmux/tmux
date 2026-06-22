@@ -441,7 +441,7 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 			if (sb_pad < 0)
 				sb_pad = 0;
 			if (sb_pos == PANE_SCROLLBARS_LEFT) {
-				if ((int)sx - sb_w < PANE_MINIMUM) {
+				if ((int)sx - sb_w - sb_pad < PANE_MINIMUM) {
 					wp->xoff = wp->xoff +
 					    (int)sx - PANE_MINIMUM;
 					sx = PANE_MINIMUM;

@@ -454,22 +454,26 @@ void
 style_set_scrollbar_style_from_option(struct style *sb_style,
     struct options *oo)
 {
-	struct style	*sy;
+	const struct options_table_entry	*oe;
+	struct options_entry			*o;
+	const char				*s;
 
-	sy = options_string_to_style(oo, "pane-scrollbars-style", NULL);
-	if (sy == NULL) {
-		style_set(sb_style, &grid_default_cell);
+	style_set(sb_style, &grid_default_cell);
+	o = options_get(oo, "pane-scrollbars-style");
+	if (o == NULL)
+		fatalx("missing pane-scrollbars-style");
+	oe = options_table_entry(o);
+	if (style_parse(sb_style, &grid_default_cell, oe->default_str) != 0)
+		fatalx("bad pane-scrollbars-style default");
+
+	s = options_get_string(oo, "pane-scrollbars-style");
+	if (s != NULL && style_parse(sb_style, &grid_default_cell, s) != 0)
+		style_parse(sb_style, &grid_default_cell, oe->default_str);
+	if (sb_style->width < 1)
 		sb_style->width = PANE_SCROLLBARS_DEFAULT_WIDTH;
+	if (sb_style->pad < 0)
 		sb_style->pad = PANE_SCROLLBARS_DEFAULT_PADDING;
-		utf8_set(&sb_style->gc.data, PANE_SCROLLBARS_CHARACTER);
-	} else {
-		style_copy(sb_style, sy);
-		if (sb_style->width < 1)
-			sb_style->width = PANE_SCROLLBARS_DEFAULT_WIDTH;
-		if (sb_style->pad < 0)
-			sb_style->pad = PANE_SCROLLBARS_DEFAULT_PADDING;
-		utf8_set(&sb_style->gc.data, PANE_SCROLLBARS_CHARACTER);
-	}
+	utf8_set(&sb_style->gc.data, PANE_SCROLLBARS_CHARACTER);
 }
 
 /* Initialize style ranges. */
