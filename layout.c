@@ -1336,14 +1336,21 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
  * layout_assign_pane before much else happens!
  */
 struct layout_cell *
-layout_floating_pane(struct window *w, u_int sx, u_int sy, int ox, int oy)
+layout_floating_pane(struct window *w, struct window_pane *wp, u_int sx,
+    u_int sy, int ox, int oy)
 {
-	struct layout_cell	*lc = w->layout_root, *lcnew, *lcparent;
+	struct layout_cell	*lc, *lcnew, *lcparent;
 
-	if (lc->type == LAYOUT_WINDOWPANE) {
+	if (wp == NULL)
+		lc = w->layout_root;
+	else
+		lc = wp->layout_cell;
+	lcparent = lc->parent;
+
+	if (lcparent == NULL) {
 		/*
-		* Adding a pane to a root that doesn't have a container. Must
-		* create and insert a new root.
+		* Adding a pane to a root that isn't node. Must create and
+		* insert a new root.
 		*/
 		lcparent = layout_create_cell(NULL);
 		layout_make_node(lcparent, LAYOUT_TOPBOTTOM);
@@ -1353,11 +1360,10 @@ layout_floating_pane(struct window *w, u_int sx, u_int sy, int ox, int oy)
 		/* Insert the old cell. */
 		lc->parent = lcparent;
 		TAILQ_INSERT_HEAD(&lcparent->cells, lc, entry);
-	} else
-		lcparent = w->layout_root;
+	}
 
 	lcnew = layout_create_cell(lcparent);
-	TAILQ_INSERT_TAIL(&lcparent->cells, lcnew, entry);
+	TAILQ_INSERT_AFTER(&lcparent->cells, lc, lcnew, entry);
 	lcnew->flags |= LAYOUT_CELL_FLOATING;
 	layout_set_size(lcnew, sx, sy, ox, oy);
 
@@ -1532,7 +1538,7 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 /* Get a new floating cell. */
 struct layout_cell *
 layout_get_floating_cell(struct cmdq_item *item, struct args *args,
-    struct window *w, __unused struct window_pane *wp, char **cause)
+    struct window *w, struct window_pane *wp, char **cause)
 {
 	struct layout_cell	*lcnew;
 	int			 sx = w->sx / 2, sy = w->sy / 4;
@@ -1606,7 +1612,7 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 		return (NULL);
 	}
 
-	lcnew = layout_floating_pane(w, sx, sy, ox, oy);
+	lcnew = layout_floating_pane(w, wp, sx, sy, ox, oy);
 	return (lcnew);
 }
 
