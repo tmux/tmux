@@ -729,19 +729,19 @@ screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right,
 	gc.attr |= GRID_ATTR_CHARSET;
 
 	if (left)
-		screen_write_box_border_set(lines, CELL_LEFTJOIN, &gc);
+		screen_write_box_border_set(lines, CELL_URD, &gc);
 	else
-		screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
+		screen_write_box_border_set(lines, CELL_LR, &gc);
 	screen_write_cell(ctx, &gc);
 
-	screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
+	screen_write_box_border_set(lines, CELL_LR, &gc);
 	for (i = 1; i < nx - 1; i++)
 		screen_write_cell(ctx, &gc);
 
 	if (right)
-		screen_write_box_border_set(lines, CELL_RIGHTJOIN, &gc);
+		screen_write_box_border_set(lines, CELL_ULD, &gc);
 	else
-		screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
+		screen_write_box_border_set(lines, CELL_LR, &gc);
 	screen_write_cell(ctx, &gc);
 
 	screen_write_set_cursor(ctx, cx, cy);
@@ -844,26 +844,26 @@ screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
 	gc.flags |= GRID_FLAG_NOPALETTE;
 
 	/* Draw top border */
-	screen_write_box_border_set(lines, CELL_TOPLEFT, &gc);
+	screen_write_box_border_set(lines, CELL_RD, &gc);
 	screen_write_cell(ctx, &gc);
-	screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
+	screen_write_box_border_set(lines, CELL_LR, &gc);
 	for (i = 1; i < nx - 1; i++)
 		screen_write_cell(ctx, &gc);
-	screen_write_box_border_set(lines, CELL_TOPRIGHT, &gc);
+	screen_write_box_border_set(lines, CELL_LD, &gc);
 	screen_write_cell(ctx, &gc);
 
 	/* Draw bottom border */
 	screen_write_set_cursor(ctx, cx, cy + ny - 1);
-	screen_write_box_border_set(lines, CELL_BOTTOMLEFT, &gc);
+	screen_write_box_border_set(lines, CELL_RU, &gc);
 	screen_write_cell(ctx, &gc);
-	screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
+	screen_write_box_border_set(lines, CELL_LR, &gc);
 	for (i = 1; i < nx - 1; i++)
 		screen_write_cell(ctx, &gc);
-	screen_write_box_border_set(lines, CELL_BOTTOMRIGHT, &gc);
+	screen_write_box_border_set(lines, CELL_LU, &gc);
 	screen_write_cell(ctx, &gc);
 
 	/* Draw sides */
-	screen_write_box_border_set(lines, CELL_TOPBOTTOM, &gc);
+	screen_write_box_border_set(lines, CELL_UD, &gc);
 	for (i = 1; i < ny - 1; i++) {
 		/* left side */
 		screen_write_set_cursor(ctx, cx, cy + i);
