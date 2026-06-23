@@ -1545,20 +1545,20 @@ tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 }
 
 void
-tty_draw_images(struct client *c, struct window_pane *wp, struct screen *s)
+tty_draw_images(struct client *c, struct window_pane *wp)
 {
 	struct image	*im;
 	struct tty_ctx	 ttyctx;
 
-	TAILQ_FOREACH(im, &s->images, entry) {
+	TAILQ_FOREACH(im, &wp->screen->images, entry) {
 		memset(&ttyctx, 0, sizeof ttyctx);
 
 		/* Set the client independent properties. */
 		ttyctx.ocx = im->px;
 		ttyctx.ocy = im->py;
 
-		ttyctx.orlower = s->rlower;
-		ttyctx.orupper = s->rupper;
+		ttyctx.orlower = wp->screen->rlower;
+		ttyctx.orupper = wp->screen->rupper;
 
 		ttyctx.xoff = ttyctx.rxoff = wp->xoff;
 		ttyctx.sx = wp->sx;

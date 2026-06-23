@@ -1139,10 +1139,6 @@ redraw_draw_border_arrow(struct redraw_draw_ctx *dctx,
 	else
 		return;
 
-
-#ifdef ENABLE_SIXEL
-	tty_draw_images(c, wp, s);
-#endif
 	utf8_set(&gc->data, ch);
 	gc->attr |= GRID_ATTR_CHARSET;
 }
@@ -1622,8 +1618,16 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	tty_reset(tty);
 	tty_sync_end(tty);
 
-	log_debug("%s: finished @%u redraw", c->name, scene->w->id);
+#ifdef ENABLE_SIXEL
+	if (wp != NULL)
+		tty_draw_images(c, wp);
+	else {
+		TAILQ_FOREACH(loop, &scene->w->panes, entry)
+			tty_draw_images(c, wp);
+	}
+#endif
 
+	log_debug("%s: finished @%u redraw", c->name, scene->w->id);
 }
 
 /* Get border cell type beneath status cell at offset x in pane status line. */
