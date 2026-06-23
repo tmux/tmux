@@ -20,6 +20,7 @@
 #include <sys/types.h>
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "tmux.h"
 
@@ -1563,7 +1564,8 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 /* Get a new floating cell. */
 struct layout_cell *
 layout_get_floating_cell(struct cmdq_item *item, struct args *args,
-    struct window *w, struct window_pane *wp, char **cause)
+    enum pane_lines lines, struct window *w, struct window_pane *wp,
+    char **cause)
 {
 	struct layout_cell	*lcnew;
 	int			 sx = w->sx / 2, sy = w->sy / 4;
@@ -1571,22 +1573,26 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 	char			*error;
 
 	if (args_has(args, 'x')) {
-		sx = args_percentage_and_expand(args, 'x', 0, w->sx - 1, w->sx,
-		    item, &error);
+		sx = args_percentage_and_expand(args, 'x', 0, PANE_MAXIMUM,
+		    w->sx, item, &error);
 		if (error != NULL) {
 			xasprintf(cause, "position %s", error);
 			free(error);
 			return (NULL);
 		}
+		if (lines != PANE_LINES_NONE)
+			sx -= 2;
 	}
 	if (args_has(args, 'y')) {
-		sy = args_percentage_and_expand(args, 'y', 0, w->sy - 1, w->sy,
-		    item, &error);
+		sy = args_percentage_and_expand(args, 'y', 0, PANE_MAXIMUM,
+		    w->sy, item, &error);
 		if (error != NULL) {
 			xasprintf(cause, "position %s", error);
 			free(error);
 			return (NULL);
 		}
+		if (lines != PANE_LINES_NONE)
+			sy -= 2;
 	}
 	if (args_has(args, 'X')) {
 		ox = args_percentage_and_expand(args, 'X', -sx, w->sx,
@@ -1616,7 +1622,9 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 				ox = 4;
 		}
 		w->last_new_pane_x = ox;
-	}
+	} else
+		if (lines != PANE_LINES_NONE)
+			ox += 1;
 	if (oy == INT_MAX) {
 		if (w->last_new_pane_y == 0)
 			oy = 2;
@@ -1626,7 +1634,9 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 				oy = 2;
 		}
 		w->last_new_pane_y = oy;
-	}
+	} else
+		if (lines != PANE_LINES_NONE)
+			oy += 1;
 
 	if (sx < PANE_MINIMUM || sx > PANE_MAXIMUM) {
 		*cause = xstrdup("invalid width");

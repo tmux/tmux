@@ -662,6 +662,18 @@ options_parse_get(struct options *oo, const char *s, int *idx, int only)
 	return (o);
 }
 
+const struct options_table_entry *
+options_search(const char *name)
+{
+	const struct options_table_entry	*oe;
+
+	for (oe = options_table; oe->name != NULL; oe++) {
+		if (strcmp(oe->name, name) == 0)
+			return (oe);
+	}
+	return (NULL);
+}
+
 char *
 options_match(const char *s, int *idx, int *ambiguous)
 {

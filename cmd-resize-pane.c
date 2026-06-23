@@ -94,7 +94,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	server_unzoom_window(w);
 
 	if (args_has(args, 'x')) {
-		x = args_percentage(args, 'x', 0, INT_MAX, w->sx, &cause);
+		x = args_percentage(args, 'x', 0, PANE_MAXIMUM, w->sx, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "width %s", cause);
 			free(cause);
@@ -112,7 +112,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			layout_resize_pane_to(wp, LAYOUT_LEFTRIGHT, x);
 	}
 	if (args_has(args, 'y')) {
-		y = args_percentage(args, 'y', 0, INT_MAX, w->sy, &cause);
+		y = args_percentage(args, 'y', 0, PANE_MAXIMUM, w->sy, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "height %s", cause);
 			free(cause);

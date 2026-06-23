@@ -2599,6 +2599,7 @@ char		*options_to_string(struct options_entry *, int, int);
 char		*options_parse(const char *, int *);
 struct options_entry *options_parse_get(struct options *, const char *, int *,
 		     int);
+const struct options_table_entry *options_search(const char *);
 char		*options_match(const char *, int *, int *);
 struct options_entry *options_match_get(struct options *, const char *, int *,
 		     int, int *);
@@ -3521,6 +3522,7 @@ int		 window_get_bg_client(struct window_pane *);
 enum client_theme window_pane_get_theme(struct window_pane *);
 void		 window_pane_send_theme_update(struct window_pane *);
 enum pane_lines	 window_pane_get_pane_lines(struct window_pane *);
+enum pane_lines	 window_get_pane_lines(struct window *);
 int		 window_get_pane_status(struct window *);
 int		 window_pane_get_pane_status(struct window_pane *);
 struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
@@ -3584,7 +3586,8 @@ void		 layout_spread_out(struct window_pane *);
 struct layout_cell *layout_get_tiled_cell(struct cmdq_item *, struct args *,
 		     struct window *, struct window_pane *, int, char **);
 struct layout_cell *layout_get_floating_cell(struct cmdq_item *, struct args *,
-		     struct window *, struct window_pane *, char **);
+		     enum pane_lines, struct window *, struct window_pane *,
+		     char **);
 int		 layout_remove_tile(struct window *, struct layout_cell *);
 
 /* layout-custom.c */
