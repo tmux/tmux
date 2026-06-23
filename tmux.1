@@ -3605,7 +3605,7 @@ The
 flag will create an empty pane and forward any output from stdin to it.
 For example:
 .Bd -literal -offset indent
-$ make 2>&1|tmux splitw \-dI &
+$ make 2>&1|tmux new\-pane \-dI &
 .Ed
 .Pp
 All other options have the same meaning as for the
