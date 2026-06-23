@@ -662,6 +662,18 @@ options_parse_get(struct options *oo, const char *s, int *idx, int only)
 	return (o);
 }
 
+const struct options_table_entry *
+options_search(const char *name)
+{
+	const struct options_table_entry	*oe;
+
+	for (oe = options_table; oe->name != NULL; oe++) {
+		if (strcmp(oe->name, name) == 0)
+			return (oe);
+	}
+	return (NULL);
+}
+
 char *
 options_match(const char *s, int *idx, int *ambiguous)
 {
@@ -1219,6 +1231,15 @@ options_push_changes(const char *name)
 	if (strcmp(name, "status") == 0 ||
 	    strcmp(name, "status-interval") == 0)
 		status_timer_start_all();
+	if (strcmp(name, "status") == 0 ||
+	    strcmp(name, "status-position") == 0 ||
+	    strcmp(name, "pane-border-indicators") == 0 ||
+	    strcmp(name, "pane-border-lines") == 0 ||
+	    strcmp(name, "pane-border-status") == 0 ||
+	    strcmp(name, "pane-scrollbars") == 0 ||
+	    strcmp(name, "pane-scrollbars-position") == 0 ||
+	    strcmp(name, "pane-scrollbars-style") == 0)
+		redraw_invalidate_all_scenes();
 	if (strcmp(name, "monitor-silence") == 0)
 		alerts_reset_all();
 	if (strcmp(name, "window-style") == 0 ||

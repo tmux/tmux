@@ -1365,7 +1365,7 @@ input_esc_dispatch(struct input_ctx *ictx)
 {
 	struct screen_write_ctx		*sctx = &ictx->ctx;
 	struct screen			*s = sctx->s;
-	struct input_table_entry	*entry;
+	const struct input_table_entry	*entry;
 
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
@@ -1439,12 +1439,12 @@ input_esc_dispatch(struct input_ctx *ictx)
 static int
 input_csi_dispatch(struct input_ctx *ictx)
 {
-	struct screen_write_ctx	       *sctx = &ictx->ctx;
-	struct screen		       *s = sctx->s;
-	struct input_table_entry       *entry;
-	struct options		       *oo;
-	int				i, n, m, ek, set, p;
-	u_int				cx, bg = ictx->cell.cell.bg;
+	struct screen_write_ctx		*sctx = &ictx->ctx;
+	struct screen			*s = sctx->s;
+	const struct input_table_entry	*entry;
+	struct options			*oo;
+	int				 i, n, m, ek, set, p;
+	u_int				 cx, bg = ictx->cell.cell.bg;
 
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
@@ -2701,7 +2701,7 @@ input_exit_osc(struct input_ctx *ictx)
 	case 2:
 		if (wp != NULL &&
 		    options_get_number(wp->options, "allow-set-title") &&
-		    screen_set_title(sctx->s, p)) {
+		    screen_set_title(sctx->s, p, 1)) {
 			notify_pane("pane-title-changed", wp);
 			server_redraw_window_borders(wp->window);
 			server_status_window(wp->window);
@@ -2711,7 +2711,7 @@ input_exit_osc(struct input_ctx *ictx)
 		input_osc_4(ictx, p);
 		break;
 	case 7:
-		if (screen_set_path(sctx->s, p) && wp != NULL) {
+		if (wp != NULL && screen_set_path(sctx->s, p, 1)) {
 			server_redraw_window_borders(wp->window);
 			server_status_window(wp->window);
 		}
@@ -2779,7 +2779,7 @@ input_exit_apc(struct input_ctx *ictx)
 
 	if (wp != NULL &&
 	    options_get_number(wp->options, "allow-set-title") &&
-	    screen_set_title(sctx->s, ictx->input_buf)) {
+	    screen_set_title(sctx->s, ictx->input_buf, 1)) {
 		notify_pane("pane-title-changed", wp);
 		server_redraw_window_borders(wp->window);
 		server_status_window(wp->window);
@@ -2822,10 +2822,10 @@ input_exit_rename(struct input_ctx *ictx)
 		if (o != NULL)
 			options_remove_or_default(o, -1, NULL);
 		if (!options_get_number(w->options, "automatic-rename"))
-			window_set_name(w, "");
+			window_set_name(w, "", WINDOW_NAME_FORBID_EXT);
 	} else {
 		options_set_number(w->options, "automatic-rename", 0);
-		window_set_name(w, ictx->input_buf);
+		window_set_name(w, ictx->input_buf, WINDOW_NAME_FORBID_EXT);
 	}
 	server_redraw_window_borders(w);
 	server_status_window(w);
@@ -3055,7 +3055,7 @@ input_osc_10(struct input_ctx *ictx, const char *p)
 			return;
 		c = window_pane_get_fg_control_client(wp);
 		if (c == -1) {
-			tty_default_colours(&defaults, wp);
+			tty_default_colours(&defaults, wp, NULL);
 			if (COLOUR_DEFAULT(defaults.fg))
 				c = window_pane_get_fg(wp);
 			else
@@ -3225,7 +3225,7 @@ static int
 input_osc_52_parse(struct input_ctx *ictx, const char *p, u_char **out,
     int *outlen, char *clip)
 {
-	char		*end;
+	const char	*end;
 	size_t		 len;
 	const char	*allow = "cpqs01234567";
 	u_int		 i, j = 0;

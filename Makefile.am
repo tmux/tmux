@@ -209,12 +209,14 @@ dist_tmux_SOURCES = \
 	tty.c \
 	utf8-combined.c \
 	utf8.c \
+	window-border.c \
 	window-buffer.c \
 	window-client.c \
 	window-clock.c \
 	window-copy.c \
 	window-customize.c \
 	window-tree.c \
+	window-visible.c \
 	window.c \
 	xmalloc.c \
 	xmalloc.h

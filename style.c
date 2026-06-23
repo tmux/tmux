@@ -32,6 +32,7 @@
 static struct style style_default = {
 	{ { { ' ' }, 0, 1, 1 }, 0, 0, 8, 8, 0, 0 },
 	0,
+	0,
 
 	8,
 	STYLE_ALIGN_DEFAULT,
@@ -201,6 +202,13 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 			if ((value = colour_fromstring(tmp + 5)) == -1)
 				goto error;
 			sy->fill = value;
+		} else if (end > 4 && strncasecmp(tmp, "dim=", 4) == 0) {
+			if (tmp[end - 1] == '%')
+				tmp[end - 1] = '\0';
+			n = strtonum(tmp + 4, 0, 100, &errstr);
+			if (errstr != NULL)
+				goto error;
+			sy->dim = n;
 		} else if (end > 3 && strncasecmp(tmp + 1, "g=", 2) == 0) {
 			if ((value = colour_fromstring(tmp + 3)) == -1)
 				goto error;
@@ -346,6 +354,11 @@ style_tostring(struct style *sy)
 		    colour_tostring(sy->fill));
 		comma = ",";
 	}
+	if (sy->dim != 0) {
+		off += xsnprintf(s + off, sizeof s - off, "%sdim=%d%%", comma,
+		    sy->dim);
+		comma = ",";
+	}
 	if (gc->fg != 8) {
 		off += xsnprintf(s + off, sizeof s - off, "%sfg=%s", comma,
 		    colour_tostring(gc->fg));
@@ -386,7 +399,7 @@ style_tostring(struct style *sy)
 }
 
 /* Apply a style on top of the given style. */
-void
+struct style *
 style_add(struct grid_cell *gc, struct options *oo, const char *name,
     struct format_tree *ft)
 {
@@ -409,6 +422,7 @@ style_add(struct grid_cell *gc, struct options *oo, const char *name,
 
 	if (ft0 != NULL)
 		format_free(ft0);
+	return (sy);
 }
 
 /* Apply a style on top of the default style. */
@@ -440,22 +454,26 @@ void
 style_set_scrollbar_style_from_option(struct style *sb_style,
     struct options *oo)
 {
-	struct style	*sy;
+	const struct options_table_entry	*oe;
+	struct options_entry			*o;
+	const char				*s;
 
-	sy = options_string_to_style(oo, "pane-scrollbars-style", NULL);
-	if (sy == NULL) {
-		style_set(sb_style, &grid_default_cell);
+	style_set(sb_style, &grid_default_cell);
+	o = options_get(oo, "pane-scrollbars-style");
+	if (o == NULL)
+		fatalx("missing pane-scrollbars-style");
+	oe = options_table_entry(o);
+	if (style_parse(sb_style, &grid_default_cell, oe->default_str) != 0)
+		fatalx("bad pane-scrollbars-style default");
+
+	s = options_get_string(oo, "pane-scrollbars-style");
+	if (s != NULL && style_parse(sb_style, &grid_default_cell, s) != 0)
+		style_parse(sb_style, &grid_default_cell, oe->default_str);
+	if (sb_style->width < 1)
 		sb_style->width = PANE_SCROLLBARS_DEFAULT_WIDTH;
+	if (sb_style->pad < 0)
 		sb_style->pad = PANE_SCROLLBARS_DEFAULT_PADDING;
-		utf8_set(&sb_style->gc.data, PANE_SCROLLBARS_CHARACTER);
-	} else {
-		style_copy(sb_style, sy);
-		if (sb_style->width < 1)
-			sb_style->width = PANE_SCROLLBARS_DEFAULT_WIDTH;
-		if (sb_style->pad < 0)
-			sb_style->pad = PANE_SCROLLBARS_DEFAULT_PADDING;
-		utf8_set(&sb_style->gc.data, PANE_SCROLLBARS_CHARACTER);
-	}
+	utf8_set(&sb_style->gc.data, PANE_SCROLLBARS_CHARACTER);
 }
 
 /* Initialize style ranges. */

@@ -114,10 +114,6 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	dst_wp->layout_cell = src_lc;
 	dst_lc->wp = src_wp;
 	src_wp->layout_cell = dst_lc;
-	if (window_pane_is_floating(src_wp) != window_pane_is_floating(dst_wp)) {
-		src_wp->layout_cell->flags ^= LAYOUT_CELL_FLOATING;
-		dst_wp->layout_cell->flags ^= LAYOUT_CELL_FLOATING;
-	}
 
 	src_wp->window = dst_w;
 	options_set_parent(src_wp->options, dst_w->options);
@@ -153,9 +149,11 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 		colour_palette_from_option(&src_wp->palette, src_wp->options);
 		colour_palette_from_option(&dst_wp->palette, dst_wp->options);
 		layout_fix_panes(src_w, NULL);
+		redraw_invalidate_scene(src_w);
 		server_redraw_window(src_w);
 	}
 	layout_fix_panes(dst_w, NULL);
+	redraw_invalidate_scene(dst_w);
 	server_redraw_window(dst_w);
 
 	notify_window("window-layout-changed", src_w);

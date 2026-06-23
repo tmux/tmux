@@ -67,6 +67,7 @@ $TMUX set @true 1 || exit 1
 $TMUX set @false 0 || exit 1
 $TMUX set @warm Summer || exit 1
 $TMUX set @cold Winter || exit 1
+$TMUX set @v 'foo:bar' || exit 1
 
 # Plain string without substitutions et al
 test_format "abc xyz" "abc xyz"
@@ -74,6 +75,8 @@ test_format "abc xyz" "abc xyz"
 # Test basic escapes for "#", "{", "#{" "}", "#}", ","
 test_format "##" "#"
 test_format "#," ","
+test_format "#{s/#:/_/:@v}" "foo_bar"
+test_format "#{s/o/#:/:@v}" "f:::bar"
 test_format "{" "{"
 test_format "##{" "#{"
 test_format "#}" "}"
@@ -230,5 +233,20 @@ test_format "#{l:#{#}}}" "#{#}}"
 # Invalid formats:
 #test_format "#{l:#{}" ""
 #test_format "#{l:#{#}}" ""
+
+# Fuzzy (subsequence) match operator m/z
+test_format "#{m/z:wtr,window-tree}" "1"	# subsequence in order
+test_format "#{m/z:tree,window-tree}" "1"	# contiguous is a subsequence
+test_format "#{m/z:xyz,window-tree}" "0"	# not a subsequence
+test_format "#{m/z:wrt,window-tree}" "0"	# right letters, wrong order
+test_format "#{m/z:,window-tree}" "1"		# empty pattern matches
+test_format "#{m/z:window-tree,wtr}" "0"	# pattern longer than text
+test_format "#{m/z:WTR,window-tree}" "0"	# case-sensitive by default
+test_format "#{m/zi:WTR,window-tree}" "1"	# /zi is case-insensitive
+test_format "#{m/z:win tree,window-tree}" "1"	# space-separated tokens are ANDed
+test_format "#{m/z:wn tr,window-tree}" "1"	# each token matched as subsequence
+test_format "#{m/z:win xyz,window-tree}" "0"	# all tokens must match
+test_format "#{m/z: tree ,window-tree}" "1"	# leading/trailing spaces ignored
+test_format "#{m/z:wt   tr,window-tree}" "1"	# repeated spaces ignored
 
 exit 0

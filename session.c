@@ -116,7 +116,6 @@ session_create(const char *prefix, const char *name, const char *cwd,
 	s = xcalloc(1, sizeof *s);
 	s->references = 1;
 	s->flags = 0;
-
 	s->cwd = xstrdup(cwd);
 
 	TAILQ_INIT(&s->lastw);

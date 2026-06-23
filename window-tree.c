@@ -113,6 +113,7 @@ struct window_tree_modedata {
 	char				 *key_format;
 	char				 *command;
 	int				  squash_groups;
+	int				  hide_preview_this_pane;
 	int				  prompt_flags;
 
 	struct window_tree_itemdata	**item_list;
@@ -289,6 +290,8 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	if (n == 0)
 		goto empty;
 	for (i = 0; i < n; i++) {
+		if (data->hide_preview_this_pane && l[i] == data->wp)
+			continue;
 		if (window_tree_filter_pane(s, wl, l[i], filter))
 			window_tree_build_pane(s, wl, l[i], modedata, mti);
 	}
@@ -352,6 +355,7 @@ window_tree_build(void *modedata, struct sort_criteria *sort_crit,
     uint64_t *tag, const char *filter)
 {
 	struct window_tree_modedata	*data = modedata;
+	int				 squash_groups = data->squash_groups;
 	struct session			*s, **l;
 	struct session_group		*sg, *current;
 	struct window			*w;
@@ -369,15 +373,14 @@ window_tree_build(void *modedata, struct sort_criteria *sort_crit,
 	l = sort_get_sessions(&n, sort_crit);
 	if (n == 0)
 		return;
-	s = l[n - 1];
 	for (i = 0; i < n; i++) {
-		if (data->squash_groups &&
-		    (sg = session_group_contains(s)) != NULL) {
+		s = l[i];
+		if (squash_groups && (sg = session_group_contains(s)) != NULL) {
 			if ((sg == current && s != data->fs.s) ||
 			    (sg != current && s != TAILQ_FIRST(&sg->sessions)))
 				continue;
 		}
-		window_tree_build_session(l[i], modedata, sort_crit, filter);
+		window_tree_build_session(s, modedata, sort_crit, filter);
 	}
 
 	switch (data->type) {
@@ -590,6 +593,10 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 	struct options		*oo;
 
 	total = window_count_panes(w, 1);
+	if (data->hide_preview_this_pane && data->wp->window == w)
+		total--;
+	if (total == 0)
+		return;
 
 	if (sx / total < 24) {
 		visible = sx / 24;
@@ -600,6 +607,8 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 
 	current = 0;
 	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (data->hide_preview_this_pane && wp == data->wp)
+			continue;
 		if (wp == w->active)
 			break;
 		current++;
@@ -663,6 +672,8 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 
 	i = loop = 0;
 	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (data->hide_preview_this_pane && wp == data->wp)
+			continue;
 		if (loop == end)
 			break;
 		if (loop < start) {
@@ -714,6 +725,7 @@ static void
 window_tree_draw(void *modedata, void *itemdata, struct screen_write_ctx *ctx,
     u_int sx, u_int sy)
 {
+	struct window_tree_modedata	*data = modedata;
 	struct window_tree_itemdata	*item = itemdata;
 	struct session			*sp;
 	struct winlink			*wl;
@@ -733,7 +745,8 @@ window_tree_draw(void *modedata, void *itemdata, struct screen_write_ctx *ctx,
 		window_tree_draw_window(modedata, sp, wl, ctx, sx, sy);
 		break;
 	case WINDOW_TREE_PANE:
-		screen_write_preview(ctx, &wp->base, sx, sy);
+		if (!data->hide_preview_this_pane || wp != data->wp)
+			screen_write_preview(ctx, &wp->base, sx, sy);
 		break;
 	}
 }
@@ -886,18 +899,18 @@ window_tree_sort(struct sort_criteria *sort_crit)
 }
 
 static const char* window_tree_help_lines[] = {
-	"\r\033[1m      Enter \033[0m\016x\017 \033[0mChoose selected item\n",
-	"\r\033[1m       S-Up \033[0m\016x\017 \033[0mSwap current and previous window\n",
-	"\r\033[1m     S-Down \033[0m\016x\017 \033[0mSwap current and next window\n",
-	"\r\033[1m          x \033[0m\016x\017 \033[0mKill selected item\n",
-	"\r\033[1m          X \033[0m\016x\017 \033[0mKill tagged items\n",
-	"\r\033[1m          < \033[0m\016x\017 \033[0mScroll previews left\n",
-	"\r\033[1m          > \033[0m\016x\017 \033[0mScroll previews right\n",
-	"\r\033[1m          m \033[0m\016x\017 \033[0mSet the marked pane\n",
-	"\r\033[1m          M \033[0m\016x\017 \033[0mClear the marked pane\n",
-	"\r\033[1m          : \033[0m\016x\017 \033[0mRun a command for each tagged item\n",
-	"\r\033[1m          f \033[0m\016x\017 \033[0mEnter a format\n",
-	"\r\033[1m          H \033[0m\016x\017 \033[0mJump to the starting pane\n",
+	"#[bold]      Enter #[default]#[acs]x#[default] Choose selected item",
+	"#[bold]       S-Up #[default]#[acs]x#[default] Swap current and previous window",
+	"#[bold]     S-Down #[default]#[acs]x#[default] Swap current and next window",
+	"#[bold]          x #[default]#[acs]x#[default] Kill selected item",
+	"#[bold]          X #[default]#[acs]x#[default] Kill tagged items",
+	"#[bold]          < #[default]#[acs]x#[default] Scroll previews left",
+	"#[bold]          > #[default]#[acs]x#[default] Scroll previews right",
+	"#[bold]          m #[default]#[acs]x#[default] Set the marked pane",
+	"#[bold]          M #[default]#[acs]x#[default] Clear the marked pane",
+	"#[bold]          : #[default]#[acs]x#[default] Run a command for each tagged item",
+	"#[bold]          f #[default]#[acs]x#[default] Enter a format",
+	"#[bold]          H #[default]#[acs]x#[default] Jump to the starting pane",
 	NULL
 };
 
@@ -942,6 +955,7 @@ window_tree_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 	else
 		data->command = xstrdup(args_string(args, 0));
 	data->squash_groups = !args_has(args, 'G');
+	data->hide_preview_this_pane = args_has(args, 'h');
 	if (args_has(args, 'y'))
 		data->prompt_flags = PROMPT_ACCEPT;
 

@@ -33,8 +33,8 @@ const struct cmd_entry cmd_choose_tree_entry = {
 	.name = "choose-tree",
 	.alias = NULL,
 
-	.args = { "F:f:GK:kNO:rst:wyZ", 0, 1, cmd_choose_tree_args_parse },
-	.usage = "[-GNrswZ] [-F format] [-f filter] [-K key-format] "
+	.args = { "F:f:GhK:kNO:rst:wyZ", 0, 1, cmd_choose_tree_args_parse },
+	.usage = "[-GhkNrswZ] [-F format] [-f filter] [-K key-format] "
 		 "[-O sort-order] " CMD_TARGET_PANE_USAGE " [template]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -47,8 +47,8 @@ const struct cmd_entry cmd_choose_client_entry = {
 	.name = "choose-client",
 	.alias = NULL,
 
-	.args = { "F:f:K:kNO:rt:yZ", 0, 1, cmd_choose_tree_args_parse },
-	.usage = "[-NrZ] [-F format] [-f filter] [-K key-format] "
+	.args = { "F:f:hiK:kNO:rt:yZ", 0, 1, cmd_choose_tree_args_parse },
+	.usage = "[-hikNrZ] [-F format] [-f filter] [-K key-format] "
 		 "[-O sort-order] " CMD_TARGET_PANE_USAGE " [template]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -62,7 +62,7 @@ const struct cmd_entry cmd_choose_buffer_entry = {
 	.alias = NULL,
 
 	.args = { "F:f:K:kNO:rt:yZ", 0, 1, cmd_choose_tree_args_parse },
-	.usage = "[-NrZ] [-F format] [-f filter] [-K key-format] "
+	.usage = "[-kNrZ] [-F format] [-f filter] [-K key-format] "
 		 "[-O sort-order] " CMD_TARGET_PANE_USAGE " [template]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -76,7 +76,7 @@ const struct cmd_entry cmd_customize_mode_entry = {
 	.alias = NULL,
 
 	.args = { "F:f:kNt:yZ", 0, 0, NULL },
-	.usage = "[-NZ] [-F format] [-f filter] " CMD_TARGET_PANE_USAGE,
+	.usage = "[-kNZ] [-F format] [-f filter] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 

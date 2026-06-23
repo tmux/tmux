@@ -75,12 +75,6 @@ struct popup_data {
 	u_int			  lb;
 };
 
-struct popup_editor {
-	char			*path;
-	popup_finish_edit_cb	 cb;
-	void			*arg;
-};
-
 static const struct menu_item popup_menu_items[] = {
 	{ "Close", 'q', NULL },
 	{ "#{?buffer_name,Paste #[underscore]#{buffer_name},}", 'p', NULL },
@@ -90,15 +84,6 @@ static const struct menu_item popup_menu_items[] = {
 	{ "", KEYC_NONE, NULL },
 	{ "To Horizontal Pane", 'h', NULL },
 	{ "To Vertical Pane", 'v', NULL },
-
-	{ NULL, KEYC_NONE, NULL }
-};
-
-static const struct menu_item popup_internal_menu_items[] = {
-	{ "Close", 'q', NULL },
-	{ "", KEYC_NONE, NULL },
-	{ "Fill Space", 'F', NULL },
-	{ "Centre", 'C', NULL },
 
 	{ NULL, KEYC_NONE, NULL }
 };
@@ -208,7 +193,8 @@ popup_init_ctx_cb(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx)
 
 	memcpy(&ttyctx->defaults, &pd->defaults, sizeof ttyctx->defaults);
 	ttyctx->flags &= ~TTY_CTX_WINDOW_BIGGER;
-	ttyctx->palette = &pd->palette;
+	ttyctx->style_ctx.defaults = &ttyctx->defaults;
+	ttyctx->style_ctx.palette = &pd->palette;
 	ttyctx->redraw_cb = popup_redraw_cb;
 	ttyctx->set_client_cb = popup_set_client_cb;
 	ttyctx->arg = pd;
@@ -287,15 +273,15 @@ popup_check_cb(struct client* c, void *data, u_int px, u_int py, u_int nx)
 }
 
 static void
-popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
+popup_draw_cb(struct client *c, void *data)
 {
 	struct popup_data	*pd = data;
 	struct tty		*tty = &c->tty;
 	struct screen		 s;
 	struct screen_write_ctx	 ctx;
 	u_int			 i, px = pd->px, py = pd->py;
-	struct colour_palette	*palette = &pd->palette;
 	struct grid_cell	 defaults;
+	struct tty_style_ctx	 style_ctx;
 
 	popup_reapply_styles(pd);
 
@@ -321,9 +307,13 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 
 	memcpy(&defaults, &pd->defaults, sizeof defaults);
 	if (defaults.fg == 8)
-		defaults.fg = palette->fg;
+		defaults.fg = pd->palette.fg;
 	if (defaults.bg == 8)
-		defaults.bg = palette->bg;
+		defaults.bg = pd->palette.bg;
+	style_ctx.defaults = &defaults;
+	style_ctx.palette = &pd->palette;
+	style_ctx.dim = 0;
+	style_ctx.hyperlinks = s.hyperlinks;
 
 	if (pd->md != NULL) {
 		c->overlay_check = menu_check_cb;
@@ -332,15 +322,13 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 		c->overlay_check = NULL;
 		c->overlay_data = NULL;
 	}
-	for (i = 0; i < pd->sy; i++) {
-		tty_draw_line(tty, &s, 0, i, pd->sx, px, py + i, &defaults,
-		    palette);
-	}
+	for (i = 0; i < pd->sy; i++)
+		tty_draw_line(tty, &s, 0, i, pd->sx, px, py + i, &style_ctx);
 	screen_free(&s);
 	if (pd->md != NULL) {
 		c->overlay_check = NULL;
 		c->overlay_data = NULL;
-		menu_draw_cb(c, pd->md, rctx);
+		menu_draw_cb(c, pd->md);
 	}
 	c->overlay_check = popup_check_cb;
 	c->overlay_data = pd;
@@ -435,7 +423,7 @@ popup_make_pane(struct popup_data *pd, enum layout_type type)
 		pd->job = NULL;
 	}
 
-	screen_set_title(&pd->s, new_wp->base.title);
+	screen_set_title(&pd->s, new_wp->base.title, 0);
 	screen_free(&new_wp->base);
 	memcpy(&new_wp->base, &pd->s, sizeof wp->base);
 	screen_resize(&new_wp->base, new_wp->sx, new_wp->sy, 1);
@@ -647,11 +635,7 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 
 menu:
 	pd->menu = menu_create("");
-	if (pd->flags & POPUP_INTERNAL) {
-		menu_add_items(pd->menu, popup_internal_menu_items, NULL, c,
-		    NULL);
-	} else
-		menu_add_items(pd->menu, popup_menu_items, NULL, c, NULL);
+	menu_add_items(pd->menu, popup_menu_items, NULL, c, NULL);
 	if (m->x >= (pd->menu->width + 4) / 2)
 		x = m->x - (pd->menu->width + 4) / 2;
 	else
@@ -858,127 +842,16 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 	pd->psx = sx;
 	pd->psy = sy;
 
-	if (flags & POPUP_NOJOB)
-		pd->ictx = input_init(NULL, NULL, &pd->palette, NULL);
-	else {
-		pd->job = job_run(shellcmd, argc, argv, env, s, cwd,
-		    popup_job_update_cb, popup_job_complete_cb, NULL, pd,
-		    JOB_NOWAIT|JOB_PTY|JOB_KEEPWRITE|JOB_DEFAULTSHELL, jx, jy);
-		if (pd->job == NULL) {
-			popup_free(pd);
-			return (-1);
-		}
-		pd->ictx = input_init(NULL, job_get_event(pd->job),
-		    &pd->palette, c);
+	pd->job = job_run(shellcmd, argc, argv, env, s, cwd,
+	    popup_job_update_cb, popup_job_complete_cb, NULL, pd,
+	    JOB_NOWAIT|JOB_PTY|JOB_KEEPWRITE|JOB_DEFAULTSHELL, jx, jy);
+	if (pd->job == NULL) {
+		popup_free(pd);
+		return (-1);
 	}
+	pd->ictx = input_init(NULL, job_get_event(pd->job), &pd->palette, c);
 
 	server_client_set_overlay(c, 0, popup_check_cb, popup_mode_cb,
 	    popup_draw_cb, popup_key_cb, popup_free_cb, popup_resize_cb, pd);
-	return (0);
-}
-
-void
-popup_write(struct client *c, const char *data, size_t size)
-{
-	struct popup_data	*pd = c->overlay_data;
-
-	if (!popup_present(c))
-		return;
-	c->overlay_check = NULL;
-	c->overlay_data = NULL;
-	input_parse_screen(pd->ictx, &pd->s, popup_init_ctx_cb, pd, data, size);
-	c->overlay_check = popup_check_cb;
-	c->overlay_data = pd;
-}
-
-static void
-popup_editor_free(struct popup_editor *pe)
-{
-	unlink(pe->path);
-	free(pe->path);
-	free(pe);
-}
-
-static void
-popup_editor_close_cb(int status, void *arg)
-{
-	struct popup_editor	*pe = arg;
-	FILE			*f;
-	char			*buf = NULL;
-	off_t			 len = 0;
-
-	if (status != 0) {
-		pe->cb(NULL, 0, pe->arg);
-		popup_editor_free(pe);
-		return;
-	}
-
-	f = fopen(pe->path, "r");
-	if (f != NULL) {
-		fseeko(f, 0, SEEK_END);
-		len = ftello(f);
-		fseeko(f, 0, SEEK_SET);
-
-		if (len == 0 ||
-		    (uintmax_t)len > (uintmax_t)SIZE_MAX ||
-		    (buf = malloc(len)) == NULL ||
-		    fread(buf, len, 1, f) != 1) {
-			free(buf);
-			buf = NULL;
-			len = 0;
-		}
-		fclose(f);
-	}
-	pe->cb(buf, len, pe->arg); /* callback now owns buffer */
-	popup_editor_free(pe);
-}
-
-int
-popup_editor(struct client *c, const char *buf, size_t len,
-    popup_finish_edit_cb cb, void *arg)
-{
-	struct popup_editor	*pe;
-	int			 fd;
-	FILE			*f;
-	char			*cmd;
-	char			 path[] = _PATH_TMP "tmux.XXXXXXXX";
-	const char		*editor;
-	u_int			 px, py, sx, sy;
-
-	editor = options_get_string(global_options, "editor");
-	if (*editor == '\0')
-		return (-1);
-
-	fd = mkstemp(path);
-	if (fd == -1)
-		return (-1);
-	f = fdopen(fd, "w");
-	if (f == NULL)
-		return (-1);
-	if (fwrite(buf, len, 1, f) != 1) {
-		fclose(f);
-		return (-1);
-	}
-	fclose(f);
-
-	pe = xcalloc(1, sizeof *pe);
-	pe->path = xstrdup(path);
-	pe->cb = cb;
-	pe->arg = arg;
-
-	sx = c->tty.sx * 9 / 10;
-	sy = c->tty.sy * 9 / 10;
-	px = (c->tty.sx / 2) - (sx / 2);
-	py = (c->tty.sy / 2) - (sy / 2);
-
-	xasprintf(&cmd, "%s %s", editor, path);
-	if (popup_display(POPUP_INTERNAL|POPUP_CLOSEEXIT, BOX_LINES_DEFAULT,
-	    NULL, px, py, sx, sy, NULL, cmd, 0, NULL, _PATH_TMP, NULL, c, NULL,
-	    NULL, NULL, popup_editor_close_cb, pe) != 0) {
-		popup_editor_free(pe);
-		free(cmd);
-		return (-1);
-	}
-	free(cmd);
 	return (0);
 }

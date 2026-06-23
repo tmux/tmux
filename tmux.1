@@ -363,9 +363,13 @@ Kill the current pane.
 .It z
 Toggle zoom state of the current pane.
 .It {
-Swap the current pane with the previous pane.
+Move floating pane to top-left corner.
 .It }
-Swap the current pane with the next pane.
+Move floating pane to top-right corner.
+.It M-{
+Move floating pane to bottom-left corner.
+.It M-}
+Move floating pane to bottom-right corner.
 .It \[ti]
 Show previous messages from
 .Nm ,
@@ -1205,6 +1209,7 @@ Kill the
 server and clients and destroy all sessions.
 .It Xo Ic kill\-session
 .Op Fl aCg
+.Op Fl f Ar filter
 .Op Fl t Ar target\-session
 .Xc
 Destroy the given session, closing any windows linked to it and no other
@@ -1212,6 +1217,12 @@ sessions, and detaching all clients attached to it.
 If
 .Fl a
 is given, all sessions but the specified one is killed.
+When
+.Fl a
+is given,
+.Fl f
+specifies a filter.
+Only sessions for which the filter is true are killed.
 If
 .Fl g
 is given and the session is in a session group, all sessions in the group are
@@ -1576,35 +1587,57 @@ option.
 Rename the session to
 .Ar new\-name .
 .It Xo Ic server\-access
-.Op Fl adlrw
-.Op Ar user
+.Op Fl adglrw
+.Op Ar user | group
 .Xc
 Change the access or read/write permission of
-.Ar user .
+.Ar user
+or
+.Ar group .
 The user running the
 .Nm
 server (its owner) and the root user cannot be changed and are always
 permitted access.
+.Fl g
+changes a group rather than a user.
 .Pp
 .Fl a
 and
 .Fl d
-are used to give or revoke access for the specified user.
-If the user is already attached, the
+are used to give or revoke access for the specified user or group.
+If a client is already attached, the
 .Fl d
-flag causes their clients to be detached.
+flag causes it to be detached unless it is still permitted by another entry.
 .Pp
 .Fl r
 and
 .Fl w
 change the permissions for
-.Ar user :
+.Ar user
+or
+.Ar group :
 .Fl r
-makes their clients read-only and
+makes matching clients read-only and
 .Fl w
 writable.
 .Fl l
 lists current access permissions.
+User entries are shown with
+.Ql U ,
+group entries with
+.Ql G ,
+and read-only or writable entries with
+.Ql R
+or
+.Ql W ,
+for example
+.Ql user1 (U,W)
+or
+.Ql testgroup (G,R) .
+If both a user and group entry match a client, the user entry takes
+precedence.
+Only the effective group ID of the client is used, not its supplementary
+groups.
 .Pp
 By default, the access list is empty and
 .Nm
@@ -2266,11 +2299,22 @@ Toggle rectangle selection mode.
 .Xc
 Cycles the current line between centre, top, and bottom.
 .It Xo
-.Ic refresh\-from\-pane
+.Ic refresh\-on
+.Xc
+Turn on automatic refresh of the content from the pane, so that new output
+appears while in copy mode.
+Automatic refresh is off by default; it will scroll only while the cursor is at
+the bottom and is paused while a selection is in progress.
+.It Xo
+.Ic refresh\-off
+.Xc
+Turn off automatic refresh of the content from the pane.
+.It Xo
+.Ic refresh\-toggle
 (vi: r)
 (emacs: r)
 .Xc
-Refresh the content from the pane.
+Toggle automatic refresh of the content from the pane.
 .It Xo
 .Ic scroll\-bottom
 .Xc
@@ -2282,6 +2326,11 @@ that line.
 (emacs: C\-Down)
 .Xc
 Scroll down.
+If
+.Ic mode\-keys
+is
+.Ic vi ,
+the cursor is fixed relative to the text.
 .It Xo
 .Ic scroll\-down\-and\-cancel
 .Xc
@@ -2312,7 +2361,6 @@ cursor on that line.
 Scroll pane in copy\-mode when bound to a mouse drag event.
 .Fl e
 causes copy mode to exit when at the bottom.
-.Pp
 .It Xo
 .Ic scroll\-top
 .Xc
@@ -2324,6 +2372,11 @@ that line.
 (emacs: C\-Up)
 .Xc
 Scroll up.
+If
+.Ic mode\-keys
+is
+.Ic vi ,
+the cursor is fixed relative to the text.
 .It Xo
 .Ic search\-again
 (vi: n)
@@ -2743,7 +2796,7 @@ the end of the visible pane.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose\-client
-.Op Fl NryZ
+.Op Fl hkNryZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key\-format
@@ -2780,6 +2833,7 @@ The following keys may be used in client mode:
 .It Li "z" Ta "Suspend selected client"
 .It Li "Z" Ta "Suspend tagged clients"
 .It Li "f" Ta "Enter a format to filter items"
+.It Li "c" Ta "Clear the current filter"
 .It Li "O" Ta "Change sort order"
 .It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
@@ -2814,12 +2868,20 @@ If a filter would lead to an empty list, it is ignored.
 specifies the format for each item in the list and
 .Fl K
 a format for each shortcut key; both are evaluated once for each line.
+.Pp
 .Fl N
 starts without the preview or if given twice with the larger preview.
-This command works only if at least one client is attached.
+.Fl h
+hides the pane containing the mode.
+.Fl k
+kills the pane when the mode is exited.
+.Pp
+The
+.Ic choose-client
+command works only if at least one client is attached.
 .It Xo
 .Ic choose\-tree
-.Op Fl GNrswyZ
+.Op Fl GhikNrswyZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key\-format
@@ -2867,10 +2929,12 @@ The following keys may be used in tree mode:
 .It Li "C\-t" Ta "Tag all items"
 .It Li "\&:" Ta "Run a command for each tagged item"
 .It Li "f" Ta "Enter a format to filter items"
+.It Li "c" Ta "Clear the current filter"
 .It Li "H" Ta "Jump to the starting pane"
 .It Li "O" Ta "Change sort order"
 .It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
+.It Li "i" Ta "Change view (preview and client information)"
 .It Li "F1 or C\-h" Ta "Display help"
 .It Li "q" Ta "Exit mode"
 .El
@@ -2904,15 +2968,32 @@ If a filter would lead to an empty list, it is ignored.
 specifies the format for each item in the tree and
 .Fl K
 a format for each shortcut key; both are evaluated once for each line.
-.Fl N
-starts without the preview or if given twice with the larger preview.
 .Fl G
 includes all sessions in any session groups in the tree rather than only the
 first.
-This command works only if at least one client is attached.
+.Pp
+.Fl N
+starts without the preview or if given twice with the larger preview.
+.Fl i
+starts showing client information instead of the preview.
+.Fl h
+hides the pane containing the mode.
+.Fl k
+kills the pane when the mode is exited.
+.Fl h
+and
+.Fl k
+are intended to ease use of the mode in a floating pane; for example:
+.Bd -literal -offset indent
+bind s 'new-pane -x50% -y50% -E; choose-tree -hks'
+.Ed
+.Pp
+The
+.Ic choose-tree
+command works only if at least one client is attached.
 .It Xo
 .Ic customize\-mode
-.Op Fl NZ
+.Op Fl kNZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl t Ar target\-pane
@@ -2947,6 +3028,7 @@ The following keys may be used in customize mode:
 .It Li "T" Ta "Tag no items"
 .It Li "C\-t" Ta "Tag all items"
 .It Li "f" Ta "Enter a format to filter items"
+.It Li "c" Ta "Clear the current filter"
 .It Li "v" Ta "Toggle option information"
 .It Li "F1 or C\-h" Ta "Display help"
 .It Li "q" Ta "Exit mode"
@@ -2958,9 +3040,15 @@ the item in the list is not shown, otherwise it is shown.
 If a filter would lead to an empty list, it is ignored.
 .Fl F
 specifies the format for each item in the tree.
+.Pp
 .Fl N
 starts without the option information.
-This command works only if at least one client is attached.
+.Fl k
+kills the pane when the mode is exited.
+.Pp
+The
+.Ic customize-mode
+command works only if at least one client is attached.
 .It Xo
 .Tg displayp
 .Ic display\-panes
@@ -3031,7 +3119,9 @@ The default is
 .Fl Z
 zooms the pane.
 .Pp
-This command works only if at least one client is attached.
+The
+.Ic find-window
+command works only if at least one client is attached.
 .Tg joinp
 .It Xo Ic join\-pane
 .Op Fl bdfhv
@@ -3065,6 +3155,7 @@ the marked pane is used rather than the current pane.
 .Tg killp
 .It Xo Ic kill\-pane
 .Op Fl a
+.Op Fl f Ar filter
 .Op Fl t Ar target\-pane
 .Xc
 .D1 Pq alias: Ic killp
@@ -3072,11 +3163,18 @@ Destroy the given pane.
 If no panes remain in the containing window, it is also destroyed.
 The
 .Fl a
-option kills all but the pane given with
+option kills all panes in the window except the pane given with
 .Fl t .
+When
+.Fl a
+is given,
+.Fl f
+specifies a filter.
+Only panes for which the filter is true are killed.
 .Tg killw
 .It Xo Ic kill\-window
 .Op Fl a
+.Op Fl f Ar filter
 .Op Fl t Ar target\-window
 .Xc
 .D1 Pq alias: Ic killw
@@ -3085,8 +3183,14 @@ Kill the current window or the window at
 removing it from any sessions to which it is linked.
 The
 .Fl a
-option kills all but the window given with
+option kills all windows in the session except the window given with
 .Fl t .
+When
+.Fl a
+is given,
+.Fl f
+specifies a filter.
+Only windows for which the filter is true are killed.
 .Tg lastp
 .It Xo Ic last\-pane
 .Op Fl deZ
@@ -3218,14 +3322,82 @@ or
 reverses the sort order.
 .Tg movep
 .It Xo Ic move\-pane
-.Op Fl bdfhv
+.Op Fl bdfhMv
+.Op Fl D Op Ar lines
 .Op Fl l Ar size
+.Op Fl L Op Ar columns
+.Op Fl P Ar position
+.Op Fl R Op Ar columns
 .Op Fl s Ar src\-pane
 .Op Fl t Ar dst\-pane
+.Op Fl U Op Ar lines
+.Op Fl X Ar x\-position
+.Op Fl Y Ar y\-position
+.Op Fl z Ar z\-index
 .Xc
 .D1 Pq alias: Ic movep
 Does the same as
-.Ic join\-pane .
+.Ic join\-pane ,
+except if given
+.Fl D ,
+.Fl L ,
+.Fl P ,
+.Fl R ,
+.Fl U ,
+.Fl X ,
+.Fl Y
+or
+.Fl z
+in which case move the target floating pane.
+.Fl D ,
+.Fl L ,
+.Fl R
+and
+.Fl U
+move it down, left, right or up by
+.Ar lines
+or
+.Ar columns
+(one if omitted).
+.Fl P
+moves it to
+.Ar position ,
+which may be one of:
+.Bl -column "XXXXXXXXXXXXXXXXXX" "X"
+.It Sy "Position" Ta Sy "Meaning"
+.It Li "top-left" Ta "Top left"
+.It Li "top-centre" Ta "Top and horizontal centre"
+.It Li "top-right" Ta "Top right"
+.It Li "centre-left" Ta "Vertical centre and left"
+.It Li "centre" Ta "Centre"
+.It Li "centre-right" Ta "Vertical centre and right"
+.It Li "bottom-left" Ta "Bottom left"
+.It Li "bottom-centre" Ta "Bottom and horizontal centre"
+.It Li "bottom-right" Ta "Bottom right"
+.It Li "top-left-centre" Ta "Centre of top-left quadrant"
+.It Li "top-right-centre" Ta "Centre of top-right quadrant"
+.It Li "bottom-left-centre" Ta "Centre of bottom-left quadrant"
+.It Li "bottom-right-centre" Ta "Centre of bottom-right quadrant"
+.It Li "front" Ta "Front of floating panes"
+.It Li "back" Ta "Back of floating panes"
+.It Li "forward" Ta "Forward one floating pane"
+.It Li "backward" Ta "Backward one floating pane"
+.It Li "forward-loop" Ta "Forward but back if already at front"
+.It Li "backward-loop" Ta "Backward but front if already at back"
+.El
+.Pp
+.Fl X
+and
+.Fl Y
+move it to an absolute position.
+.Fl z
+moves the pane to the given
+.Ar z-index ,
+where zero is the front.
+.Pp
+.Fl M
+begins a mouse drag (only valid if bound to a mouse key binding, see
+.Sx MOUSE SUPPORT ) .
 .Tg movew
 .It Xo Ic move\-window
 .Op Fl abrdk
@@ -3330,7 +3502,8 @@ but a different format may be specified with
 .Fl F .
 .Tg newp
 .It Xo Ic new\-pane
-.Op Fl bdefhIkPvZ
+.Op Fl bdefhIkPvWZ
+.Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
@@ -3341,6 +3514,7 @@ but a different format may be specified with
 .Op Fl s Ar style
 .Op Fl S Ar active\-border\-style
 .Op Fl t Ar target\-pane
+.Op Fl T Ar title
 .Op Ar shell\-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic newp
@@ -3359,6 +3533,11 @@ sets the border style when the pane is active and
 .Fl R
 sets the border style when the pane is inactive (see
 .Sx STYLES ) .
+.Fl T
+sets the pane title.
+.Fl B
+sets the pane border lines for floating panes; see
+.Ic pane\-border\-lines .
 .Pp
 .Fl h
 does a horizontal split and
@@ -3402,6 +3581,17 @@ but also sets the
 .Ic remain\-on\-exit\-format
 option for this pane to
 .Ar message .
+.Pp
+.Fl W
+Waits until
+.Ar shell\-command
+exits, then returns its exit status.
+For example:
+.Bd -literal -offset indent
+$ tmux new-pane -W 'vi afile'
+$ echo $?
+0
+.Ed
 .Pp
 .Fl E ,
 or an empty
@@ -3512,37 +3702,51 @@ if specified, to
 .Ar new\-name .
 .Tg resizep
 .It Xo Ic resize\-pane
-.Op Fl DLMRTUZ
-.Op Fl t Ar target\-pane
+.Op Fl MTZ
+.Op Fl D Ar lines
+.Op Fl L Ar columns
+.Op Fl R Ar columns
+.Op Fl U Ar lines
 .Op Fl x Ar width
 .Op Fl y Ar height
-.Op Ar adjustment
+.Op Fl t Ar target\-pane
 .Xc
 .D1 Pq alias: Ic resizep
-Resize a pane, up, down, left or right by
-.Ar adjustment
-with
+Resize a pane, up, down, left or right by a specified adjustment with
 .Fl U ,
 .Fl D ,
 .Fl L
 or
-.Fl R ,
-or
-to an absolute size
-with
+.Fl R ;
+or to an absolute size with
 .Fl x
 or
 .Fl y .
-The
-.Ar adjustment
-is given in lines or columns (the default is 1);
+The adjustment is given in
+.Ar lines
+or
+.Ar columns
+(the default is 1);
 .Fl x
 and
 .Fl y
-may be a given as a number of lines or columns or followed by
+may be a given as a number of
+.Ar lines
+or
+.Ar columns
+or followed by
 .Ql %
 for a percentage of the window size (for example
 .Ql \-x 10% ) .
+If
+.Ar target\-pane
+is floating,
+.Fl U ,
+.Fl D ,
+.Fl L ,
+and
+.Fl R
+target their respective borders, and negative values may be given.
 With
 .Fl Z ,
 the active pane is toggled between zoomed (occupying the whole of the window)
@@ -3756,6 +3960,7 @@ the command behaves like
 .Op Fl s Ar style
 .Op Fl S Ar active\-border\-style
 .Op Fl t Ar target\-pane
+.Op Fl T Ar title
 .Op Ar shell\-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic splitw
@@ -4794,6 +4999,12 @@ command to show the indicator for the active pane.
 Set the colour used by the
 .Ic display\-panes
 command to show the indicators for inactive panes.
+.It Ic display\-panes\-format Ar format
+Set the
+.Ar format
+of the text shown by the
+.Ic display\-panes
+command, expanded for each pane.
 .It Ic display\-panes\-time Ar time
 Set the time in milliseconds for which the indicators shown by the
 .Ic display\-panes
@@ -5436,6 +5647,8 @@ simple ASCII characters
 the pane number
 .It spaces
 space characters
+.It none
+no border for floating panes
 .El
 .Pp
 .Ql double
@@ -5444,9 +5657,14 @@ and
 will fall back to standard ACS line drawing when UTF\-8 is not supported.
 .Pp
 .It Xo Ic pane\-border\-status
-.Op Ic off | top | bottom
+.Op Ic off | top | bottom | top\-floating | bottom\-floating
 .Xc
 Turn pane border status lines off or set their position.
+If set to
+.Ic top\-floating
+or
+.Ic bottom\-floating ,
+status lines are shown only on floating panes.
 .Pp
 .It Ic pane\-border\-style Ar style
 Set the pane border style for panes aside from the active pane.
@@ -6166,13 +6384,20 @@ An optional argument specifies flags:
 .Ql r
 means the pattern is a regular expression instead of the default
 .Xr glob 7
-pattern, and
+pattern,
+.Ql z
+means the pattern is a fuzzy match, that is, it matches if its characters
+appear in the string in order but not necessarily consecutively;
+the pattern is split on spaces into separate terms which must all match,
+and
 .Ql i
 means to ignore case.
 For example:
 .Ql #{m:*foo*,#{host}}
 or
-.Ql #{m/ri:\[ha]A,MYVAR} .
+.Ql #{m/ri:\[ha]A,MYVAR}
+or
+.Ql #{m/z:abc,aXbXc} .
 A
 .Ql C
 performs a search for a
@@ -6285,9 +6510,15 @@ gives
 gives
 .Ql Sun Oct 25 09:25:02 2015 .
 Adding
-.Ql p (
-.Ql `t/p` )
+.Ql p
+.Pq Ql t/p
 will use shorter but less accurate time format for times in the past.
+.Ql r
+.Pq Ql t/r
+will show the time relative to the current time, for example
+.Ql \1m
+or
+.Ql 2m23s .
 A custom format may be given using an
 .Ql f
 suffix (note that
@@ -6302,6 +6533,24 @@ option):
 .Ql #{t/f/%%H#:%%M:window_activity} ,
 see
 .Xr strftime 3 .
+.Pp
+The
+.Ql I:\&
+prefix will interrogate the client.
+.Ql I/f
+will be true if
+.Nm
+believes that the client supports the given terminal feature, for example
+.Ql I/f:RGB ,
+.Ql I/c
+will be true if a client has the given
+.Xr terminfo 3
+capability, for example
+.Ql I/c:smcup ,
+and
+.Ql I/e
+gives the value of a client environment variable, for example
+.Ql #{I/e:FOO} .
 .Pp
 The
 .Ql b:\&
@@ -6541,6 +6790,7 @@ The following variables are available, where appropriate:
 .It Li "keypad_flag" Ta "" Ta "Pane keypad flag"
 .It Li "last_window_index" Ta "" Ta "Index of last window in session"
 .It Li "line" Ta "" Ta "Line number in the list"
+.It Li "loop_index" Ta "" Ta "Index of item in the W:, P:, S:, or L: loop"
 .It Li "loop_last_flag" Ta "" Ta "1 if last window, pane, session, client in the W:, P:, S:, or L: loop"
 .It Li "mouse_all_flag" Ta "" Ta "Pane mouse all flag"
 .It Li "mouse_any_flag" Ta "" Ta "Pane mouse any flag"
@@ -6778,6 +7028,9 @@ is the terminal alternate character set.
 Align text to the left, centre or right of the available space if appropriate.
 .It Ic fill=colour
 Fill the available space with a background colour if appropriate.
+.It Ic dim=percentage
+Dim foreground and background colours by
+.Ar percentage .
 .It Ic width=N
 Set the width of the styled area.
 .Ar N
@@ -7617,7 +7870,7 @@ The buffer commands are as follows:
 .Bl -tag -width Ds
 .It Xo
 .Ic choose\-buffer
-.Op Fl NryZ
+.Op Fl kNryZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key\-format
@@ -7653,6 +7906,7 @@ The following keys may be used in buffer mode:
 .It Li "D" Ta "Delete tagged buffers"
 .It Li "e" Ta "Open the buffer in an editor"
 .It Li "f" Ta "Enter a format to filter items"
+.It Li "c" Ta "Clear the current filter"
 .It Li "O" Ta "Change sort order"
 .It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
@@ -7688,7 +7942,11 @@ specifies the format for each item in the list and
 a format for each shortcut key; both are evaluated once for each line.
 .Fl N
 starts without the preview.
-This command works only if at least one client is attached.
+.Fl k
+kills the pane when the mode is exited.
+The
+.Ic choose-buffer
+command works only if at least one client is attached.
 .Tg clearhist
 .It Xo Ic clear\-history
 .Op Fl H

@@ -51,6 +51,11 @@ static void	window_copy_redraw_selection(struct window_mode_entry *, u_int);
 static void	window_copy_redraw_lines(struct window_mode_entry *, u_int,
 		    u_int);
 static void	window_copy_redraw_screen(struct window_mode_entry *);
+static void	window_copy_do_refresh(struct window_mode_entry *, int);
+static void	window_copy_refresh_timer(int, short, void *);
+static void	window_copy_refresh_arm(struct window_mode_entry *);
+static void	window_copy_refresh_start(struct window_mode_entry *);
+static void	window_copy_refresh_stop(struct window_mode_entry *);
 static void	window_copy_style_changed(struct window_mode_entry *);
 static int	window_copy_line_number_mode(struct window_mode_entry *);
 static int	window_copy_line_number_is_absolute(struct window_mode_entry *);
@@ -255,6 +260,10 @@ struct window_copy_mode_data {
 	int		 backing_written; /* backing display started */
 	struct input_ctx *ictx;
 
+	u_int		 sync_added;	/* snapshot of backing grid counters */
+	u_int		 sync_collected;
+	u_int		 sync_generation;
+
 	int		 viewmode;	/* view mode entered */
 
 	u_int		 oy;		/* number of lines scrolled up */
@@ -338,6 +347,10 @@ struct window_copy_mode_data {
 
 	struct event	 dragtimer;
 #define WINDOW_COPY_DRAG_REPEAT_TIME 50000
+
+	struct event	 refresh_timer;
+#define WINDOW_COPY_REFRESH_INTERVAL 50000
+	int		 refresh_active;
 };
 
 static void
@@ -424,6 +437,116 @@ window_copy_clone_screen(struct screen *src, struct screen *hint, u_int *cx,
 	return (dst);
 }
 
+/*
+ * Snapshot the source grid's monotonic scroll counters so the next incremental
+ * sync can tell how much history was added or collected since this point.
+ */
+static void
+window_copy_sync_snapshot(struct window_copy_mode_data *data, struct grid *src)
+{
+	data->sync_added = src->scroll_added;
+	data->sync_collected = src->scroll_collected;
+	data->sync_generation = src->scroll_generation;
+}
+
+/*
+ * Reconcile the backing screen with the live pane grid in place, copying only
+ * the history that scrolled in or was collected since the last snapshot rather
+ * than cloning the whole scrollback. The result is identical to a fresh
+ * window_copy_clone_screen, so the caller repositions and redraws the same way
+ * for both paths. Returns 1 on success, or 0 if the caller must fall back to a
+ * full clone (different source pane, geometry or generation change, or counter
+ * deltas that do not add up).
+ */
+static int
+window_copy_sync_backing(struct window_mode_entry *wme)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct window_pane		*wp = wme->swp;
+	struct screen			*src = &wp->base;
+	struct screen			*dst = data->backing;
+	struct grid			*sg = src->grid;
+	struct grid			*dg = dst->grid;
+	u_int				 sy = sg->sy;
+	u_int				 old_hsize = dg->hsize;
+	u_int				 new_hsize = sg->hsize;
+	u_int				 added, collected, kept;
+
+	/*
+	 * Only a pane's own live grid is tracked incrementally. A different
+	 * source pane (copy-mode -s) goes through clone_screen, which also
+	 * trims trailing blank lines that this path does not.
+	 */
+	if (data->viewmode || wme->swp != wme->wp)
+		return (0);
+
+	/* Indices only line up at the same size and generation. */
+	if (sg->sx != dg->sx || sg->sy != dg->sy ||
+	    sg->scroll_generation != data->sync_generation)
+		return (0);
+
+	added = sg->scroll_added - data->sync_added;
+	collected = sg->scroll_collected - data->sync_collected;
+
+	/*
+	 * Reject anything that does not balance: counter wrap, a history-limit
+	 * change that collected past the snapshot, or arithmetic that does not
+	 * reproduce the new history size.
+	 */
+	if (added > (u_int)INT_MAX || collected > (u_int)INT_MAX ||
+	    collected > old_hsize || old_hsize + added < collected ||
+	    old_hsize + added - collected != new_hsize)
+		return (0);
+
+	kept = old_hsize - collected;
+
+	if (added == 0 && collected == 0) {
+		/* History is unchanged; only the viewport can have mutated. */
+		grid_duplicate_lines(dg, dg->hsize, sg, sg->hsize, sy);
+	} else {
+		/* Drop the oldest lines and shift the rest down. */
+		if (collected > 0) {
+			grid_free_lines(dg, 0, collected);
+			memmove(&dg->linedata[0], &dg->linedata[collected],
+			    (old_hsize + sy - collected) * sizeof *dg->linedata);
+			memset(&dg->linedata[old_hsize + sy - collected], 0,
+			    collected * sizeof *dg->linedata);
+		}
+
+		/* Resize linedata to the new history plus viewport. */
+		if (new_hsize + sy != old_hsize + sy - collected) {
+			dg->linedata = xreallocarray(dg->linedata,
+			    new_hsize + sy, sizeof *dg->linedata);
+			memset(&dg->linedata[old_hsize + sy - collected], 0,
+			    (new_hsize - kept) * sizeof *dg->linedata);
+		}
+
+		/*
+		 * Set hsize before copying so grid_duplicate_lines does not
+		 * clamp the count to the old, smaller grid size.
+		 */
+		dg->hsize = new_hsize;
+
+		/* Copy the newly scrolled history, then refresh the viewport. */
+		if (added > 0)
+			grid_duplicate_lines(dg, kept, sg, kept, added);
+		grid_duplicate_lines(dg, new_hsize, sg, new_hsize, sy);
+	}
+
+	dg->hscrolled = sg->hscrolled;
+
+	/* Match clone_screen's backing cursor placement. */
+	if (src->cy > dg->sy - 1) {
+		dst->cx = 0;
+		dst->cy = dg->sy - 1;
+	} else {
+		dst->cx = src->cx;
+		dst->cy = src->cy;
+	}
+
+	return (1);
+}
+
 static struct window_copy_mode_data *
 window_copy_common_init(struct window_mode_entry *wme)
 {
@@ -458,6 +581,7 @@ window_copy_common_init(struct window_mode_entry *wme)
 	data->modekeys = options_get_number(wp->window->options, "mode-keys");
 
 	evtimer_set(&data->dragtimer, window_copy_scroll_timer, wme);
+	evtimer_set(&data->refresh_timer, window_copy_refresh_timer, wme);
 
 	return (data);
 }
@@ -475,6 +599,7 @@ window_copy_init(struct window_mode_entry *wme,
 	data = window_copy_common_init(wme);
 	data->backing = window_copy_clone_screen(base, &data->screen, &cx, &cy,
 	    wme->swp != wme->wp);
+	window_copy_sync_snapshot(data, base->grid);
 
 	data->cx = cx;
 	if (cy < screen_hsize(data->backing)) {
@@ -541,6 +666,7 @@ window_copy_free(struct window_mode_entry *wme)
 	struct window_copy_mode_data	*data = wme->data;
 
 	evtimer_del(&data->dragtimer);
+	evtimer_del(&data->refresh_timer);
 
 	free(data->searchmark);
 	free(data->searchstr);
@@ -567,13 +693,8 @@ window_copy_add(struct window_pane *wp, int parse, const char *fmt, ...)
 
 static void
 window_copy_init_ctx_cb(__unused struct screen_write_ctx *ctx,
-    struct tty_ctx *ttyctx)
+    __unused struct tty_ctx *ttyctx)
 {
-	memcpy(&ttyctx->defaults, &grid_default_cell, sizeof ttyctx->defaults);
-	ttyctx->palette = NULL;
-	ttyctx->redraw_cb = NULL;
-	ttyctx->set_client_cb = NULL;
-	ttyctx->arg = NULL;
 }
 
 void
@@ -679,7 +800,7 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 		return;
 
 	/*
-	 * See screen_redraw_draw_pane_scrollbar - this is the inverse of the
+	 * See redraw_draw_pane_scrollbar - this is the inverse of the
 	 * formula used there.
 	 */
 	new_offset = new_slider_y * ((float)(size + sb_height) / sb_height);
@@ -2786,34 +2907,136 @@ window_copy_cmd_search_forward_incremental(struct window_copy_cmd_state *cs)
 	return (action);
 }
 
-static enum window_copy_cmd_action
-window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
+/*
+ * Reconcile the backing screen with the live pane, incrementally if possible
+ * and otherwise by recloning, then reposition the view. When following, jump
+ * to the bottom so new output stays visible; otherwise keep the same lines on
+ * screen. Driven by the automatic refresh timer.
+ */
+static void
+window_copy_do_refresh(struct window_mode_entry *wme, int follow)
 {
-	struct window_mode_entry	*wme = cs->wme;
 	struct window_pane		*wp = wme->swp;
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 oy_from_top;
 
-	if (data->viewmode)
-		return (WINDOW_COPY_CMD_NOTHING);
 	if (data->oy > screen_hsize(data->backing))
 		data->oy = screen_hsize(data->backing);
 	oy_from_top = screen_hsize(data->backing) - data->oy;
 
-	screen_free(data->backing);
-	free(data->backing);
-	data->backing = window_copy_clone_screen(&wp->base, &data->screen, NULL,
-	    NULL, wme->swp != wme->wp);
+	if (!window_copy_sync_backing(wme)) {
+		screen_free(data->backing);
+		free(data->backing);
+		data->backing = window_copy_clone_screen(&wp->base,
+		    &data->screen, NULL, NULL, wme->swp != wme->wp);
+	}
 
-	if (oy_from_top <= screen_hsize(data->backing))
+	if (follow) {
+		data->cy = screen_size_y(&data->screen) - 1;
+		data->cx = window_copy_cursor_limit(wme,
+		    screen_hsize(data->backing) + data->cy, 0);
+		data->oy = 0;
+	} else if (oy_from_top <= screen_hsize(data->backing))
 		data->oy = screen_hsize(data->backing) - oy_from_top;
 	else {
 		data->cy = 0;
 		data->oy = screen_hsize(data->backing);
 	}
 
+	window_copy_sync_snapshot(data, wp->base.grid);
 	window_copy_size_changed(wme);
-	return (WINDOW_COPY_CMD_REDRAW);
+}
+
+static void
+window_copy_refresh_arm(struct window_mode_entry *wme)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct timeval			 tv = {
+		.tv_sec = WINDOW_COPY_REFRESH_INTERVAL / 1000000,
+		.tv_usec = WINDOW_COPY_REFRESH_INTERVAL % 1000000
+	};
+
+	if (data->refresh_active)
+		evtimer_add(&data->refresh_timer, &tv);
+}
+
+static void
+window_copy_refresh_timer(__unused int fd, __unused short events, void *arg)
+{
+	struct window_mode_entry	*wme = arg;
+	struct window_pane		*wp = wme->wp;
+	struct window_copy_mode_data	*data = wme->data;
+	int				 follow;
+
+	if (TAILQ_FIRST(&wp->modes) != wme || !data->refresh_active)
+		return;
+
+	/*
+	 * Skip the refresh while a selection is being made, otherwise it would
+	 * move; only follow new output if the cursor is still at the bottom.
+	 */
+	if ((wp->flags & PANE_UNSEENCHANGES) && data->screen.sel == NULL &&
+	    data->cursordrag == CURSORDRAG_NONE) {
+		follow = (data->oy == 0 &&
+		    data->cy == screen_size_y(&data->screen) - 1);
+		window_copy_do_refresh(wme, follow);
+		window_copy_redraw_screen(wme);
+		/* The timer runs outside key handling, so force a repaint. */
+		wp->flags |= PANE_REDRAW;
+		wp->flags &= ~PANE_UNSEENCHANGES;
+	}
+
+	window_copy_refresh_arm(wme);
+}
+
+static void
+window_copy_refresh_start(struct window_mode_entry *wme)
+{
+	struct window_copy_mode_data	*data = wme->data;
+
+	/*
+	 * Do not refresh a view of another pane (copy-mode -s): the source may
+	 * disappear and changes are not tracked on this pane.
+	 */
+	if (data->viewmode || wme->swp != wme->wp || data->refresh_active)
+		return;
+	data->refresh_active = 1;
+	window_copy_refresh_arm(wme);
+}
+
+static void
+window_copy_refresh_stop(struct window_mode_entry *wme)
+{
+	struct window_copy_mode_data	*data = wme->data;
+
+	data->refresh_active = 0;
+	evtimer_del(&data->refresh_timer);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_refresh_on(struct window_copy_cmd_state *cs)
+{
+	window_copy_refresh_start(cs->wme);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_refresh_off(struct window_copy_cmd_state *cs)
+{
+	window_copy_refresh_stop(cs->wme);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_refresh_toggle(struct window_copy_cmd_state *cs)
+{
+	struct window_copy_mode_data	*data = cs->wme->data;
+
+	if (data->refresh_active)
+		window_copy_refresh_stop(cs->wme);
+	else
+		window_copy_refresh_start(cs->wme);
+	return (WINDOW_COPY_CMD_NOTHING);
 }
 
 static enum window_copy_cmd_action
@@ -3280,11 +3503,23 @@ static const struct {
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_rectangle_toggle
 	},
-	{ .command = "refresh-from-pane",
+	{ .command = "refresh-on",
 	  .args = { "", 0, 0, NULL },
 	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
-	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  .f = window_copy_cmd_refresh_from_pane
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_refresh_on
+	},
+	{ .command = "refresh-off",
+	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_refresh_off
+	},
+	{ .command = "refresh-toggle",
+	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_refresh_toggle
 	},
 	{ .command = "scroll-bottom",
 	  .args = { "", 0, 0, NULL },
@@ -4867,14 +5102,10 @@ window_copy_set_line_numbers(struct window_pane *wp, int enabled)
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
 	struct window_copy_mode_data	*data;
 
-	if (wme == NULL)
-		return;
-	if (wme->mode != &window_copy_mode)
+	if (wme == NULL || wme->mode != &window_copy_mode)
 		return;
 	data = wme->data;
-	if (data == NULL)
-		return;
-	if (data->line_numbers == enabled)
+	if (data == NULL || data->line_numbers == enabled)
 		return;
 	data->line_numbers = enabled;
 	window_copy_redraw_screen(wme);
@@ -5172,8 +5403,12 @@ window_copy_update_cursor(struct window_mode_entry *wme, u_int cx, u_int cy)
 	u_int				 maxx;
 	int				 allow_onemore;
 
-	allow_onemore = (data->screen.sel != NULL && data->rectflag);
-	if (cy < screen_size_y(s)) {
+	/*
+	 * Allow rectangle selection to extend past end of current line to
+	 * behave the same as vi with virtualedit=block set.
+	 */
+	if (!data->rectflag && cy < screen_size_y(s)) {
+		allow_onemore = (data->screen.sel != NULL && data->rectflag);
 		py = screen_hsize(data->backing) + cy - data->oy;
 		maxx = window_copy_cursor_limit(wme, py, allow_onemore);
 		if (cx > maxx)
@@ -5874,6 +6109,7 @@ static void
 window_copy_cursor_up(struct window_mode_entry *wme, int scroll_only)
 {
 	struct window_copy_mode_data	*data = wme->data;
+	struct options			*oo = wme->wp->window->options;
 	struct screen			*s = &data->screen;
 	u_int				 ox, oy, px, py;
 	int				 norectsel;
@@ -5888,6 +6124,11 @@ window_copy_cursor_up(struct window_mode_entry *wme, int scroll_only)
 
 	if (data->lineflag == LINE_SEL_LEFT_RIGHT && oy == data->sely)
 		window_copy_other_end(wme);
+
+	if (scroll_only && options_get_number(oo, "mode-keys") == MODEKEY_VI) {
+		if (data->cy < screen_size_y(s) - 1)
+			window_copy_update_cursor(wme, data->cx, data->cy + 1);
+	}
 
 	if (scroll_only || data->cy == 0) {
 		if (norectsel)
@@ -5948,6 +6189,7 @@ static void
 window_copy_cursor_down(struct window_mode_entry *wme, int scroll_only)
 {
 	struct window_copy_mode_data	*data = wme->data;
+	struct options			*oo = wme->wp->window->options;
 	struct screen			*s = &data->screen;
 	u_int				 ox, oy, px, py;
 	int				 norectsel;
@@ -5962,6 +6204,11 @@ window_copy_cursor_down(struct window_mode_entry *wme, int scroll_only)
 
 	if (data->lineflag == LINE_SEL_RIGHT_LEFT && oy == data->endsely)
 		window_copy_other_end(wme);
+
+	if (scroll_only && options_get_number(oo, "mode-keys") == MODEKEY_VI) {
+		if (data->cy > 0)
+			window_copy_update_cursor(wme, data->cx, data->cy - 1);
+	}
 
 	if (scroll_only || data->cy == screen_size_y(s) - 1) {
 		if (norectsel)

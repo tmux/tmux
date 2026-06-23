@@ -7,6 +7,8 @@
 *~
 .deps/
 .dirstamp
+.serena/
+AGENTS.md
 Makefile
 Makefile.in
 aclocal.m4

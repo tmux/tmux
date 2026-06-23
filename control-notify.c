@@ -224,6 +224,14 @@ control_notify_session_window_changed(struct session *s)
 {
 	struct client	*c;
 
+	/*
+	 * A deferred session-window-changed notification can fire after the
+	 * session has been destroyed (which sets curw to NULL) but is kept
+	 * alive by the notification's reference. Skip the notification.
+	 */
+	if (s->curw == NULL)
+		return;
+
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
 			continue;
