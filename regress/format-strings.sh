@@ -234,4 +234,14 @@ test_format "#{l:#{#}}}" "#{#}}"
 #test_format "#{l:#{}" ""
 #test_format "#{l:#{#}}" ""
 
+# Fuzzy (subsequence) match operator m/z
+test_format "#{m/z:wtr,window-tree}" "1"	# subsequence in order
+test_format "#{m/z:tree,window-tree}" "1"	# contiguous is a subsequence
+test_format "#{m/z:xyz,window-tree}" "0"	# not a subsequence
+test_format "#{m/z:wrt,window-tree}" "0"	# right letters, wrong order
+test_format "#{m/z:,window-tree}" "1"		# empty pattern matches
+test_format "#{m/z:window-tree,wtr}" "0"	# pattern longer than text
+test_format "#{m/z:WTR,window-tree}" "0"	# case-sensitive by default
+test_format "#{m/zi:WTR,window-tree}" "1"	# /zi is case-insensitive
+
 exit 0
