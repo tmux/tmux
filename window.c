@@ -2177,6 +2177,15 @@ window_pane_get_pane_lines(struct window_pane *wp)
 	return (options_get_number(oo, "pane-border-lines"));
 }
 
+enum pane_lines
+window_get_pane_lines(struct window *w)
+{
+	struct options	*oo;
+
+	oo = w->options;
+	return (options_get_number(oo, "pane-border-lines"));
+}
+
 int
 window_get_pane_status(struct window *w)
 {
