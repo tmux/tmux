@@ -5723,6 +5723,7 @@ fail:
 
 /* Expand keys in a template. */
 static char *
+
 format_expand1(struct format_expand_state *es, const char *fmt)
 {
 	struct format_tree	*ft = es->ft;
