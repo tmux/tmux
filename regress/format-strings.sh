@@ -243,5 +243,10 @@ test_format "#{m/z:,window-tree}" "1"		# empty pattern matches
 test_format "#{m/z:window-tree,wtr}" "0"	# pattern longer than text
 test_format "#{m/z:WTR,window-tree}" "0"	# case-sensitive by default
 test_format "#{m/zi:WTR,window-tree}" "1"	# /zi is case-insensitive
+test_format "#{m/z:win tree,window-tree}" "1"	# space-separated tokens are ANDed
+test_format "#{m/z:wn tr,window-tree}" "1"	# each token matched as subsequence
+test_format "#{m/z:win xyz,window-tree}" "0"	# all tokens must match
+test_format "#{m/z: tree ,window-tree}" "1"	# leading/trailing spaces ignored
+test_format "#{m/z:wt   tr,window-tree}" "1"	# repeated spaces ignored
 
 exit 0
