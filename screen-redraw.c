@@ -1623,7 +1623,7 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		tty_draw_images(c, wp);
 	else {
 		TAILQ_FOREACH(loop, &scene->w->panes, entry)
-			tty_draw_images(c, wp);
+			tty_draw_images(c, loop);
 	}
 #endif
 
