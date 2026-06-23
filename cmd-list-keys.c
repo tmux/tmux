@@ -223,7 +223,12 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 		cmd_list_keys_filter_key_list(filter_notes, filter_key, only, l,
 		    &n);
 	}
-	if (single)
+	if (filter_key && n == 0) {
+		cmdq_error(item, "unknown key: %s", keystr);
+		free(prefix);
+		return (CMD_RETURN_ERROR);
+	}
+	if (single && n > 1)
 		n = 1;
 
 	ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
