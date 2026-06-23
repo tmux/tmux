@@ -530,6 +530,7 @@ server_client_free(__unused int fd, __unused short events, void *arg)
 
 	log_debug("free client %p (%d references)", c, c->references);
 
+	redraw_free_scene(c->redraw_scene);
 	cmdq_free(c->queue);
 
 	if (c->references == 0) {
@@ -2101,11 +2102,11 @@ server_client_check_redraw(struct client *c)
 			if (wp->flags & PANE_REDRAW) {
 				log_debug("%s: redraw pane %%%u", __func__,
 				    wp->id);
-				screen_redraw_pane(c, wp, 0);
+				redraw_pane(c, wp);
 			} else if (wp->flags & PANE_REDRAWSCROLLBAR) {
 				log_debug("%s: redraw scrollbar %%%u", __func__,
 				    wp->id);
-				screen_redraw_pane(c, wp, 1);
+				redraw_pane_scrollbar(c, wp);
 			}
 		}
 	}
@@ -2120,7 +2121,7 @@ server_client_check_redraw(struct client *c)
 			server_client_set_path(c);
 		}
 		server_client_set_progress_bar(c);
-		screen_redraw_screen(c);
+		redraw_screen(c);
 	}
 
 	/* Put the tty back how it was. */

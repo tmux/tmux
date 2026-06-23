@@ -800,7 +800,7 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 		return;
 
 	/*
-	 * See screen_redraw_draw_pane_scrollbar - this is the inverse of the
+	 * See redraw_draw_pane_scrollbar - this is the inverse of the
 	 * formula used there.
 	 */
 	new_offset = new_slider_y * ((float)(size + sb_height) / sb_height);

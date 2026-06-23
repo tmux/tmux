@@ -318,6 +318,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmdq_item *item)
 		grid_clear_history(wp->base.grid);
 		if (args_has(args, 'H'))
 			screen_reset_hyperlinks(wp->screen);
+		server_redraw_window(wp->window);
 		return (CMD_RETURN_NORMAL);
 	}
 

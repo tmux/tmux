@@ -257,8 +257,7 @@ menu_reapply_styles(struct menu_data *md, struct client *c)
 }
 
 void
-menu_draw_cb(struct client *c, void *data,
-    __unused struct screen_redraw_ctx *rctx)
+menu_draw_cb(struct client *c, void *data)
 {
 	struct menu_data	*md = data;
 	struct tty		*tty = &c->tty;
@@ -636,7 +635,7 @@ menu_display(struct menu *menu, int flags, int starting_choice,
 	    style, selected_style, border_style, fs, cb, data);
 	if (md == NULL)
 		return (-1);
-	server_client_set_overlay(c, 0, NULL, menu_mode_cb, menu_draw_cb,
-	    menu_key_cb, menu_free_cb, menu_resize_cb, md);
+	server_client_set_overlay(c, 0, menu_check_cb, menu_mode_cb,
+	    menu_draw_cb, menu_key_cb, menu_free_cb, menu_resize_cb, md);
 	return (0);
 }
