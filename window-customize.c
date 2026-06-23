@@ -981,7 +981,7 @@ window_customize_free_item_callback(void *itemdata)
 
 static int
 window_customize_set_option_callback(struct client *c, void *itemdata,
-    const char *s, __unused key_code key, __unused int flags)
+    const char *s, __unused int flags)
 {
 	struct window_customize_itemdata	*item = itemdata;
 	struct window_customize_modedata	*data = item->data;
@@ -1195,7 +1195,7 @@ window_customize_reset_option(struct window_customize_modedata *data,
 
 static int
 window_customize_set_command_callback(struct client *c, void *itemdata,
-    const char *s, __unused key_code key, __unused int flags)
+    const char *s, __unused int flags)
 {
 	struct window_customize_itemdata	*item = itemdata;
 	struct window_customize_modedata	*data = item->data;
@@ -1234,7 +1234,7 @@ fail:
 
 static int
 window_customize_set_note_callback(__unused struct client *c, void *itemdata,
-    const char *s, __unused key_code key, __unused int flags)
+    const char *s, __unused int flags)
 {
 	struct window_customize_itemdata	*item = itemdata;
 	struct window_customize_modedata	*data = item->data;
@@ -1372,7 +1372,7 @@ window_customize_change_each(void *modedata, void *itemdata,
 
 static int
 window_customize_change_current_callback(__unused struct client *c,
-    void *modedata, const char *s, __unused key_code key, __unused int flags)
+    void *modedata, const char *s, __unused int flags)
 {
 	struct window_customize_modedata	*data = modedata;
 	struct window_customize_itemdata	*item;
@@ -1408,7 +1408,7 @@ window_customize_change_current_callback(__unused struct client *c,
 
 static int
 window_customize_change_tagged_callback(struct client *c, void *modedata,
-    const char *s, __unused key_code key, __unused int flags)
+    const char *s, __unused int flags)
 {
 	struct window_customize_modedata	*data = modedata;
 
