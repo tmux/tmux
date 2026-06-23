@@ -357,8 +357,8 @@ window_destroy(struct window *w)
 	window_unzoom(w, 0);
 	RB_REMOVE(windows, &windows, w);
 
-	layout_free_cell(w->layout_root);
-	layout_free_cell(w->saved_layout_root);
+	layout_free_cell(w->layout_root, 0);
+	layout_free_cell(w->saved_layout_root, 0);
 	free(w->old_layout);
 
 	window_destroy_panes(w);
@@ -785,7 +785,7 @@ window_unzoom(struct window *w, int notify)
 		return (-1);
 
 	w->flags &= ~WINDOW_ZOOMED;
-	layout_free(w);
+	layout_free(w, 0);
 	w->layout_root = w->saved_layout_root;
 	w->saved_layout_root = NULL;
 
