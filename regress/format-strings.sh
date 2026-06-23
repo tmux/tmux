@@ -249,4 +249,10 @@ test_format "#{m/z:win xyz,window-tree}" "0"	# all tokens must match
 test_format "#{m/z: tree ,window-tree}" "1"	# leading/trailing spaces ignored
 test_format "#{m/z:wt   tr,window-tree}" "1"	# repeated spaces ignored
 
+# Space splits the pattern into tokens which must all match (AND)
+test_format "#{m/z:win tree,window-tree}" "1"	# both tokens present
+test_format "#{m/z:tree win,window-tree}" "1"	# token order independent
+test_format "#{m/z:win xyz,window-tree}" "0"	# second token absent
+test_format "#{m/z:  ,window-tree}" "1"		# only spaces is empty pattern
+
 exit 0
