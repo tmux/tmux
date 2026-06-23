@@ -6385,7 +6385,8 @@ means the pattern is a regular expression instead of the default
 pattern,
 .Ql z
 means the pattern is a fuzzy match, that is, it matches if its characters
-appear in the string in order but not necessarily consecutively,
+appear in the string in order but not necessarily consecutively;
+the pattern is split on spaces into separate terms which must all match,
 and
 .Ql i
 means to ignore case.
