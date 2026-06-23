@@ -472,6 +472,7 @@ window_customize_build_keys(struct window_customize_modedata *data,
 			expanded = format_expand(ft, filter);
 			if (!format_true(expanded)) {
 				free(expanded);
+				bd = key_bindings_next(kt, bd);
 				continue;
 			}
 			free(expanded);
