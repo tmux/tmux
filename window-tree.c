@@ -1082,7 +1082,7 @@ window_tree_command_done(__unused struct cmdq_item *item, void *modedata)
 
 static int
 window_tree_command_callback(struct client *c, void *modedata, const char *s,
-    __unused key_code key, __unused int flags)
+    __unused int flags)
 {
 	struct window_tree_modedata	*data = modedata;
 
@@ -1141,7 +1141,7 @@ window_tree_kill_each(__unused void *modedata, void *itemdata,
 
 static int
 window_tree_kill_current_callback(struct client *c, void *modedata,
-    const char *s, __unused key_code key, __unused int flags)
+    const char *s, __unused int flags)
 {
 	struct window_tree_modedata	*data = modedata;
 	struct mode_tree_data		*mtd = data->data;
@@ -1162,7 +1162,7 @@ window_tree_kill_current_callback(struct client *c, void *modedata,
 
 static int
 window_tree_kill_tagged_callback(struct client *c, void *modedata,
-    const char *s, __unused key_code key, __unused int flags)
+    const char *s, __unused int flags)
 {
 	struct window_tree_modedata	*data = modedata;
 	struct mode_tree_data		*mtd = data->data;

@@ -673,7 +673,7 @@ status_prompt_accept(__unused struct cmdq_item *item, void *data)
 	void		*pd = c->prompt_data;
 
 	if (c->prompt_string != NULL) {
-		c->prompt_inputcb(c, pd, "y", KEYC_NONE, PROMPT_INPUT_DONE);
+		c->prompt_inputcb(c, pd, "y", PROMPT_INPUT_DONE);
 		status_prompt_clear(c);
 	}
 	return (CMD_RETURN_NORMAL);
@@ -686,7 +686,7 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
     prompt_free_cb freecb, void *data, int flags, enum prompt_type prompt_type)
 {
 	struct format_tree	*ft;
-	char			*tmp;
+	char			*tmp, *cp;
 
 	server_client_clear_overlay(c);
 
@@ -735,8 +735,13 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 		c->tty.flags |= TTY_FREEZE;
 	c->flags |= CLIENT_REDRAWSTATUS;
 
-	if (flags & PROMPT_INCREMENTAL)
-		c->prompt_inputcb(c, data, "=", KEYC_NONE, 0);
+	if (flags & PROMPT_INCREMENTAL) {
+		tmp = utf8_tocstr(c->prompt_buffer);
+		xasprintf(&cp, "=%s", tmp);
+		c->prompt_inputcb(c, c->prompt_data, cp, 0);
+		free(cp);
+		free(tmp);
+	}
 
 	if ((flags & PROMPT_SINGLE) && (flags & PROMPT_ACCEPT))
 		cmdq_append(c, cmdq_get_callback(status_prompt_accept, c));
@@ -1425,10 +1430,25 @@ status_prompt_backward_word(struct client *c, const char *separators)
 	c->prompt_index = idx;
 }
 
-/* Should this key exit incremental prompt? */
-static int
-status_prompt_incremental_exit_key(key_code key)
+/* Fire input callback when done. */
+static void
+status_prompt_done(struct client *c, const char *s)
 {
+	struct prompt_data	*pd = c->prompt_data;
+
+	if (c->prompt_inputcb(c, pd, s, PROMPT_INPUT_DONE) == 0)
+		status_prompt_clear(c);
+}
+
+/* Check for a movement key. */
+static int
+status_prompt_check_move(struct client *c, key_code key)
+{
+	struct prompt_data	*pd = c->prompt_data;
+	char			*s;
+
+	if (~c->prompt_flags & PROMPT_INCREMENTAL)
+		return (0);
 	switch (key) {
 	case KEYC_UP:
 	case KEYC_DOWN:
@@ -1436,21 +1456,14 @@ status_prompt_incremental_exit_key(key_code key)
 	case KEYC_RIGHT:
 	case KEYC_PPAGE:
 	case KEYC_NPAGE:
-		return (1);
-	}
-	return (0);
-}
-
-/* Fire input callback when done. */
-static int
-status_prompt_done(struct client *c, const char *s)
-{
-	struct prompt_data	*pd = c->prompt_data;
-
-	if (c->prompt_inputcb(c, pd, s, KEYC_NONE, PROMPT_INPUT_DONE) == 0) {
-		status_prompt_clear(c);
+		break;
+	default:
 		return (0);
 	}
+	s = utf8_tocstr(c->prompt_buffer);
+	if (c->prompt_inputcb(c, pd, s, PROMPT_INPUT_MOVE) == 0)
+		status_prompt_clear(c);
+	free(s);
 	return (1);
 }
 
@@ -1468,7 +1481,7 @@ status_prompt_key(struct client *c, key_code key)
 
 	if (c->prompt_flags & PROMPT_KEY) {
 		ks = key_string_lookup_key(key, 0);
-		c->prompt_inputcb(c, pd, ks, KEYC_NONE, PROMPT_INPUT_DONE);
+		c->prompt_inputcb(c, pd, ks, PROMPT_INPUT_DONE);
 		status_prompt_clear(c);
 		return (0);
 	}
@@ -1481,7 +1494,7 @@ status_prompt_key(struct client *c, key_code key)
 		if (key >= '0' && key <= '9')
 			goto append_key;
 		s = utf8_tocstr(c->prompt_buffer);
-		c->prompt_inputcb(c, pd, s, KEYC_NONE, PROMPT_INPUT_DONE);
+		c->prompt_inputcb(c, pd, s, PROMPT_INPUT_DONE);
 		status_prompt_clear(c);
 		free(s);
 		return (1);
@@ -1513,16 +1526,8 @@ status_prompt_key(struct client *c, key_code key)
 	}
 
 process_key:
-	if ((c->prompt_flags & PROMPT_INCREMENTAL) &&
-	    status_prompt_incremental_exit_key(key)) {
-		s = utf8_tocstr(c->prompt_buffer);
-		if (status_prompt_done(c, s) == 0) {
-			free(s);
-			return (1);
-		}
-		return (0);
-	}
-
+	if (status_prompt_check_move(c, key))
+		return (1);
 	switch (key) {
 	case KEYC_LEFT:
 	case 'b'|KEYC_CTRL:
@@ -1786,7 +1791,7 @@ changed:
 	if (c->prompt_flags & PROMPT_INCREMENTAL) {
 		s = utf8_tocstr(c->prompt_buffer);
 		xasprintf(&cp, "%c%s", prefix, s);
-		c->prompt_inputcb(c, pd, cp, KEYC_NONE, 0);
+		c->prompt_inputcb(c, pd, cp, 0);
 		free(cp);
 		free(s);
 	}

@@ -35,7 +35,7 @@ static enum cmd_retval		cmd_command_prompt_exec(struct cmd *,
 				    struct cmdq_item *);
 
 static int	cmd_command_prompt_callback(struct client *, void *,
-		    const char *, key_code, int);
+		    const char *, int);
 static void	cmd_command_prompt_free(void *);
 
 const struct cmd_entry cmd_command_prompt_entry = {
@@ -178,7 +178,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 
 static int
 cmd_command_prompt_callback(struct client *c, void *data, const char *s,
-    __unused key_code key, int flags)
+    int flags)
 {
 	struct cmd_command_prompt_cdata		 *cdata = data;
 	char					 *error;
