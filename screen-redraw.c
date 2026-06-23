@@ -772,9 +772,13 @@ redraw_mark_pane(struct redraw_build_ctx *bctx, struct window_pane *wp)
 	if (window_pane_scrollbar_visible(wp, bctx->sb)) {
 		overlay = window_pane_scrollbar_overlay(wp, bctx->sb);
 		if (overlay) {
-			sb_w = wp->scrollbar_style.width;
-			if (sb_w > (int)wp->sx)
-				sb_w = wp->sx;
+			sb_w = wp->scrollbar_style.width +
+			    wp->scrollbar_style.pad;
+			if (sb_w > (int)wp->sx) {
+				sb_w = wp->scrollbar_style.width;
+				if (sb_w > (int)wp->sx)
+					sb_w = wp->sx;
+			}
 		} else
 			sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
 	}
@@ -1236,7 +1240,7 @@ redraw_draw_scrollbar_span(struct redraw_draw_ctx *dctx,
 	struct screen		*s = wp->screen;
 	struct tty		*tty = &scene->c->tty;
 	struct style		*sb_style = &wp->scrollbar_style;
-	struct grid_cell	 gc, slgc, *gcp;
+	struct grid_cell	 gc, slgc, pad_gc, *gcp;
 	double			 pct_view;
 	u_int			 total_height, slider_h, slider_y;
 	u_int			 sb_h = span->data.sb.height;
@@ -1276,6 +1280,7 @@ redraw_draw_scrollbar_span(struct redraw_draw_ctx *dctx,
 	memcpy(&slgc, &gc, sizeof slgc);
 	slgc.fg = gc.bg;
 	slgc.bg = gc.fg;
+	tty_default_colours(&pad_gc, wp, NULL);
 
 	sb_w = sb_style->width;
 	sb_pad = sb_style->pad;
@@ -1283,16 +1288,14 @@ redraw_draw_scrollbar_span(struct redraw_draw_ctx *dctx,
 
 	tty_cursor(tty, x, y);
 	for (i = 0; i < n; i++) {
-		if (span->data.sb.flags & REDRAW_SCROLLBAR_OVERLAY) {
-			/* Padding is transparent and is not part of overlay spans. */
-		} else if (span->data.sb.flags & REDRAW_SCROLLBAR_LEFT) {
+		if (span->data.sb.flags & REDRAW_SCROLLBAR_LEFT) {
 			if (off + i >= sb_w && off + i < sb_w + sb_pad) {
-				tty_cell(tty, &grid_default_cell, NULL);
+				tty_cell(tty, &pad_gc, NULL);
 				continue;
 			}
 		} else {
 			if (off + i < sb_pad) {
-				tty_cell(tty, &grid_default_cell, NULL);
+				tty_cell(tty, &pad_gc, NULL);
 				continue;
 			}
 		}
