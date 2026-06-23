@@ -1059,7 +1059,7 @@ mode_tree_search_set(struct mode_tree_data *mtd)
 
 static int
 mode_tree_search_callback(__unused struct client *c, void *data, const char *s,
-    __unused int done)
+    __unused key_code key, __unused int flags)
 {
 	struct mode_tree_data	*mtd = data;
 
@@ -1086,7 +1086,7 @@ mode_tree_search_free(void *data)
 
 static int
 mode_tree_filter_callback(__unused struct client *c, void *data, const char *s,
-    __unused int done)
+    __unused key_code key, __unused int flags)
 {
 	struct mode_tree_data	*mtd = data;
 

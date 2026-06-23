@@ -1991,7 +1991,10 @@ RB_HEAD(client_windows, client_window);
 #define CLIENT_PASTE_TIME_LIMIT 5
 
 /* Client connection. */
-typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
+#define PROMPT_INPUT_DONE 0x1
+#define PROMPT_INPUT_MOVE 0x2
+typedef int (*prompt_input_cb)(struct client *, void *, const char *, key_code,
+    int);
 typedef void (*prompt_free_cb)(void *);
 typedef struct visible_ranges *(*overlay_check_cb)(struct client *, void *,
     u_int, u_int, u_int);

@@ -35,7 +35,7 @@ static enum cmd_retval		cmd_command_prompt_exec(struct cmd *,
 				    struct cmdq_item *);
 
 static int	cmd_command_prompt_callback(struct client *, void *,
-		    const char *, int);
+		    const char *, key_code, int);
 static void	cmd_command_prompt_free(void *);
 
 const struct cmd_entry cmd_command_prompt_entry = {
@@ -178,7 +178,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 
 static int
 cmd_command_prompt_callback(struct client *c, void *data, const char *s,
-    int done)
+    __unused key_code key, int flags)
 {
 	struct cmd_command_prompt_cdata		 *cdata = data;
 	char					 *error;
@@ -188,10 +188,10 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 	int					  argc = 0;
 	char					**argv = NULL;
 
-	if (s == NULL)
+	if (s == NULL || (flags & PROMPT_INPUT_MOVE))
 		goto out;
 
-	if (done) {
+	if (flags & PROMPT_INPUT_DONE) {
 		if (cdata->flags & PROMPT_INCREMENTAL)
 			goto out;
 		cmd_append_argv(&cdata->argc, &cdata->argv, s);
@@ -204,10 +204,9 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 
 	argc = cdata->argc;
 	argv = cmd_copy_argv(cdata->argc, cdata->argv);
-	if (!done)
+	if (~flags & PROMPT_INPUT_DONE)
 		cmd_append_argv(&argc, &argv, s);
-
-	if (done) {
+	else {
 		cmd_free_argv(cdata->argc, cdata->argv);
 		cdata->argc = argc;
 		cdata->argv = cmd_copy_argv(argc, argv);
