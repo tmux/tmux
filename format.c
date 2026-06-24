@@ -4525,53 +4525,6 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 	return (list);
 }
 
-/* Fuzzy match a single token (no spaces). */
-static int
-format_fuzzy_match_token(const char *pattern, size_t patternlen,
-    const char *text, int icase)
-{
-	const char	*end = pattern + patternlen;
-
-	while (pattern != end) {
-		if (*text == '\0')
-			return (0);
-		if (icase) {
-			if (tolower((u_char)*pattern) == tolower((u_char)*text))
-				pattern++;
-		} else {
-			if (*pattern == *text)
-				pattern++;
-		}
-		text++;
-	}
-	return (1);
-}
-
-/*
- * Fuzzy match strings. The pattern is split on spaces into tokens and every
- * token must match as a sequence.
- */
-static int
-format_fuzzy_match(const char *pattern, const char *text, int icase)
-{
-	const char	*start;
-	size_t		 len;
-
-	while (*pattern != '\0') {
-		while (*pattern == ' ')
-			pattern++;
-		if (*pattern == '\0')
-			break;
-		start = pattern;
-		while (*pattern != '\0' && *pattern != ' ')
-			pattern++;
-		len = pattern - start;
-		if (!format_fuzzy_match_token(start, len, text, icase))
-			return (0);
-	}
-	return (1);
-}
-
 /* Match against an fnmatch(3) pattern or regular expression. */
 static char *
 format_match(struct format_modifier *fm, const char *pattern, const char *text)
@@ -4582,10 +4535,7 @@ format_match(struct format_modifier *fm, const char *pattern, const char *text)
 
 	if (fm->argc >= 1)
 		s = fm->argv[0];
-	if (strchr(s, 'z') != NULL) {
-		if (!format_fuzzy_match(pattern, text, strchr(s, 'i') != NULL))
-			return (xstrdup("0"));
-	} else if (strchr(s, 'r') == NULL) {
+	if (strchr(s, 'r') == NULL) {
 		if (strchr(s, 'i') != NULL)
 			flags |= FNM_CASEFOLD;
 		if (fnmatch(pattern, text, flags) != 0)
