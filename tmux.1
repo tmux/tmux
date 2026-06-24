@@ -5746,13 +5746,10 @@ the scrollbar overlays the pane and does not narrow or reflow the pane.
 See also
 .Ic pane\-scrollbars\-style .
 .Pp
-.It Ic pane\-scrollbars\-timeout Ar time
-Set the time in milliseconds before scrollbars are hidden when
-.Ic pane\-scrollbars
-is
-.Ic modal
-or
-.Ic auto\-hide .
+.It Xo Ic pane\-scrollbars\-position
+.Op Ic left | right
+.Xc
+Sets which side of the pane to display pane scrollbars on.
 .Pp
 .It Ic pane\-scrollbars\-style Ar style
 Set the scrollbars style.
@@ -5770,10 +5767,13 @@ attribute sets the width of the scrollbar and the
 attribute the padding between the scrollbar and the pane.
 Other attributes are ignored.
 .Pp
-.It Xo Ic pane\-scrollbars\-position
-.Op Ic left | right
-.Xc
-Sets which side of the pane to display pane scrollbars on.
+.It Ic pane\-scrollbars\-timeout Ar time
+Set the time in milliseconds before scrollbars are hidden when
+.Ic pane\-scrollbars
+is
+.Ic modal
+or
+.Ic auto\-hide .
 .Pp
 .It Ic pane\-status\-current\-style Ar style
 Set status line style for the currently active pane.
