@@ -1990,7 +1990,10 @@ server_client_reset_state(struct client *c)
 			}
 		}
 		if (options_get_number(oo, "focus-follows-mouse") ||
-		    options_get_number(w->options, "pane-scrollbars-auto-hide"))
+		    options_get_number(w->options, "pane-scrollbars") ==
+		    PANE_SCROLLBARS_MODAL ||
+		    options_get_number(w->options, "pane-scrollbars") ==
+		    PANE_SCROLLBARS_AUTOHIDE)
 			mode |= MODE_MOUSE_ALL;
 		else if (~mode & MODE_MOUSE_ALL)
 			mode |= MODE_MOUSE_BUTTON;

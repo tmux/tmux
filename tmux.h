@@ -1455,6 +1455,7 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_SCROLLBARS_OFF 0
 #define PANE_SCROLLBARS_MODAL 1
 #define PANE_SCROLLBARS_ALWAYS 2
+#define PANE_SCROLLBARS_AUTOHIDE 3
 
 /* Pane scrollbars position option. */
 #define PANE_SCROLLBARS_RIGHT 0

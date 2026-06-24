@@ -1149,8 +1149,10 @@ window_pane_scrollbar_timer(__unused int fd, __unused short events, void *arg)
 static int
 window_pane_scrollbar_auto_hide(struct window_pane *wp)
 {
-	return (options_get_number(wp->window->options,
-	    "pane-scrollbars-auto-hide"));
+	int	sb;
+
+	sb = options_get_number(wp->window->options, "pane-scrollbars");
+	return (sb == PANE_SCROLLBARS_MODAL || sb == PANE_SCROLLBARS_AUTOHIDE);
 }
 
 int
@@ -2019,6 +2021,7 @@ window_pane_show_scrollbar(struct window_pane *wp, int sb_option)
 	if (SCREEN_IS_ALTERNATE(&wp->base))
 		return (0);
 	if (sb_option == PANE_SCROLLBARS_ALWAYS ||
+	    sb_option == PANE_SCROLLBARS_AUTOHIDE ||
 	    (sb_option == PANE_SCROLLBARS_MODAL &&
 	    window_pane_mode(wp) != WINDOW_PANE_NO_MODE))
 		return (1);
@@ -2030,9 +2033,7 @@ window_pane_scrollbar_reserve(struct window_pane *wp, int sb_option)
 {
 	if (!window_pane_show_scrollbar(wp, sb_option))
 		return (0);
-	if (sb_option != PANE_SCROLLBARS_ALWAYS)
-		return (0);
-	return (!window_pane_scrollbar_auto_hide(wp));
+	return (sb_option == PANE_SCROLLBARS_ALWAYS);
 }
 
 int
