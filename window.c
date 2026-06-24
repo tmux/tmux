@@ -2066,7 +2066,7 @@ window_pane_scrollbar_start_timer(struct window_pane *wp)
 		return;
 
 	delay = options_get_number(wp->window->options,
-	    "pane-scrollbars-auto-hide-timeout");
+	    "pane-scrollbars-timeout");
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
 	evtimer_del(&wp->sb_auto_timer);

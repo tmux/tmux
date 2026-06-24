@@ -1404,7 +1404,7 @@ const struct options_table_entry options_table[] = {
 	  .text = "Pane scrollbar state: off, on, modal, or auto-hide."
 	},
 
-	{ .name = "pane-scrollbars-auto-hide-timeout",
+	{ .name = "pane-scrollbars-timeout",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .minimum = 0,

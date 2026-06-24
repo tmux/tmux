@@ -1237,7 +1237,7 @@ options_push_changes(const char *name)
 	    strcmp(name, "pane-border-lines") == 0 ||
 	    strcmp(name, "pane-border-status") == 0 ||
 	    strcmp(name, "pane-scrollbars") == 0 ||
-	    strcmp(name, "pane-scrollbars-auto-hide-timeout") == 0 ||
+	    strcmp(name, "pane-scrollbars-timeout") == 0 ||
 	    strcmp(name, "pane-scrollbars-position") == 0 ||
 	    strcmp(name, "pane-scrollbars-style") == 0)
 		redraw_invalidate_all_scenes();

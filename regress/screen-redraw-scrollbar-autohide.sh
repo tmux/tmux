@@ -34,7 +34,7 @@ $TMUX2 new -d -x20 -y6 "sh -c 'seq 40; exec sleep 100'" || exit 1
 $TMUX2 set -g status off || exit 1
 $TMUX2 set -g window-size manual || exit 1
 $TMUX2 setw pane-scrollbars auto-hide || exit 1
-$TMUX2 setw pane-scrollbars-auto-hide-timeout 2000 || exit 1
+$TMUX2 setw pane-scrollbars-timeout 2000 || exit 1
 $TMUX2 setw pane-scrollbars-style "bg=red,fg=white,width=1,pad=1" || exit 1
 
 $TMUX new -d -x20 -y6 || exit 1
