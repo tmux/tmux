@@ -1542,9 +1542,11 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 		lcnew = layout_create_cell(NULL);
 		layout_set_size(lcnew, w->sx, w->sy, 0, 0);
 		if (lcroot->type == LAYOUT_WINDOWPANE) {
-			layout_replace_with_node(w, lcnew, LAYOUT_TOPBOTTOM);
+			lcroot = layout_replace_with_node(w, lcnew,
+			    LAYOUT_TOPBOTTOM);
 			TAILQ_INSERT_TAIL(&lcroot->cells, lc, entry);
 			lc->parent = lcroot;
+			w->layout_root = lcroot;
 		} else {
 			lcnew->parent = lcroot;
 			TAILQ_INSERT_HEAD(&lcroot->cells, lcnew, entry);
