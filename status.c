@@ -670,7 +670,7 @@ status_prompt_accept(__unused struct cmdq_item *item, void *data)
 	void		*pd = c->prompt_data;
 
 	if (c->prompt_string != NULL) {
-		c->prompt_inputcb(c, pd, "y", PROMPT_INPUT_DONE);
+		c->prompt_inputcb(c, pd, "y", PROMPT_KEY_CLOSE);
 		status_prompt_clear(c);
 	}
 	return (CMD_RETURN_NORMAL);
@@ -735,7 +735,7 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 	if (flags & PROMPT_INCREMENTAL) {
 		tmp = utf8_tocstr(c->prompt_buffer);
 		xasprintf(&cp, "=%s", tmp);
-		c->prompt_inputcb(c, c->prompt_data, cp, 0);
+		c->prompt_inputcb(c, c->prompt_data, cp, PROMPT_KEY_HANDLED);
 		free(cp);
 		free(tmp);
 	}
@@ -1428,24 +1428,28 @@ status_prompt_backward_word(struct client *c, const char *separators)
 }
 
 /* Fire input callback when done. */
-static void
+static enum prompt_key_result
 status_prompt_done(struct client *c, const char *s)
 {
 	struct prompt_data	*pd = c->prompt_data;
 
-	if (c->prompt_inputcb(c, pd, s, PROMPT_INPUT_DONE) == 0)
+	if (c->prompt_inputcb(c, pd, s, PROMPT_KEY_CLOSE) == PROMPT_CLOSE) {
 		status_prompt_clear(c);
+		return (PROMPT_KEY_CLOSE);
+	}
+	c->flags |= CLIENT_REDRAWSTATUS;
+	return (PROMPT_KEY_HANDLED);
 }
 
 /* Check for a movement key. */
-static int
+static enum prompt_key_result
 status_prompt_check_move(struct client *c, key_code key)
 {
 	struct prompt_data	*pd = c->prompt_data;
 	char			*s;
 
 	if (~c->prompt_flags & PROMPT_INCREMENTAL)
-		return (0);
+		return (PROMPT_KEY_NOT_HANDLED);
 	switch (key) {
 	case KEYC_UP:
 	case KEYC_DOWN:
@@ -1455,17 +1459,20 @@ status_prompt_check_move(struct client *c, key_code key)
 	case KEYC_NPAGE:
 		break;
 	default:
-		return (0);
+		return (PROMPT_KEY_NOT_HANDLED);
 	}
 	s = utf8_tocstr(c->prompt_buffer);
-	if (c->prompt_inputcb(c, pd, s, PROMPT_INPUT_MOVE) == 0)
+	if (c->prompt_inputcb(c, pd, s, PROMPT_KEY_MOVE) == PROMPT_CLOSE) {
 		status_prompt_clear(c);
+		free(s);
+		return (PROMPT_KEY_CLOSE);
+	}
 	free(s);
-	return (1);
+	return (PROMPT_KEY_MOVE);
 }
 
 /* Handle keys in prompt. */
-int
+enum prompt_key_result
 status_prompt_key(struct client *c, key_code key)
 {
 	struct prompt_data	*pd = c->prompt_data;
@@ -1474,13 +1481,14 @@ status_prompt_key(struct client *c, key_code key)
 	const char		*histstr, *separators = NULL, *ks;
 	size_t			 size, idx;
 	struct utf8_data	 tmp;
+	enum prompt_key_result result = PROMPT_KEY_HANDLED;
 	int			 keys, word_is_separators;
 
 	if (c->prompt_flags & PROMPT_KEY) {
 		ks = key_string_lookup_key(key, 0);
-		c->prompt_inputcb(c, pd, ks, PROMPT_INPUT_DONE);
+		c->prompt_inputcb(c, pd, ks, PROMPT_KEY_CLOSE);
 		status_prompt_clear(c);
-		return (0);
+		return (PROMPT_KEY_CLOSE);
 	}
 	size = utf8_strlen(c->prompt_buffer);
 
@@ -1491,10 +1499,10 @@ status_prompt_key(struct client *c, key_code key)
 		if (key >= '0' && key <= '9')
 			goto append_key;
 		s = utf8_tocstr(c->prompt_buffer);
-		c->prompt_inputcb(c, pd, s, PROMPT_INPUT_DONE);
+		c->prompt_inputcb(c, pd, s, PROMPT_KEY_CLOSE);
 		status_prompt_clear(c);
 		free(s);
-		return (1);
+		return (PROMPT_KEY_NOT_HANDLED);
 	}
 
 	if (c->prompt_flags & (PROMPT_SINGLE|PROMPT_QUOTENEXT)) {
@@ -1502,7 +1510,7 @@ status_prompt_key(struct client *c, key_code key)
 			key = 0x7f;
 		else if ((key & KEYC_MASK_KEY) > 0x7f) {
 			if (!KEYC_IS_UNICODE(key))
-				return (0);
+				return (PROMPT_KEY_HANDLED);
 			key &= KEYC_MASK_KEY;
 		} else
 			key &= (key & KEYC_CTRL) ? 0x1f : KEYC_MASK_KEY;
@@ -1518,13 +1526,14 @@ status_prompt_key(struct client *c, key_code key)
 		case 2:
 			goto append_key;
 		default:
-			return (0);
+			return (PROMPT_KEY_HANDLED);
 		}
 	}
 
 process_key:
-	if (status_prompt_check_move(c, key))
-		return (1);
+	result = status_prompt_check_move(c, key);
+	if (result != PROMPT_KEY_NOT_HANDLED)
+		return (result);
 	switch (key) {
 	case KEYC_LEFT:
 	case 'b'|KEYC_CTRL:
@@ -1560,10 +1569,8 @@ process_key:
 		break;
 	case KEYC_BSPACE:
 	case 'h'|KEYC_CTRL:
-		if (c->prompt_flags & PROMPT_BSPACE_EXIT && size == 0) {
-			status_prompt_done(c, NULL);
-			break;
-		}
+		if (c->prompt_flags & PROMPT_BSPACE_EXIT && size == 0)
+			return (status_prompt_done(c, NULL));
 		if (c->prompt_index != 0) {
 			if (c->prompt_index == size)
 				c->prompt_buffer[--c->prompt_index].size = 0;
@@ -1706,15 +1713,14 @@ process_key:
 		s = utf8_tocstr(c->prompt_buffer);
 		if (*s != '\0')
 			status_prompt_add_history(s, c->prompt_type);
-		status_prompt_done(c, s);
+		result = status_prompt_done(c, s);
 		free(s);
-		break;
+		return (result);
 	case '\033': /* Escape */
 	case '['|KEYC_CTRL:
 	case 'c'|KEYC_CTRL:
 	case 'g'|KEYC_CTRL:
-		status_prompt_done(c, NULL);
-		break;
+		return (status_prompt_done(c, NULL));
 	case 'r'|KEYC_CTRL:
 		if (~c->prompt_flags & PROMPT_INCREMENTAL)
 			break;
@@ -1745,7 +1751,7 @@ process_key:
 	}
 
 	c->flags |= CLIENT_REDRAWSTATUS;
-	return (0);
+	return (PROMPT_KEY_HANDLED);
 
 append_key:
 	if (key <= 0x7f) {
@@ -1755,7 +1761,7 @@ append_key:
 	} else if (KEYC_IS_UNICODE(key))
 		utf8_to_data(key, &tmp);
 	else
-		return (0);
+		return (PROMPT_KEY_HANDLED);
 
 	c->prompt_buffer = xreallocarray(c->prompt_buffer, size + 2,
 	    sizeof *c->prompt_buffer);
@@ -1774,11 +1780,12 @@ append_key:
 	}
 
 	if (c->prompt_flags & PROMPT_SINGLE) {
-		if (utf8_strlen(c->prompt_buffer) != 1)
+		if (utf8_strlen(c->prompt_buffer) != 1) {
 			status_prompt_clear(c);
-		else {
+			result = PROMPT_KEY_CLOSE;
+		} else {
 			s = utf8_tocstr(c->prompt_buffer);
-			status_prompt_done(c, s);
+			result = status_prompt_done(c, s);
 			free(s);
 		}
 	}
@@ -1788,11 +1795,11 @@ changed:
 	if (c->prompt_flags & PROMPT_INCREMENTAL) {
 		s = utf8_tocstr(c->prompt_buffer);
 		xasprintf(&cp, "%c%s", prefix, s);
-		c->prompt_inputcb(c, pd, cp, 0);
+		c->prompt_inputcb(c, pd, cp, PROMPT_KEY_HANDLED);
 		free(cp);
 		free(s);
 	}
-	return (0);
+	return (result);
 }
 
 /* Get previous line from the history. */

@@ -1066,25 +1066,27 @@ mode_tree_search_set(struct mode_tree_data *mtd)
 	mtd->wp->flags |= PANE_REDRAW;
 }
 
-static int
+static enum prompt_result
 mode_tree_search_callback(__unused struct client *c, void *data, const char *s,
-    __unused int flags)
+    enum prompt_key_result key)
 {
 	struct mode_tree_data	*mtd = data;
 
 	if (mtd->dead)
-		return (0);
+		return (PROMPT_CLOSE);
 
 	free(mtd->search);
-	if (s == NULL || *s == '\0') {
+	if (s == NULL || *s == '\0')
 		mtd->search = NULL;
-		return (0);
+	else {
+		mtd->search = xstrdup(s);
+		mtd->search_icase = mode_tree_is_lowercase(s);
+		mode_tree_search_set(mtd);
 	}
-	mtd->search = xstrdup(s);
-	mtd->search_icase = mode_tree_is_lowercase(s);
-	mode_tree_search_set(mtd);
 
-	return (0);
+	if (key == PROMPT_KEY_HANDLED)
+		return (PROMPT_CONTINUE);
+	return (PROMPT_CLOSE);
 }
 
 static void
@@ -1093,14 +1095,14 @@ mode_tree_search_free(void *data)
 	mode_tree_remove_ref(data);
 }
 
-static int
+static enum prompt_result
 mode_tree_filter_callback(__unused struct client *c, void *data, const char *s,
-    __unused int flags)
+    enum prompt_key_result key)
 {
 	struct mode_tree_data	*mtd = data;
 
 	if (mtd->dead)
-		return (0);
+		return (PROMPT_CLOSE);
 
 	if (mtd->filter != NULL)
 		free(mtd->filter);
@@ -1113,7 +1115,9 @@ mode_tree_filter_callback(__unused struct client *c, void *data, const char *s,
 	mode_tree_draw(mtd);
 	mtd->wp->flags |= PANE_REDRAW;
 
-	return (0);
+	if (key == PROMPT_KEY_HANDLED)
+		return (PROMPT_CONTINUE);
+	return (PROMPT_CLOSE);
 }
 
 static void
