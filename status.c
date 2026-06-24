@@ -726,7 +726,6 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 
 	c->prompt_flags = flags;
 	c->prompt_type = prompt_type;
-	c->prompt_mode = PROMPT_ENTRY;
 
 	if ((~flags & PROMPT_INCREMENTAL) && (~flags & PROMPT_NOFREEZE))
 		c->tty.flags |= TTY_FREEZE;
@@ -882,7 +881,7 @@ status_prompt_redraw(struct client *c)
 
 	n = options_get_number(s->options, "prompt-cursor-colour");
 	sl->active->default_ccolour = n;
-	if (c->prompt_mode == PROMPT_COMMAND)
+	if (c->prompt_flags & PROMPT_COMMANDMODE)
 		n = options_get_number(oo, "prompt-command-cursor-style");
 	else
 		n = options_get_number(oo, "prompt-cursor-style");
@@ -893,7 +892,7 @@ status_prompt_redraw(struct client *c)
 	if (promptline > lines - 1)
 		promptline = lines - 1;
 
-	if (c->prompt_mode == PROMPT_COMMAND)
+	if (c->prompt_flags & PROMPT_COMMANDMODE)
 		style_apply(&gc, oo, "message-command-style", NULL);
 	else
 		style_apply(&gc, oo, "message-style", NULL);
@@ -911,7 +910,7 @@ status_prompt_redraw(struct client *c)
 	 */
 	format_add(ft, "message", "%s", prompt);
 	format_add(ft, "command_prompt", "%d",
-	    c->prompt_mode == PROMPT_COMMAND);
+	    !!(c->prompt_flags & PROMPT_COMMANDMODE));
 	msgfmt = options_get_string(oo, "message-format");
 	expanded = format_expand_time(ft, msgfmt);
 	free(prompt);
@@ -1040,7 +1039,7 @@ status_prompt_keypad_key(key_code key)
 static int
 status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 {
-	if (c->prompt_mode == PROMPT_ENTRY) {
+	if (~c->prompt_flags & PROMPT_COMMANDMODE) {
 		switch (key) {
 		case 'a'|KEYC_CTRL:
 		case 'c'|KEYC_CTRL:
@@ -1072,7 +1071,7 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 			return (1);
 		case '\033': /* Escape */
 		case '['|KEYC_CTRL:
-			c->prompt_mode = PROMPT_COMMAND;
+			c->prompt_flags |= PROMPT_COMMANDMODE;
 			if (c->prompt_index != 0)
 				c->prompt_index--;
 			c->flags |= CLIENT_REDRAWSTATUS;
@@ -1091,16 +1090,16 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 	case 'C':
 	case 's':
 	case 'a':
-		c->prompt_mode = PROMPT_ENTRY;
+		c->prompt_flags &= ~PROMPT_COMMANDMODE;
 		c->flags |= CLIENT_REDRAWSTATUS;
 		break; /* switch mode and... */
 	case 'S':
-		c->prompt_mode = PROMPT_ENTRY;
+		c->prompt_flags &= ~PROMPT_COMMANDMODE;
 		c->flags |= CLIENT_REDRAWSTATUS;
 		*new_key = 'u'|KEYC_CTRL;
 		return (1);
 	case 'i':
-		c->prompt_mode = PROMPT_ENTRY;
+		c->prompt_flags &= ~PROMPT_COMMANDMODE;
 		c->flags |= CLIENT_REDRAWSTATUS;
 		return (0);
 	case '\033': /* Escape */
