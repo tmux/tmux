@@ -202,6 +202,7 @@ cmd_join_pane_move(struct cmdq_item *item, struct args *args,
 	char			*cause = NULL, flag;
 	int			 xoff = lc->xoff, yoff = lc->yoff, adjust;
 	u_int			 i;
+	enum pane_lines		 lines = window_pane_get_pane_lines(wp);
 
 	if (args_has(args, 'X')) {
 		xoff = args_percentage_and_expand(args, 'X', -(int)lc->sx,
@@ -211,6 +212,8 @@ cmd_join_pane_move(struct cmdq_item *item, struct args *args,
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
+		if (lines != PANE_LINES_NONE)
+			xoff += 1;
 	}
 	if (args_has(args, 'Y')) {
 		yoff = args_percentage_and_expand(args, 'Y', -(int)lc->sy,
@@ -220,6 +223,8 @@ cmd_join_pane_move(struct cmdq_item *item, struct args *args,
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
+		if (lines != PANE_LINES_NONE)
+			yoff += 1;
 	}
 
 	for (i = 0; i < nitems(flags); i++) {
