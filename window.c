@@ -2030,6 +2030,8 @@ window_pane_scrollbar_reserve(struct window_pane *wp, int sb_option)
 {
 	if (!window_pane_show_scrollbar(wp, sb_option))
 		return (0);
+	if (sb_option != PANE_SCROLLBARS_ALWAYS)
+		return (0);
 	return (!window_pane_scrollbar_auto_hide(wp));
 }
 
