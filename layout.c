@@ -1401,8 +1401,7 @@ layout_floating_pane(struct window *w, struct window_pane *wp, u_int sx,
 		* insert a new root.
 		*/
 		lcparent = layout_replace_with_node(w, lc, LAYOUT_TOPBOTTOM);
-	} else
-		lcparent = w->layout_root;
+	}
 
 	lcnew = layout_create_cell(lcparent);
 	TAILQ_INSERT_AFTER(&lcparent->cells, lc, lcnew, entry);
