@@ -2031,11 +2031,26 @@ RB_HEAD(client_windows, client_window);
 /* Maximum time to be pasting. */
 #define CLIENT_PASTE_TIME_LIMIT 5
 
-/* Client connection. */
-#define PROMPT_INPUT_DONE 0x1
-#define PROMPT_INPUT_MOVE 0x2
-typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
+/* Prompt result. */
+enum prompt_result {
+	PROMPT_CONTINUE,
+	PROMPT_CLOSE
+};
+
+/* Prompt key result. */
+enum prompt_key_result {
+	PROMPT_KEY_NOT_HANDLED,
+	PROMPT_KEY_HANDLED,
+	PROMPT_KEY_CLOSE,
+	PROMPT_KEY_MOVE
+};
+
+/* Prompt callbacks. */
+typedef enum prompt_result (*prompt_input_cb)(struct client *, void *,
+    const char *, enum prompt_key_result);
 typedef void (*prompt_free_cb)(void *);
+
+/* Overlay callbacks. */
 typedef struct visible_ranges *(*overlay_check_cb)(struct client *, void *,
     u_int, u_int, u_int);
 typedef struct screen *(*overlay_mode_cb)(struct client *, void *, u_int *,
@@ -2044,6 +2059,8 @@ typedef void (*overlay_draw_cb)(struct client *, void *);
 typedef int (*overlay_key_cb)(struct client *, void *, struct key_event *);
 typedef void (*overlay_free_cb)(struct client *, void *);
 typedef void (*overlay_resize_cb)(struct client *, void *);
+
+/* Client connection. */
 struct client {
 	const char		*name;
 	struct tmuxpeer		*peer;
@@ -2187,10 +2204,6 @@ struct client {
 	prompt_free_cb		 prompt_freecb;
 	void			*prompt_data;
 	u_int			 prompt_hindex[PROMPT_NTYPES];
-	enum {
-		PROMPT_ENTRY,
-		PROMPT_COMMAND
-	}			 prompt_mode;
 	struct utf8_data	*prompt_saved;
 #define PROMPT_SINGLE 0x1
 #define PROMPT_NUMERIC 0x2
@@ -2201,6 +2214,7 @@ struct client {
 #define PROMPT_QUOTENEXT 0x40
 #define PROMPT_BSPACE_EXIT 0x80
 #define PROMPT_NOFREEZE 0x100
+#define PROMPT_COMMANDMODE 0x200
 	int			 prompt_flags;
 	enum prompt_type	 prompt_type;
 	int			 prompt_cursor;
@@ -3152,7 +3166,7 @@ void	 status_prompt_set(struct client *, struct cmd_find_state *,
 	     void *, int, enum prompt_type);
 void	 status_prompt_clear(struct client *);
 int	 status_prompt_redraw(struct client *);
-int	 status_prompt_key(struct client *, key_code);
+enum prompt_key_result status_prompt_key(struct client *, key_code);
 void	 status_prompt_update(struct client *, const char *, const char *);
 void	 status_prompt_load_history(void);
 void	 status_prompt_save_history(void);

@@ -34,8 +34,8 @@ static enum args_parse_type	cmd_command_prompt_args_parse(struct args *,
 static enum cmd_retval		cmd_command_prompt_exec(struct cmd *,
 				    struct cmdq_item *);
 
-static int	cmd_command_prompt_callback(struct client *, void *,
-		    const char *, int);
+static enum prompt_result cmd_command_prompt_callback(struct client *, void *,
+		    const char *, enum prompt_key_result);
 static void	cmd_command_prompt_free(void *);
 
 const struct cmd_entry cmd_command_prompt_entry = {
@@ -176,9 +176,9 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 	return (CMD_RETURN_WAIT);
 }
 
-static int
+static enum prompt_result
 cmd_command_prompt_callback(struct client *c, void *data, const char *s,
-    int flags)
+    enum prompt_key_result key)
 {
 	struct cmd_command_prompt_cdata		 *cdata = data;
 	char					 *error;
@@ -188,23 +188,23 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 	int					  argc = 0;
 	char					**argv = NULL;
 
-	if (s == NULL || (flags & PROMPT_INPUT_MOVE))
+	if (s == NULL || key == PROMPT_KEY_MOVE)
 		goto out;
 
-	if (flags & PROMPT_INPUT_DONE) {
+	if (key == PROMPT_KEY_CLOSE) {
 		if (cdata->flags & PROMPT_INCREMENTAL)
 			goto out;
 		cmd_append_argv(&cdata->argc, &cdata->argv, s);
 		if (++cdata->current != cdata->count) {
 			prompt = &cdata->prompts[cdata->current];
 			status_prompt_update(c, prompt->prompt, prompt->input);
-			return (1);
+			return (PROMPT_CONTINUE);
 		}
 	}
 
 	argc = cdata->argc;
 	argv = cmd_copy_argv(cdata->argc, cdata->argv);
-	if (~flags & PROMPT_INPUT_DONE)
+	if (key != PROMPT_KEY_CLOSE)
 		cmd_append_argv(&argc, &argv, s);
 	else {
 		cmd_free_argv(cdata->argc, cdata->argv);
@@ -226,12 +226,12 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 	cmd_free_argv(argc, argv);
 
 	if (c->prompt_inputcb != cmd_command_prompt_callback)
-		return (1);
+		return (PROMPT_CONTINUE);
 
 out:
 	if (item != NULL)
 		cmdq_continue(item);
-	return (0);
+	return (PROMPT_CLOSE);
 }
 
 static void

@@ -33,8 +33,8 @@ static enum args_parse_type	cmd_confirm_before_args_parse(struct args *,
 static enum cmd_retval		cmd_confirm_before_exec(struct cmd *,
 				    struct cmdq_item *);
 
-static int	cmd_confirm_before_callback(struct client *, void *,
-		    const char *, int);
+static enum prompt_result cmd_confirm_before_callback(struct client *, void *,
+		    const char *, enum prompt_key_result);
 static void	cmd_confirm_before_free(void *);
 
 const struct cmd_entry cmd_confirm_before_entry = {
@@ -118,9 +118,9 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 	return (CMD_RETURN_WAIT);
 }
 
-static int
+static enum prompt_result
 cmd_confirm_before_callback(struct client *c, void *data, const char *s,
-    __unused int flags)
+    __unused enum prompt_key_result key)
 {
 	struct cmd_confirm_before_data	*cdata = data;
 	struct cmdq_item		*item = cdata->item, *new_item;
@@ -151,7 +151,7 @@ out:
 			cmdq_get_client(item)->retval = retcode;
 		cmdq_continue(item);
 	}
-	return (0);
+	return (PROMPT_CLOSE);
 }
 
 static void

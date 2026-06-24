@@ -979,9 +979,9 @@ window_customize_free_item_callback(void *itemdata)
 	window_customize_destroy(data);
 }
 
-static int
+static enum prompt_result
 window_customize_set_option_callback(struct client *c, void *itemdata,
-    const char *s, __unused int flags)
+    const char *s, __unused enum prompt_key_result key)
 {
 	struct window_customize_itemdata	*item = itemdata;
 	struct window_customize_modedata	*data = item->data;
@@ -993,12 +993,12 @@ window_customize_set_option_callback(struct client *c, void *itemdata,
 	int					 idx = item->idx;
 
 	if (s == NULL || *s == '\0' || data->dead)
-		return (0);
+		return (PROMPT_CLOSE);
 	if (item == NULL || !window_customize_check_item(data, item, NULL))
-		return (0);
+		return (PROMPT_CLOSE);
 	o = options_get(oo, name);
 	if (o == NULL)
-		return (0);
+		return (PROMPT_CLOSE);
 	oe = options_table_entry(o);
 
 	if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_ARRAY)) {
@@ -1020,13 +1020,13 @@ window_customize_set_option_callback(struct client *c, void *itemdata,
 	mode_tree_draw(data->data);
 	data->wp->flags |= PANE_REDRAW;
 
-	return (0);
+	return (PROMPT_CLOSE);
 
 fail:
 	*cause = toupper((u_char)*cause);
 	status_message_set(c, -1, 1, 0, 0, "%s", cause);
 	free(cause);
-	return (0);
+	return (PROMPT_CLOSE);
 }
 
 static void
@@ -1193,9 +1193,9 @@ window_customize_reset_option(struct window_customize_modedata *data,
 	}
 }
 
-static int
+static enum prompt_result
 window_customize_set_command_callback(struct client *c, void *itemdata,
-    const char *s, __unused int flags)
+    const char *s, __unused enum prompt_key_result key)
 {
 	struct window_customize_itemdata	*item = itemdata;
 	struct window_customize_modedata	*data = item->data;
@@ -1204,9 +1204,9 @@ window_customize_set_command_callback(struct client *c, void *itemdata,
 	char					*error;
 
 	if (s == NULL || *s == '\0' || data->dead)
-		return (0);
+		return (PROMPT_CLOSE);
 	if (item == NULL || !window_customize_get_key(item, NULL, &bd))
-		return (0);
+		return (PROMPT_CLOSE);
 
 	pr = cmd_parse_from_string(s, NULL);
 	switch (pr->status) {
@@ -1223,27 +1223,27 @@ window_customize_set_command_callback(struct client *c, void *itemdata,
 	mode_tree_draw(data->data);
 	data->wp->flags |= PANE_REDRAW;
 
-	return (0);
+	return (PROMPT_CLOSE);
 
 fail:
 	*error = toupper((u_char)*error);
 	status_message_set(c, -1, 1, 0, 0, "%s", error);
 	free(error);
-	return (0);
+	return (PROMPT_CLOSE);
 }
 
-static int
+static enum prompt_result
 window_customize_set_note_callback(__unused struct client *c, void *itemdata,
-    const char *s, __unused int flags)
+    const char *s, __unused enum prompt_key_result key)
 {
 	struct window_customize_itemdata	*item = itemdata;
 	struct window_customize_modedata	*data = item->data;
 	struct key_binding			*bd;
 
 	if (s == NULL || *s == '\0' || data->dead)
-		return (0);
+		return (PROMPT_CLOSE);
 	if (item == NULL || !window_customize_get_key(item, NULL, &bd))
-		return (0);
+		return (PROMPT_CLOSE);
 
 	free((void *)bd->note);
 	bd->note = xstrdup(s);
@@ -1252,7 +1252,7 @@ window_customize_set_note_callback(__unused struct client *c, void *itemdata,
 	mode_tree_draw(data->data);
 	data->wp->flags |= PANE_REDRAW;
 
-	return (0);
+	return (PROMPT_CLOSE);
 }
 
 static void
@@ -1370,17 +1370,17 @@ window_customize_change_each(void *modedata, void *itemdata,
 		options_push_changes(item->name);
 }
 
-static int
+static enum prompt_result
 window_customize_change_current_callback(__unused struct client *c,
-    void *modedata, const char *s, __unused int flags)
+    void *modedata, const char *s, __unused enum prompt_key_result key)
 {
 	struct window_customize_modedata	*data = modedata;
 	struct window_customize_itemdata	*item;
 
 	if (s == NULL || *s == '\0' || data->dead)
-		return (0);
+		return (PROMPT_CLOSE);
 	if (tolower((u_char) s[0]) != 'y' || s[1] != '\0')
-		return (0);
+		return (PROMPT_CLOSE);
 
 	item = mode_tree_get_current(data->data);
 	switch (data->change) {
@@ -1403,19 +1403,19 @@ window_customize_change_current_callback(__unused struct client *c,
 	mode_tree_draw(data->data);
 	data->wp->flags |= PANE_REDRAW;
 
-	return (0);
+	return (PROMPT_CLOSE);
 }
 
-static int
+static enum prompt_result
 window_customize_change_tagged_callback(struct client *c, void *modedata,
-    const char *s, __unused int flags)
+    const char *s, __unused enum prompt_key_result key)
 {
 	struct window_customize_modedata	*data = modedata;
 
 	if (s == NULL || *s == '\0' || data->dead)
-		return (0);
+		return (PROMPT_CLOSE);
 	if (tolower((u_char) s[0]) != 'y' || s[1] != '\0')
-		return (0);
+		return (PROMPT_CLOSE);
 
 	mode_tree_each_tagged(data->data, window_customize_change_each, c,
 	    KEYC_NONE, 0);
@@ -1423,7 +1423,7 @@ window_customize_change_tagged_callback(struct client *c, void *modedata,
 	mode_tree_draw(data->data);
 	data->wp->flags |= PANE_REDRAW;
 
-	return (0);
+	return (PROMPT_CLOSE);
 }
 
 static void

@@ -1500,8 +1500,14 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 		}
 		server_client_clear_overlay(c);
 		if (c->prompt_string != NULL) {
-			if (status_prompt_key(c, event->key) == 0)
+			switch (status_prompt_key(c, event->key)) {
+			case PROMPT_KEY_HANDLED:
+			case PROMPT_KEY_CLOSE:
 				return (0);
+			case PROMPT_KEY_NOT_HANDLED:
+			case PROMPT_KEY_MOVE:
+				break;
+			}
 		}
 	}
 
