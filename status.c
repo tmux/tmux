@@ -38,15 +38,12 @@ static const char *status_prompt_down_history(u_int *, u_int);
 static void	 status_prompt_add_history(const char *, u_int);
 
 static char	*status_prompt_complete(struct client *, const char *, u_int);
-static char	*status_prompt_complete_window_menu(struct client *,
-		     struct session *, const char *, u_int, char);
 
 struct status_prompt_menu {
 	struct client	 *c;
 	u_int		  start;
 	u_int		  size;
 	char		**list;
-	char		  flag;
 };
 
 static const char	*prompt_type_strings[] = {
@@ -1890,20 +1887,14 @@ status_prompt_add_list(char ***list, u_int *size, const char *s)
 
 /* Build completion list. */
 static char **
-status_prompt_complete_list(u_int *size, const char *s, int at_start)
+status_prompt_complete_list(u_int *size, const char *s)
 {
-	char					**list = NULL, *tmp;
-	const char				**layout, *value, *cp;
-	const struct cmd_entry			**cmdent;
-	const struct options_table_entry	 *oe;
-	size_t					  slen = strlen(s), valuelen;
-	struct options_entry			 *o;
-	struct options_array_item		 *a;
-	const char				 *layouts[] = {
-		"even-horizontal", "even-vertical",
-		"main-horizontal", "main-horizontal-mirrored",
-		"main-vertical", "main-vertical-mirrored", "tiled", NULL
-	};
+	char				**list = NULL, *tmp;
+	const char			*value, *cp;
+	const struct cmd_entry		**cmdent;
+	size_t				 slen = strlen(s), valuelen;
+	struct options_entry		*o;
+	struct options_array_item	*a;
 
 	*size = 0;
 	for (cmdent = cmd_table; *cmdent != NULL; cmdent++) {
@@ -1931,16 +1922,6 @@ status_prompt_complete_list(u_int *size, const char *s, int at_start)
 		next:
 			a = options_array_next(a);
 		}
-	}
-	if (at_start)
-		return (list);
-	for (oe = options_table; oe->name != NULL; oe++) {
-		if (strncmp(oe->name, s, slen) == 0)
-			status_prompt_add_list(&list, size, oe->name);
-	}
-	for (layout = layouts; *layout != NULL; layout++) {
-		if (strncmp(*layout, s, slen) == 0)
-			status_prompt_add_list(&list, size, *layout);
 	}
 	return (list);
 }
@@ -1976,22 +1957,11 @@ status_prompt_menu_callback(__unused struct menu *menu, u_int idx, key_code key,
 	struct status_prompt_menu	*spm = data;
 	struct client			*c = spm->c;
 	u_int				 i;
-	char				*s;
 
 	if (key != KEYC_NONE) {
 		idx += spm->start;
-		if (spm->flag == '\0')
-			s = xstrdup(spm->list[idx]);
-		else
-			xasprintf(&s, "-%c%s", spm->flag, spm->list[idx]);
-		if (c->prompt_type == PROMPT_TYPE_WINDOW_TARGET) {
-			free(c->prompt_buffer);
-			c->prompt_buffer = utf8_fromcstr(s);
-			c->prompt_index = utf8_strlen(c->prompt_buffer);
+		if (status_prompt_replace_complete(c, spm->list[idx]))
 			c->flags |= CLIENT_REDRAWSTATUS;
-		} else if (status_prompt_replace_complete(c, s))
-			c->flags |= CLIENT_REDRAWSTATUS;
-		free(s);
 	}
 
 	for (i = 0; i < spm->size; i++)
@@ -2002,7 +1972,7 @@ status_prompt_menu_callback(__unused struct menu *menu, u_int idx, key_code key,
 /* Show complete word menu. */
 static int
 status_prompt_complete_list_menu(struct client *c, char **list, u_int size,
-    u_int offset, char flag)
+    u_int offset)
 {
 	struct menu			*menu;
 	struct menu_item		 item;
@@ -2019,7 +1989,6 @@ status_prompt_complete_list_menu(struct client *c, char **list, u_int size,
 	spm->c = c;
 	spm->size = size;
 	spm->list = list;
-	spm->flag = flag;
 
 	height = c->tty.sy - lines - 2;
 	if (height > 10)
@@ -2058,107 +2027,6 @@ status_prompt_complete_list_menu(struct client *c, char **list, u_int size,
 	return (1);
 }
 
-/* Show complete word menu. */
-static char *
-status_prompt_complete_window_menu(struct client *c, struct session *s,
-    const char *word, u_int offset, char flag)
-{
-	struct menu			 *menu;
-	struct menu_item		  item;
-	struct status_prompt_menu	 *spm;
-	struct winlink			 *wl;
-	char				**list = NULL, *tmp;
-	u_int				  lines = status_line_size(c), height;
-	u_int				  py, size = 0, i, ax, aw;
-
-	if (c->tty.sy - lines < 3)
-		return (NULL);
-
-	spm = xmalloc(sizeof *spm);
-	spm->c = c;
-	spm->flag = flag;
-
-	height = c->tty.sy - lines - 2;
-	if (height > 10)
-		height = 10;
-	spm->start = 0;
-
-	menu = menu_create("");
-	RB_FOREACH(wl, winlinks, &s->windows) {
-		if (word != NULL && *word != '\0') {
-			xasprintf(&tmp, "%d", wl->idx);
-			if (strncmp(tmp, word, strlen(word)) != 0) {
-				free(tmp);
-				continue;
-			}
-			free(tmp);
-		}
-
-		list = xreallocarray(list, size + 1, sizeof *list);
-		if (c->prompt_type == PROMPT_TYPE_WINDOW_TARGET) {
-			xasprintf(&tmp, "%d (%s)", wl->idx, wl->window->name);
-			xasprintf(&list[size++], "%d", wl->idx);
-		} else {
-			xasprintf(&tmp, "%s:%d (%s)", s->name, wl->idx,
-			    wl->window->name);
-			xasprintf(&list[size++], "%s:%d", s->name, wl->idx);
-		}
-		item.name = tmp;
-		item.key = '0' + size - 1;
-		item.command = NULL;
-		menu_add_item(menu, &item, NULL, c, NULL);
-		free(tmp);
-
-		if (size == height)
-			break;
-	}
-	if (size == 0) {
-		menu_free(menu);
-		free(spm);
-		return (NULL);
-	}
-	if (size == 1) {
-		menu_free(menu);
-		if (flag != '\0') {
-			xasprintf(&tmp, "-%c%s", flag, list[0]);
-			free(list[0]);
-		} else
-			tmp = list[0];
-		free(list);
-		free(spm);
-		return (tmp);
-	}
-	if (height > size)
-		height = size;
-
-	spm->size = size;
-	spm->list = list;
-
-	status_prompt_area(c, &ax, &aw);
-	if (options_get_number(c->session->options, "status-position") == 0)
-		py = lines;
-	else
-		py = c->tty.sy - 3 - height;
-	offset += utf8_cstrwidth(c->prompt_string);
-	offset += ax;
-	if (offset > 2)
-		offset -= 2;
-	else
-		offset = 0;
-
-	if (menu_display(menu, MENU_NOMOUSE|MENU_TAB, 0, NULL, offset, py, c,
-	    BOX_LINES_DEFAULT, NULL, NULL, NULL, NULL,
-	    status_prompt_menu_callback, spm) != 0) {
-		menu_free(menu);
-		for (i = 0; i < size; i++)
-			free(list[i]);
-		free(list);
-		free(spm);
-		return (NULL);
-	}
-	return (NULL);
-}
-
 /* Sort complete list. */
 static int
 status_prompt_complete_sort(const void *a, const void *b)
@@ -2168,110 +2036,25 @@ status_prompt_complete_sort(const void *a, const void *b)
 	return (strcmp(*aa, *bb));
 }
 
-/* Complete a session. */
-static char *
-status_prompt_complete_session(char ***list, u_int *size, const char *s,
-    char flag)
-{
-	struct session	*loop;
-	char		*out, *tmp, n[11];
-
-	RB_FOREACH(loop, sessions, &sessions) {
-		if (*s == '\0' || strncmp(loop->name, s, strlen(s)) == 0) {
-			*list = xreallocarray(*list, (*size) + 2,
-			    sizeof **list);
-			xasprintf(&(*list)[(*size)++], "%s:", loop->name);
-		} else if (*s == '$') {
-			xsnprintf(n, sizeof n, "%u", loop->id);
-			if (s[1] == '\0' ||
-			    strncmp(n, s + 1, strlen(s) - 1) == 0) {
-				*list = xreallocarray(*list, (*size) + 2,
-				    sizeof **list);
-				xasprintf(&(*list)[(*size)++], "$%s:", n);
-			}
-		}
-	}
-	out = status_prompt_complete_prefix(*list, *size);
-	if (out != NULL && flag != '\0') {
-		xasprintf(&tmp, "-%c%s", flag, out);
-		free(out);
-		out = tmp;
-	}
-	return (out);
-}
-
 /* Complete word. */
 static char *
 status_prompt_complete(struct client *c, const char *word, u_int offset)
 {
-	struct session	 *session;
-	const char	 *s, *colon;
-	char		**list = NULL, *copy = NULL, *out = NULL;
-	char		  flag = '\0';
-	u_int		  size = 0, i;
+	char	**list = NULL, *out = NULL;
+	u_int	  size = 0, i;
 
-	if (*word == '\0' &&
-	    c->prompt_type != PROMPT_TYPE_TARGET &&
-	    c->prompt_type != PROMPT_TYPE_WINDOW_TARGET)
+	if (c->prompt_type != PROMPT_TYPE_COMMAND || offset != 0 ||
+	    *word == '\0')
 		return (NULL);
 
-	if (c->prompt_type != PROMPT_TYPE_TARGET &&
-	    c->prompt_type != PROMPT_TYPE_WINDOW_TARGET &&
-	    strncmp(word, "-t", 2) != 0 &&
-	    strncmp(word, "-s", 2) != 0) {
-		list = status_prompt_complete_list(&size, word, offset == 0);
-		if (size == 0)
-			out = NULL;
-		else if (size == 1)
-			xasprintf(&out, "%s ", list[0]);
-		else
-			out = status_prompt_complete_prefix(list, size);
-		goto found;
-	}
+	list = status_prompt_complete_list(&size, word);
+	if (size == 0)
+		out = NULL;
+	else if (size == 1)
+		xasprintf(&out, "%s ", list[0]);
+	else
+		out = status_prompt_complete_prefix(list, size);
 
-	if (c->prompt_type == PROMPT_TYPE_TARGET ||
-	    c->prompt_type == PROMPT_TYPE_WINDOW_TARGET) {
-		s = word;
-		flag = '\0';
-	} else {
-		s = word + 2;
-		flag = word[1];
-		offset += 2;
-	}
-
-	/* If this is a window completion, open the window menu. */
-	if (c->prompt_type == PROMPT_TYPE_WINDOW_TARGET) {
-		out = status_prompt_complete_window_menu(c, c->session, s,
-		    offset, '\0');
-		goto found;
-	}
-	colon = strchr(s, ':');
-
-	/* If there is no colon, complete as a session. */
-	if (colon == NULL) {
-		out = status_prompt_complete_session(&list, &size, s, flag);
-		goto found;
-	}
-
-	/* If there is a colon but no period, find session and show a menu. */
-	if (strchr(colon + 1, '.') == NULL) {
-		if (*s == ':')
-			session = c->session;
-		else {
-			copy = xstrdup(s);
-			*strchr(copy, ':') = '\0';
-			session = session_find(copy);
-			free(copy);
-			if (session == NULL)
-				goto found;
-		}
-		out = status_prompt_complete_window_menu(c, session, colon + 1,
-		    offset, flag);
-		if (out == NULL)
-			return (NULL);
-	}
-
-found:
 	if (size != 0) {
 		qsort(list, size, sizeof *list, status_prompt_complete_sort);
 		for (i = 0; i < size; i++)
@@ -2283,7 +2066,7 @@ found:
 		out = NULL;
 	}
 	if (out != NULL ||
-	    !status_prompt_complete_list_menu(c, list, size, offset, flag)) {
+	    !status_prompt_complete_list_menu(c, list, size, offset)) {
 		for (i = 0; i < size; i++)
 			free(list[i]);
 		free(list);
