@@ -1135,12 +1135,27 @@ window_pane_wait_finish(struct window_pane *wp)
 }
 
 static void
+window_pane_free_modes(struct window_pane *wp)
+{
+	struct window_mode_entry	*wme;
+
+	while (!TAILQ_EMPTY(&wp->modes)) {
+		wme = TAILQ_FIRST(&wp->modes);
+		TAILQ_REMOVE(&wp->modes, wme, entry);
+		wme->mode->free(wme);
+		free(wme);
+	}
+
+	wp->screen = &wp->base;
+}
+
+static void
 window_pane_destroy(struct window_pane *wp)
 {
 	window_pane_wait_finish(wp);
 	spawn_editor_finish(wp);
 
-	window_pane_reset_mode_all(wp);
+	window_pane_free_modes(wp);
 	free(wp->searchstr);
 
 	if (wp->fd != -1) {
