@@ -1284,6 +1284,10 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	}
 
 	if (mtd->help) {
+		if (KEYC_IS_MOUSE(*key)) {
+			*key = KEYC_NONE;
+			return (0);
+		}
 		mtd->help = 0;
 		mode_tree_draw(mtd);
 		*key = KEYC_NONE;
