@@ -1887,7 +1887,7 @@ server_client_reset_state(struct client *c)
 	struct window_pane	*wp = server_client_get_pane(c), *loop;
 	struct screen		*s = NULL;
 	struct options		*oo = c->session->options;
-	int			 mode = 0, cursor, flags, pane_mode = 0;
+	int			 mode = 0, cursor, flags, pane_mode = 0, sb;
 	u_int			 cx = 0, cy = 0, ox, oy, sx, sy, n, sb_w;
 	struct visible_ranges	*r;
 
@@ -1989,11 +1989,10 @@ server_client_reset_state(struct client *c)
 					mode |= MODE_MOUSE_ALL;
 			}
 		}
+		sb = options_get_number(w->options, "pane-scrollbars");
 		if (options_get_number(oo, "focus-follows-mouse") ||
-		    options_get_number(w->options, "pane-scrollbars") ==
-		    PANE_SCROLLBARS_MODAL ||
-		    options_get_number(w->options, "pane-scrollbars") ==
-		    PANE_SCROLLBARS_AUTOHIDE)
+		    sb == PANE_SCROLLBARS_MODAL ||
+		    sb == PANE_SCROLLBARS_AUTOHIDE)
 			mode |= MODE_MOUSE_ALL;
 		else if (~mode & MODE_MOUSE_ALL)
 			mode |= MODE_MOUSE_BUTTON;
