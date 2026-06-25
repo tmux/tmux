@@ -1623,7 +1623,7 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 			sy -= 2;
 	}
 	if (args_has(args, 'X')) {
-		ox = args_percentage_and_expand(args, 'X', -(int)w->sx, w->sx,
+		ox = args_percentage_and_expand(args, 'X', -sx, w->sx,
 		    w->sx, item, &error);
 		if (error != NULL) {
 			xasprintf(cause, "position %s", error);
@@ -1632,7 +1632,7 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 		}
 	}
 	if (args_has(args, 'Y')) {
-		oy = args_percentage_and_expand(args, 'Y', -(int)w->sy, w->sy,
+		oy = args_percentage_and_expand(args, 'Y', -sy, w->sy,
 		    w->sy, item, &error);
 		if (error != NULL) {
 			xasprintf(cause, "position %s", error);
