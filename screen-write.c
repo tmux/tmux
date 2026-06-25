@@ -2459,34 +2459,148 @@ screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
 #endif
 
 #ifdef ENABLE_KITTY_IMAGES
+/*
+ * Display a kitty image using the Unicode placeholder protocol so the image
+ * is grid-resident (like sixel) rather than a terminal overlay tmux cannot
+ * clip or scroll.
+ *
+ *  1. The image data is transmitted once to each kitty client with
+ *     a=t (transmit only - no display, no placement) so the terminal stores
+ *     it but does not show it, followed by a=p,U=1 to create an invisible
+ *     virtual placement defining the render rectangle.
+ *  2. U+10EEEE placeholder cells are written into the grid at the cursor,
+ *     spanning cols x rows, with the image id in the foreground colour and
+ *     the row encoded in a combining diacritic on the first column. These
+ *     drive the real, on-screen image and move/clear with the text.
+ *
+ * Because the cells are ordinary text, tmux's existing redraw/scroll/per-pane
+ * machinery handles clipping, scrolling and coexistence automatically.
+ */
 void
 screen_write_kittyimage(struct screen_write_ctx *ctx, struct kitty_image *ki)
 {
 	struct screen		*s = ctx->s;
 	struct tty_ctx		 ttyctx;
-	struct image		*im;
+	struct grid_cell	 gc;
+	struct utf8_data	 ud;
+	u_int			 cols, rows, image_id, x, y, sx, sy, ncol, nrow;
+	double			 scale;
+	char			 buf[UTF8_SIZE];
+	size_t			 off;
 
 	if (ki == NULL)
 		return;
 
-	/* Store the image in the cache. */
-	im = image_store(s, IMAGE_KITTY, ki);
+	/* Natural cell dimensions of the image (its pixel size divided by the
+	 * window's cell pixel size). This rectangle already matches the image's
+	 * aspect ratio. */
+	kitty_size_in_cells(ki, &ncol, &nrow);
+	if (ncol == 0 || nrow == 0)
+		return;
 
-	/* Trigger a tty write to send to all terminals. */
-	if (im != NULL && ctx->wp != NULL) {
+	/* Assign a unique image id so coexisting images do not collide on the
+	 * application's recycled id (e.g. i=1). */
+	image_id = kitty_alloc_id();
+	kitty_set_image_id(ki, image_id);
+
+	/*
+	 * Fit the rectangle into the pane while preserving its aspect ratio.
+	 * Scaling cols and rows by the same factor keeps the rectangle's aspect
+	 * matched to the image, so kitty fills it without letterboxing (which
+	 * would otherwise show as large empty borders around a small image).
+	 * Scaling both axes uniformly instead of clipping them independently is
+	 * essential: clipping cols to the pane width but leaving rows unchanged
+	 * changes the aspect and kitty pads the result.
+	 */
+	sx = screen_size_x(s);
+	sy = screen_size_y(s);
+	scale = 1.0;
+	if (ncol > sx)
+		scale = (double)sx / ncol;
+	if (nrow * scale > sy)
+		scale = (double)sy / nrow;
+	if (scale > 1.0)
+		scale = 1.0;
+	cols = (ncol * scale) + 0.5;
+	rows = (nrow * scale) + 0.5;
+	if (cols < 1)
+		cols = 1;
+	if (rows < 1)
+		rows = 1;
+	if (cols > sx)
+		cols = sx;
+	if (rows > sy)
+		rows = sy;
+	if (cols == 0 || rows == 0)
+		return;
+
+	/*
+	 * Record the fitted size on the image so the per-client transmit
+	 * (which calls kitty_size_in_cells independently) emits a virtual
+	 * placement with the same dimensions as the placeholder cells below.
+	 */
+	kitty_set_cells(ki, cols, rows);
+
+	/*
+	 * Take ownership of the image data in the per-screen image list. This
+	 * gives it a proper lifetime: it is freed when its cells scroll off the
+	 * grid or are overwritten/cleared (image_check_line/area/scroll_up),
+	 * bounds total memory (all_images caps the global count), and keeps the
+	 * data available so it can be re-transmitted to clients that attach
+	 * later. Without this the per-image allocation (which holds the entire
+	 * base64 payload) would leak on every image.
+	 */
+	image_store(s, IMAGE_KITTY, ki);
+
+	/* Transmit the image data once to each kitty client. */
+	if (ctx->wp != NULL) {
 		screen_write_collect_flush(ctx, 0, __func__);
 		screen_write_initctx(ctx, &ttyctx, 0);
-		ttyctx.ptr = im;
+		ttyctx.ptr = ki;
 		ttyctx.arg = ctx->wp;
 		ttyctx.ocx = s->cx;
 		ttyctx.ocy = s->cy;
 		ttyctx.set_client_cb = tty_set_client_cb;
-		tty_write(tty_cmd_kittyimage, &ttyctx);
+		tty_write(tty_cmd_kitty_transmit, &ttyctx);
 	}
 
-	/* Move cursor past the image. */
-	if (kitty_get_rows(ki) > 0)
-		screen_write_cursormove(ctx, 0, s->cy + kitty_get_rows(ki), 0);
+	/* Write the placeholder cells into the grid, one bounded rectangle of
+	 * cols x rows cells starting at the cursor. */
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+	/* Encode the image id in the foreground colour using the explicit 256-colour
+	 * form (COLOUR_FLAG_256) so the terminal always sees \e[38;5;<id>m. A plain
+	 * palette index would instead be emitted via terminfo setaf, which for some
+	 * ids (notably 38 and 48, the SGR extended-colour introducers) produces a
+	 * broken/incomplete escape the terminal cannot map back to an image id. */
+	gc.fg = (image_id | COLOUR_FLAG_256);	/* image id in foreground colour */
+	for (y = 0; y < rows; y++) {
+		/* Start each row at the first column so the diacritic
+		 * column-inheritance (left-neighbour based) is unambiguous. */
+		screen_write_cursormove(ctx, 0, s->cy, 0);
+		for (x = 0; x < cols; x++) {
+			/* U+10EEEE + (row, col-0) diacritics on the first column;
+			 * bare placeholder on later columns (column auto-increments). */
+			off = kitty_placeholder_cell(y, x == 0 ? 1 : 0,
+			    buf, sizeof buf);
+			if (off == 0)
+				continue;
+
+			memset(&ud, 0, sizeof ud);
+			if (off > sizeof ud.data)
+				off = sizeof ud.data;
+			memcpy(ud.data, buf, off);
+			ud.size = ud.have = off;
+			ud.width = 1;
+			memcpy(&gc.data, &ud, sizeof gc.data);
+
+			screen_write_cell(ctx, &gc);
+		}
+		/* Advance to the next line. This is a real newline, not an
+		 * auto-wrap, so the line must NOT be flagged GRID_LINE_WRAPPED:
+		 * a wrapped flag makes grid_reflow join the following line onto
+		 * this one during a pane resize/split, mangling the image. */
+		screen_write_linefeed(ctx, 0, 8);
+	}
 }
 #endif
 

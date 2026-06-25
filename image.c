@@ -189,7 +189,7 @@ image_store(struct screen *s, enum image_type type, void *data)
 	TAILQ_INSERT_TAIL(&s->images, im, entry);
 
 	TAILQ_INSERT_TAIL(&all_images, im, all_entry);
-	if (++all_images_count == MAX_IMAGE_COUNT)
+	if (++all_images_count > MAX_IMAGE_COUNT)
 		image_free(TAILQ_FIRST(&all_images));
 
 	return (im);

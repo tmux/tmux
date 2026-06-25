@@ -120,6 +120,9 @@ struct input_ctx {
 	size_t				input_len;
 	size_t				input_space;
 	enum input_end_type		input_end;
+#ifdef ENABLE_KITTY_IMAGES
+	struct kitty_image		*kitty_pending;
+#endif
 
 	struct input_param		param_list[24];
 	u_int				param_list_len;
@@ -901,6 +904,10 @@ input_free(struct input_ctx *ictx)
 	free(ictx->input_buf);
 	evbuffer_free(ictx->since_ground);
 	event_del(&ictx->ground_timer);
+
+#ifdef ENABLE_KITTY_IMAGES
+	kitty_free(ictx->kitty_pending);
+#endif
 
 	screen_write_stop_sync(ictx->wp);
 
@@ -2755,6 +2762,7 @@ input_apc_kitty_image(struct input_ctx *ictx)
 	struct window_pane	*wp = ictx->wp;
 	struct window		*w;
 	struct kitty_image	*ki;
+	int			 action;
 
 	if (wp == NULL)
 		return;
@@ -2764,9 +2772,10 @@ input_apc_kitty_image(struct input_ctx *ictx)
 	    w->xpixel, w->ypixel);
 	if (ki == NULL)
 		return;
+	action = kitty_get_action(ki);
 
 	/* Handle query commands. */
-	if (kitty_get_action(ki) == 'q') {
+	if (action == 'q') {
 		if (kitty_get_image_id(ki) != 0)
 			input_reply(ictx, 0, "\033_Gi=%u;OK\033\\",
 			    kitty_get_image_id(ki));
@@ -2776,15 +2785,40 @@ input_apc_kitty_image(struct input_ctx *ictx)
 		return;
 	}
 
+	/*
+	 * Accumulate multi-chunk transmissions (a=T/t with m=1). Only the
+	 * first chunk carries the dimensions; continuation chunks share the
+	 * same image id and just extend the payload. The complete image is
+	 * stored and placed once, when the final chunk (m=0) arrives.
+	 */
+	if ((action == 'T' || action == 't') && kitty_get_more(ki) == 1) {
+		if (ictx->kitty_pending == NULL) {
+			/* First chunk: keep it as the in-progress image. */
+			ictx->kitty_pending = ki;
+		} else {
+			/* Continuation: append payload, drop the chunk. */
+			kitty_append(ictx->kitty_pending, ki);
+			kitty_free(ki);
+		}
+		return;
+	}
+
 	/* Store image placements and trigger a redraw. */
-	if (kitty_get_action(ki) == 'T' || kitty_get_action(ki) == 't' ||
-	    kitty_get_action(ki) == 'p') {
+	if (action == 'T' || action == 't' || action == 'p') {
+		if (ictx->kitty_pending != NULL) {
+			/* Final chunk of a multi-chunk image. */
+			kitty_append(ictx->kitty_pending, ki);
+			kitty_free(ki);
+			ki = ictx->kitty_pending;
+			ictx->kitty_pending = NULL;
+		}
 		screen_write_kittyimage(sctx, ki);
 	} else {
 		/* For other actions (delete, etc.), pass through. */
 		char	*apc;
 		size_t	 apclen;
 
+		ictx->kitty_pending = NULL;
 		apclen = xasprintf(&apc, "\033_%s\033\\", ictx->input_buf);
 		tty_kitty_passthrough(wp, apc, apclen, sctx->s->cx,
 		    sctx->s->cy);
