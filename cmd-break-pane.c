@@ -65,9 +65,8 @@ cmd_break_pane_float(struct cmdq_item *item, struct args *args,
 		return (CMD_RETURN_ERROR);
 	}
 
-	layout_floating_args_parse(item, args, lines, w, &sx, &sy, &ox, &oy,
-	    &cause);
-	if (cause != NULL) {
+	if (layout_floating_args_parse(item, args, lines, w, &sx, &sy, &ox, &oy,
+	    &cause) != 0) {
 		cmdq_error(item, "failed to float pane: %s", cause);
 		free(cause);
 		return (CMD_RETURN_ERROR);

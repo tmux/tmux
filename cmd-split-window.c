@@ -70,25 +70,6 @@ const struct cmd_entry cmd_split_window_entry = {
 	.exec = cmd_split_window_exec
 };
 
-static struct layout_cell *
-layout_get_floating_cell(struct cmdq_item *item, struct args *args,
-    enum pane_lines lines, struct window *w, struct window_pane *wp,
-    char **cause)
-{
-	struct layout_cell	*lcnew;
-	u_int			 sx = UINT_MAX, sy = UINT_MAX;
-	int			 ox = INT_MAX, oy = INT_MAX;
-
-	layout_floating_args_parse(item, args, lines, w, &sx, &sy, &ox, &oy,
-	    cause);
-	if (*cause != NULL) {
-		return (NULL);
-	}
-
-	lcnew = layout_floating_pane(w, wp, sx, sy, ox, oy);
-	return (lcnew);
-}
-
 static enum cmd_retval
 cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 {

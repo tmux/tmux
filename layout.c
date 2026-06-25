@@ -820,7 +820,7 @@ layout_resize_pane_to(struct window_pane *wp, enum layout_type type,
 }
 
 /* Resize a floating pane to an absolute size. */
-void
+int
 layout_resize_floating_pane_to(struct window_pane *wp, enum layout_type type,
     u_int size, char **cause)
 {
@@ -828,7 +828,7 @@ layout_resize_floating_pane_to(struct window_pane *wp, enum layout_type type,
 
 	if (~lc->flags & LAYOUT_CELL_FLOATING) {
 		*cause = xstrdup("pane is not floating");
-		return;
+		return (-1);
 	}
 
 	if (window_pane_get_pane_lines(wp) != PANE_LINES_NONE &&
@@ -836,23 +836,24 @@ layout_resize_floating_pane_to(struct window_pane *wp, enum layout_type type,
 		size -= 2;
 	if (size < PANE_MINIMUM || size > PANE_MAXIMUM) {
 		*cause = xstrdup("size is too big or too small");
-		return;
+		return (-1);
 	}
 
 	if (type == LAYOUT_TOPBOTTOM) {
 		if (lc->sy == size)
-			return;
+			return (0);
 		lc->sy = size;
 	} else {
 		if (lc->sx == size)
-			return;
+			return (0);
 		lc->sx = size;
 	}
 	redraw_invalidate_scene(wp->window);
+	return (0);
 }
 
 /* Resize a floating pane relative to its current size. */
-void
+int
 layout_resize_floating_pane(struct window_pane *wp, enum layout_type type,
     int change, int opposite, char **cause)
 {
@@ -861,16 +862,16 @@ layout_resize_floating_pane(struct window_pane *wp, enum layout_type type,
 
 	if (~lc->flags & LAYOUT_CELL_FLOATING) {
 		*cause = xstrdup("pane is not floating");
-		return;
+		return (-1);
 	}
 	if (change == 0)
-		return;
+		return (0);
 
 	if (type == LAYOUT_TOPBOTTOM) {
 		size = lc->sy + change;
 		if (size < PANE_MINIMUM || size > PANE_MAXIMUM) {
 			*cause = xstrdup("change is too big or too small");
-			return;
+			return (-1);
 		}
 		lc->sy = size;
 		if (opposite)
@@ -879,13 +880,14 @@ layout_resize_floating_pane(struct window_pane *wp, enum layout_type type,
 		size = lc->sx + change;
 		if (size < PANE_MINIMUM || size > PANE_MAXIMUM) {
 			*cause = xstrdup("change is too big or too small");
-			return;
+			return (-1);
 		}
 		lc->sx = size;
 		if (opposite)
 			lc->xoff -= change;
 	}
 	redraw_invalidate_scene(wp->window);
+	return (0);
 }
 
 /* Resize a layout cell. */
@@ -1567,7 +1569,25 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 	return (lc);
 }
 
-void
+struct layout_cell *
+layout_get_floating_cell(struct cmdq_item *item, struct args *args,
+    enum pane_lines lines, struct window *w, struct window_pane *wp,
+    char **cause)
+{
+	struct layout_cell	*lcnew;
+	u_int			 sx = UINT_MAX, sy = UINT_MAX;
+	int			 ox = INT_MAX, oy = INT_MAX;
+
+	if (layout_floating_args_parse(item, args, lines, w, &sx, &sy, &ox, &oy,
+	    cause) != 0) {
+		return (NULL);
+	}
+
+	lcnew = layout_floating_pane(w, wp, sx, sy, ox, oy);
+	return (lcnew);
+}
+
+int
 layout_floating_args_parse(struct cmdq_item *item, struct args *args,
     enum pane_lines lines, struct window *w, u_int *sxp, u_int *syp, int *oxp,
     int *oyp, char **cause)
@@ -1586,7 +1606,7 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 		if (error != NULL) {
 			xasprintf(cause, "position %s", error);
 			free(error);
-			return;
+			return (-1);
 		}
 		if (lines != PANE_LINES_NONE)
 			sx -= 2;
@@ -1597,7 +1617,7 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 		if (error != NULL) {
 			xasprintf(cause, "position %s", error);
 			free(error);
-			return;
+			return (-1);
 		}
 		if (lines != PANE_LINES_NONE)
 			sy -= 2;
@@ -1608,7 +1628,7 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 		if (error != NULL) {
 			xasprintf(cause, "position %s", error);
 			free(error);
-			return;
+			return (-1);
 		}
 	}
 	if (args_has(args, 'Y')) {
@@ -1617,7 +1637,7 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 		if (error != NULL) {
 			xasprintf(cause, "position %s", error);
 			free(error);
-			return;
+			return (-1);
 		}
 	}
 
@@ -1648,17 +1668,18 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 
 	if (sx < PANE_MINIMUM || sx > PANE_MAXIMUM) {
 		*cause = xstrdup("invalid width");
-		return;
+		return (-1);
 	}
 	if (sy < PANE_MINIMUM || sy > PANE_MAXIMUM) {
 		*cause = xstrdup("invalid height");
-		return;
+		return (-1);
 	}
 
 	*sxp = sx;
 	*syp = sy;
 	*oxp = ox;
 	*oyp = oy;
+	return (0);
 }
 
 /*

@@ -3578,9 +3578,9 @@ void		 layout_resize_pane(struct window_pane *, enum layout_type,
 		     int, int);
 void		 layout_resize_pane_to(struct window_pane *, enum layout_type,
 		     u_int);
-void		 layout_resize_floating_pane(struct window_pane *,
+int		 layout_resize_floating_pane(struct window_pane *,
 		     enum layout_type, int, int, char **);
-void		 layout_resize_floating_pane_to(struct window_pane *,
+int		 layout_resize_floating_pane_to(struct window_pane *,
 		     enum layout_type, u_int, char **);
 void		 layout_assign_pane(struct layout_cell *, struct window_pane *,
 		     int);
@@ -3593,7 +3593,10 @@ int		 layout_spread_cell(struct window *, struct layout_cell *);
 void		 layout_spread_out(struct window_pane *);
 struct layout_cell *layout_get_tiled_cell(struct cmdq_item *, struct args *,
 		     struct window *, struct window_pane *, int, char **);
-void		 layout_floating_args_parse(struct cmdq_item *, struct args *,
+struct layout_cell *layout_get_floating_cell(struct cmdq_item *, struct args *,
+		     enum pane_lines, struct window *, struct window_pane *,
+		     char **cause);
+int		 layout_floating_args_parse(struct cmdq_item *, struct args *,
 		     enum pane_lines, struct window *, u_int *, u_int *, int *,
 		     int *, char **);
 int		 layout_remove_tile(struct window *, struct layout_cell *);
