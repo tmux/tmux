@@ -2348,6 +2348,7 @@ enum options_table_type {
 #define OPTIONS_TABLE_IS_ARRAY 0x1
 #define OPTIONS_TABLE_IS_HOOK 0x2
 #define OPTIONS_TABLE_IS_STYLE 0x4
+#define OPTIONS_TABLE_IS_COLOUR 0x8
 
 struct options_table_entry {
 	const char		 *name;
@@ -3946,6 +3947,8 @@ int		 popup_modify(struct client *, const char *, const char *,
 /* style.c */
 int		 style_parse(struct style *,const struct grid_cell *,
 		     const char *);
+int		 style_parse_colour(struct style *,
+		     const struct grid_cell *, const char *);
 const char	*style_tostring(struct style *);
 struct style	*style_add(struct grid_cell *, struct options *,
 		     const char *, struct format_tree *);

@@ -190,10 +190,11 @@ screen_reset_tabs(struct screen *s)
 void
 screen_set_default_cursor(struct screen *s, struct options *oo)
 {
-	int	c;
+	struct grid_cell	gc;
+	int			c;
 
-	c = options_get_number(oo, "cursor-colour");
-	s->default_ccolour = c;
+	style_apply(&gc, oo, "cursor-colour", NULL);
+	s->default_ccolour = gc.fg;
 
 	c = options_get_number(oo, "cursor-style");
 	s->default_mode = 0;

@@ -222,18 +222,23 @@ static void
 window_clock_draw_screen(struct window_mode_entry *wme)
 {
 	struct window_pane		*wp = wme->wp;
+	struct window			*w = wp->window;
 	struct window_clock_mode_data	*data = wme->data;
 	struct screen_write_ctx		 ctx;
 	int				 colour, style;
 	struct screen			*s = &data->screen;
 	struct grid_cell		 gc;
+	struct format_tree		*ft;
 	char				 tim[64], *ptr;
 	time_t				 t;
 	struct tm			*tm;
 	u_int				 i, j, x, y, idx;
 
-	colour = options_get_number(wp->window->options, "clock-mode-colour");
-	style = options_get_number(wp->window->options, "clock-mode-style");
+	ft = format_create_defaults(NULL, NULL, NULL, NULL, wp);
+	style_apply(&gc, w->options, "clock-mode-colour", ft);
+	format_free(ft);
+	colour = gc.fg;
+	style = options_get_number(w->options, "clock-mode-style");
 
 	screen_write_start(&ctx, s);
 

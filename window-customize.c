@@ -769,6 +769,15 @@ window_customize_draw_option(struct window_customize_modedata *data,
 		    "EXAMPLE"))
 			goto out;
 	}
+	if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_COLOUR)) {
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 1,
+		    &grid_default_cell, "This is a colour option: "))
+			goto out;
+		style_apply(&gc, item->oo, name, ft);
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0, &gc,
+		    "EXAMPLE"))
+			goto out;
+	}
 	if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_STYLE)) {
 		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 1,
 		    &grid_default_cell, "This is a style option: "))

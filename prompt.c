@@ -106,8 +106,9 @@ prompt_flags_to_string(int flags)
 void
 prompt_set_options(struct prompt_create_data *pd, struct session *s)
 {
-	struct options	*oo;
-	u_int		 n;
+	struct options		*oo;
+	struct grid_cell	 gc;
+	u_int			 n;
 
 	if (s != NULL)
 		oo = s->options;
@@ -120,7 +121,8 @@ prompt_set_options(struct prompt_create_data *pd, struct session *s)
 	screen_set_cursor_style(n, &pd->cstyle, &pd->cmode);
 	n = options_get_number(oo, "prompt-command-cursor-style");
 	screen_set_cursor_style(n, &pd->command_cstyle, &pd->command_cmode);
-	pd->ccolour = options_get_number(oo, "prompt-cursor-colour");
+	style_apply(&gc, oo, "prompt-cursor-colour", NULL);
+	pd->ccolour = gc.fg;
 	pd->message_format = options_get_string(oo, "message-format");
 	pd->keys = options_get_number(oo, "status-keys");
 	pd->word_separators = options_get_string(oo, "word-separators");
