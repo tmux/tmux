@@ -1514,11 +1514,11 @@ tty_draw_images(struct client *c, struct window_pane *wp, struct screen *s)
 			tty_write_one(tty_cmd_sixelimage, c, &ttyctx);
 			break;
 #endif
-#ifdef ENABLE_KITTY_IMAGES
-		case IMAGE_KITTY:
-			tty_write_one(tty_cmd_kittyimage, c, &ttyctx);
-			break;
-#endif
+		/*
+		 * Kitty images are displayed as U+10EEEE placeholder cells in the
+		 * grid, so they are redrawn with the normal pane text -- nothing
+		 * to do here.
+		 */
 		default:
 			break;
 		}
@@ -2176,54 +2176,58 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 }
 #endif
 
+/* tty_add callback for kitty_transmit: append bytes to the client tty. */
+static void
+tty_kitty_add(void *arg, const char *buf, size_t len)
+{
+	struct tty	*tty = arg;
+
+	tty->flags |= TTY_NOBLOCK;
+	tty_add(tty, buf, len);
+	tty_invalidate(tty);
+}
+
 #ifdef ENABLE_KITTY_IMAGES
 static int
 tty_has_kitty(struct tty *tty)
 {
 	return (tty->term->flags & TERM_KITTY);
 }
+#endif
 
+#ifdef ENABLE_KITTY_IMAGES
+/*
+ * Transmit a kitty image once to this client using the Unicode placeholder
+ * protocol (a=T,U=1,q=2): the terminal stores the image data but does not
+ * display it; display is driven by U+10EEEE placeholder cells written into the
+ * grid by screen_write_kittyimage(). Transmitted-once per image per client.
+ */
 void
-tty_cmd_kittyimage(struct tty *tty, const struct tty_ctx *ctx)
+tty_cmd_kitty_transmit(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct image		*im = ctx->ptr;
-	char			*data;
-	size_t			 size;
-	u_int			 cx = ctx->ocx, cy = ctx->ocy;
-	int			 fallback = 0;
+	struct kitty_image	*ki = ctx->ptr;
+	struct window_pane	*wp = ctx->arg;
+	u_int			 cols, rows;
 
-	if (im == NULL || im->data.kitty == NULL)
+	if (ki == NULL || wp == NULL)
+		return;
+	if (!tty_has_kitty(tty))
+		return;		/* placeholder cells are harmless text without it */
+	if (kitty_get_transmitted(ki))
+		return;		/* transmit once per client */
+
+	kitty_size_in_cells(ki, &cols, &rows);
+	if (cols == 0 || rows == 0)
 		return;
 
-	/* Check if this terminal supports kitty graphics. */
-	if (!tty_has_kitty(tty))
-		fallback = 1;
-
-	log_debug("%s: image at %u,%u (fallback=%d)", __func__, cx, cy,
-	    fallback);
-
-	if (fallback == 1) {
-		/* Use text fallback for non-kitty terminals. */
-		data = xstrdup(im->fallback);
-		size = strlen(data);
-	} else {
-		/* Re-serialize the kitty image command. */
-		data = kitty_print(im->data.kitty, &size);
-	}
-
-	if (data != NULL) {
-		log_debug("%s: %zu bytes", __func__, size);
-		tty_region_off(tty);
-		tty_margin_off(tty);
-		tty_cursor(tty, cx + ctx->xoff, cy + ctx->yoff);
-
-		tty->flags |= TTY_NOBLOCK;
-		tty_add(tty, data, size);
-		tty_invalidate(tty);
-		free(data);
-	}
+	tty_region_off(tty);
+	tty_margin_off(tty);
+	kitty_transmit(ki, cols, rows, tty_kitty_add, tty);
+	kitty_set_transmitted(ki, 1);
 }
+#endif
 
+#ifdef ENABLE_KITTY_IMAGES
 /*
  * Pass a kitty APC sequence directly to all attached kitty-capable clients
  * showing the given pane.  The outer terminal's cursor is first moved to

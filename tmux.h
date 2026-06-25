@@ -2687,7 +2687,7 @@ void	tty_cmd_sixelimage(struct tty *, const struct tty_ctx *);
 #endif
 
 #ifdef ENABLE_KITTY_IMAGES
-void	tty_cmd_kittyimage(struct tty *, const struct tty_ctx *);
+void	tty_cmd_kitty_transmit(struct tty *, const struct tty_ctx *);
 void	tty_kitty_delete_all(struct tty *);
 void	tty_kitty_delete_all_pane(struct window_pane *);
 void	tty_kitty_passthrough(struct window_pane *, const char *, size_t,
@@ -3798,9 +3798,19 @@ void		 kitty_free(struct kitty_image *);
 void		 kitty_size_in_cells(struct kitty_image *, u_int *, u_int *);
 char		 kitty_get_action(struct kitty_image *);
 u_int		 kitty_get_image_id(struct kitty_image *);
+void		 kitty_set_image_id(struct kitty_image *, u_int);
+void		 kitty_set_cells(struct kitty_image *, u_int, u_int);
 u_int		 kitty_get_rows(struct kitty_image *);
+int		 kitty_get_transmitted(struct kitty_image *);
+void		 kitty_set_transmitted(struct kitty_image *, int);
+u_int		 kitty_get_more(struct kitty_image *);
+void		 kitty_append(struct kitty_image *, struct kitty_image *);
 char		*kitty_print(struct kitty_image *, size_t *);
 char		*kitty_delete_all(size_t *);
+size_t		 kitty_placeholder_cell(u_int, int, char *, size_t);
+u_int		 kitty_alloc_id(void);
+void		 kitty_transmit(struct kitty_image *, u_int, u_int,
+		    void (*)(void *, const char *, size_t), void *);
 #endif
 
 /* server-acl.c */
