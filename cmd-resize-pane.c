@@ -64,7 +64,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*errstr, *argval;
 	const char		 flags[4] = { 'U', 'D', 'L', 'R' };
 	char			*cause = NULL, flag;
-	u_int			 opposite = 0;
+	u_int			 opposite;
 	int			 adjust, x, y, status;
 	long unsigned		 i;
 	struct grid		*gd = wp->base.grid;
@@ -164,6 +164,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			type = LAYOUT_LEFTRIGHT;
 
 		if (window_pane_is_floating(wp)) {
+			opposite = 0;
 			if (flag == 'L' || flag == 'U')
 				opposite = 1;
 
