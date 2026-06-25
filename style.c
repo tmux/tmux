@@ -480,18 +480,25 @@ style_set_scrollbar_style_from_option(struct style *sb_style,
 	const struct options_table_entry	*oe;
 	struct options_entry			*o;
 	const char				*s;
+	char					*style, *expanded;
 
 	style_set(sb_style, &grid_default_cell);
 	o = options_get(oo, "pane-scrollbars-style");
 	if (o == NULL)
 		fatalx("missing pane-scrollbars-style");
 	oe = options_table_entry(o);
-	if (style_parse(sb_style, &grid_default_cell, oe->default_str) != 0)
+	style = format_single(NULL, oe->default_str, NULL, NULL, NULL, NULL);
+	if (style_parse(sb_style, &grid_default_cell, style) != 0)
 		fatalx("bad pane-scrollbars-style default");
 
 	s = options_get_string(oo, "pane-scrollbars-style");
-	if (s != NULL && style_parse(sb_style, &grid_default_cell, s) != 0)
-		style_parse(sb_style, &grid_default_cell, oe->default_str);
+	if (s != NULL) {
+		expanded = format_single(NULL, s, NULL, NULL, NULL, NULL);
+		if (style_parse(sb_style, &grid_default_cell, expanded) != 0)
+			style_parse(sb_style, &grid_default_cell, style);
+		free(expanded);
+	}
+	free(style);
 	if (sb_style->width < 1)
 		sb_style->width = PANE_SCROLLBARS_DEFAULT_WIDTH;
 	if (sb_style->pad < 0)
