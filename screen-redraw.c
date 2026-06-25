@@ -1505,6 +1505,62 @@ redraw_set_draw_context(struct redraw_draw_ctx *dctx,
 		dctx->flags |= REDRAW_ISOLATES;
 }
 
+/* Draw a pane's prompt over its content. */
+static void
+redraw_draw_pane_prompt(struct redraw_draw_ctx *dctx, struct window_pane *wp)
+{
+	struct redraw_scene	*scene = dctx->scene;
+	struct client		*c = scene->c;
+	struct tty		*tty = &c->tty;
+	struct screen		 screen;
+	struct screen_write_ctx	 ctx;
+	struct prompt_draw_data	 pdd;
+	int			 ox = scene->ox, oy = scene->oy;
+	int			 sx = scene->sx, sy = scene->sy;
+	int			 line, cy, px, offset, width, wy;
+
+	if (wp->prompt == NULL || wp->sx == 0 || wp->sy == 0)
+		return;
+
+	if (~dctx->flags & REDRAW_STATUS_TOP)
+		wy = wp->yoff + (int)wp->sy - 1;
+	else
+		wy = wp->yoff;
+	if (wy < oy || wy >= oy + sy)
+		return;
+	line = wy - oy;
+	if (dctx->flags & REDRAW_STATUS_TOP)
+		cy = dctx->status_lines + line;
+	else
+		cy = line;
+
+	if (wp->xoff + (int)wp->sx <= ox || wp->xoff >= ox + sx)
+		return;
+	if (wp->xoff < ox) {
+		offset = ox - wp->xoff;
+		px = 0;
+	} else {
+		offset = 0;
+		px = wp->xoff - ox;
+	}
+	width = wp->sx - offset;
+	if (px + width > sx)
+		width = sx - px;
+
+	screen_init(&screen, wp->sx, 1, 0);
+	screen_write_start(&ctx, &screen);
+	pdd.ctx = &ctx;
+	pdd.cursor_x = &wp->prompt_cx;
+	pdd.area_x = 0;
+	pdd.area_width = wp->sx;
+	pdd.prompt_line = 0;
+	prompt_draw(wp->prompt, &pdd);
+	screen_write_stop(&ctx);
+
+	tty_draw_line(tty, &screen, 0, offset, width, px, cy, NULL);
+	screen_free(&screen);
+}
+
 /* Draw scene to client. */
 static void
 redraw_draw(struct client *c, struct window_pane *wp, int flags)
@@ -1526,7 +1582,7 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	if (flags & REDRAW_STATUS) {
 		if (c->message_string != NULL)
 			redraw = status_message_redraw(c);
-		else if (c->prompt_string != NULL)
+		else if (c->prompt != NULL)
 			redraw = status_prompt_redraw(c);
 		else
 			redraw = status_redraw(c);
@@ -1600,9 +1656,20 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	else
 		redraw_draw_lines(&dctx, flags);
 
+	if (flags & REDRAW_PANE) {
+		if (wp != NULL)
+			redraw_draw_pane_prompt(&dctx, wp);
+		else {
+			TAILQ_FOREACH(loop, &scene->w->panes, entry) {
+				if (window_pane_is_visible(loop))
+					redraw_draw_pane_prompt(&dctx, loop);
+			}
+		}
+	}
+
 	if (flags & REDRAW_STATUS) {
 		lines = dctx.status_lines;
-		if (c->message_string != NULL || c->prompt_string != NULL)
+		if (c->message_string != NULL || c->prompt != NULL)
 			lines = (lines == 0 ? 1 : lines);
 		if (dctx.flags & REDRAW_STATUS_TOP)
 			y = 0;

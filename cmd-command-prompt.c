@@ -42,8 +42,8 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	.name = "command-prompt",
 	.alias = NULL,
 
-	.args = { "1CbeFiklI:Np:t:T:", 0, 1, cmd_command_prompt_args_parse },
-	.usage = "[-1CbeFiklN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE
+	.args = { "1CbeFiklI:NPp:t:T:", 0, 1, cmd_command_prompt_args_parse },
+	.usage = "[-1CbeFiklNP] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE
 		 " [-T prompt-type] [template]",
 
 	.flags = CMD_CLIENT_TFLAG,
@@ -61,6 +61,8 @@ struct cmd_command_prompt_cdata {
 
 	int				  flags;
 	enum prompt_type		  prompt_type;
+
+	struct window_pane		 *wp;
 
 	struct cmd_command_prompt_prompt *prompts;
 	u_int				  count;
@@ -87,10 +89,15 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_command_prompt_cdata *cdata;
 	char				*tmp, *prompts, *prompt, *next_prompt;
 	char				*inputs = NULL, *next_input;
+	struct window_pane		*wp = target->wp;
 	u_int				 count = args_count(args);
 	int				 wait = !args_has(args, 'b'), space = 1;
+	int				 pane = args_has(args, 'P');
 
-	if (tc->prompt_string != NULL)
+	if (pane) {
+		if (wp == NULL || window_pane_has_prompt(wp))
+			return (CMD_RETURN_NORMAL);
+	} else if (tc->prompt != NULL)
 		return (CMD_RETURN_NORMAL);
 	if (args_has(args, 'i'))
 		wait = 0;
@@ -98,6 +105,8 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 	cdata = xcalloc(1, sizeof *cdata);
 	if (wait)
 		cdata->item = item;
+	if (pane)
+		cdata->wp = wp;
 	cdata->state = args_make_commands_prepare(self, item, 0, "%1", wait,
 	    args_has(args, 'F'));
 
@@ -146,7 +155,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if ((type = args_get(args, 'T')) != NULL) {
-		cdata->prompt_type = status_prompt_type(type);
+		cdata->prompt_type = prompt_type(type);
 		if (cdata->prompt_type == PROMPT_TYPE_INVALID) {
 			cmdq_error(item, "unknown type: %s", type);
 			cmd_command_prompt_free(cdata);
@@ -167,9 +176,18 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->flags |= PROMPT_BSPACE_EXIT;
 	if (args_has(args, 'C'))
 		cdata->flags |= PROMPT_NOFREEZE;
-	status_prompt_set(tc, target, cdata->prompts[0].prompt,
-	    cdata->prompts[0].input, cmd_command_prompt_callback,
-	    cmd_command_prompt_free, cdata, cdata->flags, cdata->prompt_type);
+	if (pane) {
+		cdata->flags |= PROMPT_ISPANE;
+		window_pane_set_prompt(wp, tc, target, cdata->prompts[0].prompt,
+		    cdata->prompts[0].input, cmd_command_prompt_callback,
+		    cmd_command_prompt_free, cdata, cdata->flags,
+		    cdata->prompt_type);
+	} else {
+		status_prompt_set(tc, target, cdata->prompts[0].prompt,
+		    cdata->prompts[0].input, cmd_command_prompt_callback,
+		    cmd_command_prompt_free, cdata, cdata->flags,
+		    cdata->prompt_type);
+	}
 
 	if (!wait)
 		return (CMD_RETURN_NORMAL);
@@ -197,7 +215,12 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 		cmd_append_argv(&cdata->argc, &cdata->argv, s);
 		if (++cdata->current != cdata->count) {
 			prompt = &cdata->prompts[cdata->current];
-			status_prompt_update(c, prompt->prompt, prompt->input);
+			if (cdata->wp != NULL) {
+				window_pane_update_prompt(cdata->wp,
+				    prompt->prompt, prompt->input);
+			} else
+				status_prompt_update(c, prompt->prompt,
+				    prompt->input);
 			return (PROMPT_CONTINUE);
 		}
 	}
@@ -225,12 +248,19 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 	}
 	cmd_free_argv(argc, argv);
 
-	if (c->prompt_inputcb != cmd_command_prompt_callback)
+	/*
+	 * An incremental prompt fires its callback on every edit but must stay
+	 * open for further typing; only an explicit close (handled above) ends
+	 * it.
+	 */
+	if (cdata->flags & PROMPT_INCREMENTAL)
 		return (PROMPT_CONTINUE);
 
 out:
-	if (item != NULL)
+	if (item != NULL) {
+		cdata->item = NULL;
 		cmdq_continue(item);
+	}
 	return (PROMPT_CLOSE);
 }
 
@@ -239,6 +269,11 @@ cmd_command_prompt_free(void *data)
 {
 	struct cmd_command_prompt_cdata *cdata = data;
 	u_int				 i;
+
+	if (cdata->item != NULL) {
+		cmdq_continue(cdata->item);
+		cdata->item = NULL;
+	}
 
 	for (i = 0; i < cdata->count; i++) {
 		free(cdata->prompts[i].prompt);

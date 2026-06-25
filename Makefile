@@ -102,6 +102,8 @@ SRCS=	alerts.c \
 	popup.c \
 	proc.c \
 	procname.c \
+	prompt.c \
+	prompt-history.c \
 	regsub.c \
 	resize.c \
 	screen-redraw.c \

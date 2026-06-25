@@ -279,7 +279,7 @@ cmd_display_panes_draw(struct client *c, __unused void *data)
 	tty_window_offset(&c->tty, &ctx.ox, &ctx.oy, &ctx.sx, &ctx.sy);
 	if (options_get_number(s->options, "status-position") == 0) {
 		lines = status_line_size(c);
-		if (c->message_string != NULL || c->prompt_string != NULL)
+		if (c->message_string != NULL || c->prompt != NULL)
 			lines = (lines == 0 ? 1 : lines);
 		ctx.statuslines = lines;
 		ctx.statustop = 1;
