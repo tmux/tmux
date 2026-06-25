@@ -26,6 +26,85 @@
 
 #include "tmux.h"
 
+/* Theme colour slots and their server options. */
+static const struct {
+	const char	*name;
+	const char	*dark_option;
+	const char	*light_option;
+	int		 terminal_colour;
+} colour_theme_table[] = {
+	{ "themeblack",
+	  "dark-theme-black",
+	  "light-theme-black",
+	  0
+	},
+	{ "themewhite",
+	  "dark-theme-white",
+	  "light-theme-white",
+	  7
+	},
+	{ "themelightgrey",
+	  "dark-theme-light-grey",
+	  "light-theme-light-grey",
+	  7
+	},
+	{ "themedarkgrey",
+	  "dark-theme-dark-grey",
+	  "light-theme-dark-grey",
+	  0
+	},
+	{ "themegreen",
+	  "dark-theme-green",
+	  "light-theme-green",
+	  2
+	},
+	{ "themeyellow",
+	  "dark-theme-yellow",
+	  "light-theme-yellow",
+	  3
+	},
+	{ "themered",
+	  "dark-theme-red",
+	  "light-theme-red",
+	  1
+	},
+	{ "themeblue",
+	  "dark-theme-blue",
+	  "light-theme-blue",
+	  4
+	},
+	{ "themecyan",
+	  "dark-theme-cyan",
+	  "light-theme-cyan",
+	  6
+	},
+	{ "thememagenta",
+	  "dark-theme-magenta",
+	  "light-theme-magenta",
+	  5
+	}
+};
+
+/* Get theme colour option. */
+const char *
+colour_theme_option(u_int n, enum client_theme theme)
+{
+	if (n >= nitems(colour_theme_table))
+		return (NULL);
+	if (theme == THEME_LIGHT)
+		return (colour_theme_table[n].light_option);
+	return (colour_theme_table[n].dark_option);
+}
+
+/* Get theme terminal colour. */
+int
+colour_theme_terminal_colour(u_int n)
+{
+	if (n >= nitems(colour_theme_table))
+		return (8);
+	return (colour_theme_table[n].terminal_colour);
+}
+
 static int
 colour_dist_sq(int R, int G, int B, int r, int g, int b)
 {
@@ -126,7 +205,7 @@ colour_dim(int c, u_int dim)
 {
 	u_char	r, g, b;
 
-	if (dim == 0 || COLOUR_DEFAULT(c))
+	if (dim == 0 || COLOUR_DEFAULT(c) || (c & COLOUR_FLAG_THEME))
 		return (c);
 	if (dim >= 100)
 		return (colour_join_rgb(0, 0, 0));
@@ -151,6 +230,13 @@ colour_tostring(int c)
 
 	if (c == -1)
 		return ("none");
+
+	if (c & COLOUR_FLAG_THEME) {
+		c &= 0xff;
+		if (c >= 0 && (u_int)c < nitems(colour_theme_table))
+			return (colour_theme_table[c].name);
+		return ("invalid");
+	}
 
 	if (c & COLOUR_FLAG_RGB) {
 		colour_split_rgb(c, &r, &g, &b);
@@ -252,6 +338,7 @@ colour_fromstring(const char *s)
 	const char	*cp;
 	int		 n;
 	u_char		 r, g, b;
+	u_int		 i;
 
 	if (*s == '#' && strlen(s) == 7) {
 		for (cp = s + 1; isxdigit((u_char) *cp); cp++)
@@ -281,6 +368,11 @@ colour_fromstring(const char *s)
 		return (8);
 	if (strcasecmp(s, "terminal") == 0)
 		return (9);
+
+	for (i = 0; i < nitems(colour_theme_table); i++) {
+		if (strcasecmp(s, colour_theme_table[i].name) == 0)
+			return (i|COLOUR_FLAG_THEME);
+	}
 
 	if (strcasecmp(s, "black") == 0 || strcmp(s, "0") == 0)
 		return (0);

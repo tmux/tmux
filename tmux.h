@@ -737,9 +737,25 @@ enum hanguljamo_state {
 /* Colour flags. */
 #define COLOUR_FLAG_256 0x01000000
 #define COLOUR_FLAG_RGB 0x02000000
+#define COLOUR_FLAG_THEME 0x04000000
 
 /* Special colours. */
 #define COLOUR_DEFAULT(c) ((c) == 8 || (c) == 9)
+
+/* Theme colours. */
+enum colour_theme {
+	COLOUR_THEME_BLACK,
+	COLOUR_THEME_WHITE,
+	COLOUR_THEME_LIGHT_GREY,
+	COLOUR_THEME_DARK_GREY,
+	COLOUR_THEME_GREEN,
+	COLOUR_THEME_YELLOW,
+	COLOUR_THEME_RED,
+	COLOUR_THEME_BLUE,
+	COLOUR_THEME_CYAN,
+	COLOUR_THEME_MAGENTA
+};
+#define COLOUR_THEME_COUNT 10
 
 /* Replacement palette. */
 struct colour_palette {
@@ -2260,6 +2276,8 @@ struct client {
 
 	int			 references;
 
+	int		 theme_colours[COLOUR_THEME_COUNT];
+
 	void			*pan_window;
 	u_int			 pan_ox;
 	u_int			 pan_oy;
@@ -3158,6 +3176,7 @@ void	 server_client_print(struct client *, int, struct evbuffer *);
 
 /* server-fn.c */
 void	 server_redraw_client(struct client *);
+void	 server_client_update_theme_colours(struct client *);
 void	 server_status_client(struct client *);
 void	 server_redraw_session(struct session *);
 void	 server_redraw_session_group(struct session *);
@@ -3271,6 +3290,8 @@ int	 colour_dim(int, u_int);
 const char *colour_tostring(int);
 enum client_theme colour_totheme(int);
 int	 colour_fromstring(const char *);
+const char *colour_theme_option(u_int, enum client_theme);
+int	 colour_theme_terminal_colour(u_int);
 int	 colour_256toRGB(int);
 int	 colour_256to16(int);
 int	 colour_byname(const char *);

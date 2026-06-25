@@ -4573,6 +4573,57 @@ where the number is a hexadecimal number, or a range of the form
 Give the command to pipe to if the
 .Ic copy\-pipe
 copy mode command is used without arguments.
+.It Xo Ic theme
+.Op Ic detect | terminal | light | dark
+.Xc
+Whether tmux should use the detected client theme
+.Pq Ic detect ,
+use terminal ANSI colours
+.Pq Ic terminal ,
+or force the light or dark theme.
+.It Xo Ic dark\-theme\-black ,
+.Ic dark\-theme\-white ,
+.Ic dark\-theme\-light\-grey ,
+.Ic dark\-theme\-dark\-grey ,
+.Ic dark\-theme\-green ,
+.Ic dark\-theme\-yellow ,
+.Ic dark\-theme\-red ,
+.Ic dark\-theme\-blue ,
+.Ic dark\-theme\-cyan ,
+.Ic dark\-theme\-magenta ,
+.Ic light\-theme\-black ,
+.Ic light\-theme\-white ,
+.Ic light\-theme\-light\-grey ,
+.Ic light\-theme\-dark\-grey ,
+.Ic light\-theme\-green ,
+.Ic light\-theme\-yellow ,
+.Ic light\-theme\-red ,
+.Ic light\-theme\-blue ,
+.Ic light\-theme\-cyan
+.No and Ic light\-theme\-magenta Ar colour
+.Xc
+Set the theme colours.
+These are the named colours
+.Ic themeblack ,
+.Ic themewhite ,
+.Ic themelightgrey ,
+.Ic themedarkgrey ,
+.Ic themegreen ,
+.Ic themeyellow ,
+.Ic themered ,
+.Ic themeblue ,
+.Ic themecyan
+and
+.Ic thememagenta
+which may be used in styles and elsewhere a
+.Ar colour
+is accepted.
+The
+.Ic dark\-theme\-*
+set is used when the client reports a dark background and the
+.Ic light\-theme\-*
+set when it reports a light background;
+an unknown background is treated as dark.
 .It Ic default\-client\-command Ar command
 Set the default command to run when tmux is called without a command.
 The default is

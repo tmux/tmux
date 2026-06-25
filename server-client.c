@@ -287,6 +287,7 @@ struct client *
 server_client_create(int fd)
 {
 	struct client	*c;
+	u_int		 i;
 
 	setblocking(fd, 0);
 
@@ -309,6 +310,9 @@ server_client_create(int fd)
 
 	c->tty.sx = 80;
 	c->tty.sy = 24;
+
+	for (i = 0; i < COLOUR_THEME_COUNT; i++)
+		c->theme_colours[i] = 8;
 	c->theme = THEME_UNKNOWN;
 
 	status_init(c);
@@ -360,6 +364,7 @@ server_client_open(struct client *c, char **cause)
 	if (tty_open(&c->tty, cause) != 0)
 		return (-1);
 
+	server_client_update_theme_colours(c);
 	return (0);
 }
 
@@ -1075,6 +1080,52 @@ have_event:
 	if (log_get_level() != 0)
 		log_debug("mouse key is %s", key_string_lookup_key (key, 1));
 	return (key);
+}
+
+/* Update client theme colours from server options. */
+void
+server_client_update_theme_colours(struct client *c)
+{
+	struct format_tree	*ft;
+	const char		*name, *value;
+	enum client_theme	 theme;
+	char			*expanded;
+	u_int			 i;
+	int			 colour, option;
+
+	if (c == NULL)
+		return;
+
+	option = options_get_number(global_options, "theme");
+	if (option == 1) {
+		for (i = 0; i < COLOUR_THEME_COUNT; i++)
+			c->theme_colours[i] = colour_theme_terminal_colour(i);
+		return;
+	}
+
+	ft = format_create(c, NULL, FORMAT_NONE, FORMAT_NOJOBS);
+	format_defaults(ft, c, NULL, NULL, NULL);
+
+	theme = c->theme;
+	if (option == 2)
+		theme = THEME_LIGHT;
+	else if (option == 3)
+		theme = THEME_DARK;
+	for (i = 0; i < COLOUR_THEME_COUNT; i++) {
+		c->theme_colours[i] = 8;
+		name = colour_theme_option(i, theme);
+		if (name == NULL)
+			continue;
+		value = options_get_string(global_options, name);
+		expanded = format_expand(ft, value);
+		colour = colour_fromstring(expanded);
+		free(expanded);
+		if (colour == -1 || (colour & COLOUR_FLAG_THEME))
+			continue;
+		c->theme_colours[i] = colour;
+	}
+
+	format_free(ft);
 }
 
 /* Is this a bracket paste key? */
@@ -2929,12 +2980,25 @@ out:
 static void
 server_client_report_theme(struct client *c, enum client_theme theme)
 {
+	enum client_theme	 old = c->theme;
+
 	if (theme == THEME_LIGHT) {
 		c->theme = THEME_LIGHT;
 		notify_client("client-light-theme", c);
 	} else {
 		c->theme = THEME_DARK;
 		notify_client("client-dark-theme", c);
+	}
+
+	/*
+	 * If the theme has changed, update the theme colours and redraw the
+	 * client.
+	 */
+	if (c->theme != old) {
+		server_client_update_theme_colours(c);
+		if (c->tty.flags & TTY_OPENED)
+			tty_invalidate(&c->tty);
+		server_redraw_client(c);
 	}
 
 	/*
