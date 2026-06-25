@@ -7361,7 +7361,7 @@ See
 for possible values for
 .Ar prompt\-type .
 .It Xo Ic command\-prompt
-.Op Fl 1bCeFiklN
+.Op Fl 1bCeFiklNP
 .Op Fl I Ar inputs
 .Op Fl p Ar prompts
 .Op Fl t Ar target\-client
@@ -7441,6 +7441,8 @@ user exits the command prompt.
 makes
 .Em BSpace
 cancel an empty prompt.
+.Fl P
+opens a prompt inside a pane instead of on the status line.
 .Pp
 .Fl T
 tells

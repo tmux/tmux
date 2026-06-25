@@ -254,7 +254,7 @@ server_start(struct tmuxproc *client, uint64_t flags, struct event_base *base,
 	proc_loop(server_proc, server_loop);
 
 	job_kill_all();
-	status_prompt_save_history();
+	prompt_save_history();
 
 	exit(0);
 }

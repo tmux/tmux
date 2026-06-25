@@ -1317,10 +1317,11 @@ again:
 		if (prompt == NULL)
 			break;
 		data->references++;
-		status_prompt_set(c, NULL, prompt, "",
+		mode_tree_set_prompt(data->data, c, prompt, "",
+		    PROMPT_TYPE_COMMAND,
+		    PROMPT_SINGLE|PROMPT_NOFORMAT|data->prompt_flags,
 		    window_tree_kill_current_callback, window_tree_command_free,
-		    data, PROMPT_SINGLE|PROMPT_NOFORMAT|data->prompt_flags,
-		    PROMPT_TYPE_COMMAND);
+		    data);
 		free(prompt);
 		break;
 	case 'X':
@@ -1329,10 +1330,11 @@ again:
 			break;
 		xasprintf(&prompt, "Kill %u tagged? ", tagged);
 		data->references++;
-		status_prompt_set(c, NULL, prompt, "",
+		mode_tree_set_prompt(data->data, c, prompt, "",
+		    PROMPT_TYPE_COMMAND,
+		    PROMPT_SINGLE|PROMPT_NOFORMAT|data->prompt_flags,
 		    window_tree_kill_tagged_callback, window_tree_command_free,
-		    data, PROMPT_SINGLE|PROMPT_NOFORMAT|data->prompt_flags,
-		    PROMPT_TYPE_COMMAND);
+		    data);
 		free(prompt);
 		break;
 	case ':':
@@ -1342,9 +1344,10 @@ again:
 		else
 			xasprintf(&prompt, "(current) ");
 		data->references++;
-		status_prompt_set(c, NULL, prompt, "",
+		mode_tree_set_prompt(data->data, c, prompt, "",
+		    PROMPT_TYPE_COMMAND, PROMPT_NOFORMAT,
 		    window_tree_command_callback, window_tree_command_free,
-		    data, PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
+		    data);
 		free(prompt);
 		break;
 	case '\r':

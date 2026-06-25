@@ -1145,10 +1145,10 @@ window_customize_set_option(struct client *c,
 		new_item->idx = idx;
 
 		data->references++;
-		status_prompt_set(c, NULL, prompt, value,
+		mode_tree_set_prompt(data->data, c, prompt, value,
+		    PROMPT_TYPE_COMMAND, PROMPT_NOFORMAT,
 		    window_customize_set_option_callback,
-		    window_customize_free_item_callback, new_item,
-		    PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
+		    window_customize_free_item_callback, new_item);
 
 		free(prompt);
 		free(value);
@@ -1283,10 +1283,10 @@ window_customize_set_key(struct client *c,
 		new_item->key = key;
 
 		data->references++;
-		status_prompt_set(c, NULL, prompt, value,
+		mode_tree_set_prompt(data->data, c, prompt, value,
+		    PROMPT_TYPE_COMMAND, PROMPT_NOFORMAT,
 		    window_customize_set_command_callback,
-		    window_customize_free_item_callback, new_item,
-		    PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
+		    window_customize_free_item_callback, new_item);
 		free(prompt);
 		free(value);
 	} else if (strcmp(s, "Note") == 0) {
@@ -1299,11 +1299,11 @@ window_customize_set_key(struct client *c,
 		new_item->key = key;
 
 		data->references++;
-		status_prompt_set(c, NULL, prompt,
+		mode_tree_set_prompt(data->data, c, prompt,
 		    (bd->note == NULL ? "" : bd->note),
+		    PROMPT_TYPE_COMMAND, PROMPT_NOFORMAT,
 		    window_customize_set_note_callback,
-		    window_customize_free_item_callback, new_item,
-		    PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
+		    window_customize_free_item_callback, new_item);
 		free(prompt);
 	}
 }
@@ -1477,11 +1477,11 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 		xasprintf(&prompt, "Reset %s to default? ", item->name);
 		data->references++;
 		data->change = WINDOW_CUSTOMIZE_RESET;
-		status_prompt_set(c, NULL, prompt, "",
-		    window_customize_change_current_callback,
-		    window_customize_free_callback, data,
+		mode_tree_set_prompt(data->data, c, prompt, "",
+		    PROMPT_TYPE_COMMAND,
 		    PROMPT_SINGLE|PROMPT_NOFORMAT|data->prompt_flags,
-		    PROMPT_TYPE_COMMAND);
+		    window_customize_change_current_callback,
+		    window_customize_free_callback, data);
 		free(prompt);
 		break;
 	case 'D':
@@ -1491,11 +1491,11 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 		xasprintf(&prompt, "Reset %u tagged to default? ", tagged);
 		data->references++;
 		data->change = WINDOW_CUSTOMIZE_RESET;
-		status_prompt_set(c, NULL, prompt, "",
-		    window_customize_change_tagged_callback,
-		    window_customize_free_callback, data,
+		mode_tree_set_prompt(data->data, c, prompt, "",
+		    PROMPT_TYPE_COMMAND,
 		    PROMPT_SINGLE|PROMPT_NOFORMAT|data->prompt_flags,
-		    PROMPT_TYPE_COMMAND);
+		    window_customize_change_tagged_callback,
+		    window_customize_free_callback, data);
 		free(prompt);
 		break;
 	case 'u':
@@ -1508,11 +1508,11 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 			xasprintf(&prompt, "Unset %s? ", item->name);
 		data->references++;
 		data->change = WINDOW_CUSTOMIZE_UNSET;
-		status_prompt_set(c, NULL, prompt, "",
-		    window_customize_change_current_callback,
-		    window_customize_free_callback, data,
+		mode_tree_set_prompt(data->data, c, prompt, "",
+		    PROMPT_TYPE_COMMAND,
 		    PROMPT_SINGLE|PROMPT_NOFORMAT|data->prompt_flags,
-		    PROMPT_TYPE_COMMAND);
+		    window_customize_change_current_callback,
+		    window_customize_free_callback, data);
 		free(prompt);
 		break;
 	case 'U':
@@ -1522,11 +1522,11 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 		xasprintf(&prompt, "Unset %u tagged? ", tagged);
 		data->references++;
 		data->change = WINDOW_CUSTOMIZE_UNSET;
-		status_prompt_set(c, NULL, prompt, "",
-		    window_customize_change_tagged_callback,
-		    window_customize_free_callback, data,
+		mode_tree_set_prompt(data->data, c, prompt, "",
+		    PROMPT_TYPE_COMMAND,
 		    PROMPT_SINGLE|PROMPT_NOFORMAT|data->prompt_flags,
-		    PROMPT_TYPE_COMMAND);
+		    window_customize_change_tagged_callback,
+		    window_customize_free_callback, data);
 		free(prompt);
 		break;
 	case 'H':
