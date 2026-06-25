@@ -328,9 +328,10 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "cursor-colour",
-	  .type = OPTIONS_TABLE_COLOUR,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
-	  .default_num = -1,
+	  .flags = OPTIONS_TABLE_IS_COLOUR,
+	  .default_str = "",
 	  .text = "Colour of the cursor."
 	},
 
@@ -635,16 +636,18 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "display-panes-active-colour",
-	  .type = OPTIONS_TABLE_COLOUR,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 1,
+	  .flags = OPTIONS_TABLE_IS_COLOUR,
+	  .default_str = "red",
 	  .text = "Colour of the active pane for 'display-panes'."
 	},
 
 	{ .name = "display-panes-colour",
-	  .type = OPTIONS_TABLE_COLOUR,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 4,
+	  .flags = OPTIONS_TABLE_IS_COLOUR,
+	  .default_str = "blue",
 	  .text = "Colour of not active panes for 'display-panes'."
 	},
 
@@ -991,9 +994,10 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "prompt-cursor-colour",
-	  .type = OPTIONS_TABLE_COLOUR,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = -1,
+	  .flags = OPTIONS_TABLE_IS_COLOUR,
+	  .default_str = "",
 	  .text = "Colour of the cursor when in the command prompt."
 	},
 
@@ -1145,9 +1149,10 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "clock-mode-colour",
-	  .type = OPTIONS_TABLE_COLOUR,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 4,
+	  .flags = OPTIONS_TABLE_IS_COLOUR,
+	  .default_str = "blue",
 	  .text = "Colour of the clock in clock mode."
 	},
 

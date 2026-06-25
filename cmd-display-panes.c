@@ -133,7 +133,8 @@ cmd_display_panes_draw_pane(struct cmd_display_panes_ctx *ctx,
 	struct grid_cell	 fgc, bgc;
 	u_int			 pane, idx, px, py, i, j, xoff, yoff, sx, sy;
 	u_int			 cx, cy;
-	int			 colour, active_colour;
+	const char		*name;
+	struct format_tree	*ft;
 	char			 buf[16], lbuf[16], *ptr;
 	size_t			 len, llen;
 
@@ -191,18 +192,16 @@ cmd_display_panes_draw_pane(struct cmd_display_panes_ctx *ctx,
 
 	if (sx < len)
 		return;
-	colour = options_get_number(oo, "display-panes-colour");
-	active_colour = options_get_number(oo, "display-panes-active-colour");
+	if (w->active == wp)
+		name = "display-panes-active-colour";
+	else
+		name = "display-panes-colour";
+	ft = format_create_defaults(NULL, c, s, NULL, wp);
+	style_apply(&fgc, oo, name, ft);
+	format_free(ft);
 
-	memcpy(&fgc, &grid_default_cell, sizeof fgc);
 	memcpy(&bgc, &grid_default_cell, sizeof bgc);
-	if (w->active == wp) {
-		fgc.fg = active_colour;
-		bgc.bg = active_colour;
-	} else {
-		fgc.fg = colour;
-		bgc.bg = colour;
-	}
+	bgc.bg = fgc.fg;
 
 	if (pane > 9 && pane < 35)
 		llen = xsnprintf(lbuf, sizeof lbuf, "%c", 'a' + (pane - 10));

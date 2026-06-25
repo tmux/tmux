@@ -989,9 +989,12 @@ struct style *
 options_string_to_style(struct options *oo, const char *name,
     struct format_tree *ft)
 {
-	struct options_entry	*o;
-	const char		*s;
-	char			*expanded;
+	struct options_entry			*o;
+	const struct options_table_entry	*oe;
+	const struct grid_cell			*dgc = &grid_default_cell;
+	const char				*s;
+	char					*expanded;
+	int					 failed;
 
 	o = options_get(oo, name);
 	if (o == NULL || !OPTIONS_IS_STRING(o))
@@ -1000,20 +1003,27 @@ options_string_to_style(struct options *oo, const char *name,
 	if (o->cached)
 		return (&o->style);
 	s = o->value.string;
+	oe = o->tableentry;
 	log_debug("%s: %s is '%s'", __func__, name, s);
 
-	style_set(&o->style, &grid_default_cell);
+	style_set(&o->style, dgc);
 	o->cached = (strstr(s, "#{") == NULL);
 
 	if (ft != NULL && !o->cached) {
 		expanded = format_expand(ft, s);
-		if (style_parse(&o->style, &grid_default_cell, expanded) != 0) {
-			free(expanded);
-			return (NULL);
-		}
+		if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_COLOUR))
+			failed = style_parse_colour(&o->style, dgc, expanded);
+		else
+			failed = style_parse(&o->style, dgc, expanded);
 		free(expanded);
+		if (failed != 0)
+			return (NULL);
 	} else {
-		if (style_parse(&o->style, &grid_default_cell, s) != 0)
+		if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_COLOUR))
+			failed = style_parse_colour(&o->style, dgc, s);
+		else
+			failed = style_parse(&o->style, dgc, s);
+		if (failed != 0)
 			return (NULL);
 	}
 	return (&o->style);
@@ -1039,6 +1049,12 @@ options_from_string_check(const struct options_table_entry *oe,
 	    strstr(value, "#{") == NULL &&
 	    style_parse(&sy, &grid_default_cell, value) != 0) {
 		xasprintf(cause, "invalid style: %s", value);
+		return (-1);
+	}
+	if ((oe->flags & OPTIONS_TABLE_IS_COLOUR) &&
+	    strstr(value, "#{") == NULL &&
+	    style_parse_colour(&sy, &grid_default_cell, value) != 0) {
+		xasprintf(cause, "invalid colour: %s", value);
 		return (-1);
 	}
 	return (0);
