@@ -1477,6 +1477,33 @@ format_cb_client_cell_width(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for client_colours. */
+static void *
+format_cb_client_colours(struct format_tree *ft)
+{
+	struct tty_term	*term;
+	u_int		 colours;
+
+	if (ft->c == NULL || (~ft->c->tty.flags & TTY_STARTED))
+		return (NULL);
+	term = ft->c->tty.term;
+
+	if (term->flags & TERM_RGBCOLOURS)
+		colours = 16777216;
+	else if (term->flags & TERM_256COLOURS)
+		colours = 256;
+	else {
+		colours = tty_term_number(term, TTYC_COLORS);
+		if (colours < 8)
+			colours = 2;
+		else if (colours < 16)
+			colours = 8;
+		else
+			colours = 16;
+	}
+	return (format_printf("%u", colours));
+}
+
 /* Callback for client_control_mode. */
 static void *
 format_cb_client_control_mode(struct format_tree *ft)
@@ -3213,6 +3240,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "client_cell_width", FORMAT_TABLE_STRING,
 	  format_cb_client_cell_width
+	},
+	{ "client_colours", FORMAT_TABLE_STRING,
+	  format_cb_client_colours
 	},
 	{ "client_control_mode", FORMAT_TABLE_STRING,
 	  format_cb_client_control_mode
