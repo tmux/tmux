@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -149,6 +150,8 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		argval = args_get(args, flag);
 		if (argval == NULL)
 			argval = "1";
+		else if (!isdigit(*argval) && args_count(args) > 0)
+			argval = args_string(args, 0);
 
 		adjust = strtonum(argval, INT_MIN, INT_MAX, &errstr);
 		if (errstr != NULL) {
