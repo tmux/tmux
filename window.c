@@ -631,6 +631,7 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
 			wp->flags |= PANE_REDRAW;
+			redraw_invalidate_scene(w);
 		}
 
 		wp = w->active;
