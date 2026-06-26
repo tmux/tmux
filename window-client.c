@@ -38,7 +38,7 @@ static void		 window_client_key(struct window_mode_entry *,
 #define WINDOW_CLIENT_DEFAULT_COMMAND "detach-client -t '%%'"
 
 #define WINDOW_CLIENT_DEFAULT_FORMAT \
-	"#{t/p:client_activity}: session #{session_name}"
+	"#[fg=themelightgrey]#{t/p:client_activity}: session #[default]#{session_name}"
 
 #define WINDOW_CLIENT_DEFAULT_KEY_FORMAT \
 	"#{?#{e|<:#{line},10}," \
@@ -52,30 +52,30 @@ static void		 window_client_key(struct window_mode_entry *,
 	"#[fg=themegreen],#[fg=themelightgrey]}#{p/15:#{l:" #f "}}" \
 	"#[default]"
 static const char *window_client_info_lines[] = {
-	"Client Name   #[#{E:tree-mode-border-style},acs]x#[default] "
-	"#{client_name} "
+	"#[fg=themelightgrey]Client Name   #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{client_name} #[fg=themelightgrey]"
 	"#[fg=themelightgrey](PID #{client_pid})#[default]",
-	"Session       #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#[fg=themelightgrey]Session       #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{session_name}",
-	"Attach Time   #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#[fg=themelightgrey]Attach Time   #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{t:client_created} "
 	"#[fg=themelightgrey](#{t/r:client_created})#[default]",
-	"Activity Time #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#[fg=themelightgrey]Activity Time #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{t:client_activity} "
 	"#[fg=themelightgrey](#{t/r:client_activity})#[default]",
-	"Terminal Type #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#[fg=themelightgrey]Terminal Type #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{?client_termtype,#{client_termtype},Unknown}",
-	"TERM          #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#[fg=themelightgrey]TERM          #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{client_termname}",
-	"Size          #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#[fg=themelightgrey]Size          #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{client_width}x#{client_height} "
 	"#[fg=themelightgrey](cell #{client_cell_width}x"
 	"#{client_cell_height})#[default]",
-	"Bytes Written #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#[fg=themelightgrey]Bytes Written #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{client_written} "
 	"#[fg=themelightgrey](#{client_discarded} discarded)#[default]",
 
-	"Features      #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#[fg=themelightgrey]Features      #[#{E:tree-mode-border-style},acs]x#[default] "
 	WINDOW_CLIENT_FEATURE(256) " "
 	WINDOW_CLIENT_FEATURE(RGB) " "
 	WINDOW_CLIENT_FEATURE(bpaste) " "
@@ -104,36 +104,36 @@ static const char *window_client_info_lines[] = {
 	WINDOW_CLIENT_FEATURE(usstyle),
 	"#[#{E:tree-mode-border-style},acs]qqqqqqqqqqqqqqn#{R:q,#{window_width}}#[default]",
 
-	"prefix        #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#[fg=themelightgrey]prefix        #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{prefix}",
 
-	"mouse         #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#[fg=themelightgrey]mouse         #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{?mouse,#{?#{I/c:kmous},,#[fg=themered]}on,#[fg=themelightgrey]off} "
 	"#{?#{I/c:kmous},,#[align=right]unavailable: [kmous] missing}",
 
-	"set-clipboard #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#[fg=themelightgrey]set-clipboard #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{?#{!=:#{set-clipboard},off},#{?#{I/f:clipboard},,"
 	"#[fg=themered]}#{set-clipboard},#[fg=themelightgrey]off} "
 	"#{?#{I/f:clipboard},,#[align=right]unavailable: [Ms] missing}",
 
-	"get-clipboard #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#[fg=themelightgrey]get-clipboard #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{?#{!=:#{get-clipboard},off},#{?#{I/f:clipboard},,"
 	"#[fg=themered]}#{get-clipboard},#[fg=themelightgrey]off} "
 	"#{?#{I/f:clipboard},,#[align=right]unavailable: [Ms] missing}",
 
-	"focus-events  #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#[fg=themelightgrey]focus-events  #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{?focus-events,#{?#{I/f:focus},,#[fg=themered]}on,#[fg=themelightgrey]off} "
 	"#{?#{I/f:focus},,#[align=right]unavailable: [Enfcs] or [Dcfcs] missing}",
 
-	"extended-keys #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#[fg=themelightgrey]extended-keys #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{?#{!=:#{extended-keys},off},#{?#{I/f:extkeys},,"
 	"#[fg=themered]}#{extended-keys},#[fg=themelightgrey]off} "
 	"#{?#{I/f:extkeys},,#[align=right]unavailable: [Eneks] or [Dseks] missing}",
 
-	"set-titles    #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#[fg=themelightgrey]set-titles    #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{?set-titles,on,#[fg=themelightgrey]off}",
 
-	"escape-time   #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#[fg=themelightgrey]escape-time   #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{escape-time} ms",
 };
 
