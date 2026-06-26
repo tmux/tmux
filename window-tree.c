@@ -158,8 +158,6 @@ static const char *window_tree_pane_info_lines[] = {
 	"#{pane_tty}",
 	"#[fg=themelightgrey]Position      #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{pane_x},#{pane_y} #{pane_width}x#{pane_height}",
-	"#[fg=themelightgrey]Started At    #[#{E:tree-mode-border-style},acs]x#[default] "
-	"#{?pane_start_command,#{pane_start_command},none}",
 	"#[fg=themelightgrey]Mode          #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{?pane_in_mode,#{pane_mode},none}",
 	"#[fg=themelightgrey]Flags         #[#{E:tree-mode-border-style},acs]x#[default] "
@@ -181,7 +179,7 @@ static const char *window_tree_window_info_lines[] = {
 	"#[fg=themelightgrey]Activity Time #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{t:window_activity} #[fg=themelightgrey](#{t/r:window_activity})#[default]",
 	"#[fg=themelightgrey]Sessions      #[#{E:tree-mode-border-style},acs]x#[default] "
-	"#{s/,/ /:window_active_sessions_list}",
+	"#{s/,/ /:window_linked_sessions_list}",
 	"#[fg=themelightgrey]Flags         #[#{E:tree-mode-border-style},acs]x#[default] "
 	WINDOW_TREE_FLAG("active", "window_active") " "
 	WINDOW_TREE_FLAG("last", "window_last_flag") " "
