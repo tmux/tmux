@@ -36,8 +36,8 @@ static void		 window_customize_key(struct window_mode_entry *,
 #define WINDOW_CUSTOMIZE_DEFAULT_FORMAT \
 	"#{?is_option," \
 		"#{?option_is_global,,#[reverse](#{option_scope})#[default] }" \
-		"#[ignore]" \
-		"#{option_value}#{?option_unit, #{option_unit},}" \
+		"#[fg=themelightgrey]#[ignore]#{option_value}" \
+		"#{?option_unit, #{option_unit},}" \
 	"," \
 		"#{key}" \
 	"}"
@@ -881,15 +881,24 @@ window_customize_height(__unused void *modedata, __unused u_int height)
 }
 
 static const char* window_customize_help_lines[] = {
-	"#[bold]   Enter, s #[default]#[acs]x#[default] Set %1 value",
-	"#[bold]          S #[default]#[acs]x#[default] Set global %1 value",
-	"#[bold]          w #[default]#[acs]x#[default] Set window %1 value",
-	"#[bold]          d #[default]#[acs]x#[default] Set to default value",
-	"#[bold]          D #[default]#[acs]x#[default] Set tagged %1s to default value",
-	"#[bold]          u #[default]#[acs]x#[default] Unset an %1",
-	"#[bold]          U #[default]#[acs]x#[default] Unset tagged %1s",
-	"#[bold]          f #[default]#[acs]x#[default] Enter a filter",
-	"#[bold]          v #[default]#[acs]x#[default] Toggle information",
+	"#[fg=themelightgrey]"
+	"   Enter, s #[#{E:tree-mode-border-style},acs]x#[default] Set %1 value",
+	"#[fg=themelightgrey]"
+	"          S #[#{E:tree-mode-border-style},acs]x#[default] Set global %1 value",
+	"#[fg=themelightgrey]"
+	"          w #[#{E:tree-mode-border-style},acs]x#[default] Set window %1 value",
+	"#[fg=themelightgrey]"
+	"          d #[#{E:tree-mode-border-style},acs]x#[default] Set to default value",
+	"#[fg=themelightgrey]"
+	"          D #[#{E:tree-mode-border-style},acs]x#[default] Set tagged %1s to default value",
+	"#[fg=themelightgrey]"
+	"          u #[#{E:tree-mode-border-style},acs]x#[default] Unset an %1",
+	"#[fg=themelightgrey]"
+	"          U #[#{E:tree-mode-border-style},acs]x#[default] Unset tagged %1s",
+	"#[fg=themelightgrey]"
+	"          f #[#{E:tree-mode-border-style},acs]x#[default] Enter a filter",
+	"#[fg=themelightgrey]"
+	"          v #[#{E:tree-mode-border-style},acs]x#[default] Toggle information",
 	NULL
 };
 

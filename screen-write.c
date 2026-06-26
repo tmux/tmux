@@ -749,7 +749,8 @@ screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right,
 
 /* Draw a vertical line on screen. */
 void
-screen_write_vline(struct screen_write_ctx *ctx, u_int ny, int top, int bottom)
+screen_write_vline(struct screen_write_ctx *ctx, u_int ny, int top, int bottom,
+    const struct grid_cell *gcp)
 {
 	struct screen		*s = ctx->s;
 	struct grid_cell	 gc;
@@ -758,7 +759,10 @@ screen_write_vline(struct screen_write_ctx *ctx, u_int ny, int top, int bottom)
 	cx = s->cx;
 	cy = s->cy;
 
-	memcpy(&gc, &grid_default_cell, sizeof gc);
+	if (gcp != NULL)
+		memcpy(&gc, gcp, sizeof gc);
+	else
+		memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.attr |= GRID_ATTR_CHARSET;
 
 	screen_write_putc(ctx, &gc, top ? 'w' : 'x');
