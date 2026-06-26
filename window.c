@@ -1141,8 +1141,7 @@ window_pane_scrollbar_timer(__unused int fd, __unused short events, void *arg)
 {
 	struct window_pane	*wp = arg;
 
-	if (wp->sb_auto_hover)
-		return;
+	wp->sb_auto_hover = 0;
 	window_pane_scrollbar_hide(wp);
 }
 
@@ -2061,8 +2060,6 @@ window_pane_scrollbar_start_timer(struct window_pane *wp)
 	u_int		delay;
 
 	if (!window_pane_scrollbar_auto_hide(wp) || !wp->sb_auto_visible)
-		return;
-	if (wp->sb_auto_hover)
 		return;
 
 	delay = options_get_number(wp->window->options,

@@ -52,6 +52,20 @@ if has_scrollbar_style; then
 	fail "auto-hide scrollbar visible before reveal"
 fi
 
+$TMUX2 set -g mouse on || exit 1
+$TMUX2 set -g focus-events off || exit 1
+$TMUX send -l "$(printf '\033[<35;20;3M')" || exit 1
+sleep 1
+
+if ! has_scrollbar_style; then
+	fail "auto-hide scrollbar not visible after mouse hover"
+fi
+
+sleep 3
+if has_scrollbar_style; then
+	fail "auto-hide scrollbar still visible after stale mouse hover"
+fi
+
 $TMUX2 copy-mode -H || exit 1
 $TMUX2 send -X history-top || exit 1
 sleep 1

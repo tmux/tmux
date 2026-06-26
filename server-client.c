@@ -647,7 +647,7 @@ server_client_update_scrollbar_hover(struct client *c, int type, int px, int py)
 			continue;
 		if (server_client_in_scrollbar_area(wp, px, py)) {
 			wp->sb_auto_hover = 1;
-			window_pane_scrollbar_show(wp, 0);
+			window_pane_scrollbar_show(wp, 1);
 		} else {
 			wp->sb_auto_hover = 0;
 			window_pane_scrollbar_start_timer(wp);
