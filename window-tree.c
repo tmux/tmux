@@ -38,11 +38,11 @@ static void		 window_tree_key(struct window_mode_entry *,
 
 #define WINDOW_TREE_DEFAULT_FORMAT \
 	"#{?pane_format," \
-		"#{?pane_marked,#[reverse],}#{?pane_floating_flag,#[italics],}" \
+		"#{?pane_marked,#[fg=thememagenta],}#{?pane_floating_flag,#[underscore],}" \
 		"#{pane_current_command}#[fg=themelightgrey]#{pane_flags}" \
 		"#{?#{&&:#{pane_title},#{!=:#{pane_title},#{host_short}}},: \"#{pane_title}\",}" \
 	",window_format," \
-		"#{?window_marked_flag,#[reverse],}" \
+		"#{?window_marked_flag,#[fg=thememagenta],}" \
 		"#{window_name}#[fg=themelightgrey]#{window_flags}" \
 		"#{?#{&&:#{==:#{window_panes},1},#{&&:#{pane_title},#{!=:#{pane_title},#{host_short}}}},: \"#{pane_title}\",}" \
 	"," \

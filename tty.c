@@ -753,8 +753,10 @@ tty_force_cursor_colour(struct tty *tty, int c)
 	u_char	r, g, b;
 	char	s[13];
 
-	if (c != -1)
+	if (c != -1) {
+		c = tty_map_theme_colour(tty, c);
 		c = colour_force_rgb(c);
+	}
 	if (c == tty->ccolour)
 		return;
 	if (c == -1)
