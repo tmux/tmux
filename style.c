@@ -285,7 +285,13 @@ style_tostring(struct style *sy)
 	struct grid_cell	*gc = &sy->gc;
 	int			 off = 0;
 	const char		*comma = "", *tmp = "";
-	static char		 s[256];
+	/*
+	 * A style with many attributes set serialises to well over 256 bytes
+	 * (the attribute list alone is ~155, plus colours, range, width, pad
+	 * and so on). xsnprintf() below is fatal on overflow, so size this for
+	 * the largest possible style.
+	 */
+	static char		 s[1024];
 	char			 b[21];
 
 	*s = '\0';
