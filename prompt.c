@@ -45,6 +45,7 @@ struct prompt {
 	enum screen_cursor_style  cstyle;
 	enum screen_cursor_style  command_cstyle;
 	int			  ccolour;
+	int			  command_ccolour;
 	int			  cmode;
 	int			  command_cmode;
 
@@ -123,6 +124,8 @@ prompt_set_options(struct prompt_create_data *pd, struct session *s)
 	screen_set_cursor_style(n, &pd->command_cstyle, &pd->command_cmode);
 	style_apply(&gc, oo, "prompt-cursor-colour", NULL);
 	pd->ccolour = gc.fg;
+	style_apply(&gc, oo, "prompt-command-cursor-colour", NULL);
+	pd->command_ccolour = gc.fg;
 	pd->message_format = options_get_string(oo, "message-format");
 	pd->keys = options_get_number(oo, "status-keys");
 	pd->word_separators = options_get_string(oo, "word-separators");
@@ -177,6 +180,7 @@ prompt_create(const struct prompt_create_data *pd)
 	pr->cstyle = pd->cstyle;
 	pr->command_cstyle = pd->command_cstyle;
 	pr->ccolour = pd->ccolour;
+	pr->command_ccolour = pd->command_ccolour;
 	pr->cmode = pd->cmode;
 	pr->command_cmode = pd->command_cmode;
 	pr->message_format = xstrdup(pd->message_format);
@@ -466,12 +470,13 @@ prompt_draw(struct prompt *pr, struct prompt_draw_data *pd)
 		memcpy(&gc, &pr->command_style, sizeof gc);
 		s->default_cstyle = pr->command_cstyle;
 		s->default_mode = pr->command_cmode;
+		s->default_ccolour = pr->command_ccolour;
 	} else {
 		memcpy(&gc, &pr->style, sizeof gc);
 		s->default_cstyle = pr->cstyle;
 		s->default_mode = pr->cmode;
+		s->default_ccolour = pr->ccolour;
 	}
-	s->default_ccolour = pr->ccolour;
 
 	expanded = prompt_expand(pr);
 	start = format_width(expanded);

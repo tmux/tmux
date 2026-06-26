@@ -274,6 +274,7 @@ const struct options_name_map options_other_names[] = {
 	{ "clock-mode-color", "clock-mode-colour" },
 	{ "cursor-color", "cursor-colour" },
 	{ "prompt-cursor-color", "prompt-cursor-colour" },
+	{ "prompt-command-cursor-color", "prompt-command-cursor-colour" },
 	{ "pane-colors", "pane-colours" },
 	{ NULL, NULL }
 };
@@ -586,7 +587,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "#{?#{e|>=:#{client_colours},256},darkseagreen,green}",
+	  .default_str = "#{?#{e|>=:#{client_colours},256},yellowgreen,green}",
 	  .text = "Dark theme colour for green."
 	},
 
@@ -1171,6 +1172,15 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
 	  .default_str = "",
 	  .text = "Colour of the cursor when in the command prompt."
+	},
+
+	{ .name = "prompt-command-cursor-colour",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .flags = OPTIONS_TABLE_IS_COLOUR,
+	  .default_str = "",
+	  .text = "Colour of the cursor in the command prompt when in command "
+		  "mode, if 'status-keys' is set to 'vi'."
 	},
 
 	{ .name = "prompt-cursor-style",

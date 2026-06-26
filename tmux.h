@@ -2068,6 +2068,7 @@ struct prompt_create_data {
 	enum screen_cursor_style cstyle;
 	enum screen_cursor_style command_cstyle;
 	int			 ccolour;
+	int			 command_ccolour;
 	int			 cmode;
 	int			 command_cmode;
 	const char		*message_format;
