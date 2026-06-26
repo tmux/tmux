@@ -336,13 +336,20 @@ window_buffer_sort(struct sort_criteria *sort_crit)
 }
 
 static const char* window_buffer_help_lines[] = {
-	"#[bold]      Enter #[default]#[acs]x#[default] Paste selected %1",
-	"#[bold]          p #[default]#[acs]x#[default] Paste selected %1",
-	"#[bold]          P #[default]#[acs]x#[default] Paste tagged %1s",
-	"#[bold]          d #[default]#[acs]x#[default] Delete selected %1",
-	"#[bold]          D #[default]#[acs]x#[default] Delete tagged %1s",
-	"#[bold]          e #[default]#[acs]x#[default] Open %1 in editor",
-	"#[bold]          f #[default]#[acs]x#[default] Enter a filter",
+	"#[fg=themelightgrey]"
+	"      Enter #[#{E:tree-mode-border-style},acs]x#[default] Paste selected %1",
+	"#[fg=themelightgrey]"
+	"          p #[#{E:tree-mode-border-style},acs]x#[default] Paste selected %1",
+	"#[fg=themelightgrey]"
+	"          P #[#{E:tree-mode-border-style},acs]x#[default] Paste tagged %1s",
+	"#[fg=themelightgrey]"
+	"          d #[#{E:tree-mode-border-style},acs]x#[default] Delete selected %1",
+	"#[fg=themelightgrey]"
+	"          D #[#{E:tree-mode-border-style},acs]x#[default] Delete tagged %1s",
+	"#[fg=themelightgrey]"
+	"          e #[#{E:tree-mode-border-style},acs]x#[default] Open %1 in editor",
+	"#[fg=themelightgrey]"
+	"          f #[#{E:tree-mode-border-style},acs]x#[default] Enter a filter",
 	NULL
 };
 

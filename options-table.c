@@ -593,7 +593,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "#{?#{e|>=:#{client_colours},256},darkkhaki,yellow}",
+	  .default_str = "#{?#{e|>=:#{client_colours},256},darkgoldenrod,yellow}",
 	  .text = "Dark theme colour for yellow."
 	},
 
@@ -1503,8 +1503,8 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "fg=#{?pane_marked,thememagenta,"
-	                 "#{?synchronize-panes,themered,"
-	                 "#{?pane_in_mode,themeyellow,themegreen}}}",
+			 "#{?synchronize-panes,themered,"
+			 "#{?pane_in_mode,themeyellow,themegreen}}}",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the active pane border."
@@ -1614,7 +1614,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "popup-border-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "fg=themelightgrey",
+	  .default_str = "bg=themedarkgrey,fg=themelightgrey",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Default style of popup borders."
@@ -1675,6 +1675,15 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 0,
 	  .text = "Maximum number of columns in the 'tiled' layout. "
 		  "A value of 0 means no limit."
+	},
+
+	{ .name = "tree-mode-border-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "bg=themedarkgrey,fg=themelightgrey",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of borders in tree mode."
 	},
 
 	{ .name = "tree-mode-preview-format",

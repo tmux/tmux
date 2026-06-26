@@ -39,14 +39,14 @@ static void		 window_tree_key(struct window_mode_entry *,
 #define WINDOW_TREE_DEFAULT_FORMAT \
 	"#{?pane_format," \
 		"#{?pane_marked,#[reverse],}#{?pane_floating_flag,#[italics],}" \
-		"#{pane_current_command}#{pane_flags}" \
+		"#{pane_current_command}#[fg=themelightgrey]#{pane_flags}" \
 		"#{?#{&&:#{pane_title},#{!=:#{pane_title},#{host_short}}},: \"#{pane_title}\",}" \
 	",window_format," \
 		"#{?window_marked_flag,#[reverse],}" \
-		"#{window_name}#{window_flags}" \
+		"#{window_name}#[fg=themelightgrey]#{window_flags}" \
 		"#{?#{&&:#{==:#{window_panes},1},#{&&:#{pane_title},#{!=:#{pane_title},#{host_short}}}},: \"#{pane_title}\",}" \
 	"," \
-		"#{session_windows} windows" \
+		"#[fg=themelightgrey]#{session_windows} windows" \
 		"#{?session_grouped, " \
 			"(group #{session_group}: " \
 			"#{session_group_list})," \
@@ -401,7 +401,8 @@ window_tree_build(void *modedata, struct sort_criteria *sort_crit,
 
 static void
 window_tree_draw_label(struct screen_write_ctx *ctx, u_int px, u_int py,
-    u_int sx, u_int sy, const struct grid_cell *gc, const char *label)
+    u_int sx, u_int sy, const struct grid_cell *border_gc,
+    const struct grid_cell *label_gc, const char *label)
 {
 	u_int	 width, ox, oy;
 	char	*new_label = NULL;
@@ -420,12 +421,20 @@ window_tree_draw_label(struct screen_write_ctx *ctx, u_int px, u_int py,
 
 	screen_write_cursormove(ctx, px + ox - 2, py + oy - 1, 0);
 	screen_write_box(ctx, width + 4, 3, BOX_LINES_DEFAULT,
-	    NULL, NULL);
+	    border_gc, NULL);
 	screen_write_cursormove(ctx, px + ox - 1, py + oy, 0);
-	screen_write_clearcharacter(ctx, width + 2, 8);
+	screen_write_clearcharacter(ctx, width + 2, border_gc->bg);
 	screen_write_cursormove(ctx, px + ox, py + oy, 0);
-	format_draw(ctx, gc, width, label, NULL, 0);
+	format_draw(ctx, label_gc, width, label, NULL, 0);
 	free(new_label);
+}
+
+static void
+window_tree_border_cell(struct grid_cell *gc, struct options *oo,
+    struct format_tree *ft)
+{
+	memcpy(gc, &grid_default_cell, sizeof *gc);
+	style_apply(gc, oo, "tree-mode-border-style", ft);
 }
 
 static void
@@ -437,7 +446,7 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 	u_int			 cx = ctx->s->cx, cy = ctx->s->cy;
 	u_int			 loop, total, visible, each, width, offset;
 	u_int			 current, start, end, remaining, i;
-	struct grid_cell	 gc;
+	struct grid_cell	 gc, label_gc;
 	int			 left, right;
 	char			*label;
 	const char		*format;
@@ -495,20 +504,21 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 	if (each == 0)
 		return;
 
+	window_tree_border_cell(&gc, data->wp->window->options, NULL);
 	if (left) {
 		data->left = cx + 2;
 		screen_write_cursormove(ctx, cx + 2, cy, 0);
-		screen_write_vline(ctx, sy, 0, 0);
+		screen_write_vline(ctx, sy, 0, 0, &gc);
 		screen_write_cursormove(ctx, cx, cy + sy / 2, 0);
-		screen_write_puts(ctx, &grid_default_cell, "<");
+		screen_write_puts(ctx, &gc, "<");
 	} else
 		data->left = -1;
 	if (right) {
 		data->right = cx + sx - 3;
 		screen_write_cursormove(ctx, cx + sx - 3, cy, 0);
-		screen_write_vline(ctx, sy, 0, 0);
+		screen_write_vline(ctx, sy, 0, 0, &gc);
 		screen_write_cursormove(ctx, cx + sx - 1, cy + sy / 2, 0);
-		screen_write_puts(ctx, &grid_default_cell, ">");
+		screen_write_puts(ctx, &gc, ">");
 	} else
 		data->right = -1;
 
@@ -530,8 +540,10 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 		ft = format_create(NULL, NULL, FORMAT_WINDOW|w->id, 0);
 		format_defaults(ft, NULL, s, wl, NULL);
 
-		memcpy(&gc, &grid_default_cell, sizeof gc);
-		style_apply(&gc, oo, "tree-mode-preview-style", ft);
+		window_tree_border_cell(&gc, oo, ft);
+		memcpy(&label_gc, &grid_default_cell, sizeof label_gc);
+		style_apply(&label_gc, oo, "tree-mode-preview-style", ft);
+		label_gc.bg = gc.bg;
 
 		if (left)
 			offset = 3 + (i * each);
@@ -550,7 +562,7 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 			label = format_expand(ft, format);
 			if (*label != '\0') {
 				window_tree_draw_label(ctx, cx + offset, cy,
-				    width, sy, &gc, label);
+				    width, sy, &gc, &label_gc, label);
 			}
 			free(label);
 		}
@@ -558,7 +570,7 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 		if (loop != end - 1) {
 			screen_write_cursormove(ctx, cx + offset + width, cy,
 			    0);
-			screen_write_vline(ctx, sy, 0, 0);
+			screen_write_vline(ctx, sy, 0, 0, &gc);
 		}
 		loop++;
 
@@ -575,7 +587,7 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 	u_int			 cx = ctx->s->cx, cy = ctx->s->cy;
 	u_int			 loop, total, visible, each, width, offset;
 	u_int			 current, start, end, remaining, i;
-	struct grid_cell	 gc;
+	struct grid_cell	 gc, label_gc;
 	int			 left, right;
 	char			*label;
 	const char		*format;
@@ -639,20 +651,21 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 	if (each == 0)
 		return;
 
+	window_tree_border_cell(&gc, data->wp->window->options, NULL);
 	if (left) {
 		data->left = cx + 2;
 		screen_write_cursormove(ctx, cx + 2, cy, 0);
-		screen_write_vline(ctx, sy, 0, 0);
+		screen_write_vline(ctx, sy, 0, 0, &gc);
 		screen_write_cursormove(ctx, cx, cy + sy / 2, 0);
-		screen_write_puts(ctx, &grid_default_cell, "<");
+		screen_write_puts(ctx, &gc, "<");
 	} else
 		data->left = -1;
 	if (right) {
 		data->right = cx + sx - 3;
 		screen_write_cursormove(ctx, cx + sx - 3, cy, 0);
-		screen_write_vline(ctx, sy, 0, 0);
+		screen_write_vline(ctx, sy, 0, 0, &gc);
 		screen_write_cursormove(ctx, cx + sx - 1, cy + sy / 2, 0);
-		screen_write_puts(ctx, &grid_default_cell, ">");
+		screen_write_puts(ctx, &gc, ">");
 	} else
 		data->right = -1;
 
@@ -675,8 +688,10 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 		ft = format_create(NULL, NULL, FORMAT_PANE|wp->id, 0);
 		format_defaults(ft, NULL, s, wl, wp);
 
-		memcpy(&gc, &grid_default_cell, sizeof gc);
-		style_apply(&gc, oo, "tree-mode-preview-style", ft);
+		window_tree_border_cell(&gc, oo, ft);
+		memcpy(&label_gc, &grid_default_cell, sizeof label_gc);
+		style_apply(&label_gc, oo, "tree-mode-preview-style", ft);
+		label_gc.bg = gc.bg;
 
 		if (left)
 			offset = 3 + (i * each);
@@ -695,7 +710,7 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 			label = format_expand(ft, format);
 			if (*label != '\0') {
 				window_tree_draw_label(ctx, cx + offset, cy,
-				    width, sy, &gc, label);
+				    width, sy, &gc, &label_gc, label);
 			}
 			free(label);
 		}
@@ -703,7 +718,7 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 		if (loop != end - 1) {
 			screen_write_cursormove(ctx, cx + offset + width, cy,
 			    0);
-			screen_write_vline(ctx, sy, 0, 0);
+			screen_write_vline(ctx, sy, 0, 0, &gc);
 		}
 		loop++;
 
@@ -889,18 +904,30 @@ window_tree_sort(struct sort_criteria *sort_crit)
 }
 
 static const char* window_tree_help_lines[] = {
-	"#[bold]      Enter #[default]#[acs]x#[default] Choose selected item",
-	"#[bold]       S-Up #[default]#[acs]x#[default] Swap current and previous window",
-	"#[bold]     S-Down #[default]#[acs]x#[default] Swap current and next window",
-	"#[bold]          x #[default]#[acs]x#[default] Kill selected item",
-	"#[bold]          X #[default]#[acs]x#[default] Kill tagged items",
-	"#[bold]          < #[default]#[acs]x#[default] Scroll previews left",
-	"#[bold]          > #[default]#[acs]x#[default] Scroll previews right",
-	"#[bold]          m #[default]#[acs]x#[default] Set the marked pane",
-	"#[bold]          M #[default]#[acs]x#[default] Clear the marked pane",
-	"#[bold]          : #[default]#[acs]x#[default] Run a command for each tagged item",
-	"#[bold]          f #[default]#[acs]x#[default] Enter a format",
-	"#[bold]          H #[default]#[acs]x#[default] Jump to the starting pane",
+	"#[fg=themelightgrey]"
+	"      Enter #[#{E:tree-mode-border-style},acs]x#[default] Choose selected item",
+	"#[fg=themelightgrey]"
+	"       S-Up #[#{E:tree-mode-border-style},acs]x#[default] Swap current and previous window",
+	"#[fg=themelightgrey]"
+	"     S-Down #[#{E:tree-mode-border-style},acs]x#[default] Swap current and next window",
+	"#[fg=themelightgrey]"
+	"          x #[#{E:tree-mode-border-style},acs]x#[default] Kill selected item",
+	"#[fg=themelightgrey]"
+	"          X #[#{E:tree-mode-border-style},acs]x#[default] Kill tagged items",
+	"#[fg=themelightgrey]"
+	"          < #[#{E:tree-mode-border-style},acs]x#[default] Scroll previews left",
+	"#[fg=themelightgrey]"
+	"          > #[#{E:tree-mode-border-style},acs]x#[default] Scroll previews right",
+	"#[fg=themelightgrey]"
+	"          m #[#{E:tree-mode-border-style},acs]x#[default] Set the marked pane",
+	"#[fg=themelightgrey]"
+	"          M #[#{E:tree-mode-border-style},acs]x#[default] Clear the marked pane",
+	"#[fg=themelightgrey]"
+	"          : #[#{E:tree-mode-border-style},acs]x#[default] Run a command for each tagged item",
+	"#[fg=themelightgrey]"
+	"          f #[#{E:tree-mode-border-style},acs]x#[default] Enter a format",
+	"#[fg=themelightgrey]"
+	"          H #[#{E:tree-mode-border-style},acs]x#[default] Jump to the starting pane",
 	NULL
 };
 
