@@ -993,6 +993,10 @@ struct style {
 	int			pad;
 
 	enum style_default_type	default_type;
+
+	/* OSC 8 hyperlink: an ID into the global style hyperlink set (see
+	   style.c), or zero for no link. */
+	u_int			link;
 };
 
 #ifdef ENABLE_SIXEL
@@ -3989,6 +3993,7 @@ int		 style_parse(struct style *,const struct grid_cell *,
 int		 style_parse_colour(struct style *,
 		     const struct grid_cell *, const char *);
 const char	*style_tostring(struct style *);
+const char	*style_link(struct style *);
 struct style	*style_add(struct grid_cell *, struct options *,
 		     const char *, struct format_tree *);
 void		 style_apply(struct grid_cell *, struct options *,

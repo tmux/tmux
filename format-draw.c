@@ -723,7 +723,7 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	struct grid_cell	 gc, current_default, base_default;
 	struct style		 sy, saved_sy;
 	struct utf8_data	*ud = &sy.gc.data;
-	const char		*cp, *end;
+	const char		*cp, *end, *link_uri;
 	enum utf8_state		 more;
 	char			*tmp;
 	struct format_range	*fr = NULL, *fr1;
@@ -837,6 +837,21 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 			sy.gc.bg = base->bg;
 			sy.gc.fg = base->fg;
 		}
+
+		/*
+		 * Resolve the style's #[link=...] URI into a hyperlink ID in
+		 * the target screen's set and store it on the cell, so the
+		 * cells drawn below carry an OSC 8 link (emitted later by
+		 * tty_draw_line). The URI doubles as the internal ID so
+		 * repeated links share one entry and the ID stays stable across
+		 * redraws (no spurious status redraws from grid_compare).
+		 */
+		link_uri = style_link(&sy);
+		if (link_uri != NULL && os->hyperlinks != NULL)
+			sy.gc.link = hyperlinks_put(os->hyperlinks, link_uri,
+			    link_uri);
+		else
+			sy.gc.link = 0;
 
 		/* If this style has a fill colour, store it for later. */
 		if (sy.fill != 8)

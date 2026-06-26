@@ -42,6 +42,9 @@
 
 #define MAX_HYPERLINKS 5000
 
+/* Maximum length of a stored hyperlink URI. */
+#define MAX_HYPERLINK_URI 1024
+
 static long long hyperlinks_next_external_id = 1;
 static u_int global_hyperlinks_count;
 
@@ -146,6 +149,13 @@ hyperlinks_put(struct hyperlinks *hl, const char *uri_in,
 
 	utf8_stravis(&uri, uri_in, VIS_OCTAL|VIS_CSTYLE);
 	utf8_stravis(&internal_id, internal_id_in, VIS_OCTAL|VIS_CSTYLE);
+
+	/* Reject an over-long URI so it is never stored. */
+	if (strlen(uri) > MAX_HYPERLINK_URI) {
+		free(uri);
+		free(internal_id);
+		return (0);
+	}
 
 	if (*internal_id_in != '\0') {
 		find.uri = uri;

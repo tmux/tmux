@@ -1,5 +1,10 @@
 CHANGES FROM 3.6b TO 3.7
 
+* Add a link= style attribute (with nolink to end it) which makes styled text
+  an OSC 8 hyperlink, for example in the status line:
+  status-right "#[link=https://example.com]link#[nolink]". Emitted only to
+  terminals with the hyperlinks feature.
+
 * Add floating panes. These are panes which sit above the layout ("tiled
   panes") like popups but unlike popups are not modal and behave like panes (so
   the same escape sequence support). Floating panes are created with the
