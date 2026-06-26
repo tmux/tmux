@@ -148,10 +148,12 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			continue;
 
 		argval = args_get(args, flag);
-		if (argval == NULL)
-			argval = "1";
-		else if (!isdigit(*argval) && args_count(args) > 0)
-			argval = args_string(args, 0);
+		if (argval == NULL) {
+			if (args_count(args) == 0)
+				argval = "1";
+			else
+				argval = args_string(args, 0);
+		}
 
 		adjust = strtonum(argval, INT_MIN, INT_MAX, &errstr);
 		if (errstr != NULL) {

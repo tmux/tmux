@@ -186,6 +186,12 @@ args_parse_flag_argument(struct args_value *values, u_int count, char **cause,
 out:
 	s = args_value_as_string(new);
 	log_debug("%s: -%c = %s", __func__, flag, s);
+	if (optional_argument && *s == '-') {
+		args_free_value(new);
+		free(new);
+		new = NULL;
+	}
+
 	args_set(args, flag, new, 0);
 	return (0);
 }
