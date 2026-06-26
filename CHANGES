@@ -5,6 +5,7 @@ CHANGES FROM 3.6b TO 3.7
   the same escape sequence support). Floating panes are created with the
   new-pane command, bound to * by default.
 
+  This is an early release of this feature and they are relatively limited.
   Currently floating panes can only be moved and resized using the mouse. The
   default second status line (if status-format is set to 2) has changed to show
   a list of panes. Many obvious features are not yet available for floating
