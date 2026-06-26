@@ -263,7 +263,7 @@ layout_cell_is_tiled(struct layout_cell *lc)
 	return is_leaf && !is_floating;
 }
 
-static int
+int
 layout_cell_has_tiled_child(struct layout_cell *lc)
 {
 	struct layout_cell      *lcchild;
@@ -1189,7 +1189,7 @@ layout_resize_child_cells(struct window *w, struct layout_cell *lc)
  * inserts the cell into it. Used when creating new cells requires a different
  * layout type, or when the root layout is a window pane.
  */
-static struct layout_cell *
+struct layout_cell *
 layout_replace_with_node(struct window *w, struct layout_cell *lc,
     enum layout_type type)
 {
@@ -1521,36 +1521,15 @@ struct layout_cell *
 layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
     struct window *w, struct window_pane *wp, int flags, char **cause)
 {
-	struct layout_cell	*lcnew, *lc = wp->layout_cell;
-	struct layout_cell	*lcroot = w->layout_root;
+	struct layout_cell	*lcnew;
 	enum layout_type	 type;
 	u_int			 curval;
 	int			 size = -1;
 	char			*error = NULL;
 
 	if (window_pane_is_floating(wp)) {
-		if (layout_cell_has_tiled_child(lcroot)) {
-			*cause = xstrdup("can't split a floating pane");
-			return (NULL);
-		}
-		/*
-		 * When no panes are tiled, a new cell is created and inserted
-		 * at the top of the root node. A new root node is created if
-		 * necessary.
-		 */
-		lcnew = layout_create_cell(NULL);
-		layout_set_size(lcnew, w->sx, w->sy, 0, 0);
-		if (lcroot->type == LAYOUT_WINDOWPANE) {
-			lcroot = layout_replace_with_node(w, lcnew,
-			    LAYOUT_TOPBOTTOM);
-			TAILQ_INSERT_TAIL(&lcroot->cells, lc, entry);
-			lc->parent = lcroot;
-			w->layout_root = lcroot;
-		} else {
-			lcnew->parent = lcroot;
-			TAILQ_INSERT_HEAD(&lcroot->cells, lcnew, entry);
-		}
-		return (lcnew);
+		*cause = xstrdup("can't split a floating pane");
+		return (NULL);
 	}
 
 	type = LAYOUT_TOPBOTTOM;

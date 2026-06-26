@@ -70,6 +70,38 @@ const struct cmd_entry cmd_split_window_entry = {
 	.exec = cmd_split_window_exec
 };
 
+static struct layout_cell *
+cmd_split_window_new_tiled(struct cmdq_item *item, struct args *args,
+    struct window *w, struct window_pane *wp, int flags, int new_pane,
+    char **cause)
+{
+	struct layout_cell	*lcnew, *lc = wp->layout_cell;
+	struct layout_cell	*lcroot = w->layout_root;
+
+	/*
+	 * When no panes are tiled and `new-pane` was used, a new cell is
+	 * created and inserted at the top of the root node. A new root node is
+	 * created if necessary.
+	 */
+	if (new_pane && !layout_cell_has_tiled_child(lcroot)) {
+		lcnew = layout_create_cell(NULL);
+		layout_set_size(lcnew, w->sx, w->sy, 0, 0);
+		if (lcroot->type == LAYOUT_WINDOWPANE) {
+			lcroot = layout_replace_with_node(w, lcnew,
+			    LAYOUT_TOPBOTTOM);
+			TAILQ_INSERT_TAIL(&lcroot->cells, lc, entry);
+			lc->parent = lcroot;
+			w->layout_root = lcroot;
+		} else {
+			lcnew->parent = lcroot;
+			TAILQ_INSERT_HEAD(&lcroot->cells, lcnew, entry);
+		}
+		return (lcnew);
+	}
+
+	return layout_get_tiled_cell(item, args, w, wp, flags, cause);
+}
+
 static enum cmd_retval
 cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -84,7 +116,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*wp = target->wp, *new_wp;
 	struct layout_cell	*lc = NULL;
 	struct cmd_find_state	 fs;
-	int			 input, empty, is_floating, flags = 0;
+	int			 input, empty, is_floating, new_pane, flags = 0;
 	const char		*template, *style, *value;
 	char			*cause = NULL, *cp, *title;
 	const struct options_table_entry *oe;
@@ -92,7 +124,8 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	enum pane_lines		 lines;
 	u_int			 count = args_count(args);
 
-	if (cmd_get_entry(self) == &cmd_new_pane_entry)
+	new_pane = cmd_get_entry(self) == &cmd_new_pane_entry;
+	if (new_pane)
 		is_floating = !args_has(args, 'L');
 	else
 		is_floating = 0;
@@ -132,7 +165,8 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (is_floating)
 		lc = layout_get_floating_cell(item, args, lines, w, wp, &cause);
 	else
-		lc = layout_get_tiled_cell(item, args, w, wp, flags, &cause);
+		lc = cmd_split_window_new_tiled(item, args, w, wp, flags,
+		    new_pane, &cause);
 	if (cause != NULL) {
 		cmdq_error(item, "%s", cause);
 		free(cause);
