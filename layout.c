@@ -74,6 +74,12 @@ layout_create_cell(struct layout_cell *lcparent)
 	lc->xoff = INT_MAX;
 	lc->yoff = INT_MAX;
 
+	lc->saved_sx = UINT_MAX;
+	lc->saved_sy = UINT_MAX;
+
+	lc->saved_xoff = INT_MAX;
+	lc->saved_yoff = INT_MAX;
+
 	lc->wp = NULL;
 
 	return (lc);
@@ -814,7 +820,7 @@ layout_resize_pane_to(struct window_pane *wp, enum layout_type type,
 }
 
 /* Resize a floating pane to an absolute size. */
-void
+int
 layout_resize_floating_pane_to(struct window_pane *wp, enum layout_type type,
     u_int size, char **cause)
 {
@@ -822,7 +828,7 @@ layout_resize_floating_pane_to(struct window_pane *wp, enum layout_type type,
 
 	if (~lc->flags & LAYOUT_CELL_FLOATING) {
 		*cause = xstrdup("pane is not floating");
-		return;
+		return (-1);
 	}
 
 	if (window_pane_get_pane_lines(wp) != PANE_LINES_NONE &&
@@ -830,23 +836,24 @@ layout_resize_floating_pane_to(struct window_pane *wp, enum layout_type type,
 		size -= 2;
 	if (size < PANE_MINIMUM || size > PANE_MAXIMUM) {
 		*cause = xstrdup("size is too big or too small");
-		return;
+		return (-1);
 	}
 
 	if (type == LAYOUT_TOPBOTTOM) {
 		if (lc->sy == size)
-			return;
+			return (0);
 		lc->sy = size;
 	} else {
 		if (lc->sx == size)
-			return;
+			return (0);
 		lc->sx = size;
 	}
 	redraw_invalidate_scene(wp->window);
+	return (0);
 }
 
 /* Resize a floating pane relative to its current size. */
-void
+int
 layout_resize_floating_pane(struct window_pane *wp, enum layout_type type,
     int change, int opposite, char **cause)
 {
@@ -855,16 +862,16 @@ layout_resize_floating_pane(struct window_pane *wp, enum layout_type type,
 
 	if (~lc->flags & LAYOUT_CELL_FLOATING) {
 		*cause = xstrdup("pane is not floating");
-		return;
+		return (-1);
 	}
 	if (change == 0)
-		return;
+		return (0);
 
 	if (type == LAYOUT_TOPBOTTOM) {
 		size = lc->sy + change;
 		if (size < PANE_MINIMUM || size > PANE_MAXIMUM) {
 			*cause = xstrdup("change is too big or too small");
-			return;
+			return (-1);
 		}
 		lc->sy = size;
 		if (opposite)
@@ -873,13 +880,14 @@ layout_resize_floating_pane(struct window_pane *wp, enum layout_type type,
 		size = lc->sx + change;
 		if (size < PANE_MINIMUM || size > PANE_MAXIMUM) {
 			*cause = xstrdup("change is too big or too small");
-			return;
+			return (-1);
 		}
 		lc->sx = size;
 		if (opposite)
 			lc->xoff -= change;
 	}
 	redraw_invalidate_scene(wp->window);
+	return (0);
 }
 
 /* Resize a layout cell. */
@@ -1561,16 +1569,35 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 	return (lc);
 }
 
-/* Get a new floating cell. */
 struct layout_cell *
 layout_get_floating_cell(struct cmdq_item *item, struct args *args,
     enum pane_lines lines, struct window *w, struct window_pane *wp,
     char **cause)
 {
 	struct layout_cell	*lcnew;
-	int			 sx = w->sx / 2, sy = w->sy / 4;
+	u_int			 sx = UINT_MAX, sy = UINT_MAX;
 	int			 ox = INT_MAX, oy = INT_MAX;
-	char			*error;
+
+	if (layout_floating_args_parse(item, args, lines, w, &sx, &sy, &ox, &oy,
+	    cause) != 0)
+		return (NULL);
+
+	lcnew = layout_floating_pane(w, wp, sx, sy, ox, oy);
+	return (lcnew);
+}
+
+int
+layout_floating_args_parse(struct cmdq_item *item, struct args *args,
+    enum pane_lines lines, struct window *w, u_int *sxp, u_int *syp, int *oxp,
+    int *oyp, char **cause)
+{
+	int	 sx, sy, ox, oy;
+	char	*error = NULL;
+
+	sx = *sxp == UINT_MAX ? w->sx / 2 : *sxp;
+	sy = *syp == UINT_MAX ? w->sy / 4 : *syp;
+	ox = *oxp == INT_MAX ? INT_MAX : *oxp;
+	oy = *oyp == INT_MAX ? INT_MAX : *oyp;
 
 	if (args_has(args, 'x')) {
 		sx = args_percentage_and_expand(args, 'x', 0, PANE_MAXIMUM,
@@ -1578,7 +1605,7 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 		if (error != NULL) {
 			xasprintf(cause, "position %s", error);
 			free(error);
-			return (NULL);
+			return (-1);
 		}
 		if (lines != PANE_LINES_NONE)
 			sx -= 2;
@@ -1589,7 +1616,7 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 		if (error != NULL) {
 			xasprintf(cause, "position %s", error);
 			free(error);
-			return (NULL);
+			return (-1);
 		}
 		if (lines != PANE_LINES_NONE)
 			sy -= 2;
@@ -1598,18 +1625,18 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 		ox = args_percentage_and_expand(args, 'X', -sx, w->sx,
 		    w->sx, item, &error);
 		if (error != NULL) {
-			xasprintf(cause, "size %s", error);
+			xasprintf(cause, "position %s", error);
 			free(error);
-			return (NULL);
+			return (-1);
 		}
 	}
 	if (args_has(args, 'Y')) {
 		oy = args_percentage_and_expand(args, 'Y', -sy, w->sy,
 		    w->sy, item, &error);
 		if (error != NULL) {
-			xasprintf(cause, "size %s", error);
+			xasprintf(cause, "position %s", error);
 			free(error);
-			return (NULL);
+			return (-1);
 		}
 	}
 
@@ -1640,15 +1667,18 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 
 	if (sx < PANE_MINIMUM || sx > PANE_MAXIMUM) {
 		*cause = xstrdup("invalid width");
-		return (NULL);
+		return (-1);
 	}
 	if (sy < PANE_MINIMUM || sy > PANE_MAXIMUM) {
 		*cause = xstrdup("invalid height");
-		return (NULL);
+		return (-1);
 	}
 
-	lcnew = layout_floating_pane(w, wp, sx, sy, ox, oy);
-	return (lcnew);
+	*sxp = sx;
+	*syp = sy;
+	*oxp = ox;
+	*oyp = oy;
+	return (0);
 }
 
 /*

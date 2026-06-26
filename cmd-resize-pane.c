@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -63,8 +64,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*errstr, *argval;
 	const char		 flags[4] = { 'U', 'D', 'L', 'R' };
 	char			*cause = NULL, flag;
-	u_int			 opposite = 0;
-	int			 adjust, x, y, status;
+	int			 adjust, x, y, status, opposite = 0;
 	long unsigned		 i;
 	struct grid		*gd = wp->base.grid;
 
@@ -101,9 +101,8 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_ERROR);
 		}
 		if (window_pane_is_floating(wp)) {
-			layout_resize_floating_pane_to(wp, LAYOUT_LEFTRIGHT, x,
-			    &cause);
-			if (cause != NULL) {
+			if (layout_resize_floating_pane_to(wp, LAYOUT_LEFTRIGHT,
+			    x, &cause) != 0) {
 				cmdq_error(item, "size %s", cause);
 				free(cause);
 				return (CMD_RETURN_ERROR);
@@ -130,9 +129,8 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			break;
 		}
 		if (window_pane_is_floating(wp)) {
-			layout_resize_floating_pane_to(wp, LAYOUT_TOPBOTTOM, y,
-			    &cause);
-			if (cause != NULL) {
+			if (layout_resize_floating_pane_to(wp, LAYOUT_TOPBOTTOM,
+			    y, &cause) != 0) {
 				cmdq_error(item, "size %s", cause);
 				free(cause);
 				return (CMD_RETURN_ERROR);
@@ -147,8 +145,12 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			continue;
 
 		argval = args_get(args, flag);
-		if (argval == NULL)
-			argval = "1";
+		if (argval == NULL) {
+			if (args_count(args) == 0)
+				argval = "1";
+			else
+				argval = args_string(args, 0);
+		}
 
 		adjust = strtonum(argval, INT_MIN, INT_MAX, &errstr);
 		if (errstr != NULL) {
@@ -164,9 +166,8 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			if (flag == 'L' || flag == 'U')
 				opposite = 1;
 
-			layout_resize_floating_pane(wp, type, adjust, opposite,
-			    &cause);
-			if (cause != NULL) {
+			if (layout_resize_floating_pane(wp, type, adjust,
+			    opposite, &cause) != 0) {
 				cmdq_error(item, "adjustment %s", cause);
 				free(cause);
 				return (CMD_RETURN_ERROR);
