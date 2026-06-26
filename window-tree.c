@@ -114,6 +114,7 @@ struct window_tree_modedata {
 	char				 *command;
 	int				  squash_groups;
 	int				  hide_preview_this_pane;
+	int				  preview_is_info;
 	int				  prompt_flags;
 
 	struct window_tree_itemdata	**item_list;
@@ -139,6 +140,82 @@ static enum sort_order window_tree_order_seq[] = {
 	SORT_ACTIVITY,
 	SORT_Z,
 	SORT_END,
+};
+
+#define WINDOW_TREE_FLAG(label, cond) \
+	"#{?" cond ",#[fg=themegreen],#[fg=themelightgrey]}" label "#[default]"
+
+static const char *window_tree_pane_info_lines[] = {
+	"#[fg=themelightgrey]Pane          #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{pane_index} #[fg=themelightgrey](#{pane_id})#[default]",
+	"#[fg=themelightgrey]Title         #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{pane_title}",
+	"#[fg=themelightgrey]Command       #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{pane_current_command} #[fg=themelightgrey](PID #{pane_pid})#[default]",
+	"#[fg=themelightgrey]Path          #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{pane_current_path}",
+	"#[fg=themelightgrey]TTY           #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{pane_tty}",
+	"#[fg=themelightgrey]Position      #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{pane_x},#{pane_y} #{pane_width}x#{pane_height}",
+	"#[fg=themelightgrey]Started At    #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{?pane_start_command,#{pane_start_command},none}",
+	"#[fg=themelightgrey]Mode          #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{?pane_in_mode,#{pane_mode},none}",
+	"#[fg=themelightgrey]Flags         #[#{E:tree-mode-border-style},acs]x#[default] "
+	WINDOW_TREE_FLAG("active", "pane_active") " "
+	WINDOW_TREE_FLAG("zoomed", "window_zoomed_flag") " "
+	WINDOW_TREE_FLAG("marked", "pane_marked") " "
+	WINDOW_TREE_FLAG("sync", "pane_synchronized") " "
+	WINDOW_TREE_FLAG("dead", "pane_dead") " "
+	WINDOW_TREE_FLAG("piped", "pane_pipe"),
+};
+
+static const char *window_tree_window_info_lines[] = {
+	"#[fg=themelightgrey]Window        #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{window_index}: #{window_name} #[fg=themelightgrey](#{window_id})#[default]",
+	"#[fg=themelightgrey]Size          #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{window_width}x#{window_height}",
+	"#[fg=themelightgrey]Panes         #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{window_panes}",
+	"#[fg=themelightgrey]Activity Time #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{t:window_activity} #[fg=themelightgrey](#{t/r:window_activity})#[default]",
+	"#[fg=themelightgrey]Sessions      #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{s/,/ /:window_active_sessions_list}",
+	"#[fg=themelightgrey]Flags         #[#{E:tree-mode-border-style},acs]x#[default] "
+	WINDOW_TREE_FLAG("active", "window_active") " "
+	WINDOW_TREE_FLAG("last", "window_last_flag") " "
+	WINDOW_TREE_FLAG("bell", "window_bell_flag") " "
+	WINDOW_TREE_FLAG("activity", "window_activity_flag") " "
+	WINDOW_TREE_FLAG("silence", "window_silence_flag") " "
+	WINDOW_TREE_FLAG("zoomed", "window_zoomed_flag") " "
+	WINDOW_TREE_FLAG("marked", "window_marked_flag"),
+};
+
+static const char *window_tree_session_info_lines[] = {
+	"#[fg=themelightgrey]Session       #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{session_name} #[fg=themelightgrey](#{session_id})#[default]",
+	"#[fg=themelightgrey]Created Time  #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{t:session_created} #[fg=themelightgrey](#{t/r:session_created})#[default]",
+	"#[fg=themelightgrey]Activity Time #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{t:session_activity} #[fg=themelightgrey](#{t/r:session_activity})#[default]",
+	"#[fg=themelightgrey]Attached Time #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{?#{t:session_last_attached},#{t:session_last_attached} #[fg=themelightgrey](#{t/r:session_last_attached})#[default],never}",
+	"#[fg=themelightgrey]Clients       #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{s/,/ /:session_attached_list}",
+	"#[fg=themelightgrey]Windows       #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{session_windows}",
+	"#[fg=themelightgrey]Path          #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{session_path}",
+	"#[fg=themelightgrey]Group         #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{?session_grouped,#{session_group} (#{session_group_size}),none}",
+	"#[fg=themelightgrey]Flags         #[#{E:tree-mode-border-style},acs]x#[default] "
+	WINDOW_TREE_FLAG("attached", "session_attached") " "
+	WINDOW_TREE_FLAG("grouped", "session_grouped") " "
+	WINDOW_TREE_FLAG("marked", "session_marked") " "
+	WINDOW_TREE_FLAG("bell", "session_bell_flag") " "
+	WINDOW_TREE_FLAG("activity", "session_activity_flag") " "
+	WINDOW_TREE_FLAG("silence", "session_silence_flag"),
 };
 
 static void
@@ -727,6 +804,81 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 }
 
 static void
+window_tree_draw_info(struct window_tree_modedata *data, void *itemdata,
+    struct screen_write_ctx *ctx, u_int sx, u_int sy)
+{
+	struct window_tree_itemdata	*item = itemdata;
+	struct screen			*s = ctx->s;
+	struct session			*sp;
+	struct winlink			*wl;
+	struct window_pane		*wp;
+	struct grid_cell		 gc;
+	u_int				 cx = s->cx, cy = s->cy, i, j, k;
+	struct format_tree		*ft;
+	char				*expanded;
+	const char *const		*lines[3];
+	u_int				 count[3], n = 0;
+
+	window_tree_pull_item(item, &sp, &wl, &wp);
+	if (sp == NULL || wp == NULL)
+		return;
+
+	if (item->type == WINDOW_TREE_PANE) {
+		lines[n] = window_tree_pane_info_lines;
+		count[n++] = nitems(window_tree_pane_info_lines);
+	}
+	if (item->type == WINDOW_TREE_PANE ||
+	    item->type == WINDOW_TREE_WINDOW) {
+		lines[n] = window_tree_window_info_lines;
+		count[n++] = nitems(window_tree_window_info_lines);
+	}
+	lines[n] = window_tree_session_info_lines;
+	count[n++] = nitems(window_tree_session_info_lines);
+
+	ft = format_create(NULL, NULL, FORMAT_NONE, 0);
+	format_defaults(ft, NULL, sp, wl, wp);
+
+	i = 0;
+	for (j = 0; j < n; j++) {
+		if (j != 0) {
+			if (i == sy)
+				break;
+			window_tree_border_cell(&gc, data->wp->window->options,
+			    NULL);
+			screen_write_cursormove(ctx, cx, cy + i, 0);
+			screen_write_hline(ctx, sx, 0, 0, BOX_LINES_DEFAULT,
+			    &gc);
+			if (sx > 14) {
+				gc.attr |= GRID_ATTR_CHARSET;
+				screen_write_cursormove(ctx, cx + 14, cy + i,
+				    0);
+				screen_write_putc(ctx, &gc, 'n');
+			}
+			i++;
+		}
+		for (k = 0; k < count[j]; k++) {
+			if (i == sy)
+				break;
+			expanded = format_expand(ft, lines[j][k]);
+			screen_write_cursormove(ctx, cx, cy + i, 0);
+			format_draw(ctx, &grid_default_cell, sx, expanded, NULL,
+			    0);
+			free(expanded);
+			i++;
+		}
+		if (i == sy)
+			break;
+	}
+	if (sx > 14 && i < sy) {
+		window_tree_border_cell(&gc, data->wp->window->options, NULL);
+		screen_write_cursormove(ctx, cx + 14, cy + i, 0);
+		screen_write_vline(ctx, sy - i, 0, 0, &gc);
+	}
+
+	format_free(ft);
+}
+
+static void
 window_tree_draw(void *modedata, void *itemdata, struct screen_write_ctx *ctx,
     u_int sx, u_int sy)
 {
@@ -739,6 +891,11 @@ window_tree_draw(void *modedata, void *itemdata, struct screen_write_ctx *ctx,
 	window_tree_pull_item(item, &sp, &wl, &wp);
 	if (wp == NULL)
 		return;
+
+	if (data->preview_is_info) {
+		window_tree_draw_info(data, item, ctx, sx, sy);
+		return;
+	}
 
 	switch (item->type) {
 	case WINDOW_TREE_NONE:
@@ -922,6 +1079,8 @@ static const char* window_tree_help_lines[] = {
 	"          m #[#{E:tree-mode-border-style},acs]x#[default] Set the marked pane",
 	"#[fg=themelightgrey]"
 	"          M #[#{E:tree-mode-border-style},acs]x#[default] Clear the marked pane",
+	"#[fg=themelightgrey]"
+	"          i #[#{E:tree-mode-border-style},acs]x#[default] Toggle session, window and pane information",
 	"#[fg=themelightgrey]"
 	"          : #[#{E:tree-mode-border-style},acs]x#[default] Run a command for each tagged item",
 	"#[fg=themelightgrey]"
@@ -1319,6 +1478,13 @@ again:
 	case 'M':
 		server_clear_marked();
 		mode_tree_build(data->data);
+		break;
+	case 'i':
+		data->preview_is_info = !data->preview_is_info;
+		if (data->preview_is_info)
+			mode_tree_view_name(data->data, "info");
+		else
+			mode_tree_view_name(data->data, "preview");
 		break;
 	case 'x':
 		window_tree_pull_item(item, &ns, &nwl, &nwp);
