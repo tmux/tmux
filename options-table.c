@@ -1719,6 +1719,15 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of preview indicator in tree mode."
 	},
 
+	{ .name = "tree-mode-selection-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "#{E:mode-style}",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of the selected line in tree mode."
+	},
+
 	{ .name = "window-active-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
