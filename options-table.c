@@ -910,7 +910,9 @@ const struct options_table_entry options_table[] = {
 	{ .name = "message-command-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "bg=themegreen,fg=themeblack,fill=themegreen",
+	  .default_str = "bg=themeblack,fg=themeyellow,"
+			 "#{?#{m/r:(^|#,)IS(PANE|MODE)($|#,),#{prompt_flags}},,"
+			 "fill=themeblack}",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the command prompt when in command mode, if "
