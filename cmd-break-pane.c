@@ -34,9 +34,10 @@ const struct cmd_entry cmd_break_pane_entry = {
 	.name = "break-pane",
 	.alias = "breakp",
 
-	.args = { "abdPF:n:s:t:", 0, 0, NULL },
-	.usage = "[-abdP] [-F format] [-n window-name] [-s src-pane] "
-		 "[-t dst-window]",
+	.args = { "abdPF:n:s:t:Wx:X:y:Y:", 0, 0, NULL },
+	.usage = "[-abdPW] [-F format] [-n window-name] [-s src-pane] "
+		 "[-t dst-window] [-x width] [-y height] [-X x-position] "
+		 "[-Y y-position]",
 
 	.source = { 's', CMD_FIND_PANE, 0 },
 	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_WINDOW_INDEX },
@@ -44,6 +45,48 @@ const struct cmd_entry cmd_break_pane_entry = {
 	.flags = 0,
 	.exec = cmd_break_pane_exec
 };
+
+static enum cmd_retval
+cmd_break_pane_float(struct cmdq_item *item, struct args *args,
+    struct window *w, struct window_pane *wp)
+{
+	struct layout_cell	*lc = wp->layout_cell;
+	u_int			 sx = lc->saved_sx, sy = lc->saved_sy;
+	int			 ox = lc->saved_xoff, oy = lc->saved_yoff;
+	char			*cause = NULL;
+	enum pane_lines		 lines = window_get_pane_lines(w);
+
+	if (window_pane_is_floating(wp)) {
+		cmdq_error(item, "pane is already floating");
+		return (CMD_RETURN_ERROR);
+	}
+	if (w->flags & WINDOW_ZOOMED) {
+		cmdq_error(item, "can't float a pane while window is zoomed");
+		return (CMD_RETURN_ERROR);
+	}
+
+	if (layout_floating_args_parse(item, args, lines, w, &sx, &sy, &ox, &oy,
+	    &cause) != 0) {
+		cmdq_error(item, "failed to float pane: %s", cause);
+		free(cause);
+		return (CMD_RETURN_ERROR);
+	}
+	layout_remove_tile(w, lc);
+	layout_set_size(lc, sx, sy, ox, oy);
+
+	lc->flags |= LAYOUT_CELL_FLOATING;
+	TAILQ_REMOVE(&w->z_index, wp, zentry);
+	TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
+
+	if (!args_has(args, 'd'))
+		window_set_active_pane(w, wp, 1);
+	layout_fix_offsets(w);
+	layout_fix_panes(w, NULL);
+	notify_window("window-layout-changed", w);
+	server_redraw_window(w);
+
+	return (CMD_RETURN_NORMAL);
+}
 
 static enum cmd_retval
 cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
@@ -61,6 +104,9 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	char			*newname, *cause, *cp;
 	int			 idx = target->idx, before;
 	const char		*template, *name = args_get(args, 'n');
+
+	if (args_has(args, 'W'))
+		return (cmd_break_pane_float(item, args, w, wp));
 
 	if (name != NULL && !check_name(name, WINDOW_NAME_FORBID)) {
 		cmdq_error(item, "invalid window name: %s", name);
