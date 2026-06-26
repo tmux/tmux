@@ -98,6 +98,8 @@ prompt_flags_to_string(int flags)
 		strlcat(tmp, "ISPANE,", sizeof tmp);
 	if (flags & PROMPT_ISMODE)
 		strlcat(tmp, "ISMODE,", sizeof tmp);
+	if (flags & PROMPT_EDITARROWS)
+		strlcat(tmp, "EDITARROWS,", sizeof tmp);
 	if (*tmp != '\0')
 		tmp[strlen(tmp) - 1] = '\0';
 	return (tmp);
@@ -536,8 +538,6 @@ prompt_mouse(struct prompt *pr, u_int x, u_int ax, u_int aw, int *redraw)
 
 	if (x < ax || x >= ax + aw)
 		return (PROMPT_KEY_NOT_HANDLED);
-	if (pr->flags & PROMPT_INCREMENTAL)
-		return (PROMPT_KEY_HANDLED);
 
 	start = prompt_width(pr, aw);
 	left = aw - start;
@@ -1060,10 +1060,13 @@ prompt_check_move(struct prompt *pr, key_code key)
 	switch (key) {
 	case KEYC_UP:
 	case KEYC_DOWN:
-	case KEYC_LEFT:
-	case KEYC_RIGHT:
 	case KEYC_PPAGE:
 	case KEYC_NPAGE:
+		break;
+	case KEYC_LEFT:
+	case KEYC_RIGHT:
+		if (pr->flags & PROMPT_EDITARROWS)
+			return (PROMPT_KEY_NOT_HANDLED);
 		break;
 	default:
 		return (PROMPT_KEY_NOT_HANDLED);

@@ -4555,6 +4555,47 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 	return (list);
 }
 
+/* Match using the fuzzy matcher. */
+static char *
+format_match_fuzzy(const char *pattern, const char *text, int positions)
+{
+	struct evbuffer	*buffer;
+	bitstr_t	*bs;
+	char		*value;
+	size_t		 size;
+	u_int		 i, width;
+
+	width = format_width(text);
+	if (width == 0)
+		width = 1;
+	bs = fuzzy_match(pattern, text, width, NULL);
+	if (bs == NULL)
+		return (xstrdup(positions ? "" : "0"));
+
+	if (!positions) {
+		free(bs);
+		return (xstrdup("1"));
+	}
+
+	buffer = evbuffer_new();
+	if (buffer == NULL)
+		fatalx("out of memory");
+	for (i = 0; i < width; i++) {
+		if (!bit_test(bs, i))
+			continue;
+		if (EVBUFFER_LENGTH(buffer) != 0)
+			evbuffer_add(buffer, ",", 1);
+		evbuffer_add_printf(buffer, "%u", i);
+	}
+	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
+		value = xmemdup(EVBUFFER_DATA(buffer), size);
+	else
+		value = xstrdup("");
+	evbuffer_free(buffer);
+	free(bs);
+	return (value);
+}
+
 /* Match against an fnmatch(3) pattern or regular expression. */
 static char *
 format_match(struct format_modifier *fm, const char *pattern, const char *text)
@@ -4565,6 +4606,10 @@ format_match(struct format_modifier *fm, const char *pattern, const char *text)
 
 	if (fm->argc >= 1)
 		s = fm->argv[0];
+	if (strchr(s, 'p') != NULL)
+		return (format_match_fuzzy(pattern, text, 1));
+	if (strchr(s, 'z') != NULL)
+		return (format_match_fuzzy(pattern, text, 0));
 	if (strchr(s, 'r') == NULL) {
 		if (strchr(s, 'i') != NULL)
 			flags |= FNM_CASEFOLD;

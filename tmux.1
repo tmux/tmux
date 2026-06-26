@@ -362,6 +362,8 @@ Choose the current window interactively.
 Kill the current pane.
 .It z
 Toggle zoom state of the current pane.
+.It Tab
+Choose a new window and session by fuzzy matching.
 .It {
 Move floating pane to top-left corner.
 .It }
@@ -3087,6 +3089,51 @@ kills the pane when the mode is exited.
 The
 .Ic customize-mode
 command works only if at least one client is attached.
+.It Xo
+.Ic switch\-mode
+.Op Fl kswZ
+.Op Fl F Ar format
+.Op Fl t Ar target\-pane
+.Op Ar command
+.Xc
+Put a pane into switch mode, where a session or window may be chosen
+interactively from a list.
+Each session or window is shown on one line and the list is narrowed by typing:
+the typed text is matched against each item with fuzzy
+matching and only matching items are shown, sorted by how well they match.
+.Fl s
+lists sessions (the default) and
+.Fl w
+lists windows.
+.Fl Z
+zooms the pane.
+The following keys may be used in switch mode:
+.Bl -column "KeyXXX" "Function" -offset indent
+.It Sy "Key" Ta Sy "Function"
+.It Li "Enter" Ta "Choose the selected item"
+.It Li "Up" Ta "Select the previous item"
+.It Li "Down" Ta "Select the next item"
+.It Li "Escape" Ta "Exit mode"
+.El
+.Pp
+After a session or window is chosen, the first instance of
+.Ql %%
+and all instances of
+.Ql %1
+are replaced by the target in
+.Ar command
+and the result executed as a command.
+If
+.Ar command
+is not given, "switch\-client \-Zt \[aq]%%\[aq]" is used.
+.Fl F
+specifies the format for each item in the list.
+.Fl k
+kills the pane when the mode is exited.
+.Pp
+The appearance of matched characters is controlled by the
+.Ic switch\-mode\-match\-style
+option.
 .It Xo
 .Tg displayp
 .Ic display\-panes
@@ -6102,6 +6149,15 @@ is enabled.
 When the entire screen is cleared and this option is on, scroll the contents of
 the screen into history before clearing it.
 .Pp
+.It Ic switch\-mode\-match\-style Ar style
+Set the style of characters matched by the filter in
+.Ic switch\-mode .
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
 .It Xo Ic synchronize\-panes
 .Op Ic on | off
 .Xc
@@ -6494,13 +6550,36 @@ An optional argument specifies flags:
 .Ql r
 means the pattern is a regular expression instead of the default
 .Xr glob 7
-pattern and
+pattern;
 .Ql i
-means to ignore case.
+means to ignore case;
+.Ql z
+means to do a fuzzy match;
+.Ql p
+is like
+.Ql z
+but returns a list of matched positions.
+A fuzzy match matches plain terms as sequences where each character must appear
+in order but not necessarily consecutively; terms beginning with
+.Ql '
+are exact substring matches,
+.Ql ^
+anchors a term at the start,
+.Ql $
+anchors it at the end,
+.Ql !
+inverts a term and
+.Ql |
+separates alternative groups.
 For example:
 .Ql #{m:*foo*,#{host}}
 or
-.Ql #{m/ri:\[ha]A,MYVAR} .
+.Ql #{m/ri:\[ha]A,MYVAR}
+or
+.Ql #{m/z:dev bash,dev:1 bash}
+or
+.Ql #{m/z:^dev | ^prod,prod:1 ssh} .
+.Pp
 A
 .Ql C
 performs a search for a

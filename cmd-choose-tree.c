@@ -84,6 +84,19 @@ const struct cmd_entry cmd_customize_mode_entry = {
 	.exec = cmd_choose_tree_exec
 };
 
+const struct cmd_entry cmd_switch_mode_entry = {
+	.name = "switch-mode",
+	.alias = NULL,
+
+	.args = { "F:kst:wZ", 0, 1, cmd_choose_tree_args_parse },
+	.usage = "[-kswZ] [-F format] " CMD_TARGET_PANE_USAGE " [command]",
+
+	.target = { 't', CMD_FIND_PANE, 0 },
+
+	.flags = 0,
+	.exec = cmd_choose_tree_exec
+};
+
 static enum args_parse_type
 cmd_choose_tree_args_parse(__unused struct args *args, __unused u_int idx,
     __unused char **cause)
@@ -116,6 +129,8 @@ cmd_choose_tree_exec(struct cmd *self, struct cmdq_item *item)
 		mode = &window_client_mode;
 	} else if (cmd_get_entry(self) == &cmd_customize_mode_entry)
 		mode = &window_customize_mode;
+	else if (cmd_get_entry(self) == &cmd_switch_mode_entry)
+		mode = &window_switch_mode;
 	else
 		mode = &window_tree_mode;
 
