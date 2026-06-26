@@ -189,7 +189,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	if (args_has(args, 'k') || args_has(args, 'm')) {
 		options_set_number(new_wp->options, "remain-on-exit", 3);
-		if (args_has(args, 'm'))
+		if (args_has(args, 'm')) {
 			options_set_string(new_wp->options,
 			    "remain-on-exit-format", 0, "%s",
 			    args_get(args, 'm'));
