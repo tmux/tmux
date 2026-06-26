@@ -402,6 +402,8 @@ key_bindings_init(void)
 		"bind -N 'Redraw the current client' r { refresh-client }",
 		"bind -N 'Choose a session from a list' s { choose-tree -Zs }",
 		"bind -N 'Show a clock' t { clock-mode }",
+		"bind -N 'Switch to a window' Tab { new-pane -E -x75% -y30% -X0 -Y0; move-pane -P bottom-centre; switch-mode -wk }",
+		"bind -N 'Switch to a session' BTab { new-pane -E -x75% -y30% -X0 -Y0; move-pane -P bottom-centre; switch-mode -sk }",
 		"bind -N 'Choose a window from a list' w { choose-tree -Zw }",
 		"bind -N 'Kill the active pane' x { confirm-before -p\"kill-pane #P? (y/n)\" kill-pane }",
 		"bind -N 'Zoom the active pane' z { resize-pane -Z }",

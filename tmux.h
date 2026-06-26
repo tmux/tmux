@@ -2054,6 +2054,7 @@ typedef void (*prompt_free_cb)(void *);
 #define PROMPT_COMMANDMODE 0x200
 #define PROMPT_ISPANE 0x400
 #define PROMPT_ISMODE 0x800
+#define PROMPT_EDITARROWS 0x1000
 
 /* Prompt create data. */
 struct prompt_create_data {
@@ -3269,6 +3270,9 @@ void	 colour_palette_from_option(struct colour_palette *, struct options *);
 const char *attributes_tostring(int);
 int	 attributes_fromstring(const char *);
 
+/* fuzzy.c */
+bitstr_t	*fuzzy_match(const char *, const char *, u_int, u_int *);
+
 /* grid.c */
 extern const struct grid_cell grid_default_cell;
 void	 grid_empty_line(struct grid *, u_int, u_int);
@@ -3724,6 +3728,9 @@ extern const struct window_mode window_buffer_mode;
 
 /* window-tree.c */
 extern const struct window_mode window_tree_mode;
+
+/* window-switch.c */
+extern const struct window_mode window_switch_mode;
 
 /* window-clock.c */
 extern const struct window_mode window_clock_mode;

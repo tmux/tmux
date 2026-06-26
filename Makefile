@@ -78,6 +78,7 @@ SRCS=	alerts.c \
 	environ.c \
 	file.c \
 	format.c \
+	fuzzy.c \
 	format-draw.c \
 	grid-reader.c \
 	grid-view.c \
@@ -133,6 +134,7 @@ SRCS=	alerts.c \
 	window-clock.c \
 	window-copy.c \
 	window-customize.c \
+	window-switch.c \
 	window-visible.c \
 	window-tree.c \
 	window.c \
@@ -145,7 +147,7 @@ CDIAGFLAGS+= -Wundef -Wbad-function-cast -Winline -Wcast-align
 
 CFLAGS += -I${.CURDIR}
 
-LDADD=  -lutil -lcurses -levent -lm
-DPADD=  ${LIBUTIL} ${LIBCURSES} ${LIBEVENT} ${LIBM}
+LDADD=	-lutil -lcurses -levent -lm
+DPADD=	${LIBUTIL} ${LIBCURSES} ${LIBEVENT} ${LIBM}
 
 .include <bsd.prog.mk>
