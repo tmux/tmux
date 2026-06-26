@@ -585,7 +585,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "#{?#{e|>=:#{client_colours},256},palegreen,green}",
+	  .default_str = "#{?#{e|>=:#{client_colours},256},darkseagreen,green}",
 	  .text = "Dark theme colour for green."
 	},
 
@@ -593,7 +593,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "#{?#{e|>=:#{client_colours},256},lightgoldenrod,yellow}",
+	  .default_str = "#{?#{e|>=:#{client_colours},256},darkkhaki,yellow}",
 	  .text = "Dark theme colour for yellow."
 	},
 
@@ -601,7 +601,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "#{?#{e|>=:#{client_colours},256},lightsalmon,red}",
+	  .default_str = "#{?#{e|>=:#{client_colours},256},indianred,red}",
 	  .text = "Dark theme colour for red."
 	},
 
@@ -609,7 +609,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "#{?#{e|>=:#{client_colours},256},lightskyblue,blue}",
+	  .default_str = "#{?#{e|>=:#{client_colours},256},skyblue3,blue}",
 	  .text = "Dark theme colour for blue."
 	},
 
@@ -617,7 +617,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "#{?#{e|>=:#{client_colours},256},aquamarine,cyan}",
+	  .default_str = "#{?#{e|>=:#{client_colours},256},cadetblue,cyan}",
 	  .text = "Dark theme colour for cyan."
 	},
 
@@ -625,7 +625,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "#{?#{e|>=:#{client_colours},256},plum,magenta}",
+	  .default_str = "#{?#{e|>=:#{client_colours},256},mediumpurple,magenta}",
 	  .text = "Dark theme colour for magenta."
 	},
 
@@ -665,7 +665,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "#{?#{e|>=:#{client_colours},256},forestgreen,green}",
+	  .default_str = "#{?#{e|>=:#{client_colours},256},seagreen,green}",
 	  .text = "Light theme colour for green."
 	},
 
@@ -681,7 +681,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "#{?#{e|>=:#{client_colours},256},violetred4,red}",
+	  .default_str = "#{?#{e|>=:#{client_colours},256},indianred4,red}",
 	  .text = "Light theme colour for red."
 	},
 
@@ -689,7 +689,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "#{?#{e|>=:#{client_colours},256},royalblue,blue}",
+	  .default_str = "#{?#{e|>=:#{client_colours},256},steelblue,blue}",
 	  .text = "Light theme colour for blue."
 	},
 
@@ -705,7 +705,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "#{?#{e|>=:#{client_colours},256},purple,magenta}",
+	  .default_str = "#{?#{e|>=:#{client_colours},256},purple4,magenta}",
 	  .text = "Light theme colour for magenta."
 	},
 
