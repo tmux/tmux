@@ -1,3 +1,7 @@
+CHANGES FROM 3.7 to 3.7a
+
+* Fix crash in break-pane when no name is provided.
+
 CHANGES FROM 3.6b TO 3.7
 
 * Add floating panes. These are panes which sit above the layout ("tiled
