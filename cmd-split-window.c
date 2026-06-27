@@ -96,7 +96,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (cmd_get_entry(self) == &cmd_new_pane_entry)
 		is_floating = !args_has(args, 'L');
 	else
-		is_floating = 0;
+		is_floating = window_pane_is_floating(wp);
 
 	flags = is_floating ? SPAWN_FLOATING : 0;
 	if (args_has(args, 'b'))
