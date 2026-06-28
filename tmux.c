@@ -290,7 +290,10 @@ clean_name(const char *name, const char* forbid)
 		return (NULL);
 	copy = xstrdup(name);
 	for (cp = copy; *cp != '\0'; cp++) {
-		if (strchr(forbid, *cp) != NULL)
+		if (*cp == '#' && strchr(forbid, '#') != NULL) {
+			if (cp[1] == '(')
+				*cp = '_';
+		} else if (strchr(forbid, *cp) != NULL)
 			*cp = '_';
 	}
 	utf8_stravis(&new_name, copy, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);

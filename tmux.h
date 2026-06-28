@@ -3678,6 +3678,8 @@ void		 layout_fix_offsets(struct window *);
 void		 layout_fix_panes(struct window *, struct window_pane *);
 void		 layout_resize_adjust(struct window *, struct layout_cell *,
 		     enum layout_type, int);
+void		 layout_resize_set_size(struct window *, struct layout_cell *,
+		     enum layout_type, u_int);
 struct layout_cell *layout_cell_get_neighbour(struct layout_cell *);
 void		 layout_init(struct window *, struct window_pane *);
 void		 layout_free(struct window *);
@@ -3692,6 +3694,12 @@ int		 layout_resize_floating_pane_to(struct window_pane *,
 		     enum layout_type, u_int, char **);
 void		 layout_assign_pane(struct layout_cell *, struct window_pane *,
 		     int);
+int		 layout_split_check_space(struct window_pane *,
+		     struct layout_cell *, enum layout_type);
+void		 layout_split_sizes(struct layout_cell *, int, int,
+		     enum layout_type, u_int *, u_int *, u_int *);
+struct layout_cell *layout_replace_with_node(struct window *,
+		     struct layout_cell *, enum layout_type);
 struct layout_cell *layout_split_pane(struct window_pane *, enum layout_type,
 		     int, int);
 struct layout_cell *layout_floating_pane(struct window *, struct window_pane *,
@@ -3708,6 +3716,7 @@ int		 layout_floating_args_parse(struct cmdq_item *, struct args *,
 		     enum pane_lines, struct window *, u_int *, u_int *, int *,
 		     int *, char **);
 int		 layout_remove_tile(struct window *, struct layout_cell *);
+int		 layout_insert_tile(struct window *, struct layout_cell *);
 
 /* layout-custom.c */
 char		*layout_dump(struct window *, struct layout_cell *);
