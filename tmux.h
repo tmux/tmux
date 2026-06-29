@@ -1502,7 +1502,13 @@ struct layout_cell {
 	enum layout_type type;
 
 #define LAYOUT_CELL_FLOATING 0x1
+#define LAYOUT_CELL_HIDDEN 0x2
+#define LAYOUT_CELL_ZOOMED 0x4	/* only while parsing a layout */
+#define LAYOUT_CELL_X_RELATIVE 0x8 /* only while parsing a layout */
+#define LAYOUT_CELL_Y_RELATIVE 0x10 /* only while parsing a layout */
 	int		 flags;
+	u_int		 z_index;	/* only while parsing a layout */
+	u_int		 pane_id;	/* only while parsing a layout */
 
 	struct layout_cell *parent;
 
@@ -3711,6 +3717,7 @@ int		 layout_remove_tile(struct window *, struct layout_cell *);
 
 /* layout-custom.c */
 char		*layout_dump(struct window *, struct layout_cell *);
+int		 layout_validate(struct window *, const char *, char **);
 int		 layout_parse(struct window *, const char *, char **);
 
 /* layout-set.c */

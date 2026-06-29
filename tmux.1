@@ -2681,14 +2681,14 @@ For example:
 .Bd -literal -offset indent
 $ tmux list\-windows
 0: ksh [159x48]
-    layout: bb62,159x48,0,0{79x48,0,0,79x48,80,0}
-$ tmux select\-layout \[aq]bb62,159x48,0,0{79x48,0,0,79x48,80,0}\[aq]
+    layout: 8ebd,159x48+0+0{%0,0:79x48+0+0;%1,1:79x48+80+0}
+$ tmux select\-layout \[aq]8ebd,159x48+0+0{%0,0:79x48+0+0;%1,1:79x48+80+0}\[aq]
 .Ed
 .Pp
 .Nm
 automatically adjusts the size of the layout for the current window size.
-Note that a layout cannot be applied to a window with more panes than that
-from which the layout was originally defined.
+A current or legacy layout can be applied to a window with the same number or
+fewer panes; surplus layout cells are discarded.
 .Pp
 Commands related to windows and panes are as follows:
 .Bl -tag -width Ds
@@ -3371,6 +3371,13 @@ specifies the sort order: one of
 (time).
 .Fl r
 reverses the sort order.
+.Pp
+The layout of the window containing each pane may be included using the
+.Ql window_layout
+format variable.
+It is repeated for each pane from the same window.
+Its format is described under
+.Ic select\-layout .
 .Tg lsw
 .It Xo Ic list\-windows
 .Op Fl ar
@@ -3406,6 +3413,22 @@ or
 (time).
 .Fl r
 reverses the sort order.
+.Pp
+The default format includes the layout of each window, also available with the
+.Ql window_layout
+format variable.
+The format is described under
+.Ic select\-layout .
+.Pp
+Layouts for multiple windows may be produced in a form suitable for
+.Ic select\-layout
+using
+.Fl F .
+For example, they may be captured and reapplied directly:
+.Bd -literal -offset indent
+$ layouts=\[dq]$(tmux list\-windows \-F \[aq]#{window_id}:#{window_layout}\[aq])\[dq]
+$ tmux select\-layout \[dq]$layouts\[dq]
+.Ed
 .Tg movep
 .It Xo Ic move\-pane
 .Op Fl bdfhMv
@@ -3965,6 +3988,142 @@ commands.
 applies the last set layout if possible (undoes the most recent layout change).
 .Fl E
 spreads the current pane and any panes next to it out evenly.
+.Pp
+.Ar layout\-name
+may be a serialized layout with an optional outer checksum followed by one
+root layout cell:
+.Bd -literal -offset indent
+layout = [checksum,]cell
+.Ed
+.Pp
+A layout cell is either a container cell or a pane cell.
+Geometry gives a cell's size and position.
+.Nm
+accepts X Window System-style geometry specifications:
+.Bd -literal -offset indent
+geometry = widthxheight[x-offset[y-offset]]
+x-offset = +N | ++N | +-N | -N
+y-offset = +N | ++N | +-N | -N
+.Ed
+.Pp
+.Ql +N
+is an absolute offset from the left or top of the window.
+.Ql -N
+is accepted only for floating pane cells and places the pane's right or bottom
+edge relative to the right or bottom of the window.
+To specify a negative offset to place a floating pane off the left or above the
+top of the window, specify it as:
+.Ql +-N .
+.Ql ++N
+is equivalent to
+.Ql +N .
+If both offsets are omitted,
+.Ql +0+0
+is assumed; if only the first is present, the second defaults to
+.Ql +0 .
+Widths and heights must be between 1 and 10,000, and resolved offsets must be
+between -10,000 and 10,000.
+Neither
+.Ic list\-windows
+nor
+.Ic list\-panes
+currently generates
+.Ql -N
+relative offsets.
+.Pp
+Container cells begin with geometry and hold other layout cells.
+Braces arrange the child cells from left to right and square brackets arrange
+them from top to bottom.
+Pane cells are leaves and begin with a pane ID and z-index, followed by their
+geometry and optional flags.
+Semicolons separate child cells.
+The complete cell forms are:
+.Bd -literal -offset indent
+cell      = container | pane
+container = geometry{cell;cell;...}
+          | geometry[cell;cell;...]
+pane      = %pane-id,z-index:geometry[:flags]
+.Ed
+.Pp
+Pane IDs in the current format must be unique.
+If the layout and target window have the same number of panes and the pane IDs
+exactly match those in the target window, panes are assigned by ID.
+If none match, panes are assigned in tree order, allowing a layout from another
+window to be reused; a partial match is rejected as ambiguous.
+If the target window has fewer panes, cells are removed from the end of the
+layout tree until the counts match, remaining z-indexes are compacted, and
+panes are assigned in tree order.
+A layout cannot be applied to a target window with more panes than it has pane
+cells.
+.Pp
+If a window has only one pane, the root layout cell is itself a pane cell, so
+the pane ID, z-index, geometry and any flags immediately follow the outer
+checksum.
+The z-index is zero for the front pane and increases towards the back.
+It is present for every pane, including tiled panes.
+Z-indexes must be unique and contiguous from zero, with all floating panes
+before any tiled panes.
+The flags are
+.Ql f
+for floating,
+.Ql h
+for hidden and
+.Ql z
+for zoomed.
+An absent
+.Ql f
+flag means tiled and absent
+.Ql h
+and
+.Ql z
+flags mean visible and unzoomed.
+The
+.Ql h
+and
+.Ql z
+flags cannot be combined.
+.Pp
+For example, this layout contains two tiled panes and one floating pane:
+.Bd -literal -offset indent
+6939,120x40+0+0{%0,1:60x40+0+0;%1,2:59x40+61+0;%2,0:28x8+11+6:f}
+.Ed
+.Pp
+The legacy format uses commas rather than semicolons to separate child cells
+and does not include z-indexes or flags:
+.Bd -literal -offset indent
+legacy-geometry = widthxheight,x,y
+cell            = legacy-geometry{cell,cell,...}
+                | legacy-geometry[cell,cell,...]
+                | legacy-geometry,pane-id
+.Ed
+.Pp
+The checksum is optional.
+If present, it is four hexadecimal digits and covers all non-whitespace text
+after its comma; a layout with an incorrect checksum is rejected.
+Whitespace, including newlines, may appear between layout tokens and does not
+change the checksum, so a layout may be indented for readability.
+A checksum may also appear before any nested cell; nested checksums are
+accepted and checked but are not generated by
+.Ic list\-windows .
+A layout must use one form consistently.
+In a legacy layout, panes are treated as tiled, visible and unzoomed.
+.Ic list\-windows
+and the
+.Ql window_layout
+format variable generate the current format with a checksum.
+.Pp
+A serialized layout is a layout snapshot, not a complete session restoration.
+It rearranges existing panes and windows but does not create panes or windows.
+.Pp
+Layouts for multiple windows may be prefixed by their window IDs and joined:
+.Bd -literal -offset indent
+window-layouts = @window-id:layout [@window-id:layout ...]
+.Ed
+.Pp
+Whitespace, including newlines, may appear between the window records.
+Each window layout retains its own checksum.
+All records are checked before any window is changed.
+Unknown or duplicate window IDs are rejected.
 .Tg selectp
 .It Xo Ic select\-pane
 .Op Fl DdeLlMmRUZ
@@ -7111,7 +7270,7 @@ The following variables are available, where appropriate:
 .It Li "window_id" Ta "" Ta "Unique window ID"
 .It Li "window_index" Ta "#I" Ta "Index of window"
 .It Li "window_last_flag" Ta "" Ta "1 if window is the last used"
-.It Li "window_layout" Ta "" Ta "Window layout description, ignoring zoomed window panes"
+.It Li "window_layout" Ta "" Ta "Window layout description, including zoom and pane flags"
 .It Li "window_linked" Ta "" Ta "1 if window is linked across sessions"
 .It Li "window_linked_sessions" Ta "" Ta "Number of sessions this window is linked to"
 .It Li "window_linked_sessions_list" Ta "" Ta "List of sessions this window is linked to"

@@ -64,6 +64,8 @@ layout_create_cell(struct layout_cell *lcparent)
 	lc = xmalloc(sizeof *lc);
 	lc->type = LAYOUT_WINDOWPANE;
 	lc->flags = 0;
+	lc->z_index = UINT_MAX;
+	lc->pane_id = UINT_MAX;
 	lc->parent = lcparent;
 
 	TAILQ_INIT(&lc->cells);
