@@ -81,6 +81,7 @@ enum redraw_span_type {
 #define REDRAW_BORDER_IS_ARROW 0x1
 #define REDRAW_SCROLLBAR_LEFT 0x2
 #define REDRAW_SCROLLBAR_RIGHT 0x4
+#define REDRAW_SCROLLBAR_OVERLAY 0x8
 
 /* Draw operations. */
 #define REDRAW_PANE 0x1
@@ -447,7 +448,7 @@ redraw_mark_pane_inside(struct redraw_build_ctx *bctx, struct window_pane *wp)
 /* Mark scrollbar data. */
 static void
 redraw_mark_pane_scrollbar(struct redraw_build_ctx *bctx,
-    struct window_pane *wp, int sb_w, int sb_left)
+    struct window_pane *wp, int sb_w, int sb_left, int overlay)
 {
 	struct redraw_build_cell	*bc;
 	u_int				 x, y;
@@ -457,7 +458,13 @@ redraw_mark_pane_scrollbar(struct redraw_build_ctx *bctx,
 	if (sb_w == 0)
 		return;
 
-	if (sb_left) {
+	if (overlay && sb_left) {
+		sx = wp->xoff;
+		ex = sx + sb_w - 1;
+	} else if (overlay) {
+		ex = wp->xoff + (int)wp->sx - 1;
+		sx = ex - sb_w + 1;
+	} else if (sb_left) {
 		sx = wp->xoff - sb_w;
 		ex = wp->xoff - 1;
 	} else {
@@ -481,6 +488,8 @@ redraw_mark_pane_scrollbar(struct redraw_build_ctx *bctx,
 				bc->data.sb.flags |= REDRAW_SCROLLBAR_LEFT;
 			else
 				bc->data.sb.flags |= REDRAW_SCROLLBAR_RIGHT;
+			if (overlay)
+				bc->data.sb.flags |= REDRAW_SCROLLBAR_OVERLAY;
 		}
 	}
 }
@@ -755,19 +764,30 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 static void
 redraw_mark_pane(struct redraw_build_ctx *bctx, struct window_pane *wp)
 {
-	int	sb_w = 0, sb_left = 0;
+	int	sb_w = 0, sb_left = 0, overlay = 0;
 
 	if (!window_pane_is_visible(wp))
 		return;
 
-	if (window_pane_show_scrollbar(wp, bctx->sb))
-		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
+	if (window_pane_scrollbar_visible(wp, bctx->sb)) {
+		overlay = window_pane_scrollbar_overlay(wp, bctx->sb);
+		if (overlay) {
+			sb_w = wp->scrollbar_style.width +
+			    wp->scrollbar_style.pad;
+			if (sb_w > (int)wp->sx) {
+				sb_w = wp->scrollbar_style.width;
+				if (sb_w > (int)wp->sx)
+					sb_w = wp->sx;
+			}
+		} else
+			sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
+	}
 	if (sb_w != 0 && bctx->sbp == PANE_SCROLLBARS_LEFT)
 		sb_left = 1;
 
 	redraw_mark_pane_inside(bctx, wp);
-	redraw_mark_pane_borders(bctx, wp, sb_w, sb_left);
-	redraw_mark_pane_scrollbar(bctx, wp, sb_w, sb_left);
+	redraw_mark_pane_borders(bctx, wp, overlay ? 0 : sb_w, sb_left);
+	redraw_mark_pane_scrollbar(bctx, wp, sb_w, sb_left, overlay);
 }
 
 /* Choose the pane that will provide the border style for two-pane layouts. */
@@ -1220,7 +1240,7 @@ redraw_draw_scrollbar_span(struct redraw_draw_ctx *dctx,
 	struct screen		*s = wp->screen;
 	struct tty		*tty = &scene->c->tty;
 	struct style		*sb_style = &wp->scrollbar_style;
-	struct grid_cell	 gc, slgc, *gcp;
+	struct grid_cell	 gc, slgc, pad_gc, *gcp;
 	double			 pct_view;
 	u_int			 total_height, slider_h, slider_y;
 	u_int			 sb_h = span->data.sb.height;
@@ -1260,6 +1280,7 @@ redraw_draw_scrollbar_span(struct redraw_draw_ctx *dctx,
 	memcpy(&slgc, &gc, sizeof slgc);
 	slgc.fg = gc.bg;
 	slgc.bg = gc.fg;
+	tty_default_colours(&pad_gc, wp, NULL);
 
 	sb_w = sb_style->width;
 	sb_pad = sb_style->pad;
@@ -1269,12 +1290,12 @@ redraw_draw_scrollbar_span(struct redraw_draw_ctx *dctx,
 	for (i = 0; i < n; i++) {
 		if (span->data.sb.flags & REDRAW_SCROLLBAR_LEFT) {
 			if (off + i >= sb_w && off + i < sb_w + sb_pad) {
-				tty_cell(tty, &grid_default_cell, NULL);
+				tty_cell(tty, &pad_gc, NULL);
 				continue;
 			}
 		} else {
 			if (off + i < sb_pad) {
-				tty_cell(tty, &grid_default_cell, NULL);
+				tty_cell(tty, &pad_gc, NULL);
 				continue;
 			}
 		}

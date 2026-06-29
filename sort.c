@@ -26,8 +26,8 @@
 static struct sort_criteria *sort_criteria;
 
 static void
-sort_qsort(void *l, u_int len, u_int size, int (*cmp)(const void *, const void *),
-    struct sort_criteria *sort_crit)
+sort_qsort(void *l, u_int len, u_int size, int (*cmp)(const void *,
+    const void *), struct sort_criteria *sort_crit)
 {
 	u_int	 i;
 	void	*tmp, **ll;

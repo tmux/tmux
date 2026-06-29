@@ -126,7 +126,7 @@ window_visible_ranges(struct window_pane *base_wp, int px, int py, u_int width,
 			continue;
 
 		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
-		if (!window_pane_show_scrollbar(wp, sb))
+		if (!window_pane_scrollbar_reserve(wp, sb))
 			sb_w = sb_pos = 0;
 
 		for (i = 0; i < r->used; i++) {
