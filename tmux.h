@@ -1517,11 +1517,11 @@ struct layout_cell {
 
 	struct layout_cell *parent;
 
-	u_int		 sx, saved_sx;
-	u_int		 sy, saved_sy;
+	u_int		 sx;
+	u_int		 sy;
 
-	int		 xoff, saved_xoff;
-	int		 yoff, saved_yoff;
+	int		 xoff;
+	int		 yoff;
 
 	u_int		 saved_sx;
 	u_int		 saved_sy;
@@ -3697,6 +3697,7 @@ void             layout_save_size(struct layout_cell *);
 void		 layout_make_leaf(struct layout_cell *, struct window_pane *);
 void		 layout_make_node(struct layout_cell *, enum layout_type);
 void		 layout_fix_zindexes(struct window *, struct layout_cell *);
+int		 layout_cell_is_tiled(struct layout_cell *);
 void		 layout_fix_offsets(struct window *);
 void		 layout_fix_panes(struct window *, struct window_pane *);
 void		 layout_resize_adjust(struct window *, struct layout_cell *,
@@ -3730,8 +3731,8 @@ struct layout_cell *layout_floating_pane(struct window *, struct window_pane *,
 void		 layout_close_pane(struct window_pane *);
 int		 layout_spread_cell(struct window *, struct layout_cell *);
 void		 layout_spread_out(struct window_pane *);
-void		 layout_cell_floating_args_parse(struct cmdq_item *, struct args *,
-		     struct window *, u_int *, u_int *, int *, int *, char **);
+struct layout_cell *layout_get_tiled_cell(struct cmdq_item *, struct args *,
+		     struct window *, struct window_pane *, int, char **);
 struct layout_cell *layout_get_floating_cell(struct cmdq_item *, struct args *,
 		     enum pane_lines, struct window *, struct window_pane *,
 		     char **cause);
