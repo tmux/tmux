@@ -710,6 +710,7 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 					     "AFTER" };
 	size_t			 size = strlen(expanded);
 	struct screen		*os = octx->s, s[TOTAL];
+	struct hyperlinks	*hl = os->hyperlinks;
 	struct screen_write_ctx	 ctx[TOTAL];
 	u_int			 ocx = os->cx, ocy = os->cy, n, i, width[TOTAL];
 	u_int			 map[] = { LEFT,
@@ -723,7 +724,7 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	struct grid_cell	 gc, current_default, base_default;
 	struct style		 sy, saved_sy;
 	struct utf8_data	*ud = &sy.gc.data;
-	const char		*cp, *end;
+	const char		*cp, *end, *link_uri;
 	enum utf8_state		 more;
 	char			*tmp;
 	struct format_range	*fr = NULL, *fr1;
@@ -837,6 +838,17 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 			sy.gc.bg = base->bg;
 			sy.gc.fg = base->fg;
 		}
+
+		/*
+		 * Resolve any hyperlink and store it in the cell. The URI
+		 * doubles as the internal ID so repeated links share one entry
+		 * and the ID stays stable across redraws.
+		 */
+		link_uri = style_link(&sy);
+		if (link_uri != NULL && hl != NULL)
+			sy.gc.link = hyperlinks_put(hl, link_uri, link_uri);
+		else
+			sy.gc.link = 0;
 
 		/* If this style has a fill colour, store it for later. */
 		if (sy.fill != 8)
