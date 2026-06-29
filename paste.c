@@ -219,7 +219,7 @@ paste_rename(const char *oldname, const char *newname, char **cause)
 		return (-1);
 	}
 
-	name = clean_name(newname, "");
+	name = clean_name(newname, 0);
 	if (name == NULL) {
 		if (cause != NULL)
 			xasprintf(cause, "invalid buffer name: %s", newname);
@@ -287,7 +287,7 @@ paste_set(char *data, size_t size, const char *name, char **cause)
 		return (-1);
 	}
 
-	newname = clean_name(name, "");
+	newname = clean_name(name, 0);
 	if (newname == NULL) {
 		if (cause != NULL)
 			xasprintf(cause, "invalid buffer name: %s", name);

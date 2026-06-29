@@ -1953,15 +1953,13 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 		case 2004:
 			screen_write_mode_clear(sctx, MODE_BRACKETPASTE);
 			break;
+		case 2026:
+			screen_write_stop_sync(ictx->wp);
+			break;
 		case 2031:
 			screen_write_mode_clear(sctx, MODE_THEME_UPDATES);
 			if (ictx->wp != NULL)
 				ictx->wp->flags &= ~PANE_THEMECHANGED;
-			break;
-		case 2026:	/* synchronized output */
-			screen_write_stop_sync(ictx->wp);
-			if (ictx->wp != NULL)
-				ictx->wp->flags |= PANE_REDRAW;
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
@@ -2065,7 +2063,7 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 				ictx->wp->flags &= ~PANE_THEMECHANGED;
 			}
 			break;
-		case 2026:	/* synchronized output */
+		case 2026:
 			screen_write_start_sync(ictx->wp);
 			break;
 		default:
@@ -2822,10 +2820,10 @@ input_exit_rename(struct input_ctx *ictx)
 		if (o != NULL)
 			options_remove_or_default(o, -1, NULL);
 		if (!options_get_number(w->options, "automatic-rename"))
-			window_set_name(w, "", WINDOW_NAME_FORBID_EXT);
+			window_set_name(w, "", 1);
 	} else {
 		options_set_number(w->options, "automatic-rename", 0);
-		window_set_name(w, ictx->input_buf, WINDOW_NAME_FORBID_EXT);
+		window_set_name(w, ictx->input_buf, 1);
 	}
 	server_redraw_window_borders(w);
 	server_status_window(w);

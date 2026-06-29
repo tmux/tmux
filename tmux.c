@@ -282,7 +282,7 @@ get_timer(void)
 }
 
 char *
-clean_name(const char *name, const char* forbid)
+clean_name(const char *name, int untrusted)
 {
 	char	*copy, *cp, *new_name;
 
@@ -290,10 +290,7 @@ clean_name(const char *name, const char* forbid)
 		return (NULL);
 	copy = xstrdup(name);
 	for (cp = copy; *cp != '\0'; cp++) {
-		if (*cp == '#' && strchr(forbid, '#') != NULL) {
-			if (cp[1] == '(')
-				*cp = '_';
-		} else if (strchr(forbid, *cp) != NULL)
+		if (untrusted && cp[0] == '#' && cp[1] == '(')
 			*cp = '_';
 	}
 	utf8_stravis(&new_name, copy, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
@@ -301,22 +298,11 @@ clean_name(const char *name, const char* forbid)
 	return (new_name);
 }
 
-/*
- * Check a name given by a command: reject it if it is empty, not valid UTF-8,
- * or contains a forbidden character. Other characters that clean_name would
- * change (for example with utf8_stravis) are allowed and fixed silently.
- */
 int
-check_name(const char *name, const char *forbid)
+check_name(const char *name)
 {
-	const char	*cp;
-
 	if (!utf8_isvalid(name))
 		return (0);
-	for (cp = name; *cp != '\0'; cp++) {
-		if (strchr(forbid, *cp) != NULL)
-			return (0);
-	}
 	return (1);
 }
 

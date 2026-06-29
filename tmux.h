@@ -96,12 +96,6 @@ struct winlink;
 #define TMUX_LOCK_CMD "lock -np"
 #endif
 
-/* Forbidden characters in names. */
-#define WINDOW_NAME_FORBID ":."
-#define WINDOW_NAME_FORBID_EXT ":.#"
-#define SESSION_NAME_FORBID ":."
-#define SESSION_NAME_FORBID_EXT ":.#"
-
 /* Minimum layout cell size, NOT including border lines. */
 #define PANE_MINIMUM 1
 
@@ -2409,8 +2403,8 @@ int		 checkshell(const char *);
 void		 setblocking(int, int);
 char 		*shell_argv0(const char *, int);
 uint64_t	 get_timer(void);
-char		*clean_name(const char *, const char *);
-int		 check_name(const char *, const char *);
+char		*clean_name(const char *, int);
+int		 check_name(const char *);
 const char	*sig2name(int);
 const char	*find_cwd(void);
 const char	*find_home(void);
@@ -3487,7 +3481,7 @@ void		 window_pane_stack_push(struct window_panes *,
 		     struct window_pane *);
 void		 window_pane_stack_remove(struct window_panes *,
 		     struct window_pane *);
-void		 window_set_name(struct window *, const char *, const char *);
+void		 window_set_name(struct window *, const char *, int);
 void		 window_add_ref(struct window *, const char *);
 void		 window_remove_ref(struct window *, const char *);
 void		 winlink_clear_flags(struct winlink *);

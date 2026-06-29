@@ -62,7 +62,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	int			 idx = target->idx, before;
 	const char		*template, *name = args_get(args, 'n');
 
-	if (name != NULL && !check_name(name, WINDOW_NAME_FORBID)) {
+	if (name != NULL && !check_name(name)) {
 		cmdq_error(item, "invalid window name: %s", name);
 		return (CMD_RETURN_ERROR);
 	}
@@ -86,7 +86,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_ERROR);
 		}
 		if (name != NULL) {
-			window_set_name(w, name, WINDOW_NAME_FORBID);
+			window_set_name(w, name, 0);
 			options_set_number(w->options, "automatic-rename", 0);
 		}
 		server_unlink_window(src_s, wl);
@@ -116,7 +116,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (name == NULL) {
 		newname = default_window_name(w);
-		window_set_name(w, newname, WINDOW_NAME_FORBID);
+		window_set_name(w, newname, 0);
 		free(newname);
 	} else {
 		window_set_name(w, name, 0);
