@@ -90,7 +90,7 @@ layout_create_cell(struct layout_cell *lcparent)
 void
 layout_free_cell(struct layout_cell *lc, int only_nodes)
 {
-	struct layout_cell	*lcchild;
+	struct layout_cell	*lcchild, *lcnext;
 
 	if (lc == NULL || (only_nodes && lc->type == LAYOUT_WINDOWPANE))
 		return;
@@ -98,11 +98,14 @@ layout_free_cell(struct layout_cell *lc, int only_nodes)
 	switch (lc->type) {
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
-		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (only_nodes && lcchild->type == LAYOUT_WINDOWPANE)
-				continue;
-			TAILQ_REMOVE(&lc->cells, lcchild, entry);
-			layout_free_cell(lcchild, only_nodes);
+		lcchild = TAILQ_FIRST(&lc->cells);
+		while (lcchild != NULL) {
+			lcnext = TAILQ_NEXT(lcchild, entry);
+			if (!only_nodes || lcchild->type != LAYOUT_WINDOWPANE) {
+				TAILQ_REMOVE(&lc->cells, lcchild, entry);
+				layout_free_cell(lcchild, only_nodes);
+			}
+			lcchild = lcnext;
 		}
 		break;
 	case LAYOUT_WINDOWPANE:
