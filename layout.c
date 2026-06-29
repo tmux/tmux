@@ -20,6 +20,7 @@
 #include <sys/types.h>
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "tmux.h"
 
@@ -443,17 +444,21 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 {
 	struct window_pane	*wp;
 	struct layout_cell	*lc;
-	int			 status, scrollbars, sb_pos, sb_w, sb_pad;
-	u_int			 sx, sy;
+	int			 status, sb_w, sb_pad;
+	int			 old_xoff, old_yoff, changed = 0;
+	u_int			 sx, sy, old_sx, old_sy;
 
 	status = window_get_pane_status(w);
-	scrollbars = options_get_number(w->options, "pane-scrollbars");
-	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if ((lc = wp->layout_cell) == NULL || wp == skip ||
 		    !window_pane_is_visible(wp))
 			continue;
+
+		old_xoff = wp->xoff;
+		old_yoff = wp->yoff;
+		old_sx = wp->sx;
+		old_sy = wp->sy;
 
 		wp->xoff = lc->xoff;
 		wp->yoff = lc->yoff;
@@ -467,15 +472,15 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 			sy--;
 		}
 
-		if (window_pane_show_scrollbar(wp, scrollbars)) {
+		if (window_pane_scrollbar_reserve(wp)) {
 			sb_w = wp->scrollbar_style.width;
 			sb_pad = wp->scrollbar_style.pad;
 			if (sb_w < 1)
 				sb_w = 1;
 			if (sb_pad < 0)
 				sb_pad = 0;
-			if (sb_pos == PANE_SCROLLBARS_LEFT) {
-				if ((int)sx - sb_w < PANE_MINIMUM) {
+			if (w->sb_pos == PANE_SCROLLBARS_LEFT) {
+				if ((int)sx - sb_w - sb_pad < PANE_MINIMUM) {
 					wp->xoff = wp->xoff +
 					    (int)sx - PANE_MINIMUM;
 					sx = PANE_MINIMUM;
@@ -492,7 +497,15 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		}
 
 		window_pane_resize(wp, sx, sy);
+
+		if (wp->xoff != old_xoff ||
+		    wp->yoff != old_yoff ||
+		    wp->sx != old_sx ||
+		    wp->sy != old_sy)
+			changed = 1;
 	}
+	if (changed)
+		redraw_invalidate_scene(w);
 }
 
 /* Count the number of available cells in a layout. */
@@ -523,16 +536,15 @@ layout_resize_check(struct window *w, struct layout_cell *lc,
 	struct layout_cell	*lcchild;
 	struct style		*sb_style = &w->active->scrollbar_style;
 	u_int			 available, minimum;
-	int			 status, scrollbars;
+	int			 status;
 
 	status = window_get_pane_status(w);
-	scrollbars = options_get_number(w->options, "pane-scrollbars");
 
 	if (lc->type == LAYOUT_WINDOWPANE) {
 		/* Space available in this cell only. */
 		if (type == LAYOUT_LEFTRIGHT) {
 			available = lc->sx;
-			if (scrollbars)
+			if (w->sb == PANE_SCROLLBARS_ALWAYS)
 				minimum = PANE_MINIMUM + sb_style->width +
 				    sb_style->pad;
 			else
@@ -858,7 +870,7 @@ layout_resize_pane_to(struct window_pane *wp, enum layout_type type,
 }
 
 /* Resize a floating pane to an absolute size. */
-void
+int
 layout_resize_floating_pane_to(struct window_pane *wp, enum layout_type type,
     u_int size, char **cause)
 {
@@ -866,7 +878,7 @@ layout_resize_floating_pane_to(struct window_pane *wp, enum layout_type type,
 
 	if (~lc->flags & LAYOUT_CELL_FLOATING) {
 		*cause = xstrdup("pane is not floating");
-		return;
+		return (-1);
 	}
 
 	if (window_pane_get_pane_lines(wp) != PANE_LINES_NONE &&
@@ -874,17 +886,24 @@ layout_resize_floating_pane_to(struct window_pane *wp, enum layout_type type,
 		size -= 2;
 	if (size < PANE_MINIMUM || size > PANE_MAXIMUM) {
 		*cause = xstrdup("size is too big or too small");
-		return;
+		return (-1);
 	}
 
-	if (type == LAYOUT_TOPBOTTOM)
+	if (type == LAYOUT_TOPBOTTOM) {
+		if (lc->sy == size)
+			return (0);
 		lc->sy = size;
-	else
+	} else {
+		if (lc->sx == size)
+			return (0);
 		lc->sx = size;
+	}
+	redraw_invalidate_scene(wp->window);
+	return (0);
 }
 
 /* Resize a floating pane relative to its current size. */
-void
+int
 layout_resize_floating_pane(struct window_pane *wp, enum layout_type type,
     int change, int opposite, char **cause)
 {
@@ -893,14 +912,16 @@ layout_resize_floating_pane(struct window_pane *wp, enum layout_type type,
 
 	if (~lc->flags & LAYOUT_CELL_FLOATING) {
 		*cause = xstrdup("pane is not floating");
-		return;
+		return (-1);
 	}
+	if (change == 0)
+		return (0);
 
 	if (type == LAYOUT_TOPBOTTOM) {
 		size = lc->sy + change;
 		if (size < PANE_MINIMUM || size > PANE_MAXIMUM) {
 			*cause = xstrdup("change is too big or too small");
-			return;
+			return (-1);
 		}
 		lc->sy = size;
 		if (opposite)
@@ -909,12 +930,14 @@ layout_resize_floating_pane(struct window_pane *wp, enum layout_type type,
 		size = lc->sx + change;
 		if (size < PANE_MINIMUM || size > PANE_MAXIMUM) {
 			*cause = xstrdup("change is too big or too small");
-			return;
+			return (-1);
 		}
 		lc->sx = size;
 		if (opposite)
 			lc->xoff -= change;
 	}
+	redraw_invalidate_scene(wp->window);
+	return (0);
 }
 
 /* Resize a layout cell. */
@@ -1279,6 +1302,100 @@ layout_split_sizes(struct layout_cell *lc, int size, int before,
 
 
 /*
+ * Replaces the provided layout cell with a new node of the specified type and
+ * inserts the cell into it. Used when creating new cells requires a different
+ * layout type, or when the root layout is a window pane.
+ */
+struct layout_cell *
+layout_replace_with_node(struct window *w, struct layout_cell *lc,
+    enum layout_type type)
+{
+	struct layout_cell	*lcparent;
+
+	lcparent = layout_create_cell(lc->parent);
+	layout_make_node(lcparent, type);
+	layout_set_size(lcparent, lc->sx, lc->sy, lc->xoff, lc->yoff);
+	if (lc->parent == NULL)
+		w->layout_root = lcparent;
+	else
+		TAILQ_REPLACE(&lc->parent->cells, lc, lcparent, entry);
+
+	/* Insert the old cell. */
+	lc->parent = lcparent;
+	TAILQ_INSERT_HEAD(&lcparent->cells, lc, entry);
+
+	return (lcparent);
+}
+
+/* Checks if there is enough space for two new panes. */
+int
+layout_split_check_space(struct window_pane *wp, struct layout_cell *lc,
+   enum layout_type type)
+{
+	struct style	*sb_style = &wp->scrollbar_style;
+	u_int		 minimum, sx = lc->sx, sy = lc->sy;
+	int		 status;
+
+	if (lc->flags & LAYOUT_CELL_FLOATING)
+		fatalx("floating cells cannot be split");
+
+	status = window_get_pane_status(wp->window);
+
+	switch (type) {
+	case LAYOUT_LEFTRIGHT:
+		if (wp->window->sb == PANE_SCROLLBARS_ALWAYS) {
+			minimum = PANE_MINIMUM * 2 + sb_style->width +
+			    sb_style->pad;
+		} else
+			minimum = PANE_MINIMUM * 2 + 1;
+		if (sx < minimum)
+			return (0);
+		break;
+	case LAYOUT_TOPBOTTOM:
+		if (layout_add_horizontal_border(wp->window, lc, status))
+			minimum = PANE_MINIMUM * 2 + 2;
+		else
+			minimum = PANE_MINIMUM * 2 + 1;
+		if (sy < minimum)
+			return (0);
+		break;
+	default:
+		fatalx("bad layout type");
+	}
+
+	return (1);
+}
+
+/* Calculates the new cell sizes when splitting a pane. */
+void
+layout_split_sizes(struct layout_cell *lc, int size, int before,
+    enum layout_type type, u_int *size1, u_int *size2, u_int *saved_size)
+{
+	u_int	s1, s2, ss;
+	u_int	sx = lc->sx, sy = lc->sy;
+
+	if (type == LAYOUT_LEFTRIGHT)
+		ss = sx;
+	else
+		ss = sy;
+	if (size < 0)
+		s2 = ((ss + 1) / 2) - 1;
+	else if (before)
+		s2 = ss - size - 1;
+	else
+		s2 = size;
+	if (s2 < PANE_MINIMUM)
+		s2 = PANE_MINIMUM;
+	else if (s2 > sx - 2)
+		s2 = ss - 2;
+	s1 = ss - 1 - s2;
+
+	*size1 = s1;
+	*size2 = s2;
+	*saved_size = ss;
+}
+
+/*
  * Split a pane into two. size is a hint, or -1 for default half/half
  * split. This must be followed by layout_assign_pane before much else happens!
  */
@@ -1373,17 +1490,7 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 		 */
 
 		/* Create and insert the replacement parent. */
-		lcparent = layout_create_cell(lc->parent);
-		layout_make_node(lcparent, type);
-		layout_set_size(lcparent, sx, sy, xoff, yoff);
-		if (lc->parent == NULL)
-			wp->window->layout_root = lcparent;
-		else
-			TAILQ_REPLACE(&lc->parent->cells, lc, lcparent, entry);
-
-		/* Insert the old cell. */
-		lc->parent = lcparent;
-		TAILQ_INSERT_HEAD(&lcparent->cells, lc, entry);
+		lcparent = layout_replace_with_node(wp->window, lc, type);
 
 		/* Create the new child cell. */
 		lcnew = layout_create_cell(lcparent);
@@ -1442,14 +1549,7 @@ layout_floating_pane(struct window *w, struct window_pane *wp, u_int sx,
 		* Adding a pane to a root that isn't node. Must create and
 		* insert a new root.
 		*/
-		lcparent = layout_create_cell(NULL);
-		layout_make_node(lcparent, LAYOUT_TOPBOTTOM);
-		layout_set_size(lcparent, w->sx, w->sy, 0, 0);
-		w->layout_root = lcparent;
-
-		/* Insert the old cell. */
-		lc->parent = lcparent;
-		TAILQ_INSERT_HEAD(&lcparent->cells, lc, entry);
+		lcparent = layout_replace_with_node(w, lc, LAYOUT_TOPBOTTOM);
 	}
 
 	lcnew = layout_create_cell(lcparent);
@@ -1574,6 +1674,7 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 	enum layout_type	 type;
 	u_int			 curval;
 	int			 size = -1;
+	char			*error = NULL;
 
 	if (window_pane_is_floating(wp)) {
 		*cause = xstrdup("can't split a floating pane");
@@ -1600,15 +1701,16 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 
 	if (args_has(args, 'l')) {
 		size = args_percentage_and_expand(args, 'l', 0, INT_MAX, curval,
-		    item, cause);
+		    item, &error);
 	} else if (args_has(args, 'p')) {
 		size = args_strtonum_and_expand(args, 'p', 0, 100, item,
-		    cause);
-		if (*cause == NULL)
+		    &error);
+		if (error == NULL)
 			size = curval * size / 100;
 	}
-	if (*cause != NULL) {
-		*cause = xstrdup("invalid tiled geometry");
+	if (error != NULL) {
+		xasprintf(cause, "invalid tiled geometry %s", error);
+		free(error);
 		return (NULL);
 	}
 
@@ -1625,11 +1727,30 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 	return (lc);
 }
 
-void
-layout_cell_floating_args_parse(struct cmdq_item *item, struct args *args,
-    struct window *w, u_int *sxp, u_int *syp, int *oxp, int *oyp, char **cause)
+struct layout_cell *
+layout_get_floating_cell(struct cmdq_item *item, struct args *args,
+    enum pane_lines lines, struct window *w, struct window_pane *wp,
+    char **cause)
 {
-	int	sx, sy, ox, oy;
+	struct layout_cell	*lcnew;
+	u_int			 sx = UINT_MAX, sy = UINT_MAX;
+	int			 ox = INT_MAX, oy = INT_MAX;
+
+	if (layout_floating_args_parse(item, args, lines, w, &sx, &sy, &ox, &oy,
+	    cause) != 0)
+		return (NULL);
+
+	lcnew = layout_floating_pane(w, wp, sx, sy, ox, oy);
+	return (lcnew);
+}
+
+int
+layout_floating_args_parse(struct cmdq_item *item, struct args *args,
+    enum pane_lines lines, struct window *w, u_int *sxp, u_int *syp, int *oxp,
+    int *oyp, char **cause)
+{
+	int	 sx, sy, ox, oy;
+	char	*error = NULL;
 
 	sx = *sxp == UINT_MAX ? w->sx / 2 : *sxp;
 	sy = *syp == UINT_MAX ? w->sy / 4 : *syp;
@@ -1637,28 +1758,44 @@ layout_cell_floating_args_parse(struct cmdq_item *item, struct args *args,
 	oy = *oyp == INT_MAX ? INT_MAX : *oyp;
 
 	if (args_has(args, 'x')) {
-		sx = args_percentage_and_expand(args, 'x', 0, w->sx - 1, w->sx,
-		    item, cause);
-		if (*cause != NULL)
-			return;
+		sx = args_percentage_and_expand(args, 'x', 0, PANE_MAXIMUM,
+		    w->sx, item, &error);
+		if (error != NULL) {
+			xasprintf(cause, "position %s", error);
+			free(error);
+			return (-1);
+		}
+		if (lines != PANE_LINES_NONE)
+			sx -= 2;
 	}
 	if (args_has(args, 'y')) {
-		sy = args_percentage_and_expand(args, 'y', 0, w->sy - 1, w->sy,
-		    item, cause);
-		if (*cause != NULL)
-			return;
+		sy = args_percentage_and_expand(args, 'y', 0, PANE_MAXIMUM,
+		    w->sy, item, &error);
+		if (error != NULL) {
+			xasprintf(cause, "position %s", error);
+			free(error);
+			return (-1);
+		}
+		if (lines != PANE_LINES_NONE)
+			sy -= 2;
 	}
 	if (args_has(args, 'X')) {
-		ox = args_percentage_and_expand(args, 'X', -(int)w->sx, w->sx,
-		    w->sx, item, cause);
-		if (*cause != NULL)
-			return;
+		ox = args_percentage_and_expand(args, 'X', -sx, w->sx,
+		    w->sx, item, &error);
+		if (error != NULL) {
+			xasprintf(cause, "position %s", error);
+			free(error);
+			return (-1);
+		}
 	}
 	if (args_has(args, 'Y')) {
-		oy = args_percentage_and_expand(args, 'Y', -(int)w->sy, w->sy,
-		    w->sy, item, cause);
-		if (*cause != NULL)
-			return;
+		oy = args_percentage_and_expand(args, 'Y', -sy, w->sy,
+		    w->sy, item, &error);
+		if (error != NULL) {
+			xasprintf(cause, "position %s", error);
+			free(error);
+			return (-1);
+		}
 	}
 
 	if (ox == INT_MAX) {
@@ -1670,7 +1807,9 @@ layout_cell_floating_args_parse(struct cmdq_item *item, struct args *args,
 				ox = 4;
 		}
 		w->last_new_pane_x = ox;
-	}
+	} else
+		if (lines != PANE_LINES_NONE)
+			ox += 1;
 	if (oy == INT_MAX) {
 		if (w->last_new_pane_y == 0)
 			oy = 2;
@@ -1680,39 +1819,24 @@ layout_cell_floating_args_parse(struct cmdq_item *item, struct args *args,
 				oy = 2;
 		}
 		w->last_new_pane_y = oy;
+	} else
+		if (lines != PANE_LINES_NONE)
+			oy += 1;
+
+	if (sx < PANE_MINIMUM || sx > PANE_MAXIMUM) {
+		*cause = xstrdup("invalid width");
+		return (-1);
 	}
+	if (sy < PANE_MINIMUM || sy > PANE_MAXIMUM) {
+		*cause = xstrdup("invalid height");
+		return (-1);
+	}
+
 	*sxp = sx;
 	*syp = sy;
 	*oxp = ox;
 	*oyp = oy;
-}
-
-/* Get a new floating cell. */
-struct layout_cell *
-layout_get_floating_cell(struct cmdq_item *item, struct args *args,
-    struct window *w, struct window_pane *wp, char **cause)
-{
-	struct layout_cell	*lcnew;
-	u_int			 sx = UINT_MAX, sy = UINT_MAX;
-	int			 ox = INT_MAX, oy = INT_MAX;
-
-	layout_cell_floating_args_parse(item, args, w, &sx, &sy, &ox, &oy,
-	    cause);
-	if (*cause != NULL) {
-		return (NULL);
-	}
-
-	if (sx < PANE_MINIMUM || sx > PANE_MAXIMUM) {
-		*cause = xstrdup("invalid width");
-		return (NULL);
-	}
-	if (sy < PANE_MINIMUM || sy > PANE_MAXIMUM) {
-		*cause = xstrdup("invalid height");
-		return (NULL);
-	}
-
-	lcnew = layout_floating_pane(w, wp, sx, sy, ox, oy);
-	return (lcnew);
+	return (0);
 }
 
 /*
@@ -1746,8 +1870,76 @@ layout_remove_tile(struct window *w, struct layout_cell *lc)
 		layout_resize_adjust(w, lcneighbour, type, change);
 	}
 
-	/* Zeroing out the cell geometry until the cell is retiled. */
-	layout_set_size(lc, 0, 0, 0, 0);
+	/*
+	 * Zeroing out the cell geometry until the cell is retiled unless this
+	 * is the top level node.
+	 */
+	if (lc->parent != NULL)
+		layout_set_size(lc, 0, 0, 0, 0);
+	return (1);
+}
+
+/*
+ * Inserts a cell back into the tiled layout by taking half the space from its
+ * nearest neighbour.
+ */
+int
+layout_insert_tile(struct window *w, struct layout_cell *lc)
+{
+	struct layout_cell	*lcneighbour, *lctiled, *lcparent;
+	enum layout_type	 type;
+	u_int			 size1, size2, saved_size;
+
+	if (lc == NULL)
+		fatalx("layout cell cannot be null when tiling");
+
+	lcparent = lc->parent;
+	if (lc->flags & LAYOUT_CELL_FLOATING)
+		return (1);
+
+	if (lcparent == NULL) {
+		/* Only pane in the layout. */
+		layout_set_size(lc, w->sx, w->sy, 0, 0);
+		return (1);
+	}
+
+	type = lcparent->type;
+	lcneighbour = layout_cell_get_neighbour(lc);
+	if (lcneighbour == NULL) {
+		/*
+		 * This will become the only visible cell in the parent.
+		 * Tile the parent, then set the child's 'split' size.
+		 */
+		layout_insert_tile(w, lcparent);
+		if (type == LAYOUT_LEFTRIGHT)
+			size1 = lcparent->sx;
+		else
+			size1 = lcparent->sy;
+		layout_resize_set_size(w, lc, type, size1);
+	} else {
+		/*
+		 * If the neighbour is a node, a tiled child in the subtree of
+		 * the neighbour is needed to check for space.
+		 */
+		lctiled = layout_cell_get_first_tiled(lcneighbour);
+		if (!layout_split_check_space(lctiled->wp, lcneighbour, type))
+			return (0);
+		layout_split_sizes(lcneighbour, -1, 0, type, &size1, &size2,
+		    &saved_size);
+		layout_resize_set_size(w, lc, type, size1);
+		layout_resize_set_size(w, lcneighbour, type, size2);
+	}
+
+	/* Setting opposite of the 'split' size to that of the parent. */
+	if (lcparent->type == LAYOUT_LEFTRIGHT) {
+		size1 = lcparent->sy;
+		type = LAYOUT_TOPBOTTOM;
+	} else {
+		size1 = lcparent->sx;
+		type = LAYOUT_LEFTRIGHT;
+	}
+	layout_resize_set_size(w, lc, type, size1);
+
 	return (1);
 }
 

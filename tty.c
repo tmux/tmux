@@ -51,6 +51,7 @@ static void	tty_check_bg(struct tty *, struct colour_palette *,
 		    struct grid_cell *);
 static void	tty_check_us(struct tty *, struct colour_palette *,
 		    struct grid_cell *);
+static int	tty_map_theme_colour(struct tty *, int);
 static void	tty_colours_fg(struct tty *, const struct grid_cell *);
 static void	tty_colours_bg(struct tty *, const struct grid_cell *);
 static void	tty_colours_us(struct tty *, const struct grid_cell *);
@@ -752,8 +753,10 @@ tty_force_cursor_colour(struct tty *tty, int c)
 	u_char	r, g, b;
 	char	s[13];
 
-	if (c != -1)
+	if (c != -1) {
+		c = tty_map_theme_colour(tty, c);
 		c = colour_force_rgb(c);
+	}
 	if (c == tty->ccolour)
 		return;
 	if (c == -1)
@@ -1545,20 +1548,20 @@ tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 }
 
 void
-tty_draw_images(struct client *c, struct window_pane *wp, struct screen *s)
+tty_draw_images(struct client *c, struct window_pane *wp)
 {
 	struct image	*im;
 	struct tty_ctx	 ttyctx;
 
-	TAILQ_FOREACH(im, &s->images, entry) {
+	TAILQ_FOREACH(im, &wp->screen->images, entry) {
 		memset(&ttyctx, 0, sizeof ttyctx);
 
 		/* Set the client independent properties. */
 		ttyctx.ocx = im->px;
 		ttyctx.ocy = im->py;
 
-		ttyctx.orlower = s->rlower;
-		ttyctx.orupper = s->rupper;
+		ttyctx.orlower = wp->screen->rlower;
+		ttyctx.orupper = wp->screen->rupper;
 
 		ttyctx.xoff = ttyctx.rxoff = wp->xoff;
 		ttyctx.sx = wp->sx;
@@ -2780,6 +2783,9 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 				gc2.bg = changed;
 		}
 	}
+	gc2.fg = tty_map_theme_colour(tty, gc2.fg);
+	gc2.bg = tty_map_theme_colour(tty, gc2.bg);
+	gc2.us = tty_map_theme_colour(tty, gc2.us);
 	if (style_ctx->dim != 0) {
 		gc2.fg = tty_dim_default_colour(tty, gc2.fg, 1);
 		gc2.bg = tty_dim_default_colour(tty, gc2.bg, 0);
@@ -2929,6 +2935,28 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 		tty_colours_us(tty, gc);
 }
 
+static int
+tty_map_theme_colour(struct tty *tty, int colour)
+{
+	struct client	*c;
+	u_int		 n;
+	int		 m;
+
+	if (~colour & COLOUR_FLAG_THEME)
+		return (colour);
+
+	n = colour & 0xff;
+	if (n >= COLOUR_THEME_COUNT)
+		return (8);
+	if (tty == NULL || (c = tty->client) == NULL)
+		return (8);
+
+	m = c->theme_colours[n];
+	if (m == -1 || (m & COLOUR_FLAG_THEME))
+		return (8);
+	return (m);
+}
+
 static void
 tty_check_fg(struct tty *tty, struct colour_palette *palette,
     struct grid_cell *gc)
@@ -2951,6 +2979,7 @@ tty_check_fg(struct tty *tty, struct colour_palette *palette,
 		if ((c = colour_palette_get(palette, c)) != -1)
 			gc->fg = c;
 	}
+	gc->fg = tty_map_theme_colour(tty, gc->fg);
 
 	/* Is this a 24-bit colour? */
 	if (gc->fg & COLOUR_FLAG_RGB) {
@@ -3011,6 +3040,7 @@ tty_check_bg(struct tty *tty, struct colour_palette *palette,
 		if ((c = colour_palette_get(palette, gc->bg)) != -1)
 			gc->bg = c;
 	}
+	gc->bg = tty_map_theme_colour(tty, gc->bg);
 
 	/* Is this a 24-bit colour? */
 	if (gc->bg & COLOUR_FLAG_RGB) {
@@ -3061,6 +3091,7 @@ tty_check_us(__unused struct tty *tty, struct colour_palette *palette,
 		if ((c = colour_palette_get(palette, gc->us)) != -1)
 			gc->us = c;
 	}
+	gc->us = tty_map_theme_colour(tty, gc->us);
 
 	/* Convert underscore colour if only RGB can be supported. */
 	if (!tty_term_has(tty->term, TTYC_SETULC1)) {

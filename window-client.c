@@ -38,7 +38,7 @@ static void		 window_client_key(struct window_mode_entry *,
 #define WINDOW_CLIENT_DEFAULT_COMMAND "detach-client -t '%%'"
 
 #define WINDOW_CLIENT_DEFAULT_FORMAT \
-	"#{t/p:client_activity}: session #{session_name}"
+	"#[fg=themelightgrey]#{t/p:client_activity}: session #[default]#{session_name}"
 
 #define WINDOW_CLIENT_DEFAULT_KEY_FORMAT \
 	"#{?#{e|<:#{line},10}," \
@@ -49,87 +49,91 @@ static void		 window_client_key(struct window_mode_entry *,
 
 #define WINDOW_CLIENT_FEATURE(f) \
 	"#{?#{I/f:" #f "}," \
-	"#[fg=green],#[dim]}#{p/15:#{l:" #f "}}" \
+	"#[fg=themegreen],#[fg=themelightgrey]}#{p/15:#{l:" #f "}}" \
 	"#[default]"
 static const char *window_client_info_lines[] = {
-	"Client Name   #[acs]x#[default] "
-	"#{client_name} "
-	"#[dim](PID #{client_pid})#[default]",
-	"Session       #[acs]x#[default] "
+	"#[fg=themelightgrey]Client Name   #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{client_name} #[fg=themelightgrey]"
+	"#[fg=themelightgrey](PID #{client_pid})#[default]",
+	"#[fg=themelightgrey]Session       #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{session_name}",
-	"Attach Time   #[acs]x#[default] "
+	"#[fg=themelightgrey]Attach Time   #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{t:client_created} "
-	"#[dim](#{t/r:client_created})#[default]",
-	"Activity Time #[acs]x#[default] "
+	"#[fg=themelightgrey](#{t/r:client_created})#[default]",
+	"#[fg=themelightgrey]Activity Time #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{t:client_activity} "
-	"#[dim](#{t/r:client_activity})#[default]",
-	"Terminal Type #[acs]x#[default] "
+	"#[fg=themelightgrey](#{t/r:client_activity})#[default]",
+	"#[fg=themelightgrey]Terminal Type #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{?client_termtype,#{client_termtype},Unknown}",
-	"TERM          #[acs]x#[default] "
+	"#[fg=themelightgrey]TERM          #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{client_termname}",
-	"Size          #[acs]x#[default] "
+	"#[fg=themelightgrey]Size          #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{client_width}x#{client_height} "
-	"#[dim](cell #{client_cell_width}x#{client_cell_height})#[default]",
-	"Bytes Written #[acs]x#[default] "
+	"#[fg=themelightgrey](cell #{client_cell_width}x"
+	"#{client_cell_height})#[default]",
+	"#[fg=themelightgrey]Bytes Written #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{client_written} "
-	"#[dim](#{client_discarded} discarded)#[default]",
+	"#[fg=themelightgrey](#{client_discarded} discarded)#[default]",
 
-	"Features      #[acs]x#[default] "
+	"#[fg=themelightgrey]Features      #[#{E:tree-mode-border-style},acs]x#[default] "
 	WINDOW_CLIENT_FEATURE(256) " "
 	WINDOW_CLIENT_FEATURE(RGB) " "
 	WINDOW_CLIENT_FEATURE(bpaste) " "
 	WINDOW_CLIENT_FEATURE(ccolour),
-	"              #[acs]x#[default] "
+	"              #[#{E:tree-mode-border-style},acs]x#[default] "
 	WINDOW_CLIENT_FEATURE(clipboard) " "
 	WINDOW_CLIENT_FEATURE(cstyle) " "
 	WINDOW_CLIENT_FEATURE(extkeys) " "
 	WINDOW_CLIENT_FEATURE(focus),
-	"              #[acs]x#[default] "
+	"              #[#{E:tree-mode-border-style},acs]x#[default] "
 	WINDOW_CLIENT_FEATURE(hyperlinks) " "
 	WINDOW_CLIENT_FEATURE(ignorefkeys) " "
 	WINDOW_CLIENT_FEATURE(margins) " "
 	WINDOW_CLIENT_FEATURE(mouse),
-	"              #[acs]x#[default] "
+	"              #[#{E:tree-mode-border-style},acs]x#[default] "
 	WINDOW_CLIENT_FEATURE(osc7) " "
 	WINDOW_CLIENT_FEATURE(overline) " "
 	WINDOW_CLIENT_FEATURE(progressbar) " "
 	WINDOW_CLIENT_FEATURE(rectfill),
-	"              #[acs]x#[default] "
+	"              #[#{E:tree-mode-border-style},acs]x#[default] "
 	WINDOW_CLIENT_FEATURE(sixel) " "
 	WINDOW_CLIENT_FEATURE(strikethrough) " "
 	WINDOW_CLIENT_FEATURE(sync) " "
 	WINDOW_CLIENT_FEATURE(title),
-	"              #[acs]x#[default] "
+	"              #[#{E:tree-mode-border-style},acs]x#[default] "
 	WINDOW_CLIENT_FEATURE(usstyle),
-	"#[acs]qqqqqqqqqqqqqqn#{R:q,#{window_width}}#[default]",
+	"#[#{E:tree-mode-border-style},acs]qqqqqqqqqqqqqqn#{R:q,#{window_width}}#[default]",
 
-	"prefix        #[acs]x#[default] "
+	"#[fg=themelightgrey]prefix        #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{prefix}",
 
-	"mouse         #[acs]x#[default] "
-	"#{?mouse,#{?#{I/c:kmous},,#[fg=red]}on,#[dim]off} "
+	"#[fg=themelightgrey]mouse         #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{?mouse,#{?#{I/c:kmous},,#[fg=themered]}on,#[fg=themelightgrey]off} "
 	"#{?#{I/c:kmous},,#[align=right]unavailable: [kmous] missing}",
 
-	"set-clipboard #[acs]x#[default] "
-	"#{?#{!=:#{set-clipboard},off},#{?#{I/f:clipboard},,#[fg=red]}#{set-clipboard},#[dim]off} "
+	"#[fg=themelightgrey]set-clipboard #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{?#{!=:#{set-clipboard},off},#{?#{I/f:clipboard},,"
+	"#[fg=themered]}#{set-clipboard},#[fg=themelightgrey]off} "
 	"#{?#{I/f:clipboard},,#[align=right]unavailable: [Ms] missing}",
 
-	"get-clipboard #[acs]x#[default] "
-	"#{?#{!=:#{get-clipboard},off},#{?#{I/f:clipboard},,#[fg=red]}#{get-clipboard},#[dim]off} "
+	"#[fg=themelightgrey]get-clipboard #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{?#{!=:#{get-clipboard},off},#{?#{I/f:clipboard},,"
+	"#[fg=themered]}#{get-clipboard},#[fg=themelightgrey]off} "
 	"#{?#{I/f:clipboard},,#[align=right]unavailable: [Ms] missing}",
 
-	"focus-events  #[acs]x#[default] "
-	"#{?focus-events,#{?#{I/f:focus},,#[fg=red]}on,#[dim]off} "
+	"#[fg=themelightgrey]focus-events  #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{?focus-events,#{?#{I/f:focus},,#[fg=themered]}on,#[fg=themelightgrey]off} "
 	"#{?#{I/f:focus},,#[align=right]unavailable: [Enfcs] or [Dcfcs] missing}",
 
-	"extended-keys #[acs]x#[default] "
-	"#{?#{!=:#{extended-keys},off},#{?#{I/f:extkeys},,#[fg=red]}#{extended-keys},#[dim]off} "
+	"#[fg=themelightgrey]extended-keys #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{?#{!=:#{extended-keys},off},#{?#{I/f:extkeys},,"
+	"#[fg=themered]}#{extended-keys},#[fg=themelightgrey]off} "
 	"#{?#{I/f:extkeys},,#[align=right]unavailable: [Eneks] or [Dseks] missing}",
 
-	"set-titles    #[acs]x#[default] "
-	"#{?set-titles,on,#[dim]off}",
+	"#[fg=themelightgrey]set-titles    #[#{E:tree-mode-border-style},acs]x#[default] "
+	"#{?set-titles,on,#[fg=themelightgrey]off}",
 
-	"escape-time   #[acs]x#[default] "
+	"#[fg=themelightgrey]escape-time   #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{escape-time} ms",
 };
 
@@ -258,6 +262,8 @@ window_client_draw_info(__unused void *modedata, void *itemdata,
 	struct window_client_itemdata	*item = itemdata;
 	struct client			*c = item->c;
 	struct screen			*s = ctx->s;
+	struct window			*w = c->session->curw->window;
+	struct grid_cell		 gc;
 	u_int				 cx = s->cx, cy = s->cy, i;
 	struct format_tree		*ft;
 	char				*expanded;
@@ -273,6 +279,12 @@ window_client_draw_info(__unused void *modedata, void *itemdata,
 		format_draw(ctx, &grid_default_cell, sx, expanded, NULL, 0);
 		free(expanded);
 	}
+	if (sx > 14 && i < sy) {
+		memcpy(&gc, &grid_default_cell, sizeof gc);
+		style_apply(&gc, w->options, "tree-mode-border-style", NULL);
+		screen_write_cursormove(ctx, cx + 14, cy + i, 0);
+		screen_write_vline(ctx, sy - i, 0, 0, &gc);
+	}
 
 	format_free(ft);
 }
@@ -284,20 +296,24 @@ window_client_draw(void *modedata, void *itemdata,
 	struct window_client_modedata	*data = modedata;
 	struct window_client_itemdata	*item = itemdata;
 	struct client			*c = item->c;
+	struct session			*session = c->session;
 	struct screen			*s = ctx->s;
+	struct window			*w;
 	struct window_pane		*wp;
+	struct grid_cell		 gc;
 	u_int				 cx = s->cx, cy = s->cy, lines, at;
 
-	if (c->session == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
+	if (session == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
 		return;
 	if (data->preview_is_info) {
 		window_client_draw_info(modedata, itemdata, ctx, sx, sy);
 		return;
 	}
-	wp = c->session->curw->window->active;
+	w = session->curw->window;
+	wp = w->active;
 	if (data->hide_preview_this_pane && wp == data->wp) {
-		if (!TAILQ_EMPTY(&c->session->curw->window->last_panes))
-			wp = TAILQ_FIRST(&c->session->curw->window->last_panes);
+		if (!TAILQ_EMPTY(&w->last_panes))
+			wp = TAILQ_FIRST(&w->last_panes);
 		else
 			wp = NULL;
 	}
@@ -318,7 +334,9 @@ window_client_draw(void *modedata, void *itemdata,
 		screen_write_cursormove(ctx, cx, cy + 2, 0);
 	else
 		screen_write_cursormove(ctx, cx, cy + sy - 1 - lines, 0);
-	screen_write_hline(ctx, sx, 0, 0, BOX_LINES_DEFAULT, NULL);
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+	style_apply(&gc, w->options, "tree-mode-border-style", NULL);
+	screen_write_hline(ctx, sx, 0, 0, BOX_LINES_DEFAULT, &gc);
 
 	if (at != 0)
 		screen_write_cursormove(ctx, cx, cy, 0);
@@ -369,15 +387,24 @@ window_client_sort(struct sort_criteria *sort_crit)
 }
 
 static const char* window_client_help_lines[] = {
-	"#[bold]          i #[default]#[acs]x#[default] Toggle info view",
-	"#[bold]      Enter #[default]#[acs]x#[default] Choose selected %1",
-	"#[bold]          d #[default]#[acs]x#[default] Detach selected %1",
-	"#[bold]          D #[default]#[acs]x#[default] Detach tagged %1s",
-	"#[bold]          x #[default]#[acs]x#[default] Detach selected %1",
-	"#[bold]          X #[default]#[acs]x#[default] Detach tagged %1s",
-	"#[bold]          z #[default]#[acs]x#[default] Suspend selected %1",
-	"#[bold]          Z #[default]#[acs]x#[default] Suspend tagged %1s",
-	"#[bold]          f #[default]#[acs]x#[default] Enter a filter",
+	"#[fg=themelightgrey]"
+	"          i #[#{E:tree-mode-border-style},acs]x#[default] Toggle info view",
+	"#[fg=themelightgrey]"
+	"      Enter #[#{E:tree-mode-border-style},acs]x#[default] Choose selected %1",
+	"#[fg=themelightgrey]"
+	"          d #[#{E:tree-mode-border-style},acs]x#[default] Detach selected %1",
+	"#[fg=themelightgrey]"
+	"          D #[#{E:tree-mode-border-style},acs]x#[default] Detach tagged %1s",
+	"#[fg=themelightgrey]"
+	"          x #[#{E:tree-mode-border-style},acs]x#[default] Detach selected %1",
+	"#[fg=themelightgrey]"
+	"          X #[#{E:tree-mode-border-style},acs]x#[default] Detach tagged %1s",
+	"#[fg=themelightgrey]"
+	"          z #[#{E:tree-mode-border-style},acs]x#[default] Suspend selected %1",
+	"#[fg=themelightgrey]"
+	"          Z #[#{E:tree-mode-border-style},acs]x#[default] Suspend tagged %1s",
+	"#[fg=themelightgrey]"
+	"          f #[#{E:tree-mode-border-style},acs]x#[default] Enter a filter",
 	NULL
 };
 

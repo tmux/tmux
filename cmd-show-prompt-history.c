@@ -55,56 +55,44 @@ cmd_show_prompt_history_exec(struct cmd *self, struct cmdq_item *item)
 	struct args		*args = cmd_get_args(self);
 	const char		*typestr = args_get(args, 'T');
 	enum prompt_type	 type;
-	u_int			 tidx, hidx;
+	u_int			 t, h;
+	const char		*v;
 
 	if (cmd_get_entry(self) == &cmd_clear_prompt_history_entry) {
 		if (typestr == NULL) {
-			for (tidx = 0; tidx < PROMPT_NTYPES; tidx++) {
-				for (hidx = 0; hidx < status_prompt_hsize[tidx];
-				     hidx++)
-					free(status_prompt_hlist[tidx][hidx]);
-				free(status_prompt_hlist[tidx]);
-				status_prompt_hlist[tidx] = NULL;
-				status_prompt_hsize[tidx] = 0;
-			}
+			for (t = 0; t < PROMPT_NTYPES; t++)
+				prompt_history_clear(t);
 		} else {
-			type = status_prompt_type(typestr);
+			type = prompt_type(typestr);
 			if (type == PROMPT_TYPE_INVALID) {
 				cmdq_error(item, "invalid type: %s", typestr);
 				return (CMD_RETURN_ERROR);
 			}
-			for (hidx = 0; hidx < status_prompt_hsize[type]; hidx++)
-				free(status_prompt_hlist[type][hidx]);
-			free(status_prompt_hlist[type]);
-			status_prompt_hlist[type] = NULL;
-			status_prompt_hsize[type] = 0;
+			prompt_history_clear(type);
 		}
-
 		return (CMD_RETURN_NORMAL);
 	}
 
 	if (typestr == NULL) {
-		for (tidx = 0; tidx < PROMPT_NTYPES; tidx++) {
-			cmdq_print(item, "History for %s:\n",
-			    status_prompt_type_string(tidx));
-			for (hidx = 0; hidx < status_prompt_hsize[tidx];
-			    hidx++) {
-				cmdq_print(item, "%d: %s", hidx + 1,
-				    status_prompt_hlist[tidx][hidx]);
+		for (t = 0; t < PROMPT_NTYPES; t++) {
+			typestr = prompt_type_string(t);
+			cmdq_print(item, "History for %s:\n", typestr);
+			for (h = 0; h < prompt_history_size(t); h++) {
+				v = prompt_history_get(t, h);
+				cmdq_print(item, "%d: %s", h + 1, v);
 			}
 			cmdq_print(item, "%s", "");
 		}
 	} else {
-		type = status_prompt_type(typestr);
+		type = prompt_type(typestr);
 		if (type == PROMPT_TYPE_INVALID) {
 			cmdq_error(item, "invalid type: %s", typestr);
 			return (CMD_RETURN_ERROR);
 		}
-		cmdq_print(item, "History for %s:\n",
-		    status_prompt_type_string(type));
-		for (hidx = 0; hidx < status_prompt_hsize[type]; hidx++) {
-			cmdq_print(item, "%d: %s", hidx + 1,
-			    status_prompt_hlist[type][hidx]);
+		cmdq_print(item, "History for %s:\n", prompt_type_string(type));
+		for (h = 0; h < prompt_history_size(type); h++) {
+			v = prompt_history_get(type, h);
+			cmdq_print(item, "%d: %s", h + 1, v);
 		}
 		cmdq_print(item, "%s", "");
 	}

@@ -56,7 +56,7 @@ cfg_done(__unused struct cmdq_item *item, __unused void *data)
 	if (cfg_item != NULL)
 		cmdq_continue(cfg_item);
 
-	status_prompt_load_history();
+	prompt_load_history();
 
 	return (CMD_RETURN_NORMAL);
 }

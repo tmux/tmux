@@ -364,6 +364,8 @@ Choose the current window interactively.
 Kill the current pane.
 .It z
 Toggle zoom state of the current pane.
+.It Tab
+Choose a new window and session by fuzzy matching.
 .It {
 Move floating pane to top-left corner.
 .It }
@@ -2744,6 +2746,15 @@ and
 .Fl Y
 options set the position of the upper-left corner of the pane.
 If omitted, new floating panes are cascaded from the top-left of the window.
+The
+.Fl x ,
+.Fl y ,
+.Fl X ,
+and
+.Fl Y
+options may be followed by
+.Ql %
+to specify a percentage of the window size.
 .Pp
 If the pane had previously been floating, the position and sizes are restored
 from the saved values not specified by the
@@ -2873,9 +2884,11 @@ The following keys may be used in client mode:
 .It Li "z" Ta "Suspend selected client"
 .It Li "Z" Ta "Suspend tagged clients"
 .It Li "f" Ta "Enter a format to filter items"
+.It Li "c" Ta "Clear the current filter"
 .It Li "O" Ta "Change sort order"
 .It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
+.It Li "i" Ta "Change view (preview and client information)"
 .It Li "F1 or C\-h" Ta "Display help"
 .It Li "q" Ta "Exit mode"
 .El
@@ -2968,11 +2981,12 @@ The following keys may be used in tree mode:
 .It Li "C\-t" Ta "Tag all items"
 .It Li "\&:" Ta "Run a command for each tagged item"
 .It Li "f" Ta "Enter a format to filter items"
+.It Li "c" Ta "Clear the current filter"
 .It Li "H" Ta "Jump to the starting pane"
 .It Li "O" Ta "Change sort order"
 .It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
-.It Li "i" Ta "Change view (preview and client information)"
+.It Li "i" Ta "Change view (preview and session, window and pane information)"
 .It Li "F1 or C\-h" Ta "Display help"
 .It Li "q" Ta "Exit mode"
 .El
@@ -3066,6 +3080,7 @@ The following keys may be used in customize mode:
 .It Li "T" Ta "Tag no items"
 .It Li "C\-t" Ta "Tag all items"
 .It Li "f" Ta "Enter a format to filter items"
+.It Li "c" Ta "Clear the current filter"
 .It Li "v" Ta "Toggle option information"
 .It Li "F1 or C\-h" Ta "Display help"
 .It Li "q" Ta "Exit mode"
@@ -3086,6 +3101,51 @@ kills the pane when the mode is exited.
 The
 .Ic customize-mode
 command works only if at least one client is attached.
+.It Xo
+.Ic switch\-mode
+.Op Fl kswZ
+.Op Fl F Ar format
+.Op Fl t Ar target\-pane
+.Op Ar command
+.Xc
+Put a pane into switch mode, where a session or window may be chosen
+interactively from a list.
+Each session or window is shown on one line and the list is narrowed by typing:
+the typed text is matched against each item with fuzzy
+matching and only matching items are shown, sorted by how well they match.
+.Fl s
+lists sessions (the default) and
+.Fl w
+lists windows.
+.Fl Z
+zooms the pane.
+The following keys may be used in switch mode:
+.Bl -column "KeyXXX" "Function" -offset indent
+.It Sy "Key" Ta Sy "Function"
+.It Li "Enter" Ta "Choose the selected item"
+.It Li "Up" Ta "Select the previous item"
+.It Li "Down" Ta "Select the next item"
+.It Li "Escape" Ta "Exit mode"
+.El
+.Pp
+After a session or window is chosen, the first instance of
+.Ql %%
+and all instances of
+.Ql %1
+are replaced by the target in
+.Ar command
+and the result executed as a command.
+If
+.Ar command
+is not given, "switch\-client \-Zt \[aq]%%\[aq]" is used.
+.Fl F
+specifies the format for each item in the list.
+.Fl k
+kills the pane when the mode is exited.
+.Pp
+The appearance of matched characters is controlled by the
+.Ic switch\-mode\-match\-style
+option.
 .It Xo
 .Tg displayp
 .Ic display\-panes
@@ -3571,7 +3631,7 @@ but a different format may be specified with
 .Fl F .
 .Tg newp
 .It Xo Ic new\-pane
-.Op Fl bdefhIkPvWZ
+.Op Fl bdefhIkLPvWZ
 .Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
@@ -3584,101 +3644,49 @@ but a different format may be specified with
 .Op Fl S Ar active\-border\-style
 .Op Fl t Ar target\-pane
 .Op Fl T Ar title
+.Op Fl x Ar width
+.Op Fl y Ar height
+.Op Fl X Ar x-position
+.Op Fl Y Ar y-position
 .Op Ar shell\-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic newp
-Create a new pane.
-The new pane is created by splitting
-.Ar target\-pane .
-If
-.Fl d
-is given, the session does not make the new pane the current pane.
-.Fl Z
-zooms if the window is not zoomed, or keeps it zoomed if already zoomed.
-.Fl s
-sets the style for the pane content.
-.Fl S
-sets the border style when the pane is active and
-.Fl R
-sets the border style when the pane is inactive (see
-.Sx STYLES ) .
-.Fl T
-sets the pane title.
+Creates a new floating pane.
+The
+.Fl x
+and
+.Fl y
+options set the width and height of the floating pane in columns and lines
+respectively.
+The default is half the window width and a quarter the window height.
+The
+.Fl X
+and
+.Fl Y
+options set the position of the upper-left corner of the pane.
+If omitted, new floating panes are cascaded from the top-left of the window.
+The
+.Fl x ,
+.Fl y ,
+.Fl X ,
+and
+.Fl Y
+options may be followed by
+.Ql %
+to specify a percentage of the window size.
 .Fl B
 sets the pane border lines for floating panes; see
 .Ic pane\-border\-lines .
 .Pp
-.Fl h
-does a horizontal split and
-.Fl v
-a vertical split; if neither is specified,
-.Fl v
-is assumed.
 The
-.Fl l
-option specifies the size of the new pane in lines (for vertical split) or in
-columns (for horizontal split);
-.Ar size
-may be followed by
-.Ql %
-to specify a percentage of the available space.
-.Fl p
-is a shorthand option for this.
-The
-.Fl b
-option causes the new pane to be created to the left of or above
-.Ar target\-pane .
-The
-.Fl f
-option creates a new pane spanning the full window height (with
-.Fl h )
-or full window width (with
-.Fl v ) ,
-instead of splitting the active pane.
-.Pp
-.Fl k
-keeps the pane open after the optional
-.Ar shell\-command
-exits and waits for a key to be pressed before closing it.
-The message shown is controlled by the
-.Ic remain\-on\-exit\-format
-option.
-.Fl m Ar message
-is equivalent to
-.Fl k
-but also sets the
-.Ic remain\-on\-exit\-format
-option for this pane to
-.Ar message .
-.Pp
-.Fl W
-Waits until
-.Ar shell\-command
-exits, then returns its exit status.
-For example:
-.Bd -literal -offset indent
-$ tmux new-pane -W 'vi afile'
-$ echo $?
-0
-.Ed
-.Pp
-.Fl E ,
-or an empty
-.Ar shell\-command ,
-(\[aq]\[aq]) will create an empty pane with no command running in it;
-.Ic display-message
-.Fl I
-can write to an empty pane.
-The
-.Fl I
-flag will create an empty pane and forward any output from stdin to it.
-For example:
-.Bd -literal -offset indent
-$ make 2>&1|tmux splitw \-dI &
-.Ed
+.Fl L
+option makes
+.Ic new\-pane
+behave like
+.Ic split\-window .
 .Pp
 All other options have the same meaning as for the
-.Ic new\-window
+.Ic split\-window
 command.
 .Tg nextl
 .It Ic next\-layout Op Fl t Ar target\-window
@@ -4033,14 +4041,92 @@ the command behaves like
 .Op Ar shell\-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic splitw
-Creates a new pane by splitting
+Create a new pane by splitting
 .Ar target\-pane .
-Shares behavior with
-.Ic new\-pane .
+If
+.Fl d
+is given, the session does not make the new pane the current pane.
+.Fl Z
+zooms if the window is not zoomed, or keeps it zoomed if already zoomed.
+.Fl s
+sets the style for the pane content.
+.Fl S
+sets the border style when the pane is active and
+.Fl R
+sets the border style when the pane is inactive (see
+.Sx STYLES ) .
+.Fl T
+sets the pane title.
 .Pp
-See
-.Ic new\-pane
-for more details.
+.Fl h
+does a horizontal split and
+.Fl v
+a vertical split; if neither is specified,
+.Fl v
+is assumed.
+The
+.Fl l
+option specifies the size of the new pane in lines (for vertical split) or in
+columns (for horizontal split);
+.Ar size
+may be followed by
+.Ql %
+to specify a percentage of the available space.
+.Fl p
+is a shorthand option for this.
+The
+.Fl b
+option causes the new pane to be created to the left of or above
+.Ar target\-pane .
+The
+.Fl f
+option creates a new pane spanning the full window height (with
+.Fl h )
+or full window width (with
+.Fl v ) ,
+instead of splitting the active pane.
+.Pp
+.Fl k
+keeps the pane open after the optional
+.Ar shell\-command
+exits and waits for a key to be pressed before closing it.
+The message shown is controlled by the
+.Ic remain\-on\-exit\-format
+option.
+.Fl m Ar message
+is equivalent to
+.Fl k
+but also sets the
+.Ic remain\-on\-exit\-format
+option for this pane to
+.Ar message .
+.Pp
+.Fl W
+Waits until
+.Ar shell\-command
+exits, then returns its exit status.
+For example:
+.Bd -literal -offset indent
+$ tmux new-pane -W 'vi afile'
+$ echo $?
+0
+.Ed
+.Pp
+.Fl E ,
+or an empty
+.Ar shell\-command ,
+(\[aq]\[aq]) will create an empty pane with no command running in it;
+.Ic display-message
+.Fl I
+can write to an empty pane.
+The
+.Fl I
+flag will create an empty pane and forward any output from stdin to it.
+For example:
+.Bd -literal -offset indent
+$ make 2>&1|tmux new\-pane \-dI &
+.Ed
+.Pp
 .Tg swapp
 .It Xo Ic swap\-pane
 .Op Fl dDUZ
@@ -4653,6 +4739,57 @@ where the number is a hexadecimal number, or a range of the form
 Give the command to pipe to if the
 .Ic copy\-pipe
 copy mode command is used without arguments.
+.It Xo Ic theme
+.Op Ic detect | terminal | light | dark
+.Xc
+Whether tmux should use the detected client theme
+.Pq Ic detect ,
+use terminal ANSI colours
+.Pq Ic terminal ,
+or force the light or dark theme.
+.It Xo Ic dark\-theme\-black ,
+.Ic dark\-theme\-white ,
+.Ic dark\-theme\-light\-grey ,
+.Ic dark\-theme\-dark\-grey ,
+.Ic dark\-theme\-green ,
+.Ic dark\-theme\-yellow ,
+.Ic dark\-theme\-red ,
+.Ic dark\-theme\-blue ,
+.Ic dark\-theme\-cyan ,
+.Ic dark\-theme\-magenta ,
+.Ic light\-theme\-black ,
+.Ic light\-theme\-white ,
+.Ic light\-theme\-light\-grey ,
+.Ic light\-theme\-dark\-grey ,
+.Ic light\-theme\-green ,
+.Ic light\-theme\-yellow ,
+.Ic light\-theme\-red ,
+.Ic light\-theme\-blue ,
+.Ic light\-theme\-cyan
+.No and Ic light\-theme\-magenta Ar colour
+.Xc
+Set the theme colours.
+These are the named colours
+.Ic themeblack ,
+.Ic themewhite ,
+.Ic themelightgrey ,
+.Ic themedarkgrey ,
+.Ic themegreen ,
+.Ic themeyellow ,
+.Ic themered ,
+.Ic themeblue ,
+.Ic themecyan
+and
+.Ic thememagenta
+which may be used in styles and elsewhere a
+.Ar colour
+is accepted.
+The
+.Ic dark\-theme\-*
+set is used when the client reports a dark background and the
+.Ic light\-theme\-*
+set when it reports a light background;
+an unknown background is treated as dark.
 .It Ic default\-client\-command Ar command
 Set the default command to run when tmux is called without a command.
 The default is
@@ -5242,14 +5379,19 @@ is input before dismissing it.
 Can be set to zero to disable any timeout.
 .It Ic prompt\-cursor\-colour Ar colour
 Set the colour of the cursor in the command prompt.
+.It Ic prompt\-command\-cursor\-colour Ar colour
+Set the colour of the cursor in the command prompt when
+.Xr vi 1
+keys are enabled and the prompt is in command mode.
 .It Ic prompt\-cursor\-style Ar style
 Set the style of the cursor in the command prompt.
 See the
 .Ic cursor\-style
 options for available styles.
 .It Ic prompt\-command\-cursor\-style Ar style
-Set the style of the cursor in the command prompt when vi keys are enabled and
-the prompt is in command mode.
+Set the style of the cursor in the command prompt when
+.Xr vi 1
+keys are enabled and the prompt is in command mode.
 See the
 .Ic cursor\-style
 options for available styles.
@@ -5834,7 +5976,7 @@ and
 will fall back to standard ACS line drawing when UTF\-8 is not supported.
 .Pp
 .It Xo Ic pane\-scrollbars
-.Op Ic off | modal | on
+.Op Ic off | modal | on | auto\-hide
 .Xc
 When enabled, a character based scrollbar appears on the left or right
 of each pane.
@@ -5844,18 +5986,28 @@ represents the position and size of the visible part of the pane content.
 .Pp
 If set to
 .Ic on
-the scrollbar is visible all the time.
+the scrollbar is visible all the time and the pane is narrowed by the width of
+the scrollbar.
 If set to
 .Ic modal
-the scrollbar only appears when the pane is in copy mode or view mode.
-When the scrollbar is visible, the pane is narrowed by the width of the
-scrollbar and the text in the pane is reflowed.
+the scrollbar only appears when the pane is in copy mode or view mode and
+auto-hides when not in use.
 If set to
-.Ic modal ,
-the pane is narrowed only when the scrollbar is visible.
+.Ic auto\-hide
+the scrollbar is available all the time but auto-hides when not in use.
+With
+.Ic modal
+and
+.Ic auto\-hide ,
+the scrollbar overlays the pane and does not narrow or reflow the pane.
 .Pp
 See also
 .Ic pane\-scrollbars\-style .
+.Pp
+.It Xo Ic pane\-scrollbars\-position
+.Op Ic left | right
+.Xc
+Sets which side of the pane to display pane scrollbars on.
 .Pp
 .It Ic pane\-scrollbars\-style Ar style
 Set the scrollbars style.
@@ -5873,10 +6025,13 @@ attribute sets the width of the scrollbar and the
 attribute the padding between the scrollbar and the pane.
 Other attributes are ignored.
 .Pp
-.It Xo Ic pane\-scrollbars\-position
-.Op Ic left | right
-.Xc
-Sets which side of the pane to display pane scrollbars on.
+.It Ic pane\-scrollbars\-timeout Ar time
+Set the time in milliseconds before scrollbars are hidden when
+.Ic pane\-scrollbars
+is
+.Ic modal
+or
+.Ic auto\-hide .
 .Pp
 .It Ic pane\-status\-current\-style Ar style
 Set status line style for the currently active pane.
@@ -5918,11 +6073,27 @@ A value of 0 (the default) means no limit.
 When a limit is set, panes are arranged to not exceed this number of columns,
 with additional panes stacked in extra rows.
 .Pp
+.It Ic tree\-mode\-border\-style Ar style
+Set the style of borders in tree mode.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
 .It Ic tree\-mode\-preview\-format Ar format
 Format of the preview indicator in tree mode.
 .Pp
 .It Ic tree\-mode\-preview\-style Ar style
 Set the style of the preview indicator in tree mode.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
+.It Ic tree\-mode\-selection\-style Ar style
+Set the style of the selected line in tree mode.
 For how to specify
 .Ar style ,
 see the
@@ -6107,6 +6278,15 @@ is enabled.
 .Xc
 When the entire screen is cleared and this option is on, scroll the contents of
 the screen into history before clearing it.
+.Pp
+.It Ic switch\-mode\-match\-style Ar style
+Set the style of characters matched by the filter in
+.Ic switch\-mode .
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
 .Pp
 .It Xo Ic synchronize\-panes
 .Op Ic on | off
@@ -6500,13 +6680,36 @@ An optional argument specifies flags:
 .Ql r
 means the pattern is a regular expression instead of the default
 .Xr glob 7
-pattern, and
+pattern;
 .Ql i
-means to ignore case.
+means to ignore case;
+.Ql z
+means to do a fuzzy match;
+.Ql p
+is like
+.Ql z
+but returns a list of matched positions.
+A fuzzy match matches plain terms as sequences where each character must appear
+in order but not necessarily consecutively; terms beginning with
+.Ql '
+are exact substring matches,
+.Ql ^
+anchors a term at the start,
+.Ql $
+anchors it at the end,
+.Ql !
+inverts a term and
+.Ql |
+separates alternative groups.
 For example:
 .Ql #{m:*foo*,#{host}}
 or
-.Ql #{m/ri:\[ha]A,MYVAR} .
+.Ql #{m/ri:\[ha]A,MYVAR}
+or
+.Ql #{m/z:dev bash,dev:1 bash}
+or
+.Ql #{m/z:^dev | ^prod,prod:1 ssh} .
+.Pp
 A
 .Ql C
 performs a search for a
@@ -6831,6 +7034,7 @@ The following variables are available, where appropriate:
 .It Li "client_activity" Ta "" Ta "Time client last had activity"
 .It Li "client_cell_height" Ta "" Ta "Height of each client cell in pixels"
 .It Li "client_cell_width" Ta "" Ta "Width of each client cell in pixels"
+.It Li "client_colours" Ta "" Ta "Number of colours client supports"
 .It Li "client_control_mode" Ta "" Ta "1 if client is in control mode"
 .It Li "client_created" Ta "" Ta "Time client created"
 .It Li "client_discarded" Ta "" Ta "Bytes discarded when client behind"
@@ -7146,6 +7350,28 @@ Set the width of the styled area.
 .Ar N
 may be a column count or a percentage (for example
 .Ql 50% ) .
+.It Xo Ic link=uri
+(or
+.Ic nolink )
+.Xc
+Make the styled text an OSC 8 hyperlink to
+.Ar uri ,
+for example
+.Ql #[link=https://example.com]text#[nolink] .
+This is emitted only to terminals with the
+.Ic hyperlinks
+feature (see
+.Ic terminal-features ) ;
+it works in the status line and in other formats drawn with styles.
+The link continues until
+.Ic nolink ,
+.Ic default ,
+or an empty
+.Ic link=
+is given.
+The
+.Ar uri
+may not contain spaces or commas and is limited in length.
 .It Xo Ic list=on ,
 .Ic list=focus ,
 .Ic list=left\-marker ,
@@ -7478,7 +7704,7 @@ See
 for possible values for
 .Ar prompt\-type .
 .It Xo Ic command\-prompt
-.Op Fl 1bCeFiklN
+.Op Fl 1bCeFiklNP
 .Op Fl I Ar inputs
 .Op Fl p Ar prompts
 .Op Fl t Ar target\-client
@@ -7558,6 +7784,8 @@ user exits the command prompt.
 makes
 .Em BSpace
 cancel an empty prompt.
+.Fl P
+opens a prompt inside a pane instead of on the status line.
 .Pp
 .Fl T
 tells
@@ -8016,6 +8244,7 @@ The following keys may be used in buffer mode:
 .It Li "D" Ta "Delete tagged buffers"
 .It Li "e" Ta "Open the buffer in an editor"
 .It Li "f" Ta "Enter a format to filter items"
+.It Li "c" Ta "Clear the current filter"
 .It Li "O" Ta "Change sort order"
 .It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"

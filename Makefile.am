@@ -163,6 +163,7 @@ dist_tmux_SOURCES = \
 	file.c \
 	format.c \
 	format-draw.c \
+	fuzzy.c \
 	grid-reader.c \
 	grid-view.c \
 	grid.c \
@@ -185,6 +186,8 @@ dist_tmux_SOURCES = \
 	paste.c \
 	popup.c \
 	proc.c \
+	prompt.c \
+	prompt-history.c \
 	regsub.c \
 	resize.c \
 	screen-redraw.c \
@@ -210,11 +213,13 @@ dist_tmux_SOURCES = \
 	tty.c \
 	utf8-combined.c \
 	utf8.c \
+	window-border.c \
 	window-buffer.c \
 	window-client.c \
 	window-clock.c \
 	window-copy.c \
 	window-customize.c \
+	window-switch.c \
 	window-tree.c \
 	window-visible.c \
 	window.c \

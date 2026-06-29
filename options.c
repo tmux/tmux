@@ -662,6 +662,18 @@ options_parse_get(struct options *oo, const char *s, int *idx, int only)
 	return (o);
 }
 
+const struct options_table_entry *
+options_search(const char *name)
+{
+	const struct options_table_entry	*oe;
+
+	for (oe = options_table; oe->name != NULL; oe++) {
+		if (strcmp(oe->name, name) == 0)
+			return (oe);
+	}
+	return (NULL);
+}
+
 char *
 options_match(const char *s, int *idx, int *ambiguous)
 {
@@ -977,9 +989,12 @@ struct style *
 options_string_to_style(struct options *oo, const char *name,
     struct format_tree *ft)
 {
-	struct options_entry	*o;
-	const char		*s;
-	char			*expanded;
+	struct options_entry			*o;
+	const struct options_table_entry	*oe;
+	const struct grid_cell			*dgc = &grid_default_cell;
+	const char				*s;
+	char					*expanded;
+	int					 failed;
 
 	o = options_get(oo, name);
 	if (o == NULL || !OPTIONS_IS_STRING(o))
@@ -988,20 +1003,27 @@ options_string_to_style(struct options *oo, const char *name,
 	if (o->cached)
 		return (&o->style);
 	s = o->value.string;
+	oe = o->tableentry;
 	log_debug("%s: %s is '%s'", __func__, name, s);
 
-	style_set(&o->style, &grid_default_cell);
+	style_set(&o->style, dgc);
 	o->cached = (strstr(s, "#{") == NULL);
 
 	if (ft != NULL && !o->cached) {
 		expanded = format_expand(ft, s);
-		if (style_parse(&o->style, &grid_default_cell, expanded) != 0) {
-			free(expanded);
-			return (NULL);
-		}
+		if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_COLOUR))
+			failed = style_parse_colour(&o->style, dgc, expanded);
+		else
+			failed = style_parse(&o->style, dgc, expanded);
 		free(expanded);
+		if (failed != 0)
+			return (NULL);
 	} else {
-		if (style_parse(&o->style, &grid_default_cell, s) != 0)
+		if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_COLOUR))
+			failed = style_parse_colour(&o->style, dgc, s);
+		else
+			failed = style_parse(&o->style, dgc, s);
+		if (failed != 0)
 			return (NULL);
 	}
 	return (&o->style);
@@ -1027,6 +1049,12 @@ options_from_string_check(const struct options_table_entry *oe,
 	    strstr(value, "#{") == NULL &&
 	    style_parse(&sy, &grid_default_cell, value) != 0) {
 		xasprintf(cause, "invalid style: %s", value);
+		return (-1);
+	}
+	if ((oe->flags & OPTIONS_TABLE_IS_COLOUR) &&
+	    strstr(value, "#{") == NULL &&
+	    style_parse_colour(&sy, &grid_default_cell, value) != 0) {
+		xasprintf(cause, "invalid colour: %s", value);
 		return (-1);
 	}
 	return (0);
@@ -1186,6 +1214,17 @@ options_push_changes(const char *name)
 
 	log_debug("%s: %s", __func__, name);
 
+	if (strcmp(name, "theme") == 0 ||
+	    strncmp(name, "dark-theme-", 11) == 0 ||
+	    strncmp(name, "light-theme-", 12) == 0) {
+		TAILQ_FOREACH(loop, &clients, entry) {
+			server_client_update_theme_colours(loop);
+			if (loop->tty.flags & TTY_OPENED)
+				tty_invalidate(&loop->tty);
+			server_redraw_client(loop);
+		}
+	}
+
 	if (strcmp(name, "automatic-rename") == 0) {
 		RB_FOREACH(w, windows, &windows) {
 			if (w->active == NULL)
@@ -1219,6 +1258,16 @@ options_push_changes(const char *name)
 	if (strcmp(name, "status") == 0 ||
 	    strcmp(name, "status-interval") == 0)
 		status_timer_start_all();
+	if (strcmp(name, "status") == 0 ||
+	    strcmp(name, "status-position") == 0 ||
+	    strcmp(name, "pane-border-indicators") == 0 ||
+	    strcmp(name, "pane-border-lines") == 0 ||
+	    strcmp(name, "pane-border-status") == 0 ||
+	    strcmp(name, "pane-scrollbars") == 0 ||
+	    strcmp(name, "pane-scrollbars-timeout") == 0 ||
+	    strcmp(name, "pane-scrollbars-position") == 0 ||
+	    strcmp(name, "pane-scrollbars-style") == 0)
+		redraw_invalidate_all_scenes();
 	if (strcmp(name, "monitor-silence") == 0)
 		alerts_reset_all();
 	if (strcmp(name, "window-style") == 0 ||
@@ -1237,8 +1286,17 @@ options_push_changes(const char *name)
 	if (strcmp(name, "pane-border-status") == 0 ||
 	    strcmp(name, "pane-scrollbars") == 0 ||
 	    strcmp(name, "pane-scrollbars-position") == 0) {
-		RB_FOREACH(w, windows, &windows)
+		RB_FOREACH(w, windows, &windows) {
+			w->sb = options_get_number(w->options,
+			    "pane-scrollbars");
+			w->sb_pos = options_get_number(w->options,
+			    "pane-scrollbars-position");
 			layout_fix_panes(w, NULL);
+		}
+	}
+	if (strcmp(name, "pane-scrollbars") == 0) {
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
+			window_pane_scrollbar_hide(wp);
 	}
 	if (strcmp(name, "pane-scrollbars-style") == 0) {
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {

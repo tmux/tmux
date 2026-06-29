@@ -48,6 +48,8 @@ static void	server_client_dispatch(struct imsg *, void *);
 static int	server_client_dispatch_command(struct client *, struct imsg *);
 static int	server_client_dispatch_identify(struct client *, struct imsg *);
 static int	server_client_dispatch_shell(struct client *);
+static void	server_client_update_scrollbar_hover(struct client *, int, int,
+		    int);
 static void	server_client_report_theme(struct client *, enum client_theme);
 
 /* Compare client windows. */
@@ -287,6 +289,7 @@ struct client *
 server_client_create(int fd)
 {
 	struct client	*c;
+	u_int		 i;
 
 	setblocking(fd, 0);
 
@@ -309,6 +312,9 @@ server_client_create(int fd)
 
 	c->tty.sx = 80;
 	c->tty.sy = 24;
+
+	for (i = 0; i < COLOUR_THEME_COUNT; i++)
+		c->theme_colours[i] = 8;
 	c->theme = THEME_UNKNOWN;
 
 	status_init(c);
@@ -360,6 +366,7 @@ server_client_open(struct client *c, char **cause)
 	if (tty_open(&c->tty, cause) != 0)
 		return (-1);
 
+	server_client_update_theme_colours(c);
 	return (0);
 }
 
@@ -485,10 +492,7 @@ server_client_lost(struct client *c)
 	free(c->message_string);
 	if (event_initialized(&c->message_timer))
 		evtimer_del(&c->message_timer);
-
-	free(c->prompt_saved);
-	free(c->prompt_string);
-	free(c->prompt_buffer);
+	prompt_free(c->prompt);
 
 	format_lost_client(c);
 	environ_free(c->environ);
@@ -530,6 +534,7 @@ server_client_free(__unused int fd, __unused short events, void *arg)
 
 	log_debug("free client %p (%d references)", c, c->references);
 
+	redraw_free_scene(c->redraw_scene);
 	cmdq_free(c->queue);
 
 	if (c->references == 0) {
@@ -598,6 +603,58 @@ server_client_exec(struct client *c, const char *cmd)
 	free(msg);
 }
 
+/* Is this point inside the auto-hide scrollbar interaction area? */
+static int
+server_client_in_scrollbar_area(struct window_pane *wp, int px, int py)
+{
+	struct window	*w = wp->window;
+	u_int		 width, pad, total;
+	int		 start, end;
+
+	if (!window_pane_scrollbar_overlay(wp))
+		return (0);
+	if (py < wp->yoff || py >= wp->yoff + (int)wp->sy)
+		return (0);
+
+	width = wp->scrollbar_style.width;
+	pad = wp->scrollbar_style.pad;
+	total = width + pad;
+	if (total == 0 || total > wp->sx)
+		total = wp->sx;
+
+	if (w->sb_pos == PANE_SCROLLBARS_LEFT) {
+		start = wp->xoff;
+		end = wp->xoff + (int)total - 1;
+	} else {
+		end = wp->xoff + (int)wp->sx - 1;
+		start = end - (int)total + 1;
+	}
+	return (px >= start && px <= end);
+}
+
+/* Update auto-hide scrollbars for a mouse movement. */
+static void
+server_client_update_scrollbar_hover(struct client *c, int type, int px, int py)
+{
+	struct window		*w = c->session->curw->window;
+	struct window_pane	*wp;
+
+	if (type != KEYC_TYPE_MOUSEMOVE)
+		return;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (!window_pane_is_visible(wp))
+			continue;
+		if (server_client_in_scrollbar_area(wp, px, py)) {
+			wp->sb_auto_hover = 1;
+			window_pane_scrollbar_show(wp, 1);
+		} else {
+			wp->sb_auto_hover = 0;
+			window_pane_scrollbar_start_timer(wp);
+		}
+	}
+}
+
 /* Is the mouse inside a pane? */
 static enum key_code_mouse_location
 server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
@@ -605,17 +662,19 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 {
 	struct window		*w = wp->window;
 	struct window_pane	*fwp;
-	int			 pane_status, sb, sb_pos, sb_w, sb_pad;
+	int			 pane_status, sb_w, sb_pad;
 	int			 pane_status_line, sl_top, sl_bottom;
 	int			 bdr_bottom, bdr_top, bdr_left, bdr_right;
+	int			 sb_start, sb_end, sb_overlay;
 
-	sb = options_get_number(w->options, "pane-scrollbars");
-	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
 	pane_status = window_pane_get_pane_status(wp);
+	sb_overlay = window_pane_scrollbar_overlay(wp);
 
-	if (window_pane_show_scrollbar(wp, sb)) {
+	if (window_pane_scrollbar_visible(wp)) {
 		sb_w = wp->scrollbar_style.width;
 		sb_pad = wp->scrollbar_style.pad;
+		if (sb_overlay && sb_w > (int)wp->sx)
+			sb_w = wp->sx;
 	} else {
 		sb_w = 0;
 		sb_pad = 0;
@@ -628,23 +687,48 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 	else
 		pane_status_line = -1; /* not used */
 	bdr_left = wp->xoff - 1;
-	if (sb_pos == PANE_SCROLLBARS_LEFT)
+	if (!sb_overlay && w->sb_pos == PANE_SCROLLBARS_LEFT)
 		bdr_left -= sb_pad + sb_w;
+
+	if (sb_overlay && sb_w != 0 &&
+	    py >= wp->yoff && py < wp->yoff + (int)wp->sy &&
+	    px >= wp->xoff && px < wp->xoff + (int)wp->sx) {
+		if (w->sb_pos == PANE_SCROLLBARS_LEFT) {
+			sb_start = wp->xoff;
+			sb_end = sb_start + sb_w - 1;
+		} else {
+			sb_end = wp->xoff + (int)wp->sx - 1;
+			sb_start = sb_end - sb_w + 1;
+		}
+		if (px >= sb_start && px <= sb_end) {
+			sl_top = wp->yoff + wp->sb_slider_y;
+			sl_bottom = (wp->yoff + wp->sb_slider_y +
+			    wp->sb_slider_h - 1);
+			if (py < sl_top)
+				return (KEYC_MOUSE_LOCATION_SCROLLBAR_UP);
+			else if (py >= sl_top && py <= sl_bottom) {
+				*sl_mpos = (py - wp->sb_slider_y - wp->yoff);
+				return (KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER);
+			} else
+				return (KEYC_MOUSE_LOCATION_SCROLLBAR_DOWN);
+		}
+		return (KEYC_MOUSE_LOCATION_PANE);
+	}
 
 	/* Check if point is within the pane or scrollbar. */
 	if (((pane_status != PANE_STATUS_OFF &&
 	    py != pane_status_line && py != wp->yoff + (int)wp->sy) ||
 	    (wp->yoff == 0 && py < (int)wp->sy) ||
 	    (py >= wp->yoff && py < wp->yoff + (int)wp->sy)) &&
-	    ((sb_pos == PANE_SCROLLBARS_RIGHT &&
+	    ((w->sb_pos == PANE_SCROLLBARS_RIGHT &&
 	    px < wp->xoff + (int)wp->sx + sb_pad + sb_w) ||
-	    (sb_pos == PANE_SCROLLBARS_LEFT &&
+	    (w->sb_pos == PANE_SCROLLBARS_LEFT &&
 	    px < wp->xoff + (int)wp->sx - sb_pad - sb_w))) {
 		/* Check if in the scrollbar. */
-		if ((sb_pos == PANE_SCROLLBARS_RIGHT &&
+		if ((w->sb_pos == PANE_SCROLLBARS_RIGHT &&
 		    (px >= wp->xoff + (int)wp->sx + sb_pad &&
 		    px < wp->xoff + (int)wp->sx + sb_pad + sb_w)) ||
-		    (sb_pos == PANE_SCROLLBARS_LEFT &&
+		    (w->sb_pos == PANE_SCROLLBARS_LEFT &&
 		    (px >= wp->xoff - sb_pad - sb_w &&
 		    px < wp->xoff - sb_pad))) {
 			/* Check where inside the scrollbar. */
@@ -678,7 +762,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 			if (window_pane_is_floating(fwp) &&
 			    window_pane_get_pane_lines(fwp) == PANE_LINES_NONE)
 				continue;
-			if (window_pane_show_scrollbar(fwp, sb)) {
+			if (window_pane_scrollbar_reserve(fwp)) {
 				sb_w = fwp->scrollbar_style.width;
 				sb_pad = fwp->scrollbar_style.pad;
 			} else {
@@ -688,7 +772,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 			bdr_top = fwp->yoff - 1;
 			bdr_bottom = fwp->yoff + fwp->sy;
 			bdr_left = fwp->xoff - 1;
-			if (sb_pos == PANE_SCROLLBARS_LEFT) {
+			if (w->sb_pos == PANE_SCROLLBARS_LEFT) {
 				bdr_left -= sb_pad + sb_w;
 				bdr_right = fwp->xoff + fwp->sx;
 			} else {
@@ -908,10 +992,14 @@ have_event:
 			tty_window_offset(&c->tty, &m->ox, &m->oy, &sx, &sy);
 			log_debug("mouse window @%u at %u,%u (%ux%u)",
 				  w->id, m->ox, m->oy, sx, sy);
-			if (px > sx || py > sy)
+			if (px > sx || py > sy) {
+				server_client_update_scrollbar_hover(c, type,
+				    -1, -1);
 				return (KEYC_UNKNOWN);
+			}
 			px = px + m->ox;
 			py = py + m->oy;
+			server_client_update_scrollbar_hover(c, type, px, py);
 
 			if (type == KEYC_TYPE_MOUSEDRAG && lwp != NULL) {
 				/* Use pane from last mouse event. */
@@ -944,7 +1032,8 @@ have_event:
 			m->wp = wp->id;
 			m->w = wp->window->id;
 		}
-	}
+	} else
+		server_client_update_scrollbar_hover(c, type, -1, -1);
 
 	/* Reset click type or add a click timer if needed. */
 	if (type == KEYC_TYPE_MOUSEDOWN ||
@@ -1077,6 +1166,52 @@ have_event:
 	if (log_get_level() != 0)
 		log_debug("mouse key is %s", key_string_lookup_key (key, 1));
 	return (key);
+}
+
+/* Update client theme colours from server options. */
+void
+server_client_update_theme_colours(struct client *c)
+{
+	struct format_tree	*ft;
+	const char		*name, *value;
+	enum client_theme	 theme;
+	char			*expanded;
+	u_int			 i;
+	int			 colour, option;
+
+	if (c == NULL)
+		return;
+
+	option = options_get_number(global_options, "theme");
+	if (option == 1) {
+		for (i = 0; i < COLOUR_THEME_COUNT; i++)
+			c->theme_colours[i] = colour_theme_terminal_colour(i);
+		return;
+	}
+
+	ft = format_create(c, NULL, FORMAT_NONE, FORMAT_NOJOBS);
+	format_defaults(ft, c, NULL, NULL, NULL);
+
+	theme = c->theme;
+	if (option == 2)
+		theme = THEME_LIGHT;
+	else if (option == 3)
+		theme = THEME_DARK;
+	for (i = 0; i < COLOUR_THEME_COUNT; i++) {
+		c->theme_colours[i] = 8;
+		name = colour_theme_option(i, theme);
+		if (name == NULL)
+			continue;
+		value = options_get_string(global_options, name);
+		expanded = format_expand(ft, value);
+		colour = colour_fromstring(expanded);
+		free(expanded);
+		if (colour == -1 || (colour & COLOUR_FLAG_THEME))
+			continue;
+		c->theme_colours[i] = colour;
+	}
+
+	format_free(ft);
 }
 
 /* Is this a bracket paste key? */
@@ -1459,6 +1594,7 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 {
 	struct session		*s = c->session;
 	struct cmdq_item	*item;
+	struct window_pane	*wp;
 
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
@@ -1488,6 +1624,7 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 				return (0);
 			status_message_clear(c);
 		}
+
 		if (c->overlay_key != NULL) {
 			switch (c->overlay_key(c, c->overlay_data, event)) {
 			case 0:
@@ -1497,10 +1634,40 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 				return (0);
 			}
 		}
+
 		server_client_clear_overlay(c);
-		if (c->prompt_string != NULL) {
-			if (status_prompt_key(c, event->key) == 0)
+		if (c->prompt != NULL) {
+			switch (status_prompt_key(c, event->key, &event->m)) {
+			case PROMPT_KEY_HANDLED:
+			case PROMPT_KEY_CLOSE:
 				return (0);
+			case PROMPT_KEY_NOT_HANDLED:
+			case PROMPT_KEY_MOVE:
+				break;
+			}
+		}
+
+		wp = s->curw->window->active;
+		if (wp == NULL || !window_pane_has_prompt(wp)) {
+			TAILQ_FOREACH(wp, &s->curw->window->panes, entry) {
+				if (window_pane_has_prompt(wp) &&
+				    window_pane_is_visible(wp))
+					break;
+			}
+		}
+		if (wp != NULL &&
+		    window_pane_has_prompt(wp) &&
+		    window_pane_is_visible(wp)) {
+			switch (window_pane_prompt_key(wp, c, event->key, &event->m)) {
+			case PROMPT_KEY_HANDLED:
+			case PROMPT_KEY_CLOSE:
+			case PROMPT_KEY_MOVE:
+				return (0);
+			case PROMPT_KEY_NOT_HANDLED:
+				if (KEYC_IS_MOUSE(event->key))
+					return (0);
+				break;
+			}
 		}
 	}
 
@@ -1773,6 +1940,42 @@ out:
 		bufferevent_enable(wp->event, EV_READ);
 }
 
+/* Move cursor for pane prompt. */
+static int
+server_client_prompt_cursor(struct client *c, struct window_pane *wp, int *mode,
+    u_int *cx, u_int *cy)
+{
+	struct tty		*tty = &c->tty;
+	struct visible_ranges	*r;
+	u_int			 ox, oy, sx, sy;
+	int			 px, py;
+
+	if (!window_pane_has_prompt(wp))
+		return (0);
+	*mode &= ~MODE_CURSOR;
+
+	tty_window_offset(tty, &ox, &oy, &sx, &sy);
+	if (status_at_line(c) == 0)
+		py = wp->yoff;
+	else
+		py = wp->yoff + wp->sy - 1;
+	px = wp->xoff + wp->prompt_cx;
+	if (px < (int)ox || px > (int)(ox + sx) ||
+	    py < (int)oy || py > (int)(oy + sy))
+		return (1);
+
+	*cx = px - ox;
+	*cy = py - oy;
+
+	r = window_visible_ranges(wp, *cx, *cy, 1, NULL);
+	if (window_position_is_visible(r, *cx)) {
+		if (status_at_line(c) == 0)
+			*cy += status_line_size(c);
+		*mode |= MODE_CURSOR;
+	}
+	return (1);
+}
+
 /*
  * Update cursor position and mode settings. The scroll region and attributes
  * are cleared when idle (waiting for an event) as this is the most likely time
@@ -1791,7 +1994,8 @@ server_client_reset_state(struct client *c)
 	struct screen		*s = NULL;
 	struct options		*oo = c->session->options;
 	int			 mode = 0, cursor, flags, pane_mode = 0;
-	u_int			 cx = 0, cy = 0, ox, oy, sx, sy, n;
+	u_int			 cx = 0, cy = 0, ox, oy, sx, sy, prompt = 0;
+	u_int			 sb_w;
 	struct visible_ranges	*r;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
@@ -1805,7 +2009,7 @@ server_client_reset_state(struct client *c)
 	if (c->overlay_draw != NULL) {
 		if (c->overlay_mode != NULL)
 			s = c->overlay_mode(c, c->overlay_data, &cx, &cy);
-	} else if (wp != NULL && c->prompt_string == NULL)
+	} else if (wp != NULL && c->prompt == NULL)
 		s = wp->screen;
 	else
 		s = c->status.active;
@@ -1821,42 +2025,50 @@ server_client_reset_state(struct client *c)
 	tty_margin_off(tty);
 
 	/* Move cursor to pane cursor and offset. */
-	if (c->prompt_string != NULL) {
-		n = options_get_number(oo, "status-position");
-		if (n == 0)
-			cy = status_prompt_line_at(c);
-		else {
-			n = status_line_size(c) - status_prompt_line_at(c);
-			if (n <= tty->sy)
-				cy = tty->sy - n;
-			else
-				cy = tty->sy - 1;
-		}
-		cx = c->prompt_cursor;
+	if (c->prompt != NULL) {
+		prompt = 1;
+		status_prompt_cursor(c, &cx, &cy);
 	} else if (wp != NULL && c->overlay_draw == NULL) {
-		cursor = 0;
-		pane_mode = wp->base.mode;
+		prompt = server_client_prompt_cursor(c, wp, &mode, &cx, &cy);
+		if (!prompt) {
+			cursor = 0;
+			pane_mode = wp->base.mode;
 
-		tty_window_offset(tty, &ox, &oy, &sx, &sy);
-		if (wp->xoff + (int)s->cx >= (int)ox &&
-		    wp->xoff + (int)s->cx <= (int)ox + (int)sx &&
-		    wp->yoff + (int)s->cy >= (int)oy &&
-		    wp->yoff + (int)s->cy <= (int)oy + (int)sy) {
-			cursor = 1;
+			tty_window_offset(tty, &ox, &oy, &sx, &sy);
+			if (wp->xoff + (int)s->cx >= (int)ox &&
+			    wp->xoff + (int)s->cx <= (int)ox + (int)sx &&
+			    wp->yoff + (int)s->cy >= (int)oy &&
+			    wp->yoff + (int)s->cy <= (int)oy + (int)sy) {
+				cursor = 1;
 
-			cx = wp->xoff + (int)s->cx - (int)ox;
-			cy = wp->yoff + (int)s->cy - (int)oy;
+				cx = wp->xoff + (int)s->cx - (int)ox;
+				cy = wp->yoff + (int)s->cy - (int)oy;
 
-			r = window_visible_ranges(wp, cx, cy, 1, NULL);
-			if (!window_position_is_visible(r, cx))
-				cursor = 0;
+				r = window_visible_ranges(wp, cx, cy, 1, NULL);
+				if (!window_position_is_visible(r, cx))
+					cursor = 0;
 
-			if (status_at_line(c) == 0)
-				cy += status_line_size(c);
+			if (window_pane_scrollbar_overlay_visible(wp)) {
+				sb_w = wp->scrollbar_style.width;
+				if (sb_w > wp->sx)
+					sb_w = wp->sx;
+				if (sb_w != 0 &&
+	    w->sb_pos ==
+	    PANE_SCROLLBARS_LEFT) {
+					if (s->cx < sb_w)
+						cursor = 0;
+				} else if (sb_w != 0 &&
+				    s->cx >= wp->sx - sb_w)
+					cursor = 0;
+			}
+
+				if (status_at_line(c) == 0)
+					cy += status_line_size(c);
+			}
+
+			if ((pane_mode & MODE_SYNC) || !cursor)
+				mode &= ~MODE_CURSOR;
 		}
-
-		if ((pane_mode & MODE_SYNC) || !cursor)
-			mode &= ~MODE_CURSOR;
 	} else if (c->overlay_mode == NULL || s == NULL)
 		mode &= ~MODE_CURSOR;
 	if (~pane_mode & MODE_SYNC) {
@@ -1877,14 +2089,16 @@ server_client_reset_state(struct client *c)
 					mode |= MODE_MOUSE_ALL;
 			}
 		}
-		if (options_get_number(oo, "focus-follows-mouse"))
-			mode |= MODE_MOUSE_ALL;
+	if (options_get_number(oo, "focus-follows-mouse") ||
+	    w->sb == PANE_SCROLLBARS_MODAL ||
+	    w->sb == PANE_SCROLLBARS_AUTOHIDE)
+		mode |= MODE_MOUSE_ALL;
 		else if (~mode & MODE_MOUSE_ALL)
 			mode |= MODE_MOUSE_BUTTON;
 	}
 
 	/* Clear bracketed paste mode if at the prompt. */
-	if (c->overlay_draw == NULL && c->prompt_string != NULL)
+	if (c->overlay_draw == NULL && prompt)
 		mode &= ~MODE_BRACKETPASTE;
 
 	/* Set the terminal mode and reset attributes. */
@@ -2101,11 +2315,11 @@ server_client_check_redraw(struct client *c)
 			if (wp->flags & PANE_REDRAW) {
 				log_debug("%s: redraw pane %%%u", __func__,
 				    wp->id);
-				screen_redraw_pane(c, wp, 0);
+				redraw_pane(c, wp);
 			} else if (wp->flags & PANE_REDRAWSCROLLBAR) {
 				log_debug("%s: redraw scrollbar %%%u", __func__,
 				    wp->id);
-				screen_redraw_pane(c, wp, 1);
+				redraw_pane_scrollbar(c, wp);
 			}
 		}
 	}
@@ -2120,7 +2334,7 @@ server_client_check_redraw(struct client *c)
 			server_client_set_path(c);
 		}
 		server_client_set_progress_bar(c);
-		screen_redraw_screen(c);
+		redraw_screen(c);
 	}
 
 	/* Put the tty back how it was. */
@@ -2869,12 +3083,25 @@ out:
 static void
 server_client_report_theme(struct client *c, enum client_theme theme)
 {
+	enum client_theme	 old = c->theme;
+
 	if (theme == THEME_LIGHT) {
 		c->theme = THEME_LIGHT;
 		notify_client("client-light-theme", c);
 	} else {
 		c->theme = THEME_DARK;
 		notify_client("client-dark-theme", c);
+	}
+
+	/*
+	 * If the theme has changed, update the theme colours and redraw the
+	 * client.
+	 */
+	if (c->theme != old) {
+		server_client_update_theme_colours(c);
+		if (c->tty.flags & TTY_OPENED)
+			tty_invalidate(&c->tty);
+		server_redraw_client(c);
 	}
 
 	/*

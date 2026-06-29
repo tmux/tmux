@@ -54,6 +54,7 @@ cmd_break_pane_float(struct cmdq_item *item, struct args *args,
 	u_int			 sx = lc->saved_sx, sy = lc->saved_sy;
 	int			 ox = lc->saved_xoff, oy = lc->saved_yoff;
 	char			*cause = NULL;
+	enum pane_lines		 lines = window_get_pane_lines(w);
 
 	if (window_pane_is_floating(wp)) {
 		cmdq_error(item, "pane is already floating");
@@ -68,13 +69,13 @@ cmd_break_pane_float(struct cmdq_item *item, struct args *args,
 		return (CMD_RETURN_ERROR);
 	}
 
-	layout_remove_tile(w, lc);
-	layout_cell_floating_args_parse(item, args, w, &sx, &sy, &ox, &oy, &cause);
-	if (cause != NULL) {
+	if (layout_floating_args_parse(item, args, lines, w, &sx, &sy, &ox, &oy,
+	    &cause) != 0) {
 		cmdq_error(item, "failed to float pane: %s", cause);
 		free(cause);
 		return (CMD_RETURN_ERROR);
 	}
+	layout_remove_tile(w, lc);
 	layout_set_size(lc, sx, sy, ox, oy);
 
 	lc->flags |= LAYOUT_CELL_FLOATING;
@@ -111,7 +112,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'W'))
 		return (cmd_break_pane_float(item, args, w, wp));
 
-	if (name != NULL && !check_name(name, WINDOW_NAME_FORBID)) {
+	if (name != NULL && !check_name(name)) {
 		cmdq_error(item, "invalid window name: %s", name);
 		return (CMD_RETURN_ERROR);
 	}
@@ -135,7 +136,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_ERROR);
 		}
 		if (name != NULL) {
-			window_set_name(w, name, WINDOW_NAME_FORBID);
+			window_set_name(w, name, 0);
 			options_set_number(w->options, "automatic-rename", 0);
 		}
 		server_unlink_window(src_s, wl);
@@ -165,7 +166,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (name == NULL) {
 		newname = default_window_name(w);
-		window_set_name(w, newname, WINDOW_NAME_FORBID);
+		window_set_name(w, newname, 0);
 		free(newname);
 	} else {
 		window_set_name(w, name, 0);

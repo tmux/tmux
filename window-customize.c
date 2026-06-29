@@ -36,8 +36,8 @@ static void		 window_customize_key(struct window_mode_entry *,
 #define WINDOW_CUSTOMIZE_DEFAULT_FORMAT \
 	"#{?is_option," \
 		"#{?option_is_global,,#[reverse](#{option_scope})#[default] }" \
-		"#[ignore]" \
-		"#{option_value}#{?option_unit, #{option_unit},}" \
+		"#[fg=themelightgrey]#[ignore]#{option_value}" \
+		"#{?option_unit, #{option_unit},}" \
 	"," \
 		"#{key}" \
 	"}"
@@ -472,6 +472,7 @@ window_customize_build_keys(struct window_customize_modedata *data,
 			expanded = format_expand(ft, filter);
 			if (!format_true(expanded)) {
 				free(expanded);
+				bd = key_bindings_next(kt, bd);
 				continue;
 			}
 			free(expanded);
@@ -740,8 +741,10 @@ window_customize_draw_option(struct window_customize_modedata *data,
 		if (strcmp(expanded, value) != 0) {
 			if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy),
 			    0, &grid_default_cell, "This expands to: %s",
-			    expanded))
+			    expanded)) {
+				free(expanded);
 				goto out;
+			}
 		}
 		free(expanded);
 	}
@@ -762,6 +765,15 @@ window_customize_draw_option(struct window_customize_modedata *data,
 			goto out;
 		memcpy(&gc, &grid_default_cell, sizeof gc);
 		gc.fg = options_get_number(item->oo, name);
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0, &gc,
+		    "EXAMPLE"))
+			goto out;
+	}
+	if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_COLOUR)) {
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 1,
+		    &grid_default_cell, "This is a colour option: "))
+			goto out;
+		style_apply(&gc, item->oo, name, ft);
 		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0, &gc,
 		    "EXAMPLE"))
 			goto out;
@@ -869,15 +881,24 @@ window_customize_height(__unused void *modedata, __unused u_int height)
 }
 
 static const char* window_customize_help_lines[] = {
-	"#[bold]   Enter, s #[default]#[acs]x#[default] Set %1 value",
-	"#[bold]          S #[default]#[acs]x#[default] Set global %1 value",
-	"#[bold]          w #[default]#[acs]x#[default] Set window %1 value",
-	"#[bold]          d #[default]#[acs]x#[default] Set to default value",
-	"#[bold]          D #[default]#[acs]x#[default] Set tagged %1s to default value",
-	"#[bold]          u #[default]#[acs]x#[default] Unset an %1",
-	"#[bold]          U #[default]#[acs]x#[default] Unset tagged %1s",
-	"#[bold]          f #[default]#[acs]x#[default] Enter a filter",
-	"#[bold]          v #[default]#[acs]x#[default] Toggle information",
+	"#[fg=themelightgrey]"
+	"   Enter, s #[#{E:tree-mode-border-style},acs]x#[default] Set %1 value",
+	"#[fg=themelightgrey]"
+	"          S #[#{E:tree-mode-border-style},acs]x#[default] Set global %1 value",
+	"#[fg=themelightgrey]"
+	"          w #[#{E:tree-mode-border-style},acs]x#[default] Set window %1 value",
+	"#[fg=themelightgrey]"
+	"          d #[#{E:tree-mode-border-style},acs]x#[default] Set to default value",
+	"#[fg=themelightgrey]"
+	"          D #[#{E:tree-mode-border-style},acs]x#[default] Set tagged %1s to default value",
+	"#[fg=themelightgrey]"
+	"          u #[#{E:tree-mode-border-style},acs]x#[default] Unset an %1",
+	"#[fg=themelightgrey]"
+	"          U #[#{E:tree-mode-border-style},acs]x#[default] Unset tagged %1s",
+	"#[fg=themelightgrey]"
+	"          f #[#{E:tree-mode-border-style},acs]x#[default] Enter a filter",
+	"#[fg=themelightgrey]"
+	"          v #[#{E:tree-mode-border-style},acs]x#[default] Toggle information",
 	NULL
 };
 
@@ -976,9 +997,9 @@ window_customize_free_item_callback(void *itemdata)
 	window_customize_destroy(data);
 }
 
-static int
+static enum prompt_result
 window_customize_set_option_callback(struct client *c, void *itemdata,
-    const char *s, __unused int done)
+    const char *s, __unused enum prompt_key_result key)
 {
 	struct window_customize_itemdata	*item = itemdata;
 	struct window_customize_modedata	*data = item->data;
@@ -990,12 +1011,12 @@ window_customize_set_option_callback(struct client *c, void *itemdata,
 	int					 idx = item->idx;
 
 	if (s == NULL || *s == '\0' || data->dead)
-		return (0);
+		return (PROMPT_CLOSE);
 	if (item == NULL || !window_customize_check_item(data, item, NULL))
-		return (0);
+		return (PROMPT_CLOSE);
 	o = options_get(oo, name);
 	if (o == NULL)
-		return (0);
+		return (PROMPT_CLOSE);
 	oe = options_table_entry(o);
 
 	if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_ARRAY)) {
@@ -1017,13 +1038,13 @@ window_customize_set_option_callback(struct client *c, void *itemdata,
 	mode_tree_draw(data->data);
 	data->wp->flags |= PANE_REDRAW;
 
-	return (0);
+	return (PROMPT_CLOSE);
 
 fail:
 	*cause = toupper((u_char)*cause);
 	status_message_set(c, -1, 1, 0, 0, "%s", cause);
 	free(cause);
-	return (0);
+	return (PROMPT_CLOSE);
 }
 
 static void
@@ -1142,10 +1163,10 @@ window_customize_set_option(struct client *c,
 		new_item->idx = idx;
 
 		data->references++;
-		status_prompt_set(c, NULL, prompt, value,
+		mode_tree_set_prompt(data->data, c, prompt, value,
+		    PROMPT_TYPE_COMMAND, PROMPT_NOFORMAT,
 		    window_customize_set_option_callback,
-		    window_customize_free_item_callback, new_item,
-		    PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
+		    window_customize_free_item_callback, new_item);
 
 		free(prompt);
 		free(value);
@@ -1190,9 +1211,9 @@ window_customize_reset_option(struct window_customize_modedata *data,
 	}
 }
 
-static int
+static enum prompt_result
 window_customize_set_command_callback(struct client *c, void *itemdata,
-    const char *s, __unused int done)
+    const char *s, __unused enum prompt_key_result key)
 {
 	struct window_customize_itemdata	*item = itemdata;
 	struct window_customize_modedata	*data = item->data;
@@ -1201,9 +1222,9 @@ window_customize_set_command_callback(struct client *c, void *itemdata,
 	char					*error;
 
 	if (s == NULL || *s == '\0' || data->dead)
-		return (0);
+		return (PROMPT_CLOSE);
 	if (item == NULL || !window_customize_get_key(item, NULL, &bd))
-		return (0);
+		return (PROMPT_CLOSE);
 
 	pr = cmd_parse_from_string(s, NULL);
 	switch (pr->status) {
@@ -1220,27 +1241,27 @@ window_customize_set_command_callback(struct client *c, void *itemdata,
 	mode_tree_draw(data->data);
 	data->wp->flags |= PANE_REDRAW;
 
-	return (0);
+	return (PROMPT_CLOSE);
 
 fail:
 	*error = toupper((u_char)*error);
 	status_message_set(c, -1, 1, 0, 0, "%s", error);
 	free(error);
-	return (0);
+	return (PROMPT_CLOSE);
 }
 
-static int
+static enum prompt_result
 window_customize_set_note_callback(__unused struct client *c, void *itemdata,
-    const char *s, __unused int done)
+    const char *s, __unused enum prompt_key_result key)
 {
 	struct window_customize_itemdata	*item = itemdata;
 	struct window_customize_modedata	*data = item->data;
 	struct key_binding			*bd;
 
 	if (s == NULL || *s == '\0' || data->dead)
-		return (0);
+		return (PROMPT_CLOSE);
 	if (item == NULL || !window_customize_get_key(item, NULL, &bd))
-		return (0);
+		return (PROMPT_CLOSE);
 
 	free((void *)bd->note);
 	bd->note = xstrdup(s);
@@ -1249,7 +1270,7 @@ window_customize_set_note_callback(__unused struct client *c, void *itemdata,
 	mode_tree_draw(data->data);
 	data->wp->flags |= PANE_REDRAW;
 
-	return (0);
+	return (PROMPT_CLOSE);
 }
 
 static void
@@ -1280,10 +1301,10 @@ window_customize_set_key(struct client *c,
 		new_item->key = key;
 
 		data->references++;
-		status_prompt_set(c, NULL, prompt, value,
+		mode_tree_set_prompt(data->data, c, prompt, value,
+		    PROMPT_TYPE_COMMAND, PROMPT_NOFORMAT,
 		    window_customize_set_command_callback,
-		    window_customize_free_item_callback, new_item,
-		    PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
+		    window_customize_free_item_callback, new_item);
 		free(prompt);
 		free(value);
 	} else if (strcmp(s, "Note") == 0) {
@@ -1296,11 +1317,11 @@ window_customize_set_key(struct client *c,
 		new_item->key = key;
 
 		data->references++;
-		status_prompt_set(c, NULL, prompt,
+		mode_tree_set_prompt(data->data, c, prompt,
 		    (bd->note == NULL ? "" : bd->note),
+		    PROMPT_TYPE_COMMAND, PROMPT_NOFORMAT,
 		    window_customize_set_note_callback,
-		    window_customize_free_item_callback, new_item,
-		    PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
+		    window_customize_free_item_callback, new_item);
 		free(prompt);
 	}
 }
@@ -1367,17 +1388,17 @@ window_customize_change_each(void *modedata, void *itemdata,
 		options_push_changes(item->name);
 }
 
-static int
+static enum prompt_result
 window_customize_change_current_callback(__unused struct client *c,
-    void *modedata, const char *s, __unused int done)
+    void *modedata, const char *s, __unused enum prompt_key_result key)
 {
 	struct window_customize_modedata	*data = modedata;
 	struct window_customize_itemdata	*item;
 
 	if (s == NULL || *s == '\0' || data->dead)
-		return (0);
+		return (PROMPT_CLOSE);
 	if (tolower((u_char) s[0]) != 'y' || s[1] != '\0')
-		return (0);
+		return (PROMPT_CLOSE);
 
 	item = mode_tree_get_current(data->data);
 	switch (data->change) {
@@ -1400,19 +1421,19 @@ window_customize_change_current_callback(__unused struct client *c,
 	mode_tree_draw(data->data);
 	data->wp->flags |= PANE_REDRAW;
 
-	return (0);
+	return (PROMPT_CLOSE);
 }
 
-static int
+static enum prompt_result
 window_customize_change_tagged_callback(struct client *c, void *modedata,
-    const char *s, __unused int done)
+    const char *s, __unused enum prompt_key_result key)
 {
 	struct window_customize_modedata	*data = modedata;
 
 	if (s == NULL || *s == '\0' || data->dead)
-		return (0);
+		return (PROMPT_CLOSE);
 	if (tolower((u_char) s[0]) != 'y' || s[1] != '\0')
-		return (0);
+		return (PROMPT_CLOSE);
 
 	mode_tree_each_tagged(data->data, window_customize_change_each, c,
 	    KEYC_NONE, 0);
@@ -1420,7 +1441,7 @@ window_customize_change_tagged_callback(struct client *c, void *modedata,
 	mode_tree_draw(data->data);
 	data->wp->flags |= PANE_REDRAW;
 
-	return (0);
+	return (PROMPT_CLOSE);
 }
 
 static void
@@ -1474,11 +1495,11 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 		xasprintf(&prompt, "Reset %s to default? ", item->name);
 		data->references++;
 		data->change = WINDOW_CUSTOMIZE_RESET;
-		status_prompt_set(c, NULL, prompt, "",
-		    window_customize_change_current_callback,
-		    window_customize_free_callback, data,
+		mode_tree_set_prompt(data->data, c, prompt, "",
+		    PROMPT_TYPE_COMMAND,
 		    PROMPT_SINGLE|PROMPT_NOFORMAT|data->prompt_flags,
-		    PROMPT_TYPE_COMMAND);
+		    window_customize_change_current_callback,
+		    window_customize_free_callback, data);
 		free(prompt);
 		break;
 	case 'D':
@@ -1488,11 +1509,11 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 		xasprintf(&prompt, "Reset %u tagged to default? ", tagged);
 		data->references++;
 		data->change = WINDOW_CUSTOMIZE_RESET;
-		status_prompt_set(c, NULL, prompt, "",
-		    window_customize_change_tagged_callback,
-		    window_customize_free_callback, data,
+		mode_tree_set_prompt(data->data, c, prompt, "",
+		    PROMPT_TYPE_COMMAND,
 		    PROMPT_SINGLE|PROMPT_NOFORMAT|data->prompt_flags,
-		    PROMPT_TYPE_COMMAND);
+		    window_customize_change_tagged_callback,
+		    window_customize_free_callback, data);
 		free(prompt);
 		break;
 	case 'u':
@@ -1505,11 +1526,11 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 			xasprintf(&prompt, "Unset %s? ", item->name);
 		data->references++;
 		data->change = WINDOW_CUSTOMIZE_UNSET;
-		status_prompt_set(c, NULL, prompt, "",
-		    window_customize_change_current_callback,
-		    window_customize_free_callback, data,
+		mode_tree_set_prompt(data->data, c, prompt, "",
+		    PROMPT_TYPE_COMMAND,
 		    PROMPT_SINGLE|PROMPT_NOFORMAT|data->prompt_flags,
-		    PROMPT_TYPE_COMMAND);
+		    window_customize_change_current_callback,
+		    window_customize_free_callback, data);
 		free(prompt);
 		break;
 	case 'U':
@@ -1519,11 +1540,11 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 		xasprintf(&prompt, "Unset %u tagged? ", tagged);
 		data->references++;
 		data->change = WINDOW_CUSTOMIZE_UNSET;
-		status_prompt_set(c, NULL, prompt, "",
-		    window_customize_change_tagged_callback,
-		    window_customize_free_callback, data,
+		mode_tree_set_prompt(data->data, c, prompt, "",
+		    PROMPT_TYPE_COMMAND,
 		    PROMPT_SINGLE|PROMPT_NOFORMAT|data->prompt_flags,
-		    PROMPT_TYPE_COMMAND);
+		    window_customize_change_tagged_callback,
+		    window_customize_free_callback, data);
 		free(prompt);
 		break;
 	case 'H':

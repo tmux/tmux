@@ -149,7 +149,7 @@ args_parse_flag_argument(struct args_value *values, u_int count, char **cause,
     int optional_argument)
 {
 	struct args_value	*argument, *new;
-	const char		*s;
+	const char		*s, *as;
 
 	new = xcalloc(1, sizeof *new);
 	if (*string != '\0') {
@@ -180,12 +180,24 @@ args_parse_flag_argument(struct args_value *values, u_int count, char **cause,
 		xasprintf(cause, "-%c expects an argument", flag);
 		return (-1);
 	}
+
+	if (optional_argument && argument->type == ARGS_STRING) {
+		as = argument->string;
+		if (as[0] == '-' && (as[1] == '-' || isalpha((u_char)as[1]))) {
+			args_free_value(new);
+			free(new);
+			log_debug("%s: -%c (optional)", __func__, flag);
+			args_set(args, flag, NULL, ARGS_ENTRY_OPTIONAL_VALUE);
+			return (0);
+		}
+	}
 	args_copy_value(new, argument);
 	(*i)++;
 
 out:
 	s = args_value_as_string(new);
 	log_debug("%s: -%c = %s", __func__, flag, s);
+
 	args_set(args, flag, new, 0);
 	return (0);
 }
@@ -998,7 +1010,7 @@ args_string_percentage(const char *value, long long minval, long long maxval,
 		copy = xstrdup(value);
 		copy[valuelen - 1] = '\0';
 
-		ll = strtonum(copy, 0, 100, &errstr);
+		ll = strtonum(copy, 0, 1000, &errstr);
 		free(copy);
 		if (errstr != NULL) {
 			*cause = xstrdup(errstr);
@@ -1066,7 +1078,7 @@ args_string_percentage_and_expand(const char *value, long long minval,
 		copy[valuelen - 1] = '\0';
 
 		f = format_single_from_target(item, copy);
-		ll = strtonum(f, 0, 100, &errstr);
+		ll = strtonum(f, 0, 1000, &errstr);
 		free(f);
 		free(copy);
 		if (errstr != NULL) {

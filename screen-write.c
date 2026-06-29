@@ -732,19 +732,19 @@ screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right,
 	gc.attr |= GRID_ATTR_CHARSET;
 
 	if (left)
-		screen_write_box_border_set(lines, CELL_LEFTJOIN, &gc);
+		screen_write_box_border_set(lines, CELL_URD, &gc);
 	else
-		screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
+		screen_write_box_border_set(lines, CELL_LR, &gc);
 	screen_write_cell(ctx, &gc);
 
-	screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
+	screen_write_box_border_set(lines, CELL_LR, &gc);
 	for (i = 1; i < nx - 1; i++)
 		screen_write_cell(ctx, &gc);
 
 	if (right)
-		screen_write_box_border_set(lines, CELL_RIGHTJOIN, &gc);
+		screen_write_box_border_set(lines, CELL_ULD, &gc);
 	else
-		screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
+		screen_write_box_border_set(lines, CELL_LR, &gc);
 	screen_write_cell(ctx, &gc);
 
 	screen_write_set_cursor(ctx, cx, cy);
@@ -752,7 +752,8 @@ screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right,
 
 /* Draw a vertical line on screen. */
 void
-screen_write_vline(struct screen_write_ctx *ctx, u_int ny, int top, int bottom)
+screen_write_vline(struct screen_write_ctx *ctx, u_int ny, int top, int bottom,
+    const struct grid_cell *gcp)
 {
 	struct screen		*s = ctx->s;
 	struct grid_cell	 gc;
@@ -761,7 +762,10 @@ screen_write_vline(struct screen_write_ctx *ctx, u_int ny, int top, int bottom)
 	cx = s->cx;
 	cy = s->cy;
 
-	memcpy(&gc, &grid_default_cell, sizeof gc);
+	if (gcp != NULL)
+		memcpy(&gc, gcp, sizeof gc);
+	else
+		memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.attr |= GRID_ATTR_CHARSET;
 
 	screen_write_putc(ctx, &gc, top ? 'w' : 'x');
@@ -847,26 +851,26 @@ screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
 	gc.flags |= GRID_FLAG_NOPALETTE;
 
 	/* Draw top border */
-	screen_write_box_border_set(lines, CELL_TOPLEFT, &gc);
+	screen_write_box_border_set(lines, CELL_RD, &gc);
 	screen_write_cell(ctx, &gc);
-	screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
+	screen_write_box_border_set(lines, CELL_LR, &gc);
 	for (i = 1; i < nx - 1; i++)
 		screen_write_cell(ctx, &gc);
-	screen_write_box_border_set(lines, CELL_TOPRIGHT, &gc);
+	screen_write_box_border_set(lines, CELL_LD, &gc);
 	screen_write_cell(ctx, &gc);
 
 	/* Draw bottom border */
 	screen_write_set_cursor(ctx, cx, cy + ny - 1);
-	screen_write_box_border_set(lines, CELL_BOTTOMLEFT, &gc);
+	screen_write_box_border_set(lines, CELL_RU, &gc);
 	screen_write_cell(ctx, &gc);
-	screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
+	screen_write_box_border_set(lines, CELL_LR, &gc);
 	for (i = 1; i < nx - 1; i++)
 		screen_write_cell(ctx, &gc);
-	screen_write_box_border_set(lines, CELL_BOTTOMRIGHT, &gc);
+	screen_write_box_border_set(lines, CELL_LU, &gc);
 	screen_write_cell(ctx, &gc);
 
 	/* Draw sides */
-	screen_write_box_border_set(lines, CELL_TOPBOTTOM, &gc);
+	screen_write_box_border_set(lines, CELL_UD, &gc);
 	for (i = 1; i < ny - 1; i++) {
 		/* left side */
 		screen_write_set_cursor(ctx, cx, cy + i);
@@ -1523,6 +1527,7 @@ screen_write_clearline(struct screen_write_ctx *ctx, u_int bg)
 	struct grid_line		*gl;
 	u_int				 sx = screen_size_x(s);
 	struct screen_write_citem	*ci = ctx->item;
+	u_int				 flags;
 
 	gl = grid_get_line(s->grid, s->grid->hsize + s->cy);
 	if (gl->cellsize == 0 && COLOUR_DEFAULT(bg))
@@ -1533,7 +1538,10 @@ screen_write_clearline(struct screen_write_ctx *ctx, u_int bg)
 		ctx->wp->flags |= PANE_REDRAW;
 #endif
 
+	flags = gl->flags & (GRID_LINE_START_PROMPT|GRID_LINE_START_OUTPUT);
 	grid_view_clear(s->grid, 0, s->cy, sx, 1, bg);
+	gl = grid_get_line(s->grid, s->grid->hsize + s->cy);
+	gl->flags |= flags;
 
 	screen_write_collect_clear(ctx, s->cy, 1);
 	ci->x = 0;
@@ -2180,6 +2188,10 @@ screen_write_collect_flush_scrolled(struct screen_write_ctx *ctx)
 		screen_write_redraw_pane(ctx, &ttyctx);
 		return 0;
 	}
+	if (wp != NULL && window_pane_scrollbar_overlay_visible(wp)) {
+		wp->flags |= PANE_REDRAW;
+		return 0;
+	}
 
 	log_debug("%s: scrolled %u (region %u-%u)", __func__, ctx->scrolled,
 	    s->rupper, s->rlower);
@@ -2193,7 +2205,7 @@ screen_write_collect_flush_scrolled(struct screen_write_ctx *ctx)
 	tty_write(tty_cmd_scrollup, &ttyctx);
 
 	if (wp != NULL)
-		wp->flags |= PANE_REDRAWSCROLLBAR;
+		window_pane_scrollbar_redraw(wp);
 	return 1;
 }
 

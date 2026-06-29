@@ -36,7 +36,26 @@ enum mode_tree_preview {
 	MODE_TREE_PREVIEW_BIG
 };
 
+#define MODE_TREE_PREFIX_STYLE \
+	"#{?mode_tree_selected,#[default]#[noacs]," \
+	"#[fg=themelightgrey]#[bg=default]#[noacs]}"
+
+#define MODE_TREE_PREFIX_FORMAT \
+	MODE_TREE_PREFIX_STYLE \
+	"#{p/#{mode_tree_key_width}:" \
+	"#{?#{!=:#{mode_tree_key},},(#{mode_tree_key}),}}" \
+	"#{R:#{?mode_tree_parent_last,    ," \
+	"#[acs]x" MODE_TREE_PREFIX_STYLE "   }," \
+	"#{mode_tree_repeat}}" \
+	"#{?mode_tree_branch," \
+	"#[acs]#{?mode_tree_last,mq,tq}" MODE_TREE_PREFIX_STYLE "> ,}" \
+	"#{?mode_tree_has_children," \
+	"#{?mode_tree_expanded,#[fg=themered]-" MODE_TREE_PREFIX_STYLE " ," \
+	"#[fg=themegreen]+" MODE_TREE_PREFIX_STYLE " }," \
+	"#{?mode_tree_flat,,  }}"
+
 struct mode_tree_item;
+struct mode_tree_prompt;
 TAILQ_HEAD(mode_tree_list, mode_tree_item);
 
 struct mode_tree_data {
@@ -51,11 +70,11 @@ struct mode_tree_data {
 	struct sort_criteria	  sort_crit;
 	const char		 *view_name;
 
-	mode_tree_build_cb        buildcb;
-	mode_tree_draw_cb         drawcb;
-	mode_tree_search_cb       searchcb;
-	mode_tree_menu_cb         menucb;
-	mode_tree_height_cb       heightcb;
+	mode_tree_build_cb	  buildcb;
+	mode_tree_draw_cb	  drawcb;
+	mode_tree_search_cb	  searchcb;
+	mode_tree_menu_cb	  menucb;
+	mode_tree_height_cb	  heightcb;
 	mode_tree_key_cb	  keycb;
 	mode_tree_swap_cb	  swapcb;
 	mode_tree_sort_cb	  sortcb;
@@ -77,6 +96,10 @@ struct mode_tree_data {
 	u_int			  current;
 
 	struct screen		  screen;
+	struct prompt		 *prompt;
+	struct mode_tree_prompt	 *prompt_data;
+	u_int			  prompt_cx;
+	int			  prompt_top;
 
 	int			  preview;
 	char			 *search;
@@ -124,9 +147,25 @@ struct mode_tree_menu {
 	u_int				 line;
 };
 
-static void mode_tree_free_items(struct mode_tree_list *);
-static void mode_tree_draw_help(struct mode_tree_data *,
-    struct screen_write_ctx *);
+/*
+ * Wrapper around a prompt owned by a mode tree. The mode tree holds a reference
+ * while the prompt is alive; the wrapper callbacks forward to the caller's
+ * callbacks and drop that reference when the prompt is freed.
+ */
+struct mode_tree_prompt {
+	struct mode_tree_data		*mtd;
+	struct client			*c;
+	mode_tree_prompt_input_cb	 inputcb;
+	prompt_free_cb			 freecb;
+	void				*data;
+};
+
+static void	mode_tree_free_items(struct mode_tree_list *);
+static void	mode_tree_draw_help(struct mode_tree_data *,
+		    struct screen_write_ctx *);
+static void	mode_tree_draw_prompt(struct mode_tree_data *,
+		    struct screen_write_ctx *);
+static enum cmd_retval mode_tree_prompt_accept(struct cmdq_item *, void *);
 
 static const struct menu_item mode_tree_menu_items[] = {
 	{ "Scroll Left", '<', NULL },
@@ -138,31 +177,53 @@ static const struct menu_item mode_tree_menu_items[] = {
 };
 
 static const char* mode_tree_help_start[] = {
-	"#[bold]      Up, k #[default]#[acs]x#[default] Move cursor up",
-	"#[bold]    Down, j #[default]#[acs]x#[default] Move cursor down",
-	"#[bold]          g #[default]#[acs]x#[default] Go to top",
-	"#[bold]          G #[default]#[acs]x#[default] Go to bottom",
-	"#[bold] PPage, C-b #[default]#[acs]x#[default] Page up",
-	"#[bold] NPage, C-f #[default]#[acs]x#[default] Page down",
-	"#[bold]    Left, h #[default]#[acs]x#[default] Collapse %1",
-	"#[bold]   Right, l #[default]#[acs]x#[default] Expand %1",
-	"#[bold]        M-- #[default]#[acs]x#[default] Collapse all %1s",
-	"#[bold]        M-+ #[default]#[acs]x#[default] Expand all %1s",
-	"#[bold]          t #[default]#[acs]x#[default] Toggle %1 tag",
-	"#[bold]          T #[default]#[acs]x#[default] Untag all %1s",
-	"#[bold]        C-t #[default]#[acs]x#[default] Tag all %1s",
-	"#[bold]        C-s #[default]#[acs]x#[default] Search forward",
-	"#[bold]        C-r #[default]#[acs]x#[default] Search backward",
-	"#[bold]          n #[default]#[acs]x#[default] Repeat search forward",
-	"#[bold]          N #[default]#[acs]x#[default] Repeat search backward",
-	"#[bold]          f #[default]#[acs]x#[default] Filter %1s",
-	"#[bold]          O #[default]#[acs]x#[default] Change sort order",
-	"#[bold]          r #[default]#[acs]x#[default] Reverse sort order",
-	"#[bold]          v #[default]#[acs]x#[default] Toggle preview",
+	"#[fg=themelightgrey]"
+	"      Up, k #[#{E:tree-mode-border-style},acs]x#[default] Move cursor up",
+	"#[fg=themelightgrey]"
+	"    Down, j #[#{E:tree-mode-border-style},acs]x#[default] Move cursor down",
+	"#[fg=themelightgrey]"
+	"          g #[#{E:tree-mode-border-style},acs]x#[default] Go to top",
+	"#[fg=themelightgrey]"
+	"          G #[#{E:tree-mode-border-style},acs]x#[default] Go to bottom",
+	"#[fg=themelightgrey]"
+	" PPage, C-b #[#{E:tree-mode-border-style},acs]x#[default] Page up",
+	"#[fg=themelightgrey]"
+	" NPage, C-f #[#{E:tree-mode-border-style},acs]x#[default] Page down",
+	"#[fg=themelightgrey]"
+	"    Left, h #[#{E:tree-mode-border-style},acs]x#[default] Collapse %1",
+	"#[fg=themelightgrey]"
+	"   Right, l #[#{E:tree-mode-border-style},acs]x#[default] Expand %1",
+	"#[fg=themelightgrey]"
+	"        M-- #[#{E:tree-mode-border-style},acs]x#[default] Collapse all %1s",
+	"#[fg=themelightgrey]"
+	"        M-+ #[#{E:tree-mode-border-style},acs]x#[default] Expand all %1s",
+	"#[fg=themelightgrey]"
+	"          t #[#{E:tree-mode-border-style},acs]x#[default] Toggle %1 tag",
+	"#[fg=themelightgrey]"
+	"          T #[#{E:tree-mode-border-style},acs]x#[default] Untag all %1s",
+	"#[fg=themelightgrey]"
+	"        C-t #[#{E:tree-mode-border-style},acs]x#[default] Tag all %1s",
+	"#[fg=themelightgrey]"
+	"        C-s #[#{E:tree-mode-border-style},acs]x#[default] Search forward",
+	"#[fg=themelightgrey]"
+	"        C-r #[#{E:tree-mode-border-style},acs]x#[default] Search backward",
+	"#[fg=themelightgrey]"
+	"          n #[#{E:tree-mode-border-style},acs]x#[default] Repeat search forward",
+	"#[fg=themelightgrey]"
+	"          N #[#{E:tree-mode-border-style},acs]x#[default] Repeat search backward",
+	"#[fg=themelightgrey]"
+	"          f #[#{E:tree-mode-border-style},acs]x#[default] Filter %1s",
+	"#[fg=themelightgrey]"
+	"          O #[#{E:tree-mode-border-style},acs]x#[default] Change sort order",
+	"#[fg=themelightgrey]"
+	"          r #[#{E:tree-mode-border-style},acs]x#[default] Reverse sort order",
+	"#[fg=themelightgrey]"
+	"          v #[#{E:tree-mode-border-style},acs]x#[default] Toggle preview",
 	NULL
 };
 static const char* mode_tree_help_end[] = {
-	"#[bold]  q, Escape #[default]#[acs]x#[default] Exit mode",
+	"#[fg=themelightgrey]"
+	"  q, Escape #[#{E:tree-mode-border-style},acs]x#[default] Exit mode",
 	NULL
 };
 #define MODE_TREE_HELP_DEFAULT_WIDTH 39
@@ -383,6 +444,13 @@ mode_tree_get_current_name(struct mode_tree_data *mtd)
 }
 
 void
+mode_tree_select_top(struct mode_tree_data *mtd)
+{
+	mtd->current = 0;
+	mtd->offset = 0;
+}
+
+void
 mode_tree_expand_current(struct mode_tree_data *mtd)
 {
 	if (!mtd->line_list[mtd->current].item->expanded) {
@@ -509,7 +577,9 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 	mtd->modedata = modedata;
 	mtd->menu = menu;
 
-	if (args_has(args, 'N') > 1)
+	if (drawcb == NULL)
+		mtd->preview = MODE_TREE_PREVIEW_OFF;
+	else if (args_has(args, 'N') > 1)
 		mtd->preview = MODE_TREE_PREVIEW_BIG;
 	else if (args_has(args, 'N'))
 		mtd->preview = MODE_TREE_PREVIEW_OFF;
@@ -641,6 +711,7 @@ mode_tree_free(struct mode_tree_data *mtd)
 	if (mtd->zoomed == 0)
 		server_unzoom_window(wp->window);
 
+	mode_tree_clear_prompt(mtd);
 	mode_tree_free_items(&mtd->children);
 	mode_tree_clear_lines(mtd);
 	screen_free(&mtd->screen);
@@ -723,8 +794,8 @@ mode_tree_no_tag(struct mode_tree_item *mti)
 }
 
 /*
- * Set the alignment of mti->name: -1 to align left, 0 (default) to not align,
- * or 1 to align right.
+ * Set the alignment of the item name: -1 to align left, 0 (default) to not
+ * align, or 1 to align right.
  */
 void
 mode_tree_align(struct mode_tree_item *mti, int align)
@@ -753,25 +824,34 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	struct mode_tree_item	*mti;
 	struct options		*oo = wp->window->options;
 	struct screen_write_ctx	 ctx;
-	struct grid_cell	 gc0, gc;
-	u_int			 w, h, i, j, sy, box_x, box_y, width;
-	char			*text, *start, *key;
-	const char		*tag, *symbol;
-	size_t			 size, n;
-	int			 keylen, pad, alignlen[mtd->maxdepth + 1];
+	struct format_tree	*ft;
+	struct grid_cell	 gc0, gc, box_gc;
+	u_int			 w, h, i, sy, box_x, box_y;
+	u_int			 width, text_width, prefix_width, left;
+	char			*text, *prefix;
+	const char		*tag, *separator;
+	size_t			 n;
+	int			 keylen, alignlen[mtd->maxdepth + 1];
+	int			 dfg, dfg0;
 
 	if (mtd->line_size == 0)
 		return;
 
 	memcpy(&gc0, &grid_default_cell, sizeof gc0);
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	style_apply(&gc, oo, "mode-style", NULL);
+	style_apply(&gc, oo, "tree-mode-selection-style", NULL);
+	memcpy(&box_gc, &grid_default_cell, sizeof box_gc);
+	style_apply(&box_gc, oo, "tree-mode-border-style", NULL);
+
+	dfg = gc.fg;
+	dfg0 = gc0.fg;
 
 	w = mtd->width;
 	h = mtd->height;
 
 	screen_write_start(&ctx, s);
 	screen_write_clearscreen(&ctx, 8);
+	ft = format_create_defaults(NULL, NULL, NULL, NULL, wp);
 
 	keylen = 0;
 	for (i = 0; i < mtd->line_size; i++) {
@@ -802,81 +882,98 @@ mode_tree_draw(struct mode_tree_data *mtd)
 
 		screen_write_cursormove(&ctx, 0, i - mtd->offset, 0);
 
-		pad = keylen - 2 - mti->keylen;
 		if (mti->key != KEYC_NONE)
-			xasprintf(&key, "(%s)%*s", mti->keystr, pad, "");
+			format_add(ft, "mode_tree_key", "%s", mti->keystr);
 		else
-			key = xstrdup("");
-
-		if (line->flat)
-			symbol = "";
-		else if (TAILQ_EMPTY(&mti->children))
-			symbol = "  ";
-		else if (mti->expanded)
-			symbol = "- ";
-		else
-			symbol = "+ ";
-
-		if (line->depth == 0)
-			start = xstrdup(symbol);
-		else {
-			size = (4 * line->depth) + 32;
-
-			start = xcalloc(1, size);
-			for (j = 1; j < line->depth; j++) {
-				if (mti->parent != NULL &&
-				    mtd->line_list[mti->parent->line].last)
-					strlcat(start, "    ", size);
-				else
-					strlcat(start, "\001x\001   ", size);
-			}
-			if (line->last)
-				strlcat(start, "\001mq\001> ", size);
+			format_add(ft, "mode_tree_key", "%s", "");
+		format_add(ft, "mode_tree_key_width", "%d", keylen);
+		format_add(ft, "mode_tree_selected", "%d", i == mtd->current);
+		if (line->depth == 0) {
+			format_add(ft, "mode_tree_repeat", "%u", 0);
+			format_add(ft, "mode_tree_branch", "0");
+			format_add(ft, "mode_tree_parent_last", "0");
+		} else {
+			format_add(ft, "mode_tree_repeat", "%u",
+			    line->depth - 1);
+			format_add(ft, "mode_tree_branch", "1");
+			if (mti->parent != NULL &&
+			    mtd->line_list[mti->parent->line].last)
+				format_add(ft, "mode_tree_parent_last", "1");
 			else
-				strlcat(start, "\001tq\001> ", size);
-			strlcat(start, symbol, size);
+				format_add(ft, "mode_tree_parent_last", "0");
 		}
+		if (TAILQ_EMPTY(&mti->children))
+			format_add(ft, "mode_tree_has_children", "0");
+		else
+			format_add(ft, "mode_tree_has_children", "1");
+		format_add(ft, "mode_tree_last", "%d", line->last);
+		format_add(ft, "mode_tree_expanded", "%d", mti->expanded);
+		format_add(ft, "mode_tree_flat", "%d", line->flat);
+		prefix = format_expand(ft, MODE_TREE_PREFIX_FORMAT);
+		prefix_width = format_width(prefix);
+		if (prefix_width > w)
+			prefix_width = w;
 
 		if (mti->tagged)
 			tag = "*";
 		else
 			tag = "";
-		xasprintf(&text, "%-*s%s%*s%s%s", keylen, key, start,
-		    mti->align * alignlen[line->depth], mti->name, tag,
-		    (mti->text != NULL) ? ": " : "" );
-		width = utf8_cstrwidth(text);
-		if (width > w)
-			width = w;
-		free(start);
+		if (mti->text != NULL)
+			separator = "#[fg=themelightgrey]: #[default]";
+		else
+			separator = "";
+		xasprintf(&text, "%*s%s%s",
+		    mti->align * alignlen[line->depth], mti->name, tag, separator);
+		text_width = format_width(text);
+		left = (prefix_width < w) ? (w - prefix_width) : 0;
+		if (text_width > left)
+			text_width = left;
+		width = prefix_width + text_width;
 
 		if (mti->tagged) {
-			gc.attr ^= GRID_ATTR_BRIGHT;
-			gc0.attr ^= GRID_ATTR_BRIGHT;
+			gc.fg = COLOUR_THEME_CYAN|COLOUR_FLAG_THEME;
+			gc0.fg = COLOUR_THEME_CYAN|COLOUR_FLAG_THEME;
 		}
 
 		if (i != mtd->current) {
 			screen_write_clearendofline(&ctx, 8);
-			screen_write_nputs(&ctx, w, &gc0, "%s", text);
-			if (mti->text != NULL) {
-				format_draw(&ctx, &gc0, w - width, mti->text,
-				    NULL, 0);
+			format_draw(&ctx, &grid_default_cell, prefix_width,
+			    prefix, NULL, 0);
+			if (left != 0) {
+				screen_write_cursormove(&ctx, prefix_width,
+				    i - mtd->offset, 0);
+				format_draw(&ctx, &gc0, left, text, NULL, 0);
+				if (mti->text != NULL && width < w) {
+					screen_write_cursormove(&ctx, width,
+					    i - mtd->offset, 0);
+					format_draw(&ctx, &gc0, w - width,
+					    mti->text, NULL, 0);
+				}
 			}
 		} else {
 			screen_write_clearendofline(&ctx, gc.bg);
-			screen_write_nputs(&ctx, w, &gc, "%s", text);
-			if (mti->text != NULL) {
-				format_draw(&ctx, &gc, w - width, mti->text,
-				    NULL, 0);
+			format_draw(&ctx, &gc, prefix_width, prefix, NULL, 0);
+			if (left != 0) {
+				screen_write_cursormove(&ctx, prefix_width,
+				    i - mtd->offset, 0);
+				format_draw(&ctx, &gc, left, text, NULL, 0);
+				if (mti->text != NULL && width < w) {
+					screen_write_cursormove(&ctx, width,
+					    i - mtd->offset, 0);
+					format_draw(&ctx, &gc, w - width,
+					    mti->text, NULL, 0);
+				}
 			}
 		}
 		free(text);
-		free(key);
+		free(prefix);
 
 		if (mti->tagged) {
-			gc.attr ^= GRID_ATTR_BRIGHT;
-			gc0.attr ^= GRID_ATTR_BRIGHT;
+			gc.fg = dfg;
+			gc0.fg = dfg0;
 		}
 	}
+	format_free(ft);
 
 	if (mtd->preview == MODE_TREE_PREVIEW_OFF)
 		goto done;
@@ -891,7 +988,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 		mti = mti->parent;
 
 	screen_write_cursormove(&ctx, 0, h, 0);
-	screen_write_box(&ctx, w, sy - h, BOX_LINES_DEFAULT, NULL, NULL);
+	screen_write_box(&ctx, w, sy - h, BOX_LINES_DEFAULT, &box_gc, NULL);
 
 	if (mtd->sort_crit.order_seq != NULL) {
 		xasprintf(&text, " %s (sort: %s%s)%s%s%s", mti->name,
@@ -904,21 +1001,21 @@ mode_tree_draw(struct mode_tree_data *mtd)
 		xasprintf(&text, " %s", mti->name);
 	if (w - 2 >= strlen(text)) {
 		screen_write_cursormove(&ctx, 1, h, 0);
-		screen_write_puts(&ctx, &gc0, "%s", text);
+		screen_write_puts(&ctx, &box_gc, "%s", text);
 
 		if (mtd->no_matches)
 			n = (sizeof "no matches") - 1;
 		else
 			n = (sizeof "active") - 1;
 		if (mtd->filter != NULL && w - 2 >= strlen(text) + 10 + n + 2) {
-			screen_write_puts(&ctx, &gc0, " (filter: ");
+			screen_write_puts(&ctx, &box_gc, " (filter: ");
 			if (mtd->no_matches)
-				screen_write_puts(&ctx, &gc, "no matches");
+				screen_write_puts(&ctx, &box_gc, "no matches");
 			else
-				screen_write_puts(&ctx, &gc0, "active");
-			screen_write_puts(&ctx, &gc0, ") ");
+				screen_write_puts(&ctx, &box_gc, "active");
+			screen_write_puts(&ctx, &box_gc, ") ");
 		} else
-			screen_write_puts(&ctx, &gc0, " ");
+			screen_write_puts(&ctx, &box_gc, " ");
 	}
 	free(text);
 
@@ -933,8 +1030,147 @@ mode_tree_draw(struct mode_tree_data *mtd)
 done:
 	if (mtd->help)
 		mode_tree_draw_help(mtd, &ctx);
-	screen_write_cursormove(&ctx, 0, mtd->current - mtd->offset, 0);
+	if (mtd->prompt != NULL)
+		mode_tree_draw_prompt(mtd, &ctx);
+	else {
+		s->mode &= ~MODE_CURSOR;
+		screen_write_cursormove(&ctx, 0, mtd->current - mtd->offset, 0);
+	}
 	screen_write_stop(&ctx);
+}
+
+static void
+mode_tree_draw_prompt(struct mode_tree_data *mtd, struct screen_write_ctx *ctx)
+{
+	struct screen		*s = &mtd->screen;
+	struct prompt_draw_data	 pdd;
+	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
+	u_int			 py;
+
+	if (sx == 0 || sy == 0)
+		return;
+
+	if (mtd->prompt_top)
+		py = 0;
+	else
+		py = sy - 1;
+
+	pdd.ctx = ctx;
+	pdd.cursor_x = &mtd->prompt_cx;
+	pdd.area_x = 0;
+	pdd.area_width = sx;
+	pdd.prompt_line = py;
+
+	s->mode |= MODE_CURSOR;
+	prompt_draw(mtd->prompt, &pdd);
+	screen_write_cursormove(ctx, mtd->prompt_cx, py, 0);
+}
+
+void
+mode_tree_clear_prompt(struct mode_tree_data *mtd)
+{
+	struct prompt	*prompt = mtd->prompt;
+
+	if (mtd->prompt != NULL) {
+		mtd->prompt = NULL;
+		prompt_free(prompt);
+		mtd->screen.mode &= ~MODE_CURSOR;
+	}
+}
+
+int
+mode_tree_has_prompt(struct mode_tree_data *mtd)
+{
+	return (mtd->prompt != NULL);
+}
+
+static enum cmd_retval
+mode_tree_prompt_accept(struct cmdq_item *item, void *data)
+{
+	struct mode_tree_data	*mtd = data;
+	struct client		*c = cmdq_get_client(item);
+	key_code		 key = 'y';
+
+	if (mtd->prompt != NULL && c != NULL)
+		mode_tree_key(mtd, c, &key, NULL, NULL, NULL);
+
+	mode_tree_remove_ref(mtd);
+	return (CMD_RETURN_NORMAL);
+}
+
+static enum prompt_result
+mode_tree_prompt_input_callback(void *data, const char *s,
+    enum prompt_key_result key)
+{
+	struct mode_tree_prompt	*mtp = data;
+
+	if (mtp->inputcb != NULL)
+		return (mtp->inputcb(mtp->c, mtp->data, s, key));
+	return (PROMPT_CLOSE);
+}
+
+static void
+mode_tree_prompt_free_callback(void *data)
+{
+	struct mode_tree_prompt	*mtp = data;
+
+	if (mtp->mtd->prompt_data == mtp)
+		mtp->mtd->prompt_data = NULL;
+	if (mtp->freecb != NULL)
+		mtp->freecb(mtp->data);
+	mode_tree_remove_ref(mtp->mtd);
+	free(mtp);
+}
+
+void
+mode_tree_set_prompt(struct mode_tree_data *mtd, struct client *c,
+    const char *prompt, const char *input, enum prompt_type type, int flags,
+    mode_tree_prompt_input_cb inputcb, prompt_free_cb freecb, void *data)
+{
+	struct session			*s;
+	struct options			*oo;
+	struct prompt_create_data	 pd;
+	struct mode_tree_prompt		*mtp;
+
+	if (c != NULL && c->session != NULL) {
+		s = c->session;
+		oo = s->options;
+	} else {
+		s = NULL;
+		oo = global_s_options;
+	}
+
+	mode_tree_clear_prompt(mtd);
+
+	mtp = xcalloc(1, sizeof *mtp);
+	mtp->mtd = mtd;
+	mtp->c = c;
+	mtp->inputcb = inputcb;
+	mtp->freecb = freecb;
+	mtp->data = data;
+
+	mtd->references++;
+	mtd->prompt_top = options_get_number(oo, "status-position") == 0;
+
+	memset(&pd, 0, sizeof pd);
+	prompt_set_options(&pd, s);
+	pd.prompt = prompt;
+	pd.input = input;
+	pd.type = type;
+	pd.flags = flags|PROMPT_ISMODE;
+	pd.inputcb = mode_tree_prompt_input_callback;
+	pd.freecb = mode_tree_prompt_free_callback;
+	pd.data = mtp;
+	mtd->prompt = prompt_create(&pd);
+	mtd->prompt_data = mtp;
+
+	mode_tree_draw(mtd);
+	mtd->wp->flags |= PANE_REDRAW;
+
+	if ((flags & PROMPT_SINGLE) && (flags & PROMPT_ACCEPT) && c != NULL) {
+		mtd->references++;
+		cmdq_append(c, cmdq_get_callback(mode_tree_prompt_accept, mtd));
+	}
 }
 
 static struct mode_tree_item *
@@ -1057,41 +1293,37 @@ mode_tree_search_set(struct mode_tree_data *mtd)
 	mtd->wp->flags |= PANE_REDRAW;
 }
 
-static int
+static enum prompt_result
 mode_tree_search_callback(__unused struct client *c, void *data, const char *s,
-    __unused int done)
+    enum prompt_key_result key)
 {
 	struct mode_tree_data	*mtd = data;
 
 	if (mtd->dead)
-		return (0);
+		return (PROMPT_CLOSE);
 
 	free(mtd->search);
-	if (s == NULL || *s == '\0') {
+	if (s == NULL || *s == '\0')
 		mtd->search = NULL;
-		return (0);
+	else {
+		mtd->search = xstrdup(s);
+		mtd->search_icase = mode_tree_is_lowercase(s);
+		mode_tree_search_set(mtd);
 	}
-	mtd->search = xstrdup(s);
-	mtd->search_icase = mode_tree_is_lowercase(s);
-	mode_tree_search_set(mtd);
 
-	return (0);
+	if (key == PROMPT_KEY_HANDLED)
+		return (PROMPT_CONTINUE);
+	return (PROMPT_CLOSE);
 }
 
-static void
-mode_tree_search_free(void *data)
-{
-	mode_tree_remove_ref(data);
-}
-
-static int
+static enum prompt_result
 mode_tree_filter_callback(__unused struct client *c, void *data, const char *s,
-    __unused int done)
+    enum prompt_key_result key)
 {
 	struct mode_tree_data	*mtd = data;
 
 	if (mtd->dead)
-		return (0);
+		return (PROMPT_CLOSE);
 
 	if (mtd->filter != NULL)
 		free(mtd->filter);
@@ -1104,13 +1336,20 @@ mode_tree_filter_callback(__unused struct client *c, void *data, const char *s,
 	mode_tree_draw(mtd);
 	mtd->wp->flags |= PANE_REDRAW;
 
-	return (0);
+	if (key == PROMPT_KEY_HANDLED)
+		return (PROMPT_CONTINUE);
+	return (PROMPT_CLOSE);
 }
 
 static void
-mode_tree_filter_free(void *data)
+mode_tree_clear_filter(struct mode_tree_data *mtd)
 {
-	mode_tree_remove_ref(data);
+	free(mtd->filter);
+	mtd->filter = NULL;
+
+	mode_tree_build(mtd);
+	mode_tree_draw(mtd);
+	mtd->wp->flags |= PANE_REDRAW;
 }
 
 static void
@@ -1181,12 +1420,14 @@ mode_tree_display_menu(struct mode_tree_data *mtd, struct client *c, u_int x,
 
 static void
 mode_tree_draw_help_line(struct screen_write_ctx *ctx,
-    const struct grid_cell *gc, const char *line, const char *item, u_int x,
-    u_int y, u_int w)
+    const struct grid_cell *gc, struct format_tree *ft, const char *line,
+    const char *item, u_int x, u_int y, u_int w)
 {
-	char	*expanded;
+	char	*expanded, *replaced;
 
-	expanded = cmd_template_replace(line, item, 1);
+	replaced = cmd_template_replace(line, item, 1);
+	expanded = format_expand(ft, replaced);
+	free(replaced);
 	screen_write_cursormove(ctx, x, y, 0);
 	screen_write_clearcharacter(ctx, w, gc->bg);
 	screen_write_cursormove(ctx, x, y, 0);
@@ -1198,10 +1439,12 @@ static void
 mode_tree_draw_help(struct mode_tree_data *mtd, struct screen_write_ctx *ctx)
 {
 	struct screen		 *s = &mtd->screen;
-	struct grid_cell	  gc;
+	struct options		 *oo = mtd->wp->window->options;
+	struct grid_cell	  box_gc, gc;
+	struct format_tree	 *ft;
 	const char		**line, **lines = NULL, *item = "item";
 	u_int			  sx = screen_size_x(s), sy = screen_size_y(s);
-	u_int                     x, y, w, h = 0, box_w, box_h;
+	u_int			  x, y, w, h = 0, box_w, box_h;
 
 	if (mtd->helpcb == NULL)
 		w = MODE_TREE_HELP_DEFAULT_WIDTH;
@@ -1224,18 +1467,22 @@ mode_tree_draw_help(struct mode_tree_data *mtd, struct screen_write_ctx *ctx)
 	x = (sx - box_w) / 2;
 	y = (sy - box_h) / 2;
 
+	memcpy(&box_gc, &grid_default_cell, sizeof box_gc);
+	style_apply(&box_gc, oo, "tree-mode-border-style", NULL);
 	memcpy(&gc, &grid_default_cell, sizeof gc);
+	ft = format_create_defaults(NULL, NULL, NULL, NULL, mtd->wp);
 	screen_write_cursormove(ctx, x, y, 0);
-	screen_write_box(ctx, box_w, box_h, BOX_LINES_DEFAULT, &gc, NULL);
+	screen_write_box(ctx, box_w, box_h, BOX_LINES_DEFAULT, &box_gc, NULL);
 
 	y++;
 	x++;
 	for (line = mode_tree_help_start; *line != NULL; line++, y++)
-		mode_tree_draw_help_line(ctx, &gc, *line, item, x, y, w);
+		mode_tree_draw_help_line(ctx, &gc, ft, *line, item, x, y, w);
 	for (line = lines; line != NULL && *line != NULL; line++, y++)
-		mode_tree_draw_help_line(ctx, &gc, *line, item, x, y, w);
+		mode_tree_draw_help_line(ctx, &gc, ft, *line, item, x, y, w);
 	for (line = mode_tree_help_end; *line != NULL; line++, y++)
-		mode_tree_draw_help_line(ctx, &gc, *line, item, x, y, w);
+		mode_tree_draw_help_line(ctx, &gc, ft, *line, item, x, y, w);
+	format_free(ft);
 }
 
 static void
@@ -1251,15 +1498,75 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 {
 	struct mode_tree_line	*line;
 	struct mode_tree_item	*current, *parent, *mti;
-	u_int			 i, x, y;
+	u_int			 i, x, y, py, sx;
 	int			 choice, preview;
+	enum prompt_key_result	 result;
+	int			 redraw;
+	struct prompt		*prompt;
+	struct mode_tree_prompt	*mtp;
 
 	if (mtd->line_size == 0) {
 		*key = KEYC_NONE;
 		return (1);
 	}
 
+	if (mtd->prompt != NULL) {
+		redraw = 0;
+		prompt = mtd->prompt;
+
+		mtp = mtd->prompt_data;
+		if (mtp != NULL)
+			mtp->c = c;
+		if (KEYC_IS_MOUSE(*key)) {
+			if (m == NULL ||
+			    MOUSE_BUTTONS(m->b) != MOUSE_BUTTON_1 ||
+			    MOUSE_DRAG(m->b) || MOUSE_RELEASE(m->b) ||
+			    cmd_mouse_at(mtd->wp, m, &x, &y, 0) != 0)
+				result = PROMPT_KEY_NOT_HANDLED;
+			else {
+				sx = screen_size_x(&mtd->screen);
+				if (mtd->prompt_top)
+					py = 0;
+				else
+					py = screen_size_y(&mtd->screen) - 1;
+				if (y == py) {
+					result = prompt_mouse(prompt, x, 0, sx,
+					    &redraw);
+				} else
+					result = PROMPT_KEY_NOT_HANDLED;
+			}
+		} else
+			result = prompt_key(prompt, *key, &redraw);
+		if (mtd->prompt_data == mtp && mtp != NULL)
+			mtp->c = NULL;
+
+		/*
+		 * Only an explicit close or the prompt marking itself closed
+		 * ends it; cursor movement and editing keep it open.
+		 */
+		if (mtd->prompt == prompt &&
+		    (result == PROMPT_KEY_CLOSE || prompt_closed(prompt)))
+			mode_tree_clear_prompt(mtd);
+
+		if (redraw || mtd->prompt != prompt) {
+			mode_tree_draw(mtd);
+			mtd->wp->flags |= PANE_REDRAW;
+		}
+		if (result != PROMPT_KEY_NOT_HANDLED) {
+			*key = KEYC_NONE;
+			return (0);
+		}
+	}
+
 	if (mtd->help) {
+		if (KEYC_IS_MOUSE(*key)) {
+			*key = KEYC_NONE;
+			return (0);
+		}
+		if (*key == KEYC_FOCUS_IN || *key == KEYC_FOCUS_OUT) {
+			*key = KEYC_NONE;
+			return (0);
+		}
 		mtd->help = 0;
 		mode_tree_draw(mtd);
 		*key = KEYC_NONE;
@@ -1461,11 +1768,10 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	case '?':
 	case '/':
 	case 's'|KEYC_CTRL:
-		mtd->references++;
 		mtd->search_dir = MODE_TREE_SEARCH_FORWARD;
-		status_prompt_set(c, NULL, "(search) ", "",
-		    mode_tree_search_callback, mode_tree_search_free, mtd,
-		    PROMPT_NOFORMAT, PROMPT_TYPE_SEARCH);
+		mode_tree_set_prompt(mtd, c, "(search) ", "",
+		    PROMPT_TYPE_SEARCH, PROMPT_NOFORMAT,
+		    mode_tree_search_callback, NULL, mtd);
 		break;
 	case 'n':
 		mtd->search_dir = MODE_TREE_SEARCH_FORWARD;
@@ -1476,10 +1782,13 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		mode_tree_search_set(mtd);
 		break;
 	case 'f':
-		mtd->references++;
-		status_prompt_set(c, NULL, "(filter) ", mtd->filter,
-		    mode_tree_filter_callback, mode_tree_filter_free, mtd,
-		    PROMPT_NOFORMAT, PROMPT_TYPE_SEARCH);
+		mode_tree_set_prompt(mtd, c, "(filter) ", mtd->filter,
+		    PROMPT_TYPE_SEARCH, PROMPT_NOFORMAT,
+		    mode_tree_filter_callback, NULL, mtd);
+		break;
+	case 'c':
+		mode_tree_clear_prompt(mtd);
+		mode_tree_clear_filter(mtd);
 		break;
 	case 'v':
 		switch (mtd->preview) {

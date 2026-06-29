@@ -1,12 +1,12 @@
 TILE01 abcdefghij  │TILE01 abcdefghij
 TILE02 abcdefghij  │TILE02 abcdefghij
-TILE03 abc┌────────────────┐bcdefghij
-TILE04 abc│FLT             │bcdefghij
-          │                │
-──────────│                │────────────
-TILE00 abc│                │bcdefghij
-TILE01 abc│                │bcdefghij
-TILE02 abc│                │bcdefghij
-TILE03 abc└────────────────┘bcdefghij
+TILE03 abcdefghij  │TILE03 abcdefghij
+TILE04 abcd┌──────────────┐abcdefghij
+           │FLT           │
+───────────│              │─────────────
+TILE00 abcd│              │abcdefghij
+TILE01 abcd│              │abcdefghij
+TILE02 abcd└──────────────┘abcdefghij
+TILE03 abcdefghij  │TILE03 abcdefghij
 TILE04 abcdefghij  │TILE04 abcdefghij
                    │

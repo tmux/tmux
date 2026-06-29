@@ -6,7 +6,7 @@
 06:abcdefghijklmnopqrstuvwxyz0123456789
 07:abcdefghijklmnopqrstuvwxyz0123456789
 08:abcdefghijklmnopqrstuvwxyz0123456789
-09:abcdef┌────────────────────┐23456789
-10:abcdef│BOTTOM              │23456789
-11:abcdef│                    │23456789
-         │                    │
+09:abcdefghijklmnopqrstuvwxyz0123456789
+10:abcdefg┌──────────────────┐123456789
+11:abcdefg│BOTTOM            │123456789
+          │                  │

@@ -1477,6 +1477,33 @@ format_cb_client_cell_width(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for client_colours. */
+static void *
+format_cb_client_colours(struct format_tree *ft)
+{
+	struct tty_term	*term;
+	u_int		 colours;
+
+	if (ft->c == NULL || (~ft->c->tty.flags & TTY_STARTED))
+		return (NULL);
+	term = ft->c->tty.term;
+
+	if (term->flags & TERM_RGBCOLOURS)
+		colours = 16777216;
+	else if (term->flags & TERM_256COLOURS)
+		colours = 256;
+	else {
+		colours = tty_term_number(term, TTYC_COLORS);
+		if (colours < 8)
+			colours = 2;
+		else if (colours < 16)
+			colours = 8;
+		else
+			colours = 16;
+	}
+	return (format_printf("%u", colours));
+}
+
 /* Callback for client_control_mode. */
 static void *
 format_cb_client_control_mode(struct format_tree *ft)
@@ -3228,6 +3255,9 @@ static const struct format_table_entry format_table[] = {
 	{ "client_cell_width", FORMAT_TABLE_STRING,
 	  format_cb_client_cell_width
 	},
+	{ "client_colours", FORMAT_TABLE_STRING,
+	  format_cb_client_colours
+	},
 	{ "client_control_mode", FORMAT_TABLE_STRING,
 	  format_cb_client_control_mode
 	},
@@ -4542,6 +4572,47 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 	return (list);
 }
 
+/* Match using the fuzzy matcher. */
+static char *
+format_match_fuzzy(const char *pattern, const char *text, int positions)
+{
+	struct evbuffer	*buffer;
+	bitstr_t	*bs;
+	char		*value;
+	size_t		 size;
+	u_int		 i, width;
+
+	width = format_width(text);
+	if (width == 0)
+		width = 1;
+	bs = fuzzy_match(pattern, text, width, NULL);
+	if (bs == NULL)
+		return (xstrdup(positions ? "" : "0"));
+
+	if (!positions) {
+		free(bs);
+		return (xstrdup("1"));
+	}
+
+	buffer = evbuffer_new();
+	if (buffer == NULL)
+		fatalx("out of memory");
+	for (i = 0; i < width; i++) {
+		if (!bit_test(bs, i))
+			continue;
+		if (EVBUFFER_LENGTH(buffer) != 0)
+			evbuffer_add(buffer, ",", 1);
+		evbuffer_add_printf(buffer, "%u", i);
+	}
+	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
+		value = xmemdup(EVBUFFER_DATA(buffer), size);
+	else
+		value = xstrdup("");
+	evbuffer_free(buffer);
+	free(bs);
+	return (value);
+}
+
 /* Match against an fnmatch(3) pattern or regular expression. */
 static char *
 format_match(struct format_modifier *fm, const char *pattern, const char *text)
@@ -4552,6 +4623,10 @@ format_match(struct format_modifier *fm, const char *pattern, const char *text)
 
 	if (fm->argc >= 1)
 		s = fm->argv[0];
+	if (strchr(s, 'p') != NULL)
+		return (format_match_fuzzy(pattern, text, 1));
+	if (strchr(s, 'z') != NULL)
+		return (format_match_fuzzy(pattern, text, 0));
 	if (strchr(s, 'r') == NULL) {
 		if (strchr(s, 'i') != NULL)
 			flags |= FNM_CASEFOLD;
