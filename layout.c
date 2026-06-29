@@ -433,13 +433,11 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 {
 	struct window_pane	*wp;
 	struct layout_cell	*lc;
-	int			 status, scrollbars, sb_pos, sb_w, sb_pad;
+	int			 status, sb_w, sb_pad;
 	int			 old_xoff, old_yoff, changed = 0;
 	u_int			 sx, sy, old_sx, old_sy;
 
 	status = window_get_pane_status(w);
-	scrollbars = options_get_number(w->options, "pane-scrollbars");
-	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if ((lc = wp->layout_cell) == NULL || wp == skip)
@@ -462,14 +460,14 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 			sy--;
 		}
 
-		if (window_pane_scrollbar_reserve(wp, scrollbars)) {
+		if (window_pane_scrollbar_reserve(wp)) {
 			sb_w = wp->scrollbar_style.width;
 			sb_pad = wp->scrollbar_style.pad;
 			if (sb_w < 1)
 				sb_w = 1;
 			if (sb_pad < 0)
 				sb_pad = 0;
-			if (sb_pos == PANE_SCROLLBARS_LEFT) {
+			if (w->sb_pos == PANE_SCROLLBARS_LEFT) {
 				if ((int)sx - sb_w - sb_pad < PANE_MINIMUM) {
 					wp->xoff = wp->xoff +
 					    (int)sx - PANE_MINIMUM;
@@ -526,16 +524,15 @@ layout_resize_check(struct window *w, struct layout_cell *lc,
 	struct layout_cell	*lcchild;
 	struct style		*sb_style = &w->active->scrollbar_style;
 	u_int			 available, minimum;
-	int			 status, scrollbars;
+	int			 status;
 
 	status = window_get_pane_status(w);
-	scrollbars = options_get_number(w->options, "pane-scrollbars");
 
 	if (lc->type == LAYOUT_WINDOWPANE) {
 		/* Space available in this cell only. */
 		if (type == LAYOUT_LEFTRIGHT) {
 			available = lc->sx;
-			if (scrollbars == PANE_SCROLLBARS_ALWAYS)
+			if (w->sb == PANE_SCROLLBARS_ALWAYS)
 				minimum = PANE_MINIMUM + sb_style->width +
 				    sb_style->pad;
 			else
@@ -1253,17 +1250,16 @@ layout_split_check_space(struct window_pane *wp, struct layout_cell *lc,
 {
 	struct style	*sb_style = &wp->scrollbar_style;
 	u_int		 minimum, sx = lc->sx, sy = lc->sy;
-	int		 scrollbars, status;
+	int		 status;
 
 	if (lc->flags & LAYOUT_CELL_FLOATING)
 		fatalx("floating cells cannot be split");
 
 	status = window_get_pane_status(wp->window);
-	scrollbars = options_get_number(wp->window->options, "pane-scrollbars");
 
 	switch (type) {
 	case LAYOUT_LEFTRIGHT:
-		if (scrollbars == PANE_SCROLLBARS_ALWAYS) {
+		if (wp->window->sb == PANE_SCROLLBARS_ALWAYS) {
 			minimum = PANE_MINIMUM * 2 + sb_style->width +
 			    sb_style->pad;
 		} else

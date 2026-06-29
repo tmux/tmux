@@ -1286,8 +1286,13 @@ options_push_changes(const char *name)
 	if (strcmp(name, "pane-border-status") == 0 ||
 	    strcmp(name, "pane-scrollbars") == 0 ||
 	    strcmp(name, "pane-scrollbars-position") == 0) {
-		RB_FOREACH(w, windows, &windows)
+		RB_FOREACH(w, windows, &windows) {
+			w->sb = options_get_number(w->options,
+			    "pane-scrollbars");
+			w->sb_pos = options_get_number(w->options,
+			    "pane-scrollbars-position");
 			layout_fix_panes(w, NULL);
+		}
 	}
 	if (strcmp(name, "pane-scrollbars") == 0) {
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes)

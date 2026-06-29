@@ -609,10 +609,9 @@ server_client_in_scrollbar_area(struct window_pane *wp, int px, int py)
 {
 	struct window	*w = wp->window;
 	u_int		 width, pad, total;
-	int		 sb, sb_pos, start, end;
+	int		 start, end;
 
-	sb = options_get_number(w->options, "pane-scrollbars");
-	if (!window_pane_scrollbar_overlay(wp, sb))
+	if (!window_pane_scrollbar_overlay(wp))
 		return (0);
 	if (py < wp->yoff || py >= wp->yoff + (int)wp->sy)
 		return (0);
@@ -623,8 +622,7 @@ server_client_in_scrollbar_area(struct window_pane *wp, int px, int py)
 	if (total == 0 || total > wp->sx)
 		total = wp->sx;
 
-	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
-	if (sb_pos == PANE_SCROLLBARS_LEFT) {
+	if (w->sb_pos == PANE_SCROLLBARS_LEFT) {
 		start = wp->xoff;
 		end = wp->xoff + (int)total - 1;
 	} else {
@@ -664,17 +662,15 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 {
 	struct window		*w = wp->window;
 	struct window_pane	*fwp;
-	int			 pane_status, sb, sb_pos, sb_w, sb_pad;
+	int			 pane_status, sb_w, sb_pad;
 	int			 pane_status_line, sl_top, sl_bottom;
 	int			 bdr_bottom, bdr_top, bdr_left, bdr_right;
 	int			 sb_start, sb_end, sb_overlay;
 
-	sb = options_get_number(w->options, "pane-scrollbars");
-	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
 	pane_status = window_pane_get_pane_status(wp);
-	sb_overlay = window_pane_scrollbar_overlay(wp, sb);
+	sb_overlay = window_pane_scrollbar_overlay(wp);
 
-	if (window_pane_scrollbar_visible(wp, sb)) {
+	if (window_pane_scrollbar_visible(wp)) {
 		sb_w = wp->scrollbar_style.width;
 		sb_pad = wp->scrollbar_style.pad;
 		if (sb_overlay && sb_w > (int)wp->sx)
@@ -691,13 +687,13 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 	else
 		pane_status_line = -1; /* not used */
 	bdr_left = wp->xoff - 1;
-	if (!sb_overlay && sb_pos == PANE_SCROLLBARS_LEFT)
+	if (!sb_overlay && w->sb_pos == PANE_SCROLLBARS_LEFT)
 		bdr_left -= sb_pad + sb_w;
 
 	if (sb_overlay && sb_w != 0 &&
 	    py >= wp->yoff && py < wp->yoff + (int)wp->sy &&
 	    px >= wp->xoff && px < wp->xoff + (int)wp->sx) {
-		if (sb_pos == PANE_SCROLLBARS_LEFT) {
+		if (w->sb_pos == PANE_SCROLLBARS_LEFT) {
 			sb_start = wp->xoff;
 			sb_end = sb_start + sb_w - 1;
 		} else {
@@ -724,15 +720,15 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 	    py != pane_status_line && py != wp->yoff + (int)wp->sy) ||
 	    (wp->yoff == 0 && py < (int)wp->sy) ||
 	    (py >= wp->yoff && py < wp->yoff + (int)wp->sy)) &&
-	    ((sb_pos == PANE_SCROLLBARS_RIGHT &&
+	    ((w->sb_pos == PANE_SCROLLBARS_RIGHT &&
 	    px < wp->xoff + (int)wp->sx + sb_pad + sb_w) ||
-	    (sb_pos == PANE_SCROLLBARS_LEFT &&
+	    (w->sb_pos == PANE_SCROLLBARS_LEFT &&
 	    px < wp->xoff + (int)wp->sx - sb_pad - sb_w))) {
 		/* Check if in the scrollbar. */
-		if ((sb_pos == PANE_SCROLLBARS_RIGHT &&
+		if ((w->sb_pos == PANE_SCROLLBARS_RIGHT &&
 		    (px >= wp->xoff + (int)wp->sx + sb_pad &&
 		    px < wp->xoff + (int)wp->sx + sb_pad + sb_w)) ||
-		    (sb_pos == PANE_SCROLLBARS_LEFT &&
+		    (w->sb_pos == PANE_SCROLLBARS_LEFT &&
 		    (px >= wp->xoff - sb_pad - sb_w &&
 		    px < wp->xoff - sb_pad))) {
 			/* Check where inside the scrollbar. */
@@ -766,7 +762,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 			if (window_pane_is_floating(fwp) &&
 			    window_pane_get_pane_lines(fwp) == PANE_LINES_NONE)
 				continue;
-			if (window_pane_scrollbar_reserve(fwp, sb)) {
+			if (window_pane_scrollbar_reserve(fwp)) {
 				sb_w = fwp->scrollbar_style.width;
 				sb_pad = fwp->scrollbar_style.pad;
 			} else {
@@ -776,7 +772,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 			bdr_top = fwp->yoff - 1;
 			bdr_bottom = fwp->yoff + fwp->sy;
 			bdr_left = fwp->xoff - 1;
-			if (sb_pos == PANE_SCROLLBARS_LEFT) {
+			if (w->sb_pos == PANE_SCROLLBARS_LEFT) {
 				bdr_left -= sb_pad + sb_w;
 				bdr_right = fwp->xoff + fwp->sx;
 			} else {
@@ -1997,7 +1993,7 @@ server_client_reset_state(struct client *c)
 	struct window_pane	*wp = server_client_get_pane(c), *loop;
 	struct screen		*s = NULL;
 	struct options		*oo = c->session->options;
-	int			 mode = 0, cursor, flags, pane_mode = 0, sb;
+	int			 mode = 0, cursor, flags, pane_mode = 0;
 	u_int			 cx = 0, cy = 0, ox, oy, sx, sy, prompt = 0;
 	u_int			 sb_w;
 	struct visible_ranges	*r;
@@ -2057,9 +2053,8 @@ server_client_reset_state(struct client *c)
 				if (sb_w > wp->sx)
 					sb_w = wp->sx;
 				if (sb_w != 0 &&
-				    options_get_number(w->options,
-				    "pane-scrollbars-position") ==
-				    PANE_SCROLLBARS_LEFT) {
+	    w->sb_pos ==
+	    PANE_SCROLLBARS_LEFT) {
 					if (s->cx < sb_w)
 						cursor = 0;
 				} else if (sb_w != 0 &&
@@ -2094,11 +2089,10 @@ server_client_reset_state(struct client *c)
 					mode |= MODE_MOUSE_ALL;
 			}
 		}
-		sb = options_get_number(w->options, "pane-scrollbars");
-		if (options_get_number(oo, "focus-follows-mouse") ||
-		    sb == PANE_SCROLLBARS_MODAL ||
-		    sb == PANE_SCROLLBARS_AUTOHIDE)
-			mode |= MODE_MOUSE_ALL;
+	if (options_get_number(oo, "focus-follows-mouse") ||
+	    w->sb == PANE_SCROLLBARS_MODAL ||
+	    w->sb == PANE_SCROLLBARS_AUTOHIDE)
+		mode |= MODE_MOUSE_ALL;
 		else if (~mode & MODE_MOUSE_ALL)
 			mode |= MODE_MOUSE_BUTTON;
 	}

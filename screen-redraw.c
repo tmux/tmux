@@ -212,8 +212,6 @@ struct redraw_build_ctx {
 	u_int					 sx;
 	u_int					 sy;
 
-	int					 sb;
-	int					 sbp;
 	int					 ind;
 
 	struct redraw_build_cell		*cells;
@@ -285,16 +283,13 @@ redraw_set_context(struct client *c, struct redraw_build_ctx *bctx)
 {
 	struct session	*s = c->session;
 	struct window	*w = s->curw->window;
-	struct options	*oo = w->options;
 
 	memset(bctx, 0, sizeof *bctx);
 	bctx->c = c;
 	bctx->w = w;
 	redraw_get_window_offset(c, &bctx->ox, &bctx->oy, &bctx->sx, &bctx->sy);
 
-	bctx->sb = options_get_number(oo, "pane-scrollbars");
-	bctx->sbp = options_get_number(oo, "pane-scrollbars-position");
-	bctx->ind = options_get_number(oo, "pane-border-indicators");
+	bctx->ind = options_get_number(w->options, "pane-border-indicators");
 }
 
 /* Return a cell. */
@@ -769,8 +764,8 @@ redraw_mark_pane(struct redraw_build_ctx *bctx, struct window_pane *wp)
 	if (!window_pane_is_visible(wp))
 		return;
 
-	if (window_pane_scrollbar_visible(wp, bctx->sb)) {
-		overlay = window_pane_scrollbar_overlay(wp, bctx->sb);
+	if (window_pane_scrollbar_visible(wp)) {
+		overlay = window_pane_scrollbar_overlay(wp);
 		if (overlay) {
 			sb_w = wp->scrollbar_style.width +
 			    wp->scrollbar_style.pad;
@@ -782,7 +777,7 @@ redraw_mark_pane(struct redraw_build_ctx *bctx, struct window_pane *wp)
 		} else
 			sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
 	}
-	if (sb_w != 0 && bctx->sbp == PANE_SCROLLBARS_LEFT)
+	if (sb_w != 0 && bctx->w->sb_pos == PANE_SCROLLBARS_LEFT)
 		sb_left = 1;
 
 	redraw_mark_pane_inside(bctx, wp);
