@@ -1380,6 +1380,9 @@ struct window {
 	u_int			 last_new_pane_x;
 	u_int			 last_new_pane_y;
 
+	int			 sb;
+	int			 sb_pos;
+
 	struct utf8_data	*fill_character;
 	int			 flags;
 #define WINDOW_BELL 0x1
@@ -3580,10 +3583,10 @@ void		 window_pane_update_used_data(struct window_pane *,
 void		 window_set_fill_character(struct window *);
 void		 window_pane_default_cursor(struct window_pane *);
 int		 window_pane_mode(struct window_pane *);
-int		 window_pane_show_scrollbar(struct window_pane *, int);
-int		 window_pane_scrollbar_reserve(struct window_pane *, int);
-int		 window_pane_scrollbar_visible(struct window_pane *, int);
-int		 window_pane_scrollbar_overlay(struct window_pane *, int);
+int		 window_pane_show_scrollbar(struct window_pane *);
+int		 window_pane_scrollbar_reserve(struct window_pane *);
+int		 window_pane_scrollbar_visible(struct window_pane *);
+int		 window_pane_scrollbar_overlay(struct window_pane *);
 int		 window_pane_scrollbar_overlay_visible(struct window_pane *);
 void		 window_pane_scrollbar_show(struct window_pane *, int);
 void		 window_pane_scrollbar_hide(struct window_pane *);

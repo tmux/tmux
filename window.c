@@ -1165,20 +1165,15 @@ window_pane_scrollbar_timer(__unused int fd, __unused short events, void *arg)
 static int
 window_pane_scrollbar_auto_hide(struct window_pane *wp)
 {
-	int	sb;
-
-	sb = options_get_number(wp->window->options, "pane-scrollbars");
-	return (sb == PANE_SCROLLBARS_MODAL || sb == PANE_SCROLLBARS_AUTOHIDE);
+	return (wp->window->sb == PANE_SCROLLBARS_MODAL ||
+	    wp->window->sb == PANE_SCROLLBARS_AUTOHIDE);
 }
 
 int
 window_pane_scrollbar_overlay_visible(struct window_pane *wp)
 {
-	int	sb;
-
-	sb = options_get_number(wp->window->options, "pane-scrollbars");
-	return (window_pane_scrollbar_overlay(wp, sb) &&
-	    window_pane_scrollbar_visible(wp, sb));
+	return (window_pane_scrollbar_overlay(wp) &&
+	    window_pane_scrollbar_visible(wp));
 }
 
 void
@@ -1769,17 +1764,13 @@ window_pane_full_size_offset(struct window_pane *wp, int *xoff, int *yoff,
     u_int *sx, u_int *sy)
 {
 	struct window		*w = wp->window;
-	int			 pane_scrollbars;
-	u_int			 sb_w, sb_pos;
+	u_int			 sb_w;
 
-	pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
-	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
-
-	if (window_pane_scrollbar_reserve(wp, pane_scrollbars))
+	if (window_pane_scrollbar_reserve(wp))
 		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
 	else
 		sb_w = 0;
-	if (sb_pos == PANE_SCROLLBARS_LEFT) {
+	if (w->sb_pos == PANE_SCROLLBARS_LEFT) {
 		*xoff = wp->xoff - sb_w;
 		*sx = wp->sx + sb_w;
 	} else { /* sb_pos == PANE_SCROLLBARS_RIGHT */
@@ -2195,40 +2186,39 @@ window_pane_mode(struct window_pane *wp)
 	return (WINDOW_PANE_NO_MODE);
 }
 
-/* Return 1 if scrollbar is or should be displayed. */
 int
-window_pane_show_scrollbar(struct window_pane *wp, int sb_option)
+window_pane_show_scrollbar(struct window_pane *wp)
 {
 	if (SCREEN_IS_ALTERNATE(&wp->base))
 		return (0);
-	if (sb_option == PANE_SCROLLBARS_ALWAYS ||
-	    sb_option == PANE_SCROLLBARS_AUTOHIDE ||
-	    (sb_option == PANE_SCROLLBARS_MODAL &&
+	if (wp->window->sb == PANE_SCROLLBARS_ALWAYS ||
+	    wp->window->sb == PANE_SCROLLBARS_AUTOHIDE ||
+	    (wp->window->sb == PANE_SCROLLBARS_MODAL &&
 	    window_pane_mode(wp) != WINDOW_PANE_NO_MODE))
 		return (1);
 	return (0);
 }
 
 int
-window_pane_scrollbar_reserve(struct window_pane *wp, int sb_option)
+window_pane_scrollbar_reserve(struct window_pane *wp)
 {
-	if (!window_pane_show_scrollbar(wp, sb_option))
+	if (!window_pane_show_scrollbar(wp))
 		return (0);
-	return (sb_option == PANE_SCROLLBARS_ALWAYS);
+	return (wp->window->sb == PANE_SCROLLBARS_ALWAYS);
 }
 
 int
-window_pane_scrollbar_overlay(struct window_pane *wp, int sb_option)
+window_pane_scrollbar_overlay(struct window_pane *wp)
 {
-	if (!window_pane_show_scrollbar(wp, sb_option))
+	if (!window_pane_show_scrollbar(wp))
 		return (0);
 	return (window_pane_scrollbar_auto_hide(wp));
 }
 
 int
-window_pane_scrollbar_visible(struct window_pane *wp, int sb_option)
+window_pane_scrollbar_visible(struct window_pane *wp)
 {
-	if (!window_pane_show_scrollbar(wp, sb_option))
+	if (!window_pane_show_scrollbar(wp))
 		return (0);
 	if (!window_pane_scrollbar_auto_hide(wp))
 		return (1);
@@ -2256,12 +2246,9 @@ void
 window_pane_scrollbar_show(struct window_pane *wp, int start_timer)
 {
 	int	changed = 0;
-	int	sb;
-
 	if (!window_pane_scrollbar_auto_hide(wp))
 		return;
-	sb = options_get_number(wp->window->options, "pane-scrollbars");
-	if (!window_pane_show_scrollbar(wp, sb))
+	if (!window_pane_show_scrollbar(wp))
 		return;
 	if (!wp->sb_auto_visible) {
 		wp->sb_auto_visible = 1;
