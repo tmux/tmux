@@ -586,7 +586,7 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 	len = 8192;
 	buf = xmalloc(len);
 
-	tmplen = xsnprintf(tmp, sizeof tmp, "\033P0;%uq", si->p2);
+	tmplen = xsnprintf(tmp, sizeof tmp, "\033P9;%uq", si->p2);
 	sixel_print_add(&buf, &len, &used, tmp, tmplen);
 
 	if (si->set_ra) {

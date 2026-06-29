@@ -1138,6 +1138,7 @@ window_tree_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 	    window_tree_get_key, window_tree_swap, window_tree_sort,
 	    window_tree_help, data, window_tree_menu_items, &s);
 	mode_tree_zoom(data->data, args);
+	mode_tree_view_name(data->data, "preview");
 
 	mode_tree_build(data->data);
 	mode_tree_draw(data->data);

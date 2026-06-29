@@ -64,7 +64,7 @@ static const char *options_table_cursor_style_list[] = {
 	"blinking-bar", "bar", NULL
 };
 static const char *options_table_pane_scrollbars_list[] = {
-	"off", "modal", "on", NULL
+	"off", "modal", "on", "auto-hide", NULL
 };
 static const char *options_table_pane_scrollbars_position_list[] = {
 	"right", "left", NULL
@@ -1594,7 +1594,17 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .choices = options_table_pane_scrollbars_list,
 	  .default_num = PANE_SCROLLBARS_OFF,
-	  .text = "Pane scrollbar state."
+	  .text = "Pane scrollbar state: off, on, modal, or auto-hide."
+	},
+
+	{ .name = "pane-scrollbars-timeout",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .minimum = 0,
+	  .maximum = INT_MAX,
+	  .default_num = 500,
+	  .unit = "milliseconds",
+	  .text = "Time before modal and auto-hide pane scrollbars disappear."
 	},
 
 	{ .name = "pane-scrollbars-style",

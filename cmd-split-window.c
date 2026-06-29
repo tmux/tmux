@@ -40,8 +40,8 @@ const struct cmd_entry cmd_new_pane_entry = {
 
 	.args = { "bB:c:de:EfF:hIkl:Lm:p:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
 	.usage = "[-bdefhIklPvWZ] [-B border-lines] "
-		  "[-c start-directory] [-e environment] "
-		  "[-F format] [-l size] [-m message] [-p percentage] "
+		 "[-c start-directory] [-e environment] "
+		 "[-F format] [-l size] [-m message] [-p percentage] "
 		 "[-s style] [-S active-border-style] "
 		 "[-R inactive-border-style] [-T title] [-x width] [-y height] "
 		 "[-X x-position] [-Y y-position] " CMD_TARGET_PANE_USAGE " "
@@ -95,7 +95,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (cmd_get_entry(self) == &cmd_new_pane_entry)
 		is_floating = !args_has(args, 'L');
 	else
-		is_floating = 0;
+		is_floating = window_pane_is_floating(wp);
 
 	flags = is_floating ? SPAWN_FLOATING : 0;
 	if (args_has(args, 'b'))

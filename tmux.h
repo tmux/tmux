@@ -1300,6 +1300,9 @@ struct window_pane {
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
+	int		 sb_auto_visible;
+	int		 sb_auto_hover;
+	struct event	 sb_auto_timer;
 
 	int		 argc;
 	char	       **argv;
@@ -1474,6 +1477,7 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_SCROLLBARS_OFF 0
 #define PANE_SCROLLBARS_MODAL 1
 #define PANE_SCROLLBARS_ALWAYS 2
+#define PANE_SCROLLBARS_AUTOHIDE 3
 
 /* Pane scrollbars position option. */
 #define PANE_SCROLLBARS_RIGHT 0
@@ -3636,6 +3640,14 @@ void		 window_set_fill_character(struct window *);
 void		 window_pane_default_cursor(struct window_pane *);
 int		 window_pane_mode(struct window_pane *);
 int		 window_pane_show_scrollbar(struct window_pane *, int);
+int		 window_pane_scrollbar_reserve(struct window_pane *, int);
+int		 window_pane_scrollbar_visible(struct window_pane *, int);
+int		 window_pane_scrollbar_overlay(struct window_pane *, int);
+int		 window_pane_scrollbar_overlay_visible(struct window_pane *);
+void		 window_pane_scrollbar_show(struct window_pane *, int);
+void		 window_pane_scrollbar_hide(struct window_pane *);
+void		 window_pane_scrollbar_start_timer(struct window_pane *);
+void		 window_pane_scrollbar_redraw(struct window_pane *);
 int		 window_pane_get_bg(struct window_pane *);
 int		 window_pane_get_fg(struct window_pane *);
 int		 window_pane_get_fg_control_client(struct window_pane *);
@@ -3684,6 +3696,8 @@ void		 layout_fix_offsets(struct window *);
 void		 layout_fix_panes(struct window *, struct window_pane *);
 void		 layout_resize_adjust(struct window *, struct layout_cell *,
 		     enum layout_type, int);
+void		 layout_resize_set_size(struct window *, struct layout_cell *,
+		     enum layout_type, u_int);
 struct layout_cell *layout_cell_get_neighbour(struct layout_cell *);
 void		 layout_init(struct window *, struct window_pane *);
 void		 layout_free(struct window *);
@@ -3698,6 +3712,12 @@ int		 layout_resize_floating_pane_to(struct window_pane *,
 		     enum layout_type, u_int, char **);
 void		 layout_assign_pane(struct layout_cell *, struct window_pane *,
 		     int);
+int		 layout_split_check_space(struct window_pane *,
+		     struct layout_cell *, enum layout_type);
+void		 layout_split_sizes(struct layout_cell *, int, int,
+		     enum layout_type, u_int *, u_int *, u_int *);
+struct layout_cell *layout_replace_with_node(struct window *,
+		     struct layout_cell *, enum layout_type);
 struct layout_cell *layout_split_pane(struct window_pane *, enum layout_type,
 		     int, int);
 struct layout_cell *layout_floating_pane(struct window *, struct window_pane *,
@@ -3714,6 +3734,7 @@ int		 layout_floating_args_parse(struct cmdq_item *, struct args *,
 		     enum pane_lines, struct window *, u_int *, u_int *, int *,
 		     int *, char **);
 int		 layout_remove_tile(struct window *, struct layout_cell *);
+int		 layout_insert_tile(struct window *, struct layout_cell *);
 
 /* layout-custom.c */
 char		*layout_dump(struct window *, struct layout_cell *);

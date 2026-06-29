@@ -110,20 +110,26 @@ must_fail $TMUX set-buffer -b "bad${invalid}name" data
 # Titles set by commands allow '#', ':' and '.'.
 $TMUX select-pane -T 'title#:.ok' || fail "command title rejected"
 must_equal "$($TMUX display-message -p '#{pane_title}')" 'title#:.ok'
+$TMUX send-keys "printf '\\033]2;title#[fg=red]ok\\007'" Enter || exit 1
+sleep 1
+must_equal "$($TMUX display-message -p '#{pane_title}')" 'title#[fg=red]ok'
+$TMUX send-keys "printf '\\033]2;title#(bad)\\007'" Enter || exit 1
+sleep 1
+must_equal "$($TMUX display-message -p '#{pane_title}')" 'title_(bad)'
 
 # Buffer names allow '#', ':' and '.'.
 $TMUX set-buffer -b 'buffer#:.ok' data || fail "buffer name rejected"
 must_equal "$($TMUX list-buffers -F '#{buffer_name}')" 'buffer#:.ok'
 
-# Window names from escape sequences reject '#', ':' and '.' by cleaning them.
+# Window names from escape sequences allow '#' except in '#('.
 $TMUX send-keys "printf '\\033kescape#:.ok\\033\\\\'" Enter || exit 1
 sleep 1
-must_equal "$($TMUX display-message -p '#{window_name}')" 'escape___ok'
+must_equal "$($TMUX display-message -p '#{window_name}')" 'escape#__ok'
 
 # Titles from escape sequences reject only '#'.
 $TMUX send-keys "printf '\\033]2;escape#:.ok\\007'" Enter || exit 1
 sleep 1
-must_equal "$($TMUX display-message -p '#{pane_title}')" 'escape_:.ok'
+must_equal "$($TMUX display-message -p '#{pane_title}')" 'escape#:.ok'
 
 # Invalid UTF-8 from escape sequences is ignored.
 $TMUX rename-window 'before-invalid' || exit 1

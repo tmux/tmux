@@ -1524,6 +1524,7 @@ screen_write_clearline(struct screen_write_ctx *ctx, u_int bg)
 	struct grid_line		*gl;
 	u_int				 sx = screen_size_x(s);
 	struct screen_write_citem	*ci = ctx->item;
+	u_int				 flags;
 
 	gl = grid_get_line(s->grid, s->grid->hsize + s->cy);
 	if (gl->cellsize == 0 && COLOUR_DEFAULT(bg))
@@ -1534,7 +1535,10 @@ screen_write_clearline(struct screen_write_ctx *ctx, u_int bg)
 		ctx->wp->flags |= PANE_REDRAW;
 #endif
 
+	flags = gl->flags & (GRID_LINE_START_PROMPT|GRID_LINE_START_OUTPUT);
 	grid_view_clear(s->grid, 0, s->cy, sx, 1, bg);
+	gl = grid_get_line(s->grid, s->grid->hsize + s->cy);
+	gl->flags |= flags;
 
 	screen_write_collect_clear(ctx, s->cy, 1);
 	ci->x = 0;
@@ -2178,6 +2182,10 @@ screen_write_collect_flush_scrolled(struct screen_write_ctx *ctx)
 		screen_write_redraw_pane(ctx, &ttyctx);
 		return 0;
 	}
+	if (wp != NULL && window_pane_scrollbar_overlay_visible(wp)) {
+		wp->flags |= PANE_REDRAW;
+		return 0;
+	}
 
 	log_debug("%s: scrolled %u (region %u-%u)", __func__, ctx->scrolled,
 	    s->rupper, s->rlower);
@@ -2191,7 +2199,7 @@ screen_write_collect_flush_scrolled(struct screen_write_ctx *ctx)
 	tty_write(tty_cmd_scrollup, &ttyctx);
 
 	if (wp != NULL)
-		wp->flags |= PANE_REDRAWSCROLLBAR;
+		window_pane_scrollbar_redraw(wp);
 	return 1;
 }
 
