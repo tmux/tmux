@@ -7268,6 +7268,28 @@ Set the width of the styled area.
 .Ar N
 may be a column count or a percentage (for example
 .Ql 50% ) .
+.It Xo Ic link=uri
+(or
+.Ic nolink )
+.Xc
+Make the styled text an OSC 8 hyperlink to
+.Ar uri ,
+for example
+.Ql #[link=https://example.com]text#[nolink] .
+This is emitted only to terminals with the
+.Ic hyperlinks
+feature (see
+.Ic terminal-features ) ;
+it works in the status line and in other formats drawn with styles.
+The link continues until
+.Ic nolink ,
+.Ic default ,
+or an empty
+.Ic link=
+is given.
+The
+.Ar uri
+may not contain spaces or commas and is limited in length.
 .It Xo Ic list=on ,
 .Ic list=focus ,
 .Ic list=left\-marker ,

@@ -580,6 +580,7 @@ tty_default_features(int *feat, const char *name, u_int version)
 			      "cstyle,"
 			      "extkeys,"
 			      "focus,"
+		  	      "hyperlinks,"
 			      "usstyle"
 		},
 		{ .name = "XTerm",
