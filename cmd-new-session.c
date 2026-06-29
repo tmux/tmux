@@ -101,22 +101,22 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 
 	if ((tmp = args_get(args, 'n')) != NULL) {
 		ename = format_single(item, tmp, c, NULL, NULL, NULL);
-		if (!check_name(ename, WINDOW_NAME_FORBID)) {
+		if (!check_name(ename)) {
 			cmdq_error(item, "invalid window name: %s", ename);
 			free(ename);
 			return (CMD_RETURN_ERROR);
 		}
-		wname = clean_name(ename, WINDOW_NAME_FORBID);
+		wname = clean_name(ename, 0);
 		free(ename);
 	}
 	if ((tmp = args_get(args, 's')) != NULL) {
 		ename = format_single(item, tmp, c, NULL, NULL, NULL);
-		if (!check_name(ename, SESSION_NAME_FORBID)) {
+		if (!check_name(ename)) {
 			cmdq_error(item, "invalid session name: %s", ename);
 			free(ename);
 			goto fail;
 		}
-		sname = clean_name(ename, SESSION_NAME_FORBID);
+		sname = clean_name(ename, 0);
 		free(ename);
 	}
 	if (args_has(args, 'A')) {
@@ -152,12 +152,12 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		else if (groupwith != NULL)
 			prefix = xstrdup(groupwith->name);
 		else {
-			if (!check_name(group, SESSION_NAME_FORBID)) {
+			if (!check_name(group)) {
 				cmdq_error(item,
 				    "invalid session group name: %s", group);
 				goto fail;
 			}
-			prefix = clean_name(group, SESSION_NAME_FORBID);
+			prefix = clean_name(group, 0);
 		}
 	}
 
