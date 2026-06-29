@@ -250,10 +250,7 @@ screen_set_title(struct screen *s, const char *title, int untrusted)
 {
 	char	*new_title;
 
-	if (untrusted)
-		new_title = clean_name(title, "#");
-	else
-		new_title = clean_name(title, "");
+	new_title = clean_name(title, untrusted);
 	if (new_title == NULL)
 		return (0);
 	free(s->title);
@@ -267,10 +264,7 @@ screen_set_path(struct screen *s, const char *path, int untrusted)
 {
 	char	*new_path;
 
-	if (untrusted)
-		new_path = clean_name(path, "#");
-	else
-		new_path = clean_name(path, "");
+	new_path = clean_name(path, untrusted);
 	if (new_path == NULL)
 		return (0);
 	free(s->path);
