@@ -5895,7 +5895,7 @@ and
 will fall back to standard ACS line drawing when UTF\-8 is not supported.
 .Pp
 .It Xo Ic pane\-scrollbars
-.Op Ic off | modal | on
+.Op Ic off | modal | on | auto\-hide
 .Xc
 When enabled, a character based scrollbar appears on the left or right
 of each pane.
@@ -5905,18 +5905,28 @@ represents the position and size of the visible part of the pane content.
 .Pp
 If set to
 .Ic on
-the scrollbar is visible all the time.
+the scrollbar is visible all the time and the pane is narrowed by the width of
+the scrollbar.
 If set to
 .Ic modal
-the scrollbar only appears when the pane is in copy mode or view mode.
-When the scrollbar is visible, the pane is narrowed by the width of the
-scrollbar and the text in the pane is reflowed.
+the scrollbar only appears when the pane is in copy mode or view mode and
+auto-hides when not in use.
 If set to
-.Ic modal ,
-the pane is narrowed only when the scrollbar is visible.
+.Ic auto\-hide
+the scrollbar is available all the time but auto-hides when not in use.
+With
+.Ic modal
+and
+.Ic auto\-hide ,
+the scrollbar overlays the pane and does not narrow or reflow the pane.
 .Pp
 See also
 .Ic pane\-scrollbars\-style .
+.Pp
+.It Xo Ic pane\-scrollbars\-position
+.Op Ic left | right
+.Xc
+Sets which side of the pane to display pane scrollbars on.
 .Pp
 .It Ic pane\-scrollbars\-style Ar style
 Set the scrollbars style.
@@ -5934,10 +5944,13 @@ attribute sets the width of the scrollbar and the
 attribute the padding between the scrollbar and the pane.
 Other attributes are ignored.
 .Pp
-.It Xo Ic pane\-scrollbars\-position
-.Op Ic left | right
-.Xc
-Sets which side of the pane to display pane scrollbars on.
+.It Ic pane\-scrollbars\-timeout Ar time
+Set the time in milliseconds before scrollbars are hidden when
+.Ic pane\-scrollbars
+is
+.Ic modal
+or
+.Ic auto\-hide .
 .Pp
 .It Ic pane\-status\-current\-style Ar style
 Set status line style for the currently active pane.
