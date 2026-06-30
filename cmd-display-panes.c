@@ -308,6 +308,7 @@ cmd_display_panes_key(struct client *c, void *data, struct key_event *event)
 	char				*expanded;
 	struct cmd_invoke_input		 ci = { 0 };
 	struct cmdq_item		*item = cdata->item, *new_item;
+	struct cmdq_state		*cs = NULL;
 	struct window			*w = c->session->curw->window;
 	struct window_pane		*wp;
 	u_int				 index;
@@ -333,7 +334,9 @@ cmd_display_panes_key(struct client *c, void *data, struct key_event *event)
 	ci.argc = 1;
 	ci.argv = &expanded;
 
-	new_item = cmd_invoke_get(cdata->tree, cmdq_get_state(item), &ci);
+	if (item != NULL)
+		cs = cmdq_get_state(item);
+	new_item = cmd_invoke_get(cdata->tree, cs, &ci);
 	if (item == NULL)
 		cmdq_append(c, new_item);
 	else
