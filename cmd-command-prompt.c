@@ -201,7 +201,7 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 	struct cmd_command_prompt_cdata		 *cdata = data;
 	char					 *error;
 	struct cmdq_item			 *item = cdata->item, *new_item;
-	struct cmdq_state			 *cs;
+	struct cmdq_state			 *cs = NULL;
 	struct cmd_command_prompt_prompt	 *prompt;
 	int					  argc = 0;
 	char					**argv = NULL;
