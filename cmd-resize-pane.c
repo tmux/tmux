@@ -181,7 +181,7 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 	struct window_pane	*wp;
 	struct layout_cell	*lc;
 	int			 y, ly, x, lx, sx, sy, new_sx, new_sy;
-	int			 scrollbars, sb_pos, left, right;
+	int			 left, right;
 	int			 new_xoff, new_yoff, resizes = 0;
 
 	wp = cmd_mouse_pane(m, NULL, &wl);
@@ -193,15 +193,13 @@ cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
 	lc = wp->layout_cell;
 	sx = wp->sx;
 	sy = wp->sy;
-	scrollbars = options_get_number(w->options, "pane-scrollbars");
-	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
 	left = wp->xoff - 1;
 	right = wp->xoff + sx;
-	if (window_pane_show_scrollbar(wp, scrollbars) &&
-	    sb_pos == PANE_SCROLLBARS_LEFT) {
+	if (window_pane_show_scrollbar(wp) &&
+	    w->sb_pos == PANE_SCROLLBARS_LEFT) {
 		left -= wp->scrollbar_style.width + wp->scrollbar_style.pad;
-	} else if (window_pane_show_scrollbar(wp, scrollbars) &&
-	    sb_pos == PANE_SCROLLBARS_RIGHT) {
+	} else if (window_pane_show_scrollbar(wp) &&
+	    w->sb_pos == PANE_SCROLLBARS_RIGHT) {
 		right += wp->scrollbar_style.width + wp->scrollbar_style.pad;
 	}
 

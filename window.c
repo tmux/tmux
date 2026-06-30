@@ -1471,20 +1471,16 @@ window_pane_full_size_offset(struct window_pane *wp, int *xoff, int *yoff,
     u_int *sx, u_int *sy)
 {
 	struct window		*w = wp->window;
-	int			 pane_scrollbars;
-	u_int			 sb_w, sb_pos;
+	u_int			 sb_w;
 
-	pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
-	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
-
-	if (window_pane_show_scrollbar(wp, pane_scrollbars))
+	if (window_pane_show_scrollbar(wp))
 		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
 	else
 		sb_w = 0;
-	if (sb_pos == PANE_SCROLLBARS_LEFT) {
+	if (w->sb_pos == PANE_SCROLLBARS_LEFT) {
 		*xoff = wp->xoff - sb_w;
 		*sx = wp->sx + sb_w;
-	} else { /* sb_pos == PANE_SCROLLBARS_RIGHT */
+	} else { /* w->sb_pos == PANE_SCROLLBARS_RIGHT */
 		*xoff = wp->xoff;
 		*sx = wp->sx + sb_w;
 	}
@@ -1899,12 +1895,14 @@ window_pane_mode(struct window_pane *wp)
 
 /* Return 1 if scrollbar is or should be displayed. */
 int
-window_pane_show_scrollbar(struct window_pane *wp, int sb_option)
+window_pane_show_scrollbar(struct window_pane *wp)
 {
+	struct window	*w = wp->window;
+
 	if (SCREEN_IS_ALTERNATE(&wp->base))
 		return (0);
-	if (sb_option == PANE_SCROLLBARS_ALWAYS ||
-	    (sb_option == PANE_SCROLLBARS_MODAL &&
+	if (w->sb == PANE_SCROLLBARS_ALWAYS ||
+	    (w->sb == PANE_SCROLLBARS_MODAL &&
 	    window_pane_mode(wp) != WINDOW_PANE_NO_MODE))
 		return (1);
 	return (0);

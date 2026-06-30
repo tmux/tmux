@@ -123,31 +123,28 @@ static enum screen_redraw_border_type
 screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
     int px, int py)
 {
-	struct options	*oo = wp->window->options;
+	struct window	*w = wp->window;
+	struct options	*oo = w->options;
 	int		 ex = wp->xoff + wp->sx, ey = wp->yoff + wp->sy;
 	int		 hsplit = 0, vsplit = 0, pane_status = ctx->pane_status;
-	int		 pane_scrollbars = ctx->pane_scrollbars, sb_w = 0;
-	int		 sb_pos, sx = wp->sx, sy = wp->sy, left, right;
+	int		 sb_w = 0;
+	int		 sx = wp->sx, sy = wp->sy, left, right;
 	enum layout_type split_type;
-
-	if (pane_scrollbars != 0)
-		sb_pos = ctx->pane_scrollbars_pos;
-	else
-		sb_pos = 0;
 
 	/* Inside pane. */
 	if (px >= wp->xoff && px < ex && py >= wp->yoff && py < ey)
 		return (SCREEN_REDRAW_INSIDE);
 
 	/* Are scrollbars enabled? */
-	if (window_pane_show_scrollbar(wp, pane_scrollbars))
+	if (window_pane_show_scrollbar(wp))
 		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
 
 	/* Floating pane borders. */
 	if (window_pane_is_floating(wp)) {
 		left = wp->xoff - 1;
 		right = wp->xoff + sx;
-		if (sb_pos == PANE_SCROLLBARS_LEFT)
+		if (w->sb != PANE_SCROLLBARS_OFF &&
+		    w->sb_pos == PANE_SCROLLBARS_LEFT)
 			left -= sb_w;
 		else
 			right += sb_w;
@@ -182,7 +179,8 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	 * active window's border when there are two panes.
 	 */
 	if ((wp->yoff == 0 || py >= wp->yoff - 1) && py <= ey) {
-		if (sb_pos == PANE_SCROLLBARS_LEFT) {
+		if (w->sb != PANE_SCROLLBARS_OFF &&
+		    w->sb_pos == PANE_SCROLLBARS_LEFT) {
 			if (wp->xoff - sb_w == 0 && px == sx + sb_w) {
 				if (!hsplit || (hsplit && py <= sy / 2))
 					return (SCREEN_REDRAW_BORDER_RIGHT);
@@ -194,7 +192,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 				if (px == wp->xoff + sx + sb_w - 1)
 					return (SCREEN_REDRAW_BORDER_RIGHT);
 			}
-		} else { /* sb_pos == PANE_SCROLLBARS_RIGHT or disabled */
+		} else { /* w->sb_pos == PANE_SCROLLBARS_RIGHT or disabled */
 			if (wp->xoff == 0 && px == sx + sb_w) {
 				if (!hsplit || (hsplit && py <= sy / 2))
 					return (SCREEN_REDRAW_BORDER_RIGHT);
@@ -216,7 +214,8 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 		if (wp->yoff != 0 && py == wp->yoff - 1 && px > sx / 2)
 			return (SCREEN_REDRAW_BORDER_TOP);
 	} else {
-		if (sb_pos == PANE_SCROLLBARS_LEFT) {
+		if (w->sb != PANE_SCROLLBARS_OFF &&
+		    w->sb_pos == PANE_SCROLLBARS_LEFT) {
 			if ((wp->xoff - sb_w == 0 || px >= wp->xoff - sb_w) &&
 			    (px <= ex || (sb_w != 0 && px < ex + sb_w))) {
 				if (pane_status != PANE_STATUS_BOTTOM &&
@@ -225,7 +224,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 				if (pane_status != PANE_STATUS_TOP && py == ey)
 					return (SCREEN_REDRAW_BORDER_BOTTOM);
 			}
-		} else { /* sb_pos == PANE_SCROLLBARS_RIGHT */
+		} else { /* w->sb_pos == PANE_SCROLLBARS_RIGHT */
 			if ((wp->xoff == 0 || px >= wp->xoff) &&
 			    (px <= ex || (sb_w != 0 && px < ex + sb_w))) {
 				if (pane_status != PANE_STATUS_BOTTOM &&
@@ -278,17 +277,15 @@ screen_redraw_cell_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	struct client		*c = ctx->c;
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp2;
-	int			 sx = w->sx, sy = w->sy, sb_w, sb_pos, n;
+	int			 sx = w->sx, sy = w->sy, sb_w, n;
 
-	if (ctx->pane_scrollbars != 0)
-		sb_pos = ctx->pane_scrollbars_pos;
-	else
-		sb_pos = 0;
 	sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
 
 	/* For floating panes, only check the pane itself. */
 	if (window_pane_is_floating(wp)) {
-		n = screen_redraw_cell_border1(ctx, sb_pos, sb_w, wp, px, py);
+		n = screen_redraw_cell_border1(ctx,
+		    w->sb != PANE_SCROLLBARS_OFF ? w->sb_pos : 0,
+		    sb_w, wp, px, py);
 		if (n == -1)
 			return (0);
 		return (n);
@@ -311,7 +308,9 @@ screen_redraw_cell_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	TAILQ_FOREACH(wp2, &w->z_index, zentry) {
 		if (!window_pane_visible(wp2) || window_pane_is_floating(wp2))
 			continue;
-		n = screen_redraw_cell_border1(ctx, sb_pos, sb_w, wp2, px, py);
+		n = screen_redraw_cell_border1(ctx,
+		    w->sb != PANE_SCROLLBARS_OFF ? w->sb_pos : 0,
+		    sb_w, wp2, px, py);
 		if (n != -1)
 			return (n);
 	}
@@ -435,9 +434,9 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, int px, int py,
 	struct window_pane	*wp, *start;
 	int			 sx = w->sx, sy = w->sy;
 	int			 pane_status = ctx->pane_status;
-	int			 border, pane_scrollbars = ctx->pane_scrollbars;
+	int			 border;
 	int			 pane_status_line, tiled_only = 0, left, right;
-	int			 sb_pos = ctx->pane_scrollbars_pos, sb_w;
+	int			 sb_w;
 
 	*wpp = NULL;
 
@@ -452,7 +451,8 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, int px, int py,
 			continue;
 		}
 		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
-		if (sb_pos == PANE_SCROLLBARS_LEFT) {
+		if (w->sb != PANE_SCROLLBARS_OFF &&
+		    w->sb_pos == PANE_SCROLLBARS_LEFT) {
 			if ((px >= wp->xoff - 1 - sb_w &&
 			    px <= wp->xoff + (int)wp->sx) &&
 			    (py >= wp->yoff - 1 &&
@@ -492,7 +492,8 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, int px, int py,
 		*wpp = wp;
 
 		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
-		if (sb_pos == PANE_SCROLLBARS_LEFT) {
+		if (w->sb != PANE_SCROLLBARS_OFF &&
+		    w->sb_pos == PANE_SCROLLBARS_LEFT) {
 			if ((px < wp->xoff - 1 - sb_w ||
 			     px > wp->xoff + (int)wp->sx) &&
 			    (py < wp->yoff - 1 ||
@@ -524,7 +525,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, int px, int py,
 		}
 
 		/* Check if CELL_SCROLLBAR. */
-		if (window_pane_show_scrollbar(wp, pane_scrollbars)) {
+		if (window_pane_show_scrollbar(wp)) {
 			/*
 			 * Check if py could lie within a scrollbar. If the
 			 * pane is at the top then py == 0 to sy; if the pane
@@ -536,10 +537,10 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, int px, int py,
 			    (py >= wp->yoff &&
 			     py < wp->yoff + (int)wp->sy)) {
 				/* Check if px lies within a scrollbar. */
-				if ((sb_pos == PANE_SCROLLBARS_RIGHT &&
+				if ((w->sb_pos == PANE_SCROLLBARS_RIGHT &&
 				    (px >= wp->xoff + (int)wp->sx &&
 				    px < wp->xoff + (int)wp->sx + sb_w)) ||
-				    (sb_pos == PANE_SCROLLBARS_LEFT &&
+				    (w->sb_pos == PANE_SCROLLBARS_LEFT &&
 				    (px >= wp->xoff - sb_w &&
 				    px < wp->xoff)))
 					return (CELL_SCROLLBAR);
@@ -593,13 +594,12 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 	struct style_line_entry	*sle = &wp->border_status_line;
 	char			*expanded;
 	int			 pane_status = rctx->pane_status, sb_w = 0;
-	int			 pane_scrollbars = rctx->pane_scrollbars;
 	int			 max_width;
 	u_int			 width, i, cell_type, px, py;
 	struct screen_write_ctx	 ctx;
 	struct screen		 old;
 
-	if (window_pane_show_scrollbar(wp, pane_scrollbars))
+	if (window_pane_show_scrollbar(wp))
 		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
 
 	ft = format_create(c, NULL, FORMAT_PANE|wp->id, FORMAT_STATUS);
@@ -791,10 +791,6 @@ screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 	ctx->pane_status = options_get_number(wo, "pane-border-status");
 	ctx->pane_lines = options_get_number(wo, "pane-border-lines");
 
-	ctx->pane_scrollbars = options_get_number(wo, "pane-scrollbars");
-	ctx->pane_scrollbars_pos = options_get_number(wo,
-	    "pane-scrollbars-position");
-
 	tty_window_offset(&c->tty, &ctx->ox, &ctx->oy, &ctx->sx, &ctx->sy);
 
 	log_debug("%s: %s @%u ox=%u oy=%u sx=%u sy=%u %u/%d", __func__, c->name,
@@ -863,7 +859,7 @@ screen_redraw_pane(struct client *c, struct window_pane *wp,
 	if (!redraw_scrollbar_only)
 		screen_redraw_draw_pane(&ctx, wp);
 
-	if (window_pane_show_scrollbar(wp, ctx.pane_scrollbars))
+	if (window_pane_show_scrollbar(wp))
 		screen_redraw_draw_pane_scrollbar(&ctx, wp);
 
 	tty_reset(&c->tty);
@@ -1142,7 +1138,7 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 	struct window			*w;
 	struct visible_range		*ri;
 	static struct visible_ranges	 sr = { NULL, 0, 0 };
-	int				 found_self, sb, sb_w, sb_pos;
+	int				 found_self, sb_w;
 	int				 lb, rb, tb, bb, sx, ex;
 	u_int				 i, s;
 
@@ -1182,9 +1178,6 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 		r->used = 1;
 	}
 
-	sb = options_get_number(w->options, "pane-scrollbars");
-	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
-
 	found_self = 0;
 	TAILQ_FOREACH_REVERSE(wp, &w->z_index, window_panes_zindex, zentry) {
 		if (wp == base_wp) {
@@ -1203,12 +1196,12 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 			continue;
 
 		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
-		if (!window_pane_show_scrollbar(wp, sb))
-			sb_w = sb_pos = 0;
+		if (!window_pane_show_scrollbar(wp))
+			sb_w = 0;
 
 		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
-			if (sb_pos == PANE_SCROLLBARS_LEFT) {
+			if (w->sb_pos == PANE_SCROLLBARS_LEFT) {
 				if (wp->xoff > sb_w)
 					lb = wp->xoff - 1 - sb_w;
 				else
@@ -1219,7 +1212,7 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 				else
 					lb = 0;
 			}
-			if (sb_pos == PANE_SCROLLBARS_LEFT)
+			if (w->sb_pos == PANE_SCROLLBARS_LEFT)
 				rb = wp->xoff + wp->sx;
 			else /* PANE_SCROLLBARS_RIGHT or none. */
 				rb = wp->xoff + wp->sx + sb_w;
@@ -1407,7 +1400,7 @@ screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx)
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (window_pane_show_scrollbar(wp, ctx->pane_scrollbars) &&
+		if (window_pane_show_scrollbar(wp) &&
 		    window_pane_visible(wp))
 			screen_redraw_draw_pane_scrollbar(ctx, wp);
 	}
@@ -1420,8 +1413,8 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
 {
 	struct screen	*s = wp->screen;
 	double		 percent_view;
-	u_int		 sb = ctx->pane_scrollbars, total_height, sb_h = wp->sy;
-	u_int		 sb_pos = ctx->pane_scrollbars_pos, slider_h, slider_y;
+	u_int		 sb = wp->window->sb, total_height, sb_h = wp->sy;
+	u_int		 sb_pos = wp->window->sb_pos, slider_h, slider_y;
 	int		 sb_w = wp->scrollbar_style.width;
 	int		 sb_pad = wp->scrollbar_style.pad;
 	int		 cm_y, cm_size, xoff = wp->xoff;
