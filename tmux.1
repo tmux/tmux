@@ -4051,8 +4051,13 @@ and does not include z-indexes or flags:
 legacy-geometry = widthxheight,x,y
 cell            = legacy-geometry{cell,cell,...}
                 | legacy-geometry[cell,cell,...]
-                | legacy-geometry,pane-id
+                | legacy-geometry[,pane-id]
 .Ed
+.Pp
+Pane IDs are optional in legacy layouts and are ignored when assigning panes.
+This permits layouts from versions of
+.Nm
+before pane IDs were added.
 .Pp
 The checksum is optional.
 If present, it is four hexadecimal digits and covers all non-whitespace text

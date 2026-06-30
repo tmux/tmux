@@ -34,8 +34,9 @@ static enum cmd_retval	cmd_select_layout_exec_multiple(struct cmdq_item *,
 			    const char *);
 
 struct cmd_select_layout_record {
-	struct window	*w;
-	char		*layout;
+	struct window			*w;
+	char				*layout;
+	struct layout_prepared		*prepared;
 };
 
 const struct cmd_entry cmd_select_layout_entry = {
@@ -83,8 +84,10 @@ cmd_select_layout_free_records(struct cmd_select_layout_record *records,
 {
 	u_int	i;
 
-	for (i = 0; i < nrecords; i++)
+	for (i = 0; i < nrecords; i++) {
 		free(records[i].layout);
+		layout_free_prepared(records[i].prepared);
+	}
 	free(records);
 }
 
@@ -148,6 +151,7 @@ cmd_select_layout_exec_multiple(struct cmdq_item *item, const char *input)
 		records[nrecords].w = w;
 		records[nrecords].layout = xstrndup(layoutstart,
 		    layoutend - layoutstart);
+		records[nrecords].prepared = NULL;
 		nrecords++;
 	}
 	if (nrecords == 0)
@@ -155,8 +159,9 @@ cmd_select_layout_exec_multiple(struct cmdq_item *item, const char *input)
 
 	/* Validate every record before changing any window. */
 	for (i = 0; i < nrecords; i++) {
-		if (layout_validate(records[i].w, records[i].layout,
-		    &cause) != 0) {
+		records[i].prepared = layout_prepare(records[i].w,
+		    records[i].layout, &cause);
+		if (records[i].prepared == NULL) {
 			cmdq_error(item, "@%u: %s", records[i].w->id, cause);
 			free(cause);
 			goto fail;
@@ -168,17 +173,14 @@ cmd_select_layout_exec_multiple(struct cmdq_item *item, const char *input)
 		server_unzoom_window(w);
 		oldlayout = w->old_layout;
 		w->old_layout = layout_dump(w, w->layout_root);
-		if (layout_parse(w, records[i].layout, &cause) != 0) {
-			cmdq_error(item, "@%u: %s", w->id, cause);
-			free(cause);
-			free(w->old_layout);
-			w->old_layout = oldlayout;
-			goto fail;
-		}
+		layout_apply_prepared(w, records[i].prepared);
+		records[i].prepared = NULL;
 		free(oldlayout);
-		recalculate_sizes();
-		server_redraw_window(w);
-		notify_window("window-layout-changed", w);
+	}
+	recalculate_sizes();
+	for (i = 0; i < nrecords; i++) {
+		server_redraw_window(records[i].w);
+		notify_window("window-layout-changed", records[i].w);
 	}
 
 	cmd_select_layout_free_records(records, nrecords);
@@ -199,6 +201,7 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
 	struct window_pane	*wp = target->wp;
+	struct layout_prepared	*prepared = NULL;
 	const char		*layoutname;
 	char			*oldlayout, *cause;
 	int			 next, previous, layout;
@@ -213,11 +216,13 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 			ptr++;
 		if (*ptr == '@')
 			return (cmd_select_layout_exec_multiple(item, ptr));
-		if (layout_set_lookup(ptr) == -1 &&
-		    layout_validate(w, ptr, &cause) != 0) {
-			cmdq_error(item, "%s: %s", cause, ptr);
-			free(cause);
-			return (CMD_RETURN_ERROR);
+		if (layout_set_lookup(ptr) == -1) {
+			prepared = layout_prepare(w, ptr, &cause);
+			if (prepared == NULL) {
+				cmdq_error(item, "%s: %s", cause, ptr);
+				free(cause);
+				return (CMD_RETURN_ERROR);
+			}
 		}
 	}
 
@@ -265,11 +270,16 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (layoutname != NULL) {
-		if (layout_parse(w, layoutname, &cause) == -1) {
-			cmdq_error(item, "%s: %s", cause, layoutname);
-			free(cause);
-			goto error;
+		if (prepared == NULL) {
+			prepared = layout_prepare(w, layoutname, &cause);
+			if (prepared == NULL) {
+				cmdq_error(item, "%s: %s", cause, layoutname);
+				free(cause);
+				goto error;
+			}
 		}
+		layout_apply_prepared(w, prepared);
+		prepared = NULL;
 		goto changed;
 	}
 
@@ -284,6 +294,7 @@ changed:
 	return (CMD_RETURN_NORMAL);
 
 error:
+	layout_free_prepared(prepared);
 	free(w->old_layout);
 	w->old_layout = oldlayout;
 	return (CMD_RETURN_ERROR);

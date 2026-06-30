@@ -65,6 +65,12 @@ must_equal "$($TMUX list-panes -F '#{pane_width}x#{pane_height},#{pane_left},#{p
     '56x28,0,0
 56x28,57,0'
 
+# Layouts from before pane IDs were added remain accepted.
+historical='bb62,159x48,0,0{79x48,0,0,79x48,80,0}'
+$TMUX select-layout "$historical" || fail "legacy layout without IDs failed"
+must_equal "$($TMUX display-message -p '#{window_width}x#{window_height}')" \
+    '159x48'
+
 # Return to the smaller layout for the remaining parser tests.
 $TMUX select-layout "$legacy" || fail "legacy layout could not be reapplied"
 layout=$($TMUX display-message -p '#{window_layout}')
@@ -112,6 +118,10 @@ case "$($TMUX display-message -p '#{window_layout}')" in
 *'%0,0:26x24+0+0;%1,1:53x24+27+0}'*) ;;
 *) fail "z-indexes were not compacted after removing a cell" ;;
 esac
+# The complete tree must be structurally valid before surplus cells are
+# removed; the last child has the wrong height here.
+must_fail $TMUX select-layout \
+    '80x24+0+0{%100,0:39x24+0+0;%101,1:20x24+40+0;%102,2:19x10+61+0}'
 must_fail $TMUX select-layout '%100,0:80x24+0+0'
 $TMUX select-layout "$legacy" || fail "legacy layout could not be restored"
 
@@ -141,6 +151,18 @@ must_fail $TMUX select-layout \
     '80x24+0+0{%0,0:0x24+0+0;%1,1:40x24+40+0}'
 must_equal "$($TMUX display-message -p -t %0 '#{pane_zoomed_flag}')" 1
 $TMUX resize-pane -t %0 -Z || fail "unzoom failed"
+
+# The parser accepts its maximum nesting depth and safely rejects one more.
+$TMUX kill-server 2>/dev/null
+$TMUX new-session -d -x 80 -y 24 || exit 1
+deep='%0,0:1x1+0+0'
+i=1
+while [ $i -lt 64 ]; do
+	deep="1x1+0+0{$deep}"
+	i=$((i + 1))
+done
+$TMUX select-layout "$deep" || fail "maximum layout depth was rejected"
+must_fail $TMUX select-layout "1x1+0+0{$deep}"
 
 # X-style geometry supports right/bottom-relative offsets, absolute negative
 # offsets, doubled plus signs, and omitted positions.

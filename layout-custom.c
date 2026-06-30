@@ -20,6 +20,7 @@
 
 #include <ctype.h>
 #include <limits.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -30,7 +31,7 @@
 enum layout_format {
 	LAYOUT_FORMAT_UNKNOWN,
 	LAYOUT_FORMAT_LEGACY,
-	LAYOUT_FORMAT_NEW
+	LAYOUT_FORMAT
 };
 
 struct layout_parse_ctx {
@@ -39,6 +40,14 @@ struct layout_parse_ctx {
 	enum layout_format	 format;
 	u_int			 depth;
 	u_int			 cells;
+};
+
+struct layout_prepared {
+	struct layout_cell	*root;
+	struct layout_cell	*zoomed;
+	enum layout_format	 format;
+	u_int			 ncells;
+	int			 pane_ids;
 };
 
 static struct layout_cell	*layout_find_bottomright(struct layout_cell *);
@@ -435,7 +444,7 @@ layout_parse_position(struct layout_parse_ctx *ctx, int *value,
 
 /* Parse legacy comma geometry or current X-style geometry. */
 static int
-layout_parse_geometry(struct layout_parse_ctx *ctx, int current, u_int *sxp,
+layout_parse_geometry(struct layout_parse_ctx *ctx, int is_pane, u_int *sxp,
     u_int *syp, int *xoffp, int *yoffp, int *xrelative, int *yrelative)
 {
 	int	has_x, has_y;
@@ -446,7 +455,7 @@ layout_parse_geometry(struct layout_parse_ctx *ctx, int current, u_int *sxp,
 	    layout_parse_uint(ctx, syp) != 0)
 		return (-1);
 	layout_skip_space(ctx);
-	if (!current && ctx->ptr != ctx->end && *ctx->ptr == ',') {
+	if (!is_pane && ctx->ptr != ctx->end && *ctx->ptr == ',') {
 		if (layout_set_format(ctx, LAYOUT_FORMAT_LEGACY) != 0 ||
 		    layout_parse_char(ctx, ',') != 0 ||
 		    layout_parse_int(ctx, xoffp) != 0 ||
@@ -457,7 +466,7 @@ layout_parse_geometry(struct layout_parse_ctx *ctx, int current, u_int *sxp,
 			return (-1);
 		return (0);
 	}
-	if (layout_set_format(ctx, LAYOUT_FORMAT_NEW) != 0)
+	if (layout_set_format(ctx, LAYOUT_FORMAT) != 0)
 		return (-1);
 	*xoffp = *yoffp = 0;
 	has_x = layout_parse_position(ctx, xoffp, xrelative);
@@ -519,7 +528,7 @@ layout_construct(struct layout_parse_ctx *ctx, struct layout_cell *parent,
     struct layout_cell **lcp)
 {
 	struct layout_cell	*lc = NULL, *lcchild;
-	const char		*body;
+	const char		*body, *saved;
 	u_int			 sx, sy, id, z;
 	u_short			 csum = 0;
 	int			 is_pane, xoff, yoff, xrelative, yrelative;
@@ -621,7 +630,7 @@ layout_construct(struct layout_parse_ctx *ctx, struct layout_cell *parent,
 			}
 			separator = *ctx->ptr++;
 			if (separator == ';') {
-				if (layout_set_format(ctx, LAYOUT_FORMAT_NEW) != 0)
+				if (layout_set_format(ctx, LAYOUT_FORMAT) != 0)
 					goto fail;
 			} else if (separator == ',') {
 				if (layout_set_format(ctx, LAYOUT_FORMAT_LEGACY) != 0)
@@ -630,11 +639,21 @@ layout_construct(struct layout_parse_ctx *ctx, struct layout_cell *parent,
 				goto fail;
 		}
 	} else {
-		if (layout_parse_char(ctx, ',') != 0 ||
-		    layout_parse_uint(ctx, &id) != 0 ||
-		    layout_set_format(ctx, LAYOUT_FORMAT_LEGACY) != 0)
+		if (layout_set_format(ctx, LAYOUT_FORMAT_LEGACY) != 0)
 			goto fail;
-		lc->pane_id = id;
+		layout_skip_space(ctx);
+		if (ctx->ptr != ctx->end && *ctx->ptr == ',') {
+			saved = ctx->ptr++;
+			if (layout_parse_uint(ctx, &id) != 0) {
+				ctx->ptr = saved;
+			} else {
+				layout_skip_space(ctx);
+				if (ctx->ptr != ctx->end && *ctx->ptr == 'x')
+					ctx->ptr = saved;
+				else
+					lc->pane_id = id;
+			}
+		}
 	}
 
 	if (has_checksum && csum != layout_checksum(body, ctx->ptr))
@@ -761,27 +780,36 @@ layout_count_pane_id(struct layout_cell *lc, u_int pane_id)
 	return (count);
 }
 
-/* Check IDs are unique and count those belonging to the target window. */
+/* Return whether every parsed pane ID is unique. */
 static int
-layout_pane_ids_status1(struct window *w, struct layout_cell *root,
-    struct layout_cell *lc, u_int *matches)
+layout_pane_ids_unique(struct layout_cell *root, struct layout_cell *lc)
+{
+	struct layout_cell	*lcchild;
+
+	if (lc->type == LAYOUT_WINDOWPANE)
+		return (layout_count_pane_id(root, lc->pane_id) == 1);
+	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+		if (!layout_pane_ids_unique(root, lcchild))
+			return (0);
+	}
+	return (1);
+}
+
+/* Count parsed pane IDs belonging to the target window. */
+static u_int
+layout_pane_ids_matching(struct window *w, struct layout_cell *lc)
 {
 	struct layout_cell	*lcchild;
 	struct window_pane	*wp;
+	u_int			 matches = 0;
 
 	if (lc->type == LAYOUT_WINDOWPANE) {
-		if (layout_count_pane_id(root, lc->pane_id) != 1)
-			return (-1);
 		wp = window_pane_find_by_id(lc->pane_id);
-		if (wp != NULL && wp->window == w)
-			(*matches)++;
-		return (0);
+		return (wp != NULL && wp->window == w);
 	}
-	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-		if (layout_pane_ids_status1(w, root, lcchild, matches) != 0)
-			return (-1);
-	}
-	return (0);
+	TAILQ_FOREACH(lcchild, &lc->cells, entry)
+		matches += layout_pane_ids_matching(w, lcchild);
+	return (matches);
 }
 
 /* Return 1 to assign by ID, 0 by tree order, or -1 for ambiguous IDs. */
@@ -789,10 +817,9 @@ static int
 layout_pane_ids_status(struct window *w, struct layout_cell *root,
     u_int ncells)
 {
-	u_int	matches = 0;
+	u_int	matches;
 
-	if (layout_pane_ids_status1(w, root, root, &matches) != 0)
-		return (-1);
+	matches = layout_pane_ids_matching(w, root);
 	if (matches == 0)
 		return (0);
 	if (matches == ncells)
@@ -800,21 +827,21 @@ layout_pane_ids_status(struct window *w, struct layout_cell *root,
 	return (-1);
 }
 
-/* Parse a layout string and optionally arrange the window. */
-static int
-layout_parse1(struct window *w, const char *layout, char **cause, int apply)
+/* Parse and validate a layout without changing the window. */
+struct layout_prepared *
+layout_prepare(struct window *w, const char *layout, char **cause)
 {
 	struct layout_parse_ctx	 ctx;
 	struct layout_cell	*lcchild, *root = NULL, *zoomed = NULL;
-	struct window_pane	*wp;
+	struct layout_prepared	*prepared;
 	const char		*body;
-	u_int			 npanes, ncells, old_ncells, z, matches;
+	u_int			 npanes, ncells, old_ncells;
 	u_short			 csum;
 	int			 has_checksum, pane_ids = 0;
 
 	if (strlen(layout) >= LAYOUT_STRING_MAX) {
 		*cause = xstrdup("invalid layout");
-		return (-1);
+		return (NULL);
 	}
 	ctx.ptr = layout;
 	ctx.end = layout + strlen(layout);
@@ -827,31 +854,34 @@ layout_parse1(struct window *w, const char *layout, char **cause, int apply)
 	    layout_construct(&ctx, NULL, &root) != 0) {
 		*cause = xstrdup("invalid layout");
 		layout_free_cell(root);
-		return (-1);
+		return (NULL);
 	}
 	layout_skip_space(&ctx);
 	if (ctx.ptr != ctx.end || root == NULL) {
 		*cause = xstrdup("invalid layout");
 		layout_free_cell(root);
-		return (-1);
+		return (NULL);
 	}
 	if (layout_resolve_relative(root,
 	    root->type == LAYOUT_WINDOWPANE ? w->sx : root->sx,
 	    root->type == LAYOUT_WINDOWPANE ? w->sy : root->sy) != 0) {
 		*cause = xstrdup("invalid layout");
 		layout_free_cell(root);
-		return (-1);
+		return (NULL);
 	}
 
 	npanes = window_count_panes(w, 1);
 	ncells = layout_count_cells(root);
-	if (ctx.format == LAYOUT_FORMAT_NEW) {
+	if (ctx.format == LAYOUT_FORMAT) {
 		old_ncells = ncells;
-		matches = 0;
 		if (npanes > ncells ||
 		    layout_validate_new(root, ncells, &zoomed) != 0 ||
-		    layout_pane_ids_status1(w, root, root, &matches) != 0) {
+		    !layout_pane_ids_unique(root, root)) {
 			*cause = xstrdup("invalid layout");
+			goto fail;
+		}
+		if (!layout_check(root)) {
+			*cause = xstrdup("size mismatch before applying layout");
 			goto fail;
 		}
 		if (npanes < ncells) {
@@ -898,23 +928,52 @@ layout_parse1(struct window *w, const char *layout, char **cause, int apply)
 		*cause = xstrdup("size mismatch after applying layout");
 		goto fail;
 	}
-	if (!apply) {
-		layout_free_cell(root);
-		return (0);
-	}
 
-	/* The layout is fully validated before the existing layout is changed. */
+	prepared = xcalloc(1, sizeof *prepared);
+	prepared->root = root;
+	prepared->zoomed = zoomed;
+	prepared->format = ctx.format;
+	prepared->ncells = ncells;
+	prepared->pane_ids = pane_ids;
+	return (prepared);
+
+fail:
+	layout_free_cell(root);
+	return (NULL);
+}
+
+/* Free a prepared layout without applying it. */
+void
+layout_free_prepared(struct layout_prepared *prepared)
+{
+	if (prepared == NULL)
+		return;
+	layout_free_cell(prepared->root);
+	free(prepared);
+}
+
+/* Apply and free a prepared layout. This cannot fail. */
+void
+layout_apply_prepared(struct window *w, struct layout_prepared *prepared)
+{
+	struct layout_cell	*lcchild, *root = prepared->root;
+	struct window_pane	*wp;
+	u_int			 z;
+
+	prepared->root = NULL;
+
+	/* The layout was fully validated before the existing layout is changed. */
 	layout_free_cell(w->layout_root);
 	w->layout_root = root;
 	wp = TAILQ_FIRST(&w->panes);
-	layout_assign(w, &wp, root, pane_ids);
+	layout_assign(w, &wp, root, prepared->pane_ids);
 
 	while (!TAILQ_EMPTY(&w->z_index)) {
 		wp = TAILQ_FIRST(&w->z_index);
 		TAILQ_REMOVE(&w->z_index, wp, zentry);
 	}
-	if (ctx.format == LAYOUT_FORMAT_NEW) {
-		for (z = 0; z < ncells; z++) {
+	if (prepared->format == LAYOUT_FORMAT) {
+		for (z = 0; z < prepared->ncells; z++) {
 			lcchild = layout_find_zindex(root, z);
 			TAILQ_INSERT_TAIL(&w->z_index, lcchild->wp, zentry);
 		}
@@ -925,33 +984,13 @@ layout_parse1(struct window *w, const char *layout, char **cause, int apply)
 		window_resize(w, root->sx, root->sy, -1, -1);
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
-	recalculate_sizes();
 	layout_print_cell(root, __func__, 0);
 
-	if (zoomed != NULL) {
-		zoomed->flags &= ~LAYOUT_CELL_ZOOMED;
-		window_zoom(zoomed->wp);
+	if (prepared->zoomed != NULL) {
+		prepared->zoomed->flags &= ~LAYOUT_CELL_ZOOMED;
+		window_zoom(prepared->zoomed->wp);
 	}
-	notify_window("window-layout-changed", w);
-	return (0);
-
-fail:
-	layout_free_cell(root);
-	return (-1);
-}
-
-/* Validate a layout string without changing the window. */
-int
-layout_validate(struct window *w, const char *layout, char **cause)
-{
-	return (layout_parse1(w, layout, cause, 0));
-}
-
-/* Parse a layout string and arrange window as layout. */
-int
-layout_parse(struct window *w, const char *layout, char **cause)
-{
-	return (layout_parse1(w, layout, cause, 1));
+	free(prepared);
 }
 
 /* Assign panes to cells in tree order. */
