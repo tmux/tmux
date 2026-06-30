@@ -2,6 +2,11 @@ CHANGES FROM 3.7 to 3.7a
 
 * Fix crash in break-pane when no name is provided.
 
+* Scrollbar options are now cached rather than being looked up for every redraw
+  (issue 5298).
+
+* Only forbid #( in names, allow #[, empty names, : and .
+
 CHANGES FROM 3.6b TO 3.7
 
 * Add floating panes. These are panes which sit above the layout ("tiled
