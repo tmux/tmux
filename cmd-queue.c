@@ -35,6 +35,7 @@
 enum cmdq_type {
 	CMDQ_COMMAND,
 	CMDQ_CALLBACK,
+	CMDQ_INVOKE,
 };
 
 /* Command queue item. */
@@ -60,6 +61,7 @@ struct cmdq_item {
 
 	struct cmd_list		*cmdlist;
 	struct cmd		*cmd;
+	struct cmd_invoke_state	*invoke_state;
 
 	cmdq_cb			 cb;
 	void			*data;
@@ -457,6 +459,8 @@ cmdq_remove(struct cmdq_item *item)
 		server_client_unref(item->client);
 	if (item->cmdlist != NULL)
 		cmd_list_free(item->cmdlist);
+	if (item->invoke_state != NULL)
+		cmd_invoke_state_free(item->invoke_state);
 	cmdq_free_state(item->state);
 
 	TAILQ_REMOVE(&item->queue->list, item, entry);
@@ -534,6 +538,41 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmdq_state *state)
 	if (created)
 		cmdq_free_state(state);
 	return (first);
+}
+
+/* Get a single command for command queue with invoke state. */
+struct cmdq_item *
+cmdq_get_one_command(struct cmd *cmd, struct cmdq_state *state,
+    struct cmd_invoke_state *invoke_state)
+{
+	struct cmd_list		*cmdlist;
+	struct cmdq_item	*item;
+
+	cmdlist = cmd_list_new();
+	cmd_list_append(cmdlist, cmd);
+
+	item = cmdq_get_command(cmdlist, state);
+	cmd_list_free(cmdlist);
+	item->invoke_state = cmd_invoke_state_add_ref(invoke_state);
+	return (item);
+}
+
+/* Get an invoke continuation for command queue. */
+struct cmdq_item *
+cmdq_get_invoke(struct cmd_invoke_state *invoke_state, struct cmdq_state *state)
+{
+	struct cmdq_item	*item;
+
+	item = xcalloc(1, sizeof *item);
+	xasprintf(&item->name, "[invoke/%p]", item);
+	item->type = CMDQ_INVOKE;
+	item->group = 0;
+	if (state == NULL)
+		item->state = cmdq_new_state(NULL, NULL, 0);
+	else
+		item->state = cmdq_link_state(state);
+	item->invoke_state = cmd_invoke_state_add_ref(invoke_state);
+	return (item);
 }
 
 /* Fill in flag for a command. */
@@ -772,6 +811,8 @@ cmdq_next(struct client *c)
 			switch (item->type) {
 			case CMDQ_COMMAND:
 				retval = cmdq_fire_command(item);
+				if (item->invoke_state != NULL)
+					cmd_invoke_result(item->invoke_state, retval);
 
 				/*
 				 * If a command returns an error, remove any
@@ -782,6 +823,9 @@ cmdq_next(struct client *c)
 				break;
 			case CMDQ_CALLBACK:
 				retval = cmdq_fire_callback(item);
+				break;
+			case CMDQ_INVOKE:
+				retval = cmd_invoke_fire(item, item->invoke_state);
 				break;
 			default:
 				retval = CMD_RETURN_ERROR;

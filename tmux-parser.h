@@ -63,10 +63,10 @@ enum cmd_parse_node_type {
 struct cmd_parse_tree	*cmd_parse_from_file(FILE *, struct cmd_parse_input *,
 			    char **);
 struct cmd_parse_tree	*cmd_parse_from_buffer(const void *, size_t,
-			     struct cmd_parse_input *, char **);
+			    struct cmd_parse_input *, char **);
 struct cmd_parse_tree	*cmd_parse_from_string(const char *,
-			     struct cmd_parse_input *, char **);
-struct cmd_parse_tree	*cmd_parse_addref(struct cmd_parse_tree *);
+			    struct cmd_parse_input *, char **);
+struct cmd_parse_tree	*cmd_parse_add_ref(struct cmd_parse_tree *);
 void			 cmd_parse_free(struct cmd_parse_tree *);
 struct cmd_parse_node	*cmd_parse_root(struct cmd_parse_tree *);
 char			*cmd_parse_print(const struct cmd_parse_tree *);

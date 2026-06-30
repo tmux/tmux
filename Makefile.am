@@ -103,6 +103,7 @@ dist_tmux_SOURCES = \
 	cmd-find-window.c \
 	cmd-find.c \
 	cmd-if-shell.c \
+	cmd-invoke.c \
 	cmd-join-pane.c \
 	cmd-kill-pane.c \
 	cmd-kill-server.c \

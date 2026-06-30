@@ -675,7 +675,7 @@ cmd_parse_from_string(const char *s, struct cmd_parse_input *pi, char **cause)
 }
 
 struct cmd_parse_tree *
-cmd_parse_addref(struct cmd_parse_tree *tree)
+cmd_parse_add_ref(struct cmd_parse_tree *tree)
 {
 	tree->references++;
 	return (tree);

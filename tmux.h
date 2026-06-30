@@ -43,6 +43,9 @@ struct args_command_state;
 struct client;
 struct cmd;
 struct cmd_find_state;
+struct cmd_invoke_state;
+struct cmd_parse_node;
+struct cmd_parse_tree;
 struct cmdq_item;
 struct cmdq_list;
 struct cmdq_state;
@@ -3023,6 +3026,14 @@ struct cmd_parse_result *cmd_parse_from_buffer(const void *, size_t,
 struct cmd_parse_result *cmd_parse_from_arguments(struct args_value *, u_int,
 		     struct cmd_parse_input *);
 
+/* cmd-invoke.c */
+struct cmdq_item *cmd_invoke_get(struct cmd_parse_tree *, struct cmdq_state *,
+	    int, char **);
+struct cmd_invoke_state *cmd_invoke_state_add_ref(struct cmd_invoke_state *);
+void		 cmd_invoke_state_free(struct cmd_invoke_state *);
+void		 cmd_invoke_result(struct cmd_invoke_state *, enum cmd_retval);
+enum cmd_retval	 cmd_invoke_fire(struct cmdq_item *, struct cmd_invoke_state *);
+
 /* cmd-queue.c */
 struct cmdq_state *cmdq_new_state(struct cmd_find_state *, struct key_event *,
 		     int);
@@ -3046,6 +3057,10 @@ struct key_event *cmdq_get_event(struct cmdq_item *);
 struct cmd_find_state *cmdq_get_current(struct cmdq_item *);
 int		  cmdq_get_flags(struct cmdq_item *);
 struct cmdq_item *cmdq_get_command(struct cmd_list *, struct cmdq_state *);
+struct cmdq_item *cmdq_get_one_command(struct cmd *, struct cmdq_state *,
+	    struct cmd_invoke_state *);
+struct cmdq_item *cmdq_get_invoke(struct cmd_invoke_state *,
+	    struct cmdq_state *);
 #define cmdq_get_callback(cb, data) cmdq_get_callback1(#cb, cb, data)
 struct cmdq_item *cmdq_get_callback1(const char *, cmdq_cb, void *);
 struct cmdq_item *cmdq_get_error(const char *);
