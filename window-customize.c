@@ -490,7 +490,7 @@ window_customize_build_keys(struct window_customize_modedata *data,
 		    expanded, NULL, 0);
 		free(expanded);
 
-		tmp = cmd_parse_print(bd->cmd); /* XXX: command parser conversion */
+		tmp = cmd_parse_print(bd->cmd);
 		xasprintf(&text, "#[ignore]%s", tmp);
 		free(tmp);
 		mti = mode_tree_add(data->data, child, item,
@@ -625,7 +625,7 @@ window_customize_draw_key(__unused struct window_customize_modedata *data,
 	if (s->cy >= cy + sy - 1)
 		return;
 
-	cmd = cmd_parse_print(bd->cmd); /* XXX: command parser conversion */
+	cmd = cmd_parse_print(bd->cmd);
 	if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
 	    &grid_default_cell, "Command: %s", cmd)) {
 		free(cmd);
@@ -1218,6 +1218,7 @@ window_customize_set_command_callback(struct client *c, void *itemdata,
 	struct window_customize_itemdata	*item = itemdata;
 	struct window_customize_modedata	*data = item->data;
 	struct key_binding			*bd;
+	struct cmd_parse_tree			*tree;
 	char					*error;
 
 	if (s == NULL || *s == '\0' || data->dead)
@@ -1225,27 +1226,15 @@ window_customize_set_command_callback(struct client *c, void *itemdata,
 	if (item == NULL || !window_customize_get_key(item, NULL, &bd))
 		return (PROMPT_CLOSE);
 
-#if 0 /* XXX: command parser conversion */
-	struct cmd_parse_result	*pr;
-
-	pr = cmd_parse_from_string(s, NULL);
-	switch (pr->status) {
-	case CMD_PARSE_ERROR:
-		error = pr->error;
+	tree = cmd_parse_from_string(s, NULL, &error);
+	if (tree == NULL)
 		goto fail;
-	case CMD_PARSE_SUCCESS:
-		break;
-	}
-	cmd_list_free(bd->cmdlist);
-	bd->cmdlist = pr->cmdlist;
 
+	cmd_parse_free(bd->cmd);
+	bd->cmd = tree;
 	mode_tree_build(data->data);
 	mode_tree_draw(data->data);
 	data->wp->flags |= PANE_REDRAW;
-#else
-	error = xstrdup("XXX: command parser conversion not done for customize");
-	goto fail;
-#endif
 
 	return (PROMPT_CLOSE);
 
@@ -1298,7 +1287,7 @@ window_customize_set_key(struct client *c,
 		bd->flags ^= KEY_BINDING_REPEAT;
 	else if (strcmp(s, "Command") == 0) {
 		xasprintf(&prompt, "(%s) ", key_string_lookup_key(key, 0));
-		value = cmd_parse_print(bd->cmd); /* XXX: command parser conversion */
+		value = cmd_parse_print(bd->cmd);
 
 		new_item = xcalloc(1, sizeof *new_item);
 		new_item->data = data;
@@ -1360,7 +1349,7 @@ window_customize_reset_key(struct window_customize_modedata *data,
 		return;
 
 	dd = key_bindings_get_default(kt, bd->key);
-	if (dd != NULL && bd->cmd == dd->cmd) /* XXX: command parser conversion */
+	if (dd != NULL && bd->cmd == dd->cmd)
 		return;
 	if (dd == NULL && item == mode_tree_get_current(data->data)) {
 		mode_tree_collapse_current(data->data);

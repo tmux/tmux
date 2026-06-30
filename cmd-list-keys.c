@@ -157,7 +157,7 @@ cmd_list_keys_format_add_key_binding(struct format_tree *ft,
 
 	format_add(ft, "key_string", "%s", key_string_lookup_key(bd->key, 0));
 
-	s = cmd_parse_print(bd->cmd); /* XXX: command parser conversion */
+	s = cmd_parse_print(bd->cmd);
 	format_add(ft, "key_command", "%s", s);
 	free(s);
 }

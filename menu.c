@@ -315,10 +315,9 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 	int				 count = menu->count, old = md->choice;
 	const char			*name = NULL;
 	const struct menu_item		*item;
+	struct cmd_parse_tree		*tree;
+	struct cmdq_item		*new_item;
 	struct cmdq_state		*state;
-#if 0 /* XXX: command parser conversion */
-	enum cmd_parse_status		 status;
-#endif
 	char				*error;
 
 	if (KEYC_IS_MOUSE(event->key)) {
@@ -498,18 +497,15 @@ chosen:
 	else
 		event = NULL;
 	state = cmdq_new_state(&md->fs, event, 0);
-
-#if 0 /* XXX: command parser conversion */
-	status = cmd_parse_and_append(item->command, NULL, c, state, &error);
-	if (status == CMD_PARSE_ERROR) {
+	tree = cmd_parse_from_string(item->command, NULL, &error);
+	if (tree == NULL) {
 		cmdq_append(c, cmdq_get_error(error));
 		free(error);
+	} else {
+		new_item = cmd_invoke_get(tree, state, NULL);
+		cmdq_append(c, new_item);
+		cmd_parse_free(tree);
 	}
-#else
-	error = xstrdup("XXX: command parser conversion not done for menu");
-	cmdq_append(c, cmdq_get_error(error));
-	free(error);
-#endif
 	cmdq_free_state(state);
 
 	return (1);

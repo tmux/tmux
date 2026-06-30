@@ -1814,32 +1814,26 @@ void
 mode_tree_run_command(struct client *c, struct cmd_find_state *fs,
     const char *template, const char *name)
 {
+	struct cmd_parse_tree	*tree;
+	struct cmdq_item	*new_item;
 	struct cmdq_state	*state;
 	char			*command, *error;
-#if 0 /* XXX: command parser conversion */
-	enum cmd_parse_status	 status;
-#endif
 
 	command = cmd_template_replace(template, name, 1);
 	if (command != NULL && *command != '\0') {
 		state = cmdq_new_state(fs, NULL, 0);
-#if 0 /* XXX: command parser conversion */
-		status = cmd_parse_and_append(command, NULL, c, state, &error);
-		if (status == CMD_PARSE_ERROR) {
+		tree = cmd_parse_from_string(command, NULL, &error);
+		if (tree == NULL) {
 			if (c != NULL) {
 				*error = toupper((u_char)*error);
 				status_message_set(c, -1, 1, 0, 0, "%s", error);
 			}
 			free(error);
+		} else {
+			new_item = cmd_invoke_get(tree, state, NULL);
+			cmdq_append(c, new_item);
+			cmd_parse_free(tree);
 		}
-#else
-		error = xstrdup("XXX: command parser conversion not done for mode tree");
-		if (c != NULL) {
-			*error = toupper((u_char)*error);
-			status_message_set(c, -1, 1, 0, 0, "%s", error);
-		}
-		free(error);
-#endif
 		cmdq_free_state(state);
 	}
 	free(command);
