@@ -699,7 +699,7 @@ cmd_parse_root(struct cmd_parse_tree *tree)
 }
 
 enum cmd_parse_node_type
-cmd_parse_node_type(const struct cmd_parse_node *node)
+cmd_parse_node_type(struct cmd_parse_node *node)
 {
 	return (node->type);
 }
@@ -739,19 +739,19 @@ cmd_parse_node_type_string(enum cmd_parse_node_type type)
 }
 
 const char *
-cmd_parse_node_value(const struct cmd_parse_node *node)
+cmd_parse_node_value(struct cmd_parse_node *node)
 {
 	return (node->value);
 }
 
 u_int
-cmd_parse_node_line(const struct cmd_parse_node *node)
+cmd_parse_node_line(struct cmd_parse_node *node)
 {
 	return (node->line);
 }
 
 u_int
-cmd_parse_node_end_line(const struct cmd_parse_node *node)
+cmd_parse_node_end_line(struct cmd_parse_node *node)
 {
 	return (node->end_line);
 }
@@ -831,29 +831,34 @@ cmd_parse_escape(const char *s)
 }
 
 static void
-cmd_parse_log_node(struct cmd_parse_node *node, u_int depth)
+cmd_parse_log_one_node(struct cmd_parse_node *node, u_int depth)
 {
 	struct cmd_parse_node	*child;
-	char			*esc;
+	const char		*type = cmd_parse_node_type_string(node->type);
+	char			*escaped;
 
-	if (node->value != NULL) {
-		esc = cmd_parse_escape(node->value);
-		log_debug("%*s%s value=\"%s\"", depth * 2, "",
-		    cmd_parse_node_type_string(node->type), esc);
-		free(esc);
-	} else {
-		log_debug("%*s%s", depth * 2, "",
-		    cmd_parse_node_type_string(node->type));
+	if (node->value == NULL)
+		log_debug("%*s%s", depth * 2, "", type);
+	else {
+		escaped = cmd_parse_escape(node->value);
+		log_debug("%*s%s value=\"%s\"", depth * 2, "", type, escaped);
+		free(escaped);
 	}
 
 	TAILQ_FOREACH(child, &node->children, entry)
-		cmd_parse_log_node(child, depth + 1);
+		cmd_parse_log_one_node(child, depth + 1);
 }
 
 void
-cmd_parse_log(const struct cmd_parse_tree *tree)
+cmd_parse_log_node(struct cmd_parse_node *node)
 {
-	cmd_parse_log_node(tree->root, 0);
+	cmd_parse_log_one_node(node, 0);
+}
+
+void
+cmd_parse_log(struct cmd_parse_tree *tree)
+{
+	cmd_parse_log_node(tree->root);
 }
 
 /* Does this literal text need quoting to reparse as itself? */
@@ -1123,7 +1128,7 @@ cmd_parse_print_sequence(char **buf, struct cmd_parse_node *seq, u_int depth)
 }
 
 char *
-cmd_parse_print(const struct cmd_parse_tree *tree)
+cmd_parse_print(struct cmd_parse_tree *tree)
 {
 	struct cmd_parse_node	*root = tree->root, *child;
 	char			*buf = NULL;
@@ -1503,10 +1508,8 @@ yylex_token(int ch)
 
 	for (;;) {
 		/* EOF or \n are always the end of the token. */
-		if (ch == EOF) {
-			log_debug("%s: end at EOF", __func__);
+		if (ch == EOF)
 			break;
-		}
 		if (state == NONE && ch == '\r') {
 			ch = yylex_getc();
 			if (ch != '\n') {
@@ -1515,22 +1518,16 @@ yylex_token(int ch)
 			}
 		}
 		if (ch == '\n') {
-			if (state == NONE) {
-				log_debug("%s: end at EOL", __func__);
+			if (state == NONE)
 				break;
-			}
 			pi->line++;
 		}
 
 		/* Whitespace or ; or } ends a token unless inside quotes. */
-		if (state == NONE && (ch == ' ' || ch == '\t')) {
-			log_debug("%s: end at WS", __func__);
+		if (state == NONE && (ch == ' ' || ch == '\t'))
 			break;
-		}
-		if (state == NONE && (ch == ';' || ch == '}')) {
-			log_debug("%s: end at %c", __func__, ch);
+		if (state == NONE && (ch == ';' || ch == '}'))
 			break;
-		}
 
 		/*
 		 * Spaces and comments inside quotes after \n are removed but
@@ -1671,7 +1668,6 @@ yylex_format(void)
 		goto error;
 
 	buf[len] = '\0';
-	log_debug("%s: %s", __func__, buf);
 	return (buf);
 
 error:

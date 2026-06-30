@@ -80,13 +80,14 @@ struct cmd_parse_tree	*cmd_parse_from_string(const char *,
 struct cmd_parse_tree	*cmd_parse_add_ref(struct cmd_parse_tree *);
 void			 cmd_parse_free(struct cmd_parse_tree *);
 struct cmd_parse_node	*cmd_parse_root(struct cmd_parse_tree *);
-char			*cmd_parse_print(const struct cmd_parse_tree *);
-void			 cmd_parse_log(const struct cmd_parse_tree *);
-enum cmd_parse_node_type cmd_parse_node_type(const struct cmd_parse_node *);
+char			*cmd_parse_print(struct cmd_parse_tree *);
+void			 cmd_parse_log(struct cmd_parse_tree *);
+void			 cmd_parse_log_node(struct cmd_parse_node *);
+enum cmd_parse_node_type cmd_parse_node_type(struct cmd_parse_node *);
 const char		*cmd_parse_node_type_string(enum cmd_parse_node_type);
-const char		*cmd_parse_node_value(const struct cmd_parse_node *);
-u_int			 cmd_parse_node_line(const struct cmd_parse_node *);
-u_int			 cmd_parse_node_end_line(const struct cmd_parse_node *);
+const char		*cmd_parse_node_value(struct cmd_parse_node *);
+u_int			 cmd_parse_node_line(struct cmd_parse_node *);
+u_int			 cmd_parse_node_end_line(struct cmd_parse_node *);
 struct cmd_parse_node	*cmd_parse_node_first_child(struct cmd_parse_node *);
 struct cmd_parse_node	*cmd_parse_node_next(struct cmd_parse_node *);
 

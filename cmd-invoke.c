@@ -373,6 +373,7 @@ cmd_invoke_get(struct cmd_parse_tree *tree, struct cmdq_state *state, int argc,
 	is = xcalloc(1, sizeof *is);
 	is->references = 1;
 	is->tree = cmd_parse_add_ref(tree);
+	cmd_parse_log(tree);
 
 	is->argc = argc;
 	if (argc != 0) {
@@ -444,6 +445,7 @@ cmd_invoke_fire(struct cmdq_item *item, struct cmd_invoke_state *is)
 		node = cmd_invoke_next(is);
 		if (node == NULL)
 			return (CMD_RETURN_NORMAL);
+		cmd_parse_log_node(node);
 
 		switch (cmd_parse_node_type(node)) {
 		case CMD_PARSE_ROOT:

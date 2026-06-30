@@ -33,6 +33,7 @@
 #endif
 
 #include "compat.h"
+#include "tmux-parser.h"
 #include "tmux-protocol.h"
 #include "xmalloc.h"
 
