@@ -51,15 +51,6 @@ struct args {
 	struct args_value	*values;
 };
 
-/* Prepared command state. */
-struct args_command_state {
-	struct cmd_parse_tree	*tree;
-	char			*cmd;
-	struct cmd_parse_input	 pi;
-	char			*error;
-	int			 parse_input;
-};
-
 static struct args_entry	*args_find(struct args *, u_char);
 
 static int	args_cmp(struct args_entry *, struct args_entry *);
@@ -748,151 +739,53 @@ args_string(struct args *args, u_int idx)
 	return (args_value_as_string(&args->values[idx]));
 }
 
-/* Make a command now. */
-struct cmdq_item *
-args_command_now(struct cmd *self, struct cmdq_item *item, u_int idx,
-    int expand)
+/*
+ * Convert one command argument into a parse tree. A string value is parsed;
+ * existing commands are referenced.
+ */
+struct cmd_parse_tree *
+args_to_commands(struct cmd *self, struct cmdq_item *item, u_int idx,
+    const char *default_command, int expand, char **cause)
 {
-	struct args_command_state	*state;
-	struct cmdq_item		*new_item;
-	struct cmdq_state		*cs = cmdq_get_state(item);
-	char				*error;
+	struct args		*args = cmd_get_args(self);
+	struct args_value	*value;
+	struct cmd_parse_input	 pi = { 0 };
+	const char		*cmd = NULL, *file;
+	char			*expanded;
+	struct cmd_parse_tree	*tree;
 
-	state = args_command_prepare(self, item, idx, NULL, expand);
-	new_item = args_command_get(state, 0, NULL, cs, &error);
-	if (new_item == NULL) {
-		cmdq_error(item, "%s", error);
-		free(error);
-	}
-	args_command_free(state);
-	return (new_item);
-}
+	*cause = NULL;
 
-/* Save bits to make a command later. */
-struct args_command_state *
-args_command_prepare(struct cmd *self, struct cmdq_item *item, u_int idx,
-    const char *default_command, int expand)
-{
-	struct args			*args = cmd_get_args(self);
-	struct args_value		*value;
-	struct args_command_state	*state;
-	const char			*cmd = NULL;
-	const char			*file;
-
-	state = xcalloc(1, sizeof *state);
-	state->pi.flags = cmd_get_parse_flags(self);
-
-	cmd_get_source(self, &file, &state->pi.line);
-	if (file != NULL)
-		state->pi.file = xstrdup(file);
-
-	if (idx < args->count) {
-		value = &args->values[idx];
-		if (value->type == ARGS_COMMANDS) {
-			state->tree = cmd_parse_add_ref(value->cmd);
-			return (state);
-		}
-		if (value->type != ARGS_STRING)
-			fatalx("argument not string or commands");
-		cmd = value->string;
-	} else {
-		if (default_command == NULL)
-			fatalx("argument out of range");
+	if (idx >= args->count)
 		cmd = default_command;
+	else {
+		value = &args->values[idx];
+		switch (value->type) {
+		case ARGS_COMMANDS:
+			return (cmd_parse_add_ref(value->cmd));
+		case ARGS_STRING:
+			cmd = value->string;
+			break;
+		case ARGS_NONE:
+			break;
+		}
 	}
-
+	if (cmd == NULL)
+		fatalx("argument out of range");
 
 	if (expand)
-		state->cmd = format_single_from_target(item, cmd);
+		expanded = format_single_from_target(item, cmd);
 	else
-		state->cmd = xstrdup(cmd);
-	log_debug("%s: %s", __func__, state->cmd);
+		expanded = xstrdup(cmd);
+	log_debug("%s: %s", __func__, expanded);
 
-	if (strcmp(state->cmd, "%1") == 0)
-		state->parse_input = 1;
-	else {
-		state->tree = cmd_parse_from_string(state->cmd, &state->pi,
-		    &state->error);
-	}
-
-	return (state);
-}
-
-/* Return argument as command queue item. */
-struct cmdq_item *
-args_command_get(struct args_command_state *state, int argc, char **argv,
-    struct cmdq_state *qstate, char **error)
-{
-	struct cmd_invoke_input	ci = { 0 };
-	struct cmd_parse_tree	*tree;
-	struct cmdq_item	*item;
-	int			 free_tree = 0;
-
-	if (state->error != NULL) {
-		*error = xstrdup(state->error);
-		return (NULL);
-	}
-
-	ci.file = state->pi.file;
-	ci.flags = state->pi.flags;
-
-	if (state->parse_input) {
-		if (argc == 0 || argv[0] == NULL) {
-			*error = xstrdup("missing command");
-			return (NULL);
-		}
-		tree = cmd_parse_from_string(argv[0], &state->pi, error);
-		if (tree == NULL)
-			return (NULL);
-		free_tree = 1;
-	} else {
-		if (state->tree == NULL)
-			fatalx("no command tree");
-		tree = state->tree;
-		ci.argc = argc;
-		ci.argv = argv;
-	}
-
-	item = cmd_invoke_get(tree, qstate, &ci);
-	if (free_tree)
-		cmd_parse_free(tree);
-	return (item);
-}
-
-/* Free commands state. */
-void
-args_command_free(struct args_command_state *state)
-{
-	if (state->tree != NULL)
-		cmd_parse_free(state->tree);
-	free((void *)state->pi.file);
-	free(state->cmd);
-	free(state->error);
-	free(state);
-}
-
-/* Get prepared command. */
-char *
-args_command_get_command(struct args_command_state *state)
-{
-	int	 n;
-	char	*s, *tmp;
-
-	if (state->parse_input)
-		return (xstrdup(""));
-	if (state->cmd == NULL && state->tree != NULL) {
-		tmp = cmd_parse_print(state->tree);
-		n = strcspn(tmp, " ,");
-		xasprintf(&s, "%.*s", n, tmp);
-		free(tmp);
-		return (s);
-	}
-	if (state->cmd != NULL) {
-		n = strcspn(state->cmd, " ,");
-		xasprintf(&s, "%.*s", n, state->cmd);
-		return (s);
-	}
-	return (xstrdup(""));
+	cmd_get_source(self, &file, &pi.line);
+	if (file != NULL)
+		pi.file = file;
+	pi.flags = cmd_get_parse_flags(self);
+	tree = cmd_parse_from_string(expanded, &pi, cause);
+	free(expanded);
+	return (tree);
 }
 
 /* Get first value in argument. */

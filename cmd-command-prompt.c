@@ -57,7 +57,7 @@ struct cmd_command_prompt_prompt {
 
 struct cmd_command_prompt_cdata {
 	struct cmdq_item		 *item;
-	struct args_command_state	 *state;
+	struct cmd_parse_tree		 *tree;
 
 	int				  flags;
 	enum prompt_type		  prompt_type;
@@ -85,13 +85,13 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 	struct args			*args = cmd_get_args(self);
 	struct client			*tc = cmdq_get_target_client(item);
 	struct cmd_find_state		*target = cmdq_get_target(item);
-	const char			*type, *s, *input;
+	const char			*type, *s, *input, *cmd;
 	struct cmd_command_prompt_cdata *cdata;
 	char				*tmp, *prompts, *prompt, *next_prompt;
-	char				*inputs = NULL, *next_input;
+	char				*inputs = NULL, *next_input, *cause = NULL;
 	struct window_pane		*wp = target->wp;
 	u_int				 count = args_count(args);
-	int				 wait = !args_has(args, 'b'), space = 1;
+	int				 wait = !args_has(args, 'b'), space = 1, n;
 	int				 pane = args_has(args, 'P');
 
 	if (pane) {
@@ -107,14 +107,22 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->item = item;
 	if (pane)
 		cdata->wp = wp;
-	cdata->state = args_command_prepare(self, item, 0, "%1",
-	    args_has(args, 'F'));
+	if (count != 0) {
+		cdata->tree = args_to_commands(self, item, 0, NULL,
+		    args_has(args, 'F'), &cause);
+		if (cdata->tree == NULL) {
+			cmdq_error(item, "%s", cause);
+			free(cause);
+			free(cdata);
+			return (CMD_RETURN_ERROR);
+		}
+	}
 
 	if ((s = args_get(args, 'p')) == NULL) {
 		if (count != 0) {
-			tmp = args_command_get_command(cdata->state);
-			xasprintf(&prompts, "(%s)", tmp);
-			free(tmp);
+			cmd = args_string(args, 0);
+			n = strcspn(cmd, " ,");
+			xasprintf(&prompts, "(%.*s)", n, cmd);
 		} else {
 			prompts = xstrdup(":");
 			space = 0;
@@ -203,6 +211,9 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 	struct cmdq_item			 *item = cdata->item, *new_item;
 	struct cmdq_state			 *cs = NULL;
 	struct cmd_command_prompt_prompt	 *prompt;
+	struct cmd_invoke_input			  ci = { 0 };
+	struct cmd_parse_tree			 *tree;
+	struct cmd_parse_input			  pi = { 0 };
 	int					  argc = 0;
 	char					**argv = NULL;
 
@@ -237,14 +248,33 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 
 	if (item != NULL)
 		cs = cmdq_get_state(item);
-	new_item = args_command_get(cdata->state, argc, argv, cs, &error);
-	if (new_item == NULL) {
-		cmdq_append(c, cmdq_get_error(error));
-		free(error);
-	} else if (item == NULL) {
-		cmdq_append(c, new_item);
+
+	if (cdata->tree != NULL) {
+		/* Explicit body: prompt inputs become the template argv. */
+		ci.argc = argc;
+		ci.argv = argv;
+		new_item = cmd_invoke_get(cdata->tree, cs, &ci);
+		if (item == NULL)
+			cmdq_append(c, new_item);
+		else
+			cmdq_insert_after(item, new_item);
 	} else {
-		cmdq_insert_after(item, new_item);
+		/* No body: parse the submitted text as command language. */
+		tree = cmd_parse_from_string(s, &pi, &error);
+		if (tree == NULL) {
+			if (item == NULL)
+				cmdq_append(c, cmdq_get_error(error));
+			else
+				cmdq_error(item, "%s", error);
+			free(error);
+		} else {
+			new_item = cmd_invoke_get(tree, cs, NULL);
+			cmd_parse_free(tree);
+			if (item == NULL)
+				cmdq_append(c, new_item);
+			else
+				cmdq_insert_after(item, new_item);
+		}
 	}
 	cmd_free_argv(argc, argv);
 
@@ -281,6 +311,6 @@ cmd_command_prompt_free(void *data)
 	}
 	free(cdata->prompts);
 	cmd_free_argv(cdata->argc, cdata->argv);
-	args_command_free(cdata->state);
+	cmd_parse_free(cdata->tree);
 	free(cdata);
 }

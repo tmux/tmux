@@ -53,11 +53,11 @@ const struct cmd_entry cmd_if_shell_entry = {
 };
 
 struct cmd_if_shell_data {
-	struct args_command_state	*cmd_if;
-	struct args_command_state	*cmd_else;
+	struct cmd_parse_tree	*cmd_if;
+	struct cmd_parse_tree	*cmd_else;
 
-	struct client			*client;
-	struct cmdq_item		*item;
+	struct client		*client;
+	struct cmdq_item	*item;
 };
 
 static enum args_parse_type
@@ -76,42 +76,58 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state		*target = cmdq_get_target(item);
 	struct cmd_if_shell_data	*cdata;
 	struct cmdq_item		*new_item;
-	char				*shellcmd;
+	struct cmd_parse_tree		*tree;
+	char				*shellcmd, *cause = NULL;
 	struct client			*tc = cmdq_get_target_client(item);
 	struct session			*s = target->s;
-	u_int				 count = args_count(args);
+	u_int				 count = args_count(args), idx;
 	int				 wait = !args_has(args, 'b');
 
 	shellcmd = format_single_from_target(item, args_string(args, 0));
 	if (args_has(args, 'F')) {
 		if (*shellcmd != '0' && *shellcmd != '\0')
-			new_item = args_command_now(self, item, 1, 0);
+			idx = 1;
 		else if (count == 3)
-			new_item = args_command_now(self, item, 2, 0);
+			idx = 2;
 		else {
 			free(shellcmd);
 			return (CMD_RETURN_NORMAL);
 		}
 		free(shellcmd);
-		if (new_item == NULL)
+
+		tree = args_to_commands(self, item, idx, NULL, 0, &cause);
+		if (tree == NULL) {
+			cmdq_error(item, "%s", cause);
+			free(cause);
 			return (CMD_RETURN_ERROR);
+		}
+		new_item = cmd_invoke_get(tree, cmdq_get_state(item), NULL);
+		cmd_parse_free(tree);
 		cmdq_insert_after(item, new_item);
 		return (CMD_RETURN_NORMAL);
 	}
 
 	cdata = xcalloc(1, sizeof *cdata);
-
-	cdata->cmd_if = args_command_prepare(self, item, 1, NULL, 0);
+	cdata->cmd_if = args_to_commands(self, item, 1, NULL, 0, &cause);
+	if (cdata->cmd_if == NULL) {
+		cmdq_error(item, "%s", cause);
+		goto fail;
+	}
 	if (count == 3) {
-		cdata->cmd_else = args_command_prepare(self, item, 2,
-		    NULL, 0);
+		cdata->cmd_else = args_to_commands(self, item, 2, NULL, 0,
+		    &cause);
+		if (cdata->cmd_else == NULL) {
+			cmdq_error(item, "%s", cause);
+			goto fail;
+		}
 	}
 
-	if (wait) {
+	if (!wait)
+		cdata->client = tc;
+	else {
 		cdata->client = cmdq_get_client(item);
 		cdata->item = item;
-	} else
-		cdata->client = tc;
+	}
 	if (cdata->client != NULL)
 		cdata->client->references++;
 
@@ -120,15 +136,19 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	    cmd_if_shell_callback, cmd_if_shell_free, cdata, 0, -1,
 	    -1) == NULL) {
 		cmdq_error(item, "failed to run command: %s", shellcmd);
-		free(shellcmd);
-		cmd_if_shell_free(cdata);
-		return (CMD_RETURN_ERROR);
+		goto fail;
 	}
 	free(shellcmd);
 
 	if (!wait)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
+
+fail:
+	free(cause);
+	free(shellcmd);
+	cmd_if_shell_free(cdata);
+	return (CMD_RETURN_ERROR);
 }
 
 static void
@@ -137,35 +157,23 @@ cmd_if_shell_callback(struct job *job)
 	struct cmd_if_shell_data	*cdata = job_get_data(job);
 	struct client			*c = cdata->client;
 	struct cmdq_item		*item = cdata->item, *new_item;
-	struct cmdq_state		*cs = NULL;
-	struct args_command_state	*state;
-	char				*error;
+	struct cmd_parse_tree		*tree;
 	int				 status;
 
 	status = job_get_status(job);
 	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
-		state = cdata->cmd_else;
+		tree = cdata->cmd_else;
 	else
-		state = cdata->cmd_if;
-	if (state == NULL)
+		tree = cdata->cmd_if;
+	if (tree == NULL)
 		goto out;
 
-	if (item != NULL)
-		cs = cmdq_get_state(item);
-	new_item = args_command_get(state, 0, NULL, cs, &error);
-	if (new_item == NULL) {
-		if (cdata->item != NULL)
-			cmdq_error(cdata->item, "%s", error);
-		else {
-			*error = toupper((u_char)*error);
-			status_message_set(c, -1, 1, 0, 0, "%s", error);
-		}
-		free(error);
+	if (item == NULL) {
+		new_item = cmd_invoke_get(tree, NULL, NULL);
+		cmdq_append(c, new_item);
 	} else {
-		if (item == NULL)
-			cmdq_append(c, new_item);
-		else
-			cmdq_insert_after(item, new_item);
+		new_item = cmd_invoke_get(tree, cmdq_get_state(item), NULL);
+		cmdq_insert_after(item, new_item);
 	}
 
 out:
@@ -182,8 +190,8 @@ cmd_if_shell_free(void *data)
 		server_client_unref(cdata->client);
 
 	if (cdata->cmd_else != NULL)
-		args_command_free(cdata->cmd_else);
-	args_command_free(cdata->cmd_if);
-
+		cmd_parse_free(cdata->cmd_else);
+	if (cdata->cmd_if != NULL)
+		cmd_parse_free(cdata->cmd_if);
 	free(cdata);
 }

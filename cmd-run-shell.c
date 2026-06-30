@@ -55,15 +55,15 @@ const struct cmd_entry cmd_run_shell_entry = {
 };
 
 struct cmd_run_shell_data {
-	struct client			*client;
-	char				*cmd;
-	struct args_command_state	*state;
-	char				*cwd;
-	struct cmdq_item		*item;
-	struct session			*s;
-	int				 wp_id;
-	struct event			 timer;
-	int				 flags;
+	struct client		*client;
+	char			*cmd;
+	struct cmd_parse_tree	*tree;
+	char			*cwd;
+	struct cmdq_item	*item;
+	struct session		*s;
+	int			 wp_id;
+	struct event		 timer;
+	int			 flags;
 };
 
 static enum args_parse_type
@@ -118,7 +118,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	struct format_tree		*ft;
 	double				 d;
 	struct timeval			 tv;
-	char				*end, key[16];
+	char				*end, key[16], *cause = NULL;
 	u_int				 i;
 	int				 wait = !args_has(args, 'b');
 
@@ -128,8 +128,10 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "invalid delay time: %s", delay);
 			return (CMD_RETURN_ERROR);
 		}
-	} else if (args_count(args) == 0)
-		return (CMD_RETURN_NORMAL);
+	} else {
+		if (args_count(args) == 0)
+			return (CMD_RETURN_NORMAL);
+	}
 
 	cdata = xcalloc(1, sizeof *cdata);
 	if (!args_has(args, 'C')) {
@@ -144,8 +146,13 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 			format_free(ft);
 		}
 	} else {
-		cdata->state = args_command_prepare(self, item, 0, NULL,
-		    1);
+		cdata->tree = args_to_commands(self, item, 0, NULL, 1, &cause);
+		if (cdata->tree == NULL) {
+			cmdq_error(item, "%s", cause);
+			free(cause);
+			cmd_run_shell_free(cdata);
+			return (CMD_RETURN_ERROR);
+		}
 	}
 
 	if (args_has(args, 't') && wp != NULL)
@@ -162,6 +169,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	if (cdata->client != NULL)
 		cdata->client->references++;
+
 	if (args_has(args, 'c'))
 		cdata->cwd = xstrdup(args_get(args, 'c'));
 	else
@@ -170,18 +178,20 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'E'))
 		cdata->flags |= JOB_SHOWSTDERR;
 
-	cdata->s = s;
-	if (s != NULL)
+	if (s != NULL) {
+		cdata->s = s;
 		session_add_ref(s, __func__);
+	}
 
 	evtimer_set(&cdata->timer, cmd_run_shell_timer, cdata);
-	if (delay != NULL) {
+	if (delay == NULL)
+		event_active(&cdata->timer, EV_TIMEOUT, 1);
+	else {
 		timerclear(&tv);
 		tv.tv_sec = (time_t)d;
 		tv.tv_usec = (d - (double)tv.tv_sec) * 1000000U;
 		evtimer_add(&cdata->timer, &tv);
-	} else
-		event_active(&cdata->timer, EV_TIMEOUT, 1);
+	}
 
 	if (!wait)
 		return (CMD_RETURN_NORMAL);
@@ -196,9 +206,8 @@ cmd_run_shell_timer(__unused int fd, __unused short events, void* arg)
 	const char			*cmd = cdata->cmd;
 	struct cmdq_item		*item = cdata->item, *new_item;
 	struct cmdq_state		*cs = NULL;
-	char				*error;
 
-	if (cdata->state == NULL) {
+	if (cdata->tree == NULL) {
 		if (cmd == NULL) {
 			if (cdata->item != NULL)
 				cmdq_continue(cdata->item);
@@ -223,21 +232,11 @@ cmd_run_shell_timer(__unused int fd, __unused short events, void* arg)
 
 	if (item != NULL)
 		cs = cmdq_get_state(item);
-	new_item = args_command_get(cdata->state, 0, NULL, cs, &error);
-	if (new_item == NULL) {
-		if (cdata->item != NULL)
-			cmdq_error(cdata->item, "%s", error);
-		else {
-			*error = toupper((u_char)*error);
-			status_message_set(c, -1, 1, 0, 0, "%s", error);
-		}
-		free(error);
-	} else {
-		if (item == NULL)
-			cmdq_append(c, new_item);
-		else
-			cmdq_insert_after(item, new_item);
-	}
+	new_item = cmd_invoke_get(cdata->tree, cs, NULL);
+	if (item == NULL)
+		cmdq_append(c, new_item);
+	else
+		cmdq_insert_after(item, new_item);
 
 	if (cdata->item != NULL)
 		cmdq_continue(cdata->item);
@@ -305,8 +304,7 @@ cmd_run_shell_free(void *data)
 		session_remove_ref(cdata->s, __func__);
 	if (cdata->client != NULL)
 		server_client_unref(cdata->client);
-	if (cdata->state != NULL)
-		args_command_free(cdata->state);
+	cmd_parse_free(cdata->tree);
 	free(cdata->cwd);
 	free(cdata->cmd);
 	free(cdata);

@@ -44,8 +44,8 @@ const struct cmd_entry cmd_display_panes_entry = {
 };
 
 struct cmd_display_panes_data {
-	struct cmdq_item		*item;
-	struct args_command_state	*state;
+	struct cmdq_item	*item;
+	struct cmd_parse_tree	*tree;
 };
 
 struct cmd_display_panes_ctx {
@@ -297,7 +297,7 @@ cmd_display_panes_free(__unused struct client *c, void *data)
 
 	if (cdata->item != NULL)
 		cmdq_continue(cdata->item);
-	args_command_free(cdata->state);
+	cmd_parse_free(cdata->tree);
 	free(cdata);
 }
 
@@ -305,9 +305,9 @@ static int
 cmd_display_panes_key(struct client *c, void *data, struct key_event *event)
 {
 	struct cmd_display_panes_data	*cdata = data;
-	char				*expanded, *error;
+	char				*expanded;
+	struct cmd_invoke_input		 ci = { 0 };
 	struct cmdq_item		*item = cdata->item, *new_item;
-	struct cmdq_state		*cs = NULL;
 	struct window			*w = c->session->curw->window;
 	struct window_pane		*wp;
 	u_int				 index;
@@ -330,20 +330,14 @@ cmd_display_panes_key(struct client *c, void *data, struct key_event *event)
 	window_unzoom(w, 1);
 
 	xasprintf(&expanded, "%%%u", wp->id);
+	ci.argc = 1;
+	ci.argv = &expanded;
 
-	if (item != NULL)
-		cs = cmdq_get_state(item);
-	new_item = args_command_get(cdata->state, 1, &expanded, cs,
-	    &error);
-	if (new_item == NULL) {
-		cmdq_append(c, cmdq_get_error(error));
-		free(error);
-	} else {
-		if (item == NULL)
-			cmdq_append(c, new_item);
-		else
-			cmdq_insert_after(item, new_item);
-	}
+	new_item = cmd_invoke_get(cdata->tree, cmdq_get_state(item), &ci);
+	if (item == NULL)
+		cmdq_append(c, new_item);
+	else
+		cmdq_insert_after(item, new_item);
 
 	free(expanded);
 	return (1);
@@ -363,21 +357,28 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 	if (tc->overlay_draw != NULL)
 		return (CMD_RETURN_NORMAL);
 
-	if (args_has(args, 'd')) {
+	if (!args_has(args, 'd'))
+		delay = options_get_number(s->options, "display-panes-time");
+	else {
 		delay = args_strtonum(args, 'd', 0, UINT_MAX, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "delay %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-	} else
-		delay = options_get_number(s->options, "display-panes-time");
+	}
 
 	cdata = xcalloc(1, sizeof *cdata);
 	if (wait)
 		cdata->item = item;
-	cdata->state = args_command_prepare(self, item, 0,
-	    "select-pane -t \"%%%\"", 0);
+	cdata->tree = args_to_commands(self, item, 0, "select-pane -t \"%%%\"",
+	    0, &cause);
+	if (cdata->tree == NULL) {
+		cmdq_error(item, "%s", cause);
+		free(cause);
+		free(cdata);
+		return (CMD_RETURN_ERROR);
+	}
 
 	if (args_has(args, 'N')) {
 		server_client_set_overlay(tc, delay, NULL, NULL,
