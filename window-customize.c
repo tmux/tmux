@@ -633,7 +633,7 @@ window_customize_draw_key(__unused struct window_customize_modedata *data,
 	}
 	default_bd = key_bindings_get_default(kt, bd->key);
 	if (default_bd != NULL) {
-		default_cmd = cmd_parse_print(default_bd->cmd); /* XXX */
+		default_cmd = cmd_parse_print(default_bd->cmd);
 		if (strcmp(cmd, default_cmd) != 0 &&
 		    !screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
 		    &grid_default_cell, "The default is: %s", default_cmd)) {
