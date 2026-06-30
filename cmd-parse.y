@@ -744,36 +744,105 @@ cmd_parse_new_commands_node(struct cmd_parse_tree *tree, u_int line)
 	return (commands);
 }
 
+/* Add one argument to the current command, creating it if needed. */
+static void
+cmd_parse_from_arguments_add(struct cmd_parse_node *seq,
+    struct cmd_parse_node **cmd, struct cmd_parse_node *child)
+{
+	if (*cmd == NULL) {
+		*cmd = cmd_parse_new_node(CMD_PARSE_COMMAND, 0);
+		TAILQ_INSERT_TAIL(&seq->children, *cmd, entry);
+	}
+	TAILQ_INSERT_TAIL(&(*cmd)->children, child, entry);
+}
+
+/*
+ * Add one argv string, splitting unescaped ; as command separators:
+ *
+ * A single ; starts another command in the same sequence.
+ * A double ;; starts another sequence.
+ * A \; is kept as a literal semicolon in the argument.
+ */
+static void
+cmd_parse_from_argument_string(struct cmd_parse_node *root,
+    struct cmd_parse_node **seq, struct cmd_parse_node **cmd, const char *s)
+{
+	char			*buf;
+	size_t			 len = 0;
+	struct cmd_parse_node	*child;
+	const char		*cp;
+
+	buf = xmalloc(1);
+	*buf = '\0';
+
+	for (cp = s; *cp != '\0'; cp++) {
+		if (*cp == '\\' && cp[1] != '\0') {
+			cp++;
+			buf = xrealloc(buf, len + 2);
+			buf[len++] = *cp;
+			buf[len] = '\0';
+			continue;
+		}
+
+		if (*cp != ';') {
+			buf = xrealloc(buf, len + 2);
+			buf[len++] = *cp;
+			buf[len] = '\0';
+			continue;
+		}
+
+		if (len != 0) {
+			child = cmd_parse_new_string_node(buf, 0);
+			cmd_parse_from_arguments_add(*seq, cmd, child);
+			len = 0;
+			*buf = '\0';
+		}
+
+		if (cp[1] == ';') {
+			*cmd = NULL;
+			*seq = cmd_parse_new_node(CMD_PARSE_SEQUENCE, 0);
+			TAILQ_INSERT_TAIL(&root->children, *seq, entry);
+			cp++;
+		} else
+			*cmd = NULL;
+	}
+
+	if (len != 0) {
+		child = cmd_parse_new_string_node(buf, 0);
+		cmd_parse_from_arguments_add(*seq, cmd, child);
+	}
+
+	free(buf);
+}
+
 /* Build a parse tree directly from existing argument values. */
 struct cmd_parse_tree *
 cmd_parse_from_arguments(struct args_value *values, u_int count)
 {
 	struct cmd_parse_tree	*new;
-	struct cmd_parse_node	*root, *seq, *cmd, *child;
+	struct cmd_parse_node	*root, *seq, *cmd = NULL, *child;
 	u_int			 i;
 
-	cmd = cmd_parse_new_node(CMD_PARSE_COMMAND, 0);
+	root = cmd_parse_new_node(CMD_PARSE_ROOT, 0);
+	seq = cmd_parse_new_node(CMD_PARSE_SEQUENCE, 0);
+	TAILQ_INSERT_TAIL(&root->children, seq, entry);
+
 	for (i = 0; i < count; i++) {
 		switch (values[i].type) {
 		case ARGS_NONE:
 			continue;
 		case ARGS_STRING:
-			child = cmd_parse_new_string_node(values[i].string, 0);
+			cmd_parse_from_argument_string(root, &seq, &cmd,
+			    values[i].string);
 			break;
 		case ARGS_COMMANDS:
 			child = cmd_parse_new_commands_node(values[i].cmd, 0);
+			cmd_parse_from_arguments_add(seq, &cmd, child);
 			break;
 		default:
 			fatalx("unknown argument type");
 		}
-		TAILQ_INSERT_TAIL(&cmd->children, child, entry);
 	}
-
-	seq = cmd_parse_new_node(CMD_PARSE_SEQUENCE, 0);
-	TAILQ_INSERT_TAIL(&seq->children, cmd, entry);
-
-	root = cmd_parse_new_node(CMD_PARSE_ROOT, 0);
-	TAILQ_INSERT_TAIL(&root->children, seq, entry);
 
 	new = xcalloc(1, sizeof *new);
 	new->references = 1;
