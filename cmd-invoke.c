@@ -450,8 +450,6 @@ cmd_invoke_fire(struct cmdq_item *item, struct cmd_invoke_state *is)
 		node = cmd_invoke_next(is);
 		if (node == NULL)
 			return (CMD_RETURN_NORMAL);
-		log_debug("%s: node %s", __func__,
-		    cmd_parse_node_type_string(cmd_parse_node_type(node)));
 		cmd_parse_log_node(__func__, node);
 
 		switch (cmd_parse_node_type(node)) {
