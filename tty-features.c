@@ -583,6 +583,18 @@ tty_default_features(int *feat, const char *name, u_int version)
 		  	      "hyperlinks,"
 			      "usstyle"
 		},
+		{ .name = "ghostty",
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
+			      "ccolour,"
+			      "cstyle,"
+			      "extkeys,"
+			      "focus,"
+			      "hyperlinks,"
+			      "osc7,"
+			      "sync,"
+			      "usstyle,"
+			      "progressbar"
+		},
 		{ .name = "XTerm",
 		  /*
 		   * xterm also supports DECSLRM and DECFRA, but they can be
