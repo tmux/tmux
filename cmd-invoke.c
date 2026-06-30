@@ -474,12 +474,12 @@ cmd_invoke_fire(struct cmdq_item *item, struct cmd_invoke_state *is)
 			}
 			break;
 		case CMD_PARSE_ELIF:
-	case CMD_PARSE_ELSE:
-		break;
-	case CMD_PARSE_COMMAND:
-		cmd = cmd_invoke_build_command(item, is, node);
-		if (cmd == NULL) {
-			cmd_invoke_skip_sequence(is);
+		case CMD_PARSE_ELSE:
+			break;
+		case CMD_PARSE_COMMAND:
+			cmd = cmd_invoke_build_command(item, is, node);
+			if (cmd == NULL) {
+				cmd_invoke_skip_sequence(is);
 				break;
 			}
 
