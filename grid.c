@@ -74,9 +74,43 @@ grid_check_lines(struct grid *gd)
 		}
 	}
 }
+
+void
+grid_check_is_clear(struct grid *gd)
+{
+	struct grid_line	*gl;
+	u_int			 yy, ny;
+
+	assert(gd != NULL);
+
+	if (gd->sy == 0) {
+		assert(gd->linedata == NULL);
+		return;
+	}
+
+	assert(gd->linedata != NULL);
+
+	ny = gd->hsize + gd->sy;
+	for (yy = 0; yy < ny; yy++) {
+		gl = &gd->linedata[yy];
+
+		assert(gl->celldata == NULL);
+		assert(gl->cellused == 0);
+		assert(gl->cellsize == 0);
+		assert(gl->extddata == NULL);
+		assert(gl->extdsize == 0);
+		assert(gl->flags == 0);
+		assert(gl->time == 0);
+	}
+}
 #else
 static void
 grid_check_lines(__unused struct grid *gd)
+{
+}
+
+void
+grid_check_is_clear(__unused struct grid *gd)
 {
 }
 #endif
@@ -363,6 +397,7 @@ grid_create(u_int sx, u_int sy, u_int hlimit)
 	else
 		gd->linedata = NULL;
 
+	grid_check_is_clear(gd);
 	return (gd);
 }
 
