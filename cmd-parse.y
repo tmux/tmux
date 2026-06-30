@@ -831,34 +831,36 @@ cmd_parse_escape(const char *s)
 }
 
 static void
-cmd_parse_log_one_node(struct cmd_parse_node *node, u_int depth)
+cmd_parse_log_one_node(const char *prefix, struct cmd_parse_node *node,
+    u_int depth)
 {
 	struct cmd_parse_node	*child;
 	const char		*type = cmd_parse_node_type_string(node->type);
 	char			*escaped;
 
 	if (node->value == NULL)
-		log_debug("%*s%s", depth * 2, "", type);
+		log_debug("%s: %*s%s", prefix, depth * 2, "", type);
 	else {
 		escaped = cmd_parse_escape(node->value);
-		log_debug("%*s%s value=\"%s\"", depth * 2, "", type, escaped);
+		log_debug("%s: %*s%s value=\"%s\"", prefix, depth * 2, "",
+		    type, escaped);
 		free(escaped);
 	}
 
 	TAILQ_FOREACH(child, &node->children, entry)
-		cmd_parse_log_one_node(child, depth + 1);
+		cmd_parse_log_one_node(prefix, child, depth + 1);
 }
 
 void
-cmd_parse_log_node(struct cmd_parse_node *node)
+cmd_parse_log_node(const char *prefix, struct cmd_parse_node *node)
 {
-	cmd_parse_log_one_node(node, 0);
+	cmd_parse_log_one_node(prefix, node, 0);
 }
 
 void
-cmd_parse_log(struct cmd_parse_tree *tree)
+cmd_parse_log(const char *prefix, struct cmd_parse_tree *tree)
 {
-	cmd_parse_log_node(tree->root);
+	cmd_parse_log_node(prefix, tree->root);
 }
 
 /* Does this literal text need quoting to reparse as itself? */

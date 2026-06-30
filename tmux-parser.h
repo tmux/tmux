@@ -81,8 +81,9 @@ struct cmd_parse_tree	*cmd_parse_add_ref(struct cmd_parse_tree *);
 void			 cmd_parse_free(struct cmd_parse_tree *);
 struct cmd_parse_node	*cmd_parse_root(struct cmd_parse_tree *);
 char			*cmd_parse_print(struct cmd_parse_tree *);
-void			 cmd_parse_log(struct cmd_parse_tree *);
-void			 cmd_parse_log_node(struct cmd_parse_node *);
+void			 cmd_parse_log(const char *, struct cmd_parse_tree *);
+void			 cmd_parse_log_node(const char *,
+			     struct cmd_parse_node *);
 enum cmd_parse_node_type cmd_parse_node_type(struct cmd_parse_node *);
 const char		*cmd_parse_node_type_string(enum cmd_parse_node_type);
 const char		*cmd_parse_node_value(struct cmd_parse_node *);
