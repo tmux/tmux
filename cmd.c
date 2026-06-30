@@ -544,7 +544,6 @@ cmd_free(struct cmd *cmd)
 	free(cmd);
 }
 
-/* Copy a command. */
 /* Get a command as a string. */
 char *
 cmd_print(struct cmd *cmd)
@@ -561,7 +560,6 @@ cmd_print(struct cmd *cmd)
 	return (out);
 }
 
-/* Create a new command list. */
 /* Adjust current mouse position for a pane. */
 int
 cmd_mouse_at(struct window_pane *wp, struct mouse_event *m, u_int *xp,
