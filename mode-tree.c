@@ -148,7 +148,6 @@ static const char* mode_tree_help_start[] = {
 	"\r\033[1m          T \033[0m\016x\017 \033[0mUntag all %1s\n",
 	"\r\033[1m        C-t \033[0m\016x\017 \033[0mTag all %1s\n",
 	"\r\033[1m        C-s \033[0m\016x\017 \033[0mSearch forward\n",
-	"\r\033[1m        C-r \033[0m\016x\017 \033[0mSearch backward\n",
 	"\r\033[1m          n \033[0m\016x\017 \033[0mRepeat search forward\n",
 	"\r\033[1m          N \033[0m\016x\017 \033[0mRepeat search backward\n",
 	"\r\033[1m          f \033[0m\016x\017 \033[0mFilter %1s\n",
