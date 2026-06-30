@@ -1282,8 +1282,10 @@ cmd_parse_command_any_have(struct cmd_parse_node *node, int flag)
 		case CMD_PARSE_STRING:
 			values[count].type = ARGS_STRING;
 			values[count].string = cmd_parse_make_string(child);
-			if (values[count].string == NULL)
+			if (values[count].string == NULL) {
+				found = -1;
 				goto out;
+			}
 			break;
 		case CMD_PARSE_COMMANDS:
 			values[count].type = ARGS_COMMANDS;
@@ -1296,9 +1298,10 @@ cmd_parse_command_any_have(struct cmd_parse_node *node, int flag)
 	}
 
 	cmd = cmd_parse(values, count, NULL, node->line, 0, &cause);
-	if (cmd == NULL)
+	if (cmd == NULL) {
 		free(cause);
-	else {
+		found = -1;
+	} else {
 		if (cmd_get_entry(cmd)->flags & flag)
 			found = 1;
 		cmd_free(cmd);
@@ -1314,6 +1317,7 @@ int
 cmd_parse_any_have(struct cmd_parse_tree *tree, int flag)
 {
 	struct cmd_parse_node	*seq, *node;
+	int			 found = 0, r;
 
 	TAILQ_FOREACH(seq, &tree->root->children, entry) {
 		if (seq->type != CMD_PARSE_SEQUENCE)
@@ -1322,11 +1326,14 @@ cmd_parse_any_have(struct cmd_parse_tree *tree, int flag)
 		TAILQ_FOREACH(node, &seq->children, entry) {
 			if (node->type != CMD_PARSE_COMMAND)
 				continue;
-			if (cmd_parse_command_any_have(node, flag))
-				return (1);
+			r = cmd_parse_command_any_have(node, flag);
+			if (r < 0)
+				return (0);
+			if (r)
+				found = 1;
 		}
 	}
-	return (0);
+	return (found);
 }
 
 static void printflike(1, 2)
