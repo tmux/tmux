@@ -375,27 +375,16 @@ grid_create(u_int sx, u_int sy, u_int hlimit)
 {
 	struct grid	*gd;
 
-	gd = xmalloc(sizeof *gd);
+	gd = xcalloc(1, sizeof *gd);
 	gd->sx = sx;
 	gd->sy = sy;
 
 	if (hlimit != 0)
 		gd->flags = GRID_HISTORY;
-	else
-		gd->flags = 0;
-
-	gd->hscrolled = 0;
-	gd->hsize = 0;
 	gd->hlimit = hlimit;
-
-	gd->scroll_added = 0;
-	gd->scroll_collected = 0;
-	gd->scroll_generation = 0;
 
 	if (gd->sy != 0)
 		gd->linedata = xcalloc(gd->sy, sizeof *gd->linedata);
-	else
-		gd->linedata = NULL;
 
 	grid_check_is_clear(gd);
 	return (gd);
