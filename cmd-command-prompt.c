@@ -107,12 +107,12 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->item = item;
 	if (pane)
 		cdata->wp = wp;
-	cdata->state = args_make_commands_prepare(self, item, 0, "%1", wait,
+	cdata->state = args_command_prepare(self, item, 0, "%1",
 	    args_has(args, 'F'));
 
 	if ((s = args_get(args, 'p')) == NULL) {
 		if (count != 0) {
-			tmp = args_make_commands_get_command(cdata->state);
+			tmp = args_command_get_command(cdata->state);
 			xasprintf(&prompts, "(%s)", tmp);
 			free(tmp);
 		} else {
@@ -201,7 +201,7 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 	struct cmd_command_prompt_cdata		 *cdata = data;
 	char					 *error;
 	struct cmdq_item			 *item = cdata->item, *new_item;
-	struct cmd_list				 *cmdlist;
+	struct cmdq_state			 *cs;
 	struct cmd_command_prompt_prompt	 *prompt;
 	int					  argc = 0;
 	char					**argv = NULL;
@@ -235,15 +235,15 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 		cdata->argv = cmd_copy_argv(argc, argv);
 	}
 
-	cmdlist = args_make_commands(cdata->state, argc, argv, &error);
-	if (cmdlist == NULL) {
+	if (item != NULL)
+		cs = cmdq_get_state(item);
+	new_item = args_command_get(cdata->state, argc, argv, cs, &error);
+	if (new_item == NULL) {
 		cmdq_append(c, cmdq_get_error(error));
 		free(error);
 	} else if (item == NULL) {
-		new_item = cmdq_get_command(cmdlist, NULL);
 		cmdq_append(c, new_item);
 	} else {
-		new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
 		cmdq_insert_after(item, new_item);
 	}
 	cmd_free_argv(argc, argv);
@@ -281,6 +281,6 @@ cmd_command_prompt_free(void *data)
 	}
 	free(cdata->prompts);
 	cmd_free_argv(cdata->argc, cdata->argv);
-	args_make_commands_free(cdata->state);
+	args_command_free(cdata->state);
 	free(cdata);
 }

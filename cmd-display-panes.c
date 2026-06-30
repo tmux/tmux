@@ -297,7 +297,7 @@ cmd_display_panes_free(__unused struct client *c, void *data)
 
 	if (cdata->item != NULL)
 		cmdq_continue(cdata->item);
-	args_make_commands_free(cdata->state);
+	args_command_free(cdata->state);
 	free(cdata);
 }
 
@@ -307,7 +307,7 @@ cmd_display_panes_key(struct client *c, void *data, struct key_event *event)
 	struct cmd_display_panes_data	*cdata = data;
 	char				*expanded, *error;
 	struct cmdq_item		*item = cdata->item, *new_item;
-	struct cmd_list			*cmdlist;
+	struct cmdq_state		*cs = NULL;
 	struct window			*w = c->session->curw->window;
 	struct window_pane		*wp;
 	u_int				 index;
@@ -331,16 +331,18 @@ cmd_display_panes_key(struct client *c, void *data, struct key_event *event)
 
 	xasprintf(&expanded, "%%%u", wp->id);
 
-	cmdlist = args_make_commands(cdata->state, 1, &expanded, &error);
-	if (cmdlist == NULL) {
+	if (item != NULL)
+		cs = cmdq_get_state(item);
+	new_item = args_command_get(cdata->state, 1, &expanded, cs,
+	    &error);
+	if (new_item == NULL) {
 		cmdq_append(c, cmdq_get_error(error));
 		free(error);
-	} else if (item == NULL) {
-		new_item = cmdq_get_command(cmdlist, NULL);
-		cmdq_append(c, new_item);
 	} else {
-		new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
-		cmdq_insert_after(item, new_item);
+		if (item == NULL)
+			cmdq_append(c, new_item);
+		else
+			cmdq_insert_after(item, new_item);
 	}
 
 	free(expanded);
@@ -374,8 +376,8 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 	cdata = xcalloc(1, sizeof *cdata);
 	if (wait)
 		cdata->item = item;
-	cdata->state = args_make_commands_prepare(self, item, 0,
-	    "select-pane -t \"%%%\"", wait, 0);
+	cdata->state = args_command_prepare(self, item, 0,
+	    "select-pane -t \"%%%\"", 0);
 
 	if (args_has(args, 'N')) {
 		server_client_set_overlay(tc, delay, NULL, NULL,

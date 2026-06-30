@@ -50,10 +50,10 @@ const struct cmd_entry cmd_confirm_before_entry = {
 };
 
 struct cmd_confirm_before_data {
-	struct cmdq_item	*item;
-	struct cmd_list		*cmdlist;
-	u_char			 confirm_key;
-	int			 default_yes;
+	struct cmdq_item		*item;
+	struct args_command_state	*state;
+	u_char				 confirm_key;
+	int				 default_yes;
 };
 
 static enum args_parse_type
@@ -71,15 +71,12 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 	struct client			*tc = cmdq_get_target_client(item);
 	struct cmd_find_state		*target = cmdq_get_target(item);
 	char				*new_prompt;
-	const char			*confirm_key, *prompt, *cmd;
+	const char			*confirm_key, *prompt;
+	char				*cmd;
 	int				 wait = !args_has(args, 'b');
 
 	cdata = xcalloc(1, sizeof *cdata);
-	cdata->cmdlist = args_make_commands_now(self, item, 0, 1);
-	if (cdata->cmdlist == NULL) {
-		free(cdata);
-		return (CMD_RETURN_ERROR);
-	}
+	cdata->state = args_command_prepare(self, item, 0, NULL, 1);
 
 	if (wait)
 		cdata->item = item;
@@ -92,7 +89,7 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 			cdata->confirm_key = confirm_key[0];
 		else {
 			cmdq_error(item, "invalid confirm key");
-			cmd_list_free(cdata->cmdlist);
+			args_command_free(cdata->state);
 			free(cdata);
 			return (CMD_RETURN_ERROR);
 		}
@@ -103,9 +100,10 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 	if ((prompt = args_get(args, 'p')) != NULL)
 		xasprintf(&new_prompt, "%s ", prompt);
 	else {
-		cmd = cmd_get_entry(cmd_list_first(cdata->cmdlist))->name;
+		cmd = args_command_get_command(cdata->state);
 		xasprintf(&new_prompt, "Confirm '%s'? (%c/n) ", cmd,
 		    cdata->confirm_key);
+		free(cmd);
 	}
 
 	status_prompt_set(tc, target, new_prompt, NULL,
@@ -124,6 +122,7 @@ cmd_confirm_before_callback(struct client *c, void *data, const char *s,
 {
 	struct cmd_confirm_before_data	*cdata = data;
 	struct cmdq_item		*item = cdata->item, *new_item;
+	char				*error;
 	int				 retcode = 1;
 
 	if (c->flags & CLIENT_DEAD)
@@ -136,11 +135,22 @@ cmd_confirm_before_callback(struct client *c, void *data, const char *s,
 	retcode = 0;
 
 	if (item == NULL) {
-		new_item = cmdq_get_command(cdata->cmdlist, NULL);
+		new_item = args_command_get(cdata->state, 0, NULL, NULL,
+		    &error);
+		if (new_item == NULL) {
+			cmdq_append(c, cmdq_get_error(error));
+			free(error);
+			goto out;
+		}
 		cmdq_append(c, new_item);
 	} else {
-		new_item = cmdq_get_command(cdata->cmdlist,
-		    cmdq_get_state(item));
+		new_item = args_command_get(cdata->state, 0, NULL,
+		    cmdq_get_state(item), &error);
+		if (new_item == NULL) {
+			cmdq_error(item, "%s", error);
+			free(error);
+			goto out;
+		}
 		cmdq_insert_after(item, new_item);
 	}
 
@@ -159,6 +169,6 @@ cmd_confirm_before_free(void *data)
 {
 	struct cmd_confirm_before_data	*cdata = data;
 
-	cmd_list_free(cdata->cmdlist);
+	args_command_free(cdata->state);
 	free(cdata);
 }

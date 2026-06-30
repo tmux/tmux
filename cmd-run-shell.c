@@ -144,8 +144,8 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 			format_free(ft);
 		}
 	} else {
-		cdata->state = args_make_commands_prepare(self, item, 0, NULL,
-		    wait, 1);
+		cdata->state = args_command_prepare(self, item, 0, NULL,
+		    1);
 	}
 
 	if (args_has(args, 't') && wp != NULL)
@@ -195,7 +195,7 @@ cmd_run_shell_timer(__unused int fd, __unused short events, void* arg)
 	struct client			*c = cdata->client;
 	const char			*cmd = cdata->cmd;
 	struct cmdq_item		*item = cdata->item, *new_item;
-	struct cmd_list			*cmdlist;
+	struct cmdq_state		*cs = NULL;
 	char				*error;
 
 	if (cdata->state == NULL) {
@@ -221,20 +221,22 @@ cmd_run_shell_timer(__unused int fd, __unused short events, void* arg)
 		return;
 	}
 
-	cmdlist = args_make_commands(cdata->state, 0, NULL, &error);
-	if (cmdlist == NULL) {
-		if (cdata->item == NULL) {
+	if (item != NULL)
+		cs = cmdq_get_state(item);
+	new_item = args_command_get(cdata->state, 0, NULL, cs, &error);
+	if (new_item == NULL) {
+		if (cdata->item != NULL)
+			cmdq_error(cdata->item, "%s", error);
+		else {
 			*error = toupper((u_char)*error);
 			status_message_set(c, -1, 1, 0, 0, "%s", error);
-		} else
-			cmdq_error(cdata->item, "%s", error);
+		}
 		free(error);
-	} else if (item == NULL) {
-		new_item = cmdq_get_command(cmdlist, NULL);
-		cmdq_append(c, new_item);
 	} else {
-		new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
-		cmdq_insert_after(item, new_item);
+		if (item == NULL)
+			cmdq_append(c, new_item);
+		else
+			cmdq_insert_after(item, new_item);
 	}
 
 	if (cdata->item != NULL)
@@ -304,7 +306,7 @@ cmd_run_shell_free(void *data)
 	if (cdata->client != NULL)
 		server_client_unref(cdata->client);
 	if (cdata->state != NULL)
-		args_make_commands_free(cdata->state);
+		args_command_free(cdata->state);
 	free(cdata->cwd);
 	free(cdata->cmd);
 	free(cdata);
