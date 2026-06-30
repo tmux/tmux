@@ -52,6 +52,8 @@ const struct cmd_entry cmd_confirm_before_entry = {
 struct cmd_confirm_before_data {
 	struct cmdq_item	*item;
 	struct cmd_parse_tree	*tree;
+	char			*file;
+	int			 parse_flags;
 	u_char			 confirm_key;
 	int			 default_yes;
 };
@@ -71,7 +73,7 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 	struct client			*tc = cmdq_get_target_client(item);
 	struct cmd_find_state		*target = cmdq_get_target(item);
 	char				*new_prompt, *cause = NULL;
-	const char			*confirm_key, *prompt, *cmd;
+	const char			*confirm_key, *prompt, *cmd, *file;
 	int				 wait = !args_has(args, 'b'), n;
 
 	cdata = xcalloc(1, sizeof *cdata);
@@ -82,6 +84,10 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 		free(cdata);
 		return (CMD_RETURN_ERROR);
 	}
+	cmd_get_source(self, &file, NULL);
+	if (file != NULL)
+		cdata->file = xstrdup(file);
+	cdata->parse_flags = cmd_get_parse_flags(self);
 
 	if (wait)
 		cdata->item = item;
@@ -127,6 +133,8 @@ cmd_confirm_before_callback(struct client *c, void *data, const char *s,
 {
 	struct cmd_confirm_before_data	*cdata = data;
 	struct cmdq_item		*item = cdata->item, *new_item;
+	struct cmdq_state		*cs;
+	struct cmd_invoke_input		 ci = { 0 };
 	int				 retcode = 1;
 
 	if (c->flags & CLIENT_DEAD)
@@ -138,12 +146,14 @@ cmd_confirm_before_callback(struct client *c, void *data, const char *s,
 		goto out;
 	retcode = 0;
 
+	ci.file = cdata->file;
+	ci.flags = cdata->parse_flags;
 	if (item == NULL) {
-		new_item = cmd_invoke_get(cdata->tree, NULL, NULL);
+		new_item = cmd_invoke_get(cdata->tree, NULL, &ci);
 		cmdq_append(c, new_item);
 	} else {
-		new_item = cmd_invoke_get(cdata->tree, cmdq_get_state(item),
-		    NULL);
+		cs = cmdq_get_state(item);
+		new_item = cmd_invoke_get(cdata->tree, cs, &ci);
 		cmdq_insert_after(item, new_item);
 	}
 
@@ -163,5 +173,6 @@ cmd_confirm_before_free(void *data)
 	struct cmd_confirm_before_data	*cdata = data;
 
 	cmd_parse_free(cdata->tree);
+	free(cdata->file);
 	free(cdata);
 }

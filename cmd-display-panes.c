@@ -46,6 +46,8 @@ const struct cmd_entry cmd_display_panes_entry = {
 struct cmd_display_panes_data {
 	struct cmdq_item	*item;
 	struct cmd_parse_tree	*tree;
+	char			*file;
+	int			 parse_flags;
 };
 
 struct cmd_display_panes_ctx {
@@ -298,6 +300,7 @@ cmd_display_panes_free(__unused struct client *c, void *data)
 	if (cdata->item != NULL)
 		cmdq_continue(cdata->item);
 	cmd_parse_free(cdata->tree);
+	free(cdata->file);
 	free(cdata);
 }
 
@@ -333,6 +336,8 @@ cmd_display_panes_key(struct client *c, void *data, struct key_event *event)
 	xasprintf(&expanded, "%%%u", wp->id);
 	ci.argc = 1;
 	ci.argv = &expanded;
+	ci.file = cdata->file;
+	ci.flags = cdata->parse_flags;
 
 	if (item != NULL)
 		cs = cmdq_get_state(item);
@@ -354,6 +359,7 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 	struct session			*s = tc->session;
 	u_int				 delay;
 	char				*cause;
+	const char			*file;
 	struct cmd_display_panes_data	*cdata;
 	int				 wait = !args_has(args, 'b');
 
@@ -382,6 +388,10 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 		free(cdata);
 		return (CMD_RETURN_ERROR);
 	}
+	cmd_get_source(self, &file, NULL);
+	if (file != NULL)
+		cdata->file = xstrdup(file);
+	cdata->parse_flags = cmd_get_parse_flags(self);
 
 	if (args_has(args, 'N')) {
 		server_client_set_overlay(tc, delay, NULL, NULL,

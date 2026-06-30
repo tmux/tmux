@@ -56,6 +56,9 @@ struct cmd_if_shell_data {
 	struct cmd_parse_tree	*cmd_if;
 	struct cmd_parse_tree	*cmd_else;
 
+	char			*file;
+	int			 parse_flags;
+
 	struct client		*client;
 	struct cmdq_item	*item;
 };
@@ -77,6 +80,8 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_if_shell_data	*cdata;
 	struct cmdq_item		*new_item;
 	struct cmd_parse_tree		*tree;
+	struct cmd_invoke_input		 input = { 0 };
+	const char			*file;
 	char				*shellcmd, *cause = NULL;
 	struct client			*tc = cmdq_get_target_client(item);
 	struct session			*s = target->s;
@@ -101,7 +106,10 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-		new_item = cmd_invoke_get(tree, cmdq_get_state(item), NULL);
+		cmd_get_source(self, &file, NULL);
+		input.file = file;
+		input.flags = cmd_get_parse_flags(self);
+		new_item = cmd_invoke_get(tree, cmdq_get_state(item), &input);
 		cmd_parse_free(tree);
 		cmdq_insert_after(item, new_item);
 		return (CMD_RETURN_NORMAL);
@@ -121,6 +129,10 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 			goto fail;
 		}
 	}
+	cmd_get_source(self, &file, NULL);
+	if (file != NULL)
+		cdata->file = xstrdup(file);
+	cdata->parse_flags = cmd_get_parse_flags(self);
 
 	if (!wait)
 		cdata->client = tc;
@@ -158,6 +170,7 @@ cmd_if_shell_callback(struct job *job)
 	struct client			*c = cdata->client;
 	struct cmdq_item		*item = cdata->item, *new_item;
 	struct cmd_parse_tree		*tree;
+	struct cmd_invoke_input		 input = { 0 };
 	int				 status;
 
 	status = job_get_status(job);
@@ -168,11 +181,13 @@ cmd_if_shell_callback(struct job *job)
 	if (tree == NULL)
 		goto out;
 
+	input.file = cdata->file;
+	input.flags = cdata->parse_flags;
 	if (item == NULL) {
-		new_item = cmd_invoke_get(tree, NULL, NULL);
+		new_item = cmd_invoke_get(tree, NULL, &input);
 		cmdq_append(c, new_item);
 	} else {
-		new_item = cmd_invoke_get(tree, cmdq_get_state(item), NULL);
+		new_item = cmd_invoke_get(tree, cmdq_get_state(item), &input);
 		cmdq_insert_after(item, new_item);
 	}
 
@@ -193,5 +208,6 @@ cmd_if_shell_free(void *data)
 		cmd_parse_free(cdata->cmd_else);
 	if (cdata->cmd_if != NULL)
 		cmd_parse_free(cdata->cmd_if);
+	free(cdata->file);
 	free(cdata);
 }

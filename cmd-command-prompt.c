@@ -58,6 +58,8 @@ struct cmd_command_prompt_prompt {
 struct cmd_command_prompt_cdata {
 	struct cmdq_item		 *item;
 	struct cmd_parse_tree		 *tree;
+	char				 *file;
+	int				  parse_flags;
 
 	int				  flags;
 	enum prompt_type		  prompt_type;
@@ -85,7 +87,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 	struct args			*args = cmd_get_args(self);
 	struct client			*tc = cmdq_get_target_client(item);
 	struct cmd_find_state		*target = cmdq_get_target(item);
-	const char			*type, *s, *input, *cmd;
+	const char			*type, *s, *input, *cmd, *file;
 	struct cmd_command_prompt_cdata *cdata;
 	char				*tmp, *prompts, *prompt, *next_prompt;
 	char				*inputs = NULL, *next_input, *cause = NULL;
@@ -116,6 +118,10 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 			free(cdata);
 			return (CMD_RETURN_ERROR);
 		}
+		cmd_get_source(self, &file, NULL);
+		if (file != NULL)
+			cdata->file = xstrdup(file);
+		cdata->parse_flags = cmd_get_parse_flags(self);
 	}
 
 	if ((s = args_get(args, 'p')) == NULL) {
@@ -253,14 +259,16 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 		/* Explicit body: prompt inputs become the template argv. */
 		ci.argc = argc;
 		ci.argv = argv;
+		ci.file = cdata->file;
+		ci.flags = cdata->parse_flags;
 		new_item = cmd_invoke_get(cdata->tree, cs, &ci);
 		if (item == NULL)
 			cmdq_append(c, new_item);
 		else
 			cmdq_insert_after(item, new_item);
-	} else {
+	} else if (argc > 0 && argv[0] != NULL) {
 		/* No body: parse the submitted text as command language. */
-		tree = cmd_parse_from_string(s, &pi, &error);
+		tree = cmd_parse_from_string(argv[0], &pi, &error);
 		if (tree == NULL) {
 			if (item == NULL)
 				cmdq_append(c, cmdq_get_error(error));
@@ -312,5 +320,6 @@ cmd_command_prompt_free(void *data)
 	free(cdata->prompts);
 	cmd_free_argv(cdata->argc, cdata->argv);
 	cmd_parse_free(cdata->tree);
+	free(cdata->file);
 	free(cdata);
 }
