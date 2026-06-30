@@ -2048,19 +2048,18 @@ server_client_reset_state(struct client *c)
 				if (!window_position_is_visible(r, cx))
 					cursor = 0;
 
-			if (window_pane_scrollbar_overlay_visible(wp)) {
-				sb_w = wp->scrollbar_style.width;
-				if (sb_w > wp->sx)
-					sb_w = wp->sx;
-				if (sb_w != 0 &&
-	    w->sb_pos ==
-	    PANE_SCROLLBARS_LEFT) {
-					if (s->cx < sb_w)
+				if (window_pane_scrollbar_overlay_visible(wp)) {
+					sb_w = wp->scrollbar_style.width;
+					if (sb_w > wp->sx)
+						sb_w = wp->sx;
+					if (sb_w != 0 &&
+					    w->sb_pos == PANE_SCROLLBARS_LEFT) {
+						if (s->cx < sb_w)
+							cursor = 0;
+					} else if (sb_w != 0 &&
+					    s->cx >= wp->sx - sb_w)
 						cursor = 0;
-				} else if (sb_w != 0 &&
-				    s->cx >= wp->sx - sb_w)
-					cursor = 0;
-			}
+				}
 
 				if (status_at_line(c) == 0)
 					cy += status_line_size(c);
@@ -2089,10 +2088,10 @@ server_client_reset_state(struct client *c)
 					mode |= MODE_MOUSE_ALL;
 			}
 		}
-	if (options_get_number(oo, "focus-follows-mouse") ||
-	    w->sb == PANE_SCROLLBARS_MODAL ||
-	    w->sb == PANE_SCROLLBARS_AUTOHIDE)
-		mode |= MODE_MOUSE_ALL;
+		if (options_get_number(oo, "focus-follows-mouse") ||
+		    w->sb == PANE_SCROLLBARS_MODAL ||
+		    w->sb == PANE_SCROLLBARS_AUTOHIDE)
+			mode |= MODE_MOUSE_ALL;
 		else if (~mode & MODE_MOUSE_ALL)
 			mode |= MODE_MOUSE_BUTTON;
 	}
