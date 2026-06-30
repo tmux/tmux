@@ -1667,7 +1667,9 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		}
 	}
 	tty_sync_start(tty);
-	tty_update_mode(tty, 0, NULL);
+	/* Hide the cursor while drawing but keep input modes such as the mouse,
+	   otherwise each redraw disables and reenables them. */
+	tty_update_mode(tty, tty->mode & ~CURSOR_MODES, NULL);
 
 	if (wp != NULL)
 		redraw_draw_pane_lines(&dctx, wp, flags);
