@@ -252,12 +252,22 @@ cmd_invoke_is_true(struct cmdq_item *item,
 	return (0);
 }
 
-/* Push the selected conditional branch onto the traversal stack. */
-static void
-cmd_invoke_push_branch(struct cmd_invoke_state *is,
-    struct cmd_parse_node *node, struct cmd_parse_node *first)
+/* Skip else branches. */
+static struct cmd_parse_node *
+cmd_invoke_if_branch_end(struct cmd_parse_node *first)
 {
-	cmd_invoke_push(is, node, first, NULL);
+	struct cmd_parse_node	*node;
+
+	for (node = first; node != NULL; node = cmd_parse_node_next(node)) {
+		switch (cmd_parse_node_type(node)) {
+		case CMD_PARSE_ELIF:
+		case CMD_PARSE_ELSE:
+			return (node);
+		default:
+			break;
+		}
+	}
+	return (NULL);
 }
 
 /* Select and queue the branch for a conditional node. */
@@ -275,7 +285,8 @@ cmd_invoke_if(struct cmdq_item *item, struct cmd_invoke_state *is,
 	if (cmd_invoke_is_true(item, is, next, &r) != 0)
 		return (-1);
 	if (r) {
-		cmd_invoke_push_branch(is, node, first);
+		next = cmd_invoke_if_branch_end(first);
+		cmd_invoke_push(is, node, first, next);
 		return (0);
 	}
 
@@ -289,13 +300,13 @@ cmd_invoke_if(struct cmdq_item *item, struct cmd_invoke_state *is,
 				return (-1);
 			if (r) {
 				next = cmd_parse_node_next(next);
-				cmd_invoke_push_branch(is, child, next);
+				cmd_invoke_push(is, child, next, NULL);
 				return (0);
 			}
 			break;
 		case CMD_PARSE_ELSE:
 			next = cmd_parse_node_first_child(child);
-			cmd_invoke_push_branch(is, child, next);
+			cmd_invoke_push(is, child, next, NULL);
 			return (0);
 		default:
 			break;

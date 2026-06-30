@@ -88,26 +88,7 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-#if 0 /* XXX: command parser conversion */
-	struct cmd_parse_result	*pr;
-
-	if (count == 2)
-		pr = cmd_parse_from_string(args_string(args, 1), NULL);
-	else {
-		pr = cmd_parse_from_arguments(args_values(args) + 1, count - 1,
-		    NULL);
-	}
-	switch (pr->status) {
-	case CMD_PARSE_ERROR:
-		cmdq_error(item, "%s", pr->error);
-		free(pr->error);
-		return (CMD_RETURN_ERROR);
-	case CMD_PARSE_SUCCESS:
-		break;
-	}
-	key_bindings_add(tablename, key, note, repeat, pr->cmdlist);
+	cmd = cmd_parse_from_arguments(args_values(args) + 1, count - 1);
+	key_bindings_add(tablename, key, note, repeat, cmd);
 	return (CMD_RETURN_NORMAL);
-#else
-	fatalx("XXX: command parser conversion not done for bind-key");
-#endif
 }

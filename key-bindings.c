@@ -192,7 +192,8 @@ key_bindings_add(const char *name, key_code key, const char *note, int repeat,
 {
 	struct key_table	*table = key_bindings_get_table(name, 1);
 	struct key_binding	*bd;
-	char			*k, *s;
+	const char		*k;
+	char			*s;
 
 	bd = key_bindings_get(table, key & ~KEYC_MASK_FLAGS);
 	if (cmd == NULL) {
@@ -670,23 +671,21 @@ key_bindings_init(void)
 		"bind -Tcopy-mode-vi C-Down { send -X scroll-down }",
 	};
 
-#if 0 /* XXX: command parser conversion */
 	u_int			 i;
-	struct cmd_parse_result	*pr;
+	struct cmd_parse_tree	*tree;
+	struct cmdq_item	*new_item;
+	struct cmd_invoke_input	 ci = { 0 };
+	char			*cause = NULL;
 
 	for (i = 0; i < nitems(defaults); i++) {
-		pr = cmd_parse_from_string(defaults[i], NULL);
-		if (pr->status != CMD_PARSE_SUCCESS) {
-			log_debug("%s", pr->error);
+		tree = cmd_parse_from_string(defaults[i], NULL, &cause);
+		if (tree == NULL)
 			fatalx("bad default key: %s", defaults[i]);
-		}
-		cmdq_append(NULL, cmdq_get_command(pr->cmdlist, NULL));
-		cmd_list_free(pr->cmdlist);
+
+		new_item = cmd_invoke_get(tree, NULL, &ci);
+		cmdq_append(NULL, new_item);
+		cmd_parse_free(tree);
 	}
-#else
-	log_debug("XXX: command parser conversion not done for %u default keys",
-	    (u_int)nitems(defaults));
-#endif
 	cmdq_append(NULL, cmdq_get_callback(key_bindings_init_done, NULL));
 }
 

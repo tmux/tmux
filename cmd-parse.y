@@ -697,14 +697,81 @@ struct cmd_parse_tree *
 cmd_parse_from_node(struct cmd_parse_node *node)
 {
 	struct cmd_parse_tree	*new;
-	struct cmd_parse_node	*root, *child;
+	struct cmd_parse_node	*root, *child, *copy;
 
 	root = cmd_parse_new_node(CMD_PARSE_ROOT, node->line);
 	root->end_line = node->end_line;
 	TAILQ_FOREACH(child, &node->children, entry) {
-		TAILQ_INSERT_TAIL(&root->children, cmd_parse_copy_node(child),
-		    entry);
+		copy = cmd_parse_copy_node(child);
+		TAILQ_INSERT_TAIL(&root->children, copy, entry);
 	}
+
+	new = xcalloc(1, sizeof *new);
+	new->references = 1;
+	new->root = root;
+	return (new);
+}
+
+/* Build a string node with a single literal text child. */
+static struct cmd_parse_node *
+cmd_parse_new_string_node(const char *s, u_int line)
+{
+	struct cmd_parse_node	*string, *text;
+
+	string = cmd_parse_new_node(CMD_PARSE_STRING, line);
+	if (*s != '\0') {
+		text = cmd_parse_new_node(CMD_PARSE_TEXT, line);
+		text->value = xstrdup(s);
+		TAILQ_INSERT_TAIL(&string->children, text, entry);
+	}
+	return (string);
+}
+
+/* Build a commands node from a copy of the children of a tree's root. */
+static struct cmd_parse_node *
+cmd_parse_new_commands_node(struct cmd_parse_tree *tree, u_int line)
+{
+	struct cmd_parse_node	*commands, *root, *child, *copy;
+
+	commands = cmd_parse_new_node(CMD_PARSE_COMMANDS, line);
+
+	root = cmd_parse_root(tree);
+	TAILQ_FOREACH(child, &root->children, entry) {
+		copy = cmd_parse_copy_node(child);
+		TAILQ_INSERT_TAIL(&commands->children, copy, entry);
+	}
+
+	return (commands);
+}
+
+/* Build a parse tree directly from existing argument values. */
+struct cmd_parse_tree *
+cmd_parse_from_arguments(struct args_value *values, u_int count)
+{
+	struct cmd_parse_tree	*new;
+	struct cmd_parse_node	*root, *seq, *cmd, *child;
+	u_int			 i;
+
+	cmd = cmd_parse_new_node(CMD_PARSE_COMMAND, 0);
+	for (i = 0; i < count; i++) {
+		switch (values[i].type) {
+		case ARGS_NONE:
+			continue;
+		case ARGS_STRING:
+			child = cmd_parse_new_string_node(values[i].string, 0);
+			break;
+		case ARGS_COMMANDS:
+			child = cmd_parse_new_commands_node(values[i].cmd, 0);
+			break;
+		}
+		TAILQ_INSERT_TAIL(&cmd->children, child, entry);
+	}
+
+	seq = cmd_parse_new_node(CMD_PARSE_SEQUENCE, 0);
+	TAILQ_INSERT_TAIL(&seq->children, cmd, entry);
+
+	root = cmd_parse_new_node(CMD_PARSE_ROOT, 0);
+	TAILQ_INSERT_TAIL(&root->children, seq, entry);
 
 	new = xcalloc(1, sizeof *new);
 	new->references = 1;

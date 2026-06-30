@@ -38,6 +38,7 @@
 
 struct cmd_parse_tree;
 struct cmd_parse_node;
+struct args_value;
 
 struct cmd_parse_input {
 	int			 flags;
@@ -78,6 +79,7 @@ struct cmd_parse_tree	*cmd_parse_from_buffer(const void *, size_t,
 struct cmd_parse_tree	*cmd_parse_from_string(const char *,
 			    struct cmd_parse_input *, char **);
 struct cmd_parse_tree	*cmd_parse_from_node(struct cmd_parse_node *);
+struct cmd_parse_tree	*cmd_parse_from_arguments(struct args_value *, u_int);
 struct cmd_parse_tree	*cmd_parse_add_ref(struct cmd_parse_tree *);
 void			 cmd_parse_free(struct cmd_parse_tree *);
 struct cmd_parse_node	*cmd_parse_root(struct cmd_parse_tree *);
