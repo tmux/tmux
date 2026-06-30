@@ -1115,10 +1115,6 @@ cmd_parse_print_command(char **buf, struct cmd_parse_node *cmd, u_int depth)
 	}
 }
 
-/*
- * Emit a line break before a body line, or a space when printing on one
- * line.
- */
 static void
 cmd_parse_print_break(char **buf, u_int depth, int oneline)
 {
@@ -1130,12 +1126,6 @@ cmd_parse_print_break(char **buf, u_int depth, int oneline)
 	}
 }
 
-/*
- * An %if that shares a sequence with other commands must be printed on one
- * line, because only an inline %if reparses in that position; such an %if
- * always has single-sequence branch bodies, so this is lossless. An %if that
- * is alone in its sequence is printed over multiple lines.
- */
 static void
 cmd_parse_print_if(char **buf, struct cmd_parse_node *node, u_int depth,
     int oneline)
@@ -1208,11 +1198,15 @@ static void
 cmd_parse_print_sequence(char **buf, struct cmd_parse_node *seq, u_int depth)
 {
 	struct cmd_parse_node	*child;
-	int			 first = 1, oneline;
+	int			 first = 1, oneline = 0;
 
-	/* More than one item in a sequence forces everything onto one line. */
-	oneline = (TAILQ_FIRST(&seq->children) !=
-	    TAILQ_LAST(&seq->children, cmd_parse_nodes));
+	if (TAILQ_NEXT(TAILQ_FIRST(&seq->children), entry) != NULL) {
+		/*
+		 * If there is more than one item in a sequence, force
+		 * everything on to one line.
+		 */
+		oneline = 1;
+	}
 
 	TAILQ_FOREACH(child, &seq->children, entry) {
 		if (!first)
@@ -1238,6 +1232,101 @@ cmd_parse_print(struct cmd_parse_tree *tree)
 	if (buf == NULL)
 		buf = xstrdup("");
 	return (buf);
+}
+
+static char *
+cmd_parse_make_string(struct cmd_parse_node *node)
+{
+	struct cmd_parse_node	*child;
+	char			*s = NULL, *new;
+
+	if (node->type != CMD_PARSE_STRING)
+		return (NULL);
+
+	TAILQ_FOREACH(child, &node->children, entry) {
+		if (child->type != CMD_PARSE_TEXT) {
+			free(s);
+			return (NULL);
+		}
+		if (s == NULL)
+			s = xstrdup(child->value);
+		else {
+			xasprintf(&new, "%s%s", s, child->value);
+			free(s);
+			s = new;
+		}
+	}
+	if (s == NULL)
+		s = xstrdup("");
+	return (s);
+}
+
+static int
+cmd_parse_command_any_have(struct cmd_parse_node *node, int flag)
+{
+	struct cmd_parse_node	*child;
+	struct args_value	*values = NULL;
+	struct cmd		*cmd;
+	char			*cause = NULL;
+	u_int			 count = 0;
+	int			 found = 0;
+
+	if (node->type != CMD_PARSE_COMMAND)
+		return (0);
+
+	TAILQ_FOREACH(child, &node->children, entry) {
+		values = xreallocarray(values, count + 1, sizeof *values);
+		memset(&values[count], 0, sizeof values[count]);
+
+		switch (child->type) {
+		case CMD_PARSE_STRING:
+			values[count].type = ARGS_STRING;
+			values[count].string = cmd_parse_make_string(child);
+			if (values[count].string == NULL)
+				goto out;
+			break;
+		case CMD_PARSE_COMMANDS:
+			values[count].type = ARGS_COMMANDS;
+			values[count].cmd = cmd_parse_from_node(child);
+			break;
+		default:
+			fatalx("unexpected node type in command");
+		}
+		count++;
+	}
+
+	cmd = cmd_parse(values, count, NULL, node->line, 0, &cause);
+	if (cmd == NULL)
+		free(cause);
+	else {
+		if (cmd_get_entry(cmd)->flags & flag)
+			found = 1;
+		cmd_free(cmd);
+	}
+
+out:
+	args_free_values(values, count);
+	free(values);
+	return (found);
+}
+
+int
+cmd_parse_any_have(struct cmd_parse_tree *tree, int flag)
+{
+	struct cmd_parse_node	*seq, *node;
+
+	TAILQ_FOREACH(seq, &tree->root->children, entry) {
+		if (seq->type != CMD_PARSE_SEQUENCE)
+			continue;
+
+		TAILQ_FOREACH(node, &seq->children, entry) {
+			if (node->type != CMD_PARSE_COMMAND)
+				continue;
+			if (cmd_parse_command_any_have(node, flag))
+				return (1);
+		}
+	}
+	return (0);
 }
 
 static void printflike(1, 2)

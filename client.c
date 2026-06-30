@@ -69,40 +69,23 @@ static void		 client_dispatch_attached(struct imsg *);
 static void		 client_dispatch_wait(struct imsg *);
 static const char	*client_exit_message(void);
 
-static int
-client_next_has_flag(int argc, char **argv, int flag)
-{
-	struct args_value	*values = args_from_vector(argc, argv);
-	struct cmd		*cmd;
-	char			*cause;
-	int			 result = 0;
-
-	cmd = cmd_parse(values, argc, NULL, 0, 0, &cause);
-	if (cmd == NULL)
-		free(cause);
-	else {
-		if (cmd_get_entry(cmd)->flags & flag)
-			result = 1;
-		cmd_free(cmd);
-	}
-	args_free_values(values, argc);
-	free(values);
-	return (result);
-}
-
+/* Does any command have a flag? */
 static int
 client_command_has_flag(int argc, char **argv, int flag)
 {
-	int	start = 0, i;
+	struct args_value	*values;
+	struct cmd_parse_tree	*tree;
+	int			 found;
 
-	for (i = 0; i <= argc; i++) {
-		if (i != argc && strcmp(argv[i], ";") != 0)
-			continue;
-		if (i != start && client_next_has_flag(i - start, argv + start, flag))
-			return (1);
-		start = i + 1;
-	}
-	return (0);
+	values = args_from_vector(argc, argv);
+	tree = cmd_parse_from_arguments(values, argc);
+	found = cmd_parse_any_have(tree, flag);
+
+	cmd_parse_free(tree);
+	args_free_values(values, argc);
+	free(values);
+
+	return (found);
 }
 
 /*
