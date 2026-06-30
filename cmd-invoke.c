@@ -288,6 +288,7 @@ cmd_invoke_if(struct cmdq_item *item, struct cmd_invoke_state *is,
 			if (cmd_invoke_is_true(item, is, next, &r) != 0)
 				return (-1);
 			if (r) {
+				next = cmd_parse_node_next(next);
 				cmd_invoke_push_branch(is, child, next);
 				return (0);
 			}
