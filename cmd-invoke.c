@@ -45,8 +45,6 @@ struct cmd_invoke_state {
 
 	int			 argc;
 	char		       **argv;
-	int			 parse_flags;
-	char			*file;
 };
 
 static void	cmd_invoke_push(struct cmd_invoke_state *,
@@ -61,9 +59,9 @@ static int	cmd_invoke_assignment(struct cmdq_item *,
 		    struct cmd_invoke_state *, struct cmd_parse_node *);
 static int	cmd_invoke_if(struct cmdq_item *, struct cmd_invoke_state *,
 		    struct cmd_parse_node *);
-static struct cmd	*cmd_invoke_build_command(struct cmdq_item *,
-			     struct cmd_invoke_state *, struct cmd_parse_node *);
-static int		 cmd_invoke_read_only(struct cmdq_item *, struct cmd *);
+static struct cmd *cmd_invoke_build_command(struct cmdq_item *,
+		     struct cmd_invoke_state *, struct cmd_parse_node *);
+static int	cmd_invoke_read_only(struct cmdq_item *, struct cmd *);
 
 /* Push a node's child range onto the traversal stack. */
 static void
@@ -321,15 +319,16 @@ static void
 cmd_invoke_error(struct cmdq_item *item, struct cmd_invoke_state *is,
     struct cmd_parse_node *node, const char *cause)
 {
-	u_int	line = cmd_parse_node_line(node);
+	const char	*file = cmd_parse_file(is->tree);
+	u_int		 line = cmd_parse_node_line(node);
 
 	if (cmdq_get_client(item) != NULL) {
 		cmdq_error(item, "%s", cause);
 		return;
 	}
 
-	if (is->file != NULL)
-		cfg_add_cause("%s:%u: %s", is->file, line, cause);
+	if (file != NULL)
+		cfg_add_cause("%s:%u: %s", file, line, cause);
 	else
 		cfg_add_cause("%s", cause);
 }
@@ -339,9 +338,13 @@ static struct cmd *
 cmd_invoke_build_command(struct cmdq_item *item, struct cmd_invoke_state *is,
     struct cmd_parse_node *node)
 {
+	struct cmd_parse_tree	*tree = is->tree;
 	struct cmd_parse_node	*child;
 	struct args_value	*values = NULL;
 	struct cmd		*cmd;
+	const char		*file = cmd_parse_file(is->tree);
+	u_int			 line = cmd_parse_node_line(node);
+	int			 flags = cmd_parse_flags(is->tree);
 	char			*cause = NULL;
 	u_int			 count = 0;
 
@@ -358,7 +361,7 @@ cmd_invoke_build_command(struct cmdq_item *item, struct cmd_invoke_state *is,
 			break;
 		case CMD_PARSE_COMMANDS:
 			values[count].type = ARGS_COMMANDS;
-			values[count].cmd = cmd_parse_from_node(child);
+			values[count].cmd = cmd_parse_from_node(tree, child);
 			break;
 		default:
 			fatalx("unexpected node type in command");
@@ -367,8 +370,7 @@ cmd_invoke_build_command(struct cmdq_item *item, struct cmd_invoke_state *is,
 		child = cmd_parse_node_next(child);
 	}
 
-	cmd = cmd_parse(values, count, is->file, cmd_parse_node_line(node),
-	    is->parse_flags, &cause);
+	cmd = cmd_parse(values, count, file, line, flags, &cause);
 	if (cmd == NULL) {
 		cmd_invoke_error(item, is, node, cause);
 		free(cause);
@@ -416,10 +418,6 @@ cmd_invoke_get(struct cmd_parse_tree *tree, struct cmdq_state *state,
 	is->references = 1;
 	is->tree = cmd_parse_add_ref(tree);
 
-	if (input->file != NULL)
-		is->file = xstrdup(input->file);
-	is->parse_flags = input->flags;
-
 	is->argc = input->argc;
 	if (input->argc != 0) {
 		is->argv = xreallocarray(NULL, input->argc, sizeof *is->argv);
@@ -459,7 +457,6 @@ cmd_invoke_state_free(struct cmd_invoke_state *is)
 	free(is->argv);
 
 	cmd_parse_free(is->tree);
-	free(is->file);
 	free(is->stack);
 	free(is);
 }

@@ -57,6 +57,8 @@ struct cmd_parse_node {
 
 struct cmd_parse_tree {
 	int				 references;
+	char				*file;
+	int				 flags;
 	struct cmd_parse_node		*root;
 };
 
@@ -619,6 +621,8 @@ cmd_parse_run_parser(char **cause)
 
 	tree = xcalloc(1, sizeof *tree);
 	tree->references = 1;
+	tree->file = ps->input->file != NULL ? xstrdup(ps->input->file) : NULL;
+	tree->flags = (ps->input->flags & ~CMD_PARSE_ONEGROUP);
 	tree->root = root;
 	return (tree);
 }
@@ -694,7 +698,7 @@ cmd_parse_from_string(const char *s, struct cmd_parse_input *pi, char **cause)
 }
 
 struct cmd_parse_tree *
-cmd_parse_from_node(struct cmd_parse_node *node)
+cmd_parse_from_node(struct cmd_parse_tree *tree, struct cmd_parse_node *node)
 {
 	struct cmd_parse_tree	*new;
 	struct cmd_parse_node	*root, *child, *copy;
@@ -708,6 +712,8 @@ cmd_parse_from_node(struct cmd_parse_node *node)
 
 	new = xcalloc(1, sizeof *new);
 	new->references = 1;
+	new->file = tree->file != NULL ? xstrdup(tree->file) : NULL;
+	new->flags = tree->flags;
 	new->root = root;
 	return (new);
 }
@@ -825,6 +831,7 @@ cmd_parse_free(struct cmd_parse_tree *tree)
 {
 	if (tree != NULL && --tree->references == 0) {
 		cmd_parse_free_node(tree->root);
+		free(tree->file);
 		free(tree);
 	}
 }
@@ -833,6 +840,18 @@ struct cmd_parse_node *
 cmd_parse_root(struct cmd_parse_tree *tree)
 {
 	return (tree->root);
+}
+
+const char *
+cmd_parse_file(struct cmd_parse_tree *tree)
+{
+	return (tree->file);
+}
+
+int
+cmd_parse_flags(struct cmd_parse_tree *tree)
+{
+	return (tree->flags);
 }
 
 enum cmd_parse_node_type
@@ -1262,7 +1281,8 @@ cmd_parse_make_string(struct cmd_parse_node *node)
 }
 
 static int
-cmd_parse_command_any_have(struct cmd_parse_node *node, int flag)
+cmd_parse_command_any_have(struct cmd_parse_tree *tree,
+    struct cmd_parse_node *node, int flag)
 {
 	struct cmd_parse_node	*child;
 	struct args_value	*values = NULL;
@@ -1289,7 +1309,7 @@ cmd_parse_command_any_have(struct cmd_parse_node *node, int flag)
 			break;
 		case CMD_PARSE_COMMANDS:
 			values[count].type = ARGS_COMMANDS;
-			values[count].cmd = cmd_parse_from_node(child);
+			values[count].cmd = cmd_parse_from_node(tree, child);
 			break;
 		default:
 			fatalx("unexpected node type in command");
@@ -1326,7 +1346,7 @@ cmd_parse_any_have(struct cmd_parse_tree *tree, int flag)
 		TAILQ_FOREACH(node, &seq->children, entry) {
 			if (node->type != CMD_PARSE_COMMAND)
 				continue;
-			r = cmd_parse_command_any_have(node, flag);
+			r = cmd_parse_command_any_have(tree, node, flag);
 			if (r < 0)
 				return (0);
 			if (r)
