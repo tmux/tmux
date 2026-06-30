@@ -1293,6 +1293,7 @@ struct window_pane {
 #define PANE_THEMECHANGED 0x2000
 #define PANE_UNSEENCHANGES 0x4000
 #define PANE_REDRAWSCROLLBAR 0x8000
+#define PANE_REDRAWDEFER 0x10000
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
@@ -1320,6 +1321,7 @@ struct window_pane {
 
 	struct window_pane_resizes resize_queue;
 	struct event	 resize_timer;
+	struct event	 redraw_timer;
 	struct event	 sync_timer;
 
 	struct input_ctx *ictx;
@@ -3584,6 +3586,8 @@ int		 window_pane_destroy_ready(struct window_pane *);
 void		 window_pane_resize(struct window_pane *, u_int, u_int);
 void		 window_pane_clear_resizes(struct window_pane *,
 		     struct window_pane_resize *);
+void		 window_pane_defer_redraw(struct window_pane *);
+void		 window_pane_finish_redraw(struct window_pane *);
 int		 window_pane_set_mode(struct window_pane *,
 		     struct window_pane *, const struct window_mode *,
 		     struct cmd_find_state *, struct args *);

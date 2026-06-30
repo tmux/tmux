@@ -72,6 +72,7 @@ static struct window_pane *window_pane_create(struct window *, u_int, u_int,
 		    u_int);
 static void	window_pane_destroy(struct window_pane *);
 static void	window_pane_scrollbar_timer(int, short, void *);
+static void	window_pane_redraw_timer(int, short, void *);
 static void	window_pane_full_size_offset(struct window_pane *wp,
 		    int *xoff, int *yoff, u_int *sx, u_int *sy);
 
@@ -1234,6 +1235,8 @@ window_pane_destroy(struct window_pane *wp)
 
 	if (event_initialized(&wp->resize_timer))
 		event_del(&wp->resize_timer);
+	if (event_initialized(&wp->redraw_timer))
+		event_del(&wp->redraw_timer);
 	if (event_initialized(&wp->sync_timer))
 		event_del(&wp->sync_timer);
 	if (event_initialized(&wp->sb_auto_timer))
@@ -1261,6 +1264,9 @@ window_pane_read_callback(__unused struct bufferevent *bufev, void *data)
 	char				*new_data;
 	size_t				 new_size;
 	struct client			*c;
+	int				 deferred;
+
+	deferred = (wp->flags & PANE_REDRAWDEFER);
 
 	if (wp->pipe_fd != -1) {
 		new_data = window_pane_get_new_data(wp, wpo, &new_size);
@@ -1276,6 +1282,8 @@ window_pane_read_callback(__unused struct bufferevent *bufev, void *data)
 			control_write_output(c, wp);
 	}
 	input_parse_pane(wp);
+	if (deferred)
+		window_pane_finish_redraw(wp);
 	bufferevent_disable(wp->event, EV_READ);
 }
 
@@ -1318,6 +1326,35 @@ window_pane_clear_resizes(struct window_pane *wp,
 		TAILQ_REMOVE(&wp->resize_queue, r, entry);
 		free(r);
 	}
+}
+
+static void
+window_pane_redraw_timer(__unused int fd, __unused short events, void *arg)
+{
+	window_pane_finish_redraw(arg);
+}
+
+void
+window_pane_defer_redraw(struct window_pane *wp)
+{
+	struct timeval	 tv = { .tv_usec = 50000 };
+
+	wp->flags |= PANE_REDRAWDEFER;
+	if (!event_initialized(&wp->redraw_timer))
+		evtimer_set(&wp->redraw_timer, window_pane_redraw_timer, wp);
+	evtimer_del(&wp->redraw_timer);
+	evtimer_add(&wp->redraw_timer, &tv);
+}
+
+void
+window_pane_finish_redraw(struct window_pane *wp)
+{
+	if (~wp->flags & PANE_REDRAWDEFER)
+		return;
+	evtimer_del(&wp->redraw_timer);
+	wp->flags &= ~PANE_REDRAWDEFER;
+	wp->flags |= PANE_REDRAW;
+	server_redraw_window(wp->window);
 }
 
 void

@@ -146,7 +146,7 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	if (wp->layout_cell == NULL)
 		return (0);
 
-	if (wp->flags & (PANE_REDRAW|PANE_DROP))
+	if (wp->flags & (PANE_REDRAW|PANE_DROP|PANE_REDRAWDEFER))
 		return (-1);
 	if (c->flags & CLIENT_REDRAWWINDOW) {
 		/*
@@ -3017,6 +3017,7 @@ screen_write_alternateon(struct screen_write_ctx *ctx, struct grid_cell *gc,
 		if (!TAILQ_EMPTY(&wp->resize_queue)) {
 			window_pane_send_resize(wp, wp->sx, wp->sy);
 			window_pane_clear_resizes(wp, NULL);
+			window_pane_defer_redraw(wp);
 		}
 		server_redraw_window_borders(wp->window);
 	}

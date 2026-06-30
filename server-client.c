@@ -2245,6 +2245,18 @@ server_client_any_pane_redraw(struct client *c)
 	return (0);
 }
 
+static int
+server_client_redraw_deferred(struct window *w)
+{
+	struct window_pane	*wp;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp->flags & PANE_REDRAWDEFER)
+			return (1);
+	}
+	return (0);
+}
+
 /* Check for client redraws. */
 static void
 server_client_check_redraw(struct client *c)
@@ -2259,6 +2271,8 @@ server_client_check_redraw(struct client *c)
 	size_t			 n;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
+		return;
+	if (server_client_redraw_deferred(w))
 		return;
 	if (c->flags & CLIENT_ALLREDRAWFLAGS) {
 		log_debug("%s: redraw%s%s%s%s", c->name,
