@@ -688,41 +688,21 @@ key_bindings_init(void)
 	cmdq_append(NULL, cmdq_get_callback(key_bindings_init_done, NULL));
 }
 
-static enum cmd_retval
-key_bindings_read_only(struct cmdq_item *item, __unused void *data)
-{
-	cmdq_error(item, "client is read-only");
-	return (CMD_RETURN_ERROR);
-}
-
 struct cmdq_item *
 key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
     struct client *c, struct key_event *event, struct cmd_find_state *fs)
 {
 	struct cmdq_item	*new_item;
 	struct cmdq_state	*new_state;
-	int			 readonly, flags = 0;
+	int			 flags = 0;
 
-	if (c == NULL || (~c->flags & CLIENT_READONLY))
-		readonly = 1;
-	else {
-#if 0 /* XXX: command parser conversion */
-		readonly = cmd_list_all_have(bd->cmdlist, CMD_READONLY);
-#else
-		readonly = 0;
-#endif
-	}
+	if (bd->flags & KEY_BINDING_REPEAT)
+		flags |= CMDQ_STATE_REPEAT;
+	new_state = cmdq_new_state(fs, event, flags);
 
-	if (!readonly)
-		new_item = cmdq_get_callback(key_bindings_read_only, NULL);
-	else {
-		if (bd->flags & KEY_BINDING_REPEAT)
-			flags |= CMDQ_STATE_REPEAT;
-		new_state = cmdq_new_state(fs, event, flags);
+	new_item = cmd_invoke_get(bd->cmd, new_state, NULL);
+	cmdq_free_state(new_state);
 
-		new_item = cmd_invoke_get(bd->cmd, new_state, NULL);
-		cmdq_free_state(new_state);
-	}
 	if (item != NULL)
 		new_item = cmdq_insert_after(item, new_item);
 	else

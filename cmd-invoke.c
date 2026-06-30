@@ -61,8 +61,9 @@ static int	cmd_invoke_assignment(struct cmdq_item *,
 		    struct cmd_invoke_state *, struct cmd_parse_node *);
 static int	cmd_invoke_if(struct cmdq_item *, struct cmd_invoke_state *,
 		    struct cmd_parse_node *);
-static struct cmd *cmd_invoke_build_command(struct cmdq_item *,
-		    struct cmd_invoke_state *, struct cmd_parse_node *);
+static struct cmd	*cmd_invoke_build_command(struct cmdq_item *,
+			     struct cmd_invoke_state *, struct cmd_parse_node *);
+static int		 cmd_invoke_read_only(struct cmdq_item *, struct cmd *);
 
 /* Push a node's child range onto the traversal stack. */
 static void
@@ -365,6 +366,20 @@ fail:
 	return (NULL);
 }
 
+static int
+cmd_invoke_read_only(struct cmdq_item *item, struct cmd *cmd)
+{
+	struct client		*c = cmdq_get_client(item);
+	const struct cmd_entry	*entry = cmd_get_entry(cmd);
+
+	if (c == NULL || (~c->flags & CLIENT_READONLY))
+		return (0);
+	if (entry->flags & CMD_READONLY)
+		return (0);
+	cmdq_error(item, "client is read-only");
+	return (-1);
+}
+
 /* Create the first invoke queue item for a parsed tree. */
 struct cmdq_item *
 cmd_invoke_get(struct cmd_parse_tree *tree, struct cmdq_state *state,
@@ -484,6 +499,11 @@ cmd_invoke_fire(struct cmdq_item *item, struct cmd_invoke_state *is)
 		case CMD_PARSE_COMMAND:
 			cmd = cmd_invoke_build_command(item, is, node);
 			if (cmd == NULL) {
+				cmd_invoke_skip_sequence(is);
+				break;
+			}
+			if (cmd_invoke_read_only(item, cmd) != 0) {
+				cmd_free(cmd);
 				cmd_invoke_skip_sequence(is);
 				break;
 			}
