@@ -1977,6 +1977,15 @@ struct cmd_entry {
 	enum cmd_retval	 (*exec)(struct cmd *, struct cmdq_item *);
 };
 
+/* Command invocation input. */
+struct cmd_invoke_input {
+	const char	*file;
+	int		 flags;
+
+	int		 argc;
+	char	       **argv;
+};
+
 /* Status line. */
 #define STATUS_LINES_LIMIT 5
 struct status_line {
@@ -2988,7 +2997,7 @@ enum cmd_retval	 cmd_attach_session(struct cmdq_item *, const char *, int, int,
 
 /* cmd-invoke.c */
 struct cmdq_item *cmd_invoke_get(struct cmd_parse_tree *, struct cmdq_state *,
-	    int, char **);
+		     const struct cmd_invoke_input *);
 struct cmd_invoke_state *cmd_invoke_state_add_ref(struct cmd_invoke_state *);
 void		 cmd_invoke_state_free(struct cmd_invoke_state *);
 void		 cmd_invoke_result(struct cmd_invoke_state *, enum cmd_retval);

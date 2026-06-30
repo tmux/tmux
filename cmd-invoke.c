@@ -366,8 +366,8 @@ fail:
 
 /* Create the first invoke queue item for a parsed tree. */
 struct cmdq_item *
-cmd_invoke_get(struct cmd_parse_tree *tree, struct cmdq_state *state, int argc,
-    char **argv)
+cmd_invoke_get(struct cmd_parse_tree *tree, struct cmdq_state *state,
+    const struct cmd_invoke_input *input)
 {
 	struct cmd_invoke_state	*is;
 	struct cmd_parse_node	*root = cmd_parse_root(tree), *first;
@@ -377,14 +377,16 @@ cmd_invoke_get(struct cmd_parse_tree *tree, struct cmdq_state *state, int argc,
 	is = xcalloc(1, sizeof *is);
 	is->references = 1;
 	is->tree = cmd_parse_add_ref(tree);
-	log_debug("%s: tree %p", __func__, tree);
-	cmd_parse_log(__func__, tree);
 
-	is->argc = argc;
-	if (argc != 0) {
-		is->argv = xreallocarray(NULL, argc, sizeof *is->argv);
-		for (i = 0; i < argc; i++)
-			is->argv[i] = xstrdup(argv[i]);
+	if (input->file != NULL)
+		is->file = xstrdup(input->file);
+	is->parse_flags = input->flags;
+
+	is->argc = input->argc;
+	if (input->argc != 0) {
+		is->argv = xreallocarray(NULL, input->argc, sizeof *is->argv);
+		for (i = 0; i < input->argc; i++)
+			is->argv[i] = xstrdup(input->argv[i]);
 	}
 
 	first = cmd_parse_node_first_child(root);
@@ -472,13 +474,12 @@ cmd_invoke_fire(struct cmdq_item *item, struct cmd_invoke_state *is)
 			}
 			break;
 		case CMD_PARSE_ELIF:
-		case CMD_PARSE_ELSE:
-			break;
-		case CMD_PARSE_COMMAND:
-			fatalx("XXX: command execution not implemented yet");
-			cmd = cmd_invoke_build_command(item, is, node);
-			if (cmd == NULL) {
-				cmd_invoke_skip_sequence(is);
+	case CMD_PARSE_ELSE:
+		break;
+	case CMD_PARSE_COMMAND:
+		cmd = cmd_invoke_build_command(item, is, node);
+		if (cmd == NULL) {
+			cmd_invoke_skip_sequence(is);
 				break;
 			}
 
