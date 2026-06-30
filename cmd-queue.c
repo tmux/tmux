@@ -369,7 +369,7 @@ cmdq_insert_hook(struct session *s, struct cmdq_item *item,
 	struct cmdq_state		*new_state;
 	struct options_entry		*o;
 	struct options_array_item	*a;
-	struct cmd_list			*cmdlist;
+	struct cmd_parse_tree		*tree;
 
 	if (item->state->flags & CMDQ_STATE_NOHOOKS)
 		return;
@@ -429,9 +429,9 @@ cmdq_insert_hook(struct session *s, struct cmdq_item *item,
 
 	a = options_array_first(o);
 	while (a != NULL) {
-		cmdlist = options_array_item_value(a)->cmdlist;
-		if (cmdlist != NULL) {
-			new_item = cmdq_get_command(cmdlist, new_state);
+		tree = options_array_item_value(a)->cmd;
+		if (tree != NULL) {
+			new_item = cmd_invoke_get(tree, new_state, NULL);
 			if (item != NULL)
 				item = cmdq_insert_after(item, new_item);
 			else

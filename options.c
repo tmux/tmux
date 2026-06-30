@@ -125,8 +125,8 @@ options_value_free(struct options_entry *o, union options_value *ov)
 {
 	if (OPTIONS_IS_STRING(o))
 		free(ov->string);
-	if (OPTIONS_IS_COMMAND(o) && ov->cmdlist != NULL)
-		cmd_list_free(ov->cmdlist);
+	if (OPTIONS_IS_COMMAND(o))
+		cmd_parse_free(ov->cmd);
 }
 
 static char *
@@ -136,7 +136,7 @@ options_value_to_string(struct options_entry *o, union options_value *ov,
 	char	*s;
 
 	if (OPTIONS_IS_COMMAND(o))
-		return (cmd_list_print(ov->cmdlist, 0));
+		return (cmd_parse_print(ov->cmd));
 	if (OPTIONS_IS_NUMBER(o)) {
 		switch (o->tableentry->type) {
 		case OPTIONS_TABLE_NUMBER:
@@ -259,6 +259,7 @@ options_default(struct options *oo, const struct options_table_entry *oe)
 {
 	struct options_entry	*o;
 	union options_value	*ov;
+	char			*error = NULL;
 	u_int			 i;
 
 	o = options_empty(oo, oe);
@@ -279,22 +280,9 @@ options_default(struct options *oo, const struct options_table_entry *oe)
 		ov->string = xstrdup(oe->default_str);
 		break;
 	case OPTIONS_TABLE_COMMAND:
-#if 0 /* XXX: command parser conversion */
-		struct cmd_parse_result	*pr;
-
-		pr = cmd_parse_from_string(oe->default_str, NULL);
-		switch (pr->status) {
-		case CMD_PARSE_ERROR:
-			free(pr->error);
-			break;
-		case CMD_PARSE_SUCCESS:
-			ov->cmdlist = pr->cmdlist;
-			break;
-		}
-#else
-		log_debug("XXX: command parser conversion not done for command option default %s",
-		    oe->name);
-#endif
+		ov->cmd = cmd_parse_from_string(oe->default_str, NULL, &error);
+		if (ov->cmd == NULL)
+			fatalx("bad default option %s", oe->name);
 		break;
 	default:
 		ov->number = oe->default_num;
@@ -443,6 +431,8 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 	struct options_array_item	*a;
 	char				*new;
 	long long		 	 number;
+	struct cmd_parse_tree		*tree;
+	char				*error = NULL;
 
 	if (!OPTIONS_IS_ARRAY(o)) {
 		if (cause != NULL)
@@ -458,19 +448,13 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 	}
 
 	if (OPTIONS_IS_COMMAND(o)) {
-#if 0 /* XXX: command parser conversion */
-		struct cmd_parse_result	*pr;
-
-		pr = cmd_parse_from_string(value, NULL);
-		switch (pr->status) {
-		case CMD_PARSE_ERROR:
+		tree = cmd_parse_from_string(value, NULL, &error);
+		if (tree == NULL) {
 			if (cause != NULL)
-				*cause = pr->error;
+				*cause = error;
 			else
-				free(pr->error);
+				free(error);
 			return (-1);
-		case CMD_PARSE_SUCCESS:
-			break;
 		}
 
 		a = options_array_item(o, idx);
@@ -478,15 +462,8 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 			a = options_array_new(o, idx);
 		else
 			options_value_free(o, &a->value);
-		a->value.cmdlist = pr->cmdlist;
+		a->value.cmd = tree;
 		return (0);
-#else
-		if (cause != NULL) {
-			xasprintf(cause,
-			    "XXX: command parser conversion not done for command option array");
-		}
-		return (-1);
-#endif
 	}
 
 	if (OPTIONS_IS_STRING(o)) {
@@ -776,7 +753,7 @@ options_get_number(struct options *oo, const char *name)
 	return (o->value.number);
 }
 
-struct cmd_list *
+struct cmd_parse_tree *
 options_get_command(struct options *oo, const char *name)
 {
 	struct options_entry	*o;
@@ -786,7 +763,7 @@ options_get_command(struct options *oo, const char *name)
 		fatalx("missing option %s", name);
 	if (!OPTIONS_IS_COMMAND(o))
 		fatalx("option %s is not a command", name);
-	return (o->value.cmdlist);
+	return (o->value.cmd);
 }
 
 struct options_entry *
@@ -852,7 +829,7 @@ options_set_number(struct options *oo, const char *name, long long value)
 
 struct options_entry *
 options_set_command(struct options *oo, const char *name,
-    struct cmd_list *value)
+    struct cmd_parse_tree *value)
 {
 	struct options_entry	*o;
 
@@ -868,9 +845,8 @@ options_set_command(struct options *oo, const char *name,
 
 	if (!OPTIONS_IS_COMMAND(o))
 		fatalx("option %s is not a command", name);
-	if (o->value.cmdlist != NULL)
-		cmd_list_free(o->value.cmdlist);
-	o->value.cmdlist = value;
+	cmd_parse_free(o->value.cmd);
+	o->value.cmd = cmd_parse_add_ref(value);
 	return (o);
 }
 
@@ -1146,6 +1122,8 @@ options_from_string(struct options *oo, const struct options_table_entry *oe,
 	const char		*errstr, *new;
 	char			*old;
 	key_code		 key;
+	struct cmd_parse_tree	*tree;
+	struct cmd_parse_input	 pi = { 0 };
 
 	if (oe != NULL) {
 		if (value == NULL &&
@@ -1203,25 +1181,14 @@ options_from_string(struct options *oo, const struct options_table_entry *oe,
 		return (options_from_string_flag(oo, name, value, cause));
 	case OPTIONS_TABLE_CHOICE:
 		return (options_from_string_choice(oe, oo, name, value, cause));
-	case OPTIONS_TABLE_COMMAND:
-#if 0 /* XXX: command parser conversion */
-		struct cmd_parse_result	*pr;
-
-		pr = cmd_parse_from_string(value, NULL);
-		switch (pr->status) {
-		case CMD_PARSE_ERROR:
-			*cause = pr->error;
+	case OPTIONS_TABLE_COMMAND: {
+		tree = cmd_parse_from_string(value, &pi, cause);
+		if (tree == NULL)
 			return (-1);
-		case CMD_PARSE_SUCCESS:
-			options_set_command(oo, name, pr->cmdlist);
-			return (0);
-		}
-		break;
-#else
-		xasprintf(cause,
-		    "XXX: command parser conversion not done for command option");
-		return (-1);
-#endif
+		options_set_command(oo, name, tree);
+		cmd_parse_free(tree);
+		return (0);
+	}
 	}
 	return (-1);
 }

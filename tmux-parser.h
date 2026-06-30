@@ -43,9 +43,9 @@ struct args_value;
 struct cmd_parse_input {
 	int			 flags;
 #define CMD_PARSE_QUIET 0x1
-#define CMD_PARSE_PARSEONLY 0x2 /* XXX */
-#define CMD_PARSE_NOALIAS 0x4 /* XXX */
-#define CMD_PARSE_VERBOSE 0x8 /* XXX */
+#define CMD_PARSE_PARSEONLY 0x2
+#define CMD_PARSE_NOALIAS 0x4
+#define CMD_PARSE_VERBOSE 0x8
 #define CMD_PARSE_ONEGROUP 0x10
 
 	const char		*file;

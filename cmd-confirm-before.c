@@ -100,8 +100,7 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 			cdata->confirm_key = confirm_key[0];
 		else {
 			cmdq_error(item, "invalid confirm key");
-			cmd_parse_free(cdata->tree);
-			free(cdata);
+			cmd_confirm_before_free(cdata);
 			return (CMD_RETURN_ERROR);
 		}
 	}

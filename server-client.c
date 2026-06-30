@@ -2527,28 +2527,15 @@ bad:
 	proc_kill_peer(c->peer);
 }
 
-/* Callback when command is not allowed. */
-static enum cmd_retval
-server_client_read_only(struct cmdq_item *item, __unused void *data)
-{
-	cmdq_error(item, "client is read-only");
-	return (CMD_RETURN_ERROR);
-}
-
 /* Callback for default command. */
 static enum cmd_retval
 server_client_default_command(struct cmdq_item *item, __unused void *data)
 {
-	struct client		*c = cmdq_get_client(item);
-	struct cmd_list		*cmdlist;
+	struct cmd_parse_tree	*tree;
 	struct cmdq_item	*new_item;
 
-	cmdlist = options_get_command(global_options, "default-client-command");
-	if ((c->flags & CLIENT_READONLY) &&
-	    !cmd_list_all_have(cmdlist, CMD_READONLY))
-		new_item = cmdq_get_callback(server_client_read_only, NULL);
-	else
-		new_item = cmdq_get_command(cmdlist, NULL);
+	tree = options_get_command(global_options, "default-client-command");
+	new_item = cmd_invoke_get(tree, NULL, NULL);
 	cmdq_insert_after(item, new_item);
 	return (CMD_RETURN_NORMAL);
 }

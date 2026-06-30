@@ -791,12 +791,10 @@ cmd_parse_add_ref(struct cmd_parse_tree *tree)
 void
 cmd_parse_free(struct cmd_parse_tree *tree)
 {
-	if (tree == NULL)
-		return;
-	if (--tree->references != 0)
-		return;
-	cmd_parse_free_node(tree->root);
-	free(tree);
+	if (tree != NULL && --tree->references == 0) {
+		cmd_parse_free_node(tree->root);
+		free(tree);
+	}
 }
 
 struct cmd_parse_node *

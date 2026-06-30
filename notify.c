@@ -37,19 +37,19 @@ struct notify_entry {
 
 static struct cmdq_item *
 notify_insert_one_hook(struct cmdq_item *item, struct notify_entry *ne,
-    struct cmd_list *cmdlist, struct cmdq_state *state)
+    struct cmd_parse_tree *tree, struct cmdq_state *state)
 {
 	struct cmdq_item	*new_item;
 	char			*s;
 
-	if (cmdlist == NULL)
+	if (tree == NULL)
 		return (item);
 	if (log_get_level() != 0) {
-		s = cmd_list_print(cmdlist, 0);
+		s = cmd_parse_print(tree);
 		log_debug("%s: hook %s is: %s", __func__, ne->name, s);
 		free(s);
 	}
-	new_item = cmdq_get_command(cmdlist, state);
+	new_item = cmd_invoke_get(tree, state, NULL);
 	return (cmdq_insert_after(item, new_item));
 }
 
@@ -61,7 +61,7 @@ notify_insert_hook(struct cmdq_item *item, struct notify_entry *ne)
 	struct cmdq_state		*state;
 	struct options_entry		*o;
 	struct options_array_item	*a;
-	struct cmd_list			*cmdlist;
+	struct cmd_parse_tree		*tree;
 
 	log_debug("%s: inserting hook %s", __func__, ne->name);
 
@@ -116,8 +116,8 @@ notify_insert_hook(struct cmdq_item *item, struct notify_entry *ne)
 	} else {
 		a = options_array_first(o);
 		while (a != NULL) {
-			cmdlist = options_array_item_value(a)->cmdlist;
-			item = notify_insert_one_hook(item, ne, cmdlist, state);
+			tree = options_array_item_value(a)->cmd;
+			item = notify_insert_one_hook(item, ne, tree, state);
 			a = options_array_next(a);
 		}
 	}
