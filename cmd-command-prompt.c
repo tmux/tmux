@@ -85,7 +85,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 	struct args			*args = cmd_get_args(self);
 	struct client			*tc = cmdq_get_target_client(item);
 	struct cmd_find_state		*target = cmdq_get_target(item);
-	const char			*type, *s, *input, *cmd, *file;
+	const char			*type, *s, *input, *cmd;
 	struct cmd_command_prompt_cdata *cdata;
 	char				*tmp, *prompts, *prompt, *next_prompt;
 	char				*inputs = NULL, *next_input, *cause = NULL;
