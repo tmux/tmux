@@ -123,7 +123,7 @@ screen_reinit(struct screen *s)
 	s->saved_cy = UINT_MAX;
 
 	screen_reset_tabs(s);
-
+	grid_check_is_clear(s->grid);
 	grid_clear_lines(s->grid, s->grid->hsize, s->grid->sy, 8);
 
 	screen_clear_selection(s);

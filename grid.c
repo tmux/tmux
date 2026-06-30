@@ -74,9 +74,43 @@ grid_check_lines(struct grid *gd)
 		}
 	}
 }
+
+void
+grid_check_is_clear(struct grid *gd)
+{
+	struct grid_line	*gl;
+	u_int			 yy, ny;
+
+	assert(gd != NULL);
+
+	if (gd->sy == 0) {
+		assert(gd->linedata == NULL);
+		return;
+	}
+
+	assert(gd->linedata != NULL);
+
+	ny = gd->hsize + gd->sy;
+	for (yy = 0; yy < ny; yy++) {
+		gl = &gd->linedata[yy];
+
+		assert(gl->celldata == NULL);
+		assert(gl->cellused == 0);
+		assert(gl->cellsize == 0);
+		assert(gl->extddata == NULL);
+		assert(gl->extdsize == 0);
+		assert(gl->flags == 0);
+		assert(gl->time == 0);
+	}
+}
 #else
 static void
 grid_check_lines(__unused struct grid *gd)
+{
+}
+
+void
+grid_check_is_clear(__unused struct grid *gd)
 {
 }
 #endif
@@ -341,28 +375,18 @@ grid_create(u_int sx, u_int sy, u_int hlimit)
 {
 	struct grid	*gd;
 
-	gd = xmalloc(sizeof *gd);
+	gd = xcalloc(1, sizeof *gd);
 	gd->sx = sx;
 	gd->sy = sy;
 
 	if (hlimit != 0)
 		gd->flags = GRID_HISTORY;
-	else
-		gd->flags = 0;
-
-	gd->hscrolled = 0;
-	gd->hsize = 0;
 	gd->hlimit = hlimit;
-
-	gd->scroll_added = 0;
-	gd->scroll_collected = 0;
-	gd->scroll_generation = 0;
 
 	if (gd->sy != 0)
 		gd->linedata = xcalloc(gd->sy, sizeof *gd->linedata);
-	else
-		gd->linedata = NULL;
 
+	grid_check_is_clear(gd);
 	return (gd);
 }
 

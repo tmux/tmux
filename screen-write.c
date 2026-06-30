@@ -1011,6 +1011,8 @@ screen_write_stop_sync(struct window_pane *wp)
 		evtimer_del(&wp->sync_timer);
 	wp->base.mode &= ~MODE_SYNC;
 
+	wp->flags |= PANE_REDRAW;
+
 	log_debug("%s: %%%u stopped sync mode", __func__, wp->id);
 }
 
