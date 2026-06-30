@@ -69,6 +69,42 @@ static void		 client_dispatch_attached(struct imsg *);
 static void		 client_dispatch_wait(struct imsg *);
 static const char	*client_exit_message(void);
 
+static int
+client_next_has_flag(int argc, char **argv, int flag)
+{
+	struct args_value	*values = args_from_vector(argc, argv);
+	struct cmd		*cmd;
+	char			*cause;
+	int			 result = 0;
+
+	cmd = cmd_parse(values, argc, NULL, 0, 0, &cause);
+	if (cmd == NULL)
+		free(cause);
+	else {
+		if (cmd_get_entry(cmd)->flags & flag)
+			result = 1;
+		cmd_free(cmd);
+	}
+	args_free_values(values, argc);
+	free(values);
+	return (result);
+}
+
+static int
+client_command_has_flag(int argc, char **argv, int flag)
+{
+	int	start = 0, i;
+
+	for (i = 0; i <= argc; i++) {
+		if (i != argc && strcmp(argv[i], ";") != 0)
+			continue;
+		if (i != start && client_next_has_flag(i - start, argv + start, flag))
+			return (1);
+		start = i + 1;
+	}
+	return (0);
+}
+
 /*
  * Get server create lock. If already held then server start is happening in
  * another client, so block until the lock is released and return -2 to
@@ -252,33 +288,8 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 		flags |= CLIENT_STARTSERVER;
 	} else {
 		msg = MSG_COMMAND;
-
-#if 0 /* XXX: command parser conversion */
-		struct cmd_parse_result	*pr;
-		struct args_value	*values;
-
-		/*
-		 * It's annoying parsing the command string twice (in client
-		 * and later in server) but it is necessary to get the start
-		 * server flag.
-		 */
-		values = args_from_vector(argc, argv);
-		pr = cmd_parse_from_arguments(values, argc, NULL);
-		if (pr->status == CMD_PARSE_SUCCESS) {
-			if (cmd_list_any_have(pr->cmdlist, CMD_STARTSERVER))
-				flags |= CLIENT_STARTSERVER;
-			cmd_list_free(pr->cmdlist);
-		} else
-			free(pr->error);
-		args_free_values(values, argc);
-		free(values);
-#else
-		/*
-		 * XXX: command parser conversion. The old parser was used only
-		 * to detect CMD_STARTSERVER here.
-		 */
-		flags |= CLIENT_STARTSERVER;
-#endif
+		if (client_command_has_flag(argc, argv, CMD_STARTSERVER))
+			flags |= CLIENT_STARTSERVER;
 	}
 
 	/* Create client process structure (starts logging). */
