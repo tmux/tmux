@@ -316,6 +316,24 @@ cmd_invoke_if(struct cmdq_item *item, struct cmd_invoke_state *is,
 	return (0);
 }
 
+/* Report an error from an invoke item. */
+static void
+cmd_invoke_error(struct cmdq_item *item, struct cmd_invoke_state *is,
+    struct cmd_parse_node *node, const char *cause)
+{
+	u_int	line = cmd_parse_node_line(node);
+
+	if (cmdq_get_client(item) != NULL) {
+		cmdq_error(item, "%s", cause);
+		return;
+	}
+
+	if (is->file != NULL)
+		cfg_add_cause("%s:%u: %s", is->file, line, cause);
+	else
+		cfg_add_cause("%s", cause);
+}
+
 /* Build one command from a parsed command node. */
 static struct cmd *
 cmd_invoke_build_command(struct cmdq_item *item, struct cmd_invoke_state *is,
@@ -352,7 +370,7 @@ cmd_invoke_build_command(struct cmdq_item *item, struct cmd_invoke_state *is,
 	cmd = cmd_parse(values, count, is->file, cmd_parse_node_line(node),
 	    is->parse_flags, &cause);
 	if (cmd == NULL) {
-		cmdq_error(item, "%s", cause);
+		cmd_invoke_error(item, is, node, cause);
 		free(cause);
 		goto fail;
 	}
