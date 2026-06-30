@@ -2093,10 +2093,10 @@ server_client_reset_state(struct client *c)
 					mode |= MODE_MOUSE_ALL;
 			}
 		}
-	if (options_get_number(oo, "focus-follows-mouse") ||
-	    w->sb == PANE_SCROLLBARS_MODAL ||
-	    w->sb == PANE_SCROLLBARS_AUTOHIDE)
-		mode |= MODE_MOUSE_ALL;
+		if (options_get_number(oo, "focus-follows-mouse") ||
+		    w->sb == PANE_SCROLLBARS_MODAL ||
+		    w->sb == PANE_SCROLLBARS_AUTOHIDE)
+			mode |= MODE_MOUSE_ALL;
 		else if (~mode & MODE_MOUSE_ALL)
 			mode |= MODE_MOUSE_BUTTON;
 	}
