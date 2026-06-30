@@ -27,6 +27,7 @@
 
 /* One frame in the parse tree stack. */
 struct cmd_invoke_frame {
+	struct cmd_parse_tree	*tree;
 	struct cmd_parse_node	*node;
 	struct cmd_parse_node	*next;
 	struct cmd_parse_node	*end;
@@ -36,6 +37,7 @@ struct cmd_invoke_frame {
 struct cmd_invoke_state {
 	u_int			 references;
 	struct cmd_parse_tree	*tree;
+	struct cmd_parse_tree	*current_tree;
 
 	struct cmd_invoke_frame	*stack;
 	u_int			 nstack;
@@ -48,8 +50,9 @@ struct cmd_invoke_state {
 };
 
 static void	cmd_invoke_push(struct cmd_invoke_state *,
-		    struct cmd_parse_node *, struct cmd_parse_node *,
-		    struct cmd_parse_node *);
+		    struct cmd_parse_tree *, struct cmd_parse_node *,
+		    struct cmd_parse_node *, struct cmd_parse_node *);
+static struct cmd_parse_tree *cmd_invoke_tree(struct cmd_invoke_state *);
 static struct cmd_parse_node *cmd_invoke_next(struct cmd_invoke_state *);
 static void	cmd_invoke_skip_sequence(struct cmd_invoke_state *);
 static int	cmd_invoke_expand_string(struct cmdq_item *,
@@ -60,21 +63,31 @@ static int	cmd_invoke_assignment(struct cmdq_item *,
 static int	cmd_invoke_if(struct cmdq_item *, struct cmd_invoke_state *,
 		    struct cmd_parse_node *);
 static struct cmd *cmd_invoke_build_command(struct cmdq_item *,
-		     struct cmd_invoke_state *, struct cmd_parse_node *);
+		    struct cmd_invoke_state *, struct cmd_parse_node *);
 static int	cmd_invoke_read_only(struct cmdq_item *, struct cmd *);
 
 /* Push a node's child range onto the traversal stack. */
 static void
-cmd_invoke_push(struct cmd_invoke_state *is, struct cmd_parse_node *node,
-    struct cmd_parse_node *first, struct cmd_parse_node *end)
+cmd_invoke_push(struct cmd_invoke_state *is, struct cmd_parse_tree *tree,
+    struct cmd_parse_node *node, struct cmd_parse_node *first,
+    struct cmd_parse_node *end)
 {
 	u_int	n = is->nstack + 1;
 
 	is->stack = xreallocarray(is->stack, n, sizeof *is->stack);
+	is->stack[is->nstack].tree = cmd_parse_add_ref(tree);
 	is->stack[is->nstack].node = node;
 	is->stack[is->nstack].next = first;
 	is->stack[is->nstack].end = end;
 	is->nstack = n;
+}
+
+static struct cmd_parse_tree *
+cmd_invoke_tree(struct cmd_invoke_state *is)
+{
+	if (is->current_tree != NULL)
+		return (is->current_tree);
+	return (is->tree);
 }
 
 /* Return the next node to execute from the traversal stack. */
@@ -90,11 +103,13 @@ cmd_invoke_next(struct cmd_invoke_state *is)
 		frame = &is->stack[is->nstack - 1];
 		if (frame->next != NULL && frame->next != frame->end)
 			break;
+		cmd_parse_free(frame->tree);
 		is->nstack--;
 	}
 
 	node = frame->next;
 	frame->next = cmd_parse_node_next(node);
+	is->current_tree = frame->tree;
 	return (node);
 }
 
@@ -113,6 +128,8 @@ cmd_invoke_skip_sequence(struct cmd_invoke_state *is)
 		type = cmd_parse_node_type(is->stack[i - 1].node);
 		if (type == CMD_PARSE_SEQUENCE) {
 			is->stack[i - 1].next = is->stack[i - 1].end;
+			while (is->nstack > i)
+				cmd_parse_free(is->stack[--is->nstack].tree);
 			is->nstack = i;
 			break;
 		}
@@ -274,6 +291,7 @@ static int
 cmd_invoke_if(struct cmdq_item *item, struct cmd_invoke_state *is,
     struct cmd_parse_node *node)
 {
+	struct cmd_parse_tree	*tree = cmd_invoke_tree(is);
 	struct cmd_parse_node	*child, *first, *next;
 	int			 r;
 
@@ -285,7 +303,7 @@ cmd_invoke_if(struct cmdq_item *item, struct cmd_invoke_state *is,
 		return (-1);
 	if (r) {
 		next = cmd_invoke_if_branch_end(first);
-		cmd_invoke_push(is, node, first, next);
+		cmd_invoke_push(is, tree, node, first, next);
 		return (0);
 	}
 
@@ -299,13 +317,13 @@ cmd_invoke_if(struct cmdq_item *item, struct cmd_invoke_state *is,
 				return (-1);
 			if (r) {
 				next = cmd_parse_node_next(next);
-				cmd_invoke_push(is, child, next, NULL);
+				cmd_invoke_push(is, tree, child, next, NULL);
 				return (0);
 			}
 			break;
 		case CMD_PARSE_ELSE:
 			next = cmd_parse_node_first_child(child);
-			cmd_invoke_push(is, child, next, NULL);
+			cmd_invoke_push(is, tree, child, next, NULL);
 			return (0);
 		default:
 			break;
@@ -319,8 +337,9 @@ static void
 cmd_invoke_error(struct cmdq_item *item, struct cmd_invoke_state *is,
     struct cmd_parse_node *node, const char *cause)
 {
-	const char	*file = cmd_parse_file(is->tree);
-	u_int		 line = cmd_parse_node_line(node);
+	struct cmd_parse_tree	*tree = cmd_invoke_tree(is);
+	const char		*file = cmd_parse_file(tree);
+	u_int			 line = cmd_parse_node_line(node);
 
 	if (cmdq_get_client(item) != NULL) {
 		cmdq_error(item, "%s", cause);
@@ -338,7 +357,7 @@ static struct cmd *
 cmd_invoke_build_command(struct cmdq_item *item, struct cmd_invoke_state *is,
     struct cmd_parse_node *node)
 {
-	struct cmd_parse_tree	*tree = is->tree;
+	struct cmd_parse_tree	*tree = cmd_invoke_tree(is);
 	struct cmd_parse_node	*child;
 	struct args_value	*values = NULL;
 	struct cmd		*cmd;
@@ -426,7 +445,7 @@ cmd_invoke_get(struct cmd_parse_tree *tree, struct cmdq_state *state,
 	}
 
 	first = cmd_parse_node_first_child(root);
-	cmd_invoke_push(is, root, first, NULL);
+	cmd_invoke_push(is, tree, root, first, NULL);
 
 	item = cmdq_get_invoke(is, state);
 	cmd_invoke_state_free(is);
@@ -446,6 +465,7 @@ void
 cmd_invoke_state_free(struct cmd_invoke_state *is)
 {
 	int	i;
+	u_int	j;
 
 	if (is == NULL)
 		return;
@@ -455,6 +475,8 @@ cmd_invoke_state_free(struct cmd_invoke_state *is)
 	for (i = 0; i < is->argc; i++)
 		free(is->argv[i]);
 	free(is->argv);
+	for (j = 0; j < is->nstack; j++)
+		cmd_parse_free(is->stack[j].tree);
 
 	cmd_parse_free(is->tree);
 	free(is->stack);
@@ -473,10 +495,13 @@ cmd_invoke_result(struct cmd_invoke_state *is, enum cmd_retval retval)
 enum cmd_retval
 cmd_invoke_fire(struct cmdq_item *item, struct cmd_invoke_state *is)
 {
-	struct cmd_parse_node	*node;
+	struct cmd_parse_node	*node, *first;
+	struct cmd_parse_tree	*tree, *alias;
 	struct cmdq_item	*new_item, *next;
 	struct cmdq_state	*state;
 	struct cmd		*cmd;
+	char			*cause;
+	int			 r;
 
 	if (is->have_last && is->last == CMD_RETURN_ERROR)
 		cmd_invoke_skip_sequence(is);
@@ -489,11 +514,12 @@ cmd_invoke_fire(struct cmdq_item *item, struct cmd_invoke_state *is)
 			return (CMD_RETURN_NORMAL);
 		cmd_parse_log_node(__func__, node);
 
+		tree = cmd_invoke_tree(is);
 		switch (cmd_parse_node_type(node)) {
 		case CMD_PARSE_ROOT:
 		case CMD_PARSE_SEQUENCE:
-			cmd_invoke_push(is, node,
-			    cmd_parse_node_first_child(node), NULL);
+			first = cmd_parse_node_first_child(node);
+			cmd_invoke_push(is, tree, node, first, NULL);
 			break;
 		case CMD_PARSE_ASSIGN:
 		case CMD_PARSE_HIDDEN_ASSIGN:
@@ -512,6 +538,21 @@ cmd_invoke_fire(struct cmdq_item *item, struct cmd_invoke_state *is)
 		case CMD_PARSE_ELSE:
 			break;
 		case CMD_PARSE_COMMAND:
+			r = cmd_parse_expand_alias(tree, node, &alias, &cause);
+			if (r == 1) {
+				node = cmd_parse_root(alias);
+				first = cmd_parse_node_first_child(node);
+				cmd_invoke_push(is, alias, node, first, NULL);
+				cmd_parse_free(alias);
+				break;
+			}
+			if (r == -1) {
+				cmd_invoke_error(item, is, node, cause);
+				free(cause);
+				cmd_invoke_skip_sequence(is);
+				break;
+			}
+
 			cmd = cmd_invoke_build_command(item, is, node);
 			if (cmd == NULL) {
 				cmd_invoke_skip_sequence(is);

@@ -714,6 +714,81 @@ cmd_parse_from_node(struct cmd_parse_tree *tree, struct cmd_parse_node *node)
 	return (new);
 }
 
+/* Find the last command node in tree order. */
+static struct cmd_parse_node *
+cmd_parse_last_command(struct cmd_parse_node *node)
+{
+	struct cmd_parse_node	*child, *last = NULL, *found;
+
+	if (node->type == CMD_PARSE_COMMAND)
+		last = node;
+	TAILQ_FOREACH(child, &node->children, entry) {
+		found = cmd_parse_last_command(child);
+		if (found != NULL)
+			last = found;
+	}
+	return (last);
+}
+
+/*
+ * If cmd names an alias, parse the alias text as command language and append
+ * the original arguments after the alias name to the last expanded command.
+ */
+int
+cmd_parse_expand_alias(struct cmd_parse_tree *src, struct cmd_parse_node *cmd,
+    struct cmd_parse_tree **out, char **cause)
+{
+	struct cmd_parse_input	 pi;
+	struct cmd_parse_tree	*tree;
+	struct cmd_parse_node	*first, *node, *last, *loop, *copy;
+	char			*alias;
+
+	*out = NULL;
+	*cause = NULL;
+
+	if (cmd->type != CMD_PARSE_COMMAND)
+		return (0);
+	if (cmd_parse_flags(src) & CMD_PARSE_NOALIAS)
+		return (0);
+
+	first = TAILQ_FIRST(&cmd->children);
+	if (first == NULL)
+		return (0);
+	if (first->type != CMD_PARSE_STRING)
+		return (0);
+	node = TAILQ_FIRST(&first->children);
+	if (node == NULL || TAILQ_NEXT(node, entry) != NULL)
+		return (0);
+	if (node->type != CMD_PARSE_TEXT)
+		return (0);
+
+	alias = cmd_get_alias(node->value);
+	if (alias == NULL)
+		return (0);
+
+	memset(&pi, 0, sizeof pi);
+	pi.file = cmd_parse_file(src);
+	pi.line = cmd_parse_node_line(cmd);
+	pi.flags = cmd_parse_flags(src) | CMD_PARSE_NOALIAS;
+
+	tree = cmd_parse_from_string(alias, &pi, cause);
+	free(alias);
+	if (tree == NULL)
+		return (-1);
+
+	last = cmd_parse_last_command(cmd_parse_root(tree));
+	if (last != NULL) {
+		loop = TAILQ_NEXT(first, entry);
+		while (loop != NULL) {
+			copy = cmd_parse_copy_node(loop);
+			TAILQ_INSERT_TAIL(&last->children, copy, entry);
+			loop = TAILQ_NEXT(loop, entry);
+		}
+	}
+	*out = tree;
+	return (1);
+}
+
 /* Build a string node with a single literal text child. */
 static struct cmd_parse_node *
 cmd_parse_new_string_node(const char *s, u_int line)
@@ -1274,16 +1349,40 @@ static int
 cmd_parse_command_any_have(struct cmd_parse_tree *tree,
     struct cmd_parse_node *node, int flag)
 {
-	struct cmd_parse_node	*child;
+	struct cmd_parse_node	*child, *first, *text;
 	int			 flags = tree->flags;
 	struct args_value	*values = NULL;
 	struct cmd		*cmd;
 	char			*cause = NULL;
+	const char		*file = tree->file;
 	u_int			 count = 0;
-	int			 found = 0;
+	int			 found = 0, r;
 
 	if (node->type != CMD_PARSE_COMMAND)
 		return (0);
+	r = cmd_parse_expand_alias(tree, node, &tree, &cause);
+	if (r == 1) {
+		found = cmd_parse_any_have(tree, flag);
+		cmd_parse_free(tree);
+		return (found);
+	}
+	if (r == -1) {
+		free(cause);
+		return (-1);
+	}
+	first = TAILQ_FIRST(&node->children);
+	if (first != NULL && first->type == CMD_PARSE_STRING) {
+		text = TAILQ_FIRST(&first->children);
+		if (text != NULL && TAILQ_NEXT(text, entry) == NULL &&
+		    text->type == CMD_PARSE_TEXT) {
+			if (cmd_find(text->value, &cause) == NULL) {
+				free(cause);
+				return (-1);
+			}
+			free(cause);
+			cause = NULL;
+		}
+	}
 
 	TAILQ_FOREACH(child, &node->children, entry) {
 		values = xreallocarray(values, count + 1, sizeof *values);
@@ -1308,7 +1407,9 @@ cmd_parse_command_any_have(struct cmd_parse_tree *tree,
 		count++;
 	}
 
-	cmd = cmd_parse(values, count, tree->file, node->line, flags, &cause);
+	if (file == NULL)
+		file = "";
+	cmd = cmd_parse(values, count, file, node->line, flags, &cause);
 	if (cmd == NULL) {
 		free(cause);
 		found = -1;
@@ -1338,7 +1439,7 @@ cmd_parse_any_have(struct cmd_parse_tree *tree, int flag)
 			if (node->type != CMD_PARSE_COMMAND)
 				continue;
 			r = cmd_parse_command_any_have(tree, node, flag);
-			if (r < 0)
+			if (r < 0 && !found)
 				return (0);
 			if (r)
 				found = 1;

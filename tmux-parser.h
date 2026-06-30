@@ -79,6 +79,9 @@ struct cmd_parse_tree	*cmd_parse_from_string(const char *,
 			    struct cmd_parse_input *, char **);
 struct cmd_parse_tree	*cmd_parse_from_node(struct cmd_parse_tree *,
 			     struct cmd_parse_node *);
+int			 cmd_parse_expand_alias(struct cmd_parse_tree *,
+			     struct cmd_parse_node *, struct cmd_parse_tree **,
+			     char **);
 struct cmd_parse_tree	*cmd_parse_from_arguments(struct args_value *, u_int);
 struct cmd_parse_tree	*cmd_parse_add_ref(struct cmd_parse_tree *);
 int			 cmd_parse_any_have(struct cmd_parse_tree *, int);
