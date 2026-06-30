@@ -38,7 +38,29 @@
 
 struct cmd_parse_tree;
 struct cmd_parse_node;
-struct cmd_parse_input;
+
+enum cmd_parse_status {
+	CMD_PARSE_ERROR,
+	CMD_PARSE_SUCCESS
+};
+
+struct cmd_parse_result {
+	enum cmd_parse_status	 status;
+	struct cmd_list		*cmdlist;
+	char			*error;
+};
+
+struct cmd_parse_input {
+	int			 flags;
+#define CMD_PARSE_QUIET 0x1
+#define CMD_PARSE_PARSEONLY 0x2 /* XXX */
+#define CMD_PARSE_NOALIAS 0x4 /* XXX */
+#define CMD_PARSE_VERBOSE 0x8 /* XXX */
+#define CMD_PARSE_ONEGROUP 0x10
+
+	const char		*file;
+	u_int			 line;
+};
 
 enum cmd_parse_node_type {
 	CMD_PARSE_ROOT,

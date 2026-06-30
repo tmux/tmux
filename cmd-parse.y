@@ -660,18 +660,18 @@ cmd_parse_from_string(const char *s, struct cmd_parse_input *pi, char **cause)
 {
 	struct cmd_parse_input	 input;
 
-	if (pi == NULL) {
+	if (pi != NULL)
+		memcpy(&input, pi, sizeof input);
+	else
 		memset(&input, 0, sizeof input);
-		pi = &input;
-	}
 
 	/*
 	 * When parsing a string, put commands in one group even if there are
 	 * multiple lines. This means { a \n b } is identical to "a ; b" when
 	 * given as an argument to another command.
 	 */
-	pi->flags |= CMD_PARSE_ONEGROUP;
-	return (cmd_parse_from_buffer(s, strlen(s), pi, cause));
+	input.flags |= CMD_PARSE_ONEGROUP;
+	return (cmd_parse_from_buffer(s, strlen(s), &input, cause));
 }
 
 struct cmd_parse_tree *

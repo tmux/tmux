@@ -44,19 +44,4 @@ void		 log_debug(const char *, ...) printflike(1, 2);
 __dead void	 fatal(const char *, ...) printflike(1, 2);
 __dead void	 fatalx(const char *, ...) printflike(1, 2);
 
-/*
- * Parser input. The real struct has more fields, but the AST parser only
- * touches flags, file and line.
- */
-struct cmd_parse_input {
-	int		 flags;
-#define CMD_PARSE_QUIET 0x1
-#define CMD_PARSE_PARSEONLY 0x2
-#define CMD_PARSE_NOALIAS 0x4
-#define CMD_PARSE_VERBOSE 0x8
-#define CMD_PARSE_ONEGROUP 0x10
-	const char	*file;
-	u_int		 line;
-};
-
 #endif /* TMUX_TEST_STUB_H */

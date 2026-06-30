@@ -1939,32 +1939,6 @@ enum cmd_retval {
 	CMD_RETURN_STOP
 };
 
-/* Command parse result. */
-enum cmd_parse_status {
-	CMD_PARSE_ERROR,
-	CMD_PARSE_SUCCESS
-};
-struct cmd_parse_result {
-	enum cmd_parse_status	 status;
-	struct cmd_list		*cmdlist;
-	char			*error;
-};
-struct cmd_parse_input {
-	int			 flags;
-#define CMD_PARSE_QUIET 0x1
-#define CMD_PARSE_PARSEONLY 0x2
-#define CMD_PARSE_NOALIAS 0x4
-#define CMD_PARSE_VERBOSE 0x8
-#define CMD_PARSE_ONEGROUP 0x10
-
-	const char		*file;
-	u_int			 line;
-
-	struct cmdq_item	*item;
-	struct client		*c;
-	struct cmd_find_state	 fs;
-};
-
 /* Command queue flags. */
 #define CMDQ_STATE_REPEAT 0x1
 #define CMDQ_STATE_CONTROL 0x2
@@ -3010,21 +2984,6 @@ char		*cmd_template_replace(const char *, const char *, int);
 /* cmd-attach-session.c */
 enum cmd_retval	 cmd_attach_session(struct cmdq_item *, const char *, int, int,
 		     int, const char *, int, const char *);
-
-/* cmd-parse.c */
-struct cmd_parse_result *cmd_parse_from_file(FILE *, struct cmd_parse_input *);
-struct cmd_parse_result *cmd_parse_from_string(const char *,
-		     struct cmd_parse_input *);
-enum cmd_parse_status cmd_parse_and_insert(const char *,
-		     struct cmd_parse_input *, struct cmdq_item *,
-		     struct cmdq_state *, char **);
-enum cmd_parse_status cmd_parse_and_append(const char *,
-		     struct cmd_parse_input *, struct client *,
-		     struct cmdq_state *, char **);
-struct cmd_parse_result *cmd_parse_from_buffer(const void *, size_t,
-		     struct cmd_parse_input *);
-struct cmd_parse_result *cmd_parse_from_arguments(struct args_value *, u_int,
-		     struct cmd_parse_input *);
 
 /* cmd-invoke.c */
 struct cmdq_item *cmd_invoke_get(struct cmd_parse_tree *, struct cmdq_state *,

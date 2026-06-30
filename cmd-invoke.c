@@ -453,20 +453,26 @@ cmd_invoke_fire(struct cmdq_item *item, struct cmd_invoke_state *is)
 			break;
 		case CMD_PARSE_ASSIGN:
 		case CMD_PARSE_HIDDEN_ASSIGN:
-			if (cmd_invoke_assignment(item, is, node) != 0)
-				return (CMD_RETURN_ERROR);
+			if (cmd_invoke_assignment(item, is, node) != 0) {
+				cmdq_error(item, "bad assignment");
+				cmd_invoke_skip_sequence(is);
+			}
 			break;
 		case CMD_PARSE_IF:
-			if (cmd_invoke_if(item, is, node) != 0)
-				return (CMD_RETURN_ERROR);
+			if (cmd_invoke_if(item, is, node) != 0) {
+				cmdq_error(item, "bad condition");
+				cmd_invoke_skip_sequence(is);
+			}
 			break;
 		case CMD_PARSE_ELIF:
 		case CMD_PARSE_ELSE:
 			break;
 		case CMD_PARSE_COMMAND:
 			cmd = cmd_invoke_build_command(item, is, node);
-			if (cmd == NULL)
-				return (CMD_RETURN_ERROR);
+			if (cmd == NULL) {
+				cmd_invoke_skip_sequence(is);
+				break;
+			}
 
 			/*
 			 * Queue one command followed by this walker. WAIT and
