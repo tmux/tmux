@@ -94,7 +94,6 @@ enum cmd_parse_node_type cmd_parse_node_type(struct cmd_parse_node *);
 const char		*cmd_parse_node_type_string(enum cmd_parse_node_type);
 const char		*cmd_parse_node_value(struct cmd_parse_node *);
 u_int			 cmd_parse_node_line(struct cmd_parse_node *);
-u_int			 cmd_parse_node_end_line(struct cmd_parse_node *);
 struct cmd_parse_node	*cmd_parse_node_first_child(struct cmd_parse_node *);
 struct cmd_parse_node	*cmd_parse_node_next(struct cmd_parse_node *);
 

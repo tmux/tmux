@@ -48,7 +48,6 @@ TAILQ_HEAD(cmd_parse_nodes, cmd_parse_node);
 struct cmd_parse_node {
 	enum cmd_parse_node_type	 type;
 	u_int				 line;
-	u_int				 end_line;
 	char				*value;
 
 	struct cmd_parse_nodes		 children;
@@ -438,7 +437,6 @@ cmd_parse_new_node(enum cmd_parse_node_type type, u_int line)
 	node = xcalloc(1, sizeof *node);
 	node->type = type;
 	node->line = line;
-	node->end_line = line;
 	TAILQ_INIT(&node->children);
 	return (node);
 }
@@ -476,7 +474,6 @@ cmd_parse_copy_node(struct cmd_parse_node *node)
 	struct cmd_parse_node	*new, *child, *copy;
 
 	new = cmd_parse_new_node(node->type, node->line);
-	new->end_line = node->end_line;
 	if (node->value != NULL)
 		new->value = xstrdup(node->value);
 
@@ -704,7 +701,6 @@ cmd_parse_from_node(struct cmd_parse_tree *tree, struct cmd_parse_node *node)
 	struct cmd_parse_node	*root, *child, *copy;
 
 	root = cmd_parse_new_node(CMD_PARSE_ROOT, node->line);
-	root->end_line = node->end_line;
 	TAILQ_FOREACH(child, &node->children, entry) {
 		copy = cmd_parse_copy_node(child);
 		TAILQ_INSERT_TAIL(&root->children, copy, entry);
@@ -904,12 +900,6 @@ u_int
 cmd_parse_node_line(struct cmd_parse_node *node)
 {
 	return (node->line);
-}
-
-u_int
-cmd_parse_node_end_line(struct cmd_parse_node *node)
-{
-	return (node->end_line);
 }
 
 struct cmd_parse_node *
