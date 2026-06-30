@@ -342,9 +342,9 @@ cmd_invoke_build_command(struct cmdq_item *item, struct cmd_invoke_state *is,
 	struct cmd_parse_node	*child;
 	struct args_value	*values = NULL;
 	struct cmd		*cmd;
-	const char		*file = cmd_parse_file(is->tree);
+	const char		*file = cmd_parse_file(tree);
 	u_int			 line = cmd_parse_node_line(node);
-	int			 flags = cmd_parse_flags(is->tree);
+	int			 flags = cmd_parse_flags(tree);
 	char			*cause = NULL;
 	u_int			 count = 0;
 
@@ -497,16 +497,16 @@ cmd_invoke_fire(struct cmdq_item *item, struct cmd_invoke_state *is)
 			break;
 		case CMD_PARSE_ASSIGN:
 		case CMD_PARSE_HIDDEN_ASSIGN:
-			if (cmd_invoke_assignment(item, is, node) != 0) {
-				cmdq_error(item, "bad assignment");
-				cmd_invoke_skip_sequence(is);
-			}
+			if (cmd_invoke_assignment(item, is, node) == 0)
+				break;
+			cmd_invoke_error(item, is, node, "bad assignment");
+			cmd_invoke_skip_sequence(is);
 			break;
 		case CMD_PARSE_IF:
-			if (cmd_invoke_if(item, is, node) != 0) {
-				cmdq_error(item, "bad condition");
-				cmd_invoke_skip_sequence(is);
-			}
+			if (cmd_invoke_if(item, is, node) == 0)
+				break;
+			cmd_invoke_error(item, is, node, "bad condition");
+			cmd_invoke_skip_sequence(is);
 			break;
 		case CMD_PARSE_ELIF:
 		case CMD_PARSE_ELSE:

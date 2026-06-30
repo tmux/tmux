@@ -58,8 +58,6 @@ struct cmd_run_shell_data {
 	struct client		*client;
 	char			*cmd;
 	struct cmd_parse_tree	*tree;
-	char			*file;
-	int			 parse_flags;
 	char			*cwd;
 	struct cmdq_item	*item;
 	struct session		*s;
@@ -92,7 +90,7 @@ cmd_run_shell_print(struct job *job, const char *msg)
 			cmdq_print(cdata->item, "%s", msg);
 			return;
 		}
-		if (cdata->item != NULL && cdata->client != NULL)
+		if (cdata->client != NULL)
 			wp = server_client_get_pane(cdata->client);
 		if (wp == NULL && cmd_find_from_nothing(&fs, 0) == 0)
 			wp = fs.wp;
@@ -116,7 +114,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	struct client			*tc = cmdq_get_target_client(item);
 	struct session			*s = target->s;
 	struct window_pane		*wp = target->wp;
-	const char			*delay, *cmd, *file;
+	const char			*delay, *cmd;
 	struct format_tree		*ft;
 	double				 d;
 	struct timeval			 tv;
@@ -155,10 +153,6 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 			cmd_run_shell_free(cdata);
 			return (CMD_RETURN_ERROR);
 		}
-		cmd_get_source(self, &file, NULL);
-		if (file != NULL)
-			cdata->file = xstrdup(file);
-		cdata->parse_flags = cmd_get_parse_flags(self);
 	}
 
 	if (args_has(args, 't') && wp != NULL)
@@ -212,7 +206,6 @@ cmd_run_shell_timer(__unused int fd, __unused short events, void* arg)
 	const char			*cmd = cdata->cmd;
 	struct cmdq_item		*item = cdata->item, *new_item;
 	struct cmdq_state		*cs = NULL;
-	struct cmd_invoke_input		 input = { 0 };
 
 	if (cdata->tree == NULL) {
 		if (cmd == NULL) {
@@ -239,9 +232,7 @@ cmd_run_shell_timer(__unused int fd, __unused short events, void* arg)
 
 	if (item != NULL)
 		cs = cmdq_get_state(item);
-	input.file = cdata->file;
-	input.flags = cdata->parse_flags;
-	new_item = cmd_invoke_get(cdata->tree, cs, &input);
+	new_item = cmd_invoke_get(cdata->tree, cs, NULL);
 	if (item == NULL)
 		cmdq_append(c, new_item);
 	else
@@ -314,7 +305,6 @@ cmd_run_shell_free(void *data)
 	if (cdata->client != NULL)
 		server_client_unref(cdata->client);
 	cmd_parse_free(cdata->tree);
-	free(cdata->file);
 	free(cdata->cwd);
 	free(cdata->cmd);
 	free(cdata);

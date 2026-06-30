@@ -1285,6 +1285,7 @@ cmd_parse_command_any_have(struct cmd_parse_tree *tree,
     struct cmd_parse_node *node, int flag)
 {
 	struct cmd_parse_node	*child;
+	int			 flags = tree->flags;
 	struct args_value	*values = NULL;
 	struct cmd		*cmd;
 	char			*cause = NULL;
@@ -1317,7 +1318,7 @@ cmd_parse_command_any_have(struct cmd_parse_tree *tree,
 		count++;
 	}
 
-	cmd = cmd_parse(values, count, NULL, node->line, 0, &cause);
+	cmd = cmd_parse(values, count, tree->file, node->line, flags, &cause);
 	if (cmd == NULL) {
 		free(cause);
 		found = -1;

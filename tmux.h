@@ -1971,9 +1971,6 @@ struct cmd_entry {
 
 /* Command invocation input. */
 struct cmd_invoke_input {
-	const char	*file;
-	int		 flags;
-
 	int		 argc;
 	char	       **argv;
 };

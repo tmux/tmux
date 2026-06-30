@@ -98,7 +98,6 @@ load_cfg(const char *path, struct cmdq_item *item,
 {
 	FILE			*f;
 	struct cmd_parse_input	 pi;
-	struct cmd_invoke_input	 ci;
 	struct cmd_parse_tree	*tree;
 	struct cmdq_item	*new_item0;
 	struct cmdq_state	*state;
@@ -138,10 +137,7 @@ load_cfg(const char *path, struct cmdq_item *item,
 		state = cmdq_new_state(NULL, NULL, 0);
 	cmdq_add_format(state, "current_file", "%s", pi.file);
 
-	memset(&ci, 0, sizeof ci);
-	ci.file = pi.file;
-	ci.flags = flags;
-	new_item0 = cmd_invoke_get(tree, state, &ci);
+	new_item0 = cmd_invoke_get(tree, state, NULL);
 	if (item != NULL)
 		new_item0 = cmdq_insert_after(item, new_item0);
 	else
@@ -160,7 +156,6 @@ load_cfg_from_buffer(const void *buf, size_t len, const char *path,
     struct cmdq_item **new_item)
 {
 	struct cmd_parse_input	 pi;
-	struct cmd_invoke_input	 ci;
 	struct cmd_parse_tree	*tree;
 	struct cmdq_item	*new_item0;
 	struct cmdq_state	*state;
@@ -193,10 +188,7 @@ load_cfg_from_buffer(const void *buf, size_t len, const char *path,
 		state = cmdq_new_state(NULL, NULL, 0);
 	cmdq_add_format(state, "current_file", "%s", pi.file);
 
-	memset(&ci, 0, sizeof ci);
-	ci.file = pi.file;
-	ci.flags = flags;
-	new_item0 = cmd_invoke_get(tree, state, &ci);
+	new_item0 = cmd_invoke_get(tree, state, NULL);
 	if (item != NULL)
 		new_item0 = cmdq_insert_after(item, new_item0);
 	else

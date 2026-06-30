@@ -58,8 +58,6 @@ struct cmd_command_prompt_prompt {
 struct cmd_command_prompt_cdata {
 	struct cmdq_item		 *item;
 	struct cmd_parse_tree		 *tree;
-	char				 *file;
-	int				  parse_flags;
 
 	int				  flags;
 	enum prompt_type		  prompt_type;
@@ -118,10 +116,6 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 			free(cdata);
 			return (CMD_RETURN_ERROR);
 		}
-		cmd_get_source(self, &file, NULL);
-		if (file != NULL)
-			cdata->file = xstrdup(file);
-		cdata->parse_flags = cmd_get_parse_flags(self);
 	}
 
 	if ((s = args_get(args, 'p')) == NULL) {
@@ -259,8 +253,6 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 		/* Explicit body: prompt inputs become the template argv. */
 		ci.argc = argc;
 		ci.argv = argv;
-		ci.file = cdata->file;
-		ci.flags = cdata->parse_flags;
 		new_item = cmd_invoke_get(cdata->tree, cs, &ci);
 		if (item == NULL)
 			cmdq_append(c, new_item);
@@ -320,6 +312,5 @@ cmd_command_prompt_free(void *data)
 	free(cdata->prompts);
 	cmd_free_argv(cdata->argc, cdata->argv);
 	cmd_parse_free(cdata->tree);
-	free(cdata->file);
 	free(cdata);
 }
