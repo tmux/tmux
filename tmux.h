@@ -2506,11 +2506,11 @@ extern char **cfg_files;
 extern u_int cfg_nfiles;
 extern int cfg_quiet;
 void	start_cfg(void);
-int	load_cfg(const char *, struct client *, struct cmdq_item *,
-            struct cmd_find_state *, int, struct cmdq_item **);
-int	load_cfg_from_buffer(const void *, size_t, const char *,
-  	    struct client *, struct cmdq_item *, struct cmd_find_state *,
+int	load_cfg(const char *, struct cmdq_item *, struct cmd_find_state *,
 	    int, struct cmdq_item **);
+int	load_cfg_from_buffer(const void *, size_t, const char *,
+	    struct cmdq_item *, struct cmd_find_state *, int,
+	    struct cmdq_item **);
 void printflike(1, 2) cfg_add_cause(const char *, ...);
 void	cfg_print_causes(struct cmdq_item *);
 void	cfg_show_causes(struct session *);

@@ -87,13 +87,13 @@ start_cfg(void)
 	if (cfg_quiet)
 		flags = CMD_PARSE_QUIET;
 	for (i = 0; i < cfg_nfiles; i++)
-		load_cfg(cfg_files[i], c, NULL, NULL, flags, NULL);
+		load_cfg(cfg_files[i], NULL, NULL, flags, NULL);
 
 	cmdq_append(NULL, cmdq_get_callback(cfg_done, NULL));
 }
 
 int
-load_cfg(const char *path, struct client *c, struct cmdq_item *item,
+load_cfg(const char *path, struct cmdq_item *item,
     struct cmd_find_state *current, int flags, struct cmdq_item **new_item)
 {
 	FILE			*f;
@@ -152,8 +152,8 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item,
 
 int
 load_cfg_from_buffer(const void *buf, size_t len, const char *path,
-    struct client *c, struct cmdq_item *item, struct cmd_find_state *current,
-    int flags, struct cmdq_item **new_item)
+    struct cmdq_item *item, struct cmd_find_state *current, int flags,
+    struct cmdq_item **new_item)
 {
 	struct cmd_parse_input	 pi;
 	struct cmd_parse_tree	*tree;
