@@ -763,6 +763,8 @@ cmd_parse_from_arguments(struct args_value *values, u_int count)
 		case ARGS_COMMANDS:
 			child = cmd_parse_new_commands_node(values[i].cmd, 0);
 			break;
+		default:
+			fatalx("unknown argument type");
 		}
 		TAILQ_INSERT_TAIL(&cmd->children, child, entry);
 	}

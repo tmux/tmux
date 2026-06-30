@@ -2578,7 +2578,10 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	size_t			  len;
 	int			  argc = 0;
 	char			**argv, *cause;
-	struct cmdq_item	 *new_item;
+	struct cmdq_item	 *item;
+	struct cmd_invoke_input	  ci = { 0 };
+	struct args_value	 *values;
+	struct cmd_parse_tree	 *tree;
 
 	if (c->flags & CLIENT_EXIT)
 		return (0);
@@ -2598,40 +2601,19 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	}
 
 	argc = data.argc;
-	if (argc == 0) {
-		new_item = cmdq_get_callback(server_client_default_command,
-		    NULL);
-	} else {
-#if 0 /* XXX: command parser conversion */
-		struct cmd_parse_result	*pr;
-		struct args_value	*values;
-
+	if (argc == 0)
+		item = cmdq_get_callback(server_client_default_command, NULL);
+	else {
 		values = args_from_vector(argc, argv);
-		pr = cmd_parse_from_arguments(values, argc, NULL);
-		switch (pr->status) {
-		case CMD_PARSE_ERROR:
-			cause = pr->error;
-			goto error;
-		case CMD_PARSE_SUCCESS:
-			break;
-		}
+		tree = cmd_parse_from_arguments(values, argc);
 		args_free_values(values, argc);
 		free(values);
 		cmd_free_argv(argc, argv);
-		if ((c->flags & CLIENT_READONLY) &&
-		    !cmd_list_all_have(pr->cmdlist, CMD_READONLY)) {
-			new_item = cmdq_get_callback(server_client_read_only,
-			    NULL);
-		} else
-			new_item = cmdq_get_command(pr->cmdlist, NULL);
-		cmd_list_free(pr->cmdlist);
-#else
-		cause = xstrdup(
-		    "XXX: command parser conversion not done for client commands");
-		goto error;
-#endif
+
+		item = cmd_invoke_get(tree, NULL, &ci);
+		cmd_parse_free(tree);
 	}
-	cmdq_append(c, new_item);
+	cmdq_append(c, item);
 	cmdq_append(c, cmdq_get_callback(server_client_command_done, NULL));
 
 	return (0);
