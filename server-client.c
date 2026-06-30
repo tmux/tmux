@@ -2578,8 +2578,6 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	size_t			  len;
 	int			  argc = 0;
 	char			**argv, *cause;
-	struct cmd_parse_result	 *pr;
-	struct args_value	 *values;
 	struct cmdq_item	 *new_item;
 
 	if (c->flags & CLIENT_EXIT)
@@ -2604,6 +2602,10 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 		new_item = cmdq_get_callback(server_client_default_command,
 		    NULL);
 	} else {
+#if 0 /* XXX: command parser conversion */
+		struct cmd_parse_result	*pr;
+		struct args_value	*values;
+
 		values = args_from_vector(argc, argv);
 		pr = cmd_parse_from_arguments(values, argc, NULL);
 		switch (pr->status) {
@@ -2623,6 +2625,11 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 		} else
 			new_item = cmdq_get_command(pr->cmdlist, NULL);
 		cmd_list_free(pr->cmdlist);
+#else
+		cause = xstrdup(
+		    "XXX: command parser conversion not done for client commands");
+		goto error;
+#endif
 	}
 	cmdq_append(c, new_item);
 	cmdq_append(c, cmdq_get_callback(server_client_command_done, NULL));

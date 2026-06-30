@@ -774,8 +774,6 @@ args_make_commands_prepare(struct cmd *self, struct cmdq_item *item, u_int idx,
     const char *default_command, int wait, int expand)
 {
 	struct args			*args = cmd_get_args(self);
-	struct cmd_find_state		*target = cmdq_get_target(item);
-	struct client			*tc = cmdq_get_target_client(item);
 	struct args_value		*value;
 	struct args_command_state	*state;
 	const char			*cmd;
@@ -804,15 +802,22 @@ args_make_commands_prepare(struct cmd *self, struct cmdq_item *item, u_int idx,
 		state->cmd = xstrdup(cmd);
 	log_debug("%s: %s", __func__, state->cmd);
 
+#if 0 /* XXX: command parser conversion */
 	if (wait)
 		state->pi.item = item;
 	cmd_get_source(self, &file, &state->pi.line);
 	if (file != NULL)
 		state->pi.file = xstrdup(file);
-	state->pi.c = tc;
+	state->pi.c = cmdq_get_target_client(item);
 	if (state->pi.c != NULL)
 		state->pi.c->references++;
-	cmd_find_copy_state(&state->pi.fs, target);
+	cmd_find_copy_state(&state->pi.fs, cmdq_get_target(item));
+#else
+	(void)wait;
+	cmd_get_source(self, &file, &state->pi.line);
+	if (file != NULL)
+		state->pi.file = xstrdup(file);
+#endif
 
 	return (state);
 }
@@ -822,15 +827,16 @@ struct cmd_list *
 args_make_commands(struct args_command_state *state, int argc, char **argv,
     char **error)
 {
-	struct cmd_parse_result	*pr;
-	char			*cmd, *new_cmd;
-	int			 i;
-
 	if (state->cmdlist != NULL) {
 		if (argc == 0)
 			return (state->cmdlist);
 		return (cmd_list_copy(state->cmdlist, argc, argv));
 	}
+
+#if 0 /* XXX: command parser conversion */
+	struct cmd_parse_result	*pr;
+	char			*cmd, *new_cmd;
+	int			 i;
 
 	cmd = xstrdup(state->cmd);
 	log_debug("%s: %s", __func__, cmd);
@@ -853,6 +859,10 @@ args_make_commands(struct args_command_state *state, int argc, char **argv,
 		return (pr->cmdlist);
 	}
 	fatalx("invalid parse return state");
+#else
+	(void)error;
+	fatalx("XXX: command parser conversion not done for ARGS_COMMANDS");
+#endif
 }
 
 /* Free commands state. */
@@ -861,8 +871,10 @@ args_make_commands_free(struct args_command_state *state)
 {
 	if (state->cmdlist != NULL)
 		cmd_list_free(state->cmdlist);
+#if 0 /* XXX: command parser conversion */
 	if (state->pi.c != NULL)
 		server_client_unref(state->pi.c);
+#endif
 	free((void *)state->pi.file);
 	free(state->cmd);
 	free(state);

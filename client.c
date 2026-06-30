@@ -232,7 +232,6 @@ int
 client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
     int feat)
 {
-	struct cmd_parse_result	*pr;
 	struct msg_command	*data;
 	int			 fd, i;
 	const char		*ttynam, *termname, *cwd;
@@ -243,7 +242,6 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 	ssize_t			 linelen;
 	char			*line = NULL, **caps = NULL, *cause;
 	u_int			 ncaps = 0;
-	struct args_value	*values;
 
 	/* Set up the initial command. */
 	if (shell_command != NULL) {
@@ -254,6 +252,10 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 		flags |= CLIENT_STARTSERVER;
 	} else {
 		msg = MSG_COMMAND;
+
+#if 0 /* XXX: command parser conversion */
+		struct cmd_parse_result	*pr;
+		struct args_value	*values;
 
 		/*
 		 * It's annoying parsing the command string twice (in client
@@ -270,6 +272,13 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 			free(pr->error);
 		args_free_values(values, argc);
 		free(values);
+#else
+		/*
+		 * XXX: command parser conversion. The old parser was used only
+		 * to detect CMD_STARTSERVER here.
+		 */
+		flags |= CLIENT_STARTSERVER;
+#endif
 	}
 
 	/* Create client process structure (starts logging). */

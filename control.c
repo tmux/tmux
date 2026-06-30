@@ -557,7 +557,9 @@ control_read_callback(__unused struct bufferevent *bufev, void *data)
 	struct evbuffer		*buffer = cs->read_event->input;
 	char			*line, *error;
 	struct cmdq_state	*state;
+#if 0 /* XXX: command parser conversion */
 	enum cmd_parse_status	 status;
+#endif
 
 	for (;;) {
 		line = evbuffer_readln(buffer, NULL, EVBUFFER_EOL_LF);
@@ -570,11 +572,18 @@ control_read_callback(__unused struct bufferevent *bufev, void *data)
 			break;
 		}
 
+#if 0 /* XXX: command parser conversion */
 		state = cmdq_new_state(NULL, NULL, CMDQ_STATE_CONTROL);
 		status = cmd_parse_and_append(line, NULL, c, state, &error);
 		if (status == CMD_PARSE_ERROR)
 			cmdq_append(c, cmdq_get_callback(control_error, error));
 		cmdq_free_state(state);
+#else
+		state = cmdq_new_state(NULL, NULL, CMDQ_STATE_CONTROL);
+		error = xstrdup("XXX: command parser conversion not done for control mode");
+		cmdq_append(c, cmdq_get_callback(control_error, error));
+		cmdq_free_state(state);
+#endif
 
 		free(line);
 	}

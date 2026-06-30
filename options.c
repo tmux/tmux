@@ -260,7 +260,6 @@ options_default(struct options *oo, const struct options_table_entry *oe)
 	struct options_entry	*o;
 	union options_value	*ov;
 	u_int			 i;
-	struct cmd_parse_result	*pr;
 
 	o = options_empty(oo, oe);
 	ov = &o->value;
@@ -280,6 +279,9 @@ options_default(struct options *oo, const struct options_table_entry *oe)
 		ov->string = xstrdup(oe->default_str);
 		break;
 	case OPTIONS_TABLE_COMMAND:
+#if 0 /* XXX: command parser conversion */
+		struct cmd_parse_result	*pr;
+
 		pr = cmd_parse_from_string(oe->default_str, NULL);
 		switch (pr->status) {
 		case CMD_PARSE_ERROR:
@@ -289,6 +291,10 @@ options_default(struct options *oo, const struct options_table_entry *oe)
 			ov->cmdlist = pr->cmdlist;
 			break;
 		}
+#else
+		log_debug("XXX: command parser conversion not done for command option default %s",
+		    oe->name);
+#endif
 		break;
 	default:
 		ov->number = oe->default_num;
@@ -436,7 +442,6 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 {
 	struct options_array_item	*a;
 	char				*new;
-	struct cmd_parse_result		*pr;
 	long long		 	 number;
 
 	if (!OPTIONS_IS_ARRAY(o)) {
@@ -453,6 +458,9 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 	}
 
 	if (OPTIONS_IS_COMMAND(o)) {
+#if 0 /* XXX: command parser conversion */
+		struct cmd_parse_result	*pr;
+
 		pr = cmd_parse_from_string(value, NULL);
 		switch (pr->status) {
 		case CMD_PARSE_ERROR:
@@ -472,6 +480,13 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 			options_value_free(o, &a->value);
 		a->value.cmdlist = pr->cmdlist;
 		return (0);
+#else
+		if (cause != NULL) {
+			xasprintf(cause,
+			    "XXX: command parser conversion not done for command option array");
+		}
+		return (-1);
+#endif
 	}
 
 	if (OPTIONS_IS_STRING(o)) {
@@ -1131,7 +1146,6 @@ options_from_string(struct options *oo, const struct options_table_entry *oe,
 	const char		*errstr, *new;
 	char			*old;
 	key_code		 key;
-	struct cmd_parse_result	*pr;
 
 	if (oe != NULL) {
 		if (value == NULL &&
@@ -1190,6 +1204,9 @@ options_from_string(struct options *oo, const struct options_table_entry *oe,
 	case OPTIONS_TABLE_CHOICE:
 		return (options_from_string_choice(oe, oo, name, value, cause));
 	case OPTIONS_TABLE_COMMAND:
+#if 0 /* XXX: command parser conversion */
+		struct cmd_parse_result	*pr;
+
 		pr = cmd_parse_from_string(value, NULL);
 		switch (pr->status) {
 		case CMD_PARSE_ERROR:
@@ -1200,6 +1217,11 @@ options_from_string(struct options *oo, const struct options_table_entry *oe,
 			return (0);
 		}
 		break;
+#else
+		xasprintf(cause,
+		    "XXX: command parser conversion not done for command option");
+		return (-1);
+#endif
 	}
 	return (-1);
 }

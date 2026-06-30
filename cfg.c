@@ -98,9 +98,10 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item,
 {
 	FILE			*f;
 	struct cmd_parse_input	 pi;
-	struct cmd_parse_result	*pr;
+	struct cmd_parse_tree	*tree;
 	struct cmdq_item	*new_item0;
 	struct cmdq_state	*state;
+	char			*cause = NULL;
 
 	if (new_item != NULL)
 		*new_item = NULL;
@@ -117,18 +118,16 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item,
 	pi.flags = flags;
 	pi.file = path;
 	pi.line = 1;
-	pi.item = item;
-	pi.c = c;
-
-	pr = cmd_parse_from_file(f, &pi);
+	tree = cmd_parse_from_file(f, &pi, &cause);
 	fclose(f);
-	if (pr->status == CMD_PARSE_ERROR) {
-		cfg_add_cause("%s", pr->error);
-		free(pr->error);
+	if (tree == NULL) {
+		cfg_add_cause("%s", cause);
+		free(cause);
 		return (-1);
 	}
+	cmd_parse_log(__func__, tree);
 	if (flags & CMD_PARSE_PARSEONLY) {
-		cmd_list_free(pr->cmdlist);
+		cmd_parse_free(tree);
 		return (0);
 	}
 
@@ -138,12 +137,12 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item,
 		state = cmdq_new_state(NULL, NULL, 0);
 	cmdq_add_format(state, "current_file", "%s", pi.file);
 
-	new_item0 = cmdq_get_command(pr->cmdlist, state);
+	new_item0 = cmd_invoke_get(tree, state, 0, NULL);
 	if (item != NULL)
 		new_item0 = cmdq_insert_after(item, new_item0);
 	else
 		new_item0 = cmdq_append(NULL, new_item0);
-	cmd_list_free(pr->cmdlist);
+	cmd_parse_free(tree);
 	cmdq_free_state(state);
 
 	if (new_item != NULL)
@@ -157,9 +156,10 @@ load_cfg_from_buffer(const void *buf, size_t len, const char *path,
     int flags, struct cmdq_item **new_item)
 {
 	struct cmd_parse_input	 pi;
-	struct cmd_parse_result	*pr;
+	struct cmd_parse_tree	*tree;
 	struct cmdq_item	*new_item0;
 	struct cmdq_state	*state;
+	char			*cause = NULL;
 
 	if (new_item != NULL)
 		*new_item = NULL;
@@ -170,17 +170,15 @@ load_cfg_from_buffer(const void *buf, size_t len, const char *path,
 	pi.flags = flags;
 	pi.file = path;
 	pi.line = 1;
-	pi.item = item;
-	pi.c = c;
-
-	pr = cmd_parse_from_buffer(buf, len, &pi);
-	if (pr->status == CMD_PARSE_ERROR) {
-		cfg_add_cause("%s", pr->error);
-		free(pr->error);
+	tree = cmd_parse_from_buffer(buf, len, &pi, &cause);
+	if (tree == NULL) {
+		cfg_add_cause("%s", cause);
+		free(cause);
 		return (-1);
 	}
+	cmd_parse_log(__func__, tree);
 	if (flags & CMD_PARSE_PARSEONLY) {
-		cmd_list_free(pr->cmdlist);
+		cmd_parse_free(tree);
 		return (0);
 	}
 
@@ -190,12 +188,12 @@ load_cfg_from_buffer(const void *buf, size_t len, const char *path,
 		state = cmdq_new_state(NULL, NULL, 0);
 	cmdq_add_format(state, "current_file", "%s", pi.file);
 
-	new_item0 = cmdq_get_command(pr->cmdlist, state);
+	new_item0 = cmd_invoke_get(tree, state, 0, NULL);
 	if (item != NULL)
 		new_item0 = cmdq_insert_after(item, new_item0);
 	else
 		new_item0 = cmdq_append(NULL, new_item0);
-	cmd_list_free(pr->cmdlist);
+	cmd_parse_free(tree);
 	cmdq_free_state(state);
 
 	if (new_item != NULL)

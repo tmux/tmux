@@ -672,6 +672,8 @@ key_bindings_init(void)
 		"bind -Tcopy-mode-vi C-Up { send -X scroll-up }",
 		"bind -Tcopy-mode-vi C-Down { send -X scroll-down }",
 	};
+
+#if 0 /* XXX: command parser conversion */
 	u_int			 i;
 	struct cmd_parse_result	*pr;
 
@@ -684,6 +686,10 @@ key_bindings_init(void)
 		cmdq_append(NULL, cmdq_get_command(pr->cmdlist, NULL));
 		cmd_list_free(pr->cmdlist);
 	}
+#else
+	log_debug("XXX: command parser conversion not done for %u default keys",
+	    (u_int)nitems(defaults));
+#endif
 	cmdq_append(NULL, cmdq_get_callback(key_bindings_init_done, NULL));
 }
 

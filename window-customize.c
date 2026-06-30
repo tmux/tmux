@@ -1218,13 +1218,15 @@ window_customize_set_command_callback(struct client *c, void *itemdata,
 	struct window_customize_itemdata	*item = itemdata;
 	struct window_customize_modedata	*data = item->data;
 	struct key_binding			*bd;
-	struct cmd_parse_result			*pr;
 	char					*error;
 
 	if (s == NULL || *s == '\0' || data->dead)
 		return (PROMPT_CLOSE);
 	if (item == NULL || !window_customize_get_key(item, NULL, &bd))
 		return (PROMPT_CLOSE);
+
+#if 0 /* XXX: command parser conversion */
+	struct cmd_parse_result	*pr;
 
 	pr = cmd_parse_from_string(s, NULL);
 	switch (pr->status) {
@@ -1240,6 +1242,10 @@ window_customize_set_command_callback(struct client *c, void *itemdata,
 	mode_tree_build(data->data);
 	mode_tree_draw(data->data);
 	data->wp->flags |= PANE_REDRAW;
+#else
+	error = xstrdup("XXX: command parser conversion not done for customize");
+	goto fail;
+#endif
 
 	return (PROMPT_CLOSE);
 

@@ -328,7 +328,11 @@ cmd_invoke_build_command(struct cmdq_item *item, struct cmd_invoke_state *is,
 			break;
 		case CMD_PARSE_COMMANDS:
 			values[count].type = ARGS_COMMANDS;
+#if 0 /* XXX: command parser conversion */
 			values[count].cmdparse = child;
+#else
+			fatalx("XXX: command parser conversion not done for ARGS_COMMANDS");
+#endif
 			break;
 		default:
 			fatalx("unexpected node type in command");
@@ -373,7 +377,8 @@ cmd_invoke_get(struct cmd_parse_tree *tree, struct cmdq_state *state, int argc,
 	is = xcalloc(1, sizeof *is);
 	is->references = 1;
 	is->tree = cmd_parse_add_ref(tree);
-	cmd_parse_log(tree);
+	log_debug("%s: tree %p", __func__, tree);
+	cmd_parse_log(__func__, tree);
 
 	is->argc = argc;
 	if (argc != 0) {
@@ -445,7 +450,9 @@ cmd_invoke_fire(struct cmdq_item *item, struct cmd_invoke_state *is)
 		node = cmd_invoke_next(is);
 		if (node == NULL)
 			return (CMD_RETURN_NORMAL);
-		cmd_parse_log_node(node);
+		log_debug("%s: node %s", __func__,
+		    cmd_parse_node_type_string(cmd_parse_node_type(node)));
+		cmd_parse_log_node(__func__, node);
 
 		switch (cmd_parse_node_type(node)) {
 		case CMD_PARSE_ROOT:
@@ -470,6 +477,7 @@ cmd_invoke_fire(struct cmdq_item *item, struct cmd_invoke_state *is)
 		case CMD_PARSE_ELSE:
 			break;
 		case CMD_PARSE_COMMAND:
+			fatalx("XXX: command execution not implemented yet");
 			cmd = cmd_invoke_build_command(item, is, node);
 			if (cmd == NULL) {
 				cmd_invoke_skip_sequence(is);

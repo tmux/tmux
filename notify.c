@@ -62,8 +62,6 @@ notify_insert_hook(struct cmdq_item *item, struct notify_entry *ne)
 	struct options_entry		*o;
 	struct options_array_item	*a;
 	struct cmd_list			*cmdlist;
-	const char			*value;
-	struct cmd_parse_result		*pr;
 
 	log_debug("%s: inserting hook %s", __func__, ne->name);
 
@@ -95,6 +93,10 @@ notify_insert_hook(struct cmdq_item *item, struct notify_entry *ne)
 	cmdq_add_formats(state, ne->formats);
 
 	if (*ne->name == '@') {
+#if 0 /* XXX: command parser conversion */
+	struct cmd_parse_result	*pr;
+	const char		*value;
+
 		value = options_get_string(oo, ne->name);
 		pr = cmd_parse_from_string(value, NULL);
 		switch (pr->status) {
@@ -107,6 +109,10 @@ notify_insert_hook(struct cmdq_item *item, struct notify_entry *ne)
 			notify_insert_one_hook(item, ne, pr->cmdlist, state);
 			break;
 		}
+#else
+		log_debug("%s: command parser conversion not done for hook %s",
+		    __func__, ne->name);
+#endif
 	} else {
 		a = options_array_first(o);
 		while (a != NULL) {

@@ -57,7 +57,6 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 	struct args		 *args = cmd_get_args(self);
 	key_code		  key;
 	const char		 *tablename, *note = args_get(args, 'N');
-	struct cmd_parse_result	 *pr;
 	int			  repeat;
 	struct args_value	 *value;
 	u_int			  count = args_count(args);
@@ -88,6 +87,9 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
+#if 0 /* XXX: command parser conversion */
+	struct cmd_parse_result	*pr;
+
 	if (count == 2)
 		pr = cmd_parse_from_string(args_string(args, 1), NULL);
 	else {
@@ -104,4 +106,7 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	key_bindings_add(tablename, key, note, repeat, pr->cmdlist);
 	return (CMD_RETURN_NORMAL);
+#else
+	fatalx("XXX: command parser conversion not done for bind-key");
+#endif
 }
