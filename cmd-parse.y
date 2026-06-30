@@ -789,62 +789,18 @@ cmd_parse_strcat(char **buf, const char *fmt, ...)
 	}
 }
 
-/* Escape a value for the debug tree dump. */
-static char *
-cmd_parse_escape(const char *s)
-{
-	char	*out;
-	size_t	 len = 0, size = strlen(s) * 2 + 1;
-	int	 ch;
-
-	out = xmalloc(size);
-	while ((ch = (u_char)*s++) != '\0') {
-		if (len + 2 >= size) {
-			size *= 2;
-			out = xrealloc(out, size);
-		}
-		switch (ch) {
-		case '\\':
-		case '"':
-			out[len++] = '\\';
-			out[len++] = ch;
-			break;
-		case '\n':
-			out[len++] = '\\';
-			out[len++] = 'n';
-			break;
-		case '\r':
-			out[len++] = '\\';
-			out[len++] = 'r';
-			break;
-		case '\t':
-			out[len++] = '\\';
-			out[len++] = 't';
-			break;
-		default:
-			out[len++] = ch;
-			break;
-		}
-	}
-	out[len] = '\0';
-	return (out);
-}
-
 static void
 cmd_parse_log_one_node(const char *prefix, struct cmd_parse_node *node,
     u_int depth)
 {
 	struct cmd_parse_node	*child;
 	const char		*type = cmd_parse_node_type_string(node->type);
-	char			*escaped;
 
 	if (node->value == NULL)
 		log_debug("%s: %*s%s", prefix, depth * 2, "", type);
 	else {
-		escaped = cmd_parse_escape(node->value);
 		log_debug("%s: %*s%s value=\"%s\"", prefix, depth * 2, "",
-		    type, escaped);
-		free(escaped);
+		    type, node->value);
 	}
 
 	TAILQ_FOREACH(child, &node->children, entry)
@@ -1267,7 +1223,6 @@ yylex_get_word(int ch)
 	yylex_ungetc(ch);
 
 	buf[len] = '\0';
-	log_debug("%s: %s", __func__, buf);
 	return (buf);
 }
 
