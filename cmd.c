@@ -220,18 +220,11 @@ const struct cmd_entry *cmd_table[] = {
 struct cmd {
 	const struct cmd_entry	 *entry;
 	struct args		 *args;
-	u_int			  group;
 
 	char			 *file;
 	u_int			  line;
 	int			  parse_flags;
-
-	TAILQ_ENTRY(cmd)	  qentry;
 };
-TAILQ_HEAD(cmds, cmd);
-
-/* Next group number for new command list. */
-static u_int cmd_list_next_group = 1;
 
 /* Log an argument vector. */
 void printflike(3, 4)
@@ -402,13 +395,6 @@ cmd_get_args(struct cmd *cmd)
 	return (cmd->args);
 }
 
-/* Get group for command. */
-u_int
-cmd_get_group(struct cmd *cmd)
-{
-	return (cmd->group);
-}
-
 /* Get file and line for command. */
 void
 cmd_get_source(struct cmd *cmd, const char **file, u_int *line)
@@ -559,22 +545,6 @@ cmd_free(struct cmd *cmd)
 }
 
 /* Copy a command. */
-struct cmd *
-cmd_copy(struct cmd *cmd, int argc, char **argv)
-{
-	struct cmd	*new_cmd;
-
-	new_cmd = xcalloc(1, sizeof *new_cmd);
-	new_cmd->entry = cmd->entry;
-	new_cmd->args = args_copy(cmd->args, argc, argv);
-
-	if (cmd->file != NULL)
-		new_cmd->file = xstrdup(cmd->file);
-	new_cmd->line = cmd->line;
-
-	return (new_cmd);
-}
-
 /* Get a command as a string. */
 char *
 cmd_print(struct cmd *cmd)
@@ -592,173 +562,6 @@ cmd_print(struct cmd *cmd)
 }
 
 /* Create a new command list. */
-struct cmd_list *
-cmd_list_new(void)
-{
-	struct cmd_list	*cmdlist;
-
-	cmdlist = xcalloc(1, sizeof *cmdlist);
-	cmdlist->references = 1;
-	cmdlist->group = cmd_list_next_group++;
-	cmdlist->list = xcalloc(1, sizeof *cmdlist->list);
-	TAILQ_INIT(cmdlist->list);
-	return (cmdlist);
-}
-
-/* Append a command to a command list. */
-void
-cmd_list_append(struct cmd_list *cmdlist, struct cmd *cmd)
-{
-	cmd->group = cmdlist->group;
-	TAILQ_INSERT_TAIL(cmdlist->list, cmd, qentry);
-}
-
-/* Append all commands from one list to another.  */
-void
-cmd_list_append_all(struct cmd_list *cmdlist, struct cmd_list *from)
-{
-	struct cmd	*cmd;
-
-	TAILQ_FOREACH(cmd, from->list, qentry)
-		cmd->group = cmdlist->group;
-	TAILQ_CONCAT(cmdlist->list, from->list, qentry);
-}
-
-/* Move all commands from one command list to another. */
-void
-cmd_list_move(struct cmd_list *cmdlist, struct cmd_list *from)
-{
-	TAILQ_CONCAT(cmdlist->list, from->list, qentry);
-	cmdlist->group = cmd_list_next_group++;
-}
-
-/* Free a command list. */
-void
-cmd_list_free(struct cmd_list *cmdlist)
-{
-	struct cmd	*cmd, *cmd1;
-
-	if (--cmdlist->references != 0)
-		return;
-
-	TAILQ_FOREACH_SAFE(cmd, cmdlist->list, qentry, cmd1) {
-		TAILQ_REMOVE(cmdlist->list, cmd, qentry);
-		cmd_free(cmd);
-	}
-	free(cmdlist->list);
-	free(cmdlist);
-}
-
-/* Copy a command list, expanding %s in arguments. */
-struct cmd_list *
-cmd_list_copy(const struct cmd_list *cmdlist, int argc, char **argv)
-{
-	struct cmd	*cmd;
-	struct cmd_list	*new_cmdlist;
-	struct cmd	*new_cmd;
-	u_int		 group = cmdlist->group;
-	char		*s;
-
-	s = cmd_list_print(cmdlist, 0);
-	log_debug("%s: %s", __func__, s);
-	free(s);
-
-	new_cmdlist = cmd_list_new();
-	TAILQ_FOREACH(cmd, cmdlist->list, qentry) {
-		if (cmd->group != group) {
-			new_cmdlist->group = cmd_list_next_group++;
-			group = cmd->group;
-		}
-		new_cmd = cmd_copy(cmd, argc, argv);
-		cmd_list_append(new_cmdlist, new_cmd);
-	}
-
-	s = cmd_list_print(new_cmdlist, 0);
-	log_debug("%s: %s", __func__, s);
-	free(s);
-
-	return (new_cmdlist);
-}
-
-/* Get a command list as a string. */
-char *
-cmd_list_print(const struct cmd_list *cmdlist, int flags)
-{
-	struct cmd	*cmd, *next;
-	char		*buf, *this;
-	size_t		 len;
-	const char	*separator;
-	int		 escaped = flags & CMD_LIST_PRINT_ESCAPED;
-	int		 no_groups = flags & CMD_LIST_PRINT_NO_GROUPS;
-	const char	*single_separator = escaped ? " \\; " : " ; ";
-	const char	*double_separator = escaped ? " \\;\\; " : " ;; ";
-
-	len = 1;
-	buf = xcalloc(1, len);
-
-	TAILQ_FOREACH(cmd, cmdlist->list, qentry) {
-		this = cmd_print(cmd);
-
-		len += strlen(this) + 6;
-		buf = xrealloc(buf, len);
-
-		strlcat(buf, this, len);
-
-		next = TAILQ_NEXT(cmd, qentry);
-		if (next != NULL) {
-			if (!no_groups && cmd->group != next->group)
-				separator = double_separator;
-			else
-				separator = single_separator;
-			strlcat(buf, separator, len);
-		}
-
-		free(this);
-	}
-
-	return (buf);
-}
-
-/* Get first command in list. */
-struct cmd *
-cmd_list_first(struct cmd_list *cmdlist)
-{
-	return (TAILQ_FIRST(cmdlist->list));
-}
-
-/* Get next command in list. */
-struct cmd *
-cmd_list_next(struct cmd *cmd)
-{
-	return (TAILQ_NEXT(cmd, qentry));
-}
-
-/* Do all of the commands in this command list have this flag? */
-int
-cmd_list_all_have(struct cmd_list *cmdlist, int flag)
-{
-	struct cmd	*cmd;
-
-	TAILQ_FOREACH(cmd, cmdlist->list, qentry) {
-		if (~cmd->entry->flags & flag)
-			return (0);
-	}
-	return (1);
-}
-
-/* Do any of the commands in this command list have this flag? */
-int
-cmd_list_any_have(struct cmd_list *cmdlist, int flag)
-{
-	struct cmd	*cmd;
-
-	TAILQ_FOREACH(cmd, cmdlist->list, qentry) {
-		if (cmd->entry->flags & flag)
-			return (1);
-	}
-	return (0);
-}
-
 /* Adjust current mouse position for a pane. */
 int
 cmd_mouse_at(struct window_pane *wp, struct mouse_event *m, u_int *xp,

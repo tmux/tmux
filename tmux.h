@@ -1924,13 +1924,6 @@ struct cmd_find_state {
 #define CMD_FIND_EXACT_WINDOW 0x20
 #define CMD_FIND_CANFAIL 0x40
 
-/* List of commands. */
-struct cmd_list {
-	int		 references;
-	u_int		 group;
-	struct cmds	*list;
-};
-
 /* Command return values. */
 enum cmd_retval {
 	CMD_RETURN_ERROR = -1,
@@ -2956,27 +2949,12 @@ char		*cmd_stringify_argv(int, char **);
 char		*cmd_get_alias(const char *);
 const struct cmd_entry *cmd_get_entry(struct cmd *);
 struct args	*cmd_get_args(struct cmd *);
-u_int		 cmd_get_group(struct cmd *);
 void		 cmd_get_source(struct cmd *, const char **, u_int *);
 int		 cmd_get_parse_flags(struct cmd *);
 struct cmd	*cmd_parse(struct args_value *, u_int, const char *, u_int, int,
 		     char **);
-struct cmd	*cmd_copy(struct cmd *, int, char **);
 void		 cmd_free(struct cmd *);
 char		*cmd_print(struct cmd *);
-struct cmd_list	*cmd_list_new(void);
-struct cmd_list	*cmd_list_copy(const struct cmd_list *, int, char **);
-void		 cmd_list_append(struct cmd_list *, struct cmd *);
-void		 cmd_list_append_all(struct cmd_list *, struct cmd_list *);
-void		 cmd_list_move(struct cmd_list *, struct cmd_list *);
-void		 cmd_list_free(struct cmd_list *);
-#define CMD_LIST_PRINT_ESCAPED 0x1
-#define CMD_LIST_PRINT_NO_GROUPS 0x2
-char		*cmd_list_print(const struct cmd_list *, int);
-struct cmd	*cmd_list_first(struct cmd_list *);
-struct cmd	*cmd_list_next(struct cmd *);
-int		 cmd_list_all_have(struct cmd_list *, int);
-int		 cmd_list_any_have(struct cmd_list *, int);
 int		 cmd_mouse_at(struct window_pane *, struct mouse_event *,
 		     u_int *, u_int *, int);
 struct winlink	*cmd_mouse_window(struct mouse_event *, struct session **);
@@ -3018,7 +2996,6 @@ struct cmd_find_state *cmdq_get_source(struct cmdq_item *);
 struct key_event *cmdq_get_event(struct cmdq_item *);
 struct cmd_find_state *cmdq_get_current(struct cmdq_item *);
 int		  cmdq_get_flags(struct cmdq_item *);
-struct cmdq_item *cmdq_get_command(struct cmd_list *, struct cmdq_state *);
 struct cmdq_item *cmdq_get_one_command(struct cmd *, struct cmdq_state *,
 	    struct cmd_invoke_state *);
 struct cmdq_item *cmdq_get_invoke(struct cmd_invoke_state *,

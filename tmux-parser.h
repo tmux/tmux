@@ -28,8 +28,7 @@
  *
  * The parser builds syntax only. It does not expand formats, environment
  * variables, or ~, does not evaluate %if/%elif, does not expand aliases, and
- * does not build struct cmd or struct cmd_list. Those are execution-time
- * operations.
+ * does not build struct cmd. That is an execution-time operation.
  *
  * Command failure scope is represented by CMD_PARSE_SEQUENCE: if an invoked
  * command or assignment fails, the invoker skips the remaining children of

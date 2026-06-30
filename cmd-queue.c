@@ -48,7 +48,6 @@ struct cmdq_item {
 	struct client		*target_client;
 
 	enum cmdq_type		 type;
-	u_int			 group;
 
 	u_int			 number;
 	time_t			 time;
@@ -59,7 +58,6 @@ struct cmdq_item {
 	struct cmd_find_state	 source;
 	struct cmd_find_state	 target;
 
-	struct cmd_list		*cmdlist;
 	struct cmd		*cmd;
 	struct cmd_invoke_state	*invoke_state;
 
@@ -457,8 +455,8 @@ cmdq_remove(struct cmdq_item *item)
 {
 	if (item->client != NULL)
 		server_client_unref(item->client);
-	if (item->cmdlist != NULL)
-		cmd_list_free(item->cmdlist);
+	if (item->cmd != NULL)
+		cmd_free(item->cmd);
 	if (item->invoke_state != NULL)
 		cmd_invoke_state_free(item->invoke_state);
 	cmdq_free_state(item->state);
@@ -469,91 +467,28 @@ cmdq_remove(struct cmdq_item *item)
 	free(item);
 }
 
-/* Remove all subsequent items that match this item's group. */
-static void
-cmdq_remove_group(struct cmdq_item *item)
-{
-	struct cmdq_item	*this, *next;
-
-	if (item->group == 0)
-		return;
-	this = TAILQ_NEXT(item, entry);
-	while (this != NULL) {
-		next = TAILQ_NEXT(this, entry);
-		if (this->group == item->group)
-			cmdq_remove(this);
-		this = next;
-	}
-}
-
-/* Empty command callback. */
-static enum cmd_retval
-cmdq_empty_command(__unused struct cmdq_item *item, __unused void *data)
-{
-	return (CMD_RETURN_NORMAL);
-}
-
-/* Get a command for the command queue. */
-struct cmdq_item *
-cmdq_get_command(struct cmd_list *cmdlist, struct cmdq_state *state)
-{
-	struct cmdq_item	*item, *first = NULL, *last = NULL;
-	struct cmd		*cmd;
-	const struct cmd_entry	*entry;
-	int			 created = 0;
-
-	if ((cmd = cmd_list_first(cmdlist)) == NULL)
-		return (cmdq_get_callback(cmdq_empty_command, NULL));
-
-	if (state == NULL) {
-		state = cmdq_new_state(NULL, NULL, 0);
-		created = 1;
-	}
-
-	while (cmd != NULL) {
-		entry = cmd_get_entry(cmd);
-
-		item = xcalloc(1, sizeof *item);
-		xasprintf(&item->name, "[%s/%p]", entry->name, item);
-		item->type = CMDQ_COMMAND;
-
-		item->group = cmd_get_group(cmd);
-		item->state = cmdq_link_state(state);
-
-		item->cmdlist = cmdlist;
-		item->cmd = cmd;
-
-		cmdlist->references++;
-		log_debug("%s: %s group %u", __func__, item->name, item->group);
-
-		if (first == NULL)
-			first = item;
-		if (last != NULL)
-			last->next = item;
-		last = item;
-
-		cmd = cmd_list_next(cmd);
-	}
-
-	if (created)
-		cmdq_free_state(state);
-	return (first);
-}
-
 /* Get a single command for command queue with invoke state. */
 struct cmdq_item *
 cmdq_get_one_command(struct cmd *cmd, struct cmdq_state *state,
     struct cmd_invoke_state *invoke_state)
 {
-	struct cmd_list		*cmdlist;
 	struct cmdq_item	*item;
+	const struct cmd_entry	*entry = cmd_get_entry(cmd);
 
-	cmdlist = cmd_list_new();
-	cmd_list_append(cmdlist, cmd);
+	item = xcalloc(1, sizeof *item);
+	xasprintf(&item->name, "[%s/%p]", entry->name, item);
+	item->type = CMDQ_COMMAND;
+	item->cmd = cmd;
 
-	item = cmdq_get_command(cmdlist, state);
-	cmd_list_free(cmdlist);
-	item->invoke_state = cmd_invoke_state_add_ref(invoke_state);
+	if (state == NULL)
+		item->state = cmdq_new_state(NULL, NULL, 0);
+	else
+		item->state = cmdq_link_state(state);
+
+	if (invoke_state != NULL)
+		item->invoke_state = cmd_invoke_state_add_ref(invoke_state);
+
+	log_debug("%s: %s", __func__, item->name);
 	return (item);
 }
 
@@ -566,7 +501,6 @@ cmdq_get_invoke(struct cmd_invoke_state *invoke_state, struct cmdq_state *state)
 	item = xcalloc(1, sizeof *item);
 	xasprintf(&item->name, "[invoke/%p]", item);
 	item->type = CMDQ_INVOKE;
-	item->group = 0;
 	if (state == NULL)
 		item->state = cmdq_new_state(NULL, NULL, 0);
 	else
@@ -650,7 +584,7 @@ cmdq_fire_command(struct cmdq_item *item)
 		cmdq_add_message(item);
 	if (log_get_level() > 1) {
 		tmp = cmd_print(cmd);
-		log_debug("%s %s: (%u) %s", __func__, name, item->group, tmp);
+		log_debug("%s %s: %s", __func__, name, tmp);
 		free(tmp);
 	}
 
@@ -729,7 +663,6 @@ cmdq_get_callback1(const char *name, cmdq_cb cb, void *data)
 	xasprintf(&item->name, "[%s/%p]", name, item);
 	item->type = CMDQ_CALLBACK;
 
-	item->group = 0;
 	item->state = cmdq_new_state(NULL, NULL, 0);
 
 	item->cb = cb;
@@ -814,12 +747,6 @@ cmdq_next(struct client *c)
 				if (item->invoke_state != NULL)
 					cmd_invoke_result(item->invoke_state, retval);
 
-				/*
-				 * If a command returns an error, remove any
-				 * subsequent commands in the same group.
-				 */
-				if (retval == CMD_RETURN_ERROR)
-					cmdq_remove_group(item);
 				break;
 			case CMDQ_CALLBACK:
 				retval = cmdq_fire_callback(item);

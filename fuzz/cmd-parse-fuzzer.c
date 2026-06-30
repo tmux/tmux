@@ -36,7 +36,8 @@ int
 LLVMFuzzerTestOneInput(const u_char *data, size_t size)
 {
 	struct cmd_parse_input	 pi;
-	struct cmd_parse_result	*pr;
+	struct cmd_parse_tree	*tree;
+	char			*cause = NULL;
 
 	if (size > 2048 || size == 0)
 		return 0;
@@ -44,17 +45,10 @@ LLVMFuzzerTestOneInput(const u_char *data, size_t size)
 	memset(&pi, 0, sizeof pi);
 	pi.flags = CMD_PARSE_QUIET;
 
-	pr = cmd_parse_from_buffer(data, size, &pi);
-	switch (pr->status) {
-	case CMD_PARSE_SUCCESS:
-		cmd_list_free(pr->cmdlist);
-		break;
-	case CMD_PARSE_ERROR:
-		free(pr->error);
-		break;
-	default:
-		break;
-	}
+	tree = cmd_parse_from_buffer(data, size, &pi, &cause);
+	if (tree != NULL)
+		cmd_parse_free(tree);
+	free(cause);
 
 	return 0;
 }
