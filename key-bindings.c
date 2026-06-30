@@ -674,7 +674,6 @@ key_bindings_init(void)
 	u_int			 i;
 	struct cmd_parse_tree	*tree;
 	struct cmdq_item	*new_item;
-	struct cmd_invoke_input	 ci = { 0 };
 	char			*cause = NULL;
 
 	for (i = 0; i < nitems(defaults); i++) {
@@ -682,7 +681,7 @@ key_bindings_init(void)
 		if (tree == NULL)
 			fatalx("bad default key: %s", defaults[i]);
 
-		new_item = cmd_invoke_get(tree, NULL, &ci);
+		new_item = cmd_invoke_get(tree, NULL, NULL);
 		cmdq_append(NULL, new_item);
 		cmd_parse_free(tree);
 	}
@@ -702,7 +701,6 @@ key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
 {
 	struct cmdq_item	*new_item;
 	struct cmdq_state	*new_state;
-	struct cmd_invoke_input	 ci;
 	int			 readonly, flags = 0;
 
 	if (c == NULL || (~c->flags & CLIENT_READONLY))
@@ -722,8 +720,7 @@ key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
 			flags |= CMDQ_STATE_REPEAT;
 		new_state = cmdq_new_state(fs, event, flags);
 
-		memset(&ci, 0, sizeof ci);
-		new_item = cmd_invoke_get(bd->cmd, new_state, &ci);
+		new_item = cmd_invoke_get(bd->cmd, new_state, NULL);
 		cmdq_free_state(new_state);
 	}
 	if (item != NULL)

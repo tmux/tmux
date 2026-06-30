@@ -2579,7 +2579,6 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	int			  argc = 0;
 	char			**argv, *cause;
 	struct cmdq_item	 *item;
-	struct cmd_invoke_input	  ci = { 0 };
 	struct args_value	 *values;
 	struct cmd_parse_tree	 *tree;
 
@@ -2610,7 +2609,7 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 		free(values);
 		cmd_free_argv(argc, argv);
 
-		item = cmd_invoke_get(tree, NULL, &ci);
+		item = cmd_invoke_get(tree, NULL, NULL);
 		cmd_parse_free(tree);
 	}
 	cmdq_append(c, item);

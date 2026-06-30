@@ -373,7 +373,11 @@ cmd_invoke_get(struct cmd_parse_tree *tree, struct cmdq_state *state,
 	struct cmd_invoke_state	*is;
 	struct cmd_parse_node	*root = cmd_parse_root(tree), *first;
 	struct cmdq_item	*item;
+	struct cmd_invoke_input	 new_input = { 0 };
 	int			 i;
+
+	if (input == NULL)
+		input = &new_input;
 
 	is = xcalloc(1, sizeof *is);
 	is->references = 1;
