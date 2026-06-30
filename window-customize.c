@@ -490,7 +490,7 @@ window_customize_build_keys(struct window_customize_modedata *data,
 		    expanded, NULL, 0);
 		free(expanded);
 
-		tmp = cmd_list_print(bd->cmdlist, 0);
+		tmp = cmd_parse_print(bd->cmd); /* XXX: command parser conversion */
 		xasprintf(&text, "#[ignore]%s", tmp);
 		free(tmp);
 		mti = mode_tree_add(data->data, child, item,
@@ -625,7 +625,7 @@ window_customize_draw_key(__unused struct window_customize_modedata *data,
 	if (s->cy >= cy + sy - 1)
 		return;
 
-	cmd = cmd_list_print(bd->cmdlist, 0);
+	cmd = cmd_parse_print(bd->cmd); /* XXX: command parser conversion */
 	if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
 	    &grid_default_cell, "Command: %s", cmd)) {
 		free(cmd);
@@ -633,7 +633,7 @@ window_customize_draw_key(__unused struct window_customize_modedata *data,
 	}
 	default_bd = key_bindings_get_default(kt, bd->key);
 	if (default_bd != NULL) {
-		default_cmd = cmd_list_print(default_bd->cmdlist, 0);
+		default_cmd = cmd_parse_print(default_bd->cmd); /* XXX */
 		if (strcmp(cmd, default_cmd) != 0 &&
 		    !screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
 		    &grid_default_cell, "The default is: %s", default_cmd)) {
@@ -1298,7 +1298,7 @@ window_customize_set_key(struct client *c,
 		bd->flags ^= KEY_BINDING_REPEAT;
 	else if (strcmp(s, "Command") == 0) {
 		xasprintf(&prompt, "(%s) ", key_string_lookup_key(key, 0));
-		value = cmd_list_print(bd->cmdlist, 0);
+		value = cmd_parse_print(bd->cmd); /* XXX: command parser conversion */
 
 		new_item = xcalloc(1, sizeof *new_item);
 		new_item->data = data;
@@ -1360,7 +1360,7 @@ window_customize_reset_key(struct window_customize_modedata *data,
 		return;
 
 	dd = key_bindings_get_default(kt, bd->key);
-	if (dd != NULL && bd->cmdlist == dd->cmdlist)
+	if (dd != NULL && bd->cmd == dd->cmd) /* XXX: command parser conversion */
 		return;
 	if (dd == NULL && item == mode_tree_get_current(data->data)) {
 		mode_tree_collapse_current(data->data);

@@ -54,12 +54,13 @@ cmd_bind_key_args_parse(__unused struct args *args, __unused u_int idx,
 static enum cmd_retval
 cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		 *args = cmd_get_args(self);
-	key_code		  key;
-	const char		 *tablename, *note = args_get(args, 'N');
-	int			  repeat;
-	struct args_value	 *value;
-	u_int			  count = args_count(args);
+	struct args		*args = cmd_get_args(self);
+	key_code		 key;
+	const char		*tablename, *note = args_get(args, 'N');
+	int			 repeat;
+	struct args_value	*value;
+	u_int			 count = args_count(args);
+	struct cmd_parse_tree	*cmd;
 
 	key = key_string_lookup_string(args_string(args, 0));
 	if (key == KEYC_NONE || key == KEYC_UNKNOWN) {
@@ -82,8 +83,8 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 
 	value = args_value(args, 1);
 	if (count == 2 && value->type == ARGS_COMMANDS) {
-		key_bindings_add(tablename, key, note, repeat, value->cmdlist);
-		value->cmdlist->references++;
+		cmd = cmd_parse_add_ref(value->cmd);
+		key_bindings_add(tablename, key, note, repeat, cmd);
 		return (CMD_RETURN_NORMAL);
 	}
 

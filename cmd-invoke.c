@@ -313,7 +313,7 @@ cmd_invoke_build_command(struct cmdq_item *item, struct cmd_invoke_state *is,
 	struct args_value	*values = NULL;
 	struct cmd		*cmd;
 	char			*cause = NULL;
-	u_int			 count = 0, i;
+	u_int			 count = 0;
 
 	child = cmd_parse_node_first_child(node);
 	while (child != NULL) {
@@ -328,11 +328,7 @@ cmd_invoke_build_command(struct cmdq_item *item, struct cmd_invoke_state *is,
 			break;
 		case CMD_PARSE_COMMANDS:
 			values[count].type = ARGS_COMMANDS;
-#if 0 /* XXX: command parser conversion */
-			values[count].cmdparse = child;
-#else
-			fatalx("XXX: command parser conversion not done for ARGS_COMMANDS");
-#endif
+			values[count].cmd = cmd_parse_from_node(child);
 			break;
 		default:
 			fatalx("unexpected node type in command");
@@ -348,18 +344,12 @@ cmd_invoke_build_command(struct cmdq_item *item, struct cmd_invoke_state *is,
 		free(cause);
 		goto fail;
 	}
-	for (i = 0; i < count; i++) {
-		if (values[i].type == ARGS_STRING)
-			free(values[i].string);
-	}
+	args_free_values(values, count);
 	free(values);
 	return (cmd);
 
 fail:
-	for (i = 0; i < count; i++) {
-		if (values[i].type == ARGS_STRING)
-			free(values[i].string);
-	}
+	args_free_values(values, count);
 	free(values);
 	return (NULL);
 }

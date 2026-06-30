@@ -89,8 +89,7 @@ args_copy_value(struct args_value *to, struct args_value *from)
 	case ARGS_NONE:
 		break;
 	case ARGS_COMMANDS:
-		to->cmdlist = from->cmdlist;
-		to->cmdlist->references++;
+		to->cmd = cmd_parse_add_ref(from->cmd);
 		break;
 	case ARGS_STRING:
 		to->string = xstrdup(from->string);
@@ -123,7 +122,7 @@ args_value_as_string(struct args_value *value)
 		return ("");
 	case ARGS_COMMANDS:
 		if (value->cached == NULL)
-			value->cached = cmd_list_print(value->cmdlist, 0);
+			value->cached = cmd_parse_print(value->cmd);
 		return (value->cached);
 	case ARGS_STRING:
 		return (value->string);
@@ -367,7 +366,7 @@ args_copy_copy_value(struct args_value *to, struct args_value *from, int argc,
 		to->string = expanded;
 		break;
 	case ARGS_COMMANDS:
-		to->cmdlist = cmd_list_copy(from->cmdlist, argc, argv);
+		to->cmd = cmd_parse_add_ref(from->cmd);
 		break;
 	}
 }
@@ -418,7 +417,7 @@ args_free_value(struct args_value *value)
 		free(value->string);
 		break;
 	case ARGS_COMMANDS:
-		cmd_list_free(value->cmdlist);
+		cmd_parse_free(value->cmd);
 		break;
 	}
 	free(value->cached);
@@ -477,7 +476,7 @@ args_to_vector(struct args *args, int *argc, char ***argv)
 			cmd_append_argv(argc, argv, args->values[i].string);
 			break;
 		case ARGS_COMMANDS:
-			s = cmd_list_print(args->values[i].cmdlist, 0);
+			s = cmd_parse_print(args->values[i].cmd);
 			cmd_append_argv(argc, argv, s);
 			free(s);
 			break;
@@ -532,7 +531,7 @@ args_print_add_value(char **buf, size_t *len, struct args_value *value)
 	case ARGS_NONE:
 		break;
 	case ARGS_COMMANDS:
-		expanded = cmd_list_print(value->cmdlist, 0);
+		expanded = cmd_parse_print(value->cmd);
 		args_print_add(buf, len, "{ %s }", expanded);
 		break;
 	case ARGS_STRING:
@@ -784,9 +783,14 @@ args_make_commands_prepare(struct cmd *self, struct cmdq_item *item, u_int idx,
 	if (idx < args->count) {
 		value = &args->values[idx];
 		if (value->type == ARGS_COMMANDS) {
+#if 0 /* XXX: command parser conversion */
 			state->cmdlist = value->cmdlist;
 			state->cmdlist->references++;
 			return (state);
+#else
+			fatalx("XXX: command parser conversion not done for "
+			    "ARGS_COMMANDS");
+#endif
 		}
 		cmd = value->string;
 	} else {

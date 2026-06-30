@@ -96,7 +96,7 @@ key_bindings_cmp(struct key_binding *bd1, struct key_binding *bd2)
 static void
 key_bindings_free(struct key_binding *bd)
 {
-	cmd_list_free(bd->cmdlist);
+	cmd_parse_free(bd->cmd);
 	free((void *)bd->note);
 	free(bd);
 }
@@ -188,16 +188,14 @@ key_bindings_next(__unused struct key_table *table, struct key_binding *bd)
 
 void
 key_bindings_add(const char *name, key_code key, const char *note, int repeat,
-    struct cmd_list *cmdlist)
+    struct cmd_parse_tree *cmd)
 {
-	struct key_table	*table;
+	struct key_table	*table = key_bindings_get_table(name, 1);
 	struct key_binding	*bd;
-	char			*s;
-
-	table = key_bindings_get_table(name, 1);
+	char			*k, *s;
 
 	bd = key_bindings_get(table, key & ~KEYC_MASK_FLAGS);
-	if (cmdlist == NULL) {
+	if (cmd == NULL) {
 		if (bd != NULL) {
 			if (note != NULL) {
 				free((void *)bd->note);
@@ -222,11 +220,11 @@ key_bindings_add(const char *name, key_code key, const char *note, int repeat,
 
 	if (repeat)
 		bd->flags |= KEY_BINDING_REPEAT;
-	bd->cmdlist = cmdlist;
+	bd->cmd = cmd;
 
-	s = cmd_list_print(bd->cmdlist, 0);
-	log_debug("%s: %#llx %s = %s", __func__, bd->key,
-	    key_string_lookup_key(bd->key, 1), s);
+	k = key_string_lookup_key(bd->key, 1);
+	s = cmd_parse_print(bd->cmd);
+	log_debug("%s: %#llx %s = %s", __func__, bd->key, k, s);
 	free(s);
 }
 
@@ -235,6 +233,7 @@ key_bindings_remove(const char *name, key_code key)
 {
 	struct key_table	*table;
 	struct key_binding	*bd;
+	const char		*k;
 
 	table = key_bindings_get_table(name, 0);
 	if (table == NULL)
@@ -244,8 +243,8 @@ key_bindings_remove(const char *name, key_code key)
 	if (bd == NULL)
 		return;
 
-	log_debug("%s: %#llx %s", __func__, bd->key,
-	    key_string_lookup_key(bd->key, 1));
+	k = key_string_lookup_key(bd->key, 1);
+	log_debug("%s: %#llx %s", __func__, bd->key, k);
 
 	RB_REMOVE(key_bindings, &table->key_bindings, bd);
 	key_bindings_free(bd);
@@ -277,9 +276,8 @@ key_bindings_reset(const char *name, key_code key)
 		return;
 	}
 
-	cmd_list_free(bd->cmdlist);
-	bd->cmdlist = dd->cmdlist;
-	bd->cmdlist->references++;
+	cmd_parse_free(bd->cmd);
+	bd->cmd = cmd_parse_add_ref(dd->cmd);
 
 	free((void *)bd->note);
 	if (dd->note != NULL)
@@ -336,8 +334,7 @@ key_bindings_init_done(__unused struct cmdq_item *item, __unused void *data)
 			if (bd->note != NULL)
 				new_bd->note = xstrdup(bd->note);
 			new_bd->flags = bd->flags;
-			new_bd->cmdlist = bd->cmdlist;
-			new_bd->cmdlist->references++;
+			new_bd->cmd = cmd_parse_add_ref(bd->cmd);
 			RB_INSERT(key_bindings, &table->default_key_bindings,
 			    new_bd);
 		}
@@ -706,12 +703,18 @@ key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
 {
 	struct cmdq_item	*new_item;
 	struct cmdq_state	*new_state;
+	struct cmd_invoke_input	 ci;
 	int			 readonly, flags = 0;
 
 	if (c == NULL || (~c->flags & CLIENT_READONLY))
 		readonly = 1;
-	else
+	else {
+#if 0 /* XXX: command parser conversion */
 		readonly = cmd_list_all_have(bd->cmdlist, CMD_READONLY);
+#else
+		readonly = 0;
+#endif
+	}
 
 	if (!readonly)
 		new_item = cmdq_get_callback(key_bindings_read_only, NULL);
@@ -719,7 +722,9 @@ key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
 		if (bd->flags & KEY_BINDING_REPEAT)
 			flags |= CMDQ_STATE_REPEAT;
 		new_state = cmdq_new_state(fs, event, flags);
-		new_item = cmdq_get_command(bd->cmdlist, new_state);
+
+		memset(&ci, 0, sizeof ci);
+		new_item = cmd_invoke_get(bd->cmd, new_state, &ci);
 		cmdq_free_state(new_state);
 	}
 	if (item != NULL)

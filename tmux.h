@@ -1869,13 +1869,13 @@ enum args_type {
 
 /* Argument value. */
 struct args_value {
-	enum args_type		 type;
+	enum args_type			 type;
 	union {
-		char		*string;
-		struct cmd_list	*cmdlist;
+		char			*string;
+		struct cmd_parse_tree	*cmd;
 	};
-	char			*cached;
-	TAILQ_ENTRY(args_value)	 entry;
+	char				*cached;
+	TAILQ_ENTRY(args_value)		 entry;
 };
 
 /* Arguments set. */
@@ -2311,7 +2311,7 @@ enum control_sub_type {
 /* Key binding and key table. */
 struct key_binding {
 	key_code		 key;
-	struct cmd_list		*cmdlist;
+	struct cmd_parse_tree	*cmd;
 	const char		*note;
 	const char		*tablename;
 
@@ -3061,7 +3061,7 @@ struct key_binding *key_bindings_get_default(struct key_table *, key_code);
 struct key_binding *key_bindings_first(struct key_table *);
 struct key_binding *key_bindings_next(struct key_table *, struct key_binding *);
 void	 key_bindings_add(const char *, key_code, const char *, int,
-	     struct cmd_list *);
+	     struct cmd_parse_tree *);
 void	 key_bindings_remove(const char *, key_code);
 void	 key_bindings_reset(const char *, key_code);
 void	 key_bindings_remove_table(const char *);

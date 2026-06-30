@@ -88,6 +88,7 @@ struct cmd_parse_scan {
 static char	*cmd_parse_get_error(const char *, u_int, const char *);
 static struct cmd_parse_node	*cmd_parse_new_node(enum cmd_parse_node_type,
 		    u_int);
+static struct cmd_parse_node	*cmd_parse_copy_node(struct cmd_parse_node *);
 static struct cmd_parse_nodes	*cmd_parse_new_nodes(void);
 static void	 cmd_parse_free_node(struct cmd_parse_node *);
 static void	 cmd_parse_append(struct cmd_parse_nodes *,
@@ -466,6 +467,24 @@ cmd_parse_free_node(struct cmd_parse_node *node)
 	free(node);
 }
 
+/* Recursively copy a node and all of its descendants. */
+static struct cmd_parse_node *
+cmd_parse_copy_node(struct cmd_parse_node *node)
+{
+	struct cmd_parse_node	*new, *child, *copy;
+
+	new = cmd_parse_new_node(node->type, node->line);
+	new->end_line = node->end_line;
+	if (node->value != NULL)
+		new->value = xstrdup(node->value);
+
+	TAILQ_FOREACH(child, &node->children, entry) {
+		copy = cmd_parse_copy_node(child);
+		TAILQ_INSERT_TAIL(&new->children, copy, entry);
+	}
+	return (new);
+}
+
 /* Move all nodes from src to the tail of dst, then free the src list head. */
 static void
 cmd_parse_append(struct cmd_parse_nodes *dst, struct cmd_parse_nodes *src)
@@ -672,6 +691,25 @@ cmd_parse_from_string(const char *s, struct cmd_parse_input *pi, char **cause)
 	 */
 	input.flags |= CMD_PARSE_ONEGROUP;
 	return (cmd_parse_from_buffer(s, strlen(s), &input, cause));
+}
+
+struct cmd_parse_tree *
+cmd_parse_from_node(struct cmd_parse_node *node)
+{
+	struct cmd_parse_tree	*new;
+	struct cmd_parse_node	*root, *child;
+
+	root = cmd_parse_new_node(CMD_PARSE_ROOT, node->line);
+	root->end_line = node->end_line;
+	TAILQ_FOREACH(child, &node->children, entry) {
+		TAILQ_INSERT_TAIL(&root->children, cmd_parse_copy_node(child),
+		    entry);
+	}
+
+	new = xcalloc(1, sizeof *new);
+	new->references = 1;
+	new->root = root;
+	return (new);
 }
 
 struct cmd_parse_tree *
