@@ -1955,8 +1955,6 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 			break;
 		case 2026:
 			screen_write_stop_sync(ictx->wp);
-			if (ictx->wp != NULL)
-				ictx->wp->flags |= PANE_REDRAW;
 			break;
 		case 2031:
 			screen_write_mode_clear(sctx, MODE_THEME_UPDATES);
