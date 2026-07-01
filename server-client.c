@@ -2590,7 +2590,7 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 		item = cmdq_get_callback(server_client_default_command, NULL);
 	else {
 		values = args_from_vector(argc, argv);
-		tree = cmd_parse_from_arguments(values, argc);
+		tree = cmd_parse_from_arguments(values, argc, NULL);
 		args_free_values(values, argc);
 		free(values);
 		cmd_free_argv(argc, argv);

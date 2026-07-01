@@ -547,7 +547,10 @@ cmd_invoke_fire(struct cmdq_item *item, struct cmd_invoke_state *is)
 				break;
 			}
 			if (r == -1) {
-				cmd_invoke_error(item, is, node, cause);
+				if (cmdq_get_client(item) != NULL)
+					cmdq_error(item, "%s", cause);
+				else
+					cfg_add_cause("%s", cause);
 				free(cause);
 				cmd_invoke_skip_sequence(is);
 				break;

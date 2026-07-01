@@ -103,6 +103,7 @@ static void	 cmd_parse_print_sequence(char **, struct cmd_parse_node *,
 		    u_int);
 static void	 cmd_parse_print_item(char **, struct cmd_parse_node *, u_int,
 		    int);
+static char			*cmd_parse_make_string(struct cmd_parse_node *);
 
 %}
 
@@ -716,16 +717,18 @@ cmd_parse_from_node(struct cmd_parse_tree *tree, struct cmd_parse_node *node)
 
 /* Find the last command node in tree order. */
 static struct cmd_parse_node *
-cmd_parse_last_command(struct cmd_parse_node *node)
+cmd_parse_last_top_level_command(struct cmd_parse_tree *tree)
 {
-	struct cmd_parse_node	*child, *last = NULL, *found;
+	struct cmd_parse_node	*root, *seq, *node, *last = NULL;
 
-	if (node->type == CMD_PARSE_COMMAND)
-		last = node;
-	TAILQ_FOREACH(child, &node->children, entry) {
-		found = cmd_parse_last_command(child);
-		if (found != NULL)
-			last = found;
+	root = cmd_parse_root(tree);
+	TAILQ_FOREACH(seq, &root->children, entry) {
+		if (seq->type == CMD_PARSE_SEQUENCE) {
+			TAILQ_FOREACH(node, &seq->children, entry) {
+				if (node->type == CMD_PARSE_COMMAND)
+					last = node;
+			}
+		}
 	}
 	return (last);
 }
@@ -740,8 +743,8 @@ cmd_parse_expand_alias(struct cmd_parse_tree *src, struct cmd_parse_node *cmd,
 {
 	struct cmd_parse_input	 pi;
 	struct cmd_parse_tree	*tree;
-	struct cmd_parse_node	*first, *node, *last, *loop, *copy;
-	char			*alias;
+	struct cmd_parse_node	*first, *last, *loop, *copy;
+	char			*alias, *name;
 
 	*out = NULL;
 	*cause = NULL;
@@ -754,15 +757,12 @@ cmd_parse_expand_alias(struct cmd_parse_tree *src, struct cmd_parse_node *cmd,
 	first = TAILQ_FIRST(&cmd->children);
 	if (first == NULL)
 		return (0);
-	if (first->type != CMD_PARSE_STRING)
-		return (0);
-	node = TAILQ_FIRST(&first->children);
-	if (node == NULL || TAILQ_NEXT(node, entry) != NULL)
-		return (0);
-	if (node->type != CMD_PARSE_TEXT)
+	name = cmd_parse_make_string(first);
+	if (name == NULL)
 		return (0);
 
-	alias = cmd_get_alias(node->value);
+	alias = cmd_get_alias(name);
+	free(name);
 	if (alias == NULL)
 		return (0);
 
@@ -771,12 +771,12 @@ cmd_parse_expand_alias(struct cmd_parse_tree *src, struct cmd_parse_node *cmd,
 	pi.line = cmd_parse_node_line(cmd);
 	pi.flags = cmd_parse_flags(src) | CMD_PARSE_NOALIAS;
 
-	tree = cmd_parse_from_string(alias, &pi, cause);
+	tree = cmd_parse_from_buffer(alias, strlen(alias), &pi, cause);
 	free(alias);
 	if (tree == NULL)
 		return (-1);
 
-	last = cmd_parse_last_command(cmd_parse_root(tree));
+	last = cmd_parse_last_top_level_command(tree);
 	if (last != NULL) {
 		loop = TAILQ_NEXT(first, entry);
 		while (loop != NULL) {
@@ -824,10 +824,10 @@ cmd_parse_new_commands_node(struct cmd_parse_tree *tree, u_int line)
 /* Add one argument to the current command, creating it if needed. */
 static void
 cmd_parse_from_arguments_add(struct cmd_parse_node *seq,
-    struct cmd_parse_node **cmd, struct cmd_parse_node *child)
+    struct cmd_parse_node **cmd, struct cmd_parse_node *child, u_int line)
 {
 	if (*cmd == NULL) {
-		*cmd = cmd_parse_new_node(CMD_PARSE_COMMAND, 0);
+		*cmd = cmd_parse_new_node(CMD_PARSE_COMMAND, line);
 		TAILQ_INSERT_TAIL(&seq->children, *cmd, entry);
 	}
 	TAILQ_INSERT_TAIL(&(*cmd)->children, child, entry);
@@ -835,17 +835,22 @@ cmd_parse_from_arguments_add(struct cmd_parse_node *seq,
 
 /* Build a parse tree directly from existing argument values. */
 struct cmd_parse_tree *
-cmd_parse_from_arguments(struct args_value *values, u_int count)
+cmd_parse_from_arguments(struct args_value *values, u_int count,
+    struct cmd_parse_input *pi)
 {
-	struct cmd_parse_tree	*new;
+	struct cmd_parse_tree	*new, *new_cmd;
 	struct cmd_parse_node	*root, *seq, *cmd = NULL, *child;
 	u_int			 i;
 	char			*copy;
 	size_t			 size;
 	int			 end;
+	u_int			 line = 0;
 
-	root = cmd_parse_new_node(CMD_PARSE_ROOT, 0);
-	seq = cmd_parse_new_node(CMD_PARSE_SEQUENCE, 0);
+	if (pi != NULL)
+		line = pi->line;
+
+	root = cmd_parse_new_node(CMD_PARSE_ROOT, line);
+	seq = cmd_parse_new_node(CMD_PARSE_SEQUENCE, line);
 	TAILQ_INSERT_TAIL(&root->children, seq, entry);
 
 	for (i = 0; i < count; i++) {
@@ -865,16 +870,19 @@ cmd_parse_from_arguments(struct args_value *values, u_int count)
 				else
 					end = 1;
 			}
-
-			if (!end || size != 0) {
-				child = cmd_parse_new_string_node(copy, 0);
-				cmd_parse_from_arguments_add(seq, &cmd, child);
+			if (end && size == 0) {
+				free(copy);
+				break;
 			}
+
+			child = cmd_parse_new_string_node(copy, line);
+			cmd_parse_from_arguments_add(seq, &cmd, child, line);
 			free(copy);
 			break;
 		case ARGS_COMMANDS:
-			child = cmd_parse_new_commands_node(values[i].cmd, 0);
-			cmd_parse_from_arguments_add(seq, &cmd, child);
+			new_cmd = values[i].cmd;
+			child = cmd_parse_new_commands_node(new_cmd, line);
+			cmd_parse_from_arguments_add(seq, &cmd, child, line);
 			break;
 		default:
 			fatalx("unknown argument type");
@@ -886,6 +894,10 @@ cmd_parse_from_arguments(struct args_value *values, u_int count)
 
 	new = xcalloc(1, sizeof *new);
 	new->references = 1;
+	if (pi != NULL) {
+		new->file = pi->file != NULL ? xstrdup(pi->file) : NULL;
+		new->flags = (pi->flags & ~CMD_PARSE_ONEGROUP);
+	}
 	new->root = root;
 	return (new);
 }

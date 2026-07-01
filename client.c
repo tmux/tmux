@@ -78,7 +78,7 @@ client_command_has_flag(int argc, char **argv, int flag)
 	int			 found;
 
 	values = args_from_vector(argc, argv);
-	tree = cmd_parse_from_arguments(values, argc);
+	tree = cmd_parse_from_arguments(values, argc, NULL);
 	found = cmd_parse_any_have(tree, flag);
 
 	cmd_parse_free(tree);

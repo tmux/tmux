@@ -56,11 +56,12 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
 	key_code		 key;
-	const char		*tablename, *note = args_get(args, 'N');
+	const char		*tablename, *note = args_get(args, 'N'), *file;
 	int			 repeat;
 	struct args_value	*value;
 	u_int			 count = args_count(args);
 	struct cmd_parse_tree	*cmd;
+	struct cmd_parse_input	 pi;
 
 	key = key_string_lookup_string(args_string(args, 0));
 	if (key == KEYC_NONE || key == KEYC_UNKNOWN) {
@@ -88,7 +89,13 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	cmd = cmd_parse_from_arguments(args_values(args) + 1, count - 1);
+	memset(&pi, 0, sizeof pi);
+	cmd_get_source(self, &file, &pi.line);
+	if (file != NULL)
+		pi.file = file;
+	pi.flags = cmd_get_parse_flags(self);
+
+	cmd = cmd_parse_from_arguments(args_values(args) + 1, count - 1, &pi);
 	key_bindings_add(tablename, key, note, repeat, cmd);
 	return (CMD_RETURN_NORMAL);
 }
