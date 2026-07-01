@@ -1,3 +1,23 @@
+# tmux with teammode
+
+This is a fork of tmux that adds **teammode**: a multi-user mode (enabled by
+default) in which several users attached to the same session each work
+independently. Each user gets their own active pane and their own current
+window, so they can type in different panes and navigate to different windows
+at the same time, and each user sees the other users' cursors drawn as coloured
+markers. Set `set -g teammode off` for classic shared behaviour.
+
+See [TEAMMODE.md](../TEAMMODE.md) for details and usage.
+
+> **Disclaimer:** the teammode changes were fully vibe-coded and should be used
+> with care. They work in manual testing, but have not been exhaustively
+> reviewed or tested — do not rely on them in critical setups without your own
+> verification.
+
+The original tmux README follows.
+
+---
+
 # Welcome to tmux!
 
 tmux is a terminal multiplexer: it enables a number of terminals to be created,
