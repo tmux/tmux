@@ -265,7 +265,7 @@ layout_parse(struct window *w, const char *layout, char **cause)
 		window_resize(w, tiled_lc->sx, tiled_lc->sy, -1, -1);
 
 	/* Destroy the old layout and swap to the new. */
-	layout_free_cell(w->layout_root);
+	layout_free_cell(w->layout_root, 0);
 	w->layout_root = tiled_lc;
 
 	/* Assign the panes into the cells. */
@@ -291,7 +291,7 @@ layout_parse(struct window *w, const char *layout, char **cause)
 	return (0);
 
 fail:
-	layout_free_cell(tiled_lc);
+	layout_free_cell(tiled_lc, 0);
 	return (-1);
 }
 
@@ -423,6 +423,6 @@ layout_construct(struct layout_cell *lcparent, const char **layout,
 	return (0);
 
 fail:
-	layout_free_cell(*lc);
+	layout_free_cell(*lc, 0);
 	return (-1);
 }
