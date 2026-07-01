@@ -124,12 +124,12 @@ layout_set_previous(struct window *w)
 }
 
 static struct window_pane *
-layout_first_tiled(struct window *w)
+layout_set_first_tiled(struct window *w)
 {
 	struct window_pane	*wp;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (!window_pane_is_floating(wp))
+		if (wp->layout_cell && layout_cell_is_tiled(wp->layout_cell))
 			return (wp);
 	}
 	return (NULL);
@@ -139,19 +139,15 @@ static void
 layout_set_even(struct window *w, enum layout_type type)
 {
 	struct window_pane	*wp;
-	struct layout_cell	*lc, *lcnew;
+	struct layout_cell	*lcroot, *lcchild;
 	u_int			 n, sx, sy;
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
-	/* Get number of panes. */
 	n = window_count_panes(w, 0);
 	if (n <= 1)
 		return;
 
-	/* Free the old root and construct a new. */
-	layout_free(w);
-	lc = w->layout_root = layout_create_cell(NULL);
 	if (type == LAYOUT_LEFTRIGHT) {
 		sx = (n * (PANE_MINIMUM + 1)) - 1;
 		if (sx < w->sx)
@@ -163,30 +159,30 @@ layout_set_even(struct window *w, enum layout_type type)
 			sy = w->sy;
 		sx = w->sx;
 	}
-	layout_set_size(lc, sx, sy, 0, 0);
-	layout_make_node(lc, type);
 
-	/* Build new leaf cells. */
+	layout_free(w, 1);
+	lcroot = w->layout_root = layout_create_cell(NULL);
+	layout_set_size(lcroot, sx, sy, 0, 0);
+	layout_make_node(lcroot, type);
+
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (window_pane_is_floating(wp))
-			continue;
-		lcnew = layout_create_cell(lc);
-		layout_make_leaf(lcnew, wp);
-		lcnew->sx = w->sx;
-		lcnew->sy = w->sy;
-		TAILQ_INSERT_TAIL(&lc->cells, lcnew, entry);
+		lcchild = wp->layout_cell;
+		TAILQ_INSERT_TAIL(&lcroot->cells, lcchild, entry);
+		lcchild->parent = lcroot;
+		if (layout_cell_is_tiled(lcchild)) {
+			lcchild->sx = w->sx;
+			lcchild->sy = w->sy;
+		}
 	}
 
-	/* Spread out cells. */
-	layout_spread_cell(w, lc);
+	layout_spread_cell(w, lcroot);
 
-	/* Fix cell offsets. */
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
-	window_resize(w, lc->sx, lc->sy, -1, -1);
+	window_resize(w, lcroot->sx, lcroot->sy, -1, -1);
 	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
 }
@@ -206,15 +202,14 @@ layout_set_even_v(struct window *w)
 static void
 layout_set_main_h(struct window *w)
 {
-	struct window_pane	*wp;
-	struct layout_cell	*lc, *lcmain, *lcother, *lcchild;
+	struct window_pane	*wp, *wpmain;
+	struct layout_cell	*lcroot, *lcmain, *lcother, *lcchild;
 	u_int			 n, mainh, otherh, sx, sy;
 	char			*cause;
 	const char		*s;
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
-	/* Get number of panes. */
 	n = window_count_panes(w, 0);
 	if (n <= 1)
 		return;
@@ -255,52 +250,48 @@ layout_set_main_h(struct window *w)
 	if (sx < w->sx)
 		sx = w->sx;
 
-	/* Free old tree and create a new root. */
-	layout_free(w);
-	lc = w->layout_root = layout_create_cell(NULL);
-	layout_set_size(lc, sx, mainh + otherh + 1, 0, 0);
-	layout_make_node(lc, LAYOUT_TOPBOTTOM);
+	layout_free(w, 1);
+	lcroot = w->layout_root = layout_create_cell(NULL);
+	layout_set_size(lcroot, sx, mainh + otherh + 1, 0, 0);
+	layout_make_node(lcroot, LAYOUT_TOPBOTTOM);
 
-	/* Create the main pane. */
-	lcmain = layout_create_cell(lc);
+	wpmain = layout_set_first_tiled(w);
+	lcmain = wpmain->layout_cell;
+	lcmain->parent = lcroot;
 	layout_set_size(lcmain, sx, mainh, 0, 0);
-	layout_make_leaf(lcmain, layout_first_tiled(w));
-	TAILQ_INSERT_TAIL(&lc->cells, lcmain, entry);
+	TAILQ_INSERT_TAIL(&lcroot->cells, lcmain, entry);
 
-	/* Create the other pane. */
-	lcother = layout_create_cell(lc);
-	layout_set_size(lcother, sx, otherh, 0, 0);
 	if (n == 1) {
-		wp = TAILQ_NEXT(layout_first_tiled(w), entry);
-		while (wp != NULL && window_pane_is_floating(wp))
+		wp = TAILQ_NEXT(wpmain, entry);
+		while (wp != NULL && !layout_cell_is_tiled(wp->layout_cell))
 			wp = TAILQ_NEXT(wp, entry);
-		layout_make_leaf(lcother, wp);
-		TAILQ_INSERT_TAIL(&lc->cells, lcother, entry);
+		TAILQ_INSERT_TAIL(&lcroot->cells, wp->layout_cell, entry);
+		wp->layout_cell->parent = lcroot;
 	} else {
+		lcother = layout_create_cell(lcroot);
+		layout_set_size(lcother, sx, otherh, 0, 0);
 		layout_make_node(lcother, LAYOUT_LEFTRIGHT);
-		TAILQ_INSERT_TAIL(&lc->cells, lcother, entry);
+		TAILQ_INSERT_TAIL(&lcroot->cells, lcother, entry);
 
-		/* Add the remaining panes as children. */
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (window_pane_is_floating(wp))
+			if (wp == wpmain)
 				continue;
-			if (wp == layout_first_tiled(w))
-				continue;
-			lcchild = layout_create_cell(lcother);
-			layout_set_size(lcchild, PANE_MINIMUM, otherh, 0, 0);
-			layout_make_leaf(lcchild, wp);
+			lcchild = wp->layout_cell;
 			TAILQ_INSERT_TAIL(&lcother->cells, lcchild, entry);
+			lcchild->parent = lcother;
+			if (layout_cell_is_tiled(lcchild))
+				layout_set_size(lcchild, PANE_MINIMUM, otherh,
+				    0, 0);
 		}
 		layout_spread_cell(w, lcother);
 	}
 
-	/* Fix cell offsets. */
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
-	window_resize(w, lc->sx, lc->sy, -1, -1);
+	window_resize(w, lcroot->sx, lcroot->sy, -1, -1);
 	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
 }
@@ -308,15 +299,14 @@ layout_set_main_h(struct window *w)
 static void
 layout_set_main_h_mirrored(struct window *w)
 {
-	struct window_pane	*wp;
-	struct layout_cell	*lc, *lcmain, *lcother, *lcchild;
+	struct window_pane	*wp, *wpmain;
+	struct layout_cell	*lcroot, *lcmain, *lcother, *lcchild;
 	u_int			 n, mainh, otherh, sx, sy;
 	char			*cause;
 	const char		*s;
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
-	/* Get number of panes. */
 	n = window_count_panes(w, 0);
 	if (n <= 1)
 		return;
@@ -357,52 +347,48 @@ layout_set_main_h_mirrored(struct window *w)
 	if (sx < w->sx)
 		sx = w->sx;
 
-	/* Free old tree and create a new root. */
-	layout_free(w);
-	lc = w->layout_root = layout_create_cell(NULL);
-	layout_set_size(lc, sx, mainh + otherh + 1, 0, 0);
-	layout_make_node(lc, LAYOUT_TOPBOTTOM);
+	layout_free(w, 1);
+	lcroot = w->layout_root = layout_create_cell(NULL);
+	layout_set_size(lcroot, sx, mainh + otherh + 1, 0, 0);
+	layout_make_node(lcroot, LAYOUT_TOPBOTTOM);
 
-	/* Create the other pane. */
-	lcother = layout_create_cell(lc);
-	layout_set_size(lcother, sx, otherh, 0, 0);
+	wpmain = layout_set_first_tiled(w);
+	lcmain = wpmain->layout_cell;
+	lcmain->parent = lcroot;
+	layout_set_size(lcmain, sx, mainh, 0, 0);
+	TAILQ_INSERT_TAIL(&lcroot->cells, lcmain, entry);
+
 	if (n == 1) {
-		wp = TAILQ_NEXT(layout_first_tiled(w), entry);
-		while (wp != NULL && window_pane_is_floating(wp))
+		wp = TAILQ_NEXT(wpmain, entry);
+		while (wp != NULL && !layout_cell_is_tiled(wp->layout_cell))
 			wp = TAILQ_NEXT(wp, entry);
-		layout_make_leaf(lcother, wp);
-		TAILQ_INSERT_TAIL(&lc->cells, lcother, entry);
+		TAILQ_INSERT_HEAD(&lcroot->cells, wp->layout_cell, entry);
+		wp->layout_cell->parent = lcroot;
 	} else {
+		lcother = layout_create_cell(lcroot);
+		layout_set_size(lcother, sx, otherh, 0, 0);
 		layout_make_node(lcother, LAYOUT_LEFTRIGHT);
-		TAILQ_INSERT_TAIL(&lc->cells, lcother, entry);
+		TAILQ_INSERT_HEAD(&lcroot->cells, lcother, entry);
 
-		/* Add the remaining panes as children. */
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (window_pane_is_floating(wp))
+			if (wp == wpmain)
 				continue;
-			if (wp == layout_first_tiled(w))
-				continue;
-			lcchild = layout_create_cell(lcother);
-			layout_set_size(lcchild, PANE_MINIMUM, otherh, 0, 0);
-			layout_make_leaf(lcchild, wp);
+			lcchild = wp->layout_cell;
 			TAILQ_INSERT_TAIL(&lcother->cells, lcchild, entry);
+			lcchild->parent = lcother;
+			if (layout_cell_is_tiled(lcchild))
+				layout_set_size(lcchild, PANE_MINIMUM, otherh,
+				    0, 0);
 		}
 		layout_spread_cell(w, lcother);
 	}
 
-	/* Create the main pane. */
-	lcmain = layout_create_cell(lc);
-	layout_set_size(lcmain, sx, mainh, 0, 0);
-	layout_make_leaf(lcmain, layout_first_tiled(w));
-	TAILQ_INSERT_TAIL(&lc->cells, lcmain, entry);
-
-	/* Fix cell offsets. */
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
-	window_resize(w, lc->sx, lc->sy, -1, -1);
+	window_resize(w, lcroot->sx, lcroot->sy, -1, -1);
 	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
 }
@@ -410,21 +396,20 @@ layout_set_main_h_mirrored(struct window *w)
 static void
 layout_set_main_v(struct window *w)
 {
-	struct window_pane	*wp;
-	struct layout_cell	*lc, *lcmain, *lcother, *lcchild;
+	struct window_pane	*wp, *wpmain;
+	struct layout_cell	*lcroot, *lcmain, *lcother, *lcchild;
 	u_int			 n, mainw, otherw, sx, sy;
 	char			*cause;
 	const char		*s;
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
-	/* Get number of panes. */
 	n = window_count_panes(w, 0);
 	if (n <= 1)
 		return;
 	n--;	/* take off main pane */
 
-	/* Find available width - take off one line for the border. */
+	/* Find available width - take off one column for the border. */
 	sx = w->sx - 1;
 
 	/* Get the main pane width. */
@@ -459,52 +444,48 @@ layout_set_main_v(struct window *w)
 	if (sy < w->sy)
 		sy = w->sy;
 
-	/* Free old tree and create a new root. */
-	layout_free(w);
-	lc = w->layout_root = layout_create_cell(NULL);
-	layout_set_size(lc, mainw + otherw + 1, sy, 0, 0);
-	layout_make_node(lc, LAYOUT_LEFTRIGHT);
+	layout_free(w, 1);
+	lcroot = w->layout_root = layout_create_cell(NULL);
+	layout_set_size(lcroot, mainw + otherw + 1, sy, 0, 0);
+	layout_make_node(lcroot, LAYOUT_LEFTRIGHT);
 
-	/* Create the main pane. */
-	lcmain = layout_create_cell(lc);
+	wpmain = layout_set_first_tiled(w);
+	lcmain = wpmain->layout_cell;
+	lcmain->parent = lcroot;
 	layout_set_size(lcmain, mainw, sy, 0, 0);
-	layout_make_leaf(lcmain, layout_first_tiled(w));
-	TAILQ_INSERT_TAIL(&lc->cells, lcmain, entry);
+	TAILQ_INSERT_TAIL(&lcroot->cells, lcmain, entry);
 
-	/* Create the other pane. */
-	lcother = layout_create_cell(lc);
-	layout_set_size(lcother, otherw, sy, 0, 0);
 	if (n == 1) {
-		wp = TAILQ_NEXT(layout_first_tiled(w), entry);
-		while (wp != NULL && window_pane_is_floating(wp))
+		wp = TAILQ_NEXT(wpmain, entry);
+		while (wp != NULL && !layout_cell_is_tiled(wp->layout_cell))
 			wp = TAILQ_NEXT(wp, entry);
-		layout_make_leaf(lcother, wp);
-		TAILQ_INSERT_TAIL(&lc->cells, lcother, entry);
+		TAILQ_INSERT_TAIL(&lcroot->cells, wp->layout_cell, entry);
+		wp->layout_cell->parent = lcroot;
 	} else {
+		lcother = layout_create_cell(lcroot);
 		layout_make_node(lcother, LAYOUT_TOPBOTTOM);
-		TAILQ_INSERT_TAIL(&lc->cells, lcother, entry);
+		layout_set_size(lcother, otherw, sy, 0, 0);
+		TAILQ_INSERT_TAIL(&lcroot->cells, lcother, entry);
 
-		/* Add the remaining panes as children. */
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (window_pane_is_floating(wp))
+			if (wp == wpmain)
 				continue;
-			if (wp == layout_first_tiled(w))
-				continue;
-			lcchild = layout_create_cell(lcother);
-			layout_set_size(lcchild, otherw, PANE_MINIMUM, 0, 0);
-			layout_make_leaf(lcchild, wp);
+			lcchild = wp->layout_cell;
 			TAILQ_INSERT_TAIL(&lcother->cells, lcchild, entry);
+			lcchild->parent = lcother;
+			if (layout_cell_is_tiled(lcchild))
+				layout_set_size(lcchild, otherw, PANE_MINIMUM,
+				    0, 0);
 		}
 		layout_spread_cell(w, lcother);
 	}
 
-	/* Fix cell offsets. */
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
-	window_resize(w, lc->sx, lc->sy, -1, -1);
+	window_resize(w, lcroot->sx, lcroot->sy, -1, -1);
 	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
 }
@@ -512,8 +493,8 @@ layout_set_main_v(struct window *w)
 static void
 layout_set_main_v_mirrored(struct window *w)
 {
-	struct window_pane	*wp;
-	struct layout_cell	*lc, *lcmain, *lcother, *lcchild;
+	struct window_pane	*wp, *wpmain;
+	struct layout_cell	*lcroot, *lcmain, *lcother, *lcchild;
 	u_int			 n, mainw, otherw, sx, sy;
 	char			*cause;
 	const char		*s;
@@ -526,7 +507,7 @@ layout_set_main_v_mirrored(struct window *w)
 		return;
 	n--;	/* take off main pane */
 
-	/* Find available width - take off one line for the border. */
+	/* Find available width - take off one column for the border. */
 	sx = w->sx - 1;
 
 	/* Get the main pane width. */
@@ -561,62 +542,58 @@ layout_set_main_v_mirrored(struct window *w)
 	if (sy < w->sy)
 		sy = w->sy;
 
-	/* Free old tree and create a new root. */
-	layout_free(w);
-	lc = w->layout_root = layout_create_cell(NULL);
-	layout_set_size(lc, mainw + otherw + 1, sy, 0, 0);
-	layout_make_node(lc, LAYOUT_LEFTRIGHT);
+	layout_free(w, 1);
+	lcroot = w->layout_root = layout_create_cell(NULL);
+	layout_set_size(lcroot, mainw + otherw + 1, sy, 0, 0);
+	layout_make_node(lcroot, LAYOUT_LEFTRIGHT);
 
-	/* Create the other pane. */
-	lcother = layout_create_cell(lc);
-	layout_set_size(lcother, otherw, sy, 0, 0);
+	wpmain = layout_set_first_tiled(w);
+	lcmain = wpmain->layout_cell;
+	lcmain->parent = lcroot;
+	layout_set_size(lcmain, mainw, sy, 0, 0);
+	TAILQ_INSERT_TAIL(&lcroot->cells, lcmain, entry);
+
 	if (n == 1) {
-		wp = TAILQ_NEXT(layout_first_tiled(w), entry);
-		while (wp != NULL && window_pane_is_floating(wp))
+		wp = TAILQ_NEXT(wpmain, entry);
+		while (wp != NULL && !layout_cell_is_tiled(wp->layout_cell))
 			wp = TAILQ_NEXT(wp, entry);
-		layout_make_leaf(lcother, wp);
-		TAILQ_INSERT_TAIL(&lc->cells, lcother, entry);
+		TAILQ_INSERT_HEAD(&lcroot->cells, wp->layout_cell, entry);
+		wp->layout_cell->parent = lcroot;
 	} else {
+		lcother = layout_create_cell(lcroot);
 		layout_make_node(lcother, LAYOUT_TOPBOTTOM);
-		TAILQ_INSERT_TAIL(&lc->cells, lcother, entry);
+		layout_set_size(lcother, otherw, sy, 0, 0);
+		TAILQ_INSERT_HEAD(&lcroot->cells, lcother, entry);
 
-		/* Add the remaining panes as children. */
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (window_pane_is_floating(wp))
+			if (wp == wpmain)
 				continue;
-			if (wp == layout_first_tiled(w))
-				continue;
-			lcchild = layout_create_cell(lcother);
-			layout_set_size(lcchild, otherw, PANE_MINIMUM, 0, 0);
-			layout_make_leaf(lcchild, wp);
+			lcchild = wp->layout_cell;
 			TAILQ_INSERT_TAIL(&lcother->cells, lcchild, entry);
+			lcchild->parent = lcother;
+			if (layout_cell_is_tiled(lcchild))
+				layout_set_size(lcchild, otherw, PANE_MINIMUM,
+				    0, 0);
 		}
 		layout_spread_cell(w, lcother);
 	}
 
-	/* Create the main pane. */
-	lcmain = layout_create_cell(lc);
-	layout_set_size(lcmain, mainw, sy, 0, 0);
-	layout_make_leaf(lcmain, layout_first_tiled(w));
-	TAILQ_INSERT_TAIL(&lc->cells, lcmain, entry);
-
-	/* Fix cell offsets. */
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
-	window_resize(w, lc->sx, lc->sy, -1, -1);
+	window_resize(w, lcroot->sx, lcroot->sy, -1, -1);
 	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
 }
 
-void
+static void
 layout_set_tiled(struct window *w)
 {
 	struct options		*oo = w->options;
 	struct window_pane	*wp;
-	struct layout_cell	*lc, *lcrow, *lcchild;
+	struct layout_cell	*lcroot, *lcrow, *lcchild;
 	u_int			 n, width, height, used, sx, sy;
 	u_int			 i, j, columns, rows, max_columns;
 
@@ -647,56 +624,59 @@ layout_set_tiled(struct window *w)
 	if (height < PANE_MINIMUM)
 		height = PANE_MINIMUM;
 
-	/* Free old tree and create a new root. */
-	layout_free(w);
-	lc = w->layout_root = layout_create_cell(NULL);
 	sx = ((width + 1) * columns) - 1;
 	if (sx < w->sx)
 		sx = w->sx;
 	sy = ((height + 1) * rows) - 1;
 	if (sy < w->sy)
 		sy = w->sy;
-	layout_set_size(lc, sx, sy, 0, 0);
-	layout_make_node(lc, LAYOUT_TOPBOTTOM);
 
-	/* Create a grid of the cells, skipping any floating panes. */
+	layout_free(w, 1);
+	lcroot = w->layout_root = layout_create_cell(NULL);
+	layout_set_size(lcroot, sx, sy, 0, 0);
+	layout_make_node(lcroot, LAYOUT_TOPBOTTOM);
+
+	/* Create a grid of the tiled cells. */
 	wp = TAILQ_FIRST(&w->panes);
-	while (wp != NULL && window_pane_is_floating(wp))
-		wp = TAILQ_NEXT(wp, entry);
 	for (j = 0; j < rows; j++) {
+		while (wp != NULL && !layout_cell_is_tiled(wp->layout_cell))
+			wp = TAILQ_NEXT(wp, entry);
 		/* If this is the last cell, all done. */
 		if (wp == NULL)
 			break;
 
-		/* Create the new row. */
-		lcrow = layout_create_cell(lc);
-		layout_set_size(lcrow, w->sx, height, 0, 0);
-		TAILQ_INSERT_TAIL(&lc->cells, lcrow, entry);
+		lcchild = wp->layout_cell;
 
 		/* If only one column, just use the row directly. */
 		if (n - (j * columns) == 1 || columns == 1) {
-			layout_make_leaf(lcrow, wp);
+			lcchild->parent = lcroot;
+			TAILQ_INSERT_TAIL(&lcroot->cells, lcchild, entry);
+			layout_set_size(lcchild, w->sx, height, 0, 0);
 			wp = TAILQ_NEXT(wp, entry);
-			while (wp != NULL && window_pane_is_floating(wp))
-				wp = TAILQ_NEXT(wp, entry);
 			continue;
 		}
 
-		/* Add in the columns. */
+		/* Create the new row. */
+		lcrow = layout_create_cell(lcroot);
 		layout_make_node(lcrow, LAYOUT_LEFTRIGHT);
+		layout_set_size(lcrow, w->sx, height, 0, 0);
+		TAILQ_INSERT_TAIL(&lcroot->cells, lcrow, entry);
+
+		/* Add in the columns. */
 		for (i = 0; i < columns; i++) {
 			/* Create and add a pane cell. */
-			lcchild = layout_create_cell(lcrow);
-			layout_set_size(lcchild, width, height, 0, 0);
-			layout_make_leaf(lcchild, wp);
+			lcchild->parent = lcrow;
 			TAILQ_INSERT_TAIL(&lcrow->cells, lcchild, entry);
+			layout_set_size(lcchild, width, height, 0, 0);
 
 			/* Move to the next non-floating cell. */
 			wp = TAILQ_NEXT(wp, entry);
-			while (wp != NULL && window_pane_is_floating(wp))
+			while (wp != NULL &&
+			    !layout_cell_is_tiled(wp->layout_cell))
 				wp = TAILQ_NEXT(wp, entry);
 			if (wp == NULL)
 				break;
+			lcchild = wp->layout_cell;
 		}
 
 		/*
@@ -713,21 +693,19 @@ layout_set_tiled(struct window *w)
 		    w->sx - used);
 	}
 
-	/* Adjust the last row height to fit if necessary. */
 	used = (rows * height) + rows - 1;
 	if (w->sy > used) {
-		lcrow = TAILQ_LAST(&lc->cells, layout_cells);
+		lcrow = TAILQ_LAST(&lcroot->cells, layout_cells);
 		layout_resize_adjust(w, lcrow, LAYOUT_TOPBOTTOM,
 		    w->sy - used);
 	}
 
-	/* Fix cell offsets. */
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
-	window_resize(w, lc->sx, lc->sy, -1, -1);
+	window_resize(w, lcroot->sx, lcroot->sy, -1, -1);
 	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
 }

@@ -38,6 +38,7 @@ static int	screen_write_overwrite(struct screen_write_ctx *,
 		    struct grid_cell *, u_int);
 static int	screen_write_combine(struct screen_write_ctx *,
 		    const struct grid_cell *);
+static void	screen_write_flush_dirty(struct window_pane *);
 
 struct screen_write_citem {
 	u_int				x;
@@ -214,18 +215,46 @@ screen_write_pane_is_obscured(struct screen_write_ctx *ctx)
 	return (0);
 }
 
-/* Should we draw to TTY for this screen? */
+/* Should we draw to the TTY? */
 static int
-screen_write_should_draw(struct screen_write_ctx *ctx)
+screen_write_should_draw_lines(struct screen_write_ctx *ctx, u_int y, u_int ny)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = ctx->s;
+	u_int			 sy = screen_size_y(s);
+	bitstr_t		*bs;
 
-	if (s->mode & MODE_SYNC)
-		return (0);
 	if (wp != NULL && (wp->flags & (PANE_REDRAW|PANE_DROP)))
 		return (0);
+	if (s->mode & MODE_SYNC) {
+		if (wp != NULL && y < sy && ny != 0) {
+			bs = wp->sync_dirty;
+			if (ny > sy - y)
+				ny = sy - y;
+			if (bs == NULL || wp->sync_dirty_size != sy) {
+				if (bs != NULL && wp->sync_dirty_size != sy) {
+					y = 0;
+					ny = sy;
+				}
+				free(bs);
+
+				bs = wp->sync_dirty = bit_alloc(sy);
+				if (bs == NULL)
+					fatal("bit_alloc failed");
+				wp->sync_dirty_size = sy;
+			}
+			bit_nset(bs, y, y + ny - 1);
+		}
+		return (0);
+	}
 	return (1);
+}
+
+/* Should we draw this line to the TTY? */
+static int
+screen_write_should_draw_line(struct screen_write_ctx *ctx, u_int y)
+{
+	return (screen_write_should_draw_lines(ctx, y, 1));
 }
 
 /* Set up context for TTY command. */
@@ -993,7 +1022,7 @@ screen_write_sync_callback(__unused int fd, __unused short events, void *arg)
 
 	if (wp->base.mode & MODE_SYNC) {
 		wp->base.mode &= ~MODE_SYNC;
-		wp->flags |= PANE_REDRAW;
+		screen_write_flush_dirty(wp);
 	}
 }
 
@@ -1025,7 +1054,7 @@ screen_write_stop_sync(struct window_pane *wp)
 		evtimer_del(&wp->sync_timer);
 	wp->base.mode &= ~MODE_SYNC;
 
-	wp->flags |= PANE_REDRAW;
+	screen_write_flush_dirty(wp);
 
 	log_debug("%s: %%%u stopped sync mode", __func__, wp->id);
 }
@@ -1180,9 +1209,6 @@ screen_write_redraw_line(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
-	if (!screen_write_should_draw(ctx))
-		return;
-
 	r = window_visible_ranges(wp, xoff, yoff + yy, sx, NULL);
 	for (i = 0; i < r->used; i++) {
 		ri = &r->ranges[i];
@@ -1218,6 +1244,44 @@ screen_write_redraw_line(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 			ttyctx->cell = &ngc;
 		}
 		tty_write(tty_cmd_cell, ttyctx);
+	}
+}
+
+/* Redraw dirty lines. */
+static void
+screen_write_flush_dirty(struct window_pane *wp)
+{
+	struct screen_write_ctx	 ctx;
+	struct tty_ctx		 ttyctx;
+	struct screen		*s = &wp->base;
+	u_int			 y, sy = screen_size_y(s), lines = 0;
+
+	if (wp->sync_dirty == NULL)
+		return;
+
+	screen_write_start_pane(&ctx, wp, s);
+	screen_write_initctx(&ctx, &ttyctx, 1, 1);
+
+	for (y = 0; y < sy; y++) {
+		if (bit_test(wp->sync_dirty, y)) {
+			screen_write_redraw_line(&ctx, &ttyctx, y);
+			lines++;
+		}
+	}
+	log_debug("%s: %%%u had %u dirty lines", __func__, wp->id, lines);
+
+	screen_write_stop(&ctx);
+	screen_write_clear_dirty(wp);
+}
+
+/* Clear any dirty lines. */
+void
+screen_write_clear_dirty(struct window_pane *wp)
+{
+	if (wp != NULL && wp->sync_dirty != NULL) {
+		free(wp->sync_dirty);
+		wp->sync_dirty = NULL;
+		wp->sync_dirty_size = 0;
 	}
 }
 
@@ -1263,7 +1327,7 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 
-	if (!screen_write_should_draw(ctx))
+	if (!screen_write_should_draw_lines(ctx, 0, screen_size_y(s)))
 		return;
 	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
 		tty_write(tty_cmd_alignmenttest, &ttyctx);
@@ -1304,7 +1368,7 @@ screen_write_insertcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 	screen_write_collect_flush(ctx, 0, __func__);
 	ttyctx.n = nx;
 
-	if (!screen_write_should_draw(ctx))
+	if (!screen_write_should_draw_line(ctx, s->cy))
 		return;
 	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
 		tty_write(tty_cmd_insertcharacter, &ttyctx);
@@ -1345,7 +1409,7 @@ screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 	screen_write_collect_flush(ctx, 0, __func__);
 	ttyctx.n = nx;
 
-	if (!screen_write_should_draw(ctx))
+	if (!screen_write_should_draw_line(ctx, s->cy))
 		return;
 	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
 		tty_write(tty_cmd_deletecharacter, &ttyctx);
@@ -1386,7 +1450,7 @@ screen_write_clearcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 	screen_write_collect_flush(ctx, 0, __func__);
 	ttyctx.n = nx;
 
-	if (!screen_write_should_draw(ctx))
+	if (!screen_write_should_draw_line(ctx, s->cy))
 		return;
 	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
 		tty_write(tty_cmd_clearcharacter, &ttyctx);
@@ -1427,7 +1491,7 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 		screen_write_collect_flush(ctx, 0, __func__);
 		ttyctx.n = ny;
 
-		if (!screen_write_should_draw(ctx))
+		if (!screen_write_should_draw_lines(ctx, s->cy, sy - s->cy))
 			return;
 		if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
 			tty_write(tty_cmd_insertline, &ttyctx);
@@ -1454,7 +1518,7 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 	screen_write_collect_flush(ctx, 0, __func__);
 	ttyctx.n = ny;
 
-	if (!screen_write_should_draw(ctx))
+	if (!screen_write_should_draw_lines(ctx, s->cy, s->rlower + 1 - s->cy))
 		return;
 	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
 		tty_write(tty_cmd_insertline, &ttyctx);
@@ -1471,7 +1535,7 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 	struct screen	*s = ctx->s;
 	struct grid	*gd = s->grid;
 	struct tty_ctx	 ttyctx;
-	u_int		 sy = screen_size_y(s);
+	u_int		 sy = screen_size_y(s), ry;
 
 	if (ny == 0)
 		ny = 1;
@@ -1495,7 +1559,8 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 		screen_write_collect_flush(ctx, 0, __func__);
 		ttyctx.n = ny;
 
-		if (!screen_write_should_draw(ctx))
+		ry = s->rlower + 1 - s->rupper;
+		if (!screen_write_should_draw_lines(ctx, s->rupper, ry))
 			return;
 		if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
 			tty_write(tty_cmd_deleteline, &ttyctx);
@@ -1506,8 +1571,9 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 		return;
 	}
 
-	if (ny > s->rlower + 1 - s->cy)
-		ny = s->rlower + 1 - s->cy;
+	ry = s->rlower + 1 - s->cy;
+	if (ny > ry)
+		ny = ry;
 	if (ny == 0)
 		return;
 
@@ -1522,7 +1588,7 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 	screen_write_collect_flush(ctx, 0, __func__);
 	ttyctx.n = ny;
 
-	if (!screen_write_should_draw(ctx))
+	if (!screen_write_should_draw_lines(ctx, s->cy, ry))
 		return;
 	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
 		tty_write(tty_cmd_deleteline, &ttyctx);
@@ -1656,7 +1722,9 @@ screen_write_reverseindex(struct screen_write_ctx *ctx, u_int bg)
 {
 	struct screen	*s = ctx->s;
 	struct tty_ctx	 ttyctx;
+	u_int		 ry;
 
+<<<<<<< HEAD
 	if (s->cy == s->rupper) {
 #ifdef ENABLE_SIXEL
 		if (image_free_all(s) && ctx->wp != NULL)
@@ -1665,20 +1733,29 @@ screen_write_reverseindex(struct screen_write_ctx *ctx, u_int bg)
 
 		grid_view_scroll_region_down(s->grid, s->rupper, s->rlower, bg);
 		screen_write_collect_flush(ctx, 0, __func__);
+=======
+	if (s->cy != s->rupper) {
+		if (s->cy > 0)
+			screen_write_set_cursor(ctx, -1, s->cy - 1);
+		return;
+	}
+>>>>>>> obsd-master
 
-		screen_write_initctx(ctx, &ttyctx, 1, 1);
-		ttyctx.bg = bg;
+	grid_view_scroll_region_down(s->grid, s->rupper, s->rlower, bg);
+	screen_write_collect_flush(ctx, 0, __func__);
 
-		if (!screen_write_should_draw(ctx))
-			return;
-		if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
-			tty_write(tty_cmd_reverseindex, &ttyctx);
-			return;
-		}
+	screen_write_initctx(ctx, &ttyctx, 1, 1);
+	ttyctx.bg = bg;
 
-		screen_write_redraw_pane(ctx, &ttyctx);
-	} else if (s->cy > 0)
-		screen_write_set_cursor(ctx, -1, s->cy - 1);
+	ry = s->rlower + 1 - s->rupper;
+	if (!screen_write_should_draw_lines(ctx, s->rupper, ry))
+		return;
+	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
+		tty_write(tty_cmd_reverseindex, &ttyctx);
+		return;
+	}
+
+	screen_write_redraw_pane(ctx, &ttyctx);
 }
 
 /* Set scroll region. */
@@ -1728,6 +1805,7 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped, u_int bg)
 		ctx->bg = bg;
 	}
 
+<<<<<<< HEAD
 	if (s->cy == s->rlower) {
 #ifdef ENABLE_SIXEL
 		if (rlower == screen_size_y(s) - 1)
@@ -1742,6 +1820,17 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped, u_int bg)
 		ctx->scrolled++;
 	} else if (s->cy < screen_size_y(s) - 1)
 		screen_write_set_cursor(ctx, -1, s->cy + 1);
+=======
+	if (s->cy != s->rlower) {
+		if (s->cy < screen_size_y(s) - 1)
+			screen_write_set_cursor(ctx, -1, s->cy + 1);
+		return;
+	}
+
+	grid_view_scroll_region_up(gd, s->rupper, s->rlower, bg);
+	screen_write_collect_scroll(ctx, bg);
+	ctx->scrolled++;
+>>>>>>> obsd-master
 }
 
 /* Scroll up. */
@@ -1781,7 +1870,7 @@ screen_write_scrolldown(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 	struct screen	*s = ctx->s;
 	struct grid	*gd = s->grid;
 	struct tty_ctx	 ttyctx;
-	u_int		 i;
+	u_int		 i, ry;
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
@@ -1802,7 +1891,8 @@ screen_write_scrolldown(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 	screen_write_collect_flush(ctx, 0, __func__);
 	ttyctx.n = lines;
 
-	if (!screen_write_should_draw(ctx))
+	ry = s->rlower + 1 - s->rupper;
+	if (!screen_write_should_draw_lines(ctx, s->rupper, ry))
 		return;
 	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED || ctx->wp == NULL) {
 		tty_write(tty_cmd_scrolldown, &ttyctx);
@@ -1855,7 +1945,7 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 	screen_write_collect_clear(ctx, s->cy + 1, sy - (s->cy + 1));
 	screen_write_collect_flush(ctx, 0, __func__);
 
-	if (!screen_write_should_draw(ctx))
+	if (!screen_write_should_draw_lines(ctx, s->cy, sy - s->cy))
 		return;
 	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED) {
 		tty_write(tty_cmd_clearendofscreen, &ttyctx);
@@ -1930,7 +2020,7 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 	screen_write_collect_clear(ctx, 0, s->cy);
 	screen_write_collect_flush(ctx, 0, __func__);
 
-	if (!screen_write_should_draw(ctx))
+	if (!screen_write_should_draw_lines(ctx, 0, s->cy + 1))
 		return;
 	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED) {
 		tty_write(tty_cmd_clearstartofscreen, &ttyctx);
@@ -2003,7 +2093,7 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 
 	screen_write_collect_clear(ctx, 0, sy);
 
-	if (!screen_write_should_draw(ctx))
+	if (!screen_write_should_draw_lines(ctx, s->cy, sy - s->cy))
 		return;
 	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED) {
 		tty_write(tty_cmd_clearscreen, &ttyctx);
@@ -2317,12 +2407,21 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
     const char *from)
 {
 	struct screen			*s = ctx->s;
+	struct window_pane		*wp = ctx->wp;
 	u_int				 y, cx, cy, items = 0;
 	struct screen_write_citem	*ci, *tmp;
 	struct screen_write_cline	*cl;
 
-	if (!screen_write_should_draw(ctx))
+	if (wp != NULL && (wp->flags & (PANE_REDRAW|PANE_DROP)))
 		goto discard;
+	if (s->mode & MODE_SYNC) {
+		for (y = 0; y < screen_size_y(s); y++) {
+			cl = &s->write_list[y];
+			if (!TAILQ_EMPTY(&cl->items))
+				screen_write_should_draw_line(ctx, y);
+		}
+		goto discard;
+	}
 
 	if (ctx->scrolled != 0) {
 		if (!screen_write_collect_flush_scrolled(ctx))
@@ -2660,12 +2759,12 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	if (s->mode & MODE_INSERT) {
 		screen_write_collect_flush(ctx, 0, __func__);
 		ttyctx.n = width;
-		if (screen_write_should_draw(ctx))
+		if (screen_write_should_draw_line(ctx, s->cy))
 			tty_write(tty_cmd_insertcharacter, &ttyctx);
 	}
 
 	/* If not writing, done now. */
-	if (skip || !screen_write_should_draw(ctx))
+	if (skip || !screen_write_should_draw_line(ctx, s->cy))
 		return;
 
 	/* Do a full line redraw if needed. */
@@ -2685,7 +2784,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	for (i = 0, vis = 0; i < r->used; i++)
 		vis += r->ranges[i].nx;
 	if (vis >= width) {
-		if (screen_write_should_draw(ctx))
+		if (screen_write_should_draw_line(ctx, s->cy))
 			tty_write(tty_cmd_cell, &ttyctx);
 		return;
 	}
@@ -2695,7 +2794,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	 * spaces in the visible regions.
 	 */
 	utf8_set(&tmp_gc.data, ' ');
-	if (!screen_write_should_draw(ctx))
+	if (!screen_write_should_draw_line(ctx, s->cy))
 		return;
 	for (i = 0; i < r->used; i++) {
 		ri = &r->ranges[i];
@@ -2838,7 +2937,7 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	ttyctx.cell = &last;
 	if (force_wide)
 		ttyctx.flags |= TTY_CTX_CELL_INVALIDATE;
-	if (screen_write_should_draw(ctx))
+	if (screen_write_should_draw_line(ctx, cy))
 		tty_write(tty_cmd_cell, &ttyctx);
 	screen_write_set_cursor(ctx, cx, cy);
 
