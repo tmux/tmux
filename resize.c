@@ -345,7 +345,7 @@ recalculate_size_skip_client(struct client *loop, __unused int type,
 	if (loop->session->curw == NULL)
 		return (1);
 	if (current)
-		return (loop->session->curw->window != w);
+		return (!server_client_is_viewing(loop, w));
 	return (session_has(loop->session, w) == 0);
 }
 

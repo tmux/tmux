@@ -100,7 +100,10 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 			free(wname);
 			if (args_has(args, 'd'))
 				return (CMD_RETURN_NORMAL);
-			if (session_set_current(s, new_wl) == 0)
+			if (c != NULL && c->session == s &&
+			    (c->flags & CLIENT_ACTIVEWINDOW))
+				server_client_set_curw(c, new_wl);
+			else if (session_set_current(s, new_wl) == 0)
 				server_redraw_session(s);
 			if (c != NULL && c->session != NULL)
 				s->curw->window->latest = c;
@@ -149,6 +152,11 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 		server_redraw_session_group(s);
 	} else
 		server_status_session_group(s);
+
+	/* In team mode only the creating client switches to the new window. */
+	if (c != NULL && c->session == s && (c->flags & CLIENT_ACTIVEWINDOW) &&
+	    !args_has(args, 'd'))
+		server_client_set_curw(c, new_wl);
 
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)

@@ -156,6 +156,8 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 		environ_update(s->options, tc->environ, s->environ);
 
 	server_client_set_session(tc, s);
+	if (wl != NULL && (tc->flags & CLIENT_ACTIVEWINDOW))
+		server_client_set_curw(tc, wl);
 	if (~cmdq_get_flags(item) & CMDQ_STATE_REPEAT)
 		server_client_set_key_table(tc, NULL);
 

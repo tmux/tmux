@@ -102,6 +102,36 @@ cmd_select_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'l'))
 		last = 1;
 
+	/*
+	 * In team mode the issuing client navigates its own current window
+	 * independently of the session and other clients.
+	 */
+	if (c != NULL && c->session == s && (c->flags & CLIENT_ACTIVEWINDOW)) {
+		activity = args_has(args, 'a');
+		if (next) {
+			if (server_client_next_window(c, activity) != 0) {
+				cmdq_error(item, "no next window");
+				return (CMD_RETURN_ERROR);
+			}
+		} else if (previous) {
+			if (server_client_previous_window(c, activity) != 0) {
+				cmdq_error(item, "no previous window");
+				return (CMD_RETURN_ERROR);
+			}
+		} else if (last ||
+		    (args_has(args, 'T') && wl == server_client_get_curw(c))) {
+			if (server_client_last_window(c) != 0) {
+				cmdq_error(item, "no last window");
+				return (CMD_RETURN_ERROR);
+			}
+		} else
+			server_client_set_curw(c, wl);
+		cmd_find_from_client(current, c, 0);
+		cmdq_insert_hook(s, item, current, "after-select-window");
+		recalculate_sizes();
+		return (CMD_RETURN_NORMAL);
+	}
+
 	if (next || previous || last) {
 		activity = args_has(args, 'a');
 		if (next) {

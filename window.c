@@ -207,6 +207,8 @@ winlink_remove(struct winlinks *wwl, struct winlink *wl)
 {
 	struct window	*w = wl->window;
 
+	server_client_remove_window(wl);
+
 	if (w != NULL) {
 		TAILQ_REMOVE(&w->winlinks, wl, wentry);
 		window_remove_ref(w, __func__);
@@ -527,7 +529,7 @@ window_pane_update_focus(struct window_pane *wp)
 				if (c->session != NULL &&
 				    c->session->attached != 0 &&
 				    (c->flags & CLIENT_FOCUSED) &&
-				    c->session->curw->window == wp->window &&
+				    server_client_is_viewing(c, wp->window) &&
 				    c->overlay_draw == NULL) {
 					focused = 1;
 					break;

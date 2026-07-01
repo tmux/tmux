@@ -281,8 +281,7 @@ redraw_get_window_offset(struct client *c, u_int *ox, u_int *oy, u_int *sx,
 static void
 redraw_set_context(struct client *c, struct redraw_build_ctx *bctx)
 {
-	struct session	*s = c->session;
-	struct window	*w = s->curw->window;
+	struct window	*w = server_client_get_curw(c)->window;
 
 	memset(bctx, 0, sizeof *bctx);
 	bctx->c = c;
@@ -917,8 +916,7 @@ redraw_build_cells(struct redraw_build_ctx *bctx)
 static struct redraw_scene *
 redraw_make_scene(struct client *c)
 {
-	struct session			*s = c->session;
-	struct window			*w = s->curw->window;
+	struct window			*w = server_client_get_curw(c)->window;
 	struct redraw_build_ctx		 bctx;
 	struct redraw_scene		*scene;
 	struct redraw_build_cell	*bc, *last;
@@ -1028,7 +1026,7 @@ static struct redraw_scene *
 redraw_get_scene(struct client *c)
 {
 	struct redraw_scene	*scene = c->redraw_scene;
-	struct window		*w = c->session->curw->window;
+	struct window		*w = server_client_get_curw(c)->window;
 	const char		*reason = NULL;
 	u_int			 ox, oy, sx, sy;
 
@@ -1089,7 +1087,8 @@ redraw_get_default_border_style(struct redraw_draw_ctx *dctx,
 	struct grid_cell	*dgc = &dctx->default_gc;
 
 	if (~dctx->flags & REDRAW_DEFAULT_SET) {
-		ft = format_create_defaults(NULL, c, s, s->curw, NULL);
+		ft = format_create_defaults(NULL, c, s, server_client_get_curw(c),
+		    NULL);
 		memcpy(dgc, &grid_default_cell, sizeof *dgc);
 		style_add(dgc, oo, "pane-border-style", ft);
 		format_free(ft);
@@ -1508,7 +1507,7 @@ redraw_set_draw_context(struct redraw_draw_ctx *dctx,
 	memset(dctx, 0, sizeof *dctx);
 	dctx->scene = scene;
 
-	if (server_is_marked(s, s->curw, marked_pane.wp))
+	if (server_is_marked(s, server_client_get_curw(c), marked_pane.wp))
 		dctx->marked = marked_pane.wp;
 	dctx->active = server_client_get_pane(c);
 
@@ -1606,8 +1605,7 @@ redraw_draw_remote_cursors(struct redraw_draw_ctx *dctx)
 			continue;
 		if (c2->flags & (CLIENT_SUSPENDED|CLIENT_CONTROL))
 			continue;
-		if (c2->session->curw == NULL ||
-		    c2->session->curw->window != w)
+		if (!server_client_is_viewing(c2, w))
 			continue;
 
 		wp = server_client_get_pane(c2);
@@ -1648,8 +1646,7 @@ static void
 redraw_draw(struct client *c, struct window_pane *wp, int flags)
 {
 	struct redraw_draw_ctx	 dctx;
-	struct session		*s = c->session;
-	struct window		*w = s->curw->window;
+	struct window		*w = server_client_get_curw(c)->window;
 	struct tty		*tty = &c->tty;
 	struct screen		*sl;
 	struct redraw_scene	*scene;

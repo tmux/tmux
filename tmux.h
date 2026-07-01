@@ -2244,7 +2244,7 @@ struct client {
 #define CLIENT_CONTROL_PAUSEAFTER 0x100000000ULL
 #define CLIENT_CONTROL_WAITEXIT 0x200000000ULL
 #define CLIENT_WINDOWSIZECHANGED 0x400000000ULL
-/* 0x800000000ULL unused */
+#define CLIENT_ACTIVEWINDOW 0x800000000ULL
 #define CLIENT_BRACKETPASTING 0x1000000000ULL
 #define CLIENT_ASSUMEPASTING 0x2000000000ULL
 /* 0x4000000000ULL unused */
@@ -2290,6 +2290,9 @@ struct client {
 
 	struct session		*session;
 	struct session		*last_session;
+
+	struct winlink		*curw;		/* per-client current window */
+	struct winlink		*last_curw;	/* per-client last window */
 
 	int			 references;
 
@@ -3189,6 +3192,13 @@ struct client_window *server_client_add_client_window(struct client *, u_int);
 struct window_pane *server_client_get_pane(struct client *);
 void	 server_client_set_pane(struct client *, struct window_pane *);
 void	 server_client_remove_pane(struct window_pane *);
+struct winlink *server_client_get_curw(struct client *);
+int	 server_client_is_viewing(struct client *, struct window *);
+void	 server_client_set_curw(struct client *, struct winlink *);
+int	 server_client_next_window(struct client *, int);
+int	 server_client_previous_window(struct client *, int);
+int	 server_client_last_window(struct client *);
+void	 server_client_remove_window(struct winlink *);
 void	 server_client_print(struct client *, int, struct evbuffer *);
 
 /* server-fn.c */

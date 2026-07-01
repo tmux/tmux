@@ -1,83 +1,83 @@
-# Team Mode (Multi-User Cursors)
+# Team Mode (Multi-User Independent Panes, Windows and Cursors)
 
 This build of tmux adds **team mode**, which lets multiple users attached to the
-same set of windows each work in their own pane at the same time and see each
-other's cursors.
+same session each work fully independently — their own pane, their own current
+window, and a view of everyone else's cursors.
 
 **Team mode is enabled by default** (the `teammode` session option defaults to
 `on`).
 
 ## What it does
 
-When `teammode` is on:
+When `teammode` is on, each client attached to the session is independent:
 
-1. **Independent active pane per user.** Each attached client controls its own
-   active pane (via tmux's existing `active-pane` client flag, which the option
-   sets automatically on attach). Keystrokes from each user go to *their* pane,
-   and each user's terminal cursor sits in *their* pane.
+1. **Independent active pane per user.** Each client controls its own active
+   pane (auto `active-pane` client flag). Keystrokes go to *that user's* pane and
+   each user's terminal cursor sits in *their* pane.
 
-2. **Visible remote cursors.** Each client draws a coloured marker at the cursor
-   position of every *other* client viewing the same window. Every user is
-   assigned a distinct colour so you can tell collaborators apart. Markers are
-   transient — painted over the pane content on each redraw and never stored in
-   the screen.
+2. **Independent current window per user.** Each client has its own current
+   window (auto `active-window` client flag), so users can view and navigate to
+   different windows of the *one* session independently. `select-window`,
+   `next-window`, `previous-window`, `last-window`, `new-window` and the numeric
+   window keys affect only the issuing client — `Ctrl+b c` in one terminal no
+   longer drags the others to the new window.
 
-3. **Independent window navigation** (via session groups). Each user attaches to
-   their own session in a *session group*; the sessions share the same windows
-   and panes (same processes) but keep an independent "current window", so users
-   can move between windows independently.
+3. **Visible remote cursors.** Each client draws a coloured marker at the cursor
+   position of every *other* client viewing the same window. Every user gets a
+   distinct colour. Markers are transient — painted over the pane content on each
+   redraw and never stored in the screen.
+
+When `teammode` is **off**, all clients on a session share one active pane and one
+current window, as classic tmux does (useful for mirroring a session on a
+projector).
 
 ### Design constraints
 
 - A pane runs a single program with a single cursor, so independent cursors only
   exist **across different panes**, never within one pane.
-- The marker colour is derived from the client name, so a given user keeps the
-  same colour across detach/reattach.
+- The marker colour is derived from the client name, so a user keeps the same
+  colour across detach/reattach.
+- `last-window` uses a single per-client "last window" pointer (not a full
+  stack).
 
 ## Does `Ctrl+b c` (new-window) give each user their own window?
 
-**Only if each user is on their own session in a group.** It depends on the
-workflow:
+**Yes**, with team mode on (the default): windows are per-client within a single
+session. `Ctrl+b c` creates a window and switches *only the client that pressed
+it*; other users stay where they are (the new window still appears in everyone's
+window list). Window switching (`Ctrl+b n/p/l/<number>`) is likewise per-client.
 
-- **Same session** (`tmux new -s foo` then `tmux a -t foo`): both clients share
-  one session, so they share the *current window*. When either user presses
-  `Ctrl+b c` (or switches windows), **both** terminals jump to the new/other
-  window. Team mode still gives independent panes and remote cursors — only
-  window *navigation* is linked.
-- **Grouped sessions** (`tmux new -s foo` then `tmux new -s foo2 -t foo`): the
-  sessions share windows/panes but each has its own current window, so
-  `Ctrl+b c` and window switching are **independent** per user.
+With `teammode off`, `Ctrl+b c` and window switches move every client on the
+session together, as before.
+
+## Recommended companion setting
+
+Enable `aggressive-resize` so a window is sized only by the clients currently
+viewing it — two users on different windows then won't shrink each other:
+
+```
+set -g aggressive-resize on
+```
 
 ## Changes in this build
 
 | File | Change |
 |------|--------|
-| `options-table.c` | New session option `teammode` (flag, **default on**). |
-| `server-client.c` | Auto-set `CLIENT_ACTIVEPANE` on attach when `teammode` is on; assign a stable per-user marker colour (`server_client_team_colour`); detect cursor-only moves and redraw observers (`server_client_window_teammode`, in `server_client_loop`). |
-| `screen-redraw.c` | New `redraw_draw_remote_cursors()`, called on full-window redraws, paints each other client's cursor as a coloured cell. |
-| `tmux.h` | `struct client.team_colour`; `struct window_pane.lastcx/lastcy`. |
-| `tmux.1` | Documentation for the `teammode` option and workflow. |
+| `options-table.c` | Session option `teammode` (flag, **default on**). |
+| `tmux.h` | `client.curw` / `client.last_curw`; `CLIENT_ACTIVEWINDOW` flag; `client.team_colour`; `window_pane.lastcx/lastcy`. |
+| `server-client.c` | Auto-set `CLIENT_ACTIVEPANE`+`CLIENT_ACTIVEWINDOW` on attach; per-client window accessors `server_client_get_curw` / `is_viewing` / `set_curw` + next/previous/last; `server_client_remove_window`; per-user marker colour; cursor-move redraw; ~20 client-scoped `curw` reads switched to the per-client accessor. |
+| `server-fn.c`, `screen-write.c`, `tty.c`, `screen-redraw.c`, `window.c`, `tty-keys.c`, `resize.c` | Client-scoped "is this client viewing window w / what window does this client see" reads switched to `server_client_is_viewing` / `server_client_get_curw`. |
+| `cmd-select-window.c`, `cmd-new-window.c`, `spawn.c`, `cmd-switch-client.c` | Per-client window navigation when the issuing client has `active-window`. |
+| `format.c` | Client-context formats (status line, window list, `#{window_active}`) resolve the current window per-client. |
+| `session.c` | `session_detach` repoints per-client current windows off a removed winlink. |
+| `tmux.1` | Documentation. |
 
-Total: ~187 added lines across 5 files.
-
-### How it works internally
-
-- Pane selection, input routing, and per-client cursor placement already support
-  a per-client active pane through the pre-existing `CLIENT_ACTIVEPANE` flag
-  (`server_client_get_pane`). The option simply turns this flag on automatically.
-- `redraw_draw_remote_cursors()` iterates the client list; for each other client
-  on the same window it reads that client's active-pane cursor
-  (`server_client_get_pane` → `screen->cx/cy`), converts to the observing
-  client's viewport coordinates (same math as `server_client_reset_state`), and
-  writes a restyled cell with `tty_cell()`.
-- A bare cursor move (e.g. arrow keys in an editor) does not normally trigger a
-  redraw. `server_client_loop()` detects such moves in team-mode windows
-  (comparing each pane's cursor to cached `lastcx/lastcy`) and forces a redraw of
-  the observers so markers stay current.
+Session-scoped uses of `session->curw` (command targeting in `cmd-find.c`,
+session internals, session-level formats) are intentionally left unchanged.
 
 ## Step-by-step usage
 
-### 1. Build (if not already built)
+### 1. Build
 
 ```sh
 cd /shared/tmux
@@ -86,81 +86,52 @@ sh autogen.sh
 make
 ```
 
-The binary is `/shared/tmux/tmux`. Use it directly as `./tmux` or install it with
-`make install` (needs sudo; default location `/usr/local/bin/tmux`).
+The binary is `/shared/tmux/tmux`.
 
-### 2. Same window, different panes (simplest — nothing to enable)
-
-Team mode is on by default, so just attach two clients to one session:
+### 2. Two users, one session (nothing to enable)
 
 ```sh
-# User A – create the session and split into panes:
-./tmux new-session -s work
-#   (inside tmux: prefix + %  or  prefix + "  to create panes)
-
-# User B – attach to the same session (in another terminal):
+# User A:
+./tmux new-session -s work            # create some windows/panes
+# User B, in another terminal:
 ./tmux attach -t work
 ```
 
-Each user selects a different pane (`prefix + arrow`, `prefix + o`, or click) and
-types independently. Each user sees the other's cursor as a coloured block.
+Each user independently:
+- selects a different pane and types into it;
+- switches to / creates different windows (`Ctrl+b c`, `Ctrl+b n/p`, `Ctrl+b <n>`);
+- sees the others' cursors as coloured blocks when viewing the same window.
 
-> Note: on a shared session, `Ctrl+b c` / window switching affects both users
-> (see the section above). Use grouped sessions for independent navigation.
+### 3. Turning team mode off (restore classic shared session)
 
-### 3. Independent window navigation (session groups)
-
-Give each user their own session in a group so they can move between windows
-independently while sharing the same windows/panes:
-
-```sh
-# User A – create the session:
-./tmux new-session -s work
-
-# User B – create a grouped session sharing A's windows, and attach:
-./tmux new-session -t work
-```
-
-`new-session -t work` creates a session linked to the same windows/panes and
-attaches to it in one step. Both users now:
-
-- share the same windows and the programs running in them;
-- switch windows independently (`prefix + n/p/<number>`, `prefix + c`);
-- keep independent active panes and see each other's cursors.
-
-Setting `aggressive-resize on` is recommended so a window is sized only by the
-users currently viewing it:
-
-```sh
-./tmux set-option -g aggressive-resize on
-```
-
-### 4. Turning team mode off
-
-It is on by default. To disable it (globally, in `~/.tmux.conf` or at runtime):
+In `~/.tmux.conf` or at runtime:
 
 ```
 set -g teammode off
 ```
 
 The option takes effect for a client **when it attaches**, so change it before
-attaching (a config setting does this automatically). To change it for an
+attaching (a config setting does this automatically); to change an
 already-attached client, detach and reattach.
 
-### 5. Verify
+### 4. Verify
 
 ```sh
-./tmux show-options -g teammode                       # -> teammode on
+./tmux show-options -g teammode                        # -> teammode on
 ./tmux list-clients -F '#{client_name} [#{client_flags}]'
-#   each attached client line should include: active-pane
+#   attached clients show: active-pane, active-window
+./tmux list-clients -F 'curwin=#{window_index}'        # differs per client
 ```
 
 ## Notes and limitations
 
-- **Marker refresh cost.** Cursor-only moves currently trigger a full-window
-  redraw of observers. Correct but potentially heavy if a program animates the
-  cursor rapidly in a shared window; a lighter cursor-only redraw path is a
+- **Marker / view refresh cost.** A bare cursor move or window switch triggers a
+  redraw of the affected observers. Correct but potentially heavy with rapid
+  cursor animation in a shared window; a lighter cursor-only redraw path is a
   possible future optimization.
-- **One cursor per pane.** Two users cannot have separate cursors in the *same*
-  pane. Use different panes.
-- **Read-only / control clients** do not draw markers.
+- **One cursor per pane.** Two users cannot have separate cursors in the same
+  pane — use different panes.
+- **last-window** is a single per-client pointer, not a stack.
+- **Alerts / window flags** are per-session (shared by clients on a session) and
+  clear when a viewing client selects the window.
+- **Read-only / control clients** do not draw cursor markers.

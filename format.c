@@ -2756,8 +2756,14 @@ format_cb_last_window_index(struct format_tree *ft)
 static void *
 format_cb_window_active(struct format_tree *ft)
 {
+	struct winlink	*curw;
+
 	if (ft->wl != NULL) {
-		if (ft->wl == ft->wl->session->curw)
+		if (ft->c != NULL && ft->c->session == ft->wl->session)
+			curw = server_client_get_curw(ft->c);
+		else
+			curw = ft->wl->session->curw;
+		if (ft->wl == curw)
 			return (xstrdup("1"));
 		return (xstrdup("0"));
 	}
@@ -4821,7 +4827,7 @@ format_window_name(struct format_expand_state *es, const char *fmt)
 /* Add neighbor window variables to the format tree. */
 static void
 format_add_window_neighbor(struct format_tree *nft, struct winlink *wl,
-    struct session *s, const char *prefix)
+    struct winlink *curw, const char *prefix)
 {
 	struct options_entry	*o;
 	const char		*oname;
@@ -4832,7 +4838,7 @@ format_add_window_neighbor(struct format_tree *nft, struct winlink *wl,
 	free(key);
 
 	xasprintf(&key, "%s_window_active", prefix);
-	format_add(nft, key, "%d", wl == s->curw);
+	format_add(nft, key, "%d", wl == curw);
 	free(key);
 
 	o = options_first(wl->window->options);
@@ -4862,7 +4868,7 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 	char				 *all, *active, *use, *expanded, *value;
 	struct evbuffer			 *buffer;
 	size_t				  size;
-	struct winlink			 *wl, **l;
+	struct winlink			 *wl, **l, *curw;
 	struct window			 *w;
 	int				  i, n;
 
@@ -4880,12 +4886,22 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 	if (buffer == NULL)
 		fatalx("out of memory");
 
+	/*
+	 * In team mode each client views its own current window, so the "active"
+	 * window in a client's status line is that client's window, not the
+	 * session's.
+	 */
+	if (c != NULL)
+		curw = server_client_get_curw(c);
+	else
+		curw = ft->s->curw;
+
 	l = sort_get_winlinks_session(ft->s, &n, sc);
 	for (i = 0; i < n; i++) {
 		wl = l[i];
 		w = wl->window;
 		format_log(es, "window loop: %u @%u", wl->idx, w->id);
-		if (active != NULL && wl == ft->s->curw)
+		if (active != NULL && wl == curw)
 			use = active;
 		else
 			use = all;
@@ -4897,13 +4913,13 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 
 		/* Add neighbor window data to the format tree. */
 		format_add(nft, "window_after_active", "%d",
-		    i > 0 && l[i - 1] == ft->s->curw);
+		    i > 0 && l[i - 1] == curw);
 		format_add(nft, "window_before_active", "%d",
-		    i + 1 < n && l[i + 1] == ft->s->curw);
+		    i + 1 < n && l[i + 1] == curw);
 		if (i + 1 < n)
-			format_add_window_neighbor(nft, l[i + 1], ft->s, "next");
+			format_add_window_neighbor(nft, l[i + 1], curw, "next");
 		if (i > 0)
-			format_add_window_neighbor(nft, l[i - 1], ft->s, "prev");
+			format_add_window_neighbor(nft, l[i - 1], curw, "prev");
 
 		format_copy_state(&next, es, 0);
 		next.ft = nft;
@@ -6094,8 +6110,13 @@ format_defaults(struct format_tree *ft, struct client *c, struct session *s,
 
 	if (s == NULL && c != NULL)
 		s = c->session;
-	if (wl == NULL && s != NULL)
-		wl = s->curw;
+	if (wl == NULL) {
+		/* In team mode default to the client's own current window. */
+		if (c != NULL && c->session == s)
+			wl = server_client_get_curw(c);
+		else if (s != NULL)
+			wl = s->curw;
+	}
 	if (wp == NULL && wl != NULL)
 		wp = wl->window->active;
 

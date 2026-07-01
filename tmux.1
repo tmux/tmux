@@ -5093,24 +5093,35 @@ The values are the same as those for
 .Xc
 Enable team mode.
 This is enabled by default.
-When on, each client attached to the session controls its own active pane
-independently (as if the
+When on, each client attached to the same session works independently, as if
+the
 .Ic active\-pane
-client flag was given, see
-.Ic attach\-session ) ,
-so multiple users may work in different panes at the same time.
-In addition, each client sees the cursor of every other client viewing the
-same window, drawn as a coloured marker; each user is assigned a distinct
-colour.
+and
+.Ic active\-window
+client flags were given (see
+.Ic attach\-session ) :
+.Bl -bullet -offset indent
+.It
+Each client has its own active pane, so multiple users may type in different
+panes at the same time.
+.It
+Each client has its own current window, so users may view and navigate to
+different windows of the one session independently
+.Po
+.Ic select\-window ,
+.Ic next\-window ,
+.Ic new\-window
+and so on affect only the issuing client
+.Pc .
+.It
+Each client sees the cursor of every other client viewing the same window,
+drawn as a coloured marker; each user is assigned a distinct colour.
+.El
 .Pp
 Because the cursor of a pane belongs to the program running in it, independent
 cursors only exist across different panes, never within a single pane.
-For users to also navigate windows independently, give each user their own
-session in a session group sharing the same windows, for example with
-.Ql tmux new\-session \-t Ar target ,
-and set this option globally with
-.Ql set\-option \-g teammode on
-so grouped sessions inherit it.
+When it is off, all clients on a session share one active pane and one current
+window, as usual (useful for mirroring a session).
 Setting
 .Ic aggressive\-resize
 is recommended so that users viewing different windows do not resize each

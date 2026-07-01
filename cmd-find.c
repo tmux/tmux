@@ -890,7 +890,7 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c, int flags)
 			return (0);
 		}
 		fs->s = c->session;
-		fs->wl = fs->s->curw;
+		fs->wl = server_client_get_curw(c);
 		fs->w = fs->wl->window;
 
 		cmd_find_log_state(__func__, fs);
