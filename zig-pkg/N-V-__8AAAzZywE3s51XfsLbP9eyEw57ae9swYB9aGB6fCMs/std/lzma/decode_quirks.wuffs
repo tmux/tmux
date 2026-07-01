@@ -1,0 +1,42 @@
+// Copyright 2023 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+// --------
+
+// Quirks are discussed in (/doc/note/quirks.md).
+//
+// The base38 encoding of "lzma" is 0x13_3A15. Left shifting by 10 gives
+// 0x4CE8_5400.
+pri const QUIRKS_BASE : base.u32 = 0x4CE8_5400
+
+// --------
+
+// When this quirk is set, a positive or zero value ignores or enforces the "If
+// initial byte [after properties or other headers] is not equal to ZERO, the
+// LZMA Decoder must stop decoding and report error" from the spec
+// https://raw.githubusercontent.com/jljusten/LZMA-SDK/781863cdf592da3e97420f50de5dac056ad352a5/DOC/lzma-specification.txt
+pub const QUIRK_ALLOW_NON_ZERO_INITIAL_BYTE : base.u32 = 0x4CE8_5400 | 0x00
+
+// When this quirk is set, a positive value indicates an extension to the LZMA
+// format. Zero means to use the default LZMA format.
+//
+// When positive, the low byte of the u64 value indicates the extension.
+// Currently, the only valid extensions are:
+//   - 0x01 indicates Lzip.
+//   - 0x02 indicates LZMA2.
+//
+// For Lzip, the high 7 bytes (shifted right by 8) must be less than or equal
+// to 0xFF and indicates the dictionary size. See section "6 File format" of
+// https://www.nongnu.org/lzip/manual/lzip_manual.html
+//
+// For LZMA2, the high 7 bytes (shifted right by 8) must be less than or equal
+// to 40 and indicates the dictionary size. See section "5.3.1. LZMA2" of
+// https://tukaani.org/xz/xz-file-format.txt
+pub const QUIRK_FORMAT_EXTENSION : base.u32 = 0x4CE8_5400 | 0x01

@@ -1,0 +1,71 @@
+// Copyright 2022 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pri func decoder.flush_slow?(dst: base.io_writer) {
+    var flush_pointer       : base.u32[..= 1_048575]
+    var flush_repeat_count  : base.u32[..= 255]
+    var flush_prev          : base.u8
+    var block_checksum_have : base.u32
+    var block_size          : base.u32
+
+    var entry : base.u32
+    var curr  : base.u8
+
+    flush_pointer = this.flush_pointer
+    flush_repeat_count = this.flush_repeat_count
+    flush_prev = this.flush_prev
+    block_checksum_have = this.block_checksum_have
+    block_size = this.block_size
+
+    while (block_size > 0) and (not coroutine_resumed) {
+        if flush_repeat_count < 4 {
+            entry = this.bwt[flush_pointer]
+            curr = (entry & 0xFF) as base.u8
+            flush_pointer = entry >> 12
+            if curr == flush_prev {
+                flush_repeat_count += 1
+            } else {
+                flush_repeat_count = 1
+            }
+            block_checksum_have =
+                    REV_CRC32_TABLE[((block_checksum_have >> 24) as base.u8) ^ curr] ^
+                    (block_checksum_have ~mod<< 8)
+            args.dst.write_u8?(a: curr)
+            flush_prev = curr
+            block_size -= 1
+
+        } else {
+            entry = this.bwt[flush_pointer]
+            curr = (entry & 0xFF) as base.u8
+            flush_pointer = entry >> 12
+            flush_repeat_count = curr as base.u32
+            while flush_repeat_count > 0,
+                    inv block_size > 0,
+            {
+                block_checksum_have =
+                        REV_CRC32_TABLE[((block_checksum_have >> 24) as base.u8) ^ flush_prev] ^
+                        (block_checksum_have ~mod<< 8)
+                args.dst.write_u8?(a: flush_prev)
+                flush_repeat_count -= 1
+            }
+            flush_repeat_count = 0
+            flush_prev = curr
+            block_size -= 1
+        }
+    }
+
+    this.flush_pointer = flush_pointer
+    this.flush_repeat_count = flush_repeat_count
+    this.flush_prev = flush_prev
+    this.block_checksum_have = block_checksum_have
+    if block_size <= 900000 {
+        this.block_size = block_size
+    }
+}

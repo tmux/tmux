@@ -1,0 +1,829 @@
+// Copyright 2023 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+// --------
+
+// See https://tukaani.org/xz/xz-file-format.txt
+
+use "std/crc32"
+use "std/crc64"
+use "std/lzma"
+use "std/sha256"
+
+pub status "#bad BCJ offset"
+pub status "#bad block header"
+pub status "#bad checksum"
+pub status "#bad filter"
+pub status "#bad footer"
+pub status "#bad header"
+pub status "#bad header (concatenated stream)"
+pub status "#bad index"
+pub status "#bad padding"
+pub status "#truncated input"
+pub status "#unsupported checksum algorithm"
+pub status "#unsupported filter"
+pub status "#unsupported filter combination"
+
+pri status "#internal error: inconsistent BCJ filter state"
+
+pub const DECODER_DST_HISTORY_RETAIN_LENGTH_MAX_INCL_WORST_CASE : base.u64 = 0
+pub const DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE               : base.u64 = 0xFFFF_FFFF + 273
+
+pub struct decoder? implements base.io_transformer(
+        filters               : array[3] base.u32,
+        num_non_final_filters : base.u32[..= 3],
+
+        // 0: None.
+        // 1: CRC-32.
+        // 2: CRC-64.
+        // 3: SHA-256.
+        checksummer : base.u8[..= 3],
+
+        ignore_checksum   : base.bool,
+        standalone_format : base.bool,
+
+        lzma_needs_reset : base.bool,
+
+        block_has_compressed_size   : base.bool,
+        block_has_uncompressed_size : base.bool,
+
+        bcj_undo_index    : base.u8,
+        bcj_pos           : base.u32,
+        bcj_x86_prev_mask : base.u32,
+
+        block_compressed_size     : base.u64,
+        block_uncompressed_size   : base.u64,
+        compressed_size_for_index : base.u64,
+
+        // Strictly speaking, we should verify that each block's compressed and
+        // uncompressed sizes (as it is encountered during decoding the stream)
+        // equals the per-block pair of sizes listed in the index at the end of
+        // the file.
+        //
+        // This requires O(N) memory, where N is the number of blocks. Instead
+        // (and the spec's "4.3. List of Records" suggests doing this), we can
+        // use O(1) memory by just comparing a hash (and a total) of the
+        // compressed and uncompressed sizes.
+        //
+        // This implementation uses a Murmur inspired hash function. It's given
+        // u64 values (not u8) and the final mixing step is not required.
+        //
+        // For the array indexes: 0 is compressed, 1 is uncompressed.
+        verification_have_hashed_sizes : array[2] base.u32,
+        verification_want_hashed_sizes : array[2] base.u32,
+        verification_have_total_sizes  : array[2] base.u64,
+        verification_want_total_sizes  : array[2] base.u64,
+
+        num_actual_blocks : base.u64,
+        num_index_blocks  : base.u64,
+
+        index_block_compressed_size   : base.u64,
+        index_block_uncompressed_size : base.u64,
+
+        backwards_size : base.u64,
+
+        started_verify_index : base.bool,
+
+        flags : base.u16,
+
+        util : base.utility,
+) + (
+        filter_data : array[3] array[256] base.u8,
+
+        crc32  : crc32.ieee_hasher,
+        crc64  : crc64.ecma_hasher,
+        sha256 : sha256.hasher,
+
+        lzma : lzma.decoder,
+)
+
+pub func decoder.get_quirk(key: base.u32) base.u64 {
+    if args.key == base.QUIRK_IGNORE_CHECKSUM {
+        if this.ignore_checksum {
+            return 1
+        }
+    } else if args.key == QUIRK_DECODE_STANDALONE_CONCATENATED_STREAMS {
+        if this.standalone_format {
+            return 1
+        }
+    }
+    return 0
+}
+
+pub func decoder.set_quirk!(key: base.u32, value: base.u64) base.status {
+    if args.key == base.QUIRK_IGNORE_CHECKSUM {
+        this.ignore_checksum = args.value > 0
+        return ok
+    } else if args.key == QUIRK_DECODE_STANDALONE_CONCATENATED_STREAMS {
+        this.standalone_format = args.value > 0
+        return ok
+    }
+    return base."#unsupported option"
+}
+
+pub func decoder.dst_history_retain_length() base.optional_u63 {
+    return this.lzma.dst_history_retain_length()
+}
+
+pub func decoder.workbuf_len() base.range_ii_u64 {
+    return this.lzma.workbuf_len()
+}
+
+pub func decoder.transform_io?(dst: base.io_writer, src: base.io_reader, workbuf: slice base.u8) {
+    var status : base.status
+
+    while true {
+        status =? this.do_transform_io?(dst: args.dst, src: args.src, workbuf: args.workbuf)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_transform_io?(dst: base.io_writer, src: base.io_reader, workbuf: slice base.u8) {
+    var header_magic      : base.u64
+    var dmark             : base.u64
+    var smark             : base.u64
+    var i8                : base.u8
+    var status            : base.status
+    var checksum32_have   : base.u32
+    var checksum32_want   : base.u32
+    var checksum64_have   : base.u64
+    var checksum64_want   : base.u64
+    var checksum256_have  : base.bitvec256
+    var compressed_size   : base.u64
+    var uncompressed_size : base.u64
+    var hash              : base.u32
+    var c8                : base.u8
+    var c32               : base.u32
+    var footer_magic      : base.u16
+
+    while.streams true {
+        header_magic = args.src.read_u48le_as_u64?()
+        if header_magic <> '\xFD\x37\x7A\x58\x5A\x00'le {
+            return "#bad header"
+        }
+
+        // Read the 2-byte flags and the 4-byte CRC-32 checksum of those 2 bytes.
+        header_magic = args.src.read_u48le_as_u64?()
+        if header_magic == '\x00\x00\xFF\x12\xD9\x41'le {
+            this.checksummer = 0  // None.
+        } else if header_magic == '\x00\x01\x69\x22\xDE\x36'le {
+            this.checksummer = 1  // CRC-32.
+        } else if header_magic == '\x00\x04\xE6\xD6\xB4\x46'le {
+            this.checksummer = 2  // CRC-64.
+        } else if header_magic == '\x00\x0A\xE1\xFB\x0C\xA1'le {
+            this.checksummer = 3  // SHA-256.
+        } else if (header_magic & 0xF0FF) <> 0 {
+            // Section 2.1.1.2. Stream Flags: "If any reserved bit is set, the
+            // decoder MUST indicate an error."
+            return "#bad header"
+        } else {
+            header_magic = 0xF & (header_magic >> 8)
+            if (header_magic <> 0x0) and (header_magic <> 0x1) and (header_magic <> 0x4) and (header_magic <> 0xA) {
+                return "#unsupported checksum algorithm"
+            }
+            return "#bad checksum"
+        }
+        this.flags = (header_magic & 0xFFFF) as base.u16
+
+        this.num_actual_blocks = 0
+        while.blocks true {
+            if args.src.length() <= 0 {
+                yield? base."$short read"
+                continue.blocks
+            } else if args.src.peek_u8() == 0x00 {
+                // We've hit the Index instead of a Block.
+                break.blocks
+            }
+            this.num_actual_blocks ~mod+= 1
+
+            if not this.ignore_checksum {
+                this.crc32.reset!()
+            }
+
+            this.compressed_size_for_index = 4  // For the upcoming 4-byte CRC-32.
+            while true {
+                smark = args.src.mark()
+                status =? this.decode_block_header_with_padding?(src: args.src)
+                this.compressed_size_for_index ~sat+= args.src.count_since(mark: smark)
+                if not this.ignore_checksum {
+                    checksum32_have = this.crc32.update_u32!(x: args.src.since(mark: smark))
+                }
+                if status.is_ok() {
+                    break
+                }
+                yield? status
+            }
+
+            checksum32_want = args.src.read_u32le?()
+            if this.ignore_checksum {
+                // No-op.
+            } else if checksum32_have <> checksum32_want {
+                return "#bad checksum"
+            } else {
+                this.crc32.reset!()
+                this.crc64.reset!()
+                this.sha256.reset!()
+            }
+
+            compressed_size = 0
+            uncompressed_size = 0
+            while true {
+                if (this.bcj_undo_index as base.u64) > args.dst.length() {
+                    yield? base."$short write"
+                    continue
+                }
+
+                dmark = args.dst.mark()
+                smark = args.src.mark()
+                if this.num_non_final_filters == 0 {
+                    status =? this.lzma.transform_io?(dst: args.dst, src: args.src, workbuf: args.workbuf)
+                } else {
+                    if this.bcj_undo_index > 0 {
+                        args.dst.copy_from_slice!(s: this.filter_data[0][.. this.bcj_undo_index])
+                        this.bcj_undo_index = 0
+                    }
+
+                    // The non-final filters will modify the args.dst contents so
+                    // that its history isn't what this.lzma considers its
+                    // (unfiltered) history.
+                    io_forget_history (io: args.dst) {
+                        status =? this.lzma.transform_io?(dst: args.dst, src: args.src, workbuf: args.workbuf)
+                    }
+
+                    this.bcj_undo_index = this.apply_non_final_filters!(dst_slice: args.dst.since(mark: dmark))
+                    if (this.bcj_undo_index > 0) and (not status.is_ok()) {
+                        i8 = this.bcj_undo_index - 1
+                        while true {
+                            if not args.dst.can_undo_byte() {
+                                return "#internal error: inconsistent BCJ filter state"
+                            }
+                            this.filter_data[0][i8] = args.dst.peek_undo_byte()
+                            args.dst.undo_byte!()
+                            if i8 <= 0 {
+                                break
+                            }
+                            i8 -= 1
+                        }
+                    }
+                }
+                compressed_size ~mod+= args.src.count_since(mark: smark)
+                uncompressed_size ~mod+= args.dst.count_since(mark: dmark)
+
+                if this.ignore_checksum {
+                    // No-op.
+                } else if this.checksummer == 1 {
+                    this.crc32.update!(x: args.dst.since(mark: dmark))
+                } else if this.checksummer == 2 {
+                    this.crc64.update!(x: args.dst.since(mark: dmark))
+                } else if this.checksummer == 3 {
+                    this.sha256.update!(x: args.dst.since(mark: dmark))
+                }
+                if status.is_ok() {
+                    break
+                }
+                yield? status
+            }
+
+            if (this.block_has_compressed_size and (this.block_compressed_size <> compressed_size)) or
+                    (this.block_has_uncompressed_size and (this.block_uncompressed_size <> uncompressed_size)) {
+                return "#bad block header"
+            }
+
+            // A block's 'compressed size' (as measured here) needs to match what's
+            // listed in the index at the end of the XZ file. Per the XZ file
+            // format specification, a block is:
+            //
+            // +==============+=================+===============+=======+
+            // | Block Header | Compressed Data | Block Padding | Check |
+            // +==============+=================+===============+=======+
+            //
+            // The compressed_size variable only measures the "Compressed Data"
+            // portion. The 'compressed size for indexing purposes' needs to add
+            // the size of the Block Header and the Check (but not the Block
+            // Padding). this.compressed_size_for_index was initialized and
+            // accumulated above to, at this point in time, hold the size of the
+            // Block Header. We need to add the other two parts.
+            this.compressed_size_for_index ~sat+= compressed_size
+            this.compressed_size_for_index ~sat+= CHECKSUM_LENGTH[this.checksummer] as base.u64
+
+            // Update the verification_have_etc values. The hash function is
+            // loosely based on https://en.wikipedia.org/wiki/MurmurHash#Algorithm
+            this.verification_have_total_sizes[0] ~mod+= this.compressed_size_for_index
+            hash = ((this.compressed_size_for_index ^ (this.compressed_size_for_index >> 32)) & 0xFFFF_FFFF) as base.u32
+            hash ~mod*= 0xCC9E_2D51
+            hash = (hash ~mod<< 15) | (hash >> 17)
+            hash ~mod*= 0x1B87_3593
+            hash ^= this.verification_have_hashed_sizes[0]
+            hash = (hash ~mod<< 13) | (hash >> 19)
+            this.verification_have_hashed_sizes[0] = (hash ~mod* 5) ~mod+ 0xE654_6B64
+            this.verification_have_total_sizes[1] ~mod+= uncompressed_size
+            hash = ((uncompressed_size ^ (uncompressed_size >> 32)) & 0xFFFF_FFFF) as base.u32
+            hash ~mod*= 0xCC9E_2D51
+            hash = (hash ~mod<< 15) | (hash >> 17)
+            hash ~mod*= 0x1B87_3593
+            hash ^= this.verification_have_hashed_sizes[1]
+            hash = (hash ~mod<< 13) | (hash >> 19)
+            this.verification_have_hashed_sizes[1] = (hash ~mod* 5) ~mod+ 0xE654_6B64
+
+            // Consume the "Block Padding".
+            while (compressed_size & 3) <> 0 {
+                c8 = args.src.read_u8?()
+                if c8 <> 0x00 {
+                    return "#bad padding"
+                }
+                compressed_size ~mod+= 1
+            }
+
+            this.lzma_needs_reset = true
+
+            if this.ignore_checksum {
+                args.src.skip_u32?(n: CHECKSUM_LENGTH[this.checksummer] as base.u32)
+
+            } else if this.checksummer == 1 {
+                checksum32_want = args.src.read_u32le?()
+                checksum32_have = this.crc32.checksum_u32()
+                if checksum32_have <> checksum32_want {
+                    return "#bad checksum"
+                }
+
+            } else if this.checksummer == 2 {
+                checksum64_want = args.src.read_u64le?()
+                checksum64_have = this.crc64.checksum_u64()
+                if checksum64_have <> checksum64_want {
+                    return "#bad checksum"
+                }
+
+            } else if this.checksummer == 3 {
+                checksum256_have = this.sha256.checksum_bitvec256()
+                checksum64_want = args.src.read_u64be?()
+                if checksum256_have.get_u64(i: 3) <> checksum64_want {
+                    return "#bad checksum"
+                }
+                checksum64_want = args.src.read_u64be?()
+                if checksum256_have.get_u64(i: 2) <> checksum64_want {
+                    return "#bad checksum"
+                }
+                checksum64_want = args.src.read_u64be?()
+                if checksum256_have.get_u64(i: 1) <> checksum64_want {
+                    return "#bad checksum"
+                }
+                checksum64_want = args.src.read_u64be?()
+                if checksum256_have.get_u64(i: 0) <> checksum64_want {
+                    return "#bad checksum"
+                }
+            }
+        }.blocks
+
+        // Verify the index.
+        this.backwards_size = 0
+        if not this.ignore_checksum {
+            this.crc32.reset!()
+        }
+        while true {
+            smark = args.src.mark()
+            status =? this.verify_index?(src: args.src)
+            this.backwards_size ~sat+= args.src.count_since(mark: smark)
+            if not this.ignore_checksum {
+                this.crc32.update!(x: args.src.since(mark: smark))
+            }
+            if status.is_ok() {
+                break
+            }
+            yield? status
+        }
+        if not this.ignore_checksum {
+            this.crc32.update!(x: ZEROES[.. 3 & (0 ~mod- (3 & this.backwards_size))])
+        }
+        while (this.backwards_size & 3) <> 0 {
+            c8 = args.src.read_u8?()
+            if c8 <> 0x00 {
+                return "#bad index"
+            }
+            this.backwards_size ~mod+= 1
+        }
+        this.backwards_size >>= 2
+        if (this.backwards_size == 0) or (this.backwards_size > 0xFFFF_FFFF) {
+            return "#bad index"
+        }
+        checksum32_want = args.src.read_u32le?()
+        if this.ignore_checksum {
+            // No-op.
+        } else if checksum32_want <> this.crc32.checksum_u32() {
+            return "#bad checksum"
+        } else {
+            this.crc32.reset!()
+        }
+
+        // Verify the footer.
+        checksum32_want = args.src.read_u32le?()
+        while true {
+            smark = args.src.mark()
+            status =? this.verify_footer?(src: args.src)
+            if not this.ignore_checksum {
+                this.crc32.update!(x: args.src.since(mark: smark))
+            }
+            if status.is_ok() {
+                break
+            }
+            yield? status
+        }
+        if (not this.ignore_checksum) and (checksum32_want <> this.crc32.checksum_u32()) {
+            return "#bad checksum"
+        }
+        footer_magic = args.src.read_u16le?()
+        if footer_magic <> '\x59\x5A'le {
+            return "#bad footer"
+        }
+
+        if not this.standalone_format {
+            break.streams
+        }
+
+        // Consume any Stream Padding.
+        while.stream_padding true {
+            while args.src.length() < 4,
+                    post args.src.length() >= 4,
+            {
+                if args.src.is_closed() {
+                    if args.src.length() == 0 {
+                        break.streams
+                    } else {
+                        return "#truncated input"
+                    }
+                }
+                yield? base."$short read"
+            }
+
+            c32 = args.src.peek_u32le()
+            if c32 == '\xFD\x37\x7A\x58'le {
+                break.stream_padding
+            } else if c32 <> 0 {
+                return "#bad header (concatenated stream)"
+            }
+            args.src.skip_u32_fast!(actual: 4, worst_case: 4)
+        }.stream_padding
+        this.started_verify_index = false
+    }.streams
+}
+
+pri func decoder.decode_block_header_with_padding?(src: base.io_reader) {
+    var c8               : base.u8
+    var padded_size_have : base.u64
+    var padded_size_want : base.u64
+    var smark            : base.u64
+    var status           : base.status
+
+    c8 = args.src.read_u8?()
+    padded_size_want = ((c8 as base.u64) * 4) ~mod- 1
+
+    while true {
+        smark = args.src.mark()
+        status =? this.decode_block_header_sans_padding?(src: args.src)
+        padded_size_have ~sat+= args.src.count_since(mark: smark)
+        if status.is_ok() {
+            break
+        }
+        yield? status
+    }
+
+    if padded_size_have > padded_size_want {
+        return "#bad block header"
+    }
+    while padded_size_have < padded_size_want {
+        assert padded_size_have < 0xFFFF_FFFF_FFFF_FFFF via "a < b: a < c; c <= b"(c: padded_size_want)
+
+        c8 = args.src.read_u8?()
+        if c8 <> 0x00 {
+            return "#bad block header"
+        }
+
+        padded_size_have += 1
+    }
+}
+
+pri func decoder.decode_block_header_sans_padding?(src: base.io_reader) {
+    var c8        : base.u8
+    var c32       : base.u32
+    var alignment : base.u32
+    var flags     : base.u8
+    var filter_id : base.u8
+    var status    : base.status
+    var shift     : base.u32
+    var f         : base.u32
+    var k         : base.u32
+
+    flags = args.src.read_u8?()
+    this.num_non_final_filters = (flags & 0x03) as base.u32
+    if (flags & 0x3C) <> 0 {
+        return "#bad block header"
+    }
+
+    this.block_has_compressed_size = (flags & 0x40) <> 0
+    if this.block_has_compressed_size {
+        // Read a uvarint (Unsigned LEB128) as this.block_compressed_size.
+        this.block_compressed_size = 0
+        shift = 0
+        while true {
+            c8 = args.src.read_u8?()
+            if shift <= 56 {
+                this.block_compressed_size |= ((c8 & 0x7F) as base.u64) << shift
+                if c8 >= 0x80 {
+                    shift += 7
+                    continue
+                } else if (c8 == 0x00) and (shift > 0) {
+                    return "#bad block header"
+                }
+                break
+            } else if c8 <> 1 {
+                return "#bad block header"
+            }
+            this.block_compressed_size |= (1 as base.u64) << 63
+            break
+        }
+    }
+
+    this.block_has_uncompressed_size = (flags & 0x80) <> 0
+    if this.block_has_uncompressed_size {
+        // Read a uvarint (Unsigned LEB128) as this.block_uncompressed_size.
+        this.block_uncompressed_size = 0
+        shift = 0
+        while true {
+            c8 = args.src.read_u8?()
+            if shift <= 56 {
+                this.block_uncompressed_size |= ((c8 & 0x7F) as base.u64) << shift
+                if c8 >= 0x80 {
+                    shift += 7
+                    continue
+                } else if (c8 == 0x00) and (shift > 0) {
+                    return "#bad block header"
+                }
+                break
+            } else if c8 <> 1 {
+                return "#bad block header"
+            }
+            this.block_uncompressed_size |= (1 as base.u64) << 63
+            break
+        }
+    }
+
+    // Configure the non-final filters.
+
+    this.bcj_x86_prev_mask = 0
+    choose apply_non_final_filters = [apply_non_final_filters]
+    f = 0
+    while f < this.num_non_final_filters {
+        assert f < 3 via "a < b: a < c; c <= b"(c: this.num_non_final_filters)
+        filter_id = args.src.read_u8?()
+        if filter_id == 0x21 {  // LZMA2
+            return "#bad filter"
+
+        } else if filter_id == 0x03 {  // Delta.
+            // Delta's "Size of Properties" should be 1.
+            c8 = args.src.read_u8?()
+            if c8 <> 0x01 {
+                return "#bad filter"
+            }
+            // Stash that 1 Properties byte on to the LZMA decoder.
+            c8 = args.src.read_u8?()
+            this.filters[f] = ((c8 as base.u32) << 8) | 0x03
+
+            k = 0
+            while k < 0x100,
+                    inv f < 3,
+            {
+                this.filter_data[f][k] = 0x00
+                k += 1
+            }
+
+        } else if (filter_id < 0x03) or (0x0B < filter_id) {
+            return "#unsupported filter"
+        } else if f <> 0 {
+            // We only support BCJ (Branch, Call, Jump) filters if they're the
+            // only filter (other than LZMA2). This simplifies their undo_byte
+            // interaction with I/O suspension.
+            return "#unsupported filter combination"
+        } else {
+            this.filters[f] = filter_id as base.u32
+            if filter_id == 0x04 {
+                choose apply_non_final_filters = [apply_filter_04_x86]
+            } else if filter_id == 0x05 {
+                choose apply_non_final_filters = [apply_filter_05_powerpc]
+            } else if filter_id == 0x06 {
+                choose apply_non_final_filters = [apply_filter_06_ia64]
+            } else if filter_id == 0x07 {
+                choose apply_non_final_filters = [apply_filter_07_arm]
+            } else if filter_id == 0x08 {
+                choose apply_non_final_filters = [apply_filter_08_armthumb]
+            } else if filter_id == 0x09 {
+                choose apply_non_final_filters = [apply_filter_09_sparc]
+            } else if filter_id == 0x0A {
+                choose apply_non_final_filters = [apply_filter_0a_arm64]
+            } else {
+                choose apply_non_final_filters = [apply_filter_0b_riscv]
+            }
+
+            c8 = args.src.read_u8?()
+            if c8 == 0x00 {
+                this.bcj_pos = 0
+            } else if c8 == 0x04 {
+                c32 = args.src.read_u32le?()
+                alignment = BCJ_OFFSET_ALIGNMENT[filter_id] as base.u32
+                if alignment > 0 {
+                    if (c32 % alignment) <> 0 {
+                        return "#bad BCJ offset"
+                    }
+                }
+                this.bcj_pos = c32
+            } else {
+                return "#unsupported filter"
+            }
+        }
+
+        f += 1
+    }
+
+    // Configure the final filter (which must be LZMA2).
+
+    filter_id = args.src.read_u8?()
+    if filter_id == 0x21 {  // LZMA2
+        if this.lzma_needs_reset {
+            this.lzma.reset!()
+        }
+        // LZMA2's "Size of Properties" should be 1.
+        c8 = args.src.read_u8?()
+        if c8 <> 0x01 {
+            return "#bad filter"
+        }
+        // Pass that 1 Properties byte on to the LZMA decoder.
+        c8 = args.src.read_u8?()
+        status = this.lzma.set_quirk!(
+                key: lzma.QUIRK_FORMAT_EXTENSION,
+                value: 0x02 | ((c8 as base.u64) << 8))
+        if not status.is_ok() {
+            return "#bad filter"
+        }
+
+    } else if (filter_id < 0x03) or (0x0B < filter_id) {
+        return "#unsupported filter"
+
+    } else {
+        return "#bad filter"
+    }
+}
+
+pri func decoder.verify_index?(src: base.io_reader) {
+    var c8    : base.u8
+    var shift : base.u32
+    var hash  : base.u32
+
+    if not this.started_verify_index {
+        this.started_verify_index = true
+        c8 = args.src.read_u8?()
+        if c8 <> 0 {
+            return "#bad index"
+        }
+
+        this.num_index_blocks = 0
+        shift = 0
+        while true {
+            c8 = args.src.read_u8?()
+            if shift <= 56 {
+                this.num_index_blocks |= ((c8 & 0x7F) as base.u64) << shift
+                if c8 >= 0x80 {
+                    shift += 7
+                    continue
+                } else if (c8 == 0x00) and (shift > 0) {
+                    return "#bad index"
+                }
+                break
+            } else if c8 <> 1 {
+                return "#bad index"
+            }
+            this.num_index_blocks |= (1 as base.u64) << 63
+            break
+        }
+        if this.num_index_blocks <> this.num_actual_blocks {
+            return "#bad index"
+        }
+    }
+
+    while this.num_index_blocks > 0 {
+        this.num_index_blocks -= 1
+
+        this.index_block_compressed_size = 0
+        shift = 0
+        while true {
+            c8 = args.src.read_u8?()
+            if shift <= 56 {
+                this.index_block_compressed_size |= ((c8 & 0x7F) as base.u64) << shift
+                if c8 >= 0x80 {
+                    shift += 7
+                    continue
+                } else if (c8 == 0x00) and (shift > 0) {
+                    return "#bad index"
+                }
+                break
+            } else if c8 <> 1 {
+                return "#bad index"
+            }
+            this.index_block_compressed_size |= (1 as base.u64) << 63
+            break
+        }
+
+        this.index_block_uncompressed_size = 0
+        shift = 0
+        while true {
+            c8 = args.src.read_u8?()
+            if shift <= 56 {
+                this.index_block_uncompressed_size |= ((c8 & 0x7F) as base.u64) << shift
+                if c8 >= 0x80 {
+                    shift += 7
+                    continue
+                } else if (c8 == 0x00) and (shift > 0) {
+                    return "#bad index"
+                }
+                break
+            } else if c8 <> 1 {
+                return "#bad index"
+            }
+            this.index_block_uncompressed_size |= (1 as base.u64) << 63
+            break
+        }
+
+        // Update the verification_want_etc values. The hash function is
+        // loosely based on https://en.wikipedia.org/wiki/MurmurHash#Algorithm
+        this.verification_want_total_sizes[0] ~mod+= this.index_block_compressed_size
+        hash = ((this.index_block_compressed_size ^ (this.index_block_compressed_size >> 32)) & 0xFFFF_FFFF) as base.u32
+        hash ~mod*= 0xCC9E_2D51
+        hash = (hash ~mod<< 15) | (hash >> 17)
+        hash ~mod*= 0x1B87_3593
+        hash ^= this.verification_want_hashed_sizes[0]
+        hash = (hash ~mod<< 13) | (hash >> 19)
+        this.verification_want_hashed_sizes[0] = (hash ~mod* 5) ~mod+ 0xE654_6B64
+        this.verification_want_total_sizes[1] ~mod+= this.index_block_uncompressed_size
+        hash = ((this.index_block_uncompressed_size ^ (this.index_block_uncompressed_size >> 32)) & 0xFFFF_FFFF) as base.u32
+        hash ~mod*= 0xCC9E_2D51
+        hash = (hash ~mod<< 15) | (hash >> 17)
+        hash ~mod*= 0x1B87_3593
+        hash ^= this.verification_want_hashed_sizes[1]
+        hash = (hash ~mod<< 13) | (hash >> 19)
+        this.verification_want_hashed_sizes[1] = (hash ~mod* 5) ~mod+ 0xE654_6B64
+    }
+
+    if (this.verification_have_hashed_sizes[0] <> this.verification_want_hashed_sizes[0]) or
+            (this.verification_have_hashed_sizes[1] <> this.verification_want_hashed_sizes[1]) or
+            (this.verification_have_total_sizes[0] <> this.verification_want_total_sizes[0]) or
+            (this.verification_have_total_sizes[1] <> this.verification_want_total_sizes[1]) {
+        return "#bad index"
+    }
+}
+
+pri func decoder.verify_footer?(src: base.io_reader) {
+    var c32 : base.u32
+
+    c32 = args.src.read_u32le?()
+    if c32 <> ((this.backwards_size & 0xFFFF_FFFF) as base.u32) {
+        return "#bad footer"
+    }
+
+    c32 = args.src.read_u16le_as_u32?()
+    if c32 <> (this.flags as base.u32) {
+        return "#bad footer"
+    }
+}
+
+pri const CHECKSUM_LENGTH : roarray[4] base.u8 = [
+        0x00,  // 0: None.
+        0x04,  // 1: CRC-32.
+        0x08,  // 2: CRC-64.
+        0x20,  // 3: SHA-256.
+]
+
+pri const ZEROES : roarray[3] base.u8 = [0, 0, 0]
+
+// See https://tukaani.org/xz/xz-file-format.txt section 5.3.2.
+// Branch/Call/Jump Filters for Executables.
+pri const BCJ_OFFSET_ALIGNMENT : roarray[12] base.u8 = [
+        0x00,  // 0x00: Unused.
+        0x00,  // 0x01: Unused.
+        0x00,  // 0x02: Unused.
+        0x00,  // 0x03: Unused.
+        0x01,  // 0x04: x86.
+        0x04,  // 0x05: powerpc.
+        0x10,  // 0x06: ia64.
+        0x04,  // 0x07: arm.
+        0x02,  // 0x08: armthumb.
+        0x04,  // 0x09: sparc.
+        0x04,  // 0x0A: arm64.
+        0x02,  // 0x0B: riscv.
+]

@@ -1,0 +1,23 @@
+# Feed this file to script/make-artificial.go
+
+make gif
+
+header
+
+image {
+	imageWidthHeight 2 2
+	palette {
+		0x00 0x00 0xFF
+		0x11 0x00 0xFF
+		0x22 0x00 0xFF
+		0x33 0x00 0xFF
+	}
+}
+
+frame {
+	frameLeftTopWidthHeight 0 0 2 2
+}
+# The frame is 4 pixels, but we don't supply any.
+lzw 2
+
+trailer

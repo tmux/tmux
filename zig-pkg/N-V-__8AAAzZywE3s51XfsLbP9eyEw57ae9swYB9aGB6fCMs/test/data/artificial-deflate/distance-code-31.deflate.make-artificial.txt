@@ -1,0 +1,19 @@
+# Feed this file to script/make-artificial.go
+
+make deflate
+
+# RFC 1951 section 3.2.6 says that for fixed Huffman codes, "distance codes
+# 30-31 will never actually occur in the compressed data", and likewise for
+# literal/length values 286-287.
+#
+# This dates from a more innocent time, before widespread concerns about
+# malicious actors deliberately supplying invalid input to probe for security
+# vulnerabilities. Upon encountering such input, a robust decoder shouldn't
+# enter an internally inconsistent state.
+#
+# In terms of the Wuffs implementation (and error message convention), we
+# should return an error, as it is indeed invalid input, but we shouldn't
+# return an "internal error".
+blockFixedHuffman (final) {
+	len 3 distCode 31
+}

@@ -1,0 +1,663 @@
+{
+    "": 17096903,
+    "AUTHORS": 548,
+    "CONTRIBUTING.md": 709,
+    "CONTRIBUTORS": 1589,
+    "LICENSE": 10174,
+    "README.md": 9493,
+    "build-all.sh": 3451,
+    "build-example.sh": 1947,
+    "build-fuzz.sh": 1123,
+    "cmd": {
+        "": 78005,
+        "commonflags": {
+            "": 3289,
+            "commonflags.go": 3289
+        },
+        "ractool": {
+            "": 30003,
+            "data.go": 9639,
+            "gen.go": 2147,
+            "main.go": 18217
+        },
+        "wuffs": {
+            "": 22168,
+            "gen.go": 9241,
+            "main.go": 4479,
+            "release.go": 2653,
+            "test.go": 5795
+        },
+        "wuffs-c": {
+            "": 18306,
+            "genlib.go": 3632,
+            "main.go": 1244,
+            "release.go": 9131,
+            "test.go": 4299
+        },
+        "wuffsfmt": {
+            "": 4239,
+            "main.go": 4239
+        }
+    },
+    "doc": {
+        "": 201031,
+        "README.md": 578,
+        "background.md": 3624,
+        "benchmarks.md": 17470,
+        "binary-size.md": 3164,
+        "changelog.md": 4931,
+        "getting-started.md": 3570,
+        "glossary.md": 5900,
+        "note": {
+            "": 69660,
+            "README.md": 131,
+            "assertions.md": 3919,
+            "base38-and-fourcc.md": 2481,
+            "bounds-checking.md": 2301,
+            "coroutines.md": 2905,
+            "effects.md": 1127,
+            "facts.md": 7627,
+            "fuzzing.md": 1396,
+            "initialization.md": 4395,
+            "interval-arithmetic.md": 4453,
+            "io-input-output.md": 10149,
+            "iterate-loops.md": 1411,
+            "memory-safety.md": 3573,
+            "pixel-formats.md": 5893,
+            "pixel-subsampling.md": 4426,
+            "quirks.md": 1732,
+            "ranges-and-rects.md": 3202,
+            "signed-unsigned-integers.md": 2933,
+            "slices-arrays-and-tables.md": 2282,
+            "statuses.md": 3324
+        },
+        "related-work.md": 13477,
+        "roadmap.md": 696,
+        "spec": {
+            "": 62134,
+            "README.md": 285,
+            "nie-related-work.md": 3452,
+            "nie-spec.md": 16217,
+            "rac-related-work.md": 11449,
+            "rac-spec.md": 30731
+        },
+        "std": {
+            "": 10019,
+            "README.md": 1138,
+            "compression-decoders.md": 1280,
+            "hashers.md": 1262,
+            "image-decoders.md": 6339
+        },
+        "wuffs-the-language.md": 4132,
+        "wuffs-the-library.md": 1676
+    },
+    "example": {
+        "": 60943,
+        "crc32": {
+            "": 2700,
+            "crc32.cc": 2700
+        },
+        "gifplayer": {
+            "": 14558,
+            "README.md": 343,
+            "gifplayer.c": 14215
+        },
+        "imageviewer": {
+            "": 16047,
+            "imageviewer.c": 16047
+        },
+        "jsonptr": {
+            "": 17440,
+            "jsonptr.cc": 17440
+        },
+        "library": {
+            "": 3960,
+            "library.c": 3960
+        },
+        "zcat": {
+            "": 6238,
+            "zcat.c": 6238
+        }
+    },
+    "fuzz": {
+        "": 16543,
+        "c": {
+            "": 16543,
+            "fuzzlib": {
+                "": 5855,
+                "fuzzlib.c": 5855
+            },
+            "std": {
+                "": 10688,
+                "README.md": 645,
+                "gif_fuzzer.c": 5412,
+                "seed_corpora.txt": 821,
+                "zlib_fuzzer.c": 3810
+            }
+        }
+    },
+    "go.mod": 235,
+    "go.sum": 675,
+    "hello-wuffs-c": {
+        "": 11460,
+        "README.md": 5983,
+        "main.c": 2466,
+        "parse.wuffs": 1351,
+        "run.sh": 890,
+        "wuffs-base.c": 770
+    },
+    "internal": {
+        "": 483530,
+        "README.md": 330,
+        "cgen": {
+            "": 478317,
+            "base": {
+                "": 173231,
+                "all-impl.c": 4559,
+                "core-private.h": 13142,
+                "core-public.h": 14727,
+                "image-impl.c": 29624,
+                "image-private.h": 811,
+                "image-public.h": 40184,
+                "io-private.h": 7986,
+                "io-public.h": 4467,
+                "memory-private.h": 706,
+                "memory-public.h": 2792,
+                "range-private.h": 2706,
+                "range-public.h": 25353,
+                "strconv-impl.c": 10049,
+                "strconv-private.h": 707,
+                "strconv-public.h": 2752,
+                "token-private.h": 733,
+                "token-public.h": 11933
+            },
+            "builtin.go": 26681,
+            "cgen.go": 37934,
+            "data.go": 170427,
+            "expr.go": 14882,
+            "func.go": 14957,
+            "gen.go": 4508,
+            "liveness.go": 11461,
+            "statement.go": 15579,
+            "var.go": 8657
+        },
+        "testcut": {
+            "": 4883,
+            "testcut.go": 4883
+        }
+    },
+    "lang": {
+        "": 277020,
+        "README.md": 147,
+        "ast": {
+            "": 42542,
+            "ast.go": 29436,
+            "eq.go": 2847,
+            "sort.go": 1726,
+            "string.go": 6588,
+            "string_test.go": 1945
+        },
+        "builtin": {
+            "": 15445,
+            "builtin.go": 15445
+        },
+        "check": {
+            "": 135655,
+            "assert.go": 8999,
+            "axioms.md": 1059,
+            "bounds.go": 41999,
+            "check.go": 20708,
+            "check_test.go": 7312,
+            "data.go": 8504,
+            "gen.go": 8028,
+            "optimize.go": 3500,
+            "resolve.go": 5909,
+            "type.go": 29637
+        },
+        "generate": {
+            "": 3522,
+            "generate.go": 3522
+        },
+        "parse": {
+            "": 32932,
+            "parse.go": 32932
+        },
+        "render": {
+            "": 8075,
+            "render.go": 8075
+        },
+        "token": {
+            "": 37404,
+            "list.go": 31118,
+            "token.go": 6286
+        },
+        "wuffsroot": {
+            "": 1298,
+            "wuffsroot.go": 1298
+        }
+    },
+    "lib": {
+        "": 340961,
+        "README.md": 275,
+        "base38": {
+            "": 4243,
+            "base38.go": 1841,
+            "base38_test.go": 2402
+        },
+        "cgolz4": {
+            "": 16237,
+            "cgolz4.go": 11617,
+            "cgolz4_test.go": 2492,
+            "notcgo.go": 2128
+        },
+        "cgozlib": {
+            "": 9070,
+            "cgozlib.go": 4636,
+            "cgozlib_test.go": 2949,
+            "notcgo.go": 1485
+        },
+        "cgozstd": {
+            "": 18982,
+            "cgozstd.go": 12440,
+            "cgozstd_test.go": 4412,
+            "notcgo.go": 2130
+        },
+        "compression": {
+            "": 4569,
+            "compression.go": 3533,
+            "compression_test.go": 1036
+        },
+        "flatecut": {
+            "": 27237,
+            "flatecut.go": 21017,
+            "flatecut_test.go": 6220
+        },
+        "internal": {
+            "": 6498,
+            "racdict": {
+                "": 6498,
+                "racdict.go": 6498
+            }
+        },
+        "interval": {
+            "": 82681,
+            "interval.go": 35131,
+            "interval_test.go": 33477,
+            "radial_test.go": 14073
+        },
+        "rac": {
+            "": 122964,
+            "chunk_reader.go": 16981,
+            "chunk_writer.go": 22361,
+            "conc_reader.go": 11618,
+            "example_test.go": 8713,
+            "rac.go": 6363,
+            "rac_test.go": 23223,
+            "reader.go": 14642,
+            "writer.go": 19063
+        },
+        "raclz4": {
+            "": 7745,
+            "example_test.go": 3662,
+            "raclz4.go": 4083
+        },
+        "raczlib": {
+            "": 21264,
+            "example_test.go": 3669,
+            "make_cgo.go": 964,
+            "make_notcgo.go": 1123,
+            "raczlib.go": 5101,
+            "raczlib_test.go": 10407
+        },
+        "raczstd": {
+            "": 8175,
+            "example_test.go": 3669,
+            "raczstd.go": 4506
+        },
+        "readerat": {
+            "": 2472,
+            "readerat.go": 2472
+        },
+        "zlibcut": {
+            "": 8549,
+            "example_test.go": 3963,
+            "zlibcut.go": 3575,
+            "zlibcut_test.go": 1011
+        }
+    },
+    "release": {
+        "": 1192760,
+        "c": {
+            "": 1192760,
+            "README.md": 972,
+            "wuffs-unsupported-snapshot.c": 759903,
+            "wuffs-v0.2.c": 431885
+        }
+    },
+    "script": {
+        "": 194809,
+        "adler32-standalone.c": 4270,
+        "bench-c-deflate-fragmentation.c": 12090,
+        "bench-go-deflate": {
+            "": 3070,
+            "main.go": 3070
+        },
+        "bench-go-gif": {
+            "": 4213,
+            "main.go": 4213
+        },
+        "bench-history.sh": 1413,
+        "bench-rust-deflate": {
+            "": 4303,
+            "Cargo.toml": 165,
+            "src": {
+                "": 4138,
+                "main.rs": 4138
+            }
+        },
+        "bench-rust-gif": {
+            "": 6367,
+            "Cargo.toml": 159,
+            "src": {
+                "": 6208,
+                "main.rs": 6208
+            }
+        },
+        "bench-rust-gif-dot-rs": {
+            "": 5328,
+            "Cargo.toml": 177,
+            "src": {
+                "": 5151,
+                "main.rs": 5151
+            }
+        },
+        "checksum.go": 2201,
+        "compress-giflzw.go": 1155,
+        "convert-png-to-wbmp.go": 2812,
+        "crawl.go": 12796,
+        "draw-with-mask.go": 2164,
+        "extract-deflate-offsets.go": 5320,
+        "extract-giflzw.go": 8859,
+        "extract-palette-indexes.go": 3078,
+        "inline-c-relative-includes.go": 2597,
+        "make-artificial.go": 28598,
+        "mmap-ring-buffer.c": 4558,
+        "preprocess-wuffs.go": 14430,
+        "print-bits.go": 1636,
+        "print-byte-frequencies.go": 1991,
+        "print-crc32-example.go": 3278,
+        "print-crc32-magic-numbers.go": 1453,
+        "print-deflate-huff-table-size.go": 21461,
+        "print-deflate-magic-numbers.go": 2739,
+        "print-lzw-example.go": 7232,
+        "print-markdown-links.go": 3298,
+        "rac-random-seek-test.go": 3152,
+        "run-json-test-suite.sh": 2487,
+        "wuffs-deflate-decoder-decode-huffman.c": 16460
+    },
+    "std": {
+        "": 318902,
+        "adler32": {
+            "": 5363,
+            "README.md": 3812,
+            "common_adler32.wuffs": 1551
+        },
+        "bmp": {
+            "": 12955,
+            "decode_bmp.wuffs": 12955
+        },
+        "crc32": {
+            "": 67402,
+            "README.md": 11337,
+            "common_crc32.wuffs": 56065
+        },
+        "deflate": {
+            "": 71393,
+            "README.md": 16991,
+            "common_consts.wuffs": 2933,
+            "decode_deflate.wuffs": 27703,
+            "decode_huffman_fast.wuffs": 14579,
+            "decode_huffman_slow.wuffs": 9187
+        },
+        "gif": {
+            "": 89681,
+            "README.md": 20983,
+            "common_consts.wuffs": 2621,
+            "decode_config.wuffs": 23667,
+            "decode_gif.wuffs": 37810,
+            "decode_quirks.wuffs": 4600
+        },
+        "gzip": {
+            "": 3885,
+            "README.md": 361,
+            "decode_gzip.wuffs": 3524
+        },
+        "json": {
+            "": 33288,
+            "common_consts.wuffs": 9781,
+            "decode_json.wuffs": 23507
+        },
+        "lzw": {
+            "": 24556,
+            "README.md": 13637,
+            "decode_lzw.wuffs": 10919
+        },
+        "wbmp": {
+            "": 6479,
+            "decode_wbmp.wuffs": 6479
+        },
+        "zlib": {
+            "": 3900,
+            "README.md": 295,
+            "decode_zlib.wuffs": 3605
+        }
+    },
+    "test": {
+        "": 13890844,
+        "c": {
+            "": 252563,
+            "mimiclib": {
+                "": 13709,
+                "deflate-gzip-zlib.c": 10282,
+                "gif.c": 3427
+            },
+            "std": {
+                "": 209750,
+                "adler32.c": 10963,
+                "bmp.c": 5211,
+                "crc32.c": 11827,
+                "deflate.c": 33315,
+                "gif.c": 87626,
+                "gzip.c": 10491,
+                "json.c": 14700,
+                "lzw.c": 15920,
+                "wbmp.c": 6413,
+                "zlib.c": 13284
+            },
+            "testlib": {
+                "": 29104,
+                "testlib.c": 29104
+            }
+        },
+        "data": {
+            "": 13638281,
+            "README.md": 4118,
+            "analysis": {
+                "": 6676,
+                "giflzw-emission-lengths.txt": 6676
+            },
+            "animated-red-blue.gif": 2913,
+            "artificial": {
+                "": 62110,
+                "0.bytes": 0,
+                "256.bytes": 256,
+                "256.bytes.gz": 289,
+                "deflate-backref-crosses-blocks.deflate": 12,
+                "deflate-backref-crosses-blocks.deflate.commentary.txt": 1576,
+                "deflate-backref-crosses-blocks.deflate.decompressed": 7,
+                "deflate-backref-crosses-blocks.deflate.make-artificial.txt": 222,
+                "deflate-degenerate-huffman-unused.deflate": 15,
+                "deflate-degenerate-huffman-unused.deflate.commentary.txt": 3016,
+                "deflate-degenerate-huffman-unused.deflate.decompressed": 3,
+                "deflate-degenerate-huffman-unused.deflate.make-artificial.txt": 366,
+                "deflate-distance-32768.deflate": 252,
+                "deflate-distance-32768.deflate.commentary.txt": 3220,
+                "deflate-distance-32768.deflate.decompressed": 32781,
+                "deflate-distance-32768.deflate.make-artificial.txt": 513,
+                "deflate-distance-code-31.deflate": 2,
+                "deflate-distance-code-31.deflate.commentary.txt": 414,
+                "deflate-distance-code-31.deflate.decompressed": 0,
+                "deflate-distance-code-31.deflate.make-artificial.txt": 746,
+                "deflate-huffman-primlen-9.deflate": 176,
+                "deflate-huffman-primlen-9.deflate.commentary.txt": 5232,
+                "deflate-huffman-primlen-9.deflate.decompressed": 6,
+                "deflate-huffman-primlen-9.deflate.make-artificial.txt": 1687,
+                "gif-background-color.gif": 90,
+                "gif-background-color.gif.make-artificial.txt": 454,
+                "gif-empty-palette.gif": 54,
+                "gif-empty-palette.gif.make-artificial.txt": 563,
+                "gif-frame-out-of-bounds.gif": 132,
+                "gif-frame-out-of-bounds.gif.make-artificial.txt": 3223,
+                "gif-metadata-empty.gif": 90,
+                "gif-metadata-empty.gif.make-artificial.txt": 816,
+                "gif-metadata-full.gif": 110,
+                "gif-metadata-full.gif.make-artificial.txt": 1068,
+                "gif-multiple-graphic-controls.gif": 56,
+                "gif-multiple-graphic-controls.gif.make-artificial.txt": 623,
+                "gif-multiple-loop-counts.gif": 139,
+                "gif-multiple-loop-counts.gif.make-artificial.txt": 1878,
+                "gif-no-frames.gif": 26,
+                "gif-no-frames.gif.make-artificial.txt": 188,
+                "gif-pixel-data-none.gif": 40,
+                "gif-pixel-data-none.gif.make-artificial.txt": 288,
+                "gif-pixel-data-not-enough.gif": 40,
+                "gif-pixel-data-not-enough.gif.make-artificial.txt": 290,
+                "gif-pixel-data-too-much.gif": 41,
+                "gif-pixel-data-too-much.gif.make-artificial.txt": 305,
+                "gif-small-frame-interlaced.gif": 40,
+                "gif-small-frame-interlaced.gif.make-artificial.txt": 440,
+                "gif-zero-width-frame.gif": 40,
+                "gif-zero-width-frame.gif.make-artificial.txt": 285
+            },
+            "australian-abc-local-stations.json": 25940,
+            "bricks-color.bmp": 57738,
+            "bricks-color.jpeg": 8948,
+            "bricks-color.lossless.webp": 29290,
+            "bricks-color.lossy.webp": 3848,
+            "bricks-color.png": 33928,
+            "bricks-color.tiff": 37496,
+            "bricks-dither.bmp": 27002,
+            "bricks-dither.gif": 15783,
+            "bricks-dither.indexes": 19200,
+            "bricks-dither.indexes.giflzw": 14923,
+            "bricks-dither.lossless.webp": 12570,
+            "bricks-dither.palette": 1024,
+            "bricks-dither.png": 14324,
+            "bricks-gray.bmp": 30628,
+            "bricks-gray.gif": 15613,
+            "bricks-gray.indexes": 19200,
+            "bricks-gray.indexes.giflzw": 14731,
+            "bricks-gray.jpeg": 5590,
+            "bricks-gray.lossless.webp": 12268,
+            "bricks-gray.lossy.webp": 2036,
+            "bricks-gray.png": 13145,
+            "bricks-gray.tiff": 11287,
+            "bricks-nodither.bmp": 23612,
+            "bricks-nodither.gif": 14236,
+            "bricks-nodither.indexes": 19200,
+            "bricks-nodither.indexes.giflzw": 13382,
+            "bricks-nodither.lossless.webp": 10814,
+            "bricks-nodither.palette": 1024,
+            "bricks-nodither.png": 12366,
+            "bricks-nodither.wbmp": 2405,
+            "crude-flag.nia": 128,
+            "crude-flag.nie": 40,
+            "crude-flag.nii": 48,
+            "gifplayer-muybridge.gif": 356707,
+            "github-tags.json": 853,
+            "harvesters.bmp": 3003202,
+            "harvesters.gif": 815426,
+            "harvesters.jpeg": 402147,
+            "harvesters.lossless.webp": 1466150,
+            "harvesters.lossy.webp": 173694,
+            "harvesters.png": 1989777,
+            "harvesters.tiff": 2076076,
+            "hat.bmp": 30602,
+            "hat.gif": 12529,
+            "hat.jpeg": 6151,
+            "hat.lossless.webp": 22152,
+            "hat.lossy.webp": 3186,
+            "hat.png": 24092,
+            "hat.tiff": 25723,
+            "hat.wbmp": 1348,
+            "hibiscus.primitive.bmp": 551754,
+            "hibiscus.primitive.gif": 31105,
+            "hibiscus.primitive.jpeg": 28864,
+            "hibiscus.primitive.lossless.webp": 27400,
+            "hibiscus.primitive.lossy.webp": 6004,
+            "hibiscus.primitive.png": 45016,
+            "hibiscus.primitive.svg": 2808,
+            "hibiscus.primitive.tiff": 52444,
+            "hibiscus.regular.bmp": 413850,
+            "hibiscus.regular.gif": 111922,
+            "hibiscus.regular.jpeg": 58991,
+            "hibiscus.regular.lossless.webp": 205896,
+            "hibiscus.regular.lossy.webp": 24488,
+            "hibiscus.regular.png": 251814,
+            "hibiscus.regular.tiff": 282562,
+            "hippopotamus.bmp": 3162,
+            "hippopotamus.interlaced.gif": 1800,
+            "hippopotamus.interlaced.png": 2659,
+            "hippopotamus.interlaced.truncated.gif": 1024,
+            "hippopotamus.jpeg": 1219,
+            "hippopotamus.lossless.webp": 1880,
+            "hippopotamus.lossy.webp": 348,
+            "hippopotamus.masked-with-muybridge.gif": 1697,
+            "hippopotamus.masked-with-muybridge.png": 2921,
+            "hippopotamus.regular.gif": 1799,
+            "hippopotamus.regular.png": 2143,
+            "hippopotamus.tiff": 2468,
+            "json-things.formatted.json": 152,
+            "json-things.unformatted.json": 85,
+            "midsummer.txt": 11065,
+            "midsummer.txt.gz": 5174,
+            "midsummer.txt.zlib": 5148,
+            "muybridge-frame-000.indexes": 600,
+            "muybridge-frame-000.wbmp": 84,
+            "muybridge-frame-001.indexes": 600,
+            "muybridge-frame-002.indexes": 600,
+            "muybridge-frame-003.indexes": 600,
+            "muybridge-frame-004.indexes": 600,
+            "muybridge-frame-005.indexes": 600,
+            "muybridge-frame-006.indexes": 600,
+            "muybridge-frame-007.indexes": 600,
+            "muybridge-frame-008.indexes": 600,
+            "muybridge-frame-009.indexes": 600,
+            "muybridge-frame-010.indexes": 600,
+            "muybridge-frame-011.indexes": 600,
+            "muybridge-frame-012.indexes": 600,
+            "muybridge-frame-013.indexes": 600,
+            "muybridge-frame-014.indexes": 600,
+            "muybridge.gif": 9828,
+            "nobel-prizes.json": 216670,
+            "pi.txt": 100003,
+            "pi.txt.giflzw": 50550,
+            "pi.txt.gz": 48343,
+            "pi.txt.zlib": 48324,
+            "pjw-thumbnail.bmp": 274,
+            "pjw-thumbnail.gif": 158,
+            "pjw-thumbnail.jpeg": 1049,
+            "pjw-thumbnail.lossless.webp": 156,
+            "pjw-thumbnail.lossy.webp": 546,
+            "pjw-thumbnail.png": 208,
+            "pjw-thumbnail.tiff": 491,
+            "romeo.txt": 942,
+            "romeo.txt.deflate": 530,
+            "romeo.txt.fixed-huff.deflate": 692,
+            "romeo.txt.gz": 558,
+            "romeo.txt.zlib": 536,
+            "sheep-more.rac": 278
+        }
+    },
+    "wuffs-root-directory.txt": 151
+}

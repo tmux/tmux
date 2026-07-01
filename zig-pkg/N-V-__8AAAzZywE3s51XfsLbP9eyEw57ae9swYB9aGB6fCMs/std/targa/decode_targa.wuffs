@@ -1,0 +1,616 @@
+// Copyright 2022 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pub status "#bad header"
+pub status "#bad run length encoding"
+pub status "#truncated input"
+pub status "#unsupported TARGA file"
+
+pub const DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE : base.u64 = 0
+
+pub struct decoder? implements base.image_decoder(
+        width  : base.u32[..= 0xFFFF],
+        height : base.u32[..= 0xFFFF],
+
+        // The call sequence state machine is discussed in
+        // (/doc/std/image-decoders-call-sequence.md).
+        call_sequence : base.u8,
+
+        header_id_length                   : base.u8,
+        header_color_map_type              : base.u8,
+        header_image_type                  : base.u8,
+        header_color_map_first_entry_index : base.u16,
+        header_color_map_length            : base.u16,
+        header_color_map_entry_size        : base.u8,
+        header_pixel_depth                 : base.u8,
+        header_image_descriptor            : base.u8,
+
+        opaque : base.bool,
+
+        scratch_bytes_per_pixel : base.u32[..= 4],
+        src_bytes_per_pixel     : base.u32[..= 4],
+        src_pixfmt              : base.u32,
+
+        frame_config_io_position : base.u64,
+
+        swizzler : base.pixel_swizzler,
+        util     : base.utility,
+) + (
+        dst_palette : array[4 * 256] base.u8,
+        src_palette : array[4 * 256] base.u8,
+        scratch     : array[4] base.u8,
+)
+
+pub func decoder.get_quirk(key: base.u32) base.u64 {
+    return 0
+}
+
+pub func decoder.set_quirk!(key: base.u32, value: base.u64) base.status {
+    return base."#unsupported option"
+}
+
+pub func decoder.decode_image_config?(dst: nptr base.image_config, src: base.io_reader) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_image_config?(dst: args.dst, src: args.src)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_image_config?(dst: nptr base.image_config, src: base.io_reader) {
+    var c32 : base.u32
+    var c5  : base.u32[..= 0x1F]
+    var i   : base.u32
+
+    if this.call_sequence <> 0x00 {
+        return base."#bad call sequence"
+    }
+
+    this.header_id_length = args.src.read_u8?()
+    this.header_color_map_type = args.src.read_u8?()
+    if this.header_color_map_type > 1 {
+        return "#bad header"
+    }
+
+    this.header_image_type = args.src.read_u8?()
+    if (this.header_image_type == 0x01) or
+            (this.header_image_type == 0x02) or
+            (this.header_image_type == 0x03) or
+            (this.header_image_type == 0x09) or
+            (this.header_image_type == 0x0A) or
+            (this.header_image_type == 0x0B) {
+        // No-op.
+    } else {
+        // TODO: 0x20 and 0x21 are invalid, according to the spec, but are
+        // apparently unofficial extensions.
+        return "#bad header"
+    }
+
+    this.header_color_map_first_entry_index = args.src.read_u16le?()
+    this.header_color_map_length = args.src.read_u16le?()
+    this.header_color_map_entry_size = args.src.read_u8?()
+    if this.header_color_map_type <> 0 {
+        // We have a color-mapped image (in Wuffs, an indexed pixel format).
+        if (this.header_color_map_first_entry_index <> 0) or
+                (this.header_color_map_length > 0x100) {
+            return "#unsupported TARGA file"
+        } else if (this.header_color_map_entry_size <> 0x0F) and
+                (this.header_color_map_entry_size <> 0x10) and
+                (this.header_color_map_entry_size <> 0x18) and
+                (this.header_color_map_entry_size <> 0x20) {
+            return "#bad header"
+        }
+    } else {
+        // The color-map fields must be zero.
+        if (this.header_color_map_first_entry_index <> 0) or
+                (this.header_color_map_length <> 0) or
+                (this.header_color_map_entry_size <> 0) {
+            return "#bad header"
+        }
+    }
+
+    // Ignore the X-Origin and Y-Origin fields.
+    args.src.skip_u32?(n: 4)
+
+    this.width = args.src.read_u16le_as_u32?()
+    this.height = args.src.read_u16le_as_u32?()
+
+    this.header_pixel_depth = args.src.read_u8?()
+    if (this.header_pixel_depth <> 0x01) and
+            (this.header_pixel_depth <> 0x08) and
+            (this.header_pixel_depth <> 0x0F) and
+            (this.header_pixel_depth <> 0x10) and
+            (this.header_pixel_depth <> 0x18) and
+            (this.header_pixel_depth <> 0x20) {
+        return "#bad header"
+    }
+
+    if (this.header_image_type | 8) == 0x09 {
+        this.scratch_bytes_per_pixel = 1
+        this.src_bytes_per_pixel = 1
+        this.src_pixfmt = base.PIXEL_FORMAT__INDEXED__BGRA_NONPREMUL
+        this.opaque =
+                (this.header_color_map_entry_size == 0x0F) or
+                (this.header_color_map_entry_size == 0x18)
+
+    } else if (this.header_image_type | 8) == 0x0A {
+        if (this.header_pixel_depth == 0x0F) or
+                (this.header_pixel_depth == 0x10) {
+            // Wuffs' base.pixel_swizzler doesn't support BGRX5551, so
+            // scratch_bytes_per_pixel and src_bytes_per_pixel are different.
+            this.scratch_bytes_per_pixel = 4
+            this.src_bytes_per_pixel = 0
+            this.src_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL
+        } else if this.header_pixel_depth == 0x18 {
+            this.scratch_bytes_per_pixel = 3
+            this.src_bytes_per_pixel = 3
+            this.src_pixfmt = base.PIXEL_FORMAT__BGR
+            this.opaque = true
+        } else if this.header_pixel_depth == 0x20 {
+            this.scratch_bytes_per_pixel = 4
+            this.src_bytes_per_pixel = 4
+            this.src_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL
+        } else {
+            return "#unsupported TARGA file"
+        }
+
+    } else {
+        if this.header_pixel_depth == 0x08 {
+            this.scratch_bytes_per_pixel = 1
+            this.src_bytes_per_pixel = 1
+            this.src_pixfmt = base.PIXEL_FORMAT__Y
+            this.opaque = true
+        } else {
+            return "#unsupported TARGA file"
+        }
+    }
+
+    this.header_image_descriptor = args.src.read_u8?()
+    if (this.header_image_descriptor & 0x10) <> 0 {
+        // We don't support right-to-left, only left-to-right pixel order.
+        return "#unsupported TARGA file"
+    }
+
+    // Skip the Image ID.
+    args.src.skip_u32?(n: this.header_id_length as base.u32)
+
+    // Read the color map.
+    if this.header_color_map_type <> 0 {
+        while i < (this.header_color_map_length as base.u32) {
+            assert i <= 0xFFFF via "a <= b: a <= c; c <= b"(c: this.header_color_map_length as base.u32)
+            if this.header_color_map_entry_size == 0x18 {
+                c32 = args.src.read_u24le_as_u32?()
+                this.src_palette[((i & 0xFF) * 4) + 0] = ((c32 >> 0x00) & 0xFF) as base.u8
+                this.src_palette[((i & 0xFF) * 4) + 1] = ((c32 >> 0x08) & 0xFF) as base.u8
+                this.src_palette[((i & 0xFF) * 4) + 2] = ((c32 >> 0x10) & 0xFF) as base.u8
+                this.src_palette[((i & 0xFF) * 4) + 3] = 0xFF
+            } else if this.header_color_map_entry_size == 0x20 {
+                c32 = args.src.read_u32le?()
+                this.src_palette[((i & 0xFF) * 4) + 0] = ((c32 >> 0x00) & 0xFF) as base.u8
+                this.src_palette[((i & 0xFF) * 4) + 1] = ((c32 >> 0x08) & 0xFF) as base.u8
+                this.src_palette[((i & 0xFF) * 4) + 2] = ((c32 >> 0x10) & 0xFF) as base.u8
+                this.src_palette[((i & 0xFF) * 4) + 3] = ((c32 >> 0x18) & 0xFF) as base.u8
+            } else {
+                // Expand 15-bit or 16-bit color map entries.
+                c32 = args.src.read_u16le_as_u32?()
+                c5 = 0x1F & (c32 >> 0)
+                this.src_palette[((i & 0xFF) * 4) + 0] = ((c5 << 3) | (c5 >> 2)) as base.u8
+                c5 = 0x1F & (c32 >> 5)
+                this.src_palette[((i & 0xFF) * 4) + 1] = ((c5 << 3) | (c5 >> 2)) as base.u8
+                c5 = 0x1F & (c32 >> 10)
+                this.src_palette[((i & 0xFF) * 4) + 2] = ((c5 << 3) | (c5 >> 2)) as base.u8
+                // TODO: can the alpha value be zero (BGRA5551 not BGRX5551)?
+                this.src_palette[((i & 0xFF) * 4) + 3] = 0xFF
+            }
+            i += 1
+        }
+        while i < 0x100 {
+            this.src_palette[(i * 4) + 0] = 0x00
+            this.src_palette[(i * 4) + 1] = 0x00
+            this.src_palette[(i * 4) + 2] = 0x00
+            this.src_palette[(i * 4) + 3] = 0xFF
+            i += 1
+        }
+    }
+
+    this.frame_config_io_position = args.src.position()
+
+    if args.dst <> nullptr {
+        args.dst.set!(
+                pixfmt: this.src_pixfmt,
+                pixsub: 0,
+                width: this.width,
+                height: this.height,
+                first_frame_io_position: this.frame_config_io_position,
+                first_frame_is_opaque: this.opaque)
+    }
+
+    this.call_sequence = 0x20
+}
+
+pub func decoder.decode_frame_config?(dst: nptr base.frame_config, src: base.io_reader) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_frame_config?(dst: args.dst, src: args.src)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_frame_config?(dst: nptr base.frame_config, src: base.io_reader) {
+    if this.call_sequence == 0x20 {
+        // No-op.
+    } else if this.call_sequence < 0x20 {
+        this.do_decode_image_config?(dst: nullptr, src: args.src)
+    } else if this.call_sequence == 0x28 {
+        if this.frame_config_io_position <> args.src.position() {
+            return base."#bad restart"
+        }
+    } else if this.call_sequence == 0x40 {
+        this.call_sequence = 0x60
+        return base."@end of data"
+    } else {
+        return base."@end of data"
+    }
+
+    if args.dst <> nullptr {
+        args.dst.set!(bounds: this.util.make_rect_ie_u32(
+                min_incl_x: 0,
+                min_incl_y: 0,
+                max_excl_x: this.width,
+                max_excl_y: this.height),
+                duration: 0,
+                index: 0,
+                io_position: this.frame_config_io_position,
+                disposal: 0,
+                opaque_within_bounds: this.opaque,
+                overwrite_instead_of_blend: false,
+                background_color: 0xFF00_0000)
+    }
+
+    this.call_sequence = 0x40
+}
+
+pub func decoder.decode_frame?(dst: ptr base.pixel_buffer, src: base.io_reader, blend: base.pixel_blend, workbuf: slice base.u8, opts: nptr base.decode_frame_options) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_frame?(dst: args.dst, src: args.src, blend: args.blend, workbuf: args.workbuf, opts: args.opts)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_frame?(dst: ptr base.pixel_buffer, src: base.io_reader, blend: base.pixel_blend, workbuf: slice base.u8, opts: nptr base.decode_frame_options) {
+    var status              : base.status
+    var dst_pixfmt          : base.pixel_format
+    var dst_bits_per_pixel  : base.u32[..= 256]
+    var dst_bytes_per_pixel : base.u64[..= 32]
+    var dst_x               : base.u32
+    var dst_y               : base.u32
+    var tab                 : table base.u8
+    var dst_palette         : slice base.u8
+    var dst                 : slice base.u8
+    var dst_start           : base.u64
+    var src_palette         : roslice base.u8
+    var mark                : base.u64
+    var num_pixels64        : base.u64
+    var num_pixels32        : base.u32[..= 0xFFFF]
+    var lit_length          : base.u32[..= 0xFFFF]
+    var run_length          : base.u32[..= 0xFFFF]
+    var num_dst_bytes       : base.u64[..= 0x1F_FFE0]
+    var num_src_bytes       : base.u32[..= 0x3_FFFC]
+    var c32                 : base.u32
+    var c5                  : base.u32[..= 0x1F]
+
+    if this.call_sequence == 0x40 {
+        // No-op.
+    } else if this.call_sequence < 0x40 {
+        this.do_decode_frame_config?(dst: nullptr, src: args.src)
+    } else {
+        return base."@end of data"
+    }
+
+    if this.header_color_map_type <> 0 {
+        src_palette = this.src_palette[..]
+    }
+    status = this.swizzler.prepare!(
+            dst_pixfmt: args.dst.pixel_format(),
+            dst_palette: args.dst.palette_or_else(fallback: this.dst_palette[..]),
+            src_pixfmt: this.util.make_pixel_format(repr: this.src_pixfmt),
+            src_palette: src_palette,
+            blend: args.blend)
+    if not status.is_ok() {
+        return status
+    }
+
+    // TODO: the dst_pixfmt variable shouldn't be necessary. We should be able
+    // to chain the two calls: "args.dst.pixel_format().bits_per_pixel()".
+    dst_pixfmt = args.dst.pixel_format()
+    dst_bits_per_pixel = dst_pixfmt.bits_per_pixel()
+    if (dst_bits_per_pixel & 7) <> 0 {
+        return base."#unsupported option"
+    }
+    dst_bytes_per_pixel = (dst_bits_per_pixel / 8) as base.u64
+
+    if (this.header_image_descriptor & 0x20) == 0 {  // Bottom-to-top.
+        dst_y = this.height ~mod- 1
+    }
+    if (this.header_image_type & 8) == 0 {
+        // No RLE (run length encoding) means that the entire row is
+        // effectively literals.
+        lit_length = this.width
+    }
+
+    while.resume true {
+        tab = args.dst.plane(p: 0)
+        dst_palette = args.dst.palette_or_else(fallback: this.dst_palette[..])
+
+        while dst_y < this.height {
+            dst = tab.row_u32(y: dst_y)
+            dst_start = (dst_x as base.u64) * dst_bytes_per_pixel
+            if dst_start <= dst.length() {
+                dst = dst[dst_start ..]
+            } else {
+                dst = this.util.empty_slice_u8()
+            }
+
+            while dst_x < this.width {
+                assert dst_x <= 0xFFFF via "a <= b: a <= c; c <= b"(c: this.width)
+
+                if this.src_bytes_per_pixel > 0 {
+                    if lit_length > 0 {
+                        mark = args.src.mark()
+                        num_pixels64 = args.src.length() / (this.src_bytes_per_pixel as base.u64)
+                        num_pixels32 = num_pixels64.min(no_more_than: lit_length as base.u64) as base.u32
+                        num_dst_bytes = (num_pixels32 as base.u64) * dst_bytes_per_pixel
+                        num_src_bytes = num_pixels32 * this.src_bytes_per_pixel
+                        args.src.skip_u32?(n: num_src_bytes)
+                        this.swizzler.swizzle_interleaved_from_slice!(
+                                dst: dst,
+                                dst_palette: dst_palette,
+                                src: args.src.since(mark: mark))
+                        if num_dst_bytes <= dst.length() {
+                            dst = dst[num_dst_bytes ..]
+                        } else {
+                            dst = this.util.empty_slice_u8()
+                        }
+                        dst_x += num_pixels32
+                        lit_length = (lit_length ~mod- num_pixels32) & 0xFFFF
+                        if lit_length > 0 {
+                            yield? base."$short read"
+                            continue.resume
+                        }
+
+                    } else if run_length > 0 {
+                        run_length -= 1
+                        this.swizzler.swizzle_interleaved_from_slice!(
+                                dst: dst,
+                                dst_palette: dst_palette,
+                                src: this.scratch[.. this.scratch_bytes_per_pixel])
+                        if dst_bytes_per_pixel <= dst.length() {
+                            dst = dst[dst_bytes_per_pixel ..]
+                        }
+                        dst_x += 1
+
+                    } else {
+                        // Handle Raw vs RLE packets.
+                        if args.src.length() <= 0 {
+                            yield? base."$short read"
+                            continue.resume
+                        }
+                        if args.src.peek_u8_as_u32() < 0x80 {
+                            lit_length = args.src.peek_u8_as_u32() + 1
+                            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                            if (lit_length + dst_x) > this.width {
+                                return "#bad run length encoding"
+                            }
+
+                        } else {
+                            if this.src_bytes_per_pixel == 1 {
+                                if args.src.length() < 2 {
+                                    yield? base."$short read"
+                                    continue.resume
+                                }
+                                run_length = (args.src.peek_u8_as_u32() & 0x7F) + 1
+                                args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                                this.scratch[0] = args.src.peek_u8()
+                                args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                            } else if this.src_bytes_per_pixel == 3 {
+                                if args.src.length() < 4 {
+                                    yield? base."$short read"
+                                    continue.resume
+                                }
+                                run_length = (args.src.peek_u8_as_u32() & 0x7F) + 1
+                                args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                                this.scratch[0] = args.src.peek_u8()
+                                args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                                this.scratch[1] = args.src.peek_u8()
+                                args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                                this.scratch[2] = args.src.peek_u8()
+                                args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                            } else {  // this.src_bytes_per_pixel == 4
+                                if args.src.length() < 5 {
+                                    yield? base."$short read"
+                                    continue.resume
+                                }
+                                run_length = (args.src.peek_u8_as_u32() & 0x7F) + 1
+                                args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                                this.scratch[0] = args.src.peek_u8()
+                                args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                                this.scratch[1] = args.src.peek_u8()
+                                args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                                this.scratch[2] = args.src.peek_u8()
+                                args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                                this.scratch[3] = args.src.peek_u8()
+                                args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                            }
+
+                            if (run_length + dst_x) > this.width {
+                                return "#bad run length encoding"
+                            }
+                        }
+                    }
+
+                } else {
+                    // Wuffs' base.pixel_swizzler doesn't support BGRX5551, so
+                    // we manually convert to BGRX8888, one pixel at a time.
+
+                    if lit_length > 0 {
+                        if args.src.length() < 2 {
+                            yield? base."$short read"
+                            continue.resume
+                        }
+                        c32 = args.src.peek_u16le_as_u32()
+                        args.src.skip_u32_fast!(actual: 2, worst_case: 2)
+                        c5 = 0x1F & (c32 >> 0)
+                        this.scratch[0] = ((c5 << 3) | (c5 >> 2)) as base.u8
+                        c5 = 0x1F & (c32 >> 5)
+                        this.scratch[1] = ((c5 << 3) | (c5 >> 2)) as base.u8
+                        c5 = 0x1F & (c32 >> 10)
+                        this.scratch[2] = ((c5 << 3) | (c5 >> 2)) as base.u8
+                        // TODO: can the alpha value be zero (BGRA5551 not BGRX5551)?
+                        this.scratch[3] = 0xFF
+                        this.swizzler.swizzle_interleaved_from_slice!(
+                                dst: dst,
+                                dst_palette: dst_palette,
+                                src: this.scratch[.. 4])
+                        if dst_bytes_per_pixel <= dst.length() {
+                            dst = dst[dst_bytes_per_pixel ..]
+                        }
+                        dst_x += 1
+                        lit_length -= 1
+
+                    } else if run_length > 0 {
+                        run_length -= 1
+                        this.swizzler.swizzle_interleaved_from_slice!(
+                                dst: dst,
+                                dst_palette: dst_palette,
+                                src: this.scratch[.. this.scratch_bytes_per_pixel])
+                        if dst_bytes_per_pixel <= dst.length() {
+                            dst = dst[dst_bytes_per_pixel ..]
+                        }
+                        dst_x += 1
+
+                    } else {
+                        // Handle Raw vs RLE packets.
+                        if args.src.length() <= 0 {
+                            yield? base."$short read"
+                            continue.resume
+                        }
+                        if args.src.peek_u8_as_u32() < 0x80 {
+                            lit_length = args.src.peek_u8_as_u32() + 1
+                            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                            if (lit_length + dst_x) > this.width {
+                                return "#bad run length encoding"
+                            }
+
+                        } else {
+                            if args.src.length() < 3 {
+                                yield? base."$short read"
+                                continue.resume
+                            }
+                            run_length = (args.src.peek_u8_as_u32() & 0x7F) + 1
+                            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                            c32 = args.src.peek_u16le_as_u32()
+                            args.src.skip_u32_fast!(actual: 2, worst_case: 2)
+                            c5 = 0x1F & (c32 >> 0)
+                            this.scratch[0] = ((c5 << 3) | (c5 >> 2)) as base.u8
+                            c5 = 0x1F & (c32 >> 5)
+                            this.scratch[1] = ((c5 << 3) | (c5 >> 2)) as base.u8
+                            c5 = 0x1F & (c32 >> 10)
+                            this.scratch[2] = ((c5 << 3) | (c5 >> 2)) as base.u8
+                            // TODO: can the alpha value be zero (BGRA5551 not BGRX5551)?
+                            this.scratch[3] = 0xFF
+
+                            if (run_length + dst_x) > this.width {
+                                return "#bad run length encoding"
+                            }
+                        }
+                    }
+                }
+            }
+            dst_x = 0
+
+            if (this.header_image_descriptor & 0x20) == 0 {  // Bottom-to-top.
+                dst_y ~mod-= 1
+            } else {  // Top-to-bottom.
+                dst_y ~mod+= 1
+            }
+            if (this.header_image_type & 8) == 0 {
+                // No RLE (run length encoding) means that the entire row is
+                // effectively literals.
+                lit_length = this.width
+            }
+        }
+        break.resume
+    }.resume
+
+    this.call_sequence = 0x60
+}
+
+pub func decoder.frame_dirty_rect() base.rect_ie_u32 {
+    return this.util.make_rect_ie_u32(
+            min_incl_x: 0,
+            min_incl_y: 0,
+            max_excl_x: this.width,
+            max_excl_y: this.height)
+}
+
+pub func decoder.num_animation_loops() base.u32 {
+    return 0
+}
+
+pub func decoder.num_decoded_frame_configs() base.u64 {
+    if this.call_sequence > 0x20 {
+        return 1
+    }
+    return 0
+}
+
+pub func decoder.num_decoded_frames() base.u64 {
+    if this.call_sequence > 0x40 {
+        return 1
+    }
+    return 0
+}
+
+pub func decoder.restart_frame!(index: base.u64, io_position: base.u64) base.status {
+    if this.call_sequence < 0x20 {
+        return base."#bad call sequence"
+    }
+    if args.index <> 0 {
+        return base."#bad argument"
+    }
+    this.call_sequence = 0x28
+    this.frame_config_io_position = args.io_position
+    return ok
+}
+
+pub func decoder.set_report_metadata!(fourcc: base.u32, report: base.bool) {
+    // TODO: implement.
+}
+
+pub func decoder.tell_me_more?(dst: base.io_writer, minfo: nptr base.more_information, src: base.io_reader) {
+    return base."#no more information"
+}
+
+pub func decoder.workbuf_len() base.range_ii_u64 {
+    return this.util.make_range_ii_u64(min_incl: 0, max_incl: 0)
+}

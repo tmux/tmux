@@ -1,0 +1,9 @@
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#include FT_TRUETYPE_TABLES_H
+#include <freetype/ftmm.h>
+#include <freetype/ftoutln.h>
+#include <freetype/ftsnames.h>
+#include <freetype/ttnameid.h>
+#include <freetype/ftbitmap.h>
+#include <freetype/ftbbox.h>

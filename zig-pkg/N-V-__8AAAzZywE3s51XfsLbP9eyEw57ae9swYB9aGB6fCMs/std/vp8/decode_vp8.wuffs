@@ -1,0 +1,24 @@
+// Copyright 2024 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+// --------
+
+// This code is a placeholder. std/webp depends on std/vp8 (a lossy image
+// codec) even though, in the very short term, std/webp only implements the
+// lossless VP8L format. In the medium term, though, std/webp will also support
+// VP8 and the resultant code changes will be smaller and simpler if std/webp
+// depends on std/vp8 right from the start.
+//
+// Also, a std/webm package does not exist yet, but might in the future. If it
+// does, it will also depend on std/vp8 (but not std/webp).
+
+pub struct placeholder?(
+        placeholder : base.u32,
+)

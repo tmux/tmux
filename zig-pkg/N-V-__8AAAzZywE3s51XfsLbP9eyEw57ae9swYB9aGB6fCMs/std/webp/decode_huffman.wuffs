@@ -1,0 +1,531 @@
+// Copyright 2024 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pri func decoder.decode_huffman_groups?(src: base.io_reader, n_huffman_groups: base.u32[..= 256]) {
+    var hg : base.u32
+    var ht : base.u32
+
+    hg = 0
+    while hg < args.n_huffman_groups {
+        assert hg < 256 via "a < b: a < c; c <= b"(c: args.n_huffman_groups)
+        ht = 0
+        while ht < 5,
+                inv hg < 256,
+        {
+            this.decode_huffman_tree?(src: args.src, hg: hg, ht: ht)
+            ht += 1
+        }
+        hg += 1
+    }
+}
+
+pri func decoder.decode_huffman_tree?(src: base.io_reader, hg: base.u32[..= 255], ht: base.u32[..= 4]) {
+    var c8         : base.u8
+    var use_simple : base.u32[..= 1]
+    var status     : base.status
+
+    if args.ht >= 4 {
+        this.ht_n_symbols = 40
+    } else if args.ht > 0 {
+        this.ht_n_symbols = 256
+    } else if this.color_cache_bits == 0 {
+        this.ht_n_symbols = 280
+    } else {
+        this.ht_n_symbols = 280 + ((1 as base.u32) << this.color_cache_bits)
+    }
+
+    if this.n_bits < 1 {
+        c8 = args.src.read_u8?()
+        this.bits = (c8 as base.u32)
+        this.n_bits = 8
+        assert this.n_bits >= 1
+    }
+    use_simple = this.bits & 1
+    this.bits >>= 1
+    this.n_bits -= 1
+
+    if use_simple <> 0 {
+        this.decode_huffman_tree_simple?(src: args.src, hg: args.hg, ht: args.ht)
+
+    } else {
+        this.decode_code_length_code_lengths?(src: args.src)
+
+        status = this.build_code_lengths_huffman_nodes!()
+        if not status.is_ok() {
+            return status
+        }
+
+        this.build_code_lengths?(src: args.src)
+
+        status = this.build_huffman_nodes!(hg: args.hg, ht: args.ht)
+        if not status.is_ok() {
+            return status
+        }
+    }
+}
+
+pri func decoder.decode_huffman_tree_simple?(src: base.io_reader, hg: base.u32[..= 255], ht: base.u32[..= 4]) {
+    var c8                  : base.u8
+    var use_second_symbol   : base.u32[..= 1]
+    var first_symbol_n_bits : base.u32[..= 8]
+    var symbol0             : base.u32[..= 0xFF]
+    var symbol1             : base.u32[..= 0xFF]
+    var base_offset         : base.u32[..= 0x064C]
+
+    if this.n_bits < 2 {
+        c8 = args.src.read_u8?()
+        if this.n_bits >= 2 {
+            return "#internal error: inconsistent n_bits"
+        }
+        this.bits |= (c8 as base.u32) << this.n_bits
+        this.n_bits += 8
+        assert this.n_bits >= 2
+    }
+    use_second_symbol = this.bits & 1
+    first_symbol_n_bits = (((this.bits & 2) >> 1) * 7) + 1
+    this.bits >>= 2
+    this.n_bits -= 2
+
+    if this.n_bits < first_symbol_n_bits {
+        c8 = args.src.read_u8?()
+        if this.n_bits >= first_symbol_n_bits {
+            return "#internal error: inconsistent n_bits"
+        }
+        assert this.n_bits < 8 via "a < b: a < c; c <= b"(c: first_symbol_n_bits)
+        this.bits |= (c8 as base.u32) << this.n_bits
+        this.n_bits += 8
+        assert this.n_bits >= 8
+        assert first_symbol_n_bits <= this.n_bits via "a <= b: a <= c; c <= b"(c: 8)
+        assert this.n_bits >= first_symbol_n_bits via "a >= b: b <= a"()
+    }
+    symbol0 = this.bits & (((1 as base.u32) << first_symbol_n_bits) - 1)
+    this.bits >>= first_symbol_n_bits
+    this.n_bits -= first_symbol_n_bits
+
+    base_offset = HUFFMAN_TABLE_BASE_OFFSETS[args.ht] as base.u32
+
+    if use_second_symbol <> 0 {
+        if this.n_bits < 8 {
+            c8 = args.src.read_u8?()
+            if this.n_bits >= 8 {
+                return "#internal error: inconsistent n_bits"
+            }
+            this.bits |= (c8 as base.u32) << this.n_bits
+            this.n_bits += 8
+            assert this.n_bits >= 8
+        }
+        symbol1 = this.bits & 0xFF
+        this.bits >>= 8
+        this.n_bits -= 8
+
+        this.huffman_nodes[args.hg][base_offset + 0] = (base_offset + 1) as base.u16
+        this.huffman_nodes[args.hg][base_offset + 1] = (symbol0 | 0x8000) as base.u16
+        this.huffman_nodes[args.hg][base_offset + 2] = (symbol1 | 0x8000) as base.u16
+
+    } else {
+        this.huffman_nodes[args.hg][base_offset] = (symbol0 | 0x8000) as base.u16
+    }
+}
+
+pri func decoder.decode_code_length_code_lengths?(src: base.io_reader) {
+    var c8      : base.u8
+    var n_codes : base.u32[..= 19]
+    var i       : base.u32
+
+    if this.n_bits < 4 {
+        c8 = args.src.read_u8?()
+        if this.n_bits >= 4 {
+            return "#internal error: inconsistent n_bits"
+        }
+        this.bits |= (c8 as base.u32) << this.n_bits
+        this.n_bits += 8
+        assert this.n_bits >= 4
+    }
+    n_codes = (this.bits & 15) + 4
+    this.bits >>= 4
+    this.n_bits -= 4
+
+    i = 0
+    while i < n_codes {
+        assert i < 19 via "a < b: a < c; c <= b"(c: n_codes)
+
+        if this.n_bits < 3 {
+            c8 = args.src.read_u8?()
+            if this.n_bits >= 3 {
+                return "#internal error: inconsistent n_bits"
+            }
+            this.bits |= (c8 as base.u32) << this.n_bits
+            this.n_bits += 8
+            assert this.n_bits >= 3
+        }
+        this.code_length_code_lengths[CODE_LENGTH_CODE_ORDER[i]] = (this.bits & 7) as base.u8
+        this.bits >>= 3
+        this.n_bits -= 3
+
+        i += 1
+    }
+    while i < 19 {
+        this.code_length_code_lengths[CODE_LENGTH_CODE_ORDER[i]] = 0
+        i += 1
+    }
+}
+
+pri func decoder.build_code_lengths_huffman_nodes!() base.status {
+    var code_bits : base.u32
+    var code_len  : base.u32[..= 7]  //  The "code length code length".
+    var symbol    : base.u32[..= 19]  // The "code length or 16, 17, 18".
+
+    var histogram        : array[8] base.u32
+    var n_used_symbols   : base.u32
+    var last_used_symbol : base.u32[..= 18]
+
+    var subscription_weight : base.u32[..= 0x8000]
+    var subscription_total  : base.u32
+    var curr_code           : base.u32
+    var next_codes          : array[9] base.u32
+
+    var n_branches : base.u32
+    var h          : base.u32[..= 36]
+    var children   : base.u32
+    var node       : base.u16
+
+    symbol = 0
+    while symbol < 19 {
+        code_len = this.code_length_code_lengths[symbol] as base.u32
+        if code_len <> 0 {
+            histogram[code_len] ~mod+= 1
+            n_used_symbols ~mod+= 1
+            last_used_symbol = symbol
+        }
+        symbol += 1
+    }
+
+    if n_used_symbols < 1 {
+        return "#bad Huffman code"
+    } else if n_used_symbols == 1 {
+        this.code_lengths_huffman_nodes[0] = (last_used_symbol | 0x8000) as base.u16
+        return ok
+    }
+
+    subscription_weight = 1 << 14
+    code_len = 1
+    while true {
+        curr_code = (curr_code ~mod+ histogram[code_len]) ~mod<< 1
+        next_codes[code_len + 1] = curr_code
+        subscription_total ~mod+= subscription_weight ~mod* histogram[code_len]
+        subscription_weight >>= 1
+        if code_len >= 7 {
+            break
+        }
+        code_len += 1
+    }
+
+    if subscription_total > (1 << 15) {
+        return "#bad Huffman code (over-subscribed)"
+    } else if subscription_total < (1 << 15) {
+        return "#bad Huffman code (under-subscribed)"
+    }
+
+    this.code_lengths_huffman_nodes[0] = 0
+    symbol = 0
+    while symbol < 19 {
+        code_len = this.code_length_code_lengths[symbol] as base.u32
+        if code_len > 0 {
+            code_bits = next_codes[code_len]
+            next_codes[code_len] ~mod+= 1
+
+            // Insert {symbol, code_bits, code_len} into the node tree.
+            code_bits ~mod<<= 32 - code_len
+            h = 0
+            while code_len > 0,
+                    inv symbol < 19,
+            {
+                node = this.code_lengths_huffman_nodes[h]
+                if node == 0 {
+                    children = 1 ~mod+ (2 ~mod* n_branches)
+                    children = children.min(no_more_than: 35)
+                    this.code_lengths_huffman_nodes[h] = children as base.u16
+                    this.code_lengths_huffman_nodes[children + 0] = 0
+                    this.code_lengths_huffman_nodes[children + 1] = 0
+                    h = children + (code_bits >> 31)
+                    n_branches ~mod+= 1
+                } else {
+                    children = node as base.u32
+                    h = children.min(no_more_than: 35) + (code_bits >> 31)
+                }
+                code_bits ~mod<<= 1
+                code_len -= 1
+            }
+            this.code_lengths_huffman_nodes[h] = (symbol | 0x8000) as base.u16
+        }
+        symbol += 1
+    }
+    return ok
+}
+
+pri func decoder.build_huffman_nodes!(hg: base.u32[..= 255], ht: base.u32[..= 4]) base.status {
+    var base_offset : base.u32[..= 0x064C]
+
+    var code_bits : base.u32
+    var code_len  : base.u32[..= 15]
+    var symbol    : base.u32[..= 2328]
+
+    var histogram        : array[16] base.u32
+    var n_used_symbols   : base.u32
+    var last_used_symbol : base.u32[..= 2328]
+
+    var subscription_weight : base.u32[..= 0x8000]
+    var subscription_total  : base.u32
+    var curr_code           : base.u32
+    var next_codes          : array[17] base.u32
+
+    var n_branches : base.u32
+    var h          : base.u32[..= 0x187A]
+    var children   : base.u32
+    var node       : base.u16
+
+    base_offset = HUFFMAN_TABLE_BASE_OFFSETS[args.ht] as base.u32
+
+    symbol = 0
+    while symbol < this.ht_n_symbols {
+        assert symbol < 2328 via "a < b: a < c; c <= b"(c: this.ht_n_symbols)
+        code_len = (this.code_lengths[symbol] & 15) as base.u32
+        if code_len <> 0 {
+            histogram[code_len] ~mod+= 1
+            n_used_symbols ~mod+= 1
+            last_used_symbol = symbol
+        }
+        symbol += 1
+    }
+
+    if n_used_symbols < 1 {
+        return "#bad Huffman code"
+    } else if n_used_symbols == 1 {
+        this.huffman_nodes[args.hg][base_offset] = (last_used_symbol | 0x8000) as base.u16
+        return ok
+    }
+
+    subscription_weight = 1 << 14
+    code_len = 1
+    while true {
+        curr_code = (curr_code ~mod+ histogram[code_len]) ~mod<< 1
+        next_codes[code_len + 1] = curr_code
+        subscription_total ~mod+= subscription_weight ~mod* histogram[code_len]
+        subscription_weight >>= 1
+        if code_len >= 15 {
+            break
+        }
+        code_len += 1
+    }
+
+    if subscription_total > (1 << 15) {
+        return "#bad Huffman code (over-subscribed)"
+    } else if subscription_total < (1 << 15) {
+        return "#bad Huffman code (under-subscribed)"
+    }
+
+    this.huffman_nodes[args.hg][base_offset] = 0
+    symbol = 0
+    while symbol < this.ht_n_symbols {
+        assert symbol < 2328 via "a < b: a < c; c <= b"(c: this.ht_n_symbols)
+        code_len = (this.code_lengths[symbol] & 15) as base.u32
+        if code_len <> 0 {
+            code_bits = next_codes[code_len]
+            next_codes[code_len] ~mod+= 1
+
+            // Insert {symbol, code_bits, code_len} into the node tree.
+            code_bits ~mod<<= 32 - code_len
+            h = base_offset
+            while code_len > 0,
+                    inv symbol < 2328,
+            {
+                node = this.huffman_nodes[args.hg][h]
+                if node == 0 {
+                    children = base_offset ~mod+ (1 ~mod+ (2 ~mod* n_branches))
+                    children = children.min(no_more_than: 0x1879)
+                    this.huffman_nodes[args.hg][h] = children as base.u16
+                    this.huffman_nodes[args.hg][children + 0] = 0
+                    this.huffman_nodes[args.hg][children + 1] = 0
+                    h = children + (code_bits >> 31)
+                    n_branches ~mod+= 1
+                } else {
+                    children = node as base.u32
+                    h = children.min(no_more_than: 0x1879) + (code_bits >> 31)
+                }
+                code_bits ~mod<<= 1
+                code_len -= 1
+            }
+            this.huffman_nodes[args.hg][h] = (symbol | 0x8000) as base.u16
+        }
+        symbol += 1
+    }
+    return ok
+}
+
+pri func decoder.build_code_lengths?(src: base.io_reader) {
+    var c8               : base.u8
+    var use_length       : base.u32[..= 1]
+    var length_n_bits    : base.u32[..= 16]
+    var length           : base.u32[..= 65537]
+    var prev_code_length : base.u16[..= 15]
+    var h                : base.u32[..= 36]
+    var s                : base.u32[..= 2328]
+    var s_max            : base.u32
+    var node             : base.u16
+    var symbol           : base.u32[..= 0x7FFF]
+    var repeat_value     : base.u16[..= 15]
+    var repeat_n_bits    : base.u32[..= 7]
+
+    if this.n_bits < 1 {
+        c8 = args.src.read_u8?()
+        this.bits = (c8 as base.u32)
+        this.n_bits = 8
+        assert this.n_bits >= 1
+    }
+    use_length = this.bits & 1
+    this.bits >>= 1
+    this.n_bits -= 1
+
+    this.ht_code_lengths_remaining = this.ht_n_symbols
+    if use_length <> 0 {
+        if this.n_bits < 3 {
+            c8 = args.src.read_u8?()
+            if this.n_bits >= 3 {
+                return "#internal error: inconsistent n_bits"
+            }
+            this.bits |= (c8 as base.u32) << this.n_bits
+            this.n_bits += 8
+            assert this.n_bits >= 3
+        }
+        length_n_bits = ((this.bits & 7) * 2) + 2
+        this.bits >>= 3
+        this.n_bits -= 3
+
+        while this.n_bits < length_n_bits,
+                post this.n_bits >= length_n_bits,
+        {
+            c8 = args.src.read_u8?()
+            if this.n_bits >= length_n_bits {
+                return "#internal error: inconsistent n_bits"
+            }
+            assert this.n_bits < 16 via "a < b: a < c; c <= b"(c: length_n_bits)
+            this.bits |= (c8 as base.u32) << this.n_bits
+            this.n_bits += 8
+        }
+        length = (this.bits & (((1 as base.u32) << length_n_bits) - 1)) + 2
+        this.bits >>= length_n_bits
+        this.n_bits -= length_n_bits
+
+        if length > this.ht_n_symbols {
+            return "#bad Huffman code"
+        }
+        this.ht_code_lengths_remaining = length
+    }
+
+    prev_code_length = 8
+    while s < this.ht_n_symbols {
+        assert s < 2328 via "a < b: a < c; c <= b"(c: this.ht_n_symbols)
+
+        if this.ht_code_lengths_remaining <= 0 {
+            while s < this.ht_n_symbols {
+                assert s < 2328 via "a < b: a < c; c <= b"(c: this.ht_n_symbols)
+                this.code_lengths[s] = 0
+                s += 1
+            }
+            break
+        }
+        this.ht_code_lengths_remaining -= 1
+
+        h = 0
+        while true,
+                inv s < 2328,
+        {
+            node = this.code_lengths_huffman_nodes[h]
+            if node >= 0x8000 {
+                break
+            } else if node > 35 {
+                return "#internal error: inconsistent Huffman code"
+            }
+            if this.n_bits < 1 {
+                c8 = args.src.read_u8?()
+                this.bits = (c8 as base.u32)
+                this.n_bits = 8
+                assert this.n_bits >= 1
+            }
+            h = (node as base.u32) + (this.bits & 1)
+            this.bits >>= 1
+            this.n_bits -= 1
+        }
+
+        symbol = (node & 0x7FFF) as base.u32
+        if symbol == 0 {
+            this.code_lengths[s] = 0
+            s += 1
+            continue
+        } else if symbol < 16 {
+            prev_code_length = symbol as base.u16
+            this.code_lengths[s] = prev_code_length
+            s += 1
+            continue
+        } else if symbol == 16 {
+            repeat_value = prev_code_length
+        } else {
+            repeat_value = 0
+        }
+
+        repeat_n_bits = REPEAT_N_BITS[symbol & 3] as base.u32
+        s_max = (REPEAT_COUNTS[symbol & 3] as base.u32) ~mod+ s
+
+        if this.n_bits < repeat_n_bits {
+            c8 = args.src.read_u8?()
+            if this.n_bits >= repeat_n_bits {
+                return "#internal error: inconsistent n_bits"
+            }
+            assert this.n_bits < 7 via "a < b: a < c; c <= b"(c: repeat_n_bits)
+            this.bits |= (c8 as base.u32) << this.n_bits
+            this.n_bits += 8
+            assert this.n_bits >= 8
+            assert repeat_n_bits <= this.n_bits via "a <= b: a <= c; c <= b"(c: 8)
+            assert this.n_bits >= repeat_n_bits via "a >= b: b <= a"()
+        }
+        s_max ~mod+= this.bits & (((1 as base.u32) << repeat_n_bits) - 1)
+        this.bits >>= repeat_n_bits
+        this.n_bits -= repeat_n_bits
+
+        if s_max > this.ht_n_symbols {
+            return "#bad Huffman code"
+        }
+        assert s_max <= 2328 via "a <= b: a <= c; c <= b"(c: this.ht_n_symbols)
+        while s < s_max,
+                inv s_max <= 2328,
+        {
+            assert s < 2328 via "a < b: a < c; c <= b"(c: s_max)
+            this.code_lengths[s] = repeat_value
+            s += 1
+        }
+    }
+}
+
+pri const CODE_LENGTH_CODE_ORDER : roarray[19] base.u8[..= 18] = [
+        17, 18, 0, 1, 2, 3, 4, 5, 16, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+]
+
+pri const REPEAT_N_BITS : roarray[4] base.u8[..= 7] = [2, 3, 7, 0]
+
+pri const REPEAT_COUNTS : roarray[4] base.u8[..= 11] = [3, 3, 11, 0]
+
+// See the decoder.huffman_nodes comment re five (5) Huffman trees.
+pri const HUFFMAN_TABLE_BASE_OFFSETS : roarray[5] base.u16[..= 0x064C] = [
+        0x064C,
+        0x0000,
+        0x01FF,
+        0x03FE,
+        0x05FD,
+]

@@ -1,0 +1,950 @@
+// Copyright 2023 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+// --------
+
+// The AlgOveNN line numbers refer to the ./README.md file.
+//
+// Most LZMA C/C++ implementations use macros for the "decodeTheNextBym()" code
+// fragment in that "Algorithm Overview" section, repeated multiple times in
+// the decoding algorithm. Wuffs does not have macros (or inline functions), so
+// its LZMA implementation looks relatively verbose and repetitive (even though
+// it's equivalent to the C/C++ code, at the machine code level).
+
+pri func decoder.decode_bitstream_slow?(dst: base.io_writer, src: base.io_reader, workbuf: roslice base.u8) {
+    var c8 : base.u8
+
+    var bits  : base.u32
+    var range : base.u32
+
+    var state : base.u32[..= 11]
+
+    // repN is what the "Algorithm Overview" calls (mrud[N] - 1). The minimum
+    // distance is 1.
+    var rep0   : base.u32[..= 0xFFFF_FFFE]
+    var rep1   : base.u32[..= 0xFFFF_FFFE]
+    var rep2   : base.u32[..= 0xFFFF_FFFE]
+    var rep3   : base.u32[..= 0xFFFF_FFFE]
+    var reptmp : base.u32[..= 0xFFFF_FFFE]
+    var rep    : base.u32
+
+    var pos     : base.u64
+    var pos_end : base.u64
+
+    var lc      : base.u32[..= 8]
+    var lp_mask : base.u64[..= 15]
+    var pb_mask : base.u64[..= 15]
+
+    var prob       : base.u32
+    var threshold  : base.u32
+    var tree_node  : base.u32[..= 0x1FF]
+    var prev_byte  : base.u8
+    var match_byte : base.u32
+    var match_cusp : base.u32[..= 0xFFFF]
+    var len_state  : base.u32[..= 3]  // Equals min(len-2, 3) when in a MATCH.
+    var slot       : base.u32[..= 0x7F]
+    var len        : base.u32[..= 273]
+
+    // LANL stands for Literal After Non-Literal. These variables are used when
+    // decoding a LITERAL and state >= 7.
+    var lanl_offset     : base.u32[..= 0x100]
+    var lanl_old_offset : base.u32[..= 0x100]
+    var lanl_index      : base.u32[..= 0x2FF]
+
+    var num_extra_bits  : base.u32[..= 30]
+    var dist_extra_bits : base.u32
+    var high_bit_was_on : base.u32
+    var i               : base.u32
+
+    var index_ao00 : base.u32[..= (12 << 4) - 1]
+    var index_ao41 : base.u32[..= (12 << 4) - 1]
+    var index_lit  : base.u32[..= (1 << 4) - 1]
+    var index_len  : base.u32[..= (1 << 4) - 1]
+
+    var index_small_dist_base  : base.u32
+    var index_small_dist_extra : base.u32
+    var index_small_dist       : base.u32[..= 127]
+
+    var index_large_dist : base.u32[..= 15]
+
+    // dist is part of the Lempel-Ziv (length, distance) pair. When dist is at
+    // or below the args.dst history length then the LZ copy can be resolved
+    // just from args.dst (and adj_dist and wb_index are unused). Otherwise, if
+    // e.g. dist was 100 and args.dst.history_length() was 40 then adj_dist
+    // would be 60: the LZ copy starts 60 bytes before the end of the
+    // args.workbuf ringbuffer. wb_index is that start index, equal to
+    // ((this.dict_workbuf_index ~mod- adj_dist) modulo this.dict_size).
+    var dist     : base.u32
+    var adj_dist : base.u32
+    var wb_index : base.u64
+
+    prev_byte = this.stashed_bytes[0]
+    match_byte = this.stashed_bytes[1] as base.u32
+    bits = this.stashed_bits
+    range = this.stashed_range
+    state = this.stashed_state
+    rep0 = this.stashed_rep0
+    rep1 = this.stashed_rep1
+    rep2 = this.stashed_rep2
+    rep3 = this.stashed_rep3
+    pos = this.stashed_pos
+    pos_end = this.stashed_pos_end
+
+    lc = this.lc
+    lp_mask = ((1 as base.u64) << this.lp) - 1
+    pb_mask = ((1 as base.u64) << this.pb) - 1
+
+    // "outer" is the core loop discussed in README.md's "Algorithm Overview".
+    while.outer not coroutine_resumed {
+        if pos >= pos_end {
+            this.end_of_chunk = true
+            break.outer
+        }
+
+        // AlgOve00  if decodeTheNextBym() == 0
+        index_ao00 = (state << 4) | ((pos & pb_mask) as base.u32)
+        prob = this.probs_ao00[index_ao00] as base.u32
+        threshold = (range >> 11) ~mod* prob
+        if bits < threshold {
+            range = threshold
+            prob ~mod+= (2048 ~mod- prob) >> 5
+            this.probs_ao00[index_ao00] = (prob & 0xFFFF) as base.u16
+            if (range >> 24) == 0 {
+                c8 = args.src.read_u8?()
+                bits = (bits ~mod<< 8) | (c8 as base.u32)
+                range ~mod<<= 8
+            }
+
+            // AlgOve01  // Decode a LITERAL.
+            // AlgOve02  literal = decodeLiteral()
+
+            index_lit = 15 & (
+                    (((pos & lp_mask) as base.u32) << lc) |
+                    ((prev_byte as base.u32) >> (8 - lc)))
+
+            if state >= 7 {
+                // We are decoding an 8-bit LITERAL, and (state >= 7) means
+                // that we most recently decoded a NON-LITERAL. The
+                // this.probs_lit[index_lit] array has 0x300 elements: three
+                // banks of 0x100.
+                //
+                // For (state < 7), we only use the first bank (and we run the
+                // while.low_state loop instead). This is equivalent to running
+                // the while.high_state loop where lanl_offset starts at and
+                // stays at zero for the entire loop. match_byte is ignored.
+                //
+                // For (state >= 7), we start by using the two later banks, but
+                // as we are decoding those 8 bits (from MSB to LSB order), we
+                // drop down to the first bank (and stay there) if and when the
+                // decoded bit doesn't equal the corresponding bit (in the same
+                // MSB to LSB order) in the match_byte variable.
+                //
+                // lanl_offset stays at 0x100 until that "if and when" point
+                // (which typically happens; if all 8 bits were equal then the
+                // previous NON-LITERAL copy could often just have been
+                // longer), when lanl_offset then drops down to zero. We then
+                // effectively run the remaining (8 - I) iterations in the
+                // while.low_state loop, where I is the iteration count.
+                //
+                // Whether we use the 0x100 or 0x200 bank, out of the two later
+                // banks, depends on the match_byte's I'th bit (MSB to LSB).
+                // match_byte is conceptually a base.u8 (it is <= 0xFF outside
+                // of this code fragment) but the intermediate computation is
+                // simpler as a base.u32 (ignoring the high 23 bits).
+                lanl_offset = 0x100
+
+                tree_node = 1
+                while.high_state tree_node < 0x100 {
+                    match_byte ~mod<<= 1
+                    lanl_old_offset = lanl_offset
+                    lanl_offset &= match_byte
+                    lanl_index = lanl_offset + lanl_old_offset + tree_node
+
+                    prob = this.probs_lit[index_lit][lanl_index] as base.u32
+                    threshold = (range >> 11) ~mod* prob
+                    if bits < threshold {
+                        lanl_offset = (lanl_offset ^ lanl_old_offset) & 0x100
+                        range = threshold
+                        prob ~mod+= (2048 ~mod- prob) >> 5
+                        this.probs_lit[index_lit][lanl_index] = (prob & 0xFFFF) as base.u16
+                        tree_node = (tree_node << 1)
+                    } else {
+                        bits ~mod-= threshold
+                        range ~mod-= threshold
+                        prob ~mod-= prob >> 5
+                        this.probs_lit[index_lit][lanl_index] = (prob & 0xFFFF) as base.u16
+                        tree_node = (tree_node << 1) | 1
+                    }
+                    if (range >> 24) == 0 {
+                        c8 = args.src.read_u8?()
+                        bits = (bits ~mod<< 8) | (c8 as base.u32)
+                        range ~mod<<= 8
+                    }
+                }.high_state
+
+            } else {
+                tree_node = 1
+                while.low_state tree_node < 0x100 {
+                    prob = this.probs_lit[index_lit][tree_node] as base.u32
+                    threshold = (range >> 11) ~mod* prob
+                    if bits < threshold {
+                        range = threshold
+                        prob ~mod+= (2048 ~mod- prob) >> 5
+                        this.probs_lit[index_lit][tree_node] = (prob & 0xFFFF) as base.u16
+                        tree_node = (tree_node << 1)
+                    } else {
+                        bits ~mod-= threshold
+                        range ~mod-= threshold
+                        prob ~mod-= prob >> 5
+                        this.probs_lit[index_lit][tree_node] = (prob & 0xFFFF) as base.u16
+                        tree_node = (tree_node << 1) | 1
+                    }
+                    if (range >> 24) == 0 {
+                        c8 = args.src.read_u8?()
+                        bits = (bits ~mod<< 8) | (c8 as base.u32)
+                        range ~mod<<= 8
+                    }
+                }.low_state
+            }
+
+            // AlgOve03  emitLiteral(literal)
+            // AlgOve04  continue
+            prev_byte = (tree_node & 0xFF) as base.u8
+            args.dst.write_u8?(a: prev_byte)
+            pos ~mod+= 1
+            state = STATE_TRANSITION_LITERAL[state] as base.u32
+            continue.outer
+        }
+
+        // AlgOve00a if decodeTheNextBym() == 0  // If-false branch.
+        bits ~mod-= threshold
+        range ~mod-= threshold
+        prob ~mod-= prob >> 5
+        this.probs_ao00[index_ao00] = (prob & 0xFFFF) as base.u16
+        if (range >> 24) == 0 {
+            c8 = args.src.read_u8?()
+            bits = (bits ~mod<< 8) | (c8 as base.u32)
+            range ~mod<<= 8
+        }
+
+        while.goto_do_the_lz_copy true,
+                post len >= 1,
+        {{
+        // AlgOve20  if decodeTheNextBym() == 0
+        prob = this.probs_ao20[state] as base.u32
+        threshold = (range >> 11) ~mod* prob
+        if bits < threshold {
+            range = threshold
+            prob ~mod+= (2048 ~mod- prob) >> 5
+            this.probs_ao20[state] = (prob & 0xFFFF) as base.u16
+            if (range >> 24) == 0 {
+                c8 = args.src.read_u8?()
+                bits = (bits ~mod<< 8) | (c8 as base.u32)
+                range ~mod<<= 8
+            }
+
+            // AlgOve21  // Decode a MATCH.
+
+            while.goto_have_len true,
+                    post len >= 1,
+            {{
+            // AlgOve22  len = decodeLen()
+
+            // AlgOve22.0  if decodeTheNextBym() == 0
+            prob = this.probs_match_len_low[0][0] as base.u32
+            threshold = (range >> 11) ~mod* prob
+            if bits < threshold {
+                range = threshold
+                prob ~mod+= (2048 ~mod- prob) >> 5
+                this.probs_match_len_low[0][0] = (prob & 0xFFFF) as base.u16
+                if (range >> 24) == 0 {
+                    c8 = args.src.read_u8?()
+                    bits = (bits ~mod<< 8) | (c8 as base.u32)
+                    range ~mod<<= 8
+                }
+
+                // AlgOve22.1  // Decode a low length.
+                // AlgOve22.2  len = decodeMultipleByms(3) + 2
+                index_len = (pos & pb_mask) as base.u32
+                tree_node = 1
+                while tree_node < 0x08 {
+                    prob = this.probs_match_len_low[index_len][tree_node] as base.u32
+                    threshold = (range >> 11) ~mod* prob
+                    if bits < threshold {
+                        range = threshold
+                        prob ~mod+= (2048 ~mod- prob) >> 5
+                        this.probs_match_len_low[index_len][tree_node] = (prob & 0xFFFF) as base.u16
+                        tree_node = (tree_node << 1)
+                    } else {
+                        bits ~mod-= threshold
+                        range ~mod-= threshold
+                        prob ~mod-= prob >> 5
+                        this.probs_match_len_low[index_len][tree_node] = (prob & 0xFFFF) as base.u16
+                        tree_node = (tree_node << 1) | 1
+                    }
+                    if (range >> 24) == 0 {
+                        c8 = args.src.read_u8?()
+                        bits = (bits ~mod<< 8) | (c8 as base.u32)
+                        range ~mod<<= 8
+                    }
+                }
+                len_state = CLAMP_NO_MORE_THAN_3[tree_node & 0x07] as base.u32
+                len = (tree_node & 0x07) + 2
+                assert len >= 1
+                break.goto_have_len  // goto AlgOve23.
+            }
+
+            // AlgOve22.0a if decodeTheNextBym() == 0  // If-false branch.
+            bits ~mod-= threshold
+            range ~mod-= threshold
+            prob ~mod-= prob >> 5
+            this.probs_match_len_low[0][0] = (prob & 0xFFFF) as base.u16
+            if (range >> 24) == 0 {
+                c8 = args.src.read_u8?()
+                bits = (bits ~mod<< 8) | (c8 as base.u32)
+                range ~mod<<= 8
+            }
+
+            // AlgOve22.3  if decodeTheNextBym() == 0
+            prob = this.probs_match_len_mid[0][0] as base.u32
+            threshold = (range >> 11) ~mod* prob
+            if bits < threshold {
+                range = threshold
+                prob ~mod+= (2048 ~mod- prob) >> 5
+                this.probs_match_len_mid[0][0] = (prob & 0xFFFF) as base.u16
+                if (range >> 24) == 0 {
+                    c8 = args.src.read_u8?()
+                    bits = (bits ~mod<< 8) | (c8 as base.u32)
+                    range ~mod<<= 8
+                }
+
+                // AlgOve22.4  // Decode a middle length.
+                // AlgOve22.5  len = decodeMultipleByms(3) + 10
+                index_len = (pos & pb_mask) as base.u32
+                tree_node = 1
+                while tree_node < 0x08 {
+                    prob = this.probs_match_len_mid[index_len][tree_node] as base.u32
+                    threshold = (range >> 11) ~mod* prob
+                    if bits < threshold {
+                        range = threshold
+                        prob ~mod+= (2048 ~mod- prob) >> 5
+                        this.probs_match_len_mid[index_len][tree_node] = (prob & 0xFFFF) as base.u16
+                        tree_node = (tree_node << 1)
+                    } else {
+                        bits ~mod-= threshold
+                        range ~mod-= threshold
+                        prob ~mod-= prob >> 5
+                        this.probs_match_len_mid[index_len][tree_node] = (prob & 0xFFFF) as base.u16
+                        tree_node = (tree_node << 1) | 1
+                    }
+                    if (range >> 24) == 0 {
+                        c8 = args.src.read_u8?()
+                        bits = (bits ~mod<< 8) | (c8 as base.u32)
+                        range ~mod<<= 8
+                    }
+                }
+                len = (tree_node & 0x07) + 10
+                assert len >= 1
+                len_state = 3
+                break.goto_have_len  // goto AlgOve23.
+            }
+
+            // AlgOve22.3a if decodeTheNextBym() == 0  // If-false branch.
+            bits ~mod-= threshold
+            range ~mod-= threshold
+            prob ~mod-= prob >> 5
+            this.probs_match_len_mid[0][0] = (prob & 0xFFFF) as base.u16
+            if (range >> 24) == 0 {
+                c8 = args.src.read_u8?()
+                bits = (bits ~mod<< 8) | (c8 as base.u32)
+                range ~mod<<= 8
+            }
+
+            // AlgOve22.7  // Decode a high length.
+            // AlgOve22.8  len = decodeMultipleByms(8) + 18
+            tree_node = 1
+            while tree_node < 0x100 {
+                prob = this.probs_match_len_high[0][tree_node] as base.u32
+                threshold = (range >> 11) ~mod* prob
+                if bits < threshold {
+                    range = threshold
+                    prob ~mod+= (2048 ~mod- prob) >> 5
+                    this.probs_match_len_high[0][tree_node] = (prob & 0xFFFF) as base.u16
+                    tree_node = (tree_node << 1)
+                } else {
+                    bits ~mod-= threshold
+                    range ~mod-= threshold
+                    prob ~mod-= prob >> 5
+                    this.probs_match_len_high[0][tree_node] = (prob & 0xFFFF) as base.u16
+                    tree_node = (tree_node << 1) | 1
+                }
+                if (range >> 24) == 0 {
+                    c8 = args.src.read_u8?()
+                    bits = (bits ~mod<< 8) | (c8 as base.u32)
+                    range ~mod<<= 8
+                }
+            }
+            len = (tree_node & 0xFF) + 18
+            assert len >= 1
+            len_state = 3
+            break.goto_have_len
+            }}.goto_have_len
+
+            // AlgOve23  slot = decodeSlot(min(len-2, 3))
+            slot = 1
+            while slot < 0x40,
+                    inv len >= 1,
+            {
+                prob = this.probs_slot[len_state][slot] as base.u32
+                threshold = (range >> 11) ~mod* prob
+                if bits < threshold {
+                    range = threshold
+                    prob ~mod+= (2048 ~mod- prob) >> 5
+                    this.probs_slot[len_state][slot] = (prob & 0xFFFF) as base.u16
+                    slot = (slot << 1)
+                } else {
+                    bits ~mod-= threshold
+                    range ~mod-= threshold
+                    prob ~mod-= prob >> 5
+                    this.probs_slot[len_state][slot] = (prob & 0xFFFF) as base.u16
+                    slot = (slot << 1) | 1
+                }
+                if (range >> 24) == 0 {
+                    c8 = args.src.read_u8?()
+                    bits = (bits ~mod<< 8) | (c8 as base.u32)
+                    range ~mod<<= 8
+                }
+            }
+            slot &= 0x3F
+
+            // AlgOve24  distBiasedBy1 = decodeDistBiasedBy1(slot)
+            rep = slot
+            if slot < 4 {
+                // No-op.
+
+            } else if slot < 14 {
+                num_extra_bits = (slot >> 1) - 1
+                rep = (2 | (slot & 1)) << num_extra_bits
+
+                // Read num_extra_bits "xxxx" bits.
+                index_small_dist_base = rep ~mod- slot
+                index_small_dist_extra = 1
+                dist_extra_bits = 0
+                i = 0
+                while i < num_extra_bits,
+                        inv len >= 1,
+                {
+                    assert i < 30 via "a < b: a < c; c <= b"(c: num_extra_bits)
+                    index_small_dist = (index_small_dist_base ~mod+ index_small_dist_extra) & 127
+                    prob = this.probs_small_dist[index_small_dist] as base.u32
+                    threshold = (range >> 11) ~mod* prob
+                    if bits < threshold {
+                        range = threshold
+                        prob ~mod+= (2048 ~mod- prob) >> 5
+                        this.probs_small_dist[index_small_dist] = (prob & 0xFFFF) as base.u16
+                        index_small_dist_extra = (index_small_dist_extra ~mod<< 1)
+                        i += 1
+                    } else {
+                        bits ~mod-= threshold
+                        range ~mod-= threshold
+                        prob ~mod-= prob >> 5
+                        this.probs_small_dist[index_small_dist] = (prob & 0xFFFF) as base.u16
+                        index_small_dist_extra = (index_small_dist_extra ~mod<< 1) | 1
+                        dist_extra_bits |= (1 as base.u32) << i
+                        i += 1
+                    }
+                    if (range >> 24) == 0 {
+                        c8 = args.src.read_u8?()
+                        bits = (bits ~mod<< 8) | (c8 as base.u32)
+                        range ~mod<<= 8
+                    }
+                }
+                rep ~mod+= dist_extra_bits
+
+            } else {
+                num_extra_bits = (slot >> 1) - 1
+                assert num_extra_bits >= 6
+                assert num_extra_bits <= 30
+                rep = (2 | (slot & 1)) << num_extra_bits
+
+                // Read (num_extra_bits - 4) "yyyy" bits.
+                dist_extra_bits = 0
+                while true,
+                        pre num_extra_bits > 4,
+                        inv len >= 1,
+                        post num_extra_bits > 0,
+                        post num_extra_bits <= 4,
+                {
+                    range >>= 1
+                    bits ~mod-= range
+                    high_bit_was_on = 0 ~mod- (bits >> 31)
+                    bits ~mod+= range & high_bit_was_on
+                    dist_extra_bits = (dist_extra_bits ~mod<< 1) | ((high_bit_was_on ~mod+ 1) & 1)
+                    if (range >> 24) == 0 {
+                        c8 = args.src.read_u8?()
+                        bits = (bits ~mod<< 8) | (c8 as base.u32)
+                        range ~mod<<= 8
+                    }
+
+                    num_extra_bits -= 1
+                    if num_extra_bits <= 4 {
+                        break
+                    }
+                }
+                dist_extra_bits ~mod<<= 4
+
+                // Read 4 "zzzz" bits.
+                index_large_dist = 1
+                while true,
+                        pre num_extra_bits > 0,
+                        pre num_extra_bits <= 4,
+                        inv len >= 1,
+                {
+                    prob = this.probs_large_dist[index_large_dist] as base.u32
+                    threshold = (range >> 11) ~mod* prob
+                    if bits < threshold {
+                        range = threshold
+                        prob ~mod+= (2048 ~mod- prob) >> 5
+                        this.probs_large_dist[index_large_dist] = (prob & 0xFFFF) as base.u16
+                        index_large_dist = 15 & ((index_large_dist ~mod<< 1))
+                    } else {
+                        bits ~mod-= threshold
+                        range ~mod-= threshold
+                        prob ~mod-= prob >> 5
+                        this.probs_large_dist[index_large_dist] = (prob & 0xFFFF) as base.u16
+                        index_large_dist = 15 & ((index_large_dist ~mod<< 1) | 1)
+                        dist_extra_bits |= (1 as base.u32) << (4 - num_extra_bits)
+                    }
+                    if (range >> 24) == 0 {
+                        c8 = args.src.read_u8?()
+                        bits = (bits ~mod<< 8) | (c8 as base.u32)
+                        range ~mod<<= 8
+                    }
+
+                    num_extra_bits -= 1
+                    if num_extra_bits <= 0 {
+                        break
+                    }
+                }
+                rep ~mod+= dist_extra_bits
+            }
+
+            // AlgOve25  if distBiasedBy1 == 0xFFFF_FFFF
+            if rep >= 0xFFFF_FFFF {
+                // AlgOve26  break
+                this.end_of_chunk = true
+                break.outer
+            }
+
+            // AlgOve28  mrud = (1 + distBiasedBy1, mrud[0], mrud[1], mrud[2])
+            rep3 = rep2
+            rep2 = rep1
+            rep1 = rep0
+            rep0 = rep
+
+            assert len >= 1
+            state = STATE_TRANSITION_MATCH[state] as base.u32
+            break.goto_do_the_lz_copy  // goto AlgOve90.
+        }
+
+        // AlgOve20a if decodeTheNextBym() == 0  // If-false branch.
+        bits ~mod-= threshold
+        range ~mod-= threshold
+        prob ~mod-= prob >> 5
+        this.probs_ao20[state] = (prob & 0xFFFF) as base.u16
+        if (range >> 24) == 0 {
+            c8 = args.src.read_u8?()
+            bits = (bits ~mod<< 8) | (c8 as base.u32)
+            range ~mod<<= 8
+        }
+
+        // AlgOve40  if decodeTheNextBym() == 0
+        prob = this.probs_ao40[state] as base.u32
+        threshold = (range >> 11) ~mod* prob
+        if bits < threshold {
+            range = threshold
+            prob ~mod+= (2048 ~mod- prob) >> 5
+            this.probs_ao40[state] = (prob & 0xFFFF) as base.u16
+            if (range >> 24) == 0 {
+                c8 = args.src.read_u8?()
+                bits = (bits ~mod<< 8) | (c8 as base.u32)
+                range ~mod<<= 8
+            }
+
+            // AlgOve41  if decodeTheNextBym() == 0
+            index_ao41 = (state << 4) | ((pos & pb_mask) as base.u32)
+            prob = this.probs_ao41[index_ao41] as base.u32
+            threshold = (range >> 11) ~mod* prob
+            if bits < threshold {
+                range = threshold
+                prob ~mod+= (2048 ~mod- prob) >> 5
+                this.probs_ao41[index_ao41] = (prob & 0xFFFF) as base.u16
+                if (range >> 24) == 0 {
+                    c8 = args.src.read_u8?()
+                    bits = (bits ~mod<< 8) | (c8 as base.u32)
+                    range ~mod<<= 8
+                }
+
+                // AlgOve42  // Decode a SHORTREP.
+                // AlgOve43  len = 1
+                len = 1
+
+                assert len >= 1
+                state = STATE_TRANSITION_SHORTREP[state] as base.u32
+                break.goto_do_the_lz_copy  // goto AlgOve90.
+            }
+
+            // AlgOve41a if decodeTheNextBym() == 0  // If-false branch.
+            bits ~mod-= threshold
+            range ~mod-= threshold
+            prob ~mod-= prob >> 5
+            this.probs_ao41[index_ao41] = (prob & 0xFFFF) as base.u16
+            if (range >> 24) == 0 {
+                c8 = args.src.read_u8?()
+                bits = (bits ~mod<< 8) | (c8 as base.u32)
+                range ~mod<<= 8
+            }
+
+            // AlgOve46  // Decode a LONGREP[0].
+
+        } else {
+            // AlgOve40a if decodeTheNextBym() == 0  // If-false branch.
+            bits ~mod-= threshold
+            range ~mod-= threshold
+            prob ~mod-= prob >> 5
+            this.probs_ao40[state] = (prob & 0xFFFF) as base.u16
+            if (range >> 24) == 0 {
+                c8 = args.src.read_u8?()
+                bits = (bits ~mod<< 8) | (c8 as base.u32)
+                range ~mod<<= 8
+            }
+
+            // AlgOve60  if decodeTheNextBym() == 0
+            prob = this.probs_ao60[state] as base.u32
+            threshold = (range >> 11) ~mod* prob
+            if bits < threshold {
+                range = threshold
+                prob ~mod+= (2048 ~mod- prob) >> 5
+                this.probs_ao60[state] = (prob & 0xFFFF) as base.u16
+                if (range >> 24) == 0 {
+                    c8 = args.src.read_u8?()
+                    bits = (bits ~mod<< 8) | (c8 as base.u32)
+                    range ~mod<<= 8
+                }
+
+                // AlgOve61  // Decode a LONGREP[1].
+                // AlgOve62  mrud = (mrud[1], mrud[0], mrud[2], mrud[3])
+                reptmp = rep1
+                rep1 = rep0
+                rep0 = reptmp
+
+            } else {
+                // AlgOve60a if decodeTheNextBym() == 0  // If-false branch.
+                bits ~mod-= threshold
+                range ~mod-= threshold
+                prob ~mod-= prob >> 5
+                this.probs_ao60[state] = (prob & 0xFFFF) as base.u16
+                if (range >> 24) == 0 {
+                    c8 = args.src.read_u8?()
+                    bits = (bits ~mod<< 8) | (c8 as base.u32)
+                    range ~mod<<= 8
+                }
+
+                // AlgOve63  if decodeTheNextBym() == 0
+                prob = this.probs_ao63[state] as base.u32
+                threshold = (range >> 11) ~mod* prob
+                if bits < threshold {
+                    range = threshold
+                    prob ~mod+= (2048 ~mod- prob) >> 5
+                    this.probs_ao63[state] = (prob & 0xFFFF) as base.u16
+                    if (range >> 24) == 0 {
+                        c8 = args.src.read_u8?()
+                        bits = (bits ~mod<< 8) | (c8 as base.u32)
+                        range ~mod<<= 8
+                    }
+
+                    // AlgOve64  // Decode a LONGREP[2].
+                    // AlgOve65  mrud = (mrud[2], mrud[0], mrud[1], mrud[3])
+                    reptmp = rep2
+                    rep2 = rep1
+                    rep1 = rep0
+                    rep0 = reptmp
+
+                } else {
+                    // AlgOve63a if decodeTheNextBym() == 0  // If-false branch.
+                    bits ~mod-= threshold
+                    range ~mod-= threshold
+                    prob ~mod-= prob >> 5
+                    this.probs_ao63[state] = (prob & 0xFFFF) as base.u16
+                    if (range >> 24) == 0 {
+                        c8 = args.src.read_u8?()
+                        bits = (bits ~mod<< 8) | (c8 as base.u32)
+                        range ~mod<<= 8
+                    }
+
+                    // AlgOve67  // Decode a LONGREP[3].
+                    // AlgOve68  mrud = (mrud[3], mrud[0], mrud[1], mrud[2])
+                    reptmp = rep3
+                    rep3 = rep2
+                    rep2 = rep1
+                    rep1 = rep0
+                    rep0 = reptmp
+                }
+            }
+        }
+
+        // AlgOve80  len = decodeLen()
+        while.goto_after_decode_len true,
+                post len >= 1,
+        {{
+        // AlgOve80.0  if decodeTheNextBym() == 0
+        prob = this.probs_longrep_len_low[0][0] as base.u32
+        threshold = (range >> 11) ~mod* prob
+        if bits < threshold {
+            range = threshold
+            prob ~mod+= (2048 ~mod- prob) >> 5
+            this.probs_longrep_len_low[0][0] = (prob & 0xFFFF) as base.u16
+            if (range >> 24) == 0 {
+                c8 = args.src.read_u8?()
+                bits = (bits ~mod<< 8) | (c8 as base.u32)
+                range ~mod<<= 8
+            }
+
+            // AlgOve80.1  // Decode a low length.
+            // AlgOve80.2  len = decodeMultipleByms(3) + 2
+            index_len = (pos & pb_mask) as base.u32
+            tree_node = 1
+            while tree_node < 0x08 {
+                prob = this.probs_longrep_len_low[index_len][tree_node] as base.u32
+                threshold = (range >> 11) ~mod* prob
+                if bits < threshold {
+                    range = threshold
+                    prob ~mod+= (2048 ~mod- prob) >> 5
+                    this.probs_longrep_len_low[index_len][tree_node] = (prob & 0xFFFF) as base.u16
+                    tree_node = (tree_node << 1)
+                } else {
+                    bits ~mod-= threshold
+                    range ~mod-= threshold
+                    prob ~mod-= prob >> 5
+                    this.probs_longrep_len_low[index_len][tree_node] = (prob & 0xFFFF) as base.u16
+                    tree_node = (tree_node << 1) | 1
+                }
+                if (range >> 24) == 0 {
+                    c8 = args.src.read_u8?()
+                    bits = (bits ~mod<< 8) | (c8 as base.u32)
+                    range ~mod<<= 8
+                }
+            }
+            len = (tree_node & 0x07) + 2
+            assert len >= 1
+            state = STATE_TRANSITION_LONGREP[state] as base.u32
+            break.goto_after_decode_len
+        }
+
+        // AlgOve80.0a if decodeTheNextBym() == 0  // If-false branch.
+        bits ~mod-= threshold
+        range ~mod-= threshold
+        prob ~mod-= prob >> 5
+        this.probs_longrep_len_low[0][0] = (prob & 0xFFFF) as base.u16
+        if (range >> 24) == 0 {
+            c8 = args.src.read_u8?()
+            bits = (bits ~mod<< 8) | (c8 as base.u32)
+            range ~mod<<= 8
+        }
+
+        // AlgOve80.3  if decodeTheNextBym() == 0
+        prob = this.probs_longrep_len_mid[0][0] as base.u32
+        threshold = (range >> 11) ~mod* prob
+        if bits < threshold {
+            range = threshold
+            prob ~mod+= (2048 ~mod- prob) >> 5
+            this.probs_longrep_len_mid[0][0] = (prob & 0xFFFF) as base.u16
+            if (range >> 24) == 0 {
+                c8 = args.src.read_u8?()
+                bits = (bits ~mod<< 8) | (c8 as base.u32)
+                range ~mod<<= 8
+            }
+
+            // AlgOve80.4  // Decode a middle length.
+            // AlgOve80.5  len = decodeMultipleByms(3) + 10
+            index_len = (pos & pb_mask) as base.u32
+            tree_node = 1
+            while tree_node < 0x08 {
+                prob = this.probs_longrep_len_mid[index_len][tree_node] as base.u32
+                threshold = (range >> 11) ~mod* prob
+                if bits < threshold {
+                    range = threshold
+                    prob ~mod+= (2048 ~mod- prob) >> 5
+                    this.probs_longrep_len_mid[index_len][tree_node] = (prob & 0xFFFF) as base.u16
+                    tree_node = (tree_node << 1)
+                } else {
+                    bits ~mod-= threshold
+                    range ~mod-= threshold
+                    prob ~mod-= prob >> 5
+                    this.probs_longrep_len_mid[index_len][tree_node] = (prob & 0xFFFF) as base.u16
+                    tree_node = (tree_node << 1) | 1
+                }
+                if (range >> 24) == 0 {
+                    c8 = args.src.read_u8?()
+                    bits = (bits ~mod<< 8) | (c8 as base.u32)
+                    range ~mod<<= 8
+                }
+            }
+            len = (tree_node & 0x07) + 10
+            assert len >= 1
+            state = STATE_TRANSITION_LONGREP[state] as base.u32
+            break.goto_after_decode_len
+        }
+
+        // AlgOve80.3a if decodeTheNextBym() == 0  // If-false branch.
+        bits ~mod-= threshold
+        range ~mod-= threshold
+        prob ~mod-= prob >> 5
+        this.probs_longrep_len_mid[0][0] = (prob & 0xFFFF) as base.u16
+        if (range >> 24) == 0 {
+            c8 = args.src.read_u8?()
+            bits = (bits ~mod<< 8) | (c8 as base.u32)
+            range ~mod<<= 8
+        }
+
+        // AlgOve80.7  // Decode a high length.
+        // AlgOve80.8  len = decodeMultipleByms(8) + 18
+        tree_node = 1
+        while tree_node < 0x100 {
+            prob = this.probs_longrep_len_high[0][tree_node] as base.u32
+            threshold = (range >> 11) ~mod* prob
+            if bits < threshold {
+                range = threshold
+                prob ~mod+= (2048 ~mod- prob) >> 5
+                this.probs_longrep_len_high[0][tree_node] = (prob & 0xFFFF) as base.u16
+                tree_node = (tree_node << 1)
+            } else {
+                bits ~mod-= threshold
+                range ~mod-= threshold
+                prob ~mod-= prob >> 5
+                this.probs_longrep_len_high[0][tree_node] = (prob & 0xFFFF) as base.u16
+                tree_node = (tree_node << 1) | 1
+            }
+            if (range >> 24) == 0 {
+                c8 = args.src.read_u8?()
+                bits = (bits ~mod<< 8) | (c8 as base.u32)
+                range ~mod<<= 8
+            }
+        }
+        len = (tree_node & 0xFF) + 18
+        assert len >= 1
+        state = STATE_TRANSITION_LONGREP[state] as base.u32
+
+        break.goto_after_decode_len
+        }}.goto_after_decode_len
+        break.goto_do_the_lz_copy
+        }}.goto_do_the_lz_copy
+
+        // AlgOve90  labelDoTheLZCopy:
+        // AlgOve94  emitCopy(len, mrud[0])
+
+        assert len >= 1
+        dist = rep0 + 1
+        assert dist >= 1
+        if ((dist as base.u64) > pos) or
+                ((dist as base.u64) > (this.dict_size as base.u64)) {
+            return "#bad distance"
+        }
+        pos ~mod+= len as base.u64
+        // 274 is at least (len + 1). A limited_copy_u32_from_slice call below
+        // passes "up_to: len + 1". It's simpler if it's always a full copy.
+        while 274 > args.dst.length(),
+                inv len >= 1,
+                inv dist >= 1,
+                post 274 <= args.dst.length(),
+        {
+            yield? base."$short write"
+        }
+        assert (len as base.u64) <= args.dst.length() via "a <= b: a <= c; c <= b"(c: 274)
+
+        // Copy from the args.workbuf history, if necessary.
+        if (dist as base.u64) > args.dst.history_length() {
+            adj_dist = (((dist as base.u64) - args.dst.history_length()) & 0xFFFF_FFFF) as base.u32
+            if adj_dist > this.dict_seen {
+                return "#bad distance"
+            }
+            wb_index = (this.dict_workbuf_index as base.u64) ~mod- (adj_dist as base.u64)
+            while wb_index >= 0x8000_0000_0000_0000,
+                    inv dist >= 1,
+            {
+                wb_index ~mod+= this.dict_size as base.u64
+            }
+            if wb_index >= args.workbuf.length() {
+                return "#internal error: inconsistent dictionary state"
+            }
+
+            if len < adj_dist {
+                // Copy len bytes of history and one more byte for the later
+                // half of the two-byte cusp, all from args.workbuf.
+                args.dst.limited_copy_u32_from_slice!(up_to: len + 1, s: args.workbuf[wb_index ..])
+                if not args.dst.can_undo_byte() {
+                    return "#internal error: inconsistent dictionary state"
+                }
+                match_byte = args.dst.peek_undo_byte() as base.u32
+                args.dst.undo_byte!()
+                if not args.dst.can_undo_byte() {
+                    return "#internal error: inconsistent dictionary state"
+                }
+                prev_byte = args.dst.peek_undo_byte()
+                continue.outer
+            } else if len == adj_dist {
+                // Like above, copy len bytes of history and one more byte for
+                // the later half of the two-byte cusp, but the copy-source
+                // crosses over from args.workbuf to args.dst.
+                args.dst.limited_copy_u32_from_slice!(up_to: len, s: args.workbuf[wb_index ..])
+                args.dst.limited_copy_u32_from_history!(up_to: 1, distance: dist)
+                if not args.dst.can_undo_byte() {
+                    return "#internal error: inconsistent dictionary state"
+                }
+                match_byte = args.dst.peek_undo_byte() as base.u32
+                args.dst.undo_byte!()
+                if not args.dst.can_undo_byte() {
+                    return "#internal error: inconsistent dictionary state"
+                }
+                prev_byte = args.dst.peek_undo_byte()
+                continue.outer
+            }
+            args.dst.limited_copy_u32_from_slice!(up_to: adj_dist, s: args.workbuf[wb_index ..])
+            len -= adj_dist
+            assert len >= 1
+            if ((len as base.u64) > args.dst.length()) or
+                    ((dist as base.u64) > args.dst.history_length()) {
+                return "#internal error: inconsistent dictionary state"
+            }
+        }
+
+        // Copy from the args.dst history.
+        assert len >= 1
+        assert dist >= 1
+        assert (len as base.u64) <= args.dst.length()
+        assert (dist as base.u64) <= args.dst.history_length()
+        match_cusp = args.dst.limited_copy_u32_from_history_fast_return_cusp!(
+                up_to: len, distance: dist)
+        match_byte = match_cusp >> 8
+        prev_byte = (match_cusp & 0xFF) as base.u8
+    }.outer
+
+    this.stashed_bytes[0] = prev_byte
+    this.stashed_bytes[1] = (match_byte & 0xFF) as base.u8
+    this.stashed_bits = bits
+    this.stashed_range = range
+    this.stashed_state = state
+    this.stashed_rep0 = rep0
+    this.stashed_rep1 = rep1
+    this.stashed_rep2 = rep2
+    this.stashed_rep3 = rep3
+    this.stashed_pos = pos
+    this.stashed_pos_end = pos_end
+}

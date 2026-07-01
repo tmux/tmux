@@ -1,0 +1,179 @@
+// Copyright 2017 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+use "std/adler32"
+use "std/deflate"
+
+pub status "@dictionary required"
+
+pub status "#bad checksum"
+pub status "#bad compression method"
+pub status "#bad compression window size"
+pub status "#bad parity check"
+pub status "#incorrect dictionary"
+pub status "#truncated input"
+
+pub const DECODER_DST_HISTORY_RETAIN_LENGTH_MAX_INCL_WORST_CASE : base.u64 = 0
+
+// TODO: reference deflate.DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE.
+pub const DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE : base.u64 = 1
+
+pub struct decoder? implements base.io_transformer(
+        bad_call_sequence : base.bool,
+        header_complete   : base.bool,
+
+        got_dictionary  : base.bool,
+        want_dictionary : base.bool,
+
+        quirks : array[QUIRKS_COUNT] base.bool,
+
+        ignore_checksum : base.bool,
+        checksum        : adler32.hasher,
+
+        dict_id_hasher : adler32.hasher,
+        dict_id_have   : base.u32,
+        dict_id_want   : base.u32,
+
+        flate : deflate.decoder,
+
+        util : base.utility,
+)
+
+pub func decoder.dictionary_id() base.u32 {
+    return this.dict_id_want
+}
+
+pub func decoder.add_dictionary!(dict: slice base.u8) {
+    if this.header_complete {
+        this.bad_call_sequence = true
+    } else {
+        this.dict_id_have = this.dict_id_hasher.update_u32!(x: args.dict)
+        this.flate.add_history!(hist: args.dict)
+    }
+    this.got_dictionary = true
+}
+
+pub func decoder.get_quirk(key: base.u32) base.u64 {
+    var key : base.u32
+
+    if (args.key == base.QUIRK_IGNORE_CHECKSUM) and this.ignore_checksum {
+        return 1
+    } else if args.key >= QUIRKS_BASE {
+        key = args.key - QUIRKS_BASE
+        if key < QUIRKS_COUNT {
+            if this.quirks[key] {
+                return 1
+            }
+        }
+    }
+    return 0
+}
+
+pub func decoder.set_quirk!(key: base.u32, value: base.u64) base.status {
+    if this.header_complete {
+        this.bad_call_sequence = true
+        return base."#bad call sequence"
+    } else if args.key == base.QUIRK_IGNORE_CHECKSUM {
+        this.ignore_checksum = args.value > 0
+        return ok
+    } else if args.key >= QUIRKS_BASE {
+        args.key -= QUIRKS_BASE
+        if args.key < QUIRKS_COUNT {
+            this.quirks[args.key] = args.value > 0
+            return ok
+        }
+    }
+    return base."#unsupported option"
+}
+
+pub func decoder.dst_history_retain_length() base.optional_u63 {
+    return this.util.make_optional_u63(has_value: true, value: 0)
+}
+
+pub func decoder.workbuf_len() base.range_ii_u64 {
+    return this.util.make_range_ii_u64(
+            min_incl: DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE,
+            max_incl: DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE)
+}
+
+pub func decoder.transform_io?(dst: base.io_writer, src: base.io_reader, workbuf: slice base.u8) {
+    var status : base.status
+
+    while true {
+        status =? this.do_transform_io?(dst: args.dst, src: args.src, workbuf: args.workbuf)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_transform_io?(dst: base.io_writer, src: base.io_reader, workbuf: slice base.u8) {
+    var x             : base.u16
+    var checksum_have : base.u32
+    var status        : base.status
+    var checksum_want : base.u32
+    var mark          : base.u64
+
+    if this.bad_call_sequence {
+        return base."#bad call sequence"
+    } else if this.quirks[QUIRK_JUST_RAW_DEFLATE - QUIRKS_BASE] {
+        // No-op.
+    } else if not this.want_dictionary {
+        x = args.src.read_u16be?()
+        if ((x >> 8) & 0x0F) <> 0x08 {
+            return "#bad compression method"
+        }
+        if (x >> 12) > 0x07 {
+            return "#bad compression window size"
+        }
+        if (x % 31) <> 0 {
+            return "#bad parity check"
+        }
+        this.want_dictionary = (x & 0x20) <> 0
+        if this.want_dictionary {
+            this.dict_id_have = 1  // Adler-32 initial value.
+            this.dict_id_want = args.src.read_u32be?()
+            return "@dictionary required"
+        } else if this.got_dictionary {
+            return "#incorrect dictionary"
+        }
+    } else if this.dict_id_have <> this.dict_id_want {
+        if this.got_dictionary {
+            return "#incorrect dictionary"
+        }
+        return "@dictionary required"
+    }
+
+    this.header_complete = true
+
+    // Decode and checksum the DEFLATE-encoded payload.
+    while true {
+        mark = args.dst.mark()
+        status =? this.flate.transform_io?(dst: args.dst, src: args.src, workbuf: args.workbuf)
+        if (not this.ignore_checksum) and (not this.quirks[QUIRK_JUST_RAW_DEFLATE - QUIRKS_BASE]) {
+            checksum_have = this.checksum.update_u32!(x: args.dst.since(mark: mark))
+        }
+        if status.is_ok() {
+            break
+        }
+        yield? status
+    }
+
+    if not this.quirks[QUIRK_JUST_RAW_DEFLATE - QUIRKS_BASE] {
+        checksum_want = args.src.read_u32be?()
+        if (not this.ignore_checksum) and (checksum_have <> checksum_want) {
+            return "#bad checksum"
+        }
+    }
+
+    // TODO: reset state (e.g. want_dictionary), so that we can read concat'ed
+    // zlib streams?
+}

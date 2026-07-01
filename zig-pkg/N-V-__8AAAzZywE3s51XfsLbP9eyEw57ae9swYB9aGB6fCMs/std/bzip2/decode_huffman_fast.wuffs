@@ -1,0 +1,123 @@
+// Copyright 2022 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pri func decoder.decode_huffman_fast!(src: base.io_reader) base.status {
+    var bits       : base.u32
+    var n_bits     : base.u32[..= 31]
+    var block_size : base.u32[..= 900000]
+    var which      : base.u8[..= 5]
+    var ticks      : base.u32[..= 50]
+    var section    : base.u32
+    var run_shift  : base.u32[..= 23]
+
+    var table_entry : base.u16
+    var child       : base.u16
+    var child_ff    : base.u32[..= 255]
+    var i           : base.u32
+    var j           : base.u32
+    var output      : base.u32[..= 255]
+    var run         : base.u32[..= 12_582912]  // 12_582912 = (3 << 22)
+    var mtft0       : base.u32[..= 255]
+
+    bits = this.bits
+    n_bits = this.n_bits
+    block_size = this.block_size
+    which = this.decode_huffman_which
+    ticks = this.decode_huffman_ticks
+    section = this.decode_huffman_section
+    run_shift = this.decode_huffman_run_shift
+
+    // Apply the Huffman trees.
+    while.outer args.src.length() >= 4 {
+        if ticks > 0 {
+            ticks -= 1
+        } else {
+            ticks = 49
+            section ~mod+= 1
+            if section >= this.num_sections {
+                return "#bad number of sections"
+            }
+            which = CLAMP_TO_5[this.huffman_selectors[section & 32767] & 7]
+        }
+
+        bits |= args.src.peek_u32be() >> n_bits
+        args.src.skip_u32_fast!(actual: (31 - n_bits) >> 3, worst_case: 4)
+        n_bits |= 24
+
+        table_entry = this.huffman_tables[which][bits >> 24]
+        bits ~mod<<= table_entry >> 12
+        n_bits -= (table_entry >> 12) as base.u32
+        child = table_entry & 0x3FF
+        while child < 257 {
+            child = this.huffman_trees[which][child][bits >> 31]
+            bits ~mod<<= 1
+            if n_bits <= 0 {
+                return "#internal error: inconsistent Huffman decoder state"
+            }
+            n_bits -= 1
+        }
+
+        if child < 0x300 {  // mNN symbol.
+            // Move to front.
+            child_ff = (child & 0xFF) as base.u32
+            output = this.mtft[child_ff] as base.u32
+            this.mtft[1 .. 1 + child_ff].copy_from_slice!(
+                    s: this.mtft[.. child_ff])
+            this.mtft[0] = output as base.u8
+
+            this.letter_counts[output] ~mod+= 1
+            this.bwt[block_size] = output
+            if block_size >= this.max_incl_block_size {
+                return "#bad block length"
+            }
+            assert block_size < 900000 via "a < b: a < c; c <= b"(c: this.max_incl_block_size)
+            block_size += 1
+            run_shift = 0
+            continue.outer
+        } else if child == 0x300 {  // EOB symbol.
+            this.decode_huffman_finished = true
+            break.outer
+        }
+
+        // RUNA or RUNB symbol.
+        if run_shift >= 23 {
+            return "#bad block length"
+        }
+        run = ((child as base.u32) & 3) << run_shift
+        run_shift += 1
+        i = block_size
+        j = run + block_size
+        if j > this.max_incl_block_size {
+            return "#bad block length"
+        }
+        assert j <= 900000 via "a <= b: a <= c; c <= b"(c: this.max_incl_block_size)
+        block_size = j
+
+        mtft0 = this.mtft[0] as base.u32
+        this.letter_counts[mtft0] ~mod+= run
+        while i < j,
+                pre j <= 900000,
+        {
+            assert i < 900000 via "a < b: a < c; c <= b"(c: j)
+            this.bwt[i] = mtft0
+            i += 1
+        }
+    }.outer
+
+    this.bits = bits
+    this.n_bits = n_bits
+    this.block_size = block_size
+    this.decode_huffman_which = which
+    this.decode_huffman_ticks = ticks
+    this.decode_huffman_section = section
+    this.decode_huffman_run_shift = run_shift
+
+    return ok
+}

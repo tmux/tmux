@@ -1,0 +1,175 @@
+// Copyright 2024 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+// --------
+
+// The Lzip file format specification is at
+// https://www.nongnu.org/lzip/manual/lzip_manual.html#File-format
+
+use "std/crc32"
+use "std/lzma"
+
+pub status "#bad checksum"
+pub status "#bad footer"
+pub status "#bad header"
+pub status "#truncated input"
+
+pub const DECODER_DST_HISTORY_RETAIN_LENGTH_MAX_INCL_WORST_CASE : base.u64 = 0
+pub const DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE               : base.u64 = 0xFFFF_FFFF + 273
+
+pub struct decoder? implements base.io_transformer(
+        ignore_checksum : base.bool,
+
+        dsize_have : base.u64,
+        ssize_have : base.u64,
+
+        util : base.utility,
+) + (
+        crc32 : crc32.ieee_hasher,
+        lzma  : lzma.decoder,
+)
+
+pub func decoder.get_quirk(key: base.u32) base.u64 {
+    if (args.key == base.QUIRK_IGNORE_CHECKSUM) and this.ignore_checksum {
+        return 1
+    }
+    return 0
+}
+
+pub func decoder.set_quirk!(key: base.u32, value: base.u64) base.status {
+    if args.key == base.QUIRK_IGNORE_CHECKSUM {
+        this.ignore_checksum = args.value > 0
+        return ok
+    }
+    return base."#unsupported option"
+}
+
+pub func decoder.dst_history_retain_length() base.optional_u63 {
+    return this.lzma.dst_history_retain_length()
+}
+
+pub func decoder.workbuf_len() base.range_ii_u64 {
+    return this.lzma.workbuf_len()
+}
+
+pub func decoder.transform_io?(dst: base.io_writer, src: base.io_reader, workbuf: slice base.u8) {
+    var status : base.status
+
+    while true {
+        status =? this.do_transform_io?(dst: args.dst, src: args.src, workbuf: args.workbuf)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_transform_io?(dst: base.io_writer, src: base.io_reader, workbuf: slice base.u8) {
+    var c8            : base.u8
+    var c32           : base.u32
+    var c64           : base.u64
+    var dmark         : base.u64
+    var smark         : base.u64
+    var status        : base.status
+    var checksum_want : base.u32
+    var checksum_have : base.u32
+    var size_want     : base.u64
+
+    while.outer true {
+        // Read the magic number and version number.
+        //
+        // Some of the test/3pdata/xzsuite/good*v0*.lz files have a 0x00
+        // version number (instead of 0x01). We reject those, just like
+        // /usr/bin/lzip does and as per the Lzip spec.
+        c64 = args.src.read_u40le_as_u64?()
+        if c64 <> 'LZIP\x01'le {
+            return "#bad header"
+        }
+
+        // Read the dictionary size.
+        c8 = args.src.read_u8?()
+        status = this.lzma.set_quirk!(
+                key: lzma.QUIRK_FORMAT_EXTENSION,
+                value: 0x01 | ((c8 as base.u64) << 8))
+        if not status.is_ok() {
+            if status == base."#bad argument" {
+                return "#bad header"
+            }
+            return status
+        }
+
+        // Decode LZMA.
+        //
+        // Re lzma.QUIRK_ALLOW_NON_ZERO_INITIAL_BYTE, as exercised by
+        // test/3pdata/xzsuite/lzip-testsuite/fox6_mark.lz, the LZMA spec says
+        // that the decoder must check that the byte is zero, but the Lzip spec
+        // says that the byte "must be ignored by the range decoder".
+        this.ssize_have = 0
+        this.dsize_have = 0
+        this.lzma.set_quirk!(key: lzma.QUIRK_ALLOW_NON_ZERO_INITIAL_BYTE, value: 1)
+        while true {
+            dmark = args.dst.mark()
+            smark = args.src.mark()
+            status =? this.lzma.transform_io?(dst: args.dst, src: args.src, workbuf: args.workbuf)
+            this.ssize_have ~mod+= args.src.count_since(mark: smark)
+            this.dsize_have ~mod+= args.dst.count_since(mark: dmark)
+
+            if not this.ignore_checksum {
+                this.crc32.update!(x: args.dst.since(mark: dmark))
+            }
+
+            if status.is_ok() {
+                break
+            }
+            yield? status
+        }
+
+        // Check the checksum.
+        checksum_want = args.src.read_u32le?()
+        if not this.ignore_checksum {
+            checksum_have = this.crc32.checksum_u32()
+            if checksum_have <> checksum_want {
+                return "#bad checksum"
+            }
+        }
+
+        // Check the uncompressed size.
+        size_want = args.src.read_u64le?()
+        if this.dsize_have <> size_want {
+            return "#bad footer"
+        }
+
+        // Check the compressed size, which includes 6 bytes of header and 20
+        // bytes of footer. Per the spec, it's also capped at 2 PiB.
+        size_want = args.src.read_u64le?()
+        if (size_want < 26) or (0x8_0000_0000_0000 < size_want) {
+            return "#bad footer"
+        } else if this.ssize_have <> (size_want - 26) {
+            return "#bad footer"
+        }
+
+        // Reset state and continue the outer loop, if not at EOF and it looks
+        // like there's another LZIP-encoded chunk.
+        while args.src.length() < 4,
+                post args.src.length() >= 4,
+        {
+            if args.src.is_closed() {
+                break.outer
+            }
+            yield? base."$short read"
+        }
+        c32 = args.src.peek_u32le()
+        if c32 <> 'LZIP'le {
+            break.outer
+        }
+        this.crc32.reset!()
+        this.lzma.reset!()
+    }.outer
+}

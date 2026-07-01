@@ -1,0 +1,433 @@
+// Copyright 2023 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pub status "#bad header"
+pub status "#truncated input"
+pub status "#unsupported Netpbm file"
+
+pri status "@internal note: short read"
+
+pub const DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE : base.u64 = 0
+
+pub struct decoder? implements base.image_decoder(
+        pixfmt : base.u32,
+        width  : base.u32[..= 0xFF_FFFF],
+        height : base.u32[..= 0xFF_FFFF],
+
+        max_value : base.u32[..= 0xFF_FFFF],
+
+        // The call sequence state machine is discussed in
+        // (/doc/std/image-decoders-call-sequence.md).
+        call_sequence : base.u8,
+
+        frame_config_io_position : base.u64,
+
+        dst_x : base.u32,
+        dst_y : base.u32,
+
+        swizzler : base.pixel_swizzler,
+        util     : base.utility,
+)
+
+pub func decoder.get_quirk(key: base.u32) base.u64 {
+    return 0
+}
+
+pub func decoder.set_quirk!(key: base.u32, value: base.u64) base.status {
+    return base."#unsupported option"
+}
+
+pub func decoder.decode_image_config?(dst: nptr base.image_config, src: base.io_reader) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_image_config?(dst: args.dst, src: args.src)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_image_config?(dst: nptr base.image_config, src: base.io_reader) {
+    var c8 : base.u8
+    var n  : base.u32
+
+    if this.call_sequence <> 0x00 {
+        return base."#bad call sequence"
+    }
+
+    c8 = args.src.read_u8?()
+    if c8 <> 'P' {
+        return "#bad header"
+    }
+
+    c8 = args.src.read_u8?()
+    if (c8 < '1') or ('7' < c8) {
+        return "#bad header"
+    } else if c8 == '5' {
+        this.pixfmt = base.PIXEL_FORMAT__Y
+    } else if c8 == '6' {
+        this.pixfmt = base.PIXEL_FORMAT__RGB
+    } else {
+        return "#unsupported Netpbm file"
+    }
+
+    c8 = args.src.read_u8?()
+    if c8 <> 0x0A {
+        return "#bad header"
+    }
+
+    // Decode width.
+    while true {
+        c8 = args.src.read_u8?()
+        if (c8 == ' ') or (c8 == 0x09) {
+            continue
+        } else if c8 == '#' {
+            // Consume a "#...\n" comment.
+            while true {
+                c8 = args.src.read_u8?()
+                if c8 == 0x0A {
+                    break
+                }
+            }
+            continue
+        } else if (c8 < '0') or ('9' < c8) {
+            return "#bad header"
+        }
+        this.width = ((c8 - '0') as base.u32)
+        break
+    }
+    while true {
+        c8 = args.src.read_u8?()
+        if (c8 == ' ') or (c8 == 0x09) {
+            break
+        } else if (c8 < '0') or ('9' < c8) {
+            return "#bad header"
+        }
+        n = (10 * this.width) + ((c8 - '0') as base.u32)
+        if n > 0xFF_FFFF {
+            return "#unsupported Netpbm file"
+        }
+        this.width = n
+    }
+
+    // Decode height.
+    while true {
+        c8 = args.src.read_u8?()
+        if (c8 == ' ') or (c8 == 0x09) {
+            continue
+        } else if c8 == '#' {
+            // Consume a "#...\n" comment.
+            while true {
+                c8 = args.src.read_u8?()
+                if c8 == 0x0A {
+                    break
+                }
+            }
+            continue
+        } else if (c8 < '0') or ('9' < c8) {
+            return "#bad header"
+        }
+        this.height = ((c8 - '0') as base.u32)
+        break
+    }
+    while true {
+        c8 = args.src.read_u8?()
+        if (c8 == ' ') or (c8 == 0x09) or (c8 == 0x0D) {
+            continue
+        } else if c8 == 0x0A {
+            break
+        } else if (c8 < '0') or ('9' < c8) {
+            return "#bad header"
+        }
+        n = (10 * this.height) + ((c8 - '0') as base.u32)
+        if n > 0xFF_FFFF {
+            return "#unsupported Netpbm file"
+        }
+        this.height = n
+    }
+
+    // Decode max_value.
+    while true {
+        c8 = args.src.read_u8?()
+        if (c8 == ' ') or (c8 == 0x09) {
+            continue
+        } else if c8 == '#' {
+            // Consume a "#...\n" comment.
+            while true {
+                c8 = args.src.read_u8?()
+                if c8 == 0x0A {
+                    break
+                }
+            }
+            continue
+        } else if (c8 < '0') or ('9' < c8) {
+            return "#bad header"
+        }
+        this.max_value = ((c8 - '0') as base.u32)
+        break
+    }
+    while true {
+        c8 = args.src.read_u8?()
+        if (c8 == ' ') or (c8 == 0x09) or (c8 == 0x0D) {
+            continue
+        } else if c8 == 0x0A {
+            break
+        } else if (c8 < '0') or ('9' < c8) {
+            return "#bad header"
+        }
+        n = (10 * this.max_value) + ((c8 - '0') as base.u32)
+        if n > 0xFF_FFFF {
+            return "#unsupported Netpbm file"
+        }
+        this.max_value = n
+    }
+
+    if this.max_value <> 255 {
+        return "#unsupported Netpbm file"
+    }
+
+    this.frame_config_io_position = args.src.position()
+
+    if args.dst <> nullptr {
+        args.dst.set!(
+                pixfmt: this.pixfmt,
+                pixsub: 0,
+                width: this.width,
+                height: this.height,
+                first_frame_io_position: this.frame_config_io_position,
+                first_frame_is_opaque: false)
+    }
+
+    this.call_sequence = 0x20
+}
+
+pub func decoder.decode_frame_config?(dst: nptr base.frame_config, src: base.io_reader) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_frame_config?(dst: args.dst, src: args.src)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_frame_config?(dst: nptr base.frame_config, src: base.io_reader) {
+    if this.call_sequence == 0x20 {
+        // No-op.
+    } else if this.call_sequence < 0x20 {
+        this.do_decode_image_config?(dst: nullptr, src: args.src)
+    } else if this.call_sequence == 0x28 {
+        if this.frame_config_io_position <> args.src.position() {
+            return base."#bad restart"
+        }
+    } else if this.call_sequence == 0x40 {
+        this.call_sequence = 0x60
+        return base."@end of data"
+    } else {
+        return base."@end of data"
+    }
+
+    if args.dst <> nullptr {
+        args.dst.set!(bounds: this.util.make_rect_ie_u32(
+                min_incl_x: 0,
+                min_incl_y: 0,
+                max_excl_x: this.width,
+                max_excl_y: this.height),
+                duration: 0,
+                index: 0,
+                io_position: this.frame_config_io_position,
+                disposal: 0,
+                opaque_within_bounds: false,
+                overwrite_instead_of_blend: false,
+                background_color: 0x0000_0000)
+    }
+
+    this.call_sequence = 0x40
+}
+
+pub func decoder.decode_frame?(dst: ptr base.pixel_buffer, src: base.io_reader, blend: base.pixel_blend, workbuf: slice base.u8, opts: nptr base.decode_frame_options) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_frame?(dst: args.dst, src: args.src, blend: args.blend, workbuf: args.workbuf, opts: args.opts)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_frame?(dst: ptr base.pixel_buffer, src: base.io_reader, blend: base.pixel_blend, workbuf: slice base.u8, opts: nptr base.decode_frame_options) {
+    var status : base.status
+
+    if this.call_sequence == 0x40 {
+        // No-op.
+    } else if this.call_sequence < 0x40 {
+        this.do_decode_frame_config?(dst: nullptr, src: args.src)
+    } else {
+        return base."@end of data"
+    }
+
+    this.dst_x = 0
+    this.dst_y = 0
+
+    status = this.swizzler.prepare!(
+            dst_pixfmt: args.dst.pixel_format(),
+            dst_palette: args.dst.palette(),
+            src_pixfmt: this.util.make_pixel_format(repr: this.pixfmt),
+            src_palette: this.util.empty_slice_u8(),
+            blend: args.blend)
+    if not status.is_ok() {
+        return status
+    }
+
+    while true {
+        status = this.swizzle!(dst: args.dst, src: args.src)
+        if status.is_ok() {
+            break
+        } else if status <> "@internal note: short read" {
+            return status
+        }
+        yield? base."$short read"
+    }
+
+    this.call_sequence = 0x60
+}
+
+pri func decoder.swizzle!(dst: ptr base.pixel_buffer, src: base.io_reader) base.status {
+    var dst_pixfmt          : base.pixel_format
+    var dst_bits_per_pixel  : base.u32[..= 256]
+    var dst_bytes_per_pixel : base.u32[..= 32]
+    var dst_bytes_per_row   : base.u64
+    var src_bytes_per_pixel : base.u32[..= 8]
+    var tab                 : table base.u8
+    var dst                 : slice base.u8
+    var i                   : base.u64
+    var j                   : base.u64
+    var n                   : base.u64
+
+    // TODO: the dst_pixfmt variable shouldn't be necessary. We should be able
+    // to chain the two calls: "args.dst.pixel_format().bits_per_pixel()".
+    dst_pixfmt = args.dst.pixel_format()
+    dst_bits_per_pixel = dst_pixfmt.bits_per_pixel()
+    if (dst_bits_per_pixel & 7) <> 0 {
+        return base."#unsupported option"
+    }
+    dst_bytes_per_pixel = dst_bits_per_pixel / 8
+    dst_bytes_per_row = (this.width * dst_bytes_per_pixel) as base.u64
+    tab = args.dst.plane(p: 0)
+
+    while true {
+        if this.dst_x == this.width {
+            this.dst_x = 0
+            this.dst_y ~mod+= 1
+            if this.dst_y >= this.height {
+                break
+            }
+        }
+
+        dst = tab.row_u32(y: this.dst_y)
+        if dst_bytes_per_row < dst.length() {
+            dst = dst[.. dst_bytes_per_row]
+        }
+        i = (this.dst_x as base.u64) * (dst_bytes_per_pixel as base.u64)
+        if i >= dst.length() {
+            src_bytes_per_pixel = 1
+            assert src_bytes_per_pixel > 0
+            if this.pixfmt == base.PIXEL_FORMAT__RGB {
+                src_bytes_per_pixel = 3
+                assert src_bytes_per_pixel > 0
+            }
+            n = args.src.length() / (src_bytes_per_pixel as base.u64)
+            n = n.min(no_more_than: (this.width ~mod- this.dst_x) as base.u64)
+            j = n
+            while j >= 8 {
+                if args.src.length() >= ((src_bytes_per_pixel * 8) as base.u64) {
+                    args.src.skip_u32_fast!(
+                            actual: src_bytes_per_pixel * 8,
+                            worst_case: src_bytes_per_pixel * 8)
+                }
+                j -= 8
+            }
+            while j > 0 {
+                if args.src.length() >= ((src_bytes_per_pixel * 1) as base.u64) {
+                    args.src.skip_u32_fast!(
+                            actual: src_bytes_per_pixel * 1,
+                            worst_case: src_bytes_per_pixel * 1)
+                }
+                j -= 1
+            }
+        } else {
+            n = this.swizzler.swizzle_interleaved_from_reader!(
+                    dst: dst[i ..],
+                    dst_palette: args.dst.palette(),
+                    src: args.src)
+        }
+        if n == 0 {
+            return "@internal note: short read"
+        }
+        this.dst_x ~sat+= (n & 0xFFFF_FFFF) as base.u32
+    }
+
+    return ok
+}
+
+pub func decoder.frame_dirty_rect() base.rect_ie_u32 {
+    return this.util.make_rect_ie_u32(
+            min_incl_x: 0,
+            min_incl_y: 0,
+            max_excl_x: this.width,
+            max_excl_y: this.height)
+}
+
+pub func decoder.num_animation_loops() base.u32 {
+    return 0
+}
+
+pub func decoder.num_decoded_frame_configs() base.u64 {
+    if this.call_sequence > 0x20 {
+        return 1
+    }
+    return 0
+}
+
+pub func decoder.num_decoded_frames() base.u64 {
+    if this.call_sequence > 0x40 {
+        return 1
+    }
+    return 0
+}
+
+pub func decoder.restart_frame!(index: base.u64, io_position: base.u64) base.status {
+    if this.call_sequence < 0x20 {
+        return base."#bad call sequence"
+    }
+    if (args.index <> 0) or (args.io_position <> this.frame_config_io_position) {
+        return base."#bad argument"
+    }
+    this.call_sequence = 0x28
+    return ok
+}
+
+pub func decoder.set_report_metadata!(fourcc: base.u32, report: base.bool) {
+    // No-op. Netpbm doesn't support metadata.
+}
+
+pub func decoder.tell_me_more?(dst: base.io_writer, minfo: nptr base.more_information, src: base.io_reader) {
+    return base."#no more information"
+}
+
+pub func decoder.workbuf_len() base.range_ii_u64 {
+    return this.util.make_range_ii_u64(min_incl: 0, max_incl: 0)
+}

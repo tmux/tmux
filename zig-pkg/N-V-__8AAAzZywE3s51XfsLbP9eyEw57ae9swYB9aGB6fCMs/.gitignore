@@ -1,0 +1,9 @@
+*.exe
+*.out
+*~
+/gen
+/hello-wuffs-c/parse.c
+Cargo.lock
+perf.data
+perf.data.old
+target

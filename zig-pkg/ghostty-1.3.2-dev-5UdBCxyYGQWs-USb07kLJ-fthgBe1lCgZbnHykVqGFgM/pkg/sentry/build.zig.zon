@@ -1,0 +1,17 @@
+.{
+    .name = .sentry,
+    .version = "0.7.8",
+    .fingerprint = 0xd177b4a12f6b3b79,
+    .paths = .{""},
+    .dependencies = .{
+        // getsentry/sentry-native
+        .sentry = .{
+            .url = "https://deps.files.ghostty.org/sentry-1220446be831adcca918167647c06c7b825849fa3fba5f22da394667974537a9c77e.tar.gz",
+            .hash = "N-V-__8AAPlZGwBEa-gxrcypGBZ2R8Bse4JYSfo_ul8i2jlG",
+            .lazy = true,
+        },
+
+        .apple_sdk = .{ .path = "../apple-sdk" },
+        .breakpad = .{ .path = "../breakpad", .lazy = true },
+    },
+}

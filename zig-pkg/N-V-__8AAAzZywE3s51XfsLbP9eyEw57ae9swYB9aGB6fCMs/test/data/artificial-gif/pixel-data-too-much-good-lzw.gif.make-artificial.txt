@@ -1,0 +1,37 @@
+# Feed this file to script/make-artificial.go
+
+make gif
+
+header
+
+image {
+	imageWidthHeight 2 2
+	palette {
+		0x00 0x00 0xFF
+		0x11 0x00 0xFF
+		0x22 0x00 0xFF
+		0x33 0x00 0xFF
+	}
+}
+
+frame {
+	frameLeftTopWidthHeight 0 0 2 2
+}
+
+# The frame area is 4 pixels but we supply 5 (that's still valid LZW data).
+# Compare with pixel-data-too-much-bad-lzw.gif.make-artificial.txt
+#
+# The equivalent bytes' disassembly (see also std/lzw/README.md) is:
+#
+# 0x02                              LZW literal width.
+# 0x02                              GIF block length.
+# 0x84 0x5D = 0b0101_1101_1000_0100 (little endian).
+#             0b...._...._...._.100 3-bit Clear code.
+#             0b...._...._..00_0... 3-bit Literal 0x00.
+#             0b...._...1_10.._.... 3-bit Copy code (2 bytes).
+#             0b...._110._...._.... 3-bit Copy code (2 bytes).
+#             0b0101_...._...._.... 4-bit End code.
+# 0x00                              GIF block terminator.
+lzw 2 0x00 0x00 0x00 0x00 0x00
+
+trailer

@@ -1,0 +1,1023 @@
+// Copyright 2024 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+// --------
+
+// Thumbhash is a tiny image format (maximum image dimensions are 32×32 pixels;
+// maximum image file size is 29 bytes or 32 bytes with a 3-byte header), based
+// on the Discrete Cosine Transform.
+//
+// https://evanw.github.io/thumbhash/ has the original description and
+// implementation. This implementation assumes a 3-byte magic identifier is
+// prepended, unless QUIRK_JUST_RAW_THUMBHASH is enabled, so that /usr/bin/file
+// or similar programs can identify the data as thumbhash-formatted data.
+//
+// That 3-byte magic string is "\xC3\xBE\xFE", which is arbitrary and not part
+// of the original thumbhash description or implementation. But "\xC3\xBE" is
+// the UTF-8 encoding of 'þ' (U+00FE LATIN SMALL LETTER THORN) and "\xFE" is
+// invalid UTF-8 but is the ISO-8859-1 encoding of 'þ'. The Old English letter
+// 'þ' is pronounced like the "th" that starts "thumbhash".
+//
+// This implementation also uses fixed point math instead of floating point.
+
+pub status "#bad header"
+pub status "#truncated input"
+
+pub const DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE : base.u64 = 0
+
+pub struct decoder? implements base.image_decoder(
+        pixfmt           : base.u32,
+        w_dimension_code : base.u8[..= 7],
+        h_dimension_code : base.u8[..= 7],
+
+        // The call sequence state machine is discussed in
+        // (/doc/std/image-decoders-call-sequence.md).
+        call_sequence : base.u8,
+
+        frame_config_io_position : base.u8[..= 9],
+
+        // The L, P and Q DC values occupy 6 bits in the file format.
+        // Conceptually, they range from 0 to 1 (for L) or from -1 to +1 (for P
+        // and Q). That's what values are calculated in the original JavaScript
+        // reference implementation, which uses floating point.
+        //
+        // This implementation uses fixed point. The fx and fy cosine tables
+        // and the FROM_4_BITS_TO_PLUS_MINUS_ETC tables are all stored as 2.14
+        // signed fixed point (represented in this code as a base.u16, since
+        // Wuffs as of 2024 only speaks unsigned integers). Multiplying two of
+        // those uses 4.28 (as a base.u32). Multiplying three of those uses
+        // 22.42 (as a base.u64).
+        //
+        // We eventually combine L, P and Q values so we need them to use the
+        // same denominator. l_scale is out of 31 and p_scale and q_scale are
+        // out of 63, so the common denominator is ((63 * 31) << 42) =
+        // 8589_384836_186112 = 0x001E_8400_0000_0000.
+        //
+        // The A channel is not combined with L, P or Q and a_scale is out of
+        // 15, so we can keep the a_dc denominator at (15 << 42).
+        //
+        // Let LDENOM = ((63 * 31) << 14) = 0x01E8_4000.
+        //
+        // Let ADENOM = ( 15       << 14) = 0x0003_C000.
+        l_dc : base.u64,  // Fixed-point denominator is (LDENOM << 28).
+        p_dc : base.u64,  // Fixed-point denominator is (LDENOM << 28).
+        q_dc : base.u64,  // Fixed-point denominator is (LDENOM << 28).
+        a_dc : base.u64,  // Fixed-point denominator is (ADENOM << 28).
+
+        quirk_just_raw_thumbhash : base.bool,
+
+        l_scale : base.u8[..= 31],
+        p_scale : base.u8[..= 63],
+        q_scale : base.u8[..= 63],
+        a_scale : base.u8[..= 15],
+
+        // The first three fields determine lx and ly: the exclusive max of the
+        // (cx, cy) pairs indexing two-dimensional AC coefficients. The (0, 0)
+        // pair is the DC coefficient. (lx / ly) is also the image's aspect
+        // ratio, after rounding width and height to a whole number of pixels
+        // such that the longest dimension is 32.
+        //
+        // Let lminor and lmajor alias lx and ly if is_landscape is 0 (false).
+        // If is_landscape is 1 (true) then these are swapped.
+        //
+        // lminor equals max(3, l_count). lmajor equals 7 or 5, depending on
+        // whether has_alpha is 0 or 1. For example, if has_alpha = 0, l_count
+        // = 5 and is_landscape = 1 then lx = 7 and ly = 5, so that width = 32
+        // and height = 23.
+        //
+        // lx and ly then detemine the number of L AC coefficients (the number
+        // of lac elements that are used), ranging in 10 ..= 27. The number for
+        // P and Q is always 5 and the number for A is 0 or 14, depending on
+        // has_alpha. Total file size is an optional 3-byte magic identifier
+        // plus (5 + has_alpha) bytes of header plus 4 bits per AC coefficient.
+        // As a table:
+        //
+        // When has_alpha = 0 and is_landscape = 0:
+        // l_count: 3   lx / ly = 3 / 7   w = 14   h = 32   #lac = 14   #pac = #qac = 5   #aac =  0   file_size = 3 + 17
+        // l_count: 4   lx / ly = 4 / 7   w = 18   h = 32   #lac = 18   #pac = #qac = 5   #aac =  0   file_size = 3 + 19
+        // l_count: 5   lx / ly = 5 / 7   w = 23   h = 32   #lac = 22   #pac = #qac = 5   #aac =  0   file_size = 3 + 21
+        // l_count: 6   lx / ly = 6 / 7   w = 27   h = 32   #lac = 26   #pac = #qac = 5   #aac =  0   file_size = 3 + 23
+        // l_count: 7   lx / ly = 7 / 7   w = 32   h = 32   #lac = 27   #pac = #qac = 5   #aac =  0   file_size = 3 + 24
+        //
+        // When has_alpha = 1 and is_landscape = 0:
+        // l_count: 3   lx / ly = 3 / 5   w = 19   h = 32   #lac = 10   #pac = #qac = 5   #aac = 14   file_size = 3 + 23
+        // l_count: 4   lx / ly = 4 / 5   w = 26   h = 32   #lac = 13   #pac = #qac = 5   #aac = 14   file_size = 3 + 25
+        // l_count: 5   lx / ly = 5 / 5   w = 32   h = 32   #lac = 14   #pac = #qac = 5   #aac = 14   file_size = 3 + 25
+        // l_count: 6   lx / ly = 6 / 5   w = 32   h = 27   #lac = 19   #pac = #qac = 5   #aac = 14   file_size = 3 + 28
+        // l_count: 7   lx / ly = 7 / 5   w = 32   h = 23   #lac = 22   #pac = #qac = 5   #aac = 14   file_size = 3 + 29
+        //
+        // A "(cx * ly) < (lx * (ly - cy))" constraint determines which L AC
+        // coefficients are used. Here are some visualizations, where 'D' is
+        // the DC coefficient. When has_alpha = 0:
+        //  - the       14  '3' coefficients are always used,
+        //  - the (18 - 14) '4' coefficients are also used when (l_count >= 4),
+        //  - the (22 - 18) '5' coefficients are also used when (l_count >= 5),
+        //  - the (26 - 22) '6' coefficients are also used when (l_count >= 6),
+        //  - the (27 - 26) '7' coefficients are also used when (l_count >= 7),
+        //
+        // When has_alpha = 0:
+        // D334567
+        // 333456
+        // 33356
+        // 3346
+        // 335
+        // 34
+        // 3
+        //
+        // When has_alpha = 1:
+        // D334567
+        // 333467
+        // 33467
+        // 336
+        // 36
+        //
+        // The same visualization for P and Q:
+        // D33
+        // 33
+        // 3
+        //
+        // The same visualization for A (when has_alpha = 1):
+        // D3333
+        // 3333
+        // 333
+        // 33
+        // 3
+        has_alpha    : base.u8[..= 1],
+        l_count      : base.u8[..= 7],
+        is_landscape : base.u8[..= 1],
+        lx           : base.u32[..= 7],
+        ly           : base.u32[..= 7],
+
+        swizzler : base.pixel_swizzler,
+        util     : base.utility,
+) + (
+        // AC coefficients, doubled (†) when stored here to simplify the later
+        // (fx[cx] * fy[cy]) calculation in from_coeffs_to_pixels.
+        //
+        // Before doubling, these conceptually range from -1 to +1 (for L and
+        // A) or from -1.25 to +1.25 (for P and Q, boosted "to compensate for
+        // quantization" in the original JavaScript reference implementation).
+        //
+        // These AC values will eventually be multiplied by fx[cx] and fy[cy],
+        // both of which are 2.14 signed fixed point, so these fixed point
+        // values use the DC value denominators right-shifted by 28: LDENOM =
+        // ((63 * 31) << 14) for L, P and Q and ADENOM = (15 << 14) for A.
+        //
+        // For example, if lac[10] was 23998464 as a base.u32 here in Wuffs
+        // code, the corresponding undoubled floating point value in JavaScript
+        // code would be (23998464.0 / (2 * LDENOM)) = 0.375.
+        //
+        // Not every element is used, only the first up-to-27 (lac), 5 (pac and
+        // qac) or 14 (aac). But we round up the array sizes up to a power of 2
+        // (and bitwise-and the array indexes) to simplify bounds checking.
+        lac : array[32] base.u32,  // Fixed-point denominator is LDENOM.
+        pac : array[8] base.u32,  //  Fixed-point denominator is LDENOM.
+        qac : array[8] base.u32,  //  Fixed-point denominator is LDENOM.
+        aac : array[16] base.u32,  // Fixed-point denominator is ADENOM.
+
+        // 32 rows, 32 BGRA pixels per row.
+        pixels : array[32] array[128] base.u8,
+)
+
+pub func decoder.get_quirk(key: base.u32) base.u64 {
+    if (args.key == QUIRK_JUST_RAW_THUMBHASH) and this.quirk_just_raw_thumbhash {
+        return 1
+    }
+    return 0
+}
+
+pub func decoder.set_quirk!(key: base.u32, value: base.u64) base.status {
+    if args.key == QUIRK_JUST_RAW_THUMBHASH {
+        this.quirk_just_raw_thumbhash = args.value > 0
+        return ok
+    }
+    return base."#unsupported option"
+}
+
+pub func decoder.decode_image_config?(dst: nptr base.image_config, src: base.io_reader) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_image_config?(dst: args.dst, src: args.src)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_image_config?(dst: nptr base.image_config, src: base.io_reader) {
+    var c32  : base.u32
+    var swap : base.u8[..= 7]
+
+    if this.call_sequence <> 0x00 {
+        return base."#bad call sequence"
+    }
+
+    if not this.quirk_just_raw_thumbhash {
+        c32 = args.src.read_u24le_as_u32?()
+        if c32 <> '\xC3\xBE\xFE'le {
+            return "#bad header"
+        }
+    }
+
+    c32 = args.src.read_u24le_as_u32?()
+    this.l_dc = (((c32 >> 0x00) & 63) as base.u64) * (31 << 42)
+    this.p_dc = ((((c32 >> 0x06) & 63) as base.u64) * (31 << 43)) ~mod- ((63 * 31) << 42)
+    this.q_dc = ((((c32 >> 0x0C) & 63) as base.u64) * (31 << 43)) ~mod- ((63 * 31) << 42)
+    this.l_scale = ((c32 >> 0x12) & 31) as base.u8
+    this.has_alpha = ((c32 >> 0x17) & 1) as base.u8
+
+    c32 = args.src.read_u16le_as_u32?()
+    this.l_count = ((c32 >> 0x00) & 7) as base.u8
+    this.p_scale = ((c32 >> 0x03) & 63) as base.u8
+    this.q_scale = ((c32 >> 0x09) & 63) as base.u8
+    this.is_landscape = ((c32 >> 0x0F) & 1) as base.u8
+    this.w_dimension_code = (DIMENSION_CODES_FROM_HAS_ALPHA_AND_L_COUNT[this.has_alpha][this.l_count] >> 4) & 7
+    this.h_dimension_code = (DIMENSION_CODES_FROM_HAS_ALPHA_AND_L_COUNT[this.has_alpha][this.l_count] >> 0) & 7
+    if this.is_landscape <> 0 {
+        swap = this.w_dimension_code
+        this.w_dimension_code = this.h_dimension_code
+        this.h_dimension_code = swap
+    }
+
+    if this.is_landscape <> 0 {
+        this.lx = (7 - (2 * this.has_alpha)) as base.u32
+        this.ly = (this.l_count.max(no_less_than: 3)) as base.u32
+    } else {
+        this.lx = (this.l_count.max(no_less_than: 3)) as base.u32
+        this.ly = (7 - (2 * this.has_alpha)) as base.u32
+    }
+
+    this.frame_config_io_position = 8
+    assert this.frame_config_io_position >= 8
+    if this.has_alpha <> 0 {
+        c32 = args.src.read_u8_as_u32?()
+        this.a_dc = (((c32 >> 0x00) & 15) as base.u64) << 42
+        this.a_scale = ((c32 >> 0x04) & 15) as base.u8
+        this.frame_config_io_position = 9
+        assert this.frame_config_io_position >= 8
+    }
+
+    if this.quirk_just_raw_thumbhash {
+        this.frame_config_io_position -= 3
+    }
+
+    this.pixfmt = base.PIXEL_FORMAT__BGRX
+    if this.has_alpha <> 0 {
+        this.pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL
+    }
+
+    if args.dst <> nullptr {
+        args.dst.set!(
+                pixfmt: this.pixfmt,
+                pixsub: 0,
+                width: DIMENSIONS_FROM_DIMENSION_CODES[this.w_dimension_code] as base.u32,
+                height: DIMENSIONS_FROM_DIMENSION_CODES[this.h_dimension_code] as base.u32,
+                first_frame_io_position: this.frame_config_io_position as base.u64,
+                first_frame_is_opaque: this.has_alpha == 0)
+    }
+
+    this.call_sequence = 0x20
+}
+
+pub func decoder.decode_frame_config?(dst: nptr base.frame_config, src: base.io_reader) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_frame_config?(dst: args.dst, src: args.src)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_frame_config?(dst: nptr base.frame_config, src: base.io_reader) {
+    if this.call_sequence == 0x20 {
+        // No-op.
+    } else if this.call_sequence < 0x20 {
+        this.do_decode_image_config?(dst: nullptr, src: args.src)
+    } else if this.call_sequence == 0x28 {
+        if (this.frame_config_io_position as base.u64) <> args.src.position() {
+            return base."#bad restart"
+        }
+    } else if this.call_sequence == 0x40 {
+        this.call_sequence = 0x60
+        return base."@end of data"
+    } else {
+        return base."@end of data"
+    }
+
+    if args.dst <> nullptr {
+        args.dst.set!(bounds: this.util.make_rect_ie_u32(
+                min_incl_x: 0,
+                min_incl_y: 0,
+                max_excl_x: DIMENSIONS_FROM_DIMENSION_CODES[this.w_dimension_code] as base.u32,
+                max_excl_y: DIMENSIONS_FROM_DIMENSION_CODES[this.h_dimension_code] as base.u32),
+                duration: 0,
+                index: 0,
+                io_position: this.frame_config_io_position as base.u64,
+                disposal: 0,
+                opaque_within_bounds: this.has_alpha == 0,
+                overwrite_instead_of_blend: false,
+                background_color: 0x0000_0000)
+    }
+
+    this.call_sequence = 0x40
+}
+
+pub func decoder.decode_frame?(dst: ptr base.pixel_buffer, src: base.io_reader, blend: base.pixel_blend, workbuf: slice base.u8, opts: nptr base.decode_frame_options) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_frame?(dst: args.dst, src: args.src, blend: args.blend, workbuf: args.workbuf, opts: args.opts)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_frame?(dst: ptr base.pixel_buffer, src: base.io_reader, blend: base.pixel_blend, workbuf: slice base.u8, opts: nptr base.decode_frame_options) {
+    var status : base.status
+
+    if this.call_sequence == 0x40 {
+        // No-op.
+    } else if this.call_sequence < 0x40 {
+        this.do_decode_frame_config?(dst: nullptr, src: args.src)
+    } else {
+        return base."@end of data"
+    }
+
+    status = this.swizzler.prepare!(
+            dst_pixfmt: args.dst.pixel_format(),
+            dst_palette: args.dst.palette(),
+            src_pixfmt: this.util.make_pixel_format(repr: this.pixfmt),
+            src_palette: this.util.empty_slice_u8(),
+            blend: args.blend)
+    if not status.is_ok() {
+        return status
+    }
+
+    this.from_src_to_coeffs?(src: args.src)
+    this.from_coeffs_to_pixels!()
+    status = this.from_pixels_to_dst!(dst: args.dst)
+    if not status.is_ok() {
+        return status
+    }
+
+    this.call_sequence = 0x60
+}
+
+pri func decoder.from_src_to_coeffs?(src: base.io_reader) {
+    var c8       : base.u8
+    var cy       : base.u32
+    var cx       : base.u32
+    var i        : base.u32
+    var has_bits : base.bool
+
+    // Read L AC coefficients.
+    i = 0
+    cy = 0
+    while cy < this.ly {
+        cx = 0
+        if cy == 0 {
+            cx = 1
+        }
+        while (cx ~mod* this.ly) < (this.lx ~mod* (this.ly ~mod- cy)) {
+            if has_bits {
+                has_bits = false
+                c8 >>= 4
+            } else {
+                has_bits = true
+                c8 = args.src.read_u8?()
+            }
+
+            // Multiply by (63 * 2) to double (†) and get to LDENOM.
+            this.lac[i & 31] = ((this.l_scale as base.u32) ~mod* 126) ~mod*
+                    this.util.sign_extend_convert_u16_u32(a: FROM_4_BITS_TO_PLUS_MINUS_1_00[c8 & 15])
+
+            i ~mod+= 1
+            cx ~mod+= 1
+        }
+        cy ~mod+= 1
+    }
+
+    // Read P AC coefficients.
+    i = 0
+    cx = 0
+    while cx < 5 {
+        if has_bits {
+            has_bits = false
+            c8 >>= 4
+        } else {
+            has_bits = true
+            c8 = args.src.read_u8?()
+        }
+
+        // Multiply by (31 * 2) to double (†) and get to LDENOM.
+        this.pac[i & 7] = ((this.p_scale as base.u32) ~mod* 62) ~mod*
+                this.util.sign_extend_convert_u16_u32(a: FROM_4_BITS_TO_PLUS_MINUS_1_25[c8 & 15])
+
+        i ~mod+= 1
+        cx ~mod+= 1
+    }
+
+    // Read Q AC coefficients.
+    i = 0
+    cx = 0
+    while cx < 5 {
+        if has_bits {
+            has_bits = false
+            c8 >>= 4
+        } else {
+            has_bits = true
+            c8 = args.src.read_u8?()
+        }
+
+        // Multiply by (31 * 2) to double (†) and get to LDENOM.
+        this.qac[i & 7] = ((this.q_scale as base.u32) ~mod* 62) ~mod*
+                this.util.sign_extend_convert_u16_u32(a: FROM_4_BITS_TO_PLUS_MINUS_1_25[c8 & 15])
+
+        i ~mod+= 1
+        cx ~mod+= 1
+    }
+
+    // Read A AC coefficients.
+    if this.has_alpha == 0 {
+        return ok
+    }
+    i = 0
+    cx = 0
+    while cx < 14 {
+        if has_bits {
+            has_bits = false
+            c8 >>= 4
+        } else {
+            has_bits = true
+            c8 = args.src.read_u8?()
+        }
+
+        // Multiply by 2 to double (†). We're already at ADENOM.
+        this.aac[i & 15] = ((this.a_scale as base.u32) ~mod* 2) ~mod*
+                this.util.sign_extend_convert_u16_u32(a: FROM_4_BITS_TO_PLUS_MINUS_1_00[c8 & 15])
+
+        i ~mod+= 1
+        cx ~mod+= 1
+    }
+}
+
+pri func decoder.from_coeffs_to_pixels!() {
+    var h : base.u32[..= 32]
+    var w : base.u32[..= 32]
+
+    // fx[7] and fy[7] are unused but we round up the array sizes up to a power
+    // of 2 (and bitwise-and the array indexes) to simplify bounds checking.
+    var fy : array[8] base.u32
+    var fx : array[8] base.u32
+
+    var cosines_base_y : base.u32[..= 127]
+    var cosines_base_x : base.u32[..= 127]
+
+    var y : base.u32
+    var x : base.u32
+
+    var f : base.u32
+    var l : base.u64
+    var p : base.u64
+    var q : base.u64
+    var b : base.u64
+    var g : base.u64
+    var r : base.u64
+    var a : base.u64
+
+    var i  : base.u32
+    var cy : base.u32
+    var cx : base.u32
+
+    h = DIMENSIONS_FROM_DIMENSION_CODES[this.h_dimension_code] as base.u32
+    w = DIMENSIONS_FROM_DIMENSION_CODES[this.w_dimension_code] as base.u32
+    fy[0] = 0x4000  // This is always cos(0), scaled by 0x4000 = (1 << 14).
+    fx[0] = 0x4000  // This is always cos(0), scaled by 0x4000 = (1 << 14).
+    a = 0xFF
+
+    y = 0
+    while y < h {
+        assert y < 32 via "a < b: a < c; c <= b"(c: h)
+
+        cosines_base_y = CUMULATIVE_DIMENSIONS[this.h_dimension_code] as base.u32
+        fy[1] = this.util.sign_extend_convert_u16_u32(a: COSINES[cosines_base_y + y][0])
+        fy[2] = this.util.sign_extend_convert_u16_u32(a: COSINES[cosines_base_y + y][1])
+        fy[3] = this.util.sign_extend_convert_u16_u32(a: COSINES[cosines_base_y + y][2])
+        fy[4] = this.util.sign_extend_convert_u16_u32(a: COSINES[cosines_base_y + y][3])
+        fy[5] = this.util.sign_extend_convert_u16_u32(a: COSINES[cosines_base_y + y][4])
+        fy[6] = this.util.sign_extend_convert_u16_u32(a: COSINES[cosines_base_y + y][5])
+
+        // The original JavaScript reference implementation also multiplied
+        // fy[cy] by 2 but we have already adjusted for that (†).
+
+        x = 0
+        while x < w,
+                inv y < 32,
+        {
+            assert x < 32 via "a < b: a < c; c <= b"(c: w)
+
+            cosines_base_x = CUMULATIVE_DIMENSIONS[this.w_dimension_code] as base.u32
+            fx[1] = this.util.sign_extend_convert_u16_u32(a: COSINES[cosines_base_x + x][0])
+            fx[2] = this.util.sign_extend_convert_u16_u32(a: COSINES[cosines_base_x + x][1])
+            fx[3] = this.util.sign_extend_convert_u16_u32(a: COSINES[cosines_base_x + x][2])
+            fx[4] = this.util.sign_extend_convert_u16_u32(a: COSINES[cosines_base_x + x][3])
+            fx[5] = this.util.sign_extend_convert_u16_u32(a: COSINES[cosines_base_x + x][4])
+            fx[6] = this.util.sign_extend_convert_u16_u32(a: COSINES[cosines_base_x + x][5])
+
+            // Accumulate L.
+            l = this.l_dc
+            i = 0
+            cy = 0
+            while cy < this.ly,
+                    inv y < 32,
+                    inv x < 32,
+            {
+                cx = 0
+                if cy == 0 {
+                    cx = 1
+                }
+                while (cx ~mod* this.ly) < (this.lx ~mod* (this.ly ~mod- cy)),
+                        inv y < 32,
+                        inv x < 32,
+                {
+                    f = fx[cx & 7] ~mod* fy[cy & 7]
+                    l ~mod+= this.util.sign_extend_convert_u32_u64(a: f) ~mod*
+                            this.util.sign_extend_convert_u32_u64(a: this.lac[i & 31])
+                    i ~mod+= 1
+                    cx ~mod+= 1
+                }
+                cy ~mod+= 1
+            }
+
+            // Accumulate P and Q.
+            p = this.p_dc
+            q = this.q_dc
+            i = 0
+            cy = 0
+            while cy < 3,
+                    inv y < 32,
+                    inv x < 32,
+            {
+                cx = 0
+                if cy == 0 {
+                    cx = 1
+                }
+                while cx < (3 - cy),
+                        inv y < 32,
+                        inv x < 32,
+                        inv cy < 3,
+                {
+                    assert cx < 3 via "a < b: a < c; c <= b"(c: 3 - cy)
+                    f = fx[cx] ~mod* fy[cy]
+                    p ~mod+= this.util.sign_extend_convert_u32_u64(a: f) ~mod*
+                            this.util.sign_extend_convert_u32_u64(a: this.pac[i & 7])
+                    q ~mod+= this.util.sign_extend_convert_u32_u64(a: f) ~mod*
+                            this.util.sign_extend_convert_u32_u64(a: this.qac[i & 7])
+                    i ~mod+= 1
+                    cx ~mod+= 1
+                }
+                cy ~mod+= 1
+            }
+
+            // Convert LPQ to RGB. The code is the i64 equivalents of:
+            //   b = l - ((2 * p) / 3)
+            //   r = (((3 * l) + q) - b) / 2
+            //   g = r - q
+            b = l ~mod- this.util.i64_divide(a: 2 ~mod* p, b: 3)
+            r = this.util.sign_extend_rshift_u64(a: ((3 ~mod* l) ~mod+ q) ~mod- b, n: 1)
+            g = r ~mod- q
+
+            // Rescale from (LDENOM << 28) to 255 and clamp.
+            //
+            // (LDENOM << 28) = 8589_384836_186112 = (33_683862_102690 * 255) + 162
+            //
+            // Rounding down (instead of rounding to nearest) more closely
+            // matches the original JavaScript reference implementation. The
+            // two implementations aren't a 100% match, due to floating point
+            // versus fixed point rounding errors, but they're pretty close.
+            if (b >> 63) <> 0 {
+                b = 0
+            } else if b >= (33_683862_102690 * 255) {
+                b = 255
+            } else {
+                b /= 33_683862_102690
+            }
+            if (g >> 63) <> 0 {
+                g = 0
+            } else if g >= (33_683862_102690 * 255) {
+                g = 255
+            } else {
+                g /= 33_683862_102690
+            }
+            if (r >> 63) <> 0 {
+                r = 0
+            } else if r >= (33_683862_102690 * 255) {
+                r = 255
+            } else {
+                r /= 33_683862_102690
+            }
+
+            // Accumulate, rescale from (ADENOM << 28) and clamp A.
+            if this.has_alpha <> 0 {
+                a = this.a_dc
+                i = 0
+                cy = 0
+                while cy < 5,
+                        inv y < 32,
+                        inv x < 32,
+                {
+                    cx = 0
+                    if cy == 0 {
+                        cx = 1
+                    }
+                    while cx < (5 - cy),
+                            inv y < 32,
+                            inv x < 32,
+                            inv cy < 5,
+                    {
+                        assert cx < 5 via "a < b: a < c; c <= b"(c: 5 - cy)
+                        f = fx[cx] ~mod* fy[cy]
+                        a ~mod+= this.util.sign_extend_convert_u32_u64(a: f) ~mod*
+                                this.util.sign_extend_convert_u32_u64(a: this.aac[i & 15])
+                        i ~mod+= 1
+                        cx ~mod+= 1
+                    }
+                    cy ~mod+= 1
+                }
+
+                // (ADENOM << 28) = 65_970697_666560 = (258708_618300 * 255) + 60
+                if (a >> 63) <> 0 {
+                    a = 0
+                } else if a >= (258708_618300 * 255) {
+                    a = 255
+                } else {
+                    a /= 258708_618300
+                }
+            }
+
+            // Store the BGRA pixel.
+            this.pixels[y][(4 * x) + 0] = (b & 0xFF) as base.u8
+            this.pixels[y][(4 * x) + 1] = (g & 0xFF) as base.u8
+            this.pixels[y][(4 * x) + 2] = (r & 0xFF) as base.u8
+            this.pixels[y][(4 * x) + 3] = (a & 0xFF) as base.u8
+
+            x += 1
+        }
+        y += 1
+    }
+}
+
+pri func decoder.from_pixels_to_dst!(dst: ptr base.pixel_buffer) base.status {
+    var h : base.u32[..= 32]
+    var w : base.u32[..= 32]
+
+    var dst_pixfmt          : base.pixel_format
+    var dst_bits_per_pixel  : base.u32[..= 256]
+    var dst_bytes_per_pixel : base.u32[..= 32]
+    var dst_bytes_per_row   : base.u64
+    var tab                 : table base.u8
+    var y                   : base.u32
+    var dst                 : slice base.u8
+    var src                 : slice base.u8
+
+    h = DIMENSIONS_FROM_DIMENSION_CODES[this.h_dimension_code] as base.u32
+    w = DIMENSIONS_FROM_DIMENSION_CODES[this.w_dimension_code] as base.u32
+
+    // TODO: the dst_pixfmt variable shouldn't be necessary. We should be able
+    // to chain the two calls: "args.dst.pixel_format().bits_per_pixel()".
+    dst_pixfmt = args.dst.pixel_format()
+    dst_bits_per_pixel = dst_pixfmt.bits_per_pixel()
+    if (dst_bits_per_pixel & 7) <> 0 {
+        return base."#unsupported option"
+    }
+    dst_bytes_per_pixel = dst_bits_per_pixel / 8
+    dst_bytes_per_row = (w * dst_bytes_per_pixel) as base.u64
+    tab = args.dst.plane(p: 0)
+
+    while y < h {
+        assert y < 32 via "a < b: a < c; c <= b"(c: h)
+        src = this.pixels[y][.. w * 4]
+
+        dst = tab.row_u32(y: y)
+        if dst_bytes_per_row < dst.length() {
+            dst = dst[.. dst_bytes_per_row]
+        }
+
+        this.swizzler.swizzle_interleaved_from_slice!(
+                dst: dst,
+                dst_palette: args.dst.palette(),
+                src: src)
+
+        y += 1
+    }
+
+    return ok
+}
+
+pub func decoder.frame_dirty_rect() base.rect_ie_u32 {
+    return this.util.make_rect_ie_u32(
+            min_incl_x: 0,
+            min_incl_y: 0,
+            max_excl_x: DIMENSIONS_FROM_DIMENSION_CODES[this.w_dimension_code] as base.u32,
+            max_excl_y: DIMENSIONS_FROM_DIMENSION_CODES[this.h_dimension_code] as base.u32)
+}
+
+pub func decoder.num_animation_loops() base.u32 {
+    return 0
+}
+
+pub func decoder.num_decoded_frame_configs() base.u64 {
+    if this.call_sequence > 0x20 {
+        return 1
+    }
+    return 0
+}
+
+pub func decoder.num_decoded_frames() base.u64 {
+    if this.call_sequence > 0x40 {
+        return 1
+    }
+    return 0
+}
+
+pub func decoder.restart_frame!(index: base.u64, io_position: base.u64) base.status {
+    if this.call_sequence < 0x20 {
+        return base."#bad call sequence"
+    }
+    if (args.index <> 0) or (args.io_position <> (this.frame_config_io_position as base.u64)) {
+        return base."#bad argument"
+    }
+    this.call_sequence = 0x28
+    return ok
+}
+
+pub func decoder.set_report_metadata!(fourcc: base.u32, report: base.bool) {
+    // No-op. Thumbhash doesn't support metadata.
+}
+
+pub func decoder.tell_me_more?(dst: base.io_writer, minfo: nptr base.more_information, src: base.io_reader) {
+    return base."#no more information"
+}
+
+pub func decoder.workbuf_len() base.range_ii_u64 {
+    return this.util.make_range_ii_u64(min_incl: 0, max_incl: 0)
+}
+
+// DIMENSIONS_FROM_DIMENSION_CODES enumerates all possible widths and heights.
+pri const DIMENSIONS_FROM_DIMENSION_CODES : roarray[8] base.u8[..= 32] = [
+        0, 14, 18, 19, 23, 26, 27, 32,
+]
+
+// CUMULATIVE_DIMENSIONS is the sum-table of DIMENSIONS_FROM_DIMENSION_CODES.
+pri const CUMULATIVE_DIMENSIONS : roarray[8] base.u8[..= 127] = [
+        0, 0, 14, 32, 51, 74, 100, 127,
+]
+
+// DIMENSION_CODES_FROM_HAS_ALPHA_AND_L_COUNT holds the width (high 4 bits) and
+// height (low 4 bits) codes. For example, if has_alpha is 0 and l_count is 5
+// then the 0x47 value means that the image is 23×32 (so the aspect ratio is
+// 0.71875), because:
+//  - the width  is DIMENSIONS_FROM_DIMENSION_CODES[4] = 23
+//  - the height is DIMENSIONS_FROM_DIMENSION_CODES[7] = 32
+//
+// If is_landscape is 1 (true) then the width and height are swapped.
+pri const DIMENSION_CODES_FROM_HAS_ALPHA_AND_L_COUNT : roarray[2] roarray[8] base.u8 = [
+        [0x17, 0x17, 0x17, 0x17, 0x27, 0x47, 0x67, 0x77],
+        [0x37, 0x37, 0x37, 0x37, 0x57, 0x77, 0x76, 0x74],
+]
+
+// FROM_4_BITS_TO_PLUS_MINUS_1_00 converts AC coefficients to 2.14 fixed point.
+pri const FROM_4_BITS_TO_PLUS_MINUS_1_00 : roarray[16] base.u16 = [
+        0xC000,  // -1.000
+        0xC889,  // -0.867
+        0xD111,  // -0.733
+        0xD99A,  // -0.600
+        0xE222,  // -0.467
+        0xEAAB,  // -0.333
+        0xF333,  // -0.200
+        0xFBBC,  // -0.067
+        0x0444,  // +0.067
+        0x0CCD,  // +0.200
+        0x1555,  // +0.333
+        0x1DDE,  // +0.467
+        0x2666,  // +0.600
+        0x2EEF,  // +0.733
+        0x3777,  // +0.867
+        0x4000,  // +1.000
+]
+
+// FROM_4_BITS_TO_PLUS_MINUS_1_25 converts AC coefficients to 2.14 fixed point.
+pri const FROM_4_BITS_TO_PLUS_MINUS_1_25 : roarray[16] base.u16 = [
+        0xB000,  // -1.250
+        0xBAAB,  // -1.083
+        0xC555,  // -0.917
+        0xD000,  // -0.750
+        0xDAAB,  // -0.583
+        0xE555,  // -0.417
+        0xF000,  // -0.250
+        0xFAAB,  // -0.083
+        0x0555,  // +0.083
+        0x1000,  // +0.250
+        0x1AAB,  // +0.417
+        0x2555,  // +0.583
+        0x3000,  // +0.750
+        0x3AAB,  // +0.917
+        0x4555,  // +1.083
+        0x5000,  // +1.250
+]
+
+// COSINES[etc][cx - 1] holds cos(π * cx * (x + 0.5) / w) as 2.14 fixed point.
+// Each 6-element row is copied to fx[1 .. 7] and fy[1 .. 7]. fx[0] and fy[0]
+// are always equal to 0x4000, which is cos(0) as 2.14 fixed point. fx[7] and
+// fy[7] are unused.
+//
+// (x + 0.5) ranges from (0 + 0.5) to (w - 0.5). Valid w values are given by
+// the positive elements of DIMENSIONS_FROM_DIMENSION_CODES.
+pri const COSINES : roarray[159] roarray[6] base.u16 = [
+        // w = 14
+        [0x3F99, 0x3E65, 0x3C69, 0x39A9, 0x3631, 0x320A],  // x =  0
+        [0x3C69, 0x320A, 0x220D, 0x0E3E, 0xF8D6, 0xE43B],  // x =  1
+        [0x3631, 0x1BC5, 0xF8D6, 0xD819, 0xC397, 0xC19B],  // x =  2
+        [0x2D41, 0x0000, 0xD2BF, 0xC000, 0xD2BF, 0x0000],  // x =  3
+        [0x220D, 0xE43B, 0xC067, 0xD819, 0x1523, 0x3E65],  // x =  4
+        [0x1523, 0xCDF6, 0xC9CF, 0x0E3E, 0x3F99, 0x1BC5],  // x =  5
+        [0x072A, 0xC19B, 0xEADD, 0x39A9, 0x220D, 0xCDF6],  // x =  6
+        [0xF8D6, 0xC19B, 0x1523, 0x39A9, 0xDDF3, 0xCDF6],  // x =  7
+        [0xEADD, 0xCDF6, 0x3631, 0x0E3E, 0xC067, 0x1BC5],  // x =  8
+        [0xDDF3, 0xE43B, 0x3F99, 0xD819, 0xEADD, 0x3E65],  // x =  9
+        [0xD2BF, 0x0000, 0x2D41, 0xC000, 0x2D41, 0x0000],  // x = 10
+        [0xC9CF, 0x1BC5, 0x072A, 0xD819, 0x3C69, 0xC19B],  // x = 11
+        [0xC397, 0x320A, 0xDDF3, 0x0E3E, 0x072A, 0xE43B],  // x = 12
+        [0xC067, 0x3E65, 0xC397, 0x39A9, 0xC9CF, 0x320A],  // x = 13
+
+        // w = 18
+        [0x3FC2, 0x3F07, 0x3DD2, 0x3C24, 0x3A01, 0x376D],  // x =  0
+        [0x3DD2, 0x376D, 0x2D41, 0x2000, 0x1090, 0x0000],  // x =  1
+        [0x3A01, 0x2923, 0x1090, 0xF4E3, 0xDB4B, 0xC893],  // x =  2
+        [0x346D, 0x15E4, 0xEF70, 0xCEF9, 0xC03E, 0xC893],  // x =  3
+        [0x2D41, 0x0000, 0xD2BF, 0xC000, 0xD2BF, 0x0000],  // x =  4
+        [0x24B5, 0xEA1C, 0xC22E, 0xCEF9, 0x0594, 0x376D],  // x =  5
+        [0x1B0C, 0xD6DD, 0xC22E, 0xF4E3, 0x346D, 0x376D],  // x =  6
+        [0x1090, 0xC893, 0xD2BF, 0x2000, 0x3DD2, 0x0000],  // x =  7
+        [0x0594, 0xC0F9, 0xEF70, 0x3C24, 0x1B0C, 0xC893],  // x =  8
+        [0xFA6C, 0xC0F9, 0x1090, 0x3C24, 0xE4F4, 0xC893],  // x =  9
+        [0xEF70, 0xC893, 0x2D41, 0x2000, 0xC22E, 0x0000],  // x = 10
+        [0xE4F4, 0xD6DD, 0x3DD2, 0xF4E3, 0xCB93, 0x376D],  // x = 11
+        [0xDB4B, 0xEA1C, 0x3DD2, 0xCEF9, 0xFA6C, 0x376D],  // x = 12
+        [0xD2BF, 0x0000, 0x2D41, 0xC000, 0x2D41, 0x0000],  // x = 13
+        [0xCB93, 0x15E4, 0x1090, 0xCEF9, 0x3FC2, 0xC893],  // x = 14
+        [0xC5FF, 0x2923, 0xEF70, 0xF4E3, 0x24B5, 0xC893],  // x = 15
+        [0xC22E, 0x376D, 0xD2BF, 0x2000, 0xEF70, 0x0000],  // x = 16
+        [0xC03E, 0x3F07, 0xC22E, 0x3C24, 0xC5FF, 0x376D],  // x = 17
+
+        // w = 19
+        [0x3FC8, 0x3F21, 0x3E0B, 0x3C88, 0x3A9C, 0x3849],  // x =  0
+        [0x3E0B, 0x3849, 0x2F16, 0x2301, 0x14C8, 0x0549],  // x =  1
+        [0x3A9C, 0x2B59, 0x14C8, 0xFAB7, 0xE18A, 0xCD7F],  // x =  2
+        [0x3594, 0x19B5, 0xF577, 0xD4A7, 0xC1F5, 0xC378],  // x =  3
+        [0x2F16, 0x0549, 0xD8B1, 0xC0DF, 0xCA6C, 0xF04A],  // x =  4
+        [0x274F, 0xF04A, 0xC564, 0xC7B7, 0xF577, 0x2B59],  // x =  5
+        [0x1E76, 0xDCFF, 0xC038, 0xE64B, 0x274F, 0x3F21],  // x =  6
+        [0x14C8, 0xCD7F, 0xCA6C, 0x0FB6, 0x3FC8, 0x19B5],  // x =  7
+        [0x0A89, 0xC378, 0xE18A, 0x3281, 0x2F16, 0xDCFF],  // x =  8
+        [0x0000, 0xC000, 0x0000, 0x4000, 0x0000, 0xC000],  // x =  9
+        [0xF577, 0xC378, 0x1E76, 0x3281, 0xD0EA, 0xDCFF],  // x = 10
+        [0xEB38, 0xCD7F, 0x3594, 0x0FB6, 0xC038, 0x19B5],  // x = 11
+        [0xE18A, 0xDCFF, 0x3FC8, 0xE64B, 0xD8B1, 0x3F21],  // x = 12
+        [0xD8B1, 0xF04A, 0x3A9C, 0xC7B7, 0x0A89, 0x2B59],  // x = 13
+        [0xD0EA, 0x0549, 0x274F, 0xC0DF, 0x3594, 0xF04A],  // x = 14
+        [0xCA6C, 0x19B5, 0x0A89, 0xD4A7, 0x3E0B, 0xC378],  // x = 15
+        [0xC564, 0x2B59, 0xEB38, 0xFAB7, 0x1E76, 0xCD7F],  // x = 16
+        [0xC1F5, 0x3849, 0xD0EA, 0x2301, 0xEB38, 0x0549],  // x = 17
+        [0xC038, 0x3F21, 0xC1F5, 0x3C88, 0xC564, 0x3849],  // x = 18
+
+        // w = 23
+        [0x3FDA, 0x3F67, 0x3EA9, 0x3DA0, 0x3C4E, 0x3AB4],  // x =  0
+        [0x3EA9, 0x3AB4, 0x3449, 0x2BAF, 0x2141, 0x156F],  // x =  1
+        [0x3C4E, 0x31A5, 0x2141, 0x0D05, 0xF749, 0xE28E],  // x =  2
+        [0x38D3, 0x24E8, 0x08B7, 0xEA91, 0xD13A, 0xC260],  // x =  3
+        [0x3449, 0x156F, 0xEEBC, 0xCE5B, 0xC026, 0xC951],  // x =  4
+        [0x2EC6, 0x045E, 0xD79C, 0xC099, 0xCBB7, 0xF2FB],  // x =  5
+        [0x2864, 0xF2FB, 0xC72D, 0xC54C, 0xEEBC, 0x24E8],  // x =  6
+        [0x2141, 0xE28E, 0xC026, 0xDB18, 0x197F, 0x3F67],  // x =  7
+        [0x197F, 0xD451, 0xC3B2, 0xFBA2, 0x38D3, 0x31A5],  // x =  8
+        [0x1144, 0xC951, 0xD13A, 0x1D72, 0x3EA9, 0x045E],  // x =  9
+        [0x08B7, 0xC260, 0xE681, 0x36AF, 0x2864, 0xD451],  // x = 10
+        [0x0000, 0xC000, 0x0000, 0x4000, 0x0000, 0xC000],  // x = 11
+        [0xF749, 0xC260, 0x197F, 0x36AF, 0xD79C, 0xD451],  // x = 12
+        [0xEEBC, 0xC951, 0x2EC6, 0x1D72, 0xC157, 0x045E],  // x = 13
+        [0xE681, 0xD451, 0x3C4E, 0xFBA2, 0xC72D, 0x31A5],  // x = 14
+        [0xDEBF, 0xE28E, 0x3FDA, 0xDB18, 0xE681, 0x3F67],  // x = 15
+        [0xD79C, 0xF2FB, 0x38D3, 0xC54C, 0x1144, 0x24E8],  // x = 16
+        [0xD13A, 0x045E, 0x2864, 0xC099, 0x3449, 0xF2FB],  // x = 17
+        [0xCBB7, 0x156F, 0x1144, 0xCE5B, 0x3FDA, 0xC951],  // x = 18
+        [0xC72D, 0x24E8, 0xF749, 0xEA91, 0x2EC6, 0xC260],  // x = 19
+        [0xC3B2, 0x31A5, 0xDEBF, 0x0D05, 0x08B7, 0xE28E],  // x = 20
+        [0xC157, 0x3AB4, 0xCBB7, 0x2BAF, 0xDEBF, 0x156F],  // x = 21
+        [0xC026, 0x3F67, 0xC157, 0x3DA0, 0xC3B2, 0x3AB4],  // x = 22
+
+        // w = 26
+        [0x3FE2, 0x3F89, 0x3EF4, 0x3E24, 0x3D1A, 0x3BD7],  // x =  0
+        [0x3EF4, 0x3BD7, 0x36C5, 0x2FE8, 0x2778, 0x1DBE],  // x =  1
+        [0x3D1A, 0x34AC, 0x2778, 0x16B2, 0x03DD, 0xF0AF],  // x =  2
+        [0x3A5D, 0x2A71, 0x130A, 0xF849, 0xDEE4, 0xCB54],  // x =  3
+        [0x36C5, 0x1DBE, 0xFC23, 0xDBA5, 0xC5A3, 0xC077],  // x =  4
+        [0x3261, 0x0F51, 0xE5BC, 0xC755, 0xC10C, 0xD58F],  // x =  5
+        [0x2D41, 0x0000, 0xD2BF, 0xC000, 0xD2BF, 0x0000],  // x =  6
+        [0x2778, 0xF0AF, 0xC5A3, 0xC755, 0xF477, 0x2A71],  // x =  7
+        [0x211C, 0xE242, 0xC01E, 0xDBA5, 0x1A44, 0x3F89],  // x =  8
+        [0x1A44, 0xD58F, 0xC2E6, 0xF849, 0x36C5, 0x34AC],  // x =  9
+        [0x130A, 0xCB54, 0xCD9F, 0x16B2, 0x3FE2, 0x0F51],  // x = 10
+        [0x0B89, 0xC429, 0xDEE4, 0x2FE8, 0x3261, 0xE242],  // x = 11
+        [0x03DD, 0xC077, 0xF477, 0x3E24, 0x130A, 0xC429],  // x = 12
+        [0xFC23, 0xC077, 0x0B89, 0x3E24, 0xECF6, 0xC429],  // x = 13
+        [0xF477, 0xC429, 0x211C, 0x2FE8, 0xCD9F, 0xE242],  // x = 14
+        [0xECF6, 0xCB54, 0x3261, 0x16B2, 0xC01E, 0x0F51],  // x = 15
+        [0xE5BC, 0xD58F, 0x3D1A, 0xF849, 0xC93B, 0x34AC],  // x = 16
+        [0xDEE4, 0xE242, 0x3FE2, 0xDBA5, 0xE5BC, 0x3F89],  // x = 17
+        [0xD888, 0xF0AF, 0x3A5D, 0xC755, 0x0B89, 0x2A71],  // x = 18
+        [0xD2BF, 0x0000, 0x2D41, 0xC000, 0x2D41, 0x0000],  // x = 19
+        [0xCD9F, 0x0F51, 0x1A44, 0xC755, 0x3EF4, 0xD58F],  // x = 20
+        [0xC93B, 0x1DBE, 0x03DD, 0xDBA5, 0x3A5D, 0xC077],  // x = 21
+        [0xC5A3, 0x2A71, 0xECF6, 0xF849, 0x211C, 0xCB54],  // x = 22
+        [0xC2E6, 0x34AC, 0xD888, 0x16B2, 0xFC23, 0xF0AF],  // x = 23
+        [0xC10C, 0x3BD7, 0xC93B, 0x2FE8, 0xD888, 0x1DBE],  // x = 24
+        [0xC01E, 0x3F89, 0xC10C, 0x3E24, 0xC2E6, 0x3BD7],  // x = 25
+
+        // w = 27
+        [0x3FE4, 0x3F91, 0x3F07, 0x3E46, 0x3D50, 0x3C24],  // x =  0
+        [0x3F07, 0x3C24, 0x376D, 0x3107, 0x2923, 0x2000],  // x =  1
+        [0x3D50, 0x3579, 0x2923, 0x1959, 0x076E, 0xF4E3],  // x =  2
+        [0x3AC4, 0x2BEB, 0x15E4, 0xFC47, 0xE347, 0xCEF9],  // x =  3
+        [0x376D, 0x2000, 0x0000, 0xE000, 0xC893, 0xC000],  // x =  4
+        [0x3356, 0x125B, 0xEA1C, 0xCA87, 0xC01C, 0xCEF9],  // x =  5
+        [0x2E8D, 0x03B9, 0xD6DD, 0xC06F, 0xCCAA, 0xF4E3],  // x =  6
+        [0x2923, 0xF4E3, 0xC893, 0xC3DC, 0xEA1C, 0x2000],  // x =  7
+        [0x232B, 0xE6A7, 0xC0F9, 0xD415, 0x0EC2, 0x3C24],  // x =  8
+        [0x1CB9, 0xD9C8, 0xC0F9, 0xEDA5, 0x2E8D, 0x3C24],  // x =  9
+        [0x15E4, 0xCEF9, 0xC893, 0x0B1D, 0x3F07, 0x2000],  // x = 10
+        [0x0EC2, 0xC6CF, 0xD6DD, 0x2638, 0x3AC4, 0xF4E3],  // x = 11
+        [0x076E, 0xC1BA, 0xEA1C, 0x3931, 0x232B, 0xCEF9],  // x = 12
+        [0x0000, 0xC000, 0x0000, 0x4000, 0x0000, 0xC000],  // x = 13
+        [0xF892, 0xC1BA, 0x15E4, 0x3931, 0xDCD5, 0xCEF9],  // x = 14
+        [0xF13E, 0xC6CF, 0x2923, 0x2638, 0xC53C, 0xF4E3],  // x = 15
+        [0xEA1C, 0xCEF9, 0x376D, 0x0B1D, 0xC0F9, 0x2000],  // x = 16
+        [0xE347, 0xD9C8, 0x3F07, 0xEDA5, 0xD173, 0x3C24],  // x = 17
+        [0xDCD5, 0xE6A7, 0x3F07, 0xD415, 0xF13E, 0x3C24],  // x = 18
+        [0xD6DD, 0xF4E3, 0x376D, 0xC3DC, 0x15E4, 0x2000],  // x = 19
+        [0xD173, 0x03B9, 0x2923, 0xC06F, 0x3356, 0xF4E3],  // x = 20
+        [0xCCAA, 0x125B, 0x15E4, 0xCA87, 0x3FE4, 0xCEF9],  // x = 21
+        [0xC893, 0x2000, 0x0000, 0xE000, 0x376D, 0xC000],  // x = 22
+        [0xC53C, 0x2BEB, 0xEA1C, 0xFC47, 0x1CB9, 0xCEF9],  // x = 23
+        [0xC2B0, 0x3579, 0xD6DD, 0x1959, 0xF892, 0xF4E3],  // x = 24
+        [0xC0F9, 0x3C24, 0xC893, 0x3107, 0xD6DD, 0x2000],  // x = 25
+        [0xC01C, 0x3F91, 0xC0F9, 0x3E46, 0xC2B0, 0x3C24],  // x = 26
+
+        // w = 32
+        [0x3FEC, 0x3FB1, 0x3F4F, 0x3EC5, 0x3E15, 0x3D3F],  // x =  0
+        [0x3F4F, 0x3D3F, 0x39DB, 0x3537, 0x2F6C, 0x289A],  // x =  1
+        [0x3E15, 0x3871, 0x2F6C, 0x238E, 0x1590, 0x0646],  // x =  2
+        [0x3C42, 0x3179, 0x20E7, 0x0C7C, 0xF69C, 0xE1D5],  // x =  3
+        [0x39DB, 0x289A, 0x0F8D, 0xF384, 0xD9E0, 0xC78F],  // x =  4
+        [0x36E5, 0x1E2B, 0xFCDC, 0xDC72, 0xC625, 0xC04F],  // x =  5
+        [0x3368, 0x1294, 0xEA70, 0xCAC9, 0xC014, 0xCE87],  // x =  6
+        [0x2F6C, 0x0646, 0xD9E0, 0xC13B, 0xC91B, 0xED6C],  // x =  7
+        [0x2AFB, 0xF9BA, 0xCC98, 0xC13B, 0xDF19, 0x1294],  // x =  8
+        [0x2620, 0xED6C, 0xC3BE, 0xCAC9, 0xFCDC, 0x3179],  // x =  9
+        [0x20E7, 0xE1D5, 0xC014, 0xDC72, 0x1B5D, 0x3FB1],  // x = 10
+        [0x1B5D, 0xD766, 0xC1EB, 0xF384, 0x3368, 0x3871],  // x = 11
+        [0x1590, 0xCE87, 0xC91B, 0x0C7C, 0x3F4F, 0x1E2B],  // x = 12
+        [0x0F8D, 0xC78F, 0xD505, 0x238E, 0x3C42, 0xF9BA],  // x = 13
+        [0x0964, 0xC2C1, 0xE4A3, 0x3537, 0x2AFB, 0xD766],  // x = 14
+        [0x0324, 0xC04F, 0xF69C, 0x3EC5, 0x0F8D, 0xC2C1],  // x = 15
+        [0xFCDC, 0xC04F, 0x0964, 0x3EC5, 0xF073, 0xC2C1],  // x = 16
+        [0xF69C, 0xC2C1, 0x1B5D, 0x3537, 0xD505, 0xD766],  // x = 17
+        [0xF073, 0xC78F, 0x2AFB, 0x238E, 0xC3BE, 0xF9BA],  // x = 18
+        [0xEA70, 0xCE87, 0x36E5, 0x0C7C, 0xC0B1, 0x1E2B],  // x = 19
+        [0xE4A3, 0xD766, 0x3E15, 0xF384, 0xCC98, 0x3871],  // x = 20
+        [0xDF19, 0xE1D5, 0x3FEC, 0xDC72, 0xE4A3, 0x3FB1],  // x = 21
+        [0xD9E0, 0xED6C, 0x3C42, 0xCAC9, 0x0324, 0x3179],  // x = 22
+        [0xD505, 0xF9BA, 0x3368, 0xC13B, 0x20E7, 0x1294],  // x = 23
+        [0xD094, 0x0646, 0x2620, 0xC13B, 0x36E5, 0xED6C],  // x = 24
+        [0xCC98, 0x1294, 0x1590, 0xCAC9, 0x3FEC, 0xCE87],  // x = 25
+        [0xC91B, 0x1E2B, 0x0324, 0xDC72, 0x39DB, 0xC04F],  // x = 26
+        [0xC625, 0x289A, 0xF073, 0xF384, 0x2620, 0xC78F],  // x = 27
+        [0xC3BE, 0x3179, 0xDF19, 0x0C7C, 0x0964, 0xE1D5],  // x = 28
+        [0xC1EB, 0x3871, 0xD094, 0x238E, 0xEA70, 0x0646],  // x = 29
+        [0xC0B1, 0x3D3F, 0xC625, 0x3537, 0xD094, 0x289A],  // x = 30
+        [0xC014, 0x3FB1, 0xC0B1, 0x3EC5, 0xC1EB, 0x3D3F],  // x = 31
+]

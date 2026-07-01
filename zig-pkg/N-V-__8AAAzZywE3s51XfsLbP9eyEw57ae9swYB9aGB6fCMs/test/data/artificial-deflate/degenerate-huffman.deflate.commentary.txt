@@ -1,0 +1,69 @@
+Running degenerate-huffman.deflate through script/print-bits.go and adding
+commentary:
+
+    offset  xoffset ASCII   hex     binary
+    000000  0x0000  .       0x04    0b_...._.100  Dynamic Huffman block, non-final
+    000000  0x0000  .       0x04    0b_0000_0...  NumLCodes: 257
+    000001  0x0001  .       0xC0    0b_...0_0000  NumDCodes: 1
+    000001  0x0001  .       0xC0    0b_110._....  NumCLCodeLengths: 18
+    000002  0x0002  !       0x21    0b_...._...1
+
+Decode the H-CL Huffman table (NumCLCodeLengths = 18). Recall the peculiar
+code_order: 16, 17, 18, 0, 8, ..., 2, 14, 1, 15:
+
+    000002  0x0002  !       0x21    0b_0010_000.  CLCodeLengths: 18 x 3 bits
+    000003  0x0003  .       0x01    0b_0000_0001    CLCLs[ 1] is 2
+    000004  0x0004  .       0x00    0b_0000_0000    CLCLs[ 2] is 2
+    000005  0x0005  .       0x00    0b_0000_0000    CLCLs[17] is 2
+    000006  0x0006  .       0x00    0b_0000_0000    CLCLs[18] is 2
+    000007  0x0007  .       0x80    0b_1000_0000
+    000008  0x0008  .       0xA0    0b_.010_0000
+
+The H-CL Huffman table is:
+"00" -> CodeLength=1
+"01" -> CodeLength=2
+"10" -> CodeLength=17 which means a block of ( 3 + 3_extra_bits) zeroes
+"11" -> CodeLength=18 which means a block of (11 + 7_extra_bits) zeroes
+
+Decode the H-L Huffman table (NumLCodes = 257):
+
+    000008  0x0008  .       0xA0    0b_1..._....  "11" is CL=18: 11+7extra
+    000009  0x0009  .       0xB7    0b_...._...1
+    000009  0x0009  .       0xB7    0b_1011_011.  7extra=91: 102 zeroes
+    000010  0x000A  V       0x56    0b_...._..10  "01" is CL= 2 (102='f')
+    000010  0x000A  V       0x56    0b_...._01..  "10" is CL=17:  3+3extra
+    000010  0x000A  V       0x56    0b_.101_....  3extra=5: 8 zeroes
+    000010  0x000A  V       0x56    0b_0..._....  "00" is CL= 1 (111='o')
+    000011  0x000B  .       0xFE    0b_...._...0
+    000011  0x000B  .       0xFE    0b_...._.11.  "11" is CL=18: 11+7extra
+    000011  0x000B  .       0xFE    0b_1111_1...  7extra=127: 138 zeroes
+    000012  0x000C  7       0x37    0b_...._..11
+    000012  0x000C  7       0x37    0b_...._01..  "10" is CL=17:  3+3extra
+    000012  0x000C  7       0x37    0b_.011_....  3extra=3: 6 zeroes
+    000012  0x000C  7       0x37    0b_0..._....  "01" is CL=2 (256=EOB)
+    000013  0x000D  .       0x89    0b_...._...1
+
+The H-L Huffman table is:
+"0"  -> 'o'
+"10" -> 'f'
+"11" -> EOB
+
+Decode the H-D Huffman table (NumDCodes = 1):
+
+    000013  0x000D  .       0x89    0b_...._.00.  "00" is CL= 1 (DCode 0)
+
+The H-D Huffman table is:
+"0"  -> 0
+This table is incomplete: there is no entry starting with a "1" bit. It is
+therefore degenerate, but not used below.
+
+Apply H-L and H-D.
+
+    000013  0x000D  .       0x89    0b_...0_1...  lcode:  102  literal 'f'
+    000013  0x000D  .       0x89    0b_..0._....  lcode:  111  literal 'o'
+    000013  0x000D  .       0x89    0b_.0.._....  lcode:  111  literal 'o'
+    000013  0x000D  .       0x89    0b_1..._....  lcode:  256  end of block
+    000014  0x000E  .       0x1B    0b_...._...1
+
+The second Dynamic Huffman block (the final one) continues after that, but this
+commentary stops here.

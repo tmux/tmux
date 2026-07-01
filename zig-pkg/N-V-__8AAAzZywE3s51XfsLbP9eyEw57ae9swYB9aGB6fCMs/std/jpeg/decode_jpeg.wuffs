@@ -1,0 +1,2270 @@
+// Copyright 2023 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pub status "#bad DHT marker"
+pub status "#bad DQT marker"
+pub status "#bad DRI marker"
+pub status "#bad SOF marker"
+pub status "#bad SOS marker"
+pub status "#bad header"
+pub status "#bad marker"
+pub status "#bad scan count"
+pub status "#missing Huffman table"
+pub status "#missing Quantization table"
+pub status "#rejected progressive JPEG"
+pub status "#short SOS bitstream"
+pub status "#truncated input"
+pub status "#unsupported arithmetic coding"
+pub status "#unsupported color model"
+pub status "#unsupported fractional sampling"
+pub status "#unsupported hierarchical coding"
+pub status "#unsupported implicit height"
+pub status "#unsupported lossless coding"
+pub status "#unsupported marker"
+pub status "#unsupported precision (12 bits)"
+pub status "#unsupported precision (16 bits)"
+pub status "#unsupported precision"
+pub status "#unsupported scan count"
+
+pri status "#internal error: inconsistent decoder state"
+
+pub const DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE : base.u64 = 0xC_00C0_0300
+
+pub struct decoder? implements base.image_decoder(
+        width  : base.u32[..= 0xFFFF],
+        height : base.u32[..= 0xFFFF],
+
+        width_in_mcus  : base.u32[..= 0x2000],
+        height_in_mcus : base.u32[..= 0x2000],
+
+        // The call sequence state machine is discussed in
+        // (/doc/std/image-decoders-call-sequence.md).
+        call_sequence : base.u8,
+
+        test_only_interrupt_decode_mcu : base.bool,
+
+        is_jfif        : base.bool,
+        is_adobe       : base.u8,  // 0: no, 1: yes+RGB/CMYK, 2:yes+YCC/YCCK.
+        is_rgb_or_cmyk : base.bool,
+
+        sof_marker          : base.u8,
+        next_restart_marker : base.u8[..= 7],
+
+        max_incl_components_h : base.u8[..= 4],
+        max_incl_components_v : base.u8[..= 4],
+
+        num_components : base.u32[..= 4],
+        components_c   : array[4] base.u8,
+        components_h   : array[4] base.u8[..= 4],
+        components_v   : array[4] base.u8[..= 4],
+        components_tq  : array[4] base.u8[..= 3],
+
+        // components_workbuf_offsets[0 .. 5], indexed by (csel) and (csel +
+        // 1), is the i and j bounds in the workbuf[i .. j] slice holding 8-bit
+        // samples (post-IDCT values) for the csel'th component. The row width
+        // is components_workbuf_widths[csel], which is also the row stride.
+        // There is no slack.
+        //
+        // For example, a 4:2:0 chroma-subsampled, 36 pixels wide × 28 pixels
+        // high image has 6 blocks (4 Y, 1 Cb, 1 Cr; 8×8 samples each) per MCU.
+        // Each MCU is 16×16 pixels. The image is 3 MCUs wide × 2 MCUs high.
+        // The post-IDCT image dimensions round up to 48 × 32 pixels.
+        //
+        // The components_workbuf_widths array is:
+        //   0: 0x30 = 48  // Y
+        //   1: 0x18 = 24  // Cb
+        //   2: 0x18 = 24  // Cr
+        //   3: 0x00 =  0  // Unused
+        //
+        // The head of the components_workbuf_offsets array is:
+        //   0: 0x0000 =    0
+        //   1: 0x0600 = 1536 = previous + (48 * 32)
+        //   2: 0x0780 = 1920 = previous + (24 * 16)
+        //   3: 0x0900 = 2304 = previous + (24 * 16)
+        //   4: 0x0900 = 2304 = previous + ( 0 *  0)
+        //
+        // That's components_workbuf_offsets[0 .. 5], for to a csel ranging in
+        // [0 .. 4]. For sequential JPEGs, components_workbuf_offsets[5 .. 9]
+        // are all equal to components_workbuf_offsets[4]. The four tail
+        // elements are unused, other than components_workbuf_offsets[8] (equal
+        // to components_workbuf_offsets[4]) being the workbuf_len.
+        //
+        // For progressive JPEGs, these hold the pre-IDCT pre-dequantization
+        // coefficients that persist between and are incrementally built by
+        // multiple Scans. There are 64 16-bit coefficients per block, just
+        // like there are 64 8-bit samples per block, but 16-bit coefficients
+        // obviously occupy twice as many bytes. Hence, the deltas between the
+        // components_workbuf_offsets tail elements are twice the deltas
+        // between its head elements.
+        //
+        // A block's 64 coefficients also have a different workbuf layout
+        // (placed in 128 consecutive bytes), compared to a block's 64 samples
+        // (placed in 8 rows; the stride is components_workbuf_widths[csel]).
+        // The 16-bit coefficients are stored little-endian.
+        //
+        // Continuing our 36 × 28 image example, if it was sequential encoded,
+        // the remaining four elements would all be 0x0900. If progressive
+        // encoded, the tail of the components_workbuf_offsets array is:
+        //   5: 0x1500 = 5376 = previous + (48 * 64)
+        //   6: 0x1800 = 6144 = previous + (24 * 32)
+        //   7: 0x1B00 = 6912 = previous + (24 * 32)
+        //   8: 0x1B00 = 6912 = previous + ( 0 *  0)
+        //
+        // The workbuf_len would be 0x0900 (baseline) or 0x1B00 (progressive).
+        components_workbuf_widths  : array[4] base.u32[..= 0x1_0008],
+        components_workbuf_heights : array[4] base.u32[..= 0x1_0008],
+        components_workbuf_offsets : array[9] base.u64[..= 0xC_00C0_0300],  // 12 * 0x1_0008 * 0x1_0008.
+
+        scan_count           : base.u32,
+        scan_num_components  : base.u32[..= 4],
+        scan_comps_cselector : array[4] base.u8[..= 3],
+        scan_comps_td        : array[4] base.u8[..= 3],
+        scan_comps_ta        : array[4] base.u8[..= 3],
+
+        // Every JPEG has a single SOI (Start Of Image) marker. Hierarchical
+        // JPEG images can have multiple Frames but this decoder does not
+        // support those. We thus expect a single SOF (Start Of Frame) for the
+        // single SOI.
+        //
+        // Sequential JPEGs have a single SOS (Start Of Scan) for the SOF.
+        // Their (Ss, Se, Ah, Al) below are effectively (0, 63, 0, 0).
+        //
+        // Progressive JPEGs have muliple Scans, incrementally building the 64
+        // coefficients (1 DC coefficient and 63 AC coefficients) of each
+        // pre-IDCT block. There are two independent aspects of progression.
+        //
+        // Spectral selection (the Ss and Se parameters) is when a subset of a
+        // 64 coefficients are in the scan. For example, three scans could hold
+        // coefficient 0 (the DC coefficient), coefficients 1 ..= 5 and then
+        // coefficients 6 ..= 63, in zig-zag order.
+        //
+        // Successive approximation (the Ah and Al parameters) is when a subset
+        // of the spectral-selected coefficients' 8 bits are in the scan
+        // (assuming 8-bit and not 12-bit or 16-bit JPEGs). For example, three
+        // scans could hold the 6 most significant bits, the second-least
+        // significant bit and then the least significant bit. A zero Ah value
+        // is a special case, meaning the scan holds (8 - Al) bits.
+        //
+        // The test/data/peacock.progressive.jpeg file has 10 scans:
+        //   0: Ss = 0   Se =  0   Ah = 0   Al = 1   3 components (Y, Cb, Cr)
+        //   1: Ss = 1   Se =  5   Ah = 0   Al = 2   1 component  (Y)
+        //   2: Ss = 1   Se = 63   Ah = 0   Al = 1   1 component  (Cr)
+        //   3: Ss = 1   Se = 63   Ah = 0   Al = 1   1 component  (Cb)
+        //   4: Ss = 6   Se = 63   Ah = 0   Al = 2   1 component  (Y)
+        //   5: Ss = 1   Se = 63   Ah = 2   Al = 1   1 component  (Y)
+        //   6: Ss = 0   Se =  0   Ah = 1   Al = 0   3 components (Y, Cb, Cr)
+        //   7: Ss = 1   Se = 63   Ah = 1   Al = 0   1 component  (Cr)
+        //   8: Ss = 1   Se = 63   Ah = 1   Al = 0   1 component  (Cb)
+        //   9: Ss = 1   Se = 63   Ah = 1   Al = 0   1 component  (Y)
+        //
+        // This matches /usr/bin/cjpeg's default script for progressive YCbCr:
+        // https://github.com/libjpeg-turbo/libjpeg-turbo/blob/2192560d74e6e6cf99dd05928885573be00a8208/jcparam.c#L517-L535
+        //
+        // The first scan holds the high 7 bits of all components' DC
+        // coefficients.
+        //
+        // The second scan holds the high 6 bits of the 1 ..= 5 AC coefficients
+        // of the Y component.
+        //
+        // The third and fourth scan give the high 7 bits of all of the AC
+        // coefficients of the Cr and Cb components.
+        //
+        // The fifth scan is like the second scan, but for the Y component's
+        // remaining AC coefficients.
+        //
+        // The sixth scan holds the second-least significant bit for the Y
+        // component's AC coefficients.
+        //
+        // The seventh scan holds the least significant bit for all components'
+        // DC coefficients.
+        //
+        // The last three scans hold the least significant bit for components'
+        // AC coefficients.
+        scan_ss : base.u8[..= 63],
+        scan_se : base.u8[..= 63],
+        scan_ah : base.u8[..= 14],
+        scan_al : base.u8[..= 13],
+
+        // These fields, the mx and my loop bounds in decode_sos, are usually
+        // measured "in MCUs" but, for progressive JPEGs' single-component
+        // scans, they're measured in blocks.
+        scan_width_in_mcus  : base.u32[..= 0x2000],
+        scan_height_in_mcus : base.u32[..= 0x2000],
+
+        // The block's position within the MCU. For example, a 4:2:0 chroma-
+        // subsampled image has 6 blocks (4 Y, 1 Cb, 1 Cr) per MCU:
+        //   0: by = 0   bx = 0   Y
+        //   1: by = 0   bx = 1   Y
+        //   2: by = 1   bx = 0   Y
+        //   3: by = 1   bx = 1   Y
+        //   4: by = 0   bx = 0   Cb
+        //   5: by = 0   bx = 0   Cr
+        //
+        // The remaining (16 - mcu_num_blocks) elements are unused.
+        scan_comps_bx_offset : array[16] base.u8[..= 3],
+        scan_comps_by_offset : array[16] base.u8[..= 3],
+
+        mcu_num_blocks    : base.u32[..= 10],
+        mcu_current_block : base.u32[..= 10],
+        mcu_zig_index     : base.u32[..= 63],
+
+        mcu_blocks_sselector : array[16] base.u8[..= 3],
+
+        // (offset[b] + (mx_mul[b] * mx) + (my_mul[b] * my)) is the workbuf
+        // offset of the top-left sample of the b'th block in the (mx, my) MCU.
+        // The block's 64 samples are arranged in 8 rows, each separated by a
+        // stride equal to components_workbuf_widths[csel].
+        //
+        // For single-component scans, its calculation depends on:
+        //   - components_workbuf_offsets
+        //   - components_workbuf_widths
+        //
+        // For multi-component scans, its calculation depends on:
+        //   - components_workbuf_offsets
+        //   - components_workbuf_widths
+        //   - scan_comps_bx_offset
+        //   - scan_comps_by_offset
+        //   - components_h
+        //   - components_v
+        //
+        // Continuing our 4:2:0 chroma-subsampled, 36 × 28 sequential example:
+        //   0: my_mul = 768   mx_mul = 16   offset = 0x0000 + 0x0000 =    0
+        //   1: my_mul = 768   mx_mul = 16   offset = 0x0000 + 0x0008 =    8
+        //   2: my_mul = 768   mx_mul = 16   offset = 0x0000 + 0x0180 =  384
+        //   3: my_mul = 768   mx_mul = 16   offset = 0x0000 + 0x0188 =  392
+        //   4: my_mul = 192   mx_mul =  8   offset = 0x0600 + 0x0000 = 1536
+        //   5: my_mul = 192   mx_mul =  8   offset = 0x0780 + 0x0000 = 1920
+        mcu_blocks_offset : array[10] base.u64[..= 0xC_00D8_03D8],  // (8 * 3 * (0x1_0008 + 1)) + 0xC_00C0_0300
+        mcu_blocks_mx_mul : array[10] base.u32[..= 0x00_0020],  // 8 * 4.
+        mcu_blocks_my_mul : array[10] base.u32[..= 0x20_0100],  // 8 * 4 * 0x1_0008.
+
+        mcu_blocks_dc_hselector : array[10] base.u8[..= 3],
+        mcu_blocks_ac_hselector : array[10] base.u8[..= 7],
+
+        mcu_previous_dc_values : array[4] base.u16,
+
+        block_smoothing_lowest_scan_al : array[4] array[10] base.u8[..= 16],
+        block_smoothing_dc_values      : array[5] array[5] base.u16,
+        block_smoothing_mx_max_incl    : base.u32[..= 0x1FFF],
+        block_smoothing_my_max_incl    : base.u32[..= 0x1FFF],
+
+        restart_interval       : base.u16,
+        saved_restart_interval : base.u16,
+        restarts_remaining     : base.u16,
+
+        // End-Of-Band run count, per Section G.1.2.2: "Progressive encoding of
+        // AC coefficients with Huffman coding... An EOB run of length 5 means
+        // that the current block and the next four blocks have an end-of-band
+        // with no intervening non-zero coefficients".
+        eob_run : base.u16,
+
+        frame_config_io_position : base.u64,
+
+        payload_length : base.u32[..= 0xFFFF],
+
+        seen_dqt       : array[4] base.bool,
+        saved_seen_dqt : array[4] base.bool,
+        seen_dht       : array[8] base.bool,
+
+        // These fields yield bitstream bits in Most Significant Bits order.
+        bitstream_bits   : base.u64,
+        bitstream_n_bits : base.u32,
+        bitstream_ri     : base.u32[..= 0x800],
+        bitstream_wi     : base.u32[..= 0x800],
+
+        bitstream_is_closed : base.bool,
+
+        expect_multiple_scans : base.bool,
+
+        use_lower_quality        : base.bool,
+        reject_progressive_jpegs : base.bool,
+
+        swizzle_immediately           : base.bool,
+        swizzle_immediately_status    : base.status,
+        swizzle_immediately_b_offsets : array[10] base.u32[..= 576],
+        swizzle_immediately_c_offsets : array[5] base.u32,
+
+        // bitstream_padding is the number (per restart) of implicit zeroes
+        // remaining at the end of the bitstream. Its initial 12345 value is
+        // arbitrary.
+        bitstream_padding : base.u32[..= 12345],
+
+        quant_tables       : array[4] array[64] base.u16[..= 0xFF],
+        saved_quant_tables : array[4] array[64] base.u16[..= 0xFF],
+
+        // huff_tables_symbols[(tc*4)|th][i] is the i'th Huffman code's symbol.
+        huff_tables_symbols : array[8] array[256] base.u8,
+
+        // huff_tables_slow[(tc*4)|th][n] is a u32 such that:
+        //  - the high 24 bits hold the maximum (exclusive) bit-string of the
+        //    codes of bit-length (n+1).
+        //  - the low 8 bits hold a huff_tables_symbols[(tc*4)|th] index bias.
+        huff_tables_slow : array[8] array[16] base.u32,
+
+        // huff_tables_fast[(tc*4)|th][b] is a u16 that decodes the bit-length
+        // and symbol when the MSB-first bit-stream starts with b.
+        //  - the high 8 bits hold the bit-length. Zero means no fast path.
+        //  - the low 8 bits hold the symbol.
+        huff_tables_fast : array[8] array[256] base.u16,
+
+        swizzler : base.pixel_swizzler,
+        util     : base.utility,
+) + (
+        bitstream_buffer : array[0x800] base.u8,  // 0x800 = 2048.
+
+        // Decoding sequential JPEGs only uses the first element of this array,
+        // since sequential decode_mcu calls decode_idct straight away.
+        // Decoding progressive JPEGs can use all of it.
+        mcu_blocks : array[10] array[64] base.u16,
+
+        swizzle_immediately_buffer : array[640] base.u8,
+
+        swizzle_ycck_scratch_buffer_2k : array[2048] base.u8,
+
+        // The dht_temp_etc fields are decode_dht temporary values.
+
+        // dht_temp_counts[n] is the number of codes with bit-length (n+1).
+        dht_temp_counts : array[16] base.u8,
+        // dht_temp_bit_lengths[i] is the bit-length of the i'th code.
+        dht_temp_bit_lengths : array[256] base.u8,
+        // dht_temp_bit_strings[i] is the bit-string of the i'th code.
+        dht_temp_bit_strings : array[256] base.u16,
+
+        dst_palette : array[4 * 256] base.u8,
+)
+
+pub func decoder.get_quirk(key: base.u32) base.u64 {
+    if args.key == base.QUIRK_QUALITY {
+        if this.use_lower_quality {
+            return 0xFFFF_FFFF_FFFF_FFFF
+        }
+    } else if args.key == QUIRK_REJECT_PROGRESSIVE_JPEGS {
+        if this.reject_progressive_jpegs {
+            return 1
+        }
+    }
+    return 0
+}
+
+pub func decoder.set_quirk!(key: base.u32, value: base.u64) base.status {
+    if args.key == base.QUIRK_QUALITY {
+        this.use_lower_quality = args.value >= 0x8000_0000_0000_0000
+        return ok
+    } else if args.key == QUIRK_REJECT_PROGRESSIVE_JPEGS {
+        this.reject_progressive_jpegs = args.value <> 0
+        return ok
+    }
+    return base."#unsupported option"
+}
+
+pub func decoder.decode_image_config?(dst: nptr base.image_config, src: base.io_reader) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_image_config?(dst: args.dst, src: args.src)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_image_config?(dst: nptr base.image_config, src: base.io_reader) {
+    var c8     : base.u8
+    var marker : base.u8
+    var pixfmt : base.u32
+
+    if this.call_sequence <> 0x00 {
+        return base."#bad call sequence"
+    }
+
+    c8 = args.src.read_u8?()
+    if c8 <> 0xFF {
+        return "#bad header"
+    }
+    c8 = args.src.read_u8?()
+    if c8 <> 0xD8 {  // SOI (Start Of Image).
+        return "#bad header"
+    }
+
+    // Process chunks (markers and their payloads).
+    while true {
+        // Read the marker (a two-byte 0xFF 0x?? sequence).
+        while true {
+            c8 = args.src.read_u8?()
+            if c8 == 0xFF {
+                break
+            }
+            // Getting here is invalid according to the JPEG spec, but libjpeg
+            // treats this as a warning (JWRN_EXTRANEOUS_DATA), not an error.
+        }
+        while true {
+            c8 = args.src.read_u8?()
+            if c8 <> 0xFF {
+                marker = c8
+                break
+            }
+            // Section B.1.1.2: "Any marker may optionally be preceded by any
+            // number of [0xFF] fill bytes".
+        }
+
+        if marker == 0x00 {
+            // Ignore byte stuffing.
+            continue
+        } else if (0xD0 <= marker) and (marker <= 0xD9) {
+            // RSTn (Restart), SOI and EOI markers have no payload.
+            if marker <= 0xD7 {
+                continue
+            }
+        } else {
+            this.payload_length = args.src.read_u16be_as_u32?()
+            // Payload length includes the 2 bytes for the u16be just read.
+            if this.payload_length < 2 {
+                if (marker == 0xFE) or  // COM.
+                        ((0xE0 <= marker) and (marker < 0xF0)) {  // APPn.
+                    // Strictly speaking, this is invalid according to Section
+                    // B.1.1.4 "Marker segments". However, libjpeg-turbo allows
+                    // it (for COM and APPn markers; see its jdmarker.c file's
+                    // skip_variable function) so we do too.
+                    continue
+                }
+                return "#bad marker"
+            }
+            this.payload_length -= 2
+        }
+
+        // Switch on the marker.
+        if marker < 0xC0 {
+            return "#unsupported marker"
+
+        } else if marker < 0xD0 {  // SOFn (Start of Frame) and friends.
+            if marker <= 0xC2 {
+                if (marker == 0xC2) and this.reject_progressive_jpegs {
+                    return "#rejected progressive JPEG"
+                } else if this.sof_marker <> 0 {
+                    return "#bad SOF marker"
+                } else if (marker == 0xC0) {
+                    // SOF0 (which is 0xC0) means a baseline JPEG. The baseline
+                    // (th <= 1) restriction is specified in table B.5.
+                    if this.seen_dht[2] or this.seen_dht[3] or this.seen_dht[6] or this.seen_dht[7] {
+                        return "#bad SOF marker"
+                    }
+                }
+                this.sof_marker = marker
+                this.decode_sof?(src: args.src)
+                break
+
+            } else if marker == 0xC3 {
+                return "#unsupported lossless coding"
+
+            } else if marker == 0xC4 {  // DHT (Define Huffman Table).
+                this.decode_dht?(src: args.src)
+                continue
+
+            } else if (0xC5 <= marker) and (marker <= 0xC7) {
+                return "#unsupported hierarchical coding"
+
+            } else if marker == 0xC8 {  // JPG (JPEG extension).
+                return "#unsupported marker"
+
+            } else {
+                return "#unsupported arithmetic coding"
+            }
+
+        } else if marker < 0xE0 {
+            if marker < 0xDA {
+                // RSTn markers are already handled above. We either have 0xD8
+                // (SOI: Start Of Image) or 0xD9 (EOI: End Of Image), neither
+                // of which are valid here.
+                return "#bad marker"
+
+            } else if marker == 0xDA {  // SOS (Start Of Scan).
+                // We shouldn't see SOS before SOF.
+                return "#bad SOS marker"
+
+            } else if marker == 0xDB {  // DQT (Define Quantization Table).
+                this.decode_dqt?(src: args.src)
+                continue
+
+            } else if marker == 0xDD {  // DRI (Define Restart Interval).
+                this.decode_dri?(src: args.src)
+                continue
+
+            } else {
+                // 0xDC (DNL: Define Number of Lines).
+                // 0xDE (DHP: Define Hierarchical Progression).
+                // 0xDF (EXP: Expand Reference Components).
+                return "#unsupported marker"
+            }
+
+        } else if marker < 0xF0 {  // APPn (Application specific).
+            this.decode_appn?(src: args.src, marker: marker)
+            continue
+
+        } else {
+            if marker == 0xFE {  // COM (Comment).
+                // No-op.
+
+            } else {
+                return "#unsupported marker"
+            }
+        }
+
+        args.src.skip_u32?(n: this.payload_length)
+        this.payload_length = 0
+    }
+
+    choose decode_idct = [
+            // TODO: decode_idct_arm_neon,
+            decode_idct_x86_avx2]
+
+    this.frame_config_io_position = args.src.position()
+
+    if args.dst <> nullptr {
+        pixfmt = base.PIXEL_FORMAT__Y
+        if this.num_components > 1 {
+            // TODO: base.PIXEL_FORMAT__YCBCR is probably more correct,
+            // although possibly less convenient for the caller.
+            pixfmt = base.PIXEL_FORMAT__BGRX
+        }
+        args.dst.set!(
+                pixfmt: pixfmt,
+                pixsub: 0,
+                width: this.width,
+                height: this.height,
+                first_frame_io_position: this.frame_config_io_position,
+                first_frame_is_opaque: true)
+    }
+
+    this.call_sequence = 0x20
+}
+
+pri func decoder.decode_dqt?(src: base.io_reader) {
+    var c8 : base.u8
+    var q  : base.u8[..= 3]
+    var i  : base.u32
+
+    while this.payload_length > 0 {
+        this.payload_length -= 1
+        c8 = args.src.read_u8?()
+        if (c8 & 0x0F) > 3 {
+            return "#bad DQT marker"
+        }
+        q = c8 & 0x0F
+        if (c8 >> 4) == 1 {
+            return "#unsupported precision"
+        } else if ((c8 >> 4) > 1) or (this.payload_length < 64) {
+            return "#bad DQT marker"
+        }
+        this.payload_length -= 64
+
+        i = 0
+        while i < 64 {
+            i += 1
+            this.quant_tables[q][UNZIG[i]] = args.src.read_u8_as_u16?()
+        }
+        this.seen_dqt[q] = true
+
+        if this.sof_marker == 0 {
+            i = 0
+            while i < 64 {
+                this.saved_quant_tables[q][i] = this.quant_tables[q][i]
+                i += 1
+            }
+            this.saved_seen_dqt[q] = true
+        }
+    }
+}
+
+pri func decoder.decode_dri?(src: base.io_reader) {
+    if this.payload_length <> 2 {
+        return "#bad DRI marker"
+    }
+    this.payload_length = 0
+
+    this.restart_interval = args.src.read_u16be?()
+    if this.sof_marker == 0 {
+        this.saved_restart_interval = this.restart_interval
+    }
+}
+
+// APPn tags are listed at https://exiftool.org/TagNames/JPEG.html
+pri func decoder.decode_appn?(src: base.io_reader, marker: base.u8) {
+    var c8  : base.u8
+    var c32 : base.u32
+
+    while.goto_done true {{
+    if args.marker == 0xE0 {  // APP0.
+        if this.payload_length >= 5 {
+            this.payload_length -= 5
+
+            c32 = args.src.read_u32le?()
+            if c32 <> 'JFIF'le {
+                this.payload_length = 0xFFFF & (this.payload_length + 1)
+                break.goto_done
+            }
+            c8 = args.src.read_u8?()
+            this.is_jfif = (c8 == 0)
+        }
+
+    } else if args.marker == 0xEE {  // APP14.
+        if this.payload_length >= 12 {
+            this.payload_length -= 12
+
+            c32 = args.src.read_u32le?()
+            if c32 <> 'Adob'le {
+                this.payload_length = 0xFFFF & (this.payload_length + 8)
+                break.goto_done
+            }
+            c32 = args.src.read_u32le?()
+            if (0xFF & c32) <> 'e' {
+                this.payload_length = 0xFFFF & (this.payload_length + 4)
+                break.goto_done
+            }
+            // After the 5 bytes of "Adobe" come 2 bytes of DCTEncodeVersion
+            // and 4 bytes of flags. The 12th byte is the color transform.
+            // Technically, 0=Unknown, 1=YCbCr and 2=YCbCrK. In practice, per
+            // libjpeg-turbo, treat 0=RGB/CMYK and NonZero=YCbCr/YCbCrK.
+            //
+            // https://www.sno.phy.queensu.ca/~phil/exiftool/TagNames/JPEG.html#Adobe
+            c32 = args.src.read_u32le?()
+            if (c32 >> 24) == 0 {
+                this.is_adobe = 1
+            } else {
+                this.is_adobe = 2
+            }
+        }
+    }
+    break.goto_done
+    }}.goto_done
+
+    args.src.skip_u32?(n: this.payload_length)
+    this.payload_length = 0
+}
+
+pri func decoder.decode_sof?(src: base.io_reader) {
+    var c8     : base.u8
+    var comp_h : base.u8
+    var comp_v : base.u8
+    var i      : base.u32
+    var j      : base.u32
+
+    var has_h24 : base.bool
+    var has_h3  : base.bool
+    var has_v24 : base.bool
+    var has_v3  : base.bool
+
+    var upper_bound : base.u32[..= 0x1_0008]
+
+    var wh0 : base.u64[..= 0x1_0010_0040]  // 0x1_0008 * 0x1_0008.
+    var wh1 : base.u64[..= 0x1_0010_0040]  // 0x1_0008 * 0x1_0008.
+    var wh2 : base.u64[..= 0x1_0010_0040]  // 0x1_0008 * 0x1_0008.
+    var wh3 : base.u64[..= 0x1_0010_0040]  // 0x1_0008 * 0x1_0008.
+
+    var progressive : base.u64[..= 2]
+
+    if this.payload_length < 6 {
+        return "#bad SOF marker"
+    }
+    this.payload_length -= 6
+    c8 = args.src.read_u8?()
+    if c8 == 8 {
+        // No-op.
+    } else if c8 == 12 {
+        return "#unsupported precision (12 bits)"
+    } else if c8 == 16 {
+        return "#unsupported precision (16 bits)"
+    } else {
+        return "#unsupported precision"
+    }
+    this.height = args.src.read_u16be_as_u32?()
+    if this.height == 0 {
+        return "#unsupported implicit height"
+    }
+    this.width = args.src.read_u16be_as_u32?()
+    if this.width == 0 {
+        return base."#unsupported image dimension"
+    }
+    c8 = args.src.read_u8?()
+    if (c8 == 0) or (c8 > 4) {
+        return "#bad SOF marker"
+    } else if c8 == 2 {
+        return "#unsupported color model"
+    }
+    this.num_components = c8 as base.u32
+    if this.payload_length <> (3 * this.num_components) {
+        return "#bad SOF marker"
+    }
+    this.payload_length = 0
+
+    i = 0
+    while i < this.num_components {
+        assert i < 4 via "a < b: a < c; c <= b"(c: this.num_components)
+        this.components_c[i] = args.src.read_u8?()
+        c8 = args.src.read_u8?()
+        comp_h = c8 >> 4
+        comp_v = c8 & 0x0F
+        if (comp_h == 0) or (comp_h > 4) or (comp_v == 0) or (comp_v > 4) {
+            return "#bad SOF marker"
+        }
+        this.components_h[i] = comp_h
+        if this.max_incl_components_h < this.components_h[i] {
+            this.max_incl_components_h = this.components_h[i]
+        }
+        this.components_v[i] = comp_v
+        if this.max_incl_components_v < this.components_v[i] {
+            this.max_incl_components_v = this.components_v[i]
+        }
+        c8 = args.src.read_u8?()
+        if c8 >= 4 {
+            return "#bad SOF marker"
+        }
+        this.components_tq[i] = c8
+
+        // Section B.2.2: "the value of C_i shall be different from the values
+        // of C_1 through C_(i-1)".
+        j = 0
+        while j < i,
+                inv i < 4,
+        {
+            assert j < 4 via "a < b: a < c; c < b"(c: i)
+            if this.components_c[j] == this.components_c[i] {
+                return "#bad SOF marker"
+            }
+            j += 1
+        }
+
+        i += 1
+    }
+
+    if this.num_components == 1 {
+        // The first (and only) component's H and V factors are effectively
+        // always 1. Section A.2.2: "When Ns = 1 (where Ns is the number of
+        // components in a scan), the order of data units [8x8 blocks] within a
+        // scan shall be left-to-right and top-to-bottom... regardless of the
+        // values of H1 and V1.".
+        this.max_incl_components_h = 1
+        this.max_incl_components_v = 1
+        this.components_h[0] = 1
+        this.components_v[0] = 1
+
+    } else {
+        has_h24 = false
+        has_h3 = false
+        has_v24 = false
+        has_v3 = false
+        i = 0
+        while i < this.num_components {
+            assert i < 4 via "a < b: a < c; c <= b"(c: this.num_components)
+            has_h24 = has_h24 or (this.components_h[i] == 2) or (this.components_h[i] == 4)
+            has_h3 = has_h3 or (this.components_h[i] == 3)
+            has_v24 = has_v24 or (this.components_v[i] == 2) or (this.components_v[i] == 4)
+            has_v3 = has_v3 or (this.components_v[i] == 3)
+            i += 1
+        }
+        if (has_h24 and has_h3) or (has_v24 and has_v3) {
+            return "#unsupported fractional sampling"
+        }
+
+        // Match the behavior of libjpeg-turbo's jdapimin.c.
+        if this.num_components == 4 {
+            this.is_rgb_or_cmyk = this.is_adobe < 2
+        } else {  // this.num_components == 3
+            if this.is_jfif {
+                this.is_rgb_or_cmyk = false
+            } else if this.is_adobe > 0 {
+                this.is_rgb_or_cmyk = this.is_adobe == 1
+            } else {
+                this.is_rgb_or_cmyk =
+                        (this.components_c[0] == 'R') and
+                        (this.components_c[1] == 'G') and
+                        (this.components_c[2] == 'B')
+            }
+        }
+    }
+
+    this.width_in_mcus = this.quantize_dimension(
+            width: this.width, h: 1, max_incl_h: this.max_incl_components_h)
+    this.height_in_mcus = this.quantize_dimension(
+            width: this.height, h: 1, max_incl_h: this.max_incl_components_v)
+
+    upper_bound = 0x1_0008
+
+    this.components_workbuf_widths[0] = upper_bound.min(no_more_than:
+            8 * this.width_in_mcus * (this.components_h[0] as base.u32))
+    this.components_workbuf_widths[1] = upper_bound.min(no_more_than:
+            8 * this.width_in_mcus * (this.components_h[1] as base.u32))
+    this.components_workbuf_widths[2] = upper_bound.min(no_more_than:
+            8 * this.width_in_mcus * (this.components_h[2] as base.u32))
+    this.components_workbuf_widths[3] = upper_bound.min(no_more_than:
+            8 * this.width_in_mcus * (this.components_h[3] as base.u32))
+
+    this.components_workbuf_heights[0] = upper_bound.min(no_more_than:
+            8 * this.height_in_mcus * (this.components_v[0] as base.u32))
+    this.components_workbuf_heights[1] = upper_bound.min(no_more_than:
+            8 * this.height_in_mcus * (this.components_v[1] as base.u32))
+    this.components_workbuf_heights[2] = upper_bound.min(no_more_than:
+            8 * this.height_in_mcus * (this.components_v[2] as base.u32))
+    this.components_workbuf_heights[3] = upper_bound.min(no_more_than:
+            8 * this.height_in_mcus * (this.components_v[3] as base.u32))
+
+    wh0 = (this.components_workbuf_widths[0] as base.u64) * (this.components_workbuf_heights[0] as base.u64)
+    wh1 = (this.components_workbuf_widths[1] as base.u64) * (this.components_workbuf_heights[1] as base.u64)
+    wh2 = (this.components_workbuf_widths[2] as base.u64) * (this.components_workbuf_heights[2] as base.u64)
+    wh3 = (this.components_workbuf_widths[3] as base.u64) * (this.components_workbuf_heights[3] as base.u64)
+
+    progressive = 0
+    if this.sof_marker >= 0xC2 {
+        // Pre-IDCT block coefficients (mcu_blocks elements) are 2 bytes each.
+        progressive = 2
+
+        i = 0
+        while i < 4 {
+            j = 0
+            while j < 10,
+                    inv i < 4,
+            {
+                this.block_smoothing_lowest_scan_al[i][j] = 16
+                j += 1
+            }
+            i += 1
+        }
+    }
+
+    this.components_workbuf_offsets[0] = 0
+    this.components_workbuf_offsets[1] = this.components_workbuf_offsets[0] + wh0
+    this.components_workbuf_offsets[2] = this.components_workbuf_offsets[1] + wh1
+    this.components_workbuf_offsets[3] = this.components_workbuf_offsets[2] + wh2
+    this.components_workbuf_offsets[4] = this.components_workbuf_offsets[3] + wh3
+    this.components_workbuf_offsets[5] = this.components_workbuf_offsets[4] + (wh0 * progressive)
+    this.components_workbuf_offsets[6] = this.components_workbuf_offsets[5] + (wh1 * progressive)
+    this.components_workbuf_offsets[7] = this.components_workbuf_offsets[6] + (wh2 * progressive)
+    this.components_workbuf_offsets[8] = this.components_workbuf_offsets[7] + (wh3 * progressive)
+}
+
+pri func decoder.quantize_dimension(width: base.u32[..= 0xFFFF], h: base.u8[..= 4], max_incl_h: base.u8[..= 4]) base.u32[..= 0x2000] {
+    var ratio : base.u32
+
+    ratio = 0
+    if args.h > 0 {
+        ratio = (args.max_incl_h / args.h) as base.u32
+    }
+
+    if ratio == 1 {
+        return (args.width + 0x07) / 0x08
+    } else if ratio == 2 {
+        return (args.width + 0x0F) / 0x10
+    } else if ratio == 3 {
+        return (args.width + 0x17) / 0x18
+    }
+    return (args.width + 0x1F) / 0x20
+}
+
+pub func decoder.decode_frame_config?(dst: nptr base.frame_config, src: base.io_reader) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_frame_config?(dst: args.dst, src: args.src)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_frame_config?(dst: nptr base.frame_config, src: base.io_reader) {
+    if this.call_sequence == 0x20 {
+        // No-op.
+    } else if this.call_sequence < 0x20 {
+        this.do_decode_image_config?(dst: nullptr, src: args.src)
+    } else if this.call_sequence == 0x28 {
+        if this.frame_config_io_position <> args.src.position() {
+            return base."#bad restart"
+        }
+    } else if this.call_sequence == 0x40 {
+        this.call_sequence = 0x60
+        return base."@end of data"
+    } else {
+        return base."@end of data"
+    }
+
+    if args.dst <> nullptr {
+        args.dst.set!(bounds: this.util.make_rect_ie_u32(
+                min_incl_x: 0,
+                min_incl_y: 0,
+                max_excl_x: this.width,
+                max_excl_y: this.height),
+                duration: 0,
+                index: 0,
+                io_position: this.frame_config_io_position,
+                disposal: 0,
+                opaque_within_bounds: true,
+                overwrite_instead_of_blend: false,
+                background_color: 0xFF00_0000)
+    }
+
+    this.call_sequence = 0x40
+}
+
+pub func decoder.decode_frame?(dst: ptr base.pixel_buffer, src: base.io_reader, blend: base.pixel_blend, workbuf: slice base.u8, opts: nptr base.decode_frame_options) {
+    var ddf_status     : base.status
+    var swizzle_status : base.status
+    var scan_count     : base.u32
+
+    while true {
+        scan_count = this.scan_count
+        ddf_status =? this.do_decode_frame?(dst: args.dst, src: args.src, blend: args.blend, workbuf: args.workbuf, opts: args.opts)
+        if (ddf_status == base."$short read") and args.src.is_closed() {
+            ddf_status = "#truncated input"
+        }
+
+        if (not this.swizzle_immediately) and
+                (ddf_status.is_error() or (scan_count < this.scan_count)) {
+            if this.sof_marker >= 0xC2 {
+                this.apply_progressive_idct!(workbuf: args.workbuf)
+            }
+
+            if this.num_components == 1 {
+                swizzle_status = this.swizzle_gray!(
+                        dst: args.dst,
+                        workbuf: args.workbuf,
+                        x0: 0,
+                        x1: 0xFFFF_FFFF,
+                        y0: 0,
+                        y1: 0xFFFF_FFFF,
+                        stride: this.components_workbuf_widths[0] as base.u64)
+            } else {
+                swizzle_status = this.swizzle_colorful!(
+                        dst: args.dst,
+                        workbuf: args.workbuf,
+                        x0: 0,
+                        x1: 0xFFFF_FFFF,
+                        y0: 0,
+                        y1: 0xFFFF_FFFF)
+            }
+            if ddf_status.is_error() {
+                return ddf_status
+            } else if swizzle_status.is_error() {
+                return swizzle_status
+            }
+        }
+
+        yield? ddf_status
+    }
+}
+
+pri func decoder.do_decode_frame?(dst: ptr base.pixel_buffer, src: base.io_reader, blend: base.pixel_blend, workbuf: slice base.u8, opts: nptr base.decode_frame_options) {
+    var pixfmt : base.u32
+    var status : base.status
+    var c8     : base.u8
+    var marker : base.u8
+
+    if this.call_sequence == 0x40 {
+        // No-op.
+    } else if this.call_sequence < 0x40 {
+        this.do_decode_frame_config?(dst: nullptr, src: args.src)
+    } else {
+        return base."@end of data"
+    }
+
+    pixfmt = base.PIXEL_FORMAT__Y
+    if this.num_components > 1 {
+        pixfmt = base.PIXEL_FORMAT__BGRX
+    }
+    status = this.swizzler.prepare!(
+            dst_pixfmt: args.dst.pixel_format(),
+            dst_palette: args.dst.palette_or_else(fallback: this.dst_palette[..]),
+            src_pixfmt: this.util.make_pixel_format(repr: pixfmt),
+            src_palette: this.util.empty_slice_u8(),
+            blend: args.blend)
+    if not status.is_ok() {
+        return status
+    }
+
+    // For progressive JPEGs, zero-initialize the saved pre-IDCT blocks. For
+    // sequential JPEGs, this is a no-op, other than checking that args.workbuf
+    // is long enough and setting this.swizzle_immediately.
+    this.swizzle_immediately = false
+    if this.components_workbuf_offsets[8] > args.workbuf.length() {
+        if (this.sof_marker >= 0xC2) or not this.use_lower_quality {
+            return base."#bad workbuf length"
+        }
+        this.swizzle_immediately = true
+        this.swizzle_immediately_status = ok
+    } else if this.components_workbuf_offsets[4] < this.components_workbuf_offsets[8] {
+        args.workbuf[this.components_workbuf_offsets[4] .. this.components_workbuf_offsets[8]].bulk_memset!(byte_value: 0)
+    }
+    // For both sequential and progressive JPEGs, biased-zero-initialize the
+    // samples, in case the scans are incomplete (in terms of covering all
+    // components) or the input is truncated. 0x80 is the same post-IDCT bias
+    // as per BIAS_AND_CLAMP. For YCbCr, (0x80, 0x80, 0x80) is a medium gray
+    // but (0x00, 0x00, 0x00) is a dark green.
+    if this.components_workbuf_offsets[4] <= args.workbuf.length() {
+        args.workbuf[.. this.components_workbuf_offsets[4]].bulk_memset!(byte_value: 0x80)
+    }
+
+    // Process chunks (markers and their payloads).
+    while true {
+        // Read the marker (a two-byte 0xFF 0x?? sequence).
+        while true {
+            c8 = args.src.read_u8?()
+            if c8 == 0xFF {
+                break
+            }
+            // Getting here is invalid according to the JPEG spec, but libjpeg
+            // treats this as a warning (JWRN_EXTRANEOUS_DATA), not an error.
+        }
+        while true {
+            c8 = args.src.read_u8?()
+            if c8 <> 0xFF {
+                marker = c8
+                break
+            }
+            // Section B.1.1.2: "Any marker may optionally be preceded by any
+            // number of [0xFF] fill bytes".
+        }
+
+        if marker == 0x00 {
+            // Ignore byte stuffing.
+            continue
+        } else if (0xD0 <= marker) and (marker <= 0xD9) {
+            // RSTn (Restart), SOI and EOI markers have no payload.
+            if marker <= 0xD7 {
+                continue
+            }
+        } else {
+            this.payload_length = args.src.read_u16be_as_u32?()
+            // Payload length includes the 2 bytes for the u16be just read.
+            if this.payload_length < 2 {
+                return "#bad marker"
+            }
+            this.payload_length -= 2
+        }
+
+        // Switch on the marker.
+        if marker < 0xC0 {
+            return "#unsupported marker"
+
+        } else if marker < 0xD0 {  // SOFn (Start of Frame) and friends.
+            if marker == 0xC4 {  // DHT (Define Huffman Table).
+                this.decode_dht?(src: args.src)
+                continue
+
+            } else if marker == 0xC8 {  // JPG (JPEG extension).
+                return "#unsupported marker"
+            }
+            return "#bad SOF marker"
+
+        } else if marker < 0xE0 {
+            if marker < 0xD9 {
+                // RSTn markers are already handled above. We have 0xD8 (SOI:
+                // Start Of Image), which is invalid here.
+                return "#bad marker"
+
+            } else if marker == 0xD9 {  // EOI (End Of Image).
+                break
+
+            } else if marker == 0xDA {  // SOS (Start Of Scan).
+                this.decode_sos?(dst: args.dst, src: args.src, workbuf: args.workbuf)
+                continue
+
+            } else if marker == 0xDB {  // DQT (Define Quantization Table).
+                this.decode_dqt?(src: args.src)
+                continue
+
+            } else if marker == 0xDD {  // DRI (Define Restart Interval).
+                this.decode_dri?(src: args.src)
+                continue
+
+            } else {
+                // 0xDC (DNL: Define Number of Lines).
+                // 0xDE (DHP: Define Hierarchical Progression).
+                // 0xDF (EXP: Expand Reference Components).
+                return "#unsupported marker"
+            }
+
+        } else if marker < 0xF0 {  // APPn (Application specific).
+            // No-op.
+
+        } else {
+            if marker == 0xFE {  // COM (Comment).
+                // No-op.
+
+            } else {
+                return "#unsupported marker"
+            }
+        }
+
+        args.src.skip_u32?(n: this.payload_length)
+        this.payload_length = 0
+    }
+
+    this.call_sequence = 0x60
+}
+
+pri func decoder.decode_dht?(src: base.io_reader) {
+    var c8                  : base.u8
+    var tc                  : base.u8[..= 1]
+    var th                  : base.u8[..= 3]
+    var tc4_th              : base.u8[..= 7]
+    var working_total_count : base.u32[..= 0xFFFF]
+    var total_count         : base.u32[..= 256]
+    var i                   : base.u32
+    var failed              : base.bool
+
+    while this.payload_length > 0 {
+        if this.payload_length < 17 {
+            return "#bad DHT marker"
+        }
+        this.payload_length -= 17
+        c8 = args.src.read_u8?()
+        if ((c8 >> 4) > 1) or ((c8 & 0x0F) > 3) {
+            return "#bad DHT marker"
+        }
+        tc = c8 >> 4
+        th = c8 & 0x0F
+        tc4_th = ((tc * 4) | th) as base.u8
+
+        // SOF0 (which is 0xC0) means a baseline JPEG. The baseline (th <= 1)
+        // restriction is specified in table B.5.
+        if (this.sof_marker == 0xC0) and ((tc4_th & 3) > 1) {
+            return "#bad DHT marker"
+        }
+
+        // Read dht_temp_counts.
+        i = 0
+        while i < 16 {
+            this.dht_temp_counts[i] = args.src.read_u8?()
+            i += 1
+        }
+        working_total_count = 0
+        i = 0
+        while i < 16 {
+            working_total_count =
+                    (working_total_count + (this.dht_temp_counts[i] as base.u32)) & 0xFFFF
+            i += 1
+        }
+        if (working_total_count <= 0) or (256 < working_total_count) {
+            return "#bad DHT marker"
+        }
+        total_count = working_total_count
+
+        // Read huff_tables_symbols[tc4_th].
+        if this.payload_length < total_count {
+            return "#bad DHT marker"
+        }
+        this.payload_length -= total_count
+        i = 0
+        while i < total_count {
+            assert i < 256 via "a < b: a < c; c <= b"(c: total_count)
+            this.huff_tables_symbols[tc4_th][i] = args.src.read_u8?()
+            i += 1
+        }
+        while i < 256 {
+            this.huff_tables_symbols[tc4_th][i] = 0
+            i += 1
+        }
+
+        // For tc == 0 (DC, not AC tables), the symbols must not exceed 15 (for
+        // lossy JPEG) or 16 (for lossless JPEG). We only support lossy.
+        if (tc4_th & 4) == 0 {
+            i = 0
+            while i < total_count {
+                assert i < 256 via "a < b: a < c; c <= b"(c: total_count)
+                if this.huff_tables_symbols[tc4_th][i] > 15 {
+                    return "#bad DHT marker"
+                }
+                i += 1
+            }
+        }
+
+        failed = this.calculate_huff_tables!(tc4_th: tc4_th, total_count: total_count)
+        if failed {
+            return "#bad DHT marker"
+        }
+
+        this.seen_dht[tc4_th] = true
+    }
+}
+
+pri func decoder.calculate_huff_tables!(tc4_th: base.u8[..= 7], total_count: base.u32[..= 256]) base.bool {
+    var i                    : base.u32
+    var j                    : base.u8
+    var k                    : base.u8
+    var bit_length_minus_one : base.u32[..= 15]
+    var bit_length           : base.u8[..= 16]
+    var bit_string           : base.u32
+    var slow                 : base.u32
+    var prefix               : base.u8
+    var fast                 : base.u16
+    var reps                 : base.u32
+
+    // Calculate dht_temp_bit_lengths.
+    i = 0
+    k = 0
+    bit_length_minus_one = 0
+    while i < args.total_count {
+        assert i < 256 via "a < b: a < c; c <= b"(c: args.total_count)
+        while k >= this.dht_temp_counts[bit_length_minus_one],
+                inv i < 256,
+                post k < this.dht_temp_counts[bit_length_minus_one],
+        {
+            k = 0
+            bit_length_minus_one = (bit_length_minus_one + 1) & 15
+        }
+        assert k < 255 via "a < b: a < c; c <= b"(c: this.dht_temp_counts[bit_length_minus_one])
+        k += 1
+        this.dht_temp_bit_lengths[i] = (bit_length_minus_one + 1) as base.u8
+        i += 1
+    }
+
+    // Calculate dht_temp_bit_strings.
+    bit_length = 0
+    bit_string = 0
+    i = 0
+    while i < args.total_count {
+        assert i < 256 via "a < b: a < c; c <= b"(c: args.total_count)
+        while bit_length < this.dht_temp_bit_lengths[i],
+                inv i < 256,
+        {
+            if bit_length >= 16 {
+                return true
+            }
+            bit_length += 1
+            bit_string ~mod<<= 1
+        }
+        this.dht_temp_bit_strings[i] = (bit_string & 0xFFFF) as base.u16
+        bit_string ~mod+= 1
+
+        // Check the bit_string just assigned to dht_temp_bit_strings[i].
+        // Section C: "the codes shall be generated such that the
+        // all-1-bits code word of any length is reserved".
+        if (bit_string >> bit_length) > 0 {
+            return true
+        }
+
+        i += 1
+    }
+
+    // Calculate huff_tables_slow[args.tc4_th].
+    k = 0
+    bit_length_minus_one = 0
+    while true {
+        if this.dht_temp_counts[bit_length_minus_one] == 0 {
+            this.huff_tables_slow[args.tc4_th][bit_length_minus_one] = 0
+        } else {
+            slow = 0xFF & ((k as base.u32) ~mod-
+                    (this.dht_temp_bit_strings[k] as base.u32))
+            k ~mod+= this.dht_temp_counts[bit_length_minus_one]
+            this.huff_tables_slow[args.tc4_th][bit_length_minus_one] = slow |
+                    (((this.dht_temp_bit_strings[k ~mod- 1] as base.u32) + 1) << 8)
+        }
+
+        bit_length_minus_one = (bit_length_minus_one + 1) & 15
+        if bit_length_minus_one == 0 {
+            break
+        }
+    }
+
+    // Calculate huff_tables_fast[args.tc4_th].
+    i = 0
+    while i < 256 {
+        this.huff_tables_fast[args.tc4_th][i] = 0xFFFF
+        i += 1
+    }
+    j = 0
+    bit_length_minus_one = 0
+    while bit_length_minus_one < 8 {
+        k = 0
+        while k < this.dht_temp_counts[bit_length_minus_one],
+                inv bit_length_minus_one < 8,
+        {
+            assert k < 255 via "a < b: a < c; c <= b"(c: this.dht_temp_counts[bit_length_minus_one])
+            prefix = (((this.dht_temp_bit_strings[j] as base.u32) <<
+                    (7 - bit_length_minus_one)) & 0xFF) as base.u8
+            fast = ((((bit_length_minus_one + 1) as base.u32) << 8) |
+                    (this.huff_tables_symbols[args.tc4_th][j] as base.u32)) as base.u16
+            reps = (1 as base.u32) << (7 - bit_length_minus_one)
+            while reps > 0,
+                    inv bit_length_minus_one < 8,
+                    inv k < 255,
+            {
+                this.huff_tables_fast[args.tc4_th][prefix] = fast
+                prefix ~mod+= 1
+                reps -= 1
+            }
+            k += 1
+            j ~mod+= 1
+        }
+
+        bit_length_minus_one += 1
+    }
+
+    return false
+}
+
+pri func decoder.decode_sos?(dst: ptr base.pixel_buffer, src: base.io_reader, workbuf: slice base.u8) {
+    var my : base.u32
+    var mx : base.u32
+
+    var decode_mcu_result : base.u32
+    var bitstream_length  : base.u32
+
+    if this.scan_count >= 32 {
+        return "#unsupported scan count"
+    } else if (this.scan_count > 0) and (not this.expect_multiple_scans) {
+        return "#bad scan count"
+    }
+
+    this.prepare_scan?(src: args.src)
+
+    // Reset.
+    this.next_restart_marker = 0
+    this.mcu_previous_dc_values[0] = 0
+    this.mcu_previous_dc_values[1] = 0
+    this.mcu_previous_dc_values[2] = 0
+    this.mcu_previous_dc_values[3] = 0
+    this.restarts_remaining = this.restart_interval
+    this.eob_run = 0
+    this.bitstream_bits = 0
+    this.bitstream_n_bits = 0
+    this.bitstream_ri = 0
+    this.bitstream_wi = 0
+    this.bitstream_padding = 12345
+    this.fill_bitstream!(src: args.src)
+
+    my = 0
+    while my < this.scan_height_in_mcus {
+        assert my < 0x2000 via "a < b: a < c; c <= b"(c: this.scan_height_in_mcus)
+        mx = 0
+        while mx < this.scan_width_in_mcus,
+                inv my < 0x2000,
+        {
+            assert mx < 0x2000 via "a < b: a < c; c <= b"(c: this.scan_width_in_mcus)
+            this.mcu_current_block = 0
+            this.mcu_zig_index = this.scan_ss as base.u32
+
+            if this.sof_marker >= 0xC2 {
+                this.load_mcu_blocks!(mx: mx, my: my, workbuf: args.workbuf)
+            }
+
+            while.decode_mcu true,
+                    inv my < 0x2000,
+                    inv mx < 0x2000,
+            {
+                decode_mcu_result = this.decode_mcu!(dst: args.dst, workbuf: args.workbuf, mx: mx, my: my)
+                if decode_mcu_result == 0 {
+                    break.decode_mcu
+                } else if decode_mcu_result == 1 {
+                    // No-op.
+                } else if decode_mcu_result == 2 {
+                    return "#internal error: inconsistent decoder state"
+                } else {
+                    return this.swizzle_immediately_status
+                }
+
+                while.fill_bitstream true,
+                        inv my < 0x2000,
+                        inv mx < 0x2000,
+                {
+                    bitstream_length = this.bitstream_wi ~mod- this.bitstream_ri
+                    this.fill_bitstream!(src: args.src)
+                    if bitstream_length < (this.bitstream_wi ~mod- this.bitstream_ri) {
+                        break.fill_bitstream
+                    } else if this.bitstream_padding == 0 {
+                        return "#short SOS bitstream"
+                    } else if args.src.is_closed() and (not this.bitstream_is_closed) {
+                        if this.bitstream_wi < (0x800 / 2) {
+                            assert this.bitstream_wi <= (this.bitstream_wi + 264) via "a <= (a + b): 0 <= b"()
+                            this.bitstream_buffer[this.bitstream_wi .. (this.bitstream_wi + 264)].bulk_memset!(byte_value: 0)
+                            this.bitstream_wi += 264
+                            this.bitstream_is_closed = true
+                        }
+                        break.fill_bitstream
+                    }
+                    yield? base."$short read"
+                }.fill_bitstream
+            }.decode_mcu
+
+            if this.sof_marker >= 0xC2 {
+                this.save_mcu_blocks!(mx: mx, my: my, workbuf: args.workbuf)
+            }
+
+            // Check for a restart.
+            if this.restarts_remaining > 0 {
+                this.restarts_remaining -= 1
+                if this.restarts_remaining == 0 {
+                    this.skip_past_the_next_restart_marker?(src: args.src)
+
+                    // Reset.
+                    this.mcu_previous_dc_values[0] = 0
+                    this.mcu_previous_dc_values[1] = 0
+                    this.mcu_previous_dc_values[2] = 0
+                    this.mcu_previous_dc_values[3] = 0
+                    this.restarts_remaining = this.restart_interval
+                    this.eob_run = 0
+                    this.bitstream_bits = 0
+                    this.bitstream_n_bits = 0
+                    this.bitstream_ri = 0
+                    this.bitstream_wi = 0
+                    this.bitstream_padding = 12345
+                }
+            }
+
+            mx += 1
+        }
+        my += 1
+    }
+
+    this.scan_count ~sat+= 1
+}
+
+pri func decoder.prepare_scan?(src: base.io_reader) {
+    var c8         : base.u8
+    var i          : base.u32
+    var j          : base.u32
+    var j_max_incl : base.u32[..= 9]
+    var failed     : base.bool
+
+    if (this.payload_length < 6) or (this.payload_length > 12) {
+        return "#bad SOS marker"
+    }
+    c8 = args.src.read_u8?()
+    if (c8 < 1) or (c8 > 4) {
+        return "#bad SOS marker"
+    }
+    this.scan_num_components = c8 as base.u32
+    if (this.scan_num_components > this.num_components) or
+            (this.payload_length <> (4 + (2 * this.scan_num_components))) {
+        return "#bad SOS marker"
+    }
+    this.payload_length = 0
+
+    i = 0
+    while i < this.scan_num_components {
+        assert i < 4 via "a < b: a < c; c <= b"(c: this.scan_num_components)
+        c8 = args.src.read_u8?()
+
+        j = 0
+        while true,
+                inv i < 4,
+        {
+            if j >= this.num_components {
+                return "#bad SOS marker"
+            }
+            assert j < 4 via "a < b: a < c; c <= b"(c: this.num_components)
+            if c8 == this.components_c[j] {
+                if not this.seen_dqt[this.components_tq[j]] {
+                    return "#missing Quantization table"
+                }
+                this.scan_comps_cselector[i] = j as base.u8
+                break
+            }
+            j += 1
+        }
+
+        // Section B.2.3: "the value of C_sj shall be different from the values
+        // of C_s1 to C_sj–1".
+        j = 0
+        while j < i,
+                inv i < 4,
+        {
+            assert j < 4 via "a < b: a < c; c < b"(c: i)
+            if this.scan_comps_cselector[i] == this.scan_comps_cselector[j] {
+                return "#bad SOS marker"
+            }
+            j += 1
+        }
+
+        c8 = args.src.read_u8?()
+        if ((c8 >> 4) > 3) or ((c8 & 0x0F) > 3) {
+            return "#bad SOS marker"
+        }
+        this.scan_comps_td[i] = c8 >> 4
+        this.scan_comps_ta[i] = c8 & 0x0F
+        // SOF0 (which is 0xC0) means a baseline JPEG. The baseline (tx <= 1)
+        // restriction is specified in table B.5.
+        if this.sof_marker == 0xC0 {
+            if (this.scan_comps_td[i] > 1) or (this.scan_comps_ta[i] > 1) {
+                return "#bad SOS marker"
+            }
+        }
+
+        i += 1
+    }
+
+    if this.scan_count == 0 {
+        this.expect_multiple_scans =
+                (this.sof_marker >= 0xC2) or
+                (this.scan_num_components < this.num_components)
+    }
+
+    if this.sof_marker < 0xC2 {
+        // At this point, for sequential (not progressive) JPEGs, we should
+        // check that (Ss, Se, Ah, Al) is (0, 63, 0, 0) but libjpeg treats
+        // otherwise as a warning (JWRN_NOT_SEQUENTIAL), not an error.
+        args.src.skip_u32?(n: 3)
+        this.scan_ss = 0
+        this.scan_se = 63
+        this.scan_ah = 0
+        this.scan_al = 0
+
+    } else {
+        c8 = args.src.read_u8?()
+        if c8 > 63 {
+            return "#bad SOS marker"
+        }
+        this.scan_ss = c8
+
+        c8 = args.src.read_u8?()
+        if (c8 > 63) or (c8 < this.scan_ss) {
+            return "#bad SOS marker"
+        }
+        this.scan_se = c8
+
+        c8 = args.src.read_u8?()
+        if ((c8 >> 4) > 14) or ((c8 & 0x0F) > 13) {
+            return "#bad SOS marker"
+        }
+        this.scan_ah = c8 >> 4
+        this.scan_al = c8 & 0x0F
+        if this.scan_ah > 0 {
+            if (this.scan_ah - 1) <> this.scan_al {
+                return "#bad SOS marker"
+            }
+        }
+
+        if this.scan_ss == 0 {
+            // Progressive DC scans can have only one spectral element.
+            if this.scan_se <> 0 {
+                return "#bad SOS marker"
+            } else if this.scan_ah == 0 {
+                choose decode_mcu = [decode_mcu_progressive_dc_high_bits]
+            } else {
+                choose decode_mcu = [decode_mcu_progressive_dc_low_bit]
+            }
+        } else {
+            // Progressive AC scans can have only one component.
+            if this.scan_num_components <> 1 {
+                return "#bad SOS marker"
+            } else if this.scan_ah == 0 {
+                choose decode_mcu = [decode_mcu_progressive_ac_high_bits]
+            } else {
+                choose decode_mcu = [decode_mcu_progressive_ac_low_bit]
+            }
+        }
+    }
+
+    i = 0
+    while i < this.scan_num_components {
+        assert i < 4 via "a < b: a < c; c <= b"(c: this.scan_num_components)
+
+        if (this.scan_ss == 0) and (not this.seen_dht[0 | this.scan_comps_td[i]]) {
+            this.use_default_huffman_table?(tc4_th: 0 | this.scan_comps_td[i])
+        }
+        if (this.scan_se <> 0) and (not this.seen_dht[4 | this.scan_comps_ta[i]]) {
+            this.use_default_huffman_table?(tc4_th: 4 | this.scan_comps_ta[i])
+        }
+
+        j = this.scan_ss as base.u32
+        j_max_incl = (this.scan_se.min(no_more_than: 9)) as base.u32
+        while j <= j_max_incl,
+                inv i < 4,
+        {
+            assert j <= 9 via "a <= b: a <= c; c <= b"(c: j_max_incl)
+            this.block_smoothing_lowest_scan_al[this.scan_comps_cselector[i]][j] = this.scan_al
+            j += 1
+        }
+
+        i += 1
+    }
+
+    if this.scan_num_components == 1 {
+        this.calculate_single_component_scan_fields!()
+    } else {
+        failed = this.calculate_multiple_component_scan_fields!()
+        if failed {
+            return "#bad SOS marker"
+        }
+    }
+}
+
+pri func decoder.use_default_huffman_table?(tc4_th: base.u8[..= 7]) {
+    var data   : roslice base.u8
+    var r      : base.io_reader
+    var status : base.status
+
+    if args.tc4_th == 0 {
+        data = DEFAULT_HUFF_TABLE_DC_LUMA[..]
+    } else if args.tc4_th == 1 {
+        data = DEFAULT_HUFF_TABLE_DC_CHROMA[..]
+    } else if args.tc4_th == 4 {
+        data = DEFAULT_HUFF_TABLE_AC_LUMA[..]
+    } else if args.tc4_th == 5 {
+        data = DEFAULT_HUFF_TABLE_AC_CHROMA[..]
+    } else {
+        return "#missing Huffman table"
+    }
+
+    io_bind (io: r, data: data, history_position: 0) {
+        this.payload_length = (data.length() & 0xFFFF) as base.u32
+        status =? this.decode_dht?(src: r)
+    }
+    return status
+}
+
+pri func decoder.calculate_single_component_scan_fields!() {
+    var csel : base.u8[..= 3]
+
+    this.scan_comps_bx_offset[0] = 0
+    this.scan_comps_by_offset[0] = 0
+    this.mcu_num_blocks = 1
+    this.mcu_blocks_sselector[0] = 0
+
+    csel = this.scan_comps_cselector[0]
+    this.mcu_blocks_offset[0] = this.components_workbuf_offsets[csel]
+    this.mcu_blocks_mx_mul[0] = 8
+    this.mcu_blocks_my_mul[0] = 8 * this.components_workbuf_widths[csel]
+    this.mcu_blocks_dc_hselector[0] = 0 | this.scan_comps_td[0]
+    this.mcu_blocks_ac_hselector[0] = 4 | this.scan_comps_ta[0]
+
+    this.scan_width_in_mcus = this.quantize_dimension(
+            width: this.width, h: this.components_h[csel], max_incl_h: this.max_incl_components_h)
+    this.scan_height_in_mcus = this.quantize_dimension(
+            width: this.height, h: this.components_v[csel], max_incl_h: this.max_incl_components_v)
+}
+
+pri func decoder.calculate_multiple_component_scan_fields!() base.bool {
+    var i         : base.u32
+    var h         : base.u32[..= 4]
+    var v         : base.u32[..= 4]
+    var hv        : base.u32[..= 16]
+    var total_hv  : base.u32
+    var b         : base.u32
+    var bx_offset : base.u32
+    var by_offset : base.u32
+    var sibo      : base.u32
+    var ssel      : base.u8[..= 3]
+    var csel      : base.u8[..= 3]
+
+    total_hv = 0
+    i = 0
+    b = 0
+    bx_offset = 0
+    by_offset = 0
+    while i < this.scan_num_components {
+        assert i < 4 via "a < b: a < c; c <= b"(c: this.scan_num_components)
+        h = this.components_h[this.scan_comps_cselector[i]] as base.u32
+        v = this.components_v[this.scan_comps_cselector[i]] as base.u32
+        hv = ((this.components_h[this.scan_comps_cselector[i]] as base.u32) *
+                (this.components_v[this.scan_comps_cselector[i]] as base.u32))
+        this.swizzle_immediately_c_offsets[i] = 64 ~mod* total_hv
+        total_hv ~mod+= hv
+
+        while hv > 0,
+                inv i < 4,
+        {
+            this.scan_comps_bx_offset[b & 15] = (bx_offset & 3) as base.u8
+            this.scan_comps_by_offset[b & 15] = (by_offset & 3) as base.u8
+            this.mcu_blocks_sselector[b & 15] = i as base.u8
+            b ~mod+= 1
+            bx_offset ~mod+= 1
+            if bx_offset == h {
+                bx_offset = 0
+                by_offset ~mod+= 1
+                if by_offset == v {
+                    by_offset = 0
+                }
+            }
+            hv -= 1
+        }
+
+        i += 1
+    }
+    if total_hv > 10 {
+        return true
+    }
+    this.mcu_num_blocks = total_hv
+    this.swizzle_immediately_c_offsets[this.scan_num_components] = 64 ~mod* total_hv
+
+    b = 0
+    while b < this.mcu_num_blocks {
+        assert b < 10 via "a < b: a < c; c <= b"(c: this.mcu_num_blocks)
+        ssel = this.mcu_blocks_sselector[b]
+        csel = this.scan_comps_cselector[ssel]
+        this.mcu_blocks_offset[b] = this.components_workbuf_offsets[csel] +
+                (8 * (this.scan_comps_bx_offset[b] as base.u64)) +
+                (8 * (this.scan_comps_by_offset[b] as base.u64) * (this.components_workbuf_widths[csel] as base.u64))
+        this.mcu_blocks_mx_mul[b] = 8 * (this.components_h[csel] as base.u32)
+        this.mcu_blocks_my_mul[b] = 8 * (this.components_v[csel] as base.u32) * this.components_workbuf_widths[csel]
+        this.mcu_blocks_dc_hselector[b] = 0 | this.scan_comps_td[ssel]
+        this.mcu_blocks_ac_hselector[b] = 4 | this.scan_comps_ta[ssel]
+        sibo = this.swizzle_immediately_c_offsets[csel] ~mod+ (
+                (8 * (this.scan_comps_bx_offset[b] as base.u32)) +
+                (64 * (this.scan_comps_by_offset[b] as base.u32) * (this.components_h[csel] as base.u32)))
+        this.swizzle_immediately_b_offsets[b] = sibo.min(no_more_than: 576)
+        b += 1
+    }
+
+    this.scan_width_in_mcus = this.width_in_mcus
+    this.scan_height_in_mcus = this.height_in_mcus
+    return false
+}
+
+pri func decoder.fill_bitstream!(src: base.io_reader) {
+    var wi     : base.u32[..= 0x800]
+    var c8     : base.u8
+    var new_wi : base.u32[..= 0x800]
+
+    // Compact unread bytes to the start of the buffer.
+    if this.bitstream_ri <= 0 {
+        // No-op.
+    } else if this.bitstream_ri >= this.bitstream_wi {
+        this.bitstream_ri = 0
+        this.bitstream_wi = 0
+    } else {
+        assert this.bitstream_wi > this.bitstream_ri via "a > b: b < a"()
+        wi = this.bitstream_wi - this.bitstream_ri
+        this.bitstream_buffer[..].copy_from_slice!(s: this.bitstream_buffer[this.bitstream_ri .. this.bitstream_wi])
+        this.bitstream_ri = 0
+        this.bitstream_wi = wi
+    }
+
+    wi = this.bitstream_wi
+    while (wi < 0x800) and (args.src.length() > 0) {
+        c8 = args.src.peek_u8()
+        if c8 < 0xFF {
+            this.bitstream_buffer[wi] = c8
+            wi += 1
+            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+            continue
+        } else if args.src.length() <= 1 {
+            break
+        }
+
+        c8 = args.src.peek_u8_at(offset: 1)
+        if c8 == 0x00 {
+            this.bitstream_buffer[wi] = 0xFF
+            wi += 1
+            args.src.skip_u32_fast!(actual: 2, worst_case: 2)
+            continue
+        } else if c8 < 0xFF {
+            break
+        }
+        // Section B.1.1.2: "Any marker may optionally be preceded by any
+        // number of [0xFF] fill bytes".
+        args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+    }
+
+    // If we hit a "\xFF\x??" marker then pad the bitstream. In this method
+    // invocation, insert up to 264 bytes of implicit zeroes. Repeated calls to
+    // this method can insert even more.
+    if args.src.length() > 1 {
+        if (args.src.peek_u8() >= 0xFF) and ((args.src.peek_u16le() >> 8) > 0) {
+            new_wi = wi.min(no_more_than: 0x800 - 264) + 264
+            new_wi = new_wi.min(no_more_than: wi + this.bitstream_padding)
+            if wi < new_wi {
+                assert new_wi > wi via "a > b: b < a"()
+                this.bitstream_padding ~sat-= new_wi - wi
+                this.bitstream_buffer[wi .. new_wi].bulk_memset!(byte_value: 0)
+                wi = new_wi
+            }
+        }
+    }
+
+    this.bitstream_wi = wi
+}
+
+pri func decoder.load_mcu_blocks_for_single_component!(mx: base.u32[..= 0x2000], my: base.u32[..= 0x2000], workbuf: slice base.u8, csel: base.u32[..= 3]),
+        choosy,
+{
+    var stride16 : base.u64[..= 0x10_0080]
+    var offset   : base.u64
+
+    stride16 = (this.components_workbuf_widths[args.csel] * 16) as base.u64
+    offset = this.components_workbuf_offsets[args.csel | 4] +
+            ((args.mx as base.u64) * 128) +
+            ((args.my as base.u64) * stride16)
+    if offset <= args.workbuf.length() {
+        this.mcu_blocks[.. 1].bulk_load_host_endian!(src: args.workbuf[offset ..])
+    }
+}
+
+pri func decoder.load_mcu_blocks!(mx: base.u32[..= 0x2000], my: base.u32[..= 0x2000], workbuf: slice base.u8) {
+    var b        : base.u32
+    var csel     : base.u8[..= 3]
+    var h        : base.u64[..= 4]
+    var v        : base.u64[..= 4]
+    var stride16 : base.u64[..= 0x10_0080]
+    var offset   : base.u64
+
+    h = 1
+    v = 1
+    b = 0
+    while b < this.mcu_num_blocks {
+        assert b < 10 via "a < b: a < c; c <= b"(c: this.mcu_num_blocks)
+        csel = this.scan_comps_cselector[this.mcu_blocks_sselector[b]]
+        if this.scan_num_components > 1 {
+            h = this.components_h[csel] as base.u64
+            v = this.components_v[csel] as base.u64
+        }
+        stride16 = (this.components_workbuf_widths[csel] * 16) as base.u64
+        offset = this.components_workbuf_offsets[csel | 4] +
+                (((h * (args.mx as base.u64)) + (this.scan_comps_bx_offset[b] as base.u64)) * 128) +
+                (((v * (args.my as base.u64)) + (this.scan_comps_by_offset[b] as base.u64)) * stride16)
+        if offset <= args.workbuf.length() {
+            assert b <= (b + 1) via "a <= (a + b): 0 <= b"()
+            this.mcu_blocks[b .. (b + 1)].bulk_load_host_endian!(src: args.workbuf[offset ..])
+        }
+        b += 1
+    }
+}
+
+pri func decoder.save_mcu_blocks!(mx: base.u32[..= 0x2000], my: base.u32[..= 0x2000], workbuf: slice base.u8) {
+    var b        : base.u32
+    var csel     : base.u8[..= 3]
+    var h        : base.u64[..= 4]
+    var v        : base.u64[..= 4]
+    var stride16 : base.u64[..= 0x10_0080]
+    var offset   : base.u64
+
+    h = 1
+    v = 1
+    b = 0
+    while b < this.mcu_num_blocks {
+        assert b < 10 via "a < b: a < c; c <= b"(c: this.mcu_num_blocks)
+        csel = this.scan_comps_cselector[this.mcu_blocks_sselector[b]]
+        if this.scan_num_components > 1 {
+            h = this.components_h[csel] as base.u64
+            v = this.components_v[csel] as base.u64
+        }
+        stride16 = (this.components_workbuf_widths[csel] * 16) as base.u64
+        offset = this.components_workbuf_offsets[csel | 4] +
+                (((h * (args.mx as base.u64)) + (this.scan_comps_bx_offset[b] as base.u64)) * 128) +
+                (((v * (args.my as base.u64)) + (this.scan_comps_by_offset[b] as base.u64)) * stride16)
+        if offset <= args.workbuf.length() {
+            assert b <= (b + 1) via "a <= (a + b): 0 <= b"()
+            this.mcu_blocks[b .. (b + 1)].bulk_save_host_endian!(dst: args.workbuf[offset ..])
+        }
+        b += 1
+    }
+}
+
+pri func decoder.skip_past_the_next_restart_marker?(src: base.io_reader) {
+    var c8 : base.u8
+
+    while true {
+        if args.src.length() < 2 {
+            yield? base."$short read"
+            continue
+        } else if args.src.peek_u8() < 0xFF {
+            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+            continue
+        }
+
+        c8 = (args.src.peek_u16le() >> 8) as base.u8
+        if c8 < 0xC0 {
+            // Either a reserved marker or "\xFF\x00" byte stuffing. Consume it
+            // and continue.
+            args.src.skip_u32_fast!(actual: 2, worst_case: 2)
+            continue
+        } else if (c8 < 0xD0) or (0xD7 < c8) {
+            // Not an RSTn (Restart) marker. Leave it and break.
+            break
+        }
+
+        c8 &= 7
+        if (this.next_restart_marker == ((c8 + 1) & 7)) or
+                (this.next_restart_marker == ((c8 + 2) & 7)) {
+            // A leading RSTn marker. Leave it and break.
+            break
+        } else if (this.next_restart_marker == ((c8 + 7) & 7)) or
+                (this.next_restart_marker == ((c8 + 6) & 7)) {
+            // A lagging RSTn marker. Consume it and continue.
+            args.src.skip_u32_fast!(actual: 2, worst_case: 2)
+            continue
+        } else {
+            // The RSTn marker is either the expected one or far away from the
+            // expected one (neither leading or lagging). Consume it and break.
+            args.src.skip_u32_fast!(actual: 2, worst_case: 2)
+            break
+        }
+    }
+
+    this.next_restart_marker = (this.next_restart_marker ~mod+ 1) & 7
+}
+
+pri func decoder.apply_progressive_idct!(workbuf: slice base.u8) {
+    var csel : base.u32
+
+    var block_smoothing_applicable : base.bool
+
+    var scan_width_in_mcus  : base.u32[..= 0x2000]
+    var scan_height_in_mcus : base.u32[..= 0x2000]
+    var mcu_blocks_mx_mul_0 : base.u32[..= 0x00_0020]
+    var mcu_blocks_my_mul_0 : base.u32[..= 0x20_0100]
+
+    var my : base.u32
+    var mx : base.u32
+
+    var stride : base.u64[..= 0x1_0008]
+    var offset : base.u64
+
+    // Copies mcu_blocks[0], which load_mcu_blocks_for_single_component might
+    // overwrite, as decode_mcu may be suspended (due to a "$short read").
+    var stashed_mcu_blocks_0 : array[128] base.u8
+
+    this.mcu_blocks[.. 1].bulk_save_host_endian!(dst: stashed_mcu_blocks_0[..])
+
+    block_smoothing_applicable = true
+    csel = 0
+    while csel < this.num_components {
+        assert csel < 4 via "a < b: a < c; c <= b"(c: this.num_components)
+        if (this.block_smoothing_lowest_scan_al[csel][0] >= 16) or
+                this.top_left_quants_has_zero(q: this.components_tq[csel] as base.u32) {
+            block_smoothing_applicable = false
+        }
+        csel += 1
+    }
+
+    csel = 0
+    while csel < this.num_components {
+        assert csel < 4 via "a < b: a < c; c <= b"(c: this.num_components)
+
+        // Fake a single-component scan.
+        scan_width_in_mcus = this.quantize_dimension(
+                width: this.width, h: this.components_h[csel], max_incl_h: this.max_incl_components_h)
+        scan_height_in_mcus = this.quantize_dimension(
+                width: this.height, h: this.components_v[csel], max_incl_h: this.max_incl_components_v)
+        mcu_blocks_mx_mul_0 = 8
+        mcu_blocks_my_mul_0 = 8 * this.components_workbuf_widths[csel]
+
+        // For partially loaded progressive JPEGs, apply what libjpeg-turbo
+        // calls "block smoothing".
+        if block_smoothing_applicable and (0 <> (
+                this.block_smoothing_lowest_scan_al[csel][1] |
+                this.block_smoothing_lowest_scan_al[csel][2] |
+                this.block_smoothing_lowest_scan_al[csel][3] |
+                this.block_smoothing_lowest_scan_al[csel][4] |
+                this.block_smoothing_lowest_scan_al[csel][5] |
+                this.block_smoothing_lowest_scan_al[csel][6] |
+                this.block_smoothing_lowest_scan_al[csel][8] |
+                this.block_smoothing_lowest_scan_al[csel][8] |
+                this.block_smoothing_lowest_scan_al[csel][9])) {
+            choose load_mcu_blocks_for_single_component = [load_mcu_blocks_for_single_component_smooth]
+            this.block_smoothing_mx_max_incl = scan_width_in_mcus ~sat- 1
+            this.block_smoothing_my_max_incl = scan_height_in_mcus ~sat- 1
+        } else {
+            choose load_mcu_blocks_for_single_component = [load_mcu_blocks_for_single_component]
+        }
+
+        // Apply IDCT to the MCU blocks in the csel'th component.
+        my = 0
+        while my < scan_height_in_mcus,
+                inv csel < 4,
+        {
+            assert my < 0x2000 via "a < b: a < c; c <= b"(c: scan_height_in_mcus)
+            mx = 0
+            while mx < scan_width_in_mcus,
+                    inv csel < 4,
+                    inv my < 0x2000,
+            {
+                assert mx < 0x2000 via "a < b: a < c; c <= b"(c: scan_width_in_mcus)
+                this.load_mcu_blocks_for_single_component!(mx: mx, my: my, workbuf: args.workbuf, csel: csel)
+
+                stride = this.components_workbuf_widths[csel] as base.u64
+                offset = this.components_workbuf_offsets[csel] +
+                        ((mcu_blocks_mx_mul_0 as base.u64) * (mx as base.u64)) +
+                        ((mcu_blocks_my_mul_0 as base.u64) * (my as base.u64))
+                if offset <= args.workbuf.length() {
+                    this.decode_idct!(
+                            dst_buffer: args.workbuf[offset ..],
+                            dst_stride: stride,
+                            q: this.components_tq[csel] as base.u32)
+
+                }
+
+                mx += 1
+            }
+            my += 1
+        }
+
+        csel += 1
+    }
+
+    this.mcu_blocks[.. 1].bulk_load_host_endian!(src: stashed_mcu_blocks_0[..])
+}
+
+pri func decoder.swizzle_gray!(dst: ptr base.pixel_buffer, workbuf: slice base.u8, x0: base.u32, x1: base.u32, y0: base.u32, y1: base.u32, stride: base.u64) base.status {
+    var dst_pixfmt          : base.pixel_format
+    var dst_bits_per_pixel  : base.u32[..= 256]
+    var dst_bytes_per_pixel : base.u32[..= 32]
+    var x0                  : base.u64
+    var x1                  : base.u64
+    var tab                 : table base.u8
+    var dst                 : slice base.u8
+    var y                   : base.u32
+    var y1                  : base.u32[..= 0xFFFF]
+
+    // TODO: the dst_pixfmt variable shouldn't be necessary. We should be able
+    // to chain the two calls: "args.dst.pixel_format().bits_per_pixel()".
+    dst_pixfmt = args.dst.pixel_format()
+    dst_bits_per_pixel = dst_pixfmt.bits_per_pixel()
+    if (dst_bits_per_pixel & 7) <> 0 {
+        return base."#unsupported option"
+    }
+    dst_bytes_per_pixel = dst_bits_per_pixel / 8
+    x0 = (dst_bytes_per_pixel * args.x0.min(no_more_than: this.width)) as base.u64
+    x1 = (dst_bytes_per_pixel * args.x1.min(no_more_than: this.width)) as base.u64
+
+    tab = args.dst.plane(p: 0)
+    y = args.y0
+    y1 = args.y1.min(no_more_than: this.height)
+    while y < y1 {
+        assert y < 0xFFFF via "a < b: a < c; c <= b"(c: y1)
+        dst = tab.row_u32(y: y)
+        if x1 < dst.length() {
+            dst = dst[.. x1]
+        }
+        if x0 < dst.length() {
+            dst = dst[x0 ..]
+        } else {
+            dst = this.util.empty_slice_u8()
+        }
+
+        this.swizzler.swizzle_interleaved_from_slice!(
+                dst: dst,
+                dst_palette: args.dst.palette_or_else(fallback: this.dst_palette[..]),
+                src: args.workbuf)
+
+        if args.stride <= args.workbuf.length() {
+            args.workbuf = args.workbuf[args.stride ..]
+        } else {
+            args.workbuf = this.util.empty_slice_u8()
+        }
+
+        y += 1
+    }
+    return ok
+}
+
+pri func decoder.swizzle_colorful!(dst: ptr base.pixel_buffer, workbuf: slice base.u8, x0: base.u32, x1: base.u32, y0: base.u32, y1: base.u32) base.status {
+    var i       : base.u64
+    var j       : base.u64
+    var src0    : slice base.u8
+    var src1    : slice base.u8
+    var src2    : slice base.u8
+    var src3    : slice base.u8
+    var width0  : base.u32[..= 0x1_0008]
+    var width1  : base.u32[..= 0x1_0008]
+    var width2  : base.u32[..= 0x1_0008]
+    var width3  : base.u32[..= 0x1_0008]
+    var height0 : base.u32[..= 0x1_0008]
+    var height1 : base.u32[..= 0x1_0008]
+    var height2 : base.u32[..= 0x1_0008]
+    var height3 : base.u32[..= 0x1_0008]
+    var status  : base.status
+
+    if this.swizzle_immediately {
+        i = this.swizzle_immediately_c_offsets[0] as base.u64
+        j = this.swizzle_immediately_c_offsets[1] as base.u64
+        if (i <= j) and (j <= 640) {
+            src0 = this.swizzle_immediately_buffer[i .. j]
+            width0 = 8 * (this.components_h[0] as base.u32)
+            height0 = 8 * (this.components_v[0] as base.u32)
+        }
+
+        i = this.swizzle_immediately_c_offsets[1] as base.u64
+        j = this.swizzle_immediately_c_offsets[2] as base.u64
+        if (i <= j) and (j <= 640) {
+            src1 = this.swizzle_immediately_buffer[i .. j]
+            width1 = 8 * (this.components_h[1] as base.u32)
+            height1 = 8 * (this.components_v[1] as base.u32)
+        }
+
+        i = this.swizzle_immediately_c_offsets[2] as base.u64
+        j = this.swizzle_immediately_c_offsets[3] as base.u64
+        if (i <= j) and (j <= 640) {
+            src2 = this.swizzle_immediately_buffer[i .. j]
+            width2 = 8 * (this.components_h[2] as base.u32)
+            height2 = 8 * (this.components_v[2] as base.u32)
+        }
+
+        i = this.swizzle_immediately_c_offsets[3] as base.u64
+        j = this.swizzle_immediately_c_offsets[4] as base.u64
+        if (i <= j) and (j <= 640) {
+            src3 = this.swizzle_immediately_buffer[i .. j]
+            width3 = 8 * (this.components_h[3] as base.u32)
+            height3 = 8 * (this.components_v[3] as base.u32)
+        }
+
+    } else {
+        if (this.components_workbuf_offsets[0] <= this.components_workbuf_offsets[1]) and
+                (this.components_workbuf_offsets[1] <= args.workbuf.length()) {
+            src0 = args.workbuf[this.components_workbuf_offsets[0] .. this.components_workbuf_offsets[1]]
+            width0 = this.components_workbuf_widths[0]
+            height0 = this.components_workbuf_heights[0]
+        }
+
+        if (this.components_workbuf_offsets[1] <= this.components_workbuf_offsets[2]) and
+                (this.components_workbuf_offsets[2] <= args.workbuf.length()) {
+            src1 = args.workbuf[this.components_workbuf_offsets[1] .. this.components_workbuf_offsets[2]]
+            width1 = this.components_workbuf_widths[1]
+            height1 = this.components_workbuf_heights[1]
+        }
+
+        if (this.components_workbuf_offsets[2] <= this.components_workbuf_offsets[3]) and
+                (this.components_workbuf_offsets[3] <= args.workbuf.length()) {
+            src2 = args.workbuf[this.components_workbuf_offsets[2] .. this.components_workbuf_offsets[3]]
+            width2 = this.components_workbuf_widths[2]
+            height2 = this.components_workbuf_heights[2]
+        }
+
+        if (this.components_workbuf_offsets[3] <= this.components_workbuf_offsets[4]) and
+                (this.components_workbuf_offsets[4] <= args.workbuf.length()) {
+            src3 = args.workbuf[this.components_workbuf_offsets[3] .. this.components_workbuf_offsets[4]]
+            width3 = this.components_workbuf_widths[3]
+            height3 = this.components_workbuf_heights[3]
+        }
+    }
+
+    status = this.swizzler.swizzle_ycck!(
+            dst: args.dst,
+            dst_palette: args.dst.palette_or_else(fallback: this.dst_palette[..]),
+            x_min_incl: args.x0 & 0xFFFF,
+            x_max_excl: args.x1.min(no_more_than: this.width),
+            y_min_incl: args.y0 & 0xFFFF,
+            y_max_excl: args.y1.min(no_more_than: this.height),
+            src0: src0,
+            src1: src1,
+            src2: src2,
+            src3: src3,
+            width0: width0,
+            width1: width1,
+            width2: width2,
+            width3: width3,
+            height0: height0,
+            height1: height1,
+            height2: height2,
+            height3: height3,
+            stride0: width0,
+            stride1: width1,
+            stride2: width2,
+            stride3: width3,
+            h0: this.components_h[0],
+            h1: this.components_h[1],
+            h2: this.components_h[2],
+            h3: this.components_h[3],
+            v0: this.components_v[0],
+            v1: this.components_v[1],
+            v2: this.components_v[2],
+            v3: this.components_v[3],
+            is_rgb_or_cmyk: this.is_rgb_or_cmyk,
+            triangle_filter_for_2to1: not this.use_lower_quality,
+            scratch_buffer_2k: this.swizzle_ycck_scratch_buffer_2k[..])
+    return status
+}
+
+pub func decoder.frame_dirty_rect() base.rect_ie_u32 {
+    return this.util.make_rect_ie_u32(
+            min_incl_x: 0,
+            min_incl_y: 0,
+            max_excl_x: this.width,
+            max_excl_y: this.height)
+}
+
+pub func decoder.num_animation_loops() base.u32 {
+    return 0
+}
+
+pub func decoder.num_decoded_frame_configs() base.u64 {
+    if this.call_sequence > 0x20 {
+        return 1
+    }
+    return 0
+}
+
+pub func decoder.num_decoded_frames() base.u64 {
+    if this.call_sequence > 0x40 {
+        return 1
+    }
+    return 0
+}
+
+pub func decoder.restart_frame!(index: base.u64, io_position: base.u64) base.status {
+    var i : base.u32
+    var j : base.u32
+
+    if this.call_sequence < 0x20 {
+        return base."#bad call sequence"
+    }
+    if args.index <> 0 {
+        return base."#bad argument"
+    }
+
+    this.call_sequence = 0x28
+    this.bitstream_is_closed = false
+    this.expect_multiple_scans = false
+    this.frame_config_io_position = args.io_position
+    this.scan_count = 0
+    this.restart_interval = this.saved_restart_interval
+
+    i = 0
+    while i < 4 {
+        this.seen_dqt[i] = this.saved_seen_dqt[i]
+        j = 0
+        while j < 64,
+                inv i < 4,
+        {
+            this.quant_tables[i][j] = this.saved_quant_tables[i][j]
+            j += 1
+        }
+        i += 1
+    }
+
+    i = 0
+    while i < 4 {
+        j = 0
+        while j < 10,
+                inv i < 4,
+        {
+            this.block_smoothing_lowest_scan_al[i][j] = 16
+            j += 1
+        }
+        i += 1
+    }
+
+    i = 0
+    while i < 8 {
+        this.seen_dht[i] = false
+        i += 1
+    }
+
+    return ok
+}
+
+pub func decoder.set_report_metadata!(fourcc: base.u32, report: base.bool) {
+    // TODO: implement.
+}
+
+pub func decoder.tell_me_more?(dst: base.io_writer, minfo: nptr base.more_information, src: base.io_reader) {
+    return base."#no more information"
+}
+
+pub func decoder.workbuf_len() base.range_ii_u64 {
+    if this.use_lower_quality and (this.sof_marker < 0xC2) {
+        return this.util.make_range_ii_u64(
+                min_incl: 0,
+                max_incl: this.components_workbuf_offsets[8])
+    }
+    return this.util.make_range_ii_u64(
+            min_incl: this.components_workbuf_offsets[8],
+            max_incl: this.components_workbuf_offsets[8])
+}

@@ -1,0 +1,14 @@
+root = true
+
+[*.{sh,bash,elv,nu}]
+indent_size = 2
+indent_style = space
+
+[bash-preexec.sh]
+indent_size = 4
+indent_style = space
+
+[*.swift]
+indent_size = 4
+indent_style = space
+trim_trailing_whitespace = true

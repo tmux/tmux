@@ -1,0 +1,1035 @@
+// Copyright 2024 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+// --------
+
+// ETC1 / ETC2 is a lossy, fixed-rate texture compression format. ETC1 uses 8
+// bytes per 4×4 pixel block, 0.5 bytes per pixel (after rounding image
+// dimensions up to a multiple of 4). The ETC1 specification is at:
+// http://www.khronos.org/registry/gles/extensions/OES/OES_compressed_ETC1_RGB8_texture.txt
+//
+// That's the raw format for uploading to GPUs. The iPACKMAN file format (*.pkm
+// files) prepends a 16-byte header, stating width, height and pixel format.
+//
+// Android v2.2 Froyo (2010) and its OpenGL ES shipped with ETC1 / PKM support.
+// AOSP has a software implementation, used by its etc1tool program:
+// https://cs.android.com/android/platform/superproject/main/+/main:frameworks/native/opengl/libs/ETC1/etc1.cpp;l=200;drc=efb735f4d5a2f04550e33e8aa9485f906018fe4e
+//
+// ETC2 (mandatory in OpenGL ES 3.0; see the 3.0 spec Appendix C.1 or the 3.2
+// spec Appendix C.2 "ETC Compressed Texture Image Formats") extends ETC1 in a
+// backwards-compatible way by re-purposing bit patterns that well-behaved
+// encoders wouldn't emit. It also uses 8 bytes per 4×4 block (0.5 bytes per
+// pixel), unless producing 8-bit alpha (instead of no alpha or 1-bit alpha),
+// in which case it's doubled to 16 bytes per 4×4 block (1 byte per pixel).
+//
+// https://registry.khronos.org/OpenGL/specs/es/3.0/es_spec_3.0.pdf
+// https://registry.khronos.org/OpenGL/specs/es/3.2/es_spec_3.2.pdf
+// https://registry.khronos.org/DataFormat/specs/1.3/dataformat.1.3.html#ETC1
+// https://registry.khronos.org/DataFormat/specs/1.3/dataformat.1.3.html#ETC1S
+// https://registry.khronos.org/DataFormat/specs/1.3/dataformat.1.3.html#ETC2
+// https://www.khronos.org/assets/uploads/developers/library/2012-siggraph-opengl-es-bof/Ericsson-ETC2-SIGGRAPH_Aug12.pdf
+// https://www.graphicshardware.org/previous/www_2007/presentations/strom-etc2-gh07.pdf
+// https://github.com/Ericsson/ETCPACK
+// https://en.wikipedia.org/wiki/Ericsson_Texture_Compression
+
+pub status "#bad header"
+pub status "#truncated input"
+pub status "#unsupported ETC2 file"
+
+pub const DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE : base.u64 = 0
+
+pub struct decoder? implements base.image_decoder(
+        pixfmt : base.u32,
+        width  : base.u32[..= 0xFFFF],
+        height : base.u32[..= 0xFFFF],
+
+        // The call sequence state machine is discussed in
+        // (/doc/std/image-decoders-call-sequence.md).
+        call_sequence : base.u8,
+
+        srgb : base.bool,
+
+        num_buffered_blocks : base.u32[..= 64],
+
+        dst_x : base.u32,
+        dst_y : base.u32,
+
+        swizzler : base.pixel_swizzler,
+        util     : base.utility,
+) + (
+        alphas : array[64] base.u64,
+        colors : array[64] base.u64,
+
+        // buffer holds 64 blocks. Each block is 4×4 pixels, 64 bytes.
+        buffer : array[4096] base.u8,
+)
+
+pub func decoder.get_quirk(key: base.u32) base.u64 {
+    return 0
+}
+
+pub func decoder.set_quirk!(key: base.u32, value: base.u64) base.status {
+    return base."#unsupported option"
+}
+
+pub func decoder.decode_image_config?(dst: nptr base.image_config, src: base.io_reader) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_image_config?(dst: args.dst, src: args.src)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_image_config?(dst: nptr base.image_config, src: base.io_reader) {
+    var c32               : base.u32
+    var rounded_up_width  : base.u16
+    var rounded_up_height : base.u16
+
+    if this.call_sequence <> 0x00 {
+        return base."#bad call sequence"
+    }
+
+    c32 = args.src.read_u32le?()
+    if c32 <> 'PKM 'le {
+        return "#bad header"
+    }
+
+    c32 = args.src.read_u32le?()
+    if (c32 == '10\x00\x00'le) or  //        ETC1.
+            (c32 == '20\x00\x01'le) or  //   ETC2  RGB.
+            (c32 == '20\x00\x09'le) {  //    ETC2 sRGB.
+        this.pixfmt = base.PIXEL_FORMAT__BGRX
+    } else if (c32 == '20\x00\x03'le) or  // ETC2  RGBA8.
+            (c32 == '20\x00\x0A'le) {  //    ETC2 sRGBA8.
+        this.pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL
+    } else if (c32 == '20\x00\x04'le) or  // ETC2  RGBA1.
+            (c32 == '20\x00\x0B'le) {  //    ETC2 sRGBA1.
+        this.pixfmt = base.PIXEL_FORMAT__BGRA_BINARY
+    } else if (c32 & 0xFFFF) == '20'le {
+        return "#unsupported ETC2 file"
+    } else {
+        return "#bad header"
+    }
+    this.srgb = (c32 >> 24) >= 0x09
+
+    rounded_up_width = args.src.read_u16be?()
+    rounded_up_height = args.src.read_u16be?()
+
+    c32 = args.src.read_u16be_as_u32?()
+    if ((c32 + 3) & 0xFFFF_FFFC) <> (rounded_up_width as base.u32) {
+        return "#bad header"
+    }
+    this.width = c32
+
+    c32 = args.src.read_u16be_as_u32?()
+    if ((c32 + 3) & 0xFFFF_FFFC) <> (rounded_up_height as base.u32) {
+        return "#bad header"
+    }
+    this.height = c32
+
+    if args.dst <> nullptr {
+        args.dst.set!(
+                pixfmt: this.pixfmt,
+                pixsub: 0,
+                width: this.width,
+                height: this.height,
+                first_frame_io_position: 16,
+                first_frame_is_opaque: this.pixfmt == base.PIXEL_FORMAT__BGRX)
+    }
+
+    this.call_sequence = 0x20
+}
+
+pub func decoder.decode_frame_config?(dst: nptr base.frame_config, src: base.io_reader) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_frame_config?(dst: args.dst, src: args.src)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_frame_config?(dst: nptr base.frame_config, src: base.io_reader) {
+    if this.call_sequence == 0x20 {
+        // No-op.
+    } else if this.call_sequence < 0x20 {
+        this.do_decode_image_config?(dst: nullptr, src: args.src)
+    } else if this.call_sequence == 0x28 {
+        if 16 <> args.src.position() {
+            return base."#bad restart"
+        }
+    } else if this.call_sequence == 0x40 {
+        this.call_sequence = 0x60
+        return base."@end of data"
+    } else {
+        return base."@end of data"
+    }
+
+    if args.dst <> nullptr {
+        args.dst.set!(bounds: this.util.make_rect_ie_u32(
+                min_incl_x: 0,
+                min_incl_y: 0,
+                max_excl_x: this.width,
+                max_excl_y: this.height),
+                duration: 0,
+                index: 0,
+                io_position: 16,
+                disposal: 0,
+                opaque_within_bounds: this.pixfmt == base.PIXEL_FORMAT__BGRX,
+                overwrite_instead_of_blend: false,
+                background_color: 0xFF00_0000)
+    }
+
+    this.call_sequence = 0x40
+}
+
+pub func decoder.decode_frame?(dst: ptr base.pixel_buffer, src: base.io_reader, blend: base.pixel_blend, workbuf: slice base.u8, opts: nptr base.decode_frame_options) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_frame?(dst: args.dst, src: args.src, blend: args.blend, workbuf: args.workbuf, opts: args.opts)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_frame?(dst: ptr base.pixel_buffer, src: base.io_reader, blend: base.pixel_blend, workbuf: slice base.u8, opts: nptr base.decode_frame_options) {
+    var remaining : base.u32[..= 0x1000_0000]
+    var status    : base.status
+
+    if this.call_sequence == 0x40 {
+        // No-op.
+    } else if this.call_sequence < 0x40 {
+        this.do_decode_frame_config?(dst: nullptr, src: args.src)
+    } else {
+        return base."@end of data"
+    }
+
+    status = this.swizzler.prepare!(
+            dst_pixfmt: args.dst.pixel_format(),
+            dst_palette: args.dst.palette(),
+            src_pixfmt: this.util.make_pixel_format(repr: this.pixfmt),
+            src_palette: this.util.empty_slice_u8(),
+            blend: args.blend)
+    if not status.is_ok() {
+        return status
+    }
+
+    this.dst_x = 0
+    this.dst_y = 0
+
+    remaining = ((this.width + 3) / 4) * ((this.height + 3) / 4)
+    while remaining > 0 {
+        this.num_buffered_blocks = remaining.min(no_more_than: 64)
+        if remaining < this.num_buffered_blocks {
+            return base."#too much data"
+        }
+        remaining -= this.num_buffered_blocks
+
+        this.from_src_to_colors?(src: args.src)
+        this.from_colors_to_buffer!()
+        if this.pixfmt == base.PIXEL_FORMAT__BGRA_NONPREMUL {
+            this.from_alphas_to_buffer!()
+        }
+        status = this.from_buffer_to_dst!(dst: args.dst)
+        if not status.is_ok() {
+            return status
+        }
+    }
+
+    this.call_sequence = 0x60
+}
+
+pri func decoder.from_src_to_colors?(src: base.io_reader) {
+    var bi : base.u32[..= 64]
+
+    while bi < this.num_buffered_blocks {
+        assert bi < 64 via "a < b: a < c; c <= b"(c: this.num_buffered_blocks)
+        if this.pixfmt == base.PIXEL_FORMAT__BGRA_NONPREMUL {
+            this.alphas[bi] = args.src.read_u64be?()
+        }
+        this.colors[bi] = args.src.read_u64be?()
+        bi += 1
+    }
+}
+
+pri func decoder.from_colors_to_buffer!() {
+    var bi    : base.u32[..= 64]
+    var color : base.u64
+    var r0    : base.u32
+    var r1    : base.u32
+    var g0    : base.u32
+    var g1    : base.u32
+    var b0    : base.u32
+    var b1    : base.u32
+    var diff  : base.bool
+    var tran  : base.bool
+    var flip  : base.bool
+
+    while bi < this.num_buffered_blocks {
+        assert bi < 64 via "a < b: a < c; c <= b"(c: this.num_buffered_blocks)
+        color = this.colors[bi]
+
+        diff = (color & 0x2_0000_0000) <> 0
+        tran = (not diff) and (this.pixfmt == base.PIXEL_FORMAT__BGRA_BINARY)
+        if (not diff) and (this.pixfmt <> base.PIXEL_FORMAT__BGRA_BINARY) {
+            // The high 32 bits of color:
+            //
+            // 63 62 61 60 59 58 57 56 55 54 53 52 51 50 49 48 47 46 45 44 43 42 41 40 39 38 37 36 35 34 33 32  dec
+            // 3F 3E 3D 3C 3B 3A 39 38 37 36 35 34 33 32 31 30 2F 2E 2D 2C 2B 2A 29 28 27 26 25 24 23 22 21 20  hex
+            // R0 r0 r0 r0 R1 r1 r1 r1 G0 g0 g0 g0 G1 g1 g1 g1 B0 b0 b0 b0 B1 b1 b1 b1 W0 w0 w0 W1 w1 w1 00 Fl
+
+            r0 = (0x0F & (color >> 0x3C)) as base.u32
+            r0 = (r0 << 4) | r0
+            r1 = (0x0F & (color >> 0x38)) as base.u32
+            r1 = (r1 << 4) | r1
+
+            g0 = (0x0F & (color >> 0x34)) as base.u32
+            g0 = (g0 << 4) | g0
+            g1 = (0x0F & (color >> 0x30)) as base.u32
+            g1 = (g1 << 4) | g1
+
+            b0 = (0x0F & (color >> 0x2C)) as base.u32
+            b0 = (b0 << 4) | b0
+            b1 = (0x0F & (color >> 0x28)) as base.u32
+            b1 = (b1 << 4) | b1
+
+        } else {
+            // The high 32 bits of color (unless ETC2's T / H / Planar modes):
+            //
+            // 63 62 61 60 59 58 57 56 55 54 53 52 51 50 49 48 47 46 45 44 43 42 41 40 39 38 37 36 35 34 33 32  dec
+            // 3F 3E 3D 3C 3B 3A 39 38 37 36 35 34 33 32 31 30 2F 2E 2D 2C 2B 2A 29 28 27 26 25 24 23 22 21 20  hex
+            // R0 r0 r0 r0 r0 R1 r1 r1 G0 g0 g0 g0 g0 G1 g1 g1 B0 b0 b0 b0 b0 B1 b1 b1 W0 w0 w0 W1 w1 w1 .. Fl
+
+            r0 = (0x1F & (color >> 0x3B)) as base.u32
+            r1 = r0 ~mod+ DIFFS[0x07 & (color >> 0x38)]
+            if (r1 >> 5) <> 0 {
+                this.decode_t_mode!(
+                        bits: color,
+                        offset: 16 * bi,
+                        transparent: tran)
+                bi += 1
+                continue
+            }
+            r0 = (r0 ~mod<< 3) | (r0 >> 2)
+            r1 = (r1 ~mod<< 3) | (r1 >> 2)
+
+            g0 = (0x1F & (color >> 0x33)) as base.u32
+            g1 = g0 ~mod+ DIFFS[0x07 & (color >> 0x30)]
+            if (g1 >> 5) <> 0 {
+                this.decode_h_mode!(
+                        bits: color,
+                        offset: 16 * bi,
+                        transparent: tran)
+                bi += 1
+                continue
+            }
+            g0 = (g0 ~mod<< 3) | (g0 >> 2)
+            g1 = (g1 ~mod<< 3) | (g1 >> 2)
+
+            b0 = (0x1F & (color >> 0x2B)) as base.u32
+            b1 = b0 ~mod+ DIFFS[0x07 & (color >> 0x28)]
+            if (b1 >> 5) <> 0 {
+                this.decode_planar_mode!(
+                        bits: color,
+                        offset: 16 * bi)
+                bi += 1
+                continue
+            }
+            b0 = (b0 ~mod<< 3) | (b0 >> 2)
+            b1 = (b1 ~mod<< 3) | (b1 >> 2)
+        }
+
+        flip = (color & 0x1_0000_0000) <> 0
+        this.decode_half_block!(
+                bits: (color & 0xFFFF_FFFF) as base.u32,
+                offset: 16 * bi,
+                which: ((color >> 0x25) & 7) as base.u32,
+                r: r0,
+                g: g0,
+                b: b0,
+                flip: flip,
+                transparent: tran,
+                second: false)
+        this.decode_half_block!(
+                bits: (color & 0xFFFF_FFFF) as base.u32,
+                offset: 16 * bi,
+                which: ((color >> 0x22) & 7) as base.u32,
+                r: r1,
+                g: g1,
+                b: b1,
+                flip: flip,
+                transparent: tran,
+                second: true)
+
+        bi += 1
+    }
+}
+
+pri func decoder.decode_t_mode!(
+        bits: base.u64,
+        offset: base.u32[..= 1008],
+        transparent: base.bool) {
+    var r : array[4] base.u8
+    var g : array[4] base.u8
+    var b : array[4] base.u8
+    var a : array[4] base.u8
+
+    var which : base.u32[..= 7]
+    var delta : base.u32
+
+    var y     : base.u32
+    var x     : base.u32
+    var x4y   : base.u32[..= 15]
+    var index : base.u32[..= 3]
+    var o     : base.u32[..= 4092]
+
+    // Unjumble T-mode's 59 bits and convert from RGB444 to RGB888.
+    //
+    // 63 62 61 60 59 58 57 56 55 54 53 52 51 50 49 48 47 46 45 44 43 42 41 40 39 38 37 36 35 34 33 32  dec
+    // 3F 3E 3D 3C 3B 3A 39 38 37 36 35 34 33 32 31 30 2F 2E 2D 2C 2B 2A 29 28 27 26 25 24 23 22 21 20  hex
+    // .. .. .. R0 r0 .. r0 r0 G0 g0 g0 g0 B0 b0 b0 b0 R2 r2 r2 r2 G2 g2 g2 g2 B2 b2 b2 b2 Wh wh .. wh
+    //
+    // The low 32 bits hold "2 bits per pixel" indexes into the r, g, b arrays.
+
+    r[0] = ((0x0C & (args.bits >> 0x39)) as base.u8) |
+            ((0x03 & (args.bits >> 0x38)) as base.u8)
+    r[0] = (r[0] << 4) | r[0]
+    g[0] = (0x0F & (args.bits >> 0x34)) as base.u8
+    g[0] = (g[0] << 4) | g[0]
+    b[0] = (0x0F & (args.bits >> 0x30)) as base.u8
+    b[0] = (b[0] << 4) | b[0]
+    a[0] = 0xFF
+
+    r[2] = (0x0F & (args.bits >> 0x2C)) as base.u8
+    r[2] = (r[2] << 4) | r[2]
+    g[2] = (0x0F & (args.bits >> 0x28)) as base.u8
+    g[2] = (g[2] << 4) | g[2]
+    b[2] = (0x0F & (args.bits >> 0x24)) as base.u8
+    b[2] = (b[2] << 4) | b[2]
+    a[2] = 0xFF
+
+    // Modulate and apply transparency.
+
+    which = ((0x06 & (args.bits >> 0x21)) as base.u32) |
+            ((0x01 & (args.bits >> 0x20)) as base.u32)
+    delta = T_H_MODIFIERS[which] as base.u32
+
+    r[1] = CLAMP[((r[2] as base.u32) ~mod+ delta) & 1023]
+    g[1] = CLAMP[((g[2] as base.u32) ~mod+ delta) & 1023]
+    b[1] = CLAMP[((b[2] as base.u32) ~mod+ delta) & 1023]
+    a[1] = 0xFF
+
+    r[3] = CLAMP[((r[2] as base.u32) ~mod- delta) & 1023]
+    g[3] = CLAMP[((g[2] as base.u32) ~mod- delta) & 1023]
+    b[3] = CLAMP[((b[2] as base.u32) ~mod- delta) & 1023]
+    a[3] = 0xFF
+
+    if args.transparent {
+        r[2] = 0
+        g[2] = 0
+        b[2] = 0
+        a[2] = 0
+    }
+
+    // Paint the 4×4 block.
+
+    while y < 4 {
+        x = 0
+        while x < 4,
+                inv y < 4,
+        {
+            x4y = (x * 4) | y
+            index = (((args.bits >> x4y) & 1) as base.u32) |
+                    (((args.bits >> (x4y + 15)) & 2) as base.u32)
+            o = args.offset + (x * 4) + (y * 1024)
+            this.buffer[o + 0] = b[index]
+            this.buffer[o + 1] = g[index]
+            this.buffer[o + 2] = r[index]
+            this.buffer[o + 3] = a[index]
+            x += 1
+        }
+        y += 1
+    }
+}
+
+pri func decoder.decode_h_mode!(
+        bits: base.u64,
+        offset: base.u32[..= 1008],
+        transparent: base.bool) {
+    var r : array[4] base.u8
+    var g : array[4] base.u8
+    var b : array[4] base.u8
+    var a : array[4] base.u8
+
+    var rgb0  : base.u32
+    var rgb2  : base.u32
+    var which : base.u32[..= 7]
+    var delta : base.u32
+
+    var y     : base.u32
+    var x     : base.u32
+    var x4y   : base.u32[..= 15]
+    var index : base.u32[..= 3]
+    var o     : base.u32[..= 4092]
+
+    // Unjumble H-mode's 58 bits (one of the 'which' bits is implied by order)
+    // and convert from RGB444 to RGB888.
+    //
+    // 63 62 61 60 59 58 57 56 55 54 53 52 51 50 49 48 47 46 45 44 43 42 41 40 39 38 37 36 35 34 33 32  dec
+    // 3F 3E 3D 3C 3B 3A 39 38 37 36 35 34 33 32 31 30 2F 2E 2D 2C 2B 2A 29 28 27 26 25 24 23 22 21 20  hex
+    // .. R0 r0 r0 r0 G0 g0 g0 .. .. .. g0 B0 .. b0 b0 b0 R2 r2 r2 r2 G2 g2 g2 g2 B2 b2 b2 b2 Wh .. wh
+    //
+    // The low 32 bits hold "2 bits per pixel" indexes into the r, g, b arrays.
+
+    r[0] = (0x0F & (args.bits >> 0x3B)) as base.u8
+    r[0] = (r[0] << 4) | r[0]
+    g[0] = ((0x0E & (args.bits >> 0x37)) as base.u8) |
+            ((0x01 & (args.bits >> 0x34)) as base.u8)
+    g[0] = (g[0] << 4) | g[0]
+    b[0] = ((0x08 & (args.bits >> 0x30)) as base.u8) |
+            ((0x07 & (args.bits >> 0x2F)) as base.u8)
+    b[0] = (b[0] << 4) | b[0]
+
+    r[2] = (0x0F & (args.bits >> 0x2B)) as base.u8
+    r[2] = (r[2] << 4) | r[2]
+    g[2] = (0x0F & (args.bits >> 0x27)) as base.u8
+    g[2] = (g[2] << 4) | g[2]
+    b[2] = (0x0F & (args.bits >> 0x23)) as base.u8
+    b[2] = (b[2] << 4) | b[2]
+
+    // Modulate and apply transparency.
+
+    rgb0 = ((r[0] as base.u32) << 0x10) |
+            ((g[0] as base.u32) << 0x08) |
+            ((b[0] as base.u32) << 0x00)
+    rgb2 = ((r[2] as base.u32) << 0x10) |
+            ((g[2] as base.u32) << 0x08) |
+            ((b[2] as base.u32) << 0x00)
+    which = ((0x04 & (args.bits >> 0x20)) as base.u32) |
+            ((0x02 & (args.bits >> 0x1F)) as base.u32)
+    if rgb0 >= rgb2 {
+        which |= 1
+    }
+    delta = T_H_MODIFIERS[which] as base.u32
+
+    r[1] = CLAMP[((r[0] as base.u32) ~mod- delta) & 1023]
+    g[1] = CLAMP[((g[0] as base.u32) ~mod- delta) & 1023]
+    b[1] = CLAMP[((b[0] as base.u32) ~mod- delta) & 1023]
+    a[1] = 0xFF
+
+    r[0] = CLAMP[((r[0] as base.u32) ~mod+ delta) & 1023]
+    g[0] = CLAMP[((g[0] as base.u32) ~mod+ delta) & 1023]
+    b[0] = CLAMP[((b[0] as base.u32) ~mod+ delta) & 1023]
+    a[0] = 0xFF
+
+    r[3] = CLAMP[((r[2] as base.u32) ~mod- delta) & 1023]
+    g[3] = CLAMP[((g[2] as base.u32) ~mod- delta) & 1023]
+    b[3] = CLAMP[((b[2] as base.u32) ~mod- delta) & 1023]
+    a[3] = 0xFF
+
+    r[2] = CLAMP[((r[2] as base.u32) ~mod+ delta) & 1023]
+    g[2] = CLAMP[((g[2] as base.u32) ~mod+ delta) & 1023]
+    b[2] = CLAMP[((b[2] as base.u32) ~mod+ delta) & 1023]
+    a[2] = 0xFF
+
+    if args.transparent {
+        r[2] = 0
+        g[2] = 0
+        b[2] = 0
+        a[2] = 0
+    }
+
+    // Paint the 4×4 block.
+
+    while y < 4 {
+        x = 0
+        while x < 4,
+                inv y < 4,
+        {
+            x4y = (x * 4) | y
+            index = (((args.bits >> x4y) & 1) as base.u32) |
+                    (((args.bits >> (x4y + 15)) & 2) as base.u32)
+            o = args.offset + (x * 4) + (y * 1024)
+            this.buffer[o + 0] = b[index]
+            this.buffer[o + 1] = g[index]
+            this.buffer[o + 2] = r[index]
+            this.buffer[o + 3] = a[index]
+            x += 1
+        }
+        y += 1
+    }
+}
+
+pri func decoder.decode_planar_mode!(
+        bits: base.u64,
+        offset: base.u32[..= 1008]) {
+    var ro : base.u32
+    var go : base.u32
+    var bo : base.u32
+    var rh : base.u32
+    var gh : base.u32
+    var bh : base.u32
+    var rv : base.u32
+    var gv : base.u32
+    var bv : base.u32
+
+    var y  : base.u32
+    var x  : base.u32
+    var o  : base.u32[..= 4092]
+    var rp : base.u32
+    var gp : base.u32
+    var bp : base.u32
+
+    // Unjumble Planar-mode's 57 bits and convert from RGB676 to RGB888.
+    //
+    // 63 62 61 60 59 58 57 56 55 54 53 52 51 50 49 48 47 46 45 44 43 42 41 40 39 38 37 36 35 34 33 32  dec
+    // 3F 3E 3D 3C 3B 3A 39 38 37 36 35 34 33 32 31 30 2F 2E 2D 2C 2B 2A 29 28 27 26 25 24 23 22 21 20  hex
+    // .. Ro ro ro ro ro ro Go .. go go go go go go Bo .. .. .. bo bo .. bo bo bo Rh rh rh rh rh .. rh
+    //
+    // 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0  dec
+    // 1F 1E 1D 1C 1B 1A 19 18 17 16 15 14 13 12 11 10 0F 0E 0D 0C 0B 0A 09 08 07 06 05 04 03 02 01 00  hex
+    // Gh gh gh gh gh gh gh Bh bh bh bh bh bh Rv rv rv rv rv rv Gv gv gv gv gv gv gv Bv bv bv bv bv bv
+
+    ro = (0x3F & (args.bits >> 0x39)) as base.u32
+    ro = (ro ~mod<< 2) | (ro >> 4)
+    go = ((0x40 & (args.bits >> 0x32)) as base.u32) |
+            ((0x3F & (args.bits >> 0x31)) as base.u32)
+    go = (go ~mod<< 1) | (go >> 6)
+    bo = ((0x20 & (args.bits >> 0x2B)) as base.u32) |
+            ((0x18 & (args.bits >> 0x28)) as base.u32) |
+            ((0x07 & (args.bits >> 0x27)) as base.u32)
+    bo = (bo ~mod<< 2) | (bo >> 4)
+
+    rh = ((0x3E & (args.bits >> 0x21)) as base.u32) |
+            ((0x01 & (args.bits >> 0x20)) as base.u32)
+    rh = (rh ~mod<< 2) | (rh >> 4)
+    gh = (0x7F & (args.bits >> 0x19)) as base.u32
+    gh = (gh ~mod<< 1) | (gh >> 6)
+    bh = (0x3F & (args.bits >> 0x13)) as base.u32
+    bh = (bh ~mod<< 2) | (bh >> 4)
+
+    rv = (0x3F & (args.bits >> 0x0D)) as base.u32
+    rv = (rv ~mod<< 2) | (rv >> 4)
+    gv = (0x7F & (args.bits >> 0x06)) as base.u32
+    gv = (gv ~mod<< 1) | (gv >> 6)
+    bv = (0x3F & (args.bits >> 0x00)) as base.u32
+    bv = (bv ~mod<< 2) | (bv >> 4)
+
+    // Convert h and v colors from absolute to relative.
+
+    rh ~mod-= ro
+    gh ~mod-= go
+    bh ~mod-= bo
+
+    rv ~mod-= ro
+    gv ~mod-= go
+    bv ~mod-= bo
+
+    // Prepare to linearly interpolate (which involves dividing by 4).
+
+    ro ~mod*= 4
+    go ~mod*= 4
+    bo ~mod*= 4
+
+    // Paint the 4×4 block.
+
+    while y < 4 {
+        x = 0
+        while x < 4,
+                inv y < 4,
+        {
+            o = args.offset + (x * 4) + (y * 1024)
+            bp = ((x ~mod* bh) ~mod+ (y ~mod* bv)) ~mod+ bo
+            this.buffer[o + 0] = CLAMP[((bp ~mod+ 2) / 4) & 1023]
+            gp = ((x ~mod* gh) ~mod+ (y ~mod* gv)) ~mod+ go
+            this.buffer[o + 1] = CLAMP[((gp ~mod+ 2) / 4) & 1023]
+            rp = ((x ~mod* rh) ~mod+ (y ~mod* rv)) ~mod+ ro
+            this.buffer[o + 2] = CLAMP[((rp ~mod+ 2) / 4) & 1023]
+            x += 1
+            this.buffer[o + 3] = 0xFF
+        }
+        y += 1
+    }
+}
+
+pri func decoder.decode_half_block!(
+        bits: base.u32,
+        offset: base.u32[..= 1008],
+        which: base.u32[..= 7],
+        r: base.u32,
+        g: base.u32,
+        b: base.u32,
+        flip: base.bool,
+        transparent: base.bool,
+        second: base.bool) {
+    var which : base.u32[..= 15]
+    var x0    : base.u32[..= 2]
+    var y0    : base.u32[..= 2]
+    var x     : base.u32[..= 3]
+    var y     : base.u32[..= 3]
+    var i     : base.u32
+    var x4y   : base.u32[..= 15]
+    var index : base.u32[..= 3]
+    var modif : base.u32
+    var o     : base.u32[..= 4092]
+
+    which = args.which
+    if args.transparent {
+        which |= 8
+    }
+
+    if not args.second {
+        // No-op.
+    } else if args.flip {
+        y0 = 2
+    } else {
+        x0 = 2
+    }
+
+    while i < 8 {
+        if args.flip {
+            x = (x0 + (i / 2)) & 3
+            y = (y0 + (i & 1))
+        } else {
+            x = (x0 + (i / 4))
+            y = (y0 + i) & 3
+        }
+
+        x4y = (x * 4) | y
+        index = ((args.bits >> x4y) & 1) |
+                ((args.bits >> (x4y + 15)) & 2)
+        modif = MODIFIERS[which][index]
+
+        o = args.offset + (x * 4) + (y * 1024)
+        if args.transparent and (index == 2) {
+            this.buffer[o + 0] = 0
+            this.buffer[o + 1] = 0
+            this.buffer[o + 2] = 0
+            this.buffer[o + 3] = 0
+        } else {
+            this.buffer[o + 0] = CLAMP[(args.b ~mod+ modif) & 1023]
+            this.buffer[o + 1] = CLAMP[(args.g ~mod+ modif) & 1023]
+            this.buffer[o + 2] = CLAMP[(args.r ~mod+ modif) & 1023]
+            this.buffer[o + 3] = 0xFF
+        }
+
+        i += 1
+    }
+}
+
+pri func decoder.from_alphas_to_buffer!() {
+    var bi         : base.u32[..= 64]
+    var alpha      : base.u64
+    var a0         : base.u32
+    var multiplier : base.u32[..= 15]
+    var which      : base.u32[..= 15]
+    var offset     : base.u32[..= 1008]
+    var y          : base.u32
+    var x          : base.u32
+    var shift      : base.u32[..= 45]
+    var delta      : base.u32
+    var o          : base.u32[..= 4092]
+
+    while bi < this.num_buffered_blocks {
+        assert bi < 64 via "a < b: a < c; c <= b"(c: this.num_buffered_blocks)
+        alpha = this.alphas[bi]
+
+        a0 = (alpha >> 56) as base.u32
+        multiplier = ((alpha >> 52) & 0x0F) as base.u32
+        which = ((alpha >> 48) & 0x0F) as base.u32
+
+        offset = 16 * bi
+        y = 0
+        while y < 4,
+                inv bi < 64,
+        {
+            x = 0
+            while x < 4,
+                    inv bi < 64,
+                    inv y < 4,
+            {
+                shift = (((x ^ 3) * 4) | (y ^ 3)) * 3
+                delta = multiplier ~mod* ALPHA_MODIFIERS[which][7 & (alpha >> shift)]
+                o = offset + (x * 4) + (y * 1024)
+                this.buffer[o + 3] = CLAMP[(a0 ~mod+ delta) & 1023]
+                x += 1
+            }
+            y += 1
+        }
+
+        bi += 1
+    }
+}
+
+pri func decoder.from_buffer_to_dst!(dst: ptr base.pixel_buffer) base.status {
+    var dst_pixfmt          : base.pixel_format
+    var dst_bits_per_pixel  : base.u32[..= 256]
+    var dst_bytes_per_pixel : base.u32[..= 32]
+    var dst_bytes_per_row   : base.u64
+    var tab                 : table base.u8
+    var bi                  : base.u32
+    var rem_x               : base.u32[..= 0xFFFF]
+    var dy                  : base.u32[..= 4]
+    var dst                 : slice base.u8
+    var src                 : slice base.u8
+    var si                  : base.u32[..= 4080]
+    var sj                  : base.u32[..= 4096]
+    var i                   : base.u64
+    var num_src_pixels      : base.u32
+
+    // TODO: the dst_pixfmt variable shouldn't be necessary. We should be able
+    // to chain the two calls: "args.dst.pixel_format().bits_per_pixel()".
+    dst_pixfmt = args.dst.pixel_format()
+    dst_bits_per_pixel = dst_pixfmt.bits_per_pixel()
+    if (dst_bits_per_pixel & 7) <> 0 {
+        return base."#unsupported option"
+    }
+    dst_bytes_per_pixel = dst_bits_per_pixel / 8
+    dst_bytes_per_row = (this.width * dst_bytes_per_pixel) as base.u64
+    tab = args.dst.plane(p: 0)
+
+    while bi < this.num_buffered_blocks {
+        assert bi < 64 via "a < b: a < c; c <= b"(c: this.num_buffered_blocks)
+
+        if this.width <= this.dst_x {
+            this.dst_x = 0
+            this.dst_y ~mod+= 4
+            if this.dst_y >= this.height {
+                break
+            }
+            rem_x = this.width
+        } else {
+            rem_x = this.width - this.dst_x
+        }
+
+        dy = 0
+        while dy < 4,
+                inv bi < 64,
+        {
+            si = (1024 * dy) + (16 * bi)
+            sj = (1024 * dy) + (16 * 64)
+            if si < sj {
+                src = this.buffer[si .. sj]
+            }
+            if ((4 * rem_x) as base.u64) < src.length() {
+                src = src[.. (4 * rem_x) as base.u64]
+            }
+
+            if (this.dst_y ~mod+ dy) >= this.height {
+                break
+            }
+            dst = tab.row_u32(y: this.dst_y ~mod+ dy)
+            if dst_bytes_per_row < dst.length() {
+                dst = dst[.. dst_bytes_per_row]
+            }
+
+            i = (this.dst_x as base.u64) * (dst_bytes_per_pixel as base.u64)
+            if i < dst.length() {
+                this.swizzler.swizzle_interleaved_from_slice!(
+                        dst: dst[i ..],
+                        dst_palette: args.dst.palette(),
+                        src: src)
+            }
+
+            dy += 1
+        }
+
+        num_src_pixels = ((src.length() & 0xFFFF_FFFF) as base.u32) / 4
+        this.dst_x ~mod+= num_src_pixels
+        bi ~mod+= (num_src_pixels + 3) / 4
+    }
+
+    return ok
+}
+
+pub func decoder.frame_dirty_rect() base.rect_ie_u32 {
+    return this.util.make_rect_ie_u32(
+            min_incl_x: 0,
+            min_incl_y: 0,
+            max_excl_x: this.width,
+            max_excl_y: this.height)
+}
+
+pub func decoder.num_animation_loops() base.u32 {
+    return 0
+}
+
+pub func decoder.num_decoded_frame_configs() base.u64 {
+    if this.call_sequence > 0x20 {
+        return 1
+    }
+    return 0
+}
+
+pub func decoder.num_decoded_frames() base.u64 {
+    if this.call_sequence > 0x40 {
+        return 1
+    }
+    return 0
+}
+
+pub func decoder.restart_frame!(index: base.u64, io_position: base.u64) base.status {
+    if this.call_sequence < 0x20 {
+        return base."#bad call sequence"
+    }
+    if (args.index <> 0) or (args.io_position <> 16) {
+        return base."#bad argument"
+    }
+    this.call_sequence = 0x28
+    return ok
+}
+
+pub func decoder.set_report_metadata!(fourcc: base.u32, report: base.bool) {
+    // No-op. ETC2 doesn't support metadata.
+}
+
+pub func decoder.tell_me_more?(dst: base.io_writer, minfo: nptr base.more_information, src: base.io_reader) {
+    return base."#no more information"
+}
+
+pub func decoder.workbuf_len() base.range_ii_u64 {
+    return this.util.make_range_ii_u64(min_incl: 0, max_incl: 0)
+}
+
+pri const DIFFS : roarray[8] base.u32 = [
+        0x0000_0000,
+        0x0000_0001,
+        0x0000_0002,
+        0x0000_0003,
+        0xFFFF_FFFC,
+        0xFFFF_FFFD,
+        0xFFFF_FFFE,
+        0xFFFF_FFFF,
+]
+
+pri const MODIFIERS : roarray[16] roarray[4] base.u32 = [
+        [0x0000_0002, 0x0000_0008, 0xFFFF_FFFE, 0xFFFF_FFF8],  // [  -8,  -2,  +2,   +8] re-ordered.
+        [0x0000_0005, 0x0000_0011, 0xFFFF_FFFB, 0xFFFF_FFEF],  // [ -17,  -5,  +5,  +17] re-ordered.
+        [0x0000_0009, 0x0000_001D, 0xFFFF_FFF7, 0xFFFF_FFE3],  // [ -29,  -9,  +9,  +29] re-ordered.
+        [0x0000_000D, 0x0000_002A, 0xFFFF_FFF3, 0xFFFF_FFD6],  // [ -42, -13, +13,  +42] re-ordered.
+        [0x0000_0012, 0x0000_003C, 0xFFFF_FFEE, 0xFFFF_FFC4],  // [ -60, -18, +18,  +60] re-ordered.
+        [0x0000_0018, 0x0000_0050, 0xFFFF_FFE8, 0xFFFF_FFB0],  // [ -80, -24, +24,  +80] re-ordered.
+        [0x0000_0021, 0x0000_006A, 0xFFFF_FFDF, 0xFFFF_FF96],  // [-106, -33, +33, +106] re-ordered.
+        [0x0000_002F, 0x0000_00B7, 0xFFFF_FFD1, 0xFFFF_FF49],  // [-183, -47, +47, +183] re-ordered.
+
+        [0x0000_0000, 0x0000_0008, 0x0000_0000, 0xFFFF_FFF8],  // [  -8,   0,   0,   +8] re-ordered.
+        [0x0000_0000, 0x0000_0011, 0x0000_0000, 0xFFFF_FFEF],  // [ -17,   0,   0,  +17] re-ordered.
+        [0x0000_0000, 0x0000_001D, 0x0000_0000, 0xFFFF_FFE3],  // [ -29,   0,   0,  +29] re-ordered.
+        [0x0000_0000, 0x0000_002A, 0x0000_0000, 0xFFFF_FFD6],  // [ -42,   0,   0,  +42] re-ordered.
+        [0x0000_0000, 0x0000_003C, 0x0000_0000, 0xFFFF_FFC4],  // [ -60,   0,   0,  +60] re-ordered.
+        [0x0000_0000, 0x0000_0050, 0x0000_0000, 0xFFFF_FFB0],  // [ -80,   0,   0,  +80] re-ordered.
+        [0x0000_0000, 0x0000_006A, 0x0000_0000, 0xFFFF_FF96],  // [-106,   0,   0, +106] re-ordered.
+        [0x0000_0000, 0x0000_00B7, 0x0000_0000, 0xFFFF_FF49],  // [-183,   0,   0, +183] re-ordered.
+]
+
+pri const T_H_MODIFIERS : roarray[8] base.u8 = [3, 6, 11, 16, 23, 32, 41, 64]
+
+pri const ALPHA_MODIFIERS : roarray[16] roarray[8] base.u32 = [
+        [0xFFFF_FFFD, 0xFFFF_FFFA, 0xFFFF_FFF7, 0xFFFF_FFF1, 0x0000_0002, 0x0000_0005, 0x0000_0008, 0x0000_000E],  // [-3, -6,  -9, -15, +2, +5, +8, +14]
+        [0xFFFF_FFFD, 0xFFFF_FFF9, 0xFFFF_FFF6, 0xFFFF_FFF3, 0x0000_0002, 0x0000_0006, 0x0000_0009, 0x0000_000C],  // [-3, -7, -10, -13, +2, +6, +9, +12]
+        [0xFFFF_FFFE, 0xFFFF_FFFB, 0xFFFF_FFF8, 0xFFFF_FFF3, 0x0000_0001, 0x0000_0004, 0x0000_0007, 0x0000_000C],  // [-2, -5,  -8, -13, +1, +4, +7, +12]
+        [0xFFFF_FFFE, 0xFFFF_FFFC, 0xFFFF_FFFA, 0xFFFF_FFF3, 0x0000_0001, 0x0000_0003, 0x0000_0005, 0x0000_000C],  // [-2, -4,  -6, -13, +1, +3, +5, +12]
+        [0xFFFF_FFFD, 0xFFFF_FFFA, 0xFFFF_FFF8, 0xFFFF_FFF4, 0x0000_0002, 0x0000_0005, 0x0000_0007, 0x0000_000B],  // [-3, -6,  -8, -12, +2, +5, +7, +11]
+        [0xFFFF_FFFD, 0xFFFF_FFF9, 0xFFFF_FFF7, 0xFFFF_FFF5, 0x0000_0002, 0x0000_0006, 0x0000_0008, 0x0000_000A],  // [-3, -7,  -9, -11, +2, +6, +8, +10]
+        [0xFFFF_FFFC, 0xFFFF_FFF9, 0xFFFF_FFF8, 0xFFFF_FFF5, 0x0000_0003, 0x0000_0006, 0x0000_0007, 0x0000_000A],  // [-4, -7,  -8, -11, +3, +6, +7, +10]
+        [0xFFFF_FFFD, 0xFFFF_FFFB, 0xFFFF_FFF8, 0xFFFF_FFF5, 0x0000_0002, 0x0000_0004, 0x0000_0007, 0x0000_000A],  // [-3, -5,  -8, -11, +2, +4, +7, +10]
+        [0xFFFF_FFFE, 0xFFFF_FFFA, 0xFFFF_FFF8, 0xFFFF_FFF6, 0x0000_0001, 0x0000_0005, 0x0000_0007, 0x0000_0009],  // [-2, -6,  -8, -10, +1, +5, +7,  +9]
+        [0xFFFF_FFFE, 0xFFFF_FFFB, 0xFFFF_FFF8, 0xFFFF_FFF6, 0x0000_0001, 0x0000_0004, 0x0000_0007, 0x0000_0009],  // [-2, -5,  -8, -10, +1, +4, +7,  +9]
+        [0xFFFF_FFFE, 0xFFFF_FFFC, 0xFFFF_FFF8, 0xFFFF_FFF6, 0x0000_0001, 0x0000_0003, 0x0000_0007, 0x0000_0009],  // [-2, -4,  -8, -10, +1, +3, +7,  +9]
+        [0xFFFF_FFFE, 0xFFFF_FFFB, 0xFFFF_FFF9, 0xFFFF_FFF6, 0x0000_0001, 0x0000_0004, 0x0000_0006, 0x0000_0009],  // [-2, -5,  -7, -10, +1, +4, +6,  +9]
+        [0xFFFF_FFFD, 0xFFFF_FFFC, 0xFFFF_FFF9, 0xFFFF_FFF6, 0x0000_0002, 0x0000_0003, 0x0000_0006, 0x0000_0009],  // [-3, -4,  -7, -10, +2, +3, +6,  +9]
+        [0xFFFF_FFFF, 0xFFFF_FFFE, 0xFFFF_FFFD, 0xFFFF_FFF6, 0x0000_0000, 0x0000_0001, 0x0000_0002, 0x0000_0009],  // [-1, -2,  -3, -10, +0, +1, +2,  +9]
+        [0xFFFF_FFFC, 0xFFFF_FFFA, 0xFFFF_FFF8, 0xFFFF_FFF7, 0x0000_0003, 0x0000_0005, 0x0000_0007, 0x0000_0008],  // [-4, -6,  -8,  -9, +3, +5, +7,  +8]
+        [0xFFFF_FFFD, 0xFFFF_FFFB, 0xFFFF_FFF9, 0xFFFF_FFF7, 0x0000_0002, 0x0000_0004, 0x0000_0006, 0x0000_0008],  // [-3, -5,  -7,  -9, +2, +4, +6,  +8]
+]
+
+pri const CLAMP : roarray[1024] base.u8 = [
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+        0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
+        0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F,
+        0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F,
+        0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F,
+        0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x5F,
+        0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x6F,
+        0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7A, 0x7B, 0x7C, 0x7D, 0x7E, 0x7F,
+
+        0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F,
+        0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F,
+        0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF,
+        0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF,
+        0xC0, 0xC1, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8, 0xC9, 0xCA, 0xCB, 0xCC, 0xCD, 0xCE, 0xCF,
+        0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD, 0xDE, 0xDF,
+        0xE0, 0xE1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7, 0xE8, 0xE9, 0xEA, 0xEB, 0xEC, 0xED, 0xEE, 0xEF,
+        0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF,
+
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+]

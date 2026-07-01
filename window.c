@@ -556,6 +556,9 @@ window_set_name(struct window *w, const char *new_name, int untrusted)
 void
 window_resize(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 {
+	struct window_pane	*wp;
+	u_int			 old_xpixel = w->xpixel, old_ypixel = w->ypixel;
+
 	if (xpixel == 0)
 		xpixel = DEFAULT_XPIXEL;
 	if (ypixel == 0)
@@ -575,6 +578,10 @@ window_resize(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 	if (ypixel != -1)
 		w->ypixel = ypixel;
 	redraw_invalidate_scene(w);
+	if (w->xpixel != old_xpixel || w->ypixel != old_ypixel) {
+		TAILQ_FOREACH(wp, &w->panes, entry)
+			tmux_ghostty_vt_pane_resize(wp, wp->sx, wp->sy);
+	}
 }
 
 void
@@ -1333,6 +1340,8 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->screen = &wp->base;
 	window_pane_default_cursor(wp);
 
+	tmux_ghostty_vt_pane_init(wp);
+
 	screen_init(&wp->status_screen, 1, 1, 0);
 	style_ranges_init(&wp->border_status_line.ranges);
 	evtimer_set(&wp->sb_auto_timer, window_pane_scrollbar_timer, wp);
@@ -1450,6 +1459,7 @@ window_pane_destroy(struct window_pane *wp)
 		input_free(wp->ictx);
 		wp->ictx = NULL;
 	}
+	tmux_ghostty_vt_pane_free(wp);
 
 	if (wp->pipe_fd != -1) {
 		bufferevent_free(wp->pipe_event);
@@ -1581,6 +1591,7 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	wp->sy = sy;
 
 	log_debug("%s: %%%u resize %ux%u", __func__, wp->id, sx, sy);
+	tmux_ghostty_vt_pane_resize(wp, sx, sy);
 	screen_resize(&wp->base, sx, sy, wp->base.saved_grid == NULL);
 
 	wme = TAILQ_FIRST(&wp->modes);

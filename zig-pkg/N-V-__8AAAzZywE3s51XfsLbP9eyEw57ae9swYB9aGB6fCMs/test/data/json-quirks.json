@@ -1,0 +1,16 @@
+ï»¿[
+	123,
+	nan,
+	+INFINITY,
+	"escaped \a\b\e\f\n\r\t\v\0\'\"\?\\\/ things",
+	{
+		"ABC\u0394E": // U+00000394 GREEK CAPITAL LETTER DELTA.
+		"mno\U0001F4A9q", /* U+0001F4A9 PILE OF POO. */
+		/* And now for some
+		 * invalid Unicode. */
+		"ABC\uD800E": // Unpaired surrogate.
+		"mno\U12345678q", // Out of range.
+	},
+	"w\x58\x59z",
+	"invÿlid UTF-8",
+]

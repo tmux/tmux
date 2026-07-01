@@ -1,0 +1,202 @@
+// Copyright 2021 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+// --------
+
+// Compared to libpng's ARM NEON implementation, this implementation cannot
+// assume that the row pointers are 16-byte aligned. libpng allocates its own
+// buffers, Wuffs code cannot call malloc and instead uses whatever buffers it
+// is given. Wuffs also uncompresses the entire zlib stream into a continuous
+// array. Rows are therefore not necessarily padded to alignment boundaries,
+// especially considering the one additional filter byte per row.
+//
+// Wuffs' "cpu_arch >= arm_neon" requires __ARM_FEATURE_UNALIGNED but still, we
+// can't e.g. cast a uint8_t* to a uint32_t* without proving alignment.
+
+// --------
+
+// Filter 1: Sub.
+
+pri func decoder.filter_1_distance_4_arm_neon!(curr: slice base.u8),
+        choose cpu_arch >= arm_neon,
+{
+    var curr : slice base.u8
+
+    var util : base.arm_neon_utility
+    var fa   : base.arm_neon_u8x8
+    var fx   : base.arm_neon_u8x8
+
+    iterate (curr = args.curr)(length: 4, advance: 4, unroll: 2) {
+        fx = util.make_u32x2_repeat(a: curr.peek_u32le()).as_u8x8()
+        fx = fx.vadd_u8(b: fa)
+        curr.poke_u32le!(a: fx.as_u32x2().vget_lane_u32(b: 0))
+        fa = fx
+    }
+}
+
+// --------
+
+// Filter 3: Average.
+
+pri func decoder.filter_3_distance_4_arm_neon!(curr: slice base.u8, prev: slice base.u8),
+        choose cpu_arch >= arm_neon,
+{
+    var curr : slice base.u8
+    var prev : slice base.u8
+
+    var util : base.arm_neon_utility
+    var fa   : base.arm_neon_u8x8
+    var fb   : base.arm_neon_u8x8
+    var fx   : base.arm_neon_u8x8
+
+    if args.prev.length() == 0 {
+        iterate (curr = args.curr)(length: 4, advance: 4, unroll: 2) {
+            fx = util.make_u32x2_repeat(a: curr.peek_u32le()).as_u8x8()
+            fx = fx.vadd_u8(b: fa.vhadd_u8(b: fb))
+            curr.poke_u32le!(a: fx.as_u32x2().vget_lane_u32(b: 0))
+            fa = fx
+        }
+
+    } else {
+        iterate (curr = args.curr, prev = args.prev)(length: 4, advance: 4, unroll: 2) {
+            fb = util.make_u32x2_repeat(a: prev.peek_u32le()).as_u8x8()
+            fx = util.make_u32x2_repeat(a: curr.peek_u32le()).as_u8x8()
+            fx = fx.vadd_u8(b: fa.vhadd_u8(b: fb))
+            curr.poke_u32le!(a: fx.as_u32x2().vget_lane_u32(b: 0))
+            fa = fx
+        }
+    }
+}
+
+// --------
+
+// Filter 4: Paeth.
+
+pri func decoder.filter_4_distance_3_arm_neon!(curr: slice base.u8, prev: slice base.u8),
+        choose cpu_arch >= arm_neon,
+{
+    // See the comments in filter_4_distance_4_arm_neon for an explanation of
+    // how this works. That function's single loop is copied twice here, once
+    // with "length: 4" and once with "length: 3". It's generally faster to
+    // load 4 bytes at a time instead of 3.
+    //
+    // Differences between that function and this one are marked with a §.
+
+    var curr : slice base.u8
+    var prev : slice base.u8
+
+    var util  : base.arm_neon_utility
+    var fa    : base.arm_neon_u8x8
+    var fb    : base.arm_neon_u8x8
+    var fc    : base.arm_neon_u8x8
+    var fx    : base.arm_neon_u8x8
+    var fafb  : base.arm_neon_u16x8
+    var fcfc  : base.arm_neon_u16x8
+    var pa    : base.arm_neon_u16x8
+    var pb    : base.arm_neon_u16x8
+    var pc    : base.arm_neon_u16x8
+    var cmpab : base.arm_neon_u16x8
+    var cmpac : base.arm_neon_u16x8
+    var picka : base.arm_neon_u8x8
+    var pickb : base.arm_neon_u8x8
+
+    // § The advance is 3, not 4.
+    iterate (curr = args.curr, prev = args.prev)(length: 4, advance: 3, unroll: 2) {
+        fb = util.make_u32x2_repeat(a: prev.peek_u32le()).as_u8x8()
+        fx = util.make_u32x2_repeat(a: curr.peek_u32le()).as_u8x8()
+        fafb = fa.vaddl_u8(b: fb)
+        fcfc = fc.vaddl_u8(b: fc)
+        pa = fb.vabdl_u8(b: fc)
+        pb = fa.vabdl_u8(b: fc)
+        pc = fafb.vabdq_u16(b: fcfc)
+        cmpab = pa.vcleq_u16(b: pb)
+        cmpac = pa.vcleq_u16(b: pc)
+        picka = cmpab.vandq_u16(b: cmpac).vmovn_u16()
+        pickb = pb.vcleq_u16(b: pc).vmovn_u16()
+        fx = fx.vadd_u8(
+                b: picka.vbsl_u8(b: fa,
+                c: pickb.vbsl_u8(b: fb, c: fc)))
+        // § poke_u24le replaces poke_u32le.
+        curr.poke_u24le!(a: fx.as_u32x2().vget_lane_u32(b: 0))
+        fc = fb
+        fa = fx
+    } else (length: 3, advance: 3, unroll: 1) {
+        // § peek_u24le_as_u32 replaces peek_u32le.
+        fb = util.make_u32x2_repeat(a: prev.peek_u24le_as_u32()).as_u8x8()
+        // § peek_u24le_as_u32 replaces peek_u32le.
+        fx = util.make_u32x2_repeat(a: curr.peek_u24le_as_u32()).as_u8x8()
+        fafb = fa.vaddl_u8(b: fb)
+        fcfc = fc.vaddl_u8(b: fc)
+        pa = fb.vabdl_u8(b: fc)
+        pb = fa.vabdl_u8(b: fc)
+        pc = fafb.vabdq_u16(b: fcfc)
+        cmpab = pa.vcleq_u16(b: pb)
+        cmpac = pa.vcleq_u16(b: pc)
+        picka = cmpab.vandq_u16(b: cmpac).vmovn_u16()
+        pickb = pb.vcleq_u16(b: pc).vmovn_u16()
+        fx = fx.vadd_u8(
+                b: picka.vbsl_u8(b: fa,
+                c: pickb.vbsl_u8(b: fb, c: fc)))
+        // § poke_u24le replaces poke_u32le.
+        curr.poke_u24le!(a: fx.as_u32x2().vget_lane_u32(b: 0))
+        // § These assignments are unnecessary; this is the last iteration.
+        // fc = fb
+        // fa = fx
+    }
+}
+
+pri func decoder.filter_4_distance_4_arm_neon!(curr: slice base.u8, prev: slice base.u8),
+        choose cpu_arch >= arm_neon,
+{
+    var curr : slice base.u8
+    var prev : slice base.u8
+
+    var util  : base.arm_neon_utility
+    var fa    : base.arm_neon_u8x8
+    var fb    : base.arm_neon_u8x8
+    var fc    : base.arm_neon_u8x8
+    var fx    : base.arm_neon_u8x8
+    var fafb  : base.arm_neon_u16x8
+    var fcfc  : base.arm_neon_u16x8
+    var pa    : base.arm_neon_u16x8
+    var pb    : base.arm_neon_u16x8
+    var pc    : base.arm_neon_u16x8
+    var cmpab : base.arm_neon_u16x8
+    var cmpac : base.arm_neon_u16x8
+    var picka : base.arm_neon_u8x8
+    var pickb : base.arm_neon_u8x8
+
+    iterate (curr = args.curr, prev = args.prev)(length: 4, advance: 4, unroll: 2) {
+        fb = util.make_u32x2_repeat(a: prev.peek_u32le()).as_u8x8()
+        fx = util.make_u32x2_repeat(a: curr.peek_u32le()).as_u8x8()
+
+        fafb = fa.vaddl_u8(b: fb)  // fafb = (fa + fb)
+        fcfc = fc.vaddl_u8(b: fc)  // fcfc = (fc + fc)
+
+        pa = fb.vabdl_u8(b: fc)  //      pa = abs(fa + fb - fc - fa)
+        pb = fa.vabdl_u8(b: fc)  //      pb = abs(fa + fb - fc - fb)
+        pc = fafb.vabdq_u16(b: fcfc)  // pc = abs(fa + fb - fc - fc)
+
+        cmpab = pa.vcleq_u16(b: pb)  // cmpab = (pa <= pb)
+        cmpac = pa.vcleq_u16(b: pc)  // cmpac = (pa <= pc)
+
+        picka = cmpab.vandq_u16(b: cmpac).vmovn_u16()  // picka = ((pa <= pb) && (pa <= pc))
+        pickb = pb.vcleq_u16(b: pc).vmovn_u16()  //       pickb = (pb <= pc)
+
+        // Add the predictor to the residual.
+        fx = fx.vadd_u8(
+                b: picka.vbsl_u8(b: fa,
+                c: pickb.vbsl_u8(b: fb, c: fc)))
+
+        curr.poke_u32le!(a: fx.as_u32x2().vget_lane_u32(b: 0))
+        fc = fb
+        fa = fx
+    }
+}

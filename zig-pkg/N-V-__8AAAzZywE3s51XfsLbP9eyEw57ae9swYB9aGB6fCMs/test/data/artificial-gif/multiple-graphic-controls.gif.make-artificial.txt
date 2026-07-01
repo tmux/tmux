@@ -1,0 +1,31 @@
+# Feed this file to script/make-artificial.go
+
+# This GIF image contains multiple "Graphic Control Extensions" for a frame.
+#
+# The GIF89a specification says that "at most one Graphic Control Extension may
+# precede a graphic rendering block", but in practice, some encoders emit more
+# than one, and decoders ignore all but the last one.
+
+make gif
+
+header
+
+image {
+	imageWidthHeight 1 1
+	palette {
+		0x00 0x00 0xFF
+		0x11 0x00 0xFF
+		0x22 0x00 0xFF
+		0x33 0x00 0xFF
+	}
+}
+
+graphicControl animationDisposalNone 200ms
+graphicControl animationDisposalNone 300ms
+
+frame {
+	frameLeftTopWidthHeight 0 0 1 1
+}
+lzw 2 0x00
+
+trailer

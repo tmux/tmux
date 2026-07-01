@@ -1,0 +1,6 @@
+# Allstar (https://github.com/ossf/allstar/) is a GitHub App to set and enforce
+# security policies.
+
+# test/data/archive.iso is test data, not a binary to be executed.
+ignorePaths:
+- test/data/archive.iso

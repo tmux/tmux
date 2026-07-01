@@ -1,0 +1,801 @@
+// Copyright 2022 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pub status "#bad Huffman code (over-subscribed)"
+pub status "#bad Huffman code (under-subscribed)"
+pub status "#bad block header"
+pub status "#bad block length"
+pub status "#bad checksum"
+pub status "#bad header"
+pub status "#bad number of sections"
+pub status "#truncated input"
+pub status "#unsupported block randomization"
+
+pri status "#internal error: inconsistent Huffman decoder state"
+
+pub const DECODER_DST_HISTORY_RETAIN_LENGTH_MAX_INCL_WORST_CASE : base.u64 = 0
+pub const DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE               : base.u64 = 0
+
+pri const CLAMP_TO_5 : roarray[8] base.u8[..= 5] = [0, 1, 2, 3, 4, 5, 5, 5]
+
+pub struct decoder? implements base.io_transformer(
+        bits   : base.u32,
+        n_bits : base.u32[..= 31],
+
+        // Block size is measured prior to the RLE1 step.
+        max_incl_block_size : base.u32[..= 900000],
+
+        block_size               : base.u32[..= 900000],
+        decode_huffman_finished  : base.bool,
+        decode_huffman_which     : base.u8[..= 5],
+        decode_huffman_ticks     : base.u32[..= 50],
+        decode_huffman_section   : base.u32,
+        decode_huffman_run_shift : base.u32[..= 23],
+
+        flush_pointer      : base.u32[..= 1_048575],
+        flush_repeat_count : base.u32[..= 255],
+        flush_prev         : base.u8,
+
+        ignore_checksum      : base.bool,
+        final_checksum_have  : base.u32,
+        block_checksum_have  : base.u32,
+        block_checksum_want  : base.u32,
+        original_pointer     : base.u32,
+        num_symbols          : base.u32[..= 258],
+        num_huffman_codes    : base.u32[..= 6],
+        num_sections         : base.u32[..= 18001],
+        code_lengths_bitmask : base.u32,
+
+        util : base.utility,
+) + (
+        scratch : base.u32,
+
+        letter_counts : array[256] base.u32,
+
+        // presence[i] being non-zero is whether the byte value i occurs in the
+        // block's decompressed output.
+        presence : array[256] base.u8,
+
+        // mtft is the Move To Front Transform state.
+        mtft : array[256] base.u8,
+
+        // huffman_selectors selects which of the huffman_trees to use for each
+        // 50-symbol section.
+        huffman_selectors : array[32768] base.u8,
+
+        // Each array[2] base.u16 is a branch node in the Huffman tree. The
+        // build_huffman_tree method comment details what the base.u16 values mean.
+        //
+        // Each Huffman tree has num_symbols leaf nodes and hence (num_symbols - 1)
+        // branch nodes, also called internal nodes, as per
+        // https://stackoverflow.com/questions/69399994/maximum-number-of-nodes-in-a-huffman-tree/69401083#69401083
+        //
+        // This can be proven inductively. The base case Huffman code (two symbols)
+        // has one branch node (the root node). The inductive case, adding one
+        // symbol to a (complete but possibly non-canonical) Huffman code replaces
+        // one leaf node with one branch node (and two leaf nodes). The net gain in
+        // branch nodes is +1.
+        //
+        // Since num_symbols' inclusive maximum is 258 (for RUNA, RUNB, 255 × mXYZ,
+        // EOB), there are at most 257 branch nodes.
+        huffman_trees : array[6] array[257] array[2] base.u16,
+
+        // huffman_tables[which] caches the result of walking huffman_trees[which]
+        // for each possible 8-bit input. The base.u16 value decomposes as:
+        //  - The low 10 bits are the final node, where finality comes either from
+        //    hitting a leaf node or from spending all 8 bits of the input. As per
+        //    the build_huffman_tree method, a value of 0x100 = 256 or less means
+        //    a branch node and 0x201 = 513 or more means a leaf node.
+        //  - The middle 2 bits are unused.
+        //  - The high 4 bits are the number of input bits spent.
+        huffman_tables : array[6] array[256] base.u16,
+
+        // bwt is the Burrows Wheeler Transform state. Per the README.md file, each
+        // entry is a row with the low 8 bits holding the L column and the high 20
+        // bits holding the U column. The middle 4 bits are unused.
+        //
+        // The read_code_lengths and build_huffman_tree methods also re-purpose
+        // this buffer to temporarily hold up to 258 symbols' code lengths.
+        bwt : array[1_048576] base.u32,
+)
+
+pub func decoder.get_quirk(key: base.u32) base.u64 {
+    if (args.key == base.QUIRK_IGNORE_CHECKSUM) and this.ignore_checksum {
+        return 1
+    }
+    return 0
+}
+
+pub func decoder.set_quirk!(key: base.u32, value: base.u64) base.status {
+    if args.key == base.QUIRK_IGNORE_CHECKSUM {
+        this.ignore_checksum = args.value > 0
+        return ok
+    }
+    return base."#unsupported option"
+}
+
+pub func decoder.dst_history_retain_length() base.optional_u63 {
+    return this.util.make_optional_u63(has_value: true, value: 0)
+}
+
+pub func decoder.workbuf_len() base.range_ii_u64 {
+    return this.util.make_range_ii_u64(
+            min_incl: DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE,
+            max_incl: DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE)
+}
+
+pub func decoder.transform_io?(dst: base.io_writer, src: base.io_reader, workbuf: slice base.u8) {
+    var status : base.status
+
+    while true {
+        status =? this.do_transform_io?(dst: args.dst, src: args.src, workbuf: args.workbuf)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_transform_io?(dst: base.io_writer, src: base.io_reader, workbuf: slice base.u8) {
+    var c8                  : base.u8
+    var i                   : base.u32
+    var tag                 : base.u64
+    var status              : base.status
+    var final_checksum_want : base.u32
+
+    // Read the header.
+    c8 = args.src.read_u8?()
+    if c8 <> 0x42 {
+        return "#bad header"
+    }
+    c8 = args.src.read_u8?()
+    if c8 <> 0x5A {
+        return "#bad header"
+    }
+    c8 = args.src.read_u8?()
+    if c8 <> 0x68 {
+        return "#bad header"
+    }
+    c8 = args.src.read_u8?()
+    if (c8 < '1') or ('9' < c8) {
+        return "#bad header"
+    }
+    this.max_incl_block_size = ((c8 - '0') as base.u32) * 100000
+
+    while true {
+        // Read the 48-bit tag.
+        tag = 0
+        i = 0
+        while i < 48 {
+            if this.n_bits <= 0 {
+                c8 = args.src.read_u8?()
+                this.bits = (c8 as base.u32) << 24
+                this.n_bits = 8
+                assert this.n_bits > 0
+            }
+            tag ~mod<<= 1
+            tag |= (this.bits >> 31) as base.u64
+            this.bits ~mod<<= 1
+            this.n_bits -= 1
+            i += 1
+        }
+
+        if tag == 0x1772_4538_5090 {
+            break
+        } else if tag <> 0x3141_5926_5359 {
+            return "#bad block header"
+        }
+
+        this.prepare_block?(src: args.src)
+
+        this.block_size = 0
+        this.decode_huffman_finished = false
+        this.decode_huffman_which = CLAMP_TO_5[this.huffman_selectors[0] & 7]
+        this.decode_huffman_ticks = 50
+        this.decode_huffman_section = 0
+        this.decode_huffman_run_shift = 0
+        while not this.decode_huffman_finished {
+            status = this.decode_huffman_fast!(src: args.src)
+            if status.is_error() {
+                return status
+            } else if this.decode_huffman_finished {
+                break
+            }
+            this.decode_huffman_slow?(src: args.src)
+        }
+
+        this.invert_bwt!()
+
+        this.block_checksum_have = 0xFFFF_FFFF
+        if this.original_pointer >= this.block_size {
+            return "#bad block length"
+        }
+        assert this.original_pointer < 900000 via "a < b: a < c; c <= b"(c: this.block_size)
+        this.flush_pointer = this.bwt[this.original_pointer] >> 12
+        this.flush_repeat_count = 0
+        this.flush_prev = 0
+
+        while this.block_size > 0 {
+            this.flush_fast!(dst: args.dst)
+            if this.block_size <= 0 {
+                break
+            }
+            this.flush_slow?(dst: args.dst)
+        }
+
+        this.block_checksum_have ^= 0xFFFF_FFFF
+        if (not this.ignore_checksum) and (this.block_checksum_have <> this.block_checksum_want) {
+            return "#bad checksum"
+        }
+        this.final_checksum_have = this.block_checksum_have ^ (
+                (this.final_checksum_have >> 31) |
+                (this.final_checksum_have ~mod<< 1))
+    }
+
+    // Read the 32-bit final checksum.
+    final_checksum_want = 0
+    i = 0
+    while i < 32 {
+        if this.n_bits <= 0 {
+            c8 = args.src.read_u8?()
+            this.bits = (c8 as base.u32) << 24
+            this.n_bits = 8
+            assert this.n_bits > 0
+        }
+        final_checksum_want ~mod<<= 1
+        final_checksum_want |= this.bits >> 31
+        this.bits ~mod<<= 1
+        this.n_bits -= 1
+        i += 1
+    }
+    if (not this.ignore_checksum) and (this.final_checksum_have <> final_checksum_want) {
+        return "#bad checksum"
+    }
+}
+
+pri func decoder.prepare_block?(src: base.io_reader) {
+    var c8       : base.u8
+    var i        : base.u32
+    var j        : base.u32
+    var selector : base.u32
+    var sel_ff   : base.u32
+    var movee    : base.u8
+    var status   : base.status
+
+    // Read the 32-bit block checksum.
+    this.block_checksum_want = 0
+    i = 0
+    while i < 32 {
+        if this.n_bits <= 0 {
+            c8 = args.src.read_u8?()
+            this.bits = (c8 as base.u32) << 24
+            this.n_bits = 8
+            assert this.n_bits > 0
+        }
+        this.block_checksum_want ~mod<<= 1
+        this.block_checksum_want |= this.bits >> 31
+        this.bits ~mod<<= 1
+        this.n_bits -= 1
+        i += 1
+    }
+
+    // Read the "block randomized" bit.
+    if this.n_bits <= 0 {
+        c8 = args.src.read_u8?()
+        this.bits = (c8 as base.u32) << 24
+        this.n_bits = 8
+        assert this.n_bits > 0
+    }
+    if (this.bits >> 31) <> 0 {
+        return "#unsupported block randomization"
+    }
+    this.bits ~mod<<= 1
+    this.n_bits -= 1
+
+    // Read the 24-bit original pointer. The BWT technical report calls this I.
+    this.original_pointer = 0
+    i = 0
+    while i < 24 {
+        if this.n_bits <= 0 {
+            c8 = args.src.read_u8?()
+            this.bits = (c8 as base.u32) << 24
+            this.n_bits = 8
+            assert this.n_bits > 0
+        }
+        this.original_pointer ~mod<<= 1
+        this.original_pointer |= this.bits >> 31
+        this.bits ~mod<<= 1
+        this.n_bits -= 1
+        i += 1
+    }
+
+    // Reset the presence bitmap.
+    i = 0
+    while i < 256 {
+        this.presence[i] = 0
+        i += 1
+    }
+
+    // Read the 16-bit high-level presence bitmap.
+    i = 0
+    while i < 256 {
+        if this.n_bits <= 0 {
+            c8 = args.src.read_u8?()
+            this.bits = (c8 as base.u32) << 24
+            this.n_bits = 8
+            assert this.n_bits > 0
+        }
+        if (this.bits >> 31) <> 0 {
+            this.presence[i] = 1
+        }
+        this.bits ~mod<<= 1
+        this.n_bits -= 1
+        i += 16
+    }
+
+    // Read the 16-bit low-level presence bitmaps.
+    this.scratch = 0
+    i = 0
+    while i < 256 {
+        if this.presence[i] == 0 {
+            i += 16
+            continue
+        }
+        while true {
+            if this.n_bits <= 0 {
+                c8 = args.src.read_u8?()
+                this.bits = (c8 as base.u32) << 24
+                this.n_bits = 8
+                assert this.n_bits > 0
+            }
+            this.scratch ~mod+= this.bits >> 31
+            this.presence[i & 0xFF] = (this.bits >> 31) as base.u8
+            this.bits ~mod<<= 1
+            this.n_bits -= 1
+            i ~mod+= 1
+            if (i & 15) == 0 {
+                break
+            }
+        }
+    }
+    if (this.scratch < 1) or (256 < this.scratch) {
+        return "#bad block header"
+    }
+    this.num_symbols = this.scratch + 2
+
+    // Read the 3-bit number of Huffman codes.
+    this.scratch = 0
+    i = 0
+    while i < 3 {
+        if this.n_bits <= 0 {
+            c8 = args.src.read_u8?()
+            this.bits = (c8 as base.u32) << 24
+            this.n_bits = 8
+            assert this.n_bits > 0
+        }
+        this.scratch ~mod<<= 1
+        this.scratch |= this.bits >> 31
+        this.bits ~mod<<= 1
+        this.n_bits -= 1
+        i += 1
+    }
+    if (this.scratch < 2) or (6 < this.scratch) {
+        return "#bad block header"
+    }
+    this.num_huffman_codes = this.scratch
+
+    // Read the 15-bit number of sections.
+    this.scratch = 0
+    i = 0
+    while i < 15 {
+        if this.n_bits <= 0 {
+            c8 = args.src.read_u8?()
+            this.bits = (c8 as base.u32) << 24
+            this.n_bits = 8
+            assert this.n_bits > 0
+        }
+        this.scratch ~mod<<= 1
+        this.scratch |= this.bits >> 31
+        this.bits ~mod<<= 1
+        this.n_bits -= 1
+        i += 1
+    }
+    if (this.scratch < 1) or (18001 < this.scratch) {
+        return "#bad block header"
+    }
+    this.num_sections = this.scratch
+
+    // Initialize the MTFT state.
+    i = 0
+    while i < this.num_huffman_codes {
+        assert i < 6 via "a < b: a < c; c <= b"(c: this.num_huffman_codes)
+        this.mtft[i] = i as base.u8
+        i += 1
+    }
+
+    // Read each section's Huffman code selector, applying the MTFT.
+    i = 0
+    while i < this.num_sections {
+        assert i < 18001 via "a < b: a < c; c <= b"(c: this.num_sections)
+        selector = 0
+
+        // Read a unary encoded natural number.
+        while true,
+                inv i < 18001,
+        {
+            if this.n_bits <= 0 {
+                c8 = args.src.read_u8?()
+                this.bits = (c8 as base.u32) << 24
+                this.n_bits = 8
+                assert this.n_bits > 0
+            }
+            if (this.bits >> 31) == 0 {
+                this.bits ~mod<<= 1
+                this.n_bits -= 1
+                break
+            }
+            this.bits ~mod<<= 1
+            this.n_bits -= 1
+            selector ~mod+= 1
+            if selector >= this.num_huffman_codes {
+                return "#bad block header"
+            }
+        }
+
+        // Move to front.
+        if selector == 0 {
+            this.huffman_selectors[i] = this.mtft[0]
+        } else {
+            sel_ff = selector & 0xFF
+            movee = this.mtft[sel_ff]
+            this.mtft[1 .. 1 + sel_ff].copy_from_slice!(
+                    s: this.mtft[.. sel_ff])
+            this.mtft[0] = movee
+            this.huffman_selectors[i] = movee
+        }
+
+        i += 1
+    }
+
+    // Read the Huffman codes.
+    i = 0
+    while i < this.num_huffman_codes {
+        assert i < 6 via "a < b: a < c; c <= b"(c: this.num_huffman_codes)
+        this.read_code_lengths?(src: args.src)
+        status = this.build_huffman_tree!(which: i)
+        if status.is_error() {
+            return status
+        }
+        this.build_huffman_table!(which: i)
+        i += 1
+    }
+
+    // Initialize the MTFT state.
+    i = 0
+    j = 0
+    while i < 256 {
+        if this.presence[i] <> 0 {
+            this.mtft[j & 0xFF] = i as base.u8
+            j ~mod+= 1
+        }
+        i += 1
+    }
+
+    // Initialize the letter counts.
+    i = 0
+    while i < 256 {
+        this.letter_counts[i] = 0
+        i += 1
+    }
+}
+
+pri func decoder.read_code_lengths?(src: base.io_reader) {
+    var c8          : base.u8
+    var i           : base.u32
+    var code_length : base.u32
+
+    this.code_lengths_bitmask = 0
+
+    // Read the 5-bit starting value.
+    i = 0
+    while i < 5 {
+        if this.n_bits <= 0 {
+            c8 = args.src.read_u8?()
+            this.bits = (c8 as base.u32) << 24
+            this.n_bits = 8
+            assert this.n_bits > 0
+        }
+        code_length ~mod<<= 1
+        code_length |= this.bits >> 31
+        this.bits ~mod<<= 1
+        this.n_bits -= 1
+        i += 1
+    }
+
+    // Read the code lengths.
+    i = 0
+    while i < this.num_symbols {
+        assert i < 258 via "a < b: a < c; c <= b"(c: this.num_symbols)
+        while true,
+                inv i < 258,
+        {
+            if (code_length < 1) or (20 < code_length) {
+                return "#bad block header"
+            }
+
+            if this.n_bits <= 0 {
+                c8 = args.src.read_u8?()
+                this.bits = (c8 as base.u32) << 24
+                this.n_bits = 8
+                assert this.n_bits > 0
+            }
+            if (this.bits >> 31) == 0 {
+                this.bits ~mod<<= 1
+                this.n_bits -= 1
+                break
+            }
+            this.bits ~mod<<= 1
+            this.n_bits -= 1
+
+            if this.n_bits <= 0 {
+                c8 = args.src.read_u8?()
+                this.bits = (c8 as base.u32) << 24
+                this.n_bits = 8
+                assert this.n_bits > 0
+            }
+            if (this.bits >> 31) == 0 {
+                code_length ~mod+= 1
+            } else {
+                code_length ~mod-= 1
+            }
+            this.bits ~mod<<= 1
+            this.n_bits -= 1
+        }
+
+        this.code_lengths_bitmask |= (1 as base.u32) << (code_length & 31)
+        this.bwt[i] = code_length
+        i += 1
+    }
+}
+
+// build_huffman_tree builds a canonical Huffman tree given the symbols' code
+// lengths. For the "abraca.txt.bz2" example, the code lengths are:
+//  - symbol=0x301 (RUNA)  cl=3
+//  - symbol=0x302 (RUNB)  cl=3
+//  - symbol=0x201 (m01)   cl=2
+//  - symbol=0x202 (m02)   cl=3
+//  - symbol=0x203 (m03)   cl=2
+//  - symbol=0x300 (EOB)   cl=3
+//
+// The bitstring mapping is:
+//  - "00"   0x201 (m01)
+//  - "01"   0x203 (m03)
+//  - "100"  0x301 (RUNA)
+//  - "101"  0x302 (RUNB)
+//  - "110"  0x202 (m02)
+//  - "111"  0x300 (EOB)
+//
+// The Huffman tree has 5 branch nodes (where 5+1 is both the number of leaf
+// nodes and the number of symbols). Each branch node has two children,
+// represented by a base.u16 value. 0x100 = 256 or less means that the child is
+// a branch node. 0x201 ..= 0x2FF means an mNN leaf node. 0x300, 0x301 and
+// 0x302 mean EOB, RUNA and RUNB leaf nodes.
+//  - node0 = [0x001 (node1), 0x002 (node2)]
+//  - node1 = [0x201 (m01)  , 0x203 (m03)  ]
+//  - node2 = [0x003 (node3), 0x004 (node4)]
+//  - node3 = [0x301 (RUNA) , 0x302 (RUNB) ]
+//  - node4 = [0x202 (m02)  , 0x300 (EOB)  ]
+//
+// For example, the tree walk from node0 right (1) to node2 left (0) to node3
+// left (0) to RUNA means that the RUNA bitstring is "100".
+//
+// The tree is built incrementally by considering symbols in increasing code
+// length order, maintaining a stack of nodes that's the path from the root
+// (node0) to the latest created-but-unfinished node. Created means that their
+// left child is assigned (non-zero). Unfinished means that their right child
+// is pending (zero). For example, after adding the 0x201, 0x203 and 0x301
+// symbols, we would have this (in-progress) tree:
+//  - node0 = [0x001 (node1), 0x002 (node2)]
+//  - node1 = [0x201 (m01)  , 0x203 (m03)  ]
+//  - node2 = [0x003 (node3), 0            ]
+//  - node3 = [0x301 (RUNA) , 0            ]
+//
+// The stack would be [node0, node2, node3]. The next symbol would fill in the
+// top of the stack, node3. If that symbol's code length matches the stack
+// height (here, 3) then it would pop the stack. Otherwise it would push new
+// nodes onto the stack until the stack height matched that code length.
+pri func decoder.build_huffman_tree!(which: base.u32[..= 5]) base.status {
+    var code_length      : base.u32
+    var symbol_index     : base.u32
+    var num_branch_nodes : base.u32[..= 257]
+    var stack_height     : base.u32[..= 21]
+    var stack_values     : array[21] base.u32[..= 256]
+    var node_index       : base.u32[..= 256]
+    var leaf_value       : base.u16
+
+    // Push a root node.
+    this.huffman_trees[args.which][0][0] = 0
+    this.huffman_trees[args.which][0][1] = 0
+    num_branch_nodes = 1
+    stack_height = 1
+    stack_values[0] = 0
+
+    code_length = 1
+    while code_length <= 20 {
+        if (this.code_lengths_bitmask & ((1 as base.u32) << code_length)) == 0 {
+            code_length += 1
+            continue
+        }
+        symbol_index = 0
+        while symbol_index < this.num_symbols,
+                inv code_length <= 20,
+        {
+            assert symbol_index < 258 via "a < b: a < c; c <= b"(c: this.num_symbols)
+            if this.bwt[symbol_index] <> code_length {
+                symbol_index += 1
+                continue
+            }
+
+            while true,
+                    inv code_length <= 20,
+                    inv symbol_index < 258,
+                    post stack_height > 0,
+            {
+                if stack_height <= 0 {
+                    return "#bad Huffman code (over-subscribed)"
+                } else if stack_height >= code_length {
+                    break
+                }
+                assert stack_height < 20 via "a < b: a < c; c <= b"(c: code_length)
+
+                node_index = stack_values[stack_height - 1]
+                if this.huffman_trees[args.which][node_index][0] == 0 {
+                    this.huffman_trees[args.which][node_index][0] = num_branch_nodes as base.u16
+                } else {
+                    this.huffman_trees[args.which][node_index][1] = num_branch_nodes as base.u16
+                }
+                if num_branch_nodes >= 257 {
+                    return "#bad Huffman code (under-subscribed)"
+                }
+                stack_values[stack_height] = num_branch_nodes
+                this.huffman_trees[args.which][num_branch_nodes][0] = 0
+                this.huffman_trees[args.which][num_branch_nodes][1] = 0
+                num_branch_nodes += 1
+                stack_height += 1
+            }
+
+            node_index = stack_values[stack_height - 1]
+            if symbol_index < 2 {
+                leaf_value = (0x301 + symbol_index) as base.u16
+            } else if (symbol_index + 1) < this.num_symbols {
+                leaf_value = (0x1FF + symbol_index) as base.u16
+            } else {
+                leaf_value = 0x300
+            }
+
+            if this.huffman_trees[args.which][node_index][0] == 0 {
+                this.huffman_trees[args.which][node_index][0] = leaf_value
+            } else {
+                this.huffman_trees[args.which][node_index][1] = leaf_value
+                stack_height -= 1
+                while stack_height > 0,
+                        inv code_length <= 20,
+                        inv symbol_index < 258,
+                {
+                    node_index = stack_values[stack_height - 1]
+                    if this.huffman_trees[args.which][node_index][1] == 0 {
+                        break
+                    }
+                    stack_height -= 1
+                }
+            }
+
+            symbol_index += 1
+        }
+        code_length += 1
+    }
+
+    if stack_height <> 0 {
+        return "#bad Huffman code (under-subscribed)"
+    }
+    return ok
+}
+
+pri func decoder.build_huffman_table!(which: base.u32[..= 5]) {
+    var i      : base.u32
+    var bits   : base.u32
+    var n_bits : base.u16[..= 8]
+    var child  : base.u16
+
+    while i < 256 {
+        bits = i << 24
+        n_bits = 0
+        child = 0
+        while (child < 257) and (n_bits < 8),
+                inv i < 256,
+        {
+            child = this.huffman_trees[args.which][child][bits >> 31]
+            bits ~mod<<= 1
+            n_bits += 1
+        }
+        this.huffman_tables[args.which][i] = (child | (n_bits << 12)) as base.u16
+        i += 1
+    }
+}
+
+// invert_bwt performs "two passes over the data, and one pass over the
+// alphabet", per the BWT technical report, except that the first data pass
+// (accumulating this.letter_counts) is integrated into the decode_huffman_etc
+// methods.
+pri func decoder.invert_bwt!() {
+    var i       : base.u32
+    var letter  : base.u32[..= 255]
+    var sum     : base.u32
+    var old_sum : base.u32
+
+    // Alphabet pass.
+    sum = 0
+    i = 0
+    while i < 256 {
+        old_sum = sum
+        sum ~mod+= this.letter_counts[i]
+        this.letter_counts[i] = old_sum
+        i += 1
+    }
+
+    // Second data pass, but per the README.md file, calculate the U column
+    // instead of the BWT technical report's T column.
+    i = 0
+    while i < this.block_size {
+        assert i < 900000 via "a < b: a < c; c <= b"(c: this.block_size)
+        letter = this.bwt[i] & 0xFF
+        this.bwt[this.letter_counts[letter] & 1_048575] |= i << 12
+        this.letter_counts[letter] ~mod+= 1
+        i += 1
+    }
+}
+
+// The table below was created by script/print-crc32-magic-numbers.go with the
+// -reverse flag set.
+
+pri const REV_CRC32_TABLE : roarray[256] base.u32 = [
+        0x0000_0000, 0x04C1_1DB7, 0x0982_3B6E, 0x0D43_26D9, 0x1304_76DC, 0x17C5_6B6B, 0x1A86_4DB2, 0x1E47_5005,
+        0x2608_EDB8, 0x22C9_F00F, 0x2F8A_D6D6, 0x2B4B_CB61, 0x350C_9B64, 0x31CD_86D3, 0x3C8E_A00A, 0x384F_BDBD,
+        0x4C11_DB70, 0x48D0_C6C7, 0x4593_E01E, 0x4152_FDA9, 0x5F15_ADAC, 0x5BD4_B01B, 0x5697_96C2, 0x5256_8B75,
+        0x6A19_36C8, 0x6ED8_2B7F, 0x639B_0DA6, 0x675A_1011, 0x791D_4014, 0x7DDC_5DA3, 0x709F_7B7A, 0x745E_66CD,
+        0x9823_B6E0, 0x9CE2_AB57, 0x91A1_8D8E, 0x9560_9039, 0x8B27_C03C, 0x8FE6_DD8B, 0x82A5_FB52, 0x8664_E6E5,
+        0xBE2B_5B58, 0xBAEA_46EF, 0xB7A9_6036, 0xB368_7D81, 0xAD2F_2D84, 0xA9EE_3033, 0xA4AD_16EA, 0xA06C_0B5D,
+        0xD432_6D90, 0xD0F3_7027, 0xDDB0_56FE, 0xD971_4B49, 0xC736_1B4C, 0xC3F7_06FB, 0xCEB4_2022, 0xCA75_3D95,
+        0xF23A_8028, 0xF6FB_9D9F, 0xFBB8_BB46, 0xFF79_A6F1, 0xE13E_F6F4, 0xE5FF_EB43, 0xE8BC_CD9A, 0xEC7D_D02D,
+        0x3486_7077, 0x3047_6DC0, 0x3D04_4B19, 0x39C5_56AE, 0x2782_06AB, 0x2343_1B1C, 0x2E00_3DC5, 0x2AC1_2072,
+        0x128E_9DCF, 0x164F_8078, 0x1B0C_A6A1, 0x1FCD_BB16, 0x018A_EB13, 0x054B_F6A4, 0x0808_D07D, 0x0CC9_CDCA,
+        0x7897_AB07, 0x7C56_B6B0, 0x7115_9069, 0x75D4_8DDE, 0x6B93_DDDB, 0x6F52_C06C, 0x6211_E6B5, 0x66D0_FB02,
+        0x5E9F_46BF, 0x5A5E_5B08, 0x571D_7DD1, 0x53DC_6066, 0x4D9B_3063, 0x495A_2DD4, 0x4419_0B0D, 0x40D8_16BA,
+        0xACA5_C697, 0xA864_DB20, 0xA527_FDF9, 0xA1E6_E04E, 0xBFA1_B04B, 0xBB60_ADFC, 0xB623_8B25, 0xB2E2_9692,
+        0x8AAD_2B2F, 0x8E6C_3698, 0x832F_1041, 0x87EE_0DF6, 0x99A9_5DF3, 0x9D68_4044, 0x902B_669D, 0x94EA_7B2A,
+        0xE0B4_1DE7, 0xE475_0050, 0xE936_2689, 0xEDF7_3B3E, 0xF3B0_6B3B, 0xF771_768C, 0xFA32_5055, 0xFEF3_4DE2,
+        0xC6BC_F05F, 0xC27D_EDE8, 0xCF3E_CB31, 0xCBFF_D686, 0xD5B8_8683, 0xD179_9B34, 0xDC3A_BDED, 0xD8FB_A05A,
+        0x690C_E0EE, 0x6DCD_FD59, 0x608E_DB80, 0x644F_C637, 0x7A08_9632, 0x7EC9_8B85, 0x738A_AD5C, 0x774B_B0EB,
+        0x4F04_0D56, 0x4BC5_10E1, 0x4686_3638, 0x4247_2B8F, 0x5C00_7B8A, 0x58C1_663D, 0x5582_40E4, 0x5143_5D53,
+        0x251D_3B9E, 0x21DC_2629, 0x2C9F_00F0, 0x285E_1D47, 0x3619_4D42, 0x32D8_50F5, 0x3F9B_762C, 0x3B5A_6B9B,
+        0x0315_D626, 0x07D4_CB91, 0x0A97_ED48, 0x0E56_F0FF, 0x1011_A0FA, 0x14D0_BD4D, 0x1993_9B94, 0x1D52_8623,
+        0xF12F_560E, 0xF5EE_4BB9, 0xF8AD_6D60, 0xFC6C_70D7, 0xE22B_20D2, 0xE6EA_3D65, 0xEBA9_1BBC, 0xEF68_060B,
+        0xD727_BBB6, 0xD3E6_A601, 0xDEA5_80D8, 0xDA64_9D6F, 0xC423_CD6A, 0xC0E2_D0DD, 0xCDA1_F604, 0xC960_EBB3,
+        0xBD3E_8D7E, 0xB9FF_90C9, 0xB4BC_B610, 0xB07D_ABA7, 0xAE3A_FBA2, 0xAAFB_E615, 0xA7B8_C0CC, 0xA379_DD7B,
+        0x9B36_60C6, 0x9FF7_7D71, 0x92B4_5BA8, 0x9675_461F, 0x8832_161A, 0x8CF3_0BAD, 0x81B0_2D74, 0x8571_30C3,
+        0x5D8A_9099, 0x594B_8D2E, 0x5408_ABF7, 0x50C9_B640, 0x4E8E_E645, 0x4A4F_FBF2, 0x470C_DD2B, 0x43CD_C09C,
+        0x7B82_7D21, 0x7F43_6096, 0x7200_464F, 0x76C1_5BF8, 0x6886_0BFD, 0x6C47_164A, 0x6104_3093, 0x65C5_2D24,
+        0x119B_4BE9, 0x155A_565E, 0x1819_7087, 0x1CD8_6D30, 0x029F_3D35, 0x065E_2082, 0x0B1D_065B, 0x0FDC_1BEC,
+        0x3793_A651, 0x3352_BBE6, 0x3E11_9D3F, 0x3AD0_8088, 0x2497_D08D, 0x2056_CD3A, 0x2D15_EBE3, 0x29D4_F654,
+        0xC5A9_2679, 0xC168_3BCE, 0xCC2B_1D17, 0xC8EA_00A0, 0xD6AD_50A5, 0xD26C_4D12, 0xDF2F_6BCB, 0xDBEE_767C,
+        0xE3A1_CBC1, 0xE760_D676, 0xEA23_F0AF, 0xEEE2_ED18, 0xF0A5_BD1D, 0xF464_A0AA, 0xF927_8673, 0xFDE6_9BC4,
+        0x89B8_FD09, 0x8D79_E0BE, 0x803A_C667, 0x84FB_DBD0, 0x9ABC_8BD5, 0x9E7D_9662, 0x933E_B0BB, 0x97FF_AD0C,
+        0xAFB0_10B1, 0xAB71_0D06, 0xA632_2BDF, 0xA2F3_3668, 0xBCB4_666D, 0xB875_7BDA, 0xB536_5D03, 0xB1F7_40B4,
+]

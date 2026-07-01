@@ -1,0 +1,18 @@
+.{
+    .name = .gtk4_layer_shell,
+    .version = "1.1.0",
+    .fingerprint = 0x4b96f9483c6feeb1,
+    .paths = .{""},
+    .dependencies = .{
+        .gtk4_layer_shell = .{
+            .url = "https://deps.files.ghostty.org/gtk4-layer-shell-1.1.0.tar.gz",
+            .hash = "N-V-__8AALiNBAA-_0gprYr92CjrMj1I5bqNu0TSJOnjFNSr",
+            .lazy = true,
+        },
+        .wayland_protocols = .{
+            .url = "https://deps.files.ghostty.org/wayland-protocols-258d8f88f2c8c25a830c6316f87d23ce1a0f12d9.tar.gz",
+            .hash = "N-V-__8AAKw-DAAaV8bOAAGqA0-oD7o-HNIlPFYKRXSPT03S",
+            .lazy = true,
+        },
+    },
+}

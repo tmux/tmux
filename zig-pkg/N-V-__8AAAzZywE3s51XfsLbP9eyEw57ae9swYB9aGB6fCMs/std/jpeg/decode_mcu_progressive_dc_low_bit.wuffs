@@ -1,0 +1,88 @@
+// Copyright 2023 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pri func decoder.decode_mcu_progressive_dc_low_bit!(dst: ptr base.pixel_buffer, workbuf: slice base.u8, mx: base.u32[..= 0x1FFF], my: base.u32[..= 0x1FFF]) base.u32 {
+    var ret : base.u32
+
+    var bits   : base.u64
+    var n_bits : base.u32
+
+    var one_lshift_scan_al : base.u16[..= 0x2000]
+
+    var r   : base.io_reader
+    var pos : base.u32
+
+    bits = this.bitstream_bits
+    n_bits = this.bitstream_n_bits
+
+    one_lshift_scan_al = (1 as base.u16) << this.scan_al
+
+    if this.bitstream_ri > this.bitstream_wi {
+        return 2  // Internal error.
+    }
+    io_bind (io: r, data: this.bitstream_buffer[this.bitstream_ri .. this.bitstream_wi], history_position: this.bitstream_ri as base.u64) {
+        while.goto_done true {{
+
+        while.block this.mcu_current_block < this.mcu_num_blocks {
+            assert this.mcu_current_block < 10 via "a < b: a < c; c <= b"(c: this.mcu_num_blocks)
+
+            // Ensure that we have enough bits for this iteration of the
+            // while.block loop body. Worst case, there are 64 components and
+            // each one needs (16 + 15) bits (round that up to 4 bytes), so we
+            // need (64 * 4) = 256 bytes available. 8 more bytes of slack means
+            // that we can always call peek_u64be.
+            if r.length() < 264 {
+                ret = 1  // Request another fill_bitstream call.
+                break.goto_done
+            }
+
+            while.dc_component true,
+                    inv this.mcu_current_block < 10,
+            {
+                // Load at least 56 bits.
+                if r.length() < 8 {
+                    ret = 2  // Internal error.
+                    break.goto_done
+                }
+                bits |= r.peek_u64be() >> (n_bits & 63)
+                r.skip_u32_fast!(actual: (63 - (n_bits & 63)) >> 3, worst_case: 8)
+                n_bits |= 56
+
+                // Refine a bit.
+                if (bits >> 63) <> 0 {
+                    this.mcu_blocks[this.mcu_current_block][0] |= one_lshift_scan_al
+                }
+                bits ~mod<<= 1
+                n_bits ~mod-= 1
+
+                break.dc_component
+            }.dc_component
+
+            assert this.mcu_current_block < 10
+            this.mcu_current_block += 1
+        }.block
+        this.mcu_current_block = 0
+
+        break.goto_done
+        }}.goto_done
+
+        pos = (r.position() & 0xFFFF_FFFF) as base.u32
+        if pos > this.bitstream_wi {
+            ret = 2  // Internal error.
+        } else {
+            assert pos <= 0x800 via "a <= b: a <= c; c <= b"(c: this.bitstream_wi)
+            this.bitstream_ri = pos
+        }
+    }
+
+    this.bitstream_bits = bits
+    this.bitstream_n_bits = n_bits
+    return ret
+}

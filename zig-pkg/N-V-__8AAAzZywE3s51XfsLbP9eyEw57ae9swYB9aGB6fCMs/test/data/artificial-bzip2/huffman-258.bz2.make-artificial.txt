@@ -1,0 +1,83 @@
+# Feed this file to script/make-artificial.go
+
+# This modifies abraca.txt.bz2.make-artificial.txt to produce the same
+# decompressed output, "abraca", but in a more elaborate way. The Huffman codes
+# here have the full 258 symbols instead of just 6.
+
+make bzip2
+
+# Bitslices (a) ..= (g)
+bits 16 0x425A
+bits  8 0x68
+bits  8 0x39
+bits 48 0x314159265359
+bits 32 0x76A70995
+bits  1 0x0
+bits 24 0x000001
+
+# Bitslices (h) ..= (j)
+bits 16 0xFFFF
+repeat 16 [
+	bits 16 0xFFFF
+]
+
+# Bitslices (k) ..= (m)
+bits  3 0x2
+bits 15 0x0001
+bits  1 0x0
+
+# Bitslices (n) ..= (o)
+#
+# Both Huffman codes have 258 symbols: 254 × 8-bit symbols and then 4 × 9-bit
+# symbols.
+#
+# For small XYZ (where XYZ < 253), the mXYZ symbol's bitstring is (XYZ+1) in
+# binary. For example, the m099 symbol's bitstring is "01100100", because the
+# binary representation of 0d099+1 = 0d100 = 0x64 = 0b01100100.
+#
+# RUNA is the 8-bit bitstring "00000000".
+# RUNB is the 8-bit bitstring "00000001".
+# m001 is the 8-bit bitstring "00000010".
+# m002 is the 8-bit bitstring "00000011".
+# m003 is the 8-bit bitstring "00000100".
+# etc
+# m250 is the 8-bit bitstring "11111011".
+# m251 is the 8-bit bitstring "11111100".
+# m252 is the 8-bit bitstring "11111101".
+# m253 is the 9-bit bitstring "111111100".
+# m254 is the 9-bit bitstring "111111101".
+# m255 is the 9-bit bitstring "111111110".
+# EOB  is the 9-bit bitstring "111111111".
+repeat 2 [
+	bits  5 0x08
+	repeat 254 [
+		bits  1 0x0
+	]
+	bits  3 0x4
+	bits  1 0x0
+	bits  1 0x0
+	bits  1 0x0
+]
+
+# Bitslice  (p)
+#
+# There are 7 symbols.
+# Order = [0x00, 0x01, 0x02, 0x03, ... 0xFF]    m099 picks 'c'. 0d099+1 = 0x64.
+# Order = ['c',  0x00, 0x01, 0x02, ... 0xFF]    m098 picks 'a'. 0d098+1 = 0x63.
+# Order = ['a',  'c',  0x00, 0x01, ... 0xFF]    m114 picks 'r'. 0d114+1 = 0x73.
+# Order = ['r',  'a',  'c',  0x00, ... 0xFF]    m001 picks 'a'. 0d001+1 = 0x02.
+# Order = ['a',  'r',  'c',  0x00, ... 0xFF]    RUNA picks 'a'.
+# Order = ['a',  'r',  'c',  0x00, ... 0xFF]    m100 picks 'b'. 0d100+1 = 0x65.
+# Order = ['b',  'a',  'r',  'c',  ... 0xFF]    EOB.
+bits  8 0x64
+bits  8 0x63
+bits  8 0x73
+bits  8 0x02
+bits  8 0x00
+bits  8 0x65
+bits  9 0x1FF
+
+# Bitslices (q) ..= (s)
+bits 48 0x177245385090
+bits 32 0x76A70995
+bits  1 0x0

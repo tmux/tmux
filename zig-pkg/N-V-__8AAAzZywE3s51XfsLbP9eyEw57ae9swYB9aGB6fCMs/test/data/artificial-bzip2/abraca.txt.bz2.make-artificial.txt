@@ -1,0 +1,49 @@
+# Feed this file to script/make-artificial.go
+
+# This script generates test/data/abraca.txt.bz2 exactly, following the
+# description in std/bzip2/README.md and its bitslices (a) ..= (s).
+#
+# By itself, this isn't a very interesting foo.make-artificial.txt file, in
+# that it doesn't make *artificial* bzip2 test data (as opposed to test data
+# *naturally* created by the /usr/bin/bzip2 tool). But this file is a useful
+# diff-base for other bar.make-artificial.txt files in the same directory.
+
+make bzip2
+
+# Bitslices (a) ..= (g)
+bits 16 0x425A
+bits  8 0x68
+bits  8 0x39
+bits 48 0x314159265359
+bits 32 0x76A70995
+bits  1 0x0
+bits 24 0x000001
+
+# Bitslices (h) ..= (j)
+bits 16 0x0300
+bits 16 0x7000
+bits 16 0x2000
+
+# Bitslices (k) ..= (m)
+bits  3 0x2
+bits 15 0x0001
+bits  1 0x0
+
+# Bitslices (n) ..= (o)
+repeat 2 [
+	bits 19 0x0CD34
+]
+
+# Bitslice  (p)
+bits  3 0x6
+bits  2 0x0
+bits  2 0x1
+bits  2 0x0
+bits  3 0x4
+bits  2 0x1
+bits  3 0x7
+
+# Bitslices (q) ..= (s)
+bits 48 0x177245385090
+bits 32 0x76A70995
+bits  5 0x00

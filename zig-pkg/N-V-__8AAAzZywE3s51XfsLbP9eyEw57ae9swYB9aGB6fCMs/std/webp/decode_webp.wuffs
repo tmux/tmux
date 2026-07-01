@@ -1,0 +1,876 @@
+// Copyright 2024 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+use "std/vp8"
+
+pub status "#bad Huffman code (over-subscribed)"
+pub status "#bad Huffman code (under-subscribed)"
+pub status "#bad Huffman code"
+pub status "#bad back-reference"
+pub status "#bad color cache"
+pub status "#bad header"
+pub status "#bad transform"
+pub status "#short chunk"
+pub status "#truncated input"
+pub status "#unsupported number of Huffman groups"
+pub status "#unsupported transform after color indexing transform"
+pub status "#unsupported WebP file"
+
+pri status "#internal error: inconsistent Huffman code"
+pri status "#internal error: inconsistent dst buffer"
+pri status "#internal error: inconsistent n_bits"
+
+pub const DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE : base.u64 = 0
+
+pub struct decoder? implements base.image_decoder(
+        pixfmt : base.u32,
+        width  : base.u32[..= 0x4000],
+        height : base.u32[..= 0x4000],
+
+        // The call sequence state machine is discussed in
+        // (/doc/std/image-decoders-call-sequence.md).
+        call_sequence : base.u8,
+
+        code_length_code_lengths : array[19] base.u8[..= 7],
+
+        sub_chunk_has_padding : base.bool,
+
+        frame_config_io_position : base.u64,
+
+        riff_chunk_length : base.u32,
+        sub_chunk_length  : base.u32,
+
+        bits   : base.u32,
+        n_bits : base.u32[..= 31],
+
+        seen_transform           : array[4] base.bool,
+        transform_type           : array[4] base.u8[..= 3],
+        transform_tile_size_log2 : array[4] base.u8[..= 9],
+        n_transforms             : base.u32[..= 4],
+
+        color_cache_bits         : base.u32[..= 11],
+        overall_color_cache_bits : base.u32[..= 11],
+        overall_tile_size_log2   : base.u32[..= 9],
+        overall_n_huffman_groups : base.u32[..= 256],
+
+        ht_n_symbols              : base.u32[..= 2328],
+        ht_code_lengths_remaining : base.u32,
+
+        color_indexing_palette_size : base.u32[..= 256],
+        color_indexing_width        : base.u32[..= 0x4000],
+
+        // The 0th element is for the Meta (Huffman Group) selectors.
+        // The 1st element is for the Predictor transform.
+        // The 2nd element is for the Cross Color transform.
+        // The 3rd element is overall workbuf length.
+        workbuf_offset_for_transform : array[4] base.u32[..= 0x4C00_0000],
+
+        // If the Color Indexing transform is present then workbuf[i .. j]
+        // holds the pre-transformed pixel data (the Green component of the
+        // pixel's bgra data holds color indexes) and workbuf[0 .. j] holds the
+        // post-transformed data:
+        //
+        //  - i is workbuf_offset_for_color_indexing
+        //  - j is workbuf_offset_for_transform[0]
+        //
+        // i is calculated as:
+        //
+        //  - if there are 8 bits per color index then i is 0.
+        //  - if there are 4 bits per color index then i is j*1/2, roughly.
+        //  - if there are 2 bits per color index then i is j*3/4, roughly.
+        //  - if there are 1 bits per color index then i is j*7/8, roughly.
+        //
+        // The two slices (workbuf[i .. j] and workbuf[0 .. j]) overlap.
+        // apply_transform_color_indexing modifies the pixel buffer in-place.
+        workbuf_offset_for_color_indexing : base.u32[..= 0x4000_0000],
+
+        swizzler : base.pixel_swizzler,
+        util     : base.utility,
+) + (
+        palette     : array[4 * 256] base.u8,
+        color_cache : array[2048] base.u32,
+
+        codes        : array[2328] base.u16,
+        code_lengths : array[2328] base.u16,
+
+        // Each node is a base.u16 whose bit patterns are:
+        //
+        //  - 0000_0000_0000_0000   Invalid.
+        //  - 0CCC_CCCC_CCCC_CCCC   Branch node (children_offset is CCC).
+        //  - 1SSS_SSSS_SSSS_SSSS   Leaf node (symbol is SSS, it may be zero).
+        code_lengths_huffman_nodes : array[37] base.u16,
+
+        // A Huffman group has five (5) Huffman trees.
+        //
+        // Start  .. End     Size
+        // 0x064C .. 0x187B  0x122F  (1) Green, back-ref length, color cache.
+        // 0x0000 .. 0x01FF  0x01FF  (2) Red.
+        // 0x01FF .. 0x03FE  0x01FF  (3) Blue.
+        // 0x03FE .. 0x05FD  0x01FF  (4) Alpha.
+        // 0x05FD .. 0x064C  0x004F  (5) Back-ref distance.
+        //
+        // The Green+etc tree is last (in terms of start offset) because it's
+        // by far the largest (worst case) and its color cache component has
+        // variable length.
+        //
+        // 0x122F = 4655 = ((2 * 2328) - 1) and the same 2328 turns up in func
+        // decoder.decode_huffman_tree.
+        //
+        // 2328 is (256 + 24 + 2048), combining 256 Green values, 24 back-ref
+        // lengths and up to 2048 = (1 << 11) color cache keys.
+        //
+        // 0x01FF = 511 = ((2 * 256) - 1) is for 256 Red (Blue, Alpha) values.
+        //
+        // 0x004F = 79 = ((2 * 40) - 1) is for 40 back-ref distances.
+        //
+        // 0x187B = 6267 and (0x187B * sizeof(u16)) = 12534. Overall, this
+        // field takes 0x30_F600 = 3_208704 bytes of memory.
+        //
+        // The base.u16's bits are the same as for code_lengths_huffman_nodes.
+        huffman_nodes : array[256] array[0x187B] base.u16,
+)
+
+pub func decoder.get_quirk(key: base.u32) base.u64 {
+    return 0
+}
+
+pub func decoder.set_quirk!(key: base.u32, value: base.u64) base.status {
+    return base."#unsupported option"
+}
+
+pub func decoder.decode_image_config?(dst: nptr base.image_config, src: base.io_reader) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_image_config?(dst: args.dst, src: args.src)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_image_config?(dst: nptr base.image_config, src: base.io_reader) {
+    var c32    : base.u32
+    var r_mark : base.u64
+    var status : base.status
+
+    if this.call_sequence <> 0x00 {
+        return base."#bad call sequence"
+    }
+
+    c32 = args.src.read_u32le?()
+    if c32 <> 'RIFF'le {
+        return "#bad header"
+    }
+    this.riff_chunk_length = args.src.read_u32le?()
+    if (this.riff_chunk_length & 1) <> 0 {
+        return "#bad header"
+    }
+
+    while true {
+        io_limit (io: args.src, limit: this.riff_chunk_length as base.u64) {
+            r_mark = args.src.mark()
+            status =? this.do_decode_image_config_limited?(src: args.src)
+            this.riff_chunk_length ~sat-=
+                    (args.src.count_since(mark: r_mark) & 0xFFFF_FFFF) as base.u32
+        }
+
+        if status.is_ok() {
+            break
+        } else if not status.is_suspension() {
+            return status
+        } else if (status == base."$short read") and (this.riff_chunk_length == 0) {
+            return "#short chunk"
+        }
+        yield? status
+    }
+
+    this.frame_config_io_position = args.src.position()
+
+    if args.dst <> nullptr {
+        args.dst.set!(
+                pixfmt: this.pixfmt,
+                pixsub: 0,
+                width: this.width,
+                height: this.height,
+                first_frame_io_position: this.frame_config_io_position,
+                first_frame_is_opaque: false)
+    }
+
+    this.call_sequence = 0x20
+}
+
+pri func decoder.do_decode_image_config_limited?(src: base.io_reader) {
+    var c32    : base.u32
+    var r_mark : base.u64
+    var status : base.status
+
+    c32 = args.src.read_u32le?()
+    if c32 <> 'WEBP'le {
+        return "#bad header"
+    }
+
+    c32 = args.src.read_u32le?()
+    if c32 == 'VP8 'le {
+        return "#unsupported WebP file"
+
+    } else if c32 == 'VP8L'le {
+        this.sub_chunk_length = args.src.read_u32le?()
+        if this.sub_chunk_length < 4 {
+            return "#bad header"
+        }
+        this.sub_chunk_has_padding = (this.sub_chunk_length & 1) <> 0
+
+        while true {
+            io_limit (io: args.src, limit: this.sub_chunk_length as base.u64) {
+                r_mark = args.src.mark()
+                status =? this.do_decode_image_config_limited_vp8l?(src: args.src)
+                this.sub_chunk_length ~sat-=
+                        (args.src.count_since(mark: r_mark) & 0xFFFF_FFFF) as base.u32
+            }
+
+            if status.is_ok() {
+                break
+            } else if not status.is_suspension() {
+                return status
+            } else if (status == base."$short read") and (this.sub_chunk_length == 0) {
+                return "#short chunk"
+            }
+            yield? status
+        }
+
+    } else if c32 == 'VP8X'le {
+        return "#unsupported WebP file"
+
+    } else {
+        return "#bad header"
+    }
+}
+
+pri func decoder.do_decode_image_config_limited_vp8l?(src: base.io_reader) {
+    var c32            : base.u32
+    var transform_size : base.u32[..= 0x400_0000]
+
+    c32 = args.src.read_u8_as_u32?()
+    if c32 <> 0x2F {
+        return "#bad header"
+    }
+    c32 = args.src.read_u32le?()
+    this.width = (c32 & 0x3FFF) + 1
+    c32 >>= 14
+    this.height = (c32 & 0x3FFF) + 1
+    c32 >>= 14
+    this.pixfmt = base.PIXEL_FORMAT__BGRX
+    if (c32 & 1) <> 0 {
+        this.pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL
+    }
+    c32 >>= 1
+    if c32 <> 0 {
+        return "#bad header"
+    }
+
+    transform_size = 4 * ((this.width + 3) >> 2) * ((this.height + 3) >> 2)
+    this.workbuf_offset_for_transform[0] = (4 * this.width * this.height) + (0 * transform_size)
+    this.workbuf_offset_for_transform[1] = (4 * this.width * this.height) + (1 * transform_size)
+    this.workbuf_offset_for_transform[2] = (4 * this.width * this.height) + (2 * transform_size)
+    this.workbuf_offset_for_transform[3] = (4 * this.width * this.height) + (3 * transform_size)
+}
+
+pub func decoder.decode_frame_config?(dst: nptr base.frame_config, src: base.io_reader) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_frame_config?(dst: args.dst, src: args.src)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_frame_config?(dst: nptr base.frame_config, src: base.io_reader) {
+    if this.call_sequence == 0x20 {
+        // No-op.
+    } else if this.call_sequence < 0x20 {
+        this.do_decode_image_config?(dst: nullptr, src: args.src)
+    } else if this.call_sequence == 0x28 {
+        if this.frame_config_io_position <> args.src.position() {
+            return base."#bad restart"
+        }
+    } else if this.call_sequence == 0x40 {
+        this.call_sequence = 0x60
+        return base."@end of data"
+    } else {
+        return base."@end of data"
+    }
+
+    if args.dst <> nullptr {
+        args.dst.set!(bounds: this.util.make_rect_ie_u32(
+                min_incl_x: 0,
+                min_incl_y: 0,
+                max_excl_x: this.width,
+                max_excl_y: this.height),
+                duration: 0,
+                index: 0,
+                io_position: this.frame_config_io_position,
+                disposal: 0,
+                opaque_within_bounds: false,
+                overwrite_instead_of_blend: false,
+                background_color: 0x0000_0000)
+    }
+
+    this.call_sequence = 0x40
+}
+
+pub func decoder.decode_frame?(dst: ptr base.pixel_buffer, src: base.io_reader, blend: base.pixel_blend, workbuf: slice base.u8, opts: nptr base.decode_frame_options) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_frame?(dst: args.dst, src: args.src, blend: args.blend, workbuf: args.workbuf, opts: args.opts)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_frame?(dst: ptr base.pixel_buffer, src: base.io_reader, blend: base.pixel_blend, workbuf: slice base.u8, opts: nptr base.decode_frame_options) {
+    var c8             : base.u8
+    var has_more       : base.u32[..= 1]
+    var width          : base.u32[..= 0x4000]
+    var dst            : slice base.u8
+    var tile_data      : roslice base.u8
+    var status         : base.status
+    var pix            : slice base.u8
+    var which          : base.u32[..= 4]
+    var transform_type : base.u32[..= 3]
+    var ti             : base.u64
+    var tj             : base.u64
+
+    if this.call_sequence == 0x40 {
+        // No-op.
+    } else if this.call_sequence < 0x40 {
+        this.do_decode_frame_config?(dst: nullptr, src: args.src)
+    } else {
+        return base."@end of data"
+    }
+
+    this.seen_transform[0] = false
+    this.seen_transform[1] = false
+    this.seen_transform[2] = false
+    this.seen_transform[3] = false
+    this.n_transforms = 0
+
+    while true {
+        if this.n_bits < 1 {
+            c8 = args.src.read_u8?()
+            this.bits = (c8 as base.u32)
+            this.n_bits = 8
+            assert this.n_bits >= 1
+        }
+        has_more = this.bits & 1
+        this.bits >>= 1
+        this.n_bits -= 1
+
+        if has_more == 0 {
+            break
+        }
+        this.decode_transform?(src: args.src, workbuf: args.workbuf)
+    }
+
+    width = this.width
+    if this.seen_transform[3] {
+        width = this.color_indexing_width
+    }
+
+    this.decode_color_cache_parameters?(src: args.src)
+    this.overall_color_cache_bits = this.color_cache_bits
+    this.decode_hg_table?(src: args.src, width: width, workbuf: args.workbuf)
+    this.color_cache_bits = this.overall_color_cache_bits
+    this.decode_huffman_groups?(src: args.src, n_huffman_groups: this.overall_n_huffman_groups)
+
+    while true {
+        if ((this.workbuf_offset_for_color_indexing as base.u64) > (this.workbuf_offset_for_transform[0] as base.u64)) or
+                ((this.workbuf_offset_for_transform[0] as base.u64) > (this.workbuf_offset_for_transform[1] as base.u64)) or
+                ((this.workbuf_offset_for_transform[1] as base.u64) > args.workbuf.length()) or
+                ((this.workbuf_offset_for_transform[0] as base.u64) > args.workbuf.length()) {
+            return base."#bad workbuf length"
+        }
+        dst = args.workbuf[
+                (this.workbuf_offset_for_color_indexing as base.u64) ..
+                (this.workbuf_offset_for_transform[0] as base.u64)]
+        tile_data = args.workbuf[
+                (this.workbuf_offset_for_transform[0] as base.u64) ..
+                (this.workbuf_offset_for_transform[1] as base.u64)]
+        status =? this.decode_pixels?(
+                dst: dst,
+                src: args.src,
+                width: width,
+                height: this.height,
+                tile_data: tile_data,
+                tile_size_log2: this.overall_tile_size_log2)
+        if status.is_ok() {
+            break
+        }
+        yield? status
+    }
+
+    if (this.workbuf_offset_for_transform[0] as base.u64) > args.workbuf.length() {
+        return base."#bad workbuf length"
+    }
+    pix = args.workbuf[.. (this.workbuf_offset_for_transform[0] as base.u64)]
+
+    which = this.n_transforms
+    while which > 0 {
+        which -= 1
+        transform_type = this.transform_type[which] as base.u32
+
+        tile_data = this.util.empty_slice_u8()
+        if transform_type < 2 {
+            ti = this.workbuf_offset_for_transform[transform_type + 1] as base.u64
+            tj = this.workbuf_offset_for_transform[transform_type + 2] as base.u64
+            if (ti <= tj) and (tj <= args.workbuf.length()) {
+                tile_data = args.workbuf[ti .. tj]
+            }
+        }
+
+        if transform_type == 0 {
+            this.apply_transform_predictor!(pix: pix, tile_data: tile_data)
+        } else if transform_type == 1 {
+            this.apply_transform_cross_color!(pix: pix, tile_data: tile_data)
+        } else if transform_type == 2 {
+            this.apply_transform_subtract_green!(pix: pix)
+        } else {
+            this.apply_transform_color_indexing!(pix: pix)
+            width = this.width
+        }
+    }
+
+    status = this.swizzle!(
+            dst: args.dst,
+            src: pix,
+            blend: args.blend)
+    if not status.is_ok() {
+        return status
+    }
+
+    this.call_sequence = 0x60
+}
+
+pri func decoder.decode_transform?(src: base.io_reader, workbuf: slice base.u8) {
+    var status         : base.status
+    var c8             : base.u8
+    var transform_type : base.u32[..= 3]
+    var tile_size_log2 : base.u32[..= 9]
+    var p              : slice base.u8
+
+    if this.n_bits < 2 {
+        c8 = args.src.read_u8?()
+        if this.n_bits >= 2 {
+            return "#internal error: inconsistent n_bits"
+        }
+        this.bits |= (c8 as base.u32) << this.n_bits
+        this.n_bits += 8
+        assert this.n_bits >= 2
+    }
+    transform_type = this.bits & 3
+    this.bits >>= 2
+    this.n_bits -= 2
+
+    if this.seen_transform[transform_type] or (this.n_transforms >= 4) {
+        return "#bad transform"
+    } else if this.seen_transform[3] {
+        return "#unsupported transform after color indexing transform"
+    }
+    this.seen_transform[transform_type] = true
+    this.transform_type[this.n_transforms] = transform_type as base.u8
+    this.n_transforms += 1
+
+    if transform_type < 2 {  // Predictor, Cross Color transform.
+        if this.n_bits < 3 {
+            c8 = args.src.read_u8?()
+            if this.n_bits >= 3 {
+                return "#internal error: inconsistent n_bits"
+            }
+            this.bits |= (c8 as base.u32) << this.n_bits
+            this.n_bits += 8
+            assert this.n_bits >= 3
+        }
+        tile_size_log2 = (this.bits & 7) + 2
+        this.transform_tile_size_log2[transform_type] = tile_size_log2 as base.u8
+        this.bits >>= 3
+        this.n_bits -= 3
+
+        this.decode_color_cache_parameters?(src: args.src)
+        this.decode_huffman_groups?(src: args.src, n_huffman_groups: 1)
+
+        while true,
+                inv transform_type < 2,
+                inv tile_size_log2 >= 2,
+        {
+            if ((this.workbuf_offset_for_transform[transform_type + 1] as base.u64) > (this.workbuf_offset_for_transform[transform_type + 2] as base.u64)) or
+                    ((this.workbuf_offset_for_transform[transform_type + 2] as base.u64) > args.workbuf.length()) {
+                return base."#bad workbuf length"
+            }
+            status =? this.decode_pixels?(
+                    dst: args.workbuf[
+                    (this.workbuf_offset_for_transform[transform_type + 1] as base.u64) ..
+                    (this.workbuf_offset_for_transform[transform_type + 2] as base.u64)],
+                    src: args.src,
+                    width: (this.width + (((1 as base.u32) << tile_size_log2) - 1)) >> tile_size_log2,
+                    height: (this.height + (((1 as base.u32) << tile_size_log2) - 1)) >> tile_size_log2,
+                    tile_data: this.util.empty_slice_u8(),
+                    tile_size_log2: 0)
+            if status.is_ok() {
+                break
+            }
+            yield? status
+        }
+
+    } else if transform_type == 2 {  // Subtract Green transform.
+        // No-op.
+
+    } else {  // Color Indexing transform.
+        if this.n_bits < 8 {
+            c8 = args.src.read_u8?()
+            if this.n_bits >= 8 {
+                return "#internal error: inconsistent n_bits"
+            }
+            this.bits |= (c8 as base.u32) << this.n_bits
+            this.n_bits += 8
+            assert this.n_bits >= 8
+        }
+        this.color_indexing_palette_size = (this.bits & 0xFF) + 1
+        this.bits >>= 8
+        this.n_bits -= 8
+
+        if this.color_indexing_palette_size <= 2 {
+            this.color_indexing_width = (this.width + 7) / 8
+            this.transform_tile_size_log2[3] = 3
+        } else if this.color_indexing_palette_size <= 4 {
+            this.color_indexing_width = (this.width + 3) / 4
+            this.transform_tile_size_log2[3] = 2
+        } else if this.color_indexing_palette_size <= 16 {
+            this.color_indexing_width = (this.width + 1) / 2
+            this.transform_tile_size_log2[3] = 1
+        } else {
+            this.color_indexing_width = this.width
+            this.transform_tile_size_log2[3] = 0
+        }
+
+        if this.width >= this.color_indexing_width {
+            this.workbuf_offset_for_color_indexing = 4 * (this.width - this.color_indexing_width) * this.height
+        }
+
+        this.decode_color_cache_parameters?(src: args.src)
+        this.decode_huffman_groups?(src: args.src, n_huffman_groups: 1)
+
+        this.decode_pixels?(
+                dst: this.palette[.. 4 * this.color_indexing_palette_size],
+                src: args.src,
+                width: this.color_indexing_palette_size,
+                height: 1,
+                tile_data: this.util.empty_slice_u8(),
+                tile_size_log2: 0)
+        this.palette[4 * this.color_indexing_palette_size .. 1024].bulk_memset!(byte_value: 0)
+
+        p = this.palette[.. 4 * this.color_indexing_palette_size]
+        while p.length() >= 8 {
+            p[4] ~mod+= p[0]
+            p[5] ~mod+= p[1]
+            p[6] ~mod+= p[2]
+            p[7] ~mod+= p[3]
+            p = p[4 ..]
+        }
+    }
+}
+
+pri func decoder.decode_color_cache_parameters?(src: base.io_reader) {
+    var c8               : base.u8
+    var use_color_cache  : base.u32[..= 1]
+    var color_cache_bits : base.u32[..= 15]
+
+    if this.n_bits < 1 {
+        c8 = args.src.read_u8?()
+        this.bits = (c8 as base.u32)
+        this.n_bits = 8
+        assert this.n_bits >= 1
+    }
+    use_color_cache = this.bits & 1
+    this.bits >>= 1
+    this.n_bits -= 1
+
+    this.color_cache_bits = 0
+    if use_color_cache <> 0 {
+        if this.n_bits < 4 {
+            c8 = args.src.read_u8?()
+            if this.n_bits >= 4 {
+                return "#internal error: inconsistent n_bits"
+            }
+            this.bits |= (c8 as base.u32) << this.n_bits
+            this.n_bits += 8
+            assert this.n_bits >= 4
+        }
+        color_cache_bits = this.bits & 15
+        this.bits >>= 4
+        this.n_bits -= 4
+
+        if (color_cache_bits < 1) or (11 < color_cache_bits) {
+            return "#bad color cache"
+        }
+        this.color_cache_bits = color_cache_bits
+    }
+}
+
+pri func decoder.decode_hg_table?(src: base.io_reader, width: base.u32[..= 0x4000], workbuf: slice base.u8) {
+    var status         : base.status
+    var c8             : base.u8
+    var use_hg_table   : base.u32[..= 1]
+    var tile_size_log2 : base.u32[..= 9]
+    var hg_pixels      : slice base.u8
+    var n              : base.u64
+    var p              : roslice base.u8
+    var hg_plus_1      : base.u32[..= 256]
+
+    if this.n_bits < 1 {
+        c8 = args.src.read_u8?()
+        this.bits = (c8 as base.u32)
+        this.n_bits = 8
+        assert this.n_bits >= 1
+    }
+    use_hg_table = this.bits & 1
+    this.bits >>= 1
+    this.n_bits -= 1
+
+    if use_hg_table == 0 {
+        this.overall_n_huffman_groups = 1
+        this.overall_tile_size_log2 = 0
+        if ((this.workbuf_offset_for_transform[0] as base.u64) > (this.workbuf_offset_for_transform[1] as base.u64)) or
+                ((this.workbuf_offset_for_transform[1] as base.u64) > args.workbuf.length()) {
+            return base."#bad workbuf length"
+        }
+        hg_pixels = args.workbuf[
+                this.workbuf_offset_for_transform[0] as base.u64 ..
+                this.workbuf_offset_for_transform[1] as base.u64]
+        if hg_pixels.length() >= 4 {
+            hg_pixels[0] = 0x00
+            hg_pixels[1] = 0x00
+            hg_pixels[2] = 0x00
+            hg_pixels[3] = 0x00
+        }
+        return ok
+    }
+
+    if this.n_bits < 3 {
+        c8 = args.src.read_u8?()
+        if this.n_bits >= 3 {
+            return "#internal error: inconsistent n_bits"
+        }
+        this.bits |= (c8 as base.u32) << this.n_bits
+        this.n_bits += 8
+        assert this.n_bits >= 3
+    }
+    tile_size_log2 = (this.bits & 7) + 2
+    this.bits >>= 3
+    this.n_bits -= 3
+
+    this.overall_tile_size_log2 = tile_size_log2
+
+    this.decode_color_cache_parameters?(src: args.src)
+    this.decode_huffman_groups?(src: args.src, n_huffman_groups: 1)
+    while true,
+            inv tile_size_log2 >= 2,
+    {
+        if ((this.workbuf_offset_for_transform[0] as base.u64) > (this.workbuf_offset_for_transform[1] as base.u64)) or
+                ((this.workbuf_offset_for_transform[1] as base.u64) > args.workbuf.length()) {
+            return base."#bad workbuf length"
+        }
+        status =? this.decode_pixels?(
+                dst: args.workbuf[
+                (this.workbuf_offset_for_transform[0] as base.u64) ..
+                (this.workbuf_offset_for_transform[1] as base.u64)],
+                src: args.src,
+                width: (args.width + (((1 as base.u32) << tile_size_log2) - 1)) >> tile_size_log2,
+                height: (this.height + (((1 as base.u32) << tile_size_log2) - 1)) >> tile_size_log2,
+                tile_data: this.util.empty_slice_u8(),
+                tile_size_log2: 0)
+        if status.is_ok() {
+            break
+        }
+        yield? status
+    }
+
+    this.overall_n_huffman_groups = 1
+    if ((this.workbuf_offset_for_transform[0] as base.u64) > (this.workbuf_offset_for_transform[1] as base.u64)) or
+            ((this.workbuf_offset_for_transform[1] as base.u64) > args.workbuf.length()) {
+        return base."#bad workbuf length"
+    }
+    hg_pixels = args.workbuf[
+            this.workbuf_offset_for_transform[0] as base.u64 ..
+            this.workbuf_offset_for_transform[1] as base.u64]
+    n = (((args.width + (((1 as base.u32) << tile_size_log2) - 1)) >> tile_size_log2) *
+            ((this.height + (((1 as base.u32) << tile_size_log2) - 1)) >> tile_size_log2) *
+            4) as base.u64
+    if n > hg_pixels.length() {
+        return base."#bad workbuf length"
+    }
+    p = hg_pixels[.. n]
+    while p.length() >= 4 {
+        if p[2] <> 0 {
+            return "#unsupported number of Huffman groups"
+        }
+        hg_plus_1 = (p[1] as base.u32) + 1
+        if this.overall_n_huffman_groups < hg_plus_1 {
+            this.overall_n_huffman_groups = hg_plus_1
+        }
+        p = p[4 ..]
+    }
+}
+
+pri func decoder.decode_pixels?(dst: slice base.u8, src: base.io_reader, width: base.u32[..= 0x4000], height: base.u32[..= 0x4000], tile_data: roslice base.u8, tile_size_log2: base.u32[..= 9]) {
+    var i : base.u32
+    var n : base.u32[..= 2048]
+
+    i = 0
+    n = (1 as base.u32) << this.color_cache_bits
+    while i < n {
+        assert i < 2048 via "a < b: a < c; c <= b"(c: n)
+        this.color_cache[i] = 0
+        i += 1
+    }
+
+    this.decode_pixels_slow?(
+            dst: args.dst,
+            src: args.src,
+            width: args.width,
+            height: args.height,
+            tile_data: args.tile_data,
+            tile_size_log2: args.tile_size_log2)
+}
+
+pri func decoder.swizzle!(dst: ptr base.pixel_buffer, src: roslice base.u8, blend: base.pixel_blend) base.status {
+    var status              : base.status
+    var dst_pixfmt          : base.pixel_format
+    var dst_bits_per_pixel  : base.u32[..= 256]
+    var dst_bytes_per_pixel : base.u32[..= 32]
+    var dst_bytes_per_row   : base.u64
+    var dst_palette         : slice base.u8
+    var tab                 : table base.u8
+    var src_bytes_per_row   : base.u64
+    var dst                 : slice base.u8
+    var y                   : base.u32
+
+    status = this.swizzler.prepare!(
+            dst_pixfmt: args.dst.pixel_format(),
+            dst_palette: args.dst.palette_or_else(fallback: this.palette[..]),
+            src_pixfmt: this.util.make_pixel_format(repr: this.pixfmt),
+            src_palette: this.util.empty_slice_u8(),
+            blend: args.blend)
+    if not status.is_ok() {
+        return status
+    }
+
+    // TODO: the dst_pixfmt variable shouldn't be necessary. We should be able
+    // to chain the two calls: "args.dst.pixel_format().bits_per_pixel()".
+    dst_pixfmt = args.dst.pixel_format()
+    dst_bits_per_pixel = dst_pixfmt.bits_per_pixel()
+    if (dst_bits_per_pixel & 7) <> 0 {
+        return base."#unsupported option"
+    }
+    dst_bytes_per_pixel = dst_bits_per_pixel / 8
+    dst_bytes_per_row = (this.width * dst_bytes_per_pixel) as base.u64
+    dst_palette = args.dst.palette_or_else(fallback: this.palette[..])
+    tab = args.dst.plane(p: 0)
+    src_bytes_per_row = (this.width * 4) as base.u64
+
+    while src_bytes_per_row <= args.src.length() {
+        dst = tab.row_u32(y: y)
+        if dst_bytes_per_row < dst.length() {
+            dst = dst[.. dst_bytes_per_row]
+        }
+
+        this.swizzler.swizzle_interleaved_from_slice!(
+                dst: dst,
+                dst_palette: dst_palette,
+                src: args.src[.. src_bytes_per_row])
+
+        args.src = args.src[src_bytes_per_row ..]
+        y ~mod+= 1
+    }
+
+    return ok
+}
+
+pub func decoder.frame_dirty_rect() base.rect_ie_u32 {
+    return this.util.make_rect_ie_u32(
+            min_incl_x: 0,
+            min_incl_y: 0,
+            max_excl_x: this.width,
+            max_excl_y: this.height)
+}
+
+pub func decoder.num_animation_loops() base.u32 {
+    return 0
+}
+
+pub func decoder.num_decoded_frame_configs() base.u64 {
+    if this.call_sequence > 0x20 {
+        return 1
+    }
+    return 0
+}
+
+pub func decoder.num_decoded_frames() base.u64 {
+    if this.call_sequence > 0x40 {
+        return 1
+    }
+    return 0
+}
+
+pub func decoder.restart_frame!(index: base.u64, io_position: base.u64) base.status {
+    if this.call_sequence < 0x20 {
+        return base."#bad call sequence"
+    }
+    if (args.index <> 0) or (args.io_position <> this.frame_config_io_position) {
+        return base."#bad argument"
+    }
+    this.call_sequence = 0x28
+    return ok
+}
+
+pub func decoder.set_report_metadata!(fourcc: base.u32, report: base.bool) {
+    // No-op.
+}
+
+pub func decoder.tell_me_more?(dst: base.io_writer, minfo: nptr base.more_information, src: base.io_reader) {
+    return base."#no more information"
+}
+
+pub func decoder.workbuf_len() base.range_ii_u64 {
+    return this.util.make_range_ii_u64(
+            min_incl: this.workbuf_offset_for_transform[3] as base.u64,
+            max_incl: this.workbuf_offset_for_transform[3] as base.u64)
+}
+
+pri const DISTANCE_MAP : roarray[120] base.u8 = [
+        0x18, 0x07, 0x17, 0x19, 0x28, 0x06, 0x27, 0x29, 0x16, 0x1A,
+        0x26, 0x2A, 0x38, 0x05, 0x37, 0x39, 0x15, 0x1B, 0x36, 0x3A,
+        0x25, 0x2B, 0x48, 0x04, 0x47, 0x49, 0x14, 0x1C, 0x35, 0x3B,
+        0x46, 0x4A, 0x24, 0x2C, 0x58, 0x45, 0x4B, 0x34, 0x3C, 0x03,
+        0x57, 0x59, 0x13, 0x1D, 0x56, 0x5A, 0x23, 0x2D, 0x44, 0x4C,
+        0x55, 0x5B, 0x33, 0x3D, 0x68, 0x02, 0x67, 0x69, 0x12, 0x1E,
+        0x66, 0x6A, 0x22, 0x2E, 0x54, 0x5C, 0x43, 0x4D, 0x65, 0x6B,
+        0x32, 0x3E, 0x78, 0x01, 0x77, 0x79, 0x53, 0x5D, 0x11, 0x1F,
+        0x64, 0x6C, 0x42, 0x4E, 0x76, 0x7A, 0x21, 0x2F, 0x75, 0x7B,
+        0x31, 0x3F, 0x63, 0x6D, 0x52, 0x5E, 0x00, 0x74, 0x7C, 0x41,
+        0x4F, 0x10, 0x20, 0x62, 0x6E, 0x30, 0x73, 0x7D, 0x51, 0x5F,
+        0x40, 0x72, 0x7E, 0x61, 0x6F, 0x50, 0x71, 0x7F, 0x60, 0x70,
+]

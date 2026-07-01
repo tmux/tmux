@@ -1,0 +1,4 @@
+# Ignore everything ending in "suite".
+#
+# This ignores "pngsuite" but not "fetch-pngsuite.sh".
+*suite

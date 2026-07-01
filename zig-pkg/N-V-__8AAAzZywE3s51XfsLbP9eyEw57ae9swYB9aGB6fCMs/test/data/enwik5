@@ -1,0 +1,812 @@
+<mediawiki xmlns="http://www.mediawiki.org/xml/export-0.3/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mediawiki.org/xml/export-0.3/ http://www.mediawiki.org/xml/export-0.3.xsd" version="0.3" xml:lang="en">
+  <siteinfo>
+    <sitename>Wikipedia</sitename>
+    <base>http://en.wikipedia.org/wiki/Main_Page</base>
+    <generator>MediaWiki 1.6alpha</generator>
+    <case>first-letter</case>
+      <namespaces>
+      <namespace key="-2">Media</namespace>
+      <namespace key="-1">Special</namespace>
+      <namespace key="0" />
+      <namespace key="1">Talk</namespace>
+      <namespace key="2">User</namespace>
+      <namespace key="3">User talk</namespace>
+      <namespace key="4">Wikipedia</namespace>
+      <namespace key="5">Wikipedia talk</namespace>
+      <namespace key="6">Image</namespace>
+      <namespace key="7">Image talk</namespace>
+      <namespace key="8">MediaWiki</namespace>
+      <namespace key="9">MediaWiki talk</namespace>
+      <namespace key="10">Template</namespace>
+      <namespace key="11">Template talk</namespace>
+      <namespace key="12">Help</namespace>
+      <namespace key="13">Help talk</namespace>
+      <namespace key="14">Category</namespace>
+      <namespace key="15">Category talk</namespace>
+      <namespace key="100">Portal</namespace>
+      <namespace key="101">Portal talk</namespace>
+    </namespaces>
+  </siteinfo>
+  <page>
+    <title>AaA</title>
+    <id>1</id>
+    <revision>
+      <id>32899315</id>
+      <timestamp>2005-12-27T18:46:47Z</timestamp>
+      <contributor>
+        <username>Jsmethers</username>
+        <id>614213</id>
+      </contributor>
+      <text xml:space="preserve">#REDIRECT [[AAA]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>AlgeriA</title>
+    <id>5</id>
+    <revision>
+      <id>18063769</id>
+      <timestamp>2005-07-03T11:13:13Z</timestamp>
+      <contributor>
+        <username>Docu</username>
+        <id>8029</id>
+      </contributor>
+      <minor />
+      <comment>adding cur_id=5: {{R from CamelCase}}</comment>
+      <text xml:space="preserve">#REDIRECT [[Algeria]]{{R from CamelCase}}</text>
+    </revision>
+  </page>
+  <page>
+    <title>AmericanSamoa</title>
+    <id>6</id>
+    <revision>
+      <id>18063795</id>
+      <timestamp>2005-07-03T11:14:17Z</timestamp>
+      <contributor>
+        <username>Docu</username>
+        <id>8029</id>
+      </contributor>
+      <minor />
+      <comment>adding to cur_id=6  {{R from CamelCase}}</comment>
+      <text xml:space="preserve">#REDIRECT [[American Samoa]]{{R from CamelCase}}</text>
+    </revision>
+  </page>
+  <page>
+    <title>AppliedEthics</title>
+    <id>8</id>
+    <revision>
+      <id>15898943</id>
+      <timestamp>2002-02-25T15:43:11Z</timestamp>
+      <contributor>
+        <ip>Conversion script</ip>
+      </contributor>
+      <minor />
+      <comment>Automated conversion</comment>
+      <text xml:space="preserve">#REDIRECT [[Applied ethics]]
+</text>
+    </revision>
+  </page>
+  <page>
+    <title>AccessibleComputing</title>
+    <id>10</id>
+    <revision>
+      <id>15898945</id>
+      <timestamp>2003-04-25T22:18:38Z</timestamp>
+      <contributor>
+        <username>Ams80</username>
+        <id>7543</id>
+      </contributor>
+      <minor />
+      <comment>Fixing redirect</comment>
+      <text xml:space="preserve">#REDIRECT [[Accessible_computing]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>AdA</title>
+    <id>11</id>
+    <revision>
+      <id>15898946</id>
+      <timestamp>2002-09-22T16:02:58Z</timestamp>
+      <contributor>
+        <username>Andre Engels</username>
+        <id>300</id>
+      </contributor>
+      <minor />
+      <text xml:space="preserve">#REDIRECT [[Ada programming language]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>Anarchism</title>
+    <id>12</id>
+    <revision>
+      <id>42136831</id>
+      <timestamp>2006-03-04T01:41:25Z</timestamp>
+      <contributor>
+        <username>CJames745</username>
+        <id>832382</id>
+      </contributor>
+      <minor />
+      <comment>/* Anarchist Communism */  too many brackets</comment>
+      <text xml:space="preserve">{{Anarchism}}
+'''Anarchism''' originated as a term of abuse first used against early [[working class]] [[radical]]s including the [[Diggers]] of the [[English Revolution]] and the [[sans-culotte|''sans-culottes'']] of the [[French Revolution]].[http://uk.encarta.msn.com/encyclopedia_761568770/Anarchism.html] Whilst the term is still used in a pejorative way to describe ''&quot;any act that used violent means to destroy the organization of society&quot;''&lt;ref&gt;[http://www.cas.sc.edu/socy/faculty/deflem/zhistorintpolency.html History of International Police Cooperation], from the final protocols of the &quot;International Conference of Rome for the Social Defense Against Anarchists&quot;, 1898&lt;/ref&gt;, it has also been taken up as a positive label by self-defined anarchists.
+
+The word '''anarchism''' is [[etymology|derived from]] the [[Greek language|Greek]] ''[[Wiktionary:&amp;#945;&amp;#957;&amp;#945;&amp;#961;&amp;#967;&amp;#943;&amp;#945;|&amp;#945;&amp;#957;&amp;#945;&amp;#961;&amp;#967;&amp;#943;&amp;#945;]]'' (&quot;without [[archon]]s (ruler, chief, king)&quot;). Anarchism as a [[political philosophy]], is the belief that ''rulers'' are unnecessary and should be abolished, although there are differing interpretations of what this means. Anarchism also refers to related [[social movement]]s) that advocate the elimination of authoritarian institutions, particularly the [[state]].&lt;ref&gt;[http://en.wikiquote.org/wiki/Definitions_of_anarchism Definitions of anarchism] on Wikiquote, accessed 2006&lt;/ref&gt; The word &quot;[[anarchy]],&quot; as most anarchists use it, does not imply [[chaos]], [[nihilism]], or [[anomie]], but rather a harmonious [[anti-authoritarian]] society. In place of what are regarded as authoritarian political structures and coercive economic institutions, anarchists advocate social relations based upon [[voluntary association]] of autonomous individuals, [[mutual aid]], and [[self-governance]]. 
+    
+While anarchism is most easily defined by what it is against, anarchists also offer positive visions of what they believe to be a truly free society. However, ideas about how an anarchist society might work vary considerably, especially with respect to economics; there is also disagreement about how a free society might be brought about. 
+
+== Origins and predecessors ==
+
+[[Peter Kropotkin|Kropotkin]], and others, argue that before recorded [[history]], human society was organized on anarchist principles.&lt;ref&gt;[[Peter Kropotkin|Kropotkin]], Peter. ''&quot;[[Mutual Aid: A Factor of Evolution]]&quot;'', 1902.&lt;/ref&gt; Most anthropologists follow Kropotkin and Engels in believing that hunter-gatherer bands were egalitarian and lacked division of labour, accumulated wealth, or decreed law, and had equal access to resources.&lt;ref&gt;[[Friedrich Engels|Engels]], Freidrich. ''&quot;[http://www.marxists.org/archive/marx/works/1884/origin-family/index.htm Origins of the Family, Private Property, and the State]&quot;'', 1884.&lt;/ref&gt;
+[[Image:WilliamGodwin.jpg|thumb|right|150px|William Godwin]]
+
+Anarchists including the [[The Anarchy Organisation]] and [[Murray Rothbard|Rothbard]] find anarchist attitudes in [[Taoism]] from [[History of China|Ancient China]].&lt;ref&gt;The Anarchy Organization (Toronto). ''Taoism and Anarchy.'' [[April 14]] [[2002]] [http://www.toxicpop.co.uk/library/taoism.htm Toxicpop mirror] [http://www.geocities.com/SoHo/5705/taoan.html Vanity site mirror]&lt;/ref&gt;&lt;ref&gt;[[Murray Rothbard|Rothbard]], Murray. ''&quot;[http://www.lewrockwell.com/rothbard/ancient-chinese.html The Ancient Chinese Libertarian Tradition]&quot;'', an extract from ''&quot;[http://www.mises.org/journals/jls/9_2/9_2_3.pdf Concepts of the Role of Intellectuals in Social Change Toward Laissez Faire]&quot;'', The Journal of Libertarian Studies, 9 (2) Fall 1990.&lt;/ref&gt; [[Peter Kropotkin|Kropotkin]] found similar ideas in [[stoicism|stoic]] [[Zeno of Citium]]. According to Kropotkin, Zeno &quot;repudiated the omnipotence of the state, its intervention and regimentation, and proclaimed the sovereignty of the moral law of the individual&quot;. &lt;ref&gt;[http://www.blackcrayon.com/page.jsp/library/britt1910.html Anarchism], written by Peter Kropotkin, from Encyclopaedia Britannica, 1910]&lt;/ref&gt;
+
+The [[Anabaptist]]s of 16th century Europe are sometimes considered to be religious forerunners of modern anarchism. [[Bertrand Russell]], in his ''History of Western Philosophy'', writes that the Anabaptists &quot;repudiated all law, since they held that the good man will be guided at every moment by [[the Holy Spirit]]...[f]rom this premise they arrive at [[communism]]....&quot;&lt;ref&gt;[[Bertrand Russell|Russell]], Bertrand. ''&quot;Ancient philosophy&quot;'' in ''A History of Western Philosophy, and its connection with political and social circumstances from the earliest times to the present day'', 1945.&lt;/ref&gt; [[Diggers (True Levellers)|The Diggers]] or &quot;True Levellers&quot; were an early communistic movement during the time of the [[English Civil War]], and are considered by some as forerunners of modern anarchism.&lt;ref&gt;[http://www.zpub.com/notes/aan-hist.html An Anarchist Timeline], from Encyclopaedia Britannica, 1994.&lt;/ref&gt;
+
+In the [[modern era]], the first to use the term to mean something other than chaos was [[Louis-Armand de Lom d'Arce de Lahontan, Baron de Lahontan|Louis-Armand, Baron de Lahontan]] in his ''Nouveaux voyages dans l'Amérique septentrionale'', (1703), where he described the [[Native Americans in the United States|indigenous American]] society, which had no state, laws, prisons, priests, or private property, as being in anarchy&lt;ref&gt;[http://etext.lib.virginia.edu/cgi-local/DHI/dhi.cgi?id=dv1-12 Dictionary of the History of Ideas - ANARCHISM]&lt;/ref&gt;. [[Russell Means]], a [[libertarian]] and leader in the [[American Indian Movement]], has repeatedly stated that he is &quot;an anarchist, and so are all [his] ancestors.&quot;
+
+In 1793, in the thick of the [[French Revolution]], [[William Godwin]] published ''An Enquiry Concerning Political Justice'' [http://web.bilkent.edu.tr/Online/www.english.upenn.edu/jlynch/Frank/Godwin/pjtp.html]. Although Godwin did not use the word ''anarchism'', many later anarchists have regarded this book as the first major anarchist text, and Godwin as the &quot;founder of philosophical anarchism.&quot; But at this point no anarchist movement yet existed, and the term ''anarchiste'' was known mainly as an insult hurled by the [[bourgeois]] [[Girondins]] at more radical elements in the [[French revolution]].
+
+==The first self-labelled anarchist==
+[[Image:Pierre_Joseph_Proudhon.jpg|110px|thumb|left|Pierre Joseph Proudhon]]
+{{main articles|[[Pierre-Joseph Proudhon]] and [[Mutualism (economic theory)]]}}
+
+It is commonly held that it wasn't until [[Pierre-Joseph Proudhon]] published ''[[What is Property?]]'' in 1840 that the term &quot;anarchist&quot; was adopted as a self-description. It is for this reason that some claim Proudhon as the founder of modern anarchist theory. In [[What is Property?]] Proudhon answers with the famous accusation &quot;[[Property is theft]].&quot; In this work he opposed the institution of decreed &quot;property&quot; (propriété), where owners have complete rights to &quot;use and abuse&quot; their property as they wish, such as exploiting workers for profit.&lt;ref name=&quot;proudhon-prop&quot;&gt;[[Pierre-Joseph Proudhon|Proudhon]], Pierre-Joseph. ''&quot;[http://www.marxists.org/reference/subject/economics/proudhon/property/ch03.htm Chapter 3. Labour as the efficient cause of the domain of property]&quot;'' from ''&quot;[[What is Property?]]&quot;'', 1840&lt;/ref&gt; In its place Proudhon supported what he called 'possession' - individuals can have limited rights to use resources, capital and goods in accordance with principles of equality and justice. 
+
+Proudhon's vision of anarchy, which he called [[mutualism]] (mutuellisme), involved an exchange economy where individuals and groups could trade the products of their labor using ''labor notes'' which represented the amount of working time involved in production. This would ensure that no one would profit from the labor of others. Workers could freely join together in co-operative workshops. An interest-free bank would be set up to provide everyone with access to the means of production. Proudhon's ideas were influential within French working class movements, and his followers were active in the [[Revolution of 1848]] in France.
+
+Proudhon's philosophy of property is complex: it was developed in a number of works over his lifetime, and there are differing interpretations of some of his ideas. ''For more detailed discussion see [[Pierre-Joseph Proudhon|here]].''
+
+==Max Stirner's Egoism==
+{{main articles|[[Max Stirner]] and [[Egoism]]}}
+
+In his ''The Ego and Its Own'' Stirner argued that most commonly accepted social institutions - including the notion of State, property as a right, natural rights in general, and the very notion of society - were mere illusions or ''ghosts'' in the mind, saying of society  that &quot;the individuals are its reality.&quot; He advocated egoism and a form of amoralism, in which individuals would unite in 'associations of egoists' only when it was in their self interest to do so.  For him, property simply comes about through might: &quot;Whoever knows how to take, to defend, the thing, to him belongs property.&quot; And, &quot;What I have in my power, that is my own. So long as I assert myself as holder, I am the proprietor of the thing.&quot;
+
+Stirner never called himself an anarchist - he accepted only the label 'egoist'. Nevertheless, his ideas were influential on many individualistically-inclined anarchists, although interpretations of his thought are diverse.
+
+==American individualist anarchism==
+[[Image:BenjaminTucker.jpg|thumb|150px|left|[[Benjamin Tucker]]]]
+{{main articles|[[Individualist anarchism]] and [[American individualist anarchism]]}}
+
+In 1825 [[Josiah Warren]] had participated in a [[communitarian]] experiment headed by [[Robert Owen]] called [[New Harmony]], which failed in a few years amidst much internal conflict. Warren blamed the community's failure on a lack of [[individual sovereignty]] and a lack of private property.  Warren proceeded to organise experimenal anarchist communities which respected what he called &quot;the sovereignty of the individual&quot; at [[Utopia (anarchist community)|Utopia]] and [[Modern Times]]. In 1833 Warren wrote and published ''The Peaceful Revolutionist'', which some have noted to be the first anarchist periodical ever published. Benjamin Tucker says that Warren &quot;was the first man to expound and formulate the doctrine now known as Anarchism.&quot; (''Liberty'' XIV (December, 1900):1)
+
+[[Benjamin Tucker]] became interested in anarchism through meeting Josiah Warren and [[William B. Greene]]. He edited and published ''Liberty'' from August 1881 to April 1908; it is widely considered to be the finest individualist-anarchist periodical ever issued in the English language.  Tucker's conception of individualist anarchism incorporated the ideas of a variety of theorists: Greene's ideas on [[mutualism|mutual banking]]; Warren's ideas on [[cost the limit of price|cost as the limit of price]] (a [[heterodox economics|heterodox]] variety of [[labour theory of value]]); [[Proudhon]]'s market anarchism; [[Max Stirner]]'s [[egoism]]; and, [[Herbert Spencer]]'s &quot;law of equal freedom&quot;.  Tucker strongly supported the individual's right to own the product of his or her labour as &quot;[[private property]]&quot;, and believed in a &lt;ref name=&quot;tucker-pay&quot;&gt;[[Benjamin Tucker|Tucker]], Benjamin. ''&quot;[http://www.blackcrayon.com/page.jsp/library/tucker/tucker37.htm Labor and Its Pay]&quot;'' Individual Liberty: Selections From the Writings of Benjamin R. Tucker, Vanguard Press, New York, 1926, Kraus Reprint Co., Millwood, NY, 1973.&lt;/ref&gt;[[market economy]] for trading this property. He argued that in a truly free market system without the state, the abundance of  competition would eliminate profits and ensure that all workers received the full value of their labor. 
+
+Other 19th century individualists included [[Lysander Spooner]], [[Stephen Pearl Andrews]], and [[Victor Yarros]].
+
+==The First International==
+[[Image:Bakuninfull.jpg|thumb|150px|right|[[Bakunin|Mikhail Bakunin 1814-1876]]]]
+{{main articles|[[International Workingmen's Association]], [[Anarchism and Marxism]]}}
+
+In Europe, harsh reaction followed the revolutions of 1848. Twenty years later in 1864 the [[International Workingmen's Association]], sometimes called the 'First International', united some diverse European revolutionary currents including anarchism. Due to its genuine links to active workers movements the International became signficiant. 
+
+From the start [[Karl Marx]] was a leading figure in the International: he was elected to every succeeding General Council of the association.   The first objections to Marx came from the [[Mutualism|Mutualists]] who opposed communism and statism.  Shortly after [[Mikhail Bakunin]] and his followers joined in 1868, the First International became polarised into two camps, with Marx and Bakunin as their respective figureheads. The clearest difference between the camps was over strategy. The anarchists around Bakunin favoured (in Kropotkin's words) &quot;direct economical struggle against capitalism, without interfering in the political parliamentary agitation.&quot;  At that time Marx and his followers focused on parliamentary activity.
+
+Bakunin characterised Marx's ideas as [[authoritarian]], and predicted that if a Marxist party gained to power its leaders would end up as bad as the [[ruling class]] they had fought against.&lt;ref&gt;[[Mikhail Bakunin|Bakunin]], Mikhail. ''&quot;[http://www.litencyc.com/php/adpage.php?id=1969 Statism and Anarchy]&quot;''&lt;/ref&gt; In 1872 the conflict climaxed with a final split between the two groups at the [[Hague Congress (1872)|Hague Congress]]. This is often cited as the origin of the [[Anarchist_objections_to_marxism|conflict between anarchists and Marxists]]. From this moment the ''[[Social democracy|social democratic]]'' and ''[[Libertarian socialism|libertarian]]'' currents of socialism had distinct organisations including rival [[List of left-wing internationals|'internationals'.]]
+
+==Anarchist Communism==
+{{main|Anarchist communism}}
+[[Image:PeterKropotkin.jpg|thumb|150px|right|Peter Kropotkin]]
+
+Proudhon and Bakunin both opposed [[communism]], associating it with statism. However, in the 1870s many anarchists moved away from Bakunin's economic thinking (called &quot;collectivism&quot;) and embraced communist concepts. Communists believed the means of production should be owned collectively, and that goods be distributed by need, not labor. [http://nefac.net/node/157]
+
+An early anarchist communist was Joseph Déjacque, the first person to describe himself as &quot;[[libertarian socialism|libertarian]]&quot;.[http://recollectionbooks.com/bleed/Encyclopedia/DejacqueJoseph.htm]&lt;ref&gt;[http://joseph.dejacque.free.fr/ecrits/lettreapjp.htm De l'être-humain mâle et femelle - Lettre à P.J. Proudhon par Joseph Déjacque] (in [[French language|French]])&lt;/ref&gt; Unlike Proudhon, he argued that &quot;it is not the product of his or her labor that the worker has a right to, but to the satisfaction of his or her needs, whatever may be their nature.&quot; He announced his ideas in his US published journal Le Libertaire (1858-1861).
+
+Peter Kropotkin, often seen as the most important theorist, outlined his economic ideas in The Conquest of Bread and Fields, Factories and Workshops. He felt co-operation is more beneficial than competition, illustrated in nature in Mutual Aid: A Factor of Evolution (1897). Subsequent anarchist communists include Emma Goldman and Alexander Berkman. Many in the anarcho-syndicalist movements (see below) saw anarchist communism as their objective. Isaac Puente's 1932 Comunismo Libertario was adopted by the Spanish CNT as its manifesto for a post-revolutionary society.
+
+Some anarchists disliked merging communism with anarchism. Several individualist anarchists maintained that abolition of private property was not consistent with liberty. For example, Benjamin Tucker, whilst professing respect for Kropotkin and publishing his work[http://www.zetetics.com/mac/libdebates/apx1pubs.html], described communist anarchism as &quot;pseudo-anarchism&quot;.&lt;ref name=&quot;tucker-pay&quot;/&gt;
+
+==Propaganda of the deed==
+[[Image:JohannMost.jpg|left|150px|thumb|[[Johann Most]] was an outspoken advocate of violence]]
+{{main|Propaganda of the deed}}
+
+Anarchists have often been portrayed as dangerous and violent, due mainly to a number of high-profile violent acts, including [[riot]]s, [[assassination]]s, [[insurrection]]s, and [[terrorism]] by some anarchists. Some [[revolution]]aries of the late 19th century encouraged acts of political violence,  such as [[bomb]]ings and the [[assassination]]s of [[head of state|heads of state]] to further anarchism. Such actions have sometimes been called '[[propaganda by the deed]]'. 
+
+One of the more outspoken advocates of this strategy was [[Johann Most]], who said &quot;the existing system will be quickest and most radically overthrown by the annihilation of its exponents. Therefore, massacres of the enemies of the people must be set in motion.&quot;{{fact}} Most's preferred method of terrorism, dynamite, earned him the moniker &quot;Dynamost.&quot;  
+
+However, there is no [[consensus]] on the legitimacy or utility of violence in general. [[Mikhail Bakunin]] and [[Errico Malatesta]], for example, wrote of violence as a necessary and sometimes desirable force in revolutionary settings. But at the same time, they denounced acts of individual terrorism. (Malatesta in &quot;On Violence&quot; and Bakunin when he refuted Nechaev).
+
+Other anarchists, sometimes identified as [[anarcho-pacifists|pacifist anarchists]], advocated complete [[nonviolence]]. [[Leo Tolstoy]], whose philosophy is often viewed as a form of [[Christian anarchism|Christian anarchism]] ''(see below)'', was a notable exponent of [[nonviolent resistance]].
+
+==Anarchism in the labour movement==
+{{seealso|Anarcho-syndicalism}}
+
+[[Image:Flag of Anarcho syndicalism.svg|thumb|175px|The red-and-black flag, coming from the experience of anarchists in the labour movement, is particularly associated with anarcho-syndicalism.]]
+
+[[Anarcho-syndicalism]] was an early 20th century working class movement seeking to overthrow capitalism and the state to institute a worker controlled society. The movement pursued [[industrial action]]s, such as [[general strike]], as a primary strategy. Many anarcho-syndicalists believed in [[anarchist communism]], though not all communists believed in syndicalism.
+
+After the [[Paris Commune|1871 repression]] French anarchism reemerged, influencing the ''Bourses de Travails'' of autonomous workers groups and trade unions. From this movement the [[Confédération Générale du Travail]] (General Confederation of Work, CGT) was formed in 1895 as the first major anarcho-syndicalist movement. [[Emile Pataud]] and [[Emile Pouget]]'s writing for the CGT saw [[libertarian communism]] developing from a [[general strike]].  After 1914 the CGT moved away from anarcho-syndicalism due to the appeal of [[Bolshevism]].  French-style syndicalism was a significant movement in Europe prior to 1921, and remained a significant movement in Spain until the mid 1940s.
+
+The [[Industrial Workers of the World]] (IWW), founded in 1905 in the US, espoused [[industrial unionism|unionism]] and sought a [[general strike]] to usher in a stateless society. In 1923 100,000 members existed, with the support of up to 300,000. Though not explicitly anarchist, they organized by rank and file democracy, embodying a spirit of resistance that has inspired many Anglophone syndicalists.
+
+[[Image:CNT_tu_votar_y_ellos_deciden.jpg|thumb|175px|CNT propaganda from April 2004.  Reads: Don't let the politicians rule our lives/ You vote and they decide/ Don't allow it/ Unity, Action, Self-management.]]
+
+Spanish anarchist trade union federations were formed in the 1870's, 1900 and 1910. The most successful was the [[Confederación Nacional del Trabajo]] (National Confederation of Labour: CNT), founded in 1910. Prior to the 1940s the CNT was the major force in Spanish working class politics.  With a membership of 1.58 million in 1934, the CNT played a major role in the [[Spanish Civil War]]. ''See also:'' [[Anarchism in Spain]].
+
+Syndicalists like [[Ricardo Flores Magón]] were key figures in the [[Mexican Revolution]]. [[Latin America|Latin American]] anarchism was strongly influenced, extending to the [[Zapatista Army of National Liberation|Zapatista]] rebellion and the [[factory occupation movements]] in Argentina. In Berlin in 1922 the CNT was joined with the [[International Workers Association]], an anarcho-syndicalist successor to the [[First International]].
+
+Contemporary anarcho-syndicalism continues as a minor force in many socities; much smaller than in the 1910s, 20s and 30s.  
+
+The largest organised anarchist movement today is in Spain, in the form of the [[Confederación General del Trabajo]] and the [[CNT]].  The CGT claims a paid-up membership of 60,000, and received over a million votes in Spanish [[syndical]] elections.  Other active syndicalist movements include the US [[Workers Solidarity Alliance]], and the UK [[Solidarity Federation]].  The revolutionary industrial unionist [[Industrial Workers of the World]] also exists, claiming 2,000 paid members.  Contemporary critics of anarcho-syndicalism and revolutionary industrial unionism claim that they are [[workerist]] and fail to deal with economic life outside work.  Post-leftist critics such as [[Bob Black]] claim anarcho-syndicalism advocates oppressive social structures, such as [[Manual labour|work]] and the [[workplace]].
+
+Anarcho-syndicalists in general uphold principles of workers solidarity, [[direct action]], and self-management.
+
+==The Russian Revolution==
+{{main|Russian Revolution of 1917}}
+
+The [[Russian Revolution of 1917]] was a seismic event in the development of anarchism as a movement and as a philosophy.
+
+Anarchists participated alongside the [[Bolsheviks]] in both February and October revolutions, many anarchists initially supporting the Bolshevik coup. However the Bolsheviks soon turned against the anarchists and other left-wing opposition, a conflict which culminated in the 1918 [[Kronstadt rebellion]]. Anarchists in central Russia were imprisoned or driven underground, or joined the victorious Bolsheviks. In [[Ukraine]] anarchists fought in the [[Russian Civil War|civil war]] against both Whites and Bolsheviks within the Makhnovshchina peasant army led by [[Nestor Makhno]]).
+
+Expelled American anarchists [[Emma Goldman]] and [[Alexander Berkman]] before leaving Russia were amongst those agitating in response to Bolshevik policy and the suppression of the Kronstadt uprising. Both wrote classic accounts of their experiences in Russia, aiming to expose the reality of Bolshevik control. For them, [[Bakunin]]'s predictions about the consequences of Marxist rule had proved all too true.
+
+The victory of the Bolsheviks in the October Revolution and the resulting Russian Civil War did serious damage to anarchist movements internationally. Many workers and activists saw Bolshevik success as setting an example; Communist parties grew at the expense of anarchism and other socialist movements. In France and the US for example, the major syndicalist movements of the [[CGT]] and [[IWW]] began to realign themselves away from anarchism and towards the [[Comintern|Communist International]].
+
+In Paris, the [[Dielo Truda]] group of Russian anarchist exiles which included [[Nestor Makhno]] concluded that anarchists needed to develop new forms of organisation in response to the structures of Bolshevism. Their 1926 manifesto, known as the [[Platformism|Organisational Platform of the Libertarian Communists]], was supported by some communist anarchists, though opposed by many others. 
+
+The ''Platform'' continues to inspire some contemporary anarchist groups who believe in an anarchist movement organised around its principles of 'theoretical unity', 'tactical unity', 'collective responsibility' and 'federalism'. Platformist groups today include the [[Workers Solidarity Movement]] in Ireland, the UK's [[Anarchist Federation]], and the late [[North Eastern Federation of Anarchist Communists]] in the northeastern United States and bordering Canada.
+
+==The fight against fascism==
+{{main articles|[[Anti-fascism]] and [[Anarchism in Spain]]}}
+[[Image:CNT-armoured-car-factory.jpg|right|thumb|270px|[[Spain]], [[1936]]. Members of the [[CNT]] construct [[armoured car]]s to fight against the [[fascist]]s in one of the [[collectivisation|collectivised]] factories.]]
+In the 1920s and 1930s the familiar dynamics of anarchism's conflict with the state were transformed by the rise of [[fascism]] in Europe. In many cases, European anarchists faced difficult choices - should they join in [[popular front]]s with reformist democrats and Soviet-led [[Communists]] against a common fascist enemy? Luigi Fabbri, an exile from Italian fascism, was amongst those arguing that fascism was something different:
+
+:&quot;Fascism is not just another form of government which, like all others, uses violence. It is the most authoritarian and the most violent form of government imaginable. It represents the utmost glorification of the theory and practice of the principle of authority.&quot; {{fact}}
+
+In France, where the fascists came close to insurrection in the February 1934 riots, anarchists divided over a 'united front' policy. [http://melior.univ-montp3.fr/ra_forum/en/people/berry_david/fascism_or_revolution.html] In Spain, the [[CNT]] initially refused to join a popular front electoral alliance, and abstention by CNT supporters led to a right wing election victory. But in 1936, the CNT changed its policy and anarchist votes helped bring the popular front back to power. Months later, the ruling class responded with an attempted coup, and the [[Spanish Civil War]] (1936-39) was underway. 
+
+In reponse to the army rebellion [[Anarchism in Spain|an anarchist-inspired]] movement of peasants and workers, supported by armed militias, took control of the major [[city]] of [[Barcelona]] and of large areas of rural Spain where they [[collectivization|collectivized]] the land. But even before the eventual fascist victory in 1939, the anarchists were losing ground in a bitter struggle with the  [[Stalinists]]. The CNT leadership often appeared confused and divided, with some members controversially entering the government. Stalinist-led troops suppressed the collectives, and persecuted both [[POUM|dissident marxists]] and anarchists.
+
+Since the late 1970s anarchists have been involved in fighting the rise of [[neo-fascism|neo-fascist]] groups. In Germany and the United Kingdom some anarchists worked within [[militant]] [[anti-fascism|anti-fascist]] groups alongside members of the [[Marxist]] left. They advocated directly combating fascists with physical force rather than relying on the state.  Since the late 1990s, a similar tendency has developed within US anarchism. ''See also: [[Anti-Racist Action]] (US), [[Anti-Fascist Action]] (UK), [[Antifa]]''
+
+==Religious anarchism==
+[[Image:LeoTolstoy.jpg|thumb|150px|[[Leo Tolstoy|Leo Tolstoy]] 1828-1910]]
+{{main articles|[[Christian anarchism]] and [[Anarchism and religion]]}}
+
+Most anarchist culture tends to be [[secular]] if not outright [[militant athiesm|anti-religious]].  However, the combination of religious social conscience, historical religiousity amongst oppressed social classes, and the compatibility of some interpretations of religious traditions with anarchism has resulted in religious anarchism.
+
+[[Christian anarchism|Christian anarchists]] believe that there is no higher authority than [[God]], and oppose earthly authority such as [[government]] and established churches. They believe that Jesus' teachings were clearly anarchistic, but were corrupted when &quot;Christianity&quot; was declared the official religion of Rome. Christian anarchists, who follow Jesus' directive to &quot;turn the other cheek&quot;, are strict [[pacifism|pacifists]]. The most famous advocate of Christian anarchism was [[Leo Tolstoy]], author of ''[[The Kingdom of God is Within You]]'', who called for a society based on compassion, nonviolent principles and freedom.  Christian anarchists tend to form [[experimental communities]].  They also occasionally [[tax resistance|resist taxation]].  Many Christian anarchists are [[vegetarianism|vegetarian]] or [[veganism|vegan]]{{fact}}.
+
+Christian anarchy can be said to have roots as old as the religion's birth, as the [[early church]] exhibits many anarchistic tendencies, such as communal goods and wealth. By aiming to obey utterly certain of the Bible's teachings certain [[anabaptism|anabaptist]] groups of sixteenth century Europe attempted to emulate the early church's social-economic organisation and philosophy by regarding it as the only social structure capable of true obediance to Jesus' teachings, and utterly rejected (in theory) all earthly hierarchies and authority (and indeed non-anabaptists in general) and violence as ungodly. Such groups, for example the [[Hutterites]], typically went from initially anarchistic beginnings to, as their movements stabalised, more authoritarian social models.
+
+[[Chinese Anarchism]] was most influential in the 1920s.  Strands of Chinese anarchism included [[Tai-Xu]]'s [[Buddhist Anarchism]] which was influenced by Tolstoy and the [[well-field system]].
+
+[[Neopaganism]], with its focus on the environment and equality, along with its often decentralized nature, has lead to a number of neopagan anarchists. One of the most prominent is [[Starhawk]], who writes extensively about both [[spirituality]] and [[activism]].
+
+==Anarchism and feminism==
+[[Image:Goldman-4.jpg|thumb|left|150px|[[Emma Goldman]]]]
+{{main|Anarcha-Feminism}}
+
+Early [[French feminism|French feminists]] such as [[Jenny d'Héricourt]] and [[Juliette Adam]] criticised the [[mysogyny]] in the anarchism of [[Proudhon]] during the 1850s.
+ 
+Anarcha-feminism is a kind of [[radical feminism]] that espouses the belief that [[patriarchy]] is a fundamental problem in society.  While anarchist feminism has existed for more than a hundred years, its explicit formulation as ''anarcha-feminism'' dates back to the early 70s&lt;ref&gt;[http://www.anarcha.org/sallydarity/Anarcho-FeminismTwoStatements.htm Anarcho-Feminism - Two Statements - Who we are: An Anarcho-Feminist Manifesto]&lt;/ref&gt;, during the [[second-wave feminism|second-wave]] feminist movement.  Anarcha-feminism, views [[patriarchy]] as the first manifestation of hierarchy in human history; thus, the first form of oppression occurred in the dominance of male over female.  Anarcha-feminists then conclude that if feminists are against patriarchy, they must also be against all forms of [[hierarchy]], and therefore must reject the authoritarian nature of the state and capitalism. {{fact}}
+
+Anarcho-primitivists see the creation of gender roles and patriarchy a creation of the start of [[civilization]], and therefore consider primitivism to also be an anarchist school of thought that addresses feminist concerns.  [[Eco-feminism]] is often considered a feminist variant of green anarchist feminist thought.  
+
+Anarcha-feminism is most often associated with early 20th-century authors and theorists such as [[Emma Goldman]] and [[Voltairine de Cleyre]], although even early first-wave feminist [[Mary Wollstonecraft]] held proto-anarchist views, and William Godwin is often considered a feminist anarchist precursor. It should be noted that Goldman and de Cleyre, though they both opposed the state, had opposing philosophies, as de Cleyre explains: &quot;Miss Goldman is a communist; I am an individualist. She wishes to destroy the right of property, I wish to assert it. I make my war upon privilege and authority, whereby the right of property, the true right in that which is proper to the individual, is annihilated. She believes that co-operation would entirely supplant competition; I hold that competition in one form or another will always exist, and that it is highly desirable it should.&quot;  In the [[Spanish Civil War]], an anarcha-feminist group, &quot;Free Women&quot;, organized to defend both anarchist and feminist ideas.
+
+In the modern day anarchist movement, many anarchists, male or female, consider themselves feminists, and anarcha-feminist ideas are growing.  The publishing of Quiet Rumors, an anarcha-feminist reader, has helped to spread various kinds of anti-authoritarian and anarchist feminist ideas to the broader movement. Wendy McElroy has popularized an individualist-anarchism take on feminism in her books, articles, and individualist feminist website.&lt;ref&gt;[http://www.ifeminists.net I-feminists.net]&lt;/ref&gt;
+
+==Anarcho-capitalism==
+[[Image:Murray Rothbard Smile.JPG|thumb|left|150px|[[Murray Rothbard]] (1926-1995)]]
+{{main|Anarcho-capitalism}}
+Anarcho-capitalism is a predominantly United States-based theoretical tradition that desires a stateless society with the economic system of [[free market]] [[capitalism]]. Unlike other branches of anarchism, it does not oppose [[profit]] or capitalism. Consequently, most anarchists do not recognise anarcho-capitalism as a form of anarchism.
+
+[[Murray Rothbard]]'s synthesis of [[classical liberalism]] and [[Austrian economics]] was germinal for the development of contemporary anarcho-capitalist theory. He defines anarcho-capitalism in terms of the [[non-aggression principle]], based on the concept of [[Natural Law]]. Competiting theorists use egoism, [[utilitarianism]] (used by [[David Friedman]]), or [[contractarianism]] (used by [[Jan Narveson]]). Some [[minarchism|minarchists]], such as [[Ayn Rand]], [[Robert Nozick]], and [[Robert A. Heinlein]], have influenced anarcho-capitalism.
+
+Some anarcho-capitalists, along with some right-wing libertarian historians such as David Hart and [[Ralph Raico]], considered similar philosophies existing prior to Rothbard to be anarcho-capitalist, such as those of [[Gustave de Molinari]] and [[Auberon Herbert]] &lt;ref&gt;[[Gustave de Molinari|Molinari]], Gustave de. ''[http://praxeology.net/MR-GM-PS.htm Preface to &quot;The Production of Security&quot;]'', translated by J. Huston McCulloch, Occasional Papers Series #2 (Richard M. Ebeling, Editor), New York: The Center for Libertarian Studies, May 1977.&lt;/ref&gt;&lt;ref name=&quot;david-hart&quot;/&gt;&lt;ref&gt;[[Ralph Raico|Raico]], Ralph [http://www.mises.org/story/1787 ''Authentic German Liberalism of the 19th Century''] Ecole Polytechnique, Centre de Recherce en Epistemologie Appliquee, Unité associée au CNRS (2004).&lt;/ref&gt; Opponents of anarcho-capitalists dispute these claims.&lt;ref&gt;McKay, Iain; Elkin, Gary; Neal, Dave ''et al'' [http://www.infoshop.org/faq/append11.html Replies to Some Errors and Distortions in Bryan Caplan's &quot;Anarchist Theory FAQ&quot; version 5.2] ''An Anarchist FAQ Version 11.2'' Accessed February 20, 2006.&lt;/ref&gt;
+
+The place of anarcho-capitalism within anarchism, and indeed whether it is a form of anarchism at all, is highly controversial. For more on this debate see ''[[Anarchism and anarcho-capitalism]]''.
+
+==Anarchism and the environment==
+{{seealso|Anarcho-primitivism|Green anarchism|Eco-anarchism|Ecofeminism}}
+
+Since the late 1970s anarchists in Anglophone and European countries have been taking action for the natural environment. [[Eco-anarchism|Eco-anarchists]] or [[Green anarchism|Green anarchists]] believe in [[deep ecology]].  This is a worldview that embraces [[biodiversity]] and [[sustainability]]. Eco-anarchists often use [[direct action]] against what they see as earth-destroying institutions. Of particular importance is the [[Earth First!]] movement, that takes action such as [[tree sitting]]. Another important component is [[ecofeminism]], which sees the domination of nature as a metaphor for the domination of women. Green anarchism also involves a critique of industrial capitalism, and, for some green anarchists, civilization itself.{{fact}}
+
+Primitivism is a predominantly Western philosophy that advocates a return to a pre-industrial and usually pre-agricultural society.  It develops a critique of industrial civilization.  In this critique [[technology]] and [[development]] have [[alienation|alienated]] people from the natural world. This philosophy develops themes present in the political action of the [[Luddites]] and the writings of [[Jean-Jacques Rousseau]]. Primitivism developed in the context of the [[Reclaim the Streets]], Earth First! and the [[Earth Liberation Front]] movements. [[John Zerzan]] wrote that [[civilization]] &amp;mdash; not just the state &amp;mdash; would need to fall for anarchy to be achieved.{{fact}} Anarcho-primitivists point to the anti-authoritarian nature of many 'primitive' or hunter-gatherer societies throughout the world's history, as examples of anarchist societies.
+
+==Other branches and offshoots==
+Anarchism generates many eclectic and syncretic philosophies and movements.  Since the Western social formet in the 1960s and 1970s a number new of movements and schools have appeared.  Most of these stances are limited to even smaller numbers than the schools and movements listed above.
+
+[[Image:Hakim Bey.jpeg|thumb|right|[[Hakim Bey]]]]
+*'''Post-left anarchy''' - Post-left anarchy (also called egoist-anarchism) seeks to distance itself from the traditional &quot;left&quot; - communists, liberals, social democrats, etc. - and to escape the confines of [[ideology]] in general. Post-leftists argue that anarchism has been weakened by its long attachment to contrary &quot;leftist&quot; movements and single issue causes ([[anti-war]], [[anti-nuclear]], etc.). It calls for a synthesis of anarchist thought and a specifically anti-authoritarian revolutionary movement outside of the leftist milieu. It often focuses on the individual rather than speaking in terms of class or other broad generalizations and shuns organizational tendencies in favor of the complete absence of  explicit hierarchy. Important groups and individuals associated with Post-left anarchy include: [[CrimethInc]], the magazine [[Anarchy: A Journal of Desire Armed]] and its editor [[Jason McQuinn]], [[Bob Black]], [[Hakim Bey]] and others. For more information, see [[Infoshop.org]]'s ''Anarchy After Leftism''&lt;ref&gt;[http://www.infoshop.org/afterleftism.html Infoshop.org - Anarchy After Leftism]&lt;/ref&gt; section, and the [http://anarchism.ws/postleft.html Post-left section] on [http://anarchism.ws/ anarchism.ws.] ''See also:'' [[Post-left anarchy]]
+
+*'''Post-structuralism''' - The term postanarchism was originated by [[Saul Newman]], first receiving popular attention in his book ''[[From Bakunin to Lacan]]'' to refer to a theoretical move towards a synthesis of classical anarchist theory and [[poststructuralist]] thought. Subsequent to Newman's use of the term, however, it has taken on a life of its own and a wide range of ideas including [[autonomism]], [[post-left anarchy]], [[situationism]], [[post-colonialism]] and Zapatismo. By its very nature post-anarchism rejects the idea that it should be a coherent set of doctrines and beliefs. As such it is difficult, if not impossible, to state with any degree of certainty who should or shouldn't be grouped under the rubric. Nonetheless key thinkers associated with post-anarchism include [[Saul Newman]], [[Todd May]], [[Gilles Deleuze]] and [[Félix Guattari]]. ''External reference: Postanarchism Clearinghouse''&lt;ref&gt;[http://www.postanarchism.org/ Post anarchist clearing house]&lt;/ref&gt; ''See also'' [[Post-anarchism]]
+
+*'''Insurrectionary anarchism''' - Insurrectionary anarchism is a form of revolutionary anarchism critical of formal anarchist labor unions and federations. Insurrectionary anarchists advocate informal organization, including small affinity groups, carrying out acts of resistance in various struggles, and mass organizations called base structures, which can include exploited individuals who are not anarchists. Proponents include [[Wolfi Landstreicher]] and [[Alfredo M. Bonanno]], author of works including &quot;Armed Joy&quot; and &quot;The Anarchist Tension&quot;. This tendency is represented in the US in magazines such as [[Willful Disobedience]] and [[Killing King Abacus]]. ''See also:'' [[Insurrectionary anarchism]]
+
+*'''Small 'a' anarchism''' - '''Small 'a' anarchism''' is a term used in two different, but not unconnected contexts. Dave Neal posited the term in opposition to big 'A' Anarchism in the article [http://www.spunk.org/library/intro/practice/sp001689.html Anarchism: Ideology or Methodology?]. While big 'A' Anarchism referred to ideological Anarchists, small 'a' anarchism was applied to their methodological counterparts; those who viewed anarchism as &quot;a way of acting, or a historical tendency against illegitimate authority.&quot; As an anti-ideological position, small 'a' anarchism shares some similarities with [[post-left anarchy]]. [[David Graeber]] and [[Andrej Grubacic]] offer an alternative use of the term, applying it to groups and movements organising according to or acting in a manner consistent with anarchist principles of decentralisation, voluntary association, mutual aid, the network model, and crucially, &quot;the rejection of any idea that the end justifies the means, let alone that the business of a revolutionary is to seize state power and then begin imposing one's vision at the point of a gun.&quot;[http://www.zmag.org/content/showarticle.cfm?SectionID=41&amp;ItemID=4796]
+
+==Other issues==
+*'''Conceptions of an anarchist society''' - Many political philosophers justify support of the state as a means of regulating violence, so that the destruction caused by human conflict is minimized and fair relationships are established. Anarchists argue that pursuit of these ends does not justify the establishment of a state; many argue that the state is incompatible with those goals and the ''cause'' of chaos, violence, and war. Anarchists argue that the state helps to create a [[Monopoly on the legitimate use of physical force|monopoly on violence]], and uses violence to advance elite interests.  Much effort has been dedicated to explaining how anarchist societies would handle criminality.''See also:'' [[Anarchism and Society]]
+
+*'''Civil rights and cultural sovereignty''' - [[Black anarchism]] opposes the existence of a state, capitalism, and subjugation and domination of people of color, and favors a non-hierarchical organization of society. Theorists include [[Ashanti Alston]], [[Lorenzo Komboa Ervin]], and [[Sam Mbah]]. [[Anarchist People of Color]] was created as a forum for non-caucasian anarchists to express their thoughts about racial issues within the anarchist movement, particularly within the United States. [[National anarchism]] is a political view which seeks to unite cultural or ethnic preservation with anarchist views. Its adherents propose that those preventing ethnic groups (or [[races]]) from living in separate autonomous groupings should be resisted. [[Anti-Racist Action]] is not an anarchist group, but many anarchists are involved.  It focuses on publicly confronting racist agitators. The [[Zapatista]] movement of Chiapas, Mexico is a cultural sovereignty group with some anarchist proclivities.
+
+*'''Neocolonialism and Globalization''' - Nearly all anarchists oppose [[neocolonialism]] as an attempt to use economic coercion on a global scale, carried out through state institutions such as the [[World Bank]], [[World Trade Organization]], [[G8|Group of Eight]], and the [[World Economic Forum]]. [[Globalization]] is an ambiguous term that has different meanings to different anarchist factions. Most anarchists use the term to mean neocolonialism and/or [[cultural imperialism]] (which they may see as related). Many are active in the [[anti-globalization]] movement. Others, particularly anarcho-capitalists, use &quot;globalization&quot; to mean the worldwide expansion of the division of labor and trade, which they see as beneficial so long as governments do not intervene.
+
+*'''Parallel structures''' - Many anarchists try to set up alternatives to state-supported institutions and &quot;outposts,&quot;  such as [[Food Not Bombs]], [[infoshop]]s, educational systems such as home-schooling, neighborhood mediation/arbitration groups, and so on.  The idea is to create the structures for a new anti-authoritarian society in the shell of the old, authoritarian one.
+
+*'''Technology''' - Recent technological developments have made the anarchist cause both easier to advance and more conceivable to people. Many people use the Internet to form on-line communities. [[Intellectual property]] is undermined and a gift-culture supported by [[file sharing|sharing music files]],  [[open source]] programming, and the [[free software movement]]. These cyber-communities include the [[GNU]], [[Linux]], [[Indymedia]], and [[Wiki]]. &lt;!-- ***NEEDS SOURCE THAT E-GOLD IS USED BY ANARCHISTS*** [[Public key cryptography]] has made anonymous digital currencies such as [[e-gold]] and [[Local Exchange Trading Systems]] an alternative to statist [[fiat money]]. --&gt; Some anarchists see [[information technology]] as the best weapon to defeat authoritarianism. Some even think the information age makes eventual anarchy inevitable.&lt;ref&gt;[http://www.modulaware.com/a/?m=select&amp;id=0684832720 The Sovereign Individual -- Mastering the transition to the information age]&lt;/ref&gt; ''See also'': [[Crypto-anarchism]] and [[Cypherpunk]].
+
+*'''Pacifism''' - Some anarchists consider [[Pacifism]] (opposition to [[war]]) to be inherent in their philosophy. [[Anarcho-pacifism|anarcho-pacifists]] take it further and follow [[Leo Tolstoy]]'s belief in [[Nonviolence|non-violence]]. Anarchists see war as an activity in which the state seeks to gain and consolidate power, both domestically and in foreign lands, and subscribe to [[Randolph Bourne]]'s view that &quot;war is the health of the state&quot;&lt;ref&gt;[http://struggle.ws/hist_texts/warhealthstate1918.html War is the Health of the State]&lt;/ref&gt;. A lot of anarchist activity has been [[anti-war]] based.
+
+*'''Parliamentarianism''' - In general terms, the anarchist ethos opposes voting in elections, because voting amounts to condoning the state.&lt;ref&gt;[http://members.aol.com/vlntryst/hitler.html The Voluntaryist - Why I would not vote against Hitler]&lt;/ref&gt;. [[Voluntaryism]] is an anarchist school of thought which emphasizes &quot;tending your own garden&quot; and &quot;neither ballots nor bullets.&quot; The anarchist case against voting is explained in ''The Ethics of Voting''&lt;ref&gt;[http://www.voluntaryist.com/nonvoting/ethics_of_voting.php Voluntaryist - The ethics of voting]&lt;/ref&gt; by [[George H. Smith]]. (Also see &quot;Voting Anarchists: An Oxymoron or What?&quot; by [[Joe Peacott]], and writings by [[Fred Woodworth]]).
+
+*'''Sectarianism''' - Most anarchist schools of thought are, to some degree, [[sectarian]].  There is often a difference of opinion ''within'' each school about how to react to, or interact with, other schools.  Some, such as [[panarchy|panarchists]], believe that it is possible for a variety of modes of social life to coexist and compete. Some anarchists view opposing schools as a social impossibility and resist interaction; others see opportunities for coalition-building, or at least temporary alliances for specific purposes. ''See [[anarchism without adjectives]].''
+
+==Criticisms of anarchism==
+:''Main article:'' [[Criticisms of anarchism]]
+
+'''Violence.'''  Since anarchism has often been associated with violence and destruction, some people have seen it as being too violent. On the other hand hand, [[Frederick Engels]] criticsed anarchists for not being violent enough:
+:''&quot;A revolution is certainly the most authoritarian thing there is; it is the act whereby one part of the population imposes its will upon the other part by means of rifles, bayonets and cannon — authoritarian means, if such there be at all; and if the victorious party does not want to have fought in vain, it must maintain this rule by means of the terror which its arms inspire in the reactionists. Would the Paris Commune have lasted a single day if it had not made use of this authority of the armed people against the bourgeois?&quot;&lt;ref&gt;[http://www.marxists.org/archive/marx/works/1872/10/authority.htm ''On Authority'']&lt;/ref&gt;
+
+'''Utopianism.''' Anarchism is often criticised as unfeasible, or plain [[utopian]], even by many who agree that it's a nice idea in principle. For example, Carl Landauer in his book ''European Socialism'' criticizes anarchism as being unrealistically utopian, and holds that government is a &quot;lesser evil&quot; than a society without &quot;repressive force.&quot; He holds that the belief that &quot;ill intentions will cease if repressive force disappears&quot; is an &quot;absurdity.&quot;&lt;ref&gt;[[Carl Landauer|Landauer]], Carl. ''European Socialism: A History of Ideas and Movements'' (1959) (retrieved from &quot;Anarchist Theory FAQ&quot; by [[Bryan Caplan]] on [[January 27]] [[2006]]&lt;/ref&gt; However, it must be noted that not all anarchists have such a utopian view of anarchism. For example, some, such as Benjamin Tucker, advocate privately-funded institutions that defend individual liberty and property. However, other anarchists, such as Sir [[Herbert Read]], proudly accept the characterization &quot;utopian.&quot; 
+
+'''[[Social class|Class]] character.''' [[Marxists]] have characterised anarchism as an expression of the class interests of the [[petite bourgeoisie]] or perhaps the [[lumpenproletariat]]. See e.g. Plekhanov&lt;ref&gt;[[G. V. Plekhanov]] ''&quot;[http://www.marxists.org/archive/plekhanov/1895/anarch/index.htm Anarchism and Socialism]&quot;''&lt;/ref&gt; for a Marxist critique of 1895. Anarchists have also been characterised as spoilt [[middle-class]] [[dilettante]]s, most recently in relation to [[anti-capitalism|anti-capitalist]] protesters.
+
+'''Tacit authoritarianism.''' In recent decades anarchism has been criticised by 'situationists', 'post-anarchists' and others of preserving 'tacitly statist', authoritarian or bureaucratic tendencies behind a dogmatic facade.&lt;ref&gt;[http://library.nothingness.org/articles/SI/en/display/20 ''Society of the Spectacle] Paragraph 91&lt;/ref&gt;
+
+'''Hypocrisy.''' Some critics point to the [[sexist]]&lt;ref&gt;[[Jenny P. d'Hericourt]], ''&quot;[http://www.pinn.net/~sunshine/whm2003/hericourt2.html Contemporary feminist critic of Proudhon]&quot;''&lt;/ref&gt; and [[racist]] views of some prominent anarchists, notably [[Pierre-Joseph Proudhon|Proudhon]] and [[Mikhail Bakunin|Bakunin]], as examples of [[hypocrisy]] inherent within anarchism. While many anarchists, however, dismiss that the personal prejudices of 19th century theorists influence the beliefs of present-day anarchists, others criticise modern anarchism for continuing to be [[eurocentric]] and reference the impact of anarchist thinkers like Proudhon on [[fascism]] through groups like [[Cercle Proudhon]].&lt;ref&gt;[http://www.stewarthomesociety.org/ai.htm ''Anarchist Integralism]&lt;/ref&gt; Anarcho-capitalist [[Bryan Caplan]] argues that the treatment of fascists and suspected fascist sympathizers by Spanish Anarchists in the Spanish Civil War was a form of illegitimate coercion, making the proffessed anarchists &quot;ultimately just a third faction of totalitarians,&quot; alongside the communists and fascists. He also criticizes the willingness of the CNT to join the (statist) Republican government during the civil war, and references [[Stanley G. Payne]]'s  book on the Franco regime which claims that the CNT entered negotiations with the fascist government six years after the war.&lt;ref&gt;[[Bryan Caplan|Caplan]], Bryan. ''&quot;[http://www.gmu.edu/departments/economics/bcaplan/spain.htm The Anarcho-Statists of Spain]&quot;''&lt;/ref&gt;
+
+==Cultural phenomena==
+[[Image:Noam_chomsky.jpg|thumb|150px|right| [[Noam Chomsky]] (1928–)]]
+The kind of anarchism that is most easily encountered in popular culture is represented by celebrities who publicly identify themselves as anarchists. Although some anarchists reject any focus on such famous living individuals as inherently élitist, the following figures are examples of prominent publicly self-avowed anarchists:
+
+* the [[MIT]] professor of [[Linguistics]] [[Noam Chomsky]]
+* the [[science fiction]] author [[Ursula K. Le Guin]]
+* the social historian [[Howard Zinn]] 
+* entertainer and author [[Hans Alfredsson]]
+* the [[Avant-garde]] artist [[Nicolás Rosselló]]
+
+In [[Denmark]], the [[Freetown Christiania]] was created in downtown [[Copenhagen]]. The housing and employment crisis in most of [[Western Europe]] led to the formation of [[commune (intentional community)|communes]] and squatter movements like the one still thriving in [[Barcelona]], in [[Catalonia]].  Militant [[antifa|resistance to neo-Nazi groups]] in places like Germany, and the uprisings of [[autonomous Marxism]], [[situationist]], and [[Autonomist]] groups in France and Italy also helped to give popularity to anti-authoritarian, non-capitalist ideas.   
+
+In various musical styles, anarchism rose in popularity.  Most famous for the linking of anarchist ideas and music has been punk rock, although in the modern age, hip hop, and folk music are also becoming important mediums for the spreading of the anarchist message.  In the [[United Kingdom|UK]] this was associated with the [[punk rock]] movement; the band [[Crass]] is celebrated for its anarchist and [[pacifism|pacifist]] ideas. The [[Dutch people|Dutch]] punk band [[The Ex]] further exemplifies this expression.
+''For further details, see [[anarcho-punk]]''
+
+==See also==
+&lt;!-- (Please take care in adding to this list that it not grow excessively large, consider adding to the list of anarchist concepts page) --&gt;
+There are many concepts relevant to the topic of anarchism, this is a brief summary.  There is also a more extensive [[list of anarchist concepts]].
+
+* [[individualist anarchism]], [[anarcho-communism]], [[anarcho-syndicalism]], [[anarcho-capitalism]], [[mutualism]], [[Christian anarchism]], [[anarcha-feminism]], [[green anarchism]], [[nihilist anarchism]], [[anarcho-nationalism]], [[black anarchism]], [[national anarchism]]. [[post-anarchism]], [[post-left anarchism]] 
+* [[Libertarian Socialism]]
+* [[Anarchist symbolism]]
+* [[Anarchism/Links|List of anarchism links]]
+* [[List of anarchists]]
+* [[List of anarchist organizations]]
+* [[Major conflicts within anarchist thought]]
+* [[Past and present anarchist communities]]
+
+===Historical events===
+*[[Paris Commune]] (1871)
+*[[Haymarket Riot]] (1886)
+*[[The Makhnovschina]] (1917 &amp;mdash; 1921)
+*[[Kronstadt rebellion]] (1921)
+*[[Spanish Revolution]] (1936) (see [[Anarchism in Spain]] and [[Spanish Revolution]])
+*May 1968, France (1968)
+*[[WTO Ministerial Conference of 1999|WTO Meeting in Seattle]] (1999)
+
+===Books===
+{{main|List of anarchist books}}
+
+The following is a sample of books that have been referenced in this page, a more complete list can be found at the [[list of anarchist books]].
+
+*[[Mikhail Bakunin]], ''[[God and the State]]'' [http://dwardmac.pitzer.edu/Anarchist_Archives/bakunin/godandstate/godandstate_ch1.html]
+*[[Emma Goldman]], ''[[Anarchism &amp; Other Essays]]'' [http://dwardmac.pitzer.edu/Anarchist_Archives/goldman/GoldmanCW.html]
+*[[Peter Kropotkin]], ''[[Mutual Aid: A Factor of Evolution|Mutual Aid]]'' [http://www.gutenberg.org/etext/4341]
+*[[Pierre-Joseph Proudhon]], ''[[What is Property?]]'' [http://www.gutenberg.org/etext/360]
+*[[Rudolf Rocker]], ''[[Anarcho-Syndicalism (book)|Anarcho-Syndicalism]]''
+*[[Murray Rothbard]] ''[[The Ethics of Liberty]]'' [http://www.mises.org/rothbard/ethics/ethics.asp]
+*[[Max Stirner]], ''[[The Ego And Its Own]]'' [http://www.df.lth.se/~triad/stirner/]
+*[[Leo Tolstoy]], ''[[The Kingdom of God is Within You]]'' [http://www.kingdomnow.org/withinyou.html]
+
+===Anarchism by region/culture===
+* [[African Anarchism]]
+* [[Anarchism in Spain]]
+* [[Anarchism in the English tradition]]
+* [[Chinese anarchism]]
+
+==References==
+&lt;div style=&quot;font-size: 85%&quot;&gt;
+&lt;references/&gt;
+&lt;/div&gt;
+
+'''These notes have no corresponding reference in the article. They might be re-used.'''
+# {{note|bill}} [http://ns52.super-hosts.com/~vaz1net/bill/anarchism/library/thelaw.html]
+# {{note|praxeology}} [http://praxeology.net/GM-PS.htm]
+# {{note|platform}} [http://flag.blackened.net/revolt/platform/plat_preface.html]
+# {{note|appleton}} [http://www.againstpolitics.com/market_anarchism/appleton_boston.htm Against Politics - Appleton - Boston Anarchists]
+# {{note|Yarros-NotUtopian}} [[Victor Yarros|Yarros, Victor]] ''Liberty'' VII, [[January 2]] [[1892]].
+# {{note|totse}} [http://www.totse.com/en/politics/anarchism/161594.html Noam Chomsky on Anarchism by Noam Chomsky]
+
+==External links==
+The overwhelming diversity and number of links relating to anarchism is extensively covered on the [[List of anarchism web resources|links subpage]]. 
+{{wikiquote|Definitions of anarchism}}
+*[http://anarchoblogs.protest.net/ Anarchoblogs] Blogs by Anarchists.
+*[http://dwardmac.pitzer.edu/Anarchist_Archives/ Anarchy Archives] extensively archives information relating to famous anarchists.  This includes many of their books and other publications.
+*Hundreds of anarchists are listed, with short bios, links &amp; dedicated pages [http://recollectionbooks.com/bleed/gallery/galleryindex.htm at the Daily Bleed's Anarchist Encyclopedia]
+*[http://www.infoshop.org/ Infoshop.org] ([[Infoshop.org|wikipedia page]])
+*[http://www.iww.org/ Industrial Workers of the World]
+
+&lt;!-- Attention!  The external link portion of this article regularly grows far beyond manageable size.  Please only list an outside link if it applies to anarchism in general and is somewhat noteworthy.  Links to lesser known sites or submovements will be routinely moved to the list page to keep this article free of clutter --&gt;
+
+
+[[Category:Anarchism|*]]
+[[Category:Forms of government|Anarchism]]
+[[Category:Political ideology entry points|Anarchism]]
+[[Category:Political theories|Anarchism]]
+[[Category:Social philosophy|Anarchism]]
+
+[[ar:لاسلطوية]]
+[[ast:Anarquismu]]
+[[bg:Анархизъм]]
+[[bs:Anarhizam]]
+[[ca:Anarquisme]]
+[[cs:Anarchismus]]
+[[da:Anarkisme]]
+[[de:Anarchismus]]
+[[eo:Anarkiismo]]
+[[es:Anarquismo]]
+[[et:Anarhism]]
+[[eu:Anarkismo]]
+[[fa:دولت‌زدائی]]
+[[fi:Anarkismi]]
+[[fr:Anarchisme]]
+[[gl:Anarquismo]]
+[[he:אנרכיזם]]
+[[hu:Anarchizmus]]
+[[id:Anarkisme]]
+[[is:Stjórnleysisstefna]]
+[[it:Anarchismo]]
+[[ja:アナキズム]]
+[[ko:아나키즘]]
+[[lt:Anarchizmas]]
+[[nl:Anarchisme]]
+[[nn:Anarkisme]]
+[[no:Anarkisme]]
+[[pl:Anarchizm]]
+[[pt:Anarquismo]]
+[[ro:Anarhism]]
+[[ru:Анархизм]]
+[[sco:Anarchism]]
+[[simple:Anarchism]]
+[[sk:Anarchizmus]]
+[[sl:Anarhizem]]
+[[sr:Анархизам]]
+[[sv:Anarkism]]
+[[th:ลัทธิอนาธิปไตย]]
+[[tr:Anarşizm]]
+[[zh:无政府主义]]
+[[zh-min-nan:Hui-thóng-tī-chú-gī]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>AfghanistanHistory</title>
+    <id>13</id>
+    <revision>
+      <id>15898948</id>
+      <timestamp>2002-08-27T03:07:44Z</timestamp>
+      <contributor>
+        <username>Magnus Manske</username>
+        <id>4</id>
+      </contributor>
+      <minor />
+      <comment>whoops</comment>
+      <text xml:space="preserve">#REDIRECT [[History of Afghanistan]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>AfghanistanGeography</title>
+    <id>14</id>
+    <revision>
+      <id>15898949</id>
+      <timestamp>2002-02-25T15:43:11Z</timestamp>
+      <contributor>
+        <ip>Conversion script</ip>
+      </contributor>
+      <minor />
+      <comment>Automated conversion</comment>
+      <text xml:space="preserve">#REDIRECT [[Geography of Afghanistan]]
+</text>
+    </revision>
+  </page>
+  <page>
+    <title>AfghanistanPeople</title>
+    <id>15</id>
+    <revision>
+      <id>15898950</id>
+      <timestamp>2002-08-21T10:42:35Z</timestamp>
+      <contributor>
+        <username>-- April</username>
+        <id>166</id>
+      </contributor>
+      <minor />
+      <comment>fix link</comment>
+      <text xml:space="preserve">#REDIRECT [[Demographics of Afghanistan]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>AfghanistanEconomy</title>
+    <id>17</id>
+    <revision>
+      <id>15898951</id>
+      <timestamp>2002-05-17T15:30:05Z</timestamp>
+      <contributor>
+        <username>AxelBoldt</username>
+        <id>2</id>
+      </contributor>
+      <comment>fix redirect</comment>
+      <text xml:space="preserve">#REDIRECT [[Economy of Afghanistan]]
+</text>
+    </revision>
+  </page>
+  <page>
+    <title>AfghanistanCommunications</title>
+    <id>18</id>
+    <revision>
+      <id>15898952</id>
+      <timestamp>2002-09-13T13:39:26Z</timestamp>
+      <contributor>
+        <username>Andre Engels</username>
+        <id>300</id>
+      </contributor>
+      <minor />
+      <comment>indirect redirect</comment>
+      <text xml:space="preserve">#REDIRECT [[Communications in Afghanistan]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>AfghanistanTransportations</title>
+    <id>19</id>
+    <revision>
+      <id>15898953</id>
+      <timestamp>2002-10-09T13:36:44Z</timestamp>
+      <contributor>
+        <username>Magnus Manske</username>
+        <id>4</id>
+      </contributor>
+      <minor />
+      <comment>#REDIRECT [[Transportation in Afghanistan]]</comment>
+      <text xml:space="preserve">#REDIRECT [[Transportation in Afghanistan]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>AfghanistanMilitary</title>
+    <id>20</id>
+    <revision>
+      <id>15898954</id>
+      <timestamp>2002-09-03T01:14:20Z</timestamp>
+      <contributor>
+        <username>Andre Engels</username>
+        <id>300</id>
+      </contributor>
+      <minor />
+      <comment>short-circuiting two-step redirect</comment>
+      <text xml:space="preserve">#REDIRECT [[Military of Afghanistan]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>AfghanistanTransnationalIssues</title>
+    <id>21</id>
+    <revision>
+      <id>15898955</id>
+      <timestamp>2002-10-09T13:37:01Z</timestamp>
+      <contributor>
+        <username>Magnus Manske</username>
+        <id>4</id>
+      </contributor>
+      <minor />
+      <comment>#REDIRECT [[Foreign relations of Afghanistan]]</comment>
+      <text xml:space="preserve">#REDIRECT [[Foreign relations of Afghanistan]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>AlTruism</title>
+    <id>22</id>
+    <revision>
+      <id>15898956</id>
+      <timestamp>2002-02-25T15:43:11Z</timestamp>
+      <contributor>
+        <ip>Conversion script</ip>
+      </contributor>
+      <minor />
+      <comment>Automated conversion</comment>
+      <text xml:space="preserve">#REDIRECT [[Altruism]]
+</text>
+    </revision>
+  </page>
+  <page>
+    <title>AssistiveTechnology</title>
+    <id>23</id>
+    <revision>
+      <id>15898957</id>
+      <timestamp>2003-04-25T22:20:03Z</timestamp>
+      <contributor>
+        <username>Ams80</username>
+        <id>7543</id>
+      </contributor>
+      <minor />
+      <comment>Fixing redirect</comment>
+      <text xml:space="preserve">#REDIRECT [[Assistive_technology]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>AmoeboidTaxa</title>
+    <id>24</id>
+    <revision>
+      <id>15898958</id>
+      <timestamp>2002-02-25T15:43:11Z</timestamp>
+      <contributor>
+        <ip>Conversion script</ip>
+      </contributor>
+      <minor />
+      <comment>Automated conversion</comment>
+      <text xml:space="preserve">#REDIRECT [[Amoeboid]]
+</text>
+    </revision>
+  </page>
+  <page>
+    <title>Autism</title>
+    <id>25</id>
+    <revision>
+      <id>42019020</id>
+      <timestamp>2006-03-03T06:39:21Z</timestamp>
+      <contributor>
+        <username>Ohnoitsjamie</username>
+        <id>507787</id>
+      </contributor>
+      <comment>rv difficult-to-follow paragraph</comment>
+      <text xml:space="preserve">&lt;!-- NOTES: 
+
+1) Please do not convert the bullets to subheadings here as the table of contents would be too large in that case (for example, see the FAC).
+2) Use ref/note combos for all links and explicitly cited references
+3) Reference anything you put here with notable references, as this subject tends to attract a lot of controversy. 
+
+--&gt;{{DiseaseDisorder infobox |
+  Name  = Childhood autism |
+  ICD10 =  F84.0 |
+  ICD9  =  {{ICD9|299.0}} |
+}}
+'''Autism''' is classified as a neurodevelopmental disorder that manifests itself in markedly abnormal social interaction, communication ability, patterns of interests, and patterns of behavior. 
+
+Although the specific [[etiology]] of autism is unknown, many researchers suspect that autism results from genetically mediated vulnerabilities to environmental triggers. And while there is disagreement about the magnitude, nature, and mechanisms for such environmental factors, researchers have found at least seven major genes prevalent among individuals diagnosed as autistic. Some estimate that autism occurs in as many as one [[United States]] child in 166, however the [[National Institute of Mental Health]] gives a more conservative estimate of one in 1000{{ref|NihAutismov2005}}. For families that already have one autistic child, the odds of a second autistic child may be as high as one in twenty.  Diagnosis is based on a list of [[Psychiatry|psychiatric]] criteria, and a series of standardized clinical tests may also be used.
+
+Autism may not be [[Physiology|physiologically]] obvious. A complete physical and [[neurological]] evaluation will typically be part of diagnosing autism. Some now speculate that autism is not a single condition but a group of several distinct conditions that manifest in similar ways.
+
+By definition, autism must manifest delays in &quot;social interaction, language as used in social communication, or symbolic or imaginative play,&quot; with &quot;onset prior to age 3 years&quot;, according to the [[Diagnostic and Statistical Manual of Mental Disorders]]. The [[ICD-10]] also says that symptoms must &quot;manifest before the age of three years.&quot; There have been large increases in the reported [[Autism epidemic|incidence of autism]], for reasons that are heavily debated by [[research]]ers in [[psychology]] and related fields within the [[scientific community]].
+
+Some children with autism have improved their social and other skills to the point where they can fully participate in mainstream education and social events, but there are lingering concerns that an absolute cure from autism is impossible with current technology. However, many autistic children and adults who are able to communicate (at least in writing) are opposed to attempts to cure their conditions, and see such conditions as part of who they are.
+
+==History==
+[[image:Asperger_kl2.jpg|frame|right|Dr. [[Hans Asperger]] described a form of autism in the 1940s that later became known as [[Asperger's syndrome]].]]
+
+The word ''autism'' was first used in the [[English language]] by Swiss psychiatrist [[Eugene Bleuler]] in a 1912 number of the ''American Journal of Insanity''. It comes from the Greek word for &quot;self&quot;.
+
+However, the [[Medical classification|classification]] of autism did not occur until the middle of the [[twentieth century]], when in 1943 psychiatrist Dr. [[Leo Kanner]] of the [[Johns Hopkins Hospital]] in Baltimore reported on 11 child patients with striking behavioral similarities, and introduced the label ''early infantile autism''. He suggested &quot;autism&quot; from the [[Greek language|Greek]] &amp;alpha;&amp;upsilon;&amp;tau;&amp;omicron;&amp;sigmaf; (''autos''), meaning &quot;self&quot;, to describe the  fact that the children seemed to lack interest in other people. Although Kanner's first paper on the subject was published in a (now defunct) journal, ''The Nervous Child'', almost every characteristic he originally described is still regarded as typical of the autistic spectrum of disorders.
+
+At the same time an [[Austria|Austrian]] scientist, Dr. [[Hans Asperger]], described a different form of autism that became known as [[Asperger's syndrome]]&amp;mdash;but the widespread recognition of Asperger's work was delayed by [[World War II]] in [[Germany]], and by the fact that his seminal paper wasn't translated into English for almost 50 years. The majority of his work wasn't widely read until 1997.
+
+Thus these two conditions were described and are today listed in the [[Diagnostic and Statistical Manual of Mental Disorders]] DSM-IV-TR (fourth edition, text revision 1) as two of the five [[Pervasive developmental disorder|pervasive developmental disorders]] (PDD), more often referred to today as [[Autistic spectrum|autism spectrum disorders]] (ASD). All of these conditions are characterized by varying degrees of difference in [[communication skill]]s, social interactions, and restricted, repetitive and stereotyped patterns of [[Human behavior|behavior]].
+
+Few clinicians today solely use the DSM-IV criteria for determining a diagnosis of autism, which are based on the absence or delay of certain developmental milestones. Many clinicians instead use an alternate means (or a combination thereof) to more accurately determine a [[diagnosis]].
+
+==Terminology==
+{{wiktionarypar2|autism|autistic}}
+When referring to someone diagnosed with autism, the term ''autistic'' is often used. However, the term ''person with autism'' can be used instead. This is referred to as ''[[person-first terminology]]''. The [[autistic community]] generally prefers the term ''autistic'' for reasons that are fairly controversial. This article uses the term ''autistic'' (see [[Talk:Autism|talk page]]).
+
+==Characteristics==
+[[Image:kanner_kl2.jpg|frame|right|Dr. [[Leo Kanner]] introduced the label ''early infantile autism'' in 1943.]]
+There is a great diversity in the skills and behaviors of individuals diagnosed as autistic, and physicians will often arrive at different conclusions about the appropriate diagnosis. Much of this is due to the [[sensory system]] of an autistic which is quite different from the sensory system of other people, since certain [[stimulus|stimulations]] can affect an autistic differently than a non-autistic, and the degree to which the sensory system is affected varies wildly from one autistic person to another.
+
+Nevertheless, professionals within [[pediatric]] care and development often look for early indicators of autism in order to initiate treatment as early as possible.  However, some people do not believe in treatment for autism, either because they do not believe autism is a disorder or because they believe treatment can do more harm than good.
+
+===Social development===
+Typically, developing infants are social beings&amp;mdash;early in life they do such things as gaze at people, turn toward voices, grasp a finger, and even smile. In contrast, most autistic children prefer objects to faces and seem to have tremendous difficulty learning to engage in the give-and-take of everyday human interaction. Even in the first few months of life, many seem indifferent to other people because they avoid eye contact and do not interact with them as often as non-autistic children.
+
+Children with autism often appear to prefer being alone to the company of others and may passively accept such things as hugs and cuddling without reciprocating, or resist attention altogether. Later, they seldom seek comfort from others or respond to parents' displays of [[anger]] or [[affection]] in a typical way. Research has suggested that although autistic children are attached to their [[parent]]s, their expression of this attachment is unusual and difficult to interpret. Parents who looked forward to the joys of cuddling, [[teaching]], and playing with their child may feel crushed by this lack of expected [[attachment theory|attachment]] behavior.
+
+Children with autism appear to lack &quot;[[Theory of mind|theory of mind]]&quot;, the ability to see things from another person's perspective, a behavior cited as exclusive to human beings above the age of five and, possibly, other higher [[primate]]s such as adult [[gorilla]]s, [[Common chimpanzee|chimpanzee]]s and [[bonobos]]. Typical 5-year-olds can develop insights into other people's different knowledge, feelings, and intentions, interpretations based upon social cues (e.g., gestures, facial expressions). An individual with autism seems to lack these interpretation skills, an inability that leaves them unable to predict or understand other people's actions. The [[social alienation]] of autistic and Asperger's people is so intense from childhood that many of them have [[imaginary friend]]s as companionship. However, having an imaginary friend is not necessarily a sign of autism and also occurs in non-autistic children. 
+
+Although not universal, it is common for autistic people to not regulate their behavior. This can take the form of crying or verbal outbursts that may seem out of proportion to the situation. Individuals with autism generally prefer consistent routines and environments; they may react negatively to changes in them. It is not uncommon for these individuals to exhibit aggression, increased levels of self-stimulatory behavior, self-injury or extensive withdrawal in overwhelming situations.
+
+===Sensory system===
+A key indicator to clinicians making a proper assessment for autism would include looking for symptoms much like those found in [[Sensory Integration Dysfunction|sensory integration dysfunction]]. Children will exhibit problems coping with the normal sensory input. Indicators of this disorder include oversensitivity or underreactivity to touch, movement, sights, or sounds; physical clumsiness or carelessness; poor body awareness; a tendency to be easily distracted; impulsive physical or verbal behavior; an activity level that is unusually high or low; not unwinding or calming oneself; difficulty learning new movements; difficulty in making transitions from one situation to another; social and/or emotional problems; delays in [[Speech delay|speech]], [[Language delay|language]] or [[motor skills]]; specific learning difficulties/delays in academic achievement.
+
+One common example is an individual with autism [[Hearing (sense)|hearing]]. A person with Autism may have trouble hearing certain people while other people are louder than usual. Or the person with autism may be unable to filter out sounds in certain situations, such as in a large crowd of people (see [[cocktail party effect]]). However, this is perhaps the part of the autism that tends to vary the most from person to person, so these examples may not apply to every autistic.
+
+It should be noted that sensory difficulties, although reportedly common in autistics, are not part of the [[DSM-IV]] diagnostic criteria for ''autistic disorder''.
+
+===Communication difficulties===
+By age 3, typical children have passed predictable language learning milestones; one of the earliest is babbling. By the first birthday, a typical toddler says words, turns when he or she hears his or her name, points when he or she wants a toy, and when offered something distasteful, makes it clear that the answer is &quot;no.&quot; Speech development in people with autism takes different paths.  Some remain [[mute]] throughout their lives while being fully [[literacy|literate]] and able to communicate in other ways&amp;mdash;images, [[sign language]], and [[typing]] are far more natural to them. Some infants who later show signs of autism coo and babble during the first few months of life, but stop soon afterwards. Others may be delayed, developing language as late as the [[adolescence|teenage]] years.  Still, inability to speak does not mean that people with autism are unintelligent or unaware.  Once given appropriate accommodations, many will happily converse for hours, and can often be found in online [[chat room]]s, discussion boards or [[website]]s and even using communication devices at autism-community social events such as [[Autreat]].
+
+Those who do speak often use [[language]] in unusual ways, retaining features of earlier stages of language development for long periods or throughout their lives.  Some speak only single words, while others repeat the same phrase over and over. Some repeat what they hear, a condition called [[echolalia]].  Sing-song repetitions in particular are a calming, joyous activity that many autistic adults engage in.  Many people with autism have a strong [[tonality|tonal]] sense, and can often understand spoken language. 
+Some children may exhibit only slight delays in language, or even seem to have precocious language and unusually large [[vocabulary|vocabularies]], but have great difficulty in sustaining typical [[conversation]]s.  The &quot;give and take&quot; of non-autistic conversation is hard for them, although they often carry on a [[monologue]] on a favorite subject, giving no one else an opportunity to comment. When given the chance to converse with other autistics, they comfortably do so in &quot;parallel monologue&quot;&amp;mdash;taking turns expressing views and information.  Just as &quot;[[neurotypical]]s&quot; (people without autism) have trouble understanding autistic [[body language]]s, vocal tones, or phraseology, people with autism similarly have trouble with such things in people without autism.  In particular, autistic language abilities tend to be highly literal; people without autism often inappropriately attribute hidden meaning to what people with autism say or expect the person with autism to sense such unstated meaning in their own words.
+
+The body language of people with autism can be difficult for other people to understand. Facial expressions, movements, and gestures may be easily understood by some other people with autism, but do not match those used by other people. Also, their tone of voice has a much more subtle inflection in reflecting their feelings, and the [[auditory system]] of a person without autism often cannot sense the fluctuations. What seems to non-autistic people like a high-pitched, sing-song, or flat, [[robot]]-like voice is common in autistic children. Some autistic children with relatively good language skills speak like little adults, rather than communicating at their current age level, which is one of the things that can lead to problems.
+
+Since non-autistic people are often unfamiliar with the autistic [[body language]], and since autistic natural language may not tend towards speech, autistic people often struggle to let other people know what they need. As anybody might do in such a situation, they may scream in frustration or resort to grabbing what they want. While waiting for non-autistic people to learn to communicate with them, people with autism do whatever they can to get through to them. Communication difficulties may contribute to autistic people becoming socially anxious or depressed.
+
+===Repetitive behaviors===
+Although people with autism usually appear physically normal and have good muscle control, unusual repetitive motions, known as self-stimulation or &quot;stimming,&quot; may set them apart. These behaviors might be extreme and highly apparent or more subtle. Some children and older individuals spend a lot of time repeatedly flapping their arms or wiggling their toes, others suddenly freeze in position. As [[child]]ren, they might spend hours lining up their cars and trains in a certain way, not using them for pretend play. If someone accidentally moves one of these toys, the child may be tremendously upset. Autistic children often need, and demand, absolute consistency in their environment. A slight change in any routine&amp;mdash;in mealtimes, dressing, taking a bath, or going to school at a certain time and by the same route&amp;mdash;can be extremely disturbing. People with autism sometimes have a persistent, intense preoccupation. For example, the child might be obsessed with learning all about [[vacuum cleaners]], [[train]] schedules or [[lighthouses]]. Often they show great interest in different languages, numbers, symbols or [[science]] topics.  Repetitive behaviors can also extend into the spoken word as well. Perseveration of a single word or phrase, even for a specific number of times can also become a part of the child's daily routine.
+
+===Effects in education===
+Children with autism are affected with these symptoms every day. These unusual characteristics set them apart from the everyday normal student. Because they have trouble understanding people’s thoughts and feelings, they have trouble understanding what their teacher may be telling them. They do not understand that facial expressions and vocal variations hold meanings and may misinterpret what emotion their instructor is displaying. This inability to fully decipher the world around them makes education stressful. Teachers need to be aware of a student's disorder so that they are able to help the student get the best out of the lessons being taught. 
+
+Some students learn better with visual aids as they are better able to understand material presented this way. Because of this, many teachers create “visual schedules” for their autistic students. This allows the student to know what is going on throughout the day, so they know what to prepare for and what activity they will be doing next. Some autistic children have trouble going from one activity to the next, so this visual schedule can help to reduce stress. 
+
+Research has shown that working in pairs may be beneficial to autistic children. &lt;!-- cite a source here, please! --&gt; Autistic students have problems in schools not only with language and communication, but with socialization as well. They feel self-conscious about themselves and many feel that they will always be outcasts. By allowing them to work with peers they can make friends, which in turn can help them cope with the problems that arise. By doing so they can become more integrated into the mainstream environment of the classroom.
+
+A teacher's aide can also be useful to the student. The aide is able to give more elaborate directions that the teacher may not have time to explain to the autistic child. The aide can also facilitate the autistic child in such a way as to allow them to stay at a similar level to the rest of the class. This allows a partially one-on-one lesson structure so that the child is still able to stay in a normal classroom but be given the extra help that they need. 
+
+There are many different techniques that teachers can use to assist their students. A teacher needs to become familiar with the child’s disorder to know what will work best with that particular child. Every child is going to be different and teachers have to be able to adjust with every one of them.
+
+Students with Autism Spectrum Disorders typically have high levels of anxiety and stress, particularly in social environments like school. If a student exhibits aggressive or explosive behavior, it is important for educational teams to recognize the impact of stress and anxiety. Preparing students for new situations by writing Social Stories can lower anxiety. Teaching social and emotional concepts using systematic teaching approaches such as The Incredible 5-Point Scale or other Cognitive Behavioral strategies can increase a student's ability to control excessive behavioral reactions.
+
+== DSM definition ==
+Autism is defined in section 299.00 of the [[Diagnostic and Statistical Manual of Mental Disorders]] (DSM-IV) as:
+#A total of six (or more) items from (1), (2) and (3), with at least two from (1), and one each from (2) and (3): 
+##qualitative impairment in social interaction, as manifested by at least two of the following: 
+###marked impairment in the use of multiple nonverbal behaviors such as eye-to-eye gaze, facial expression, body postures, and gestures to regulate social interaction 
+###failure to develop peer relationships appropriate to developmental level 
+###a lack of spontaneous seeking to share enjoyment, interests, or achievements with other people (e.g., by a lack of showing, bringing, or pointing out objects of interest) 
+###lack of social or emotional reciprocity 
+##qualitative impairments in communication as manifested by at least one of the following: 
+###delay in, or total lack of, the development of spoken language (not accompanied by an attempt to compensate through alternative modes of communication such as gesture or mime) 
+###in individuals with adequate speech, marked impairment in the ability to initiate or sustain a conversation with others 
+###stereotyped and repetitive use of language or idiosyncratic language 
+###lack of varied, spontaneous make-believe play or social imitative play appropriate to developmental level
+##restricted repetitive and stereotyped patterns of behavior, interests, and activities, as manifested by at least one of the following: 
+###encompassing preoccupation with one or more stereotyped and restricted patterns of interest that is abnormal either in intensity or focus 
+###apparently inflexible adherence to specific, nonfunctional routines or rituals 
+###stereotyped and repetitive motor mannerisms (e.g., hand or finger flapping or twisting, or complex whole-body movements) 
+###persistent preoccupation with parts of objects
+#Delays or abnormal functioning in at least one of the following areas, with onset prior to age 3 years: (1) social interaction, (2) language as used in social communication, or (3) symbolic or imaginative play. 
+#The disturbance is not better accounted for by [[Rett syndrome|Rett's Disorder]] or [[Childhood disintegrative disorder|Childhood Disintegrative Disorder]].
+
+The ''Diagnostic and Statistical Manual''&lt;!-- --&gt;'s diagnostic criteria in general is controversial for being vague and subjective.  (See the [[DSM cautionary statement]].) The criteria for autism is much more controversial and some clinicians today may ignore it completely, instead solely relying on other methods for determining the diagnosis.
+
+== Types of autism == 
+Autism presents in a wide degree, from those who are nearly [[dysfunctional]] and apparently [[Developmental Disability|mentally handicapped]] to those whose symptoms are mild or remedied enough to appear unexceptional (&quot;normal&quot;) to the general public. In terms of both classification and therapy, autistic individuals are often divided into those with an [[Intelligence Quotient|IQ]]&amp;lt;80 referred to as having &quot;low-functioning autism&quot; (LFA), while those with IQ&amp;gt;80 are referred to as having &quot;high-functioning autism&quot; (HFA). Low and high functioning are more generally applied to how well an individual can accomplish activities of daily living, rather than to [[IQ]].  The terms low and high functioning are controversial and not all autistics accept these labels.  Further, these two labels are not currently used or accepted in autism literature.
+
+This discrepancy can lead to confusion among service providers who equate IQ with functioning and may refuse to serve high-IQ autistic people who are severely compromised in their ability to perform daily living tasks, or may fail to recognize the intellectual potential of many autistic people who are considered LFA. For example, some professionals refuse to recognize autistics who can speak or write as being autistic at all, because they still think of autism as a communication disorder so severe that no speech or writing is possible.
+
+As a consequence, many &quot;high-functioning&quot; autistic persons, and autistic people with a relatively high [[IQ]], are underdiagnosed, thus making the claim that &quot;autism implies retardation&quot; self-fulfilling. The number of people diagnosed with LFA is not rising quite as sharply as HFA, indicating that at least part of the explanation for the apparent rise is probably better diagnostics.
+
+=== Asperger's and Kanner's syndrome ===
+[[Image:Hans Asperger.jpg|thumb|right|160px|Asperger described his patients as &quot;little professors&quot;.]]
+In the current [[Diagnostic and Statistical Manual of Mental Disorders]] (DSM-IV-TR), the most significant difference between Autistic Disorder (Kanner's) and Asperger's syndrome is that a diagnosis of the former includes the observation of &quot;[d]elays or abnormal functioning in at least one of the following areas, with onset prior to age 3 years: (1) social interaction, (2) language as used in social communication, or (3) symbolic or imaginative play[,]&quot; {{ref|bnat}} while a diagnosis of Asperger's syndrome observes &quot;no clinically significant delay&quot; in these areas. {{ref|bnas}}
+
+The DSM makes no mention of level of intellectual functioning, but the fact that Asperger's autistics as a group tend to perform better than those with Kanner's autism has produced a popular conception that ''[[Asperger's syndrome]]'' is synonymous with &quot;higher-functioning autism,&quot; or that it is a lesser [[disorder]] than ''autism''.  There is also a popular but not necessarily true conception that all autistic individuals with a high level of intellectual functioning have Asperger's autism or that both types are merely [[geek]]s with a medical label attached. Also, autism has evolved in the public understanding, but the popular identification of autism with relatively severe cases as accurately depicted in ''[[Rain Man]]'' has encouraged relatives of family members diagnosed in the autistic spectrum to speak of their loved ones as having Asperger's syndrome rather than autism.
+
+===Autism as a spectrum disorder===
+{{details|Autistic spectrum}}
+
+Another view of these disorders is that they are on a continuum known as [[autistic spectrum]] disorders.  A related continuum is [[Sensory Integration Dysfunction]], which is about how well we integrate the information we receive from our senses.  Autism, Asperger's syndrome, and Sensory Integration Dysfunction are all closely related and overlap.
+
+There are two main manifestations of classical autism, [[regressive autism]] and [[early infantile autism]].  Early infantile autism is present at birth while regressive autism begins before the age of 3 and often around 18 months.  Although this causes some controversy over when the neurological differences involved in autism truly begin, some believe that it is only a matter of when an environmental toxin triggers the disorder. This triggering could occur during gestation due to a toxin that enters the mother's body and is transfered to the fetus. The triggering could also occur after birth during the crucial early nervous system development of the child due to a toxin directly entering the child's body.
+
+== Increase in diagnoses of autism ==
+{{details|Autism epidemic}}
+
+[[Image:autismnocgraph.png|right|thumb|400px|The number of reported cases of autism has increased dramatically over the past decade. Statistics in graph from the [[National Center for Health Statistics]].]]
+There has been an explosion worldwide in reported cases of autism over the last ten years, which is largely reminiscent of increases in the diagnosis of [[schizophrenia]] and [[multiple personality disorder]] in the twentieth century. This has brought rise to a number of different theories as to the nature of the sudden increase.
+
+Epidemiologists argue that the rise in diagnoses in the United States is partly or entirely attributable to changes in diagnostic criteria, reclassifications, public awareness, and the incentive to receive federally mandated services. A widely cited study from the [[M.I.N.D. Institute]] in California ([[17 October]] [[2002]]), claimed that the increase in autism is real, even after those complicating factors are accounted for (see reference in this section below).
+
+Other researchers remain unconvinced (see references below), including Dr. Chris Johnson, a professor of pediatrics at the University of Texas Health Sciences Center at [[San Antonio]] and cochair of the [[American Academy of Pediatrics]] Autism Expert Panel, who says, &quot;There is a chance we're seeing a true rise, but right now I don't think anybody can answer that question for sure.&quot; ([[Newsweek]] reference below).
+
+The answer to this question has significant ramifications on the direction of research, since a ''real increase'' would focus more attention (and research funding) on the search for environmental factors, while ''little or no real increase'' would focus more attention to genetics. On the other hand, it is conceivable that certain environmental factors (vaccination, diet, societal changes) may have a particular impact on people with a specific genetic constitution. There is little public research on the effects of [[in vitro fertilization]] on the number of incidences of autism.
+
+One of the more popular theories is that there is a connection between &quot;geekdom&quot; and autism.  This is hinted, for instance, by a ''Wired Magazine'' article in 2001 entitled &quot;The [[Geek]] Syndrome&quot;, which is a point argued by many in the autism rights movement{{ref|Wired}}.  This article, many professionals assert, is just one example of the media's application of mental disease labels to what is actually variant normal behavior&amp;mdash;they argue that shyness, lack of athletic ability or social skills, and intellectual interests, even when they seem unusual to others, are not in themselves signs of autism or Asperger's syndrome. Others assert that it is actually the medical profession which is applying mental disease labels to children who in the past would have simply been accepted as a little different or even labeled 'gifted'. See [[clinomorphism]] for further discussion of this issue.
+
+Due to the recent publicity surrounding autism and autistic spectrum disorders, an increasing number of adults are choosing to seek diagnoses of high-functioning autism or Asperger's syndrome in light of symptoms they currently experience or experienced during childhood. Since the cause of autism is thought to be at least partly genetic, a proportion of these adults seek their own diagnosis specifically as follow-up to their children's diagnoses. Because autism falls into the [[pervasive developmental disorder]] category, strictly speaking, symptoms must have been present in a given patient before age seven in order to make a [[differential diagnosis]].
+
+== Therapies ==
+{{details|Autism therapies}}
+
+==Sociology==
+Due to the complexity of autism, there are many facets of [[sociology]] that need to be considered when discussing it, such as the culture which has evolved from autistic persons connecting and communicating with one another.  In addition, there are several subgroups forming within the autistic community, sometimes in strong opposition to one another.
+
+===Community and politics===
+{{details|Autistic community}}
+{{details|Autism rights movement}}
+
+Much like many other controversies in the world, the autistic community itself has splintered off into several groups.  Essentially, these groups are those who seek a cure for autism, dubbed ''

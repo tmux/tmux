@@ -1,0 +1,32 @@
+# This file maps file formats to file extensions, and specifically, to a set of
+# files used to seed fuzz testing.
+#
+# The map is often trivial. For example, the "gif" implementation is tested on
+# files matching "*.gif". However, for some formats, the format name and the
+# conventional file extension differ, such as "gzip" and "gz". There may also
+# be multiple file extensions: both "jpeg" and "jpg" are widely used. First
+# party test data will usually use "jpeg", but third party test data, such as a
+# web crawl sample, may use "jpg".
+#
+# This file is not used by Wuffs per se, but it is used by the "projects/wuffs"
+# directory in the https://github.com/google/oss-fuzz repository.
+#
+# Externally sourced seed files (whose paths start with "../") are fetched by
+# https://github.com/google/oss-fuzz/blob/master/projects/wuffs/Dockerfile
+
+bmp:    test/data/*.bmp   ../bmpsuite_corpus/*.bmp
+bzip2:  test/data/*.bz2
+cbor:   test/data/*.cbor
+gif:    test/data/*.gif   test/data/artificial-gif/*.gif
+gzip:   test/data/*.gz
+jpeg:   test/data/*.jpeg  ../libjpeg_turbo_corpus/*.jpg
+json:   test/data/*.json  ../rapidjson_corpus/*  ../simdjson_corpus/*  ../JSONTestSuite/test_*/*.json
+png:    test/data/*.png   test/data/artificial-png/*.png  ../pngsuite_corpus/*.png
+targa:  test/data/*.tga
+wbmp:   test/data/*.wbmp
+xz:     test/data/*.xz    ../xz_corpus/*.xz
+zlib:   test/data/*.zlib
+
+# Wuffs' pixel_swizzler doesn't process any particular file format. We just
+# want some random inputs and bricks* is as good a seed corpus as any.
+pixel_swizzler: test/data/bricks*

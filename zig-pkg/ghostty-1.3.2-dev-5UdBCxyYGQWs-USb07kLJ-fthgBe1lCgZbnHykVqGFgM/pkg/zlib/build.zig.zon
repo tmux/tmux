@@ -1,0 +1,16 @@
+.{
+    .name = .zlib,
+    .version = "1.3.1",
+    .fingerprint = 0x73887d3aef823f9e,
+    .paths = .{""},
+    .dependencies = .{
+        // madler/zlib
+        .zlib = .{
+            .url = "https://deps.files.ghostty.org/zlib-1220fed0c74e1019b3ee29edae2051788b080cd96e90d56836eea857b0b966742efb.tar.gz",
+            .hash = "N-V-__8AAB0eQwD-0MdOEBmz7intriBReIsIDNlukNVoNu6o",
+            .lazy = true,
+        },
+
+        .apple_sdk = .{ .path = "../apple-sdk" },
+    },
+}

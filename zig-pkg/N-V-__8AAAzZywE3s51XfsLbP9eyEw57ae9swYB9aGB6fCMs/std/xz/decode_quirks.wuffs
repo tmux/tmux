@@ -1,0 +1,40 @@
+// Copyright 2024 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+// --------
+
+// Quirks are discussed in (/doc/note/quirks.md).
+//
+// The base38 encoding of "xz.." is 0x1D_42C0. Left shifting by 10 gives
+// 0x750B_0000.
+pri const QUIRKS_BASE : base.u32 = 0x750B_0000
+
+// --------
+
+// When this quirk is set, a positive value means to allow one or more Streams
+// (which can have trailing Stream Padding). Zero means exactly one Stream (and
+// decoding stops at the end of that Stream; no Stream Padding is consumed).
+//
+// The XZ spec (section 2. Overall Structure of .xz File) says:
+//
+//   While a typical file contains only one Stream and no Stream Padding, a
+//   decoder handling standalone .xz files SHOULD support files that have more
+//   than one Stream or Stream Padding.
+//
+//   In contrast to standalone .xz files, when the .xz file format is used as
+//   an internal part of some other file format or communication protocol, it
+//   usually is expected that the decoder stops after the first Stream, and
+//   doesn't look for Stream Padding or possibly other Streams.
+//
+// For Wuffs, the quirk value is zero by default, which means to decode the
+// XZ-as-part-of-something-else format, not the XZ-standalone format. Like most
+// of Wuffs' other std/foobar quirks, decoding a more lenient variant of the
+// foobar format is opt-in, not opt-out.
+pub const QUIRK_DECODE_STANDALONE_CONCATENATED_STREAMS : base.u32 = 0x750B_0000 | 0x00

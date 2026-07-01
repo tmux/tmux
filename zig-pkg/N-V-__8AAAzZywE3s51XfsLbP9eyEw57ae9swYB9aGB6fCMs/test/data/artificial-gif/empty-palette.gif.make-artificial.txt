@@ -1,0 +1,33 @@
+# Feed this file to script/make-artificial.go
+
+# This GIF image has two frames. There is no global palette, and only the first
+# frame has a local palette.
+#
+# Wuffs implicitly gives the second frame an all-opaque-black palette by
+# default. Wuffs can be configured to reject it instead, by enabling a 'quirk'.
+
+make gif
+
+header
+
+image {
+	imageWidthHeight 1 1
+}
+
+frame {
+	frameLeftTopWidthHeight 0 0 1 1
+	palette {
+		0x00 0x00 0xFF
+		0x11 0x00 0xFF
+		0x22 0x00 0xFF
+		0x33 0x00 0xFF
+	}
+}
+lzw 2 0x00
+
+frame {
+	frameLeftTopWidthHeight 0 0 1 1
+}
+lzw 2 0x00
+
+trailer

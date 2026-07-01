@@ -1,0 +1,1752 @@
+// Copyright 2020 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pub struct decoder? implements base.token_decoder(
+        quirks : array[QUIRKS_COUNT] base.bool,
+
+        allow_leading_ars  : base.bool,
+        allow_leading_ubom : base.bool,
+
+        end_of_data : base.bool,
+
+        trailer_stop : base.u8,
+
+        // comment_type is set as a side-effect of decode_comment?.
+        //  - 0 means no comment.
+        //  - 1 means a block comment.
+        //  - 2 means a line  comment.
+        comment_type : base.u8,
+
+        util : base.utility,
+) + (
+        // stack is conceptually an array of bits, implemented as an array of u32.
+        // The N'th bit being 0 or 1 means that we're in an array or object, where
+        // N is the recursion depth.
+        //
+        // Parsing JSON involves recursion: containers (arrays and objects) can
+        // hold other containers. As child elements are completed, the parser needs
+        // to remember 1 bit of state per recursion depth: whether the parent
+        // container was an array or an object. When continuing to parse the
+        // parent's elements, `, "key": value` is only valid for objects.
+        //
+        // Note that we explicitly track our own stack and depth. We do not use the
+        // call stack to hold this state and the decoder.decode_tokens function is
+        // not recursive per se.
+        //
+        // Wuffs code does not have the capability to dynamically allocate memory,
+        // so the maximum depth is hard-coded at compile time. In this case, the
+        // maximum is 1024 (stack is 1024 bits or 128 bytes), also known as
+        // DECODER_DEPTH_MAX_INCL.
+        //
+        // The [JSON spec](https://www.ietf.org/rfc/rfc8259.txt) clearly states,
+        // "an implementation may set limits on the maximum depth of nesting".
+        //
+        // In comparison, as of February 2020, the Chromium web browser's JSON
+        // parser's maximum recursion depth is 200:
+        // https://source.chromium.org/chromium/chromium/src/+/3dece34cde622faa0daac07156c25d92c9897d1e:base/json/json_common.h;l=18
+        //
+        // Other languages and libraries' maximum depths (determined empirically)
+        // are listed at https://github.com/lovasoa/bad_json_parsers#results
+        stack : array[1024 / 32] base.u32,
+)
+
+pub func decoder.get_quirk(key: base.u32) base.u64 {
+    var key : base.u32
+
+    if args.key >= QUIRKS_BASE {
+        key = args.key - QUIRKS_BASE
+        if key < QUIRKS_COUNT {
+            if this.quirks[key] {
+                return 1
+            }
+        }
+    }
+    return 0
+}
+
+pub func decoder.set_quirk!(key: base.u32, value: base.u64) base.status {
+    if args.key >= QUIRKS_BASE {
+        args.key -= QUIRKS_BASE
+        if args.key < QUIRKS_COUNT {
+            this.quirks[args.key] = args.value > 0
+            return ok
+        }
+    }
+    return base."#unsupported option"
+}
+
+pub func decoder.workbuf_len() base.range_ii_u64 {
+    return this.util.empty_range_ii_u64()
+}
+
+pub func decoder.decode_tokens?(dst: base.token_writer, src: base.io_reader, workbuf: slice base.u8) {
+    // This is a very, very long function, and it is tempting to refactor it.
+    // Be careful of performance impacts when doing so. For example, commit
+    // 86d3b89f "Factor out json.decoder.decode_string" pulled out a 500 line
+    // decode_string function, which was certainly cleaner structurally, but
+    // also regressed performance by 1.1x to 1.2x. For details, see
+    // https://github.com/google/wuffs/commit/86d3b89f9a6578d964a4b6d71e21dfc9bb702b44
+
+    var vminor            : base.u32[..= 0xFF_FFFF]
+    var number_length     : base.u32[..= 0x3FF]
+    var number_status     : base.u32[..= 0x3]
+    var string_length     : base.u32[..= 0xFFFB]
+    var whitespace_length : base.u32[..= 0xFFFE]
+    var depth             : base.u32[..= 1024]
+    var stack_byte        : base.u32[..= (1024 / 32) - 1]
+    var stack_bit         : base.u32[..= 31]
+    var match             : base.u32[..= 2]
+    var c32               : base.u32
+    var c8                : base.u8
+    var backslash         : base.u8
+    var char              : base.u8
+    var class             : base.u8[..= 0x0F]
+    var multi_byte_utf8   : base.u32
+
+    var backslash_x_ok     : base.u8
+    var backslash_x_value  : base.u8
+    var backslash_x_string : base.u32
+
+    var uni4_ok             : base.u8
+    var uni4_string         : base.u64
+    var uni4_value          : base.u32[..= 0xFFFF]
+    var uni4_high_surrogate : base.u32[..= 0x10_FC00]
+
+    var uni8_ok     : base.u8
+    var uni8_string : base.u64
+    var uni8_value  : base.u32[..= 0xFFFF_FFFF]
+
+    // expect is a bitmask of what the next character class can be.
+    //
+    // expect_after_value is what to expect after seeing a value (a literal,
+    // number, string, array or object). For depth 0, this is ignored.
+    // Otherwise, it should be (EXPECT_CLOSE_FOO | EXPECT_COMMA), for some
+    // value of FOO.
+    var expect             : base.u32
+    var expect_after_value : base.u32
+
+    if this.end_of_data {
+        return base."@end of data"
+    }
+
+    if this.quirks[QUIRK_EXPECT_TRAILING_NEW_LINE_OR_EOF - QUIRKS_BASE] {
+        if this.quirks[QUIRK_ALLOW_COMMENT_BLOCK - QUIRKS_BASE] or
+                this.quirks[QUIRK_ALLOW_COMMENT_LINE - QUIRKS_BASE] or
+                this.quirks[QUIRK_ALLOW_TRAILING_FILLER - QUIRKS_BASE] {
+            return "#bad quirk combination"
+        }
+    }
+
+    if this.quirks[QUIRK_ALLOW_LEADING_ASCII_RECORD_SEPARATOR - QUIRKS_BASE] or
+            this.quirks[QUIRK_ALLOW_LEADING_UNICODE_BYTE_ORDER_MARK - QUIRKS_BASE] {
+        this.decode_leading?(dst: args.dst, src: args.src)
+    }
+
+    expect = EXPECT_VALUE
+
+    while.outer true {
+        while.goto_parsed_a_leaf_value true {{
+        if args.dst.length() <= 0 {
+            yield? base."$short write"
+            continue.outer
+        }
+
+        // Consume whitespace.
+        whitespace_length = 0
+        c8 = 0
+        class = 0
+        while.ws true,
+                inv args.dst.length() > 0,
+                post args.src.length() > 0,
+        {
+            if args.src.length() <= 0 {
+                if whitespace_length > 0 {
+                    args.dst.write_simple_token_fast!(
+                            value_major: 0,
+                            value_minor: 0,
+                            continued: 0,
+                            length: whitespace_length)
+                    whitespace_length = 0
+                }
+                if args.src.is_closed() {
+                    return "#bad input"
+                }
+                yield? base."$short read"
+                continue.outer
+            }
+
+            c8 = args.src.peek_u8()
+            class = LUT_CLASSES[c8]
+            if class <> CLASS_WHITESPACE {
+                break.ws
+            }
+            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+
+            if whitespace_length >= 0xFFFE {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: 0,
+                        continued: 0,
+                        length: 0xFFFF)
+                whitespace_length = 0
+                continue.outer
+            }
+            whitespace_length += 1
+        }.ws
+
+        // Emit whitespace.
+        if whitespace_length > 0 {
+            args.dst.write_simple_token_fast!(
+                    value_major: 0,
+                    value_minor: 0,
+                    continued: 0,
+                    length: whitespace_length)
+            whitespace_length = 0
+            if args.dst.length() <= 0 {
+                continue.outer
+            }
+        }
+
+        // Check expected character classes.
+        if 0 == (expect & ((1 as base.u32) << class)) {
+            return "#bad input"
+        }
+
+        // These assertions are redundant (the Wuffs compiler should already
+        // know these facts; deleting these assertions should still compile)
+        // but are listed explicitly to guard against future edits to the code
+        // above inadvertently invalidating these assertions.
+        assert args.dst.length() > 0
+        assert args.src.length() > 0
+
+        if class == CLASS_STRING {
+            // -------- BEGIN parse strings.
+            // Emit the leading '"'.
+            args.dst.write_simple_token_fast!(
+                    value_major: 0,
+                    value_minor: (base.TOKEN__VBC__STRING << 21) |
+                    base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                    base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                    base.TOKEN__VBD__STRING__DEFINITELY_ASCII |
+                    base.TOKEN__VBD__STRING__CONVERT_0_DST_1_SRC_DROP,
+                    continued: 1,
+                    length: 1)
+            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+
+            while.string_loop_outer true {
+                if args.dst.length() <= 0 {
+                    yield? base."$short write"
+                    continue.string_loop_outer
+                }
+
+                string_length = 0
+                while.string_loop_inner true,
+                        pre args.dst.length() > 0,
+                {
+                    if args.src.length() <= 0 {
+                        if string_length > 0 {
+                            args.dst.write_simple_token_fast!(
+                                    value_major: 0,
+                                    value_minor: (base.TOKEN__VBC__STRING << 21) |
+                                    base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                                    base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                                    base.TOKEN__VBD__STRING__CONVERT_1_DST_1_SRC_COPY,
+                                    continued: 1,
+                                    length: string_length)
+                            string_length = 0
+                        }
+                        if args.src.is_closed() {
+                            return "#bad input"
+                        }
+                        yield? base."$short read"
+                        continue.string_loop_outer
+                    }
+
+                    // As an optimization, consume non-special ASCII 4 bytes at
+                    // a time.
+                    while args.src.length() > 4,
+                            inv args.dst.length() > 0,
+                            inv args.src.length() > 0,
+                    {
+                        c32 = args.src.peek_u32le()
+                        if 0x00 <> (LUT_CHARS[0xFF & (c32 >> 0)] |
+                                LUT_CHARS[0xFF & (c32 >> 8)] |
+                                LUT_CHARS[0xFF & (c32 >> 16)] |
+                                LUT_CHARS[0xFF & (c32 >> 24)]) {
+                            break
+                        }
+                        args.src.skip_u32_fast!(actual: 4, worst_case: 4)
+                        if string_length > (0xFFFB - 4) {
+                            args.dst.write_simple_token_fast!(
+                                    value_major: 0,
+                                    value_minor: (base.TOKEN__VBC__STRING << 21) |
+                                    base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                                    base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                                    base.TOKEN__VBD__STRING__CONVERT_1_DST_1_SRC_COPY,
+                                    continued: 1,
+                                    length: string_length + 4)
+                            string_length = 0
+                            continue.string_loop_outer
+                        }
+                        string_length += 4
+                    }
+
+                    c8 = args.src.peek_u8()
+                    char = LUT_CHARS[c8]
+
+                    if char == 0x00 {  // Non-special ASCII.
+                        args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                        if string_length >= 0xFFFB {
+                            args.dst.write_simple_token_fast!(
+                                    value_major: 0,
+                                    value_minor: (base.TOKEN__VBC__STRING << 21) |
+                                    base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                                    base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                                    base.TOKEN__VBD__STRING__CONVERT_1_DST_1_SRC_COPY,
+                                    continued: 1,
+                                    length: 0xFFFC)
+                            string_length = 0
+                            continue.string_loop_outer
+                        }
+                        string_length += 1
+                        continue.string_loop_inner
+
+                    } else if char == 0x01 {  // '"'
+                        if string_length <> 0 {
+                            args.dst.write_simple_token_fast!(
+                                    value_major: 0,
+                                    value_minor: (base.TOKEN__VBC__STRING << 21) |
+                                    base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                                    base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                                    base.TOKEN__VBD__STRING__CONVERT_1_DST_1_SRC_COPY,
+                                    continued: 1,
+                                    length: string_length)
+                            string_length = 0
+                        }
+                        break.string_loop_outer
+
+                    } else if char == 0x02 {  // '\\'.
+                        if string_length > 0 {
+                            args.dst.write_simple_token_fast!(
+                                    value_major: 0,
+                                    value_minor: (base.TOKEN__VBC__STRING << 21) |
+                                    base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                                    base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                                    base.TOKEN__VBD__STRING__CONVERT_1_DST_1_SRC_COPY,
+                                    continued: 1,
+                                    length: string_length)
+                            string_length = 0
+                            if args.dst.length() <= 0 {
+                                continue.string_loop_outer
+                            }
+                        }
+                        assert args.dst.length() > 0
+
+                        if args.src.length() < 2 {
+                            if args.src.is_closed() {
+                                return "#bad backslash-escape"
+                            }
+                            yield? base."$short read"
+                            continue.string_loop_outer
+                        }
+                        c8 = (args.src.peek_u16le() >> 8) as base.u8
+                        backslash = LUT_BACKSLASHES[c8]
+                        if (backslash & 0x80) <> 0 {
+                            args.src.skip_u32_fast!(actual: 2, worst_case: 2)
+                            args.dst.write_simple_token_fast!(
+                                    value_major: 0,
+                                    value_minor: (base.TOKEN__VBC__UNICODE_CODE_POINT << 21) |
+                                    ((backslash & 0x7F) as base.u32),
+                                    continued: 1,
+                                    length: 2)
+                            continue.string_loop_outer
+
+                        } else if backslash <> 0 {
+                            if this.quirks[LUT_QUIRKY_BACKSLASHES_QUIRKS[backslash & 7]] {
+                                args.src.skip_u32_fast!(actual: 2, worst_case: 2)
+                                args.dst.write_simple_token_fast!(
+                                        value_major: 0,
+                                        value_minor: (base.TOKEN__VBC__UNICODE_CODE_POINT << 21) |
+                                        (LUT_QUIRKY_BACKSLASHES_CHARS[backslash & 7] as base.u32),
+                                        continued: 1,
+                                        length: 2)
+                                continue.string_loop_outer
+                            }
+
+                        } else if c8 == 'u' {
+                            // -------- BEGIN backslash-u.
+                            if args.src.length() < 6 {
+                                if args.src.is_closed() {
+                                    return "#bad backslash-escape"
+                                }
+                                yield? base."$short read"
+                                continue.string_loop_outer
+                            }
+
+                            uni4_string = args.src.peek_u48le_as_u64() >> 16
+                            uni4_value = 0
+                            uni4_ok = 0x80
+
+                            c8 = LUT_HEXADECIMAL_DIGITS[0xFF & (uni4_string >> 0)]
+                            uni4_ok &= c8
+                            uni4_value |= ((c8 & 0x0F) as base.u32) << 12
+                            c8 = LUT_HEXADECIMAL_DIGITS[0xFF & (uni4_string >> 8)]
+                            uni4_ok &= c8
+                            uni4_value |= ((c8 & 0x0F) as base.u32) << 8
+                            c8 = LUT_HEXADECIMAL_DIGITS[0xFF & (uni4_string >> 16)]
+                            uni4_ok &= c8
+                            uni4_value |= ((c8 & 0x0F) as base.u32) << 4
+                            c8 = LUT_HEXADECIMAL_DIGITS[0xFF & (uni4_string >> 24)]
+                            uni4_ok &= c8
+                            uni4_value |= ((c8 & 0x0F) as base.u32) << 0
+
+                            if uni4_ok == 0 {
+                                // It wasn't 4 hexadecimal digits. No-op (and
+                                // fall through to "#bad backslash-escape").
+
+                            } else if (uni4_value < 0xD800) or (0xDFFF < uni4_value) {
+                                // Not a Unicode surrogate. We're good.
+                                args.src.skip_u32_fast!(actual: 6, worst_case: 6)
+                                args.dst.write_simple_token_fast!(
+                                        value_major: 0,
+                                        value_minor: (base.TOKEN__VBC__UNICODE_CODE_POINT << 21) |
+                                        uni4_value,
+                                        continued: 1,
+                                        length: 6)
+                                continue.string_loop_outer
+
+                            } else if uni4_value >= 0xDC00 {
+                                // Low surrogate. No-op (and fall through to
+                                // "#bad backslash-escape").
+
+                            } else {
+                                // High surrogate, which needs to be followed
+                                // by a "\\u1234" low surrogate. We've already
+                                // peeked 6 bytes for the high surrogate. We
+                                // need 12 in total: another 8 bytes at an
+                                // offset of 4.
+                                if args.src.length() < 12 {
+                                    if args.src.is_closed() {
+                                        if this.quirks[QUIRK_REPLACE_INVALID_UNICODE - QUIRKS_BASE] {
+                                            args.src.skip_u32_fast!(actual: 6, worst_case: 6)
+                                            args.dst.write_simple_token_fast!(
+                                                    value_major: 0,
+                                                    value_minor: (base.TOKEN__VBC__UNICODE_CODE_POINT << 21) |
+                                                    base.UNICODE__REPLACEMENT_CHARACTER,
+                                                    continued: 1,
+                                                    length: 6)
+                                            continue.string_loop_outer
+                                        }
+                                        return "#bad backslash-escape"
+                                    }
+                                    yield? base."$short read"
+                                    continue.string_loop_outer
+                                }
+                                uni4_string = args.src.peek_u64le_at(offset: 4) >> 16
+
+                                // Look for the low surrogate's "\\u".
+                                if ((0xFF & (uni4_string >> 0)) <> '\\') or
+                                        ((0xFF & (uni4_string >> 8)) <> 'u') {
+                                    uni4_high_surrogate = 0
+                                    uni4_value = 0
+                                    uni4_ok = 0
+                                } else {
+                                    uni4_high_surrogate =
+                                            0x1_0000 + ((uni4_value - 0xD800) << 10)
+                                    uni4_value = 0
+                                    uni4_ok = 0x80
+                                    uni4_string >>= 16
+
+                                    c8 = LUT_HEXADECIMAL_DIGITS[0xFF & (uni4_string >> 0)]
+                                    uni4_ok &= c8
+                                    uni4_value |= ((c8 & 0x0F) as base.u32) << 12
+                                    c8 = LUT_HEXADECIMAL_DIGITS[0xFF & (uni4_string >> 8)]
+                                    uni4_ok &= c8
+                                    uni4_value |= ((c8 & 0x0F) as base.u32) << 8
+                                    c8 = LUT_HEXADECIMAL_DIGITS[0xFF & (uni4_string >> 16)]
+                                    uni4_ok &= c8
+                                    uni4_value |= ((c8 & 0x0F) as base.u32) << 4
+                                    c8 = LUT_HEXADECIMAL_DIGITS[0xFF & (uni4_string >> 24)]
+                                    uni4_ok &= c8
+                                    uni4_value |= ((c8 & 0x0F) as base.u32) << 0
+                                }
+
+                                if (uni4_ok <> 0) and
+                                        (0xDC00 <= uni4_value) and (uni4_value <= 0xDFFF) {
+
+                                    // Emit a single token for the surrogate
+                                    // pair.
+                                    uni4_value -= 0xDC00
+                                    args.src.skip_u32_fast!(actual: 12, worst_case: 12)
+                                    args.dst.write_simple_token_fast!(
+                                            value_major: 0,
+                                            value_minor: (base.TOKEN__VBC__UNICODE_CODE_POINT << 21) |
+                                            uni4_high_surrogate | uni4_value,
+                                            continued: 1,
+                                            length: 12)
+                                    continue.string_loop_outer
+                                }
+                            }
+
+                            if this.quirks[QUIRK_REPLACE_INVALID_UNICODE - QUIRKS_BASE] {
+                                if args.src.length() < 6 {
+                                    return "#internal error: inconsistent I/O"
+                                }
+                                args.src.skip_u32_fast!(actual: 6, worst_case: 6)
+                                args.dst.write_simple_token_fast!(
+                                        value_major: 0,
+                                        value_minor: (base.TOKEN__VBC__UNICODE_CODE_POINT << 21) |
+                                        base.UNICODE__REPLACEMENT_CHARACTER,
+                                        continued: 1,
+                                        length: 6)
+                                continue.string_loop_outer
+                            }
+                            // -------- END   backslash-u.
+
+                        } else if (c8 == 'U') and
+                                this.quirks[QUIRK_ALLOW_BACKSLASH_CAPITAL_U - QUIRKS_BASE] {
+                            // -------- BEGIN backslash-capital-u.
+                            if args.src.length() < 10 {
+                                if args.src.is_closed() {
+                                    return "#bad backslash-escape"
+                                }
+                                yield? base."$short read"
+                                continue.string_loop_outer
+                            }
+                            uni8_string = args.src.peek_u64le_at(offset: 2)
+                            uni8_value = 0
+                            uni8_ok = 0x80
+
+                            c8 = LUT_HEXADECIMAL_DIGITS[0xFF & (uni8_string >> 0)]
+                            uni8_ok &= c8
+                            uni8_value |= ((c8 & 0x0F) as base.u32) << 28
+                            c8 = LUT_HEXADECIMAL_DIGITS[0xFF & (uni8_string >> 8)]
+                            uni8_ok &= c8
+                            uni8_value |= ((c8 & 0x0F) as base.u32) << 24
+                            c8 = LUT_HEXADECIMAL_DIGITS[0xFF & (uni8_string >> 16)]
+                            uni8_ok &= c8
+                            uni8_value |= ((c8 & 0x0F) as base.u32) << 20
+                            c8 = LUT_HEXADECIMAL_DIGITS[0xFF & (uni8_string >> 24)]
+                            uni8_ok &= c8
+                            uni8_value |= ((c8 & 0x0F) as base.u32) << 16
+                            c8 = LUT_HEXADECIMAL_DIGITS[0xFF & (uni8_string >> 32)]
+                            uni8_ok &= c8
+                            uni8_value |= ((c8 & 0x0F) as base.u32) << 12
+                            c8 = LUT_HEXADECIMAL_DIGITS[0xFF & (uni8_string >> 40)]
+                            uni8_ok &= c8
+                            uni8_value |= ((c8 & 0x0F) as base.u32) << 8
+                            c8 = LUT_HEXADECIMAL_DIGITS[0xFF & (uni8_string >> 48)]
+                            uni8_ok &= c8
+                            uni8_value |= ((c8 & 0x0F) as base.u32) << 4
+                            c8 = LUT_HEXADECIMAL_DIGITS[0xFF & (uni8_string >> 56)]
+                            uni8_ok &= c8
+                            uni8_value |= ((c8 & 0x0F) as base.u32) << 0
+
+                            if uni8_ok == 0 {
+                                // It wasn't 8 hexadecimal digits. No-op (and
+                                // fall through to "#bad backslash-escape").
+
+                            } else if (uni8_value < 0xD800) or (
+                                    (0xDFFF < uni8_value) and (uni8_value <= 0x10_FFFF)) {
+                                // Not a Unicode surrogate. We're good.
+                                args.src.skip_u32_fast!(actual: 10, worst_case: 10)
+                                args.dst.write_simple_token_fast!(
+                                        value_major: 0,
+                                        value_minor: (base.TOKEN__VBC__UNICODE_CODE_POINT << 21) |
+                                        (uni8_value & 0x1F_FFFF),
+                                        continued: 1,
+                                        length: 10)
+                                continue.string_loop_outer
+                            } else if this.quirks[QUIRK_REPLACE_INVALID_UNICODE - QUIRKS_BASE] {
+                                args.src.skip_u32_fast!(actual: 10, worst_case: 10)
+                                args.dst.write_simple_token_fast!(
+                                        value_major: 0,
+                                        value_minor: (base.TOKEN__VBC__UNICODE_CODE_POINT << 21) |
+                                        base.UNICODE__REPLACEMENT_CHARACTER,
+                                        continued: 1,
+                                        length: 10)
+                                continue.string_loop_outer
+                            }
+                            // -------- END   backslash-capital-u.
+
+                        } else if (c8 == 'x') and
+                                this.quirks[QUIRK_ALLOW_BACKSLASH_X_AS_CODE_POINTS - QUIRKS_BASE] {
+                            // -------- BEGIN backslash-x
+                            if args.src.length() < 4 {
+                                if args.src.is_closed() {
+                                    return "#bad backslash-escape"
+                                }
+                                yield? base."$short read"
+                                continue.string_loop_outer
+                            }
+
+                            backslash_x_string = args.src.peek_u32le()
+                            backslash_x_ok = 0x80
+
+                            c8 = LUT_HEXADECIMAL_DIGITS[0xFF & (backslash_x_string >> 16)]
+                            backslash_x_ok &= c8
+                            backslash_x_value = ((c8 & 0x0F) << 4) as base.u8
+                            c8 = LUT_HEXADECIMAL_DIGITS[0xFF & (backslash_x_string >> 24)]
+                            backslash_x_ok &= c8
+                            backslash_x_value = (backslash_x_value | (c8 & 0x0F)) as base.u8
+
+                            if (backslash_x_ok == 0) or
+                                    ((backslash_x_string & 0xFFFF) <> 0x785C) {
+                                // It wasn't "\\x34", for some hexadecimal
+                                // digits "34".
+                                return "#bad backslash-escape"
+                            }
+                            args.src.skip_u32_fast!(actual: 4, worst_case: 4)
+                            args.dst.write_simple_token_fast!(
+                                    value_major: 0,
+                                    value_minor: (base.TOKEN__VBC__UNICODE_CODE_POINT << 21) |
+                                    (backslash_x_value as base.u32),
+                                    continued: 1,
+                                    length: 4)
+                            continue.string_loop_outer
+                            // -------- END   backslash-x
+                        }
+
+                        return "#bad backslash-escape"
+
+                    } else if char == 0x03 {  // 2-byte UTF-8.
+                        if args.src.length() < 2 {
+                            if string_length > 0 {
+                                args.dst.write_simple_token_fast!(
+                                        value_major: 0,
+                                        value_minor: (base.TOKEN__VBC__STRING << 21) |
+                                        base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                                        base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                                        base.TOKEN__VBD__STRING__CONVERT_1_DST_1_SRC_COPY,
+                                        continued: 1,
+                                        length: string_length)
+                                string_length = 0
+                                if args.dst.length() <= 0 {
+                                    continue.string_loop_outer
+                                }
+                            }
+                            if args.src.is_closed() {
+                                if this.quirks[QUIRK_REPLACE_INVALID_UNICODE - QUIRKS_BASE] {
+                                    args.dst.write_simple_token_fast!(
+                                            value_major: 0,
+                                            value_minor: (base.TOKEN__VBC__UNICODE_CODE_POINT << 21) |
+                                            base.UNICODE__REPLACEMENT_CHARACTER,
+                                            continued: 1,
+                                            length: 1)
+                                    args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                                    continue.string_loop_outer
+                                }
+                                return "#bad UTF-8"
+                            }
+                            yield? base."$short read"
+                            continue.string_loop_outer
+                        }
+                        multi_byte_utf8 = args.src.peek_u16le_as_u32()
+                        if (multi_byte_utf8 & 0xC000) == 0x8000 {
+                            multi_byte_utf8 = (0x00_07C0 & (multi_byte_utf8 ~mod<< 6)) |
+                                    (0x00_003F & (multi_byte_utf8 >> 8))
+                            args.src.skip_u32_fast!(actual: 2, worst_case: 2)
+                            if string_length >= 0xFFF8 {
+                                args.dst.write_simple_token_fast!(
+                                        value_major: 0,
+                                        value_minor: (base.TOKEN__VBC__STRING << 21) |
+                                        base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                                        base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                                        base.TOKEN__VBD__STRING__CONVERT_1_DST_1_SRC_COPY,
+                                        continued: 1,
+                                        length: string_length + 2)
+                                string_length = 0
+                                continue.string_loop_outer
+                            }
+                            string_length += 2
+                            continue.string_loop_inner
+                        }
+
+                    } else if char == 0x04 {  // 3-byte UTF-8.
+                        if args.src.length() < 3 {
+                            if string_length > 0 {
+                                args.dst.write_simple_token_fast!(
+                                        value_major: 0,
+                                        value_minor: (base.TOKEN__VBC__STRING << 21) |
+                                        base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                                        base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                                        base.TOKEN__VBD__STRING__CONVERT_1_DST_1_SRC_COPY,
+                                        continued: 1,
+                                        length: string_length)
+                                string_length = 0
+                                if args.dst.length() <= 0 {
+                                    continue.string_loop_outer
+                                }
+                            }
+                            if args.src.is_closed() {
+                                if this.quirks[QUIRK_REPLACE_INVALID_UNICODE - QUIRKS_BASE] {
+                                    args.dst.write_simple_token_fast!(
+                                            value_major: 0,
+                                            value_minor: (base.TOKEN__VBC__UNICODE_CODE_POINT << 21) |
+                                            base.UNICODE__REPLACEMENT_CHARACTER,
+                                            continued: 1,
+                                            length: 1)
+                                    args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                                    continue.string_loop_outer
+                                }
+                                return "#bad UTF-8"
+                            }
+                            yield? base."$short read"
+                            continue.string_loop_outer
+                        }
+                        multi_byte_utf8 = args.src.peek_u24le_as_u32()
+                        if (multi_byte_utf8 & 0xC0_C000) == 0x80_8000 {
+                            multi_byte_utf8 = (0x00_F000 & (multi_byte_utf8 ~mod<< 12)) |
+                                    (0x00_0FC0 & (multi_byte_utf8 >> 2)) |
+                                    (0x00_003F & (multi_byte_utf8 >> 16))
+                            if (0x07FF < multi_byte_utf8) and
+                                    ((multi_byte_utf8 < 0xD800) or (0xDFFF < multi_byte_utf8)) {
+
+                                args.src.skip_u32_fast!(actual: 3, worst_case: 3)
+                                if string_length >= 0xFFF8 {
+                                    args.dst.write_simple_token_fast!(
+                                            value_major: 0,
+                                            value_minor: (base.TOKEN__VBC__STRING << 21) |
+                                            base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                                            base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                                            base.TOKEN__VBD__STRING__CONVERT_1_DST_1_SRC_COPY,
+                                            continued: 1,
+                                            length: string_length + 3)
+                                    string_length = 0
+                                    continue.string_loop_outer
+                                }
+                                string_length += 3
+                                continue.string_loop_inner
+                            }
+                        }
+
+                    } else if char == 0x05 {  // 4-byte UTF-8.
+                        if args.src.length() < 4 {
+                            if string_length > 0 {
+                                args.dst.write_simple_token_fast!(
+                                        value_major: 0,
+                                        value_minor: (base.TOKEN__VBC__STRING << 21) |
+                                        base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                                        base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                                        base.TOKEN__VBD__STRING__CONVERT_1_DST_1_SRC_COPY,
+                                        continued: 1,
+                                        length: string_length)
+                                string_length = 0
+                                if args.dst.length() <= 0 {
+                                    continue.string_loop_outer
+                                }
+                            }
+                            if args.src.is_closed() {
+                                if this.quirks[QUIRK_REPLACE_INVALID_UNICODE - QUIRKS_BASE] {
+                                    args.dst.write_simple_token_fast!(
+                                            value_major: 0,
+                                            value_minor: (base.TOKEN__VBC__UNICODE_CODE_POINT << 21) |
+                                            base.UNICODE__REPLACEMENT_CHARACTER,
+                                            continued: 1,
+                                            length: 1)
+                                    args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                                    continue.string_loop_outer
+                                }
+                                return "#bad UTF-8"
+                            }
+                            yield? base."$short read"
+                            continue.string_loop_outer
+                        }
+                        multi_byte_utf8 = args.src.peek_u32le()
+                        if (multi_byte_utf8 & 0xC0C0_C000) == 0x8080_8000 {
+                            multi_byte_utf8 = (0x1C_0000 & (multi_byte_utf8 ~mod<< 18)) |
+                                    (0x03_F000 & (multi_byte_utf8 ~mod<< 4)) |
+                                    (0x00_0FC0 & (multi_byte_utf8 >> 10)) |
+                                    (0x00_003F & (multi_byte_utf8 >> 24))
+                            if (0xFFFF < multi_byte_utf8) and (multi_byte_utf8 <= 0x10_FFFF) {
+                                args.src.skip_u32_fast!(actual: 4, worst_case: 4)
+                                if string_length >= 0xFFF8 {
+                                    args.dst.write_simple_token_fast!(
+                                            value_major: 0,
+                                            value_minor: (base.TOKEN__VBC__STRING << 21) |
+                                            base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                                            base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                                            base.TOKEN__VBD__STRING__CONVERT_1_DST_1_SRC_COPY,
+                                            continued: 1,
+                                            length: string_length + 4)
+                                    string_length = 0
+                                    continue.string_loop_outer
+                                }
+                                string_length += 4
+                                continue.string_loop_inner
+                            }
+                        }
+                    }
+
+                    if string_length > 0 {
+                        args.dst.write_simple_token_fast!(
+                                value_major: 0,
+                                value_minor: (base.TOKEN__VBC__STRING << 21) |
+                                base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                                base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                                base.TOKEN__VBD__STRING__CONVERT_1_DST_1_SRC_COPY,
+                                continued: 1,
+                                length: string_length)
+                        string_length = 0
+                        if args.dst.length() <= 0 {
+                            continue.string_loop_outer
+                        }
+                    }
+                    if (char & 0x80) <> 0 {
+                        if this.quirks[QUIRK_ALLOW_ASCII_CONTROL_CODES - QUIRKS_BASE] {
+                            args.dst.write_simple_token_fast!(
+                                    value_major: 0,
+                                    value_minor: (base.TOKEN__VBC__UNICODE_CODE_POINT << 21) |
+                                    ((char & 0x7F) as base.u32),
+                                    continued: 1,
+                                    length: 1)
+                            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                            continue.string_loop_outer
+                        }
+                        if char == 0x8A {
+                            return "#bad new-line in a string"
+                        }
+                        return "#bad C0 control code"
+                    }
+                    if this.quirks[QUIRK_REPLACE_INVALID_UNICODE - QUIRKS_BASE] {
+                        args.dst.write_simple_token_fast!(
+                                value_major: 0,
+                                value_minor: (base.TOKEN__VBC__UNICODE_CODE_POINT << 21) |
+                                base.UNICODE__REPLACEMENT_CHARACTER,
+                                continued: 1,
+                                length: 1)
+                        args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                        continue.string_loop_outer
+                    }
+                    return "#bad UTF-8"
+                }.string_loop_inner
+            }.string_loop_outer
+
+            // Emit the trailing '"'.
+            while true {
+                if args.src.length() <= 0 {
+                    if args.src.is_closed() {
+                        return "#bad input"
+                    }
+                    yield? base."$short read"
+                    continue
+                }
+                if args.dst.length() <= 0 {
+                    yield? base."$short write"
+                    continue
+                }
+                args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__STRING << 21) |
+                        base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                        base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                        base.TOKEN__VBD__STRING__DEFINITELY_ASCII |
+                        base.TOKEN__VBD__STRING__CONVERT_0_DST_1_SRC_DROP,
+                        continued: 0,
+                        length: 1)
+                break
+            }
+
+            // As above, expect must have contained EXPECT_STRING. If it didn't
+            // also contain EXPECT_NUMBER (excluding EXPECT_COMMENT) then we
+            // were parsing an object key and the next token should be ':'.
+            if 0 == (expect & ((1 as base.u32) << CLASS_NUMBER)) {
+                expect = EXPECT_COLON
+                continue.outer
+            }
+            break.goto_parsed_a_leaf_value
+            // -------- END   parse strings.
+
+        } else if class == CLASS_COMMA {
+            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+            // The ',' is punctuation (filler).
+            args.dst.write_simple_token_fast!(
+                    value_major: 0,
+                    value_minor: (base.TOKEN__VBC__FILLER << 21) |
+                    base.TOKEN__VBD__FILLER__PUNCTUATION,
+                    continued: 0,
+                    length: 1)
+            // What's valid after a comma depends on whether or not we're in an
+            // array or an object.
+            if 0 == (expect & ((1 as base.u32) << CLASS_CLOSE_SQUARE_BRACKET)) {
+                if this.quirks[QUIRK_ALLOW_EXTRA_COMMA - QUIRKS_BASE] {
+                    expect = EXPECT_STRING | EXPECT_CLOSE_CURLY_BRACE
+                } else {
+                    expect = EXPECT_STRING
+                }
+            } else {
+                if this.quirks[QUIRK_ALLOW_EXTRA_COMMA - QUIRKS_BASE] {
+                    expect = EXPECT_VALUE | EXPECT_CLOSE_SQUARE_BRACKET
+                } else {
+                    expect = EXPECT_VALUE
+                }
+            }
+            continue.outer
+
+        } else if class == CLASS_COLON {
+            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+            // The ':' is punctuation (filler).
+            args.dst.write_simple_token_fast!(
+                    value_major: 0,
+                    value_minor: (base.TOKEN__VBC__FILLER << 21) |
+                    base.TOKEN__VBD__FILLER__PUNCTUATION,
+                    continued: 0,
+                    length: 1)
+            expect = EXPECT_VALUE
+            continue.outer
+
+        } else if class == CLASS_NUMBER {
+            // -------- BEGIN parse numbers.
+            while true,
+                    pre args.dst.length() > 0,
+            {
+                number_length = this.decode_number!(src: args.src)
+                number_status = number_length >> 8
+                vminor = (base.TOKEN__VBC__NUMBER << 21) |
+                        base.TOKEN__VBD__NUMBER__CONTENT_FLOATING_POINT |
+                        base.TOKEN__VBD__NUMBER__CONTENT_INTEGER_SIGNED |
+                        base.TOKEN__VBD__NUMBER__FORMAT_TEXT
+                if (number_length & 0x80) <> 0 {
+                    vminor = (base.TOKEN__VBC__NUMBER << 21) |
+                            base.TOKEN__VBD__NUMBER__CONTENT_FLOATING_POINT |
+                            base.TOKEN__VBD__NUMBER__FORMAT_TEXT
+                }
+                number_length = number_length & 0x7F
+                if number_status == 0 {
+                    args.dst.write_simple_token_fast!(
+                            value_major: 0,
+                            value_minor: vminor,
+                            continued: 0,
+                            length: number_length)
+                    break
+                }
+
+                while number_length > 0 {
+                    number_length -= 1
+                    if args.src.can_undo_byte() {
+                        args.src.undo_byte!()
+                    } else {
+                        return "#internal error: inconsistent I/O"
+                    }
+                }
+
+                if number_status == 1 {
+                    if this.quirks[QUIRK_ALLOW_INF_NAN_NUMBERS - QUIRKS_BASE] {
+                        this.decode_inf_nan?(dst: args.dst, src: args.src)
+                        break
+                    }
+                    return "#bad input"
+                } else if number_status == 2 {
+                    return "#unsupported number length"
+                } else {
+                    yield? base."$short read"
+                    while args.dst.length() <= 0,
+                            post args.dst.length() > 0,
+                    {
+                        yield? base."$short write"
+                    }
+                }
+            }
+            break.goto_parsed_a_leaf_value
+            // -------- END   parse numbers.
+
+        } else if class == CLASS_OPEN_CURLY_BRACE {
+            vminor = (base.TOKEN__VBC__STRUCTURE << 21) |
+                    base.TOKEN__VBD__STRUCTURE__PUSH |
+                    base.TOKEN__VBD__STRUCTURE__FROM_NONE |
+                    base.TOKEN__VBD__STRUCTURE__TO_DICT
+            if depth == 0 {
+                // No-op.
+            } else if 0 <> (expect_after_value & ((1 as base.u32) << CLASS_CLOSE_CURLY_BRACE)) {
+                vminor = (base.TOKEN__VBC__STRUCTURE << 21) |
+                        base.TOKEN__VBD__STRUCTURE__PUSH |
+                        base.TOKEN__VBD__STRUCTURE__FROM_DICT |
+                        base.TOKEN__VBD__STRUCTURE__TO_DICT
+            } else {
+                vminor = (base.TOKEN__VBC__STRUCTURE << 21) |
+                        base.TOKEN__VBD__STRUCTURE__PUSH |
+                        base.TOKEN__VBD__STRUCTURE__FROM_LIST |
+                        base.TOKEN__VBD__STRUCTURE__TO_DICT
+            }
+            if depth >= 1024 {
+                return "#unsupported recursion depth"
+            }
+            stack_byte = depth / 32
+            stack_bit = depth & 31
+            this.stack[stack_byte] |= (1 as base.u32) << stack_bit
+            depth += 1
+
+            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+            args.dst.write_simple_token_fast!(
+                    value_major: 0,
+                    value_minor: vminor,
+                    continued: 0,
+                    length: 1)
+            expect = EXPECT_CLOSE_CURLY_BRACE | EXPECT_STRING
+            expect_after_value = EXPECT_CLOSE_CURLY_BRACE | EXPECT_COMMA
+            continue.outer
+
+        } else if class == CLASS_CLOSE_CURLY_BRACE {
+            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+            if depth <= 1 {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__STRUCTURE << 21) |
+                        base.TOKEN__VBD__STRUCTURE__POP |
+                        base.TOKEN__VBD__STRUCTURE__FROM_DICT |
+                        base.TOKEN__VBD__STRUCTURE__TO_NONE,
+                        continued: 0,
+                        length: 1)
+                break.outer
+            }
+            depth -= 1
+            stack_byte = (depth - 1) / 32
+            stack_bit = (depth - 1) & 31
+            if 0 == (this.stack[stack_byte] & ((1 as base.u32) << stack_bit)) {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__STRUCTURE << 21) |
+                        base.TOKEN__VBD__STRUCTURE__POP |
+                        base.TOKEN__VBD__STRUCTURE__FROM_DICT |
+                        base.TOKEN__VBD__STRUCTURE__TO_LIST,
+                        continued: 0,
+                        length: 1)
+                expect = EXPECT_CLOSE_SQUARE_BRACKET | EXPECT_COMMA
+                expect_after_value = EXPECT_CLOSE_SQUARE_BRACKET | EXPECT_COMMA
+            } else {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__STRUCTURE << 21) |
+                        base.TOKEN__VBD__STRUCTURE__POP |
+                        base.TOKEN__VBD__STRUCTURE__FROM_DICT |
+                        base.TOKEN__VBD__STRUCTURE__TO_DICT,
+                        continued: 0,
+                        length: 1)
+                expect = EXPECT_CLOSE_CURLY_BRACE | EXPECT_COMMA
+                expect_after_value = EXPECT_CLOSE_CURLY_BRACE | EXPECT_COMMA
+            }
+            continue.outer
+
+        } else if class == CLASS_OPEN_SQUARE_BRACKET {
+            vminor = (base.TOKEN__VBC__STRUCTURE << 21) |
+                    base.TOKEN__VBD__STRUCTURE__PUSH |
+                    base.TOKEN__VBD__STRUCTURE__FROM_NONE |
+                    base.TOKEN__VBD__STRUCTURE__TO_LIST
+            if depth == 0 {
+                // No-op.
+            } else if 0 <> (expect_after_value & ((1 as base.u32) << CLASS_CLOSE_CURLY_BRACE)) {
+                vminor = (base.TOKEN__VBC__STRUCTURE << 21) |
+                        base.TOKEN__VBD__STRUCTURE__PUSH |
+                        base.TOKEN__VBD__STRUCTURE__FROM_DICT |
+                        base.TOKEN__VBD__STRUCTURE__TO_LIST
+            } else {
+                vminor = (base.TOKEN__VBC__STRUCTURE << 21) |
+                        base.TOKEN__VBD__STRUCTURE__PUSH |
+                        base.TOKEN__VBD__STRUCTURE__FROM_LIST |
+                        base.TOKEN__VBD__STRUCTURE__TO_LIST
+            }
+            if depth >= 1024 {
+                return "#unsupported recursion depth"
+            }
+            stack_byte = depth / 32
+            stack_bit = depth & 31
+            this.stack[stack_byte] &= 0xFFFF_FFFF ^ ((1 as base.u32) << stack_bit)
+            depth += 1
+
+            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+            args.dst.write_simple_token_fast!(
+                    value_major: 0,
+                    value_minor: vminor,
+                    continued: 0,
+                    length: 1)
+            expect = EXPECT_CLOSE_SQUARE_BRACKET | EXPECT_VALUE
+            expect_after_value = EXPECT_CLOSE_SQUARE_BRACKET | EXPECT_COMMA
+            continue.outer
+
+        } else if class == CLASS_CLOSE_SQUARE_BRACKET {
+            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+            if depth <= 1 {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__STRUCTURE << 21) |
+                        base.TOKEN__VBD__STRUCTURE__POP |
+                        base.TOKEN__VBD__STRUCTURE__FROM_LIST |
+                        base.TOKEN__VBD__STRUCTURE__TO_NONE,
+                        continued: 0,
+                        length: 1)
+                break.outer
+            }
+            depth -= 1
+            stack_byte = (depth - 1) / 32
+            stack_bit = (depth - 1) & 31
+            if 0 == (this.stack[stack_byte] & ((1 as base.u32) << stack_bit)) {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__STRUCTURE << 21) |
+                        base.TOKEN__VBD__STRUCTURE__POP |
+                        base.TOKEN__VBD__STRUCTURE__FROM_LIST |
+                        base.TOKEN__VBD__STRUCTURE__TO_LIST,
+                        continued: 0,
+                        length: 1)
+                expect = EXPECT_CLOSE_SQUARE_BRACKET | EXPECT_COMMA
+                expect_after_value = EXPECT_CLOSE_SQUARE_BRACKET | EXPECT_COMMA
+            } else {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__STRUCTURE << 21) |
+                        base.TOKEN__VBD__STRUCTURE__POP |
+                        base.TOKEN__VBD__STRUCTURE__FROM_LIST |
+                        base.TOKEN__VBD__STRUCTURE__TO_DICT,
+                        continued: 0,
+                        length: 1)
+                expect = EXPECT_CLOSE_CURLY_BRACE | EXPECT_COMMA
+                expect_after_value = EXPECT_CLOSE_CURLY_BRACE | EXPECT_COMMA
+            }
+            continue.outer
+
+        } else if class == CLASS_FALSE {
+            match = args.src.match7(a: '\x05false'le)
+            if match == 0 {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__LITERAL << 21) |
+                        base.TOKEN__VBD__LITERAL__FALSE,
+                        continued: 0,
+                        length: 5)
+                if args.src.length() < 5 {
+                    return "#internal error: inconsistent I/O"
+                }
+                args.src.skip_u32_fast!(actual: 5, worst_case: 5)
+                break.goto_parsed_a_leaf_value
+            } else if match == 1 {
+                yield? base."$short read"
+                continue.outer
+            }
+
+        } else if class == CLASS_TRUE {
+            match = args.src.match7(a: '\x04true'le)
+            if match == 0 {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__LITERAL << 21) |
+                        base.TOKEN__VBD__LITERAL__TRUE,
+                        continued: 0,
+                        length: 4)
+                if args.src.length() < 4 {
+                    return "#internal error: inconsistent I/O"
+                }
+                args.src.skip_u32_fast!(actual: 4, worst_case: 4)
+                break.goto_parsed_a_leaf_value
+            } else if match == 1 {
+                yield? base."$short read"
+                continue.outer
+            }
+
+        } else if class == CLASS_NULL_NAN_INF {
+            match = args.src.match7(a: '\x04null'le)
+            if match == 0 {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__LITERAL << 21) |
+                        base.TOKEN__VBD__LITERAL__NULL,
+                        continued: 0,
+                        length: 4)
+                if args.src.length() < 4 {
+                    return "#internal error: inconsistent I/O"
+                }
+                args.src.skip_u32_fast!(actual: 4, worst_case: 4)
+                break.goto_parsed_a_leaf_value
+            } else if match == 1 {
+                yield? base."$short read"
+                continue.outer
+            }
+
+            if this.quirks[QUIRK_ALLOW_INF_NAN_NUMBERS - QUIRKS_BASE] {
+                this.decode_inf_nan?(dst: args.dst, src: args.src)
+                break.goto_parsed_a_leaf_value
+            }
+
+        } else if class == CLASS_COMMENT {
+            if this.quirks[QUIRK_ALLOW_COMMENT_BLOCK - QUIRKS_BASE] or
+                    this.quirks[QUIRK_ALLOW_COMMENT_LINE - QUIRKS_BASE] {
+                this.decode_comment?(dst: args.dst, src: args.src)
+                if this.comment_type > 0 {
+                    continue.outer
+                }
+            }
+        }
+
+        return "#bad input"
+        }}.goto_parsed_a_leaf_value
+
+        // We've just parsed a leaf (non-container) value: literal (null,
+        // false, true), number or string.
+        if depth == 0 {
+            break.outer
+        }
+        expect = expect_after_value
+    }.outer
+
+    if this.quirks[QUIRK_ALLOW_TRAILING_FILLER - QUIRKS_BASE] or
+            this.quirks[QUIRK_EXPECT_TRAILING_NEW_LINE_OR_EOF - QUIRKS_BASE] {
+        this.decode_trailer?(dst: args.dst, src: args.src)
+    }
+
+    this.end_of_data = true
+}
+
+pri func decoder.decode_number!(src: base.io_reader) base.u32[..= 0x3FF] {
+    var c8             : base.u8
+    var n              : base.u32[..= 0x3FF]
+    var floating_point : base.u32[..= 0x80]
+
+    while.goto_done true {{
+    n = 0
+
+    // Peek.
+    if args.src.length() <= 0 {
+        if not args.src.is_closed() {
+            n |= 0x300
+        }
+        break.goto_done
+    }
+    c8 = args.src.peek_u8()
+
+    // Scan the optional minus sign.
+    if c8 <> '-' {
+        assert args.src.length() > 0
+        assert n <= 1
+    } else {
+        n += 1
+        args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+
+        // Peek.
+        if args.src.length() <= 0 {
+            if not args.src.is_closed() {
+                n |= 0x300
+            }
+            n |= 0x100  // A '-' without digits is invalid.
+            break.goto_done
+        }
+        c8 = args.src.peek_u8()
+
+        assert args.src.length() > 0
+        assert n <= 1
+    }
+
+    // Scan the opening digits.
+    if c8 == '0' {
+        n += 1
+        args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+        assert n <= 99
+    } else {
+        n = this.decode_digits!(src: args.src, n: n)
+        if n > 99 {
+            break.goto_done
+        }
+        assert n <= 99
+    }
+
+    // Peek.
+    if args.src.length() <= 0 {
+        if not args.src.is_closed() {
+            n |= 0x300
+        }
+        break.goto_done
+    }
+    c8 = args.src.peek_u8()
+
+    // Scan the optional fraction.
+    if c8 <> '.' {
+        assert args.src.length() > 0
+        assert n <= 99
+    } else {
+        if n >= 99 {
+            n |= 0x200
+            break.goto_done
+        }
+        n += 1
+        args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+        floating_point = 0x80
+
+        n = this.decode_digits!(src: args.src, n: n)
+        if n > 99 {
+            break.goto_done
+        }
+
+        // Peek.
+        if args.src.length() <= 0 {
+            if not args.src.is_closed() {
+                n |= 0x300
+            }
+            break.goto_done
+        }
+        c8 = args.src.peek_u8()
+
+        assert args.src.length() > 0
+        assert n <= 99
+    }
+
+    // Scan the optional 'E' or 'e'.
+    if (c8 <> 'E') and (c8 <> 'e') {
+        break.goto_done
+    }
+    if n >= 99 {
+        n |= 0x200
+        break.goto_done
+    }
+    n += 1
+    args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+    floating_point = 0x80
+    assert n <= 99
+
+    // Peek.
+    if args.src.length() <= 0 {
+        if not args.src.is_closed() {
+            n |= 0x300
+        }
+        n |= 0x100  // An 'E' or 'e' without digits is invalid.
+        break.goto_done
+    }
+    c8 = args.src.peek_u8()
+
+    // Scan the optional '+' or '-'.
+    if (c8 <> '+') and (c8 <> '-') {
+        assert n <= 99
+    } else {
+        if n >= 99 {
+            n |= 0x200
+            break.goto_done
+        }
+        n += 1
+        args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+        assert n <= 99
+    }
+
+    // Scan the exponent digits.
+    n = this.decode_digits!(src: args.src, n: n)
+
+    break.goto_done
+    }}.goto_done
+
+    return n | floating_point
+}
+
+pri func decoder.decode_digits!(src: base.io_reader, n: base.u32[..= 99]) base.u32[..= 0x3FF] {
+    var c8 : base.u8
+    var n  : base.u32[..= 0x3FF]
+
+    n = args.n
+    while true {
+        if args.src.length() <= 0 {
+            if not args.src.is_closed() {
+                n |= 0x300
+            }
+            break
+        }
+        c8 = args.src.peek_u8()
+        if 0x00 == LUT_DECIMAL_DIGITS[c8] {
+            break
+        }
+        // Cap DECODER_NUMBER_LENGTH_MAX_INCL at an arbitrary value, 99. The
+        // caller's src.data.len should therefore be at least 100, also known
+        // as DECODER_SRC_IO_BUFFER_LENGTH_MIN_INCL.
+        //
+        // An example of a JSON number that is 81 bytes long is:
+        // https://github.com/nst/JSONTestSuite/blob/master/test_parsing/y_number_double_close_to_zero.json
+        //
+        // Note that 99 (in hex, 0x63) is less than 0x80, so we can use 0x80 as
+        // a flag bit in func decoder.decode_number.
+        if n >= 99 {
+            n |= 0x200
+            break
+        }
+        n += 1
+        args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+    }
+    if n == args.n {
+        n |= 0x100
+    }
+    return n
+}
+
+pri func decoder.decode_leading?(dst: base.token_writer, src: base.io_reader) {
+    var c8 : base.u8
+    var u  : base.u32
+
+    this.allow_leading_ars =
+            this.quirks[QUIRK_ALLOW_LEADING_ASCII_RECORD_SEPARATOR - QUIRKS_BASE]
+    this.allow_leading_ubom =
+            this.quirks[QUIRK_ALLOW_LEADING_UNICODE_BYTE_ORDER_MARK - QUIRKS_BASE]
+
+    while this.allow_leading_ars or this.allow_leading_ubom {
+        if args.dst.length() <= 0 {
+            yield? base."$short write"
+            continue
+        }
+        if args.src.length() <= 0 {
+            if args.src.is_closed() {
+                break
+            }
+            yield? base."$short read"
+            continue
+        }
+        c8 = args.src.peek_u8()
+        if (c8 == 0x1E) and this.allow_leading_ars {
+            this.allow_leading_ars = false
+            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+            args.dst.write_simple_token_fast!(
+                    value_major: 0, value_minor: 0, continued: 0, length: 1)
+            continue
+        } else if (c8 == 0xEF) and this.allow_leading_ubom {
+            if args.src.length() < 3 {
+                if args.src.is_closed() {
+                    break
+                }
+                yield? base."$short read"
+                continue
+            }
+            u = args.src.peek_u24le_as_u32()
+            if u == 0xBF_BBEF {
+                this.allow_leading_ubom = false
+                args.src.skip_u32_fast!(actual: 3, worst_case: 3)
+                args.dst.write_simple_token_fast!(
+                        value_major: 0, value_minor: 0, continued: 0, length: 3)
+                continue
+            }
+        }
+        break
+    }
+}
+
+pri func decoder.decode_comment?(dst: base.token_writer, src: base.io_reader) {
+    var c8     : base.u8
+    var c16    : base.u16
+    var length : base.u32[..= 0xFFFD]
+
+    this.comment_type = 0
+
+    while (args.dst.length() <= 0) or (args.src.length() <= 1),
+            post args.dst.length() > 0,
+            post args.src.length() > 1,
+    {
+        if args.dst.length() <= 0 {
+            yield? base."$short write"
+            continue
+        }
+        if args.src.is_closed() {
+            return ok
+        }
+        yield? base."$short read"
+    }
+    c16 = args.src.peek_u16le()
+
+    if (c16 == '/*'le) and this.quirks[QUIRK_ALLOW_COMMENT_BLOCK - QUIRKS_BASE] {
+        args.src.skip_u32_fast!(actual: 2, worst_case: 2)
+        length = 2
+
+        while.comment_block true,
+                pre args.dst.length() > 0,
+        {
+            if args.src.length() <= 1 {
+                if length > 0 {
+                    args.dst.write_simple_token_fast!(
+                            value_major: 0,
+                            value_minor: (base.TOKEN__VBC__FILLER << 21) |
+                            base.TOKEN__VBD__FILLER__COMMENT_BLOCK,
+                            continued: 1,
+                            length: length)
+                }
+                if args.src.is_closed() {
+                    return "#bad input"
+                }
+                yield? base."$short read"
+                while args.dst.length() <= 0,
+                        post args.dst.length() > 0,
+                {
+                    yield? base."$short write"
+                }
+                length = 0
+                continue.comment_block
+            }
+
+            c16 = args.src.peek_u16le()
+            if c16 == '*/'le {
+                args.src.skip_u32_fast!(actual: 2, worst_case: 2)
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__FILLER << 21) |
+                        base.TOKEN__VBD__FILLER__COMMENT_BLOCK,
+                        continued: 0,
+                        length: length + 2)
+                this.comment_type = 1
+                return ok
+            }
+
+            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+            if length >= 0xFFFD {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__FILLER << 21) |
+                        base.TOKEN__VBD__FILLER__COMMENT_BLOCK,
+                        continued: 1,
+                        length: length + 1)
+                while args.dst.length() <= 0,
+                        post args.dst.length() > 0,
+                {
+                    yield? base."$short write"
+                }
+                length = 0
+                continue.comment_block
+            }
+            length += 1
+        }.comment_block
+
+    } else if (c16 == '//'le) and this.quirks[QUIRK_ALLOW_COMMENT_LINE - QUIRKS_BASE] {
+        args.src.skip_u32_fast!(actual: 2, worst_case: 2)
+        length = 2
+
+        while.comment_line true,
+                pre args.dst.length() > 0,
+        {
+            if args.src.length() <= 0 {
+                if args.src.is_closed() {
+                    args.dst.write_simple_token_fast!(
+                            value_major: 0,
+                            value_minor: (base.TOKEN__VBC__FILLER << 21) |
+                            base.TOKEN__VBD__FILLER__COMMENT_LINE,
+                            continued: 0,
+                            length: length)
+                    this.comment_type = 2
+                    return ok
+                } else if length > 0 {
+                    args.dst.write_simple_token_fast!(
+                            value_major: 0,
+                            value_minor: (base.TOKEN__VBC__FILLER << 21) |
+                            base.TOKEN__VBD__FILLER__COMMENT_LINE,
+                            continued: 1,
+                            length: length)
+                }
+                yield? base."$short read"
+                while args.dst.length() <= 0,
+                        post args.dst.length() > 0,
+                {
+                    yield? base."$short write"
+                }
+                length = 0
+                continue.comment_line
+            }
+
+            c8 = args.src.peek_u8()
+            if c8 == '\n' {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__FILLER << 21) |
+                        base.TOKEN__VBD__FILLER__COMMENT_LINE,
+                        continued: 0,
+                        length: length)
+                this.comment_type = 2
+                return ok
+            }
+
+            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+            if length >= 0xFFFD {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__FILLER << 21) |
+                        base.TOKEN__VBD__FILLER__COMMENT_LINE,
+                        continued: 1,
+                        length: length + 1)
+                while args.dst.length() <= 0,
+                        post args.dst.length() > 0,
+                {
+                    yield? base."$short write"
+                }
+                length = 0
+                continue.comment_line
+            }
+            length += 1
+        }.comment_line
+    }
+}
+
+pri func decoder.decode_inf_nan?(dst: base.token_writer, src: base.io_reader) {
+    var c32 : base.u32
+    var neg : base.u32[..= 1]
+
+    while true {
+        if args.dst.length() <= 0 {
+            yield? base."$short write"
+            continue
+        }
+        if args.src.length() <= 2 {
+            if args.src.is_closed() {
+                return "#bad input"
+            }
+            yield? base."$short read"
+            continue
+        }
+
+        // Bitwise or'ing with 0x20 converts upper case ASCII to lower case.
+
+        c32 = args.src.peek_u24le_as_u32()
+        if (c32 | 0x20_2020) == 'inf'le {
+            if args.src.length() > 7 {
+                if (args.src.peek_u64le() | 0x2020_2020_2020_2020) == 'infinity'le {
+                    args.dst.write_simple_token_fast!(
+                            value_major: 0,
+                            value_minor: (base.TOKEN__VBC__NUMBER << 21) |
+                            base.TOKEN__VBD__NUMBER__CONTENT_POS_INF,
+                            continued: 0,
+                            length: 8)
+                    args.src.skip_u32_fast!(actual: 8, worst_case: 8)
+                    return ok
+                }
+            } else if not args.src.is_closed() {
+                yield? base."$short read"
+                continue
+            }
+            args.dst.write_simple_token_fast!(
+                    value_major: 0,
+                    value_minor: (base.TOKEN__VBC__NUMBER << 21) |
+                    base.TOKEN__VBD__NUMBER__CONTENT_POS_INF,
+                    continued: 0,
+                    length: 3)
+            args.src.skip_u32_fast!(actual: 3, worst_case: 3)
+            return ok
+
+        } else if (c32 | 0x20_2020) == 'nan'le {
+            args.dst.write_simple_token_fast!(
+                    value_major: 0,
+                    value_minor: (base.TOKEN__VBC__NUMBER << 21) |
+                    base.TOKEN__VBD__NUMBER__CONTENT_POS_NAN,
+                    continued: 0,
+                    length: 3)
+            args.src.skip_u32_fast!(actual: 3, worst_case: 3)
+            return ok
+        } else if (c32 & 0xFF) == '+' {
+            neg = 0
+        } else if (c32 & 0xFF) == '-' {
+            neg = 1
+        } else {
+            return "#bad input"
+        }
+
+        if args.src.length() <= 3 {
+            if args.src.is_closed() {
+                return "#bad input"
+            }
+            yield? base."$short read"
+            continue
+        }
+
+        c32 = args.src.peek_u32le() >> 8
+        if (c32 | 0x20_2020) == 'inf'le {
+            if args.src.length() > 8 {
+                if (args.src.peek_u64le_at(offset: 1) | 0x2020_2020_2020_2020) == 'infinity'le {
+                    args.dst.write_simple_token_fast!(
+                            value_major: 0,
+                            value_minor: (base.TOKEN__VBC__NUMBER << 21) |
+                            (base.TOKEN__VBD__NUMBER__CONTENT_POS_INF >> neg),
+                            continued: 0,
+                            length: 9)
+                    args.src.skip_u32_fast!(actual: 9, worst_case: 9)
+                    return ok
+                }
+            } else if not args.src.is_closed() {
+                yield? base."$short read"
+                continue
+            }
+            args.dst.write_simple_token_fast!(
+                    value_major: 0,
+                    value_minor: (base.TOKEN__VBC__NUMBER << 21) |
+                    (base.TOKEN__VBD__NUMBER__CONTENT_POS_INF >> neg),
+                    continued: 0,
+                    length: 4)
+            args.src.skip_u32_fast!(actual: 4, worst_case: 4)
+            return ok
+
+        } else if (c32 | 0x20_2020) == 'nan'le {
+            args.dst.write_simple_token_fast!(
+                    value_major: 0,
+                    value_minor: (base.TOKEN__VBC__NUMBER << 21) |
+                    (base.TOKEN__VBD__NUMBER__CONTENT_POS_NAN >> neg),
+                    continued: 0,
+                    length: 4)
+            args.src.skip_u32_fast!(actual: 4, worst_case: 4)
+            return ok
+        }
+
+        return "#bad input"
+    }
+}
+
+pri func decoder.decode_trailer?(dst: base.token_writer, src: base.io_reader) {
+    var c8                : base.u8
+    var whitespace_length : base.u32[..= 0xFFFE]
+
+    if this.quirks[QUIRK_EXPECT_TRAILING_NEW_LINE_OR_EOF - QUIRKS_BASE] {
+        this.trailer_stop = '\n'
+    } else {
+        this.trailer_stop = 0
+    }
+
+    while.outer true {
+        if args.dst.length() <= 0 {
+            yield? base."$short write"
+            continue.outer
+        }
+
+        whitespace_length = 0
+        while.inner true,
+                pre args.dst.length() > 0,
+        {
+            if args.src.length() <= 0 {
+                if whitespace_length > 0 {
+                    args.dst.write_simple_token_fast!(
+                            value_major: 0, value_minor: 0, continued: 0, length: whitespace_length)
+                }
+                if args.src.is_closed() {
+                    break.outer
+                }
+                yield? base."$short read"
+                continue.outer
+            }
+
+            c8 = args.src.peek_u8()
+            if LUT_CLASSES[c8] <> CLASS_WHITESPACE {
+                if whitespace_length > 0 {
+                    args.dst.write_simple_token_fast!(
+                            value_major: 0, value_minor: 0, continued: 0, length: whitespace_length)
+                }
+                if this.trailer_stop > 0 {
+                    return "#bad input"
+                }
+                this.decode_comment?(dst: args.dst, src: args.src)
+                if this.comment_type > 0 {
+                    continue.outer
+                }
+                return ok
+            }
+
+            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+            if (whitespace_length >= 0xFFFE) or (c8 == this.trailer_stop) {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0, value_minor: 0, continued: 0, length: whitespace_length + 1)
+                if c8 == this.trailer_stop {
+                    return ok
+                }
+                continue.outer
+            }
+            whitespace_length += 1
+        }.inner
+    }.outer
+}

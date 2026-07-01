@@ -1,0 +1,342 @@
+// Copyright 2023 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pri const XXH_PRIME64_1 : base.u64 = 0x9E37_79B1_85EB_CA87
+pri const XXH_PRIME64_2 : base.u64 = 0xC2B2_AE3D_27D4_EB4F
+pri const XXH_PRIME64_3 : base.u64 = 0x1656_67B1_9E37_79F9
+pri const XXH_PRIME64_4 : base.u64 = 0x85EB_CA77_C2B2_AE63
+pri const XXH_PRIME64_5 : base.u64 = 0x27D4_EB2F_1656_67C5
+
+pri const INITIAL_V0 : base.u64 = 0x60EA_27EE_ADC0_B5D6  // 0 + XXH_PRIME64_1 + XXH_PRIME64_2
+pri const INITIAL_V1 : base.u64 = 0xC2B2_AE3D_27D4_EB4F  // 0                 + XXH_PRIME64_2
+pri const INITIAL_V2 : base.u64 = 0x0000_0000_0000_0000  // 0
+pri const INITIAL_V3 : base.u64 = 0x61C8_864E_7A14_3579  // 0 - XXH_PRIME64_1
+
+pub struct hasher? implements base.hasher_u64(
+        length_modulo_u64    : base.u64,
+        length_overflows_u64 : base.bool,
+
+        padding0 : base.u8,
+        padding1 : base.u8,
+        padding2 : base.u8,
+
+        buf_len  : base.u32[..= 32],
+        buf_data : array[32] base.u8,
+
+        v0 : base.u64,
+        v1 : base.u64,
+        v2 : base.u64,
+        v3 : base.u64,
+)
+
+pub func hasher.get_quirk(key: base.u32) base.u64 {
+    return 0
+}
+
+pub func hasher.set_quirk!(key: base.u32, value: base.u64) base.status {
+    return base."#unsupported option"
+}
+
+pub func hasher.update!(x: roslice base.u8) {
+    if (this.length_modulo_u64 == 0) and not this.length_overflows_u64 {
+        this.v0 = INITIAL_V0
+        this.v1 = INITIAL_V1
+        this.v2 = INITIAL_V2
+        this.v3 = INITIAL_V3
+
+        // In theory, we could "choose up" here to pick SIMD versions. In
+        // practice, non-SIMD versions are faster (and simpler). For example,
+        // see commit b9b28dbe "std/xxhash32: add hasher.up_x86_sse42".
+    }
+
+    this.up!(x: args.x)
+}
+
+pub func hasher.update_u64!(x: roslice base.u8) base.u64 {
+    this.update!(x: args.x)
+    return this.checksum_u64()
+}
+
+pri func hasher.up!(x: roslice base.u8) {
+    var new_lmu : base.u64
+    var buf_u64 : base.u64
+    var buf_len : base.u32[..= 31]
+    var v0      : base.u64
+    var v1      : base.u64
+    var v2      : base.u64
+    var v3      : base.u64
+    var p       : roslice base.u8
+
+    new_lmu = this.length_modulo_u64 ~mod+ args.x.length()
+    this.length_overflows_u64 = (new_lmu < this.length_modulo_u64) or this.length_overflows_u64
+    this.length_modulo_u64 = new_lmu
+
+    while true {
+        if this.buf_len >= 32 {
+            buf_u64 = (this.buf_data[0x00] as base.u64) |
+                    ((this.buf_data[0x01] as base.u64) << 8) |
+                    ((this.buf_data[0x02] as base.u64) << 16) |
+                    ((this.buf_data[0x03] as base.u64) << 24) |
+                    ((this.buf_data[0x04] as base.u64) << 32) |
+                    ((this.buf_data[0x05] as base.u64) << 40) |
+                    ((this.buf_data[0x06] as base.u64) << 48) |
+                    ((this.buf_data[0x07] as base.u64) << 56)
+            v0 = this.v0 ~mod+ (buf_u64 ~mod* XXH_PRIME64_2)
+            v0 = (v0 ~mod<< 31) | (v0 >> 33)
+            this.v0 = v0 ~mod* XXH_PRIME64_1
+
+            buf_u64 = (this.buf_data[0x08] as base.u64) |
+                    ((this.buf_data[0x09] as base.u64) << 8) |
+                    ((this.buf_data[0x0A] as base.u64) << 16) |
+                    ((this.buf_data[0x0B] as base.u64) << 24) |
+                    ((this.buf_data[0x0C] as base.u64) << 32) |
+                    ((this.buf_data[0x0D] as base.u64) << 40) |
+                    ((this.buf_data[0x0E] as base.u64) << 48) |
+                    ((this.buf_data[0x0F] as base.u64) << 56)
+            v1 = this.v1 ~mod+ (buf_u64 ~mod* XXH_PRIME64_2)
+            v1 = (v1 ~mod<< 31) | (v1 >> 33)
+            this.v1 = v1 ~mod* XXH_PRIME64_1
+
+            buf_u64 = (this.buf_data[0x10] as base.u64) |
+                    ((this.buf_data[0x11] as base.u64) << 8) |
+                    ((this.buf_data[0x12] as base.u64) << 16) |
+                    ((this.buf_data[0x13] as base.u64) << 24) |
+                    ((this.buf_data[0x14] as base.u64) << 32) |
+                    ((this.buf_data[0x15] as base.u64) << 40) |
+                    ((this.buf_data[0x16] as base.u64) << 48) |
+                    ((this.buf_data[0x17] as base.u64) << 56)
+            v2 = this.v2 ~mod+ (buf_u64 ~mod* XXH_PRIME64_2)
+            v2 = (v2 ~mod<< 31) | (v2 >> 33)
+            this.v2 = v2 ~mod* XXH_PRIME64_1
+
+            buf_u64 = (this.buf_data[0x18] as base.u64) |
+                    ((this.buf_data[0x19] as base.u64) << 8) |
+                    ((this.buf_data[0x1A] as base.u64) << 16) |
+                    ((this.buf_data[0x1B] as base.u64) << 24) |
+                    ((this.buf_data[0x1C] as base.u64) << 32) |
+                    ((this.buf_data[0x1D] as base.u64) << 40) |
+                    ((this.buf_data[0x1E] as base.u64) << 48) |
+                    ((this.buf_data[0x1F] as base.u64) << 56)
+            v3 = this.v3 ~mod+ (buf_u64 ~mod* XXH_PRIME64_2)
+            v3 = (v3 ~mod<< 31) | (v3 >> 33)
+            this.v3 = v3 ~mod* XXH_PRIME64_1
+
+            this.buf_len = 0
+            break
+        }
+
+        if args.x.length() <= 0 {
+            return nothing
+        }
+        this.buf_data[this.buf_len] = args.x[0]
+        this.buf_len += 1
+        args.x = args.x[1 ..]
+    }
+
+    buf_len = this.buf_len & 31
+    v0 = this.v0
+    v1 = this.v1
+    v2 = this.v2
+    v3 = this.v3
+
+    iterate (p = args.x)(length: 32, advance: 32, unroll: 1) {
+        buf_u64 = (p[0x00] as base.u64) |
+                ((p[0x01] as base.u64) << 8) |
+                ((p[0x02] as base.u64) << 16) |
+                ((p[0x03] as base.u64) << 24) |
+                ((p[0x04] as base.u64) << 32) |
+                ((p[0x05] as base.u64) << 40) |
+                ((p[0x06] as base.u64) << 48) |
+                ((p[0x07] as base.u64) << 56)
+        v0 = v0 ~mod+ (buf_u64 ~mod* XXH_PRIME64_2)
+        v0 = (v0 ~mod<< 31) | (v0 >> 33)
+        v0 = v0 ~mod* XXH_PRIME64_1
+
+        buf_u64 = (p[0x08] as base.u64) |
+                ((p[0x09] as base.u64) << 8) |
+                ((p[0x0A] as base.u64) << 16) |
+                ((p[0x0B] as base.u64) << 24) |
+                ((p[0x0C] as base.u64) << 32) |
+                ((p[0x0D] as base.u64) << 40) |
+                ((p[0x0E] as base.u64) << 48) |
+                ((p[0x0F] as base.u64) << 56)
+        v1 = v1 ~mod+ (buf_u64 ~mod* XXH_PRIME64_2)
+        v1 = (v1 ~mod<< 31) | (v1 >> 33)
+        v1 = v1 ~mod* XXH_PRIME64_1
+
+        buf_u64 = (p[0x10] as base.u64) |
+                ((p[0x11] as base.u64) << 8) |
+                ((p[0x12] as base.u64) << 16) |
+                ((p[0x13] as base.u64) << 24) |
+                ((p[0x14] as base.u64) << 32) |
+                ((p[0x15] as base.u64) << 40) |
+                ((p[0x16] as base.u64) << 48) |
+                ((p[0x17] as base.u64) << 56)
+        v2 = v2 ~mod+ (buf_u64 ~mod* XXH_PRIME64_2)
+        v2 = (v2 ~mod<< 31) | (v2 >> 33)
+        v2 = v2 ~mod* XXH_PRIME64_1
+
+        buf_u64 = (p[0x18] as base.u64) |
+                ((p[0x19] as base.u64) << 8) |
+                ((p[0x1A] as base.u64) << 16) |
+                ((p[0x1B] as base.u64) << 24) |
+                ((p[0x1C] as base.u64) << 32) |
+                ((p[0x1D] as base.u64) << 40) |
+                ((p[0x1E] as base.u64) << 48) |
+                ((p[0x1F] as base.u64) << 56)
+        v3 = v3 ~mod+ (buf_u64 ~mod* XXH_PRIME64_2)
+        v3 = (v3 ~mod<< 31) | (v3 >> 33)
+        v3 = v3 ~mod* XXH_PRIME64_1
+
+    } else (length: 1, advance: 1, unroll: 1) {
+        this.buf_data[buf_len] = p[0]
+        buf_len = (buf_len + 1) & 31
+    }
+
+    this.buf_len = buf_len
+    this.v0 = v0
+    this.v1 = v1
+    this.v2 = v2
+    this.v3 = v3
+}
+
+pub func hasher.checksum_u64() base.u64 {
+    var ret     : base.u64
+    var v0      : base.u64
+    var v1      : base.u64
+    var v2      : base.u64
+    var v3      : base.u64
+    var i       : base.u32[..= 32]
+    var i8      : base.u32[..= 24]
+    var n       : base.u32[..= 32]
+    var buf_u32 : base.u32
+    var buf_u64 : base.u64
+
+    if (this.length_modulo_u64 >= 32) or this.length_overflows_u64 {
+        ret ~mod+= (this.v0 ~mod<< 1) | (this.v0 >> 63)
+        ret ~mod+= (this.v1 ~mod<< 7) | (this.v1 >> 57)
+        ret ~mod+= (this.v2 ~mod<< 12) | (this.v2 >> 52)
+        ret ~mod+= (this.v3 ~mod<< 18) | (this.v3 >> 46)
+
+        v0 = this.v0 ~mod* XXH_PRIME64_2
+        v0 = (v0 ~mod<< 31) | (v0 >> 33)
+        v0 ~mod*= XXH_PRIME64_1
+        v1 = this.v1 ~mod* XXH_PRIME64_2
+        v1 = (v1 ~mod<< 31) | (v1 >> 33)
+        v1 ~mod*= XXH_PRIME64_1
+        v2 = this.v2 ~mod* XXH_PRIME64_2
+        v2 = (v2 ~mod<< 31) | (v2 >> 33)
+        v2 ~mod*= XXH_PRIME64_1
+        v3 = this.v3 ~mod* XXH_PRIME64_2
+        v3 = (v3 ~mod<< 31) | (v3 >> 33)
+        v3 ~mod*= XXH_PRIME64_1
+
+        ret = ((ret ^ v0) ~mod* XXH_PRIME64_1) ~mod+ XXH_PRIME64_4
+        ret = ((ret ^ v1) ~mod* XXH_PRIME64_1) ~mod+ XXH_PRIME64_4
+        ret = ((ret ^ v2) ~mod* XXH_PRIME64_1) ~mod+ XXH_PRIME64_4
+        ret = ((ret ^ v3) ~mod* XXH_PRIME64_1) ~mod+ XXH_PRIME64_4
+
+        ret ~mod+= this.length_modulo_u64
+    } else {
+        ret ~mod+= XXH_PRIME64_5
+        ret ~mod+= this.length_modulo_u64
+    }
+
+    n = 32
+    n = n.min(no_more_than: this.buf_len)
+
+    if 0x08 <= n {
+        buf_u64 = (this.buf_data[0x00] as base.u64) |
+                ((this.buf_data[0x01] as base.u64) << 8) |
+                ((this.buf_data[0x02] as base.u64) << 16) |
+                ((this.buf_data[0x03] as base.u64) << 24) |
+                ((this.buf_data[0x04] as base.u64) << 32) |
+                ((this.buf_data[0x05] as base.u64) << 40) |
+                ((this.buf_data[0x06] as base.u64) << 48) |
+                ((this.buf_data[0x07] as base.u64) << 56)
+        buf_u64 ~mod*= XXH_PRIME64_2
+        buf_u64 = (buf_u64 ~mod<< 31) | (buf_u64 >> 33)
+        buf_u64 ~mod*= XXH_PRIME64_1
+        ret ^= buf_u64
+        ret = (ret ~mod<< 27) | (ret >> 37)
+        ret ~mod*= XXH_PRIME64_1
+        ret ~mod+= XXH_PRIME64_4
+        i = 0x08
+    }
+
+    if 0x10 <= n {
+        buf_u64 = (this.buf_data[0x08] as base.u64) |
+                ((this.buf_data[0x09] as base.u64) << 8) |
+                ((this.buf_data[0x0A] as base.u64) << 16) |
+                ((this.buf_data[0x0B] as base.u64) << 24) |
+                ((this.buf_data[0x0C] as base.u64) << 32) |
+                ((this.buf_data[0x0D] as base.u64) << 40) |
+                ((this.buf_data[0x0E] as base.u64) << 48) |
+                ((this.buf_data[0x0F] as base.u64) << 56)
+        buf_u64 ~mod*= XXH_PRIME64_2
+        buf_u64 = (buf_u64 ~mod<< 31) | (buf_u64 >> 33)
+        buf_u64 ~mod*= XXH_PRIME64_1
+        ret ^= buf_u64
+        ret = (ret ~mod<< 27) | (ret >> 37)
+        ret ~mod*= XXH_PRIME64_1
+        ret ~mod+= XXH_PRIME64_4
+        i = 0x10
+    }
+
+    if 0x18 <= n {
+        buf_u64 = (this.buf_data[0x10] as base.u64) |
+                ((this.buf_data[0x11] as base.u64) << 8) |
+                ((this.buf_data[0x12] as base.u64) << 16) |
+                ((this.buf_data[0x13] as base.u64) << 24) |
+                ((this.buf_data[0x14] as base.u64) << 32) |
+                ((this.buf_data[0x15] as base.u64) << 40) |
+                ((this.buf_data[0x16] as base.u64) << 48) |
+                ((this.buf_data[0x17] as base.u64) << 56)
+        buf_u64 ~mod*= XXH_PRIME64_2
+        buf_u64 = (buf_u64 ~mod<< 31) | (buf_u64 >> 33)
+        buf_u64 ~mod*= XXH_PRIME64_1
+        ret ^= buf_u64
+        ret = (ret ~mod<< 27) | (ret >> 37)
+        ret ~mod*= XXH_PRIME64_1
+        ret ~mod+= XXH_PRIME64_4
+        i = 0x18
+    }
+
+    if (n & 4) <> 0 {
+        i8 = i & 24
+        buf_u32 = (this.buf_data[i8 + 0x00] as base.u32) |
+                ((this.buf_data[i8 + 0x01] as base.u32) << 8) |
+                ((this.buf_data[i8 + 0x02] as base.u32) << 16) |
+                ((this.buf_data[i8 + 0x03] as base.u32) << 24)
+        ret ^= (buf_u32 as base.u64) ~mod* XXH_PRIME64_1
+        ret = (ret ~mod<< 23) | (ret >> 41)
+        ret ~mod*= XXH_PRIME64_2
+        ret ~mod+= XXH_PRIME64_3
+        i = i8 + 4
+    }
+
+    while i < n {
+        assert i < 32 via "a < b: a < c; c <= b"(c: n)
+
+        ret ^= (this.buf_data[i] as base.u64) ~mod* XXH_PRIME64_5
+        ret = (ret ~mod<< 11) | (ret >> 53)
+        ret ~mod*= XXH_PRIME64_1
+
+        i += 1
+    }
+
+    ret ^= ret >> 33
+    ret ~mod*= XXH_PRIME64_2
+    ret ^= ret >> 29
+    ret ~mod*= XXH_PRIME64_3
+    ret ^= ret >> 32
+
+    return ret as base.u64
+}

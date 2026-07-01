@@ -1,0 +1,325 @@
+// Copyright 2021 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pri func decoder.filter_and_swizzle_tricky!(dst: ptr base.pixel_buffer, workbuf: slice base.u8) base.status {
+    var dst_pixfmt          : base.pixel_format
+    var dst_bits_per_pixel  : base.u32[..= 256]
+    var dst_bytes_per_pixel : base.u64[..= 32]
+    var dst_bytes_per_row1  : base.u64
+    var dst_palette         : slice base.u8
+    var tab                 : table base.u8
+
+    var src_bytes_per_pixel : base.u64[..= 8]
+
+    var x        : base.u32
+    var y        : base.u32
+    var i        : base.u64[..= 0x1FFF_FFC0]
+    var dst      : slice base.u8
+    var filter   : base.u8
+    var s        : slice base.u8
+    var curr_row : slice base.u8
+    var prev_row : slice base.u8
+
+    var bits_unpacked   : array[8] base.u8
+    var bits_packed     : base.u8
+    var packs_remaining : base.u8
+    var multiplier      : base.u8
+    var shift           : base.u8[..= 7]
+
+    // TODO: the dst_pixfmt variable shouldn't be necessary. We should be able
+    // to chain the two calls: "args.dst.pixel_format().bits_per_pixel()".
+    dst_pixfmt = args.dst.pixel_format()
+    dst_bits_per_pixel = dst_pixfmt.bits_per_pixel()
+    if (dst_bits_per_pixel & 7) <> 0 {
+        return base."#unsupported option"
+    }
+    dst_bytes_per_pixel = (dst_bits_per_pixel / 8) as base.u64
+    dst_bytes_per_row1 = (this.frame_rect_x1 as base.u64) * dst_bytes_per_pixel
+    dst_palette = args.dst.palette_or_else(fallback: this.dst_palette[..])
+    tab = args.dst.plane(p: 0)
+
+    src_bytes_per_pixel = 1
+    if this.depth >= 8 {
+        src_bytes_per_pixel = (NUM_CHANNELS[this.color_type] as base.u64) *
+                ((this.depth >> 3) as base.u64)
+    }
+
+    if (this.chunk_type_array[0] == 'I') {
+        y = INTERLACING[this.interlace_pass][5] as base.u32
+    } else {
+        y = this.frame_rect_y0
+    }
+    while y < this.frame_rect_y1 {
+        assert y < 0x00FF_FFFF via "a < b: a < c; c <= b"(c: this.frame_rect_y1)
+        dst = tab.row_u32(y: y)
+        if dst_bytes_per_row1 < dst.length() {
+            dst = dst[.. dst_bytes_per_row1]
+        }
+
+        if 1 > args.workbuf.length() {
+            return "#internal error: inconsistent workbuf length"
+        }
+        filter = args.workbuf[0]
+        args.workbuf = args.workbuf[1 ..]
+        if this.pass_bytes_per_row > args.workbuf.length() {
+            return "#internal error: inconsistent workbuf length"
+        }
+        curr_row = args.workbuf[.. this.pass_bytes_per_row]
+        args.workbuf = args.workbuf[this.pass_bytes_per_row ..]
+
+        if filter == 0 {
+            // No-op.
+        } else if filter == 1 {
+            this.filter_1!(curr: curr_row)
+        } else if filter == 2 {
+            this.filter_2!(curr: curr_row, prev: prev_row)
+        } else if filter == 3 {
+            this.filter_3!(curr: curr_row, prev: prev_row)
+        } else if filter == 4 {
+            this.filter_4!(curr: curr_row, prev: prev_row)
+        } else {
+            return "#bad filter"
+        }
+
+        s = curr_row
+        if (this.chunk_type_array[0] == 'I') {
+            x = INTERLACING[this.interlace_pass][2] as base.u32
+        } else {
+            x = this.frame_rect_x0
+        }
+        if this.depth == 8 {
+            while x < this.frame_rect_x1,
+                    inv y < 0x00FF_FFFF,
+            {
+                assert x < 0x00FF_FFFF via "a < b: a < c; c <= b"(c: this.frame_rect_x1)
+                i = (x as base.u64) * dst_bytes_per_pixel
+                if i <= dst.length() {
+                    if ((this.remap_transparency & 0xFFFF_FFFF) as base.u32) <> 0 {
+                        if this.color_type == 0 {
+                            if 1 <= s.length() {
+                                bits_unpacked[0] = s[0]
+                                bits_unpacked[1] = s[0]
+                                bits_unpacked[2] = s[0]
+                                bits_unpacked[3] = 0xFF
+                                s = s[1 ..]
+                                if ((this.remap_transparency & 0xFFFF_FFFF) as base.u32) == (
+                                        ((bits_unpacked[0] as base.u32) << 0) |
+                                        ((bits_unpacked[1] as base.u32) << 8) |
+                                        ((bits_unpacked[2] as base.u32) << 16) |
+                                        ((bits_unpacked[3] as base.u32) << 24)) {
+                                    bits_unpacked[0] = 0
+                                    bits_unpacked[1] = 0
+                                    bits_unpacked[2] = 0
+                                    bits_unpacked[3] = 0
+                                }
+                                this.swizzler.swizzle_interleaved_from_slice!(
+                                        dst: dst[i ..],
+                                        dst_palette: dst_palette,
+                                        src: bits_unpacked[.. 4])
+                            }
+                        } else {
+                            if 3 <= s.length() {
+                                bits_unpacked[0] = s[2]
+                                bits_unpacked[1] = s[1]
+                                bits_unpacked[2] = s[0]
+                                bits_unpacked[3] = 0xFF
+                                s = s[3 ..]
+                                if ((this.remap_transparency & 0xFFFF_FFFF) as base.u32) == (
+                                        ((bits_unpacked[0] as base.u32) << 0) |
+                                        ((bits_unpacked[1] as base.u32) << 8) |
+                                        ((bits_unpacked[2] as base.u32) << 16) |
+                                        ((bits_unpacked[3] as base.u32) << 24)) {
+                                    bits_unpacked[0] = 0
+                                    bits_unpacked[1] = 0
+                                    bits_unpacked[2] = 0
+                                    bits_unpacked[3] = 0
+                                }
+                                this.swizzler.swizzle_interleaved_from_slice!(
+                                        dst: dst[i ..],
+                                        dst_palette: dst_palette,
+                                        src: bits_unpacked[.. 4])
+                            }
+                        }
+
+                    } else if src_bytes_per_pixel <= s.length() {
+                        this.swizzler.swizzle_interleaved_from_slice!(
+                                dst: dst[i ..],
+                                dst_palette: dst_palette,
+                                src: s[.. src_bytes_per_pixel])
+                        s = s[src_bytes_per_pixel ..]
+                    }
+                }
+                x += (1 as base.u32) << INTERLACING[this.interlace_pass][0]
+            }
+
+        } else if this.depth < 8 {
+            multiplier = 1
+            if this.color_type == 0 {  // Color type 0 means base.PIXEL_FORMAT__Y.
+                multiplier = LOW_BIT_DEPTH_MULTIPLIERS[this.depth]
+            }
+            shift = (8 - this.depth) & 7
+            packs_remaining = 0
+
+            while x < this.frame_rect_x1,
+                    inv y < 0x00FF_FFFF,
+                    inv this.depth < 8,
+            {
+                assert x < 0x00FF_FFFF via "a < b: a < c; c <= b"(c: this.frame_rect_x1)
+                i = (x as base.u64) * dst_bytes_per_pixel
+                if i <= dst.length() {
+                    if (packs_remaining == 0) and (1 <= s.length()) {
+                        packs_remaining = LOW_BIT_DEPTH_NUM_PACKS[this.depth]
+                        bits_packed = s[0]
+                        s = s[1 ..]
+                    }
+                    bits_unpacked[0] = (bits_packed >> shift) ~mod* multiplier
+                    bits_packed = bits_packed ~mod<< this.depth
+                    packs_remaining = packs_remaining ~mod- 1
+
+                    if ((this.remap_transparency & 0xFFFF_FFFF) as base.u32) <> 0 {
+                        bits_unpacked[1] = bits_unpacked[0]
+                        bits_unpacked[2] = bits_unpacked[0]
+                        bits_unpacked[3] = 0xFF
+                        if ((this.remap_transparency & 0xFFFF_FFFF) as base.u32) == (
+                                ((bits_unpacked[0] as base.u32) << 0) |
+                                ((bits_unpacked[1] as base.u32) << 8) |
+                                ((bits_unpacked[2] as base.u32) << 16) |
+                                ((bits_unpacked[3] as base.u32) << 24)) {
+                            bits_unpacked[0] = 0
+                            bits_unpacked[1] = 0
+                            bits_unpacked[2] = 0
+                            bits_unpacked[3] = 0
+                        }
+                        this.swizzler.swizzle_interleaved_from_slice!(
+                                dst: dst[i ..],
+                                dst_palette: dst_palette,
+                                src: bits_unpacked[.. 4])
+
+                    } else {
+                        this.swizzler.swizzle_interleaved_from_slice!(
+                                dst: dst[i ..],
+                                dst_palette: dst_palette,
+                                src: bits_unpacked[.. 1])
+                    }
+                }
+                x += (1 as base.u32) << INTERLACING[this.interlace_pass][0]
+            }
+
+        } else {
+            while x < this.frame_rect_x1,
+                    inv y < 0x00FF_FFFF,
+            {
+                assert x < 0x00FF_FFFF via "a < b: a < c; c <= b"(c: this.frame_rect_x1)
+                i = (x as base.u64) * dst_bytes_per_pixel
+                if i <= dst.length() {
+                    if this.color_type == 0 {
+                        if 2 <= s.length() {
+                            bits_unpacked[0] = s[1]
+                            bits_unpacked[1] = s[0]
+                            bits_unpacked[2] = s[1]
+                            bits_unpacked[3] = s[0]
+                            bits_unpacked[4] = s[1]
+                            bits_unpacked[5] = s[0]
+                            bits_unpacked[6] = 0xFF
+                            bits_unpacked[7] = 0xFF
+                            s = s[2 ..]
+                            if this.remap_transparency == (
+                                    ((bits_unpacked[0] as base.u64) << 0) |
+                                    ((bits_unpacked[1] as base.u64) << 8) |
+                                    ((bits_unpacked[2] as base.u64) << 16) |
+                                    ((bits_unpacked[3] as base.u64) << 24) |
+                                    ((bits_unpacked[4] as base.u64) << 32) |
+                                    ((bits_unpacked[5] as base.u64) << 40) |
+                                    ((bits_unpacked[6] as base.u64) << 48) |
+                                    ((bits_unpacked[7] as base.u64) << 56)) {
+                                bits_unpacked[0] = 0
+                                bits_unpacked[1] = 0
+                                bits_unpacked[2] = 0
+                                bits_unpacked[3] = 0
+                                bits_unpacked[4] = 0
+                                bits_unpacked[5] = 0
+                                bits_unpacked[6] = 0
+                                bits_unpacked[7] = 0
+                            }
+                        }
+
+                    } else if this.color_type == 2 {
+                        if 6 <= s.length() {
+                            bits_unpacked[0] = s[5]
+                            bits_unpacked[1] = s[4]
+                            bits_unpacked[2] = s[3]
+                            bits_unpacked[3] = s[2]
+                            bits_unpacked[4] = s[1]
+                            bits_unpacked[5] = s[0]
+                            bits_unpacked[6] = 0xFF
+                            bits_unpacked[7] = 0xFF
+                            s = s[6 ..]
+                            if this.remap_transparency == (
+                                    ((bits_unpacked[0] as base.u64) << 0) |
+                                    ((bits_unpacked[1] as base.u64) << 8) |
+                                    ((bits_unpacked[2] as base.u64) << 16) |
+                                    ((bits_unpacked[3] as base.u64) << 24) |
+                                    ((bits_unpacked[4] as base.u64) << 32) |
+                                    ((bits_unpacked[5] as base.u64) << 40) |
+                                    ((bits_unpacked[6] as base.u64) << 48) |
+                                    ((bits_unpacked[7] as base.u64) << 56)) {
+                                bits_unpacked[0] = 0
+                                bits_unpacked[1] = 0
+                                bits_unpacked[2] = 0
+                                bits_unpacked[3] = 0
+                                bits_unpacked[4] = 0
+                                bits_unpacked[5] = 0
+                                bits_unpacked[6] = 0
+                                bits_unpacked[7] = 0
+                            }
+                        }
+
+                    } else if this.color_type == 4 {
+                        if 4 <= s.length() {
+                            bits_unpacked[0] = s[1]
+                            bits_unpacked[1] = s[0]
+                            bits_unpacked[2] = s[1]
+                            bits_unpacked[3] = s[0]
+                            bits_unpacked[4] = s[1]
+                            bits_unpacked[5] = s[0]
+                            bits_unpacked[6] = s[3]
+                            bits_unpacked[7] = s[2]
+                            s = s[4 ..]
+                        }
+
+                    } else {
+                        if 8 <= s.length() {
+                            bits_unpacked[0] = s[5]
+                            bits_unpacked[1] = s[4]
+                            bits_unpacked[2] = s[3]
+                            bits_unpacked[3] = s[2]
+                            bits_unpacked[4] = s[1]
+                            bits_unpacked[5] = s[0]
+                            bits_unpacked[6] = s[7]
+                            bits_unpacked[7] = s[6]
+                            s = s[8 ..]
+                        }
+                    }
+
+                    this.swizzler.swizzle_interleaved_from_slice!(
+                            dst: dst[i ..],
+                            dst_palette: dst_palette,
+                            src: bits_unpacked[.. 8])
+                }
+                x += (1 as base.u32) << INTERLACING[this.interlace_pass][0]
+            }
+        }
+
+        prev_row = curr_row
+        y += (1 as base.u32) << INTERLACING[this.interlace_pass][3]
+    }
+
+    return ok
+}

@@ -1,0 +1,8 @@
+[package]
+name    = "bench_rust_jpeg"
+version = "0.0.1"
+authors = ["Nigel Tao <nigeltao@golang.org>"]
+
+[dependencies]
+jpeg-decoder = "0.3"
+rustc_version_runtime = "*"

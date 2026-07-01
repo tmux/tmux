@@ -1,0 +1,87 @@
+// Copyright 2017 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+// --------
+
+// Quirks are discussed in (/doc/note/quirks.md).
+//
+// The base38 encoding of "gif." is 0x0E_A964. Left shifting by 10 gives
+// 0x3AA5_9000.
+pri const QUIRKS_BASE : base.u32 = 0x3AA5_9000
+
+// --------
+
+// When this quirk is enabled, when skipping over frames, the number of frames
+// visited isn't incremented when the last byte of the N'th frame is seen.
+// Instead, it is incremented when the first byte of the N+1'th frame's header
+// is seen. There may be zero or more GIF extensions between the N'th frame's
+// payload and the N+1'th frame's header.
+//
+// For a well-formed GIF, this won't have much effect. For a malformed GIF,
+// this can affect the number of valid frames, if there is an error detected in
+// the extensions between one frame's payload and the next frame's header.
+//
+// Some other GIF decoders don't register the N'th frame as complete until they
+// see the N+1'th frame's header (or the end-of-animation terminator), so that
+// e.g. the API for visiting the N'th frame can also return whether it's the
+// final frame. Enabling this quirk allows for matching that behavior.
+pub const QUIRK_DELAY_NUM_DECODED_FRAMES : base.u32 = 0x3AA5_9000 | 0x00
+
+// When this quirk is enabled, the background color of the first frame is set
+// to black whenever that first frame has a local (frame-specific) palette.
+// That black can be either opaque black or transparent black, depending on
+// whether or not that first frame is opaque: whether that local palette
+// contains a transparent color.
+//
+// This has no effect unless QUIRK_HONOR_BACKGROUND_COLOR is also enabled.
+//
+// There isn't really much of a rationale for this, other than it matches the
+// behavior of another GIF implementation.
+pub const QUIRK_FIRST_FRAME_LOCAL_PALETTE_MEANS_BLACK_BACKGROUND : base.u32 = 0x3AA5_9000 | 0x01
+
+// When this quirk is enabled, the background color is taken from the GIF
+// instead of always being transparent black. If the background color index in
+// the GIF header is non-zero but less than the global palette's size, the
+// global background color is that global palette's entry. Otherwise, it is
+// opaque black. A frame's background color is transparent if the frame palette
+// contains a transparent color. Otherwise, it is the global background color.
+// Note that different frames can have different background colors.
+//
+// Specifically, if the initial frame bounds is smaller than the image bounds,
+// those pixels outside the initial frame bounds are assumed to start as that
+// frame background color. The frame background color should also be used when
+// processing WUFFS_BASE__ANIMATION_DISPOSAL__RESTORE_BACKGROUND. In both
+// cases, the caller of Wuffs, not Wuffs itself, is responsible for filling the
+// pixel buffer with that color.
+pub const QUIRK_HONOR_BACKGROUND_COLOR : base.u32 = 0x3AA5_9000 | 0x02
+
+// When this quirk is enabled, silently ignore e.g. a frame that reports a
+// width and height of 6 pixels each, followed by 50 pixel values. In that
+// case, we process the first 36 pixel values and discard the excess 14.
+pub const QUIRK_IGNORE_TOO_MUCH_PIXEL_DATA : base.u32 = 0x3AA5_9000 | 0x03
+
+// When this quirk is enabled, if the initial frame bounds extends beyond the
+// image bounds, then the image bounds stay unchanged. By default (with this
+// quirk disabled), the image bounds are adjusted to always contain the first
+// frame's bounds (but not necessarily subsequent frame's bounds).
+//
+// For more discussion, see
+// https://github.com/google/wuffs/blob/main/test/data/artificial/gif-frame-out-of-bounds.gif.make-artificial.txt
+pub const QUIRK_IMAGE_BOUNDS_ARE_STRICT : base.u32 = 0x3AA5_9000 | 0x04
+
+// When this quirk is enabled, a frame with zero width or height is rejected
+// during decode_frame (but accepted during decode_frame_config).
+pub const QUIRK_REJECT_EMPTY_FRAME : base.u32 = 0x3AA5_9000 | 0x05
+
+// When this quirk is enabled, a frame with no explicit palette is rejected,
+// instead of implicitly having a palette with every entry being opaque black.
+pub const QUIRK_REJECT_EMPTY_PALETTE : base.u32 = 0x3AA5_9000 | 0x06
+
+pri const QUIRKS_COUNT : base.u32 = 0x07

@@ -1,0 +1,7 @@
+[package]
+name    = "bench_rust_gif_dot_rs"
+version = "0.0.1"
+authors = ["Nigel Tao <nigeltao@golang.org>"]
+
+[dependencies]
+gif     = { git = "https://github.com/Geal/gif.rs" }

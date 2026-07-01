@@ -1,0 +1,251 @@
+// Copyright 2024 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+// --------
+
+// Like std/crc32's x86 SIMD implementation, this is based on Gopal et al.
+// "Fast CRC Computation for Generic Polynomials Using PCLMULQDQ Instruction".
+// and further optimized a la
+// https://github.com/JoernEngel/joernblog/blob/778f0007b9a580e477608691f1aa86369f0efdd2/crc64.c
+
+pri func ecma_hasher.up_x86_sse42!(x: roslice base.u8),
+        choose cpu_arch >= x86_sse42,
+{
+    var s : base.u64
+    var p : roslice base.u8
+
+    var buf : array[48] base.u8
+
+    var util : base.x86_sse42_utility
+    var xa   : base.x86_m128i
+    var xb   : base.x86_m128i
+    var xc   : base.x86_m128i
+    var xd   : base.x86_m128i
+    var xe   : base.x86_m128i
+    var xf   : base.x86_m128i
+    var xg   : base.x86_m128i
+    var xh   : base.x86_m128i
+    var mu1  : base.x86_m128i
+    var mu2  : base.x86_m128i
+    var mu4  : base.x86_m128i
+    var mu8  : base.x86_m128i
+    var mupx : base.x86_m128i
+
+    s = 0xFFFF_FFFF_FFFF_FFFF ^ this.state
+
+    // Align to a 16-byte boundary.
+    while (args.x.length() > 0) and ((15 & args.x.uintptr_low_12_bits()) <> 0) {
+        s = ECMA_TABLE[0][((s & 0xFF) as base.u8) ^ args.x[0]] ^ (s >> 8)
+        args.x = args.x[1 ..]
+    }
+
+    while.chain2 true {{
+    while.chain4 true {{
+    if args.x.length() >= 0x80 {
+        // No-op.
+
+    } else if args.x.length() >= 0x40 {
+        // Set up 4 accumulators.
+        xa = util.make_m128i_slice128(a: args.x[0x00 .. 0x10])._mm_xor_si128(b:
+                util.make_m128i_single_u64(a: s))
+        xb = util.make_m128i_slice128(a: args.x[0x10 .. 0x20])
+        xc = util.make_m128i_slice128(a: args.x[0x20 .. 0x30])
+        xd = util.make_m128i_slice128(a: args.x[0x30 .. 0x40])
+        args.x = args.x[0x40 ..]
+        break.chain4
+
+    } else if args.x.length() >= 0x20 {
+        // Set up 2 accumulators.
+        xa = util.make_m128i_slice128(a: args.x[0x00 .. 0x10])._mm_xor_si128(b:
+                util.make_m128i_single_u64(a: s))
+        xb = util.make_m128i_slice128(a: args.x[0x10 .. 0x20])
+        args.x = args.x[0x20 ..]
+        break.chain2
+
+    } else {
+        // For short inputs, just do a simple loop.
+        iterate (p = args.x)(length: 1, advance: 1, unroll: 1) {
+            s = ECMA_TABLE[0][((s & 0xFF) as base.u8) ^ p[0]] ^ (s >> 8)
+        }
+        this.state = 0xFFFF_FFFF_FFFF_FFFF ^ s
+        return nothing
+    }
+
+    // Set up 8 accumulators.
+    xa = util.make_m128i_slice128(a: args.x[0x00 .. 0x10])._mm_xor_si128(b:
+            util.make_m128i_single_u64(a: s))
+    xb = util.make_m128i_slice128(a: args.x[0x10 .. 0x20])
+    xc = util.make_m128i_slice128(a: args.x[0x20 .. 0x30])
+    xd = util.make_m128i_slice128(a: args.x[0x30 .. 0x40])
+    xe = util.make_m128i_slice128(a: args.x[0x40 .. 0x50])
+    xf = util.make_m128i_slice128(a: args.x[0x50 .. 0x60])
+    xg = util.make_m128i_slice128(a: args.x[0x60 .. 0x70])
+    xh = util.make_m128i_slice128(a: args.x[0x70 .. 0x80])
+    args.x = args.x[0x80 ..]
+
+    // Main loop.
+    mu8 = util.make_m128i_slice128(a: ECMA_X86_SSE42_FOLD8[.. 16])
+    while args.x.length() >= 0x80 {
+        xa = xa._mm_clmulepi64_si128(b: mu8, imm8: 0x00)._mm_xor_si128(b:
+                xa._mm_clmulepi64_si128(b: mu8, imm8: 0x11))._mm_xor_si128(b:
+                util.make_m128i_slice128(a: args.x[0x00 .. 0x10]))
+        xb = xb._mm_clmulepi64_si128(b: mu8, imm8: 0x00)._mm_xor_si128(b:
+                xb._mm_clmulepi64_si128(b: mu8, imm8: 0x11))._mm_xor_si128(b:
+                util.make_m128i_slice128(a: args.x[0x10 .. 0x20]))
+        xc = xc._mm_clmulepi64_si128(b: mu8, imm8: 0x00)._mm_xor_si128(b:
+                xc._mm_clmulepi64_si128(b: mu8, imm8: 0x11))._mm_xor_si128(b:
+                util.make_m128i_slice128(a: args.x[0x20 .. 0x30]))
+        xd = xd._mm_clmulepi64_si128(b: mu8, imm8: 0x00)._mm_xor_si128(b:
+                xd._mm_clmulepi64_si128(b: mu8, imm8: 0x11))._mm_xor_si128(b:
+                util.make_m128i_slice128(a: args.x[0x30 .. 0x40]))
+        xe = xe._mm_clmulepi64_si128(b: mu8, imm8: 0x00)._mm_xor_si128(b:
+                xe._mm_clmulepi64_si128(b: mu8, imm8: 0x11))._mm_xor_si128(b:
+                util.make_m128i_slice128(a: args.x[0x40 .. 0x50]))
+        xf = xf._mm_clmulepi64_si128(b: mu8, imm8: 0x00)._mm_xor_si128(b:
+                xf._mm_clmulepi64_si128(b: mu8, imm8: 0x11))._mm_xor_si128(b:
+                util.make_m128i_slice128(a: args.x[0x50 .. 0x60]))
+        xg = xg._mm_clmulepi64_si128(b: mu8, imm8: 0x00)._mm_xor_si128(b:
+                xg._mm_clmulepi64_si128(b: mu8, imm8: 0x11))._mm_xor_si128(b:
+                util.make_m128i_slice128(a: args.x[0x60 .. 0x70]))
+        xh = xh._mm_clmulepi64_si128(b: mu8, imm8: 0x00)._mm_xor_si128(b:
+                xh._mm_clmulepi64_si128(b: mu8, imm8: 0x11))._mm_xor_si128(b:
+                util.make_m128i_slice128(a: args.x[0x70 .. 0x80]))
+        args.x = args.x[0x80 ..]
+    }
+
+    // Reduce 8 chains down to 4.
+    mu4 = util.make_m128i_slice128(a: ECMA_X86_SSE42_FOLD4[.. 16])
+    xa = xa._mm_clmulepi64_si128(b: mu4, imm8: 0x00)._mm_xor_si128(b:
+            xa._mm_clmulepi64_si128(b: mu4, imm8: 0x11))._mm_xor_si128(b:
+            xe)
+    xb = xb._mm_clmulepi64_si128(b: mu4, imm8: 0x00)._mm_xor_si128(b:
+            xb._mm_clmulepi64_si128(b: mu4, imm8: 0x11))._mm_xor_si128(b:
+            xf)
+    xc = xc._mm_clmulepi64_si128(b: mu4, imm8: 0x00)._mm_xor_si128(b:
+            xc._mm_clmulepi64_si128(b: mu4, imm8: 0x11))._mm_xor_si128(b:
+            xg)
+    xd = xd._mm_clmulepi64_si128(b: mu4, imm8: 0x00)._mm_xor_si128(b:
+            xd._mm_clmulepi64_si128(b: mu4, imm8: 0x11))._mm_xor_si128(b:
+            xh)
+    if args.x.length() > 0x40 {
+        xa = xa._mm_clmulepi64_si128(b: mu4, imm8: 0x00)._mm_xor_si128(b:
+                xa._mm_clmulepi64_si128(b: mu4, imm8: 0x11))._mm_xor_si128(b:
+                util.make_m128i_slice128(a: args.x[0x00 .. 0x10]))
+        xb = xb._mm_clmulepi64_si128(b: mu4, imm8: 0x00)._mm_xor_si128(b:
+                xb._mm_clmulepi64_si128(b: mu4, imm8: 0x11))._mm_xor_si128(b:
+                util.make_m128i_slice128(a: args.x[0x10 .. 0x20]))
+        xc = xc._mm_clmulepi64_si128(b: mu4, imm8: 0x00)._mm_xor_si128(b:
+                xc._mm_clmulepi64_si128(b: mu4, imm8: 0x11))._mm_xor_si128(b:
+                util.make_m128i_slice128(a: args.x[0x20 .. 0x30]))
+        xd = xd._mm_clmulepi64_si128(b: mu4, imm8: 0x00)._mm_xor_si128(b:
+                xd._mm_clmulepi64_si128(b: mu4, imm8: 0x11))._mm_xor_si128(b:
+                util.make_m128i_slice128(a: args.x[0x30 .. 0x40]))
+        args.x = args.x[0x40 ..]
+    }
+
+    break.chain4
+    }}.chain4
+    // Reduce 4 chains down to 2.
+    mu2 = util.make_m128i_slice128(a: ECMA_X86_SSE42_FOLD2[.. 16])
+    xa = xa._mm_clmulepi64_si128(b: mu2, imm8: 0x00)._mm_xor_si128(b:
+            xa._mm_clmulepi64_si128(b: mu2, imm8: 0x11))._mm_xor_si128(b:
+            xc)
+    xb = xb._mm_clmulepi64_si128(b: mu2, imm8: 0x00)._mm_xor_si128(b:
+            xb._mm_clmulepi64_si128(b: mu2, imm8: 0x11))._mm_xor_si128(b:
+            xd)
+    if args.x.length() > 0x20 {
+        xa = xa._mm_clmulepi64_si128(b: mu2, imm8: 0x00)._mm_xor_si128(b:
+                xa._mm_clmulepi64_si128(b: mu2, imm8: 0x11))._mm_xor_si128(b:
+                util.make_m128i_slice128(a: args.x[0x00 .. 0x10]))
+        xb = xb._mm_clmulepi64_si128(b: mu2, imm8: 0x00)._mm_xor_si128(b:
+                xb._mm_clmulepi64_si128(b: mu2, imm8: 0x11))._mm_xor_si128(b:
+                util.make_m128i_slice128(a: args.x[0x10 .. 0x20]))
+        args.x = args.x[0x20 ..]
+    }
+
+    break.chain2
+    }}.chain2
+    // Reduce 2 chains down to 1.
+    mu1 = util.make_m128i_slice128(a: ECMA_X86_SSE42_FOLD1[.. 16])
+    xa = xa._mm_clmulepi64_si128(b: mu1, imm8: 0x00)._mm_xor_si128(b:
+            xa._mm_clmulepi64_si128(b: mu1, imm8: 0x11))._mm_xor_si128(b:
+            xb)
+    if args.x.length() > 24 {
+        xa = xa._mm_clmulepi64_si128(b: mu1, imm8: 0x00)._mm_xor_si128(b:
+                xa._mm_clmulepi64_si128(b: mu1, imm8: 0x11))._mm_xor_si128(b:
+                util.make_m128i_slice128(a: args.x[0x00 .. 0x10]))
+        args.x = args.x[0x10 ..]
+        if args.x.length() > 24 {
+            return nothing  // Unreachable.
+        }
+    }
+    assert args.x.length() <= 24
+
+    // Copy our accumulator xa and the remaining data to buf, a 48-byte buffer.
+    // The buffer includes the implicitly appended 8 bytes for the CRC.
+    //
+    //   | 0-padding  | xa       | args.x    | 0-padding |
+    //   | 0-24 bytes | 16 bytes | 0-24 bytes| 8 bytes   |
+    //
+    assert (24 - args.x.length()) <= ((24 - args.x.length()) + 16) via "a <= (a + b): 0 <= b"()
+    xa.store_slice128!(a: buf[24 - args.x.length() .. (24 - args.x.length()) + 16])
+    buf[(24 - args.x.length()) + 16 ..].copy_from_slice!(s: args.x)
+
+    // Reduce the 48-byte buffer down to a 16-byte (128-bit) accumulator.
+    mu2 = util.make_m128i_slice128(a: ECMA_X86_SSE42_FOLD2[.. 16])
+    xa = util.make_m128i_slice128(a: buf[0x00 .. 0x10])
+    xb = util.make_m128i_slice128(a: buf[0x10 .. 0x20])
+    xc = util.make_m128i_slice128(a: buf[0x20 .. 0x30])
+    xd = xa._mm_clmulepi64_si128(b: mu2, imm8: 0x00)._mm_xor_si128(b:
+            xa._mm_clmulepi64_si128(b: mu2, imm8: 0x11))
+    xe = xb._mm_clmulepi64_si128(b: mu1, imm8: 0x00)._mm_xor_si128(b:
+            xb._mm_clmulepi64_si128(b: mu1, imm8: 0x11))
+    xa = xd._mm_xor_si128(b: xe._mm_xor_si128(b: xc))
+
+    // Reduce 128-bit to 64-bit via Barrett reduction.
+    mupx = util.make_m128i_slice128(a: ECMA_X86_SSE42_MUPX[.. 16])
+    xb = xa._mm_clmulepi64_si128(b: mupx, imm8: 0x00)
+    xc = xb._mm_clmulepi64_si128(b: mupx, imm8: 0x10)
+    s = xc._mm_xor_si128(b: xb._mm_slli_si128(imm8: 8)).
+            _mm_xor_si128(b: xa)._mm_extract_epi64(imm8: 1)
+
+    this.state = 0xFFFF_FFFF_FFFF_FFFF ^ s
+}
+
+// These constants are reproduced by
+// script/print-crc64-x86-sse42-magic-numbers.go
+//
+// The rkN names match the numbers at
+// https://github.com/intel/isa-l/blob/7b30857e20b84e5afab1a28291189b9dc571110d/crc/crc64_ecma_refl_by16_10.asm#L33-L56
+
+pri const ECMA_X86_SSE42_FOLD1 : roarray[16] base.u8 = [
+        0xE4, 0x3A, 0x39, 0xCA, 0x97, 0xD4, 0x5D, 0xE0,  // fold1a' = 0xE05D_D497_CA39_3AE4 = rk2
+        0x40, 0x5F, 0x87, 0xC7, 0xAF, 0x95, 0xBE, 0xDA,  // fold1b' = 0xDABE_95AF_C787_5F40 = rk1
+]
+
+pri const ECMA_X86_SSE42_FOLD2 : roarray[16] base.u8 = [
+        0x44, 0xFA, 0x9E, 0x8A, 0x00, 0x5B, 0x09, 0x60,  // fold2a' = 0x6009_5B00_8A9E_FA44 = rk20
+        0x51, 0xAF, 0xE1, 0x0F, 0xA3, 0x53, 0xE6, 0x3B,  // fold2b' = 0x3BE6_53A3_0FE1_AF51 = rk19
+]
+
+pri const ECMA_X86_SSE42_FOLD4 : roarray[16] base.u8 = [
+        0xF3, 0x41, 0xD4, 0x9D, 0xBB, 0xEF, 0xE3, 0x6A,  // fold4a' = 0x6AE3_EFBB_9DD4_41F3 = rk16
+        0xF4, 0x2D, 0x84, 0xA7, 0x54, 0x60, 0x1F, 0x08,  // fold4b' = 0x081F_6054_A784_2DF4 = rk15
+]
+
+pri const ECMA_X86_SSE42_FOLD8 : roarray[16] base.u8 = [
+        0x00, 0x10, 0xCC, 0x4F, 0x1D, 0xD7, 0x57, 0x87,  // fold8a' = 0x8757_D71D_4FCC_1000 = rk4
+        0x40, 0xE7, 0x3D, 0xF7, 0x2A, 0x6B, 0xD8, 0xD7,  // fold8b' = 0xD7D8_6B2A_F73D_E740 = rk3
+]
+
+pri const ECMA_X86_SSE42_MUPX : roarray[16] base.u8 = [
+        0xD5, 0x63, 0x29, 0x17, 0x6C, 0x46, 0x3E, 0x9C,  // μ'  = 0x9C3E_466C_1729_63D5 = rk7
+        0x85, 0x1E, 0x0E, 0xAF, 0x2B, 0xAF, 0xD8, 0x92,  // Px' = 0x92D8_AF2B_AF0E_1E85 = rk8
+]

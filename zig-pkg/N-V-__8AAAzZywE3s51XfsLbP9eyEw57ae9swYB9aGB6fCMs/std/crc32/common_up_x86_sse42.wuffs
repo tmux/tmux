@@ -1,0 +1,150 @@
+// Copyright 2021 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pri func ieee_hasher.up_x86_sse42!(x: roslice base.u8),
+        choose cpu_arch >= x86_sse42,
+{
+    var s : base.u32
+
+    var util : base.x86_sse42_utility
+    var kk   : base.x86_m128i
+    var x0   : base.x86_m128i
+    var x1   : base.x86_m128i
+    var x2   : base.x86_m128i
+    var x3   : base.x86_m128i
+    var x4   : base.x86_m128i
+    var x5   : base.x86_m128i
+    var x6   : base.x86_m128i
+    var x7   : base.x86_m128i
+    var y0   : base.x86_m128i
+    var y1   : base.x86_m128i
+    var y2   : base.x86_m128i
+    var y3   : base.x86_m128i
+    var y4   : base.x86_m128i
+    var y5   : base.x86_m128i
+    var y6   : base.x86_m128i
+    var y7   : base.x86_m128i
+
+    s = 0xFFFF_FFFF ^ this.state
+
+    // Align to a 16-byte boundary.
+    while (args.x.length() > 0) and ((15 & args.x.uintptr_low_12_bits()) <> 0) {
+        s = IEEE_TABLE[0][((s & 0xFF) as base.u8) ^ args.x[0]] ^ (s >> 8)
+        args.x = args.x[1 ..]
+    }
+
+    if args.x.length() >= 128 {
+        // BEGIN script/print-crc32-x86-sse42-code.go generated code.
+        x0 = util.make_m128i_slice128(a: args.x[0x00 .. 0x10])
+        x1 = util.make_m128i_slice128(a: args.x[0x10 .. 0x20])
+        x2 = util.make_m128i_slice128(a: args.x[0x20 .. 0x30])
+        x3 = util.make_m128i_slice128(a: args.x[0x30 .. 0x40])
+        x4 = util.make_m128i_slice128(a: args.x[0x40 .. 0x50])
+        x5 = util.make_m128i_slice128(a: args.x[0x50 .. 0x60])
+        x6 = util.make_m128i_slice128(a: args.x[0x60 .. 0x70])
+        x7 = util.make_m128i_slice128(a: args.x[0x70 .. 0x80])
+        kk = util.make_m128i_multiple_u32(a00: 0x33FF_F533, a01: 0, a02: 0x910E_EEC1, a03: 0)
+        x0 = x0._mm_xor_si128(b: util.make_m128i_single_u32(a: s))
+        args.x = args.x[128 ..]
+        while args.x.length() >= 128 {
+            y0 = x0._mm_clmulepi64_si128(b: kk, imm8: 0x00)
+            x0 = x0._mm_clmulepi64_si128(b: kk, imm8: 0x11)
+            y1 = x1._mm_clmulepi64_si128(b: kk, imm8: 0x00)
+            x1 = x1._mm_clmulepi64_si128(b: kk, imm8: 0x11)
+            y2 = x2._mm_clmulepi64_si128(b: kk, imm8: 0x00)
+            x2 = x2._mm_clmulepi64_si128(b: kk, imm8: 0x11)
+            y3 = x3._mm_clmulepi64_si128(b: kk, imm8: 0x00)
+            x3 = x3._mm_clmulepi64_si128(b: kk, imm8: 0x11)
+            y4 = x4._mm_clmulepi64_si128(b: kk, imm8: 0x00)
+            x4 = x4._mm_clmulepi64_si128(b: kk, imm8: 0x11)
+            y5 = x5._mm_clmulepi64_si128(b: kk, imm8: 0x00)
+            x5 = x5._mm_clmulepi64_si128(b: kk, imm8: 0x11)
+            y6 = x6._mm_clmulepi64_si128(b: kk, imm8: 0x00)
+            x6 = x6._mm_clmulepi64_si128(b: kk, imm8: 0x11)
+            y7 = x7._mm_clmulepi64_si128(b: kk, imm8: 0x00)
+            x7 = x7._mm_clmulepi64_si128(b: kk, imm8: 0x11)
+            y0 = y0._mm_xor_si128(b: util.make_m128i_slice128(a: args.x[0x00 .. 0x10]))
+            x0 = x0._mm_xor_si128(b: y0)
+            y1 = y1._mm_xor_si128(b: util.make_m128i_slice128(a: args.x[0x10 .. 0x20]))
+            x1 = x1._mm_xor_si128(b: y1)
+            y2 = y2._mm_xor_si128(b: util.make_m128i_slice128(a: args.x[0x20 .. 0x30]))
+            x2 = x2._mm_xor_si128(b: y2)
+            y3 = y3._mm_xor_si128(b: util.make_m128i_slice128(a: args.x[0x30 .. 0x40]))
+            x3 = x3._mm_xor_si128(b: y3)
+            y4 = y4._mm_xor_si128(b: util.make_m128i_slice128(a: args.x[0x40 .. 0x50]))
+            x4 = x4._mm_xor_si128(b: y4)
+            y5 = y5._mm_xor_si128(b: util.make_m128i_slice128(a: args.x[0x50 .. 0x60]))
+            x5 = x5._mm_xor_si128(b: y5)
+            y6 = y6._mm_xor_si128(b: util.make_m128i_slice128(a: args.x[0x60 .. 0x70]))
+            x6 = x6._mm_xor_si128(b: y6)
+            y7 = y7._mm_xor_si128(b: util.make_m128i_slice128(a: args.x[0x70 .. 0x80]))
+            x7 = x7._mm_xor_si128(b: y7)
+            args.x = args.x[128 ..]
+        }
+        kk = util.make_m128i_multiple_u32(a00: 0xAE68_9191, a01: 0, a02: 0xCCAA_009E, a03: 0)
+        y0 = x0._mm_clmulepi64_si128(b: kk, imm8: 0x00)
+        x0 = x0._mm_clmulepi64_si128(b: kk, imm8: 0x11)
+        y2 = x2._mm_clmulepi64_si128(b: kk, imm8: 0x00)
+        x2 = x2._mm_clmulepi64_si128(b: kk, imm8: 0x11)
+        y4 = x4._mm_clmulepi64_si128(b: kk, imm8: 0x00)
+        x4 = x4._mm_clmulepi64_si128(b: kk, imm8: 0x11)
+        y6 = x6._mm_clmulepi64_si128(b: kk, imm8: 0x00)
+        x6 = x6._mm_clmulepi64_si128(b: kk, imm8: 0x11)
+        y0 = y0._mm_xor_si128(b: x1)
+        x0 = x0._mm_xor_si128(b: y0)
+        y2 = y2._mm_xor_si128(b: x3)
+        x2 = x2._mm_xor_si128(b: y2)
+        y4 = y4._mm_xor_si128(b: x5)
+        x4 = x4._mm_xor_si128(b: y4)
+        y6 = y6._mm_xor_si128(b: x7)
+        x6 = x6._mm_xor_si128(b: y6)
+        kk = util.make_m128i_multiple_u32(a00: 0xF1DA_05AA, a01: 0, a02: 0x8125_6527, a03: 0)
+        y0 = x0._mm_clmulepi64_si128(b: kk, imm8: 0x00)
+        x0 = x0._mm_clmulepi64_si128(b: kk, imm8: 0x11)
+        y4 = x4._mm_clmulepi64_si128(b: kk, imm8: 0x00)
+        x4 = x4._mm_clmulepi64_si128(b: kk, imm8: 0x11)
+        y0 = y0._mm_xor_si128(b: x2)
+        x0 = x0._mm_xor_si128(b: y0)
+        y4 = y4._mm_xor_si128(b: x6)
+        x4 = x4._mm_xor_si128(b: y4)
+        kk = util.make_m128i_multiple_u32(a00: 0x8F35_2D95, a01: 0, a02: 0x1D95_13D7, a03: 0)
+        y0 = x0._mm_clmulepi64_si128(b: kk, imm8: 0x00)
+        x0 = x0._mm_clmulepi64_si128(b: kk, imm8: 0x11)
+        y0 = y0._mm_xor_si128(b: x4)
+        x0 = x0._mm_xor_si128(b: y0)
+        kk = util.make_m128i_multiple_u32(a00: 0xF701_1641, a01: 0xB4E5_B025, a02: 0xDB71_0641, a03: 1)
+        s = util.make_m128i_single_u64(a: x0._mm_extract_epi64(imm8: 0)).
+                _mm_clmulepi64_si128(b: kk, imm8: 0x00).
+                _mm_clmulepi64_si128(b: kk, imm8: 0x10).
+                _mm_extract_epi32(imm8: 2)
+        kk = util.make_m128i_multiple_u32(a00: 0xF701_1641, a01: 0xB4E5_B025, a02: 0xDB71_0641, a03: 1)
+        s = util.make_m128i_single_u64(a: x0._mm_extract_epi64(imm8: 1) ^ (s as base.u64)).
+                _mm_clmulepi64_si128(b: kk, imm8: 0x00).
+                _mm_clmulepi64_si128(b: kk, imm8: 0x10).
+                _mm_extract_epi32(imm8: 2)
+        // END   script/print-crc32-x86-sse42-code.go generated code.
+    }
+
+    while args.x.length() >= 8 {
+        kk = util.make_m128i_multiple_u32(a00: 0xF701_1641, a01: 0xB4E5_B025, a02: 0xDB71_0641, a03: 1)
+        s = util.make_m128i_single_u64(a: args.x.peek_u64le() ^ (s as base.u64)).
+                _mm_clmulepi64_si128(b: kk, imm8: 0x00).
+                _mm_clmulepi64_si128(b: kk, imm8: 0x10).
+                _mm_extract_epi32(imm8: 2)
+        args.x = args.x[8 ..]
+    }
+
+    while args.x.length() > 0 {
+        s = IEEE_TABLE[0][((s & 0xFF) as base.u8) ^ args.x[0]] ^ (s >> 8)
+        args.x = args.x[1 ..]
+    }
+
+    this.state = 0xFFFF_FFFF ^ s
+}

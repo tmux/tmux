@@ -1,0 +1,8 @@
+[package]
+name    = "bench_rust_gif"
+version = "0.0.1"
+authors = ["Nigel Tao <nigeltao@golang.org>"]
+
+[dependencies]
+gif    = "0.11"
+rustc_version_runtime = "*"

@@ -1,0 +1,257 @@
+// Copyright 2017 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pri func decoder.decode_huffman_slow?(dst: base.io_writer, src: base.io_reader) {
+    var bits               : base.u32
+    var n_bits             : base.u32
+    var table_entry        : base.u32
+    var table_entry_n_bits : base.u32[..= 15]
+    var lmask              : base.u32[..= 511]
+    var dmask              : base.u32[..= 511]
+    var b0                 : base.u32[..= 255]
+    var redir_top          : base.u32[..= 0xFFFF]
+    var redir_mask         : base.u32[..= 0x7FFF]
+    var b1                 : base.u32[..= 255]
+    var length             : base.u32[..= 258]
+    var b2                 : base.u32[..= 255]
+    var b3                 : base.u32[..= 255]
+    var b4                 : base.u32[..= 255]
+    var dist_minus_1       : base.u32[..= 0x7FFF]
+    var b5                 : base.u32[..= 255]
+    var n_copied           : base.u32
+    var hlen               : base.u32[..= 0x7FFF]
+    var hdist              : base.u32
+
+    // When editing this function, consider making the equivalent change to the
+    // decode_huffman_fastxx functions. Keep the diff between the two
+    // decode_huffman_*.wuffs files as small as possible, while retaining both
+    // correctness and performance.
+
+    if (this.n_bits >= 8) or ((this.bits >> (this.n_bits & 7)) <> 0) {
+        return "#internal error: inconsistent n_bits"
+    }
+
+    bits = this.bits
+    n_bits = this.n_bits
+
+    lmask = ((1 as base.u32) << this.n_huffs_bits[0]) - 1
+    dmask = ((1 as base.u32) << this.n_huffs_bits[1]) - 1
+
+    while.loop not coroutine_resumed {
+        // Decode an lcode symbol from H-L.
+        while true {
+            table_entry = this.huffs[0][bits & lmask]
+            table_entry_n_bits = table_entry & 0x0F
+            if n_bits >= table_entry_n_bits {
+                bits >>= table_entry_n_bits
+                n_bits -= table_entry_n_bits
+                break
+            }
+            assert n_bits < 15 via "a < b: a < c; c <= b"(c: table_entry_n_bits)
+            b0 = args.src.read_u8_as_u32?()
+            bits |= b0 << n_bits
+            n_bits += 8
+        }
+
+        if (table_entry >> 31) <> 0 {
+            // Literal.
+            args.dst.write_u8?(a: ((table_entry >> 8) & 0xFF) as base.u8)
+            continue.loop
+        } else if (table_entry >> 30) <> 0 {
+            // No-op; code continues past the if-else chain.
+        } else if (table_entry >> 29) <> 0 {
+            // End of block.
+            this.end_of_block = true
+            break.loop
+        } else if (table_entry >> 28) <> 0 {
+            // Redirect.
+            redir_top = (table_entry >> 8) & 0xFFFF
+            redir_mask = ((1 as base.u32) << ((table_entry >> 4) & 0x0F)) - 1
+            while true {
+                table_entry = this.huffs[0][(redir_top + (bits & redir_mask)) & HUFFS_TABLE_MASK]
+                table_entry_n_bits = table_entry & 0x0F
+                if n_bits >= table_entry_n_bits {
+                    bits >>= table_entry_n_bits
+                    n_bits -= table_entry_n_bits
+                    break
+                }
+                assert n_bits < 15 via "a < b: a < c; c <= b"(c: table_entry_n_bits)
+                b1 = args.src.read_u8_as_u32?()
+                bits |= b1 << n_bits
+                n_bits += 8
+            }
+
+            if (table_entry >> 31) <> 0 {
+                // Literal.
+                args.dst.write_u8?(a: ((table_entry >> 8) & 0xFF) as base.u8)
+                continue.loop
+            } else if (table_entry >> 30) <> 0 {
+                // No-op; code continues past the if-else chain.
+            } else if (table_entry >> 29) <> 0 {
+                // End of block.
+                this.end_of_block = true
+                break.loop
+            } else if (table_entry >> 28) <> 0 {
+                return "#internal error: inconsistent Huffman decoder state"
+            } else if (table_entry >> 27) <> 0 {
+                return "#bad Huffman code"
+            } else {
+                return "#internal error: inconsistent Huffman decoder state"
+            }
+
+        } else if (table_entry >> 27) <> 0 {
+            return "#bad Huffman code"
+        } else {
+            return "#internal error: inconsistent Huffman decoder state"
+        }
+
+        // length = base_number_minus_3 + 3 + extra_bits.
+        //
+        // The -3 is from the bias in script/print-deflate-magic-numbers.go.
+        // That bias makes the "& 0xFF" 1 and 15-ish lines below correct.
+        length = ((table_entry >> 8) & 0xFF) + 3
+        table_entry_n_bits = (table_entry >> 4) & 0x0F
+        if table_entry_n_bits > 0 {
+            while n_bits < table_entry_n_bits,
+                    post n_bits >= table_entry_n_bits,
+            {
+                assert n_bits < 15 via "a < b: a < c; c <= b"(c: table_entry_n_bits)
+                b2 = args.src.read_u8_as_u32?()
+                bits |= b2 << n_bits
+                n_bits += 8
+            }
+            // The "+ 253" is the same as "- 3", after the "& 0xFF", but the
+            // plus form won't require an underflow check.
+            length = ((length + 253 + bits.low_bits(n: table_entry_n_bits)) & 0xFF) + 3
+            bits >>= table_entry_n_bits
+            n_bits -= table_entry_n_bits
+        }
+
+        // Decode a dcode symbol from H-D.
+        while true {
+            table_entry = this.huffs[1][bits & dmask]
+            table_entry_n_bits = table_entry & 15
+            if n_bits >= table_entry_n_bits {
+                bits >>= table_entry_n_bits
+                n_bits -= table_entry_n_bits
+                break
+            }
+            assert n_bits < 15 via "a < b: a < c; c <= b"(c: table_entry_n_bits)
+            b3 = args.src.read_u8_as_u32?()
+            bits |= b3 << n_bits
+            n_bits += 8
+        }
+        // Check for a redirect.
+        if (table_entry >> 28) == 1 {
+            redir_top = (table_entry >> 8) & 0xFFFF
+            redir_mask = ((1 as base.u32) << ((table_entry >> 4) & 0x0F)) - 1
+            while true {
+                table_entry = this.huffs[1][(redir_top + (bits & redir_mask)) & HUFFS_TABLE_MASK]
+                table_entry_n_bits = table_entry & 0x0F
+                if n_bits >= table_entry_n_bits {
+                    bits >>= table_entry_n_bits
+                    n_bits -= table_entry_n_bits
+                    break
+                }
+                assert n_bits < 15 via "a < b: a < c; c <= b"(c: table_entry_n_bits)
+                b4 = args.src.read_u8_as_u32?()
+                bits |= b4 << n_bits
+                n_bits += 8
+            }
+        }
+
+        // For H-D, all symbols should be base_number + extra_bits.
+        if (table_entry >> 24) <> 0x40 {
+            if (table_entry >> 24) == 0x08 {
+                return "#bad Huffman code"
+            }
+            return "#internal error: inconsistent Huffman decoder state"
+        }
+
+        // dist_minus_1 = base_number_minus_1 + extra_bits.
+        // distance     = dist_minus_1 + 1.
+        //
+        // The -1 is from the bias in script/print-deflate-magic-numbers.go.
+        // That bias makes the "& 0x7FFF" 2 and 15-ish lines below correct and
+        // undoing that bias makes proving (dist_minus_1 + 1) > 0 trivial.
+        dist_minus_1 = (table_entry >> 8) & 0x7FFF
+        table_entry_n_bits = (table_entry >> 4) & 0x0F
+        if table_entry_n_bits > 0 {
+            while n_bits < table_entry_n_bits,
+                    post n_bits >= table_entry_n_bits,
+            {
+                assert n_bits < 15 via "a < b: a < c; c <= b"(c: table_entry_n_bits)
+                b5 = args.src.read_u8_as_u32?()
+                bits |= b5 << n_bits
+                n_bits += 8
+            }
+            dist_minus_1 = (dist_minus_1 + bits.low_bits(n: table_entry_n_bits)) & 0x7FFF
+            bits >>= table_entry_n_bits
+            n_bits -= table_entry_n_bits
+        }
+
+        while.inner true {
+            // Copy from this.history.
+            if ((dist_minus_1 + 1) as base.u64) > args.dst.history_length() {
+                // Set (hlen, hdist) to be the length-distance pair to copy
+                // from this.history.
+                hdist = (((dist_minus_1 + 1) as base.u64) - args.dst.history_length()) as base.u32
+                if hdist < length {
+                    assert hdist < 0x8000 via "a < b: a < c; c <= b"(c: length)
+                    hlen = hdist
+                    assert hlen <= length via "a <= b: a == c; c <= b"(c: hdist)
+                } else {
+                    hlen = length
+                    assert hlen <= length via "a <= b: a == b"()
+                }
+
+                hdist ~mod+= ((this.transformed_history_count ~mod- args.dst.history_position()) & 0xFFFF_FFFF) as base.u32
+                if this.history_index < hdist {
+                    return "#bad distance"
+                }
+
+                // Copy from this.history[(this.history_index - hdist) ..].
+                n_copied = args.dst.limited_copy_u32_from_slice!(
+                        up_to: hlen, s: this.history[(this.history_index - hdist) & 0x7FFF ..])
+                if n_copied < hlen {
+                    assert n_copied < length via "a < b: a < c; c <= b"(c: hlen)
+                    assert length > n_copied via "a > b: b < a"()
+                    length -= n_copied
+                    yield? base."$short write"
+                    continue.inner
+                }
+                assert length >= hlen via "a >= b: b <= a"()
+                length -= hlen
+                if length == 0 {
+                    // No need to copy from args.dst.
+                    continue.loop
+                }
+            }
+
+            // Copy from args.dst.
+            n_copied = args.dst.limited_copy_u32_from_history!(
+                    up_to: length, distance: (dist_minus_1 + 1))
+            if length <= n_copied {
+                continue.loop
+            }
+            length -= n_copied
+            yield? base."$short write"
+        }.inner
+    }.loop
+
+    // TODO: "assert n_bits < 8"? What about (bits >> n_bits)?
+
+    this.bits = bits
+    this.n_bits = n_bits
+
+    if (this.n_bits >= 8) or ((this.bits >> (this.n_bits & 7)) <> 0) {
+        return "#internal error: inconsistent n_bits"
+    }
+}

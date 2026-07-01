@@ -1,0 +1,59 @@
+// Copyright 2017 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pub status "#bad LZW code"
+pub status "#bad extension label"
+pub status "#bad frame size"
+pub status "#bad graphic control"
+pub status "#bad header"
+pub status "#bad literal width"
+pub status "#bad palette"
+pub status "#truncated input"
+
+pri status "#internal error: inconsistent I/O"
+
+pub const DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE : base.u64 = 0
+
+// See the spec appendix E "Interlaced Images" on page 29. The first element
+// represents either that the frame was non-interlaced, or that all interlace
+// stages are complete. Otherwise, the four interlace stages are elements 4, 3,
+// 2 and 1 in descending order. For example, the start and delta for the first
+// interlace stage is 0 and 8, for the second interlace stage is 4 and 8, etc.
+// For interlaced frames, the decoder.interlace field starts at 4 and is
+// decremented towards 0.
+//
+// INTERLACE_START[0] is a special case. For non-interlaced frames, that
+// element is never accessed. For interlaced frames, that element is only
+// accessed after all interlace stages are complete. Being the maximum base.u32
+// value means that, after all interlace stages are complete, dst_y will be set
+// to that maximum value (and therefore outside the frame rect).
+pri const INTERLACE_START : roarray[5] base.u32 = [0xFFFF_FFFF, 1, 2, 4, 0]
+pri const INTERLACE_DELTA : roarray[5] base.u8 = [1, 2, 4, 8, 8]
+pri const INTERLACE_COUNT : roarray[5] base.u8 = [0, 1, 2, 4, 8]
+
+// ANIMEXTS1DOT0 is "ANIMEXTS1.0" as bytes.
+pri const ANIMEXTS1DOT0 : roarray[11] base.u8 = [
+        0x41, 0x4E, 0x49, 0x4D, 0x45, 0x58, 0x54, 0x53, 0x31, 0x2E, 0x30,
+]
+
+// NETSCAPE2DOT0 is "NETSCAPE2.0" as bytes.
+pri const NETSCAPE2DOT0 : roarray[11] base.u8 = [
+        0x4E, 0x45, 0x54, 0x53, 0x43, 0x41, 0x50, 0x45, 0x32, 0x2E, 0x30,
+]
+
+// ICCRGBG1012 Is "ICCRGBG1012" as bytes.
+pri const ICCRGBG1012 : roarray[11] base.u8 = [
+        0x49, 0x43, 0x43, 0x52, 0x47, 0x42, 0x47, 0x31, 0x30, 0x31, 0x32,
+]
+
+// XMPDATAXMP IS "XMP DataXMP" as bytes.
+pri const XMPDATAXMP : roarray[11] base.u8 = [
+        0x58, 0x4D, 0x50, 0x20, 0x44, 0x61, 0x74, 0x61, 0x58, 0x4D, 0x50,
+]

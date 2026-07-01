@@ -1,0 +1,930 @@
+// Copyright 2023 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pri func decoder.decode_idct_x86_avx2!(dst_buffer: slice base.u8, dst_stride: base.u64, q: base.u32[..= 3]),
+        choose cpu_arch >= x86_avx2,
+{
+    var sse42_util : base.x86_sse42_utility
+    var util       : base.x86_avx2_utility
+
+    // SIMD constants.
+
+    var k_0000 : base.x86_m256i
+    var k_8080 : base.x86_m256i
+
+    var k_0000_0002 : base.x86_m256i
+    var k_0001_FFFF : base.x86_m256i
+    var k_0400_0000 : base.x86_m256i
+
+    var k_29CF_1151_D630_1151 : base.x86_m256i
+    var k_E333_133E_ADFD_1051 : base.x86_m256i
+    var k_E6DC_25A1_1925_25A1 : base.x86_m256i
+    var k_ECC1_E333_EFB0_ADFD : base.x86_m256i
+
+    // "Are the AC terms zero" variable names start with "az_".
+
+    var az_coeffs : base.x86_m128i
+    var az_ah00   : base.x86_m256i
+    var az_ad00   : base.x86_m256i
+    var az_eh00   : base.x86_m256i
+    var az_adeh   : base.x86_m256i
+
+    // Set up variables.
+
+    var rows01 : base.x86_m256i
+    var rows23 : base.x86_m256i
+    var rows45 : base.x86_m256i
+    var rows67 : base.x86_m256i
+
+    var quants01 : base.x86_m256i
+    var quants23 : base.x86_m256i
+    var quants45 : base.x86_m256i
+    var quants67 : base.x86_m256i
+
+    var rows04 : base.x86_m256i
+    var rows31 : base.x86_m256i
+    var rows26 : base.x86_m256i
+    var rows75 : base.x86_m256i
+
+    // First pass variable names start with "fp_".
+
+    var fp_rows62   : base.x86_m256i
+    var fp_bq2662ad : base.x86_m256i
+    var fp_bq2662eh : base.x86_m256i
+    var fp_cb26ad   : base.x86_m256i
+    var fp_cb26eh   : base.x86_m256i
+
+    var fp_rows40pos : base.x86_m256i
+    var fp_rows04neg : base.x86_m256i
+    var fp_rows0pm4  : base.x86_m256i
+    var fp_ccpmad    : base.x86_m256i
+    var fp_ccpmeh    : base.x86_m256i
+
+    var fp_cd01ad : base.x86_m256i
+    var fp_cd01eh : base.x86_m256i
+    var fp_cd32ad : base.x86_m256i
+    var fp_cd32eh : base.x86_m256i
+
+    var fp_sums7351     : base.x86_m256i
+    var fp_sums5173     : base.x86_m256i
+    var fp_ci73515173ad : base.x86_m256i
+    var fp_ci73515173eh : base.x86_m256i
+    var fp_cl7351ad     : base.x86_m256i
+    var fp_cl7351eh     : base.x86_m256i
+
+    var fp_rows13   : base.x86_m256i
+    var fp_bq7153ad : base.x86_m256i
+    var fp_bq7153eh : base.x86_m256i
+    var fp_ck75ad   : base.x86_m256i
+    var fp_ck75eh   : base.x86_m256i
+
+    var fp_cl5173ad : base.x86_m256i
+    var fp_cl5173eh : base.x86_m256i
+    var fp_ck13ad   : base.x86_m256i
+    var fp_ck13eh   : base.x86_m256i
+
+    // Intermediate variables between first and second pass.
+
+    var intermediate01ad : base.x86_m256i
+    var intermediate01eh : base.x86_m256i
+    var intermediate01   : base.x86_m256i
+    var intermediate32ad : base.x86_m256i
+    var intermediate32eh : base.x86_m256i
+    var intermediate32   : base.x86_m256i
+    var intermediate45ad : base.x86_m256i
+    var intermediate45eh : base.x86_m256i
+    var intermediate45   : base.x86_m256i
+    var intermediate76ad : base.x86_m256i
+    var intermediate76eh : base.x86_m256i
+    var intermediate76   : base.x86_m256i
+
+    var ita0a1e0e1 : base.x86_m256i
+    var ita2a3e2e3 : base.x86_m256i
+    var ita4a5e4e5 : base.x86_m256i
+    var ita6a7e6e7 : base.x86_m256i
+
+    var ita0c0e0g0 : base.x86_m256i
+    var ita1c1e1g1 : base.x86_m256i
+    var ita4c4e4g4 : base.x86_m256i
+    var ita5c5e5g5 : base.x86_m256i
+
+    var ita0b0e0f0 : base.x86_m256i
+    var ita4b4e4f4 : base.x86_m256i
+    var itc0d0g0h0 : base.x86_m256i
+    var itc4d4g4h4 : base.x86_m256i
+
+    var intermediateae : base.x86_m256i
+    var intermediatebf : base.x86_m256i
+    var intermediatecg : base.x86_m256i
+    var intermediatedh : base.x86_m256i
+
+    var intermediatedb : base.x86_m256i
+    var intermediatehf : base.x86_m256i
+
+    // Second pass variable names start with "sp_".
+
+    var sp_cols62   : base.x86_m256i
+    var sp_bq2662ad : base.x86_m256i
+    var sp_bq2662eh : base.x86_m256i
+    var sp_rb26ad   : base.x86_m256i
+    var sp_rb26eh   : base.x86_m256i
+
+    var sp_cols40pos : base.x86_m256i
+    var sp_cols04neg : base.x86_m256i
+    var sp_cols0pm4  : base.x86_m256i
+    var sp_rcpmad    : base.x86_m256i
+    var sp_rcpmeh    : base.x86_m256i
+
+    var sp_rd01ad : base.x86_m256i
+    var sp_rd01eh : base.x86_m256i
+    var sp_rd32ad : base.x86_m256i
+    var sp_rd32eh : base.x86_m256i
+
+    var sp_sums7351     : base.x86_m256i
+    var sp_sums5173     : base.x86_m256i
+    var sp_ri73515173ad : base.x86_m256i
+    var sp_ri73515173eh : base.x86_m256i
+    var sp_rl7351ad     : base.x86_m256i
+    var sp_rl7351eh     : base.x86_m256i
+
+    var sp_cols13   : base.x86_m256i
+    var sp_bq7153ad : base.x86_m256i
+    var sp_bq7153eh : base.x86_m256i
+    var sp_rk75ad   : base.x86_m256i
+    var sp_rk75eh   : base.x86_m256i
+
+    var sp_rl5173ad : base.x86_m256i
+    var sp_rl5173eh : base.x86_m256i
+    var sp_rk13ad   : base.x86_m256i
+    var sp_rk13eh   : base.x86_m256i
+
+    // Final variables.
+
+    var final01ad : base.x86_m256i
+    var final01eh : base.x86_m256i
+    var final01   : base.x86_m256i
+    var final32ad : base.x86_m256i
+    var final32eh : base.x86_m256i
+    var final32   : base.x86_m256i
+    var final45ad : base.x86_m256i
+    var final45eh : base.x86_m256i
+    var final45   : base.x86_m256i
+    var final76ad : base.x86_m256i
+    var final76eh : base.x86_m256i
+    var final76   : base.x86_m256i
+
+    var fta0a1e0e1 : base.x86_m256i
+    var fta2a3e2e3 : base.x86_m256i
+    var fta4a5e4e5 : base.x86_m256i
+    var fta6a7e6e7 : base.x86_m256i
+    var fta0c0e0g0 : base.x86_m256i
+    var fta1c1e1g1 : base.x86_m256i
+    var fta4c4e4g4 : base.x86_m256i
+    var fta5c5e5g5 : base.x86_m256i
+    var fta0b0e0f0 : base.x86_m256i
+    var ftc0d0g0h0 : base.x86_m256i
+    var fta4b4e4f4 : base.x86_m256i
+    var ftc4d4g4h4 : base.x86_m256i
+    var finalae    : base.x86_m256i
+    var finalbf    : base.x86_m256i
+    var finalcg    : base.x86_m256i
+    var finaldh    : base.x86_m256i
+
+    var final0145 : base.x86_m256i
+    var final2367 : base.x86_m256i
+    var final0    : base.u64
+    var final1    : base.u64
+    var final2    : base.u64
+    var final3    : base.u64
+    var final4    : base.u64
+    var final5    : base.u64
+    var final6    : base.u64
+    var final7    : base.u64
+
+    var remaining : slice base.u8
+
+    // ----
+
+    if 8 > args.dst_stride {
+        return nothing
+    }
+
+    k_0000 = util.make_m256i_multiple_u16(
+            a00: 0x0000, a01: 0x0000, a02: 0x0000, a03: 0x0000,
+            a04: 0x0000, a05: 0x0000, a06: 0x0000, a07: 0x0000,
+            a08: 0x0000, a09: 0x0000, a10: 0x0000, a11: 0x0000,
+            a12: 0x0000, a13: 0x0000, a14: 0x0000, a15: 0x0000)
+    k_8080 = util.make_m256i_multiple_u16(
+            a00: 0x8080, a01: 0x8080, a02: 0x8080, a03: 0x8080,
+            a04: 0x8080, a05: 0x8080, a06: 0x8080, a07: 0x8080,
+            a08: 0x8080, a09: 0x8080, a10: 0x8080, a11: 0x8080,
+            a12: 0x8080, a13: 0x8080, a14: 0x8080, a15: 0x8080)
+
+    k_0000_0002 = util.make_m256i_multiple_u16(
+            a00: 0x0000, a01: 0x0002, a02: 0x0000, a03: 0x0002,
+            a04: 0x0000, a05: 0x0002, a06: 0x0000, a07: 0x0002,
+            a08: 0x0000, a09: 0x0002, a10: 0x0000, a11: 0x0002,
+            a12: 0x0000, a13: 0x0002, a14: 0x0000, a15: 0x0002)
+    k_0001_FFFF = util.make_m256i_multiple_u16(
+            a00: 0x0001, a01: 0x0001, a02: 0x0001, a03: 0x0001,
+            a04: 0x0001, a05: 0x0001, a06: 0x0001, a07: 0x0001,
+            a08: 0xFFFF, a09: 0xFFFF, a10: 0xFFFF, a11: 0xFFFF,
+            a12: 0xFFFF, a13: 0xFFFF, a14: 0xFFFF, a15: 0xFFFF)
+    k_0400_0000 = util.make_m256i_multiple_u16(
+            a00: 0x0400, a01: 0x0000, a02: 0x0400, a03: 0x0000,
+            a04: 0x0400, a05: 0x0000, a06: 0x0400, a07: 0x0000,
+            a08: 0x0400, a09: 0x0000, a10: 0x0400, a11: 0x0000,
+            a12: 0x0400, a13: 0x0000, a14: 0x0400, a15: 0x0000)
+
+    k_29CF_1151_D630_1151 = util.make_m256i_multiple_u16(
+            a00: 0x29CF, a01: 0x1151, a02: 0x29CF, a03: 0x1151,
+            a04: 0x29CF, a05: 0x1151, a06: 0x29CF, a07: 0x1151,
+            a08: 0xD630, a09: 0x1151, a10: 0xD630, a11: 0x1151,
+            a12: 0xD630, a13: 0x1151, a14: 0xD630, a15: 0x1151)
+    k_E333_133E_ADFD_1051 = util.make_m256i_multiple_u16(
+            a00: 0xE333, a01: 0x133E, a02: 0xE333, a03: 0x133E,
+            a04: 0xE333, a05: 0x133E, a06: 0xE333, a07: 0x133E,
+            a08: 0xADFD, a09: 0x1051, a10: 0xADFD, a11: 0x1051,
+            a12: 0xADFD, a13: 0x1051, a14: 0xADFD, a15: 0x1051)
+    k_E6DC_25A1_1925_25A1 = util.make_m256i_multiple_u16(
+            a00: 0xE6DC, a01: 0x25A1, a02: 0xE6DC, a03: 0x25A1,
+            a04: 0xE6DC, a05: 0x25A1, a06: 0xE6DC, a07: 0x25A1,
+            a08: 0x1925, a09: 0x25A1, a10: 0x1925, a11: 0x25A1,
+            a12: 0x1925, a13: 0x25A1, a14: 0x1925, a15: 0x25A1)
+    k_ECC1_E333_EFB0_ADFD = util.make_m256i_multiple_u16(
+            a00: 0xECC1, a01: 0xE333, a02: 0xECC1, a03: 0xE333,
+            a04: 0xECC1, a05: 0xE333, a06: 0xECC1, a07: 0xE333,
+            a08: 0xEFB0, a09: 0xADFD, a10: 0xEFB0, a11: 0xADFD,
+            a12: 0xEFB0, a13: 0xADFD, a14: 0xEFB0, a15: 0xADFD)
+
+    // ----
+
+    while.goto_do_second_pass true,
+            inv 8 <= args.dst_stride,
+    {{
+
+    // Name the columns a ..= h and the rows 0 ..= 7.
+    //
+    // Check if the AC terms are zero. First, a relative cheap check of the
+    // (a1, b1, c1, d1, a2, b2, c2, d2) coefficients - two half-rows.
+    if 0 == (util.make_u64_slice_u16lex4(a: this.mcu_blocks[0][0x08 .. 0x0C]) |
+            util.make_u64_slice_u16lex4(a: this.mcu_blocks[0][0x10 .. 0x14])) {
+
+        // A more thorough check of every coefficient in rows 1 ..= 7.
+        az_coeffs = sse42_util.make_m128i_slice_u16lex8(a: this.mcu_blocks[0][0x08 .. 0x10])._mm_or_si128(b:
+                sse42_util.make_m128i_slice_u16lex8(a: this.mcu_blocks[0][0x10 .. 0x18]))._mm_or_si128(b:
+                sse42_util.make_m128i_slice_u16lex8(a: this.mcu_blocks[0][0x18 .. 0x20]))._mm_or_si128(b:
+                sse42_util.make_m128i_slice_u16lex8(a: this.mcu_blocks[0][0x20 .. 0x28]))._mm_or_si128(b:
+                sse42_util.make_m128i_slice_u16lex8(a: this.mcu_blocks[0][0x28 .. 0x30]))._mm_or_si128(b:
+                sse42_util.make_m128i_slice_u16lex8(a: this.mcu_blocks[0][0x30 .. 0x38]))._mm_or_si128(b:
+                sse42_util.make_m128i_slice_u16lex8(a: this.mcu_blocks[0][0x38 .. 0x40]))
+
+        // Pack u16x8 into u8x8 in the low 64 bits (using signed saturation)
+        // and bulk-compare to zero. Only "zero versus non-zero" matters.
+        if 0 == az_coeffs._mm_packs_epi16(b: az_coeffs).truncate_u64() {
+            // Dequantize, similar to the "Set up" code path below.
+            rows01 = util.make_m256i_slice_u16lex16(a: this.mcu_blocks[0][0x00 .. 0x10])
+            quants01 = util.make_m256i_slice_u16lex16(a: this.quant_tables[args.q][0x00 .. 0x10])
+            rows01 = rows01._mm256_mullo_epi16(b: quants01)
+
+            // az_ah00 = i16x16 [a b c d e f g h   0 0 0 0 0 0 0 0]
+            // az_ad00 = i16x16 [a a b b c c d d   0 0 0 0 0 0 0 0]
+            // az_eh00 = i16x16 [e e f f g g h h   0 0 0 0 0 0 0 0]
+            // az_adeh = i16x16 [a a b b c c d d   e e f f g g h h]
+            az_ah00 = rows01._mm256_slli_epi16(imm8: 2)  // PASS1_BITS is 2.
+            az_ad00 = az_ah00._mm256_unpacklo_epi16(b: az_ah00)
+            az_eh00 = az_ah00._mm256_unpackhi_epi16(b: az_ah00)
+            az_adeh = az_ad00._mm256_inserti128_si256(b: az_eh00._mm256_castsi256_si128(), imm8: 1)
+
+            // intermediateae = i16x16 [a a a a a a a a   e e e e e e e e]
+            // intermediatebf = i16x16 [b b b b b b b b   f f f f f f f f]
+            // intermediatecg = i16x16 [c c c c c c c c   g g g g g g g g]
+            // intermediatedh = i16x16 [d d d d d d d d   h h h h h h h h]
+            intermediateae = az_adeh._mm256_shuffle_epi32(imm8: 0x00)
+            intermediatebf = az_adeh._mm256_shuffle_epi32(imm8: 0x55)
+            intermediatecg = az_adeh._mm256_shuffle_epi32(imm8: 0xAA)
+            intermediatedh = az_adeh._mm256_shuffle_epi32(imm8: 0xFF)
+
+            break.goto_do_second_pass
+        }
+    }
+
+    // ----
+
+    // Set up.
+
+    // Dequantize:
+    //
+    // rows01 = i16x16 [a0 b0 .. g0 h0
+    //                  a1 b1 .. g1 h1]
+    // rows23 = i16x16 [a2 b2 .. g2 e2
+    //                  a3 b3 .. g3 h3]
+    // rows45 = i16x16 [a4 b4 .. g4 h4
+    //                  a5 b5 .. g5 h5]
+    // rows67 = i16x16 [a6 b6 .. g6 h6
+    //                  a7 b7 .. g7 h7]
+    rows01 = util.make_m256i_slice_u16lex16(a: this.mcu_blocks[0][0x00 .. 0x10])
+    rows23 = util.make_m256i_slice_u16lex16(a: this.mcu_blocks[0][0x10 .. 0x20])
+    rows45 = util.make_m256i_slice_u16lex16(a: this.mcu_blocks[0][0x20 .. 0x30])
+    rows67 = util.make_m256i_slice_u16lex16(a: this.mcu_blocks[0][0x30 .. 0x40])
+    quants01 = util.make_m256i_slice_u16lex16(a: this.quant_tables[args.q][0x00 .. 0x10])
+    quants23 = util.make_m256i_slice_u16lex16(a: this.quant_tables[args.q][0x10 .. 0x20])
+    quants45 = util.make_m256i_slice_u16lex16(a: this.quant_tables[args.q][0x20 .. 0x30])
+    quants67 = util.make_m256i_slice_u16lex16(a: this.quant_tables[args.q][0x30 .. 0x40])
+    rows01 = rows01._mm256_mullo_epi16(b: quants01)
+    rows23 = rows23._mm256_mullo_epi16(b: quants23)
+    rows45 = rows45._mm256_mullo_epi16(b: quants45)
+    rows67 = rows67._mm256_mullo_epi16(b: quants67)
+
+    // Permute:
+    //
+    // rows04 = i16x16 [a0 b0 .. g0 h0
+    //                  a4 b4 .. g4 h4]
+    // rows31 = i16x16 [a3 b3 .. g3 e3
+    //                  a1 b1 .. g1 h1]
+    // rows26 = i16x16 [a2 b2 .. g2 h2
+    //                  a6 b6 .. g6 h6]
+    // rows75 = i16x16 [a7 b7 .. g7 h7
+    //                  a5 b5 .. g5 h5]
+    rows04 = rows01._mm256_permute2x128_si256(b: rows45, imm8: 0x20)
+    rows31 = rows23._mm256_permute2x128_si256(b: rows01, imm8: 0x31)
+    rows26 = rows23._mm256_permute2x128_si256(b: rows67, imm8: 0x20)
+    rows75 = rows67._mm256_permute2x128_si256(b: rows45, imm8: 0x31)
+
+    // ----
+
+    // First pass (even rows).
+
+    // This non-SIMD code:
+    //
+    // cb2 = (bq2 ~mod* 0x0000_29CF) ~mod+ (bq6 ~mod* 0x0000_1151)
+    // cb6 = (bq2 ~mod* 0x0000_1151) ~mod+ (bq6 ~mod* 0xFFFF_D630)
+    //
+    // becomes:
+    //
+    // fp_rows62   = i16x16 [a6 b6 .. g6 h6
+    //                       a2 b2 .. g2 h2]
+    // fp_bq2662ad = i16x16 [a2 a6 .. d2 d6
+    //                       a6 a2 .. d6 d2]
+    // fp_bq2662eh = i16x16 [e2 e6 .. h2 h6
+    //                       e6 e2 .. h6 h2]
+    // fp_cb26ad = i32x8  [cb2.a .. cb2.d
+    //                     cb6.a .. cb6.d]
+    //           = i32x8  [a2*0x29CF+a6*0x1151 .. d2*0x29CF+d6*0x1151
+    //                     a6*0xD630+a2*0x1151 .. d6*0xD630+d2*0x1151]
+    // fp_cb26eh = i32x8  [cb2.e .. cb2.h
+    //                     cb6.e .. cb6.h]
+    //           = i32x8  [e2*0x29CF+e6*0x1151 .. h2*0x29CF+h6*0x1151
+    //                     e6*0xD630+e2*0x1151 .. h6*0xD630+h2*0x1151]
+    fp_rows62 = rows26._mm256_permute2x128_si256(b: rows26, imm8: 0x01)
+    fp_bq2662ad = rows26._mm256_unpacklo_epi16(b: fp_rows62)
+    fp_bq2662eh = rows26._mm256_unpackhi_epi16(b: fp_rows62)
+    fp_cb26ad = fp_bq2662ad._mm256_madd_epi16(b: k_29CF_1151_D630_1151)
+    fp_cb26eh = fp_bq2662eh._mm256_madd_epi16(b: k_29CF_1151_D630_1151)
+
+    // This non-SIMD code:
+    //
+    // ccp = (bq0 ~mod+ bq4) ~mod<< 13
+    // ccm = (bq0 ~mod- bq4) ~mod<< 13
+    //
+    // becomes:
+    //
+    // fp_rows40pos  = i16x16 [+a4 +b4 .. +g4 +h4
+    //                         +a0 +b0 .. +g0 +h0]
+    // fp_rows04neg  = i16x16 [+a0 +b0 .. +g0 +h0
+    //                         -a4 -b4 .. -g4 -h4]
+    // fp_rows0pm4   = i16x16 [a0+a4 b0+b4 .. g0+g4 h0+h4
+    //                         a0-a4 b0-b4 .. g0-g4 h0-h4]
+    // fp_ccpmad = i32x8  [ccp.a .. ccp.d
+    //                     ccm.a .. ccm.d]
+    //           = i32x8  [(a0+a4)<<13 .. (d0+d4)<<13
+    //                     (a0-a4)<<13 .. (d0-d4)<<13]
+    // fp_ccpmeh = i32x8  [ccp.e .. ccp.h
+    //                     ccm.e .. ccm.h]
+    //           = i32x8  [(e0+e4)<<13 .. (h0+h4)<<13
+    //                     (e0-e4)<<13 .. (h0-h4)<<13]
+    fp_rows40pos = rows04._mm256_permute2x128_si256(b: rows04, imm8: 0x01)
+    fp_rows04neg = rows04._mm256_sign_epi16(b: k_0001_FFFF)
+    fp_rows0pm4 = fp_rows40pos._mm256_add_epi16(b: fp_rows04neg)
+    fp_ccpmad = k_0000._mm256_unpacklo_epi16(b: fp_rows0pm4)._mm256_srai_epi32(imm8: 16 - 13)
+    fp_ccpmeh = k_0000._mm256_unpackhi_epi16(b: fp_rows0pm4)._mm256_srai_epi32(imm8: 16 - 13)
+
+    // This non-SIMD code:
+    //
+    // cd0 = ccp ~mod+ cb2
+    // cd1 = ccm ~mod+ cb6
+    // cd2 = ccm ~mod- cb6
+    // cd3 = ccp ~mod- cb2
+    //
+    // becomes:
+    //
+    // fp_cd01ad = i32x8  [cd0.a .. cd0.d
+    //                     cd1.a .. cd1.d]
+    //           = i32x8  [ccp.a+cb2.a .. ccp.d+cb2.d
+    //                     ccm.a+cb6.a .. ccm.d+cb6.d]
+    // fp_cd01eh = i32x8  [cd0.e .. cd0.h
+    //                     cd1.e .. cd1.h]
+    //           = i32x8  [ccp.e+cb2.e .. ccp.h+cb2.h
+    //                     ccm.e+cb6.e .. ccm.h+cb6.h]
+    // fp_cd32ad = i32x8  [cd3.a .. cd3.d
+    //                     cd2.a .. cd2.d]
+    //           = i32x8  [ccp.a-cb2.a .. ccp.d-cb2.d
+    //                     ccm.a-cb6.a .. ccm.d-cb6.d]
+    // fp_cd32eh = i32x8  [cd3.e .. cd3.h
+    //                     cd2.e .. cd2.h]
+    //           = i32x8  [ccp.e-cb2.e .. ccp.h-cb2.h
+    //                     ccm.e-cb6.e .. ccm.h-cb6.h]
+    fp_cd01ad = fp_ccpmad._mm256_add_epi32(b: fp_cb26ad)
+    fp_cd01eh = fp_ccpmeh._mm256_add_epi32(b: fp_cb26eh)
+    fp_cd32ad = fp_ccpmad._mm256_sub_epi32(b: fp_cb26ad)
+    fp_cd32eh = fp_ccpmeh._mm256_sub_epi32(b: fp_cb26eh)
+
+    // ----
+
+    // First pass (odd rows).
+
+    // This non-SIMD code:
+    //
+    // ci73 = bq7 ~mod+ bq3
+    // ci51 = bq5 ~mod+ bq1
+    // cl73 = (ci73 ~mod* 0xFFFF_E6DC) ~mod+ (ci51 ~mod* 0x0000_25A1)
+    // cl51 = (ci73 ~mod* 0x0000_25A1) ~mod+ (ci51 ~mod* 0x0000_1925)
+    //
+    // becomes:
+    //
+    // fp_sums7351     = i16x16 [a7+a3 b7+b3 .. g7+g3 h7+h3
+    //                           a5+a1 b5+b1 .. g5+g1 h5+h1]
+    // fp_sums5173     = i16x16 [a5+a1 b5+b1 .. g5+g1 h5+h1
+    //                           a7+a3 b7+b3 .. g7+g3 h7+h3]
+    // fp_ci73515173ad = i16x16 [a7+a3 a5+a1 .. d7+d3 d5+d1
+    //                           a5+a1 a7+a3 .. d5+d1 d7+d3]
+    // fp_ci73515173eh = i16x16 [e7+e3 e5+e1 .. h7+h3 h5+d1
+    //                           e5+e1 e7+e3 .. h5+h1 h7+d3]
+    // fp_cl7351ad = i32x8  [cl73.a .. cl73.d
+    //                       cl51.a .. cl51.d]
+    //             = i32x8  [(a7+a3)*0xE6DC+(a5+a1)*0x25A1 .. (d7+d3)*0xE6DC+(d5+d1)*0x25A1
+    //                       (a5+a1)*0x1925+(a7+a3)*0x25A1 .. (d5+d1)*0x1925+(d7+d3)*0x25A1]
+    // fp_cl7351eh = i32x8  [cl73.e .. cl73.h
+    //                       cl51.e .. cl51.h]
+    //             = i32x8  [(e7+e3)*0xE6DC+(e5+e1)*0x25A1 .. (h7+h3)*0xE6DC+(h5+h1)*0x25A1
+    //                       (e5+e1)*0x1925+(e7+e3)*0x25A1 .. (h5+h1)*0x1925+(h7+h3)*0x25A1]
+    fp_sums7351 = rows75._mm256_add_epi16(b: rows31)
+    fp_sums5173 = fp_sums7351._mm256_permute2x128_si256(b: fp_sums7351, imm8: 0x01)
+    fp_ci73515173ad = fp_sums7351._mm256_unpacklo_epi16(b: fp_sums5173)
+    fp_ci73515173eh = fp_sums7351._mm256_unpackhi_epi16(b: fp_sums5173)
+    fp_cl7351ad = fp_ci73515173ad._mm256_madd_epi16(b: k_E6DC_25A1_1925_25A1)
+    fp_cl7351eh = fp_ci73515173eh._mm256_madd_epi16(b: k_E6DC_25A1_1925_25A1)
+
+    // This non-SIMD code:
+    //
+    // ck5 = cl51 ~mod+ ((bq3 ~mod* 0xFFFF_ADFD) ~mod+ (bq5 ~mod* 0xFFFF_EFB0))
+    // ck7 = cl73 ~mod+ ((bq1 ~mod* 0xFFFF_E333) ~mod+ (bq7 ~mod* 0xFFFF_ECC1))
+    //
+    // becomes:
+    //
+    // fp_rows13   = i16x16 [a1 b1 .. g1 e1   a3 b3 .. g3 h3]
+    // fp_bq7153ad = i16x16 [a7 a1 .. d7 d1   a5 a3 .. d5 d3]
+    // fp_bq7153eh = i16x16 [e7 e1 .. h7 h1   e5 e3 .. h5 h3]
+    // fp_ck75ad   = i32x8  [ck7.a .. ck7.d
+    //                       ck5.a .. ck5.d]
+    //             = i32x8  [cl73.a+a7*0xECC1+a1*0xE333 .. cl73.d+d7*0xECC1+d1*0xE333
+    //                       cl51.a+a5*0xEFB0+a3*0xADFD .. cl51.d+d5*0xEFB0+d3*0xADFD]
+    // fp_ck75eh   = i32x8  [ck7.e .. ck7.h
+    //                       ck5.e .. ck5.h]
+    //             = i32x8  [cl73.e+e7*0xECC1+e1*0xE333 .. cl73.h+h7*0xECC1+h1*0xE333
+    //                       cl51.e+e5*0xEFB0+e3*0xADFD .. cl51.h+h5*0xEFB0+h3*0xADFD]
+    fp_rows13 = rows31._mm256_permute2x128_si256(b: rows31, imm8: 0x01)
+    fp_bq7153ad = rows75._mm256_unpacklo_epi16(b: fp_rows13)
+    fp_bq7153eh = rows75._mm256_unpackhi_epi16(b: fp_rows13)
+    fp_ck75ad = fp_bq7153ad._mm256_madd_epi16(b: k_ECC1_E333_EFB0_ADFD)._mm256_add_epi32(b: fp_cl7351ad)
+    fp_ck75eh = fp_bq7153eh._mm256_madd_epi16(b: k_ECC1_E333_EFB0_ADFD)._mm256_add_epi32(b: fp_cl7351eh)
+
+    // This non-SIMD code:
+    //
+    // ck1 = cl51 ~mod+ ((bq1 ~mod* 0x0000_133E) ~mod+ (bq7 ~mod* 0xFFFF_E333))
+    // ck3 = cl73 ~mod+ ((bq3 ~mod* 0x0000_1051) ~mod+ (bq5 ~mod* 0xFFFF_ADFD))
+    //
+    // becomes:
+    //
+    // fp_cl5173ad = i32x8  [cl51.a .. cl51.d
+    //                       cl73.a .. cl73.d]
+    // fp_cl5173eh = i32x8  [cl51.e .. cl51.h
+    //                       cl73.e .. cl73.h]
+    // fp_ck13ad   = i32x8  [ck1.a .. ck1.d
+    //                       ck3.a .. ck3.d]
+    //             = i32x8  [cl51.a+a7*0xE333+a1*0x133E .. cl51.d+d7*0xE333+d1*0x133E
+    //                       cl73.a+a5*0xADFD+a3*0x1051 .. cl73.d+d5*0xADFD+d3*0x1051]
+    // fp_ck13eh   = i32x8  [ck1.e .. ck3.h
+    //                       ck3.e .. ck1.h]
+    //             = i32x8  [cl51.e+e7*0xE333+e1*0x133E .. cl51.h+h7*0xE333+h1*0x133E
+    //                       cl73.e+e5*0xADFD+e3*0x1051 .. cl73.h+h5*0xADFD+h3*0x1051]
+    fp_cl5173ad = fp_cl7351ad._mm256_permute2x128_si256(b: fp_cl7351ad, imm8: 0x01)
+    fp_cl5173eh = fp_cl7351eh._mm256_permute2x128_si256(b: fp_cl7351eh, imm8: 0x01)
+    fp_ck13ad = fp_cl5173ad._mm256_add_epi32(b: fp_bq7153ad._mm256_madd_epi16(b: k_E333_133E_ADFD_1051))
+    fp_ck13eh = fp_cl5173eh._mm256_add_epi32(b: fp_bq7153eh._mm256_madd_epi16(b: k_E333_133E_ADFD_1051))
+
+    // ----
+
+    // First pass (combine rows).
+
+    // We have now calculated:
+    //
+    // fp_ck13ad = i32x8  [ck1.a .. ck1.d   ck3.a .. ck3.d]
+    // fp_ck13eh = i32x8  [ck1.e .. ck1.h   ck3.e .. ck3.h]
+    // fp_ck75ad = i32x8  [ck7.a .. ck7.d   ck5.a .. ck5.d]
+    // fp_ck75eh = i32x8  [ck7.e .. ck7.h   ck5.e .. ck5.h]
+    // fp_cd01ad = i32x8  [cd0.a .. cd0.d   cd1.a .. cd1.d]
+    // fp_cd01eh = i32x8  [cd0.e .. cd0.h   cd1.e .. cd1.h]
+    // fp_cd32ad = i32x8  [cd3.a .. cd3.d   cd2.a .. cd2.d]
+    // fp_cd32eh = i32x8  [cd3.e .. cd3.h   cd2.e .. cd2.h]
+    //
+    // This non-SIMD code:
+    //
+    // intermediate0 = this.util.sign_extend_rshift_u32(a: (cd0 ~mod+ ck1) ~mod+ (1 << 10), n: 11)
+    // intermediate1 = this.util.sign_extend_rshift_u32(a: (cd1 ~mod+ ck3) ~mod+ (1 << 10), n: 11)
+    // intermediate2 = this.util.sign_extend_rshift_u32(a: (cd2 ~mod+ ck5) ~mod+ (1 << 10), n: 11)
+    // intermediate3 = this.util.sign_extend_rshift_u32(a: (cd3 ~mod+ ck7) ~mod+ (1 << 10), n: 11)
+    // intermediate4 = this.util.sign_extend_rshift_u32(a: (cd3 ~mod- ck7) ~mod+ (1 << 10), n: 11)
+    // intermediate5 = this.util.sign_extend_rshift_u32(a: (cd2 ~mod- ck5) ~mod+ (1 << 10), n: 11)
+    // intermediate6 = this.util.sign_extend_rshift_u32(a: (cd1 ~mod- ck3) ~mod+ (1 << 10), n: 11)
+    // intermediate7 = this.util.sign_extend_rshift_u32(a: (cd0 ~mod- ck1) ~mod+ (1 << 10), n: 11)
+    //
+    // becomes a mix of adds, subtracts, shifts and packs.
+    intermediate01ad = fp_cd01ad._mm256_add_epi32(b: fp_ck13ad)._mm256_add_epi32(b: k_0400_0000)._mm256_srai_epi32(imm8: 11)
+    intermediate01eh = fp_cd01eh._mm256_add_epi32(b: fp_ck13eh)._mm256_add_epi32(b: k_0400_0000)._mm256_srai_epi32(imm8: 11)
+    intermediate01 = intermediate01ad._mm256_packs_epi32(b: intermediate01eh)
+    intermediate32ad = fp_cd32ad._mm256_add_epi32(b: fp_ck75ad)._mm256_add_epi32(b: k_0400_0000)._mm256_srai_epi32(imm8: 11)
+    intermediate32eh = fp_cd32eh._mm256_add_epi32(b: fp_ck75eh)._mm256_add_epi32(b: k_0400_0000)._mm256_srai_epi32(imm8: 11)
+    intermediate32 = intermediate32ad._mm256_packs_epi32(b: intermediate32eh)
+    intermediate45ad = fp_cd32ad._mm256_sub_epi32(b: fp_ck75ad)._mm256_add_epi32(b: k_0400_0000)._mm256_srai_epi32(imm8: 11)
+    intermediate45eh = fp_cd32eh._mm256_sub_epi32(b: fp_ck75eh)._mm256_add_epi32(b: k_0400_0000)._mm256_srai_epi32(imm8: 11)
+    intermediate45 = intermediate45ad._mm256_packs_epi32(b: intermediate45eh)
+    intermediate76ad = fp_cd01ad._mm256_sub_epi32(b: fp_ck13ad)._mm256_add_epi32(b: k_0400_0000)._mm256_srai_epi32(imm8: 11)
+    intermediate76eh = fp_cd01eh._mm256_sub_epi32(b: fp_ck13eh)._mm256_add_epi32(b: k_0400_0000)._mm256_srai_epi32(imm8: 11)
+    intermediate76 = intermediate76ad._mm256_packs_epi32(b: intermediate76eh)
+
+    // ----
+
+    // Transpose/re-order the intermediate rows and columns. We start with:
+    //
+    // intermediate01 = i16x16 [in.a0 .. in.d0   in.e0 .. in.h0   in.a1 .. in.d1   in.e1 .. in.h1]
+    // intermediate32 = i16x16 [in.a3 .. in.d3   in.e3 .. in.h3   in.a2 .. in.d2   in.e2 .. in.h2]
+    // intermediate45 = i16x16 [in.a4 .. in.d4   in.e4 .. in.h4   in.a5 .. in.d5   in.e5 .. in.h5]
+    // intermediate76 = i16x16 [in.a7 .. in.d7   in.e7 .. in.h7   in.a6 .. in.d6   in.e6 .. in.h6]
+
+    ita0a1e0e1 = intermediate01._mm256_permute4x64_epi64(imm8: 0xD8)
+    ita2a3e2e3 = intermediate32._mm256_permute4x64_epi64(imm8: 0x72)
+    ita4a5e4e5 = intermediate45._mm256_permute4x64_epi64(imm8: 0xD8)
+    ita6a7e6e7 = intermediate76._mm256_permute4x64_epi64(imm8: 0x72)
+
+    // We now have:
+    //
+    // ita0a1e0e1     = i16x16 [in.a0 .. in.d0   in.a1 .. in.d1   in.e0 .. in.h0   in.e1 .. in.h1]
+    // ita2a3e2e3     = i16x16 [in.a2 .. in.d2   in.a3 .. in.d3   in.e2 .. in.h2   in.e3 .. in.h3]
+    // ita4a5e4e5     = i16x16 [in.a4 .. in.d4   in.a5 .. in.d5   in.e4 .. in.h4   in.e5 .. in.h5]
+    // ita6a7e6e7     = i16x16 [in.a6 .. in.d6   in.a7 .. in.d7   in.e6 .. in.h6   in.e7 .. in.h7]
+
+    ita0c0e0g0 = ita0a1e0e1._mm256_unpacklo_epi16(b: ita2a3e2e3)
+    ita1c1e1g1 = ita0a1e0e1._mm256_unpackhi_epi16(b: ita2a3e2e3)
+    ita4c4e4g4 = ita4a5e4e5._mm256_unpacklo_epi16(b: ita6a7e6e7)
+    ita5c5e5g5 = ita4a5e4e5._mm256_unpackhi_epi16(b: ita6a7e6e7)
+
+    // We now have:
+    //
+    // ita0c0e0g0     = i16x16 [in.a0 in.a2 .. in.d0 in.d2   in.e0 in.e2 .. in.h0 in.h2]
+    // ita1c1e1g1     = i16x16 [in.a1 in.a3 .. in.d1 in.d3   in.e1 in.e3 .. in.h1 in.h3]
+    // ita4c4e4g4     = i16x16 [in.a4 in.a6 .. in.d4 in.d6   in.e4 in.e6 .. in.h4 in.h6]
+    // ita5c5e5g5     = i16x16 [in.a5 in.a7 .. in.d5 in.d7   in.e5 in.e7 .. in.h5 in.h7]
+
+    ita0b0e0f0 = ita0c0e0g0._mm256_unpacklo_epi16(b: ita1c1e1g1)
+    itc0d0g0h0 = ita0c0e0g0._mm256_unpackhi_epi16(b: ita1c1e1g1)
+    ita4b4e4f4 = ita4c4e4g4._mm256_unpacklo_epi16(b: ita5c5e5g5)
+    itc4d4g4h4 = ita4c4e4g4._mm256_unpackhi_epi16(b: ita5c5e5g5)
+
+    // We now have:
+    //
+    // ita0b0e0f0     = i16x16 [in.a0 .. in.a3   in.b0 .. in.b3   in.e0 .. in.e3   in.f0 .. in.f3]
+    // itc0d0g0h0     = i16x16 [in.c0 .. in.c3   in.d0 .. in.d3   in.g0 .. in.g3   in.h0 .. in.h3]
+    // ita4b4e4f4     = i16x16 [in.a4 .. in.a7   in.b4 .. in.b7   in.e4 .. in.e7   in.f4 .. in.f7]
+    // itc4d4g4h4     = i16x16 [in.c4 .. in.c7   in.d4 .. in.d7   in.g4 .. in.g7   in.h4 .. in.h7]
+
+    intermediateae = ita0b0e0f0._mm256_unpacklo_epi64(b: ita4b4e4f4)
+    intermediatebf = ita0b0e0f0._mm256_unpackhi_epi64(b: ita4b4e4f4)
+    intermediatecg = itc0d0g0h0._mm256_unpacklo_epi64(b: itc4d4g4h4)
+    intermediatedh = itc0d0g0h0._mm256_unpackhi_epi64(b: itc4d4g4h4)
+
+    // We now have:
+    //
+    // intermediateae = i16x16 [in.a0 .. in.a3   in.a4 .. in.a7   in.e0 .. in.e3   in.e4 .. in.e7]
+    // intermediatebf = i16x16 [in.b0 .. in.b3   in.b4 .. in.b7   in.f0 .. in.f4   in.f5 .. in.f7]
+    // intermediatecg = i16x16 [in.c0 .. in.c3   in.c4 .. in.c7   in.g0 .. in.g3   in.g4 .. in.g7]
+    // intermediatedh = i16x16 [in.d0 .. in.d3   in.d4 .. in.d7   in.h0 .. in.h4   in.h5 .. in.h7]
+
+    break.goto_do_second_pass
+    }}.goto_do_second_pass
+
+    // ----
+
+    // To recap, we have:
+    //
+    // intermediateae = i16x16 [in.a0 in.a1 .. in.a6 in.a7
+    //                          in.e0 in.e1 .. in.e6 in.e7]
+    // intermediatebf = i16x16 [in.b0 in.b1 .. in.b6 in.b7
+    //                          in.f0 in.f1 .. in.f6 in.f7]
+    // intermediatecg = i16x16 [in.c0 in.c1 .. in.c6 in.c7
+    //                          in.g0 in.g1 .. in.g6 in.g7]
+    // intermediatedh = i16x16 [in.d0 in.d1 .. in.d6 in.d7
+    //                          in.h0 in.h1 .. in.h6 in.h7]
+    //
+    // Which is similar to this, but note the transposition and re-ordering:
+    //
+    // rows01 = i16x16 [a0 b0 .. g0 h0
+    //                  a1 b1 .. g1 h1]
+    // rows23 = i16x16 [a2 b2 .. g2 e2
+    //                  a3 b3 .. g3 h3]
+    // rows45 = i16x16 [a4 b4 .. g4 h4
+    //                  a5 b5 .. g5 h5]
+    // rows67 = i16x16 [a6 b6 .. g6 h6
+    //                  a7 b7 .. g7 h7]
+
+    // Permute:
+    //
+    // intermediatedb = i16x16 [in.d0 in.d1 .. in.d6 in.d7
+    //                          in.b0 in.b1 .. in.b6 in.b7]
+    // intermediatehf = i16x16 [in.h0 in.h1 .. in.h6 in.h7
+    //                          in.f0 in.f1 .. in.f6 in.f7]
+    //
+    // The row/column analogies are:
+    //
+    // [a0 .. h0   a4 .. h4] = rows04   <=>   intermediateae = [in.a0 .. in.a7   in.e0 .. in.e7]
+    // [a3 .. h3   a1 .. h1] = rows31   <=>   intermediatedb = [in.d0 .. in.d7   in.b0 .. in.b7]
+    // [a2 .. h2   a6 .. h6] = rows26   <=>   intermediatecg = [in.c0 .. in.c7   in.g0 .. in.g7]
+    // [a7 .. h7   a5 .. h5] = rows75   <=>   intermediatehf = [in.h0 .. in.h7   in.f0 .. in.f7]
+    intermediatedb = intermediatedh._mm256_permute2x128_si256(b: intermediatebf, imm8: 0x20)
+    intermediatehf = intermediatedh._mm256_permute2x128_si256(b: intermediatebf, imm8: 0x31)
+
+    // ----
+
+    // Second pass (even columns).
+
+    // This non-SIMD code:
+    //
+    // rb2 = (in2 ~mod* 0x0000_29CF) ~mod+ (in6 ~mod* 0x0000_1151)
+    // rb6 = (in2 ~mod* 0x0000_1151) ~mod+ (in6 ~mod* 0xFFFF_D630)
+    //
+    // becomes:
+    //
+    // sp_rb26ad = i32x8  [rb2.a .. rb2.d   rb6.a .. rb6.d] transposed
+    // sp_rb26eh = i32x8  [rb2.e .. rb2.h   rb6.e .. rb6.h] transposed
+    //
+    // 'Tranposed' means that the rows and column names should be swapped.
+    // rb2.a, rb6.h, etc should really be rbc.0, rbg.7, etc but the former
+    // notation lines up closer with the first pass' comments.
+    sp_cols62 = intermediatecg._mm256_permute2x128_si256(b: intermediatecg, imm8: 0x01)
+    sp_bq2662ad = intermediatecg._mm256_unpacklo_epi16(b: sp_cols62)
+    sp_bq2662eh = intermediatecg._mm256_unpackhi_epi16(b: sp_cols62)
+    sp_rb26ad = sp_bq2662ad._mm256_madd_epi16(b: k_29CF_1151_D630_1151)
+    sp_rb26eh = sp_bq2662eh._mm256_madd_epi16(b: k_29CF_1151_D630_1151)
+
+    // This non-SIMD code:
+    //
+    // rcp = (in0 ~mod+ in4) ~mod<< 13
+    // rcm = (in0 ~mod- in4) ~mod<< 13
+    //
+    // becomes:
+    //
+    // sp_rcpmad = i32x8  [rcp.a .. rcp.d   rcm.a .. rcm.d] transposed
+    // sp_rcpmeh = i32x8  [rcp.e .. rcp.h   rcm.e .. rcm.h] transposed
+    sp_cols40pos = intermediateae._mm256_permute2x128_si256(b: intermediateae, imm8: 0x01)
+    sp_cols04neg = intermediateae._mm256_sign_epi16(b: k_0001_FFFF)
+    sp_cols0pm4 = sp_cols40pos._mm256_add_epi16(b: sp_cols04neg)
+    sp_rcpmad = k_0000._mm256_unpacklo_epi16(b: sp_cols0pm4)._mm256_srai_epi32(imm8: 16 - 13)
+    sp_rcpmeh = k_0000._mm256_unpackhi_epi16(b: sp_cols0pm4)._mm256_srai_epi32(imm8: 16 - 13)
+
+    // This non-SIMD code:
+    //
+    // rd0 = rcp ~mod+ rb2
+    // rd1 = rcm ~mod+ rb6
+    // rd2 = rcm ~mod- rb6
+    // rd3 = rcp ~mod- rb2
+    //
+    // becomes:
+    //
+    // sp_rd01ad = i32x8  [rd0.a .. rd0.d   rd1.a .. rd1.d] transposed
+    // sp_rd01eh = i32x8  [rd0.e .. rd0.h   rd1.e .. rd1.h] transposed
+    // sp_rd32ad = i32x8  [rd3.a .. rd3.d   rd2.a .. rd2.d] transposed
+    // sp_rd32eh = i32x8  [rd3.e .. rd3.h   rd2.e .. rd2.h] transposed
+    sp_rd01ad = sp_rcpmad._mm256_add_epi32(b: sp_rb26ad)
+    sp_rd01eh = sp_rcpmeh._mm256_add_epi32(b: sp_rb26eh)
+    sp_rd32ad = sp_rcpmad._mm256_sub_epi32(b: sp_rb26ad)
+    sp_rd32eh = sp_rcpmeh._mm256_sub_epi32(b: sp_rb26eh)
+
+    // ----
+
+    // Second pass (odd columns).
+
+    // This non-SIMD code:
+    //
+    // ri73 = in7 ~mod+ in3
+    // ri51 = in5 ~mod+ in1
+    // rl73 = (ri73 ~mod* 0xFFFF_E6DC) ~mod+ (ri51 ~mod* 0x0000_25A1)
+    // rl51 = (ri73 ~mod* 0x0000_25A1) ~mod+ (ri51 ~mod* 0x0000_1925)
+    //
+    // becomes:
+    //
+    // sp_rl7351ad = i32x8  [rl73.a .. rl73.d   rl51.a .. rl51.d] transposed
+    // sp_rl7351eh = i32x8  [rl73.e .. rl73.h   rl51.e .. rl51.h] transposed
+    sp_sums7351 = intermediatehf._mm256_add_epi16(b: intermediatedb)
+    sp_sums5173 = sp_sums7351._mm256_permute2x128_si256(b: sp_sums7351, imm8: 0x01)
+    sp_ri73515173ad = sp_sums7351._mm256_unpacklo_epi16(b: sp_sums5173)
+    sp_ri73515173eh = sp_sums7351._mm256_unpackhi_epi16(b: sp_sums5173)
+    sp_rl7351ad = sp_ri73515173ad._mm256_madd_epi16(b: k_E6DC_25A1_1925_25A1)
+    sp_rl7351eh = sp_ri73515173eh._mm256_madd_epi16(b: k_E6DC_25A1_1925_25A1)
+
+    // This non-SIMD code:
+    //
+    // rk5 = rl51 ~mod+ ((in3 ~mod* 0xFFFF_ADFD) ~mod+ (in5 ~mod* 0xFFFF_EFB0))
+    // rk7 = rl73 ~mod+ ((in1 ~mod* 0xFFFF_E333) ~mod+ (in7 ~mod* 0xFFFF_ECC1))
+    //
+    // becomes:
+    //
+    // sp_rk75ad   = i32x8  [rk7.a .. rk7.d   rk5.a .. rk5.d] transposed
+    // sp_rk75eh   = i32x8  [rk7.e .. rk7.h   rk5.e .. rk5.h] transposed
+    sp_cols13 = intermediatedb._mm256_permute2x128_si256(b: intermediatedb, imm8: 0x01)
+    sp_bq7153ad = intermediatehf._mm256_unpacklo_epi16(b: sp_cols13)
+    sp_bq7153eh = intermediatehf._mm256_unpackhi_epi16(b: sp_cols13)
+    sp_rk75ad = sp_bq7153ad._mm256_madd_epi16(b: k_ECC1_E333_EFB0_ADFD)._mm256_add_epi32(b: sp_rl7351ad)
+    sp_rk75eh = sp_bq7153eh._mm256_madd_epi16(b: k_ECC1_E333_EFB0_ADFD)._mm256_add_epi32(b: sp_rl7351eh)
+
+    // This non-SIMD code:
+    //
+    // rk1 = rl51 ~mod+ ((in1 ~mod* 0x0000_133E) ~mod+ (in7 ~mod* 0xFFFF_E333))
+    // rk3 = rl73 ~mod+ ((in3 ~mod* 0x0000_1051) ~mod+ (in5 ~mod* 0xFFFF_ADFD))
+    //
+    // becomes:
+    //
+    // sp_rk13ad   = i32x8  [rk1.a .. rk1.d   rk3.a .. rk3.d] transposed
+    // sp_rk13eh   = i32x8  [rk1.e .. rk3.h   rk3.e .. rk1.h] transposed
+    sp_rl5173ad = sp_rl7351ad._mm256_permute2x128_si256(b: sp_rl7351ad, imm8: 0x01)
+    sp_rl5173eh = sp_rl7351eh._mm256_permute2x128_si256(b: sp_rl7351eh, imm8: 0x01)
+    sp_rk13ad = sp_rl5173ad._mm256_add_epi32(b: sp_bq7153ad._mm256_madd_epi16(b: k_E333_133E_ADFD_1051))
+    sp_rk13eh = sp_rl5173eh._mm256_add_epi32(b: sp_bq7153eh._mm256_madd_epi16(b: k_E333_133E_ADFD_1051))
+
+    // ----
+
+    // Second pass (combine columns).
+
+    // We have now calculated:
+    //
+    // sp_rk13ad = i32x8  [rk1.a .. rk1.d   rk3.a .. rk3.d] transposed
+    // sp_rk13eh = i32x8  [rk1.e .. rk1.h   rk3.e .. rk3.h] transposed
+    // sp_rk75ad = i32x8  [rk7.a .. rk7.d   rk5.a .. rk5.d] transposed
+    // sp_rk75eh = i32x8  [rk7.e .. rk7.h   rk5.e .. rk5.h] transposed
+    // sp_rd01ad = i32x8  [rd0.a .. rd0.d   rd1.a .. rd1.d] transposed
+    // sp_rd01eh = i32x8  [rd0.e .. rd0.h   rd1.e .. rd1.h] transposed
+    // sp_rd32ad = i32x8  [rd3.a .. rd3.d   rd2.a .. rd2.d] transposed
+    // sp_rd32eh = i32x8  [rd3.e .. rd3.h   rd2.e .. rd2.h] transposed
+    //
+    // This non-SIMD code:
+    //
+    // final0 = this.util.sign_extend_rshift_u32(a: (rd0 ~mod+ rk1) ~mod+ (1 << 17), n: 18)
+    // final1 = this.util.sign_extend_rshift_u32(a: (rd1 ~mod+ rk3) ~mod+ (1 << 17), n: 18)
+    // final2 = this.util.sign_extend_rshift_u32(a: (rd2 ~mod+ rk5) ~mod+ (1 << 17), n: 18)
+    // final3 = this.util.sign_extend_rshift_u32(a: (rd3 ~mod+ rk7) ~mod+ (1 << 17), n: 18)
+    // final4 = this.util.sign_extend_rshift_u32(a: (rd3 ~mod- rk7) ~mod+ (1 << 17), n: 18)
+    // final5 = this.util.sign_extend_rshift_u32(a: (rd2 ~mod- rk5) ~mod+ (1 << 17), n: 18)
+    // final6 = this.util.sign_extend_rshift_u32(a: (rd1 ~mod- rk3) ~mod+ (1 << 17), n: 18)
+    // final7 = this.util.sign_extend_rshift_u32(a: (rd0 ~mod- rk1) ~mod+ (1 << 17), n: 18)
+    //
+    // becomes a mix of adds, subtracts, shifts and packs.
+    final01ad = sp_rd01ad._mm256_add_epi32(b: sp_rk13ad)._mm256_add_epi32(b: k_0000_0002)._mm256_srai_epi32(imm8: 18)
+    final01eh = sp_rd01eh._mm256_add_epi32(b: sp_rk13eh)._mm256_add_epi32(b: k_0000_0002)._mm256_srai_epi32(imm8: 18)
+    final01 = final01ad._mm256_packs_epi32(b: final01eh)
+    final32ad = sp_rd32ad._mm256_add_epi32(b: sp_rk75ad)._mm256_add_epi32(b: k_0000_0002)._mm256_srai_epi32(imm8: 18)
+    final32eh = sp_rd32eh._mm256_add_epi32(b: sp_rk75eh)._mm256_add_epi32(b: k_0000_0002)._mm256_srai_epi32(imm8: 18)
+    final32 = final32ad._mm256_packs_epi32(b: final32eh)
+    final45ad = sp_rd32ad._mm256_sub_epi32(b: sp_rk75ad)._mm256_add_epi32(b: k_0000_0002)._mm256_srai_epi32(imm8: 18)
+    final45eh = sp_rd32eh._mm256_sub_epi32(b: sp_rk75eh)._mm256_add_epi32(b: k_0000_0002)._mm256_srai_epi32(imm8: 18)
+    final45 = final45ad._mm256_packs_epi32(b: final45eh)
+    final76ad = sp_rd01ad._mm256_sub_epi32(b: sp_rk13ad)._mm256_add_epi32(b: k_0000_0002)._mm256_srai_epi32(imm8: 18)
+    final76eh = sp_rd01eh._mm256_sub_epi32(b: sp_rk13eh)._mm256_add_epi32(b: k_0000_0002)._mm256_srai_epi32(imm8: 18)
+    final76 = final76ad._mm256_packs_epi32(b: final76eh)
+
+    // ----
+
+    // Transpose/re-order the final rows and columns.
+    fta0a1e0e1 = final01._mm256_permute4x64_epi64(imm8: 0xD8)
+    fta2a3e2e3 = final32._mm256_permute4x64_epi64(imm8: 0x72)
+    fta4a5e4e5 = final45._mm256_permute4x64_epi64(imm8: 0xD8)
+    fta6a7e6e7 = final76._mm256_permute4x64_epi64(imm8: 0x72)
+    fta0c0e0g0 = fta0a1e0e1._mm256_unpacklo_epi16(b: fta2a3e2e3)
+    fta1c1e1g1 = fta0a1e0e1._mm256_unpackhi_epi16(b: fta2a3e2e3)
+    fta4c4e4g4 = fta4a5e4e5._mm256_unpacklo_epi16(b: fta6a7e6e7)
+    fta5c5e5g5 = fta4a5e4e5._mm256_unpackhi_epi16(b: fta6a7e6e7)
+    fta0b0e0f0 = fta0c0e0g0._mm256_unpacklo_epi16(b: fta1c1e1g1)
+    ftc0d0g0h0 = fta0c0e0g0._mm256_unpackhi_epi16(b: fta1c1e1g1)
+    fta4b4e4f4 = fta4c4e4g4._mm256_unpacklo_epi16(b: fta5c5e5g5)
+    ftc4d4g4h4 = fta4c4e4g4._mm256_unpackhi_epi16(b: fta5c5e5g5)
+    finalae = fta0b0e0f0._mm256_unpacklo_epi64(b: fta4b4e4f4)
+    finalbf = fta0b0e0f0._mm256_unpackhi_epi64(b: fta4b4e4f4)
+    finalcg = ftc0d0g0h0._mm256_unpacklo_epi64(b: ftc4d4g4h4)
+    finaldh = ftc0d0g0h0._mm256_unpackhi_epi64(b: ftc4d4g4h4)
+
+    // ----
+
+    // Pack i16x16 into i8x32 (using signed saturation; i8 ranges from -128 ..=
+    // +127), bias by +0x80 (u8 ranges from 0 ..= 255) and extract the rows.
+    //
+    // We also drop the "'Tranposed' means that the rows and column names
+    // should be swapped". Rows are back to 0 ..= 7 and columns are a ..= h.
+    final0145 = finalae._mm256_packs_epi16(b: finalbf)._mm256_add_epi8(b: k_8080)
+    final2367 = finalcg._mm256_packs_epi16(b: finaldh)._mm256_add_epi8(b: k_8080)
+    final0 = final0145._mm256_extract_epi64(index: 0)
+    final1 = final0145._mm256_extract_epi64(index: 1)
+    final2 = final2367._mm256_extract_epi64(index: 0)
+    final3 = final2367._mm256_extract_epi64(index: 1)
+    final4 = final0145._mm256_extract_epi64(index: 2)
+    final5 = final0145._mm256_extract_epi64(index: 3)
+    final6 = final2367._mm256_extract_epi64(index: 2)
+    final7 = final2367._mm256_extract_epi64(index: 3)
+
+    // ----
+
+    // Write to the args.dst_buffer.
+
+    if args.dst_stride > args.dst_buffer.length() {
+        return nothing
+    }
+    assert 8 <= args.dst_buffer.length() via "a <= b: a <= c; c <= b"(c: args.dst_stride)
+    assert args.dst_buffer.length() >= 8 via "a >= b: b <= a"()
+    remaining = args.dst_buffer[args.dst_stride ..]
+    args.dst_buffer.poke_u64le!(a: final0)
+    args.dst_buffer = remaining
+
+    if args.dst_stride > args.dst_buffer.length() {
+        return nothing
+    }
+    assert 8 <= args.dst_buffer.length() via "a <= b: a <= c; c <= b"(c: args.dst_stride)
+    assert args.dst_buffer.length() >= 8 via "a >= b: b <= a"()
+    remaining = args.dst_buffer[args.dst_stride ..]
+    args.dst_buffer.poke_u64le!(a: final1)
+    args.dst_buffer = remaining
+
+    if args.dst_stride > args.dst_buffer.length() {
+        return nothing
+    }
+    assert 8 <= args.dst_buffer.length() via "a <= b: a <= c; c <= b"(c: args.dst_stride)
+    assert args.dst_buffer.length() >= 8 via "a >= b: b <= a"()
+    remaining = args.dst_buffer[args.dst_stride ..]
+    args.dst_buffer.poke_u64le!(a: final2)
+    args.dst_buffer = remaining
+
+    if args.dst_stride > args.dst_buffer.length() {
+        return nothing
+    }
+    assert 8 <= args.dst_buffer.length() via "a <= b: a <= c; c <= b"(c: args.dst_stride)
+    assert args.dst_buffer.length() >= 8 via "a >= b: b <= a"()
+    remaining = args.dst_buffer[args.dst_stride ..]
+    args.dst_buffer.poke_u64le!(a: final3)
+    args.dst_buffer = remaining
+
+    if args.dst_stride > args.dst_buffer.length() {
+        return nothing
+    }
+    assert 8 <= args.dst_buffer.length() via "a <= b: a <= c; c <= b"(c: args.dst_stride)
+    assert args.dst_buffer.length() >= 8 via "a >= b: b <= a"()
+    remaining = args.dst_buffer[args.dst_stride ..]
+    args.dst_buffer.poke_u64le!(a: final4)
+    args.dst_buffer = remaining
+
+    if args.dst_stride > args.dst_buffer.length() {
+        return nothing
+    }
+    assert 8 <= args.dst_buffer.length() via "a <= b: a <= c; c <= b"(c: args.dst_stride)
+    assert args.dst_buffer.length() >= 8 via "a >= b: b <= a"()
+    remaining = args.dst_buffer[args.dst_stride ..]
+    args.dst_buffer.poke_u64le!(a: final5)
+    args.dst_buffer = remaining
+
+    if args.dst_stride > args.dst_buffer.length() {
+        return nothing
+    }
+    assert 8 <= args.dst_buffer.length() via "a <= b: a <= c; c <= b"(c: args.dst_stride)
+    assert args.dst_buffer.length() >= 8 via "a >= b: b <= a"()
+    remaining = args.dst_buffer[args.dst_stride ..]
+    args.dst_buffer.poke_u64le!(a: final6)
+    args.dst_buffer = remaining
+
+    if 8 > args.dst_buffer.length() {
+        return nothing
+    }
+    assert args.dst_buffer.length() >= 8 via "a >= b: b <= a"()
+    args.dst_buffer.poke_u64le!(a: final7)
+}

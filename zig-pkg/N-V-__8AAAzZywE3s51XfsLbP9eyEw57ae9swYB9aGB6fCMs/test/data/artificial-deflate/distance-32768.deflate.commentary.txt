@@ -1,0 +1,52 @@
+Running distance-32768.deflate through script/print-bits.go and adding
+commentary:
+
+    offset  xoffset ASCII   hex     binary
+    000000  0x0000  K       0x4B    0b_...._.011  Fixed Huffman block, final
+    000000  0x0000  K       0x4B    0b_0100_1...  lcode:   97  literal 'a'
+    000001  0x0001  L       0x4C    0b_...._.100
+    000001  0x0001  L       0x4C    0b_0100_1...  lcode:   98  literal 'b'
+    000002  0x0002  J       0x4A    0b_...._.010
+    etc
+    000015  0x000F  3       0x33    0b_0011_0...  lcode:   55  literal '7'
+    000016  0x0010  .       0x1F    0b_...._.111
+    000016  0x0010  .       0x1F    0b_0001_1...  lcode:  285  length:      258
+    000017  0x0011  .       0xA5    0b_...._.101
+    000017  0x0011  .       0xA5    0b_1010_0...  dcode:    5  base:          7
+    000018  0x0012  G       0x47    0b_...._...1  extra:    1  distance:      8
+    000018  0x0012  G       0x47    0b_0100_011.  lcode:  285  length:      258
+    000019  0x0013  .       0xE9    0b_...._...1
+    000019  0x0013  .       0xE9    0b_..10_100.  dcode:    5  base:          7
+    000019  0x0013  .       0xE9    0b_.1.._....  extra:    1  distance:      8
+    etc
+    000236  0x00EC  .       0xE9    0b_1..._....  lcode:  284  base:        227
+    000237  0x00ED  .       0x91    0b_.001_0001
+    000237  0x00ED  .       0x91    0b_1..._....  extra:   17  length:      244
+    000238  0x00EE  H       0x48    0b_...._1000
+    000238  0x00EE  H       0x48    0b_0100_....  dcode:    5  base:          7
+    000239  0x00EF  .       0x03    0b_...._...1
+    000239  0x00EF  .       0x03    0b_...._..1.  extra:    1  distance:      8
+    000239  0x00EF  .       0x03    0b_0000_00..  lcode:  257  length:        3
+    000240  0x00F0  .       0xEF    0b_...._...1
+    000240  0x00F0  .       0xEF    0b_..10_111.  dcode:   29  base:      24577
+    000240  0x00F0  .       0xEF    0b_11.._....  extra: 8191  distance:  32768
+    000241  0x00F1  .       0xFF    0b_1111_1111
+    000242  0x00F2  .       0x07    0b_...._.111
+    000242  0x00F2  .       0x07    0b_0000_0...  lcode:  257  length:        3
+    000243  0x00F3  *       0x2A    0b_...._..10
+    000243  0x00F3  *       0x2A    0b_.010_10..  dcode:   10  base:         33
+    000243  0x00F3  *       0x2A    0b_0..._....  extra:    2  distance:     35
+    000244  0x00F4  .       0x01    0b_...._.001
+    000244  0x00F4  .       0x01    0b_0000_0...  lcode:  257  length:        3
+    000245  0x00F5  .       0xDE    0b_...._..10
+    000245  0x00F5  .       0xDE    0b_.101_11..  dcode:   29  base:      24577
+    000245  0x00F5  .       0xDE    0b_1..._....  extra: 8191  distance:  32768
+    000246  0x00F6  .       0xFF    0b_1111_1111
+    000247  0x00F7  .       0x0F    0b_...._1111
+    000247  0x00F7  .       0x0F    0b_0000_....  lcode:  258  length:        4
+    000248  0x00F8  .       0xBA    0b_...._.010
+    000248  0x00F8  .       0xBA    0b_1011_1...  dcode:   29  base:      24577
+    000249  0x00F9  .       0xFE    0b_1111_1110  extra: 8190  distance:  32767
+    000250  0x00FA  .       0x1F    0b_...1_1111
+    000250  0x00FA  .       0x1F    0b_000._....  lcode:  256  end of block
+    000251  0x00FB  .       0x00    0b_...._0000

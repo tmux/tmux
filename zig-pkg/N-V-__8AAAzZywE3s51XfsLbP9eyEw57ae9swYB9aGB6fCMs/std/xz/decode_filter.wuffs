@@ -1,0 +1,544 @@
+// Copyright 2023 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pri func decoder.apply_non_final_filters!(dst_slice: slice base.u8) base.u8,
+        choosy,
+{
+    var f          : base.u32[..= 2]
+    var i          : base.u64
+    var filter_id  : base.u32[..= 0x7F]
+    var delta_dist : base.u32[..= 0x100]
+    var delta_pos  : base.u32
+    var c8         : base.u8
+
+    if this.num_non_final_filters <= 0 {
+        return 0
+    }
+    f = this.num_non_final_filters - 1
+
+    while true {
+        filter_id = this.filters[f] & 0x7F
+        if filter_id == 0x03 {  // Delta.
+            delta_dist = ((this.filters[f] >> 8) & 0xFF) + 1
+            delta_pos = this.filters[f] >> 24
+            i = 0
+            while i < args.dst_slice.length() {
+                assert i < 0xFFFF_FFFF_FFFF_FFFF via "a < b: a < c; c <= b"(c: args.dst_slice.length())
+                c8 = args.dst_slice[i]
+                c8 ~mod+= this.filter_data[f][(delta_dist ~mod+ delta_pos) & 0xFF]
+                this.filter_data[f][delta_pos & 0xFF] = c8
+                delta_pos ~mod-= 1
+                args.dst_slice[i] = c8
+                i += 1
+            }
+            this.filters[f] &= 0xFFFF
+            this.filters[f] |= (delta_pos ~mod<< 24)
+        }
+
+        if f <= 0 {
+            break
+        }
+        f -= 1
+    }
+    return 0
+}
+
+pri const FILTER_04_X86_MASK_TO_ALLOWED_STATUS : roarray[8] base.bool = [
+        true, true, true, false, true, false, false, false,
+]
+
+pri const FILTER_04_X86_MASK_TO_BIT_NUM : roarray[8] base.u8[..= 3] = [
+        0, 1, 2, 2, 3, 3, 3, 3,
+]
+
+pri const FILTER_04_X86_MASK_TO_XOR_OPERAND : roarray[8] base.u32 = [
+        0xFFFF_FFFF,
+        0x00FF_FFFF,
+        0x0000_FFFF,
+        0x0000_FFFF,
+        0x0000_00FF,
+        0x0000_00FF,
+        0x0000_00FF,
+        0x0000_00FF,
+]
+
+pri func decoder.apply_filter_04_x86!(dst_slice: slice base.u8) base.u8 {
+    var s : slice base.u8
+    var p : base.u32
+
+    var i         : base.u64
+    var prev_pos  : base.u64
+    var prev_mask : base.u32
+    var c8        : base.u8
+    var src       : base.u32
+    var dst       : base.u32
+    var bit_num   : base.u32[..= 3]
+
+    s = args.dst_slice
+    p = this.bcj_pos ~mod+ 5
+
+    prev_pos = 0xFFFF_FFFF_FFFF_FFFF
+    prev_mask = this.bcj_x86_prev_mask
+
+    while s.length() >= 5,
+            post s.length() < 5,
+    {
+        if (s[0] & 0xFE) <> 0xE8 {
+            i ~mod+= 1
+            p ~mod+= 1
+            s = s[1 ..]
+            continue
+        }
+
+        prev_pos = i ~mod- prev_pos
+        if prev_pos > 3 {
+            prev_mask = 0
+        } else if prev_pos > 0 {
+            prev_mask = (prev_mask ~mod<< (prev_pos - 1)) & 7
+            if prev_mask <> 0 {
+                c8 = s[4 - FILTER_04_X86_MASK_TO_BIT_NUM[prev_mask & 7]]
+                if (not FILTER_04_X86_MASK_TO_ALLOWED_STATUS[prev_mask & 7]) or
+                        (c8 == 0x00) or (c8 == 0xFF) {
+                    prev_pos = i
+                    prev_mask = (prev_mask ~mod<< 1) | 1
+                    i ~mod+= 1
+                    p ~mod+= 1
+                    s = s[1 ..]
+                    continue
+                }
+            }
+        }
+
+        prev_pos = i
+
+        c8 = s[4]
+        if (c8 <> 0x00) and (c8 <> 0xFF) {
+            prev_mask = (prev_mask ~mod<< 1) | 1
+            i ~mod+= 1
+            p ~mod+= 1
+            s = s[1 ..]
+            continue
+        }
+
+        src = ((s[1] as base.u32) << 0x00) |
+                ((s[2] as base.u32) << 0x08) |
+                ((s[3] as base.u32) << 0x10) |
+                ((s[4] as base.u32) << 0x18)
+
+        while true,
+                inv s.length() >= 5,
+        {
+            dst = src ~mod- p
+            if prev_mask == 0 {
+                break
+            }
+            bit_num = FILTER_04_X86_MASK_TO_BIT_NUM[prev_mask & 7] as base.u32
+            c8 = ((dst >> (24 - (bit_num * 8))) & 0xFF) as base.u8
+            if (c8 <> 0x00) and (c8 <> 0xFF) {
+                break
+            }
+            src = dst ^ FILTER_04_X86_MASK_TO_XOR_OPERAND[prev_mask & 7]
+        }
+
+        dst &= 0x01FF_FFFF
+        dst |= 0 ~mod- (dst & 0x0100_0000)
+        s[1] = ((dst >> 0x00) & 0xFF) as base.u8
+        s[2] = ((dst >> 0x08) & 0xFF) as base.u8
+        s[3] = ((dst >> 0x10) & 0xFF) as base.u8
+        s[4] = ((dst >> 0x18) & 0xFF) as base.u8
+
+        i ~mod+= 5
+        p ~mod+= 5
+        s = s[5 ..]
+    }
+
+    prev_pos = i ~mod- prev_pos
+    if prev_pos > 3 {
+        this.bcj_x86_prev_mask = 0
+    } else if prev_pos > 0 {
+        this.bcj_x86_prev_mask = prev_mask ~mod<< (prev_pos - 1)
+    }
+
+    this.bcj_pos = p ~mod- 5
+    return s.length() as base.u8
+}
+
+pri func decoder.apply_filter_05_powerpc!(dst_slice: slice base.u8) base.u8 {
+    var s : slice base.u8
+    var p : base.u32
+    var x : base.u32
+
+    s = args.dst_slice
+    p = this.bcj_pos
+
+    while s.length() >= 4,
+            post s.length() < 4,
+    {
+        x = ((s[0] as base.u32) << 0x18) |
+                ((s[1] as base.u32) << 0x10) |
+                ((s[2] as base.u32) << 0x08) |
+                ((s[3] as base.u32) << 0x00)
+        if (x & 0xFC00_0003) == 0x4800_0001 {
+            x = (((x & 0x03FF_FFFC) ~mod- p) & 0x03FF_FFFC) | 0x4800_0001
+            s[0] = ((x >> 0x18) & 0xFF) as base.u8
+            s[1] = ((x >> 0x10) & 0xFF) as base.u8
+            s[2] = ((x >> 0x08) & 0xFF) as base.u8
+            s[3] = ((x >> 0x00) & 0xFF) as base.u8
+        }
+        p ~mod+= 4
+        s = s[4 ..]
+    }
+
+    this.bcj_pos = p
+    return s.length() as base.u8
+}
+
+pri const FILTER_06_IA64_BRANCH_TABLE : roarray[32] base.u8[..= 7] = [
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        4, 4, 6, 6, 0, 0, 7, 7,
+        4, 4, 0, 0, 4, 4, 0, 0,
+]
+
+pri func decoder.apply_filter_06_ia64!(dst_slice: slice base.u8) base.u8 {
+    var s        : slice base.u8
+    var p        : base.u32
+    var mask     : base.u32[..= 7]
+    var slot     : base.u32[..= 2]
+    var bit_pos  : base.u32[..= 87]
+    var byte_pos : base.u32[..= 10]
+    var bit_res  : base.u32[..= 7]
+    var x        : base.u64
+    var j        : base.u32
+    var norm     : base.u64
+    var addr     : base.u32
+
+    s = args.dst_slice
+    p = this.bcj_pos
+
+    while s.length() >= 16,
+            post s.length() < 16,
+    {
+        mask = FILTER_06_IA64_BRANCH_TABLE[s[0] & 0x1F] as base.u32
+
+        slot = 0
+        while true,
+                inv s.length() >= 16,
+        {
+            while.goto_done true,
+                    inv s.length() >= 16,
+            {{
+            if ((mask >> slot) & 1) == 0 {
+                break.goto_done
+            }
+
+            bit_pos = (slot * 41) + 5
+            byte_pos = bit_pos >> 3
+            bit_res = bit_pos & 7
+
+            x = 0
+            j = 0
+            while j < 6,
+                    inv s.length() >= 16,
+            {
+                x |= (s[j + byte_pos] as base.u64) << (8 * j)
+                j += 1
+            }
+
+            norm = x >> bit_res
+            if (((norm >> 37) & 0x0F) <> 0x05) or
+                    (((norm >> 9) & 0x07) <> 0x00) {
+                break.goto_done
+            }
+
+            addr = ((norm >> 13) & 0x0F_FFFF) as base.u32
+            addr |= (((norm >> 36) & 1) as base.u32) << 20
+            addr <<= 4
+            addr ~mod-= p
+            addr >>= 4
+
+            norm &= 0xFFFF_FFEE_0000_1FFF
+            norm |= ((addr & 0x0F_FFFF) as base.u64) << 13
+            norm |= ((addr & 0x10_0000) as base.u64) << (36 - 20)
+
+            x &= ((1 as base.u64) << bit_res) - 1
+            x |= norm ~mod<< bit_res
+            j = 0
+            while j < 6,
+                    inv s.length() >= 16,
+            {
+                s[j + byte_pos] = ((x >> (8 * j)) & 0xFF) as base.u8
+                j += 1
+            }
+
+            break.goto_done
+            }}.goto_done
+
+            if slot >= 2 {
+                break
+            }
+            slot += 1
+        }
+
+        p ~mod+= 16
+        s = s[16 ..]
+    }
+
+    this.bcj_pos = p
+    return s.length() as base.u8
+}
+
+pri func decoder.apply_filter_07_arm!(dst_slice: slice base.u8) base.u8 {
+    var s : slice base.u8
+    var p : base.u32
+    var x : base.u32
+
+    s = args.dst_slice
+    p = this.bcj_pos ~mod+ 8
+
+    while s.length() >= 4,
+            post s.length() < 4,
+    {
+        if s[3] == 0xEB {
+            x = ((s[0] as base.u32) << 0x00) |
+                    ((s[1] as base.u32) << 0x08) |
+                    ((s[2] as base.u32) << 0x10) |
+                    ((s[3] as base.u32) << 0x18)
+            x = (((x & 0xFF_FFFF) << 2) ~mod- p) >> 2
+            s[0] = ((x >> 0x00) & 0xFF) as base.u8
+            s[1] = ((x >> 0x08) & 0xFF) as base.u8
+            s[2] = ((x >> 0x10) & 0xFF) as base.u8
+        }
+        p ~mod+= 4
+        s = s[4 ..]
+    }
+
+    this.bcj_pos = p ~mod- 8
+    return s.length() as base.u8
+}
+
+pri func decoder.apply_filter_08_armthumb!(dst_slice: slice base.u8) base.u8 {
+    var s : slice base.u8
+    var p : base.u32
+    var x : base.u32
+    var y : base.u32
+
+    s = args.dst_slice
+    p = this.bcj_pos ~mod+ 4
+
+    while s.length() >= 4,
+            post s.length() < 4,
+    {
+        x = ((s[0] as base.u32) << 0x00) |
+                ((s[1] as base.u32) << 0x08) |
+                ((s[2] as base.u32) << 0x10) |
+                ((s[3] as base.u32) << 0x18)
+        if (x & 0xF800_F800) <> 0xF800_F000 {
+            p ~mod+= 2
+            s = s[2 ..]
+            continue
+        }
+        y = (((s[0] & 0xFF) as base.u32) << 0x0B) |
+                (((s[1] & 0x07) as base.u32) << 0x13) |
+                (((s[2] & 0xFF) as base.u32) << 0x00) |
+                (((s[3] & 0x07) as base.u32) << 0x08)
+        y = ((y ~mod<< 1) ~mod- p) >> 1
+        s[0] = (((y >> 0x0B) & 0xFF)) as base.u8
+        s[1] = (((y >> 0x13) & 0x07) | 0xF0) as base.u8
+        s[2] = (((y >> 0x00) & 0xFF)) as base.u8
+        s[3] = (((y >> 0x08) & 0x07) | 0xF8) as base.u8
+        p ~mod+= 4
+        s = s[4 ..]
+    }
+
+    this.bcj_pos = p ~mod- 4
+    return s.length() as base.u8
+}
+
+pri func decoder.apply_filter_09_sparc!(dst_slice: slice base.u8) base.u8 {
+    var s : slice base.u8
+    var p : base.u32
+    var x : base.u32
+
+    s = args.dst_slice
+    p = this.bcj_pos
+
+    while s.length() >= 4,
+            post s.length() < 4,
+    {
+        x = ((s[0] as base.u32) << 0x18) |
+                ((s[1] as base.u32) << 0x10) |
+                ((s[2] as base.u32) << 0x08) |
+                ((s[3] as base.u32) << 0x00)
+        if ((x >> 22) == 0x100) or ((x >> 22) == 0x1FF) {
+            x = ((x ~mod<< 2) ~mod- p) >> 2
+            x = (0x4000_0000 - (x & 0x40_0000)) | 0x4000_0000 | (x & 0x3F_FFFF)
+            s[0] = ((x >> 0x18) & 0xFF) as base.u8
+            s[1] = ((x >> 0x10) & 0xFF) as base.u8
+            s[2] = ((x >> 0x08) & 0xFF) as base.u8
+            s[3] = ((x >> 0x00) & 0xFF) as base.u8
+        }
+        p ~mod+= 4
+        s = s[4 ..]
+    }
+
+    this.bcj_pos = p
+    return s.length() as base.u8
+}
+
+pri func decoder.apply_filter_0a_arm64!(dst_slice: slice base.u8) base.u8 {
+    var s : slice base.u8
+    var p : base.u32
+    var x : base.u32
+    var y : base.u32
+
+    s = args.dst_slice
+    p = this.bcj_pos
+
+    while s.length() >= 4,
+            post s.length() < 4,
+    {
+        x = ((s[0] as base.u32) << 0x00) |
+                ((s[1] as base.u32) << 0x08) |
+                ((s[2] as base.u32) << 0x10) |
+                ((s[3] as base.u32) << 0x18)
+        if (x >> 26) == 0x25 {
+            // Arm64 BL instruction.
+            y = x ~mod- (p >> 2)
+            x = 0x9400_0000 | (y & 0x03FF_FFFF)
+            s[0] = ((x >> 0x00) & 0xFF) as base.u8
+            s[1] = ((x >> 0x08) & 0xFF) as base.u8
+            s[2] = ((x >> 0x10) & 0xFF) as base.u8
+            s[3] = ((x >> 0x18) & 0xFF) as base.u8
+        } else if (x & 0x9F00_0000) == 0x9000_0000 {
+            // Arm64 ADRP instruction. We only modify relative addresses in the
+            // range +/-512 MiB.
+            y = ((x >> 29) & 0x03) | ((x >> 3) & 0x1F_FFFC)
+            if ((y ~mod+ 0x02_0000) & 0x1C_0000) == 0 {
+                y ~mod-= p >> 12
+                x &= 0x9000_001F
+                x |= (y & 3) << 29
+                x |= (y & 0x03_FFFC) << 3
+                x |= (0 ~mod- (y & 0x02_0000)) & 0xE0_0000
+                s[0] = ((x >> 0x00) & 0xFF) as base.u8
+                s[1] = ((x >> 0x08) & 0xFF) as base.u8
+                s[2] = ((x >> 0x10) & 0xFF) as base.u8
+                s[3] = ((x >> 0x18) & 0xFF) as base.u8
+            }
+        }
+        p ~mod+= 4
+        s = s[4 ..]
+    }
+
+    this.bcj_pos = p
+    return s.length() as base.u8
+}
+
+pri func decoder.apply_filter_0b_riscv!(dst_slice: slice base.u8) base.u8 {
+    var s    : slice base.u8
+    var p    : base.u32
+    var x    : base.u32
+    var x27  : base.u32[..= 31]
+    var y    : base.u32
+    var addr : base.u32
+
+    s = args.dst_slice
+    p = this.bcj_pos
+
+    while s.length() >= 8,
+            post s.length() < 8,
+    {
+        if s[0] == 0xEF {
+            // RISC-V JAL instruction.
+            if (s[1] & 0x0D) <> 0x00 {
+                p ~mod+= 2
+                s = s[2 ..]
+                continue
+            }
+            addr = (((s[1] & 0xF0) as base.u32) << 13) |
+                    ((s[2] as base.u32) << 9) |
+                    ((s[3] as base.u32) << 1)
+            addr ~mod-= p
+            s[1] = (s[1] & 0x0F) |
+                    (((addr >> 8) & 0xF0) as base.u8)
+            s[2] = (((addr >> 16) & 0x0F) |
+                    ((addr >> 7) & 0x10) |
+                    ((addr ~mod<< 4) & 0xE0)) as base.u8
+            s[3] = (((addr >> 4) & 0x7F) |
+                    ((addr >> 13) & 0x80)) as base.u8
+            p ~mod+= 4
+            s = s[4 ..]
+            continue
+
+        } else if (s[0] & 0x7F) == 0x17 {
+            // RISC-V AUIPC instruction.
+            x = ((s[0] as base.u32) << 0x00) |
+                    ((s[1] as base.u32) << 0x08) |
+                    ((s[2] as base.u32) << 0x10) |
+                    ((s[3] as base.u32) << 0x18)
+
+            if (x & 0xE80) <> 0 {
+                y = ((s[4] as base.u32) << 0x00) |
+                        ((s[5] as base.u32) << 0x08) |
+                        ((s[6] as base.u32) << 0x10) |
+                        ((s[7] as base.u32) << 0x18)
+                if (((x ~mod<< 8) ^ (y ~mod- 3)) & 0x000F_8003) <> 0 {
+                    p ~mod+= 6
+                    s = s[6 ..]
+                    continue
+                }
+                addr = (x & 0xFFFF_F000) | (y >> 20)
+                x = 0x117 | (y ~mod<< 12)
+                s[0] = ((x >> 0x00) & 0xFF) as base.u8
+                s[1] = ((x >> 0x08) & 0xFF) as base.u8
+                s[2] = ((x >> 0x10) & 0xFF) as base.u8
+                s[3] = ((x >> 0x18) & 0xFF) as base.u8
+                s[4] = ((addr >> 0x00) & 0xFF) as base.u8
+                s[5] = ((addr >> 0x08) & 0xFF) as base.u8
+                s[6] = ((addr >> 0x10) & 0xFF) as base.u8
+                s[7] = ((addr >> 0x18) & 0xFF) as base.u8
+                p ~mod+= 8
+                s = s[8 ..]
+                continue
+            }
+
+            x27 = x >> 27
+            if ((x ~mod- 0x3117) ~mod<< 18) >= (x27 & 0x1D) {
+                p ~mod+= 4
+                s = s[4 ..]
+                continue
+            }
+            addr = ((s[4] as base.u32) << 0x18) |
+                    ((s[5] as base.u32) << 0x10) |
+                    ((s[6] as base.u32) << 0x08) |
+                    ((s[7] as base.u32) << 0x00)
+            addr ~mod-= p
+            y = (x >> 12) | (addr ~mod<< 20)
+            x = 0x17 | (x27 << 7) | ((addr ~mod+ 0x800) & 0xFFFF_F000)
+            s[0] = ((x >> 0x00) & 0xFF) as base.u8
+            s[1] = ((x >> 0x08) & 0xFF) as base.u8
+            s[2] = ((x >> 0x10) & 0xFF) as base.u8
+            s[3] = ((x >> 0x18) & 0xFF) as base.u8
+            s[4] = ((y >> 0x00) & 0xFF) as base.u8
+            s[5] = ((y >> 0x08) & 0xFF) as base.u8
+            s[6] = ((y >> 0x10) & 0xFF) as base.u8
+            s[7] = ((y >> 0x18) & 0xFF) as base.u8
+            p ~mod+= 8
+            s = s[8 ..]
+            continue
+        }
+
+        p ~mod+= 2
+        s = s[2 ..]
+    }
+
+    this.bcj_pos = p
+    return s.length() as base.u8
+}

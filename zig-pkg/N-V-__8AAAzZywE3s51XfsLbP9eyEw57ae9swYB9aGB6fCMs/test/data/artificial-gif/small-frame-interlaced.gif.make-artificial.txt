@@ -1,0 +1,27 @@
+# Feed this file to script/make-artificial.go
+
+# This GIF image has one frame, whose frame rect is smaller than the image
+# rect. The frame is also interlaced, but its frame rect (and dirty rect)
+# should still only be 1 row high.
+
+make gif
+
+header
+
+image {
+	imageWidthHeight 5 5
+	palette {
+		0x00 0x00 0xFF
+		0x11 0x00 0xFF
+		0x22 0x00 0xFF
+		0x33 0x00 0xFF
+	}
+}
+
+frame {
+	frameLeftTopWidthHeight 3 2 1 1
+	interlaced
+}
+lzw 2 0x00
+
+trailer

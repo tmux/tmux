@@ -1,0 +1,14 @@
+# Feed this file to script/make-artificial.go
+
+make deflate
+
+blockNoCompression (nonFinal) {
+	literal "abcd"
+}
+blockFixedHuffman (final) {
+	len 3 dist 2
+	endOfBlock
+}
+
+# The decompressed data is 4 + 3 = 7 bytes:
+# abcdcdc

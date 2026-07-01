@@ -1,0 +1,12 @@
+# Source code is always LF, never CRLF.
+#
+# For example, tools like the wuffs-c compiler (and its internal/cgen package)
+# look for hard-coded strings containing "\n" but not "\r\n".
+*.c     text eol=lf
+*.cc    text eol=lf
+*.go    text eol=lf
+*.h     text eol=lf
+*.hh    text eol=lf
+*.rs    text eol=lf
+*.sh    text eol=lf
+*.wuffs text eol=lf

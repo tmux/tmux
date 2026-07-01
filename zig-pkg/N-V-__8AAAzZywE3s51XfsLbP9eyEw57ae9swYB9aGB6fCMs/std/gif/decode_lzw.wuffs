@@ -1,0 +1,260 @@
+// Copyright 2023 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+// --------
+
+// This file (in std/gif) is a fork of std/lzw/decode_lzw.wuffs, inlined so
+// that the gif 'caller' can take the this.lzw_output[this.lzw_output_ri ..
+// this.lzw_output_wi] slice directly. Wuffs version 0.3 provided this as the
+// lzw.decoder.flush!() method, but we'd like to deprecate (and eventually
+// remove) methods that return anything pointer-y (including slices).
+//
+// It also changes the ? methods to ! methods, so that the LZW-decoder does not
+// need a "this.lzw.reset!()" call in case of a recoverable error.
+
+pri func decoder.lzw_init!() {
+    var i : base.u32[..= 8191]
+
+    this.lzw_literal_width = 8
+    if this.lzw_pending_literal_width_plus_one > 0 {
+        this.lzw_literal_width = this.lzw_pending_literal_width_plus_one - 1
+    }
+    this.lzw_clear_code = (1 as base.u32) << this.lzw_literal_width
+    this.lzw_end_code = this.lzw_clear_code + 1
+    this.lzw_save_code = this.lzw_end_code
+    this.lzw_prev_code = this.lzw_end_code
+    this.lzw_width = this.lzw_literal_width + 1
+    this.lzw_bits = 0
+    this.lzw_n_bits = 0
+    this.lzw_output_ri = 0
+    this.lzw_output_wi = 0
+    i = 0
+    while i < this.lzw_clear_code {
+        assert i < 256 via "a < b: a < c; c <= b"(c: this.lzw_clear_code)
+        this.lzw_lm1s[i] = 0
+        this.lzw_suffixes[i][0] = i as base.u8
+        i += 1
+    }
+}
+
+pri func decoder.lzw_read_from!(src: base.io_reader) {
+    var clear_code : base.u32[..= 256]
+    var end_code   : base.u32[..= 257]
+
+    var save_code : base.u32[..= 4096]
+    var prev_code : base.u32[..= 4095]
+    var width     : base.u32[..= 12]
+    var bits      : base.u32
+    var n_bits    : base.u32[..= 31]
+    var output_wi : base.u32[..= 8191]
+
+    var code       : base.u32[..= 4095]
+    var c          : base.u32[..= 4095]
+    var o          : base.u32[..= 8191]
+    var steps      : base.u32
+    var first_byte : base.u8
+    var lm1_b      : base.u16[..= 4095]
+    var lm1_a      : base.u16[..= 4095]
+
+    clear_code = this.lzw_clear_code
+    end_code = this.lzw_end_code
+
+    save_code = this.lzw_save_code
+    prev_code = this.lzw_prev_code
+    width = this.lzw_width
+    bits = this.lzw_bits
+    n_bits = this.lzw_n_bits
+    output_wi = this.lzw_output_wi
+
+    while true {
+        if n_bits < width {
+            assert n_bits < 12 via "a < b: a < c; c <= b"(c: width)
+            if args.src.length() >= 4 {
+                // Read 4 bytes, using the "Variant 4" technique of
+                // https://fgiesen.wordpress.com/2018/02/20/reading-bits-in-far-too-many-ways-part-2/
+                bits |= args.src.peek_u32le() ~mod<< n_bits
+                args.src.skip_u32_fast!(actual: (31 - n_bits) >> 3, worst_case: 3)
+                n_bits |= 24
+                assert width <= n_bits via "a <= b: a <= c; c <= b"(c: 12)
+                assert n_bits >= width via "a >= b: b <= a"()
+            } else if args.src.length() <= 0 {
+                if args.src.is_closed() {
+                    this.lzw_read_from_return_value = 3
+                } else {
+                    this.lzw_read_from_return_value = 2
+                }
+                break
+            } else {
+                bits |= args.src.peek_u8_as_u32() << n_bits
+                args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                n_bits += 8
+                if n_bits >= width {
+                    // No-op.
+                } else if args.src.length() <= 0 {
+                    if args.src.is_closed() {
+                        this.lzw_read_from_return_value = 3
+                    } else {
+                        this.lzw_read_from_return_value = 2
+                    }
+                    break
+                } else {
+                    bits |= args.src.peek_u8_as_u32() << n_bits
+                    args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                    n_bits += 8
+                    assert width <= n_bits via "a <= b: a <= c; c <= b"(c: 12)
+                    assert n_bits >= width via "a >= b: b <= a"()
+
+                    // This if condition is always false, but for some unknown
+                    // reason, removing it worsens the benchmarks slightly.
+                    if n_bits < width {
+                        this.lzw_read_from_return_value = 5
+                        break
+                    }
+                }
+            }
+        }
+
+        code = bits.low_bits(n: width)
+        bits >>= width
+        n_bits -= width
+
+        if code < clear_code {
+            assert code < 256 via "a < b: a < c; c <= b"(c: clear_code)
+            this.lzw_output[output_wi] = code as base.u8
+            output_wi = (output_wi + 1) & 8191
+            if save_code <= 4095 {
+                lm1_a = (this.lzw_lm1s[prev_code] ~mod+ 1) & 4095
+                this.lzw_lm1s[save_code] = lm1_a
+
+                if (lm1_a % 8) <> 0 {
+                    this.lzw_prefixes[save_code] = this.lzw_prefixes[prev_code]
+                    this.lzw_suffixes[save_code] = this.lzw_suffixes[prev_code]
+                    this.lzw_suffixes[save_code][lm1_a % 8] = code as base.u8
+                } else {
+                    this.lzw_prefixes[save_code] = prev_code as base.u16
+                    this.lzw_suffixes[save_code][0] = code as base.u8
+                }
+
+                save_code += 1
+                if width < 12 {
+                    width += 1 & (save_code >> width)
+                }
+                prev_code = code
+            }
+
+        } else if code <= end_code {
+            if code == end_code {
+                this.lzw_read_from_return_value = 0
+                break
+            }
+            save_code = end_code
+            prev_code = end_code
+            width = this.lzw_literal_width + 1
+
+        } else if code <= save_code {
+            c = code
+            if code == save_code {
+                c = prev_code
+            }
+
+            // Letting old_wi and new_wi denote the values of output_wi before
+            // and after these two lines of code, the decoded bytes will be
+            // written to output[old_wi:new_wi]. They will be written
+            // back-to-front, 8 bytes at a time, starting by writing
+            // output[o:o + 8], which will contain output[new_wi - 1].
+            //
+            // In the special case that code == save_code, the decoded bytes
+            // contain an extra copy (at the end) of the first byte, and will
+            // be written to output[old_wi:new_wi + 1].
+            o = (output_wi + ((this.lzw_lm1s[c] as base.u32) & 0xFFFF_FFF8)) & 8191
+            output_wi = (output_wi + 1 + (this.lzw_lm1s[c] as base.u32)) & 8191
+
+            steps = (this.lzw_lm1s[c] as base.u32) >> 3
+            while true {
+                assert o <= (o + 8) via "a <= (a + b): 0 <= b"(b: 8)
+
+                // The final "8" is redundant semantically, but helps the
+                // wuffs-c code generator recognize that both slices have the
+                // same constant length, and hence produce efficient C code.
+                this.lzw_output[o .. o + 8].copy_from_slice!(s: this.lzw_suffixes[c][.. 8])
+
+                if steps <= 0 {
+                    break
+                }
+                steps -= 1
+
+                // This line is essentially "o -= 8". The "& 8191" is a no-op
+                // in practice, but is necessary for the overflow checker.
+                o = (o ~mod- 8) & 8191
+                c = this.lzw_prefixes[c] as base.u32
+            }
+            first_byte = this.lzw_suffixes[c][0]
+
+            if code == save_code {
+                this.lzw_output[output_wi] = first_byte
+                output_wi = (output_wi + 1) & 8191
+            }
+
+            if save_code <= 4095 {
+                lm1_b = (this.lzw_lm1s[prev_code] ~mod+ 1) & 4095
+                this.lzw_lm1s[save_code] = lm1_b
+
+                if (lm1_b % 8) <> 0 {
+                    this.lzw_prefixes[save_code] = this.lzw_prefixes[prev_code]
+                    this.lzw_suffixes[save_code] = this.lzw_suffixes[prev_code]
+                    this.lzw_suffixes[save_code][lm1_b % 8] = first_byte
+                } else {
+                    this.lzw_prefixes[save_code] = prev_code as base.u16
+                    this.lzw_suffixes[save_code][0] = first_byte as base.u8
+                }
+
+                save_code += 1
+                if width < 12 {
+                    width += 1 & (save_code >> width)
+                }
+                prev_code = code
+            }
+
+        } else {
+            this.lzw_read_from_return_value = 4
+            break
+        }
+
+        // Flush the output if it could be too full to contain the entire
+        // decoding of the next code. The longest possible decoding is slightly
+        // less than 4096 and output's length is 8192, so a conservative
+        // threshold is ensuring that output_wi <= 4095.
+        if output_wi > 4095 {
+            this.lzw_read_from_return_value = 1
+            break
+        }
+    }
+
+    // Rewind args.src, if we're not in "$short read" and we've read too many
+    // bits.
+    if this.lzw_read_from_return_value <> 2 {
+        while n_bits >= 8 {
+            n_bits -= 8
+            if args.src.can_undo_byte() {
+                args.src.undo_byte!()
+            } else {
+                this.lzw_read_from_return_value = 5
+                break
+            }
+        }
+    }
+
+    this.lzw_save_code = save_code
+    this.lzw_prev_code = prev_code
+    this.lzw_width = width
+    this.lzw_bits = bits
+    this.lzw_n_bits = n_bits
+    this.lzw_output_wi = output_wi
+}

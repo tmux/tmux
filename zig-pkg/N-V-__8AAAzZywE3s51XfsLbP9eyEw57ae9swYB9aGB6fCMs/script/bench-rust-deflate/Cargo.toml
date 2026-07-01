@@ -1,0 +1,8 @@
+[package]
+name    = "bench_rust_deflate"
+version = "0.0.1"
+authors = ["Nigel Tao <nigeltao@golang.org>"]
+
+[dependencies]
+flate2  = "1.0"
+rustc_version_runtime = "*"

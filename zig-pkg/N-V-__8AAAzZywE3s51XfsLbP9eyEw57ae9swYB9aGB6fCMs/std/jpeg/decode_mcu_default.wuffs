@@ -1,0 +1,344 @@
+// Copyright 2023 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pri func decoder.decode_mcu!(dst: ptr base.pixel_buffer, workbuf: slice base.u8, mx: base.u32[..= 0x1FFF], my: base.u32[..= 0x1FFF]) base.u32,
+        choosy,
+{
+    var ret : base.u32
+
+    var bits   : base.u64
+    var n_bits : base.u32
+
+    var csel : base.u8[..= 3]
+
+    var r   : base.io_reader
+    var pos : base.u32
+
+    // etc_bl and etc_blm1 are the Huffman code's "bit length" and "bit length
+    // minus 1" for the DC (first) and AC (later) components.
+
+    var dc_h       : base.u8[..= 3]
+    var dc_symbol  : base.u32[..= 0x0F]
+    var dc_ht_fast : base.u32
+    var dc_bl      : base.u32
+    var dc_code    : base.u32
+    var dc_blm1    : base.u32[..= 15]
+    var dc_ht_slow : base.u32
+    var dc_value   : base.u16
+    var dc_extend  : base.u16
+
+    var ac_huff_table_fast : nptr roarray[256] base.u16
+
+    var ac_h       : base.u8[..= 7]
+    var ac_symbol  : base.u32[..= 0xFF]
+    var ac_ht_fast : base.u32
+    var ac_bl      : base.u32
+    var ac_code    : base.u32
+    var ac_blm1    : base.u32[..= 15]
+    var ac_ht_slow : base.u32
+    var ac_value   : base.u16
+    var ac_extend  : base.u16
+
+    var ac_rrrr : base.u32[..= 15]
+    var ac_ssss : base.u32[..= 15]
+
+    var z : base.u32[..= 79]  // 79 = 63 + 15 + 1.
+
+    var mcb    : base.u32[..= 9]
+    var stride : base.u64[..= 0x1_0008]
+    var offset : base.u64
+
+    bits = this.bitstream_bits
+    n_bits = this.bitstream_n_bits
+
+    if this.bitstream_ri > this.bitstream_wi {
+        return 2  // Internal error.
+    }
+    io_bind (io: r, data: this.bitstream_buffer[this.bitstream_ri .. this.bitstream_wi], history_position: this.bitstream_ri as base.u64) {
+        while.goto_done true {{
+
+        while.block this.mcu_current_block < this.mcu_num_blocks {
+            assert this.mcu_current_block < 10 via "a < b: a < c; c <= b"(c: this.mcu_num_blocks)
+            while.dc_component this.mcu_zig_index <= 0,
+                    inv this.mcu_current_block < 10,
+            {
+                this.mcu_blocks[.. 1].bulk_memset!(byte_value: 0)
+
+                // Load at least 56 bits. We only need 8 bytes (for the
+                // peek_u64be call), but ask for 264 to be consistent with the
+                // other "another fill_bitstream call" requests, in this method
+                // (decode_mcu) and its other variants.
+                if r.length() < 264 {
+                    ret = 1  // Request another fill_bitstream call.
+                    break.goto_done
+                }
+                bits |= r.peek_u64be() >> (n_bits & 63)
+                r.skip_u32_fast!(actual: (63 - (n_bits & 63)) >> 3, worst_case: 8)
+                n_bits |= 56
+
+                // Read the Huffman-encoded dc_symbol, up to 16 bits long.
+                dc_h = this.mcu_blocks_dc_hselector[this.mcu_current_block]
+                dc_ht_fast = this.huff_tables_fast[dc_h][bits >> 56] as base.u32
+                dc_bl = dc_ht_fast >> 8
+                if n_bits >= dc_bl {
+                    dc_symbol = 0x0F & dc_ht_fast
+                    dc_extend = EXTEND[dc_symbol]
+                    bits ~mod<<= (dc_bl & 63)
+                    n_bits -= dc_bl
+                } else {
+                    dc_code = (bits >> 55) as base.u32
+                    dc_blm1 = 8
+                    bits ~mod<<= 9
+                    n_bits ~mod-= 9
+                    while true,
+                            inv this.mcu_current_block < 10,
+                    {
+                        dc_ht_slow = this.huff_tables_slow[dc_h][dc_blm1]
+                        if dc_code < (dc_ht_slow >> 8) {
+                            dc_symbol = 0x0F & (this.huff_tables_symbols[dc_h][0xFF & (dc_code ~mod+ dc_ht_slow)] as base.u32)
+                            dc_extend = EXTEND[dc_symbol]
+                            break
+                        }
+                        dc_code = (dc_code ~mod<< 1) | ((bits >> 63) as base.u32)
+                        bits ~mod<<= 1
+                        n_bits ~mod-= 1
+                        dc_blm1 = (dc_blm1 + 1) & 15
+                        if dc_blm1 == 0 {
+                            dc_symbol = 0
+                            dc_extend = EXTEND[dc_symbol]
+                            break
+                        }
+                    }
+                }
+
+                // Process the dc_value in the next dc_symbol (up to 15) bits.
+                //
+                // The dc_value is shifted by (64 - dc_symbol) in two steps,
+                // because we want to shift by 64 (not 0) when dc_symbol is 0.
+                dc_value = (((bits >> 32) >> (32 - dc_symbol)) & 0xFFFF) as base.u16
+                dc_value ~mod+= dc_extend &
+                        (((this.util.sign_extend_rshift_u64(a: bits, n: 63) & 0xFFFF) as base.u16) ^ 0xFFFF)
+                bits ~mod<<= dc_symbol
+                n_bits ~mod-= dc_symbol
+                csel = this.scan_comps_cselector[this.mcu_blocks_sselector[this.mcu_current_block]]
+                this.mcu_previous_dc_values[csel] ~mod+= dc_value
+                this.mcu_blocks[0][0] =
+                        this.mcu_previous_dc_values[csel]
+
+                this.mcu_zig_index = 1
+                break.dc_component
+            }.dc_component
+
+            // Ensure that we have enough bits for this iteration of the
+            // while.block loop body. Worst case, there are 64 components and
+            // each one needs (16 + 15) bits (round that up to 4 bytes), so we
+            // need (64 * 4) = 256 bytes available. 8 more bytes of slack means
+            // that we can always call peek_u64be.
+            if r.length() < 264 {
+                ret = 1  // Request another fill_bitstream call.
+                break.goto_done
+            }
+
+            // Ensure the informal "the lower bound on the number of loaded
+            // bits is at least 16" loop pre-condition below.
+            if n_bits < 16 {
+                bits |= r.peek_u64be() >> (n_bits & 63)
+                // Skip these lines that are normally part of "load more bits".
+                // It's unnecessary, just for the informal (NB > 16) below, and
+                // skipping it avoids a small but negative performance impact.
+                //
+                // r.skip_u32_fast!( etc )
+                // n_bits |= 56
+            }
+
+            z = 1
+            this.mcu_zig_index = 0
+            ac_h = this.mcu_blocks_ac_hselector[this.mcu_current_block]
+            ac_huff_table_fast = this.huff_tables_fast[ac_h][..] as ptr array[256] base.u16
+            while.ac_components z < 64,
+                    inv this.mcu_current_block < 10,
+                    inv ac_huff_table_fast <> nullptr,
+            {
+                // Use the high bits of the bits variable to look up the
+                // Huffman table. Conceptually, we should do this *after*
+                // "Load at least 56 bits" below (at "LOOK-UP" further below),
+                // but it is noticably faster to do it beforehand:
+                // https://github.com/google/wuffs/commit/d9c7740ea6c4a450401c393787838436895b87bb
+                //
+                // Earlier look-up is OK because there is a informal loop
+                // pre-condition (informal means not enforced by the Wuffs
+                // compiler) that (NB >= 16) here, where NB is "the number of
+                // loaded bits in the bits variable". It is literally n_bits
+                // for almost all loop iterations, but it can be higher on the
+                // first iteration, set up by "Ensure the informal" above.
+                //
+                // For subsequent iterations, the "Load at least 56 bits" below
+                // does what it says. The Huffman code consumes up to 16 bits
+                // and processing the Huffman symbol's ssss nibble consumes up
+                // to 15 bits. (56 - 16 - 15) = 25 >= 16 so at the end of the
+                // loop body, (n_bits >= 16).
+                //
+                // This 16 bound has some slack, as (NB >= 8) is all we need
+                // when ac_huff_table_fast has (1 << 8) entries, but a bound of
+                // 16 (the longest JPEG Huffman code bit length) won't need to
+                // change even if, in the future, the look-up table size grows.
+                ac_ht_fast = ac_huff_table_fast[bits >> 56] as base.u32
+
+                // Load at least 56 bits.
+                //
+                // TODO: eliminate this bounds check entirely.
+                if r.length() < 8 {
+                    ret = 2  // Internal error.
+                    break.goto_done
+                }
+                bits |= r.peek_u64be() >> (n_bits & 63)
+                r.skip_u32_fast!(actual: (63 - (n_bits & 63)) >> 3, worst_case: 8)
+                n_bits |= 56
+
+                // Read the Huffman-encoded ac_symbol, up to 16 bits long.
+                //
+                // LOOK-UP: "ac_ht_fast = etc" conceptually happens here, just
+                // before deriving ac_bl from ac_ht_fast.
+                ac_bl = ac_ht_fast >> 8
+                if n_bits >= ac_bl {
+                    ac_symbol = 0xFF & ac_ht_fast
+                    bits ~mod<<= (ac_bl & 63)
+                    n_bits -= ac_bl
+                } else {
+                    ac_code = (bits >> 55) as base.u32
+                    ac_blm1 = 8
+                    bits ~mod<<= 9
+                    n_bits ~mod-= 9
+                    while true,
+                            inv this.mcu_current_block < 10,
+                            inv ac_huff_table_fast <> nullptr,
+                            inv z < 64,
+                    {
+                        ac_ht_slow = this.huff_tables_slow[ac_h][ac_blm1]
+                        if ac_code < (ac_ht_slow >> 8) {
+                            ac_symbol = this.huff_tables_symbols[ac_h][0xFF & (ac_code ~mod+ ac_ht_slow)] as base.u32
+                            break
+                        }
+                        ac_code = (ac_code ~mod<< 1) | ((bits >> 63) as base.u32)
+                        bits ~mod<<= 1
+                        n_bits ~mod-= 1
+                        ac_blm1 = (ac_blm1 + 1) & 15
+                        if ac_blm1 == 0 {
+                            ac_symbol = 0
+                            break
+                        }
+                    }
+                }
+
+                // Split the 8-bit ac_symbol into two 4-bit halves, per section
+                // F.2.2.2 "Decoding procedure for AC coefficients".
+                ac_rrrr = ac_symbol >> 4
+                z += ac_rrrr + 1
+                ac_ssss = ac_symbol & 15
+                ac_extend = EXTEND[ac_ssss]
+
+                // Process the ac_value in the next ac_ssss (up to 15) bits.
+                if ac_ssss > 0 {
+                    ac_value = ((bits >> (64 - ac_ssss)) & 0xFFFF) as base.u16
+                    ac_value ~mod+= ac_extend &
+                            (((this.util.sign_extend_rshift_u64(a: bits, n: 63) & 0xFFFF) as base.u16) ^ 0xFFFF)
+                    bits ~mod<<= ac_ssss
+                    n_bits ~mod-= ac_ssss
+                    this.mcu_blocks[0][UNZIG[z]] =
+                            ac_value
+                } else if ac_rrrr < 15 {
+                    break.ac_components
+                }
+            }.ac_components
+
+            assert this.mcu_current_block < 10
+            mcb = this.mcu_current_block
+            this.mcu_current_block += 1
+            if this.test_only_interrupt_decode_mcu {
+                break.goto_done
+            }
+
+            // Apply IDCT.
+
+            if not this.swizzle_immediately {
+                csel = this.scan_comps_cselector[this.mcu_blocks_sselector[mcb]]
+                stride = this.components_workbuf_widths[csel] as base.u64
+                offset = this.mcu_blocks_offset[mcb] +
+                        ((this.mcu_blocks_mx_mul[mcb] as base.u64) * (args.mx as base.u64)) +
+                        ((this.mcu_blocks_my_mul[mcb] as base.u64) * (args.my as base.u64))
+                if offset <= args.workbuf.length() {
+                    this.decode_idct!(
+                            dst_buffer: args.workbuf[offset ..],
+                            dst_stride: stride,
+                            q: this.components_tq[csel] as base.u32)
+
+                }
+
+            } else if this.num_components == 1 {
+                this.decode_idct!(
+                        dst_buffer: this.swizzle_immediately_buffer[.. 64],
+                        dst_stride: 8,
+                        q: this.components_tq[csel] as base.u32)
+                this.swizzle_immediately_status = this.swizzle_gray!(
+                        dst: args.dst,
+                        workbuf: this.swizzle_immediately_buffer[.. 64],
+                        x0: (args.mx + 0) * 8,
+                        x1: (args.mx + 1) * 8,
+                        y0: (args.my + 0) * 8,
+                        y1: (args.my + 1) * 8,
+                        stride: 8)
+                if not this.swizzle_immediately_status.is_ok() {
+                    ret = 3  // Swizzling failure.
+                    break.goto_done
+                }
+                break.block
+
+            } else {
+                csel = this.scan_comps_cselector[this.mcu_blocks_sselector[mcb]]
+                stride = 8 * (this.components_h[csel] as base.u64)
+                this.decode_idct!(
+                        dst_buffer: this.swizzle_immediately_buffer[this.swizzle_immediately_b_offsets[mcb] ..],
+                        dst_stride: stride,
+                        q: this.components_tq[csel] as base.u32)
+                if this.mcu_current_block < this.mcu_num_blocks {
+                    continue.block
+                }
+                this.swizzle_immediately_status = this.swizzle_colorful!(
+                        dst: args.dst,
+                        workbuf: this.util.empty_slice_u8(),
+                        x0: (args.mx + 0) * 8 * (this.max_incl_components_h as base.u32),
+                        x1: (args.mx + 1) * 8 * (this.max_incl_components_h as base.u32),
+                        y0: (args.my + 0) * 8 * (this.max_incl_components_v as base.u32),
+                        y1: (args.my + 1) * 8 * (this.max_incl_components_v as base.u32))
+                if not this.swizzle_immediately_status.is_ok() {
+                    ret = 3  // Swizzling failure.
+                    break.goto_done
+                }
+                break.block
+            }
+        }.block
+        this.mcu_current_block = 0
+
+        break.goto_done
+        }}.goto_done
+
+        pos = (r.position() & 0xFFFF_FFFF) as base.u32
+        if pos > this.bitstream_wi {
+            ret = 2  // Internal error.
+        } else {
+            assert pos <= 0x800 via "a <= b: a <= c; c <= b"(c: this.bitstream_wi)
+            this.bitstream_ri = pos
+        }
+    }
+
+    this.bitstream_bits = bits
+    this.bitstream_n_bits = n_bits
+    return ret
+}

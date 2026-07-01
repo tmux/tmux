@@ -1,0 +1,68 @@
+# Feed this file to script/make-artificial.go
+
+# This GIF image contains multiple "loop count" entries.
+#
+# The GIF89a specification doesn't discuss loop counts: it is an extension to
+# the format. Neither the official spec nor unofficial documents (e.g.
+# http://www.vurdalakov.net/misc/gif/netscape-looping-application-extension)
+# state how to interpret having more than one of them: whether to accept the
+# first, accept the last, reject the overall animated image as invalid, etc.
+# Different spec-compliant decoders can choose different policies.
+#
+# Wuffs reports the most recent loop count seen, which may change over the
+# course of stepping through the frames. Programs that use Wuffs may enforce
+# their own policy (e.g. accept first, accept last, etc.) on top of that.
+#
+# Note also that the loop count as written in the GIF file format has "excludes"
+# semantics: it is the number of times to repeat the animation excluding the
+# initial play-through (and 0 means to loop forever). An "excludes" loop count
+# of 3 means to play each animation frame 4 times. An absent loop count means to
+# play each animation frame exactly once.
+#
+# Wuffs' API provides "includes" semantics, across all of its supported
+# animation file formats. An "includes" loop count of 3 means to play each
+# animation frame 3 times. There is no absent option. Wuffs' numbers and GIF's
+# numbers will generally differ by 1 (other than the absent case, and both
+# using 0 to mean forever).
+
+make gif
+
+header
+
+image {
+	imageWidthHeight 2 2
+	palette {
+		0x00 0x00 0xFF
+		0x11 0x00 0xFF
+		0x22 0x00 0xFF
+		0x33 0x00 0xFF
+	}
+}
+
+frame {
+	frameLeftTopWidthHeight 0 0 1 1
+}
+lzw 2 0x00
+
+frame {
+	frameLeftTopWidthHeight 0 0 1 1
+}
+lzw 2 0x00
+
+loopCount 50
+
+frame {
+	frameLeftTopWidthHeight 0 0 1 1
+}
+lzw 2 0x00
+
+loopCount 30
+
+frame {
+	frameLeftTopWidthHeight 0 0 1 1
+}
+lzw 2 0x00
+
+loopCount 40
+
+trailer

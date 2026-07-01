@@ -1,0 +1,17 @@
+.{
+    .name = .libpng,
+    .version = "1.6.43",
+    .fingerprint = 0xb7a09eb437ca8a79,
+    .paths = .{""},
+    .dependencies = .{
+        // glennrp/libpng
+        .libpng = .{
+            .url = "https://deps.files.ghostty.org/libpng-1220aa013f0c83da3fb64ea6d327f9173fa008d10e28bc9349eac3463457723b1c66.tar.gz",
+            .hash = "N-V-__8AAJrvXQCqAT8Mg9o_tk6m0yf5Fz-gCNEOKLyTSerD",
+            .lazy = true,
+        },
+
+        .zlib = .{ .path = "../zlib", .lazy = true },
+        .apple_sdk = .{ .path = "../apple-sdk" },
+    },
+}

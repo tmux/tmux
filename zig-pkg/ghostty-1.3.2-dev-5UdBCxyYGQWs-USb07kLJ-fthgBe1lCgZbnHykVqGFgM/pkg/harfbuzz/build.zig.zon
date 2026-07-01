@@ -1,0 +1,18 @@
+.{
+    .name = .harfbuzz,
+    .version = "11.0.0",
+    .fingerprint = 0xbd60917cd18865d8,
+    .paths = .{""},
+    .dependencies = .{
+        // harfbuzz/harfbuzz
+        .harfbuzz = .{
+            .url = "https://deps.files.ghostty.org/harfbuzz-11.0.0.tar.xz",
+            .hash = "N-V-__8AAG02ugUcWec-Ndp-i7JTsJ0dgF8nnJRUInkGLG7G",
+            .lazy = true,
+        },
+
+        .freetype = .{ .path = "../freetype" },
+        .macos = .{ .path = "../macos" },
+        .apple_sdk = .{ .path = "../apple-sdk" },
+    },
+}

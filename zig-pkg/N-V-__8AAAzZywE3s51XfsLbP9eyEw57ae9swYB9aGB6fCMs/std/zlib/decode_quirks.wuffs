@@ -1,0 +1,29 @@
+// Copyright 2021 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+// --------
+
+// Quirks are discussed in (/doc/note/quirks.md).
+//
+// The base38 encoding of "zlib" is 0x1E_A356. Left shifting by 10 gives
+// 0x7A8D_5800.
+pri const QUIRKS_BASE : base.u32 = 0x7A8D_5800
+
+// --------
+
+// When this quirk is enabled, the decoder speaks just raw deflate, without
+// zlib's configuration prefix and checksum suffix wrapped around that.
+//
+// A zlib.decoder basically becomes a deflate.decoder. This is useful when the
+// caller might want to choose between the two related-but-slightly-different
+// formats at run time but would rather not allocate two separate decoders.
+pub const QUIRK_JUST_RAW_DEFLATE : base.u32 = 0x7A8D_5800 | 0x00
+
+pri const QUIRKS_COUNT : base.u32 = 0x01

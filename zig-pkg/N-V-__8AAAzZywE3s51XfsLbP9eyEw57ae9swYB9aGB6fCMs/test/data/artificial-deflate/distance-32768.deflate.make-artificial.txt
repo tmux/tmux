@@ -1,0 +1,30 @@
+# Feed this file to script/make-artificial.go
+
+make deflate
+
+blockFixedHuffman (final) {
+	# Make 16 + 126*258 + 244 = 32768 bytes:
+	# abcdefgh0123456701234567...01234567
+	literal "abcdefgh01234567"
+	repeat 126 [
+		len 258 dist 8
+	]
+	len 244 dist 8
+
+	# Copy "abc".
+	len 3 dist 32768
+
+	# Copy "012".
+	len 3 dist 35
+
+	# Copy "gh0".
+	len 3 dist 32768
+
+	# Copy "2345".
+	len 4 dist 32767
+
+	endOfBlock
+}
+
+# The decompressed data is 32768 + 3 + 3 + 3 + 4 = 32781 bytes:
+# abcdefgh0123456701234567...01234567abc012gh02345

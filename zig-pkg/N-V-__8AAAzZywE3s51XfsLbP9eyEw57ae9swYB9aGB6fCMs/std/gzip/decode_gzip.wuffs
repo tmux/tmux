@@ -1,0 +1,158 @@
+// Copyright 2018 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+use "std/crc32"
+use "std/deflate"
+
+pub status "#bad checksum"
+pub status "#bad compression method"
+pub status "#bad encoding flags"
+pub status "#bad header"
+pub status "#truncated input"
+
+pub const DECODER_DST_HISTORY_RETAIN_LENGTH_MAX_INCL_WORST_CASE : base.u64 = 0
+
+// TODO: reference deflate.DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE.
+pub const DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE : base.u64 = 1
+
+pub struct decoder? implements base.io_transformer(
+        ignore_checksum : base.bool,
+        checksum        : crc32.ieee_hasher,
+
+        flate : deflate.decoder,
+
+        util : base.utility,
+)
+
+pub func decoder.get_quirk(key: base.u32) base.u64 {
+    if (args.key == base.QUIRK_IGNORE_CHECKSUM) and this.ignore_checksum {
+        return 1
+    }
+    return 0
+}
+
+pub func decoder.set_quirk!(key: base.u32, value: base.u64) base.status {
+    if args.key == base.QUIRK_IGNORE_CHECKSUM {
+        this.ignore_checksum = args.value > 0
+        return ok
+    }
+    return base."#unsupported option"
+}
+
+pub func decoder.dst_history_retain_length() base.optional_u63 {
+    return this.util.make_optional_u63(has_value: true, value: 0)
+}
+
+pub func decoder.workbuf_len() base.range_ii_u64 {
+    return this.util.make_range_ii_u64(
+            min_incl: DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE,
+            max_incl: DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE)
+}
+
+pub func decoder.transform_io?(dst: base.io_writer, src: base.io_reader, workbuf: slice base.u8) {
+    var status : base.status
+
+    while true {
+        status =? this.do_transform_io?(dst: args.dst, src: args.src, workbuf: args.workbuf)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_transform_io?(dst: base.io_writer, src: base.io_reader, workbuf: slice base.u8) {
+    var c8                  : base.u8
+    var flags               : base.u8
+    var xlen                : base.u16
+    var mark                : base.u64
+    var checksum_have       : base.u32
+    var decoded_length_have : base.u32
+    var status              : base.status
+    var checksum_want       : base.u32
+    var decoded_length_want : base.u32
+
+    // Read the header.
+    c8 = args.src.read_u8?()
+    if c8 <> 0x1F {
+        return "#bad header"
+    }
+    c8 = args.src.read_u8?()
+    if c8 <> 0x8B {
+        return "#bad header"
+    }
+    c8 = args.src.read_u8?()
+    if c8 <> 0x08 {
+        return "#bad compression method"
+    }
+    flags = args.src.read_u8?()
+    // TODO: API for returning the header's MTIME field.
+    args.src.skip_u32?(n: 6)
+
+    // Handle FEXTRA.
+    if (flags & 0x04) <> 0 {
+        xlen = args.src.read_u16le?()
+        args.src.skip_u32?(n: xlen as base.u32)
+    }
+
+    // Handle FNAME.
+    //
+    // TODO: API for returning the header's FNAME field. This might require
+    // converting ISO 8859-1 to UTF-8. We may also want to cap the UTF-8
+    // filename length to NAME_MAX, which is 255.
+    if (flags & 0x08) <> 0 {
+        while true {
+            c8 = args.src.read_u8?()
+            if c8 == 0 {
+                break
+            }
+        }
+    }
+
+    // Handle FCOMMENT.
+    if (flags & 0x10) <> 0 {
+        while true {
+            c8 = args.src.read_u8?()
+            if c8 == 0 {
+                break
+            }
+        }
+    }
+
+    // Handle FHCRC.
+    if (flags & 0x02) <> 0 {
+        args.src.skip_u32?(n: 2)
+    }
+
+    // Reserved flags bits must be zero.
+    if (flags & 0xE0) <> 0 {
+        return "#bad encoding flags"
+    }
+
+    // Decode and checksum the DEFLATE-encoded payload.
+    while true {
+        mark = args.dst.mark()
+        status =? this.flate.transform_io?(dst: args.dst, src: args.src, workbuf: args.workbuf)
+        if not this.ignore_checksum {
+            checksum_have = this.checksum.update_u32!(x: args.dst.since(mark: mark))
+            decoded_length_have ~mod+= (args.dst.count_since(mark: mark) & 0xFFFF_FFFF) as base.u32
+        }
+        if status.is_ok() {
+            break
+        }
+        yield? status
+    }
+    checksum_want = args.src.read_u32le?()
+    decoded_length_want = args.src.read_u32le?()
+    if (not this.ignore_checksum) and
+            ((checksum_have <> checksum_want) or (decoded_length_have <> decoded_length_want)) {
+        return "#bad checksum"
+    }
+}

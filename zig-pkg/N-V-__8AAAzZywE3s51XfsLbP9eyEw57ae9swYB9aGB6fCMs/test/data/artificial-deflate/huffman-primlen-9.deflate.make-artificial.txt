@@ -1,0 +1,93 @@
+# Feed this file to script/make-artificial.go
+
+make deflate
+
+blockDynamicHuffman (final) {
+	huffman CodeLength {
+		# 15 codes of length 4.
+		0  0000
+		1  0001
+		etcetera
+		13 1101
+		14 1110
+
+		# 4 codes of length 6.
+		15 111100
+		16 111101
+		17 111110
+		18 111111
+	}
+
+	# script/print-deflate-huff-table-size.go prints:
+	# primLen  9:    852  entries =   512 prim +  340 seco
+	# @1  @2  @3  @4  @5  @6  @7  @8  @9 @10 @11 @12 @13 @14 @15
+	#  1   1   1   0   0   0   0   0   0;  1 229  49   1   1   2
+	huffman Literal/Length {
+		0   0
+		1   10
+		2   110
+		3   1110000000
+
+		# 229 codes of length 11.
+		4   11100000010
+		5   11100000011
+		etcetera
+		231 11111100101
+		232 11111100110
+
+		# 49 codes of length 12.
+		233 111111001110
+		234 111111001111
+		etcetera
+		256 111111100101
+		257 111111100110
+		etcetera
+		280 111111111101
+		281 111111111110
+
+		# 1+1+2 = 4 codes of length 13+.
+		282 1111111111110
+		283 11111111111110
+		284 111111111111110
+		285 111111111111111
+	}
+
+	# script/print-deflate-huff-table-size.go prints:
+	# primLen  9:    592  entries =   512 prim +   80 seco
+	# @1  @2  @3  @4  @5  @6  @7  @8  @9 @10 @11 @12 @13 @14 @15
+	#  1   1   1   1   1   1   1   0   0;  1   9   9   1   1   2
+	huffman Distance {
+		0  0
+		1  10
+		2  110
+		3  1110
+		4  11110
+		5  111110
+		6  1111110
+		7  1111111000
+
+		# 9 codes of length 11.
+		8  11111110010
+		9  11111110011
+		etcetera
+		15 11111111001
+		16 11111111010
+
+		# 9 codes of length 12.
+		17 111111110110
+		18 111111110111
+		etcetera
+		24 111111111101
+		25 111111111110
+
+		# 1+1+2 = 4 codes of length 13+.
+		26 1111111111110
+		27 11111111111110
+		28 111111111111110
+		29 111111111111111
+	}
+
+	literal "ban"
+	len 3 dist 2
+	endOfBlock
+}

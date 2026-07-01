@@ -1,0 +1,797 @@
+// Copyright 2020 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pub status "#bad input"
+pub status "#unsupported recursion depth"
+
+pri status "#internal error: inconsistent I/O"
+pri status "#internal error: inconsistent token length"
+
+// --------
+
+// DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE is the largest workbuf length that a
+// decoder will request.
+pub const DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE : base.u64 = 0
+
+// DECODER_DEPTH_MAX_INCL is the maximum supported recursion depth: how deeply
+// nested [] arrays and {} maps can be.
+//
+// The CBOR spec itself does not define a limit, but allows implementations to
+// set their own limits.
+pub const DECODER_DEPTH_MAX_INCL : base.u64 = 1024
+
+// DECODER_DST_TOKEN_BUFFER_LENGTH_MIN_INCL is the minimum length of the dst
+// wuffs_base__token_buffer passed to the decoder.
+pub const DECODER_DST_TOKEN_BUFFER_LENGTH_MIN_INCL : base.u64 = 2
+
+// DECODER_SRC_IO_BUFFER_LENGTH_MIN_INCL is the minimum length of the src
+// wuffs_base__io_buffer passed to the decoder.
+pub const DECODER_SRC_IO_BUFFER_LENGTH_MIN_INCL : base.u64 = 9
+
+// --------
+
+// TOKEN_VALUE_MAJOR is the base38 encoding of "cbor".
+pub const TOKEN_VALUE_MAJOR : base.u32 = 0x0B_29FA
+
+// TOKEN_VALUE_MINOR__DETAIL_MASK is a mask for the low 18 bits of a token's
+// value_minor. 18 is 64 - base.TOKEN__VALUE_EXTENSION__NUM_BITS.
+pub const TOKEN_VALUE_MINOR__DETAIL_MASK : base.u64 = 0x003_FFFF
+
+// TOKEN_VALUE_MINOR__MINUS_1_MINUS_X means that the 9-byte length token holds
+// the negative integer (-1 - x), where x is the big-endian unsigned integer in
+// the token's final 8 bytes. The most significant bit of x is guaranteed to be
+// set, so that (-1 - x) will always underflow an int64_t and its absolute
+// value (+1 + x) might also overflow a uint64_t.
+pub const TOKEN_VALUE_MINOR__MINUS_1_MINUS_X : base.u32 = 0x100_0000
+
+// TOKEN_VALUE_MINOR__SIMPLE_VALUE means that the low 8 bits (or, equivalently,
+// the low 18 bits) of the token's value_minor is a CBOR simple value either in
+// the range 0 ..= 19 or in the range 24 ..= 255.
+//
+// Simple values in the range 20 ..= 23 (which correspond to: false, true, null
+// and undefined) are represented by WUFFS_BASE__TOKEN__VBC__LITERAL tokens.
+pub const TOKEN_VALUE_MINOR__SIMPLE_VALUE : base.u32 = 0x080_0000
+
+// TOKEN_VALUE_MINOR__TAG means that the low 18 bits of the token's value_minor
+// is a CBOR tag. That token may be continued, in which case the following
+// token is an extended token whose value_extension holds a further
+// base.TOKEN__VALUE_EXTENSION__NUM_BITS bits. The 64-bit CBOR tag is either v
+// or ((v << base.TOKEN__VALUE_EXTENSION__NUM_BITS) | value_extension_1) where
+// v is (value_minor_0 & TOKEN_VALUE_MINOR__DETAIL_MASK).
+//
+// When a token chain contains extended tokens like this, all but the last
+// token has zero length.
+pub const TOKEN_VALUE_MINOR__TAG : base.u32 = 0x040_0000
+
+// --------
+
+pri const LITERALS : roarray[4] base.u32[..= 0x1FF_FFFF] = [
+        (base.TOKEN__VBC__LITERAL << 21) | base.TOKEN__VBD__LITERAL__FALSE,
+        (base.TOKEN__VBC__LITERAL << 21) | base.TOKEN__VBD__LITERAL__TRUE,
+        (base.TOKEN__VBC__LITERAL << 21) | base.TOKEN__VBD__LITERAL__NULL,
+        (base.TOKEN__VBC__LITERAL << 21) | base.TOKEN__VBD__LITERAL__UNDEFINED,
+]
+
+pri const TOKEN_LENGTHS : roarray[32] base.u8[..= 9] = [
+        1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1,
+        2, 3, 5, 9, 0, 0, 0, 1,
+]
+
+pub struct decoder? implements base.token_decoder(
+        end_of_data : base.bool,
+
+        util : base.utility,
+) + (
+        // stack is conceptually an array of 2-bit integers, implemented as an
+        // array of u32. The N'th 2-bit pair is whether we're in an array or
+        // object, where N is the recursion depth:
+        //  - 0b00 In an array.
+        //  - 0b01 In an object, expecting a value.
+        //  - 0b10 In an array.
+        //  - 0b11 In an object, expecting a key.
+        //
+        // The maximum recursion depth, 1024, is the same as for std/json.
+        stack : array[1024 / 16] base.u32,
+
+        // container_num_remaining[i] is the number of elements remaining in the
+        // open containers, for i ranging in 0 .. depth. If (i < depth) and
+        // (container_num_remaining[i] == 0) then the i'th open container has
+        // indefinite length.
+        container_num_remaining : array[1024] base.u64,
+)
+
+pub func decoder.get_quirk(key: base.u32) base.u64 {
+    return 0
+}
+
+pub func decoder.set_quirk!(key: base.u32, value: base.u64) base.status {
+    return base."#unsupported option"
+}
+
+pub func decoder.workbuf_len() base.range_ii_u64 {
+    return this.util.empty_range_ii_u64()
+}
+
+pub func decoder.decode_tokens?(dst: base.token_writer, src: base.io_reader, workbuf: slice base.u8) {
+    var string_length : base.u64
+
+    var n64          : base.u64
+    var depth        : base.u32[..= 1024]
+    var stack_byte   : base.u32[..= (1024 / 16) - 1]
+    var stack_bit    : base.u32[..= 30]
+    var stack_val    : base.u32[..= 3]
+    var token_length : base.u32[..= 0xFFFF]
+    var vminor       : base.u32[..= 0x1FF_FFFF]
+    var vminor_alt   : base.u32[..= 0x1FF_FFFF]
+    var continued    : base.u32[..= 1]
+    var c8           : base.u8
+    var c_major      : base.u8[..= 0x07]
+    var c_minor      : base.u8[..= 0x1F]
+    var tagged       : base.bool
+
+    // indefinite_string_major_type is 2 or 3 when we are in an
+    // indefinite-length byte string or text string. It is 0 otherwise.
+    var indefinite_string_major_type : base.u8[..= 3]
+
+    if this.end_of_data {
+        return base."@end of data"
+    }
+
+    while.outer true {
+        while.goto_parsed_a_leaf_value true {{
+        while.goto_fail true {{
+        if args.dst.length() <= 1 {
+            yield? base."$short write"
+            continue.outer
+        }
+        if args.src.length() <= 0 {
+            if args.src.is_closed() {
+                return "#bad input"
+            }
+            yield? base."$short read"
+            continue.outer
+        }
+        c8 = args.src.peek_u8()
+
+        if (indefinite_string_major_type <> 0) and (indefinite_string_major_type <> (c8 >> 5)) {
+            if c8 <> 0xFF {
+                return "#bad input"
+            }
+            vminor = (base.TOKEN__VBC__STRING << 21) |
+                    base.TOKEN__VBD__STRING__CONVERT_0_DST_1_SRC_DROP
+            if indefinite_string_major_type == 3 {
+                vminor |= base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                        base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                        base.TOKEN__VBD__STRING__DEFINITELY_ASCII
+            }
+            indefinite_string_major_type = 0
+            args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+            args.dst.write_simple_token_fast!(
+                    value_major: 0,
+                    value_minor: vminor,
+                    continued: 0,
+                    length: 1)
+            break.goto_parsed_a_leaf_value
+        }
+
+        args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+        c_major = (c8 >> 5) as base.u8
+        c_minor = c8 & 0x1F
+        if c_minor < 0x18 {
+            string_length = c_minor as base.u64
+        } else {
+            while.goto_have_string_length true,
+                    inv args.dst.length() > 1,
+            {{
+            if c_minor == 0x18 {
+                if args.src.length() >= 1 {
+                    string_length = args.src.peek_u8_as_u64()
+                    args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                    break.goto_have_string_length
+                }
+            } else if c_minor == 0x19 {
+                if args.src.length() >= 2 {
+                    string_length = args.src.peek_u16be_as_u64()
+                    args.src.skip_u32_fast!(actual: 2, worst_case: 2)
+                    break.goto_have_string_length
+                }
+            } else if c_minor == 0x1A {
+                if args.src.length() >= 4 {
+                    string_length = args.src.peek_u32be_as_u64()
+                    args.src.skip_u32_fast!(actual: 4, worst_case: 4)
+                    break.goto_have_string_length
+                }
+            } else if c_minor == 0x1B {
+                if args.src.length() >= 8 {
+                    string_length = args.src.peek_u64be()
+                    args.src.skip_u32_fast!(actual: 8, worst_case: 8)
+                    break.goto_have_string_length
+                }
+            } else {
+                string_length = 0
+                break.goto_have_string_length
+            }
+
+            if args.src.can_undo_byte() {
+                args.src.undo_byte!()
+                if args.src.is_closed() {
+                    return "#bad input"
+                }
+                yield? base."$short read"
+                continue.outer
+            }
+            return "#internal error: inconsistent I/O"
+            }}.goto_have_string_length
+        }
+
+        if c_major == 0 {
+            // -------- BEGIN Major type 0: an unsigned integer.
+            if c_minor < 0x1A {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__INLINE_INTEGER_UNSIGNED << 21) |
+                        ((string_length & 0xFFFF) as base.u32),
+                        continued: 0,
+                        length: TOKEN_LENGTHS[c_minor] as base.u32)
+                break.goto_parsed_a_leaf_value
+            } else if c_minor < 0x1C {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__INLINE_INTEGER_UNSIGNED << 21) |
+                        ((string_length >> base.TOKEN__VALUE_EXTENSION__NUM_BITS) as base.u32),
+                        continued: 1,
+                        length: 0)
+                args.dst.write_extended_token_fast!(
+                        value_extension: string_length & 0x3FFF_FFFF_FFFF,
+                        continued: 0,
+                        length: TOKEN_LENGTHS[c_minor] as base.u32)
+                break.goto_parsed_a_leaf_value
+            }
+            // -------- END   Major type 0: an unsigned integer.
+
+        } else if c_major == 1 {
+            // -------- BEGIN Major type 1: a negative integer.
+            if c_minor < 0x1A {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__INLINE_INTEGER_SIGNED << 21) |
+                        (0x1F_FFFF - ((string_length & 0xFFFF) as base.u32)),
+                        continued: 0,
+                        length: TOKEN_LENGTHS[c_minor] as base.u32)
+                break.goto_parsed_a_leaf_value
+            } else if c_minor < 0x1C {
+                if string_length < 0x8000_0000_0000_0000 {
+                    args.dst.write_simple_token_fast!(
+                            value_major: 0,
+                            value_minor: (base.TOKEN__VBC__INLINE_INTEGER_SIGNED << 21) |
+                            (0x1F_FFFF - ((string_length >> base.TOKEN__VALUE_EXTENSION__NUM_BITS) as base.u32)),
+                            continued: 1,
+                            length: 0)
+                    args.dst.write_extended_token_fast!(
+                            value_extension: (0xFFFF_FFFF_FFFF_FFFF - string_length) & 0x3FFF_FFFF_FFFF,
+                            continued: 0,
+                            length: TOKEN_LENGTHS[c_minor] as base.u32)
+                } else {
+                    args.dst.write_simple_token_fast!(
+                            value_major: TOKEN_VALUE_MAJOR,
+                            value_minor: TOKEN_VALUE_MINOR__MINUS_1_MINUS_X,
+                            continued: 0,
+                            length: 9)
+                }
+                break.goto_parsed_a_leaf_value
+            }
+            // -------- END   Major type 1: a negative integer.
+
+        } else if c_major == 2 {
+            // -------- BEGIN Major type 2: a byte string.
+            if c_minor < 0x1C {
+                if string_length == 0 {
+                    args.dst.write_simple_token_fast!(
+                            value_major: 0,
+                            value_minor: (base.TOKEN__VBC__STRING << 21) |
+                            base.TOKEN__VBD__STRING__CONVERT_0_DST_1_SRC_DROP,
+                            continued: 0,
+                            length: TOKEN_LENGTHS[c_minor] as base.u32)
+                    break.goto_parsed_a_leaf_value
+                }
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__STRING << 21) |
+                        base.TOKEN__VBD__STRING__CONVERT_0_DST_1_SRC_DROP,
+                        continued: 1,
+                        length: TOKEN_LENGTHS[c_minor] as base.u32)
+            } else if c_minor == 0x1F {
+                if indefinite_string_major_type <> 0 {
+                    break.goto_fail
+                }
+                indefinite_string_major_type = 2
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__STRING << 21) |
+                        base.TOKEN__VBD__STRING__CONVERT_0_DST_1_SRC_DROP,
+                        continued: 1,
+                        length: 1)
+                continue.outer
+            } else {
+                break.goto_fail
+            }
+
+            while true {
+                if args.dst.length() <= 0 {
+                    yield? base."$short write"
+                    continue
+                }
+                n64 = string_length.min(no_more_than: args.src.length())
+                token_length = (n64 & 0xFFFF) as base.u32
+                if n64 > 0xFFFF {
+                    token_length = 0xFFFF
+                } else if token_length <= 0 {
+                    if args.src.is_closed() {
+                        return "#bad input"
+                    }
+                    yield? base."$short read"
+                    continue
+                }
+                if args.src.length() < (token_length as base.u64) {
+                    return "#internal error: inconsistent token length"
+                }
+                string_length ~mod-= token_length as base.u64
+                continued = 0
+                if (string_length > 0) or (indefinite_string_major_type > 0) {
+                    continued = 1
+                }
+                args.src.skip_u32_fast!(actual: token_length, worst_case: token_length)
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__STRING << 21) |
+                        base.TOKEN__VBD__STRING__CONVERT_1_DST_1_SRC_COPY,
+                        continued: continued,
+                        length: token_length)
+                if string_length > 0 {
+                    continue
+                } else if indefinite_string_major_type > 0 {
+                    continue.outer
+                }
+                break.goto_parsed_a_leaf_value
+            }
+            // -------- END   Major type 2: a byte string.
+
+        } else if c_major == 3 {
+            // -------- BEGIN Major type 3: a text string.
+            if c_minor < 0x1C {
+                if string_length == 0 {
+                    args.dst.write_simple_token_fast!(
+                            value_major: 0,
+                            value_minor: (base.TOKEN__VBC__STRING << 21) |
+                            base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                            base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                            base.TOKEN__VBD__STRING__DEFINITELY_ASCII |
+                            base.TOKEN__VBD__STRING__CONVERT_0_DST_1_SRC_DROP,
+                            continued: 0,
+                            length: TOKEN_LENGTHS[c_minor] as base.u32)
+                    break.goto_parsed_a_leaf_value
+                }
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__STRING << 21) |
+                        base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                        base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                        base.TOKEN__VBD__STRING__DEFINITELY_ASCII |
+                        base.TOKEN__VBD__STRING__CONVERT_0_DST_1_SRC_DROP,
+                        continued: 1,
+                        length: TOKEN_LENGTHS[c_minor] as base.u32)
+            } else if c_minor == 0x1F {
+                if indefinite_string_major_type <> 0 {
+                    break.goto_fail
+                }
+                indefinite_string_major_type = 3
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__STRING << 21) |
+                        base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                        base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                        base.TOKEN__VBD__STRING__DEFINITELY_ASCII |
+                        base.TOKEN__VBD__STRING__CONVERT_0_DST_1_SRC_DROP,
+                        continued: 1,
+                        length: 1)
+                continue.outer
+            } else {
+                break.goto_fail
+            }
+
+            while true {
+                if args.dst.length() <= 0 {
+                    yield? base."$short write"
+                    continue
+                }
+                n64 = string_length.min(no_more_than: 0xFFFF)
+                n64 = args.src.valid_utf_8_length(up_to: n64)
+                token_length = (n64 & 0xFFFF) as base.u32
+                if token_length <= 0 {
+                    // The longest UTF-8 code point is 4 bytes.
+                    if args.src.is_closed() or (args.src.length() >= 4) {
+                        return "#bad input"
+                    }
+                    yield? base."$short read"
+                    continue
+                }
+                if args.src.length() < (token_length as base.u64) {
+                    return "#internal error: inconsistent token length"
+                }
+                string_length ~mod-= token_length as base.u64
+                continued = 0
+                if (string_length > 0) or (indefinite_string_major_type > 0) {
+                    continued = 1
+                }
+                args.src.skip_u32_fast!(actual: token_length, worst_case: token_length)
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__STRING << 21) |
+                        base.TOKEN__VBD__STRING__DEFINITELY_UTF_8 |
+                        base.TOKEN__VBD__STRING__CHAIN_MUST_BE_UTF_8 |
+                        base.TOKEN__VBD__STRING__CONVERT_1_DST_1_SRC_COPY,
+                        continued: continued,
+                        length: token_length)
+                if string_length > 0 {
+                    continue
+                } else if indefinite_string_major_type > 0 {
+                    continue.outer
+                }
+                break.goto_parsed_a_leaf_value
+            }
+            // -------- END   Major type 3: a text string.
+
+        } else if c_major == 4 {
+            // -------- BEGIN Major type 4: an array of data items.
+            if TOKEN_LENGTHS[c_minor] == 0 {
+                break.goto_fail
+            } else if depth >= 1024 {
+                token_length = TOKEN_LENGTHS[c_minor] as base.u32
+                while (token_length > 0) and (args.src.can_undo_byte()) {
+                    args.src.undo_byte!()
+                    token_length -= 1
+                }
+                return "#unsupported recursion depth"
+            }
+
+            vminor = (base.TOKEN__VBC__STRUCTURE << 21) |
+                    base.TOKEN__VBD__STRUCTURE__PUSH |
+                    base.TOKEN__VBD__STRUCTURE__FROM_NONE |
+                    base.TOKEN__VBD__STRUCTURE__TO_LIST
+            vminor_alt = (base.TOKEN__VBC__STRUCTURE << 21) |
+                    base.TOKEN__VBD__STRUCTURE__POP |
+                    base.TOKEN__VBD__STRUCTURE__FROM_LIST |
+                    base.TOKEN__VBD__STRUCTURE__TO_NONE
+            if depth > 0 {
+                stack_byte = (depth - 1) / 16
+                stack_bit = ((depth - 1) & 15) * 2
+                if 0 == (this.stack[stack_byte] & ((1 as base.u32) << stack_bit)) {
+                    vminor = (base.TOKEN__VBC__STRUCTURE << 21) |
+                            base.TOKEN__VBD__STRUCTURE__PUSH |
+                            base.TOKEN__VBD__STRUCTURE__FROM_LIST |
+                            base.TOKEN__VBD__STRUCTURE__TO_LIST
+                    vminor_alt = (base.TOKEN__VBC__STRUCTURE << 21) |
+                            base.TOKEN__VBD__STRUCTURE__POP |
+                            base.TOKEN__VBD__STRUCTURE__FROM_LIST |
+                            base.TOKEN__VBD__STRUCTURE__TO_LIST
+                } else {
+                    vminor = (base.TOKEN__VBC__STRUCTURE << 21) |
+                            base.TOKEN__VBD__STRUCTURE__PUSH |
+                            base.TOKEN__VBD__STRUCTURE__FROM_DICT |
+                            base.TOKEN__VBD__STRUCTURE__TO_LIST
+                    vminor_alt = (base.TOKEN__VBC__STRUCTURE << 21) |
+                            base.TOKEN__VBD__STRUCTURE__POP |
+                            base.TOKEN__VBD__STRUCTURE__FROM_LIST |
+                            base.TOKEN__VBD__STRUCTURE__TO_DICT
+                }
+            }
+            args.dst.write_simple_token_fast!(
+                    value_major: 0,
+                    value_minor: vminor,
+                    continued: 0,
+                    length: TOKEN_LENGTHS[c_minor] as base.u32)
+            if c_minor == 0x00 {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: vminor_alt,
+                        continued: 0,
+                        length: 0)
+                break.goto_parsed_a_leaf_value
+            }
+
+            stack_byte = depth / 16
+            stack_bit = (depth & 15) * 2
+            this.stack[stack_byte] &= 0xFFFF_FFFF ^ ((3 as base.u32) << stack_bit)
+            this.container_num_remaining[depth] = string_length
+            depth += 1
+            tagged = false
+            continue.outer
+            // -------- END   Major type 4: an array of data items.
+
+        } else if c_major == 5 {
+            // -------- BEGIN Major type 5: a map of pairs of data items.
+            if TOKEN_LENGTHS[c_minor] == 0 {
+                break.goto_fail
+            } else if depth >= 1024 {
+                token_length = TOKEN_LENGTHS[c_minor] as base.u32
+                while (token_length > 0) and (args.src.can_undo_byte()) {
+                    args.src.undo_byte!()
+                    token_length -= 1
+                }
+                return "#unsupported recursion depth"
+            }
+
+            vminor = (base.TOKEN__VBC__STRUCTURE << 21) |
+                    base.TOKEN__VBD__STRUCTURE__PUSH |
+                    base.TOKEN__VBD__STRUCTURE__FROM_NONE |
+                    base.TOKEN__VBD__STRUCTURE__TO_DICT
+            vminor_alt = (base.TOKEN__VBC__STRUCTURE << 21) |
+                    base.TOKEN__VBD__STRUCTURE__POP |
+                    base.TOKEN__VBD__STRUCTURE__FROM_DICT |
+                    base.TOKEN__VBD__STRUCTURE__TO_NONE
+            if depth > 0 {
+                stack_byte = (depth - 1) / 16
+                stack_bit = ((depth - 1) & 15) * 2
+                if 0 == (this.stack[stack_byte] & ((1 as base.u32) << stack_bit)) {
+                    vminor = (base.TOKEN__VBC__STRUCTURE << 21) |
+                            base.TOKEN__VBD__STRUCTURE__PUSH |
+                            base.TOKEN__VBD__STRUCTURE__FROM_LIST |
+                            base.TOKEN__VBD__STRUCTURE__TO_DICT
+                    vminor_alt = (base.TOKEN__VBC__STRUCTURE << 21) |
+                            base.TOKEN__VBD__STRUCTURE__POP |
+                            base.TOKEN__VBD__STRUCTURE__FROM_DICT |
+                            base.TOKEN__VBD__STRUCTURE__TO_LIST
+                } else {
+                    vminor = (base.TOKEN__VBC__STRUCTURE << 21) |
+                            base.TOKEN__VBD__STRUCTURE__PUSH |
+                            base.TOKEN__VBD__STRUCTURE__FROM_DICT |
+                            base.TOKEN__VBD__STRUCTURE__TO_DICT
+                    vminor_alt = (base.TOKEN__VBC__STRUCTURE << 21) |
+                            base.TOKEN__VBD__STRUCTURE__POP |
+                            base.TOKEN__VBD__STRUCTURE__FROM_DICT |
+                            base.TOKEN__VBD__STRUCTURE__TO_DICT
+                }
+            }
+            args.dst.write_simple_token_fast!(
+                    value_major: 0,
+                    value_minor: vminor,
+                    continued: 0,
+                    length: TOKEN_LENGTHS[c_minor] as base.u32)
+            if c_minor == 0x00 {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: vminor_alt,
+                        continued: 0,
+                        length: 0)
+                break.goto_parsed_a_leaf_value
+            }
+
+            stack_byte = depth / 16
+            stack_bit = (depth & 15) * 2
+            this.stack[stack_byte] |= (3 as base.u32) << stack_bit
+            this.container_num_remaining[depth] = string_length
+            depth += 1
+            tagged = false
+            continue.outer
+            // -------- END   Major type 5: a map of pairs of data items.
+
+        } else if c_major == 6 {
+            // -------- BEGIN Major type 6: tags.
+            if c_minor >= 0x1C {
+                break.goto_fail
+            }
+            // Write one token (18 bits) or two tokens (18 + 46 bits).
+            if string_length < 0x4_0000 {
+                args.dst.write_simple_token_fast!(
+                        value_major: TOKEN_VALUE_MAJOR,
+                        value_minor: TOKEN_VALUE_MINOR__TAG |
+                        (string_length as base.u32),
+                        continued: 0,
+                        length: TOKEN_LENGTHS[c_minor] as base.u32)
+            } else {
+                args.dst.write_simple_token_fast!(
+                        value_major: TOKEN_VALUE_MAJOR,
+                        value_minor: TOKEN_VALUE_MINOR__TAG |
+                        ((string_length >> base.TOKEN__VALUE_EXTENSION__NUM_BITS) as base.u32),
+                        continued: 1,
+                        length: 0)
+                args.dst.write_extended_token_fast!(
+                        value_extension: string_length & 0x3FFF_FFFF_FFFF,
+                        continued: 0,
+                        length: TOKEN_LENGTHS[c_minor] as base.u32)
+            }
+            tagged = true
+            continue.outer
+            // -------- END   Major type 6: tags.
+
+        } else if c_major == 7 {
+            // -------- BEGIN Major type 7: miscellaneous.
+            if c_minor < 0x14 {
+                args.dst.write_simple_token_fast!(
+                        value_major: TOKEN_VALUE_MAJOR,
+                        value_minor: TOKEN_VALUE_MINOR__SIMPLE_VALUE |
+                        ((string_length & 0xFF) as base.u32),
+                        continued: 0,
+                        length: 1)
+                break.goto_parsed_a_leaf_value
+
+            } else if c_minor < 0x18 {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: LITERALS[c_minor & 3],
+                        continued: 0,
+                        length: 1)
+                break.goto_parsed_a_leaf_value
+
+            } else if c_minor == 0x18 {
+                if string_length < 0x18 {
+                    if not args.src.can_undo_byte() {
+                        return "#internal error: inconsistent I/O"
+                    }
+                    args.src.undo_byte!()
+                    break.goto_fail
+                }
+                args.dst.write_simple_token_fast!(
+                        value_major: TOKEN_VALUE_MAJOR,
+                        value_minor: TOKEN_VALUE_MINOR__SIMPLE_VALUE |
+                        ((string_length & 0xFF) as base.u32),
+                        continued: 0,
+                        length: 2)
+                break.goto_parsed_a_leaf_value
+
+            } else if c_minor < 0x1C {
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: (base.TOKEN__VBC__NUMBER << 21) |
+                        base.TOKEN__VBD__NUMBER__CONTENT_FLOATING_POINT |
+                        base.TOKEN__VBD__NUMBER__FORMAT_BINARY_BIG_ENDIAN |
+                        base.TOKEN__VBD__NUMBER__FORMAT_IGNORE_FIRST_BYTE,
+                        continued: 0,
+                        length: TOKEN_LENGTHS[c_minor] as base.u32)
+                break.goto_parsed_a_leaf_value
+
+            } else if c_minor == 0x1F {
+                // Indefinite-length strings were dealt with separately, above.
+                // Here, we expect to be in an indefinite-length container.
+                if tagged or (depth <= 0) {
+                    break.goto_fail
+                }
+                depth -= 1
+                if this.container_num_remaining[depth] <> 0 {
+                    break.goto_fail
+                }
+
+                // Check that, if we're in a map, the map contains an even
+                // number of elements.
+                stack_byte = depth / 16
+                stack_bit = (depth & 15) * 2
+                stack_val = 3 & (this.stack[stack_byte] >> stack_bit)
+                if stack_val == 1 {
+                    break.goto_fail
+                }
+
+                // Fill in FROM_ETC.
+                if stack_val <> 3 {
+                    vminor_alt = (base.TOKEN__VBC__STRUCTURE << 21) |
+                            base.TOKEN__VBD__STRUCTURE__POP |
+                            base.TOKEN__VBD__STRUCTURE__FROM_LIST
+                } else {
+                    vminor_alt = (base.TOKEN__VBC__STRUCTURE << 21) |
+                            base.TOKEN__VBD__STRUCTURE__POP |
+                            base.TOKEN__VBD__STRUCTURE__FROM_DICT
+                }
+
+                // Fill in TO_ETC.
+                if depth <= 0 {
+                    vminor_alt |= base.TOKEN__VBD__STRUCTURE__TO_NONE
+                } else {
+                    stack_byte = (depth - 1) / 16
+                    stack_bit = ((depth - 1) & 15) * 2
+                    if 0 == (this.stack[stack_byte] & ((1 as base.u32) << stack_bit)) {
+                        vminor_alt |= base.TOKEN__VBD__STRUCTURE__TO_LIST
+                    } else {
+                        vminor_alt |= base.TOKEN__VBD__STRUCTURE__TO_DICT
+                    }
+                }
+
+                args.dst.write_simple_token_fast!(
+                        value_major: 0,
+                        value_minor: vminor_alt,
+                        continued: 0,
+                        length: 1)
+                break.goto_parsed_a_leaf_value
+            }
+            // -------- END   Major type 7: miscellaneous.
+        }
+        break.goto_fail
+        }}.goto_fail
+
+        if args.src.can_undo_byte() {
+            args.src.undo_byte!()
+            return "#bad input"
+        }
+        return "#internal error: inconsistent I/O"
+        }}.goto_parsed_a_leaf_value
+
+        // We've just parsed a leaf (non-container) value, or the (explicit or
+        // implicit) close of a container (array or object).
+        tagged = false
+        while depth > 0 {
+            // Toggle the key/value bit for object containers. This bit is
+            // ignored for array containers.
+            stack_byte = (depth - 1) / 16
+            stack_bit = ((depth - 1) & 15) * 2
+            this.stack[stack_byte] ^= (1 as base.u32) << (stack_bit + 1)
+            if 1 == (3 & (this.stack[stack_byte] >> stack_bit)) {
+                // We just parsed the key of a key-value pair.
+                continue.outer
+            }
+
+            if this.container_num_remaining[depth - 1] <= 0 {
+                // We're in an indefinite-length container.
+                continue.outer
+            }
+            this.container_num_remaining[depth - 1] -= 1
+            if this.container_num_remaining[depth - 1] > 0 {
+                // We're in a definite-length, non-empty container and have not
+                // seen its final value.
+                continue.outer
+            }
+
+            while args.dst.length() <= 0,
+                    inv depth > 0,
+                    post args.dst.length() > 0,
+            {
+                yield? base."$short write"
+                continue
+            }
+            depth -= 1
+
+            // Fill in FROM_ETC.
+            stack_byte = depth / 16
+            stack_bit = (depth & 15) * 2
+            if 0 == (this.stack[stack_byte] & ((1 as base.u32) << stack_bit)) {
+                vminor_alt = (base.TOKEN__VBC__STRUCTURE << 21) |
+                        base.TOKEN__VBD__STRUCTURE__POP |
+                        base.TOKEN__VBD__STRUCTURE__FROM_LIST
+            } else {
+                vminor_alt = (base.TOKEN__VBC__STRUCTURE << 21) |
+                        base.TOKEN__VBD__STRUCTURE__POP |
+                        base.TOKEN__VBD__STRUCTURE__FROM_DICT
+            }
+
+            // Fill in TO_ETC.
+            if depth <= 0 {
+                vminor_alt |= base.TOKEN__VBD__STRUCTURE__TO_NONE
+            } else {
+                stack_byte = (depth - 1) / 16
+                stack_bit = ((depth - 1) & 15) * 2
+                if 0 == (this.stack[stack_byte] & ((1 as base.u32) << stack_bit)) {
+                    vminor_alt |= base.TOKEN__VBD__STRUCTURE__TO_LIST
+                } else {
+                    vminor_alt |= base.TOKEN__VBD__STRUCTURE__TO_DICT
+                }
+            }
+
+            args.dst.write_simple_token_fast!(
+                    value_major: 0,
+                    value_minor: vminor_alt,
+                    continued: 0,
+                    length: 0)
+        }
+
+        // We've parsed the top-level value and we're therefore done overall.
+        break.outer
+    }.outer
+
+    this.end_of_data = true
+}

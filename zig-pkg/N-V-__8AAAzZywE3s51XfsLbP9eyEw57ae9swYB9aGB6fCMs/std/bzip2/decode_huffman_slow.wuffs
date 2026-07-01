@@ -1,0 +1,101 @@
+// Copyright 2022 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pri func decoder.decode_huffman_slow?(src: base.io_reader) {
+    var c8         : base.u8
+    var node_index : base.u32[..= 256]
+
+    var child    : base.u16
+    var child_ff : base.u32[..= 255]
+    var i        : base.u32
+    var j        : base.u32
+    var output   : base.u32[..= 255]
+    var run      : base.u32[..= 12_582912]  // 12_582912 = (3 << 22)
+    var mtft0    : base.u32[..= 255]
+
+    // Apply the Huffman trees.
+    while.outer not coroutine_resumed {
+        if this.decode_huffman_ticks > 0 {
+            this.decode_huffman_ticks -= 1
+        } else {
+            this.decode_huffman_ticks = 49
+            this.decode_huffman_section ~mod+= 1
+            if this.decode_huffman_section >= this.num_sections {
+                return "#bad number of sections"
+            }
+            this.decode_huffman_which = CLAMP_TO_5[this.huffman_selectors[this.decode_huffman_section & 32767] & 7]
+        }
+
+        node_index = 0
+        while true {
+            if this.n_bits <= 0 {
+                c8 = args.src.read_u8?()
+                this.bits = (c8 as base.u32) << 24
+                this.n_bits = 8
+                assert this.n_bits > 0
+            }
+            child = this.huffman_trees[this.decode_huffman_which][node_index][this.bits >> 31]
+            this.bits ~mod<<= 1
+            this.n_bits -= 1
+
+            if child < 257 {  // Branch node.
+                node_index = child as base.u32
+                continue
+
+            } else if child < 0x300 {  // mNN symbol.
+                // Move to front.
+                child_ff = (child & 0xFF) as base.u32
+                output = this.mtft[child_ff] as base.u32
+                this.mtft[1 .. 1 + child_ff].copy_from_slice!(
+                        s: this.mtft[.. child_ff])
+                this.mtft[0] = output as base.u8
+
+                this.letter_counts[output] ~mod+= 1
+                this.bwt[this.block_size] = output
+                if this.block_size >= this.max_incl_block_size {
+                    return "#bad block length"
+                }
+                assert this.block_size < 900000 via "a < b: a < c; c <= b"(c: this.max_incl_block_size)
+                this.block_size += 1
+                this.decode_huffman_run_shift = 0
+                break
+
+            } else if child == 0x300 {  // EOB symbol.
+                this.decode_huffman_finished = true
+                break.outer
+            }
+
+            // RUNA or RUNB symbol.
+            if this.decode_huffman_run_shift >= 23 {
+                return "#bad block length"
+            }
+            run = ((child as base.u32) & 3) << this.decode_huffman_run_shift
+            this.decode_huffman_run_shift += 1
+            i = this.block_size
+            j = run + this.block_size
+            if j > this.max_incl_block_size {
+                return "#bad block length"
+            }
+            assert j <= 900000 via "a <= b: a <= c; c <= b"(c: this.max_incl_block_size)
+            this.block_size = j
+
+            mtft0 = this.mtft[0] as base.u32
+            this.letter_counts[mtft0] ~mod+= run
+            while i < j,
+                    pre j <= 900000,
+            {
+                assert i < 900000 via "a < b: a < c; c <= b"(c: j)
+                this.bwt[i] = mtft0
+                i += 1
+            }
+            break
+        }
+    }.outer
+}

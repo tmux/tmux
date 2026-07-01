@@ -1,0 +1,4 @@
+This placeholder file indicates the root of the Wuffs repository.
+
+For example, filenames like "test/data/pi.txt" are relative to this root
+directory.

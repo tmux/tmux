@@ -1,0 +1,227 @@
+# To reproduce this analysis:
+#
+# cd ..
+# go run ../../script/extract-giflzw.go -histogram -allframes *.gif > analysis/giflzw-emission-lengths.txt
+
+animated-red-blue.gif (all frames)
+ Percent   Count  Emission_Length_Bucket
+   49.23     542           1 (Literal Code)
+    5.27      58           2
+    6.36      70           3
+    5.99      66           4
+    4.18      46           5
+    3.54      39           6
+    2.45      27           7
+    1.73      19           8
+    9.36     103    9 ..  16
+    7.18      79   17 ..  32
+    4.72      52   33 ..  64
+    0.00       0   65 .. 128
+    0.00       0  127 .. 256
+    0.00       0  256+   
+
+bricks-dither.gif (all frames)
+ Percent   Count  Emission_Length_Bucket
+   45.58    4853           1 (Literal Code)
+   35.89    3821           2
+   13.23    1409           3
+    3.82     407           4
+    1.04     111           5
+    0.31      33           6
+    0.08       9           7
+    0.02       2           8
+    0.02       2    9 ..  16
+    0.00       0   17 ..  32
+    0.00       0   33 ..  64
+    0.00       0   65 .. 128
+    0.00       0  127 .. 256
+    0.00       0  256+   
+
+bricks-gray.gif (all frames)
+ Percent   Count  Emission_Length_Bucket
+   47.34    4980           1 (Literal Code)
+   31.91    3357           2
+   14.30    1504           3
+    4.53     476           4
+    1.34     141           5
+    0.42      44           6
+    0.14      15           7
+    0.02       2           8
+    0.00       0    9 ..  16
+    0.00       0   17 ..  32
+    0.00       0   33 ..  64
+    0.00       0   65 .. 128
+    0.00       0  127 .. 256
+    0.00       0  256+   
+
+bricks-nodither.gif (all frames)
+ Percent   Count  Emission_Length_Bucket
+   41.39    3982           1 (Literal Code)
+   32.93    3168           2
+   16.13    1552           3
+    5.93     570           4
+    2.21     213           5
+    0.95      91           6
+    0.31      30           7
+    0.09       9           8
+    0.05       5    9 ..  16
+    0.00       0   17 ..  32
+    0.00       0   33 ..  64
+    0.00       0   65 .. 128
+    0.00       0  127 .. 256
+    0.00       0  256+   
+
+gifplayer-muybridge.gif (all frames)
+Warning: frame #60: block data is not valid LZW: unexpected EOF
+Warning: frame #89: block data is not valid LZW: unexpected EOF
+ Percent   Count  Emission_Length_Bucket
+   12.78   34658           1 (Literal Code)
+   14.05   38106           2
+   13.25   35937           3
+   10.59   28707           4
+    7.85   21286           5
+    6.08   16481           6
+    4.85   13156           7
+    3.60    9764           8
+    9.34   25318    9 ..  16
+    4.89   13257   17 ..  32
+    4.78   12954   33 ..  64
+    4.72   12806   65 .. 128
+    3.02    8190  127 .. 256
+    0.20     550  256+   
+
+harvesters.gif (all frames)
+ Percent   Count  Emission_Length_Bucket
+   46.73  269145           1 (Literal Code)
+   39.51  227566           2
+   10.13   58353           3
+    2.39   13766           4
+    0.71    4106           5
+    0.26    1509           6
+    0.11     622           7
+    0.05     291           8
+    0.08     485    9 ..  16
+    0.02     100   17 ..  32
+    0.01      57   33 ..  64
+    0.00       1   65 .. 128
+    0.00       0  127 .. 256
+    0.00       0  256+   
+
+hat.gif (all frames)
+ Percent   Count  Emission_Length_Bucket
+   80.52    6758           1 (Literal Code)
+   19.03    1597           2
+    0.39      33           3
+    0.01       1           4
+    0.01       1           5
+    0.01       1           6
+    0.02       2           7
+    0.00       0           8
+    0.00       0    9 ..  16
+    0.00       0   17 ..  32
+    0.00       0   33 ..  64
+    0.00       0   65 .. 128
+    0.00       0  127 .. 256
+    0.00       0  256+   
+
+hibiscus.primitive.gif (all frames)
+ Percent   Count  Emission_Length_Bucket
+   25.86    5566           1 (Literal Code)
+   19.05    4100           2
+   11.30    2433           3
+    7.30    1571           4
+    5.43    1168           5
+    4.34     934           6
+    3.23     695           7
+    2.55     548           8
+   11.13    2396    9 ..  16
+    6.81    1466   17 ..  32
+    2.89     623   33 ..  64
+    0.10      22   65 .. 128
+    0.00       0  127 .. 256
+    0.00       0  256+   
+
+hibiscus.regular.gif (all frames)
+ Percent   Count  Emission_Length_Bucket
+   47.48   37363           1 (Literal Code)
+   36.43   28663           2
+   11.91    9370           3
+    2.94    2311           4
+    0.81     637           5
+    0.22     177           6
+    0.09      74           7
+    0.04      31           8
+    0.06      50    9 ..  16
+    0.02      14   17 ..  32
+    0.00       0   33 ..  64
+    0.00       0   65 .. 128
+    0.00       0  127 .. 256
+    0.00       0  256+   
+
+hippopotamus.interlaced.gif (all frames)
+ Percent   Count  Emission_Length_Bucket
+   82.56     672           1 (Literal Code)
+   13.02     106           2
+    3.19      26           3
+    0.74       6           4
+    0.25       2           5
+    0.25       2           6
+    0.00       0           7
+    0.00       0           8
+    0.00       0    9 ..  16
+    0.00       0   17 ..  32
+    0.00       0   33 ..  64
+    0.00       0   65 .. 128
+    0.00       0  127 .. 256
+    0.00       0  256+   
+
+hippopotamus.regular.gif (all frames)
+ Percent   Count  Emission_Length_Bucket
+   82.66     672           1 (Literal Code)
+   13.04     106           2
+    2.83      23           3
+    0.86       7           4
+    0.37       3           5
+    0.25       2           6
+    0.00       0           7
+    0.00       0           8
+    0.00       0    9 ..  16
+    0.00       0   17 ..  32
+    0.00       0   33 ..  64
+    0.00       0   65 .. 128
+    0.00       0  127 .. 256
+    0.00       0  256+   
+
+muybridge.gif (all frames)
+ Percent   Count  Emission_Length_Bucket
+   80.23    5863           1 (Literal Code)
+   16.80    1228           2
+    2.63     192           3
+    0.27      20           4
+    0.07       5           5
+    0.00       0           6
+    0.00       0           7
+    0.00       0           8
+    0.00       0    9 ..  16
+    0.00       0   17 ..  32
+    0.00       0   33 ..  64
+    0.00       0   65 .. 128
+    0.00       0  127 .. 256
+    0.00       0  256+   
+
+pjw-thumbnail.gif (all frames)
+ Percent   Count  Emission_Length_Bucket
+    2.80       4           1 (Literal Code)
+    5.59       8           2
+    8.39      12           3
+   11.19      16           4
+   10.49      15           5
+    9.09      13           6
+    9.79      14           7
+    8.39      12           8
+   32.17      46    9 ..  16
+    2.10       3   17 ..  32
+    0.00       0   33 ..  64
+    0.00       0   65 .. 128
+    0.00       0  127 .. 256
+    0.00       0  256+   

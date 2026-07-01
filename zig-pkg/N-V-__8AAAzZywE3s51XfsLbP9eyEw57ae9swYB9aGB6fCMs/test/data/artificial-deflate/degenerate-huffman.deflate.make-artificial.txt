@@ -1,0 +1,66 @@
+# Feed this file to script/make-artificial.go
+
+make deflate
+
+blockDynamicHuffman (nonFinal) {
+	huffman CodeLength {
+		1  00
+		2  01
+		17 10
+		18 11
+	}
+
+	huffman Literal/Length {
+		# 102='f', 111='o', 256=EOB
+		111 0
+		102 10
+		256 11
+	}
+
+	huffman Distance {
+		# Incomplete. There is no key/value pair whose value starts with "1".
+		#
+		# The sole key/value pair is also unused. (The one below is used.)
+		0 0
+		incomplete
+	}
+
+	literal "foo"
+	endOfBlock
+}
+
+blockDynamicHuffman (final) {
+	huffman CodeLength {
+		0  00
+		1  01
+		2  100
+		3  101
+		17 110
+		18 111
+	}
+
+	huffman Literal/Length {
+		# 65='A', 66='B', 67='C', 68='D', 256=EOB, 257=Length3
+		256 00
+		257 01
+		65  100
+		66  101
+		67  110
+		68  111
+	}
+
+	huffman Distance {
+		# Incomplete. There is no key/value pair whose value starts with "1".
+		#
+		# The sole key/value pair is also used. (The one above is unused.)
+		#
+		# Per the second table in RFC 1951 section 3.2.5. "Compressed blocks
+		# (length and distance codes)", code 3 means a distance of 4.
+		3 0
+		incomplete
+	}
+
+	literal "ABCD"
+	len 3 dist 4
+	endOfBlock
+}

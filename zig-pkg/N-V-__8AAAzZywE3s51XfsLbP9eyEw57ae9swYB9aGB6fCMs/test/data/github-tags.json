@@ -1,0 +1,22 @@
+[
+  {
+    "name": "v0.2.0",
+    "zipball_url": "https://api.github.com/repos/google/wuffs/zipball/v0.2.0",
+    "tarball_url": "https://api.github.com/repos/google/wuffs/tarball/v0.2.0",
+    "commit": {
+      "sha": "fb600fe3ce5e161936849148aa4d3ad82dfc5743",
+      "url": "https://api.github.com/repos/google/wuffs/commits/fb600fe3ce5e161936849148aa4d3ad82dfc5743"
+    },
+    "node_id": "MDM6UmVmMTEwNDgyMjY3OnYwLjIuMA=="
+  },
+  {
+    "name": "v0.1.0",
+    "zipball_url": "https://api.github.com/repos/google/wuffs/zipball/v0.1.0",
+    "tarball_url": "https://api.github.com/repos/google/wuffs/tarball/v0.1.0",
+    "commit": {
+      "sha": "f604194ba4d7f9721105b6ec328422b5f98fe8bd",
+      "url": "https://api.github.com/repos/google/wuffs/commits/f604194ba4d7f9721105b6ec328422b5f98fe8bd"
+    },
+    "node_id": "MDM6UmVmMTEwNDgyMjY3OnYwLjEuMA=="
+  }
+]

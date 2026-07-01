@@ -1,0 +1,230 @@
+// Copyright 2020 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+// --------
+
+// Quirks are discussed in (/doc/note/quirks.md).
+//
+// The base38 encoding of "json" is 0x11_6642. Left shifting by 10 gives
+// 0x4599_0800.
+pri const QUIRKS_BASE : base.u32 = 0x4599_0800
+
+// --------
+
+// When this quirk is enabled, literal (not escaped) ASCII control codes, such
+// as backspaces, new lines and NUL bytes, are accepted in JSON strings.
+//
+// Regardless of whether this quirk is enabled, escaped ASCII control codes,
+// such as "\b" or "\u0008", are always accepted.
+//
+// This allows for multi-line strings, where a literal new line in the encoding
+// becomes a literal new line in the decoding. A backslash before a new line is
+// still a syntax error, unless combined with QUIRK_ALLOW_BACKSLASH_NEW_LINE.
+//
+// Any indentation following a new line is not stripped, but remains part of
+// the decoded string.
+pub const QUIRK_ALLOW_ASCII_CONTROL_CODES : base.u32 = 0x4599_0800 | 0x00
+
+// When this quirk is enabled, e.g. "abc\az" is accepted as a JSON string,
+// equivalent to "abc\u0007z", containing an ASCII Bell control character.
+pub const QUIRK_ALLOW_BACKSLASH_A : base.u32 = 0x4599_0800 | 0x01
+
+// When this quirk is enabled, e.g. "abc\U0001F4A9z" is accepted as a JSON
+// string, equivalent to "abc\uD83D\uDCA9z", containing the U+0001F4A9 PILE OF
+// POO Unicode code point. There are exactly 8 encoded bytes after each "\U".
+//
+// This quirk can combine with QUIRK_REPLACE_INVALID_UNICODE.
+pub const QUIRK_ALLOW_BACKSLASH_CAPITAL_U : base.u32 = 0x4599_0800 | 0x02
+
+// When this quirk is enabled, e.g. "abc\ez" is accepted as a JSON string,
+// equivalent to "abc\u001Bz", containing an ASCII Escape control character.
+pub const QUIRK_ALLOW_BACKSLASH_E : base.u32 = 0x4599_0800 | 0x03
+
+// When this quirk is enabled, e.g. ("abc\
+// z") is accepted as a JSON string, equivalent to "abc\nz".
+//
+// This allows for multi-line strings, if each new line is preceded by a
+// backslash. This doesn't combine per se with QUIRK_ALLOW_ASCII_CONTROL_CODES,
+// but they have similar consequences.
+//
+// Any indentation following a new line is not stripped, but remains part of
+// the decoded string.
+pub const QUIRK_ALLOW_BACKSLASH_NEW_LINE : base.u32 = 0x4599_0800 | 0x04
+
+// When this quirk is enabled, e.g. "abc\?z" is accepted as a JSON string,
+// equivalent to "abc?z".
+pub const QUIRK_ALLOW_BACKSLASH_QUESTION_MARK : base.u32 = 0x4599_0800 | 0x05
+
+// When this quirk is enabled, e.g. "abc\'z" is accepted as a JSON string,
+// equivalent to "abc'z".
+pub const QUIRK_ALLOW_BACKSLASH_SINGLE_QUOTE : base.u32 = 0x4599_0800 | 0x06
+
+// When this quirk is enabled, e.g. "abc\vz" is accepted as a JSON string,
+// equivalent to "abc\u000Bz", containing an ASCII Vertical Tab control
+// character.
+pub const QUIRK_ALLOW_BACKSLASH_V : base.u32 = 0x4599_0800 | 0x07
+
+// (0x4599_0800 | 0x08) is reserved for QUIRK_ALLOW_BACKSLASH_X_AS_BYTES. This
+// quirk used to be implemented, but it was removed due to its complexity.
+// Enabling it (as a run-time option) meant that decoded JSON strings are no
+// longer guaranteed to be valid UTF-8. We could re-implement it (i.e. undo
+// commit 6c138776) if there is sufficient demand.
+// https://github.com/google/wuffs/commit/6c138776889418bb155b748630e73f386b57a381
+
+// When this quirk is enabled, e.g. "abc\xeFz" is accepted as a JSON string. It
+// decodes to 6 bytes: 0x61, 0x62, 0x63, 0xC3, 0xAF and 0x7A. The UTF-8
+// encoding of U+00EF LATIN SMALL LETTER I WITH DIAERESIS is the two byte
+// sequence (0xC3, 0xAF). Decoded strings are still valid UTF-8 and tokens
+// still split on UTF-8 boundaries.
+//
+// There are exactly 2 encoded bytes after each "\x". "\x", "\x9", "\x9$" and
+// "\X99" are all still rejected.
+pub const QUIRK_ALLOW_BACKSLASH_X_AS_CODE_POINTS : base.u32 = 0x4599_0800 | 0x09
+
+// When this quirk is enabled, e.g. "abc\0z" is accepted as a JSON string,
+// equivalent to "abc\u0000z", containing an ASCII NUL control character.
+pub const QUIRK_ALLOW_BACKSLASH_ZERO : base.u32 = 0x4599_0800 | 0x0A
+
+// When this quirk is enabled, "/* C/C++ style block comments */" are accepted
+// anywhere whitespace would be. See also QUIRK_ALLOW_TRAILING_FILLER.
+//
+// They produce WUFFS_BASE__TOKEN__VBD__FILLER__COMMENT_BLOCK tokens. The token
+// chain's source bytes includes the starting "/*" and the ending "*/".
+//
+// To avoid ambiguity (as comments can contain new lines), this quirk cannot be
+// combined with QUIRK_EXPECT_TRAILING_NEW_LINE_OR_EOF.
+pub const QUIRK_ALLOW_COMMENT_BLOCK : base.u32 = 0x4599_0800 | 0x0B
+
+// When this quirk is enabled, "// C/C++ style line comments\n" are accepted
+// anywhere whitespace would be. See also QUIRK_ALLOW_TRAILING_FILLER.
+//
+// Line comments are terminated by a '\n' byte. '\r' bytes are irrelevant. When
+// combined with QUIRK_ALLOW_TRAILING_FILLER, a line comment at the end of the
+// file may omit the final '\n' byte.
+//
+// They produce WUFFS_BASE__TOKEN__VBD__FILLER__COMMENT_LINE tokens. The token
+// chain's source bytes includes the starting "//" but always excludes the
+// ending "\n", regardless of whether it met the end of the file instead.
+//
+// Even if the line comments are on consecutive lines, each line comment is a
+// separate token chain. Between them is at least one "\n" and maybe other
+// whitespace, which are not part of a line comment token chain.
+//
+// To avoid ambiguity (as comments can contain new lines), this quirk cannot be
+// combined with QUIRK_EXPECT_TRAILING_NEW_LINE_OR_EOF.
+pub const QUIRK_ALLOW_COMMENT_LINE : base.u32 = 0x4599_0800 | 0x0C
+
+// When this quirk is enabled, there may be a comma after the final array
+// element or object key-value pair and before the closing "]" or "}". A comma
+// can therefore be a terminator (not just a separator) for elements / pairs,
+// which can simplify incremental edits and line oriented diffs.
+//
+// For example, `[1,]`, `[1,2,3,]` and `{"k":"v",}` all become acceptable, but
+// `[,]`, `{,}` and `{"k",:"v"}` are still rejected.
+pub const QUIRK_ALLOW_EXTRA_COMMA : base.u32 = 0x4599_0800 | 0x0D
+
+// When this quirk is enabled, "inf", "Infinity", "NAN" and their
+// case-insensitive variants, optionally preceded immediately by "-" or "+",
+// are accepted anywhere a JSON number would be.
+pub const QUIRK_ALLOW_INF_NAN_NUMBERS : base.u32 = 0x4599_0800 | 0x0E
+
+// When this quirk is enabled, the input byte stream may optionally start with
+// "\x1E" (the ASCII Record Separator control character). That byte is skipped
+// and decoding proceeds normally.
+//
+// When combined with QUIRK_ALLOW_LEADING_UNICODE_BYTE_ORDER_MARK, either mark
+// may come first in the byte stream.
+//
+// When combined with QUIRK_EXPECT_TRAILING_NEW_LINE_OR_EOF, this format is
+// also known as RFC 7464, Json Text Sequences and MIME type
+// "application/json-seq".
+pub const QUIRK_ALLOW_LEADING_ASCII_RECORD_SEPARATOR : base.u32 = 0x4599_0800 | 0x0F
+
+// When this quirk is enabled, the input byte stream may optionally start with
+// "\xEF\xBB\xBF", the UTF-8 encoding of the Unicode BOM (Byte Order Mark).
+// Those 3 bytes are skipped and decoding proceeds normally.
+//
+// When combined with QUIRK_ALLOW_LEADING_ASCII_RECORD_SEPARATOR, either mark
+// may come first in the byte stream.
+pub const QUIRK_ALLOW_LEADING_UNICODE_BYTE_ORDER_MARK : base.u32 = 0x4599_0800 | 0x10
+
+// When this quirk is enabled, following a successful decoding of a top-level
+// JSON value, any trailing whitespace (ASCII characters 0x09, 0x0A, 0x0D or
+// 0x20) and/or comments (if QUIRK_ALLOW_COMMENT_ETC is enabled) are also
+// consumed (and WUFFS_BASE__TOKEN__VBC__FILLER tokens emitted) up to but
+// excluding the end-of-file or the next non-filler byte.
+//
+// Trailing non-filler is not an error. Decoding simply stops before it.
+//
+// To avoid ambiguity, this quirk cannot be combined with
+// QUIRK_EXPECT_TRAILING_NEW_LINE_OR_EOF. Unlike that quirk, enabling this
+// quirk will consume multiple trailing '\n' bytes.
+pub const QUIRK_ALLOW_TRAILING_FILLER : base.u32 = 0x4599_0800 | 0x11
+
+// When this quirk is enabled, following a successful decoding of a top-level
+// JSON value, any trailing whitespace (ASCII characters 0x09, 0x0A, 0x0D or
+// 0x20) is also consumed (and WUFFS_BASE__TOKEN__VBC__FILLER tokens emitted)
+// up to but excluding the end-of-file or up to and including a single new line
+// (ASCII 0x0A, also known as '\n'), whichever comes first. A trailing '\n' is
+// not mandatory (if at end-of-file), but it is consumed if present and will
+// stop decoding.
+//
+// Trailing non-whitespace after a trailing '\n' is ignored.
+//
+// Trailing non-whitespace, before EOF or '\n', is an error. For example, with
+// "007" input, decoding with this quirk disabled (the default case) will
+// consume just 1 byte ("0") and leave the rest ("07") unread without error, as
+// "0" is a perfectly valid JSON value (but "00" is not). Decoding "007" (or
+// "007\n") with this quirk enabled will return an error.
+//
+// To avoid ambiguity (as comments can contain new lines), this quirk cannot be
+// combined with any of:
+//  - QUIRK_ALLOW_COMMENT_BLOCK
+//  - QUIRK_ALLOW_COMMENT_LINE
+//  - QUIRK_ALLOW_TRAILING_FILLER
+//
+// If a JSON encoder avoids emitting (optional) '\n' bytes, other than a single
+// '\n' after each top-level value in a multi-JSON-value stream, this format is
+// also known as Line-delimited JSON (LDJSON), newline-delimited JSON (NDJSON)
+// and JSON lines (JSONL, http://jsonlines.org/). With or without this quirk
+// enabled, this decoder always accepts '\n' bytes before the end of a
+// top-level JSON value, anywhere whitespace is valid per the JSON spec, but
+// such bytes may confuse other line oriented Unix tools that assume exactly
+// one JSON value per line.
+//
+// When combined with QUIRK_ALLOW_LEADING_ASCII_RECORD_SEPARATOR, this format
+// is also known as RFC 7464, Json Text Sequences and MIME type
+// "application/json-seq".
+pub const QUIRK_EXPECT_TRAILING_NEW_LINE_OR_EOF : base.u32 = 0x4599_0800 | 0x12
+
+// When this quirk is enabled, JSON Pointer strings containing "~n", "~r" or
+// "~t", which would otherwise be invalid, are unescaped as "\n", "\r" or "\t".
+//
+// This quirk isn't used by Wuffs' std/json package per se, but it is used by
+// the wuffs_aux::DecodeJson function.
+pub const QUIRK_JSON_POINTER_ALLOW_TILDE_N_TILDE_R_TILDE_T : base.u32 = 0x4599_0800 | 0x13
+
+// When this quirk is enabled, invalid UTF-8 inside a JSON string is accepted.
+// Each byte of invalid UTF-8 is equivalent to "\uFFFD", the Unicode
+// Replacement Character. The UTF-8 encoding of U+FFFD is "\xEF\xBF\xBD".
+//
+// Invalid UTF-8 outside a JSON string remains an error.
+//
+// Similarly, for backslash-u escapes featuring incorrectly paired Unicode
+// surrogates, each backslash-u 6-byte unit is replaced. For example,
+// "abc\uDC00z" and "ijk\uD800\uDBFFz" are equivalent to "abc\uFFFDz" and
+// "ijk\uFFFD\uFFFDz".
+//
+// When combined with QUIRK_ALLOW_BACKSLASH_CAPITAL_U, a "\U12345678" 10-byte
+// unit that is an invalid Unicode code point (i.e. in the range U+D800 ..=
+// U+DFFF or above U+10FFFF) is similarly replaced with U+FFFD.
+pub const QUIRK_REPLACE_INVALID_UNICODE : base.u32 = 0x4599_0800 | 0x14
+
+pri const QUIRKS_COUNT : base.u32 = 0x15

@@ -1,0 +1,308 @@
+// Copyright 2024 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pri func decoder.decode_pixels_slow?(dst: slice base.u8, src: base.io_reader, width: base.u32[..= 0x4000], height: base.u32[..= 0x4000], tile_data: roslice base.u8, tile_size_log2: base.u32[..= 9]) {
+    var c8 : base.u8
+
+    var p     : base.u64
+    var p_max : base.u64[..= 0x4000_0000]
+
+    var tile_size_log2 : base.u32[..= 31]
+    var width_in_tiles : base.u32[..= 0x20FF]
+
+    var x : base.u32
+    var y : base.u32
+    var i : base.u32
+
+    var hg   : base.u32[..= 0xFF]
+    var h    : base.u32[..= 0x187A]
+    var node : base.u16
+
+    var pixel_g   : base.u32[..= 0x7FFF]
+    var color     : base.u32  // u32 0xAARR_GGBB, non-premultiplied alpha.
+    var dst_pixel : slice base.u8
+
+    var back_ref_len_n_bits          : base.u32[..= 11]
+    var back_ref_len_minus_1         : base.u32[..= 0x1FFF]  // 0x1FFF = 8191.
+    var back_ref_dist_n_bits         : base.u32[..= 18]
+    var back_ref_dist_sym            : base.u32[..= 0x7FFF]
+    var back_ref_dist_premap_minus_1 : base.u32[..= 0xF_FFFF]  // 0xF_FFFF = 1048575.
+    var back_ref_dist_minus_1        : base.u32
+
+    var dm : base.u32[..= 0xFF]
+    var dx : base.u32
+    var dy : base.u32
+
+    var p_end : base.u64[..= 0x4000_8000]
+    var dist4 : base.u64
+    var q     : base.u64
+
+    var color_cache_pixels : slice base.u8
+    var color_cache_p      : base.u64
+    var color_cache_shift  : base.u32[..= 31]
+
+    p_max = (4 * args.width * args.height) as base.u64
+    if args.dst.length() < p_max {
+        return "#internal error: inconsistent dst buffer"
+    }
+
+    if args.tile_size_log2 <> 0 {
+        tile_size_log2 = args.tile_size_log2
+        width_in_tiles = (args.width + (((1 as base.u32) << tile_size_log2) - 1)) >> tile_size_log2
+    } else {
+        tile_size_log2 = 31
+        width_in_tiles = 1
+    }
+
+    while p < p_max {
+        // The "~mod+ 1" selects the green pixel of the BGRA 4-byte group.
+        i = ((((y >> tile_size_log2) ~mod* width_in_tiles) ~mod+ (x >> tile_size_log2)) ~mod* 4) ~mod+ 1
+        if (i as base.u64) < args.tile_data.length() {
+            hg = args.tile_data[i as base.u64] as base.u32
+        }
+
+        // Decode the Green+etc symbol.
+        h = HUFFMAN_TABLE_BASE_OFFSETS[0] as base.u32
+        while true,
+                inv p < p_max,
+        {
+            node = this.huffman_nodes[hg][h]
+            if node >= 0x8000 {
+                break
+            } else if node > 0x1879 {
+                return "#internal error: inconsistent Huffman code"
+            }
+            if this.n_bits < 1 {
+                c8 = args.src.read_u8?()
+                this.bits = (c8 as base.u32)
+                this.n_bits = 8
+                assert this.n_bits >= 1
+            }
+            h = (node as base.u32) + (this.bits & 1)
+            this.bits >>= 1
+            this.n_bits -= 1
+        }
+        pixel_g = (node & 0x7FFF) as base.u32
+
+        if pixel_g < 0x100 {  // Literal pixel.
+            color = pixel_g << 8
+
+            // Decode the Red symbol.
+            h = HUFFMAN_TABLE_BASE_OFFSETS[1] as base.u32
+            while true,
+                    inv p < p_max,
+            {
+                node = this.huffman_nodes[hg][h]
+                if node >= 0x8000 {
+                    break
+                }
+                if this.n_bits < 1 {
+                    c8 = args.src.read_u8?()
+                    this.bits = (c8 as base.u32)
+                    this.n_bits = 8
+                    assert this.n_bits >= 1
+                }
+                h = ((node as base.u32) & 0xFFF) + (this.bits & 1)
+                this.bits >>= 1
+                this.n_bits -= 1
+            }
+            color |= ((node & 0xFF) as base.u32) << 16
+
+            // Decode the Blue symbol.
+            h = HUFFMAN_TABLE_BASE_OFFSETS[2] as base.u32
+            while true,
+                    inv p < p_max,
+            {
+                node = this.huffman_nodes[hg][h]
+                if node >= 0x8000 {
+                    break
+                }
+                if this.n_bits < 1 {
+                    c8 = args.src.read_u8?()
+                    this.bits = (c8 as base.u32)
+                    this.n_bits = 8
+                    assert this.n_bits >= 1
+                }
+                h = ((node as base.u32) & 0xFFF) + (this.bits & 1)
+                this.bits >>= 1
+                this.n_bits -= 1
+            }
+            color |= ((node & 0xFF) as base.u32) << 0
+
+            // Decode the Alpha symbol.
+            h = HUFFMAN_TABLE_BASE_OFFSETS[3] as base.u32
+            while true,
+                    inv p < p_max,
+            {
+                node = this.huffman_nodes[hg][h]
+                if node >= 0x8000 {
+                    break
+                }
+                if this.n_bits < 1 {
+                    c8 = args.src.read_u8?()
+                    this.bits = (c8 as base.u32)
+                    this.n_bits = 8
+                    assert this.n_bits >= 1
+                }
+                h = ((node as base.u32) & 0xFFF) + (this.bits & 1)
+                this.bits >>= 1
+                this.n_bits -= 1
+            }
+            color |= ((node & 0xFF) as base.u32) << 24
+
+        } else if pixel_g < 0x118 {  // Back-ref pixel.
+            // Decode the back-ref length.
+            if pixel_g < 0x104 {
+                back_ref_len_minus_1 = pixel_g - 0x100
+            } else {
+                back_ref_len_n_bits = (pixel_g - 0x102) >> 1
+                back_ref_len_minus_1 = ((2 as base.u32) + (pixel_g & 1)) << back_ref_len_n_bits
+                assert back_ref_len_minus_1 <= 6144
+                while this.n_bits < back_ref_len_n_bits,
+                        inv p < p_max,
+                        inv back_ref_len_minus_1 <= 6144,
+                        post this.n_bits >= back_ref_len_n_bits,
+                {
+                    c8 = args.src.read_u8?()
+                    if this.n_bits >= back_ref_len_n_bits {
+                        return "#internal error: inconsistent n_bits"
+                    }
+                    assert this.n_bits < 12 via "a < b: a < c; c <= b"(c: back_ref_len_n_bits)
+                    this.bits |= (c8 as base.u32) << this.n_bits
+                    this.n_bits += 8
+                }
+                back_ref_len_minus_1 += this.bits & (((1 as base.u32) << back_ref_len_n_bits) - 1)
+                this.bits >>= back_ref_len_n_bits
+                this.n_bits -= back_ref_len_n_bits
+            }
+
+            // Decode the back-ref distance.
+
+            h = HUFFMAN_TABLE_BASE_OFFSETS[4] as base.u32
+            while true,
+                    inv p < p_max,
+            {
+                node = this.huffman_nodes[hg][h]
+                if node >= 0x8000 {
+                    break
+                }
+                if this.n_bits < 1 {
+                    c8 = args.src.read_u8?()
+                    this.bits = (c8 as base.u32)
+                    this.n_bits = 8
+                    assert this.n_bits >= 1
+                }
+                h = ((node as base.u32) & 0xFFF) + (this.bits & 1)
+                this.bits >>= 1
+                this.n_bits -= 1
+            }
+            back_ref_dist_sym = (node & 0x7FFF) as base.u32
+
+            if back_ref_dist_sym < 4 {
+                back_ref_dist_premap_minus_1 = back_ref_dist_sym
+            } else if back_ref_dist_sym < 40 {
+                back_ref_dist_n_bits = (back_ref_dist_sym - 2) >> 1
+                back_ref_dist_premap_minus_1 = ((2 as base.u32) + (back_ref_dist_sym & 1)) << back_ref_dist_n_bits
+                assert back_ref_dist_premap_minus_1 <= 786432
+                while this.n_bits < back_ref_dist_n_bits,
+                        inv p < p_max,
+                        inv back_ref_dist_premap_minus_1 <= 786432,
+                        post this.n_bits >= back_ref_dist_n_bits,
+                {
+                    c8 = args.src.read_u8?()
+                    if this.n_bits >= back_ref_dist_n_bits {
+                        return "#internal error: inconsistent n_bits"
+                    }
+                    assert this.n_bits < 24 via "a < b: a < c; c <= b"(c: back_ref_dist_n_bits)
+                    this.bits |= (c8 as base.u32) << this.n_bits
+                    this.n_bits += 8
+                }
+                back_ref_dist_premap_minus_1 += this.bits & (((1 as base.u32) << back_ref_dist_n_bits) - 1)
+                this.bits >>= back_ref_dist_n_bits
+                this.n_bits -= back_ref_dist_n_bits
+            }
+
+            if back_ref_dist_premap_minus_1 >= 120 {
+                back_ref_dist_minus_1 = back_ref_dist_premap_minus_1 - 120
+            } else {
+                dm = DISTANCE_MAP[back_ref_dist_premap_minus_1] as base.u32
+                dy = dm >> 4
+                dx = 7 ~mod- (dm & 15)
+                back_ref_dist_minus_1 = (args.width * dy) ~mod+ dx
+            }
+
+            // Apply the (back_ref_len_minus_1, back_ref_dist_minus_1) pair.
+            assert p < 0x4000_0000 via "a < b: a < c; c <= b"(c: p_max)
+            p_end = p + (((back_ref_len_minus_1 + 1) * 4) as base.u64)
+            dist4 = ((back_ref_dist_minus_1 as base.u64) * 4) + 4
+            if (p_end > p_max) or (p_end > args.dst.length()) or (p < dist4) {
+                return "#bad back-reference"
+            }
+            q = p - dist4
+            while (q < p) and (p < p_end),
+                    inv p_end <= args.dst.length(),
+            {
+                assert q < p_end via "a < b: a < c; c < b"(c: p)
+                assert p < 0x4000_8000 via "a < b: a < c; c <= b"(c: p_end)
+                assert q < 0x4000_8000 via "a < b: a < c; c <= b"(c: p_end)
+                assert p < args.dst.length() via "a < b: a < c; c <= b"(c: p_end)
+                assert q < args.dst.length() via "a < b: a < c; c <= b"(c: p_end)
+                args.dst[p] = args.dst[q]
+                p += 1
+                q += 1
+            }
+
+            // Update (x, y).
+            x ~mod+= back_ref_len_minus_1 + 1
+            while x >= args.width {
+                x -= args.width
+                y ~mod+= 1
+            }
+            continue
+
+        } else {  // Color cache pixel.
+            // Insert previous pixels into this.color_cache.
+            if (color_cache_p > p) or (p > args.dst.length()) {
+                return "#internal error: inconsistent dst buffer"
+            }
+            color_cache_pixels = args.dst[color_cache_p .. p]
+            color_cache_p = p
+            color_cache_shift = (32 - this.color_cache_bits) & 31
+            while color_cache_pixels.length() >= 4,
+                    inv pixel_g >= 0x118,
+            {
+                color = color_cache_pixels.peek_u32le()
+                this.color_cache[((color ~mod* 0x1E35_A7BD) >> color_cache_shift) & 2047] = color
+                color_cache_pixels = color_cache_pixels[4 ..]
+            }
+
+            // Look up this.color_cache.
+            color = this.color_cache[(pixel_g - 0x118) & 2047]
+        }
+
+        // Set the dst pixel to the color.
+        if p > args.dst.length() {
+            return "#internal error: inconsistent dst buffer"
+        }
+        dst_pixel = args.dst[p ..]
+        if dst_pixel.length() < 4 {
+            return "#internal error: inconsistent dst buffer"
+        }
+        dst_pixel.poke_u32le!(a: color)
+        p ~mod+= 4
+
+        // Update (x, y).
+        x ~mod+= 1
+        if x == args.width {
+            x = 0
+            y ~mod+= 1
+        }
+    }
+}

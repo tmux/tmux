@@ -1,0 +1,80 @@
+// Copyright 2017 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+// TODO: drop the '?' but still generate wuffs_adler32__hasher__initialize?
+pub struct hasher? implements base.hasher_u32(
+        state   : base.u32,
+        started : base.bool,
+)
+
+pub func hasher.get_quirk(key: base.u32) base.u64 {
+    return 0
+}
+
+pub func hasher.set_quirk!(key: base.u32, value: base.u64) base.status {
+    return base."#unsupported option"
+}
+
+pub func hasher.update!(x: roslice base.u8) {
+    if not this.started {
+        this.started = true
+        this.state = 1
+        // There used to be an up_x86_avx2 implementation too, but while it
+        // made the std/adler32 micro-benchmarks better, it also made the
+        // std/zlib and std/png micro-benchmarks worse. See commit baec831f
+        // "Add std/adler32 hasher.up_x86_avx2".
+        choose up = [
+                up_arm_neon,
+                up_x86_sse42]
+    }
+    this.up!(x: args.x)
+}
+
+pub func hasher.update_u32!(x: roslice base.u8) base.u32 {
+    this.update!(x: args.x)
+    return this.state
+}
+
+pri func hasher.up!(x: roslice base.u8),
+        choosy,
+{
+    // The Adler-32 checksum's magic 65521 and 5552 numbers are discussed in
+    // this package's README.md.
+
+    var s1        : base.u32
+    var s2        : base.u32
+    var remaining : roslice base.u8
+    var p         : roslice base.u8
+
+    s1 = this.state.low_bits(n: 16)
+    s2 = this.state.high_bits(n: 16)
+    while args.x.length() > 0 {
+        remaining = args.x[.. 0]
+        if args.x.length() > 5552 {
+            remaining = args.x[5552 ..]
+            args.x = args.x[.. 5552]
+        }
+
+        // The SIMD versions of this function replace this simple iterate loop.
+        iterate (p = args.x)(length: 1, advance: 1, unroll: 8) {
+            s1 ~mod+= p[0] as base.u32
+            s2 ~mod+= s1
+        }
+
+        s1 %= 65521
+        s2 %= 65521
+        args.x = remaining
+    }
+    this.state = ((s2 & 0xFFFF) << 16) | (s1 & 0xFFFF)
+}
+
+pub func hasher.checksum_u32() base.u32 {
+    return this.state
+}

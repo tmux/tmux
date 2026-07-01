@@ -1,0 +1,46 @@
+# Feed this file to script/make-artificial.go
+
+make gif
+
+header
+
+image {
+	imageWidthHeight 2 2
+	palette {
+		0x00 0x00 0xFF
+		0x11 0x00 0xFF
+		0x22 0x00 0xFF
+		0x33 0x00 0xFF
+	}
+}
+
+# ICCP metadata.
+#
+# Extension (Application Extension), 11 bytes for AI and AAC.
+bytes 0x21 0xFF 0x0B
+# Application Identifier "ICCRGBG1".
+bytes 0x49 0x43 0x43 0x52 0x47 0x42 0x47 0x31
+# Application Authentication Code "012".
+bytes 0x30 0x31 0x32
+# Block Terminator.
+bytes 0x00
+
+# XMP metadata.
+#
+# Extension (Application Extension), 11 bytes for AI and AAC.
+bytes 0x21 0xFF 0x0B
+# Application Identifier "XMP Data".
+bytes 0x58 0x4D 0x50 0x20 0x44 0x61 0x74 0x61
+# Application Authentication Code "XMP".
+bytes 0x58 0x4D 0x50
+# Block Terminator.
+bytes 0x00
+
+loopCount 2000
+
+frame {
+	frameLeftTopWidthHeight 1 0 1 1
+}
+lzw 4 0x01
+
+trailer

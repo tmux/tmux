@@ -1,0 +1,16 @@
+.{
+    .name = .fontconfig,
+    .version = "2.14.2",
+    .fingerprint = 0x4a79a5a40c6d6d8,
+    .paths = .{""},
+    .dependencies = .{
+        .fontconfig = .{
+            .url = "https://deps.files.ghostty.org/fontconfig-2.14.2.tar.gz",
+            .hash = "N-V-__8AAIrfdwARSa-zMmxWwFuwpXf1T3asIN7s5jqi9c1v",
+            .lazy = true,
+        },
+
+        .freetype = .{ .path = "../freetype", .lazy = true },
+        .libxml2 = .{ .path = "../libxml2", .lazy = true },
+    },
+}

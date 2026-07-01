@@ -1,0 +1,233 @@
+# Enumerated Media Types
+# ----------------------
+#
+# This is a curated list of about 200 common Media Types (also known as MIME
+# Types). The official name, with variable length, is in the fourth column. A
+# fixed length contraction, presented in 4/4/2 format, is in the third column.
+# The base38 numeric encoding of that 4/4/2 string is in the first (hex) and
+# second (decimal) columns. These positive numbers are all less than or equal
+# to ((1<<53)-1), also known as Number.MAX_SAFE_INTEGER in JavaScript, and so
+# generally safe to pass around as a JSON value, float64, int64 or uint64.
+#
+# As an int64 or uint64, the high 32 bits (of which only 21 are used) hold the
+# top-level type: 0x09CC62 means "application", 0x106BF7 means "image", etc.
+#
+# Using fixed-size numbers instead of variable-length strings can be useful in
+# file formats, wire protocols, database tables or other contexts where dynamic
+# memory allocation is unavailable or fallible or where variable-length data
+# complicates matters. At the micro-optimization level, comparing or hashing
+# uint64 numbers is also faster than for arbitrary strings.
+#
+# Using a sparse enumeration (instead of the dense 1 = "application/epub+zip",
+# 2 = "application/java-archive", etc) means that, when debugging or logging,
+# the numerical value can be converted to a somewhat-human-readable form (the
+# "appl/java/ar" 4/4/2 string) purely algorithmically, without a lookup table.
+# Inserting new entries can also preserve the sortedness of the 4/4/2 form
+# without requiring renumbering.
+#
+# When debugging, if the numerical value is all that you know, grepping a large
+# codebase for 0x09CC62_880DB9BE or 2757998351858110 will also produce far
+# fewer false positives than grepping for 2.
+#
+# The pua.example subtypes (e.g. for private use within a system that deals
+# with "foobar.example" files) are an unofficial suggestion for entries not in
+# the official IANA registry, similar to Unicode's Private Use Area. For a PUA
+# entry's 4/4/2 string, the middle-4 starts with a "~" (and cannot be "~~~~")
+# but the rest of the middle-4-right-2 is freeform.
+#
+# The official IANA Media Types registry:
+# https://www.iana.org/assignments/media-types/media-types.xhtml
+#
+# A popular subset of that registry, with about 800 entries, as well as a
+# mapping between Media Types (like "application/java-archive") and filename
+# extensions (like ".jar"):
+# https://svn.apache.org/repos/asf/httpd/httpd/trunk/docs/conf/mime.types
+#
+# This file (enumerated-media-types.txt) is canonically hosted in the doc/note
+# directory of the github.com/google/wuffs repository. That same directory also
+# holds a base38-and-fourcc.md file that elaborates on base38 encoding.
+
+0x09CC62_6933B000	2757997834252288	appl/epub/..	application/epub+zip
+0x09CC62_880DB9BE	2757998351858110	appl/java/ar	application/java-archive
+0x09CC62_880DBC67	2757998351858791	appl/java/so	application/java-serialized-object
+0x09CC62_880DBCD7	2757998351858903	appl/java/vm	application/java-vm
+0x09CC62_8B321000	2757998404571136	appl/json/..	application/json
+0x09CC62_9C23B800	2757998688843776	appl/mate/..	application/mathematica
+0x09CC62_9C23F800	2757998688860160	appl/matm/..	application/mathml+xml
+0x09CC62_9F53D800	2757998742329344	appl/mswo/..	application/msword
+0x09CC62_A9E37800	2757998919514112	appl/octe/..	application/octet-stream
+0x09CC62_B0B24000	2757999033729024	appl/pdf./..	application/pdf
+0x09CC62_B2B30000	2757999067332608	appl/post/..	application/postscript
+0x09CC62_C0E9C000	2757999305801728	appl/rtf./..	application/rtf
+0x09CC62_C664E000	2757999397756928	appl/smil/..	application/smil+xml
+0x09CC62_CE584000	2757999531147264	appl/ttml/..	application/ttml+xml
+0x09CC62_D86553E7	2757999699776487	appl/vand/pa	application/vnd.android.package-archive
+0x09CC62_D8681384	2757999699956612	appl/vapp/mp	application/vnd.apple.mpegurl
+0x09CC62_D9754B34	2757999717600052	appl/vgoe/kl	application/vnd.google-earth.kml+xml
+0x09CC62_D9754B42	2757999717600066	appl/vgoe/kz	application/vnd.google-earth.kmz
+0x09CC62_D9C13800	2757999722575872	appl/vicc/..	application/vnd.iccprofile
+0x09CC62_DA1CBB29	2757999728573225	appl/vkde/ka	application/vnd.kde.karbon
+0x09CC62_DA1CBB2B	2757999728573227	appl/vkde/kc	application/vnd.kde.kchart
+0x09CC62_DA1CBB2E	2757999728573230	appl/vkde/kf	application/vnd.kde.kformula
+0x09CC62_DA1CBB31	2757999728573233	appl/vkde/ki	application/vnd.kde.kivio
+0x09CC62_DA1CBB37	2757999728573239	appl/vkde/ko	application/vnd.kde.kontour
+0x09CC62_DA1CBB38	2757999728573240	appl/vkde/kp	application/vnd.kde.kpresenter
+0x09CC62_DA1CBB3B	2757999728573243	appl/vkde/ks	application/vnd.kde.kspread
+0x09CC62_DA1CBB3F	2757999728573247	appl/vkde/kw	application/vnd.kde.kword
+0x09CC62_DA8851F9	2757999735624185	appl/vms./ca	application/vnd.ms-cab-compressed
+0x09CC62_DA88525C	2757999735624284	appl/vms./ex	application/vnd.ms-excel
+0x09CC62_DA8852CA	2757999735624394	appl/vms./ht	application/vnd.ms-htmlhelp
+0x09CC62_DA8853F5	2757999735624693	appl/vms./po	application/vnd.ms-powerpoint
+0x09CC62_DACDF9EE	2757999740189166	appl/voao/c.	application/vnd.oasis.opendocument.chart
+0x09CC62_DACDFA0C	2757999740189196	appl/voao/ct	application/vnd.oasis.opendocument.chart-template
+0x09CC62_DACDFA14	2757999740189204	appl/voao/d.	application/vnd.oasis.opendocument.database
+0x09CC62_DACDFA60	2757999740189280	appl/voao/f.	application/vnd.oasis.opendocument.formula
+0x09CC62_DACDFA7E	2757999740189310	appl/voao/ft	application/vnd.oasis.opendocument.formula-template
+0x09CC62_DACDFA86	2757999740189318	appl/voao/g.	application/vnd.oasis.opendocument.graphics
+0x09CC62_DACDFAA4	2757999740189348	appl/voao/gt	application/vnd.oasis.opendocument.graphics-template
+0x09CC62_DACDFAD2	2757999740189394	appl/voao/i.	application/vnd.oasis.opendocument.image
+0x09CC62_DACDFAF0	2757999740189424	appl/voao/it	application/vnd.oasis.opendocument.image-template
+0x09CC62_DACDFBDC	2757999740189660	appl/voao/p.	application/vnd.oasis.opendocument.presentation
+0x09CC62_DACDFBFA	2757999740189690	appl/voao/pt	application/vnd.oasis.opendocument.presentation-template
+0x09CC62_DACDFC4E	2757999740189774	appl/voao/s.	application/vnd.oasis.opendocument.spreadsheet
+0x09CC62_DACDFC6C	2757999740189804	appl/voao/st	application/vnd.oasis.opendocument.spreadsheet-template
+0x09CC62_DACDFC74	2757999740189812	appl/voao/t.	application/vnd.oasis.opendocument.text
+0x09CC62_DACDFC8B	2757999740189835	appl/voao/tm	application/vnd.oasis.opendocument.text-master
+0x09CC62_DACDFC92	2757999740189842	appl/voao/tt	application/vnd.oasis.opendocument.text-template
+0x09CC62_DACDFC95	2757999740189845	appl/voao/tw	application/vnd.oasis.opendocument.text-web
+0x09CC62_DADFCBF6	2757999741357046	appl/vopo/pp	application/vnd.openxmlformats-officedocument.presentationml.presentation
+0x09CC62_DADFCBF8	2757999741357048	appl/vopo/pr	application/vnd.openxmlformats-officedocument.presentationml.slide
+0x09CC62_DADFCBF9	2757999741357049	appl/vopo/ps	application/vnd.openxmlformats-officedocument.presentationml.slideshow
+0x09CC62_DADFCBFA	2757999741357050	appl/vopo/pt	application/vnd.openxmlformats-officedocument.presentationml.template
+0x09CC62_DADFCC6B	2757999741357163	appl/vopo/ss	application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+0x09CC62_DADFCC6C	2757999741357164	appl/vopo/st	application/vnd.openxmlformats-officedocument.spreadsheetml.template
+0x09CC62_DADFCCF4	2757999741357300	appl/vopo/wd	application/vnd.openxmlformats-officedocument.wordprocessingml.document
+0x09CC62_DADFCD04	2757999741357316	appl/vopo/wt	application/vnd.openxmlformats-officedocument.wordprocessingml.template
+0x09CC62_DF1E4800	2757999812560896	appl/wasm/..	application/wasm
+0x09CC62_E5514000	2757999916564480	appl/x7z./..	application/x-7z-compressed
+0x09CC62_E5BCB800	2757999923607552	appl/xabi/..	application/x-abiword
+0x09CC62_E5CD9227	2757999924711975	appl/xapp/di	application/x-apple-diskimage
+0x09CC62_E5F28000	2757999927132160	appl/xbit/..	application/x-bittorrent
+0x09CC62_E605D800	2757999928399872	appl/xbz2/..	application/x-bzip2
+0x09CC62_E61DF800	2757999929980928	appl/xche/..	application/x-chess-pgn
+0x09CC62_E6477000	2757999932698624	appl/xdeb/..	application/x-debian-package
+0x09CC62_E653B800	2757999933503488	appl/xdoo/..	application/x-doom
+0x09CC62_E65BD800	2757999934035968	appl/xdvi/..	application/x-dvi
+0x09CC62_E6DA1800	2757999942309888	appl/xgnu/..	application/x-gnumeric
+0x09CC62_E70E1800	2757999945717760	appl/xhtm/..	application/xhtml+xml
+0x09CC62_E73A1800	2757999948601344	appl/xiso/..	application/x-iso9660-image
+0x09CC62_E7AC4000	2757999956082688	appl/xlat/..	application/x-latex
+0x09CC62_E7E58000	2757999959834624	appl/xml./..	application/xml
+0x09CC62_E7E5F000	2757999959863296	appl/xmld/..	application/xml-dtd
+0x09CC62_E7EDD1BC	2757999960379836	appl/xms./ap	application/x-ms-application
+0x09CC62_E7EDD460	2757999960380512	appl/xms./sh	application/x-ms-shortcut
+0x09CC62_E7EE4000	2757999960408064	appl/xmsd/..	application/x-msdownload
+0x09CC62_E8BAF000	2757999973822464	appl/xrar/..	application/x-rar-compressed
+0x09CC62_E8EF8000	2757999977267200	appl/xsh./..	application/x-sh
+0x09CC62_E8F04800	2757999977318400	appl/xsho/..	application/x-shockwave-flash
+0x09CC62_E8FAE000	2757999978012672	appl/xsql/..	application/x-sql
+0x09CC62_E9153000	2757999979737088	appl/xtar/..	application/x-tar
+0x09CC62_E91A2000	2757999980060672	appl/xtex/..	application/x-tex
+0x09CC62_E91A2277	2757999980061303	appl/xtex/fm	application/x-tex-tfm
+0x09CC62_E91A22EA	2757999980061418	appl/xtex/in	application/x-texinfo
+0x09CC62_E9E68000	2757999993454592	appl/xxz./..	application/x-xz
+0x09CC62_F49B4000	2758000173072384	appl/zip./..	application/zip
+0x09CC62_FAA35800	2758000274266112	appl/~exa/..	application/pua.example
+0x09CC62_FE887DA3	2758000339615139	appl/~~~~/~~	application/*
+
+0x09E6CB_1DE9D000	2787034845007872	audi/3gpp/..	audio/3gpp
+0x09E6CB_4C087000	2787035618766848	audi/acc3...	audio/ac3
+0x09E6CB_4DDD6000	2787035649499136	audi/amr./..	audio/amr
+0x09E6CB_4DDE6800	2787035649566720	audi/amrw/..	audio/amr-wb
+0x09E6CB_52746800	2787035726505984	audi/basi/..	audio/basic
+0x09E6CB_9D79D800	2787036985153536	audi/midi/..	audio/midi
+0x09E6CB_9E86B000	2787037002772480	audi/mobx/..	audio/mobile-xmf
+0x09E6CB_9EAA7000	2787037005115392	audi/mp4./..	audio/mp4
+0x09E6CB_9EB6D800	2787037005928448	audi/mpeg/..	audio/mpeg
+0x09E6CB_AA881000	2787037204189184	audi/ogg./..	audio/ogg
+0x09E6CB_E5BB5800	2787038197405696	audi/xaac/..	audio/x-aac
+0x09E6CB_E5C4F000	2787038198034432	audi/xaif/..	audio/x-aiff
+0x09E6CB_E6A9F800	2787038213044224	audi/xfla/..	audio/x-flac
+0x09E6CB_E7D96000	2787038232928256	audi/xmat/..	audio/x-matroska
+0x09E6CB_E7EB3800	2787038234097664	audi/xmpu/..	audio/x-mpegurl
+0x09E6CB_E7EDD4F1	2787038234268913	audi/xms./wa	audio/x-ms-wax
+0x09E6CB_E7EDD4FD	2787038234268925	audi/xms./wm	audio/x-ms-wma
+0x09E6CB_E8702000	2787038242807808	audi/xpnr/..	audio/x-pn-realaudio
+0x09E6CB_E99CB000	2787038262505472	audi/xwav/..	audio/x-wav
+0x09E6CB_FE887DA3	2787038613503395	audi/~~~~/~~	audio/*
+
+0x0DF632_5B96B000	3929870842638336	font/coll/..	font/collection
+0x0DF632_ACD18000	3929872205447168	font/otf./..	font/otf
+0x0DF632_CE4F4000	3929872767336448	font/ttf./..	font/ttf
+0x0DF632_E1866000	3929873089716224	font/woff/..	font/woff
+0x0DF632_E1866072	3929873089716338	font/woff/2.	font/woff2
+0x0DF632_FE887DA3	3929873576394147	font/~~~~/~~	font/*
+
+0x106BF7_4F695000	4622309560766464	imag/avif/..	image/avif
+0x106BF7_548DC000	4622309647040512	imag/bmp./..	image/bmp
+0x106BF7_754B2000	4622310196322304	imag/gif./..	image/gif
+0x106BF7_8A8FD000	4622310553145344	imag/jp2./..	image/jp2
+0x106BF7_8A9E9800	4622310554114048	imag/jpeg/..	image/jpeg
+0x106BF7_8AB4A000	4622310555557888	imag/jpx./..	image/jpx
+0x106BF7_8C0F6000	4622310578282496	imag/jxl./..	image/jxl
+0x106BF7_921BE000	4622310679764992	imag/ktx./..	image/ktx
+0x106BF7_B276B000	4622311222587392	imag/png./..	image/png
+0x106BF7_C7F90000	4622311583449088	imag/svgx/..	image/svg+xml
+0x106BF7_CC5F6000	4622311657267200	imag/tiff/..	image/tiff
+0x106BF7_D859CBF9	4622311858228217	imag/vado/ps	image/vnd.adobe.photoshop
+0x106BF7_D8E88000	4622311867580416	imag/vdjv/..	image/vnd.djvu
+0x106BF7_DC3704F2	4622311923057906	imag/vwap/wb	image/vnd.wap.wbmp
+0x106BF7_DFBEB000	4622311982280704	imag/webp/..	image/webp
+0x106BF7_E7271800	4622312106563584	imag/xico/..	image/x-icon
+0x106BF7_E87151B9	4622312128205241	imag/xpor/am	image/x-portable-anymap
+0x106BF7_E87151DF	4622312128205279	imag/xpor/bm	image/x-portable-bitmap
+0x106BF7_E871529D	4622312128205469	imag/xpor/gm	image/x-portable-graymap
+0x106BF7_E87153F3	4622312128205811	imag/xpor/pm	image/x-portable-pixmap
+0x106BF7_E91BC800	4622312139376640	imag/xtga/..	image/x-tga
+0x106BF7_FAA35800	4622312433473536	imag/~exa/..	image/pua.example
+0x106BF7_FE887DA3	4622312498822563	imag/~~~~/~~	image/*
+
+0x13F426_4DB31800	5616469907019776	mult/alte/..	multipart/alternative
+0x13F426_56B07800	5616470057842688	mult/byte/..	multipart/byteranges
+0x13F426_6FB61800	5616470477641728	mult/form/..	multipart/form-data
+0x13F426_9D917800	5616471246993408	mult/mixe/..	multipart/mixed
+0x13F426_E7E30000	5616472493850624	mult/xmix/..	multipart/x-mixed-replace
+0x13F426_FE887DA3	5616472873794979	mult/~~~~/~~	multipart/*
+
+0x197816_59144800	7168911796881408	text/cacm/..	text/cache-manifest
+0x197816_591EB800	7168911797565440	text/cale/..	text/calendar
+0x197816_5C52D000	7168911851311104	text/css./..	text/css
+0x197816_5C566000	7168911851544576	text/csv./..	text/csv
+0x197816_7DF74000	7168912415735808	text/html/..	text/html
+0x197816_880E4800	7168912585017344	text/javs/..	text/javascript
+0x197816_9C218800	7168912921823232	text/mark/..	text/markdown
+0x197816_B215E800	7168913290160128	text/plai/..	text/plain
+0x197816_C0E9C000	7168913538924544	text/rtf./..	text/rtf
+0x197816_CAF20800	7168913707239424	text/tabs/..	text/tab-separated-values
+0x197816_CE8B9000	7168913767632896	text/turt/..	text/turtle
+0x197816_D4AC0000	7168913870422016	text/uril/..	text/uri-list
+0x197816_E6082000	7168914161672192	text/xc../..	text/x-c
+0x197816_E7521000	7168914183294976	text/xjav/..	text/x-java-source
+0x197816_E7E58000	7168914192957440	text/xml./..	text/xml
+0x197816_E971A000	7168914218917888	text/xvcl/..	text/x-vcalendar
+0x197816_E971D000	7168914218930176	text/xvcr/..	text/x-vcard
+0x197816_FE887DA3	7168914572737955	text/~~~~/~~	text/*
+
+0x1B384F_1DE9D000	7661736826621952	vide/3gpp/..	video/3gpp
+0x1B384F_1DE9D072	7661736826622066	vide/3gpp/2.	video/3gpp2
+0x1B384F_9EAA7000	7661738986729472	vide/mp4./..	video/mp4
+0x1B384F_9EB6D800	7661738987542528	vide/mpeg/..	video/mpeg
+0x1B384F_AA881000	7661739185803264	vide/ogg./..	video/ogg
+0x1B384F_BA681800	7661739452143616	vide/quic/..	video/quicktime
+0x1B384F_DA85B800	7661739990956032	vide/vmpu/..	video/vnd.mpegurl
+0x1B384F_DFBE9800	7661740078569472	vide/webm/..	video/webm
+0x1B384F_E6AAA000	7661740194701312	vide/xflv/..	video/x-flv
+0x1B384F_E7D96000	7661740214542336	vide/xmat/..	video/x-matroska
+0x1B384F_E7E86800	7661740215527424	vide/xmng/..	video/x-mng
+0x1B384F_E7EDD1BF	7661740215882175	vide/xms./as	video/x-ms-asf
+0x1B384F_E7EDD4FD	7661740215883005	vide/xms./wm	video/x-ms-wm
+0x1B384F_E7EDD506	7661740215883014	vide/xms./wv	video/x-ms-wmv
+0x1B384F_E7EDD508	7661740215883016	vide/xms./wx	video/x-ms-wmx
+0x1B384F_E7EDD52E	7661740215883054	vide/xms./xx	video/x-ms-wvx
+0x1B384F_E7EED000	7661740215947264	vide/xmsv/..	video/x-msvideo
+0x1B384F_FE887DA3	7661740595117475	vide/~~~~/~~	video/*

@@ -1,0 +1,452 @@
+// Copyright 2023 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+// INITIAL_SHA256_H comes from section "5.3.3 SHA-256" of
+// https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
+pri const INITIAL_SHA256_H : roarray[8] base.u32 = [
+        0x6A09_E667, 0xBB67_AE85, 0x3C6E_F372, 0xA54F_F53A,
+        0x510E_527F, 0x9B05_688C, 0x1F83_D9AB, 0x5BE0_CD19,
+]
+
+// K comes from section "4.2.2 SHA-224 and SHA-256 Constants" of
+// https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
+pri const K : roarray[64] base.u32 = [
+        0x428A_2F98, 0x7137_4491, 0xB5C0_FBCF, 0xE9B5_DBA5,
+        0x3956_C25B, 0x59F1_11F1, 0x923F_82A4, 0xAB1C_5ED5,
+        0xD807_AA98, 0x1283_5B01, 0x2431_85BE, 0x550C_7DC3,
+        0x72BE_5D74, 0x80DE_B1FE, 0x9BDC_06A7, 0xC19B_F174,
+        0xE49B_69C1, 0xEFBE_4786, 0x0FC1_9DC6, 0x240C_A1CC,
+        0x2DE9_2C6F, 0x4A74_84AA, 0x5CB0_A9DC, 0x76F9_88DA,
+        0x983E_5152, 0xA831_C66D, 0xB003_27C8, 0xBF59_7FC7,
+        0xC6E0_0BF3, 0xD5A7_9147, 0x06CA_6351, 0x1429_2967,
+        0x27B7_0A85, 0x2E1B_2138, 0x4D2C_6DFC, 0x5338_0D13,
+        0x650A_7354, 0x766A_0ABB, 0x81C2_C92E, 0x9272_2C85,
+        0xA2BF_E8A1, 0xA81A_664B, 0xC24B_8B70, 0xC76C_51A3,
+        0xD192_E819, 0xD699_0624, 0xF40E_3585, 0x106A_A070,
+        0x19A4_C116, 0x1E37_6C08, 0x2748_774C, 0x34B0_BCB5,
+        0x391C_0CB3, 0x4ED8_AA4A, 0x5B9C_CA4F, 0x682E_6FF3,
+        0x748F_82EE, 0x78A5_636F, 0x84C8_7814, 0x8CC7_0208,
+        0x90BE_FFFA, 0xA450_6CEB, 0xBEF9_A3F7, 0xC671_78F2,
+]
+
+pub struct hasher? implements base.hasher_bitvec256(
+        length_modulo_u64    : base.u64,
+        length_overflows_u64 : base.bool,
+
+        padding0 : base.u8,
+        padding1 : base.u8,
+        padding2 : base.u8,
+
+        buf_len  : base.u32[..= 64],
+        buf_data : array[64] base.u8,
+
+        h0 : base.u32,
+        h1 : base.u32,
+        h2 : base.u32,
+        h3 : base.u32,
+        h4 : base.u32,
+        h5 : base.u32,
+        h6 : base.u32,
+        h7 : base.u32,
+
+        util : base.utility,
+)
+
+pub func hasher.get_quirk(key: base.u32) base.u64 {
+    return 0
+}
+
+pub func hasher.set_quirk!(key: base.u32, value: base.u64) base.status {
+    return base."#unsupported option"
+}
+
+pub func hasher.update!(x: roslice base.u8) {
+    var new_lmu : base.u64
+
+    if (this.length_modulo_u64 == 0) and not this.length_overflows_u64 {
+        this.h0 = INITIAL_SHA256_H[0]
+        this.h1 = INITIAL_SHA256_H[1]
+        this.h2 = INITIAL_SHA256_H[2]
+        this.h3 = INITIAL_SHA256_H[3]
+        this.h4 = INITIAL_SHA256_H[4]
+        this.h5 = INITIAL_SHA256_H[5]
+        this.h6 = INITIAL_SHA256_H[6]
+        this.h7 = INITIAL_SHA256_H[7]
+    }
+
+    new_lmu = this.length_modulo_u64 ~mod+ args.x.length()
+    this.length_overflows_u64 = (new_lmu < this.length_modulo_u64) or this.length_overflows_u64
+    this.length_modulo_u64 = new_lmu
+
+    // Align to a block boundary before calling this.up.
+    if this.buf_len <> 0 {
+        while this.buf_len < 64 {
+            if args.x.length() <= 0 {
+                return nothing
+            }
+            this.buf_data[this.buf_len] = args.x[0]
+            this.buf_len += 1
+            args.x = args.x[1 ..]
+        }
+        this.buf_len = 0
+        this.up!(x: this.buf_data[..])
+    }
+
+    this.up!(x: args.x)
+}
+
+pub func hasher.update_bitvec256!(x: roslice base.u8) base.bitvec256 {
+    this.update!(x: args.x)
+    return this.checksum_bitvec256()
+}
+
+pri func hasher.up!(x: roslice base.u8) {
+    var p : roslice base.u8
+
+    var w : array[64] base.u32
+
+    var w2  : base.u32
+    var w15 : base.u32
+    var s0  : base.u32
+    var s1  : base.u32
+    var t1  : base.u32
+    var t2  : base.u32
+
+    var a : base.u32
+    var b : base.u32
+    var c : base.u32
+    var d : base.u32
+    var e : base.u32
+    var f : base.u32
+    var g : base.u32
+    var h : base.u32
+
+    var i : base.u32
+
+    var buf_len : base.u32[..= 63]
+
+    a = this.h0
+    b = this.h1
+    c = this.h2
+    d = this.h3
+    e = this.h4
+    f = this.h5
+    g = this.h6
+    h = this.h7
+
+    iterate (p = args.x)(length: 64, advance: 64, unroll: 1) {
+        w[0x00] = ((p[0x00] as base.u32) << 24) | ((p[0x01] as base.u32) << 16) |
+                ((p[0x02] as base.u32) << 8) | ((p[0x03] as base.u32))
+        w[0x01] = ((p[0x04] as base.u32) << 24) | ((p[0x05] as base.u32) << 16) |
+                ((p[0x06] as base.u32) << 8) | ((p[0x07] as base.u32))
+        w[0x02] = ((p[0x08] as base.u32) << 24) | ((p[0x09] as base.u32) << 16) |
+                ((p[0x0A] as base.u32) << 8) | ((p[0x0B] as base.u32))
+        w[0x03] = ((p[0x0C] as base.u32) << 24) | ((p[0x0D] as base.u32) << 16) |
+                ((p[0x0E] as base.u32) << 8) | ((p[0x0F] as base.u32))
+        w[0x04] = ((p[0x10] as base.u32) << 24) | ((p[0x11] as base.u32) << 16) |
+                ((p[0x12] as base.u32) << 8) | ((p[0x13] as base.u32))
+        w[0x05] = ((p[0x14] as base.u32) << 24) | ((p[0x15] as base.u32) << 16) |
+                ((p[0x16] as base.u32) << 8) | ((p[0x17] as base.u32))
+        w[0x06] = ((p[0x18] as base.u32) << 24) | ((p[0x19] as base.u32) << 16) |
+                ((p[0x1A] as base.u32) << 8) | ((p[0x1B] as base.u32))
+        w[0x07] = ((p[0x1C] as base.u32) << 24) | ((p[0x1D] as base.u32) << 16) |
+                ((p[0x1E] as base.u32) << 8) | ((p[0x1F] as base.u32))
+        w[0x08] = ((p[0x20] as base.u32) << 24) | ((p[0x21] as base.u32) << 16) |
+                ((p[0x22] as base.u32) << 8) | ((p[0x23] as base.u32))
+        w[0x09] = ((p[0x24] as base.u32) << 24) | ((p[0x25] as base.u32) << 16) |
+                ((p[0x26] as base.u32) << 8) | ((p[0x27] as base.u32))
+        w[0x0A] = ((p[0x28] as base.u32) << 24) | ((p[0x29] as base.u32) << 16) |
+                ((p[0x2A] as base.u32) << 8) | ((p[0x2B] as base.u32))
+        w[0x0B] = ((p[0x2C] as base.u32) << 24) | ((p[0x2D] as base.u32) << 16) |
+                ((p[0x2E] as base.u32) << 8) | ((p[0x2F] as base.u32))
+        w[0x0C] = ((p[0x30] as base.u32) << 24) | ((p[0x31] as base.u32) << 16) |
+                ((p[0x32] as base.u32) << 8) | ((p[0x33] as base.u32))
+        w[0x0D] = ((p[0x34] as base.u32) << 24) | ((p[0x35] as base.u32) << 16) |
+                ((p[0x36] as base.u32) << 8) | ((p[0x37] as base.u32))
+        w[0x0E] = ((p[0x38] as base.u32) << 24) | ((p[0x39] as base.u32) << 16) |
+                ((p[0x3A] as base.u32) << 8) | ((p[0x3B] as base.u32))
+        w[0x0F] = ((p[0x3C] as base.u32) << 24) | ((p[0x3D] as base.u32) << 16) |
+                ((p[0x3E] as base.u32) << 8) | ((p[0x3F] as base.u32))
+
+        i = 16
+        while i < 64,
+                inv i >= 16,
+        {
+            w2 = w[i - 2]
+            s1 = (w2 >> 10) ^
+                    ((w2 ~mod<< 15) | (w2 >> 17)) ^
+                    ((w2 ~mod<< 13) | (w2 >> 19))
+            w15 = w[i - 15]
+            s0 = (w15 >> 3) ^
+                    ((w15 ~mod<< 25) | (w15 >> 7)) ^
+                    ((w15 ~mod<< 14) | (w15 >> 18))
+            w[i] = ((s1 ~mod+ w[i - 7]) ~mod+ s0) ~mod+ w[i - 16]
+            i += 1
+        }
+
+        i = 0
+        while i < 64 {
+            t1 = h
+            t1 ~mod+= ((e ~mod<< 26) | (e >> 6)) ^
+                    ((e ~mod<< 21) | (e >> 11)) ^
+                    ((e ~mod<< 7) | (e >> 25))
+            t1 ~mod+= (e & f) ^ ((0xFFFF_FFFF ^ e) & g)
+            t1 ~mod+= K[i]
+            t1 ~mod+= w[i]
+
+            t2 = ((a ~mod<< 30) | (a >> 2)) ^
+                    ((a ~mod<< 19) | (a >> 13)) ^
+                    ((a ~mod<< 10) | (a >> 22))
+            t2 ~mod+= (a & b) ^ (a & c) ^ (b & c)
+
+            h = g
+            g = f
+            f = e
+            e = d ~mod+ t1
+            d = c
+            c = b
+            b = a
+            a = t1 ~mod+ t2
+
+            i += 1
+        }
+
+        a ~mod+= this.h0
+        this.h0 = a
+        b ~mod+= this.h1
+        this.h1 = b
+        c ~mod+= this.h2
+        this.h2 = c
+        d ~mod+= this.h3
+        this.h3 = d
+        e ~mod+= this.h4
+        this.h4 = e
+        f ~mod+= this.h5
+        this.h5 = f
+        g ~mod+= this.h6
+        this.h6 = g
+        h ~mod+= this.h7
+        this.h7 = h
+
+    } else (length: 1, advance: 1, unroll: 1) {
+        this.buf_data[buf_len] = p[0]
+        buf_len = (buf_len + 1) & 63
+    }
+    this.buf_len = (args.x.length() & 63) as base.u32
+}
+
+pub func hasher.checksum_bitvec256() base.bitvec256 {
+    var buf_len  : base.u32[..= 64]
+    var buf_data : array[64] base.u8
+
+    var length_in_bits : base.u64
+
+    var w : array[64] base.u32
+
+    var w2  : base.u32
+    var w15 : base.u32
+    var s0  : base.u32
+    var s1  : base.u32
+    var t1  : base.u32
+    var t2  : base.u32
+
+    var h0 : base.u32
+    var h1 : base.u32
+    var h2 : base.u32
+    var h3 : base.u32
+    var h4 : base.u32
+    var h5 : base.u32
+    var h6 : base.u32
+    var h7 : base.u32
+
+    var a : base.u32
+    var b : base.u32
+    var c : base.u32
+    var d : base.u32
+    var e : base.u32
+    var f : base.u32
+    var g : base.u32
+    var h : base.u32
+
+    var i : base.u32
+
+    var final_block : base.bool
+
+    i = 0
+    while i < 64 {
+        buf_data[i] = this.buf_data[i]
+        i += 1
+    }
+
+    // Pad with a 1 bit and then zero or more 0 bits, until we're at 56 bytes
+    // (448 bits), modulo 64 bytes (512 bits).
+    buf_len = this.buf_len & 63
+    if buf_len < 56 {
+        buf_data[buf_len] = 0x80
+        buf_len += 1
+        while buf_len < 56 {
+            buf_data[buf_len] = 0x00
+            buf_len += 1
+        }
+        final_block = true
+
+    } else {
+        assert buf_len <= 63
+        buf_data[buf_len] = 0x80
+        buf_len += 1
+        while buf_len < 64 {
+            buf_data[buf_len] = 0x00
+            buf_len += 1
+        }
+    }
+
+    h0 = this.h0
+    a = h0
+    h1 = this.h1
+    b = h1
+    h2 = this.h2
+    c = h2
+    h3 = this.h3
+    d = h3
+    h4 = this.h4
+    e = h4
+    h5 = this.h5
+    f = h5
+    h6 = this.h6
+    g = h6
+    h7 = this.h7
+    h = h7
+
+    while true {
+        if final_block {
+            // The final block ends with the total length (in bits).
+            length_in_bits = this.length_modulo_u64 ~mod* 8
+            buf_data[56] = ((length_in_bits >> 56) & 0xFF) as base.u8
+            buf_data[57] = ((length_in_bits >> 48) & 0xFF) as base.u8
+            buf_data[58] = ((length_in_bits >> 40) & 0xFF) as base.u8
+            buf_data[59] = ((length_in_bits >> 32) & 0xFF) as base.u8
+            buf_data[60] = ((length_in_bits >> 24) & 0xFF) as base.u8
+            buf_data[61] = ((length_in_bits >> 16) & 0xFF) as base.u8
+            buf_data[62] = ((length_in_bits >> 8) & 0xFF) as base.u8
+            buf_data[63] = ((length_in_bits) & 0xFF) as base.u8
+        }
+
+        w[0x00] = ((buf_data[0x00] as base.u32) << 24) | ((buf_data[0x01] as base.u32) << 16) |
+                ((buf_data[0x02] as base.u32) << 8) | ((buf_data[0x03] as base.u32))
+        w[0x01] = ((buf_data[0x04] as base.u32) << 24) | ((buf_data[0x05] as base.u32) << 16) |
+                ((buf_data[0x06] as base.u32) << 8) | ((buf_data[0x07] as base.u32))
+        w[0x02] = ((buf_data[0x08] as base.u32) << 24) | ((buf_data[0x09] as base.u32) << 16) |
+                ((buf_data[0x0A] as base.u32) << 8) | ((buf_data[0x0B] as base.u32))
+        w[0x03] = ((buf_data[0x0C] as base.u32) << 24) | ((buf_data[0x0D] as base.u32) << 16) |
+                ((buf_data[0x0E] as base.u32) << 8) | ((buf_data[0x0F] as base.u32))
+        w[0x04] = ((buf_data[0x10] as base.u32) << 24) | ((buf_data[0x11] as base.u32) << 16) |
+                ((buf_data[0x12] as base.u32) << 8) | ((buf_data[0x13] as base.u32))
+        w[0x05] = ((buf_data[0x14] as base.u32) << 24) | ((buf_data[0x15] as base.u32) << 16) |
+                ((buf_data[0x16] as base.u32) << 8) | ((buf_data[0x17] as base.u32))
+        w[0x06] = ((buf_data[0x18] as base.u32) << 24) | ((buf_data[0x19] as base.u32) << 16) |
+                ((buf_data[0x1A] as base.u32) << 8) | ((buf_data[0x1B] as base.u32))
+        w[0x07] = ((buf_data[0x1C] as base.u32) << 24) | ((buf_data[0x1D] as base.u32) << 16) |
+                ((buf_data[0x1E] as base.u32) << 8) | ((buf_data[0x1F] as base.u32))
+        w[0x08] = ((buf_data[0x20] as base.u32) << 24) | ((buf_data[0x21] as base.u32) << 16) |
+                ((buf_data[0x22] as base.u32) << 8) | ((buf_data[0x23] as base.u32))
+        w[0x09] = ((buf_data[0x24] as base.u32) << 24) | ((buf_data[0x25] as base.u32) << 16) |
+                ((buf_data[0x26] as base.u32) << 8) | ((buf_data[0x27] as base.u32))
+        w[0x0A] = ((buf_data[0x28] as base.u32) << 24) | ((buf_data[0x29] as base.u32) << 16) |
+                ((buf_data[0x2A] as base.u32) << 8) | ((buf_data[0x2B] as base.u32))
+        w[0x0B] = ((buf_data[0x2C] as base.u32) << 24) | ((buf_data[0x2D] as base.u32) << 16) |
+                ((buf_data[0x2E] as base.u32) << 8) | ((buf_data[0x2F] as base.u32))
+        w[0x0C] = ((buf_data[0x30] as base.u32) << 24) | ((buf_data[0x31] as base.u32) << 16) |
+                ((buf_data[0x32] as base.u32) << 8) | ((buf_data[0x33] as base.u32))
+        w[0x0D] = ((buf_data[0x34] as base.u32) << 24) | ((buf_data[0x35] as base.u32) << 16) |
+                ((buf_data[0x36] as base.u32) << 8) | ((buf_data[0x37] as base.u32))
+        w[0x0E] = ((buf_data[0x38] as base.u32) << 24) | ((buf_data[0x39] as base.u32) << 16) |
+                ((buf_data[0x3A] as base.u32) << 8) | ((buf_data[0x3B] as base.u32))
+        w[0x0F] = ((buf_data[0x3C] as base.u32) << 24) | ((buf_data[0x3D] as base.u32) << 16) |
+                ((buf_data[0x3E] as base.u32) << 8) | ((buf_data[0x3F] as base.u32))
+
+        i = 16
+        while i < 64,
+                inv i >= 16,
+        {
+            w2 = w[i - 2]
+            s1 = (w2 >> 10) ^
+                    ((w2 ~mod<< 15) | (w2 >> 17)) ^
+                    ((w2 ~mod<< 13) | (w2 >> 19))
+            w15 = w[i - 15]
+            s0 = (w15 >> 3) ^
+                    ((w15 ~mod<< 25) | (w15 >> 7)) ^
+                    ((w15 ~mod<< 14) | (w15 >> 18))
+            w[i] = ((s1 ~mod+ w[i - 7]) ~mod+ s0) ~mod+ w[i - 16]
+            i += 1
+        }
+
+        i = 0
+        while i < 64 {
+            t1 = h
+            t1 ~mod+= ((e ~mod<< 26) | (e >> 6)) ^
+                    ((e ~mod<< 21) | (e >> 11)) ^
+                    ((e ~mod<< 7) | (e >> 25))
+            t1 ~mod+= (e & f) ^ ((0xFFFF_FFFF ^ e) & g)
+            t1 ~mod+= K[i]
+            t1 ~mod+= w[i]
+
+            t2 = ((a ~mod<< 30) | (a >> 2)) ^
+                    ((a ~mod<< 19) | (a >> 13)) ^
+                    ((a ~mod<< 10) | (a >> 22))
+            t2 ~mod+= (a & b) ^ (a & c) ^ (b & c)
+
+            h = g
+            g = f
+            f = e
+            e = d ~mod+ t1
+            d = c
+            c = b
+            b = a
+            a = t1 ~mod+ t2
+
+            i += 1
+        }
+
+        a ~mod+= h0
+        b ~mod+= h1
+        c ~mod+= h2
+        d ~mod+= h3
+        e ~mod+= h4
+        f ~mod+= h5
+        g ~mod+= h6
+        h ~mod+= h7
+
+        if final_block {
+            break
+        }
+        final_block = true
+
+        h0 = a
+        h1 = b
+        h2 = c
+        h3 = d
+        h4 = e
+        h5 = f
+        h6 = g
+        h7 = h
+
+        buf_len = 0
+        while buf_len < 56 {
+            buf_data[buf_len] = 0x00
+            buf_len += 1
+        }
+    }
+
+    return this.util.make_bitvec256(
+            e00: (h as base.u64) | ((g as base.u64) << 32),
+            e01: (f as base.u64) | ((e as base.u64) << 32),
+            e02: (d as base.u64) | ((c as base.u64) << 32),
+            e03: (b as base.u64) | ((a as base.u64) << 32))
+}

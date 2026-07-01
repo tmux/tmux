@@ -1,0 +1,42 @@
+# Feed this file to script/make-artificial.go
+
+# This modifies abraca.txt.bz2.make-artificial.txt to have 51 Huffman-coded
+# symbols (bitslice (p)) but only 1 section (bitslice (l)). At 50 symbols per
+# section, this should be invalid.
+
+make bzip2
+
+# Bitslices (a) ..= (g)
+bits 16 0x425A
+bits  8 0x68
+bits  8 0x39
+bits 48 0x314159265359
+bits 32 0x76A70995
+bits  1 0x0
+bits 24 0x000001
+
+# Bitslices (h) ..= (j)
+bits 16 0x0300
+bits 16 0x7000
+bits 16 0x2000
+
+# Bitslices (k) ..= (m)
+bits  3 0x2
+bits 15 0x0001
+bits  1 0x0
+
+# Bitslices (n) ..= (o)
+repeat 2 [
+	bits 19 0x0CD34
+]
+
+# Bitslice  (p)
+repeat 50 [
+	bits  2 0x0
+]
+bits  3 0x7
+
+# Bitslices (q) ..= (s)
+bits 48 0x177245385090
+bits 32 0x76A70995
+bits  5 0x00

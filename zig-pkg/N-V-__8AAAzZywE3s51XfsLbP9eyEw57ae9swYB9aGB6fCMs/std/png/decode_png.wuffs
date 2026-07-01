@@ -1,0 +1,1734 @@
+// Copyright 2020 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+use "std/crc32"
+use "std/zlib"
+
+pub struct decoder? implements base.image_decoder(
+        width  : base.u32[..= 0x00FF_FFFF],
+        height : base.u32[..= 0x00FF_FFFF],
+
+        // pass_bytes_per_row doesn't include the 1 byte for the per-row filter.
+        pass_bytes_per_row : base.u64[..= 0x07FF_FFF8],
+
+        workbuf_wi            : base.u64,
+        workbuf_hist_pos_base : base.u64,
+
+        // The inclusive upper bound, DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE, is
+        // derived from the width and height upper bounds at up to 8 bytes per
+        // pixel. It equals (((8 * M) + 1) * M), where M is 0x00FF_FFFF.
+        overall_workbuf_length : base.u64[..= 0x0007_FFFF_F100_0007],
+        pass_workbuf_length    : base.u64[..= 0x0007_FFFF_F100_0007],
+
+        // The call sequence state machine is discussed in
+        // (/doc/std/image-decoders-call-sequence.md).
+        call_sequence : base.u8,
+
+        report_metadata_chrm : base.bool,
+        report_metadata_exif : base.bool,
+        report_metadata_gama : base.bool,
+        report_metadata_iccp : base.bool,
+        report_metadata_kvp  : base.bool,
+        report_metadata_srgb : base.bool,
+
+        ignore_checksum : base.bool,
+
+        depth           : base.u8[..= 16],
+        color_type      : base.u8[..= 6],
+        filter_distance : base.u8[..= 8],
+        interlace_pass  : base.u8[..= 7],
+
+        seen_actl : base.bool,
+        seen_chrm : base.bool,
+        seen_fctl : base.bool,
+        seen_exif : base.bool,
+        seen_gama : base.bool,
+        seen_iccp : base.bool,
+        seen_idat : base.bool,
+        seen_ihdr : base.bool,
+        seen_plte : base.bool,
+        seen_srgb : base.bool,
+        seen_trns : base.bool,
+
+        metadata_is_zlib_compressed : base.bool,
+
+        zlib_is_dirty : base.bool,
+
+        chunk_type       : base.u32,
+        chunk_type_array : array[4] base.u8,
+        chunk_length     : base.u32,
+
+        // remap_transparency, if non-zero, is the 32-bit or 64-bit (depending on
+        // this.depth) argb_nonpremul color that is nominally opaque but remapped
+        // to transparent black.
+        //
+        // "Remapped" is an unofficial term. This is where the IHDR color type is 0
+        // (Y) or 2 (RGB) but there's also a tRNS chunk.
+        //
+        // PNG transparency that isn't "remapped" is color type 3 (indexed) with
+        // tRNS, color type 4 (YA) or color type 6 (RGBA).
+        remap_transparency : base.u64,
+
+        dst_pixfmt : base.u32,
+        src_pixfmt : base.u32,
+
+        num_animation_frames_value      : base.u32,
+        num_animation_loops_value       : base.u32,
+        num_decoded_frame_configs_value : base.u32,
+        num_decoded_frames_value        : base.u32,
+
+        // The frame_etc fields correspond to the base.frame_config argument passed
+        // to decode_frame_config. For animated APNG, these are explicitly given in
+        // the file's fcTL chunks. For still PNG, these are implicitly given in the
+        // file's IHDR chunk.
+        //
+        // Either way, decode_image_config has to read all the way to the start of
+        // the first IDAT / fdAT chunk (e.g. to see if there's a PLTE chunk). While
+        // later frame's restart io_positions are located just before fcTL chunks,
+        // the first frame's restart io_position is located just before the IDAT /
+        // fdAT chunk, so we also have to cache the first frame's configuration as
+        // we cannot re-read the first fcTL. Hence, there are first_etc fields for
+        // every frame_etc field.
+        //
+        // For the etc_duration fields, there are 705_600000 flicks per second and
+        // the maximum frame duration is 65535 seconds.
+        //
+        // The fields are ordered to minimize alignment wastage.
+        frame_rect_x0                    : base.u32[..= 0x00FF_FFFF],
+        frame_rect_y0                    : base.u32[..= 0x00FF_FFFF],
+        frame_rect_x1                    : base.u32[..= 0x00FF_FFFF],
+        frame_rect_y1                    : base.u32[..= 0x00FF_FFFF],
+        first_rect_x0                    : base.u32[..= 0x00FF_FFFF],
+        first_rect_y0                    : base.u32[..= 0x00FF_FFFF],
+        first_rect_x1                    : base.u32[..= 0x00FF_FFFF],
+        first_rect_y1                    : base.u32[..= 0x00FF_FFFF],
+        frame_config_io_position         : base.u64,
+        first_config_io_position         : base.u64,
+        frame_duration                   : base.u64[..= 0x2A0E_6FF1_6600],
+        first_duration                   : base.u64[..= 0x2A0E_6FF1_6600],
+        frame_disposal                   : base.u8,
+        first_disposal                   : base.u8,
+        frame_overwrite_instead_of_blend : base.bool,
+        first_overwrite_instead_of_blend : base.bool,
+
+        next_animation_seq_num : base.u32,
+
+        metadata_flavor : base.u32,
+        metadata_fourcc : base.u32,
+        metadata_x      : base.u64,
+        metadata_y      : base.u64,
+        metadata_z      : base.u64,
+
+        // ztxt_ri and ztxt_wi are read and write indexes into the dst_palette
+        // buffer, re-purposed as a zlib uncompression buffer for zTXt chunks. The
+        // upper bound, 1024, is the same as the dst_palette length.
+        ztxt_ri : base.u32[..= 1024],
+        ztxt_wi : base.u32[..= 1024],
+        // ztxt_hist_pos is the history position: how many uncompressed bytes have
+        // been generated.
+        ztxt_hist_pos : base.u64,
+
+        swizzler : base.pixel_swizzler,
+        util     : base.utility,
+) + (
+        crc32 : crc32.ieee_hasher,
+        zlib  : zlib.decoder,
+
+        // dst_palette and src_palette are used by the swizzler, during
+        // decode_frame. src_palette is initialized by processing the PLTE chunk.
+        // dst_palette is also re-purposed as a zlib uncompression buffer for zTXt
+        // chunks, during decode_image_config.
+        dst_palette : array[4 * 256] base.u8,
+        src_palette : array[4 * 256] base.u8,
+)
+
+pub func decoder.get_quirk(key: base.u32) base.u64 {
+    if (args.key == base.QUIRK_IGNORE_CHECKSUM) and this.ignore_checksum {
+        return 1
+    }
+    return 0
+}
+
+pub func decoder.set_quirk!(key: base.u32, value: base.u64) base.status {
+    if args.key == base.QUIRK_IGNORE_CHECKSUM {
+        this.ignore_checksum = args.value > 0
+        this.zlib.set_quirk!(key: args.key, value: args.value)
+        return ok
+    }
+    return base."#unsupported option"
+}
+
+pub func decoder.decode_image_config?(dst: nptr base.image_config, src: base.io_reader) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_image_config?(dst: args.dst, src: args.src)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_image_config?(dst: nptr base.image_config, src: base.io_reader) {
+    var magic         : base.u64
+    var mark          : base.u64
+    var checksum_have : base.u32
+    var checksum_want : base.u32
+    var status        : base.status
+
+    if this.call_sequence <> 0x00 {
+        return base."#bad call sequence"
+    } else if not this.seen_ihdr {
+        magic = args.src.read_u64le?()
+        if magic <> '\x89PNG\x0D\x0A\x1A\x0A'le {
+            return "#bad header"
+        }
+        magic = args.src.read_u64le?()
+        if magic <> '\x00\x00\x00\x0DIHDR'le {
+            if magic == '\x00\x00\x00\x04CgBI'le {
+                // TODO: add support for Apple's unofficial CgBI extension to
+                // PNG, once there exists good documentation for it. See
+                // https://github.com/w3c/PNG-spec/issues/45
+                return "#unsupported CgBI extension"
+            }
+            return "#bad header"
+        }
+        this.chunk_type_array[0] = 'I'
+        this.chunk_type_array[1] = 'H'
+        this.chunk_type_array[2] = 'D'
+        this.chunk_type_array[3] = 'R'
+        this.crc32.reset!()
+        this.crc32.update_u32!(x: this.chunk_type_array[..])
+
+        while true {
+            mark = args.src.mark()
+            status =? this.decode_ihdr?(src: args.src)
+            if not this.ignore_checksum {
+                checksum_have = this.crc32.update_u32!(x: args.src.since(mark: mark))
+            }
+            if status.is_ok() {
+                break
+            }
+            yield? status
+        }
+
+        // Verify CRC-32 checksum.
+        checksum_want = args.src.read_u32be?()
+        if (not this.ignore_checksum) and (checksum_have <> checksum_want) {
+            return "#bad checksum"
+        }
+        this.seen_ihdr = true
+    } else if this.metadata_fourcc <> 0 {
+        this.call_sequence = 0x10
+        return base."@metadata reported"
+    }
+
+    // Read up until an IDAT or fdAT chunk.
+    //
+    // By default, libpng "warns and discards" when seeing ancillary chunk
+    // checksum failures (as opposed to critical chunk checksum failures) but
+    // it still continues to decode the image. Wuffs' decoder is similar,
+    // simply always ignoring ancillary chunks' CRC-32 checksums.
+    //
+    // https://github.com/glennrp/libpng/blob/dbe3e0c43e549a1602286144d94b0666549b18e6/png.h#L1436
+    //
+    // We've already seen the IHDR chunk. We're not expecting an IEND chunk. An
+    // IDAT chunk breaks the loop. The only other possible critical chunk is a
+    // PLTE chunk. We verify PLTE checksums here but ignore other checksums.
+    while true {
+        if args.src.length() < 8 {
+            yield? base."$short read"
+            continue
+        }
+
+        this.chunk_length = args.src.peek_u32be()
+        this.chunk_type = (args.src.peek_u64le() >> 32) as base.u32
+        if this.chunk_type == 'IDAT'le {
+            if (not this.seen_actl) or this.seen_fctl {
+                break
+            }
+            this.seen_idat = true
+        } else if this.chunk_type == 'fdAT'le {
+            if this.seen_idat and this.seen_fctl {
+                break
+            }
+            return "#bad chunk"
+        }
+        args.src.skip_u32_fast!(actual: 8, worst_case: 8)
+
+        if (not this.ignore_checksum) and ((this.chunk_type & ANCILLARY_BIT) == 0) {
+            this.chunk_type_array[0] = ((this.chunk_type >> 0) & 0xFF) as base.u8
+            this.chunk_type_array[1] = ((this.chunk_type >> 8) & 0xFF) as base.u8
+            this.chunk_type_array[2] = ((this.chunk_type >> 16) & 0xFF) as base.u8
+            this.chunk_type_array[3] = ((this.chunk_type >> 24) & 0xFF) as base.u8
+            this.crc32.reset!()
+            this.crc32.update_u32!(x: this.chunk_type_array[..])
+        }
+
+        while true {
+            mark = args.src.mark()
+            status =? this.decode_other_chunk?(src: args.src, framy: false)
+            if (not this.ignore_checksum) and ((this.chunk_type & ANCILLARY_BIT) == 0) {
+                checksum_have = this.crc32.update_u32!(x: args.src.since(mark: mark))
+            }
+            if status.is_ok() {
+                break
+            }
+            yield? status
+        }
+
+        // If we have metadata, delay reading (skipping) the ancillary chunk's
+        // CRC-32 checksum until the end of tell_me_more.
+        if this.metadata_fourcc <> 0 {
+            this.call_sequence = 0x10
+            return base."@metadata reported"
+        }
+
+        checksum_want = args.src.read_u32be?()
+        if (not this.ignore_checksum) and ((this.chunk_type & ANCILLARY_BIT) == 0) and
+                (checksum_have <> checksum_want) {
+            return "#bad checksum"
+        }
+    }
+
+    if (this.color_type == 3) and (not this.seen_plte) {
+        return "#missing palette"
+    }
+
+    this.frame_config_io_position = args.src.position()
+    this.first_config_io_position = this.frame_config_io_position
+
+    if args.dst <> nullptr {
+        args.dst.set!(
+                pixfmt: this.dst_pixfmt,
+                pixsub: 0,
+                width: this.width,
+                height: this.height,
+                first_frame_io_position: this.first_config_io_position,
+                first_frame_is_opaque: (this.color_type <= 3) and (not this.seen_trns))
+    }
+
+    // For still (non-animated) PNGs, the first and only frame's configuration
+    // is implied by the IHDR chunk instead of an explicit fcTL chunk.
+    if not this.seen_actl {
+        this.num_animation_frames_value = 1
+        this.first_rect_x0 = 0
+        this.first_rect_y0 = 0
+        this.first_rect_x1 = this.width
+        this.first_rect_y1 = this.height
+        this.first_duration = 0
+        this.first_disposal = base.ANIMATION_DISPOSAL__NONE
+        this.first_overwrite_instead_of_blend = false
+    }
+
+    this.call_sequence = 0x20
+}
+
+pri func decoder.decode_ihdr?(src: base.io_reader) {
+    var a32 : base.u32
+    var a8  : base.u8
+
+    a32 = args.src.read_u32be?()
+    if (a32 == 0) or (a32 > 0x7FFF_FFFF) {
+        return "#bad header"
+    } else if a32 > 0xFF_FFFF {
+        return base."#unsupported image dimension"
+    }
+    this.width = a32
+
+    a32 = args.src.read_u32be?()
+    if (a32 == 0) or (a32 > 0x7FFF_FFFF) {
+        return "#bad header"
+    } else if a32 > 0xFF_FFFF {
+        return base."#unsupported image dimension"
+    }
+    this.height = a32
+
+    // Depth.
+    a8 = args.src.read_u8?()
+    if a8 > 16 {
+        return "#bad header"
+    }
+    this.depth = a8
+
+    // Color.
+    a8 = args.src.read_u8?()
+    if (a8 == 1) or (a8 == 5) or (a8 > 6) {
+        return "#bad header"
+    }
+    this.color_type = a8
+
+    // Compression.
+    a8 = args.src.read_u8?()
+    if a8 <> 0 {
+        return "#unsupported PNG compression method"
+    }
+
+    // Filter.
+    a8 = args.src.read_u8?()
+    if a8 <> 0 {
+        return "#bad header"
+    }
+
+    // Interlace.
+    a8 = args.src.read_u8?()
+    if a8 == 0 {
+        this.interlace_pass = 0
+    } else if a8 == 1 {
+        this.interlace_pass = 1
+        choose filter_and_swizzle = [filter_and_swizzle_tricky]
+    } else {
+        return "#bad header"
+    }
+
+    // Derived fields.
+    this.filter_distance = 0
+    this.assign_filter_distance!()
+    if this.filter_distance == 0 {
+        return "#bad header"
+    }
+    this.overall_workbuf_length = (this.height as base.u64) *
+            (1 + this.calculate_bytes_per_row(width: this.width))
+    this.choose_filter_implementations!()
+}
+
+pri func decoder.assign_filter_distance!() {
+    if this.depth < 8 {
+        if (this.depth <> 1) and (this.depth <> 2) and (this.depth <> 4) {
+            return nothing
+        } else if this.color_type == 0 {
+            this.dst_pixfmt = base.PIXEL_FORMAT__Y
+            this.src_pixfmt = base.PIXEL_FORMAT__Y
+        } else if this.color_type == 3 {
+            this.dst_pixfmt = base.PIXEL_FORMAT__INDEXED__BGRA_BINARY
+            this.src_pixfmt = base.PIXEL_FORMAT__INDEXED__BGRA_BINARY
+        } else {
+            return nothing
+        }
+
+        this.filter_distance = 1
+        choose filter_and_swizzle = [filter_and_swizzle_tricky]
+
+    } else if this.color_type == 0 {
+        if this.depth == 8 {
+            this.dst_pixfmt = base.PIXEL_FORMAT__Y
+            this.src_pixfmt = base.PIXEL_FORMAT__Y
+            this.filter_distance = 1
+        } else if this.depth == 16 {
+            if this.interlace_pass == 0 {
+                this.dst_pixfmt = base.PIXEL_FORMAT__Y_16LE
+                this.src_pixfmt = base.PIXEL_FORMAT__Y_16BE
+            } else {
+                // Interlaced means choosing filter_and_swizzle_tricky.
+                this.dst_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL_4X16LE
+                this.src_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL_4X16LE
+            }
+            this.filter_distance = 2
+        }
+
+    } else if this.color_type == 2 {
+        if this.depth == 8 {
+            this.dst_pixfmt = base.PIXEL_FORMAT__BGR
+            this.src_pixfmt = base.PIXEL_FORMAT__RGB
+            this.filter_distance = 3
+        } else if this.depth == 16 {
+            this.dst_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL_4X16LE
+            this.src_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL_4X16LE
+            this.filter_distance = 6
+            choose filter_and_swizzle = [filter_and_swizzle_tricky]
+        }
+
+    } else if this.color_type == 3 {
+        if this.depth == 8 {
+            this.dst_pixfmt = base.PIXEL_FORMAT__INDEXED__BGRA_BINARY
+            this.src_pixfmt = base.PIXEL_FORMAT__INDEXED__BGRA_BINARY
+            this.filter_distance = 1
+        }
+
+    } else if this.color_type == 4 {
+        if this.depth == 8 {
+            this.dst_pixfmt = base.PIXEL_FORMAT__YA_NONPREMUL
+            this.src_pixfmt = base.PIXEL_FORMAT__YA_NONPREMUL
+            this.filter_distance = 2
+        } else if this.depth == 16 {
+            this.dst_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL_4X16LE
+            this.src_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL_4X16LE
+            this.filter_distance = 4
+            choose filter_and_swizzle = [filter_and_swizzle_tricky]
+        }
+
+    } else if this.color_type == 6 {
+        if this.depth == 8 {
+            this.dst_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL
+            this.src_pixfmt = base.PIXEL_FORMAT__RGBA_NONPREMUL
+            this.filter_distance = 4
+        } else if this.depth == 16 {
+            this.dst_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL_4X16LE
+            this.src_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL_4X16LE
+            this.filter_distance = 8
+            choose filter_and_swizzle = [filter_and_swizzle_tricky]
+        }
+    }
+}
+
+pri func decoder.calculate_bytes_per_row(width: base.u32[..= 0x00FF_FFFF]) base.u64[..= 0x07FF_FFF8] {
+    var bytes_per_channel : base.u64[..= 2]
+
+    if this.depth == 1 {
+        return ((args.width + 7) / 8) as base.u64
+    } else if this.depth == 2 {
+        return ((args.width + 3) / 4) as base.u64
+    } else if this.depth == 4 {
+        return ((args.width + 1) / 2) as base.u64
+    }
+    bytes_per_channel = (this.depth >> 3) as base.u64
+    return (args.width as base.u64) * bytes_per_channel *
+            (NUM_CHANNELS[this.color_type] as base.u64)
+}
+
+pri func decoder.choose_filter_implementations!() {
+    // Filter 0 is a no-op. Filter 2, the up filter, should already vectorize
+    // easily by a good optimizing C compiler.
+    if this.filter_distance == 3 {
+        choose filter_1 = [filter_1_distance_3_fallback]
+        choose filter_3 = [filter_3_distance_3_fallback]
+        choose filter_4 = [
+                filter_4_distance_3_arm_neon,
+                filter_4_distance_3_x86_sse42,
+                filter_4_distance_3_fallback]
+    } else if this.filter_distance == 4 {
+        choose filter_1 = [
+                filter_1_distance_4_arm_neon,
+                filter_1_distance_4_x86_sse42,
+                filter_1_distance_4_fallback]
+        choose filter_3 = [
+                filter_3_distance_4_arm_neon,
+                filter_3_distance_4_x86_sse42,
+                filter_3_distance_4_fallback]
+        choose filter_4 = [
+                filter_4_distance_4_arm_neon,
+                filter_4_distance_4_x86_sse42,
+                filter_4_distance_4_fallback]
+    }
+}
+
+// framy is:
+//  - false when coming from decode_image_config.
+//  - true  when coming from decode_frame_config.
+pri func decoder.decode_other_chunk?(src: base.io_reader, framy: base.bool) {
+    if (this.chunk_type == 'PLTE'le) and (not args.framy) {
+        if this.seen_plte {
+            return "#bad chunk"
+        } else if this.color_type == 3 {
+            // Color type 3 means paletted.
+            this.decode_plte?(src: args.src)
+        } else if (this.color_type == 2) or (this.color_type == 6) {
+            // Color types 2 and 6 means RGB and RGBA. In these cases, the PLTE
+            // chunk is merely a hint, like a sPLT "suggested palette" chunk.
+            // We ignore it.
+        } else {
+            return "#bad chunk"
+        }
+        this.seen_plte = true
+
+    } else if (this.chunk_type & ANCILLARY_BIT) == 0 {
+        if this.chunk_type <> 'IDAT'le {
+            return "#bad chunk"
+        }
+    }
+
+    if this.chunk_type == 'eXIf'le {
+        if this.report_metadata_exif {
+            if this.seen_exif {
+                return "#bad chunk"
+            }
+            this.decode_exif?(src: args.src)
+            this.seen_exif = true
+        }
+
+    } else if (this.chunk_type == 'iTXt'le) or
+            (this.chunk_type == 'tEXt'le) or
+            (this.chunk_type == 'zTXt'le) {
+        if this.report_metadata_kvp {
+            this.metadata_flavor = base.MORE_INFORMATION__FLAVOR__METADATA_RAW_TRANSFORM
+            this.metadata_fourcc = 'KVPK'be
+            this.metadata_x = 0
+            this.metadata_y = 0
+            this.metadata_z = 0
+        }
+
+    } else if not args.framy {
+        if this.chunk_type == 'acTL'le {
+            if this.seen_actl {
+                return "#bad chunk"
+            }
+            this.decode_actl?(src: args.src)
+            this.seen_actl = true
+
+        } else if this.chunk_type == 'cHRM'le {
+            if this.report_metadata_chrm {
+                if this.seen_chrm {
+                    return "#bad chunk"
+                }
+                this.decode_chrm?(src: args.src)
+                this.seen_chrm = true
+            }
+
+        } else if this.chunk_type == 'fcTL'le {
+            if this.seen_fctl {
+                return "#bad chunk"
+            }
+            this.decode_fctl?(src: args.src)
+            this.seen_fctl = true
+
+        } else if this.chunk_type == 'gAMA'le {
+            if this.report_metadata_gama {
+                if this.seen_gama {
+                    return "#bad chunk"
+                }
+                this.decode_gama?(src: args.src)
+                this.seen_gama = true
+            }
+
+        } else if this.chunk_type == 'iCCP'le {
+            if this.report_metadata_iccp {
+                if this.seen_iccp {
+                    return "#bad chunk"
+                }
+                this.decode_iccp?(src: args.src)
+                this.seen_iccp = true
+            }
+
+        } else if this.chunk_type == 'sRGB'le {
+            if this.report_metadata_srgb {
+                if this.seen_srgb {
+                    return "#bad chunk"
+                }
+                this.decode_srgb?(src: args.src)
+                this.seen_srgb = true
+            }
+
+        } else if this.chunk_type == 'tRNS'le {
+            if this.seen_trns or
+                    ((this.color_type == 3) and (not this.seen_plte)) {
+                return "#bad chunk"
+            } else if this.color_type > 3 {
+                // No-op, ignoring the chunk. The PNG spec section "11.3.2.1
+                // tRNS Transparency" says that "A tRNS chunk shall not appear
+                // for colour types 4 and 6, since a full alpha channel is
+                // already present in those cases." However, some real-world
+                // PNG images (incorrectly) have these. libpng treats this as a
+                // "benign error", not a fatal one. See
+                // https://github.com/google/wuffs/issues/146
+            } else {
+                this.decode_trns?(src: args.src)
+            }
+            this.seen_trns = true
+        }
+    }
+
+    if this.metadata_fourcc == 0 {
+        args.src.skip_u32?(n: this.chunk_length)
+    }
+}
+
+pri func decoder.decode_actl?(src: base.io_reader) {
+    if this.chunk_length <> 8 {
+        return "#bad chunk"
+    } else if this.interlace_pass > 0 {
+        // https://wiki.mozilla.org/APNG_Specification doesn't say whether the
+        // interlace pattern starts at the image or frame top-left corner. We
+        // avoid the question by returning "unsupported" for now.
+        return "#unsupported PNG file"
+    }
+    this.chunk_length = 0
+    this.num_animation_frames_value = args.src.read_u32be?()
+    if this.num_animation_frames_value == 0 {
+        return "#bad chunk"
+    }
+    this.num_animation_loops_value = args.src.read_u32be?()
+}
+
+pri func decoder.decode_chrm?(src: base.io_reader) {
+    var u : base.u64
+
+    if this.chunk_length <> 32 {
+        return "#bad chunk"
+    }
+    this.chunk_length = 0
+    this.metadata_flavor = base.MORE_INFORMATION__FLAVOR__METADATA_PARSED
+    this.metadata_fourcc = 'CHRM'be
+    this.metadata_x = 0
+    this.metadata_y = 0
+    this.metadata_z = 0
+
+    // See the wuffs_base__more_information__metadata_parsed__chrm comments for
+    // how we pack the eight chromaticity values into three u64 fields. This
+    // admittedly truncates chromaticity values from 32 to 24 bits, but in
+    // practice they only range between 0 and 100000 (which is 0x01_86A0).
+    u = args.src.read_u32be_as_u64?()
+    this.metadata_x |= (0xFF_FFFF & u) << 0
+    u = args.src.read_u32be_as_u64?()
+    this.metadata_x |= (0xFF_FFFF & u) << 24
+    u = args.src.read_u32be_as_u64?()
+    this.metadata_x |= (0xFF_FFFF & u) ~mod<< 48
+    this.metadata_y |= (0xFF_FFFF & u) >> 16
+    u = args.src.read_u32be_as_u64?()
+    this.metadata_y |= (0xFF_FFFF & u) << 8
+    u = args.src.read_u32be_as_u64?()
+    this.metadata_y |= (0xFF_FFFF & u) << 32
+    u = args.src.read_u32be_as_u64?()
+    this.metadata_y |= (0xFF_FFFF & u) ~mod<< 56
+    this.metadata_z |= (0xFF_FFFF & u) >> 8
+    u = args.src.read_u32be_as_u64?()
+    this.metadata_z |= (0xFF_FFFF & u) << 16
+    u = args.src.read_u32be_as_u64?()
+    this.metadata_z |= (0xFF_FFFF & u) << 40
+}
+
+pri func decoder.decode_exif?(src: base.io_reader) {
+    if this.chunk_length < 4 {
+        return "#bad chunk"
+    }
+    this.metadata_flavor = base.MORE_INFORMATION__FLAVOR__METADATA_RAW_PASSTHROUGH
+    this.metadata_fourcc = 'EXIF'be
+    this.metadata_x = 0
+    this.metadata_y = args.src.position()
+    this.metadata_z = this.metadata_y ~sat+ (this.chunk_length as base.u64)
+    this.chunk_length = 0
+}
+
+pri func decoder.decode_fctl?(src: base.io_reader) {
+    var x0 : base.u32
+    var y0 : base.u32
+    var x1 : base.u32
+    var y1 : base.u32
+
+    if this.chunk_length <> 26 {
+        return "#bad chunk"
+    }
+    this.chunk_length = 0
+
+    x0 = args.src.read_u32be?()
+    if x0 <> this.next_animation_seq_num {
+        return "#bad animation sequence number"
+    } else if this.next_animation_seq_num >= 0xFFFF_FFFF {
+        return "#unsupported PNG file"
+    }
+    this.next_animation_seq_num += 1
+
+    x1 = args.src.read_u32be?()
+    y1 = args.src.read_u32be?()
+    x0 = args.src.read_u32be?()
+    y0 = args.src.read_u32be?()
+    x1 ~mod+= x0
+    y1 ~mod+= y0
+    if (x0 >= x1) or (x0 > this.width) or (x1 > this.width) or
+            (y0 >= y1) or (y0 > this.height) or (y1 > this.height) {
+        return "#bad chunk"
+    }
+    assert x1 <= 0x00FF_FFFF via "a <= b: a <= c; c <= b"(c: this.width)
+    assert y1 <= 0x00FF_FFFF via "a <= b: a <= c; c <= b"(c: this.height)
+    assert x0 <= 0x00FF_FFFF via "a <= b: a <= c; c <= b"(c: x1)
+    assert y0 <= 0x00FF_FFFF via "a <= b: a <= c; c <= b"(c: y1)
+    this.frame_rect_x0 = x0
+    this.frame_rect_y0 = y0
+    this.frame_rect_x1 = x1
+    this.frame_rect_y1 = y1
+
+    // There are 705_600000 flicks per second. A nominally zero denominator
+    // means to use 100 instead (the units are centiseconds, the same as GIF).
+    x0 = args.src.read_u16be_as_u32?()
+    x1 = args.src.read_u16be_as_u32?()
+    if x1 <= 0 {
+        this.frame_duration = (x0 as base.u64) * 7_056000
+    } else {
+        this.frame_duration = ((x0 as base.u64) * 705_600000) / (x1 as base.u64)
+    }
+
+    x0 = args.src.read_u8_as_u32?()
+    if x0 == 0 {
+        this.frame_disposal = base.ANIMATION_DISPOSAL__NONE
+    } else if x0 == 1 {
+        this.frame_disposal = base.ANIMATION_DISPOSAL__RESTORE_BACKGROUND
+    } else if x0 == 2 {
+        this.frame_disposal = base.ANIMATION_DISPOSAL__RESTORE_PREVIOUS
+    } else {
+        return "#bad chunk"
+    }
+
+    x0 = args.src.read_u8_as_u32?()
+    if x0 == 0 {
+        this.frame_overwrite_instead_of_blend = true
+    } else if x0 == 1 {
+        this.frame_overwrite_instead_of_blend = false
+    } else {
+        return "#bad chunk"
+    }
+
+    if this.num_decoded_frame_configs_value == 0 {
+        this.first_rect_x0 = this.frame_rect_x0
+        this.first_rect_y0 = this.frame_rect_y0
+        this.first_rect_x1 = this.frame_rect_x1
+        this.first_rect_y1 = this.frame_rect_y1
+        this.first_duration = this.frame_duration
+        this.first_disposal = this.frame_disposal
+        this.first_overwrite_instead_of_blend = this.frame_overwrite_instead_of_blend
+    }
+}
+
+pri func decoder.decode_gama?(src: base.io_reader) {
+    if this.chunk_length <> 4 {
+        return "#bad chunk"
+    }
+    this.chunk_length = 0
+    this.metadata_flavor = base.MORE_INFORMATION__FLAVOR__METADATA_PARSED
+    this.metadata_fourcc = 'GAMA'be
+    this.metadata_x = args.src.read_u32be_as_u64?()
+    this.metadata_y = 0
+    this.metadata_z = 0
+}
+
+pri func decoder.decode_iccp?(src: base.io_reader) {
+    var c8 : base.u8
+
+    // Skip the NUL-terminated color profile name.
+    while true {
+        if this.chunk_length <= 0 {
+            return "#bad chunk"
+        }
+        this.chunk_length -= 1
+        c8 = args.src.read_u8?()
+        if c8 == 0 {
+            break
+        }
+    }
+
+    // Compression method.
+    if this.chunk_length <= 0 {
+        return "#bad chunk"
+    }
+    this.chunk_length -= 1
+    c8 = args.src.read_u8?()
+    if c8 <> 0 {
+        return "#unsupported PNG compression method"
+    }
+
+    this.metadata_is_zlib_compressed = true
+    this.metadata_flavor = base.MORE_INFORMATION__FLAVOR__METADATA_RAW_TRANSFORM
+    this.metadata_fourcc = 'ICCP'be
+    this.metadata_x = 0
+    this.metadata_y = 0
+    this.metadata_z = 0
+}
+
+pri func decoder.decode_plte?(src: base.io_reader) {
+    var num_entries : base.u32[..= 256]
+    var i           : base.u32
+    var argb        : base.u32
+
+    if (this.chunk_length > 768) or ((this.chunk_length % 3) <> 0) {
+        return "#bad chunk"
+    }
+    num_entries = (this.chunk_length as base.u32) / 3
+    this.chunk_length = 0
+
+    while i < num_entries {
+        assert i < 256 via "a < b: a < c; c <= b"(c: num_entries)
+        // Convert from RGB (in memory order) to ARGB (in native u32 order)
+        // to BGRA (in memory order).
+        argb = args.src.read_u24be_as_u32?()
+        argb |= 0xFF00_0000
+        this.src_palette[(4 * i) + 0] = ((argb >> 0) & 0xFF) as base.u8
+        this.src_palette[(4 * i) + 1] = ((argb >> 8) & 0xFF) as base.u8
+        this.src_palette[(4 * i) + 2] = ((argb >> 16) & 0xFF) as base.u8
+        this.src_palette[(4 * i) + 3] = ((argb >> 24) & 0xFF) as base.u8
+        i += 1
+    }
+
+    // Set the remaining palette entries to opaque black.
+    while i < 256 {
+        this.src_palette[(4 * i) + 0] = 0x00
+        this.src_palette[(4 * i) + 1] = 0x00
+        this.src_palette[(4 * i) + 2] = 0x00
+        this.src_palette[(4 * i) + 3] = 0xFF
+        i += 1
+    }
+}
+
+pri func decoder.decode_srgb?(src: base.io_reader) {
+    if this.chunk_length <> 1 {
+        return "#bad chunk"
+    }
+    this.chunk_length = 0
+    this.metadata_flavor = base.MORE_INFORMATION__FLAVOR__METADATA_PARSED
+    this.metadata_fourcc = 'SRGB'be
+    this.metadata_x = args.src.read_u8_as_u64?()
+    this.metadata_y = 0
+    this.metadata_z = 0
+}
+
+pri func decoder.decode_trns?(src: base.io_reader) {
+    var i : base.u32
+    var n : base.u32[..= 256]
+    var u : base.u64
+
+    if this.color_type == 0 {
+        choose filter_and_swizzle = [filter_and_swizzle_tricky]
+        if this.depth <= 8 {
+            this.dst_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL
+            this.src_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL
+        } else {
+            this.dst_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL_4X16LE
+            this.src_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL_4X16LE
+        }
+        if this.chunk_length <> 2 {
+            return "#bad chunk"
+        }
+        this.chunk_length = 0
+
+        u = args.src.read_u16be_as_u64?()
+        if this.depth <= 1 {
+            this.remap_transparency = ((u & 0x01) * 0xFF_FFFF) | 0xFF00_0000
+        } else if this.depth <= 2 {
+            this.remap_transparency = ((u & 0x03) * 0x55_5555) | 0xFF00_0000
+        } else if this.depth <= 4 {
+            this.remap_transparency = ((u & 0x0F) * 0x11_1111) | 0xFF00_0000
+        } else if this.depth <= 8 {
+            this.remap_transparency = ((u & 0xFF) * 0x01_0101) | 0xFF00_0000
+        } else {
+            this.remap_transparency = (u * 0x0001_0001_0001) | 0xFFFF_0000_0000_0000
+        }
+
+    } else if this.color_type == 2 {
+        choose filter_and_swizzle = [filter_and_swizzle_tricky]
+        if this.depth <= 8 {
+            this.dst_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL
+            this.src_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL
+        } else {
+            this.dst_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL_4X16LE
+            this.src_pixfmt = base.PIXEL_FORMAT__BGRA_NONPREMUL_4X16LE
+        }
+        if this.chunk_length <> 6 {
+            return "#bad chunk"
+        }
+        this.chunk_length = 0
+
+        u = args.src.read_u48be_as_u64?()
+        if this.depth <= 8 {
+            this.remap_transparency =
+                    (0x0000_00FF & (u >> 0)) |
+                    (0x0000_FF00 & (u >> 8)) |
+                    (0x00FF_0000 & (u >> 16)) |
+                    0xFF00_0000
+        } else {
+            this.remap_transparency = u | 0xFFFF_0000_0000_0000
+        }
+
+    } else if this.color_type == 3 {
+        this.dst_pixfmt = base.PIXEL_FORMAT__INDEXED__BGRA_NONPREMUL
+        this.src_pixfmt = base.PIXEL_FORMAT__INDEXED__BGRA_NONPREMUL
+        if this.chunk_length > 256 {
+            return "#bad chunk"
+        }
+        n = this.chunk_length as base.u32
+        this.chunk_length = 0
+        while i < n {
+            assert i < 256 via "a < b: a < c; c <= b"(c: n)
+            this.src_palette[(4 * i) + 3] = args.src.read_u8?()
+            i += 1
+        }
+
+    } else {
+        return "#bad chunk"
+    }
+}
+
+pub func decoder.decode_frame_config?(dst: nptr base.frame_config, src: base.io_reader) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_frame_config?(dst: args.dst, src: args.src)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_frame_config?(dst: nptr base.frame_config, src: base.io_reader) {
+    var checksum_have : base.u32
+
+    if (this.call_sequence & 0x10) <> 0 {
+        return base."#bad call sequence"
+    } else if this.call_sequence == 0x20 {
+        // No-op.
+    } else if this.call_sequence < 0x20 {
+        this.do_decode_image_config?(dst: nullptr, src: args.src)
+    } else if this.call_sequence == 0x28 {
+        if this.frame_config_io_position <> args.src.position() {
+            return base."#bad restart"
+        }
+    } else if this.call_sequence == 0x40 {
+        this.skip_frame?(src: args.src)
+    } else {
+        return base."@end of data"
+    }
+
+    if this.metadata_fourcc <> 0 {
+        this.call_sequence = 0x30
+        return base."@metadata reported"
+    }
+
+    if this.num_decoded_frame_configs_value == 0 {
+        this.frame_rect_x0 = this.first_rect_x0
+        this.frame_rect_y0 = this.first_rect_y0
+        this.frame_rect_x1 = this.first_rect_x1
+        this.frame_rect_y1 = this.first_rect_y1
+        this.frame_config_io_position = this.first_config_io_position
+        this.frame_duration = this.first_duration
+        this.frame_disposal = this.first_disposal
+        this.frame_overwrite_instead_of_blend = this.first_overwrite_instead_of_blend
+
+    } else {
+        // Decode the next IEND or fcTL chunk.
+        while true {
+            this.chunk_length = args.src.read_u32be?()
+            this.chunk_type = args.src.read_u32le?()
+            if this.chunk_type == 'IEND'le {
+                if this.chunk_length <> 0 {
+                    return "#bad chunk"
+                }
+                checksum_have = args.src.read_u32le?()
+                if (not this.ignore_checksum) and (checksum_have <> 0x8260_42AE) {
+                    return "#bad checksum"
+                }
+                this.call_sequence = 0x60
+                return base."@end of data"
+            } else if this.chunk_type == 'fdAT'le {
+                return "#bad chunk"
+            } else if this.chunk_type == 'fcTL'le {
+                this.frame_config_io_position = args.src.position() ~mod- 8
+                this.decode_fctl?(src: args.src)
+                args.src.skip?(n: 4)  // Skip the checksum.
+                break
+            }
+
+            this.decode_other_chunk?(src: args.src, framy: true)
+            if this.metadata_fourcc <> 0 {
+                this.call_sequence = 0x30
+                return base."@metadata reported"
+            }
+            args.src.skip_u32?(n: 4)  // Skip the checksum.
+            this.chunk_length = 0
+        }
+    }
+
+    if args.dst <> nullptr {
+        args.dst.set!(bounds: this.util.make_rect_ie_u32(
+                min_incl_x: this.frame_rect_x0,
+                min_incl_y: this.frame_rect_y0,
+                max_excl_x: this.frame_rect_x1,
+                max_excl_y: this.frame_rect_y1),
+                duration: this.frame_duration,
+                index: this.num_decoded_frame_configs_value as base.u64,
+                io_position: this.frame_config_io_position,
+                disposal: this.frame_disposal,
+                opaque_within_bounds: (this.color_type <= 3) and (not this.seen_trns),
+                overwrite_instead_of_blend: this.frame_overwrite_instead_of_blend,
+                background_color: 0x0000_0000)
+    }
+
+    this.num_decoded_frame_configs_value ~sat+= 1
+    this.call_sequence = 0x40
+}
+
+pri func decoder.skip_frame?(src: base.io_reader) {
+    var seq_num : base.u32
+
+    this.chunk_type_array[0] = 0
+    this.chunk_type_array[1] = 0
+    this.chunk_type_array[2] = 0
+    this.chunk_type_array[3] = 0
+
+    while true {
+        if args.src.length() < 8 {
+            yield? base."$short read"
+            continue
+        }
+
+        this.chunk_length = args.src.peek_u32be()
+        this.chunk_type = (args.src.peek_u64le() >> 32) as base.u32
+
+        if this.chunk_type == 'IDAT'le {
+            if this.chunk_type_array[0] == 'f' {
+                return "#bad chunk"
+            }
+            this.chunk_type_array[0] = 'I'
+            this.chunk_type_array[1] = 'D'
+            this.chunk_type_array[2] = 'A'
+            this.chunk_type_array[3] = 'T'
+
+        } else if this.chunk_type == 'fdAT'le {
+            if this.chunk_type_array[0] == 'I' {
+                return "#bad chunk"
+            }
+            this.chunk_type_array[0] = 'f'
+            this.chunk_type_array[1] = 'd'
+            this.chunk_type_array[2] = 'A'
+            this.chunk_type_array[3] = 'T'
+            if this.chunk_length < 4 {
+                return "#bad chunk"
+            }
+            this.chunk_length -= 4
+            args.src.skip_u32_fast!(actual: 8, worst_case: 8)
+            seq_num = args.src.read_u32be?()
+            if seq_num <> this.next_animation_seq_num {
+                return "#bad animation sequence number"
+            } else if this.next_animation_seq_num >= 0xFFFF_FFFF {
+                return "#unsupported PNG file"
+            }
+            this.next_animation_seq_num += 1
+            args.src.skip?(n: (this.chunk_length as base.u64) + 4)  // +4 for the checksum.
+            this.chunk_length = 0
+            continue
+
+        } else if this.chunk_type_array[0] <> 0 {
+            break
+
+        } else if this.chunk_type == 'fcTL'le {
+            return "#bad chunk"
+        }
+
+        // +12 for chunk length, chunk type and checksum.
+        args.src.skip?(n: (this.chunk_length as base.u64) + 12)
+        this.chunk_length = 0
+    }
+
+    this.num_decoded_frames_value ~sat+= 1
+    this.call_sequence = 0x20
+}
+
+pub func decoder.decode_frame?(dst: ptr base.pixel_buffer, src: base.io_reader, blend: base.pixel_blend, workbuf: slice base.u8, opts: nptr base.decode_frame_options) {
+    var status : base.status
+
+    while true {
+        status =? this.do_decode_frame?(dst: args.dst, src: args.src, blend: args.blend, workbuf: args.workbuf, opts: args.opts)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_decode_frame?(dst: ptr base.pixel_buffer, src: base.io_reader, blend: base.pixel_blend, workbuf: slice base.u8, opts: nptr base.decode_frame_options) {
+    var seq_num     : base.u32
+    var status      : base.status
+    var pass_width  : base.u32[..= 0x00FF_FFFF]
+    var pass_height : base.u32[..= 0x00FF_FFFF]
+
+    if (this.call_sequence & 0x10) <> 0 {
+        return base."#bad call sequence"
+    } else if this.call_sequence >= 0x60 {
+        return base."@end of data"
+    } else if this.call_sequence <> 0x40 {
+        this.do_decode_frame_config?(dst: nullptr, src: args.src)
+    }
+
+    while true {
+        if args.src.length() < 8 {
+            yield? base."$short read"
+            continue
+        }
+
+        this.chunk_length = args.src.peek_u32be()
+        this.chunk_type = (args.src.peek_u64le() >> 32) as base.u32
+
+        if this.chunk_type == 'IDAT'le {
+            this.chunk_type_array[0] = 'I'
+            this.chunk_type_array[1] = 'D'
+            this.chunk_type_array[2] = 'A'
+            this.chunk_type_array[3] = 'T'
+            args.src.skip_u32_fast!(actual: 8, worst_case: 8)
+            if not this.ignore_checksum {
+                this.crc32.reset!()
+                this.crc32.update_u32!(x: this.chunk_type_array[..])
+            }
+            break
+
+        } else if this.chunk_type == 'fdAT'le {
+            this.chunk_type_array[0] = 'f'
+            this.chunk_type_array[1] = 'd'
+            this.chunk_type_array[2] = 'A'
+            this.chunk_type_array[3] = 'T'
+            if this.chunk_length < 4 {
+                return "#bad chunk"
+            }
+            this.chunk_length -= 4
+            args.src.skip_u32_fast!(actual: 8, worst_case: 8)
+            seq_num = args.src.read_u32be?()
+            if seq_num <> this.next_animation_seq_num {
+                return "#bad animation sequence number"
+            } else if this.next_animation_seq_num >= 0xFFFF_FFFF {
+                return "#unsupported PNG file"
+            }
+            this.next_animation_seq_num += 1
+            break
+
+        } else if this.chunk_type == 'fcTL'le {
+            return "#bad chunk"
+        }
+
+        // +12 for chunk length, chunk type and checksum.
+        args.src.skip?(n: (this.chunk_length as base.u64) + 12)
+        this.chunk_length = 0
+    }
+
+    if this.zlib_is_dirty {
+        this.zlib.reset!()
+        if this.ignore_checksum {
+            this.zlib.set_quirk!(key: base.QUIRK_IGNORE_CHECKSUM, value: 1)
+        }
+    }
+    this.zlib_is_dirty = true
+
+    status = this.swizzler.prepare!(
+            dst_pixfmt: args.dst.pixel_format(),
+            dst_palette: args.dst.palette_or_else(fallback: this.dst_palette[..]),
+            src_pixfmt: this.util.make_pixel_format(repr: this.src_pixfmt),
+            src_palette: this.src_palette[..],
+            blend: args.blend)
+    if not status.is_ok() {
+        return status
+    }
+
+    this.workbuf_hist_pos_base = 0
+    while true {
+        if (this.chunk_type_array[0] == 'I') {
+            pass_width = 0x00FF_FFFF &
+                    (((INTERLACING[this.interlace_pass][1] as base.u32) + this.width) >>
+                    INTERLACING[this.interlace_pass][0])
+            pass_height = 0x00FF_FFFF &
+                    (((INTERLACING[this.interlace_pass][4] as base.u32) + this.height) >>
+                    INTERLACING[this.interlace_pass][3])
+        } else {
+            pass_width = 0x00FF_FFFF & (this.frame_rect_x1 ~mod- this.frame_rect_x0)
+            pass_height = 0x00FF_FFFF & (this.frame_rect_y1 ~mod- this.frame_rect_y0)
+        }
+
+        if (pass_width > 0) and (pass_height > 0) {
+            this.pass_bytes_per_row = this.calculate_bytes_per_row(width: pass_width)
+            this.pass_workbuf_length = (pass_height as base.u64) * (1 + this.pass_bytes_per_row)
+            while true {
+                status =? this.decode_pass?(src: args.src, workbuf: args.workbuf)
+                if status.is_ok() {
+                    break
+                } else if status.is_error() or
+                        ((status == base."$short read") and args.src.is_closed()) {
+                    // The input was invalid or truncated. Produce whatever
+                    // pixels we can.
+                    if this.workbuf_wi <= args.workbuf.length() {
+                        // This might return "#internal error: inconsistent
+                        // workbuf length" because of the ".. this.workbuf_wi".
+                        // We just ignore the error.
+                        this.filter_and_swizzle!(dst: args.dst, workbuf: args.workbuf[.. this.workbuf_wi])
+                    }
+                    if status == base."$short read" {
+                        return "#truncated input"
+                    }
+                }
+                yield? status
+            }
+            status = this.filter_and_swizzle!(dst: args.dst, workbuf: args.workbuf)
+            if not status.is_ok() {
+                return status
+            }
+            this.workbuf_hist_pos_base ~mod+= this.pass_workbuf_length
+        }
+
+        if (this.interlace_pass == 0) or (this.interlace_pass >= 7) {
+            break
+        }
+        this.interlace_pass += 1
+    }
+
+    this.num_decoded_frames_value ~sat+= 1
+    this.call_sequence = 0x20
+}
+
+pri func decoder.decode_pass?(src: base.io_reader, workbuf: slice base.u8) {
+    var w             : base.io_writer
+    var w_mark        : base.u64
+    var r_mark        : base.u64
+    var zlib_status   : base.status
+    var checksum_have : base.u32
+    var checksum_want : base.u32
+    var seq_num       : base.u32
+
+    this.workbuf_wi = 0
+    while true {
+        if (this.workbuf_wi > this.pass_workbuf_length) or (
+                this.pass_workbuf_length > args.workbuf.length()) {
+            return base."#bad workbuf length"
+        }
+        io_bind (io: w, data: args.workbuf[this.workbuf_wi .. this.pass_workbuf_length], history_position: this.workbuf_hist_pos_base ~mod+ this.workbuf_wi) {
+            io_limit (io: args.src, limit: (this.chunk_length as base.u64)) {
+                w_mark = w.mark()
+                r_mark = args.src.mark()
+                zlib_status =? this.zlib.transform_io?(
+                        dst: w, src: args.src, workbuf: this.util.empty_slice_u8())
+                if not this.ignore_checksum {
+                    this.crc32.update_u32!(x: args.src.since(mark: r_mark))
+                }
+                this.chunk_length ~sat-= (args.src.count_since(mark: r_mark) & 0xFFFF_FFFF) as base.u32
+                this.workbuf_wi ~sat+= w.count_since(mark: w_mark)
+            }
+        }
+
+        if zlib_status.is_ok() {
+            if this.chunk_length > 0 {
+                // TODO: should this really be a fatal error?
+                return base."#too much data"
+            }
+            checksum_want = args.src.read_u32be?()
+            // Verify the final IDAT chunk's CRC-32 checksum.
+            if (not this.ignore_checksum) and (this.chunk_type_array[0] == 'I') {
+                checksum_have = this.crc32.update_u32!(x: this.util.empty_slice_u8())
+                if checksum_have <> checksum_want {
+                    return "#bad checksum"
+                }
+            }
+            break
+        } else if zlib_status == base."$short write" {
+            if (1 <= this.interlace_pass) and (this.interlace_pass <= 6) {
+                break
+            }
+            return base."#too much data"
+        } else if zlib_status <> base."$short read" {
+            return zlib_status
+        } else if this.chunk_length == 0 {
+            // Verify the non-final IDAT chunk's CRC-32 checksum.
+            checksum_want = args.src.read_u32be?()
+            if (not this.ignore_checksum) and (this.chunk_type_array[0] == 'I') {
+                checksum_have = this.crc32.update_u32!(x: this.util.empty_slice_u8())
+                if checksum_have <> checksum_want {
+                    return "#bad checksum"
+                }
+            }
+
+            // The next chunk should be another IDAT or fdAT.
+            this.chunk_length = args.src.read_u32be?()
+            this.chunk_type = args.src.read_u32le?()
+            if (this.chunk_type_array[0] == 'I') {
+                if this.chunk_type <> 'IDAT'le {
+                    return "#bad chunk"
+                }
+                // The IDAT is part of the next CRC-32 checksum's input.
+                if not this.ignore_checksum {
+                    this.crc32.reset!()
+                    this.crc32.update_u32!(x: this.chunk_type_array[..])
+                }
+            } else {
+                if (this.chunk_type <> 'fdAT'le) or (this.chunk_length < 4) {
+                    return "#bad chunk"
+                }
+                this.chunk_length -= 4
+                seq_num = args.src.read_u32be?()
+                if seq_num <> this.next_animation_seq_num {
+                    return "#bad animation sequence number"
+                } else if this.next_animation_seq_num >= 0xFFFF_FFFF {
+                    return "#unsupported PNG file"
+                }
+                this.next_animation_seq_num += 1
+            }
+            continue
+        } else if args.src.length() > 0 {
+            return "#internal error: zlib decoder did not exhaust its input"
+        }
+        yield? base."$short read"
+    }
+
+    if this.workbuf_wi <> this.pass_workbuf_length {
+        return base."#not enough data"
+    } else if 0 < args.workbuf.length() {
+        // For the top row, the Paeth filter (4) is equivalent to the Sub
+        // filter (1), but the Paeth implementation is simpler if it can assume
+        // that there is a previous row.
+        if args.workbuf[0] == 4 {
+            args.workbuf[0] = 1
+        }
+    }
+}
+
+pub func decoder.frame_dirty_rect() base.rect_ie_u32 {
+    return this.util.make_rect_ie_u32(
+            min_incl_x: this.frame_rect_x0,
+            min_incl_y: this.frame_rect_y0,
+            max_excl_x: this.frame_rect_x1,
+            max_excl_y: this.frame_rect_y1)
+}
+
+pub func decoder.num_animation_loops() base.u32 {
+    return this.num_animation_loops_value
+}
+
+pub func decoder.num_decoded_frame_configs() base.u64 {
+    return this.num_decoded_frame_configs_value as base.u64
+}
+
+pub func decoder.num_decoded_frames() base.u64 {
+    return this.num_decoded_frames_value as base.u64
+}
+
+pub func decoder.restart_frame!(index: base.u64, io_position: base.u64) base.status {
+    if this.call_sequence < 0x20 {
+        return base."#bad call sequence"
+    } else if (args.index >= (this.num_animation_frames_value as base.u64)) or
+            ((args.index == 0) and (args.io_position <> this.first_config_io_position)) {
+        return base."#bad argument"
+    }
+    this.call_sequence = 0x28
+    if this.interlace_pass >= 1 {
+        this.interlace_pass = 1
+    }
+    this.frame_config_io_position = args.io_position
+    this.num_decoded_frame_configs_value = (args.index & 0xFFFF_FFFF) as base.u32
+    this.num_decoded_frames_value = this.num_decoded_frame_configs_value
+    return ok
+}
+
+pub func decoder.set_report_metadata!(fourcc: base.u32, report: base.bool) {
+    if args.fourcc == 'CHRM'be {
+        this.report_metadata_chrm = args.report
+    } else if args.fourcc == 'EXIF'be {
+        this.report_metadata_exif = args.report
+    } else if args.fourcc == 'GAMA'be {
+        this.report_metadata_gama = args.report
+    } else if args.fourcc == 'ICCP'be {
+        this.report_metadata_iccp = args.report
+    } else if args.fourcc == 'KVP 'be {
+        this.report_metadata_kvp = args.report
+    } else if args.fourcc == 'SRGB'be {
+        this.report_metadata_srgb = args.report
+    }
+}
+
+pub func decoder.tell_me_more?(dst: base.io_writer, minfo: nptr base.more_information, src: base.io_reader) {
+    var status : base.status
+
+    while true {
+        status =? this.do_tell_me_more?(dst: args.dst, minfo: args.minfo, src: args.src)
+        if (status == base."$short read") and args.src.is_closed() {
+            return "#truncated input"
+        }
+        yield? status
+    }
+}
+
+pri func decoder.do_tell_me_more?(dst: base.io_writer, minfo: nptr base.more_information, src: base.io_reader) {
+    var c8          : base.u8
+    var c16         : base.u16
+    var w           : base.io_writer
+    var num_written : base.u64
+    var w_mark      : base.u64
+    var r_mark      : base.u64
+    var zlib_status : base.status
+
+    if (this.call_sequence & 0x10) == 0 {
+        return base."#bad call sequence"
+    }
+    if this.metadata_fourcc == 0 {
+        return base."#no more information"
+    }
+
+    while.goto_done true {{
+    if this.metadata_flavor == base.MORE_INFORMATION__FLAVOR__METADATA_RAW_PASSTHROUGH {
+        while true {
+            if args.src.position() <> this.metadata_y {
+                return base."#bad I/O position"
+            } else if args.minfo <> nullptr {
+                args.minfo.set!(
+                        flavor: this.metadata_flavor,
+                        w: this.metadata_fourcc,
+                        x: this.metadata_x,
+                        y: this.metadata_y,
+                        z: this.metadata_z)
+            }
+            if this.metadata_y >= this.metadata_z {
+                break.goto_done
+            }
+            this.metadata_y = this.metadata_z
+            yield? base."$even more information"
+        }
+    }
+
+    if this.metadata_is_zlib_compressed {
+        if this.zlib_is_dirty {
+            this.zlib.reset!()
+            if this.ignore_checksum {
+                this.zlib.set_quirk!(key: base.QUIRK_IGNORE_CHECKSUM, value: 1)
+            }
+        }
+        this.zlib_is_dirty = true
+        this.ztxt_hist_pos = 0
+    }
+
+    while.loop true {
+        if args.minfo <> nullptr {
+            args.minfo.set!(
+                    flavor: this.metadata_flavor,
+                    w: this.metadata_fourcc,
+                    x: this.metadata_x,
+                    y: this.metadata_y,
+                    z: this.metadata_z)
+        }
+
+        if this.metadata_flavor <> base.MORE_INFORMATION__FLAVOR__METADATA_RAW_TRANSFORM {
+            break.loop
+        }
+
+        if this.metadata_is_zlib_compressed {
+            if this.chunk_type == 'iCCP'le {
+                io_limit (io: args.src, limit: this.chunk_length as base.u64) {
+                    r_mark = args.src.mark()
+                    zlib_status =? this.zlib.transform_io?(
+                            dst: args.dst, src: args.src, workbuf: this.util.empty_slice_u8())
+                    this.chunk_length ~sat-=
+                            (args.src.count_since(mark: r_mark) & 0xFFFF_FFFF) as base.u32
+                }
+
+                if zlib_status.is_ok() {
+                    this.metadata_is_zlib_compressed = false
+                    break.loop
+                } else if not zlib_status.is_suspension() {
+                    return zlib_status
+                }
+                yield? zlib_status
+
+            } else if this.chunk_type == 'iTXt'le {
+                // TODO: verify uncompressed data is UTF-8.
+                io_limit (io: args.src, limit: this.chunk_length as base.u64) {
+                    r_mark = args.src.mark()
+                    zlib_status =? this.zlib.transform_io?(
+                            dst: args.dst, src: args.src, workbuf: this.util.empty_slice_u8())
+                    this.chunk_length ~sat-=
+                            (args.src.count_since(mark: r_mark) & 0xFFFF_FFFF) as base.u32
+                }
+
+                if zlib_status.is_ok() {
+                    this.metadata_is_zlib_compressed = false
+                    break.loop
+                } else if not zlib_status.is_suspension() {
+                    return zlib_status
+                }
+                yield? zlib_status
+
+            } else if this.chunk_type == 'zTXt'le {
+                // Fill this.dst_palette, zlib-uncompressing producing Latin-1.
+                if this.ztxt_ri == this.ztxt_wi {
+                    io_bind (io: w, data: this.dst_palette[..], history_position: this.ztxt_hist_pos) {
+                        io_limit (io: args.src, limit: this.chunk_length as base.u64) {
+                            w_mark = w.mark()
+                            r_mark = args.src.mark()
+                            zlib_status =? this.zlib.transform_io?(
+                                    dst: w, src: args.src, workbuf: this.util.empty_slice_u8())
+                            this.chunk_length ~sat-=
+                                    (args.src.count_since(mark: r_mark) & 0xFFFF_FFFF) as base.u32
+                            num_written = w.count_since(mark: w_mark)
+                        }
+                    }
+                    if num_written > 1024 {
+                        return "#internal error: inconsistent I/O"
+                    }
+                    this.ztxt_ri = 0
+                    this.ztxt_wi = num_written as base.u32
+                    this.ztxt_hist_pos ~sat+= num_written
+                }
+
+                // Drain this.dst_palette, converting from Latin-1 to UTF-8.
+                while this.ztxt_ri < this.ztxt_wi {
+                    assert this.ztxt_ri < 1024 via "a < b: a < c; c <= b"(c: this.ztxt_wi)
+                    c16 = LATIN_1[this.dst_palette[this.ztxt_ri]]
+                    if c16 == 0 {
+                        return "#bad text chunk (not Latin-1)"
+                    } else if c16 <= 0x7F {
+                        if args.dst.length() <= 0 {
+                            yield? base."$short write"
+                            continue.loop
+                        }
+                        this.ztxt_ri += 1
+                        args.dst.write_u8_fast!(a: c16 as base.u8)
+                    } else {
+                        if args.dst.length() <= 1 {
+                            yield? base."$short write"
+                            continue.loop
+                        }
+                        this.ztxt_ri += 1
+                        args.dst.write_u16le_fast!(a: c16)
+                    }
+                }
+
+                if zlib_status.is_ok() {
+                    this.metadata_is_zlib_compressed = false
+                    break.loop
+                } else if not zlib_status.is_suspension() {
+                    return zlib_status
+                } else if zlib_status <> base."$short write" {
+                    yield? zlib_status
+                }
+
+            } else {
+                return "#internal error: inconsistent chunk type"
+            }
+
+        } else if (this.chunk_type == 'iTXt'le) and (this.metadata_fourcc == 'KVPV'be) {
+            // iTXt value is UTF-8.
+            //
+            // TODO: verify data is UTF-8.
+            while true {
+                if this.chunk_length <= 0 {
+                    break.loop
+                } else if args.src.length() <= 0 {
+                    yield? base."$short read"
+                    continue.loop
+                } else if args.dst.length() <= 0 {
+                    yield? base."$short write"
+                    continue.loop
+                }
+                this.chunk_length -= 1
+                c8 = args.src.peek_u8()
+                args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                args.dst.write_u8_fast!(a: c8)
+            }
+
+        } else {
+            // Other uncompressed keys and values are Latin-1.
+            while true {
+                if this.chunk_length <= 0 {
+                    // Keys are NUL-terminated but values are not.
+                    if this.metadata_fourcc == 'KVPK'be {
+                        return "#bad chunk"
+                    }
+                    break.loop
+                } else if args.src.length() <= 0 {
+                    yield? base."$short read"
+                    continue.loop
+                }
+                c8 = args.src.peek_u8()
+                if c8 == 0 {
+                    this.chunk_length -= 1
+                    args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                    break.loop
+                }
+                c16 = LATIN_1[c8]
+                if c16 == 0 {
+                    return "#bad text chunk (not Latin-1)"
+                } else if c16 <= 0x7F {
+                    if args.dst.length() <= 0 {
+                        yield? base."$short write"
+                        continue.loop
+                    }
+                    this.chunk_length -= 1
+                    args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                    args.dst.write_u8_fast!(a: c16 as base.u8)
+                } else {
+                    if args.dst.length() <= 1 {
+                        yield? base."$short write"
+                        continue.loop
+                    }
+                    this.chunk_length -= 1
+                    args.src.skip_u32_fast!(actual: 1, worst_case: 1)
+                    args.dst.write_u16le_fast!(a: c16)
+                }
+            }
+        }
+    }.loop
+
+    // Key-value pairs come in... pairs.
+    if this.metadata_fourcc == 'KVPK'be {
+        this.metadata_fourcc = 'KVPV'be
+        if this.chunk_type == 'iTXt'le {
+            // Compression flag, compression method.
+            if this.chunk_length <= 1 {
+                return "#bad chunk"
+            }
+            this.chunk_length -= 2
+            c8 = args.src.read_u8?()
+            if c8 == 0 {
+                this.metadata_is_zlib_compressed = false
+            } else if c8 == 1 {
+                this.metadata_is_zlib_compressed = true
+            } else {
+                return "#bad chunk"
+            }
+            c8 = args.src.read_u8?()
+            if (c8 <> 0) and this.metadata_is_zlib_compressed {
+                return "#unsupported PNG compression method"
+            }
+
+            // Skip the language tag and translated keyword: two iterations
+            // looking for a NUL terminator.
+            this.metadata_fourcc ~mod-= 2
+            while this.metadata_fourcc <> 'KVPV'be {
+                this.metadata_fourcc ~mod+= 1
+                while true {
+                    if this.chunk_length <= 0 {
+                        return "#bad chunk"
+                    }
+                    this.chunk_length -= 1
+                    c8 = args.src.read_u8?()
+                    if c8 == 0 {
+                        break
+                    }
+                }
+            }
+
+        } else if this.chunk_type == 'zTXt'le {
+            // Compression method.
+            if this.chunk_length <= 0 {
+                return "#bad chunk"
+            }
+            this.chunk_length -= 1
+            c8 = args.src.read_u8?()
+            if c8 <> 0 {
+                return "#unsupported PNG compression method"
+            }
+            this.metadata_is_zlib_compressed = true
+        }
+
+        this.call_sequence &= 0xEF
+        return ok
+    }
+    break.goto_done
+    }}.goto_done
+
+    if this.chunk_length <> 0 {
+        return "#bad chunk"
+    }
+
+    // Skip the ancillary chunk's CRC-32 checksum.
+    args.src.skip?(n: 4)
+
+    this.metadata_flavor = 0
+    this.metadata_fourcc = 0
+    this.metadata_x = 0
+    this.metadata_y = 0
+    this.metadata_z = 0
+
+    this.call_sequence &= 0xEF
+    return ok
+}
+
+pub func decoder.workbuf_len() base.range_ii_u64 {
+    return this.util.make_range_ii_u64(
+            min_incl: this.overall_workbuf_length,
+            max_incl: this.overall_workbuf_length)
+}

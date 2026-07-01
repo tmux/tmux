@@ -1,0 +1,29 @@
+Running backref-crosses-blocks.deflate through script/print-bits.go and adding
+commentary:
+
+    offset  xoffset ASCII   hex     binary
+    000000  0x0000  .       0x00    0b_...._.000  Uncompressed block, non-final
+    000001  0x0001  .       0x04    0b_0000_0100  Literal length: 0x0004
+    000002  0x0002  .       0x00    0b_0000_0000
+    000003  0x0003  .       0xFB    0b_1111_1011  Inverse:        0xFFFB
+    000004  0x0004  .       0xFF    0b_1111_1111
+    000005  0x0005  a       0x61    0b_0110_0001  Literal "abcd"
+    000006  0x0006  b       0x62    0b_0110_0010
+    000007  0x0007  c       0x63    0b_0110_0011
+    000008  0x0008  d       0x64    0b_0110_0100
+
+The fixed Huffman block contains a back-reference (into the previous block)
+then an end of block. The length=3, distance=2 back-reference decodes to "cdc",
+so the overall decoding is "abcdcdc".
+
+    000009  0x0009  .       0x03    0b_...._.011  Fixed Huffman block, final
+    000009  0x0009  .       0x03    0b_0000_0...  lcode:  257  length:        3
+    000010  0x000A  B       0x42    0b_...._..10
+    000010  0x000A  B       0x42    0b_.100_00..  dcode:    1  distance:      2
+    000010  0x000A  B       0x42    0b_0..._....  lcode:  256  end of block
+    000011  0x000B  .       0x00    0b_..00_0000
+
+This back-reference is valid, even though there is no prior data in that block,
+because there is prior data in previous blocks. RFC 1951 section 2 "Compressed
+representation overview" says that "the LZ77 algorithm may use a reference to a
+duplicated string occurring in a previous block".

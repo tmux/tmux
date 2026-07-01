@@ -1060,6 +1060,9 @@ input_parse_buffer(struct window_pane *wp, const u_char *buf, size_t len)
 	if (!TAILQ_EMPTY(&wp->modes))
 		wp->flags |= PANE_UNSEENCHANGES;
 
+	if (tmux_ghostty_vt_pane_write(wp, buf, len))
+		return;
+
 	/* NULL wp if there is a mode set as don't want to update the tty. */
 	if (TAILQ_EMPTY(&wp->modes))
 		screen_write_start_pane(sctx, wp, &wp->base);
@@ -3505,6 +3508,15 @@ input_reply_clipboard(struct bufferevent *bev, const char *buf, size_t len,
 		bufferevent_write(bev, out, outlen);
 	bufferevent_write(bev, end, strlen(end));
 	free(out);
+}
+
+/* Request a clipboard reply from a client for a pane. */
+int
+input_request_clipboard(struct window_pane *wp, int input_end)
+{
+	if (wp == NULL || wp->ictx == NULL)
+		return (-1);
+	return (input_add_request(wp->ictx, INPUT_REQUEST_CLIPBOARD, input_end));
 }
 
 /* Set input buffer size. */

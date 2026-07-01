@@ -1,0 +1,100 @@
+# Feed this file to script/make-artificial.go
+
+# This GIF image contains four frames, each of which are outside the nominal
+# image's bounds: (0, 0) - (2, 2):
+#
+#  - frame #0 has bounds (1, 0) - (4, 1).
+#  - frame #1 has bounds (0, 1) - (2, 3).
+#  - frame #2 has bounds (0, 4) - (1, 5).
+#  - frame #3 has bounds (2, 0) - (6, 3).
+#
+# Here are some (but not all) possible decoding policies:
+#
+#  0. Reject it.
+#  1. Keep   the image width×height at 2×2, clip all of the frames.
+#  2. Adjust the image width×height to 3×1, the first frame's size, move
+#     frame #0's top-left to be (0, 0), and clip subsequent frames.
+#  3. Adjust the image width×height to 4×1, the first frame's bottom-right
+#     corner, and clip subsequent frames.
+#  4. Expand the image width×height to 4×2, the union of the image and first
+#     frame's bounds, and clip subsequent frames.
+#  5. Expand the image width×height to 4×5, so that no frames are clipped. This
+#     needs to decode all frames before being able to report the image bounds.
+#
+# The GIF specification (https://www.w3.org/Graphics/GIF/spec-gif89a.txt) calls
+# for policy 0, rejection, as it says that "Each image must fit within the
+# boundaries of the Logical Screen, as defined in the Logical Screen
+# Descriptor". The spec uses "image" and "screen" for what Wuffs calls "frame"
+# and "image".
+#
+# In practice, real world encoders violate the spec, and real world decoders
+# have responded by accepting such files anyway. As of May 2018:
+#
+#  - Chromium chooses policy 4:
+#    https://cs.chromium.org/chromium/src/third_party/blink/renderer/platform/image-decoders/gif/gif_image_reader.cc?rcl=5161173c43324da2b13e1aa45bbe69901daa1279&l=740
+#
+#  - Firefox chooses policy 2:
+#    https://dxr.mozilla.org/mozilla-central/rev/b75acf9652937ce79a9bf02de843c100db0e5ec7/image/decoders/nsGIFDecoder2.cpp#814
+#
+#  - Go chooses policy 0:
+#    https://github.com/golang/go/blob/d3beea8c529a20b9eebb5ff8c22684af5ee1c920/src/image/gif/reader.go#L508
+#    but a surprised user filed https://github.com/golang/go/issues/20856 when
+#    Go rejected some (off-spec) GIF files that other decoders accept.
+#
+#  - gdk-pixbuf chooses policy 1:
+#    https://github.com/GNOME/gdk-pixbuf/blob/c1fd9f5d6592c0183c54efc806b3ca6871e1f496/gdk-pixbuf/io-gif.c#L992
+#
+#  - giflib enforces no particular policy. It provides image and frame bounds
+#    as encoded in the file and leaves it up to the caller how to respond.
+#
+# Wuffs chooses policy 4 by default, the same as Chromium. Wuffs can be
+# configured to choose policy 1, by enabling a 'quirk'.
+
+make gif
+
+header
+
+image {
+	imageWidthHeight 2 2
+	palette {
+		0x00 0x00 0xFF
+		0x11 0x00 0xFF
+		0x22 0x00 0xFF
+		0x33 0x00 0xFF
+		0x44 0x00 0xFF
+		0x55 0x00 0xFF
+		0x66 0x00 0xFF
+		0x77 0x00 0xFF
+
+		0x00 0x88 0xFF
+		0x00 0x99 0xFF
+		0x00 0xAA 0xFF
+		0x00 0xBB 0xFF
+		0x00 0xCC 0xFF
+		0x00 0xDD 0xFF
+		0x00 0xEE 0xFF
+		0x00 0xFF 0xFF
+	}
+}
+
+frame {
+	frameLeftTopWidthHeight 1 0 3 1
+}
+lzw 4 0x01 0x02 0x03
+
+frame {
+	frameLeftTopWidthHeight 0 1 2 2
+}
+lzw 4 0x08 0x09 0x0A 0x0B
+
+frame {
+	frameLeftTopWidthHeight 0 4 1 1
+}
+lzw 4 0x0E
+
+frame {
+	frameLeftTopWidthHeight 2 0 4 3
+}
+lzw 4 0x04 0x05 0x06 0x07 0x08 0x09 0x0A 0x0B 0x0C 0x0D 0x0E 0x0F
+
+trailer

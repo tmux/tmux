@@ -1,0 +1,34 @@
+// Copyright 2021 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pri func ieee_hasher.up_arm_crc32!(x: roslice base.u8),
+        choose cpu_arch >= arm_crc32,
+{
+    var p : roslice base.u8
+
+    var util : base.arm_crc32_utility
+    var s    : base.arm_crc32_u32
+
+    s = util.make_u32(a: 0xFFFF_FFFF ^ this.state)
+
+    // Align to a 16-byte boundary.
+    while (args.x.length() > 0) and ((15 & args.x.uintptr_low_12_bits()) <> 0) {
+        s = s.crc32b(b: args.x[0])
+        args.x = args.x[1 ..]
+    }
+
+    iterate (p = args.x)(length: 8, advance: 8, unroll: 16) {
+        s = s.crc32d(b: p.peek_u64le())
+    } else (length: 1, advance: 1, unroll: 1) {
+        s = s.crc32b(b: p[0])
+    }
+
+    this.state = 0xFFFF_FFFF ^ s.value()
+}

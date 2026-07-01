@@ -1375,6 +1375,10 @@ struct window_pane {
 
 	struct input_ctx *ictx;
 
+#ifdef HAVE_GHOSTTY_VT
+	struct tmux_ghostty_vt *ghostty_vt;
+#endif
+
 	struct grid_cell cached_gc;
 	struct grid_cell cached_active_gc;
 	u_int		 cached_dim;
@@ -3426,8 +3430,77 @@ void	 input_parse_pane(struct window_pane *);
 void	 input_parse_buffer(struct window_pane *, const u_char *, size_t);
 void	 input_parse_screen(struct input_ctx *, struct screen *,
 	     screen_write_init_ctx_cb, void *, const u_char *, size_t);
+
+#ifdef HAVE_GHOSTTY_VT
+/* ghostty-vt.zig */
+struct tmux_ghostty_vt *tmux_ghostty_vt_new(struct window_pane *);
+void	 tmux_ghostty_vt_free(struct tmux_ghostty_vt *);
+void	 tmux_ghostty_vt_resize(struct tmux_ghostty_vt *, u_int, u_int);
+void	 tmux_ghostty_vt_write(struct tmux_ghostty_vt *, const u_char *, size_t);
+
+static inline void
+tmux_ghostty_vt_pane_init(struct window_pane *wp)
+{
+	if (!options_get_number(wp->options, "ghostty-vt"))
+		return;
+	wp->ghostty_vt = tmux_ghostty_vt_new(wp);
+}
+
+static inline void
+tmux_ghostty_vt_pane_free(struct window_pane *wp)
+{
+	tmux_ghostty_vt_free(wp->ghostty_vt);
+	wp->ghostty_vt = NULL;
+}
+
+static inline void
+tmux_ghostty_vt_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
+{
+	tmux_ghostty_vt_resize(wp->ghostty_vt, sx, sy);
+}
+
+static inline int
+tmux_ghostty_vt_pane_write(struct window_pane *wp, const u_char *buf,
+    size_t len)
+{
+	if (!options_get_number(wp->options, "ghostty-vt")) {
+		tmux_ghostty_vt_pane_free(wp);
+		return (0);
+	}
+	if (wp->ghostty_vt == NULL)
+		tmux_ghostty_vt_pane_init(wp);
+	if (wp->ghostty_vt == NULL)
+		return (0);
+	tmux_ghostty_vt_write(wp->ghostty_vt, buf, len);
+	return (1);
+}
+#else
+static inline void
+tmux_ghostty_vt_pane_init(__unused struct window_pane *wp)
+{
+}
+
+static inline void
+tmux_ghostty_vt_pane_free(__unused struct window_pane *wp)
+{
+}
+
+static inline void
+tmux_ghostty_vt_pane_resize(__unused struct window_pane *wp,
+    __unused u_int sx, __unused u_int sy)
+{
+}
+
+static inline int
+tmux_ghostty_vt_pane_write(__unused struct window_pane *wp,
+    __unused const u_char *buf, __unused size_t len)
+{
+	return (0);
+}
+#endif
 void	 input_reply_clipboard(struct bufferevent *, const char *, size_t,
 	     const char *, char);
+int	 input_request_clipboard(struct window_pane *, int);
 void	 input_set_buffer_size(size_t);
 void	 input_request_reply(struct client *, enum input_request_type, void *);
 void	 input_cancel_requests(struct client *);

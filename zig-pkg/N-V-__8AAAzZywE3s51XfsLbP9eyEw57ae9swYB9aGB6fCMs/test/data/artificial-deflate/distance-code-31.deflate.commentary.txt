@@ -1,0 +1,8 @@
+Running distance-code-31.deflate through script/print-bits.go and adding
+commentary:
+
+    offset  xoffset ASCII   hex     binary
+    000000  0x0000  .       0x03    0b_...._.011  Fixed Huffman block, final
+    000000  0x0000  .       0x03    0b_0000_0...  lcode:  257  length:        3
+    000001  0x0001  ~       0x7E    0b_...._..10
+    000001  0x0001  ~       0x7E    0b_.111_11..  dcode:   31  INVALID

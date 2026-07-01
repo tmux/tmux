@@ -1463,6 +1463,13 @@ const struct options_table_entry options_table[] = {
 	  .text = "Format used to fill unused parts of window."
 	},
 
+	{ .name = "ghostty-vt",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_num = 0,
+	  .text = "Whether to use the Ghostty VT parser for this pane."
+	},
+
 	{ .name = "main-pane-height",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,

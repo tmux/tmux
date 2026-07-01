@@ -1,0 +1,139 @@
+// Copyright 2020 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pub status "#bad animation sequence number"
+pub status "#bad checksum"
+pub status "#bad chunk"
+pub status "#bad filter"
+pub status "#bad header"
+pub status "#bad text chunk (not Latin-1)"
+pub status "#missing palette"
+pub status "#truncated input"
+pub status "#unsupported CgBI extension"
+pub status "#unsupported PNG compression method"
+pub status "#unsupported PNG file"
+
+pri status "#internal error: inconsistent I/O"
+pri status "#internal error: inconsistent chunk type"
+pri status "#internal error: inconsistent workbuf length"
+pri status "#internal error: zlib decoder did not exhaust its input"
+
+pub const DECODER_WORKBUF_LEN_MAX_INCL_WORST_CASE : base.u64 = 0x0007_FFFF_F100_0007
+
+// DECODER_SRC_IO_BUFFER_LENGTH_MIN_INCL is the minimum length of the src
+// wuffs_base__io_buffer passed to the decoder.
+pub const DECODER_SRC_IO_BUFFER_LENGTH_MIN_INCL : base.u64 = 8
+
+// ANCILLARY_BIT is the upper/lower case bit on the chunk type's first byte (in
+// little-endian order).
+pri const ANCILLARY_BIT : base.u32 = 0x0000_0020
+
+// INTERLACING holds the Adam7 interlacing pattern, involving 7 passes:
+//  1 6 4 6 2 6 4 6
+//  7 7 7 7 7 7 7 7
+//  5 6 5 6 5 6 5 6
+//  7 7 7 7 7 7 7 7
+//  3 6 4 6 3 6 4 6
+//  7 7 7 7 7 7 7 7
+//  5 6 5 6 5 6 5 6
+//  7 7 7 7 7 7 7 7
+//
+// The six elements of each inner array are:
+//  0: log2(x_stride)
+//  1: x_stride - x_offset - 1
+//  2: x_offset
+//  3: log2(y_stride)
+//  4: y_stride - y_offset - 1
+//  5: y_offset
+pri const INTERLACING : roarray[8] roarray[6] base.u8[..= 7] = [
+        [0, 0, 0, 0, 0, 0],  // non-interlaced; xy_stride=1, xy_offset=0
+        [3, 7, 0, 3, 7, 0],  // interlace_pass == 1
+        [3, 3, 4, 3, 7, 0],  // interlace_pass == 2
+        [2, 3, 0, 3, 3, 4],  // interlace_pass == 3
+        [2, 1, 2, 2, 3, 0],  // interlace_pass == 4
+        [1, 1, 0, 2, 1, 2],  // interlace_pass == 5
+        [1, 0, 1, 1, 1, 0],  // interlace_pass == 6
+        [0, 0, 0, 1, 0, 1],  // interlace_pass == 7
+]
+
+// LOW_BIT_DEPTH_MULTIPLIERS holds multipliers that convert D-bit values into
+// 8-bit values, for depth D.
+pri const LOW_BIT_DEPTH_MULTIPLIERS : roarray[8] base.u8 = [
+        0,
+        0b1111_1111,  // depth == 1
+        0b0101_0101,  // depth == 2
+        0,
+        0b0001_0001,  // depth == 4
+        0,
+        0,
+        0,
+]
+
+// LOW_BIT_DEPTH_NUM_PACKS holds the number of smaller-than-1-byte units that
+// are packed into each byte.
+pri const LOW_BIT_DEPTH_NUM_PACKS : roarray[8] base.u8 = [
+        0,
+        8,  // depth == 1
+        4,  // depth == 2
+        0,
+        2,  // depth == 4
+        0,
+        0,
+        0,
+]
+
+// NUM_CHANNELS holds the number of channels for each valid color type.
+pri const NUM_CHANNELS : roarray[8] base.u8[..= 4] = [
+        1,  // color_type == 0: Y
+        0,
+        3,  // color_type == 2: RGB
+        1,  // color_type == 3: indexed
+        2,  // color_type == 4: YA
+        0,
+        4,  // color_type == 6: RGBA
+        0,
+]
+
+// LATIN_1 converts from printable Latin-1 (ISO/IEC 8859-1) to UTF-8 (encoded
+// as little-endian u16). It was created by script/print-png-latin-1.go.
+pri const LATIN_1 : roarray[256] base.u16 = [
+        0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+        0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+        0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+        0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+        0x0020, 0x0021, 0x0022, 0x0023, 0x0024, 0x0025, 0x0026, 0x0027,
+        0x0028, 0x0029, 0x002A, 0x002B, 0x002C, 0x002D, 0x002E, 0x002F,
+        0x0030, 0x0031, 0x0032, 0x0033, 0x0034, 0x0035, 0x0036, 0x0037,
+        0x0038, 0x0039, 0x003A, 0x003B, 0x003C, 0x003D, 0x003E, 0x003F,
+        0x0040, 0x0041, 0x0042, 0x0043, 0x0044, 0x0045, 0x0046, 0x0047,
+        0x0048, 0x0049, 0x004A, 0x004B, 0x004C, 0x004D, 0x004E, 0x004F,
+        0x0050, 0x0051, 0x0052, 0x0053, 0x0054, 0x0055, 0x0056, 0x0057,
+        0x0058, 0x0059, 0x005A, 0x005B, 0x005C, 0x005D, 0x005E, 0x005F,
+        0x0060, 0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067,
+        0x0068, 0x0069, 0x006A, 0x006B, 0x006C, 0x006D, 0x006E, 0x006F,
+        0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077,
+        0x0078, 0x0079, 0x007A, 0x007B, 0x007C, 0x007D, 0x007E, 0x0000,
+        0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+        0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+        0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+        0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+        0x0000, 0xA1C2, 0xA2C2, 0xA3C2, 0xA4C2, 0xA5C2, 0xA6C2, 0xA7C2,
+        0xA8C2, 0xA9C2, 0xAAC2, 0xABC2, 0xACC2, 0xADC2, 0xAEC2, 0xAFC2,
+        0xB0C2, 0xB1C2, 0xB2C2, 0xB3C2, 0xB4C2, 0xB5C2, 0xB6C2, 0xB7C2,
+        0xB8C2, 0xB9C2, 0xBAC2, 0xBBC2, 0xBCC2, 0xBDC2, 0xBEC2, 0xBFC2,
+        0x80C3, 0x81C3, 0x82C3, 0x83C3, 0x84C3, 0x85C3, 0x86C3, 0x87C3,
+        0x88C3, 0x89C3, 0x8AC3, 0x8BC3, 0x8CC3, 0x8DC3, 0x8EC3, 0x8FC3,
+        0x90C3, 0x91C3, 0x92C3, 0x93C3, 0x94C3, 0x95C3, 0x96C3, 0x97C3,
+        0x98C3, 0x99C3, 0x9AC3, 0x9BC3, 0x9CC3, 0x9DC3, 0x9EC3, 0x9FC3,
+        0xA0C3, 0xA1C3, 0xA2C3, 0xA3C3, 0xA4C3, 0xA5C3, 0xA6C3, 0xA7C3,
+        0xA8C3, 0xA9C3, 0xAAC3, 0xABC3, 0xACC3, 0xADC3, 0xAEC3, 0xAFC3,
+        0xB0C3, 0xB1C3, 0xB2C3, 0xB3C3, 0xB4C3, 0xB5C3, 0xB6C3, 0xB7C3,
+        0xB8C3, 0xB9C3, 0xBAC3, 0xBBC3, 0xBCC3, 0xBDC3, 0xBEC3, 0xBFC3,
+]

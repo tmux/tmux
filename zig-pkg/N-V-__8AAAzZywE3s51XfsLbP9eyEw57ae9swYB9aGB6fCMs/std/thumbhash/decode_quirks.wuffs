@@ -1,0 +1,26 @@
+// Copyright 2024 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+// --------
+
+// Quirks are discussed in (/doc/note/quirks.md).
+//
+// The base38 encoding of "th.." is 0x19_83D8. Left shifting by 10 gives
+// 0x660F_6000.
+pri const QUIRKS_BASE : base.u32 = 0x660F_6000
+
+// --------
+
+// When this quirk is enabled, the decoder speaks just raw thumbhash, without
+// the "\xC3\xBE\xFE" magic identifier to start the file.
+//
+// Enabling this quirk matches the behavior of the original JavaScript
+// reference implementation at https://evanw.github.io/thumbhash/
+pub const QUIRK_JUST_RAW_THUMBHASH : base.u32 = 0x660F_6000 | 0x00

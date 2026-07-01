@@ -1,0 +1,177 @@
+// Copyright 2021 The Wuffs Authors.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+pri func hasher.up_x86_sse42!(x: roslice base.u8),
+        choose cpu_arch >= x86_sse42,
+{
+    // These variables are the same as the non-SIMD version.
+    var s1        : base.u32
+    var s2        : base.u32
+    var remaining : roslice base.u8
+    var p         : roslice base.u8
+
+    // The remaining variables are specific to the SIMD version.
+
+    var util          : base.x86_sse42_utility
+    var zeroes        : base.x86_m128i
+    var ones          : base.x86_m128i
+    var weights__left : base.x86_m128i
+    var weights_right : base.x86_m128i
+    var q__left       : base.x86_m128i
+    var q_right       : base.x86_m128i
+    var v1            : base.x86_m128i
+    var v2            : base.x86_m128i
+    var v2j           : base.x86_m128i
+    var v2k           : base.x86_m128i
+
+    var num_iterate_bytes : base.u32
+    var tail_index        : base.u64
+
+    // zeroes and ones are uniform u16×8 vectors.
+    zeroes = util.make_m128i_repeat_u16(a: 0)
+    ones = util.make_m128i_repeat_u16(a: 1)
+
+    // weights__left and weights_right form the sequence 32, 31, 30, ..., 1.
+    weights__left = util.make_m128i_multiple_u8(
+            a00: 0x20, a01: 0x1F, a02: 0x1E, a03: 0x1D,
+            a04: 0x1C, a05: 0x1B, a06: 0x1A, a07: 0x19,
+            a08: 0x18, a09: 0x17, a10: 0x16, a11: 0x15,
+            a12: 0x14, a13: 0x13, a14: 0x12, a15: 0x11)
+    weights_right = util.make_m128i_multiple_u8(
+            a00: 0x10, a01: 0x0F, a02: 0x0E, a03: 0x0D,
+            a04: 0x0C, a05: 0x0B, a06: 0x0A, a07: 0x09,
+            a08: 0x08, a09: 0x07, a10: 0x06, a11: 0x05,
+            a12: 0x04, a13: 0x03, a14: 0x02, a15: 0x01)
+
+    // Decompose this.state.
+    s1 = this.state.low_bits(n: 16)
+    s2 = this.state.high_bits(n: 16)
+
+    // Just like the non-SIMD version, loop over args.x up to almost-5552 bytes
+    // at a time. The slightly smaller 5536 is the largest multiple of 32 less
+    // than non-SIMD's 5552.
+    while args.x.length() > 0 {
+        remaining = args.x[.. 0]
+        if args.x.length() > 5536 {
+            remaining = args.x[5536 ..]
+            args.x = args.x[.. 5536]
+        }
+
+        // The s1 state is the sum of the input bytes and the s2 state is the
+        // sum of the s1 state at each 1-byte step. Inside the iterate loop
+        // below, but starting fresh at each outer while loop iteration, s1
+        // consists of three parts (called s1i, s1j and s1k):
+        //  - s1i: the initial value, before any 32-byte iterations.
+        //  - s1j: the total contribution from previous 32-byte iterations.
+        //  - s1k: the contribution due to the current 32-byte iteration.
+        //
+        // The upcoming iterate loop (at 32 bytes per iteration) encompasses
+        // num_iterate_bytes 1-byte steps. We hoist the total s1i contribution,
+        // (s1i * num_iterate_bytes) out here.
+        num_iterate_bytes = (args.x.length() & 0xFFFF_FFE0) as base.u32
+        s2 ~mod+= (s1 ~mod* num_iterate_bytes)
+
+        // Zero-initialize some u32×4 vectors associated with the two state
+        // variables s1 and s2. The iterate loop accumulates four parallel u32
+        // sums in each vector. A post-iterate step merges the four u32 sums
+        // into a single u32 sum.
+        v1 = util.make_m128i_zeroes()
+        v2j = util.make_m128i_zeroes()
+        v2k = util.make_m128i_zeroes()
+
+        // The inner loop.
+        iterate (p = args.x)(length: 32, advance: 32, unroll: 1) {
+            // SSE4.2 works with 16-byte registers. Split the 32-byte p into
+            // left and right halves.
+            //
+            // Let q__left = [u8×16: p00, p01, p02, ..., p15]
+            // Let q_right = [u8×16: p16, p17, p18, ..., p31]
+            q__left = util.make_m128i_slice128(a: p[.. 16])
+            q_right = util.make_m128i_slice128(a: p[16 .. 32])
+
+            // For v2j, we need to calculate the sums of the s1j terms for each
+            // of p's 32 elements. This is simply 32 times the same number,
+            // that number being the sum of v1's four u32 accumulators. We add
+            // v1 now and multiply by 32 later, outside the inner loop.
+            v2j = v2j._mm_add_epi32(b: v1)
+
+            // For v1, we need to add the elements of p. Computing the sum of
+            // absolute differences (_mm_sad_epu8) with zero just sums the
+            // elements. q__left._mm_sad_epu8(b: zeroes) equals
+            //   [u64×2: p00 + p01 + ... + p07, p08 + p09 + ... + p15]
+            // This is equivalent (little-endian) to:
+            //   [u32×4: p00 + p01 + ... + p07, 0, p08 + p09 + ... + p15, 0]
+            // We accumulate those "sum of q__left's elements" in v1, and ditto
+            // for q_right's elements.
+            v1 = v1._mm_add_epi32(b: q__left._mm_sad_epu8(b: zeroes))
+            v1 = v1._mm_add_epi32(b: q_right._mm_sad_epu8(b: zeroes))
+
+            // For v2k, we need to calculate a weighted sum: ((32 * p00) + (31
+            // * p01) + (30 * p02) + ... + (1 * p31)), which splits naturally
+            // into weighted sums of the left half and of the right half.
+            //
+            // The _mm_maddubs_epi16 call (vertically multiply u8 columns and
+            // then horizontally sum u16 pairs) with the left half produces:
+            //   [u16×8: ((32*p00)+(31*p01)),
+            //           ((30*p02)+(29*p03)),
+            //           ...
+            //           ((18*p14)+(17*p15))]
+            //
+            // The ones._mm_madd_epi16(b: etc) call is a multiply-add (note
+            // that it's "madd" not "add"). Multiplying by 1 is a no-op, so
+            // this sums u16 pairs to produce u32 values:
+            //   [u32×4: ((32*p00)+(31*p01)+(30*p02)+(29*p03)),
+            //           ((28*p04)+(27*p05)+(26*p06)+(25*p07)),
+            //           ...
+            //           ((20*p12)+(19*p13)+(18*p14)+(17*p15))]
+            //
+            // Ditto again for q_right's elements.
+            v2k = v2k._mm_add_epi32(b: ones._mm_madd_epi16(b:
+                    q__left._mm_maddubs_epi16(b: weights__left)))
+            v2k = v2k._mm_add_epi32(b: ones._mm_madd_epi16(b:
+                    q_right._mm_maddubs_epi16(b: weights_right)))
+        }
+
+        // Merge the four parallel u32 sums (v1) into the single u32 sum (s1).
+        // Starting with a u32×4 vector [x0, x1, x2, x3]:
+        //  - shuffling with 0b1011_0001 gives [x1, x0, x3, x2].
+        //  - adding gives [x0+x1, x0+x1, x2+x3, x2+x3].
+        //  - shuffling with 0b0100_1110 gives [x2+x3, x2+x3, x0+x1, x0+x1].
+        //  - adding gives [x0+x1+x2+x3, ditto, ditto, ditto].
+        // The truncate_u32 call extracts the first u32: x0+x1+x2+x3.
+        v1 = v1._mm_add_epi32(b: v1._mm_shuffle_epi32(imm8: 0b1011_0001))
+        v1 = v1._mm_add_epi32(b: v1._mm_shuffle_epi32(imm8: 0b0100_1110))
+        s1 ~mod+= v1.truncate_u32()
+
+        // Combine v2j and v2k. The slli (shift logical left immediate) by 5
+        // multiplies v2j's four u32 elements each by 32, alluded to earlier.
+        v2 = v2k._mm_add_epi32(b: v2j._mm_slli_epi32(imm8: 5))
+
+        // Similarly merge v2 (a u32×4 vector) into s2 (a u32 scalar).
+        v2 = v2._mm_add_epi32(b: v2._mm_shuffle_epi32(imm8: 0b1011_0001))
+        v2 = v2._mm_add_epi32(b: v2._mm_shuffle_epi32(imm8: 0b0100_1110))
+        s2 ~mod+= v2.truncate_u32()
+
+        // Handle the tail of args.x that wasn't a complete 32-byte chunk.
+        tail_index = args.x.length() & 0xFFFF_FFFF_FFFF_FFE0  // And-not 32.
+        if tail_index < args.x.length() {
+            iterate (p = args.x[tail_index ..])(length: 1, advance: 1, unroll: 1) {
+                s1 ~mod+= p[0] as base.u32
+                s2 ~mod+= s1
+            }
+        }
+
+        // The rest of this function is the same as the non-SIMD version.
+        s1 %= 65521
+        s2 %= 65521
+        args.x = remaining
+    }
+    this.state = ((s2 & 0xFFFF) << 16) | (s1 & 0xFFFF)
+}

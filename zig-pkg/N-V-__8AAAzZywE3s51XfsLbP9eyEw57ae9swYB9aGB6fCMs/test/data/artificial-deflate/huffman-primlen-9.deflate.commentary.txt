@@ -1,0 +1,112 @@
+Running huffman-primlen-9.deflate through script/print-bits.go and adding
+commentary:
+
+    offset  xoffset ASCII   hex     binary
+    000000  0x0000  .       0xED    0b_...._.101  Dynamic Huffman block, final
+    000000  0x0000  .       0xED    0b_1110_1...  NumLCodes: 286
+    000001  0x0001  .       0xFD    0b_...1_1101  NumDCodes: 30
+    000001  0x0001  .       0xFD    0b_111._....  NumCLCodeLengths: 19
+    000002  0x0002  m       0x6D    0b_...._...1
+
+Decode the H-CL Huffman table (NumCLCodeLengths = 18). Recall the peculiar
+code_order: 16, 17, 18, 0, 8, ..., 2, 14, 1, 15:
+
+    000002  0x0002  m       0x6D    0b_0110_110.  CLCodeLengths: 19 x 3 bits
+    000003  0x0003  .       0x93    0b_1001_0011    CLCLs[  0] is 4
+    000004  0x0004  $       0x24    0b_0010_0100    CLCLs[...] is 4
+    000005  0x0005  I       0x49    0b_0100_1001    CLCLs[ 14] is 4
+    000006  0x0006  .       0x92    0b_1001_0010    CLCLs[ 15] is 6
+    000007  0x0007  $       0x24    0b_0010_0100    CLCLs[ 16] is 6
+    000008  0x0008  I       0x49    0b_0100_1001    CLCLs[ 17] is 6
+    000009  0x0009  #       0x23    0b_...._..11    CLCLs[ 18] is 6
+
+The H-CL Huffman table is:
+"0000"   -> CodeLength=0
+"0001"   -> CodeLength=1
+"0010"   -> CodeLength=2
+etc
+"1110"   -> CodeLength=14
+"111100" -> CodeLength=15
+"111101" -> CodeLength=16 which means run-length encoding
+"111110" -> CodeLength=17 which means a block of ( 3 + 3_extra_bits) zeroes
+"111111" -> CodeLength=18 which means a block of (11 + 7_extra_bits) zeroes
+
+Decode the H-L Huffman table (NumLCodes = 286):
+
+    000009  0x0009  #       0x23    0b_..10_00..  "0001"   is CL=1
+    000009  0x0009  #       0x23    0b_00.._....  "0010"   is CL=2
+    000010  0x000A  q       0x71    0b_...._..01
+    000010  0x000A  q       0x71    0b_..11_00..  "0011"   is CL=3
+    000010  0x000A  q       0x71    0b_01.._....
+    000011  0x000B  u       0x75    0b_...._..01  "1010"   is CL=10
+    000011  0x000B  u       0x75    0b_..11_01..  "1011"   is CL=11
+    000011  0x000B  u       0x75    0b_01.._....  "1011"   is CL=11
+    000012  0x000C  w       0x77    0b_...._..11
+    000012  0x000C  w       0x77    0b_..11_01..  "1011"   is CL=11
+    etc
+    000149  0x0095  .       0xCC    0b_..00_11..  "1100"   is CL=12
+    000149  0x0095  .       0xCC    0b_11.._....  "1100"   is CL=12
+    000150  0x0096  .       0xEC    0b_...._..00
+    000150  0x0096  .       0xEC    0b_..10_11..  "1101"   is CL=13
+    000150  0x0096  .       0xEC    0b_11.._....  "1110"   is CL=14
+    000151  0x0097  =       0x3D    0b_...._..01
+    000151  0x0097  =       0x3D    0b_0011_11..  "111100" is CL=15
+    000152  0x0098  .       0x0F    0b_..00_1111  "111100" is CL=15
+
+The H-L Huffman table is:
+"0"               -> '\x00'
+"10"              -> '\x01'
+"110"             -> '\x02'
+"1110000000"      -> '\x03'
+"11100000010"     -> '\x04'
+etc
+"11101011111"     -> '\x61' aka 'a' aka 97
+"11101100000"     -> '\x62' aka 'b' aka 98
+etc
+"111111100101"    -> Lit/Len code 256 (EOB)
+"111111100110"    -> Lit/Len code 257 (Length =   3)
+etc
+"111111111111111" -> Lit/Len code 285 (Length = 258)
+
+Decode the H-D Huffman table (NumDCodes = 30):
+
+    000152  0x0098  .       0x0F    0b_00.._....  "0001"   is CL=1
+    000153  0x0099  .       0x12    0b_...._..10
+    000153  0x0099  .       0x12    0b_..01_00..  "0010"   is CL=2
+    000153  0x0099  .       0x12    0b_00.._....
+    000154  0x009A  .       0x8B    0b_...._..11  "0011"   is CL=3
+    000154  0x009A  .       0x8B    0b_..00_10..  "0100"   is CL=4
+    etc
+    000165  0x00A5  .       0xCC    0b_..00_11..  "1100"   is CL=12
+    000165  0x00A5  .       0xCC    0b_11.._....  "1101"   is CL=13
+    000166  0x00A6  .       0xDE    0b_...._..10
+    000166  0x00A6  .       0xDE    0b_..01_11..  "1110"   is CL=14
+    000166  0x00A6  .       0xDE    0b_11.._....  "111100" is CL=15
+    000167  0x00A7  .       0xF3    0b_...._0011
+    000167  0x00A7  .       0xF3    0b_1111_....  "111100" is CL=15
+    000168  0x00A8  .       0xDC    0b_...._..00
+
+The H-D Huffman table is:
+"0"               -> Distance code  0 (Distance =     1)
+"10"              -> Distance code  1 (Distance =     2)
+"110"             -> Distance code  2 (Distance =     3)
+etc
+"11111110010"     -> Distance code  8 (Distance =    17 +  3_extra_bits)
+etc
+"111111111111111" -> Distance code 29 (Distance = 24577 + 13_extra_bits)
+
+Apply H-L and H-D. The length=3, distance=2 back-reference decodes to "ana", so
+the overall decoding is "banana".
+
+    000168  0x00A8  .       0xDC    0b_1101_11..  lcode:   98  literal 'b'
+    000169  0x00A9  .       0xE0    0b_...0_0000
+    000169  0x00A9  .       0xE0    0b_111._....  lcode:   97  literal 'a'
+    000170  0x00AA  .       0xFA    0b_1111_1010
+    000171  0x00AB  .       0xB7    0b_1011_0111  lcode:  110  literal 'n'
+    000172  0x00AC  .       0xF9    0b_...._.001
+    000172  0x00AC  .       0xF9    0b_1111_1...  lcode:  256  length=3
+    000173  0x00AD  .       0xB3    0b_.011_0011
+    000173  0x00AD  .       0xB3    0b_1..._....  dcode:    1  distance=2
+    000174  0x00AE  .       0xFE    0b_...._...0
+    000174  0x00AE  .       0xFE    0b_1111_111.  lcode:  256  end of block
+    000175  0x00AF  .       0x14    0b_...1_0100
