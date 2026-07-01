@@ -3250,6 +3250,7 @@ void	 colour_split_rgb(int, u_char *, u_char *, u_char *);
 int	 colour_force_rgb(int);
 int	 colour_dim(int, u_int);
 const char *colour_tostring(int);
+const char *colour_toescape(struct client *, int, int);
 enum client_theme colour_totheme(int);
 int	 colour_fromstring(const char *);
 const char *colour_theme_option(u_int, enum client_theme);
