@@ -4434,6 +4434,15 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 	struct format_modifier	*list = NULL;
 	char			 c, last[] = "X;:", **argv, *value;
 	int			 argc;
+	struct format_expand_state next;
+
+	/*
+	 * Expand modifier arguments without time expansion so that any strftime
+	 * specifiers are preserved for modifiers such as t/f to interpret; the
+	 * final value is expanded with time later where appropriate.
+	 */
+	format_copy_state(&next, es, 0);
+	next.flags &= ~FORMAT_EXPAND_TIME;
 
 	/*
 	 * Modifiers are a ; separated list of the forms:
@@ -4499,7 +4508,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 
 			argv = xcalloc(1, sizeof *argv);
 			value = format_unescape(es, cp + 1, end - (cp + 1));
-			argv[0] = format_expand1(es, value);
+			argv[0] = format_expand1(&next, value);
 			free(value);
 			argc = 1;
 
@@ -4523,7 +4532,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 
 			argv = xreallocarray(argv, argc + 1, sizeof *argv);
 			value = format_unescape(es, cp, end - cp);
-			argv[argc++] = format_expand1(es, value);
+			argv[argc++] = format_expand1(&next, value);
 			free(value);
 
 			cp = end;
