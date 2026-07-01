@@ -1577,6 +1577,72 @@ redraw_draw_pane_prompt(struct redraw_draw_ctx *dctx, struct window_pane *wp)
 	screen_free(&screen);
 }
 
+/*
+ * Draw markers at the cursor positions of other clients viewing the same
+ * window (team mode). Each remote user gets a distinct colour. The markers are
+ * transient: they are painted over the pane content every redraw and never
+ * mutate the grid.
+ */
+static void
+redraw_draw_remote_cursors(struct redraw_draw_ctx *dctx)
+{
+	struct redraw_scene	*scene = dctx->scene;
+	struct client		*c = scene->c, *c2;
+	struct window		*w = scene->w;
+	struct tty		*tty = &c->tty;
+	struct window_pane	*wp;
+	struct screen		*s2;
+	struct grid_cell	 gc;
+	int			 ox = scene->ox, oy = scene->oy;
+	int			 sx = scene->sx, sy = scene->sy;
+	int			 cx, cy;
+
+	if (c->session == NULL ||
+	    !options_get_number(c->session->options, "teammode"))
+		return;
+
+	TAILQ_FOREACH(c2, &clients, entry) {
+		if (c2 == c || c2->session == NULL)
+			continue;
+		if (c2->flags & (CLIENT_SUSPENDED|CLIENT_CONTROL))
+			continue;
+		if (c2->session->curw == NULL ||
+		    c2->session->curw->window != w)
+			continue;
+
+		wp = server_client_get_pane(c2);
+		if (wp == NULL || !window_pane_is_visible(wp))
+			continue;
+		s2 = wp->screen;
+		if (~s2->mode & MODE_CURSOR)
+			continue;
+		if (wp->base.mode & MODE_SYNC)
+			continue;
+
+		/* Is the remote cursor within this client's viewport? */
+		if (wp->xoff + (int)s2->cx < ox ||
+		    wp->xoff + (int)s2->cx >= ox + sx ||
+		    wp->yoff + (int)s2->cy < oy ||
+		    wp->yoff + (int)s2->cy >= oy + sy)
+			continue;
+		cx = wp->xoff + (int)s2->cx - ox;
+		cy = wp->yoff + (int)s2->cy - oy;
+		if (dctx->flags & REDRAW_STATUS_TOP)
+			cy += dctx->status_lines;
+
+		/* Restyle the cell under the remote cursor as a marker. */
+		grid_view_get_cell(s2->grid, s2->cx, s2->cy, &gc);
+		if (gc.flags & GRID_FLAG_PADDING)
+			continue;
+		gc.bg = c2->team_colour;
+		gc.fg = 0;
+		gc.attr &= ~GRID_ATTR_BLINK;
+
+		tty_cursor(tty, cx, cy);
+		tty_cell(tty, &gc, NULL);
+	}
+}
+
 /* Draw scene to client. */
 static void
 redraw_draw(struct client *c, struct window_pane *wp, int flags)
@@ -1682,6 +1748,9 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 			}
 		}
 	}
+
+	if (wp == NULL)
+		redraw_draw_remote_cursors(&dctx);
 
 	if (flags & REDRAW_STATUS) {
 		lines = dctx.status_lines;

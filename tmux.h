@@ -1294,6 +1294,10 @@ struct window_pane {
 #define PANE_UNSEENCHANGES 0x4000
 #define PANE_REDRAWSCROLLBAR 0x8000
 
+	/* Last cursor position broadcast to team-mode observers. */
+	u_int		 lastcx;
+	u_int		 lastcy;
+
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
 	int		 sb_auto_visible;
@@ -2189,6 +2193,8 @@ struct client {
 	size_t			 redraw;
 
 	struct redraw_scene	*redraw_scene;
+
+	int			 team_colour;
 
 	struct event		 repeat_timer;
 

@@ -1220,6 +1220,16 @@ const struct options_table_entry options_table[] = {
 		  "session."
 	},
 
+	{ .name = "teammode",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_num = 1,
+	  .text = "Whether attached clients each control an independent active "
+		  "pane and see each other's cursors. Enabled by default. Set "
+		  "this globally so that grouped sessions (used for independent "
+		  "window navigation) inherit it."
+	},
+
 	{ .name = "update-environment",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,

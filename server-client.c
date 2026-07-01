@@ -44,6 +44,8 @@ static void	server_client_set_path(struct client *);
 static void	server_client_set_progress_bar(struct client *);
 static void	server_client_reset_state(struct client *);
 static void	server_client_update_latest(struct client *);
+static int	server_client_team_colour(struct client *);
+static int	server_client_window_teammode(struct window *);
 static void	server_client_dispatch(struct imsg *, void *);
 static int	server_client_dispatch_command(struct client *, struct imsg *);
 static int	server_client_dispatch_identify(struct client *, struct imsg *);
@@ -306,6 +308,8 @@ server_client_create(int fd)
 	c->fd = -1;
 	c->out_fd = -1;
 
+	c->team_colour = -1;
+
 	c->queue = cmdq_new();
 	RB_INIT(&c->windows);
 	RB_INIT(&c->files);
@@ -403,6 +407,53 @@ server_client_attached_lost(struct client *c)
 	}
 }
 
+/*
+ * Pick a stable, distinct colour for a client's team-mode cursor marker.
+ * Derived from the client name so a given user keeps the same colour across
+ * detach and reattach.
+ */
+static int
+server_client_team_colour(struct client *c)
+{
+	static const int	 palette[] = {
+		203, 214, 220, 84, 45, 171, 213, 39
+	};
+	const char		*name = c->name;
+	unsigned long		 hash = 5381;
+
+	if (name == NULL)
+		hash = (unsigned long)(uintptr_t)c;
+	else {
+		for (; *name != '\0'; name++)
+			hash = ((hash << 5) + hash) + (unsigned char)*name;
+	}
+	return (palette[hash % nitems(palette)] | COLOUR_FLAG_256);
+}
+
+/*
+ * Return non-zero if window w is currently viewed by more than one client and
+ * at least one of them has the teammode option set - i.e. remote-cursor
+ * markers may need to be drawn for it.
+ */
+static int
+server_client_window_teammode(struct window *w)
+{
+	struct client	*c;
+	int		 team = 0;
+	u_int		 n = 0;
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session == NULL || c->session->curw == NULL)
+			continue;
+		if (c->session->curw->window != w)
+			continue;
+		n++;
+		if (options_get_number(c->session->options, "teammode"))
+			team = 1;
+	}
+	return (team && n > 1);
+}
+
 /* Set client session. */
 void
 server_client_set_session(struct client *c, struct session *s)
@@ -419,6 +470,11 @@ server_client_set_session(struct client *c, struct session *s)
 	if (old != NULL && old->curw != NULL)
 		window_update_focus(old->curw->window);
 	if (s != NULL) {
+		if (options_get_number(s->options, "teammode")) {
+			c->flags |= CLIENT_ACTIVEPANE;
+			if (c->team_colour == -1)
+				c->team_colour = server_client_team_colour(c);
+		}
 		s->curw->window->latest = c;
 		recalculate_sizes();
 		window_update_focus(s->curw->window);
@@ -1725,6 +1781,24 @@ server_client_loop(void)
 				    wme->mode->style_changed != NULL)
 					wme->mode->style_changed(wme);
 			}
+		}
+	}
+
+	/*
+	 * In team mode a bare cursor move (no content change) does not trigger
+	 * a redraw, but observers need one to refresh the remote-cursor
+	 * markers. Detect such moves and redraw the affected windows.
+	 */
+	RB_FOREACH(w, windows, &windows) {
+		if (!server_client_window_teammode(w))
+			continue;
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (wp->screen->cx == wp->lastcx &&
+			    wp->screen->cy == wp->lastcy)
+				continue;
+			wp->lastcx = wp->screen->cx;
+			wp->lastcy = wp->screen->cy;
+			server_redraw_window(w);
 		}
 	}
 

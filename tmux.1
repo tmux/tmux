@@ -5088,6 +5088,35 @@ Set action on a bell in a window when
 is on.
 The values are the same as those for
 .Ic activity\-action .
+.It Xo Ic teammode
+.Op Ic on | off
+.Xc
+Enable team mode.
+This is enabled by default.
+When on, each client attached to the session controls its own active pane
+independently (as if the
+.Ic active\-pane
+client flag was given, see
+.Ic attach\-session ) ,
+so multiple users may work in different panes at the same time.
+In addition, each client sees the cursor of every other client viewing the
+same window, drawn as a coloured marker; each user is assigned a distinct
+colour.
+.Pp
+Because the cursor of a pane belongs to the program running in it, independent
+cursors only exist across different panes, never within a single pane.
+For users to also navigate windows independently, give each user their own
+session in a session group sharing the same windows, for example with
+.Ql tmux new\-session \-t Ar target ,
+and set this option globally with
+.Ql set\-option \-g teammode on
+so grouped sessions inherit it.
+Setting
+.Ic aggressive\-resize
+is recommended so that users viewing different windows do not resize each
+other.
+This option takes effect for a client when it attaches, so change it before
+attaching.
 .It Ic default\-command Ar shell\-command
 Set the command used for new windows (if not specified when the window is
 created) to
