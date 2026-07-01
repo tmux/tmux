@@ -55,12 +55,13 @@ jobs:
             bison \
             libevent \
             ncurses \
+            utf8proc \
             pkg-config
 
       - name: build
         run: |
           sh autogen.sh
-          ./configure
+          ./configure --enable-utf8proc
           make -j"$(getconf _NPROCESSORS_ONLN)"
 
       - name: test
