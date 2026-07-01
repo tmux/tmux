@@ -50,12 +50,12 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew install \
-               autoconf \
-               automake \
-               bison \
-               libevent \
-               ncurses \
-               pkg-config
+            autoconf \
+            automake \
+            bison \
+            libevent \
+            ncurses \
+            pkg-config
 
       - name: build
         run: |
