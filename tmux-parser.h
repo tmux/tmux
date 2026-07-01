@@ -71,6 +71,8 @@ enum cmd_parse_node_type {
 	CMD_PARSE_ELSE
 };
 
+#define CMD_PARSE_PRINT_MULTILINE 0x1
+
 struct cmd_parse_tree	*cmd_parse_from_file(FILE *, struct cmd_parse_input *,
 			    char **);
 struct cmd_parse_tree	*cmd_parse_from_buffer(const void *, size_t,
@@ -90,7 +92,7 @@ void			 cmd_parse_free(struct cmd_parse_tree *);
 struct cmd_parse_node	*cmd_parse_root(struct cmd_parse_tree *);
 const char		*cmd_parse_file(struct cmd_parse_tree *);
 int			 cmd_parse_flags(struct cmd_parse_tree *);
-char			*cmd_parse_print(struct cmd_parse_tree *);
+char			*cmd_parse_print(struct cmd_parse_tree *, int);
 void			 cmd_parse_log(const char *, struct cmd_parse_tree *);
 void			 cmd_parse_log_node(const char *,
 			     struct cmd_parse_node *);

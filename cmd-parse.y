@@ -100,10 +100,10 @@ static struct cmd_parse_node	*cmd_parse_make_assign(enum cmd_parse_node_type,
 static struct cmd_parse_node	*cmd_parse_token_from_string(const char *);
 static void	 cmd_parse_onegroup(struct cmd_parse_node *);
 static void	 cmd_parse_print_sequence(char **, struct cmd_parse_node *,
-		    u_int);
+		    u_int, int);
 static void	 cmd_parse_print_item(char **, struct cmd_parse_node *, u_int,
 		    int);
-static char			*cmd_parse_make_string(struct cmd_parse_node *);
+static char	*cmd_parse_make_string(struct cmd_parse_node *);
 
 %}
 
@@ -1173,21 +1173,42 @@ cmd_parse_print_string(char **buf, struct cmd_parse_node *string)
 	}
 }
 
+static const char *
+cmd_parse_print_separator(u_int depth, int flags)
+{
+	if ((~flags & CMD_PARSE_PRINT_MULTILINE) && depth == 0)
+		return (" \\; ");
+	return (" ; ");
+}
+
 static void
 cmd_parse_print_commands(char **buf, struct cmd_parse_node *commands,
-    u_int depth)
+    u_int depth, int flags)
 {
 	struct cmd_parse_node	*child;
+	int			 first = 1;
 
 	if (TAILQ_EMPTY(&commands->children)) {
 		cmd_parse_strcat(buf, "{}");
 		return;
 	}
 
+	if (~flags & CMD_PARSE_PRINT_MULTILINE) {
+		cmd_parse_strcat(buf, "{ ");
+		TAILQ_FOREACH(child, &commands->children, entry) {
+			if (!first)
+				cmd_parse_strcat(buf, " ; ");
+			first = 0;
+			cmd_parse_print_sequence(buf, child, depth + 1, flags);
+		}
+		cmd_parse_strcat(buf, " }");
+		return;
+	}
+
 	cmd_parse_strcat(buf, "{\n");
 	TAILQ_FOREACH(child, &commands->children, entry) {
 		cmd_parse_print_indent(buf, depth + 1);
-		cmd_parse_print_sequence(buf, child, depth + 1);
+		cmd_parse_print_sequence(buf, child, depth + 1, flags);
 		cmd_parse_strcat(buf, "\n");
 	}
 	cmd_parse_print_indent(buf, depth);
@@ -1195,7 +1216,8 @@ cmd_parse_print_commands(char **buf, struct cmd_parse_node *commands,
 }
 
 static void
-cmd_parse_print_command(char **buf, struct cmd_parse_node *cmd, u_int depth)
+cmd_parse_print_command(char **buf, struct cmd_parse_node *cmd, u_int depth,
+    int flags)
 {
 	struct cmd_parse_node	*child;
 	int			 first = 1;
@@ -1205,7 +1227,7 @@ cmd_parse_print_command(char **buf, struct cmd_parse_node *cmd, u_int depth)
 			cmd_parse_strcat(buf, " ");
 		first = 0;
 		if (child->type == CMD_PARSE_COMMANDS)
-			cmd_parse_print_commands(buf, child, depth);
+			cmd_parse_print_commands(buf, child, depth, flags);
 		else
 			cmd_parse_print_string(buf, child);
 	}
@@ -1224,9 +1246,10 @@ cmd_parse_print_break(char **buf, u_int depth, int oneline)
 
 static void
 cmd_parse_print_if(char **buf, struct cmd_parse_node *node, u_int depth,
-    int oneline)
+    int flags)
 {
 	struct cmd_parse_node	*child, *sub;
+	int			 oneline = (~flags & CMD_PARSE_PRINT_MULTILINE);
 
 	child = TAILQ_FIRST(&node->children);
 	cmd_parse_strcat(buf, "%%if ");
@@ -1237,7 +1260,7 @@ cmd_parse_print_if(char **buf, struct cmd_parse_node *node, u_int depth,
 		switch (child->type) {
 		case CMD_PARSE_SEQUENCE:
 			cmd_parse_print_break(buf, depth, oneline);
-			cmd_parse_print_sequence(buf, child, depth);
+			cmd_parse_print_sequence(buf, child, depth, flags);
 			break;
 		case CMD_PARSE_ELIF:
 			sub = TAILQ_FIRST(&child->children);
@@ -1247,7 +1270,7 @@ cmd_parse_print_if(char **buf, struct cmd_parse_node *node, u_int depth,
 			for (sub = TAILQ_NEXT(sub, entry); sub != NULL;
 			    sub = TAILQ_NEXT(sub, entry)) {
 				cmd_parse_print_break(buf, depth, oneline);
-				cmd_parse_print_sequence(buf, sub, depth);
+				cmd_parse_print_sequence(buf, sub, depth, flags);
 			}
 			break;
 		case CMD_PARSE_ELSE:
@@ -1255,7 +1278,7 @@ cmd_parse_print_if(char **buf, struct cmd_parse_node *node, u_int depth,
 			cmd_parse_strcat(buf, "%%else");
 			TAILQ_FOREACH(sub, &child->children, entry) {
 				cmd_parse_print_break(buf, depth, oneline);
-				cmd_parse_print_sequence(buf, sub, depth);
+				cmd_parse_print_sequence(buf, sub, depth, flags);
 			}
 			break;
 		default:
@@ -1268,11 +1291,11 @@ cmd_parse_print_if(char **buf, struct cmd_parse_node *node, u_int depth,
 
 static void
 cmd_parse_print_item(char **buf, struct cmd_parse_node *item, u_int depth,
-    int oneline)
+    int flags)
 {
 	switch (item->type) {
 	case CMD_PARSE_COMMAND:
-		cmd_parse_print_command(buf, item, depth);
+		cmd_parse_print_command(buf, item, depth, flags);
 		break;
 	case CMD_PARSE_ASSIGN:
 		cmd_parse_strcat(buf, "%s=", item->value);
@@ -1283,7 +1306,7 @@ cmd_parse_print_item(char **buf, struct cmd_parse_node *item, u_int depth,
 		cmd_parse_print_string(buf, TAILQ_FIRST(&item->children));
 		break;
 	case CMD_PARSE_IF:
-		cmd_parse_print_if(buf, item, depth, oneline);
+		cmd_parse_print_if(buf, item, depth, flags);
 		break;
 	default:
 		break;
@@ -1291,39 +1314,47 @@ cmd_parse_print_item(char **buf, struct cmd_parse_node *item, u_int depth,
 }
 
 static void
-cmd_parse_print_sequence(char **buf, struct cmd_parse_node *seq, u_int depth)
+cmd_parse_print_sequence(char **buf, struct cmd_parse_node *seq, u_int depth,
+    int flags)
 {
-	struct cmd_parse_node	*child;
-	int			 first = 1, oneline = 0;
+	struct cmd_parse_node	*child, *first_child;
+	const char		*sep = cmd_parse_print_separator(depth, flags);
+	int			 first = 1;
 
-	if (TAILQ_NEXT(TAILQ_FIRST(&seq->children), entry) != NULL) {
-		/*
-		 * If there is more than one item in a sequence, force
-		 * everything on to one line.
-		 */
-		oneline = 1;
-	}
+	/*
+	 * If there is more than one item in a sequence everything must be on one
+	 * line (a %if or brace body cannot span lines mid-sequence), so clear
+	 * the multiline flag for the items. The separator is chosen above from
+	 * the original flags so a multiline sequence keeps its ";" separator.
+	 */
+	first_child = TAILQ_FIRST(&seq->children);
+	if (first_child != NULL && TAILQ_NEXT(first_child, entry) != NULL)
+		flags &= ~CMD_PARSE_PRINT_MULTILINE;
 
 	TAILQ_FOREACH(child, &seq->children, entry) {
 		if (!first)
-			cmd_parse_strcat(buf, " ; ");
+			cmd_parse_strcat(buf, "%s", sep);
 		first = 0;
-		cmd_parse_print_item(buf, child, depth, oneline);
+		cmd_parse_print_item(buf, child, depth, flags);
 	}
 }
 
 char *
-cmd_parse_print(struct cmd_parse_tree *tree)
+cmd_parse_print(struct cmd_parse_tree *tree, int flags)
 {
 	struct cmd_parse_node	*root = tree->root, *child;
 	char			*buf = NULL;
 	int			 first = 1;
 
 	TAILQ_FOREACH(child, &root->children, entry) {
-		if (!first)
-			cmd_parse_strcat(&buf, "\n");
+		if (!first) {
+			if (flags & CMD_PARSE_PRINT_MULTILINE)
+				cmd_parse_strcat(&buf, "\n");
+			else
+				cmd_parse_strcat(&buf, " \\; ");
+		}
 		first = 0;
-		cmd_parse_print_sequence(&buf, child, 0);
+		cmd_parse_print_sequence(&buf, child, 0, flags);
 	}
 	if (buf == NULL)
 		buf = xstrdup("");

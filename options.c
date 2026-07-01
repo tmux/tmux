@@ -136,7 +136,7 @@ options_value_to_string(struct options_entry *o, union options_value *ov,
 	char	*s;
 
 	if (OPTIONS_IS_COMMAND(o))
-		return (cmd_parse_print(ov->cmd));
+		return (cmd_parse_print(ov->cmd, 0));
 	if (OPTIONS_IS_NUMBER(o)) {
 		switch (o->tableentry->type) {
 		case OPTIONS_TABLE_NUMBER:

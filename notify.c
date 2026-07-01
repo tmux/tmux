@@ -45,7 +45,7 @@ notify_insert_one_hook(struct cmdq_item *item, struct notify_entry *ne,
 	if (tree == NULL)
 		return (item);
 	if (log_get_level() != 0) {
-		s = cmd_parse_print(tree);
+		s = cmd_parse_print(tree, 0);
 		log_debug("%s: hook %s is: %s", __func__, ne->name, s);
 		free(s);
 	}

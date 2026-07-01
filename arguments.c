@@ -115,7 +115,7 @@ args_value_as_string(struct args_value *value)
 		return ("");
 	case ARGS_COMMANDS:
 		if (value->cached == NULL)
-			value->cached = cmd_parse_print(value->cmd);
+			value->cached = cmd_parse_print(value->cmd, 0);
 		return (value->cached);
 	case ARGS_STRING:
 		return (value->string);
@@ -469,7 +469,7 @@ args_to_vector(struct args *args, int *argc, char ***argv)
 			cmd_append_argv(argc, argv, args->values[i].string);
 			break;
 		case ARGS_COMMANDS:
-			s = cmd_parse_print(args->values[i].cmd);
+			s = cmd_parse_print(args->values[i].cmd, 0);
 			cmd_append_argv(argc, argv, s);
 			free(s);
 			break;
@@ -524,7 +524,7 @@ args_print_add_value(char **buf, size_t *len, struct args_value *value)
 	case ARGS_NONE:
 		break;
 	case ARGS_COMMANDS:
-		expanded = cmd_parse_print(value->cmd);
+		expanded = cmd_parse_print(value->cmd, 0);
 		args_print_add(buf, len, "{ %s }", expanded);
 		break;
 	case ARGS_STRING:

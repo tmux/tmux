@@ -224,7 +224,7 @@ key_bindings_add(const char *name, key_code key, const char *note, int repeat,
 	bd->cmd = cmd;
 
 	k = key_string_lookup_key(bd->key, 1);
-	s = cmd_parse_print(bd->cmd);
+	s = cmd_parse_print(bd->cmd, 0);
 	log_debug("%s: %#llx %s = %s", __func__, bd->key, k, s);
 	free(s);
 }

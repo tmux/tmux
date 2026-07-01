@@ -44,8 +44,8 @@ const struct cmd_entry cmd_list_keys_entry = {
 	.name = "list-keys",
 	.alias = "lsk",
 
-	.args = { "1aF:NO:P:rT:", 0, 1, NULL },
-	.usage = "[-1aNr] [-F format] [-O order] [-P prefix-string]"
+	.args = { "1aF:NO:P:prT:", 0, 1, NULL },
+	.usage = "[-1aNpr] [-F format] [-O order] [-P prefix-string]"
 		 "[-T key-table] [key]",
 
 	.flags = CMD_STARTSERVER|CMD_AFTERHOOK,
@@ -119,7 +119,7 @@ cmd_list_keys_get_root_and_prefix(u_int *n, struct sort_criteria *sort_crit)
 }
 
 static void
-cmd_list_keys_filter_key_list(int filter_notes, int filter_key, key_code only,
+cmd_list_keys_do_filter(int filter_notes, int filter_key, key_code only,
     struct key_binding **l, u_int *n)
 {
 	key_code	key;
@@ -137,8 +137,8 @@ cmd_list_keys_filter_key_list(int filter_notes, int filter_key, key_code only,
 }
 
 static void
-cmd_list_keys_format_add_key_binding(struct format_tree *ft,
-    const struct key_binding *bd, const char *prefix)
+cmd_list_keys_format_key_binding(struct format_tree *ft,
+    const struct key_binding *bd, const char *prefix, int flags)
 {
 	char	*s;
 
@@ -157,7 +157,7 @@ cmd_list_keys_format_add_key_binding(struct format_tree *ft,
 
 	format_add(ft, "key_string", "%s", key_string_lookup_key(bd->key, 0));
 
-	s = cmd_parse_print(bd->cmd);
+	s = cmd_parse_print(bd->cmd, flags);
 	format_add(ft, "key_command", "%s", s);
 	free(s);
 }
@@ -176,6 +176,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 	char			*prefix = NULL;
 	u_int			 i, n;
 	int			 single, notes_only, filter_notes, filter_key;
+	int			 print_flags = 0;
 	struct sort_criteria	 sort_crit;
 
 	if ((keystr = args_string(args, 0)) != NULL) {
@@ -205,6 +206,8 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 	prefix = cmd_list_keys_get_prefix(args);
 	single = args_has(args, '1');
 	notes_only = args_has(args, 'N');
+	if (args_has(args, 'p'))
+		print_flags |= CMD_PARSE_PRINT_MULTILINE;
 
 	if ((template = args_get(args, 'F')) == NULL)
 		template = LIST_KEYS_TEMPLATE;
@@ -218,10 +221,8 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 
 	filter_notes = notes_only && !args_has(args, 'a');
 	filter_key = only != KEYC_UNKNOWN;
-	if (filter_notes || filter_key) {
-		cmd_list_keys_filter_key_list(filter_notes, filter_key, only, l,
-		    &n);
-	}
+	if (filter_notes || filter_key)
+		cmd_list_keys_do_filter(filter_notes, filter_key, only, l, &n);
 	if (filter_key && n == 0) {
 		cmdq_error(item, "unknown key: %s", keystr);
 		free(prefix);
@@ -238,7 +239,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 	format_add(ft, "key_table_width", "%u",
 	    cmd_list_keys_get_table_width(l, n));
 	for (i = 0; i < n; i++) {
-		cmd_list_keys_format_add_key_binding(ft, l[i], prefix);
+		cmd_list_keys_format_key_binding(ft, l[i], prefix, print_flags);
 
 		line = format_expand(ft, template);
 		if (single && tc != NULL && (~tc->flags & CLIENT_CONTROL))
