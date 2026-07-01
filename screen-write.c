@@ -1724,22 +1724,16 @@ screen_write_reverseindex(struct screen_write_ctx *ctx, u_int bg)
 	struct tty_ctx	 ttyctx;
 	u_int		 ry;
 
-<<<<<<< HEAD
-	if (s->cy == s->rupper) {
-#ifdef ENABLE_SIXEL
-		if (image_free_all(s) && ctx->wp != NULL)
-			ctx->wp->flags |= PANE_REDRAW;
-#endif
-
-		grid_view_scroll_region_down(s->grid, s->rupper, s->rlower, bg);
-		screen_write_collect_flush(ctx, 0, __func__);
-=======
 	if (s->cy != s->rupper) {
 		if (s->cy > 0)
 			screen_write_set_cursor(ctx, -1, s->cy - 1);
 		return;
 	}
->>>>>>> obsd-master
+
+#ifdef ENABLE_SIXEL
+	if (image_free_all(s) && ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
+#endif
 
 	grid_view_scroll_region_down(s->grid, s->rupper, s->rlower, bg);
 	screen_write_collect_flush(ctx, 0, __func__);
@@ -1805,32 +1799,24 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped, u_int bg)
 		ctx->bg = bg;
 	}
 
-<<<<<<< HEAD
-	if (s->cy == s->rlower) {
-#ifdef ENABLE_SIXEL
-		if (rlower == screen_size_y(s) - 1)
-			redraw = image_scroll_up(s, 1);
-		else
-			redraw = image_check_line(s, rupper, rlower - rupper);
-		if (redraw && ctx->wp != NULL)
-			ctx->wp->flags |= PANE_REDRAW;
-#endif
-		grid_view_scroll_region_up(gd, s->rupper, s->rlower, bg);
-		screen_write_collect_scroll(ctx, bg);
-		ctx->scrolled++;
-	} else if (s->cy < screen_size_y(s) - 1)
-		screen_write_set_cursor(ctx, -1, s->cy + 1);
-=======
 	if (s->cy != s->rlower) {
 		if (s->cy < screen_size_y(s) - 1)
 			screen_write_set_cursor(ctx, -1, s->cy + 1);
 		return;
 	}
 
+#ifdef ENABLE_SIXEL
+	if (rlower == screen_size_y(s) - 1)
+		redraw = image_scroll_up(s, 1);
+	else
+		redraw = image_check_line(s, rupper, rlower - rupper);
+	if (redraw && ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
+#endif
+
 	grid_view_scroll_region_up(gd, s->rupper, s->rlower, bg);
 	screen_write_collect_scroll(ctx, bg);
 	ctx->scrolled++;
->>>>>>> obsd-master
 }
 
 /* Scroll up. */
