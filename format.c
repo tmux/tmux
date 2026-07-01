@@ -121,6 +121,8 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_CLIENT_TERMCAP 0x1000000
 #define FORMAT_CLIENT_TERMFEAT 0x2000000
 #define FORMAT_CLIENT_ENVIRON 0x4000000
+#define FORMAT_COLOUR_ESC_FG 0x8000000
+#define FORMAT_COLOUR_ESC_BG 0x10000000
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 100
@@ -4472,7 +4474,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 			break;
 
 		/* Check single character modifiers with no arguments. */
-		if (strchr("labcdnwETSWPL!<>", cp[0]) != NULL &&
+		if (strchr("labdnwETSWPL!<>", cp[0]) != NULL &&
 		    format_is_end(cp[1])) {
 			format_add_modifier(&list, count, cp, 1, NULL, 0);
 			cp++;
@@ -4494,7 +4496,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 		}
 
 		/* Now try single character with arguments. */
-		if (strchr("ImCLNPSst=pReqW", cp[0]) == NULL)
+		if (strchr("ImCLNPSst=pReqWc", cp[0]) == NULL)
 			break;
 		c = cp[0];
 
@@ -5272,6 +5274,12 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 				break;
 			case 'c':
 				modifiers |= FORMAT_COLOUR;
+				if (fm->argc < 1)
+					break;
+				if (strchr(fm->argv[0], 'f') != NULL)
+					modifiers |= FORMAT_COLOUR_ESC_FG;
+				if (strchr(fm->argv[0], 'b') != NULL)
+					modifiers |= FORMAT_COLOUR_ESC_BG;
 				break;
 			case 'd':
 				modifiers |= FORMAT_DIRNAME;
@@ -5470,11 +5478,28 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	/* Is this a colour? */
 	if (modifiers & FORMAT_COLOUR) {
 		new = format_expand1(es, copy);
-		c = colour_fromstring(new);
-		if (c == -1 || (c = colour_force_rgb(c)) == -1)
-			value = xstrdup("");
-		else
-			xasprintf(&value, "%06x", c & 0xffffff);
+		if (modifiers & (FORMAT_COLOUR_ESC_FG|FORMAT_COLOUR_ESC_BG)) {
+			if (strcasecmp(new, "none") == 0)
+				value = xstrdup("\033[0m");
+			else if ((c = colour_fromstring(new)) == -1)
+				value = xstrdup("");
+			else {
+				if (modifiers & FORMAT_COLOUR_ESC_BG)
+					cp = colour_toescape(ft->c, c, 1);
+				else
+					cp = colour_toescape(ft->c, c, 0);
+				if (cp == NULL)
+					value = xstrdup("");
+				else
+					value = xstrdup(cp);
+			}
+		} else {
+			c = colour_fromstring(new);
+			if (c == -1 || (c = colour_force_rgb(c)) == -1)
+				value = xstrdup("");
+			else
+				xasprintf(&value, "%06x", c & 0xffffff);
+		}
 		free(new);
 		goto done;
 	}
