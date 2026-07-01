@@ -1174,9 +1174,9 @@ cmd_parse_print_string(char **buf, struct cmd_parse_node *string)
 }
 
 static const char *
-cmd_parse_print_separator(u_int depth, int flags)
+cmd_parse_print_separator(u_int depth)
 {
-	if ((~flags & CMD_PARSE_PRINT_MULTILINE) && depth == 0)
+	if (depth == 0)
 		return (" \\; ");
 	return (" ; ");
 }
@@ -1318,7 +1318,7 @@ cmd_parse_print_sequence(char **buf, struct cmd_parse_node *seq, u_int depth,
     int flags)
 {
 	struct cmd_parse_node	*child, *first_child;
-	const char		*sep = cmd_parse_print_separator(depth, flags);
+	const char		*sep = cmd_parse_print_separator(depth);
 	int			 first = 1;
 
 	/*
