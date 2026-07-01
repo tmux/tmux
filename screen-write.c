@@ -453,6 +453,7 @@ screen_write_text(struct screen_write_ctx *ctx, u_int cx, u_int width,
 	va_list			 ap;
 	char			*tmp;
 	u_int			 cy = s->cy, i, end, next, idx = 0, at, left;
+	u_int			 w, pos, n;
 	struct utf8_data	*text;
 	struct grid_cell	 gc;
 
@@ -472,9 +473,14 @@ screen_write_text(struct screen_write_ctx *ctx, u_int cx, u_int width,
 		for (end = idx; text[end].size != 0; end++) {
 			if (text[end].size == 1 && text[end].data[0] == '\n')
 				break;
-			if (at + text[end].width > left)
+			/* A tab expands to the next multiple of eight columns. */
+			if (text[end].size == 1 && text[end].data[0] == '\t')
+				w = 8 - (at % 8);
+			else
+				w = text[end].width;
+			if (at + w > left)
 				break;
-			at += text[end].width;
+			at += w;
 		}
 
 		/*
@@ -499,10 +505,21 @@ screen_write_text(struct screen_write_ctx *ctx, u_int cx, u_int width,
 				next = end;
 		}
 
-		/* Print the line. */
+		/* Print the line, expanding any tabs to spaces. */
+		pos = 0;
 		for (i = idx; i < end; i++) {
+			if (text[i].size == 1 && text[i].data[0] == '\t') {
+				n = 8 - (pos % 8);
+				utf8_set(&gc.data, ' ');
+				while (n-- > 0) {
+					screen_write_cell(ctx, &gc);
+					pos++;
+				}
+				continue;
+			}
 			utf8_copy(&gc.data, &text[i]);
 			screen_write_cell(ctx, &gc);
+			pos += text[i].width;
 		}
 
 		/* If at the bottom, stop. */
