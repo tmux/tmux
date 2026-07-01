@@ -14,14 +14,27 @@ concurrency:
 
 jobs:
   regress:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ubuntu-24.04-x64
+            runner: ubuntu-24.04
+          - name: ubuntu-24.04-arm64
+            runner: ubuntu-24.04-arm
+          - name: macos-26-arm64
+            runner: macos-26
 
     steps:
       - name: checkout
         uses: actions/checkout@v4
 
       - name: dependencies
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -33,11 +46,22 @@ jobs:
             libncurses-dev \
             pkg-config
 
+      - name: dependencies
+        if: runner.os == 'macOS'
+        run: |
+          brew install \
+	       autoconf \
+	       automake \
+	       bison \
+	       libevent \
+	       ncurses \
+	       pkg-config
+
       - name: build
         run: |
           sh autogen.sh
           ./configure
-          make -j"$(nproc)"
+          make -j"$(getconf _NPROCESSORS_ONLN)"
 
       - name: test
         run: |
