@@ -1688,6 +1688,12 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 int
 window_pane_is_visible(struct window_pane *wp)
 {
+	struct layout_cell	*lc = wp->layout_cell;
+
+	if (lc == NULL)
+		lc = wp->saved_layout_cell;
+	if (lc != NULL && (lc->flags & LAYOUT_CELL_HIDDEN))
+		return (0);
 	if (~wp->window->flags & WINDOW_ZOOMED)
 		return (1);
 	return (wp == wp->window->active);

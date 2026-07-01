@@ -1505,7 +1505,13 @@ struct layout_cell {
 	enum layout_type type;
 
 #define LAYOUT_CELL_FLOATING 0x1
+#define LAYOUT_CELL_HIDDEN 0x2	/* hidden in a serialized layout */
+#define LAYOUT_CELL_ZOOMED 0x4	/* only while parsing a layout */
+#define LAYOUT_CELL_X_RELATIVE 0x8 /* only while parsing a layout */
+#define LAYOUT_CELL_Y_RELATIVE 0x10 /* only while parsing a layout */
 	int		 flags;
+	u_int		 z_index;	/* only while parsing a layout */
+	u_int		 pane_id;	/* only while parsing a layout */
 
 	struct layout_cell *parent;
 
@@ -3731,8 +3737,11 @@ int		 layout_remove_tile(struct window *, struct layout_cell *);
 int		 layout_insert_tile(struct window *, struct layout_cell *);
 
 /* layout-custom.c */
+struct layout_prepared;
 char		*layout_dump(struct window *, struct layout_cell *);
-int		 layout_parse(struct window *, const char *, char **);
+struct layout_prepared *layout_prepare(struct window *, const char *, char **);
+void		 layout_free_prepared(struct layout_prepared *);
+void		 layout_apply_prepared(struct window *, struct layout_prepared *);
 
 /* layout-set.c */
 int		 layout_set_lookup(const char *);

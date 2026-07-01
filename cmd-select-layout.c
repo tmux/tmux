@@ -18,7 +18,9 @@
 
 #include <sys/types.h>
 
+#include <ctype.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "tmux.h"
 
@@ -28,6 +30,14 @@
 
 static enum cmd_retval	cmd_select_layout_exec(struct cmd *,
 			    struct cmdq_item *);
+static enum cmd_retval	cmd_select_layout_exec_multiple(struct cmdq_item *,
+			    const char *);
+
+struct cmd_select_layout_record {
+	struct window			*w;
+	char				*layout;
+	struct layout_prepared		*prepared;
+};
 
 const struct cmd_entry cmd_select_layout_entry = {
 	.name = "select-layout",
@@ -68,6 +78,121 @@ const struct cmd_entry cmd_previous_layout_entry = {
 	.exec = cmd_select_layout_exec
 };
 
+static void
+cmd_select_layout_free_records(struct cmd_select_layout_record *records,
+    u_int nrecords)
+{
+	u_int	i;
+
+	for (i = 0; i < nrecords; i++) {
+		free(records[i].layout);
+		layout_free_prepared(records[i].prepared);
+	}
+	free(records);
+}
+
+/* Apply a list of @window-id:layout records. */
+static enum cmd_retval
+cmd_select_layout_exec_multiple(struct cmdq_item *item, const char *input)
+{
+	struct cmd_select_layout_record	*records = NULL;
+	struct window			*w;
+	const char			*ptr = input, *idstart, *idend;
+	const char			*layoutstart, *layoutend;
+	char				*id, *cause, *oldlayout;
+	u_int				 i, nrecords = 0;
+
+	for (;;) {
+		while (*ptr != '\0' && isspace((u_char)*ptr))
+			ptr++;
+		if (*ptr == '\0')
+			break;
+		if (*ptr != '@')
+			goto invalid;
+
+		idstart = ptr++;
+		if (!isdigit((u_char)*ptr))
+			goto invalid;
+		while (isdigit((u_char)*ptr))
+			ptr++;
+		idend = ptr;
+		while (*ptr != '\0' && isspace((u_char)*ptr))
+			ptr++;
+		if (*ptr++ != ':')
+			goto invalid;
+
+		id = xstrndup(idstart, idend - idstart);
+		w = window_find_by_id_str(id);
+		if (w == NULL) {
+			cmdq_error(item, "unknown window: %s", id);
+			free(id);
+			goto fail;
+		}
+		free(id);
+		for (i = 0; i < nrecords; i++) {
+			if (records[i].w == w) {
+				cmdq_error(item, "duplicate window: @%u", w->id);
+				goto fail;
+			}
+		}
+
+		layoutstart = ptr;
+		while (*ptr != '\0' && *ptr != '@')
+			ptr++;
+		layoutend = ptr;
+		while (layoutend != layoutstart &&
+		    isspace((u_char)layoutend[-1]))
+			layoutend--;
+		if (layoutend == layoutstart)
+			goto invalid;
+
+		records = xreallocarray(records, nrecords + 1,
+		    sizeof *records);
+		records[nrecords].w = w;
+		records[nrecords].layout = xstrndup(layoutstart,
+		    layoutend - layoutstart);
+		records[nrecords].prepared = NULL;
+		nrecords++;
+	}
+	if (nrecords == 0)
+		goto invalid;
+
+	/* Validate every record before changing any window. */
+	for (i = 0; i < nrecords; i++) {
+		records[i].prepared = layout_prepare(records[i].w,
+		    records[i].layout, &cause);
+		if (records[i].prepared == NULL) {
+			cmdq_error(item, "@%u: %s", records[i].w->id, cause);
+			free(cause);
+			goto fail;
+		}
+	}
+
+	for (i = 0; i < nrecords; i++) {
+		w = records[i].w;
+		server_unzoom_window(w);
+		oldlayout = w->old_layout;
+		w->old_layout = layout_dump(w, w->layout_root);
+		layout_apply_prepared(w, records[i].prepared);
+		records[i].prepared = NULL;
+		free(oldlayout);
+	}
+	recalculate_sizes();
+	for (i = 0; i < nrecords; i++) {
+		server_redraw_window(records[i].w);
+		notify_window("window-layout-changed", records[i].w);
+	}
+
+	cmd_select_layout_free_records(records, nrecords);
+	return (CMD_RETURN_NORMAL);
+
+invalid:
+	cmdq_error(item, "invalid multiple-window layout");
+fail:
+	cmd_select_layout_free_records(records, nrecords);
+	return (CMD_RETURN_ERROR);
+}
+
 static enum cmd_retval
 cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -76,9 +201,30 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
 	struct window_pane	*wp = target->wp;
+	struct layout_prepared	*prepared = NULL;
 	const char		*layoutname;
 	char			*oldlayout, *cause;
 	int			 next, previous, layout;
+	const char		*ptr;
+
+	if (cmd_get_entry(self) == &cmd_select_layout_entry &&
+	    args_count(args) != 0 && !args_has(args, 'E') &&
+	    !args_has(args, 'n') && !args_has(args, 'o') &&
+	    !args_has(args, 'p')) {
+		ptr = args_string(args, 0);
+		while (*ptr != '\0' && isspace((u_char)*ptr))
+			ptr++;
+		if (*ptr == '@')
+			return (cmd_select_layout_exec_multiple(item, ptr));
+		if (layout_set_lookup(ptr) == -1) {
+			prepared = layout_prepare(w, ptr, &cause);
+			if (prepared == NULL) {
+				cmdq_error(item, "%s: %s", cause, ptr);
+				free(cause);
+				return (CMD_RETURN_ERROR);
+			}
+		}
+	}
 
 	server_unzoom_window(w);
 
@@ -124,11 +270,16 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (layoutname != NULL) {
-		if (layout_parse(w, layoutname, &cause) == -1) {
-			cmdq_error(item, "%s: %s", cause, layoutname);
-			free(cause);
-			goto error;
+		if (prepared == NULL) {
+			prepared = layout_prepare(w, layoutname, &cause);
+			if (prepared == NULL) {
+				cmdq_error(item, "%s: %s", cause, layoutname);
+				free(cause);
+				goto error;
+			}
 		}
+		layout_apply_prepared(w, prepared);
+		prepared = NULL;
 		goto changed;
 	}
 
@@ -143,6 +294,7 @@ changed:
 	return (CMD_RETURN_NORMAL);
 
 error:
+	layout_free_prepared(prepared);
 	free(w->old_layout);
 	w->old_layout = oldlayout;
 	return (CMD_RETURN_ERROR);
