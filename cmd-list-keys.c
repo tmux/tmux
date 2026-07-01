@@ -37,11 +37,6 @@
 	"-T #{p|#{key_table_width}:key_table} "			\
 	"#{p|#{key_string_width}:#{q|a:key_string}} "		\
 	"#{key_command}}"
-
-/*
- * Multiline (-p) template: do not align anything, just a single space between
- * each field regardless of the width of other keys.
- */
 #define LIST_KEYS_TEMPLATE_PRETTY				\
 	"#{?notes_only,"					\
 	"#{key_prefix} "					\
