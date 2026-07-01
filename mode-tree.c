@@ -206,8 +206,6 @@ static const char* mode_tree_help_start[] = {
 	"#[fg=themelightgrey]"
 	"        C-s #[#{E:tree-mode-border-style},acs]x#[default] Search forward",
 	"#[fg=themelightgrey]"
-	"        C-r #[#{E:tree-mode-border-style},acs]x#[default] Search backward",
-	"#[fg=themelightgrey]"
 	"          n #[#{E:tree-mode-border-style},acs]x#[default] Repeat search forward",
 	"#[fg=themelightgrey]"
 	"          N #[#{E:tree-mode-border-style},acs]x#[default] Repeat search backward",

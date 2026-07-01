@@ -1295,11 +1295,8 @@ struct window_pane {
 #define PANE_UNSEENCHANGES 0x4000
 #define PANE_REDRAWSCROLLBAR 0x8000
 
-	/* Last floating position/size, saved when the pane is tiled. */
-	int		 saved_float_xoff;
-	int		 saved_float_yoff;
-	u_int		 saved_float_sx;
-	u_int		 saved_float_sy;
+	bitstr_t	*sync_dirty;
+	u_int		 sync_dirty_size;
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
@@ -3307,6 +3304,7 @@ void	 colour_split_rgb(int, u_char *, u_char *, u_char *);
 int	 colour_force_rgb(int);
 int	 colour_dim(int, u_int);
 const char *colour_tostring(int);
+const char *colour_toescape(struct client *, int, int);
 enum client_theme colour_totheme(int);
 int	 colour_fromstring(const char *);
 const char *colour_theme_option(u_int, enum client_theme);
@@ -3331,6 +3329,7 @@ bitstr_t	*fuzzy_match(const char *, const char *, u_int, u_int *);
 
 /* grid.c */
 extern const struct grid_cell grid_default_cell;
+void	 grid_check_is_clear(struct grid *);
 void	 grid_empty_line(struct grid *, u_int, u_int);
 void	 grid_set_tab(struct grid_cell *, u_int);
 int	 grid_cells_equal(const struct grid_cell *, const struct grid_cell *);
@@ -3448,6 +3447,7 @@ void	 screen_write_mode_set(struct screen_write_ctx *, int);
 void	 screen_write_mode_clear(struct screen_write_ctx *, int);
 void	 screen_write_start_sync(struct window_pane *);
 void	 screen_write_stop_sync(struct window_pane *);
+void	 screen_write_clear_dirty(struct window_pane *);
 void	 screen_write_cursorup(struct screen_write_ctx *, u_int);
 void	 screen_write_cursordown(struct screen_write_ctx *, u_int);
 void	 screen_write_cursorright(struct screen_write_ctx *, u_int);
@@ -3683,7 +3683,7 @@ struct visible_ranges *window_visible_ranges(struct window_pane *, int, int,
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);
 struct layout_cell *layout_create_cell(struct layout_cell *);
-void		 layout_free_cell(struct layout_cell *);
+void		 layout_free_cell(struct layout_cell *, int);
 void		 layout_print_cell(struct layout_cell *, const char *, u_int);
 void		 layout_destroy_cell(struct window *, struct layout_cell *,
 		     struct layout_cell **);
@@ -3706,7 +3706,7 @@ void		 layout_resize_set_size(struct window *, struct layout_cell *,
 		     enum layout_type, u_int);
 struct layout_cell *layout_cell_get_neighbour(struct layout_cell *);
 void		 layout_init(struct window *, struct window_pane *);
-void		 layout_free(struct window *);
+void		 layout_free(struct window *, int);
 void		 layout_resize(struct window *, u_int, u_int);
 void		 layout_resize_pane(struct window_pane *, enum layout_type,
 		     int, int);

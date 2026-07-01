@@ -104,7 +104,7 @@ spawn_window(struct spawn_context *sc, char **cause)
 		sc->wp0 = TAILQ_FIRST(&w->panes);
 		TAILQ_REMOVE(&w->panes, sc->wp0, entry);
 
-		layout_free(w);
+		layout_free(w, 0);
 		window_destroy_panes(w);
 
 		TAILQ_INSERT_HEAD(&w->panes, sc->wp0, entry);
