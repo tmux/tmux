@@ -35,6 +35,7 @@
 #include "compat.h"
 #include "tmux-protocol.h"
 #include "xmalloc.h"
+#include "image-kitty.h"
 
 extern char   **environ;
 
@@ -654,6 +655,7 @@ enum tty_code_code {
 	TTYC_SMXX,
 	TTYC_SPB,
 	TTYC_SXL,
+	TTYC_KG,
 	TTYC_SS,
 	TTYC_SWD,
 	TTYC_SYNC,
@@ -1021,11 +1023,18 @@ struct style {
 	u_int			link;
 };
 
-#ifdef ENABLE_SIXEL
 /* Image. */
+enum image_kind {
+	IMAGE_SIXEL,
+	IMAGE_KITTY
+};
 struct image {
 	struct screen		*s;
-	struct sixel_image	*data;
+	enum image_kind		 kind;
+	union {
+		struct sixel_image	*sixel;
+		struct kitty_image	*kitty;
+	} data;
 	char			*fallback;
 
 	u_int			 px;
@@ -1039,7 +1048,6 @@ struct image {
 	TAILQ_ENTRY (image)	 all_entry;
 };
 TAILQ_HEAD(images, image);
-#endif
 
 /* Cursor style. */
 enum screen_cursor_style {
@@ -1097,10 +1105,8 @@ struct screen {
 	bitstr_t			*tabs;
 	struct screen_sel		*sel;
 
-#ifdef ENABLE_SIXEL
 	struct images			 images;
 	struct images			 saved_images;
-#endif
 
 	struct screen_write_cline	*write_list;
 
@@ -1735,6 +1741,7 @@ struct tty_term {
 #define TERM_RGBCOLOURS 0x10
 #define TERM_VT100LIKE 0x20
 #define TERM_SIXEL 0x40
+#define TERM_KITTYGRAPHICS 0x80
 	int		 flags;
 
 	LIST_ENTRY(tty_term) entry;
@@ -1872,9 +1879,7 @@ struct tty_ctx {
 			size_t		 size;
 		} sel;
 
-#ifdef ENABLE_SIXEL
 		struct image		*image;
-#endif
 	};
 
 	/*
@@ -2990,8 +2995,10 @@ void	tty_cmd_setselection(struct tty *, const struct tty_ctx *);
 void	tty_cmd_rawstring(struct tty *, const struct tty_ctx *);
 #ifdef ENABLE_SIXEL
 void	tty_cmd_sixelimage(struct tty *, const struct tty_ctx *);
-void	tty_draw_images(struct client *, struct window_pane *);
 #endif
+void	tty_cmd_kittyimage(struct tty *, const struct tty_ctx *);
+void	tty_draw_images(struct client *, struct window_pane *);
+void	tty_clear_pane_kitty_images(struct window_pane *);
 void	tty_cmd_syncstart(struct tty *, const struct tty_ctx *);
 void	tty_default_colours(struct grid_cell *, struct window_pane *, u_int *);
 
@@ -3459,12 +3466,19 @@ tmux_ghostty_vt_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	tmux_ghostty_vt_resize(wp->ghostty_vt, sx, sy);
 }
 
+/*
+ * The option is re-checked on every write so toggling it takes effect
+ * for existing panes. The parser taking over starts with no state for
+ * bytes the other consumed; the next full write resynchronizes the
+ * visible content.
+ */
 static inline int
 tmux_ghostty_vt_pane_write(struct window_pane *wp, const u_char *buf,
     size_t len)
 {
 	if (!options_get_number(wp->options, "ghostty-vt")) {
-		tmux_ghostty_vt_pane_free(wp);
+		if (wp->ghostty_vt != NULL)
+			tmux_ghostty_vt_pane_free(wp);
 		return (0);
 	}
 	if (wp->ghostty_vt == NULL)
@@ -4284,14 +4298,16 @@ void		 spawn_editor_finish(struct window_pane *);
 /* regsub.c */
 char		*regsub(const char *, const char *, const char *, int);
 
-#ifdef ENABLE_SIXEL
 /* image.c */
 int		 image_free_all(struct screen *);
-struct image	*image_store(struct screen *, struct sixel_image *);
+struct image	*image_store_sixel(struct screen *, struct sixel_image *);
+struct image	*image_store_kitty(struct screen *, struct kitty_image *,
+		     u_int, u_int, u_int, u_int);
 int		 image_check_line(struct screen *, u_int, u_int);
 int		 image_check_area(struct screen *, u_int, u_int, u_int, u_int);
 int		 image_scroll_up(struct screen *, u_int);
 
+#ifdef ENABLE_SIXEL
 /* image-sixel.c */
 #define SIXEL_COLOUR_REGISTERS 1024
 struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int);

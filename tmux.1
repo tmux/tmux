@@ -5726,6 +5726,8 @@ set.
 .Op Ic on | off
 .Xc
 Use the Ghostty VT parser for panes instead of the built-in parser.
+Changing the option takes effect for a pane on its next output; the
+parser taking over does not see bytes the other already consumed.
 This is experimental and defaults to off.
 .Pp
 .It Ic main\-pane\-height Ar height

@@ -83,6 +83,7 @@ const tmux_sources = [_][]const u8{
     "grid-view.c",
     "grid.c",
     "hyperlinks.c",
+    "image.c",
     "input-keys.c",
     "input.c",
     "job.c",
@@ -159,6 +160,21 @@ const compat_common_sources = [_][]const u8{
     "compat/vis.c",
 };
 
+const wuffs_defines = [_][]const u8{
+    "WUFFS_IMPLEMENTATION",
+    "WUFFS_CONFIG__MODULES",
+    "WUFFS_CONFIG__MODULE__BASE",
+    "WUFFS_CONFIG__MODULE__PNG",
+    "WUFFS_CONFIG__MODULE__DEFLATE",
+    "WUFFS_CONFIG__MODULE__ZLIB",
+    "WUFFS_CONFIG__MODULE__CRC32",
+    "WUFFS_CONFIG__MODULE__ADLER32",
+    "WUFFS_CONFIG__ENABLE_DROP_IN_REPLACEMENT__STB",
+    "STBI_NO_STDIO",
+    "WUFFS_CONFIG__DST_PIXEL_FORMAT__ENABLE_ALLOWLIST",
+    "WUFFS_CONFIG__DST_PIXEL_FORMAT__ALLOW_RGBA_NONPREMUL",
+};
+
 const cflags = [_][]const u8{
     "-std=gnu99",
     "-Wall",
@@ -231,6 +247,16 @@ pub fn build(b: *std.Build) void {
         addCommonDefines(ghostty_mod);
         addTargetDefines(ghostty_mod, target.result.os.tag);
         ghostty_mod.addCMacro("HAVE_GHOSTTY_VT", "1");
+        if (b.lazyDependency("wuffs", .{})) |wuffs_dep| {
+            var wuffs_flags: std.ArrayList([]const u8) = .empty;
+            inline for (wuffs_defines) |define| {
+                wuffs_flags.append(b.allocator, "-D" ++ define) catch @panic("OOM");
+            }
+            ghostty_mod.addCSourceFile(.{
+                .file = wuffs_dep.path("release/c/wuffs-v0.4.c"),
+                .flags = wuffs_flags.items,
+            });
+        }
         const ghostty_obj = b.addObject(.{
             .name = "ghostty-vt",
             .root_module = ghostty_mod,

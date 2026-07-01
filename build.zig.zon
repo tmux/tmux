@@ -1,0 +1,18 @@
+.{
+    .name = .tmux,
+    .version = "3.7.0",
+    .fingerprint = 0x8980c419184da781,
+    .dependencies = .{
+        // google/wuffs, mirrored by ghostty
+        .wuffs = .{
+            .url = "https://deps.files.ghostty.org/wuffs-122037b39d577ec2db3fd7b2130e7b69ef6cc1807d68607a7c232c958315d381b5cd.tar.gz",
+            .hash = "N-V-__8AAAzZywE3s51XfsLbP9eyEw57ae9swYB9aGB6fCMs",
+            .lazy = true,
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "ghostty-vt.zig",
+    },
+}

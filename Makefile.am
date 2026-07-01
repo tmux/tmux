@@ -247,8 +247,9 @@ nodist_tmux_SOURCES += compat/utf8proc.c
 endif
 
 # Enable sixel support.
+dist_tmux_SOURCES += image.c image-kitty.h
 if ENABLE_SIXEL
-dist_tmux_SOURCES += image.c image-sixel.c
+dist_tmux_SOURCES += image-sixel.c
 endif
 
 # Add bits for fuzzing if enabled.

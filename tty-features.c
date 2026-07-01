@@ -357,6 +357,17 @@ static const struct tty_feature tty_feature_sixel = {
 	TERM_SIXEL
 };
 
+/* Terminal has kitty graphics capability. */
+static const char *const tty_feature_kittygraphics_capabilities[] = {
+	"Kg",
+	NULL
+};
+static const struct tty_feature tty_feature_kittygraphics = {
+	"kittygraphics",
+	tty_feature_kittygraphics_capabilities,
+	TERM_KITTYGRAPHICS
+};
+
 /* Terminal supports the OSC 9;4 progress bar. */
 static const char *const tty_feature_progressbar_capabilities[] = {
 	"Spb=\\E]9;4;%p1%d;%p2%d\\E\\\\",
@@ -387,6 +398,7 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_rectfill,
 	&tty_feature_rgb,
 	&tty_feature_sixel,
+	&tty_feature_kittygraphics,
 	&tty_feature_strikethrough,
 	&tty_feature_sync,
 	&tty_feature_title,
@@ -594,7 +606,22 @@ tty_default_features(int *feat, const char *name, u_int version)
 			      "osc7,"
 			      "sync,"
 			      "usstyle,"
-			      "progressbar"
+			      "progressbar,"
+			      "kittygraphics"
+		},
+		{ .name = "kitty",
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
+			      "ccolour,"
+			      "cstyle,"
+			      "extkeys,"
+			      "focus,"
+			      "overline,"
+			      "hyperlinks,"
+			      "osc7,"
+			      "sync,"
+			      "usstyle,"
+			      "progressbar,"
+			      "kittygraphics"
 		},
 		{ .name = "XTerm",
 		  /*

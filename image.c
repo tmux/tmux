@@ -59,7 +59,17 @@ image_free(struct image *im)
 	all_images_count--;
 
 	TAILQ_REMOVE(im->list, im, entry);
-	sixel_free(im->data);
+	switch (im->kind) {
+#ifdef ENABLE_SIXEL
+	case IMAGE_SIXEL:
+		sixel_free(im->data.sixel);
+		break;
+#endif
+	case IMAGE_KITTY:
+		free(im->data.kitty->data);
+		free(im->data.kitty);
+		break;
+	}
 	free(im->fallback);
 	free(im);
 }
@@ -85,7 +95,7 @@ image_fallback(char **ret, u_int sx, u_int sy)
 	u_int	 py, size, lsize;
 
 	/* Allocate first line. */
-	lsize = xasprintf(&label, "SIXEL IMAGE (%ux%u)\r\n", sx, sy) + 1;
+	lsize = xasprintf(&label, "IMAGE (%ux%u)\r\n", sx, sy) + 1;
 	if (sx < lsize - 3)
 		size = lsize - 1;
 	else
@@ -119,18 +129,50 @@ image_fallback(char **ret, u_int sx, u_int sy)
 	free(label);
 }
 
+#ifdef ENABLE_SIXEL
 struct image*
-image_store(struct screen *s, struct sixel_image *si)
+image_store_sixel(struct screen *s, struct sixel_image *si)
 {
 	struct image	*im;
 
 	im = xcalloc(1, sizeof *im);
 	im->s = s;
-	im->data = si;
+	im->kind = IMAGE_SIXEL;
+	im->data.sixel = si;
 
 	im->px = s->cx;
 	im->py = s->cy;
 	sixel_size_in_cells(si, &im->sx, &im->sy);
+
+	image_fallback(&im->fallback, im->sx, im->sy);
+
+	image_log(im, __func__, NULL);
+	im->list = &s->images;
+	TAILQ_INSERT_TAIL(im->list, im, entry);
+
+	TAILQ_INSERT_TAIL(&all_images, im, all_entry);
+	if (++all_images_count == MAX_IMAGE_COUNT)
+		image_free(TAILQ_FIRST(&all_images));
+
+	return (im);
+}
+#endif
+
+struct image*
+image_store_kitty(struct screen *s, struct kitty_image *ki, u_int px,
+    u_int py, u_int sx, u_int sy)
+{
+	struct image	*im;
+
+	im = xcalloc(1, sizeof *im);
+	im->s = s;
+	im->kind = IMAGE_KITTY;
+	im->data.kitty = ki;
+
+	im->px = px;
+	im->py = py;
+	im->sx = sx;
+	im->sy = sy;
 
 	image_fallback(&im->fallback, im->sx, im->sy);
 
@@ -187,8 +229,10 @@ image_scroll_up(struct screen *s, u_int lines)
 {
 	struct image		*im, *im1;
 	int			 redraw = 0;
+#ifdef ENABLE_SIXEL
 	u_int			 sx, sy;
 	struct sixel_image	*new;
+#endif
 
 	TAILQ_FOREACH_SAFE(im, &s->images, entry, im1) {
 		if (im->py >= lines) {
@@ -203,19 +247,41 @@ image_scroll_up(struct screen *s, u_int lines)
 			redraw = 1;
 			continue;
 		}
-		sx = im->sx;
-		sy = (im->py + im->sy) - lines;
-		image_log(im, __func__, "3, lines=%u, sy=%u", lines, sy);
+		image_log(im, __func__, "3, lines=%u", lines);
 
-		new = sixel_scale(im->data, 0, 0, 0, im->sy - sy, sx, sy, 1);
-		sixel_free(im->data);
-		im->data = new;
+		switch (im->kind) {
+#ifdef ENABLE_SIXEL
+		case IMAGE_SIXEL:
+			sx = im->sx;
+			sy = (im->py + im->sy) - lines;
+			new = sixel_scale(im->data.sixel, 0, 0, 0,
+			    im->sy - sy, sx, sy, 1);
+			sixel_free(im->data.sixel);
+			im->data.sixel = new;
 
-		im->py = 0;
-		sixel_size_in_cells(im->data, &im->sx, &im->sy);
+			im->py = 0;
+			sixel_size_in_cells(im->data.sixel, &im->sx, &im->sy);
 
-		free(im->fallback);
-		image_fallback(&im->fallback, im->sx, im->sy);
+			free(im->fallback);
+			image_fallback(&im->fallback, im->sx, im->sy);
+			break;
+#endif
+		case IMAGE_KITTY:
+			im->sy = (im->py + im->sy) - lines;
+			im->py = 0;
+			if (im->data.kitty != NULL) {
+				u_int	sh = im->data.kitty->source_height != 0 ?
+				    im->data.kitty->source_height :
+				    im->data.kitty->height;
+				im->data.kitty->source_y += lines * sh /
+				    (im->sy + lines);
+				im->data.kitty->source_height = sh -
+				    lines * sh / (im->sy + lines);
+			}
+			free(im->fallback);
+			image_fallback(&im->fallback, im->sx, im->sy);
+			break;
+		}
 		redraw = 1;
 	}
 	return (redraw);

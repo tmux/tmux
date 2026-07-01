@@ -28,3 +28,5 @@ tmux
 tmux.1.*
 zig-out/
 /result
+.claude/
+zig-pkg/

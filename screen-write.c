@@ -1308,10 +1308,8 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	utf8_set(&gc.data, 'E');
 
-#ifdef ENABLE_SIXEL
 	if (image_free_all(s) && ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
-#endif
 
 	for (yy = 0; yy < screen_size_y(s); yy++) {
 		for (xx = 0; xx < screen_size_x(s); xx++)
@@ -1355,10 +1353,8 @@ screen_write_insertcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 	if (s->cx > screen_size_x(s) - 1)
 		return;
 
-#ifdef ENABLE_SIXEL
 	if (image_check_line(s, s->cy, 1) && ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
-#endif
 
 	screen_write_initctx(ctx, &ttyctx, 0, 1);
 	ttyctx.bg = bg;
@@ -1396,10 +1392,8 @@ screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 	if (s->cx > screen_size_x(s) - 1)
 		return;
 
-#ifdef ENABLE_SIXEL
 	if (image_check_line(s, s->cy, 1) && ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
-#endif
 
 	screen_write_initctx(ctx, &ttyctx, 0, 1);
 	ttyctx.bg = bg;
@@ -1437,10 +1431,8 @@ screen_write_clearcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 	if (s->cx > screen_size_x(s) - 1)
 		return;
 
-#ifdef ENABLE_SIXEL
 	if (image_check_line(s, s->cy, 1) && ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
-#endif
 
 	screen_write_initctx(ctx, &ttyctx, 0, 1);
 	ttyctx.bg = bg;
@@ -1472,10 +1464,8 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 	if (ny == 0)
 		ny = 1;
 
-#ifdef ENABLE_SIXEL
 	if (image_check_line(s, s->cy, sy - s->cy) && ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
-#endif
 
 	if (s->cy < s->rupper || s->cy > s->rlower) {
 		if (ny > sy - s->cy)
@@ -1540,10 +1530,8 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 	if (ny == 0)
 		ny = 1;
 
-#ifdef ENABLE_SIXEL
 	if (image_check_line(s, s->cy, sy - s->cy) && ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
-#endif
 
 	if (s->cy < s->rupper || s->cy > s->rlower) {
 		if (ny > sy - s->cy)
@@ -1613,10 +1601,8 @@ screen_write_clearline(struct screen_write_ctx *ctx, u_int bg)
 	if (gl->cellsize == 0 && COLOUR_DEFAULT(bg))
 		return;
 
-#ifdef ENABLE_SIXEL
 	if (image_check_line(s, s->cy, 1) && ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
-#endif
 
 	flags = gl->flags & GRID_LINE_OSC133_FLAGS;
 	memcpy(&od, &gl->osc133_data, sizeof od);
@@ -1652,10 +1638,8 @@ screen_write_clearendofline(struct screen_write_ctx *ctx, u_int bg)
 	if (s->cx > sx - 1 || (s->cx >= gl->cellsize && COLOUR_DEFAULT(bg)))
 		return;
 
-#ifdef ENABLE_SIXEL
 	if (image_check_line(s, s->cy, 1) && ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
-#endif
 
 	grid_view_clear(s->grid, s->cx, s->cy, sx - s->cx, 1, bg);
 
@@ -1679,10 +1663,8 @@ screen_write_clearstartofline(struct screen_write_ctx *ctx, u_int bg)
 		return;
 	}
 
-#ifdef ENABLE_SIXEL
 	if (image_check_line(s, s->cy, 1) && ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
-#endif
 
 	if (s->cx > sx - 1)
 		grid_view_clear(s->grid, 0, s->cy, sx, 1, bg);
@@ -1733,10 +1715,8 @@ screen_write_reverseindex(struct screen_write_ctx *ctx, u_int bg)
 		return;
 	}
 
-#ifdef ENABLE_SIXEL
 	if (image_free_all(s) && ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
-#endif
 
 	grid_view_scroll_region_down(s->grid, s->rupper, s->rlower, bg);
 	screen_write_collect_flush(ctx, 0, __func__);
@@ -1785,9 +1765,7 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped, u_int bg)
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct grid_line	*gl;
-#ifdef ENABLE_SIXEL
 	int			 redraw = 0;
-#endif
 	u_int			 rupper = s->rupper, rlower = s->rlower;
 
 	gl = grid_get_line(gd, gd->hsize + s->cy);
@@ -1808,14 +1786,12 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped, u_int bg)
 		return;
 	}
 
-#ifdef ENABLE_SIXEL
 	if (rlower == screen_size_y(s) - 1)
 		redraw = image_scroll_up(s, 1);
 	else
 		redraw = image_check_line(s, rupper, rlower - rupper);
 	if (redraw && ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
-#endif
 
 	grid_view_scroll_region_up(gd, s->rupper, s->rlower, bg);
 	screen_write_collect_scroll(ctx, bg);
@@ -1840,10 +1816,8 @@ screen_write_scrollup(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 		ctx->bg = bg;
 	}
 
-#ifdef ENABLE_SIXEL
 	if (image_scroll_up(s, lines) && ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
-#endif
 
 	for (i = 0; i < lines; i++) {
 		grid_view_scroll_region_up(gd, s->rupper, s->rlower, bg);
@@ -1869,10 +1843,8 @@ screen_write_scrolldown(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 	else if (lines > s->rlower - s->rupper + 1)
 		lines = s->rlower - s->rupper + 1;
 
-#ifdef ENABLE_SIXEL
 	if (image_free_all(s) && ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
-#endif
 
 	for (i = 0; i < lines; i++)
 		grid_view_scroll_region_down(gd, s->rupper, s->rlower, bg);
@@ -1910,10 +1882,8 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
-#ifdef ENABLE_SIXEL
 	if (image_check_line(s, s->cy, sy - s->cy) && ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
-#endif
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
@@ -1991,10 +1961,8 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
-#ifdef ENABLE_SIXEL
 	if (image_check_line(s, 0, s->cy - 1) && ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
-#endif
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
@@ -2064,10 +2032,8 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
-#ifdef ENABLE_SIXEL
 	if (image_free_all(s) && ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
-#endif
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
@@ -2531,10 +2497,8 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 		}
 	}
 
-#ifdef ENABLE_SIXEL
 	if (image_check_area(s, s->cx, s->cy, ci->used, 1) && ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
-#endif
 
 	grid_view_set_cells(s->grid, s->cx, s->cy, &ci->gc, cl->data + ci->x,
 	    ci->used);
@@ -3092,7 +3056,7 @@ screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
 	screen_write_collect_flush(ctx, 0, __func__);
 
 	screen_write_initctx(ctx, &ttyctx, 0, 0);
-	ttyctx.image = image_store(s, si);
+	ttyctx.image = image_store_sixel(s, si);
 
 	tty_write(tty_cmd_sixelimage, &ttyctx);
 

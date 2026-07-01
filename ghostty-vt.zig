@@ -6,11 +6,21 @@ const c = @cImport({
     @cInclude("ghostty/vt.h");
 });
 
+extern fn log_debug(fmt: [*c]const u8, ...) void;
+
 const allocator = std.heap.c_allocator;
 const max_size = std.math.maxInt(u16);
 const max_osc_len = 1024 * 1024;
 const max_hyperlink_uri = 4096;
+const kitty_storage_limit: u64 = 64 * 1024 * 1024;
+const alt_pending_max = 64;
 const version = "tmux next-3.7-zig";
+
+const ClearScanState = enum {
+    ground,
+    esc,
+    csi,
+};
 
 const GhosttyVT = struct {
     terminal: c.GhosttyTerminal,
@@ -28,6 +38,16 @@ const GhosttyVT = struct {
     osc_active: bool,
     osc_esc: bool,
     osc_pending_esc: bool,
+    alt_pending: [alt_pending_max]u8,
+    alt_pending_len: usize,
+    kitty_iter: c.GhosttyKittyGraphicsPlacementIterator,
+    kitty_enabled: bool,
+    last_kitty_sig: ?u64,
+    screen_cleared: bool,
+    clear_state: ClearScanState,
+    clear_param: u16,
+    clear_param_active: bool,
+    clear_param_done: bool,
 };
 
 fn sizeValid(sx: c_uint, sy: c_uint) bool {
@@ -52,57 +72,150 @@ fn alternateMode(mode: c_uint) bool {
     return mode == 47 or mode == 1047 or mode == 1049;
 }
 
-fn alternateCsiEnd(buf: []const u8, off: usize) ?usize {
-    if (off + 4 >= buf.len or buf[off] != 0x1b or buf[off + 1] != '[' or buf[off + 2] != '?')
-        return null;
+const AltFiltered = struct {
+    data: []u8,
+    cap: usize,
+};
 
-    var i = off + 3;
+const AltParse = union(enum) {
+    not_candidate,
+    partial,
+    complete: usize,
+};
+
+// Byte at position `idx` of the virtual stream `pending ++ buf`.
+fn altStreamAt(gvt: *GhosttyVT, buf: []const u8, idx: usize) u8 {
+    if (idx < gvt.alt_pending_len)
+        return gvt.alt_pending[idx];
+    return buf[idx - gvt.alt_pending_len];
+}
+
+// Parse a private set/reset sequence (ESC [ ? params h/l) starting at
+// `off`. Params must be non-empty digit runs separated by ';'.
+fn altParse(gvt: *GhosttyVT, buf: []const u8, off: usize, n: usize) AltParse {
+    const prefix = "\x1b[?";
+    var i = off;
+    for (prefix) |ch| {
+        if (i == n)
+            return .partial;
+        if (altStreamAt(gvt, buf, i) != ch)
+            return .not_candidate;
+        i += 1;
+    }
     while (true) {
-        if (i >= buf.len or !std.ascii.isDigit(buf[i]))
-            return null;
-
-        var mode: c_uint = 0;
-        while (i < buf.len and std.ascii.isDigit(buf[i])) : (i += 1)
-            mode = mode * 10 + @as(c_uint, buf[i] - '0');
-        if (!alternateMode(mode))
-            return null;
-
-        if (i >= buf.len)
-            return null;
-        switch (buf[i]) {
+        if (i == n)
+            return .partial;
+        if (!std.ascii.isDigit(altStreamAt(gvt, buf, i)))
+            return .not_candidate;
+        while (i < n and std.ascii.isDigit(altStreamAt(gvt, buf, i)))
+            i += 1;
+        if (i == n)
+            return .partial;
+        switch (altStreamAt(gvt, buf, i)) {
             ';' => i += 1,
-            'h', 'l' => return i + 1,
-            else => return null,
+            'h', 'l' => return .{ .complete = i + 1 },
+            else => return .not_candidate,
         }
     }
 }
 
-fn filterAlternateScreen(buf: []const u8) ?[]u8 {
-    var first: ?usize = null;
-    for (buf, 0..) |_, i| {
-        if (alternateCsiEnd(buf, i) != null) {
-            first = i;
-            break;
+// Re-emit the sequence in stream[off..end] without the alternate-screen
+// modes. Emits nothing when no other modes remain.
+fn altRewrite(gvt: *GhosttyVT, buf: []const u8, off: usize, end: usize, out: []u8, out_off: usize) usize {
+    var o = out_off;
+    const body_start = off + 3;
+    const final = altStreamAt(gvt, buf, end - 1);
+    var kept = false;
+
+    var i = body_start;
+    while (i < end - 1) {
+        var mode: c_uint = 0;
+        while (i < end - 1 and std.ascii.isDigit(altStreamAt(gvt, buf, i))) : (i += 1) {
+            if (mode < 100000)
+                mode = mode * 10 + @as(c_uint, altStreamAt(gvt, buf, i) - '0');
+        }
+        if (i < end - 1 and altStreamAt(gvt, buf, i) == ';')
+            i += 1;
+        if (alternateMode(mode))
+            continue;
+        if (!kept) {
+            @memcpy(out[o..][0..3], "\x1b[?");
+            o += 3;
+        } else {
+            out[o] = ';';
+            o += 1;
+        }
+        var digits: [10]u8 = undefined;
+        const str = std.fmt.bufPrint(&digits, "{d}", .{mode}) catch unreachable;
+        @memcpy(out[o..][0..str.len], str);
+        o += str.len;
+        kept = true;
+    }
+    if (kept) {
+        out[o] = final;
+        o += 1;
+    }
+    return o;
+}
+
+// Strip alternate-screen switch sequences from the input, carrying an
+// unfinished candidate sequence across writes in gvt.alt_pending. The
+// returned buffer is owned by the caller; free data.ptr[0..cap].
+fn filterAlternateScreen(gvt: *GhosttyVT, buf: []const u8) ?AltFiltered {
+    if (gvt.alt_pending_len == 0 and
+        std.mem.indexOfScalar(u8, buf, 0x1b) == null)
+        return null;
+
+    const cap = gvt.alt_pending_len + buf.len;
+    const out = allocator.alloc(u8, cap) catch return null;
+    const n = cap;
+
+    var i: usize = 0;
+    var o: usize = 0;
+    while (i < n) {
+        const ch = altStreamAt(gvt, buf, i);
+        if (ch != 0x1b) {
+            out[o] = ch;
+            o += 1;
+            i += 1;
+            continue;
+        }
+        switch (altParse(gvt, buf, i, n)) {
+            .not_candidate => {
+                out[o] = ch;
+                o += 1;
+                i += 1;
+            },
+            .complete => |end| {
+                o = altRewrite(gvt, buf, i, end, out, o);
+                i = end;
+            },
+            .partial => {
+                const rem = n - i;
+                if (rem <= alt_pending_max) {
+                    var tmp: [alt_pending_max]u8 = undefined;
+                    for (0..rem) |k|
+                        tmp[k] = altStreamAt(gvt, buf, i + k);
+                    @memcpy(gvt.alt_pending[0..rem], tmp[0..rem]);
+                    gvt.alt_pending_len = rem;
+                    // Held bytes re-enter the stream on the next write.
+                    return finishAltFilter(gvt, out, cap, o, true);
+                }
+                // Too long to hold; give up on this candidate.
+                while (i < n) : (i += 1) {
+                    out[o] = altStreamAt(gvt, buf, i);
+                    o += 1;
+                }
+            },
         }
     }
-    const start = first orelse return null;
+    return finishAltFilter(gvt, out, cap, o, false);
+}
 
-    var out = allocator.alloc(u8, buf.len) catch return null;
-    var in: usize = 0;
-    var out_off: usize = 0;
-
-    while (in < buf.len) {
-        if (in >= start) {
-            if (alternateCsiEnd(buf, in)) |end| {
-                in = end;
-                continue;
-            }
-        }
-        out[out_off] = buf[in];
-        out_off += 1;
-        in += 1;
-    }
-    return out[0..out_off];
+fn finishAltFilter(gvt: *GhosttyVT, out: []u8, cap: usize, o: usize, held: bool) AltFiltered {
+    if (!held)
+        gvt.alt_pending_len = 0;
+    return .{ .data = out[0..o], .cap = cap };
 }
 
 fn setProgressBar(wp: ?*c.window_pane, state: c.enum_progress_bar_state, progress: c_int) void {
@@ -248,6 +361,49 @@ fn finishOsc(gvt: *GhosttyVT, input_end: c_int) void {
         maybeClipboard(gvt.wp, osc, input_end);
     }
     resetOsc(gvt);
+}
+
+fn resetClearScan(gvt: *GhosttyVT, state: ClearScanState) void {
+    gvt.clear_state = state;
+    gvt.clear_param = 0;
+    gvt.clear_param_active = false;
+    gvt.clear_param_done = false;
+}
+
+fn scanClearScreen(gvt: *GhosttyVT, buf: []const u8) void {
+    for (buf) |ch| {
+        switch (gvt.clear_state) {
+            .ground => {
+                if (ch == 0x1b)
+                    resetClearScan(gvt, .esc);
+            },
+            .esc => {
+                if (ch == '[')
+                    resetClearScan(gvt, .csi)
+                else if (ch != 0x1b)
+                    resetClearScan(gvt, .ground);
+            },
+            .csi => {
+                if (std.ascii.isDigit(ch)) {
+                    if (!gvt.clear_param_done) {
+                        gvt.clear_param_active = true;
+                        if (gvt.clear_param < 1000)
+                            gvt.clear_param = gvt.clear_param * 10 + ch - '0';
+                    }
+                } else if (ch == ';') {
+                    gvt.clear_param_done = true;
+                } else if (ch == 'J') {
+                    if (gvt.clear_param_active and (gvt.clear_param == 2 or gvt.clear_param == 3))
+                        gvt.screen_cleared = true;
+                    resetClearScan(gvt, .ground);
+                } else if (ch == 0x1b) {
+                    resetClearScan(gvt, .esc);
+                } else if (ch >= 0x40 and ch <= 0x7e) {
+                    resetClearScan(gvt, .ground);
+                }
+            },
+        }
+    }
 }
 
 fn scanOscSideEffects(gvt: *GhosttyVT, buf: []const u8) void {
@@ -412,36 +568,42 @@ fn mapColor(sc: *const c.GhosttyStyleColor, default_col: c_int) c_int {
     };
 }
 
-fn buildCell(gc: *c.grid_cell, style: *const c.GhosttyStyle, utf8_buf: []const u8) void {
-    gc.* = std.mem.zeroes(c.grid_cell);
-    gc.*.fg = 8;
-    gc.*.bg = 8;
-    gc.*.us = 8;
+// Truncate to the last complete codepoint that fits in `max` bytes.
+fn utf8Truncate(buf: []const u8, max: usize) []const u8 {
+    if (buf.len <= max)
+        return buf;
+    var end: usize = 0;
+    while (end < buf.len) {
+        const l = std.unicode.utf8ByteSequenceLength(buf[end]) catch break;
+        if (end + l > max or end + l > buf.len)
+            break;
+        end += l;
+    }
+    return buf[0..end];
+}
 
+// Width of the grapheme's base codepoint; ghostty's own wide-cell data
+// overrides this for wide characters and spacer tails.
+fn utf8Width(buf: []const u8) u8 {
+    const l = std.unicode.utf8ByteSequenceLength(buf[0]) catch return 1;
+    if (l > buf.len)
+        return 1;
+    const cp = std.unicode.utf8Decode(buf[0..l]) catch return 1;
+    const width = c.wcwidth(@intCast(cp));
+    return if (width < 0) 1 else @intCast(width);
+}
+
+fn buildCell(gc: *c.grid_cell, style: *const c.GhosttyStyle, grapheme: []const u8) void {
+    gc.* = std.mem.zeroes(c.grid_cell);
+
+    const utf8_buf = utf8Truncate(grapheme, c.UTF8_SIZE);
     if (utf8_buf.len == 0) {
         c.utf8_set(&gc.*.data, ' ');
-    } else if (utf8_buf.len <= c.UTF8_SIZE) {
+    } else {
         @memcpy(gc.*.data.data[0..utf8_buf.len], utf8_buf);
         gc.*.data.size = @intCast(utf8_buf.len);
         gc.*.data.have = @intCast(utf8_buf.len);
-        if (utf8_buf.len == 1) {
-            gc.*.data.width = 1;
-        } else {
-            var wc: c.wchar_t = 0;
-            var ud: c.utf8_data = undefined;
-            c.utf8_set(&ud, 0);
-            @memcpy(ud.data[0..utf8_buf.len], utf8_buf);
-            ud.size = @intCast(utf8_buf.len);
-            ud.have = @intCast(utf8_buf.len);
-            if (c.utf8_towc(&ud, &wc) == c.UTF8_DONE) {
-                const width = c.wcwidth(wc);
-                gc.*.data.width = if (width < 0) 1 else @intCast(width);
-            } else {
-                gc.*.data.width = 1;
-            }
-        }
-    } else {
-        c.utf8_set(&gc.*.data, ' ');
+        gc.*.data.width = if (utf8_buf.len == 1) 1 else utf8Width(utf8_buf);
     }
 
     gc.*.attr = mapAttr(style);
@@ -546,6 +708,12 @@ fn syncModes(gvt: *GhosttyVT, s: *c.screen) void {
     syncMode(gvt, s, ghosttyMode(1003, false), c.MODE_MOUSE_ALL);
     syncMode(gvt, s, ghosttyMode(1005, false), c.MODE_MOUSE_UTF8);
     syncMode(gvt, s, ghosttyMode(1006, false), c.MODE_MOUSE_SGR);
+
+    // Reflect the kitty keyboard protocol negotiated inside ghostty so
+    // that tmux encodes keys in extended form for this pane.
+    var kkflags: u8 = 0;
+    if (c.ghostty_terminal_get(gvt.terminal, c.GHOSTTY_TERMINAL_DATA_KITTY_KEYBOARD_FLAGS, &kkflags) == c.GHOSTTY_SUCCESS and kkflags != 0)
+        s.*.mode |= c.MODE_KEYS_EXTENDED;
 }
 
 fn syncHistoryRow(gvt: *GhosttyVT, s: *c.screen, history_y: usize, target_y: c_uint) void {
@@ -600,44 +768,65 @@ fn historyRowChanged(gvt: *GhosttyVT, s: *c.screen, history_y: usize, target_y: 
     return false;
 }
 
-fn gridHistoryFull(grid: *c.grid) bool {
-    return grid.*.hlimit != 0 and grid.*.hsize >= grid.*.hlimit;
+fn importHistoryRows(gvt: *GhosttyVT, s: *c.screen, grid: *c.grid, from: usize, to: usize) void {
+    var history_y = from;
+    while (history_y < to) : (history_y += 1) {
+        if (grid.*.hlimit != 0 and grid.*.hsize >= grid.*.hlimit)
+            c.grid_collect_history(grid, 0);
+        const target_y = grid.*.hsize;
+        c.grid_scroll_history(grid, 8);
+        syncHistoryRow(gvt, s, history_y, target_y);
+    }
 }
 
-fn syncScrollback(gvt: *GhosttyVT, s: *c.screen) void {
+fn syncScrollback(gvt: *GhosttyVT, s: *c.screen) bool {
     var scrollback_rows: usize = 0;
     if (c.ghostty_terminal_get(gvt.terminal, c.GHOSTTY_TERMINAL_DATA_SCROLLBACK_ROWS, &scrollback_rows) != c.GHOSTTY_SUCCESS)
-        return;
-    const grid = s.*.grid orelse return;
+        return false;
+    const grid = s.*.grid orelse return false;
 
     if (scrollback_rows == gvt.last_scrollback) {
-        if (scrollback_rows != 0 and grid.*.hsize != 0 and gridHistoryFull(grid)) {
-            const history_y = scrollback_rows - 1;
-            if (historyRowChanged(gvt, s, history_y, grid.*.hsize - 1)) {
-                c.grid_collect_history(grid, 0);
-                const next_y = grid.*.hsize;
-                c.grid_scroll_history(grid, 8);
-                syncHistoryRow(gvt, s, history_y, next_y);
-            }
+        if (scrollback_rows == 0)
+            return false;
+        if (grid.*.hsize == 0) {
+            importHistoryRows(gvt, s, grid, 0, scrollback_rows);
+            return true;
         }
-        return;
+
+        // Once ghostty's scrollback ring is full the row count stays
+        // constant while the content shifts, possibly by several rows
+        // per write. Find the shift by scanning backwards for the row
+        // matching our newest history row, then import exactly the
+        // rows that scrolled past. If nothing matches (e.g. the ring
+        // shifted further than it holds), rebuild the whole history.
+        var k: usize = 0;
+        while (k < scrollback_rows) : (k += 1) {
+            if (!historyRowChanged(gvt, s, scrollback_rows - 1 - k, grid.*.hsize - 1))
+                break;
+        }
+        if (k == 0)
+            return false;
+        if (k < scrollback_rows) {
+            importHistoryRows(gvt, s, grid, scrollback_rows - k, scrollback_rows);
+            return true;
+        }
+        c.grid_clear_history(grid);
+        importHistoryRows(gvt, s, grid, 0, scrollback_rows);
+        return true;
     }
 
+    var changed = false;
     if (scrollback_rows < gvt.last_scrollback) {
         c.grid_clear_history(grid);
         gvt.last_scrollback = 0;
+        changed = true;
     }
     if (scrollback_rows > gvt.last_scrollback) {
-        var history_y = gvt.last_scrollback;
-        while (history_y < scrollback_rows) : (history_y += 1) {
-            if (grid.*.hsize >= grid.*.hlimit)
-                c.grid_collect_history(grid, 0);
-            const target_y = grid.*.hsize;
-            c.grid_scroll_history(grid, 8);
-            syncHistoryRow(gvt, s, history_y, target_y);
-        }
+        importHistoryRows(gvt, s, grid, gvt.last_scrollback, scrollback_rows);
+        changed = true;
     }
     gvt.last_scrollback = scrollback_rows;
+    return changed;
 }
 
 fn syncActiveScreen(gvt: *GhosttyVT, s: *c.screen) bool {
@@ -688,6 +877,302 @@ fn syncRowFlags(grid: *c.grid, py: c_uint, row: c.GhosttyRow) void {
     syncRowFlagsLine(grid, grid.*.hsize + py, row);
 }
 
+extern fn stbi_load_from_memory(
+    buffer: [*c]const u8,
+    len: c_int,
+    x: [*c]c_int,
+    y: [*c]c_int,
+    channels_in_file: [*c]c_int,
+    desired_channels: c_int,
+) [*c]u8;
+
+extern fn stbi_image_free(retval_from_stbi_load: ?*anyopaque) void;
+
+var png_decoder_installed = false;
+
+fn ghosttyLogCb(
+    _: ?*anyopaque,
+    _: c.GhosttySysLogLevel,
+    scope: [*c]const u8,
+    scope_len: usize,
+    message: [*c]const u8,
+    message_len: usize,
+) callconv(.c) void {
+    log_debug("ghostty[%.*s]: %.*s", @as(c_int, @intCast(scope_len)), scope, @as(c_int, @intCast(message_len)), message);
+}
+
+fn installPngDecoder() void {
+    if (png_decoder_installed)
+        return;
+    _ = c.ghostty_sys_set(c.GHOSTTY_SYS_OPT_DECODE_PNG, @ptrCast(&decodePngCb));
+    _ = c.ghostty_sys_set(c.GHOSTTY_SYS_OPT_LOG, @ptrCast(&ghosttyLogCb));
+    png_decoder_installed = true;
+}
+
+fn decodePngCb(
+    _: ?*anyopaque,
+    ghostty_allocator: ?*const c.GhosttyAllocator,
+    data: [*c]const u8,
+    data_len: usize,
+    out: ?*c.GhosttySysImage,
+) callconv(.c) bool {
+    var width: c_int = 0;
+    var height: c_int = 0;
+    var channels: c_int = 0;
+    const pixels = stbi_load_from_memory(data, @intCast(data_len), &width, &height, &channels, 4);
+    if (pixels == null)
+        return false;
+    defer stbi_image_free(pixels);
+
+    const result = out orelse return false;
+    const pixels_len = @as(usize, @intCast(width)) * @as(usize, @intCast(height)) * 4;
+
+    // The library frees this buffer with the provided allocator, so the
+    // pixels must be allocated through it rather than returned directly.
+    const copy = c.ghostty_alloc(ghostty_allocator, pixels_len) orelse return false;
+    @memcpy(copy[0..pixels_len], pixels[0..pixels_len]);
+
+    result.*.width = @intCast(width);
+    result.*.height = @intCast(height);
+    result.*.data = copy;
+    result.*.data_len = pixels_len;
+    return true;
+}
+
+const KittyPlacementInfo = struct {
+    image_id: u32,
+    placement_id: u32,
+    z: i32,
+    render_info: c.GhosttyKittyGraphicsPlacementRenderInfo,
+    img_handle: c.GhosttyKittyGraphicsImage,
+};
+
+fn kittyPlacementLess(_: void, a: KittyPlacementInfo, b: KittyPlacementInfo) bool {
+    return a.z < b.z;
+}
+
+fn kittyPlacementNext(gvt: *GhosttyVT, graphics: c.GhosttyKittyGraphics) ?KittyPlacementInfo {
+    while (c.ghostty_kitty_graphics_placement_next(gvt.kitty_iter)) {
+        var info: KittyPlacementInfo = undefined;
+        info.image_id = 0;
+        info.placement_id = 0;
+        info.z = 0;
+        var is_virtual = false;
+        _ = c.ghostty_kitty_graphics_placement_get(gvt.kitty_iter, c.GHOSTTY_KITTY_GRAPHICS_PLACEMENT_DATA_IMAGE_ID, &info.image_id);
+        _ = c.ghostty_kitty_graphics_placement_get(gvt.kitty_iter, c.GHOSTTY_KITTY_GRAPHICS_PLACEMENT_DATA_PLACEMENT_ID, &info.placement_id);
+        _ = c.ghostty_kitty_graphics_placement_get(gvt.kitty_iter, c.GHOSTTY_KITTY_GRAPHICS_PLACEMENT_DATA_Z, &info.z);
+        _ = c.ghostty_kitty_graphics_placement_get(gvt.kitty_iter, c.GHOSTTY_KITTY_GRAPHICS_PLACEMENT_DATA_IS_VIRTUAL, &is_virtual);
+        if (is_virtual)
+            continue;
+
+        info.render_info = std.mem.zeroes(c.GhosttyKittyGraphicsPlacementRenderInfo);
+        info.render_info.size = @sizeOf(c.GhosttyKittyGraphicsPlacementRenderInfo);
+        info.img_handle = c.ghostty_kitty_graphics_image(graphics, info.image_id);
+        if (info.img_handle == null)
+            continue;
+        if (c.ghostty_kitty_graphics_placement_render_info(gvt.kitty_iter, info.img_handle, gvt.terminal, &info.render_info) != c.GHOSTTY_SUCCESS)
+            continue;
+        if (!info.render_info.viewport_visible)
+            continue;
+        return info;
+    }
+    return null;
+}
+
+fn kittyGraphics(gvt: *GhosttyVT) ?c.GhosttyKittyGraphics {
+    var graphics: c.GhosttyKittyGraphics = null;
+    if (c.ghostty_terminal_get(gvt.terminal, c.GHOSTTY_TERMINAL_DATA_KITTY_GRAPHICS, @ptrCast(&graphics)) != c.GHOSTTY_SUCCESS or graphics == null)
+        return null;
+    if (c.ghostty_kitty_graphics_get(graphics, c.GHOSTTY_KITTY_GRAPHICS_DATA_PLACEMENT_ITERATOR, @ptrCast(&gvt.kitty_iter)) != c.GHOSTTY_SUCCESS)
+        return null;
+    return graphics;
+}
+
+// Expand a grayscale image to RGBA in place of the copy; kitty has no
+// grayscale wire format. Returns null on failure.
+fn kittyExpandGray(data: []const u8, width: u32, height: u32, has_alpha: bool) ?[]u8 {
+    const pixels = @as(usize, width) * @as(usize, height);
+    const bpp: usize = if (has_alpha) 2 else 1;
+    if (data.len < pixels * bpp)
+        return null;
+    const out = allocator.alloc(u8, pixels * 4) catch return null;
+    for (0..pixels) |p| {
+        const g = data[p * bpp];
+        out[p * 4 + 0] = g;
+        out[p * 4 + 1] = g;
+        out[p * 4 + 2] = g;
+        out[p * 4 + 3] = if (has_alpha) data[p * bpp + 1] else 0xff;
+    }
+    return out;
+}
+
+fn syncKittyImages(gvt: *GhosttyVT, s: *c.screen) bool {
+    if (!gvt.kitty_enabled)
+        return false;
+
+    var changed = false;
+
+    if (gvt.screen_cleared) {
+        c.tty_clear_pane_kitty_images(gvt.wp);
+        if (c.image_free_all(s) != 0)
+            changed = true;
+        gvt.last_kitty_sig = null;
+        gvt.screen_cleared = false;
+    }
+
+    const graphics = kittyGraphics(gvt) orelse {
+        if (gvt.last_kitty_sig != null) {
+            c.tty_clear_pane_kitty_images(gvt.wp);
+            if (c.image_free_all(s) != 0)
+                changed = true;
+            gvt.last_kitty_sig = null;
+        }
+        return changed;
+    };
+
+    // First pass: hash the visible placement set so an unchanged set of
+    // placements is not freed and re-copied on every sync.
+    var hasher = std.hash.Wyhash.init(0);
+    var count: usize = 0;
+    while (kittyPlacementNext(gvt, graphics)) |info| {
+        hasher.update(std.mem.asBytes(&info.image_id));
+        hasher.update(std.mem.asBytes(&info.placement_id));
+        hasher.update(std.mem.asBytes(&info.render_info.viewport_col));
+        hasher.update(std.mem.asBytes(&info.render_info.viewport_row));
+        hasher.update(std.mem.asBytes(&info.render_info.grid_cols));
+        hasher.update(std.mem.asBytes(&info.render_info.grid_rows));
+        hasher.update(std.mem.asBytes(&info.render_info.source_x));
+        hasher.update(std.mem.asBytes(&info.render_info.source_y));
+        hasher.update(std.mem.asBytes(&info.render_info.source_width));
+        hasher.update(std.mem.asBytes(&info.render_info.source_height));
+        count += 1;
+    }
+    hasher.update(std.mem.asBytes(&count));
+    const sig = hasher.final();
+    if (gvt.last_kitty_sig != null and gvt.last_kitty_sig.? == sig)
+        return changed;
+    gvt.last_kitty_sig = sig;
+
+    c.tty_clear_pane_kitty_images(gvt.wp);
+    if (c.image_free_all(s) != 0)
+        changed = true;
+    if (count == 0)
+        return changed;
+
+    // Second pass: collect visible placements sorted by z-index so
+    // lower layers are stored first and drawn underneath higher ones.
+    const graphics2 = kittyGraphics(gvt) orelse return changed;
+    var placements = allocator.alloc(KittyPlacementInfo, count) catch return changed;
+    defer allocator.free(placements);
+    var idx: usize = 0;
+    while (kittyPlacementNext(gvt, graphics2)) |info| {
+        if (idx < count) {
+            placements[idx] = info;
+            idx += 1;
+        }
+    }
+    std.mem.sort(KittyPlacementInfo, placements[0..idx], {}, kittyPlacementLess);
+
+    for (placements[0..idx]) |info| {
+        var width: u32 = 0;
+        var height: u32 = 0;
+        var format: c.GhosttyKittyImageFormat = c.GHOSTTY_KITTY_IMAGE_FORMAT_RGBA;
+        var compression: c.GhosttyKittyImageCompression = c.GHOSTTY_KITTY_IMAGE_COMPRESSION_NONE;
+        var data_ptr: [*c]const u8 = null;
+        var data_len: usize = 0;
+        _ = c.ghostty_kitty_graphics_image_get(info.img_handle, c.GHOSTTY_KITTY_IMAGE_DATA_WIDTH, &width);
+        _ = c.ghostty_kitty_graphics_image_get(info.img_handle, c.GHOSTTY_KITTY_IMAGE_DATA_HEIGHT, &height);
+        _ = c.ghostty_kitty_graphics_image_get(info.img_handle, c.GHOSTTY_KITTY_IMAGE_DATA_FORMAT, &format);
+        _ = c.ghostty_kitty_graphics_image_get(info.img_handle, c.GHOSTTY_KITTY_IMAGE_DATA_COMPRESSION, &compression);
+        _ = c.ghostty_kitty_graphics_image_get(info.img_handle, c.GHOSTTY_KITTY_IMAGE_DATA_DATA_PTR, @ptrCast(&data_ptr));
+        _ = c.ghostty_kitty_graphics_image_get(info.img_handle, c.GHOSTTY_KITTY_IMAGE_DATA_DATA_LEN, &data_len);
+        if (data_ptr == null or data_len == 0)
+            continue;
+
+        const gray = format == c.GHOSTTY_KITTY_IMAGE_FORMAT_GRAY or
+            format == c.GHOSTTY_KITTY_IMAGE_FORMAT_GRAY_ALPHA;
+        if (gray and compression != c.GHOSTTY_KITTY_IMAGE_COMPRESSION_NONE) {
+            // Cannot expand without inflating first; skip.
+            log_debug("%s: skipping compressed grayscale image=%u", "syncKittyImages", info.image_id);
+            continue;
+        }
+
+        var pixel_copy: []u8 = undefined;
+        var out_format = format;
+        if (gray) {
+            const has_alpha = format == c.GHOSTTY_KITTY_IMAGE_FORMAT_GRAY_ALPHA;
+            pixel_copy = kittyExpandGray(data_ptr[0..data_len], width, height, has_alpha) orelse continue;
+            out_format = c.GHOSTTY_KITTY_IMAGE_FORMAT_RGBA;
+        } else {
+            const copy = allocator.alloc(u8, data_len) catch continue;
+            @memcpy(copy, data_ptr[0..data_len]);
+            pixel_copy = copy;
+        }
+
+        // Clip placements that start above or left of the viewport so
+        // the stored position is inside the pane.
+        var col = info.render_info.viewport_col;
+        var row = info.render_info.viewport_row;
+        var cols = info.render_info.grid_cols;
+        var rows = info.render_info.grid_rows;
+        var src_x = info.render_info.source_x;
+        var src_y = info.render_info.source_y;
+        var src_w = if (info.render_info.source_width != 0) info.render_info.source_width else width;
+        var src_h = if (info.render_info.source_height != 0) info.render_info.source_height else height;
+        if (col < 0 and cols != 0) {
+            const shift: u32 = @intCast(-col);
+            if (shift >= cols) {
+                allocator.free(pixel_copy);
+                continue;
+            }
+            src_x += shift * src_w / cols;
+            src_w -= shift * src_w / cols;
+            cols -= shift;
+            col = 0;
+        }
+        if (row < 0 and rows != 0) {
+            const shift: u32 = @intCast(-row);
+            if (shift >= rows) {
+                allocator.free(pixel_copy);
+                continue;
+            }
+            src_y += shift * src_h / rows;
+            src_h -= shift * src_h / rows;
+            rows -= shift;
+            row = 0;
+        }
+        if (cols == 0 or rows == 0) {
+            allocator.free(pixel_copy);
+            continue;
+        }
+
+        const ki = allocator.create(c.kitty_image) catch {
+            allocator.free(pixel_copy);
+            continue;
+        };
+        ki.* = .{
+            .data = pixel_copy.ptr,
+            .data_len = pixel_copy.len,
+            .width = width,
+            .height = height,
+            .format = @intCast(out_format),
+            .compression = @intCast(compression),
+            .source_x = src_x,
+            .source_y = src_y,
+            .source_width = src_w,
+            .source_height = src_h,
+            .image_id = info.image_id,
+            .placement_id = info.placement_id,
+        };
+
+        _ = c.image_store_kitty(s, ki, @intCast(col), @intCast(row), cols, rows);
+        changed = true;
+        log_debug("%s: stored kitty image=%u placement=%u at %d,%d grid=%ux%u", "syncKittyImages", info.image_id, info.placement_id, col, row, cols, rows);
+    }
+
+    return changed;
+}
+
 fn syncCursor(gvt: *GhosttyVT, s: *c.screen) void {
     var cursor_in_vp = false;
     _ = c.ghostty_render_state_get(gvt.render_state, c.GHOSTTY_RENDER_STATE_DATA_CURSOR_VIEWPORT_HAS_VALUE, &cursor_in_vp);
@@ -717,38 +1202,67 @@ fn syncCursor(gvt: *GhosttyVT, s: *c.screen) void {
     };
 }
 
-fn syncColors(gvt: *GhosttyVT, s: *c.screen) void {
-    var colors = std.mem.zeroes(c.GhosttyRenderStateColors);
-    colors.size = @sizeOf(c.GhosttyRenderStateColors);
-    if (c.ghostty_render_state_colors_get(gvt.render_state, &colors) != c.GHOSTTY_SUCCESS)
-        return;
+fn colorEq(a: c.GhosttyColorRgb, b: c.GhosttyColorRgb) bool {
+    return a.r == b.r and a.g == b.g and a.b == b.b;
+}
 
+// Colors the application never overrode (via OSC 10/11/12) must stay
+// unset on the tmux side, so the outer terminal's own defaults - and
+// features like background transparency - show through. The getters
+// return GHOSTTY_NO_VALUE when nothing was configured or overridden.
+fn overriddenColor(gvt: *GhosttyVT, eff_kind: c_uint, def_kind: c_uint, unset: c_int) c_int {
+    var eff = std.mem.zeroes(c.GhosttyColorRgb);
+    var def = std.mem.zeroes(c.GhosttyColorRgb);
+    if (c.ghostty_terminal_get(gvt.terminal, eff_kind, &eff) != c.GHOSTTY_SUCCESS)
+        return unset;
+    if (c.ghostty_terminal_get(gvt.terminal, def_kind, &def) == c.GHOSTTY_SUCCESS and
+        colorEq(eff, def))
+        return unset;
+    return c.colour_join_rgb(eff.r, eff.g, eff.b);
+}
+
+fn syncColors(gvt: *GhosttyVT, s: *c.screen) void {
+    const wp = gvt.wp;
     var changed = false;
-    const cursor = if (colors.cursor_has_value)
-        c.colour_join_rgb(colors.cursor.r, colors.cursor.g, colors.cursor.b)
-    else
-        -1;
+
+    const cursor = overriddenColor(gvt, c.GHOSTTY_TERMINAL_DATA_COLOR_CURSOR, c.GHOSTTY_TERMINAL_DATA_COLOR_CURSOR_DEFAULT, -1);
     if (s.*.default_ccolour != cursor) {
         s.*.default_ccolour = cursor;
         changed = true;
     }
 
-    const wp = gvt.wp;
-    var color = c.colour_join_rgb(colors.foreground.r, colors.foreground.g, colors.foreground.b);
-    if (wp.*.palette.fg != color) {
-        wp.*.palette.fg = color;
+    const fg = overriddenColor(gvt, c.GHOSTTY_TERMINAL_DATA_COLOR_FOREGROUND, c.GHOSTTY_TERMINAL_DATA_COLOR_FOREGROUND_DEFAULT, 8);
+    if (wp.*.palette.fg != fg) {
+        wp.*.palette.fg = fg;
         changed = true;
     }
-    color = c.colour_join_rgb(colors.background.r, colors.background.g, colors.background.b);
-    if (wp.*.palette.bg != color) {
-        wp.*.palette.bg = color;
+    const bg = overriddenColor(gvt, c.GHOSTTY_TERMINAL_DATA_COLOR_BACKGROUND, c.GHOSTTY_TERMINAL_DATA_COLOR_BACKGROUND_DEFAULT, 8);
+    if (wp.*.palette.bg != bg) {
+        wp.*.palette.bg = bg;
         changed = true;
     }
-    for (0..256) |i| {
-        color = c.colour_join_rgb(colors.palette[i].r, colors.palette[i].g, colors.palette[i].b);
-        if (c.colour_palette_get(&wp.*.palette, @as(c_int, @intCast(i)) | c.COLOUR_FLAG_256) != color) {
-            _ = c.colour_palette_set(&wp.*.palette, @intCast(i), color);
-            changed = true;
+
+    var pal: [256]c.GhosttyColorRgb = undefined;
+    var pald: [256]c.GhosttyColorRgb = undefined;
+    if (c.ghostty_terminal_get(gvt.terminal, c.GHOSTTY_TERMINAL_DATA_COLOR_PALETTE, @ptrCast(&pal)) == c.GHOSTTY_SUCCESS and
+        c.ghostty_terminal_get(gvt.terminal, c.GHOSTTY_TERMINAL_DATA_COLOR_PALETTE_DEFAULT, @ptrCast(&pald)) == c.GHOSTTY_SUCCESS)
+    {
+        for (0..256) |i| {
+            const desired: c_int = if (colorEq(pal[i], pald[i]))
+                -1
+            else
+                c.colour_join_rgb(pal[i].r, pal[i].g, pal[i].b);
+            // Compare against the override slot only: falling back to
+            // colour_palette_get would fight tmux's own pane-colours
+            // configuration in default_palette.
+            const current: c_int = if (wp.*.palette.palette != null)
+                wp.*.palette.palette[i]
+            else
+                -1;
+            if (current != desired) {
+                _ = c.colour_palette_set(&wp.*.palette, @intCast(i), desired);
+                changed = true;
+            }
         }
     }
 
@@ -756,34 +1270,39 @@ fn syncColors(gvt: *GhosttyVT, s: *c.screen) void {
         wp.*.flags |= c.PANE_STYLECHANGED | c.PANE_THEMECHANGED;
 }
 
-fn sync(gvt: *GhosttyVT, s: *c.screen) void {
-    const grid = s.*.grid orelse return;
+fn sync(gvt: *GhosttyVT, s: *c.screen, force: bool) bool {
+    const grid = s.*.grid orelse return false;
     const screen_changed = syncActiveScreen(gvt, s);
-    if (gvt.active_screen == c.GHOSTTY_TERMINAL_SCREEN_PRIMARY)
-        syncScrollback(gvt, s);
+    var changed = screen_changed;
+    if (gvt.active_screen == c.GHOSTTY_TERMINAL_SCREEN_PRIMARY) {
+        if (syncScrollback(gvt, s))
+            changed = true;
+    }
+    if (syncKittyImages(gvt, s))
+        changed = true;
 
     if (c.ghostty_render_state_update(gvt.render_state, gvt.terminal) != c.GHOSTTY_SUCCESS)
-        return;
+        return changed;
 
     var dirty: c.GhosttyRenderStateDirty = undefined;
     if (c.ghostty_render_state_get(gvt.render_state, c.GHOSTTY_RENDER_STATE_DATA_DIRTY, &dirty) != c.GHOSTTY_SUCCESS)
-        return;
-    if (screen_changed)
+        return changed;
+    if (screen_changed or force)
         dirty = c.GHOSTTY_RENDER_STATE_DIRTY_FULL
     else if (dirty == c.GHOSTTY_RENDER_STATE_DIRTY_FALSE)
-        return;
+        return changed;
 
     var cols: u16 = 0;
     var rows: u16 = 0;
     if (c.ghostty_render_state_get(gvt.render_state, c.GHOSTTY_RENDER_STATE_DATA_COLS, &cols) != c.GHOSTTY_SUCCESS)
-        return;
+        return changed;
     if (c.ghostty_render_state_get(gvt.render_state, c.GHOSTTY_RENDER_STATE_DATA_ROWS, &rows) != c.GHOSTTY_SUCCESS)
-        return;
+        return changed;
     if (cols != grid.*.sx or rows != grid.*.sy)
-        return;
+        return changed;
 
     if (c.ghostty_render_state_get(gvt.render_state, c.GHOSTTY_RENDER_STATE_DATA_ROW_ITERATOR, @ptrCast(&gvt.row_iter)) != c.GHOSTTY_SUCCESS)
-        return;
+        return changed;
 
     var py: c_uint = 0;
     while (py < rows) : (py += 1) {
@@ -857,12 +1376,15 @@ fn sync(gvt: *GhosttyVT, s: *c.screen) void {
         var clean = c.GHOSTTY_RENDER_STATE_DIRTY_FALSE;
         _ = c.ghostty_render_state_set(gvt.render_state, c.GHOSTTY_RENDER_STATE_OPTION_DIRTY, &clean);
     }
+    return true;
 }
 
 export fn tmux_ghostty_vt_new(wp: ?*c.window_pane) ?*GhosttyVT {
     const pane = wp orelse return null;
-    if (!sizeValid(pane.*.sx, pane.*.sy))
+    if (!sizeValid(pane.*.sx, pane.*.sy)) {
+        log_debug("%s: invalid size %ux%u", "tmux_ghostty_vt_new", pane.*.sx, pane.*.sy);
         return null;
+    }
 
     const gvt = allocator.create(GhosttyVT) catch return null;
     gvt.* = .{
@@ -881,6 +1403,16 @@ export fn tmux_ghostty_vt_new(wp: ?*c.window_pane) ?*GhosttyVT {
         .osc_active = false,
         .osc_esc = false,
         .osc_pending_esc = false,
+        .alt_pending = std.mem.zeroes([alt_pending_max]u8),
+        .alt_pending_len = 0,
+        .kitty_iter = null,
+        .kitty_enabled = false,
+        .last_kitty_sig = null,
+        .screen_cleared = false,
+        .clear_state = .ground,
+        .clear_param = 0,
+        .clear_param_active = false,
+        .clear_param_done = false,
     };
 
     const options = c.GhosttyTerminalOptions{
@@ -889,6 +1421,7 @@ export fn tmux_ghostty_vt_new(wp: ?*c.window_pane) ?*GhosttyVT {
         .max_scrollback = pane.*.base.grid.?.*.hlimit,
     };
     if (c.ghostty_terminal_new(null, &gvt.terminal, options) != c.GHOSTTY_SUCCESS) {
+        log_debug("%s: ghostty_terminal_new failed", "tmux_ghostty_vt_new");
         allocator.destroy(gvt);
         return null;
     }
@@ -924,6 +1457,16 @@ export fn tmux_ghostty_vt_new(wp: ?*c.window_pane) ?*GhosttyVT {
     _ = c.ghostty_terminal_set(gvt.terminal, c.GHOSTTY_TERMINAL_OPT_DEVICE_ATTRIBUTES, @ptrCast(&deviceAttributesCb));
     _ = c.ghostty_terminal_set(gvt.terminal, c.GHOSTTY_TERMINAL_OPT_PWD_CHANGED, @ptrCast(&pwdChangedCb));
 
+    var kitty_built = false;
+    _ = c.ghostty_build_info(c.GHOSTTY_BUILD_INFO_KITTY_GRAPHICS, &kitty_built);
+    if (kitty_built) {
+        installPngDecoder();
+        var storage_limit = kitty_storage_limit;
+        _ = c.ghostty_terminal_set(gvt.terminal, c.GHOSTTY_TERMINAL_OPT_KITTY_IMAGE_STORAGE_LIMIT, &storage_limit);
+        if (c.ghostty_kitty_graphics_placement_iterator_new(null, &gvt.kitty_iter) == c.GHOSTTY_SUCCESS)
+            gvt.kitty_enabled = true;
+    }
+
     return gvt;
 }
 
@@ -933,6 +1476,8 @@ export fn tmux_ghostty_vt_free(gvt_: ?*GhosttyVT) void {
     c.ghostty_render_state_row_iterator_free(gvt.row_iter);
     c.ghostty_render_state_free(gvt.render_state);
     c.ghostty_terminal_free(gvt.terminal);
+    if (gvt.kitty_iter != null)
+        c.ghostty_kitty_graphics_placement_iterator_free(gvt.kitty_iter);
     freeOsc(gvt);
     allocator.destroy(gvt);
 }
@@ -944,11 +1489,25 @@ export fn tmux_ghostty_vt_resize(gvt_: ?*GhosttyVT, sx: c_uint, sy: c_uint) void
     const pixels = pixelSize(gvt.wp);
     if (c.ghostty_terminal_resize(gvt.terminal, @intCast(sx), @intCast(sy), pixels.width, pixels.height) != c.GHOSTTY_SUCCESS)
         return;
+
+    // A pixel-only change (e.g. the client font size changed) does not
+    // invalidate the grid contents or the history.
+    if (sx == gvt.sx and sy == gvt.sy)
+        return;
     gvt.sx = sx;
     gvt.sy = sy;
+
+    // ghostty reflows its scrollback on resize, so the imported copy no
+    // longer lines up; rebuild it from scratch. The caller has already
+    // resized the tmux grid, so resync immediately rather than leaving
+    // the history empty until the next write.
     if (gvt.wp.*.base.grid != null)
         c.grid_clear_history(gvt.wp.*.base.grid);
     gvt.last_scrollback = 0;
+    gvt.last_kitty_sig = null;
+    _ = c.image_free_all(&gvt.wp.*.base);
+    if (sync(gvt, &gvt.wp.*.base, true))
+        gvt.wp.*.flags |= c.PANE_CHANGED | c.PANE_REDRAW;
 }
 
 export fn tmux_ghostty_vt_write(gvt_: ?*GhosttyVT, data: [*c]const u8, len: usize) void {
@@ -957,19 +1516,20 @@ export fn tmux_ghostty_vt_write(gvt_: ?*GhosttyVT, data: [*c]const u8, len: usiz
         return;
 
     var buf = data[0..len];
+    scanClearScreen(gvt, buf);
     scanOscSideEffects(gvt, buf);
 
-    var filtered: ?[]u8 = null;
-    if (gvt.wp.*.options != null and c.options_get_number(gvt.wp.*.options, "alternate-screen") == 0) {
-        filtered = filterAlternateScreen(buf);
-        if (filtered) |f|
-            buf = f;
-    }
-    defer if (filtered) |f| allocator.free(f.ptr[0..len]);
+    var filtered: ?AltFiltered = null;
+    if (gvt.wp.*.options != null and c.options_get_number(gvt.wp.*.options, "alternate-screen") == 0)
+        filtered = filterAlternateScreen(gvt, buf);
+    defer if (filtered) |f| allocator.free(f.data.ptr[0..f.cap]);
+    if (filtered) |f|
+        buf = f.data;
 
     if (buf.len != 0)
         c.ghostty_terminal_vt_write(gvt.terminal, buf.ptr, buf.len);
 
-    sync(gvt, &gvt.wp.*.base);
-    gvt.wp.*.flags |= c.PANE_CHANGED | c.PANE_REDRAW;
+    gvt.wp.*.flags |= c.PANE_CHANGED;
+    if (sync(gvt, &gvt.wp.*.base, false))
+        gvt.wp.*.flags |= c.PANE_REDRAW;
 }

@@ -1591,8 +1591,10 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	wp->sy = sy;
 
 	log_debug("%s: %%%u resize %ux%u", __func__, wp->id, sx, sy);
-	tmux_ghostty_vt_pane_resize(wp, sx, sy);
 	screen_resize(&wp->base, sx, sy, wp->base.saved_grid == NULL);
+
+	/* After screen_resize so the resync sees the resized grid. */
+	tmux_ghostty_vt_pane_resize(wp, sx, sy);
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL && wme->mode->resize != NULL)

@@ -68,10 +68,8 @@ static void	tty_emulate_repeat(struct tty *, enum tty_code_code,
 static void	tty_draw_pane(struct tty *, const struct tty_ctx *, u_int);
 static int	tty_check_overlay(struct tty *, u_int, u_int);
 
-#ifdef ENABLE_SIXEL
 static void	tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
 		    struct client *, struct tty_ctx *);
-#endif
 
 #define tty_use_margin(tty) \
 	(tty->term->flags & TERM_DECSLRM)
@@ -1522,7 +1520,6 @@ tty_check_overlay_range(struct tty *tty, u_int px, u_int py, u_int nx)
 	return (c->overlay_check(c, c->overlay_data, px, py, nx));
 }
 
-#ifdef ENABLE_SIXEL
 /* Update context for client. */
 static int
 tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
@@ -1571,10 +1568,54 @@ tty_draw_images(struct client *c, struct window_pane *wp)
 		ttyctx.arg = wp;
 		ttyctx.set_client_cb = tty_set_client_cb;
 		ttyctx.flags |= TTY_CTX_INVISIBLE_PANES;
-		tty_write_one(tty_cmd_sixelimage, c, &ttyctx);
+#ifdef ENABLE_SIXEL
+		if (im->kind == IMAGE_SIXEL)
+			tty_write_one(tty_cmd_sixelimage, c, &ttyctx);
+		else
+#endif
+		if (im->kind == IMAGE_KITTY)
+			tty_write_one(tty_cmd_kittyimage, c, &ttyctx);
 	}
 }
-#endif
+
+void
+tty_clear_pane_kitty_images(struct window_pane *wp)
+{
+	struct client	*c;
+	struct image	*im;
+	char		*data;
+	u_int		 id;
+	int		 sent;
+
+	if (TAILQ_EMPTY(&wp->base.images))
+		return;
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session == NULL || c->session->curw == NULL)
+			continue;
+		if (c->session->curw->window != wp->window)
+			continue;
+		if (c->tty.term == NULL || (c->flags & CLIENT_SUSPENDED))
+			continue;
+		if ((~c->tty.term->flags & TERM_KITTYGRAPHICS) &&
+		    !tty_term_has(c->tty.term, TTYC_KG))
+			continue;
+
+		sent = 0;
+		TAILQ_FOREACH(im, &wp->base.images, entry) {
+			if (im->kind != IMAGE_KITTY)
+				continue;
+			id = 0x80000000u | ((wp->id & 0x7fffu) << 16) |
+			    (im->data.kitty->image_id & 0xffffu);
+			xasprintf(&data, "\033_Ga=d,d=i,i=%u,q=2;\033\\", id);
+			tty_puts(&c->tty, data);
+			free(data);
+			sent = 1;
+		}
+		if (sent)
+			tty_invalidate(&c->tty);
+	}
+}
 
 void
 tty_sync_start(struct tty *tty)
@@ -1649,7 +1690,6 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 	}
 }
 
-#ifdef ENABLE_SIXEL
 /* Only write to the incoming tty instead of every client. */
 static void
 tty_write_one(void (*cmdfn)(struct tty *, const struct tty_ctx *),
@@ -1660,7 +1700,6 @@ tty_write_one(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 	if ((ctx->set_client_cb(ctx, c)) == 1)
 		cmdfn(&c->tty, ctx);
 }
-#endif
 
 void
 tty_cmd_insertcharacter(struct tty *tty, const struct tty_ctx *ctx)
@@ -2160,7 +2199,7 @@ void
 tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct image		*im = ctx->image;
-	struct sixel_image	*si = im->data;
+	struct sixel_image	*si = im->data.sixel;
 	struct sixel_image	*new;
 	char			*data;
 	size_t			 size;
@@ -2206,6 +2245,162 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 		sixel_free(new);
 }
 #endif
+
+#define KITTY_CHUNK_SIZE 4096
+
+/*
+ * Choose the kitty protocol format key. The data is decoded pixels when
+ * uncompressed, so trust the byte count first and the recorded format
+ * only for compressed data. Returns 0 if the data cannot be represented.
+ */
+static u_int
+tty_kitty_format(const struct kitty_image *ki)
+{
+	size_t	pixels = (size_t)ki->width * ki->height;
+
+	if (ki->compression == 0) {
+		if (ki->data_len == pixels * 4)
+			return (32);
+		if (ki->data_len == pixels * 3)
+			return (24);
+	}
+	if (ki->data_len >= 8 &&
+	    memcmp(ki->data, "\211PNG\r\n\032\n", 8) == 0)
+		return (100);
+	switch (ki->format) {
+	case 0:	/* GHOSTTY_KITTY_IMAGE_FORMAT_RGB */
+		return (24);
+	case 1:	/* GHOSTTY_KITTY_IMAGE_FORMAT_RGBA */
+		return (32);
+	case 2:	/* GHOSTTY_KITTY_IMAGE_FORMAT_PNG */
+		return (100);
+	}
+	return (0);
+}
+
+void
+tty_cmd_kittyimage(struct tty *tty, const struct tty_ctx *ctx)
+{
+	struct window_pane	*wp = ctx->arg;
+	struct image		*im = ctx->image;
+	struct kitty_image	*ki = im->data.kitty;
+	char			*data, *b64;
+	size_t			 size, b64len, off, chunk;
+	u_int			 cx = ctx->ocx, cy = ctx->ocy;
+	u_int			 i, j, x, y, rx, ry;
+	u_int			 format, id, pid, sx1, sy1, sw, sh;
+	int			 fallback = 0, b64n, last;
+
+	if ((~tty->term->flags & TERM_KITTYGRAPHICS) &&
+	    !tty_term_has(tty->term, TTYC_KG))
+		fallback = 1;
+	if (tty->xpixel == 0 || tty->ypixel == 0)
+		fallback = 1;
+	format = tty_kitty_format(ki);
+	if (format == 0)
+		fallback = 1;
+
+	if (!tty_clamp_area(tty, ctx, cx, cy, im->sx, im->sy, &i, &j, &x, &y,
+	    &rx, &ry))
+		return;
+
+	if (fallback) {
+		data = xstrdup(im->fallback);
+		size = strlen(data);
+
+		tty_region_off(tty);
+		tty_margin_off(tty);
+		tty_cursor(tty, x, y);
+
+		tty->flags |= TTY_NOBLOCK;
+		tty_add(tty, data, size);
+		tty_invalidate(tty);
+		free(data);
+		return;
+	}
+
+	/*
+	 * Crop the source rectangle to the visible part of the placement
+	 * and scale it onto exactly the visible cells (c=/r=), so the
+	 * image cannot bleed over pane borders.
+	 */
+	sx1 = ki->source_x;
+	sy1 = ki->source_y;
+	sw = ki->source_width != 0 ? ki->source_width : ki->width;
+	sh = ki->source_height != 0 ? ki->source_height : ki->height;
+	if (im->sx != 0) {
+		sx1 += i * sw / im->sx;
+		sw = rx * sw / im->sx;
+	}
+	if (im->sy != 0) {
+		sy1 += j * sh / im->sy;
+		sh = ry * sh / im->sy;
+	}
+	if (sw == 0 || sh == 0)
+		return;
+
+	/*
+	 * Image ids from different panes share the outer terminal, so
+	 * mix the pane id in to keep them distinct. Retransmitting the
+	 * same id and placement replaces rather than accumulates.
+	 */
+	if (wp != NULL)
+		id = 0x80000000u | ((wp->id & 0x7fffu) << 16) |
+		    (ki->image_id & 0xffffu);
+	else
+		id = ki->image_id;
+	pid = ki->placement_id != 0 ? ki->placement_id : 1;
+
+	b64len = 4 * ((ki->data_len + 2) / 3) + 1;
+	b64 = xmalloc(b64len);
+	b64n = b64_ntop(ki->data, ki->data_len, b64, b64len);
+	if (b64n <= 0) {
+		free(b64);
+		return;
+	}
+
+	tty_region_off(tty);
+	tty_margin_off(tty);
+	tty_cursor(tty, x, y);
+	tty->flags |= TTY_NOBLOCK;
+
+	off = 0;
+	while (off < (size_t)b64n) {
+		chunk = (size_t)b64n - off;
+		if (chunk > KITTY_CHUNK_SIZE)
+			chunk = KITTY_CHUNK_SIZE;
+		last = (off + chunk == (size_t)b64n);
+
+		if (off == 0) {
+			if (format == 100) {
+				size = xasprintf(&data,
+				    "\033_Ga=T,q=2,C=1,t=d,f=100,i=%u,p=%u,"
+				    "x=%u,y=%u,w=%u,h=%u,c=%u,r=%u%s,m=%d;"
+				    "%.*s\033\\",
+				    id, pid, sx1, sy1, sw, sh, rx, ry,
+				    ki->compression != 0 ? ",o=z" : "",
+				    last ? 0 : 1, (int)chunk, b64 + off);
+			} else {
+				size = xasprintf(&data,
+				    "\033_Ga=T,q=2,C=1,t=d,f=%u,s=%u,v=%u,"
+				    "i=%u,p=%u,x=%u,y=%u,w=%u,h=%u,c=%u,r=%u"
+				    "%s,m=%d;%.*s\033\\",
+				    format, ki->width, ki->height, id, pid,
+				    sx1, sy1, sw, sh, rx, ry,
+				    ki->compression != 0 ? ",o=z" : "",
+				    last ? 0 : 1, (int)chunk, b64 + off);
+			}
+		} else {
+			size = xasprintf(&data, "\033_Gq=2,m=%d;%.*s\033\\",
+			    last ? 0 : 1, (int)chunk, b64 + off);
+		}
+		tty_add(tty, data, size);
+		free(data);
+		off += chunk;
+	}
+	free(b64);
+	tty_invalidate(tty);
+}
 
 void
 tty_cmd_syncstart(struct tty *tty, const struct tty_ctx *ctx)

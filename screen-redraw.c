@@ -1817,14 +1817,12 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	tty_reset(tty);
 	tty_sync_end(tty);
 
-#ifdef ENABLE_SIXEL
 	if (wp != NULL)
 		tty_draw_images(c, wp);
 	else {
 		TAILQ_FOREACH(loop, &scene->w->panes, entry)
 			tty_draw_images(c, loop);
 	}
-#endif
 
 	log_debug("%s: finished @%u redraw", c->name, scene->w->id);
 }
