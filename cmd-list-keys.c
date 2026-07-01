@@ -38,6 +38,21 @@
 	"#{p|#{key_string_width}:#{q|a:key_string}} "		\
 	"#{key_command}}"
 
+/*
+ * Multiline (-p) template: do not align anything, just a single space between
+ * each field regardless of the width of other keys.
+ */
+#define LIST_KEYS_TEMPLATE_PRETTY				\
+	"#{?notes_only,"					\
+	"#{key_prefix} "					\
+	"#{key_string} "					\
+	"#{?key_note,#{key_note},#{key_command}}"		\
+	","							\
+	"bind-key #{?key_repeat,-r ,}"				\
+	"-T #{key_table} "					\
+	"#{q|a:key_string} "					\
+	"#{key_command}}"
+
 static enum cmd_retval cmd_list_keys_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_list_keys_entry = {
@@ -209,8 +224,12 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'p'))
 		print_flags |= CMD_PARSE_PRINT_MULTILINE;
 
-	if ((template = args_get(args, 'F')) == NULL)
-		template = LIST_KEYS_TEMPLATE;
+	if ((template = args_get(args, 'F')) == NULL) {
+		if (print_flags & CMD_PARSE_PRINT_MULTILINE)
+			template = LIST_KEYS_TEMPLATE_PRETTY;
+		else
+			template = LIST_KEYS_TEMPLATE;
+	}
 
 	if (table)
 		l = sort_get_key_bindings_table(table, &n, &sort_crit);

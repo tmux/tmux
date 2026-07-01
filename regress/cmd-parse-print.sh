@@ -57,23 +57,23 @@ bind-key  -T parsetest n if-shell true { display-message a\nb 'x;y' '#literal' }
 --- options ---
 display-message 'hi there'
 --- multiline ---
-bind-key  -T parsetest a display-message hello
-bind-key  -T parsetest b display-message 'hello world'
-bind-key  -T parsetest c display-message 'literal $HOME #{p} ~'
-bind-key  -T parsetest d display-message ''
-bind-key  -T parsetest e display-message '#{pane_id}'
-bind-key  -T parsetest f display-message a \; display-message b
-bind-key  -T parsetest g display-message one
+bind-key -T parsetest a display-message hello
+bind-key -T parsetest b display-message 'hello world'
+bind-key -T parsetest c display-message 'literal $HOME #{p} ~'
+bind-key -T parsetest d display-message ''
+bind-key -T parsetest e display-message '#{pane_id}'
+bind-key -T parsetest f display-message a \; display-message b
+bind-key -T parsetest g display-message one
 display-message two
-bind-key  -T parsetest h if-shell true {
+bind-key -T parsetest h if-shell true {
 	display-message yes
 } {
 	display-message no
 }
-bind-key  -T parsetest m if-shell true {
+bind-key -T parsetest m if-shell true {
 	display-message ${HOME} ~ ~root '#{pane_id}'
 }
-bind-key  -T parsetest n if-shell true {
+bind-key -T parsetest n if-shell true {
 	display-message a\nb 'x;y' '#literal'
 }
 EOF
