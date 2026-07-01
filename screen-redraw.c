@@ -1102,10 +1102,14 @@ screen_redraw_draw_panes(struct screen_redraw_ctx *ctx)
 static void
 screen_redraw_draw_status_column(struct screen_redraw_ctx *ctx)
 {
-	struct client	*c = ctx->c;
-	struct tty	*tty = &c->tty;
-	struct screen	*s = &c->status_column.screen;
-	u_int		 i, x, width = status_column_width(c);
+	struct client		*c = ctx->c;
+	struct session		*sess = c->session;
+	struct tty		*tty = &c->tty;
+	struct screen		*s = &c->status_column.screen;
+	struct grid_cell	 gc;
+	struct format_tree	*ft;
+	u_int			 i, x, width = status_column_width(c);
+	int			 sep;
 
 	if (width == 0)
 		return;
@@ -1115,6 +1119,21 @@ screen_redraw_draw_status_column(struct screen_redraw_ctx *ctx)
 
 	for (i = 0; i < ctx->vsy && i < screen_size_y(s); i++)
 		tty_draw_line(tty, s, 0, i, width, x, ctx->vy + i, NULL);
+
+	/* Draw the draggable separator border alongside the content. */
+	sep = status_column_separator_at(c);
+	if (sep == -1)
+		return;
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+	ft = format_create_defaults(NULL, c, sess, sess->curw, NULL);
+	style_add(&gc, sess->options, "status-column-border-style", ft);
+	format_free(ft);
+	gc.attr |= GRID_ATTR_CHARSET;
+	utf8_set(&gc.data, CELL_BORDERS[CELL_TOPBOTTOM]); /* vertical line */
+	for (i = 0; i < ctx->vsy; i++) {
+		tty_cursor(tty, sep, ctx->vy + i);
+		tty_cell(tty, &gc, NULL);
+	}
 }
 
 /* Draw the status line. */

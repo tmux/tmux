@@ -177,6 +177,7 @@ enum key_code_mouse_location {
 	KEYC_MOUSE_LOCATION_STATUS_RIGHT,
 	KEYC_MOUSE_LOCATION_STATUS_DEFAULT,
 	KEYC_MOUSE_LOCATION_BORDER,
+	KEYC_MOUSE_LOCATION_STATUS_COLUMN_BORDER,
 	KEYC_MOUSE_LOCATION_SCROLLBAR_UP,
 	KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER,
 	KEYC_MOUSE_LOCATION_SCROLLBAR_DOWN,
@@ -3167,6 +3168,7 @@ u_int	 status_prompt_line_at(struct client *);
 int	 status_at_line(struct client *);
 u_int	 status_line_size(struct client *);
 int	 status_column_at(struct client *);
+int	 status_column_separator_at(struct client *);
 u_int	 status_column_width(struct client *);
 void	 status_get_client_viewport(struct client *, u_int *, u_int *,
 	     u_int *, u_int *);

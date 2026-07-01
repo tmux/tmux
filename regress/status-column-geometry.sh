@@ -30,15 +30,15 @@ check_size() {
 # No column: 80 wide, 23 high (status line).
 check_size 80x23 "column off"
 
-# Left column of 12.
+# Left column of 12 plus the one-cell separator.
 $TMUX set -g status-column 12 || exit 1
 sleep 1
-check_size 68x23 "left column"
+check_size 67x23 "left column"
 
-# Right column of 12.
+# Right column of 12 plus the one-cell separator.
 $TMUX set -g status-column-position right || exit 1
 sleep 1
-check_size 68x23 "right column"
+check_size 67x23 "right column"
 
 # Too-narrow terminal hides the column.
 $TMUX set -g status-column 200 || exit 1
@@ -49,7 +49,7 @@ check_size 80x23 "too narrow"
 $TMUX set -g status-column 12 || exit 1
 $TMUX set -g status off || exit 1
 sleep 1
-check_size 68x24 "status off"
+check_size 67x24 "status off"
 
 # Both off restores the full terminal.
 $TMUX set -g status-column 0 || exit 1

@@ -944,6 +944,16 @@ const struct options_table_entry options_table[] = {
 	  .text = "Position of the vertical status column."
 	},
 
+	{ .name = "status-column-border-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of the vertical status column separator border, which "
+		  "can be dragged with the mouse to resize the column."
+	},
+
 	{ .name = "status-fg",
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .scope = OPTIONS_TABLE_SESSION,

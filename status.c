@@ -285,6 +285,26 @@ status_column_at(struct client *c)
 }
 
 /*
+ * Get the screen column of the status column separator (the one-column border
+ * between the column content and the window viewport). -1 means there is no
+ * column (or it is hidden for this client). For a left column the separator
+ * sits just right of the content; for a right column just left of it.
+ */
+int
+status_column_separator_at(struct client *c)
+{
+	struct session	*s = c->session;
+	struct options	*oo = (s != NULL) ? s->options : global_s_options;
+	u_int		 width = status_column_width(c);
+
+	if (width == 0)
+		return (-1);
+	if (options_get_number(oo, "status-column-position") == 0)
+		return (width);
+	return (c->tty.sx - width - 1);
+}
+
+/*
  * Get the width of the status column for a client. 0 means off or hidden
  * (when the configured width would leave no window columns, the column is
  * hidden for this client, like the status line on a one-row terminal).
@@ -304,8 +324,11 @@ status_column_width(struct client *c)
 	if (width == 0)
 		return (0);
 
-	/* Hide the column when it would leave no window columns. */
-	if (width >= c->tty.sx)
+	/*
+	 * Hide the column when its content plus the one-column separator would
+	 * leave no window columns.
+	 */
+	if (width + 1 >= c->tty.sx)
 		return (0);
 	return (width);
 }
@@ -326,21 +349,22 @@ status_get_client_viewport(struct client *c, u_int *x, u_int *y, u_int *sx,
     u_int *sy)
 {
 	u_int	width = status_column_width(c), lines = status_line_size(c);
+	u_int	reserved = (width == 0) ? 0 : width + 1; /* +1 separator */
 
 	/*
 	 * The client may not have a session yet (when working out the size for
 	 * a new session); then only the sizes matter, not the offsets.
 	 */
 	if (c->session != NULL && status_column_at(c) == 0)
-		*x = width;
+		*x = reserved;
 	else
 		*x = 0;
 	if (c->session != NULL && status_at_line(c) == 0)
 		*y = lines;
 	else
 		*y = 0;
-	if (width < c->tty.sx)
-		*sx = c->tty.sx - width;
+	if (reserved < c->tty.sx)
+		*sx = c->tty.sx - reserved;
 	else
 		*sx = 0;
 	if (lines < c->tty.sy)

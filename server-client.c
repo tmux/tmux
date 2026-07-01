@@ -34,6 +34,8 @@ static void	server_client_check_pane_resize(struct window_pane *);
 static void	server_client_check_pane_buffer(struct window_pane *);
 static void	server_client_check_window_resize(struct window *);
 static key_code	server_client_check_mouse(struct client *, struct key_event *);
+static void	server_client_status_column_drag_update(struct client *,
+		    struct mouse_event *);
 static void	server_client_repeat_timer(int, short, void *);
 static void	server_client_click_timer(int, short, void *);
 static void	server_client_check_exit(struct client *);
@@ -903,6 +905,14 @@ have_event:
 			return (KEYC_UNKNOWN);
 	}
 
+	/* Is this on the status column separator border? */
+	if (loc == KEYC_MOUSE_LOCATION_NOWHERE) {
+		int	sep = status_column_separator_at(c);
+
+		if (sep != -1 && x == (u_int)sep && y >= vy && y < vy + vsy)
+			loc = KEYC_MOUSE_LOCATION_STATUS_COLUMN_BORDER;
+	}
+
 	/*
 	 * Not on status line. Adjust position and check for border, pane, or
 	 * scrollbar.
@@ -1036,6 +1046,13 @@ have_event:
 		}
 	}
 	if (type == KEYC_TYPE_MOUSEDRAG) {
+		if (loc == KEYC_MOUSE_LOCATION_STATUS_COLUMN_BORDER &&
+		    c->tty.mouse_drag_flag == 0 &&
+		    c->tty.mouse_drag_update == NULL) {
+			c->tty.mouse_drag_update =
+			    server_client_status_column_drag_update;
+			server_client_status_column_drag_update(c, m);
+		}
 		if (c->tty.mouse_drag_update != NULL)
 			key = KEYC_DRAGGING;
 
@@ -1100,6 +1117,50 @@ have_event:
 	if (log_get_level() != 0)
 		log_debug("mouse key is %s", key_string_lookup_key (key, 1));
 	return (key);
+}
+
+/*
+ * Update the status column width while its separator border is dragged with
+ * the mouse. The new width is written to the session status-column option so
+ * it persists and applies to every client attached to the session, mirroring
+ * how dragging a pane border resizes panes.
+ */
+static void
+server_client_status_column_drag_update(struct client *c, struct mouse_event *m)
+{
+	struct session	*s = c->session;
+	int		 sx = c->tty.sx, width, position;
+
+	if (s == NULL) {
+		c->tty.mouse_drag_update = NULL;
+		return;
+	}
+
+	/*
+	 * Place the separator under the cursor: for a left column the content
+	 * width runs up to the cursor; for a right column it is measured back
+	 * from the right edge (leaving one column for the separator itself).
+	 */
+	position = options_get_number(s->options, "status-column-position");
+	if (position == 0)
+		width = m->x;
+	else
+		width = sx - 1 - (int)m->x;
+
+	/* Keep at least one content column, one separator and one window column. */
+	if (width < 1)
+		width = 1;
+	if (width > sx - 2)
+		width = sx - 2;
+	if (width < 1)
+		return;
+
+	if ((u_int)width == (u_int)options_get_number(s->options,
+	    "status-column"))
+		return;
+
+	options_set_number(s->options, "status-column", width);
+	options_push_changes("status-column");
 }
 
 /* Is this a bracket paste key? */
