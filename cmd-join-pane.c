@@ -52,7 +52,7 @@ const struct cmd_entry cmd_move_pane_entry = {
 	.name = "move-pane",
 	.alias = "movep",
 
-	.args = { "bdfhMvl:L::P:R::s:t:U::X:Y:z:", 0, 0, NULL },
+	.args = { "bdD::fhMvl:L::P:R::s:t:U::X:Y:z:", 0, 0, NULL },
 	.usage = "[-bdfhMv] [-D lines] [-l size] [-L columns] [-P position] "
 	         "[-R columns] " CMD_SRCDST_PANE_USAGE " [-U lines] "
 	         "[-X x-position] [-Y y-position] [-z z-index]",
