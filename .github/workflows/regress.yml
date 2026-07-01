@@ -1,0 +1,45 @@
+name: 'Run Tests'
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '33 3 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tmux-tests
+  cancel-in-progress: true
+
+jobs:
+  regress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf \
+            automake \
+            bison \
+            build-essential \
+            libevent-dev \
+            libncurses-dev \
+            pkg-config
+
+      - name: build
+        run: |
+          sh autogen.sh
+          ./configure
+          make -j"$(nproc)"
+
+      - name: test
+        run: |
+          cd regress
+          make
