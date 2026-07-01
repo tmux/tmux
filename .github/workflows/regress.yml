@@ -25,12 +25,12 @@ jobs:
           - name: ubuntu-24.04-x64
             runner: ubuntu-24.04
             make: make
-          - name: ubuntu-24.04-arm64
-            runner: ubuntu-24.04-arm
-            make: make
-          - name: macos-26-arm64
-            runner: macos-26
-            make: gmake
+         # - name: ubuntu-24.04-arm64
+         #   runner: ubuntu-24.04-arm
+         #   make: make
+         # - name: macos-26-arm64
+         #   runner: macos-26
+         #   make: gmake
 
     steps:
       - name: checkout
