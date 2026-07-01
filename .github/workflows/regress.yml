@@ -47,7 +47,7 @@ jobs:
             build-essential \
             libevent-dev \
             libncurses-dev \
-            libutf8proc-dev
+            libutf8proc-dev \
             pkg-config
 
       - name: dependencies
