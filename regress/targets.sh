@@ -156,20 +156,21 @@ check "alpha:{last}" "2"
 
 # --- combined and empty forms ---------------------------------------------
 #
-# ":win" uses the current session; confirm that is alpha first so the test is
-# unambiguous, then resolve a window inside it with an empty session part.
+# Empty targets use the current pane from TMUX_PANE when there is no client.
+# This keeps the test independent of the best-session fallback.
 check_ok select-window -t alpha:0
-check "" "alpha" '#{session_name}'		# empty target is current
-check "" "alpha:0" '#{session_name}:#{window_index}'
-check ":shell" "alpha:2" '#{session_name}:#{window_index}'
+pane=$($TMUX display-message -p -t alpha:0 '#{pane_id}')
+TMUX_PANE=$pane check "" "alpha" '#{session_name}'	# empty target is current
+TMUX_PANE=$pane check "" "alpha:0" '#{session_name}:#{window_index}'
+TMUX_PANE=$pane check ":shell" "alpha:2" '#{session_name}:#{window_index}'
 check "alpha:shell.0" "alpha:2" '#{session_name}:#{window_index}'
-check "alpha:.0" "alpha:0" '#{session_name}:#{window_index}'	# empty window part
+TMUX_PANE=$pane check "alpha:.0" "alpha:0" '#{session_name}:#{window_index}'	# empty window part
 
 # --- bare-name fallbacks --------------------------------------------------
 #
 # A bare pane target that is not a pane falls back to a window, then to a
 # session, using the current session (alpha).
-check "editor" "0" '#{window_index}'			# bare window name
+TMUX_PANE=$pane check "editor" "0" '#{window_index}'	# bare window name
 check "beta" "beta" '#{session_name}'			# bare session name
 
 # --- whole-target special tokens ------------------------------------------
