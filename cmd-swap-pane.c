@@ -80,6 +80,10 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 		server_redraw_window(dst_w);
 
 	if (args_has(args, 'D')) {
+		if (window_pane_is_floating(dst_wp)) {
+			cmdq_error(item, "cannot swap down on floating pane");
+			return (CMD_RETURN_ERROR);
+		}
 		src_w = dst_w;
 		src_wp = TAILQ_NEXT(dst_wp, entry);
 		src_wp = cmd_swap_pane_next_tiled_pane(src_wp);
@@ -88,6 +92,10 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 			src_wp = cmd_swap_pane_next_tiled_pane(src_wp);
 		}
 	} else if (args_has(args, 'U')) {
+		if (window_pane_is_floating(dst_wp)) {
+			cmdq_error(item, "cannot swap up on floating pane");
+			return (CMD_RETURN_ERROR);
+		}
 		src_w = dst_w;
 		src_wp = TAILQ_PREV(dst_wp, window_panes, entry);
 		src_wp = cmd_swap_pane_prev_tiled_pane(src_wp);
