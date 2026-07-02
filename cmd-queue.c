@@ -549,10 +549,12 @@ cmdq_find_flag(struct cmdq_item *item, struct cmd_find_state *fs,
 	}
 
 	value = args_get(cmd_get_args(item->cmd), flag->flag);
+	value = format_single_from_target(item, value);
 	if (cmd_find_target(fs, item, value, flag->type, flag->flags) != 0) {
 		cmd_find_clear_state(fs, 0);
 		return (CMD_RETURN_ERROR);
 	}
+	free((void *)value);
 	return (CMD_RETURN_NORMAL);
 }
 
@@ -630,7 +632,7 @@ cmdq_fire_command(struct cmdq_item *item)
 			goto out;
 		}
 	} else if (entry->flags & CMD_CLIENT_TFLAG) {
-		tc = cmd_find_client(item, args_get(args, 't'), quiet);
+		tc = cmd_find_client(item, args_get_target(args, item), quiet);
 		if (tc == NULL && !quiet) {
 			retval = CMD_RETURN_ERROR;
 			goto out;

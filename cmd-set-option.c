@@ -128,7 +128,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	/* Get the scope and table for the option .*/
-	scope = options_scope_from_name(args, window, name, target, &oo,
+	scope = options_scope_from_name(args, window, name, item, &oo,
 	    &cause);
 	if (scope == OPTIONS_TABLE_NONE) {
 		if (args_has(args, 'q'))
