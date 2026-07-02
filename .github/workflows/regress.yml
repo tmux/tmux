@@ -67,13 +67,13 @@ jobs:
             pkg-config
 
       - name: build
-          run: |
-           sh autogen.sh
-            ./configure ${{ matrix.configure }}
-	    export ASAN_OPTIONS="abort_on_error=1:detect_leaks=0"
-            ${{ matrix.make }} -j"$(getconf _NPROCESSORS_ONLN)"
+        run: |
+         sh autogen.sh
+          ./configure ${{ matrix.configure }}
+          export ASAN_OPTIONS="abort_on_error=1:detect_leaks=0"
+          ${{ matrix.make }} -j"$(getconf _NPROCESSORS_ONLN)"
 
       - name: test
-          run: |
-            cd regress
-            ${{ matrix.make }}
+        run: |
+          cd regress
+          ${{ matrix.make }}
