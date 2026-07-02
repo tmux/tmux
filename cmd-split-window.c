@@ -167,6 +167,12 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if ((new_wp = spawn_pane(&sc, &cause)) == NULL) {
 		cmdq_error(item, "create pane failed: %s", cause);
 		free(cause);
+		/*
+		 * On failure spawn_pane has already destroyed the layout cell
+		 * (via layout_close_pane in its fork-failure path); clear lc so
+		 * the fail path below does not destroy it a second time.
+		 */
+		lc = NULL;
 		goto fail;
 	}
 
@@ -220,8 +226,16 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		switch (window_pane_start_input(new_wp, item, &cause)) {
 		case -1:
 			server_client_remove_pane(new_wp);
-			if (!is_floating)
+			if (!is_floating) {
+				/*
+				 * layout_close_pane destroys the pane's layout
+				 * cell.
+				 * Clear lc so the fail path below does not
+				 * attempt to destroy it a second time.
+				 */
 				layout_close_pane(new_wp);
+				lc = NULL;
+			}
 			window_remove_pane(wp->window, new_wp);
 			cmdq_error(item, "%s", cause);
 			free(cause);
@@ -272,7 +286,8 @@ fail:
 	if (sc.argv != NULL)
 		cmd_free_argv(sc.argc, sc.argv);
 	environ_free(sc.environ);
-	layout_destroy_cell(w, lc, &w->layout_root);
+	if (lc != NULL)
+		layout_destroy_cell(w, lc, &w->layout_root);
 
 	return (CMD_RETURN_ERROR);
 
