@@ -1,0 +1,85 @@
+name: 'Bombadil Fuzz'
+
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: 'How many one-minute fuzzing rounds to run'
+        required: false
+        default: '10'
+  schedule:
+    - cron: '47 4 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tmux-bombadil
+  cancel-in-progress: true
+
+jobs:
+  bombadil:
+    name: bombadil-terminal-fuzz
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf \
+            automake \
+            bison \
+            build-essential \
+            libevent-dev \
+            libncurses-dev \
+            libutf8proc-dev \
+            pkg-config
+
+      - name: build
+        run: |
+          sh autogen.sh
+          ./configure --enable-utf8proc
+          make -j"$(getconf _NPROCESSORS_ONLN)"
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: install bombadil
+        run: npm install
+        working-directory: fuzz/bombadil
+
+      # Traces record the full grid for every state and grow to gigabytes
+      # per minute, so fuzz in one-minute rounds, deleting the trace after
+      # every clean round and keeping only a failing one.
+      - name: fuzz
+        run: |
+          rounds="${{ inputs.minutes || '10' }}"
+          i=1
+          while [ "$i" -le "$rounds" ]; do
+            echo "round $i of $rounds"
+            if ! TIME_LIMIT=1m sh run.sh \
+                --exit-on-violation \
+                --columns 80 --rows 24 \
+                --output-path output --output-path-overwrite; then
+              gzip output/trace.jsonl
+              exit 1
+            fi
+            rm -rf output
+            i=$((i + 1))
+          done
+        working-directory: fuzz/bombadil
+
+      - name: upload trace
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bombadil-trace
+          path: fuzz/bombadil/output/trace.jsonl.gz
+          if-no-files-found: ignore

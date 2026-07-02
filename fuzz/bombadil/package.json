@@ -1,0 +1,12 @@
+{
+  "name": "tmux-bombadil-fuzz",
+  "private": true,
+  "description": "Bombadil property-based fuzzing harness for tmux",
+  "scripts": {
+    "test": "sh run.sh"
+  },
+  "devDependencies": {
+    "@antithesishq/bombadil": "0.6.1",
+    "typescript": "^5.5.0"
+  }
+}
