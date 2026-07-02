@@ -59,7 +59,12 @@ static const struct grid_cell_entry grid_cleared_entry = {
 	{ .data = { 0, 8, 8, ' ' } }, GRID_FLAG_CLEARED
 };
 
-#ifdef __APPLE__
+/*
+ * These checks are diagnostics for macOS-only grid corruption debugging. They
+ * are intentionally debug only: grid_check_lines() is quadratic in the total
+ * history + visible line count and is called from the linefeed scroll path.
+ */
+#if defined(__APPLE__) && defined(DEBUG)
 static void
 grid_check_lines(struct grid *gd)
 {
