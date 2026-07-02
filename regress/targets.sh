@@ -158,6 +158,7 @@ check "alpha:{last}" "2"
 #
 # ":win" uses the current session; confirm that is alpha first so the test is
 # unambiguous, then resolve a window inside it with an empty session part.
+check_ok select-window -t alpha:0
 check "" "alpha" '#{session_name}'		# empty target is current
 check "" "alpha:0" '#{session_name}:#{window_index}'
 check ":shell" "alpha:2" '#{session_name}:#{window_index}'
