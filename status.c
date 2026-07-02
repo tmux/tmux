@@ -630,7 +630,7 @@ status_message_redraw(struct client *c)
 	status_prompt_area(c, &ax, &aw);
 
 	ft = format_create_defaults(NULL, c, NULL, NULL, NULL);
-	memcpy(&gc, &grid_default_cell, sizeof gc);
+	style_apply(&gc, s->options, "message-style", ft);
 
 	/*
 	 * Set #{message} in the format tree. If styles should be ignored in
