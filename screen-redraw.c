@@ -1087,8 +1087,8 @@ redraw_get_default_border_style(struct redraw_draw_ctx *dctx,
 	struct grid_cell	*dgc = &dctx->default_gc;
 
 	if (~dctx->flags & REDRAW_DEFAULT_SET) {
-		ft = format_create_defaults(NULL, c, s, server_client_get_curw(c),
-		    NULL);
+		ft = format_create_defaults(NULL, c, s,
+		    server_client_get_curw(c), NULL);
 		memcpy(dgc, &grid_default_cell, sizeof *dgc);
 		style_add(dgc, oo, "pane-border-style", ft);
 		format_free(ft);

@@ -1653,6 +1653,7 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 {
 	struct session		*s = c->session;
 	struct cmdq_item	*item;
+	struct window		*w;
 	struct window_pane	*wp;
 
 	/* Check the client is good to accept input. */
@@ -1706,10 +1707,10 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 			}
 		}
 
-		wp = server_client_get_curw(c)->window->active;
+		w = server_client_get_curw(c)->window;
+		wp = w->active;
 		if (wp == NULL || !window_pane_has_prompt(wp)) {
-			TAILQ_FOREACH(wp, &server_client_get_curw(c)->window->panes,
-			    entry) {
+			TAILQ_FOREACH(wp, &w->panes, entry) {
 				if (window_pane_has_prompt(wp) &&
 				    window_pane_is_visible(wp))
 					break;

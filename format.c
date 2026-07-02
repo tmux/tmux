@@ -4887,9 +4887,9 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 		fatalx("out of memory");
 
 	/*
-	 * In team mode each client views its own current window, so the "active"
-	 * window in a client's status line is that client's window, not the
-	 * session's.
+	 * In team mode each client views its own current window, so the
+	 * "active" window in a client's status line is that client's window,
+	 * not the session's.
 	 */
 	if (c != NULL)
 		curw = server_client_get_curw(c);
