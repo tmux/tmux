@@ -81,15 +81,16 @@ cmd_capture_pane_cell(struct screen *s, u_int xx, u_int yy)
 	struct grid		*gd = s->grid;
 	struct hyperlinks	*hl = s->hyperlinks;
 	struct grid_cell	 gc;
-	char			*line, *data, *tmp, *link, *linkid, *f, *b, *u;
+	char			*line, *data, *link, *linkid, *f, *b, *u;
+	char			 c[UTF8_SIZE + 1];
 	const char		*uri, *iid;
 	u_int			 flags;
 
 	grid_get_cell(gd, xx, yy, &gc);
 
-	tmp = utf8_tocstr(&gc.data);
-	utf8_stravis(&data, tmp, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
-	free(tmp);
+	memcpy(c, gc.data.data, gc.data.size);
+	c[gc.data.size] = '\0';
+	utf8_stravis(&data, c, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
 
 	if (gc.link != 0 && hyperlinks_get(hl, gc.link, &uri, &iid, NULL)) {
 		xasprintf(&link, "%s", uri);
