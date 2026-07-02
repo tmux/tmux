@@ -1,0 +1,75 @@
+name: 'Run Tests'
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '33 3 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tmux-tests
+  cancel-in-progress: true
+
+jobs:
+  regress:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ubuntu-24.04-x64
+            runner: ubuntu-24.04
+            make: make
+         # - name: ubuntu-24.04-arm64
+         #   runner: ubuntu-24.04-arm
+         #   make: make
+         # - name: macos-26-arm64
+         #   runner: macos-26
+         #   make: gmake
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf \
+            automake \
+            bison \
+            build-essential \
+            libevent-dev \
+            libncurses-dev \
+            libutf8proc-dev \
+            pkg-config
+
+      - name: dependencies
+        if: runner.os == 'macOS'
+        run: |
+          brew install \
+            autoconf \
+            automake \
+            bison \
+            libevent \
+            make \
+            ncurses \
+            utf8proc \
+            pkg-config
+
+      - name: build
+        run: |
+          sh autogen.sh
+          ./configure --enable-utf8proc
+          ${{ matrix.make }} -j"$(getconf _NPROCESSORS_ONLN)"
+
+      - name: test
+        run: |
+          cd regress
+          ${{ matrix.make }}

@@ -2770,7 +2770,7 @@ The pane must not already be floating or hidden, and the window must not
 be zoomed.
 .Tg capturep
 .It Xo Ic capture\-pane
-.Op Fl aeFHLpPqCJMN
+.Op Fl aeFHLpPRqCJMN
 .Op Fl b Ar buffer\-name
 .Op Fl E Ar end\-line
 .Op Fl S Ar start\-line
@@ -2830,6 +2830,8 @@ With
 .Fl H ,
 only hyperlinks in the specified lines are captured.
 Multiple hyperlinks on the same line are separated by spaces.
+.Fl R
+dumps the internal grid data for diagnostics.
 .Pp
 .Fl S
 and
