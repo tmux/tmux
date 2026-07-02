@@ -45,7 +45,7 @@ attributes_tostring(int attr)
 	    (attr & GRID_ATTR_UNDERSCORE_3) ? "curly-underscore," : "",
 	    (attr & GRID_ATTR_UNDERSCORE_4) ? "dotted-underscore," : "",
 	    (attr & GRID_ATTR_UNDERSCORE_5) ? "dashed-underscore," : "",
-        (attr & GRID_ATTR_OVERLINE) ? "overline," : "",
+	    (attr & GRID_ATTR_OVERLINE) ? "overline," : "",
 	    (attr & GRID_ATTR_NOATTR) ? "noattr," : "");
 	if (len > 0)
 		buf[len - 1] = '\0';

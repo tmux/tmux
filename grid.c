@@ -1712,3 +1712,98 @@ grid_in_set(struct grid *gd, u_int px, u_int py, const char *set)
 		return (0);
 	return (utf8_cstrhas(set, &gc.data));
 }
+
+/* Line flags to string. */
+const char *
+grid_line_flags_string(int flags)
+{
+	static char	s[128];
+
+	*s = '\0';
+	if (flags & GRID_LINE_WRAPPED)
+		strlcat(s, "WRAPPED,", sizeof s);
+	if (flags & GRID_LINE_EXTENDED)
+		strlcat(s, "EXTENDED,", sizeof s);
+	if (flags & GRID_LINE_DEAD)
+		strlcat(s, "DEAD,", sizeof s);
+	if (flags & GRID_LINE_START_PROMPT)
+		strlcat(s, "START_PROMPT,", sizeof s);
+	if (flags & GRID_LINE_START_OUTPUT)
+		strlcat(s, "START_OUTPUT,", sizeof s);
+	if (flags & GRID_LINE_HYPERLINK)
+		strlcat(s, "HYPERLINK,", sizeof s);
+	if (*s == '\0')
+		return ("NONE");
+	s[strlen(s) - 1] = '\0';
+	return (s);
+}
+
+/* Cell flags to string. */
+const char *
+grid_cell_flags_string(int flags)
+{
+	static char	s[128];
+
+	*s = '\0';
+	if (flags & GRID_FLAG_FG256)
+		strlcat(s, "FG256,", sizeof s);
+	if (flags & GRID_FLAG_BG256)
+		strlcat(s, "BG256,", sizeof s);
+	if (flags & GRID_FLAG_PADDING)
+		strlcat(s, "PADDING,", sizeof s);
+	if (flags & GRID_FLAG_EXTENDED)
+		strlcat(s, "EXTENDED,", sizeof s);
+	if (flags & GRID_FLAG_SELECTED)
+		strlcat(s, "SELECTED,", sizeof s);
+	if (flags & GRID_FLAG_CLEARED)
+		strlcat(s, "CLEARED,", sizeof s);
+	if (flags & GRID_FLAG_TAB)
+		strlcat(s, "TAB,", sizeof s);
+	if (flags & GRID_FLAG_NOPALETTE)
+		strlcat(s, "NOPALETTE,", sizeof s);
+	if (*s == '\0')
+		return ("NONE");
+	s[strlen(s) - 1] = '\0';
+	return (s);
+}
+
+/* Cell attributes to string. */
+const char *
+grid_cell_attr_string(int attr)
+{
+	static char	s[256];
+
+	*s = '\0';
+	if (attr & GRID_ATTR_CHARSET)
+		strlcat(s, "CHARSET,", sizeof s);
+	if (attr & GRID_ATTR_BRIGHT)
+		strlcat(s, "BRIGHT,", sizeof s);
+	if (attr & GRID_ATTR_DIM)
+		strlcat(s, "DIM,", sizeof s);
+	if (attr & GRID_ATTR_UNDERSCORE)
+		strlcat(s, "UNDERSCORE,", sizeof s);
+	if (attr & GRID_ATTR_BLINK)
+		strlcat(s, "BLINK,", sizeof s);
+	if (attr & GRID_ATTR_REVERSE)
+		strlcat(s, "REVERSE,", sizeof s);
+	if (attr & GRID_ATTR_HIDDEN)
+		strlcat(s, "HIDDEN,", sizeof s);
+	if (attr & GRID_ATTR_ITALICS)
+		strlcat(s, "ITALICS,", sizeof s);
+	if (attr & GRID_ATTR_STRIKETHROUGH)
+		strlcat(s, "STRIKETHROUGH,", sizeof s);
+	if (attr & GRID_ATTR_UNDERSCORE_2)
+		strlcat(s, "UNDERSCORE_2,", sizeof s);
+	if (attr & GRID_ATTR_UNDERSCORE_3)
+		strlcat(s, "UNDERSCORE_3,", sizeof s);
+	if (attr & GRID_ATTR_UNDERSCORE_4)
+		strlcat(s, "UNDERSCORE_4,", sizeof s);
+	if (attr & GRID_ATTR_UNDERSCORE_5)
+		strlcat(s, "UNDERSCORE_5,", sizeof s);
+	if (attr & GRID_ATTR_OVERLINE)
+		strlcat(s, "OVERLINE,", sizeof s);
+	if (*s == '\0')
+		return ("NONE");
+	s[strlen(s) - 1] = '\0';
+	return (s);
+}
