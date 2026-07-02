@@ -25,12 +25,15 @@ jobs:
           - name: ubuntu-24.04-x64
             runner: ubuntu-24.04
             make: make
+            configure: --enable-utf8proc --enable-asan
          # - name: ubuntu-24.04-arm64
          #   runner: ubuntu-24.04-arm
          #   make: make
+         #   configure: --enable-utf8proc --enable-asan
          # - name: macos-26-arm64
          #   runner: macos-26
          #   make: gmake
+         #   configure: --enable-utf8proc
 
     steps:
       - name: checkout
@@ -66,10 +69,12 @@ jobs:
       - name: build
         run: |
           sh autogen.sh
-          ./configure --enable-utf8proc
+          ./configure ${{ matrix.configure }}
           ${{ matrix.make }} -j"$(getconf _NPROCESSORS_ONLN)"
 
       - name: test
-        run: |
-          cd regress
-          ${{ matrix.make }}
+          env:
+            ASAN_OPTIONS: abort_on_error=1:detect_leaks=0
+          run: |
+            cd regress
+            ${{ matrix.make }}
