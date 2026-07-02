@@ -449,10 +449,9 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	src_w = src_wl->window;
 	server_unzoom_window(src_w);
 
-	if (!args_has(args, 't') && window_pane_is_floating(src_wp))
-		return (cmd_join_pane_tile(item, args, src_w, src_wp));
-
 	if (src_wp == dst_wp) {
+		if (window_pane_is_floating(src_wp))
+			return (cmd_join_pane_tile(item, args, src_w, src_wp));
 		cmdq_error(item, "source and target panes must be different");
 		return (CMD_RETURN_ERROR);
 	}

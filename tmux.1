@@ -3249,10 +3249,11 @@ is omitted and a marked pane is present (see
 the marked pane is used rather than the current pane.
 .Pp
 If
-.Ar dst\-pane
-is not specified and
 .Ar src\-pane
-is floating,
+is floating and
+.Ar dst\-pane
+is equal to
+.Ar src\-pane,
 .Ar src\-pane
 is returned to its previous position in the layout.
 .Tg killp
