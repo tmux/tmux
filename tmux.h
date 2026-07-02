@@ -909,6 +909,7 @@ struct grid_line {
 	u_short			 cellused;
 	u_short			 cellsize;
 	u_int			 extdsize;
+	u_int			 extdcapacity;
 
 	u_int			 time;
 	struct osc133_data	 osc133_data;

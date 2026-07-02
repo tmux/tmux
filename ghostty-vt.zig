@@ -26,7 +26,6 @@ const GhosttyVT = struct {
     terminal: c.GhosttyTerminal,
     render_state: c.GhosttyRenderState,
     row_iter: c.GhosttyRenderStateRowIterator,
-    row_cells: c.GhosttyRenderStateRowCells,
     wp: *c.window_pane,
     sx: c_uint,
     sy: c_uint,
@@ -44,6 +43,8 @@ const GhosttyVT = struct {
     kitty_enabled: bool,
     last_kitty_sig: ?u64,
     screen_cleared: bool,
+    saw_esc: bool,
+    hist_anchor: c.GhosttyTrackedGridRef,
     clear_state: ClearScanState,
     clear_param: u16,
     clear_param_active: bool,
@@ -582,34 +583,223 @@ fn utf8Truncate(buf: []const u8, max: usize) []const u8 {
     return buf[0..end];
 }
 
-// Width of the grapheme's base codepoint; ghostty's own wide-cell data
-// overrides this for wide characters and spacer tails.
-fn utf8Width(buf: []const u8) u8 {
-    const l = std.unicode.utf8ByteSequenceLength(buf[0]) catch return 1;
-    if (l > buf.len)
-        return 1;
-    const cp = std.unicode.utf8Decode(buf[0..l]) catch return 1;
-    const width = c.wcwidth(@intCast(cp));
-    return if (width < 0) 1 else @intCast(width);
-}
-
-fn buildCell(gc: *c.grid_cell, style: *const c.GhosttyStyle, grapheme: []const u8) void {
-    gc.* = std.mem.zeroes(c.grid_cell);
-
+// Cell width comes from ghostty's wide-cell data (finishCellWide
+// widens to 2 or marks padding), never from wcwidth: ghostty already
+// applied its width tables during parsing, and its cursor arithmetic
+// is the one the application observed.
+fn setCellText(gc: *c.grid_cell, grapheme: []const u8) void {
     const utf8_buf = utf8Truncate(grapheme, c.UTF8_SIZE);
     if (utf8_buf.len == 0) {
         c.utf8_set(&gc.*.data, ' ');
-    } else {
-        @memcpy(gc.*.data.data[0..utf8_buf.len], utf8_buf);
-        gc.*.data.size = @intCast(utf8_buf.len);
-        gc.*.data.have = @intCast(utf8_buf.len);
-        gc.*.data.width = if (utf8_buf.len == 1) 1 else utf8Width(utf8_buf);
+        return;
+    }
+    @memcpy(gc.*.data.data[0..utf8_buf.len], utf8_buf);
+    gc.*.data.size = @intCast(utf8_buf.len);
+    gc.*.data.have = @intCast(utf8_buf.len);
+    gc.*.data.width = 1;
+}
+
+fn setCellCodepoint(gc: *c.grid_cell, cp: u32) void {
+    if (cp == 0 or cp > std.math.maxInt(u21)) {
+        c.utf8_set(&gc.*.data, ' ');
+        return;
+    }
+    if (cp < 0x80) {
+        c.utf8_set(&gc.*.data, @intCast(cp));
+        return;
+    }
+    const len = std.unicode.utf8Encode(@intCast(cp), gc.*.data.data[0..4]) catch {
+        c.utf8_set(&gc.*.data, ' ');
+        return;
+    };
+    gc.*.data.size = len;
+    gc.*.data.have = len;
+    gc.*.data.width = 1;
+}
+
+// Bit layout of a ghostty cell (terminal/page.zig `Cell` at the pinned
+// library rev). The C API treats the u64 as opaque, so every decoded
+// cell is validated against ghostty_cell_get_multi for the first few
+// thousand reads and the decoder is disabled on the first mismatch.
+const CellBits = packed struct(u64) {
+    content_tag: u2,
+    content: u24,
+    style_id: u16,
+    wide: u2,
+    protected: u1,
+    hyperlink: u1,
+    semantic_content: u2,
+    _padding: u16,
+};
+
+const CellDecode = enum { validating, bits, ffi };
+var cell_decode: CellDecode = .validating;
+var cell_decode_validated: u32 = 0;
+const cell_decode_validate_max = 4096;
+
+// The interesting bits of a raw cell, extracted once so the expensive
+// style/grapheme/hyperlink lookups run only for cells that carry them.
+const RawCell = struct {
+    raw: c.GhosttyCell,
+    tag: c.GhosttyCellContentTag,
+    cp: u32,
+    wide: c.GhosttyCellWide,
+    style_id: u16,
+    has_styling: bool,
+    has_hyperlink: bool,
+
+    const read_keys = [_]c.GhosttyCellData{
+        c.GHOSTTY_CELL_DATA_CONTENT_TAG,
+        c.GHOSTTY_CELL_DATA_CODEPOINT,
+        c.GHOSTTY_CELL_DATA_WIDE,
+        c.GHOSTTY_CELL_DATA_STYLE_ID,
+        c.GHOSTTY_CELL_DATA_HAS_STYLING,
+        c.GHOSTTY_CELL_DATA_HAS_HYPERLINK,
+    };
+
+    fn readFfi(raw: c.GhosttyCell) RawCell {
+        var rc = RawCell{
+            .raw = raw,
+            .tag = c.GHOSTTY_CELL_CONTENT_CODEPOINT,
+            .cp = 0,
+            .wide = c.GHOSTTY_CELL_WIDE_NARROW,
+            .style_id = 0,
+            .has_styling = false,
+            .has_hyperlink = false,
+        };
+        var values = [read_keys.len]?*anyopaque{
+            &rc.tag, &rc.cp, &rc.wide, &rc.style_id, &rc.has_styling, &rc.has_hyperlink,
+        };
+        _ = c.ghostty_cell_get_multi(raw, read_keys.len, &read_keys, &values, null);
+        return rc;
     }
 
+    fn readBits(raw: c.GhosttyCell) RawCell {
+        const bits: CellBits = @bitCast(raw);
+        const is_text = bits.content_tag == 0 or bits.content_tag == 1;
+        return .{
+            .raw = raw,
+            .tag = bits.content_tag,
+            .cp = if (is_text) bits.content & 0x1fffff else 0,
+            .wide = bits.wide,
+            .style_id = bits.style_id,
+            .has_styling = bits.style_id != 0,
+            .has_hyperlink = bits.hyperlink != 0,
+        };
+    }
+
+    fn read(raw: c.GhosttyCell) RawCell {
+        return switch (cell_decode) {
+            .bits => readBits(raw),
+            .ffi => readFfi(raw),
+            .validating => readValidating(raw),
+        };
+    }
+
+    fn readValidating(raw: c.GhosttyCell) RawCell {
+        @branchHint(.cold);
+        const rc = readBits(raw);
+        const ffi = readFfi(raw);
+        if (rc.tag != ffi.tag or rc.cp != ffi.cp or rc.wide != ffi.wide or
+            rc.style_id != ffi.style_id or
+            rc.has_styling != ffi.has_styling or rc.has_hyperlink != ffi.has_hyperlink)
+        {
+            cell_decode = .ffi;
+            log_debug("%s: cell bit-decode mismatch, using FFI reads", "ghostty-vt");
+            return ffi;
+        }
+        cell_decode_validated += 1;
+        if (cell_decode_validated >= cell_decode_validate_max)
+            cell_decode = .bits;
+        return rc;
+    }
+
+    fn isDefault(rc: RawCell) bool {
+        return rc.tag == c.GHOSTTY_CELL_CONTENT_CODEPOINT and rc.cp == 0 and
+            !rc.has_styling and !rc.has_hyperlink and
+            rc.wide == c.GHOSTTY_CELL_WIDE_NARROW;
+    }
+};
+
+fn applyCellStyle(gc: *c.grid_cell, style: *const c.GhosttyStyle) void {
     gc.*.attr = mapAttr(style);
     gc.*.fg = mapColor(&style.fg_color, 8);
     gc.*.bg = mapColor(&style.bg_color, 8);
     gc.*.us = mapColor(&style.underline_color, 8);
+}
+
+// Direct-mapped cache of mapped styles, keyed by (page node, style id).
+// Style ids are only stable while the terminal is not mutating, so
+// entries are stamped with a generation that sync() bumps per pass.
+const StyleCacheEntry = struct {
+    node: ?*anyopaque = null,
+    style_id: u16 = 0,
+    gen: u32 = 0,
+    attr: c_ushort = 0,
+    fg: c_int = 0,
+    bg: c_int = 0,
+    us: c_int = 0,
+};
+var style_cache: [512]StyleCacheEntry = @splat(.{});
+var style_cache_gen: u32 = 0;
+
+fn bumpStyleCacheGen() void {
+    style_cache_gen +%= 1;
+    if (style_cache_gen == 0)
+        style_cache = @splat(.{});
+}
+
+fn applyCachedStyle(gc: *c.grid_cell, ref: *const c.GhosttyGridRef, style_id: u16) void {
+    const idx = (style_id ^ (@intFromPtr(ref.node) >> 6)) & (style_cache.len - 1);
+    const e = &style_cache[idx];
+    if (e.gen == style_cache_gen and e.node == ref.node and e.style_id == style_id) {
+        gc.*.attr = e.attr;
+        gc.*.fg = e.fg;
+        gc.*.bg = e.bg;
+        gc.*.us = e.us;
+        return;
+    }
+    var style = std.mem.zeroes(c.GhosttyStyle);
+    style.size = @sizeOf(c.GhosttyStyle);
+    if (c.ghostty_grid_ref_style(ref, &style) == c.GHOSTTY_SUCCESS)
+        applyCellStyle(gc, &style);
+    e.* = .{
+        .node = ref.node,
+        .style_id = style_id,
+        .gen = style_cache_gen,
+        .attr = gc.*.attr,
+        .fg = gc.*.fg,
+        .bg = gc.*.bg,
+        .us = gc.*.us,
+    };
+}
+
+// Content and wide/hyperlink-independent finishing shared by the
+// viewport and history builders.
+fn finishCellWide(gc: *c.grid_cell, rc: RawCell) void {
+    if (rc.wide == c.GHOSTTY_CELL_WIDE_WIDE) {
+        gc.*.data.width = 2;
+    } else if (rc.wide == c.GHOSTTY_CELL_WIDE_SPACER_TAIL) {
+        gc.*.flags |= c.GRID_FLAG_PADDING;
+        c.utf8_set(&gc.*.data, 0);
+    }
+}
+
+fn applyCellBgContent(gc: *c.grid_cell, rc: RawCell) void {
+    c.utf8_set(&gc.*.data, ' ');
+    switch (rc.tag) {
+        c.GHOSTTY_CELL_CONTENT_BG_COLOR_PALETTE => {
+            var idx: c.GhosttyColorPaletteIndex = 0;
+            if (c.ghostty_cell_get(rc.raw, c.GHOSTTY_CELL_DATA_COLOR_PALETTE, &idx) == c.GHOSTTY_SUCCESS)
+                gc.*.bg = @as(c_int, idx) | c.COLOUR_FLAG_256;
+        },
+        c.GHOSTTY_CELL_CONTENT_BG_COLOR_RGB => {
+            var rgb = std.mem.zeroes(c.GhosttyColorRgb);
+            if (c.ghostty_cell_get(rc.raw, c.GHOSTTY_CELL_DATA_COLOR_RGB, &rgb) == c.GHOSTTY_SUCCESS)
+                gc.*.bg = c.colour_join_rgb(rgb.r, rgb.g, rgb.b);
+        },
+        else => {},
+    }
 }
 
 fn utf8FromGridRef(ref: *const c.GhosttyGridRef, out: []u8) []const u8 {
@@ -654,30 +844,38 @@ fn pointGridRef(gvt: *GhosttyVT, tag: c.GhosttyPointTag, x: c_uint, y: usize, re
     return c.ghostty_terminal_grid_ref(gvt.terminal, point, ref) == c.GHOSTTY_SUCCESS;
 }
 
-fn buildCellFromGridRef(s: *c.screen, gc: *c.grid_cell, ref: *const c.GhosttyGridRef) void {
-    var style = std.mem.zeroes(c.GhosttyStyle);
-    style.size = @sizeOf(c.GhosttyStyle);
-    if (c.ghostty_grid_ref_style(ref, &style) != c.GHOSTTY_SUCCESS)
-        style = std.mem.zeroes(c.GhosttyStyle);
+// Build a tmux cell from an already-fetched raw cell, consulting the
+// grid ref only for data the raw cell cannot provide (style, grapheme
+// cluster, hyperlink). Returns true when the result is the default
+// blank cell, which callers may skip storing.
+fn buildCellFromRaw(s: *c.screen, gc: *c.grid_cell, ref: *const c.GhosttyGridRef, rc: RawCell) bool {
+    if (rc.isDefault()) {
+        gc.* = c.grid_default_cell;
+        return true;
+    }
 
-    var utf8_buf: [c.UTF8_SIZE * 4]u8 = undefined;
-    buildCell(gc, &style, utf8FromGridRef(ref, &utf8_buf));
+    gc.* = std.mem.zeroes(c.grid_cell);
+    gc.*.fg = 8;
+    gc.*.bg = 8;
+    gc.*.us = 8;
 
-    var raw_cell: c.GhosttyCell = 0;
-    _ = c.ghostty_grid_ref_cell(ref, &raw_cell);
-    var wide = c.GHOSTTY_CELL_WIDE_NARROW;
-    _ = c.ghostty_cell_get(raw_cell, c.GHOSTTY_CELL_DATA_WIDE, &wide);
-    var has_hyperlink = false;
-    _ = c.ghostty_cell_get(raw_cell, c.GHOSTTY_CELL_DATA_HAS_HYPERLINK, &has_hyperlink);
-    if (has_hyperlink)
+    if (rc.has_styling)
+        applyCachedStyle(gc, ref, rc.style_id);
+
+    if (rc.tag == c.GHOSTTY_CELL_CONTENT_CODEPOINT_GRAPHEME) {
+        var utf8_buf: [c.UTF8_SIZE * 4]u8 = undefined;
+        setCellText(gc, utf8FromGridRef(ref, &utf8_buf));
+    } else if (rc.tag == c.GHOSTTY_CELL_CONTENT_CODEPOINT) {
+        setCellCodepoint(gc, rc.cp);
+    } else {
+        applyCellBgContent(gc, rc);
+    }
+
+    if (rc.has_hyperlink)
         applyHyperlink(s, gc, ref);
 
-    if (wide == c.GHOSTTY_CELL_WIDE_WIDE) {
-        gc.*.data.width = 2;
-    } else if (wide == c.GHOSTTY_CELL_WIDE_SPACER_TAIL) {
-        gc.*.flags |= c.GRID_FLAG_PADDING;
-        c.utf8_set(&gc.*.data, 0);
-    }
+    finishCellWide(gc, rc);
+    return false;
 }
 
 fn syncMode(gvt: *GhosttyVT, s: *c.screen, ghostty_mode: c.GhosttyMode, tmux_mode: c_int) void {
@@ -721,47 +919,124 @@ fn syncHistoryRow(gvt: *GhosttyVT, s: *c.screen, history_y: usize, target_y: c_u
     var ref: c.GhosttyGridRef = undefined;
 
     resetRowFlags(grid, target_y);
-    if (pointGridRef(gvt, c.GHOSTTY_POINT_TAG_HISTORY, 0, history_y, &ref)) {
-        var row: c.GhosttyRow = 0;
-        if (c.ghostty_grid_ref_row(&ref, &row) == c.GHOSTTY_SUCCESS)
-            syncRowFlagsLine(grid, target_y, row);
-    }
+    // One page lookup per row: a grid ref is a transparent (node, x, y)
+    // snapshot, so stepping x along the row reuses the resolved node
+    // instead of paying the full lookup for every cell.
+    if (!pointGridRef(gvt, c.GHOSTTY_POINT_TAG_HISTORY, 0, history_y, &ref))
+        return;
+    var row: c.GhosttyRow = 0;
+    if (c.ghostty_grid_ref_row(&ref, &row) == c.GHOSTTY_SUCCESS)
+        syncRowFlagsLine(grid, target_y, row);
 
+    syncRowCellsFromRef(s, grid, &ref, target_y);
+}
+
+// Mirror one ghostty row into the tmux grid line at absolute row
+// `line_y`, stepping the resolved grid ref across the columns. Default
+// cells are skipped when the tmux line does not store that column yet
+// (grid_expand_line fills gaps with the default cell), which keeps
+// mostly-blank lines short on the tmux side.
+// A pending run of adjacent single-byte cells sharing one style,
+// flushed to the tmux grid with a single grid_set_cells call.
+const Run = struct {
+    start: c_uint = 0,
+    len: usize = 0,
+    style_id: u16 = 0,
+    gc: c.grid_cell = undefined,
+    chars: [512]u8 = undefined,
+
+    fn flush(run: *Run, grid: *c.grid, line_y: c_uint) void {
+        if (run.len == 0)
+            return;
+        c.grid_set_cells(grid, run.start, line_y, &run.gc, &run.chars, run.len);
+        run.len = 0;
+    }
+};
+
+fn syncRowCellsFromRef(s: *c.screen, grid: *c.grid, ref: *c.GhosttyGridRef, line_y: c_uint) void {
+    const line = c.grid_get_line(grid, line_y);
+    const run_cells = cell_decode == .bits;
+    var run = Run{};
     var px: c_uint = 0;
     while (px < grid.*.sx) : (px += 1) {
-        if (!pointGridRef(gvt, c.GHOSTTY_POINT_TAG_HISTORY, px, history_y, &ref))
+        ref.x = @intCast(px);
+        var raw: c.GhosttyCell = 0;
+        if (c.ghostty_grid_ref_cell(ref, &raw) != c.GHOSTTY_SUCCESS)
             continue;
+
+        // An all-zero cell is the default cell; when the tmux line does
+        // not store that column either, there is nothing to do.
+        if (raw == 0 and cell_decode != .ffi) {
+            run.flush(grid, line_y);
+            if (px < line.*.cellsize)
+                c.grid_set_cell(grid, px, line_y, &c.grid_default_cell);
+            continue;
+        }
+
+        if (run_cells) {
+            const bits: CellBits = @bitCast(raw);
+            const cp = bits.content & 0x1fffff;
+            if (bits.content_tag == 0 and bits.wide == 0 and
+                bits.hyperlink == 0 and cp >= 0x20 and cp < 0x7f)
+            {
+                if (run.len != 0 and
+                    (bits.style_id != run.style_id or run.len == run.chars.len))
+                    run.flush(grid, line_y);
+                if (run.len == 0) {
+                    run.start = px;
+                    run.style_id = bits.style_id;
+                    run.gc = std.mem.zeroes(c.grid_cell);
+                    run.gc.fg = 8;
+                    run.gc.bg = 8;
+                    run.gc.us = 8;
+                    c.utf8_set(&run.gc.data, ' ');
+                    if (bits.style_id != 0)
+                        applyCachedStyle(&run.gc, ref, bits.style_id);
+                }
+                run.chars[run.len] = @intCast(cp);
+                run.len += 1;
+                continue;
+            }
+        }
+
+        run.flush(grid, line_y);
         var gc: c.grid_cell = undefined;
-        buildCellFromGridRef(s, &gc, &ref);
-        c.grid_set_cell(grid, px, target_y, &gc);
+        if (buildCellFromRaw(s, &gc, ref, RawCell.read(raw)) and
+            px >= line.*.cellsize)
+            continue;
+        c.grid_set_cell(grid, px, line_y, &gc);
     }
+    run.flush(grid, line_y);
 }
 
 fn historyRowChanged(gvt: *GhosttyVT, s: *c.screen, history_y: usize, target_y: c_uint) bool {
     const grid = s.*.grid orelse return false;
     var ref: c.GhosttyGridRef = undefined;
 
-    if (pointGridRef(gvt, c.GHOSTTY_POINT_TAG_HISTORY, 0, history_y, &ref)) {
-        var row: c.GhosttyRow = 0;
-        var wrapped = false;
-        if (c.ghostty_grid_ref_row(&ref, &row) == c.GHOSTTY_SUCCESS and
-            c.ghostty_row_get(row, c.GHOSTTY_ROW_DATA_WRAP, &wrapped) == c.GHOSTTY_SUCCESS)
-        {
-            const line = c.grid_get_line(grid, target_y);
-            if (((line.*.flags & c.GRID_LINE_WRAPPED) != 0) != wrapped)
-                return true;
-        }
+    if (!pointGridRef(gvt, c.GHOSTTY_POINT_TAG_HISTORY, 0, history_y, &ref))
+        return false;
+
+    var row: c.GhosttyRow = 0;
+    var wrapped = false;
+    if (c.ghostty_grid_ref_row(&ref, &row) == c.GHOSTTY_SUCCESS and
+        c.ghostty_row_get(row, c.GHOSTTY_ROW_DATA_WRAP, &wrapped) == c.GHOSTTY_SUCCESS)
+    {
+        const line = c.grid_get_line(grid, target_y);
+        if (((line.*.flags & c.GRID_LINE_WRAPPED) != 0) != wrapped)
+            return true;
     }
 
     var px: c_uint = 0;
     while (px < grid.*.sx) : (px += 1) {
-        if (!pointGridRef(gvt, c.GHOSTTY_POINT_TAG_HISTORY, px, history_y, &ref))
+        ref.x = @intCast(px);
+        var raw: c.GhosttyCell = 0;
+        if (c.ghostty_grid_ref_cell(&ref, &raw) != c.GHOSTTY_SUCCESS)
             continue;
 
         var old_gc: c.grid_cell = undefined;
         var new_gc: c.grid_cell = undefined;
         c.grid_get_cell(grid, px, target_y, &old_gc);
-        buildCellFromGridRef(s, &new_gc, &ref);
+        _ = buildCellFromRaw(s, &new_gc, &ref, RawCell.read(raw));
         if (c.grid_cells_equal(&old_gc, &new_gc) == 0)
             return true;
     }
@@ -777,6 +1052,45 @@ fn importHistoryRows(gvt: *GhosttyVT, s: *c.screen, grid: *c.grid, from: usize, 
         c.grid_scroll_history(grid, 8);
         syncHistoryRow(gvt, s, history_y, target_y);
     }
+    setHistAnchor(gvt, to);
+}
+
+// Anchor a tracked grid ref to the newest imported history row. The
+// library moves it as the scrollback ring shifts, so the next sync can
+// read the shift count from the anchor's position instead of comparing
+// row content.
+fn setHistAnchor(gvt: *GhosttyVT, scrollback_rows: usize) void {
+    if (scrollback_rows == 0 or scrollback_rows - 1 > std.math.maxInt(u32))
+        return;
+    var point = std.mem.zeroes(c.GhosttyPoint);
+    point.tag = c.GHOSTTY_POINT_TAG_HISTORY;
+    point.value.coordinate.x = 0;
+    point.value.coordinate.y = @intCast(scrollback_rows - 1);
+    if (gvt.hist_anchor == null) {
+        if (c.ghostty_terminal_grid_ref_track(gvt.terminal, point, &gvt.hist_anchor) != c.GHOSTTY_SUCCESS)
+            gvt.hist_anchor = null;
+    } else if (c.ghostty_tracked_grid_ref_set(gvt.hist_anchor, gvt.terminal, point) != c.GHOSTTY_SUCCESS) {
+        c.ghostty_tracked_grid_ref_free(gvt.hist_anchor);
+        gvt.hist_anchor = null;
+    }
+}
+
+// Ring-full shift count via the anchor: it sat at the newest history
+// row after the last import, so its current position gives the number
+// of rows pushed past it since. Returns scrollback_rows when the
+// anchored row was pruned entirely (full rebuild) and null when the
+// anchor is unavailable (fall back to content comparison).
+fn histAnchorShift(gvt: *GhosttyVT, scrollback_rows: usize) ?usize {
+    const anchor = gvt.hist_anchor orelse return null;
+    if (!c.ghostty_tracked_grid_ref_has_value(anchor))
+        return scrollback_rows;
+    var pt = std.mem.zeroes(c.GhosttyPointCoordinate);
+    if (c.ghostty_tracked_grid_ref_point(anchor, c.GHOSTTY_POINT_TAG_HISTORY, &pt) != c.GHOSTTY_SUCCESS)
+        return null;
+    const y: usize = pt.y;
+    if (y >= scrollback_rows)
+        return null;
+    return scrollback_rows - 1 - y;
 }
 
 fn syncScrollback(gvt: *GhosttyVT, s: *c.screen) bool {
@@ -795,14 +1109,17 @@ fn syncScrollback(gvt: *GhosttyVT, s: *c.screen) bool {
 
         // Once ghostty's scrollback ring is full the row count stays
         // constant while the content shifts, possibly by several rows
-        // per write. Find the shift by scanning backwards for the row
-        // matching our newest history row, then import exactly the
-        // rows that scrolled past. If nothing matches (e.g. the ring
-        // shifted further than it holds), rebuild the whole history.
+        // per write. The anchor gives the shift directly; without it,
+        // scan backwards for the row matching our newest history row.
+        // If the ring shifted further than it holds, rebuild.
         var k: usize = 0;
-        while (k < scrollback_rows) : (k += 1) {
-            if (!historyRowChanged(gvt, s, scrollback_rows - 1 - k, grid.*.hsize - 1))
-                break;
+        if (histAnchorShift(gvt, scrollback_rows)) |shift| {
+            k = shift;
+        } else {
+            while (k < scrollback_rows) : (k += 1) {
+                if (!historyRowChanged(gvt, s, scrollback_rows - 1 - k, grid.*.hsize - 1))
+                    break;
+            }
         }
         if (k == 0)
             return false;
@@ -1272,6 +1589,7 @@ fn syncColors(gvt: *GhosttyVT, s: *c.screen) void {
 
 fn sync(gvt: *GhosttyVT, s: *c.screen, force: bool) bool {
     const grid = s.*.grid orelse return false;
+    bumpStyleCacheGen();
     const screen_changed = syncActiveScreen(gvt, s);
     var changed = screen_changed;
     if (gvt.active_screen == c.GHOSTTY_TERMINAL_SCREEN_PRIMARY) {
@@ -1317,50 +1635,13 @@ fn sync(gvt: *GhosttyVT, s: *c.screen, force: bool) bool {
 
         resetRowFlags(grid, grid.*.hsize + py);
 
-        if (c.ghostty_render_state_row_get(gvt.row_iter, c.GHOSTTY_RENDER_STATE_ROW_DATA_CELLS, @ptrCast(&gvt.row_cells)) != c.GHOSTTY_SUCCESS)
-            continue;
-
         var raw_row: c.GhosttyRow = 0;
         if (c.ghostty_render_state_row_get(gvt.row_iter, c.GHOSTTY_RENDER_STATE_ROW_DATA_RAW, &raw_row) == c.GHOSTTY_SUCCESS)
             syncRowFlags(grid, py, raw_row);
 
-        var px: c_uint = 0;
-        while (px < cols) : (px += 1) {
-            if (!c.ghostty_render_state_row_cells_next(gvt.row_cells))
-                break;
-
-            var style = std.mem.zeroes(c.GhosttyStyle);
-            style.size = @sizeOf(c.GhosttyStyle);
-            if (c.ghostty_render_state_row_cells_get(gvt.row_cells, c.GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_STYLE, &style) != c.GHOSTTY_SUCCESS)
-                style = std.mem.zeroes(c.GhosttyStyle);
-
-            var utf8_buf: [c.UTF8_SIZE * 4]u8 = undefined;
-            var gbuf = c.GhosttyBuffer{ .ptr = &utf8_buf, .cap = utf8_buf.len, .len = 0 };
-            if (c.ghostty_render_state_row_cells_get(gvt.row_cells, c.GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_GRAPHEMES_UTF8, &gbuf) != c.GHOSTTY_SUCCESS)
-                gbuf.len = 0;
-
-            var gc: c.grid_cell = undefined;
-            buildCell(&gc, &style, utf8_buf[0..gbuf.len]);
-
-            var raw_cell: c.GhosttyCell = 0;
-            _ = c.ghostty_render_state_row_cells_get(gvt.row_cells, c.GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_RAW, &raw_cell);
-            var wide = c.GHOSTTY_CELL_WIDE_NARROW;
-            _ = c.ghostty_cell_get(raw_cell, c.GHOSTTY_CELL_DATA_WIDE, &wide);
-            var has_hyperlink = false;
-            _ = c.ghostty_cell_get(raw_cell, c.GHOSTTY_CELL_DATA_HAS_HYPERLINK, &has_hyperlink);
-            if (has_hyperlink) {
-                var ref: c.GhosttyGridRef = undefined;
-                if (pointGridRef(gvt, c.GHOSTTY_POINT_TAG_VIEWPORT, px, py, &ref))
-                    applyHyperlink(s, &gc, &ref);
-            }
-            if (wide == c.GHOSTTY_CELL_WIDE_WIDE) {
-                gc.data.width = 2;
-            } else if (wide == c.GHOSTTY_CELL_WIDE_SPACER_TAIL) {
-                gc.flags |= c.GRID_FLAG_PADDING;
-                c.utf8_set(&gc.data, 0);
-            }
-            c.grid_view_set_cell(grid, px, py, &gc);
-        }
+        var ref: c.GhosttyGridRef = undefined;
+        if (pointGridRef(gvt, c.GHOSTTY_POINT_TAG_VIEWPORT, 0, py, &ref))
+            syncRowCellsFromRef(s, grid, &ref, grid.*.hsize + py);
 
         if (dirty == c.GHOSTTY_RENDER_STATE_DIRTY_PARTIAL) {
             var clean = false;
@@ -1368,9 +1649,11 @@ fn sync(gvt: *GhosttyVT, s: *c.screen, force: bool) bool {
         }
     }
 
-    syncModes(gvt, s);
+    if (force or screen_changed or gvt.saw_esc) {
+        syncModes(gvt, s);
+        syncColors(gvt, s);
+    }
     syncCursor(gvt, s);
-    syncColors(gvt, s);
 
     if (dirty == c.GHOSTTY_RENDER_STATE_DIRTY_FULL) {
         var clean = c.GHOSTTY_RENDER_STATE_DIRTY_FALSE;
@@ -1391,7 +1674,6 @@ export fn tmux_ghostty_vt_new(wp: ?*c.window_pane) ?*GhosttyVT {
         .terminal = null,
         .render_state = null,
         .row_iter = null,
-        .row_cells = null,
         .wp = pane,
         .sx = pane.*.sx,
         .sy = pane.*.sy,
@@ -1409,6 +1691,8 @@ export fn tmux_ghostty_vt_new(wp: ?*c.window_pane) ?*GhosttyVT {
         .kitty_enabled = false,
         .last_kitty_sig = null,
         .screen_cleared = false,
+        .saw_esc = true,
+        .hist_anchor = null,
         .clear_state = .ground,
         .clear_param = 0,
         .clear_param_active = false,
@@ -1433,13 +1717,6 @@ export fn tmux_ghostty_vt_new(wp: ?*c.window_pane) ?*GhosttyVT {
         return null;
     }
     if (c.ghostty_render_state_row_iterator_new(null, &gvt.row_iter) != c.GHOSTTY_SUCCESS) {
-        c.ghostty_render_state_free(gvt.render_state);
-        c.ghostty_terminal_free(gvt.terminal);
-        allocator.destroy(gvt);
-        return null;
-    }
-    if (c.ghostty_render_state_row_cells_new(null, &gvt.row_cells) != c.GHOSTTY_SUCCESS) {
-        c.ghostty_render_state_row_iterator_free(gvt.row_iter);
         c.ghostty_render_state_free(gvt.render_state);
         c.ghostty_terminal_free(gvt.terminal);
         allocator.destroy(gvt);
@@ -1472,12 +1749,12 @@ export fn tmux_ghostty_vt_new(wp: ?*c.window_pane) ?*GhosttyVT {
 
 export fn tmux_ghostty_vt_free(gvt_: ?*GhosttyVT) void {
     const gvt = gvt_ orelse return;
-    c.ghostty_render_state_row_cells_free(gvt.row_cells);
     c.ghostty_render_state_row_iterator_free(gvt.row_iter);
     c.ghostty_render_state_free(gvt.render_state);
     c.ghostty_terminal_free(gvt.terminal);
     if (gvt.kitty_iter != null)
         c.ghostty_kitty_graphics_placement_iterator_free(gvt.kitty_iter);
+    c.ghostty_tracked_grid_ref_free(gvt.hist_anchor);
     freeOsc(gvt);
     allocator.destroy(gvt);
 }
@@ -1516,8 +1793,19 @@ export fn tmux_ghostty_vt_write(gvt_: ?*GhosttyVT, data: [*c]const u8, len: usiz
         return;
 
     var buf = data[0..len];
-    scanClearScreen(gvt, buf);
-    scanOscSideEffects(gvt, buf);
+    // Both scanners only ever act on ESC/BEL/CAN/SUB bytes when idle,
+    // so a plain-text buffer can skip the byte-by-byte state machines.
+    // The same test gates the mode/palette sync: modes and colors can
+    // only change through escape sequences, and a sequence split across
+    // writes leaves the scanner states non-idle in between.
+    const scanners_idle = gvt.clear_state == .ground and
+        !gvt.osc_active and !gvt.osc_pending_esc;
+    gvt.saw_esc = !scanners_idle or
+        std.mem.indexOfScalar(u8, buf, 0x1b) != null;
+    if (gvt.saw_esc) {
+        scanClearScreen(gvt, buf);
+        scanOscSideEffects(gvt, buf);
+    }
 
     var filtered: ?AltFiltered = null;
     if (gvt.wp.*.options != null and c.options_get_number(gvt.wp.*.options, "alternate-screen") == 0)

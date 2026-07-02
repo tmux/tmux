@@ -1548,6 +1548,14 @@ window_pane_set_event(struct window_pane *wp)
 	    NULL, window_pane_error_callback, wp);
 	if (wp->event == NULL)
 		fatalx("out of memory");
+#ifdef HAVE_GHOSTTY_VT
+	/*
+	 * The ghostty backend mirrors the whole viewport after each parsed
+	 * chunk, so larger reads amortize that fixed cost; the stock parser
+	 * is incremental and does not care either way.
+	 */
+	bufferevent_set_max_single_read(wp->event, 262144);
+#endif
 	wp->ictx = input_init(wp, wp->event, &wp->palette, NULL);
 
 	bufferevent_enable(wp->event, EV_READ|EV_WRITE);

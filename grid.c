@@ -142,9 +142,16 @@ static void
 grid_get_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
     int flags)
 {
-	u_int at = gl->extdsize + 1;
+	u_int at = gl->extdsize + 1, cap;
 
-	gl->extddata = xreallocarray(gl->extddata, at, sizeof *gl->extddata);
+	if (at > gl->extdcapacity) {
+		cap = gl->extdcapacity == 0 ? 8 : gl->extdcapacity * 2;
+		if (cap < at)
+			cap = at;
+		gl->extddata = xreallocarray(gl->extddata, cap,
+		    sizeof *gl->extddata);
+		gl->extdcapacity = cap;
+	}
 	gl->extdsize = at;
 
 	gce->offset = at - 1;
@@ -207,6 +214,7 @@ grid_compact_line(struct grid_line *gl)
 		free(gl->extddata);
 		gl->extddata = NULL;
 		gl->extdsize = 0;
+		gl->extdcapacity = 0;
 		return;
 	}
 	new_extddata = xreallocarray(NULL, new_extdsize, sizeof *gl->extddata);
@@ -224,6 +232,7 @@ grid_compact_line(struct grid_line *gl)
 	free(gl->extddata);
 	gl->extddata = new_extddata;
 	gl->extdsize = new_extdsize;
+	gl->extdcapacity = new_extdsize;
 }
 
 /* Get line data. */
@@ -1297,12 +1306,15 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 			dstl->celldata = NULL;
 		if (srcl->extdsize != 0) {
 			dstl->extdsize = srcl->extdsize;
+			dstl->extdcapacity = srcl->extdsize;
 			dstl->extddata = xreallocarray(NULL, dstl->extdsize,
 			    sizeof *dstl->extddata);
 			memcpy(dstl->extddata, srcl->extddata, dstl->extdsize *
 			    sizeof *dstl->extddata);
-		} else
+		} else {
 			dstl->extddata = NULL;
+			dstl->extdcapacity = 0;
+		}
 
 		sy++;
 		dy++;
