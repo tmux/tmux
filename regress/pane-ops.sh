@@ -389,6 +389,61 @@ check_ok kill-window -t P:2
 
 check_ok new-window -d -t P:2 -n splits
 
+# new-window -E creates an empty initial pane, running no command.
+check_ok new-window -d -E -t P:9 -n empty
+check_fmt 'P:9.0' '#{pane_dead}' '0'
+check_fmt 'P:9.0' '#{pane_pid}' ''
+check_fail 'command cannot be given for empty pane' \
+    new-window -d -E -t P:10 -n empty 'true'
+
+# respawn-pane -E stores the command and cwd without starting it.
+tmp=${TMPDIR:-/tmp}/tmux-pane-ops-empty-$$
+rm -f "$tmp"
+check_ok new-window -d -E -t P:10 -n empty-respawn
+check_ok respawn-pane -E -c /tmp -t P:10.0 "pwd > $tmp"
+if [ -e "$tmp" ]; then
+	echo "respawn-pane -E started command unexpectedly"
+	exit 1
+fi
+check_ok respawn-pane -t P:10.0
+i=0
+while [ ! -e "$tmp" ]; do
+	i=$((i + 1))
+	[ $i -gt 50 ] && echo "respawn-pane did not start stored command" && \
+	    exit 1
+	sleep 0.1
+done
+if [ "$(cat "$tmp")" != "/tmp" ]; then
+	echo "respawn-pane did not use stored cwd"
+	exit 1
+fi
+rm -f "$tmp"
+check_ok kill-window -t P:9
+
+# respawn-window -E stores the command and cwd without starting it.
+tmp=${TMPDIR:-/tmp}/tmux-window-ops-empty-$$
+rm -f "$tmp"
+check_ok new-window -d -E -t P:11 -n empty-respawn-window
+check_ok respawn-window -E -c /tmp -t P:11 "pwd > $tmp"
+check_fmt 'P:11.0' '#{pane_pid}' ''
+if [ -e "$tmp" ]; then
+	echo "respawn-window -E started command unexpectedly"
+	exit 1
+fi
+check_ok respawn-window -t P:11
+i=0
+while [ ! -e "$tmp" ]; do
+	i=$((i + 1))
+	[ $i -gt 50 ] && echo "respawn-window did not start stored command" && \
+	    exit 1
+	sleep 0.1
+done
+if [ "$(cat "$tmp")" != "/tmp" ]; then
+	echo "respawn-window did not use stored cwd"
+	exit 1
+fi
+rm -f "$tmp"
+
 # -E splits with an empty pane, running no command; giving one is an error.
 check_ok split-window -d -E -t P:2.0
 check_fmt 'P:2' '#{window_panes}' '2'
