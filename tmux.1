@@ -3253,7 +3253,7 @@ If
 is floating and
 .Ar dst\-pane
 is either unspecified or equal to
-.Ar src\-pane,
+.Ar src\-pane ,
 .Ar src\-pane
 is returned to its previous position in the layout.
 .Tg killp
@@ -3849,7 +3849,7 @@ This command will automatically set
 to manual in the window options.
 .Tg respawnp
 .It Xo Ic respawn\-pane
-.Op Fl Ek
+.Op Fl \&Ek
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
 .Op Fl t Ar target\-pane
@@ -3878,7 +3878,7 @@ option has the same meaning as for the
 command.
 .Tg respawnw
 .It Xo Ic respawn\-window
-.Op Fl Ek
+.Op Fl \&Ek
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
 .Op Fl t Ar target\-window
@@ -6771,7 +6771,7 @@ will use shorter but less accurate time format for times in the past.
 .Ql r
 .Pq Ql t/r
 will show the time relative to the current time, for example
-.Ql \1m
+.Ql \&1m
 or
 .Ql 2m23s .
 A custom format may be given using an
@@ -6896,6 +6896,33 @@ prefix, for example a user option
 .Ql @color
 on the next window is available as
 .Ql next_@color .
+.Pp
+.Ql O:\&
+will loop over each option;
+array options are looped once for each array item.
+.Ql O:\&
+may be given a flag to choose the options table:
+.Bl -column "Flag" "Table" -offset indent
+.It Sy "Flag" Ta Sy "Table"
+.It Li "s" Ta "session"
+.It Li "w" Ta "window"
+.It Li "p" Ta "pane"
+.It Li "v" Ta "server"
+.El
+.Pp
+.Ql g
+chooses global options.
+The default is
+.Ql s .
+.Ql V:\&
+will loop over each environment variable.
+Its flags are:
+.Bl -column "Flag" "Environment" -offset indent
+.It Sy "Flag" Ta Sy "Environment"
+.It Li "s" Ta "session environment"
+.It Li "g" Ta "global environment"
+.It Li "c" Ta "client environment"
+.El
 .Pp
 .Ql N:\&
 checks if a window (without any suffix or with the
