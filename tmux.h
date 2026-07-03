@@ -2274,14 +2274,24 @@ struct client {
 };
 TAILQ_HEAD(clients, client);
 
-/* Control mode subscription type. */
-enum control_sub_type {
-	CONTROL_SUB_SESSION,
-	CONTROL_SUB_PANE,
-	CONTROL_SUB_ALL_PANES,
-	CONTROL_SUB_WINDOW,
-	CONTROL_SUB_ALL_WINDOWS
+/* Monitor. */
+enum monitor_type {
+	MONITOR_SESSION,
+	MONITOR_PANE,
+	MONITOR_ALL_PANES,
+	MONITOR_WINDOW,
+	MONITOR_ALL_WINDOWS
 };
+struct monitor_change {
+	const char		*name;
+	const char		*value;
+
+	struct client		*c;
+	struct session		*s;
+	struct winlink		*wl;
+	struct window_pane	*wp;
+};
+typedef void (*monitor_cb)(struct monitor_change *, void *);
 
 /* Key binding and key table. */
 struct key_binding {
@@ -3794,6 +3804,13 @@ void	 check_window_name(struct window *);
 char	*default_window_name(struct window *);
 char	*parse_window_name(const char *);
 
+/* monitor.c */
+struct monitor_set *monitor_create(struct client *, monitor_cb, void *);
+void	monitor_destroy(struct monitor_set *);
+void	monitor_add(struct monitor_set *, const char *, enum monitor_type, int,
+	    const char *);
+void	monitor_remove(struct monitor_set *, const char *);
+
 /* control.c */
 void	control_discard(struct client *);
 void	control_start(struct client *);
@@ -3809,8 +3826,8 @@ void	control_reset_offsets(struct client *);
 void printflike(2, 3) control_write(struct client *, const char *, ...);
 void	control_write_output(struct client *, struct window_pane *);
 int	control_all_done(struct client *);
-void	control_add_sub(struct client *, const char *, enum control_sub_type,
-    	   int, const char *);
+void	control_add_sub(struct client *, const char *, enum monitor_type, int,
+	    const char *);
 void	control_remove_sub(struct client *, const char *);
 
 /* control-notify.c */

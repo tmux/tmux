@@ -95,6 +95,7 @@ SRCS=	alerts.c \
 	log.c \
 	menu.c \
 	mode-tree.c \
+	monitor.c \
 	names.c \
 	notify.c \
 	options-table.c \
