@@ -125,6 +125,8 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_COLOUR_ESC_FG 0x8000000
 #define FORMAT_COLOUR_ESC_BG 0x10000000
 #define FORMAT_QUOTE_SHELL_SQ 0x20000000
+#define FORMAT_OPTIONS 0x40000000
+#define FORMAT_ENVIRON 0x80000000ULL
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 100
@@ -4221,7 +4223,7 @@ format_relative_time(time_t t)
 
 /* Find a format entry. */
 static char *
-format_find(struct format_tree *ft, const char *key, int modifiers,
+format_find(struct format_tree *ft, const char *key, uint64_t modifiers,
     const char *time_format)
 {
 	const struct format_table_entry	*fte;
@@ -4551,7 +4553,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 
 	/*
 	 * Modifiers are a ; separated list of the forms:
-	 *	l,m,C,a,b,c,d,I,n,t,w,q,E,T,S,W,P,R,<,>
+	 *	l,m,C,a,b,c,d,I,n,t,w,q,E,T,S,W,P,O,V,R,<,>
 	 *	=a
 	 *	=/a
 	 *	=/a/
@@ -4570,7 +4572,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 			break;
 
 		/* Check single character modifiers with no arguments. */
-		if (strchr("labdnwETSWPL!<>", cp[0]) != NULL &&
+		if (strchr("labdnwETSWPOVL!<>", cp[0]) != NULL &&
 		    format_is_end(cp[1])) {
 			format_add_modifier(&list, count, cp, 1, NULL, 0);
 			cp++;
@@ -4592,7 +4594,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 		}
 
 		/* Now try single character with arguments. */
-		if (strchr("ImCLNPSst=pReqWc", cp[0]) == NULL)
+		if (strchr("ImCLNPSOVst=pReqWc", cp[0]) == NULL)
 			break;
 		c = cp[0];
 
@@ -4869,11 +4871,14 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 		else
 			use = all;
 		nft = format_create(c, item, FORMAT_NONE, ft->flags);
+
 		format_add(nft, "loop_index", "%d", i);
 		format_add(nft, "loop_last_flag", "%d", i == n - 1);
+
 		format_defaults(nft, ft->c, s, NULL, NULL);
 		format_copy_state(&next, es, 0);
 		next.ft = nft;
+
 		expanded = format_expand1(&next, use);
 		format_free(next.ft);
 
@@ -4988,24 +4993,29 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 			use = active;
 		else
 			use = all;
-		nft = format_create(c, item, FORMAT_WINDOW|w->id,
-		    ft->flags);
+		nft = format_create(c, item, FORMAT_WINDOW|w->id, ft->flags);
+
 		format_add(nft, "loop_index", "%d", i);
 		format_add(nft, "loop_last_flag", "%d", i == n - 1);
-		format_defaults(nft, ft->c, s, wl, NULL);
 
 		/* Add neighbour window data to the format tree. */
-		format_add(nft, "window_after_active", "%d",
-		    i > 0 && l[i - 1] == s->curw);
-		format_add(nft, "window_before_active", "%d",
-		    i + 1 < n && l[i + 1] == s->curw);
+		if (i > 0 && l[i - 1] == s->curw)
+			format_add(nft, "window_after_active", "1");
+		else
+			format_add(nft, "window_after_active", "0");
+		if (i + 1 < n && l[i + 1] == s->curw)
+			format_add(nft, "window_before_active", "1");
+		else
+			format_add(nft, "window_before_active", "0");
 		if (i + 1 < n)
 			format_add_window_neighbour(nft, l[i + 1], s, "next");
 		if (i > 0)
 			format_add_window_neighbour(nft, l[i - 1], s, "prev");
 
+		format_defaults(nft, ft->c, s, wl, NULL);
 		format_copy_state(&next, es, 0);
 		next.ft = nft;
+
 		expanded = format_expand1(&next, use);
 		format_free(nft);
 
@@ -5062,13 +5072,15 @@ format_loop_panes(struct format_expand_state *es, const char *fmt)
 			use = active;
 		else
 			use = all;
-		nft = format_create(c, item, FORMAT_PANE|wp->id,
-		    ft->flags);
+		nft = format_create(c, item, FORMAT_PANE|wp->id, ft->flags);
+
 		format_add(nft, "loop_index", "%d", i);
 		format_add(nft, "loop_last_flag", "%d", i == n - 1);
+
 		format_defaults(nft, ft->c, ft->s, ft->wl, wp);
 		format_copy_state(&next, es, 0);
 		next.ft = nft;
+
 		expanded = format_expand1(&next, use);
 		format_free(nft);
 
@@ -5078,6 +5090,269 @@ format_loop_panes(struct format_expand_state *es, const char *fmt)
 
 	free(active);
 	free(all);
+
+	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
+		value = xmemdup(EVBUFFER_DATA(buffer), size);
+	else
+		value = xstrdup("");
+	evbuffer_free(buffer);
+	return (value);
+}
+
+/* Add an option to an options loop. */
+static void
+format_loop_add_option(struct format_expand_state *es, const char *fmt,
+    struct evbuffer *buffer, struct options_entry *o, u_int n, u_int i)
+{
+	struct format_tree			*ft = es->ft, *nft;
+	struct format_expand_state		 next;
+	const struct options_table_entry	*oe = options_table_entry(o);
+	const char				*name = options_name(o);
+	char					*expanded, *s;
+	int					 is_array = options_is_array(o);
+
+	format_log(es, "option loop: %s", name);
+	nft = format_create(ft->client, ft->item, FORMAT_NONE, ft->flags);
+
+	format_add(nft, "option_name", "%s", name);
+	s = options_to_string(o, -1, 0);
+	format_add(nft, "option_value", "%s", s);
+	free(s);
+
+	format_add(nft, "option_is_array", "%d", is_array);
+	format_add(nft, "option_array_index", "%s", "");
+	format_add(nft, "option_array_first", "%d", is_array);
+	format_add(nft, "option_array_last", "%d", is_array);
+	format_add(nft, "option_array_count", "%u", n);
+
+	if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_HOOK))
+		format_add(nft, "option_is_hook", "1");
+	else
+		format_add(nft, "option_is_hook", "0");
+	format_add(nft, "option_is_user", "%d", oe == NULL);
+
+	if (options_next(o) == NULL)
+		format_add(nft, "loop_last_flag", "1");
+	else
+		format_add(nft, "loop_last_flag", "0");
+	format_add(nft, "loop_index", "%u", i);
+
+	format_defaults(nft, ft->c, ft->s, ft->wl, ft->wp);
+	format_copy_state(&next, es, 0);
+	next.ft = nft;
+
+	expanded = format_expand1(&next, fmt);
+	format_free(nft);
+	evbuffer_add(buffer, expanded, strlen(expanded));
+	free(expanded);
+}
+
+/* Add an array option item to an options loop. */
+static void
+format_loop_add_array_item(struct format_expand_state *es, const char *fmt,
+    struct evbuffer *buffer, struct options_entry *o,
+    struct options_array_item *a, int n, u_int i)
+{
+	struct format_tree			*ft = es->ft, *nft;
+	struct format_expand_state		 next;
+	const struct options_table_entry	*oe = options_table_entry(o);
+	const char				*name = options_name(o);
+	char					*expanded, *s;
+	u_int					 idx;
+
+	idx = options_array_item_index(a);
+	format_log(es, "option loop: %s[%u]", name, idx);
+	nft = format_create(ft->client, ft->item, FORMAT_NONE, ft->flags);
+
+	format_add(nft, "option_name", "%s", name);
+	s = options_to_string(o, idx, 0);
+	format_add(nft, "option_value", "%s", s);
+	free(s);
+
+	format_add(nft, "option_is_array", "1");
+	format_add(nft, "option_array_index", "%u", idx);
+	if (a == options_array_first(o))
+		format_add(nft, "option_array_first", "1");
+	else
+		format_add(nft, "option_array_first", "0");
+	if (options_array_next(a) == NULL)
+		format_add(nft, "option_array_last", "1");
+	else
+		format_add(nft, "option_array_last", "0");
+	format_add(nft, "option_array_count", "%u", n);
+
+	if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_HOOK))
+		format_add(nft, "option_is_hook", "1");
+	else
+		format_add(nft, "option_is_hook", "0");
+	format_add(nft, "option_is_user", "%d", oe == NULL);
+
+	if (options_array_next(a) == NULL && options_next(o) == NULL)
+		format_add(nft, "loop_last_flag", "1");
+	else
+		format_add(nft, "loop_last_flag", "0");
+	format_add(nft, "loop_index", "%u", i);
+
+	format_defaults(nft, ft->c, ft->s, ft->wl, ft->wp);
+	format_copy_state(&next, es, 0);
+	next.ft = nft;
+
+	expanded = format_expand1(&next, fmt);
+	format_free(nft);
+	evbuffer_add(buffer, expanded, strlen(expanded));
+	free(expanded);
+}
+
+/* Loop over options. */
+static char *
+format_loop_options(struct format_expand_state *es, const char *fmt,
+    const char *flags)
+{
+	struct format_tree		*ft = es->ft;
+	struct options			*oo = NULL;
+	struct options_entry		*o;
+	struct options_array_item	*a;
+	char				*value;
+	struct evbuffer			*buffer;
+	size_t				 size;
+	u_int				 i = 0, n;
+	int				 global = 0;
+
+	if (flags == NULL || *flags == '\0')
+		flags = "s";
+	if (strchr(flags, 'v') != NULL)
+		oo = global_options;
+	else {
+		if (strchr(flags, 'g') != NULL)
+			global = 1;
+		if (strchr(flags, 'w') != NULL) {
+			if (global)
+				oo = global_w_options;
+			else if (ft->w != NULL)
+				oo = ft->w->options;
+		} else if (strchr(flags, 's') != NULL) {
+			if (global)
+				oo = global_s_options;
+			else if (ft->s != NULL)
+				oo = ft->s->options;
+		} else if (strchr(flags, 'p') != NULL) {
+			if (global)
+				/* invalid */;
+			else if (ft->wp != NULL)
+				oo = ft->wp->options;
+		} else if (global)
+			oo = global_s_options;
+	}
+	if (oo == NULL)
+		return (xstrdup(""));
+
+	buffer = evbuffer_new();
+	if (buffer == NULL)
+		fatalx("out of memory");
+
+	o = options_first(oo);
+	while (o != NULL) {
+
+		n = 0;
+		if (options_is_array(o)) {
+			a = options_array_first(o);
+			while (a != NULL) {
+				n++;
+				a = options_array_next(a);
+			}
+		}
+
+		if (!options_is_array(o) || n == 0) {
+			format_loop_add_option(es, fmt, buffer, o, n, i);
+			i++;
+			o = options_next(o);
+			continue;
+		}
+
+		a = options_array_first(o);
+		while (a != NULL) {
+			format_loop_add_array_item(es, fmt, buffer, o, a, n, i);
+			i++;
+			a = options_array_next(a);
+		}
+		o = options_next(o);
+	}
+
+	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
+		value = xmemdup(EVBUFFER_DATA(buffer), size);
+	else
+		value = xstrdup("");
+	evbuffer_free(buffer);
+	return (value);
+}
+
+/* Loop over an environment. */
+static char *
+format_loop_environ(struct format_expand_state *es, const char *fmt,
+    const char *flags)
+{
+	struct format_tree		*ft = es->ft, *nft;
+	struct client			*c = ft->client;
+	struct cmdq_item		*item = ft->item;
+	struct format_expand_state	 next;
+	struct environ			*env = NULL;
+	struct environ_entry		*envent;
+	char				*expanded, *value;
+	struct evbuffer			*buffer;
+	size_t				 size;
+	u_int				 i = 0;
+
+	if (flags == NULL || *flags == '\0' || strcmp(flags, "s") == 0) {
+		if (ft->s != NULL)
+			env = ft->s->environ;
+	} else if (strcmp(flags, "g") == 0)
+		env = global_environ;
+	else if (strcmp(flags, "c") == 0) {
+		if (ft->client != NULL)
+			env = ft->client->environ;
+	}
+	if (env == NULL)
+		return (xstrdup(""));
+
+	buffer = evbuffer_new();
+	if (buffer == NULL)
+		fatalx("out of memory");
+
+	envent = environ_first(env);
+	while (envent != NULL) {
+		format_log(es, "environment loop: %s", envent->name);
+		nft = format_create(c, item, FORMAT_NONE, ft->flags);
+
+		format_add(nft, "environ_name", "%s", envent->name);
+		if (envent->value == NULL)
+			format_add(nft, "environ_value", "%s", "");
+		else
+			format_add(nft, "environ_value", "%s", envent->value);
+
+		if (envent->flags & ENVIRON_HIDDEN)
+			format_add(nft, "environ_hidden", "1");
+		else
+			format_add(nft, "environ_hidden", "0");
+		format_add(nft, "environ_removed", "%d", envent->value == NULL);
+
+		if (environ_next(envent) == NULL)
+			format_add(nft, "loop_last_flag", "1");
+		else
+			format_add(nft, "loop_last_flag", "0");
+		format_add(nft, "loop_index", "%u", i);
+
+		format_defaults(nft, ft->c, ft->s, ft->wl, ft->wp);
+		format_copy_state(&next, es, 0);
+		next.ft = nft;
+
+		expanded = format_expand1(&next, fmt);
+		format_free(nft);
+		evbuffer_add(buffer, expanded, strlen(expanded));
+		free(expanded);
+
+		i++;
+		envent = environ_next(envent);
+	}
 
 	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
 		value = xmemdup(EVBUFFER_DATA(buffer), size);
@@ -5111,14 +5386,16 @@ format_loop_clients(struct format_expand_state *es, const char *fmt)
 		c = l[i];
 		format_log(es, "client loop: %s", c->name);
 		nft = format_create(c, item, 0, ft->flags);
+
 		format_add(nft, "loop_index", "%d", i);
 		format_add(nft, "loop_last_flag", "%d", i == n - 1);
+
 		format_defaults(nft, c, ft->s, ft->wl, ft->wp);
 		format_copy_state(&next, es, 0);
 		next.ft = nft;
+
 		expanded = format_expand1(&next, fmt);
 		format_free(nft);
-
 		evbuffer_add(buffer, expanded, strlen(expanded));
 		free(expanded);
 	}
@@ -5288,12 +5565,14 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	char				 *copy0, *condition, *found, *new;
 	char				 *value, *left, *right;
 	size_t				  valuelen;
-	int				  modifiers = 0, limit = 0, width = 0;
+	uint64_t			  modifiers = 0;
+	int				  limit = 0, width = 0;
 	int				  j, c;
 	struct format_modifier		 *list, *cmp = NULL, *search = NULL;
 	struct format_modifier		**sub = NULL, *mexp = NULL, *fm;
 	struct format_modifier		 *bool_op_n = NULL;
 	u_int				  i, count, nsub = 0, nrep, check = 0;
+	const char			 *loop_flags = "";
 	struct format_expand_state	  next;
 	struct environ_entry		 *envent;
 
@@ -5491,6 +5770,16 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 				else
 					sc->reversed = 0;
 				break;
+			case 'O':
+				modifiers |= FORMAT_OPTIONS;
+				if (fm->argc == 1)
+					loop_flags = fm->argv[0];
+				break;
+			case 'V':
+				modifiers |= FORMAT_ENVIRON;
+				if (fm->argc == 1)
+					loop_flags = fm->argv[0];
+				break;
 			case 'L':
 				modifiers |= FORMAT_CLIENTS;
 				if (fm->argc < 1) {
@@ -5624,6 +5913,14 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			goto fail;
 	} else if (modifiers & FORMAT_CLIENTS) {
 		value = format_loop_clients(es, copy);
+		if (value == NULL)
+			goto fail;
+	} else if (modifiers & FORMAT_OPTIONS) {
+		value = format_loop_options(es, copy, loop_flags);
+		if (value == NULL)
+			goto fail;
+	} else if (modifiers & FORMAT_ENVIRON) {
+		value = format_loop_environ(es, copy, loop_flags);
 		if (value == NULL)
 			goto fail;
 	} else if (modifiers & FORMAT_WINDOW_NAME) {
