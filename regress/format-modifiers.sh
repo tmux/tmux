@@ -100,6 +100,9 @@ $TMUX set -g @host 'myhost' || exit 1
 $TMUX set -g @ts '1000000000' || exit 1  # 2001-09-09 01:46:40 UTC
 $TMUX set -g @sp 'a b$c' || exit 1     # shell-special characters for q:
 $TMUX set -g @hash 'a#b' || exit 1     # a "#" for q/e:
+$TMUX set -g @sq "a'b" || exit 1       # a single quote for q/s:
+$TMUX set -g @nl "$(printf 'a\nb')" || exit 1
+q_s_nl=$(printf "'a\nb'")
 
 
 # --- Comparisons and matching --------------------------------------------
@@ -153,6 +156,10 @@ test_format "#{!!:non-empty}" "1"
 
 # q: escapes shell special characters with a backslash.
 test_format "#{q:@sp}" 'a\ b\$c'
+# q/s quotes with POSIX shell single quotes.
+test_format "#{q/s:@sp}" "'a b\$c'"
+test_format "#{q/s:@sq}" "'a'\\''b'"
+test_format "#{q/s:@nl}" "$q_s_nl"
 # q/e and q/h escape "#" for the format/style parser by doubling it.
 test_format "#{q/e:@hash}" 'a##b'
 test_format "#{q/h:@hash}" 'a##b'
