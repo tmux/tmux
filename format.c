@@ -42,6 +42,7 @@
 struct format_expand_state;
 
 static char	*format_job_get(struct format_expand_state *, const char *);
+static char	*format_quote_shell_single(const char *);
 static char	*format_expand1(struct format_expand_state *, const char *);
 static int	 format_replace(struct format_expand_state *, const char *,
 		     size_t, char **, size_t *, size_t *);
@@ -863,6 +864,37 @@ format_cb_start_command(struct format_tree *ft)
 		return (NULL);
 
 	return (cmd_stringify_argv(wp->argc, wp->argv));
+}
+
+/* Callback for pane_start_command_list. */
+static void *
+format_cb_start_command_list(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+	char			*buf = NULL, *s;
+	size_t			 len = 0;
+	int			 i;
+
+	if (wp == NULL)
+		return (NULL);
+	if (wp->argc == 0)
+		return (xstrdup(""));
+
+	for (i = 0; i < wp->argc; i++) {
+		s = format_quote_shell_single(wp->argv[i]);
+
+		len += strlen(s) + 1;
+		buf = xrealloc(buf, len);
+
+		if (i == 0)
+			*buf = '\0';
+		else
+			strlcat(buf, " ", len);
+		strlcat(buf, s, len);
+
+		free(s);
+	}
+	return (buf);
 }
 
 /* Callback for pane_start_path. */
@@ -2293,7 +2325,7 @@ format_cb_pane_path(struct format_tree *ft)
 static void *
 format_cb_pane_pid(struct format_tree *ft)
 {
-	if (ft->wp != NULL)
+	if (ft->wp != NULL && ft->wp->fd != -1)
 		return (format_printf("%ld", (long)ft->wp->pid));
 	return (NULL);
 }
@@ -3539,6 +3571,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_start_command", FORMAT_TABLE_STRING,
 	  format_cb_start_command
+	},
+	{ "pane_start_command_list", FORMAT_TABLE_STRING,
+	  format_cb_start_command_list
 	},
 	{ "pane_start_path", FORMAT_TABLE_STRING,
 	  format_cb_start_path
