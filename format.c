@@ -4916,9 +4916,9 @@ format_window_name(struct format_expand_state *es, const char *fmt)
 	return (xstrdup("0"));
 }
 
-/* Add neighbor window variables to the format tree. */
+/* Add neighbour window variables to the format tree. */
 static void
-format_add_window_neighbor(struct format_tree *nft, struct winlink *wl,
+format_add_window_neighbour(struct format_tree *nft, struct winlink *wl,
     struct session *s, const char *prefix)
 {
 	struct options_entry	*o;
@@ -4951,20 +4951,21 @@ format_add_window_neighbor(struct format_tree *nft, struct winlink *wl,
 static char *
 format_loop_windows(struct format_expand_state *es, const char *fmt)
 {
-	struct sort_criteria		 *sc = &sort_crit;
-	struct format_tree		 *ft = es->ft;
-	struct client			 *c = ft->client;
-	struct cmdq_item		 *item = ft->item;
-	struct format_tree		 *nft;
-	struct format_expand_state	  next;
-	char				 *all, *active, *use, *expanded, *value;
-	struct evbuffer			 *buffer;
-	size_t				  size;
-	struct winlink			 *wl, **l;
-	struct window			 *w;
-	int				  i, n;
+	struct sort_criteria		*sc = &sort_crit;
+	struct format_tree		*ft = es->ft;
+	struct client			*c = ft->client;
+	struct session			*s = ft->s;
+	struct cmdq_item		*item = ft->item;
+	struct format_tree		*nft;
+	struct format_expand_state	 next;
+	char				*all, *active, *use, *expanded, *value;
+	struct evbuffer			*buffer;
+	size_t				 size;
+	struct winlink			*wl, **l;
+	struct window			*w;
+	int				 i, n;
 
-	if (ft->s == NULL) {
+	if (s == NULL) {
 		format_log(es, "window loop but no session");
 		return (NULL);
 	}
@@ -4978,12 +4979,12 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 	if (buffer == NULL)
 		fatalx("out of memory");
 
-	l = sort_get_winlinks_session(ft->s, &n, sc);
+	l = sort_get_winlinks_session(s, &n, sc);
 	for (i = 0; i < n; i++) {
 		wl = l[i];
 		w = wl->window;
 		format_log(es, "window loop: %u @%u", wl->idx, w->id);
-		if (active != NULL && wl == ft->s->curw)
+		if (active != NULL && wl == s->curw)
 			use = active;
 		else
 			use = all;
@@ -4991,17 +4992,17 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 		    ft->flags);
 		format_add(nft, "loop_index", "%d", i);
 		format_add(nft, "loop_last_flag", "%d", i == n - 1);
-		format_defaults(nft, ft->c, ft->s, wl, NULL);
+		format_defaults(nft, ft->c, s, wl, NULL);
 
-		/* Add neighbor window data to the format tree. */
+		/* Add neighbour window data to the format tree. */
 		format_add(nft, "window_after_active", "%d",
-		    i > 0 && l[i - 1] == ft->s->curw);
+		    i > 0 && l[i - 1] == s->curw);
 		format_add(nft, "window_before_active", "%d",
-		    i + 1 < n && l[i + 1] == ft->s->curw);
+		    i + 1 < n && l[i + 1] == s->curw);
 		if (i + 1 < n)
-			format_add_window_neighbor(nft, l[i + 1], ft->s, "next");
+			format_add_window_neighbour(nft, l[i + 1], s, "next");
 		if (i > 0)
-			format_add_window_neighbor(nft, l[i - 1], ft->s, "prev");
+			format_add_window_neighbour(nft, l[i - 1], s, "prev");
 
 		format_copy_state(&next, es, 0);
 		next.ft = nft;
