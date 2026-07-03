@@ -526,11 +526,17 @@ $TMUX split-window -h -t zeta:charlie
 $TMUX split-window -h -t zeta:charlie
 test_format "#{P:#{pane_index}}" "012" "zeta:charlie"
 test_format "#{P/r:#{pane_index}}" "210" "zeta:charlie"
-# A pane-sort argument is accepted; for panes only the r (reverse) suffix has an
-# effect, so these all keep the count and exercise the argument branch.
+# Pane sort accepts i (pane-list order) and z (z-order). Other sort letters
+# fall back to the default creation order; r reverses whichever order is used.
 test_format "#{P/i:x}" "xxx" "zeta:charlie"
+test_format "#{P/i:#{pane_index}}" "012" "zeta:charlie"
+test_format "#{P/z:x}" "xxx" "zeta:charlie"
 test_format "#{P/n:x}" "xxx" "zeta:charlie"
 test_format "#{P/t:x}" "xxx" "zeta:charlie"
+$TMUX new-pane -d -t zeta:charlie -x 20 -y 10 -X 1 -Y 1
+test_format "#{P/i:#{pane_index}}" "0123" "zeta:charlie"
+test_format "#{P/z:#{pane_index}}" "3012" "zeta:charlie"
+test_format "#{P/zr:#{pane_index}}" "0123" "zeta:charlie"
 
 # Verbose expansion of the loops, to exercise their logging paths.
 $TMUX display-message -v -p "#{S:#{session_name}}" >/dev/null 2>&1
