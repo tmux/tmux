@@ -123,6 +123,7 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_CLIENT_ENVIRON 0x4000000
 #define FORMAT_COLOUR_ESC_FG 0x8000000
 #define FORMAT_COLOUR_ESC_BG 0x10000000
+#define FORMAT_QUOTE_SHELL_SQ 0x20000000
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 100
@@ -4027,6 +4028,29 @@ format_quote_shell(const char *s)
 	return (out);
 }
 
+/* Quote string with POSIX shell single quotes. */
+static char *
+format_quote_shell_single(const char *s)
+{
+	const char	*cp;
+	char		*out, *at;
+
+	at = out = xmalloc(strlen(s) * 4 + 3);
+	*at++ = '\'';
+	for (cp = s; *cp != '\0'; cp++) {
+		if (*cp == '\'') {
+			*at++ = '\'';
+			*at++ = '\\';
+			*at++ = '\'';
+			*at++ = '\'';
+		} else
+			*at++ = *cp;
+	}
+	*at++ = '\'';
+	*at = '\0';
+	return (out);
+}
+
 /* Quote #s in string. */
 static char *
 format_quote_style(const char *s)
@@ -4243,6 +4267,11 @@ found:
 	if (modifiers & FORMAT_QUOTE_SHELL) {
 		saved = found;
 		found = format_quote_shell(saved);
+		free(saved);
+	}
+	if (modifiers & FORMAT_QUOTE_SHELL_SQ) {
+		saved = found;
+		found = format_quote_shell_single(saved);
 		free(saved);
 	}
 	if (modifiers & FORMAT_QUOTE_STYLE) {
@@ -5315,6 +5344,8 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			case 'q':
 				if (fm->argc < 1)
 					modifiers |= FORMAT_QUOTE_SHELL;
+				else if (strchr(fm->argv[0], 's') != NULL)
+					modifiers |= FORMAT_QUOTE_SHELL_SQ;
 				else if (strchr(fm->argv[0], 'e') != NULL ||
 				    strchr(fm->argv[0], 'h') != NULL)
 					modifiers |= FORMAT_QUOTE_STYLE;
