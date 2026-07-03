@@ -2862,6 +2862,19 @@ format_cb_window_height(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for window_manual_height. */
+static void *
+format_cb_window_manual_height(struct format_tree *ft)
+{
+	struct window	*w = ft->w;
+
+	if (w == NULL)
+		return (NULL);
+	if (options_get_number(w->options, "window-size") != WINDOW_SIZE_MANUAL)
+		return (xstrdup(""));
+	return (format_printf("%u", w->manual_sy));
+}
+
 /* Callback for window_id. */
 static void *
 format_cb_window_id(struct format_tree *ft)
@@ -3040,6 +3053,19 @@ format_cb_window_width(struct format_tree *ft)
 	if (ft->w != NULL)
 		return (format_printf("%u", ft->w->sx));
 	return (NULL);
+}
+
+/* Callback for window_manual_width. */
+static void *
+format_cb_window_manual_width(struct format_tree *ft)
+{
+	struct window	*w = ft->w;
+
+	if (w == NULL)
+		return (NULL);
+	if (options_get_number(w->options, "window-size") != WINDOW_SIZE_MANUAL)
+		return (xstrdup(""));
+	return (format_printf("%u", w->manual_sx));
 }
 
 /* Callback for window_zoomed_flag. */
@@ -3747,6 +3773,12 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "window_linked_sessions_list", FORMAT_TABLE_STRING,
 	  format_cb_window_linked_sessions_list
+	},
+	{ "window_manual_height", FORMAT_TABLE_STRING,
+	  format_cb_window_manual_height
+	},
+	{ "window_manual_width", FORMAT_TABLE_STRING,
+	  format_cb_window_manual_width
 	},
 	{ "window_marked_flag", FORMAT_TABLE_STRING,
 	  format_cb_window_marked_flag
