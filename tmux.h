@@ -1505,6 +1505,14 @@ enum layout_type {
 	LAYOUT_WINDOWPANE
 };
 
+/* Layout cell sizes and position. */
+struct layout_geometry {
+	u_int	sx;
+	u_int	sy;
+	int	xoff;
+	int	yoff;
+};
+
 /* Layout cells queue. */
 TAILQ_HEAD(layout_cells, layout_cell);
 
@@ -1517,17 +1525,9 @@ struct layout_cell {
 
 	struct layout_cell *parent;
 
-	u_int		 sx;
-	u_int		 sy;
-
-	int		 xoff;
-	int		 yoff;
-
-	u_int		 saved_sx;
-	u_int		 saved_sy;
-
-	int		 saved_xoff;
-	int		 saved_yoff;
+	struct layout_geometry g;
+	/* Saved floating geometry. */
+	struct layout_geometry fg;
 
 	struct window_pane *wp;
 	struct layout_cells cells;
@@ -3711,6 +3711,7 @@ struct visible_ranges *window_visible_ranges(struct window_pane *, int, int,
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);
+void		 layout_geometry_init(struct layout_geometry *);
 struct layout_cell *layout_create_cell(struct layout_cell *);
 void		 layout_free_cell(struct layout_cell *, int);
 void		 layout_print_cell(struct layout_cell *, const char *, u_int);
@@ -3719,7 +3720,7 @@ void		 layout_destroy_cell(struct window *, struct layout_cell *,
 void		 layout_resize_layout(struct window *, struct layout_cell *,
 		     enum layout_type, int, int);
 struct layout_cell *layout_search_by_border(struct layout_cell *, u_int, u_int);
-void             layout_set_size(struct layout_cell *, u_int, u_int, int, int);
+void		 layout_set_size(struct layout_cell *, u_int, u_int, int, int);
 void		 layout_make_leaf(struct layout_cell *, struct window_pane *);
 void		 layout_make_node(struct layout_cell *, enum layout_type);
 void		 layout_fix_zindexes(struct window *, struct layout_cell *);
@@ -3753,7 +3754,7 @@ struct layout_cell *layout_replace_with_node(struct window *,
 struct layout_cell *layout_split_pane(struct window_pane *, enum layout_type,
 		     int, int);
 struct layout_cell *layout_floating_pane(struct window *, struct window_pane *,
-		     u_int, u_int, int, int);
+		     struct layout_geometry *);
 void		 layout_close_pane(struct window_pane *);
 int		 layout_spread_cell(struct window *, struct layout_cell *);
 void		 layout_spread_out(struct window_pane *);
@@ -3761,10 +3762,10 @@ struct layout_cell *layout_get_tiled_cell(struct cmdq_item *, struct args *,
 		     struct window *, struct window_pane *, int, char **);
 struct layout_cell *layout_get_floating_cell(struct cmdq_item *, struct args *,
 		     enum pane_lines, struct window *, struct window_pane *,
-		     char **cause);
+		     char **);
 int		 layout_floating_args_parse(struct cmdq_item *, struct args *,
-		     enum pane_lines, struct window *, u_int *, u_int *, int *,
-		     int *, char **);
+		     enum pane_lines, struct window *, struct layout_geometry *,
+		     char **);
 int		 layout_remove_tile(struct window *, struct layout_cell *);
 int		 layout_insert_tile(struct window *, struct layout_cell *);
 

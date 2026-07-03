@@ -46,13 +46,13 @@ resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 	layout_resize(w, sx, sy);
 
 	/* Resize the window, it can be no smaller than the layout. */
-	if (sx < w->layout_root->sx)
-		sx = w->layout_root->sx;
-	if (sy < w->layout_root->sy)
-		sy = w->layout_root->sy;
+	if (sx < w->layout_root->g.sx)
+		sx = w->layout_root->g.sx;
+	if (sy < w->layout_root->g.sy)
+		sy = w->layout_root->g.sy;
 	window_resize(w, sx, sy, xpixel, ypixel);
 	log_debug("%s: @%u resized to %ux%u; layout %ux%u", __func__, w->id,
-	    sx, sy, w->layout_root->sx, w->layout_root->sy);
+	    sx, sy, w->layout_root->g.sx, w->layout_root->g.sy);
 
 	/* Restore the window zoom state. */
 	if (zoomed)

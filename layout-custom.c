@@ -101,10 +101,10 @@ layout_append(struct layout_cell *lc, char *buf, size_t len)
 		return (0);
 	if (lc->wp != NULL) {
 		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%d,%d,%u",
-		    lc->sx, lc->sy, lc->xoff, lc->yoff, lc->wp->id);
+		    lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff, lc->wp->id);
 	} else {
 		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%d,%d",
-		    lc->sx, lc->sy, lc->xoff, lc->yoff);
+		    lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff);
 	}
 	if (tmplen > (sizeof tmp) - 1)
 		return (-1);
@@ -145,24 +145,24 @@ layout_check(struct layout_cell *lc)
 		break;
 	case LAYOUT_LEFTRIGHT:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (lcchild->sy != lc->sy)
+			if (lcchild->g.sy != lc->g.sy)
 				return (0);
 			if (!layout_check(lcchild))
 				return (0);
-			n += lcchild->sx + 1;
+			n += lcchild->g.sx + 1;
 		}
-		if (n - 1 != lc->sx)
+		if (n - 1 != lc->g.sx)
 			return (0);
 		break;
 	case LAYOUT_TOPBOTTOM:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (lcchild->sx != lc->sx)
+			if (lcchild->g.sx != lc->g.sx)
 				return (0);
 			if (!layout_check(lcchild))
 				return (0);
-			n += lcchild->sy + 1;
+			n += lcchild->g.sy + 1;
 		}
-		if (n - 1 != lc->sy)
+		if (n - 1 != lc->g.sy)
 			return (0);
 		break;
 	}
@@ -237,21 +237,21 @@ layout_parse(struct window *w, const char *layout, char **cause)
 		break;
 	case LAYOUT_LEFTRIGHT:
 		TAILQ_FOREACH(lcchild, &tiled_lc->cells, entry) {
-			sy = lcchild->sy + 1;
-			sx += lcchild->sx + 1;
+			sy = lcchild->g.sy + 1;
+			sx += lcchild->g.sx + 1;
 		}
 		break;
 	case LAYOUT_TOPBOTTOM:
 		TAILQ_FOREACH(lcchild, &tiled_lc->cells, entry) {
-			sx = lcchild->sx + 1;
-			sy += lcchild->sy + 1;
+			sx = lcchild->g.sx + 1;
+			sy += lcchild->g.sy + 1;
 		}
 		break;
 	}
 	if (tiled_lc->type != LAYOUT_WINDOWPANE &&
-	    (tiled_lc->sx != sx || tiled_lc->sy != sy)) {
+	    (tiled_lc->g.sx != sx || tiled_lc->g.sy != sy)) {
 		layout_print_cell(tiled_lc, __func__, 0);
-		tiled_lc->sx = sx - 1; tiled_lc->sy = sy - 1;
+		tiled_lc->g.sx = sx - 1; tiled_lc->g.sy = sy - 1;
 	}
 
 	/* Check the new layout. */
@@ -262,7 +262,7 @@ layout_parse(struct window *w, const char *layout, char **cause)
 
 	/* Resize window to the layout size. */
 	if (sx != 0 && sy != 0)
-		window_resize(w, tiled_lc->sx, tiled_lc->sy, -1, -1);
+		window_resize(w, tiled_lc->g.sx, tiled_lc->g.sy, -1, -1);
 
 	/* Destroy the old layout and swap to the new. */
 	layout_free_cell(w->layout_root, 0);
@@ -358,10 +358,10 @@ layout_construct_cell(struct layout_cell *lcparent, const char **layout)
 	}
 
 	lc = layout_create_cell(lcparent);
-	lc->sx = sx;
-	lc->sy = sy;
-	lc->xoff = xoff;
-	lc->yoff = yoff;
+	lc->g.sx = sx;
+	lc->g.sy = sy;
+	lc->g.xoff = xoff;
+	lc->g.yoff = yoff;
 
 	return (lc);
 }
