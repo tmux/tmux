@@ -3249,6 +3249,15 @@ is omitted and a marked pane is present (see
 .Ic select\-pane
 .Fl m ) ,
 the marked pane is used rather than the current pane.
+.Pp
+If
+.Ar src\-pane
+is floating and
+.Ar dst\-pane
+is either unspecified or equal to
+.Ar src\-pane,
+.Ar src\-pane
+is returned to its previous position in the layout.
 .Tg killp
 .It Xo Ic kill\-pane
 .Op Fl a

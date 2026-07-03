@@ -364,6 +364,44 @@ cmd_join_pane_zindex(struct cmdq_item *item, struct winlink *wl,
 }
 
 static enum cmd_retval
+cmd_join_pane_tile(struct cmdq_item *item, struct args *args, struct window *w,
+    struct window_pane *wp)
+{
+	struct layout_cell	*lc = wp->layout_cell;
+
+	if (!window_pane_is_floating(wp)) {
+		cmdq_error(item, "pane is not floating");
+		return (CMD_RETURN_ERROR);
+	}
+	if (w->flags & WINDOW_ZOOMED) {
+		cmdq_error(item, "can't tile a pane while window is zoomed");
+		return (CMD_RETURN_ERROR);
+	}
+
+	lc->saved_sx = lc->sx;
+	lc->saved_sy = lc->sy;
+	lc->saved_xoff = lc->xoff;
+	lc->saved_yoff = lc->yoff;
+	if (layout_insert_tile(w, lc) != 0) {
+		cmdq_error(item, "no space for a new pane");
+		return (CMD_RETURN_ERROR);
+	}
+	lc->flags &= ~LAYOUT_CELL_FLOATING;
+
+	TAILQ_REMOVE(&w->z_index, wp, zentry);
+	TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
+
+	if (!args_has(args, 'd'))
+		window_set_active_pane(w, wp, 1);
+	layout_fix_offsets(w);
+	layout_fix_panes(w, NULL);
+	notify_window("window-layout-changed", w);
+	server_redraw_window(w);
+
+	return (CMD_RETURN_NORMAL);
+}
+
+static enum cmd_retval
 cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
@@ -412,6 +450,8 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	server_unzoom_window(src_w);
 
 	if (src_wp == dst_wp) {
+		if (window_pane_is_floating(src_wp))
+			return (cmd_join_pane_tile(item, args, src_w, src_wp));
 		cmdq_error(item, "source and target panes must be different");
 		return (CMD_RETURN_ERROR);
 	}
