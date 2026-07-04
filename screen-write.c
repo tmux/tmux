@@ -2079,7 +2079,7 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 
 	screen_write_collect_clear(ctx, 0, sy);
 
-	if (!screen_write_should_draw_lines(ctx, s->cy, sy - s->cy))
+	if (!screen_write_should_draw_lines(ctx, 0, sy))
 		return;
 	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED) {
 		tty_write(tty_cmd_clearscreen, &ttyctx);
