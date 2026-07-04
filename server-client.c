@@ -1197,6 +1197,8 @@ server_client_update_theme_colours(struct client *c)
 	format_defaults(ft, c, NULL, NULL, NULL);
 
 	theme = c->theme;
+	if (theme == THEME_UNKNOWN)
+		theme = colour_totheme(c->tty.bg);
 	if (option == 2)
 		theme = THEME_LIGHT;
 	else if (option == 3)
