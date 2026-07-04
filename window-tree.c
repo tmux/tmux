@@ -326,8 +326,8 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	struct window_tree_itemdata	*item;
 	struct mode_tree_item		*mti;
 	char				*name, *text;
-	struct window_pane		*wp, **l;
-	u_int				 n, i;
+	struct window_pane		**l;
+	u_int				 n, i, found;
 	int				 expanded;
 	struct format_tree		*ft;
 
@@ -354,29 +354,23 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	free(name);
 	mode_tree_align(mti, 1);
 
-	if ((wp = TAILQ_FIRST(&wl->window->panes)) == NULL)
-		goto empty;
-	if (TAILQ_NEXT(wp, entry) == NULL) {
-		if (!window_tree_filter_pane(s, wl, wp, filter))
-			goto empty;
-	}
-
 	l = sort_get_panes_window(wl->window, &n, sort_crit);
-	if (n == 0)
-		goto empty;
+	found = 0;
 	for (i = 0; i < n; i++) {
+		if (!window_tree_filter_pane(s, wl, l[i], filter))
+			continue;
+		found++;
 		if (data->hide_preview_this_pane && l[i] == data->wp)
 			continue;
-		if (window_tree_filter_pane(s, wl, l[i], filter))
-			window_tree_build_pane(s, wl, l[i], modedata, mti);
+		window_tree_build_pane(s, wl, l[i], modedata, mti);
+	}
+	if (found == 0) {
+		window_tree_free_item(item);
+		data->item_size--;
+		mode_tree_remove(data->data, mti);
+		return (0);
 	}
 	return (1);
-
-empty:
-	window_tree_free_item(item);
-	data->item_size--;
-	mode_tree_remove(data->data, mti);
-	return (0);
 }
 
 static void
