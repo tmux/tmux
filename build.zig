@@ -95,6 +95,7 @@ const tmux_sources = [_][]const u8{
     "log.c",
     "menu.c",
     "mode-tree.c",
+    "monitor.c",
     "names.c",
     "notify.c",
     "options-table.c",
