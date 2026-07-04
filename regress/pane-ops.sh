@@ -25,6 +25,9 @@
 
 PATH=/bin:/usr/bin
 TERM=screen
+LANG=C.UTF-8
+LC_ALL=C.UTF-8
+export TERM LANG LC_ALL
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -Ltest -f/dev/null"
