@@ -26,14 +26,14 @@ jobs:
             runner: ubuntu-24.04
             make: make
             configure: --enable-utf8proc --enable-asan
-         # - name: ubuntu-24.04-arm64
-         #   runner: ubuntu-24.04-arm
-         #   make: make
-         #   configure: --enable-utf8proc --enable-asan
-         # - name: macos-26-arm64
-         #   runner: macos-26
-         #   make: gmake
-         #   configure: --enable-utf8proc
+          - name: ubuntu-24.04-arm64
+            runner: ubuntu-24.04-arm
+            make: make
+            configure: --enable-utf8proc --enable-asan
+          - name: macos-26-arm64
+            runner: macos-26
+            make: gmake
+            configure: --enable-utf8proc
 
     steps:
       - name: checkout
