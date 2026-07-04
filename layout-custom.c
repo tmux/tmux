@@ -850,8 +850,11 @@ layout_prepare(struct window *w, const char *layout, char **cause)
 	ctx.cells = 0;
 	has_checksum = layout_parse_checksum(&ctx, &csum);
 	body = ctx.ptr;
-	if ((has_checksum && csum != layout_checksum(body, ctx.end)) ||
-	    layout_construct(&ctx, NULL, &root) != 0) {
+	if (has_checksum && csum != layout_checksum(body, ctx.end)) {
+		*cause = xstrdup("invalid layout checksum");
+		return (NULL);
+	}
+	if (layout_construct(&ctx, NULL, &root) != 0) {
 		*cause = xstrdup("invalid layout");
 		layout_free_cell(root);
 		return (NULL);
