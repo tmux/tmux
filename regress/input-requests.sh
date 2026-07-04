@@ -85,7 +85,7 @@ try:
         palette_out = f.name
     respawn("stty raw -echo min 1 time 50; "
         "printf '\\033]4;99;?\\033\\\\'; "
-        "dd bs=1 count=64 2>/dev/null | cat -v >%s; sleep 1" %
+        "dd bs=1 count=27 2>/dev/null | cat -v >%s; sleep 1" %
         palette_out)
     read_until(fd, b"\033]4;99;?\033\\")
     os.write(fd, b"\033]4;99;rgb:0101/0202/0303\033\\")
@@ -101,7 +101,7 @@ try:
         clip_out = f.name
     respawn("stty raw -echo min 1 time 50; "
         "printf '\\033]52;c;?\\033\\\\'; "
-        "dd bs=1 count=64 2>/dev/null | cat -v >%s; sleep 1" %
+        "dd bs=1 count=21 2>/dev/null | cat -v >%s; sleep 1" %
         clip_out)
     data = read_until(fd, b"]52;")
     if b"?" not in data:
