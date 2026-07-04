@@ -44,6 +44,11 @@ const serverCrashText = extract((state) => {
 	return null;
 });
 
+// Grid dimensions while running. A zero or negative width/height means the
+// resize or layout code produced an impossible terminal size.
+const gridColumns = extract((state) => state.grid.size.columns);
+const gridRows = extract((state) => state.grid.size.rows);
+
 /* Properties. */
 
 // The client must never die from a signal (SIGSEGV, SIGABRT, ...). Clean
@@ -56,6 +61,13 @@ export const clientNeverKilledBySignal = always(
 // unexpectedly". Random shell echo cannot plausibly reproduce that string.
 export const serverNeverCrashes = always(
 	() => serverCrashText.current === null,
+);
+
+// The grid must always have positive dimensions while the client is running.
+// A zero or negative size would mean resize/layout/reflow produced an
+// impossible terminal and would likely crash on the next draw.
+export const gridAlwaysPositive = always(
+	() => !running.current || (gridColumns.current > 0 && gridRows.current > 0),
 );
 
 // Prompts, messages and mid-redraw sampling can replace or blank the status
