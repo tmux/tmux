@@ -330,6 +330,7 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	u_int				 n, i, found;
 	int				 expanded;
 	struct format_tree		*ft;
+	uint64_t			 tag = FORMAT_NONE;
 
 	item = window_tree_add_item(data);
 	item->type = WINDOW_TREE_WINDOW;
@@ -337,7 +338,9 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	item->winlink = wl->idx;
 	item->pane = -1;
 
-	ft = format_create(NULL, NULL, FORMAT_PANE|wl->window->active->id, 0);
+	if (wl->window != NULL && wl->window->active != NULL)
+		tag = FORMAT_PANE|wl->window->active->id;
+	ft = format_create(NULL, NULL, tag, 0);
 	format_defaults(ft, NULL, s, wl, NULL);
 	text = format_expand(ft, data->format);
 	xasprintf(&name, "%u", wl->idx);
@@ -385,6 +388,7 @@ window_tree_build_session(struct session *s, void *modedata,
 	u_int				 n, i, empty;
 	int				 expanded;
 	struct format_tree		*ft;
+	uint64_t			 tag = FORMAT_NONE;
 
 	item = window_tree_add_item(data);
 	item->type = WINDOW_TREE_SESSION;
@@ -392,7 +396,9 @@ window_tree_build_session(struct session *s, void *modedata,
 	item->winlink = -1;
 	item->pane = -1;
 
-	ft = format_create(NULL, NULL, FORMAT_PANE|wl->window->active->id, 0);
+	if (wl != NULL && wl->window != NULL && wl->window->active != NULL)
+		tag = FORMAT_PANE|wl->window->active->id;
+	ft = format_create(NULL, NULL, tag, 0);
 	format_defaults(ft, NULL, s, NULL, NULL);
 	text = format_expand(ft, data->format);
 	format_free(ft);
