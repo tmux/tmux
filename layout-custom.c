@@ -126,8 +126,7 @@ layout_append_geometry(char *buf, size_t len, u_int sx, u_int sy, int xoff,
 		y = -(long long)yoff;
 	} else
 		y = yoff;
-	return (xsnprintf(buf, len, "%ux%u%s%llu%s%llu", sx, sy, xs, x,
-	    ys, y));
+	return (xsnprintf(buf, len, "%ux%u%s%llu%s%llu", sx, sy, xs, x, ys, y));
 }
 
 /* Dump layout as a string. */
