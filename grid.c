@@ -60,21 +60,6 @@ static const struct grid_cell_entry grid_cleared_entry = {
 };
 
 #ifdef __APPLE__
-static void
-grid_check_lines(struct grid *gd)
-{
-	u_int	i, j;
-
-	for (i = 0; i < gd->hsize + gd->sy; i++) {
-		for (j = i + 1; j < gd->hsize + gd->sy; j++) {
-			if (gd->linedata[i].celldata != NULL)
-				assert(gd->linedata[i].celldata != gd->linedata[j].celldata);
-			if (gd->linedata[i].extddata != NULL)
-				assert(gd->linedata[i].extddata != gd->linedata[j].extddata);
-		}
-	}
-}
-
 void
 grid_check_is_clear(struct grid *gd)
 {
@@ -104,11 +89,6 @@ grid_check_is_clear(struct grid *gd)
 	}
 }
 #else
-static void
-grid_check_lines(__unused struct grid *gd)
-{
-}
-
 void
 grid_check_is_clear(__unused struct grid *gd)
 {
@@ -506,8 +486,6 @@ grid_scroll_history(struct grid *gd, u_int bg)
 	gd->linedata[gd->hsize].time = current_time;
 	gd->hsize++;
 	gd->scroll_added++;
-
-	grid_check_lines(gd);
 }
 
 /* Clear the history. */
@@ -557,8 +535,6 @@ grid_scroll_history_region(struct grid *gd, u_int upper, u_int lower, u_int bg)
 	gd->hscrolled++;
 	gd->hsize++;
 	gd->scroll_added++;
-
-	grid_check_lines(gd);
 }
 
 /* Expand line to fit to cell. */
@@ -820,8 +796,6 @@ grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny, u_int bg)
 	}
 	if (py != 0 && (py < dy || py >= dy + ny))
 		gd->linedata[py - 1].flags &= ~GRID_LINE_WRAPPED;
-
-	grid_check_lines(gd);
 }
 
 /* Move a group of cells. */
@@ -1311,8 +1285,6 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 		sy++;
 		dy++;
 	}
-
-	grid_check_lines(dst);
 }
 
 /* Mark line as dead. */
@@ -1609,8 +1581,6 @@ grid_reflow(struct grid *gd, u_int sx)
 	gd->linedata = target->linedata;
 	free(target);
 	gd->scroll_generation++;
-
-	grid_check_lines(gd);
 }
 
 /* Convert to position based on wrapped lines. */
