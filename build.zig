@@ -194,6 +194,11 @@ pub fn build(b: *std.Build) void {
         "ghostty-vt",
         "Link libghostty-vt and compile the Ghostty VT backend",
     ) orelse false;
+    const enable_utf8proc = b.option(
+        bool,
+        "utf8proc",
+        "Link utf8proc for Unicode width support",
+    ) orelse false;
     const exe = b.addExecutable(.{
         .name = "tmux",
         .root_module = b.createModule(.{
@@ -233,6 +238,11 @@ pub fn build(b: *std.Build) void {
     mod.linkSystemLibrary("libevent_core", .{});
     mod.linkSystemLibrary("ncurses", .{});
     mod.linkSystemLibrary("m", .{});
+    if (enable_utf8proc) {
+        mod.addCMacro("HAVE_UTF8PROC", "1");
+        mod.addCSourceFile(.{ .file = b.path("compat/utf8proc.c"), .flags = &cflags });
+        mod.linkSystemLibrary("utf8proc", .{ .needed = true });
+    }
 
     if (enable_ghostty_vt) {
         mod.addCMacro("HAVE_GHOSTTY_VT", "1");
@@ -247,6 +257,12 @@ pub fn build(b: *std.Build) void {
         addPkgConfigIncludes(b, ghostty_mod, &.{ "libevent_core", "ncurses", "libghostty-vt" });
         addCommonDefines(ghostty_mod);
         addTargetDefines(ghostty_mod, target.result.os.tag);
+        if (target.result.os.tag == .macos)
+            addDarwinSDKIncludes(ghostty_mod, b);
+        if (enable_utf8proc) {
+            ghostty_mod.addCMacro("HAVE_UTF8PROC", "1");
+            addPkgConfigIncludes(b, ghostty_mod, &.{ "libutf8proc" });
+        }
         ghostty_mod.addCMacro("HAVE_GHOSTTY_VT", "1");
         if (b.lazyDependency("wuffs", .{})) |wuffs_dep| {
             var wuffs_flags: std.ArrayList([]const u8) = .empty;
@@ -354,10 +370,18 @@ fn addTargetDefines(mod: *std.Build.Module, os_tag: std.Target.Os.Tag) void {
 
 fn addDarwin(mod: *std.Build.Module, b: *std.Build) void {
     addTargetDefines(mod, .macos);
+    addDarwinSDKIncludes(mod, b);
 
     mod.addCSourceFile(.{ .file = b.path("osdep-darwin.c"), .flags = &cflags });
     mod.addCSourceFile(.{ .file = b.path("compat/daemon-darwin.c"), .flags = &cflags });
     mod.linkSystemLibrary("util", .{});
+}
+
+fn addDarwinSDKIncludes(mod: *std.Build.Module, b: *std.Build) void {
+    const sdkroot = b.graph.environ_map.get("SDKROOT") orelse return;
+    if (sdkroot.len == 0)
+        return;
+    mod.addSystemIncludePath(.{ .cwd_relative = b.pathJoin(&.{ sdkroot, "usr/include" }) });
 }
 
 fn addLinux(mod: *std.Build.Module, b: *std.Build) void {
