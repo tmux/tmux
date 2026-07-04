@@ -1,3 +1,5 @@
+![](logo/bmux-logo.png)
+
 Welcome to tmux!
 
 tmux is a terminal multiplexer: it enables a number of terminals to be created,
@@ -37,6 +39,36 @@ autoconf, automake and pkg-config:
 	$ sh autogen.sh
 	$ ./configure && make
 	$ sudo make install
+
+* Ghostty VT backend
+
+The Ghostty VT parser backend is optional. It must be enabled at build time
+and at runtime.
+
+The default Nix package builds with the Ghostty VT backend enabled:
+
+	$ nix build
+
+For a local development build, use the Zig build and enable the ghostty-vt
+option:
+
+	$ nix develop
+	$ zig build -Dghostty-vt=true -Dutf8proc=true
+
+This requires libghostty-vt to be available through pkg-config. The Nix package
+and dev shell include the required Ghostty VT package.
+
+After starting the built binary, enable the backend globally with:
+
+	:set -g ghostty-vt on
+
+Or enable it for only the current pane with:
+
+	:set -p ghostty-vt on
+
+If tmux was built without -Dghostty-vt=true, the ghostty-vt option will not
+switch panes to the Ghostty VT backend because the backend code is not linked
+into the binary.
 
 * Contributing
 
