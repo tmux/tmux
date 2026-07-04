@@ -95,7 +95,7 @@ layout_checksum(const char *start, const char *end)
 
 /* Find the absolute position of a pane in the z-index list. */
 static int
-layout_zindex(struct window *w, struct window_pane *wp, u_int *z)
+layout_absolute_zindex(struct window *w, struct window_pane *wp, u_int *z)
 {
 	struct window_pane	*loop;
 
@@ -176,7 +176,7 @@ layout_append(struct window *w, struct layout_cell *lc, char *buf, size_t len)
 	}
 
 	if (lc->wp != NULL) {
-		if (layout_zindex(w, lc->wp, &z) != 0)
+		if (layout_absolute_zindex(w, lc->wp, &z) != 0)
 			return (-1);
 		if (lc->flags & LAYOUT_CELL_FLOATING)
 			flags[pos++] = 'f';
@@ -224,21 +224,6 @@ layout_append(struct window *w, struct layout_cell *lc, char *buf, size_t len)
 		break;
 	}
 
-	return (0);
-}
-
-/* Return whether a subtree contains a tiled leaf. */
-static int
-layout_has_tiled(struct layout_cell *lc)
-{
-	struct layout_cell	*lcchild;
-
-	if (lc->type == LAYOUT_WINDOWPANE)
-		return ((lc->flags & LAYOUT_CELL_FLOATING) == 0);
-	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-		if (layout_has_tiled(lcchild))
-			return (1);
-	}
 	return (0);
 }
 

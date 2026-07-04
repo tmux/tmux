@@ -266,17 +266,17 @@ layout_cell_is_tiled(struct layout_cell *lc)
 	return is_leaf && !is_floating;
 }
 
-static int
-layout_cell_has_tiled_child(struct layout_cell *lc)
+/* Return whether a cell or any of its descendants is tiled. */
+int
+layout_has_tiled(struct layout_cell *lc)
 {
 	struct layout_cell      *lcchild;
 
 	if (lc->type == LAYOUT_WINDOWPANE)
-		return (0);
+		return (layout_cell_is_tiled(lc));
 
 	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-		if (layout_cell_is_tiled(lcchild) ||
-		    layout_cell_has_tiled_child(lcchild))
+		if (layout_has_tiled(lcchild))
 			return (1);
 	}
 	return (0);
@@ -291,8 +291,7 @@ layout_cell_is_first_tiled(struct layout_cell *lc)
 		return (layout_cell_is_tiled(lc));
 
 	TAILQ_FOREACH(lcchild, &lcparent->cells, entry) {
-		if (layout_cell_is_tiled(lcchild) ||
-		    layout_cell_has_tiled_child(lcchild))
+		if (layout_has_tiled(lcchild))
 			break;
 	}
 
@@ -331,8 +330,7 @@ layout_fix_offsets1(struct layout_cell *lc)
 	if (lc->type == LAYOUT_LEFTRIGHT) {
 		xoff = lc->xoff;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (!layout_cell_is_tiled(lcchild) &&
-			    !layout_cell_has_tiled_child(lcchild))
+			if (!layout_has_tiled(lcchild))
 				continue;
 			lcchild->xoff = xoff;
 			lcchild->yoff = lc->yoff;
@@ -343,8 +341,7 @@ layout_fix_offsets1(struct layout_cell *lc)
 	} else {
 		yoff = lc->yoff;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (!layout_cell_is_tiled(lcchild) &&
-			    !layout_cell_has_tiled_child(lcchild))
+			if (!layout_has_tiled(lcchild))
 				continue;
 			lcchild->xoff = lc->xoff;
 			lcchild->yoff = yoff;
@@ -595,8 +592,7 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 	/* Child cell runs in a different direction. */
 	if (lc->type != type) {
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (!layout_cell_is_tiled(lcchild) &&
-			    !layout_cell_has_tiled_child(lcchild))
+			if (!layout_has_tiled(lcchild))
 				continue;
 			layout_resize_adjust(w, lcchild, type, change);
 		}
@@ -606,7 +602,7 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 	/*
 	 * If a node doesn't contain any tiled cells, there is nothing to do.
 	 */
-	if (!layout_cell_has_tiled_child(lc))
+	if (!layout_has_tiled(lc))
 		return;
 
 	/*
@@ -617,8 +613,7 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			if (change == 0)
 				break;
-			if (!layout_cell_is_tiled(lcchild) &&
-			    !layout_cell_has_tiled_child(lcchild))
+			if (!layout_has_tiled(lcchild))
 				continue;
 			if (change > 0) {
 				layout_resize_adjust(w, lcchild, type, 1);
@@ -659,9 +654,7 @@ layout_cell_get_neighbour_direction(struct layout_cell *lc, int direction)
 		else
 			lcn = TAILQ_PREV(lcn, layout_cells, entry);
 
-		if (lcn == NULL ||
-		    layout_cell_is_tiled(lcn) ||
-		    layout_cell_has_tiled_child(lcn))
+		if (lcn == NULL || layout_has_tiled(lcn))
 			return (lcn);
 	}
 }
@@ -1177,8 +1170,7 @@ layout_resize_child_cells(struct window *w, struct layout_cell *lc)
 	count = 0;
 	previous = 0;
 	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-		if (!layout_cell_is_tiled(lcchild) &&
-		    !layout_cell_has_tiled_child(lcchild))
+		if (!layout_has_tiled(lcchild))
 			continue;
 		count++;
 		if (lc->type == LAYOUT_LEFTRIGHT)
@@ -1198,8 +1190,7 @@ layout_resize_child_cells(struct window *w, struct layout_cell *lc)
 	/* Resize children into the new size. */
 	idx = 0;
 	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-		if (!layout_cell_is_tiled(lcchild) &&
-		    !layout_cell_has_tiled_child(lcchild))
+		if (!layout_has_tiled(lcchild))
 			continue;
 		if (lc->type == LAYOUT_TOPBOTTOM) {
 			lcchild->sx = lc->sx;
