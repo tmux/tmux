@@ -40,9 +40,9 @@
           '';
 
           nativeBuildInputs = with pkgs; [
-            autoreconfHook
             bison
             pkg-config
+            zig
           ];
 
           buildInputs = with pkgs; [
@@ -55,9 +55,23 @@
             libiconv
           ];
 
-          configureFlags = [
-            "--enable-utf8proc"
-          ];
+          dontConfigure = true;
+
+          buildPhase = ''
+            runHook preBuild
+            export ZIG_GLOBAL_CACHE_DIR=$PWD/zig-pkg
+            export ZIG_LOCAL_CACHE_DIR=$TMPDIR/zig-cache
+            zig build -Dghostty-vt=true -Dutf8proc=true -Doptimize=ReleaseFast
+            runHook postBuild
+          '';
+
+          installPhase = ''
+            runHook preInstall
+            export ZIG_GLOBAL_CACHE_DIR=$PWD/zig-pkg
+            export ZIG_LOCAL_CACHE_DIR=$TMPDIR/zig-cache
+            zig build -Dghostty-vt=true -Dutf8proc=true -Doptimize=ReleaseFast --prefix $out install
+            runHook postInstall
+          '';
 
           meta = with pkgs.lib; {
             description = "Terminal multiplexer with Ghostty VT integration";
