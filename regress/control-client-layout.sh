@@ -38,11 +38,12 @@ sleep 1
 # Default control output is legacy; window-layout-new output is current.
 awk '/^layout:/ { print }' "$OUT1" | while IFS= read -r line; do
 	case "$line" in
-	*window-layout-new*|*%0,*|*';'*) exit 1 ;;
+	*window-layout-new*|*v2:*|*%0,*|*';'*) exit 1 ;;
 	esac
 done || exit 1
 [ "$(grep -ac '^layout:' "$OUT1")" -eq 6 ] || exit 1
-grep -a '^layout:.*window-layout-new.*%0,' "$OUT2" >/dev/null || exit 1
+grep -a '^layout:.*window-layout-new.*,v2:.*%0,' "$OUT2" >/dev/null ||
+    exit 1
 
 # Toggling the flag changes subsequent format expansion for the same client.
 printf '%s\n' "refresh-client -f window-layout-new" >&3
@@ -50,7 +51,8 @@ printf '%s\n' "display-message -p 'new:#{client_flags}:#{window_layout}'" >&3
 printf '%s\n' "refresh-client -f '!window-layout-new'" >&3
 printf '%s\n' "display-message -p 'legacy:#{client_flags}:#{window_layout}'" >&3
 sleep 1
-grep -a '^new:.*window-layout-new.*%0,' "$OUT1" >/dev/null || exit 1
+grep -a '^new:.*window-layout-new.*,v2:.*%0,' "$OUT1" >/dev/null ||
+    exit 1
 grep -a '^legacy:' "$OUT1" | tail -1 | grep -v '%0,' >/dev/null || exit 1
 
 # One layout change is formatted independently for each connected client.
@@ -62,9 +64,11 @@ LEGACY=$(grep -a '^%layout-change ' "$OUT1" | tail -1)
 CURRENT=$(grep -a '^%layout-change ' "$OUT2" | tail -1)
 [ -n "$LEGACY" ] || exit 1
 [ -n "$CURRENT" ] || exit 1
-case "$LEGACY" in *%0,*|*';'*) exit 1 ;; esac
-case "$CURRENT" in *%0,*) ;; *) exit 1 ;; esac
+case "$LEGACY" in *v2:*|*%0,*|*';'*) exit 1 ;; esac
+case "$CURRENT" in *v2:*%0,*) ;; *) exit 1 ;; esac
 [ "$(printf '%s' "$CURRENT" | awk '{ print gsub(/%0,/, "") }')" -ge 2 ] ||
+    exit 1
+[ "$(printf '%s' "$CURRENT" | awk '{ print gsub(/v2:/, "") }')" -ge 2 ] ||
     exit 1
 
 exec 3>&-

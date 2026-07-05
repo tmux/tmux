@@ -61,6 +61,7 @@ static int			 layout_append_geometry(char *, size_t, u_int,
 static int			 layout_check(struct layout_cell *);
 static int			 layout_check_geometry(u_int, u_int, int, int);
 static int			 layout_parse_char(struct layout_parse_ctx *, char);
+static int			 layout_parse_version(struct layout_parse_ctx *);
 static int			 layout_construct(struct layout_parse_ctx *,
 				     struct layout_cell *, struct layout_cell **);
 static void			 layout_assign(struct window *, struct window_pane **,
@@ -137,7 +138,7 @@ layout_dump(struct window *w, struct layout_cell *root)
 {
 	char	 layout[LAYOUT_STRING_MAX], *out;
 
-	*layout = '\0';
+	strlcpy(layout, "v2:", sizeof layout);
 	if (layout_append(w, root, layout, sizeof layout) != 0)
 		return (NULL);
 
@@ -585,6 +586,21 @@ layout_parse_checksum(struct layout_parse_ctx *ctx, u_short *csum)
 	return (1);
 }
 
+/* Parse an optional outer layout version. */
+static int
+layout_parse_version(struct layout_parse_ctx *ctx)
+{
+	layout_skip_space(ctx);
+	if (ctx->ptr == ctx->end || *ctx->ptr != 'v')
+		return (0);
+	if ((size_t)(ctx->end - ctx->ptr) < 3 || ctx->ptr[1] != '2' ||
+	    ctx->ptr[2] != ':')
+		return (-1);
+	ctx->ptr += 3;
+	layout_skip_space(ctx);
+	return (1);
+}
+
 /* Construct one cell, accepting an optional checksum before nested cells. */
 static int
 layout_construct(struct layout_parse_ctx *ctx, struct layout_cell *parent,
@@ -900,7 +916,7 @@ layout_prepare(struct window *w, const char *layout, char **cause)
 	const char		*body;
 	u_int			 npanes, ncells, old_ncells;
 	u_short			 csum;
-	int			 has_checksum, pane_ids = 0;
+	int			 has_checksum, pane_ids = 0, version;
 
 	if (strlen(layout) >= LAYOUT_STRING_MAX) {
 		*cause = xstrdup("invalid layout");
@@ -917,6 +933,11 @@ layout_prepare(struct window *w, const char *layout, char **cause)
 		*cause = xstrdup("invalid layout checksum");
 		return (NULL);
 	}
+	version = layout_parse_version(&ctx);
+	if (version == -1) {
+		*cause = xstrdup("invalid layout version");
+		return (NULL);
+	}
 	if (layout_construct(&ctx, NULL, &root) != 0) {
 		*cause = xstrdup("invalid layout");
 		layout_free_cell(root, 0);
@@ -925,6 +946,11 @@ layout_prepare(struct window *w, const char *layout, char **cause)
 	layout_skip_space(&ctx);
 	if (ctx.ptr != ctx.end || root == NULL) {
 		*cause = xstrdup("invalid layout");
+		layout_free_cell(root, 0);
+		return (NULL);
+	}
+	if (version == 1 && ctx.format != LAYOUT_FORMAT) {
+		*cause = xstrdup("invalid layout version");
 		layout_free_cell(root, 0);
 		return (NULL);
 	}

@@ -26,6 +26,21 @@ must_fail()
 	return 0
 }
 
+versioned()
+{
+	body="v2:$1"
+	checksum=$(printf %s "$body" | od -An -tu1 | awk '
+	    { for (i = 1; i <= NF; i++) {
+	        if ($i == 9 || $i == 10 || $i == 11 || $i == 12 ||
+	            $i == 13 || $i == 32)
+	            continue
+	        checksum = int(checksum / 2) + (checksum % 2) * 32768
+	        checksum = (checksum + $i) % 65536
+	    } }
+	    END { printf "%04x", checksum }')
+	printf '%s,%s' "$checksum" "$body"
+}
+
 $TMUX kill-server 2>/dev/null
 sleep 0.5
 $TMUX new-session -d -x 80 -y 24 || exit 1
@@ -36,20 +51,37 @@ legacy='89f5,80x24,0,0{39x24,0,0,0,40x24,40,0,1}'
 $TMUX select-layout "$legacy" || fail "legacy layout was rejected"
 layout=$($TMUX display-message -p '#{window_layout}')
 must_equal "$layout" \
-    '93fc,80x24+0+0{%0,0:39x24+0+0;%1,1:40x24+40+0}'
+    'cc3c,v2:80x24+0+0{%0,0:39x24+0+0;%1,1:40x24+40+0}'
 
 # Both current and legacy layouts may omit the outer checksum.
 $TMUX select-layout '80x24+0+0{%0,0:39x24+0+0;%1,1:40x24+40+0}' || \
     fail "checksumless current layout was rejected"
+must_equal "$($TMUX display-message -p '#{window_layout}')" "$layout"
+$TMUX select-layout \
+    'v2:80x24+0+0{%0,0:39x24+0+0;%1,1:40x24+40+0}' || \
+    fail "checksumless versioned layout was rejected"
 must_equal "$($TMUX display-message -p '#{window_layout}')" "$layout"
 $TMUX select-layout '80x24,0,0{39x24,0,0,0,40x24,40,0,1}' || \
     fail "checksumless legacy layout was rejected"
 must_equal "$($TMUX display-message -p '#{window_layout}')" "$layout"
 must_fail $TMUX select-layout \
     '0000,80x24+0+0{%0,0:39x24+0+0;%1,1:40x24+40+0}'
+must_fail $TMUX select-layout \
+    '0000,v2:80x24+0+0{%0,0:39x24+0+0;%1,1:40x24+40+0}'
+# The old checksum for the unversioned cell does not validate v2:.
+must_fail $TMUX select-layout \
+    '93fc,v2:80x24+0+0{%0,0:39x24+0+0;%1,1:40x24+40+0}'
+must_fail $TMUX select-layout \
+    'v1:80x24+0+0{%0,0:39x24+0+0;%1,1:40x24+40+0}'
+must_fail $TMUX select-layout \
+    'v3:80x24+0+0{%0,0:39x24+0+0;%1,1:40x24+40+0}'
+must_fail $TMUX select-layout \
+    'v2:80x24,0,0{39x24,0,0,0,40x24,40,0,1}'
+must_fail $TMUX select-layout \
+    '80x24+0+0{v2:%0,0:39x24+0+0;%1,1:40x24+40+0}'
 
 # Top-bottom containers are accepted in both current and legacy formats.
-topbottom='081e,80x24+0+0[%0,0:80x11+0+0;%1,1:80x12+0+12]'
+topbottom=$(versioned '80x24+0+0[%0,0:80x11+0+0;%1,1:80x12+0+12]')
 $TMUX select-layout "$topbottom" || fail "top-bottom layout was rejected"
 must_equal "$($TMUX display-message -p '#{window_layout}')" "$topbottom"
 must_equal "$($TMUX list-panes -F '#{pane_width}x#{pane_height},#{pane_left},#{pane_top}')" \
@@ -72,7 +104,7 @@ $TMUX select-layout "$layout" || fail "layout could not be restored"
 # tiled geometry.
 $TMUX resize-pane -t %0 -Z || fail "tiled zoom failed"
 must_equal "$($TMUX display-message -p '#{window_layout}')" \
-    '8e46,80x24+0+0{%0,0:39x24+0+0:z;%1,1:40x24+40+0}'
+    "$(versioned '80x24+0+0{%0,0:39x24+0+0:z;%1,1:40x24+40+0}')"
 $TMUX resize-pane -t %0 -Z || fail "tiled unzoom failed"
 $TMUX select-layout "$layout" || fail "layout could not be restored"
 
@@ -115,7 +147,7 @@ must_fail $TMUX select-layout "$badnested"
 must_equal "$($TMUX display-message -p '#{window_layout}')" "$layout"
 
 # Hidden state is retained in the serialized cell flags.
-hidden='659f,80x24+0+0{%0,0:39x24+0+0;%1,1:40x24+40+0:h}'
+hidden=$(versioned '80x24+0+0{%0,0:39x24+0+0;%1,1:40x24+40+0:h}')
 $TMUX select-layout "$hidden" || fail "hidden layout was rejected"
 must_equal "$($TMUX display-message -p '#{window_layout}')" "$hidden"
 
@@ -228,7 +260,7 @@ $TMUX resize-pane -t %0 -Z || fail "unzoom failed"
 $TMUX kill-server 2>/dev/null
 sleep 0.5
 $TMUX new-session -d -x 80 -y 24 || exit 1
-legacy_negative='a9af,%0,0:20x8+0+0'
+legacy_negative=$(versioned '%0,0:20x8+0+0')
 $TMUX select-layout '20x8,-10,-20,0' || fail "legacy negative layout failed"
 must_equal "$($TMUX display-message -p '#{window_layout}')" "$legacy_negative"
 deep='%0,0:1x1+0+0'
@@ -262,43 +294,45 @@ $TMUX select-layout "$relative" || fail "relative geometry was rejected"
 must_equal "$($TMUX display-message -p -t %1 '#{pane_left},#{pane_top}')" \
     '80,10'
 must_equal "$($TMUX display-message -p '#{window_layout}')" \
-    '0041,120x40+0+0{%0,1:120x40+0+0;%1,0:30x10+80+10:f}'
+    "$(versioned '120x40+0+0{%0,1:120x40+0+0;%1,0:30x10+80+10:f}')"
 
 bottomright='120x40+0+0{%0,1:120x40+0+0;%1,0:30x10-0-0:f}'
 $TMUX select-layout "$bottomright" || fail "bottom-right geometry failed"
 must_equal "$($TMUX display-message -p -t %1 '#{pane_left},#{pane_top}')" \
     '90,30'
 must_equal "$($TMUX display-message -p '#{window_layout}')" \
-    '2242,120x40+0+0{%0,1:120x40+0+0;%1,0:30x10+90+30:f}'
+    "$(versioned '120x40+0+0{%0,1:120x40+0+0;%1,0:30x10+90+30:f}')"
 
-absolute='3a22,120x40+0+0{%0,1:120x40+0+0;%1,0:20x8+-10+-20:f}'
-$TMUX select-layout "$absolute" || fail "absolute negative geometry failed"
+absolute_body='120x40+0+0{%0,1:120x40+0+0;%1,0:20x8+-10+-20:f}'
+$TMUX select-layout "3a22,$absolute_body" || \
+    fail "absolute negative geometry failed"
 must_equal "$($TMUX display-message -p -t %1 '#{pane_left},#{pane_top}')" \
     '-10,-20'
-must_equal "$($TMUX display-message -p '#{window_layout}')" "$absolute"
+must_equal "$($TMUX display-message -p '#{window_layout}')" \
+    "$(versioned "$absolute_body")"
 
 hiddenfloat='120x40+0+0{%0,1:120x40+0+0;%1,0:20x8+-10+-20:fh}'
 $TMUX select-layout "$hiddenfloat" || fail "hidden floating layout failed"
 must_equal "$($TMUX display-message -p -t %1 '#{pane_left},#{pane_top},#{pane_width},#{pane_height}')" \
     '-10,-20,20,8'
 must_equal "$($TMUX display-message -p '#{window_layout}')" \
-    '9d83,120x40+0+0{%0,1:120x40+0+0;%1,0:20x8+-10+-20:fh}'
+    "$(versioned '120x40+0+0{%0,1:120x40+0+0;%1,0:20x8+-10+-20:fh}')"
 must_fail $TMUX select-layout \
     '120x40+0+0{%0,1:120x40+0+0;%1,0:20x8+-10+-20:fhz}'
 must_equal "$($TMUX display-message -p '#{window_layout}')" \
-    '9d83,120x40+0+0{%0,1:120x40+0+0;%1,0:20x8+-10+-20:fh}'
+    "$(versioned '120x40+0+0{%0,1:120x40+0+0;%1,0:20x8+-10+-20:fh}')"
 must_fail $TMUX select-layout \
     '120x40+0+0{%0,1:120x40+0+0;%1,0:10000x8-10000+0:f}'
 
 defaults='fcb6,120x40{%0,1:120x40;%1,0:30x10++80+10:f}'
 $TMUX select-layout "$defaults" || fail "default or doubled offsets failed"
 must_equal "$($TMUX display-message -p '#{window_layout}')" \
-    '0041,120x40+0+0{%0,1:120x40+0+0;%1,0:30x10+80+10:f}'
+    "$(versioned '120x40+0+0{%0,1:120x40+0+0;%1,0:30x10+80+10:f}')"
 
 oneoffset='8f93,120x40{%0,1:120x40;%1,0:30x10+80:f}'
 $TMUX select-layout "$oneoffset" || fail "single offset default failed"
 must_equal "$($TMUX display-message -p '#{window_layout}')" \
-    '5fb9,120x40+0+0{%0,1:120x40+0+0;%1,0:30x10+80+0:f}'
+    "$(versioned '120x40+0+0{%0,1:120x40+0+0;%1,0:30x10+80+0:f}')"
 
 $TMUX kill-server 2>/dev/null
 sleep 0.5
@@ -338,7 +372,7 @@ $TMUX new-pane -d -x 24 -y 8 -X 50 -Y 12 'sleep 100' || \
 
 layout=$($TMUX display-message -p '#{window_layout}')
 must_equal "$layout" \
-    'a6f2,120x40+0+0{%0,2:60x40+0+0;%1,3:59x40+61+0;%3,0:22x6+51+13:f;%2,1:28x8+11+6:f}'
+    "$(versioned '120x40+0+0{%0,2:60x40+0+0;%1,3:59x40+61+0;%3,0:22x6+51+13:f;%2,1:28x8+11+6:f}')"
 case "$layout" in
 *'<'*|*'>'*) fail "obsolete floating delimiters were emitted" ;;
 esac
