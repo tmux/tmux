@@ -42,8 +42,16 @@ static struct style style_default = {
 
 	STYLE_WIDTH_DEFAULT, 0, STYLE_PAD_DEFAULT,
 
-	STYLE_DEFAULT_BASE
+	STYLE_DEFAULT_BASE,
+
+	0
 };
+
+/*
+ * Global hyperlink set holding the URIs for #[link=...] styles, so a style
+ * only needs to store a small ID rather than the URI itself.
+ */
+static struct hyperlinks	*style_hyperlinks;
 
 /* Set range string. */
 static void
@@ -91,6 +99,7 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 			sy->gc.us = base->us;
 			sy->gc.attr = base->attr;
 			sy->gc.flags = base->flags;
+			sy->link = 0;
 		} else if (strcasecmp(tmp, "ignore") == 0)
 			sy->ignore = 1;
 		else if (strcasecmp(tmp, "noignore") == 0)
@@ -234,7 +243,9 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 		} else if (strcasecmp(tmp, "none") == 0)
 			sy->gc.attr = 0;
 		else if (end > 2 && strncasecmp(tmp, "no", 2) == 0) {
-			if (strcmp(tmp + 2, "attr") == 0)
+			if (strcmp(tmp + 2, "link") == 0)
+				sy->link = 0;
+			else if (strcmp(tmp + 2, "attr") == 0)
 				sy->gc.attr |= GRID_ATTR_NOATTR;
 			else {
 				value = attributes_fromstring(tmp + 2);
@@ -262,6 +273,15 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 			if (errstr != NULL)
 				goto error;
 			sy->pad = (int)n;
+		} else if (strncasecmp(tmp, "link=", 5) == 0) {
+			if (tmp[5] == '\0')
+				sy->link = 0;
+			else {
+				if (style_hyperlinks == NULL)
+					style_hyperlinks = hyperlinks_init();
+				sy->link = hyperlinks_put(style_hyperlinks,
+				    tmp + 5, tmp + 5);
+			}
 		} else {
 			if ((value = attributes_fromstring(tmp)) == -1)
 				goto error;
@@ -284,8 +304,8 @@ style_tostring(struct style *sy)
 {
 	struct grid_cell	*gc = &sy->gc;
 	int			 off = 0;
-	const char		*comma = "", *tmp = "";
-	static char		 s[1024];
+	const char		*comma = "", *tmp = "", *uri;
+	static char		 s[2048];
 	char			 b[21];
 
 	*s = '\0';
@@ -389,13 +409,31 @@ style_tostring(struct style *sy)
 		comma = ",";
 	}
 	if (sy->pad >= 0) {
-		xsnprintf(s + off, sizeof s - off, "%spad=%u", comma,
+		off += xsnprintf(s + off, sizeof s - off, "%spad=%u", comma,
 		    sy->pad);
+		comma = ",";
+	}
+	uri = style_link(sy);
+	if (uri != NULL) {
+		xsnprintf(s + off, sizeof s - off, "%slink=%s", comma, uri);
 		comma = ",";
 	}
 	if (*s == '\0')
 		return ("default");
 	return (s);
+}
+
+/* Get the hyperlink URI for a style, or NULL if it has none. */
+const char *
+style_link(struct style *sy)
+{
+	const char	*uri;
+
+	if (sy->link == 0 || style_hyperlinks == NULL)
+		return (NULL);
+	if (!hyperlinks_get(style_hyperlinks, sy->link, &uri, NULL, NULL))
+		return (NULL);
+	return (uri);
 }
 
 /* Apply a style on top of the given style. */

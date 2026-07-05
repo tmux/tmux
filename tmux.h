@@ -100,12 +100,6 @@ struct winlink;
 #define TMUX_LOCK_CMD "lock -np"
 #endif
 
-/* Forbidden characters in names. */
-#define WINDOW_NAME_FORBID ":."
-#define WINDOW_NAME_FORBID_EXT ":.#"
-#define SESSION_NAME_FORBID ":."
-#define SESSION_NAME_FORBID_EXT ":.#"
-
 /* Minimum and maximum layout cell size, NOT including border lines. */
 #define PANE_MINIMUM 1
 #define PANE_MAXIMUM 10000
@@ -993,6 +987,8 @@ struct style {
 	int			pad;
 
 	enum style_default_type	default_type;
+
+	u_int			link;
 };
 
 #ifdef ENABLE_SIXEL
@@ -1417,6 +1413,9 @@ struct window {
 
 	u_int			 last_new_pane_x;
 	u_int			 last_new_pane_y;
+
+	int			 sb;
+	int			 sb_pos;
 
 	struct utf8_data	*fill_character;
 	int			 flags;
@@ -2503,8 +2502,8 @@ int		 checkshell(const char *);
 void		 setblocking(int, int);
 char 		*shell_argv0(const char *, int);
 uint64_t	 get_timer(void);
-char		*clean_name(const char *, const char *);
-int		 check_name(const char *, const char *);
+char		*clean_name(const char *, int);
+int		 check_name(const char *);
 const char	*sig2name(int);
 const char	*find_cwd(void);
 const char	*find_home(void);
@@ -3625,7 +3624,7 @@ void		 window_pane_stack_push(struct window_panes *,
 		     struct window_pane *);
 void		 window_pane_stack_remove(struct window_panes *,
 		     struct window_pane *);
-void		 window_set_name(struct window *, const char *, const char *);
+void		 window_set_name(struct window *, const char *, int);
 void		 window_add_ref(struct window *, const char *);
 void		 window_remove_ref(struct window *, const char *);
 void		 winlink_clear_flags(struct winlink *);
@@ -3639,10 +3638,10 @@ void		 window_pane_update_used_data(struct window_pane *,
 void		 window_set_fill_character(struct window *);
 void		 window_pane_default_cursor(struct window_pane *);
 int		 window_pane_mode(struct window_pane *);
-int		 window_pane_show_scrollbar(struct window_pane *, int);
-int		 window_pane_scrollbar_reserve(struct window_pane *, int);
-int		 window_pane_scrollbar_visible(struct window_pane *, int);
-int		 window_pane_scrollbar_overlay(struct window_pane *, int);
+int		 window_pane_show_scrollbar(struct window_pane *);
+int		 window_pane_scrollbar_reserve(struct window_pane *);
+int		 window_pane_scrollbar_visible(struct window_pane *);
+int		 window_pane_scrollbar_overlay(struct window_pane *);
 int		 window_pane_scrollbar_overlay_visible(struct window_pane *);
 void		 window_pane_scrollbar_show(struct window_pane *, int);
 void		 window_pane_scrollbar_hide(struct window_pane *);
@@ -4021,6 +4020,7 @@ int		 style_parse(struct style *,const struct grid_cell *,
 int		 style_parse_colour(struct style *,
 		     const struct grid_cell *, const char *);
 const char	*style_tostring(struct style *);
+const char	*style_link(struct style *);
 struct style	*style_add(struct grid_cell *, struct options *,
 		     const char *, struct format_tree *);
 void		 style_apply(struct grid_cell *, struct options *,
