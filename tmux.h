@@ -1231,6 +1231,7 @@ struct visible_ranges {
 /* Child window structure. */
 struct window_pane {
 	u_int		 id;
+	int		 references;
 	u_int		 active_point;
 
 	struct window	*window;
@@ -1262,6 +1263,7 @@ struct window_pane {
 #define PANE_THEMECHANGED 0x2000
 #define PANE_UNSEENCHANGES 0x4000
 #define PANE_REDRAWSCROLLBAR 0x8000
+#define PANE_DESTROYED 0x10000
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;
@@ -3603,6 +3605,8 @@ void		 window_pane_stack_remove(struct window_panes *,
 void		 window_set_name(struct window *, const char *, int);
 void		 window_add_ref(struct window *, const char *);
 void		 window_remove_ref(struct window *, const char *);
+void		 window_pane_add_ref(struct window_pane *, const char *);
+void		 window_pane_remove_ref(struct window_pane *, const char *);
 void		 winlink_clear_flags(struct winlink *);
 int		 winlink_shuffle_up(struct session *, struct winlink *, int);
 int		 window_pane_start_input(struct window_pane *,
