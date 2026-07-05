@@ -31,6 +31,8 @@ static enum args_parse_type	cmd_set_option_args_parse(struct args *,
 				    u_int, char **);
 static enum cmd_retval		cmd_set_option_exec(struct cmd *,
 				    struct cmdq_item *);
+static enum cmd_retval		cmd_set_hook_monitor_exec(struct cmdq_item *,
+				    struct args *, int);
 
 const struct cmd_entry cmd_set_option_entry = {
 	.name = "set-option",
@@ -62,8 +64,9 @@ const struct cmd_entry cmd_set_hook_entry = {
 	.name = "set-hook",
 	.alias = NULL,
 
-	.args = { "agpRt:uw", 1, 2, cmd_set_option_args_parse },
-	.usage = "[-agpRuw] " CMD_TARGET_PANE_USAGE " hook [command]",
+	.args = { "agpRt:uB:w", 0, 2, cmd_set_option_args_parse },
+	.usage = "[-agpRuw] [-B name:what:format] " CMD_TARGET_PANE_USAGE " "
+		 "[hook] [command]",
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
@@ -72,12 +75,98 @@ const struct cmd_entry cmd_set_hook_entry = {
 };
 
 static enum args_parse_type
-cmd_set_option_args_parse(__unused struct args *args, u_int idx,
+cmd_set_option_args_parse(struct args *args, u_int idx,
     __unused char **cause)
 {
+	if (args_has(args, 'B'))
+		return (ARGS_PARSE_COMMANDS_OR_STRING);
 	if (idx == 1)
 		return (ARGS_PARSE_COMMANDS_OR_STRING);
 	return (ARGS_PARSE_STRING);
+}
+
+static enum cmd_retval
+cmd_set_hook_monitor_exec(struct cmdq_item *item, struct args *args, int window)
+{
+	struct cmd_find_state	*target = cmdq_get_target(item), fs;
+	struct options		*oo;
+	struct options_entry	*o;
+	char			*cause = NULL, *name = NULL, *format = NULL;
+	char			*expanded = NULL, *newvalue = NULL;
+	const char		*value, *old;
+	enum monitor_type	 type;
+	int			 id, scope;
+
+	if (args_count(args) > 1) {
+		cmdq_error(item, "too many arguments");
+		return (CMD_RETURN_ERROR);
+	}
+
+	value = args_get(args, 'B');
+	if (args_has(args, 'u')) {
+		if (monitor_parse(value, &name, &type, &id, &format) != 0)
+			name = xstrdup(value);
+		free(format);
+		format = NULL;
+	} else {
+		if (monitor_parse(value, &name, &type, &id, &format) != 0) {
+			cmdq_error(item, "invalid subscription: %s", value);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+
+	if (*name != '@') {
+		cmdq_error(item, "monitor hook name must start with @");
+		goto fail;
+	}
+
+	scope = options_scope_from_name(args, window, name, target, &oo,
+	    &cause);
+	if (scope == OPTIONS_TABLE_NONE) {
+		cmdq_error(item, "%s", cause);
+		free(cause);
+		goto fail;
+	}
+	cmd_find_copy_state(&fs, target);
+
+	if (args_has(args, 'u')) {
+		notify_monitor_remove(oo, name);
+		goto out;
+	}
+
+	if (args_count(args) != 0) {
+		value = args_string(args, 0);
+		if (args_has(args, 'F')) {
+			expanded = format_single_from_target(item, value);
+			value = expanded;
+		}
+		o = options_get_only(oo, name);
+		if (!args_has(args, 'o') || o == NULL) {
+			if (args_has(args, 'a') && o != NULL) {
+				old = options_get_string(oo, name);
+				xasprintf(&newvalue, "%s%s", old, value);
+				value = newvalue;
+			}
+			options_set_string(oo, name, 0, "%s", value);
+			options_push_changes(name);
+		}
+	}
+
+	notify_monitor_add(item, oo, name, type, id, format, &fs, target->s);
+
+out:
+	free(newvalue);
+	free(expanded);
+	free(name);
+	free(format);
+	return (CMD_RETURN_NORMAL);
+
+fail:
+	free(newvalue);
+	free(expanded);
+	free(name);
+	free(format);
+	return (CMD_RETURN_ERROR);
 }
 
 static enum cmd_retval
@@ -96,6 +185,12 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	int				 scope;
 
 	window = (cmd_get_entry(self) == &cmd_set_window_option_entry);
+	if (cmd_get_entry(self) == &cmd_set_hook_entry && args_has(args, 'B'))
+		return (cmd_set_hook_monitor_exec(item, args, window));
+	if (args_count(args) == 0) {
+		cmdq_error(item, "missing argument");
+		return (CMD_RETURN_ERROR);
+	}
 
 	/* Expand argument. */
 	argument = format_single_from_target(item, args_string(args, 0));

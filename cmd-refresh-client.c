@@ -46,36 +46,17 @@ const struct cmd_entry cmd_refresh_client_entry = {
 static void
 cmd_refresh_client_update_subscription(struct client *tc, const char *value)
 {
-	char			*copy, *split, *name, *what;
-	enum monitor_type	 subtype;
-	int			 subid = -1;
+	char			*name, *format;
+	enum monitor_type	 type;
+	int			 id;
 
-	copy = name = xstrdup(value);
-	if ((split = strchr(copy, ':')) == NULL) {
-		control_remove_sub(tc, copy);
-		goto out;
+	if (monitor_parse(value, &name, &type, &id, &format) != 0) {
+		control_remove_sub(tc, value);
+		return;
 	}
-	*split++ = '\0';
-
-	what = split;
-	if ((split = strchr(what, ':')) == NULL)
-		goto out;
-	*split++ = '\0';
-
-	if (strcmp(what, "%*") == 0)
-		subtype = MONITOR_ALL_PANES;
-	else if (sscanf(what, "%%%d", &subid) == 1 && subid >= 0)
-		subtype = MONITOR_PANE;
-	else if (strcmp(what, "@*") == 0)
-		subtype = MONITOR_ALL_WINDOWS;
-	else if (sscanf(what, "@%d", &subid) == 1 && subid >= 0)
-		subtype = MONITOR_WINDOW;
-	else
-		subtype = MONITOR_SESSION;
-	control_add_sub(tc, name, subtype, subid, split);
-
-out:
-	free(copy);
+	control_add_sub(tc, name, type, id, format);
+	free(name);
+	free(format);
 }
 
 static enum cmd_retval
