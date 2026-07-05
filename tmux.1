@@ -2773,7 +2773,7 @@ The pane must not already be floating or hidden, and the window must not
 be zoomed.
 .Tg capturep
 .It Xo Ic capture\-pane
-.Op Fl aeFHLpPqCJMN
+.Op Fl aeFHLpPRqCJMN
 .Op Fl b Ar buffer\-name
 .Op Fl E Ar end\-line
 .Op Fl S Ar start\-line
@@ -2833,6 +2833,8 @@ With
 .Fl H ,
 only hyperlinks in the specified lines are captured.
 Multiple hyperlinks on the same line are separated by spaces.
+.Fl R
+dumps the internal grid data for diagnostics.
 .Pp
 .Fl S
 and
@@ -3250,6 +3252,15 @@ is omitted and a marked pane is present (see
 .Ic select\-pane
 .Fl m ) ,
 the marked pane is used rather than the current pane.
+.Pp
+If
+.Ar src\-pane
+is floating and
+.Ar dst\-pane
+is either unspecified or equal to
+.Ar src\-pane ,
+.Ar src\-pane
+is returned to its previous position in the layout.
 .Tg killp
 .It Xo Ic kill\-pane
 .Op Fl a
@@ -3546,7 +3557,7 @@ the
 option.
 .Tg neww
 .It Xo Ic new\-window
-.Op Fl abdkPS
+.Op Fl abdEkPS
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
@@ -3570,6 +3581,9 @@ is the new window location.
 If
 .Fl d
 is given, the session does not make the new window the current window.
+If
+.Fl E
+is given, the initial pane is created without a running command.
 .Ar target\-window
 represents the window to be created; if the target already exists an error is
 shown, unless the
@@ -3869,7 +3883,7 @@ This command will automatically set
 to manual in the window options.
 .Tg respawnp
 .It Xo Ic respawn\-pane
-.Op Fl k
+.Op Fl \&Ek
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
 .Op Fl t Ar target\-pane
@@ -3886,6 +3900,9 @@ executed.
 The pane must be already inactive, unless
 .Fl k
 is given, in which case any existing command is killed.
+If
+.Fl E
+is given, the pane is left without a running command.
 .Fl c
 specifies a new working directory for the pane.
 The
@@ -3895,7 +3912,7 @@ option has the same meaning as for the
 command.
 .Tg respawnw
 .It Xo Ic respawn\-window
-.Op Fl k
+.Op Fl \&Ek
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
 .Op Fl t Ar target\-window
@@ -3912,6 +3929,9 @@ executed.
 The window must be already inactive, unless
 .Fl k
 is given, in which case any existing command is killed.
+If
+.Fl E
+is given, the window is left with one pane and without a running command.
 .Fl c
 specifies a new working directory for the window.
 The
@@ -6558,6 +6578,7 @@ Hooks are managed with these commands:
 .Bl -tag -width Ds
 .It Xo Ic set\-hook
 .Op Fl agpRuw
+.Op Fl B Ar name:what:format
 .Op Fl t Ar target\-pane
 .Ar hook\-name
 .Op Ar command
@@ -6574,18 +6595,53 @@ The flags are the same as for
 .Ic set\-option .
 .Pp
 With
+.Fl B ,
+.Ar name:what:format
+uses the same subscription syntax as
+.Ic refresh\-client
+.Fl B :
+.Ar name
+is the hook to run,
+.Ar what
+selects the session, pane, all panes, window, or all windows, and
+.Ar format
+is expanded once a second.
+For monitor hooks,
+.Ar name
+must begin with
+.Ql @ .
+If
+.Ar command
+is given, it is stored as the
+.Ql @
+hook command; otherwise only the monitor is created or replaced.
+Note that monitor hooks are not inherited, the hook is only run from
+the scope where it is created.
+With
+.Fl u ,
+the subscription named by
+.Fl B
+is removed.
+.Pp
+With
 .Fl R ,
 run
 .Ar hook\-name
 immediately.
 .It Xo Ic show\-hooks
-.Op Fl gpw
+.Op Fl Bgpw
 .Op Fl t Ar target\-pane
 .Op Ar hook
 .Xc
 Shows hooks.
 The flags are the same as for
 .Ic show\-options .
+.Pp
+With
+.Fl B ,
+shows the subscriptions installed with
+.Em set\-hook
+.Fl B .
 .El
 .Sh MOUSE SUPPORT
 If the
@@ -6877,6 +6933,12 @@ results in
 replaces a
 .Nm
 colour by its six-digit hexadecimal RGB value.
+If an argument of
+.Ql f
+or
+.Ql b
+is given, it will instead produce the SGR escape sequence to set the foreground
+or background colour respectively.
 .Pp
 A limit may be placed on the length of the resultant string by prefixing it
 by an
@@ -6928,7 +6990,7 @@ will use shorter but less accurate time format for times in the past.
 .Ql r
 .Pq Ql t/r
 will show the time relative to the current time, for example
-.Ql \1m
+.Ql \&1m
 or
 .Ql 2m23s .
 A custom format may be given using an
@@ -6986,7 +7048,9 @@ or with
 .Ql a
 escape
 .Nm
-command arguments.
+command arguments; with
+.Ql s
+use single quotes.
 .Ql E:\&
 will expand the format twice, for example
 .Ql #{E:status\-left}
@@ -7020,7 +7084,13 @@ to sort in reverse order.
 .Ql /r\&
 can also be used with
 .Ql P:\&
-to reverse the sort order by pane index.
+to reverse the sort order; by default panes are sorted by creation order.
+.Ql P:\&
+can also take
+.Ql /i\&
+to sort by pane index or
+.Ql /z\&
+to sort by z-index.
 For example,
 .Ql S/nr:\&
 to sort sessions by name in reverse order.
@@ -7045,6 +7115,33 @@ prefix, for example a user option
 .Ql @color
 on the next window is available as
 .Ql next_@color .
+.Pp
+.Ql O:\&
+will loop over each option;
+array options are looped once for each array item.
+.Ql O:\&
+may be given a flag to choose the options table:
+.Bl -column "Flag" "Table" -offset indent
+.It Sy "Flag" Ta Sy "Table"
+.It Li "s" Ta "session"
+.It Li "w" Ta "window"
+.It Li "p" Ta "pane"
+.It Li "v" Ta "server"
+.El
+.Pp
+.Ql g
+chooses global options.
+The default is
+.Ql s .
+.Ql V:\&
+will loop over each environment variable.
+Its flags are:
+.Bl -column "Flag" "Environment" -offset indent
+.It Sy "Flag" Ta Sy "Environment"
+.It Li "s" Ta "session environment"
+.It Li "g" Ta "global environment"
+.It Li "c" Ta "client environment"
+.El
 .Pp
 .Ql N:\&
 checks if a window (without any suffix or with the
@@ -7182,10 +7279,13 @@ The following variables are available, where appropriate:
 .It Li "history_size" Ta "" Ta "Size of history in lines"
 .It Li "hook" Ta "" Ta "Name of running hook, if any"
 .It Li "hook_client" Ta "" Ta "Name of client where hook was run, if any"
+.It Li "hook_last" Ta "" Ta "Previous value for a monitor hook"
 .It Li "hook_pane" Ta "" Ta "ID of pane where hook was run, if any"
 .It Li "hook_session" Ta "" Ta "ID of session where hook was run, if any"
 .It Li "hook_session_name" Ta "" Ta "Name of session where hook was run, if any"
+.It Li "hook_value" Ta "" Ta "New value for a monitor hook"
 .It Li "hook_window" Ta "" Ta "ID of window where hook was run, if any"
+.It Li "hook_window_index" Ta "" Ta "Index of window where hook was run, if any"
 .It Li "hook_window_name" Ta "" Ta "Name of window where hook was run, if any"
 .It Li "host" Ta "#H" Ta "Hostname of local host"
 .It Li "host_short" Ta "#h" Ta "Hostname of local host (no domain name)"
@@ -7259,6 +7359,7 @@ The following variables are available, where appropriate:
 .It Li "pane_right" Ta "" Ta "Right of pane"
 .It Li "pane_search_string" Ta "" Ta "Last search string in copy mode"
 .It Li "pane_start_command" Ta "" Ta "Command pane started with"
+.It Li "pane_start_command_list" Ta "" Ta "Command pane started with, quoted"
 .It Li "pane_start_path" Ta "" Ta "Path pane started with"
 .It Li "pane_synchronized" Ta "" Ta "1 if pane is synchronized"
 .It Li "pane_tabs" Ta "" Ta "Pane tab positions"
@@ -7344,6 +7445,8 @@ The following variables are available, where appropriate:
 .It Li "window_linked" Ta "" Ta "1 if window is linked across sessions"
 .It Li "window_linked_sessions" Ta "" Ta "Number of sessions this window is linked to"
 .It Li "window_linked_sessions_list" Ta "" Ta "List of sessions this window is linked to"
+.It Li "window_manual_height" Ta "" Ta "Manual height of window, if set"
+.It Li "window_manual_width" Ta "" Ta "Manual width of window, if set"
 .It Li "window_marked_flag" Ta "" Ta "1 if window contains the marked pane"
 .It Li "window_name" Ta "#W" Ta "Name of window"
 .It Li "window_offset_x" Ta "" Ta "X offset into window if larger than client"

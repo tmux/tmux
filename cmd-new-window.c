@@ -38,8 +38,8 @@ const struct cmd_entry cmd_new_window_entry = {
 	.name = "new-window",
 	.alias = "neww",
 
-	.args = { "abc:de:F:kn:PSt:", 0, -1, NULL },
-	.usage = "[-abdkPS] [-c start-directory] [-e environment] [-F format] "
+	.args = { "abc:de:EF:kn:PSt:", 0, -1, NULL },
+	.usage = "[-abdEkPS] [-c start-directory] [-e environment] [-F format] "
 		 "[-n window-name] " CMD_TARGET_WINDOW_USAGE
 		 " [shell-command [argument ...]]",
 
@@ -60,11 +60,18 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*tc = cmdq_get_target_client(item);
 	struct session		*s = target->s;
 	struct winlink		*wl = target->wl, *new_wl = NULL;
-	int			 idx = target->idx, before;
+	int			 idx = target->idx, before, count = args_count(args);
 	char			*cause = NULL, *cp, *expanded, *wname = NULL;
 	const char		*template, *name;
 	struct cmd_find_state	 fs;
 	struct args_value	*av;
+
+	if (args_has(args, 'E') &&
+	    count != 0 &&
+	    (count != 1 || *args_string(args, 0) != '\0')) {
+		cmdq_error(item, "command cannot be given for empty pane");
+		return (CMD_RETURN_ERROR);
+	}
 
 	/*
 	 * If -S and -n are given and -t is not and a single window with this
@@ -134,6 +141,8 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	sc.cwd = args_get(args, 'c');
 
 	sc.flags = 0;
+	if (args_has(args, 'E'))
+		sc.flags |= SPAWN_EMPTY;
 	if (args_has(args, 'd'))
 		sc.flags |= SPAWN_DETACHED;
 	if (args_has(args, 'k'))

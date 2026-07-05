@@ -164,6 +164,7 @@ const struct window_mode window_client_mode = {
 
 struct window_client_itemdata {
 	struct client	*c;
+	char		*ttyname;
 };
 
 struct window_client_modedata {
@@ -204,6 +205,7 @@ static void
 window_client_free_item(struct window_client_itemdata *item)
 {
 	server_client_unref(item->c);
+	free(item->ttyname);
 	free(item);
 }
 
@@ -231,6 +233,7 @@ window_client_build(void *modedata, struct sort_criteria *sort_crit,
 
 		item = window_client_add_item(data);
 		item->c = l[i];
+		item->ttyname = xstrdup(l[i]->ttyname);
 
 		l[i]->references++;
 	}
@@ -552,7 +555,7 @@ window_client_key(struct window_mode_entry *wme, struct client *c,
 		break;
 	case '\r':
 		item = mode_tree_get_current(mtd);
-		mode_tree_run_command(c, NULL, data->command, item->c->ttyname);
+		mode_tree_run_command(c, NULL, data->command, item->ttyname);
 		finished = 1;
 		break;
 	}

@@ -31,6 +31,10 @@ static enum cmd_retval	cmd_show_options_exec(struct cmd *, struct cmdq_item *);
 
 static void		cmd_show_options_print(struct cmd *, struct cmdq_item *,
 			    struct options_entry *, int, int);
+static void		cmd_show_hooks_print_monitor(struct cmdq_item *,
+			    struct options_entry *);
+static enum cmd_retval	cmd_show_hooks_monitor(struct cmd *, struct cmdq_item *,
+			    int, struct options *);
 static enum cmd_retval	cmd_show_options_all(struct cmd *, struct cmdq_item *,
 			    int, struct options *);
 
@@ -64,8 +68,8 @@ const struct cmd_entry cmd_show_hooks_entry = {
 	.name = "show-hooks",
 	.alias = NULL,
 
-	.args = { "gpt:w", 0, 1, NULL },
-	.usage = "[-gpw] " CMD_TARGET_PANE_USAGE " [hook]",
+	.args = { "Bgpt:w", 0, 1, NULL },
+	.usage = "[-Bgpw] " CMD_TARGET_PANE_USAGE " [hook]",
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
@@ -95,6 +99,9 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
+		if (cmd_get_entry(self) == &cmd_show_hooks_entry &&
+		    args_has(args, 'B'))
+			return (cmd_show_hooks_monitor(self, item, scope, oo));
 		return (cmd_show_options_all(self, item, scope, oo));
 	}
 	argument = format_single_from_target(item, args_string(args, 0));
@@ -124,8 +131,13 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 		parent = 1;
 	} else
 		parent = 0;
-	if (o != NULL)
-		cmd_show_options_print(self, item, o, idx, parent);
+	if (o != NULL) {
+		if (cmd_get_entry(self) == &cmd_show_hooks_entry &&
+		    args_has(args, 'B'))
+			cmd_show_hooks_print_monitor(item, o);
+		else
+			cmd_show_options_print(self, item, o, idx, parent);
+	}
 	else if (*name == '@') {
 		if (args_has(args, 'q'))
 			goto out;
@@ -193,6 +205,33 @@ cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
 	free(value);
 
 	free(tmp);
+}
+
+static void
+cmd_show_hooks_print_monitor(struct cmdq_item *item, struct options_entry *o)
+{
+	char	*value;
+
+	value = notify_monitor_to_string(o);
+	if (value == NULL)
+		return;
+	cmdq_print(item, "%s", value);
+	free(value);
+}
+
+/* Show all hook monitors. */
+static enum cmd_retval
+cmd_show_hooks_monitor(__unused struct cmd *self, struct cmdq_item *item,
+    __unused int scope, struct options *oo)
+{
+	struct options_entry	*o;
+
+	o = options_first(oo);
+	while (o != NULL) {
+		cmd_show_hooks_print_monitor(item, o);
+		o = options_next(o);
+	}
+	return (CMD_RETURN_NORMAL);
 }
 
 static enum cmd_retval

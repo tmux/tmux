@@ -27,12 +27,25 @@ struct notify_entry {
 	const char		*name;
 	struct cmd_find_state	 fs;
 	struct format_tree	*formats;
+	struct options		*oo;
 
 	struct client		*client;
 	struct session		*session;
 	struct window		*window;
 	int			 pane;
 	const char		*pbname;
+	int			 expand;
+};
+
+struct notify_monitor {
+	struct options		*oo;
+
+	struct monitor_set	*set;
+	struct cmd_find_state	 fs;
+
+	enum monitor_type	 type;
+	int			 id;
+	char			*format;
 };
 
 static struct cmdq_item *
@@ -50,7 +63,31 @@ notify_insert_one_hook(struct cmdq_item *item, struct notify_entry *ne,
 		free(s);
 	}
 	new_item = cmdq_get_command(cmdlist, state);
-	return (cmdq_insert_after(item, new_item));
+	if (item != NULL)
+		return (cmdq_insert_after(item, new_item));
+	return (cmdq_append(NULL, new_item));
+}
+
+static struct cmd_parse_result *
+notify_parse_hook(struct notify_entry *ne, struct cmd_find_state *fs,
+    const char *value)
+{
+	struct cmd_parse_result	*pr;
+	struct format_tree	*ft;
+	char			*expanded;
+
+	if (!ne->expand)
+		return (cmd_parse_from_string(value, NULL));
+
+	ft = format_create_defaults(NULL, ne->client, fs->s, fs->wl, fs->wp);
+	if (ne->formats != NULL)
+		format_merge(ft, ne->formats);
+	expanded = format_expand(ft, value);
+	format_free(ft);
+
+	pr = cmd_parse_from_string(expanded, NULL);
+	free(expanded);
+	return (pr);
 }
 
 static void
@@ -73,18 +110,23 @@ notify_insert_hook(struct cmdq_item *item, struct notify_entry *ne)
 	else
 		cmd_find_copy_state(&fs, &ne->fs);
 
-	if (fs.s == NULL)
-		oo = global_s_options;
-	else
-		oo = fs.s->options;
-	o = options_get(oo, ne->name);
-	if (o == NULL && fs.wp != NULL) {
-		oo = fs.wp->options;
+	if (ne->oo != NULL) {
+		oo = ne->oo;
+		o = options_get_only(oo, ne->name);
+	} else {
+		if (fs.s == NULL)
+			oo = global_s_options;
+		else
+			oo = fs.s->options;
 		o = options_get(oo, ne->name);
-	}
-	if (o == NULL && fs.wl != NULL) {
-		oo = fs.wl->window->options;
-		o = options_get(oo, ne->name);
+		if (o == NULL && fs.wp != NULL) {
+			oo = fs.wp->options;
+			o = options_get(oo, ne->name);
+		}
+		if (o == NULL && fs.wl != NULL) {
+			oo = fs.wl->window->options;
+			o = options_get(oo, ne->name);
+		}
 	}
 	if (o == NULL) {
 		log_debug("%s: hook %s not found", __func__, ne->name);
@@ -96,7 +138,7 @@ notify_insert_hook(struct cmdq_item *item, struct notify_entry *ne)
 
 	if (*ne->name == '@') {
 		value = options_get_string(oo, ne->name);
-		pr = cmd_parse_from_string(value, NULL);
+		pr = notify_parse_hook(ne, &fs, value);
 		switch (pr->status) {
 		case CMD_PARSE_ERROR:
 			log_debug("%s: can't parse hook %s: %s", __func__,
@@ -110,8 +152,24 @@ notify_insert_hook(struct cmdq_item *item, struct notify_entry *ne)
 	} else {
 		a = options_array_first(o);
 		while (a != NULL) {
-			cmdlist = options_array_item_value(a)->cmdlist;
-			item = notify_insert_one_hook(item, ne, cmdlist, state);
+			if (ne->expand) {
+				value = options_array_item_value(a)->string;
+				pr = notify_parse_hook(ne, &fs, value);
+				switch (pr->status) {
+				case CMD_PARSE_ERROR:
+					if (pr->error != NULL)
+						cmdq_error(item, "%s", pr->error);
+					break;
+				case CMD_PARSE_SUCCESS:
+					item = notify_insert_one_hook(item, ne,
+					    pr->cmdlist, state);
+					break;
+				}
+			} else {
+				cmdlist = options_array_item_value(a)->cmdlist;
+				item = notify_insert_one_hook(item, ne, cmdlist,
+				    state);
+			}
 			a = options_array_next(a);
 		}
 	}
@@ -173,6 +231,136 @@ notify_callback(struct cmdq_item *item, void *data)
 	free(ne);
 
 	return (CMD_RETURN_NORMAL);
+}
+
+void
+notify_monitor_free(void *data)
+{
+	struct notify_monitor	*nhm = data;
+
+	monitor_destroy(nhm->set);
+	free(nhm->format);
+	free(nhm);
+}
+
+void
+notify_monitor_remove(struct options *oo, const char *name)
+{
+	struct options_entry	*o;
+	struct notify_monitor	*nhm;
+
+	o = options_get_only(oo, name);
+	if (o == NULL)
+		return;
+
+	nhm = options_get_monitor_data(o);
+	if (nhm != NULL) {
+		options_set_monitor_data(o, NULL);
+		notify_monitor_free(nhm);
+	}
+}
+
+static void
+notify_monitor_cb(struct monitor_change *change, void *data)
+{
+	struct notify_monitor	*nhm = data;
+	struct notify_entry		 ne;
+	struct cmdq_item		*item;
+	struct window			*w;
+
+	item = cmdq_running(NULL);
+	if (item != NULL && (cmdq_get_flags(item) & CMDQ_STATE_NOHOOKS))
+		return;
+
+	memset(&ne, 0, sizeof ne);
+	ne.name = change->name;
+	ne.oo = nhm->oo;
+	ne.client = change->c;
+	ne.expand = 1;
+	if (change->wp != NULL && change->wl != NULL)
+		cmd_find_from_winlink_pane(&ne.fs, change->wl, change->wp, 0);
+	else if (change->wl != NULL)
+		cmd_find_from_winlink(&ne.fs, change->wl, 0);
+	else if (change->s != NULL)
+		cmd_find_from_session(&ne.fs, change->s, 0);
+	else
+		cmd_find_copy_state(&ne.fs, &nhm->fs);
+	ne.formats = format_create(change->c, item, FORMAT_NONE, FORMAT_NOJOBS);
+	format_add(ne.formats, "hook", "%s", change->name);
+	format_add(ne.formats, "hook_value", "%s", change->value);
+	format_add(ne.formats, "hook_last", "%s",
+	    change->last == NULL ? "" : change->last);
+	if (change->s != NULL) {
+		format_add(ne.formats, "hook_session", "$%u", change->s->id);
+		format_add(ne.formats, "hook_session_name", "%s", change->s->name);
+	}
+	if (change->wl != NULL) {
+		w = change->wl->window;
+		format_add(ne.formats, "hook_window", "@%u", w->id);
+		format_add(ne.formats, "hook_window_name", "%s", w->name);
+		format_add(ne.formats, "hook_window_index", "%d", change->wl->idx);
+	}
+	if (change->wp != NULL) {
+		format_add(ne.formats, "hook_pane", "%%%u", change->wp->id);
+	}
+
+	notify_insert_hook(item, &ne);
+	format_free(ne.formats);
+}
+
+void
+notify_monitor_add(__unused struct cmdq_item *item, struct options *oo,
+    const char *name, enum monitor_type type, int id, const char *format,
+    struct cmd_find_state *fs, struct session *s)
+{
+	struct options_entry	*o;
+	struct notify_monitor	*nhm;
+
+	notify_monitor_remove(oo, name);
+	o = options_get_only(oo, name);
+	if (o == NULL)
+		o = options_set_string(oo, name, 0, "%s", "");
+
+	nhm = xcalloc(1, sizeof *nhm);
+	nhm->oo = oo;
+	cmd_find_copy_state(&nhm->fs, fs);
+	nhm->type = type;
+	nhm->id = id;
+	nhm->format = xstrdup(format);
+	nhm->set = monitor_create_session(s, notify_monitor_cb, nhm);
+	options_set_monitor_data(o, nhm);
+	monitor_add(nhm->set, name, type, id, format, 0);
+}
+
+/* Convert a hook monitor to its value. */
+char *
+notify_monitor_to_string(struct options_entry *o)
+{
+	struct notify_monitor	*nhm = options_get_monitor_data(o);
+	const char		*name = options_name(o);
+	char			*s;
+
+	if (nhm == NULL)
+		return (NULL);
+
+	switch (nhm->type) {
+	case MONITOR_SESSION:
+		xasprintf(&s, "%s::%s", name, nhm->format);
+		break;
+	case MONITOR_PANE:
+		xasprintf(&s, "%s:%%%d:%s", name, nhm->id, nhm->format);
+		break;
+	case MONITOR_ALL_PANES:
+		xasprintf(&s, "%s:%%*:%s", name, nhm->format);
+		break;
+	case MONITOR_WINDOW:
+		xasprintf(&s, "%s:@%d:%s", name, nhm->id, nhm->format);
+		break;
+	case MONITOR_ALL_WINDOWS:
+		xasprintf(&s, "%s:@*:%s", name, nhm->format);
+		break;
+	}
+	return (s);
 }
 
 static void

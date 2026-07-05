@@ -90,20 +90,24 @@ layout_create_cell(struct layout_cell *lcparent)
 
 /* Free a layout cell. */
 void
-layout_free_cell(struct layout_cell *lc)
+layout_free_cell(struct layout_cell *lc, int only_nodes)
 {
-	struct layout_cell	*lcchild;
+	struct layout_cell	*lcchild, *lcnext;
 
-	if (lc == NULL)
+	if (lc == NULL || (only_nodes && lc->type == LAYOUT_WINDOWPANE))
 		return;
 
 	switch (lc->type) {
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
-		while (!TAILQ_EMPTY(&lc->cells)) {
-			lcchild = TAILQ_FIRST(&lc->cells);
-			TAILQ_REMOVE(&lc->cells, lcchild, entry);
-			layout_free_cell(lcchild);
+		lcchild = TAILQ_FIRST(&lc->cells);
+		while (lcchild != NULL) {
+			lcnext = TAILQ_NEXT(lcchild, entry);
+			if (!only_nodes || lcchild->type != LAYOUT_WINDOWPANE) {
+				TAILQ_REMOVE(&lc->cells, lcchild, entry);
+				layout_free_cell(lcchild, only_nodes);
+			}
+			lcchild = lcnext;
 		}
 		break;
 	case LAYOUT_WINDOWPANE:
@@ -257,7 +261,7 @@ layout_fix_zindexes(struct window *w, struct layout_cell *lc)
 	}
 }
 
-static int
+int
 layout_cell_is_tiled(struct layout_cell *lc)
 {
 	int	is_leaf = lc->type == LAYOUT_WINDOWPANE;
@@ -694,13 +698,13 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 	if (lcparent == NULL) {
 		if (lc->wp != NULL)
 			*lcroot = NULL;
-		layout_free_cell(lc);
+		layout_free_cell(lc, 0);
 		return;
 	}
 
 	if (!layout_cell_is_tiled(lc)) {
 		TAILQ_REMOVE(&lcparent->cells, lc, entry);
-		layout_free_cell(lc);
+		layout_free_cell(lc, 0);
 		goto out;
 	}
 
@@ -716,7 +720,7 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 
 	/* Remove this from the parent's list. */
 	TAILQ_REMOVE(&lcparent->cells, lc, entry);
-	layout_free_cell(lc);
+	layout_free_cell(lc, 0);
 
 out:
 	/*
@@ -737,7 +741,7 @@ out:
 		} else
 			TAILQ_REPLACE(&lc->parent->cells, lcparent, lc, entry);
 
-		layout_free_cell(lcparent);
+		layout_free_cell(lcparent, 0);
 	}
 }
 
@@ -755,9 +759,9 @@ layout_init(struct window *w, struct window_pane *wp)
 
 /* Free layout for pane. */
 void
-layout_free(struct window *w)
+layout_free(struct window *w, int only_nodes)
 {
-	layout_free_cell(w->layout_root);
+	layout_free_cell(w->layout_root, only_nodes);
 }
 
 /* Resize the entire layout after window resize. */
@@ -1500,7 +1504,8 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 
 	number = 0;
 	TAILQ_FOREACH (lc, &parent->cells, entry)
-		number++;
+		if (layout_cell_is_tiled(lc))
+			number++;
 	if (number <= 1)
 		return (0);
 	status = window_get_pane_status(w);
@@ -1528,6 +1533,8 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 
 	changed = 0;
 	TAILQ_FOREACH (lc, &parent->cells, entry) {
+		if (!layout_cell_is_tiled(lc))
+			continue;
 		change = 0;
 		if (parent->type == LAYOUT_LEFTRIGHT) {
 			change = each - (int)lc->sx;
@@ -1716,7 +1723,7 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 				ox = 4;
 		}
 		w->last_new_pane_x = ox;
-	} else
+	} else if (args_has(args, 'X'))
 		if (lines != PANE_LINES_NONE)
 			ox += 1;
 	if (oy == INT_MAX) {
@@ -1728,7 +1735,7 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 				oy = 2;
 		}
 		w->last_new_pane_y = oy;
-	} else
+	} else if (args_has(args, 'Y'))
 		if (lines != PANE_LINES_NONE)
 			oy += 1;
 
@@ -1760,7 +1767,7 @@ layout_remove_tile(struct window *w, struct layout_cell *lc)
 	int			 change;
 
 	if (lc->flags & LAYOUT_CELL_FLOATING)
-		return (0);
+		return (-1);
 
 	lcneighbour = layout_cell_get_neighbour(lc);
 	if (lcneighbour == NULL) {
@@ -1785,7 +1792,7 @@ layout_remove_tile(struct window *w, struct layout_cell *lc)
 	 */
 	if (lc->parent != NULL)
 		layout_set_size(lc, 0, 0, 0, 0);
-	return (1);
+	return (0);
 }
 
 /*
@@ -1802,14 +1809,14 @@ layout_insert_tile(struct window *w, struct layout_cell *lc)
 	if (lc == NULL)
 		fatalx("layout cell cannot be null when tiling");
 
-	lcparent = lc->parent;
-	if (lc->flags & LAYOUT_CELL_FLOATING)
-		return (1);
+	if (layout_cell_is_tiled(lc))
+		return (-1);
 
+	lcparent = lc->parent;
 	if (lcparent == NULL) {
 		/* Only pane in the layout. */
 		layout_set_size(lc, w->sx, w->sy, 0, 0);
-		return (1);
+		return (0);
 	}
 
 	type = lcparent->type;
@@ -1832,7 +1839,7 @@ layout_insert_tile(struct window *w, struct layout_cell *lc)
 		 */
 		lctiled = layout_cell_get_first_tiled(lcneighbour);
 		if (!layout_split_check_space(lctiled->wp, lcneighbour, type))
-			return (0);
+			return (-1);
 		layout_split_sizes(lcneighbour, -1, 0, type, &size1, &size2,
 		    &saved_size);
 		layout_resize_set_size(w, lc, type, size1);
@@ -1849,5 +1856,5 @@ layout_insert_tile(struct window *w, struct layout_cell *lc)
 	}
 	layout_resize_set_size(w, lc, type, size1);
 
-	return (1);
+	return (0);
 }

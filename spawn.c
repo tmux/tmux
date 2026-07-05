@@ -104,7 +104,7 @@ spawn_window(struct spawn_context *sc, char **cause)
 		sc->wp0 = TAILQ_FIRST(&w->panes);
 		TAILQ_REMOVE(&w->panes, sc->wp0, entry);
 
-		layout_free(w);
+		layout_free(w, 0);
 		window_destroy_panes(w);
 
 		TAILQ_INSERT_HEAD(&w->panes, sc->wp0, entry);
@@ -264,14 +264,20 @@ spawn_pane(struct spawn_context *sc, char **cause)
 			free(cwd);
 			return (NULL);
 		}
-		if (sc->wp0->fd != -1) {
+		if (sc->wp0->event != NULL) {
 			bufferevent_free(sc->wp0->event);
+			sc->wp0->event = NULL;
+		}
+		if (sc->wp0->fd != -1) {
 			close(sc->wp0->fd);
+			sc->wp0->fd = -1;
 		}
 		window_pane_reset_mode_all(sc->wp0);
-		screen_reinit(&sc->wp0->base);
-		input_free(sc->wp0->ictx);
-		sc->wp0->ictx = NULL;
+		screen_reinit(&sc->wp0->base, 0);
+		if (sc->wp0->ictx != NULL) {
+			input_free(sc->wp0->ictx);
+			sc->wp0->ictx = NULL;
+		}
 		new_wp = sc->wp0;
 		new_wp->flags &= ~(PANE_STATUSREADY|PANE_STATUSDRAWN);
 	} else {
@@ -387,6 +393,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		new_wp->base.mode |= MODE_CRLF;
 		goto complete;
 	}
+	new_wp->flags &= ~PANE_EMPTY;
 
 	/* Store current working directory and change to new one. */
 	if (getcwd(path, sizeof path) != NULL) {

@@ -727,7 +727,7 @@ layout_construct(struct layout_parse_ctx *ctx, struct layout_cell *parent,
 
 fail:
 	ctx->depth--;
-	layout_free_cell(lc);
+	layout_free_cell(lc, 0);
 	return (-1);
 }
 
@@ -919,20 +919,20 @@ layout_prepare(struct window *w, const char *layout, char **cause)
 	}
 	if (layout_construct(&ctx, NULL, &root) != 0) {
 		*cause = xstrdup("invalid layout");
-		layout_free_cell(root);
+		layout_free_cell(root, 0);
 		return (NULL);
 	}
 	layout_skip_space(&ctx);
 	if (ctx.ptr != ctx.end || root == NULL) {
 		*cause = xstrdup("invalid layout");
-		layout_free_cell(root);
+		layout_free_cell(root, 0);
 		return (NULL);
 	}
 	if (layout_resolve_relative(root,
 	    root->type == LAYOUT_WINDOWPANE ? w->sx : root->sx,
 	    root->type == LAYOUT_WINDOWPANE ? w->sy : root->sy) != 0) {
 		*cause = xstrdup("invalid layout");
-		layout_free_cell(root);
+		layout_free_cell(root, 0);
 		return (NULL);
 	}
 
@@ -1004,7 +1004,7 @@ layout_prepare(struct window *w, const char *layout, char **cause)
 	return (prepared);
 
 fail:
-	layout_free_cell(root);
+	layout_free_cell(root, 0);
 	return (NULL);
 }
 
@@ -1014,7 +1014,7 @@ layout_free_prepared(struct layout_prepared *prepared)
 {
 	if (prepared == NULL)
 		return;
-	layout_free_cell(prepared->root);
+	layout_free_cell(prepared->root, 0);
 	free(prepared);
 }
 
@@ -1029,7 +1029,7 @@ layout_apply_prepared(struct window *w, struct layout_prepared *prepared)
 	prepared->root = NULL;
 
 	/* The layout was fully validated before the existing layout is changed. */
-	layout_free_cell(w->layout_root);
+	layout_free_cell(w->layout_root, 0);
 	w->layout_root = root;
 	wp = TAILQ_FIRST(&w->panes);
 	layout_assign(w, &wp, root, prepared->pane_ids);

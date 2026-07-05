@@ -42,8 +42,8 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	.name = "capture-pane",
 	.alias = "capturep",
 
-	.args = { "ab:CeE:FHJLMNpPqS:Tt:", 0, 0, NULL },
-	.usage = "[-aCeFHJLMNpPqT] " CMD_BUFFER_USAGE " [-E end-line] "
+	.args = { "ab:CeE:FHJLMNpPqRS:Tt:", 0, 0, NULL },
+	.usage = "[-aCeFHJLMNpPqRT] " CMD_BUFFER_USAGE " [-E end-line] "
 		 "[-S start-line] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -72,6 +72,96 @@ cmd_capture_pane_append(char *buf, size_t *len, const char *line,
 	buf = xrealloc(buf, *len + linelen + 1);
 	memcpy(buf + *len, line, linelen);
 	*len += linelen;
+	return (buf);
+}
+
+static char *
+cmd_capture_pane_cell(struct screen *s, u_int xx, u_int yy)
+{
+	struct grid		*gd = s->grid;
+	struct hyperlinks	*hl = s->hyperlinks;
+	struct grid_cell	 gc;
+	char			*line, *data, *link, *linkid, *f, *b, *u;
+	char			 c[UTF8_SIZE + 1];
+	const char		*uri, *iid;
+	u_int			 flags;
+
+	grid_get_cell(gd, xx, yy, &gc);
+
+	memcpy(c, gc.data.data, gc.data.size);
+	c[gc.data.size] = '\0';
+	utf8_stravis(&data, c, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
+
+	if (gc.link != 0 && hyperlinks_get(hl, gc.link, &uri, &iid, NULL)) {
+		xasprintf(&link, "%s", uri);
+		if (iid != NULL && *iid != '\0')
+			xasprintf(&linkid, "%s", iid);
+		else
+			xasprintf(&linkid, "NONE");
+	} else {
+		xasprintf(&link, "NONE");
+		xasprintf(&linkid, "NONE");
+	}
+
+	flags = gc.flags;
+	if (gc.fg & COLOUR_FLAG_256)
+		flags |= GRID_FLAG_FG256;
+	if (gc.bg & COLOUR_FLAG_256)
+		flags |= GRID_FLAG_BG256;
+
+	xasprintf(&f, "%s[%x]", colour_tostring(gc.fg), gc.fg);
+	xasprintf(&b, "%s[%x]", colour_tostring(gc.bg), gc.bg);
+	xasprintf(&u, "%s[%x]", colour_tostring(gc.us), gc.us);
+
+	xasprintf(&line, "\t\tC %u,%u data=(%u,%u,%s) flags=%s[%x] "
+	    "attr=%s[%x] fg=%s bg=%s us=%s link=%s linkid=%s\n",
+	    yy, xx, gc.data.width, gc.data.size, data,
+	    grid_cell_flags_string(flags), flags,
+	    grid_cell_attr_string(gc.attr), gc.attr, f, b, u, link, linkid);
+
+	free(f);
+	free(b);
+	free(u);
+	free(link);
+	free(linkid);
+	free(data);
+	return (line);
+}
+
+static char *
+cmd_capture_pane_grid(struct window_pane *wp, size_t *len)
+{
+	struct screen		*s = &wp->base;
+	struct grid		*gd = s->grid;
+	struct grid_line	*gl;
+	char			*buf = xstrdup(""), *line;
+	char			 p[11];
+	u_int			 yy, xx, total = gd->hsize + gd->sy;
+
+	xasprintf(&line, "G %ux%u (%u/%u)\n", gd->sx, gd->sy, gd->hsize,
+	    gd->hlimit);
+	buf = cmd_capture_pane_append(buf, len, line, strlen(line));
+	free(line);
+
+	for (yy = 0; yy < total; yy++) {
+		gl = grid_get_line(gd, yy);
+		if (yy < gd->hsize)
+			snprintf(p, sizeof p, "-");
+		else
+			snprintf(p, sizeof p, "%u", yy - gd->hsize);
+		xasprintf(&line, "\tL %u (%s) flags=%s[%x] %u/%u\n", yy,
+		    p, grid_line_flags_string(gl->flags), gl->flags,
+		    gl->cellused, gl->cellsize);
+		buf = cmd_capture_pane_append(buf, len, line, strlen(line));
+		free(line);
+
+		for (xx = 0; xx < gd->sx; xx++) {
+			line = cmd_capture_pane_cell(s, xx, yy);
+			buf = cmd_capture_pane_append(buf, len, line,
+			    strlen(line));
+			free(line);
+		}
+	}
 	return (buf);
 }
 
@@ -323,7 +413,9 @@ cmd_capture_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	len = 0;
-	if (args_has(args, 'P') && !args_has(args, 'H'))
+	if (args_has(args, 'R'))
+		buf = cmd_capture_pane_grid(wp, &len);
+	else if (args_has(args, 'P') && !args_has(args, 'H'))
 		buf = cmd_capture_pane_pending(args, wp, &len);
 	else
 		buf = cmd_capture_pane_history(args, item, wp, &len);

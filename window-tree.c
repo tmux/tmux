@@ -326,10 +326,11 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	struct window_tree_itemdata	*item;
 	struct mode_tree_item		*mti;
 	char				*name, *text;
-	struct window_pane		*wp, **l;
-	u_int				 n, i;
+	struct window_pane		**l;
+	u_int				 n, i, found;
 	int				 expanded;
 	struct format_tree		*ft;
+	uint64_t			 tag = FORMAT_NONE;
 
 	item = window_tree_add_item(data);
 	item->type = WINDOW_TREE_WINDOW;
@@ -337,7 +338,9 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	item->winlink = wl->idx;
 	item->pane = -1;
 
-	ft = format_create(NULL, NULL, FORMAT_PANE|wl->window->active->id, 0);
+	if (wl->window != NULL && wl->window->active != NULL)
+		tag = FORMAT_PANE|wl->window->active->id;
+	ft = format_create(NULL, NULL, tag, 0);
 	format_defaults(ft, NULL, s, wl, NULL);
 	text = format_expand(ft, data->format);
 	xasprintf(&name, "%u", wl->idx);
@@ -354,29 +357,23 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	free(name);
 	mode_tree_align(mti, 1);
 
-	if ((wp = TAILQ_FIRST(&wl->window->panes)) == NULL)
-		goto empty;
-	if (TAILQ_NEXT(wp, entry) == NULL) {
-		if (!window_tree_filter_pane(s, wl, wp, filter))
-			goto empty;
-	}
-
 	l = sort_get_panes_window(wl->window, &n, sort_crit);
-	if (n == 0)
-		goto empty;
+	found = 0;
 	for (i = 0; i < n; i++) {
+		if (!window_tree_filter_pane(s, wl, l[i], filter))
+			continue;
+		found++;
 		if (data->hide_preview_this_pane && l[i] == data->wp)
 			continue;
-		if (window_tree_filter_pane(s, wl, l[i], filter))
-			window_tree_build_pane(s, wl, l[i], modedata, mti);
+		window_tree_build_pane(s, wl, l[i], modedata, mti);
+	}
+	if (found == 0) {
+		window_tree_free_item(item);
+		data->item_size--;
+		mode_tree_remove(data->data, mti);
+		return (0);
 	}
 	return (1);
-
-empty:
-	window_tree_free_item(item);
-	data->item_size--;
-	mode_tree_remove(data->data, mti);
-	return (0);
 }
 
 static void
@@ -391,6 +388,7 @@ window_tree_build_session(struct session *s, void *modedata,
 	u_int				 n, i, empty;
 	int				 expanded;
 	struct format_tree		*ft;
+	uint64_t			 tag = FORMAT_NONE;
 
 	item = window_tree_add_item(data);
 	item->type = WINDOW_TREE_SESSION;
@@ -398,7 +396,9 @@ window_tree_build_session(struct session *s, void *modedata,
 	item->winlink = -1;
 	item->pane = -1;
 
-	ft = format_create(NULL, NULL, FORMAT_PANE|wl->window->active->id, 0);
+	if (wl != NULL && wl->window != NULL && wl->window->active != NULL)
+		tag = FORMAT_PANE|wl->window->active->id;
+	ft = format_create(NULL, NULL, tag, 0);
 	format_defaults(ft, NULL, s, NULL, NULL);
 	text = format_expand(ft, data->format);
 	format_free(ft);

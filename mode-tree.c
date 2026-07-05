@@ -37,8 +37,7 @@ enum mode_tree_preview {
 };
 
 #define MODE_TREE_PREFIX_STYLE \
-	"#{?mode_tree_selected,#[default]#[noacs]," \
-	"#[fg=themelightgrey]#[bg=default]#[noacs]}"
+	"#[fg=themelightgrey]#[bg=default]#[noacs]"
 
 #define MODE_TREE_PREFIX_FORMAT \
 	MODE_TREE_PREFIX_STYLE \
@@ -950,16 +949,16 @@ mode_tree_draw(struct mode_tree_data *mtd)
 			}
 		} else {
 			screen_write_clearendofline(&ctx, gc.bg);
-			format_draw(&ctx, &gc, prefix_width, prefix, NULL, 0);
+			format_draw(&ctx, &gc, prefix_width, prefix, NULL, 1);
 			if (left != 0) {
 				screen_write_cursormove(&ctx, prefix_width,
 				    i - mtd->offset, 0);
-				format_draw(&ctx, &gc, left, text, NULL, 0);
+				format_draw(&ctx, &gc, left, text, NULL, 1);
 				if (mti->text != NULL && width < w) {
 					screen_write_cursormove(&ctx, width,
 					    i - mtd->offset, 0);
 					format_draw(&ctx, &gc, w - width,
-					    mti->text, NULL, 0);
+					    mti->text, NULL, 1);
 				}
 			}
 		}
