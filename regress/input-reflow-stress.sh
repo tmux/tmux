@@ -1,5 +1,12 @@
 #!/bin/sh
 
+PATH=/bin:/usr/bin TERM=screen
+[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+TMUX="$TEST_TMUX -Ltest -f/dev/null"
+TMP=$(mktemp)
+EXP=$(mktemp)
+trap 'rm -f "$TMP" "$EXP"; $TMUX kill-server 2>/dev/null' 0 1 15
+
 WIDTHS="80 40 20 10 7 5 4 3 2 1 2 3 4 5 7 10 20 40 80"
 HISTORY_LIMIT=220
 HISTORY_BOUND=12000
