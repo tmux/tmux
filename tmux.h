@@ -2323,9 +2323,11 @@ enum monitor_type {
 	MONITOR_WINDOW,
 	MONITOR_ALL_WINDOWS
 };
+#define MONITOR_NOTIFY_INITIAL 0x1
 struct monitor_change {
 	const char		*name;
 	const char		*value;
+	const char		*last;
 
 	struct client		*c;
 	struct session		*s;
@@ -2653,6 +2655,12 @@ char		*format_trim_right(const char *, u_int);
 
 /* notify.c */
 void	notify_hook(struct cmdq_item *, const char *);
+void	notify_monitor_add(struct cmdq_item *, struct options *,
+	    const char *, enum monitor_type, int, const char *,
+	    struct cmd_find_state *, struct session *);
+void	notify_monitor_remove(struct options *, const char *);
+void	notify_monitor_free(void *);
+char	*notify_monitor_to_string(struct options_entry *);
 void	notify_client(const char *, struct client *);
 void	notify_session(const char *, struct session *);
 void	notify_winlink(const char *, struct winlink *);
@@ -2675,6 +2683,8 @@ struct options_entry *options_default(struct options *,
 char		*options_default_to_string(const struct options_table_entry *);
 const char	*options_name(struct options_entry *);
 struct options	*options_owner(struct options_entry *);
+void		*options_get_monitor_data(struct options_entry *);
+void		 options_set_monitor_data(struct options_entry *, void *);
 const struct options_table_entry *options_table_entry(struct options_entry *);
 struct options_entry *options_get_only(struct options *, const char *);
 struct options_entry *options_get(struct options *, const char *);
@@ -3855,10 +3865,13 @@ char	*default_window_name(struct window *);
 char	*parse_window_name(const char *);
 
 /* monitor.c */
-struct monitor_set *monitor_create(struct client *, monitor_cb, void *);
+struct monitor_set *monitor_create_client(struct client *, monitor_cb, void *);
+struct monitor_set *monitor_create_session(struct session *, monitor_cb, void *);
 void	monitor_destroy(struct monitor_set *);
+int	monitor_parse(const char *, char **, enum monitor_type *, int *,
+	    char **);
 void	monitor_add(struct monitor_set *, const char *, enum monitor_type, int,
-	    const char *);
+	    const char *, u_int);
 void	monitor_remove(struct monitor_set *, const char *);
 
 /* control.c */

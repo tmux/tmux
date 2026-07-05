@@ -6397,6 +6397,7 @@ Hooks are managed with these commands:
 .Bl -tag -width Ds
 .It Xo Ic set\-hook
 .Op Fl agpRuw
+.Op Fl B Ar name:what:format
 .Op Fl t Ar target\-pane
 .Ar hook\-name
 .Op Ar command
@@ -6413,18 +6414,53 @@ The flags are the same as for
 .Ic set\-option .
 .Pp
 With
+.Fl B ,
+.Ar name:what:format
+uses the same subscription syntax as
+.Ic refresh\-client
+.Fl B :
+.Ar name
+is the hook to run,
+.Ar what
+selects the session, pane, all panes, window, or all windows, and
+.Ar format
+is expanded once a second.
+For monitor hooks,
+.Ar name
+must begin with
+.Ql @ .
+If
+.Ar command
+is given, it is stored as the
+.Ql @
+hook command; otherwise only the monitor is created or replaced.
+Note that monitor hooks are not inherited, the hook is only run from
+the scope where it is created.
+With
+.Fl u ,
+the subscription named by
+.Fl B
+is removed.
+.Pp
+With
 .Fl R ,
 run
 .Ar hook\-name
 immediately.
 .It Xo Ic show\-hooks
-.Op Fl gpw
+.Op Fl Bgpw
 .Op Fl t Ar target\-pane
 .Op Ar hook
 .Xc
 Shows hooks.
 The flags are the same as for
 .Ic show\-options .
+.Pp
+With
+.Fl B ,
+shows the subscriptions installed with
+.Em set\-hook
+.Fl B .
 .El
 .Sh MOUSE SUPPORT
 If the
@@ -7062,10 +7098,13 @@ The following variables are available, where appropriate:
 .It Li "history_size" Ta "" Ta "Size of history in lines"
 .It Li "hook" Ta "" Ta "Name of running hook, if any"
 .It Li "hook_client" Ta "" Ta "Name of client where hook was run, if any"
+.It Li "hook_last" Ta "" Ta "Previous value for a monitor hook"
 .It Li "hook_pane" Ta "" Ta "ID of pane where hook was run, if any"
 .It Li "hook_session" Ta "" Ta "ID of session where hook was run, if any"
 .It Li "hook_session_name" Ta "" Ta "Name of session where hook was run, if any"
+.It Li "hook_value" Ta "" Ta "New value for a monitor hook"
 .It Li "hook_window" Ta "" Ta "ID of window where hook was run, if any"
+.It Li "hook_window_index" Ta "" Ta "Index of window where hook was run, if any"
 .It Li "hook_window_name" Ta "" Ta "Name of window where hook was run, if any"
 .It Li "host" Ta "#H" Ta "Hostname of local host"
 .It Li "host_short" Ta "#h" Ta "Hostname of local host (no domain name)"

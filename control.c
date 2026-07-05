@@ -701,7 +701,7 @@ control_start(struct client *c)
 	RB_INIT(&cs->panes);
 	TAILQ_INIT(&cs->pending_list);
 	TAILQ_INIT(&cs->all_blocks);
-	cs->subs = monitor_create(c, control_sub_change, NULL);
+	cs->subs = monitor_create_client(c, control_sub_change, NULL);
 
 	cs->read_event = bufferevent_new(c->fd, control_read_callback,
 	    control_write_callback, control_error_callback, c);
@@ -775,7 +775,7 @@ control_add_sub(struct client *c, const char *name, enum monitor_type type,
 {
 	struct control_state	*cs = c->control_state;
 
-	monitor_add(cs->subs, name, type, id, format);
+	monitor_add(cs->subs, name, type, id, format, MONITOR_NOTIFY_INITIAL);
 }
 
 /* Remove a subscription. */
