@@ -580,6 +580,7 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
     enum layout_type type, int change)
 {
 	struct layout_cell	*lcchild;
+	int			 progress;
 
 	/* Adjust the cell size. */
 	if (type == LAYOUT_LEFTRIGHT)
@@ -613,6 +614,7 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 	 * until no further change is possible.
 	 */
 	while (change != 0) {
+		progress = 0;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			if (change == 0)
 				break;
@@ -622,13 +624,17 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 			if (change > 0) {
 				layout_resize_adjust(w, lcchild, type, 1);
 				change--;
+				progress = 1;
 				continue;
 			}
 			if (layout_resize_check(w, lcchild, type) > 0) {
 				layout_resize_adjust(w, lcchild, type, -1);
 				change++;
+				progress = 1;
 			}
 		}
+		if (!progress)
+			break;
 	}
 }
 
