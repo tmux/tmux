@@ -839,6 +839,15 @@ format_cb_window_active_clients_list(struct format_tree *ft)
 }
 
 /* Callback for window_layout. */
+static char *
+format_window_layout(struct format_tree *ft, struct layout_cell *root)
+{
+	if (ft->c != NULL && (ft->c->flags & CLIENT_CONTROL) &&
+	    (ft->c->flags & CLIENT_CONTROL_WINDOWLAYOUTV2) == 0)
+		return (layout_dump_legacy(root));
+	return (layout_dump(ft->w, root));
+}
+
 static void *
 format_cb_window_layout(struct format_tree *ft)
 {
@@ -848,8 +857,8 @@ format_cb_window_layout(struct format_tree *ft)
 		return (NULL);
 
 	if (w->saved_layout_root != NULL)
-		return (layout_dump(w, w->saved_layout_root));
-	return (layout_dump(w, w->layout_root));
+		return (format_window_layout(ft, w->saved_layout_root));
+	return (format_window_layout(ft, w->layout_root));
 }
 
 /* Callback for window_visible_layout. */
@@ -861,7 +870,7 @@ format_cb_window_visible_layout(struct format_tree *ft)
 	if (w == NULL)
 		return (NULL);
 
-	return (layout_dump(w, w->layout_root));
+	return (format_window_layout(ft, w->layout_root));
 }
 
 /* Callback for pane_start_command. */

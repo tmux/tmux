@@ -97,6 +97,7 @@ cmd_list_panes_window(struct cmd *self, struct session *s, struct winlink *wl,
     struct cmdq_item *item, int type)
 {
 	struct args		*args = cmd_get_args(self);
+	struct client		*c = cmdq_get_client(item);
 	struct window_pane	*wp, **l;
 	u_int			 i, n;
 	struct format_tree	*ft;
@@ -147,7 +148,7 @@ cmd_list_panes_window(struct cmd *self, struct session *s, struct winlink *wl,
 		wp = l[i];
 		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 		format_add(ft, "line", "%u", n);
-		format_defaults(ft, NULL, s, wl, wp);
+		format_defaults(ft, c, s, wl, wp);
 
 		if (filter != NULL) {
 			expanded = format_expand(ft, filter);

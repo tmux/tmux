@@ -59,6 +59,7 @@ static enum cmd_retval
 cmd_list_windows_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
+	struct client		*c = cmdq_get_client(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct winlink		*wl, **l;
 	struct session		*s;
@@ -94,7 +95,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmdq_item *item)
 		s = wl->session;
 		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 		format_add(ft, "line", "%u", n);
-		format_defaults(ft, NULL, s, wl, NULL);
+		format_defaults(ft, c, s, wl, NULL);
 
 		if (filter != NULL) {
 			expanded = format_expand(ft, filter);

@@ -2851,6 +2851,8 @@ server_client_control_flags(struct client *c, const char *next)
 		return (CLIENT_CONTROL_NOOUTPUT);
 	if (strcmp(next, "wait-exit") == 0)
 		return (CLIENT_CONTROL_WAITEXIT);
+	if (strcmp(next, "window-layout-v2") == 0)
+		return (CLIENT_CONTROL_WINDOWLAYOUTV2);
 	return (0);
 }
 
@@ -2919,6 +2921,8 @@ server_client_get_flags(struct client *c)
 		strlcat(s, "no-output,", sizeof s);
 	if (c->flags & CLIENT_CONTROL_WAITEXIT)
 		strlcat(s, "wait-exit,", sizeof s);
+	if (c->flags & CLIENT_CONTROL_WINDOWLAYOUTV2)
+		strlcat(s, "window-layout-v2,", sizeof s);
 	if (c->flags & CLIENT_CONTROL_PAUSEAFTER) {
 		xsnprintf(tmp, sizeof tmp, "pause-after=%u,",
 		    c->pause_age / 1000);

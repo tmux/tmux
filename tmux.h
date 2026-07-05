@@ -2245,7 +2245,7 @@ struct client {
 #define CLIENT_CONTROL_PAUSEAFTER 0x100000000ULL
 #define CLIENT_CONTROL_WAITEXIT 0x200000000ULL
 #define CLIENT_WINDOWSIZECHANGED 0x400000000ULL
-/* 0x800000000ULL unused */
+#define CLIENT_CONTROL_WINDOWLAYOUTV2 0x800000000ULL
 #define CLIENT_BRACKETPASTING 0x1000000000ULL
 #define CLIENT_ASSUMEPASTING 0x2000000000ULL
 /* 0x4000000000ULL unused */
@@ -3740,6 +3740,7 @@ int		 layout_insert_tile(struct window *, struct layout_cell *);
 /* layout-custom.c */
 struct layout_prepared;
 char		*layout_dump(struct window *, struct layout_cell *);
+char		*layout_dump_legacy(struct layout_cell *);
 struct layout_prepared *layout_prepare(struct window *, const char *, char **);
 void		 layout_free_prepared(struct layout_prepared *);
 void		 layout_apply_prepared(struct window *, struct layout_prepared *);

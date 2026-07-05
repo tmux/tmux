@@ -57,19 +57,20 @@ control_notify_window_layout_changed(struct window *w)
 	 * and we don't need to inform the client about the layout change
 	 * because the whole window will go away soon.
 	 */
-	wl = TAILQ_FIRST(&w->winlinks);
-	if (wl == NULL || w->layout_root == NULL)
+	if (TAILQ_FIRST(&w->winlinks) == NULL || w->layout_root == NULL)
 		return;
-	cp = format_single(NULL, template, NULL, NULL, wl, NULL);
 
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c) || c->session == NULL)
 			continue;
 		s = c->session;
-		if (winlink_find_by_window_id(&s->windows, w->id) != NULL)
+		wl = winlink_find_by_window_id(&s->windows, w->id);
+		if (wl != NULL) {
+			cp = format_single(NULL, template, c, s, wl, NULL);
 			control_write(c, "%s", cp);
+			free(cp);
+		}
 	}
-	free(cp);
 }
 
 void

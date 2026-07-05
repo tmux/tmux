@@ -53,6 +53,7 @@ static enum cmd_retval
 cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		 *args = cmd_get_args(self);
+	struct client		 *c = cmdq_get_client(item);
 	struct session		**l;
 	u_int		 	  n, i;
 	struct format_tree	 *ft;
@@ -76,7 +77,7 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 	for (i = 0; i < n; i++) {
 		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 		format_add(ft, "line", "%u", i);
-		format_defaults(ft, NULL, l[i], NULL, NULL);
+		format_defaults(ft, c, l[i], NULL, NULL);
 
 		if (filter != NULL) {
 			expanded = format_expand(ft, filter);

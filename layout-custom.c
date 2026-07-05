@@ -54,6 +54,8 @@ static struct layout_cell	*layout_find_bottomright(struct layout_cell *);
 static u_short			 layout_checksum(const char *, const char *);
 static int			 layout_append(struct window *,
 				     struct layout_cell *, char *, size_t);
+static int			 layout_append_legacy(struct layout_cell *, char *,
+				     size_t);
 static int			 layout_append_geometry(char *, size_t, u_int,
 				     u_int, int, int);
 static int			 layout_check(struct layout_cell *);
@@ -142,6 +144,83 @@ layout_dump(struct window *w, struct layout_cell *root)
 	xasprintf(&out, "%04hx,%s",
 	    layout_checksum(layout, layout + strlen(layout)), layout);
 	return (out);
+}
+
+/* Dump layout using the legacy syntax. */
+char *
+layout_dump_legacy(struct layout_cell *root)
+{
+	char	 layout[LAYOUT_STRING_MAX], *out;
+
+	*layout = '\0';
+	if (layout_append_legacy(root, layout, sizeof layout) != 0)
+		return (NULL);
+
+	xasprintf(&out, "%04hx,%s",
+	    layout_checksum(layout, layout + strlen(layout)), layout);
+	return (out);
+}
+
+/* Append information for a single cell using the legacy syntax. */
+static int
+layout_append_legacy(struct layout_cell *lc, char *buf, size_t len)
+{
+	struct layout_cell	*lcchild;
+	char			 tmp[96];
+	const char		*brackets = "][";
+	size_t			 tmplen;
+	u_int			 sx, sy;
+	int			 xoff, yoff;
+
+	if (len == 0)
+		return (-1);
+	if (lc == NULL)
+		return (0);
+
+	sx = lc->sx;
+	sy = lc->sy;
+	xoff = lc->xoff;
+	yoff = lc->yoff;
+	if (lc->flags & LAYOUT_CELL_HIDDEN) {
+		if (lc->saved_sx != UINT_MAX)
+			sx = lc->saved_sx;
+		if (lc->saved_sy != UINT_MAX)
+			sy = lc->saved_sy;
+		if (lc->saved_xoff != INT_MAX)
+			xoff = lc->saved_xoff;
+		if (lc->saved_yoff != INT_MAX)
+			yoff = lc->saved_yoff;
+	}
+
+	if (lc->wp != NULL) {
+		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%d,%d,%u", sx, sy,
+		    xoff, yoff, lc->wp->id);
+	} else {
+		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%d,%d", sx, sy,
+		    xoff, yoff);
+	}
+	if (tmplen > (sizeof tmp) - 1 || strlcat(buf, tmp, len) >= len)
+		return (-1);
+
+	switch (lc->type) {
+	case LAYOUT_LEFTRIGHT:
+		brackets = "}{";
+		/* FALLTHROUGH */
+	case LAYOUT_TOPBOTTOM:
+		if (strlcat(buf, &brackets[1], len) >= len)
+			return (-1);
+		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+			if (layout_append_legacy(lcchild, buf, len) != 0)
+				return (-1);
+			if (strlcat(buf, ",", len) >= len)
+				return (-1);
+		}
+		buf[strlen(buf) - 1] = brackets[0];
+		break;
+	case LAYOUT_WINDOWPANE:
+		break;
+	}
+	return (0);
 }
 
 /* Append information for a single cell. */
