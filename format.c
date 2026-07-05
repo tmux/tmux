@@ -849,7 +849,7 @@ static char *
 format_window_layout(struct format_tree *ft, struct layout_cell *root)
 {
 	if (ft->c != NULL && (ft->c->flags & CLIENT_CONTROL) &&
-	    (ft->c->flags & CLIENT_CONTROL_WINDOWLAYOUTV2) == 0)
+	    (ft->c->flags & CLIENT_CONTROL_WINDOWLAYOUT_NEW) == 0)
 		return (layout_dump_legacy(root));
 	return (layout_dump(ft->w, root));
 }
