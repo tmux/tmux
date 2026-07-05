@@ -46,10 +46,10 @@ wait_for()
 	i=0
 	while [ "$i" -lt 50 ]; do
 		if capture | grep -q "$1"; then
-			sleep 0.2
+			sleep 0.5
 			return 0
 		fi
-		sleep 0.2
+		sleep 0.5
 		i=$((i + 1))
 	done
 	fail "timed out waiting for '$1'"

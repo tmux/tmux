@@ -54,10 +54,10 @@ wait_for()
 	i=0
 	while [ "$i" -lt 50 ]; do
 		if capture | grep -q "$1"; then
-			sleep 0.2
+			sleep 0.5
 			return 0
 		fi
-		sleep 0.2
+		sleep 0.5
 		i=$((i + 1))
 	done
 	fail "timed out waiting for '$1'"
@@ -71,7 +71,7 @@ wait_count()
 	i=0
 	while [ "$i" -lt 50 ]; do
 		[ "$(capture | grep -c "$1")" -eq "$2" ] && return 0
-		sleep 0.2
+		sleep 0.5
 		i=$((i + 1))
 	done
 	fail "timed out waiting for $2 lines of '$1' (have $(capture | grep -c "$1"))"
@@ -222,7 +222,7 @@ $TMUX send-keys -t aaa:0 g Enter
 i=0
 while [ "$i" -lt 50 ]; do
 	[ "$($TMUX list-clients -F '#{client_session}')" = "zzz" ] && break
-	sleep 0.2
+	sleep 0.5
 	i=$((i + 1))
 done
 [ "$i" -lt 50 ] || fail "client did not switch to zzz"

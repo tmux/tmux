@@ -47,10 +47,10 @@ wait_for()
 	i=0
 	while [ "$i" -lt 50 ]; do
 		if capture | grep -q "$1"; then
-			sleep 0.2
+			sleep 0.5
 			return 0
 		fi
-		sleep 0.2
+		sleep 0.5
 		i=$((i + 1))
 	done
 	fail "timed out waiting for '$1'"
@@ -65,7 +65,7 @@ wait_buffers()
 	while [ "$i" -lt 50 ]; do
 		c=$($TMUX list-buffers -F x 2>/dev/null | grep -c x)
 		[ "$c" -eq "$1" ] && return 0
-		sleep 0.2
+		sleep 0.5
 		i=$((i + 1))
 	done
 	fail "expected $1 buffers, have $c"
@@ -183,14 +183,14 @@ $TMUX send-keys -t aaa:0 Enter
 i=0
 while [ "$i" -lt 50 ]; do
 	[ "$($TMUX display -p -t aaa:0 '#{pane_in_mode}')" = "0" ] && break
-	sleep 0.2
+	sleep 0.5
 	i=$((i + 1))
 done
 [ "$i" -lt 50 ] || fail "mode did not exit after Enter"
 i=0
 while [ "$i" -lt 50 ]; do
 	$TMUX capture-pane -p -t aaa:0 | grep -q 'hello buffer' && break
-	sleep 0.2
+	sleep 0.5
 	i=$((i + 1))
 done
 [ "$i" -lt 50 ] || fail "buffer not pasted into pane"
