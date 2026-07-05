@@ -955,7 +955,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "mouse",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 0,
+	  .default_num = TMUX_MOUSE,
 	  .text = "Whether the mouse is recognised and mouse key bindings are "
 		  "executed. "
 		  "Applications inside panes can use the mouse even when 'off'."
