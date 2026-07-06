@@ -1417,6 +1417,7 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 		w->last_new_pane_y = oy;
 	}
 
+	window_push_zoom(wp->window, 1, args_has(args, 'Z'));
 	lcnew = layout_floating_pane(w, sx, sy, ox, oy);
 	return (lcnew);
 }

@@ -1,3 +1,9 @@
+CHANGES FROM 3.7b TO 3.7c
+
+* Use message-style again as default for message-format.
+
+* Unzoom before creating floating panes to avoid a crash.
+
 CHANGES FROM 3.7a TO 3.7b
 
 * Fix so that the end of a synchronized update again triggers a redraw.
