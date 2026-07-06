@@ -15,7 +15,7 @@ export TERM LC_ALL LANG
 OUT=$(mktemp -d)
 TMUX_TMPDIR="$OUT"
 export TMUX_TMPDIR
-TMUX="$TEST_TMUX -Ltest-hooks-lifecycle-$$ -f/dev/null"
+TMUX="$TEST_TMUX -Ltest$$ -f/dev/null"
 
 fail()
 {
