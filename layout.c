@@ -1656,15 +1656,22 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 
 struct layout_cell *
 layout_get_floating_cell(struct cmdq_item *item, struct args *args,
-    enum pane_lines lines, struct window *w, struct window_pane *wp,
+    enum pane_lines lines, int split, struct window *w, struct window_pane *wp,
     char **cause)
 {
 	struct layout_cell	*lcnew;
 	struct layout_geometry	 fg;
 
 	layout_geometry_init(&fg);
-	if (layout_floating_args_parse(item, args, lines, w, &fg, cause) != 0)
-		return (NULL);
+	if (split) {
+		if (layout_split_floating_cell(args, lines, w, wp, &fg, cause)
+		    != 0)
+			return (NULL);
+	} else {
+		if (layout_floating_args_parse(item, args, lines, w, &fg, cause)
+		    != 0)
+			return (NULL);
+	}
 
 	window_push_zoom(wp->window, 1, args_has(args, 'Z'));
 	lcnew = layout_floating_pane(w, wp, &fg);
@@ -1763,6 +1770,77 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 	lg->sy = sy;
 	lg->xoff = ox;
 	lg->yoff = oy;
+	return (0);
+}
+
+int
+layout_split_floating_cell(struct args *args, enum pane_lines lines,
+    struct window *w, struct window_pane *wp, struct layout_geometry *out,
+    char **cause)
+{
+	struct layout_cell	*lc = wp->layout_cell;
+	struct layout_geometry	 old, new;
+	int			 xpad = 4, ypad = 2;
+	int			 tborder = ypad, bborder = w->sy - ypad;
+	int			 lborder = xpad, rborder = w->sx - xpad;
+	int			 offset, has_lines = lines != PANE_LINES_NONE;
+	int			 size;
+
+	memcpy(&old, &lc->g, sizeof *old);
+	memcpy(&new, &lc->g, sizeof *new);
+	if (args_has(args, 'h')) {
+		offset = has_lines ? 2 : 0;
+		if (args_has(args, 'b'))
+			new.xoff -= old.sx + offset;
+		else
+			new.xoff += old.sx + offset;
+	} else {
+		offset = has_lines ? 2 : 0;
+		if (args_has(args, 'b'))
+			new.yoff -= old.sy + offset;
+		else
+			new.yoff += old.sy + offset;
+	}
+
+	if (new.xoff < lborder) {
+		size = (old.sx + old.xoff - xpad - offset) / 2;
+		new.sx = size;
+		old.sx = size;
+		new.xoff = xpad;
+		old->xoff = new.xoff + new.sx + offset;
+		if (lc->sx % 2 != 0)
+			old.sx -= 1;
+	}
+	if ((new.xoff + new.sx - offset) > rborder) {
+		size = (rborder - old.xoff) / 2;
+		new.sx = size;
+		old.sx = size;
+		new.xoff = old.xoff + old.sx + offset;
+	}
+	if (new.yoff < tborder) {
+		size = (old.sy + old.yoff - ypad - offset) / 2;
+		new.sy = size;
+		old.sy = size;
+		new.yoff = ypad;
+		old.yoff = new.yoff + new.sy + offset;
+		if (lc->sy % 2 != 0)
+			old.sy -= 1;
+	}
+	if ((new.yoff + new.sy - offset) > bborder) {
+		size = (bborder - old.yoff) / 2;
+		new.sy = size;
+		old.sy = size;
+		new.yoff = old.yoff + old.sy + offset;
+	}
+
+	if (new.sx < PANE_MINIMUM || new.sy < PANE_MINIMUM ||
+	    old.sx < PANE_MINIMUM || old.sy < PANE_MINIMUM) {
+		*cause = xstrdup("no space for a new pane");
+		return (-1);
+	}
+
+	layout_set_size(lc, &old);
+	memcpy(out, &new, sizeof *out);
 	return (0);
 }
 
