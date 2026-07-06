@@ -274,7 +274,7 @@ status_redraw(struct client *c)
 		for (i = 0; i < lines; i++) {
 			screen_write_cursormove(&ctx, 0, i, 0);
 
-			ov = options_array_get(o, i);
+			ov = options_array_getv(o, "%u", i);
 			if (ov == NULL) {
 				for (n = 0; n < width; n++)
 					screen_write_putc(&ctx, &gc, ' ');
