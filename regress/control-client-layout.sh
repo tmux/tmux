@@ -25,7 +25,7 @@ $TMUX split-window -h || exit 1
 $TMUX new-pane -x20 -y8 -X5 -Y3 || exit 1
 
 $TMUX -C attach <&3 >"$OUT1" &
-$TMUX -C attach -f window-layout-new <&4 >"$OUT2" &
+$TMUX -C attach -f new-window-layouts <&4 >"$OUT2" &
 sleep 1
 
 printf '%s\n' "list-windows -F 'layout:#{client_flags}:#{window_layout}'" >&3
@@ -35,23 +35,23 @@ printf '%s\n' "display-message -p 'layout:#{client_flags}:#{window_layout}'" >&3
 printf '%s\n' "list-windows -F 'layout:#{client_flags}:#{window_layout}'" >&4
 sleep 1
 
-# Default control output is legacy; window-layout-new output is current.
+# Default control output is legacy; new-window-layouts output is current.
 awk '/^layout:/ { print }' "$OUT1" | while IFS= read -r line; do
 	case "$line" in
-	*window-layout-new*|*v2:*|*%0,*|*';'*) exit 1 ;;
+	*new-window-layouts*|*v2:*|*%0,*|*';'*) exit 1 ;;
 	esac
 done || exit 1
 [ "$(grep -ac '^layout:' "$OUT1")" -eq 6 ] || exit 1
-grep -a '^layout:.*window-layout-new.*,v2:.*%0,' "$OUT2" >/dev/null ||
+grep -a '^layout:.*new-window-layouts.*,v2:.*%0,' "$OUT2" >/dev/null ||
     exit 1
 
 # Toggling the flag changes subsequent format expansion for the same client.
-printf '%s\n' "refresh-client -f window-layout-new" >&3
+printf '%s\n' "refresh-client -f new-window-layouts" >&3
 printf '%s\n' "display-message -p 'new:#{client_flags}:#{window_layout}'" >&3
-printf '%s\n' "refresh-client -f '!window-layout-new'" >&3
+printf '%s\n' "refresh-client -f '!new-window-layouts'" >&3
 printf '%s\n' "display-message -p 'legacy:#{client_flags}:#{window_layout}'" >&3
 sleep 1
-grep -a '^new:.*window-layout-new.*,v2:.*%0,' "$OUT1" >/dev/null ||
+grep -a '^new:.*new-window-layouts.*,v2:.*%0,' "$OUT1" >/dev/null ||
     exit 1
 grep -a '^legacy:' "$OUT1" | tail -1 | grep -v '%0,' >/dev/null || exit 1
 

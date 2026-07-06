@@ -1113,7 +1113,7 @@ The flags are:
 the client has an independent active pane
 .It ignore\-size
 the client does not affect the size of other clients
-.It window\-layout\-new
+.It new\-window\-layouts
 the client receives the current layout serialization in control mode rather
 than the legacy serialization
 .It no\-detach\-on\-destroy
@@ -3402,7 +3402,7 @@ It is repeated for each pane from the same window.
 Its format is described under
 .Ic select\-layout .
 In control mode, it uses the legacy format unless the client has the
-.Ql window\-layout\-new
+.Ql new\-window\-layouts
 flag.
 .Tg lsw
 .It Xo Ic list\-windows
@@ -3446,7 +3446,7 @@ format variable.
 The format is described under
 .Ic select\-layout .
 In control mode, the legacy format is used unless the client has the
-.Ql window\-layout\-new
+.Ql new\-window\-layouts
 flag.
 .Pp
 Layouts for multiple windows may be produced in a form suitable for
@@ -4118,7 +4118,7 @@ and
 .Ql window_visible_layout
 generate the current format with a checksum.
 In control mode, they generate the legacy format by default; a client with the
-.Ql window\-layout\-new
+.Ql new\-window\-layouts
 flag receives the current format instead.
 .Ic list\-windows
 uses
@@ -9018,7 +9018,7 @@ The window's visible layout is
 and the window flags are
 .Ar window\-flags .
 The layouts use the legacy serialization unless the client has the
-.Ql window\-layout\-new
+.Ql new\-window\-layouts
 flag, in which case they use the current serialization.
 .It Ic %message Ar message
 A message sent with the
