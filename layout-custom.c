@@ -25,6 +25,63 @@
 
 #include "tmux.h"
 
+/*
+ * Layout string syntax
+ * --------------------
+ *
+ * A layout has one outer cell and may have a four-digit hexadecimal checksum:
+ *
+ *     layout = [checksum,](v2:new-cell | old-cell)
+ *
+ * The checksum covers all non-whitespace text after its comma, including the
+ * version. Checksums before nested cells are also accepted, although they are
+ * not generated. The v2: prefix is accepted only at the outer level and
+ * requires the new cell form. The new cell form requires v2: and unknown
+ * versions are rejected.
+ *
+ * New form:
+ *
+ *     geometry  = widthxheight[x-position[y-position]]
+ *     container = geometry{new-cell;new-cell;...}
+ *               | geometry[new-cell;new-cell;...]
+ *     pane      = %pane-id,z-index:geometry[:flags]
+ *     new-cell  = container | pane
+ *
+ * Braces arrange children from left to right and square brackets from top to
+ * bottom. Semicolons separate children. Positions use X geometry: +N and ++N
+ * are absolute, +-N is negative, and -N places the right or bottom edge N
+ * cells from the right or bottom. A missing position is +0; if only one is
+ * present, the second is +0. Relative right or bottom positions are permitted
+ * only for floating panes. Widths and heights are between PANE_MINIMUM and
+ * PANE_MAXIMUM; resolved positions are between -PANE_MAXIMUM and
+ * PANE_MAXIMUM.
+ *
+ * Pane IDs must be unique. Z-indexes must be unique and contiguous from zero,
+ * with floating panes before tiled panes. Flags are f (floating), h (hidden)
+ * and z (zoomed); h and z cannot be combined. Hidden panes contain their
+ * restoration geometry.
+ *
+ * Old form:
+ *
+ *     geometry = widthxheight,x-position,y-position
+ *     old-cell = geometry{old-cell,old-cell,...}
+ *              | geometry[old-cell,old-cell,...]
+ *              | geometry[,pane-id]
+ *
+ * Old pane IDs are optional and ignored. Old panes are tiled, visible and
+ * unzoomed. A layout must not mix the two cell forms or their separators.
+ * Whitespace may appear between tokens and is ignored by the checksum.
+ *
+ * Layouts rearrange existing panes; they do not create panes. New pane IDs are
+ * used when all match the target window, tree order is used when none match,
+ * and a partial match is rejected. Surplus cells are removed from the end when
+ * the target has fewer panes; a target with more panes is rejected.
+ *
+ * cmd-select-layout.c also accepts multiple window records in this form:
+ *
+ *     @window-id:layout [@window-id:layout ...]
+ */
+
 #define LAYOUT_STRING_MAX 8192
 #define LAYOUT_DEPTH_MAX 64
 
@@ -949,7 +1006,8 @@ layout_prepare(struct window *w, const char *layout, char **cause)
 		layout_free_cell(root, 0);
 		return (NULL);
 	}
-	if (version == 1 && ctx.format != LAYOUT_FORMAT) {
+	if ((version == 1 && ctx.format != LAYOUT_FORMAT) ||
+	    (version == 0 && ctx.format == LAYOUT_FORMAT)) {
 		*cause = xstrdup("invalid layout version");
 		layout_free_cell(root, 0);
 		return (NULL);
