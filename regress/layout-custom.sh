@@ -338,26 +338,17 @@ sleep 0.5
 $TMUX new-session -d -x 80 -y 24 || exit 1
 $TMUX split-window -h || fail "split-window failed"
 
-# Multiple @window-id:layout records may be applied in one command. The
-# newline produced by list-windows is insignificant whitespace.
+# select-layout changes only the window selected by -t. A window ID is not
+# accepted as part of the layout argument.
 $TMUX new-window -d -n second || fail "second window failed"
-$TMUX split-window -d -h -t @1 || fail "second window split failed"
-layouts=$($TMUX list-windows -F '#{window_id}:#{window_layout}')
-$TMUX select-layout "$layouts" || fail "multiple-window layout was rejected"
-must_equal "$($TMUX list-windows -F '#{window_id}:#{window_layout}')" \
-    "$layouts"
-compact=$(printf %s "$layouts" | tr -d '\n')
-$TMUX select-layout "$compact" || fail "compact multiple-window layout failed"
-
-# All records are validated before any window is changed.
-before=$($TMUX display-message -p -t @0 '#{window_width}x#{window_height}')
-must_fail $TMUX select-layout "@0:$reported@1:0000,"
-must_equal "$($TMUX display-message -p -t @0 '#{window_width}x#{window_height}')" \
-    "$before"
-must_fail $TMUX select-layout '@0'
-must_fail $TMUX select-layout '@0:'
-must_fail $TMUX select-layout "@0:$legacy@0:$legacy"
-must_fail $TMUX select-layout "@999999:$legacy"
+$TMUX split-window -v -t @1 || fail "second window split failed"
+first=$($TMUX display-message -p -t @0 '#{window_layout}')
+second=$($TMUX display-message -p -t @1 '#{window_layout}')
+$TMUX select-layout -t @1 even-horizontal || fail "target layout failed"
+must_equal "$($TMUX display-message -p -t @0 '#{window_layout}')" "$first"
+[ "$($TMUX display-message -p -t @1 '#{window_layout}')" != "$second" ] || \
+    fail "target window layout did not change"
+must_fail $TMUX select-layout "@0:$first"
 
 # Add floating panes and verify exact z-order, semicolon output and zoom state.
 $TMUX kill-server 2>/dev/null

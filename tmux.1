@@ -3447,16 +3447,6 @@ The format is described under
 In control mode, the old form is used unless the client has the
 .Ql new\-window\-layouts
 flag.
-.Pp
-Layouts for multiple windows may be produced in a form suitable for
-.Ic select\-layout
-using
-.Fl F .
-For example, they may be captured and reapplied directly:
-.Bd -literal -offset indent
-$ layouts=\[dq]$(tmux list\-windows \-F \[aq]#{window_id}:#{window_layout}\[aq])\[dq]
-$ tmux select\-layout \[dq]$layouts\[dq]
-.Ed
 .Tg movep
 .It Xo Ic move\-pane
 .Op Fl bdfhMv
@@ -4008,17 +3998,8 @@ uses
 for the layout in its default output.
 .Pp
 A layout description is a snapshot, not a complete saved session.
-It rearranges existing panes and windows but does not create panes or windows.
-.Pp
-Layouts for multiple windows may be prefixed by their window IDs and joined:
-.Bd -literal -offset indent
-window-layouts = @window-id:layout [@window-id:layout ...]
-.Ed
-.Pp
-Whitespace, including newlines, may appear between the window records.
-Each window layout retains its own checksum and version prefix.
-All records are checked before any window is changed.
-Unknown or duplicate window IDs are rejected.
+It rearranges existing panes in the target window but does not create panes or
+windows.
 .Tg selectp
 .It Xo Ic select\-pane
 .Op Fl DdeLlMmRUZ

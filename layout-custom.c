@@ -76,10 +76,6 @@
  * used when all match the target window, tree order is used when none match,
  * and a partial match is rejected. Surplus cells are removed from the end when
  * the target has fewer panes; a target with more panes is rejected.
- *
- * cmd-select-layout.c also accepts multiple window records in this form:
- *
- *     @window-id:layout [@window-id:layout ...]
  */
 
 #define LAYOUT_STRING_MAX 8192
