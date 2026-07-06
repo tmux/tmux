@@ -110,25 +110,7 @@
       });
 
       devShells = forAllSystems ({ pkgs, ghosttyVT, ... }: {
-        default = pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [
-            autoconf
-            automake
-            bison
-            pkg-config
-            zig
-          ];
-
-          buildInputs = with pkgs; [
-            ghosttyVT
-            ghosttyVT.dev
-            libevent
-            ncurses
-            utf8proc
-          ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
-            libiconv
-          ];
-        };
+        default = import ./nix/devShell.nix { inherit pkgs ghosttyVT; };
       });
     };
 }
