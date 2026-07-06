@@ -844,7 +844,7 @@ format_cb_window_active_clients_list(struct format_tree *ft)
 	return (value);
 }
 
-/* Callback for window_layout. */
+/* Format a window layout for the client. */
 static char *
 format_window_layout(struct format_tree *ft, struct layout_cell *root)
 {
@@ -854,6 +854,7 @@ format_window_layout(struct format_tree *ft, struct layout_cell *root)
 	return (layout_dump(ft->w, root));
 }
 
+/* Callback for window_layout. */
 static void *
 format_cb_window_layout(struct format_tree *ft)
 {
