@@ -51,13 +51,30 @@ wait_for()
 	i=0
 	while [ "$i" -lt 50 ]; do
 		CAPTURED=$(capture)
-		if echo "$CAPTURED" | grep -q "$1"; then
+		if printf '%s\n' "$CAPTURED" | grep -F -q "$1"; then
 			return 0
 		fi
 		sleep 0.2
 		i=$((i + 1))
 	done
 	fail "timed out waiting for '$1'"
+}
+
+# wait_gone $marker
+#
+# Wait (up to ~10s) until the rendered screen no longer contains $marker.
+wait_gone()
+{
+	i=0
+	while [ "$i" -lt 50 ]; do
+		CAPTURED=$(capture)
+		if ! printf '%s\n' "$CAPTURED" | grep -F -q "$1"; then
+			return 0
+		fi
+		sleep 0.2
+		i=$((i + 1))
+	done
+	fail "timed out waiting for '$1' to disappear"
 }
 
 # wait_count $marker $n
@@ -69,7 +86,7 @@ wait_count()
 	i=0
 	while [ "$i" -lt 50 ]; do
 		CAPTURED=$(capture)
-		c=$(echo "$CAPTURED" | grep -c "$1")
+		c=$(printf '%s\n' "$CAPTURED" | grep -F -c "$1")
 		[ "$c" -eq "$2" ] && return 0
 		sleep 0.2
 		i=$((i + 1))
@@ -113,15 +130,19 @@ wait_mode()
 
 exit_mode()
 {
+	marker=$1
+	shift
+
 	$TMUX send-keys -t aaa:0 "$@" || fail "send-keys $* failed"
 	wait_mode aaa:0 0
+	wait_gone "$marker"
 }
 
 # One client attached to each of two sessions; the mode is displayed on the
 # client attached to aaa (in window 0 of the outer server) and the filters
 # tell the clients apart by their attached session.
-$TMUX new-session -d -s aaa -x 80 -y 24 || exit 1
-$TMUX new-session -d -s bbb -x 80 -y 24 || exit 1
+$TMUX new-session -d -s aaa -x 80 -y 24 'cat' || exit 1
+$TMUX new-session -d -s bbb -x 80 -y 24 'cat' || exit 1
 
 $TMUX2 new-session -d -s out -x 80 -y 24 "$TMUX attach -t aaa" || exit 1
 $TMUX2 new-window -d -t out: "$TMUX attach -t bbb" || exit 1
@@ -132,29 +153,38 @@ $TMUX choose-client -t aaa:0 -F 'C1=#{client_session}' \
 	-f '#{==:#{client_session},aaa}' || exit 1
 wait_count 'C1=' 1
 out=$CAPTURED
-echo "$out" | grep -q 'C1=aaa' || fail "aaa client missing when it matches"
-echo "$out" | grep -q 'C1=bbb' && fail "bbb client shown but does not match"
-[ "$(echo "$out" | grep -c 'C1=')" -eq 1 ] || fail "expected 1 client"
-exit_mode q
+printf '%s\n' "$out" | grep -F -q 'C1=aaa' || \
+	fail "aaa client missing when it matches"
+printf '%s\n' "$out" | grep -F -q 'C1=bbb' && \
+	fail "bbb client shown but does not match"
+[ "$(printf '%s\n' "$out" | grep -F -c 'C1=')" -eq 1 ] || \
+	fail "expected 1 client"
+exit_mode 'C1=' q
 
 # --- filter keeping only the bbb client -------------------------------------
 $TMUX choose-client -t aaa:0 -F 'C2=#{client_session}' \
 	-f '#{==:#{client_session},bbb}' || exit 1
 wait_count 'C2=' 1
 out=$CAPTURED
-echo "$out" | grep -q 'C2=bbb' || fail "bbb client missing when it matches"
-echo "$out" | grep -q 'C2=aaa' && fail "aaa client shown but does not match"
-[ "$(echo "$out" | grep -c 'C2=')" -eq 1 ] || fail "expected 1 client"
-exit_mode q
+printf '%s\n' "$out" | grep -F -q 'C2=bbb' || \
+	fail "bbb client missing when it matches"
+printf '%s\n' "$out" | grep -F -q 'C2=aaa' && \
+	fail "aaa client shown but does not match"
+[ "$(printf '%s\n' "$out" | grep -F -c 'C2=')" -eq 1 ] || \
+	fail "expected 1 client"
+exit_mode 'C2=' q
 
 # --- no filter shows both clients -------------------------------------------
 $TMUX choose-client -t aaa:0 -F 'C3=#{client_session}' || exit 1
 wait_count 'C3=' 2
 out=$CAPTURED
-echo "$out" | grep -q 'C3=aaa' || fail "aaa client missing with no filter"
-echo "$out" | grep -q 'C3=bbb' || fail "bbb client missing with no filter"
-[ "$(echo "$out" | grep -c 'C3=')" -eq 2 ] || fail "expected 2 clients"
-exit_mode q
+printf '%s\n' "$out" | grep -F -q 'C3=aaa' || \
+	fail "aaa client missing with no filter"
+printf '%s\n' "$out" | grep -F -q 'C3=bbb' || \
+	fail "bbb client missing with no filter"
+[ "$(printf '%s\n' "$out" | grep -F -c 'C3=')" -eq 2 ] || \
+	fail "expected 2 clients"
+exit_mode 'C3=' q
 
 # --- filter matching nothing ------------------------------------------------
 #
@@ -163,10 +193,13 @@ $TMUX choose-client -t aaa:0 -F 'C4=#{client_session}' \
 	-f '#{==:#{client_session},nosuch}' || exit 1
 wait_count 'C4=' 2
 out=$CAPTURED
-echo "$out" | grep -q 'C4=aaa' || fail "aaa client missing with no-match filter"
-echo "$out" | grep -q 'C4=bbb' || fail "bbb client missing with no-match filter"
-echo "$out" | grep -q 'no matches' || fail "no matches indicator missing"
-exit_mode q
+printf '%s\n' "$out" | grep -F -q 'C4=aaa' || \
+	fail "aaa client missing with no-match filter"
+printf '%s\n' "$out" | grep -F -q 'C4=bbb' || \
+	fail "bbb client missing with no-match filter"
+printf '%s\n' "$out" | grep -F -q 'no matches' || \
+	fail "no matches indicator missing"
+exit_mode 'C4=' q
 
 # --- Enter runs the default command (detach-client) --------------------------
 #
@@ -178,6 +211,7 @@ wait_for 'G1=bbb'
 $TMUX send-keys -t aaa:0 Enter || fail "send-keys Enter failed"
 wait_clients 1 || fail "bbb client did not detach"
 wait_mode aaa:0 0
+wait_gone 'G1='
 [ "$($TMUX list-clients -F '#{client_session}')" = "aaa" ] || \
 	fail "wrong client detached"
 
