@@ -24,18 +24,23 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -Ltest -f/dev/null"
-TMUX2="$TEST_TMUX -Ltest2 -f/dev/null"
+TMP=$(mktemp -d) || exit 1
+TMUX_TMPDIR="$TMP"
+export TMUX_TMPDIR
+TMUX="$TEST_TMUX -Ltest$$ -f/dev/null"
+TMUX2="$TEST_TMUX -Ltest2$$ -f/dev/null"
 
 cleanup()
 {
 	$TMUX kill-server 2>/dev/null
 	$TMUX2 kill-server 2>/dev/null
+	rm -rf "$TMP"
 }
+trap cleanup EXIT
+
 fail()
 {
-	echo "$1"
-	cleanup
+	echo "$1" >&2
 	exit 1
 }
 
@@ -53,11 +58,11 @@ wait_for()
 {
 	i=0
 	while [ "$i" -lt 50 ]; do
-		if capture | grep -q "$1"; then
-			sleep 0.5
+		CAPTURED=$(capture)
+		if echo "$CAPTURED" | grep -q "$1"; then
 			return 0
 		fi
-		sleep 0.5
+		sleep 0.2
 		i=$((i + 1))
 	done
 	fail "timed out waiting for '$1'"
@@ -70,11 +75,13 @@ wait_count()
 {
 	i=0
 	while [ "$i" -lt 50 ]; do
-		[ "$(capture | grep -c "$1")" -eq "$2" ] && return 0
-		sleep 0.5
+		CAPTURED=$(capture)
+		c=$(echo "$CAPTURED" | grep -c "$1")
+		[ "$c" -eq "$2" ] && return 0
+		sleep 0.2
 		i=$((i + 1))
 	done
-	fail "timed out waiting for $2 lines of '$1' (have $(capture | grep -c "$1"))"
+	fail "timed out waiting for $2 lines of '$1' (have $c)"
 }
 
 # wait_clients $n
@@ -92,8 +99,30 @@ wait_clients()
 	return 1
 }
 
-$TMUX kill-server 2>/dev/null
-$TMUX2 kill-server 2>/dev/null
+# wait_mode $target $state
+#
+# Wait (up to ~10s) until a pane enters or leaves mode.
+wait_mode()
+{
+	t=$1
+	want=$2
+
+	i=0
+	while [ "$i" -lt 50 ]; do
+		got=$($TMUX display-message -p -t "$t" '#{pane_in_mode}' \
+		    2>/dev/null)
+		[ "$got" = "$want" ] && return 0
+		sleep 0.2
+		i=$((i + 1))
+	done
+	fail "pane $t mode state is $got, expected $want"
+}
+
+exit_mode()
+{
+	$TMUX send-keys -t aaa:0 "$@" || fail "send-keys $* failed"
+	wait_mode aaa:0 0
+}
 
 # Session zzz is created first, so it sorts first by index, and has a
 # two-pane window 0 and a single-pane window 1. Session aaa has one window
@@ -117,10 +146,10 @@ wait_clients 1 || fail "no client attached to test server"
 # (session, window, pane).
 $TMUX choose-tree -t aaa:0 -F 'F1' -f '#{==:#{session_name},aaa}' || exit 1
 wait_count 'F1' 3
-out=$(capture)
+out=$CAPTURED
 echo "$out" | grep -q 'aaa: F1' || fail "aaa missing when filter matches it"
 echo "$out" | grep -q 'zzz: F1' && fail "zzz shown but no pane matches"
-$TMUX send-keys -t aaa:0 q
+exit_mode q
 
 # --- filter keeping only zzz ------------------------------------------------
 #
@@ -128,10 +157,10 @@ $TMUX send-keys -t aaa:0 q
 # disappear.
 $TMUX choose-tree -t aaa:0 -F 'F2' -f '#{==:#{session_name},zzz}' || exit 1
 wait_count 'F2' 6
-out=$(capture)
+out=$CAPTURED
 echo "$out" | grep -q 'zzz: F2' || fail "zzz missing when filter matches it"
 echo "$out" | grep -q 'aaa: F2' && fail "aaa shown but no pane matches"
-$TMUX send-keys -t aaa:0 q
+exit_mode q
 
 # --- filter matching a single pane ------------------------------------------
 #
@@ -139,22 +168,22 @@ $TMUX send-keys -t aaa:0 q
 # and that pane; zzz:1 and all of aaa must disappear.
 $TMUX choose-tree -t aaa:0 -F 'F3' -f '#{==:#{pane_index},1}' || exit 1
 wait_count 'F3' 3
-out=$(capture)
+out=$CAPTURED
 echo "$out" | grep -q 'zzz: F3' || fail "zzz missing when its pane matches"
 echo "$out" | grep -q 'aaa: F3' && fail "aaa shown but no pane matches"
 echo "$out" | grep -q '1: F3' || fail "matching pane missing"
-$TMUX send-keys -t aaa:0 q
+exit_mode q
 
 # --- filter matching nothing ------------------------------------------------
 #
 # Everything is shown and the filter indicator reports no matches.
 $TMUX choose-tree -t aaa:0 -F 'F4' -f '#{==:#{session_name},nosuch}' || exit 1
-wait_for 'F4'
-out=$(capture)
+wait_count 'F4' 9
+out=$CAPTURED
 echo "$out" | grep -q 'aaa: F4' || fail "aaa missing with no-match filter"
 echo "$out" | grep -q 'zzz: F4' || fail "zzz missing with no-match filter"
 echo "$out" | grep -q 'no matches' || fail "no matches indicator missing"
-$TMUX send-keys -t aaa:0 q
+exit_mode q
 
 # --- -h with the tree pane as the only match --------------------------------
 #
@@ -163,29 +192,29 @@ $TMUX send-keys -t aaa:0 q
 $TMUX choose-tree -h -t aaa:0 -F 'F5' -f '#{==:#{session_name},aaa}' || \
 	exit 1
 wait_count 'F5' 2
-capture | grep -q 'aaa: F5' || fail "aaa missing with -h"
-$TMUX send-keys -t aaa:0 q
+echo "$CAPTURED" | grep -q 'aaa: F5' || fail "aaa missing with -h"
+exit_mode q
 
 # --- sort orders ------------------------------------------------------------
 #
 # By index zzz (created first) sorts first, by name aaa does, and -r reverses.
 $TMUX choose-tree -t aaa:0 -F 'F6' -O index || exit 1
-wait_for 'F6'
-capture | grep 'F6' | head -1 | grep -q 'zzz: F6' || \
+wait_count 'F6' 9
+echo "$CAPTURED" | grep 'F6' | head -1 | grep -q 'zzz: F6' || \
 	fail "zzz not first with -O index"
-$TMUX send-keys -t aaa:0 q
+exit_mode q
 
 $TMUX choose-tree -t aaa:0 -F 'F7' -O name || exit 1
-wait_for 'F7'
-capture | grep 'F7' | head -1 | grep -q 'aaa: F7' || \
+wait_count 'F7' 9
+echo "$CAPTURED" | grep 'F7' | head -1 | grep -q 'aaa: F7' || \
 	fail "aaa not first with -O name"
-$TMUX send-keys -t aaa:0 q
+exit_mode q
 
 $TMUX choose-tree -t aaa:0 -F 'F8' -O name -r || exit 1
-wait_for 'F8'
-capture | grep 'F8' | head -1 | grep -q 'zzz: F8' || \
+wait_count 'F8' 9
+echo "$CAPTURED" | grep 'F8' | head -1 | grep -q 'zzz: F8' || \
 	fail "zzz not first with -O name -r"
-$TMUX send-keys -t aaa:0 q
+exit_mode q
 
 # --- collapse and expand with h and l -----------------------------------------
 #
@@ -193,41 +222,43 @@ $TMUX send-keys -t aaa:0 q
 # l expands it again.
 $TMUX choose-tree -t aaa:0 -F 'G1' -O index || exit 1
 wait_count 'G1' 9
-$TMUX send-keys -t aaa:0 g h
+$TMUX send-keys -t aaa:0 g h || fail "send-keys collapse failed"
 wait_count 'G1' 4
-$TMUX send-keys -t aaa:0 l
+$TMUX send-keys -t aaa:0 l || fail "send-keys expand failed"
 wait_count 'G1' 9
-$TMUX send-keys -t aaa:0 q
+exit_mode q
 
 # --- filter entered at the prompt with f, cleared with c ----------------------
 $TMUX choose-tree -t aaa:0 -F 'G2' -O index || exit 1
 wait_count 'G2' 9
-$TMUX send-keys -t aaa:0 f
-$TMUX send-keys -t aaa:0 -l '#{==:#{session_name},aaa}'
-$TMUX send-keys -t aaa:0 Enter
+$TMUX send-keys -t aaa:0 f || fail "send-keys f failed"
+$TMUX send-keys -t aaa:0 -l '#{==:#{session_name},aaa}' || \
+	fail "send-keys filter failed"
+$TMUX send-keys -t aaa:0 Enter || fail "send-keys Enter failed"
 wait_count 'G2' 3
-out=$(capture)
+out=$CAPTURED
 echo "$out" | grep -q 'aaa: G2' || fail "aaa missing with prompt filter"
 echo "$out" | grep -q 'zzz: G2' && fail "zzz shown with prompt filter"
-$TMUX send-keys -t aaa:0 c
+$TMUX send-keys -t aaa:0 c || fail "send-keys c failed"
 wait_count 'G2' 9
-$TMUX send-keys -t aaa:0 q
+exit_mode q
 
 # --- Enter runs the default command (switch-client) ----------------------------
 #
 # g selects session zzz and Enter switches the client to it.
 $TMUX choose-tree -t aaa:0 -F 'G3' -O index || exit 1
 wait_count 'G3' 9
-$TMUX send-keys -t aaa:0 g Enter
+$TMUX send-keys -t aaa:0 g Enter || fail "send-keys Enter failed"
 i=0
 while [ "$i" -lt 50 ]; do
 	[ "$($TMUX list-clients -F '#{client_session}')" = "zzz" ] && break
-	sleep 0.5
+	sleep 0.2
 	i=$((i + 1))
 done
 [ "$i" -lt 50 ] || fail "client did not switch to zzz"
 $TMUX switch-client -c "$($TMUX list-clients -F '#{client_name}')" -t aaa || \
 	exit 1
+wait_mode aaa:0 0
 
 # --- x kills the current item after confirmation -------------------------------
 #
@@ -235,13 +266,12 @@ $TMUX switch-client -c "$($TMUX list-clients -F '#{client_name}')" -t aaa || \
 # kills it, leaving zzz with one window and the tree with seven lines.
 $TMUX choose-tree -t aaa:0 -F 'G4' -O index || exit 1
 wait_count 'G4' 9
-$TMUX send-keys -t aaa:0 g j j j j x
+$TMUX send-keys -t aaa:0 g j j j j x || fail "send-keys x failed"
 wait_for 'Kill window 1'
-$TMUX send-keys -t aaa:0 y
+$TMUX send-keys -t aaa:0 y || fail "send-keys y failed"
 wait_count 'G4' 7
 [ "$($TMUX list-windows -t zzz -F x | grep -c x)" -eq 1 ] || \
 	fail "window 1 of zzz not killed"
-$TMUX send-keys -t aaa:0 q
+exit_mode q
 
-cleanup
 exit 0
