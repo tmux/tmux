@@ -161,6 +161,13 @@ const compat_common_sources = [_][]const u8{
     "compat/vis.c",
 };
 
+const compat_linux_sources = [_][]const u8{
+    "compat/fgetln.c",
+    "compat/getpeereid.c",
+    "compat/getprogname.c",
+    "compat/strtonum.c",
+};
+
 const wuffs_defines = [_][]const u8{
     "WUFFS_IMPLEMENTATION",
     "WUFFS_CONFIG__MODULES",
@@ -178,12 +185,14 @@ const wuffs_defines = [_][]const u8{
 
 const cflags = [_][]const u8{
     "-std=gnu99",
+    "-D_GNU_SOURCE",
     "-Wall",
     "-Wextra",
     "-Wno-unused-parameter",
     "-Wno-missing-field-initializers",
     "-Wno-deprecated-declarations",
     "-Wno-unknown-warning-option",
+    "-Wno-pointer-sign",
 };
 
 pub fn build(b: *std.Build) void {
@@ -323,11 +332,9 @@ fn addCommonDefines(mod: *std.Build.Module) void {
     mod.addCMacro("HAVE_CLOCK_GETTIME", "1");
     mod.addCMacro("HAVE_DIRFD", "1");
     mod.addCMacro("HAVE_ERR_H", "1");
-    mod.addCMacro("HAVE_FGETLN", "1");
     mod.addCMacro("HAVE_FLOCK", "1");
     mod.addCMacro("HAVE_GETDTABLESIZE", "1");
     mod.addCMacro("HAVE_GETLINE", "1");
-    mod.addCMacro("HAVE_GETPROGNAME", "1");
     mod.addCMacro("HAVE_MEMMEM", "1");
     mod.addCMacro("HAVE_SETENV", "1");
     mod.addCMacro("HAVE_STRCASESTR", "1");
@@ -336,7 +343,6 @@ fn addCommonDefines(mod: *std.Build.Module) void {
     mod.addCMacro("HAVE_STRNDUP", "1");
     mod.addCMacro("HAVE_STRNLEN", "1");
     mod.addCMacro("HAVE_STRSEP", "1");
-    mod.addCMacro("HAVE_STRTONUM", "1");
     mod.addCMacro("HAVE_SYSCONF", "1");
     mod.addCMacro("HAVE_TIPARM", "1");
 }
@@ -346,16 +352,18 @@ fn addTargetDefines(mod: *std.Build.Module, os_tag: std.Target.Os.Tag) void {
         .macos => {
             mod.addCMacro("BROKEN___DEAD", "1");
             mod.addCMacro("BROKEN_CMSG_FIRSTHDR", "1");
+            mod.addCMacro("HAVE_FGETLN", "1");
             mod.addCMacro("HAVE_FORKPTY", "1");
             mod.addCMacro("HAVE_GETPEEREID", "1");
+            mod.addCMacro("HAVE_GETPROGNAME", "1");
             mod.addCMacro("HAVE_LIBPROC_H", "1");
             mod.addCMacro("HAVE_PROC_PIDINFO", "1");
+            mod.addCMacro("HAVE_STRTONUM", "1");
             mod.addCMacro("HAVE_SYS_SIGNAME", "1");
             mod.addCMacro("HAVE_UTIL_H", "1");
         },
         .linux => {
             mod.addCMacro("HAVE_FORKPTY", "1");
-            mod.addCMacro("HAVE_GETPEEREID", "1");
             mod.addCMacro("HAVE_MALLOC_TRIM", "1");
             mod.addCMacro("HAVE_PRCTL", "1");
             mod.addCMacro("HAVE_PR_SET_NAME", "1");
@@ -388,6 +396,11 @@ fn addLinux(mod: *std.Build.Module, b: *std.Build) void {
     addTargetDefines(mod, .linux);
 
     mod.addCSourceFile(.{ .file = b.path("osdep-linux.c"), .flags = &cflags });
+    mod.addCSourceFiles(.{
+        .root = b.path("."),
+        .files = &compat_linux_sources,
+        .flags = &cflags,
+    });
     mod.linkSystemLibrary("util", .{});
 }
 
