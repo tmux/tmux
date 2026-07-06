@@ -4077,6 +4077,21 @@ or full window width (with
 .Fl v ) ,
 instead of splitting the active pane.
 .Pp
+If
+.Ar target\-pane
+is floating, a new floating pane is created adjacent to
+.Ar target\-pane
+with equal sizes.
+The position is determined by the
+.Fl h ,
+.Fl v ,
+and
+.Fl b
+flags.
+If any of the new pane would not be visible on the screen,
+.Ar target\-pane
+and the new pane are resized to fit.
+.Pp
 .Fl k
 keeps the pane open after the optional
 .Ar shell\-command
