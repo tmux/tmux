@@ -256,7 +256,7 @@ pub fn build(b: *std.Build) void {
     if (enable_ghostty_vt) {
         mod.addCMacro("HAVE_GHOSTTY_VT", "1");
         const ghostty_mod = b.createModule(.{
-            .root_source_file = b.path("ghostty-vt.zig"),
+            .root_source_file = b.path("src/ghostty-vt.zig"),
             .target = target,
             .optimize = optimize,
             .link_libc = true,
@@ -297,6 +297,26 @@ pub fn build(b: *std.Build) void {
     if (b.args) |args| run_cmd.addArgs(args);
     const run_step = b.step("run", "Run tmux");
     run_step.dependOn(&run_cmd.step);
+
+    // Run tmux under Valgrind's memcheck tool. Mirrors ghostty's wiring: a
+    // dedicated step that wraps the built binary in `valgrind` with leak
+    // checking plus a project suppressions file. tmux forks a server
+    // process, so trace children to actually check the long-lived server.
+    // Args after `--` are forwarded to tmux, e.g.
+    //   zig build valgrind -- -f /dev/null new-session -d
+    const valgrind_cmd = b.addSystemCommand(&.{
+        "valgrind",
+        "--leak-check=full",
+        "--track-origins=yes",
+        "--trace-children=yes",
+        "--num-callers=50",
+        b.fmt("--suppressions={s}", .{b.pathFromRoot("valgrind.supp")}),
+        "--gen-suppressions=all",
+    });
+    valgrind_cmd.addArtifactArg(exe);
+    if (b.args) |args| valgrind_cmd.addArgs(args);
+    const valgrind_step = b.step("valgrind", "Run tmux under Valgrind memcheck");
+    valgrind_step.dependOn(&valgrind_cmd.step);
 }
 
 fn addPkgConfigIncludes(b: *std.Build, mod: *std.Build.Module, packages: []const []const u8) void {
