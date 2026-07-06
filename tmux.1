@@ -4576,6 +4576,10 @@ If
 .Fl g
 is given, the global session or window option is set.
 .Pp
+Array options may be set by giving a key in square brackets after the option
+name, for example
+.Ql command-alias[zoom] .
+.Pp
 .Fl F
 expands formats in the option value.
 The
@@ -4687,7 +4691,7 @@ it is replaced with
 .Ar value .
 For example, after:
 .Pp
-.Dl set \-s command\-alias[100] zoom=\[aq]resize\-pane \-Z\[aq]
+.Dl set \-s command\-alias[zoom] zoom=\[aq]resize\-pane \-Z\[aq]
 .Pp
 Using:
 .Pp
@@ -6288,11 +6292,11 @@ or
 .Fl H .
 The following two commands are equivalent:
 .Bd -literal -offset indent.
-set\-hook \-g pane\-mode\-changed[42] \[aq]set \-g status\-left\-style bg=red\[aq]
-set\-option \-g pane\-mode\-changed[42] \[aq]set \-g status\-left\-style bg=red\[aq]
+set\-hook \-g pane\-mode\-changed[style] \[aq]display\-message changed\[aq]
+set\-option \-g pane\-mode\-changed[style] \[aq]display\-message changed\[aq]
 .Ed
 .Pp
-Setting a hook without specifying an array index clears the hook and sets the
+Setting a hook without specifying an array key clears the hook and sets the
 first member of the array.
 .Pp
 A command's after

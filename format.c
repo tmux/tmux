@@ -4231,25 +4231,26 @@ format_find(struct format_tree *ft, const char *key, uint64_t modifiers,
 	struct format_entry		*fe, fe_find;
 	struct environ_entry		*envent;
 	struct options_entry		*o;
-	int				 idx;
 	char				*found = NULL, *saved, s[512];
+	char				*array_key = NULL;
 	const char			*errstr;
 	time_t				 t = 0;
 	struct tm			 tm;
 
-	o = options_parse_get(global_options, key, &idx, 0);
+	o = options_parse_get(global_options, key, &array_key, 0);
 	if (o == NULL && ft->wp != NULL)
-		o = options_parse_get(ft->wp->options, key, &idx, 0);
+		o = options_parse_get(ft->wp->options, key, &array_key, 0);
 	if (o == NULL && ft->w != NULL)
-		o = options_parse_get(ft->w->options, key, &idx, 0);
+		o = options_parse_get(ft->w->options, key, &array_key, 0);
 	if (o == NULL)
-		o = options_parse_get(global_w_options, key, &idx, 0);
+		o = options_parse_get(global_w_options, key, &array_key, 0);
 	if (o == NULL && ft->s != NULL)
-		o = options_parse_get(ft->s->options, key, &idx, 0);
+		o = options_parse_get(ft->s->options, key, &array_key, 0);
 	if (o == NULL)
-		o = options_parse_get(global_s_options, key, &idx, 0);
+		o = options_parse_get(global_s_options, key, &array_key, 0);
 	if (o != NULL) {
-		found = options_to_string(o, idx, 1);
+		found = options_to_string(o, array_key, 1);
+		free(array_key);
 		goto found;
 	}
 
@@ -4943,7 +4944,7 @@ format_add_window_neighbour(struct format_tree *nft, struct winlink *wl,
 		oname = options_name(o);
 		if (*oname == '@') {
 			xasprintf(&prefixed, "%s_%s", prefix, oname);
-			oval = options_to_string(o, -1, 1);
+			oval = options_to_string(o, NULL, 1);
 			format_add(nft, prefixed, "%s", oval);
 			free(oval);
 			free(prefixed);
@@ -5115,11 +5116,12 @@ format_loop_add_option(struct format_expand_state *es, const char *fmt,
 	nft = format_create(ft->client, ft->item, FORMAT_NONE, ft->flags);
 
 	format_add(nft, "option_name", "%s", name);
-	s = options_to_string(o, -1, 0);
+	s = options_to_string(o, NULL, 0);
 	format_add(nft, "option_value", "%s", s);
 	free(s);
 
 	format_add(nft, "option_is_array", "%d", is_array);
+	format_add(nft, "option_array_key", "%s", "");
 	format_add(nft, "option_array_index", "%s", "");
 	format_add(nft, "option_array_first", "%d", is_array);
 	format_add(nft, "option_array_last", "%d", is_array);
@@ -5157,20 +5159,21 @@ format_loop_add_array_item(struct format_expand_state *es, const char *fmt,
 	struct format_expand_state		 next;
 	const struct options_table_entry	*oe = options_table_entry(o);
 	const char				*name = options_name(o);
+	const char				*array_key;
 	char					*expanded, *s;
-	u_int					 idx;
 
-	idx = options_array_item_index(a);
-	format_log(es, "option loop: %s[%u]", name, idx);
+	array_key = options_array_item_key(a);
+	format_log(es, "option loop: %s[%s]", name, array_key);
 	nft = format_create(ft->client, ft->item, FORMAT_NONE, ft->flags);
 
 	format_add(nft, "option_name", "%s", name);
-	s = options_to_string(o, idx, 0);
+	s = options_to_string(o, array_key, 0);
 	format_add(nft, "option_value", "%s", s);
 	free(s);
 
 	format_add(nft, "option_is_array", "1");
-	format_add(nft, "option_array_index", "%u", idx);
+	format_add(nft, "option_array_key", "%s", array_key);
+	format_add(nft, "option_array_index", "%s", array_key);
 	if (a == options_array_first(o))
 		format_add(nft, "option_array_first", "1");
 	else

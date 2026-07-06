@@ -2694,25 +2694,27 @@ const struct options_table_entry *options_table_entry(struct options_entry *);
 struct options_entry *options_get_only(struct options *, const char *);
 struct options_entry *options_get(struct options *, const char *);
 void		 options_array_clear(struct options_entry *);
-union options_value *options_array_get(struct options_entry *, u_int);
-int		 options_array_set(struct options_entry *, u_int, const char *,
-		     int, char **);
+union options_value *options_array_get(struct options_entry *, const char *);
+union options_value * printflike(2, 3) options_array_getv(
+		     struct options_entry *, const char *, ...);
+int		 options_array_set(struct options_entry *, const char *,
+		     const char *, int, char **);
 int		 options_array_assign(struct options_entry *, const char *,
 		     char **);
 struct options_array_item *options_array_first(struct options_entry *);
 struct options_array_item *options_array_next(struct options_array_item *);
-u_int		 options_array_item_index(struct options_array_item *);
+const char	*options_array_item_key(struct options_array_item *);
 union options_value *options_array_item_value(struct options_array_item *);
 int		 options_is_array(struct options_entry *);
 int		 options_is_string(struct options_entry *);
-char		*options_to_string(struct options_entry *, int, int);
-char		*options_parse(const char *, int *);
-struct options_entry *options_parse_get(struct options *, const char *, int *,
-		     int);
+char		*options_to_string(struct options_entry *, const char *, int);
+char		*options_parse(const char *, char **);
+struct options_entry *options_parse_get(struct options *, const char *,
+		     char **, int);
 const struct options_table_entry *options_search(const char *);
-char		*options_match(const char *, int *, int *);
-struct options_entry *options_match_get(struct options *, const char *, int *,
-		     int, int *);
+char		*options_match(const char *, char **, int *);
+struct options_entry *options_match_get(struct options *, const char *,
+		     char **, int, int *);
 const char	*options_get_string(struct options *, const char *);
 long long	 options_get_number(struct options *, const char *);
 struct cmd_list *options_get_command(struct options *, const char *);
@@ -2735,7 +2737,7 @@ int		 options_from_string(struct options *,
 int	 	 options_find_choice(const struct options_table_entry *,
 		     const char *, char **);
 void		 options_push_changes(const char *);
-int		 options_remove_or_default(struct options_entry *, int,
+int		 options_remove_or_default(struct options_entry *, const char *,
 		     char **);
 
 /* options-table.c */
