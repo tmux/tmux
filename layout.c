@@ -580,6 +580,7 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
     enum layout_type type, int change)
 {
 	struct layout_cell	*lcchild;
+	int			 changed;
 
 	/* Adjust the cell size. */
 	if (type == LAYOUT_LEFTRIGHT)
@@ -613,6 +614,7 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 	 * until no further change is possible.
 	 */
 	while (change != 0) {
+		changed = 0;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			if (change == 0)
 				break;
@@ -622,13 +624,17 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 			if (change > 0) {
 				layout_resize_adjust(w, lcchild, type, 1);
 				change--;
+				changed = 1;
 				continue;
 			}
 			if (layout_resize_check(w, lcchild, type) > 0) {
 				layout_resize_adjust(w, lcchild, type, -1);
 				change++;
+				changed = 1;
 			}
 		}
+		if (!changed)
+			break;
 	}
 }
 
@@ -1663,6 +1669,7 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 	    cause) != 0)
 		return (NULL);
 
+	window_push_zoom(wp->window, 1, args_has(args, 'Z'));
 	lcnew = layout_floating_pane(w, wp, sx, sy, ox, oy);
 	return (lcnew);
 }
