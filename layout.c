@@ -62,11 +62,9 @@ layout_create_cell(struct layout_cell *lcparent)
 {
 	struct layout_cell	*lc;
 
-	lc = xmalloc(sizeof *lc);
+	lc = xcalloc(1, sizeof *lc);
 	lc->type = LAYOUT_WINDOWPANE;
-	lc->flags = 0;
 	lc->parent = lcparent;
-
 	TAILQ_INIT(&lc->cells);
 
 	lc->sx = UINT_MAX;
@@ -80,8 +78,6 @@ layout_create_cell(struct layout_cell *lcparent)
 
 	lc->saved_xoff = INT_MAX;
 	lc->saved_yoff = INT_MAX;
-
-	lc->wp = NULL;
 
 	return (lc);
 }

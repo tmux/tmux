@@ -667,7 +667,7 @@ options_array_first(struct options_entry *o)
 struct options_array_item *
 options_array_next(struct options_array_item *a)
 {
-	return (RB_NEXT(options_array, &o->value.array, a));
+	return (RB_NEXT(options_array, , a));
 }
 
 const char *
