@@ -2309,6 +2309,9 @@ struct client {
 	void			*overlay_data;
 	struct event		 overlay_timer;
 
+	u_int			 menu_last_px;
+	u_int			 menu_last_py;
+
 	struct client_files	 files;
 	u_int			 source_file_depth;
 

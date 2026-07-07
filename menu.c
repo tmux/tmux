@@ -313,6 +313,7 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 	struct mouse_event		*m = &event->m;
 	u_int				 i;
 	int				 count = menu->count, old = md->choice;
+	int				 move;
 	const char			*name = NULL;
 	const struct menu_item		*item;
 	struct cmdq_state		*state;
@@ -320,6 +321,14 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 	char				*error;
 
 	if (KEYC_IS_MOUSE(event->key)) {
+		/*
+		 * A mouse move with no button held reports as a release, so
+		 * treat it as highlight-only: it must never select or close the
+		 * menu, otherwise a menu opened without a button already down
+		 * (such as a submenu opened from another menu) would vanish as
+		 * soon as the mouse moved over it.
+		 */
+		move = MOUSE_DRAG(m->b) && MOUSE_RELEASE(m->b);
 		if (md->flags & MENU_NOMOUSE) {
 			if (MOUSE_BUTTONS(m->b) != MOUSE_BUTTON_1)
 				return (1);
@@ -330,7 +339,7 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 		    m->y < md->py + 1 ||
 		    m->y > md->py + 1 + count - 1) {
 			if (~md->flags & MENU_STAYOPEN) {
-				if (MOUSE_RELEASE(m->b))
+				if (!move && MOUSE_RELEASE(m->b))
 					return (1);
 			} else {
 				if (!MOUSE_RELEASE(m->b) &&
@@ -345,7 +354,7 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 			return (0);
 		}
 		if (~md->flags & MENU_STAYOPEN) {
-			if (MOUSE_RELEASE(m->b))
+			if (!move && MOUSE_RELEASE(m->b))
 				goto chosen;
 		} else {
 			if (!MOUSE_WHEEL(m->b) && !MOUSE_DRAG(m->b))
@@ -557,6 +566,10 @@ menu_prepare(struct menu *menu, int flags, int starting_choice,
 		px = c->tty.sx - menu->width - 4;
 	if (py + menu->count + 2 > c->tty.sy)
 		py = c->tty.sy - menu->count - 2;
+
+	/* Remember where this menu is so -x/-y L can reuse the position. */
+	c->menu_last_px = px;
+	c->menu_last_py = py;
 
 	if (lines == BOX_LINES_DEFAULT)
 		lines = options_get_number(o, "menu-border-lines");
