@@ -332,6 +332,8 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 	w->ypixel = ypixel;
 
 	w->options = options_create(global_w_options);
+	w->sb = options_get_number(w->options, "pane-scrollbars");
+	w->sb_pos = options_get_number(w->options, "pane-scrollbars-position");
 
 	w->references = 0;
 	TAILQ_INIT(&w->winlinks);
