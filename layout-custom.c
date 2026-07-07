@@ -100,10 +100,10 @@ layout_append(struct layout_cell *lc, char *buf, size_t len)
 	if (lc == NULL)
 		return (0);
 	if (lc->wp != NULL) {
-		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%d,%d,%u",
+		tmplen = xsnprintf(tmp, sizeof tmp, "%dx%d,%d,%d,%u",
 		    lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff, lc->wp->id);
 	} else {
-		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%d,%d",
+		tmplen = xsnprintf(tmp, sizeof tmp, "%dx%d,%d,%d",
 		    lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff);
 	}
 	if (tmplen > (sizeof tmp) - 1)
@@ -138,7 +138,7 @@ static int
 layout_check(struct layout_cell *lc)
 {
 	struct layout_cell	*lcchild;
-	u_int			 n = 0;
+	int			 n = 0;
 
 	switch (lc->type) {
 	case LAYOUT_WINDOWPANE:
@@ -174,10 +174,11 @@ int
 layout_parse(struct window *w, const char *layout, char **cause)
 {
 	struct layout_cell	*lcchild, *tiled_lc = NULL;
+	struct layout_geometry	 lg = { w->sx, w->sy, 0, 0 };
 	struct window_pane	*wp;
-	u_int			 npanes, ncells, sx = 0, sy = 0;
+	u_int			 npanes, ncells;
 	u_short			 csum;
-	int			 n;
+	int			 n, sx = 0, sy = 0;
 
 	/* Check validity. */
 	if (sscanf(layout, "%hx,%n", &csum, &n) != 1 || n != 5) {
@@ -199,7 +200,7 @@ layout_parse(struct window *w, const char *layout, char **cause)
 		/* A stub layout cell for an empty window. */
 		tiled_lc = layout_create_cell(NULL);
 		tiled_lc->type = LAYOUT_LEFTRIGHT;
-		layout_set_size(tiled_lc, w->sx, w->sy, 0, 0);
+		layout_set_size(tiled_lc, &lg);
 	}
 	if (*layout != '\0') {
 		*cause = xstrdup("invalid layout");

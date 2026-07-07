@@ -70,7 +70,7 @@ cmd_break_pane_float(struct cmdq_item *item, struct args *args,
 		return (CMD_RETURN_ERROR);
 	}
 	layout_remove_tile(w, lc);
-	layout_set_size(lc, fg->sx, fg->sy, fg->xoff, fg->yoff);
+	layout_set_size(lc, fg);
 
 	lc->flags |= LAYOUT_CELL_FLOATING;
 	TAILQ_REMOVE(&w->z_index, wp, zentry);

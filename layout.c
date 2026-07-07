@@ -56,12 +56,12 @@ static int	layout_set_size_check(struct window *, struct layout_cell *,
 static void	layout_resize_child_cells(struct window *,
 		    struct layout_cell *);
 
-/* Initializes cell geometry to sentinel values. */
+/* Initialize cell geometry to sentinel values. */
 static void
 layout_geometry_init(struct layout_geometry *lg)
 {
-	lg->sx = UINT_MAX;
-	lg->sy = UINT_MAX;
+	lg->sx = INT_MAX;
+	lg->sy = INT_MAX;
 	lg->xoff = INT_MAX;
 	lg->yoff = INT_MAX;
 }
@@ -140,7 +140,7 @@ layout_print_cell(struct layout_cell *lc, const char *hdr, u_int n)
 		type = "UNKNOWN";
 		break;
 	}
-	log_debug("%s:%*s%p type %s [parent %p] wp=%p [%d,%d %ux%u]", hdr, n,
+	log_debug("%s:%*s%p type %s [parent %p] wp=%p [%d,%d %dx%d]", hdr, n,
 	    " ", lc, type, lc->parent, lc->wp, lc->g.xoff, lc->g.yoff, lc->g.sx,
 	    lc->g.sy);
 	switch (lc->type) {
@@ -197,13 +197,13 @@ layout_search_by_border(struct layout_cell *lc, u_int x, u_int y)
 
 /* Set cell size. */
 void
-layout_set_size(struct layout_cell *lc, u_int sx, u_int sy, int xoff, int yoff)
+layout_set_size(struct layout_cell *lc, struct layout_geometry *lg)
 {
-	lc->g.sx = sx;
-	lc->g.sy = sy;
+	lc->g.sx = lg->sx;
+	lc->g.sy = lg->sy;
 
-	lc->g.xoff = xoff;
-	lc->g.yoff = yoff;
+	lc->g.xoff = lg->xoff;
+	lc->g.yoff = lg->yoff;
 }
 
 /* Make a cell a leaf cell. */
@@ -759,9 +759,10 @@ void
 layout_init(struct window *w, struct window_pane *wp)
 {
 	struct layout_cell	*lc;
+	struct layout_geometry	 lg = { w->sx, w->sy, 0, 0 };
 
 	lc = w->layout_root = layout_create_cell(NULL);
-	layout_set_size(lc, w->sx, w->sy, 0, 0);
+	layout_set_size(lc, &lg);
 	layout_make_leaf(lc, wp);
 	layout_fix_panes(w, NULL);
 }
@@ -800,7 +801,7 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 	if (xchange < 0 && xchange < -xlimit)
 		xchange = -xlimit;
 	if (xlimit == 0) {
-		if (sx <= lc->g.sx)	/* lc->g.sx is minimum possible */
+		if ((int)sx <= lc->g.sx)	/* lc->g.sx is minimum possible */
 			xchange = 0;
 		else
 			xchange = sx - lc->g.sx;
@@ -814,7 +815,7 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 	if (ychange < 0 && ychange < -ylimit)
 		ychange = -ylimit;
 	if (ylimit == 0) {
-		if (sy <= lc->g.sy)	/* lc->g.sy is minimum possible */
+		if ((int)sy <= lc->g.sy)	/* lc->g.sy is minimum possible */
 			ychange = 0;
 		else
 			ychange = sy - lc->g.sy;
@@ -881,11 +882,11 @@ layout_resize_floating_pane_to(struct window_pane *wp, enum layout_type type,
 	}
 
 	if (type == LAYOUT_TOPBOTTOM) {
-		if (lc->g.sy == size)
+		if (lc->g.sy == (int)size)
 			return (0);
 		lc->g.sy = size;
 	} else {
-		if (lc->g.sx == size)
+		if (lc->g.sx == (int)size)
 			return (0);
 		lc->g.sx = size;
 	}
@@ -1238,7 +1239,7 @@ layout_replace_with_node(struct window *w, struct layout_cell *lc,
 
 	lcparent = layout_create_cell(lc->parent);
 	layout_make_node(lcparent, type);
-	layout_set_size(lcparent, lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff);
+	layout_set_size(lcparent, &lc->g);
 	if (lc->parent == NULL)
 		w->layout_root = lcparent;
 	else
@@ -1328,7 +1329,8 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
     int flags)
 {
 	struct layout_cell	*lc, *lcparent, *lcnew, *lc1, *lc2;
-	u_int			 sx, sy, xoff, yoff, size1, size2;
+	struct layout_geometry	 lg1, lg2;
+	u_int			 size1, size2;
 	u_int			 new_size, saved_size, resize_first = 0;
 	int			 full_size = (flags & SPAWN_FULLSIZE);
 	int			 before = (flags & SPAWN_BEFORE);
@@ -1343,10 +1345,8 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 		lc = wp->layout_cell;
 
 	/* Copy the old cell size. */
-	sx = lc->g.sx;
-	sy = lc->g.sy;
-	xoff = lc->g.xoff;
-	yoff = lc->g.yoff;
+	memcpy(&lg1, &lc->g, sizeof lg1);
+	memcpy(&lg2, &lc->g, sizeof lg2);
 
 	/* Check there is enough space for the two new panes. */
 	if (!layout_split_check_space(wp, lc, type))
@@ -1401,9 +1401,10 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 		lcnew = layout_create_cell(lc);
 		size = saved_size - 1 - new_size;
 		if (lc->type == LAYOUT_LEFTRIGHT)
-			layout_set_size(lcnew, size, sy, 0, 0);
+			lg1.sx = size;
 		else if (lc->type == LAYOUT_TOPBOTTOM)
-			layout_set_size(lcnew, sx, size, 0, 0);
+			lg1.sy = size;
+		layout_set_size(lcnew, &lg1);
 		if (flags & SPAWN_BEFORE)
 			TAILQ_INSERT_HEAD(&lc->cells, lcnew, entry);
 		else
@@ -1436,18 +1437,22 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 	 * bottom/right.
 	 */
 	if (!resize_first && type == LAYOUT_LEFTRIGHT) {
-		layout_set_size(lc1, size1, sy, xoff, yoff);
-		layout_set_size(lc2, size2, sy, xoff + lc1->g.sx + 1, yoff);
+		lg1.sx = size1;
+		lg2.sx = size2;
+		layout_set_size(lc1, &lg1);
+		layout_set_size(lc2, &lg2);
 	} else if (!resize_first && type == LAYOUT_TOPBOTTOM) {
-		layout_set_size(lc1, sx, size1, xoff, yoff);
-		layout_set_size(lc2, sx, size2, xoff, yoff + lc1->g.sy + 1);
+		lg1.sy = size1;
+		lg2.sy = size2;
+		layout_set_size(lc1, &lg1);
+		layout_set_size(lc2, &lg2);
 	}
 	if (full_size) {
 		if (!resize_first)
 			layout_resize_child_cells(wp->window, lc);
-		layout_fix_offsets(wp->window);
 	} else
 		layout_make_leaf(lc, wp);
+	layout_fix_offsets(wp->window);
 
 	return (lcnew);
 }
@@ -1479,7 +1484,7 @@ layout_floating_pane(struct window *w, struct window_pane *wp,
 	lcnew = layout_create_cell(lcparent);
 	TAILQ_INSERT_AFTER(&lcparent->cells, lc, lcnew, entry);
 	lcnew->flags |= LAYOUT_CELL_FLOATING;
-	layout_set_size(lcnew, lg->sx, lg->sy, lg->xoff, lg->yoff);
+	layout_set_size(lcnew, lg);
 
 	return (lcnew);
 }
@@ -1679,8 +1684,8 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 	int	 sx, sy, ox, oy;
 	char	*error = NULL;
 
-	sx = lg->sx == UINT_MAX ? w->sx / 2 : lg->sx;
-	sy = lg->sy == UINT_MAX ? w->sy / 4 : lg->sy;
+	sx = lg->sx == INT_MAX ? (int)w->sx / 2 : lg->sx;
+	sy = lg->sy == INT_MAX ? (int)w->sy / 4 : lg->sy;
 	ox = lg->xoff;
 	oy = lg->yoff;
 
@@ -1774,6 +1779,7 @@ int
 layout_remove_tile(struct window *w, struct layout_cell *lc)
 {
 	struct layout_cell	*lcneighbour, *lcparent;
+	struct layout_geometry	 lg = { 0 };
 	enum layout_type	 type;
 	int			 change;
 
@@ -1802,7 +1808,7 @@ layout_remove_tile(struct window *w, struct layout_cell *lc)
 	 * is the top level node.
 	 */
 	if (lc->parent != NULL)
-		layout_set_size(lc, 0, 0, 0, 0);
+		layout_set_size(lc, &lg);
 	return (0);
 }
 
@@ -1814,6 +1820,7 @@ int
 layout_insert_tile(struct window *w, struct layout_cell *lc)
 {
 	struct layout_cell	*lcneighbour, *lctiled, *lcparent;
+	struct layout_geometry	 lg = { w->sx, w->sy, 0, 0 };
 	enum layout_type	 type;
 	u_int			 size1, size2, saved_size;
 
@@ -1826,7 +1833,7 @@ layout_insert_tile(struct window *w, struct layout_cell *lc)
 	lcparent = lc->parent;
 	if (lcparent == NULL) {
 		/* Only pane in the layout. */
-		layout_set_size(lc, w->sx, w->sy, 0, 0);
+		layout_set_size(lc, &lg);
 		return (0);
 	}
 
