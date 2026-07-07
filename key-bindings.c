@@ -59,6 +59,8 @@
 	" '#{?mouse_hyperlink,Type #[underscore]#{=/9/...:mouse_hyperlink},}' 'C-h' {copy-mode -q; send-keys -l -- \"#{q:mouse_hyperlink}\"}" \
 	" '#{?mouse_hyperlink,Copy #[underscore]#{=/9/...:mouse_hyperlink},}' 'h' {copy-mode -q; set-buffer -- \"#{q:mouse_hyperlink}\"}" \
 	" ''" \
+	" '#{?#{#{pane_floating_flag}},Move,}' '' {display-menu -xL -yL -T '#[align=centre]Move' " DEFAULT_MOVE_MENU " }" \
+	" '#{?#{#{pane_floating_flag}},Move & Resize,}' '' {display-menu -xL -yL -T '#[align=centre]Move & Resize' " DEFAULT_MOVE_RESIZE_MENU " }" \
 	" '#{?#{#{pane_floating_flag}},Tile,}' 't' { join-pane }" \
 	" '#{?#{!:#{pane_floating_flag}},Float,}' 'f' { break-pane -W }" \
 	" '#{?#{!:#{pane_floating_flag}},Horizontal Split,}' 'h' {split-window -h}" \
@@ -72,6 +74,30 @@
 	" 'Respawn' 'R' {respawn-pane -k}" \
 	" '#{?pane_marked,Unmark,Mark}' 'm' {select-pane -m}" \
 	" '#{?#{>:#{window_panes},1},,-}#{?window_zoomed_flag,Unzoom,Zoom}' 'z' {resize-pane -Z}"
+#define DEFAULT_MOVE_MENU \
+	" 'Centre' 'c' {move-pane -P centre}" \
+	" ''" \
+	" 'Top Left' '1' {move-pane -P top-left}" \
+	" 'Top Right' '2' {move-pane -P top-right}" \
+	" 'Bottom Left' '3' {move-pane -P bottom-left}" \
+	" 'Bottom Right' '4' {move-pane -P bottom-right}" \
+	" ''" \
+	" 'Top' 't' {move-pane -P top-centre}" \
+	" 'Bottom' 'b' {move-pane -P bottom-centre}" \
+	" 'Left' 'l' {move-pane -P centre-left}" \
+	" 'Right' 'r' {move-pane -P centre-right}"
+#define DEFAULT_MOVE_RESIZE_MENU \
+	" 'Fill' '0' {resize-pane -x100% -y100%; move-pane -P top-left}" \
+	" ''" \
+	" 'Top Left' '1' {resize-pane -x50% -y50%; move-pane -P top-left}" \
+	" 'Top Right' '2' {resize-pane -x50% -y50%; move-pane -P top-right}" \
+	" 'Bottom Left' '3' {resize-pane -x50% -y50%; move-pane -P bottom-left}" \
+	" 'Bottom Right' '4' {resize-pane -x50% -y50%; move-pane -P bottom-right}" \
+	" ''" \
+	" 'Top' 't' {resize-pane -x100% -y50%; move-pane -P top-centre}" \
+	" 'Bottom' 'b' {resize-pane -x100% -y50%; move-pane -P bottom-centre}" \
+	" 'Left' 'l' {resize-pane -x50% -y100%; move-pane -P centre-left}" \
+	" 'Right' 'r' {resize-pane -x50% -y100%; move-pane -P centre-right}"
 
 static int key_bindings_cmp(struct key_binding *, struct key_binding *);
 RB_GENERATE_STATIC(key_bindings, key_binding, entry, key_bindings_cmp);
@@ -460,6 +486,9 @@ key_bindings_init(void)
 		"bind -Tmove -N 'Move pane to bottom and resize' 'M-Down' { resizep -x100% -y50%; move-pane -P bottom-centre  }",
 		"bind -Tmove -N 'Move pane to left and resize' 'M-Left' { resizep -x50% -y100%; move-pane -P centre-left }",
 		"bind -Tmove -N 'Move pane to right and resize' 'M-Right' { resizep -x50% -y100%; move-pane -P centre-right }",
+		"bind -Tmove -N 'Move pane to fill the window' 0 { resize-pane -x100% -y100%; move-pane -P top-left }",
+		"bind -Tmove -N 'Display move menu' , { if -F '#{pane_floating_flag}' { display-menu -xP -yP -T '#[align=centre]Move' " DEFAULT_MOVE_MENU " } }",
+		"bind -Tmove -N 'Display move and resize menu' . { if -F '#{pane_floating_flag}' { display-menu -xP -yP -T '#[align=centre]Move & Resize' " DEFAULT_MOVE_RESIZE_MENU " } }",
 
 		/* Menu keys */
 		"bind -N 'Display window menu' < { display-menu -xW -yW -T '#[align=centre]#{window_index}:#{window_name}' " DEFAULT_WINDOW_MENU " }",

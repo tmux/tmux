@@ -127,6 +127,10 @@ cmd_display_menu_get_pos(struct client *tc, struct cmdq_item *item,
 		format_add(ft, "popup_mouse_y", "%u", event->m.y);
 	}
 
+	/* Position of the previous menu, for -x/-y L. */
+	format_add(ft, "popup_last_x", "%u", tc->menu_last_px);
+	format_add(ft, "popup_last_y", "%u", tc->menu_last_py + h);
+
 	/*
 	 * If there are any status lines, add this window position and the
 	 * status line position.
@@ -239,6 +243,8 @@ cmd_display_menu_get_pos(struct client *tc, struct cmdq_item *item,
 		xp = "#{popup_pane_left}";
 	else if (strcmp(xp, "M") == 0)
 		xp = "#{popup_mouse_centre_x}";
+	else if (strcmp(xp, "L") == 0)
+		xp = "#{popup_last_x}";
 	else if (strcmp(xp, "W") == 0)
 		xp = "#{popup_window_status_line_x}";
 	p = format_expand(ft, xp);
@@ -259,6 +265,8 @@ cmd_display_menu_get_pos(struct client *tc, struct cmdq_item *item,
 		yp = "#{popup_pane_bottom}";
 	else if (strcmp(yp, "M") == 0)
 		yp = "#{popup_mouse_top}";
+	else if (strcmp(yp, "L") == 0)
+		yp = "#{popup_last_y}";
 	else if (strcmp(yp, "S") == 0)
 		yp = "#{popup_status_line_y}";
 	else if (strcmp(yp, "W") == 0)
