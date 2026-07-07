@@ -71,8 +71,9 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 	struct window		*w = wl->window;
 	struct layout_cell	*lc = wp->layout_cell;
 	struct window_pane	*owp;
-	int			 wx = w->sx, wy = w->sy, px = lc->sx;
-	int			 py = lc->sy, xoff = lc->xoff, yoff = lc->yoff;
+	int			 wx = w->sx, wy = w->sy;
+	int			 px = lc->g.sx, py = lc->g.sy;
+	int			 xoff = lc->g.xoff, yoff = lc->g.yoff;
 	int			 border = 1;
 
 	if (window_pane_get_pane_lines(wp) == PANE_LINES_NONE)
@@ -180,9 +181,9 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 		return (CMD_RETURN_ERROR);
 	}
 
-	if (xoff != lc->xoff || yoff != lc->yoff) {
-		lc->xoff = xoff;
-		lc->yoff = yoff;
+	if (xoff != lc->g.xoff || yoff != lc->g.yoff) {
+		lc->g.xoff = xoff;
+		lc->g.yoff = yoff;
 		layout_fix_panes(w, NULL);
 	}
 	notify_window("window-layout-changed", w);
@@ -200,7 +201,7 @@ cmd_join_pane_move(struct cmdq_item *item, struct args *args,
 	const char		*errstr, *argval;
 	const char		 flags[] = { 'U', 'D', 'L', 'R' };
 	char			*cause = NULL, flag;
-	int			 xoff = lc->xoff, yoff = lc->yoff, adjust;
+	int			 xoff = lc->g.xoff, yoff = lc->g.yoff, adjust;
 	u_int			 i;
 	enum pane_lines		 lines = window_pane_get_pane_lines(wp);
 
@@ -251,9 +252,9 @@ cmd_join_pane_move(struct cmdq_item *item, struct args *args,
 			xoff += adjust;
 	}
 
-	if (xoff != lc->xoff || yoff != lc->yoff) {
-		lc->xoff = xoff;
-		lc->yoff = yoff;
+	if (xoff != lc->g.xoff || yoff != lc->g.yoff) {
+		lc->g.xoff = xoff;
+		lc->g.yoff = yoff;
 		layout_fix_panes(w, NULL);
 		notify_window("window-layout-changed", w);
 		server_redraw_window(w);
@@ -319,8 +320,8 @@ cmd_join_pane_mouse_move(struct client *c, struct mouse_event *m)
 		ly = m->statusat - 1;
 
 	if (x != lx || y != ly) {
-		lc->xoff += x - lx;
-		lc->yoff += y - ly;
+		lc->g.xoff += x - lx;
+		lc->g.yoff += y - ly;
 		layout_fix_panes(w, NULL);
 		server_redraw_window(w);
 		server_redraw_window_borders(w);
@@ -378,10 +379,11 @@ cmd_join_pane_tile(struct cmdq_item *item, struct args *args, struct window *w,
 		return (CMD_RETURN_ERROR);
 	}
 
-	lc->saved_sx = lc->sx;
-	lc->saved_sy = lc->sy;
-	lc->saved_xoff = lc->xoff;
-	lc->saved_yoff = lc->yoff;
+	lc->fg.sx = lc->g.sx;
+	lc->fg.sy = lc->g.sy;
+	lc->fg.xoff = lc->g.xoff;
+	lc->fg.yoff = lc->g.yoff;
+
 	if (layout_insert_tile(w, lc) != 0) {
 		cmdq_error(item, "no space for a new pane");
 		return (CMD_RETURN_ERROR);

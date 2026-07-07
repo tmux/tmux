@@ -632,13 +632,13 @@ spawn_editor(struct client *c, const char *buf, size_t len,
 	struct window			*w = wl->window;
 	struct window_pane		*wp;
 	struct layout_cell		*lc;
+	struct layout_geometry		 lg;
 	struct environ			*env;
 	FILE				*f;
 	char				*cmd, *cause = NULL;
 	char				 path[] = _PATH_TMP "tmux.XXXXXXXX";
 	const char			*editor;
 	int				 fd;
-	u_int				 px, py, sx, sy;
 
 	editor = options_get_string(global_options, "editor");
 	fd = mkstemp(path);
@@ -662,12 +662,12 @@ spawn_editor(struct client *c, const char *buf, size_t len,
 	es->cb = cb;
 	es->arg = arg;
 
-	sx = w->sx * 9 / 10;
-	sy = w->sy * 9 / 10;
-	px = w->sx / 2 - sx / 2;
-	py = w->sy / 2 - sy / 2;
+	lg.sx = w->sx * 9 / 10;
+	lg.sy = w->sy * 9 / 10;
+	lg.xoff = w->sx / 2 - lg.sx / 2;
+	lg.yoff = w->sy / 2 - lg.sy / 2;
 	window_push_zoom(w, 1, 0);
-	lc = layout_floating_pane(w, NULL, sx, sy, px, py);
+	lc = layout_floating_pane(w, NULL, &lg);
 	if (lc == NULL) {
 		spawn_editor_free(es);
 		return (NULL);
