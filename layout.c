@@ -1310,7 +1310,7 @@ layout_split_sizes(struct layout_cell *lc, int size, int before,
 		s2 = size;
 	if (s2 < PANE_MINIMUM)
 		s2 = PANE_MINIMUM;
-	else if (s2 > sx - 2)
+	else if (s2 > ss - 2)
 		s2 = ss - 2;
 	s1 = ss - 1 - s2;
 
