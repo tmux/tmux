@@ -101,6 +101,8 @@ $TMUX set -g @ts '1000000000' || exit 1  # 2001-09-09 01:46:40 UTC
 $TMUX set -g @sp 'a b$c' || exit 1     # shell-special characters for q:
 $TMUX set -g @hash 'a#b' || exit 1     # a "#" for q/e:
 $TMUX set -g @sq "a'b" || exit 1       # a single quote for q/s:
+$TMUX set -g @sub 'abABab' || exit 1
+$TMUX set -g @slash 'foo/bar foo/' || exit 1
 $TMUX set -g @nl "$(printf 'a\nb')" || exit 1
 q_s_nl=$(printf "'a\nb'")
 
@@ -426,9 +428,23 @@ test_format "#{=/3/#,:@s}" "abc,"             # escaped comma in the marker
 # The truncation marker is itself expanded as a format.
 test_format "#{=/3/#{l:>}:@s}" "abc>"
 
-# Substitution flags: a third argument of "i" is case-insensitive; an invalid
-# regular expression leaves the text unchanged.
+# Substitution, including regular expressions, back references, different
+# delimiters, empty matches and the "i" case-insensitive flag.
+test_format "#{s/z/X/:@s}" "abcdefghij"
+test_format "#{s/[bd]/X/:@s}" "aXcXefghij"
 test_format "#{s/A/X/i:@s}" "Xbcdefghij"
+test_format "#{s/a(.)/\\1x/i:@sub}" "bxBxbx"
+test_format "#{s/(.)(.)/\\2\\1/:@s}" "badcfehgji"
+test_format "#{s|foo/|bar/|:@slash}" "bar/bar bar/"
+test_format "#{s/^abc/ABC/:@s}" "ABCdefghij"
+test_format "#{s/^(.)(.)/\\2\\1/:@s}" "bacdefghij"
+test_format "#{s/^x*//:@s}" "abcdefghij"
+test_format "#{s/^/X/:@s}" "Xabcdefghij"
+test_format "#{s/^x*/X/:@s}" "Xabcdefghij"
+test_format "#{s/$/X/:@s}" "abcdefghijX"
+test_format "#{s/x*//:@s}" "abcdefghij"
+test_format "#{s/x*/X/:@s}" "aXbXcXdXeXfXgXhXiXjX"
+# An invalid regular expression leaves the text unchanged.
 test_format "#{s/[/X/:@s}" "abcdefghij"
 
 
