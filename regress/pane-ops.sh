@@ -399,6 +399,19 @@ check_fmt 'P:9.0' '#{pane_pid}' ''
 check_fail 'command cannot be given for empty pane' \
     new-window -d -E -t P:10 -n empty 'true'
 
+# An empty string as the sole argument is equivalent to -E: the pane is
+# created empty, running no command.
+check_ok new-window -d -t P:12 -n empty-str ''
+check_fmt 'P:12.0' '#{pane_dead}' '0'
+check_fmt 'P:12.0' '#{pane_pid}' ''
+check_ok kill-window -t P:12
+
+# A missing command (rather than an empty one) runs the default command, so
+# the pane is not empty and has a process.
+check_ok new-window -d -t P:12 -n default-cmd
+check_fmt 'P:12.0' '#{?pane_pid,live,empty}' 'live'
+check_ok kill-window -t P:12
+
 # respawn-pane -E stores the command and cwd without starting it.
 tmp=${TMPDIR:-/tmp}/tmux-pane-ops-empty-$$
 rm -f "$tmp"
@@ -452,6 +465,13 @@ check_ok split-window -d -E -t P:2.0
 check_fmt 'P:2' '#{window_panes}' '2'
 check_fail 'command cannot be given for empty pane' \
 	split-window -d -E -t P:2.0 'sleep 5'
+
+# An empty string as the sole argument splits with an empty pane, like -E.
+eid=$($TMUX split-window -d -P -F '#{pane_id}' -t P:2.0 '')
+check_fmt "$eid" '#{pane_dead}' '0'
+check_fmt "$eid" '#{pane_pid}' ''
+check_ok kill-pane -t "$eid"
+check_fmt 'P:2' '#{window_panes}' '2'
 
 # -e adds to the new pane's environment.
 eid=$($TMUX split-window -d -P -F '#{pane_id}' -e GREETING=hello -t P:2.0 \
