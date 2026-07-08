@@ -1667,7 +1667,7 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		}
 	}
 	tty_sync_start(tty);
-	tty_update_mode(tty, 0, NULL);
+	tty_update_mode(tty, tty->mode & ~CURSOR_MODES, NULL);
 
 	if (wp != NULL)
 		redraw_draw_pane_lines(&dctx, wp, flags);
