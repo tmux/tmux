@@ -291,6 +291,15 @@ if [ -z "$($TMUX display-message -p '#{t/r:@ts}')" ]; then
 	echo "Format test failed for '#{t/r:@ts}': empty result"
 	exit 1
 fi
+# t/d: difference from the current time in seconds.
+diff=$($TMUX display-message -p '#{t/d:@ts}')
+case "$diff" in
+[0-9]*) ;;
+*)
+	echo "Format test failed for '#{t/d:@ts}': expected positive value, got '$diff'"
+	exit 1
+	;;
+esac
 
 # t/f: custom strftime format applied to the variable's time.  Tested in a
 # format_expand context (list-windows -F), where a single strftime specifier is
@@ -326,6 +335,14 @@ done
 # A time in the future has no relative form.
 $TMUX set -g @future "$((now + 100000))"
 test_format "#{t/r:@future}" ""
+diff=$($TMUX display-message -p '#{t/d:@future}')
+case "$diff" in
+-[0-9]*) ;;
+*)
+	echo "Format test failed for '#{t/d:@future}': expected negative value, got '$diff'"
+	exit 1
+	;;
+esac
 
 
 # --- Content search (C) --------------------------------------------------
