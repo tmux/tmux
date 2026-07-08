@@ -7,8 +7,8 @@ LANG=C.UTF-8
 export TERM LC_ALL LANG
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-OUT="$TEST_TMUX -Ltest -f/dev/null"		# outer (host for the client)
-IN="$TEST_TMUX -Ltest2 -f/dev/null"		# inner (under test)
+OUT="$TEST_TMUX -LtestA$$ -f/dev/null"		# outer (host for the client)
+IN="$TEST_TMUX -LtestB$$ -f/dev/null"		# inner (under test)
 
 $OUT kill-server 2>/dev/null
 $IN kill-server 2>/dev/null
@@ -131,11 +131,14 @@ $IN send-keys -l "Z" || exit 1
 settle
 search_is "hello Z" "C-w did not kill a word"
 
-# C-a then C-k kills the whole line.
+# C-a then C-k kills the whole line. The mode prompt no longer fills the rest
+# of the row, so insert a marker to distinguish prompt input from tree content
+# that may remain visible after the prompt.
 $IN send-keys C-a || exit 1
 $IN send-keys C-k || exit 1
+$IN send-keys -l "X" || exit 1
 settle
-search_row | grep -q '(search) [^ ]' && fail "C-a C-k did not clear the line"
+search_is "X" "C-a C-k did not clear the line"
 
 # --- 3. Editing kept the prompt open the whole time. ---
 in_tree_mode || fail "editing keys closed the mode"

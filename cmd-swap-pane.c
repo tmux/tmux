@@ -42,6 +42,22 @@ const struct cmd_entry cmd_swap_pane_entry = {
 	.exec = cmd_swap_pane_exec
 };
 
+static struct window_pane *
+cmd_swap_pane_next_tiled_pane(struct window_pane *wp)
+{
+	while (wp != NULL && !layout_cell_is_tiled(wp->layout_cell))
+		wp = TAILQ_NEXT(wp, entry);
+	return (wp);
+}
+
+static struct window_pane *
+cmd_swap_pane_prev_tiled_pane(struct window_pane *wp)
+{
+	while (wp != NULL && !layout_cell_is_tiled(wp->layout_cell))
+		wp = TAILQ_PREV(wp, window_panes, entry);
+	return (wp);
+}
+
 static enum cmd_retval
 cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -62,15 +78,29 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 		server_redraw_window(dst_w);
 
 	if (args_has(args, 'D')) {
+		if (window_pane_is_floating(dst_wp)) {
+			cmdq_error(item, "cannot swap down on floating pane");
+			return (CMD_RETURN_ERROR);
+		}
 		src_w = dst_w;
 		src_wp = TAILQ_NEXT(dst_wp, entry);
-		if (src_wp == NULL)
+		src_wp = cmd_swap_pane_next_tiled_pane(src_wp);
+		if (src_wp == NULL) {
 			src_wp = TAILQ_FIRST(&dst_w->panes);
+			src_wp = cmd_swap_pane_next_tiled_pane(src_wp);
+		}
 	} else if (args_has(args, 'U')) {
+		if (window_pane_is_floating(dst_wp)) {
+			cmdq_error(item, "cannot swap up on floating pane");
+			return (CMD_RETURN_ERROR);
+		}
 		src_w = dst_w;
 		src_wp = TAILQ_PREV(dst_wp, window_panes, entry);
-		if (src_wp == NULL)
+		src_wp = cmd_swap_pane_prev_tiled_pane(src_wp);
+		if (src_wp == NULL) {
 			src_wp = TAILQ_LAST(&dst_w->panes, window_panes);
+			src_wp = cmd_swap_pane_prev_tiled_pane(src_wp);
+		}
 	}
 
 	if (src_w != dst_w && window_push_zoom(src_w, 0, args_has(args, 'Z')))
@@ -78,12 +108,6 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (src_wp == dst_wp)
 		goto out;
-
-	if (window_pane_is_floating(src_wp) ||
-	    window_pane_is_floating(dst_wp)) {
-		cmdq_error(item, "cannot swap floating panes");
-		return (CMD_RETURN_ERROR);
-	}
 
 	server_client_remove_pane(src_wp);
 	server_client_remove_pane(dst_wp);

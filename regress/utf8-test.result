@@ -90,7 +90,6 @@ You should see the Greek word 'kosme':       "κόσμε"                      
 2.3.2  U-0000E000 = ee 80 80 = ""                                            |
 2.3.3  U-0000FFFD = ef bf bd = "�"                                            |
 2.3.4  U-0010FFFF = f4 8f bf bf = "􏿿"                                         |
-2.3.5  U-00110000 = f4 90 80 80 = "�"                                         |
                                                                               |
 3  Malformed sequences                                                        |
                                                                               |

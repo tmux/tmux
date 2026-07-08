@@ -81,7 +81,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*s = target->s;
 	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
-	struct window_pane	*wp = target->wp, *new_wp;
+	struct window_pane	*wp = target->wp, *new_wp = NULL;
 	struct layout_cell	*lc = NULL;
 	struct cmd_find_state	 fs;
 	int			 input, empty, is_floating, flags = 0;
@@ -167,6 +167,11 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if ((new_wp = spawn_pane(&sc, &cause)) == NULL) {
 		cmdq_error(item, "create pane failed: %s", cause);
 		free(cause);
+		/*
+		 * spawn_pane has already torn the half-built pane down (its
+		 * fork-failure path removes the pane and destroys the layout
+		 * cell), so new_wp is NULL and there is nothing for fail to do.
+		 */
 		goto fail;
 	}
 
@@ -219,10 +224,6 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (input) {
 		switch (window_pane_start_input(new_wp, item, &cause)) {
 		case -1:
-			server_client_remove_pane(new_wp);
-			if (!is_floating)
-				layout_close_pane(new_wp);
-			window_remove_pane(wp->window, new_wp);
 			cmdq_error(item, "%s", cause);
 			free(cause);
 			goto fail;
@@ -269,10 +270,20 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	return (CMD_RETURN_NORMAL);
 
 fail:
+	/*
+	 * If the pane was spawned before we failed, tear it down here; this
+	 * also destroys its layout cell. spawn_pane's own failure path has
+	 * already done this, so new_wp is NULL in that case.
+	 */
+	if (new_wp != NULL) {
+		server_client_remove_pane(new_wp);
+		if (!is_floating)
+			layout_close_pane(new_wp);
+		window_remove_pane(wp->window, new_wp);
+	}
 	if (sc.argv != NULL)
 		cmd_free_argv(sc.argc, sc.argv);
 	environ_free(sc.environ);
-	layout_destroy_cell(w, lc, &w->layout_root);
 
 	return (CMD_RETURN_ERROR);
 

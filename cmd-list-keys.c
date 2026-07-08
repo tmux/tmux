@@ -232,7 +232,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 		n = 1;
 
 	ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
-	format_defaults(ft, NULL, NULL, NULL, NULL);
+	format_defaults(ft, tc, NULL, NULL, NULL);
 	format_add(ft, "notes_only", "%d", notes_only);
 	format_add(ft, "key_has_repeat", "%d", key_bindings_has_repeat(l, n));
 	format_add(ft, "key_string_width", "%u", cmd_list_keys_get_width(l, n));

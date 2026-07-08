@@ -71,6 +71,7 @@ struct window_pane_input_data {
 static struct window_pane *window_pane_create(struct window *, u_int, u_int,
 		    u_int);
 static void	window_pane_destroy(struct window_pane *);
+static void	window_pane_free(struct window_pane *);
 static void	window_pane_scrollbar_timer(int, short, void *);
 static void	window_pane_full_size_offset(struct window_pane *wp,
 		    int *xoff, int *yoff, u_int *sx, u_int *sy);
@@ -331,6 +332,8 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 	w->ypixel = ypixel;
 
 	w->options = options_create(global_w_options);
+	w->sb = options_get_number(w->options, "pane-scrollbars");
+	w->sb_pos = options_get_number(w->options, "pane-scrollbars-position");
 
 	w->references = 0;
 	TAILQ_INIT(&w->winlinks);
@@ -357,8 +360,8 @@ window_destroy(struct window *w)
 	window_unzoom(w, 0);
 	RB_REMOVE(windows, &windows, w);
 
-	layout_free_cell(w->layout_root);
-	layout_free_cell(w->saved_layout_root);
+	layout_free_cell(w->layout_root, 0);
+	layout_free_cell(w->saved_layout_root, 0);
 	free(w->old_layout);
 
 	window_destroy_panes(w);
@@ -417,6 +420,25 @@ window_remove_ref(struct window *w, const char *from)
 
 	if (w->references == 0)
 		window_destroy(w);
+}
+
+void
+window_pane_add_ref(struct window_pane *wp, const char *from)
+{
+	wp->references++;
+	log_debug("%s: %%%u %s, now %d", __func__, wp->id, from,
+	    wp->references);
+}
+
+void
+window_pane_remove_ref(struct window_pane *wp, const char *from)
+{
+	wp->references--;
+	log_debug("%s: %%%u %s, now %d", __func__, wp->id, from,
+	    wp->references);
+
+	if (wp->references == 0)
+		window_pane_free(wp);
 }
 
 void
@@ -785,7 +807,7 @@ window_unzoom(struct window *w, int notify)
 		return (-1);
 
 	w->flags &= ~WINDOW_ZOOMED;
-	layout_free(w);
+	layout_free(w, 0);
 	w->layout_root = w->saved_layout_root;
 	w->saved_layout_root = NULL;
 
@@ -1080,6 +1102,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	char			 host[HOST_NAME_MAX + 1];
 
 	wp = xcalloc(1, sizeof *wp);
+	wp->references = 1;
 	wp->window = w;
 	wp->options = options_create(w->options);
 	wp->flags = PANE_STYLECHANGED;
@@ -1208,9 +1231,11 @@ window_pane_destroy(struct window_pane *wp)
 	spawn_editor_finish(wp);
 
 	window_pane_clear_prompt(wp);
+	RB_REMOVE(window_pane_tree, &all_window_panes, wp);
+	wp->flags |= PANE_DESTROYED;
 
 	window_pane_free_modes(wp);
-	free(wp->searchstr);
+	screen_write_clear_dirty(wp);
 
 	if (wp->fd != -1) {
 #ifdef HAVE_UTEMPTER
@@ -1218,18 +1243,20 @@ window_pane_destroy(struct window_pane *wp)
 		kill(getpid(), SIGCHLD);
 #endif
 		bufferevent_free(wp->event);
+		wp->event = NULL;
 		close(wp->fd);
+		wp->fd = -1;
 	}
-	if (wp->ictx != NULL)
+	if (wp->ictx != NULL) {
 		input_free(wp->ictx);
-
-	screen_free(&wp->status_screen);
-
-	screen_free(&wp->base);
+		wp->ictx = NULL;
+	}
 
 	if (wp->pipe_fd != -1) {
 		bufferevent_free(wp->pipe_event);
+		wp->pipe_event = NULL;
 		close(wp->pipe_fd);
+		wp->pipe_fd = -1;
 	}
 
 	if (event_initialized(&wp->resize_timer))
@@ -1240,7 +1267,18 @@ window_pane_destroy(struct window_pane *wp)
 		event_del(&wp->sb_auto_timer);
 	window_pane_clear_resizes(wp, NULL);
 
-	RB_REMOVE(window_pane_tree, &all_window_panes, wp);
+	window_pane_remove_ref(wp, __func__);
+}
+
+static void
+window_pane_free(struct window_pane *wp)
+{
+	log_debug("pane %%%u freed (%d references)", wp->id, wp->references);
+
+	free(wp->searchstr);
+
+	screen_free(&wp->status_screen);
+	screen_free(&wp->base);
 
 	options_free(wp->options);
 	free((void *)wp->cwd);

@@ -589,6 +589,7 @@ tty_default_features(int *feat, const char *name, u_int version)
 			      "cstyle,"
 			      "extkeys,"
 			      "focus,"
+			      "overline,"
 			      "hyperlinks,"
 			      "osc7,"
 			      "sync,"

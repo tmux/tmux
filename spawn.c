@@ -104,7 +104,7 @@ spawn_window(struct spawn_context *sc, char **cause)
 		sc->wp0 = TAILQ_FIRST(&w->panes);
 		TAILQ_REMOVE(&w->panes, sc->wp0, entry);
 
-		layout_free(w);
+		layout_free(w, 0);
 		window_destroy_panes(w);
 
 		TAILQ_INSERT_HEAD(&w->panes, sc->wp0, entry);
@@ -264,14 +264,20 @@ spawn_pane(struct spawn_context *sc, char **cause)
 			free(cwd);
 			return (NULL);
 		}
-		if (sc->wp0->fd != -1) {
+		if (sc->wp0->event != NULL) {
 			bufferevent_free(sc->wp0->event);
+			sc->wp0->event = NULL;
+		}
+		if (sc->wp0->fd != -1) {
 			close(sc->wp0->fd);
+			sc->wp0->fd = -1;
 		}
 		window_pane_reset_mode_all(sc->wp0);
-		screen_reinit(&sc->wp0->base);
-		input_free(sc->wp0->ictx);
-		sc->wp0->ictx = NULL;
+		screen_reinit(&sc->wp0->base, 0);
+		if (sc->wp0->ictx != NULL) {
+			input_free(sc->wp0->ictx);
+			sc->wp0->ictx = NULL;
+		}
 		new_wp = sc->wp0;
 		new_wp->flags &= ~(PANE_STATUSREADY|PANE_STATUSDRAWN);
 	} else {
@@ -387,6 +393,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		new_wp->base.mode |= MODE_CRLF;
 		goto complete;
 	}
+	new_wp->flags &= ~PANE_EMPTY;
 
 	/* Store current working directory and change to new one. */
 	if (getcwd(path, sizeof path) != NULL) {
@@ -625,13 +632,13 @@ spawn_editor(struct client *c, const char *buf, size_t len,
 	struct window			*w = wl->window;
 	struct window_pane		*wp;
 	struct layout_cell		*lc;
+	struct layout_geometry		 lg;
 	struct environ			*env;
 	FILE				*f;
 	char				*cmd, *cause = NULL;
 	char				 path[] = _PATH_TMP "tmux.XXXXXXXX";
 	const char			*editor;
 	int				 fd;
-	u_int				 px, py, sx, sy;
 
 	editor = options_get_string(global_options, "editor");
 	fd = mkstemp(path);
@@ -655,12 +662,12 @@ spawn_editor(struct client *c, const char *buf, size_t len,
 	es->cb = cb;
 	es->arg = arg;
 
-	sx = w->sx * 9 / 10;
-	sy = w->sy * 9 / 10;
-	px = w->sx / 2 - sx / 2;
-	py = w->sy / 2 - sy / 2;
+	lg.sx = w->sx * 9 / 10;
+	lg.sy = w->sy * 9 / 10;
+	lg.xoff = w->sx / 2 - lg.sx / 2;
+	lg.yoff = w->sy / 2 - lg.sy / 2;
 	window_push_zoom(w, 1, 0);
-	lc = layout_floating_pane(w, NULL, sx, sy, px, py);
+	lc = layout_floating_pane(w, NULL, &lg);
 	if (lc == NULL) {
 		spawn_editor_free(es);
 		return (NULL);

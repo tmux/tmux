@@ -37,8 +37,7 @@ enum mode_tree_preview {
 };
 
 #define MODE_TREE_PREFIX_STYLE \
-	"#{?mode_tree_selected,#[default]#[noacs]," \
-	"#[fg=themelightgrey]#[bg=default]#[noacs]}"
+	"#[fg=themelightgrey]#[bg=default]#[noacs]"
 
 #define MODE_TREE_PREFIX_FORMAT \
 	MODE_TREE_PREFIX_STYLE \
@@ -835,6 +834,11 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	if (mtd->line_size == 0)
 		return;
 
+	w = mtd->width;
+	h = mtd->height;
+	if (w == 0 || h == 0)
+		return;
+
 	memcpy(&gc0, &grid_default_cell, sizeof gc0);
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	style_apply(&gc, oo, "tree-mode-selection-style", NULL);
@@ -843,9 +847,6 @@ mode_tree_draw(struct mode_tree_data *mtd)
 
 	dfg = gc.fg;
 	dfg0 = gc0.fg;
-
-	w = mtd->width;
-	h = mtd->height;
 
 	screen_write_start(&ctx, s);
 	screen_write_clearscreen(&ctx, 8);
@@ -950,16 +951,16 @@ mode_tree_draw(struct mode_tree_data *mtd)
 			}
 		} else {
 			screen_write_clearendofline(&ctx, gc.bg);
-			format_draw(&ctx, &gc, prefix_width, prefix, NULL, 0);
+			format_draw(&ctx, &gc, prefix_width, prefix, NULL, 1);
 			if (left != 0) {
 				screen_write_cursormove(&ctx, prefix_width,
 				    i - mtd->offset, 0);
-				format_draw(&ctx, &gc, left, text, NULL, 0);
+				format_draw(&ctx, &gc, left, text, NULL, 1);
 				if (mti->text != NULL && width < w) {
 					screen_write_cursormove(&ctx, width,
 					    i - mtd->offset, 0);
 					format_draw(&ctx, &gc, w - width,
-					    mti->text, NULL, 0);
+					    mti->text, NULL, 1);
 				}
 			}
 		}

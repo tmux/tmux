@@ -1,0 +1,87 @@
+name: 'Run Tests'
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '33 3 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tmux-tests
+  cancel-in-progress: true
+
+jobs:
+  regress:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ubuntu-24.04-x64
+            runner: ubuntu-24.04
+            make: make
+            configure: --enable-utf8proc --enable-asan
+          #- name: ubuntu-24.04-arm64
+          #  runner: ubuntu-24.04-arm
+          #  make: make
+          #  configure: --enable-utf8proc --enable-asan
+          - name: macos-26-arm64
+            runner: macos-26
+            make: gmake
+            configure: --enable-utf8proc
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf \
+            automake \
+            bison \
+            build-essential \
+            libevent-dev \
+            libncurses-dev \
+            libutf8proc-dev \
+            pkg-config
+
+      - name: dependencies
+        if: runner.os == 'macOS'
+        run: |
+          brew install \
+            autoconf \
+            automake \
+            bison \
+            libevent \
+            make \
+            ncurses \
+            utf8proc \
+            pkg-config
+
+      - name: build
+        run: |
+         sh autogen.sh
+          ./configure ${{ matrix.configure }}
+          ${{ matrix.make }} -j"$(getconf _NPROCESSORS_ONLN)"
+
+      - name: test
+        run: |
+          cd regress
+          export ASAN_OPTIONS="abort_on_error=1:detect_leaks=0"
+          ${{ matrix.make }}
+
+      - name: logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regress-logs-${{ matrix.name }}
+          path: regress/logs/*.log
+          if-no-files-found: ignore

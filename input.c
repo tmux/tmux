@@ -2818,7 +2818,7 @@ input_exit_rename(struct input_ctx *ictx)
 	if (ictx->input_len == 0) {
 		o = options_get_only(w->options, "automatic-rename");
 		if (o != NULL)
-			options_remove_or_default(o, -1, NULL);
+			options_remove_or_default(o, NULL, NULL);
 		if (!options_get_number(w->options, "automatic-rename"))
 			window_set_name(w, "", 1);
 	} else {

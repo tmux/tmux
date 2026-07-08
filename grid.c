@@ -60,23 +60,37 @@ static const struct grid_cell_entry grid_cleared_entry = {
 };
 
 #ifdef __APPLE__
-static void
-grid_check_lines(struct grid *gd)
+void
+grid_check_is_clear(struct grid *gd)
 {
-	u_int	i, j;
+	struct grid_line	*gl;
+	u_int			 yy, ny;
 
-	for (i = 0; i < gd->hsize + gd->sy; i++) {
-		for (j = i + 1; j < gd->hsize + gd->sy; j++) {
-			if (gd->linedata[i].celldata != NULL)
-				assert(gd->linedata[i].celldata != gd->linedata[j].celldata);
-			if (gd->linedata[i].extddata != NULL)
-				assert(gd->linedata[i].extddata != gd->linedata[j].extddata);
-		}
+	assert(gd != NULL);
+
+	if (gd->sy == 0) {
+		assert(gd->linedata == NULL);
+		return;
+	}
+
+	assert(gd->linedata != NULL);
+
+	ny = gd->hsize + gd->sy;
+	for (yy = 0; yy < ny; yy++) {
+		gl = &gd->linedata[yy];
+
+		assert(gl->celldata == NULL);
+		assert(gl->cellused == 0);
+		assert(gl->cellsize == 0);
+		assert(gl->extddata == NULL);
+		assert(gl->extdsize == 0);
+		assert(gl->flags == 0);
+		assert(gl->time == 0);
 	}
 }
 #else
-static void
-grid_check_lines(__unused struct grid *gd)
+void
+grid_check_is_clear(__unused struct grid *gd)
 {
 }
 #endif
@@ -341,28 +355,18 @@ grid_create(u_int sx, u_int sy, u_int hlimit)
 {
 	struct grid	*gd;
 
-	gd = xmalloc(sizeof *gd);
+	gd = xcalloc(1, sizeof *gd);
 	gd->sx = sx;
 	gd->sy = sy;
 
 	if (hlimit != 0)
 		gd->flags = GRID_HISTORY;
-	else
-		gd->flags = 0;
-
-	gd->hscrolled = 0;
-	gd->hsize = 0;
 	gd->hlimit = hlimit;
-
-	gd->scroll_added = 0;
-	gd->scroll_collected = 0;
-	gd->scroll_generation = 0;
 
 	if (gd->sy != 0)
 		gd->linedata = xcalloc(gd->sy, sizeof *gd->linedata);
-	else
-		gd->linedata = NULL;
 
+	grid_check_is_clear(gd);
 	return (gd);
 }
 
@@ -482,8 +486,6 @@ grid_scroll_history(struct grid *gd, u_int bg)
 	gd->linedata[gd->hsize].time = current_time;
 	gd->hsize++;
 	gd->scroll_added++;
-
-	grid_check_lines(gd);
 }
 
 /* Clear the history. */
@@ -533,8 +535,6 @@ grid_scroll_history_region(struct grid *gd, u_int upper, u_int lower, u_int bg)
 	gd->hscrolled++;
 	gd->hsize++;
 	gd->scroll_added++;
-
-	grid_check_lines(gd);
 }
 
 /* Expand line to fit to cell. */
@@ -796,8 +796,6 @@ grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny, u_int bg)
 	}
 	if (py != 0 && (py < dy || py >= dy + ny))
 		gd->linedata[py - 1].flags &= ~GRID_LINE_WRAPPED;
-
-	grid_check_lines(gd);
 }
 
 /* Move a group of cells. */
@@ -1287,8 +1285,6 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 		sy++;
 		dy++;
 	}
-
-	grid_check_lines(dst);
 }
 
 /* Mark line as dead. */
@@ -1585,8 +1581,6 @@ grid_reflow(struct grid *gd, u_int sx)
 	gd->linedata = target->linedata;
 	free(target);
 	gd->scroll_generation++;
-
-	grid_check_lines(gd);
 }
 
 /* Convert to position based on wrapped lines. */
@@ -1687,4 +1681,99 @@ grid_in_set(struct grid *gd, u_int px, u_int py, const char *set)
 	if (gc.flags & GRID_FLAG_PADDING)
 		return (0);
 	return (utf8_cstrhas(set, &gc.data));
+}
+
+/* Line flags to string. */
+const char *
+grid_line_flags_string(int flags)
+{
+	static char	s[128];
+
+	*s = '\0';
+	if (flags & GRID_LINE_WRAPPED)
+		strlcat(s, "WRAPPED,", sizeof s);
+	if (flags & GRID_LINE_EXTENDED)
+		strlcat(s, "EXTENDED,", sizeof s);
+	if (flags & GRID_LINE_DEAD)
+		strlcat(s, "DEAD,", sizeof s);
+	if (flags & GRID_LINE_START_PROMPT)
+		strlcat(s, "START_PROMPT,", sizeof s);
+	if (flags & GRID_LINE_START_OUTPUT)
+		strlcat(s, "START_OUTPUT,", sizeof s);
+	if (flags & GRID_LINE_HYPERLINK)
+		strlcat(s, "HYPERLINK,", sizeof s);
+	if (*s == '\0')
+		return ("NONE");
+	s[strlen(s) - 1] = '\0';
+	return (s);
+}
+
+/* Cell flags to string. */
+const char *
+grid_cell_flags_string(int flags)
+{
+	static char	s[128];
+
+	*s = '\0';
+	if (flags & GRID_FLAG_FG256)
+		strlcat(s, "FG256,", sizeof s);
+	if (flags & GRID_FLAG_BG256)
+		strlcat(s, "BG256,", sizeof s);
+	if (flags & GRID_FLAG_PADDING)
+		strlcat(s, "PADDING,", sizeof s);
+	if (flags & GRID_FLAG_EXTENDED)
+		strlcat(s, "EXTENDED,", sizeof s);
+	if (flags & GRID_FLAG_SELECTED)
+		strlcat(s, "SELECTED,", sizeof s);
+	if (flags & GRID_FLAG_CLEARED)
+		strlcat(s, "CLEARED,", sizeof s);
+	if (flags & GRID_FLAG_TAB)
+		strlcat(s, "TAB,", sizeof s);
+	if (flags & GRID_FLAG_NOPALETTE)
+		strlcat(s, "NOPALETTE,", sizeof s);
+	if (*s == '\0')
+		return ("NONE");
+	s[strlen(s) - 1] = '\0';
+	return (s);
+}
+
+/* Cell attributes to string. */
+const char *
+grid_cell_attr_string(int attr)
+{
+	static char	s[256];
+
+	*s = '\0';
+	if (attr & GRID_ATTR_CHARSET)
+		strlcat(s, "CHARSET,", sizeof s);
+	if (attr & GRID_ATTR_BRIGHT)
+		strlcat(s, "BRIGHT,", sizeof s);
+	if (attr & GRID_ATTR_DIM)
+		strlcat(s, "DIM,", sizeof s);
+	if (attr & GRID_ATTR_UNDERSCORE)
+		strlcat(s, "UNDERSCORE,", sizeof s);
+	if (attr & GRID_ATTR_BLINK)
+		strlcat(s, "BLINK,", sizeof s);
+	if (attr & GRID_ATTR_REVERSE)
+		strlcat(s, "REVERSE,", sizeof s);
+	if (attr & GRID_ATTR_HIDDEN)
+		strlcat(s, "HIDDEN,", sizeof s);
+	if (attr & GRID_ATTR_ITALICS)
+		strlcat(s, "ITALICS,", sizeof s);
+	if (attr & GRID_ATTR_STRIKETHROUGH)
+		strlcat(s, "STRIKETHROUGH,", sizeof s);
+	if (attr & GRID_ATTR_UNDERSCORE_2)
+		strlcat(s, "UNDERSCORE_2,", sizeof s);
+	if (attr & GRID_ATTR_UNDERSCORE_3)
+		strlcat(s, "UNDERSCORE_3,", sizeof s);
+	if (attr & GRID_ATTR_UNDERSCORE_4)
+		strlcat(s, "UNDERSCORE_4,", sizeof s);
+	if (attr & GRID_ATTR_UNDERSCORE_5)
+		strlcat(s, "UNDERSCORE_5,", sizeof s);
+	if (attr & GRID_ATTR_OVERLINE)
+		strlcat(s, "OVERLINE,", sizeof s);
+	if (*s == '\0')
+		return ("NONE");
+	s[strlen(s) - 1] = '\0';
+	return (s);
 }

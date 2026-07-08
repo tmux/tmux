@@ -1011,7 +1011,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 	    strcmp(target, "{active}") == 0 ||
 	    strcmp(target, "{current}") == 0) {
 		c = cmdq_get_client(item);
-		if (c == NULL) {
+		if (c == NULL || c->session == NULL) {
 			cmdq_error(item, "no current client");
 			goto error;
 		}

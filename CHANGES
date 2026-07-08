@@ -1,4 +1,8 @@
-CHANGES FROM 3.7 to 3.7a
+CHANGES FROM 3.7a TO 3.7b
+
+* Fix so that the end of a synchronized update again triggers a redraw.
+
+CHANGES FROM 3.7 TO 3.7a
 
 * Fix crash in break-pane when no name is provided.
 
