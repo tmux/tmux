@@ -1858,9 +1858,20 @@ redraw_screen(struct client *c)
 {
 	int	flags = 0;
 
-	if (c->flags & CLIENT_REDRAWWINDOW)
-		redraw_draw(c, NULL, REDRAW_ALL);
-	else {
+	if (c->flags & CLIENT_REDRAWWINDOW) {
+		/*
+		 * A full window redraw draws every pane around the overlay
+		 * without touching its cells, so repainting the overlay is only
+		 * needed when it is explicitly flagged (its content changed, or
+		 * the screen was cleared by a resize or refresh, which set the
+		 * flag via server_redraw_client). Otherwise a background pane
+		 * redraw would make an open popup flicker (GitHub issue 5336).
+		 */
+		if (c->flags & CLIENT_REDRAWOVERLAY)
+			redraw_draw(c, NULL, REDRAW_ALL);
+		else
+			redraw_draw(c, NULL, REDRAW_ALL & ~REDRAW_OVERLAY);
+	} else {
 		if (c->flags & CLIENT_REDRAWBORDERS)
 			flags |= (REDRAW_PANE_BORDER|REDRAW_PANE_STATUS);
 		if (c->flags & CLIENT_REDRAWSTATUS)
