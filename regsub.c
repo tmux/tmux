@@ -90,6 +90,15 @@ regsub(const char *pattern, const char *with, const char *text, int flags)
 		 */
 		regsub_copy(&buf, &len, text, last, m[0].rm_so + start);
 
+		/* For anchored patterns, replace the first match only. */
+		if (*pattern == '^') {
+			regsub_expand(&buf, &len, with, text + start, m,
+			    nitems(m));
+			last = start + m[0].rm_eo;
+			regsub_copy(&buf, &len, text, last, end);
+			break;
+		}
+
 		/*
 		 * If the last match was empty and this one isn't (it is either
 		 * later or has matched text), expand this match. If it is
@@ -108,12 +117,6 @@ regsub(const char *pattern, const char *with, const char *text, int flags)
 			last = start + m[0].rm_eo;
 			start += m[0].rm_eo + 1;
 			empty = 1;
-		}
-
-		/* Stop now if anchored to start. */
-		if (*pattern == '^') {
-			regsub_copy(&buf, &len, text, start, end);
-			break;
 		}
 	}
 	buf[len] = '\0';
