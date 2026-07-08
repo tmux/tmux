@@ -72,6 +72,8 @@ static void	window_copy_write_lines(struct window_mode_entry *,
 static char    *window_copy_match_at_cursor(struct window_copy_mode_data *);
 static void	window_copy_scroll_to(struct window_mode_entry *, u_int, u_int,
 		    int);
+static int	window_copy_should_scroll_exit(struct window_copy_mode_data *,
+		    int);
 static int	window_copy_search_compare(struct grid *, u_int, u_int,
 		    struct grid *, u_int, int);
 static int	window_copy_search_lr(struct grid *, struct grid *, u_int *,
@@ -662,6 +664,13 @@ window_copy_view_init(struct window_mode_entry *wme,
 	return (&data->screen);
 }
 
+static int
+window_copy_should_scroll_exit(struct window_copy_mode_data *data,
+    int scroll_exit)
+{
+	return (scroll_exit && data->oy == 0 && data->screen.sel == NULL);
+}
+
 static void
 window_copy_free(struct window_mode_entry *wme)
 {
@@ -854,7 +863,7 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 			window_copy_cursor_end_of_line(wme);
 	}
 
-	if (scroll_exit && data->oy == 0) {
+	if (window_copy_should_scroll_exit(data, scroll_exit)) {
 		window_pane_reset_mode(wp);
 		return;
 	}
@@ -972,7 +981,7 @@ window_copy_pagedown1(struct window_mode_entry *wme, int half_page,
 			window_copy_cursor_end_of_line(wme);
 	}
 
-	if (scroll_exit && data->oy == 0)
+	if (window_copy_should_scroll_exit(data, scroll_exit))
 		return (1);
 	if (data->searchmark != NULL && !data->timeout)
 		window_copy_search_marks(wme, NULL, data->searchregex, 1);
@@ -2352,7 +2361,7 @@ window_copy_cmd_scroll_down(struct window_copy_cmd_state *cs)
 
 	for (; np != 0; np--)
 		window_copy_cursor_down(wme, 1);
-	if (data->scroll_exit && data->oy == 0)
+	if (window_copy_should_scroll_exit(data, data->scroll_exit))
 		return (WINDOW_COPY_CMD_CANCEL);
 	return (WINDOW_COPY_CMD_NOTHING);
 }
