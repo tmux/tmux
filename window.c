@@ -2423,7 +2423,6 @@ window_pane_get_theme(struct window_pane *wp)
 {
 	struct window		*w;
 	struct client		*loop;
-	enum client_theme	 theme;
 	int			 found_light = 0, found_dark = 0;
 
 	if (wp == NULL)
@@ -2431,14 +2430,9 @@ window_pane_get_theme(struct window_pane *wp)
 	w = wp->window;
 
 	/*
-	 * Derive theme from pane background color, if it's not the default
-	 * colour.
+	 * Prefer a theme reported by an attached client with mode 2031 or DSR
+	 * 996: the terminal knows its own light or dark mode.
 	 */
-	theme = colour_totheme(window_pane_get_bg(wp));
-	if (theme != THEME_UNKNOWN)
-		return (theme);
-
-	/* Try to find a client that has a theme. */
 	TAILQ_FOREACH(loop, &clients, entry) {
 		if (loop->flags & CLIENT_UNATTACHEDFLAGS)
 			continue;
@@ -2455,12 +2449,16 @@ window_pane_get_theme(struct window_pane *wp)
 			break;
 		}
 	}
-
 	if (found_dark && !found_light)
 		return (THEME_DARK);
 	if (found_light && !found_dark)
 		return (THEME_LIGHT);
-	return (THEME_UNKNOWN);
+
+	/*
+	 * Otherwise guess from the pane background colour, for terminals which
+	 * do not report a theme themselves.
+	 */
+	return (colour_totheme(window_pane_get_bg(wp)));
 }
 
 void

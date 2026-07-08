@@ -141,7 +141,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	sc.cwd = args_get(args, 'c');
 
 	sc.flags = 0;
-	if (args_has(args, 'E'))
+	if (args_has(args, 'E') || (count == 1 && *args_string(args, 0) == '\0'))
 		sc.flags |= SPAWN_EMPTY;
 	if (args_has(args, 'd'))
 		sc.flags |= SPAWN_DETACHED;

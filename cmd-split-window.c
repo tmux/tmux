@@ -104,7 +104,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		flags |= SPAWN_FULLSIZE;
 
 	input = args_has(args, 'I');
-	if (input)
+	if (input || (count == 1 && *args_string(args, 0) == '\0'))
 		empty = 1;
 	else
 		empty = args_has(args, 'E');

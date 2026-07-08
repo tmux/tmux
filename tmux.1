@@ -2587,7 +2587,7 @@ The synopsis for the
 command is:
 .Bl -tag -width Ds
 .It Xo Ic copy\-mode
-.Op Fl deHMqSu
+.Op Fl dekHMqSu
 .Op Fl s Ar src\-pane
 .Op Fl t Ar target\-pane
 .Xc
@@ -2627,6 +2627,9 @@ example with:
 bind PageUp copy\-mode \-eu
 bind PageDown copy\-mode \-ed
 .Ed
+.Pp
+.Fl k
+kills the pane when the mode is exited.
 .El
 .Pp
 A number of preset arrangements of panes are available, these are called
