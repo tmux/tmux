@@ -1523,11 +1523,6 @@ struct layout_cell {
 	int			 flags;
 #define LAYOUT_CELL_FLOATING 0x1
 #define LAYOUT_CELL_HIDDEN 0x2	/* hidden in a serialized layout */
-#define LAYOUT_CELL_ZOOMED 0x4	/* only while parsing a layout */
-#define LAYOUT_CELL_X_RELATIVE 0x8 /* only while parsing a layout */
-#define LAYOUT_CELL_Y_RELATIVE 0x10 /* only while parsing a layout */
-	u_int			 z_index;	/* only while parsing a layout */
-	u_int			 pane_id;	/* only while parsing a layout */
 
 	struct layout_cell	*parent;
 

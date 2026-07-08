@@ -95,15 +95,36 @@ struct layout_parse_ctx {
 	u_int			 cells;
 };
 
+TAILQ_HEAD(parsed_layout_cells, parsed_layout_cell);
+
+struct parsed_layout_cell {
+	enum layout_type		 type;
+	int			 flags;
+#define PARSED_CELL_FLOATING 0x1
+#define PARSED_CELL_HIDDEN 0x2
+#define PARSED_CELL_ZOOMED 0x4
+#define PARSED_CELL_X_RELATIVE 0x8
+#define PARSED_CELL_Y_RELATIVE 0x10
+	u_int			 pane_id;
+	u_int			 z_index;
+	struct layout_geometry	 g;
+	struct layout_geometry	 fg;
+	struct parsed_layout_cell *parent;
+	struct parsed_layout_cells cells;
+	struct layout_cell	*layout_cell;
+	TAILQ_ENTRY(parsed_layout_cell) entry;
+};
+
 struct layout_prepared {
-	struct layout_cell	*root;
-	struct layout_cell	*zoomed;
+	struct parsed_layout_cell *root;
+	struct parsed_layout_cell *zoomed;
 	enum layout_format	 format;
 	u_int			 ncells;
 	int			 pane_ids;
 };
 
-static struct layout_cell	*layout_find_bottomright(struct layout_cell *);
+static struct parsed_layout_cell *layout_find_bottomright(
+				     struct parsed_layout_cell *);
 static u_short			 layout_checksum(const char *, const char *);
 static int			 layout_append(struct window *,
 				     struct layout_cell *, char *, size_t);
@@ -111,27 +132,167 @@ static int			 layout_append_legacy(struct layout_cell *, char *,
 				     size_t);
 static int			 layout_append_geometry(char *, size_t, u_int,
 				     u_int, int, int);
-static int			 layout_check(struct layout_cell *);
+static int			 layout_check(struct parsed_layout_cell *);
 static int			 layout_check_geometry(u_int, u_int, int, int);
 static int			 layout_parse_char(struct layout_parse_ctx *, char);
 static int			 layout_parse_version(struct layout_parse_ctx *);
 static int			 layout_construct(struct layout_parse_ctx *,
-				     struct layout_cell *, struct layout_cell **);
-static void			 layout_assign(struct window *, struct window_pane **,
-				     struct layout_cell *, int);
-static struct layout_cell	*layout_find_zindex(struct layout_cell *,
+				     struct parsed_layout_cell *,
+				     struct parsed_layout_cell **);
+static struct parsed_layout_cell *layout_find_zindex(
+				     struct parsed_layout_cell *,
 				     u_int);
-static void			 layout_compact_zindexes(struct layout_cell *,
+static void			 layout_compact_zindexes(
+				     struct parsed_layout_cell *,
 				     u_int);
 
 /* Find the bottom-right cell. */
-static struct layout_cell *
-layout_find_bottomright(struct layout_cell *lc)
+static struct parsed_layout_cell *
+layout_find_bottomright(struct parsed_layout_cell *lc)
 {
 	if (lc->type == LAYOUT_WINDOWPANE)
 		return (lc);
-	lc = TAILQ_LAST(&lc->cells, layout_cells);
+	lc = TAILQ_LAST(&lc->cells, parsed_layout_cells);
 	return (layout_find_bottomright(lc));
+}
+
+/* Create a cell in the temporary parsed layout tree. */
+static struct parsed_layout_cell *
+layout_create_parsed_cell(struct parsed_layout_cell *parent)
+{
+	struct parsed_layout_cell	*lc;
+
+	lc = xcalloc(1, sizeof *lc);
+	lc->type = LAYOUT_WINDOWPANE;
+	lc->pane_id = UINT_MAX;
+	lc->z_index = UINT_MAX;
+	lc->parent = parent;
+	lc->g.sx = lc->g.sy = UINT_MAX;
+	lc->g.xoff = lc->g.yoff = INT_MAX;
+	lc->fg.sx = lc->fg.sy = UINT_MAX;
+	lc->fg.xoff = lc->fg.yoff = INT_MAX;
+	TAILQ_INIT(&lc->cells);
+	return (lc);
+}
+
+/* Free a temporary parsed layout tree. */
+static void
+layout_free_parsed_cell(struct parsed_layout_cell *lc)
+{
+	struct parsed_layout_cell	*lcchild;
+
+	if (lc == NULL)
+		return;
+	while ((lcchild = TAILQ_FIRST(&lc->cells)) != NULL) {
+		TAILQ_REMOVE(&lc->cells, lcchild, entry);
+		layout_free_parsed_cell(lcchild);
+	}
+	free(lc);
+}
+
+/* Return whether a parsed subtree contains a tiled pane. */
+static int
+layout_parsed_has_tiled(struct parsed_layout_cell *lc)
+{
+	struct parsed_layout_cell	*lcchild;
+
+	if (lc->type == LAYOUT_WINDOWPANE)
+		return ((lc->flags & PARSED_CELL_FLOATING) == 0);
+	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+		if (layout_parsed_has_tiled(lcchild))
+			return (1);
+	}
+	return (0);
+}
+
+/* Count pane cells in a parsed tree. */
+static u_int
+layout_count_parsed_cells(struct parsed_layout_cell *lc)
+{
+	struct parsed_layout_cell	*lcchild;
+	u_int				 count = 0;
+
+	if (lc->type == LAYOUT_WINDOWPANE)
+		return (1);
+	TAILQ_FOREACH(lcchild, &lc->cells, entry)
+		count += layout_count_parsed_cells(lcchild);
+	return (count);
+}
+
+/* Increase a parsed tiled subtree while preserving its geometry. */
+static void
+layout_resize_parsed(struct parsed_layout_cell *lc, enum layout_type type,
+    u_int change)
+{
+	struct parsed_layout_cell	*lcchild, *last = NULL;
+
+	if (type == LAYOUT_LEFTRIGHT)
+		lc->g.sx += change;
+	else
+		lc->g.sy += change;
+	if (lc->type == LAYOUT_WINDOWPANE)
+		return;
+	if (lc->type == type) {
+		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+			if (layout_parsed_has_tiled(lcchild))
+				last = lcchild;
+		}
+		if (last != NULL)
+			layout_resize_parsed(last, type, change);
+	} else {
+		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+			if (layout_parsed_has_tiled(lcchild))
+				layout_resize_parsed(lcchild, type, change);
+		}
+	}
+}
+
+/* Remove the bottom-right parsed pane cell and collapse an empty level. */
+static void
+layout_destroy_parsed_cell(struct parsed_layout_cell *lc,
+    struct parsed_layout_cell **root)
+{
+	struct parsed_layout_cell	*parent, *other, *only;
+	u_int				 change;
+
+	parent = lc->parent;
+	if (parent == NULL) {
+		layout_free_parsed_cell(lc);
+		*root = NULL;
+		return;
+	}
+	if ((lc->flags & PARSED_CELL_FLOATING) == 0) {
+		other = TAILQ_PREV(lc, parsed_layout_cells, entry);
+		while (other != NULL && !layout_parsed_has_tiled(other))
+			other = TAILQ_PREV(other, parsed_layout_cells, entry);
+		if (other == NULL) {
+			other = TAILQ_NEXT(lc, entry);
+			while (other != NULL && !layout_parsed_has_tiled(other))
+				other = TAILQ_NEXT(other, entry);
+		}
+		if (other != NULL) {
+			change = (parent->type == LAYOUT_LEFTRIGHT ?
+			    lc->g.sx : lc->g.sy) + 1;
+			layout_resize_parsed(other, parent->type, change);
+		}
+	}
+	TAILQ_REMOVE(&parent->cells, lc, entry);
+	layout_free_parsed_cell(lc);
+
+	only = TAILQ_FIRST(&parent->cells);
+	if (only != NULL && TAILQ_NEXT(only, entry) == NULL) {
+		TAILQ_REMOVE(&parent->cells, only, entry);
+		only->parent = parent->parent;
+		if (only->parent == NULL) {
+			if (layout_parsed_has_tiled(only)) {
+				only->g.xoff = 0;
+				only->g.yoff = 0;
+			}
+			*root = only;
+		} else
+			TAILQ_REPLACE(&only->parent->cells, parent, only, entry);
+		layout_free_parsed_cell(parent);
+	}
 }
 
 /* Calculate layout checksum. */
@@ -362,9 +523,9 @@ layout_append(struct window *w, struct layout_cell *lc, char *buf, size_t len)
 
 /* Check tiled layout sizes fit, ignoring floating subtrees. */
 static int
-layout_check(struct layout_cell *lc)
+layout_check(struct parsed_layout_cell *lc)
 {
-	struct layout_cell	*lcchild;
+	struct parsed_layout_cell	*lcchild;
 	unsigned long long	 n = 0;
 	u_int			 children = 0;
 
@@ -373,7 +534,7 @@ layout_check(struct layout_cell *lc)
 		return (1);
 	case LAYOUT_LEFTRIGHT:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (!layout_has_tiled(lcchild))
+			if (!layout_parsed_has_tiled(lcchild))
 				continue;
 			if (lcchild->g.sy != lc->g.sy || !layout_check(lcchild))
 				return (0);
@@ -385,7 +546,7 @@ layout_check(struct layout_cell *lc)
 		break;
 	case LAYOUT_TOPBOTTOM:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (!layout_has_tiled(lcchild))
+			if (!layout_parsed_has_tiled(lcchild))
 				continue;
 			if (lcchild->g.sx != lc->g.sx || !layout_check(lcchild))
 				return (0);
@@ -414,9 +575,9 @@ layout_check_geometry(u_int sx, u_int sy, int xoff, int yoff)
 
 /* Correct the top cell size accepted from some older tmux versions. */
 static int
-layout_fix_legacy_root(struct layout_cell *root)
+layout_fix_legacy_root(struct parsed_layout_cell *root)
 {
-	struct layout_cell	*lcchild;
+	struct parsed_layout_cell	*lcchild;
 	unsigned long long	 sx = 0, sy = 0;
 
 	if (root->type == LAYOUT_WINDOWPANE)
@@ -656,10 +817,10 @@ layout_parse_version(struct layout_parse_ctx *ctx)
 
 /* Construct one cell, accepting an optional checksum before nested cells. */
 static int
-layout_construct(struct layout_parse_ctx *ctx, struct layout_cell *parent,
-    struct layout_cell **lcp)
+layout_construct(struct layout_parse_ctx *ctx, struct parsed_layout_cell *parent,
+    struct parsed_layout_cell **lcp)
 {
-	struct layout_cell	*lc = NULL, *lcchild;
+	struct parsed_layout_cell	*lc = NULL, *lcchild;
 	const char		*body, *saved;
 	u_int			 sx, sy, id, z;
 	u_short			 csum = 0;
@@ -690,12 +851,15 @@ layout_construct(struct layout_parse_ctx *ctx, struct layout_cell *parent,
 	    &xrelative, &yrelative) != 0)
 		goto fail;
 
-	lc = layout_create_cell(parent);
-	layout_set_size(lc, sx, sy, xoff, yoff);
+	lc = layout_create_parsed_cell(parent);
+	lc->g.sx = sx;
+	lc->g.sy = sy;
+	lc->g.xoff = xoff;
+	lc->g.yoff = yoff;
 	if (xrelative)
-		lc->flags |= LAYOUT_CELL_X_RELATIVE;
+		lc->flags |= PARSED_CELL_X_RELATIVE;
 	if (yrelative)
-		lc->flags |= LAYOUT_CELL_Y_RELATIVE;
+		lc->flags |= PARSED_CELL_Y_RELATIVE;
 	if (!is_pane && (xrelative || yrelative))
 		goto fail;
 	layout_skip_space(ctx);
@@ -715,15 +879,15 @@ layout_construct(struct layout_parse_ctx *ctx, struct layout_cell *parent,
 				if (*ctx->ptr == 'f') {
 					if (have_flags[0]++)
 						goto fail;
-					lc->flags |= LAYOUT_CELL_FLOATING;
+					lc->flags |= PARSED_CELL_FLOATING;
 				} else if (*ctx->ptr == 'h') {
 					if (have_flags[1]++)
 						goto fail;
-					lc->flags |= LAYOUT_CELL_HIDDEN;
+					lc->flags |= PARSED_CELL_HIDDEN;
 				} else if (*ctx->ptr == 'z') {
 					if (have_flags[2]++)
 						goto fail;
-					lc->flags |= LAYOUT_CELL_ZOOMED;
+					lc->flags |= PARSED_CELL_ZOOMED;
 				} else
 					break;
 				ctx->ptr++;
@@ -731,11 +895,11 @@ layout_construct(struct layout_parse_ctx *ctx, struct layout_cell *parent,
 			if (have_flags[1] && have_flags[2])
 				goto fail;
 		}
-		if ((lc->flags & (LAYOUT_CELL_X_RELATIVE|
-		    LAYOUT_CELL_Y_RELATIVE)) &&
-		    (lc->flags & LAYOUT_CELL_FLOATING) == 0)
+		if ((lc->flags & (PARSED_CELL_X_RELATIVE|
+		    PARSED_CELL_Y_RELATIVE)) &&
+		    (lc->flags & PARSED_CELL_FLOATING) == 0)
 			goto fail;
-		if (lc->flags & LAYOUT_CELL_HIDDEN) {
+		if (lc->flags & PARSED_CELL_HIDDEN) {
 			lc->fg.sx = lc->g.sx;
 			lc->fg.sy = lc->g.sy;
 			lc->fg.xoff = lc->g.xoff;
@@ -796,15 +960,15 @@ layout_construct(struct layout_parse_ctx *ctx, struct layout_cell *parent,
 
 fail:
 	ctx->depth--;
-	layout_free_cell(lc, 0);
+	layout_free_parsed_cell(lc);
 	return (-1);
 }
 
 /* Resolve right and bottom offsets against the complete window geometry. */
 static int
-layout_resolve_relative(struct layout_cell *lc, u_int sx, u_int sy)
+layout_resolve_relative(struct parsed_layout_cell *lc, u_int sx, u_int sy)
 {
-	struct layout_cell	*lcchild;
+	struct parsed_layout_cell	*lcchild;
 	long long		 resolved;
 
 	if (lc->type != LAYOUT_WINDOWPANE) {
@@ -814,21 +978,21 @@ layout_resolve_relative(struct layout_cell *lc, u_int sx, u_int sy)
 		}
 		return (0);
 	}
-	if (lc->flags & LAYOUT_CELL_X_RELATIVE) {
+	if (lc->flags & PARSED_CELL_X_RELATIVE) {
 		resolved = (long long)sx - lc->g.sx - lc->g.xoff;
 		if (resolved < INT_MIN || resolved > INT_MAX)
 			return (-1);
 		lc->g.xoff = resolved;
-		lc->flags &= ~LAYOUT_CELL_X_RELATIVE;
+		lc->flags &= ~PARSED_CELL_X_RELATIVE;
 	}
-	if (lc->flags & LAYOUT_CELL_Y_RELATIVE) {
+	if (lc->flags & PARSED_CELL_Y_RELATIVE) {
 		resolved = (long long)sy - lc->g.sy - lc->g.yoff;
 		if (resolved < INT_MIN || resolved > INT_MAX)
 			return (-1);
 		lc->g.yoff = resolved;
-		lc->flags &= ~LAYOUT_CELL_Y_RELATIVE;
+		lc->flags &= ~PARSED_CELL_Y_RELATIVE;
 	}
-	if (lc->flags & LAYOUT_CELL_HIDDEN) {
+	if (lc->flags & PARSED_CELL_HIDDEN) {
 		lc->fg.sx = lc->g.sx;
 		lc->fg.sy = lc->g.sy;
 		lc->fg.xoff = lc->g.xoff;
@@ -841,10 +1005,10 @@ layout_resolve_relative(struct layout_cell *lc, u_int sx, u_int sy)
 
 /* Count zoomed cells and validate z-indexes and floating ordering. */
 static int
-layout_validate_new(struct layout_cell *root, u_int ncells,
-    struct layout_cell **zoomed)
+layout_validate_new(struct parsed_layout_cell *root, u_int ncells,
+    struct parsed_layout_cell **zoomed)
 {
-	struct layout_cell	*lc;
+	struct parsed_layout_cell	*lc;
 	u_int			 z;
 	int			 seen_tiled = 0;
 
@@ -853,12 +1017,12 @@ layout_validate_new(struct layout_cell *root, u_int ncells,
 		lc = layout_find_zindex(root, z);
 		if (lc == NULL)
 			return (-1);
-		if (lc->flags & LAYOUT_CELL_FLOATING) {
+		if (lc->flags & PARSED_CELL_FLOATING) {
 			if (seen_tiled)
 				return (-1);
 		} else
 			seen_tiled = 1;
-		if (lc->flags & LAYOUT_CELL_ZOOMED) {
+		if (lc->flags & PARSED_CELL_ZOOMED) {
 			if (*zoomed != NULL)
 				return (-1);
 			*zoomed = lc;
@@ -868,10 +1032,10 @@ layout_validate_new(struct layout_cell *root, u_int ncells,
 }
 
 /* Find a leaf with a given parsed z-index. */
-static struct layout_cell *
-layout_find_zindex(struct layout_cell *lc, u_int z)
+static struct parsed_layout_cell *
+layout_find_zindex(struct parsed_layout_cell *lc, u_int z)
 {
-	struct layout_cell	*lcchild, *found;
+	struct parsed_layout_cell	*lcchild, *found;
 
 	if (lc->type == LAYOUT_WINDOWPANE)
 		return (lc->z_index == z ? lc : NULL);
@@ -885,9 +1049,9 @@ layout_find_zindex(struct layout_cell *lc, u_int z)
 
 /* Compact z-indexes while preserving the order of the remaining cells. */
 static void
-layout_compact_zindexes(struct layout_cell *root, u_int old_ncells)
+layout_compact_zindexes(struct parsed_layout_cell *root, u_int old_ncells)
 {
-	struct layout_cell	*lc;
+	struct parsed_layout_cell	*lc;
 	u_int			 old_z, new_z = 0;
 
 	for (old_z = 0; old_z < old_ncells; old_z++) {
@@ -899,9 +1063,9 @@ layout_compact_zindexes(struct layout_cell *root, u_int old_ncells)
 
 /* Count leaves containing a pane ID. */
 static u_int
-layout_count_pane_id(struct layout_cell *lc, u_int pane_id)
+layout_count_pane_id(struct parsed_layout_cell *lc, u_int pane_id)
 {
-	struct layout_cell	*lcchild;
+	struct parsed_layout_cell	*lcchild;
 	u_int			 count = 0;
 
 	if (lc->type == LAYOUT_WINDOWPANE)
@@ -914,9 +1078,9 @@ layout_count_pane_id(struct layout_cell *lc, u_int pane_id)
 
 /* Return whether every parsed pane ID is unique. */
 static int
-layout_pane_ids_unique(struct layout_cell *root, struct layout_cell *lc)
+layout_pane_ids_unique(struct parsed_layout_cell *root, struct parsed_layout_cell *lc)
 {
-	struct layout_cell	*lcchild;
+	struct parsed_layout_cell	*lcchild;
 
 	if (lc->type == LAYOUT_WINDOWPANE)
 		return (layout_count_pane_id(root, lc->pane_id) == 1);
@@ -929,9 +1093,9 @@ layout_pane_ids_unique(struct layout_cell *root, struct layout_cell *lc)
 
 /* Count parsed pane IDs belonging to the target window. */
 static u_int
-layout_pane_ids_matching(struct window *w, struct layout_cell *lc)
+layout_pane_ids_matching(struct window *w, struct parsed_layout_cell *lc)
 {
-	struct layout_cell	*lcchild;
+	struct parsed_layout_cell	*lcchild;
 	struct window_pane	*wp;
 	u_int			 matches = 0;
 
@@ -946,7 +1110,7 @@ layout_pane_ids_matching(struct window *w, struct layout_cell *lc)
 
 /* Return 1 to assign by ID, 0 by tree order, or -1 for ambiguous IDs. */
 static int
-layout_pane_ids_status(struct window *w, struct layout_cell *root,
+layout_pane_ids_status(struct window *w, struct parsed_layout_cell *root,
     u_int ncells)
 {
 	u_int	matches;
@@ -964,8 +1128,8 @@ struct layout_prepared *
 layout_prepare(struct window *w, const char *layout, char **cause)
 {
 	struct layout_parse_ctx	 ctx;
-	struct layout_cell	*lcchild, *root = NULL, *zoomed = NULL;
-	struct layout_prepared	*prepared;
+	struct parsed_layout_cell	*lcchild, *root = NULL, *zoomed = NULL;
+	struct layout_prepared	*parsed;
 	const char		*body;
 	u_int			 npanes, ncells, old_ncells;
 	u_short			 csum;
@@ -993,31 +1157,31 @@ layout_prepare(struct window *w, const char *layout, char **cause)
 	}
 	if (layout_construct(&ctx, NULL, &root) != 0) {
 		*cause = xstrdup("invalid layout");
-		layout_free_cell(root, 0);
+		layout_free_parsed_cell(root);
 		return (NULL);
 	}
 	layout_skip_space(&ctx);
 	if (ctx.ptr != ctx.end || root == NULL) {
 		*cause = xstrdup("invalid layout");
-		layout_free_cell(root, 0);
+		layout_free_parsed_cell(root);
 		return (NULL);
 	}
 	if ((version == 1 && ctx.format != LAYOUT_FORMAT) ||
 	    (version == 0 && ctx.format == LAYOUT_FORMAT)) {
 		*cause = xstrdup("invalid layout version");
-		layout_free_cell(root, 0);
+		layout_free_parsed_cell(root);
 		return (NULL);
 	}
 	if (layout_resolve_relative(root,
 	    root->type == LAYOUT_WINDOWPANE ? w->sx : root->g.sx,
 	    root->type == LAYOUT_WINDOWPANE ? w->sy : root->g.sy) != 0) {
 		*cause = xstrdup("invalid layout");
-		layout_free_cell(root, 0);
+		layout_free_parsed_cell(root);
 		return (NULL);
 	}
 
 	npanes = window_count_panes(w, 1);
-	ncells = layout_count_cells(root);
+	ncells = layout_count_parsed_cells(root);
 	if (ctx.format == LAYOUT_FORMAT) {
 		old_ncells = ncells;
 		if (npanes > ncells ||
@@ -1033,7 +1197,7 @@ layout_prepare(struct window *w, const char *layout, char **cause)
 		if (npanes < ncells) {
 			while (npanes < ncells) {
 				lcchild = layout_find_bottomright(root);
-				layout_destroy_cell(w, lcchild, &root);
+				layout_destroy_parsed_cell(lcchild, &root);
 				ncells--;
 			}
 			layout_compact_zindexes(root, old_ncells);
@@ -1056,7 +1220,7 @@ layout_prepare(struct window *w, const char *layout, char **cause)
 	} else {
 		while (npanes < ncells) {
 			lcchild = layout_find_bottomright(root);
-			layout_destroy_cell(w, lcchild, &root);
+			layout_destroy_parsed_cell(lcchild, &root);
 			ncells--;
 		}
 		if (npanes > ncells) {
@@ -1075,53 +1239,109 @@ layout_prepare(struct window *w, const char *layout, char **cause)
 		goto fail;
 	}
 
-	prepared = xcalloc(1, sizeof *prepared);
-	prepared->root = root;
-	prepared->zoomed = zoomed;
-	prepared->format = ctx.format;
-	prepared->ncells = ncells;
-	prepared->pane_ids = pane_ids;
-	return (prepared);
+	parsed = xcalloc(1, sizeof *parsed);
+	parsed->root = root;
+	parsed->zoomed = zoomed;
+	parsed->format = ctx.format;
+	parsed->ncells = ncells;
+	parsed->pane_ids = pane_ids;
+	return (parsed);
 
 fail:
-	layout_free_cell(root, 0);
+	layout_free_parsed_cell(root);
 	return (NULL);
 }
 
-/* Free a prepared layout without applying it. */
+/* Free a parsed layout without applying it. */
 void
-layout_free_prepared(struct layout_prepared *prepared)
+layout_free_prepared(struct layout_prepared *parsed)
 {
-	if (prepared == NULL)
+	if (parsed == NULL)
 		return;
-	layout_free_cell(prepared->root, 0);
-	free(prepared);
+	layout_free_parsed_cell(parsed->root);
+	free(parsed);
 }
 
-/* Apply and free a prepared layout. This cannot fail. */
-void
-layout_apply_prepared(struct window *w, struct layout_prepared *prepared)
+/* Convert one validated parsed cell to a runtime layout cell. */
+static struct layout_cell *
+layout_build_cell(struct parsed_layout_cell *parsed, struct layout_cell *parent,
+    struct window_pane **wp, int by_id)
 {
-	struct layout_cell	*lcchild, *root = prepared->root;
-	struct window_pane	*wp;
-	u_int			 z;
+	struct parsed_layout_cell	*parsed_child;
+	struct layout_cell		*lc, *lcchild;
+	struct window_pane		*new_wp;
 
-	prepared->root = NULL;
+	lc = layout_create_cell(parent);
+	parsed->layout_cell = lc;
+	layout_set_size(lc, parsed->g.sx, parsed->g.sy, parsed->g.xoff,
+	    parsed->g.yoff);
+	if (parsed->flags & PARSED_CELL_FLOATING)
+		lc->flags |= LAYOUT_CELL_FLOATING;
+	if (parsed->flags & PARSED_CELL_HIDDEN)
+		lc->flags |= LAYOUT_CELL_HIDDEN;
+	lc->fg = parsed->fg;
+
+	if (parsed->type == LAYOUT_WINDOWPANE) {
+		if (by_id)
+			new_wp = window_pane_find_by_id(parsed->pane_id);
+		else {
+			new_wp = *wp;
+			*wp = TAILQ_NEXT(*wp, entry);
+		}
+		lc->wp = new_wp;
+		return (lc);
+	}
+
+	lc->type = parsed->type;
+	TAILQ_FOREACH(parsed_child, &parsed->cells, entry) {
+		lcchild = layout_build_cell(parsed_child, lc, wp, by_id);
+		TAILQ_INSERT_TAIL(&lc->cells, lcchild, entry);
+	}
+	return (lc);
+}
+
+/* Link panes after the old runtime tree has been freed. */
+static void
+layout_link_cells(struct layout_cell *lc)
+{
+	struct layout_cell	*lcchild;
+
+	if (lc->type == LAYOUT_WINDOWPANE) {
+		lc->wp->layout_cell = lc;
+		return;
+	}
+	TAILQ_FOREACH(lcchild, &lc->cells, entry)
+		layout_link_cells(lcchild);
+}
+
+/* Apply and free a parsed layout. This cannot fail. */
+void
+layout_apply_prepared(struct window *w, struct layout_prepared *parsed)
+{
+	struct parsed_layout_cell	*cell, *parsed_root = parsed->root;
+	struct layout_cell		*root;
+	struct window_pane		*wp, *zoomed = NULL;
+	u_int				 z;
+
+	wp = TAILQ_FIRST(&w->panes);
+	root = layout_build_cell(parsed_root, NULL, &wp, parsed->pane_ids);
+	if (parsed->zoomed != NULL)
+		zoomed = parsed->zoomed->layout_cell->wp;
 
 	/* The layout was fully validated before the existing layout is changed. */
 	layout_free_cell(w->layout_root, 0);
 	w->layout_root = root;
-	wp = TAILQ_FIRST(&w->panes);
-	layout_assign(w, &wp, root, prepared->pane_ids);
+	layout_link_cells(root);
 
 	while (!TAILQ_EMPTY(&w->z_index)) {
 		wp = TAILQ_FIRST(&w->z_index);
 		TAILQ_REMOVE(&w->z_index, wp, zentry);
 	}
-	if (prepared->format == LAYOUT_FORMAT) {
-		for (z = 0; z < prepared->ncells; z++) {
-			lcchild = layout_find_zindex(root, z);
-			TAILQ_INSERT_TAIL(&w->z_index, lcchild->wp, zentry);
+	if (parsed->format == LAYOUT_FORMAT) {
+		for (z = 0; z < parsed->ncells; z++) {
+			cell = layout_find_zindex(parsed_root, z);
+			TAILQ_INSERT_TAIL(&w->z_index,
+			    cell->layout_cell->wp, zentry);
 		}
 	} else
 		layout_fix_zindexes(w, root);
@@ -1132,39 +1352,8 @@ layout_apply_prepared(struct window *w, struct layout_prepared *prepared)
 	layout_fix_panes(w, NULL);
 	layout_print_cell(root, __func__, 0);
 
-	if (prepared->zoomed != NULL) {
-		prepared->zoomed->flags &= ~LAYOUT_CELL_ZOOMED;
-		window_zoom(prepared->zoomed->wp);
-	}
-	free(prepared);
-}
-
-/* Assign panes to cells in tree order. */
-static void
-layout_assign(struct window *w, struct window_pane **wp,
-    struct layout_cell *lc, int by_id)
-{
-	struct layout_cell	*lcchild;
-	struct window_pane	*new_wp;
-
-	if (lc == NULL)
-		return;
-	switch (lc->type) {
-	case LAYOUT_WINDOWPANE:
-		if (by_id) {
-			new_wp = window_pane_find_by_id(lc->pane_id);
-			if (new_wp == NULL || new_wp->window != w)
-				return;
-		} else {
-			new_wp = *wp;
-			*wp = TAILQ_NEXT(*wp, entry);
-		}
-		layout_make_leaf(lc, new_wp);
-		return;
-	case LAYOUT_LEFTRIGHT:
-	case LAYOUT_TOPBOTTOM:
-		TAILQ_FOREACH(lcchild, &lc->cells, entry)
-			layout_assign(w, wp, lcchild, by_id);
-		return;
-	}
+	layout_free_parsed_cell(parsed_root);
+	free(parsed);
+	if (zoomed != NULL)
+		window_zoom(zoomed);
 }
