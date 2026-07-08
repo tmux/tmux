@@ -7,7 +7,7 @@ LANG=C.UTF-8
 export TERM LC_ALL LANG
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -Ltest$$ -f/dev/null"
+TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 
 TMPDIR=$(mktemp -d)
 IN="$TMPDIR/in"

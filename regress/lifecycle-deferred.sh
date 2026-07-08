@@ -8,8 +8,8 @@ export TERM LC_ALL LANG
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 
-TMUX="$TEST_TMUX -Llifecycle-deferred -f/dev/null"
-TMUX2="$TEST_TMUX -Llifecycle-deferred-outer -f/dev/null"
+TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
+TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
 
 TMPDIR=$(mktemp -d)
 IN="$TMPDIR/in"

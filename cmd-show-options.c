@@ -30,7 +30,7 @@
 static enum cmd_retval	cmd_show_options_exec(struct cmd *, struct cmdq_item *);
 
 static void		cmd_show_options_print(struct cmd *, struct cmdq_item *,
-			    struct options_entry *, int, int);
+			    struct options_entry *, const char *, int);
 static void		cmd_show_hooks_print_monitor(struct cmdq_item *,
 			    struct options_entry *);
 static enum cmd_retval	cmd_show_hooks_monitor(struct cmd *, struct cmdq_item *,
@@ -84,7 +84,8 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state		*target = cmdq_get_target(item);
 	struct options			*oo;
 	char				*argument, *name = NULL, *cause;
-	int				 window, idx, ambiguous, parent, scope;
+	char				*array_key = NULL;
+	int				 window, ambiguous, parent, scope;
 	struct options_entry		*o;
 
 	window = (cmd_get_entry(self) == &cmd_show_window_options_entry);
@@ -106,7 +107,7 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	argument = format_single_from_target(item, args_string(args, 0));
 
-	name = options_match(argument, &idx, &ambiguous);
+	name = options_match(argument, &array_key, &ambiguous);
 	if (name == NULL) {
 		if (args_has(args, 'q'))
 			goto out;
@@ -136,7 +137,7 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 		    args_has(args, 'B'))
 			cmd_show_hooks_print_monitor(item, o);
 		else
-			cmd_show_options_print(self, item, o, idx, parent);
+			cmd_show_options_print(self, item, o, array_key, parent);
 	}
 	else if (*name == '@') {
 		if (args_has(args, 'q'))
@@ -147,26 +148,28 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 
 out:
 	free(name);
+	free(array_key);
 	free(argument);
 	return (CMD_RETURN_NORMAL);
 
 fail:
 	free(name);
+	free(array_key);
 	free(argument);
 	return (CMD_RETURN_ERROR);
 }
 
 static void
 cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
-    struct options_entry *o, int idx, int parent)
+    struct options_entry *o, const char *array_key, int parent)
 {
 	struct args			*args = cmd_get_args(self);
 	struct options_array_item	*a;
 	const char			*name = options_name(o);
 	char				*value, *tmp = NULL, *escaped;
 
-	if (idx != -1) {
-		xasprintf(&tmp, "%s[%d]", name, idx);
+	if (array_key != NULL) {
+		xasprintf(&tmp, "%s[%s]", name, array_key);
 		name = tmp;
 	} else {
 		if (options_is_array(o)) {
@@ -177,8 +180,8 @@ cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
 				return;
 			}
 			while (a != NULL) {
-				idx = options_array_item_index(a);
-				cmd_show_options_print(self, item, o, idx,
+				array_key = options_array_item_key(a);
+				cmd_show_options_print(self, item, o, array_key,
 				    parent);
 				a = options_array_next(a);
 			}
@@ -186,7 +189,7 @@ cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
 		}
 	}
 
-	value = options_to_string(o, idx, 0);
+	value = options_to_string(o, array_key, 0);
 	if (args_has(args, 'v'))
 		cmdq_print(item, "%s", value);
 	else if (options_is_string(o)) {
@@ -242,15 +245,14 @@ cmd_show_options_all(struct cmd *self, struct cmdq_item *item, int scope,
 	const struct options_table_entry	*oe;
 	struct options_entry			*o;
 	struct options_array_item		*a;
-	const char				*name;
-	u_int					 idx;
+	const char				*name, *array_key;
 	int					 parent;
 
 	if (cmd_get_entry(self) != &cmd_show_hooks_entry) {
 		o = options_first(oo);
 		while (o != NULL) {
 			if (options_table_entry(o) == NULL)
-				cmd_show_options_print(self, item, o, -1, 0);
+				cmd_show_options_print(self, item, o, NULL, 0);
 			o = options_next(o);
 		}
 	}
@@ -277,7 +279,7 @@ cmd_show_options_all(struct cmd *self, struct cmdq_item *item, int scope,
 			parent = 0;
 
 		if (!options_is_array(o))
-			cmd_show_options_print(self, item, o, -1, parent);
+			cmd_show_options_print(self, item, o, NULL, parent);
 		else if ((a = options_array_first(o)) == NULL) {
 			if (!args_has(args, 'v')) {
 				name = options_name(o);
@@ -288,8 +290,8 @@ cmd_show_options_all(struct cmd *self, struct cmdq_item *item, int scope,
 			}
 		} else {
 			while (a != NULL) {
-				idx = options_array_item_index(a);
-				cmd_show_options_print(self, item, o, idx,
+				array_key = options_array_item_key(a);
+				cmd_show_options_print(self, item, o, array_key,
 				    parent);
 				a = options_array_next(a);
 			}

@@ -20,8 +20,8 @@ LANG=C.UTF-8
 export TERM LC_ALL LANG
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-OUT="$TEST_TMUX -Ltest -f/dev/null"		# outer (host for the client)
-IN="$TEST_TMUX -Ltest2 -f/dev/null"		# inner (under test)
+OUT="$TEST_TMUX -LtestA$$ -f/dev/null"		# outer (host for the client)
+IN="$TEST_TMUX -LtestB$$ -f/dev/null"		# inner (under test)
 
 $OUT kill-server 2>/dev/null
 $IN kill-server 2>/dev/null

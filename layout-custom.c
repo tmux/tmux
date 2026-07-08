@@ -231,19 +231,19 @@ layout_append_legacy(struct layout_cell *lc, char *buf, size_t len)
 	if (lc == NULL)
 		return (0);
 
-	sx = lc->sx;
-	sy = lc->sy;
-	xoff = lc->xoff;
-	yoff = lc->yoff;
+	sx = lc->g.sx;
+	sy = lc->g.sy;
+	xoff = lc->g.xoff;
+	yoff = lc->g.yoff;
 	if (lc->flags & LAYOUT_CELL_HIDDEN) {
-		if (lc->saved_sx != UINT_MAX)
-			sx = lc->saved_sx;
-		if (lc->saved_sy != UINT_MAX)
-			sy = lc->saved_sy;
-		if (lc->saved_xoff != INT_MAX)
-			xoff = lc->saved_xoff;
-		if (lc->saved_yoff != INT_MAX)
-			yoff = lc->saved_yoff;
+		if (lc->fg.sx != UINT_MAX)
+			sx = lc->fg.sx;
+		if (lc->fg.sy != UINT_MAX)
+			sy = lc->fg.sy;
+		if (lc->fg.xoff != INT_MAX)
+			xoff = lc->fg.xoff;
+		if (lc->fg.yoff != INT_MAX)
+			yoff = lc->fg.yoff;
 	}
 
 	if (lc->wp != NULL) {
@@ -293,19 +293,19 @@ layout_append(struct window *w, struct layout_cell *lc, char *buf, size_t len)
 	if (lc == NULL)
 		return (0);
 
-	sx = lc->sx;
-	sy = lc->sy;
-	xoff = lc->xoff;
-	yoff = lc->yoff;
+	sx = lc->g.sx;
+	sy = lc->g.sy;
+	xoff = lc->g.xoff;
+	yoff = lc->g.yoff;
 	if (lc->flags & LAYOUT_CELL_HIDDEN) {
-		if (lc->saved_sx != UINT_MAX)
-			sx = lc->saved_sx;
-		if (lc->saved_sy != UINT_MAX)
-			sy = lc->saved_sy;
-		if (lc->saved_xoff != INT_MAX)
-			xoff = lc->saved_xoff;
-		if (lc->saved_yoff != INT_MAX)
-			yoff = lc->saved_yoff;
+		if (lc->fg.sx != UINT_MAX)
+			sx = lc->fg.sx;
+		if (lc->fg.sy != UINT_MAX)
+			sy = lc->fg.sy;
+		if (lc->fg.xoff != INT_MAX)
+			xoff = lc->fg.xoff;
+		if (lc->fg.yoff != INT_MAX)
+			yoff = lc->fg.yoff;
 	}
 
 	if (lc->wp != NULL) {
@@ -375,24 +375,24 @@ layout_check(struct layout_cell *lc)
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			if (!layout_has_tiled(lcchild))
 				continue;
-			if (lcchild->sy != lc->sy || !layout_check(lcchild))
+			if (lcchild->g.sy != lc->g.sy || !layout_check(lcchild))
 				return (0);
-			n += lcchild->sx + 1;
+			n += lcchild->g.sx + 1;
 			children++;
 		}
-		if (children != 0 && n - 1 != lc->sx)
+		if (children != 0 && n - 1 != lc->g.sx)
 			return (0);
 		break;
 	case LAYOUT_TOPBOTTOM:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			if (!layout_has_tiled(lcchild))
 				continue;
-			if (lcchild->sx != lc->sx || !layout_check(lcchild))
+			if (lcchild->g.sx != lc->g.sx || !layout_check(lcchild))
 				return (0);
-			n += lcchild->sy + 1;
+			n += lcchild->g.sy + 1;
 			children++;
 		}
-		if (children != 0 && n - 1 != lc->sy)
+		if (children != 0 && n - 1 != lc->g.sy)
 			return (0);
 		break;
 	}
@@ -423,21 +423,21 @@ layout_fix_legacy_root(struct layout_cell *root)
 		return (0);
 	if (root->type == LAYOUT_LEFTRIGHT) {
 		TAILQ_FOREACH(lcchild, &root->cells, entry) {
-			sy = lcchild->sy + 1;
-			sx += lcchild->sx + 1;
+			sy = lcchild->g.sy + 1;
+			sx += lcchild->g.sx + 1;
 		}
 	} else {
 		TAILQ_FOREACH(lcchild, &root->cells, entry) {
-			sx = lcchild->sx + 1;
-			sy += lcchild->sy + 1;
+			sx = lcchild->g.sx + 1;
+			sy += lcchild->g.sy + 1;
 		}
 	}
 	if (sx != 0 && sy != 0 &&
-	    (root->sx != sx - 1 || root->sy != sy - 1)) {
+	    (root->g.sx != sx - 1 || root->g.sy != sy - 1)) {
 		if (sx - 1 > PANE_MAXIMUM || sy - 1 > PANE_MAXIMUM)
 			return (-1);
-		root->sx = sx - 1;
-		root->sy = sy - 1;
+		root->g.sx = sx - 1;
+		root->g.sy = sy - 1;
 	}
 	return (0);
 }
@@ -736,10 +736,10 @@ layout_construct(struct layout_parse_ctx *ctx, struct layout_cell *parent,
 		    (lc->flags & LAYOUT_CELL_FLOATING) == 0)
 			goto fail;
 		if (lc->flags & LAYOUT_CELL_HIDDEN) {
-			lc->saved_sx = lc->sx;
-			lc->saved_sy = lc->sy;
-			lc->saved_xoff = lc->xoff;
-			lc->saved_yoff = lc->yoff;
+			lc->fg.sx = lc->g.sx;
+			lc->fg.sy = lc->g.sy;
+			lc->fg.xoff = lc->g.xoff;
+			lc->fg.yoff = lc->g.yoff;
 		}
 	} else if (ctx->ptr != ctx->end &&
 	    (*ctx->ptr == '{' || *ctx->ptr == '[')) {
@@ -815,26 +815,26 @@ layout_resolve_relative(struct layout_cell *lc, u_int sx, u_int sy)
 		return (0);
 	}
 	if (lc->flags & LAYOUT_CELL_X_RELATIVE) {
-		resolved = (long long)sx - lc->sx - lc->xoff;
+		resolved = (long long)sx - lc->g.sx - lc->g.xoff;
 		if (resolved < INT_MIN || resolved > INT_MAX)
 			return (-1);
-		lc->xoff = resolved;
+		lc->g.xoff = resolved;
 		lc->flags &= ~LAYOUT_CELL_X_RELATIVE;
 	}
 	if (lc->flags & LAYOUT_CELL_Y_RELATIVE) {
-		resolved = (long long)sy - lc->sy - lc->yoff;
+		resolved = (long long)sy - lc->g.sy - lc->g.yoff;
 		if (resolved < INT_MIN || resolved > INT_MAX)
 			return (-1);
-		lc->yoff = resolved;
+		lc->g.yoff = resolved;
 		lc->flags &= ~LAYOUT_CELL_Y_RELATIVE;
 	}
 	if (lc->flags & LAYOUT_CELL_HIDDEN) {
-		lc->saved_sx = lc->sx;
-		lc->saved_sy = lc->sy;
-		lc->saved_xoff = lc->xoff;
-		lc->saved_yoff = lc->yoff;
+		lc->fg.sx = lc->g.sx;
+		lc->fg.sy = lc->g.sy;
+		lc->fg.xoff = lc->g.xoff;
+		lc->fg.yoff = lc->g.yoff;
 	}
-	if (!layout_check_geometry(lc->sx, lc->sy, lc->xoff, lc->yoff))
+	if (!layout_check_geometry(lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff))
 		return (-1);
 	return (0);
 }
@@ -1009,8 +1009,8 @@ layout_prepare(struct window *w, const char *layout, char **cause)
 		return (NULL);
 	}
 	if (layout_resolve_relative(root,
-	    root->type == LAYOUT_WINDOWPANE ? w->sx : root->sx,
-	    root->type == LAYOUT_WINDOWPANE ? w->sy : root->sy) != 0) {
+	    root->type == LAYOUT_WINDOWPANE ? w->sx : root->g.sx,
+	    root->type == LAYOUT_WINDOWPANE ? w->sy : root->g.sy) != 0) {
 		*cause = xstrdup("invalid layout");
 		layout_free_cell(root, 0);
 		return (NULL);
@@ -1127,7 +1127,7 @@ layout_apply_prepared(struct window *w, struct layout_prepared *prepared)
 		layout_fix_zindexes(w, root);
 
 	if (layout_has_tiled(root))
-		window_resize(w, root->sx, root->sy, -1, -1);
+		window_resize(w, root->g.sx, root->g.sy, -1, -1);
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 	layout_print_cell(root, __func__, 0);

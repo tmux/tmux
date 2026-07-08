@@ -17,7 +17,7 @@ LC_ALL=C.UTF-8
 export TZ LANG LC_ALL
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -Ltest -f/dev/null"
+TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 
 ESC=$(printf '\033')
 

@@ -365,13 +365,13 @@ Toggle zoom state of the current pane.
 .It Tab
 Choose a new window and session by fuzzy matching.
 .It {
-Move floating pane to top-left corner.
+Swap the current pane with the previous pane.
 .It }
-Move floating pane to top-right corner.
-.It M-{
-Move floating pane to bottom-left corner.
-.It M-}
-Move floating pane to bottom-right corner.
+Swap the current pane with the next pane.
+.It g 1, 2, 3, 4
+.It g Up, Down, Left, Right
+Move floating pane to corners or edges.
+Meta resizes the pane as well.
 .It \[ti]
 Show previous messages from
 .Nm ,
@@ -4634,6 +4634,10 @@ If
 .Fl g
 is given, the global session or window option is set.
 .Pp
+Array options may be set by giving a key in square brackets after the option
+name, for example
+.Ql command-alias[zoom] .
+.Pp
 .Fl F
 expands formats in the option value.
 The
@@ -4745,7 +4749,7 @@ it is replaced with
 .Ar value .
 For example, after:
 .Pp
-.Dl set \-s command\-alias[100] zoom=\[aq]resize\-pane \-Z\[aq]
+.Dl set \-s command\-alias[zoom] zoom=\[aq]resize\-pane \-Z\[aq]
 .Pp
 Using:
 .Pp
@@ -6346,11 +6350,11 @@ or
 .Fl H .
 The following two commands are equivalent:
 .Bd -literal -offset indent.
-set\-hook \-g pane\-mode\-changed[42] \[aq]set \-g status\-left\-style bg=red\[aq]
-set\-option \-g pane\-mode\-changed[42] \[aq]set \-g status\-left\-style bg=red\[aq]
+set\-hook \-g pane\-mode\-changed[style] \[aq]display\-message changed\[aq]
+set\-option \-g pane\-mode\-changed[style] \[aq]display\-message changed\[aq]
 .Ed
 .Pp
-Setting a hook without specifying an array index clears the hook and sets the
+Setting a hook without specifying an array key clears the hook and sets the
 first member of the array.
 .Pp
 A command's after
@@ -7875,10 +7879,7 @@ This affects what completions are offered when
 is pressed.
 Available types are:
 .Ql command ,
-.Ql search ,
-.Ql target
-and
-.Ql window\-target .
+.Ql search .
 .Pp
 The following keys have a special meaning in the command prompt, depending
 on the value of the
@@ -8013,6 +8014,7 @@ Both may be a row or column number, or one of the following special values:
 .It Li "R" Ta Fl x Ta "The right side of the terminal"
 .It Li "P" Ta "Both" Ta "The bottom left of the pane"
 .It Li "M" Ta "Both" Ta "The mouse position"
+.It Li "L" Ta "Both" Ta "The position of the last menu"
 .It Li "W" Ta "Both" Ta "The window position on the status line"
 .It Li "S" Ta Fl y Ta "The line above or below the status line"
 .El
@@ -8023,6 +8025,8 @@ Or a format, which is expanded including the following additional variables:
 .It Li "popup_centre_x" Ta "Centered in the client"
 .It Li "popup_centre_y" Ta "Centered in the client"
 .It Li "popup_height" Ta "Height of menu or popup"
+.It Li "popup_last_x" Ta "Left of the last menu"
+.It Li "popup_last_y" Ta "Bottom of the last menu"
 .It Li "popup_mouse_bottom" Ta "Bottom of at the mouse"
 .It Li "popup_mouse_centre_x" Ta "Horizontal centre at the mouse"
 .It Li "popup_mouse_centre_y" Ta "Vertical centre at the mouse"

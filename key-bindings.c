@@ -59,6 +59,8 @@
 	" '#{?mouse_hyperlink,Type #[underscore]#{=/9/...:mouse_hyperlink},}' 'C-h' {copy-mode -q; send-keys -l -- \"#{q:mouse_hyperlink}\"}" \
 	" '#{?mouse_hyperlink,Copy #[underscore]#{=/9/...:mouse_hyperlink},}' 'h' {copy-mode -q; set-buffer -- \"#{q:mouse_hyperlink}\"}" \
 	" ''" \
+	" '#{?#{#{pane_floating_flag}},Move,}' '' {display-menu -xL -yL -T '#[align=centre]Move' " DEFAULT_MOVE_MENU " }" \
+	" '#{?#{#{pane_floating_flag}},Move & Resize,}' '' {display-menu -xL -yL -T '#[align=centre]Move & Resize' " DEFAULT_MOVE_RESIZE_MENU " }" \
 	" '#{?#{#{pane_floating_flag}},Tile,}' 't' { join-pane }" \
 	" '#{?#{!:#{pane_floating_flag}},Float,}' 'f' { break-pane -W }" \
 	" '#{?#{!:#{pane_floating_flag}},Horizontal Split,}' 'h' {split-window -h}" \
@@ -72,6 +74,30 @@
 	" 'Respawn' 'R' {respawn-pane -k}" \
 	" '#{?pane_marked,Unmark,Mark}' 'm' {select-pane -m}" \
 	" '#{?#{>:#{window_panes},1},,-}#{?window_zoomed_flag,Unzoom,Zoom}' 'z' {resize-pane -Z}"
+#define DEFAULT_MOVE_MENU \
+	" 'Centre' 'c' {move-pane -P centre}" \
+	" ''" \
+	" 'Top Left' '1' {move-pane -P top-left}" \
+	" 'Top Right' '2' {move-pane -P top-right}" \
+	" 'Bottom Left' '3' {move-pane -P bottom-left}" \
+	" 'Bottom Right' '4' {move-pane -P bottom-right}" \
+	" ''" \
+	" 'Top' 't' {move-pane -P top-centre}" \
+	" 'Bottom' 'b' {move-pane -P bottom-centre}" \
+	" 'Left' 'l' {move-pane -P centre-left}" \
+	" 'Right' 'r' {move-pane -P centre-right}"
+#define DEFAULT_MOVE_RESIZE_MENU \
+	" 'Fill' '0' {resize-pane -x100% -y100%; move-pane -P top-left}" \
+	" ''" \
+	" 'Top Left' '1' {resize-pane -x50% -y50%; move-pane -P top-left}" \
+	" 'Top Right' '2' {resize-pane -x50% -y50%; move-pane -P top-right}" \
+	" 'Bottom Left' '3' {resize-pane -x50% -y50%; move-pane -P bottom-left}" \
+	" 'Bottom Right' '4' {resize-pane -x50% -y50%; move-pane -P bottom-right}" \
+	" ''" \
+	" 'Top' 't' {resize-pane -x100% -y50%; move-pane -P top-centre}" \
+	" 'Bottom' 'b' {resize-pane -x100% -y50%; move-pane -P bottom-centre}" \
+	" 'Left' 'l' {resize-pane -x50% -y100%; move-pane -P centre-left}" \
+	" 'Right' 'r' {resize-pane -x50% -y100%; move-pane -P centre-right}"
 
 static int key_bindings_cmp(struct key_binding *, struct key_binding *);
 RB_GENERATE_STATIC(key_bindings, key_binding, entry, key_bindings_cmp);
@@ -362,14 +388,14 @@ key_bindings_init(void)
 		"bind -N 'Rename current session' '$' { command-prompt -I'#S' { rename-session -- '%%' } }",
 		"bind -N 'Split window horizontally' % { split-window -h }",
 		"bind -N 'Kill current window' & { confirm-before -p\"kill-window #W? (y/n)\" kill-window }",
-		"bind -N 'Prompt for window index to select' \"'\" { command-prompt -T window-target -pindex { select-window -t ':%%' } }",
+		"bind -N 'Prompt for window index to select' \"'\" { command-prompt -pindex { select-window -t ':%%' } }",
 		"bind -N 'New floating pane' * { new-pane }",
 		"bind -N 'Toggle pane between floating and tiled' @ { if -F '#{pane_floating_flag}' { join-pane } { break-pane -W } }",
 		"bind -N 'Switch to previous client' ( { switch-client -p }",
 		"bind -N 'Switch to next client' ) { switch-client -n }",
 		"bind -N 'Rename current window' , { command-prompt -I'#W' { rename-window -- '%%' } }",
 		"bind -N 'Delete the most recent paste buffer' - { delete-buffer }",
-		"bind -N 'Move the current window' . { command-prompt -T target { move-window -t '%%' } }",
+		"bind -N 'Move the current window' . { command-prompt { move-window -t '%%' } }",
 		"bind -N 'Describe key binding' '/' { command-prompt -kpkey  { list-keys -1N '%%' } }",
 		"bind -N 'Select window 0' 0 { select-window -t:=0 }",
 		"bind -N 'Select window 1' 1 { select-window -t:=1 }",
@@ -410,10 +436,8 @@ key_bindings_init(void)
 		"bind -N 'Choose a window from a list' w { choose-tree -Zw }",
 		"bind -N 'Kill the active pane' x { confirm-before -p\"kill-pane #P? (y/n)\" kill-pane }",
 		"bind -N 'Zoom the active pane' z { resize-pane -Z }",
-		"bind -N 'Move pane to top-left corner' '{' { resize-pane -x50% -y50%; move-pane -P top-left }",
-		"bind -N 'Move pane to top-right corner' '}' { resize-pane -x50% -y50%; move-pane -P top-right }",
-		"bind -N 'Move pane to bottom-left corner' 'M-{' { resize-pane -x50% -y50%; move-pane -P bottom-left }",
-		"bind -N 'Move pane to bottom-right corner' 'M-}' { resize-pane -x50% -y50%; move-pane -P bottom-right }",
+		"bind -N 'Swap the active pane with the pane above' '{' { swap-pane -U }",
+		"bind -N 'Swap the active pane with the pane below' '}' { swap-pane -D }",
 		"bind -N 'Show messages' '~' { show-messages }",
 		"bind -N 'Enter copy mode and scroll up' PPage { copy-mode -u }",
 		"bind -N 'Select the pane above the active pane' -r Up { select-pane -U }",
@@ -443,6 +467,28 @@ key_bindings_init(void)
 		"bind -N 'Resize the pane down' -r C-Down { resize-pane -D }",
 		"bind -N 'Resize the pane left' -r C-Left if -F '#{?floating_pane_flag}' { resizep -R-1 } { resize-pane -L }",
 		"bind -N 'Resize the pane right' -r C-Right { resize-pane -R }",
+
+		/* Floating pane movement. */
+		"bind -N 'Move a floating pane' g { switch-client -Tmove }",
+		"bind -Tmove -N 'Move pane to top-left corner' 1 { move-pane -P top-left }",
+		"bind -Tmove -N 'Move pane to top-right corner' 2 { move-pane -P top-right }",
+		"bind -Tmove -N 'Move pane to bottom-left corner' 3 { move-pane -P bottom-left }",
+		"bind -Tmove -N 'Move pane to bottom-right corner' 4 { move-pane -P bottom-right }",
+		"bind -Tmove -N 'Move pane to top-left corner and resize' M-1 { resize-pane -x50% -y50%; move-pane -P top-left }",
+		"bind -Tmove -N 'Move pane to top-right corner and resize' M-2 { resize-pane -x50% -y50%; move-pane -P top-right }",
+		"bind -Tmove -N 'Move pane to bottom-left corner and resize' M-3 { resize-pane -x50% -y50%; move-pane -P bottom-left }",
+		"bind -Tmove -N 'Move pane to bottom-right corner and resize' M-4 { resize-pane -x50% -y50%; move-pane -P bottom-right }",
+		"bind -Tmove -N 'Move pane to top' 'Up' { move-pane -P top-centre }",
+		"bind -Tmove -N 'Move pane to bottom' 'Down' { move-pane -P bottom-centre  }",
+		"bind -Tmove -N 'Move pane to left' 'Left' { move-pane -P centre-left }",
+		"bind -Tmove -N 'Move pane to right' 'Right' { move-pane -P centre-right }",
+		"bind -Tmove -N 'Move pane to top and resize' 'M-Up' { resizep -x100% -y50%; move-pane -P top-centre }",
+		"bind -Tmove -N 'Move pane to bottom and resize' 'M-Down' { resizep -x100% -y50%; move-pane -P bottom-centre  }",
+		"bind -Tmove -N 'Move pane to left and resize' 'M-Left' { resizep -x50% -y100%; move-pane -P centre-left }",
+		"bind -Tmove -N 'Move pane to right and resize' 'M-Right' { resizep -x50% -y100%; move-pane -P centre-right }",
+		"bind -Tmove -N 'Move pane to fill the window' 0 { resize-pane -x100% -y100%; move-pane -P top-left }",
+		"bind -Tmove -N 'Display move menu' , { if -F '#{pane_floating_flag}' { display-menu -xP -yP -T '#[align=centre]Move' " DEFAULT_MOVE_MENU " } }",
+		"bind -Tmove -N 'Display move and resize menu' . { if -F '#{pane_floating_flag}' { display-menu -xP -yP -T '#[align=centre]Move & Resize' " DEFAULT_MOVE_RESIZE_MENU " } }",
 
 		/* Menu keys */
 		"bind -N 'Display window menu' < { display-menu -xW -yW -T '#[align=centre]#{window_index}:#{window_name}' " DEFAULT_WINDOW_MENU " }",

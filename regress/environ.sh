@@ -19,7 +19,7 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -Ltest -f/dev/null"
+TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 $TMUX kill-server 2>/dev/null
 
 # check_value $args $expected
@@ -151,7 +151,7 @@ cat > "$CONF" <<EOF
 CFGVAR=fromconfig
 %hidden CFGHID=hiddencfg
 EOF
-CTMUX="$TEST_TMUX -Ltest2 -f$CONF"
+CTMUX="$TEST_TMUX -LtestB$$ -f$CONF"
 $CTMUX kill-server 2>/dev/null
 $CTMUX new-session -d -s c -x 80 -y 24 || { rm -f "$CONF"; exit 1; }
 out=$($CTMUX show-environment -g CFGVAR 2>&1)

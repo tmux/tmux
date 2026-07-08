@@ -9,8 +9,8 @@ export PATH TERM LANG LC_ALL
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 
-TMUX="$TEST_TMUX -Lformat-render-contexts-$$ -f/dev/null"
-TMUX2="$TEST_TMUX -Lformat-render-contexts-outer-$$ -f/dev/null"
+TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
+TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
 LIMIT=20000
 
 cleanup()
@@ -49,7 +49,13 @@ tmux_run()
 	name=$1
 	shift
 
-	out=$(run_cmd $TMUX "$@" 2>&1)
+	out=$(
+		if command -v timeout >/dev/null 2>&1; then
+			timeout 10 $TMUX "$@" 2>&1
+		else
+			$TMUX "$@" 2>&1
+		fi
+	)
 	rc=$?
 	bounded "$name" "$out"
 	[ "$rc" -eq 0 ] || fail "$name failed: $out"
@@ -58,7 +64,13 @@ tmux_run()
 
 capture()
 {
-	out=$(run_cmd $TMUX2 capture-pane -p -t out:0 2>/dev/null)
+	out=$(
+		if command -v timeout >/dev/null 2>&1; then
+			timeout 10 $TMUX2 capture-pane -p -t out:0 2>/dev/null
+		else
+			$TMUX2 capture-pane -p -t out:0 2>/dev/null
+		fi
+	)
 	rc=$?
 	bounded "capture-pane" "$out"
 	[ "$rc" -eq 0 ] || fail "capture-pane failed"
@@ -67,7 +79,14 @@ capture()
 
 capture_esc()
 {
-	out=$(run_cmd $TMUX2 capture-pane -pe -t out:0 2>/dev/null)
+	out=$(
+		if command -v timeout >/dev/null 2>&1; then
+			timeout 10 $TMUX2 capture-pane -pe -t out:0 \
+				2>/dev/null
+		else
+			$TMUX2 capture-pane -pe -t out:0 2>/dev/null
+		fi
+	)
 	rc=$?
 	bounded "capture-pane -e" "$out"
 	[ "$rc" -eq 0 ] || fail "capture-pane -e failed"

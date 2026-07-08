@@ -8,20 +8,30 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+TMP=$(mktemp -d) || exit 1
+TMUX_TMPDIR="$TMP"
+export TMUX_TMPDIR
 
-TMUX="$TEST_TMUX -Ltest -f/dev/null"
-TMUX2="$TEST_TMUX -Ltest2 -f/dev/null"
+TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
+TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
 
-cleanup()
+cleanup_servers()
 {
 	$TMUX kill-server 2>/dev/null
 	$TMUX2 kill-server 2>/dev/null
 	sleep 0.5
 }
 
+cleanup()
+{
+	cleanup_servers
+	rm -rf "$TMP"
+}
+trap cleanup EXIT
+
 fail()
 {
-	echo "$1"
+	echo "$1" >&2
 	cleanup
 	exit 1
 }
@@ -53,7 +63,7 @@ wait_for()
 {
 	i=0
 	while [ "$i" -lt 50 ]; do
-		capture | grep -q "$1" && return 0
+		capture | grep -F -q "$1" && return 0
 		sleep 0.2
 		i=$((i + 1))
 	done
@@ -95,7 +105,7 @@ start_client()
 	s=$1
 	cmd=${2:-cat}
 
-	cleanup
+	cleanup_servers
 	$TMUX new-session -d -s "$s" -n main -x 80 -y 24 "$cmd" || \
 		fail "$s: new-session failed"
 	$TMUX2 new-session -d -s out -x 80 -y 24 "$TMUX attach -t $s" || \
@@ -287,7 +297,7 @@ test_copy_mode()
 	assert_alive "copy-mode exit"
 }
 
-cleanup
+cleanup_servers
 test_choose_tree
 test_choose_buffer
 test_choose_client

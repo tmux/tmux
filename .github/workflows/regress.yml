@@ -77,3 +77,11 @@ jobs:
           cd regress
           export ASAN_OPTIONS="abort_on_error=1:detect_leaks=0"
           ${{ matrix.make }}
+
+      - name: logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regress-logs-${{ matrix.name }}
+          path: regress/logs/*.log
+          if-no-files-found: ignore

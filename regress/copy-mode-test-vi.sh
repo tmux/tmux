@@ -4,7 +4,7 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -f/dev/null -Ltest"
+TMUX="$TEST_TMUX -f/dev/null -LtestA$$"
 $TMUX kill-server 2>/dev/null
 
 $TMUX new -d -x40 -y10 \

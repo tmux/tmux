@@ -2401,6 +2401,10 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	if (wp != NULL && (wp->flags & (PANE_REDRAW|PANE_DROP)))
 		goto discard;
 	if (s->mode & MODE_SYNC) {
+		if (ctx->scrolled != 0) {
+			screen_write_should_draw_lines(ctx, s->rupper,
+			    s->rlower + 1 - s->rupper);
+		}
 		for (y = 0; y < screen_size_y(s); y++) {
 			cl = &s->write_list[y];
 			if (!TAILQ_EMPTY(&cl->items))
