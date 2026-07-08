@@ -105,6 +105,104 @@ check_windows()
 	fi
 }
 
+# wait_client_session $expected
+#
+# Wait for the only test client to be attached to $expected.
+wait_client_session()
+{
+	expected=$1
+	i=0
+
+	while [ $i -lt 30 ]; do
+		out=$($TMUX list-clients -F '#{client_session}' 2>/dev/null ||
+		    true)
+		if [ "$out" = "$expected" ]; then
+			return
+		fi
+		i=$((i + 1))
+		sleep 0.1
+	done
+
+	echo "Client session wrong."
+	echo "Expected: '$expected'"
+	echo "But got:  '$out'"
+	exit 1
+}
+
+# attach_control_client $session
+#
+# Attach a control client to $session and keep its input open on fd 9.
+attach_control_client()
+{
+	fifo=$(mktemp -u)
+
+	mkfifo "$fifo" || exit 1
+	$TMUX -C attach-session -t "$1" <"$fifo" >/dev/null 2>&1 &
+	control_pid=$!
+	exec 9>"$fifo"
+	rm -f "$fifo"
+	wait_client_session "$1"
+}
+
+# check_attached_destroy $mode
+#
+# Run an attached tmux inside a pane and destroy its only session.
+check_attached_destroy()
+{
+	mode=$1
+	outer=DODouter$mode
+	outdir=$(mktemp -d) || exit 1
+	script=$outdir/inner.sh
+	rcfile=$outdir/rc
+
+	cat >"$script" <<-EOF
+	#!/bin/sh
+	"$TEST_TMUX" -LtestInner$$-$mode -f/dev/null new \\; \
+		set -g detach-on-destroy $mode \\; send exit Enter
+	printf '%s\n' \$? >"$rcfile"
+	EOF
+	chmod +x "$script" || exit 1
+
+	check_ok new-session -d -s "$outer" -x 80 -y 24
+	check_ok send-keys -t "$outer:0.0" "sh $script" Enter
+
+	i=0
+	while [ $i -lt 50 ]; do
+		[ -f "$rcfile" ] && break
+		i=$((i + 1))
+		sleep 0.1
+	done
+
+	pane=$($TMUX capture-pane -pt "$outer:0.0" -S -)
+	if [ ! -f "$rcfile" ]; then
+		echo "Inner tmux did not exit."
+		echo "$pane"
+		$TMUX kill-session -t "$outer" 2>/dev/null || true
+		rm -rf "$outdir"
+		exit 1
+	fi
+	rc=$(cat "$rcfile")
+	if [ "$rc" != 0 ]; then
+		echo "Inner tmux exited with status $rc."
+		echo "$pane"
+		$TMUX kill-session -t "$outer" 2>/dev/null || true
+		rm -rf "$outdir"
+		exit 1
+	fi
+	case "$pane" in
+	*"server exited unexpectedly"*)
+		echo "Inner tmux server crashed."
+		echo "$pane"
+		$TMUX kill-session -t "$outer" 2>/dev/null || true
+		rm -rf "$outdir"
+		exit 1
+		;;
+	esac
+
+	check_ok kill-session -t "$outer"
+	rm -rf "$outdir"
+}
+
 # ---------------------------------------------------------------------------
 # new-session and has-session.
 
@@ -202,6 +300,38 @@ check_fail '-f only valid with -a' kill-session -f 'x' -t S1
 # -C only clears alerts; the session survives.
 check_ok kill-session -C -t S2
 check_ok has-session -t S2
+
+# detach-on-destroy previous and next move attached clients in
+# alphabetical order and must not crash when a session is destroyed.
+check_ok new-session -d -s DODa -x 80 -y 24
+check_ok new-session -d -s DODb -x 80 -y 24
+check_ok new-session -d -s DODc -x 80 -y 24
+check_ok set-option -t DODb detach-on-destroy previous
+attach_control_client DODb
+check_ok kill-session -t DODb
+wait_client_session DODa
+exec 9>&-
+wait "$control_pid" 2>/dev/null || true
+check_ok kill-session -t DODa
+check_ok kill-session -t DODc
+
+check_ok new-session -d -s DODa -x 80 -y 24
+check_ok new-session -d -s DODb -x 80 -y 24
+check_ok new-session -d -s DODc -x 80 -y 24
+check_ok set-option -t DODb detach-on-destroy next
+attach_control_client DODb
+check_ok kill-session -t DODb
+wait_client_session DODc
+exec 9>&-
+wait "$control_pid" 2>/dev/null || true
+check_ok kill-session -t DODa
+check_ok kill-session -t DODc
+
+# With only one session, previous and next have no replacement session; the
+# attached client must exit cleanly rather than being moved to the dying
+# session.
+check_attached_destroy previous
+check_attached_destroy next
 
 # -a kills every other session.
 check_ok kill-session -a -t S1
