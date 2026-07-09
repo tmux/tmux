@@ -319,6 +319,72 @@ fn maybeClipboard(wp: ?*c.window_pane, buf: []const u8, input_end: c_int) void {
     c.paste_add(null, @ptrCast(out.ptr), @intCast(decoded));
 }
 
+// Write an OSC 10/11/12 or OSC 4 colour reply straight back to the
+// pane's pty in the same rgb:RRRR/GGGG/BBBB form input_osc_colour_reply
+// uses. Sends nothing for an unknown colour, matching stock tmux.
+fn colorReplyOsc(pane: *c.window_pane, n: u32, idx: ?u32, col: c_int, input_end: c_int) void {
+    if (pane.*.event == null or col == -1)
+        return;
+    const rgb = c.colour_force_rgb(col);
+    if (rgb == -1)
+        return;
+    var r: u8 = 0;
+    var g: u8 = 0;
+    var b: u8 = 0;
+    c.colour_split_rgb(rgb, &r, &g, &b);
+    const end = if (input_end == 1) "\x07" else "\x1b\\";
+    var buf: [64]u8 = undefined;
+    const reply = if (idx) |ix|
+        std.fmt.bufPrint(&buf, "\x1b]{d};{d};rgb:{x:0>2}{x:0>2}/{x:0>2}{x:0>2}/{x:0>2}{x:0>2}{s}", .{ n, ix, r, r, g, g, b, b, end }) catch return
+    else
+        std.fmt.bufPrint(&buf, "\x1b]{d};rgb:{x:0>2}{x:0>2}/{x:0>2}{x:0>2}/{x:0>2}{x:0>2}{s}", .{ n, r, r, g, g, b, b, end }) catch return;
+    _ = c.bufferevent_write(pane.*.event, reply.ptr, reply.len);
+}
+
+fn isColorQuery(rest: []const u8) bool {
+    return rest.len >= 1 and rest[0] == '?';
+}
+
+// Answer OSC 10/11/12 and OSC 4;n colour QUERIES with tmux's colour for
+// this pane. ghostty ignores colour queries and input.c is bypassed for
+// ghostty panes, so otherwise an app probing the fg/bg (e.g. neovim's
+// `background` autodetect, fzf, delta) gets no reply at all.
+fn maybeColorQuery(wp: ?*c.window_pane, buf: []const u8, input_end: c_int) void {
+    const pane = wp orelse return;
+
+    var i: usize = 0;
+    var code: u32 = 0;
+    if (i >= buf.len or !std.ascii.isDigit(buf[i]))
+        return;
+    while (i < buf.len and std.ascii.isDigit(buf[i])) : (i += 1)
+        code = code * 10 + @as(u32, buf[i] - '0');
+    if (i >= buf.len or buf[i] != ';')
+        return;
+    i += 1;
+
+    switch (code) {
+        10 => if (isColorQuery(buf[i..]))
+            colorReplyOsc(pane, 10, null, c.window_pane_get_fg(pane), input_end),
+        11 => if (isColorQuery(buf[i..]))
+            colorReplyOsc(pane, 11, null, c.window_pane_get_bg(pane), input_end),
+        12 => if (isColorQuery(buf[i..]))
+            colorReplyOsc(pane, 12, null, pane.*.base.default_ccolour, input_end),
+        4 => {
+            var idx: u32 = 0;
+            if (i >= buf.len or !std.ascii.isDigit(buf[i]))
+                return;
+            while (i < buf.len and std.ascii.isDigit(buf[i])) : (i += 1)
+                idx = idx * 10 + @as(u32, buf[i] - '0');
+            if (idx > 255 or i >= buf.len or buf[i] != ';')
+                return;
+            i += 1;
+            if (isColorQuery(buf[i..]))
+                colorReplyOsc(pane, 4, idx, c.colour_palette_get(&pane.*.palette, @intCast(idx)), input_end);
+        },
+        else => {},
+    }
+}
+
 fn resetOsc(gvt: *GhosttyVT) void {
     gvt.osc_len = 0;
     gvt.osc_active = false;
@@ -360,6 +426,7 @@ fn finishOsc(gvt: *GhosttyVT, input_end: c_int) void {
         const osc = buf[0..gvt.osc_len];
         maybeProgressBar(gvt.wp, osc);
         maybeClipboard(gvt.wp, osc, input_end);
+        maybeColorQuery(gvt.wp, osc, input_end);
     }
     resetOsc(gvt);
 }
