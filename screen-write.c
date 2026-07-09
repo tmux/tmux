@@ -3114,7 +3114,13 @@ screen_write_alternateon(struct screen_write_ctx *ctx, struct grid_cell *gc,
 
 	if (wp != NULL) {
 		window_pane_clear_resizes(wp, NULL);
+		if (event_initialized(&wp->resize_timer))
+			evtimer_del(&wp->resize_timer);
 		layout_fix_panes(wp->window, NULL);
+		if (!TAILQ_EMPTY(&wp->resize_queue)) {
+			window_pane_send_resize(wp, wp->sx, wp->sy);
+			window_pane_clear_resizes(wp, NULL);
+		}
 		server_redraw_window_borders(wp->window);
 	}
 

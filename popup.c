@@ -244,7 +244,7 @@ popup_check_cb(struct client* c, void *data, u_int px, u_int py, u_int nx)
 		*/
 		for (i = 0; i < mr->used; i++) {
 			server_client_overlay_range(pd->px, pd->py, pd->sx,
-			    pd->sy, r->ranges[i].px, py, r->ranges[i].nx,
+			    pd->sy, mr->ranges[i].px, py, mr->ranges[i].nx,
 			    &pd->or[i]);
 		}
 

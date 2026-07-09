@@ -1588,8 +1588,10 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	struct screen		*sl;
 	struct redraw_scene	*scene;
 	struct window_pane	*loop;
-	u_int			 width, i, y, lines;
+	u_int			 width, i, y, lines, j;
 	struct redraw_span	*first;
+	struct visible_ranges	*r;
+	struct visible_range	*rr;
 	int			 redraw;
 
 	if (c->flags & CLIENT_SUSPENDED)
@@ -1694,8 +1696,16 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		else
 			y = c->tty.sy - lines;
 		sl = c->status.active;
-		for (i = 0; i < lines; i++)
-			tty_draw_line(tty, sl, 0, i, UINT_MAX, 0, y + i, NULL);
+		for (i = 0; i < lines; i++) {
+			r = tty_check_overlay_range(tty, 0, y + i, tty->sx);
+			for (j = 0; j < r->used; j++) {
+				rr = &r->ranges[j];
+				if (rr->nx == 0)
+					continue;
+				tty_draw_line(tty, sl, rr->px, i, rr->nx,
+				    rr->px, y + i, NULL);
+			}
+		}
 	}
 	if (c->overlay_draw != NULL && (flags & REDRAW_OVERLAY))
 		c->overlay_draw(c, c->overlay_data);
