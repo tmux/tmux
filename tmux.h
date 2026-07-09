@@ -2468,6 +2468,7 @@ struct spawn_context {
 #define SPAWN_EMPTY 0x40
 #define SPAWN_ZOOM 0x80
 #define SPAWN_FLOATING 0x100
+#define SPAWN_HORIZONTAL 0x200
 };
 
 /* Paste buffer. */
@@ -3760,16 +3761,16 @@ void		 layout_close_pane(struct window_pane *);
 int		 layout_spread_cell(struct window *, struct layout_cell *);
 void		 layout_spread_out(struct window_pane *);
 struct layout_cell *layout_get_tiled_cell(struct cmdq_item *, struct args *,
-		     struct window *, struct window_pane *, int, char **);
+		     struct window *, struct window_pane *, int *, char **);
 struct layout_cell *layout_get_floating_cell(struct cmdq_item *, struct args *,
 		     enum pane_lines, struct window *, struct window_pane *,
-		     int, char **);
+		     int, int *, char **);
 int		 layout_floating_args_parse(struct cmdq_item *, struct args *,
 		     enum pane_lines, struct window *, struct layout_geometry *,
 		     char **);
-int		 layout_split_floating_cell(struct args *, enum pane_lines,
-		     struct window *, struct window_pane *,
-		     struct layout_geometry *, char **cause);
+int		 layout_split_floating_cell(struct layout_cell *,
+		     struct window *, struct layout_geometry *, enum pane_lines,
+		     int, char **);
 int		 layout_remove_tile(struct window *, struct layout_cell *);
 int		 layout_insert_tile(struct window *, struct layout_cell *);
 

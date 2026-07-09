@@ -458,7 +458,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-	lc = layout_get_tiled_cell(item, args, dst_w, dst_wp, flags, &cause);
+	lc = layout_get_tiled_cell(item, args, dst_w, dst_wp, &flags, &cause);
 	if (cause != NULL) {
 		cmdq_error(item, "size or position %s", cause);
 		free(cause);

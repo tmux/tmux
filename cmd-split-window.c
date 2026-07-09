@@ -84,7 +84,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*wp = target->wp, *new_wp = NULL;
 	struct layout_cell	*lc = NULL;
 	struct cmd_find_state	 fs;
-	int			 input, empty, is_floating, newp, flags = 0;
+	int			 input, empty, is_floating, npe, flags;
 	const char		*template, *style, *value;
 	char			*cause = NULL, *cp, *title;
 	const struct options_table_entry *oe;
@@ -92,17 +92,12 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	enum pane_lines		 lines;
 	u_int			 count = args_count(args);
 
-	newp = cmd_get_entry(self) == &cmd_new_pane_entry;
-	if (newp)
+	npe = cmd_get_entry(self) == &cmd_new_pane_entry;
+	if (npe)
 		is_floating = !args_has(args, 'L');
 	else
 		is_floating = window_pane_is_floating(wp);
-
 	flags = is_floating ? SPAWN_FLOATING : 0;
-	if (args_has(args, 'b'))
-		flags |= SPAWN_BEFORE;
-	if (args_has(args, 'f'))
-		flags |= SPAWN_FULLSIZE;
 
 	input = args_has(args, 'I');
 	if (input || (count == 1 && *args_string(args, 0) == '\0'))
@@ -130,11 +125,11 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-	if (is_floating)
-		lc = layout_get_floating_cell(item, args, lines, !newp, w, wp,
-			&cause);
+	if (flags & SPAWN_FLOATING)
+		lc = layout_get_floating_cell(item, args, lines, w, wp, !npe,
+			&flags, &cause);
 	else
-		lc = layout_get_tiled_cell(item, args, w, wp, flags, &cause);
+		lc = layout_get_tiled_cell(item, args, w, wp, &flags, &cause);
 	if (cause != NULL) {
 		cmdq_error(item, "%s", cause);
 		free(cause);
