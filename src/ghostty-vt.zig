@@ -956,7 +956,18 @@ fn ghosttyMode(value: u16, ansi: bool) c.GhosttyMode {
 }
 
 fn syncModes(gvt: *GhosttyVT, s: *c.screen) void {
-    s.*.mode = 0;
+    // Clear only the modes ghostty tracks, then re-derive them. Bits
+    // tmux manages itself must survive: zeroing s->mode wiped
+    // MODE_KEYS_EXTENDED (from the extended-keys option),
+    // MODE_CURSOR_BLINKING_SET / MODE_CURSOR_VERY_VISIBLE (from DECSCUSR),
+    // MODE_THEME_UPDATES, and MODE_SYNC's timer-backed bit.
+    const owned: c_int = c.MODE_CURSOR | c.MODE_INSERT | c.MODE_WRAP |
+        c.MODE_ORIGIN | c.MODE_CURSOR_BLINKING | c.MODE_BRACKETPASTE |
+        c.MODE_FOCUSON | c.MODE_CRLF | c.MODE_KKEYPAD | c.MODE_KCURSOR |
+        c.MODE_MOUSE_STANDARD | c.MODE_MOUSE_BUTTON | c.MODE_MOUSE_ALL |
+        c.MODE_MOUSE_UTF8 | c.MODE_MOUSE_SGR | c.MODE_KEYS_EXTENDED_2;
+    s.*.mode &= ~owned;
+
     syncMode(gvt, s, ghosttyMode(25, false), c.MODE_CURSOR);
     syncMode(gvt, s, ghosttyMode(4, true), c.MODE_INSERT);
     syncMode(gvt, s, ghosttyMode(7, false), c.MODE_WRAP);
@@ -964,7 +975,6 @@ fn syncModes(gvt: *GhosttyVT, s: *c.screen) void {
     syncMode(gvt, s, ghosttyMode(12, false), c.MODE_CURSOR_BLINKING);
     syncMode(gvt, s, ghosttyMode(2004, false), c.MODE_BRACKETPASTE);
     syncMode(gvt, s, ghosttyMode(1004, false), c.MODE_FOCUSON);
-    syncMode(gvt, s, ghosttyMode(2026, false), c.MODE_SYNC);
     syncMode(gvt, s, ghosttyMode(20, true), c.MODE_CRLF);
     syncMode(gvt, s, ghosttyMode(66, false), c.MODE_KKEYPAD);
     syncMode(gvt, s, ghosttyMode(1, false), c.MODE_KCURSOR);
@@ -974,11 +984,18 @@ fn syncModes(gvt: *GhosttyVT, s: *c.screen) void {
     syncMode(gvt, s, ghosttyMode(1005, false), c.MODE_MOUSE_UTF8);
     syncMode(gvt, s, ghosttyMode(1006, false), c.MODE_MOUSE_SGR);
 
-    // Reflect the kitty keyboard protocol negotiated inside ghostty so
-    // that tmux encodes keys in extended form for this pane.
+    // MODE_SYNC (mode 2026) is deliberately not mirrored: tmux's own sync
+    // bit is backed by a 1s escape-hatch timer (screen_write_start_sync);
+    // setting the raw bit here with no timer can wedge cursor/redraw.
+
+    // Reflect the kitty keyboard protocol negotiated inside ghostty. It
+    // asks for every key in the enhanced form, so map it to tmux's
+    // "report everything extended" mode (MODE_KEYS_EXTENDED_2, see
+    // input-keys.c). modifyOtherKeys - what vim uses - is not exposed by
+    // the ghostty C API and so cannot be mirrored yet.
     var kkflags: u8 = 0;
     if (c.ghostty_terminal_get(gvt.terminal, c.GHOSTTY_TERMINAL_DATA_KITTY_KEYBOARD_FLAGS, &kkflags) == c.GHOSTTY_SUCCESS and kkflags != 0)
-        s.*.mode |= c.MODE_KEYS_EXTENDED;
+        s.*.mode |= c.MODE_KEYS_EXTENDED_2;
 }
 
 fn syncHistoryRow(gvt: *GhosttyVT, s: *c.screen, history_y: usize, target_y: c_uint) void {
