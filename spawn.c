@@ -177,7 +177,7 @@ spawn_window(struct spawn_context *sc, char **cause)
 	/* Set the name of the new window. */
 	if (~sc->flags & SPAWN_RESPAWN) {
 		free(w->name);
-		if (sc->name == NULL || *sc->name == '\0')
+		if (sc->name == NULL)
 			w->name = default_window_name(w);
 		else {
 			w->name = xstrdup(sc->name);
