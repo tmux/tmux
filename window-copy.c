@@ -854,7 +854,7 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 			window_copy_cursor_end_of_line(wme);
 	}
 
-	if (scroll_exit && data->oy == 0) {
+	if (scroll_exit && data->oy == 0 && data->screen.sel == NULL) {
 		window_pane_reset_mode(wp);
 		return;
 	}
@@ -972,7 +972,7 @@ window_copy_pagedown1(struct window_mode_entry *wme, int half_page,
 			window_copy_cursor_end_of_line(wme);
 	}
 
-	if (scroll_exit && data->oy == 0)
+	if (scroll_exit && data->oy == 0 && data->screen.sel == NULL)
 		return (1);
 	if (data->searchmark != NULL && !data->timeout)
 		window_copy_search_marks(wme, NULL, data->searchregex, 1);
@@ -2352,7 +2352,7 @@ window_copy_cmd_scroll_down(struct window_copy_cmd_state *cs)
 
 	for (; np != 0; np--)
 		window_copy_cursor_down(wme, 1);
-	if (data->scroll_exit && data->oy == 0)
+	if (data->scroll_exit && data->oy == 0 && data->screen.sel == NULL)
 		return (WINDOW_COPY_CMD_CANCEL);
 	return (WINDOW_COPY_CMD_NOTHING);
 }

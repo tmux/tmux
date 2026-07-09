@@ -2340,7 +2340,8 @@ but also exit copy mode if the cursor reaches the bottom.
 .It Xo
 .Ic scroll\-exit\-on
 .Xc
-Turn on exiting copy mode when scrolling to the end of the buffer.
+Turn on exiting copy mode when scrolling to the end of the buffer, unless a
+selection is present.
 .It Xo
 .Ic scroll\-exit\-off
 .Xc
@@ -2617,6 +2618,7 @@ instead of
 .Fl e
 specifies that scrolling to the bottom of the history (to the visible screen)
 should exit copy mode.
+This will not happen if a selection is present.
 While in copy mode, pressing a key other than those used for scrolling will
 disable this behaviour.
 This is intended to allow fast scrolling through a pane's history, for
