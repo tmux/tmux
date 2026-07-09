@@ -6815,10 +6815,14 @@ Adding
 will use shorter but less accurate time format for times in the past.
 .Ql r
 .Pq Ql t/r
-will show the time relative to the current time, for example
+will give the time relative to the current time, for example
 .Ql \&1m
 or
 .Ql 2m23s .
+.Ql d
+.Pq Ql t/d
+will give the difference from the time to current time in seconds (future
+times are negative).
 A custom format may be given using an
 .Ql f
 suffix (note that

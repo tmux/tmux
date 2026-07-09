@@ -127,6 +127,7 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_QUOTE_SHELL_SQ 0x20000000
 #define FORMAT_OPTIONS 0x40000000
 #define FORMAT_ENVIRON 0x80000000ULL
+#define FORMAT_DIFFERENCE 0x100000000ULL
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 100
@@ -4221,6 +4222,17 @@ format_relative_time(time_t t)
 	return (xstrdup(out));
 }
 
+/* Make a time difference in seconds. */
+static char *
+format_time_difference(time_t t)
+{
+	time_t	 now = time(NULL);
+	char	*out;
+
+	xasprintf(&out, "%ld", (long)now - (long)t);
+	return (out);
+}
+
 /* Find a format entry. */
 static char *
 format_find(struct format_tree *ft, const char *key, uint64_t modifiers,
@@ -4305,6 +4317,8 @@ found:
 			return (NULL);
 		if (modifiers & FORMAT_RELATIVE)
 			found = format_relative_time(t);
+		else if (modifiers & FORMAT_DIFFERENCE)
+			found = format_time_difference(t);
 		else if (modifiers & FORMAT_PRETTY)
 			found = format_pretty_time(t, 0);
 		else {
@@ -5684,6 +5698,8 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 					modifiers |= FORMAT_PRETTY;
 				else if (strchr(fm->argv[0], 'r') != NULL)
 					modifiers |= FORMAT_RELATIVE;
+				else if (strchr(fm->argv[0], 'd') != NULL)
+					modifiers |= FORMAT_DIFFERENCE;
 				else if (fm->argc >= 2 &&
 				    strchr(fm->argv[0], 'f') != NULL) {
 					free(time_format);
