@@ -448,7 +448,7 @@ sleep 0.1
 
 $TMUX new-session -d -x 1 -y 1 -s test-setup "sleep 2" || exit 1
 $TMUX set-option -g history-limit "$HISTORY_LIMIT" || exit 1
-$TMUX new-session -d -x 80 -y "$HEIGHT" -s stress 'cat' || exit 1
+$TMUX new-session -d -x 80 -y "$HEIGHT" -s stress 'stty -echo; exec cat' || exit 1
 $TMUX kill-session -t test-setup || exit 1
 sleep 0.3
 
