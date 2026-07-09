@@ -1538,7 +1538,7 @@ fn overriddenColor(gvt: *GhosttyVT, eff_kind: c_uint, def_kind: c_uint, unset: c
     return c.colour_join_rgb(eff.r, eff.g, eff.b);
 }
 
-fn syncColors(gvt: *GhosttyVT, s: *c.screen) void {
+fn syncColors(gvt: *GhosttyVT, s: *c.screen) bool {
     const wp = gvt.wp;
     var changed = false;
 
@@ -1585,6 +1585,7 @@ fn syncColors(gvt: *GhosttyVT, s: *c.screen) void {
 
     if (changed)
         wp.*.flags |= c.PANE_STYLECHANGED | c.PANE_THEMECHANGED;
+    return changed;
 }
 
 fn sync(gvt: *GhosttyVT, s: *c.screen, force: bool) bool {
@@ -1607,8 +1608,25 @@ fn sync(gvt: *GhosttyVT, s: *c.screen, force: bool) bool {
         return changed;
     if (screen_changed or force)
         dirty = c.GHOSTTY_RENDER_STATE_DIRTY_FULL
-    else if (dirty == c.GHOSTTY_RENDER_STATE_DIRTY_FALSE)
+    else if (dirty == c.GHOSTTY_RENDER_STATE_DIRTY_FALSE) {
+        // Mode and colour changes (mouse-mode toggles, OSC 10/11 sets,
+        // theme reports) arrive through escape sequences that ghostty
+        // does not flag as a dirty cell change, so the row iteration
+        // below never runs for them. Mirror modes/colours/cursor here
+        // too instead of waiting for a later write that dirties a row.
+        const old_mode = s.*.mode;
+        const old_cx = s.*.cx;
+        const old_cy = s.*.cy;
+        if (gvt.saw_esc) {
+            syncModes(gvt, s);
+            if (syncColors(gvt, s))
+                changed = true;
+        }
+        syncCursor(gvt, s);
+        if (s.*.mode != old_mode or s.*.cx != old_cx or s.*.cy != old_cy)
+            changed = true;
         return changed;
+    }
 
     var cols: u16 = 0;
     var rows: u16 = 0;
@@ -1651,7 +1669,7 @@ fn sync(gvt: *GhosttyVT, s: *c.screen, force: bool) bool {
 
     if (force or screen_changed or gvt.saw_esc) {
         syncModes(gvt, s);
-        syncColors(gvt, s);
+        _ = syncColors(gvt, s);
     }
     syncCursor(gvt, s);
 
