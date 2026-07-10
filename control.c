@@ -19,6 +19,8 @@
 
 #include <sys/types.h>
 
+#include <errno.h>
+#include <poll.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -483,6 +485,56 @@ control_all_done(struct client *c)
 	if (!TAILQ_EMPTY(&cs->all_blocks))
 		return (0);
 	return (EVBUFFER_LENGTH(cs->write_event->output) == 0);
+}
+
+/*
+ * Wait for the terminal to send an empty line or close, used by a control
+ * client after printing %exit so a wrapping terminal (such as iTerm2) can
+ * finish reading. There is no event loop here and the descriptor may be
+ * non-blocking, so read into an evbuffer rather than with stdio: a stdio
+ * stream, even a line-buffered one, can pull several lines into its buffer in
+ * a single read, leaving a line that poll(2) never reports and that would
+ * therefore never be consumed.
+ */
+void
+control_wait_exit(int fd)
+{
+	struct pollfd	 pfd;
+	struct evbuffer	*evb;
+	char		*line;
+	int		 n;
+
+	evb = evbuffer_new();
+	if (evb == NULL)
+		fatalx("out of memory");
+
+	for (;;) {
+		line = evbuffer_readln(evb, NULL, EVBUFFER_EOL_LF);
+		if (line != NULL) {
+			if (*line == '\0') {	/* empty line, stop */
+				free(line);
+				break;
+			}
+			free(line);
+			continue;		/* drain buffered lines first */
+		}
+
+		pfd.fd = fd;
+		pfd.events = POLLIN;
+		if (poll(&pfd, 1, -1) == -1) {
+			if (errno == EINTR)
+				continue;
+			break;
+		}
+
+		n = evbuffer_read(evb, fd, -1);
+		if (n == 0)			/* EOF */
+			break;
+		if (n == -1 && errno != EAGAIN && errno != EINTR)
+			break;
+	}
+
+	evbuffer_free(evb);
 }
 
 /* Flush all blocks until output. */
