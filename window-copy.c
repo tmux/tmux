@@ -2355,10 +2355,14 @@ window_copy_cmd_scroll_down(struct window_copy_cmd_state *cs)
 	u_int				 np = wme->prefix;
 	int				 dragging;
 
+	/*
+	 * With a selection but no active drag, only scroll the view.
+	 */
 	dragging = (cs->c != NULL && cs->c->tty.mouse_drag_flag != 0);
 	if (data->screen.sel != NULL && !dragging) {
 		data->cursordrag = CURSORDRAG_NONE;
 		data->lineflag = LINE_SEL_NONE;
+		/* Move down in the history. */
 		window_copy_scroll_up(wme, np);
 		return (WINDOW_COPY_CMD_NOTHING);
 	}
@@ -2392,10 +2396,14 @@ window_copy_cmd_scroll_up(struct window_copy_cmd_state *cs)
 	u_int				 np = wme->prefix;
 	int				 dragging;
 
+	/*
+	 * With a selection but no active drag, only scroll the view.
+	 */
 	dragging = (cs->c != NULL && cs->c->tty.mouse_drag_flag != 0);
 	if (data->screen.sel != NULL && !dragging) {
 		data->cursordrag = CURSORDRAG_NONE;
 		data->lineflag = LINE_SEL_NONE;
+		/* Move up in the history. */
 		window_copy_scroll_down(wme, np);
 		return (WINDOW_COPY_CMD_NOTHING);
 	}
@@ -5509,6 +5517,9 @@ window_copy_start_selection(struct window_mode_entry *wme)
 	window_copy_set_selection(wme, 1, 0);
 }
 
+/* Return whether x,y is inside the selection and optionally identify
+ * the endpoint.
+ */
 static int
 window_copy_mouse_in_selection(struct window_mode_entry *wme, u_int x, u_int y,
     int *on_start, int *on_end)
