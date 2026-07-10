@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: window-buffer.c,v 1.49 2026/06/26 08:10:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>

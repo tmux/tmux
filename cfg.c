@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: cfg.c,v 1.89 2026/06/25 11:39:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>

@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: xmalloc.c,v 1.14 2026/06/18 10:56:22 nicm Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>

@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: attributes.c,v 1.13 2026/07/02 08:51:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Joshua Elsasser <josh@elsasser.org>

@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: control-notify.c,v 1.37 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -23,32 +23,56 @@
 
 #include "tmux.h"
 
+/* Should this client be sent events? */
 #define CONTROL_SHOULD_NOTIFY_CLIENT(c) \
-	((c) != NULL && ((c)->flags & CLIENT_CONTROL) && \
+	((c) != NULL && \
+	 ((c)->flags & CLIENT_CONTROL) && \
 	 (~(c)->flags & CLIENT_EXIT) && \
 	 (c)->control_state != NULL)
 
-void
-control_notify_pane_mode_changed(int pane)
+/* Notify control clients that pane mode changed. */
+static void
+control_pane_mode_changed_cb(__unused const char *name,
+    struct event_payload *ep, __unused void *sink_data)
 {
-	struct client	*c;
+	struct window_pane	*wp;
+	struct client		*c;
+	char			*value;
 
-	TAILQ_FOREACH(c, &clients, entry) {
-		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
-			continue;
-
-		control_write(c, "%%pane-mode-changed %%%u", pane);
+	wp = event_payload_get_pane(ep, "pane");
+	if (wp != NULL) {
+		TAILQ_FOREACH(c, &clients, entry) {
+			if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
+				continue;
+			control_write(c, "%%pane-mode-changed %%%u", wp->id);
+		}
+		return;
 	}
+
+	value = event_payload_print(ep, "pane");
+	if (value == NULL)
+		return;
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (CONTROL_SHOULD_NOTIFY_CLIENT(c))
+			control_write(c, "%%pane-mode-changed %s", value);
+	}
+	free(value);
 }
 
-void
-control_notify_window_layout_changed(struct window *w)
+/* Notify control clients that window layout changed. */
+static void
+control_window_layout_changed_cb(__unused const char *name,
+    struct event_payload *ep, __unused void *sink_data)
 {
-	struct client	*c;
-	struct session	*s;
-	struct winlink	*wl;
-	const char	*template;
-	char		*cp;
+	struct client		*c;
+	struct session		*s;
+	struct winlink		*wl;
+	struct window		*w = event_payload_get_window(ep, "window");
+	const char		*template;
+	char			*cp;
+
+	if (w == NULL)
+		return;
 
 	template = "%layout-change #{window_id} #{window_layout} "
 	    "#{window_visible_layout} #{window_raw_flags}";
@@ -73,12 +97,15 @@ control_notify_window_layout_changed(struct window *w)
 	free(cp);
 }
 
-void
-control_notify_window_pane_changed(struct window *w)
+/* Notify control clients that window pane changed. */
+static void
+control_window_pane_changed_cb(__unused const char *name,
+    struct event_payload *ep, __unused void *sink_data)
 {
 	struct client	*c;
+	struct window	*w = event_payload_get_window(ep, "window");
 
-	if (w->active == NULL)
+	if (w == NULL || w->active == NULL)
 		return;
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
@@ -89,12 +116,17 @@ control_notify_window_pane_changed(struct window *w)
 	}
 }
 
-void
-control_notify_window_unlinked(__unused struct session *s, struct window *w)
+/* Notify control clients that a window was unlinked. */
+static void
+control_window_unlinked_cb(__unused const char *name, struct event_payload *ep,
+    __unused void *sink_data)
 {
-	struct client	*c;
-	struct session	*cs;
+	struct client		*c;
+	struct session		*cs;
+	struct window		*w = event_payload_get_window(ep, "window");
 
+	if (w == NULL)
+		return;
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c) || c->session == NULL)
 			continue;
@@ -107,12 +139,17 @@ control_notify_window_unlinked(__unused struct session *s, struct window *w)
 	}
 }
 
-void
-control_notify_window_linked(__unused struct session *s, struct window *w)
+/* Notify control clients that a window was linked. */
+static void
+control_window_linked_cb(__unused const char *name, struct event_payload *ep,
+    __unused void *sink_data)
 {
-	struct client	*c;
-	struct session	*cs;
+	struct client		*c;
+	struct session		*cs;
+	struct window		*w = event_payload_get_window(ep, "window");
 
+	if (w == NULL)
+		return;
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c) || c->session == NULL)
 			continue;
@@ -125,12 +162,17 @@ control_notify_window_linked(__unused struct session *s, struct window *w)
 	}
 }
 
-void
-control_notify_window_renamed(struct window *w)
+/* Notify control clients that a window was renamed. */
+static void
+control_window_renamed_cb(__unused const char *name, struct event_payload *ep,
+    __unused void *sink_data)
 {
-	struct client	*c;
-	struct session	*cs;
+	struct client		*c;
+	struct session		*cs;
+	struct window		*w = event_payload_get_window(ep, "window");
 
+	if (w == NULL)
+		return;
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c) || c->session == NULL)
 			continue;
@@ -146,13 +188,16 @@ control_notify_window_renamed(struct window *w)
 	}
 }
 
-void
-control_notify_client_session_changed(struct client *cc)
+/* Notify control clients that a client changed session. */
+static void
+control_client_session_changed_cb(__unused const char *name,
+    struct event_payload *ep, __unused void *sink_data)
 {
-	struct client	*c;
-	struct session	*s;
+	struct client		*cc = event_payload_get_client(ep, "client");
+	struct client		*c;
+	struct session		*s;
 
-	if (cc->session == NULL)
+	if (cc == NULL || cc->session == NULL)
 		return;
 	s = cc->session;
 
@@ -170,22 +215,32 @@ control_notify_client_session_changed(struct client *cc)
 	}
 }
 
-void
-control_notify_client_detached(struct client *cc)
+/* Notify control clients that a client detached. */
+static void
+control_client_detached_cb(__unused const char *name, struct event_payload *ep,
+    __unused void *sink_data)
 {
-	struct client	*c;
+	struct client		*cc = event_payload_get_client(ep, "client");
+	struct client		*c;
 
+	if (cc == NULL)
+		return;
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (CONTROL_SHOULD_NOTIFY_CLIENT(c))
 			control_write(c, "%%client-detached %s", cc->name);
 	}
 }
 
-void
-control_notify_session_renamed(struct session *s)
+/* Notify control clients that a session was renamed. */
+static void
+control_session_renamed_cb(__unused const char *name, struct event_payload *ep,
+    __unused void *sink_data)
 {
-	struct client	*c;
+	struct session		*s = event_payload_get_session(ep, "session");
+	struct client		*c;
 
+	if (s == NULL)
+		return;
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
 			continue;
@@ -194,8 +249,10 @@ control_notify_session_renamed(struct session *s)
 	}
 }
 
-void
-control_notify_session_created(__unused struct session *s)
+/* Notify control clients that sessions changed. */
+static void
+control_session_created_cb(__unused const char *name,
+    __unused struct event_payload *ep, __unused void *sink_data)
 {
 	struct client	*c;
 
@@ -207,8 +264,10 @@ control_notify_session_created(__unused struct session *s)
 	}
 }
 
-void
-control_notify_session_closed(__unused struct session *s)
+/* Notify control clients that sessions changed. */
+static void
+control_session_closed_cb(__unused const char *name,
+    __unused struct event_payload *ep, __unused void *sink_data)
 {
 	struct client	*c;
 
@@ -220,9 +279,12 @@ control_notify_session_closed(__unused struct session *s)
 	}
 }
 
-void
-control_notify_session_window_changed(struct session *s)
+/* Notify control clients that the current window changed. */
+static void
+control_session_window_changed_cb(__unused const char *name,
+    struct event_payload *ep, __unused void *sink_data)
 {
+	struct session	*s = event_payload_get_session(ep, "session");
 	struct client	*c;
 
 	/*
@@ -230,7 +292,7 @@ control_notify_session_window_changed(struct session *s)
 	 * session has been destroyed (which sets curw to NULL) but is kept
 	 * alive by the notification's reference. Skip the notification.
 	 */
-	if (s->curw == NULL)
+	if (s == NULL || s->curw == NULL)
 		return;
 
 	TAILQ_FOREACH(c, &clients, entry) {
@@ -242,28 +304,68 @@ control_notify_session_window_changed(struct session *s)
 	}
 }
 
-void
-control_notify_paste_buffer_changed(const char *name)
+/* Notify control clients that a paste buffer changed. */
+static void
+control_paste_buffer_changed_cb(__unused const char *name,
+    struct event_payload *ep, __unused void *sink_data)
 {
+	const char	*pbname = event_payload_get_string(ep, "paste_buffer");
 	struct client	*c;
 
+	if (pbname == NULL)
+		return;
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
 			continue;
 
-		control_write(c, "%%paste-buffer-changed %s", name);
+		control_write(c, "%%paste-buffer-changed %s", pbname);
 	}
 }
 
-void
-control_notify_paste_buffer_deleted(const char *name)
+/* Notify control clients that a paste buffer was deleted. */
+static void
+control_paste_buffer_deleted_cb(__unused const char *name,
+    struct event_payload *ep, __unused void *sink_data)
 {
+	const char	*pbname = event_payload_get_string(ep, "paste_buffer");
 	struct client	*c;
 
+	if (pbname == NULL)
+		return;
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
 			continue;
 
-		control_write(c, "%%paste-buffer-deleted %s", name);
+		control_write(c, "%%paste-buffer-deleted %s", pbname);
 	}
+}
+
+/* Build control event sinks. */
+void
+control_build_events(void)
+{
+	/* Control event sink callbacks. */
+	static struct {
+		const char	*name;
+		events_cb	 cb;
+	} events[] = {
+		{ "pane-mode-changed", control_pane_mode_changed_cb },
+		{ "window-layout-changed", control_window_layout_changed_cb },
+		{ "window-pane-changed", control_window_pane_changed_cb },
+		{ "window-unlinked", control_window_unlinked_cb },
+		{ "window-linked", control_window_linked_cb },
+		{ "window-renamed", control_window_renamed_cb },
+		{ "client-session-changed", control_client_session_changed_cb },
+		{ "client-detached", control_client_detached_cb },
+		{ "session-renamed", control_session_renamed_cb },
+		{ "session-created", control_session_created_cb },
+		{ "session-closed", control_session_closed_cb },
+		{ "session-window-changed", control_session_window_changed_cb },
+		{ "paste-buffer-changed", control_paste_buffer_changed_cb },
+		{ "paste-buffer-deleted", control_paste_buffer_deleted_cb }
+	};
+	u_int	i;
+
+	for (i = 0; i < nitems(events); i++)
+		events_add_sink(events[i].name, events[i].cb, NULL);
 }

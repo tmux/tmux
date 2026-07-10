@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: file.c,v 1.20 2026/05/17 10:54:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>

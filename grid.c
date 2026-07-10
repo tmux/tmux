@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: grid.c,v 1.153 2026/07/02 08:51:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>

@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: window-customize.c,v 1.30 2026/07/06 14:40:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>

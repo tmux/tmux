@@ -1,4 +1,4 @@
-# $OpenBSD$
+# $OpenBSD: Makefile,v 1.120 2026/07/10 13:38:45 nicm Exp $
 
 PROG=	tmux
 SRCS=	alerts.c \
@@ -76,6 +76,8 @@ SRCS=	alerts.c \
 	control-notify.c \
 	control.c \
 	environ.c \
+	events.c \
+	events-payload.c \
 	file.c \
 	format.c \
 	fuzzy.c \
@@ -83,6 +85,7 @@ SRCS=	alerts.c \
 	grid-reader.c \
 	grid-view.c \
 	grid.c \
+	hooks.c \
 	hyperlinks.c \
 	input-keys.c \
 	input.c \
@@ -97,7 +100,6 @@ SRCS=	alerts.c \
 	mode-tree.c \
 	monitor.c \
 	names.c \
-	notify.c \
 	options-table.c \
 	options.c \
 	paste.c \

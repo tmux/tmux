@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: resize.c,v 1.56 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -60,8 +60,8 @@ resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 
 	tty_update_window_offset(w);
 	server_redraw_window(w);
-	notify_window("window-layout-changed", w);
-	notify_window("window-resized", w);
+	events_fire_window("window-layout-changed", w);
+	events_fire_window("window-resized", w);
 	w->flags &= ~WINDOW_RESIZE;
 }
 

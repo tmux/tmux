@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: key-bindings.c,v 1.186 2026/07/07 12:30:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>

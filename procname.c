@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: procname.c,v 1.20 2022/02/22 17:35:01 deraadt Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>

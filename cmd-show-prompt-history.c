@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: cmd-show-prompt-history.c,v 1.5 2026/06/25 11:39:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2021 Anindya Mukherjee <anindya49@hotmail.com>

@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: control.c,v 1.60 2026/07/10 07:25:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Nicholas Marriott <nicholas.marriott@gmail.com>

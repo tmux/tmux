@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: window-clock.c,v 1.34 2026/06/25 16:32:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>

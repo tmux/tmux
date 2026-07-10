@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: input.c,v 1.265 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -174,6 +174,8 @@ static void	input_osc_110(struct input_ctx *, const char *);
 static void	input_osc_111(struct input_ctx *, const char *);
 static void	input_osc_112(struct input_ctx *, const char *);
 static void	input_osc_133(struct input_ctx *, const char *);
+static void	input_fire_pane_title_changed(struct window_pane *,
+		    const char *);
 
 /* Transition entry/exit handlers. */
 static void	input_clear(struct input_ctx *);
@@ -209,6 +211,21 @@ static int	input_end_bel(struct input_ctx *);
 
 /* Command table comparison function. */
 static int	input_table_compare(const void *, const void *);
+
+static void
+input_fire_pane_title_changed(struct window_pane *wp, const char *title)
+{
+	struct event_payload	*ep;
+	struct cmd_find_state	 fs;
+
+	ep = event_payload_create();
+	cmd_find_from_pane(&fs, wp, 0);
+	event_payload_set_target(ep, &fs);
+	event_payload_set_pane(ep, "pane", wp);
+	event_payload_set_window(ep, "window", wp->window);
+	event_payload_set_string(ep, "new_title", "%s", title);
+	events_fire("pane-title-changed", ep);
+}
 
 /* Command table entry. */
 struct input_table_entry {
@@ -2161,7 +2178,7 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 				screen_pop_title(sctx->s);
 				if (wp == NULL)
 					break;
-				notify_pane("pane-title-changed", wp);
+				events_fire_pane("pane-title-changed", wp);
 				server_redraw_window_borders(w);
 				server_status_window(w);
 				break;
@@ -2663,7 +2680,7 @@ input_exit_osc(struct input_ctx *ictx)
 		if (wp != NULL &&
 		    options_get_number(wp->options, "allow-set-title") &&
 		    screen_set_title(sctx->s, p, 1)) {
-			notify_pane("pane-title-changed", wp);
+			input_fire_pane_title_changed(wp, p);
 			server_redraw_window_borders(wp->window);
 			server_status_window(wp->window);
 		}
@@ -2741,7 +2758,7 @@ input_exit_apc(struct input_ctx *ictx)
 	if (wp != NULL &&
 	    options_get_number(wp->options, "allow-set-title") &&
 	    screen_set_title(sctx->s, ictx->input_buf, 1)) {
-		notify_pane("pane-title-changed", wp);
+		input_fire_pane_title_changed(wp, ictx->input_buf);
 		server_redraw_window_borders(wp->window);
 		server_status_window(wp->window);
 	}
@@ -3252,7 +3269,7 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 		screen_write_start_pane(&ctx, wp, NULL);
 		screen_write_setselection(&ctx, clip, out, outlen);
 		screen_write_stop(&ctx);
-		notify_pane("pane-set-clipboard", wp);
+		events_fire_pane("pane-set-clipboard", wp);
 		paste_add(NULL, out, outlen);
 	}
 }

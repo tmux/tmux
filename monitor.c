@@ -1,7 +1,7 @@
-/* $OpenBSD$ */
+/* $OpenBSD: monitor.c,v 1.5 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
- * Copyright (c) 2026 Nicholas Marriott <nicm@users.sourceforge.net>
+ * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above

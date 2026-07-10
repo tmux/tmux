@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: window-tree.c,v 1.93 2026/07/04 22:09:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>

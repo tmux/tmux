@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: names.c,v 1.48 2026/06/29 18:17:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>

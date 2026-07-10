@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: log.c,v 1.33 2026/05/17 16:02:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>

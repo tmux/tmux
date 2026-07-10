@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: layout.c,v 1.93 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -957,7 +957,7 @@ layout_resize_layout(struct window *w, struct layout_cell *lc,
 	/* Fix cell offsets. */
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
-	notify_window("window-layout-changed", w);
+	events_fire_window("window-layout-changed", w);
 }
 
 /* Resize a single pane within the layout. */
@@ -1502,7 +1502,7 @@ layout_close_pane(struct window_pane *wp)
 		layout_fix_offsets(w);
 		layout_fix_panes(w, NULL);
 	}
-	notify_window("window-layout-changed", w);
+	events_fire_window("window-layout-changed", w);
 }
 
 /* Spread out cells inside a parent cell. */

@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: proc.c,v 1.31 2026/06/08 21:38:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2015 Nicholas Marriott <nicholas.marriott@gmail.com>
