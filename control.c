@@ -1,4 +1,4 @@
-/* $OpenBSD: control.c,v 1.60 2026/07/10 07:25:05 nicm Exp $ */
+/* $OpenBSD: control.c,v 1.61 2026/07/10 15:45:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -19,7 +19,9 @@
 
 #include <sys/types.h>
 
+#include <errno.h>
 #include <event.h>
+#include <poll.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -484,6 +486,53 @@ control_all_done(struct client *c)
 	if (!TAILQ_EMPTY(&cs->all_blocks))
 		return (0);
 	return (EVBUFFER_LENGTH(cs->write_event->output) == 0);
+}
+
+/*
+ * Wait for the terminal to send an empty line or close, used by a control
+ * client after printing %exit so a wrapping terminal (such as iTerm2) can
+ * finish reading.
+ */
+void
+control_wait_exit(int fd)
+{
+	struct pollfd	 pfd;
+	struct evbuffer	*evb;
+	char		*line;
+	int		 n;
+
+	evb = evbuffer_new();
+	if (evb == NULL)
+		fatalx("out of memory");
+
+	for (;;) {
+		line = evbuffer_readln(evb, NULL, EVBUFFER_EOL_LF);
+		if (line != NULL) {
+			if (*line == '\0') { /* empty line, stop */
+				free(line);
+				break;
+			}
+			free(line);
+			continue; /* drain buffered lines first */
+		}
+
+		memset(&pfd, 0, sizeof pfd);
+		pfd.fd = fd;
+		pfd.events = POLLIN;
+		if (poll(&pfd, 1, INFTIM) == -1) {
+			if (errno == EINTR)
+				continue;
+			break;
+		}
+
+		n = evbuffer_read(evb, fd, -1);
+		if (n == 0)
+			break;
+		if (n == -1 && errno != EAGAIN && errno != EINTR)
+			break;
+	}
+
+	evbuffer_free(evb);
 }
 
 /* Flush all blocks until output. */

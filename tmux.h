@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1395 2026/07/10 15:20:06 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1396 2026/07/10 15:45:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3917,6 +3917,7 @@ void	control_discard(struct client *);
 void	control_start(struct client *);
 void	control_ready(struct client *);
 void	control_stop(struct client *);
+void	control_wait_exit(int);
 void	control_set_pane_on(struct client *, struct window_pane *);
 void	control_set_pane_off(struct client *, struct window_pane *);
 void	control_continue_pane(struct client *, struct window_pane *);

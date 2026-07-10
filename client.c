@@ -1,4 +1,4 @@
-/* $OpenBSD: client.c,v 1.165 2025/04/25 12:25:32 nicm Exp $ */
+/* $OpenBSD: client.c,v 1.166 2026/07/10 15:45:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -240,9 +240,8 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 	pid_t			 ppid;
 	enum msgtype		 msg;
 	struct termios		 tio, saved_tio;
-	size_t			 size, linesize = 0;
-	ssize_t			 linelen;
-	char			*line = NULL, **caps = NULL, *cause;
+	size_t			 size;
+	char			**caps = NULL, *cause;
 	u_int			 ncaps = 0;
 	struct args_value	*values;
 
@@ -400,11 +399,6 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 		client_exec(client_execshell, client_execcmd);
 	}
 
-	/* Restore streams to blocking. */
-	setblocking(STDIN_FILENO, 1);
-	setblocking(STDOUT_FILENO, 1);
-	setblocking(STDERR_FILENO, 1);
-
 	/* Print the exit message, if any, and exit. */
 	if (client_attached) {
 		if (client_exitreason != CLIENT_EXIT_NONE)
@@ -419,15 +413,8 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 		else
 			printf("%%exit\n");
 		fflush(stdout);
-		if (client_flags & CLIENT_CONTROL_WAITEXIT) {
-			setvbuf(stdin, NULL, _IOLBF, 0);
-			for (;;) {
-				linelen = getline(&line, &linesize, stdin);
-				if (linelen <= 1)
-					break;
-			}
-			free(line);
-		}
+		if (client_flags & CLIENT_CONTROL_WAITEXIT)
+			control_wait_exit(STDIN_FILENO);
 		if (client_flags & CLIENT_CONTROLCONTROL) {
 			printf("\033\\");
 			fflush(stdout);
@@ -435,6 +422,12 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 		}
 	} else if (client_exitreason != CLIENT_EXIT_NONE)
 		fprintf(stderr, "%s\n", client_exit_message());
+
+	/* Restore the streams to blocking. */
+	setblocking(STDIN_FILENO, 1);
+	setblocking(STDOUT_FILENO, 1);
+	setblocking(STDERR_FILENO, 1);
+
 	return (client_exitval);
 }
 
