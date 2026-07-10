@@ -84,7 +84,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*wp = target->wp, *new_wp = NULL;
 	struct layout_cell	*lc = NULL;
 	struct cmd_find_state	 fs;
-	int			 input, empty, is_floating, npe, flags;
+	int			 input, empty, is_floating, flags = 0;
 	const char		*template, *style, *value;
 	char			*cause = NULL, *cp, *title;
 	const struct options_table_entry *oe;
@@ -92,12 +92,25 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	enum pane_lines		 lines;
 	u_int			 count = args_count(args);
 
-	npe = cmd_get_entry(self) == &cmd_new_pane_entry;
-	if (npe)
+	if (cmd_get_entry(self) == &cmd_new_pane_entry)
 		is_floating = !args_has(args, 'L');
-	else
+	else {
 		is_floating = window_pane_is_floating(wp);
-	flags = is_floating ? SPAWN_FLOATING : 0;
+		flags |= SPAWN_SPLIT;
+	}
+
+	if (is_floating)
+		flags |= SPAWN_FLOATING;
+	if (args_has(args, 'h'))
+		flags |= SPAWN_HORIZONTAL;
+	if (args_has(args, 'b'))
+		flags |= SPAWN_BEFORE;
+	if (args_has(args, 'f'))
+		flags |= SPAWN_FULLSIZE;
+	if (args_has(args, 'd'))
+		flags |= SPAWN_DETACHED;
+	if (args_has(args, 'Z'))
+		flags |= SPAWN_ZOOM;
 
 	input = args_has(args, 'I');
 	if (input || (count == 1 && *args_string(args, 0) == '\0'))
@@ -126,10 +139,10 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (flags & SPAWN_FLOATING)
-		lc = layout_get_floating_cell(item, args, lines, w, wp, !npe,
-			&flags, &cause);
+		lc = layout_get_floating_cell(item, args, lines, w, wp, flags,
+		    &cause);
 	else
-		lc = layout_get_tiled_cell(item, args, w, wp, &flags, &cause);
+		lc = layout_get_tiled_cell(item, args, w, wp, flags, &cause);
 	if (cause != NULL) {
 		cmdq_error(item, "%s", cause);
 		free(cause);
@@ -154,12 +167,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	sc.idx = -1;
 	sc.cwd = args_get(args, 'c');
-
 	sc.flags = flags;
-	if (args_has(args, 'd'))
-		sc.flags |= SPAWN_DETACHED;
-	if (args_has(args, 'Z'))
-		sc.flags |= SPAWN_ZOOM;
 
 	if ((new_wp = spawn_pane(&sc, &cause)) == NULL) {
 		cmdq_error(item, "create pane failed: %s", cause);
@@ -229,10 +237,10 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 			break;
 		}
 	}
-	if (!args_has(args, 'd'))
+	if (~flags & SPAWN_DETACHED)
 		cmd_find_from_winlink_pane(current, wl, new_wp, 0);
 
-	if (!is_floating) {
+	if (~flags & SPAWN_FLOATING) {
 		window_pop_zoom(wp->window);
 		server_redraw_window(wp->window);
 	}

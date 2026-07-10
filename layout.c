@@ -1595,7 +1595,7 @@ layout_spread_out(struct window_pane *wp)
 /* Get a new tiled cell. */
 struct layout_cell *
 layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
-    struct window *w, struct window_pane *wp, int *flags, char **cause)
+    struct window *w, struct window_pane *wp, int flags, char **cause)
 {
 	struct layout_cell	*lc;
 	enum layout_type	 type = LAYOUT_TOPBOTTOM;
@@ -1608,15 +1608,11 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 		return (NULL);
 	}
 
-	if (args_has(args, 'h'))
+	if (flags & SPAWN_HORIZONTAL)
 		type = LAYOUT_LEFTRIGHT;
-	if (args_has(args, 'b'))
-		*flags |= SPAWN_BEFORE;
-	if (args_has(args, 'f'))
-		*flags |= SPAWN_FULLSIZE;
 
 	if (args_has(args, 'l') || args_has(args, 'p')) {
-		if (args_has(args, 'f')) {
+		if (flags & SPAWN_FULLSIZE) {
 			if (type == LAYOUT_TOPBOTTOM)
 				curval = w->sy;
 			else
@@ -1644,8 +1640,8 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 		return (NULL);
 	}
 
-	window_push_zoom(wp->window, 1, args_has(args, 'Z'));
-	lc = layout_split_pane(wp, type, size, *flags);
+	window_push_zoom(wp->window, 1, (flags & SPAWN_ZOOM));
+	lc = layout_split_pane(wp, type, size, flags);
 	if (lc == NULL)
 		*cause = xstrdup("no space for a new pane");
 
@@ -1654,22 +1650,15 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 
 struct layout_cell *
 layout_get_floating_cell(struct cmdq_item *item, struct args *args,
-    enum pane_lines lines, struct window *w, struct window_pane *wp, int split,
-    int *flags, char **cause)
+    enum pane_lines lines, struct window *w, struct window_pane *wp, int flags,
+    char **cause)
 {
 	struct layout_cell	*lcnew, *lc = wp->layout_cell;
 	struct layout_geometry	 fg;
 
-	if (args_has(args, 'b'))
-		*flags |= SPAWN_BEFORE;
-	if (args_has(args, 'h'))
-		*flags |= SPAWN_HORIZONTAL;
-	if (args_has(args, 'f'))
-		*flags |= SPAWN_FULLSIZE;
-
 	layout_geometry_init(&fg);
-	if (split) {
-		if (layout_split_floating_cell(lc, w, &fg, lines, *flags, cause)
+	if (flags & SPAWN_SPLIT) {
+		if (layout_split_floating_cell(lc, w, &fg, lines, flags, cause)
 		    != 0)
 			return (NULL);
 	} else {
@@ -1678,7 +1667,7 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 			return (NULL);
 	}
 
-	window_push_zoom(wp->window, 1, args_has(args, 'Z'));
+	window_push_zoom(wp->window, 1, (flags & SPAWN_ZOOM));
 	lcnew = layout_floating_pane(w, wp, &fg);
 	return (lcnew);
 }
@@ -1787,7 +1776,7 @@ layout_split_floating_cell(struct layout_cell *lc, struct window *w,
 	int			 tborder = 1, bborder = w->sy - 1;
 	int			 lborder = 3, rborder = w->sx - 3;
 	int			 border = lines != PANE_LINES_NONE ? 1 : 0;
-	int			 size, space, before = flags & SPAWN_BEFORE;
+	int			 size, space;
 
 	/* First, move the target cell in-bounds. */
 	memcpy(&old, &lc->g, sizeof old);
@@ -1803,12 +1792,12 @@ layout_split_floating_cell(struct layout_cell *lc, struct window *w,
 	/* Move the new cell to its ideal position. */
 	memcpy(&new, &old, sizeof new);
 	if (flags & SPAWN_HORIZONTAL) {
-		if (before)
+		if (flags & SPAWN_BEFORE)
 			new.xoff -= old.sx + 2 * border;
 		else
 			new.xoff += old.sx + 2 * border;
 	} else {
-		if (before)
+		if (flags & SPAWN_BEFORE)
 			new.yoff -= old.sy + 2 * border;
 		else
 			new.yoff += old.sy + 2 * border;
