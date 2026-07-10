@@ -6325,11 +6325,7 @@ For example, this could be used to write to a log file:
 set\-hook \-g command\-error "run\-shell \\"echo 'a tmux command failed' >>/tmp/log\\""
 .Ed
 .Pp
-All the notifications listed in the
-.Sx CONTROL MODE
-section are hooks (without any arguments), except
-.Ic %exit .
-The following additional hooks are available:
+The following hooks are available in addition to after hooks:
 .Bl -tag -width "XXXXXXXXXXXXXXXXXXXXXX"
 .It alert\-activity
 Run when a window has activity.
@@ -6348,11 +6344,11 @@ Run when a client becomes the latest active client of its session.
 .It client\-attached
 Run when a client is attached.
 .It client\-detached
-Run when a client is detached
+Run when a client is detached.
 .It client\-focus\-in
-Run when focus enters a client
+Run when focus enters a client.
 .It client\-focus\-out
-Run when focus exits a client
+Run when focus exits a client.
 .It client\-resized
 Run when a client is resized.
 .It client\-session\-changed
@@ -6363,6 +6359,21 @@ Run when a client switches to a light theme.
 Run when a client switches to a dark theme.
 .It command\-error
 Run when a command fails.
+.It marked\-pane\-changed
+Run when the marked pane is set or cleared.
+.It pane\-command\-finished
+Run when an OSC 133 command finishes in a pane.
+The event payload includes
+.Ql hook_command_start_time ,
+.Ql hook_command_end_time ,
+.Ql hook_command_duration
+and
+.Ql hook_command_status
+if present.
+.It pane\-command\-started
+Run when an OSC 133 command starts in a pane.
+.It pane\-created
+Run when a pane is created or respawned.
 .It pane\-died
 Run when the program running in a pane exits, but
 .Ic remain\-on\-exit
@@ -6377,20 +6388,40 @@ option is on.
 Run when the focus exits a pane, if the
 .Ic focus\-events
 option is on.
+.It pane\-mode\-changed
+Run when a pane changes mode.
+.It pane\-mode\-entered
+Run when a pane enters a mode.
+.It pane\-mode\-exited
+Run when a pane exits a mode.
+.It pane\-prompt\-closed
+Run when a prompt in a pane is closed.
+.It pane\-prompt\-opened
+Run when a prompt is opened in a pane.
+.It pane\-resized
+Run when a pane is resized.
 .It pane\-set\-clipboard
 Run when the terminal clipboard is set using the
 .Xr xterm 1
 escape sequence.
-.It session\-created
-Run when a new session created.
+.It pane\-shell\-prompt
+Run when an OSC 133 shell prompt starts in a pane.
+.It pane\-title\-changed
+Run when a pane title is changed.
 .It session\-closed
-Run when a session closed.
+Run when a session is closed.
+.It session\-created
+Run when a new session is created.
 .It session\-renamed
 Run when a session is renamed.
+.It session\-window\-changed
+Run when a session changes its active window.
 .It window\-layout\-changed
 Run when a window layout is changed.
 .It window\-linked
 Run when a window is linked into a session.
+.It window\-pane\-changed
+Run when a window changes its active pane.
 .It window\-renamed
 Run when a window is renamed.
 .It window\-resized
@@ -6398,6 +6429,10 @@ Run when a window is resized.
 This may be after the
 .Ar client\-resized
 hook is run.
+.It window\-unzoomed
+Run when a window is unzoomed.
+.It window\-zoomed
+Run when a window is zoomed.
 .It window\-unlinked
 Run when a window is unlinked from a session.
 .El
@@ -6405,13 +6440,15 @@ Run when a window is unlinked from a session.
 Hooks are managed with these commands:
 .Bl -tag -width Ds
 .It Xo Ic set\-hook
-.Op Fl agpRuw
+.Op Fl agpERTuw
 .Op Fl B Ar name:what:format
 .Op Fl t Ar target\-pane
 .Ar hook\-name
 .Op Ar command
 .Xc
 Without
+.Fl E
+or
 .Fl R ,
 sets (or with
 .Fl u
@@ -6434,6 +6471,11 @@ is the hook to run,
 selects the session, pane, all panes, window, or all windows, and
 .Ar format
 is expanded once a second.
+With
+.Fl T ,
+the hook is run only when
+.Ar format
+is true.
 For monitor hooks,
 .Ar name
 must begin with
@@ -6450,6 +6492,14 @@ With
 the subscription named by
 .Fl B
 is removed.
+.Pp
+With
+.Fl E ,
+fire the user event named
+.Ar hook\-name .
+.Ar hook\-name
+must begin with
+.Ql @ .
 .Pp
 With
 .Fl R ,
@@ -7161,6 +7211,11 @@ The following variables are available, where appropriate:
 .It Li "pane_at_top" Ta "" Ta "1 if pane is at the top of window"
 .It Li "pane_bg" Ta "" Ta "Pane background colour"
 .It Li "pane_bottom" Ta "" Ta "Bottom of pane"
+.It Li "pane_command_duration" Ta "" Ta "Current or most recent OSC 133 command duration in seconds"
+.It Li "pane_command_end_time" Ta "" Ta "Time most recent OSC 133 command ended"
+.It Li "pane_command_running" Ta "" Ta "1 if an OSC 133 command is running"
+.It Li "pane_command_start_time" Ta "" Ta "Time current or most recent OSC 133 command started"
+.It Li "pane_command_status" Ta "" Ta "Exit status from most recent OSC 133 command"
 .It Li "pane_current_command" Ta "" Ta "Current command if available"
 .It Li "pane_current_path" Ta "" Ta "Current path if available"
 .It Li "pane_dead" Ta "" Ta "1 if pane is dead"
@@ -7178,6 +7233,8 @@ The following variables are available, where appropriate:
 .It Li "pane_input_off" Ta "" Ta "1 if input to pane is disabled"
 .It Li "pane_key_mode" Ta "" Ta "Extended key reporting mode in this pane"
 .It Li "pane_last" Ta "" Ta "1 if last pane"
+.It Li "pane_last_output_time" Ta "" Ta "Time pane last produced output"
+.It Li "pane_last_prompt_time" Ta "" Ta "Time most recent OSC 133 prompt began"
 .It Li "pane_left" Ta "" Ta "Left of pane"
 .It Li "pane_marked" Ta "" Ta "1 if this is the marked pane"
 .It Li "pane_marked_set" Ta "" Ta "1 if a marked pane is set"
@@ -8562,8 +8619,10 @@ or the current pane if omitted) after the command finishes.
 If the command fails, the exit status is also displayed.
 .Tg wait
 .It Xo Ic wait\-for
-.Op Fl L | S | U
-.Ar channel
+.Op Fl ELSUlv
+.Op Fl F Ar format
+.Op Fl w Ar waiter
+.Ar name
 .Xc
 .D1 Pq alias: Ic wait
 When used without options, prevents the client from exiting until woken using
@@ -8576,6 +8635,41 @@ is used, the channel is locked and any clients that try to lock the same
 channel are made to wait until the channel is unlocked with
 .Ic wait\-for
 .Fl U .
+.Pp
+With
+.Fl E ,
+.Nm
+waits for the next event with
+.Ar name .
+Events include hook and notification names, and user
+.Ql @
+events generated by
+.Ic set-hook
+.Fl E
+or
+.Ic set-hook
+.Fl B .
+If
+.Fl F
+is given,
+.Ar format
+must also be true.
+If
+.Fl v
+is given, event payload keys are printed (whether or not
+.Ar format
+is true).
+.Pp
+.Fl l
+list the waiters for
+.Ar name
+and
+.Fl w
+wakes
+.Ar waiter
+on
+.Ar name
+immediately.
 .El
 .Sh EXIT MESSAGES
 When a
