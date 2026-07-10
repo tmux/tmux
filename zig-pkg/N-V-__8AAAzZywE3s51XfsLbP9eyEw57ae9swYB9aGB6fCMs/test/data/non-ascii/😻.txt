@@ -1,3 +1,0 @@
-😻 U+1F63B SMILING CAT FACE WITH HEART-SHAPED EYES. UTF-8: [F0 9F 98 BB].
-
-This code point is outside of the Unicode BMP (Basic Multilingual Plane).

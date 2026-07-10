@@ -1,7 +1,0 @@
-.{
-    .name = .apple_sdk,
-    .version = "0.1.0",
-    .dependencies = .{},
-    .fingerprint = 0xdde52860f7c464d2,
-    .paths = .{""},
-}

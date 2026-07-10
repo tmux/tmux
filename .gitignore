@@ -30,3 +30,4 @@ zig-out/
 /result
 .claude/
 zig-pkg/
+fuzz/bombadil/node_modules/
