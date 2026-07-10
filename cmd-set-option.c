@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-set-option.c,v 1.145 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: cmd-set-option.c,v 1.146 2026/07/10 15:20:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -66,8 +66,8 @@ const struct cmd_entry cmd_set_hook_entry = {
 	.name = "set-hook",
 	.alias = NULL,
 
-	.args = { "agpERt:uB:w", 0, 2, cmd_set_option_args_parse },
-	.usage = "[-agpERuw] [-B name:what:format] " CMD_TARGET_PANE_USAGE " "
+	.args = { "agpERTt:uB:w", 0, 2, cmd_set_option_args_parse },
+	.usage = "[-agpERTuw] [-B name:what:format] " CMD_TARGET_PANE_USAGE " "
 		 "[hook] [command]",
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
@@ -143,7 +143,7 @@ cmd_set_hook_monitor_exec(struct cmdq_item *item, struct args *args, int window)
 	char			*expanded = NULL, *newvalue = NULL;
 	const char		*value, *old;
 	enum monitor_type	 type;
-	int			 id, scope;
+	int			 id, scope, flags = 0;
 
 	if (args_count(args) > 1) {
 		cmdq_error(item, "too many arguments");
@@ -204,7 +204,9 @@ cmd_set_hook_monitor_exec(struct cmdq_item *item, struct args *args, int window)
 	    oo != global_s_options &&
 	    oo != global_w_options)
 		s = target->s;
-	hooks_monitor_add(item, oo, name, type, id, format, &fs, s);
+	if (args_has(args, 'T'))
+		flags |= MONITOR_NOTIFY_TRUE;
+	hooks_monitor_add(item, oo, name, type, id, format, flags, &fs, s);
 
 out:
 	free(newvalue);

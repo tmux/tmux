@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1131 2026/07/10 13:38:45 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1132 2026/07/10 15:20:06 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -6359,6 +6359,17 @@ Run when a client switches to a dark theme.
 Run when a command fails.
 .It marked\-pane\-changed
 Run when the marked pane is set or cleared.
+.It pane\-command\-finished
+Run when an OSC 133 command finishes in a pane.
+The event payload includes
+.Ql hook_command_start_time ,
+.Ql hook_command_end_time ,
+.Ql hook_command_duration
+and
+.Ql hook_command_status
+if present.
+.It pane\-command\-started
+Run when an OSC 133 command starts in a pane.
 .It pane\-created
 Run when a pane is created or respawned.
 .It pane\-died
@@ -6391,6 +6402,8 @@ Run when a pane is resized.
 Run when the terminal clipboard is set using the
 .Xr xterm 1
 escape sequence.
+.It pane\-shell\-prompt
+Run when an OSC 133 shell prompt starts in a pane.
 .It pane\-title\-changed
 Run when a pane title is changed.
 .It session\-closed
@@ -6425,7 +6438,7 @@ Run when a window is unlinked from a session.
 Hooks are managed with these commands:
 .Bl -tag -width Ds
 .It Xo Ic set\-hook
-.Op Fl agpERuw
+.Op Fl agpERTuw
 .Op Fl B Ar name:what:format
 .Op Fl t Ar target\-pane
 .Ar hook\-name
@@ -6456,6 +6469,11 @@ is the hook to run,
 selects the session, pane, all panes, window, or all windows, and
 .Ar format
 is expanded once a second.
+With
+.Fl T ,
+the hook is run only when
+.Ar format
+is true.
 For monitor hooks,
 .Ar name
 must begin with
@@ -7191,6 +7209,11 @@ The following variables are available, where appropriate:
 .It Li "pane_at_top" Ta "" Ta "1 if pane is at the top of window"
 .It Li "pane_bg" Ta "" Ta "Pane background colour"
 .It Li "pane_bottom" Ta "" Ta "Bottom of pane"
+.It Li "pane_command_duration" Ta "" Ta "Current or most recent OSC 133 command duration in seconds"
+.It Li "pane_command_end_time" Ta "" Ta "Time most recent OSC 133 command ended"
+.It Li "pane_command_running" Ta "" Ta "1 if an OSC 133 command is running"
+.It Li "pane_command_start_time" Ta "" Ta "Time current or most recent OSC 133 command started"
+.It Li "pane_command_status" Ta "" Ta "Exit status from most recent OSC 133 command"
 .It Li "pane_current_command" Ta "" Ta "Current command if available"
 .It Li "pane_current_path" Ta "" Ta "Current path if available"
 .It Li "pane_dead" Ta "" Ta "1 if pane is dead"
@@ -7208,6 +7231,8 @@ The following variables are available, where appropriate:
 .It Li "pane_input_off" Ta "" Ta "1 if input to pane is disabled"
 .It Li "pane_key_mode" Ta "" Ta "Extended key reporting mode in this pane"
 .It Li "pane_last" Ta "" Ta "1 if last pane"
+.It Li "pane_last_output_time" Ta "" Ta "Time pane last produced output"
+.It Li "pane_last_prompt_time" Ta "" Ta "Time most recent OSC 133 prompt began"
 .It Li "pane_left" Ta "" Ta "Left of pane"
 .It Li "pane_marked" Ta "" Ta "1 if this is the marked pane"
 .It Li "pane_marked_set" Ta "" Ta "1 if a marked pane is set"

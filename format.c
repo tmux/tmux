@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.402 2026/07/09 06:33:19 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.403 2026/07/10 15:20:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2173,6 +2173,106 @@ format_cb_pane_dead_time(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_last_output_time. */
+static void *
+format_cb_pane_last_output_time(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+	static struct timeval	 tv;
+
+	if (wp != NULL && wp->last_output_time != 0) {
+		tv.tv_sec = wp->last_output_time;
+		tv.tv_usec = 0;
+		return (&tv);
+	}
+	return (NULL);
+}
+
+/* Callback for pane_last_prompt_time. */
+static void *
+format_cb_pane_last_prompt_time(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+	static struct timeval	 tv;
+
+	if (wp != NULL && wp->last_prompt_time != 0) {
+		tv.tv_sec = wp->last_prompt_time;
+		tv.tv_usec = 0;
+		return (&tv);
+	}
+	return (NULL);
+}
+
+/* Callback for pane_command_start_time. */
+static void *
+format_cb_pane_command_start_time(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+	static struct timeval	 tv;
+
+	if (wp != NULL && wp->cmd_start_time != 0) {
+		tv.tv_sec = wp->cmd_start_time;
+		tv.tv_usec = 0;
+		return (&tv);
+	}
+	return (NULL);
+}
+
+/* Callback for pane_command_end_time. */
+static void *
+format_cb_pane_command_end_time(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+	static struct timeval	 tv;
+
+	if (wp != NULL && wp->cmd_end_time != 0) {
+		tv.tv_sec = wp->cmd_end_time;
+		tv.tv_usec = 0;
+		return (&tv);
+	}
+	return (NULL);
+}
+
+/* Callback for pane_command_running. */
+static void *
+format_cb_pane_command_running(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL)
+		return (format_printf("%d", !!(wp->flags & PANE_CMDRUNNING)));
+	return (NULL);
+}
+
+/* Callback for pane_command_duration. */
+static void *
+format_cb_pane_command_duration(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+	time_t			 end;
+
+	if (wp == NULL || wp->cmd_start_time == 0)
+		return (NULL);
+	if (wp->flags & PANE_CMDRUNNING)
+		end = time(NULL);
+	else
+		end = wp->cmd_end_time;
+	if (end < wp->cmd_start_time)
+		end = wp->cmd_start_time;
+	return (format_printf("%lld", (long long)(end - wp->cmd_start_time)));
+}
+
+/* Callback for pane_command_status. */
+static void *
+format_cb_pane_command_status(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL && wp->cmd_status != -1)
+		return (format_printf("%d", wp->cmd_status));
+	return (NULL);
+}
+
 /* Callback for pane_format. */
 static void *
 format_cb_pane_format(struct format_tree *ft)
@@ -3485,6 +3585,21 @@ static const struct format_table_entry format_table[] = {
 	{ "pane_bottom", FORMAT_TABLE_STRING,
 	  format_cb_pane_bottom
 	},
+	{ "pane_command_duration", FORMAT_TABLE_STRING,
+	  format_cb_pane_command_duration
+	},
+	{ "pane_command_end_time", FORMAT_TABLE_TIME,
+	  format_cb_pane_command_end_time
+	},
+	{ "pane_command_running", FORMAT_TABLE_STRING,
+	  format_cb_pane_command_running
+	},
+	{ "pane_command_start_time", FORMAT_TABLE_TIME,
+	  format_cb_pane_command_start_time
+	},
+	{ "pane_command_status", FORMAT_TABLE_STRING,
+	  format_cb_pane_command_status
+	},
 	{ "pane_current_command", FORMAT_TABLE_STRING,
 	  format_cb_current_command
 	},
@@ -3535,6 +3650,12 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_last", FORMAT_TABLE_STRING,
 	  format_cb_pane_last
+	},
+	{ "pane_last_output_time", FORMAT_TABLE_TIME,
+	  format_cb_pane_last_output_time
+	},
+	{ "pane_last_prompt_time", FORMAT_TABLE_TIME,
+	  format_cb_pane_last_prompt_time
 	},
 	{ "pane_left", FORMAT_TABLE_STRING,
 	  format_cb_pane_left

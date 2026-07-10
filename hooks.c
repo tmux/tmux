@@ -1,4 +1,4 @@
-/* $OpenBSD: hooks.c,v 1.12 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: hooks.c,v 1.13 2026/07/10 15:20:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -407,7 +407,7 @@ hooks_monitor_cb(struct monitor_change *change, void *data)
 void
 hooks_monitor_add(__unused struct cmdq_item *item, struct options *oo,
     const char *name, enum monitor_type type, int id, const char *format,
-    struct cmd_find_state *fs, struct session *s)
+    int flags, struct cmd_find_state *fs, struct session *s)
 {
 	struct options_entry	*o;
 	struct hook_monitor	*hm;
@@ -426,7 +426,7 @@ hooks_monitor_add(__unused struct cmdq_item *item, struct options *oo,
 	hm->set = monitor_create_session(s, hooks_monitor_cb, hm);
 	hm->sink = events_add_sink(name, hooks_monitor_hook_cb, hm);
 	options_set_monitor_data(o, hm);
-	monitor_add(hm->set, name, type, id, format, 0);
+	monitor_add(hm->set, name, type, id, format, flags);
 }
 
 /* Convert a hook monitor to its value. */

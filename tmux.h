@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1394 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1395 2026/07/10 15:20:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1267,6 +1267,7 @@ struct window_pane {
 #define PANE_UNSEENCHANGES 0x4000
 #define PANE_REDRAWSCROLLBAR 0x8000
 #define PANE_DESTROYED 0x10000
+#define PANE_CMDRUNNING 0x20000
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;
@@ -1288,6 +1289,12 @@ struct window_pane {
 	struct timeval	 dead_time;
 	struct cmdq_item *wait_item;	/* new-pane -W: waiting for pane exit */
 	struct spawn_editor_state *editor;
+
+	time_t		 last_output_time;
+	time_t		 last_prompt_time;
+	time_t		 cmd_start_time;
+	time_t		 cmd_end_time;
+	int		 cmd_status;
 
 	int		 fd;
 	struct bufferevent *event;
@@ -2293,6 +2300,7 @@ enum monitor_type {
 	MONITOR_ALL_WINDOWS
 };
 #define MONITOR_NOTIFY_INITIAL 0x1
+#define MONITOR_NOTIFY_TRUE 0x2
 struct monitor_change {
 	const char		*name;
 	const char		*value;
@@ -2699,7 +2707,7 @@ void	 hooks_build_events(void);
 void	 hooks_run(struct cmdq_item *, const char *);
 void	 hooks_monitor_add(struct cmdq_item *, struct options *,
 	    const char *, enum monitor_type, int, const char *,
-	    struct cmd_find_state *, struct session *);
+	    int, struct cmd_find_state *, struct session *);
 void	 hooks_monitor_remove(struct options *, const char *);
 void	 hooks_monitor_free(void *);
 char	*hooks_monitor_to_string(struct options_entry *);
@@ -3901,7 +3909,7 @@ void	monitor_destroy(struct monitor_set *);
 int	monitor_parse(const char *, char **, enum monitor_type *, int *,
 	    char **);
 void	monitor_add(struct monitor_set *, const char *, enum monitor_type, int,
-	    const char *, u_int);
+	    const char *, int);
 void	monitor_remove(struct monitor_set *, const char *);
 
 /* control.c */

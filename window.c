@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.359 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.360 2026/07/10 15:20:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1177,6 +1177,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->window = w;
 	wp->options = options_create(w->options);
 	wp->flags = PANE_STYLECHANGED;
+	wp->cmd_status = -1;
 
 	wp->id = next_window_pane_id++;
 	RB_INSERT(window_pane_tree, &all_window_panes, wp);

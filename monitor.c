@@ -1,4 +1,4 @@
-/* $OpenBSD: monitor.c,v 1.5 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: monitor.c,v 1.6 2026/07/10 15:20:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -53,7 +53,7 @@ struct monitor_item {
 
 	enum monitor_type		 type;
 	u_int				 id;
-	u_int				 flags;
+	int				 flags;
 
 	char				*last;
 	struct monitor_panes		 panes;
@@ -198,7 +198,9 @@ monitor_check_value(struct monitor_set *ms, struct monitor_item *me,
 {
 	if (*last == NULL) {
 		*last = value;
-		if (me->flags & MONITOR_NOTIFY_INITIAL)
+		if ((me->flags & MONITOR_NOTIFY_INITIAL) &&
+		    ((~me->flags & MONITOR_NOTIFY_TRUE) ||
+		    format_true(value)))
 			monitor_report(ms, me, s, wl, wp, value, NULL);
 		return;
 	}
@@ -208,7 +210,8 @@ monitor_check_value(struct monitor_set *ms, struct monitor_item *me,
 		return;
 	}
 
-	monitor_report(ms, me, s, wl, wp, value, *last);
+	if ((~me->flags & MONITOR_NOTIFY_TRUE) || format_true(value))
+		monitor_report(ms, me, s, wl, wp, value, *last);
 	free(*last);
 	*last = value;
 }
@@ -621,7 +624,7 @@ fail:
 /* Add a subscription. */
 void
 monitor_add(struct monitor_set *ms, const char *name, enum monitor_type type,
-    int id, const char *format, u_int flags)
+    int id, const char *format, int flags)
 {
 	struct monitor_item	*me, find = { .name = (char *)name };
 	struct timeval		 tv = { .tv_sec = 1 };

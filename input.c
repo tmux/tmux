@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.265 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.266 2026/07/10 15:20:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1034,6 +1034,8 @@ input_parse_pane(struct window_pane *wp)
 	size_t	 new_size;
 
 	new_data = window_pane_get_new_data(wp, &wp->offset, &new_size);
+	if (new_size != 0)
+		wp->last_output_time = time(NULL);
 	input_parse_buffer(wp, new_data, new_size);
 	window_pane_update_used_data(wp, &wp->offset, new_size);
 }
@@ -3126,7 +3128,8 @@ input_osc_12(struct input_ctx *ictx, const char *p)
 			c = ictx->ctx.s->ccolour;
 			if (c == -1)
 				c = ictx->ctx.s->default_ccolour;
-			input_osc_colour_reply(ictx, 1, 12, 0, c, ictx->input_end);
+			input_osc_colour_reply(ictx, 1, 12, 0, c,
+			    ictx->input_end);
 		}
 		return;
 	}
@@ -3146,24 +3149,92 @@ input_osc_112(struct input_ctx *ictx, const char *p)
 		screen_set_cursor_colour(ictx->ctx.s, -1);
 }
 
+/* Fire an OSC 133 command event. */
+static void
+input_fire_command_event(struct window_pane *wp, const char *name)
+{
+	struct event_payload	*ep;
+	struct cmd_find_state	 fs;
+	time_t			 tstart = wp->cmd_start_time, end;
+	time_t			 tend = wp->cmd_end_time;
+
+	ep = event_payload_create();
+	cmd_find_from_pane(&fs, wp, 0);
+	event_payload_set_target(ep, &fs);
+	if (fs.s != NULL)
+		event_payload_set_session(ep, "session", fs.s);
+	if (fs.wl != NULL)
+		event_payload_set_int(ep, "window_index", fs.wl->idx);
+	event_payload_set_window(ep, "window", wp->window);
+	event_payload_set_pane(ep, "pane", wp);
+
+	if (wp->cmd_status != -1)
+		event_payload_set_int(ep, "command_status", wp->cmd_status);
+	if (tstart != 0)
+		event_payload_set_time(ep, "command_start_time", tstart);
+	if (tend != 0)
+		event_payload_set_time(ep, "command_end_time", tend);
+
+	if (tstart != 0) {
+		if (wp->flags & PANE_CMDRUNNING)
+			end = time(NULL);
+		else
+			end = tend;
+		if (end < tstart)
+			end = tstart;
+		end -= tstart;
+		event_payload_set_uint(ep, "command_duration", end);
+	}
+
+	events_fire(name, ep);
+}
+
 /* Handle the OSC 133 sequence. */
 static void
 input_osc_133(struct input_ctx *ictx, const char *p)
 {
+	struct window_pane	*wp = ictx->wp;
 	struct grid		*gd = ictx->ctx.s->grid;
 	u_int			 line = ictx->ctx.s->cy + gd->hsize;
-	struct grid_line	*gl;
+	struct grid_line	*gl = NULL;
+	const char		*errstr;
+	int			 status;
 
-	if (line > gd->hsize + gd->sy - 1)
-		return;
-	gl = grid_get_line(gd, line);
+	if (line <= gd->hsize + gd->sy - 1)
+		gl = grid_get_line(gd, line);
 
 	switch (*p) {
 	case 'A':
-		gl->flags |= GRID_LINE_START_PROMPT;
+		if (gl != NULL)
+			gl->flags |= GRID_LINE_START_PROMPT;
+		if (wp != NULL) {
+			wp->last_prompt_time = time(NULL);
+			events_fire_pane("pane-shell-prompt", wp);
+		}
 		break;
 	case 'C':
-		gl->flags |= GRID_LINE_START_OUTPUT;
+		if (gl != NULL)
+			gl->flags |= GRID_LINE_START_OUTPUT;
+		if (wp != NULL) {
+			wp->cmd_start_time = time(NULL);
+			wp->cmd_end_time = 0;
+			wp->flags |= PANE_CMDRUNNING;
+			wp->cmd_status = -1;
+			input_fire_command_event(wp, "pane-command-started");
+		}
+		break;
+	case 'D':
+		if (wp != NULL) {
+			wp->cmd_end_time = time(NULL);
+			wp->flags &= ~PANE_CMDRUNNING;
+			wp->cmd_status = -1;
+			if (p[1] == ';' && p[2] != '\0') {
+				status = strtonum(p + 2, 0, INT_MAX, &errstr);
+				if (errstr == NULL)
+					wp->cmd_status = status;
+			}
+			input_fire_command_event(wp, "pane-command-finished");
+		}
 		break;
 	}
 }
