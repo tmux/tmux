@@ -25,6 +25,7 @@
 
 #define CONTROL_SHOULD_NOTIFY_CLIENT(c) \
 	((c) != NULL && ((c)->flags & CLIENT_CONTROL) && \
+	 (~(c)->flags & CLIENT_EXIT) && \
 	 (c)->control_state != NULL)
 
 void

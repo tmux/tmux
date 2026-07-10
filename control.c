@@ -375,7 +375,7 @@ control_write_output(struct client *c, struct window_pane *wp)
 	if (winlink_find_by_window(&c->session->windows, wp->window) == NULL)
 		return;
 
-	if (c->flags & CONTROL_IGNORE_FLAGS) {
+	if (c->flags & (CONTROL_IGNORE_FLAGS|CLIENT_EXIT)) {
 		cp = control_get_pane(c, wp);
 		if (cp != NULL)
 			goto ignore;
