@@ -56,6 +56,14 @@ file_get_path(struct client *c, const char *file)
 		return (path);
 	xasprintf(&full_path, "%s/%s", server_client_get_cwd(c, NULL), path);
 	free(path);
+	{
+		char *resolved = realpath(full_path, NULL);
+		if (resolved != NULL && strcmp(resolved, full_path) != 0) {
+			free(full_path);
+			return (resolved);
+		}
+		free(resolved);
+	}
 	return (full_path);
 }
 
@@ -599,7 +607,7 @@ file_write_open(struct client_files *files, struct tmuxpeer *peer,
 
 	cf->fd = -1;
 	if (msg->fd == -1)
-		cf->fd = open(path, msg->flags|flags, 0644);
+		cf->fd = open(path, msg->flags|flags|O_NOFOLLOW, 0644);
 	else if (allow_streams) {
 		if (msg->fd != STDOUT_FILENO && msg->fd != STDERR_FILENO)
 			errno = EBADF;
@@ -760,7 +768,7 @@ file_read_open(struct client_files *files, struct tmuxpeer *peer,
 
 	cf->fd = -1;
 	if (msg->fd == -1)
-		cf->fd = open(path, flags);
+		cf->fd = open(path, flags|O_NOFOLLOW);
 	else if (allow_streams) {
 		if (msg->fd != STDIN_FILENO)
 			errno = EBADF;

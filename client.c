@@ -81,8 +81,10 @@ client_get_lock(char *lockfile)
 
 	log_debug("lock file is %s", lockfile);
 
-	if ((lockfd = open(lockfile, O_WRONLY|O_CREAT, 0600)) == -1) {
+	if ((lockfd = open(lockfile, O_WRONLY|O_CREAT|O_NOFOLLOW, 0600)) == -1) {
 		log_debug("open failed: %s", strerror(errno));
+		if (errno == ELOOP)
+			return (-1);
 		return (-1);
 	}
 
