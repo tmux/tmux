@@ -152,6 +152,10 @@ screen_reset_hyperlinks(struct screen *s)
 void
 screen_free(struct screen *s)
 {
+#ifdef ENABLE_SIXEL
+	struct image	*im;
+#endif
+
 	free(s->sel);
 	free(s->tabs);
 	free(s->path);
@@ -169,6 +173,14 @@ screen_free(struct screen *s)
 	screen_free_titles(s);
 
 #ifdef ENABLE_SIXEL
+	/*
+	 * Images saved when entering the alternate screen stay linked in the
+	 * global list; move them back so they are freed and unlinked here, or
+	 * a later eviction would write through this freed screen.
+	 */
+	TAILQ_CONCAT(&s->images, &s->saved_images, entry);
+	TAILQ_FOREACH(im, &s->images, entry)
+		im->list = &s->images;
 	image_free_all(s);
 #endif
 }
