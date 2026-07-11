@@ -348,7 +348,7 @@ server_update_socket(void)
 	if (n != last) {
 		last = n;
 
-		if (stat(socket_path, &sb) != 0)
+		if (server_fd == -1 || fstat(server_fd, &sb) != 0)
 			return;
 		mode = sb.st_mode & ACCESSPERMS;
 		if (n != 0) {
@@ -360,7 +360,7 @@ server_update_socket(void)
 				mode |= S_IXOTH;
 		} else
 			mode &= ~(S_IXUSR|S_IXGRP|S_IXOTH);
-		chmod(socket_path, mode);
+		fchmod(server_fd, mode);
 	}
 }
 

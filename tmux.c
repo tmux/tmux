@@ -375,7 +375,8 @@ int
 main(int argc, char **argv)
 {
 	char					*path = NULL, *label = NULL;
-	char					*cause, **var;
+	char					*cause, *parent, *parent_dir, **var;
+	char					 resolved[PATH_MAX];
 	const char				*s, *cwd;
 	int					 opt, keys, feat = 0, fflag = 0;
 	uint64_t				 flags = 0;
@@ -452,7 +453,16 @@ main(int argc, char **argv)
 			break;
 		case 'S':
 			free(path);
-			path = xstrdup(optarg);
+			if ((parent = xstrdup(optarg)) != NULL) {
+				parent_dir = dirname(parent);
+				if (realpath(parent_dir, resolved) != NULL)
+					xasprintf(&path, "%s/%s", resolved,
+					    basename(optarg));
+				else
+					path = xstrdup(optarg);
+				free(parent);
+			} else
+				path = xstrdup(optarg);
 			break;
 		case 'T':
 			tty_add_features(&feat, optarg, ":,");
