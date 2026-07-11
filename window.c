@@ -1093,6 +1093,7 @@ window_pane_destroy(struct window_pane *wp)
 	struct window_pane_resize	*r1;
 
 	window_pane_reset_mode_all(wp);
+	screen_write_clear_dirty(wp);
 	free(wp->searchstr);
 
 	if (wp->fd != -1) {

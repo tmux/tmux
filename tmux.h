@@ -1305,6 +1305,9 @@ struct window_pane {
 	struct event	 resize_timer;
 	struct event	 sync_timer;
 
+	bitstr_t	*sync_dirty;
+	u_int		 sync_dirty_size;
+
 	struct input_ctx *ictx;
 
 	struct grid_cell cached_gc;
@@ -3321,6 +3324,7 @@ void	 screen_write_mode_set(struct screen_write_ctx *, int);
 void	 screen_write_mode_clear(struct screen_write_ctx *, int);
 void	 screen_write_start_sync(struct window_pane *);
 void	 screen_write_stop_sync(struct window_pane *);
+void	 screen_write_clear_dirty(struct window_pane *);
 void	 screen_write_cursorup(struct screen_write_ctx *, u_int);
 void	 screen_write_cursordown(struct screen_write_ctx *, u_int);
 void	 screen_write_cursorright(struct screen_write_ctx *, u_int);

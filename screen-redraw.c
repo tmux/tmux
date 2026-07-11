@@ -1324,6 +1324,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 
 	if (wp->base.mode & MODE_SYNC)
 		screen_write_stop_sync(wp);
+	screen_write_clear_dirty(wp);
 
 	log_debug("%s: %s @%u %%%u", __func__, c->name, w->id, wp->id);
 
