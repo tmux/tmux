@@ -599,7 +599,7 @@ file_write_open(struct client_files *files, struct tmuxpeer *peer,
 
 	cf->fd = -1;
 	if (msg->fd == -1)
-		cf->fd = open(path, msg->flags|flags, 0644);
+		cf->fd = open(path, msg->flags|flags|O_CLOEXEC, 0644);
 	else if (allow_streams) {
 		if (msg->fd != STDOUT_FILENO && msg->fd != STDERR_FILENO)
 			errno = EBADF;
@@ -760,7 +760,7 @@ file_read_open(struct client_files *files, struct tmuxpeer *peer,
 
 	cf->fd = -1;
 	if (msg->fd == -1)
-		cf->fd = open(path, flags);
+		cf->fd = open(path, flags|O_CLOEXEC);
 	else if (allow_streams) {
 		if (msg->fd != STDIN_FILENO)
 			errno = EBADF;
