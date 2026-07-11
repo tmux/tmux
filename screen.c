@@ -438,6 +438,12 @@ screen_resize_y(struct screen *s, u_int sy, int eat_empty, u_int *cy)
 		if (gd->flags & GRID_HISTORY) {
 			gd->hscrolled += needed;
 			gd->hsize += needed;
+			/*
+			 * These lines enter history without going through
+			 * grid_scroll_history, so mark a history discontinuity.
+			 */
+			if (needed != 0)
+				gd->scroll_generation++;
 		} else if (needed > 0 && available > 0) {
 			if (available > needed)
 				available = needed;

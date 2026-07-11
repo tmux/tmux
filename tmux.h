@@ -905,6 +905,12 @@ struct grid {
 	struct grid_line	*linedata;
 };
 
+/* Snapshot of a grid's history sequence, for grid_history_delta. */
+struct grid_history_state {
+	u_int	added;
+	u_int	generation;
+};
+
 /* Virtual cursor in a grid. */
 struct grid_reader {
 	struct grid	*gd;
@@ -3374,6 +3380,9 @@ void	 grid_remove_history(struct grid *, u_int );
 void	 grid_scroll_history(struct grid *, u_int);
 void	 grid_scroll_history_region(struct grid *, u_int, u_int, u_int);
 void	 grid_clear_history(struct grid *);
+void	 grid_history_get_state(struct grid *, struct grid_history_state *);
+u_int	 grid_history_delta(struct grid *, const struct grid_history_state *);
+u_int	 grid_history_missed(struct grid *, const struct grid_history_state *);
 const struct grid_line *grid_peek_line(struct grid *, u_int);
 void	 grid_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
 void	 grid_set_cell(struct grid *, u_int, u_int, const struct grid_cell *);

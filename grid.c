@@ -537,6 +537,53 @@ grid_scroll_history_region(struct grid *gd, u_int upper, u_int lower, u_int bg)
 	gd->scroll_added++;
 }
 
+/* Snapshot the history sequence state. */
+void
+grid_history_get_state(struct grid *gd, struct grid_history_state *state)
+{
+	state->added = gd->scroll_added;
+	state->generation = gd->scroll_generation;
+}
+
+/*
+ * Return the number of history lines added since a snapshot that are still
+ * present, or zero if the history was reset discontinuously (cleared or
+ * reflowed) in the meantime, in which case the snapshot no longer locates a
+ * position in the current history.
+ */
+u_int
+grid_history_delta(struct grid *gd, const struct grid_history_state *state)
+{
+	u_int	added;
+
+	if (gd->scroll_generation != state->generation ||
+	    gd->scroll_added < state->added)
+		return (0);
+	added = gd->scroll_added - state->added;
+	if (added > gd->hsize)
+		added = gd->hsize;
+	return (added);
+}
+
+/*
+ * Return the number of lines scrolled into history since a snapshot, unclamped
+ * by what history still holds. grid_history_delta caps its result at hsize
+ * because it answers "how much can I replay"; this answers "how far behind has
+ * this position fallen", which the control mode resync trigger compares against
+ * the history limit to decide when a client has fallen past what a fresh
+ * attacher would keep. Zero if the history was reset discontinuously, since the
+ * snapshot no longer locates a position - that case is left to the byte
+ * backstop and the stall watchdog.
+ */
+u_int
+grid_history_missed(struct grid *gd, const struct grid_history_state *state)
+{
+	if (gd->scroll_generation != state->generation ||
+	    gd->scroll_added < state->added)
+		return (0);
+	return (gd->scroll_added - state->added);
+}
+
 /* Expand line to fit to cell. */
 static void
 grid_expand_line(struct grid *gd, u_int py, u_int sx, u_int bg)
