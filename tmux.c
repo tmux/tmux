@@ -190,6 +190,7 @@ make_label(const char *label, char **cause)
 	u_int		  i, n;
 	struct stat	  sb;
 	uid_t		  uid;
+	int		  dir_fd;
 
 	*cause = NULL;
 	if (label == NULL)
@@ -213,19 +214,29 @@ make_label(const char *label, char **cause)
 		    strerror(errno));
 		goto fail;
 	}
-	if (lstat(base, &sb) != 0) {
+	dir_fd = open(base, O_RDONLY|O_DIRECTORY);
+	if (dir_fd == -1) {
+		xasprintf(cause, "couldn't open directory %s (%s)", base,
+		    strerror(errno));
+		goto fail;
+	}
+	if (fstat(dir_fd, &sb) != 0) {
 		xasprintf(cause, "couldn't read directory %s (%s)", base,
 		    strerror(errno));
+		close(dir_fd);
 		goto fail;
 	}
 	if (!S_ISDIR(sb.st_mode)) {
 		xasprintf(cause, "%s is not a directory", base);
+		close(dir_fd);
 		goto fail;
 	}
 	if (sb.st_uid != uid || (sb.st_mode & TMUX_SOCK_PERM) != 0) {
 		xasprintf(cause, "directory %s has unsafe permissions", base);
+		close(dir_fd);
 		goto fail;
 	}
+	close(dir_fd);
 	xasprintf(&path, "%s/%s", base, label);
 	free(base);
 	return (path);
