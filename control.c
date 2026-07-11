@@ -30,27 +30,44 @@
 #include "tmux.h"
 
 /*
- * Block of data to output. Each client has one "all" queue of blocks and
- * another queue for each pane (in struct client_offset). %output blocks are
- * added to both queues and other output lines (notifications) added only to
- * the client queue.
- *
- * When a client becomes writeable, data from blocks on the pane queue are sent
- * up to the maximum size (CLIENT_BUFFER_HIGH). If a block is entirely written,
- * it is removed from both pane and client queues and if this means non-%output
- * blocks are now at the head of the client queue, they are written.
- *
- * This means a %output block holds up any subsequent non-%output blocks until
- * it is written which enforces ordering even if the client cannot accept the
- * entire block in one go.
+ * A queued block of output. Each client has one "all" queue and a per-pane
+ * queue; a block on both holds up any later block until it is written, which
+ * keeps output ordered against notifications. LINE is a verbatim notification
+ * line; PANE is pane output of size bytes read at cp->offset; REPAINT is a
+ * resync repaint, rendered lazily into its own buffer when the drain loop first
+ * reaches it and escaped from there.
  */
+enum control_block_type {
+	CONTROL_BLOCK_LINE,
+	CONTROL_BLOCK_PANE,
+	CONTROL_BLOCK_REPAINT
+};
 struct control_block {
-	size_t				 size;
-	char				*line;
+	enum control_block_type		 type;
 	uint64_t			 t;
+
+	size_t				 size;		/* PANE */
+	char				*line;		/* LINE */
+	struct evbuffer			*repaint;	/* REPAINT */
+
+	/* History sequence when a PANE block was created (resync watermark). */
+	struct grid_history_state	 history;
 
 	TAILQ_ENTRY(control_block)	 entry;
 	TAILQ_ENTRY(control_block)	 all_entry;
+};
+
+/*
+ * Exclusive pane state. ON streams normally; OFF is disabled and holds the
+ * pane read gate; PAUSED has been paused with %pause; RESYNC has discarded its
+ * backlog and owes a repaint (queued as a REPAINT block) while it keeps running
+ * with its output discarded.
+ */
+enum control_pane_state {
+	CONTROL_PANE_ON,
+	CONTROL_PANE_OFF,
+	CONTROL_PANE_PAUSED,
+	CONTROL_PANE_RESYNC
 };
 
 /* Control client pane. */
@@ -65,9 +82,15 @@ struct control_pane {
 	struct window_pane_offset	 offset;
 	struct window_pane_offset	 queued;
 
-	int				 flags;
-#define CONTROL_PANE_OFF 0x1
-#define CONTROL_PANE_PAUSED 0x2
+	enum control_pane_state		 state;
+
+	/*
+	 * History sequence and pane width when the client fell behind, used to
+	 * bound the RESYNC scrollback replay; a discontinuity or width change
+	 * degrades it to a repaint only.
+	 */
+	struct grid_history_state	 resync_state;
+	u_int				 resync_sx;
 
 	int				 pending_flag;
 	TAILQ_ENTRY(control_pane)	 pending_entry;
@@ -91,6 +114,15 @@ struct control_state {
 	struct bufferevent		*write_event;
 
 	struct monitor_set		*subs;
+
+	/*
+	 * Output watchdog. resync_last_progress is stamped whenever the write
+	 * buffer actually drains; the timer recovers panes that make no progress
+	 * for too long, the case where both the pane-read and socket-write paths
+	 * are stalled and no other callback fires. See control_client_stalled.
+	 */
+	struct event			 output_timer;
+	uint64_t			 resync_last_progress;
 };
 
 /* Low and high watermarks. */
@@ -103,10 +135,66 @@ struct control_state {
 /* Maximum age for clients that are not using pause mode. */
 #define CONTROL_MAXIMUM_AGE 300000
 
+/* No-drain-progress window before a stalled client's panes are resynced. */
+#define CONTROL_RESYNC_TIMEOUT 5000
+
+/*
+ * Byte backstop for output that never scrolls into history: alt-screen and
+ * cursor-addressed redraws (progress bars, curses apps) accumulate bytes with
+ * zero scrolled lines, so the line trigger never fires, yet the backlog grows
+ * without bound. A repaint of such a pane is lossless of its final state - only
+ * ephemeral intermediate frames are dropped - so resync eagerly once the
+ * backlog passes this. Memory protection only; the primary trigger is missed
+ * lines against the history limit. Sized at one full scrollback of typical
+ * output (~64 bytes/line * ~2000 lines * some slack), not a tunable.
+ */
+#define CONTROL_RESYNC_BACKLOG 262144
+
 /* Flags to ignore client. */
 #define CONTROL_IGNORE_FLAGS \
 	(CLIENT_CONTROL_NOOUTPUT| \
 	 CLIENT_UNATTACHEDFLAGS)
+
+static void	control_pane_resync(struct client *, struct window_pane *,
+		    struct control_pane *);
+static void	control_update_resyncs(struct client *);
+static void	control_arm_output_timer(struct control_state *);
+static struct evbuffer *control_build_repaint(struct window_pane *,
+		    struct control_pane *);
+
+/*
+ * The control-resync choice: off (0) keeps the legacy kill; on (1) resyncs
+ * everything, preempting pause mode; keep-pause (2) resyncs plain clients but
+ * pauses pause-after clients with %pause.
+ */
+#define CONTROL_RESYNC_OFF 0
+#define CONTROL_RESYNC_ON 1
+#define CONTROL_RESYNC_KEEP_PAUSE 2
+
+/* Is resync enabled for this server (any non-off value)? */
+static int
+control_resync_enabled(void)
+{
+	return (options_get_number(global_options, "control-resync") !=
+	    CONTROL_RESYNC_OFF);
+}
+
+/*
+ * Does this client recover with a resync rather than a pause? Plain clients
+ * always do when resync is enabled; a pause-after client does too unless the
+ * option is keep-pause, in which case it stays on the %pause path.
+ */
+static int
+control_client_uses_resync(struct client *c)
+{
+	int	mode = options_get_number(global_options, "control-resync");
+
+	if (mode == CONTROL_RESYNC_OFF)
+		return (0);
+	if (c->flags & CLIENT_CONTROL_PAUSEAFTER)
+		return (mode == CONTROL_RESYNC_ON);
+	return (1);
+}
 
 /* Compare client panes. */
 static int
@@ -124,7 +212,10 @@ RB_GENERATE_STATIC(control_panes, control_pane, entry, control_pane_cmp);
 static void
 control_free_block(struct control_state *cs, struct control_block *cb)
 {
-	free(cb->line);
+	if (cb->type == CONTROL_BLOCK_LINE)
+		free(cb->line);
+	else if (cb->type == CONTROL_BLOCK_REPAINT && cb->repaint != NULL)
+		evbuffer_free(cb->repaint);
 	TAILQ_REMOVE(&cs->all_blocks, cb, all_entry);
 	free(cb);
 }
@@ -217,6 +308,24 @@ control_reset_offsets(struct client *c)
 	cs->pending_count = 0;
 }
 
+/*
+ * A client is stalled when it has made no drain progress for the timeout while
+ * output is still buffered. This is derived rather than latched, so updating
+ * resync_last_progress on the next write clears it. A stalled client abstains
+ * from the pane read gate for panes with nothing queued, which is what
+ * re-enables the pty in the deadlock where the backlog is entirely in the write
+ * buffer and there is nothing left to act on per pane.
+ */
+static int
+control_client_stalled(struct control_state *cs)
+{
+	uint64_t	now = get_timer();
+
+	if (EVBUFFER_LENGTH(cs->write_event->output) == 0)
+		return (0);
+	return (now - cs->resync_last_progress >= CONTROL_RESYNC_TIMEOUT);
+}
+
 /* Get offsets for client. */
 struct window_pane_offset *
 control_pane_offset(struct client *c, struct window_pane *wp, int *off)
@@ -230,12 +339,29 @@ control_pane_offset(struct client *c, struct window_pane *wp, int *off)
 	}
 
 	cp = control_get_pane(c, wp);
-	if (cp == NULL || (cp->flags & CONTROL_PANE_PAUSED)) {
+	if (cp == NULL) {
 		*off = 0;
 		return (NULL);
 	}
-	if (cp->flags & CONTROL_PANE_OFF) {
+
+	switch (cp->state) {
+	case CONTROL_PANE_OFF:
 		*off = 1;
+		return (NULL);
+	case CONTROL_PANE_PAUSED:
+	case CONTROL_PANE_RESYNC:
+		*off = 0;
+		return (NULL);
+	case CONTROL_PANE_ON:
+		break;
+	}
+
+	/*
+	 * A caught-up pane (nothing queued) of a stalled client abstains too, so
+	 * the pty is not held shut by output that will never drain.
+	 */
+	if (TAILQ_EMPTY(&cp->blocks) && control_client_stalled(cs)) {
+		*off = 0;
 		return (NULL);
 	}
 	*off = (EVBUFFER_LENGTH(cs->write_event->output) >= CONTROL_BUFFER_LOW);
@@ -249,8 +375,8 @@ control_set_pane_on(struct client *c, struct window_pane *wp)
 	struct control_pane	*cp;
 
 	cp = control_get_pane(c, wp);
-	if (cp != NULL && (cp->flags & CONTROL_PANE_OFF)) {
-		cp->flags &= ~CONTROL_PANE_OFF;
+	if (cp != NULL && cp->state == CONTROL_PANE_OFF) {
+		cp->state = CONTROL_PANE_ON;
 		memcpy(&cp->offset, &wp->offset, sizeof cp->offset);
 		memcpy(&cp->queued, &wp->offset, sizeof cp->queued);
 	}
@@ -266,7 +392,7 @@ control_set_pane_off(struct client *c, struct window_pane *wp)
 	control_discard_pane(c, cp);
 	memcpy(&cp->offset, &wp->offset, sizeof cp->offset);
 	memcpy(&cp->queued, &wp->offset, sizeof cp->queued);
-	cp->flags |= CONTROL_PANE_OFF;
+	cp->state = CONTROL_PANE_OFF;
 }
 
 /* Continue a paused pane. */
@@ -276,8 +402,8 @@ control_continue_pane(struct client *c, struct window_pane *wp)
 	struct control_pane	*cp;
 
 	cp = control_get_pane(c, wp);
-	if (cp != NULL && (cp->flags & CONTROL_PANE_PAUSED)) {
-		cp->flags &= ~CONTROL_PANE_PAUSED;
+	if (cp != NULL && cp->state == CONTROL_PANE_PAUSED) {
+		cp->state = CONTROL_PANE_ON;
 		memcpy(&cp->offset, &wp->offset, sizeof cp->offset);
 		memcpy(&cp->queued, &wp->offset, sizeof cp->queued);
 		control_write(c, "%%continue %%%u", wp->id);
@@ -291,11 +417,65 @@ control_pause_pane(struct client *c, struct window_pane *wp)
 	struct control_pane	*cp;
 
 	cp = control_add_pane(c, wp);
-	if (~cp->flags & CONTROL_PANE_PAUSED) {
-		cp->flags |= CONTROL_PANE_PAUSED;
+	if (cp->state != CONTROL_PANE_PAUSED) {
+		cp->state = CONTROL_PANE_PAUSED;
 		control_discard_pane(c, cp);
 		control_write(c, "%%pause %%%u", wp->id);
 	}
+}
+
+/*
+ * Enter resync for a pane: discard the backlog, fast-forward the offsets to the
+ * parser position, and queue a repaint block owed to the client (rendered
+ * lazily when the drain loop reaches it). The pane keeps running with its
+ * output discarded until the repaint has drained and a writable callback
+ * resumes it (control_update_resyncs). A pause-after client is preempted here
+ * rather than paused.
+ */
+static void
+control_pane_resync(struct client *c, struct window_pane *wp,
+    struct control_pane *cp)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_block	*cb, *first;
+
+	if (cp->state == CONTROL_PANE_RESYNC)
+		return;
+
+	/*
+	 * Tag with the oldest queued block's history if there is one: it is the
+	 * first output the client has not seen, so replaying from it can only
+	 * under-replay, never duplicate.
+	 */
+	first = TAILQ_FIRST(&cp->blocks);
+	if (first != NULL && first->type == CONTROL_BLOCK_PANE)
+		cp->resync_state = first->history;
+	else
+		grid_history_get_state(wp->base.grid, &cp->resync_state);
+	cp->resync_sx = screen_size_x(&wp->base);
+
+	if (c->flags & CLIENT_CONTROL_PAUSEAFTER)
+		log_debug("%s: %s: preempting pause-after on %%%u", __func__,
+		    c->name, wp->id);
+	log_debug("%s: %s: resync %%%u", __func__, c->name, wp->id);
+
+	cp->state = CONTROL_PANE_RESYNC;
+	control_discard_pane(c, cp);
+	control_pane_clear_pending(cs, cp);
+	memcpy(&cp->offset, &wp->offset, sizeof cp->offset);
+	memcpy(&cp->queued, &wp->offset, sizeof cp->queued);
+
+	cb = xcalloc(1, sizeof *cb);
+	cb->type = CONTROL_BLOCK_REPAINT;
+	cb->t = get_timer();
+	TAILQ_INSERT_TAIL(&cs->all_blocks, cb, all_entry);
+	TAILQ_INSERT_TAIL(&cp->blocks, cb, entry);
+	TAILQ_INSERT_TAIL(&cs->pending_list, cp, pending_entry);
+	cp->pending_flag = 1;
+	cs->pending_count++;
+
+	bufferevent_enable(cs->write_event, EV_WRITE);
+	control_arm_output_timer(cs);
 }
 
 /* Write a line. */
@@ -312,6 +492,7 @@ control_vwrite(struct client *c, const char *fmt, va_list ap)
 	bufferevent_write(cs->write_event, "\n", 1);
 
 	bufferevent_enable(cs->write_event, EV_WRITE);
+	control_arm_output_timer(cs);
 	free(s);
 }
 
@@ -332,49 +513,47 @@ control_write(struct client *c, const char *fmt, ...)
 	}
 
 	cb = xcalloc(1, sizeof *cb);
+	cb->type = CONTROL_BLOCK_LINE;
 	xvasprintf(&cb->line, fmt, ap);
 	TAILQ_INSERT_TAIL(&cs->all_blocks, cb, all_entry);
 	cb->t = get_timer();
 
 	log_debug("%s: %s: storing line: %s", __func__, c->name, cb->line);
 	bufferevent_enable(cs->write_event, EV_WRITE);
+	control_arm_output_timer(cs);
 
 	va_end(ap);
 }
 
-/* Check age for this pane. */
+/*
+ * Whether a pane has fallen far enough behind for a resync. The trigger is
+ * missed scrolled lines, not buffered bytes: while the client has missed no
+ * more lines than the history keeps, a repaint reconstructs everything it
+ * missed, so a resync is lossless and buffering buys nothing; once it has
+ * missed more, the history no longer covers those lines and only a wholly
+ * buffered client keeps growing. The floor keeps a tiny or empty history from
+ * resyncing once per scrolled line - a resync should stand for at least a
+ * couple of screenfuls. CONTROL_RESYNC_BACKLOG is the byte backstop for output
+ * that never scrolls into history.
+ */
 static int
-control_check_age(struct client *c, struct window_pane *wp,
-    struct control_pane *cp)
+control_pane_behind(struct control_pane *cp, struct window_pane *wp,
+    size_t backlog)
 {
-	struct control_block	*cb;
-	uint64_t		 t, age;
+	struct grid		*gd = wp->base.grid;
+	struct control_block	*first;
+	u_int			 missed, threshold, sy = screen_size_y(&wp->base);
 
-	cb = TAILQ_FIRST(&cp->blocks);
-	if (cb == NULL)
+	if (backlog > CONTROL_RESYNC_BACKLOG)
+		return (1);
+
+	first = TAILQ_FIRST(&cp->blocks);
+	if (first == NULL || first->type != CONTROL_BLOCK_PANE)
 		return (0);
-	t = get_timer();
-	if (cb->t >= t)
-		return (0);
 
-	age = t - cb->t;
-	log_debug("%s: %s: %%%u is %llu behind", __func__, c->name, wp->id,
-	    (unsigned long long)age);
-
-	if (c->flags & CLIENT_CONTROL_PAUSEAFTER) {
-		if (age < c->pause_age)
-			return (0);
-		cp->flags |= CONTROL_PANE_PAUSED;
-		control_discard_pane(c, cp);
-		control_write(c, "%%pause %%%u", wp->id);
-	} else {
-		if (age < CONTROL_MAXIMUM_AGE)
-			return (0);
-		c->exit_message = xstrdup("too far behind");
-		c->flags |= CLIENT_EXIT;
-		control_discard(c);
-	}
-	return (1);
+	missed = grid_history_missed(gd, &first->history);
+	threshold = (gd->hlimit > 2 * sy) ? gd->hlimit : 2 * sy;
+	return (missed >= threshold);
 }
 
 /* Write output from a pane. */
@@ -396,10 +575,30 @@ control_write_output(struct client *c, struct window_pane *wp)
 		return;
 	}
 	cp = control_add_pane(c, wp);
-	if (cp->flags & (CONTROL_PANE_OFF|CONTROL_PANE_PAUSED))
+	if (cp->state != CONTROL_PANE_ON)
 		goto ignore;
-	if (control_check_age(c, wp, cp))
-		return;
+
+	/*
+	 * While the client is stalled do not queue this batch: it would be
+	 * trimmed while the client abstains from the buffer minimum. Enter resync
+	 * so the pane owes a repaint and keeps fast-forwarding instead. Otherwise
+	 * enter resync once the client has fallen behind the history frontier (or
+	 * the byte backstop), rather than letting the pane buffer grow without
+	 * bound.
+	 */
+	if (control_client_uses_resync(c)) {
+		window_pane_get_new_data(wp, &cp->offset, &new_size);
+		if (control_client_stalled(cs)) {
+			control_pane_resync(c, wp, cp);
+			goto ignore;
+		}
+		if (control_pane_behind(cp, wp, new_size)) {
+			log_debug("%s: %s: %%%u behind, backlog %zu", __func__,
+			    c->name, wp->id, new_size);
+			control_pane_resync(c, wp, cp);
+			goto ignore;
+		}
+	}
 
 	window_pane_get_new_data(wp, &cp->queued, &new_size);
 	if (new_size == 0)
@@ -407,7 +606,9 @@ control_write_output(struct client *c, struct window_pane *wp)
 	window_pane_update_used_data(wp, &cp->queued, new_size);
 
 	cb = xcalloc(1, sizeof *cb);
+	cb->type = CONTROL_BLOCK_PANE;
 	cb->size = new_size;
+	grid_history_get_state(wp->base.grid, &cb->history);
 	TAILQ_INSERT_TAIL(&cs->all_blocks, cb, all_entry);
 	cb->t = get_timer();
 
@@ -423,6 +624,7 @@ control_write_output(struct client *c, struct window_pane *wp)
 		cs->pending_count++;
 	}
 	bufferevent_enable(cs->write_event, EV_WRITE);
+	control_arm_output_timer(cs);
 	return;
 
 ignore:
@@ -554,7 +756,7 @@ control_flush_all_blocks(struct client *c)
 	struct control_block	*cb, *cb1;
 
 	TAILQ_FOREACH_SAFE(cb, &cs->all_blocks, all_entry, cb1) {
-		if (cb->size != 0)
+		if (cb->type != CONTROL_BLOCK_LINE)
 			break;
 		log_debug("%s: %s: flushing line: %s", __func__, c->name,
 		    cb->line);
@@ -643,9 +845,10 @@ control_write_pending(struct client *c, struct control_pane *cp, size_t limit)
 	struct control_state	*cs = c->control_state;
 	struct window_pane	*wp = NULL;
 	struct evbuffer		*message = NULL;
-	size_t			 used = 0, size;
+	size_t			 used = 0, size, remaining;
 	struct control_block	*cb, *cb1;
 	uint64_t		 age, t = get_timer();
+	int			 done;
 
 	wp = control_window_pane(c, cp->pane);
 	if (wp == NULL || wp->fd == -1) {
@@ -658,40 +861,43 @@ control_write_pending(struct client *c, struct control_pane *cp, size_t limit)
 	}
 
 	while (used != limit && !TAILQ_EMPTY(&cp->blocks)) {
-		if (control_check_age(c, wp, cp)) {
-			if (message != NULL)
-				evbuffer_free(message);
-			message = NULL;
-			break;
-		}
-
 		cb = TAILQ_FIRST(&cp->blocks);
-		if (cb->t < t)
-			age = t - cb->t;
-		else
-			age = 0;
-		log_debug("%s: %s: output block %zu (age %llu) for %%%u "
-		    "(used %zu/%zu)", __func__, c->name, cb->size,
-		    (unsigned long long)age, cp->pane, used, limit);
+		age = (cb->t < t) ? t - cb->t : 0;
 
-		size = cb->size;
+		/* Render a repaint the first time the drain loop reaches it. */
+		if (cb->type == CONTROL_BLOCK_REPAINT) {
+			if (cb->repaint == NULL)
+				cb->repaint = control_build_repaint(wp, cp);
+			remaining = EVBUFFER_LENGTH(cb->repaint);
+		} else
+			remaining = cb->size;
+
+		size = remaining;
 		if (size > limit - used)
 			size = limit - used;
 		used += size;
 
-		message = control_append_data(c, cp, age, message, wp, size);
+		if (message == NULL)
+			message = control_message_start(c, wp, age);
+		if (cb->type == CONTROL_BLOCK_REPAINT) {
+			control_append_escaped(message, EVBUFFER_DATA(cb->repaint),
+			    size);
+			evbuffer_drain(cb->repaint, size);
+			done = (EVBUFFER_LENGTH(cb->repaint) == 0);
+		} else {
+			control_append_data(c, cp, age, message, wp, size);
+			cb->size -= size;
+			done = (cb->size == 0);
+		}
 
-		cb->size -= size;
-		if (cb->size == 0) {
+		if (done) {
 			TAILQ_REMOVE(&cp->blocks, cb, entry);
 			control_free_block(cs, cb);
 
 			cb = TAILQ_FIRST(&cs->all_blocks);
-			if (cb != NULL && cb->size == 0) {
-				if (wp != NULL && message != NULL) {
-					control_write_data(c, message);
-					message = NULL;
-				}
+			if (cb != NULL && cb->type == CONTROL_BLOCK_LINE) {
+				control_write_data(c, message);
+				message = NULL;
 				control_flush_all_blocks(c);
 			}
 		}
@@ -711,7 +917,16 @@ control_write_callback(__unused struct bufferevent *bufev, void *data)
 	struct evbuffer		*evb = cs->write_event->output;
 	size_t			 space, limit;
 
+	/*
+	 * This callback only fires when the socket accepted data, so reaching
+	 * it means output drained: stamp progress (which is what makes
+	 * control_client_stalled false again) and finish any resync whose
+	 * repaint has now gone out.
+	 */
+	cs->resync_last_progress = get_timer();
+
 	control_flush_all_blocks(c);
+	control_update_resyncs(c);
 
 	while (EVBUFFER_LENGTH(evb) < CONTROL_BUFFER_HIGH) {
 		if (cs->pending_count == 0)
@@ -732,8 +947,162 @@ control_write_callback(__unused struct bufferevent *bufev, void *data)
 			control_pane_clear_pending(cs, cp);
 		}
 	}
+
 	if (EVBUFFER_LENGTH(evb) == 0)
 		bufferevent_disable(cs->write_event, EV_WRITE);
+}
+
+/* Is there output outstanding that the resync watchdog should watch? */
+static int
+control_output_pending(struct control_state *cs)
+{
+	struct control_pane	*cp;
+
+	if (!TAILQ_EMPTY(&cs->all_blocks) ||
+	    cs->pending_count != 0 ||
+	    EVBUFFER_LENGTH(cs->write_event->output) != 0)
+		return (1);
+
+	/*
+	 * A pane in resync is owed a repaint or waiting for room to resume; keep
+	 * watching so the last-resort age kill still fires for a client that has
+	 * gone quiet after its repaint drained.
+	 */
+	RB_FOREACH(cp, control_panes, &cs->panes) {
+		if (cp->state == CONTROL_PANE_RESYNC)
+			return (1);
+	}
+	return (0);
+}
+
+/*
+ * Arm the watchdog for one second while there is output to watch. Called when
+ * output is first queued and re-called from the timer itself, so an idle client
+ * has no periodic wakeup.
+ */
+static void
+control_arm_output_timer(struct control_state *cs)
+{
+	struct timeval	tv = { .tv_sec = 1 };
+
+	if (evtimer_initialized(&cs->output_timer) &&
+	    control_output_pending(cs) &&
+	    !evtimer_pending(&cs->output_timer, NULL))
+		evtimer_add(&cs->output_timer, &tv);
+}
+
+/*
+ * Watchdog for a client that makes no progress draining its output. Both the
+ * pane-read and socket-write callbacks are dead when the sole consumer is a
+ * stalled client, so this is the only path that can recover the pane. It closes
+ * a client that drains nothing for the maximum age; otherwise, per pane, it
+ * resyncs a resync client that has fallen behind the history frontier (or byte
+ * backstop) or that still holds queued blocks once stalled, and pauses a
+ * pause-after client kept on the %pause path once its output has aged past
+ * pause-after. Panes with nothing queued recover through the stalled abstention
+ * in control_pane_offset.
+ */
+static void
+control_output_timer(__unused int fd, __unused short events, void *data)
+{
+	struct client		*c = data;
+	struct control_state	*cs = c->control_state;
+	struct control_pane	*cp;
+	struct control_block	*cb;
+	struct window_pane	*wp;
+	uint64_t		 now = get_timer(), age;
+	size_t			 lag;
+	int			 uses_resync, stalled;
+
+	if (!control_output_pending(cs))
+		return;
+
+	age = (now > cs->resync_last_progress) ?
+	    now - cs->resync_last_progress : 0;
+	if (age >= CONTROL_MAXIMUM_AGE) {
+		log_debug("%s: %s: no progress for maximum age, exiting",
+		    __func__, c->name);
+		c->exit_message = xstrdup("too far behind");
+		c->flags |= CLIENT_EXIT;
+		control_discard(c);
+		return;
+	}
+	if (!control_resync_enabled()) {
+		control_arm_output_timer(cs);
+		return;
+	}
+
+	uses_resync = control_client_uses_resync(c);
+	stalled = control_client_stalled(cs);
+
+	RB_FOREACH(cp, control_panes, &cs->panes) {
+		if (cp->state != CONTROL_PANE_ON)
+			continue;
+		wp = control_window_pane(c, cp->pane);
+		if (wp == NULL || wp->fd == -1)
+			continue;
+		if (uses_resync) {
+			window_pane_get_new_data(wp, &cp->offset, &lag);
+			if (control_pane_behind(cp, wp, lag)) {
+				log_debug("%s: %s: %%%u behind, backlog %zu",
+				    __func__, c->name, cp->pane, lag);
+				control_pane_resync(c, wp, cp);
+			} else if (stalled && !TAILQ_EMPTY(&cp->blocks))
+				control_pane_resync(c, wp, cp);
+		} else {
+			cb = TAILQ_FIRST(&cp->blocks);
+			if (age >= (uint64_t)c->pause_age ||
+			    (cb != NULL && now > cb->t &&
+			    now - cb->t >= (uint64_t)c->pause_age))
+				control_pause_pane(c, wp);
+		}
+	}
+
+	control_arm_output_timer(cs);
+}
+
+/* Build the repaint byte stream owed to a resynced pane. */
+static struct evbuffer *
+control_build_repaint(struct window_pane *wp, struct control_pane *cp)
+{
+	struct evbuffer	*msg;
+
+	msg = evbuffer_new();
+	if (msg == NULL)
+		fatalx("out of memory");
+	screen_repaint(&wp->base, &cp->resync_state, cp->resync_sx, msg);
+	return (msg);
+}
+
+/*
+ * Finish any resync whose repaint has fully drained. Reaching this on a
+ * writable callback means the client has room again, so resume normal streaming
+ * from the current parser position; output produced while discarding is skipped
+ * (a gap, never a duplicate). A pane whose repaint is still queued stays in
+ * resync.
+ */
+static void
+control_update_resyncs(struct client *c)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_pane	*cp;
+	struct window_pane	*wp;
+
+	RB_FOREACH(cp, control_panes, &cs->panes) {
+		if (cp->state != CONTROL_PANE_RESYNC || !TAILQ_EMPTY(&cp->blocks))
+			continue;
+		wp = control_window_pane(c, cp->pane);
+		if (wp != NULL && wp->fd != -1) {
+			log_debug("%s: %s: resync of %%%u delivered", __func__,
+			    c->name, cp->pane);
+			memcpy(&cp->offset, &wp->offset, sizeof cp->offset);
+			memcpy(&cp->queued, &wp->offset, sizeof cp->queued);
+		} else {
+			log_debug("%s: %s: %%%u gone, ending resync", __func__,
+			    c->name, cp->pane);
+		}
+		cp->state = CONTROL_PANE_ON;
+	}
 }
 
 /* Write a subscription change. */
@@ -778,6 +1147,9 @@ control_start(struct client *c)
 	TAILQ_INIT(&cs->pending_list);
 	TAILQ_INIT(&cs->all_blocks);
 	cs->subs = monitor_create_client(c, control_sub_change, NULL);
+
+	evtimer_set(&cs->output_timer, control_output_timer, c);
+	cs->resync_last_progress = get_timer();
 
 	cs->read_event = bufferevent_new(c->fd, control_read_callback,
 	    control_write_callback, control_error_callback, c);
@@ -831,6 +1203,9 @@ control_stop(struct client *c)
 		return;
 
 	monitor_destroy(cs->subs);
+
+	if (evtimer_initialized(&cs->output_timer))
+		evtimer_del(&cs->output_timer);
 
 	if (~c->flags & CLIENT_CONTROLCONTROL)
 		bufferevent_free(cs->write_event);

@@ -35,6 +35,9 @@
 static const char *options_table_mode_keys_list[] = {
 	"emacs", "vi", NULL
 };
+static const char *options_table_control_resync_list[] = {
+	"off", "on", "keep-pause", NULL
+};
 static const char *options_table_clock_mode_style_list[] = {
 	"12", "24", "12-with-seconds", "24-with-seconds", NULL
 };
@@ -320,6 +323,18 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "",
 	  .separator = ",",
 	  .text = "Array of override widths for Unicode codepoints."
+	},
+
+	{ .name = "control-resync",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .choices = options_table_control_resync_list,
+	  .default_num = 1,
+	  .text = "How a control mode client that falls too far behind is handled. "
+		  "'on' resynchronises it with a screen repaint (including clients "
+		  "in pause mode, which are not paused); 'keep-pause' resynchronises "
+		  "plain clients but pauses 'pause-after' clients with '%pause'; "
+		  "'off' uses the legacy behaviour and kills the client."
 	},
 
 	{ .name = "copy-command",

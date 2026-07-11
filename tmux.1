@@ -4719,6 +4719,30 @@ where codepoint may be a UTF\-8 character, an identifier of the form
 .Ql U+number
 where the number is a hexadecimal number, or a range of the form
 .Ql U+number\-U+number .
+.It Xo Ic control\-resync
+.Op Ic off | on | keep\-pause
+.Xc
+How a control mode client that falls too far behind is recovered (see
+.Sx CONTROL MODE ) .
+A client is too far behind once it has missed more scrolled lines for a pane
+than
+.Ic history\-limit
+keeps: up to that point a repaint reconstructs everything it missed, so nothing
+is lost by waiting, but past it
+.Nm
+is already discarding lines the client never saw.
+With
+.Ic on
+(the default) it is resynchronised with a repaint, including a client in pause
+mode, which is not paused.
+With
+.Ic keep\-pause
+a pause mode client is paused with
+.Ic %pause
+instead.
+With
+.Ic off
+such a client is killed.
 .It Ic copy\-command Ar shell\-command
 Give the command to pipe to if the
 .Ic copy\-pipe
@@ -8858,7 +8882,10 @@ has been deleted.
 .It Ic %pause Ar pane\-id
 The pane has been paused (if the
 .Ar pause\-after
-flag is set).
+flag is set and
+.Ic control\-resync
+is
+.Ic keep\-pause ) .
 .It Ic %session\-changed Ar session\-id Ar name
 The client is now attached to the session with ID
 .Ar session\-id ,
@@ -8925,6 +8952,20 @@ The window with ID
 was renamed to
 .Ar name .
 .El
+.Pp
+If a client cannot keep up and has missed more scrolled lines for a pane than
+.Ic history\-limit
+keeps, or it makes no progress for several seconds, that output is discarded
+rather than held indefinitely (see
+.Ic control\-resync ) .
+When the client can accept data again the pane is resynchronised by repainting
+it with
+.Ic %output :
+the visible screen, scrollback, cursor and terminal modes are reproduced, but a
+few pieces of state that are not held in the grid may be briefly wrong until the
+application redraws them, notably the saved cursor
+.Pq Ql DECSC ,
+the selected character sets and any images.
 .Sh ENVIRONMENT
 When
 .Nm

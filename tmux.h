@@ -3563,6 +3563,8 @@ int	 screen_select_cell(struct screen *, struct grid_cell *,
 	     const struct grid_cell *);
 int	 screen_alternate_on(struct screen *, struct grid_cell *, int);
 int	 screen_alternate_off(struct screen *, struct grid_cell *, int);
+void	 screen_repaint(struct screen *, const struct grid_history_state *,
+	     u_int, struct evbuffer *);
 const char *screen_mode_to_string(int);
 const char *screen_print(struct screen *, int);
 

@@ -913,3 +913,193 @@ out:
 	buf[last] = '\0';
 	return (buf);
 }
+
+/* Append a fixed string (no formatting) to a buffer. */
+static void
+screen_repaint_add(struct evbuffer *msg, const char *s)
+{
+	evbuffer_add(msg, s, strlen(s));
+}
+
+/* Reset attributes and serialise one grid row. */
+static void
+screen_repaint_row(struct evbuffer *msg, struct screen *s, u_int py, u_int sx)
+{
+	struct grid_cell	*gc = NULL;
+	char			*line;
+
+	screen_repaint_add(msg, "\033[m");
+	line = grid_string_cells(s->grid, 0, py, sx, &gc,
+	    GRID_STRING_WITH_SEQUENCES, s);
+	screen_repaint_add(msg, line);
+	free(line);
+}
+
+/* Restore custom tab stops (clear all, then set one at each stop). */
+static void
+screen_repaint_tabs(struct evbuffer *msg, struct screen *s, u_int sx)
+{
+	u_int	i;
+
+	if (s->tabs == NULL)
+		return;
+	screen_repaint_add(msg, "\033[3g");
+	for (i = 0; i < sx; i++) {
+		if (bit_test(s->tabs, i))
+			evbuffer_add_printf(msg, "\033[1;%uH\033H", i + 1);
+	}
+}
+
+/*
+ * Restore the terminal modes, scroll region and cursor from the screen. This is
+ * the counterpart to the state input.c parses and tty_update_mode emits, so it
+ * must be kept in step with them; transient and negotiation-only bits (the
+ * synchronised update flag, cursor-blinking-set, extended keys) are masked out.
+ */
+static void
+screen_repaint_state(struct evbuffer *msg, struct screen *s)
+{
+	int	mode = s->mode &
+		    ~(MODE_SYNC|MODE_CURSOR_BLINKING_SET|EXTENDED_KEY_MODES);
+	u_int	n;
+	u_char	r, g, b;
+
+	/* Autowrap, cursor keys, keypad, insert. */
+	screen_repaint_add(msg, (mode & MODE_WRAP) ? "\033[?7h" : "\033[?7l");
+	screen_repaint_add(msg, (mode & MODE_KCURSOR) ? "\033[?1h" : "\033[?1l");
+	screen_repaint_add(msg, (mode & MODE_KKEYPAD) ? "\033=" : "\033>");
+	screen_repaint_add(msg, (mode & MODE_INSERT) ? "\033[4h" : "\033[4l");
+
+	/* Bracketed paste and focus reporting. */
+	screen_repaint_add(msg, (mode & MODE_BRACKETPASTE) ? "\033[?2004h" :
+	    "\033[?2004l");
+	screen_repaint_add(msg, (mode & MODE_FOCUSON) ? "\033[?1004h" :
+	    "\033[?1004l");
+
+	/* Mouse modes: clear all then re-apply, as tty_update_mode does. */
+	screen_repaint_add(msg, "\033[?1006l\033[?1000l\033[?1002l\033[?1003l");
+	if (mode & ALL_MOUSE_MODES)
+		screen_repaint_add(msg, "\033[?1006h");
+	if (mode & MODE_MOUSE_ALL)
+		screen_repaint_add(msg, "\033[?1000h\033[?1002h\033[?1003h");
+	else if (mode & MODE_MOUSE_BUTTON)
+		screen_repaint_add(msg, "\033[?1000h\033[?1002h");
+	else if (mode & MODE_MOUSE_STANDARD)
+		screen_repaint_add(msg, "\033[?1000h");
+
+	/* Scroll region (DECSTBM); this homes the cursor. */
+	evbuffer_add_printf(msg, "\033[%u;%ur", s->rupper + 1, s->rlower + 1);
+
+	/* Cursor style (DECSCUSR). */
+	n = 0;
+	switch (s->cstyle) {
+	case SCREEN_CURSOR_DEFAULT:
+		break;
+	case SCREEN_CURSOR_BLOCK:
+		n = (s->mode & MODE_CURSOR_BLINKING) ? 1 : 2;
+		break;
+	case SCREEN_CURSOR_UNDERLINE:
+		n = (s->mode & MODE_CURSOR_BLINKING) ? 3 : 4;
+		break;
+	case SCREEN_CURSOR_BAR:
+		n = (s->mode & MODE_CURSOR_BLINKING) ? 5 : 6;
+		break;
+	}
+	evbuffer_add_printf(msg, "\033[%u q", n);
+
+	/* Cursor colour (OSC 12). */
+	if (s->ccolour != -1) {
+		colour_split_rgb(colour_force_rgb(s->ccolour), &r, &g, &b);
+		evbuffer_add_printf(msg, "\033]12;rgb:%02hhx/%02hhx/%02hhx\033\\",
+		    r, g, b);
+	}
+
+	/* Origin mode last, since it homes the cursor. */
+	screen_repaint_add(msg, (mode & MODE_ORIGIN) ? "\033[?6h" : "\033[?6l");
+}
+
+/*
+ * Replay history lines [from, to) so they feed the client's own scrollback.
+ * Lines are written at the bottom row so each true line end scrolls one line
+ * up; wrapped logical lines are joined and re-wrapped by the client, with
+ * autowrap forced on for the replay.
+ */
+static void
+screen_repaint_replay(struct evbuffer *msg, struct screen *s, u_int sx,
+    u_int sy, u_int from, u_int to)
+{
+	struct grid		*gd = s->grid;
+	const struct grid_line	*gl;
+	u_int			 py;
+
+	evbuffer_add_printf(msg, "\033[?7h\033[%u;1H", sy);
+	for (py = from; py < to; py++) {
+		screen_repaint_row(msg, s, py, sx);
+		gl = grid_peek_line(gd, py);
+		if (gl == NULL || (~gl->flags & GRID_LINE_WRAPPED))
+			screen_repaint_add(msg, "\033[m\r\n");
+	}
+}
+
+/*
+ * Build a byte stream that reconstructs the screen on a fresh terminal, for a
+ * control mode client that must be repainted after its output was discarded.
+ * If from and owidth locate a usable position in the current primary-screen
+ * history, recent scrollback is replayed first (best effort, never duplicating
+ * lines); otherwise only the visible screen is painted.
+ */
+void
+screen_repaint(struct screen *s, const struct grid_history_state *from,
+    u_int owidth, struct evbuffer *msg)
+{
+	struct grid	*gd = s->grid;
+	u_int		 sx = screen_size_x(s), sy = screen_size_y(s), ry, gap = 0;
+	int		 alt = SCREEN_IS_ALTERNATE(s);
+	int		 cursor = (s->mode & MODE_CURSOR);
+
+	/* Cancel any partial escape sequence the gap may have cut mid-stream. */
+	screen_repaint_add(msg, "\030\033\\"); /* CAN, ST */
+
+	/* Paint atomically where supported; hide the cursor as a fallback. */
+	screen_repaint_add(msg, "\033[?2026h\033[?25l");
+
+	if (!alt && gd->hsize != 0 && sx == owidth)
+		gap = grid_history_delta(gd, from);
+	screen_repaint_tabs(msg, s, sx);
+	if (gap != 0)
+		screen_repaint_replay(msg, s, sx, sy, gd->hsize - gap, gd->hsize);
+
+	/* Enter the alternate screen before painting its contents. */
+	if (alt)
+		screen_repaint_add(msg, "\033[?1049h");
+
+	/*
+	 * Repaint each visible row. Erase the whole line first, as tty_draw_line
+	 * clears a row before drawing it: grid_string_cells emits a literal tab
+	 * for GRID_FLAG_TAB cells, which advances the cursor without clearing the
+	 * cells it glides over, so stale content under a tab gap would otherwise
+	 * survive a paint that only clears from the cursor to the end of line.
+	 */
+	screen_repaint_add(msg, "\033[m");
+	for (ry = 0; ry < sy; ry++) {
+		evbuffer_add_printf(msg, "\033[%u;1H\033[2K", ry + 1);
+		screen_repaint_row(msg, s, gd->hsize + ry, sx);
+		screen_repaint_add(msg, "\033[m");
+	}
+
+	/*
+	 * Restore state, then reposition the cursor. screen_repaint_state has by
+	 * now re-enabled origin mode if it was set, which makes cursor addressing
+	 * relative to the scroll region, so the absolute row must be converted to
+	 * a region-relative one before it is emitted.
+	 */
+	screen_repaint_state(msg, s);
+	if (s->mode & MODE_ORIGIN) {
+		u_int	crow = (s->cy > s->rupper) ? s->cy - s->rupper : 0;
+		evbuffer_add_printf(msg, "\033[%u;%uH", crow + 1, s->cx + 1);
+	} else
+		evbuffer_add_printf(msg, "\033[%u;%uH", s->cy + 1, s->cx + 1);
+	screen_repaint_add(msg, "\033[?2026l");
+	if (cursor)
+		screen_repaint_add(msg, "\033[?25h");
+}
