@@ -42,6 +42,7 @@
 
 #define MAX_HYPERLINKS 5000
 #define MAX_HYPERLINK_URI 1024
+#define MAX_HYPERLINKS_PER_SET 1000
 
 static long long hyperlinks_next_external_id = 1;
 static u_int global_hyperlinks_count;
@@ -69,6 +70,7 @@ struct hyperlinks {
 	u_int				next_inner;
 	struct hyperlinks_by_inner_tree	by_inner;
 	struct hyperlinks_by_uri_tree	by_uri;
+	u_int				count;
 	u_int				references;
 };
 
@@ -119,6 +121,7 @@ hyperlinks_remove(struct hyperlinks_uri *hlu)
 
 	TAILQ_REMOVE(&global_hyperlinks, hlu, list_entry);
 	global_hyperlinks_count--;
+	hl->count--;
 
 	RB_REMOVE(hyperlinks_by_inner_tree, &hl->by_inner, hlu);
 	RB_REMOVE(hyperlinks_by_uri_tree, &hl->by_uri, hlu);
@@ -165,6 +168,13 @@ hyperlinks_put(struct hyperlinks *hl, const char *uri_in,
 	}
 	xasprintf(&external_id, "tmux%llX", hyperlinks_next_external_id++);
 
+	if (hl->count >= MAX_HYPERLINKS_PER_SET) {
+		free(internal_id);
+		free(uri);
+		free(external_id);
+		return (0);
+	}
+
 	hlu = xcalloc(1, sizeof *hlu);
 	hlu->inner = hl->next_inner++;
 	hlu->internal_id = internal_id;
@@ -174,6 +184,7 @@ hyperlinks_put(struct hyperlinks *hl, const char *uri_in,
 	RB_INSERT(hyperlinks_by_uri_tree, &hl->by_uri, hlu);
 	RB_INSERT(hyperlinks_by_inner_tree, &hl->by_inner, hlu);
 
+	hl->count++;
 	TAILQ_INSERT_TAIL(&global_hyperlinks, hlu, list_entry);
 	if (++global_hyperlinks_count == MAX_HYPERLINKS)
 		hyperlinks_remove(TAILQ_FIRST(&global_hyperlinks));
