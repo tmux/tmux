@@ -457,6 +457,11 @@ control_read_callback(__unused struct bufferevent *bufev, void *data)
 	enum cmd_parse_status	 status;
 
 	for (;;) {
+		if (EVBUFFER_LENGTH(buffer) > 1048576) {
+			evbuffer_drain(buffer, EVBUFFER_LENGTH(buffer));
+			c->flags |= CLIENT_EXIT;
+			break;
+		}
 		line = evbuffer_readln(buffer, NULL, EVBUFFER_EOL_LF);
 		if (line == NULL)
 			break;
@@ -506,6 +511,11 @@ control_wait_exit(int fd)
 		fatalx("out of memory");
 
 	for (;;) {
+		if (EVBUFFER_LENGTH(buffer) > 1048576) {
+			evbuffer_drain(buffer, EVBUFFER_LENGTH(buffer));
+			c->flags |= CLIENT_EXIT;
+			break;
+		}
 		line = evbuffer_readln(evb, NULL, EVBUFFER_EOL_LF);
 		if (line != NULL) {
 			if (*line == '\0') { /* empty line, stop */

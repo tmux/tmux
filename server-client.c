@@ -22,6 +22,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -2683,6 +2684,8 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	case MSG_IDENTIFY_TERM:
 		if (datalen == 0 || data[datalen - 1] != '\0')
 			return (-1);
+		if (datalen > 4096)
+			return (-1);
 		c->term_name = xstrdup(data);
 		log_debug("client %p IDENTIFY_TERM %s", c, data);
 		break;
@@ -2702,6 +2705,8 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		break;
 	case MSG_IDENTIFY_CWD:
 		if (datalen == 0 || data[datalen - 1] != '\0')
+			return (-1);
+		if (datalen > PATH_MAX)
 			return (-1);
 		if (access(data, X_OK) == 0)
 			c->cwd = xstrdup(data);

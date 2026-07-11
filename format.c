@@ -474,7 +474,12 @@ format_job_tidy(struct format_job_tree *jobs, int force)
 	}
 }
 
-/* Work around needless -Wformat-nonliteral gcc warning. */
+/*
+ * Work around needless -Wformat-nonliteral gcc warning. The format string is
+ * user-controlled but strftime is safe — it does not dereference pointers
+ * from the format string the way printf-family functions do, so a malicious
+ * format cannot cause arbitrary memory access.
+ */
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-nonliteral"
