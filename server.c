@@ -44,7 +44,7 @@ struct clients		 clients;
 struct tmuxproc		*server_proc;
 static int		 server_fd = -1;
 static uint64_t		 server_client_flags;
-static int		 server_exit;
+static volatile sig_atomic_t	 server_exit;
 static struct event	 server_ev_accept;
 static struct event	 server_ev_tidy;
 

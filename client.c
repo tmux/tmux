@@ -35,7 +35,7 @@
 static struct tmuxproc	*client_proc;
 static struct tmuxpeer	*client_peer;
 static uint64_t		 client_flags;
-static int		 client_suspended;
+static volatile sig_atomic_t	 client_suspended;
 static enum {
 	CLIENT_EXIT_NONE,
 	CLIENT_EXIT_DETACHED,
@@ -47,14 +47,14 @@ static enum {
 	CLIENT_EXIT_SERVER_EXITED,
 	CLIENT_EXIT_MESSAGE_PROVIDED
 } client_exitreason = CLIENT_EXIT_NONE;
-static int		 client_exitflag;
+static volatile sig_atomic_t	 client_exitflag;
 static int		 client_exitval;
 static enum msgtype	 client_exittype;
 static const char	*client_exitsession;
 static char		*client_exitmessage;
 static const char	*client_execshell;
 static const char	*client_execcmd;
-static int		 client_attached;
+static volatile sig_atomic_t	 client_attached;
 static struct client_files client_files = RB_INITIALIZER(&client_files);
 
 static __dead void	 client_exec(const char *,const char *);
@@ -519,7 +519,7 @@ client_signal(int sig)
 	log_debug("%s: %s", __func__, strsignal(sig));
 	if (sig == SIGCHLD) {
 		for (;;) {
-			pid = waitpid(WAIT_ANY, &status, WNOHANG);
+			pid = waitpid(WAIT_ANY, &status, WNOHANG|WUNTRACED);
 			if (pid == 0)
 				break;
 			if (pid == -1) {
