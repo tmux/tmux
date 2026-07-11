@@ -470,7 +470,8 @@ server_child_signal(void)
 		case -1:
 			if (errno == ECHILD)
 				return;
-			fatal("waitpid failed");
+			log_debug("waitpid failed: %s", strerror(errno));
+			return;
 		case 0:
 			return;
 		}
