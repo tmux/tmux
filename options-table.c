@@ -1430,6 +1430,15 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of current line number in copy mode."
 	},
 
+	{ .name = "copy-mode-current-line-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of the line containing the cursor in copy mode."
+	},
+
 	{ .name = "copy-mode-line-number-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
