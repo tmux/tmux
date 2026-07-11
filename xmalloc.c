@@ -44,6 +44,8 @@ xcalloc(size_t nmemb, size_t size)
 
 	if (size == 0 || nmemb == 0)
 		fatalx("xcalloc: zero size");
+	if (nmemb > SIZE_MAX / size)
+		fatalx("xcalloc: overflow: %zu * %zu", nmemb, size);
 	ptr = calloc(nmemb, size);
 	if (ptr == NULL)
 		fatalx("xcalloc: allocating %zu * %zu bytes: %s",
