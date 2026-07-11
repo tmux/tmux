@@ -322,6 +322,10 @@ cmd_unpack_argv(char *buf, size_t len, int argc, char ***argv)
 		(*argv)[i] = xstrdup(buf);
 
 		buf += arglen;
+		if (len < arglen) {
+			cmd_free_argv(argc, *argv);
+			return (-1);
+		}
 		len -= arglen;
 	}
 	cmd_log_argv(argc, *argv, "%s", __func__);

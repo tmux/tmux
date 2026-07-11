@@ -38,6 +38,8 @@ static char			*yylex_token(int);
 static char			*yylex_format(void);
 
 #define CMD_PARSE_MAX_ENVIRON_LEN 16384
+#define CMD_PARSE_MAX_SCOPE 1000
+#define CMD_PARSE_MAX_TOKEN (1024*1024)
 
 struct cmd_parse_scope {
 	int				 flag;
@@ -268,7 +270,16 @@ hidden_assignment : HIDDEN EQUALS
 if_open		: IF expanded
 		{
 			struct cmd_parse_state	*ps = &parse_state;
-			struct cmd_parse_scope	*scope;
+			struct cmd_parse_scope	*scope, *s;
+			u_int			 depth;
+
+			depth = 0;
+			TAILQ_FOREACH(s, &ps->stack, entry)
+				depth++;
+			if (depth >= CMD_PARSE_MAX_SCOPE) {
+				yyerror("too many nested %%if blocks");
+				YYABORT;
+			}
 
 			scope = xmalloc(sizeof *scope);
 			$$ = scope->flag = format_true($2);
@@ -1683,6 +1694,8 @@ yylex_token(int ch)
 		 */
 		if (ch == '\n' && state != NONE) {
 			yylex_append1(&buf, &len, '\n');
+			if (len > CMD_PARSE_MAX_TOKEN)
+				goto error;
 			while ((ch = yylex_getc()) == ' ' || ch == '\t')
 				/* nothing */;
 			if (ch != '#')
@@ -1741,6 +1754,8 @@ yylex_token(int ch)
 
 		/* Otherwise add the character to the buffer. */
 		yylex_append1(&buf, &len, ch);
+		if (len > CMD_PARSE_MAX_TOKEN)
+			goto error;
 
 	skip:
 		last = state;
