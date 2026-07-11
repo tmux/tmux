@@ -174,6 +174,17 @@ control_discard_pane(struct client *c, struct control_pane *cp)
 	}
 }
 
+/* Remove a pane from the pending list if it is on it. */
+static void
+control_pane_clear_pending(struct control_state *cs, struct control_pane *cp)
+{
+	if (!cp->pending_flag)
+		return;
+	TAILQ_REMOVE(&cs->pending_list, cp, pending_entry);
+	cp->pending_flag = 0;
+	cs->pending_count--;
+}
+
 /* Get actual pane for this client. */
 static struct window_pane *
 control_window_pane(struct client *c, u_int pane)
@@ -554,42 +565,59 @@ control_flush_all_blocks(struct client *c)
 	}
 }
 
+/* Append escaped bytes to a message, as expected in a %output line. */
+static void
+control_append_escaped(struct evbuffer *message, const u_char *data,
+    size_t size)
+{
+	size_t	i, start;
+
+	for (i = 0; i < size; i++) {
+		if (data[i] < ' ' || data[i] == '\\') {
+			evbuffer_add_printf(message, "\\%03o", data[i]);
+		} else {
+			start = i;
+			while (i + 1 < size &&
+			    data[i + 1] >= ' ' &&
+			    data[i + 1] != '\\')
+				i++;
+			evbuffer_add(message, data + start, i - start + 1);
+		}
+	}
+}
+
+/* Start a new %output (or %extended-output) message. */
+static struct evbuffer *
+control_message_start(struct client *c, struct window_pane *wp, uint64_t age)
+{
+	struct evbuffer	*message;
+
+	message = evbuffer_new();
+	if (message == NULL)
+		fatalx("out of memory");
+	if (c->flags & CLIENT_CONTROL_PAUSEAFTER) {
+		evbuffer_add_printf(message, "%%extended-output %%%u %llu : ",
+		    wp->id, (unsigned long long)age);
+	} else
+		evbuffer_add_printf(message, "%%output %%%u ", wp->id);
+	return (message);
+}
+
 /* Append data to buffer. */
 static struct evbuffer *
 control_append_data(struct client *c, struct control_pane *cp, uint64_t age,
     struct evbuffer *message, struct window_pane *wp, size_t size)
 {
 	u_char	*new_data;
-	size_t	 new_size, start;
-	u_int	 i;
+	size_t	 new_size;
 
-	if (message == NULL) {
-		message = evbuffer_new();
-		if (message == NULL)
-			fatalx("out of memory");
-		if (c->flags & CLIENT_CONTROL_PAUSEAFTER) {
-			evbuffer_add_printf(message,
-			    "%%extended-output %%%u %llu : ", wp->id,
-			    (unsigned long long)age);
-		} else
-			evbuffer_add_printf(message, "%%output %%%u ", wp->id);
-	}
+	if (message == NULL)
+		message = control_message_start(c, wp, age);
 
 	new_data = window_pane_get_new_data(wp, &cp->offset, &new_size);
 	if (new_size < size)
 		fatalx("not enough data: %zu < %zu", new_size, size);
-	for (i = 0; i < size; i++) {
-		if (new_data[i] < ' ' || new_data[i] == '\\') {
-			evbuffer_add_printf(message, "\\%03o", new_data[i]);
-		} else {
-			start = i;
-			while (i + 1 < size &&
-			    new_data[i + 1] >= ' ' &&
-			    new_data[i + 1] != '\\')
-				i++;
-			evbuffer_add(message, new_data + start, i - start + 1);
-		}
-	}
+	control_append_escaped(message, new_data, size);
 	window_pane_update_used_data(wp, &cp->offset, size);
 	return (message);
 }
@@ -701,9 +729,7 @@ control_write_callback(__unused struct bufferevent *bufev, void *data)
 				break;
 			if (control_write_pending(c, cp, limit))
 				continue;
-			TAILQ_REMOVE(&cs->pending_list, cp, pending_entry);
-			cp->pending_flag = 0;
-			cs->pending_count--;
+			control_pane_clear_pending(cs, cp);
 		}
 	}
 	if (EVBUFFER_LENGTH(evb) == 0)
