@@ -1016,6 +1016,13 @@ input_parse(struct input_ctx *ictx, const u_char *buf, size_t len)
 		if (itr->handler != NULL && itr->handler(ictx) != 0)
 			continue;
 
+		if ((ictx->flags & INPUT_DISCARD) &&
+		    ictx->state != &input_state_ground) {
+			input_clear(ictx);
+			ictx->state = &input_state_ground;
+			continue;
+		}
+
 		/* And switch state, if necessary. */
 		if (itr->state != NULL)
 			input_set_state(ictx, itr);
