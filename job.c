@@ -1,4 +1,4 @@
-/* $OpenBSD: job.c,v 1.74 2025/09/08 11:21:56 nicm Exp $ */
+/* $OpenBSD: job.c,v 1.75 2026/07/12 20:35:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -149,7 +149,7 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e,
 			else if (chdir("/") == 0)
 				environ_set(env, "PWD", 0, "/");
 			else
-				fatal("chdir failed");
+				_exit(1);
 		}
 
 		environ_push(env);
@@ -157,21 +157,21 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e,
 
 		if (~flags & JOB_PTY) {
 			if (dup2(out[1], STDIN_FILENO) == -1)
-				fatal("dup2 failed");
+				_exit(1);
 			do_close = do_close && out[1] != STDIN_FILENO;
 			if (dup2(out[1], STDOUT_FILENO) == -1)
-				fatal("dup2 failed");
+				_exit(1);
 			do_close = do_close && out[1] != STDOUT_FILENO;
 			if (flags & JOB_SHOWSTDERR) {
 				if (dup2(out[1], STDERR_FILENO) == -1)
-					fatal("dup2 failed");
+					_exit(1);
 				do_close = do_close && out[1] != STDERR_FILENO;
 			} else {
 				nullfd = open(_PATH_DEVNULL, O_RDWR);
 				if (nullfd == -1)
-					fatal("open failed");
+					_exit(1);
 				if (dup2(nullfd, STDERR_FILENO) == -1)
-					fatal("dup2 failed");
+					_exit(1);
 				if (nullfd != STDERR_FILENO)
 					close(nullfd);
 			}
@@ -185,11 +185,11 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e,
 			if (flags & JOB_DEFAULTSHELL)
 				setenv("SHELL", shell, 1);
 			execl(shell, argv0, "-c", cmd, (char *)NULL);
-			fatal("execl failed");
+			_exit(1);
 		} else {
 			argvp = cmd_copy_argv(argc, argv);
 			execvp(argvp[0], argvp);
-			fatal("execvp failed");
+			_exit(1);
 		}
 	}
 

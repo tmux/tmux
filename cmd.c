@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd.c,v 1.185 2026/06/26 14:40:30 nicm Exp $ */
+/* $OpenBSD: cmd.c,v 1.186 2026/07/12 20:35:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -846,7 +846,7 @@ cmd_template_replace(const char *template, const char *s, int idx)
 	char		 ch, *buf;
 	const char	*ptr, *cp, quote[] = "\"\\$;~";
 	int		 replaced, quoted;
-	size_t		 len;
+	size_t		 len, slen;
 
 	if (strchr(template, '%') == NULL)
 		return (xstrdup(template));
@@ -871,7 +871,10 @@ cmd_template_replace(const char *template, const char *s, int idx)
 			if (quoted)
 				ptr++;
 
-			buf = xrealloc(buf, len + (strlen(s) * 3) + 1);
+			slen = strlen(s);
+			if (slen > SIZE_MAX / 3 || len > SIZE_MAX - (slen * 3) - 1)
+				fatalx("argument too long");
+			buf = xrealloc(buf, len + (slen * 3) + 1);
 			for (cp = s; *cp != '\0'; cp++) {
 				if (quoted && strchr(quote, *cp) != NULL)
 					buf[len++] = '\\';
@@ -880,6 +883,8 @@ cmd_template_replace(const char *template, const char *s, int idx)
 			buf[len] = '\0';
 			continue;
 		}
+		if (len > SIZE_MAX - 2)
+			fatalx("argument too long");
 		buf = xrealloc(buf, len + 2);
 		buf[len++] = ch;
 		buf[len] = '\0';
