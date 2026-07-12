@@ -17,13 +17,19 @@ LC_ALL=C.UTF-8
 export TERM LC_ALL
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
-TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
+TMUX=
+TMUX2=
+SETUP=0
 RESULTS=screen-redraw-results
 
 TMP=$(mktemp)
-trap "rm -f $TMP; $TMUX kill-server 2>/dev/null; $TMUX2 kill-server 2>/dev/null" \
-	0 1 15
+
+cleanup() {
+	rm -f "$TMP"
+	[ -n "$TMUX" ] && $TMUX kill-server 2>/dev/null
+	[ -n "$TMUX2" ] && $TMUX2 kill-server 2>/dev/null
+}
+trap cleanup 0 1 15
 
 fail() {
 	echo "$*" >&2
@@ -46,8 +52,11 @@ C="sh -c 'i=0; while [ \$i -lt 13 ]; do printf \"POP%02d abcdefghij\n\" \$i; i=\
 
 # setup: fresh inner window attached inside a fresh outer pane, 40x14.
 setup() {
-	$TMUX kill-server 2>/dev/null
-	$TMUX2 kill-server 2>/dev/null
+	[ -n "$TMUX" ] && $TMUX kill-server 2>/dev/null
+	[ -n "$TMUX2" ] && $TMUX2 kill-server 2>/dev/null
+	SETUP=$((SETUP + 1))
+	TMUX="$TEST_TMUX -LtestA$$-$SETUP -f/dev/null"
+	TMUX2="$TEST_TMUX -LtestB$$-$SETUP -f/dev/null"
 	$TMUX2 new -d -x40 -y14 "$C" || exit 1
 	$TMUX2 set -g status off || exit 1
 	$TMUX2 set -g window-size manual || exit 1

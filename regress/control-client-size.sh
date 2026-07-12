@@ -8,12 +8,11 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
-$TMUX kill-server 2>/dev/null
+TMUX="$TEST_TMUX -LtestA$$-1 -f/dev/null"
 
 TMP=$(mktemp)
 OUT=$(mktemp)
-trap "rm -f $TMP $OUT" 0 1 15
+trap 'rm -f "$TMP" "$OUT"; $TMUX kill-server 2>/dev/null' 0 1 15
 
 $TMUX -f/dev/null new -d || exit 1
 sleep 1
@@ -26,6 +25,7 @@ $TMUX ls -F':#{window_width} #{window_height}' >>$OUT
 printf ":80 24\n:100 50\n"|cmp -s $OUT - || exit 1
 $TMUX kill-server 2>/dev/null
 
+TMUX="$TEST_TMUX -LtestA$$-2 -f/dev/null"
 $TMUX -f/dev/null new -d || exit 1
 sleep 1
 cat <<EOF|$TMUX -f/dev/null -C a >$TMP
@@ -37,6 +37,7 @@ $TMUX ls -F':#{window_width} #{window_height}' >>$OUT
 printf ":80 24\n:80 24\n"|cmp -s $OUT - || exit 1
 $TMUX kill-server 2>/dev/null
 
+TMUX="$TEST_TMUX -LtestA$$-3 -f/dev/null"
 cat <<EOF|$TMUX -f/dev/null -C new -x 100 -y 50 >$TMP
 ls -F':#{window_width} #{window_height}'
 refresh -C 80,24

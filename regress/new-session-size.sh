@@ -6,11 +6,10 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
-$TMUX kill-server 2>/dev/null
+TMUX="$TEST_TMUX -LtestA$$-1 -f/dev/null"
 
 TMP=$(mktemp)
-trap "rm -f $TMP" 0 1 15
+trap 'rm -f "$TMP"; $TMUX kill-server 2>/dev/null' 0 1 15
 
 $TMUX -f/dev/null new -d </dev/null || exit 1
 sleep 1
@@ -18,6 +17,7 @@ $TMUX ls -F "#{window_width} #{window_height}" >$TMP
 printf "80 24\n"|cmp -s $TMP - || exit 1
 $TMUX kill-server 2>/dev/null
 
+TMUX="$TEST_TMUX -LtestA$$-2 -f/dev/null"
 $TMUX -f/dev/null new -d -x 100 -y 50 </dev/null || exit 1
 sleep 1
 $TMUX ls -F "#{window_width} #{window_height}" >$TMP
