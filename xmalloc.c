@@ -1,4 +1,4 @@
-/* $OpenBSD: xmalloc.c,v 1.14 2026/06/18 10:56:22 nicm Exp $ */
+/* $OpenBSD: xmalloc.c,v 1.15 2026/07/12 20:16:20 nicm Exp $ */
 
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
@@ -32,8 +32,7 @@ xmalloc(size_t size)
 		fatalx("xmalloc: zero size");
 	ptr = malloc(size);
 	if (ptr == NULL)
-		fatalx("xmalloc: allocating %zu bytes: %s",
-		    size, strerror(errno));
+		fatal("xmalloc: allocating %zu bytes", size);
 	return ptr;
 }
 
@@ -44,10 +43,11 @@ xcalloc(size_t nmemb, size_t size)
 
 	if (size == 0 || nmemb == 0)
 		fatalx("xcalloc: zero size");
+	if (SIZE_MAX / nmemb < size)
+		fatalx("xcalloc: nmemb * size > SIZE_MAX");
 	ptr = calloc(nmemb, size);
 	if (ptr == NULL)
-		fatalx("xcalloc: allocating %zu * %zu bytes: %s",
-		    nmemb, size, strerror(errno));
+		fatal("xcalloc: allocating %zu bytes", size * nmemb);
 	return ptr;
 }
 
@@ -66,8 +66,7 @@ xreallocarray(void *ptr, size_t nmemb, size_t size)
 		fatalx("xreallocarray: zero size");
 	new_ptr = reallocarray(ptr, nmemb, size);
 	if (new_ptr == NULL)
-		fatalx("xreallocarray: allocating %zu * %zu bytes: %s",
-		    nmemb, size, strerror(errno));
+		fatal("xreallocarray: allocating %zu bytes", size * nmemb);
 	return new_ptr;
 }
 
@@ -80,8 +79,7 @@ xrecallocarray(void *ptr, size_t oldnmemb, size_t nmemb, size_t size)
 		fatalx("xrecallocarray: zero size");
 	new_ptr = recallocarray(ptr, oldnmemb, nmemb, size);
 	if (new_ptr == NULL)
-		fatalx("xrecallocarray: allocating %zu * %zu bytes: %s",
-		    nmemb, size, strerror(errno));
+		fatal("xrecallocarray: allocating %zu bytes", size * nmemb);
 	return new_ptr;
 }
 
@@ -91,7 +89,7 @@ xstrdup(const char *str)
 	char *cp;
 
 	if ((cp = strdup(str)) == NULL)
-		fatalx("xstrdup: %s", strerror(errno));
+		fatal("xstrdup");
 	return cp;
 }
 
@@ -101,7 +99,7 @@ xstrndup(const char *str, size_t maxlen)
 	char *cp;
 
 	if ((cp = strndup(str, maxlen)) == NULL)
-		fatalx("xstrndup: %s", strerror(errno));
+		fatal("xstrndup");
 	return cp;
 }
 
@@ -126,7 +124,6 @@ xasprintf(char **ret, const char *fmt, ...)
 	va_start(ap, fmt);
 	i = xvasprintf(ret, fmt, ap);
 	va_end(ap);
-
 	return i;
 }
 
@@ -136,10 +133,8 @@ xvasprintf(char **ret, const char *fmt, va_list ap)
 	int i;
 
 	i = vasprintf(ret, fmt, ap);
-
-	if (i == -1)
-		fatalx("xasprintf: %s", strerror(errno));
-
+	if (i == -1 || *ret == NULL)
+		fatal("xvasprintf");
 	return i;
 }
 
@@ -152,7 +147,6 @@ xsnprintf(char *str, size_t len, const char *fmt, ...)
 	va_start(ap, fmt);
 	i = xvsnprintf(str, len, fmt, ap);
 	va_end(ap);
-
 	return i;
 }
 
@@ -163,11 +157,8 @@ xvsnprintf(char *str, size_t len, const char *fmt, va_list ap)
 
 	if (len > INT_MAX)
 		fatalx("xsnprintf: len > INT_MAX");
-
 	i = vsnprintf(str, len, fmt, ap);
-
 	if (i < 0 || i >= (int)len)
 		fatalx("xsnprintf: overflow");
-
 	return i;
 }
