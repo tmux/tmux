@@ -78,7 +78,7 @@ layout_append(struct layout_cell *lc, char *buf, size_t len)
 	enum layout_type	 type = lc->type;
 	char			 tmp[64];
 	size_t			 buflen, tmplen;
-	const char		*brackets = "][";
+	const char		*brackets = "][", *flags;
 
 	if (len == 0)
 		return (-1);
@@ -93,9 +93,10 @@ layout_append(struct layout_cell *lc, char *buf, size_t len)
 		return (-1);
 
 	if (lc->wp != NULL) {
-		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%d,%d,%u%s",
-		    lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff, lc->wp->id,
-		    lc->flags & LAYOUT_CELL_FLOATING ? ",f" : "\0");
+		flags = window_pane_printable_flags(lc->wp);
+		tmplen = xsnprintf(tmp, sizeof tmp, "%s%s%ux%u,%d,%d,%u",
+		    flags, *flags != '\0' ? "," : "", lc->g.sx, lc->g.sy,
+		    lc->g.xoff, lc->g.yoff, lc->wp->id);
 	} else {
 		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%d,%d",
 		    lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff);
@@ -307,11 +308,17 @@ static int
 layout_custom_set_flags(struct layout_cell *lc, const char **layout)
 {
 	switch (**layout) {
-		case 'f':
+		case 'F':
 			lc->flags |= LAYOUT_CELL_FLOATING;
 			(*layout)++;
 			return (1);
-		case ')':
+		case '-': /* unsupported fallthrough */
+		case '*':
+		case 'Z':
+			(*layout)++;
+			return (1);
+		case ',':
+			(*layout)++;
 			return (0);
 		default:
 			return (-1);
@@ -341,6 +348,16 @@ layout_custom_create_cell(struct layout_cell *lcparent, const char **layout)
 	(*layout)++;
 	lc = layout_create_cell(lcparent);
 	lc->type = type;
+
+	if (!isdigit((u_char) **layout)) {
+		while (1) {
+			result = layout_custom_set_flags(lc, layout);
+			if (result == 0)
+				break;
+			if (result == -1)
+				goto fail;
+		}
+	}
 
 	if (sscanf(*layout, "%ux%u,%d,%d", &lc->g.sx, &lc->g.sy, &lc->g.xoff,
 	    &lc->g.yoff) != 4)
@@ -373,19 +390,6 @@ layout_custom_create_cell(struct layout_cell *lcparent, const char **layout)
 	/* Advance past pane id. Why have this if it is ignored? */
 	while (isdigit((u_char) **layout))
 		(*layout)++;
-
-	/* Pane with no flags. */
-	if (**layout == ')')
-		return (lc);
-	(*layout)++;
-
-	while (1) {
-		result = layout_custom_set_flags(lc, layout);
-		if (result == 0)
-			break;
-		if (result == -1)
-			goto fail;
-	}
 
 	return (lc);
 fail:
