@@ -233,27 +233,46 @@ layout_make_node(struct layout_cell *lc, enum layout_type type)
 	lc->wp = NULL;
 }
 
-/* Fix z-indexes. */
-void
-layout_fix_zindexes(struct window *w, struct layout_cell *lc)
+static void
+layout_fix_zindexes1(struct window *w, struct layout_cell *lc)
 {
 	struct layout_cell	*lcchild;
-
+	// TODO: Why does this operate on cells? Couldn't it operate on
+	// panes directly?
 	if (lc == NULL)
 		return;
 
 	switch (lc->type) {
 	case LAYOUT_WINDOWPANE:
-		TAILQ_INSERT_TAIL(&w->z_index, lc->wp, zentry);
+		if (~lc->flags & LAYOUT_CELL_FLOATING)
+			TAILQ_INSERT_TAIL(&w->z_index, lc->wp, zentry);
 		break;
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
-			layout_fix_zindexes(w, lcchild);
+			layout_fix_zindexes1(w, lcchild);
 		return;
-	default:
-		fatalx("bad layout type");
 	}
+}
+
+/* Fix z-indexes. */
+void
+layout_fix_zindexes(struct window *w)
+{
+	struct window_pane	*wp, *wpnext;
+
+	/* Remove non-floating panes from the z-index. */
+	wp = TAILQ_FIRST(&w->z_index);
+	while (wp != NULL) {
+		wpnext = TAILQ_NEXT(wp, zentry);
+		if (!window_pane_is_floating(wp)) {
+			TAILQ_REMOVE(&w->z_index, wp, zentry);
+		}
+		wp = wpnext;
+	}
+
+	/* Add back the non-floating panes. */
+	layout_fix_zindexes1(w, w->layout_root);
 }
 
 int
