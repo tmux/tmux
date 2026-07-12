@@ -75,7 +75,6 @@ jobs:
       - name: test
         run: |
           cd regress
-          export ASAN_OPTIONS="abort_on_error=1:detect_leaks=0"
           ${{ matrix.make }}
 
       - name: logs
