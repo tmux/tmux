@@ -33,7 +33,7 @@ jobs:
           - name: macos-26-arm64
             runner: macos-26
             make: gmake
-            configure: --enable-utf8proc
+            configure: --enable-utf8proc --enable-asan
 
     steps:
       - name: checkout

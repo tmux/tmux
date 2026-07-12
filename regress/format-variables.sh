@@ -296,7 +296,7 @@ sleep 1
 # write end of a FIFO open, so client_* variables have a client to read.
 rm -f "$FIFO"
 mkfifo "$FIFO" || exit 1
-sleep 30 >"$FIFO" &
+while :; do sleep 1; done >"$FIFO" &
 HOLD=$!
 $TMUX -C attach -t cov <"$FIFO" >/dev/null 2>&1 &
 CC=$!
