@@ -74,8 +74,14 @@ getdelim(char **buf, size_t *bufsiz, int delimiter, FILE *fp)
 		}
 		if (ptr + 2 >= eptr) {
 			char *nbuf;
-			size_t nbufsiz = *bufsiz * 2;
+			size_t nbufsiz;
 			ssize_t d = ptr - *buf;
+
+			if (*bufsiz > SIZE_MAX / 2) {
+				errno = EOVERFLOW;
+				return -1;
+			}
+			nbufsiz = *bufsiz * 2;
 			if ((nbuf = realloc(*buf, nbufsiz)) == NULL)
 				return -1;
 			*buf = nbuf;
