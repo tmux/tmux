@@ -366,6 +366,9 @@ grid_create(u_int sx, u_int sy, u_int hlimit)
 	if (gd->sy != 0)
 		gd->linedata = xcalloc(gd->sy, sizeof *gd->linedata);
 
+#ifdef __APPLE__
+	assert(gd->hsize == 0);
+#endif
 	grid_check_is_clear(gd);
 	return (gd);
 }

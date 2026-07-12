@@ -43,7 +43,8 @@ AM_CPPFLAGS += -DDEBUG
 endif
 AM_CPPFLAGS += -iquote.
 if IS_ASAN
-AM_CFLAGS += -fsanitize=address
+AM_CPPFLAGS += -DASAN
+AM_CFLAGS += -fsanitize=address -fno-omit-frame-pointer
 AM_LDFLAGS += -fsanitize=address
 endif
 endif
