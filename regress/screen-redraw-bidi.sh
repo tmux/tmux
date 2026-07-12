@@ -42,6 +42,25 @@ compare() {
 	fi
 }
 
+wait_for_pane() {
+	i=0
+	while [ $i -lt 50 ]; do
+		case "$($TMUX2 capturep -p -t "$1")" in
+		*"$2"*) return ;;
+		esac
+		i=$((i + 1))
+		sleep 0.1
+	done
+	fail "pane $1 did not contain: $2"
+}
+
+attach_scene() {
+	# Start with a fresh outer screen and attach only after the complete
+	# scene exists, so it receives one initial redraw.
+	$TMUX respawnp -k "$TMUX2 attach" || exit 1
+	sleep 1
+}
+
 new_scene() {
 	$TMUX2 neww -d "sh -c 'printf \"BIDI-LEFT 12345\nBIDI-RIGHT 67890\"; exec sleep 100'" || exit 1
 	$TMUX2 selectw -t:\$ || exit 1
@@ -63,17 +82,19 @@ $TMUX new -d -x40 -y12 || exit 1
 $TMUX set -g status off || exit 1
 $TMUX set -g window-size manual || exit 1
 $TMUX set -g default-terminal "tmux-256color" || exit 1
-$TMUX send -l "$TMUX2 attach" || exit 1
-$TMUX send Enter || exit 1
-sleep 1
 
 # Single pane: content is wrapped in isolates.
 new_scene
+wait_for_pane ':.0' 'BIDI-RIGHT 67890'
+attach_scene
 compare bidi-single
 
 # Two panes: borders and both panes are isolated.
 new_scene
 $TMUX2 splitw -h "$C" || exit 1
+wait_for_pane ':.0' 'BIDI-RIGHT 67890'
+wait_for_pane ':.1' 'BIDI-PANE 67890'
+attach_scene
 compare bidi-split
 
 exit 0
