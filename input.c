@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.267 2026/07/13 13:01:14 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.268 2026/07/13 15:03:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1051,6 +1051,10 @@ input_parse_buffer(struct window_pane *wp, const u_char *buf, size_t len)
 		return;
 
 	window_update_activity(wp->window);
+	if (~wp->flags & PANE_ACTIVITY) {
+		wp->flags |= PANE_ACTIVITY;
+		events_fire_pane("pane-activity", wp);
+	}
 	wp->flags |= PANE_CHANGED;
 
 	/* Flag new input while in a mode. */
