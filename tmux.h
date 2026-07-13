@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1396 2026/07/10 15:45:11 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1397 2026/07/13 10:03:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2455,6 +2455,8 @@ struct spawn_context {
 #define SPAWN_EMPTY 0x40
 #define SPAWN_ZOOM 0x80
 #define SPAWN_FLOATING 0x100
+#define SPAWN_HORIZONTAL 0x200
+#define SPAWN_SPLIT 0x400
 };
 
 /* Paste buffer. */
@@ -3790,10 +3792,13 @@ struct layout_cell *layout_get_tiled_cell(struct cmdq_item *, struct args *,
 		     struct window *, struct window_pane *, int, char **);
 struct layout_cell *layout_get_floating_cell(struct cmdq_item *, struct args *,
 		     enum pane_lines, struct window *, struct window_pane *,
-		     char **);
+		     int, char **);
 int		 layout_floating_args_parse(struct cmdq_item *, struct args *,
 		     enum pane_lines, struct window *, struct layout_geometry *,
 		     char **);
+int		 layout_split_floating_cell(struct layout_cell *,
+		     struct window *, struct layout_geometry *, enum pane_lines,
+		     int, char **);
 int		 layout_remove_tile(struct window *, struct layout_cell *);
 int		 layout_insert_tile(struct window *, struct layout_cell *);
 

@@ -1,4 +1,4 @@
-/* $OpenBSD: layout.c,v 1.93 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: layout.c,v 1.94 2026/07/13 10:03:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1598,7 +1598,7 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
     struct window *w, struct window_pane *wp, int flags, char **cause)
 {
 	struct layout_cell	*lc;
-	enum layout_type	 type;
+	enum layout_type	 type = LAYOUT_TOPBOTTOM;
 	u_int			 curval;
 	int			 size = -1;
 	char			*error = NULL;
@@ -1608,12 +1608,11 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 		return (NULL);
 	}
 
-	type = LAYOUT_TOPBOTTOM;
-	if (args_has(args, 'h'))
+	if (flags & SPAWN_HORIZONTAL)
 		type = LAYOUT_LEFTRIGHT;
 
 	if (args_has(args, 'l') || args_has(args, 'p')) {
-		if (args_has(args, 'f')) {
+		if (flags & SPAWN_FULLSIZE) {
 			if (type == LAYOUT_TOPBOTTOM)
 				curval = w->sy;
 			else
@@ -1641,12 +1640,7 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 		return (NULL);
 	}
 
-	if (args_has(args, 'b'))
-		flags |= SPAWN_BEFORE;
-	if (args_has(args, 'f'))
-		flags |= SPAWN_FULLSIZE;
-
-	window_push_zoom(wp->window, 1, args_has(args, 'Z'));
+	window_push_zoom(wp->window, 1, (flags & SPAWN_ZOOM));
 	lc = layout_split_pane(wp, type, size, flags);
 	if (lc == NULL)
 		*cause = xstrdup("no space for a new pane");
@@ -1656,17 +1650,24 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 
 struct layout_cell *
 layout_get_floating_cell(struct cmdq_item *item, struct args *args,
-    enum pane_lines lines, struct window *w, struct window_pane *wp,
+    enum pane_lines lines, struct window *w, struct window_pane *wp, int flags,
     char **cause)
 {
-	struct layout_cell	*lcnew;
+	struct layout_cell	*lcnew, *lc = wp->layout_cell;
 	struct layout_geometry	 fg;
 
 	layout_geometry_init(&fg);
-	if (layout_floating_args_parse(item, args, lines, w, &fg, cause) != 0)
-		return (NULL);
+	if (flags & SPAWN_SPLIT) {
+		if (layout_split_floating_cell(lc, w, &fg, lines, flags, cause)
+		    != 0)
+			return (NULL);
+	} else {
+		if (layout_floating_args_parse(item, args, lines, w, &fg, cause)
+		    != 0)
+			return (NULL);
+	}
 
-	window_push_zoom(wp->window, 1, args_has(args, 'Z'));
+	window_push_zoom(wp->window, 1, (flags & SPAWN_ZOOM));
 	lcnew = layout_floating_pane(w, wp, &fg);
 	return (lcnew);
 }
@@ -1763,6 +1764,131 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 	lg->sy = sy;
 	lg->xoff = ox;
 	lg->yoff = oy;
+	return (0);
+}
+
+int
+layout_split_floating_cell(struct layout_cell *lc, struct window *w,
+    struct layout_geometry *out, enum pane_lines lines, int flags,
+    char **cause)
+{
+	struct layout_geometry	 old, new;
+	int			 tborder = 1, bborder = w->sy - 1;
+	int			 lborder = 3, rborder = w->sx - 3;
+	int			 border = lines != PANE_LINES_NONE ? 1 : 0;
+	int			 size, space;
+
+	/* First, move the target cell in-bounds. */
+	memcpy(&old, &lc->g, sizeof old);
+	if (lborder > old.xoff - border)
+		old.xoff = lborder + border;
+	if (rborder < old.xoff + (int)old.sx + border)
+		old.xoff = rborder - (int)old.sx - border;
+	if (tborder > old.yoff - border)
+		old.yoff = tborder + border;
+	if (bborder < old.yoff + (int)old.sy + border)
+		old.yoff = bborder - (int)old.sy - border;
+
+	/* Move the new cell to its ideal position. */
+	memcpy(&new, &old, sizeof new);
+	if (flags & SPAWN_HORIZONTAL) {
+		if (flags & SPAWN_BEFORE)
+			new.xoff -= old.sx + 2 * border;
+		else
+			new.xoff += old.sx + 2 * border;
+	} else {
+		if (flags & SPAWN_BEFORE)
+			new.yoff -= old.sy + 2 * border;
+		else
+			new.yoff += old.sy + 2 * border;
+	}
+
+	/*
+	 * The position of the new cell is checked to see if it is in bounds.
+	 * If it isn't, the availible space is split and equally given to both
+	 * cells. Only one border is check because the target cell is in bounds
+	 * already.
+	 */
+	if (lborder > new.xoff - border) {
+		/*
+		 * The space for both panes is calculated. Since the offsets are
+		 * associated to where pane contents start, we remove pane
+		 * borders from the space. '1' is added in case the space is
+		 * odd.
+		 */
+		space = old.xoff + old.sx - lborder - 3 * border + 1;
+		size = space / 2;
+		new.sx = size;
+		old.sx = size;
+		new.xoff = lborder + border;
+		old.xoff = new.xoff + new.sx + 2 * border;
+		/*
+		 * If the original space was to be odd (now even), subtract 1
+		 * from the rightmost cell
+		 */
+		if (space % 2 == 0)
+			old.sx -= 1;
+	} else if (rborder < new.xoff + (int)new.sx + border) {
+		space = rborder - old.xoff - 3 * border + 1;
+		size = space / 2;
+		new.sx = size;
+		old.sx = size;
+		new.xoff = old.xoff + old.sx + 2 * border;
+		if (space % 2 == 0)
+			new.sx -= 1;
+	} else if (tborder > new.yoff - border) {
+		space = old.sy + old.yoff - tborder - 3 * border + 1;
+		size = space / 2;
+		new.sy = size;
+		old.sy = size;
+		new.yoff = tborder + border;
+		old.yoff = new.yoff + new.sy + 2 * border;
+		if (space % 2 == 0)
+			old.sy -= 1;
+	} else if (bborder < new.yoff + (int)new.sy + border) {
+		space = bborder - old.yoff - 3 * border + 1;
+		size = space / 2;
+		new.sy = size;
+		old.sy = size;
+		new.yoff = old.yoff + old.sy + 2 * border;
+		if (space % 2 == 0)
+			new.sy -= 1;
+	}
+
+	/*
+	 * Expand the cell to occupy the whole availible space where it was
+	 * spawned.
+	 */
+	if (flags & SPAWN_FULLSIZE) {
+		if (flags & SPAWN_HORIZONTAL) {
+			new.yoff = tborder + border;
+			new.sy = bborder - tborder - 2 * border;
+			if (flags & SPAWN_BEFORE) {
+				new.xoff = lborder + border;
+				new.sx = old.xoff - new.xoff - 2 * border;
+			} else {
+				new.sx = rborder - new.xoff - border;
+			}
+		} else {
+			new.xoff = lborder + border;
+			new.sx = rborder - lborder - 2 * border;
+			if (flags & SPAWN_BEFORE) {
+				new.yoff = tborder + border;
+				new.sy = old.yoff - new.yoff - 2 * border;
+			} else {
+				new.sy = bborder - new.yoff - border;
+			}
+		}
+	}
+
+	if (new.sx < PANE_MINIMUM || new.sy < PANE_MINIMUM ||
+	    old.sx < PANE_MINIMUM || old.sy < PANE_MINIMUM) {
+		*cause = xstrdup("no space for a new pane");
+		return (-1);
+	}
+
+	layout_set_size(lc, old.sx, old.sy, old.xoff, old.yoff);
+	memcpy(out, &new, sizeof *out);
 	return (0);
 }
 

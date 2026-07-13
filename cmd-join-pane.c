@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-join-pane.c,v 1.69 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: cmd-join-pane.c,v 1.70 2026/07/13 10:03:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 George Nachman <tmux@georgester.com>
@@ -458,6 +458,13 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 		cmdq_error(item, "source and target panes must be different");
 		return (CMD_RETURN_ERROR);
 	}
+
+	if (args_has(args, 'h'))
+		flags |= SPAWN_HORIZONTAL;
+	if (args_has(args, 'b'))
+		flags |= SPAWN_BEFORE;
+	if (args_has(args, 'f'))
+		flags |= SPAWN_FULLSIZE;
 
 	lc = layout_get_tiled_cell(item, args, dst_w, dst_wp, flags, &cause);
 	if (cause != NULL) {

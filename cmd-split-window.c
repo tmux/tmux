@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-split-window.c,v 1.141 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: cmd-split-window.c,v 1.142 2026/07/13 10:03:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -62,8 +62,8 @@ const struct cmd_entry cmd_split_window_entry = {
 	.usage = "[-bdefhIklPvWZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-l size] [-m message] [-p percentage] "
 		 "[-s style] [-S active-border-style] "
-		 "[-R inactive-border-style] [-T title] " CMD_TARGET_PANE_USAGE " "
-		 "[shell-command [argument ...]]",
+		 "[-R inactive-border-style] [-T title] "
+	         CMD_TARGET_PANE_USAGE " [shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -96,14 +96,23 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (cmd_get_entry(self) == &cmd_new_pane_entry)
 		is_floating = !args_has(args, 'L');
-	else
+	else {
 		is_floating = window_pane_is_floating(wp);
+		flags |= SPAWN_SPLIT;
+	}
 
-	flags = is_floating ? SPAWN_FLOATING : 0;
+	if (is_floating)
+		flags |= SPAWN_FLOATING;
+	if (args_has(args, 'h'))
+		flags |= SPAWN_HORIZONTAL;
 	if (args_has(args, 'b'))
 		flags |= SPAWN_BEFORE;
 	if (args_has(args, 'f'))
 		flags |= SPAWN_FULLSIZE;
+	if (args_has(args, 'd'))
+		flags |= SPAWN_DETACHED;
+	if (args_has(args, 'Z'))
+		flags |= SPAWN_ZOOM;
 
 	input = args_has(args, 'I');
 	if (input || (count == 1 && *args_string(args, 0) == '\0'))
@@ -131,9 +140,10 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-	if (is_floating)
-		lc = layout_get_floating_cell(item, args, lines, w, wp, &cause);
-	else
+	if (flags & SPAWN_FLOATING) {
+		lc = layout_get_floating_cell(item, args, lines, w, wp, flags,
+		    &cause);
+	} else
 		lc = layout_get_tiled_cell(item, args, w, wp, flags, &cause);
 	if (cause != NULL) {
 		cmdq_error(item, "%s", cause);
@@ -159,12 +169,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	sc.idx = -1;
 	sc.cwd = args_get(args, 'c');
-
 	sc.flags = flags;
-	if (args_has(args, 'd'))
-		sc.flags |= SPAWN_DETACHED;
-	if (args_has(args, 'Z'))
-		sc.flags |= SPAWN_ZOOM;
 
 	if ((new_wp = spawn_pane(&sc, &cause)) == NULL) {
 		cmdq_error(item, "create pane failed: %s", cause);
@@ -240,10 +245,10 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 			break;
 		}
 	}
-	if (!args_has(args, 'd'))
+	if (~flags & SPAWN_DETACHED)
 		cmd_find_from_winlink_pane(current, wl, new_wp, 0);
 
-	if (!is_floating) {
+	if (~flags & SPAWN_FLOATING) {
 		window_pop_zoom(wp->window);
 		server_redraw_window(wp->window);
 	}
