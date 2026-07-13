@@ -449,10 +449,10 @@ $TMUX killp -t "$pane" || fail "kill-pane zoom failed"
 $TMUX set -g @a 0 || fail "set @a failed"
 $TMUX set -g @cl 0 || fail "set @cl failed"
 $TMUX set-hook -g client-created \
-	'set -gF @cl "#{@cl}|#{hook}:#{hook_client}"' ||
+	'set -gF @cl "#{?#{m:client-*,#{hook_client}},#{@cl}|#{hook}:#{hook_client},#{@cl}}"' ||
 	fail "set-hook client-created failed"
 $TMUX set-hook -g client-closed \
-	'set -gF @cl "#{@cl}|#{hook}:#{hook_client}"' ||
+	'set -gF @cl "#{?#{m:client-*,#{hook_client}},#{@cl}|#{hook}:#{hook_client},#{@cl}}"' ||
 	fail "set-hook client-closed failed"
 $TMUX set-hook -g client-attached 'set -gF @a "#{hook}"' ||
 	fail "set-hook client-attached failed"
