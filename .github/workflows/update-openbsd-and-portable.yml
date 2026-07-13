@@ -76,6 +76,18 @@ jobs:
           git fetch --filter=blob:none --no-tags origin master
           git switch -C master origin/master
 
+      - name: Capture published OpenBSD tmux base
+        id: openbsd-base
+        run: |
+          set -eu
+
+          cd "$CUTOVER_DIR"
+          if ! git rev-parse --verify -q origin/openbsd-git >/dev/null; then
+            echo "origin/openbsd-git is missing; publish the openbsd-git branch before running updates." >&2
+            exit 1
+          fi
+          echo "sha=$(git rev-parse origin/openbsd-git)" >> "$GITHUB_OUTPUT"
+
       - name: Filter OpenBSD tmux history
         run: |
           set -eu
@@ -99,12 +111,7 @@ jobs:
           cd "$CUTOVER_DIR"
           git switch master
 
-          if ! git rev-parse --verify -q origin/openbsd-git >/dev/null; then
-            echo "origin/openbsd-git is missing; publish the openbsd-git branch before running updates." >&2
-            exit 1
-          fi
-
-          old_base=$(git rev-parse origin/openbsd-git)
+          old_base="${{ steps.openbsd-base.outputs.sha }}"
           new_base=$(git rev-parse openbsd-git)
 
           if [ "$old_base" = "$new_base" ]; then
