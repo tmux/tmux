@@ -1,4 +1,4 @@
-/* $OpenBSD: window-customize.c,v 1.30 2026/07/06 14:40:57 nicm Exp $ */
+/* $OpenBSD: window-customize.c,v 1.31 2026/07/13 19:32:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -79,6 +79,11 @@ enum window_customize_scope {
 enum window_customize_change {
 	WINDOW_CUSTOMIZE_UNSET,
 	WINDOW_CUSTOMIZE_RESET,
+};
+
+enum window_customize_option_type {
+	WINDOW_CUSTOMIZE_OPTIONS,
+	WINDOW_CUSTOMIZE_HOOKS
 };
 
 struct window_customize_itemdata {
@@ -274,7 +279,8 @@ static void
 window_customize_build_option(struct window_customize_modedata *data,
     struct mode_tree_item *top, enum window_customize_scope scope,
     struct options_entry *o, struct format_tree *ft,
-    const char *filter, struct cmd_find_state *fs)
+    const char *filter, struct cmd_find_state *fs,
+    enum window_customize_option_type type)
 {
 	const struct options_table_entry	*oe = options_table_entry(o);
 	struct options				*oo = options_owner(o);
@@ -282,10 +288,23 @@ window_customize_build_option(struct window_customize_modedata *data,
 	struct window_customize_itemdata	*item;
 	char					*text, *expanded, *value;
 	int					 global = 0, array = 0;
+	int					 is_hook = 0, is_monitor = 0;
 	uint64_t				 tag;
 
 	if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_HOOK))
-		return;
+		is_hook = 1;
+	if (options_get_monitor_data(o) != NULL)
+		is_monitor = 1;
+	switch (type) {
+	case WINDOW_CUSTOMIZE_OPTIONS:
+		if (is_hook || is_monitor)
+			return;
+		break;
+	case WINDOW_CUSTOMIZE_HOOKS:
+		if (!is_hook && !is_monitor)
+			return;
+		break;
+	}
 	if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_ARRAY))
 		array = 1;
 
@@ -299,6 +318,8 @@ window_customize_build_option(struct window_customize_modedata *data,
 	format_add(ft, "option_name", "%s", name);
 	format_add(ft, "option_is_global", "%d", global);
 	format_add(ft, "option_is_array", "%d", array);
+	format_add(ft, "option_is_hook", "%d", is_hook);
+	format_add(ft, "option_is_monitor", "%d", is_monitor);
 
 	text = window_customize_scope_text(scope, fs);
 	format_add(ft, "option_scope", "%s", text);
@@ -308,6 +329,16 @@ window_customize_build_option(struct window_customize_modedata *data,
 		format_add(ft, "option_unit", "%s", oe->unit);
 	else
 		format_add(ft, "option_unit", "%s", "");
+
+	if (is_monitor) {
+		value = hooks_monitor_to_string(o);
+		if (value != NULL) {
+			format_add(ft, "option_monitor", "%s", value);
+			free(value);
+		} else
+			format_add(ft, "option_monitor", "%s", "");
+	} else
+		format_add(ft, "option_monitor", "%s", "");
 
 	if (!array) {
 		value = options_to_string(o, NULL, 0);
@@ -376,7 +407,8 @@ window_customize_build_options(struct window_customize_modedata *data,
     enum window_customize_scope scope0, struct options *oo0,
     enum window_customize_scope scope1, struct options *oo1,
     enum window_customize_scope scope2, struct options *oo2,
-    struct format_tree *ft, const char *filter, struct cmd_find_state *fs)
+    struct format_tree *ft, const char *filter, struct cmd_find_state *fs,
+    enum window_customize_option_type type)
 {
 	struct mode_tree_item		 *top;
 	struct options_entry		 *o = NULL, *loop;
@@ -400,6 +432,7 @@ window_customize_build_options(struct window_customize_modedata *data,
 		window_customize_find_user_options(oo2, &list, &size);
 
 	for (i = 0; i < size; i++) {
+		o = NULL;
 		if (oo2 != NULL)
 			o = options_get(oo2, list[i]);
 		if (o == NULL && oo1 != NULL)
@@ -413,7 +446,7 @@ window_customize_build_options(struct window_customize_modedata *data,
 		else
 			scope = scope0;
 		window_customize_build_option(data, top, scope, o, ft, filter,
-		    fs);
+		    fs, type);
 	}
 	free(list);
 
@@ -437,7 +470,7 @@ window_customize_build_options(struct window_customize_modedata *data,
 		else
 			scope = scope0;
 		window_customize_build_option(data, top, scope, o, ft, filter,
-		    fs);
+		    fs, type);
 		loop = options_next(loop);
 	}
 }
@@ -556,19 +589,31 @@ window_customize_build(void *modedata,
 	    WINDOW_CUSTOMIZE_SERVER, global_options,
 	    WINDOW_CUSTOMIZE_NONE, NULL,
 	    WINDOW_CUSTOMIZE_NONE, NULL,
-	    ft, filter, &fs);
+	    ft, filter, &fs, WINDOW_CUSTOMIZE_OPTIONS);
 	window_customize_build_options(data, "Session Options",
 	    (3ULL << 62)|(OPTIONS_TABLE_SESSION << 1)|1,
 	    WINDOW_CUSTOMIZE_GLOBAL_SESSION, global_s_options,
 	    WINDOW_CUSTOMIZE_SESSION, fs.s->options,
 	    WINDOW_CUSTOMIZE_NONE, NULL,
-	    ft, filter, &fs);
+	    ft, filter, &fs, WINDOW_CUSTOMIZE_OPTIONS);
 	window_customize_build_options(data, "Window & Pane Options",
 	    (3ULL << 62)|(OPTIONS_TABLE_WINDOW << 1)|1,
 	    WINDOW_CUSTOMIZE_GLOBAL_WINDOW, global_w_options,
 	    WINDOW_CUSTOMIZE_WINDOW, fs.w->options,
 	    WINDOW_CUSTOMIZE_PANE, fs.wp->options,
-	    ft, filter, &fs);
+	    ft, filter, &fs, WINDOW_CUSTOMIZE_OPTIONS);
+	window_customize_build_options(data, "Session Hooks",
+	    (3ULL << 62)|(1ULL << 8)|(OPTIONS_TABLE_SESSION << 1)|1,
+	    WINDOW_CUSTOMIZE_GLOBAL_SESSION, global_s_options,
+	    WINDOW_CUSTOMIZE_SESSION, fs.s->options,
+	    WINDOW_CUSTOMIZE_NONE, NULL,
+	    ft, filter, &fs, WINDOW_CUSTOMIZE_HOOKS);
+	window_customize_build_options(data, "Window & Pane Hooks",
+	    (3ULL << 62)|(1ULL << 8)|(OPTIONS_TABLE_WINDOW << 1)|1,
+	    WINDOW_CUSTOMIZE_GLOBAL_WINDOW, global_w_options,
+	    WINDOW_CUSTOMIZE_WINDOW, fs.w->options,
+	    WINDOW_CUSTOMIZE_PANE, fs.wp->options,
+	    ft, filter, &fs, WINDOW_CUSTOMIZE_HOOKS);
 
 	format_free(ft);
 	ft = format_create_from_state(NULL, NULL, &fs);
@@ -662,10 +707,12 @@ window_customize_draw_option(struct window_customize_modedata *data,
 	const char				 *array_key;
 	const char				 *space = "", *unit = "";
 	char					 *value = NULL, *expanded;
+	char					 *monitor;
 	char					 *default_value = NULL;
 	char					  choices[256] = "";
 	struct cmd_find_state			  fs;
 	struct format_tree			 *ft;
+	int					  is_hook, is_monitor;
 
 	if (!window_customize_check_item(data, item, &fs))
 		return;
@@ -676,6 +723,8 @@ window_customize_draw_option(struct window_customize_modedata *data,
 	if (o == NULL)
 		return;
 	oe = options_table_entry(o);
+	is_hook = (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_HOOK));
+	is_monitor = (options_get_monitor_data(o) != NULL);
 
 	if (oe != NULL && oe->unit != NULL) {
 		space = " ";
@@ -683,9 +732,11 @@ window_customize_draw_option(struct window_customize_modedata *data,
 	}
 	ft = format_create_from_state(NULL, NULL, &fs);
 
-	if (oe == NULL || oe->text == NULL)
-		text = "This option doesn't have a description.";
-	else
+	if (oe == NULL || oe->text == NULL) {
+		text = is_monitor ?
+		    "This hook runs when a monitor changes." :
+		    "This option doesn't have a description.";
+	} else
 		text = oe->text;
 	if (!screen_write_text(ctx, cx, sx, sy, 0, &grid_default_cell, "%s",
 	    text))
@@ -694,6 +745,12 @@ window_customize_draw_option(struct window_customize_modedata *data,
 	if (s->cy >= cy + sy - 1)
 		goto out;
 
+	if (is_monitor) {
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
+		    &grid_default_cell, "This is a monitor hook."))
+			goto out;
+		goto monitor;
+	}
 	if (oe == NULL)
 		text = "user";
 	else if ((oe->scope & (OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE)) ==
@@ -705,11 +762,31 @@ window_customize_draw_option(struct window_customize_modedata *data,
 		text = "session";
 	else
 		text = "server";
-	if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
-	    &grid_default_cell, "This is a %s option.", text))
-		goto out;
+	if (is_hook) {
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
+		    &grid_default_cell, "This is a %s hook.", text))
+			goto out;
+	} else {
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
+		    &grid_default_cell, "This is a %s option.", text))
+			goto out;
+	}
+
+monitor:
+	monitor = hooks_monitor_to_string(o);
+	if (monitor != NULL) {
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
+		    &grid_default_cell, "Monitor: %s", monitor)) {
+			free(monitor);
+			goto out;
+		}
+		free(monitor);
+	}
 	if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_ARRAY)) {
-		if (array_key != NULL) {
+		if (is_hook) {
+			if (array_key == NULL)
+				goto out;
+		} else if (array_key != NULL) {
 			if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy),
 			    0, &grid_default_cell,
 			    "This is an array option, key %s.", array_key))
@@ -734,9 +811,17 @@ window_customize_draw_option(struct window_customize_modedata *data,
 			default_value = NULL;
 		}
 	}
-	if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
-	    &grid_default_cell, "Option value: %s%s%s", value, space, unit))
-		goto out;
+	if (is_hook || is_monitor) {
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
+		    &grid_default_cell, "Hook command: %s%s%s", value, space,
+		    unit))
+			goto out;
+	} else {
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
+		    &grid_default_cell, "Option value: %s%s%s", value, space,
+		    unit))
+			goto out;
+	}
 	if (oe == NULL || oe->type == OPTIONS_TABLE_STRING) {
 		expanded = format_expand(ft, value);
 		if (strcmp(expanded, value) != 0) {

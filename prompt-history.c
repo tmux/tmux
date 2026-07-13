@@ -1,4 +1,4 @@
-/* $OpenBSD: prompt-history.c,v 1.1 2026/06/25 11:39:11 nicm Exp $ */
+/* $OpenBSD: prompt-history.c,v 1.2 2026/07/13 19:35:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -79,8 +79,9 @@ void
 prompt_load_history(void)
 {
 	FILE	*f;
-	char	*history_file, *line, *tmp;
-	size_t	 length;
+	char	*history_file, *line = NULL;
+	size_t	 length = 0;
+	ssize_t	 got;
 
 	if ((history_file = prompt_find_history_file()) == NULL)
 		return;
@@ -94,23 +95,13 @@ prompt_load_history(void)
 	}
 	free(history_file);
 
-	for (;;) {
-		if ((line = fgetln(f, &length)) == NULL)
-			break;
-
-		if (length > 0) {
-			if (line[length - 1] == '\n') {
-				line[length - 1] = '\0';
-				prompt_add_typed_history(line);
-			} else {
-				tmp = xmalloc(length + 1);
-				memcpy(tmp, line, length);
-				tmp[length] = '\0';
-				prompt_add_typed_history(tmp);
-				free(tmp);
-			}
-		}
+	while ((got = getline(&line, &length, f)) != -1) {
+		if (got > 0 && line[got - 1] == '\n')
+			line[got - 1] = '\0';
+		if (got > 0)
+			prompt_add_typed_history(line);
 	}
+	free(line);
 	fclose(f);
 }
 
