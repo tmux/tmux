@@ -160,6 +160,8 @@ dist_tmux_SOURCES = \
 	compat.h \
 	control-notify.c \
 	control.c \
+	events.c \
+	events-payload.c \
 	environ.c \
 	file.c \
 	format.c \
@@ -168,6 +170,7 @@ dist_tmux_SOURCES = \
 	grid-reader.c \
 	grid-view.c \
 	grid.c \
+	hooks.c \
 	hyperlinks.c \
 	input-keys.c \
 	input.c \
@@ -182,7 +185,6 @@ dist_tmux_SOURCES = \
 	mode-tree.c \
 	monitor.c \
 	names.c \
-	notify.c \
 	options-table.c \
 	options.c \
 	paste.c \
