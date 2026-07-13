@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.414 2026/07/13 10:22:52 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.415 2026/07/13 12:53:56 jsg Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -5576,8 +5576,8 @@ window_copy_mouse_in_selection(struct window_mode_entry *wme, u_int x, u_int y,
 		return (1);
 	}
 
-	cursorx = window_copy_cursor_offset(wme, data->cx,
-	    sx); cursory = data->cy;
+	cursorx = window_copy_cursor_offset(wme, data->cx, sx);
+	cursory = data->cy;
 	if (x != cursorx || y != cursory) {
 		if (!screen_check_selection(&data->screen, x, y))
 			return (0);
