@@ -137,7 +137,7 @@ jobs:
           git push origin master openbsd-git
 
       - name: Merge cutover into portable
-        if: steps.cutover.outputs.changed == 'true'
+        id: portable
         run: |
           set -eu
 
@@ -153,9 +153,14 @@ jobs:
           git fetch --no-tags tmux-openbsd master:refs/remotes/tmux-openbsd/master
           git switch master
           git merge --no-ff --log refs/remotes/tmux-openbsd/master
+          if git diff --quiet origin/master..master; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Push portable repository
-        if: steps.cutover.outputs.changed == 'true'
+        if: steps.portable.outputs.changed == 'true'
         run: |
           set -eu
 
