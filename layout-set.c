@@ -1,4 +1,4 @@
-/* $OpenBSD: layout-set.c,v 1.39 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: layout-set.c,v 1.40 2026/07/13 09:42:12 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -136,6 +136,21 @@ layout_set_first_tiled(struct window *w)
 }
 
 static void
+layout_set_link_floating(struct window *w, struct layout_cell *lcroot)
+{
+	struct window_pane	*wp;
+	struct layout_cell	*lc;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		lc = wp->layout_cell;
+		if (!layout_cell_is_tiled(lc)) {
+			TAILQ_INSERT_TAIL(&lcroot->cells, lc, entry);
+			lc->parent = lcroot;
+		}
+	}
+}
+
+static void
 layout_set_even(struct window *w, enum layout_type type)
 {
 	struct window_pane	*wp;
@@ -267,6 +282,8 @@ layout_set_main_h(struct window *w)
 			wp = TAILQ_NEXT(wp, entry);
 		TAILQ_INSERT_TAIL(&lcroot->cells, wp->layout_cell, entry);
 		wp->layout_cell->parent = lcroot;
+		layout_set_size(wp->layout_cell, sx, otherh, 0, 0);
+		layout_set_link_floating(w, lcroot);
 	} else {
 		lcother = layout_create_cell(lcroot);
 		layout_set_size(lcother, sx, otherh, 0, 0);
@@ -364,6 +381,8 @@ layout_set_main_h_mirrored(struct window *w)
 			wp = TAILQ_NEXT(wp, entry);
 		TAILQ_INSERT_HEAD(&lcroot->cells, wp->layout_cell, entry);
 		wp->layout_cell->parent = lcroot;
+		layout_set_size(wp->layout_cell, sx, otherh, 0, 0);
+		layout_set_link_floating(w, lcroot);
 	} else {
 		lcother = layout_create_cell(lcroot);
 		layout_set_size(lcother, sx, otherh, 0, 0);
@@ -461,6 +480,8 @@ layout_set_main_v(struct window *w)
 			wp = TAILQ_NEXT(wp, entry);
 		TAILQ_INSERT_TAIL(&lcroot->cells, wp->layout_cell, entry);
 		wp->layout_cell->parent = lcroot;
+		layout_set_size(wp->layout_cell, otherw, sy, 0, 0);
+		layout_set_link_floating(w, lcroot);
 	} else {
 		lcother = layout_create_cell(lcroot);
 		layout_make_node(lcother, LAYOUT_TOPBOTTOM);
@@ -559,6 +580,8 @@ layout_set_main_v_mirrored(struct window *w)
 			wp = TAILQ_NEXT(wp, entry);
 		TAILQ_INSERT_HEAD(&lcroot->cells, wp->layout_cell, entry);
 		wp->layout_cell->parent = lcroot;
+		layout_set_size(wp->layout_cell, otherw, sy, 0, 0);
+		layout_set_link_floating(w, lcroot);
 	} else {
 		lcother = layout_create_cell(lcroot);
 		layout_make_node(lcother, LAYOUT_TOPBOTTOM);
@@ -700,6 +723,7 @@ layout_set_tiled(struct window *w)
 		    w->sy - used);
 	}
 
+	layout_set_link_floating(w, lcroot);
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 

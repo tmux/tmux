@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-break-pane.c,v 1.72 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: cmd-break-pane.c,v 1.73 2026/07/13 13:01:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -98,9 +98,9 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*src_s = source->s;
 	struct session		*dst_s = target->s;
 	struct window_pane	*wp = source->wp;
-	struct window		*w = wl->window;
+	struct window		*w = wl->window, *old_w = w;
 	char			*cause, *cp;
-	int			 idx = target->idx, before;
+	int			 idx = target->idx, before, old_idx = wl->idx;
 	const char		*template, *name = args_get(args, 'n');
 
 	if (args_has(args, 'W'))
@@ -137,6 +137,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 		wl = winlink_find_by_window(&dst_s->windows, w);
 		if (wl == NULL)
 			return (CMD_RETURN_ERROR);
+		window_fire_pane_moved(wp, old_w, old_idx, w, wl->idx);
 		goto out;
 	}
 	if (idx != -1 && winlink_find_by_index(&dst_s->windows, idx) != NULL) {
@@ -175,6 +176,8 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 		idx = -1 - options_get_number(dst_s->options, "base-index");
 	wl = session_attach(dst_s, w, idx, &cause); /* can't fail */
 	window_remove_ref(w, __func__);
+	events_fire_window("window-created", w);
+	window_fire_pane_moved(wp, old_w, old_idx, w, wl->idx);
 	if (!args_has(args, 'd')) {
 		session_select(dst_s, wl->idx);
 		cmd_find_from_session(current, dst_s, 0);

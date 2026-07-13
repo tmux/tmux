@@ -1,4 +1,4 @@
-/* $OpenBSD: prompt.c,v 1.4 2026/06/26 14:40:30 nicm Exp $ */
+/* $OpenBSD: prompt.c,v 1.5 2026/07/13 10:29:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -42,6 +42,8 @@ struct prompt {
 	char			 *word_separators;
 	struct grid_cell	  style;
 	struct grid_cell	  command_style;
+	char			 *style_str;
+	char			 *command_style_str;
 	enum screen_cursor_style  cstyle;
 	enum screen_cursor_style  command_cstyle;
 	int			  ccolour;
@@ -61,11 +63,30 @@ struct prompt {
 	char			 *complete_display;
 };
 
+struct prompt_layout {
+	u_int			 area_x;
+	u_int			 area_width;
+
+	u_int			 content_x;
+	u_int			 content_width;
+
+	u_int			 label_width;
+	u_int			 input_x;
+	u_int			 cursor_x;
+
+	u_int			 input_offset;
+	u_int			 input_width;
+};
+
 static char	*prompt_complete(struct prompt *, const char *, u_int);
 static void	 prompt_clear_complete(struct prompt *);
-static char	*prompt_expand(struct prompt *);
+static struct format_tree *prompt_format_tree(struct prompt *);
+static char	*prompt_expand1(struct prompt *, struct format_tree *);
+static void	 prompt_effective_style(struct prompt *, struct style *,
+		     struct format_tree *);
+static void	 prompt_layout(struct prompt *, u_int, u_int,
+		     struct prompt_layout *, char **, struct style *);
 static int	 prompt_replace_complete(struct prompt *, const char *);
-static u_int	 prompt_width(struct prompt *, u_int);
 
 /* Get prompt flags as a string. */
 static const char *
@@ -120,6 +141,8 @@ prompt_set_options(struct prompt_create_data *pd, struct session *s)
 
 	style_apply(&pd->style, oo, "message-style", NULL);
 	style_apply(&pd->command_style, oo, "message-command-style", NULL);
+	pd->style_str = options_get_string(oo, "message-style");
+	pd->command_style_str = options_get_string(oo, "message-command-style");
 	n = options_get_number(oo, "prompt-cursor-style");
 	screen_set_cursor_style(n, &pd->cstyle, &pd->cmode);
 	n = options_get_number(oo, "prompt-command-cursor-style");
@@ -179,6 +202,8 @@ prompt_create(const struct prompt_create_data *pd)
 	memcpy(&pr->style, &pd->style, sizeof pr->style);
 	memcpy(&pr->command_style, &pd->command_style,
 	    sizeof pr->command_style);
+	pr->style_str = xstrdup(pd->style_str);
+	pr->command_style_str = xstrdup(pd->command_style_str);
 	pr->cstyle = pd->cstyle;
 	pr->command_cstyle = pd->command_cstyle;
 	pr->ccolour = pd->ccolour;
@@ -201,6 +226,8 @@ prompt_free(struct prompt *pr)
 		if (pr->freecb != NULL && pr->data != NULL)
 			pr->freecb(pr->data);
 		free(pr->message_format);
+		free(pr->style_str);
+		free(pr->command_style_str);
 		free(pr->word_separators);
 		free(pr->last);
 		free(pr->string);
@@ -321,16 +348,17 @@ prompt_redraw_character(struct screen_write_ctx *ctx, u_int offset,
  * 0 otherwise.
  */
 static int
-prompt_redraw_quote(const struct prompt *pr, u_int pcursor,
-    struct screen_write_ctx *ctx, u_int offset, u_int pwidth, u_int *width,
+prompt_redraw_quote(const struct prompt *pr, u_int pcursor, u_int input_x,
+    struct screen_write_ctx *ctx, u_int offset, u_int pw, u_int *w,
     struct grid_cell *gc)
 {
 	struct utf8_data	ud;
 
-	if (pr->flags & PROMPT_QUOTENEXT && ctx->s->cx == pcursor + 1) {
+	if (pr->flags & PROMPT_QUOTENEXT &&
+	    pcursor >= offset &&
+	    ctx->s->cx == input_x + pcursor - offset) {
 		utf8_set(&ud, '^');
-		return (prompt_redraw_character(ctx, offset, pwidth,
-		    width, gc, &ud));
+		return (prompt_redraw_character(ctx, offset, pw, w, gc, &ud));
 	}
 	return (1);
 }
@@ -368,12 +396,12 @@ prompt_draw_complete(struct prompt *pr, struct screen_write_ctx *ctx, u_int ax,
 	free(ud);
 }
 
-/* Expand prompt string using the current input. */
-static char *
-prompt_expand(struct prompt *pr)
+/* Create the prompt format tree using the current input. */
+static struct format_tree *
+prompt_format_tree(struct prompt *pr)
 {
 	struct format_tree	*ft;
-	char			*expanded, *prompt, *tmp;
+	char			*tmp;
 
 	if (cmd_find_valid_state(&pr->state))
 		ft = format_create_from_state(NULL, NULL, &pr->state);
@@ -385,31 +413,145 @@ prompt_expand(struct prompt *pr)
 
 	format_add(ft, "prompt_flags", "%s", prompt_flags_to_string(pr->flags));
 	format_add(ft, "prompt_type", "%s", prompt_type_string(pr->type));
-	prompt = format_expand_time(ft, pr->string);
-	format_add(ft, "message", "%s", prompt);
 	if (pr->flags & PROMPT_COMMANDMODE)
 		format_add(ft, "command_prompt", "1");
 	else
 		format_add(ft, "command_prompt", "0");
+	return (ft);
+}
+
+/* Expand prompt string using the current input. */
+static char *
+prompt_expand1(struct prompt *pr, struct format_tree *ft)
+{
+	char			*expanded, *prompt;
+
+	prompt = format_expand_time(ft, pr->string);
+	format_add(ft, "message", "%s", prompt);
 	expanded = format_expand_time(ft, pr->message_format);
 	free(prompt);
-	format_free(ft);
 	return (expanded);
 }
 
-/* Work out the width used by the prompt string. */
-static u_int
-prompt_width(struct prompt *pr, u_int aw)
+/* Get the effective message style for the current prompt. */
+static void
+prompt_effective_style(struct prompt *pr, struct style *sy,
+    struct format_tree *ft)
 {
-	char	*expanded;
-	u_int	 start;
+	const char		*s;
+	struct grid_cell	*gc;
+	char			*expanded;
 
-	expanded = prompt_expand(pr);
-	start = format_width(expanded);
-	if (start > aw)
-		start = aw;
-	free(expanded);
-	return (start);
+	if (pr->flags & PROMPT_COMMANDMODE) {
+		s = pr->command_style_str;
+		gc = &pr->command_style;
+	} else {
+		s = pr->style_str;
+		gc = &pr->style;
+	}
+
+	style_set(sy, gc);
+	if (s != NULL) {
+		expanded = format_expand_time(ft, s);
+		if (style_parse(sy, &grid_default_cell, expanded) != 0)
+			style_set(sy, gc);
+		free(expanded);
+	}
+}
+
+/* Work out where the editable prompt content appears. */
+static void
+prompt_layout(struct prompt *pr, u_int ax, u_int aw, struct prompt_layout *pl,
+    char **expanded, struct style *sy)
+{
+	char	*local = NULL;
+	struct format_tree *ft;
+	u_int	 pcursor, pwidth, end, width, offset, avail;
+
+	memset(pl, 0, sizeof *pl);
+	pl->area_x = ax;
+	pl->area_width = aw;
+
+	ft = prompt_format_tree(pr);
+	if (sy != NULL)
+		prompt_effective_style(pr, sy, ft);
+	if (expanded != NULL)
+		*expanded = prompt_expand1(pr, ft);
+	else {
+		local = prompt_expand1(pr, ft);
+		expanded = &local;
+	}
+	format_free(ft);
+
+	if (aw == 0) {
+		free(local);
+		return;
+	}
+
+	pl->label_width = format_width(*expanded);
+	if (pl->label_width > aw)
+		pl->label_width = aw;
+
+	pcursor = utf8_strwidth(pr->buffer, pr->index);
+	pwidth = utf8_strwidth(pr->buffer, -1);
+	if (pr->flags & PROMPT_QUOTENEXT)
+		pwidth++;
+
+	avail = aw - pl->label_width;
+	if (avail == 0) {
+		pl->input_offset = 0;
+		pl->input_width = 0;
+		pl->cursor_x = pl->label_width;
+	} else {
+		if (pcursor >= avail) {
+			offset = (pcursor - avail) + 1;
+			width = avail;
+		} else {
+			offset = 0;
+			width = pwidth;
+		}
+		if (width > avail)
+			width = avail;
+
+		pl->input_offset = offset;
+		pl->input_width = width;
+		pl->cursor_x = pl->label_width + pcursor - offset;
+	}
+
+	pl->content_width = pl->label_width + pl->input_width;
+	if (pr->complete_display != NULL &&
+	    pr->index == utf8_strlen(pr->buffer) &&
+	    pl->cursor_x < aw) {
+		avail = aw - pl->cursor_x;
+		width = utf8_cstrwidth(pr->complete_display);
+		if (width > avail)
+			width = avail;
+		end = pl->cursor_x + width;
+		if (end > pl->content_width)
+			pl->content_width = end;
+	}
+	if (pl->content_width > aw)
+		pl->content_width = aw;
+
+	if (sy != NULL) {
+		switch (sy->align) {
+		case STYLE_ALIGN_CENTRE:
+		case STYLE_ALIGN_ABSOLUTE_CENTRE:
+			pl->content_x = ax + (aw - pl->content_width) / 2;
+			break;
+		case STYLE_ALIGN_RIGHT:
+			pl->content_x = ax + aw - pl->content_width;
+			break;
+		default:
+			pl->content_x = ax;
+			break;
+		}
+	} else
+		pl->content_x = ax;
+
+	pl->input_x = pl->content_x + pl->label_width;
+	pl->cursor_x += pl->content_x;
+	free(local);
 }
 
 /* Choose a completion from a mouse position. */
@@ -460,70 +602,59 @@ prompt_draw(struct prompt *pr, struct prompt_draw_data *pd)
 {
 	struct screen_write_ctx	*ctx = pd->ctx;
 	struct screen		*s = ctx->s;
-	u_int			 ax = pd->area_x, py = pd->prompt_line;
-	u_int			 aw = pd->area_width, *cx = pd->cursor_x;
+	u_int			 ax = pd->area_x, py = pd->prompt_line, *cx;
+	u_int			 aw = pd->area_width;
 	struct grid_cell	 gc;
-	u_int			 i, offset, left, start, width;
-	u_int			 pcursor, pwidth;
+	struct prompt_layout	 pl;
+	struct style		 sy;
+	u_int			 i, width, pcursor;
 	char			*expanded;
 
-	/* Choose the cursor colour and style for this prompt. */
 	if (pr->flags & PROMPT_COMMANDMODE) {
-		memcpy(&gc, &pr->command_style, sizeof gc);
 		s->default_cstyle = pr->command_cstyle;
 		s->default_mode = pr->command_cmode;
 		s->default_ccolour = pr->command_ccolour;
 	} else {
-		memcpy(&gc, &pr->style, sizeof gc);
 		s->default_cstyle = pr->cstyle;
 		s->default_mode = pr->cmode;
 		s->default_ccolour = pr->ccolour;
 	}
 
-	expanded = prompt_expand(pr);
-	start = format_width(expanded);
-	if (start > aw)
-		start = aw;
-	*cx = ax + start;
+	prompt_layout(pr, ax, aw, &pl, &expanded, &sy);
+	memcpy(&gc, &sy.gc, sizeof gc);
+	cx = pd->cursor_x;
+	*cx = pl.cursor_x;
 
 	screen_write_cursormove(ctx, ax, py, 0);
-	format_draw(ctx, &gc, aw, expanded, NULL, 0);
-	screen_write_cursormove(ctx, ax + start, py, 0);
-	free(expanded);
-
-	left = aw - start;
-	if (left == 0)
-		return;
+	if (sy.fill != 8)
+		screen_write_clearcharacter(ctx, aw, sy.fill);
 
 	pcursor = utf8_strwidth(pr->buffer, pr->index);
-	pwidth = utf8_strwidth(pr->buffer, -1);
-	if (pr->flags & PROMPT_QUOTENEXT)
-		pwidth++;
-	if (pcursor >= left) {
-		/*
-		 * The cursor would be outside the screen so start drawing
-		 * with it on the right.
-		 */
-		offset = (pcursor - left) + 1;
-		pwidth = left;
-	} else
-		offset = 0;
-	if (pwidth > left)
-		pwidth = left;
-	*cx = ax + start + pcursor - offset;
 
-	width = 0;
-	for (i = 0; pr->buffer[i].size != 0; i++) {
-		if (!prompt_redraw_quote(pr, pcursor, ctx, offset, pwidth,
-		    &width, &gc))
-			break;
-		if (!prompt_redraw_character(ctx, offset, pwidth, &width, &gc,
-		    &pr->buffer[i]))
-			break;
+	if (pl.content_width != 0) {
+		screen_write_cursormove(ctx, pl.content_x, py, 0);
+		if (pl.label_width != 0)
+			format_draw(ctx, &gc, pl.label_width, expanded, NULL,
+			    0);
+
+		screen_write_cursormove(ctx, pl.input_x, py, 0);
+		width = 0;
+		for (i = 0; pr->buffer[i].size != 0; i++) {
+			if (!prompt_redraw_quote(pr, pcursor, pl.input_x,
+			    ctx, pl.input_offset, pl.input_width, &width,
+			    &gc))
+				break;
+			if (!prompt_redraw_character(ctx, pl.input_offset,
+			    pl.input_width, &width, &gc, &pr->buffer[i]))
+				break;
+		}
+		prompt_redraw_quote(pr, pcursor, pl.input_x, ctx,
+		    pl.input_offset, pl.input_width, &width, &gc);
+
+		prompt_draw_complete(pr, ctx, pl.content_x, pl.content_width,
+		    pl.cursor_x, py, &gc);
 	}
-	prompt_redraw_quote(pr, pcursor, ctx, offset, pwidth, &width, &gc);
-
-	prompt_draw_complete(pr, ctx, ax, aw, *cx, py, &gc);
+	free(expanded);
 }
 
 /* Move cursor in prompt from a mouse position. */
@@ -532,36 +663,34 @@ prompt_mouse(struct prompt *pr, u_int x, u_int ax, u_int aw, int *redraw)
 {
 	struct utf8_data	*ud;
 	enum prompt_key_result	 result;
-	u_int			 cx, start, left, pcursor, pwidth, offset, width;
-	u_int			 target;
+	struct prompt_layout	 pl;
+	struct style		 sy;
+	char			*expanded;
+	u_int			 pwidth, width, target;
 	size_t			 idx;
 
 	if (x < ax || x >= ax + aw)
 		return (PROMPT_KEY_NOT_HANDLED);
 
-	start = prompt_width(pr, aw);
-	left = aw - start;
-	if (left == 0)
+	prompt_layout(pr, ax, aw, &pl, &expanded, &sy);
+	free(expanded);
+
+	if (pl.input_width == 0)
 		return (PROMPT_KEY_HANDLED);
 
-	pcursor = utf8_strwidth(pr->buffer, pr->index);
 	pwidth = utf8_strwidth(pr->buffer, -1);
 	if (pr->flags & PROMPT_QUOTENEXT)
 		pwidth++;
-	if (pcursor >= left)
-		offset = (pcursor - left) + 1;
-	else
-		offset = 0;
 
-	cx = ax + start + pcursor - offset;
-	result = prompt_mouse_complete(pr, x, cx, ax, aw, redraw);
+	result = prompt_mouse_complete(pr, x, pl.cursor_x, pl.content_x,
+	    pl.content_width, redraw);
 	if (result != PROMPT_KEY_NOT_HANDLED)
 		return (result);
 
-	if (x <= ax + start)
-		target = offset;
+	if (x <= pl.input_x)
+		target = pl.input_offset;
 	else
-		target = offset + x - (ax + start);
+		target = pl.input_offset + x - pl.input_x;
 	if (target > pwidth)
 		target = pwidth;
 
