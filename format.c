@@ -849,26 +849,40 @@ format_cb_window_active_clients_list(struct format_tree *ft)
 static void *
 format_cb_window_layout(struct format_tree *ft)
 {
-	struct window	*w = ft->w;
+	struct client		*c = ft->client;
+	struct window		*w = ft->w;
+	struct layout_cell	*lcroot;
+	int			 flags = 0;
 
-	if (w == NULL)
+	if (w == NULL || c == NULL)
 		return (NULL);
 
 	if (w->saved_layout_root != NULL)
-		return (layout_dump(w, w->saved_layout_root));
-	return (layout_dump(w, w->layout_root));
+		lcroot = w->saved_layout_root;
+	else
+		lcroot = w->layout_root;
+
+	if (c->flags & CLIENT_CONTROL &&
+	    ~c->flags & CLIENT_CONTROL_NEWLAYOUTS)
+		flags |= LAYOUT_CUSTOM_OLD_FORMAT;
+	return (layout_dump(w, lcroot, flags));
 }
 
 /* Callback for window_visible_layout. */
 static void *
 format_cb_window_visible_layout(struct format_tree *ft)
 {
+	struct client	*c = ft->c;
 	struct window	*w = ft->w;
+	int		 flags = 0;
 
-	if (w == NULL)
+	if (w == NULL || c == NULL)
 		return (NULL);
 
-	return (layout_dump(w, w->layout_root));
+	if (c->flags & CLIENT_CONTROL &&
+	    ~c->flags & CLIENT_CONTROL_NEWLAYOUTS)
+		flags |= LAYOUT_CUSTOM_OLD_FORMAT;
+	return (layout_dump(w, w->layout_root, flags));
 }
 
 /* Callback for pane_start_command. */
