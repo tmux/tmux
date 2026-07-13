@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.487 2026/07/13 13:01:14 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.488 2026/07/13 15:03:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1812,7 +1812,8 @@ server_client_loop(void)
 				server_client_check_pane_resize(wp);
 				server_client_check_pane_buffer(wp);
 			}
-			wp->flags &= ~(PANE_REDRAW|PANE_REDRAWSCROLLBAR);
+			wp->flags &= ~(PANE_REDRAW|PANE_REDRAWSCROLLBAR|
+			    PANE_ACTIVITY);
 		}
 		check_window_name(w);
 	}

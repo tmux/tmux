@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1399 2026/07/13 13:01:14 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1400 2026/07/13 15:03:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1268,6 +1268,7 @@ struct window_pane {
 #define PANE_REDRAWSCROLLBAR 0x8000
 #define PANE_DESTROYED 0x10000
 #define PANE_CMDRUNNING 0x20000
+#define PANE_ACTIVITY 0x40000
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;
