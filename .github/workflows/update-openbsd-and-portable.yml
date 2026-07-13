@@ -116,17 +116,16 @@ jobs:
 
           if [ "$old_base" = "$new_base" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "No new OpenBSD tmux commits to import."
-            exit 0
-          fi
+            echo "No new OpenBSD tmux commits to import; continuing to portable merge."
+          else
+            if ! git merge-base --is-ancestor "$old_base" "$new_base"; then
+              echo "new openbsd-git is not a descendant of origin/openbsd-git; aborting." >&2
+              exit 1
+            fi
 
-          if ! git merge-base --is-ancestor "$old_base" "$new_base"; then
-            echo "new openbsd-git is not a descendant of origin/openbsd-git; aborting." >&2
-            exit 1
+            git cherry-pick "$old_base..$new_base"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
-
-          git cherry-pick "$old_base..$new_base"
-          echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Push cutover repository
         if: steps.cutover.outputs.changed == 'true'
