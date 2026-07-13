@@ -160,12 +160,12 @@ dist_tmux_SOURCES = \
 	compat.h \
 	control-notify.c \
 	control.c \
-	events.c \
-	events-payload.c \
 	environ.c \
+	events-payload.c \
+	events.c \
 	file.c \
-	format.c \
 	format-draw.c \
+	format.c \
 	fuzzy.c \
 	grid-reader.c \
 	grid-view.c \
@@ -190,8 +190,8 @@ dist_tmux_SOURCES = \
 	paste.c \
 	popup.c \
 	proc.c \
-	prompt.c \
 	prompt-history.c \
+	prompt.c \
 	regsub.c \
 	resize.c \
 	screen-redraw.c \
@@ -206,9 +206,9 @@ dist_tmux_SOURCES = \
 	spawn.c \
 	status.c \
 	style.c \
+	tmux-protocol.h \
 	tmux.c \
 	tmux.h \
-	tmux-protocol.h \
 	tty-acs.c \
 	tty-draw.c \
 	tty-features.c \

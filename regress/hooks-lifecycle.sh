@@ -96,6 +96,20 @@ fi
 $TMUX list-panes -sat main >/dev/null || fail "list-panes failed"
 $TMUX has -t main || fail "server died after pane exit chain"
 
+# A pane-exited hook command can run after the pane has been removed. It
+# should not retain only the event payload's temporary target references.
+$TMUX set -g @queued-pane-exited 0 || fail "set @queued-pane-exited failed"
+$TMUX set-hook -g pane-exited \
+	'display-message -p "queued #{hook_pane}" ; set -g @queued-pane-exited 1' ||
+	fail "set-hook queued pane-exited failed"
+pane=$($TMUX new -d -s queued -n qwin -P -F '#{pane_id}' 'true') ||
+	fail "new-session queued failed"
+wait_for @queued-pane-exited 1
+$TMUX has -t main || fail "server died after queued pane-exited hook"
+$TMUX set-hook -g pane-exited \
+	'set -gF @log "#{@log}|pane-exited:#{hook_pane}"' ||
+	fail "restore pane-exited hook failed"
+
 # kill-window on the last window: window-unlinked then session-closed but
 # no pane-exited for the panes in the killed window.
 $TMUX set -g @log '' || fail "reset @log failed"

@@ -49,6 +49,19 @@ status_line() {
 got() {
 	$IN show -gv @r
 }
+wait_opt() {
+	option=$1
+	expected=$2
+	i=0
+
+	while [ $i -lt 30 ]; do
+		value=$($IN show -gqv "$option" 2>/dev/null || true)
+		[ "$value" = "$expected" ] && return 0
+		i=$((i + 1))
+		sleep 0.2
+	done
+	fail "expected $option to be '$expected' but got '$value'"
+}
 reset() {
 	$IN set -g @r "SENTINEL" || exit 1
 }
@@ -85,6 +98,12 @@ $IN bind -n M-j command-prompt -P -I hello -p '(pre)' "set -g @r '%%'"      || e
 $IN bind -n M-m command-prompt    -p 'first,second'   "set -g @r '%1/%2'"   || exit 1
 $IN bind -n M-c command-prompt    -p '(cmd)'          "set -g @r '%%'"      || exit 1
 $IN bind -n M-h command-prompt -T search -p '(srch)'  "set -g @r '%%'"      || exit 1
+$IN set-hook -g pane-prompt-opened \
+	'set -gF @prompt_open "#{hook}:#{hook_pane}:#{hook_prompt_type}"' ||
+	exit 1
+$IN set-hook -g pane-prompt-closed \
+	'set -gF @prompt_close "#{hook}:#{hook_pane}:#{hook_prompt_type}"' ||
+	exit 1
 
 # --- Outer session: attach the inner one inside its pane. -------------------
 $OUT new -d -x80 -y24 || exit 1
@@ -111,14 +130,17 @@ settle
 
 # --- 1b. window.c: drawn over the pane, not on the status line. ---
 reset
+pane=$($IN display-message -p '#{pane_id}') || exit 1
 $OUT send-keys M-p || exit 1
 settle
+wait_opt @prompt_open "pane-prompt-opened:$pane:command"
 capture | grep -qF '(pane)' || fail "pane prompt not drawn in the pane"
 status_line | grep -qF '(pane)' && \
 	fail "pane prompt drawn on the status line, not over the pane"
 $OUT send-keys -l "deep" || exit 1
 $OUT send-keys Enter || exit 1
 settle
+wait_opt @prompt_close "pane-prompt-closed:$pane:command"
 [ "$(got)" = "deep" ] || fail "pane prompt accept recovered '$(got)', wanted 'deep'"
 
 # --- 1c. mode-tree.c: search prompt drawn in the pane. ---

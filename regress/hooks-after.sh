@@ -63,10 +63,10 @@ $TMUX new -d -s two || fail "new-session two failed"
 # An after hook fires with the command arguments as formats.
 $TMUX set -g @after 0 || fail "set @after failed"
 $TMUX set-hook -g after-rename-window \
-	'set -gF @after "#{hook}|#{hook_argument_0}|#{hook_flag_t}"' ||
+	'set -gF @after "#{hook}|#{hook_arguments}|#{hook_argument_0}|#{hook_flag_t}"' ||
 	fail "set-hook -g after-rename-window failed"
 $TMUX rename-window -t one:0 first || fail "rename-window first failed"
-wait_for @after 'after-rename-window|first|one:0'
+wait_for @after 'after-rename-window|-t one:0 first|first|one:0'
 
 # An appended hook command runs after the first.
 $TMUX set -g @after2 0 || fail "set @after2 failed"
@@ -74,9 +74,31 @@ $TMUX set-hook -ga after-rename-window \
 	'set -gF @after2 "#{@after}+2"' ||
 	fail "set-hook -ga after-rename-window failed"
 $TMUX rename-window -t one:0 second || fail "rename-window second failed"
-wait_for @after 'after-rename-window|second|one:0'
-wait_for @after2 'after-rename-window|second|one:0+2'
+wait_for @after 'after-rename-window|-t one:0 second|second|one:0'
+wait_for @after2 'after-rename-window|-t one:0 second|second|one:0+2'
 $TMUX set-hook -gu after-rename-window || fail "set-hook -gu failed"
+
+# A hook command is inserted after the command that fired it, before the next
+# command in the same command list.
+$TMUX set -g @order '' || fail "set @order failed"
+$TMUX set-hook -g after-rename-window \
+	'set -gF @order "#{@order}H"' ||
+	fail "set-hook -g after-rename-window order failed"
+$TMUX rename-window -t one:0 ordered \; set -gF @order '#{@order}N' ||
+	fail "rename-window order failed"
+wait_for @order 'HN'
+$TMUX set-hook -gu after-rename-window || fail "set-hook -gu order failed"
+
+# Repeated flag values are available as numbered hook flag formats.
+$TMUX set -g @flags 0 || fail "set @flags failed"
+$TMUX set-hook -g after-split-window \
+	'set -gF @flags "#{hook_arguments}|#{hook_argument_0}|#{hook_flag_t}|#{hook_flag_e}|#{hook_flag_e_0}|#{hook_flag_e_1}"' ||
+	fail "set-hook -g after-split-window failed"
+$TMUX split-window -d -t one:0 -e A=1 -e B=2 'sleep 60' ||
+	fail "split-window flags failed"
+wait_for @flags '-d -e A=1 -e B=2 -t one:0 "sleep 60"|sleep 60|one:0|B=2|A=1|B=2'
+$TMUX set-hook -gu after-split-window ||
+	fail "set-hook -gu after-split-window failed"
 
 # A session after hook only fires for commands targeting that session and
 # the hook commands run with the command target as current state.

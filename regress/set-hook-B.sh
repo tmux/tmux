@@ -147,4 +147,14 @@ $TMUX set -pt "$target_pane" @target-value changed ||
 	fail "set pane @target-value failed"
 wait_for @target-pane "$target_pane"
 
+$TMUX new -d -s zzz-survivor || fail "new survivor session failed"
+$TMUX set -g @global-after-destroy 0 ||
+	fail "set @global-after-destroy failed"
+$TMUX set-hook -g -t three -B '@global-after-destroy-session::#{session_name}' \
+	'set -g @global-after-destroy "#{hook_last}->#{hook_value}"' ||
+	fail "set-hook -B global after destroy failed"
+assert_unchanged @global-after-destroy 0
+$TMUX kill-session -t three || fail "kill destroyed monitor session failed"
+wait_for @global-after-destroy 'three->zzz-survivor'
+
 exit 0

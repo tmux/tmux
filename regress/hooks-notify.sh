@@ -181,6 +181,99 @@ $TMUX set-hook -gu pane-title-changed ||
 	fail "unset pane-title-changed failed"
 $TMUX killp -t "$pane" || fail "kill-pane title failed"
 
+# pane-created payload from a command pane, an empty pane, and a respawn.
+$TMUX set -g @pc 0 || fail "set @pc failed"
+$TMUX set-hook -g pane-created \
+	'set -gF @pc "#{hook}:#{hook_pane}:#{hook_pane_command}:#{hook_created_empty}:#{hook_created_respawn}"' ||
+	fail "set-hook pane-created failed"
+pane=$($TMUX splitw -d -t main:0 -P -F '#{pane_id}' 'sleep 30') ||
+	fail "split-window pane-created command failed"
+wait_for @pc "pane-created:$pane:\"sleep 30\":0:0"
+$TMUX killp -t "$pane" || fail "kill-pane pane-created command failed"
+
+$TMUX set -g @pc 0 || fail "reset @pc failed"
+empty_command=$($TMUX show -gqv default-shell) ||
+	fail "show default-shell failed"
+pane=$($TMUX splitw -d -E -t main:0 -P -F '#{pane_id}') ||
+	fail "split-window pane-created empty failed"
+wait_for @pc "pane-created:$pane:$empty_command:1:0"
+
+$TMUX set -g @pc 0 || fail "reset @pc respawn failed"
+$TMUX respawnp -k -t "$pane" 'sleep 30' || fail "respawn-pane failed"
+wait_for @pc "pane-created:$pane:\"sleep 30\":0:1"
+$TMUX killp -t "$pane" || fail "kill-pane pane-created respawn failed"
+$TMUX set-hook -gu pane-created || fail "unset pane-created failed"
+
+# pane-resized carries old and new dimensions.
+pane=$($TMUX splitw -d -t main:0 -P -F '#{pane_id}' 'sleep 30') ||
+	fail "split-window pane-resized failed"
+old_size=$($TMUX display -pt "$pane" '#{pane_width},#{pane_height}') ||
+	fail "display old pane size failed"
+$TMUX set -g @pr 0 || fail "set @pr failed"
+$TMUX set-hook -g pane-resized \
+	'set -gF @pr "#{hook}:#{hook_pane}:#{hook_old_width},#{hook_old_height}->#{hook_width},#{hook_height}"' ||
+	fail "set-hook pane-resized failed"
+$TMUX resizep -t "$pane" -x 20 -y 10 || fail "resize-pane failed"
+new_size=$($TMUX display -pt "$pane" '#{pane_width},#{pane_height}') ||
+	fail "display new pane size failed"
+wait_for @pr "pane-resized:$pane:$old_size->$new_size"
+$TMUX set-hook -gu pane-resized || fail "unset pane-resized failed"
+$TMUX killp -t "$pane" || fail "kill-pane pane-resized failed"
+
+# pane-mode-entered and pane-mode-exited expose split transition payloads.
+$TMUX set -g @me 0 || fail "set @me failed"
+$TMUX set -g @mx 0 || fail "set @mx failed"
+pane=$($TMUX splitw -d -t main:0 -P -F '#{pane_id}' 'sleep 30') ||
+	fail "split-window pane-mode failed"
+$TMUX set-hook -g pane-mode-entered \
+	'set -gF @me "#{hook}:#{hook_pane}:#{hook_mode_entered}:#{hook_current_mode}:#{hook_previous_mode}"' ||
+	fail "set-hook pane-mode-entered failed"
+$TMUX set-hook -g pane-mode-exited \
+	'set -gF @mx "#{hook}:#{hook_pane}:#{hook_mode_entered}:#{hook_current_mode}:#{hook_previous_mode}"' ||
+	fail "set-hook pane-mode-exited failed"
+$TMUX copy-mode -t "$pane" || fail "copy-mode split event failed"
+wait_for @me "pane-mode-entered:$pane:1:copy-mode:"
+$TMUX send-keys -t "$pane" -X cancel || fail "cancel split mode failed"
+wait_for @mx "pane-mode-exited:$pane:0::copy-mode"
+$TMUX set-hook -gu pane-mode-entered || fail "unset pane-mode-entered failed"
+$TMUX set-hook -gu pane-mode-exited || fail "unset pane-mode-exited failed"
+$TMUX killp -t "$pane" || fail "kill-pane pane-mode failed"
+
+# marked-pane-changed carries the new/old marked pane and marked flag.
+$TMUX set -g @mk 0 || fail "set @mk failed"
+pane=$($TMUX splitw -d -t main:0 -P -F '#{pane_id}' 'sleep 30') ||
+	fail "split-window marked-pane failed"
+$TMUX set-hook -g marked-pane-changed \
+	'set -gF @mk "#{hook}:#{hook_marked}:#{hook_pane}:#{hook_new_pane}:#{hook_old_pane}"' ||
+	fail "set-hook marked-pane-changed failed"
+$TMUX selectp -t "$pane" -m || fail "mark pane failed"
+wait_for @mk "marked-pane-changed:1:$pane:$pane:"
+$TMUX selectp -t "$pane" -m || fail "unmark pane failed"
+wait_for @mk "marked-pane-changed:0:$pane::$pane"
+$TMUX set-hook -gu marked-pane-changed ||
+	fail "unset marked-pane-changed failed"
+$TMUX killp -t "$pane" || fail "kill-pane marked-pane failed"
+
+# window-zoomed and window-unzoomed fire on resize-pane -Z.
+$TMUX set -g @zoom 0 || fail "set @zoom failed"
+pane=$($TMUX splitw -d -t main:0 -P -F '#{pane_id}' 'sleep 30') ||
+	fail "split-window zoom failed"
+window=$($TMUX display -pt "$pane" '#{window_id}') ||
+	fail "display zoom window failed"
+$TMUX set-hook -g window-zoomed \
+	'set -gF @zoom "#{hook}:#{hook_window}"' ||
+	fail "set-hook window-zoomed failed"
+$TMUX set-hook -g window-unzoomed \
+	'set -gF @zoom "#{hook}:#{hook_window}"' ||
+	fail "set-hook window-unzoomed failed"
+$TMUX resizep -Z -t "$pane" || fail "zoom pane failed"
+wait_for @zoom "window-zoomed:$window"
+$TMUX resizep -Z -t "$pane" || fail "unzoom pane failed"
+wait_for @zoom "window-unzoomed:$window"
+$TMUX set-hook -gu window-zoomed || fail "unset window-zoomed failed"
+$TMUX set-hook -gu window-unzoomed || fail "unset window-unzoomed failed"
+$TMUX killp -t "$pane" || fail "kill-pane zoom failed"
+
 # client-attached and client-detached using a control client.
 $TMUX set -g @a 0 || fail "set @a failed"
 $TMUX set-hook -g client-attached 'set -gF @a "#{hook}"' ||

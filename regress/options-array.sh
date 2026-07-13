@@ -36,6 +36,21 @@ check_value()
 	fi
 }
 
+check_wait_value()
+{
+	i=0
+	while [ "$i" -lt 30 ]; do
+		out=$($TMUX show $1 2>&1)
+		[ "$out" = "$2" ] && return 0
+		i=$((i + 1))
+		sleep 0.2
+	done
+	echo "show $1 failed."
+	echo "Expected: '$2'"
+	echo "But got:  '$out'"
+	exit 1
+}
+
 # check_array $args $expected
 #
 # Compare the full (multi-line) show output for an array option with a
@@ -162,6 +177,39 @@ check_ok set-hook -g window-renamed[notify] "display-message renamed"
 check_value "-gv window-renamed[notify]" "display-message renamed"
 check_ok set-hook -gu window-renamed[notify]
 check_value "-gv window-renamed[notify]" ""
+check_ok set -g @hook_first 0
+check_ok set -g @hook_second 0
+check_ok set-hook -g window-renamed[first] "set -g @hook_first 1"
+check_ok set-hook -g window-renamed[second] "set -g @hook_second 1"
+shown=$($TMUX show-hooks -g window-renamed) || {
+	echo "show-hooks -g window-renamed failed"
+	exit 1
+}
+echo "$shown" | grep -q '^window-renamed\[first\]' || {
+	echo "missing first hook key: $shown"
+	exit 1
+}
+echo "$shown" | grep -q '^window-renamed\[second\]' || {
+	echo "missing second hook key: $shown"
+	exit 1
+}
+check_ok rename-window -t main:0 array-hooks
+check_wait_value "-gqv @hook_first" "1"
+check_wait_value "-gqv @hook_second" "1"
+check_ok set-hook -gu window-renamed[first]
+shown=$($TMUX show-hooks -g window-renamed) || {
+	echo "show-hooks -g window-renamed after unset failed"
+	exit 1
+}
+echo "$shown" | grep -q '^window-renamed\[first\]' && {
+	echo "first hook key was not unset: $shown"
+	exit 1
+}
+echo "$shown" | grep -q '^window-renamed\[second\]' || {
+	echo "second hook key did not remain: $shown"
+	exit 1
+}
+check_ok set-hook -gu window-renamed[second]
 
 # --- colour-type array ----------------------------------------------------
 #
