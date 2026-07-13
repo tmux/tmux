@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd.c,v 1.186 2026/07/12 20:35:52 nicm Exp $ */
+/* $OpenBSD: cmd.c,v 1.187 2026/07/13 09:37:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -872,7 +872,7 @@ cmd_template_replace(const char *template, const char *s, int idx)
 				ptr++;
 
 			slen = strlen(s);
-			if (slen > SIZE_MAX / 3 || len > SIZE_MAX - (slen * 3) - 1)
+			if (slen >= SIZE_MAX / 3 || len > SIZE_MAX - (slen * 3) - 1)
 				fatalx("argument too long");
 			buf = xrealloc(buf, len + (slen * 3) + 1);
 			for (cp = s; *cp != '\0'; cp++) {
