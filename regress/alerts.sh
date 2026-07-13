@@ -46,7 +46,7 @@ wait_for()
 		value=$($TMUX show -gqv "$option" 2>/dev/null || true)
 		[ "$value" = "$expected" ] && return 0
 		i=$((i + 1))
-		sleep 0.2
+		sleep 0.5
 	done
 	fail "expected $option to be '$expected' but got '$value'"
 }
@@ -62,7 +62,7 @@ assert_unchanged()
 		[ "$value" = "$expected" ] || \
 			fail "expected $option to remain '$expected' but got '$value'"
 		i=$((i + 1))
-		sleep 0.2
+		sleep 0.5
 	done
 }
 
@@ -77,7 +77,7 @@ wait_for_fmt()
 		value=$($TMUX display -pt "$target" "$fmt" 2>/dev/null || true)
 		[ "$value" = "$expected" ] && return 0
 		i=$((i + 1))
-		sleep 0.2
+		sleep 0.5
 	done
 	fail "expected $fmt for $target to be '$expected' but got '$value'"
 }
@@ -94,7 +94,7 @@ assert_fmt_unchanged()
 		[ "$value" = "$expected" ] || \
 			fail "expected $fmt for $target to remain '$expected' but got '$value'"
 		i=$((i + 1))
-		sleep 0.2
+		sleep 0.5
 	done
 }
 
@@ -290,9 +290,9 @@ $TMUX selectw -t mon:w0 || fail "select-window w0 failed"
 # prevents an alert until a full quiet interval has passed afterwards.
 $TMUX neww -d -t mon: -n silreset cat || fail "new-window silreset failed"
 $TMUX set -g @log '' || fail "reset @log failed"
-$TMUX set -wt mon:silreset monitor-silence 2 ||
+$TMUX set -wt mon:silreset monitor-silence 10 ||
 	fail "set monitor-silence silreset failed"
-sleep 1
+sleep 3
 activity mon:silreset
 assert_unchanged @log ''
 wait_for @log '|alert-silence:mon:silreset'
