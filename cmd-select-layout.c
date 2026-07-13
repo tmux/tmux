@@ -73,12 +73,14 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct client		*c = cmdq_get_target_client(item);
 	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
 	struct window_pane	*wp = target->wp;
 	const char		*layoutname;
 	char			*oldlayout, *cause;
 	int			 next, previous, layout;
+	int			 flags = 0;
 
 	server_unzoom_window(w);
 
@@ -89,8 +91,12 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'p'))
 		previous = 1;
 
+	if (c->flags & CLIENT_CONTROL &&
+	    ~c->flags & CLIENT_CONTROL_NEWLAYOUTS)
+		flags |= LAYOUT_CUSTOM_OLD_FORMAT;
+
 	oldlayout = w->old_layout;
-	w->old_layout = layout_dump(w, w->layout_root);
+	w->old_layout = layout_dump(w, w->layout_root, flags);
 
 	if (next || previous) {
 		if (next)
@@ -124,7 +130,7 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (layoutname != NULL) {
-		if (layout_parse(w, layoutname, &cause) == -1) {
+		if (layout_parse(w, layoutname, flags, &cause) == -1) {
 			cmdq_error(item, "%s: %s", cause, layoutname);
 			free(cause);
 			goto error;
