@@ -1,4 +1,4 @@
-/* $OpenBSD: window-customize.c,v 1.31 2026/07/13 19:32:28 nicm Exp $ */
+/* $OpenBSD: window-customize.c,v 1.32 2026/07/13 20:02:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -39,7 +39,11 @@ static void		 window_customize_key(struct window_mode_entry *,
 		"#[fg=themelightgrey]#[ignore]#{option_value}" \
 		"#{?option_unit, #{option_unit},}" \
 	"," \
-		"#{key}" \
+		"#{?is_environment," \
+			"#[fg=themelightgrey]#[ignore]#{environment_value}" \
+		"," \
+			"#{key}" \
+		"}" \
 	"}"
 
 static const struct menu_item window_customize_menu_items[] = {
@@ -73,7 +77,9 @@ enum window_customize_scope {
 	WINDOW_CUSTOMIZE_SESSION,
 	WINDOW_CUSTOMIZE_GLOBAL_WINDOW,
 	WINDOW_CUSTOMIZE_WINDOW,
-	WINDOW_CUSTOMIZE_PANE
+	WINDOW_CUSTOMIZE_PANE,
+	WINDOW_CUSTOMIZE_GLOBAL_ENVIRONMENT,
+	WINDOW_CUSTOMIZE_SESSION_ENVIRONMENT
 };
 
 enum window_customize_change {
@@ -86,14 +92,23 @@ enum window_customize_option_type {
 	WINDOW_CUSTOMIZE_HOOKS
 };
 
+enum window_customize_item_type {
+	WINDOW_CUSTOMIZE_ITEM_OPTION,
+	WINDOW_CUSTOMIZE_ITEM_KEY,
+	WINDOW_CUSTOMIZE_ITEM_ENVIRONMENT
+};
+
 struct window_customize_itemdata {
 	struct window_customize_modedata	 *data;
+	enum window_customize_item_type	  	  type;
 	enum window_customize_scope		  scope;
 
 	char					 *table;
 	key_code				  key;
 
 	struct options				 *oo;
+	struct environ				 *environ;
+	int					  environ_flags;
 	char					 *name;
 	char					 *array_key;
 };
@@ -149,8 +164,25 @@ window_customize_get_tree(enum window_customize_scope scope,
 		return (fs->w->options);
 	case WINDOW_CUSTOMIZE_PANE:
 		return (fs->wp->options);
+	case WINDOW_CUSTOMIZE_GLOBAL_ENVIRONMENT:
+	case WINDOW_CUSTOMIZE_SESSION_ENVIRONMENT:
+		return (NULL);
 	}
 	return (NULL);
+}
+
+static struct environ *
+window_customize_get_environment(enum window_customize_scope scope,
+    struct cmd_find_state *fs)
+{
+	switch (scope) {
+	case WINDOW_CUSTOMIZE_GLOBAL_ENVIRONMENT:
+		return (global_environ);
+	case WINDOW_CUSTOMIZE_SESSION_ENVIRONMENT:
+		return (fs->s->environ);
+	default:
+		return (NULL);
+	}
 }
 
 static int
@@ -166,6 +198,10 @@ window_customize_check_item(struct window_customize_modedata *data,
 		cmd_find_copy_state(fsp, &data->fs);
 	else
 		cmd_find_from_pane(fsp, data->wp, 0);
+	if (item->type == WINDOW_CUSTOMIZE_ITEM_ENVIRONMENT) {
+		return (item->environ ==
+		    window_customize_get_environment(item->scope, fsp));
+	}
 	return (item->oo == window_customize_get_tree(item->scope, fsp));
 }
 
@@ -203,6 +239,7 @@ window_customize_scope_text(enum window_customize_scope scope,
 		xasprintf(&s, "pane %u", idx);
 		break;
 	case WINDOW_CUSTOMIZE_SESSION:
+	case WINDOW_CUSTOMIZE_SESSION_ENVIRONMENT:
 		xasprintf(&s, "session %s", fs->s->name);
 		break;
 	case WINDOW_CUSTOMIZE_WINDOW:
@@ -258,6 +295,7 @@ window_customize_build_array(struct window_customize_modedata *data,
 		format_add(ft, "option_value", "%s", value);
 
 		item = window_customize_add_item(data);
+		item->type = WINDOW_CUSTOMIZE_ITEM_OPTION;
 		item->scope = scope;
 		item->oo = oo;
 		item->name = xstrdup(options_name(o));
@@ -355,6 +393,7 @@ window_customize_build_option(struct window_customize_modedata *data,
 		free(expanded);
 	}
 	item = window_customize_add_item(data);
+	item->type = WINDOW_CUSTOMIZE_ITEM_OPTION;
 	item->oo = oo;
 	item->scope = scope;
 	item->name = xstrdup(name);
@@ -497,6 +536,7 @@ window_customize_build_keys(struct window_customize_modedata *data,
 	ft = format_create_from_state(NULL, NULL, fs);
 	format_add(ft, "is_option", "0");
 	format_add(ft, "is_key", "1");
+	format_add(ft, "is_environment", "0");
 
 	bd = key_bindings_first(kt);
 	while (bd != NULL) {
@@ -514,6 +554,7 @@ window_customize_build_keys(struct window_customize_modedata *data,
 		}
 
 		item = window_customize_add_item(data);
+		item->type = WINDOW_CUSTOMIZE_ITEM_KEY;
 		item->scope = WINDOW_CUSTOMIZE_KEY;
 		item->table = xstrdup(kt->name);
 		item->key = bd->key;
@@ -559,6 +600,80 @@ window_customize_build_keys(struct window_customize_modedata *data,
 }
 
 static void
+window_customize_build_environment(struct window_customize_modedata *data,
+    const char *title, uint64_t tag, enum window_customize_scope scope,
+    struct environ *env, struct format_tree *ft, const char *filter,
+    struct cmd_find_state *fs)
+{
+	struct mode_tree_item		*top;
+	struct window_customize_itemdata	*item;
+	struct environ_entry		*envent;
+	char				*name, *text, *expanded, *value;
+	uint64_t			 item_tag;
+	int				 global;
+
+	top = mode_tree_add(data->data, NULL, NULL, tag, title, NULL, 0);
+	mode_tree_no_tag(top);
+
+	global = (scope == WINDOW_CUSTOMIZE_GLOBAL_ENVIRONMENT);
+	format_add(ft, "is_option", "0");
+	format_add(ft, "is_key", "0");
+	format_add(ft, "is_environment", "1");
+	format_add(ft, "environment_is_global", "%d", global);
+
+	text = window_customize_scope_text(scope, fs);
+	format_add(ft, "environment_scope", "%s", text);
+	free(text);
+
+	envent = environ_first(env);
+	while (envent != NULL) {
+		format_add(ft, "environment_name", "%s", envent->name);
+		format_add(ft, "environment_hidden", "%d",
+		    !!(envent->flags & ENVIRON_HIDDEN));
+		format_add(ft, "environment_removed", "%d",
+		    envent->value == NULL);
+		if (envent->value == NULL)
+			value = xstrdup("");
+		else
+			value = xstrdup(envent->value);
+		format_add(ft, "environment_value", "%s", value);
+
+		if (filter != NULL) {
+			expanded = format_expand(ft, filter);
+			if (!format_true(expanded)) {
+				free(expanded);
+				free(value);
+				envent = environ_next(envent);
+				continue;
+			}
+			free(expanded);
+		}
+
+		item = window_customize_add_item(data);
+		item->type = WINDOW_CUSTOMIZE_ITEM_ENVIRONMENT;
+		item->scope = scope;
+		item->environ = env;
+		item->environ_flags = envent->flags;
+		item->name = xstrdup(envent->name);
+
+		if (envent->value == NULL) {
+			xasprintf(&name, "-%s", envent->name);
+			text = NULL;
+		} else {
+			name = xstrdup(envent->name);
+			text = format_expand(ft, data->format);
+		}
+		item_tag = (2ULL << 62)|((uint64_t)(uintptr_t)envent);
+		mode_tree_add(data->data, top, item, item_tag, name, text, 0);
+		free(name);
+		free(text);
+		free(value);
+
+		envent = environ_next(envent);
+	}
+}
+
+static void
 window_customize_build(void *modedata,
     __unused struct sort_criteria *sort_crit, __unused uint64_t *tag,
     const char *filter)
@@ -583,6 +698,7 @@ window_customize_build(void *modedata,
 	ft = format_create_from_state(NULL, NULL, &fs);
 	format_add(ft, "is_option", "1");
 	format_add(ft, "is_key", "0");
+	format_add(ft, "is_environment", "0");
 
 	window_customize_build_options(data, "Server Options",
 	    (3ULL << 62)|(OPTIONS_TABLE_SERVER << 1)|1,
@@ -614,9 +730,18 @@ window_customize_build(void *modedata,
 	    WINDOW_CUSTOMIZE_WINDOW, fs.w->options,
 	    WINDOW_CUSTOMIZE_PANE, fs.wp->options,
 	    ft, filter, &fs, WINDOW_CUSTOMIZE_HOOKS);
+	window_customize_build_environment(data, "Global Environment",
+	    (3ULL << 62)|(2ULL << 8)|1,
+	    WINDOW_CUSTOMIZE_GLOBAL_ENVIRONMENT, global_environ, ft, filter,
+	    &fs);
+	window_customize_build_environment(data, "Session Environment",
+	    (3ULL << 62)|(2ULL << 8)|3,
+	    WINDOW_CUSTOMIZE_SESSION_ENVIRONMENT, fs.s->environ, ft, filter,
+	    &fs);
 
 	format_free(ft);
 	ft = format_create_from_state(NULL, NULL, &fs);
+	format_add(ft, "is_environment", "0");
 
 	i = 0;
 	kt = key_bindings_first_table();
@@ -932,6 +1057,67 @@ out:
 }
 
 static void
+window_customize_draw_environment(struct window_customize_modedata *data,
+    struct window_customize_itemdata *item, struct screen_write_ctx *ctx,
+    u_int sx, u_int sy)
+{
+	struct screen		 *s = ctx->s;
+	u_int			  cx = s->cx, cy = s->cy;
+	struct environ_entry	 *envent, *parent;
+	struct cmd_find_state	  fs;
+	const char		 *text;
+
+	if (!window_customize_check_item(data, item, &fs))
+		return;
+	envent = environ_find(item->environ, item->name);
+	if (envent == NULL)
+		return;
+
+	if (item->scope == WINDOW_CUSTOMIZE_GLOBAL_ENVIRONMENT)
+		text = "global";
+	else
+		text = "session";
+	if (!screen_write_text(ctx, cx, sx, sy, 0, &grid_default_cell,
+	    "This is a %s environment variable.", text))
+		return;
+	if (envent->flags & ENVIRON_HIDDEN) {
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
+		    &grid_default_cell, "This variable is hidden."))
+			return;
+	}
+
+	screen_write_cursormove(ctx, cx, s->cy + 1, 0); /* skip line */
+	if (s->cy >= cy + sy - 1)
+		return;
+
+	if (envent->value == NULL) {
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
+		    &grid_default_cell, "Variable is removed."))
+			return;
+	} else {
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
+		    &grid_default_cell, "Variable value: %s", envent->value))
+			return;
+	}
+
+	if (item->scope != WINDOW_CUSTOMIZE_SESSION_ENVIRONMENT)
+		return;
+
+	parent = environ_find(global_environ, item->name);
+	if (parent == NULL)
+		return;
+	if (parent->value == NULL) {
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
+		    &grid_default_cell, "Global variable is removed."))
+			return;
+	} else {
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
+		    &grid_default_cell, "Global value: %s", parent->value))
+			return;
+	}
+}
+
+static void
 window_customize_draw(void *modedata, void *itemdata,
     struct screen_write_ctx *ctx, u_int sx, u_int sy)
 {
@@ -941,8 +1127,10 @@ window_customize_draw(void *modedata, void *itemdata,
 	if (item == NULL)
 		return;
 
-	if (item->scope == WINDOW_CUSTOMIZE_KEY)
+	if (item->type == WINDOW_CUSTOMIZE_ITEM_KEY)
 		window_customize_draw_key(data, item, ctx, sx, sy);
+	else if (item->type == WINDOW_CUSTOMIZE_ITEM_ENVIRONMENT)
+		window_customize_draw_environment(data, item, ctx, sx, sy);
 	else
 		window_customize_draw_option(data, item, ctx, sx, sy);
 }
@@ -994,7 +1182,7 @@ static const char**
 window_customize_help(u_int *width, const char **item)
 {
 	*width = 52;
-	*item = "option";
+	*item = "item";
 	return (window_customize_help_lines);
 }
 
@@ -1139,6 +1327,85 @@ fail:
 	return (PROMPT_CLOSE);
 }
 
+static enum prompt_result
+window_customize_set_environment_callback(__unused struct client *c,
+    void *itemdata, const char *s, __unused enum prompt_key_result key)
+{
+	struct window_customize_itemdata	*item = itemdata;
+	struct window_customize_modedata	*data = item->data;
+	struct environ_entry		*envent;
+	int				 flags;
+
+	if (s == NULL || data->dead)
+		return (PROMPT_CLOSE);
+	if (item == NULL || !window_customize_check_item(data, item, NULL))
+		return (PROMPT_CLOSE);
+
+	flags = item->environ_flags;
+	envent = environ_find(item->environ, item->name);
+	if (envent != NULL)
+		flags = envent->flags;
+	environ_set(item->environ, item->name, flags, "%s", s);
+
+	mode_tree_build(data->data);
+	mode_tree_draw(data->data);
+	data->wp->flags |= PANE_REDRAW;
+
+	return (PROMPT_CLOSE);
+}
+
+static void
+window_customize_set_environment(struct client *c,
+    struct window_customize_modedata *data,
+    struct window_customize_itemdata *item, int global)
+{
+	struct window_customize_itemdata	*new_item;
+	struct environ_entry		*envent;
+	struct environ			*env;
+	enum window_customize_scope	 scope;
+	struct cmd_find_state		 fs;
+	const char			*space = "";
+	char				*prompt, *text;
+
+	if (item == NULL || !window_customize_check_item(data, item, &fs))
+		return;
+	envent = environ_find(item->environ, item->name);
+	if (envent == NULL)
+		return;
+
+	if (global) {
+		scope = WINDOW_CUSTOMIZE_GLOBAL_ENVIRONMENT;
+		env = global_environ;
+	} else {
+		scope = item->scope;
+		env = item->environ;
+	}
+
+	text = window_customize_scope_text(scope, &fs);
+	if (*text != '\0')
+		space = ", for ";
+	else if (scope == WINDOW_CUSTOMIZE_GLOBAL_ENVIRONMENT)
+		space = ", global";
+	xasprintf(&prompt, "(%s%s%s) ", item->name, space, text);
+	free(text);
+
+	new_item = xcalloc(1, sizeof *new_item);
+	new_item->data = data;
+	new_item->type = WINDOW_CUSTOMIZE_ITEM_ENVIRONMENT;
+	new_item->scope = scope;
+	new_item->environ = env;
+	new_item->environ_flags = envent->flags;
+	new_item->name = xstrdup(item->name);
+
+	data->references++;
+	mode_tree_set_prompt(data->data, c, prompt,
+	    envent->value == NULL ? "" : envent->value, PROMPT_TYPE_COMMAND,
+	    PROMPT_NOFORMAT, window_customize_set_environment_callback,
+	    window_customize_free_item_callback, new_item);
+
+	free(prompt);
+}
+
 static void
 window_customize_set_option(struct client *c,
     struct window_customize_modedata *data,
@@ -1176,6 +1443,8 @@ window_customize_set_option(struct client *c,
 			case WINDOW_CUSTOMIZE_SERVER:
 			case WINDOW_CUSTOMIZE_GLOBAL_SESSION:
 			case WINDOW_CUSTOMIZE_GLOBAL_WINDOW:
+			case WINDOW_CUSTOMIZE_GLOBAL_ENVIRONMENT:
+			case WINDOW_CUSTOMIZE_SESSION_ENVIRONMENT:
 				scope = item->scope;
 				break;
 			case WINDOW_CUSTOMIZE_SESSION:
@@ -1209,6 +1478,10 @@ window_customize_set_option(struct client *c,
 					scope = WINDOW_CUSTOMIZE_PANE;
 				else
 					scope = WINDOW_CUSTOMIZE_WINDOW;
+				break;
+			case WINDOW_CUSTOMIZE_GLOBAL_ENVIRONMENT:
+			case WINDOW_CUSTOMIZE_SESSION_ENVIRONMENT:
+				scope = item->scope;
 				break;
 			}
 		}
@@ -1250,6 +1523,7 @@ window_customize_set_option(struct client *c,
 
 		new_item = xcalloc(1, sizeof *new_item);
 		new_item->data = data;
+		new_item->type = WINDOW_CUSTOMIZE_ITEM_OPTION;
 		new_item->scope = scope;
 		new_item->oo = oo;
 		new_item->name = xstrdup(name);
@@ -1331,6 +1605,7 @@ window_customize_set_array_key(struct client *c,
 
 	new_item = xcalloc(1, sizeof *new_item);
 	new_item->data = data;
+	new_item->type = WINDOW_CUSTOMIZE_ITEM_OPTION;
 	new_item->scope = item->scope;
 	new_item->oo = item->oo;
 	new_item->name = xstrdup(item->name);
@@ -1343,6 +1618,19 @@ window_customize_set_array_key(struct client *c,
 	    window_customize_free_item_callback, new_item);
 
 	free(prompt);
+}
+
+static void
+window_customize_unset_environment(struct window_customize_modedata *data,
+    struct window_customize_itemdata *item)
+{
+	if (item == NULL || !window_customize_check_item(data, item, NULL))
+		return;
+	if (environ_find(item->environ, item->name) == NULL)
+		return;
+	if (item == mode_tree_get_current(data->data))
+		mode_tree_up(data->data, 0);
+	environ_unset(item->environ, item->name);
 }
 
 static void
@@ -1469,6 +1757,7 @@ window_customize_set_key(struct client *c,
 
 		new_item = xcalloc(1, sizeof *new_item);
 		new_item->data = data;
+		new_item->type = WINDOW_CUSTOMIZE_ITEM_KEY;
 		new_item->scope = item->scope;
 		new_item->table = xstrdup(item->table);
 		new_item->key = key;
@@ -1485,6 +1774,7 @@ window_customize_set_key(struct client *c,
 
 		new_item = xcalloc(1, sizeof *new_item);
 		new_item->data = data;
+		new_item->type = WINDOW_CUSTOMIZE_ITEM_KEY;
 		new_item->scope = item->scope;
 		new_item->table = xstrdup(item->table);
 		new_item->key = key;
@@ -1545,19 +1835,21 @@ window_customize_change_each(void *modedata, void *itemdata,
 
 	switch (data->change) {
 	case WINDOW_CUSTOMIZE_UNSET:
-		if (item->scope == WINDOW_CUSTOMIZE_KEY)
+		if (item->type == WINDOW_CUSTOMIZE_ITEM_KEY)
 			window_customize_unset_key(data, item);
+		else if (item->type == WINDOW_CUSTOMIZE_ITEM_ENVIRONMENT)
+			window_customize_unset_environment(data, item);
 		else
 			window_customize_unset_option(data, item);
 		break;
 	case WINDOW_CUSTOMIZE_RESET:
-		if (item->scope == WINDOW_CUSTOMIZE_KEY)
+		if (item->type == WINDOW_CUSTOMIZE_ITEM_KEY)
 			window_customize_reset_key(data, item);
-		else
+		else if (item->type == WINDOW_CUSTOMIZE_ITEM_OPTION)
 			window_customize_reset_option(data, item);
 		break;
 	}
-	if (item->scope != WINDOW_CUSTOMIZE_KEY)
+	if (item->type == WINDOW_CUSTOMIZE_ITEM_OPTION)
 		options_push_changes(item->name);
 }
 
@@ -1576,19 +1868,21 @@ window_customize_change_current_callback(__unused struct client *c,
 	item = mode_tree_get_current(data->data);
 	switch (data->change) {
 	case WINDOW_CUSTOMIZE_UNSET:
-		if (item->scope == WINDOW_CUSTOMIZE_KEY)
+		if (item->type == WINDOW_CUSTOMIZE_ITEM_KEY)
 			window_customize_unset_key(data, item);
+		else if (item->type == WINDOW_CUSTOMIZE_ITEM_ENVIRONMENT)
+			window_customize_unset_environment(data, item);
 		else
 			window_customize_unset_option(data, item);
 		break;
 	case WINDOW_CUSTOMIZE_RESET:
-		if (item->scope == WINDOW_CUSTOMIZE_KEY)
+		if (item->type == WINDOW_CUSTOMIZE_ITEM_KEY)
 			window_customize_reset_key(data, item);
-		else
+		else if (item->type == WINDOW_CUSTOMIZE_ITEM_OPTION)
 			window_customize_reset_option(data, item);
 		break;
 	}
-	if (item->scope != WINDOW_CUSTOMIZE_KEY)
+	if (item->type == WINDOW_CUSTOMIZE_ITEM_OPTION)
 		options_push_changes(item->name);
 	mode_tree_build(data->data);
 	mode_tree_draw(data->data);
@@ -1636,7 +1930,7 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 
 	switch (key) {
 	case 'a':
-		if (item == NULL || item->scope == WINDOW_CUSTOMIZE_KEY)
+		if (item == NULL || item->type != WINDOW_CUSTOMIZE_ITEM_OPTION)
 			break;
 		window_customize_set_array_key(c, data, item);
 		break;
@@ -1644,8 +1938,10 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 	case 's':
 		if (item == NULL)
 			break;
-		if (item->scope == WINDOW_CUSTOMIZE_KEY)
+		if (item->type == WINDOW_CUSTOMIZE_ITEM_KEY)
 			window_customize_set_key(c, data, item);
+		else if (item->type == WINDOW_CUSTOMIZE_ITEM_ENVIRONMENT)
+			window_customize_set_environment(c, data, item, 0);
 		else {
 			window_customize_set_option(c, data, item, 0, 1);
 			options_push_changes(item->name);
@@ -1653,7 +1949,7 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 		mode_tree_build(data->data);
 		break;
 	case 'w':
-		if (item == NULL || item->scope == WINDOW_CUSTOMIZE_KEY)
+		if (item == NULL || item->type != WINDOW_CUSTOMIZE_ITEM_OPTION)
 			break;
 		window_customize_set_option(c, data, item, 0, 0);
 		options_push_changes(item->name);
@@ -1661,14 +1957,20 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 		break;
 	case 'S':
 	case 'W':
-		if (item == NULL || item->scope == WINDOW_CUSTOMIZE_KEY)
+		if (item == NULL || item->type == WINDOW_CUSTOMIZE_ITEM_KEY)
 			break;
-		window_customize_set_option(c, data, item, 1, 0);
-		options_push_changes(item->name);
+		if (item->type == WINDOW_CUSTOMIZE_ITEM_ENVIRONMENT)
+			window_customize_set_environment(c, data, item, 1);
+		else {
+			window_customize_set_option(c, data, item, 1, 0);
+			options_push_changes(item->name);
+		}
 		mode_tree_build(data->data);
 		break;
 	case 'd':
-		if (item == NULL || item->array_key != NULL)
+		if (item == NULL ||
+		    item->type != WINDOW_CUSTOMIZE_ITEM_OPTION ||
+		    item->array_key != NULL)
 			break;
 		xasprintf(&prompt, "Reset %s to default? ", item->name);
 		data->references++;
