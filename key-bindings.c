@@ -1,4 +1,4 @@
-/* $OpenBSD: key-bindings.c,v 1.186 2026/07/07 12:30:36 nicm Exp $ */
+/* $OpenBSD: key-bindings.c,v 1.187 2026/07/13 16:07:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -496,10 +496,10 @@ key_bindings_init(void)
 
 		/* Mouse button 1 down on pane. */
 		"bind -n MouseDown1Pane { select-pane -t=; send -M }",
-		"bind -n C-MouseDown1Pane { swap-pane -s@ }",
 
 		/* Mouse button 1 drag on pane. */
 		"bind -n MouseDrag1Pane { if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { copy-mode -M } }",
+		"bind -n C-MouseDrag1Pane { new-pane -M }",
 		"bind -n M-MouseDrag1Pane { move-pane -M }",
 
 		/* Mouse wheel up on pane. */

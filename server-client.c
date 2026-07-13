@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.488 2026/07/13 15:03:03 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.489 2026/07/13 16:07:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1173,6 +1173,10 @@ have_event:
 		 * the scrollbar, store the relative position in the slider
 		 * where the user grabbed.
 		 */
+		if (c->tty.mouse_drag_flag == 0) {
+			c->tty.mouse_drag_x = px;
+			c->tty.mouse_drag_y = py;
+		}
 		c->tty.mouse_drag_flag = MOUSE_BUTTONS(b) + 1;
 
 		/* Only change pane if not already dragging a pane border. */
