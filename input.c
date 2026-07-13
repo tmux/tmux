@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.266 2026/07/10 15:20:06 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.267 2026/07/13 13:01:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1316,8 +1316,10 @@ input_c0_dispatch(struct input_ctx *ictx)
 	case '\000':	/* NUL */
 		break;
 	case '\007':	/* BEL */
-		if (wp != NULL)
+		if (wp != NULL) {
+			events_fire_pane("pane-bell", wp);
 			alerts_queue(wp->window, WINDOW_BELL);
+		}
 		break;
 	case '\010':	/* BS */
 		screen_write_backspace(sctx);
@@ -2180,7 +2182,7 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 				screen_pop_title(sctx->s);
 				if (wp == NULL)
 					break;
-				events_fire_pane("pane-title-changed", wp);
+				input_fire_pane_title_changed(wp, sctx->s->title);
 				server_redraw_window_borders(w);
 				server_status_window(w);
 				break;

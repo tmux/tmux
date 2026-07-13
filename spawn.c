@@ -1,4 +1,4 @@
-/* $OpenBSD: spawn.c,v 1.47 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: spawn.c,v 1.48 2026/07/13 13:01:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -231,8 +231,10 @@ spawn_window(struct spawn_context *sc, char **cause)
 		session_select(s, sc->wl->idx);
 
 	/* Fire notification if new window. */
-	if (~sc->flags & SPAWN_RESPAWN)
+	if (~sc->flags & SPAWN_RESPAWN) {
+		events_fire_window("window-created", w);
 		events_fire_winlink("window-linked", sc->wl);
+	}
 
 	session_group_synchronize_from(s);
 	return (sc->wl);

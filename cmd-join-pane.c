@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-join-pane.c,v 1.70 2026/07/13 10:03:27 nicm Exp $ */
+/* $OpenBSD: cmd-join-pane.c,v 1.71 2026/07/13 13:01:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 George Nachman <tmux@georgester.com>
@@ -506,6 +506,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	} else
 		server_status_session(dst_s);
 
+	window_fire_pane_moved(src_wp, src_w, src_wl->idx, dst_w, dst_idx);
 	if (window_count_panes(src_w, 1) == 0)
 		server_kill_window(src_w, 1);
 	else

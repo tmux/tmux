@@ -1,4 +1,4 @@
-/* $OpenBSD: resize.c,v 1.56 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: resize.c,v 1.57 2026/07/13 13:01:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -22,9 +22,27 @@
 
 #include "tmux.h"
 
+static void
+resize_fire_window_resized(struct window *w, u_int old_sx, u_int old_sy)
+{
+	struct event_payload	*ep;
+	struct cmd_find_state	 fs;
+
+	ep = event_payload_create();
+	cmd_find_from_window(&fs, w, 0);
+	event_payload_set_target(ep, &fs);
+	event_payload_set_window(ep, "window", w);
+	event_payload_set_uint(ep, "width", w->sx);
+	event_payload_set_uint(ep, "height", w->sy);
+	event_payload_set_uint(ep, "old_width", old_sx);
+	event_payload_set_uint(ep, "old_height", old_sy);
+	events_fire("window-resized", ep);
+}
+
 void
 resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 {
+	u_int	old_sx = w->sx, old_sy = w->sy;
 	int	zoomed;
 
 	/* Check size limits. */
@@ -61,7 +79,7 @@ resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 	tty_update_window_offset(w);
 	server_redraw_window(w);
 	events_fire_window("window-layout-changed", w);
-	events_fire_window("window-resized", w);
+	resize_fire_window_resized(w, old_sx, old_sy);
 	w->flags &= ~WINDOW_RESIZE;
 }
 

@@ -1,4 +1,4 @@
-/* $OpenBSD: session.c,v 1.105 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: session.c,v 1.106 2026/07/13 13:01:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -473,6 +473,29 @@ session_last(struct session *s)
 	return (session_set_current(s, wl));
 }
 
+/* Fire session window changed. */
+static void
+session_fire_window_changed(struct session *s, struct winlink *wl,
+    struct winlink *old)
+{
+	struct event_payload	*ep;
+	struct cmd_find_state	 fs;
+
+	ep = event_payload_create();
+	cmd_find_from_winlink(&fs, wl, 0);
+	event_payload_set_target(ep, &fs);
+	event_payload_set_session(ep, "session", s);
+	event_payload_set_window(ep, "window", wl->window);
+	event_payload_set_window(ep, "new_window", wl->window);
+	event_payload_set_int(ep, "window_index", wl->idx);
+	event_payload_set_int(ep, "new_window_index", wl->idx);
+	if (old != NULL) {
+		event_payload_set_window(ep, "old_window", old->window);
+		event_payload_set_int(ep, "old_window_index", old->idx);
+	}
+	events_fire("session-window-changed", ep);
+}
+
 /* Set current winlink to wl .*/
 int
 session_set_current(struct session *s, struct winlink *wl)
@@ -495,7 +518,7 @@ session_set_current(struct session *s, struct winlink *wl)
 	winlink_clear_flags(wl);
 	window_update_activity(wl->window);
 	tty_update_window_offset(wl->window);
-	events_fire_session("session-window-changed", s);
+	session_fire_window_changed(s, wl, old);
 	return (0);
 }
 
@@ -542,12 +565,33 @@ session_group_new(const char *name)
 	return (sg);
 }
 
+/* Fire session group changed. */
+static void
+session_group_fire(const char *name, struct session_group *sg,
+    struct session *s)
+{
+	struct event_payload	*ep;
+	struct cmd_find_state	 fs;
+
+	ep = event_payload_create();
+	if (session_alive(s)) {
+		cmd_find_from_session(&fs, s, 0);
+		event_payload_set_target(ep, &fs);
+	}
+	event_payload_set_session(ep, "session", s);
+	event_payload_set_string(ep, "group", "%s", sg->name);
+	event_payload_set_uint(ep, "group_size", session_group_count(sg));
+	events_fire(name, ep);
+}
+
 /* Add a session to a session group. */
 void
 session_group_add(struct session_group *sg, struct session *s)
 {
-	if (session_group_contains(s) == NULL)
+	if (session_group_contains(s) == NULL) {
 		TAILQ_INSERT_TAIL(&sg->sessions, s, gentry);
+		session_group_fire("session-added-to-group", sg, s);
+	}
 }
 
 /* Remove a session from its group and destroy the group if empty. */
@@ -558,6 +602,7 @@ session_group_remove(struct session *s)
 
 	if ((sg = session_group_contains(s)) == NULL)
 		return;
+	session_group_fire("session-removed-from-group", sg, s);
 	TAILQ_REMOVE(&sg->sessions, s, gentry);
 	if (TAILQ_EMPTY(&sg->sessions)) {
 		RB_REMOVE(session_groups, &session_groups, sg);

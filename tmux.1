@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1133 2026/07/13 10:03:27 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1134 2026/07/13 13:01:14 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -6356,6 +6356,10 @@ See
 Run when a client becomes the latest active client of its session.
 .It client\-attached
 Run when a client is attached.
+.It client\-closed
+Run when a client is closed.
+.It client\-created
+Run when a client is created.
 .It client\-detached
 Run when a client is detached.
 .It client\-focus\-in
@@ -6374,6 +6378,8 @@ Run when a client switches to a dark theme.
 Run when a command fails.
 .It marked\-pane\-changed
 Run when the marked pane is set or cleared.
+.It pane\-bell
+Run when a pane receives a bell.
 .It pane\-command\-finished
 Run when an OSC 133 command finishes in a pane.
 The event payload includes
@@ -6407,6 +6413,8 @@ Run when a pane changes mode.
 Run when a pane enters a mode.
 .It pane\-mode\-exited
 Run when a pane exits a mode.
+.It pane\-moved
+Run when a pane is moved to another window.
 .It pane\-prompt\-closed
 Run when a prompt in a pane is closed.
 .It pane\-prompt\-opened
@@ -6425,10 +6433,18 @@ Run when a pane title is changed.
 Run when a session is closed.
 .It session\-created
 Run when a new session is created.
+.It session\-added\-to\-group
+Run when a session is added to a session group.
+.It session\-removed\-from\-group
+Run when a session is removed from a session group.
 .It session\-renamed
 Run when a session is renamed.
 .It session\-window\-changed
 Run when a session changes its active window.
+.It window\-closed
+Run when a window is closed.
+.It window\-created
+Run when a window is created.
 .It window\-layout\-changed
 Run when a window layout is changed.
 .It window\-linked

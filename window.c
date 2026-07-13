@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.360 2026/07/10 15:20:06 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.361 2026/07/13 13:01:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -128,6 +128,29 @@ window_fire_pane_changed(struct window *w, struct window_pane *wp,
 	if (lastwp != NULL)
 		event_payload_set_pane(ep, "old_pane", lastwp);
 	events_fire("window-pane-changed", ep);
+}
+
+void
+window_fire_pane_moved(struct window_pane *wp, struct window *old_w,
+    int old_idx, struct window *new_w, int new_idx)
+{
+	struct event_payload	*ep;
+	struct cmd_find_state	 fs;
+
+	ep = event_payload_create();
+	cmd_find_from_pane(&fs, wp, 0);
+	event_payload_set_target(ep, &fs);
+	event_payload_set_pane(ep, "pane", wp);
+	event_payload_set_window(ep, "window", new_w);
+	event_payload_set_window(ep, "old_window", old_w);
+	event_payload_set_window(ep, "new_window", new_w);
+	if (old_idx != -1)
+		event_payload_set_int(ep, "old_window_index", old_idx);
+	if (new_idx != -1) {
+		event_payload_set_int(ep, "window_index", new_idx);
+		event_payload_set_int(ep, "new_window_index", new_idx);
+	}
+	events_fire("pane-moved", ep);
 }
 
 static void
@@ -490,6 +513,9 @@ window_add_ref(struct window *w, const char *from)
 void
 window_remove_ref(struct window *w, const char *from)
 {
+	if (w->references == 1)
+		events_fire_window("window-closed", w);
+
 	w->references--;
 	log_debug("%s: @%u %s, now %d", __func__, w->id, from, w->references);
 
@@ -972,7 +998,7 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 		if (w->active != NULL) {
 			window_pane_stack_remove(&w->last_panes, w->active);
 			w->active->flags |= PANE_CHANGED;
-			events_fire_window("window-pane-changed", w);
+			window_fire_pane_changed(w, w->active, wp);
 			window_update_focus(w);
 		}
 	}

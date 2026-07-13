@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.486 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.487 2026/07/13 13:01:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -407,6 +407,62 @@ server_client_attached_lost(struct client *c)
 	}
 }
 
+/* Fire client session changed. */
+static void
+server_client_fire_session_changed(struct client *c, struct session *old)
+{
+	struct event_payload	*ep;
+	struct cmd_find_state	 fs;
+
+	ep = event_payload_create();
+	cmd_find_from_client(&fs, c, 0);
+	event_payload_set_target(ep, &fs);
+	event_payload_set_client(ep, "client", c);
+	if (fs.s != NULL) {
+		event_payload_set_session(ep, "session", fs.s);
+		event_payload_set_session(ep, "new_session", fs.s);
+	}
+	if (old != NULL)
+		event_payload_set_session(ep, "old_session", old);
+	if (fs.w != NULL)
+		event_payload_set_window(ep, "window", fs.w);
+	if (fs.wl != NULL)
+		event_payload_set_int(ep, "window_index", fs.wl->idx);
+	else if (fs.idx != -1)
+		event_payload_set_int(ep, "window_index", fs.idx);
+	if (fs.wp != NULL)
+		event_payload_set_pane(ep, "pane", fs.wp);
+	events_fire("client-session-changed", ep);
+}
+
+/* Fire client resized. */
+static void
+server_client_fire_resized(struct client *c, u_int old_sx, u_int old_sy)
+{
+	struct event_payload	*ep;
+	struct cmd_find_state	 fs;
+
+	ep = event_payload_create();
+	cmd_find_from_client(&fs, c, 0);
+	event_payload_set_target(ep, &fs);
+	event_payload_set_client(ep, "client", c);
+	if (fs.s != NULL)
+		event_payload_set_session(ep, "session", fs.s);
+	if (fs.w != NULL)
+		event_payload_set_window(ep, "window", fs.w);
+	if (fs.wl != NULL)
+		event_payload_set_int(ep, "window_index", fs.wl->idx);
+	else if (fs.idx != -1)
+		event_payload_set_int(ep, "window_index", fs.idx);
+	if (fs.wp != NULL)
+		event_payload_set_pane(ep, "pane", fs.wp);
+	event_payload_set_uint(ep, "width", c->tty.sx);
+	event_payload_set_uint(ep, "height", c->tty.sy);
+	event_payload_set_uint(ep, "old_width", old_sx);
+	event_payload_set_uint(ep, "old_height", old_sy);
+	events_fire("client-resized", ep);
+}
+
 /* Set client session. */
 void
 server_client_set_session(struct client *c, struct session *s)
@@ -433,7 +489,7 @@ server_client_set_session(struct client *c, struct session *s)
 		alerts_check_session(s);
 		tty_update_client_offset(c);
 		status_timer_start(c);
-		events_fire_client("client-session-changed", c);
+		server_client_fire_session_changed(c, old);
 		server_redraw_client(c);
 	}
 
@@ -470,6 +526,8 @@ server_client_lost(struct client *c)
 		server_client_attached_lost(c);
 		events_fire_client("client-detached", c);
 	}
+	if (c->name != NULL && (c->flags & (CLIENT_CONTROL|CLIENT_TERMINAL)))
+		events_fire_client("client-closed", c);
 
 	if (c->flags & CLIENT_CONTROL)
 		control_stop(c);
@@ -2425,6 +2483,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 	struct client	*c = arg;
 	ssize_t		 datalen;
 	struct session	*s;
+	u_int		 old_sx, old_sy;
 
 	if (c->flags & CLIENT_DEAD)
 		return;
@@ -2463,6 +2522,8 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 		if (c->flags & CLIENT_CONTROL)
 			break;
 		server_client_update_latest(c);
+		old_sx = c->tty.sx;
+		old_sy = c->tty.sy;
 		tty_resize(&c->tty);
 		tty_repeat_requests(&c->tty, 0);
 		recalculate_sizes();
@@ -2472,7 +2533,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 			c->overlay_resize(c, c->overlay_data);
 		server_redraw_client(c);
 		if (c->session != NULL)
-			events_fire_client("client-resized", c);
+			server_client_fire_resized(c, old_sx, old_sy);
 		break;
 	case MSG_EXITING:
 		if (datalen != 0)
@@ -2774,6 +2835,8 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 			close(c->out_fd);
 		c->out_fd = -1;
 	}
+	if (c->flags & (CLIENT_CONTROL|CLIENT_TERMINAL))
+		events_fire_client("client-created", c);
 
 	/* If pasting has taken too long, turn it off. */
 	if (c->flags & (CLIENT_BRACKETPASTING|CLIENT_ASSUMEPASTING) &&
