@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: mode-tree.c,v 1.99 2026/07/06 12:08:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>

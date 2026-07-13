@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: cmd-new-session.c,v 1.152 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -325,7 +325,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		session_group_synchronize_to(s);
 		session_select(s, RB_MIN(winlinks, &s->windows)->idx);
 	}
-	notify_session("session-created", s);
+	events_fire_session("session-created", s);
 
 	/*
 	 * Set the client to the new session. If a command client exists, it is

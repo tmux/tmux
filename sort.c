@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: sort.c,v 1.9 2026/06/29 07:45:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Dane Jensen <dhcjensen@gmail.com>

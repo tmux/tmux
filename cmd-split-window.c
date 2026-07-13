@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: cmd-split-window.c,v 1.141 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -83,6 +83,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct window		*w = wl->window;
 	struct window_pane	*wp = target->wp, *new_wp = NULL;
 	struct layout_cell	*lc = NULL;
+	struct event_payload	*ep;
 	struct cmd_find_state	 fs;
 	int			 input, empty, is_floating, flags = 0;
 	const char		*template, *style, *value;
@@ -217,7 +218,13 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'T')) {
 		title = format_single_from_target(item, args_get(args, 'T'));
 		screen_set_title(&new_wp->base, title, 0);
-		notify_pane("pane-title-changed", new_wp);
+		ep = event_payload_create();
+		cmd_find_from_pane(&fs, new_wp, 0);
+		event_payload_set_target(ep, &fs);
+		event_payload_set_pane(ep, "pane", new_wp);
+		event_payload_set_window(ep, "window", new_wp->window);
+		event_payload_set_string(ep, "new_title", "%s", title);
+		events_fire("pane-title-changed", ep);
 		free(title);
 	}
 

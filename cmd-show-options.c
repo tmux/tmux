@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: cmd-show-options.c,v 1.73 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -215,7 +215,7 @@ cmd_show_hooks_print_monitor(struct cmdq_item *item, struct options_entry *o)
 {
 	char	*value;
 
-	value = notify_monitor_to_string(o);
+	value = hooks_monitor_to_string(o);
 	if (value == NULL)
 		return;
 	cmdq_print(item, "%s", value);

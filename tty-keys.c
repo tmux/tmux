@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: tty-keys.c,v 1.210 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1008,10 +1008,10 @@ complete_key:
 	if (key == KEYC_FOCUS_OUT) {
 		c->flags &= ~CLIENT_FOCUSED;
 		window_update_focus(c->session->curw->window);
-		notify_client("client-focus-out", c);
+		events_fire_client("client-focus-out", c);
 	} else if (key == KEYC_FOCUS_IN) {
 		c->flags |= CLIENT_FOCUSED;
-		notify_client("client-focus-in", c);
+		events_fire_client("client-focus-in", c);
 		window_update_focus(c->session->curw->window);
 	}
 

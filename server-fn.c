@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: server-fn.c,v 1.147 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -29,6 +29,31 @@
 #include "tmux.h"
 
 static void	server_destroy_session_group(struct session *);
+static void	server_fire_pane_exit(const char *, struct window_pane *);
+
+static void
+server_fire_pane_exit(const char *name, struct window_pane *wp)
+{
+	struct event_payload	*ep;
+	struct cmd_find_state	 fs;
+	int			 status = wp->status;
+	const char		*signame;
+
+	if (WIFSIGNALED(status))
+		signame = sig2name(WTERMSIG(status));
+
+	ep = event_payload_create();
+	cmd_find_from_pane(&fs, wp, 0);
+	event_payload_set_target(ep, &fs);
+	event_payload_set_pane(ep, "pane", wp);
+	event_payload_set_window(ep, "window", wp->window);
+	if (WIFEXITED(status))
+		event_payload_set_int(ep, "exit_status", WEXITSTATUS(status));
+	else if (WIFSIGNALED(status))
+		event_payload_set_string(ep, "exit_signal", "%s", signame);
+	event_payload_set_int(ep, "exit_success", status == 0);
+	events_fire(name, ep);
+}
 
 void
 server_redraw_client(struct client *c)
@@ -202,6 +227,7 @@ server_kill_window(struct window *w, int renumber)
 	struct session	*s, *s1;
 	struct winlink	*wl;
 
+	window_add_ref(w, __func__);
 	RB_FOREACH_SAFE(s, sessions, &sessions, s1) {
 		if (!session_has(s, w))
 			continue;
@@ -219,6 +245,7 @@ server_kill_window(struct window *w, int renumber)
 			server_renumber_session(s);
 	}
 	recalculate_sizes();
+	window_remove_ref(w, __func__);
 }
 
 void
@@ -272,8 +299,7 @@ server_link_window(struct session *src, struct winlink *srcwl,
 			 * Can't use session_detach as it will destroy session
 			 * if this makes it empty.
 			 */
-			notify_session_window("window-unlinked", dst,
-			    dstwl->window);
+			events_fire_winlink("window-unlinked", dstwl);
 			dstwl->flags &= ~WINLINK_ALERTFLAGS;
 			winlink_stack_remove(&dst->lastw, dstwl);
 			winlink_remove(&dst->windows, dstwl);
@@ -351,7 +377,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 
 		gettimeofday(&wp->dead_time, NULL);
 		if (notify)
-			notify_pane("pane-died", wp);
+			server_fire_pane_exit("pane-died", wp);
 
 		s = options_get_string(wp->options, "remain-on-exit-format");
 		if (*s != '\0') {
@@ -374,7 +400,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 	}
 
 	if (notify)
-		notify_pane("pane-exited", wp);
+		server_fire_pane_exit("pane-exited", wp);
 
 	server_unzoom_window(w);
 	server_client_remove_pane(wp);

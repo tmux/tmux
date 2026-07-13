@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: server.c,v 1.214 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -214,6 +214,8 @@ server_start(struct tmuxproc *client, uint64_t flags, struct event_base *base,
 	TAILQ_INIT(&clients);
 	RB_INIT(&sessions);
 	key_bindings_init();
+	control_build_events();
+	hooks_build_events();
 	TAILQ_INIT(&message_log);
 	gettimeofday(&start_time, NULL);
 

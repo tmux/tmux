@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: window-border.c,v 1.1 2026/06/22 08:47:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>

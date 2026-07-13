@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: options.c,v 1.90 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -410,7 +410,7 @@ options_remove(struct options_entry *o)
 	else
 		options_value_free(o, &o->value);
 	if (o->monitor_data != NULL)
-		notify_monitor_free(o->monitor_data);
+		hooks_monitor_free(o->monitor_data);
 	RB_REMOVE(options_tree, &oo->tree, o);
 	free((void *)o->name);
 	free(o);

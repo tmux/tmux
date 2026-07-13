@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: colour.c,v 1.35 2026/07/06 14:29:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>

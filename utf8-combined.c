@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: utf8-combined.c,v 1.10 2026/06/09 11:49:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2023 Nicholas Marriott <nicholas.marriott@gmail.com>

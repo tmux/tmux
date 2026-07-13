@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: cmd-resize-pane.c,v 1.67 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -182,7 +182,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (lc->parent != NULL)
 		layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
-	notify_window("window-layout-changed", w);
+	events_fire_window("window-layout-changed", w);
 	server_redraw_window(w);
 
 	return (CMD_RETURN_NORMAL);

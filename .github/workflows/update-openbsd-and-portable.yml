@@ -1,0 +1,174 @@
+name: Update OpenBSD tmux and portable
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-openbsd-and-portable
+  cancel-in-progress: false
+
+env:
+  OPENBSD_SRC_URL: https://github.com/openbsd/src.git
+  OPENBSD_SRC_DIR: openbsd-src
+  CUTOVER_DIR: tmux-openbsd-cutover
+  PORTABLE_DIR: tmux-portable
+  PORTABLE_REPO: ${{ vars.TMUX_PORTABLE_REPO }}
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure Git identity
+        run: |
+          git config --global user.name "tmux update bot"
+          git config --global user.email "actions@github.com"
+
+      - name: Install git-filter-repo
+        run: python3 -m pip install --user git-filter-repo
+
+      - name: Checkout cutover repository
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.CUTOVER_DIR }}
+          fetch-depth: 0
+          token: ${{ secrets.UPDATE_TOKEN || github.token }}
+
+      - name: Check portable repo setting
+        run: |
+          if [ -z "$PORTABLE_REPO" ]; then
+            echo "Set repository variable TMUX_PORTABLE_REPO, for example owner/tmux-portable." >&2
+            exit 1
+          fi
+
+      - name: Checkout portable repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.PORTABLE_REPO }}
+          path: ${{ env.PORTABLE_DIR }}
+          fetch-depth: 0
+          token: ${{ secrets.UPDATE_TOKEN }}
+
+      - name: Restore OpenBSD source clone cache
+        id: openbsd-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.OPENBSD_SRC_DIR }}
+          key: openbsd-src-blobless-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            openbsd-src-blobless-${{ runner.os }}-
+
+      - name: Refresh OpenBSD source clone
+        run: |
+          set -eu
+
+          if [ ! -d "$OPENBSD_SRC_DIR/.git" ]; then
+            git clone --filter=blob:none --no-tags --single-branch --branch master \
+              "$OPENBSD_SRC_URL" "$OPENBSD_SRC_DIR"
+          fi
+
+          cd "$OPENBSD_SRC_DIR"
+          git remote set-url origin "$OPENBSD_SRC_URL"
+          git fetch --filter=blob:none --no-tags origin master
+          git switch -C master origin/master
+
+      - name: Capture published OpenBSD tmux base
+        id: openbsd-base
+        run: |
+          set -eu
+
+          cd "$CUTOVER_DIR"
+          if ! git rev-parse --verify -q origin/openbsd-git >/dev/null; then
+            echo "origin/openbsd-git is missing; publish the openbsd-git branch before running updates." >&2
+            exit 1
+          fi
+          echo "sha=$(git rev-parse origin/openbsd-git)" >> "$GITHUB_OUTPUT"
+
+      - name: Filter OpenBSD tmux history
+        run: |
+          set -eu
+
+          cd "$OPENBSD_SRC_DIR"
+          git switch -C tmux-openbsd origin/master
+          git filter-repo \
+            --force \
+            --refs tmux-openbsd \
+            --path usr.bin/tmux/ \
+            --path-rename usr.bin/tmux/: \
+            --replace-refs delete-no-add
+
+          git push "../$CUTOVER_DIR" tmux-openbsd:refs/heads/openbsd-git
+
+      - name: Update cutover master
+        id: cutover
+        run: |
+          set -eu
+
+          cd "$CUTOVER_DIR"
+          git switch master
+
+          old_base="${{ steps.openbsd-base.outputs.sha }}"
+          new_base=$(git rev-parse openbsd-git)
+
+          if [ "$old_base" = "$new_base" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No new OpenBSD tmux commits to import; continuing to portable merge."
+          else
+            if ! git merge-base --is-ancestor "$old_base" "$new_base"; then
+              echo "new openbsd-git is not a descendant of origin/openbsd-git; aborting." >&2
+              exit 1
+            fi
+
+            git cherry-pick "$old_base..$new_base"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push cutover repository
+        if: steps.cutover.outputs.changed == 'true'
+        run: |
+          set -eu
+
+          cd "$CUTOVER_DIR"
+          git push origin master openbsd-git
+
+      - name: Merge cutover into portable
+        id: portable
+        run: |
+          set -eu
+
+          cd "$PORTABLE_DIR"
+          git config remote.tmux-openbsd.tagOpt --no-tags
+
+          if git remote get-url tmux-openbsd >/dev/null 2>&1; then
+            git remote set-url tmux-openbsd "../$CUTOVER_DIR"
+          else
+            git remote add tmux-openbsd "../$CUTOVER_DIR"
+          fi
+
+          git fetch --no-tags tmux-openbsd master:refs/remotes/tmux-openbsd/master
+          git switch master
+          git merge --no-ff --log refs/remotes/tmux-openbsd/master
+          if git diff --quiet origin/master..master; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push portable repository
+        if: steps.portable.outputs.changed == 'true'
+        run: |
+          set -eu
+
+          cd "$PORTABLE_DIR"
+          git push origin master
+
+      - name: Save OpenBSD source clone cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.OPENBSD_SRC_DIR }}
+          key: openbsd-src-blobless-${{ runner.os }}-${{ github.run_id }}

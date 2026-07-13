@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: format-draw.c,v 1.33 2026/06/29 17:08:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>

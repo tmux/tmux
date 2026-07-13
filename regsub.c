@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: regsub.c,v 1.10 2026/07/08 11:04:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>

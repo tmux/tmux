@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: input-keys.c,v 1.114 2026/06/15 21:47:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>

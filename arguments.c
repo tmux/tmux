@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: arguments.c,v 1.66 2026/06/26 09:54:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2010 Nicholas Marriott <nicholas.marriott@gmail.com>

@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: cmd-attach-session.c,v 1.91 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -163,7 +163,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 
 		if (~c->flags & CLIENT_CONTROL)
 			proc_send(c->peer, MSG_READY, -1, NULL, 0);
-		notify_client("client-attached", c);
+		events_fire_client("client-attached", c);
 		c->flags |= CLIENT_ATTACHED;
 	}
 

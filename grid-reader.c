@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: grid-reader.c,v 1.10 2026/05/17 13:12:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Anindya Mukherjee <anindya49@hotmail.com>

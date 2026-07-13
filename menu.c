@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: menu.c,v 1.68 2026/07/07 09:45:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>

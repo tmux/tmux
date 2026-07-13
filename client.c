@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: client.c,v 1.166 2026/07/10 15:45:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
