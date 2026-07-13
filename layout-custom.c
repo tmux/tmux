@@ -26,9 +26,8 @@
 static struct layout_cell	*layout_find_bottomright(struct layout_cell *);
 static u_short			 layout_checksum(const char *);
 static int			 layout_append(struct layout_cell *, char *,
-				     size_t);
-static struct layout_cell	*layout_construct(struct layout_cell *,
-				     const char **);
+				     size_t, int);
+static struct layout_cell	*layout_construct(const char **, int, int);
 static void			 layout_assign(struct window_pane **,
 				     struct layout_cell *);
 
@@ -58,27 +57,103 @@ layout_checksum(const char *layout)
 
 /* Dump layout as a string. */
 char *
-layout_dump(__unused struct window *w, struct layout_cell *root)
+layout_dump(__unused struct window *w, struct layout_cell *root, int flags)
 {
 	char	layout[8192], *out;
 
 	*layout = '\0';
-	if (layout_append(root, layout, sizeof layout) != 0)
+	if (layout_append(root, layout, sizeof layout, flags) != 0)
 		return (NULL);
 
-	xasprintf(&out, "%04hx,%s", layout_checksum(layout), layout);
+	if (flags & LAYOUT_CUSTOM_OLD_FORMAT)
+		xasprintf(&out, "%04hx,%s", layout_checksum(layout), layout);
+	else
+		xasprintf(&out, "2,%04hx,%s", layout_checksum(layout), layout);
 	return (out);
 }
 
-/* Append information for a single cell. */
+/* Append information for a single cell in the old format. */
 static int
-layout_append(struct layout_cell *lc, char *buf, size_t len)
+layout_append_v1(struct layout_cell *lc, char *buf, size_t len)
+{
+	struct layout_cell     *lcchild;
+	char			tmp[64];
+	size_t			tmplen;
+	const char	       *brackets = "][";
+
+	if (len == 0)
+		return (-1);
+	if (lc == NULL)
+		return (0);
+	if (lc->wp != NULL) {
+		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%d,%d,%u",
+		    lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff, lc->wp->id);
+	} else {
+		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%d,%d",
+		    lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff);
+	}
+	if (tmplen > (sizeof tmp) - 1)
+		return (-1);
+	if (strlcat(buf, tmp, len) >= len)
+		return (-1);
+
+	switch (lc->type) {
+	case LAYOUT_LEFTRIGHT:
+		brackets = "}{";
+		/* FALLTHROUGH */
+	case LAYOUT_TOPBOTTOM:
+		if (strlcat(buf, &brackets[1], len) >= len)
+			return (-1);
+		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+			if (layout_append_v1(lcchild, buf, len) != 0)
+				return (-1);
+			if (strlcat(buf, ",", len) >= len)
+				return (-1);
+		}
+		buf[strlen(buf) - 1] = brackets[0];
+		break;
+	case LAYOUT_WINDOWPANE:
+		break;
+	}
+
+	return (0);
+}
+
+static char *
+layout_custom_get_pane_pairs(struct window_pane *wp)
+{
+	static char	kv[1024];
+	char		tmp[64];
+	size_t		kvlen, tmplen;
+	u_int		zidx;
+
+	kv[0] = '\0';
+
+	if (window_pane_is_floating(wp)) {
+		if (window_pane_zindex(wp, &zidx) == 0) {
+			tmplen = xsnprintf(tmp, sizeof tmp, "z=%d,", zidx);
+			if (tmplen > (sizeof tmp) - 1) {
+				return (NULL);
+			}
+			if (strlcat(kv, tmp, 1024) >= 1024)
+				return (NULL);
+		}
+	}
+	kvlen = strlen(kv);
+	if (kvlen > 0)
+		kv[kvlen - 1] = '\0'; /* trailing comma */
+	return (kv);
+}
+
+/* Recursively append information for a single cell in the new format. */
+static int
+layout_append_v2(struct layout_cell *lc, char *buf, size_t len)
 {
 	struct layout_cell	*lcchild;
 	enum layout_type	 type = lc->type;
 	char			 tmp[64];
 	size_t			 buflen, tmplen;
-	const char		*brackets = "][", *flags;
+	const char		*brackets = "][", *flags, *kvpairs;
 
 	if (len == 0)
 		return (-1);
@@ -94,9 +169,10 @@ layout_append(struct layout_cell *lc, char *buf, size_t len)
 
 	if (lc->wp != NULL) {
 		flags = window_pane_printable_flags(lc->wp);
-		tmplen = xsnprintf(tmp, sizeof tmp, "%s%s%ux%u,%d,%d,%u",
-		    flags, *flags != '\0' ? "," : "", lc->g.sx, lc->g.sy,
-		    lc->g.xoff, lc->g.yoff, lc->wp->id);
+		kvpairs = layout_custom_get_pane_pairs(lc->wp);
+		tmplen = xsnprintf(tmp, sizeof tmp, "%s,%ux%u,%d,%d,%u,%s",
+		    flags, lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff,
+		    lc->wp->id, kvpairs);
 	} else {
 		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%d,%d",
 		    lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff);
@@ -108,7 +184,7 @@ layout_append(struct layout_cell *lc, char *buf, size_t len)
 
 	if (type != LAYOUT_WINDOWPANE) {
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (layout_append(lcchild, buf, len) != 0)
+			if (layout_append_v2(lcchild, buf, len) != 0)
 				return (-1);
 		}
 	}
@@ -122,6 +198,16 @@ layout_append(struct layout_cell *lc, char *buf, size_t len)
 
 	return (0);
 }
+
+/* Dispatch to the correct version. */
+static int
+layout_append(struct layout_cell *lc, char *buf, size_t len, int flags)
+{
+	if (flags & LAYOUT_CUSTOM_OLD_FORMAT)
+		return (layout_append_v1(lc, buf, len));
+	return (layout_append_v2(lc, buf, len));
+}
+
 
 /* Check layout sizes fit. */
 static int
@@ -165,27 +251,36 @@ layout_check(struct layout_cell *lc)
 
 /* Parse a layout string and arrange window as layout. */
 int
-layout_parse(struct window *w, const char *layout, char **cause)
+layout_parse(struct window *w, const char *layout, int flags, char **cause)
 {
 	struct layout_cell	*lcchild, *lc = NULL;
 	struct window_pane	*wp;
 	u_int			 npanes, ncells, sx = 0, sy = 0;
 	u_short			 csum;
-	int			 n = 0;
+	int			 n, version;
 
 	/* Check validity. */
-	if (sscanf(layout, "%hx,%n", &csum, &n) != 1 || n != 5) {
-		*cause = xstrdup("invalid layout");
-		return (-1);
+	if (flags & LAYOUT_CUSTOM_OLD_FORMAT) {
+		version = 1;
+		if (sscanf(layout, "%hx,%n", &csum, &n) != 1 || n != 5) {
+			*cause = xstrdup("malformed layout header");
+			return (-1);
+		}
+	} else {
+		if (sscanf(layout, "%d,%hx,%n", &version, &csum, &n) != 2 ||
+		    n != 7) {
+			*cause = xstrdup("malformed layout header");
+			return (-1);
+		}
 	}
 	layout += n;
 	if (csum != layout_checksum(layout)) {
-		*cause = xstrdup("invalid layout");
+		*cause = xstrdup("invalid layout checksum");
 		return (-1);
 	}
 
 	/* Build the layout. */
-	lc = layout_construct(NULL, &layout);
+	lc = layout_construct(&layout, version, flags);
 	if (lc == NULL) {
 		*cause = xstrdup("invalid layout");
 		return (-1);
@@ -304,6 +399,114 @@ layout_assign(struct window_pane **wp, struct layout_cell *lc)
 	}
 }
 
+/* Part of the old format. */
+static struct layout_cell *
+layout_construct_cell(struct layout_cell *lcparent, const char **layout)
+{
+	struct layout_cell     *lc;
+	u_int			sx, sy;
+	int			xoff, yoff;
+	const char	       *saved;
+
+	if (!isdigit((u_char) **layout))
+		return (NULL);
+	if (sscanf(*layout, "%ux%u,%d,%d", &sx, &sy, &xoff, &yoff) != 4)
+		return (NULL);
+
+	while (isdigit((u_char) **layout))
+		(*layout)++;
+	if (**layout != 'x')
+		return (NULL);
+	(*layout)++;
+	while (isdigit((u_char) **layout))
+		(*layout)++;
+	if (**layout != ',')
+		return (NULL);
+	(*layout)++;
+	while (isdigit((u_char) **layout))
+		(*layout)++;
+	if (**layout != ',')
+		return (NULL);
+	(*layout)++;
+	while (isdigit((u_char) **layout))
+		(*layout)++;
+	if (**layout == ',') {
+		saved = *layout;
+		(*layout)++;
+		while (isdigit((u_char) **layout))
+			(*layout)++;
+		if (**layout == 'x')
+			*layout = saved;
+	}
+
+	lc = layout_create_cell(lcparent);
+	lc->g.sx = sx;
+	lc->g.sy = sy;
+	lc->g.xoff = xoff;
+	lc->g.yoff = yoff;
+
+	return (lc);
+}
+
+/* Part of the old format. */
+static struct layout_cell *
+layout_construct_v1(struct layout_cell *lcparent, const char **layout)
+{
+	struct layout_cell	*lc, *lcchild;
+
+	lc = layout_construct_cell(lcparent, layout);
+	if (lc == NULL)
+		return (NULL);
+
+	switch (**layout) {
+	case ',':
+	case '}':
+	case ']':
+	case '\0':
+		return (lc);
+	case '{':
+		(lc)->type = LAYOUT_LEFTRIGHT;
+		break;
+	case '[':
+		(lc)->type = LAYOUT_TOPBOTTOM;
+		break;
+	default:
+		goto fail;
+	}
+
+	do {
+		(*layout)++;
+		lcchild = layout_construct_v1(lc, layout);
+		if (lcchild == NULL)
+			goto fail;
+		TAILQ_INSERT_TAIL(&lc->cells, lcchild, entry);
+	} while (**layout == ',');
+
+	switch (lc->type) {
+	case LAYOUT_LEFTRIGHT:
+		if (**layout != '}')
+			goto fail;
+		break;
+	case LAYOUT_TOPBOTTOM:
+		if (**layout != ']')
+			goto fail;
+		break;
+	default:
+		goto fail;
+	}
+	(*layout)++;
+
+	return (lc);
+
+fail:
+	layout_free_cell(lc, 0);
+	return (NULL);
+}
+
+/*
+ * Validates the first character of *layout as a flag. If the character
+ * represents a valid flag, applies it to the layout cell and advances layout.
+ */
 static int
 layout_custom_set_flags(struct layout_cell *lc, const char **layout)
 {
@@ -311,13 +514,10 @@ layout_custom_set_flags(struct layout_cell *lc, const char **layout)
 		case 'F':
 			lc->flags |= LAYOUT_CELL_FLOATING;
 			(*layout)++;
-			return (1);
+			return (0);
 		case '-': /* unsupported fallthrough */
 		case '*':
 		case 'Z':
-			(*layout)++;
-			return (1);
-		case ',':
 			(*layout)++;
 			return (0);
 		default:
@@ -325,19 +525,25 @@ layout_custom_set_flags(struct layout_cell *lc, const char **layout)
 	}
 }
 
+/*
+ * Scans *layout, creating a layout cell from the string given. Advances layout
+ * past the scanned sharacters.
+ */
 static struct layout_cell *
 layout_custom_create_cell(struct layout_cell *lcparent, const char **layout)
 {
 	struct layout_cell	*lc;
 	enum layout_type	 type;
-	int			 result;
+	char			 other;
 
 	switch (**layout) {
 		case '{':
 			type = LAYOUT_LEFTRIGHT;
+			other = '[';
 			break;
 		case '[':
 			type = LAYOUT_TOPBOTTOM;
+			other = '{';
 			break;
 		case '(':
 			type = LAYOUT_WINDOWPANE;
@@ -349,47 +555,31 @@ layout_custom_create_cell(struct layout_cell *lcparent, const char **layout)
 	lc = layout_create_cell(lcparent);
 	lc->type = type;
 
-	if (!isdigit((u_char) **layout)) {
-		while (1) {
-			result = layout_custom_set_flags(lc, layout);
-			if (result == 0)
-				break;
-			if (result == -1)
+	if (type == LAYOUT_WINDOWPANE) {
+		while (**layout != ',') {
+			if (layout_custom_set_flags(lc, layout) == -1)
 				goto fail;
 		}
+		(*layout)++;
 	}
 
 	if (sscanf(*layout, "%ux%u,%d,%d", &lc->g.sx, &lc->g.sy, &lc->g.xoff,
 	    &lc->g.yoff) != 4)
 		goto fail;
 
-	/* Skip past the geometry. */
-	while (isdigit((u_char) **layout))
-		(*layout)++;
-	if (**layout != 'x')
-		goto fail;
-	(*layout)++;
-	while (isdigit((u_char) **layout))
-		(*layout)++;
-	if (**layout != ',')
-		goto fail;
-	(*layout)++;
-	while (isdigit((u_char) **layout))
-		(*layout)++;
-	if (**layout != ',')
-		goto fail;
-	(*layout)++;
-	while (isdigit((u_char) **layout))
-		(*layout)++;
-
-	/* If lc is a node or a pane with no id(?) nor flags, then done. */
-	if (type != LAYOUT_WINDOWPANE || **layout == ')')
-		return (lc);
-	(*layout)++;
-
-	/* Advance past pane id. Why have this if it is ignored? */
-	while (isdigit((u_char) **layout))
-		(*layout)++;
+	/*
+	 * Skipping past geometry in all cells, plus the id and attributes in
+	 * LAYOUT_WINDOWPANE cells. Attributes are not used yet when creating
+	 * cells.
+	 */
+	if (type == LAYOUT_WINDOWPANE) {
+		while (**layout != ')')
+			(*layout)++;
+	} else {
+		/* Nodes don't contain other nodes of the same type. */
+		while (**layout != other && **layout != '(')
+			(*layout)++;
+	}
 
 	return (lc);
 fail:
@@ -403,7 +593,7 @@ fail:
  * return NULL or will not advance through the entire input string.
  */
 static struct layout_cell *
-layout_construct(struct layout_cell *lcparent, const char **layout)
+layout_construct_v2(struct layout_cell *lcparent, const char **layout)
 {
 	struct layout_cell	*lcchild, *lc;
 
@@ -412,7 +602,7 @@ layout_construct(struct layout_cell *lcparent, const char **layout)
 		goto fail;
 
 	while (**layout == '(' || **layout == '{' || **layout == '[') {
-		lcchild = layout_construct(lc, layout);
+		lcchild = layout_construct_v2(lc, layout);
 		if (lcchild == NULL)
 			goto fail;
 		TAILQ_INSERT_TAIL(&lc->cells, lcchild, entry);
@@ -441,4 +631,21 @@ layout_construct(struct layout_cell *lcparent, const char **layout)
 fail:
 	layout_free_cell(lc, 0);
 	return (NULL);
+}
+
+/*
+ * Validates that the version of the layout string matches the version obtained
+ * from the flags, then dispatches to the associated parsing function.
+ */
+static struct layout_cell *
+layout_construct(const char **layout, int version, int flags)
+{
+	if (flags & LAYOUT_CUSTOM_OLD_FORMAT) {
+		if (version != 1)
+			return (NULL);
+		return (layout_construct_v1(NULL, layout));
+	}
+	if (version != 2)
+		return (NULL);
+	return (layout_construct_v2(NULL, layout));
 }
