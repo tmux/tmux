@@ -143,9 +143,9 @@ jobs:
             git remote add tmux-openbsd "../$CUTOVER_DIR"
           fi
 
-          git fetch --no-tags tmux-openbsd
+          git fetch --no-tags tmux-openbsd master:refs/remotes/tmux-openbsd/master
           git switch master
-          git merge --no-ff --log tmux-openbsd/master
+          git merge --no-ff --log refs/remotes/tmux-openbsd/master
 
       - name: Push portable repository
         if: steps.cutover.outputs.changed == 'true'
