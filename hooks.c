@@ -1,4 +1,4 @@
-/* $OpenBSD: hooks.c,v 1.13 2026/07/10 15:20:06 nicm Exp $ */
+/* $OpenBSD: hooks.c,v 1.14 2026/07/13 22:03:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -262,6 +262,19 @@ hooks_add_event(const char *name)
 	he->name = xstrdup(name);
 	he->sink = events_add_sink(name, hooks_event_cb, NULL);
 	TAILQ_INSERT_TAIL(&hooks_events, he, entry);
+}
+
+/* Return if a hook event sink exists. */
+int
+hooks_is_event(const char *name)
+{
+	struct hooks_event	*he;
+
+	TAILQ_FOREACH(he, &hooks_events, entry) {
+		if (strcmp(he->name, name) == 0)
+			return (1);
+	}
+	return (0);
 }
 
 /* Return if an event name can be fired through the hooks path. */

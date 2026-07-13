@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1401 2026/07/13 16:07:47 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1402 2026/07/13 22:03:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2709,6 +2709,7 @@ char	*format_trim_right(const char *, u_int);
 
 /* hooks.c */
 void	 hooks_add_event(const char *);
+int	 hooks_is_event(const char *);
 int	 hooks_valid_event_name(const char *);
 void	 hooks_build_events(void);
 void	 hooks_run(struct cmdq_item *, const char *);
