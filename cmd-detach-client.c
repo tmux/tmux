@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: cmd-detach-client.c,v 1.39 2026/05/22 15:22:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>

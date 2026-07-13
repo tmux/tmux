@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: cmd-swap-window.c,v 1.29 2025/10/30 13:52:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>

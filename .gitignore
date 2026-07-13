@@ -21,6 +21,7 @@ configure
 core
 etc/
 fuzz/*-fuzzer
+regress/logs/
 tags
 tmux
 tmux.1.*

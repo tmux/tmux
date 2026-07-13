@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: cmd-paste-buffer.c,v 1.44 2026/03/04 07:19:32 tb Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>

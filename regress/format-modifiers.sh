@@ -12,10 +12,12 @@
 PATH=/bin:/usr/bin
 TERM=screen
 TZ=UTC
-export TZ
+LANG=C.UTF-8
+LC_ALL=C.UTF-8
+export TZ LANG LC_ALL
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -Ltest -f/dev/null"
+TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 
 ESC=$(printf '\033')
 
@@ -98,6 +100,11 @@ $TMUX set -g @host 'myhost' || exit 1
 $TMUX set -g @ts '1000000000' || exit 1  # 2001-09-09 01:46:40 UTC
 $TMUX set -g @sp 'a b$c' || exit 1     # shell-special characters for q:
 $TMUX set -g @hash 'a#b' || exit 1     # a "#" for q/e:
+$TMUX set -g @sq "a'b" || exit 1       # a single quote for q/s:
+$TMUX set -g @sub 'abABab' || exit 1
+$TMUX set -g @slash 'foo/bar foo/' || exit 1
+$TMUX set -g @nl "$(printf 'a\nb')" || exit 1
+q_s_nl=$(printf "'a\nb'")
 
 
 # --- Comparisons and matching --------------------------------------------
@@ -151,6 +158,10 @@ test_format "#{!!:non-empty}" "1"
 
 # q: escapes shell special characters with a backslash.
 test_format "#{q:@sp}" 'a\ b\$c'
+# q/s quotes with POSIX shell single quotes.
+test_format "#{q/s:@sp}" "'a b\$c'"
+test_format "#{q/s:@sq}" "'a'\\''b'"
+test_format "#{q/s:@nl}" "$q_s_nl"
 # q/e and q/h escape "#" for the format/style parser by doubling it.
 test_format "#{q/e:@hash}" 'a##b'
 test_format "#{q/h:@hash}" 'a##b'
@@ -280,6 +291,15 @@ if [ -z "$($TMUX display-message -p '#{t/r:@ts}')" ]; then
 	echo "Format test failed for '#{t/r:@ts}': empty result"
 	exit 1
 fi
+# t/d: difference from the current time in seconds.
+diff=$($TMUX display-message -p '#{t/d:@ts}')
+case "$diff" in
+[0-9]*) ;;
+*)
+	echo "Format test failed for '#{t/d:@ts}': expected positive value, got '$diff'"
+	exit 1
+	;;
+esac
 
 # t/f: custom strftime format applied to the variable's time.  Tested in a
 # format_expand context (list-windows -F), where a single strftime specifier is
@@ -315,6 +335,14 @@ done
 # A time in the future has no relative form.
 $TMUX set -g @future "$((now + 100000))"
 test_format "#{t/r:@future}" ""
+diff=$($TMUX display-message -p '#{t/d:@future}')
+case "$diff" in
+-[0-9]*) ;;
+*)
+	echo "Format test failed for '#{t/d:@future}': expected negative value, got '$diff'"
+	exit 1
+	;;
+esac
 
 
 # --- Content search (C) --------------------------------------------------
@@ -417,9 +445,23 @@ test_format "#{=/3/#,:@s}" "abc,"             # escaped comma in the marker
 # The truncation marker is itself expanded as a format.
 test_format "#{=/3/#{l:>}:@s}" "abc>"
 
-# Substitution flags: a third argument of "i" is case-insensitive; an invalid
-# regular expression leaves the text unchanged.
+# Substitution, including regular expressions, back references, different
+# delimiters, empty matches and the "i" case-insensitive flag.
+test_format "#{s/z/X/:@s}" "abcdefghij"
+test_format "#{s/[bd]/X/:@s}" "aXcXefghij"
 test_format "#{s/A/X/i:@s}" "Xbcdefghij"
+test_format "#{s/a(.)/\\1x/i:@sub}" "bxBxbx"
+test_format "#{s/(.)(.)/\\2\\1/:@s}" "badcfehgji"
+test_format "#{s|foo/|bar/|:@slash}" "bar/bar bar/"
+test_format "#{s/^abc/ABC/:@s}" "ABCdefghij"
+test_format "#{s/^(.)(.)/\\2\\1/:@s}" "bacdefghij"
+test_format "#{s/^x*//:@s}" "abcdefghij"
+test_format "#{s/^/X/:@s}" "Xabcdefghij"
+test_format "#{s/^x*/X/:@s}" "Xabcdefghij"
+test_format "#{s/$/X/:@s}" "abcdefghijX"
+test_format "#{s/x*//:@s}" "abcdefghij"
+test_format "#{s/x*/X/:@s}" "aXbXcXdXeXfXgXhXiXjX"
+# An invalid regular expression leaves the text unchanged.
 test_format "#{s/[/X/:@s}" "abcdefghij"
 
 
@@ -517,11 +559,17 @@ $TMUX split-window -h -t zeta:charlie
 $TMUX split-window -h -t zeta:charlie
 test_format "#{P:#{pane_index}}" "012" "zeta:charlie"
 test_format "#{P/r:#{pane_index}}" "210" "zeta:charlie"
-# A pane-sort argument is accepted; for panes only the r (reverse) suffix has an
-# effect, so these all keep the count and exercise the argument branch.
+# Pane sort accepts i (pane-list order) and z (z-order). Other sort letters
+# fall back to the default creation order; r reverses whichever order is used.
 test_format "#{P/i:x}" "xxx" "zeta:charlie"
+test_format "#{P/i:#{pane_index}}" "012" "zeta:charlie"
+test_format "#{P/z:x}" "xxx" "zeta:charlie"
 test_format "#{P/n:x}" "xxx" "zeta:charlie"
 test_format "#{P/t:x}" "xxx" "zeta:charlie"
+$TMUX new-pane -d -t zeta:charlie -x 20 -y 10 -X 1 -Y 1
+test_format "#{P/i:#{pane_index}}" "0123" "zeta:charlie"
+test_format "#{P/z:#{pane_index}}" "3012" "zeta:charlie"
+test_format "#{P/zr:#{pane_index}}" "0123" "zeta:charlie"
 
 # Verbose expansion of the loops, to exercise their logging paths.
 $TMUX display-message -v -p "#{S:#{session_name}}" >/dev/null 2>&1

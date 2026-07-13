@@ -1,6 +1,6 @@
 # configure.ac
 
-AC_INIT([tmux], next-3.7)
+AC_INIT([tmux], next-3.8)
 AC_PREREQ([2.60])
 
 AC_CONFIG_AUX_DIR(etc)
@@ -78,7 +78,7 @@ AC_ARG_ENABLE(
 	asan,
 	AS_HELP_STRING(--enable-asan, enable ASAN build flags),
 	,
-	enable_asan=no
+	[case "x$host_os" in *darwin*) enable_asan=yes;; esac]
 )
 AM_CONDITIONAL(IS_ASAN, test "x$enable_asan" = xyes)
 

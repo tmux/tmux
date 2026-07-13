@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: environ.c,v 1.31 2026/06/13 20:07:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>

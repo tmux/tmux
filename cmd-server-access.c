@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: cmd-server-access.c,v 1.6 2026/06/09 12:58:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2021 Dallas Lyons <dallasdlyons@gmail.com>

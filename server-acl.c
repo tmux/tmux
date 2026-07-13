@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: server-acl.c,v 1.3 2026/06/08 21:38:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2021 Holland Schutte, Jayson Morberg

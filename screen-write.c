@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: screen-write.c,v 1.283 2026/07/09 07:35:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2096,7 +2096,7 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 
 	screen_write_collect_clear(ctx, 0, sy);
 
-	if (!screen_write_should_draw_lines(ctx, s->cy, sy - s->cy))
+	if (!screen_write_should_draw_lines(ctx, 0, sy))
 		return;
 	if (~ttyctx.flags & TTY_CTX_PANE_OBSCURED) {
 		tty_write(tty_cmd_clearscreen, &ttyctx);
@@ -2418,6 +2418,10 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	if (wp != NULL && (wp->flags & (PANE_REDRAW|PANE_DROP)))
 		goto discard;
 	if (s->mode & MODE_SYNC) {
+		if (ctx->scrolled != 0) {
+			screen_write_should_draw_lines(ctx, s->rupper,
+			    s->rlower + 1 - s->rupper);
+		}
 		for (y = 0; y < screen_size_y(s); y++) {
 			cl = &s->write_list[y];
 			if (!TAILQ_EMPTY(&cl->items))
@@ -3127,7 +3131,13 @@ screen_write_alternateon(struct screen_write_ctx *ctx, struct grid_cell *gc,
 
 	if (wp != NULL) {
 		window_pane_clear_resizes(wp, NULL);
+		if (event_initialized(&wp->resize_timer))
+			evtimer_del(&wp->resize_timer);
 		layout_fix_panes(wp->window, NULL);
+		if (!TAILQ_EMPTY(&wp->resize_queue)) {
+			window_pane_send_resize(wp, wp->sx, wp->sy);
+			window_pane_clear_resizes(wp, NULL);
+		}
 		server_redraw_window_borders(wp->window);
 	}
 

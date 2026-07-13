@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: hyperlinks.c,v 1.5 2026/06/29 16:44:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2021 Will <author@will.party>

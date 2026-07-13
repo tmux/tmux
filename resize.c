@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: resize.c,v 1.56 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -46,13 +46,13 @@ resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 	layout_resize(w, sx, sy);
 
 	/* Resize the window, it can be no smaller than the layout. */
-	if (sx < w->layout_root->sx)
-		sx = w->layout_root->sx;
-	if (sy < w->layout_root->sy)
-		sy = w->layout_root->sy;
+	if (sx < w->layout_root->g.sx)
+		sx = w->layout_root->g.sx;
+	if (sy < w->layout_root->g.sy)
+		sy = w->layout_root->g.sy;
 	window_resize(w, sx, sy, xpixel, ypixel);
 	log_debug("%s: @%u resized to %ux%u; layout %ux%u", __func__, w->id,
-	    sx, sy, w->layout_root->sx, w->layout_root->sy);
+	    sx, sy, w->layout_root->g.sx, w->layout_root->g.sy);
 
 	/* Restore the window zoom state. */
 	if (zoomed)
@@ -60,8 +60,8 @@ resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 
 	tty_update_window_offset(w);
 	server_redraw_window(w);
-	notify_window("window-layout-changed", w);
-	notify_window("window-resized", w);
+	events_fire_window("window-layout-changed", w);
+	events_fire_window("window-resized", w);
 	w->flags &= ~WINDOW_RESIZE;
 }
 

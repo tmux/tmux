@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: window-visible.c,v 1.4 2026/06/29 19:03:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>

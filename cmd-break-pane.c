@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: cmd-break-pane.c,v 1.72 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -51,10 +51,9 @@ cmd_break_pane_float(struct cmdq_item *item, struct args *args,
     struct window *w, struct window_pane *wp)
 {
 	struct layout_cell	*lc = wp->layout_cell;
-	u_int			 sx = lc->saved_sx, sy = lc->saved_sy;
-	int			 ox = lc->saved_xoff, oy = lc->saved_yoff;
 	char			*cause = NULL;
 	enum pane_lines		 lines = window_get_pane_lines(w);
+	struct layout_geometry	*fg = &lc->fg;
 
 	if (window_pane_is_floating(wp)) {
 		cmdq_error(item, "pane is already floating");
@@ -65,14 +64,13 @@ cmd_break_pane_float(struct cmdq_item *item, struct args *args,
 		return (CMD_RETURN_ERROR);
 	}
 
-	if (layout_floating_args_parse(item, args, lines, w, &sx, &sy, &ox, &oy,
-	    &cause) != 0) {
+	if (layout_floating_args_parse(item, args, lines, w, fg, &cause) != 0) {
 		cmdq_error(item, "failed to float pane: %s", cause);
 		free(cause);
 		return (CMD_RETURN_ERROR);
 	}
 	layout_remove_tile(w, lc);
-	layout_set_size(lc, sx, sy, ox, oy);
+	layout_set_size(lc, fg->sx, fg->sy, fg->xoff, fg->yoff);
 
 	lc->flags |= LAYOUT_CELL_FLOATING;
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
@@ -82,7 +80,7 @@ cmd_break_pane_float(struct cmdq_item *item, struct args *args,
 		window_set_active_pane(w, wp, 1);
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
-	notify_window("window-layout-changed", w);
+	events_fire_window("window-layout-changed", w);
 	server_redraw_window(w);
 
 	return (CMD_RETURN_NORMAL);
@@ -101,7 +99,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*dst_s = target->s;
 	struct window_pane	*wp = source->wp;
 	struct window		*w = wl->window;
-	char			*newname, *cause, *cp;
+	char			*cause, *cp;
 	int			 idx = target->idx, before;
 	const char		*template, *name = args_get(args, 'n');
 
@@ -153,6 +151,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	layout_close_pane(wp);
 
 	w = wp->window = window_create(w->sx, w->sy, w->xpixel, w->ypixel);
+	window_add_ref(w, __func__);
 	options_set_parent(wp->options, w->options);
 	wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
 	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
@@ -160,12 +159,11 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	w->active = wp;
 	w->latest = tc;
 
-	if (name == NULL) {
-		newname = default_window_name(w);
-		window_set_name(w, newname, 0);
-		free(newname);
-	} else {
-		window_set_name(w, name, 0);
+	free(w->name);
+	if (name == NULL)
+		w->name = default_window_name(w);
+	else {
+		w->name = clean_name(name, 0);
 		options_set_number(w->options, "automatic-rename", 0);
 	}
 
@@ -176,6 +174,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (idx == -1)
 		idx = -1 - options_get_number(dst_s->options, "base-index");
 	wl = session_attach(dst_s, w, idx, &cause); /* can't fail */
+	window_remove_ref(w, __func__);
 	if (!args_has(args, 'd')) {
 		session_select(dst_s, wl->idx);
 		cmd_find_from_session(current, dst_s, 0);

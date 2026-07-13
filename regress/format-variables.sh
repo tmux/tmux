@@ -15,10 +15,10 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -Ltest -f/dev/null"
+TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 # A second server on its own socket provides a real terminal (an inner client
 # attached inside one of its panes) so client terminal variables are populated.
-TMUX2="$TEST_TMUX -Ltest2 -f/dev/null"
+TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
 
 # Every variable name in format_table[].  Kept as a plain word list so it can be
 # iterated with normal shell word splitting.
@@ -133,6 +133,7 @@ pane_pipe_pid
 pane_right
 pane_search_string
 pane_start_command
+pane_start_command_list
 pane_start_path
 pane_synchronized
 pane_tabs
@@ -295,7 +296,7 @@ sleep 1
 # write end of a FIFO open, so client_* variables have a client to read.
 rm -f "$FIFO"
 mkfifo "$FIFO" || exit 1
-sleep 30 >"$FIFO" &
+while :; do sleep 1; done >"$FIFO" &
 HOLD=$!
 $TMUX -C attach -t cov <"$FIFO" >/dev/null 2>&1 &
 CC=$!
@@ -343,6 +344,8 @@ test_var pane_at_top "1" -t "$TGT"
 test_var pane_at_left "1" -t "$TGT"
 test_var last_window_index "1" -t "$TGT"
 test_var pid "$($TMUX display-message -p '#{pid}')" -t "$TGT"
+test_var pane_start_command "cat" -t "$TGT"
+test_var pane_start_command_list "'cat'" -t "$TGT"
 
 # The grouped session is reported as such.
 test_var session_grouped "1" -t "cov:"
@@ -383,6 +386,30 @@ esac
     fail "Empty #{t/p:start_time}."
 [ -n "$($TMUX display-message -p '#{t/r:start_time}')" ] ||
     fail "Empty #{t/r:start_time}."
+
+# pane_start_command_list quotes each argv word for sh, so evaluating the
+# expansion reconstructs the original argv exactly - including words with
+# quotes, spaces, newlines and empty words.  sh -c ignores the extra words
+# (they become positional parameters), so the pane stays alive.  -u stops
+# the server sanitizing the newline away when printing to a non-UTF-8
+# client (the test runs without a locale in the environment).
+$TMUX new-session -d -s quot -x 80 -y 24 -- sh -c 'sleep 100' arg0 \
+    "it's a 'test'" 'two words' '' 'new
+line' || fail "Failed to create quoting test session."
+LIST=$($TMUX -u display-message -t 'quot:0.0' -p '#{pane_start_command_list}')
+eval "set -- $LIST"
+GOT=$(for a; do printf '<%s>' "$a"; done)
+EXP=$(for a in sh -c 'sleep 100' arg0 "it's a 'test'" 'two words' '' 'new
+line'; do printf '<%s>' "$a"; done)
+if [ "$GOT" != "$EXP" ]; then
+	echo "pane_start_command_list did not round-trip."
+	echo "Expected: $EXP"
+	echo "But got:  $GOT"
+	fail "Expansion was: $LIST"
+fi
+# A pane started with the default shell has an empty start command.
+$TMUX new-window -d -t 'quot:' || fail "Failed to create shell window."
+test_var pane_start_command_list "" -t "quot:1.0"
 
 cleanup
 exit 0

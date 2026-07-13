@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: window.c,v 1.360 2026/07/10 15:20:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -71,9 +71,10 @@ struct window_pane_input_data {
 static struct window_pane *window_pane_create(struct window *, u_int, u_int,
 		    u_int);
 static void	window_pane_destroy(struct window_pane *);
+static void	window_pane_free(struct window_pane *);
 static void	window_pane_scrollbar_timer(int, short, void *);
-static void	window_pane_full_size_offset(struct window_pane *wp,
-		    int *xoff, int *yoff, u_int *sx, u_int *sy);
+static void	window_pane_full_size_offset(struct window_pane *, int *, int *,
+		    u_int *, u_int *);
 
 RB_GENERATE(windows, window, entry, window_cmp);
 RB_GENERATE(winlinks, winlink, entry, winlink_cmp);
@@ -85,12 +86,85 @@ struct window_pane_prompt {
 	status_prompt_input_cb	 inputcb;
 	prompt_free_cb		 freecb;
 	void			*data;
+	enum prompt_type	 type;
 };
 
 int
 window_cmp(struct window *w1, struct window *w2)
 {
 	return (w1->id - w2->id);
+}
+
+static void
+window_fire_renamed(struct window *w, const char *old_name)
+{
+	struct event_payload	*ep;
+	struct cmd_find_state	 fs;
+
+	ep = event_payload_create();
+	cmd_find_from_window(&fs, w, 0);
+	event_payload_set_target(ep, &fs);
+	event_payload_set_window(ep, "window", w);
+	event_payload_set_string(ep, "old_name", "%s", old_name);
+	event_payload_set_string(ep, "new_name", "%s", w->name);
+	events_fire("window-renamed", ep);
+}
+
+static void
+window_fire_pane_changed(struct window *w, struct window_pane *wp,
+    struct window_pane *lastwp)
+{
+	struct event_payload	*ep;
+	struct cmd_find_state	 fs;
+
+	ep = event_payload_create();
+	cmd_find_from_pane(&fs, wp, 0);
+	event_payload_set_target(ep, &fs);
+	event_payload_set_window(ep, "window", w);
+	event_payload_set_pane(ep, "pane", wp);
+	event_payload_set_pane(ep, "new_pane", wp);
+	if (lastwp != NULL)
+		event_payload_set_pane(ep, "old_pane", lastwp);
+	events_fire("window-pane-changed", ep);
+}
+
+static void
+window_fire_pane_mode_changed(const char *name, struct window_pane *wp,
+    const char *previous, const char *current, int entered)
+{
+	struct event_payload	*ep;
+	struct cmd_find_state	 fs;
+
+	ep = event_payload_create();
+	cmd_find_from_pane(&fs, wp, 0);
+	event_payload_set_target(ep, &fs);
+	event_payload_set_pane(ep, "pane", wp);
+	event_payload_set_window(ep, "window", wp->window);
+
+	if (current != NULL)
+		event_payload_set_string(ep, "current_mode", "%s", current);
+	if (previous != NULL)
+		event_payload_set_string(ep, "previous_mode", "%s", previous);
+	event_payload_set_int(ep, "mode_entered", entered);
+
+	events_fire(name, ep);
+}
+
+static void
+window_fire_pane_prompt(const char *name, struct window_pane *wp,
+    enum prompt_type type)
+{
+	struct event_payload	*ep;
+	struct cmd_find_state	 fs;
+	const char		*type_string = prompt_type_string(type);
+
+	ep = event_payload_create();
+	cmd_find_from_pane(&fs, wp, 0);
+	event_payload_set_target(ep, &fs);
+	event_payload_set_pane(ep, "pane", wp);
+	event_payload_set_window(ep, "window", wp->window);
+	event_payload_set_string(ep, "prompt_type", "%s", type_string);
+	events_fire(name, ep);
 }
 
 int
@@ -331,6 +405,8 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 	w->ypixel = ypixel;
 
 	w->options = options_create(global_w_options);
+	w->sb = options_get_number(w->options, "pane-scrollbars");
+	w->sb_pos = options_get_number(w->options, "pane-scrollbars-position");
 
 	w->references = 0;
 	TAILQ_INIT(&w->winlinks);
@@ -420,15 +496,36 @@ window_remove_ref(struct window *w, const char *from)
 }
 
 void
+window_pane_add_ref(struct window_pane *wp, const char *from)
+{
+	wp->references++;
+	log_debug("%s: %%%u %s, now %d", __func__, wp->id, from,
+	    wp->references);
+}
+
+void
+window_pane_remove_ref(struct window_pane *wp, const char *from)
+{
+	wp->references--;
+	log_debug("%s: %%%u %s, now %d", __func__, wp->id, from,
+	    wp->references);
+
+	if (wp->references == 0)
+		window_pane_free(wp);
+}
+
+void
 window_set_name(struct window *w, const char *new_name, int untrusted)
 {
-	char	*name;
+	char	*last, *name;
 
 	name = clean_name(new_name, untrusted);
 	if (name != NULL) {
+		last = xstrdup(w->name);
 		free(w->name);
 		w->name = name;
-		notify_window("window-renamed", w);
+		window_fire_renamed(w, last);
+		free(last);
 	}
 }
 
@@ -538,13 +635,13 @@ window_pane_update_focus(struct window_pane *wp)
 			log_debug("%s: %%%u focus out", __func__, wp->id);
 			if (wp->base.mode & MODE_FOCUSON)
 				bufferevent_write(wp->event, "\033[O", 3);
-			notify_pane("pane-focus-out", wp);
+			events_fire_pane("pane-focus-out", wp);
 			wp->flags &= ~PANE_FOCUSED;
 		} else if (focused && (~wp->flags & PANE_FOCUSED)) {
 			log_debug("%s: %%%u focus in", __func__, wp->id);
 			if (wp->base.mode & MODE_FOCUSON)
 				bufferevent_write(wp->event, "\033[I", 3);
-			notify_pane("pane-focus-in", wp);
+			events_fire_pane("pane-focus-in", wp);
 			wp->flags |= PANE_FOCUSED;
 		} else
 			log_debug("%s: %%%u focus unchanged", __func__, wp->id);
@@ -580,7 +677,7 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 	server_redraw_window(w);
 
 	if (notify)
-		notify_window("window-pane-changed", w);
+		window_fire_pane_changed(w, w->active, lastwp);
 	return (1);
 }
 
@@ -770,7 +867,8 @@ window_zoom(struct window_pane *wp)
 	w->saved_layout_root = w->layout_root;
 	layout_init(w, wp);
 	w->flags |= WINDOW_ZOOMED;
-	notify_window("window-layout-changed", w);
+	events_fire_window("window-zoomed", w);
+	events_fire_window("window-layout-changed", w);
 
 	redraw_invalidate_scene(w);
 	return (0);
@@ -796,8 +894,10 @@ window_unzoom(struct window *w, int notify)
 	}
 	layout_fix_panes(w, NULL);
 
-	if (notify)
-		notify_window("window-layout-changed", w);
+	if (notify) {
+		events_fire_window("window-unzoomed", w);
+		events_fire_window("window-layout-changed", w);
+	}
 
 	redraw_invalidate_scene(w);
 	return (0);
@@ -879,7 +979,7 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 		if (w->active != NULL) {
 			window_pane_stack_remove(&w->last_panes, w->active);
 			w->active->flags |= PANE_CHANGED;
-			notify_window("window-pane-changed", w);
+			events_fire_window("window-pane-changed", w);
 			window_update_focus(w);
 		}
 	}
@@ -1080,9 +1180,11 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	char			 host[HOST_NAME_MAX + 1];
 
 	wp = xcalloc(1, sizeof *wp);
+	wp->references = 1;
 	wp->window = w;
 	wp->options = options_create(w->options);
 	wp->flags = PANE_STYLECHANGED;
+	wp->cmd_status = -1;
 
 	wp->id = next_window_pane_id++;
 	RB_INSERT(window_pane_tree, &all_window_panes, wp);
@@ -1207,11 +1309,12 @@ window_pane_destroy(struct window_pane *wp)
 	window_pane_wait_finish(wp);
 	spawn_editor_finish(wp);
 
+	RB_REMOVE(window_pane_tree, &all_window_panes, wp);
+	wp->flags |= PANE_DESTROYED;
 	window_pane_clear_prompt(wp);
 
 	window_pane_free_modes(wp);
 	screen_write_clear_dirty(wp);
-	free(wp->searchstr);
 
 	if (wp->fd != -1) {
 #ifdef HAVE_UTEMPTER
@@ -1219,18 +1322,20 @@ window_pane_destroy(struct window_pane *wp)
 		kill(getpid(), SIGCHLD);
 #endif
 		bufferevent_free(wp->event);
+		wp->event = NULL;
 		close(wp->fd);
+		wp->fd = -1;
 	}
-	if (wp->ictx != NULL)
+	if (wp->ictx != NULL) {
 		input_free(wp->ictx);
-
-	screen_free(&wp->status_screen);
-
-	screen_free(&wp->base);
+		wp->ictx = NULL;
+	}
 
 	if (wp->pipe_fd != -1) {
 		bufferevent_free(wp->pipe_event);
+		wp->pipe_event = NULL;
 		close(wp->pipe_fd);
+		wp->pipe_fd = -1;
 	}
 
 	if (event_initialized(&wp->resize_timer))
@@ -1241,7 +1346,18 @@ window_pane_destroy(struct window_pane *wp)
 		event_del(&wp->sb_auto_timer);
 	window_pane_clear_resizes(wp, NULL);
 
-	RB_REMOVE(window_pane_tree, &all_window_panes, wp);
+	window_pane_remove_ref(wp, __func__);
+}
+
+static void
+window_pane_free(struct window_pane *wp)
+{
+	log_debug("pane %%%u freed (%d references)", wp->id, wp->references);
+
+	free(wp->searchstr);
+
+	screen_free(&wp->status_screen);
+	screen_free(&wp->base);
 
 	options_free(wp->options);
 	free((void *)wp->cwd);
@@ -1326,6 +1442,8 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
 	struct window_mode_entry	*wme;
 	struct window_pane_resize	*r;
+	struct event_payload		*ep;
+	struct cmd_find_state		 fs;
 
 	if (sx == wp->sx && sy == wp->sy)
 		return;
@@ -1348,6 +1466,17 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL && wme->mode->resize != NULL)
 		wme->mode->resize(wme, sx, sy);
+
+	ep = event_payload_create();
+	cmd_find_from_pane(&fs, wp, 0);
+	event_payload_set_target(ep, &fs);
+	event_payload_set_pane(ep, "pane", wp);
+	event_payload_set_window(ep, "window", wp->window);
+	event_payload_set_uint(ep, "width", sx);
+	event_payload_set_uint(ep, "height", sy);
+	event_payload_set_uint(ep, "old_width", r->osx);
+	event_payload_set_uint(ep, "old_height", r->osy);
+	events_fire("pane-resized", ep);
 }
 
 int
@@ -1357,9 +1486,13 @@ window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
 {
 	struct window_mode_entry	*wme;
 	struct window			*w = wp->window;
+	const char			*name = mode->name, *p = NULL;
 
-	if (!TAILQ_EMPTY(&wp->modes) && TAILQ_FIRST(&wp->modes)->mode == mode)
-		return (1);
+	if (!TAILQ_EMPTY(&wp->modes)) {
+		if (TAILQ_FIRST(&wp->modes)->mode == mode)
+			return (1);
+		p = TAILQ_FIRST(&wp->modes)->mode->name;
+	}
 
 	TAILQ_FOREACH(wme, &wp->modes, entry) {
 		if (wme->mode == mode)
@@ -1385,7 +1518,9 @@ window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
 
 	server_redraw_window_borders(wp->window);
 	server_status_window(wp->window);
-	notify_pane("pane-mode-changed", wp);
+
+	window_fire_pane_mode_changed("pane-mode-entered", wp, p, name, 1);
+	window_fire_pane_mode_changed("pane-mode-changed", wp, p, name, 1);
 
 	return (0);
 }
@@ -1396,11 +1531,13 @@ window_pane_reset_mode(struct window_pane *wp)
 	struct window_mode_entry	*wme, *next;
 	struct window			*w = wp->window;
 	int				 kill;
+	const char			*name, *p;
 
 	if (TAILQ_EMPTY(&wp->modes))
 		return;
 
 	wme = TAILQ_FIRST(&wp->modes);
+	p = wme->mode->name;
 	kill = wme->kill;
 	TAILQ_REMOVE(&wp->modes, wme, entry);
 	wme->mode->free(wme);
@@ -1417,13 +1554,16 @@ window_pane_reset_mode(struct window_pane *wp)
 		if (next->mode->resize != NULL)
 			next->mode->resize(next, wp->sx, wp->sy);
 	}
+	name = (next == NULL ? NULL : next->mode->name);
 
 	wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR|PANE_CHANGED);
 	layout_fix_panes(w, NULL);
 
 	server_redraw_window_borders(wp->window);
 	server_status_window(wp->window);
-	notify_pane("pane-mode-changed", wp);
+
+	window_fire_pane_mode_changed("pane-mode-exited", wp, p, name, 0);
+	window_fire_pane_mode_changed("pane-mode-changed", wp, p, name, 0);
 
 	if (kill)
 		server_kill_pane(wp);
@@ -1486,6 +1626,7 @@ window_pane_set_prompt(struct window_pane *wp, struct client *c,
 	wpp->inputcb = inputcb;
 	wpp->freecb = freecb;
 	wpp->data = data;
+	wpp->type = type;
 
 	memset(&pd, 0, sizeof pd);
 	prompt_set_options(&pd, s);
@@ -1503,19 +1644,28 @@ window_pane_set_prompt(struct window_pane *wp, struct client *c,
 	wp->flags |= PANE_REDRAW;
 
 	prompt_incremental_start(wp->prompt);
+	window_fire_pane_prompt("pane-prompt-opened", wp, type);
 }
 
 /* Close a pane prompt. */
 void
 window_pane_clear_prompt(struct window_pane *wp)
 {
-	struct prompt	*prompt = wp->prompt;
+	struct prompt			*prompt = wp->prompt;
+	struct window_pane_prompt	*wpp = wp->prompt_data;
+	enum prompt_type		 type = PROMPT_TYPE_INVALID;
 
-	if (prompt == NULL)
-		return;
-	wp->prompt = NULL;
-	prompt_free(prompt);
-	wp->flags |= PANE_REDRAW;
+	if (prompt != NULL) {
+		if (wpp != NULL)
+			type = wpp->type;
+
+		wp->prompt = NULL;
+		prompt_free(prompt);
+		wp->flags |= PANE_REDRAW;
+
+		if (~wp->flags & PANE_DESTROYED)
+			window_fire_pane_prompt("pane-prompt-closed", wp, type);
+	}
 }
 
 /* Does this pane have an open prompt? */
@@ -2386,7 +2536,6 @@ window_pane_get_theme(struct window_pane *wp)
 {
 	struct window		*w;
 	struct client		*loop;
-	enum client_theme	 theme;
 	int			 found_light = 0, found_dark = 0;
 
 	if (wp == NULL)
@@ -2394,14 +2543,9 @@ window_pane_get_theme(struct window_pane *wp)
 	w = wp->window;
 
 	/*
-	 * Derive theme from pane background color, if it's not the default
-	 * colour.
+	 * Prefer a theme reported by an attached client with mode 2031 or DSR
+	 * 996: the terminal knows its own light or dark mode.
 	 */
-	theme = colour_totheme(window_pane_get_bg(wp));
-	if (theme != THEME_UNKNOWN)
-		return (theme);
-
-	/* Try to find a client that has a theme. */
 	TAILQ_FOREACH(loop, &clients, entry) {
 		if (loop->flags & CLIENT_UNATTACHEDFLAGS)
 			continue;
@@ -2418,12 +2562,16 @@ window_pane_get_theme(struct window_pane *wp)
 			break;
 		}
 	}
-
 	if (found_dark && !found_light)
 		return (THEME_DARK);
 	if (found_light && !found_dark)
 		return (THEME_LIGHT);
-	return (THEME_UNKNOWN);
+
+	/*
+	 * Otherwise guess from the pane background colour, for terminals which
+	 * do not report a theme themselves.
+	 */
+	return (colour_totheme(window_pane_get_bg(wp)));
 }
 
 void

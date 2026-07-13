@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: cmd-resize-window.c,v 1.10 2023/06/30 13:19:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2018 Nicholas Marriott <nicholas.marriott@gmail.com>

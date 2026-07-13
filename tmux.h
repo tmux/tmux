@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: tmux.h,v 1.1396 2026/07/10 15:45:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -52,6 +52,9 @@ struct cmdq_state;
 struct cmds;
 struct control_state;
 struct environ;
+struct event_payload;
+struct event_payload_item;
+struct events_sink;
 struct format_job_tree;
 struct format_tree;
 struct hyperlinks_uri;
@@ -101,6 +104,9 @@ struct winlink;
 #endif
 #ifndef TMUX_LOCK_CMD
 #define TMUX_LOCK_CMD "lock -np"
+#endif
+#ifndef TMUX_MOUSE
+#define TMUX_MOUSE 0
 #endif
 
 /* Minimum and maximum layout cell size, NOT including border lines. */
@@ -1265,6 +1271,7 @@ struct visible_ranges {
 /* Child window structure. */
 struct window_pane {
 	u_int		 id;
+	int		 references;
 	u_int		 active_point;
 
 	struct window	*window;
@@ -1296,6 +1303,8 @@ struct window_pane {
 #define PANE_THEMECHANGED 0x2000
 #define PANE_UNSEENCHANGES 0x4000
 #define PANE_REDRAWSCROLLBAR 0x8000
+#define PANE_DESTROYED 0x10000
+#define PANE_CMDRUNNING 0x20000
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;
@@ -1317,6 +1326,12 @@ struct window_pane {
 	struct timeval	 dead_time;
 	struct cmdq_item *wait_item;	/* new-pane -W: waiting for pane exit */
 	struct spawn_editor_state *editor;
+
+	time_t		 last_output_time;
+	time_t		 last_prompt_time;
+	time_t		 cmd_start_time;
+	time_t		 cmd_end_time;
+	int		 cmd_status;
 
 	int		 fd;
 	struct bufferevent *event;
@@ -1503,32 +1518,31 @@ enum layout_type {
 	LAYOUT_WINDOWPANE
 };
 
+/* Layout cell sizes and position. */
+struct layout_geometry {
+	u_int	sx;
+	u_int	sy;
+	int	xoff;
+	int	yoff;
+};
+
 /* Layout cells queue. */
 TAILQ_HEAD(layout_cells, layout_cell);
 
 /* Layout cell. */
 struct layout_cell {
-	enum layout_type type;
+	enum layout_type	 type;
 
+	int			 flags;
 #define LAYOUT_CELL_FLOATING 0x1
-	int		 flags;
 
-	struct layout_cell *parent;
+	struct layout_cell	*parent;
 
-	u_int		 sx;
-	u_int		 sy;
+	struct layout_geometry	 g;
+	struct layout_geometry	 fg; /* saved floating pane */
 
-	int		 xoff;
-	int		 yoff;
-
-	u_int		 saved_sx;
-	u_int		 saved_sy;
-
-	int		 saved_xoff;
-	int		 saved_yoff;
-
-	struct window_pane *wp;
-	struct layout_cells cells;
+	struct window_pane	*wp;
+	struct layout_cells	 cells;
 
 	TAILQ_ENTRY(layout_cell) entry;
 };
@@ -2281,6 +2295,9 @@ struct client {
 	void			*overlay_data;
 	struct event		 overlay_timer;
 
+	u_int			 menu_last_px;
+	u_int			 menu_last_py;
+
 	struct client_files	 files;
 	u_int			 source_file_depth;
 
@@ -2291,14 +2308,44 @@ struct client {
 };
 TAILQ_HEAD(clients, client);
 
-/* Control mode subscription type. */
-enum control_sub_type {
-	CONTROL_SUB_SESSION,
-	CONTROL_SUB_PANE,
-	CONTROL_SUB_ALL_PANES,
-	CONTROL_SUB_WINDOW,
-	CONTROL_SUB_ALL_WINDOWS
+/* Monitor. */
+enum monitor_type {
+	MONITOR_SESSION,
+	MONITOR_PANE,
+	MONITOR_ALL_PANES,
+	MONITOR_WINDOW,
+	MONITOR_ALL_WINDOWS
 };
+#define MONITOR_NOTIFY_INITIAL 0x1
+#define MONITOR_NOTIFY_TRUE 0x2
+struct monitor_change {
+	const char		*name;
+	const char		*value;
+	const char		*last;
+
+	struct client		*c;
+	struct session		*s;
+	struct winlink		*wl;
+	struct window_pane	*wp;
+};
+typedef void (*monitor_cb)(struct monitor_change *, void *);
+
+/* Event payload type. */
+enum event_payload_type {
+	EVENT_PAYLOAD_STRING,
+	EVENT_PAYLOAD_TIME,
+	EVENT_PAYLOAD_INT,
+	EVENT_PAYLOAD_UINT,
+	EVENT_PAYLOAD_CLIENT,
+	EVENT_PAYLOAD_SESSION,
+	EVENT_PAYLOAD_WINDOW,
+	EVENT_PAYLOAD_PANE,
+	EVENT_PAYLOAD_POINTER
+};
+
+/* Event payload callbacks. */
+typedef void (*event_payload_free_cb)(void *);
+typedef void (*event_payload_print_cb)(void *, struct evbuffer *);
 
 /* Key binding and key table. */
 struct key_binding {
@@ -2609,23 +2656,78 @@ char		*format_grid_hyperlink(struct grid *, u_int, u_int,
 		     struct screen *);
 char		*format_grid_line(struct grid *, u_int);
 
-/* format-draw.c */
-void		 format_draw(struct screen_write_ctx *,
-		     const struct grid_cell *, u_int, const char *,
-		     struct style_ranges *, int);
-u_int		 format_width(const char *);
-char		*format_trim_left(const char *, u_int);
-char		*format_trim_right(const char *, u_int);
+/* events-payload.c */
+struct event_payload *event_payload_create(void);
+void	 event_payload_free(struct event_payload *);
+void printflike(2, 3) event_payload_log(struct event_payload *, const char *,
+	     ...);
+char	*event_payload_item_print(struct event_payload_item *);
+void	 event_payload_set_target(struct event_payload *,
+	     struct cmd_find_state *);
+int	 event_payload_get_target(struct event_payload *,
+	     struct cmd_find_state *);
+void printflike(3, 4) event_payload_set_string(struct event_payload *,
+	     const char *, const char *, ...);
+void	 event_payload_set_time(struct event_payload *, const char *, time_t);
+void	 event_payload_set_int(struct event_payload *, const char *, int);
+void	 event_payload_set_uint(struct event_payload *, const char *, u_int);
+void	 event_payload_set_client(struct event_payload *, const char *,
+	     struct client *);
+void	 event_payload_set_session(struct event_payload *, const char *,
+	     struct session *);
+void	 event_payload_set_window(struct event_payload *, const char *,
+	     struct window *);
+void	 event_payload_set_pane(struct event_payload *, const char *,
+	     struct window_pane *);
+void	 event_payload_set_pointer(struct event_payload *, const char *, void *,
+	     event_payload_free_cb, event_payload_print_cb);
+const char *event_payload_get_string(struct event_payload *, const char *);
+char	*event_payload_print(struct event_payload *, const char *);
+void	 event_payload_add_formats(struct event_payload *,
+	     struct format_tree *, const char *);
+struct event_payload_item *event_payload_first(struct event_payload *);
+struct event_payload_item *event_payload_next(struct event_payload_item *);
+const char *event_payload_item_name(struct event_payload_item *);
+enum event_payload_type event_payload_item_type(struct event_payload_item *);
+time_t	 event_payload_get_time(struct event_payload *, const char *);
+int	 event_payload_get_int(struct event_payload *, const char *, int *);
+int	 event_payload_get_uint(struct event_payload *, const char *, u_int *);
+struct client *event_payload_get_client(struct event_payload *, const char *);
+struct session *event_payload_get_session(struct event_payload *, const char *);
+struct window *event_payload_get_window(struct event_payload *, const char *);
+struct window_pane *event_payload_get_pane(struct event_payload *,
+	     const char *);
+void	*event_payload_get_pointer(struct event_payload *, const char *);
 
-/* notify.c */
-void	notify_hook(struct cmdq_item *, const char *);
-void	notify_client(const char *, struct client *);
-void	notify_session(const char *, struct session *);
-void	notify_winlink(const char *, struct winlink *);
-void	notify_session_window(const char *, struct session *, struct window *);
-void	notify_window(const char *, struct window *);
-void	notify_pane(const char *, struct window_pane *);
-void	notify_paste_buffer(const char *, int);
+/* events.c */
+typedef void (*events_cb)(const char *, struct event_payload *, void *);
+struct events_sink *events_add_sink(const char *, events_cb, void *);
+void	 events_remove_sink(struct events_sink *);
+void	 events_fire(const char *, struct event_payload *);
+void	 events_fire_client(const char *, struct client *);
+void	 events_fire_session(const char *, struct session *);
+void	 events_fire_window(const char *, struct window *);
+void	 events_fire_pane(const char *, struct window_pane *);
+void	 events_fire_winlink(const char *, struct winlink *);
+
+/* format-draw.c */
+void	 format_draw(struct screen_write_ctx *, const struct grid_cell *,
+	     u_int, const char *, struct style_ranges *, int);
+u_int	 format_width(const char *);
+char	*format_trim_left(const char *, u_int);
+char	*format_trim_right(const char *, u_int);
+
+/* hooks.c */
+void	 hooks_add_event(const char *);
+int	 hooks_valid_event_name(const char *);
+void	 hooks_build_events(void);
+void	 hooks_run(struct cmdq_item *, const char *);
+void	 hooks_monitor_add(struct cmdq_item *, struct options *,
+	    const char *, enum monitor_type, int, const char *,
+	    int, struct cmd_find_state *, struct session *);
+void	 hooks_monitor_remove(struct options *, const char *);
+void	 hooks_monitor_free(void *);
+char	*hooks_monitor_to_string(struct options_entry *);
 
 /* options.c */
 struct options	*options_create(struct options *);
@@ -2641,29 +2743,33 @@ struct options_entry *options_default(struct options *,
 char		*options_default_to_string(const struct options_table_entry *);
 const char	*options_name(struct options_entry *);
 struct options	*options_owner(struct options_entry *);
+void		*options_get_monitor_data(struct options_entry *);
+void		 options_set_monitor_data(struct options_entry *, void *);
 const struct options_table_entry *options_table_entry(struct options_entry *);
 struct options_entry *options_get_only(struct options *, const char *);
 struct options_entry *options_get(struct options *, const char *);
 void		 options_array_clear(struct options_entry *);
-union options_value *options_array_get(struct options_entry *, u_int);
-int		 options_array_set(struct options_entry *, u_int, const char *,
-		     int, char **);
+union options_value *options_array_get(struct options_entry *, const char *);
+union options_value * printflike(2, 3) options_array_getv(
+		     struct options_entry *, const char *, ...);
+int		 options_array_set(struct options_entry *, const char *,
+		     const char *, int, char **);
 int		 options_array_assign(struct options_entry *, const char *,
 		     char **);
 struct options_array_item *options_array_first(struct options_entry *);
 struct options_array_item *options_array_next(struct options_array_item *);
-u_int		 options_array_item_index(struct options_array_item *);
+const char	*options_array_item_key(struct options_array_item *);
 union options_value *options_array_item_value(struct options_array_item *);
 int		 options_is_array(struct options_entry *);
 int		 options_is_string(struct options_entry *);
-char		*options_to_string(struct options_entry *, int, int);
-char		*options_parse(const char *, int *);
-struct options_entry *options_parse_get(struct options *, const char *, int *,
-		     int);
+char		*options_to_string(struct options_entry *, const char *, int);
+char		*options_parse(const char *, char **);
+struct options_entry *options_parse_get(struct options *, const char *,
+		     char **, int);
 const struct options_table_entry *options_search(const char *);
-char		*options_match(const char *, int *, int *);
-struct options_entry *options_match_get(struct options *, const char *, int *,
-		     int, int *);
+char		*options_match(const char *, char **, int *);
+struct options_entry *options_match_get(struct options *, const char *,
+		     char **, int, int *);
 const char	*options_get_string(struct options *, const char *);
 long long	 options_get_number(struct options *, const char *);
 struct cmd_parse_tree *options_get_command(struct options *, const char *);
@@ -2686,7 +2792,7 @@ int		 options_from_string(struct options *,
 int	 	 options_find_choice(const struct options_table_entry *,
 		     const char *, char **);
 void		 options_push_changes(const char *);
-int		 options_remove_or_default(struct options_entry *, int,
+int		 options_remove_or_default(struct options_entry *, const char *,
 		     char **);
 
 /* options-table.c */
@@ -3453,7 +3559,7 @@ int	 redraw_get_status_border_cell_type(struct redraw_span **, u_int);
 
 /* screen.c */
 void	 screen_init(struct screen *, u_int, u_int, u_int);
-void	 screen_reinit(struct screen *);
+void	 screen_reinit(struct screen *, int);
 void	 screen_free(struct screen *);
 void	 screen_reset_tabs(struct screen *);
 void	 screen_reset_hyperlinks(struct screen *);
@@ -3581,6 +3687,8 @@ void		 window_pane_stack_remove(struct window_panes *,
 void		 window_set_name(struct window *, const char *, int);
 void		 window_add_ref(struct window *, const char *);
 void		 window_remove_ref(struct window *, const char *);
+void		 window_pane_add_ref(struct window_pane *, const char *);
+void		 window_pane_remove_ref(struct window_pane *, const char *);
 void		 winlink_clear_flags(struct winlink *);
 int		 winlink_shuffle_up(struct session *, struct winlink *, int);
 int		 window_pane_start_input(struct window_pane *,
@@ -3641,7 +3749,7 @@ void		 layout_destroy_cell(struct window *, struct layout_cell *,
 void		 layout_resize_layout(struct window *, struct layout_cell *,
 		     enum layout_type, int, int);
 struct layout_cell *layout_search_by_border(struct layout_cell *, u_int, u_int);
-void             layout_set_size(struct layout_cell *, u_int, u_int, int, int);
+void		 layout_set_size(struct layout_cell *, u_int, u_int, int, int);
 void		 layout_make_leaf(struct layout_cell *, struct window_pane *);
 void		 layout_make_node(struct layout_cell *, enum layout_type);
 void		 layout_fix_zindexes(struct window *, struct layout_cell *);
@@ -3675,7 +3783,7 @@ struct layout_cell *layout_replace_with_node(struct window *,
 struct layout_cell *layout_split_pane(struct window_pane *, enum layout_type,
 		     int, int);
 struct layout_cell *layout_floating_pane(struct window *, struct window_pane *,
-		     u_int, u_int, int, int);
+		     struct layout_geometry *);
 void		 layout_close_pane(struct window_pane *);
 int		 layout_spread_cell(struct window *, struct layout_cell *);
 void		 layout_spread_out(struct window_pane *);
@@ -3683,10 +3791,10 @@ struct layout_cell *layout_get_tiled_cell(struct cmdq_item *, struct args *,
 		     struct window *, struct window_pane *, int, char **);
 struct layout_cell *layout_get_floating_cell(struct cmdq_item *, struct args *,
 		     enum pane_lines, struct window *, struct window_pane *,
-		     char **cause);
+		     char **);
 int		 layout_floating_args_parse(struct cmdq_item *, struct args *,
-		     enum pane_lines, struct window *, u_int *, u_int *, int *,
-		     int *, char **);
+		     enum pane_lines, struct window *, struct layout_geometry *,
+		     char **);
 int		 layout_remove_tile(struct window *, struct layout_cell *);
 int		 layout_insert_tile(struct window *, struct layout_cell *);
 
@@ -3795,11 +3903,22 @@ void	 check_window_name(struct window *);
 char	*default_window_name(struct window *);
 char	*parse_window_name(const char *);
 
+/* monitor.c */
+struct monitor_set *monitor_create_client(struct client *, monitor_cb, void *);
+struct monitor_set *monitor_create_session(struct session *, monitor_cb, void *);
+void	monitor_destroy(struct monitor_set *);
+int	monitor_parse(const char *, char **, enum monitor_type *, int *,
+	    char **);
+void	monitor_add(struct monitor_set *, const char *, enum monitor_type, int,
+	    const char *, int);
+void	monitor_remove(struct monitor_set *, const char *);
+
 /* control.c */
 void	control_discard(struct client *);
 void	control_start(struct client *);
 void	control_ready(struct client *);
 void	control_stop(struct client *);
+void	control_wait_exit(int);
 void	control_set_pane_on(struct client *, struct window_pane *);
 void	control_set_pane_off(struct client *, struct window_pane *);
 void	control_continue_pane(struct client *, struct window_pane *);
@@ -3810,25 +3929,12 @@ void	control_reset_offsets(struct client *);
 void printflike(2, 3) control_write(struct client *, const char *, ...);
 void	control_write_output(struct client *, struct window_pane *);
 int	control_all_done(struct client *);
-void	control_add_sub(struct client *, const char *, enum control_sub_type,
-    	   int, const char *);
+void	control_add_sub(struct client *, const char *, enum monitor_type, int,
+	    const char *);
 void	control_remove_sub(struct client *, const char *);
 
 /* control-notify.c */
-void	control_notify_pane_mode_changed(int);
-void	control_notify_window_layout_changed(struct window *);
-void	control_notify_window_pane_changed(struct window *);
-void	control_notify_window_unlinked(struct session *, struct window *);
-void	control_notify_window_linked(struct session *, struct window *);
-void	control_notify_window_renamed(struct window *);
-void	control_notify_client_session_changed(struct client *);
-void	control_notify_client_detached(struct client *);
-void	control_notify_session_renamed(struct session *);
-void	control_notify_session_created(struct session *);
-void	control_notify_session_closed(struct session *);
-void	control_notify_session_window_changed(struct session *);
-void	control_notify_paste_buffer_changed(const char *);
-void	control_notify_paste_buffer_deleted(const char *);
+void	control_build_events(void);
 
 /* session.c */
 extern struct sessions sessions;

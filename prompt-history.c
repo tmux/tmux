@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: prompt-history.c,v 1.1 2026/06/25 11:39:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>

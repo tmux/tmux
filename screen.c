@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: screen.c,v 1.105 2026/06/29 18:17:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -99,12 +99,12 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->write_list = NULL;
 	s->hyperlinks = NULL;
 
-	screen_reinit(s);
+	screen_reinit(s, 1);
 }
 
 /* Reinitialise screen. */
 void
-screen_reinit(struct screen *s)
+screen_reinit(struct screen *s, int check)
 {
 	s->cx = 0;
 	s->cy = 0;
@@ -123,7 +123,8 @@ screen_reinit(struct screen *s)
 	s->saved_cy = UINT_MAX;
 
 	screen_reset_tabs(s);
-	grid_check_is_clear(s->grid);
+	if (check)
+		grid_check_is_clear(s->grid);
 	grid_clear_lines(s->grid, s->grid->hsize, s->grid->sy, 8);
 
 	screen_clear_selection(s);
@@ -151,6 +152,10 @@ screen_reset_hyperlinks(struct screen *s)
 void
 screen_free(struct screen *s)
 {
+#ifdef ENABLE_SIXEL
+	struct image	*im;
+#endif
+
 	free(s->sel);
 	free(s->tabs);
 	free(s->path);
@@ -168,6 +173,14 @@ screen_free(struct screen *s)
 	screen_free_titles(s);
 
 #ifdef ENABLE_SIXEL
+	/*
+	 * Images saved when entering the alternate screen stay linked in the
+	 * global list; move them back so they are freed and unlinked here, or
+	 * a later eviction would write through this freed screen.
+	 */
+	TAILQ_CONCAT(&s->images, &s->saved_images, entry);
+	TAILQ_FOREACH(im, &s->images, entry)
+		im->list = &s->images;
 	image_free_all(s);
 #endif
 }

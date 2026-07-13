@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: tty-keys.c,v 1.210 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -495,7 +495,6 @@ tty_keys_build(struct tty *tty)
 	u_int					 i, j;
 	const char				*s;
 	struct options_entry			*o;
-	struct options_array_item		*a;
 	union options_value			*ov;
 	char					 copy[16];
 	key_code				 key;
@@ -532,12 +531,10 @@ tty_keys_build(struct tty *tty)
 
 	o = options_get(global_options, "user-keys");
 	if (o != NULL) {
-		a = options_array_first(o);
-		while (a != NULL) {
-			i = options_array_item_index(a);
-			ov = options_array_item_value(a);
-			tty_keys_add(tty, ov->string, KEYC_USER + i);
-			a = options_array_next(a);
+		for (i = 0; i <= KEYC_NUSER; i++) {
+			ov = options_array_getv(o, "%u", i);
+			if (ov != NULL)
+				tty_keys_add(tty, ov->string, KEYC_USER + i);
 		}
 	}
 }
@@ -751,7 +748,7 @@ tty_keys_next(struct tty *tty)
 	const char		*buf;
 	size_t			 len, size;
 	cc_t			 bspace;
-	int			 delay, expired = 0, n;
+	int			 delay, expired = 0, n, bg = tty->bg;
 	key_code		 key, onlykey;
 	struct mouse_event	 m = { 0 };
 	struct key_event	*event;
@@ -811,11 +808,15 @@ tty_keys_next(struct tty *tty)
 	switch (tty_keys_colours(tty, buf, len, &size, &tty->fg, &tty->bg)) {
 	case 0:		/* yes */
 		key = KEYC_UNKNOWN;
+		if (tty->bg != bg)
+			server_client_update_theme_colours(c);
 		session_theme_changed(c->session);
 		goto complete_key;
 	case -1:	/* no, or not valid */
 		break;
 	case 1:		/* partial */
+		if (tty->bg != bg)
+			server_client_update_theme_colours(c);
 		session_theme_changed(c->session);
 		goto partial_key;
 	}
@@ -1007,10 +1008,10 @@ complete_key:
 	if (key == KEYC_FOCUS_OUT) {
 		c->flags &= ~CLIENT_FOCUSED;
 		window_update_focus(c->session->curw->window);
-		notify_client("client-focus-out", c);
+		events_fire_client("client-focus-out", c);
 	} else if (key == KEYC_FOCUS_IN) {
 		c->flags |= CLIENT_FOCUSED;
-		notify_client("client-focus-in", c);
+		events_fire_client("client-focus-in", c);
 		window_update_focus(c->session->curw->window);
 	}
 

@@ -13,7 +13,8 @@ AM_CPPFLAGS += @XOPEN_DEFINES@ \
 	-DTMUX_VERSION='"@VERSION@"' \
 	-DTMUX_CONF='"$(sysconfdir)/tmux.conf:~/.tmux.conf:$$XDG_CONFIG_HOME/tmux/tmux.conf:~/.config/tmux/tmux.conf"' \
 	-DTMUX_LOCK_CMD='"@DEFAULT_LOCK_CMD@"' \
-	-DTMUX_TERM='"@DEFAULT_TERM@"'
+	-DTMUX_TERM='"@DEFAULT_TERM@"' \
+	-DTMUX_MOUSE=1
 
 # Additional object files.
 LDADD = $(LIBOBJS)
@@ -42,7 +43,8 @@ AM_CPPFLAGS += -DDEBUG
 endif
 AM_CPPFLAGS += -iquote.
 if IS_ASAN
-AM_CFLAGS += -fsanitize=address
+AM_CPPFLAGS += -DASAN
+AM_CFLAGS += -fsanitize=address -fno-omit-frame-pointer
 AM_LDFLAGS += -fsanitize=address
 endif
 endif
@@ -160,13 +162,16 @@ dist_tmux_SOURCES = \
 	control-notify.c \
 	control.c \
 	environ.c \
+	events-payload.c \
+	events.c \
 	file.c \
-	format.c \
 	format-draw.c \
+	format.c \
 	fuzzy.c \
 	grid-reader.c \
 	grid-view.c \
 	grid.c \
+	hooks.c \
 	hyperlinks.c \
 	input-keys.c \
 	input.c \
@@ -179,15 +184,15 @@ dist_tmux_SOURCES = \
 	log.c \
 	menu.c \
 	mode-tree.c \
+	monitor.c \
 	names.c \
-	notify.c \
 	options-table.c \
 	options.c \
 	paste.c \
 	popup.c \
 	proc.c \
-	prompt.c \
 	prompt-history.c \
+	prompt.c \
 	regsub.c \
 	resize.c \
 	screen-redraw.c \
@@ -202,9 +207,9 @@ dist_tmux_SOURCES = \
 	spawn.c \
 	status.c \
 	style.c \
+	tmux-protocol.h \
 	tmux.c \
 	tmux.h \
-	tmux-protocol.h \
 	tty-acs.c \
 	tty-draw.c \
 	tty-features.c \

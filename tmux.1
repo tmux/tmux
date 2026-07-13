@@ -1,4 +1,4 @@
-.\" $OpenBSD$
+.\" $OpenBSD: tmux.1,v 1.1132 2026/07/10 15:20:06 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate$
+.Dd $Mdocdate: July 10 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -365,13 +365,13 @@ Toggle zoom state of the current pane.
 .It Tab
 Choose a new window and session by fuzzy matching.
 .It {
-Move floating pane to top-left corner.
+Swap the current pane with the previous pane.
 .It }
-Move floating pane to top-right corner.
-.It M-{
-Move floating pane to bottom-left corner.
-.It M-}
-Move floating pane to bottom-right corner.
+Swap the current pane with the next pane.
+.It g 1, 2, 3, 4
+.It g Up, Down, Left, Right
+Move floating pane to corners or edges.
+Meta resizes the pane as well.
 .It \[ti]
 Show previous messages from
 .Nm ,
@@ -2342,7 +2342,8 @@ but also exit copy mode if the cursor reaches the bottom.
 .It Xo
 .Ic scroll\-exit\-on
 .Xc
-Turn on exiting copy mode when scrolling to the end of the buffer.
+Turn on exiting copy mode when scrolling to the end of the buffer, unless a
+selection is present.
 .It Xo
 .Ic scroll\-exit\-off
 .Xc
@@ -2587,7 +2588,7 @@ The synopsis for the
 command is:
 .Bl -tag -width Ds
 .It Xo Ic copy\-mode
-.Op Fl deHMqSu
+.Op Fl dekHMqSu
 .Op Fl s Ar src\-pane
 .Op Fl t Ar target\-pane
 .Xc
@@ -2619,6 +2620,7 @@ instead of
 .Fl e
 specifies that scrolling to the bottom of the history (to the visible screen)
 should exit copy mode.
+This will not happen if a selection is present.
 While in copy mode, pressing a key other than those used for scrolling will
 disable this behaviour.
 This is intended to allow fast scrolling through a pane's history, for
@@ -2627,6 +2629,9 @@ example with:
 bind PageUp copy\-mode \-eu
 bind PageDown copy\-mode \-ed
 .Ed
+.Pp
+.Fl k
+kills the pane when the mode is exited.
 .El
 .Pp
 A number of preset arrangements of panes are available, these are called
@@ -3249,6 +3254,15 @@ is omitted and a marked pane is present (see
 .Ic select\-pane
 .Fl m ) ,
 the marked pane is used rather than the current pane.
+.Pp
+If
+.Ar src\-pane
+is floating and
+.Ar dst\-pane
+is either unspecified or equal to
+.Ar src\-pane ,
+.Ar src\-pane
+is returned to its previous position in the layout.
 .Tg killp
 .It Xo Ic kill\-pane
 .Op Fl a
@@ -3516,7 +3530,7 @@ the
 option.
 .Tg neww
 .It Xo Ic new\-window
-.Op Fl abdkPS
+.Op Fl abdEkPS
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
@@ -3540,6 +3554,9 @@ is the new window location.
 If
 .Fl d
 is given, the session does not make the new window the current window.
+If
+.Fl E
+is given, the initial pane is created without a running command.
 .Ar target\-window
 represents the window to be created; if the target already exists an error is
 shown, unless the
@@ -3839,7 +3856,7 @@ This command will automatically set
 to manual in the window options.
 .Tg respawnp
 .It Xo Ic respawn\-pane
-.Op Fl k
+.Op Fl \&Ek
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
 .Op Fl t Ar target\-pane
@@ -3856,6 +3873,9 @@ executed.
 The pane must be already inactive, unless
 .Fl k
 is given, in which case any existing command is killed.
+If
+.Fl E
+is given, the pane is left without a running command.
 .Fl c
 specifies a new working directory for the pane.
 The
@@ -3865,7 +3885,7 @@ option has the same meaning as for the
 command.
 .Tg respawnw
 .It Xo Ic respawn\-window
-.Op Fl k
+.Op Fl \&Ek
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
 .Op Fl t Ar target\-window
@@ -3882,6 +3902,9 @@ executed.
 The window must be already inactive, unless
 .Fl k
 is given, in which case any existing command is killed.
+If
+.Fl E
+is given, the window is left with one pane and without a running command.
 .Fl c
 specifies a new working directory for the window.
 The
@@ -4560,6 +4583,10 @@ If
 .Fl g
 is given, the global session or window option is set.
 .Pp
+Array options may be set by giving a key in square brackets after the option
+name, for example
+.Ql command-alias[zoom] .
+.Pp
 .Fl F
 expands formats in the option value.
 The
@@ -4671,7 +4698,7 @@ it is replaced with
 .Ar value .
 For example, after:
 .Pp
-.Dl set \-s command\-alias[100] zoom=\[aq]resize\-pane \-Z\[aq]
+.Dl set \-s command\-alias[zoom] zoom=\[aq]resize\-pane \-Z\[aq]
 .Pp
 Using:
 .Pp
@@ -6272,11 +6299,11 @@ or
 .Fl H .
 The following two commands are equivalent:
 .Bd -literal -offset indent.
-set\-hook \-g pane\-mode\-changed[42] \[aq]set \-g status\-left\-style bg=red\[aq]
-set\-option \-g pane\-mode\-changed[42] \[aq]set \-g status\-left\-style bg=red\[aq]
+set\-hook \-g pane\-mode\-changed[style] \[aq]display\-message changed\[aq]
+set\-option \-g pane\-mode\-changed[style] \[aq]display\-message changed\[aq]
 .Ed
 .Pp
-Setting a hook without specifying an array index clears the hook and sets the
+Setting a hook without specifying an array key clears the hook and sets the
 first member of the array.
 .Pp
 A command's after
@@ -6300,11 +6327,7 @@ For example, this could be used to write to a log file:
 set\-hook \-g command\-error "run\-shell \\"echo 'a tmux command failed' >>/tmp/log\\""
 .Ed
 .Pp
-All the notifications listed in the
-.Sx CONTROL MODE
-section are hooks (without any arguments), except
-.Ic %exit .
-The following additional hooks are available:
+The following hooks are available in addition to after hooks:
 .Bl -tag -width "XXXXXXXXXXXXXXXXXXXXXX"
 .It alert\-activity
 Run when a window has activity.
@@ -6323,11 +6346,11 @@ Run when a client becomes the latest active client of its session.
 .It client\-attached
 Run when a client is attached.
 .It client\-detached
-Run when a client is detached
+Run when a client is detached.
 .It client\-focus\-in
-Run when focus enters a client
+Run when focus enters a client.
 .It client\-focus\-out
-Run when focus exits a client
+Run when focus exits a client.
 .It client\-resized
 Run when a client is resized.
 .It client\-session\-changed
@@ -6338,6 +6361,21 @@ Run when a client switches to a light theme.
 Run when a client switches to a dark theme.
 .It command\-error
 Run when a command fails.
+.It marked\-pane\-changed
+Run when the marked pane is set or cleared.
+.It pane\-command\-finished
+Run when an OSC 133 command finishes in a pane.
+The event payload includes
+.Ql hook_command_start_time ,
+.Ql hook_command_end_time ,
+.Ql hook_command_duration
+and
+.Ql hook_command_status
+if present.
+.It pane\-command\-started
+Run when an OSC 133 command starts in a pane.
+.It pane\-created
+Run when a pane is created or respawned.
 .It pane\-died
 Run when the program running in a pane exits, but
 .Ic remain\-on\-exit
@@ -6352,20 +6390,40 @@ option is on.
 Run when the focus exits a pane, if the
 .Ic focus\-events
 option is on.
+.It pane\-mode\-changed
+Run when a pane changes mode.
+.It pane\-mode\-entered
+Run when a pane enters a mode.
+.It pane\-mode\-exited
+Run when a pane exits a mode.
+.It pane\-prompt\-closed
+Run when a prompt in a pane is closed.
+.It pane\-prompt\-opened
+Run when a prompt is opened in a pane.
+.It pane\-resized
+Run when a pane is resized.
 .It pane\-set\-clipboard
 Run when the terminal clipboard is set using the
 .Xr xterm 1
 escape sequence.
-.It session\-created
-Run when a new session created.
+.It pane\-shell\-prompt
+Run when an OSC 133 shell prompt starts in a pane.
+.It pane\-title\-changed
+Run when a pane title is changed.
 .It session\-closed
-Run when a session closed.
+Run when a session is closed.
+.It session\-created
+Run when a new session is created.
 .It session\-renamed
 Run when a session is renamed.
+.It session\-window\-changed
+Run when a session changes its active window.
 .It window\-layout\-changed
 Run when a window layout is changed.
 .It window\-linked
 Run when a window is linked into a session.
+.It window\-pane\-changed
+Run when a window changes its active pane.
 .It window\-renamed
 Run when a window is renamed.
 .It window\-resized
@@ -6373,6 +6431,10 @@ Run when a window is resized.
 This may be after the
 .Ar client\-resized
 hook is run.
+.It window\-unzoomed
+Run when a window is unzoomed.
+.It window\-zoomed
+Run when a window is zoomed.
 .It window\-unlinked
 Run when a window is unlinked from a session.
 .El
@@ -6380,12 +6442,15 @@ Run when a window is unlinked from a session.
 Hooks are managed with these commands:
 .Bl -tag -width Ds
 .It Xo Ic set\-hook
-.Op Fl agpRuw
+.Op Fl agpERTuw
+.Op Fl B Ar name:what:format
 .Op Fl t Ar target\-pane
 .Ar hook\-name
 .Op Ar command
 .Xc
 Without
+.Fl E
+or
 .Fl R ,
 sets (or with
 .Fl u
@@ -6397,18 +6462,66 @@ The flags are the same as for
 .Ic set\-option .
 .Pp
 With
+.Fl B ,
+.Ar name:what:format
+uses the same subscription syntax as
+.Ic refresh\-client
+.Fl B :
+.Ar name
+is the hook to run,
+.Ar what
+selects the session, pane, all panes, window, or all windows, and
+.Ar format
+is expanded once a second.
+With
+.Fl T ,
+the hook is run only when
+.Ar format
+is true.
+For monitor hooks,
+.Ar name
+must begin with
+.Ql @ .
+If
+.Ar command
+is given, it is stored as the
+.Ql @
+hook command; otherwise only the monitor is created or replaced.
+Note that monitor hooks are not inherited, the hook is only run from
+the scope where it is created.
+With
+.Fl u ,
+the subscription named by
+.Fl B
+is removed.
+.Pp
+With
+.Fl E ,
+fire the user event named
+.Ar hook\-name .
+.Ar hook\-name
+must begin with
+.Ql @ .
+.Pp
+With
 .Fl R ,
 run
 .Ar hook\-name
 immediately.
 .It Xo Ic show\-hooks
-.Op Fl gpw
+.Op Fl Bgpw
 .Op Fl t Ar target\-pane
 .Op Ar hook
 .Xc
 Shows hooks.
 The flags are the same as for
 .Ic show\-options .
+.Pp
+With
+.Fl B ,
+shows the subscriptions installed with
+.Em set\-hook
+.Fl B .
 .El
 .Sh MOUSE SUPPORT
 If the
@@ -6756,10 +6869,14 @@ Adding
 will use shorter but less accurate time format for times in the past.
 .Ql r
 .Pq Ql t/r
-will show the time relative to the current time, for example
-.Ql \1m
+will give the time relative to the current time, for example
+.Ql \&1m
 or
 .Ql 2m23s .
+.Ql d
+.Pq Ql t/d
+will give the difference from the time to current time in seconds (future
+times are negative).
 A custom format may be given using an
 .Ql f
 suffix (note that
@@ -6815,7 +6932,9 @@ or with
 .Ql a
 escape
 .Nm
-command arguments.
+command arguments; with
+.Ql s
+use single quotes.
 .Ql E:\&
 will expand the format twice, for example
 .Ql #{E:status\-left}
@@ -6849,7 +6968,13 @@ to sort in reverse order.
 .Ql /r\&
 can also be used with
 .Ql P:\&
-to reverse the sort order by pane index.
+to reverse the sort order; by default panes are sorted by creation order.
+.Ql P:\&
+can also take
+.Ql /i\&
+to sort by pane index or
+.Ql /z\&
+to sort by z-index.
 For example,
 .Ql S/nr:\&
 to sort sessions by name in reverse order.
@@ -6874,6 +6999,33 @@ prefix, for example a user option
 .Ql @color
 on the next window is available as
 .Ql next_@color .
+.Pp
+.Ql O:\&
+will loop over each option;
+array options are looped once for each array item.
+.Ql O:\&
+may be given a flag to choose the options table:
+.Bl -column "Flag" "Table" -offset indent
+.It Sy "Flag" Ta Sy "Table"
+.It Li "s" Ta "session"
+.It Li "w" Ta "window"
+.It Li "p" Ta "pane"
+.It Li "v" Ta "server"
+.El
+.Pp
+.Ql g
+chooses global options.
+The default is
+.Ql s .
+.Ql V:\&
+will loop over each environment variable.
+Its flags are:
+.Bl -column "Flag" "Environment" -offset indent
+.It Sy "Flag" Ta Sy "Environment"
+.It Li "s" Ta "session environment"
+.It Li "g" Ta "global environment"
+.It Li "c" Ta "client environment"
+.El
 .Pp
 .Ql N:\&
 checks if a window (without any suffix or with the
@@ -7011,10 +7163,13 @@ The following variables are available, where appropriate:
 .It Li "history_size" Ta "" Ta "Size of history in lines"
 .It Li "hook" Ta "" Ta "Name of running hook, if any"
 .It Li "hook_client" Ta "" Ta "Name of client where hook was run, if any"
+.It Li "hook_last" Ta "" Ta "Previous value for a monitor hook"
 .It Li "hook_pane" Ta "" Ta "ID of pane where hook was run, if any"
 .It Li "hook_session" Ta "" Ta "ID of session where hook was run, if any"
 .It Li "hook_session_name" Ta "" Ta "Name of session where hook was run, if any"
+.It Li "hook_value" Ta "" Ta "New value for a monitor hook"
 .It Li "hook_window" Ta "" Ta "ID of window where hook was run, if any"
+.It Li "hook_window_index" Ta "" Ta "Index of window where hook was run, if any"
 .It Li "hook_window_name" Ta "" Ta "Name of window where hook was run, if any"
 .It Li "host" Ta "#H" Ta "Hostname of local host"
 .It Li "host_short" Ta "#h" Ta "Hostname of local host (no domain name)"
@@ -7058,6 +7213,11 @@ The following variables are available, where appropriate:
 .It Li "pane_at_top" Ta "" Ta "1 if pane is at the top of window"
 .It Li "pane_bg" Ta "" Ta "Pane background colour"
 .It Li "pane_bottom" Ta "" Ta "Bottom of pane"
+.It Li "pane_command_duration" Ta "" Ta "Current or most recent OSC 133 command duration in seconds"
+.It Li "pane_command_end_time" Ta "" Ta "Time most recent OSC 133 command ended"
+.It Li "pane_command_running" Ta "" Ta "1 if an OSC 133 command is running"
+.It Li "pane_command_start_time" Ta "" Ta "Time current or most recent OSC 133 command started"
+.It Li "pane_command_status" Ta "" Ta "Exit status from most recent OSC 133 command"
 .It Li "pane_current_command" Ta "" Ta "Current command if available"
 .It Li "pane_current_path" Ta "" Ta "Current path if available"
 .It Li "pane_dead" Ta "" Ta "1 if pane is dead"
@@ -7075,6 +7235,8 @@ The following variables are available, where appropriate:
 .It Li "pane_input_off" Ta "" Ta "1 if input to pane is disabled"
 .It Li "pane_key_mode" Ta "" Ta "Extended key reporting mode in this pane"
 .It Li "pane_last" Ta "" Ta "1 if last pane"
+.It Li "pane_last_output_time" Ta "" Ta "Time pane last produced output"
+.It Li "pane_last_prompt_time" Ta "" Ta "Time most recent OSC 133 prompt began"
 .It Li "pane_left" Ta "" Ta "Left of pane"
 .It Li "pane_marked" Ta "" Ta "1 if this is the marked pane"
 .It Li "pane_marked_set" Ta "" Ta "1 if a marked pane is set"
@@ -7088,6 +7250,7 @@ The following variables are available, where appropriate:
 .It Li "pane_right" Ta "" Ta "Right of pane"
 .It Li "pane_search_string" Ta "" Ta "Last search string in copy mode"
 .It Li "pane_start_command" Ta "" Ta "Command pane started with"
+.It Li "pane_start_command_list" Ta "" Ta "Command pane started with, quoted"
 .It Li "pane_start_path" Ta "" Ta "Path pane started with"
 .It Li "pane_synchronized" Ta "" Ta "1 if pane is synchronized"
 .It Li "pane_tabs" Ta "" Ta "Pane tab positions"
@@ -7173,6 +7336,8 @@ The following variables are available, where appropriate:
 .It Li "window_linked" Ta "" Ta "1 if window is linked across sessions"
 .It Li "window_linked_sessions" Ta "" Ta "Number of sessions this window is linked to"
 .It Li "window_linked_sessions_list" Ta "" Ta "List of sessions this window is linked to"
+.It Li "window_manual_height" Ta "" Ta "Manual height of window, if set"
+.It Li "window_manual_width" Ta "" Ta "Manual width of window, if set"
 .It Li "window_marked_flag" Ta "" Ta "1 if window contains the marked pane"
 .It Li "window_name" Ta "#W" Ta "Name of window"
 .It Li "window_offset_x" Ta "" Ta "X offset into window if larger than client"
@@ -7724,10 +7889,7 @@ This affects what completions are offered when
 is pressed.
 Available types are:
 .Ql command ,
-.Ql search ,
-.Ql target
-and
-.Ql window\-target .
+.Ql search .
 .Pp
 The following keys have a special meaning in the command prompt, depending
 on the value of the
@@ -7862,6 +8024,7 @@ Both may be a row or column number, or one of the following special values:
 .It Li "R" Ta Fl x Ta "The right side of the terminal"
 .It Li "P" Ta "Both" Ta "The bottom left of the pane"
 .It Li "M" Ta "Both" Ta "The mouse position"
+.It Li "L" Ta "Both" Ta "The position of the last menu"
 .It Li "W" Ta "Both" Ta "The window position on the status line"
 .It Li "S" Ta Fl y Ta "The line above or below the status line"
 .El
@@ -7872,6 +8035,8 @@ Or a format, which is expanded including the following additional variables:
 .It Li "popup_centre_x" Ta "Centered in the client"
 .It Li "popup_centre_y" Ta "Centered in the client"
 .It Li "popup_height" Ta "Height of menu or popup"
+.It Li "popup_last_x" Ta "Left of the last menu"
+.It Li "popup_last_y" Ta "Bottom of the last menu"
 .It Li "popup_mouse_bottom" Ta "Bottom of at the mouse"
 .It Li "popup_mouse_centre_x" Ta "Horizontal centre at the mouse"
 .It Li "popup_mouse_centre_y" Ta "Vertical centre at the mouse"
@@ -8456,8 +8621,10 @@ or the current pane if omitted) after the command finishes.
 If the command fails, the exit status is also displayed.
 .Tg wait
 .It Xo Ic wait\-for
-.Op Fl L | S | U
-.Ar channel
+.Op Fl ELSUlv
+.Op Fl F Ar format
+.Op Fl w Ar waiter
+.Ar name
 .Xc
 .D1 Pq alias: Ic wait
 When used without options, prevents the client from exiting until woken using
@@ -8470,6 +8637,41 @@ is used, the channel is locked and any clients that try to lock the same
 channel are made to wait until the channel is unlocked with
 .Ic wait\-for
 .Fl U .
+.Pp
+With
+.Fl E ,
+.Nm
+waits for the next event with
+.Ar name .
+Events include hook and notification names, and user
+.Ql @
+events generated by
+.Ic set-hook
+.Fl E
+or
+.Ic set-hook
+.Fl B .
+If
+.Fl F
+is given,
+.Ar format
+must also be true.
+If
+.Fl v
+is given, event payload keys are printed (whether or not
+.Ar format
+is true).
+.Pp
+.Fl l
+list the waiters for
+.Ar name
+and
+.Fl w
+wakes
+.Ar waiter
+on
+.Ar name
+immediately.
 .El
 .Sh EXIT MESSAGES
 When a

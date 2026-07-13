@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: status.c,v 1.273 2026/07/06 14:29:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -274,7 +274,7 @@ status_redraw(struct client *c)
 		for (i = 0; i < lines; i++) {
 			screen_write_cursormove(&ctx, 0, i, 0);
 
-			ov = options_array_get(o, i);
+			ov = options_array_getv(o, "%u", i);
 			if (ov == NULL) {
 				for (n = 0; n < width; n++)
 					screen_write_putc(&ctx, &gc, ' ');
@@ -488,7 +488,7 @@ status_message_redraw(struct client *c)
 	status_message_area(c, &ax, &aw);
 
 	ft = format_create_defaults(NULL, c, NULL, NULL, NULL);
-	memcpy(&gc, &grid_default_cell, sizeof gc);
+	style_apply(&gc, s->options, "message-style", ft);
 
 	/*
 	 * Set #{message} in the format tree. If styles should be ignored in

@@ -3,12 +3,14 @@
 # Tests of array options in the options engine (options_array_* in options.c
 # and the array handling in cmd-set-option.c / cmd-show-options.c).
 #
-# Array options are indexed by integer.  This exercises: setting a whole array
-# from a separator-delimited string; per-index set with option[N]; -a append
-# (which lands at the next free index); show ordering by ascending index and
-# preservation of gaps; per-index unset with -u; show -v of a single index and
-# of a missing index; and per-option separators (user-keys splits only on
-# comma, update-environment on space or comma).
+# Array options are keyed by string, with numeric-looking keys kept compatible
+# with the old numeric forms.  This exercises: setting a whole array from a
+# separator-delimited string; per-key set with option[key]; -a append (which
+# lands at the next free numeric key); show ordering by numeric keys first in
+# ascending order followed by string keys in strcmp order; preservation of gaps;
+# per-key unset with -u; show -v of a single key and of a missing key; and
+# per-option separators (user-keys splits only on comma, update-environment on
+# space or comma).
 #
 # update-environment (session), status-format (session), user-keys (server)
 # and command-alias (server) are used as representative array options.
@@ -20,7 +22,7 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -Ltest -f/dev/null"
+TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 $TMUX kill-server 2>/dev/null
 
 check_value()
@@ -32,6 +34,21 @@ check_value()
 		echo "But got:  '$out'"
 		exit 1
 	fi
+}
+
+check_wait_value()
+{
+	i=0
+	while [ "$i" -lt 30 ]; do
+		out=$($TMUX show $1 2>&1)
+		[ "$out" = "$2" ] && return 0
+		i=$((i + 1))
+		sleep 0.2
+	done
+	echo "show $1 failed."
+	echo "Expected: '$2'"
+	echo "But got:  '$out'"
+	exit 1
 }
 
 # check_array $args $expected
@@ -87,41 +104,59 @@ $TMUX new-session -d -s main -x 80 -y 24 || exit 1
 # --- whole-array assignment splits on the separator -----------------------
 #
 # update-environment has the default " ," separator, so a single string value
-# is split into consecutive indices starting at 0.
+# is split into consecutive numeric keys starting at 0.
 check_ok set -g update-environment "AAA BBB,CCC"
 check_array "-g update-environment" "update-environment[0] AAA
 update-environment[1] BBB
 update-environment[2] CCC"
 
-# --- -a append goes to the next free index --------------------------------
+# --- -a append goes to the next free numeric key --------------------------
 check_ok set -ga update-environment "DDD"
 check_array "-g update-environment" "update-environment[0] AAA
 update-environment[1] BBB
 update-environment[2] CCC
 update-environment[3] DDD"
 
-# --- per-index unset leaves a gap; show preserves order and gaps ----------
+# --- per-key unset leaves a gap; show preserves order and gaps ------------
 check_ok set -gu update-environment[1]
 check_array "-g update-environment" "update-environment[0] AAA
 update-environment[2] CCC
 update-environment[3] DDD"
-# show -v of an existing index returns its value; a missing index is empty.
+# show -v of an existing key returns its value; a missing key is empty.
 check_value "-gv update-environment[0]" "AAA"
 check_value "-gv update-environment[1]" ""
+check_ok set -g update-environment[notify] "EEE"
+check_ok set -ga update-environment "FFF"
+check_array "-g update-environment" "update-environment[0] AAA
+update-environment[1] FFF
+update-environment[2] CCC
+update-environment[3] DDD
+update-environment[notify] EEE"
 
-# --- explicit indexed set, including out-of-order and gaps ----------------
+# --- explicit keyed set, including out-of-order and gaps ------------------
 #
 # status-format is a session array; assigning an empty string first clears its
-# multi-index default, then set specific indices out of order and confirm show
-# sorts by ascending index and keeps the gap at [1].
+# multi-index default, then set specific keys out of order and confirm show
+# sorts by ascending numeric key and keeps the gap at [1].
 check_ok set -g status-format ""
 check_array "-g status-format" "status-format"
 check_ok set -g status-format[5] "five"
 check_ok set -g status-format[0] "zero"
 check_ok set -g status-format[2] "two"
+check_ok set -g status-format[01] "one"
+check_ok set -g status-format[zoom] "zoom"
+check_ok set -g status-format[foo-bar] "foo-bar"
+check_ok set -g status-format[xterm-256color] "xterm"
 check_array "-g status-format" "status-format[0] zero
+status-format[1] one
 status-format[2] two
-status-format[5] five"
+status-format[5] five
+status-format[foo-bar] foo-bar
+status-format[xterm-256color] xterm
+status-format[zoom] zoom"
+check_value "-gv status-format[01]" "one"
+check_ok set -gu status-format[zoom]
+check_value "-gv status-format[zoom]" ""
 
 # --- comma-only separator (user-keys) -------------------------------------
 #
@@ -133,11 +168,48 @@ user-keys[1] "Two Three"'
 
 # --- command-type array (a hook) ------------------------------------------
 #
-# Hooks are command arrays: an indexed value is parsed as a command when set
+# Hooks are command arrays: a keyed value is parsed as a command when set
 # and re-printed from the parsed command list; a syntax error is reported.
 check_ok set -g alert-bell[0] "display-message hi"
 check_value "-gv alert-bell[0]" "display-message hi"
 check_fail "syntax error" set -g alert-bell[0] "if -x {"
+check_ok set-hook -g window-renamed[notify] "display-message renamed"
+check_value "-gv window-renamed[notify]" "display-message renamed"
+check_ok set-hook -gu window-renamed[notify]
+check_value "-gv window-renamed[notify]" ""
+check_ok set -g @hook_first 0
+check_ok set -g @hook_second 0
+check_ok set-hook -g window-renamed[first] "set -g @hook_first 1"
+check_ok set-hook -g window-renamed[second] "set -g @hook_second 1"
+shown=$($TMUX show-hooks -g window-renamed) || {
+	echo "show-hooks -g window-renamed failed"
+	exit 1
+}
+echo "$shown" | grep -q '^window-renamed\[first\]' || {
+	echo "missing first hook key: $shown"
+	exit 1
+}
+echo "$shown" | grep -q '^window-renamed\[second\]' || {
+	echo "missing second hook key: $shown"
+	exit 1
+}
+check_ok rename-window -t main:0 array-hooks
+check_wait_value "-gqv @hook_first" "1"
+check_wait_value "-gqv @hook_second" "1"
+check_ok set-hook -gu window-renamed[first]
+shown=$($TMUX show-hooks -g window-renamed) || {
+	echo "show-hooks -g window-renamed after unset failed"
+	exit 1
+}
+echo "$shown" | grep -q '^window-renamed\[first\]' && {
+	echo "first hook key was not unset: $shown"
+	exit 1
+}
+echo "$shown" | grep -q '^window-renamed\[second\]' || {
+	echo "second hook key did not remain: $shown"
+	exit 1
+}
+check_ok set-hook -gu window-renamed[second]
 
 # --- colour-type array ----------------------------------------------------
 #
@@ -146,11 +218,11 @@ check_ok set -w pane-colours[0] red
 check_value "-wv pane-colours[0]" "red"
 check_fail "bad colour: xxxyyy" set -w pane-colours[1] xxxyyy
 
-# --- -o refuses to overwrite an already-set index -------------------------
+# --- -o refuses to overwrite an already-set key ---------------------------
 check_ok set -g command-alias[9] "x=list-keys"
 check_fail "already set: command-alias[9]" set -go command-alias[9] "y=list-keys"
 
-# --- non-array option rejects index syntax --------------------------------
+# --- non-array option rejects key syntax ----------------------------------
 #
 # status-left is a plain string; indexing it is an error.
 check_fail "not an array: status-left[0]" set -g status-left[0] "x"

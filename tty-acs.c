@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: tty-acs.c,v 1.13 2023/08/08 07:19:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2010 Nicholas Marriott <nicholas.marriott@gmail.com>

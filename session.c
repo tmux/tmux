@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: session.c,v 1.105 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -206,7 +206,7 @@ session_destroy(struct session *s, int notify, const char *from)
 
 	RB_REMOVE(sessions, &sessions, s);
 	if (notify)
-		notify_session("session-closed", s);
+		events_fire_session("session-closed", s);
 
 	free(s->tio);
 
@@ -219,7 +219,7 @@ session_destroy(struct session *s, int notify, const char *from)
 		winlink_stack_remove(&s->lastw, TAILQ_FIRST(&s->lastw));
 	while (!RB_EMPTY(&s->windows)) {
 		wl = RB_ROOT(&s->windows);
-		notify_session_window("window-unlinked", s, wl->window);
+		events_fire_winlink("window-unlinked", wl);
 		winlink_remove(&s->windows, wl);
 	}
 
@@ -330,7 +330,7 @@ session_attach(struct session *s, struct window *w, int idx, char **cause)
 	}
 	wl->session = s;
 	winlink_set_window(wl, w);
-	notify_session_window("window-linked", s, w);
+	events_fire_winlink("window-linked", wl);
 
 	session_group_synchronize_from(s);
 	return (wl);
@@ -346,7 +346,7 @@ session_detach(struct session *s, struct winlink *wl)
 		session_next(s, 0);
 
 	wl->flags &= ~WINLINK_ALERTFLAGS;
-	notify_session_window("window-unlinked", s, wl->window);
+	events_fire_winlink("window-unlinked", wl);
 	winlink_stack_remove(&s->lastw, wl);
 	winlink_remove(&s->windows, wl);
 
@@ -493,7 +493,7 @@ session_set_current(struct session *s, struct winlink *wl)
 	winlink_clear_flags(wl);
 	window_update_activity(wl->window);
 	tty_update_window_offset(wl->window);
-	notify_session("session-window-changed", s);
+	events_fire_session("session-window-changed", s);
 	return (0);
 }
 
@@ -657,7 +657,7 @@ session_group_synchronize1(struct session *target, struct session *s)
 		wl2 = winlink_add(&s->windows, wl->idx);
 		wl2->session = s;
 		winlink_set_window(wl2, wl->window);
-		notify_session_window("window-linked", s, wl2->window);
+		events_fire_winlink("window-linked", wl2);
 		wl2->flags |= wl->flags & WINLINK_ALERTFLAGS;
 	}
 
@@ -683,7 +683,7 @@ session_group_synchronize1(struct session *target, struct session *s)
 		wl = RB_ROOT(&old_windows);
 		wl2 = winlink_find_by_window_id(&s->windows, wl->window->id);
 		if (wl2 == NULL)
-			notify_session_window("window-unlinked", s, wl->window);
+			events_fire_winlink("window-unlinked", wl);
 		winlink_remove(&old_windows, wl);
 	}
 }

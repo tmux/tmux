@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: cmd-select-layout.c,v 1.43 2026/07/10 13:38:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -139,7 +139,7 @@ changed:
 	free(oldlayout);
 	recalculate_sizes();
 	server_redraw_window(w);
-	notify_window("window-layout-changed", w);
+	events_fire_window("window-layout-changed", w);
 	return (CMD_RETURN_NORMAL);
 
 error:

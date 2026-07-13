@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: tmux-protocol.h,v 1.2 2023/01/06 07:09:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2021 Nicholas Marriott <nicholas.marriott@gmail.com>

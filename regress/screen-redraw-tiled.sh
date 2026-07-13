@@ -24,8 +24,8 @@ LC_ALL=C.UTF-8
 export TERM LC_ALL
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -Ltest -f/dev/null"
-TMUX2="$TEST_TMUX -Ltest2 -f/dev/null"
+TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
+TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
 RESULTS=screen-redraw-results
 
 TMP=$(mktemp)
@@ -49,16 +49,17 @@ compare() {
 	fi
 }
 
+C="sh -c 'exec sleep 1000'"
+
 # Fresh inner window of fixed size, with one command running.
 new_scene() {
 	$TMUX2 selectw -t:0 || exit 1
 	$TMUX2 kill-window -a 2>/dev/null
-	$TMUX2 neww -d "sh -c 'exec sleep 100'" || exit 1
+	$TMUX2 neww -d "$C" || exit 1
 	$TMUX2 selectw -t:\$ || exit 1
 	$TMUX2 resizew -x40 -y14 || exit 1
 }
 
-C="sh -c 'exec sleep 100'"
 
 # Layouts. Each produces one kind of junction. Splits at fixed window size are
 # deterministic.

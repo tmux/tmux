@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: options-table.c,v 1.233 2026/07/10 15:20:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -955,7 +955,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "mouse",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 0,
+	  .default_num = TMUX_MOUSE,
 	  .text = "Whether the mouse is recognised and mouse key bindings are "
 		  "executed. "
 		  "Applications inside panes can use the mouse even when 'off'."
@@ -1538,6 +1538,9 @@ const struct options_table_entry options_table[] = {
 			 "\"#{pane_title}\""
 			 "#{?#{mouse},"
 				"#[align=right]"
+				"#[range=control|7]["
+					"#{?#{pane_floating_flag},t,f}"
+				"]#[norange]"
 				"#[range=control|8]["
 					"#{?#{window_zoomed_flag},u,z}"
 				"]#[norange]"
@@ -1929,12 +1932,22 @@ const struct options_table_entry options_table[] = {
 	OPTIONS_TABLE_HOOK("client-light-theme", ""),
 	OPTIONS_TABLE_HOOK("client-dark-theme", ""),
 	OPTIONS_TABLE_HOOK("command-error", ""),
+	OPTIONS_TABLE_HOOK("marked-pane-changed", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-command-finished", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-command-started", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-created", ""),
 	OPTIONS_TABLE_PANE_HOOK("pane-died", ""),
 	OPTIONS_TABLE_PANE_HOOK("pane-exited", ""),
 	OPTIONS_TABLE_PANE_HOOK("pane-focus-in", ""),
 	OPTIONS_TABLE_PANE_HOOK("pane-focus-out", ""),
 	OPTIONS_TABLE_PANE_HOOK("pane-mode-changed", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-mode-entered", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-mode-exited", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-prompt-closed", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-prompt-opened", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-resized", ""),
 	OPTIONS_TABLE_PANE_HOOK("pane-set-clipboard", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-shell-prompt", ""),
 	OPTIONS_TABLE_PANE_HOOK("pane-title-changed", ""),
 	OPTIONS_TABLE_HOOK("session-closed", ""),
 	OPTIONS_TABLE_HOOK("session-created", ""),
@@ -1945,6 +1958,8 @@ const struct options_table_entry options_table[] = {
 	OPTIONS_TABLE_WINDOW_HOOK("window-pane-changed", ""),
 	OPTIONS_TABLE_WINDOW_HOOK("window-renamed", ""),
 	OPTIONS_TABLE_WINDOW_HOOK("window-resized", ""),
+	OPTIONS_TABLE_WINDOW_HOOK("window-unzoomed", ""),
+	OPTIONS_TABLE_WINDOW_HOOK("window-zoomed", ""),
 	OPTIONS_TABLE_HOOK("window-unlinked", ""),
 
 	{ .name = NULL }
