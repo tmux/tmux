@@ -99,13 +99,12 @@ jobs:
           cd "$CUTOVER_DIR"
           git switch master
 
-          base_ref=refs/openbsd/import-base
-          if ! git rev-parse --verify -q "$base_ref" >/dev/null; then
-            echo "$base_ref is missing; initialise it before running updates." >&2
+          if ! git rev-parse --verify -q origin/openbsd-git >/dev/null; then
+            echo "origin/openbsd-git is missing; publish the openbsd-git branch before running updates." >&2
             exit 1
           fi
 
-          old_base=$(git rev-parse "$base_ref")
+          old_base=$(git rev-parse origin/openbsd-git)
           new_base=$(git rev-parse openbsd-git)
 
           if [ "$old_base" = "$new_base" ]; then
@@ -115,12 +114,11 @@ jobs:
           fi
 
           if ! git merge-base --is-ancestor "$old_base" "$new_base"; then
-            echo "openbsd-git is not a descendant of $base_ref; aborting." >&2
+            echo "new openbsd-git is not a descendant of origin/openbsd-git; aborting." >&2
             exit 1
           fi
 
           git cherry-pick "$old_base..$new_base"
-          git update-ref "$base_ref" "$new_base"
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Push cutover repository
