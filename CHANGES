@@ -1,5 +1,9 @@
 CHANGES FROM 3.7b TO 3.7c
 
+* Fix scrollbar initial state so they appear on new windows (issue 5339).
+
+* Check time periodically in loops rather than every one (issue 5367).
+
 * Use message-style again as default for message-format.
 
 * Unzoom before creating floating panes to avoid a crash.
