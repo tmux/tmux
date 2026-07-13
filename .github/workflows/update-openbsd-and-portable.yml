@@ -3,7 +3,7 @@ name: Update OpenBSD tmux and portable
 on:
   workflow_dispatch:
   schedule:
-    - cron: "17 3 * * *"
+    - cron: "*/15 * * * *"
 
 permissions:
   contents: write
