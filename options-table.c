@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.235 2026/07/13 15:03:03 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.236 2026/07/13 19:32:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -240,32 +240,39 @@ static const char *options_table_status_format_default[] = {
 };
 
 /* Helpers for hook options. */
-#define OPTIONS_TABLE_HOOK(hook_name, default_value) \
+#define OPTIONS_TABLE_HOOK(hook_name, default_value, hook_text) \
 	{ .name = hook_name, \
 	  .type = OPTIONS_TABLE_COMMAND, \
 	  .scope = OPTIONS_TABLE_SESSION, \
 	  .flags = OPTIONS_TABLE_IS_ARRAY|OPTIONS_TABLE_IS_HOOK, \
 	  .default_str = default_value,	\
-	  .separator = "" \
+	  .separator = "", \
+	  .text = hook_text \
 	}
 
-#define OPTIONS_TABLE_PANE_HOOK(hook_name, default_value) \
+#define OPTIONS_TABLE_PANE_HOOK(hook_name, default_value, hook_text) \
 	{ .name = hook_name, \
 	  .type = OPTIONS_TABLE_COMMAND, \
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE, \
 	  .flags = OPTIONS_TABLE_IS_ARRAY|OPTIONS_TABLE_IS_HOOK, \
 	  .default_str = default_value,	\
-	  .separator = "" \
+	  .separator = "", \
+	  .text = hook_text \
 	}
 
-#define OPTIONS_TABLE_WINDOW_HOOK(hook_name, default_value) \
+#define OPTIONS_TABLE_WINDOW_HOOK(hook_name, default_value, hook_text) \
 	{ .name = hook_name, \
 	  .type = OPTIONS_TABLE_COMMAND, \
 	  .scope = OPTIONS_TABLE_WINDOW, \
 	  .flags = OPTIONS_TABLE_IS_ARRAY|OPTIONS_TABLE_IS_HOOK, \
 	  .default_str = default_value,	\
-	  .separator = "" \
+	  .separator = "", \
+	  .text = hook_text \
 	}
+
+#define OPTIONS_TABLE_AFTER_HOOK(command_name) \
+	OPTIONS_TABLE_HOOK("after-" command_name, "", \
+	    "Run after the " command_name " command completes.")
 
 /* Map of name conversions. */
 const struct options_name_map options_other_names[] = {
@@ -1882,95 +1889,151 @@ const struct options_table_entry options_table[] = {
 	},
 
 	/* Hook options. */
-	OPTIONS_TABLE_HOOK("after-bind-key", ""),
-	OPTIONS_TABLE_HOOK("after-capture-pane", ""),
-	OPTIONS_TABLE_HOOK("after-copy-mode", ""),
-	OPTIONS_TABLE_HOOK("after-display-message", ""),
-	OPTIONS_TABLE_HOOK("after-display-panes", ""),
-	OPTIONS_TABLE_HOOK("after-kill-pane", ""),
-	OPTIONS_TABLE_HOOK("after-list-buffers", ""),
-	OPTIONS_TABLE_HOOK("after-list-clients", ""),
-	OPTIONS_TABLE_HOOK("after-list-keys", ""),
-	OPTIONS_TABLE_HOOK("after-list-panes", ""),
-	OPTIONS_TABLE_HOOK("after-list-sessions", ""),
-	OPTIONS_TABLE_HOOK("after-list-windows", ""),
-	OPTIONS_TABLE_HOOK("after-load-buffer", ""),
-	OPTIONS_TABLE_HOOK("after-lock-server", ""),
-	OPTIONS_TABLE_HOOK("after-new-session", ""),
-	OPTIONS_TABLE_HOOK("after-new-window", ""),
-	OPTIONS_TABLE_HOOK("after-paste-buffer", ""),
-	OPTIONS_TABLE_HOOK("after-pipe-pane", ""),
-	OPTIONS_TABLE_HOOK("after-queue", ""),
-	OPTIONS_TABLE_HOOK("after-refresh-client", ""),
-	OPTIONS_TABLE_HOOK("after-rename-session", ""),
-	OPTIONS_TABLE_HOOK("after-rename-window", ""),
-	OPTIONS_TABLE_HOOK("after-resize-pane", ""),
-	OPTIONS_TABLE_HOOK("after-resize-window", ""),
-	OPTIONS_TABLE_HOOK("after-save-buffer", ""),
-	OPTIONS_TABLE_HOOK("after-select-layout", ""),
-	OPTIONS_TABLE_HOOK("after-select-pane", ""),
-	OPTIONS_TABLE_HOOK("after-select-window", ""),
-	OPTIONS_TABLE_HOOK("after-send-keys", ""),
-	OPTIONS_TABLE_HOOK("after-set-buffer", ""),
-	OPTIONS_TABLE_HOOK("after-set-environment", ""),
-	OPTIONS_TABLE_HOOK("after-set-hook", ""),
-	OPTIONS_TABLE_HOOK("after-set-option", ""),
-	OPTIONS_TABLE_HOOK("after-show-environment", ""),
-	OPTIONS_TABLE_HOOK("after-show-messages", ""),
-	OPTIONS_TABLE_HOOK("after-show-options", ""),
-	OPTIONS_TABLE_HOOK("after-split-window", ""),
-	OPTIONS_TABLE_HOOK("after-unbind-key", ""),
-	OPTIONS_TABLE_HOOK("alert-activity", ""),
-	OPTIONS_TABLE_HOOK("alert-bell", ""),
-	OPTIONS_TABLE_HOOK("alert-silence", ""),
-	OPTIONS_TABLE_HOOK("client-active", ""),
-	OPTIONS_TABLE_HOOK("client-attached", ""),
-	OPTIONS_TABLE_HOOK("client-created", ""),
-	OPTIONS_TABLE_HOOK("client-closed", ""),
-	OPTIONS_TABLE_HOOK("client-detached", ""),
-	OPTIONS_TABLE_HOOK("client-focus-in", ""),
-	OPTIONS_TABLE_HOOK("client-focus-out", ""),
-	OPTIONS_TABLE_HOOK("client-resized", ""),
-	OPTIONS_TABLE_HOOK("client-session-changed", ""),
-	OPTIONS_TABLE_HOOK("client-light-theme", ""),
-	OPTIONS_TABLE_HOOK("client-dark-theme", ""),
-	OPTIONS_TABLE_HOOK("command-error", ""),
-	OPTIONS_TABLE_HOOK("marked-pane-changed", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-activity", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-bell", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-command-finished", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-command-started", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-created", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-died", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-exited", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-focus-in", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-focus-out", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-mode-changed", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-mode-entered", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-mode-exited", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-moved", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-prompt-closed", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-prompt-opened", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-resized", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-set-clipboard", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-shell-prompt", ""),
-	OPTIONS_TABLE_PANE_HOOK("pane-title-changed", ""),
-	OPTIONS_TABLE_HOOK("session-closed", ""),
-	OPTIONS_TABLE_HOOK("session-created", ""),
-	OPTIONS_TABLE_HOOK("session-added-to-group", ""),
-	OPTIONS_TABLE_HOOK("session-renamed", ""),
-	OPTIONS_TABLE_HOOK("session-removed-from-group", ""),
-	OPTIONS_TABLE_HOOK("session-window-changed", ""),
-	OPTIONS_TABLE_WINDOW_HOOK("window-created", ""),
-	OPTIONS_TABLE_WINDOW_HOOK("window-closed", ""),
-	OPTIONS_TABLE_WINDOW_HOOK("window-layout-changed", ""),
-	OPTIONS_TABLE_HOOK("window-linked", ""),
-	OPTIONS_TABLE_WINDOW_HOOK("window-pane-changed", ""),
-	OPTIONS_TABLE_WINDOW_HOOK("window-renamed", ""),
-	OPTIONS_TABLE_WINDOW_HOOK("window-resized", ""),
-	OPTIONS_TABLE_WINDOW_HOOK("window-unzoomed", ""),
-	OPTIONS_TABLE_WINDOW_HOOK("window-zoomed", ""),
-	OPTIONS_TABLE_HOOK("window-unlinked", ""),
+	OPTIONS_TABLE_AFTER_HOOK("bind-key"),
+	OPTIONS_TABLE_AFTER_HOOK("capture-pane"),
+	OPTIONS_TABLE_AFTER_HOOK("copy-mode"),
+	OPTIONS_TABLE_AFTER_HOOK("display-message"),
+	OPTIONS_TABLE_AFTER_HOOK("display-panes"),
+	OPTIONS_TABLE_AFTER_HOOK("kill-pane"),
+	OPTIONS_TABLE_AFTER_HOOK("list-buffers"),
+	OPTIONS_TABLE_AFTER_HOOK("list-clients"),
+	OPTIONS_TABLE_AFTER_HOOK("list-keys"),
+	OPTIONS_TABLE_AFTER_HOOK("list-panes"),
+	OPTIONS_TABLE_AFTER_HOOK("list-sessions"),
+	OPTIONS_TABLE_AFTER_HOOK("list-windows"),
+	OPTIONS_TABLE_AFTER_HOOK("load-buffer"),
+	OPTIONS_TABLE_AFTER_HOOK("lock-server"),
+	OPTIONS_TABLE_AFTER_HOOK("new-session"),
+	OPTIONS_TABLE_AFTER_HOOK("new-window"),
+	OPTIONS_TABLE_AFTER_HOOK("paste-buffer"),
+	OPTIONS_TABLE_AFTER_HOOK("pipe-pane"),
+	OPTIONS_TABLE_AFTER_HOOK("refresh-client"),
+	OPTIONS_TABLE_AFTER_HOOK("rename-session"),
+	OPTIONS_TABLE_AFTER_HOOK("rename-window"),
+	OPTIONS_TABLE_AFTER_HOOK("resize-pane"),
+	OPTIONS_TABLE_AFTER_HOOK("resize-window"),
+	OPTIONS_TABLE_AFTER_HOOK("save-buffer"),
+	OPTIONS_TABLE_AFTER_HOOK("select-layout"),
+	OPTIONS_TABLE_AFTER_HOOK("select-pane"),
+	OPTIONS_TABLE_AFTER_HOOK("select-window"),
+	OPTIONS_TABLE_AFTER_HOOK("send-keys"),
+	OPTIONS_TABLE_AFTER_HOOK("set-buffer"),
+	OPTIONS_TABLE_AFTER_HOOK("set-environment"),
+	OPTIONS_TABLE_AFTER_HOOK("set-hook"),
+	OPTIONS_TABLE_AFTER_HOOK("set-option"),
+	OPTIONS_TABLE_AFTER_HOOK("show-environment"),
+	OPTIONS_TABLE_AFTER_HOOK("show-messages"),
+	OPTIONS_TABLE_AFTER_HOOK("show-options"),
+	OPTIONS_TABLE_AFTER_HOOK("split-window"),
+	OPTIONS_TABLE_AFTER_HOOK("unbind-key"),
+	OPTIONS_TABLE_HOOK("alert-activity", "",
+	    "Run when a window has activity."),
+	OPTIONS_TABLE_HOOK("alert-bell", "",
+	    "Run when a window has received a bell."),
+	OPTIONS_TABLE_HOOK("alert-silence", "",
+	    "Run when a window has been silent."),
+	OPTIONS_TABLE_HOOK("client-active", "",
+	    "Run when a client becomes the latest active client of its "
+	    "session."),
+	OPTIONS_TABLE_HOOK("client-attached", "",
+	    "Run when a client is attached."),
+	OPTIONS_TABLE_HOOK("client-created", "",
+	    "Run when a client is created."),
+	OPTIONS_TABLE_HOOK("client-closed", "",
+	    "Run when a client is closed."),
+	OPTIONS_TABLE_HOOK("client-detached", "",
+	    "Run when a client is detached."),
+	OPTIONS_TABLE_HOOK("client-focus-in", "",
+	    "Run when focus enters a client."),
+	OPTIONS_TABLE_HOOK("client-focus-out", "",
+	    "Run when focus exits a client."),
+	OPTIONS_TABLE_HOOK("client-resized", "",
+	    "Run when a client is resized."),
+	OPTIONS_TABLE_HOOK("client-session-changed", "",
+	    "Run when a client's attached session is changed."),
+	OPTIONS_TABLE_HOOK("client-light-theme", "",
+	    "Run when a client switches to a light theme."),
+	OPTIONS_TABLE_HOOK("client-dark-theme", "",
+	    "Run when a client switches to a dark theme."),
+	OPTIONS_TABLE_HOOK("command-error", "",
+	    "Run when a command fails."),
+	OPTIONS_TABLE_HOOK("marked-pane-changed", "",
+	    "Run when the marked pane is set or cleared."),
+	OPTIONS_TABLE_PANE_HOOK("pane-activity", "",
+	    "Run when there is new output in a pane."),
+	OPTIONS_TABLE_PANE_HOOK("pane-bell", "",
+	    "Run when a pane receives a bell."),
+	OPTIONS_TABLE_PANE_HOOK("pane-command-finished", "",
+	    "Run when an OSC 133 command finishes in a pane."),
+	OPTIONS_TABLE_PANE_HOOK("pane-command-started", "",
+	    "Run when an OSC 133 command starts in a pane."),
+	OPTIONS_TABLE_PANE_HOOK("pane-created", "",
+	    "Run when a pane is created or respawned."),
+	OPTIONS_TABLE_PANE_HOOK("pane-died", "",
+	    "Run when the program running in a pane exits, but remain-on-exit "
+	    "is on so the pane has not closed."),
+	OPTIONS_TABLE_PANE_HOOK("pane-exited", "",
+	    "Run when the program running in a pane exits."),
+	OPTIONS_TABLE_PANE_HOOK("pane-focus-in", "",
+	    "Run when the focus enters a pane, if the focus-events option is "
+	    "on."),
+	OPTIONS_TABLE_PANE_HOOK("pane-focus-out", "",
+	    "Run when the focus exits a pane, if the focus-events option is "
+	    "on."),
+	OPTIONS_TABLE_PANE_HOOK("pane-mode-changed", "",
+	    "Run when a pane changes mode."),
+	OPTIONS_TABLE_PANE_HOOK("pane-mode-entered", "",
+	    "Run when a pane enters a mode."),
+	OPTIONS_TABLE_PANE_HOOK("pane-mode-exited", "",
+	    "Run when a pane exits a mode."),
+	OPTIONS_TABLE_PANE_HOOK("pane-moved", "",
+	    "Run when a pane is moved to another window."),
+	OPTIONS_TABLE_PANE_HOOK("pane-prompt-closed", "",
+	    "Run when a prompt in a pane is closed."),
+	OPTIONS_TABLE_PANE_HOOK("pane-prompt-opened", "",
+	    "Run when a prompt is opened in a pane."),
+	OPTIONS_TABLE_PANE_HOOK("pane-resized", "",
+	    "Run when a pane is resized."),
+	OPTIONS_TABLE_PANE_HOOK("pane-set-clipboard", "",
+	    "Run when the terminal clipboard is set using the xterm escape "
+	    "sequence."),
+	OPTIONS_TABLE_PANE_HOOK("pane-shell-prompt", "",
+	    "Run when an OSC 133 shell prompt starts in a pane."),
+	OPTIONS_TABLE_PANE_HOOK("pane-title-changed", "",
+	    "Run when a pane title is changed."),
+	OPTIONS_TABLE_HOOK("session-closed", "",
+	    "Run when a session is closed."),
+	OPTIONS_TABLE_HOOK("session-created", "",
+	    "Run when a new session is created."),
+	OPTIONS_TABLE_HOOK("session-added-to-group", "",
+	    "Run when a session is added to a session group."),
+	OPTIONS_TABLE_HOOK("session-renamed", "",
+	    "Run when a session is renamed."),
+	OPTIONS_TABLE_HOOK("session-removed-from-group", "",
+	    "Run when a session is removed from a session group."),
+	OPTIONS_TABLE_HOOK("session-window-changed", "",
+	    "Run when a session changes its active window."),
+	OPTIONS_TABLE_WINDOW_HOOK("window-created", "",
+	    "Run when a window is created."),
+	OPTIONS_TABLE_WINDOW_HOOK("window-closed", "",
+	    "Run when a window is closed."),
+	OPTIONS_TABLE_WINDOW_HOOK("window-layout-changed", "",
+	    "Run when a window layout is changed."),
+	OPTIONS_TABLE_HOOK("window-linked", "",
+	    "Run when a window is linked into a session."),
+	OPTIONS_TABLE_WINDOW_HOOK("window-pane-changed", "",
+	    "Run when a window changes its active pane."),
+	OPTIONS_TABLE_WINDOW_HOOK("window-renamed", "",
+	    "Run when a window is renamed."),
+	OPTIONS_TABLE_WINDOW_HOOK("window-resized", "",
+	    "Run when a window is resized. This may be after the "
+	    "client-resized hook is run."),
+	OPTIONS_TABLE_WINDOW_HOOK("window-unzoomed", "",
+	    "Run when a window is unzoomed."),
+	OPTIONS_TABLE_WINDOW_HOOK("window-zoomed", "",
+	    "Run when a window is zoomed."),
+	OPTIONS_TABLE_HOOK("window-unlinked", "",
+	    "Run when a window is unlinked from a session."),
 
 	{ .name = NULL }
 };
