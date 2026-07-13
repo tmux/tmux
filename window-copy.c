@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.416 2026/07/13 16:30:28 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.417 2026/07/13 21:22:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2359,6 +2359,7 @@ window_copy_cmd_scroll_down(struct window_copy_cmd_state *cs)
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 np = wme->prefix;
+	int				 dragging;
 
 	/*
 	 * If at the bottom and scroll_exit is active with no selection,
@@ -2368,6 +2369,16 @@ window_copy_cmd_scroll_down(struct window_copy_cmd_state *cs)
 	if (data->oy == 0) {
 		if (data->scroll_exit && data->screen.sel == NULL)
 			return (WINDOW_COPY_CMD_CANCEL);
+		return (WINDOW_COPY_CMD_NOTHING);
+	}
+
+	/* With a selection but no active drag, only scroll the view. */
+	dragging = (cs->c != NULL && cs->c->tty.mouse_drag_flag != 0);
+	if (data->screen.sel != NULL && !dragging) {
+		data->cursordrag = CURSORDRAG_NONE;
+		data->lineflag = LINE_SEL_NONE;
+		/* Move down in the history. */
+		window_copy_scroll_up(wme, np);
 		return (WINDOW_COPY_CMD_NOTHING);
 	}
 
