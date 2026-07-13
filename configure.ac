@@ -177,7 +177,6 @@ AC_REPLACE_FUNCS([ \
 	clock_gettime \
 	closefrom \
 	explicit_bzero \
-	fgetln \
 	freezero \
 	getdtablecount \
 	getdtablesize \
