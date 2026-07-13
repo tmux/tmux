@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.415 2026/07/13 12:53:56 jsg Exp $ */
+/* $OpenBSD: window-copy.c,v 1.416 2026/07/13 16:30:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -57,6 +57,8 @@ static void	window_copy_refresh_arm(struct window_mode_entry *);
 static void	window_copy_refresh_start(struct window_mode_entry *);
 static void	window_copy_refresh_stop(struct window_mode_entry *);
 static void	window_copy_style_changed(struct window_mode_entry *);
+static void	window_copy_set_line_numbers1(struct window_mode_entry *, int,
+		    int);
 static int	window_copy_line_number_mode(struct window_mode_entry *);
 static int	window_copy_line_number_is_absolute(struct window_mode_entry *);
 static int	window_copy_line_numbers_active(struct window_mode_entry *);
@@ -296,7 +298,7 @@ struct window_copy_mode_data {
 	int		 rectflag;	/* in rectangle copy mode? */
 	int		 scroll_exit;	/* exit on scroll to end? */
 	int		 hide_position;	/* hide position marker */
-	int		 line_numbers;
+	int		 line_numbers;	/* 0 off, 1 from option, 2 default */
 
 	enum {
 		SEL_CHAR,		/* select one char at a time */
@@ -1117,6 +1119,9 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 	}
 	format_add(ft, "copy_position", "%u", position);
 	format_add(ft, "copy_position_limit", "%u", limit);
+	format_add(ft, "copy_line_numbers", "%d",
+	    window_copy_line_numbers_active(wme));
+	format_add(ft, "refresh_active", "%d", data->refresh_active);
 	format_add(ft, "rectangle_toggle", "%d", data->rectflag);
 
 	format_add(ft, "copy_cursor_x", "%d", data->cx);
@@ -3150,6 +3155,28 @@ window_copy_cmd_recentre_top_bottom(struct window_copy_cmd_state *cs)
 	return (WINDOW_COPY_CMD_REDRAW);
 }
 
+static enum window_copy_cmd_action
+window_copy_cmd_line_numbers_on(struct window_copy_cmd_state *cs)
+{
+	window_copy_set_line_numbers1(cs->wme, 1, 1);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_line_numbers_off(struct window_copy_cmd_state *cs)
+{
+	window_copy_set_line_numbers1(cs->wme, 0, 0);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_line_numbers_toggle(struct window_copy_cmd_state *cs)
+{
+	window_copy_set_line_numbers1(cs->wme,
+	    !window_copy_line_numbers_active(cs->wme), 1);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
 static const struct {
 	const char			 *command;
 	u_int				  minargs;
@@ -3413,6 +3440,24 @@ static const struct {
 	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_jump_to_mark
+	},
+	{ .command = "line-numbers-on",
+	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_line_numbers_on
+	},
+	{ .command = "line-numbers-off",
+	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_line_numbers_off
+	},
+	{ .command = "line-numbers-toggle",
+	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_line_numbers_toggle
 	},
 	{ .command = "next-prompt",
 	  .args = { "o", 0, 0, NULL },
@@ -5066,10 +5111,14 @@ window_copy_line_number_mode(struct window_mode_entry *wme)
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
 	struct options			*oo = wp->window->options;
+	int				 mode;
 
 	if (!data->line_numbers)
 		return (WINDOW_COPY_LINE_NUMBERS_OFF);
-	return (options_get_number(oo, "copy-mode-line-numbers"));
+	mode = options_get_number(oo, "copy-mode-line-numbers");
+	if (data->line_numbers == 2 && mode == WINDOW_COPY_LINE_NUMBERS_OFF)
+		return (WINDOW_COPY_LINE_NUMBERS_DEFAULT);
+	return (mode);
 }
 
 static int
@@ -5155,14 +5204,33 @@ void
 window_copy_set_line_numbers(struct window_pane *wp, int enabled)
 {
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
-	struct window_copy_mode_data	*data;
 
 	if (wme == NULL || wme->mode != &window_copy_mode)
 		return;
-	data = wme->data;
-	if (data == NULL || data->line_numbers == enabled)
+	window_copy_set_line_numbers1(wme, enabled, 0);
+}
+
+static void
+window_copy_set_line_numbers1(struct window_mode_entry *wme, int enabled,
+    int force)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct options			*oo = wme->wp->window->options;
+	int				 active, line_numbers;
+
+	if (data == NULL)
 		return;
-	data->line_numbers = enabled;
+	active = window_copy_line_numbers_active(wme);
+	if (!enabled)
+		line_numbers = 0;
+	else if (force && options_get_number(oo, "copy-mode-line-numbers") ==
+	    WINDOW_COPY_LINE_NUMBERS_OFF)
+		line_numbers = 2;
+	else
+		line_numbers = 1;
+	if (data->line_numbers == line_numbers && active == enabled)
+		return;
+	data->line_numbers = line_numbers;
 	window_copy_redraw_screen(wme, 1);
 }
 
