@@ -3046,8 +3046,8 @@ window_copy_refresh_timer(__unused int fd, __unused short events, void *arg)
 	 * Skip the refresh while a selection is being made, otherwise it would
 	 * move; only follow new output if the cursor is still at the bottom.
 	 */
-	if ((wp->flags & PANE_UNSEENCHANGES) && data->screen.sel == NULL &&
-	    data->cursordrag == CURSORDRAG_NONE) {
+	if ((wp->flags & PANE_UNSEENCHANGES) && (~wp->base.mode & MODE_SYNC) &&
+	    data->screen.sel == NULL && data->cursordrag == CURSORDRAG_NONE) {
 		follow = (data->oy == 0 &&
 		    data->cy == screen_size_y(&data->screen) - 1);
 		window_copy_do_refresh(wme, follow);
