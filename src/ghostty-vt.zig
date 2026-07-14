@@ -315,7 +315,7 @@ fn maybeClipboard(wp: ?*c.window_pane, buf: []const u8, input_end: c_int) void {
     c.screen_write_start_pane(&ctx, pane, null);
     c.screen_write_setselection(&ctx, clip[0..clip_len :0].ptr, out.ptr, @intCast(decoded));
     c.screen_write_stop(&ctx);
-    c.notify_pane("pane-set-clipboard", pane);
+    c.events_fire_pane("pane-set-clipboard", pane);
     c.paste_add(null, @ptrCast(out.ptr), @intCast(decoded));
 }
 
@@ -628,10 +628,17 @@ fn mapAttr(style: *const c.GhosttyStyle) c_ushort {
     return attr;
 }
 
-fn mapColor(sc: *const c.GhosttyStyleColor, default_col: c_int) c_int {
+fn mapColor(sc: *const c.GhosttyStyleColor, default_col: c_int, map_ansi: bool) c_int {
     return switch (sc.tag) {
         c.GHOSTTY_STYLE_COLOR_RGB => c.colour_join_rgb(sc.value.rgb.r, sc.value.rgb.g, sc.value.rgb.b),
-        c.GHOSTTY_STYLE_COLOR_PALETTE => @as(c_int, sc.value.palette) | c.COLOUR_FLAG_256,
+        c.GHOSTTY_STYLE_COLOR_PALETTE => blk: {
+            if (map_ansi) {
+                const idx = sc.value.palette;
+                if (idx < 8) break :blk @as(c_int, idx);
+                if (idx < 16) break :blk @as(c_int, idx - 8 + 90);
+            }
+            break :blk @as(c_int, sc.value.palette) | c.COLOUR_FLAG_256;
+        },
         else => default_col,
     };
 }
@@ -790,9 +797,9 @@ const RawCell = struct {
 
 fn applyCellStyle(gc: *c.grid_cell, style: *const c.GhosttyStyle) void {
     gc.*.attr = mapAttr(style);
-    gc.*.fg = mapColor(&style.fg_color, 8);
-    gc.*.bg = mapColor(&style.bg_color, 8);
-    gc.*.us = mapColor(&style.underline_color, 8);
+    gc.*.fg = mapColor(&style.fg_color, 8, true);
+    gc.*.bg = mapColor(&style.bg_color, 8, true);
+    gc.*.us = mapColor(&style.underline_color, 8, false);
 }
 
 // Direct-mapped cache of mapped styles, keyed by (page node, style id).
@@ -857,8 +864,15 @@ fn applyCellBgContent(gc: *c.grid_cell, rc: RawCell) void {
     switch (rc.tag) {
         c.GHOSTTY_CELL_CONTENT_BG_COLOR_PALETTE => {
             var idx: c.GhosttyColorPaletteIndex = 0;
-            if (c.ghostty_cell_get(rc.raw, c.GHOSTTY_CELL_DATA_COLOR_PALETTE, &idx) == c.GHOSTTY_SUCCESS)
-                gc.*.bg = @as(c_int, idx) | c.COLOUR_FLAG_256;
+            if (c.ghostty_cell_get(rc.raw, c.GHOSTTY_CELL_DATA_COLOR_PALETTE, &idx) == c.GHOSTTY_SUCCESS) {
+                if (idx < 8) {
+                    gc.*.bg = @as(c_int, idx);
+                } else if (idx < 16) {
+                    gc.*.bg = @as(c_int, idx - 8 + 90);
+                } else {
+                    gc.*.bg = @as(c_int, idx) | c.COLOUR_FLAG_256;
+                }
+            }
         },
         c.GHOSTTY_CELL_CONTENT_BG_COLOR_RGB => {
             var rgb = std.mem.zeroes(c.GhosttyColorRgb);
