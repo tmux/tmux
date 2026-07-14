@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.418 2026/07/14 09:07:24 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.419 2026/07/14 11:08:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -5103,7 +5103,7 @@ window_copy_write_one(struct window_mode_entry *wme,
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*gd = data->backing->grid;
 	struct grid_cell		 gc;
-	u_int		 		 fx;
+	u_int		 		 fx, i, width;
 
 	screen_write_cursormove(ctx, px, py, 0);
 	for (fx = 0; fx < nx; fx++) {
@@ -5111,7 +5111,20 @@ window_copy_write_one(struct window_mode_entry *wme,
 		if (fx + gc.data.width <= nx) {
 			window_copy_update_style(wme, fx, fy, &gc, mgc, cgc,
 			    mkgc);
-			screen_write_cell(ctx, &gc);
+			if (gc.flags & GRID_FLAG_PADDING) {
+				if (ctx->s->cy == py && ctx->s->cx <= px + fx) {
+					gc.flags &= ~GRID_FLAG_PADDING;
+					screen_write_cursormove(ctx, px + fx, py,
+					    0);
+					screen_write_putc(ctx, &gc, ' ');
+				}
+			} else if (gc.flags & GRID_FLAG_TAB) {
+				width = gc.data.width;
+				gc.flags &= ~GRID_FLAG_TAB;
+				for (i = 0; i < width; i++)
+					screen_write_putc(ctx, &gc, ' ');
+			} else
+				screen_write_cell(ctx, &gc);
 		} else
 			screen_write_putc(ctx, &grid_default_cell, ' ');
 	}
