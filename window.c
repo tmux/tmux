@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.362 2026/07/14 17:17:18 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.363 2026/07/14 19:07:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -462,6 +462,7 @@ window_destroy(struct window *w)
 	layout_free_cell(w->saved_layout_root, 0);
 	free(w->old_layout);
 
+	menu_destroy(w);
 	window_destroy_panes(w);
 
 	if (event_initialized(&w->name_event))
@@ -570,6 +571,11 @@ window_resize(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 	    ypixel == -1 ? w->ypixel : (u_int)ypixel);
 	w->sx = sx;
 	w->sy = sy;
+	if (w->menu != NULL) {
+		menu_resize(w->menu, w);
+		redraw_invalidate_scene(w);
+		server_redraw_window(w);
+	}
 	if (xpixel != -1)
 		w->xpixel = xpixel;
 	if (ypixel != -1)
@@ -644,7 +650,8 @@ window_pane_update_focus(struct window_pane *wp)
 				    c->session->attached != 0 &&
 				    (c->flags & CLIENT_FOCUSED) &&
 				    c->session->curw->window == wp->window &&
-				    c->overlay_draw == NULL) {
+				    c->overlay_draw == NULL &&
+				    wp->window->menu == NULL) {
 					focused = 1;
 					break;
 				}

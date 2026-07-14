@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-display-menu.c,v 1.51 2026/07/07 09:45:09 nicm Exp $ */
+/* $OpenBSD: cmd-display-menu.c,v 1.52 2026/07/14 19:07:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -93,7 +93,7 @@ cmd_display_menu_args_parse(struct args *args, u_int idx, __unused char **cause)
 }
 
 static int
-cmd_display_menu_get_pos(struct client *tc, struct cmdq_item *item,
+cmd_display_menu_get_popup_pos(struct client *tc, struct cmdq_item *item,
     struct args *args, u_int *px, u_int *py, u_int w, u_int h)
 {
 	struct tty		*tty = &tc->tty;
@@ -128,8 +128,8 @@ cmd_display_menu_get_pos(struct client *tc, struct cmdq_item *item,
 	}
 
 	/* Position of the previous menu, for -x/-y L. */
-	format_add(ft, "popup_last_x", "%u", tc->menu_last_px);
-	format_add(ft, "popup_last_y", "%u", tc->menu_last_py + h);
+	format_add(ft, "popup_last_x", "%u", target->w->menu_last_px);
+	format_add(ft, "popup_last_y", "%u", target->w->menu_last_py + h);
 
 	/*
 	 * If there are any status lines, add this window position and the
@@ -289,6 +289,184 @@ cmd_display_menu_get_pos(struct client *tc, struct cmdq_item *item,
 	return (1);
 }
 
+static int
+cmd_display_menu_get_menu_pos(struct client *tc, struct cmdq_item *item,
+    struct args *args, u_int *px, u_int *py, u_int w, u_int h)
+{
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct key_event	*event = cmdq_get_event(item);
+	struct session		*s = tc->session;
+	struct winlink		*wl = target->wl;
+	struct window		*window = target->w;
+	struct window_pane	*wp = target->wp;
+	struct style_ranges	*ranges = NULL;
+	struct style_range	*sr = NULL;
+	const char		*xp, *yp;
+	char			*p;
+	u_int			 line, ox, oy, sx, sy, lines, position;
+	long			 n, max_x, max_y, mouse_x = 0, mouse_y = 0;
+	struct format_tree	*ft;
+
+	max_x = window->sx > w ? window->sx - w : 0;
+	max_y = window->sy > h ? window->sy - h : 0;
+
+	tty_window_offset(&tc->tty, &ox, &oy, &sx, &sy);
+
+	ft = format_create_from_target(item);
+	if (event->m.valid) {
+		mouse_x = event->m.x + ox;
+		if (event->m.statusat == 0) {
+			if (event->m.y >= event->m.statuslines)
+				mouse_y = event->m.y - event->m.statuslines + oy;
+			else
+				mouse_y = oy;
+		} else if (event->m.statusat > 0 &&
+		    event->m.y >= (u_int)event->m.statusat) {
+			mouse_y = oy + sy - 1;
+		} else
+			mouse_y = event->m.y + oy;
+		format_add(ft, "popup_mouse_x", "%ld", mouse_x);
+		format_add(ft, "popup_mouse_y", "%ld", mouse_y);
+	}
+
+	format_add(ft, "popup_last_x", "%u", window->menu_last_px);
+	format_add(ft, "popup_last_y", "%u", window->menu_last_py + h);
+
+	lines = status_line_size(tc);
+	position = options_get_number(s->options, "status-position");
+	if (status_at_line(tc) != -1 && lines != 0) {
+		for (line = 0; line < lines; line++) {
+			ranges = &tc->status.entries[line].ranges;
+			TAILQ_FOREACH(sr, ranges, entry) {
+				if (sr->type != STYLE_RANGE_WINDOW)
+					continue;
+				if (sr->argument == (u_int)wl->idx)
+					break;
+			}
+			if (sr != NULL)
+				break;
+		}
+		if (sr != NULL) {
+			format_add(ft, "popup_window_status_line_x", "%u",
+			    sr->start + ox);
+			if (position == 0) {
+				format_add(ft, "popup_window_status_line_y",
+				    "%u", h);
+			} else {
+				format_add(ft, "popup_window_status_line_y",
+				    "%u", window->sy);
+			}
+		}
+		if (position == 0)
+			format_add(ft, "popup_status_line_y", "%u", h);
+		else
+			format_add(ft, "popup_status_line_y", "%u", window->sy);
+	}
+
+	format_add(ft, "popup_width", "%u", w);
+	format_add(ft, "popup_height", "%u", h);
+
+	n = ((long)window->sx - 1) / 2 - w / 2;
+	if (n < 0)
+		format_add(ft, "popup_centre_x", "%u", 0);
+	else
+		format_add(ft, "popup_centre_x", "%ld", n);
+	n = ((long)window->sy - 1) / 2 + h / 2;
+	if (n >= window->sy)
+		format_add(ft, "popup_centre_y", "%ld", max_y);
+	else
+		format_add(ft, "popup_centre_y", "%ld", n);
+
+	if (event->m.valid) {
+		n = mouse_x - w / 2;
+		if (n < 0)
+			format_add(ft, "popup_mouse_centre_x", "%u", 0);
+		else
+			format_add(ft, "popup_mouse_centre_x", "%ld", n);
+		n = mouse_y - h / 2;
+		if (n + h >= window->sy)
+			format_add(ft, "popup_mouse_centre_y", "%ld", max_y);
+		else
+			format_add(ft, "popup_mouse_centre_y", "%ld", n);
+		n = mouse_y + h;
+		if (n >= window->sy)
+			format_add(ft, "popup_mouse_top", "%u", window->sy - 1);
+		else
+			format_add(ft, "popup_mouse_top", "%ld", n);
+		n = mouse_y - h;
+		if (n < 0)
+			format_add(ft, "popup_mouse_bottom", "%u", 0);
+		else
+			format_add(ft, "popup_mouse_bottom", "%ld", n);
+	}
+
+	n = wp->yoff + h;
+	if (n >= window->sy)
+		format_add(ft, "popup_pane_top", "%ld", max_y);
+	else
+		format_add(ft, "popup_pane_top", "%ld", n);
+	format_add(ft, "popup_pane_bottom", "%u", wp->yoff + wp->sy);
+	format_add(ft, "popup_pane_left", "%u", wp->xoff);
+	n = (long)wp->xoff + wp->sx - w;
+	if (n < 0)
+		format_add(ft, "popup_pane_right", "%u", 0);
+	else
+		format_add(ft, "popup_pane_right", "%ld", n);
+
+	xp = args_get(args, 'x');
+	if (xp == NULL || strcmp(xp, "C") == 0)
+		xp = "#{popup_centre_x}";
+	else if (strcmp(xp, "R") == 0)
+		xp = "#{popup_pane_right}";
+	else if (strcmp(xp, "P") == 0)
+		xp = "#{popup_pane_left}";
+	else if (strcmp(xp, "M") == 0)
+		xp = "#{popup_mouse_centre_x}";
+	else if (strcmp(xp, "L") == 0)
+		xp = "#{popup_last_x}";
+	else if (strcmp(xp, "W") == 0)
+		xp = "#{popup_window_status_line_x}";
+	p = format_expand(ft, xp);
+	n = strtol(p, NULL, 10);
+	if (n < 0)
+		n = 0;
+	if (n > max_x)
+		n = max_x;
+	*px = n;
+	log_debug("%s: -x: %s = %s = %u (-w %u)", __func__, xp, p, *px, w);
+	free(p);
+
+	yp = args_get(args, 'y');
+	if (yp == NULL || strcmp(yp, "C") == 0)
+		yp = "#{popup_centre_y}";
+	else if (strcmp(yp, "P") == 0)
+		yp = "#{popup_pane_bottom}";
+	else if (strcmp(yp, "M") == 0)
+		yp = "#{popup_mouse_top}";
+	else if (strcmp(yp, "L") == 0)
+		yp = "#{popup_last_y}";
+	else if (strcmp(yp, "S") == 0)
+		yp = "#{popup_status_line_y}";
+	else if (strcmp(yp, "W") == 0)
+		yp = "#{popup_window_status_line_y}";
+	p = format_expand(ft, yp);
+	n = strtol(p, NULL, 10);
+	if (n < h)
+		n = 0;
+	else
+		n -= h;
+	if (n < 0)
+		n = 0;
+	if (n > max_y)
+		n = max_y;
+	*py = n;
+	log_debug("%s: -y: %s = %s = %u (-h %u)", __func__, yp, p, *py, h);
+	free(p);
+
+	format_free(ft);
+	return (1);
+}
+
 static enum cmd_retval
 cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -308,10 +486,6 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	u_int			 px, py, i, count = args_count(args);
 	struct options		*o = target->s->curw->window->options;
 	struct options_entry	*oe;
-
-
-	if (tc->overlay_draw != NULL)
-		return (CMD_RETURN_NORMAL);
 
 	if (args_has(args, 'C')) {
 		if (strcmp(args_get(args, 'C'), "-") == 0)
@@ -358,8 +532,8 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	if (menu->count == 0)
 		goto out;
-	if (!cmd_display_menu_get_pos(tc, item, args, &px, &py, menu->width + 4,
-	    menu->count + 2))
+	if (!cmd_display_menu_get_menu_pos(tc, item, args, &px, &py,
+	    menu->width + 4, menu->count + 2))
 		goto out;
 
 	value = args_get(args, 'b');
@@ -380,7 +554,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	if (menu_display(menu, flags, starting_choice, item, px, py, tc, lines,
 	    style, selected_style, border_style, target, NULL, NULL) != 0)
 		goto out;
-	return (CMD_RETURN_WAIT);
+	return (CMD_RETURN_NORMAL);
 
 out:
 	menu_free(menu);
@@ -446,7 +620,8 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 			w = tty->sx;
 		if (h > tty->sy)
 			h = tty->sy;
-		if (!cmd_display_menu_get_pos(tc, item, args, &px, &py, w, h))
+		if (!cmd_display_menu_get_popup_pos(tc, item, args, &px, &py,
+		    w, h))
 			goto out;
 
 		value = args_get(args, 'd');

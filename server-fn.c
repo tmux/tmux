@@ -1,4 +1,4 @@
-/* $OpenBSD: server-fn.c,v 1.147 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: server-fn.c,v 1.148 2026/07/14 19:07:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -126,6 +126,19 @@ server_redraw_window(struct window *w)
 		    c->session->curw != NULL &&
 		    c->session->curw->window == w)
 			server_redraw_client(c);
+	}
+}
+
+void
+server_redraw_window_menu(struct window *w)
+{
+	struct client	*c;
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session != NULL &&
+		    c->session->curw != NULL &&
+		    c->session->curw->window == w)
+			c->flags |= CLIENT_REDRAWMENU;
 	}
 }
 

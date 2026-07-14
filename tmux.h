@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1403 2026/07/14 17:17:18 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1404 2026/07/14 19:07:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1401,6 +1401,10 @@ struct window {
 
 	uint64_t		 redraw_scene_generation;
 
+	struct menu_data	*menu;
+	u_int			 menu_last_px;
+	u_int			 menu_last_py;
+
 	u_int			 last_new_pane_x;
 	u_int			 last_new_pane_y;
 
@@ -2218,7 +2222,7 @@ struct client {
 #define CLIENT_CONTROL_NOOUTPUT 0x4000000
 #define CLIENT_DEFAULTSOCKET 0x8000000
 #define CLIENT_STARTSERVER 0x10000000
-/* 0x20000000 unused */
+#define CLIENT_REDRAWMENU 0x20000000
 #define CLIENT_NOFORK 0x40000000
 #define CLIENT_ACTIVEPANE 0x80000000ULL
 #define CLIENT_CONTROL_PAUSEAFTER 0x100000000ULL
@@ -2234,7 +2238,8 @@ struct client {
 	 CLIENT_REDRAWSTATUS|		\
 	 CLIENT_REDRAWSTATUSALWAYS|	\
 	 CLIENT_REDRAWBORDERS|		\
-	 CLIENT_REDRAWOVERLAY)
+	 CLIENT_REDRAWOVERLAY|		\
+	 CLIENT_REDRAWMENU)
 #define CLIENT_UNATTACHEDFLAGS	\
 	(CLIENT_DEAD|		\
 	 CLIENT_SUSPENDED|	\
@@ -2287,9 +2292,6 @@ struct client {
 	overlay_resize_cb	 overlay_resize;
 	void			*overlay_data;
 	struct event		 overlay_timer;
-
-	u_int			 menu_last_px;
-	u_int			 menu_last_py;
 
 	struct client_files	 files;
 	u_int			 source_file_depth;
@@ -3272,6 +3274,7 @@ void	 server_redraw_session_group(struct session *);
 void	 server_status_session(struct session *);
 void	 server_status_session_group(struct session *);
 void	 server_redraw_window(struct window *);
+void	 server_redraw_window_menu(struct window *);
 void	 server_redraw_window_borders(struct window *);
 void	 server_status_window(struct window *);
 void	 server_lock(void);
@@ -4063,20 +4066,21 @@ void		 menu_add_item(struct menu *, const struct menu_item *,
 		    struct cmdq_item *, struct client *,
 		    struct cmd_find_state *);
 void		 menu_free(struct menu *);
-struct menu_data *menu_prepare(struct menu *, int, int, struct cmdq_item *,
-		    u_int, u_int, struct client *, enum box_lines, const char *,
-		    const char *, const char *, struct cmd_find_state *,
-		    menu_choice_cb, void *);
 int		 menu_display(struct menu *, int, int, struct cmdq_item *,
 		    u_int, u_int, struct client *, enum box_lines, const char *,
 		    const char *, const char *, struct cmd_find_state *,
 		    menu_choice_cb, void *);
-struct screen	*menu_mode_cb(struct client *, void *, u_int *, u_int *);
-struct visible_ranges *menu_check_cb(struct client *, void *, u_int, u_int,
-		    u_int);
-void		 menu_draw_cb(struct client *, void *);
-void		 menu_free_cb(struct client *, void *);
-int		 menu_key_cb(struct client *, void *, struct key_event *);
+void		 menu_close(struct window *);
+void		 menu_destroy(struct window *);
+void		 menu_update(struct menu_data *);
+struct screen	*menu_screen(struct menu_data *);
+u_int		 menu_width(struct menu_data *);
+u_int		 menu_height(struct menu_data *);
+u_int		 menu_x(struct menu_data *);
+u_int		 menu_y(struct menu_data *);
+void		 menu_get_cursor(struct menu_data *, u_int *, u_int *);
+void		 menu_resize(struct menu_data *, struct window *);
+int		 menu_key(struct client *, struct menu_data *, struct key_event *);
 
 /* popup.c */
 #define POPUP_CLOSEEXIT 0x1

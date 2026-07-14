@@ -1,4 +1,4 @@
-/* $OpenBSD: popup.c,v 1.75 2026/07/09 07:32:58 nicm Exp $ */
+/* $OpenBSD: popup.c,v 1.76 2026/07/14 19:07:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -43,7 +43,6 @@ struct popup_data {
 	struct colour_palette	  palette;
 
 	struct visible_ranges	  r;
-	struct visible_ranges	  or[2];
 
 	struct job		 *job;
 	struct input_ctx	 *ictx;
@@ -51,8 +50,6 @@ struct popup_data {
 	popup_close_cb		  cb;
 	void			 *arg;
 
-	struct menu		 *menu;
-	struct menu_data	 *md;
 	int			  close;
 
 	/* Current position and size. */
@@ -76,19 +73,6 @@ struct popup_data {
 	u_int			  lb;
 };
 
-static const struct menu_item popup_menu_items[] = {
-	{ "Close", 'q', NULL },
-	{ "#{?buffer_name,Paste #[underscore]#{buffer_name},}", 'p', NULL },
-	{ "", KEYC_NONE, NULL },
-	{ "Fill Space", 'F', NULL },
-	{ "Centre", 'C', NULL },
-	{ "", KEYC_NONE, NULL },
-	{ "To Horizontal Pane", 'h', NULL },
-	{ "To Vertical Pane", 'v', NULL },
-
-	{ NULL, KEYC_NONE, NULL }
-};
-
 static void
 popup_free(struct popup_data *pd)
 {
@@ -98,8 +82,6 @@ popup_free(struct popup_data *pd)
 		job_free(pd->job);
 	input_free(pd->ictx);
 
-	free(pd->or[0].ranges);
-	free(pd->or[1].ranges);
 	free(pd->r.ranges);
 	screen_free(&pd->s);
 	colour_palette_free(&pd->palette);
@@ -206,9 +188,6 @@ popup_mode_cb(__unused struct client *c, void *data, u_int *cx, u_int *cy)
 {
 	struct popup_data	*pd = data;
 
-	if (pd->md != NULL)
-		return (menu_mode_cb(c, pd->md, cx, cy));
-
 	if (pd->border_lines == BOX_LINES_NONE) {
 		*cx = pd->px + pd->s.cx;
 		*cy = pd->py + pd->s.cy;
@@ -221,52 +200,11 @@ popup_mode_cb(__unused struct client *c, void *data, u_int *cx, u_int *cy)
 
 /* Return parts of the input range which are not obstructed by the popup. */
 static struct visible_ranges *
-popup_check_cb(struct client* c, void *data, u_int px, u_int py, u_int nx)
+popup_check_cb(__unused struct client* c, void *data, u_int px, u_int py,
+    u_int nx)
 {
 	struct popup_data	*pd = data;
 	struct visible_ranges	*r = &pd->r;
-	struct visible_ranges	*mr;
-	u_int			 i, j, k = 0;
-
-	if (pd->md != NULL) {
-	       /*
-		* Work out the visible ranges for the menu (that is, the
-		* ranges not covered by the menu). A menu should have at most
-		* two ranges and we rely on this being the case.
-		*/
-		mr = menu_check_cb(c, pd->md, px, py, nx);
-		if (mr->used > 2)
-			fatalx("too many menu ranges");
-
-	       /*
-		* Walk the ranges still visible under the menu and check if
-		* each is visible under the popup as well. At most there can be
-		* three total ranges if popup and menu do not intersect.
-		*/
-		for (i = 0; i < mr->used; i++) {
-			server_client_overlay_range(pd->px, pd->py, pd->sx,
-			    pd->sy, mr->ranges[i].px, py, mr->ranges[i].nx,
-			    &pd->or[i]);
-		}
-
-		/*
-		 * We now have nonoverlapping ranges from left to right.
-		 * Combine them together into the output.
-		 */
-		server_client_ensure_ranges(r, 3);
-		for (i = 0; i < mr->used; i++) {
-			for (j = 0; j < pd->or[i].used; j++) {
-				if (pd->or[i].ranges[j].nx == 0)
-					continue;
-				if (k >= 3)
-					fatalx("too many popup & menu ranges");
-				r->ranges[k].px = pd->or[i].ranges[j].px;
-				r->ranges[k].nx = pd->or[i].ranges[j].nx;
-				k++;
-			}
-		}
-		return (r);
-	}
 
 	server_client_overlay_range(pd->px, pd->py, pd->sx, pd->sy, px, py, nx,
 	    r);
@@ -316,33 +254,20 @@ popup_draw_cb(struct client *c, void *data)
 	style_ctx.dim = 0;
 	style_ctx.hyperlinks = s.hyperlinks;
 
-	if (pd->md != NULL) {
-		c->overlay_check = menu_check_cb;
-		c->overlay_data = pd->md;
-	} else {
-		c->overlay_check = NULL;
-		c->overlay_data = NULL;
-	}
+	c->overlay_check = NULL;
+	c->overlay_data = NULL;
 	for (i = 0; i < pd->sy; i++)
 		tty_draw_line(tty, &s, 0, i, pd->sx, px, py + i, &style_ctx);
 	screen_free(&s);
-	if (pd->md != NULL) {
-		c->overlay_check = NULL;
-		c->overlay_data = NULL;
-		menu_draw_cb(c, pd->md);
-	}
 	c->overlay_check = popup_check_cb;
 	c->overlay_data = pd;
 }
 
 static void
-popup_free_cb(struct client *c, void *data)
+popup_free_cb(__unused struct client *c, void *data)
 {
 	struct popup_data	*pd = data;
 	struct cmdq_item	*item = pd->item;
-
-	if (pd->md != NULL)
-		menu_free_cb(c, pd->md);
 
 	if (pd->cb != NULL)
 		pd->cb(pd->status, pd->arg);
@@ -365,8 +290,6 @@ popup_resize_cb(__unused struct client *c, void *data)
 
 	if (pd == NULL)
 		return;
-	if (pd->md != NULL)
-		menu_free_cb(c, pd->md);
 
 	/* Adjust position and size. */
 	if (pd->psy > tty->sy)
@@ -395,96 +318,6 @@ popup_resize_cb(__unused struct client *c, void *data)
 		screen_resize(&pd->s, pd->sx - 2, pd->sy - 2, 0);
 		if (pd->job != NULL)
 			job_resize(pd->job, pd->sx - 2, pd->sy - 2);
-	}
-}
-
-static void
-popup_make_pane(struct popup_data *pd, enum layout_type type)
-{
-	struct client		*c = pd->c;
-	struct session		*s = c->session;
-	struct window		*w = s->curw->window;
-	struct layout_cell	*lc;
-	struct window_pane	*wp = w->active, *new_wp;
-	u_int			 hlimit;
-	const char		*shell;
-
-	window_unzoom(w, 1);
-
-	lc = layout_split_pane(wp, type, -1, 0);
-	if (lc == NULL)
-		return;
-	hlimit = options_get_number(s->options, "history-limit");
-	new_wp = window_add_pane(wp->window, NULL, hlimit, 0);
-	layout_assign_pane(lc, new_wp, 0);
-
-	if (pd->job != NULL) {
-		new_wp->fd = job_transfer(pd->job, &new_wp->pid, new_wp->tty,
-		    sizeof new_wp->tty);
-		pd->job = NULL;
-	}
-
-	screen_set_title(&pd->s, new_wp->base.title, 0);
-	screen_free(&new_wp->base);
-	memcpy(&new_wp->base, &pd->s, sizeof wp->base);
-	screen_resize(&new_wp->base, new_wp->sx, new_wp->sy, 1);
-	screen_init(&pd->s, 1, 1, 0);
-
-	shell = options_get_string(s->options, "default-shell");
-	if (!checkshell(shell))
-		shell = _PATH_BSHELL;
-	new_wp->shell = xstrdup(shell);
-
-	window_pane_set_event(new_wp);
-	window_set_active_pane(w, new_wp, 1);
-	new_wp->flags |= PANE_CHANGED;
-
-	pd->close = 1;
-}
-
-static void
-popup_menu_done(__unused struct menu *menu, __unused u_int choice,
-    key_code key, void *data)
-{
-	struct popup_data	*pd = data;
-	struct client		*c = pd->c;
-	struct paste_buffer	*pb;
-	const char		*buf;
-	size_t			 len;
-
-	pd->md = NULL;
-	pd->menu = NULL;
-	server_redraw_client(pd->c);
-
-	switch (key) {
-	case 'p':
-		pb = paste_get_top(NULL);
-		if (pb != NULL) {
-			buf = paste_buffer_data(pb, &len);
-			bufferevent_write(job_get_event(pd->job), buf, len);
-		}
-		break;
-	case 'F':
-		pd->sx = c->tty.sx;
-		pd->sy = c->tty.sy;
-		pd->px = 0;
-		pd->py = 0;
-		server_redraw_client(c);
-		break;
-	case 'C':
-		pd->px = c->tty.sx / 2 - pd->sx / 2;
-		pd->py = c->tty.sy / 2 - pd->sy / 2;
-		server_redraw_client(c);
-		break;
-	case 'h':
-		popup_make_pane(pd, LAYOUT_LEFTRIGHT);
-		break;
-	case 'v':
-		popup_make_pane(pd, LAYOUT_TOPBOTTOM);
-		break;
-	case 'q':
-		pd->close = 1;
-		break;
 	}
 }
 
@@ -553,20 +386,8 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 	struct mouse_event	*m = &event->m;
 	const char		*buf;
 	size_t			 len;
-	u_int			 px, py, x;
+	u_int			 px, py;
 	enum { NONE, LEFT, RIGHT, TOP, BOTTOM } border = NONE;
-
-	if (pd->md != NULL) {
-		if (menu_key_cb(c, pd->md, event) == 1) {
-			pd->md = NULL;
-			pd->menu = NULL;
-			if (pd->close)
-				server_client_clear_overlay(c);
-			else
-				server_redraw_client(c);
-		}
-		return (0);
-	}
 
 	if (KEYC_IS_MOUSE(event->key)) {
 		if (pd->dragging != OFF) {
@@ -577,8 +398,6 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 		    m->x > pd->px + pd->sx - 1 ||
 		    m->y < pd->py ||
 		    m->y > pd->py + pd->sy - 1) {
-			if (MOUSE_BUTTONS(m->b) == MOUSE_BUTTON_3)
-				goto menu;
 			return (0);
 		}
 		if (pd->border_lines != BOX_LINES_NONE) {
@@ -594,7 +413,7 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 		if ((m->b & MOUSE_MASK_MODIFIERS) == 0 &&
 		    MOUSE_BUTTONS(m->b) == MOUSE_BUTTON_3 &&
 		    (border == LEFT || border == TOP))
-		    goto menu;
+			goto out;
 		if (((m->b & MOUSE_MASK_MODIFIERS) == MOUSE_MASK_META) ||
 		    (border != NONE && !MOUSE_DRAG(m->lb))) {
 			if (!MOUSE_DRAG(m->b))
@@ -634,17 +453,6 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 	}
 	return (0);
 
-menu:
-	pd->menu = menu_create("");
-	menu_add_items(pd->menu, popup_menu_items, NULL, c, NULL);
-	if (m->x >= (pd->menu->width + 4) / 2)
-		x = m->x - (pd->menu->width + 4) / 2;
-	else
-		x = 0;
-	pd->md = menu_prepare(pd->menu, 0, 0, NULL, x, m->y, c,
-	    BOX_LINES_DEFAULT, NULL, NULL, NULL, NULL, popup_menu_done, pd);
-	c->flags |= CLIENT_REDRAWOVERLAY;
-
 out:
 	pd->lx = m->x;
 	pd->ly = m->y;
@@ -665,13 +473,8 @@ popup_job_update_cb(struct job *job)
 	if (size == 0)
 		return;
 
-	if (pd->md != NULL) {
-		c->overlay_check = menu_check_cb;
-		c->overlay_data = pd->md;
-	} else {
-		c->overlay_check = NULL;
-		c->overlay_data = NULL;
-	}
+	c->overlay_check = NULL;
+	c->overlay_data = NULL;
 	input_parse_screen(pd->ictx, s, popup_init_ctx_cb, pd, data, size);
 	c->overlay_check = popup_check_cb;
 	c->overlay_data = pd;

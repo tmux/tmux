@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.490 2026/07/14 17:17:17 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.491 2026/07/14 19:07:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -52,8 +52,6 @@ static void	server_client_dispatch(struct imsg *, void *);
 static int	server_client_dispatch_command(struct client *, struct imsg *);
 static int	server_client_dispatch_identify(struct client *, struct imsg *);
 static int	server_client_dispatch_shell(struct client *);
-static void	server_client_update_scrollbar_hover(struct client *, int, int,
-		    int);
 static void	server_client_report_theme(struct client *, enum client_theme);
 
 /* Compare client windows. */
@@ -1655,6 +1653,40 @@ out:
 	return (CMD_RETURN_NORMAL);
 }
 
+/* Handle a key event for the active window menu, if any. */
+static int
+server_client_handle_menu_key(struct client *c, struct key_event *event)
+{
+	struct window		*w = c->session->curw->window;
+	struct key_event	 new_event;
+	struct mouse_event	*m;
+	u_int			 ox, oy, sx, sy;
+
+	if (w->menu == NULL)
+		return (0);
+
+	memcpy(&new_event, event, sizeof new_event);
+	if (KEYC_IS_MOUSE(event->key)) {
+		m = &new_event.m;
+		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
+		m->x += ox;
+		if (m->statusat == 0) {
+			if (m->y < m->statuslines)
+				m->x = m->y = UINT_MAX;
+			else
+				m->y = m->y - m->statuslines + oy;
+		} else if (m->statusat > 0 &&
+		    m->y >= (u_int)m->statusat)
+			m->x = m->y = UINT_MAX;
+		else
+			m->y += oy;
+	}
+
+	if (menu_key(c, w->menu, &new_event) == 1)
+		menu_close(w);
+	return (1);
+}
+
 /* Handle a key event. */
 static int
 server_client_handle_key0(struct client *c, struct key_event *event,
@@ -1704,6 +1736,8 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 		}
 
 		server_client_clear_overlay(c);
+		if (server_client_handle_menu_key(c, event))
+			return (0);
 		if (c->prompt != NULL) {
 			switch (status_prompt_key(c, event->key, &event->m)) {
 			case PROMPT_KEY_HANDLED:
@@ -1726,7 +1760,8 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 		if (wp != NULL &&
 		    window_pane_has_prompt(wp) &&
 		    window_pane_is_visible(wp)) {
-			switch (window_pane_prompt_key(wp, c, event->key, &event->m)) {
+			switch (window_pane_prompt_key(wp, c, event->key,
+			    &event->m)) {
 			case PROMPT_KEY_HANDLED:
 			case PROMPT_KEY_CLOSE:
 			case PROMPT_KEY_MOVE:
@@ -2078,6 +2113,9 @@ server_client_reset_state(struct client *c)
 	if (c->overlay_draw != NULL) {
 		if (c->overlay_mode != NULL)
 			s = c->overlay_mode(c, c->overlay_data, &cx, &cy);
+	} else if (w->menu != NULL) {
+		menu_get_cursor(w->menu, &cx, &cy);
+		s = menu_screen(w->menu);
 	} else if (wp != NULL && c->prompt == NULL)
 		s = wp->screen;
 	else
@@ -2098,7 +2136,22 @@ server_client_reset_state(struct client *c)
 		prompt = 1;
 		status_prompt_cursor(c, &cx, &cy);
 	} else if (wp != NULL && c->overlay_draw == NULL) {
-		prompt = server_client_prompt_cursor(c, wp, &mode, &cx, &cy);
+		if (w->menu != NULL) {
+			tty_window_offset(tty, &ox, &oy, &sx, &sy);
+			if (cx < ox || cx >= ox + sx ||
+			    cy < oy || cy >= oy + sy)
+				mode &= ~MODE_CURSOR;
+			else {
+				cx -= ox;
+				cy -= oy;
+				if (status_at_line(c) == 0)
+					cy += status_line_size(c);
+			}
+			prompt = 1;
+		} else {
+			prompt = server_client_prompt_cursor(c, wp, &mode, &cx,
+			    &cy);
+		}
 		if (!prompt) {
 			cursor = 0;
 			pane_mode = wp->base.mode;
@@ -2150,7 +2203,7 @@ server_client_reset_state(struct client *c)
 	 * movement events.
 	 */
 	if (options_get_number(oo, "mouse")) {
-		if (c->overlay_draw == NULL) {
+		if (c->overlay_draw == NULL && w->menu == NULL) {
 			mode &= ~ALL_MOUSE_MODES;
 			TAILQ_FOREACH(loop, &w->panes, entry) {
 				if (loop->screen->mode & MODE_MOUSE_ALL)
@@ -2329,11 +2382,12 @@ server_client_check_redraw(struct client *c)
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
 	if (c->flags & CLIENT_ALLREDRAWFLAGS) {
-		log_debug("%s: redraw%s%s%s%s", c->name,
+		log_debug("%s: redraw%s%s%s%s%s", c->name,
 		    (c->flags & CLIENT_REDRAWWINDOW) ? " window" : "",
 		    (c->flags & CLIENT_REDRAWSTATUS) ? " status" : "",
 		    (c->flags & CLIENT_REDRAWBORDERS) ? " borders" : "",
-		    (c->flags & CLIENT_REDRAWOVERLAY) ? " overlay" : "");
+		    (c->flags & CLIENT_REDRAWOVERLAY) ? " overlay" : "",
+		    (c->flags & CLIENT_REDRAWMENU) ? " menu" : "");
 	}
 
 	/* Work out if a redraw is actually needed. */
