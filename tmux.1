@@ -4040,6 +4040,7 @@ the command behaves like
 .Tg splitw
 .It Xo Ic split\-window
 .Op Fl bdefhIkPvZ
+.Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
@@ -4087,6 +4088,9 @@ may be followed by
 to specify a percentage of the available space.
 .Fl p
 is a shorthand option for this.
+.Fl B
+sets the pane border lines for floating panes; see
+.Ic pane\-border\-lines .
 The
 .Fl b
 option causes the new pane to be created to the left of or above
