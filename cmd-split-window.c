@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-split-window.c,v 1.143 2026/07/13 16:07:47 nicm Exp $ */
+/* $OpenBSD: cmd-split-window.c,v 1.144 2026/07/14 15:06:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -60,10 +60,10 @@ const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
 	.alias = "splitw",
 
-	.args = { "bc:de:EfF:hIkl:m:p:PR:s:S:t:T:vWZ", 0, -1, NULL },
-	.usage = "[-bdefhIklPvWZ] [-c start-directory] [-e environment] "
-		 "[-F format] [-l size] [-m message] [-p percentage] "
-		 "[-s style] [-S active-border-style] "
+	.args = { "bB:c:de:EfF:hIkl:m:p:PR:s:S:t:T:vWZ", 0, -1, NULL },
+	.usage = "[-bdefhIklPvWZ] [-B border-lines] [-c start-directory] "
+		 "[-e environment] [-F format] [-l size] [-m message] "
+		 "[-p percentage] [-s style] [-S active-border-style] "
 		 "[-R inactive-border-style] [-T title] "
 	         CMD_TARGET_PANE_USAGE " [shell-command [argument ...]]",
 

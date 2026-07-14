@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1138 2026/07/13 22:03:08 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1139 2026/07/14 15:06:54 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: July 13 2026 $
+.Dd $Mdocdate: July 14 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -848,6 +848,7 @@ Each has a single-character alternative form.
 .It Li "{next}" Ta "+" Ta "The next window by number"
 .It Li "{previous}" Ta "\-" Ta "The previous window by number"
 .It Li "{current}" Ta "@" Ta "The current window"
+.It Li "{mouse}" Ta "=" Ta "The window where the mouse event happened"
 .El
 .Pp
 .Ar target\-pane
@@ -881,6 +882,8 @@ The following special tokens are available for the pane index:
 .It Li "{left\-of}" Ta "" Ta "The pane to the left of the active pane"
 .It Li "{right\-of}" Ta "" Ta "The pane to the right of the active pane"
 .It Li "{active}" Ta "@" Ta "The active pane"
+.It Li "{marked}" Ta "~" Ta "The marked pane"
+.It Li "{mouse}" Ta "=" Ta "The pane where the mouse event happened"
 .El
 .Pp
 The tokens
@@ -4035,6 +4038,7 @@ the command behaves like
 .Tg splitw
 .It Xo Ic split\-window
 .Op Fl bdefhIkPvZ
+.Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
@@ -4082,6 +4086,9 @@ may be followed by
 to specify a percentage of the available space.
 .Fl p
 is a shorthand option for this.
+.Fl B
+sets the pane border lines for floating panes; see
+.Ic pane\-border\-lines .
 The
 .Fl b
 option causes the new pane to be created to the left of or above

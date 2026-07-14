@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.419 2026/07/14 11:08:36 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.420 2026/07/14 15:06:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -5573,7 +5573,8 @@ window_copy_update_cursor(struct window_mode_entry *wme, u_int cx, u_int cy)
 	if (window_copy_line_numbers_active(wme)) {
 		width = window_copy_line_number_width(wme);
 
-		if (s->sel != NULL || data->lineflag != LINE_SEL_NONE ||
+		if (s->sel != NULL ||
+		    data->lineflag != LINE_SEL_NONE ||
 		    old_cy != data->cy) {
 			window_copy_redraw_screen(wme);
 			return;
@@ -6809,9 +6810,8 @@ window_copy_scroll_up(struct window_mode_entry *wme, u_int ny)
 			window_copy_write_line(wme, &ctx, 1);
 		if (screen_size_y(s) > 3)
 			window_copy_write_line(wme, &ctx, screen_size_y(s) - 2);
-		if (s->sel != NULL && screen_size_y(s) > ny) {
+		if (s->sel != NULL && screen_size_y(s) > ny)
 			window_copy_write_line(wme, &ctx, screen_size_y(s) - ny - 1);
-		}
 		screen_write_cursormove(&ctx,
 		    window_copy_cursor_offset(wme, data->cx, screen_size_x(s)),
 		    data->cy, 0);
