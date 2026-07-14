@@ -85,13 +85,13 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 	return (strcmp(fj1->cmd, fj2->cmd));
 }
 
-/* Maimum pad and trim width. */
+/* Maximum pad and trim width. */
 #define FORMAT_MAX_WIDTH 10000
 
-/* Maimum repeat size. */
+/* Maximum repeat size. */
 #define FORMAT_MAX_REPEAT 10000
 
-/* Maimum precision. */
+/* Maximum precision. */
 #define FORMAT_MAX_PRECISION 100
 
 /* Format modifiers. */
