@@ -20,16 +20,43 @@
 
 #include <ctype.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "tmux.h"
 
+struct layout_string {
+	char	*write;
+	char	 dat[8192];
+};
+
 static struct layout_cell	*layout_find_bottomright(struct layout_cell *);
 static u_short			 layout_checksum(const char *);
-static int			 layout_append(struct layout_cell *, char *,
-				     size_t, int);
+static int			 layout_append(struct layout_cell *,
+				     struct layout_string *, size_t, int);
 static struct layout_cell	*layout_construct(const char **, int, int);
 static void			 layout_assign(struct window_pane **,
 				     struct layout_cell *);
+static struct layout_cell	*layout_custom_create_cell(struct layout_cell *,
+				     const char **layout);
+
+static void
+layout_string_init(struct layout_string *ls)
+{
+	memset(ls->dat, 0, sizeof ls->dat);
+	ls->write = ls->dat;
+}
+
+static int
+layout_string_copy(struct layout_string *ls, const char *s)
+{
+	size_t	len, remaining = sizeof ls->dat - (ls->write - ls->dat);
+
+	len = strlcat(ls->write, s, remaining);
+	if (len >= remaining)
+		return (-1);
+	ls->write += len;
+	return (0);
+}
 
 /* Find the bottom-right cell. */
 static struct layout_cell *
@@ -59,17 +86,83 @@ layout_checksum(const char *layout)
 char *
 layout_dump(__unused struct window *w, struct layout_cell *root, int flags)
 {
-	char	layout[8192], *out;
+	struct layout_string	 layout = { 0 };
+	char			*out;
 
-	*layout = '\0';
-	if (layout_append(root, layout, sizeof layout, flags) != 0)
+	layout_string_init(&layout);
+
+	if (layout_append(root, &layout, sizeof layout.dat, flags) != 0)
 		return (NULL);
 
 	if (flags & LAYOUT_CUSTOM_OLD_FORMAT)
-		xasprintf(&out, "%04hx,%s", layout_checksum(layout), layout);
+		xasprintf(&out, "%04hx,%s", layout_checksum(layout.dat), layout.dat);
 	else
-		xasprintf(&out, "2,%04hx,%s", layout_checksum(layout), layout);
+		xasprintf(&out, "{\"v\":2,\"l\":%s}", layout.dat);
 	return (out);
+}
+
+static int
+layout_append_v2(struct layout_cell *lc, struct layout_string *ls, size_t len)
+{
+	struct layout_cell	*lcchild;
+	struct window_pane	*wp;
+	struct window		*w;
+	enum layout_type	 type = lc->type;
+	char			 tmp[64], c;
+	size_t			 tmpsz;
+	u_int			 i;
+
+	if (len == 0)
+		return (-1);
+	if (lc == NULL)
+		return (0);
+
+	if (type == LAYOUT_TOPBOTTOM)
+		c = 'v';
+	else if (type == LAYOUT_LEFTRIGHT)
+		c = 'h';
+	else if (LAYOUT_WINDOWPANE)
+		c = 'p';
+	else
+		return (-1);
+
+#define layout_string_format(fmt, ...)						\
+	do {									\
+		tmpsz = xsnprintf(tmp, sizeof tmp, (fmt), ##__VA_ARGS__);	\
+		if (tmpsz > (sizeof (tmp)) - 1)					\
+			return (-1);						\
+		if (layout_string_copy(ls, tmp) != 0)				\
+			return (-1);						\
+	} while (0)
+
+	layout_string_format("{\"t\":\"%c\",\"w\":%u,\"h\":%u,\"x\":%d"
+	    ",\"y\":%d", c, lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff);
+	if (type != LAYOUT_WINDOWPANE) {
+		layout_string_copy(ls, ",\"c\":[");
+		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+			if (layout_append_v2(lcchild, ls, len) != 0)
+				return (-1);
+			layout_string_copy(ls, ",");
+		}
+		*(--ls->write) = '\0'; /* removing last comma */
+		layout_string_copy(ls, "]");
+	} else {
+		wp = lc->wp;
+		w = wp->window;
+		if (wp == w->active)
+			layout_string_copy(ls, ",\"a\":true");
+		if (wp == TAILQ_FIRST(&w->last_panes))
+			layout_string_copy(ls, ",\"l\":true");
+		if (lc->flags & LAYOUT_CELL_FLOATING) {
+			window_pane_zindex(wp, &i);
+			layout_string_format(",\"z\":%u", i);
+		}
+		layout_string_format(",\"i\":%d", lc->wp->id);
+	}
+
+	layout_string_copy(ls, "}");
+
+	return (0);
 }
 
 /* Append information for a single cell in the old format. */
@@ -118,96 +211,15 @@ layout_append_v1(struct layout_cell *lc, char *buf, size_t len)
 
 	return (0);
 }
-
-static char *
-layout_custom_get_pane_pairs(struct window_pane *wp)
-{
-	static char	kv[1024];
-	char		tmp[64];
-	size_t		kvlen, tmplen;
-	u_int		zidx;
-
-	kv[0] = '\0';
-
-	if (window_pane_is_floating(wp)) {
-		if (window_pane_zindex(wp, &zidx) == 0) {
-			tmplen = xsnprintf(tmp, sizeof tmp, "z=%d,", zidx);
-			if (tmplen > (sizeof tmp) - 1) {
-				return (NULL);
-			}
-			if (strlcat(kv, tmp, 1024) >= 1024)
-				return (NULL);
-		}
-	}
-	kvlen = strlen(kv);
-	if (kvlen > 0)
-		kv[kvlen - 1] = '\0'; /* trailing comma */
-	return (kv);
-}
-
-/* Recursively append information for a single cell in the new format. */
-static int
-layout_append_v2(struct layout_cell *lc, char *buf, size_t len)
-{
-	struct layout_cell	*lcchild;
-	enum layout_type	 type = lc->type;
-	char			 tmp[64];
-	size_t			 buflen, tmplen;
-	const char		*brackets = "][", *flags, *kvpairs;
-
-	if (len == 0)
-		return (-1);
-	if (lc == NULL)
-		return (0);
-
-	if (type == LAYOUT_LEFTRIGHT)
-		brackets = "}{";
-	else if (type == LAYOUT_WINDOWPANE)
-		brackets = ")(";
-	if (strlcat(buf, &brackets[1], len) >= len)
-		return (-1);
-
-	if (lc->wp != NULL) {
-		flags = window_pane_printable_flags(lc->wp);
-		kvpairs = layout_custom_get_pane_pairs(lc->wp);
-		tmplen = xsnprintf(tmp, sizeof tmp, "%s,%ux%u,%d,%d,%u,%s",
-		    flags, lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff,
-		    lc->wp->id, kvpairs);
-	} else {
-		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%d,%d",
-		    lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff);
-	}
-	if (tmplen > (sizeof tmp) - 1)
-		return (-1);
-	if (strlcat(buf, tmp, len) >= len)
-		return (-1);
-
-	if (type != LAYOUT_WINDOWPANE) {
-		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (layout_append_v2(lcchild, buf, len) != 0)
-				return (-1);
-		}
-	}
-
-	// TODO: clean this up.
-	buflen = strlen(buf);
-	if (buflen + 1 >= len)
-		return (-1);
-	buf[buflen] = brackets[0];
-	buf[buflen + 1] = '\0';
-
-	return (0);
-}
-
 /* Dispatch to the correct version. */
 static int
-layout_append(struct layout_cell *lc, char *buf, size_t len, int flags)
+layout_append(struct layout_cell *lc, struct layout_string *ls, size_t len,
+    int flags)
 {
 	if (flags & LAYOUT_CUSTOM_OLD_FORMAT)
-		return (layout_append_v1(lc, buf, len));
-	return (layout_append_v2(lc, buf, len));
+		return (layout_append_v1(lc, ls->dat, len));
+	return (layout_append_v2(lc, ls, len));
 }
-
 
 /* Check layout sizes fit. */
 static int
@@ -267,16 +279,18 @@ layout_parse(struct window *w, const char *layout, int flags, char **cause)
 			return (-1);
 		}
 	} else {
-		if (sscanf(layout, "%d,%hx,%n", &version, &csum, &n) != 2 ||
-		    n != 7) {
+		if (sscanf(layout, "{\"v\":%d,\"l\":%n", &version, &n) != 1 ||
+		    n != 11) {
 			*cause = xstrdup("malformed layout header");
 			return (-1);
 		}
 	}
 	layout += n;
-	if (csum != layout_checksum(layout)) {
-		*cause = xstrdup("invalid layout checksum");
-		return (-1);
+	if (flags & LAYOUT_CUSTOM_OLD_FORMAT) {
+		if (csum != layout_checksum(layout)) {
+			*cause = xstrdup("invalid layout checksum");
+			return (-1);
+		}
 	}
 
 	/* Build the layout. */
@@ -285,6 +299,7 @@ layout_parse(struct window *w, const char *layout, int flags, char **cause)
 		*cause = xstrdup("invalid layout");
 		return (-1);
 	}
+	layout++; /* skip '}' in outer container */
 	if (*layout != '\0') {
 		*cause = xstrdup("invalid layout");
 		goto fail;
@@ -503,87 +518,148 @@ fail:
 	return (NULL);
 }
 
-/*
- * Validates the first character of *layout as a flag. If the character
- * represents a valid flag, applies it to the layout cell and advances layout.
- */
 static int
-layout_custom_set_flags(struct layout_cell *lc, const char **layout)
+layout_custom_parse_field(struct layout_cell *lc, const char **layout)
 {
+	struct layout_cell	*lcchild;
+	long long		 ll;
+	char			*endptr, saved;
+
+	if (**layout != '"')
+		return (0);
+	(*layout)++;
+
 	switch (**layout) {
-		case 'F':
-			lc->flags |= LAYOUT_CELL_FLOATING;
-			(*layout)++;
-			return (0);
-		case '-': /* unsupported fallthrough */
-		case '*':
-		case 'Z':
-			(*layout)++;
-			return (0);
-		default:
+	case 't': /* type */
+		if (strncmp(*layout, "t\":\"", 4) != 0)
 			return (-1);
+		(*layout) += 4;
+		switch (**layout) {
+			case 'h':
+				lc->type = LAYOUT_LEFTRIGHT;
+				break;
+			case 'v':
+				lc->type = LAYOUT_TOPBOTTOM;
+				break;
+			case 'p':
+				lc->type = LAYOUT_WINDOWPANE;
+				break;
+			default:
+				return (-1);
+		}
+		(*layout)++;
+		if (**layout != '"')
+			return (-1);
+		(*layout)++;
+		break;
+	case 'w': /* width */
+	case 'h': /* height */
+		saved = **layout;
+		(*layout)++;
+		if (strncmp(*layout, "\":", 2) != 0)
+			return (-1);
+		(*layout) += 2;
+		ll = strtoll(*layout, &endptr, 10);
+		if (*endptr != ',' && *endptr != '}')
+			return (-1);
+		if (saved == 'w')
+			lc->g.sx = ll;
+		else
+			lc->g.sy = ll;
+		*layout = endptr;
+		break;
+	case 'x': /* x-position */
+	case 'y': /* y-position */
+		saved = **layout;
+		(*layout)++;
+		if (strncmp(*layout, "\":", 2) != 0)
+			return (-1);
+		(*layout) += 2;
+		ll = strtoll(*layout, &endptr, 10);
+		if (*endptr != ',' && *endptr != '}')
+			return (-1);
+		if (saved == 'x')
+			lc->g.xoff = ll;
+		else
+			lc->g.yoff = ll;
+		*layout = endptr;
+		break;
+	case 'i': /* pane id */
+		/* Pane ids are not used when reconstructing the layout. */
+		if (strncmp(*layout, "i\":", 3) != 0)
+			return (-1);
+		(*layout) += 3;
+		while (**layout != ',' && **layout != '}')
+			(*layout)++;
+		break;
+	case 'z': /* z-index */
+		if (strncmp(*layout, "z\":", 3) != 0)
+			return (-1);
+		(*layout) += 3;
+		lc->flags |= LAYOUT_CELL_FLOATING;
+		while (**layout != ',' && **layout != '}')
+			(*layout)++;
+		break;
+	case 'a': /* active */
+	case 'l': /* last */
+		/* Properties of the window, not the cell. */
+		(*layout)++;
+		if (strncmp(*layout, "\":", 2) != 0)
+			return (-1);
+		(*layout) += 2;
+		while (**layout != ',' && **layout != '}')
+			(*layout)++;
+		break;
+	case 'c': /* children */
+		if (strncmp(*layout, "c\":[", 4) != 0)
+			return (-1);
+		(*layout) += 4;
+		while (1) {
+			lcchild = layout_custom_create_cell(lc, layout);
+			if (lcchild == NULL)
+				return (-1);
+			TAILQ_INSERT_TAIL(&lc->cells, lcchild, entry);
+			if (**layout == ',')
+				(*layout)++;
+			else if (**layout == ']') {
+				(*layout)++;
+				break;
+			} else
+				return (-1);
+		}
+		break;
 	}
+	return (0);
 }
 
-/*
- * Scans *layout, creating a layout cell from the string given. Advances layout
- * past the scanned sharacters.
- */
 static struct layout_cell *
 layout_custom_create_cell(struct layout_cell *lcparent, const char **layout)
 {
 	struct layout_cell	*lc;
-	enum layout_type	 type;
-	char			 other;
 
-	switch (**layout) {
-		case '{':
-			type = LAYOUT_LEFTRIGHT;
-			other = '[';
-			break;
-		case '[':
-			type = LAYOUT_TOPBOTTOM;
-			other = '{';
-			break;
-		case '(':
-			type = LAYOUT_WINDOWPANE;
-			break;
-		default:
-			return (NULL);
-	}
+	if (**layout != '{')
+		return (NULL);
 	(*layout)++;
+
 	lc = layout_create_cell(lcparent);
-	lc->type = type;
-
-	if (type == LAYOUT_WINDOWPANE) {
-		while (**layout != ',') {
-			if (layout_custom_set_flags(lc, layout) == -1)
-				goto fail;
-		}
-		(*layout)++;
-	}
-
-	if (sscanf(*layout, "%ux%u,%d,%d", &lc->g.sx, &lc->g.sy, &lc->g.xoff,
-	    &lc->g.yoff) != 4)
+	if (lc == NULL)
 		goto fail;
 
-	/*
-	 * Skipping past geometry in all cells, plus the id and attributes in
-	 * LAYOUT_WINDOWPANE cells. Attributes are not used yet when creating
-	 * cells.
-	 */
-	if (type == LAYOUT_WINDOWPANE) {
-		while (**layout != ')')
+	while (1) {
+		if (layout_custom_parse_field(lc, layout) != 0)
+			goto fail;
+		if (**layout == ',')
 			(*layout)++;
-	} else {
-		/* Nodes don't contain other nodes of the same type. */
-		while (**layout != other && **layout != '(')
+		else if (**layout == '}') {
 			(*layout)++;
+			break;
+		} else
+			goto fail;
 	}
 
 	return (lc);
 fail:
-	free(lc);
+	layout_free_cell(lc, 0);
 	return (NULL);
 }
 
@@ -593,44 +669,9 @@ fail:
  * return NULL or will not advance through the entire input string.
  */
 static struct layout_cell *
-layout_construct_v2(struct layout_cell *lcparent, const char **layout)
+layout_construct_v2(const char **layout)
 {
-	struct layout_cell	*lcchild, *lc;
-
-	lc = layout_custom_create_cell(lcparent, layout);
-	if (lc == NULL)
-		goto fail;
-
-	while (**layout == '(' || **layout == '{' || **layout == '[') {
-		lcchild = layout_construct_v2(lc, layout);
-		if (lcchild == NULL)
-			goto fail;
-		TAILQ_INSERT_TAIL(&lc->cells, lcchild, entry);
-	}
-
-	switch (lc->type) {
-	case LAYOUT_LEFTRIGHT:
-		if (**layout != '}' || TAILQ_FIRST(&lc->cells) == NULL)
-			goto fail;
-		break;
-	case LAYOUT_TOPBOTTOM:
-		if (**layout != ']' || TAILQ_FIRST(&lc->cells) == NULL)
-			goto fail;
-		break;
-	case LAYOUT_WINDOWPANE:
-		if (**layout != ')')
-			goto fail;
-		break;
-	default:
-		goto fail;
-	}
-	(*layout)++;
-
-	return (lc);
-
-fail:
-	layout_free_cell(lc, 0);
-	return (NULL);
+	return (layout_custom_create_cell(NULL, layout));
 }
 
 /*
@@ -647,5 +688,5 @@ layout_construct(const char **layout, int version, int flags)
 	}
 	if (version != 2)
 		return (NULL);
-	return (layout_construct_v2(NULL, layout));
+	return (layout_construct_v2(layout));
 }
