@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.489 2026/07/13 16:07:47 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.490 2026/07/14 17:17:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3125,7 +3125,8 @@ server_client_print(struct client *c, int parse, struct evbuffer *evb)
 	wp = server_client_get_pane(c);
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme == NULL || wme->mode != &window_view_mode)
-		window_pane_set_mode(wp, NULL, &window_view_mode, NULL, NULL);
+		window_pane_set_mode(wp, NULL, &window_view_mode, NULL, NULL,
+		    NULL);
 	if (parse) {
 		do {
 			line = evbuffer_readln(evb, NULL, EVBUFFER_EOL_LF);

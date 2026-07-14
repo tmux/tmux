@@ -1,4 +1,4 @@
-/* $OpenBSD: window-customize.c,v 1.33 2026/07/13 22:03:08 nicm Exp $ */
+/* $OpenBSD: window-customize.c,v 1.34 2026/07/14 17:17:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -25,7 +25,8 @@
 #include "tmux.h"
 
 static struct screen	*window_customize_init(struct window_mode_entry *,
-			     struct cmd_find_state *, struct args *);
+			     struct cmdq_item *, struct cmd_find_state *,
+			     struct args *);
 static void		 window_customize_free(struct window_mode_entry *);
 static void		 window_customize_resize(struct window_mode_entry *,
 			      u_int, u_int);
@@ -1544,7 +1545,8 @@ window_customize_help(u_int *width, const char **item)
 }
 
 static struct screen *
-window_customize_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
+window_customize_init(struct window_mode_entry *wme,
+    __unused struct cmdq_item *item, struct cmd_find_state *fs,
     struct args *args)
 {
 	struct window_pane			*wp = wme->wp;

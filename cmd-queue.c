@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-queue.c,v 1.120 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: cmd-queue.c,v 1.121 2026/07/14 17:17:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2013 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -146,6 +146,13 @@ const char *
 cmdq_get_name(struct cmdq_item *item)
 {
 	return (item->name);
+}
+
+/* Get item command. */
+struct cmd *
+cmdq_get_cmd(struct cmdq_item *item)
+{
+	return (item->cmd);
 }
 
 /* Get item client. */

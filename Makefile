@@ -1,4 +1,4 @@
-# $OpenBSD: Makefile,v 1.120 2026/07/10 13:38:45 nicm Exp $
+# $OpenBSD: Makefile,v 1.121 2026/07/14 17:17:17 nicm Exp $
 
 PROG=	tmux
 SRCS=	alerts.c \
@@ -17,7 +17,6 @@ SRCS=	alerts.c \
 	cmd-detach-client.c \
 	cmd-display-menu.c \
 	cmd-display-message.c \
-	cmd-display-panes.c \
 	cmd-find-window.c \
 	cmd-find.c \
 	cmd-if-shell.c \
@@ -137,9 +136,10 @@ SRCS=	alerts.c \
 	window-clock.c \
 	window-copy.c \
 	window-customize.c \
+	window-panes.c \
 	window-switch.c \
-	window-visible.c \
 	window-tree.c \
+	window-visible.c \
 	window.c \
 	xmalloc.c
 

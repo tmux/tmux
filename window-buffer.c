@@ -1,4 +1,4 @@
-/* $OpenBSD: window-buffer.c,v 1.49 2026/06/26 08:10:49 nicm Exp $ */
+/* $OpenBSD: window-buffer.c,v 1.50 2026/07/14 17:17:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -28,7 +28,8 @@
 #include "tmux.h"
 
 static struct screen	*window_buffer_init(struct window_mode_entry *,
-			     struct cmd_find_state *, struct args *);
+			     struct cmdq_item *, struct cmd_find_state *,
+			     struct args *);
 static void		 window_buffer_free(struct window_mode_entry *);
 static void		 window_buffer_resize(struct window_mode_entry *, u_int,
 			     u_int);
@@ -362,7 +363,8 @@ window_buffer_help(u_int *width, const char **item)
 }
 
 static struct screen *
-window_buffer_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
+window_buffer_init(struct window_mode_entry *wme,
+    __unused struct cmdq_item *item, struct cmd_find_state *fs,
     struct args *args)
 {
 	struct window_pane		*wp = wme->wp;

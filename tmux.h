@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1402 2026/07/13 22:03:08 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1403 2026/07/14 17:17:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1133,8 +1133,13 @@ struct window_mode {
 	const char	*name;
 	const char	*default_format;
 
+	int		 flags;
+#define WINDOW_MODE_HIDE_PANE_STATUS 0x1
+#define WINDOW_MODE_NO_STACK 0x2
+
 	struct screen	*(*init)(struct window_mode_entry *,
-			     struct cmd_find_state *, struct args *);
+			     struct cmdq_item *, struct cmd_find_state *,
+			     struct args *);
 	void		 (*free)(struct window_mode_entry *);
 	void		 (*resize)(struct window_mode_entry *, u_int, u_int);
 	void		 (*update)(struct window_mode_entry *);
@@ -3109,6 +3114,7 @@ void		  cmdq_merge_formats(struct cmdq_item *, struct format_tree *);
 struct cmdq_list *cmdq_new(void);
 void cmdq_free(struct cmdq_list *);
 const char	 *cmdq_get_name(struct cmdq_item *);
+struct cmd	 *cmdq_get_cmd(struct cmdq_item *);
 struct client	 *cmdq_get_client(struct cmdq_item *);
 struct client	 *cmdq_get_target_client(struct cmdq_item *);
 struct cmdq_state *cmdq_get_state(struct cmdq_item *);
@@ -3661,7 +3667,7 @@ void		 window_pane_clear_resizes(struct window_pane *,
 		     struct window_pane_resize *);
 int		 window_pane_set_mode(struct window_pane *,
 		     struct window_pane *, const struct window_mode *,
-		     struct cmd_find_state *, struct args *);
+		     struct cmdq_item *, struct cmd_find_state *, struct args *);
 void		 window_pane_reset_mode(struct window_pane *);
 void		 window_pane_reset_mode_all(struct window_pane *);
 int		 window_pane_key(struct window_pane *, struct client *,
@@ -3763,6 +3769,8 @@ void		 layout_make_leaf(struct layout_cell *, struct window_pane *);
 void		 layout_make_node(struct layout_cell *, enum layout_type);
 void		 layout_fix_zindexes(struct window *, struct layout_cell *);
 int		 layout_cell_is_tiled(struct layout_cell *);
+int		 layout_add_horizontal_border(struct layout_cell *,
+		     struct layout_cell *, int);
 void		 layout_fix_offsets(struct window *);
 void		 layout_fix_panes(struct window *, struct window_pane *);
 void		 layout_resize_adjust(struct window *, struct layout_cell *,
@@ -3885,6 +3893,9 @@ extern const struct window_mode window_switch_mode;
 /* window-clock.c */
 extern const struct window_mode window_clock_mode;
 extern const char window_clock_table[14][5][5];
+
+/* window-panes.c */
+extern const struct window_mode window_panes_mode;
 
 /* window-client.c */
 extern const struct window_mode window_client_mode;

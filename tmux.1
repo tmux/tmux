@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1139 2026/07/14 15:06:54 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1140 2026/07/14 17:17:18 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -3169,19 +3169,31 @@ option.
 .It Xo
 .Tg displayp
 .Ic display\-panes
-.Op Fl bN
+.Op Fl kNZ
 .Op Fl d Ar duration
-.Op Fl t Ar target\-client
+.Op Fl s Ar source\-window
+.Op Fl t Ar target\-pane
 .Op Ar template
 .Xc
 .D1 Pq alias: Ic displayp
-Display a visible indicator of each pane shown by
-.Ar target\-client .
+Put
+.Ar target\-pane
+into panes mode, which displays a preview of the window and a visible
+indicator of each pane.
+If
+.Fl s
+is given, the panes in
+.Ar source\-window
+are displayed instead of those in the window containing
+.Ar target\-pane .
 See the
-.Ic display\-panes\-colour
+.Ic display\-panes\-colour ,
+.Ic display\-panes\-active\-colour ,
+.Ic display\-panes\-border\-style ,
+.Ic display\-panes\-format
 and
-.Ic display\-panes\-active\-colour
-session options.
+.Ic display\-panes\-time
+window options.
 The indicator is closed when a key is pressed (unless
 .Fl N
 is given) or
@@ -3193,11 +3205,16 @@ is not given,
 .Ic display\-panes\-time
 is used.
 A duration of zero means the indicator stays until a key is pressed.
+The mode is zoomed by default;
+.Fl Z
+starts it unzoomed.
+.Fl k
+kills the pane when the mode is exited.
 While the indicator is on screen, a pane may be chosen with the
 .Ql 0
 to
 .Ql 9
-keys, which will cause
+keys or by clicking it with the mouse, which will cause
 .Ar template
 to be executed as a command with
 .Ql %%
@@ -3205,9 +3222,6 @@ substituted by the pane ID.
 The default
 .Ar template
 is "select\-pane \-t \[aq]%%\[aq]".
-With
-.Fl b ,
-other commands are not blocked from running until the indicator is closed.
 .Tg findw
 .It Xo Ic find\-window
 .Op Fl iCNrTZ
@@ -5231,24 +5245,6 @@ If
 or
 .Ic next ,
 the client is switched to the previous or next session in alphabetical order.
-.It Ic display\-panes\-active\-colour Ar colour
-Set the colour used by the
-.Ic display\-panes
-command to show the indicator for the active pane.
-.It Ic display\-panes\-colour Ar colour
-Set the colour used by the
-.Ic display\-panes
-command to show the indicators for inactive panes.
-.It Ic display\-panes\-format Ar format
-Set the
-.Ar format
-of the text shown by the
-.Ic display\-panes
-command, expanded for each pane.
-.It Ic display\-panes\-time Ar time
-Set the time in milliseconds for which the indicators shown by the
-.Ic display\-panes
-command appear.
 .It Ic display\-time Ar time
 Set the amount of time for which status line messages and other on-screen
 indicators are displayed.
@@ -5679,6 +5675,38 @@ Set clock colour.
 .Op Ic 12 | 24 | 12\-with\-seconds | 24\-with\-seconds
 .Xc
 Set clock hour format.
+.Pp
+.It Ic display\-panes\-active\-colour Ar colour
+Set the colour used by the
+.Ic display\-panes
+command to show the indicator for the active pane.
+.Pp
+.It Ic display\-panes\-border\-style Ar style
+Set the style of borders in panes mode used by the
+.Ic display\-panes
+command.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
+.It Ic display\-panes\-colour Ar colour
+Set the colour used by the
+.Ic display\-panes
+command to show the indicators for inactive panes.
+.Pp
+.It Ic display\-panes\-format Ar format
+Set the
+.Ar format
+of the text shown by the
+.Ic display\-panes
+command, expanded for each pane.
+.Pp
+.It Ic display\-panes\-time Ar time
+Set the time in milliseconds for which the indicators shown by the
+.Ic display\-panes
+command appear.
 .Pp
 .It Ic fill\-character Ar character
 Set the character used to fill areas of the terminal unused by a window.

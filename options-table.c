@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.236 2026/07/13 19:32:28 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.237 2026/07/14 17:17:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -815,40 +815,6 @@ const struct options_table_entry options_table[] = {
 		  "the client to another session if any exist."
 	},
 
-	{ .name = "display-panes-active-colour",
-	  .type = OPTIONS_TABLE_STRING,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "themered",
-	  .text = "Colour of the active pane for 'display-panes'."
-	},
-
-	{ .name = "display-panes-colour",
-	  .type = OPTIONS_TABLE_STRING,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "themeblue",
-	  .text = "Colour of not active panes for 'display-panes'."
-	},
-
-	{ .name = "display-panes-format",
-	  .type = OPTIONS_TABLE_STRING,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "#[align=right]#{pane_width}x#{pane_height}",
-	  .text = "Format of text shown by 'display-panes', expanded for each "
-		  "pane."
-	},
-
-	{ .name = "display-panes-time",
-	  .type = OPTIONS_TABLE_NUMBER,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .minimum = 1,
-	  .maximum = INT_MAX,
-	  .default_num = 1000,
-	  .unit = "milliseconds",
-	  .text = "Time for which 'display-panes' should show pane numbers."
-	},
-
 	{ .name = "display-time",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_SESSION,
@@ -1353,6 +1319,49 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_clock_mode_style_list,
 	  .default_num = 1,
 	  .text = "Time format of the clock in clock mode."
+	},
+
+	{ .name = "display-panes-active-colour",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .flags = OPTIONS_TABLE_IS_COLOUR,
+	  .default_str = "themered",
+	  .text = "Colour of the active pane for 'display-panes'."
+	},
+
+	{ .name = "display-panes-border-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "bg=themedarkgrey,fg=themelightgrey",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of the pane borders in 'display-panes'."
+	},
+
+	{ .name = "display-panes-colour",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .flags = OPTIONS_TABLE_IS_COLOUR,
+	  .default_str = "themeblue",
+	  .text = "Colour of not active panes for 'display-panes'."
+	},
+
+	{ .name = "display-panes-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "#[align=right]#{pane_width}x#{pane_height}",
+	  .text = "Format of text shown by 'display-panes', expanded for each "
+		  "pane."
+	},
+
+	{ .name = "display-panes-time",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .minimum = 1,
+	  .maximum = INT_MAX,
+	  .default_num = 1000,
+	  .unit = "milliseconds",
+	  .text = "Time for which 'display-panes' should show pane numbers."
 	},
 
 	{ .name = "copy-mode-match-style",
