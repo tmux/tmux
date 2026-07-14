@@ -49,7 +49,9 @@ $TMUX kill-server 2>/dev/null
 $TMUX2 kill-server 2>/dev/null
 
 TMP=$(mktemp)
-trap "rm -f $TMP; $TMUX kill-server 2>/dev/null; $TMUX2 kill-server 2>/dev/null" 0 1 15
+BEFORE=$(mktemp)
+AFTER=$(mktemp)
+trap "rm -f $TMP $BEFORE $AFTER; $TMUX kill-server 2>/dev/null; $TMUX2 kill-server 2>/dev/null" 0 1 15
 
 $TMUX2 -f/dev/null new -d -x48 -y8 -s test \
 	"awk 'BEGIN { for (i = 0; i < 90; i++) { if (i % 2 == 0) printf \"L%03d-ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-END\\n\", i; else printf \"S%03d\\n\", i } }'; exec sleep 100" || exit 1
@@ -121,5 +123,47 @@ $TMUX2 send -X scroll-down || exit 1
 sleep 1
 capture
 check_line 1 "S003"
+
+# Scrolling from long content to a tabbed short line should still clear the old
+# line tail.
+$TMUX2 send -X cancel || exit 1
+$TMUX resizew -x40 -y8 || exit 1
+$TMUX2 refresh -t"$CLIENT" -c || exit 1
+$TMUX2 new-window \
+	"printf 'LONGTAIL-ABCDEFGHIJKLMNOPQRSTUV\nA\tB\nLONGTAIL-123456789012345678\nS\n'; i=0; while [ \$i -lt 20 ]; do printf 'FILLER-%02d\n' \$i; i=\$((i + 1)); done; exec sleep 100" || \
+	exit 1
+sleep 1
+$TMUX2 copy-mode -H || exit 1
+$TMUX2 send -X history-top || exit 1
+sleep 1
+capture
+check_line 1 "LONGTAIL-ABCDEFGHIJKLMNOPQRSTUV"
+
+$TMUX2 send -X scroll-down || exit 1
+sleep 1
+capture
+check_line 1 "A       B"
+sed -n 1p $TMP | grep -Fq "LONGTAIL" && \
+	fail "short tabbed line left stale tail"
+
+# Reflow can leave padding from tabs at the start of wrapped lines. Entering
+# copy mode should redraw those padding cells as spaces, not skip them and move
+# the following text left.
+$TMUX2 send -X cancel || exit 1
+$TMUX resizew -x80 -y24 || exit 1
+$TMUX2 refresh -t"$CLIENT" -c || exit 1
+$TMUX2 new-window "cat ../tmux.c; exec sleep 100" || exit 1
+sleep 1
+$TMUX2 splitw -hd || exit 1
+sleep 1
+$TMUX capturep -pS0 -E- >$BEFORE || exit 1
+$TMUX2 copy-mode -H -t:.0 || exit 1
+sleep 1
+$TMUX capturep -pS0 -E- >$AFTER || exit 1
+
+if ! cmp -s "$BEFORE" "$AFTER"; then
+	diff -u "$BEFORE" "$AFTER" >&2
+	fail "copy-mode redraw moved reflowed tab padding"
+fi
 
 exit 0
