@@ -1547,7 +1547,8 @@ struct layout_cell {
 	enum layout_type	 type;
 
 	int			 flags;
-#define LAYOUT_CELL_FLOATING 0x1
+#define LAYOUT_CELL_FLOATING	0x1
+#define LAYOUT_CELL_HIDDEN	0x2
 
 	struct layout_cell	*parent;
 
@@ -3801,6 +3802,7 @@ int		 window_pane_get_pane_status(struct window_pane *);
 struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
 		     u_int);
 int		 window_pane_is_floating(struct window_pane *);
+int		 window_pane_is_hidden(struct window_pane *);
 
 /* window-border.c */
 void		 window_get_border_cell(struct window *, struct window_pane *,
