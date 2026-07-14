@@ -1,4 +1,4 @@
-/* $OpenBSD: window-tree.c,v 1.93 2026/07/04 22:09:06 nicm Exp $ */
+/* $OpenBSD: window-tree.c,v 1.94 2026/07/14 17:17:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -25,7 +25,8 @@
 #include "tmux.h"
 
 static struct screen	*window_tree_init(struct window_mode_entry *,
-			     struct cmd_find_state *, struct args *);
+			     struct cmdq_item *, struct cmd_find_state *,
+			     struct args *);
 static void		 window_tree_free(struct window_mode_entry *);
 static void		 window_tree_resize(struct window_mode_entry *, u_int,
 			     u_int);
@@ -1097,7 +1098,8 @@ window_tree_help(u_int *width, const char **item)
 }
 
 static struct screen *
-window_tree_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
+window_tree_init(struct window_mode_entry *wme,
+    __unused struct cmdq_item *item, struct cmd_find_state *fs,
     struct args *args)
 {
 	struct window_pane		*wp = wme->wp;

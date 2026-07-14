@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.420 2026/07/14 15:06:54 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.421 2026/07/14 17:17:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -33,9 +33,9 @@ static void	window_copy_command(struct window_mode_entry *, struct client *,
 		    struct session *, struct winlink *, struct args *,
 		    struct mouse_event *);
 static struct screen *window_copy_init(struct window_mode_entry *,
-		    struct cmd_find_state *, struct args *);
+		    struct cmdq_item *, struct cmd_find_state *, struct args *);
 static struct screen *window_copy_view_init(struct window_mode_entry *,
-		    struct cmd_find_state *, struct args *);
+		    struct cmdq_item *, struct cmd_find_state *, struct args *);
 static void	window_copy_free(struct window_mode_entry *);
 static void	window_copy_resize(struct window_mode_entry *, u_int, u_int);
 static void	window_copy_formats(struct window_mode_entry *,
@@ -597,7 +597,8 @@ window_copy_common_init(struct window_mode_entry *wme)
 
 static struct screen *
 window_copy_init(struct window_mode_entry *wme,
-    __unused struct cmd_find_state *fs, struct args *args)
+    __unused struct cmdq_item *item, __unused struct cmd_find_state *fs,
+    struct args *args)
 {
 	struct window_pane		*wp = wme->swp;
 	struct window_copy_mode_data	*data;
@@ -648,7 +649,8 @@ window_copy_init(struct window_mode_entry *wme,
 
 static struct screen *
 window_copy_view_init(struct window_mode_entry *wme,
-    __unused struct cmd_find_state *fs, __unused struct args *args)
+    __unused struct cmdq_item *item, __unused struct cmd_find_state *fs,
+    __unused struct args *args)
 {
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data;

@@ -101,7 +101,6 @@ dist_tmux_SOURCES = \
 	cmd-detach-client.c \
 	cmd-display-menu.c \
 	cmd-display-message.c \
-	cmd-display-panes.c \
 	cmd-find-window.c \
 	cmd-find.c \
 	cmd-if-shell.c \
@@ -223,6 +222,7 @@ dist_tmux_SOURCES = \
 	window-clock.c \
 	window-copy.c \
 	window-customize.c \
+	window-panes.c \
 	window-switch.c \
 	window-tree.c \
 	window-visible.c \
