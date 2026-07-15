@@ -176,7 +176,7 @@ layout_append_v1(struct layout_cell *lc, char *buf, size_t len)
 
 	if (len == 0)
 		return (-1);
-	if (lc == NULL)
+	if (lc == NULL || lc->flags & LAYOUT_CELL_FLOATING)
 		return (0);
 	if (lc->wp != NULL) {
 		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%d,%d,%u",
