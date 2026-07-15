@@ -2098,7 +2098,7 @@ server_client_get_screen(struct client *c, u_int *cx, u_int *cy)
 	if (c->overlay_draw != NULL) {
 		if (c->overlay_mode != NULL)
 			s = c->overlay_mode(c, c->overlay_data, cx, cy);
-	} else if (c->prompt_string == NULL && wp != NULL)
+	} else if (c->prompt == NULL && wp != NULL)
 		s = wp->screen;
 	else
 		s = c->status.active;
