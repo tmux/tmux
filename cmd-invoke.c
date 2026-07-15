@@ -337,11 +337,12 @@ static void
 cmd_invoke_error(struct cmdq_item *item, struct cmd_invoke_state *is,
     struct cmd_parse_node *node, const char *cause)
 {
+	struct client		*c = cmdq_get_client(item);
 	struct cmd_parse_tree	*tree = cmd_invoke_tree(is);
 	const char		*file = cmd_parse_file(tree);
 	u_int			 line = cmd_parse_node_line(node);
 
-	if (cmdq_get_client(item) != NULL) {
+	if (c != NULL && (~c->flags & CLIENT_CONTROL || file == NULL)) {
 		cmdq_error(item, "%s", cause);
 		return;
 	}
@@ -499,7 +500,9 @@ cmd_invoke_fire(struct cmdq_item *item, struct cmd_invoke_state *is)
 	struct cmd_parse_tree	*tree, *alias;
 	struct cmdq_item	*new_item, *next;
 	struct cmdq_state	*state;
+	struct client		*c;
 	struct cmd		*cmd;
+	const char		*file;
 	char			*cause;
 	int			 r;
 
@@ -547,7 +550,10 @@ cmd_invoke_fire(struct cmdq_item *item, struct cmd_invoke_state *is)
 				break;
 			}
 			if (r == -1) {
-				if (cmdq_get_client(item) != NULL)
+				c = cmdq_get_client(item);
+				file = cmd_parse_file(tree);
+				if (c != NULL &&
+				    (~c->flags & CLIENT_CONTROL || file == NULL))
 					cmdq_error(item, "%s", cause);
 				else
 					cfg_add_cause("%s", cause);
