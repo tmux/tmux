@@ -75,7 +75,26 @@ must_equal "$($TMUX display-message -p -t "$id" '#{pane_top}')" 1
 must_equal "$($TMUX display-message -p -t "$id" '#{pane_width}')" 6
 must_equal "$($TMUX display-message -p -t "$id" '#{pane_height}')" 3
 
-$TMUX new-pane -d -M -L -t "$BASE" 'sleep 100' || fail "new-pane -M -L failed"
+$TMUX kill-pane -t "$id" || fail "kill floating pane failed"
+$TMUX break-pane -W -s "$BASE" || fail "break base pane failed"
+$TMUX resize-pane -t "$BASE" -x10 -y4 || fail "resize floating base failed"
+$TMUX move-pane -t "$BASE" -P top-left || fail "move floating base failed"
+
+# Drag in empty window space with no tiled pane underneath.
+drag 40 10 50 15
+
+id=$($TMUX list-panes -F '#{?pane_active,#{pane_id},}' | tail -n 1)
+[ -n "$id" ] || fail "no floating pane created from empty area"
+[ "$id" != "$BASE" ] || fail "empty-area drag did not create a new pane"
+
+must_equal "$($TMUX display-message -p -t "$id" '#{pane_left}')" 40
+must_equal "$($TMUX display-message -p -t "$id" '#{pane_top}')" 10
+must_equal "$($TMUX display-message -p -t "$id" '#{pane_width}')" 9
+must_equal "$($TMUX display-message -p -t "$id" '#{pane_height}')" 4
+
+TILED=$($TMUX new-window -dPF '#{pane_id}' 'sleep 100') ||
+	fail "new tiled window failed"
+$TMUX new-pane -d -M -L -t "$TILED" 'sleep 100' || fail "new-pane -M -L failed"
 
 cleanup
 exit 0
