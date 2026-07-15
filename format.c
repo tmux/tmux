@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.404 2026/07/14 15:06:54 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.405 2026/07/15 13:02:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1068,6 +1068,20 @@ format_cb_pane_floating_flag(struct format_tree *ft)
 
 	if (wp != NULL) {
 		if (window_pane_is_floating(wp))
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for pane_modal_flag. */
+static void *
+format_cb_pane_modal_flag(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL) {
+		if (wp == wp->window->modal)
 			return (xstrdup("1"));
 		return (xstrdup("0"));
 	}
@@ -3084,6 +3098,15 @@ format_cb_window_marked_flag(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for window_modal_pane. */
+static void *
+format_cb_window_modal_pane(struct format_tree *ft)
+{
+	if (ft->w != NULL && ft->w->modal != NULL)
+		return (format_printf("%%%u", ft->w->modal->id));
+	return (NULL);
+}
+
 /* Callback for window_name. */
 static void *
 format_cb_window_name(struct format_tree *ft)
@@ -3666,6 +3689,9 @@ static const struct format_table_entry format_table[] = {
 	{ "pane_marked_set", FORMAT_TABLE_STRING,
 	  format_cb_pane_marked_set
 	},
+	{ "pane_modal_flag", FORMAT_TABLE_STRING,
+	  format_cb_pane_modal_flag
+	},
 	{ "pane_mode", FORMAT_TABLE_STRING,
 	  format_cb_pane_mode
 	},
@@ -3923,6 +3949,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "window_marked_flag", FORMAT_TABLE_STRING,
 	  format_cb_window_marked_flag
+	},
+	{ "window_modal_pane", FORMAT_TABLE_STRING,
+	  format_cb_window_modal_pane
 	},
 	{ "window_name", FORMAT_TABLE_STRING,
 	  format_cb_window_name

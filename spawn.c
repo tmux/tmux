@@ -1,4 +1,4 @@
-/* $OpenBSD: spawn.c,v 1.48 2026/07/13 13:01:14 nicm Exp $ */
+/* $OpenBSD: spawn.c,v 1.49 2026/07/15 13:02:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -273,6 +273,17 @@ spawn_pane(struct spawn_context *sc, char **cause)
 
 	spawn_log(__func__, sc);
 
+	if (sc->flags & SPAWN_MODAL) {
+		if (~sc->flags & SPAWN_FLOATING) {
+			xasprintf(cause, "modal pane must be floating");
+			return (NULL);
+		}
+		if (w->modal != NULL) {
+			xasprintf(cause, "window already has a modal pane");
+			return (NULL);
+		}
+	}
+
 	/*
 	 * Work out the current working directory. If respawning, use
 	 * the pane's stored one unless specified.
@@ -545,7 +556,16 @@ complete:
 
 	if (sc->flags & SPAWN_RESPAWN)
 		return (new_wp);
-	if ((~sc->flags & SPAWN_DETACHED) || w->active == NULL) {
+	if (sc->flags & SPAWN_MODAL) {
+		w->modal_last = w->active;
+		w->modal = new_wp;
+		window_redraw_active_switch(w, new_wp);
+		if (sc->flags & SPAWN_NONOTIFY)
+			window_set_active_pane(w, new_wp, 0);
+		else
+			window_set_active_pane(w, new_wp, 1);
+	} else if (((~sc->flags & SPAWN_DETACHED) || w->active == NULL) &&
+	    w->modal == NULL) {
 		if (sc->flags & SPAWN_NONOTIFY)
 			window_set_active_pane(w, new_wp, 0);
 		else
@@ -661,6 +681,9 @@ spawn_editor(struct client *c, const char *buf, size_t len,
 	const char			*editor;
 	int				 fd;
 
+	if (w->modal != NULL)
+		return (NULL);
+
 	editor = options_get_string(global_options, "editor");
 	fd = mkstemp(path);
 	if (fd == -1)
@@ -687,9 +710,10 @@ spawn_editor(struct client *c, const char *buf, size_t len,
 	lg.sy = w->sy * 9 / 10;
 	lg.xoff = w->sx / 2 - lg.sx / 2;
 	lg.yoff = w->sy / 2 - lg.sy / 2;
-	window_push_zoom(w, 1, 0);
+	window_push_modal_zoom(w);
 	lc = layout_floating_pane(w, NULL, &lg);
 	if (lc == NULL) {
+		window_pop_modal_zoom(w);
 		spawn_editor_free(es);
 		return (NULL);
 	}
@@ -706,13 +730,14 @@ spawn_editor(struct client *c, const char *buf, size_t len,
 	sc.environ = env;
 	sc.idx = -1;
 	sc.cwd = _PATH_TMP;
-	sc.flags = SPAWN_FLOATING;
+	sc.flags = SPAWN_FLOATING|SPAWN_MODAL;
 
 	wp = spawn_pane(&sc, &cause);
 	free(cmd);
 	environ_free(env);
 	if (wp == NULL) {
 		free(cause);
+		window_pop_modal_zoom(w);
 		spawn_editor_free(es);
 		return (NULL);
 	}

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-split-window.c,v 1.144 2026/07/14 15:06:54 nicm Exp $ */
+/* $OpenBSD: cmd-split-window.c,v 1.145 2026/07/15 13:02:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -41,8 +41,8 @@ const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
 	.alias = "newp",
 
-	.args = { "bB:c:de:EfF:hIkl:LMm:p:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
-	.usage = "[-bdefhIklMPvWZ] [-B border-lines] "
+	.args = { "bB:c:de:EfF:hIkl:LMm:Op:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
+	.usage = "[-bdefhIklMOPvWZ] [-B border-lines] "
 		 "[-c start-directory] [-e environment] "
 		 "[-F format] [-l size] [-m message] [-p percentage] "
 		 "[-s style] [-S active-border-style] "
@@ -104,6 +104,17 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		flags |= SPAWN_SPLIT;
 	}
 
+	if (args_has(args, 'O')) {
+		if (!is_floating) {
+			cmdq_error(item, "modal pane must be floating");
+			return (CMD_RETURN_ERROR);
+		}
+		if (w->modal != NULL) {
+			cmdq_error(item, "window already has a modal pane");
+			return (CMD_RETURN_ERROR);
+		}
+	}
+
 	if (args_has(args, 'M') && is_floating) {
 		if (event == NULL || !event->m.valid || tc == NULL)
 			return (CMD_RETURN_NORMAL);
@@ -121,6 +132,8 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		flags |= SPAWN_DETACHED;
 	if (args_has(args, 'Z'))
 		flags |= SPAWN_ZOOM;
+	if (args_has(args, 'O'))
+		flags |= SPAWN_MODAL;
 
 	input = args_has(args, 'I');
 	if (input || (count == 1 && *args_string(args, 0) == '\0'))
@@ -256,7 +269,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (~flags & SPAWN_DETACHED)
 		cmd_find_from_winlink_pane(current, wl, new_wp, 0);
 
-	if (~flags & SPAWN_FLOATING) {
+	if ((~flags & SPAWN_FLOATING) && !args_has(args, 'O')) {
 		window_pop_zoom(wp->window);
 		server_redraw_window(wp->window);
 	}
@@ -307,7 +320,8 @@ fail:
 		if (!is_floating)
 			layout_close_pane(new_wp);
 		window_remove_pane(wp->window, new_wp);
-	}
+	} else if (args_has(args, 'O'))
+		window_pop_modal_zoom(wp->window);
 	if (sc.argv != NULL)
 		cmd_free_argv(sc.argc, sc.argv);
 	environ_free(sc.environ);

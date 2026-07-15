@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.363 2026/07/14 19:07:03 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.364 2026/07/15 13:02:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -626,6 +626,35 @@ window_has_pane(struct window *w, struct window_pane *wp)
 	return (0);
 }
 
+int
+window_pane_contains(struct window_pane *wp, u_int x, u_int y)
+{
+	int	xoff, yoff;
+	u_int	sx, sy;
+
+	if (!window_pane_is_visible(wp))
+		return (0);
+
+	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
+	if (!window_pane_is_floating(wp)) {
+		if ((int)x < xoff || x > xoff + sx)
+			return (0);
+		if ((int)y < yoff || y > yoff + sy)
+			return (0);
+	} else if (window_pane_get_pane_lines(wp) == PANE_LINES_NONE) {
+		if ((int)x < xoff || (int)x >= xoff + (int)sx)
+			return (0);
+		if ((int)y < yoff || (int)y >= yoff + (int)sy)
+			return (0);
+	} else {
+		if ((int)x < xoff - 1 || x > xoff + sx)
+			return (0);
+		if ((int)y < yoff - 1 || y > yoff + sy)
+			return (0);
+	}
+	return (1);
+}
+
 void
 window_update_focus(struct window *w)
 {
@@ -683,6 +712,8 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 
 	if (wp == w->active)
 		return (0);
+	if (w->modal != NULL && wp != w->modal)
+		return (0);
 	if (w->flags & WINDOW_ZOOMED)
 		window_unzoom(w, 1);
 	lastwp = w->active;
@@ -721,6 +752,8 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 	struct grid_cell	*gc1, *gc2;
 	int			 c1, c2;
 
+	if (w->modal != NULL && wp != w->modal)
+		return;
 	if (wp == w->active)
 		return;
 
@@ -772,6 +805,12 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 	u_int			 sx, sy;
 
 	pane_status = window_get_pane_status(w);
+
+	if (w->modal != NULL) {
+		if (window_pane_contains(w->modal, x, y))
+			return (w->modal);
+		return (NULL);
+	}
 
 	if (pane_status == PANE_STATUS_TOP) {
 		/*
@@ -929,6 +968,29 @@ window_unzoom(struct window *w, int notify)
 	return (0);
 }
 
+void
+window_push_modal_zoom(struct window *w)
+{
+	if (w->flags & WINDOW_ZOOMED)
+		w->flags |= WINDOW_WASMODALZOOMED;
+	else
+		w->flags &= ~WINDOW_WASMODALZOOMED;
+	window_unzoom(w, 1);
+}
+
+int
+window_pop_modal_zoom(struct window *w)
+{
+	struct window_pane	*wp = w->active;
+
+	if (~w->flags & WINDOW_WASMODALZOOMED)
+		return (0);
+	w->flags &= ~WINDOW_WASMODALZOOMED;
+	if (wp != NULL && window_has_pane(w, wp))
+		return (window_zoom(wp) == 0);
+	return (0);
+}
+
 int
 window_push_zoom(struct window *w, int always, int flag)
 {
@@ -979,6 +1041,8 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 	}
 	if (~flags & SPAWN_FLOATING)
 		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
+	else if (w->modal != NULL)
+		TAILQ_INSERT_AFTER(&w->z_index, w->modal, wp, zentry);
 	else {
 		TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
 	}
@@ -989,14 +1053,29 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 void
 window_lost_pane(struct window *w, struct window_pane *wp)
 {
+	struct window_pane	*lastwp;
+
 	log_debug("%s: @%u pane %%%u", __func__, w->id, wp->id);
 
 	if (wp == marked_pane.wp)
 		server_clear_marked();
+	if (wp == w->modal_last)
+		w->modal_last = NULL;
+	if (w->modal_last == NULL)
+		w->flags &= ~WINDOW_WASMODALZOOMED;
 
 	window_pane_stack_remove(&w->last_panes, wp);
 	if (wp == w->active) {
-		w->active = TAILQ_FIRST(&w->last_panes);
+		lastwp = NULL;
+		if (wp == w->modal) {
+			lastwp = w->modal_last;
+			w->modal = NULL;
+			w->modal_last = NULL;
+		}
+		if (lastwp != NULL && window_has_pane(w, lastwp))
+			w->active = lastwp;
+		else
+			w->active = TAILQ_FIRST(&w->last_panes);
 		if (w->active == NULL) {
 			w->active = TAILQ_PREV(wp, window_panes, entry);
 			if (w->active == NULL)
@@ -1008,6 +1087,9 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 			window_fire_pane_changed(w, w->active, wp);
 			window_update_focus(w);
 		}
+	} else if (wp == w->modal) {
+		w->modal = w->modal_last = NULL;
+		w->flags &= ~WINDOW_WASMODALZOOMED;
 	}
 	redraw_invalidate_scene(w);
 }
@@ -1015,9 +1097,13 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 void
 window_remove_pane(struct window *w, struct window_pane *wp)
 {
+	int	pop = (wp == w->modal);
+
 	window_lost_pane(w, wp);
 	TAILQ_REMOVE(&w->panes, wp, entry);
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
+	if (pop && window_pop_modal_zoom(w))
+		server_redraw_window(w);
 	redraw_invalidate_scene(w);
 	window_pane_destroy(wp);
 }
@@ -1150,6 +1236,8 @@ window_printable_flags(struct winlink *wl, int escape)
 		flags[pos++] = '-';
 	if (server_check_marked() && wl == marked_pane.wl)
 		flags[pos++] = 'M';
+	if (wl->window->modal != NULL)
+		flags[pos++] = 'O';
 	if (wl->window->flags & WINDOW_ZOOMED)
 		flags[pos++] = 'Z';
 	flags[pos] = '\0';
@@ -1171,6 +1259,8 @@ window_pane_printable_flags(struct window_pane *wp)
 		flags[pos++] = 'Z';
 	if (window_pane_is_floating(wp))
 		flags[pos++] = 'F';
+	if (wp == w->modal)
+		flags[pos++] = 'O';
 	flags[pos] = '\0';
 	return (flags);
 }

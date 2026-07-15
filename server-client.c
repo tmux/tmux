@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.492 2026/07/15 10:38:31 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.493 2026/07/15 13:02:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -875,6 +875,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	u_int				 x, y, sx, sy, px, py, n, sl_mpos = 0;
 	u_int				 b, bn;
 	int				 ignore = 0;
+	int				 modal_drag = 0;
 	key_code			 key;
 	struct timeval			 tv;
 	struct style_range		*sr;
@@ -3082,16 +3083,20 @@ struct window_pane *
 server_client_get_pane(struct client *c)
 {
 	struct session		*s = c->session;
+	struct window		*w;
 	struct client_window	*cw;
 
 	if (s == NULL)
 		return (NULL);
 
+	w = s->curw->window;
+	if (w->modal != NULL)
+		return (w->modal);
 	if (~c->flags & CLIENT_ACTIVEPANE)
-		return (s->curw->window->active);
-	cw = server_client_get_client_window(c, s->curw->window->id);
+		return (w->active);
+	cw = server_client_get_client_window(c, w->id);
 	if (cw == NULL)
-		return (s->curw->window->active);
+		return (w->active);
 	return (cw->pane);
 }
 
@@ -3103,6 +3108,8 @@ server_client_set_pane(struct client *c, struct window_pane *wp)
 	struct client_window	*cw;
 
 	if (s == NULL)
+		return;
+	if (wp->window->modal != NULL && wp != wp->window->modal)
 		return;
 
 	cw = server_client_add_client_window(c, s->curw->window->id);

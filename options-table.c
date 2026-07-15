@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.237 2026/07/14 17:17:17 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.238 2026/07/15 13:02:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1531,9 +1531,10 @@ const struct options_table_entry options_table[] = {
 	{ .name = "pane-active-border-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
-	  .default_str = "fg=#{?pane_marked,thememagenta,"
+	  .default_str = "fg=#{?pane_modal_flag,themeblue,"
+			 "#{?pane_marked,thememagenta,"
 			 "#{?synchronize-panes,themered,"
-			 "#{?pane_in_mode,themeyellow,themegreen}}}",
+			 "#{?pane_in_mode,themeyellow,themegreen}}}}",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the active pane border."

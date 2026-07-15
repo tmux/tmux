@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1141 2026/07/15 10:38:31 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1142 2026/07/15 13:02:33 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -3645,7 +3645,7 @@ but a different format may be specified with
 .Fl F .
 .Tg newp
 .It Xo Ic new\-pane
-.Op Fl bdefhIkLMPvWZ
+.Op Fl bdefhIkLMOPvWZ
 .Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
@@ -3696,6 +3696,11 @@ may be used when bound to a mouse drag key; the new floating pane is resized to
 follow the mouse drag.
 It has no effect with
 .Fl L .
+.Fl O
+creates a modal pane.
+A modal pane is always the active pane and prevents interaction with any other
+panes while it is active.
+A window can only have one modal pane and it must be a floating pane.
 .Pp
 The
 .Fl L
@@ -7318,6 +7323,7 @@ The following variables are available, where appropriate:
 .It Li "pane_left" Ta "" Ta "Left of pane"
 .It Li "pane_marked" Ta "" Ta "1 if this is the marked pane"
 .It Li "pane_marked_set" Ta "" Ta "1 if a marked pane is set"
+.It Li "pane_modal_flag" Ta "" Ta "1 if pane is modal"
 .It Li "pane_mode" Ta "" Ta "Name of pane mode, if any"
 .It Li "pane_path" Ta "" Ta "Path of pane (can be set by application)"
 .It Li "pane_pid" Ta "" Ta "PID of first process in pane"
@@ -7418,6 +7424,7 @@ The following variables are available, where appropriate:
 .It Li "window_manual_height" Ta "" Ta "Manual height of window, if set"
 .It Li "window_manual_width" Ta "" Ta "Manual width of window, if set"
 .It Li "window_marked_flag" Ta "" Ta "1 if window contains the marked pane"
+.It Li "window_modal_pane" Ta "" Ta "Modal pane in window, if any"
 .It Li "window_name" Ta "#W" Ta "Name of window"
 .It Li "window_offset_x" Ta "" Ta "X offset into window if larger than client"
 .It Li "window_offset_y" Ta "" Ta "Y offset into window if larger than client"

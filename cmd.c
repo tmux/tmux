@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd.c,v 1.187 2026/07/13 09:37:39 nicm Exp $ */
+/* $OpenBSD: cmd.c,v 1.188 2026/07/15 13:02:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -833,6 +833,8 @@ cmd_mouse_pane(struct mouse_event *m, struct session **sp,
 		if (!window_has_pane(wl->window, wp))
 			return (NULL);
 	}
+	if (wl->window->modal != NULL && wp != wl->window->modal)
+		return (NULL);
 
 	if (wlp != NULL)
 		*wlp = wl;
