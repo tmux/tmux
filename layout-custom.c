@@ -279,7 +279,7 @@ layout_parse(struct window *w, const char *layout, int flags, char **cause)
 			return (-1);
 		}
 	} else {
-		if (sscanf(layout, "{\"v\":%d,\"l\":%n", &version, &n) != 1 ||
+		if (sscanf(layout, "{\"v\":%d,\"L\":%n", &version, &n) != 1 ||
 		    n != 11) {
 			*cause = xstrdup("malformed layout header");
 			return (-1);
