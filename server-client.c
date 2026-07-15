@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.493 2026/07/15 13:02:33 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.494 2026/07/15 14:14:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1058,9 +1058,34 @@ have_event:
 		}
 		px = px + m->ox;
 		py = py + m->oy;
+		if (w->modal != NULL &&
+		    !window_pane_contains(w->modal, px, py)) {
+			if (lwp == w->modal &&
+			    c->tty.mouse_drag_flag != 0 &&
+			    (type == KEYC_TYPE_MOUSEDRAG ||
+			    type == KEYC_TYPE_MOUSEUP)) {
+				modal_drag = 1;
+				wp = lwp;
+				loc = KEYC_MOUSE_LOCATION_PANE;
+				m->wp = wp->id;
+				m->w = wp->window->id;
+			} else {
+				server_client_update_scrollbar_hover(c, type,
+				    -1, -1);
+				c->tty.mouse_drag_update = NULL;
+				c->tty.mouse_drag_release = NULL;
+				c->tty.mouse_drag_flag = 0;
+				c->tty.mouse_scrolling_flag = 0;
+				c->tty.mouse_slider_mpos = -1;
+				c->tty.mouse_last_pane = -1;
+				return (KEYC_UNKNOWN);
+			}
+		}
 		server_client_update_scrollbar_hover(c, type, px, py);
 
-		if (type == KEYC_TYPE_MOUSEDRAG && lwp != NULL) {
+		if (modal_drag) {
+			/* Keep the drag with the modal pane. */
+		} else if (type == KEYC_TYPE_MOUSEDRAG && lwp != NULL) {
 			/* Use pane from last mouse event. */
 			wp = lwp;
 		} else {
@@ -1072,8 +1097,10 @@ have_event:
 			m->w = w->id;
 			log_debug("mouse %u,%u on empty area", x, y);
 		} else {
-			loc = server_client_check_mouse_in_pane(wp, px, py,
-			    &sl_mpos);
+			if (!modal_drag) {
+				loc = server_client_check_mouse_in_pane(wp, px,
+				    py, &sl_mpos);
+			}
 			if (loc == KEYC_MOUSE_LOCATION_PANE) {
 				log_debug("mouse %u,%u on pane %%%u", x, y,
 				    wp->id);
