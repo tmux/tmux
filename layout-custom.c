@@ -97,7 +97,7 @@ layout_dump(__unused struct window *w, struct layout_cell *root, int flags)
 	if (flags & LAYOUT_CUSTOM_OLD_FORMAT)
 		xasprintf(&out, "%04hx,%s", layout_checksum(layout.dat), layout.dat);
 	else
-		xasprintf(&out, "{\"v\":2,\"l\":%s}", layout.dat);
+		xasprintf(&out, "{\"v\":2,\"L\":%s}", layout.dat);
 	return (out);
 }
 
@@ -106,7 +106,6 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls, size_t len)
 {
 	struct layout_cell	*lcchild;
 	struct window_pane	*wp;
-	struct window		*w;
 	enum layout_type	 type = lc->type;
 	char			 tmp[64], c;
 	size_t			 tmpsz;
@@ -148,16 +147,17 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls, size_t len)
 		layout_string_copy(ls, "]");
 	} else {
 		wp = lc->wp;
-		w = wp->window;
-		if (wp == w->active)
+		if (wp == wp->window->active)
 			layout_string_copy(ls, ",\"a\":true");
-		if (wp == TAILQ_FIRST(&w->last_panes))
-			layout_string_copy(ls, ",\"l\":true");
+		else {
+			window_pane_last_index(wp, &i);
+			layout_string_format(",\"l\":%u", i);
+		}
 		if (lc->flags & LAYOUT_CELL_FLOATING) {
 			window_pane_zindex(wp, &i);
 			layout_string_format(",\"z\":%u", i);
 		}
-		layout_string_format(",\"i\":%d", lc->wp->id);
+		layout_string_format(",\"i\":\"%%%d\"", wp->id);
 	}
 
 	layout_string_copy(ls, "}");
@@ -299,7 +299,8 @@ layout_parse(struct window *w, const char *layout, int flags, char **cause)
 		*cause = xstrdup("invalid layout");
 		return (-1);
 	}
-	layout++; /* skip '}' in outer container */
+	if (~flags & LAYOUT_CUSTOM_OLD_FORMAT)
+		layout++; /* skip '}' in outer container */
 	if (*layout != '\0') {
 		*cause = xstrdup("invalid layout");
 		goto fail;
@@ -526,7 +527,7 @@ layout_custom_parse_field(struct layout_cell *lc, const char **layout)
 	char			*endptr, saved;
 
 	if (**layout != '"')
-		return (0);
+		return (-1);
 	(*layout)++;
 
 	switch (**layout) {
@@ -560,7 +561,8 @@ layout_custom_parse_field(struct layout_cell *lc, const char **layout)
 			return (-1);
 		(*layout) += 2;
 		ll = strtoll(*layout, &endptr, 10);
-		if (*endptr != ',' && *endptr != '}')
+		if ((*endptr != ',' && *endptr != '}') ||
+		    ll < PANE_MINIMUM || ll > PANE_MAXIMUM)
 			return (-1);
 		if (saved == 'w')
 			lc->g.sx = ll;
@@ -576,7 +578,8 @@ layout_custom_parse_field(struct layout_cell *lc, const char **layout)
 			return (-1);
 		(*layout) += 2;
 		ll = strtoll(*layout, &endptr, 10);
-		if (*endptr != ',' && *endptr != '}')
+		if ((*endptr != ',' && *endptr != '}') ||
+		    ll < -PANE_MAXIMUM || ll > PANE_MAXIMUM)
 			return (-1);
 		if (saved == 'x')
 			lc->g.xoff = ll;
@@ -585,10 +588,10 @@ layout_custom_parse_field(struct layout_cell *lc, const char **layout)
 		*layout = endptr;
 		break;
 	case 'i': /* pane id */
-		/* Pane ids are not used when reconstructing the layout. */
-		if (strncmp(*layout, "i\":", 3) != 0)
+		if (strncmp(*layout, "i\":\"%", 5) != 0)
 			return (-1);
-		(*layout) += 3;
+		(*layout) += 5;
+		/* Not used when reconstructing the layout. */
 		while (**layout != ',' && **layout != '}')
 			(*layout)++;
 		break;
@@ -602,11 +605,11 @@ layout_custom_parse_field(struct layout_cell *lc, const char **layout)
 		break;
 	case 'a': /* active */
 	case 'l': /* last */
-		/* Properties of the window, not the cell. */
 		(*layout)++;
 		if (strncmp(*layout, "\":", 2) != 0)
 			return (-1);
 		(*layout) += 2;
+		/* Not used when reconstructing the layout. */
 		while (**layout != ',' && **layout != '}')
 			(*layout)++;
 		break;
