@@ -100,6 +100,8 @@ tty_draw_line_get_empty(const struct grid_cell *gc,
 		empty = nx;
 	else if (gc->flags & GRID_FLAG_PADDING)
 		empty = 1;
+	else if (gc->data.width == 0)
+		empty = 1;
 	else if (gc->flags & GRID_FLAG_SELECTED)
 		empty = 0;
 	else if (gc->bg == last->bg && gc->attr == 0 && gc->link == 0) {
