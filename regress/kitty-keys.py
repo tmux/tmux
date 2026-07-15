@@ -617,8 +617,8 @@ try:
             failed = True
 
     for seq, expected in [
-        (b"\x1b[99;9u", "Sp-c"),
-        (b"\x1b[99;17u", "Hy-c"),
+        (b"\x1b[99;9u", "s-c"),
+        (b"\x1b[99;17u", "H-c"),
     ]:
         if not expect_key_name(client_fd, seq, expected):
             failed = True
@@ -674,16 +674,16 @@ try:
     ):
         failed = True
     if not expect_bytes(
-        "disambiguate Sp-c",
+        "disambiguate s-c",
         b"\x1b[=1u",
-        "Sp-c",
+        "s-c",
         lambda b: b == b"\x1b[99;9u",
     ):
         failed = True
     if not expect_bytes(
-        "disambiguate Hy-c",
+        "disambiguate H-c",
         b"\x1b[=1u",
-        "Hy-c",
+        "H-c",
         lambda b: b == b"\x1b[99;17u",
     ):
         failed = True

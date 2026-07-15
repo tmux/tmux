@@ -297,14 +297,14 @@ key_string_get_modifiers(const char **string)
 	modifiers = 0;
 	while ((*string)[0] != '\0') {
 		/* Check multicharacter modifier prefixes first. */
-		if (strncasecmp(*string, "Sp-", 3) == 0) {
+		if (strncmp(*string, "s-", 2) == 0) {
 			modifiers |= KEYC_SUPER;
-			*string += 3;
+			*string += 2;
 			continue;
 		}
-		if (strncasecmp(*string, "Hy-", 3) == 0) {
+		if (strncmp(*string, "H-", 2) == 0) {
 			modifiers |= KEYC_HYPER;
-			*string += 3;
+			*string += 2;
 			continue;
 		}
 		/* Single-char prefix: X- where X is C/M/S. */
@@ -438,9 +438,9 @@ key_string_lookup_key(key_code key, int with_flags)
 
 	/* Fill in the modifiers. */
 	if (key & KEYC_SUPER)
-		strlcat(out, "Sp-", sizeof out);
+		strlcat(out, "s-", sizeof out);
 	if (key & KEYC_HYPER)
-		strlcat(out, "Hy-", sizeof out);
+		strlcat(out, "H-", sizeof out);
 	if (key & KEYC_CTRL)
 		strlcat(out, "C-", sizeof out);
 	if (key & KEYC_META)
