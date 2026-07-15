@@ -24,6 +24,18 @@
 
 #include "tmux.h"
 
+/*
+ * A layout string represents the total state of a window layout in a text
+ * encoding. There are currently two versions in use. The current version, V2,
+ * is a subset of JSON with expected keys and values. This version is emitted
+ * and consumed internally by tmux or if 'new-layouts' is set as a flag in
+ * Control Mode. The flags and expected value types can be examined in
+ * 'layout_append_v2' and 'layout_custom_parse_field`. The old version, V1, is
+ * an adhoc string encoding which can be examined in 'layout_append_v1',
+ * 'layout_construct_v1', and 'layout_construct_cell'. It is only emitted in
+ * Control Mode by default for legacy compatibility.
+ */
+
 struct layout_string {
 	char	*write;
 	char	 dat[8192];
@@ -97,7 +109,7 @@ layout_dump(__unused struct window *w, struct layout_cell *root, int flags)
 	if (flags & LAYOUT_CUSTOM_OLD_FORMAT)
 		xasprintf(&out, "%04hx,%s", layout_checksum(layout.dat), layout.dat);
 	else
-		xasprintf(&out, "{\"v\":2,\"L\":%s}", layout.dat);
+		xasprintf(&out, "{\"V\":2,\"L\":%s}", layout.dat);
 	return (out);
 }
 
@@ -279,7 +291,7 @@ layout_parse(struct window *w, const char *layout, int flags, char **cause)
 			return (-1);
 		}
 	} else {
-		if (sscanf(layout, "{\"v\":%d,\"L\":%n", &version, &n) != 1 ||
+		if (sscanf(layout, "{\"V\":%d,\"L\":%n", &version, &n) != 1 ||
 		    n != 11) {
 			*cause = xstrdup("malformed layout header");
 			return (-1);
