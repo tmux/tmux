@@ -1190,6 +1190,23 @@ window_pane_zindex(struct window_pane *wp, u_int *i)
 	return (-1);
 }
 
+int
+window_pane_last_index(struct window_pane *wp, u_int *i)
+{
+	struct window		*w = wp->window;
+	struct window_pane	*wq;
+
+	*i = 0;
+	TAILQ_FOREACH(wq, &w->last_panes, zentry) {
+		if (wq == wp) {
+			return (0);
+		}
+		(*i)++;
+	}
+
+	return (-1);
+}
+
 u_int
 window_count_panes(struct window *w, int with_floating)
 {

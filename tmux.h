@@ -3702,6 +3702,7 @@ struct window_pane *window_pane_previous_by_number(struct window *,
 			struct window_pane *, u_int);
 int		 window_pane_index(struct window_pane *, u_int *);
 int		 window_pane_zindex(struct window_pane *, u_int *);
+int		 window_pane_last_index(struct window_pane *, u_int *);
 u_int		 window_count_panes(struct window *, int);
 void		 window_destroy_panes(struct window *);
 struct window_pane *window_pane_find_by_id_str(const char *);
