@@ -1397,8 +1397,12 @@ const struct options_table_entry options_table[] = {
 			 "#{t/p:top_line_time}#{?#{e|>:#{top_line_time},0}, ,}"
 			 "[#{copy_position}/#{copy_position_limit}]"
 			 "#{?search_timed_out, (timed out),"
-			 "#{?search_count, (#{search_count}"
-			 "#{?search_count_partial,+,} results),}}",
+			 "#{?search_count_present, ("
+			 "#{?#{==:#{search_count},0},Phrase not found,"
+			 "#{?search_count_partial,#{search_count}+ matches,"
+			 "#{?#{==:#{search_count},1},1 of 1 match,"
+			 "#{?search_count_current,#{search_count_current} of "
+			 "#{search_count} matches,#{search_count} matches}}}}),}}",
 	  .text = "Format of the position indicator in copy mode."
 	},
 
