@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.491 2026/07/14 19:07:03 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.492 2026/07/15 10:38:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1033,46 +1033,46 @@ have_event:
 	 * Not on status line. Adjust position and check for border, pane, or
 	 * scrollbar.
 	 */
-	if (loc == KEYC_MOUSE_LOCATION_NOWHERE) {
-		if (c->tty.mouse_scrolling_flag) {
-			if (lwp != NULL) {
-				loc = KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER;
-				m->wp = lwp->id;
-				m->w = lwp->window->id;
-			}
+	if (loc == KEYC_MOUSE_LOCATION_NOWHERE && c->tty.mouse_scrolling_flag) {
+		if (lwp != NULL) {
+			loc = KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER;
+			m->wp = lwp->id;
+			m->w = lwp->window->id;
+		}
+	} else if (loc == KEYC_MOUSE_LOCATION_NOWHERE) {
+		px = x;
+		if (m->statusat == 0 && y >= m->statuslines)
+			py = y - m->statuslines;
+		else if (m->statusat > 0 && y >= (u_int)m->statusat)
+			py = m->statusat - 1;
+		else
+			py = y;
+
+		tty_window_offset(&c->tty, &m->ox, &m->oy, &sx, &sy);
+		log_debug("mouse window @%u at %u,%u (%ux%u)", w->id, m->ox,
+		    m->oy, sx, sy);
+		if (px > sx || py > sy) {
+			server_client_update_scrollbar_hover(c, type, -1, -1);
+			return (KEYC_UNKNOWN);
+		}
+		px = px + m->ox;
+		py = py + m->oy;
+		server_client_update_scrollbar_hover(c, type, px, py);
+
+		if (type == KEYC_TYPE_MOUSEDRAG && lwp != NULL) {
+			/* Use pane from last mouse event. */
+			wp = lwp;
 		} else {
-			px = x;
-			if (m->statusat == 0 && y >= m->statuslines)
-				py = y - m->statuslines;
-			else if (m->statusat > 0 && y >= (u_int)m->statusat)
-				py = m->statusat - 1;
-			else
-				py = y;
-
-			tty_window_offset(&c->tty, &m->ox, &m->oy, &sx, &sy);
-			log_debug("mouse window @%u at %u,%u (%ux%u)",
-				  w->id, m->ox, m->oy, sx, sy);
-			if (px > sx || py > sy) {
-				server_client_update_scrollbar_hover(c, type,
-				    -1, -1);
-				return (KEYC_UNKNOWN);
-			}
-			px = px + m->ox;
-			py = py + m->oy;
-			server_client_update_scrollbar_hover(c, type, px, py);
-
-			if (type == KEYC_TYPE_MOUSEDRAG && lwp != NULL) {
-				/* Use pane from last mouse event. */
-				wp = lwp;
-			} else {
-				/* Try inside the pane. */
-				wp = window_get_active_at(w, px, py);
-			}
-			if (wp == NULL)
-				return (KEYC_UNKNOWN);
+			/* Try inside the pane. */
+			wp = window_get_active_at(w, px, py);
+		}
+		if (wp == NULL) {
+			loc = KEYC_MOUSE_LOCATION_EMPTY;
+			m->w = w->id;
+			log_debug("mouse %u,%u on empty area", x, y);
+		} else {
 			loc = server_client_check_mouse_in_pane(wp, px, py,
 			    &sl_mpos);
-
 			if (loc == KEYC_MOUSE_LOCATION_PANE) {
 				log_debug("mouse %u,%u on pane %%%u", x, y,
 				    wp->id);

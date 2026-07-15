@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1404 2026/07/14 19:07:03 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1405 2026/07/15 10:38:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -181,6 +181,7 @@ enum key_code_mouse_location {
 	KEYC_MOUSE_LOCATION_SCROLLBAR_UP,
 	KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER,
 	KEYC_MOUSE_LOCATION_SCROLLBAR_DOWN,
+	KEYC_MOUSE_LOCATION_EMPTY,
 	KEYC_MOUSE_LOCATION_CONTROL0, /* keep order */
 	KEYC_MOUSE_LOCATION_CONTROL1,
 	KEYC_MOUSE_LOCATION_CONTROL2,
@@ -237,6 +238,7 @@ enum key_code_mouse_location {
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_UP),     \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_SLIDER), \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_DOWN),   \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, EMPTY),            \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL0),         \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL1),         \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL2),         \
@@ -271,6 +273,7 @@ enum key_code_mouse_location {
 	{ #s "ScrollbarUp", KEYC_ ## name ## _SCROLLBAR_UP },         \
 	{ #s "ScrollbarSlider", KEYC_ ## name ## _SCROLLBAR_SLIDER }, \
 	{ #s "ScrollbarDown", KEYC_ ## name ## _SCROLLBAR_DOWN },     \
+	{ #s "Empty", KEYC_ ## name ## _EMPTY },		      \
 	{ #s "Border", KEYC_ ## name ## _BORDER },		      \
 	{ #s "Control0", KEYC_ ## name ## _CONTROL0 },		      \
 	{ #s "Control1", KEYC_ ## name ## _CONTROL1 },		      \
