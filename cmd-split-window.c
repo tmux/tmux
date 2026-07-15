@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-split-window.c,v 1.141 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: cmd-split-window.c,v 1.144 2026/07/14 15:06:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -33,13 +33,15 @@
 #define SPLIT_WINDOW_TEMPLATE "#{session_name}:#{window_index}.#{pane_index}"
 
 static enum cmd_retval	cmd_split_window_exec(struct cmd *, struct cmdq_item *);
+static void		cmd_split_window_mouse_resize(struct client *,
+			    struct mouse_event *);
 
 const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
 	.alias = "newp",
 
-	.args = { "bB:c:de:EfF:hIkl:Lm:p:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
-	.usage = "[-bdefhIklPvWZ] [-B border-lines] "
+	.args = { "bB:c:de:EfF:hIkl:LMm:p:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
+	.usage = "[-bdefhIklMPvWZ] [-B border-lines] "
 		 "[-c start-directory] [-e environment] "
 		 "[-F format] [-l size] [-m message] [-p percentage] "
 		 "[-s style] [-S active-border-style] "
@@ -57,12 +59,12 @@ const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
 	.alias = "splitw",
 
-	.args = { "bc:de:EfF:hIkl:m:p:PR:s:S:t:T:vWZ", 0, -1, NULL },
-	.usage = "[-bdefhIklPvWZ] [-c start-directory] [-e environment] "
-		 "[-F format] [-l size] [-m message] [-p percentage] "
-		 "[-s style] [-S active-border-style] "
-		 "[-R inactive-border-style] [-T title] " CMD_TARGET_PANE_USAGE " "
-		 "[shell-command [argument ...]]",
+	.args = { "bB:c:de:EfF:hIkl:m:p:PR:s:S:t:T:vWZ", 0, -1, NULL },
+	.usage = "[-bdefhIklPvWZ] [-B border-lines] [-c start-directory] "
+		 "[-e environment] [-F format] [-l size] [-m message] "
+		 "[-p percentage] [-s style] [-S active-border-style] "
+		 "[-R inactive-border-style] [-T title] "
+	         CMD_TARGET_PANE_USAGE " [shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -85,6 +87,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct layout_cell	*lc = NULL;
 	struct event_payload	*ep;
 	struct cmd_find_state	 fs;
+	struct key_event	*event = cmdq_get_event(item);
 	int			 input, empty, is_floating, flags = 0;
 	const char		*template, *style, *value;
 	char			*cause = NULL, *cp, *title;
@@ -95,14 +98,28 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (cmd_get_entry(self) == &cmd_new_pane_entry)
 		is_floating = !args_has(args, 'L');
-	else
+	else {
 		is_floating = window_pane_is_floating(wp);
+		flags |= SPAWN_SPLIT;
+	}
 
-	flags = is_floating ? SPAWN_FLOATING : 0;
+	if (args_has(args, 'M') && is_floating) {
+		if (event == NULL || !event->m.valid || tc == NULL)
+			return (CMD_RETURN_NORMAL);
+	}
+
+	if (is_floating)
+		flags |= SPAWN_FLOATING;
+	if (args_has(args, 'h'))
+		flags |= SPAWN_HORIZONTAL;
 	if (args_has(args, 'b'))
 		flags |= SPAWN_BEFORE;
 	if (args_has(args, 'f'))
 		flags |= SPAWN_FULLSIZE;
+	if (args_has(args, 'd'))
+		flags |= SPAWN_DETACHED;
+	if (args_has(args, 'Z'))
+		flags |= SPAWN_ZOOM;
 
 	input = args_has(args, 'I');
 	if (input || (count == 1 && *args_string(args, 0) == '\0'))
@@ -130,9 +147,10 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-	if (is_floating)
-		lc = layout_get_floating_cell(item, args, lines, w, wp, &cause);
-	else
+	if (flags & SPAWN_FLOATING) {
+		lc = layout_get_floating_cell(item, args, lines, w, wp, flags,
+		    &cause);
+	} else
 		lc = layout_get_tiled_cell(item, args, w, wp, flags, &cause);
 	if (cause != NULL) {
 		cmdq_error(item, "%s", cause);
@@ -158,12 +176,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	sc.idx = -1;
 	sc.cwd = args_get(args, 'c');
-
 	sc.flags = flags;
-	if (args_has(args, 'd'))
-		sc.flags |= SPAWN_DETACHED;
-	if (args_has(args, 'Z'))
-		sc.flags |= SPAWN_ZOOM;
 
 	if ((new_wp = spawn_pane(&sc, &cause)) == NULL) {
 		cmdq_error(item, "create pane failed: %s", cause);
@@ -239,14 +252,20 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 			break;
 		}
 	}
-	if (!args_has(args, 'd'))
+	if (~flags & SPAWN_DETACHED)
 		cmd_find_from_winlink_pane(current, wl, new_wp, 0);
 
-	if (!is_floating) {
+	if (~flags & SPAWN_FLOATING) {
 		window_pop_zoom(wp->window);
 		server_redraw_window(wp->window);
 	}
 	server_redraw_session(s);
+
+	if (args_has(args, 'M') && is_floating) {
+		tc->tty.mouse_last_pane = new_wp->id;
+		tc->tty.mouse_drag_update = cmd_split_window_mouse_resize;
+		cmd_split_window_mouse_resize(tc, &event->m);
+	}
 
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
@@ -294,4 +313,74 @@ fail:
 
 	return (CMD_RETURN_ERROR);
 
+}
+
+static void
+cmd_split_window_mouse_resize(struct client *c, struct mouse_event *m)
+{
+	struct window_pane	*wp;
+	struct window		*w;
+	struct layout_cell	*lc;
+	enum pane_lines		 lines;
+	u_int			 sx, sy;
+	int			 x, y, xoff, yoff, border;
+
+	if (c->tty.mouse_last_pane == -1)
+		return;
+	wp = window_pane_find_by_id(c->tty.mouse_last_pane);
+	if (wp == NULL || !window_pane_is_floating(wp)) {
+		c->tty.mouse_drag_update = NULL;
+		return;
+	}
+	w = wp->window;
+	lc = wp->layout_cell;
+
+	x = m->x + m->ox;
+	y = m->y + m->oy;
+	if (m->statusat == 0 && y >= (int)m->statuslines)
+		y -= m->statuslines;
+	else if (m->statusat > 0 && y >= m->statusat)
+		y = m->statusat - 1;
+
+	lines = window_pane_get_pane_lines(wp);
+	border = (lines != PANE_LINES_NONE);
+
+	if (x >= (int)c->tty.mouse_drag_x) {
+		xoff = c->tty.mouse_drag_x + border;
+		sx = x - c->tty.mouse_drag_x + 1;
+	} else {
+		sx = c->tty.mouse_drag_x - x + 1;
+		xoff = c->tty.mouse_drag_x - sx + 1;
+		if (border)
+			xoff++;
+	}
+	if (y >= (int)c->tty.mouse_drag_y) {
+		yoff = c->tty.mouse_drag_y + border;
+		sy = y - c->tty.mouse_drag_y + 1;
+	} else {
+		sy = c->tty.mouse_drag_y - y + 1;
+		yoff = c->tty.mouse_drag_y - sy + 1;
+		if (border)
+			yoff++;
+	}
+
+	if (border) {
+		if (sx <= 2)
+			sx = PANE_MINIMUM;
+		else
+			sx -= 2;
+		if (sy <= 2)
+			sy = PANE_MINIMUM;
+		else
+			sy -= 2;
+	}
+	if (sx < PANE_MINIMUM)
+		sx = PANE_MINIMUM;
+	if (sy < PANE_MINIMUM)
+		sy = PANE_MINIMUM;
+
+	layout_set_size(lc, sx, sy, xoff, yoff);
+	layout_fix_panes(w, NULL);
+	server_redraw_window(w);
+	server_redraw_window_borders(w);
 }

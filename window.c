@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.360 2026/07/10 15:20:06 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.363 2026/07/14 19:07:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -126,6 +126,29 @@ window_fire_pane_changed(struct window *w, struct window_pane *wp,
 	if (lastwp != NULL)
 		event_payload_set_pane(ep, "old_pane", lastwp);
 	events_fire("window-pane-changed", ep);
+}
+
+void
+window_fire_pane_moved(struct window_pane *wp, struct window *old_w,
+    int old_idx, struct window *new_w, int new_idx)
+{
+	struct event_payload	*ep;
+	struct cmd_find_state	 fs;
+
+	ep = event_payload_create();
+	cmd_find_from_pane(&fs, wp, 0);
+	event_payload_set_target(ep, &fs);
+	event_payload_set_pane(ep, "pane", wp);
+	event_payload_set_window(ep, "window", new_w);
+	event_payload_set_window(ep, "old_window", old_w);
+	event_payload_set_window(ep, "new_window", new_w);
+	if (old_idx != -1)
+		event_payload_set_int(ep, "old_window_index", old_idx);
+	if (new_idx != -1) {
+		event_payload_set_int(ep, "window_index", new_idx);
+		event_payload_set_int(ep, "new_window_index", new_idx);
+	}
+	events_fire("pane-moved", ep);
 }
 
 static void
@@ -437,6 +460,7 @@ window_destroy(struct window *w)
 	layout_free_cell(w->saved_layout_root, 0);
 	free(w->old_layout);
 
+	menu_destroy(w);
 	window_destroy_panes(w);
 
 	if (event_initialized(&w->name_event))
@@ -488,6 +512,9 @@ window_add_ref(struct window *w, const char *from)
 void
 window_remove_ref(struct window *w, const char *from)
 {
+	if (w->references == 1)
+		events_fire_window("window-closed", w);
+
 	w->references--;
 	log_debug("%s: @%u %s, now %d", __func__, w->id, from, w->references);
 
@@ -542,6 +569,11 @@ window_resize(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 	    ypixel == -1 ? w->ypixel : (u_int)ypixel);
 	w->sx = sx;
 	w->sy = sy;
+	if (w->menu != NULL) {
+		menu_resize(w->menu, w);
+		redraw_invalidate_scene(w);
+		server_redraw_window(w);
+	}
 	if (xpixel != -1)
 		w->xpixel = xpixel;
 	if (ypixel != -1)
@@ -625,7 +657,8 @@ window_pane_update_focus(struct window_pane *wp)
 				    c->session->attached != 0 &&
 				    (c->flags & CLIENT_FOCUSED) &&
 				    c->session->curw->window == wp->window &&
-				    c->overlay_draw == NULL) {
+				    c->overlay_draw == NULL &&
+				    wp->window->menu == NULL) {
 					focused = 1;
 					break;
 				}
@@ -979,7 +1012,7 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 		if (w->active != NULL) {
 			window_pane_stack_remove(&w->last_panes, w->active);
 			w->active->flags |= PANE_CHANGED;
-			events_fire_window("window-pane-changed", w);
+			window_fire_pane_changed(w, w->active, wp);
 			window_update_focus(w);
 		}
 	}
@@ -1481,18 +1514,21 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 
 int
 window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
-    const struct window_mode *mode, struct cmd_find_state *fs,
-    struct args *args)
+    const struct window_mode *mode, struct cmdq_item *item,
+    struct cmd_find_state *fs, struct args *args)
 {
 	struct window_mode_entry	*wme;
 	struct window			*w = wp->window;
-	const char			*name = mode->name, *p = NULL;
+	const char			*name = mode->name, *oname = NULL;
 
 	if (!TAILQ_EMPTY(&wp->modes)) {
 		if (TAILQ_FIRST(&wp->modes)->mode == mode)
 			return (1);
-		p = TAILQ_FIRST(&wp->modes)->mode->name;
+		if (TAILQ_FIRST(&wp->modes)->mode->flags & WINDOW_MODE_NO_STACK)
+			window_pane_reset_mode(wp);
 	}
+	if (!TAILQ_EMPTY(&wp->modes))
+		oname = TAILQ_FIRST(&wp->modes)->mode->name;
 
 	TAILQ_FOREACH(wme, &wp->modes, entry) {
 		if (wme->mode == mode)
@@ -1508,7 +1544,12 @@ window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
 		wme->mode = mode;
 		wme->prefix = 1;
 		TAILQ_INSERT_HEAD(&wp->modes, wme, entry);
-		wme->screen = wme->mode->init(wme, fs, args);
+		wme->screen = wme->mode->init(wme, item, fs, args);
+		if (wme->screen == NULL) {
+			TAILQ_REMOVE(&wp->modes, wme, entry);
+			free(wme);
+			return (1);
+		}
 	}
 	wme->kill = args != NULL ? args_has(args, 'k') : 0;
 	wp->screen = wme->screen;
@@ -1519,8 +1560,8 @@ window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
 	server_redraw_window_borders(wp->window);
 	server_status_window(wp->window);
 
-	window_fire_pane_mode_changed("pane-mode-entered", wp, p, name, 1);
-	window_fire_pane_mode_changed("pane-mode-changed", wp, p, name, 1);
+	window_fire_pane_mode_changed("pane-mode-entered", wp, oname, name, 1);
+	window_fire_pane_mode_changed("pane-mode-changed", wp, oname, name, 1);
 
 	return (0);
 }
@@ -2669,7 +2710,14 @@ window_get_pane_status(struct window *w)
 int
 window_pane_get_pane_status(struct window_pane *wp)
 {
+	struct window_mode_entry	*wme;
 	int	status;
+
+	wme = TAILQ_FIRST(&wp->modes);
+	if (wme != NULL &&
+	    (wme->mode->flags & WINDOW_MODE_HIDE_PANE_STATUS) &&
+	    (wp->flags & PANE_ZOOMED))
+		return (PANE_STATUS_OFF);
 
 	if (!window_pane_is_floating(wp))
 		return (window_get_pane_status(wp->window));

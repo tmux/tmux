@@ -1,4 +1,4 @@
-/* $OpenBSD: key-bindings.c,v 1.186 2026/07/07 12:30:36 nicm Exp $ */
+/* $OpenBSD: key-bindings.c,v 1.188 2026/07/13 16:30:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -48,6 +48,9 @@
 #define DEFAULT_PANE_MENU \
 	" '#{?#{m/r:(copy|view)-mode,#{pane_mode}},Go To Top,}' '<' {send -X history-top}" \
 	" '#{?#{m/r:(copy|view)-mode,#{pane_mode}},Go To Bottom,}' '>' {send -X history-bottom}" \
+	" ''" \
+	" '#{?#{==:#{pane_mode},copy-mode},#{?copy_line_numbers,Hide Line Numbers,Show Line Numbers},}' 'L' {send -X line-numbers-toggle}" \
+	" '#{?#{==:#{pane_mode},copy-mode},#{?refresh_active,Refresh Off,Refresh On},}' 'r' {send -X refresh-toggle}" \
 	" ''" \
 	" '#{?#{&&:#{buffer_size},#{!:#{pane_in_mode}}},Paste #[underscore]#{=/9/...:buffer_sample},}' 'p' {paste-buffer}" \
 	" ''" \
@@ -494,10 +497,10 @@ key_bindings_init(void)
 
 		/* Mouse button 1 down on pane. */
 		"bind -n MouseDown1Pane { select-pane -t=; send -M }",
-		"bind -n C-MouseDown1Pane { swap-pane -s@ }",
 
 		/* Mouse button 1 drag on pane. */
 		"bind -n MouseDrag1Pane { if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { copy-mode -M } }",
+		"bind -n C-MouseDrag1Pane { new-pane -M }",
 		"bind -n M-MouseDrag1Pane { move-pane -M }",
 
 		/* Mouse wheel up on pane. */
@@ -574,6 +577,7 @@ key_bindings_init(void)
 		"bind -Tcopy-mode , { send -X jump-reverse }",
 		"bind -Tcopy-mode \\; { send -X jump-again }",
 		"bind -Tcopy-mode F { command-prompt -P -1p'(jump backward)' { send -X jump-backward -- '%%' } }",
+		"bind -Tcopy-mode L { send -X line-numbers-toggle }",
 		"bind -Tcopy-mode N { send -X search-reverse }",
 		"bind -Tcopy-mode P { send -X toggle-position }",
 		"bind -Tcopy-mode R { send -X rectangle-toggle }",

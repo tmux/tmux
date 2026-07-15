@@ -56,7 +56,7 @@ gitコミットについての連絡先
 
 	tmux-users@googlegroups.com
 
-本ファイル、CHANGES、 FAQ、SYNCINGそしてTODOはISC licenseで保護されています。
+本ファイル、CHANGES、 FAQ、SYNCING.mdそしてTODOはISC licenseで保護されています。
 その他のファイルのライセンスや著作権については、ファイルの上部に明記されています。
 
 -- Nicholas Marriott <nicholas.marriott@gmail.com>

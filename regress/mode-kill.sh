@@ -8,9 +8,11 @@
 # - copy-mode -k (window-copy.c);
 # - choose-tree -k (window-tree.c);
 # - choose-buffer -k (window-buffer.c).
+# - display-panes -k (window-panes.c).
 #
 # choose-tree and choose-buffer share cmd_choose_tree_exec(), which also backs
-# choose-client and customize-mode, so those are not repeated.
+# choose-client, customize-mode, and display-panes, so choose-client and
+# customize-mode are not repeated.
 #
 # Each mode is entered in the active pane of a two-pane window: exiting with
 # -k must remove that pane and leave the other. copy-mode is left with the
@@ -147,7 +149,7 @@ wait_mode "$active" 0
 pane_gone "$active" && fail 'copy-mode: pane killed without -k'
 $TMUX kill-window -t m:w 2>/dev/null
 
-# --- choose-tree -k and choose-buffer -k kill the pane ----------------------
+# --- choose-tree -k, choose-buffer -k, and display-panes -k kill the pane ---
 #
 # These need the client to draw the mode before a key acts, so attach one now.
 # A paste buffer is needed for choose-buffer to have something to show, and a
@@ -167,5 +169,12 @@ $TMUX choose-buffer -k -F 'BUFMARK' -t m:w || fail "choose-buffer -k failed"
 wait_for 'BUFMARK'
 $TMUX send-keys -t m:w q || fail "choose-buffer exit failed"
 check_killed 'choose-buffer -k'
+
+open_window
+$TMUX set -g display-panes-format 'DPMARK' || fail "set display-panes-format"
+$TMUX display-panes -k -d 0 -t m:w || fail "display-panes -k failed"
+wait_for 'DPMARK'
+$TMUX send-keys -t m:w q || fail "display-panes exit failed"
+check_killed 'display-panes -k'
 
 exit 0

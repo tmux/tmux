@@ -410,11 +410,6 @@ int		 asprintf(char **, const char *, ...);
 int		 vasprintf(char **, const char *, va_list);
 #endif
 
-#ifndef HAVE_FGETLN
-/* fgetln.c */
-char		*fgetln(FILE *, size_t *);
-#endif
-
 #ifndef HAVE_GETLINE
 /* getline.c */
 ssize_t		 getline(char **, size_t *, FILE *);

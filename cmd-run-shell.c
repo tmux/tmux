@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-run-shell.c,v 1.91 2026/06/01 08:27:37 nicm Exp $ */
+/* $OpenBSD: cmd-run-shell.c,v 1.92 2026/07/14 17:17:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -100,7 +100,8 @@ cmd_run_shell_print(struct job *job, const char *msg)
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme == NULL || wme->mode != &window_view_mode)
-		window_pane_set_mode(wp, NULL, &window_view_mode, NULL, NULL);
+		window_pane_set_mode(wp, NULL, &window_view_mode, NULL, NULL,
+		    NULL);
 	window_copy_add(wp, 1, "%s", msg);
 }
 

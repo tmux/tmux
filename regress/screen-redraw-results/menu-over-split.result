@@ -1,0 +1,14 @@
+MENU00 abcdefghij   [38;2;179;179;179m│[39mMENU00 abcdefghij
+MENU01 abcdefghij   [38;2;179;179;179m│[39mMENU01 abcdefghij
+MENU02 abcdefghij   [38;2;179;179;179m│[39mMENU02 abcdefghij
+MENU03 a[38;5;45m[48;5;235m┌─Menu───────────┐[39m[49m3 abcdefghij
+MENU04 a[38;5;45m[48;5;235m│[38;5;250m Alpha item (a) [38;5;45m│[39m[49m4 abcdefghij
+MENU05 a[38;5;45m[48;5;235m│[38;5;16m[48;5;220m Beta item  (b) [38;5;45m[48;5;235m│[39m[49m5 abcdefghij
+MENU06 a[38;5;45m[48;5;235m├────────────────┤[39m[49m6 abcdefghij
+MENU07 a[38;5;45m[48;5;235m│[38;5;250m Gamma item (g) [38;5;45m│[39m[49m7 abcdefghij
+MENU08 a[38;5;45m[48;5;235m└────────────────┘[39m[49m8 abcdefghij
+MENU09 abcdefghij   [38;2;154;205;50m│[39mMENU09 abcdefghij
+MENU10 abcdefghij   [38;2;154;205;50m│[39mMENU10 abcdefghij
+MENU11 abcdefghij   [38;2;154;205;50m│[39mMENU11 abcdefghij
+MENU12 abcdefghij   [38;2;154;205;50m│[39mMENU12 abcdefghij
+                    [38;2;154;205;50m│[39m

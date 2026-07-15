@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-choose-tree.c,v 1.57 2026/06/26 14:40:30 nicm Exp $ */
+/* $OpenBSD: cmd-choose-tree.c,v 1.58 2026/07/14 17:17:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Thomas Adam <thomas@xteddy.org>
@@ -97,6 +97,21 @@ const struct cmd_entry cmd_switch_mode_entry = {
 	.exec = cmd_choose_tree_exec
 };
 
+const struct cmd_entry cmd_display_panes_entry = {
+	.name = "display-panes",
+	.alias = "displayp",
+
+	.args = { "d:kNs:t:Z", 0, 1, cmd_choose_tree_args_parse },
+	.usage = "[-kNZ] [-d duration] [-s source-window] "
+		 CMD_TARGET_PANE_USAGE " [template]",
+
+	.source = { 's', CMD_FIND_WINDOW, 0 },
+	.target = { 't', CMD_FIND_PANE, 0 },
+
+	.flags = CMD_AFTERHOOK,
+	.exec = cmd_choose_tree_exec
+};
+
 static enum args_parse_type
 cmd_choose_tree_args_parse(__unused struct args *args, __unused u_int idx,
     __unused char **cause)
@@ -131,9 +146,11 @@ cmd_choose_tree_exec(struct cmd *self, struct cmdq_item *item)
 		mode = &window_customize_mode;
 	else if (cmd_get_entry(self) == &cmd_switch_mode_entry)
 		mode = &window_switch_mode;
+	else if (cmd_get_entry(self) == &cmd_display_panes_entry)
+		mode = &window_panes_mode;
 	else
 		mode = &window_tree_mode;
 
-	window_pane_set_mode(wp, NULL, mode, target, args);
+	window_pane_set_mode(wp, NULL, mode, item, target, args);
 	return (CMD_RETURN_NORMAL);
 }

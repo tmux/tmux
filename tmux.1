@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1132 2026/07/10 15:20:06 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1140 2026/07/14 17:17:18 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: July 10 2026 $
+.Dd $Mdocdate: July 14 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -850,6 +850,7 @@ Each has a single-character alternative form.
 .It Li "{next}" Ta "+" Ta "The next window by number"
 .It Li "{previous}" Ta "\-" Ta "The previous window by number"
 .It Li "{current}" Ta "@" Ta "The current window"
+.It Li "{mouse}" Ta "=" Ta "The window where the mouse event happened"
 .El
 .Pp
 .Ar target\-pane
@@ -883,6 +884,8 @@ The following special tokens are available for the pane index:
 .It Li "{left\-of}" Ta "" Ta "The pane to the left of the active pane"
 .It Li "{right\-of}" Ta "" Ta "The pane to the right of the active pane"
 .It Li "{active}" Ta "@" Ta "The active pane"
+.It Li "{marked}" Ta "~" Ta "The marked pane"
+.It Li "{mouse}" Ta "=" Ta "The pane where the mouse event happened"
 .El
 .Pp
 The tokens
@@ -2160,6 +2163,19 @@ before the target.
 .Xc
 Jump to the last mark.
 .It Xo
+.Ic line\-numbers\-on
+.Xc
+Show line numbers in copy mode.
+.It Xo
+.Ic line\-numbers\-off
+.Xc
+Hide line numbers in copy mode.
+.It Xo
+.Ic line\-numbers\-toggle
+(emacs: L)
+.Xc
+Toggle line numbers in copy mode.
+.It Xo
 .Ic middle\-line
 (vi: M)
 (emacs: M\-r)
@@ -3076,6 +3092,7 @@ The following keys may be used in customize mode:
 .It Li "w" Ta "Set window option value, if option is for pane and window"
 .It Li "d" Ta "Set an option or key to the default"
 .It Li "D" Ta "Set tagged options and tagged keys to the default"
+.It Li "e" Ta "Open the value in an editor"
 .It Li "u" Ta "Unset an option (set to default value if global) or unbind a key"
 .It Li "U" Ta "Unset tagged options and unbind tagged keys"
 .It Li "C\-s" Ta "Search by name"
@@ -3154,19 +3171,31 @@ option.
 .It Xo
 .Tg displayp
 .Ic display\-panes
-.Op Fl bN
+.Op Fl kNZ
 .Op Fl d Ar duration
-.Op Fl t Ar target\-client
+.Op Fl s Ar source\-window
+.Op Fl t Ar target\-pane
 .Op Ar template
 .Xc
 .D1 Pq alias: Ic displayp
-Display a visible indicator of each pane shown by
-.Ar target\-client .
+Put
+.Ar target\-pane
+into panes mode, which displays a preview of the window and a visible
+indicator of each pane.
+If
+.Fl s
+is given, the panes in
+.Ar source\-window
+are displayed instead of those in the window containing
+.Ar target\-pane .
 See the
-.Ic display\-panes\-colour
+.Ic display\-panes\-colour ,
+.Ic display\-panes\-active\-colour ,
+.Ic display\-panes\-border\-style ,
+.Ic display\-panes\-format
 and
-.Ic display\-panes\-active\-colour
-session options.
+.Ic display\-panes\-time
+window options.
 The indicator is closed when a key is pressed (unless
 .Fl N
 is given) or
@@ -3178,11 +3207,16 @@ is not given,
 .Ic display\-panes\-time
 is used.
 A duration of zero means the indicator stays until a key is pressed.
+The mode is zoomed by default;
+.Fl Z
+starts it unzoomed.
+.Fl k
+kills the pane when the mode is exited.
 While the indicator is on screen, a pane may be chosen with the
 .Ql 0
 to
 .Ql 9
-keys, which will cause
+keys or by clicking it with the mouse, which will cause
 .Ar template
 to be executed as a command with
 .Ql %%
@@ -3190,9 +3224,6 @@ substituted by the pane ID.
 The default
 .Ar template
 is "select\-pane \-t \[aq]%%\[aq]".
-With
-.Fl b ,
-other commands are not blocked from running until the indicator is closed.
 .Tg findw
 .It Xo Ic find\-window
 .Op Fl iCNrTZ
@@ -3616,7 +3647,7 @@ but a different format may be specified with
 .Fl F .
 .Tg newp
 .It Xo Ic new\-pane
-.Op Fl bdefhIkLPvWZ
+.Op Fl bdefhIkLMPvWZ
 .Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
@@ -3662,6 +3693,11 @@ to specify a percentage of the window size.
 .Fl B
 sets the pane border lines for floating panes; see
 .Ic pane\-border\-lines .
+.Fl M
+may be used when bound to a mouse drag key; the new floating pane is resized to
+follow the mouse drag.
+It has no effect with
+.Fl L .
 .Pp
 The
 .Fl L
@@ -4018,6 +4054,7 @@ the command behaves like
 .Tg splitw
 .It Xo Ic split\-window
 .Op Fl bdefhIkPvZ
+.Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
@@ -4065,6 +4102,9 @@ may be followed by
 to specify a percentage of the available space.
 .Fl p
 is a shorthand option for this.
+.Fl B
+sets the pane border lines for floating panes; see
+.Ic pane\-border\-lines .
 The
 .Fl b
 option causes the new pane to be created to the left of or above
@@ -4076,6 +4116,21 @@ option creates a new pane spanning the full window height (with
 or full window width (with
 .Fl v ) ,
 instead of splitting the active pane.
+.Pp
+If
+.Ar target\-pane
+is floating, a new floating pane is created adjacent to
+.Ar target\-pane
+with equal sizes.
+The position is determined by the
+.Fl h ,
+.Fl v ,
+and
+.Fl b
+flags.
+If any of the new pane would not be visible on the screen,
+.Ar target\-pane
+and the new pane are resized to fit.
 .Pp
 .Fl k
 keeps the pane open after the optional
@@ -5194,24 +5249,6 @@ If
 or
 .Ic next ,
 the client is switched to the previous or next session in alphabetical order.
-.It Ic display\-panes\-active\-colour Ar colour
-Set the colour used by the
-.Ic display\-panes
-command to show the indicator for the active pane.
-.It Ic display\-panes\-colour Ar colour
-Set the colour used by the
-.Ic display\-panes
-command to show the indicators for inactive panes.
-.It Ic display\-panes\-format Ar format
-Set the
-.Ar format
-of the text shown by the
-.Ic display\-panes
-command, expanded for each pane.
-.It Ic display\-panes\-time Ar time
-Set the time in milliseconds for which the indicators shown by the
-.Ic display\-panes
-command appear.
 .It Ic display\-time Ar time
 Set the amount of time for which status line messages and other on-screen
 indicators are displayed.
@@ -5642,6 +5679,38 @@ Set clock colour.
 .Op Ic 12 | 24 | 12\-with\-seconds | 24\-with\-seconds
 .Xc
 Set clock hour format.
+.Pp
+.It Ic display\-panes\-active\-colour Ar colour
+Set the colour used by the
+.Ic display\-panes
+command to show the indicator for the active pane.
+.Pp
+.It Ic display\-panes\-border\-style Ar style
+Set the style of borders in panes mode used by the
+.Ic display\-panes
+command.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
+.It Ic display\-panes\-colour Ar colour
+Set the colour used by the
+.Ic display\-panes
+command to show the indicators for inactive panes.
+.Pp
+.It Ic display\-panes\-format Ar format
+Set the
+.Ar format
+of the text shown by the
+.Ic display\-panes
+command, expanded for each pane.
+.Pp
+.It Ic display\-panes\-time Ar time
+Set the time in milliseconds for which the indicators shown by the
+.Ic display\-panes
+command appear.
 .Pp
 .It Ic fill\-character Ar character
 Set the character used to fill areas of the terminal unused by a window.
@@ -6345,6 +6414,10 @@ See
 Run when a client becomes the latest active client of its session.
 .It client\-attached
 Run when a client is attached.
+.It client\-closed
+Run when a client is closed.
+.It client\-created
+Run when a client is created.
 .It client\-detached
 Run when a client is detached.
 .It client\-focus\-in
@@ -6363,15 +6436,12 @@ Run when a client switches to a dark theme.
 Run when a command fails.
 .It marked\-pane\-changed
 Run when the marked pane is set or cleared.
+.It pane\-activity
+Run when there is new output in a pane.
+.It pane\-bell
+Run when a pane receives a bell.
 .It pane\-command\-finished
 Run when an OSC 133 command finishes in a pane.
-The event payload includes
-.Ql hook_command_start_time ,
-.Ql hook_command_end_time ,
-.Ql hook_command_duration
-and
-.Ql hook_command_status
-if present.
 .It pane\-command\-started
 Run when an OSC 133 command starts in a pane.
 .It pane\-created
@@ -6396,6 +6466,8 @@ Run when a pane changes mode.
 Run when a pane enters a mode.
 .It pane\-mode\-exited
 Run when a pane exits a mode.
+.It pane\-moved
+Run when a pane is moved to another window.
 .It pane\-prompt\-closed
 Run when a prompt in a pane is closed.
 .It pane\-prompt\-opened
@@ -6414,10 +6486,18 @@ Run when a pane title is changed.
 Run when a session is closed.
 .It session\-created
 Run when a new session is created.
+.It session\-added\-to\-group
+Run when a session is added to a session group.
+.It session\-removed\-from\-group
+Run when a session is removed from a session group.
 .It session\-renamed
 Run when a session is renamed.
 .It session\-window\-changed
 Run when a session changes its active window.
+.It window\-closed
+Run when a window is closed.
+.It window\-created
+Run when a window is created.
 .It window\-layout\-changed
 Run when a window layout is changed.
 .It window\-linked
@@ -7148,6 +7228,7 @@ The following variables are available, where appropriate:
 .It Li "copy_cursor_word" Ta "" Ta "Word under cursor in copy mode"
 .It Li "copy_cursor_x" Ta "" Ta "Cursor X position in copy mode"
 .It Li "copy_cursor_y" Ta "" Ta "Cursor Y position in copy mode"
+.It Li "copy_line_numbers" Ta "" Ta "1 if line numbers are shown in copy mode"
 .It Li "copy_position" Ta "" Ta "Position shown in the copy mode indicator"
 .It Li "copy_position_limit" Ta "" Ta "Limit shown in the copy mode indicator"
 .It Li "current_file" Ta "" Ta "Current configuration file"
@@ -7267,6 +7348,7 @@ The following variables are available, where appropriate:
 .It Li "prev_window_active" Ta "" Ta "1 if previous window in W: loop is active"
 .It Li "prev_window_index" Ta "" Ta "Index of previous window in W: loop"
 .It Li "rectangle_toggle" Ta "" Ta "1 if rectangle selection is activated"
+.It Li "refresh_active" Ta "" Ta "1 if copy mode refresh is active"
 .It Li "scroll_position" Ta "" Ta "Scroll position in copy mode"
 .It Li "scroll_region_lower" Ta "" Ta "Bottom of scroll region in pane"
 .It Li "scroll_region_upper" Ta "" Ta "Top of scroll region in pane"
