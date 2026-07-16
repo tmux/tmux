@@ -342,9 +342,9 @@ struct window_copy_mode_data {
 	u_char		*searchmark;
 	int		 searchcount;
 	int		 searchindex;
-	uint64_t	*searchpositions;
-	u_int		 searchpositioncount;
-	u_int		 searchpositionallocated;
+	u_int		*searchpos;
+	u_int		 searchposcount;
+	u_int		 searchpossize;
 	int		 searchmore;
 	int		 searchall;
 	int		 searchx;
@@ -687,7 +687,7 @@ window_copy_free(struct window_mode_entry *wme)
 	evtimer_del(&data->refresh_timer);
 
 	free(data->searchmark);
-	free(data->searchpositions);
+	free(data->searchpos);
 	free(data->searchstr);
 	free(data->jumpchar);
 
@@ -4590,7 +4590,7 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 		return (0);
 
 	if (data->searchall || wp->searchstr == NULL ||
-	    data->searchpositions == NULL ||
+	    data->searchpos == NULL ||
 	    wp->searchregex != regex) {
 		visible_only = 0;
 		data->searchall = 0;
@@ -4753,19 +4753,21 @@ static void
 window_copy_search_set_index(struct window_copy_mode_data *data, u_int px,
     u_int py)
 {
-	uint64_t	 position = (uint64_t)py * data->backing->grid->sx + px;
-	u_int		 left = 0, right = data->searchpositioncount, middle;
+	u_int	 position, left = 0, right = data->searchposcount, middle;
+	u_int	 sx = data->backing->grid->sx;
 
 	data->searchindex = -1;
+	if (py > (UINT_MAX - px) / sx)
+		return;
+	position = py * sx + px;
 	while (left < right) {
 		middle = left + ((right - left) / 2);
-		if (data->searchpositions[middle] < position)
+		if (data->searchpos[middle] < position)
 			left = middle + 1;
 		else
 			right = middle;
 	}
-	if (left < data->searchpositioncount &&
-	    data->searchpositions[left] == position)
+	if (left < data->searchposcount && data->searchpos[left] == position)
 		data->searchindex = left + 1;
 }
 
@@ -4810,8 +4812,9 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 	struct grid			*gd = s->grid;
 	struct grid_cell		 gc;
 	int				 found, cis, stopped = 0, oldindex;
+	int				 trackpos = 0;
 	int				 cflags = REG_EXTENDED;
-	u_int				 px, py, nfound = 0, width;
+	u_int				 px, py, pos, nfound = 0, width;
 	u_int				 ssize = 1, start, end, sx = gd->sx;
 	u_int				 sy = gd->sy;
 	char				*sbuf;
@@ -4854,10 +4857,12 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 		stop = get_timer() + WINDOW_COPY_SEARCH_ALL_TIMEOUT;
 		oldindex = data->searchindex;
 		data->searchindex = -1;
-		free(data->searchpositions);
-		data->searchpositions = NULL;
-		data->searchpositioncount = 0;
-		data->searchpositionallocated = 0;
+		free(data->searchpos);
+		data->searchpos = xreallocarray(NULL, 64,
+		    sizeof *data->searchpos);
+		data->searchposcount = 0;
+		data->searchpossize = 64;
+		trackpos = 1;
 	}
 
 again:
@@ -4883,20 +4888,26 @@ again:
 					break;
 			}
 			nfound++;
-			if (!visible_only) {
-				if (data->searchpositioncount ==
-				    data->searchpositionallocated) {
-					data->searchpositionallocated =
-					    (data->searchpositionallocated == 0) ?
-					    64 : data->searchpositionallocated * 2;
-					data->searchpositions = xreallocarray(
-					    data->searchpositions,
-					    data->searchpositionallocated,
-					    sizeof *data->searchpositions);
+			if (!visible_only && trackpos) {
+				if (py > (UINT_MAX - px) / sx) {
+					free(data->searchpos);
+					data->searchpos = NULL;
+					data->searchposcount = 0;
+					data->searchpossize = 0;
+					trackpos = 0;
+				} else {
+					if (data->searchposcount ==
+					    data->searchpossize) {
+						data->searchpossize *= 2;
+						data->searchpos = xreallocarray(
+						    data->searchpos,
+						    data->searchpossize,
+						    sizeof *data->searchpos);
+					}
+					pos = py * sx + px;
+					data->searchpos[
+					    data->searchposcount++] = pos;
 				}
-				data->searchpositions[
-				    data->searchpositioncount++] =
-				    (uint64_t)py * sx + px;
 			}
 			px += window_copy_search_mark_match(data, px, py, width,
 			    regex);
@@ -4927,10 +4938,13 @@ again:
 	if (!visible_only) {
 		if (stopped) {
 			data->searchindex = -1;
-			free(data->searchpositions);
-			data->searchpositions = NULL;
-			data->searchpositioncount = 0;
-			data->searchpositionallocated = 0;
+			if (trackpos) {
+				/* Keep this non-NULL to avoid another full search. */
+				data->searchpos = xreallocarray(data->searchpos, 1,
+				    sizeof *data->searchpos);
+				data->searchpossize = 1;
+			}
+			data->searchposcount = 0;
 			if (nfound > 1000)
 				data->searchcount = 1000;
 			else if (nfound > 100)
@@ -4965,10 +4979,10 @@ window_copy_clear_marks(struct window_mode_entry *wme)
 	data->searchcount = -1;
 	data->searchindex = -1;
 	data->searchmore = 0;
-	free(data->searchpositions);
-	data->searchpositions = NULL;
-	data->searchpositioncount = 0;
-	data->searchpositionallocated = 0;
+	free(data->searchpos);
+	data->searchpos = NULL;
+	data->searchposcount = 0;
+	data->searchpossize = 0;
 
 	free(data->searchmark);
 	data->searchmark = NULL;
