@@ -76,7 +76,7 @@ $TMUX send-keys -X history-top || exit 1
 $TMUX send-keys -X search-forward-text absent || exit 1
 check_count /0
 case "$($TMUX display-message -p '#{E:copy-mode-position-format}')" in
-	*'(Phrase not found)') ;;
+	*'(0 matches)') ;;
 	*) exit 1 ;;
 esac
 $TMUX send-keys -X search-forward-text one || exit 1
