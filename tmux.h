@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1404 2026/07/14 19:07:03 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1406 2026/07/15 13:02:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -193,6 +193,7 @@ enum key_code_mouse_location {
 	KEYC_MOUSE_LOCATION_SCROLLBAR_UP,
 	KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER,
 	KEYC_MOUSE_LOCATION_SCROLLBAR_DOWN,
+	KEYC_MOUSE_LOCATION_EMPTY,
 	KEYC_MOUSE_LOCATION_CONTROL0, /* keep order */
 	KEYC_MOUSE_LOCATION_CONTROL1,
 	KEYC_MOUSE_LOCATION_CONTROL2,
@@ -249,6 +250,7 @@ enum key_code_mouse_location {
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_UP),     \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_SLIDER), \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_DOWN),   \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, EMPTY),            \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL0),         \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL1),         \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL2),         \
@@ -283,6 +285,7 @@ enum key_code_mouse_location {
 	{ #s "ScrollbarUp", KEYC_ ## name ## _SCROLLBAR_UP },         \
 	{ #s "ScrollbarSlider", KEYC_ ## name ## _SCROLLBAR_SLIDER }, \
 	{ #s "ScrollbarDown", KEYC_ ## name ## _SCROLLBAR_DOWN },     \
+	{ #s "Empty", KEYC_ ## name ## _EMPTY },		      \
 	{ #s "Border", KEYC_ ## name ## _BORDER },		      \
 	{ #s "Control0", KEYC_ ## name ## _CONTROL0 },		      \
 	{ #s "Control1", KEYC_ ## name ## _CONTROL1 },		      \
@@ -1415,6 +1418,8 @@ struct window {
 	struct timeval		 creation_time;
 
 	struct window_pane	*active;
+	struct window_pane	*modal;
+	struct window_pane	*modal_last;
 	struct window_panes 	 last_panes;
 	struct window_panes      z_index;
 	struct window_panes	 panes;
@@ -1456,6 +1461,7 @@ struct window {
 #define WINDOW_ZOOMED 0x8
 #define WINDOW_WASZOOMED 0x10
 #define WINDOW_RESIZE 0x20
+#define WINDOW_WASMODALZOOMED 0x40
 #define WINDOW_ALERTFLAGS (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_SILENCE)
 
 	int			 alerts_queued;
@@ -2486,6 +2492,7 @@ struct spawn_context {
 #define SPAWN_FLOATING 0x100
 #define SPAWN_HORIZONTAL 0x200
 #define SPAWN_SPLIT 0x400
+#define SPAWN_MODAL 0x800
 };
 
 /* Paste buffer. */
@@ -3636,6 +3643,7 @@ struct window_pane *window_get_active_at(struct window *, u_int, u_int);
 struct window_pane *window_find_string(struct window *, const char *);
 int		 window_has_floating_panes(struct window *);
 int		 window_has_pane(struct window *, struct window_pane *);
+int		 window_pane_contains(struct window_pane *, u_int, u_int);
 int		 window_set_active_pane(struct window *, struct window_pane *,
 		     int);
 void		 window_fire_pane_moved(struct window_pane *, struct window *,
@@ -3650,6 +3658,8 @@ void		 window_resize(struct window *, u_int, u_int, int, int);
 void		 window_pane_send_resize(struct window_pane *, u_int, u_int);
 int		 window_zoom(struct window_pane *);
 int		 window_unzoom(struct window *, int);
+void		 window_push_modal_zoom(struct window *);
+int		 window_pop_modal_zoom(struct window *);
 int		 window_push_zoom(struct window *, int, int);
 int		 window_pop_zoom(struct window *);
 void		 window_lost_pane(struct window *, struct window_pane *);

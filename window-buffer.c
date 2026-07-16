@@ -1,4 +1,4 @@
-/* $OpenBSD: window-buffer.c,v 1.50 2026/07/14 17:17:18 nicm Exp $ */
+/* $OpenBSD: window-buffer.c,v 1.51 2026/07/15 12:45:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -525,6 +525,8 @@ window_buffer_draw_waiting(struct window_buffer_modedata *data)
 	screen_write_start(&ctx, s);
 	screen_write_cursormove(&ctx, x, y, 0);
 	screen_write_box(&ctx, box_w, box_h, BOX_LINES_DEFAULT, &gc, NULL);
+	screen_write_cursormove(&ctx, x + 1, y + 1, 0);
+	screen_write_clearcharacter(&ctx, box_w - 2, gc.bg);
 	screen_write_cursormove(&ctx, text_x, y + 1, 0);
 	screen_write_nputs(&ctx, box_w - 2, &gc, "%s", text);
 	screen_write_stop(&ctx);
