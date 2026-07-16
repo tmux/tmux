@@ -364,7 +364,9 @@ fn addCommonDefines(mod: *std.Build.Module) void {
     mod.addCMacro("HAVE_STRNLEN", "1");
     mod.addCMacro("HAVE_STRSEP", "1");
     mod.addCMacro("HAVE_SYSCONF", "1");
-    mod.addCMacro("HAVE_TIPARM", "1");
+    // tiparm_s, not tiparm: ncurses 6.4+ tiparm() rejects string parameters
+    // (e.g. the Ms clipboard capability), silently breaking OSC 52.
+    mod.addCMacro("HAVE_TIPARM_S", "1");
 }
 
 fn addTargetDefines(mod: *std.Build.Module, os_tag: std.Target.Os.Tag) void {
