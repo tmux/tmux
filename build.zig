@@ -17,7 +17,6 @@ const tmux_sources = [_][]const u8{
     "cmd-detach-client.c",
     "cmd-display-menu.c",
     "cmd-display-message.c",
-    "cmd-display-panes.c",
     "cmd-find-window.c",
     "cmd-find.c",
     "cmd-if-shell.c",
@@ -75,6 +74,8 @@ const tmux_sources = [_][]const u8{
     "control-notify.c",
     "control.c",
     "environ.c",
+    "events-payload.c",
+    "events.c",
     "file.c",
     "format.c",
     "format-draw.c",
@@ -82,6 +83,7 @@ const tmux_sources = [_][]const u8{
     "grid-reader.c",
     "grid-view.c",
     "grid.c",
+    "hooks.c",
     "hyperlinks.c",
     "image.c",
     "input-keys.c",
@@ -97,7 +99,6 @@ const tmux_sources = [_][]const u8{
     "mode-tree.c",
     "monitor.c",
     "names.c",
-    "notify.c",
     "options-table.c",
     "options.c",
     "paste.c",
@@ -134,6 +135,7 @@ const tmux_sources = [_][]const u8{
     "window-clock.c",
     "window-copy.c",
     "window-customize.c",
+    "window-panes.c",
     "window-switch.c",
     "window-tree.c",
     "window-visible.c",
@@ -162,7 +164,6 @@ const compat_common_sources = [_][]const u8{
 };
 
 const compat_linux_sources = [_][]const u8{
-    "compat/fgetln.c",
     "compat/getpeereid.c",
     "compat/getprogname.c",
     "compat/strtonum.c",
