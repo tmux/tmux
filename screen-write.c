@@ -305,19 +305,14 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 
 	if (~ctx->flags & SCREEN_WRITE_SYNC) {
 		/*
-		 * For the active pane or for an overlay (no pane), we want to
-		 * only use synchronized updates if requested (commands that
-		 * move the cursor); for other panes, always use it, since the
-		 * cursor will have to move.
+		 * For the active pane, only use synchronized updates if
+		 * requested (commands that move the cursor); for other panes,
+		 * always use it, since the cursor will have to move.
 		 */
 		if (ctx->wp != NULL && ctx->wp != ctx->wp->window->active)
 			ttyctx->flags |= TTY_CTX_SYNC;
-		else {
-			if (ctx->wp == NULL)
-				ttyctx->flags |= TTY_CTX_OVERLAY_SYNC;
-			if (is_sync)
-				ttyctx->flags |= TTY_CTX_SYNC;
-		}
+		else if (is_sync)
+			ttyctx->flags |= TTY_CTX_SYNC;
 		tty_write(tty_cmd_syncstart, ttyctx);
 		ctx->flags |= SCREEN_WRITE_SYNC;
 	}
@@ -704,7 +699,7 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 			if (!window_position_is_visible(r, xoff + s->cx))
 				break;
 			ttyctx.cell = &gc;
-			ttyctx.flags &= (TTY_CTX_OVERLAY_SYNC|TTY_CTX_SYNC);
+			ttyctx.flags &= TTY_CTX_SYNC;
 			tty_write(tty_cmd_cell, &ttyctx);
 			ttyctx.ocx++;
 

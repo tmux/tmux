@@ -52,8 +52,7 @@ tty_draw_line_clear(struct tty *tty, u_int px, u_int py, u_int nx,
 		return;
 
 	/* If genuine BCE is available, can try escape sequences. */
-	if (tty->client->overlay_check == NULL &&
-	    !wrapped &&
+	if (!wrapped &&
 	    nx >= 10 &&
 	    !tty_fake_bce(tty, defaults, bg)) {
 		/* Off the end of the line, use EL if available. */

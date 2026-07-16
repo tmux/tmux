@@ -577,8 +577,6 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 	struct prompt_create_data	pd;
 	struct status_prompt_data	*spd;
 
-	server_client_clear_overlay(c);
-
 	status_message_clear(c);
 	status_prompt_clear(c);
 	status_push_screen(c);

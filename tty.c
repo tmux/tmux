@@ -66,7 +66,6 @@ static void	tty_redraw_region(struct tty *, const struct tty_ctx *);
 static void	tty_emulate_repeat(struct tty *, enum tty_code_code,
 		    enum tty_code_code, u_int);
 static void	tty_draw_pane(struct tty *, const struct tty_ctx *, u_int);
-static int	tty_check_overlay(struct tty *, u_int, u_int);
 
 #ifdef ENABLE_SIXEL
 static void	tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
@@ -1183,9 +1182,6 @@ tty_clear_line(struct tty *tty, const struct grid_cell *defaults, u_int py,
     u_int px, u_int nx, u_int bg)
 {
 	struct client		*c = tty->client;
-	struct visible_ranges	*r;
-	struct visible_range	*rr;
-	u_int			 i;
 
 	log_debug("%s: %s, %u at %u,%u", __func__, c->name, nx, px, py);
 
@@ -1194,7 +1190,7 @@ tty_clear_line(struct tty *tty, const struct grid_cell *defaults, u_int py,
 		return;
 
 	/* If genuine BCE is available, can try escape sequences. */
-	if (c->overlay_check == NULL && !tty_fake_bce(tty, defaults, bg)) {
+	if (!tty_fake_bce(tty, defaults, bg)) {
 		/* Off the end of the line, use EL if available. */
 		if (px + nx >= tty->sx && tty_term_has(tty->term, TTYC_EL)) {
 			tty_cursor(tty, px, py);
@@ -1217,18 +1213,9 @@ tty_clear_line(struct tty *tty, const struct grid_cell *defaults, u_int py,
 		}
 	}
 
-	/*
-	 * Couldn't use an escape sequence, use spaces. Clear only the visible
-	 * bit if there is an overlay.
-	 */
-	r = tty_check_overlay_range(tty, px, py, nx);
-	for (i = 0; i < r->used; i++) {
-		rr = &r->ranges[i];
-		if (rr->nx != 0) {
-			tty_cursor(tty, rr->px, py);
-			tty_repeat_space(tty, rr->nx);
-		}
-	}
+	/* Couldn't use an escape sequence, use spaces. */
+	tty_cursor(tty, px, py);
+	tty_repeat_space(tty, nx);
 }
 
 /* Clear a line, adjusting to visible part of pane. */
@@ -1237,22 +1224,12 @@ tty_clear_pane_line(struct tty *tty, const struct tty_ctx *ctx, u_int py,
     u_int px, u_int nx, u_int bg)
 {
 	struct client		*c = tty->client;
-	struct visible_ranges	*r;
-	struct visible_range	*ri;
-	u_int			 i, l, x, rx, ry;
+	u_int			 l, x, rx, ry;
 
 	log_debug("%s: %s, %u at %u,%u", __func__, c->name, nx, px, py);
 
-	if (tty_clamp_line(tty, ctx, px, py, nx, &l, &x, &rx, &ry)) {
-		r = tty_check_overlay_range(tty, x, ry, rx);
-		for (i = 0; i < r->used; i++) {
-			ri = &r->ranges[i];
-			if (ri->nx == 0)
-				continue;
-			tty_clear_line(tty, &ctx->defaults, ry, ri->px, ri->nx,
-			    bg);
-		}
-	}
+	if (tty_clamp_line(tty, ctx, px, py, nx, &l, &x, &rx, &ry))
+		tty_clear_line(tty, &ctx->defaults, ry, x, rx, bg);
 }
 
 /* Clamp area position to visible part of pane. */
@@ -1333,11 +1310,8 @@ tty_clear_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 	if (nx == 0 || ny == 0)
 		return;
 
-	/*
-	 * If there is an overlay or BCE is not available, cannot clear as a
-	 * region.
-	 */
-	if (c->overlay_check == NULL && !tty_fake_bce(tty, defaults, bg)) {
+	/* If BCE is available, can try to clear as a region. */
+	if (!tty_fake_bce(tty, defaults, bg)) {
 		/* Use ED if clearing off the bottom of the terminal. */
 		if (px == 0 &&
 		    px + nx >= tty->sx &&
@@ -1409,53 +1383,28 @@ static void
 tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 {
 	struct screen		*s = ctx->s;
-	u_int			 nx = ctx->sx, i, x, rx, ry, j;
-	struct visible_ranges	*r;
-	struct visible_range	*rr;
+	u_int			 nx = ctx->sx, i, x, rx, ry;
 
 	log_debug("%s: %s %u", __func__, tty->client->name, py);
 
 	if (~ctx->flags & TTY_CTX_WINDOW_BIGGER) {
-		r = tty_check_overlay_range(tty, ctx->xoff, ctx->yoff + py, nx);
-		for (j = 0; j < r->used; j++) {
-			rr = &r->ranges[j];
-			if (rr->nx == 0)
-				continue;
-			tty_draw_line(tty, s, rr->px - ctx->xoff, py, rr->nx,
-			    rr->px, ctx->yoff + py, &ctx->style_ctx);
-		}
+		tty_draw_line(tty, s, 0, py, nx, ctx->xoff, ctx->yoff + py,
+		    &ctx->style_ctx);
 		return;
 	}
-	if (tty_clamp_line(tty, ctx, 0, py, nx, &i, &x, &rx, &ry)) {
-		r = tty_check_overlay_range(tty, x, ry, rx);
-		for (j = 0; j < r->used; j++) {
-			rr = &r->ranges[j];
-			if (rr->nx == 0)
-				continue;
-			tty_draw_line(tty, s, i + rr->px - x, py, rr->nx,
-			    rr->px, ry, &ctx->style_ctx);
-		}
-	}
+	if (tty_clamp_line(tty, ctx, 0, py, nx, &i, &x, &rx, &ry))
+		tty_draw_line(tty, s, i, py, rx, x, ry, &ctx->style_ctx);
 }
 
 void
 tty_cmd_redrawline(struct tty *tty, const struct tty_ctx *ctx)
 {
-	u_int			 i, x, rx, ry, j;
-	struct visible_ranges	*r;
-	struct visible_range	*rr;
+	u_int			 i, x, rx, ry;
 
 	if (tty_clamp_line(tty, ctx, ctx->ocx, ctx->ocy, ctx->n,
-	    &i, &x, &rx, &ry)) {
-		r = tty_check_overlay_range(tty, x, ry, rx);
-		for (j = 0; j < r->used; j++) {
-			rr = &r->ranges[j];
-			if (rr->nx == 0)
-				continue;
-			tty_draw_line(tty, ctx->s, ctx->ocx + i + rr->px - x,
-			    ctx->ocy, rr->nx, rr->px, ry, &ctx->style_ctx);
-		}
-	}
+	    &i, &x, &rx, &ry))
+		tty_draw_line(tty, ctx->s, ctx->ocx + i, ctx->ocy, rx, x, ry,
+		    &ctx->style_ctx);
 }
 
 /* Check if character needs to be mapped for codeset. */
@@ -1490,36 +1439,6 @@ tty_check_codeset(struct tty *tty, const struct grid_cell *gc)
 		new.data.size = UTF8_SIZE;
 	memset(new.data.data, '_', new.data.size);
 	return (&new);
-}
-
-/* Check if a single character is covered by the overlay. */
-static int
-tty_check_overlay(struct tty *tty, u_int px, u_int py)
-{
-	struct visible_ranges	*r;
-
-	/*
-	 * With a single character, if there is anything visible (that is, the
-	 * range is not empty), it must be that character.
-	 */
-	r = tty_check_overlay_range(tty, px, py, 1);
-	return (!server_client_ranges_is_empty(r));
-}
-
-/* Return parts of the input range which are visible. */
-struct visible_ranges *
-tty_check_overlay_range(struct tty *tty, u_int px, u_int py, u_int nx)
-{
-	struct client	*c = tty->client;
-
-	if (c->overlay_check == NULL) {
-		server_client_ensure_ranges(&tty->r, 1);
-		tty->r.ranges[0].px = px;
-		tty->r.ranges[0].nx = nx;
-		tty->r.used = 1;
-		return (&tty->r);
-	}
-	return (c->overlay_check(c, c->overlay_data, px, py, nx));
 }
 
 #ifdef ENABLE_SIXEL
@@ -1665,14 +1584,11 @@ tty_write_one(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 void
 tty_cmd_insertcharacter(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct client	*c = tty->client;
-
 	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
 	    !tty_full_width(tty, ctx) ||
 	    tty_fake_bce(tty, &ctx->defaults, ctx->bg) ||
 	    (!tty_term_has(tty->term, TTYC_ICH) &&
-	    !tty_term_has(tty->term, TTYC_ICH1)) ||
-	    c->overlay_check != NULL) {
+	    !tty_term_has(tty->term, TTYC_ICH1))) {
 		tty_draw_pane(tty, ctx, ctx->ocy);
 		return;
 	}
@@ -1687,14 +1603,11 @@ tty_cmd_insertcharacter(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct client	*c = tty->client;
-
 	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
 	    !tty_full_width(tty, ctx) ||
 	    tty_fake_bce(tty, &ctx->defaults, ctx->bg) ||
 	    (!tty_term_has(tty->term, TTYC_DCH) &&
-	    !tty_term_has(tty->term, TTYC_DCH1)) ||
-	    c->overlay_check != NULL) {
+	    !tty_term_has(tty->term, TTYC_DCH1))) {
 		tty_draw_pane(tty, ctx, ctx->ocy);
 		return;
 	}
@@ -1717,16 +1630,13 @@ tty_cmd_clearcharacter(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_insertline(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct client	*c = tty->client;
-
 	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
 	    !tty_full_width(tty, ctx) ||
 	    tty_fake_bce(tty, &ctx->defaults, ctx->bg) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    !tty_term_has(tty->term, TTYC_IL1) ||
 	    ctx->sx == 1 ||
-	    ctx->sy == 1 ||
-	    c->overlay_check != NULL) {
+	    ctx->sy == 1) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1744,16 +1654,13 @@ tty_cmd_insertline(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_deleteline(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct client	*c = tty->client;
-
 	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
 	    !tty_full_width(tty, ctx) ||
 	    tty_fake_bce(tty, &ctx->defaults, ctx->bg) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    !tty_term_has(tty->term, TTYC_DL1) ||
 	    ctx->sx == 1 ||
-	    ctx->sy == 1 ||
-	    c->overlay_check != NULL) {
+	    ctx->sy == 1) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1797,8 +1704,6 @@ tty_cmd_clearstartofline(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct client	*c = tty->client;
-
 	if (ctx->ocy != ctx->orupper)
 		return;
 
@@ -1809,8 +1714,7 @@ tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 	    (!tty_term_has(tty->term, TTYC_RI) &&
 	    !tty_term_has(tty->term, TTYC_RIN)) ||
 	    ctx->sx == 1 ||
-	    ctx->sy == 1 ||
-	    c->overlay_check != NULL) {
+	    ctx->sy == 1) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1830,8 +1734,6 @@ tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct client	*c = tty->client;
-
 	if (ctx->ocy != ctx->orlower)
 		return;
 
@@ -1840,8 +1742,7 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	    tty_fake_bce(tty, &ctx->defaults, 8) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    ctx->sx == 1 ||
-	    ctx->sy == 1 ||
-	    c->overlay_check != NULL) {
+	    ctx->sy == 1) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1872,7 +1773,6 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct client		*c = tty->client;
 	u_int			 i;
 
 	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
@@ -1880,8 +1780,7 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 	    tty_fake_bce(tty, &ctx->defaults, 8) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    ctx->sx == 1 ||
-	    ctx->sy == 1 ||
-	    c->overlay_check != NULL) {
+	    ctx->sy == 1) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1911,7 +1810,6 @@ void
 tty_cmd_scrolldown(struct tty *tty, const struct tty_ctx *ctx)
 {
 	u_int		 i;
-	struct client	*c = tty->client;
 
 	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
 	    (!tty_full_width(tty, ctx) && !tty_use_margin(tty)) ||
@@ -1920,8 +1818,7 @@ tty_cmd_scrolldown(struct tty *tty, const struct tty_ctx *ctx)
 	    (!tty_term_has(tty->term, TTYC_RI) &&
 	    !tty_term_has(tty->term, TTYC_RIN)) ||
 	    ctx->sx == 1 ||
-	    ctx->sy == 1 ||
-	    c->overlay_check != NULL) {
+	    ctx->sy == 1) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -2009,11 +1906,9 @@ tty_cmd_clearscreen(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct client	*c = tty->client;
 	u_int		 i, j;
 
-	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
-	    c->overlay_check != NULL) {
+	if (ctx->flags & TTY_CTX_WINDOW_BIGGER) {
 		ctx->redraw_cb(ctx);
 		return;
 	}
@@ -2033,28 +1928,8 @@ tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 {
-	const struct grid_cell	*gcp = ctx->cell;
-	struct screen		*s = ctx->s;
-	struct visible_ranges	*r;
-	u_int			 px, py, i, vis = 0;
-
-	px = ctx->xoff + ctx->ocx - ctx->wox;
-	py = ctx->yoff + ctx->ocy - ctx->woy;
 	if (!tty_is_visible(tty, ctx, ctx->ocx, ctx->ocy, 1, 1))
 		return;
-
-	if (gcp->data.width == 1 && !tty_check_overlay(tty, px, py))
-		return;
-	if (gcp->data.width > 1) { /* could be partially obscured */
-		r = tty_check_overlay_range(tty, px, py, gcp->data.width);
-		for (i = 0; i < r->used; i++)
-			vis += r->ranges[i].nx;
-		if (vis < gcp->data.width) {
-			tty_draw_line(tty, s, s->cx, s->cy, gcp->data.width,
-			    px, py, &ctx->style_ctx);
-			return;
-		}
-	}
 
 	if (ctx->xoff + ctx->ocx - ctx->wox > tty->sx - 1 &&
 	    ctx->ocy == ctx->orlower &&
@@ -2075,9 +1950,6 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct visible_ranges	*r;
-	struct visible_range	*ri;
-	u_int			 i, px, py, cx;
 	const char		*cp = ctx->data.data;
 	size_t			 n = ctx->data.size;
 
@@ -2103,20 +1975,7 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 	tty_margin_off(tty);
 	tty_cursor_pane_unless_wrap(tty, ctx, ctx->ocx, ctx->ocy);
 	tty_attributes(tty, ctx->cell, &ctx->style_ctx);
-
-	/* Get tty position from pane position for overlay check. */
-	px = ctx->xoff + ctx->ocx - ctx->wox;
-	py = ctx->yoff + ctx->ocy - ctx->woy;
-
-	r = tty_check_overlay_range(tty, px, py, n);
-	for (i = 0; i < r->used; i++) {
-		ri = &r->ranges[i];
-		if (ri->nx != 0) {
-			cx = ri->px - ctx->xoff + ctx->wox;
-			tty_cursor_pane_unless_wrap(tty, ctx, cx, ctx->ocy);
-			tty_putn(tty, cp + ri->px - px, ri->nx, ri->nx);
-		}
-	}
+	tty_putn(tty, cp, n, n);
 }
 
 void
@@ -2210,23 +2069,8 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_syncstart(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct client	*c = tty->client;
-
-	if ((ctx->flags & TTY_CTX_OVERLAY_SYNC) &&
-	    (ctx->flags & TTY_CTX_SYNC)) {
-		/*
-		 * This is an overlay and a command that moves the cursor so
-		 * start synchronized updates.
-		 */
+	if (ctx->flags & TTY_CTX_SYNC)
 		tty_sync_start(tty);
-	} else if (~ctx->flags & TTY_CTX_OVERLAY_SYNC) {
-		/*
-		 * This is a pane. If there is an overlay, always start;
-		 * otherwise, only if requested.
-		 */
-		if ((ctx->flags & TTY_CTX_SYNC) || c->overlay_draw != NULL)
-			tty_sync_start(tty);
-	}
 }
 
 void
@@ -2243,10 +2087,6 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 
 	/* If this is a padding character, do nothing. */
 	if (gc->flags & GRID_FLAG_PADDING)
-		return;
-
-	/* Check if character is covered by overlay or floating pane. */
-	if (!tty_check_overlay(tty, tty->cx, tty->cy))
 		return;
 
 	/* Check the output codeset and apply attributes. */

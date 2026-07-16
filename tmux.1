@@ -5312,10 +5312,16 @@ section on how to specify
 .Ar style .
 .It Ic menu\-border\-lines Ar type
 Set the type of characters used for drawing menu borders.
-See
-.Ic popup\-border\-lines
-for possible values for
-.Ar border\-lines .
+.Ar type
+may be one of
+.Ic single ,
+.Ic rounded ,
+.Ic double ,
+.Ic heavy ,
+.Ic simple ,
+.Ic padded ,
+or
+.Ic none .
 .It Ic message\-command\-style Ar style
 Set status line message command style.
 This is used for the command prompt with
@@ -5954,48 +5960,6 @@ see the
 .Sx STYLES
 section.
 Attributes are ignored.
-.Pp
-.It Ic popup\-style Ar style
-Set the popup style.
-See the
-.Sx STYLES
-section on how to specify
-.Ar style .
-Attributes are ignored.
-.Pp
-.It Ic popup\-border\-style Ar style
-Set the popup border style.
-See the
-.Sx STYLES
-section on how to specify
-.Ar style .
-Attributes are ignored.
-.Pp
-.It Ic popup\-border\-lines Ar type
-Set the type of characters used for drawing popup borders.
-.Ar type
-may be one of:
-.Bl -tag -width Ds
-.It single
-single lines using ACS or UTF\-8 characters (default)
-.It rounded
-variation of single with rounded corners using UTF\-8 characters
-.It double
-double lines using UTF\-8 characters
-.It heavy
-heavy lines using UTF\-8 characters
-.It simple
-simple ASCII characters
-.It padded
-simple ASCII space character
-.It none
-no border
-.El
-.Pp
-.Ql double
-and
-.Ql heavy
-will fall back to standard ACS line drawing when UTF\-8 is not supported.
 .Pp
 .It Xo Ic pane\-scrollbars
 .Op Ic off | modal | on | auto\-hide
@@ -8078,10 +8042,16 @@ command should be omitted.
 .Pp
 .Fl b
 sets the type of characters used for drawing menu borders.
-See
-.Ic popup\-border\-lines
-for possible values for
-.Ar border\-lines .
+.Ar border\-lines
+may be one of
+.Ic single ,
+.Ic rounded ,
+.Ic double ,
+.Ic heavy ,
+.Ic simple ,
+.Ic padded ,
+or
+.Ic none .
 .Pp
 .Fl H
 sets the style for the selected menu item (see
@@ -8117,29 +8087,7 @@ Both may be a row or column number, or one of the following special values:
 .It Li "S" Ta Fl y Ta "The line above or below the status line"
 .El
 .Pp
-Or a format, which is expanded including the following additional variables:
-.Bl -column "XXXXXXXXXXXXXXXXXXXXXXXXXX" -offset indent
-.It Sy "Variable name" Ta Sy "Replaced with"
-.It Li "popup_centre_x" Ta "Centered in the client"
-.It Li "popup_centre_y" Ta "Centered in the client"
-.It Li "popup_height" Ta "Height of menu or popup"
-.It Li "popup_last_x" Ta "Left of the last menu"
-.It Li "popup_last_y" Ta "Bottom of the last menu"
-.It Li "popup_mouse_bottom" Ta "Bottom of at the mouse"
-.It Li "popup_mouse_centre_x" Ta "Horizontal centre at the mouse"
-.It Li "popup_mouse_centre_y" Ta "Vertical centre at the mouse"
-.It Li "popup_mouse_top" Ta "Top at the mouse"
-.It Li "popup_mouse_x" Ta "Mouse X position"
-.It Li "popup_mouse_y" Ta "Mouse Y position"
-.It Li "popup_pane_bottom" Ta "Bottom of the pane"
-.It Li "popup_pane_left" Ta "Left of the pane"
-.It Li "popup_pane_right" Ta "Right of the pane"
-.It Li "popup_pane_top" Ta "Top of the pane"
-.It Li "popup_status_line_y" Ta "Above or below the status line"
-.It Li "popup_width" Ta "Width of menu or popup"
-.It Li "popup_window_status_line_x" Ta "At the window position in status line"
-.It Li "popup_window_status_line_y" Ta "At the status line showing the window"
-.El
+Or a format.
 .Pp
 Each menu consists of items followed by a key shortcut shown in brackets.
 If the menu is too large to fit on the terminal, it is not displayed.
@@ -8216,116 +8164,6 @@ lists the format variables and their values.
 .Fl I
 forwards any input read from stdin to the empty pane given by
 .Ar target\-pane .
-.Tg popup
-.It Xo Ic display\-popup
-.Op Fl BCEkN
-.Op Fl b Ar border\-lines
-.Op Fl c Ar target\-client
-.Op Fl d Ar start\-directory
-.Op Fl e Ar environment
-.Op Fl h Ar height
-.Op Fl s Ar style
-.Op Fl S Ar border\-style
-.Op Fl t Ar target\-pane
-.Op Fl T Ar title
-.Op Fl w Ar width
-.Op Fl x Ar position
-.Op Fl y Ar position
-.Op Ar shell\-command Op Ar argument ...
-.Xc
-.D1 Pq alias: Ic popup
-Display a popup running
-.Ar shell\-command
-(or
-.Ar default\-command
-when omitted) on
-.Ar target\-client .
-A popup is a rectangular box drawn over the top of any panes.
-If the command is run inside an existing popup, that popup is modified.
-Only the
-.Fl b ,
-.Fl B ,
-.Fl C ,
-.Fl E ,
-.Fl EE ,
-.Fl K ,
-.Fl N ,
-.Fl s ,
-and
-.Fl S
-options are accepted in this case;
-all others are ignored.
-.Pp
-.Fl E
-closes the popup automatically when
-.Ar shell\-command
-exits.
-Two
-.Fl E
-closes the popup only if
-.Ar shell\-command
-exited with success.
-.Fl k
-allows any key to dismiss the popup instead of only
-.Ql Escape
-or
-.Ql C\-c .
-.Pp
-.Fl x
-and
-.Fl y
-give the position of the popup, they have the same meaning as for the
-.Ic display\-menu
-command.
-.Fl w
-and
-.Fl h
-give the width and height - both may be a percentage (followed by
-.Ql % ) .
-If omitted, half of the terminal size is used.
-.Pp
-.Fl B
-does not surround the popup by a border.
-.Pp
-.Fl b
-sets the type of characters used for drawing popup borders.
-When
-.Fl B
-is specified, the
-.Fl b
-option is ignored.
-See
-.Ic popup\-border\-lines
-for possible values for
-.Ar border\-lines .
-.Pp
-.Fl s
-sets the style for the popup and
-.Fl S
-sets the style for the popup border (see
-.Sx STYLES ) .
-.Pp
-.Fl e
-takes the form
-.Ql VARIABLE=value
-and sets an environment variable for the popup; it may be specified multiple
-times.
-.Pp
-.Fl T
-is a format for the popup title (see
-.Sx FORMATS ) .
-.Pp
-The
-.Fl C
-flag closes any popup on the client.
-.Pp
-.Fl N
-disables any previously specified
-.Fl E ,
-.Fl EE ,
-or
-.Fl k
-option.
 .Tg showphist
 .It Xo Ic show\-prompt\-history
 .Op Fl T Ar prompt\-type

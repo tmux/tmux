@@ -1825,7 +1825,6 @@ struct tty_ctx {
 #define TTY_CTX_INVISIBLE_PANES 0x2
 #define TTY_CTX_WINDOW_BIGGER 0x4
 #define TTY_CTX_SYNC 0x8
-#define TTY_CTX_OVERLAY_SYNC 0x10
 #define TTY_CTX_CELL_INVALIDATE 0x20
 #define TTY_CTX_PANE_OBSCURED 0x40
 
@@ -2172,16 +2171,6 @@ struct prompt_draw_data {
 	u_int			 prompt_line;
 };
 
-/* Overlay callbacks */
-typedef struct visible_ranges *(*overlay_check_cb)(struct client *, void *,
-    u_int, u_int, u_int);
-typedef struct screen *(*overlay_mode_cb)(struct client *, void *, u_int *,
-    u_int *);
-typedef void (*overlay_draw_cb)(struct client *, void *);
-typedef int (*overlay_key_cb)(struct client *, void *, struct key_event *);
-typedef void (*overlay_free_cb)(struct client *, void *);
-typedef void (*overlay_resize_cb)(struct client *, void *);
-
 /* Client connection. */
 struct client {
 	const char		*name;
@@ -2265,7 +2254,7 @@ struct client {
 #define CLIENT_SIZECHANGED 0x400000
 #define CLIENT_STATUSOFF 0x800000
 #define CLIENT_REDRAWSTATUSALWAYS 0x1000000
-#define CLIENT_REDRAWOVERLAY 0x2000000
+/* 0x2000000 unused */
 #define CLIENT_CONTROL_NOOUTPUT 0x4000000
 #define CLIENT_DEFAULTSOCKET 0x8000000
 #define CLIENT_STARTSERVER 0x10000000
@@ -2285,7 +2274,6 @@ struct client {
 	 CLIENT_REDRAWSTATUS|		\
 	 CLIENT_REDRAWSTATUSALWAYS|	\
 	 CLIENT_REDRAWBORDERS|		\
-	 CLIENT_REDRAWOVERLAY|		\
 	 CLIENT_REDRAWMENU)
 #define CLIENT_UNATTACHEDFLAGS	\
 	(CLIENT_DEAD|		\
@@ -2330,15 +2318,6 @@ struct client {
 	void			*pan_window;
 	u_int			 pan_ox;
 	u_int			 pan_oy;
-
-	overlay_check_cb	 overlay_check;
-	overlay_mode_cb		 overlay_mode;
-	overlay_draw_cb		 overlay_draw;
-	overlay_key_cb		 overlay_key;
-	overlay_free_cb		 overlay_free;
-	overlay_resize_cb	 overlay_resize;
-	void			*overlay_data;
-	struct event		 overlay_timer;
 
 	struct client_files	 files;
 	u_int			 source_file_depth;
@@ -2933,8 +2912,6 @@ void	tty_default_attributes(struct tty *, u_int,
 void	tty_update_mode(struct tty *, int, struct screen *);
 const struct grid_cell *tty_check_codeset(struct tty *,
 	    const struct grid_cell *);
-struct visible_ranges *tty_check_overlay_range(struct tty *, u_int, u_int,
-	    u_int);
 void	tty_sync_start(struct tty *);
 void	tty_sync_end(struct tty *);
 int	tty_open(struct tty *, char **);
@@ -3284,14 +3261,8 @@ int	 server_create_socket(uint64_t, char **);
 /* server-client.c */
 RB_PROTOTYPE(client_windows, client_window, entry, server_client_window_cmp);
 u_int	 server_client_how_many(void);
-void	 server_client_set_overlay(struct client *, u_int, overlay_check_cb,
-	     overlay_mode_cb, overlay_draw_cb, overlay_key_cb,
-	     overlay_free_cb, overlay_resize_cb, void *);
-void	 server_client_clear_overlay(struct client *);
 void	 server_client_ensure_ranges(struct visible_ranges *, u_int);
 int	 server_client_ranges_is_empty(struct visible_ranges *);
-void	 server_client_overlay_range(u_int, u_int, u_int, u_int, u_int, u_int,
-	     u_int, struct visible_ranges *);
 void	 server_client_set_key_table(struct client *, const char *);
 const char *server_client_get_key_table(struct client *);
 int	 server_client_check_nested(struct client *);
@@ -4142,20 +4113,6 @@ u_int		 menu_y(struct menu_data *);
 void		 menu_get_cursor(struct menu_data *, u_int *, u_int *);
 void		 menu_resize(struct menu_data *, struct window *);
 int		 menu_key(struct client *, struct menu_data *, struct key_event *);
-
-/* popup.c */
-#define POPUP_CLOSEEXIT 0x1
-#define POPUP_CLOSEEXITZERO 0x2
-#define POPUP_CLOSEANYKEY 0x4
-typedef void (*popup_close_cb)(int, void *);
-int		 popup_display(int, enum box_lines, struct cmdq_item *, u_int,
-                    u_int, u_int, u_int, struct environ *, const char *, int,
-                    char **, const char *, const char *, struct client *,
-                    struct session *, const char *, const char *,
-                    popup_close_cb, void *);
-int		 popup_present(struct client *);
-int		 popup_modify(struct client *, const char *, const char *,
-		    const char *, enum box_lines, int);
 
 /* style.c */
 int		 style_parse(struct style *,const struct grid_cell *,
