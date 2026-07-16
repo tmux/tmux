@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.151 2026/07/14 19:07:03 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.152 2026/07/16 10:52:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1850,9 +1850,12 @@ redraw_screen(struct client *c)
 {
 	int	flags = 0;
 
-	if (c->flags & CLIENT_REDRAWWINDOW)
-		redraw_draw(c, NULL, REDRAW_ALL);
-	else {
+	if (c->flags & CLIENT_REDRAWWINDOW) {
+		if (c->flags & CLIENT_REDRAWOVERLAY)
+			redraw_draw(c, NULL, REDRAW_ALL);
+		else
+			redraw_draw(c, NULL, REDRAW_ALL & ~REDRAW_OVERLAY);
+	} else {
 		if (c->flags & CLIENT_REDRAWBORDERS)
 			flags |= (REDRAW_PANE_BORDER|REDRAW_PANE_STATUS);
 		if (c->flags & CLIENT_REDRAWSTATUS)
