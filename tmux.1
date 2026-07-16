@@ -1114,6 +1114,8 @@ The flags are:
 .Bl -tag -width Ds
 .It ignore\-size
 the client does not affect the size of other clients
+.It new\-layouts
+use the new layout string format.
 .It no\-detach\-on\-destroy
 do not detach the client when the session it is attached to is destroyed if
 there are any other sessions
@@ -2693,8 +2695,8 @@ For example:
 .Bd -literal -offset indent
 $ tmux list\-windows
 0: ksh [159x48]
-    layout: bb62,159x48,0,0{79x48,0,0,79x48,80,0}
-$ tmux select\-layout \[aq]bb62,159x48,0,0{79x48,0,0,79x48,80,0}\[aq]
+    layout: {"v":2,"L":{"t":"h","w":159,"h":48,"x":0,"y":0,"c":[{"t":"p","w":79,"h":48,"x":0,"y":0,"l":0,"i":"%0"},{"t":"p","w":79,"h":48,"x":80,"y":0,"a":true,"i":"%2"}]}}
+$ tmux select\-layout \[aq]{"v":2,"L":{"t":"h","w":159,"h":48,"x":0,"y":0,"c":[{"t":"p","w":79,"h":48,"x":0,"y":0,"l":0,"i":"%0"},{"t":"p","w":79,"h":48,"x":80,"y":0,"a":true,"i":"%2"}]}}\[aq]
 .Ed
 .Pp
 .Nm
@@ -7471,7 +7473,7 @@ The following variables are available, where appropriate:
 .It Li "window_id" Ta "" Ta "Unique window ID"
 .It Li "window_index" Ta "#I" Ta "Index of window"
 .It Li "window_last_flag" Ta "" Ta "1 if window is the last used"
-.It Li "window_layout" Ta "" Ta "Window layout description, ignoring zoomed window panes"
+.It Li "window_layout" Ta "" Ta "Window layout description, ignoring zoomed window panes, in control mode uses the old format unless 'new-layouts' is set"
 .It Li "window_linked" Ta "" Ta "1 if window is linked across sessions"
 .It Li "window_linked_sessions" Ta "" Ta "Number of sessions this window is linked to"
 .It Li "window_linked_sessions_list" Ta "" Ta "List of sessions this window is linked to"
@@ -7487,7 +7489,7 @@ The following variables are available, where appropriate:
 .It Li "window_silence_flag" Ta "" Ta "1 if window has silence alert"
 .It Li "window_stack_index" Ta "" Ta "Index in session most recent stack"
 .It Li "window_start_flag" Ta "" Ta "1 if window has the lowest index"
-.It Li "window_visible_layout" Ta "" Ta "Window layout description, respecting zoomed window panes"
+.It Li "window_visible_layout" Ta "" Ta "Window layout description, respecting zoomed window panes, in control mode uses the old format unless 'new-layouts' is set"
 .It Li "window_width" Ta "" Ta "Width of window"
 .It Li "window_zoomed_flag" Ta "" Ta "1 if window is zoomed"
 .It Li "wrap_flag" Ta "" Ta "Pane wrap flag"
@@ -9005,7 +9007,7 @@ and flags (currently not used).
 For example:
 .Bd -literal -offset indent
 %begin 1363006971 2 1
-0: ksh* (1 panes) [80x24] [layout b25f,80x24,0,0,2] @2 (active)
+0: ksh* (1 panes) [80x24] [layout {"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"a":true,"i":"%2"}}] @2 (active)
 %end 1363006971 2 1
 .Ed
 .Pp
@@ -9066,7 +9068,13 @@ The layout of a window with ID
 .Ar window\-id
 changed.
 The new layout is
-.Ar window\-layout .
+.Ar window\-layout
+(if the
+.Ar new\-layouts
+flag is set, the new format string is used.
+See
+.Ic refresh\-client
+.Fl f ) .
 The window's visible layout is
 .Ar window\-visible\-layout
 and the window flags are
