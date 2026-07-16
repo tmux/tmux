@@ -3375,7 +3375,7 @@ void	 recalculate_sizes_now(int);
 /* input.c */
 #define INPUT_BUF_DEFAULT_SIZE 1048576
 struct input_ctx *input_init(struct window_pane *, struct bufferevent *,
-	     struct colour_palette *, struct client *);
+	     struct colour_palette *);
 void	 input_free(struct input_ctx *);
 void	 input_reset(struct input_ctx *, int);
 struct evbuffer *input_pending(struct input_ctx *);

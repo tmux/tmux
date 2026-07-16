@@ -101,7 +101,6 @@ struct input_ctx {
 	struct bufferevent	       *event;
 	struct screen_write_ctx		ctx;
 	struct colour_palette	       *palette;
-	struct client		       *c;
 
 	struct input_cell		cell;
 	struct input_cell		old_cell;
@@ -875,7 +874,7 @@ input_restore_state(struct input_ctx *ictx)
 /* Initialise input parser. */
 struct input_ctx *
 input_init(struct window_pane *wp, struct bufferevent *bev,
-    struct colour_palette *palette, struct client *c)
+    struct colour_palette *palette)
 {
 	struct input_ctx	*ictx;
 
@@ -883,7 +882,6 @@ input_init(struct window_pane *wp, struct bufferevent *bev,
 	ictx->wp = wp;
 	ictx->event = bev;
 	ictx->palette = palette;
-	ictx->c = c;
 
 	ictx->input_space = INPUT_BUF_START;
 	ictx->input_buf = xmalloc(INPUT_BUF_START);
@@ -3371,15 +3369,9 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 		return;
 
 	if (wp == NULL) {
-		/* Popup window. */
-		if (ictx->c == NULL) {
-			free(out);
-			return;
-		}
-		tty_set_selection(&ictx->c->tty, clip, out, outlen);
-		paste_add(NULL, out, outlen);
+		free(out);
+		return;
 	} else {
-		/* Normal window. */
 		screen_write_start_pane(&ctx, wp, NULL);
 		screen_write_setselection(&ctx, clip, out, outlen);
 		screen_write_stop(&ctx);
