@@ -85,6 +85,8 @@ static int	window_copy_last_regex(struct grid *, u_int, u_int, u_int,
 		    int);
 static int	window_copy_search_mark_at(struct window_copy_mode_data *,
 		    u_int, u_int, u_int *);
+static int	window_copy_grow_searchpos(struct window_copy_mode_data *,
+		    u_int, u_int, u_int);
 static void	window_copy_search_set_index(struct window_copy_mode_data *,
 		    u_int, u_int);
 static char    *window_copy_stringify(struct grid *, u_int, u_int, u_int,
@@ -4749,6 +4751,29 @@ window_copy_clip_width(u_int width, u_int b, u_int sx, u_int sy)
 	return ((b + width > sx * sy) ? (sx * sy) - b : width);
 }
 
+static int
+window_copy_grow_searchpos(struct window_copy_mode_data *data, u_int px,
+    u_int py, u_int sx)
+{
+	u_int	 pos;
+
+	if (py > (UINT_MAX - px) / sx) {
+		free(data->searchpos);
+		data->searchpos = NULL;
+		data->searchposcount = 0;
+		data->searchpossize = 0;
+		return (0);
+	}
+	if (data->searchposcount == data->searchpossize) {
+		data->searchpossize *= 2;
+		data->searchpos = xreallocarray(data->searchpos,
+		    data->searchpossize, sizeof *data->searchpos);
+	}
+	pos = py * sx + px;
+	data->searchpos[data->searchposcount++] = pos;
+	return (1);
+}
+
 static void
 window_copy_search_set_index(struct window_copy_mode_data *data, u_int px,
     u_int py)
@@ -4814,7 +4839,7 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 	int				 found, cis, stopped = 0, oldindex;
 	int				 trackpos = 0;
 	int				 cflags = REG_EXTENDED;
-	u_int				 px, py, pos, nfound = 0, width;
+	u_int				 px, py, nfound = 0, width;
 	u_int				 ssize = 1, start, end, sx = gd->sx;
 	u_int				 sy = gd->sy;
 	char				*sbuf;
@@ -4888,27 +4913,9 @@ again:
 					break;
 			}
 			nfound++;
-			if (!visible_only && trackpos) {
-				if (py > (UINT_MAX - px) / sx) {
-					free(data->searchpos);
-					data->searchpos = NULL;
-					data->searchposcount = 0;
-					data->searchpossize = 0;
-					trackpos = 0;
-				} else {
-					if (data->searchposcount ==
-					    data->searchpossize) {
-						data->searchpossize *= 2;
-						data->searchpos = xreallocarray(
-						    data->searchpos,
-						    data->searchpossize,
-						    sizeof *data->searchpos);
-					}
-					pos = py * sx + px;
-					data->searchpos[
-					    data->searchposcount++] = pos;
-				}
-			}
+			if (!visible_only && trackpos)
+				trackpos = window_copy_grow_searchpos(data, px, py,
+				    sx);
 			px += window_copy_search_mark_match(data, px, py, width,
 			    regex);
 		}

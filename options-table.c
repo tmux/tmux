@@ -1398,7 +1398,7 @@ const struct options_table_entry options_table[] = {
 			 "[#{copy_position}/#{copy_position_limit}]"
 			 "#{?search_timed_out, (timed out),"
 			 "#{?search_count_present, ("
-			 "#{?#{==:#{search_count},0},Phrase not found,"
+			 "#{?#{==:#{search_count},0},0 matches,"
 			 "#{?search_count_partial,#{search_count}+ matches,"
 			 "#{?#{==:#{search_count},1},1 of 1 match,"
 			 "#{?search_count_current,#{search_count_current} of "
