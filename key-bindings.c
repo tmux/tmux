@@ -31,6 +31,8 @@
 	" 'Rename' 'r' {command-prompt -I '#S' {rename-session -- '%%'}}" \
 	" 'Detach' 'd' {detach-client}" \
 	" ''" \
+	" '#{?local_active_window,Shared Window,Local Window}' 'L' {select-window #{?local_active_window,-S,-L}}" \
+	" ''" \
 	" 'New Session' 's' {new-session}" \
 	" 'New Window' 'w' {new-window}"
 #define DEFAULT_WINDOW_MENU \

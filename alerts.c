@@ -314,7 +314,7 @@ alerts_set_message(struct winlink *wl, const char *type, const char *option)
 			tty_putcode(&c->tty, TTYC_BEL);
 		if (visual == VISUAL_OFF)
 			continue;
-		if (c->session->curw == wl) {
+		if (active_get_effective_winlink(c, c->session) == wl) {
 			status_message_set(c, -1, 1, 0, 0,
 			    "%s in current window", type);
 		} else {

@@ -295,7 +295,7 @@ static void
 redraw_set_context(struct client *c, struct redraw_build_ctx *bctx)
 {
 	struct session	*s = c->session;
-	struct window	*w = s->curw->window;
+	struct window	*w = active_get_effective_window(c, s);
 
 	memset(bctx, 0, sizeof *bctx);
 	bctx->c = c;
@@ -966,7 +966,7 @@ static struct redraw_scene *
 redraw_make_scene(struct client *c)
 {
 	struct session			*s = c->session;
-	struct window			*w = s->curw->window;
+	struct window			*w = active_get_effective_window(c, s);
 	struct redraw_build_ctx		 bctx;
 	struct redraw_scene		*scene;
 	struct redraw_build_cell	*bc, *last;
@@ -1076,7 +1076,7 @@ static struct redraw_scene *
 redraw_get_scene(struct client *c)
 {
 	struct redraw_scene	*scene = c->redraw_scene;
-	struct window		*w = c->session->curw->window;
+	struct window		*w = active_get_effective_window(c, c->session);
 	const char		*reason = NULL;
 	u_int			 ox, oy, sx, sy;
 
@@ -1137,7 +1137,7 @@ redraw_get_default_border_style(struct redraw_draw_ctx *dctx,
 	struct grid_cell	*dgc = &dctx->default_gc;
 
 	if (~dctx->flags & REDRAW_DEFAULT_SET) {
-		ft = format_create_defaults(NULL, c, s, s->curw, NULL);
+		ft = format_create_defaults(NULL, c, s, NULL, NULL);
 		memcpy(dgc, &grid_default_cell, sizeof *dgc);
 		style_add(dgc, oo, "pane-border-style", ft);
 		format_free(ft);
@@ -1592,14 +1592,16 @@ redraw_set_draw_context(struct redraw_draw_ctx *dctx,
 	struct session	*s = c->session;
 	struct options	*oo = s->options;
 	struct tty	*tty = &c->tty;
+	struct winlink	*wl;
 	u_int		 lines;
 
 	memset(dctx, 0, sizeof *dctx);
 	dctx->scene = scene;
 
-	if (server_is_marked(s, s->curw, marked_pane.wp))
+	wl = active_get_effective_winlink(c, s);
+	if (server_is_marked(s, wl, marked_pane.wp))
 		dctx->marked = marked_pane.wp;
-	dctx->active = s->curw->window->active;
+	dctx->active = active_get_effective_window(c, s)->active;
 
 	lines = status_line_size(c);
 	if (options_get_number(oo, "status-position") == 0)
@@ -1672,7 +1674,7 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 {
 	struct redraw_draw_ctx	 dctx;
 	struct session		*s = c->session;
-	struct window		*w = s->curw->window;
+	struct window		*w = active_get_effective_window(c, s);
 	struct tty		*tty = &c->tty;
 	struct screen		*sl;
 	struct redraw_scene	*scene;
@@ -1872,7 +1874,7 @@ redraw_screen(struct client *c)
 			flags |= REDRAW_OVERLAY;
 		if (c->flags & CLIENT_REDRAWMENU)
 			flags |= REDRAW_MENU;
-		if (c->session->curw->window->menu != NULL)
+		if (active_get_effective_window(c, c->session)->menu != NULL)
 			flags |= REDRAW_MENU;
 		if (flags != 0)
 			redraw_draw(c, NULL, flags);
@@ -1884,7 +1886,7 @@ void
 redraw_pane(struct client *c, struct window_pane *wp)
 {
 	redraw_draw(c, wp, REDRAW_PANE|REDRAW_PANE_SCROLLBAR);
-	if (c->session->curw->window->menu != NULL)
+	if (active_get_effective_window(c, c->session)->menu != NULL)
 		redraw_draw(c, NULL, REDRAW_MENU);
 }
 

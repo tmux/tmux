@@ -800,7 +800,7 @@ format_cb_window_active_clients(struct format_tree *ft)
 		if (client_session == NULL)
 			continue;
 
-		if (w == client_session->curw->window)
+		if (w == active_get_effective_window(loop, client_session))
 			n++;
 	}
 
@@ -832,7 +832,7 @@ format_cb_window_active_clients_list(struct format_tree *ft)
 		if (client_session == NULL)
 			continue;
 
-		if (w == client_session->curw->window) {
+		if (w == active_get_effective_window(loop, client_session)) {
 			if (EVBUFFER_LENGTH(buffer) > 0)
 				evbuffer_add(buffer, ",", 1);
 			evbuffer_add_printf(buffer, "%s", loop->name);
@@ -2886,9 +2886,46 @@ format_cb_sixel_support(__unused struct format_tree *ft)
 static void *
 format_cb_active_window_index(struct format_tree *ft)
 {
-	if (ft->s != NULL)
-		return (format_printf("%u", ft->s->curw->idx));
+	struct winlink	*wl;
+
+	if (ft->s != NULL) {
+		wl = active_get_effective_winlink(ft->c, ft->s);
+		if (wl != NULL)
+			return (format_printf("%u", wl->idx));
+	}
 	return (NULL);
+}
+
+/* Callback for active_window_id. */
+static void *
+format_cb_active_window_id(struct format_tree *ft)
+{
+	struct winlink	*wl;
+
+	if (ft->s != NULL) {
+		wl = active_get_effective_winlink(ft->c, ft->s);
+		if (wl != NULL)
+			return (format_printf("@%u", wl->window->id));
+	}
+	return (NULL);
+}
+
+/* Callback for local_active_window. */
+static void *
+format_cb_local_active_window(struct format_tree *ft)
+{
+	if (ft->c != NULL && ft->s != NULL)
+		return (format_printf("%d", active_is_local_window(ft->c, ft->s)));
+	return (xstrdup("0"));
+}
+
+/* Callback for active_window_mode. */
+static void *
+format_cb_active_window_mode(struct format_tree *ft)
+{
+	if (ft->c != NULL && ft->s != NULL && active_is_local_window(ft->c, ft->s))
+		return (xstrdup("local"));
+	return (xstrdup("shared"));
 }
 
 /* Callback for last_window_index. */
@@ -2908,8 +2945,11 @@ format_cb_last_window_index(struct format_tree *ft)
 static void *
 format_cb_window_active(struct format_tree *ft)
 {
+	struct winlink	*wl;
+
 	if (ft->wl != NULL) {
-		if (ft->wl == ft->wl->session->curw)
+		wl = active_get_effective_winlink(ft->c, ft->wl->session);
+		if (ft->wl == wl)
 			return (xstrdup("1"));
 		return (xstrdup("0"));
 	}
@@ -2989,7 +3029,7 @@ static void *
 format_cb_window_flags(struct format_tree *ft)
 {
 	if (ft->wl != NULL)
-		return (xstrdup(window_printable_flags(ft->wl, 1)));
+		return (xstrdup(window_printable_flags(ft->c, ft->wl, 1)));
 	return (NULL);
 }
 
@@ -3176,7 +3216,7 @@ static void *
 format_cb_window_raw_flags(struct format_tree *ft)
 {
 	if (ft->wl != NULL)
-		return (xstrdup(window_printable_flags(ft->wl, 0)));
+		return (xstrdup(window_printable_flags(ft->c, ft->wl, 0)));
 	return (NULL);
 }
 
@@ -3386,8 +3426,14 @@ struct format_table_entry {
  * Only variables which are added by the caller go into the tree.
  */
 static const struct format_table_entry format_table[] = {
+	{ "active_window_id", FORMAT_TABLE_STRING,
+	  format_cb_active_window_id
+	},
 	{ "active_window_index", FORMAT_TABLE_STRING,
 	  format_cb_active_window_index
+	},
+	{ "active_window_mode", FORMAT_TABLE_STRING,
+	  format_cb_active_window_mode
 	},
 	{ "alternate_on", FORMAT_TABLE_STRING,
 	  format_cb_alternate_on
@@ -3556,6 +3602,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "last_window_index", FORMAT_TABLE_STRING,
 	  format_cb_last_window_index
+	},
+	{ "local_active_window", FORMAT_TABLE_STRING,
+	  format_cb_local_active_window
 	},
 	{ "mouse_all_flag", FORMAT_TABLE_STRING,
 	  format_cb_mouse_all_flag
@@ -5092,15 +5141,18 @@ format_add_window_neighbour(struct format_tree *nft, struct winlink *wl,
     struct session *s, const char *prefix)
 {
 	struct options_entry	*o;
+	struct winlink		*current;
 	const char		*oname;
 	char			*key, *prefixed, *oval;
+
+	current = active_get_effective_winlink(nft->c, s);
 
 	xasprintf(&key, "%s_window_index", prefix);
 	format_add(nft, key, "%u", wl->idx);
 	free(key);
 
 	xasprintf(&key, "%s_window_active", prefix);
-	format_add(nft, key, "%d", wl == s->curw);
+	format_add(nft, key, "%d", wl == current);
 	free(key);
 
 	o = options_first(wl->window->options);
@@ -5128,10 +5180,10 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 	struct cmdq_item		*item = ft->item;
 	struct format_tree		*nft;
 	struct format_expand_state	 next;
-	char				*all, *active, *use, *expanded, *value;
+	char				*all, *active_fmt, *use, *expanded, *value;
 	struct evbuffer			*buffer;
 	size_t				 size;
-	struct winlink			*wl, **l;
+	struct winlink			*wl, **l, *active_wl;
 	struct window			*w;
 	int				 i, n;
 
@@ -5140,9 +5192,9 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 		return (NULL);
 	}
 
-	if (format_choose(es, fmt, &all, &active, 0) != 0) {
+	if (format_choose(es, fmt, &all, &active_fmt, 0) != 0) {
 		all = xstrdup(fmt);
-		active = NULL;
+		active_fmt = NULL;
 	}
 
 	buffer = evbuffer_new();
@@ -5150,12 +5202,13 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 		fatalx("out of memory");
 
 	l = sort_get_winlinks_session(s, &n, sc);
+	active_wl = active_get_effective_winlink(ft->c, s);
 	for (i = 0; i < n; i++) {
 		wl = l[i];
 		w = wl->window;
 		format_log(es, "window loop: %u @%u", wl->idx, w->id);
-		if (active != NULL && wl == s->curw)
-			use = active;
+		if (active_fmt != NULL && wl == active_wl)
+			use = active_fmt;
 		else
 			use = all;
 		nft = format_create(c, item, FORMAT_WINDOW|w->id, ft->flags);
@@ -5164,11 +5217,11 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 		format_add(nft, "loop_last_flag", "%d", i == n - 1);
 
 		/* Add neighbour window data to the format tree. */
-		if (i > 0 && l[i - 1] == s->curw)
+		if (i > 0 && l[i - 1] == active_wl)
 			format_add(nft, "window_after_active", "1");
 		else
 			format_add(nft, "window_after_active", "0");
-		if (i + 1 < n && l[i + 1] == s->curw)
+		if (i + 1 < n && l[i + 1] == active_wl)
 			format_add(nft, "window_before_active", "1");
 		else
 			format_add(nft, "window_before_active", "0");
@@ -5188,7 +5241,7 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 		free(expanded);
 	}
 
-	free(active);
+	free(active_fmt);
 	free(all);
 
 	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
@@ -6691,7 +6744,7 @@ format_defaults(struct format_tree *ft, struct client *c, struct session *s,
 	if (s == NULL && c != NULL)
 		s = c->session;
 	if (wl == NULL && s != NULL)
-		wl = s->curw;
+		wl = active_get_effective_winlink(c, s);
 	if (wp == NULL && wl != NULL)
 		wp = wl->window->active;
 

@@ -266,12 +266,13 @@ window_client_draw_info(__unused void *modedata, void *itemdata,
 	struct window_client_itemdata	*item = itemdata;
 	struct client			*c = item->c;
 	struct screen			*s = ctx->s;
-	struct window			*w = c->session->curw->window;
+	struct window			*w;
 	struct grid_cell		 gc;
 	u_int				 cx = s->cx, cy = s->cy, i;
 	struct format_tree		*ft;
 	char				*expanded;
 
+	w = active_get_effective_window(c, c->session);
 	ft = format_create_defaults(NULL, c, NULL, NULL, NULL);
 
 	screen_write_cursormove(ctx, cx, cy, 0);

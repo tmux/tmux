@@ -1007,12 +1007,12 @@ complete_key:
 	/* Check for focus events. */
 	if (key == KEYC_FOCUS_OUT) {
 		c->flags &= ~CLIENT_FOCUSED;
-		window_update_focus(c->session->curw->window);
+		window_update_focus(active_get_effective_window(c, c->session));
 		events_fire_client("client-focus-out", c);
 	} else if (key == KEYC_FOCUS_IN) {
 		c->flags |= CLIENT_FOCUSED;
 		events_fire_client("client-focus-in", c);
-		window_update_focus(c->session->curw->window);
+		window_update_focus(active_get_effective_window(c, c->session));
 	}
 
 	/* Fire the key. */

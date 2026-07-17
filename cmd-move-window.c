@@ -62,12 +62,15 @@ cmd_move_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*source = cmdq_get_source(item);
 	struct cmd_find_state	 target;
+	struct client		*c = cmdq_get_client(item);
+	struct client		*tc = cmdq_get_target_client(item);
+	struct client		*ac;
 	const char		*tflag = args_get(args, 't');
 	struct session		*src = source->s;
 	struct session		*dst;
-	struct winlink		*wl = source->wl;
+	struct winlink		*wl = source->wl, *dstwl, *current_wl;
 	char			*cause;
-	int			 idx, kflag, dflag, sflag, before;
+	int			 idx, kflag, dflag, sflag, before, local;
 
 	if (args_has(args, 'r')) {
 		if (cmd_find_target(&target, item, tflag, CMD_FIND_SESSION,
@@ -90,23 +93,37 @@ cmd_move_window_exec(struct cmd *self, struct cmdq_item *item)
 	dflag = args_has(args, 'd');
 	sflag = args_has(args, 's');
 
+	ac = tc;
+	if (ac == NULL || ac->session != dst)
+		ac = c;
+	local = (!dflag && active_is_local_window(ac, dst));
+
 	before = args_has(args, 'b');
 	if (args_has(args, 'a') || before) {
 		if (target.wl != NULL)
 			idx = winlink_shuffle_up(dst, target.wl, before);
-		else
-			idx = winlink_shuffle_up(dst, dst->curw, before);
+		else {
+			current_wl = active_get_effective_winlink(ac, dst);
+			idx = winlink_shuffle_up(dst, current_wl, before);
+		}
 		if (idx == -1)
 			return (CMD_RETURN_ERROR);
 	}
 
-	if (server_link_window(src, wl, dst, idx, kflag, !dflag, &cause) != 0) {
+	if (server_link_window(src, wl, dst, idx, kflag, !dflag && !local,
+	    &cause) != 0) {
 		cmdq_error(item, "%s", cause);
 		free(cause);
 		return (CMD_RETURN_ERROR);
 	}
+	dstwl = winlink_find_by_window(&dst->windows, wl->window);
 	if (cmd_get_entry(self) == &cmd_move_window_entry)
 		server_unlink_window(src, wl);
+	if (local && dstwl != NULL) {
+		active_select_window(ac, dst, dstwl);
+		if (ac != NULL && ac->session == dst)
+			server_redraw_client(ac);
+	}
 
 	/*
 	 * Renumber the winlinks in the src session only, the destination

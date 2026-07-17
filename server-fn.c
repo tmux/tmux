@@ -122,8 +122,7 @@ server_redraw_window(struct window *w)
 
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session != NULL &&
-		    c->session->curw != NULL &&
-		    c->session->curw->window == w)
+		    active_get_effective_window(c, c->session) == w)
 			server_redraw_client(c);
 	}
 }
@@ -135,8 +134,7 @@ server_redraw_window_menu(struct window *w)
 
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session != NULL &&
-		    c->session->curw != NULL &&
-		    c->session->curw->window == w)
+		    active_get_effective_window(c, c->session) == w)
 			c->flags |= CLIENT_REDRAWMENU;
 	}
 }
@@ -148,8 +146,7 @@ server_redraw_window_borders(struct window *w)
 
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session != NULL &&
-		    c->session->curw != NULL &&
-		    c->session->curw->window == w)
+		    active_get_effective_window(c, c->session) == w)
 			c->flags |= CLIENT_REDRAWBORDERS;
 	}
 }

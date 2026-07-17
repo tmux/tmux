@@ -215,6 +215,28 @@ control_client_session_changed_cb(__unused const char *name,
 	}
 }
 
+/* Notify control clients that a client changed its effective window. */
+static void
+control_client_window_changed_cb(__unused const char *name,
+    struct event_payload *ep, __unused void *sink_data)
+{
+	struct client		*cc = event_payload_get_client(ep, "client");
+	struct session		*s = event_payload_get_session(ep, "session");
+	struct window		*w = event_payload_get_window(ep, "window");
+	struct client		*c;
+
+	if (cc == NULL || s == NULL || w == NULL)
+		return;
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
+			continue;
+
+		control_write(c, "%%client-window-changed %s $%u @%u",
+		    cc->name, s->id, w->id);
+	}
+}
+
 /* Notify control clients that a client detached. */
 static void
 control_client_detached_cb(__unused const char *name, struct event_payload *ep,
@@ -356,6 +378,7 @@ control_build_events(void)
 		{ "window-linked", control_window_linked_cb },
 		{ "window-renamed", control_window_renamed_cb },
 		{ "client-session-changed", control_client_session_changed_cb },
+		{ "client-window-changed", control_client_window_changed_cb },
 		{ "client-detached", control_client_detached_cb },
 		{ "session-renamed", control_session_renamed_cb },
 		{ "session-created", control_session_created_cb },

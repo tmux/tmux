@@ -93,7 +93,7 @@ window_pane_get_border_style(struct window_pane *wp, struct client *c,
 	struct grid_cell	*saved;
 	int			*flag;
 
-	if (wp == c->session->curw->window->active) {
+	if (wp == active_get_effective_window(c, c->session)->active) {
 		flag = &wp->active_border_gc_set;
 		saved = &wp->active_border_gc;
 		option = "pane-active-border-style";
@@ -104,7 +104,7 @@ window_pane_get_border_style(struct window_pane *wp, struct client *c,
 	}
 
 	if (!*flag) {
-		ft = format_create_defaults(NULL, c, s, s->curw, wp);
+		ft = format_create_defaults(NULL, c, s, NULL, wp);
 		style_apply(saved, wp->options, option, ft);
 		format_free(ft);
 		*flag = 1;
@@ -133,7 +133,7 @@ window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
 		return (0);
 
 	ft = format_create(c, NULL, FORMAT_PANE|wp->id, FORMAT_STATUS);
-	format_defaults(ft, c, c->session, c->session->curw, wp);
+	format_defaults(ft, c, c->session, NULL, wp);
 
 	fmt = options_get_string(wp->options, "pane-border-format");
 	expanded = format_expand_time(ft, fmt);

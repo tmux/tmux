@@ -348,10 +348,10 @@ recalculate_size_skip_client(struct client *loop, __unused int type,
 	 * is not the current window - this is used for aggressive-resize.
 	 * Otherwise skip any session that doesn't contain the window.
 	 */
-	if (loop->session->curw == NULL)
+	if (active_get_effective_window(loop, loop->session) == NULL)
 		return (1);
 	if (current)
-		return (loop->session->curw->window != w);
+		return (active_get_effective_window(loop, loop->session) != w);
 	return (session_has(loop->session, w) == 0);
 }
 

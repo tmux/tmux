@@ -884,13 +884,13 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c, int flags)
 	if (c->session != NULL) {
 		cmd_find_clear_state(fs, flags);
 
-		fs->wp = c->session->curw->window->active;
+		fs->wl = active_get_effective_winlink(c, c->session);
+		fs->wp = fs->wl->window->active;
 		if (fs->wp == NULL) {
 			cmd_find_from_session(fs, c->session, flags);
 			return (0);
 		}
 		fs->s = c->session;
-		fs->wl = fs->s->curw;
 		fs->w = fs->wl->window;
 
 		cmd_find_log_state(__func__, fs);
@@ -931,6 +931,57 @@ unknown_pane:
 	return (cmd_find_from_nothing(fs, flags));
 }
 
+/* Find state from mouse target. */
+static int
+cmd_find_target_from_mouse(struct cmd_find_state *fs, struct cmdq_item *item,
+    enum cmd_find_type type)
+{
+	struct mouse_event	*m = &cmdq_get_event(item)->m;
+	struct client		*c = cmdq_get_client(item);
+	struct client		*tc = cmdq_get_target_client(item);
+
+	switch (type) {
+	case CMD_FIND_PANE:
+		if (m->s != -1 && m->w == -1 && m->wp == -1 &&
+		    (fs->s = session_find_by_id(m->s)) != NULL) {
+			if (tc != NULL && tc->session == fs->s)
+				fs->wl = active_get_effective_winlink(tc, fs->s);
+			else if (c != NULL && c->session == fs->s)
+				fs->wl = active_get_effective_winlink(c, fs->s);
+			else
+				fs->wl = fs->s->curw;
+			if (fs->wl != NULL) {
+				fs->w = fs->wl->window;
+				fs->wp = fs->w->active;
+				break;
+			}
+		}
+		fs->wp = cmd_mouse_pane(m, &fs->s, &fs->wl);
+		if (fs->wp != NULL) {
+			fs->w = fs->wl->window;
+			break;
+		}
+		/* FALLTHROUGH */
+	case CMD_FIND_WINDOW:
+	case CMD_FIND_SESSION:
+		fs->wl = cmd_mouse_window(m, &fs->s);
+		if (fs->s != NULL && m->w == -1 &&
+		    tc != NULL && tc->session == fs->s)
+			fs->wl = active_get_effective_winlink(tc, fs->s);
+		else if (fs->s != NULL && m->w == -1 &&
+		    c != NULL && c->session == fs->s)
+			fs->wl = active_get_effective_winlink(c, fs->s);
+		if (fs->wl == NULL && fs->s != NULL)
+			fs->wl = fs->s->curw;
+		if (fs->wl != NULL) {
+			fs->w = fs->wl->window;
+			fs->wp = fs->w->active;
+		}
+		break;
+	}
+	return (fs->wp == NULL ? -1 : 0);
+}
+
 /*
  * Split target into pieces and resolve for the given type. Fills in the given
  * state. Returns 0 on success or -1 on error.
@@ -939,7 +990,6 @@ int
 cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
     const char *target, enum cmd_find_type type, int flags)
 {
-	struct mouse_event	*m;
 	struct client		*c;
 	struct cmd_find_state	 current;
 	char			*colon, *period, *copy = NULL, tmp[256];
@@ -1015,35 +1065,15 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 			cmdq_error(item, "no current client");
 			goto error;
 		}
-		fs->wl = c->session->curw;
-		fs->wp = c->session->curw->window->active;
-		fs->w = c->session->curw->window;
+		fs->wl = active_get_effective_winlink(c, c->session);
+		fs->wp = fs->wl->window->active;
+		fs->w = fs->wl->window;
 		goto found;
 	}
 
 	/* Mouse target is a plain = or {mouse}. */
 	if (strcmp(target, "=") == 0 || strcmp(target, "{mouse}") == 0) {
-		m = &cmdq_get_event(item)->m;
-		switch (type) {
-		case CMD_FIND_PANE:
-			fs->wp = cmd_mouse_pane(m, &fs->s, &fs->wl);
-			if (fs->wp != NULL) {
-				fs->w = fs->wl->window;
-				break;
-			}
-			/* FALLTHROUGH */
-		case CMD_FIND_WINDOW:
-		case CMD_FIND_SESSION:
-			fs->wl = cmd_mouse_window(m, &fs->s);
-			if (fs->wl == NULL && fs->s != NULL)
-				fs->wl = fs->s->curw;
-			if (fs->wl != NULL) {
-				fs->w = fs->wl->window;
-				fs->wp = fs->w->active;
-			}
-			break;
-		}
-		if (fs->wp == NULL) {
+		if (cmd_find_target_from_mouse(fs, item, type) != 0) {
 			if (~flags & CMD_FIND_QUIET)
 				cmdq_error(item, "no mouse target");
 			goto error;

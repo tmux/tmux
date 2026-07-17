@@ -93,14 +93,18 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct cmd_find_state	*source = cmdq_get_source(item);
+	struct client		*c = cmdq_get_client(item);
 	struct client		*tc = cmdq_get_target_client(item);
+	struct client		*ac;
 	struct winlink		*wl = source->wl;
+	struct winlink		*current_wl;
 	struct session		*src_s = source->s;
 	struct session		*dst_s = target->s;
 	struct window_pane	*wp = source->wp;
 	struct window		*w = wl->window, *old_w = w;
 	char			*cause, *cp;
 	int			 idx = target->idx, before, old_idx = wl->idx;
+	int			 detached, local;
 	const char		*template, *name = args_get(args, 'n');
 
 	if (wp == w->modal) {
@@ -117,11 +121,18 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	before = args_has(args, 'b');
+	ac = tc;
+	if (ac == NULL || ac->session != dst_s)
+		ac = c;
+	detached = args_has(args, 'd');
+	local = (!detached && active_is_local_window(ac, dst_s));
 	if (args_has(args, 'a') || before) {
 		if (target->wl != NULL)
 			idx = winlink_shuffle_up(dst_s, target->wl, before);
-		else
-			idx = winlink_shuffle_up(dst_s, dst_s->curw, before);
+		else {
+			current_wl = active_get_effective_winlink(ac, dst_s);
+			idx = winlink_shuffle_up(dst_s, current_wl, before);
+		}
 		if (idx == -1)
 			return (CMD_RETURN_ERROR);
 	}
@@ -129,7 +140,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (window_count_panes(w, 1) == 1) {
 		if (server_link_window(src_s, wl, dst_s, idx, 0,
-		    !args_has(args, 'd'), &cause) != 0) {
+		    !detached && !local, &cause) != 0) {
 			cmdq_error(item, "%s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
@@ -142,6 +153,13 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 		wl = winlink_find_by_window(&dst_s->windows, w);
 		if (wl == NULL)
 			return (CMD_RETURN_ERROR);
+		if (local) {
+			active_select_window(ac, dst_s, wl);
+			if (ac != NULL && ac->session == dst_s)
+				cmd_find_from_client(current, ac, 0);
+			if (ac != NULL && ac->session == dst_s)
+				server_redraw_client(ac);
+		}
 		window_fire_pane_moved(wp, old_w, old_idx, w, wl->idx);
 		goto out;
 	}
@@ -183,9 +201,17 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	window_remove_ref(w, __func__);
 	events_fire_window("window-created", w);
 	window_fire_pane_moved(wp, old_w, old_idx, w, wl->idx);
-	if (!args_has(args, 'd')) {
-		session_select(dst_s, wl->idx);
-		cmd_find_from_session(current, dst_s, 0);
+	if (!detached) {
+		if (local)
+			active_select_window(ac, dst_s, wl);
+		else
+			session_select(dst_s, wl->idx);
+		if (local && ac != NULL && ac->session == dst_s)
+			cmd_find_from_client(current, ac, 0);
+		else
+			cmd_find_from_session(current, dst_s, 0);
+		if (local && ac != NULL && ac->session == dst_s)
+			server_redraw_client(ac);
 	}
 
 	server_redraw_session(src_s);

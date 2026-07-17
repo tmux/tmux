@@ -85,6 +85,7 @@ endif
 
 # List of sources.
 dist_tmux_SOURCES = \
+	active.c \
 	alerts.c \
 	arguments.c \
 	attributes.c \

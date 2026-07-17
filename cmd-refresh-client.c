@@ -203,7 +203,7 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 		if (args_has(args, 'c'))
 			tc->pan_window = NULL;
 		else {
-			w = tc->session->curw->window;
+			w = active_get_effective_window(tc, tc->session);
 			if (tc->pan_window != w) {
 				tc->pan_window = w;
 				tc->pan_ox = tty->oox;

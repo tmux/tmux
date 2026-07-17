@@ -483,7 +483,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	char			*title, *cause = NULL;
 	int			 flags = 0, starting_choice = 0;
 	u_int			 px, py, i, count = args_count(args);
-	struct options		*o = target->s->curw->window->options;
+	struct options		*o = target->w->options;
 	struct options_entry	*oe;
 
 	if (args_has(args, 'C')) {
@@ -584,7 +584,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	u_int			 px, py, w, h, count = args_count(args);
 	struct args_value	*av;
 	struct environ		*env = NULL;
-	struct options		*o = s->curw->window->options;
+	struct options		*o = target->w->options;
 	struct options_entry	*oe;
 
 	if (args_has(args, 'C')) {

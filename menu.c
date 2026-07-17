@@ -584,7 +584,7 @@ menu_display(struct menu *menu, int flags, int starting_choice,
 	struct options		*o;
 
 	if (fs == NULL)
-		w = c->session->curw->window;
+		w = active_get_effective_window(c, c->session);
 	else
 		w = fs->w;
 	o = w->options;

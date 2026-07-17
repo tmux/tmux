@@ -142,7 +142,7 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 		return (0);
 	}
 
-	if (c->session->curw->window != wp->window)
+	if (active_get_effective_window(c, c->session) != wp->window)
 		return (0);
 	if (wp->layout_cell == NULL)
 		return (0);

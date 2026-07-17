@@ -33,8 +33,8 @@ const struct cmd_entry cmd_select_window_entry = {
 	.name = "select-window",
 	.alias = "selectw",
 
-	.args = { "lnpTt:", 0, 0, NULL },
-	.usage = "[-lnpT] " CMD_TARGET_WINDOW_USAGE,
+	.args = { "LlSnpTt:", 0, 0, NULL },
+	.usage = "[-LlnpST] " CMD_TARGET_WINDOW_USAGE,
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },
 
@@ -88,8 +88,9 @@ cmd_select_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*c = cmdq_get_client(item);
 	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
-	struct winlink		*wl = target->wl;
+	struct winlink		*wl = target->wl, *current_wl;
 	struct session		*s = target->s;
+	enum active_window_mode	 mode;
 	int			 next, previous, last, activity;
 
 	next = (cmd_get_entry(self) == &cmd_next_window_entry);
@@ -102,48 +103,104 @@ cmd_select_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'l'))
 		last = 1;
 
+	if (args_has(args, 'L') || args_has(args, 'S')) {
+		if (c == NULL || c->session == NULL) {
+			cmdq_error(item, "no current client");
+			return (CMD_RETURN_ERROR);
+		}
+		if (args_has(args, 'S'))
+			mode = ACTIVE_SHARED;
+		else
+			mode = ACTIVE_LOCAL;
+		active_set_local_window(c, s, mode);
+		if (!next &&
+		    !previous &&
+		    !last &&
+		    !args_has(args, 't') &&
+		    !args_has(args, 'T')) {
+			if (current->s == s) {
+				if (c->session == s)
+					cmd_find_from_client(current, c, 0);
+				else
+					cmd_find_from_session(current, s, 0);
+			}
+			if (c->session == s)
+				server_redraw_client(c);
+			else
+				server_redraw_session(s);
+			cmdq_insert_hook(s, item, current, "after-select-window");
+			recalculate_sizes();
+			return (CMD_RETURN_NORMAL);
+		}
+	}
+
+	if (active_is_local_window(c, s))
+		mode = ACTIVE_LOCAL;
+	else
+		mode = ACTIVE_SHARED;
 	if (next || previous || last) {
 		activity = args_has(args, 'a');
 		if (next) {
-			if (session_next(s, activity) != 0) {
+			if (active_next_window(c, s, activity) != 0) {
 				cmdq_error(item, "no next window");
 				return (CMD_RETURN_ERROR);
 			}
 		} else if (previous) {
-			if (session_previous(s, activity) != 0) {
+			if (active_previous_window(c, s, activity) != 0) {
 				cmdq_error(item, "no previous window");
 				return (CMD_RETURN_ERROR);
 			}
 		} else {
-			if (session_last(s) != 0) {
+			if (active_last_window(c, s) != 0) {
 				cmdq_error(item, "no last window");
 				return (CMD_RETURN_ERROR);
 			}
 		}
-		cmd_find_from_session(current, s, 0);
-		server_redraw_session(s);
+		if (mode == ACTIVE_LOCAL && c != NULL && c->session == s)
+			cmd_find_from_client(current, c, 0);
+		else
+			cmd_find_from_session(current, s, 0);
+		if (mode == ACTIVE_LOCAL && c != NULL && c->session == s)
+			server_redraw_client(c);
+		else
+			server_redraw_session(s);
 		cmdq_insert_hook(s, item, current, "after-select-window");
 	} else {
 		/*
 		 * If -T and select-window is invoked on same window as
 		 * current, switch to previous window.
 		 */
-		if (args_has(args, 'T') && wl == s->curw) {
-			if (session_last(s) != 0) {
+		current_wl = active_get_effective_winlink(c, s);
+		if (args_has(args, 'T') && wl == current_wl) {
+			if (active_last_window(c, s) != 0) {
 				cmdq_error(item, "no last window");
 				return (-1);
 			}
-			if (current->s == s)
+			if (current->s == s) {
+				if (mode == ACTIVE_LOCAL && c != NULL &&
+				    c->session == s)
+					cmd_find_from_client(current, c, 0);
+				else
+					cmd_find_from_session(current, s, 0);
+			}
+			if (mode == ACTIVE_LOCAL && c != NULL && c->session == s)
+				server_redraw_client(c);
+			else
+				server_redraw_session(s);
+		} else if (active_select_window(c, s, wl) == 0) {
+			if (mode == ACTIVE_LOCAL && c != NULL && c->session == s)
+				cmd_find_from_client(current, c, 0);
+			else
 				cmd_find_from_session(current, s, 0);
-			server_redraw_session(s);
-		} else if (session_select(s, wl->idx) == 0) {
-			cmd_find_from_session(current, s, 0);
-			server_redraw_session(s);
+			if (mode == ACTIVE_LOCAL && c != NULL && c->session == s)
+				server_redraw_client(c);
+			else
+				server_redraw_session(s);
 		}
 		cmdq_insert_hook(s, item, current, "after-select-window");
 	}
 	if (c != NULL && c->session != NULL)
-		s->curw->window->latest = c;
+		active_get_effective_window(c, s)->latest = c;
 	recalculate_sizes();
 
 	return (CMD_RETURN_NORMAL);

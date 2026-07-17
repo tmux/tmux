@@ -4026,12 +4026,22 @@ and
 .Ic swap\-window .
 .Tg selectw
 .It Xo Ic select\-window
-.Op Fl lnpT
+.Op Fl LlnpST
 .Op Fl t Ar target\-window
 .Xc
 .D1 Pq alias: Ic selectw
 Select the window at
 .Ar target\-window .
+.Fl L
+makes the attached client use a local current window for the target session.
+Window navigation from that client then changes only that client's effective
+window and leaves the session current window unchanged.
+.Fl S
+returns the client to the shared session current window.
+Without
+.Fl L ,
+the current window is shared by the session and stored in the session.
+.Pp
 .Fl l ,
 .Fl n
 and
@@ -7177,7 +7187,10 @@ will be replaced by
 The following variables are available, where appropriate:
 .Bl -column "XXXXXXXXXXXXXXXXXXX" "XXXXX"
 .It Sy "Variable name" Ta Sy "Alias" Ta Sy "Replaced with"
-.It Li "active_window_index" Ta "" Ta "Index of active window in session"
+.It Li "active_window_id" Ta "" Ta "ID of effective active window"
+.It Li "active_window_index" Ta "" Ta "Index of effective active window"
+.It Li "local_active_window" Ta "" Ta "1 if client has local window selection"
+.It Li "active_window_mode" Ta "" Ta "Window selection mode, shared or local"
 .It Li "alternate_on" Ta "" Ta "1 if pane is in alternate screen"
 .It Li "alternate_saved_x" Ta "" Ta "Saved cursor X in alternate screen"
 .It Li "alternate_saved_y" Ta "" Ta "Saved cursor Y in alternate screen"
@@ -7392,7 +7405,7 @@ The following variables are available, where appropriate:
 .It Li "uid" Ta "" Ta "Server UID"
 .It Li "user" Ta "" Ta "Server user"
 .It Li "version" Ta "" Ta "Server version"
-.It Li "window_active" Ta "" Ta "1 if window active"
+.It Li "window_active" Ta "" Ta "1 if window is the effective active window"
 .It Li "window_active_clients" Ta "" Ta "Number of clients viewing this window"
 .It Li "window_active_clients_list" Ta "" Ta "List of clients viewing this window"
 .It Li "window_active_sessions" Ta "" Ta "Number of sessions on which this window is active"

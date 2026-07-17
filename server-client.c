@@ -105,7 +105,7 @@ server_client_set_overlay(struct client *c, u_int delay,
 		c->tty.flags |= TTY_FREEZE;
 	if (c->overlay_mode == NULL)
 		c->tty.flags |= TTY_NOCURSOR;
-	window_update_focus(c->session->curw->window);
+	window_update_focus(active_get_effective_window(c, c->session));
 	server_redraw_client(c);
 }
 
@@ -132,7 +132,7 @@ server_client_clear_overlay(struct client *c)
 
 	c->tty.flags &= ~(TTY_FREEZE|TTY_NOCURSOR);
 	if (c->session != NULL)
-		window_update_focus(c->session->curw->window);
+		window_update_focus(active_get_effective_window(c, c->session));
 	server_redraw_client(c);
 }
 
@@ -376,7 +376,8 @@ server_client_attached_lost(struct client *c)
 		found = NULL;
 		TAILQ_FOREACH(loop, &clients, entry) {
 			s = loop->session;
-			if (loop == c || s == NULL || s->curw->window != w)
+			if (loop == c || s == NULL ||
+			    active_get_effective_window(loop, s) != w)
 				continue;
 			if (found == NULL || timercmp(&loop->activity_time,
 			    &found->activity_time, >))
@@ -457,15 +458,15 @@ server_client_set_session(struct client *c, struct session *s)
 	c->flags |= CLIENT_FOCUSED;
 
 	if (old != NULL && old->curw != NULL)
-		window_update_focus(old->curw->window);
+		window_update_focus(active_get_effective_window(c, old));
 	if (s != NULL) {
-		s->curw->window->latest = c;
+		active_get_effective_window(c, s)->latest = c;
 		recalculate_sizes();
-		window_update_focus(s->curw->window);
+		window_update_focus(active_get_effective_window(c, s));
 		session_update_activity(s, NULL);
 		session_theme_changed(s);
 		gettimeofday(&s->last_attached_time, NULL);
-		s->curw->flags &= ~WINLINK_ALERTFLAGS;
+		active_get_effective_winlink(c, s)->flags &= ~WINLINK_ALERTFLAGS;
 		alerts_check_session(s);
 		tty_update_client_offset(c);
 		status_timer_start(c);
@@ -490,6 +491,7 @@ server_client_lost(struct client *c)
 	server_client_clear_overlay(c);
 	status_prompt_clear(c);
 	status_message_clear(c);
+	active_remove_client(c);
 
 	RB_FOREACH_SAFE(cf, client_files, &c->files, cf1) {
 		cf->error = EINTR;
@@ -675,7 +677,7 @@ server_client_in_scrollbar_area(struct window_pane *wp, int px, int py)
 static void
 server_client_update_scrollbar_hover(struct client *c, int type, int px, int py)
 {
-	struct window		*w = c->session->curw->window;
+	struct window		*w = active_get_effective_window(c, c->session);
 	struct window_pane	*wp;
 
 	if (type != KEYC_TYPE_MOUSEMOVE)
@@ -848,7 +850,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 {
 	struct mouse_event		*m = &event->m;
 	struct session			*s = c->session, *fs;
-	struct window			*w = s->curw->window;
+	struct window			*w = active_get_effective_window(c, s);
 	struct winlink			*fwl;
 	struct window_pane		*wp, *fwp, *lwp = NULL;
 	u_int				 x, y, sx, sy, px, py, n, sl_mpos = 0;
@@ -1346,7 +1348,7 @@ server_client_update_latest(struct client *c)
 
 	if (c->session == NULL)
 		return;
-	w = c->session->curw->window;
+	w = active_get_effective_window(c, c->session);
 
 	if (w->latest == c)
 		return;
@@ -1410,7 +1412,7 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
 		goto out;
-	wl = s->curw;
+	wl = active_get_effective_winlink(c, s);
 
 	/* Update the activity timer. */
 	memcpy(&c->last_activity_time, &c->activity_time,
@@ -1664,7 +1666,7 @@ out:
 static int
 server_client_handle_menu_key(struct client *c, struct key_event *event)
 {
-	struct window		*w = c->session->curw->window;
+	struct window		*w = active_get_effective_window(c, c->session);
 	struct key_event	 new_event;
 	struct mouse_event	*m;
 	u_int			 ox, oy, sx, sy;
@@ -1701,6 +1703,7 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 {
 	struct session		*s = c->session;
 	struct cmdq_item	*item;
+	struct window		*w;
 	struct window_pane	*wp;
 
 	/* Check the client is good to accept input. */
@@ -1756,9 +1759,10 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 			}
 		}
 
-		wp = s->curw->window->active;
+		w = active_get_effective_window(c, s);
+		wp = w->active;
 		if (wp == NULL || !window_pane_has_prompt(wp)) {
-			TAILQ_FOREACH(wp, &s->curw->window->panes, entry) {
+			TAILQ_FOREACH(wp, &w->panes, entry) {
 				if (window_pane_has_prompt(wp) &&
 				    window_pane_is_visible(wp))
 					break;
@@ -2100,7 +2104,7 @@ static void
 server_client_reset_state(struct client *c)
 {
 	struct tty		*tty = &c->tty;
-	struct window		*w = c->session->curw->window;
+	struct window		*w = active_get_effective_window(c, c->session);
 	struct window_pane	*wp = w->active, *loop;
 	struct screen		*s = NULL;
 	struct options		*oo = c->session->options;
@@ -2341,7 +2345,7 @@ server_client_redraw_timer(__unused int fd, __unused short events,
 static void
 server_client_check_modes(struct client *c)
 {
-	struct window			*w = c->session->curw->window;
+	struct window			*w;
 	struct window_pane		*wp;
 	struct window_mode_entry	*wme;
 
@@ -2349,6 +2353,7 @@ server_client_check_modes(struct client *c)
 		return;
 	if (~c->flags & CLIENT_REDRAWSTATUS)
 		return;
+	w = active_get_effective_window(c, c->session);
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		wme = TAILQ_FIRST(&wp->modes);
 		if (wme != NULL && wme->mode->update != NULL)
@@ -2361,7 +2366,7 @@ static int
 server_client_any_pane_redraw(struct client *c)
 {
 	struct session		*s = c->session;
-	struct window		*w = s->curw->window;
+	struct window		*w = active_get_effective_window(c, s);
 	struct window_pane	*wp;
 
 	if (c->flags & CLIENT_REDRAWWINDOW)
@@ -2379,7 +2384,7 @@ server_client_check_redraw(struct client *c)
 {
 	struct session		*s = c->session;
 	struct tty		*tty = &c->tty;
-	struct window		*w = s->curw->window;
+	struct window		*w = active_get_effective_window(c, s);
 	struct window_pane	*wp;
 	int			 needed, tflags, mode = tty->mode;
 	struct timeval		 tv = { .tv_usec = 1000 };
@@ -2510,14 +2515,15 @@ static void
 server_client_set_path(struct client *c)
 {
 	struct session	*s = c->session;
+	struct window	*w = active_get_effective_window(c, s);
 	const char	*path;
 
-	if (s->curw == NULL || s->curw->window->active == NULL)
+	if (w == NULL || w->active == NULL)
 		return;
-	if (s->curw->window->active->base.path == NULL)
+	if (w->active->base.path == NULL)
 		path = "";
 	else
-		path = s->curw->window->active->base.path;
+		path = w->active->base.path;
 	if (c->path == NULL || strcmp(path, c->path) != 0) {
 		free(c->path);
 		c->path = xstrdup(path);
@@ -2530,11 +2536,12 @@ static void
 server_client_set_progress_bar(struct client *c)
 {
 	struct session		*s = c->session;
+	struct window		*w = active_get_effective_window(c, s);
 	struct progress_bar	*pane_pb;
 
-	if (s->curw == NULL || s->curw->window->active == NULL)
+	if (w == NULL || w->active == NULL)
 		return;
-	pane_pb = &s->curw->window->active->base.progress_bar;
+	pane_pb = &w->active->base.progress_bar;
 	if (pane_pb->state == c->progress_bar.state &&
 	    pane_pb->progress == c->progress_bar.progress)
 		return;
@@ -3120,7 +3127,7 @@ server_client_print(struct client *c, int parse, struct evbuffer *evb)
 		goto out;
 	}
 
-	wp = c->session->curw->window->active;
+	wp = active_get_effective_window(c, c->session)->active;
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme == NULL || wme->mode != &window_view_mode)
 		window_pane_set_mode(wp, NULL, &window_view_mode, NULL, NULL,

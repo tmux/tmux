@@ -453,6 +453,7 @@ window_destroy(struct window *w)
 {
 	log_debug("window @%u destroyed (%d references)", w->id, w->references);
 
+	active_remove_window(w);
 	window_unzoom(w, 0);
 	RB_REMOVE(windows, &windows, w);
 
@@ -675,6 +676,7 @@ void
 window_pane_update_focus(struct window_pane *wp)
 {
 	struct client	*c;
+	struct window	*w;
 	int		 focused = 0;
 
 	if (wp != NULL && (~wp->flags & PANE_EXITED)) {
@@ -682,10 +684,12 @@ window_pane_update_focus(struct window_pane *wp)
 			focused = 0;
 		else {
 			TAILQ_FOREACH(c, &clients, entry) {
-				if (c->session != NULL &&
-				    c->session->attached != 0 &&
+				if (c->session == NULL)
+					continue;
+				w = active_get_effective_window(c, c->session);
+				if (c->session->attached != 0 &&
 				    (c->flags & CLIENT_FOCUSED) &&
-				    c->session->curw->window == wp->window &&
+				    w == wp->window &&
 				    c->overlay_draw == NULL &&
 				    wp->window->menu == NULL) {
 					focused = 1;
@@ -1222,7 +1226,7 @@ window_destroy_panes(struct window *w)
 }
 
 const char *
-window_printable_flags(struct winlink *wl, int escape)
+window_printable_flags(struct client *c, struct winlink *wl, int escape)
 {
 	struct session	*s = wl->session;
 	static char	 flags[32];
@@ -1237,9 +1241,9 @@ window_printable_flags(struct winlink *wl, int escape)
 		flags[pos++] = '!';
 	if (wl->flags & WINLINK_SILENCE)
 		flags[pos++] = '~';
-	if (wl == s->curw)
+	if (active_is_effective_window(c, s, wl))
 		flags[pos++] = '*';
-	if (wl == TAILQ_FIRST(&s->lastw))
+	if (active_is_last_window(c, s, wl))
 		flags[pos++] = '-';
 	if (server_check_marked() && wl == marked_pane.wl)
 		flags[pos++] = 'M';

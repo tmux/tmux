@@ -58,9 +58,11 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct spawn_context	 sc = { 0 };
 	struct client		*tc = cmdq_get_target_client(item);
+	struct client		*ac;
 	struct session		*s = target->s;
 	struct winlink		*wl = target->wl, *new_wl = NULL;
 	int			 idx = target->idx, before, count = args_count(args);
+	int			 detached, local;
 	char			*cause = NULL, *cp, *expanded, *wname = NULL;
 	const char		*template, *name;
 	struct cmd_find_state	 fs;
@@ -107,10 +109,15 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 			free(wname);
 			if (args_has(args, 'd'))
 				return (CMD_RETURN_NORMAL);
-			if (session_set_current(s, new_wl) == 0)
-				server_redraw_session(s);
+			if (active_select_window(c, s, new_wl) == 0) {
+				if (active_is_local_window(c, s) && c != NULL &&
+				    c->session == s)
+					server_redraw_client(c);
+				else
+					server_redraw_session(s);
+			}
 			if (c != NULL && c->session != NULL)
-				s->curw->window->latest = c;
+				active_get_effective_window(c, s)->latest = c;
 			recalculate_sizes();
 			return (CMD_RETURN_NORMAL);
 		}
@@ -140,10 +147,16 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	sc.idx = idx;
 	sc.cwd = args_get(args, 'c');
 
+	ac = tc;
+	if (ac == NULL || ac->session != s)
+		ac = c;
+	detached = args_has(args, 'd');
+	local = (!detached && active_is_local_window(ac, s));
+
 	sc.flags = 0;
 	if (args_has(args, 'E') || (count == 1 && *args_string(args, 0) == '\0'))
 		sc.flags |= SPAWN_EMPTY;
-	if (args_has(args, 'd'))
+	if (detached || local)
 		sc.flags |= SPAWN_DETACHED;
 	if (args_has(args, 'k'))
 		sc.flags |= SPAWN_KILL;
@@ -153,7 +166,13 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 		free(cause);
 		goto fail;
 	}
-	if (!args_has(args, 'd') || new_wl == s->curw) {
+	if (local) {
+		if (active_select_window(ac, s, new_wl) == 0)
+			cmd_find_from_winlink(current, new_wl, 0);
+		if (ac != NULL && ac->session == s)
+			server_redraw_client(ac);
+		server_status_session_group(s);
+	} else if (!detached || new_wl == s->curw) {
 		cmd_find_from_winlink(current, new_wl, 0);
 		server_redraw_session_group(s);
 	} else

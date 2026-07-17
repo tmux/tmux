@@ -2741,6 +2741,32 @@ void	 events_fire_window(const char *, struct window *);
 void	 events_fire_pane(const char *, struct window_pane *);
 void	 events_fire_winlink(const char *, struct winlink *);
 
+/* active.c */
+enum active_window_mode {
+	ACTIVE_SHARED,
+	ACTIVE_LOCAL
+};
+int		 active_is_local_window(struct client *, struct session *);
+void		 active_set_local_window(struct client *, struct session *,
+		     enum active_window_mode);
+struct winlink	*active_get_effective_winlink(struct client *,
+		     struct session *);
+struct window	*active_get_effective_window(struct client *,
+		     struct session *);
+int		 active_select_window(struct client *, struct session *,
+		     struct winlink *);
+int		 active_select_window_index(struct client *, struct session *, int);
+int		 active_next_window(struct client *, struct session *, int);
+int		 active_previous_window(struct client *, struct session *, int);
+int		 active_last_window(struct client *, struct session *);
+void		 active_remove_client(struct client *);
+void		 active_remove_session(struct session *);
+void		 active_remove_window(struct window *);
+int		 active_is_effective_window(struct client *, struct session *,
+		     struct winlink *);
+int		 active_is_last_window(struct client *, struct session *,
+		     struct winlink *);
+
 /* format-draw.c */
 void	 format_draw(struct screen_write_ctx *, const struct grid_cell *,
 	     u_int, const char *, struct style_ranges *, int);
@@ -3733,7 +3759,7 @@ int		 window_pane_is_visible(struct window_pane *);
 int		 window_pane_exited(struct window_pane *);
 u_int		 window_pane_search(struct window_pane *, const char *, int,
 		     int);
-const char	*window_printable_flags(struct winlink *, int);
+const char	*window_printable_flags(struct client *, struct winlink *, int);
 const char      *window_pane_printable_flags(struct window_pane *);
 struct window_pane *window_pane_find_up(struct window_pane *);
 struct window_pane *window_pane_find_down(struct window_pane *);

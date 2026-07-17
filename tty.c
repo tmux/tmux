@@ -937,7 +937,7 @@ int
 tty_window_bigger(struct tty *tty)
 {
 	struct client	*c = tty->client;
-	struct window	*w = c->session->curw->window;
+	struct window	*w = active_get_effective_window(c, c->session);
 
 	return (tty->sx < w->sx || tty->sy - status_line_size(c) < w->sy);
 }
@@ -959,7 +959,7 @@ static int
 tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 {
 	struct client		*c = tty->client;
-	struct window		*w = c->session->curw->window;
+	struct window		*w = active_get_effective_window(c, c->session);
 	struct window_pane	*wp = w->active;
 	u_int			 cx, cy, lines;
 
@@ -1026,8 +1026,7 @@ tty_update_window_offset(struct window *w)
 
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session != NULL &&
-		    c->session->curw != NULL &&
-		    c->session->curw->window == w)
+		    active_get_effective_window(c, c->session) == w)
 			tty_update_client_offset(c);
 	}
 }
@@ -1529,7 +1528,7 @@ tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 {
 	struct window_pane	*wp = ttyctx->arg;
 
-	if (c->session->curw->window != wp->window)
+	if (active_get_effective_window(c, c->session) != wp->window)
 		return (0);
 	if (wp->layout_cell == NULL)
 		return (0);

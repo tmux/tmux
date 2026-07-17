@@ -410,13 +410,16 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct cmd_find_state	*source = cmdq_get_source(item);
+	struct client		*c = cmdq_get_client(item);
+	struct client		*tc = cmdq_get_target_client(item);
+	struct client		*ac;
 	struct session		*dst_s;
 	struct winlink		*src_wl, *dst_wl;
 	struct window		*src_w, *dst_w;
 	struct window_pane	*src_wp, *dst_wp;
 	const char		*s;
 	char			*cause = NULL;
-	int			 flags = 0, dst_idx;
+	int			 flags = 0, dst_idx, local;
 	struct layout_cell	*lc;
 
 	dst_s = target->s;
@@ -424,6 +427,10 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	dst_wp = target->wp;
 	dst_w = dst_wl->window;
 	dst_idx = dst_wl->idx;
+	ac = tc;
+	if (ac == NULL || ac->session != dst_s)
+		ac = c;
+	local = active_is_local_window(ac, dst_s);
 
 	if (cmd_get_entry(self) == &cmd_move_pane_entry) {
 		if (args_has(args, 'M'))
@@ -511,9 +518,18 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (!args_has(args, 'd')) {
 		window_set_active_pane(dst_w, src_wp, 1);
-		session_select(dst_s, dst_idx);
-		cmd_find_from_session(current, dst_s, 0);
-		server_redraw_session(dst_s);
+		if (local)
+			active_select_window(ac, dst_s, dst_wl);
+		else
+			session_select(dst_s, dst_idx);
+		if (local && ac != NULL && ac->session == dst_s)
+			cmd_find_from_client(current, ac, 0);
+		else
+			cmd_find_from_session(current, dst_s, 0);
+		if (local && ac != NULL && ac->session == dst_s)
+			server_redraw_client(ac);
+		else
+			server_redraw_session(dst_s);
 	} else
 		server_status_session(dst_s);
 

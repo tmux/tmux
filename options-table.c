@@ -1115,7 +1115,8 @@ const struct options_table_entry options_table[] = {
 	{ .name = "status-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "bg=themegreen,fg=themeblack",
+	  .default_str = "bg=#{?local_active_window,themeblue,themegreen},"
+			 "fg=themeblack",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the status line."
@@ -1960,6 +1961,8 @@ const struct options_table_entry options_table[] = {
 	    "Run when a client is resized."),
 	OPTIONS_TABLE_HOOK("client-session-changed", "",
 	    "Run when a client's attached session is changed."),
+	OPTIONS_TABLE_HOOK("client-window-changed", "",
+	    "Run when a client's effective window is changed."),
 	OPTIONS_TABLE_HOOK("client-light-theme", "",
 	    "Run when a client switches to a light theme."),
 	OPTIONS_TABLE_HOOK("client-dark-theme", "",

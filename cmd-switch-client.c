@@ -53,11 +53,11 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	 target;
 	const char		*tflag = args_get(args, 't');
 	enum cmd_find_type	 type;
-	int			 flags;
+	int			 flags, window_target;
 	struct client		*c = cmdq_get_client(item);
 	struct client		*tc = cmdq_get_target_client(item);
 	struct session		*s;
-	struct winlink		*wl;
+	struct winlink		*wl, *current_wl;
 	struct window		*w;
 	struct window_pane	*wp;
 	const char		*tablename;
@@ -65,8 +65,13 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	struct sort_criteria	 sort_crit;
 	uid_t			 uid;
 
-	if (tflag != NULL &&
-	    (tflag[strcspn(tflag, ":.%")] != '\0' || strcmp(tflag, "=") == 0)) {
+	window_target = 0;
+	if (tflag != NULL) {
+		if (tflag[strcspn(tflag, ":.%")] != '\0' ||
+		    strcmp(tflag, "=") == 0)
+			window_target = 1;
+	}
+	if (window_target) {
 		type = CMD_FIND_PANE;
 		flags = 0;
 	} else {
@@ -137,7 +142,8 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	} else {
 		if (cmdq_get_client(item) == NULL)
 			return (CMD_RETURN_NORMAL);
-		if (wl != NULL && wp != NULL && wp != wl->window->active) {
+		if (window_target && wl != NULL && wp != NULL &&
+		    wp != wl->window->active) {
 			w = wl->window;
 			if (window_push_zoom(w, 0, args_has(args, 'Z')))
 				server_redraw_window(w);
@@ -146,9 +152,13 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 			if (window_pop_zoom(w))
 				server_redraw_window(w);
 		}
-		if (wl != NULL) {
-			session_set_current(s, wl);
-			cmd_find_from_session(current, s, 0);
+		if (window_target && wl != NULL) {
+			active_select_window(tc, s, wl);
+			if (active_is_local_window(tc, s)) {
+				current_wl = active_get_effective_winlink(tc, s);
+				cmd_find_from_winlink(current, current_wl, 0);
+			} else
+				cmd_find_from_session(current, s, 0);
 		}
 	}
 

@@ -48,10 +48,14 @@ cmd_swap_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*source = cmdq_get_source(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct client		*c = cmdq_get_client(item);
+	struct client		*tc = cmdq_get_target_client(item);
+	struct client		*ac;
 	struct session		*src = source->s, *dst = target->s;
 	struct session_group	*sg_src, *sg_dst;
 	struct winlink		*wl_src = source->wl, *wl_dst = target->wl;
 	struct window		*w_src, *w_dst;
+	int			 local_src, local_dst;
 
 	sg_src = session_group_contains(src);
 	sg_dst = session_group_contains(dst);
@@ -79,10 +83,22 @@ cmd_swap_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (marked_pane.wl == wl_src)
 		marked_pane.wl = wl_dst;
+	ac = tc;
+	if (ac == NULL)
+		ac = c;
+	local_dst = active_is_local_window(ac, dst);
+	local_src = active_is_local_window(ac, src);
 	if (args_has(args, 'd')) {
-		session_select(dst, wl_dst->idx);
-		if (src != dst)
-			session_select(src, wl_src->idx);
+		if (local_dst)
+			active_select_window(ac, dst, wl_dst);
+		else
+			session_select(dst, wl_dst->idx);
+		if (src != dst) {
+			if (local_src)
+				active_select_window(ac, src, wl_src);
+			else
+				session_select(src, wl_src->idx);
+		}
 	}
 	session_group_synchronize_from(src);
 	server_redraw_session_group(src);

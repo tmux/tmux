@@ -203,6 +203,7 @@ session_destroy(struct session *s, int notify, const char *from)
 	if (s->curw == NULL)
 		return;
 	s->curw = NULL;
+	active_remove_session(s);
 
 	RB_REMOVE(sessions, &sessions, s);
 	if (notify)

@@ -102,9 +102,9 @@ popup_reapply_styles(struct popup_data *pd)
 
 	if (s == NULL)
 		return;
-	o = s->curw->window->options;
+	o = active_get_effective_window(c, s)->options;
 
-	ft = format_create_defaults(NULL, c, s, s->curw, NULL);
+	ft = format_create_defaults(NULL, c, s, NULL, NULL);
 
 	/* Reapply popup style from options. */
 	memcpy(&pd->defaults, &grid_default_cell, sizeof pd->defaults);
@@ -569,9 +569,9 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 	struct style		 sytmp;
 
 	if (s != NULL)
-		o = s->curw->window->options;
+		o = active_get_effective_window(c, s)->options;
 	else
-		o = c->session->curw->window->options;
+		o = active_get_effective_window(c, c->session)->options;
 
 	if (lines == BOX_LINES_DEFAULT)
 		lines = options_get_number(o, "popup-border-lines");
