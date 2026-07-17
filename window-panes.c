@@ -1,4 +1,4 @@
-/* $OpenBSD: window-panes.c,v 1.1 2026/07/14 17:17:18 nicm Exp $ */
+/* $OpenBSD: window-panes.c,v 1.2 2026/07/17 16:03:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -57,6 +57,7 @@ struct window_panes_modedata {
 	u_int				 source_session;
 	u_int				 source_window;
 	struct screen			 screen;
+	struct screen			*preview;
 
 	struct event			 timer;
 
@@ -101,6 +102,24 @@ window_panes_get_source(struct window_panes_modedata *data, struct session **sp,
 	if (wp != NULL)
 		*wp = w;
 	return (1);
+}
+
+static void
+window_panes_set_preview(struct window_panes_modedata *data)
+{
+	struct window_pane	*wp = data->wp;
+	struct screen		*src = &wp->base, *dst;
+	struct screen_write_ctx	 ctx;
+	u_int			 sx = screen_size_x(src), sy = screen_size_y(src);
+
+	data->preview = dst = xmalloc(sizeof *data->preview);
+	screen_init(dst, sx, sy, 0);
+	screen_write_start(&ctx, dst);
+	screen_write_fast_copy(&ctx, src, 0, src->grid->hsize, sx, sy);
+	screen_write_stop(&ctx);
+	dst->mode = src->mode;
+	dst->cx = src->cx;
+	dst->cy = src->cy;
 }
 
 static void
@@ -379,7 +398,7 @@ window_panes_mark_pane_status_borders(u_char *map, struct window *w,
 }
 
 static int
-window_panes_get_floating_frame(struct window_pane *wp, u_int osx, u_int osy,
+window_panes_get_floating_borders(struct window_pane *wp, u_int osx, u_int osy,
     u_int dsx, u_int dsy, int *xp, int *yp, int *x2p, int *y2p)
 {
 	struct layout_cell	*lc;
@@ -404,12 +423,12 @@ window_panes_get_floating_frame(struct window_pane *wp, u_int osx, u_int osy,
 }
 
 static int
-window_panes_clip_floating_body(struct window_pane *wp, u_int osx, u_int osy,
+window_panes_clip_floating_pane(struct window_pane *wp, u_int osx, u_int osy,
     u_int dsx, u_int dsy, u_int *xp, u_int *yp, u_int *sxp, u_int *syp)
 {
 	int	x, y, x2, y2, bx, by, bx2, by2;
 
-	if (!window_panes_get_floating_frame(wp, osx, osy, dsx, dsy, &x, &y,
+	if (!window_panes_get_floating_borders(wp, osx, osy, dsx, dsy, &x, &y,
 	    &x2, &y2))
 		return (1);
 
@@ -601,7 +620,7 @@ window_panes_draw_floating_border(struct screen_write_ctx *ctx,
 
 	if (dsx == 0 || dsy == 0)
 		return;
-	if (!window_panes_get_floating_frame(wp, osx, osy, dsx, dsy, &x, &y,
+	if (!window_panes_get_floating_borders(wp, osx, osy, dsx, dsy, &x, &y,
 	    &x2, &y2))
 		return;
 
@@ -634,7 +653,7 @@ window_panes_clear_floating_area(struct screen_write_ctx *ctx,
 	struct grid_cell	gc;
 	int			x, y, x2, y2, xx, yy;
 
-	if (!window_panes_get_floating_frame(wp, osx, osy, dsx, dsy, &x, &y,
+	if (!window_panes_get_floating_borders(wp, osx, osy, dsx, dsy, &x, &y,
 	    &x2, &y2))
 		return;
 
@@ -778,6 +797,7 @@ window_panes_draw_pane(struct window_panes_modedata *data,
     struct screen_write_ctx *ctx, struct window_pane *wp,
     struct layout_cell *root, u_int osx, u_int osy, u_int dsx, u_int dsy)
 {
+	struct screen		*s = &wp->base;
 	u_int			 pane, x, y, sx, sy;
 
 	if (!window_panes_pane_visible(wp))
@@ -785,7 +805,7 @@ window_panes_draw_pane(struct window_panes_modedata *data,
 	if (!window_panes_get_geometry(wp, root, osx, osy, dsx, dsy, &x, &y,
 	    &sx, &sy))
 		return;
-	if (!window_panes_clip_floating_body(wp, osx, osy, dsx, dsy, &x, &y,
+	if (!window_panes_clip_floating_pane(wp, osx, osy, dsx, dsy, &x, &y,
 	    &sx, &sy))
 		return;
 	if (window_pane_index(wp, &pane) != 0)
@@ -793,11 +813,15 @@ window_panes_draw_pane(struct window_panes_modedata *data,
 	window_panes_add_area(data, wp, x, y, sx, sy);
 
 	screen_write_cursormove(ctx, x, y, 0);
+	if (data->preview != NULL &&
+	    wp == data->wp &&
+	    sx <= screen_size_x(data->preview) &&
+	    sy <= screen_size_y(data->preview))
+		s = data->preview;
 	if (osx <= dsx && osy <= dsy)
-		screen_write_fast_copy(ctx, &wp->base, 0, wp->base.grid->hsize,
-		    sx, sy);
+		screen_write_fast_copy(ctx, s, 0, s->grid->hsize, sx, sy);
 	else
-		screen_write_preview(ctx, &wp->base, sx, sy);
+		screen_write_preview(ctx, s, sx, sy);
 	window_panes_draw_number(data, ctx, wp, pane, x, y, sx, sy);
 }
 
@@ -917,6 +941,8 @@ window_panes_init(struct window_mode_entry *wme, struct cmdq_item *item,
 		data->zoomed = -1;
 	else {
 		data->zoomed = (w->flags & WINDOW_ZOOMED);
+		if (!data->zoomed)
+			window_panes_set_preview(data);
 		if (!data->zoomed && window_zoom(wp) == 0)
 			server_redraw_window(w);
 	}
@@ -940,8 +966,10 @@ window_panes_free(struct window_mode_entry *wme)
 
 	evtimer_del(&data->timer);
 
-	if (data->zoomed == 0)
+	if (data->zoomed == 0) {
+		wme->wp->flags |= PANE_NORESIZETRIM;
 		server_unzoom_window(w);
+	}
 	server_redraw_window(w);
 	server_redraw_window_borders(w);
 	server_status_window(w);
@@ -949,6 +977,10 @@ window_panes_free(struct window_mode_entry *wme)
 	if (data->state != NULL)
 		args_make_commands_free(data->state);
 	window_panes_free_areas(data);
+	if (data->preview != NULL) {
+		screen_free(data->preview);
+		free(data->preview);
+	}
 	screen_free(&data->screen);
 	free(data);
 }
@@ -1060,8 +1092,11 @@ window_panes_key(struct window_mode_entry *wme, struct client *c,
 		return;
 	}
 
-	if (wp->window->flags & WINDOW_ZOOMED)
+	if (wp->window->flags & WINDOW_ZOOMED) {
+		if (data->zoomed == 0)
+			wp->flags |= PANE_NORESIZETRIM;
 		window_unzoom(wp->window, 1);
+	}
 	window_panes_run_command(data, c, target);
 	window_pane_reset_mode(wp);
 }
