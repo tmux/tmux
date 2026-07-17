@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.496 2026/07/17 08:37:29 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.497 2026/07/17 12:42:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -49,46 +49,11 @@ static void	server_client_set_path(struct client *);
 static void	server_client_set_progress_bar(struct client *);
 static void	server_client_reset_state(struct client *);
 static void	server_client_update_latest(struct client *);
-static void	server_client_remove_active_pane_client(struct client *);
 static void	server_client_dispatch(struct imsg *, void *);
 static int	server_client_dispatch_command(struct client *, struct imsg *);
 static int	server_client_dispatch_identify(struct client *, struct imsg *);
 static int	server_client_dispatch_shell(struct client *);
 static void	server_client_report_theme(struct client *, enum client_theme);
-
-/* Client active pane. */
-struct client_active_pane {
-	struct client		*client;
-	u_int			 window;
-	struct window_pane	*pane;
-
-	RB_ENTRY(client_active_pane)	 entry;
-};
-RB_HEAD(client_active_panes, client_active_pane);
-
-/* Compare client active panes. */
-static int
-server_client_active_pane_cmp(struct client_active_pane *cap1,
-    struct client_active_pane *cap2)
-{
-	uintptr_t	c1 = (uintptr_t)cap1->client;
-	uintptr_t	c2 = (uintptr_t)cap2->client;
-
-	if (c1 < c2)
-		return (-1);
-	if (c1 > c2)
-		return (1);
-	if (cap1->window < cap2->window)
-		return (-1);
-	if (cap1->window > cap2->window)
-		return (1);
-	return (0);
-}
-RB_GENERATE_STATIC(client_active_panes, client_active_pane, entry,
-    server_client_active_pane_cmp);
-
-static struct client_active_panes client_active_panes =
-    RB_INITIALIZER(&client_active_panes);
 
 /* Number of attached clients. */
 u_int
@@ -530,7 +495,6 @@ server_client_lost(struct client *c)
 	server_client_clear_overlay(c);
 	status_prompt_clear(c);
 	status_message_clear(c);
-	server_client_remove_active_pane_client(c);
 
 	RB_FOREACH_SAFE(cf, client_files, &c->files, cf1) {
 		cf->error = EINTR;
@@ -2142,7 +2106,7 @@ server_client_reset_state(struct client *c)
 {
 	struct tty		*tty = &c->tty;
 	struct window		*w = c->session->curw->window;
-	struct window_pane	*wp = server_client_get_pane(c), *loop;
+	struct window_pane	*wp = w->active, *loop;
 	struct screen		*s = NULL;
 	struct options		*oo = c->session->options;
 	int			 mode = 0, cursor, flags, pane_mode = 0;
@@ -3040,8 +3004,6 @@ server_client_set_flags(struct client *c, const char *flags)
 			flag = CLIENT_READONLY;
 		else if (strcmp(next, "ignore-size") == 0)
 			flag = CLIENT_IGNORESIZE;
-		else if (strcmp(next, "active-pane") == 0)
-			flag = CLIENT_ACTIVEPANE;
 		else if (strcmp(next, "no-detach-on-destroy") == 0)
 			flag = CLIENT_NO_DETACH_ON_DESTROY;
 		if (flag == 0)
@@ -3090,8 +3052,6 @@ server_client_get_flags(struct client *c)
 	}
 	if (c->flags & CLIENT_READONLY)
 		strlcat(s, "read-only,", sizeof s);
-	if (c->flags & CLIENT_ACTIVEPANE)
-		strlcat(s, "active-pane,", sizeof s);
 	if (c->flags & CLIENT_SUSPENDED)
 		strlcat(s, "suspended,", sizeof s);
 	if (c->flags & CLIENT_UTF8)
@@ -3101,97 +3061,11 @@ server_client_get_flags(struct client *c)
 	return (s);
 }
 
-/* Get client active pane. */
-static struct client_active_pane *
-server_client_get_active_pane(struct client *c, u_int id)
-{
-	struct client_active_pane	cap = { .client = c, .window = id };
-
-	return (RB_FIND(client_active_panes, &client_active_panes, &cap));
-}
-
-/* Add client active pane. */
-static struct client_active_pane *
-server_client_add_active_pane(struct client *c, u_int id)
-{
-	struct client_active_pane	*cap;
-
-	cap = server_client_get_active_pane(c, id);
-	if (cap == NULL) {
-		cap = xcalloc(1, sizeof *cap);
-		cap->client = c;
-		cap->window = id;
-		RB_INSERT(client_active_panes, &client_active_panes, cap);
-	}
-	return (cap);
-}
-
-/* Get client active pane. */
-struct window_pane *
-server_client_get_pane(struct client *c)
-{
-	struct session		*s = c->session;
-	struct window		*w;
-	struct client_active_pane	*cap;
-
-	if (s == NULL)
-		return (NULL);
-
-	w = s->curw->window;
-	if (w->modal != NULL)
-		return (w->modal);
-	if (~c->flags & CLIENT_ACTIVEPANE)
-		return (w->active);
-	cap = server_client_get_active_pane(c, w->id);
-	if (cap == NULL)
-		return (w->active);
-	return (cap->pane);
-}
-
-/* Set client active pane. */
-void
-server_client_set_pane(struct client *c, struct window_pane *wp)
-{
-	struct session		*s = c->session;
-	struct client_active_pane	*cap;
-
-	if (s == NULL)
-		return;
-	if (wp->window->modal != NULL && wp != wp->window->modal)
-		return;
-
-	cap = server_client_add_active_pane(c, s->curw->window->id);
-	cap->pane = wp;
-	log_debug("%s pane now %%%u", c->name, wp->id);
-}
-
-/* Remove active pane entries for a client. */
-static void
-server_client_remove_active_pane_client(struct client *c)
-{
-	struct client_active_pane	*cap, *cap1;
-
-	RB_FOREACH_SAFE(cap, client_active_panes, &client_active_panes, cap1) {
-		if (cap->client == c) {
-			RB_REMOVE(client_active_panes, &client_active_panes, cap);
-			free(cap);
-		}
-	}
-}
-
 /* Remove pane from client state. */
 void
 server_client_remove_pane(struct window_pane *wp)
 {
 	struct client			*c;
-	struct client_active_pane	*cap, *cap1;
-
-	RB_FOREACH_SAFE(cap, client_active_panes, &client_active_panes, cap1) {
-		if (cap->pane == wp) {
-			RB_REMOVE(client_active_panes, &client_active_panes, cap);
-			free(cap);
-		}
-	}
 
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->tty.mouse_last_pane == (int)wp->id) {
@@ -3246,7 +3120,7 @@ server_client_print(struct client *c, int parse, struct evbuffer *evb)
 		goto out;
 	}
 
-	wp = server_client_get_pane(c);
+	wp = c->session->curw->window->active;
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme == NULL || wme->mode != &window_view_mode)
 		window_pane_set_mode(wp, NULL, &window_view_mode, NULL, NULL,

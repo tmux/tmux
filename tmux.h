@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1407 2026/07/17 08:37:29 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1408 2026/07/17 12:42:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2216,7 +2216,7 @@ struct client {
 #define CLIENT_STARTSERVER 0x10000000
 #define CLIENT_REDRAWMENU 0x20000000
 #define CLIENT_NOFORK 0x40000000
-#define CLIENT_ACTIVEPANE 0x80000000ULL
+/* 0x80000000ULL unused */
 #define CLIENT_CONTROL_PAUSEAFTER 0x100000000ULL
 #define CLIENT_CONTROL_WAITEXIT 0x200000000ULL
 #define CLIENT_WINDOWSIZECHANGED 0x400000000ULL
@@ -3250,8 +3250,6 @@ void	 server_client_loop(void);
 const char *server_client_get_cwd(struct client *, struct session *);
 void	 server_client_set_flags(struct client *, const char *);
 const char *server_client_get_flags(struct client *);
-struct window_pane *server_client_get_pane(struct client *);
-void	 server_client_set_pane(struct client *, struct window_pane *);
 void	 server_client_remove_pane(struct window_pane *);
 void	 server_client_print(struct client *, int, struct evbuffer *);
 

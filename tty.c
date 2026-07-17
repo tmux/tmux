@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.476 2026/06/26 11:36:22 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.477 2026/07/17 12:42:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -955,7 +955,7 @@ tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 {
 	struct client		*c = tty->client;
 	struct window		*w = c->session->curw->window;
-	struct window_pane	*wp = server_client_get_pane(c);
+	struct window_pane	*wp = w->active;
 	u_int			 cx, cy, lines;
 
 	lines = status_line_size(c);

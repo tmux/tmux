@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.152 2026/07/16 10:52:32 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.153 2026/07/17 12:42:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1599,7 +1599,7 @@ redraw_set_draw_context(struct redraw_draw_ctx *dctx,
 
 	if (server_is_marked(s, s->curw, marked_pane.wp))
 		dctx->marked = marked_pane.wp;
-	dctx->active = server_client_get_pane(c);
+	dctx->active = s->curw->window->active;
 
 	lines = status_line_size(c);
 	if (options_get_number(oo, "status-position") == 0)

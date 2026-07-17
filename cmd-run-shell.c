@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-run-shell.c,v 1.92 2026/07/14 17:17:17 nicm Exp $ */
+/* $OpenBSD: cmd-run-shell.c,v 1.93 2026/07/17 12:42:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -90,8 +90,8 @@ cmd_run_shell_print(struct job *job, const char *msg)
 			cmdq_print(cdata->item, "%s", msg);
 			return;
 		}
-		if (cdata->item != NULL && cdata->client != NULL)
-			wp = server_client_get_pane(cdata->client);
+		if (cdata->client != NULL && cdata->client->session != NULL)
+			wp = cdata->client->session->curw->window->active;
 		if (wp == NULL && cmd_find_from_nothing(&fs, 0) == 0)
 			wp = fs.wp;
 		if (wp == NULL)

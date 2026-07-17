@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-find.c,v 1.86 2026/07/02 08:47:25 nicm Exp $ */
+/* $OpenBSD: cmd-find.c,v 1.87 2026/07/17 12:42:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2015 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -885,7 +885,7 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c, int flags)
 	if (c->session != NULL) {
 		cmd_find_clear_state(fs, flags);
 
-		fs->wp = server_client_get_pane(c);
+		fs->wp = c->session->curw->window->active;
 		if (fs->wp == NULL) {
 			cmd_find_from_session(fs, c->session, flags);
 			return (0);
