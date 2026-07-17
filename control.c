@@ -1,4 +1,4 @@
-/* $OpenBSD: control.c,v 1.61 2026/07/10 15:45:11 nicm Exp $ */
+/* $OpenBSD: control.c,v 1.62 2026/07/17 08:37:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -78,9 +78,20 @@ struct control_pane {
 };
 RB_HEAD(control_panes, control_pane);
 
+/* Control client window size. */
+struct control_window {
+	u_int				 window;
+	u_int				 sx;
+	u_int				 sy;
+
+	RB_ENTRY(control_window)	 entry;
+};
+RB_HEAD(control_windows, control_window);
+
 /* Control client state. */
 struct control_state {
 	struct control_panes		 panes;
+	struct control_windows		 windows;
 
 	TAILQ_HEAD(, control_pane)	 pending_list;
 	u_int				 pending_count;
@@ -119,6 +130,18 @@ control_pane_cmp(struct control_pane *cp1, struct control_pane *cp2)
 	return (0);
 }
 RB_GENERATE_STATIC(control_panes, control_pane, entry, control_pane_cmp);
+
+/* Compare control windows. */
+static int
+control_window_cmp(struct control_window *cw1, struct control_window *cw2)
+{
+	if (cw1->window < cw2->window)
+		return (-1);
+	if (cw1->window > cw2->window)
+		return (1);
+	return (0);
+}
+RB_GENERATE_STATIC(control_windows, control_window, entry, control_window_cmp);
 
 /* Free a block. */
 static void
@@ -159,6 +182,66 @@ control_add_pane(struct client *c, struct window_pane *wp)
 	TAILQ_INIT(&cp->blocks);
 
 	return (cp);
+}
+
+/* Get window for this client. */
+static struct control_window *
+control_get_window(struct client *c, u_int window)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_window	 cw = { .window = window };
+
+	if (cs == NULL)
+		return (NULL);
+	return (RB_FIND(control_windows, &cs->windows, &cw));
+}
+
+/* Set window size for this client. */
+void
+control_set_window_size(struct client *c, u_int window, u_int sx, u_int sy)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_window	*cw;
+
+	if (cs == NULL)
+		return;
+	cw = control_get_window(c, window);
+	if (cw == NULL) {
+		cw = xcalloc(1, sizeof *cw);
+		cw->window = window;
+		RB_INSERT(control_windows, &cs->windows, cw);
+	}
+	cw->sx = sx;
+	cw->sy = sy;
+}
+
+/* Get window size for this client. */
+int
+control_get_window_size(struct client *c, u_int window, u_int *sx, u_int *sy)
+{
+	struct control_window	*cw;
+
+	if ((cw = control_get_window(c, window)) == NULL)
+		return (0);
+	*sx = cw->sx;
+	*sy = cw->sy;
+	return (1);
+}
+
+/* Clear window size for this client. */
+void
+control_clear_window_size(struct client *c, u_int window)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_window	*cw;
+
+	if (cs == NULL)
+		return;
+	cw = control_get_window(c, window);
+	if (cw != NULL) {
+		RB_REMOVE(control_windows, &cs->windows, cw);
+		free(cw);
+	}
 }
 
 /* Discard output for a pane. */
@@ -749,6 +832,7 @@ control_start(struct client *c)
 
 	cs = c->control_state = xcalloc(1, sizeof *cs);
 	RB_INIT(&cs->panes);
+	RB_INIT(&cs->windows);
 	TAILQ_INIT(&cs->pending_list);
 	TAILQ_INIT(&cs->all_blocks);
 	cs->subs = monitor_create_client(c, control_sub_change, NULL);
@@ -800,6 +884,7 @@ control_stop(struct client *c)
 {
 	struct control_state	*cs = c->control_state;
 	struct control_block	*cb, *cb1;
+	struct control_window	*cw, *cw1;
 
 	if (cs == NULL)
 		return;
@@ -811,6 +896,10 @@ control_stop(struct client *c)
 	bufferevent_free(cs->read_event);
 
 	control_reset_offsets(c);
+	RB_FOREACH_SAFE(cw, control_windows, &cs->windows, cw1) {
+		RB_REMOVE(control_windows, &cs->windows, cw);
+		free(cw);
+	}
 	TAILQ_FOREACH_SAFE(cb, &cs->all_blocks, all_entry, cb1)
 		control_free_block(cs, cb);
 

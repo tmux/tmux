@@ -1,4 +1,4 @@
-/* $OpenBSD: resize.c,v 1.57 2026/07/13 13:01:14 nicm Exp $ */
+/* $OpenBSD: resize.c,v 1.58 2026/07/17 08:37:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -134,9 +134,8 @@ clients_calculate_size(int type, int current, struct client *c,
     int, int, struct session *, struct window *), u_int *sx, u_int *sy,
     u_int *xpixel, u_int *ypixel)
 {
-	struct client		*loop;
-	struct client_window	*cw;
-	u_int			 cx, cy, n = 0;
+	struct client	*loop;
+	u_int		 cx, cy, n = 0;
 
 	/*
 	 * Start comparing with 0 for largest and UINT_MAX for smallest or
@@ -187,20 +186,10 @@ clients_calculate_size(int type, int current, struct client *c,
 			continue;
 		}
 
-		/*
-		 * If the client has a per-window size, use this instead if it is
-		 * smaller.
-		 */
-		if (w != NULL)
-			cw = server_client_get_client_window(loop, w->id);
-		else
-			cw = NULL;
-
 		/* Work out this client's size. */
-		if (cw != NULL && cw->sx != 0 && cw->sy != 0) {
-			cx = cw->sx;
-			cy = cw->sy;
-		} else {
+		if (w == NULL ||
+		    !control_get_window_size(loop, w->id, &cx, &cy) ||
+		    cx == 0 || cy == 0) {
 			cx = loop->tty.sx;
 			cy = loop->tty.sy - status_line_size(loop);
 		}
@@ -247,17 +236,16 @@ skip:
 			/* Look up per-window size if any. */
 			if (~loop->flags & CLIENT_WINDOWSIZECHANGED)
 				continue;
-			cw = server_client_get_client_window(loop, w->id);
-			if (cw == NULL)
+			if (!control_get_window_size(loop, w->id, &cx, &cy))
 				continue;
 
 			/* Clamp the size. */
 			log_debug("%s: %s size for @%u is %ux%u", __func__,
-			    loop->name, w->id, cw->sx, cw->sy);
-			if (cw->sx != 0 && *sx > cw->sx)
-				*sx = cw->sx;
-			if (cw->sy != 0 && *sy > cw->sy)
-				*sy = cw->sy;
+			    loop->name, w->id, cx, cy);
+			if (cx != 0 && *sx > cx)
+				*sx = cx;
+			if (cy != 0 && *sy > cy)
+				*sy = cy;
 		}
 	}
 	if (*sx != UINT_MAX && *sy != UINT_MAX)

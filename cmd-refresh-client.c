@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-refresh-client.c,v 1.54 2026/07/05 08:24:00 nicm Exp $ */
+/* $OpenBSD: cmd-refresh-client.c,v 1.55 2026/07/17 08:37:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -66,7 +66,6 @@ cmd_refresh_client_control_client_size(struct cmd *self, struct cmdq_item *item)
 	struct client		*tc = cmdq_get_target_client(item);
 	const char		*size = args_get(args, 'C');
 	u_int			 w, x, y;
-	struct client_window	*cw;
 
 	if (sscanf(size, "@%u:%ux%u", &w, &x, &y) == 3) {
 		if (x < WINDOW_MINIMUM || x > WINDOW_MAXIMUM ||
@@ -76,22 +75,16 @@ cmd_refresh_client_control_client_size(struct cmd *self, struct cmdq_item *item)
 		}
 		log_debug("%s: client %s window @%u: size %ux%u", __func__,
 		    tc->name, w, x, y);
-		cw = server_client_add_client_window(tc, w);
-		cw->sx = x;
-		cw->sy = y;
+		control_set_window_size(tc, w, x, y);
 		tc->flags |= CLIENT_WINDOWSIZECHANGED;
 		recalculate_sizes_now(1);
 		return (CMD_RETURN_NORMAL);
 	}
 	if (sscanf(size, "@%u:", &w) == 1) {
-		cw = server_client_get_client_window(tc, w);
-		if (cw != NULL) {
-			log_debug("%s: client %s window @%u: no size", __func__,
-			    tc->name, w);
-			cw->sx = 0;
-			cw->sy = 0;
-			recalculate_sizes_now(1);
-		}
+		log_debug("%s: client %s window @%u: no size", __func__,
+		    tc->name, w);
+		control_clear_window_size(tc, w);
+		recalculate_sizes_now(1);
 		return (CMD_RETURN_NORMAL);
 	}
 
