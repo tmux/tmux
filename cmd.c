@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd.c,v 1.188 2026/07/15 13:02:33 nicm Exp $ */
+/* $OpenBSD: cmd.c,v 1.189 2026/07/17 08:29:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -841,14 +841,19 @@ cmd_mouse_pane(struct mouse_event *m, struct session **sp,
 	return (wp);
 }
 
-/* Replace the first %% or %idx in template by s. */
+/*
+ * Replace the first %% or any %idx in template by s. %% is intended for use in
+ * single quotes, so ' is escaped. %%% and %idx% are for double quotes, so a
+ * list of special characters is escaped. %idx is left unescaped.
+ */
 char *
 cmd_template_replace(const char *template, const char *s, int idx)
 {
-	char		 ch, *buf;
-	const char	*ptr, *cp, quote[] = "\"\\$;~";
-	int		 replaced, quoted;
-	size_t		 len, slen;
+	char			 ch, *buf;
+	const char		*ptr, *cp, dquote[] = "\"\\$;~";
+	int			 replaced;
+	size_t			 len, slen;
+	enum { NQ, SQ, DQ }	 quote;
 
 	if (strchr(template, '%') == NULL)
 		return (xstrdup(template));
@@ -862,23 +867,39 @@ cmd_template_replace(const char *template, const char *s, int idx)
 	while (*ptr != '\0') {
 		switch (ch = *ptr++) {
 		case '%':
-			if (*ptr < '1' || *ptr > '9' || *ptr - '0' != idx) {
+			if (*ptr >= '1' && *ptr <= '9' && *ptr - '0' == idx) {
+				ptr++;
+				quote = NQ;
+				if (*ptr == '%') {
+					quote = DQ;
+					ptr++;
+				}
+			} else {
 				if (*ptr != '%' || replaced)
 					break;
 				replaced = 1;
-			}
-			ptr++;
-
-			quoted = (*ptr == '%');
-			if (quoted)
 				ptr++;
+				quote = SQ;
+				if (*ptr == '%') {
+					quote = DQ;
+					ptr++;
+				}
+			}
 
 			slen = strlen(s);
-			if (slen >= SIZE_MAX / 3 || len > SIZE_MAX - (slen * 3) - 1)
+			if (slen >= SIZE_MAX / 4 ||
+			    len > SIZE_MAX - (slen * 4) - 1)
 				fatalx("argument too long");
-			buf = xrealloc(buf, len + (slen * 3) + 1);
+			buf = xrealloc(buf, len + (slen * 4) + 1);
 			for (cp = s; *cp != '\0'; cp++) {
-				if (quoted && strchr(quote, *cp) != NULL)
+				if (quote == SQ && *cp == '\'') {
+					buf[len++] = '\'';
+					buf[len++] = '\\';
+					buf[len++] = '\'';
+					buf[len++] = '\'';
+					continue;
+				}
+				if (quote == DQ && strchr(dquote, *cp) != NULL)
 					buf[len++] = '\\';
 				buf[len++] = *cp;
 			}
@@ -892,5 +913,6 @@ cmd_template_replace(const char *template, const char *s, int idx)
 		buf[len] = '\0';
 	}
 
+	log_debug("%s: %s -> %s", __func__, template, buf);
 	return (buf);
 }
