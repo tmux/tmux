@@ -2742,13 +2742,13 @@ void	 events_fire_pane(const char *, struct window_pane *);
 void	 events_fire_winlink(const char *, struct winlink *);
 
 /* active.c */
-enum active_window_mode {
+enum active_mode {
 	ACTIVE_SHARED,
 	ACTIVE_LOCAL
 };
 int		 active_is_local_window(struct client *, struct session *);
 void		 active_set_local_window(struct client *, struct session *,
-		     enum active_window_mode);
+		     enum active_mode);
 struct winlink	*active_get_effective_winlink(struct client *,
 		     struct session *);
 struct window	*active_get_effective_window(struct client *,
@@ -2766,6 +2766,16 @@ int		 active_is_effective_window(struct client *, struct session *,
 		     struct winlink *);
 int		 active_is_last_window(struct client *, struct session *,
 		     struct winlink *);
+int		 active_has_local_pane(struct client *, struct window *);
+void		 active_set_pane_mode(struct client *, struct window *,
+		     enum active_mode);
+struct window_pane *active_get_effective_pane(struct client *,
+		     struct window *);
+struct window_pane *active_get_last_pane(struct client *, struct window *);
+int		 active_set_pane(struct client *, struct window *,
+		     struct window_pane *, int);
+void		 active_check_clients(void);
+void		 active_remove_pane(struct window_pane *);
 
 /* format-draw.c */
 void	 format_draw(struct screen_write_ctx *, const struct grid_cell *,
@@ -2982,7 +2992,8 @@ void	tty_cmd_sixelimage(struct tty *, const struct tty_ctx *);
 void	tty_draw_images(struct client *, struct window_pane *);
 #endif
 void	tty_cmd_syncstart(struct tty *, const struct tty_ctx *);
-void	tty_default_colours(struct grid_cell *, struct window_pane *, u_int *);
+void	tty_default_colours(struct grid_cell *, struct window_pane *,
+	    struct window_pane *, u_int *);
 
 /* tty-term.c */
 extern struct tty_terms tty_terms;

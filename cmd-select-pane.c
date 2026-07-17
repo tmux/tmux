@@ -33,8 +33,8 @@ const struct cmd_entry cmd_select_pane_entry = {
 	.name = "select-pane",
 	.alias = "selectp",
 
-	.args = { "DdegLlMmP:RT:t:UZ", 0, 0, NULL }, /* -P and -g deprecated */
-	.usage = "[-DdeLlMmRUZ] [-T title] " CMD_TARGET_PANE_USAGE,
+	.args = { "DdegLlMmP:RsST:t:UZ", 0, 0, NULL }, /* -P and -g deprecated */
+	.usage = "[-DdeLlMmRsSUZ] [-T title] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -85,6 +85,7 @@ static enum cmd_retval
 cmd_select_pane_marked_pane(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
+	struct client		*c = cmdq_get_client(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct event_payload	*ep;
 	struct cmd_find_state	 fs;
@@ -138,8 +139,9 @@ cmd_select_pane_marked_pane(struct cmd *self, struct cmdq_item *item)
 		server_status_window(mwp->window);
 	}
 	if (window_pane_is_floating(wp)) {
-		window_redraw_active_switch(wp->window, wp);
-		window_set_active_pane(wp->window, wp, 1);
+		if (!active_has_local_pane(c, wp->window))
+			window_redraw_active_switch(wp->window, wp);
+		active_set_pane(c, wp->window, wp, 1);
 	}
 	return (CMD_RETURN_NORMAL);
 }
@@ -153,25 +155,39 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct event_payload	*ep;
 	struct cmd_find_state	 fs;
+	struct client		*c = cmdq_get_client(item);
 	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
 	struct session		*s = target->s;
-	struct window_pane	*wp = target->wp, *lastwp;
+	struct window_pane	*wp = target->wp, *lastwp, *activewp;
 	struct options		*oo = wp->options;
 	char			*title;
 	const char		*style;
 	struct options_entry	*o;
+
+	if (args_has(args, 's') || args_has(args, 'S')) {
+		if (c == NULL || c->session == NULL) {
+			cmdq_error(item, "no current client");
+			return (CMD_RETURN_ERROR);
+		}
+		if (args_has(args, 's'))
+			active_set_pane_mode(c, w, ACTIVE_LOCAL);
+		else
+			active_set_pane_mode(c, w, ACTIVE_SHARED);
+		return (CMD_RETURN_NORMAL);
+	}
 
 	if (entry == &cmd_last_pane_entry || args_has(args, 'l')) {
 		/*
 		 * Check for no last pane found in case the other pane was
 		 * spawned without being visited (for example split-window -d).
 		 */
-		lastwp = TAILQ_FIRST(&w->last_panes);
+		lastwp = active_get_last_pane(c, w);
 		if (lastwp == NULL && window_count_panes(w, 1) == 2) {
-			lastwp = TAILQ_PREV(w->active, window_panes, entry);
+			activewp = active_get_effective_pane(c, w);
+			lastwp = TAILQ_PREV(activewp, window_panes, entry);
 			if (lastwp == NULL)
-				lastwp = TAILQ_NEXT(w->active, entry);
+				lastwp = TAILQ_NEXT(activewp, entry);
 		}
 		if (lastwp == NULL) {
 			cmdq_error(item, "no last pane");
@@ -188,8 +204,9 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 		} else {
 			if (window_push_zoom(w, 0, args_has(args, 'Z')))
 				server_redraw_window(w);
-			window_redraw_active_switch(w, lastwp);
-			if (window_set_active_pane(w, lastwp, 1)) {
+			if (!active_has_local_pane(c, w))
+				window_redraw_active_switch(w, lastwp);
+			if (active_set_pane(c, w, lastwp, 1)) {
 				cmd_find_from_winlink(current, wl, 0);
 				cmd_select_pane_redraw(w);
 			}
@@ -267,12 +284,14 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (wp == w->active)
+	activewp = active_get_effective_pane(c, w);
+	if (wp == activewp)
 		return (CMD_RETURN_NORMAL);
 	if (window_push_zoom(w, 0, args_has(args, 'Z')))
 		server_redraw_window(w);
-	window_redraw_active_switch(w, wp);
-	if (window_set_active_pane(w, wp, 1))
+	if (!active_has_local_pane(c, w))
+		window_redraw_active_switch(w, wp);
+	if (active_set_pane(c, w, wp, 1))
 		cmd_find_from_winlink_pane(current, wl, wp, 0);
 	cmdq_insert_hook(s, item, current, "after-select-pane");
 	cmd_select_pane_redraw(w);

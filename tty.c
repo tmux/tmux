@@ -960,9 +960,10 @@ tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 {
 	struct client		*c = tty->client;
 	struct window		*w = active_get_effective_window(c, c->session);
-	struct window_pane	*wp = w->active;
+	struct window_pane	*wp;
 	u_int			 cx, cy, lines;
 
+	wp = active_get_effective_pane(c, w);
 	lines = status_line_size(c);
 
 	if (tty->sx >= w->sx && tty->sy - lines >= w->sy) {
@@ -3140,23 +3141,24 @@ tty_style_changed(struct window_pane *wp)
 }
 
 void
-tty_default_colours(struct grid_cell *gc, struct window_pane *wp, u_int *dim)
+tty_default_colours(struct grid_cell *gc, struct window_pane *wp,
+    struct window_pane *active, u_int *dim)
 {
 	if (wp->flags & PANE_STYLECHANGED)
 		tty_style_changed (wp);
 
 	memcpy(gc, &grid_default_cell, sizeof *gc);
-	if (wp == wp->window->active && wp->cached_active_gc.fg != 8)
+	if (wp == active && wp->cached_active_gc.fg != 8)
 		gc->fg = wp->cached_active_gc.fg;
 	else
 		gc->fg = wp->cached_gc.fg;
-	if (wp == wp->window->active && wp->cached_active_gc.bg != 8)
+	if (wp == active && wp->cached_active_gc.bg != 8)
 		gc->bg = wp->cached_active_gc.bg;
 	else
 		gc->bg = wp->cached_gc.bg;
 
 	if (dim != NULL) {
-		if (wp == wp->window->active)
+		if (wp == active)
 			*dim = wp->cached_active_dim;
 		else
 			*dim = wp->cached_dim;

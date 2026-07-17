@@ -795,7 +795,8 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 			break;
 
 		/* If the pane is floating, move to the front. */
-		if (window_pane_is_floating(wp)) {
+		if (window_pane_is_floating(wp) &&
+		    TAILQ_FIRST(&w->z_index) != wp) {
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
 			wp->flags |= PANE_REDRAW;
@@ -2578,7 +2579,7 @@ window_pane_get_bg(struct window_pane *wp)
 
 	c = window_pane_get_bg_control_client(wp);
 	if (c == -1) {
-		tty_default_colours(&defaults, wp, NULL);
+		tty_default_colours(&defaults, wp, wp->window->active, NULL);
 		if (COLOUR_DEFAULT(defaults.bg))
 			c = window_get_bg_client(wp);
 		else

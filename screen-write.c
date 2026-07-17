@@ -134,7 +134,7 @@ screen_write_redraw_cb(const struct tty_ctx *ttyctx)
 static int
 screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 {
-	struct window_pane	*wp = ttyctx->arg;
+	struct window_pane	*wp = ttyctx->arg, *active;
 
 	if (ttyctx->flags & TTY_CTX_INVISIBLE_PANES) {
 		if (session_has(c->session, wp->window))
@@ -160,11 +160,14 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 		return (-1);
 	}
 
+	active = active_get_effective_pane(c, wp->window);
 	if (tty_window_offset(&c->tty, &ttyctx->wox, &ttyctx->woy, &ttyctx->wsx,
 	    &ttyctx->wsy))
 		ttyctx->flags |= TTY_CTX_WINDOW_BIGGER;
 	else
 		ttyctx->flags &= ~TTY_CTX_WINDOW_BIGGER;
+	tty_default_colours(&ttyctx->defaults, wp, active,
+	    &ttyctx->style_ctx.dim);
 
 	ttyctx->xoff = ttyctx->rxoff = wp->xoff;
 	ttyctx->yoff = ttyctx->ryoff = wp->yoff;
@@ -296,7 +299,7 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 		ttyctx->redraw_cb = screen_write_redraw_cb;
 		if (ctx->wp != NULL) {
 			tty_default_colours(&ttyctx->defaults, ctx->wp,
-			    &ttyctx->style_ctx.dim);
+			    ctx->wp->window->active, &ttyctx->style_ctx.dim);
 			ttyctx->style_ctx.palette = &ctx->wp->palette;
 			ttyctx->set_client_cb = screen_write_set_client_cb;
 			ttyctx->arg = ctx->wp;

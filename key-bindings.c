@@ -71,6 +71,8 @@
 	" '#{?#{!:#{pane_floating_flag}},Horizontal Split,}' 'h' {split-window -h}" \
 	" '#{?#{!:#{pane_floating_flag}},Vertical Split,}' 'v' {split-window -v}" \
 	" ''" \
+	" '#{?#{>=:#{window_active_clients},2},#{?pane_local_mode,Shared Active Pane,Local Active Pane},}' 'a' {if -F '#{pane_local_mode}' {select-pane -S} {select-pane -s}}" \
+	" ''" \
 	" '#{?#{&&:#{!:#{pane_floating_flag}},#{>:#{window_panes},1}},Swap Up,}' 'u' {swap-pane -U}" \
 	" '#{?#{&&:#{!:#{pane_floating_flag}},#{>:#{window_panes},1}},Swap Down,}' 'd' {swap-pane -D}" \
 	" '#{?pane_marked_set,,-}Swap Marked' 's' {swap-pane}" \
@@ -501,6 +503,7 @@ key_bindings_init(void)
 
 		/* Mouse button 1 down on pane. */
 		"bind -n MouseDown1Pane { select-pane -t=; send -M }",
+		"bind -n M-MouseDown1Pane { move-pane -P front -t= }",
 
 		/* Mouse button 1 drag on pane. */
 		"bind -n MouseDrag1Pane { if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { copy-mode -M } }",
@@ -522,6 +525,7 @@ key_bindings_init(void)
 
 		/* Mouse button 1 on border. */
 		"bind -n MouseDown1Border { select-pane -M }",
+		"bind -n M-MouseDown1Border { move-pane -P front -t= }",
 
 		/* Mouse button 1 drag on border. */
 		"bind -n MouseDrag1Border { resize-pane -M }",

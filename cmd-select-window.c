@@ -90,7 +90,7 @@ cmd_select_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct winlink		*wl = target->wl, *current_wl;
 	struct session		*s = target->s;
-	enum active_window_mode	 mode;
+	enum active_mode	 mode;
 	int			 next, previous, last, activity;
 
 	next = (cmd_get_entry(self) == &cmd_next_window_entry);

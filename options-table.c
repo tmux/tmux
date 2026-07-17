@@ -1533,8 +1533,9 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "fg=#{?pane_modal_flag,themeblue,"
 			 "#{?pane_marked,thememagenta,"
+			 "#{?pane_local_active,themecyan,"
 			 "#{?synchronize-panes,themered,"
-			 "#{?pane_in_mode,themeyellow,themegreen}}}}",
+			 "#{?pane_in_mode,themeyellow,themegreen}}}}}",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the active pane border."

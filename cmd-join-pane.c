@@ -186,6 +186,7 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 		lc->g.yoff = yoff;
 		layout_fix_panes(w, NULL);
 	}
+	redraw_invalidate_scene(w);
 	events_fire_window("window-layout-changed", w);
 	server_redraw_window(w);
 
@@ -358,6 +359,7 @@ cmd_join_pane_zindex(struct cmdq_item *item, struct winlink *wl,
 	else
 		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 
+	redraw_invalidate_scene(w);
 	events_fire_window("window-layout-changed", w);
 	server_redraw_window(w);
 
@@ -397,6 +399,7 @@ cmd_join_pane_tile(struct cmdq_item *item, struct args *args, struct window *w,
 		window_set_active_pane(w, wp, 1);
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
+	redraw_invalidate_scene(w);
 	events_fire_window("window-layout-changed", w);
 	server_redraw_window(w);
 

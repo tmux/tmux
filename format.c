@@ -1061,7 +1061,8 @@ format_cb_pane_fg(struct format_tree *ft)
 	if (wp == NULL)
 		return (NULL);
 
-	tty_default_colours(&gc, wp, NULL);
+	tty_default_colours(&gc, wp,
+	    active_get_effective_pane(ft->c, wp->window), NULL);
 	return (xstrdup(colour_tostring(gc.fg)));
 }
 
@@ -1112,7 +1113,8 @@ format_cb_pane_bg(struct format_tree *ft)
 	if (wp == NULL)
 		return (NULL);
 
-	tty_default_colours(&gc, wp, NULL);
+	tty_default_colours(&gc, wp,
+	    active_get_effective_pane(ft->c, wp->window), NULL);
 	return (xstrdup(colour_tostring(gc.bg)));
 }
 
@@ -2099,12 +2101,43 @@ format_cb_synchronized_output_flag(struct format_tree *ft)
 static void *
 format_cb_pane_active(struct format_tree *ft)
 {
+	struct window_pane	*active;
+
 	if (ft->wp != NULL) {
-		if (ft->wp == ft->wp->window->active)
+		active = active_get_effective_pane(ft->c, ft->wp->window);
+		if (ft->wp == active)
 			return (xstrdup("1"));
 		return (xstrdup("0"));
 	}
 	return (NULL);
+}
+
+/* Callback for pane_local_active. */
+static void *
+format_cb_pane_local_active(struct format_tree *ft)
+{
+	struct window_pane	*active;
+
+	if (ft->wp != NULL && active_has_local_pane(ft->c, ft->wp->window)) {
+		active = active_get_effective_pane(ft->c, ft->wp->window);
+		if (ft->wp == active)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for pane_local_mode. */
+static void *
+format_cb_pane_local_mode(struct format_tree *ft)
+{
+	struct window	*w = ft->w;
+
+	if (ft->wp != NULL)
+		w = ft->wp->window;
+	if (active_has_local_pane(ft->c, w))
+		return (xstrdup("1"));
+	return (xstrdup("0"));
 }
 
 /* Callback for pane_at_left. */
@@ -2385,7 +2418,7 @@ static void *
 format_cb_pane_last(struct format_tree *ft)
 {
 	if (ft->wp != NULL) {
-		if (ft->wp == TAILQ_FIRST(&ft->wp->window->last_panes))
+		if (ft->wp == active_get_last_pane(ft->c, ft->wp->window))
 			return (xstrdup("1"));
 		return (xstrdup("0"));
 	}
@@ -3749,6 +3782,12 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_left", FORMAT_TABLE_STRING,
 	  format_cb_pane_left
+	},
+	{ "pane_local_active", FORMAT_TABLE_STRING,
+	  format_cb_pane_local_active
+	},
+	{ "pane_local_mode", FORMAT_TABLE_STRING,
+	  format_cb_pane_local_mode
 	},
 	{ "pane_marked", FORMAT_TABLE_STRING,
 	  format_cb_pane_marked
@@ -6746,7 +6785,7 @@ format_defaults(struct format_tree *ft, struct client *c, struct session *s,
 	if (wl == NULL && s != NULL)
 		wl = active_get_effective_winlink(c, s);
 	if (wp == NULL && wl != NULL)
-		wp = wl->window->active;
+		wp = active_get_effective_pane(c, wl->window);
 
 	if (c != NULL)
 		format_defaults_client(ft, c);

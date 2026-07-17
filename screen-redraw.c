@@ -1114,7 +1114,7 @@ redraw_draw_pane_span(struct redraw_draw_ctx *dctx,
 	struct tty_style_ctx	 style_ctx;
 	u_int			 px, py;
 
-	tty_default_colours(&defaults, wp, &style_ctx.dim);
+	tty_default_colours(&defaults, wp, dctx->active, &style_ctx.dim);
 	style_ctx.defaults = &defaults;
 	style_ctx.palette = &wp->palette;
 	style_ctx.hyperlinks = s->hyperlinks;
@@ -1323,7 +1323,7 @@ redraw_draw_scrollbar_span(struct redraw_draw_ctx *dctx,
 	memcpy(&slgc, &gc, sizeof slgc);
 	slgc.fg = gc.bg;
 	slgc.bg = gc.fg;
-	tty_default_colours(&pad_gc, wp, NULL);
+	tty_default_colours(&pad_gc, wp, dctx->active, NULL);
 
 	sb_w = sb_style->width;
 	sb_pad = sb_style->pad;
@@ -1601,7 +1601,7 @@ redraw_set_draw_context(struct redraw_draw_ctx *dctx,
 	wl = active_get_effective_winlink(c, s);
 	if (server_is_marked(s, wl, marked_pane.wp))
 		dctx->marked = marked_pane.wp;
-	dctx->active = active_get_effective_window(c, s)->active;
+	dctx->active = active_get_effective_pane(c, wl->window);
 
 	lines = status_line_size(c);
 	if (options_get_number(oo, "status-position") == 0)

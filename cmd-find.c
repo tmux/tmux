@@ -885,7 +885,7 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c, int flags)
 		cmd_find_clear_state(fs, flags);
 
 		fs->wl = active_get_effective_winlink(c, c->session);
-		fs->wp = fs->wl->window->active;
+		fs->wp = active_get_effective_pane(c, fs->wl->window);
 		if (fs->wp == NULL) {
 			cmd_find_from_session(fs, c->session, flags);
 			return (0);

@@ -3981,7 +3981,7 @@ applies the last set layout if possible (undoes the most recent layout change).
 spreads the current pane and any panes next to it out evenly.
 .Tg selectp
 .It Xo Ic select\-pane
-.Op Fl DdeLlMmRUZ
+.Op Fl ADdeLlMmRsSUZ
 .Op Fl T Ar title
 .Op Fl t Ar target\-pane
 .Xc
@@ -3989,6 +3989,8 @@ spreads the current pane and any panes next to it out evenly.
 Make pane
 .Ar target\-pane
 the active pane in its window.
+.Fl A
+raises the pane if it is floating.
 If one of
 .Fl D ,
 .Fl L ,
@@ -4003,6 +4005,15 @@ keeps the window zoomed if it was zoomed.
 is the same as using the
 .Ic last\-pane
 command.
+.Fl s
+switches the client to local pane selection for the target window when more
+than one client is attached; the pane currently active for the client is
+retained.
+Local pane selection is disabled automatically when fewer than two clients
+remain attached.
+.Fl S
+switches the client back to shared pane selection for the target window, so the
+window's active pane is used.
 .Fl e
 enables or
 .Fl d
@@ -7326,6 +7337,8 @@ The following variables are available, where appropriate:
 .It Li "pane_last" Ta "" Ta "1 if last pane"
 .It Li "pane_last_output_time" Ta "" Ta "Time pane last produced output"
 .It Li "pane_last_prompt_time" Ta "" Ta "Time most recent OSC 133 prompt began"
+.It Li "pane_local_active" Ta "" Ta "1 if active pane is client-local"
+.It Li "pane_local_mode" Ta "" Ta "1 if client has local pane selection"
 .It Li "pane_left" Ta "" Ta "Left of pane"
 .It Li "pane_marked" Ta "" Ta "1 if this is the marked pane"
 .It Li "pane_marked_set" Ta "" Ta "1 if a marked pane is set"

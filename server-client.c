@@ -505,6 +505,7 @@ server_client_lost(struct client *c)
 		server_client_attached_lost(c);
 		events_fire_client("client-detached", c);
 	}
+	active_check_clients();
 	if (c->name != NULL && (c->flags & (CLIENT_CONTROL|CLIENT_TERMINAL)))
 		events_fire_client("client-closed", c);
 
@@ -2105,7 +2106,7 @@ server_client_reset_state(struct client *c)
 {
 	struct tty		*tty = &c->tty;
 	struct window		*w = active_get_effective_window(c, c->session);
-	struct window_pane	*wp = w->active, *loop;
+	struct window_pane	*wp, *loop;
 	struct screen		*s = NULL;
 	struct options		*oo = c->session->options;
 	int			 mode = 0, cursor, flags, pane_mode = 0;
@@ -2113,6 +2114,7 @@ server_client_reset_state(struct client *c)
 	u_int			 sb_w;
 	struct visible_ranges	*r;
 
+	wp = active_get_effective_pane(c, w);
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
 
@@ -3074,6 +3076,7 @@ server_client_remove_pane(struct window_pane *wp)
 {
 	struct client			*c;
 
+	active_remove_pane(wp);
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->tty.mouse_last_pane == (int)wp->id) {
 			c->tty.mouse_last_pane = -1;
@@ -3089,6 +3092,7 @@ server_client_print(struct client *c, int parse, struct evbuffer *evb)
 {
 	void				*data = EVBUFFER_DATA(evb);
 	size_t				 size = EVBUFFER_LENGTH(evb);
+	struct window			*w;
 	struct window_pane		*wp;
 	struct window_mode_entry	*wme;
 	char				*sanitized, *msg, *line, empty = '\0';
@@ -3127,7 +3131,8 @@ server_client_print(struct client *c, int parse, struct evbuffer *evb)
 		goto out;
 	}
 
-	wp = active_get_effective_window(c, c->session)->active;
+	w = active_get_effective_window(c, c->session);
+	wp = active_get_effective_pane(c, w);
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme == NULL || wme->mode != &window_view_mode)
 		window_pane_set_mode(wp, NULL, &window_view_mode, NULL, NULL,

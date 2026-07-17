@@ -79,7 +79,7 @@ static void
 cmd_run_shell_print(struct job *job, const char *msg)
 {
 	struct cmd_run_shell_data	*cdata = job_get_data(job);
-	struct client			*c;
+	struct client			*c = cdata->client;
 	struct session			*s;
 	struct window_pane		*wp = NULL;
 	struct window			*w;
@@ -93,11 +93,10 @@ cmd_run_shell_print(struct job *job, const char *msg)
 			cmdq_print(cdata->item, "%s", msg);
 			return;
 		}
-		c = cdata->client;
 		if (c != NULL && c->session != NULL) {
 			s = c->session;
 			w = active_get_effective_window(c, s);
-			wp = w->active;
+			wp = active_get_effective_pane(c, w);
 		}
 		if (wp == NULL && cmd_find_from_nothing(&fs, 0) == 0)
 			wp = fs.wp;
