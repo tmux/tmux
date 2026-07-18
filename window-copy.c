@@ -466,11 +466,93 @@ static int
 window_copy_any_output_collapsed(struct screen *s)
 {
 	struct grid		*gd = s->grid;
+	struct grid_line	*gl;
 	u_int			 y;
+	int			 command = 0, output = 0;
 
 	for (y = 0; y < gd->hsize + gd->sy; y++) {
-		if (grid_get_line(gd, y)->flags & GRID_LINE_OUTPUT_COLLAPSED)
-			return (1);
+		gl = grid_get_line(gd, y);
+		if (gl->flags & GRID_LINE_START_PROMPT) {
+			command = 0;
+			output = 0;
+		}
+		if (gl->flags & GRID_LINE_START_COMMAND)
+			command = 1;
+		if (gl->flags & GRID_LINE_START_OUTPUT) {
+			if (gl->flags & GRID_LINE_OUTPUT_COLLAPSED)
+				return (1);
+			output = 1;
+		}
+		if (gl->flags & GRID_LINE_END_OUTPUT) {
+			if (!output && command &&
+			    gl->flags & GRID_LINE_OUTPUT_COLLAPSED)
+				return (1);
+			command = output = 0;
+		}
+	}
+	return (0);
+}
+
+static int
+window_copy_set_all_output(struct screen *s, int collapse)
+{
+	struct grid		*gd = s->grid;
+	struct grid_line	*gl;
+	u_int			 y;
+	int			 changed = 0, command = 0, output = 0;
+
+	for (y = 0; y < gd->hsize + gd->sy; y++) {
+		gl = grid_get_line(gd, y);
+		if (gl->flags & GRID_LINE_START_PROMPT) {
+			command = 0;
+			output = 0;
+		}
+		if (gl->flags & GRID_LINE_START_COMMAND)
+			command = 1;
+		if (gl->flags & GRID_LINE_START_OUTPUT) {
+			if (!!(gl->flags & GRID_LINE_OUTPUT_COLLAPSED) != collapse) {
+				if (collapse)
+					gl->flags |= GRID_LINE_OUTPUT_COLLAPSED;
+				else
+					gl->flags &= ~GRID_LINE_OUTPUT_COLLAPSED;
+				changed = 1;
+			}
+			output = 1;
+		}
+		if (gl->flags & GRID_LINE_END_OUTPUT) {
+			if (!output && command &&
+			    !!(gl->flags & GRID_LINE_OUTPUT_COLLAPSED) != collapse) {
+				if (collapse)
+					gl->flags |= GRID_LINE_OUTPUT_COLLAPSED;
+				else
+					gl->flags &= ~GRID_LINE_OUTPUT_COLLAPSED;
+				changed = 1;
+			}
+			command = output = 0;
+		}
+	}
+	return (changed);
+}
+
+/* Is the output following this prompt collapsed? */
+static int
+window_copy_prompt_collapsed(struct screen *s, u_int prompt)
+{
+	struct grid		*gd = s->grid;
+	struct grid_line	*gl;
+	u_int			 y;
+	int			 command = 0;
+
+	for (y = prompt; y < gd->hsize + gd->sy; y++) {
+		gl = grid_get_line(gd, y);
+		if (y != prompt && gl->flags & GRID_LINE_START_PROMPT)
+			break;
+		if (gl->flags & GRID_LINE_START_COMMAND)
+			command = 1;
+		if (gl->flags & GRID_LINE_START_OUTPUT)
+			return (gl->flags & GRID_LINE_OUTPUT_COLLAPSED);
+		if (gl->flags & GRID_LINE_END_OUTPUT && command)
+			return (gl->flags & GRID_LINE_OUTPUT_COLLAPSED);
 	}
 	return (0);
 }
@@ -492,24 +574,6 @@ window_copy_collapse_mask(struct window_mode_entry *wme)
 	if (strchr(value, 'D') != NULL)
 		mask |= WINDOW_COPY_COLLAPSE_SEPARATOR;
 	return (mask);
-}
-
-/* Is the output following this prompt collapsed? */
-static int
-window_copy_prompt_collapsed(struct screen *s, u_int prompt)
-{
-	struct grid		*gd = s->grid;
-	struct grid_line	*gl;
-	u_int			 y;
-
-	for (y = prompt; y < gd->hsize + gd->sy; y++) {
-		gl = grid_get_line(gd, y);
-		if (y != prompt && gl->flags & GRID_LINE_START_PROMPT)
-			break;
-		if (gl->flags & GRID_LINE_START_OUTPUT)
-			return (gl->flags & GRID_LINE_OUTPUT_COLLAPSED);
-	}
-	return (0);
 }
 
 static int
@@ -540,7 +604,7 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 	struct screen_write_ctx		 ctx;
 	struct grid_cell		 gc;
 	u_int			 collapse, y, x, total, dy, output_line = UINT_MAX;
-	int			 collapsed = 0, hiding = 0;
+	int			 collapsed = 0, command = 0, hiding = 0;
 
 	if (src == NULL)
 		return;
@@ -568,9 +632,13 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 		sgl = grid_get_line(sgd, y);
 		if (sgl->flags & GRID_LINE_START_PROMPT) {
 			collapsed = window_copy_prompt_collapsed(src, y);
+			command = 0;
 			hiding = collapsed &&
 			    (collapse & WINDOW_COPY_COLLAPSE_PROMPT);
 			prompt = NULL;
+		} else if (sgl->flags & GRID_LINE_START_SECONDARY_PROMPT) {
+			hiding = collapsed &&
+			    (collapse & WINDOW_COPY_COLLAPSE_PROMPT);
 		}
 		for (x = 0; x <= sgl->cellused; x++) {
 			if ((sgl->flags & GRID_LINE_START_PROMPT) && x == sgl->prompt) {
@@ -587,6 +655,7 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 				dgl->command = dst->cx;
 				hiding = collapsed &&
 				    (collapse & WINDOW_COPY_COLLAPSE_COMMAND);
+				command = 1;
 			}
 			if ((sgl->flags & GRID_LINE_START_OUTPUT) && x == sgl->output) {
 				dy = dst->grid->hsize + dst->cy;
@@ -609,9 +678,22 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 				dgl = grid_get_line(dst->grid, dy);
 				dgl->flags |= GRID_LINE_END_OUTPUT;
 				dgl->end_output = dst->cx;
+				if (output_line == UINT_MAX && command) {
+					output_line = y;
+					collapsed = (sgl->flags &
+					    GRID_LINE_OUTPUT_COLLAPSED) != 0;
+					if (prompt != NULL) {
+						prompt->flags |= GRID_LINE_OUTPUT_CONTROL;
+						prompt->output_line = output_line;
+						if (collapsed)
+							prompt->flags |=
+							    GRID_LINE_OUTPUT_COLLAPSED;
+					}
+				}
 				hiding = collapsed &&
 				    (collapse & WINDOW_COPY_COLLAPSE_SEPARATOR);
 				output_line = UINT_MAX;
+				command = 0;
 			}
 			if (x == sgl->cellused)
 				break;
@@ -812,13 +894,7 @@ window_copy_init(struct window_mode_entry *wme,
 	    options_get_number(wp->window->options,
 	    "copy-mode-collapse-controls") == WINDOW_COPY_CONTROLS_ALWAYS;
 	if (args_has(args, 'c')) {
-		for (i = 0; i < data->source->grid->hsize +
-		    data->source->grid->sy; i++) {
-			if (grid_get_line(data->source->grid, i)->flags &
-			    GRID_LINE_START_OUTPUT)
-				grid_get_line(data->source->grid, i)->flags |=
-				    GRID_LINE_OUTPUT_COLLAPSED;
-		}
+		window_copy_set_all_output(data->source, 1);
 	}
 	window_copy_rebuild_backing(wme);
 	window_copy_sync_snapshot(data, base->grid);
@@ -3433,6 +3509,7 @@ window_copy_find_output(struct window_mode_entry *wme, u_int *prompt,
 	struct grid			*gd = data->source->grid;
 	struct grid_line		*gl;
 	u_int			 target, last_prompt = 0, output = UINT_MAX, y;
+	int			 command = 0;
 
 	*prompt = 0;
 	*chosen = UINT_MAX;
@@ -3449,18 +3526,29 @@ window_copy_find_output(struct window_mode_entry *wme, u_int *prompt,
 	}
 	for (y = 0; y < gd->hsize + gd->sy; y++) {
 		gl = grid_get_line(gd, y);
-		if (gl->flags & GRID_LINE_START_PROMPT)
+		if (gl->flags & GRID_LINE_START_PROMPT) {
 			last_prompt = y;
+			command = 0;
+		}
+		if (gl->flags & GRID_LINE_START_COMMAND)
+			command = 1;
 		if (gl->flags & GRID_LINE_START_OUTPUT) {
 			output = y;
 			*prompt = last_prompt;
 		}
-		if (gl->flags & GRID_LINE_END_OUTPUT && output != UINT_MAX) {
-			if (target >= *prompt && target <= y) {
-				*chosen = output;
+		if (gl->flags & GRID_LINE_END_OUTPUT) {
+			if (output != UINT_MAX) {
+				if (target >= *prompt && target <= y) {
+					*chosen = output;
+					return (1);
+				}
+			} else if (command && target >= last_prompt && target <= y) {
+				*prompt = last_prompt;
+				*chosen = y;
 				return (1);
 			}
 			output = UINT_MAX;
+			command = 0;
 		}
 	}
 	if (output != UINT_MAX && target >= *prompt) {
@@ -3492,18 +3580,7 @@ window_copy_set_output(struct window_mode_entry *wme, int all, int collapse)
 		wanted = collapse;
 		if (wanted == -1)
 			wanted = !window_copy_any_output_collapsed(data->source);
-		for (y = 0; y < gd->hsize + gd->sy; y++) {
-			gl = grid_get_line(gd, y);
-			if (!(gl->flags & GRID_LINE_START_OUTPUT))
-				continue;
-			if (!!(gl->flags & GRID_LINE_OUTPUT_COLLAPSED) == wanted)
-				continue;
-			if (wanted)
-				gl->flags |= GRID_LINE_OUTPUT_COLLAPSED;
-			else
-				gl->flags &= ~GRID_LINE_OUTPUT_COLLAPSED;
-			changed = 1;
-		}
+		changed = window_copy_set_all_output(data->source, wanted);
 	} else {
 		if (chosen == UINT_MAX)
 			return (0);

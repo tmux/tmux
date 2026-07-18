@@ -1701,6 +1701,8 @@ grid_line_flags_string(int flags)
 		strlcat(s, "DEAD,", sizeof s);
 	if (flags & GRID_LINE_START_PROMPT)
 		strlcat(s, "START_PROMPT,", sizeof s);
+	if (flags & GRID_LINE_START_SECONDARY_PROMPT)
+		strlcat(s, "START_SECONDARY_PROMPT,", sizeof s);
 	if (flags & GRID_LINE_START_OUTPUT)
 		strlcat(s, "START_OUTPUT,", sizeof s);
 	if (flags & GRID_LINE_START_COMMAND)

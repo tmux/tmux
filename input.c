@@ -3242,15 +3242,20 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 	u_int			 column = ictx->ctx.s->cx;
 	struct grid_line	*gl = NULL;
 	const char		*errstr;
-	int			 status;
+	int			 secondary, status;
 
 	if (line <= gd->hsize + gd->sy - 1)
 		gl = grid_get_line(gd, line);
 
 	switch (*p) {
 	case 'A':
-		if (gl != NULL && !(gl->flags & GRID_LINE_START_PROMPT)) {
-			gl->flags |= GRID_LINE_START_PROMPT;
+		secondary = (strstr(p + 1, ";k=s") != NULL);
+		if (gl != NULL && !(gl->flags &
+		    (GRID_LINE_START_PROMPT|GRID_LINE_START_SECONDARY_PROMPT))) {
+			if (secondary)
+				gl->flags |= GRID_LINE_START_SECONDARY_PROMPT;
+			else
+				gl->flags |= GRID_LINE_START_PROMPT;
 			gl->prompt = column;
 		}
 		if (wp != NULL) {
