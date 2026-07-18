@@ -114,9 +114,6 @@ static const char *options_table_theme_list[] = {
 static const char *options_table_copy_mode_line_numbers_list[] = {
 	"off", "default", "absolute", "relative", "hybrid", NULL
 };
-static const char *options_table_collapse_output_list[] = {
-	"output-only", "output-and-prompt", NULL
-};
 static const char *options_table_copy_mode_collapse_controls_list[] = {
 	"always", "never", "on-demand", NULL
 };
@@ -1369,12 +1366,12 @@ const struct options_table_entry options_table[] = {
 	  .text = "Time for which 'display-panes' should show pane numbers."
 	},
 
-	{ .name = "collapse-output",
-	  .type = OPTIONS_TABLE_CHOICE,
+	{ .name = "copy-mode-collapse",
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .choices = options_table_collapse_output_list,
-	  .default_num = 0,
-	  .text = "What is hidden when command output is collapsed in copy mode."
+	  .default_str = "C",
+	  .text = "Sections hidden when OSC 133 command output is collapsed in "
+	          "copy mode."
 	},
 
 	{ .name = "copy-mode-collapse-controls",

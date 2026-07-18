@@ -1170,6 +1170,11 @@ options_from_string_check(const struct options_table_entry *oe,
 		xasprintf(cause, "not a suitable shell: %s", value);
 		return (-1);
 	}
+	if (strcmp(oe->name, "copy-mode-collapse") == 0 &&
+	    (*value == '\0' || strspn(value, "ABCD") != strlen(value))) {
+		xasprintf(cause, "value is invalid: %s", value);
+		return (-1);
+	}
 	if (oe->pattern != NULL && fnmatch(oe->pattern, value, 0) != 0) {
 		xasprintf(cause, "value is invalid: %s", value);
 		return (-1);

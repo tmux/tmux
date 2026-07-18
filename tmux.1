@@ -5838,16 +5838,30 @@ and
 .Ic hybrid ,
 they use absolute line numbers.
 .Pp
-.It Xo Ic collapse\-output
-.Op Ic output\-only | output\-and\-prompt
+.It Xo Ic copy\-mode\-collapse
+.Op Ar sections
 .Xc
-Choose what is hidden when OSC 133 command output is collapsed in copy mode.
-.Ic output\-only
-hides only the output between the C and D markers;
-.Ic output\-and\-prompt
-also hides the prompt between the A and B markers.
+Choose which OSC 133 sections are hidden when command output is collapsed in
+copy mode.
+.Ar sections
+is a string containing one or more of the following letters:
+.Bl -column "Letter" "Hidden section" -offset indent
+.It Sy Letter Ta Sy Hidden section
+.It Li A Ta prompt (A to B)
+.It Li B Ta entered command (B to C)
+.It Li C Ta command output (C to D)
+.It Li D Ta text after command output (D to the next A)
+.El
+.Pp
+For example,
+.Ic C
+hides only command output,
+.Ic CD
+hides command output and text before the next prompt, and
+.Ic CDA
+hides command output, text before the next prompt, and the prompt itself.
 The default is
-.Ic output\-only .
+.Ic C .
 .Pp
 .It Xo Ic copy\-mode\-collapse\-controls
 .Op Ic always | never | on\-demand

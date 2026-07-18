@@ -32,6 +32,11 @@ struct window_copy_mode_data;
 #define WINDOW_COPY_CONTROLS_NEVER 1
 #define WINDOW_COPY_CONTROLS_ON_DEMAND 2
 
+#define WINDOW_COPY_COLLAPSE_PROMPT 0x1
+#define WINDOW_COPY_COLLAPSE_COMMAND 0x2
+#define WINDOW_COPY_COLLAPSE_OUTPUT 0x4
+#define WINDOW_COPY_COLLAPSE_SEPARATOR 0x8
+
 static const char *window_copy_key_table(struct window_mode_entry *);
 static void	window_copy_command(struct window_mode_entry *, struct client *,
 		    struct session *, struct winlink *, struct args *,
@@ -470,6 +475,25 @@ window_copy_any_output_collapsed(struct screen *s)
 	return (0);
 }
 
+static u_int
+window_copy_collapse_mask(struct window_mode_entry *wme)
+{
+	const char	*value;
+	u_int		 mask = 0;
+
+	value = options_get_string(wme->wp->window->options,
+	    "copy-mode-collapse");
+	if (strchr(value, 'A') != NULL)
+		mask |= WINDOW_COPY_COLLAPSE_PROMPT;
+	if (strchr(value, 'B') != NULL)
+		mask |= WINDOW_COPY_COLLAPSE_COMMAND;
+	if (strchr(value, 'C') != NULL)
+		mask |= WINDOW_COPY_COLLAPSE_OUTPUT;
+	if (strchr(value, 'D') != NULL)
+		mask |= WINDOW_COPY_COLLAPSE_SEPARATOR;
+	return (mask);
+}
+
 /* Is the output following this prompt collapsed? */
 static int
 window_copy_prompt_collapsed(struct screen *s, u_int prompt)
@@ -515,8 +539,8 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 	struct grid_line		*sgl, *dgl, *prompt = NULL;
 	struct screen_write_ctx		 ctx;
 	struct grid_cell		 gc;
-	u_int			 y, x, total, dy, output_line = UINT_MAX;
-	int			 hiding = 0, hide_prompt = 0;
+	u_int			 collapse, y, x, total, dy, output_line = UINT_MAX;
+	int			 collapsed = 0, hiding = 0;
 
 	if (src == NULL)
 		return;
@@ -532,6 +556,7 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 	}
 	sgd = src->grid;
 	total = sgd->hsize + sgd->sy;
+	collapse = window_copy_collapse_mask(wme);
 
 	dst = xcalloc(1, sizeof *dst);
 	screen_init(dst, screen_size_x(&data->screen), screen_size_y(&data->screen),
@@ -542,9 +567,9 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 	for (y = 0; y < total; y++) {
 		sgl = grid_get_line(sgd, y);
 		if (sgl->flags & GRID_LINE_START_PROMPT) {
-			hide_prompt = (options_get_number(wme->wp->window->options,
-			    "collapse-output") != 0 &&
-			    window_copy_prompt_collapsed(src, y));
+			collapsed = window_copy_prompt_collapsed(src, y);
+			hiding = collapsed &&
+			    (collapse & WINDOW_COPY_COLLAPSE_PROMPT);
 			prompt = NULL;
 		}
 		for (x = 0; x <= sgl->cellused; x++) {
@@ -560,7 +585,8 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 				dgl = grid_get_line(dst->grid, dy);
 				dgl->flags |= GRID_LINE_START_COMMAND;
 				dgl->command = dst->cx;
-				hide_prompt = 0;
+				hiding = collapsed &&
+				    (collapse & WINDOW_COPY_COLLAPSE_COMMAND);
 			}
 			if ((sgl->flags & GRID_LINE_START_OUTPUT) && x == sgl->output) {
 				dy = dst->grid->hsize + dst->cy;
@@ -568,7 +594,9 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 				dgl->flags |= GRID_LINE_START_OUTPUT;
 				dgl->output = dst->cx;
 				output_line = y;
-				hiding = (sgl->flags & GRID_LINE_OUTPUT_COLLAPSED) != 0;
+				collapsed = (sgl->flags & GRID_LINE_OUTPUT_COLLAPSED) != 0;
+				hiding = collapsed &&
+				    (collapse & WINDOW_COPY_COLLAPSE_OUTPUT);
 				if (prompt != NULL) {
 					prompt->flags |= GRID_LINE_OUTPUT_CONTROL;
 					prompt->output_line = output_line;
@@ -581,12 +609,13 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 				dgl = grid_get_line(dst->grid, dy);
 				dgl->flags |= GRID_LINE_END_OUTPUT;
 				dgl->end_output = dst->cx;
-				hiding = 0;
+				hiding = collapsed &&
+				    (collapse & WINDOW_COPY_COLLAPSE_SEPARATOR);
 				output_line = UINT_MAX;
 			}
 			if (x == sgl->cellused)
 				break;
-			if (hiding || hide_prompt)
+			if (hiding)
 				continue;
 			dy = dst->grid->hsize + dst->cy;
 			dgl = grid_get_line(dst->grid, dy);
