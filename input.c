@@ -3239,6 +3239,7 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 	struct window_pane	*wp = ictx->wp;
 	struct grid		*gd = ictx->ctx.s->grid;
 	u_int			 line = ictx->ctx.s->cy + gd->hsize;
+	u_int			 column = ictx->ctx.s->cx;
 	struct grid_line	*gl = NULL;
 	const char		*errstr;
 	int			 status;
@@ -3248,16 +3249,26 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 
 	switch (*p) {
 	case 'A':
-		if (gl != NULL)
+		if (gl != NULL && !(gl->flags & GRID_LINE_START_PROMPT)) {
 			gl->flags |= GRID_LINE_START_PROMPT;
+			gl->prompt = column;
+		}
 		if (wp != NULL) {
 			wp->last_prompt_time = time(NULL);
 			events_fire_pane("pane-shell-prompt", wp);
 		}
 		break;
+	case 'B':
+		if (gl != NULL && !(gl->flags & GRID_LINE_START_COMMAND)) {
+			gl->flags |= GRID_LINE_START_COMMAND;
+			gl->command = column;
+		}
+		break;
 	case 'C':
-		if (gl != NULL)
+		if (gl != NULL && !(gl->flags & GRID_LINE_START_OUTPUT)) {
 			gl->flags |= GRID_LINE_START_OUTPUT;
+			gl->output = column;
+		}
 		if (wp != NULL) {
 			wp->cmd_start_time = time(NULL);
 			wp->cmd_end_time = 0;
@@ -3267,6 +3278,10 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 		}
 		break;
 	case 'D':
+		if (gl != NULL) {
+			gl->flags |= GRID_LINE_END_OUTPUT;
+			gl->end_output = column;
+		}
 		if (wp != NULL) {
 			wp->cmd_end_time = time(NULL);
 			wp->flags &= ~PANE_CMDRUNNING;

@@ -811,6 +811,11 @@ struct colour_palette {
 #define GRID_LINE_START_PROMPT 0x8
 #define GRID_LINE_START_OUTPUT 0x10
 #define GRID_LINE_HYPERLINK 0x20
+#define GRID_LINE_START_COMMAND 0x40
+#define GRID_LINE_END_OUTPUT 0x80
+#define GRID_LINE_OUTPUT_COLLAPSED 0x100
+#define GRID_LINE_OUTPUT_CONTROL 0x200
+#define GRID_LINE_OUTPUT_MEMBER 0x400
 
 /* Grid string flags. */
 #define GRID_STRING_WITH_SEQUENCES 0x1
@@ -889,6 +894,12 @@ struct grid_line {
 	u_int			 extdsize;
 
 	int			 flags;
+	u_int			 prompt;
+	u_int			 command;
+	u_int			 output;
+	u_int			 end_output;
+	u_int			 source_line;
+	u_int			 output_line;
 	time_t			 time;
 };
 
