@@ -47,6 +47,18 @@ $TMUX kill-server
 $TMUX new-session -d -x80 -y20 "sh -c 'printf \"\\033]133;A\\007P> \\033]133;B\\007for i in 1 2 3; do\\n\\033]133;A;k=s\\007> \\033]133;B\\007echo \\$i\\n\\033]133;A;k=s\\007> \\033]133;B\\007done\\033]133;C\\007\\nRESULT\\n\\033]133;D;0\\007\\n\\033]133;A\\007P> \\033]133;B\\007\"; exec sleep 100'" || exit 1
 sleep 1
 
+$TMUX set-window-option copy-mode-collapse CD || exit 1
+$TMUX copy-mode -U || exit 1
+$TMUX send-keys -X search-backward 'P> for i in 1 2 3; do' || exit 1
+$TMUX send-keys -X end-of-line || exit 1
+x=$($TMUX display-message -p '#{copy_cursor_x}')
+$TMUX send-keys Tab || exit 1
+line=$($TMUX display-message -p '#{copy_cursor_line}')
+[ "$line" = 'P> for i in 1 2 3; do' ] || exit 1
+newx=$($TMUX display-message -p '#{copy_cursor_x}')
+[ "$newx" = "$x" ] || exit 1
+$TMUX send-keys -X cancel || exit 1
+
 $TMUX set-window-option copy-mode-collapse AC || exit 1
 $TMUX copy-mode -U || exit 1
 $TMUX send-keys -X search-backward 'P> for i in 1 2 3; do' || exit 1

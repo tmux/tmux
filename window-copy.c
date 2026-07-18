@@ -3502,57 +3502,111 @@ window_copy_cmd_line_numbers_toggle(struct window_copy_cmd_state *cs)
 }
 
 static int
-window_copy_find_output(struct window_mode_entry *wme, u_int *prompt,
-    u_int *chosen)
+window_copy_find_output(struct window_mode_entry *wme, u_int target,
+    u_int *prompt, u_int *chosen)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*gd = data->source->grid;
 	struct grid_line		*gl;
-	u_int			 target, last_prompt = 0, output = UINT_MAX, y;
-	int			 command = 0;
+	u_int			 candidate = UINT_MAX, last_prompt = 0;
+	u_int			 output = UINT_MAX, y;
+	int			 command = 0, have_prompt = 0;
 
 	*prompt = 0;
 	*chosen = UINT_MAX;
-	gl = grid_get_line(data->backing->grid,
-	    data->backing->grid->hsize + data->cy - data->oy);
-	target = gl->source_line;
-	if (gl->flags & (GRID_LINE_OUTPUT_CONTROL|GRID_LINE_OUTPUT_MEMBER)) {
-		*chosen = gl->output_line;
-		for (y = 0; y <= *chosen; y++) {
-			if (grid_get_line(gd, y)->flags & GRID_LINE_START_PROMPT)
-				*prompt = y;
-		}
-		return (1);
-	}
 	for (y = 0; y < gd->hsize + gd->sy; y++) {
 		gl = grid_get_line(gd, y);
 		if (gl->flags & GRID_LINE_START_PROMPT) {
+			if (have_prompt && target >= last_prompt && target < y &&
+			    candidate != UINT_MAX) {
+				*prompt = last_prompt;
+				*chosen = candidate;
+				return (1);
+			}
 			last_prompt = y;
+			candidate = UINT_MAX;
+			output = UINT_MAX;
 			command = 0;
+			have_prompt = 1;
 		}
 		if (gl->flags & GRID_LINE_START_COMMAND)
 			command = 1;
 		if (gl->flags & GRID_LINE_START_OUTPUT) {
 			output = y;
-			*prompt = last_prompt;
+			candidate = y;
 		}
 		if (gl->flags & GRID_LINE_END_OUTPUT) {
-			if (output != UINT_MAX) {
-				if (target >= *prompt && target <= y) {
-					*chosen = output;
-					return (1);
-				}
-			} else if (command && target >= last_prompt && target <= y) {
-				*prompt = last_prompt;
-				*chosen = y;
-				return (1);
-			}
+			if (output == UINT_MAX && command)
+				candidate = y;
 			output = UINT_MAX;
 			command = 0;
 		}
 	}
-	if (output != UINT_MAX && target >= *prompt) {
-		*chosen = output;
+	if (have_prompt && target >= last_prompt && candidate != UINT_MAX) {
+		*prompt = last_prompt;
+		*chosen = candidate;
+		return (1);
+	}
+	return (0);
+}
+
+static void
+window_copy_cursor_source(struct window_mode_entry *wme, u_int *source_x,
+    u_int *source_y)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->backing->grid;
+	struct grid_line		*gl;
+	u_int			 y;
+
+	*source_x = data->cx;
+	y = gd->hsize + data->cy - data->oy;
+	if (!data->output_controls)
+		*source_y = y;
+	else {
+		gl = grid_get_line(gd, y);
+		*source_y = gl->source_line;
+	}
+}
+
+static int
+window_copy_restore_cursor(struct window_mode_entry *wme, u_int source_x,
+    u_int source_y, u_int prompt)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->backing->grid;
+	struct grid_line		*gl;
+	u_int			 y;
+
+	for (y = 0; y < gd->hsize + gd->sy; y++) {
+		gl = grid_get_line(gd, y);
+		if (gl->source_line != source_y || gl->cellused == 0)
+			continue;
+		data->cx = source_x;
+		if (data->cx >= gl->cellused)
+			data->cx = gl->cellused - 1;
+		if (y < gd->hsize) {
+			data->cy = 0;
+			data->oy = gd->hsize - y;
+		} else {
+			data->cy = y - gd->hsize;
+			data->oy = 0;
+		}
+		return (1);
+	}
+	for (y = 0; y < gd->hsize + gd->sy; y++) {
+		gl = grid_get_line(gd, y);
+		if (gl->source_line != prompt ||
+		    !(gl->flags & GRID_LINE_OUTPUT_CONTROL))
+			continue;
+		data->cx = gl->command;
+		if (y < gd->hsize) {
+			data->cy = 0;
+			data->oy = gd->hsize - y;
+		} else {
+			data->cy = y - gd->hsize;
+			data->oy = 0;
+		}
 		return (1);
 	}
 	return (0);
@@ -3564,18 +3618,20 @@ window_copy_set_output(struct window_mode_entry *wme, int all, int collapse)
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*gd;
 	struct grid_line		*gl;
-	u_int			 prompt = 0, y, chosen = UINT_MAX;
+	u_int			 prompt = 0, source_x, source_y;
+	u_int			 chosen = UINT_MAX;
 	int			 changed = 0, enabled = 0, wanted;
 
 	if (data->source == NULL)
 		return (0);
+	window_copy_cursor_source(wme, &source_x, &source_y);
 	if (!data->output_controls) {
 		data->output_controls = 1;
 		window_copy_rebuild_backing(wme);
 		enabled = 1;
 	}
 	gd = data->source->grid;
-	window_copy_find_output(wme, &prompt, &chosen);
+	window_copy_find_output(wme, source_y, &prompt, &chosen);
 	if (all) {
 		wanted = collapse;
 		if (wanted == -1)
@@ -3607,24 +3663,8 @@ window_copy_set_output(struct window_mode_entry *wme, int all, int collapse)
 	window_copy_clear_selection(wme);
 	window_copy_clear_marks(wme);
 	window_copy_rebuild_backing(wme);
-	if (chosen != UINT_MAX) {
-		for (y = 0; y < data->backing->grid->hsize +
-		    data->backing->grid->sy; y++) {
-			gl = grid_get_line(data->backing->grid, y);
-			if (gl->source_line != prompt ||
-			    !(gl->flags & GRID_LINE_OUTPUT_CONTROL))
-				continue;
-			data->cx = gl->command;
-			if (y < data->backing->grid->hsize) {
-				data->cy = 0;
-				data->oy = data->backing->grid->hsize - y;
-			} else {
-				data->cy = y - data->backing->grid->hsize;
-				data->oy = 0;
-			}
-			return (1);
-		}
-	}
+	if (window_copy_restore_cursor(wme, source_x, source_y, prompt))
+		return (1);
 	data->cy = screen_size_y(&data->screen) - 1;
 	data->cx = 0;
 	data->oy = 0;
