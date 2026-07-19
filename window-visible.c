@@ -83,6 +83,8 @@ window_visible_ranges(struct window_pane *base_wp, int px, int py, u_int width,
 	w = base_wp->window;
 	if ((u_int)py >= w->sy)
 		goto empty;
+	if ((u_int)px >= w->sx)
+		goto empty;
 	if (px + width > w->sx)
 		width = w->sx - px;
 
