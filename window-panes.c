@@ -1,4 +1,4 @@
-/* $OpenBSD: window-panes.c,v 1.2 2026/07/17 16:03:15 nicm Exp $ */
+/* $OpenBSD: window-panes.c,v 1.3 2026/07/19 19:53:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -966,10 +966,8 @@ window_panes_free(struct window_mode_entry *wme)
 
 	evtimer_del(&data->timer);
 
-	if (data->zoomed == 0) {
-		wme->wp->flags |= PANE_NORESIZETRIM;
+	if (data->zoomed == 0)
 		server_unzoom_window(w);
-	}
 	server_redraw_window(w);
 	server_redraw_window_borders(w);
 	server_status_window(w);
@@ -1092,11 +1090,8 @@ window_panes_key(struct window_mode_entry *wme, struct client *c,
 		return;
 	}
 
-	if (wp->window->flags & WINDOW_ZOOMED) {
-		if (data->zoomed == 0)
-			wp->flags |= PANE_NORESIZETRIM;
+	if (wp->window->flags & WINDOW_ZOOMED)
 		window_unzoom(wp->window, 1);
-	}
 	window_panes_run_command(data, c, target);
 	window_pane_reset_mode(wp);
 }
