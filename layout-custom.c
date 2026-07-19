@@ -47,7 +47,7 @@
 #define LAYOUT_STRING_MAX	8192
 #define TOKENS_MAX		(LAYOUT_STRING_MAX)
 
-/* Recognized key values for JSON format. */
+/* Recognized keys for JSON format. */
 #define KEY_VERSION	"V"	/* number */
 #define KEY_LAYOUT	"L"	/* object */
 #define KEY_TYPE	"t"	/* string, see accepted vals below */
