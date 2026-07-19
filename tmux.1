@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1143 2026/07/17 12:42:51 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1144 2026/07/19 17:36:38 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: July 17 2026 $
+.Dd $Mdocdate: July 19 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -7333,6 +7333,8 @@ The following variables are available, where appropriate:
 .It Li "pane_top" Ta "" Ta "Top of pane"
 .It Li "pane_tty" Ta "" Ta "Pseudo terminal of pane"
 .It Li "pane_unseen_changes" Ta "" Ta "1 if there were changes in pane while in mode"
+.It Li "pane_unzoomed_height" Ta "" Ta "Height of pane when not zoomed"
+.It Li "pane_unzoomed_width" Ta "" Ta "Width of pane when not zoomed"
 .It Li "pane_width" Ta "" Ta "Width of pane"
 .It Li "pane_x" Ta "" Ta "X position of pane"
 .It Li "pane_y" Ta "" Ta "Y position of pane"
