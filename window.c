@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.365 2026/07/17 16:03:15 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.366 2026/07/19 19:53:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1556,12 +1556,6 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	struct window_pane_resize	*r;
 	struct event_payload		*ep;
 	struct cmd_find_state		 fs;
-	int				 trim = 1;
-
-	if (wp->flags & PANE_NORESIZETRIM) {
-		wp->flags &= ~PANE_NORESIZETRIM;
-		trim = 0;
-	}
 
 	if (sx == wp->sx && sy == wp->sy)
 		return;
@@ -1579,10 +1573,7 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	wp->sy = sy;
 
 	log_debug("%s: %%%u resize %ux%u", __func__, wp->id, sx, sy);
-	if (wp->base.saved_grid == NULL)
-		screen_resize_cursor(&wp->base, sx, sy, 1, trim, 1);
-	else
-		screen_resize_cursor(&wp->base, sx, sy, 0, trim, 1);
+	screen_resize(&wp->base, sx, sy, wp->base.saved_grid == NULL);
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL && wme->mode->resize != NULL)
