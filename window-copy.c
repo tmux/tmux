@@ -1107,9 +1107,11 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 	u_int				 hsize = screen_hsize(data->backing);
 	u_int				 position, limit;
 	struct grid_line		*gl;
+	time_t				 t;
 
 	gl = grid_get_line(data->backing->grid, hsize - data->oy);
-	format_add(ft, "top_line_time", "%llu", (unsigned long long)gl->time);
+	t = grid_line_time(gl);
+	format_add(ft, "top_line_time", "%llu", (unsigned long long)t);
 
 	format_add(ft, "scroll_position", "%d", data->oy);
 	if (window_copy_line_number_is_absolute(wme)) {
