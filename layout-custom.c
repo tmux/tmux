@@ -245,8 +245,8 @@ static int
 layout_tokenize_value(struct layout_tokens *tokens, const char *input,
     struct layout_string_view *lsv)
 {
-	struct layout_token	*prev = layout_tokens_last(tokens);
-	int			 scan = 0;
+	const struct layout_token	*prev = layout_tokens_last(tokens);
+	int				 scan = 0;
 
 	if (prev == NULL)
 		return (-1);
