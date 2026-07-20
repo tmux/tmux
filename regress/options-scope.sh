@@ -158,6 +158,9 @@ check_fail "ambiguous option: status-l" set -g status-l x
 # A unique prefix resolves to the full option name.
 check_ok set -g status-inte 5
 check_value "-gv status-interval" "5"
+# A negative status-interval is accepted (millisecond interval for animations).
+check_ok set -g status-interval -100
+check_value "-gv status-interval" "-100"
 # -q suppresses the error and exits successfully.
 check_ok set -gq no-such-option x
 check_ok show -gqv no-such-option
