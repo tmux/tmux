@@ -1,16 +1,9 @@
 CHANGES FROM 3.7b TO 3.8
 
-* Add support for sub-second status line updates, intended for brief status
-  line animations. A negative status-interval is now a status line update
-  interval in milliseconds (its absolute value) rather than seconds; a
-  magnitude below 20 is treated as 20. A positive value is a number of seconds
-  as before, so existing configurations are unaffected. Two format variables
-  provide a time source: #{now_ms} is a monotonic millisecond clock (empty
-  outside time-expanded formats such as the status line) and
-  #{cycle:<period_ms>:<frames>} picks one of several space-separated frames
-  according to the clock, for example a braille spinner. Both expand to a fixed
-  value inside #() so they do not cause shell commands to be re-run on every
-  frame.
+* Add a #{cycle:<period_ms>:<frames>} format that shows one of several
+  space-separated frames in turn, changing every period_ms milliseconds. While
+  a cycle is shown in the status line, the status line is redrawn at that period
+  so the animation advances on its own. Empty input expands to an empty string.
 
 * Many improvements to floating panes:
 

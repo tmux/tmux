@@ -5488,19 +5488,6 @@ Update the status line every
 seconds.
 By default, updates will occur every 15 seconds.
 A setting of zero disables redrawing at interval.
-A negative
-.Ar interval
-is instead a number of milliseconds (its absolute value), intended for short
-status line animations using the
-.Ql now_ms
-and
-.Ql cycle:\&
-formats described in the
-.Sx FORMATS
-section; a magnitude below 20 milliseconds is treated as 20 to avoid
-excessively frequent updates.
-Because of the extra redraws, only use a millisecond interval while an animation
-is being displayed.
 .It Xo Ic status\-justify
 .Op Ic left | centre | right | absolute\-centre
 .Xc
@@ -7188,55 +7175,32 @@ will be replaced by
 .Ql #{?pane_in_mode,yes,no} .
 .Pp
 The
-.Ql now_ms
-variable expands to a monotonically increasing millisecond clock, intended as a
-time source for status line animations.
-It is only replaced inside a format that is expanded with time information, such
-as the status line; elsewhere, and in particular inside
-.Ql #() ,
-it expands to the empty string.
-.Pp
-The
 .Ql cycle:\&
-helper selects one of a list of frames according to
-.Ql now_ms
-and is the convenient way to build a spinner.
+format shows one of a list of frames in turn.
 It is written
 .Ql #{cycle:<period_ms>:<frames>} ,
 where
-.Ar period_ms
-is how long each frame is shown in milliseconds and
 .Ar frames
-is a list of frames separated by single spaces.
-The frame shown is
-.Ql (now_ms / period_ms) % number_of_frames ,
-so it advances by one every
+is a list of frames separated by single spaces and
 .Ar period_ms
-milliseconds and then wraps around.
-For example
-.Ql #{cycle:80:\[u280B] \[u2819] \[u2839] \[u2838] \[u283C] \[u2834] \[u2826] \[u2827]}
-is a braille spinner that advances every 80 milliseconds.
-Frames are used literally and cannot themselves contain a space; an empty frame
-list, or a
+is a time in milliseconds.
+Each frame is shown for
 .Ar period_ms
-that is not a positive number, expands to the empty string.
-.Pp
-Because
-.Ql now_ms
-only varies inside a time-expanded format, and the status line is the only such
-format that is redrawn on a timer, these animations are only visible on the
-status line, and only while a short (negative)
-.Ic status\-interval
-is set.
-Both tokens deliberately expand to a fixed value inside
-.Ql #() ,
-so embedding them in a shell command does not make it re-run on every frame; do
-not rely on
-.Ql now_ms
-or
+milliseconds before the next, wrapping back to the first after the last, so it
+advances on its own.
+While a
 .Ql cycle:\&
-inside
+is shown in the status line, the status line is redrawn every
+.Ar period_ms
+milliseconds so that it advances.
+A frame cannot contain a space; an empty list of frames, or a
+.Ar period_ms
+that is not a positive number, gives the empty string.
+It does not work inside
 .Ql #() .
+For example,
+.Ql #{cycle:200:| / \- \e}
+shows each of the four frames in turn, changing every 200 milliseconds.
 .Pp
 The following variables are available, where appropriate:
 .Bl -column "XXXXXXXXXXXXXXXXXXX" "XXXXX"
@@ -7345,7 +7309,6 @@ The following variables are available, where appropriate:
 .It Li "next_session_id" Ta "" Ta "Unique session ID for next new session"
 .It Li "next_window_active" Ta "" Ta "1 if next window in W: loop is active"
 .It Li "next_window_index" Ta "" Ta "Index of next window in W: loop"
-.It Li "now_ms" Ta "" Ta "Monotonic clock in milliseconds, for animations"
 .It Li "origin_flag" Ta "" Ta "Pane origin flag"
 .It Li "pane_active" Ta "" Ta "1 if active pane"
 .It Li "pane_at_bottom" Ta "" Ta "1 if pane is at the bottom of window"
