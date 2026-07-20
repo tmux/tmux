@@ -1852,6 +1852,17 @@ export fn tmux_ghostty_vt_new(wp: ?*c.window_pane) ?*GhosttyVT {
         allocator.destroy(gvt);
         return null;
     }
+    // A bare GhosttyTerminal starts with grapheme cluster mode (2027)
+    // reset (DECRPM "recognized but off"), but a real Ghostty enables
+    // it unconditionally on startup and always reports it as set. Apps
+    // that probe capabilities via DECRQM (many TUI frameworks do) see
+    // this "recognized but off" state as neither "unsupported" (as a
+    // classic, non-ghostty tmux pane would answer) nor "genuinely on"
+    // (as real Ghostty answers), which can steer them onto an
+    // unintended/undertested code path. Match real Ghostty's default
+    // so a ghostty-vt pane looks the same as a real Ghostty terminal
+    // to anything probing this mode.
+    _ = c.ghostty_terminal_mode_set(gvt.terminal, 2027, true);
     const pixels = pixelSize(pane);
     _ = c.ghostty_terminal_resize(gvt.terminal, @intCast(pane.*.sx), @intCast(pane.*.sy), pixels.width, pixels.height);
     if (c.ghostty_render_state_new(null, &gvt.render_state) != c.GHOSTTY_SUCCESS) {
