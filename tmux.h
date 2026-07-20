@@ -2036,6 +2036,10 @@ struct cmd_entry {
 
 /* Status line. */
 #define STATUS_LINES_LIMIT 5
+
+/* Minimum interval between status line updates in milliseconds. */
+#define STATUS_INTERVAL_MIN_MS 20
+
 struct status_line {
 	struct event		 timer;
 
@@ -2440,8 +2444,8 @@ struct options_table_entry {
 	int			  scope;
 	int			  flags;
 
-	u_int			  minimum;
-	u_int			  maximum;
+	long long		  minimum;
+	long long		  maximum;
 	const char		**choices;
 
 	const char		 *default_str;

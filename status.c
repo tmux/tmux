@@ -40,6 +40,7 @@ status_timer_callback(__unused int fd, __unused short events, void *arg)
 	struct client	*c = arg;
 	struct session	*s = c->session;
 	struct timeval	 tv;
+	long long	 interval_ms;
 
 	evtimer_del(&c->status.timer);
 
@@ -49,12 +50,27 @@ status_timer_callback(__unused int fd, __unused short events, void *arg)
 	if (c->message_string == NULL && c->prompt == NULL)
 		c->flags |= CLIENT_REDRAWSTATUS;
 
-	timerclear(&tv);
-	tv.tv_sec = options_get_number(s->options, "status-interval");
+	/*
+	 * status-interval is in seconds; a negative value is instead a
+	 * millisecond interval (its magnitude), intended for status line
+	 * animations, and is raised to a floor to avoid pathologically fast
+	 * updates.
+	 */
+	interval_ms = options_get_number(s->options, "status-interval");
+	if (interval_ms < 0) {
+		interval_ms = -interval_ms;
+		if (interval_ms < STATUS_INTERVAL_MIN_MS)
+			interval_ms = STATUS_INTERVAL_MIN_MS;
+	} else
+		interval_ms *= 1000;
 
-	if (tv.tv_sec != 0)
+	timerclear(&tv);
+	tv.tv_sec = interval_ms / 1000;
+	tv.tv_usec = (interval_ms % 1000) * 1000L;
+
+	if (interval_ms != 0)
 		evtimer_add(&c->status.timer, &tv);
-	log_debug("client %p, status interval %d", c, (int)tv.tv_sec);
+	log_debug("client %p, status interval %lld ms", c, interval_ms);
 }
 
 /* Start status timer for client. */
