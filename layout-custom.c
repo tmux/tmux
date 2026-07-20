@@ -742,7 +742,7 @@ layout_string_write(struct layout_string *ls, const char *fmt, ...)
 	len = xvsnprintf(tmp, sizeof tmp, fmt, ap);
 	if (len > (sizeof (tmp)) - 1)
 		goto fail;
-	if (remaining < len)
+	if (remaining < len + 1) /* null terminator */
 		goto fail;
 	memcpy(ls->write, tmp, len);
 	ls->write += len;
