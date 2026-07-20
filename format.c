@@ -5793,6 +5793,52 @@ fail:
 	return (NULL);
 }
 
+/* Expand the "cycle:" animation helper; see the manual for the syntax. */
+static char *
+format_cycle(struct format_expand_state *es, const char *arg)
+{
+	const char	*errstr, *frames, *start, *end, *cp;
+	char		*period;
+	int		 period_ms;
+	u_int		 nframes, index = 0, i;
+
+	/* Split "<period_ms>:<frames>" on the first colon. */
+	frames = strchr(arg, ':');
+	if (frames == NULL || frames[1] == '\0')
+		return (xstrdup(""));
+	period = xstrndup(arg, frames - arg);
+	period_ms = strtonum(period, 1, INT_MAX, &errstr);
+	free(period);
+	if (errstr != NULL)
+		return (xstrdup(""));
+	frames++;	/* skip the ':' */
+
+	/* Count the space-separated frames (there is at least one). */
+	nframes = 1;
+	for (cp = frames; *cp != '\0'; cp++) {
+		if (*cp == ' ')
+			nframes++;
+	}
+
+	/*
+	 * Choose the frame from the clock. Stay on the first frame outside a
+	 * time context so the result is stable; period_ms is >= 1 here, so the
+	 * division is always safe.
+	 */
+	if (es->flags & FORMAT_EXPAND_TIME)
+		index = (u_int)((es->start_time / (uint64_t)period_ms) %
+		    nframes);
+
+	/* Walk to the chosen frame and return a copy of it. */
+	start = frames;
+	for (i = 0; i < index; i++)
+		start = strchr(start, ' ') + 1;
+	end = strchr(start, ' ');
+	if (end == NULL)
+		end = start + strlen(start);
+	return (xstrndup(start, end - start));
+}
+
 /* Replace a key. */
 static int
 format_replace(struct format_expand_state *es, const char *key, size_t keylen,
@@ -5810,10 +5856,10 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	uint64_t			  modifiers = 0;
 	int				  limit = 0, width = 0;
 	int				  j, c;
-	struct format_modifier		 *list, *cmp = NULL, *search = NULL;
+	struct format_modifier		 *list = NULL, *cmp = NULL, *search = NULL;
 	struct format_modifier		**sub = NULL, *mexp = NULL, *fm;
 	struct format_modifier		 *bool_op_n = NULL;
-	u_int				  i, count, nsub = 0, nrep, check = 0;
+	u_int				  i, count = 0, nsub = 0, nrep, check = 0;
 	const char			 *loop_flags = "";
 	struct format_expand_state	  next;
 	struct environ_entry		 *envent;
@@ -5824,6 +5870,19 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 
 	/* Make a copy of the key. */
 	copy = copy0 = xstrndup(key, keylen);
+
+	/*
+	 * The "cycle:" animation helper must be handled before the modifier
+	 * parser runs: its value contains colons the parser would treat as
+	 * modifier separators (and a leading "c" it would read as the colour
+	 * modifier). Match "cycle:" exactly so keys that merely start with
+	 * "cycle" are left alone.
+	 */
+	if (strncmp(copy, "cycle:", 6) == 0) {
+		value = format_cycle(es, copy + 6);
+		format_log(es, "cycle '%s' is: %s", copy, value);
+		goto done;
+	}
 
 	/* Process modifier list. */
 	list = format_build_modifiers(es, &copy, &count);
@@ -6346,6 +6405,19 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 		value = format_replace_expression(mexp, es, copy);
 		if (value == NULL)
 			value = xstrdup("");
+	} else if (strcmp(copy, "now_ms") == 0) {
+		/*
+		 * Monotonic millisecond clock (= es->start_time). Emit a value
+		 * only inside a time context; elsewhere - notably inside #(),
+		 * where FORMAT_EXPAND_TIME is cleared - stay empty so a job
+		 * command key does not vary and the job is not re-executed.
+		 */
+		if (es->flags & FORMAT_EXPAND_TIME)
+			xasprintf(&value, "%llu",
+			    (unsigned long long)es->start_time);
+		else
+			value = xstrdup("");
+		format_log(es, "now_ms is: %s", value);
 	} else {
 		if (strstr(copy, "#{") != 0) {
 			format_log(es, "expanding inner format '%s'", copy);
