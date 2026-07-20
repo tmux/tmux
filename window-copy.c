@@ -28,6 +28,14 @@
 
 struct window_copy_mode_data;
 
+#define WINDOW_COPY_CONTROLS_ALWAYS 0
+#define WINDOW_COPY_CONTROLS_NEVER 1
+#define WINDOW_COPY_CONTROLS_ON_DEMAND 2
+
+#define WINDOW_COPY_LINE_CONTROL 0x1
+#define WINDOW_COPY_LINE_MEMBER 0x2
+#define WINDOW_COPY_LINE_INITIAL 0x4
+
 static const char *window_copy_key_table(struct window_mode_entry *);
 static void	window_copy_command(struct window_mode_entry *, struct client *,
 		    struct session *, struct winlink *, struct args *,
@@ -64,6 +72,8 @@ static int	window_copy_line_number_is_absolute(struct window_mode_entry *);
 static int	window_copy_line_numbers_active(struct window_mode_entry *);
 static int	window_copy_cursor_line_active(struct window_mode_entry *);
 static u_int	window_copy_line_number_width(struct window_mode_entry *);
+static u_int	window_copy_left_margin(struct window_mode_entry *);
+static int	window_copy_controls_visible(struct window_mode_entry *);
 static u_int	window_copy_cursor_offset(struct window_mode_entry *, u_int,
 		    u_int);
 static u_int	window_copy_cursor_unoffset(struct window_mode_entry *, u_int,
@@ -72,6 +82,16 @@ static void	window_copy_write_line(struct window_mode_entry *,
 		    struct screen_write_ctx *, u_int);
 static void	window_copy_write_lines(struct window_mode_entry *,
 		    struct screen_write_ctx *, u_int, u_int);
+static void	window_copy_rebuild_backing(struct window_mode_entry *);
+static int	window_copy_set_output(struct window_mode_entry *, int, int,
+		    u_int, int);
+static int	window_copy_find_output(struct window_mode_entry *, u_int,
+		    u_int *, u_int *);
+static int	window_copy_restore_cursor(struct window_mode_entry *, u_int,
+		    u_int);
+static int	window_copy_restore_command_end(struct window_mode_entry *,
+		    u_int, u_int);
+static int	window_copy_restore_before(struct window_mode_entry *, u_int);
 static char    *window_copy_match_at_cursor(struct window_copy_mode_data *);
 static void	window_copy_scroll_to(struct window_mode_entry *, u_int, u_int,
 		    int);
@@ -249,6 +269,12 @@ struct window_copy_cmd_state {
 	struct winlink			*wl;
 };
 
+struct window_copy_line {
+	u_int	 source_line;
+	u_int	 output_line;
+	u_char	 flags;
+};
+
 /*
  * Copy mode's visible screen (the "screen" field) is filled from one of two
  * sources: the original contents of the pane (used when we actually enter via
@@ -267,6 +293,11 @@ struct window_copy_mode_data {
 	struct screen	 screen;
 
 	struct screen	*backing;
+	struct screen	*source;
+	u_char		*outputs;
+	u_int		 output_count;
+	struct window_copy_line *lines;
+	u_int		 line_count;
 	int		 backing_written; /* backing display started */
 	struct input_ctx *ictx;
 
@@ -300,6 +331,9 @@ struct window_copy_mode_data {
 	int		 scroll_exit;	/* exit on scroll to end? */
 	int		 hide_position;	/* hide position marker */
 	int		 line_numbers;	/* 0 off, 1 from option, 2 default */
+	int		 output_gutter;
+	int		 output_controls;
+	int		 top_output;
 
 	enum {
 		SEL_CHAR,		/* select one char at a time */
@@ -447,6 +481,278 @@ window_copy_clone_screen(struct screen *src, struct screen *hint, u_int *cx,
 	return (dst);
 }
 
+static struct window_copy_line *
+window_copy_get_line_info(struct window_copy_mode_data *data, u_int y)
+{
+	if (data->lines == NULL || y >= data->line_count)
+		return (NULL);
+	return (&data->lines[y]);
+}
+
+static void
+window_copy_set_line(struct window_copy_mode_data *data, u_int y,
+    u_int source_line, u_int output_line, u_char flags)
+{
+	struct window_copy_line	*line;
+
+	line = window_copy_get_line_info(data, y);
+	if (line == NULL)
+		return;
+	line->source_line = source_line;
+	line->output_line = output_line;
+	line->flags |= flags;
+}
+
+static void
+window_copy_set_control(struct window_copy_mode_data *data, u_int y,
+    u_int output_line)
+{
+	struct window_copy_line	*line;
+
+	line = window_copy_get_line_info(data, y);
+	if (line == NULL)
+		return;
+	line->output_line = output_line;
+	line->flags |= WINDOW_COPY_LINE_CONTROL;
+}
+
+static int
+window_copy_any_output_collapsed(struct window_copy_mode_data *data)
+{
+	struct grid		*gd = data->source->grid;
+	struct grid_line	*gl;
+	u_int			 y;
+	int			 command = 0, output = 0;
+
+	for (y = 0; y < gd->hsize + gd->sy; y++) {
+		gl = grid_get_line(gd, y);
+		if (gl->flags & GRID_LINE_START_PROMPT)
+			break;
+	}
+	if (y != 0 && y != gd->hsize + gd->sy && data->top_output)
+		return (1);
+
+	for (y = 0; y < gd->hsize + gd->sy; y++) {
+		gl = grid_get_line(gd, y);
+		if (gl->flags & GRID_LINE_START_PROMPT) {
+			command = 0;
+			output = 0;
+		}
+		if (gl->flags & GRID_LINE_START_COMMAND)
+			command = 1;
+		if (gl->flags & GRID_LINE_START_OUTPUT) {
+			if (data->outputs[y])
+				return (1);
+			output = 1;
+		}
+		if (gl->flags & GRID_LINE_END_OUTPUT) {
+			if (!output && command && data->outputs[y])
+				return (1);
+			command = output = 0;
+		}
+	}
+	return (0);
+}
+
+static int
+window_copy_set_all_output(struct window_copy_mode_data *data, int collapse)
+{
+	struct grid		*gd = data->source->grid;
+	struct grid_line	*gl;
+	u_int			 y;
+	int			 changed = 0, command = 0, output = 0;
+
+	for (y = 0; y < gd->hsize + gd->sy; y++) {
+		gl = grid_get_line(gd, y);
+		if (gl->flags & GRID_LINE_START_PROMPT)
+			break;
+	}
+	if (y != 0 && y != gd->hsize + gd->sy &&
+	    data->top_output != collapse) {
+		data->top_output = collapse;
+		changed = 1;
+	}
+
+	for (y = 0; y < gd->hsize + gd->sy; y++) {
+		gl = grid_get_line(gd, y);
+		if (gl->flags & GRID_LINE_START_PROMPT) {
+			command = 0;
+			output = 0;
+		}
+		if (gl->flags & GRID_LINE_START_COMMAND)
+			command = 1;
+		if (gl->flags & GRID_LINE_START_OUTPUT) {
+			if (data->outputs[y] != collapse) {
+				data->outputs[y] = collapse;
+				changed = 1;
+			}
+			output = 1;
+		}
+		if (gl->flags & GRID_LINE_END_OUTPUT) {
+			if (!output && command && data->outputs[y] != collapse) {
+				data->outputs[y] = collapse;
+				changed = 1;
+			}
+			command = output = 0;
+		}
+	}
+	return (changed);
+}
+
+static int
+window_copy_controls_visible(struct window_mode_entry *wme)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	int				 controls;
+
+	controls = options_get_number(wme->wp->window->options,
+	    "copy-mode-collapse-controls");
+	return (controls == WINDOW_COPY_CONTROLS_ALWAYS ||
+	    (controls == WINDOW_COPY_CONTROLS_ON_DEMAND &&
+	    data->output_controls));
+}
+
+/* Recreate the backing screen with any collapsed OSC 133 output omitted. */
+static void
+window_copy_rebuild_backing(struct window_mode_entry *wme)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct screen			*src = data->source, *dst;
+	struct grid			*sgd;
+	struct grid_line		*sgl, *dgl;
+	struct screen_write_ctx		 ctx;
+	struct grid_cell		 gc;
+	struct osc133_data		*osc133;
+	u_int				 y, x, total, dy, prompt_dy = UINT_MAX;
+	u_int				 output_line = UINT_MAX;
+	int				 collapsed = 0, command = 0, hiding = 0;
+	int				 initial = 0, was_hiding;
+
+	if (src == NULL)
+		return;
+	if (!data->output_controls) {
+		dst = window_copy_clone_screen(src, &data->screen, NULL, NULL, 0);
+		if (data->backing != NULL) {
+			screen_free(data->backing);
+			free(data->backing);
+		}
+		free(data->lines);
+		data->lines = NULL;
+		data->line_count = 0;
+		data->backing = dst;
+		data->output_gutter = 0;
+		return;
+	}
+	sgd = src->grid;
+	total = sgd->hsize + sgd->sy;
+	dst = xcalloc(1, sizeof *dst);
+	screen_init(dst, screen_size_x(&data->screen), screen_size_y(&data->screen),
+	    screen_hlimit(src));
+	dst->grid->flags |= GRID_HISTORY;
+	free(data->lines);
+	data->lines = xcalloc(total, sizeof *data->lines);
+	data->line_count = total;
+	for (y = 0; y < total; y++)
+		data->lines[y].output_line = UINT_MAX;
+	for (y = 0; y < total; y++) {
+		sgl = grid_get_line(sgd, y);
+		if (sgl->flags & GRID_LINE_START_PROMPT)
+			break;
+	}
+	if (y != 0 && y != total)
+		initial = 1;
+
+	screen_write_start(&ctx, dst);
+	for (y = 0; y < total; y++) {
+		sgl = grid_get_line(sgd, y);
+		osc133 = &sgl->osc133_data;
+		for (x = 0; x <= sgl->cellused; x++) {
+			dy = dst->grid->hsize + dst->cy;
+			was_hiding = hiding;
+			if (!hiding)
+				window_copy_set_line(data, dy, y, output_line,
+				    output_line == UINT_MAX ? 0 :
+				    WINDOW_COPY_LINE_MEMBER);
+			dgl = grid_get_line(dst->grid, dy);
+			if (initial && y == 0 && x == 0)
+				window_copy_set_line(data, dy, y, UINT_MAX,
+				    WINDOW_COPY_LINE_CONTROL | WINDOW_COPY_LINE_INITIAL);
+			if ((sgl->flags & GRID_LINE_START_PROMPT) &&
+			    x == osc133->prompt_col) {
+				dgl->flags |= GRID_LINE_START_PROMPT;
+				dgl->osc133_data.prompt_col = dst->cx;
+				prompt_dy = dy;
+				output_line = UINT_MAX;
+				collapsed = command = hiding = 0;
+			}
+			if ((sgl->flags & GRID_LINE_SECOND_PROMPT) &&
+			    x == osc133->prompt_col) {
+				dgl->flags |= GRID_LINE_SECOND_PROMPT;
+				dgl->osc133_data.prompt_col = dst->cx;
+			}
+			if ((sgl->flags & GRID_LINE_START_COMMAND) &&
+			    x == osc133->cmd_col) {
+				dgl->flags |= GRID_LINE_START_COMMAND;
+				dgl->osc133_data.cmd_col = dst->cx;
+				command = 1;
+			}
+			if ((sgl->flags & GRID_LINE_START_OUTPUT) &&
+			    x == osc133->out_start_col) {
+				dgl->flags |= GRID_LINE_START_OUTPUT;
+				dgl->osc133_data.out_start_col = dst->cx;
+				output_line = y;
+				collapsed = data->outputs[y];
+				hiding = collapsed;
+				if (prompt_dy != UINT_MAX)
+					window_copy_set_control(data, prompt_dy, output_line);
+			}
+			if ((sgl->flags & GRID_LINE_END_OUTPUT) &&
+			    x == osc133->out_end_col) {
+				dgl->flags |= GRID_LINE_END_OUTPUT;
+				dgl->osc133_data.out_end_col = dst->cx;
+				dgl->osc133_data.exit_status = osc133->exit_status;
+				if (output_line == UINT_MAX && command) {
+					output_line = y;
+					collapsed = data->outputs[y];
+					if (prompt_dy != UINT_MAX)
+						window_copy_set_control(data, prompt_dy,
+						    output_line);
+				}
+				if (initial && prompt_dy == UINT_MAX)
+					hiding = data->top_output;
+				else
+					hiding = collapsed;
+				command = 0;
+			}
+			if (was_hiding && !hiding)
+				window_copy_set_line(data, dy, y, output_line,
+				    output_line == UINT_MAX ? 0 :
+				    WINDOW_COPY_LINE_MEMBER);
+			if (x == sgl->cellused)
+				break;
+			if (hiding)
+				continue;
+			grid_get_cell(sgd, x, y, &gc);
+			if (!(gc.flags & GRID_FLAG_PADDING))
+				screen_write_cell(&ctx, &gc);
+		}
+		if (y + 1 != total && !(sgl->flags & GRID_LINE_WRAPPED) &&
+		    (!hiding || (initial && y == 0))) {
+			screen_write_carriagereturn(&ctx);
+			screen_write_linefeed(&ctx, 0, 8);
+		}
+		if (initial && y == 0)
+			hiding = data->top_output;
+	}
+	screen_write_stop(&ctx);
+	if (data->backing != NULL) {
+		screen_free(data->backing);
+		free(data->backing);
+	}
+	data->backing = dst;
+	data->output_gutter = window_copy_controls_visible(wme);
+}
+
 /*
  * Snapshot the source grid's monotonic scroll counters so the next incremental
  * sync can tell how much history was added or collected since this point.
@@ -474,20 +780,20 @@ window_copy_sync_backing(struct window_mode_entry *wme)
 	struct window_copy_mode_data	*data = wme->data;
 	struct window_pane		*wp = wme->swp;
 	struct screen			*src = &wp->base;
-	struct screen			*dst = data->backing;
+	struct screen			*dst = data->source;
 	struct grid			*sg = src->grid;
 	struct grid			*dg = dst->grid;
 	u_int				 sy = sg->sy;
 	u_int				 old_hsize = dg->hsize;
 	u_int				 new_hsize = sg->hsize;
-	u_int				 added, collected, kept;
+	u_int				 added, collected, kept, old_count, new_count;
 
 	/*
 	 * Only a pane's own live grid is tracked incrementally. A different
 	 * source pane (copy-mode -s) goes through clone_screen, which also
 	 * trims trailing blank lines that this path does not.
 	 */
-	if (data->viewmode || wme->swp != wme->wp)
+	if (data->source == NULL || data->viewmode || wme->swp != wme->wp)
 		return (0);
 
 	/* Indices only line up at the same size and generation. */
@@ -509,6 +815,20 @@ window_copy_sync_backing(struct window_mode_entry *wme)
 		return (0);
 
 	kept = old_hsize - collected;
+	old_count = old_hsize + sy;
+	new_count = new_hsize + sy;
+	if (collected != 0) {
+		memmove(data->outputs, data->outputs + collected,
+		    (old_count - collected) * sizeof *data->outputs);
+	}
+	data->outputs = xreallocarray(data->outputs, new_count,
+	    sizeof *data->outputs);
+	if (new_count > old_count - collected) {
+		memset(data->outputs + old_count - collected, 0,
+		    (new_count - (old_count - collected)) *
+		    sizeof *data->outputs);
+	}
+	data->output_count = new_count;
 
 	if (added == 0 && collected == 0) {
 		/* History is unchanged; only the viewport can have mutated. */
@@ -553,6 +873,7 @@ window_copy_sync_backing(struct window_mode_entry *wme)
 		dst->cx = src->cx;
 		dst->cy = src->cy;
 	}
+	window_copy_rebuild_backing(wme);
 
 	return (1);
 }
@@ -605,18 +926,35 @@ window_copy_init(struct window_mode_entry *wme,
 	struct window_copy_mode_data	*data;
 	struct screen			*base = &wp->base;
 	struct screen_write_ctx		 ctx;
-	u_int				 i, cx, cy;
+	u_int				 i, cx, cy, prompt, chosen;
+	int				 restored = 0;
 
 	data = window_copy_common_init(wme);
-	data->backing = window_copy_clone_screen(base, &data->screen, &cx, &cy,
+	data->source = window_copy_clone_screen(base, &data->screen, &cx, &cy,
 	    wme->swp != wme->wp);
+	data->outputs = xcalloc(screen_hsize(data->source) +
+	    screen_size_y(data->source), sizeof *data->outputs);
+	data->output_count = screen_hsize(data->source) +
+	    screen_size_y(data->source);
+	data->output_controls = args_has(args, 'c') || args_has(args, 'U') ||
+	    options_get_number(wp->window->options,
+	    "copy-mode-collapse-controls") == WINDOW_COPY_CONTROLS_ALWAYS;
+	if (args_has(args, 'c'))
+		window_copy_set_all_output(data, 1);
+	window_copy_rebuild_backing(wme);
 	window_copy_sync_snapshot(data, base->grid);
 
 	data->cx = cx;
-	if (cy < screen_hsize(data->backing)) {
+	if (data->output_controls &&
+	    window_copy_find_output(wme, cy, &prompt, &chosen)) {
+		restored = window_copy_restore_cursor(wme, cx, cy);
+		if (!restored)
+			restored = window_copy_restore_command_end(wme, prompt, chosen);
+	}
+	if (!restored && cy < screen_hsize(data->backing)) {
 		data->cy = 0;
 		data->oy = screen_hsize(data->backing) - cy;
-	} else {
+	} else if (!restored) {
 		data->cy = cy - screen_hsize(data->backing);
 		data->oy = 0;
 	}
@@ -686,8 +1024,14 @@ window_copy_free(struct window_mode_entry *wme)
 
 	if (data->ictx != NULL)
 		input_free(data->ictx);
+	if (data->source != NULL) {
+		screen_free(data->source);
+		free(data->source);
+	}
 	screen_free(data->backing);
 	free(data->backing);
+	free(data->outputs);
+	free(data->lines);
 
 	screen_free(&data->screen);
 	free(data);
@@ -3001,10 +3345,16 @@ window_copy_do_refresh(struct window_mode_entry *wme, int follow)
 	oy_from_top = screen_hsize(data->backing) - data->oy;
 
 	if (!window_copy_sync_backing(wme)) {
-		screen_free(data->backing);
-		free(data->backing);
-		data->backing = window_copy_clone_screen(&wp->base,
+		screen_free(data->source);
+		free(data->source);
+		data->source = window_copy_clone_screen(&wp->base,
 		    &data->screen, NULL, NULL, wme->swp != wme->wp);
+		free(data->outputs);
+		data->outputs = xcalloc(screen_hsize(data->source) +
+		    screen_size_y(data->source), sizeof *data->outputs);
+		data->output_count = screen_hsize(data->source) +
+		    screen_size_y(data->source);
+		window_copy_rebuild_backing(wme);
 	}
 
 	if (follow) {
@@ -3190,6 +3540,328 @@ window_copy_cmd_line_numbers_toggle(struct window_copy_cmd_state *cs)
 {
 	window_copy_set_line_numbers1(cs->wme,
 	    !window_copy_line_numbers_active(cs->wme), 1);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static int
+window_copy_find_output(struct window_mode_entry *wme, u_int target,
+    u_int *prompt, u_int *chosen)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->source->grid;
+	struct grid_line		*gl;
+	u_int				 candidate = UINT_MAX, last_prompt = 0;
+	u_int				 output = UINT_MAX, y;
+	int				 command = 0, have_prompt = 0;
+
+	*prompt = 0;
+	*chosen = UINT_MAX;
+	for (y = 0; y < gd->hsize + gd->sy; y++) {
+		gl = grid_get_line(gd, y);
+		if (gl->flags & GRID_LINE_START_PROMPT) {
+			if (have_prompt && target >= last_prompt && target < y &&
+			    candidate != UINT_MAX) {
+				*prompt = last_prompt;
+				*chosen = candidate;
+				return (1);
+			}
+			last_prompt = y;
+			candidate = UINT_MAX;
+			output = UINT_MAX;
+			command = 0;
+			have_prompt = 1;
+		}
+		if (gl->flags & GRID_LINE_START_COMMAND)
+			command = 1;
+		if (gl->flags & GRID_LINE_START_OUTPUT) {
+			output = y;
+			candidate = y;
+		}
+		if (gl->flags & GRID_LINE_END_OUTPUT) {
+			if (output == UINT_MAX && command)
+				candidate = y;
+			output = UINT_MAX;
+			command = 0;
+		}
+	}
+	if (have_prompt && target >= last_prompt && candidate != UINT_MAX) {
+		*prompt = last_prompt;
+		*chosen = candidate;
+		return (1);
+	}
+	return (0);
+}
+
+static void
+window_copy_cursor_source(struct window_mode_entry *wme, u_int *source_x,
+    u_int *source_y)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct window_copy_line	*line;
+	u_int				 y;
+
+	*source_x = data->cx;
+	y = screen_hsize(data->backing) + data->cy - data->oy;
+	line = window_copy_get_line_info(data, y);
+	if (line == NULL)
+		*source_y = y;
+	else
+		*source_y = line->source_line;
+}
+
+static int
+window_copy_restore_cursor(struct window_mode_entry *wme, u_int source_x,
+    u_int source_y)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->backing->grid;
+	struct grid_line		*gl;
+	struct window_copy_line	*line;
+	u_int				 y;
+
+	for (y = 0; y < gd->hsize + gd->sy; y++) {
+		line = window_copy_get_line_info(data, y);
+		gl = grid_get_line(gd, y);
+		if (line == NULL || line->source_line != source_y ||
+		    gl->cellused == 0)
+			continue;
+		data->cx = source_x;
+		if (data->cx >= gl->cellused)
+			data->cx = gl->cellused;
+		if (y < gd->hsize) {
+			data->cy = 0;
+			data->oy = gd->hsize - y;
+		} else {
+			data->cy = y - gd->hsize;
+			data->oy = 0;
+		}
+		return (1);
+	}
+	return (0);
+}
+
+static int
+window_copy_restore_command_end(struct window_mode_entry *wme, u_int prompt,
+    u_int output)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->backing->grid;
+	struct grid_line		*gl;
+	struct window_copy_line	*line;
+	u_int				 command_start = UINT_MAX, marker = UINT_MAX;
+	u_int				 marker_x = 0, length, y;
+	int				 previous = 0;
+
+	for (y = 0; y < gd->hsize + gd->sy; y++) {
+		line = window_copy_get_line_info(data, y);
+		gl = grid_get_line(gd, y);
+		if (line == NULL)
+			continue;
+		if (line->source_line == prompt &&
+		    line->flags & WINDOW_COPY_LINE_CONTROL)
+			command_start = y;
+		if (line->source_line != output)
+			continue;
+		if (gl->flags & GRID_LINE_START_OUTPUT) {
+			marker = y;
+			marker_x = gl->osc133_data.out_start_col;
+			break;
+		}
+		if (marker == UINT_MAX && gl->flags & GRID_LINE_END_OUTPUT) {
+			marker = y;
+			marker_x = gl->osc133_data.out_end_col;
+		}
+	}
+	if (marker == UINT_MAX)
+		return (0);
+	if (marker_x != 0) {
+		data->cx = marker_x;
+		y = marker;
+	} else {
+		for (y = marker; y != 0; y--) {
+			if (command_start != UINT_MAX && y - 1 < command_start)
+				break;
+			length = window_copy_find_length(wme, y - 1);
+			if (length != 0) {
+				data->cx = length;
+				y--;
+				previous = 1;
+				break;
+			}
+		}
+		if (!previous)
+			return (0);
+	}
+	if (y < gd->hsize) {
+		data->cy = 0;
+		data->oy = gd->hsize - y;
+	} else {
+		data->cy = y - gd->hsize;
+		data->oy = 0;
+	}
+	return (1);
+}
+
+static int
+window_copy_restore_before(struct window_mode_entry *wme, u_int source_y)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->backing->grid;
+	struct grid_line		*gl;
+	struct window_copy_line	*line;
+	u_int				 length, y, last = UINT_MAX;
+
+	for (y = 0; y < gd->hsize + gd->sy; y++) {
+		line = window_copy_get_line_info(data, y);
+		gl = grid_get_line(gd, y);
+		if (line == NULL || line->source_line > source_y ||
+		    gl->cellused == 0)
+			continue;
+		last = y;
+	}
+	if (last == UINT_MAX)
+		return (0);
+	length = window_copy_find_length(wme, last);
+	data->cx = length;
+	if (last < gd->hsize) {
+		data->cy = 0;
+		data->oy = gd->hsize - last;
+	} else {
+		data->cy = last - gd->hsize;
+		data->oy = 0;
+	}
+	return (1);
+}
+
+static int
+window_copy_set_output(struct window_mode_entry *wme, int all, int collapse,
+    u_int target, int command_end)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	u_int				 prompt = 0, source_x, source_y;
+	u_int				 chosen = UINT_MAX, first_prompt, y;
+	int				 changed = 0, enabled = 0, found, initial,
+				 wanted;
+
+	if (data->source == NULL)
+		return (0);
+	window_copy_cursor_source(wme, &source_x, &source_y);
+	if (target == UINT_MAX)
+		target = source_y;
+	first_prompt = screen_hsize(data->source) + screen_size_y(data->source);
+	for (y = 0; y < first_prompt; y++) {
+		if (grid_get_line(data->source->grid, y)->flags &
+		    GRID_LINE_START_PROMPT) {
+			first_prompt = y;
+			break;
+		}
+	}
+	initial = first_prompt != 0 &&
+	    first_prompt != screen_hsize(data->source) +
+	    screen_size_y(data->source) && target < first_prompt;
+	if (!data->output_controls) {
+		data->output_controls = 1;
+		window_copy_rebuild_backing(wme);
+		enabled = 1;
+	}
+	found = window_copy_find_output(wme, target, &prompt, &chosen);
+	if (all) {
+		wanted = collapse;
+		if (wanted == -1)
+			wanted = !window_copy_any_output_collapsed(data);
+		changed = window_copy_set_all_output(data, wanted);
+	} else if (initial) {
+		wanted = collapse;
+		if (wanted == -1)
+			wanted = !data->top_output;
+		if (data->top_output != wanted) {
+			data->top_output = wanted;
+			changed = 1;
+		}
+	} else if (found && chosen != UINT_MAX) {
+		wanted = collapse;
+		if (wanted == -1)
+			wanted = !data->outputs[chosen];
+		if (data->outputs[chosen] != wanted) {
+			data->outputs[chosen] = wanted;
+			changed = 1;
+		}
+	}
+	if (!changed) {
+		if (enabled) {
+			data->output_controls = 0;
+			window_copy_rebuild_backing(wme);
+		}
+		return (0);
+	}
+	window_copy_clear_selection(wme);
+	window_copy_clear_marks(wme);
+	window_copy_rebuild_backing(wme);
+	if (!command_end &&
+	    window_copy_restore_cursor(wme, source_x, source_y))
+		return (1);
+	if (initial && window_copy_restore_before(wme, 0))
+		return (1);
+	if (found && window_copy_restore_command_end(wme, prompt, chosen))
+		return (1);
+	if (window_copy_restore_before(wme, source_y))
+		return (1);
+	data->cy = screen_size_y(&data->screen) - 1;
+	data->cx = 0;
+	data->oy = 0;
+	return (1);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_collapse_output(struct window_copy_cmd_state *cs)
+{
+	if (window_copy_set_output(cs->wme, args_has(cs->wargs, 'a'), 1,
+	    UINT_MAX, 0))
+		return (WINDOW_COPY_CMD_REDRAW);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_expand_output(struct window_copy_cmd_state *cs)
+{
+	if (window_copy_set_output(cs->wme, args_has(cs->wargs, 'a'), 0,
+	    UINT_MAX, 0))
+		return (WINDOW_COPY_CMD_REDRAW);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_toggle_output(struct window_copy_cmd_state *cs)
+{
+	struct window_copy_mode_data	*data = cs->wme->data;
+	struct window_copy_line	*line;
+	u_int	 current, current_prompt, target, target_prompt, chosen, x, y;
+	int	 command_end = 0, current_found, initial, target_found;
+
+	if (args_has(cs->wargs, 'm')) {
+		if (cs->m == NULL || cmd_mouse_at(cs->wme->wp, cs->m, &x, &y,
+		    0) != 0 || x >= window_copy_left_margin(cs->wme))
+			return (WINDOW_COPY_CMD_NOTHING);
+		target = screen_hsize(data->backing) + y - data->oy;
+		line = window_copy_get_line_info(data, target);
+		if (line == NULL)
+			return (WINDOW_COPY_CMD_NOTHING);
+		initial = line->flags & WINDOW_COPY_LINE_INITIAL;
+		window_copy_cursor_source(cs->wme, &x, &current);
+		current_found = window_copy_find_output(cs->wme, current,
+		    &current_prompt, &chosen);
+		target_found = initial || window_copy_find_output(cs->wme,
+		    line->source_line, &target_prompt, &chosen);
+		if (!target_found)
+			return (WINDOW_COPY_CMD_NOTHING);
+		command_end = initial || !current_found ||
+		    current_prompt != target_prompt;
+		target = line->source_line;
+	} else
+		target = UINT_MAX;
+	if (window_copy_set_output(cs->wme, args_has(cs->wargs, 'a'), -1,
+	    target, command_end))
+		return (WINDOW_COPY_CMD_REDRAW);
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -3474,6 +4146,24 @@ static const struct {
 	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
 	  .f = window_copy_cmd_line_numbers_toggle
+	},
+	{ .command = "collapse-output",
+	  .args = { "a", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_collapse_output
+	},
+	{ .command = "expand-output",
+	  .args = { "a", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_expand_output
+	},
+	{ .command = "toggle-output",
+	  .args = { "am", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_toggle_output
 	},
 	{ .command = "next-prompt",
 	  .args = { "o", 0, 0, NULL },
@@ -3803,15 +4493,21 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 	enum window_copy_cmd_action	 action;
 	enum window_copy_cmd_clear	 clear = WINDOW_COPY_CMD_CLEAR_NEVER;
 	const char			*command;
-	u_int				 i, count = args_count(args);
-	int				 keys, flags;
+	u_int				 i, count = args_count(args), mouse_x, mouse_y;
+	int				 keys, flags, mouse_control = 0;
 	char				*error = NULL;
 
 	if (count == 0)
 		return;
 	command = args_string(args, 0);
 
-	if (m != NULL && m->valid && !MOUSE_WHEEL(m->b))
+	if (m != NULL && m->valid && !MOUSE_WHEEL(m->b) &&
+	    strcmp(command, "toggle-output") == 0 &&
+	    cmd_mouse_at(wp, m, &mouse_x, &mouse_y, 0) == 0 &&
+	    mouse_x < window_copy_left_margin(wme))
+		mouse_control = 1;
+	if (m != NULL && m->valid && !MOUSE_WHEEL(m->b) &&
+	    !mouse_control)
 		window_copy_move_mouse(m);
 
 	cs.wme = wme;
@@ -5213,9 +5909,18 @@ window_copy_line_number_width(struct window_mode_entry *wme)
 }
 
 static u_int
+window_copy_left_margin(struct window_mode_entry *wme)
+{
+	struct window_copy_mode_data	*data = wme->data;
+
+	return (window_copy_line_number_width(wme) +
+	    (data->output_gutter ? 3 : 0));
+}
+
+static u_int
 window_copy_cursor_offset(struct window_mode_entry *wme, u_int cx, u_int sx)
 {
-	u_int	width = window_copy_line_number_width(wme);
+	u_int	width = window_copy_left_margin(wme);
 	u_int	content;
 
 	if (width == 0)
@@ -5232,7 +5937,7 @@ window_copy_cursor_offset(struct window_mode_entry *wme, u_int cx, u_int sx)
 static u_int
 window_copy_cursor_unoffset(struct window_mode_entry *wme, u_int vx, u_int sx)
 {
-	u_int	width = window_copy_line_number_width(wme);
+	u_int	width = window_copy_left_margin(wme);
 	u_int	content;
 
 	if (width == 0)
@@ -5312,14 +6017,16 @@ window_copy_write_line(struct window_mode_entry *wme,
 	struct grid_cell		 cur_ln_gc;
 	u_int				 sx = screen_size_x(s);
 	u_int				 hsize = screen_hsize(data->backing);
-	u_int				 width;
+	u_int				 width, line_width, gutter_width, backing_y;
 	u_int				 absolute, line_number, content_sx;
 	const char			*value;
 	char				*expanded;
 	struct format_tree		*ft;
 	int				 current, mode;
 
-	width  = window_copy_line_number_width(wme);
+	line_width = window_copy_line_number_width(wme);
+	gutter_width = data->output_gutter ? 3 : 0;
+	width = line_width + gutter_width;
 	if (width >= sx)
 		content_sx = 1;
 	else if (width != 0)
@@ -5348,7 +6055,10 @@ window_copy_write_line(struct window_mode_entry *wme,
 		    "copy-mode-current-line-number-style", ft);
 		cur_ln_gc.flags |= GRID_FLAG_NOPALETTE;
 		current = (py == data->cy);
-		absolute = hsize - data->oy + py + 1;
+		backing_y = hsize - data->oy + py;
+		absolute = backing_y + 1;
+		if (data->lines != NULL && backing_y < data->line_count)
+			absolute = data->lines[backing_y].source_line + 1;
 		mode = window_copy_line_number_mode(wme);
 		if (mode == WINDOW_COPY_LINE_NUMBERS_DEFAULT) {
 			if (py < data->oy)
@@ -5363,9 +6073,39 @@ window_copy_write_line(struct window_mode_entry *wme,
 			line_number = py - data->cy;
 		else
 			line_number = data->cy - py;
-		screen_write_cursormove(ctx, 0, py, 0);
-		screen_write_nputs(ctx, width, current ? &cur_ln_gc : &ln_gc,
-		    "%*u ", (int)width - 1, line_number);
+		if (line_width != 0) {
+			screen_write_cursormove(ctx, 0, py, 0);
+			screen_write_nputs(ctx, line_width,
+			    current ? &cur_ln_gc : &ln_gc, "%*u ",
+			    (int)line_width - 1, line_number);
+		}
+		if (gutter_width != 0) {
+			struct grid_cell control_gc;
+			char control = ' ';
+
+			if (data->lines != NULL && backing_y < data->line_count &&
+			    data->lines[backing_y].flags & WINDOW_COPY_LINE_CONTROL) {
+				if (data->lines[backing_y].flags &
+				    WINDOW_COPY_LINE_INITIAL)
+					control = data->top_output ? '>' : 'V';
+				else if (data->outputs[
+				    data->lines[backing_y].output_line])
+					control = '>';
+				else
+					control = 'V';
+			}
+			screen_write_cursormove(ctx, line_width, py, 0);
+			screen_write_putc(ctx, current ? &cur_ln_gc : &ln_gc, ' ');
+			if (control == ' ')
+				screen_write_putc(ctx, current ? &cur_ln_gc : &ln_gc, ' ');
+			else {
+				memcpy(&control_gc, current ? &cur_ln_gc : &ln_gc,
+				    sizeof control_gc);
+				control_gc.attr |= GRID_ATTR_CHARSET;
+				screen_write_putc(ctx, &control_gc, control);
+			}
+			screen_write_putc(ctx, current ? &cur_ln_gc : &ln_gc, ' ');
+		}
 	}
 
 	window_copy_write_one(wme, ctx, width, py, hsize - data->oy + py,
@@ -5440,7 +6180,7 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 	struct screen_write_ctx 	 ctx;
 	u_int				 i;
 
-	if (window_copy_line_number_width(wme) != 0) {
+	if (window_copy_left_margin(wme) != 0) {
 		screen_write_start(&ctx, &data->screen);
 		for (i = py; i < py + ny; i++)
 			window_copy_write_line(wme, &ctx, i);
@@ -5597,8 +6337,8 @@ window_copy_update_cursor(struct window_mode_entry *wme, u_int cx, u_int cy)
 
 	old_cx = data->cx; old_cy = data->cy;
 	data->cx = cx; data->cy = cy;
-	if (window_copy_line_numbers_active(wme)) {
-		width = window_copy_line_number_width(wme);
+	if (window_copy_left_margin(wme) != 0) {
+		width = window_copy_left_margin(wme);
 
 		if (s->sel != NULL ||
 		    data->lineflag != LINE_SEL_NONE ||
@@ -5836,10 +6576,10 @@ window_copy_set_selection(struct window_mode_entry *wme, int may_redraw,
 	style_apply(&gc, oo, "copy-mode-selection-style", ft);
 	gc.flags |= GRID_FLAG_NOPALETTE;
 	format_free(ft);
-	clipx = window_copy_line_number_width(wme);
+	clipx = window_copy_left_margin(wme);
 	if (clipx >= screen_size_x(s))
 		clipx = screen_size_x(s) - 1;
-	if (window_copy_line_numbers_active(wme)) {
+	if (clipx != 0) {
 		sx = window_copy_cursor_offset(wme, sx, screen_size_x(s));
 		endsx = window_copy_cursor_offset(wme, endsx, screen_size_x(s));
 	}

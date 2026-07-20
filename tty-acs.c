@@ -34,6 +34,8 @@ static const struct tty_acs_entry tty_acs_table[] = {
 	{ '-', "\342\206\221" },	/* arrow pointing up */
 	{ '.', "\342\206\223" },	/* arrow pointing down */
 	{ '0', "\342\226\256" },	/* solid square block */
+	{ '>', "\342\206\222" },	/* arrow pointing right */
+	{ 'V', "\342\206\223" },	/* arrow pointing down */
 	{ '`', "\342\227\206" },	/* diamond */
 	{ 'a', "\342\226\222" },	/* checker board (stipple) */
 	{ 'b', "\342\220\211" },

@@ -114,6 +114,9 @@ static const char *options_table_theme_list[] = {
 static const char *options_table_copy_mode_line_numbers_list[] = {
 	"off", "default", "absolute", "relative", "hybrid", NULL
 };
+static const char *options_table_copy_mode_collapse_controls_list[] = {
+	"always", "never", "on-demand", NULL
+};
 
 /* Status line format. */
 #define OPTIONS_TABLE_STATUS_FORMAT1 \
@@ -1371,6 +1374,14 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of search matches in copy mode."
+	},
+
+	{ .name = "copy-mode-collapse-controls",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_copy_mode_collapse_controls_list,
+	  .default_num = 2,
+	  .text = "When OSC 133 output collapse controls are shown in copy mode."
 	},
 
 	{ .name = "copy-mode-current-match-style",

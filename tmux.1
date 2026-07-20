@@ -2167,6 +2167,27 @@ Hide line numbers in copy mode.
 .Xc
 Toggle line numbers in copy mode.
 .It Xo
+.Ic collapse\-output
+.Op Fl a
+.Xc
+Collapse the output for the command on the cursor line.
+With
+.Fl a ,
+collapse all command output in the copy-mode buffer.
+Text before the first OSC 133 prompt is treated as an initial command output
+region.
+.It Xo
+.Ic expand\-output
+.Op Fl a
+.Xc
+Expand the output for the command on the cursor line.
+With
+.Fl a ,
+expand all command output in the copy-mode buffer.
+.Pp
+The Tab key toggles output for the command on the cursor line and S-Tab
+toggles all command output.
+.It Xo
 .Ic middle\-line
 (vi: M)
 (emacs: M\-r)
@@ -2595,11 +2616,18 @@ The synopsis for the
 command is:
 .Bl -tag -width Ds
 .It Xo Ic copy\-mode
-.Op Fl dekHMqSu
+.Op Fl UcdekHMqSu
 .Op Fl s Ar src\-pane
 .Op Fl t Ar target\-pane
 .Xc
 Enter copy mode.
+.Pp
+.Fl c
+enters copy mode with OSC 133 command output collapsed.
+.Fl U
+enters copy mode with OSC 133 output controls shown and all output expanded.
+When output is collapsed, the prompt and entered command are shown and text
+from the output start marker to the next primary prompt marker is hidden.
 .Pp
 .Fl u
 enters copy mode and scrolls one page up and
@@ -5821,6 +5849,23 @@ with
 and
 .Ic hybrid ,
 they use absolute line numbers.
+.Pp
+.It Xo Ic copy\-mode\-collapse\-controls
+.Op Ic always | never | on\-demand
+.Xc
+Choose when OSC 133 output collapse controls are shown in copy mode.
+.Ic always
+shows the control column in every copy-mode view;
+.Ic never
+does not show it, although collapse key bindings and commands still work; and
+.Ic on\-demand
+shows it after entering copy mode with
+.Fl U
+or
+.Fl c ,
+or after output is changed with a copy-mode command or key binding.
+The default is
+.Ic on\-demand .
 .Pp
 .It Xo Ic mode\-keys
 .Op Ic vi | emacs
