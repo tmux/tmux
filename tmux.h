@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1410 2026/07/19 19:53:11 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1411 2026/07/20 11:16:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -800,8 +800,19 @@ struct colour_palette {
 #define GRID_LINE_EXTENDED 0x2
 #define GRID_LINE_DEAD 0x4
 #define GRID_LINE_START_PROMPT 0x8
-#define GRID_LINE_START_OUTPUT 0x10
-#define GRID_LINE_HYPERLINK 0x20
+#define GRID_LINE_SECOND_PROMPT 0x10
+#define GRID_LINE_START_COMMAND 0x20
+#define GRID_LINE_START_OUTPUT 0x40
+#define GRID_LINE_END_OUTPUT 0x80
+#define GRID_LINE_HYPERLINK 0x100
+
+/* All OSC 133 flags. */
+#define GRID_LINE_OSC133_FLAGS \
+	(GRID_LINE_START_PROMPT| \
+	 GRID_LINE_SECOND_PROMPT| \
+	 GRID_LINE_START_COMMAND| \
+	 GRID_LINE_START_OUTPUT| \
+	 GRID_LINE_END_OUTPUT)
 
 /* Grid string flags. */
 #define GRID_STRING_WITH_SEQUENCES 0x1
@@ -870,17 +881,27 @@ struct grid_cell_entry {
 	u_char			flags;
 } __packed;
 
+/* OSC 133 data for a grid line. */
+struct osc133_data {
+	u_short			 prompt_col;
+	u_short			 cmd_col;
+	u_short			 out_start_col;
+	u_short			 out_end_col;
+	u_char			 exit_status;
+};
+
 /* Grid line. */
 struct grid_line {
 	struct grid_cell_entry	*celldata;
-	u_int			 cellused;
-	u_int			 cellsize;
-
 	struct grid_extd_entry	*extddata;
+
+	u_short			 cellused;
+	u_short			 cellsize;
 	u_int			 extdsize;
 
-	int			 flags;
-	time_t			 time;
+	u_int			 time;
+	struct osc133_data	 osc133_data;
+	u_short			 flags;
 };
 
 /* Entire grid of cells. */
@@ -3405,6 +3426,7 @@ int	 grid_compare(struct grid *, struct grid *);
 const char *grid_line_flags_string(int);
 const char *grid_cell_flags_string(int);
 const char *grid_cell_attr_string(int);
+time_t	 grid_line_time(const struct grid_line *);
 void	 grid_collect_history(struct grid *, int);
 void	 grid_remove_history(struct grid *, u_int );
 void	 grid_scroll_history(struct grid *, u_int);

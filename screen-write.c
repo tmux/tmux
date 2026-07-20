@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.283 2026/07/09 07:35:05 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.284 2026/07/20 11:16:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1576,16 +1576,19 @@ screen_write_clearline(struct screen_write_ctx *ctx, u_int bg)
 	struct grid_line		*gl;
 	u_int				 sx = screen_size_x(s);
 	struct screen_write_citem	*ci = ctx->item;
+	struct osc133_data		 od;
 	u_int				 flags;
 
 	gl = grid_get_line(s->grid, s->grid->hsize + s->cy);
 	if (gl->cellsize == 0 && COLOUR_DEFAULT(bg))
 		return;
 
-	flags = gl->flags & (GRID_LINE_START_PROMPT|GRID_LINE_START_OUTPUT);
+	flags = gl->flags & GRID_LINE_OSC133_FLAGS;
+	memcpy(&od, &gl->osc133_data, sizeof od);
 	grid_view_clear(s->grid, 0, s->cy, sx, 1, bg);
 	gl = grid_get_line(s->grid, s->grid->hsize + s->cy);
 	gl->flags |= flags;
+	memcpy(&gl->osc133_data, &od, sizeof gl->osc133_data);
 
 	screen_write_collect_clear(ctx, s->cy, 1);
 	ci->x = 0;

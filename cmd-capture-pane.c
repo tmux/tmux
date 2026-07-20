@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-capture-pane.c,v 1.67 2026/07/02 10:34:14 nicm Exp $ */
+/* $OpenBSD: cmd-capture-pane.c,v 1.68 2026/07/20 11:16:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Jonathan Alvarado <radobobo@users.sourceforge.net>
@@ -135,6 +135,7 @@ cmd_capture_pane_grid(struct window_pane *wp, size_t *len)
 	struct screen		*s = &wp->base;
 	struct grid		*gd = s->grid;
 	struct grid_line	*gl;
+	struct osc133_data	*od;
 	char			*buf = xstrdup(""), *line;
 	char			 p[11];
 	u_int			 yy, xx, total = gd->hsize + gd->sy;
@@ -150,9 +151,20 @@ cmd_capture_pane_grid(struct window_pane *wp, size_t *len)
 			snprintf(p, sizeof p, "-");
 		else
 			snprintf(p, sizeof p, "%u", yy - gd->hsize);
-		xasprintf(&line, "\tL %u (%s) flags=%s[%x] %u/%u\n", yy,
-		    p, grid_line_flags_string(gl->flags), gl->flags,
-		    gl->cellused, gl->cellsize);
+		od = &gl->osc133_data;
+		if (gl->flags & GRID_LINE_OSC133_FLAGS) {
+			xasprintf(&line, "\tL %u (%s) flags=%s[%x] "
+			    "%u/%u osc133=%u,%u,%u,%u,%u\n", yy, p,
+			    grid_line_flags_string(gl->flags), gl->flags,
+			    gl->cellused, gl->cellsize, od->prompt_col,
+			    od->cmd_col, od->out_start_col,
+			    od->out_end_col, od->exit_status);
+		} else {
+			xasprintf(&line, "\tL %u (%s) flags=%s[%x] "
+			    "%u/%u\n", yy, p,
+			    grid_line_flags_string(gl->flags), gl->flags,
+			    gl->cellused, gl->cellsize);
+		}
 		buf = cmd_capture_pane_append(buf, len, line, strlen(line));
 		free(line);
 
