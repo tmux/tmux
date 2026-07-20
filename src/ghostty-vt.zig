@@ -345,6 +345,33 @@ fn isColorQuery(rest: []const u8) bool {
     return rest.len >= 1 and rest[0] == '?';
 }
 
+// Mirrors tty_default_colours()/COLOUR_DEFAULT resolution around a
+// "default" marker colour (8 or 9).
+fn isDefaultColour(col: c_int) bool {
+    return col == 8 or col == 9;
+}
+
+// Resolve the effective foreground colour for a pane the same way
+// input.c's input_osc_10 does: prefer a control-client colour, then the
+// pane/window style (window-style, theme light/dark fallback, etc via
+// tty_default_colours), and only then fall back to the raw attached-
+// client colour. Calling window_pane_get_fg() directly (as this used
+// to) skips window-style/theme resolution entirely and returns -1
+// (no reply) whenever no client has reported its own colour, which is
+// not what classic tmux panes answer with.
+fn resolveFg(pane: *c.window_pane) c_int {
+    var col = c.window_pane_get_fg_control_client(pane);
+    if (col == -1) {
+        var defaults: c.grid_cell = undefined;
+        c.tty_default_colours(&defaults, pane, null);
+        if (isDefaultColour(defaults.fg))
+            col = c.window_pane_get_fg(pane)
+        else
+            col = defaults.fg;
+    }
+    return col;
+}
+
 // Answer OSC 10/11/12 and OSC 4;n colour QUERIES with tmux's colour for
 // this pane. ghostty ignores colour queries and input.c is bypassed for
 // ghostty panes, so otherwise an app probing the fg/bg (e.g. neovim's
@@ -364,7 +391,7 @@ fn maybeColorQuery(wp: ?*c.window_pane, buf: []const u8, input_end: c_int) void 
 
     switch (code) {
         10 => if (isColorQuery(buf[i..]))
-            colorReplyOsc(pane, 10, null, c.window_pane_get_fg(pane), input_end),
+            colorReplyOsc(pane, 10, null, resolveFg(pane), input_end),
         11 => if (isColorQuery(buf[i..]))
             colorReplyOsc(pane, 11, null, c.window_pane_get_bg(pane), input_end),
         12 => if (isColorQuery(buf[i..]))
