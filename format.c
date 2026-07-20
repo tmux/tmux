@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.406 2026/07/19 17:36:38 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.407 2026/07/20 07:42:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2571,7 +2571,7 @@ format_cb_pane_unzoomed_height(struct format_tree *ft)
 	struct window_pane	*wp = ft->wp;
 	struct window		*w;
 	struct layout_cell	*lc, *root;
-	int			 status;
+	int			 status, floating;
 	u_int			 sy;
 
 	if (wp == NULL)
@@ -2584,12 +2584,16 @@ format_cb_pane_unzoomed_height(struct format_tree *ft)
 	if (lc == NULL)
 		return (NULL);
 	sy = lc->g.sy;
+	floating = (lc->flags & LAYOUT_CELL_FLOATING);
 
 	root = w->saved_layout_root;
 	if (root == NULL)
 		root = w->layout_root;
-	status = window_pane_get_pane_status(wp);
-	if (!window_pane_is_floating(wp) &&
+	if (lc == wp->saved_layout_cell && !floating)
+		status = window_get_pane_status(w);
+	else
+		status = window_pane_get_pane_status(wp);
+	if (!floating &&
 	    root != NULL &&
 	    layout_add_horizontal_border(root, lc, status) &&
 	    sy > 1)
