@@ -125,7 +125,7 @@ static void			 layout_tokens_destroy(struct layout_tokens *);
 static int			 layout_tokens_push(struct layout_tokens *,
 				     enum layout_token_type,
 				     struct layout_string_view *);
-static struct layout_token	*layout_tokens_top(struct layout_tokens *);
+static const struct layout_token *layout_tokens_last(struct layout_tokens *);
 static struct layout_node	*layout_node_create(struct layout_node *,
 				     enum layout_node_type,
 				     struct layout_string_view *, const void *);
@@ -167,7 +167,7 @@ static struct layout_cell	*layout_construct(const char *, int, char **);
 static void			 layout_assign(struct window_pane **,
 				     struct layout_cell *);
 
-/* Return 1 if the string view compares as equal to the string. */
+/* Return 1 when the string view compares as equal to the string. */
 static int
 lsvcmp(const struct layout_string_view *lsv, const char *s)
 {
@@ -214,7 +214,7 @@ layout_tokenize_input(const char *input)
 		case ',':
 			type = TOK_COMMA;
 			break;
-		default: /* Escape sequences are not supported. */
+		default:
 			type = TOK_VALUE;
 			scan = layout_tokenize_value(tokens, input, &lsv);
 			if (scan == -1)
@@ -237,11 +237,15 @@ fail:
 	return (NULL);
 }
 
+/*
+ * Tokenize a value from the input string. Strings are terminated by a '"', and
+ * numbers/booleans are terminated by a ','. ']', or '}'.
+ */
 static int
 layout_tokenize_value(struct layout_tokens *tokens, const char *input,
     struct layout_string_view *lsv)
 {
-	struct layout_token	*prev = layout_tokens_top(tokens);
+	struct layout_token	*prev = layout_tokens_last(tokens);
 	int			 scan = 0;
 
 	if (prev == NULL)
@@ -315,8 +319,9 @@ layout_tokens_push(struct layout_tokens *tokens, enum layout_token_type type,
 	return (0);
 }
 
-static struct layout_token *
-layout_tokens_top(struct layout_tokens *tokens)
+/* Returns a reference to the last token. */
+static const struct layout_token *
+layout_tokens_last(struct layout_tokens *tokens)
 {
 	if (tokens->size == 0)
 		return (NULL);
@@ -608,14 +613,14 @@ layout_parse_boolean(struct layout_token **toks, struct layout_node *parent,
 	return (layout_node_create(parent, NODE_BOOLEAN, key, &val));
 }
 
-/* Return 1 if the node's key is equal to the parameter. */
+/* Return 1 when the node's key is equal to the parameter. */
 static int
 layout_key_is_eq(const struct layout_node *field, const char *key)
 {
 	return (lsvcmp(&field->key, key) == 0);
 }
 
-/* Return 1 if the node's value is equal to the parameter. */
+/* Return 1 when the node's value is equal to the parameter. */
 static int
 layout_val_is_eq(const struct layout_node *field, const void *val)
 {
