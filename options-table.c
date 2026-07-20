@@ -1028,14 +1028,11 @@ const struct options_table_entry options_table[] = {
 	{ .name = "status-interval",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .minimum = INT_MIN,
+	  .minimum = 0,
 	  .maximum = INT_MAX,
 	  .default_num = 15,
 	  .unit = "seconds",
-	  .text = "Number of seconds between status line updates. "
-		  "A negative value is a number of milliseconds instead, "
-		  "intended for status line animations; a magnitude below "
-		  "20 milliseconds is treated as 20."
+	  .text = "Number of seconds between status line updates."
 	},
 
 	{ .name = "status-justify",

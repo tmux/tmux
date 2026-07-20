@@ -5797,10 +5797,11 @@ fail:
 static char *
 format_cycle(struct format_expand_state *es, const char *arg)
 {
-	const char	*errstr, *frames, *start, *end, *cp;
-	char		*period;
-	int		 period_ms;
-	u_int		 nframes, index = 0, i;
+	struct status_line	*sl;
+	const char		*errstr, *frames, *start, *end, *cp;
+	char			*period;
+	int			 period_ms;
+	u_int			 nframes, index = 0, i, interval;
 
 	/* Split "<period_ms>:<frames>" on the first colon. */
 	frames = strchr(arg, ':');
@@ -5825,9 +5826,31 @@ format_cycle(struct format_expand_state *es, const char *arg)
 	 * time context so the result is stable; period_ms is >= 1 here, so the
 	 * division is always safe.
 	 */
-	if (es->flags & FORMAT_EXPAND_TIME)
+	if (es->flags & FORMAT_EXPAND_TIME) {
 		index = (u_int)((es->start_time / (uint64_t)period_ms) %
 		    nframes);
+
+		/*
+		 * A cycle in the status line drives its own redraws: request a
+		 * status redraw every period_ms, floored so a tiny period does
+		 * not cause excessively frequent updates. Keep the soonest such
+		 * interval across all cycles; status_redraw() clears it before
+		 * expanding and arms the animation timer afterwards, and is the
+		 * only place that reads it. display-message and #() are not
+		 * FORMAT_STATUS and never reach here; pane borders are, but as
+		 * status_redraw() is the only reader and resets it first, a
+		 * write from anywhere but the status line has no effect.
+		 */
+		if ((es->ft->flags & FORMAT_STATUS) && es->ft->client != NULL) {
+			interval = (u_int)period_ms;
+			if (interval < STATUS_INTERVAL_MIN_MS)
+				interval = STATUS_INTERVAL_MIN_MS;
+			sl = &es->ft->client->status;
+			if (sl->animation_interval == 0 ||
+			    interval < sl->animation_interval)
+				sl->animation_interval = interval;
+		}
+	}
 
 	/* Walk to the chosen frame and return a copy of it. */
 	start = frames;
@@ -6405,19 +6428,6 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 		value = format_replace_expression(mexp, es, copy);
 		if (value == NULL)
 			value = xstrdup("");
-	} else if (strcmp(copy, "now_ms") == 0) {
-		/*
-		 * Monotonic millisecond clock (= es->start_time). Emit a value
-		 * only inside a time context; elsewhere - notably inside #(),
-		 * where FORMAT_EXPAND_TIME is cleared - stay empty so a job
-		 * command key does not vary and the job is not re-executed.
-		 */
-		if (es->flags & FORMAT_EXPAND_TIME)
-			xasprintf(&value, "%llu",
-			    (unsigned long long)es->start_time);
-		else
-			value = xstrdup("");
-		format_log(es, "now_ms is: %s", value);
 	} else {
 		if (strstr(copy, "#{") != 0) {
 			format_log(es, "expanding inner format '%s'", copy);

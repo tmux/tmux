@@ -2037,11 +2037,14 @@ struct cmd_entry {
 /* Status line. */
 #define STATUS_LINES_LIMIT 5
 
-/* Minimum interval between status line updates in milliseconds. */
+/* Shortest interval between status line animation redraws in milliseconds. */
 #define STATUS_INTERVAL_MIN_MS 20
 
 struct status_line {
 	struct event		 timer;
+
+	struct event		 timer_animation;
+	u_int			 animation_interval;
 
 	struct screen		 screen;
 	struct screen		*active;
