@@ -264,7 +264,7 @@ layout_cell_is_tiled(struct layout_cell *lc)
 	return is_leaf && !is_floating;
 }
 
-static int
+int
 layout_cell_has_tiled_child(struct layout_cell *lc)
 {
 	struct layout_cell      *lcchild;

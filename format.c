@@ -854,7 +854,7 @@ format_cb_window_layout(struct format_tree *ft)
 	struct layout_cell	*lcroot;
 	int			 flags = 0;
 
-	if (w == NULL || c == NULL)
+	if (w == NULL)
 		return (NULL);
 
 	if (w->saved_layout_root != NULL)
@@ -862,7 +862,7 @@ format_cb_window_layout(struct format_tree *ft)
 	else
 		lcroot = w->layout_root;
 
-	if (c->flags & CLIENT_CONTROL &&
+	if (c != NULL && c->flags & CLIENT_CONTROL &&
 	    ~c->flags & CLIENT_CONTROL_NEWLAYOUTS)
 		flags |= LAYOUT_CUSTOM_OLD_FORMAT;
 	return (layout_dump(w, lcroot, flags));
@@ -876,10 +876,10 @@ format_cb_window_visible_layout(struct format_tree *ft)
 	struct window	*w = ft->w;
 	int		 flags = 0;
 
-	if (w == NULL || c == NULL)
+	if (w == NULL)
 		return (NULL);
 
-	if (c->flags & CLIENT_CONTROL &&
+	if (c != NULL && c->flags & CLIENT_CONTROL &&
 	    ~c->flags & CLIENT_CONTROL_NEWLAYOUTS)
 		flags |= LAYOUT_CUSTOM_OLD_FORMAT;
 	return (layout_dump(w, w->layout_root, flags));
