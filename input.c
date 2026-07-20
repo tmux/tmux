@@ -3279,9 +3279,14 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 	case 'A':
 	case 'N':
 		if (gl != NULL) {
-			memset(&gl->osc133_data, 0, sizeof gl->osc133_data);
-			gl->osc133_data.prompt_col = s->cx;
-			gl->flags |= GRID_LINE_START_PROMPT;
+			if (!(gl->flags & (GRID_LINE_START_PROMPT|
+			    GRID_LINE_SECOND_PROMPT))) {
+				gl->osc133_data.prompt_col = s->cx;
+				if (strstr(p + 1, ";k=s") != NULL)
+					gl->flags |= GRID_LINE_SECOND_PROMPT;
+				else
+					gl->flags |= GRID_LINE_START_PROMPT;
+			}
 		}
 		if (wp != NULL) {
 			wp->last_prompt_time = time(NULL);
@@ -3291,22 +3296,25 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 	case 'P':
 		if (gl != NULL) {
 			cp = strstr(p, ";k=s");
-			if (cp != NULL && (cp[4] == ';' || cp[4] == '\0'))
-				gl->flags |= GRID_LINE_SECOND_PROMPT;
-			else
-				gl->flags |= GRID_LINE_START_PROMPT;
-			gl->osc133_data.prompt_col = s->cx;
+			if (!(gl->flags & (GRID_LINE_START_PROMPT|
+			    GRID_LINE_SECOND_PROMPT))) {
+				gl->osc133_data.prompt_col = s->cx;
+				if (cp != NULL && (cp[4] == ';' || cp[4] == '\0'))
+					gl->flags |= GRID_LINE_SECOND_PROMPT;
+				else
+					gl->flags |= GRID_LINE_START_PROMPT;
+			}
 		}
 		break;
 	case 'B':
 	case 'I':
-		if (gl != NULL) {
+		if (gl != NULL && !(gl->flags & GRID_LINE_START_COMMAND)) {
 			gl->flags |= GRID_LINE_START_COMMAND;
 			gl->osc133_data.cmd_col = s->cx;
 		}
 		break;
 	case 'C':
-		if (gl != NULL) {
+		if (gl != NULL && !(gl->flags & GRID_LINE_START_OUTPUT)) {
 			gl->flags |= GRID_LINE_START_OUTPUT;
 			gl->osc133_data.out_start_col = s->cx;
 		}
