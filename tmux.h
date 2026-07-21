@@ -706,6 +706,32 @@ enum tty_code_code {
 #define MOUSE_PARAM_BTN_OFF 0x20
 #define MOUSE_PARAM_POS_OFF 0x21
 
+/* JSON node type. */
+enum json_node_type {
+	NODE_STRING,
+	NODE_NUMBER,
+	NODE_BOOLEAN,
+	NODE_OBJECT,
+	NODE_ARRAY
+};
+
+/* JSON node queue. */
+TAILQ_HEAD(json_nodes, json_node);
+
+/* JSON node. */
+struct json_node {
+	struct json_node		*parent;
+	struct json_string		 key;
+	enum json_node_type		 type;
+	union {
+		struct json_string	 jstr;
+		int64_t			 num;
+		int			 bool;
+		struct json_nodes	 fields;
+	} val;
+	TAILQ_ENTRY(json_node)		 entry;
+};
+
 /* A single UTF-8 character. */
 typedef u_int utf8_char;
 
@@ -4219,5 +4245,10 @@ struct hyperlinks	*hyperlinks_init(void);
 struct hyperlinks	*hyperlinks_copy(struct hyperlinks *);
 void			 hyperlinks_reset(struct hyperlinks *);
 void			 hyperlinks_free(struct hyperlinks *);
+
+/* json.c */
+struct json_node	*json_parse(const char *, char **);
+int			 json_key_is_eq(const struct json_node *, const char *);
+int			 json_val_is_eq(const struct json_node *, const void *);
 
 #endif /* TMUX_H */
