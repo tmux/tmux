@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.153 2026/07/17 12:42:51 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.154 2026/07/21 11:53:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1230,6 +1230,8 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 
 	if (wp == NULL) {
 		redraw_get_default_border_style(dctx, &gc, &pane_lines);
+		if (span->data.type != REDRAW_SPAN_BORDER)
+			pane_lines = PANE_LINES_SINGLE;
 		window_get_border_cell(w, NULL, pane_lines, cell_type, &gc);
 	} else {
 		window_pane_get_border_style(wp, c, &gc);
