@@ -1,4 +1,4 @@
-/* $OpenBSD: window-border.c,v 1.1 2026/06/22 08:47:46 nicm Exp $ */
+/* $OpenBSD: window-border.c,v 1.2 2026/07/17 12:42:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -93,7 +93,7 @@ window_pane_get_border_style(struct window_pane *wp, struct client *c,
 	struct grid_cell	*saved;
 	int			*flag;
 
-	if (wp == server_client_get_pane(c)) {
+	if (wp == c->session->curw->window->active) {
 		flag = &wp->active_border_gc_set;
 		saved = &wp->active_border_gc;
 		option = "pane-active-border-style";
