@@ -130,7 +130,7 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (layoutname != NULL) {
-		if (layout_parse(w, layoutname, flags, &cause) == -1) {
+		if (layout_parse(w, layoutname, &cause) == -1) {
 			cmdq_error(item, "%s: %s", cause, layoutname);
 			free(cause);
 			goto error;
