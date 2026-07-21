@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1144 2026/07/19 17:36:38 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1145 2026/07/21 11:52:13 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: July 19 2026 $
+.Dd $Mdocdate: July 21 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -5765,6 +5765,14 @@ section.
 .Pp
 .It Ic copy\-mode\-current\-line\-number\-style Ar style
 Set style of current line number in copy mode.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
+.It Ic copy\-mode\-current\-line\-style Ar style
+Set the style of the line containing the cursor in copy mode.
 For how to specify
 .Ar style ,
 see the
