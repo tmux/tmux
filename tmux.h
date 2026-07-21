@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1406 2026/07/15 13:02:33 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1411 2026/07/20 11:16:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -812,8 +812,19 @@ struct colour_palette {
 #define GRID_LINE_EXTENDED 0x2
 #define GRID_LINE_DEAD 0x4
 #define GRID_LINE_START_PROMPT 0x8
-#define GRID_LINE_START_OUTPUT 0x10
-#define GRID_LINE_HYPERLINK 0x20
+#define GRID_LINE_SECOND_PROMPT 0x10
+#define GRID_LINE_START_COMMAND 0x20
+#define GRID_LINE_START_OUTPUT 0x40
+#define GRID_LINE_END_OUTPUT 0x80
+#define GRID_LINE_HYPERLINK 0x100
+
+/* All OSC 133 flags. */
+#define GRID_LINE_OSC133_FLAGS \
+	(GRID_LINE_START_PROMPT| \
+	 GRID_LINE_SECOND_PROMPT| \
+	 GRID_LINE_START_COMMAND| \
+	 GRID_LINE_START_OUTPUT| \
+	 GRID_LINE_END_OUTPUT)
 
 /* Grid string flags. */
 #define GRID_STRING_WITH_SEQUENCES 0x1
@@ -882,17 +893,27 @@ struct grid_cell_entry {
 	u_char			flags;
 } __packed;
 
+/* OSC 133 data for a grid line. */
+struct osc133_data {
+	u_short			 prompt_col;
+	u_short			 cmd_col;
+	u_short			 out_start_col;
+	u_short			 out_end_col;
+	u_char			 exit_status;
+};
+
 /* Grid line. */
 struct grid_line {
 	struct grid_cell_entry	*celldata;
-	u_int			 cellused;
-	u_int			 cellsize;
-
 	struct grid_extd_entry	*extddata;
+
+	u_short			 cellused;
+	u_short			 cellsize;
 	u_int			 extdsize;
 
-	int			 flags;
-	time_t			 time;
+	u_int			 time;
+	struct osc133_data	 osc133_data;
+	u_short			 flags;
 };
 
 /* Entire grid of cells. */
@@ -2050,18 +2071,6 @@ struct client_file {
 };
 RB_HEAD(client_files, client_file);
 
-/* Client window. */
-struct client_window {
-	u_int			 window;
-	struct window_pane	*pane;
-
-	u_int			 sx;
-	u_int			 sy;
-
-	RB_ENTRY(client_window)	 entry;
-};
-RB_HEAD(client_windows, client_window);
-
 /* Maximum time to be pasting. */
 #define CLIENT_PASTE_TIME_LIMIT 5
 
@@ -2165,8 +2174,6 @@ struct client {
 	const char		*user;
 	struct cmdq_list	*queue;
 
-	struct client_windows	 windows;
-
 	struct control_state	*control_state;
 	u_int			 pause_age;
 
@@ -2247,7 +2254,7 @@ struct client {
 #define CLIENT_STARTSERVER 0x10000000
 #define CLIENT_REDRAWMENU 0x20000000
 #define CLIENT_NOFORK 0x40000000
-#define CLIENT_ACTIVEPANE 0x80000000ULL
+/* 0x80000000ULL unused */
 #define CLIENT_CONTROL_PAUSEAFTER 0x100000000ULL
 #define CLIENT_CONTROL_WAITEXIT 0x200000000ULL
 #define CLIENT_WINDOWSIZECHANGED 0x400000000ULL
@@ -3233,7 +3240,6 @@ void printflike(1, 2) server_add_message(const char *, ...);
 int	 server_create_socket(uint64_t, char **);
 
 /* server-client.c */
-RB_PROTOTYPE(client_windows, client_window, entry, server_client_window_cmp);
 u_int	 server_client_how_many(void);
 void	 server_client_set_overlay(struct client *, u_int, overlay_check_cb,
 	     overlay_mode_cb, overlay_draw_cb, overlay_key_cb,
@@ -3261,10 +3267,6 @@ void	 server_client_loop(void);
 const char *server_client_get_cwd(struct client *, struct session *);
 void	 server_client_set_flags(struct client *, const char *);
 const char *server_client_get_flags(struct client *);
-struct client_window *server_client_get_client_window(struct client *, u_int);
-struct client_window *server_client_add_client_window(struct client *, u_int);
-struct window_pane *server_client_get_pane(struct client *);
-void	 server_client_set_pane(struct client *, struct window_pane *);
 void	 server_client_remove_pane(struct window_pane *);
 void	 server_client_print(struct client *, int, struct evbuffer *);
 
@@ -3421,6 +3423,7 @@ int	 grid_compare(struct grid *, struct grid *);
 const char *grid_line_flags_string(int);
 const char *grid_cell_flags_string(int);
 const char *grid_cell_attr_string(int);
+time_t	 grid_line_time(const struct grid_line *);
 void	 grid_collect_history(struct grid *, int);
 void	 grid_remove_history(struct grid *, u_int );
 void	 grid_scroll_history(struct grid *, u_int);
@@ -3960,6 +3963,9 @@ void	control_set_pane_on(struct client *, struct window_pane *);
 void	control_set_pane_off(struct client *, struct window_pane *);
 void	control_continue_pane(struct client *, struct window_pane *);
 void	control_pause_pane(struct client *, struct window_pane *);
+void	control_set_window_size(struct client *, u_int, u_int, u_int);
+int	control_get_window_size(struct client *, u_int, u_int *, u_int *);
+void	control_clear_window_size(struct client *, u_int);
 struct window_pane_offset *control_pane_offset(struct client *,
 	   struct window_pane *, int *);
 void	control_reset_offsets(struct client *);

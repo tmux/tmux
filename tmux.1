@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1142 2026/07/15 13:02:33 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1144 2026/07/19 17:36:38 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: July 15 2026 $
+.Dd $Mdocdate: July 19 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1112,8 +1112,6 @@ detaching the client, typically causing it to exit.
 sets a comma-separated list of client flags.
 The flags are:
 .Bl -tag -width Ds
-.It active\-pane
-the client has an independent active pane
 .It ignore\-size
 the client does not affect the size of other clients
 .It no\-detach\-on\-destroy
@@ -1143,13 +1141,6 @@ When a client is read-only, only keys bound to the
 or
 .Ic switch\-client
 commands have any effect.
-A client with the
-.Ar active\-pane
-flag allows the active pane to be selected independently of the window's active
-pane used by clients without the flag.
-This only affects the cursor position and commands issued from the client;
-other features such as hooks and styles continue to use the window's active
-pane.
 .Pp
 If no server is started,
 .Ic attach\-session
@@ -6611,7 +6602,7 @@ shows the subscriptions installed with
 .Sh MOUSE SUPPORT
 If the
 .Ic mouse
-option is on (the default is off),
+option is on,
 .Nm
 allows mouse events to be bound as keys.
 The name of each key is made up of a mouse event (such as
@@ -7346,6 +7337,8 @@ The following variables are available, where appropriate:
 .It Li "pane_top" Ta "" Ta "Top of pane"
 .It Li "pane_tty" Ta "" Ta "Pseudo terminal of pane"
 .It Li "pane_unseen_changes" Ta "" Ta "1 if there were changes in pane while in mode"
+.It Li "pane_unzoomed_height" Ta "" Ta "Height of pane when not zoomed"
+.It Li "pane_unzoomed_width" Ta "" Ta "Width of pane when not zoomed"
 .It Li "pane_width" Ta "" Ta "Width of pane"
 .It Li "pane_x" Ta "" Ta "X position of pane"
 .It Li "pane_y" Ta "" Ta "Y position of pane"

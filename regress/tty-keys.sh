@@ -21,7 +21,7 @@ exit_status=0
 format_string () {
 	case $1 in
 		*\')
-			printf '"%%%%"'
+			printf '"%%%%%%"'
 			;;
 		*)
 			printf "'%%%%'"
