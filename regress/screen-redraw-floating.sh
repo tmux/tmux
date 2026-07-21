@@ -125,6 +125,13 @@ new_scene 28 8
 $TMUX2 new-pane -x16 -y5 -X18 -Y4 "sh -c 'printf OUT; exec sleep 100'" || exit 1
 compare floating-outside
 
+# Floating pane whose right border is exactly on the window right edge. The
+# floating pane is clipped so the tiled pane's right border remains unbroken.
+new_scene 28 8
+$TMUX2 respawnp -k "sh -c 'i=0; while [ \$i -lt 8 ]; do printf \"%02d:abcdefghijklmnopq\n\" \$i; i=\$((i + 1)); done; exec sleep 100'" || exit 1
+$TMUX2 new-pane -x10 -y5 -X19 -Y2 "sh -c 'printf EDGE; exec sleep 100'" || exit 1
+compare floating-clip-window-edge
+
 # Floating pane clipped at the top-left corner (negative offsets).
 new_scene 40 12
 $TMUX2 new-pane -x18 -y6 -X-4 -Y-2 "sh -c 'printf TL; exec sleep 100'" || exit 1
