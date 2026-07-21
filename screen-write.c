@@ -1618,9 +1618,7 @@ screen_write_clearline(struct screen_write_ctx *ctx, u_int bg)
 		ctx->wp->flags |= PANE_REDRAW;
 #endif
 
-	flags = gl->flags &
-	    (GRID_LINE_START_PROMPT|GRID_LINE_START_OUTPUT|
-	     GRID_LINE_OSC133_FLAGS);
+	flags = gl->flags & GRID_LINE_OSC133_FLAGS;
 	memcpy(&od, &gl->osc133_data, sizeof od);
 	grid_view_clear(s->grid, 0, s->cy, sx, 1, bg);
 	gl = grid_get_line(s->grid, s->grid->hsize + s->cy);
