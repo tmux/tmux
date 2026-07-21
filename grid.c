@@ -1728,6 +1728,8 @@ grid_line_flags_string(int flags)
 		strlcat(s, "START_OUTPUT,", sizeof s);
 	if (flags & GRID_LINE_END_OUTPUT)
 		strlcat(s, "END_OUTPUT,", sizeof s);
+	if (flags & GRID_LINE_END_OUTPUT_STATUS)
+		strlcat(s, "END_OUTPUT_STATUS,", sizeof s);
 	if (flags & GRID_LINE_HYPERLINK)
 		strlcat(s, "HYPERLINK,", sizeof s);
 	if (*s == '\0')
