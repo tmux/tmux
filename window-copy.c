@@ -6067,6 +6067,7 @@ window_copy_write_line(struct window_mode_entry *wme,
 	else
 		content_sx = sx;
 	backing_y = hsize - data->oy + py;
+	current = (py == data->cy);
 
 	screen_write_cursormove(ctx, 0, py, 0);
 
@@ -6088,7 +6089,6 @@ window_copy_write_line(struct window_mode_entry *wme,
 		style_apply(&cur_ln_gc, oo,
 		    "copy-mode-current-line-number-style", ft);
 		cur_ln_gc.flags |= GRID_FLAG_NOPALETTE;
-		current = (py == data->cy);
 		absolute = backing_y + 1;
 		if (data->lines != NULL && backing_y < data->line_count)
 			absolute = data->lines[backing_y].source_line + 1;
@@ -6166,6 +6166,7 @@ window_copy_write_line(struct window_mode_entry *wme,
 	    status_line->exit_status_present) {
 		format_add(ft, "exit_status", "%hhu", status_line->exit_status);
 		format_add(ft, "exit_status_present", "1");
+		format_add(ft, "exit_status_current", "%d", current);
 		value = options_get_string(oo, "copy-mode-exit-status-format");
 		if (*value != '\0') {
 			exit_status = format_expand(ft, value);
