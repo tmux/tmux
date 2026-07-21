@@ -3868,7 +3868,7 @@ int		 layout_insert_tile(struct window *, struct layout_cell *);
 /* layout-custom.c */
 #define LAYOUT_CUSTOM_OLD_FORMAT 0x1
 char		*layout_dump(struct window *, struct layout_cell *, int);
-int		 layout_parse(struct window *, const char *, int, char **);
+int		 layout_parse(struct window *, const char *, char **);
 
 /* layout-set.c */
 int		 layout_set_lookup(const char *);

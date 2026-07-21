@@ -872,7 +872,7 @@ format_cb_window_layout(struct format_tree *ft)
 static void *
 format_cb_window_visible_layout(struct format_tree *ft)
 {
-	struct client	*c = ft->c;
+	struct client	*c = ft->client;
 	struct window	*w = ft->w;
 	int		 flags = 0;
 

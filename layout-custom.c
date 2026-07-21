@@ -20,6 +20,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 #include <string.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -28,14 +29,17 @@
 #include "tmux.h"
 
 /*
- * Layouts can be represented as strings and currently in two formats: a JSON
- * format (v2, *current*), and a legacy format (v1). The legacy format will be
- * deprecated at some point in future and should no longer be used.
+ * Layouts can be represented as strings in a JSON format (v2). The legacy
+ * format (v1) will be deprecated in the future and should no longer be used.
  *
- * The current (v2) format is JSON. The top level has two key:
- *    "V": version number, currently 2;
- *    "L": array of layout cells
+ * The current (v2) format is JSON. The top level has two keys:
+ *    "V": version number, currently 2
+ *    "L": root layout cell
  * Each cell is an object with:
+ *    "t": cell type:
+ *        "h": horizontal
+ *        "v": vertical
+ *        "p": pane
  *    "w": cell width
  *    "h": cell height
  *    "x": horizontal position
@@ -163,15 +167,23 @@ static struct layout_cell	*layout_find_bottomright(struct layout_cell *);
 static u_short			 layout_checksum(const char *);
 static int			 layout_append(struct layout_cell *,
 				     struct layout_string *, int);
-static struct layout_cell	*layout_construct(const char *, int, char **);
+static struct layout_cell	*layout_construct(const char *, char **);
 static void			 layout_assign(struct window_pane **,
 				     struct layout_cell *);
 
-/* Return 1 when the string view compares as equal to the string. */
+/* Wrapper for string views with strcmp semantics. */
 static int
 lsvcmp(const struct layout_string_view *lsv, const char *s)
 {
-	return strncmp(lsv->ptr, s, lsv->len);
+	int	len;
+
+	len = lsv->len - (int)strlen(s);
+	if (len < 0)
+		return (-1);
+	if (len > 0)
+		return (1);
+
+	return (memcmp(lsv->ptr, s, lsv->len));
 }
 
 /* Tokenize the layout string. */
@@ -221,9 +233,9 @@ layout_tokenize_input(const char *input)
 				goto fail;
 			input += scan - 1;
 		}
-		if (layout_tokens_push(tokens, type, &lsv) != 0) {
+		if (layout_tokens_push(tokens, type, &lsv) != 0)
 			goto fail;
-		}
+
 		lsv.ptr = NULL;
 		lsv.len = 0;
 		input++;
@@ -239,7 +251,7 @@ fail:
 
 /*
  * Tokenize a value from the input string. Strings are terminated by a '"', and
- * numbers/booleans are terminated by a ','. ']', or '}'.
+ * numbers/booleans are terminated by a ',', ']', or '}'.
  */
 static int
 layout_tokenize_value(struct layout_tokens *tokens, const char *input,
@@ -253,15 +265,13 @@ layout_tokenize_value(struct layout_tokens *tokens, const char *input,
 	if (prev->type == TOK_QUOTE) {
 		do {
 			if (input[scan] == '\0')
-				return -1;
-			if (input[scan] == '"' && input[scan - 1] == '\\')
-				scan++;
+				return (-1);
 			scan++;
-		} while (input[scan] != '"');
+		} while (input[scan] != '"' || input[scan - 1] == '\\');
 	} else if (prev->type == TOK_COLON) {
 		do {
 			if (input[scan] == '\0')
-				return -1;
+				return (-1);
 			scan++;
 		} while (input[scan] != ']' && input[scan] != '}' &&
 		    input[scan] != ',');
@@ -448,9 +458,9 @@ layout_parse_key(struct layout_token **toks, struct layout_string_view *lsv)
 	lsv->len = (*toks)->val.len;
 
 	(*toks)++;
-	if ((*toks)->type != TOK_QUOTE) {
+	if ((*toks)->type != TOK_QUOTE)
 		return (-1);
-	}
+
 	(*toks)++;
 
 	return (0);
@@ -465,7 +475,7 @@ layout_parse_object(struct layout_token **toks, struct layout_node *parent,
 	struct layout_string_view	 fkey;
 
 	if ((*toks)->type != TOK_OPENOBJECT)
-		goto fail;
+		return (NULL);
 	(*toks)++;
 
 	object = layout_node_create(parent, NODE_OBJECT, key, NULL);
@@ -481,10 +491,14 @@ layout_parse_object(struct layout_token **toks, struct layout_node *parent,
 			field = layout_parse_string(toks, object, &fkey);
 			break;
 		case TOK_VALUE:
-			if (isdigit((u_char)*(*toks)->val.ptr))
-				field = layout_parse_number(toks, object, &fkey);
-			else
-				field = layout_parse_boolean(toks, object, &fkey);
+			if (lsvcmp(&(*toks)->val, "true") == 0 ||
+			    lsvcmp(&(*toks)->val, "false") == 0) {
+				field = layout_parse_boolean(toks, object,
+				    &fkey);
+			} else {
+				field = layout_parse_number(toks, object,
+				    &fkey);
+			}
 			break;
 		case TOK_OPENOBJECT:
 			field = layout_parse_object(toks, object, &fkey);
@@ -518,13 +532,14 @@ static struct layout_node *
 layout_parse_array(struct layout_token **toks, struct layout_node *parent,
     struct layout_string_view *key)
 {
-	struct layout_node	*array = layout_node_create(parent, NODE_ARRAY, key, NULL);
+	struct layout_node	*array;
 	struct layout_node	*member;
 
 	if ((*toks)->type != TOK_OPENARRAY)
-		goto fail;
+		return (NULL);
 	(*toks)++;
 
+	array = layout_node_create(parent, NODE_ARRAY, key, NULL);
 	while ((*toks)->type != TOK_CLOSEARRAY) {
 		switch ((*toks)->type) {
 		case TOK_OPENOBJECT:
@@ -583,11 +598,12 @@ layout_parse_number(struct layout_token **toks, struct layout_node *parent,
     struct layout_string_view *key)
 {
 	const char	*numstr = (*toks)->val.ptr;
+	char		*endptr;
 	int64_t		 val;
 
 	errno = 0;
-	val = strtoll(numstr, NULL, 10);
-	if (errno != 0)
+	val = strtoll(numstr, &endptr, 10);
+	if (errno != 0 || endptr != numstr + (*toks)->val.len)
 		return (NULL);
 	(*toks)++;
 
@@ -631,8 +647,9 @@ layout_val_is_eq(const struct layout_node *field, const void *val)
 		return (field->val.num == *(int64_t *)val);
 	case NODE_BOOLEAN:
 		return (field->val.bool == *(int *)val);
-	default:
-		fatalx("node has no value");
+	case NODE_OBJECT:
+	case NODE_ARRAY:
+		fatalx("unknown value comparison");
 	}
 	return (0);
 }
@@ -655,14 +672,18 @@ layout_evaluate_nodes(struct layout_node *root, int version)
 				ver = field->val.num;
 			break;
 		case NODE_OBJECT:
-			if (layout_key_is_eq(field, "L"))
+			if (layout_key_is_eq(field, "L")) {
+				if (lcroot != NULL)
+					goto fail;
 				lcroot = layout_evaluate_layout(field, NULL);
+				if (lcroot == NULL)
+					goto fail;
+			}
 			break;
 		default:
 			break;
 		}
 	}
-
 	if (ver != version)
 		goto fail;
 	if (lcroot == NULL)
@@ -709,7 +730,7 @@ layout_evaluate_layout(struct layout_node *node, struct layout_cell *lcparent)
 			break;
 		case NODE_BOOLEAN:
 			if (layout_key_is_eq(field, "a"))
-				active = field->val.num; /* unused */
+				active = field->val.bool; /* unused */
 			break;
 		case NODE_STRING:
 			if (layout_key_is_eq(field, "t")) {
@@ -721,6 +742,7 @@ layout_evaluate_layout(struct layout_node *node, struct layout_cell *lcparent)
 					type = LAYOUT_WINDOWPANE;
 				else
 					goto fail;
+				lc->type = type;
 			} else if (layout_key_is_eq(field, "i")) {
 				errno = 0;
 				numstr = field->val.lsv.ptr;
@@ -754,9 +776,15 @@ layout_evaluate_layout(struct layout_node *node, struct layout_cell *lcparent)
 	    yoff == INT_MAX)
 		goto fail;
 	layout_set_size(lc, sx, sy, xoff, yoff);
-	lc->type = type;
 	return (lc);
 fail:
+	/*
+	 * Ensure the children are freed if the child field is parsed and fails
+	 * before the layout type is set.
+	 */
+	if (type == LAYOUT_WINDOWPANE && !TAILQ_EMPTY(&lc->cells))
+		lc->type = LAYOUT_TOPBOTTOM;
+
 	layout_free_cell(lc, 0);
 	return (NULL);
 }
@@ -779,11 +807,11 @@ layout_string_write(struct layout_string *ls, const char *fmt, ...)
 	va_start(ap, fmt);
 
 	len = vsnprintf(ls->write, remaining, fmt, ap);
-        va_end(ap);
+	va_end(ap);
 
-        if (len < 0 || len >= remaining)
-                return (-1);
-        ls->write += len;
+	if (len < 0 || len >= remaining)
+		return (-1);
+	ls->write += len;
 
 	return (0);
 }
@@ -825,7 +853,8 @@ layout_dump(__unused struct window *w, struct layout_cell *root, int flags)
 		return (NULL);
 
 	if (flags & LAYOUT_CUSTOM_OLD_FORMAT)
-		xasprintf(&out, "%04hx,%s", layout_checksum(layout.dat), layout.dat);
+		xasprintf(&out, "%04hx,%s", layout_checksum(layout.dat),
+		    layout.dat);
 	else
 		xasprintf(&out, "{\"V\":2,\"L\":%s}", layout.dat);
 	return (out);
@@ -839,7 +868,7 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 	struct window_pane	*wp;
 	enum layout_type	 type;
 	char			 c;
-	u_int			 i;
+	u_int			 i, n;
 
 	if (lc == NULL)
 		return (0);
@@ -860,29 +889,39 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 	if (type != LAYOUT_WINDOWPANE) {
 		if (layout_string_write(ls, ",\"c\":[") != 0)
 			return (-1);
+		n = 0;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			if (layout_append_v2(lcchild, ls) != 0)
 				return (-1);
 			if (layout_string_write(ls, ",") != 0)
 				return (-1);
+			n++;
 		}
+		if (n == 0)
+			return (-1);
 		*(--ls->write) = '\0'; /* removing trailing comma */
 		if (layout_string_write(ls, "]") != 0)
 			return (-1);
 	} else {
 		wp = lc->wp;
+		if (wp == NULL)
+			return (-1);
 		if (wp == wp->window->active) {
 			if (layout_string_write(ls, ",\"a\":true") != 0)
 				return (-1);
 		} else {
-			window_pane_last_index(wp, &i);
-			if (layout_string_write(ls, ",\"l\":%u", i) != 0)
-				return (-1);
+			if (window_pane_last_index(wp, &i) != -1) {
+				if (layout_string_write(ls, ",\"l\":%u", i)
+				    != 0)
+					return (-1);
+			}
 		}
 		if (lc->flags & LAYOUT_CELL_FLOATING) {
-			window_pane_zindex(wp, &i);
-			if (layout_string_write(ls, ",\"z\":%u", i) != 0)
-				return (-1);
+			if (window_pane_zindex(wp, &i) != -1) {
+				if (layout_string_write(ls, ",\"z\":%u", i)
+				    != 0)
+					return (-1);
+			}
 		}
 		if (layout_string_write(ls, ",\"i\":\"%%%u\"", wp->id) != 0)
 			return (-1);
@@ -898,11 +937,13 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 static int
 layout_append_v1(struct layout_cell *lc, struct layout_string *ls)
 {
-	struct layout_cell     *lcchild;
-	const char	       *brackets = "[]";
+	struct layout_cell	*lcchild;
+	const char		*brackets = "[]";
+	int			 n;
 
-	if (lc == NULL || lc->flags & LAYOUT_CELL_FLOATING)
+	if (lc == NULL)
 		return (0);
+
 	if (lc->wp != NULL) {
 		if (layout_string_write(ls, "%ux%u,%d,%d,%u", lc->g.sx,
 		    lc->g.sy, lc->g.xoff, lc->g.yoff, lc->wp->id) != 0)
@@ -919,12 +960,20 @@ layout_append_v1(struct layout_cell *lc, struct layout_string *ls)
 	case LAYOUT_TOPBOTTOM:
 		if (layout_string_write(ls, "%c", brackets[0]) != 0)
 			return (-1);
+		n = 0;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+			if (!layout_cell_is_tiled(lcchild) &&
+			    !layout_cell_has_tiled_child(lcchild))
+				continue;
 			if (layout_append_v1(lcchild, ls) != 0)
 				return (-1);
 			if (layout_string_write(ls, ",") != 0)
 				return (-1);
+			n++;
 		}
+		if (n == 0)
+			return (-1);
+
 		*(--ls->write) = '\0'; /* removing trailing comma */
 		if (layout_string_write(ls, "%c", brackets[1]) != 0)
 			return (-1);
@@ -957,7 +1006,7 @@ layout_check(struct layout_cell *lc)
 		break;
 	case LAYOUT_LEFTRIGHT:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (!layout_cell_is_tiled(lcchild) ||
+			if (!layout_cell_is_tiled(lcchild) &&
 			    !layout_cell_has_tiled_child(lcchild))
 				continue;
 			if (lcchild->g.sy != lc->g.sy)
@@ -971,7 +1020,7 @@ layout_check(struct layout_cell *lc)
 		break;
 	case LAYOUT_TOPBOTTOM:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (!layout_cell_is_tiled(lcchild) ||
+			if (!layout_cell_is_tiled(lcchild) &&
 			    !layout_cell_has_tiled_child(lcchild))
 				continue;
 			if (lcchild->g.sx != lc->g.sx)
@@ -989,17 +1038,17 @@ layout_check(struct layout_cell *lc)
 
 /* Parse a layout string and arrange window as layout. */
 int
-layout_parse(struct window *w, const char *layout, int flags, char **cause)
+layout_parse(struct window *w, const char *layout, char **cause)
 {
 	struct layout_cell	*lcchild, *lc = NULL;
 	struct window_pane	*wp;
 	u_int			 npanes, ncells, sx = 0, sy = 0;
 
 	/* Build the layout. */
-	lc = layout_construct(layout, flags, cause);
-	if (lc == NULL) {
+	lc = layout_construct(layout, cause);
+	if (lc == NULL)
 		return (-1);
-	}
+
 	/* Check this window will fit into the layout. */
 	npanes = window_count_panes(w, 1);
 	for (;;) {
@@ -1216,15 +1265,18 @@ fail:
 
 /* Construct a layout root from a formatted string. */
 static struct layout_cell *
-layout_construct(const char *layout, int flags, char **cause)
+layout_construct(const char *layout, char **cause)
 {
 	struct layout_cell	*lc;
-	struct layout_tokens		*tokens = NULL;
-	struct layout_node		*node = NULL;
+	struct layout_tokens	*tokens = NULL;
+	struct layout_node	*node = NULL;
 	u_short			 csum;
 	int			 n;
 
-	if (flags & LAYOUT_CUSTOM_OLD_FORMAT) {
+	while (isspace((u_char) *layout))
+		layout++;
+
+	if (*layout != '{') { /* sniffing version */
 		if (sscanf(layout, "%hx,%n", &csum, &n) != 1 || n != 5) {
 			*cause = xstrdup("malformed layout header");
 			return (NULL);
