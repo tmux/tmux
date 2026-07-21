@@ -7175,35 +7175,30 @@ will be replaced by
 .Ql #{?pane_in_mode,yes,no} .
 .Pp
 The
-.Ql cycle:\&
-format shows one of a list of frames in turn.
+.Ql A
+modifier animates the status line by showing one of a list of frames in turn.
 It is written
-.Ql #{cycle:period_ms:frames} ,
-where
-.Ar frames
-is a list of frames separated by single spaces and
-.Ar period_ms
-is a time in milliseconds.
+.Ql #{A/count:frame,frame,...}
+or
+.Ql #{A:frame,frame,...} ,
+where the frames are separated by commas and
+.Ar count
+defaults to 1 when omitted.
 Each frame is shown for
-.Ar period_ms
-milliseconds before the next, wrapping back to the first after the last.
-While a
-.Ql cycle:\&
-is shown in the status line, the status line is redrawn every
-.Ar period_ms
-milliseconds, but no more often than every 20 milliseconds, so the frames
-advance on their own.
-A frame cannot contain a space; an empty list of frames, or a
-.Ar period_ms
-that is not a positive number, gives the empty string.
+.Ar count
+periods of 100 milliseconds before the next, wrapping back to the first after
+the last.
+While a cycle is shown in the status line, the status line is redrawn as it
+advances so the frames animate on their own.
+An empty list of frames gives the empty string.
 It is expanded only in the status line and
 .Ic pane\-border\-format ;
 anywhere else, including inside
 .Ql #() ,
 it is empty.
 For example,
-.Ql #{cycle:200:| / \- \e}
-shows the four frames one after another, changing every 200 milliseconds.
+.Ql #{A/2:|,/,\-,\e}
+shows the four frames in turn, changing every 200 milliseconds.
 .Pp
 The following variables are available, where appropriate:
 .Bl -column "XXXXXXXXXXXXXXXXXXX" "XXXXX"
