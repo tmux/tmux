@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.366 2026/07/19 19:53:11 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.367 2026/07/21 13:04:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -573,13 +573,13 @@ window_resize(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 	w->sy = sy;
 	if (w->menu != NULL) {
 		menu_resize(w->menu, w);
-		redraw_invalidate_scene(w);
 		server_redraw_window(w);
 	}
 	if (xpixel != -1)
 		w->xpixel = xpixel;
 	if (ypixel != -1)
 		w->ypixel = ypixel;
+	redraw_invalidate_scene(w);
 }
 
 void
