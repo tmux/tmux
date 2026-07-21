@@ -274,7 +274,7 @@ layout_tokenize_value(struct layout_tokens *tokens, const char *input,
 				return (-1);
 			scan++;
 		} while (input[scan] != ']' && input[scan] != '}' &&
-		    input[scan] != ',');
+		    input[scan] != ',' && !isspace(input[scan]));
 	} else
 		return (-1);
 
