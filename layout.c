@@ -106,7 +106,7 @@ layout_free_cell(struct layout_cell *lc, int only_nodes)
 		}
 		break;
 	case LAYOUT_WINDOWPANE:
-		if (lc->wp != NULL) {
+		if (lc->wp != NULL && lc->wp->layout_cell != NULL) {
 			lc->wp->layout_cell->parent = NULL;
 			lc->wp->layout_cell = NULL;
 		}
