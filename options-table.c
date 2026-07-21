@@ -1388,7 +1388,9 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "#[align=right]"
-			 "#{?exit_status_present,#[bg=themeyellow](#{exit_status}),}",
+			 "#{?exit_status_present,#[bg=themeyellow]#[fg=themeblack]"
+			 "#{?exit_status_current,#[fg=themewhite],}(#{exit_status})"
+			 "#[bg=themeyellow]#[fg=themeblack],}",
 	  .text = "Format of OSC 133 exit status in copy mode."
 	},
 
