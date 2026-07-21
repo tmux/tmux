@@ -175,12 +175,12 @@ static void			 layout_assign(struct window_pane **,
 static int
 lsvcmp(const struct layout_string_view *lsv, const char *s)
 {
-	int	len;
+	int	slen;
 
-	len = lsv->len - (int)strlen(s);
-	if (len < 0)
+	slen = (int)strlen(s);
+	if (lsv->len < slen)
 		return (-1);
-	if (len > 0)
+	if (lsv->len > slen)
 		return (1);
 
 	return (memcmp(lsv->ptr, s, lsv->len));
