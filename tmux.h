@@ -2036,15 +2036,8 @@ struct cmd_entry {
 
 /* Status line. */
 #define STATUS_LINES_LIMIT 5
-
-/* Shortest interval between status line animation redraws in milliseconds. */
-#define STATUS_INTERVAL_MIN_MS 20
-
 struct status_line {
 	struct event		 timer;
-
-	struct event		 timer_animation;
-	u_int			 animation_interval;
 
 	struct screen		 screen;
 	struct screen		*active;
@@ -2229,6 +2222,7 @@ struct client {
 	struct mouse_event	 click_event;
 
 	struct status_line	 status;
+	struct event		 cycle_timer;
 	enum client_theme	 theme;
 
 	struct input_requests	 input_requests;

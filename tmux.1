@@ -7178,7 +7178,7 @@ The
 .Ql cycle:\&
 format shows one of a list of frames in turn.
 It is written
-.Ql #{cycle:<period_ms>:<frames>} ,
+.Ql #{cycle:period_ms:frames} ,
 where
 .Ar frames
 is a list of frames separated by single spaces and
@@ -7186,21 +7186,24 @@ is a list of frames separated by single spaces and
 is a time in milliseconds.
 Each frame is shown for
 .Ar period_ms
-milliseconds before the next, wrapping back to the first after the last, so it
-advances on its own.
+milliseconds before the next, wrapping back to the first after the last.
 While a
 .Ql cycle:\&
 is shown in the status line, the status line is redrawn every
 .Ar period_ms
-milliseconds so that it advances.
+milliseconds, but no more often than every 20 milliseconds, so the frames
+advance on their own.
 A frame cannot contain a space; an empty list of frames, or a
 .Ar period_ms
 that is not a positive number, gives the empty string.
-It does not work inside
-.Ql #() .
+It is expanded only in the status line and
+.Ic pane\-border\-format ;
+anywhere else, including inside
+.Ql #() ,
+it is empty.
 For example,
 .Ql #{cycle:200:| / \- \e}
-shows each of the four frames in turn, changing every 200 milliseconds.
+shows the four frames one after another, changing every 200 milliseconds.
 .Pp
 The following variables are available, where appropriate:
 .Bl -column "XXXXXXXXXXXXXXXXXXX" "XXXXX"

@@ -29,8 +29,6 @@
 
 #include "tmux.h"
 
-static void	 status_animation_callback(int, short, void *);
-static void	 status_animation_timer(struct client *);
 static void	 status_message_area(struct client *, u_int *, u_int *);
 static void	 status_message_callback(int, short, void *);
 static void	 status_timer_callback(int, short, void *);
@@ -82,45 +80,6 @@ status_timer_start_all(void)
 
 	TAILQ_FOREACH(c, &clients, entry)
 		status_timer_start(c);
-}
-
-/* Status animation timer callback. */
-static void
-status_animation_callback(__unused int fd, __unused short events, void *arg)
-{
-	struct client	*c = arg;
-
-	if (c->message_string == NULL && c->prompt == NULL)
-		c->flags |= CLIENT_REDRAWSTATUS;
-}
-
-/*
- * Arm or disarm the animation timer for a client from the interval last
- * requested by the cycle formats in status_redraw. A zero interval means no
- * cycle was shown, so the timer is stopped and there is no idle cost.
- */
-static void
-status_animation_timer(struct client *c)
-{
-	struct status_line	*sl = &c->status;
-	struct timeval		 tv;
-
-	if (sl->animation_interval == 0) {
-		if (event_initialized(&sl->timer_animation))
-			evtimer_del(&sl->timer_animation);
-		return;
-	}
-
-	if (!event_initialized(&sl->timer_animation))
-		evtimer_set(&sl->timer_animation, status_animation_callback, c);
-
-	timerclear(&tv);
-	tv.tv_sec = sl->animation_interval / 1000;
-	tv.tv_usec = (sl->animation_interval % 1000) * 1000L;
-	evtimer_add(&sl->timer_animation, &tv);
-
-	log_debug("client %p, animation interval %u ms", c,
-	    sl->animation_interval);
 }
 
 /* Update status cache. */
@@ -243,8 +202,6 @@ status_free(struct client *c)
 
 	if (event_initialized(&sl->timer))
 		evtimer_del(&sl->timer);
-	if (event_initialized(&sl->timer_animation))
-		evtimer_del(&sl->timer_animation);
 
 	if (sl->active != &sl->screen) {
 		screen_free(sl->active);
@@ -275,19 +232,10 @@ status_redraw(struct client *c)
 	if (sl->active != &sl->screen)
 		fatalx("not the active screen");
 
-	/*
-	 * Clear the animation redraw interval before expanding; any cycle in
-	 * the status formats below folds its own interval back in and the
-	 * animation timer is (re)armed at the end.
-	 */
-	sl->animation_interval = 0;
-
 	/* No status line? */
 	lines = status_line_size(c);
-	if (c->tty.sy == 0 || lines == 0) {
-		status_animation_timer(c);
+	if (c->tty.sy == 0 || lines == 0)
 		return (1);
-	}
 
 	/* Create format tree. */
 	flags = FORMAT_STATUS;
@@ -359,9 +307,6 @@ status_redraw(struct client *c)
 
 	/* Free the format tree. */
 	format_free(ft);
-
-	/* Arm or stop the animation timer for any cycle shown above. */
-	status_animation_timer(c);
 
 	/* Return if the status line has changed. */
 	log_debug("%s exit: force=%d, changed=%d", __func__, force, changed);

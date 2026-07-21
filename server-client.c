@@ -525,6 +525,8 @@ server_client_lost(struct client *c)
 
 	evtimer_del(&c->repeat_timer);
 	evtimer_del(&c->click_timer);
+	if (event_initialized(&c->cycle_timer))
+		evtimer_del(&c->cycle_timer);
 
 	key_bindings_unref_table(c->keytable);
 

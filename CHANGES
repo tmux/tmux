@@ -1,9 +1,9 @@
 CHANGES FROM 3.7b TO 3.8
 
-* Add a #{cycle:<period_ms>:<frames>} format that shows one of several
+* Add a #{cycle:period_ms:frames} format which shows each of a list of
   space-separated frames in turn, changing every period_ms milliseconds. While
-  a cycle is shown in the status line, the status line is redrawn at that period
-  so the animation advances on its own. Empty input expands to an empty string.
+  a cycle is shown in the status line, the status line is redrawn as it
+  advances, so it animates on its own.
 
 * Many improvements to floating panes:
 

@@ -138,9 +138,13 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 /* How often to check the time in long loops. */
 #define FORMAT_TIME_LOOP_CHECK 10000
 
+/* Shortest interval between cycle redraws in milliseconds. */
+#define FORMAT_CYCLE_MINIMUM 20
+
 /* Format expand flags. */
 #define FORMAT_EXPAND_TIME 0x1
 #define FORMAT_EXPAND_NOJOBS 0x2
+#define FORMAT_EXPAND_NOCYCLE 0x4
 
 /* Entry in format tree. */
 struct format_entry {
@@ -413,7 +417,8 @@ format_job_get(struct format_expand_state *es, const char *cmd)
 		RB_INSERT(format_job_tree, jobs, fj);
 	}
 
-	format_copy_state(&next, es, FORMAT_EXPAND_NOJOBS);
+	format_copy_state(&next, es,
+	    FORMAT_EXPAND_NOJOBS|FORMAT_EXPAND_NOCYCLE);
 	next.flags &= ~FORMAT_EXPAND_TIME;
 
 	expanded = format_expand1(&next, cmd);
@@ -5793,15 +5798,55 @@ fail:
 	return (NULL);
 }
 
+/* Callback for the cycle timer; redraw the status line. */
+static void
+format_cycle_callback(__unused int fd, __unused short events, void *arg)
+{
+	struct client	*c = arg;
+
+	if (c->message_string == NULL && c->prompt == NULL)
+		c->flags |= CLIENT_REDRAWSTATUS;
+}
+
+/* Arm the cycle timer unless it will already fire sooner. */
+static void
+format_cycle_timer(struct client *c, u_int interval)
+{
+	struct timeval	tv, now, when;
+
+	timerclear(&tv);
+	tv.tv_sec = interval / 1000;
+	tv.tv_usec = (interval % 1000) * 1000L;
+
+	if (!event_initialized(&c->cycle_timer))
+		evtimer_set(&c->cycle_timer, format_cycle_callback, c);
+	else if (evtimer_pending(&c->cycle_timer, &when)) {
+		gettimeofday(&now, NULL);
+		timersub(&when, &now, &when);
+		if (timercmp(&when, &tv, <))
+			return;
+	}
+	evtimer_add(&c->cycle_timer, &tv);
+	log_debug("client %p, cycle timer %u ms", c, interval);
+}
+
 /* Expand the "cycle:" animation helper; see the manual for the syntax. */
 static char *
 format_cycle(struct format_expand_state *es, const char *arg)
 {
-	struct status_line	*sl;
+	struct format_tree	*ft = es->ft;
 	const char		*errstr, *frames, *start, *end, *cp;
 	char			*period;
 	int			 period_ms;
-	u_int			 nframes, index = 0, i, interval;
+	u_int			 nframes, index, i, interval;
+
+	/*
+	 * A cycle is only expanded in a status format, and never in the
+	 * command or output of #() where it would change on every frame and
+	 * make the job run again.
+	 */
+	if (!(ft->flags & FORMAT_STATUS) || (es->flags & FORMAT_EXPAND_NOCYCLE))
+		return (xstrdup(""));
 
 	/* Split "<period_ms>:<frames>" on the first colon. */
 	frames = strchr(arg, ':');
@@ -5821,35 +5866,19 @@ format_cycle(struct format_expand_state *es, const char *arg)
 			nframes++;
 	}
 
-	/*
-	 * Choose the frame from the clock. Stay on the first frame outside a
-	 * time context so the result is stable; period_ms is >= 1 here, so the
-	 * division is always safe.
-	 */
-	if (es->flags & FORMAT_EXPAND_TIME) {
-		index = (u_int)((es->start_time / (uint64_t)period_ms) %
-		    nframes);
+	/* period_ms is >= 1 here so the division is safe. */
+	index = (u_int)((es->start_time / (uint64_t)period_ms) % nframes);
 
-		/*
-		 * A cycle in the status line drives its own redraws: request a
-		 * status redraw every period_ms, floored so a tiny period does
-		 * not cause excessively frequent updates. Keep the soonest such
-		 * interval across all cycles; status_redraw() clears it before
-		 * expanding and arms the animation timer afterwards, and is the
-		 * only place that reads it. display-message and #() are not
-		 * FORMAT_STATUS and never reach here; pane borders are, but as
-		 * status_redraw() is the only reader and resets it first, a
-		 * write from anywhere but the status line has no effect.
-		 */
-		if ((es->ft->flags & FORMAT_STATUS) && es->ft->client != NULL) {
-			interval = (u_int)period_ms;
-			if (interval < STATUS_INTERVAL_MIN_MS)
-				interval = STATUS_INTERVAL_MIN_MS;
-			sl = &es->ft->client->status;
-			if (sl->animation_interval == 0 ||
-			    interval < sl->animation_interval)
-				sl->animation_interval = interval;
-		}
+	/*
+	 * Redraw the status line at the period of the fastest cycle shown so
+	 * the frames advance on their own. A single frame never changes so
+	 * there is nothing to redraw for.
+	 */
+	if (nframes > 1 && ft->client != NULL) {
+		interval = (u_int)period_ms;
+		if (interval < FORMAT_CYCLE_MINIMUM)
+			interval = FORMAT_CYCLE_MINIMUM;
+		format_cycle_timer(ft->client, interval);
 	}
 
 	/* Walk to the chosen frame and return a copy of it. */
@@ -5879,10 +5908,10 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	uint64_t			  modifiers = 0;
 	int				  limit = 0, width = 0;
 	int				  j, c;
-	struct format_modifier		 *list = NULL, *cmp = NULL, *search = NULL;
+	struct format_modifier		 *list, *cmp = NULL, *search = NULL;
 	struct format_modifier		**sub = NULL, *mexp = NULL, *fm;
 	struct format_modifier		 *bool_op_n = NULL;
-	u_int				  i, count = 0, nsub = 0, nrep, check = 0;
+	u_int				  i, count, nsub = 0, nrep, check = 0;
 	const char			 *loop_flags = "";
 	struct format_expand_state	  next;
 	struct environ_entry		 *envent;
@@ -5902,6 +5931,8 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	 * "cycle" are left alone.
 	 */
 	if (strncmp(copy, "cycle:", 6) == 0) {
+		list = NULL;
+		count = 0;
 		value = format_cycle(es, copy + 6);
 		format_log(es, "cycle '%s' is: %s", copy, value);
 		goto done;
