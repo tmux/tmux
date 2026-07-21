@@ -6058,18 +6058,33 @@ window_copy_write_line(struct window_mode_entry *wme,
 		}
 		if (gutter_width != 0) {
 			struct grid_cell control_gc;
+			struct window_copy_line *line, *next;
 			char control = ' ';
 
-			if (data->lines != NULL && backing_y < data->line_count &&
-			    data->lines[backing_y].flags & WINDOW_COPY_LINE_CONTROL) {
-				if (data->lines[backing_y].flags &
+			line = NULL;
+			if (data->lines != NULL && backing_y < data->line_count)
+				line = &data->lines[backing_y];
+			if (line != NULL &&
+			    line->flags & WINDOW_COPY_LINE_CONTROL) {
+				if (line->flags &
 				    WINDOW_COPY_LINE_INITIAL)
-					control = data->top_output ? '>' : 'V';
+					control = data->top_output ? '+' : '-';
 				else if (data->outputs[
-				    data->lines[backing_y].output_line])
-					control = '>';
+				    line->output_line])
+					control = '+';
 				else
-					control = 'V';
+					control = '-';
+			} else if (line != NULL &&
+			    line->flags & WINDOW_COPY_LINE_MEMBER) {
+				next = NULL;
+				if (backing_y + 1 < data->line_count)
+					next = &data->lines[backing_y + 1];
+				if (next == NULL ||
+				    ~(next->flags) & WINDOW_COPY_LINE_MEMBER ||
+				    next->output_line != line->output_line)
+					control = 'm'; /* ACS L character */
+				else
+					control = 'x'; /* ACS | character */
 			}
 			screen_write_cursormove(ctx, line_width, py, 0);
 			screen_write_putc(ctx, current ? &cur_ln_gc : &ln_gc, ' ');
@@ -6078,7 +6093,8 @@ window_copy_write_line(struct window_mode_entry *wme,
 			else {
 				memcpy(&control_gc, current ? &cur_ln_gc : &ln_gc,
 				    sizeof control_gc);
-				control_gc.attr |= GRID_ATTR_CHARSET;
+				if (control == 'x' || control == 'm')
+					control_gc.attr |= GRID_ATTR_CHARSET;
 				screen_write_putc(ctx, &control_gc, control);
 			}
 			screen_write_putc(ctx, current ? &cur_ln_gc : &ln_gc, ' ');
