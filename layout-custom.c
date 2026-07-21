@@ -258,7 +258,7 @@ layout_tokenize_value(struct layout_tokens *tokens, const char *input,
     struct layout_string_view *lsv)
 {
 	const struct layout_token	*prev = layout_tokens_last(tokens);
-	int				 scan = 0;
+	int				 scan = 0, escaping = 0;
 
 	if (prev == NULL)
 		return (-1);
@@ -266,8 +266,12 @@ layout_tokenize_value(struct layout_tokens *tokens, const char *input,
 		do {
 			if (input[scan] == '\0')
 				return (-1);
+			if (input[scan] == '\\' && !escaping)
+				escaping = 1;
+			else if (escaping)
+				escaping = 0;
 			scan++;
-		} while (input[scan] != '"' || input[scan - 1] == '\\');
+		} while (input[scan] != '"' && !escaping);
 	} else if (prev->type == TOK_COLON) {
 		do {
 			if (input[scan] == '\0')
