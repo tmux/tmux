@@ -1583,6 +1583,38 @@ struct layout_cell {
 	TAILQ_ENTRY(layout_cell) entry;
 };
 
+/* JSON string view. */
+struct json_string {
+	const char	*ptr;
+	int		 len;
+};
+
+/* JSON node type. */
+enum json_node_type {
+	NODE_STRING,
+	NODE_NUMBER,
+	NODE_BOOLEAN,
+	NODE_OBJECT,
+	NODE_ARRAY
+};
+
+/* JSON node queue. */
+TAILQ_HEAD(json_nodes, json_node);
+
+/* JSON node. */
+struct json_node {
+	struct json_node		*parent;
+	struct json_string		 key;
+	enum json_node_type		 type;
+	union {
+		struct json_string	 jstr;
+		int64_t			 num;
+		int			 boolean;
+		struct json_nodes	 fields;
+	} val;
+	TAILQ_ENTRY(json_node)		 entry;
+};
+
 /* Environment variable. */
 struct environ_entry {
 	char		*name;
@@ -4246,5 +4278,11 @@ struct hyperlinks	*hyperlinks_init(void);
 struct hyperlinks	*hyperlinks_copy(struct hyperlinks *);
 void			 hyperlinks_reset(struct hyperlinks *);
 void			 hyperlinks_free(struct hyperlinks *);
+
+/* json.c */
+struct json_node	*json_parse(const char *, char **);
+void			 json_destroy_node(struct json_node *);
+int			 json_key_is_eq(const struct json_node *, const char *);
+int			 json_val_is_eq(const struct json_node *, const void *);
 
 #endif /* TMUX_H */
