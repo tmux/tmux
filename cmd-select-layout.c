@@ -91,7 +91,7 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'p'))
 		previous = 1;
 
-	if (c->flags & CLIENT_CONTROL &&
+	if (c != NULL && c->flags & CLIENT_CONTROL &&
 	    ~c->flags & CLIENT_CONTROL_NEWLAYOUTS)
 		flags |= LAYOUT_CUSTOM_OLD_FORMAT;
 
