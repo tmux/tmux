@@ -1,3 +1,165 @@
+CHANGES FROM 3.7b TO 3.8
+
+* Many improvements to floating panes:
+
+  - new-pane and split-window can now set the title with -T and border lines
+    with -B, and new-pane -W waits for the pane command to exit;
+
+  - dragging with Ctrl now creates a new floating pane;
+
+  - modal panes may be created with new-pane -O; a window can have one modal
+    pane and it prevents interaction with the other panes while it is active.
+    A modal pane is now used for the editor in buffer mode;
+
+  - move-pane and resize-pane can now move and resize floating panes, including
+    mouse dragging;
+
+  - split-window in a floating pane creates a new floating pane that does not
+    overlap the active pane, if possible;
+
+  - break-pane can float a tiled pane, join-pane can tile a floating pane, and
+    swap-pane works with floating panes;
+
+  - choose-tree -h and choose-client -h hide the pane containing the mode, and
+    -k for choose commands kills the pane when the mode exits, which is useful
+    for modes in floating panes;
+
+  - pane-border-status has top-floating and bottom-floating, and there are new
+    default bindings under C-b g for common move and resize operations;
+
+  - floating panes are unzoomed before creation to avoid a crash.
+
+* Add support for themes and improve default colours:
+
+  - tmux now has builtin light and dark colour themes for terminals with 256 or
+    more colours; a new theme option controls whether tmux detects the terminal
+    theme, uses terminal colours, or forces light or dark (set to terminal for
+    the old colours);
+
+  - styles can use new theme colour names such as themeblack, themewhite and
+    themegreen, and colours in styles are expanded as formats;
+
+  - the terminal's own theme is reported to panes instead of being guessed from
+    the background, and inferred more accurately when theme reporting is not
+    supported (Ayman Bagabas, issue 5343);
+
+  - tree-mode-selection-style has been added, tree mode selection styling now
+    covers the whole line, and built-in modes use improved theme colours.
+
+* Improvements to customize mode:
+
+  - hooks and environment variables are now shown;
+
+  - e opens the selected value in an editor;
+
+  - C toggles showing only changed items;
+
+  - array item keys can now be changed.
+
+* Hooks (and control mode notifications) are now handled internally by using
+  events, each of which may carry keys and values as a payload. The control
+  mode subscriptions mechanism has been extended to allow general-purpose
+  "monitors" which check a format every second and trigger a hook when it
+  changes or becomes true:
+
+  - set-hook -B adds a monitor hook using the same subscription syntax as
+    refresh-client -B, and show-hooks -B lists them. -T runs the hook only when
+    the format is true;
+
+  - wait-for -E waits for hooks, notifications or user events, and set-hook -E
+    fires an event immediately;
+
+  - hooks have additional keys available. wait-for -v can be used to see the
+    keys sent with a hook event;
+
+  - new hooks to cover areas including client create and destroy, pane
+    activity, pane mode and prompt changes, pane movement and resizing, session
+    group changes and window creation, close and zoom;
+
+  - OSC 133 escape sequences now trigger events: pane-command-started,
+    pane-command-finished and pane-shell-prompt.
+
+* Add switch-mode, a fast switcher bound by default to Tab for windows and BTab
+  (S-Tab) for sessions.
+
+* Pane scrollbars now support auto-hide. This replaces the previous modal
+  behaviour where the pane was resized. With auto-hide, the scrollbar appears
+  while scrolling or while hovered and disappears after pane-scrollbars-timeout
+  (Michael Grant).
+
+* Change command templates so %% is escaped for single quotes while %1 remains
+  unquoted, preventing single quotes in session or target names from
+  terminating quoted command sections (reported by Aliz Hammond).
+
+* display-panes is now a mode rather than an overlay, and can be run inside
+  another pane. The -b flag has been removed.
+
+* Add new-window -E, respawn-pane -E and respawn-window -E as more convenient
+  methods to create an empty pane (rather than using '' for the command).
+
+* Menus now belong to the window, so appear on all clients.
+
+* Dragging over an existing copy mode selection now adjusts it (Michael Grant).
+
+* Rectangle selection in copy mode may extend past the end of the current line
+  to match vi's virtualedit=block behaviour (Mark Kelly, issue 5227).
+
+* With mode-keys set to vi, scrolling in copy mode now keeps the cursor in the
+  same position relative to the text (Arseniy Simonov, issue 5216).
+
+* Copy mode no longer exits at the bottom while a selection is in progress
+  (issue 5349).
+
+* Fix scrollbar initial state so scrollbars appear on new windows (issue 5339).
+
+* Add style attributes for dimming colours (dim=) and for hyperlinks (link= and
+  nolink) (issues 4842 and 4280 from Moritz Angermann).
+
+* New format modifiers: O: loops over options, V: loops over environments,
+  the I modifier reports client terminal information, t/d gives a time
+  difference in seconds, c/f and c/b emit colours, and the m operator supports
+  multiple terms and fuzzy matching.
+
+* Add or improve format variables including client_colours,
+  pane_start_command_list, window_manual_width, window_manual_height,
+  pane_last_output_time, pane_modal_flag and window_modal_pane.
+
+* Add additional pane sort orders, and a z sort order for choose-tree so
+  floating panes can be sorted by z-index.
+
+* Add -f filters to kill-pane -a, kill-window -a and kill-session -a (issue
+  4782).
+
+* Allow server ACLs to use groups as well as users (issue 4917).
+
+* The mouse option now defaults to on.
+
+* Fix send-keys -K so keys are inserted in the correct place in the input
+  queue, like keys from key bindings (issue 3476).
+
+* Fix control mode clients hanging on exit if pty data was still queued (Ben
+  Maurer, issue 5356), and avoid sending notifications to clients which are
+  already exiting (Ben Maurer, issue 5357).
+
+* Fix grouped sessions sometimes being left as unusable command targets while
+  they are being killed (Bryce Miller, issue 5180).
+
+* Fix choose mode filtering when more than one pane exists (issue 5326), and
+  fix an infinite loop in customize mode when a filter does not match.
+
+* Fix regsub when the pattern is anchored at the start (issue 5341).
+
+* Fix redraw issues around synchronized updates, copy mode, tabs, padding,
+  status lines, menus, popups, wide characters and floating panes. This
+  includes fixes for flicker with alternate screen applications and scrollbars
+  (Michael Grant, issue 5351; Noam Stolero, issue 5350; Aung Myo Kyaw, issue
+  5098).
+
+* Do not crash looking for the next or previous session (issue 5344), or when
+  no client is available.
+
+* Check time periodically in loops rather than for every item (issue 5367).
+
 CHANGES FROM 3.7a TO 3.7b
 
 * Fix so that the end of a synchronized update again triggers a redraw.
