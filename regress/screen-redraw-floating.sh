@@ -218,4 +218,11 @@ tiled=$($TMUX2 list-panes -F '#{pane_floating_flag} #{pane_id}' | \
 $TMUX2 kill-pane -t "$tiled" || exit 1
 compare floating-empty
 
+# Same after pane-border-lines is set to none: empty window background is not a
+# pane border and should still use the dotted window fill.
+new_scene 40 12
+$TMUX2 breakp -W || exit 1
+$TMUX2 set pane-border-lines none || exit 1
+compare floating-empty-noborder
+
 exit 0
