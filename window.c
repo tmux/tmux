@@ -1194,7 +1194,7 @@ window_pane_last_index(struct window_pane *wp, u_int *i)
 	struct window_pane	*wq;
 
 	*i = 0;
-	TAILQ_FOREACH(wq, &w->last_panes, zentry) {
+	TAILQ_FOREACH(wq, &w->last_panes, sentry) {
 		if (wq == wp) {
 			return (0);
 		}
