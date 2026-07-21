@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.405 2026/07/15 13:02:33 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.407 2026/07/20 07:42:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2611,6 +2611,79 @@ format_cb_pane_tty(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_unzoomed_height. */
+static void *
+format_cb_pane_unzoomed_height(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+	struct window		*w;
+	struct layout_cell	*lc, *root;
+	int			 status, floating;
+	u_int			 sy;
+
+	if (wp == NULL)
+		return (NULL);
+	w = wp->window;
+
+	lc = wp->saved_layout_cell;
+	if (lc == NULL)
+		lc = wp->layout_cell;
+	if (lc == NULL)
+		return (NULL);
+	sy = lc->g.sy;
+	floating = (lc->flags & LAYOUT_CELL_FLOATING);
+
+	root = w->saved_layout_root;
+	if (root == NULL)
+		root = w->layout_root;
+	if (lc == wp->saved_layout_cell && !floating)
+		status = window_get_pane_status(w);
+	else
+		status = window_pane_get_pane_status(wp);
+	if (!floating &&
+	    root != NULL &&
+	    layout_add_horizontal_border(root, lc, status) &&
+	    sy > 1)
+		sy--;
+
+	return (format_printf("%u", sy));
+}
+
+/* Callback for pane_unzoomed_width. */
+static void *
+format_cb_pane_unzoomed_width(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+	struct layout_cell	*lc;
+	int			 sb_w, sb_pad;
+	u_int			 sx;
+
+	if (wp == NULL)
+		return (NULL);
+
+	lc = wp->saved_layout_cell;
+	if (lc == NULL)
+		lc = wp->layout_cell;
+	if (lc == NULL)
+		return (NULL);
+	sx = lc->g.sx;
+
+	if (window_pane_scrollbar_reserve(wp)) {
+		sb_w = wp->scrollbar_style.width;
+		sb_pad = wp->scrollbar_style.pad;
+		if (sb_w < 1)
+			sb_w = 1;
+		if (sb_pad < 0)
+			sb_pad = 0;
+		if ((int)sx - sb_w - sb_pad < PANE_MINIMUM)
+			sx = PANE_MINIMUM;
+		else
+			sx -= sb_w + sb_pad;
+	}
+
+	return (format_printf("%u", sx));
+}
+
 /* Callback for pane_width. */
 static void *
 format_cb_pane_width(struct format_tree *ft)
@@ -3851,6 +3924,12 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_unseen_changes", FORMAT_TABLE_STRING,
 	  format_cb_pane_unseen_changes
+	},
+	{ "pane_unzoomed_height", FORMAT_TABLE_STRING,
+	  format_cb_pane_unzoomed_height
+	},
+	{ "pane_unzoomed_width", FORMAT_TABLE_STRING,
+	  format_cb_pane_unzoomed_width
 	},
 	{ "pane_width", FORMAT_TABLE_STRING,
 	  format_cb_pane_width

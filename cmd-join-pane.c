@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-join-pane.c,v 1.72 2026/07/15 13:02:33 nicm Exp $ */
+/* $OpenBSD: cmd-join-pane.c,v 1.73 2026/07/17 15:24:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 George Nachman <tmux@georgester.com>

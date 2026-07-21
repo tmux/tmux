@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.364 2026/07/15 13:02:33 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.366 2026/07/19 19:53:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>

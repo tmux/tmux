@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.238 2026/07/15 13:02:33 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.239 2026/07/19 17:36:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1349,7 +1349,8 @@ const struct options_table_entry options_table[] = {
 	{ .name = "display-panes-format",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "#[align=right]#{pane_width}x#{pane_height}",
+	  .default_str = "#[align=right]"
+	                 "#{pane_unzoomed_width}x#{pane_unzoomed_height}",
 	  .text = "Format of text shown by 'display-panes', expanded for each "
 		  "pane."
 	},

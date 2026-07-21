@@ -1,4 +1,4 @@
-/* $OpenBSD: window-visible.c,v 1.4 2026/06/29 19:03:34 nicm Exp $ */
+/* $OpenBSD: window-visible.c,v 1.5 2026/07/19 17:25:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -81,7 +81,7 @@ window_visible_ranges(struct window_pane *base_wp, int px, int py, u_int width,
 	}
 
 	w = base_wp->window;
-	if ((u_int)py >= w->sy)
+	if ((u_int)py >= w->sy || (u_int)px >= w->sx)
 		goto empty;
 	if (px + width > w->sx)
 		width = w->sx - px;
