@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1145 2026/07/21 11:52:13 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1146 2026/07/21 12:28:43 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -3636,7 +3636,7 @@ but a different format may be specified with
 .Fl F .
 .Tg newp
 .It Xo Ic new\-pane
-.Op Fl bdefhIkLMOPvWZ
+.Op Fl bCdefhIkLMOPvWZ
 .Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
@@ -3692,6 +3692,9 @@ creates a modal pane.
 A modal pane is always the active pane and prevents interaction with any other
 panes while it is active.
 A window can only have one modal pane and it must be a floating pane.
+With
+.Fl C ,
+the modal pane is closed when the mouse is clicked outside it.
 .Pp
 The
 .Fl L

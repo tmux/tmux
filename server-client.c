@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.497 2026/07/17 12:42:51 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.498 2026/07/21 12:28:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1062,6 +1062,11 @@ have_event:
 				c->tty.mouse_scrolling_flag = 0;
 				c->tty.mouse_slider_mpos = -1;
 				c->tty.mouse_last_pane = -1;
+				if ((w->modal->flags & PANE_CLOSEONCLICK) &&
+				    (type == KEYC_TYPE_MOUSEDOWN ||
+				    type == KEYC_TYPE_SECONDCLICK ||
+				    type == KEYC_TYPE_TRIPLECLICK))
+					server_kill_pane(w->modal);
 				return (KEYC_UNKNOWN);
 			}
 		}
