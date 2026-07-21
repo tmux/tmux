@@ -273,6 +273,8 @@ struct window_copy_line {
 	u_int	 source_line;
 	u_int	 output_line;
 	u_char	 flags;
+	u_char	 exit_status;
+	u_char	 exit_status_present;
 };
 
 /*
@@ -516,6 +518,19 @@ window_copy_set_control(struct window_copy_mode_data *data, u_int y,
 	line->flags |= WINDOW_COPY_LINE_CONTROL;
 }
 
+static void
+window_copy_set_exit_status(struct window_copy_mode_data *data, u_int y,
+    u_char exit_status)
+{
+	struct window_copy_line	*line;
+
+	line = window_copy_get_line_info(data, y);
+	if (line == NULL)
+		return;
+	line->exit_status = exit_status;
+	line->exit_status_present = 1;
+}
+
 static int
 window_copy_any_output_collapsed(struct window_copy_mode_data *data)
 {
@@ -624,6 +639,7 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 	struct grid_cell		 gc;
 	struct osc133_data		*osc133;
 	u_int				 y, x, total, dy, prompt_dy = UINT_MAX;
+	u_int				 end_prompt_dy;
 	u_int				 output_line = UINT_MAX;
 	int				 collapsed = 0, command = 0, hiding = 0, tree = 0;
 	int				 initial = 0, was_hiding;
@@ -668,6 +684,7 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 		osc133 = &sgl->osc133_data;
 		for (x = 0; x <= sgl->cellused; x++) {
 			dy = dst->grid->hsize + dst->cy;
+			end_prompt_dy = prompt_dy;
 			was_hiding = hiding;
 			if (!hiding)
 				window_copy_set_line(data, dy, y, output_line, 0);
@@ -708,6 +725,8 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 			if ((sgl->flags & GRID_LINE_END_OUTPUT) &&
 			    x == osc133->out_end_col) {
 				dgl->flags |= GRID_LINE_END_OUTPUT;
+				if (sgl->flags & GRID_LINE_END_OUTPUT_STATUS)
+					dgl->flags |= GRID_LINE_END_OUTPUT_STATUS;
 				dgl->osc133_data.out_end_col = dst->cx;
 				dgl->osc133_data.exit_status = osc133->exit_status;
 				if (output_line == UINT_MAX && command) {
@@ -718,6 +737,10 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 						window_copy_set_control(data, prompt_dy,
 						    output_line);
 				}
+				if (end_prompt_dy != UINT_MAX &&
+				    sgl->flags & GRID_LINE_END_OUTPUT_STATUS)
+					window_copy_set_exit_status(data, end_prompt_dy,
+					    osc133->exit_status);
 				if (initial && prompt_dy == UINT_MAX)
 					hiding = data->top_output;
 				else
@@ -6029,8 +6052,9 @@ window_copy_write_line(struct window_mode_entry *wme,
 	u_int				 width, line_width, gutter_width, backing_y;
 	u_int				 absolute, line_number, content_sx;
 	const char			*value;
-	char				*expanded;
+	char				*expanded, *exit_status, *position;
 	struct format_tree		*ft;
+	struct window_copy_line	*status_line;
 	int				 current, mode;
 
 	line_width = window_copy_line_number_width(wme);
@@ -6042,6 +6066,7 @@ window_copy_write_line(struct window_mode_entry *wme,
 		content_sx = sx - width;
 	else
 		content_sx = sx;
+	backing_y = hsize - data->oy + py;
 
 	screen_write_cursormove(ctx, 0, py, 0);
 
@@ -6064,7 +6089,6 @@ window_copy_write_line(struct window_mode_entry *wme,
 		    "copy-mode-current-line-number-style", ft);
 		cur_ln_gc.flags |= GRID_FLAG_NOPALETTE;
 		current = (py == data->cy);
-		backing_y = hsize - data->oy + py;
 		absolute = backing_y + 1;
 		if (data->lines != NULL && backing_y < data->line_count)
 			absolute = data->lines[backing_y].source_line + 1;
@@ -6136,18 +6160,48 @@ window_copy_write_line(struct window_mode_entry *wme,
 	window_copy_write_one(wme, ctx, width, py, hsize - data->oy + py,
 	    content_sx, &mgc, &cgc, &mkgc, &clgc);
 
+	exit_status = NULL;
+	status_line = window_copy_get_line_info(data, backing_y);
+	if (data->output_gutter && status_line != NULL &&
+	    status_line->exit_status_present) {
+		format_add(ft, "exit_status", "%hhu", status_line->exit_status);
+		format_add(ft, "exit_status_present", "1");
+		value = options_get_string(oo, "copy-mode-exit-status-format");
+		if (*value != '\0') {
+			exit_status = format_expand(ft, value);
+			if (*exit_status == '\0') {
+				free(exit_status);
+				exit_status = NULL;
+			}
+		}
+	}
+
+	position = NULL;
 	if (py == 0 && s->rupper < s->rlower && !data->hide_position) {
 		value = options_get_string(oo, "copy-mode-position-format");
 		if (*value != '\0') {
-			expanded = format_expand(ft, value);
-			if (*expanded != '\0') {
-				screen_write_cursormove(ctx, width, 0, 0);
-				format_draw(ctx, &gc, content_sx, expanded,
-				    NULL, 0);
+			position = format_expand(ft, value);
+			if (*position == '\0') {
+				free(position);
+				position = NULL;
 			}
-			free(expanded);
 		}
 	}
+	if (exit_status != NULL && position != NULL)
+		xasprintf(&expanded, "%s %s", exit_status, position);
+	else if (exit_status != NULL)
+		expanded = xstrdup(exit_status);
+	else if (position != NULL)
+		expanded = xstrdup(position);
+	else
+		expanded = NULL;
+	if (expanded != NULL) {
+		screen_write_cursormove(ctx, width, py, 0);
+		format_draw(ctx, &gc, content_sx, expanded, NULL, 0);
+		free(expanded);
+	}
+	free(exit_status);
+	free(position);
 
 	if (py == data->cy && data->cx >= content_sx) {
 		screen_write_cursormove(ctx, window_copy_cursor_offset(wme,

@@ -1384,6 +1384,14 @@ const struct options_table_entry options_table[] = {
 	  .text = "When OSC 133 output collapse controls are shown in copy mode."
 	},
 
+	{ .name = "copy-mode-exit-status-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_str = "#[align=right]"
+			 "#{?exit_status_present,#[bg=themeyellow](#{exit_status}),}",
+	  .text = "Format of OSC 133 exit status in copy mode."
+	},
+
 	{ .name = "copy-mode-current-match-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,

@@ -5780,6 +5780,14 @@ section.
 .It Ic copy\-mode\-position\-format Ar format
 Format of the position indicator in copy mode.
 .Pp
+.It Ic copy\-mode\-exit\-status\-format Ar format
+Format of the OSC 133 exit status shown beside commands in copy mode.
+The format is expanded with
+.Ql exit_status
+and
+.Ql exit_status_present ,
+which is set only when the OSC 133 end-of-output marker includes a status.
+.Pp
 .It Ic copy\-mode\-position\-style Ar style
 Set the style of the position indicator in copy mode.
 For how to specify
