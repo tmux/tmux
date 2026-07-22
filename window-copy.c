@@ -28,13 +28,10 @@
 
 struct window_copy_mode_data;
 
-#define WINDOW_COPY_CONTROLS_ALWAYS 0
-#define WINDOW_COPY_CONTROLS_NEVER 1
-#define WINDOW_COPY_CONTROLS_ON_DEMAND 2
-
 #define WINDOW_COPY_LINE_CONTROL 0x1
 #define WINDOW_COPY_LINE_MEMBER 0x2
 #define WINDOW_COPY_LINE_INITIAL 0x4
+#define WINDOW_COPY_LINE_OUTPUT 0x8
 
 static const char *window_copy_key_table(struct window_mode_entry *);
 static void	window_copy_command(struct window_mode_entry *, struct client *,
@@ -73,7 +70,6 @@ static int	window_copy_line_numbers_active(struct window_mode_entry *);
 static int	window_copy_cursor_line_active(struct window_mode_entry *);
 static u_int	window_copy_line_number_width(struct window_mode_entry *);
 static u_int	window_copy_left_margin(struct window_mode_entry *);
-static int	window_copy_controls_visible(struct window_mode_entry *);
 static u_int	window_copy_cursor_offset(struct window_mode_entry *, u_int,
 		    u_int);
 static u_int	window_copy_cursor_unoffset(struct window_mode_entry *, u_int,
@@ -336,6 +332,7 @@ struct window_copy_mode_data {
 	int		 output_gutter;
 	int		 output_controls;
 	int		 top_output;
+	u_int		 output_status_width;
 
 	enum {
 		SEL_CHAR,		/* select one char at a time */
@@ -507,7 +504,7 @@ window_copy_set_line(struct window_copy_mode_data *data, u_int y,
 
 static void
 window_copy_set_control(struct window_copy_mode_data *data, u_int y,
-    u_int output_line)
+    u_int output_line, int output)
 {
 	struct window_copy_line	*line;
 
@@ -516,6 +513,8 @@ window_copy_set_control(struct window_copy_mode_data *data, u_int y,
 		return;
 	line->output_line = output_line;
 	line->flags |= WINDOW_COPY_LINE_CONTROL;
+	if (output)
+		line->flags |= WINDOW_COPY_LINE_OUTPUT;
 }
 
 static void
@@ -529,6 +528,56 @@ window_copy_set_exit_status(struct window_copy_mode_data *data, u_int y,
 		return;
 	line->exit_status = exit_status;
 	line->exit_status_present = 1;
+}
+
+static char *
+window_copy_expand_exit_status(struct window_mode_entry *wme,
+    struct window_copy_line *line)
+{
+	struct format_tree	*ft;
+	const char		*value;
+	char			*expanded;
+
+	/*
+	 * This is called while rebuilding the backing grid, before the copy
+	 * cursor and viewport have been restored for the new grid.
+	 */
+	ft = format_create(NULL, NULL, 0, 0);
+	format_add(ft, "exit_status", "0");
+	format_add(ft, "exit_status_present", "0");
+	if (line->exit_status_present) {
+		format_add(ft, "exit_status", "%hhu", line->exit_status);
+		format_add(ft, "exit_status_present", "1");
+	}
+	value = options_get_string(wme->wp->window->options,
+	    "copy-mode-exit-status-format");
+	expanded = format_expand(ft, value);
+	format_free(ft);
+	return (expanded);
+}
+
+static void
+window_copy_update_exit_status_width(struct window_mode_entry *wme)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct window_copy_line	*line;
+	char				*expanded;
+	u_int				 width, y;
+
+	data->output_status_width = 0;
+	if (!data->output_gutter || data->lines == NULL)
+		return;
+	width = 1;
+	for (y = 0; y < data->line_count; y++) {
+		line = &data->lines[y];
+		if (~line->flags & WINDOW_COPY_LINE_CONTROL)
+			continue;
+		expanded = window_copy_expand_exit_status(wme, line);
+		if (format_width(expanded) > width)
+			width = format_width(expanded);
+		free(expanded);
+	}
+	data->output_status_width = width;
 }
 
 static int
@@ -614,19 +663,6 @@ window_copy_set_all_output(struct window_copy_mode_data *data, int collapse)
 	return (changed);
 }
 
-static int
-window_copy_controls_visible(struct window_mode_entry *wme)
-{
-	struct window_copy_mode_data	*data = wme->data;
-	int				 controls;
-
-	controls = options_get_number(wme->wp->window->options,
-	    "copy-mode-collapse-controls");
-	return (controls == WINDOW_COPY_CONTROLS_ALWAYS ||
-	    (controls == WINDOW_COPY_CONTROLS_ON_DEMAND &&
-	    data->output_controls));
-}
-
 /* Recreate the backing screen with any collapsed OSC 133 output omitted. */
 static void
 window_copy_rebuild_backing(struct window_mode_entry *wme)
@@ -657,6 +693,7 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 		data->line_count = 0;
 		data->backing = dst;
 		data->output_gutter = 0;
+		data->output_status_width = 0;
 		return;
 	}
 	sgd = src->grid;
@@ -720,7 +757,7 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 				collapsed = data->outputs[y];
 				hiding = collapsed;
 				if (prompt_dy != UINT_MAX)
-					window_copy_set_control(data, prompt_dy, output_line);
+					window_copy_set_control(data, prompt_dy, output_line, 1);
 			}
 			if ((sgl->flags & GRID_LINE_END_OUTPUT) &&
 			    x == osc133->out_end_col) {
@@ -735,7 +772,7 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 					collapsed = data->outputs[y];
 					if (prompt_dy != UINT_MAX)
 						window_copy_set_control(data, prompt_dy,
-						    output_line);
+						    output_line, 0);
 				}
 				if (end_prompt_dy != UINT_MAX &&
 				    sgl->flags & GRID_LINE_END_OUTPUT_STATUS)
@@ -782,7 +819,8 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 		free(data->backing);
 	}
 	data->backing = dst;
-	data->output_gutter = window_copy_controls_visible(wme);
+	data->output_gutter = data->output_controls;
+	window_copy_update_exit_status_width(wme);
 }
 
 /*
@@ -968,9 +1006,7 @@ window_copy_init(struct window_mode_entry *wme,
 	    screen_size_y(data->source), sizeof *data->outputs);
 	data->output_count = screen_hsize(data->source) +
 	    screen_size_y(data->source);
-	data->output_controls = args_has(args, 'c') || args_has(args, 'U') ||
-	    options_get_number(wp->window->options,
-	    "copy-mode-collapse-controls") == WINDOW_COPY_CONTROLS_ALWAYS;
+	data->output_controls = args_has(args, 'c') || args_has(args, 'U');
 	if (args_has(args, 'c'))
 		window_copy_set_all_output(data, 1);
 	window_copy_rebuild_backing(wme);
@@ -5944,9 +5980,12 @@ static u_int
 window_copy_left_margin(struct window_mode_entry *wme)
 {
 	struct window_copy_mode_data	*data = wme->data;
+	u_int				 width = 0;
 
-	return (window_copy_line_number_width(wme) +
-	    (data->output_gutter ? 3 : 0));
+	if (data->output_gutter)
+		width = data->output_status_width + 2;
+
+	return (window_copy_line_number_width(wme) + width);
 }
 
 static u_int
@@ -6052,13 +6091,12 @@ window_copy_write_line(struct window_mode_entry *wme,
 	u_int				 width, line_width, gutter_width, backing_y;
 	u_int				 absolute, line_number, content_sx;
 	const char			*value;
-	char				*expanded, *exit_status, *position;
+	char				*expanded, *status;
 	struct format_tree		*ft;
-	struct window_copy_line	*status_line;
 	int				 current, mode;
 
 	line_width = window_copy_line_number_width(wme);
-	gutter_width = data->output_gutter ? 3 : 0;
+	gutter_width = data->output_gutter ? data->output_status_width + 2 : 0;
 	width = line_width + gutter_width;
 	if (width >= sx)
 		content_sx = 1;
@@ -6066,9 +6104,6 @@ window_copy_write_line(struct window_mode_entry *wme,
 		content_sx = sx - width;
 	else
 		content_sx = sx;
-	backing_y = hsize - data->oy + py;
-	current = (py == data->cy);
-
 	screen_write_cursormove(ctx, 0, py, 0);
 
 	ft = format_create_defaults(NULL, NULL, NULL, NULL, wp);
@@ -6089,6 +6124,8 @@ window_copy_write_line(struct window_mode_entry *wme,
 		style_apply(&cur_ln_gc, oo,
 		    "copy-mode-current-line-number-style", ft);
 		cur_ln_gc.flags |= GRID_FLAG_NOPALETTE;
+		current = (py == data->cy);
+		backing_y = hsize - data->oy + py;
 		absolute = backing_y + 1;
 		if (data->lines != NULL && backing_y < data->line_count)
 			absolute = data->lines[backing_y].source_line + 1;
@@ -6116,6 +6153,7 @@ window_copy_write_line(struct window_mode_entry *wme,
 			struct grid_cell control_gc;
 			struct window_copy_line *line, *next;
 			char control = ' ';
+			u_int i;
 
 			line = NULL;
 			if (data->lines != NULL && backing_y < data->line_count)
@@ -6123,13 +6161,15 @@ window_copy_write_line(struct window_mode_entry *wme,
 			if (line != NULL &&
 			    line->flags & WINDOW_COPY_LINE_CONTROL) {
 				if (line->flags &
-				    WINDOW_COPY_LINE_INITIAL)
+				    WINDOW_COPY_LINE_INITIAL) {
 					control = data->top_output ? '+' : '-';
-				else if (data->outputs[
-				    line->output_line])
-					control = '+';
-				else
-					control = '-';
+				} else if (line->flags & WINDOW_COPY_LINE_OUTPUT &&
+				    line->output_line < data->output_count) {
+					if (data->outputs[line->output_line])
+						control = '+';
+					else
+						control = '-';
+				}
 			} else if (line != NULL &&
 			    line->flags & WINDOW_COPY_LINE_MEMBER) {
 				next = NULL;
@@ -6143,66 +6183,42 @@ window_copy_write_line(struct window_mode_entry *wme,
 					control = 'x'; /* ACS | character */
 			}
 			screen_write_cursormove(ctx, line_width, py, 0);
-			screen_write_putc(ctx, current ? &cur_ln_gc : &ln_gc, ' ');
-			if (control == ' ')
+			for (i = 0; i < gutter_width; i++)
 				screen_write_putc(ctx, current ? &cur_ln_gc : &ln_gc, ' ');
-			else {
+			if (control != ' ') {
+				screen_write_cursormove(ctx,
+				    line_width + data->output_status_width, py, 0);
 				memcpy(&control_gc, current ? &cur_ln_gc : &ln_gc,
 				    sizeof control_gc);
 				if (control == 'x' || control == 'm')
 					control_gc.attr |= GRID_ATTR_CHARSET;
 				screen_write_putc(ctx, &control_gc, control);
 			}
-			screen_write_putc(ctx, current ? &cur_ln_gc : &ln_gc, ' ');
+			if (line != NULL &&
+			    line->flags & WINDOW_COPY_LINE_CONTROL) {
+				status = window_copy_expand_exit_status(wme, line);
+				screen_write_cursormove(ctx, line_width, py, 0);
+				format_draw(ctx, current ? &cur_ln_gc : &ln_gc,
+				    data->output_status_width, status, NULL, 0);
+				free(status);
+			}
 		}
 	}
 
 	window_copy_write_one(wme, ctx, width, py, hsize - data->oy + py,
 	    content_sx, &mgc, &cgc, &mkgc, &clgc);
 
-	exit_status = NULL;
-	status_line = window_copy_get_line_info(data, backing_y);
-	if (data->output_gutter && status_line != NULL &&
-	    status_line->exit_status_present) {
-		format_add(ft, "exit_status", "%hhu", status_line->exit_status);
-		format_add(ft, "exit_status_present", "1");
-		format_add(ft, "exit_status_current", "%d", current);
-		value = options_get_string(oo, "copy-mode-exit-status-format");
-		if (*value != '\0') {
-			exit_status = format_expand(ft, value);
-			if (*exit_status == '\0') {
-				free(exit_status);
-				exit_status = NULL;
-			}
-		}
-	}
-
-	position = NULL;
 	if (py == 0 && s->rupper < s->rlower && !data->hide_position) {
 		value = options_get_string(oo, "copy-mode-position-format");
 		if (*value != '\0') {
-			position = format_expand(ft, value);
-			if (*position == '\0') {
-				free(position);
-				position = NULL;
+			expanded = format_expand(ft, value);
+			if (*expanded != '\0') {
+				screen_write_cursormove(ctx, width, 0, 0);
+				format_draw(ctx, &gc, content_sx, expanded, NULL, 0);
 			}
+			free(expanded);
 		}
 	}
-	if (exit_status != NULL && position != NULL)
-		xasprintf(&expanded, "%s %s", exit_status, position);
-	else if (exit_status != NULL)
-		expanded = xstrdup(exit_status);
-	else if (position != NULL)
-		expanded = xstrdup(position);
-	else
-		expanded = NULL;
-	if (expanded != NULL) {
-		screen_write_cursormove(ctx, width, py, 0);
-		format_draw(ctx, &gc, content_sx, expanded, NULL, 0);
-		free(expanded);
-	}
-	free(exit_status);
-	free(position);
 
 	if (py == data->cy && data->cx >= content_sx) {
 		screen_write_cursormove(ctx, window_copy_cursor_offset(wme,
@@ -6301,6 +6317,7 @@ window_copy_style_changed(struct window_mode_entry *wme)
 
 	if (data->screen.sel != NULL)
 		window_copy_set_selection(wme, 0, 1);
+	window_copy_update_exit_status_width(wme);
 	window_copy_redraw_screen(wme);
 }
 

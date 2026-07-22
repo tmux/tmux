@@ -5781,15 +5781,18 @@ section.
 Format of the position indicator in copy mode.
 .Pp
 .It Ic copy\-mode\-exit\-status\-format Ar format
-Format of the OSC 133 exit status shown beside commands in copy mode.
+Format of the OSC 133 exit status indicator in the copy-mode gutter.
+The default displays a theme red
+.Ql !
+for a nonzero status and a space otherwise.
+The gutter grows to fit the expanded format.
+The format is drawn to the left of the collapse control, and its alignment
+applies within that area.
 The format is expanded with
 .Ql exit_status
 and
 .Ql exit_status_present ,
 which is set only when the OSC 133 end-of-output marker includes a status.
-The
-.Ql exit_status_current
-format is set when the cursor is on the command line.
 .Pp
 .It Ic copy\-mode\-position\-style Ar style
 Set the style of the position indicator in copy mode.
@@ -5860,23 +5863,6 @@ with
 and
 .Ic hybrid ,
 they use absolute line numbers.
-.Pp
-.It Xo Ic copy\-mode\-collapse\-controls
-.Op Ic always | never | on\-demand
-.Xc
-Choose when OSC 133 output collapse controls are shown in copy mode.
-.Ic always
-shows the control column in every copy-mode view;
-.Ic never
-does not show it, although collapse key bindings and commands still work; and
-.Ic on\-demand
-shows it after entering copy mode with
-.Fl U
-or
-.Fl c ,
-or after output is changed with a copy-mode command or key binding.
-The default is
-.Ic on\-demand .
 .Pp
 .It Xo Ic mode\-keys
 .Op Ic vi | emacs
