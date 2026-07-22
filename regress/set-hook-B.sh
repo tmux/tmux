@@ -67,6 +67,10 @@ shown=$($TMUX show-hooks -g -B @session-name) ||
 	fail "show-hooks -B failed"
 [ "$shown" = '@session-name::#{session_name}' ] ||
 	fail "unexpected show-hooks -B output: $shown"
+shown=$($TMUX show-hooks -g) ||
+	fail "show-hooks -g failed"
+echo "$shown" | grep -q '^@session-name ' ||
+	fail "show-hooks -g did not show monitor hook: $shown"
 assert_unchanged @seen 0
 
 $TMUX rename-session two || fail "rename-session two failed"

@@ -86,6 +86,19 @@ echo "$shown" | grep -q '^session-created\[0\]' ||
 echo "$shown" | grep -q '^session-created\[1\]' ||
 	fail "missing second array item: $shown"
 
+# User hooks are options, but show-hooks should list only registered @ hooks
+# and not ordinary user options.
+$TMUX set -g @not-a-hook value || fail "set @not-a-hook failed"
+$TMUX set-hook -g @user-hook 'lsk' ||
+	fail "set-hook @user-hook failed"
+shown=$($TMUX show-hooks -g) ||
+	fail "show-hooks -g all failed"
+echo "$shown" | grep -q '^@user-hook lsk$' ||
+	fail "missing user hook: $shown"
+if echo "$shown" | grep -q '^@not-a-hook '; then
+	fail "show-hooks listed user option: $shown"
+fi
+
 # Unsetting removes the whole hook.
 $TMUX set-hook -gu session-created || fail "set-hook -gu failed"
 shown=$($TMUX show-hooks -g session-created) ||
