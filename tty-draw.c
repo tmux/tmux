@@ -124,7 +124,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	struct grid_line	*gl;
 	u_int			 i, j, last_i, cx, ex, width;
 	u_int			 cellsize, bg;
-	int			 flags, empty, wrapped = 0;
+	int			 flags, empty, sync, wrapped = 0;
 	char			 buf[1000];
 	size_t			 len;
 	enum tty_draw_line_state current_state, next_state;
@@ -166,10 +166,16 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	    "bg=%d", __func__, px, px + nx, py, ex, atx, aty, defaults->fg,
 	    defaults->bg);
 
-	/* Turn off cursor while redrawing and reset region and margins. */
+	/* Turn off cursor while redrawing unless output is synchronized. */
 	flags = (tty->flags & TTY_NOCURSOR);
-	tty->flags |= TTY_NOCURSOR;
-	tty_update_mode(tty, tty->mode, s);
+	sync = 0;
+	if ((tty->flags & TTY_SYNCING) &&
+	    tty_term_has(tty->term, TTYC_SYNC) && flags == 0)
+		sync = 1;
+	if (!sync) {
+		tty->flags |= TTY_NOCURSOR;
+		tty_update_mode(tty, tty->mode, s);
+	}
 	tty_region_off(tty);
 	tty_margin_off(tty);
 
@@ -338,6 +344,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	}
 
 out:
-	tty->flags = (tty->flags & ~TTY_NOCURSOR)|flags;
-	tty_update_mode(tty, tty->mode, s);
+	if (!sync) {
+		tty->flags = (tty->flags & ~TTY_NOCURSOR)|flags;
+		tty_update_mode(tty, tty->mode, s);
+	}
 }
