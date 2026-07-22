@@ -1,4 +1,4 @@
-/* $OpenBSD: key-bindings.c,v 1.189 2026/07/15 10:38:31 nicm Exp $ */
+/* $OpenBSD: key-bindings.c,v 1.190 2026/07/22 19:23:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -45,6 +45,9 @@
 	" ''" \
 	" 'New After' 'w' {new-window -a}" \
 	" 'New At End' 'W' {new-window}"
+#define DEFAULT_EMPTY_MENU \
+	" 'New Pane' 'p' {new-pane; join-pane}" \
+	" 'New Window' 'w' {new-window}"
 #define DEFAULT_PANE_MENU \
 	" '#{?#{m/r:(copy|view)-mode,#{pane_mode}},Go To Top,}' '<' {send -X history-top}" \
 	" '#{?#{m/r:(copy|view)-mode,#{pane_mode}},Go To Bottom,}' '>' {send -X history-bottom}" \
@@ -551,6 +554,8 @@ key_bindings_init(void)
 		/* Mouse button 3 down on pane. */
 		"bind -n MouseDown3Pane { if -Ft= '#{||:#{mouse_any_flag},#{&&:#{pane_in_mode},#{?#{m/r:(copy|view)-mode,#{pane_mode}},0,1}}}' { select-pane -t=; send -M } { display-menu -t= -xM -yM -T '#[align=centre]#{pane_index} (#{pane_id})' " DEFAULT_PANE_MENU " } }",
 		"bind -n M-MouseDown3Pane { display-menu -t= -xM -yM -T '#[align=centre]#{pane_index} (#{pane_id})' " DEFAULT_PANE_MENU " }",
+		"bind -n MouseDown3Empty { display-menu -t= -xM -yM -T '#[align=centre]#{window_index}:#{window_name}' " DEFAULT_EMPTY_MENU " }",
+		"bind -n M-MouseDown3Empty { display-menu -t= -xM -yM -T '#[align=centre]#{window_index}:#{window_name}' " DEFAULT_EMPTY_MENU " }",
 
 		/* Mouse on scrollbar. */
 		"bind -n MouseDown1ScrollbarUp { if -Ft= '#{pane_in_mode}' { send -X page-up } {copy-mode -u } }",
