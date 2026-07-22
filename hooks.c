@@ -1,4 +1,4 @@
-/* $OpenBSD: hooks.c,v 1.14 2026/07/13 22:03:08 nicm Exp $ */
+/* $OpenBSD: hooks.c,v 1.15 2026/07/22 20:12:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -471,4 +471,19 @@ hooks_monitor_to_string(struct options_entry *o)
 		break;
 	}
 	return (s);
+}
+
+/* Get the parts of a hook monitor. */
+int
+hooks_monitor_get(struct options_entry *o, enum monitor_type *type, int *id,
+    const char **format)
+{
+	struct hook_monitor	*hm = options_get_monitor_data(o);
+
+	if (hm == NULL)
+		return (0);
+	*type = hm->type;
+	*id = hm->id;
+	*format = hm->format;
+	return (1);
 }
