@@ -35,7 +35,7 @@ TMP=$(mktemp)
 trap "rm -f $TMP; $TMUX kill-server 2>/dev/null; $TMUX2 kill-server 2>/dev/null" 0 1 15
 
 $TMUX2 new-session -d -x80 -y10 \
-	"printf '\033]133;A\007p\$ \033]133;B\007one\n\033]133;C\007out1\n\033]133;D;0\007\033]133;A\007p\$ \033]133;B\007two\n\033]133;C\007out2\n\033]133;D;123\007\033]133;A\007p\$ \033]133;B\007three\n\033]133;C\007out3\n\033]133;D\007\033]133;A\007p\$ \033]133;B\007'; exec sleep 100" || \
+	"printf '\033]133;A\007p\$ \033]133;B\007one\n\033]133;C\007out1\n\033]133;D;0\007\033]133;A\007p\$ \033]133;B\007two\n\033]133;C\007out2\n\033]133;D;123\007\033]133;A\007p\$ \033]133;B\007silent\n\033]133;C\007\033]133;D;7\007\033]133;A\007p\$ \033]133;B\007three\n\033]133;C\007out3\n\033]133;D\007\033]133;A\007p\$ \033]133;B\007'; exec sleep 100" || \
 	exit 1
 $TMUX2 set -g status off || exit 1
 $TMUX2 set -g copy-mode-position-format '#[align=left]POS' || exit 1
@@ -51,6 +51,8 @@ $TMUX2 send -X history-top || exit 1
 sleep 1
 capture
 check_grep "!- p\$ two"
+check_grep "!  p\$ silent"
+check_no_grep "!+ p\$ silent"
 check_grep "POS"
 
 # Rebuilding with collapsed output must not expand copy-mode formats before
@@ -59,6 +61,8 @@ $TMUX2 send -X collapse-output -a || exit 1
 sleep 1
 capture
 check_grep "!+ p\$ two"
+check_grep "!  p\$ silent"
+check_no_grep "!+ p\$ silent"
 
 # A format wider than the standard three-column gutter is not truncated.
 $TMUX2 send -X cancel || exit 1

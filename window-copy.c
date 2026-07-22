@@ -671,13 +671,14 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 	struct screen			*src = data->source, *dst;
 	struct grid			*sgd;
 	struct grid_line		*sgl, *dgl;
+	struct window_copy_line	*line;
 	struct screen_write_ctx		 ctx;
 	struct grid_cell		 gc;
 	struct osc133_data		*osc133;
 	u_int				 y, x, total, dy, prompt_dy = UINT_MAX;
-	u_int				 end_prompt_dy;
 	u_int				 output_line = UINT_MAX;
 	int				 collapsed = 0, command = 0, hiding = 0, tree = 0;
+	int				 in_output = 0, output_empty = 0;
 	int				 initial = 0, was_hiding;
 
 	if (src == NULL)
@@ -721,7 +722,6 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 		osc133 = &sgl->osc133_data;
 		for (x = 0; x <= sgl->cellused; x++) {
 			dy = dst->grid->hsize + dst->cy;
-			end_prompt_dy = prompt_dy;
 			was_hiding = hiding;
 			if (!hiding)
 				window_copy_set_line(data, dy, y, output_line, 0);
@@ -729,31 +729,14 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 			if (initial && y == 0 && x == 0)
 				window_copy_set_line(data, dy, y, UINT_MAX,
 				    WINDOW_COPY_LINE_CONTROL | WINDOW_COPY_LINE_INITIAL);
-			if ((sgl->flags & GRID_LINE_START_PROMPT) &&
-			    x == osc133->prompt_col) {
-				dgl->flags |= GRID_LINE_START_PROMPT;
-				dgl->osc133_data.prompt_col = dst->cx;
-				prompt_dy = dy;
-				output_line = UINT_MAX;
-				collapsed = command = hiding = tree = 0;
-			}
-			if ((sgl->flags & GRID_LINE_SECOND_PROMPT) &&
-			    x == osc133->prompt_col) {
-				dgl->flags |= GRID_LINE_SECOND_PROMPT;
-				dgl->osc133_data.prompt_col = dst->cx;
-			}
-			if ((sgl->flags & GRID_LINE_START_COMMAND) &&
-			    x == osc133->cmd_col) {
-				dgl->flags |= GRID_LINE_START_COMMAND;
-				dgl->osc133_data.cmd_col = dst->cx;
-				command = 1;
-			}
 			if ((sgl->flags & GRID_LINE_START_OUTPUT) &&
 			    x == osc133->out_start_col) {
 				dgl->flags |= GRID_LINE_START_OUTPUT;
 				dgl->osc133_data.out_start_col = dst->cx;
 				output_line = y;
 				tree = 1;
+				in_output = 1;
+				output_empty = 1;
 				collapsed = data->outputs[y];
 				hiding = collapsed;
 				if (prompt_dy != UINT_MAX)
@@ -766,6 +749,12 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 					dgl->flags |= GRID_LINE_END_OUTPUT_STATUS;
 				dgl->osc133_data.out_end_col = dst->cx;
 				dgl->osc133_data.exit_status = osc133->exit_status;
+				if (in_output && output_empty && prompt_dy != UINT_MAX) {
+					line = window_copy_get_line_info(data, prompt_dy);
+					if (line != NULL)
+						line->flags &= ~WINDOW_COPY_LINE_OUTPUT;
+				}
+				in_output = 0;
 				if (output_line == UINT_MAX && command) {
 					output_line = y;
 					tree = 1;
@@ -774,9 +763,9 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 						window_copy_set_control(data, prompt_dy,
 						    output_line, 0);
 				}
-				if (end_prompt_dy != UINT_MAX &&
+				if (prompt_dy != UINT_MAX &&
 				    sgl->flags & GRID_LINE_END_OUTPUT_STATUS)
-					window_copy_set_exit_status(data, end_prompt_dy,
+					window_copy_set_exit_status(data, prompt_dy,
 					    osc133->exit_status);
 				if (initial && prompt_dy == UINT_MAX)
 					hiding = data->top_output;
@@ -784,13 +773,36 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 					hiding = collapsed;
 				command = 0;
 			}
+			/* Process C and D before a following prompt at the same column. */
+			if ((sgl->flags & GRID_LINE_START_PROMPT) &&
+			    x == osc133->prompt_col) {
+				dgl->flags |= GRID_LINE_START_PROMPT;
+				dgl->osc133_data.prompt_col = dst->cx;
+				prompt_dy = dy;
+				output_line = UINT_MAX;
+				collapsed = command = hiding = tree = 0;
+				in_output = output_empty = 0;
+			}
+			if ((sgl->flags & GRID_LINE_SECOND_PROMPT) &&
+			    x == osc133->prompt_col) {
+				dgl->flags |= GRID_LINE_SECOND_PROMPT;
+				dgl->osc133_data.prompt_col = dst->cx;
+			}
+			if ((sgl->flags & GRID_LINE_START_COMMAND) &&
+			    x == osc133->cmd_col) {
+				dgl->flags |= GRID_LINE_START_COMMAND;
+				dgl->osc133_data.cmd_col = dst->cx;
+				command = 1;
+			}
 			if (was_hiding && !hiding)
 				window_copy_set_line(data, dy, y, output_line, 0);
 			if (x == sgl->cellused)
 				break;
+			grid_get_cell(sgd, x, y, &gc);
+			if (in_output && !(gc.flags & GRID_FLAG_PADDING))
+				output_empty = 0;
 			if (hiding)
 				continue;
-			grid_get_cell(sgd, x, y, &gc);
 			if (!(gc.flags & GRID_FLAG_PADDING)) {
 				screen_write_cell(&ctx, &gc);
 				if (tree)
