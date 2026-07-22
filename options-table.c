@@ -114,10 +114,6 @@ static const char *options_table_theme_list[] = {
 static const char *options_table_copy_mode_line_numbers_list[] = {
 	"off", "default", "absolute", "relative", "hybrid", NULL
 };
-static const char *options_table_copy_mode_collapse_controls_list[] = {
-	"always", "never", "on-demand", NULL
-};
-
 /* Status line format. */
 #define OPTIONS_TABLE_STATUS_FORMAT1 \
 	"#[align=left range=left #{E:status-left-style}]" \
@@ -1376,22 +1372,11 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of search matches in copy mode."
 	},
 
-	{ .name = "copy-mode-collapse-controls",
-	  .type = OPTIONS_TABLE_CHOICE,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .choices = options_table_copy_mode_collapse_controls_list,
-	  .default_num = 2,
-	  .text = "When OSC 133 output collapse controls are shown in copy mode."
-	},
-
 	{ .name = "copy-mode-exit-status-format",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
-	  .default_str = "#[align=right]"
-			 "#{?exit_status_present,#[bg=themeyellow]#[fg=themeblack]"
-			 "#{?exit_status_current,#[fg=themewhite],}(#{exit_status})"
-			 "#[bg=themeyellow]#[fg=themeblack],}",
-	  .text = "Format of OSC 133 exit status in copy mode."
+	  .default_str = "#{?exit_status,#[fg=themered]!, }",
+	  .text = "Format of OSC 133 exit status indicator in copy mode."
 	},
 
 	{ .name = "copy-mode-current-match-style",
