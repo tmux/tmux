@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.498 2026/07/21 12:28:43 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.499 2026/07/22 08:19:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -530,6 +530,8 @@ server_client_lost(struct client *c)
 
 	evtimer_del(&c->repeat_timer);
 	evtimer_del(&c->click_timer);
+	if (event_initialized(&c->cycle_timer))
+		evtimer_del(&c->cycle_timer);
 
 	key_bindings_unref_table(c->keytable);
 

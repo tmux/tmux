@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.407 2026/07/20 07:42:13 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.408 2026/07/22 08:19:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -128,6 +128,7 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_OPTIONS 0x40000000
 #define FORMAT_ENVIRON 0x80000000ULL
 #define FORMAT_DIFFERENCE 0x100000000ULL
+#define FORMAT_CYCLE 0x200000000ULL
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 100
@@ -138,9 +139,13 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 /* How often to check the time in long loops. */
 #define FORMAT_TIME_LOOP_CHECK 10000
 
+/* Fixed animation period (ms): redraw interval and shortest frame step. */
+#define FORMAT_CYCLE_PERIOD 100
+
 /* Format expand flags. */
 #define FORMAT_EXPAND_TIME 0x1
 #define FORMAT_EXPAND_NOJOBS 0x2
+#define FORMAT_EXPAND_NOCYCLE 0x4
 
 /* Entry in format tree. */
 struct format_entry {
@@ -413,7 +418,8 @@ format_job_get(struct format_expand_state *es, const char *cmd)
 		RB_INSERT(format_job_tree, jobs, fj);
 	}
 
-	format_copy_state(&next, es, FORMAT_EXPAND_NOJOBS);
+	format_copy_state(&next, es, FORMAT_EXPAND_NOJOBS|
+	    FORMAT_EXPAND_NOCYCLE);
 	next.flags &= ~FORMAT_EXPAND_TIME;
 
 	expanded = format_expand1(&next, cmd);
@@ -4779,7 +4785,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 
 	/*
 	 * Modifiers are a ; separated list of the forms:
-	 *	l,m,C,a,b,c,d,I,n,t,w,q,E,T,S,W,P,O,V,R,<,>
+	 *	l,m,C,a,b,c,d,I,n,t,w,q,E,T,S,W,P,O,V,R,A,<,>
 	 *	=a
 	 *	=/a
 	 *	=/a/
@@ -4798,7 +4804,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 			break;
 
 		/* Check single character modifiers with no arguments. */
-		if (strchr("labdnwETSWPOVL!<>", cp[0]) != NULL &&
+		if (strchr("labdnwETSWPOVL!<>A", cp[0]) != NULL &&
 		    format_is_end(cp[1])) {
 			format_add_modifier(&list, count, cp, 1, NULL, 0);
 			cp++;
@@ -4820,7 +4826,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 		}
 
 		/* Now try single character with arguments. */
-		if (strchr("ImCLNPSOVst=pReqWc", cp[0]) == NULL)
+		if (strchr("ImCLNPSOVst=pReqWcA", cp[0]) == NULL)
 			break;
 		c = cp[0];
 
@@ -5779,6 +5785,74 @@ fail:
 	return (NULL);
 }
 
+/* Callback for the cycle timer; redraw the status line. */
+static void
+format_cycle_callback(__unused int fd, __unused short events, void *arg)
+{
+	struct client	*c = arg;
+
+	if (c->message_string == NULL && c->prompt == NULL)
+		c->flags |= CLIENT_REDRAWSTATUS;
+}
+
+/* Arm the cycle timer to redraw the status line if it is not already. */
+static void
+format_cycle_start_timer(struct client *c)
+{
+	struct timeval	tv;
+
+	tv.tv_sec = FORMAT_CYCLE_PERIOD / 1000;
+	tv.tv_usec = (FORMAT_CYCLE_PERIOD % 1000) * 1000L;
+
+	if (!event_initialized(&c->cycle_timer))
+		evtimer_set(&c->cycle_timer, format_cycle_callback, c);
+	if (!evtimer_pending(&c->cycle_timer, NULL))
+		evtimer_add(&c->cycle_timer, &tv);
+}
+
+/* Expand the "A" animation modifier; see the manual for the syntax. */
+static char *
+format_cycle(struct format_expand_state *es, const char *frames, u_int count)
+{
+	struct format_tree	*ft = es->ft;
+	const char		*start, *end, *cp;
+	u_int			 n, index, i;
+
+	/*
+	 * A cycle is only expanded in a status format, and never in the
+	 * command or output of #() where it would change on every frame and
+	 * make the job run again.
+	 */
+	if (!(ft->flags & FORMAT_STATUS) || (es->flags & FORMAT_EXPAND_NOCYCLE))
+		return (xstrdup(""));
+	if (*frames == '\0')
+		return (xstrdup(""));
+
+	/* Count the comma-separated frames (there is at least one). */
+	n = 1;
+	for (cp = frames; *cp != '\0'; cp++) {
+		if (*cp == ',')
+			n++;
+	}
+	index = (es->start_time / (count * FORMAT_CYCLE_PERIOD)) % n;
+
+	/*
+	 * Redraw the status line so the frames advance on their own; a
+	 * single frame never changes so there is nothing to redraw for.
+	 */
+	if (n > 1 && ft->client != NULL)
+		format_cycle_start_timer(ft->client);
+
+	/* Walk to the chosen frame and return a copy of it. */
+	start = frames;
+	for (i = 0; i < index; i++)
+		start = strchr(start, ',') + 1;
+	end = strchr(start, ',');
+	if (end == NULL)
+		end = start + strlen(start);
+	return (xstrndup(start, end - start));
+}
+
 /* Replace a key. */
 static int
 format_replace(struct format_expand_state *es, const char *key, size_t keylen,
@@ -5799,6 +5873,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	struct format_modifier		 *list, *cmp = NULL, *search = NULL;
 	struct format_modifier		**sub = NULL, *mexp = NULL, *fm;
 	struct format_modifier		 *bool_op_n = NULL;
+	u_int				  cycle_count = 1;
 	u_int				  i, count, nsub = 0, nrep, check = 0;
 	const char			 *loop_flags = "";
 	struct format_expand_state	  next;
@@ -5858,6 +5933,15 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 				    FORMAT_MAX_WIDTH, &errstr);
 				if (errstr != NULL)
 					width = 0;
+				break;
+			case 'A':
+				modifiers |= FORMAT_CYCLE;
+				if (fm->argc < 1)
+					break;
+				cycle_count = strtonum(fm->argv[0], 1, 100,
+				    &errstr);
+				if (errstr != NULL)
+					cycle_count = 1;
 				break;
 			case 'w':
 				modifiers |= FORMAT_WIDTH;
@@ -6077,6 +6161,13 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			else
 				value = xstrdup("");
 		}
+		goto done;
+	}
+
+	/* Is this an animation cycle? */
+	if (modifiers & FORMAT_CYCLE) {
+		value = format_cycle(es, copy, cycle_count);
+		format_log(es, "cycle '%s' is: %s", copy, value);
 		goto done;
 	}
 

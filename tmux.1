@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1146 2026/07/21 12:28:43 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1147 2026/07/22 08:19:14 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: July 21 2026 $
+.Dd $Mdocdate: July 22 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -7182,6 +7182,26 @@ For example
 .Ql #{l:#{?pane_in_mode,yes,no}}
 will be replaced by
 .Ql #{?pane_in_mode,yes,no} .
+.Pp
+The
+.Ql A
+modifier shows one of a list of frames in turn:
+.Ql #{A/count:frame,frame,...}
+or
+.Ql #{A:frame,frame,...} .
+Each frame is shown for
+.Ar count
+periods of 100 milliseconds before the next, wrapping back to the first after
+the last.
+If no count is given, one is used.
+The
+.Ql A
+modifier is expanded only in the status line and
+.Ic pane\-border\-format ;
+if present, the status line or pane borders are redrawn every 100 milliseconds.
+For example,
+.Ql #{A/2:|,/,\-,\e}
+shows the four frames in turn, changing every 200 milliseconds.
 .Pp
 The following variables are available, where appropriate:
 .Bl -column "XXXXXXXXXXXXXXXXXXX" "XXXXX"
