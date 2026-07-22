@@ -87,6 +87,9 @@ CHANGES FROM 3.7b TO 3.8
   while scrolling or while hovered and disappears after pane-scrollbars-timeout
   (Michael Grant).
 
+* Add a #{A/count:frames} modifier to show a series of frames as an animation
+  in the status line (issue 5412 from Fernando Daciuk).
+
 * Change command templates so %% is escaped for single quotes while %1 remains
   unquoted, preventing single quotes in session or target names from
   terminating quoted command sections (reported by Aliz Hammond).
