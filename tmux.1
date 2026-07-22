@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1147 2026/07/22 08:19:14 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1148 2026/07/22 20:12:58 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -4689,6 +4689,7 @@ the result would be the default background and a blue foreground.
 .Tg show
 .It Xo Ic show\-options
 .Op Fl AgHpqsvw
+.Op Fl F Ar format
 .Op Fl t Ar target\-pane
 .Op Ar option
 .Xc
@@ -4716,6 +4717,10 @@ Global session or window options are listed if
 is used.
 .Fl v
 shows only the option value, not the name.
+With
+.Fl F ,
+.Ar format
+is used for each option.
 If
 .Fl q
 is set, no error will be returned if
@@ -6593,6 +6598,7 @@ run
 immediately.
 .It Xo Ic show\-hooks
 .Op Fl Bgpw
+.Op Fl F Ar format
 .Op Fl t Ar target\-pane
 .Op Ar hook
 .Xc
@@ -6605,6 +6611,10 @@ With
 shows the subscriptions installed with
 .Em set\-hook
 .Fl B .
+With
+.Fl F ,
+.Ar format
+is used for each hook.
 .El
 .Sh MOUSE SUPPORT
 If the
@@ -7269,6 +7279,8 @@ The following variables are available, where appropriate:
 .It Li "hook" Ta "" Ta "Name of running hook, if any"
 .It Li "hook_client" Ta "" Ta "Name of client where hook was run, if any"
 .It Li "hook_last" Ta "" Ta "Previous value for a monitor hook"
+.It Li "hook_monitor_format" Ta "" Ta "Format for a monitor hook"
+.It Li "hook_monitor_target" Ta "" Ta "Target for a monitor hook"
 .It Li "hook_pane" Ta "" Ta "ID of pane where hook was run, if any"
 .It Li "hook_session" Ta "" Ta "ID of session where hook was run, if any"
 .It Li "hook_session_name" Ta "" Ta "Name of session where hook was run, if any"
@@ -7310,6 +7322,17 @@ The following variables are available, where appropriate:
 .It Li "next_session_id" Ta "" Ta "Unique session ID for next new session"
 .It Li "next_window_active" Ta "" Ta "1 if next window in W: loop is active"
 .It Li "next_window_index" Ta "" Ta "Index of next window in W: loop"
+.It Li "option_array_key" Ta "" Ta "Array key, if option is an array item"
+.It Li "option_has_array_key" Ta "" Ta "1 if option array key is present"
+.It Li "option_has_value" Ta "" Ta "1 if option value is present"
+.It Li "option_is_array" Ta "" Ta "1 if option is an array"
+.It Li "option_is_hook" Ta "" Ta "1 if option is a hook"
+.It Li "option_is_parent" Ta "" Ta "1 if option is inherited"
+.It Li "option_is_string" Ta "" Ta "1 if option is a string"
+.It Li "option_is_user" Ta "" Ta "1 if option is a user option"
+.It Li "option_name" Ta "" Ta "Name of option"
+.It Li "option_value" Ta "" Ta "Value of option"
+.It Li "option_value_only" Ta "" Ta "1 if only option values will be shown"
 .It Li "origin_flag" Ta "" Ta "Pane origin flag"
 .It Li "pane_active" Ta "" Ta "1 if active pane"
 .It Li "pane_at_bottom" Ta "" Ta "1 if pane is at the bottom of window"

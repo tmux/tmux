@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1413 2026/07/22 08:19:14 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1414 2026/07/22 20:12:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2742,6 +2742,8 @@ void	 hooks_monitor_add(struct cmdq_item *, struct options *,
 void	 hooks_monitor_remove(struct options *, const char *);
 void	 hooks_monitor_free(void *);
 char	*hooks_monitor_to_string(struct options_entry *);
+int	 hooks_monitor_get(struct options_entry *, enum monitor_type *, int *,
+	     const char **);
 
 /* options.c */
 struct options	*options_create(struct options *);
