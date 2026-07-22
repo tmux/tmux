@@ -7188,9 +7188,14 @@ Each frame is shown for
 .Ar count
 periods of 100 milliseconds before the next, wrapping back to the first after
 the last.
-While a cycle is shown in the status line, the status line is redrawn as it
+While one is shown in the status line, the status line is redrawn as it
 advances so the frames animate on their own.
-An empty list of frames gives the empty string.
+The frames are used as they are and not expanded as formats, and a comma
+always separates frames so a format containing a comma cannot be used as a
+frame.
+An empty list of frames gives the empty string, and a
+.Ar count
+which is not a positive number is taken as 1.
 It is expanded only in the status line and
 .Ic pane\-border\-format ;
 anywhere else, including inside

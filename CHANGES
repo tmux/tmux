@@ -2,8 +2,8 @@ CHANGES FROM 3.7b TO 3.8
 
 * Add a #{A/count:frames} modifier which shows each of a comma-separated list
   of frames in turn, each for count periods of 100 milliseconds (count defaults
-  to 1). While a cycle is shown in the status line, the status line is redrawn
-  as it advances, so it animates on its own.
+  to 1). While one is shown in the status line, the status line is redrawn as
+  it advances, so it animates on its own.
 
 * Many improvements to floating panes:
 

@@ -4799,7 +4799,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 
 	/*
 	 * Modifiers are a ; separated list of the forms:
-	 *	l,m,C,a,b,c,d,I,n,t,w,q,E,T,S,W,P,O,V,R,<,>
+	 *	l,m,C,a,b,c,d,I,n,t,w,q,E,T,S,W,P,O,V,R,A,<,>
 	 *	=a
 	 *	=/a
 	 *	=/a/
@@ -5815,15 +5815,16 @@ format_cycle_start_timer(struct client *c)
 {
 	struct timeval	tv;
 
-	timerclear(&tv);
 	tv.tv_sec = FORMAT_CYCLE_PERIOD / 1000;
 	tv.tv_usec = (FORMAT_CYCLE_PERIOD % 1000) * 1000L;
 
 	if (!event_initialized(&c->cycle_timer))
 		evtimer_set(&c->cycle_timer, format_cycle_callback, c);
-	if (!evtimer_pending(&c->cycle_timer, NULL))
+	if (!evtimer_pending(&c->cycle_timer, NULL)) {
+		log_debug("client %p, cycle timer %u ms", c,
+		    FORMAT_CYCLE_PERIOD);
 		evtimer_add(&c->cycle_timer, &tv);
-	log_debug("client %p, cycle timer %u ms", c, FORMAT_CYCLE_PERIOD);
+	}
 }
 
 /* Expand the "A" animation modifier; see the manual for the syntax. */
@@ -5918,15 +5919,6 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 		}
 		if (fm->size == 1) {
 			switch (fm->modifier[0]) {
-			case 'A':
-				modifiers |= FORMAT_CYCLE;
-				if (fm->argc < 1)
-					break;
-				cycle_count = strtonum(fm->argv[0], 1,
-				    INT_MAX, &errstr);
-				if (errstr != NULL)
-					cycle_count = 1;
-				break;
 			case 'm':
 			case '<':
 			case '>':
@@ -5961,6 +5953,15 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 				    FORMAT_MAX_WIDTH, &errstr);
 				if (errstr != NULL)
 					width = 0;
+				break;
+			case 'A':
+				modifiers |= FORMAT_CYCLE;
+				if (fm->argc < 1)
+					break;
+				cycle_count = strtonum(fm->argv[0], 1,
+				    INT_MAX, &errstr);
+				if (errstr != NULL)
+					cycle_count = 1;
 				break;
 			case 'w':
 				modifiers |= FORMAT_WIDTH;

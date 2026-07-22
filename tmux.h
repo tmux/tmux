@@ -2441,8 +2441,8 @@ struct options_table_entry {
 	int			  scope;
 	int			  flags;
 
-	long long		  minimum;
-	long long		  maximum;
+	u_int			  minimum;
+	u_int			  maximum;
 	const char		**choices;
 
 	const char		 *default_str;
