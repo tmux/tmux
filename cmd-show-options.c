@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-show-options.c,v 1.73 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: cmd-show-options.c,v 1.74 2026/07/22 18:58:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -249,13 +249,17 @@ cmd_show_options_all(struct cmd *self, struct cmdq_item *item, int scope,
 	const char				*name, *array_key;
 	int					 parent;
 
-	if (cmd_get_entry(self) != &cmd_show_hooks_entry) {
-		o = options_first(oo);
-		while (o != NULL) {
-			if (options_table_entry(o) == NULL)
+	o = options_first(oo);
+	while (o != NULL) {
+		if (options_table_entry(o) == NULL) {
+			name = options_name(o);
+			if (cmd_get_entry(self) != &cmd_show_hooks_entry)
 				cmd_show_options_print(self, item, o, NULL, 0);
-			o = options_next(o);
+			else if (*name == '@' && (hooks_is_event(name) ||
+			    options_get_monitor_data(o) != NULL))
+				cmd_show_options_print(self, item, o, NULL, 0);
 		}
+		o = options_next(o);
 	}
 	for (oe = options_table; oe->name != NULL; oe++) {
 		if (~oe->scope & scope)
