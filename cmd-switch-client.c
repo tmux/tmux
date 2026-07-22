@@ -51,7 +51,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	 target;
-	const char		*tflag = args_get(args, 't');
+	const char		*tflag = args_get_target(args, item);
 	enum cmd_find_type	 type;
 	int			 flags;
 	struct client		*c = cmdq_get_client(item);
