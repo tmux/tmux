@@ -1,12 +1,12 @@
-01:abcdefghijklmnopq        │···········
-02:abcdefghijklmnopq        │···········
-03:abcdefghijklmnop┌────────│···········
-04:abcdefghijklmnop│EDGE    │···········
-05:abcdefghijklmnop│        │···········
-06:abcdefghijklmnop│        │···········
-07:abcdefghijklmnop└────────│···········
-                            │···········
-────────────────────────────┘···········
+01:abcdefghijklmnopq        ············
+02:abcdefghijklmnopq        ············
+03:abcdefghijklmnop┌────────············
+04:abcdefghijklmnop│EDGE    ············
+05:abcdefghijklmnop│        ············
+06:abcdefghijklmnop│        ············
+07:abcdefghijklmnop└────────············
+                            ············
+········································
 ········································
 ········································
 ········································
