@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.155 2026/07/21 13:27:41 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.156 2026/07/23 09:38:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -320,7 +320,7 @@ redraw_reset_cell(struct redraw_build_ctx *bctx, u_int x, u_int y)
 	struct window			*w = bctx->w;
 
 	memset(bc, 0, sizeof *bc);
-	if (bctx->ox + x <= w->sx && bctx->oy + y <= w->sy)
+	if (bctx->ox + x < w->sx && bctx->oy + y < w->sy)
 		bc->data.type = REDRAW_SPAN_EMPTY;
 	else
 		bc->data.type = REDRAW_SPAN_OUTSIDE;
@@ -1232,9 +1232,15 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 
 	if (wp == NULL) {
 		redraw_get_default_border_style(dctx, &gc, &pane_lines);
-		if (span->data.type != REDRAW_SPAN_BORDER)
-			pane_lines = PANE_LINES_SINGLE;
-		window_get_border_cell(w, NULL, pane_lines, cell_type, &gc);
+		if (span->data.type == REDRAW_SPAN_OUTSIDE)
+			window_get_fill_cell(w, 0, &gc);
+		else if (span->data.type == REDRAW_SPAN_EMPTY)
+			window_get_fill_cell(w, 1, &gc);
+		else {
+			if (span->data.type != REDRAW_SPAN_BORDER)
+				pane_lines = PANE_LINES_SINGLE;
+			window_get_border_cell(NULL, pane_lines, cell_type, &gc);
+		}
 	} else {
 		window_pane_get_border_style(wp, c, &gc);
 		window_pane_get_border_cell(wp, cell_type, &gc);

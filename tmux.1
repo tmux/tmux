@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1148 2026/07/22 20:12:58 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1149 2026/07/23 09:38:27 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: July 22 2026 $
+.Dd $Mdocdate: July 23 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -5712,8 +5712,13 @@ Set the time in milliseconds for which the indicators shown by the
 .Ic display\-panes
 command appear.
 .Pp
-.It Ic fill\-character Ar character
-Set the character used to fill areas of the terminal unused by a window.
+.It Ic fill\-character Ar format
+Set the format used to fill areas of the terminal unused by a pane.
+The format is expanded once for areas inside the window with
+.Ql is_inside
+set, and once for areas outside the window with
+.Ql is_outside
+set.
 .Pp
 .It Ic main\-pane\-height Ar height
 .It Ic main\-pane\-width Ar width

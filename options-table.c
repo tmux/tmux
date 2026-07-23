@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.240 2026/07/21 11:52:13 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.241 2026/07/23 09:38:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1460,8 +1460,8 @@ const struct options_table_entry options_table[] = {
 	{ .name = "fill-character",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "",
-	  .text = "Character used to fill unused parts of window."
+	  .default_str = "#{?is_inside,#[bg=themedarkgrey] ,#[fg=themelightgrey]#[acs]~}",
+	  .text = "Format used to fill unused parts of window."
 	},
 
 	{ .name = "main-pane-height",

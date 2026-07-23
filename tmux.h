@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1414 2026/07/22 20:12:58 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1415 2026/07/23 09:38:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1438,7 +1438,8 @@ struct window {
 	int			 sb;
 	int			 sb_pos;
 
-	struct utf8_data	*fill_character;
+	struct grid_cell	 inside_cell;
+	struct grid_cell	 outside_cell;
 	int			 flags;
 #define WINDOW_BELL 0x1
 #define WINDOW_ACTIVITY 0x2
@@ -3732,7 +3733,6 @@ void		*window_pane_get_new_data(struct window_pane *,
 		     struct window_pane_offset *, size_t *);
 void		 window_pane_update_used_data(struct window_pane *,
 		     struct window_pane_offset *, size_t);
-void		 window_set_fill_character(struct window *);
 void		 window_pane_default_cursor(struct window_pane *);
 int		 window_pane_mode(struct window_pane *);
 int		 window_pane_show_scrollbar(struct window_pane *);
@@ -3760,8 +3760,10 @@ struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
 int		 window_pane_is_floating(struct window_pane *);
 
 /* window-border.c */
-void		 window_get_border_cell(struct window *, struct window_pane *,
-		     enum pane_lines, int, struct grid_cell *);
+void		 window_set_fill_cells(struct window *);
+void		 window_get_border_cell(struct window_pane *, enum pane_lines,
+		     int, struct grid_cell *);
+void		 window_get_fill_cell(struct window *, int, struct grid_cell *);
 void		 window_pane_get_border_cell(struct window_pane *, int,
 		     struct grid_cell *);
 void		 window_pane_get_border_style(struct window_pane *,

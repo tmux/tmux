@@ -1,4 +1,4 @@
-/* $OpenBSD: spawn.c,v 1.49 2026/07/15 13:02:33 nicm Exp $ */
+/* $OpenBSD: spawn.c,v 1.50 2026/07/23 09:38:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -224,6 +224,7 @@ spawn_window(struct spawn_context *sc, char **cause)
 			w->name = xstrdup(sc->name);
 			options_set_number(w->options, "automatic-rename", 0);
 		}
+		window_set_fill_cells(w);
 	}
 
 	/* Switch to the new window if required. */
