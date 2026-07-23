@@ -61,6 +61,7 @@ jobs:
             automake \
             bison \
             libevent \
+            jemalloc \
             make \
             ncurses \
             utf8proc \
