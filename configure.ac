@@ -635,13 +635,20 @@ AC_ARG_ENABLE(
 )
 try_jemalloc=no
 require_jemalloc=no
+if test "x$enable_asan" = xyes && test "x$enable_jemalloc" = xyes; then
+	AC_MSG_ERROR([--enable-asan and --enable-jemalloc cannot be used together])
+fi
 if test "x$enable_jemalloc" = xyes; then
 	try_jemalloc=yes
 elif test "x$enable_jemalloc" = x; then
 	case "$host_os" in
 		*darwin*)
-			try_jemalloc=yes
-			require_jemalloc=yes
+			if test "x$enable_asan" = xyes; then
+				enable_jemalloc=no
+			else
+				try_jemalloc=yes
+				require_jemalloc=yes
+			fi
 			;;
 	esac
 fi
