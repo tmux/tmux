@@ -1,5 +1,8 @@
 CHANGES FROM 3.7b TO 3.8
 
+* Build with jemalloc on macOS to avoid what appears to be a bug in the system
+  calloc(3) (issue 5385).
+
 * Many improvements to floating panes:
 
   - new-pane and split-window can now set the title with -T and border lines
@@ -86,6 +89,11 @@ CHANGES FROM 3.7b TO 3.8
   behaviour where the pane was resized. With auto-hide, the scrollbar appears
   while scrolling or while hovered and disappears after pane-scrollbars-timeout
   (Michael Grant).
+
+* Extend the fill-character option so both inside and outside the window can be
+  changed.
+
+* Change set-option and set-hooks to use formats and add a -F flag to each.
 
 * Add a #{A/count:frames} modifier to show a series of frames as an animation
   in the status line (issue 5412 from Fernando Daciuk).
