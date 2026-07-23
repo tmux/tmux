@@ -605,7 +605,22 @@ AC_ARG_ENABLE(
 	jemalloc,
 	AS_HELP_STRING(--enable-jemalloc, use jemalloc if it is installed)
 )
+try_jemalloc=no
+require_jemalloc=no
 if test "x$enable_jemalloc" = xyes; then
+	try_jemalloc=yes
+elif test "x$enable_jemalloc" = x; then
+	case "$host_os" in
+		*darwin*)
+			try_jemalloc=yes
+			require_jemalloc=yes
+			;;
+	esac
+fi
+if test "x$try_jemalloc" = xyes; then
+	SAVED_AM_CPPFLAGS="$AM_CPPFLAGS"
+	SAVED_OLD_CPPFLAGS="$CPPFLAGS"
+	SAVED_LIBS="$LIBS"
 	PKG_CHECK_MODULES(
 		JEMALLOC,
 		jemalloc,
@@ -614,8 +629,20 @@ if test "x$enable_jemalloc" = xyes; then
 			CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
 			LIBS="$LIBS $JEMALLOC_LIBS"
 		],
-		AC_MSG_ERROR("jemalloc not found")
+		enable_jemalloc=no
 	)
+	if test "x$enable_jemalloc" = xno; then
+		AM_CPPFLAGS="$SAVED_AM_CPPFLAGS"
+		CPPFLAGS="$SAVED_OLD_CPPFLAGS"
+		LIBS="$SAVED_LIBS"
+		if test "x$require_jemalloc" = xyes; then
+			enable_jemalloc=
+		else
+			AC_MSG_ERROR("jemalloc not found")
+		fi
+	else
+		enable_jemalloc=yes
+	fi
 fi
 
 # Check for CMSG_DATA. On some platforms like HP-UX this requires UNIX 95
@@ -961,6 +988,20 @@ case "$host_os" in
 			AC_MSG_NOTICE([	   without anyway, use --disable-utf8proc])
 			AC_MSG_NOTICE([])
 			AC_MSG_ERROR([must give --enable-utf8proc or --disable-utf8proc])
+		fi
+		#
+		# macOS calloc(3) does not appear to always zero memory correctly,
+		# so complain and suggest using jemalloc instead.
+		#
+		if test "x$enable_jemalloc" = x; then
+			AC_MSG_NOTICE([])
+			AC_MSG_NOTICE([	   macOS calloc(3) appears not to correctly])
+			AC_MSG_NOTICE([	   zero allocations in some circumstances;])
+			AC_MSG_NOTICE([	   to avoid this, configuring with])
+			AC_MSG_NOTICE([	   --enable-jemalloc is recommended. To build])
+			AC_MSG_NOTICE([	   without anyway, use --disable-jemalloc])
+			AC_MSG_NOTICE([])
+			AC_MSG_ERROR([must give --enable-jemalloc or --disable-jemalloc])
 		fi
 		;;
 	*dragonfly*)
