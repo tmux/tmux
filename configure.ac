@@ -238,6 +238,7 @@ AC_LIBOBJ(getopt_long)
 
 # Look for libevent. Try libevent_core or libevent with pkg-config first then
 # look for the library.
+libevent_version=off
 PKG_CHECK_MODULES(
 	LIBEVENT_CORE,
 	[libevent_core >= 2],
@@ -246,6 +247,8 @@ PKG_CHECK_MODULES(
 		CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
 		LIBS="$LIBEVENT_CORE_LIBS $LIBS"
 		found_libevent=yes
+		libevent_version=`$PKG_CONFIG --modversion libevent_core 2>/dev/null`
+		test "x$libevent_version" = x && libevent_version=on
 	],
 	found_libevent=no
 )
@@ -258,6 +261,8 @@ if test x$found_libevent = xno; then
 			CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
 			LIBS="$LIBEVENT_LIBS $LIBS"
 			found_libevent=yes
+			libevent_version=`$PKG_CONFIG --modversion libevent 2>/dev/null`
+			test "x$libevent_version" = x && libevent_version=on
 		],
 		found_libevent=no
 	)
@@ -266,7 +271,8 @@ if test x$found_libevent = xno; then
 	AC_SEARCH_LIBS(
 		event_init,
 		[event_core event event-1.4],
-		found_libevent=yes,
+		[found_libevent=yes
+		libevent_version=on],
 		found_libevent=no
 	)
 fi
@@ -293,6 +299,7 @@ fi
 
 # Look for ncurses or curses. Try pkg-config first then directly for the
 # library.
+ncurses_version=off
 PKG_CHECK_MODULES(
 	LIBTINFOW,
 	tinfow,
@@ -301,6 +308,8 @@ PKG_CHECK_MODULES(
 		CPPFLAGS="$LIBTINFOW_CFLAGS $SAVED_CPPFLAGS"
 		LIBS="$LIBTINFOW_LIBS $LIBS"
 		found_ncurses=yes
+		ncurses_version=`$PKG_CONFIG --modversion tinfow 2>/dev/null`
+		test "x$ncurses_version" = x && ncurses_version=on
 	],
 	found_ncurses=no
 )
@@ -313,6 +322,8 @@ if test "x$found_ncurses" = xno; then
 			CPPFLAGS="$LIBTINFO_CFLAGS $SAVED_CPPFLAGS"
 			LIBS="$LIBTINFO_LIBS $LIBS"
 			found_ncurses=yes
+			ncurses_version=`$PKG_CONFIG --modversion tinfo 2>/dev/null`
+			test "x$ncurses_version" = x && ncurses_version=on
 		],
 		found_ncurses=no
 	)
@@ -326,6 +337,8 @@ if test "x$found_ncurses" = xno; then
 			CPPFLAGS="$LIBNCURSESW_CFLAGS $SAVED_CPPFLAGS"
 			LIBS="$LIBNCURSESW_LIBS $LIBS"
 			found_ncurses=yes
+			ncurses_version=`$PKG_CONFIG --modversion ncursesw 2>/dev/null`
+			test "x$ncurses_version" = x && ncurses_version=on
 		],
 		found_ncurses=no
 	)
@@ -339,6 +352,8 @@ if test "x$found_ncurses" = xno; then
 			CPPFLAGS="$LIBNCURSES_CFLAGS $SAVED_CPPFLAGS"
 			LIBS="$LIBNCURSES_LIBS $LIBS"
 			found_ncurses=yes
+			ncurses_version=`$PKG_CONFIG --modversion ncurses 2>/dev/null`
+			test "x$ncurses_version" = x && ncurses_version=on
 		],
 		found_ncurses=no
 	)
@@ -347,7 +362,8 @@ if test "x$found_ncurses" = xno; then
 	AC_SEARCH_LIBS(
 		setupterm,
 		[tinfow tinfo terminfo ncursesw ncurses],
-		found_ncurses=yes,
+		[found_ncurses=yes
+		ncurses_version=on],
 		found_ncurses=no
 	)
 	if test "x$found_ncurses" = xyes; then
@@ -377,6 +393,7 @@ else
 		LIBS="$LIBS -lcurses"
 		CPPFLAGS="$CPPFLAGS -DHAVE_CURSES_H"
 		AC_DEFINE(HAVE_CURSES_H)
+		ncurses_version=on
 	else
 		AC_MSG_ERROR("curses not found")
 	fi
@@ -387,6 +404,7 @@ AC_CHECK_FUNCS([ \
 ])
 
 # Look for utempter.
+utempter_version=off
 AC_ARG_ENABLE(
 	utempter,
 	AS_HELP_STRING(--enable-utempter, use utempter if it is installed)
@@ -403,12 +421,14 @@ if test "x$enable_utempter" = xyes; then
 	fi
 	if test "x$enable_utempter" = xyes; then
 		AC_DEFINE(HAVE_UTEMPTER)
+		utempter_version=on
 	else
 		AC_MSG_ERROR("utempter not found")
 	fi
 fi
 
 # Look for utf8proc.
+utf8proc_version=off
 AC_ARG_ENABLE(
 	utf8proc,
 	AS_HELP_STRING(--enable-utf8proc, use utf8proc if it is installed)
@@ -436,6 +456,8 @@ if test "x$try_utf8proc" = xyes; then
 			AM_CPPFLAGS="$LIBUTF8PROC_CFLAGS $AM_CPPFLAGS"
 			CPPFLAGS="$LIBUTF8PROC_CFLAGS $SAVED_CPPFLAGS"
 			LIBS="$LIBUTF8PROC_LIBS $LIBS"
+			utf8proc_version=`$PKG_CONFIG --modversion libutf8proc 2>/dev/null`
+			test "x$utf8proc_version" = x && utf8proc_version=on
 		],
 		[:]
 	)
@@ -450,10 +472,12 @@ if test "x$try_utf8proc" = xyes; then
 	fi
 	if test "x$enable_utf8proc" = xyes; then
 		AC_DEFINE(HAVE_UTF8PROC)
+		test "x$utf8proc_version" = xoff && utf8proc_version=on
 	else
 		AM_CPPFLAGS="$SAVED_AM_CPPFLAGS"
 		CPPFLAGS="$SAVED_OLD_CPPFLAGS"
 		LIBS="$SAVED_LIBS"
+		utf8proc_version=off
 		if test "x$require_utf8proc" = xyes; then
 			enable_utf8proc=
 		else
@@ -464,6 +488,7 @@ fi
 AM_CONDITIONAL(HAVE_UTF8PROC, [test "x$enable_utf8proc" = xyes])
 
 # Check for systemd support.
+systemd_version=off
 AC_ARG_ENABLE(
 	systemd,
 	AS_HELP_STRING(--enable-systemd, enable systemd integration)
@@ -477,6 +502,8 @@ if test x"$enable_systemd" = xyes; then
 			CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
 			LIBS="$SYSTEMD_LIBS $LIBS"
 			found_systemd=yes
+			systemd_version=`$PKG_CONFIG --modversion libsystemd 2>/dev/null`
+			test "x$systemd_version" = x && systemd_version=on
 		],
 		found_systemd=no
 	)
@@ -601,6 +628,7 @@ if test "x$found_malloc_trim" = xyes; then
 fi
 
 # Build against jemalloc if requested.
+jemalloc_version=off
 AC_ARG_ENABLE(
 	jemalloc,
 	AS_HELP_STRING(--enable-jemalloc, use jemalloc if it is installed)
@@ -628,6 +656,8 @@ if test "x$try_jemalloc" = xyes; then
 			AM_CPPFLAGS="$JEMALLOC_CFLAGS $AM_CPPFLAGS"
 			CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
 			LIBS="$LIBS $JEMALLOC_LIBS"
+			jemalloc_version=`$PKG_CONFIG --modversion jemalloc 2>/dev/null`
+			test "x$jemalloc_version" = x && jemalloc_version=on
 		],
 		enable_jemalloc=no
 	)
@@ -635,6 +665,7 @@ if test "x$try_jemalloc" = xyes; then
 		AM_CPPFLAGS="$SAVED_AM_CPPFLAGS"
 		CPPFLAGS="$SAVED_OLD_CPPFLAGS"
 		LIBS="$SAVED_LIBS"
+		jemalloc_version=off
 		if test "x$require_jemalloc" = xyes; then
 			enable_jemalloc=
 		else
@@ -642,6 +673,8 @@ if test "x$try_jemalloc" = xyes; then
 		fi
 	else
 		enable_jemalloc=yes
+		AC_DEFINE(HAVE_JEMALLOC)
+		test "x$jemalloc_version" = xoff && jemalloc_version=on
 	fi
 fi
 
@@ -1089,6 +1122,26 @@ fi
 AC_MSG_CHECKING(lock-command)
 AC_MSG_RESULT($DEFAULT_LOCK_CMD)
 AC_SUBST(DEFAULT_LOCK_CMD)
+
+# Print a summary.
+AC_MSG_NOTICE([])
+if test "x$enable_asan" = xyes; then
+	AC_MSG_NOTICE([ASAN: on])
+else
+	AC_MSG_NOTICE([ASAN: off])
+fi
+if test "x$enable_debug" = xyes; then
+	AC_MSG_NOTICE([debug: on])
+else
+	AC_MSG_NOTICE([debug: off])
+fi
+AC_MSG_NOTICE([jemalloc: $jemalloc_version])
+AC_MSG_NOTICE([libevent: $libevent_version])
+AC_MSG_NOTICE([ncurses: $ncurses_version])
+AC_MSG_NOTICE([systemd: $systemd_version])
+AC_MSG_NOTICE([utempter: $utempter_version])
+AC_MSG_NOTICE([utf8proc: $utf8proc_version])
+AC_MSG_NOTICE([])
 
 # Save our CFLAGS/CPPFLAGS/LDFLAGS for the Makefile and restore the old user
 # variables.
