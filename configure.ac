@@ -415,7 +415,22 @@ AC_ARG_ENABLE(
 	utf8proc,
 	AS_HELP_STRING(--enable-utf8proc, use utf8proc if it is installed)
 )
+try_utf8proc=no
+require_utf8proc=no
 if test "x$enable_utf8proc" = xyes; then
+	try_utf8proc=yes
+elif test "x$enable_utf8proc" = x; then
+	case "$host_os" in
+		*darwin*)
+			try_utf8proc=yes
+			require_utf8proc=yes
+			;;
+	esac
+fi
+if test "x$try_utf8proc" = xyes; then
+	SAVED_AM_CPPFLAGS="$AM_CPPFLAGS"
+	SAVED_OLD_CPPFLAGS="$CPPFLAGS"
+	SAVED_LIBS="$LIBS"
 	PKG_CHECK_MODULES(
 		LIBUTF8PROC,
 		libutf8proc,
@@ -423,7 +438,8 @@ if test "x$enable_utf8proc" = xyes; then
 			AM_CPPFLAGS="$LIBUTF8PROC_CFLAGS $AM_CPPFLAGS"
 			CPPFLAGS="$LIBUTF8PROC_CFLAGS $SAVED_CPPFLAGS"
 			LIBS="$LIBUTF8PROC_LIBS $LIBS"
-		]
+		],
+		[:]
 	)
 	AC_CHECK_HEADER(utf8proc.h, enable_utf8proc=yes, enable_utf8proc=no)
 	if test "x$enable_utf8proc" = xyes; then
@@ -437,7 +453,14 @@ if test "x$enable_utf8proc" = xyes; then
 	if test "x$enable_utf8proc" = xyes; then
 		AC_DEFINE(HAVE_UTF8PROC)
 	else
-		AC_MSG_ERROR("utf8proc not found")
+		AM_CPPFLAGS="$SAVED_AM_CPPFLAGS"
+		CPPFLAGS="$SAVED_OLD_CPPFLAGS"
+		LIBS="$SAVED_LIBS"
+		if test "x$require_utf8proc" = xyes; then
+			enable_utf8proc=
+		else
+			AC_MSG_ERROR("utf8proc not found")
+		fi
 	fi
 fi
 AM_CONDITIONAL(HAVE_UTF8PROC, [test "x$enable_utf8proc" = xyes])
