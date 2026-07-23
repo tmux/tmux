@@ -76,9 +76,7 @@ AM_CONDITIONAL(IS_OPTIMIZED, test "x$enable_optimizations" = xyes)
 # Is this --enable-asan?
 AC_ARG_ENABLE(
 	asan,
-	AS_HELP_STRING(--enable-asan, enable ASAN build flags),
-	,
-	[case "x$host_os" in *darwin*) enable_asan=yes;; esac]
+	AS_HELP_STRING(--enable-asan, enable ASAN build flags)
 )
 AM_CONDITIONAL(IS_ASAN, test "x$enable_asan" = xyes)
 
