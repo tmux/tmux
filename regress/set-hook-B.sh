@@ -67,6 +67,12 @@ shown=$($TMUX show-hooks -g -B @session-name) ||
 	fail "show-hooks -B failed"
 [ "$shown" = '@session-name::#{session_name}' ] ||
 	fail "unexpected show-hooks -B output: $shown"
+shown=$($TMUX show-hooks -g -BF \
+	'#{option_name}:#{hook_monitor_target}:#{hook_monitor_format}:#{option_value}:#{option_is_hook}:#{option_is_user}' \
+	@session-name) ||
+	fail "show-hooks -BF failed"
+[ "$shown" = '@session-name::#{session_name}:@session-name::#{session_name}:1:1' ] ||
+	fail "unexpected show-hooks -BF output: $shown"
 shown=$($TMUX show-hooks -g) ||
 	fail "show-hooks -g failed"
 echo "$shown" | grep -q '^@session-name ' ||
@@ -116,6 +122,11 @@ $TMUX set -g @pane-seen 0 || fail "set @pane-seen failed"
 $TMUX set-hook -g -B "@pane:%$pane_number:#{pane_width}" \
 	'set -g @pane-seen "#{hook_session}:#{hook_window}:#{hook_window_index}:#{hook_pane}:#{hook_value}"' ||
 	fail "set-hook -B pane selector failed"
+shown=$($TMUX show-hooks -g -BF \
+	'#{option_name}:#{hook_monitor_target}:#{hook_monitor_format}' @pane) ||
+	fail "show-hooks -BF pane failed"
+[ "$shown" = "@pane:%$pane_number:#{pane_width}" ] ||
+	fail "unexpected show-hooks -BF pane output: $shown"
 assert_unchanged @pane-seen 0
 $TMUX set-hook -g -B "@pane:%$pane_number:#{@pane-value}" \
 	'set -g @pane-seen "#{hook_session}:#{hook_window}:#{hook_window_index}:#{hook_pane}:#{hook_value}"' ||

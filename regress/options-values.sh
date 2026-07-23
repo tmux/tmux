@@ -168,6 +168,30 @@ check_ok set -g @str "foo"
 check_ok set -ga @str "bar"
 check_value "-gv @str" "foobar"
 
+# --- show -F custom format ------------------------------------------------
+#
+# show-options and show-hooks use a format for their output, with the default
+# format preserving the traditional output.
+check_ok set -g @str "two words"
+check_value "-g @str" '@str "two words"'
+out=$($TMUX show -gF \
+	'#{option_name}=#{option_value}=#{option_is_user}=#{option_is_string}=#{option_value_only}' \
+	@str 2>&1)
+[ "$out" = "@str=two words=1=1=0" ] || {
+	echo "show -F @str failed."
+	echo "Expected: '@str=two words=1=1=0'"
+	echo "But got:  '$out'"
+	exit 1
+}
+out=$($TMUX show -gvF '#{option_name}=#{option_value}=#{option_value_only}' \
+	@str 2>&1)
+[ "$out" = "@str=two words=1" ] || {
+	echo "show -vF @str failed."
+	echo "Expected: '@str=two words=1'"
+	echo "But got:  '$out'"
+	exit 1
+}
+
 # --- -F expands at set time -----------------------------------------------
 #
 # With -F the value is expanded as a format once, at set time; without -F it is
