@@ -1,4 +1,4 @@
-/* $OpenBSD: options.c,v 1.90 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: options.c,v 1.91 2026/07/23 09:38:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1372,7 +1372,7 @@ options_push_changes(const char *name)
 	}
 	if (strcmp(name, "fill-character") == 0) {
 		RB_FOREACH(w, windows, &windows)
-			window_set_fill_character(w);
+			window_set_fill_cells(w);
 	}
 	if (strcmp(name, "key-table") == 0) {
 		TAILQ_FOREACH(loop, &clients, entry)

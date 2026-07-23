@@ -1,4 +1,4 @@
-/* $OpenBSD: window-border.c,v 1.2 2026/07/17 12:42:51 nicm Exp $ */
+/* $OpenBSD: window-border.c,v 1.3 2026/07/23 09:38:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -23,17 +23,81 @@
 
 #include "tmux.h"
 
+/* Set window fill cell. */
+static void
+window_set_fill_cell(struct window *w, int inside, struct grid_cell *gc)
+{
+	struct format_tree	*ft;
+	struct screen		 s;
+	struct screen_write_ctx	 ctx;
+	struct grid_cell	 new_gc;
+	const char		*value;
+	char			*expanded;
+
+	memcpy(gc, &grid_default_cell, sizeof *gc);
+	gc->attr |= GRID_ATTR_CHARSET;
+	utf8_set(&gc->data, CELL_BORDERS[CELL_NONE]);
+
+	ft = format_create(NULL, NULL, FORMAT_WINDOW|w->id, FORMAT_NOJOBS);
+	format_defaults(ft, NULL, NULL, NULL, w->active);
+	format_add(ft, "is_inside", "%d", inside);
+	format_add(ft, "is_outside", "%d", !inside);
+
+	value = options_get_string(w->options, "fill-character");
+	expanded = format_expand(ft, value);
+	format_free(ft);
+
+	screen_init(&s, 1, 1, 0);
+	screen_write_start(&ctx, &s);
+	format_draw(&ctx, &grid_default_cell, 1, expanded, NULL, 0);
+	screen_write_stop(&ctx);
+	free(expanded);
+
+	grid_view_get_cell(s.grid, 0, 0, &new_gc);
+	if (new_gc.data.width == 1)
+		memcpy(gc, &new_gc, sizeof *gc);
+	screen_free(&s);
+}
+
+/* Set window fill cells. */
+void
+window_set_fill_cells(struct window *w)
+{
+	window_set_fill_cell(w, 1, &w->inside_cell);
+	window_set_fill_cell(w, 0, &w->outside_cell);
+}
+
+/* Merge a window fill cell over an existing style. */
+static void
+window_copy_fill_cell(struct grid_cell *gc, const struct grid_cell *fill)
+{
+	utf8_copy(&gc->data, &fill->data);
+	gc->attr |= fill->attr;
+	gc->flags |= fill->flags;
+	if (fill->fg != 8)
+		gc->fg = fill->fg;
+	if (fill->bg != 8)
+		gc->bg = fill->bg;
+	if (fill->us != 8)
+		gc->us = fill->us;
+}
+
+/* Get window fill cell. */
+void
+window_get_fill_cell(struct window *w, int inside, struct grid_cell *gc)
+{
+	if (inside)
+		window_copy_fill_cell(gc, &w->inside_cell);
+	else
+		window_copy_fill_cell(gc, &w->outside_cell);
+}
+
 /* Get border cell. */
 void
-window_get_border_cell(struct window *w, struct window_pane *wp,
-    enum pane_lines pane_lines, int cell_type, struct grid_cell *gc)
+window_get_border_cell(struct window_pane *wp, enum pane_lines pane_lines,
+    int cell_type, struct grid_cell *gc)
 {
 	u_int	idx;
-
-	if (cell_type == CELL_NONE && w->fill_character != NULL) {
-		utf8_copy(&gc->data, &w->fill_character[0]);
-		return;
-	}
 
 	switch (pane_lines) {
 	case PANE_LINES_NUMBER:
@@ -79,7 +143,7 @@ window_pane_get_border_cell(struct window_pane *wp, int cell_type,
 {
 	enum pane_lines	pane_lines = window_pane_get_pane_lines(wp);
 
-	window_get_border_cell(wp->window, wp, pane_lines, cell_type, gc);
+	window_get_border_cell(wp, pane_lines, cell_type, gc);
 }
 
 /* Get pane border style. */
@@ -147,7 +211,7 @@ window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
 	pane_lines = window_pane_get_pane_lines(wp);
 	for (i = 0; i < width; i++) {
 		cell_type = redraw_get_status_border_cell_type(&span, i);
-		window_get_border_cell(wp->window, wp, pane_lines, cell_type, &gc);
+		window_get_border_cell(wp, pane_lines, cell_type, &gc);
 		screen_write_cell(&ctx, &gc);
 	}
 	gc.attr &= ~GRID_ATTR_CHARSET;
