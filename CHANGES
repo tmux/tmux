@@ -1,5 +1,8 @@
 CHANGES FROM 3.7b TO 3.7c
 
+* Build with jemalloc on macOS to avoid what appears to be a bug in calloc
+  (issue 5385).
+
 * Fix scrollbar initial state so they appear on new windows (issue 5339).
 
 * Check time periodically in loops rather than every one (issue 5367).
