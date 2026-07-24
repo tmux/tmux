@@ -2167,6 +2167,27 @@ Hide line numbers in copy mode.
 .Xc
 Toggle line numbers in copy mode.
 .It Xo
+.Ic collapse\-output
+.Op Fl a
+.Xc
+Collapse the output for the command on the cursor line.
+With
+.Fl a ,
+collapse all command output in the copy-mode buffer.
+Text before the first OSC 133 prompt is treated as an initial command output
+region.
+.It Xo
+.Ic expand\-output
+.Op Fl a
+.Xc
+Expand the output for the command on the cursor line.
+With
+.Fl a ,
+expand all command output in the copy-mode buffer.
+.Pp
+The Tab key toggles output for the command on the cursor line and S-Tab
+toggles all command output.
+.It Xo
 .Ic middle\-line
 (vi: M)
 (emacs: M\-r)
@@ -2595,11 +2616,18 @@ The synopsis for the
 command is:
 .Bl -tag -width Ds
 .It Xo Ic copy\-mode
-.Op Fl dekHMqSu
+.Op Fl UcdekHMqSu
 .Op Fl s Ar src\-pane
 .Op Fl t Ar target\-pane
 .Xc
 Enter copy mode.
+.Pp
+.Fl c
+enters copy mode with OSC 133 command output collapsed.
+.Fl U
+enters copy mode with OSC 133 output controls shown and all output expanded.
+When output is collapsed, the prompt and entered command are shown and text
+from the output start marker to the next primary prompt marker is hidden.
 .Pp
 .Fl u
 enters copy mode and scrolls one page up and
@@ -5761,6 +5789,20 @@ section.
 .Pp
 .It Ic copy\-mode\-position\-format Ar format
 Format of the position indicator in copy mode.
+.Pp
+.It Ic copy\-mode\-exit\-status\-format Ar format
+Format of the OSC 133 exit status indicator in the copy-mode gutter.
+The default displays a theme red
+.Ql !
+for a nonzero status and a space otherwise.
+The gutter grows to fit the expanded format.
+The format is drawn to the left of the collapse control, and its alignment
+applies within that area.
+The format is expanded with
+.Ql exit_status
+and
+.Ql exit_status_present ,
+which is set only when the OSC 133 end-of-output marker includes a status.
 .Pp
 .It Ic copy\-mode\-position\-style Ar style
 Set the style of the position indicator in copy mode.

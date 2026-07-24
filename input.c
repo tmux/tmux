@@ -3193,13 +3193,14 @@ input_osc_112(struct input_ctx *ictx, const char *p)
 
 /* Parse the OSC 133 D exit status. */
 static int
-input_osc_133_exit_status(const char *p)
+input_osc_133_exit_status(const char *p, int *present)
 {
 	const char	*end;
 	char		*copy;
 	const char	*errstr;
 	long long	 status;
 
+	*present = 0;
 	if (p[1] != ';' || p[2] == '\0' || strchr(p + 2, '=') == p + 2)
 		return (0);
 	end = strchr(p + 2, ';');
@@ -3213,6 +3214,7 @@ input_osc_133_exit_status(const char *p)
 		free(copy);
 		return (0);
 	}
+	*present = 1;
 	status = strtonum(copy, 0, 255, &errstr);
 	free(copy);
 	if (errstr != NULL)
@@ -3270,7 +3272,7 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 	u_int			 line = s->cy + gd->hsize;
 	struct grid_line	*gl = NULL;
 	const char		*cp;
-	int			 status;
+	int			 status, status_present;
 
 	if (line < gd->hsize + gd->sy)
 		gl = grid_get_line(gd, line);
@@ -3279,9 +3281,14 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 	case 'A':
 	case 'N':
 		if (gl != NULL) {
-			memset(&gl->osc133_data, 0, sizeof gl->osc133_data);
-			gl->osc133_data.prompt_col = s->cx;
-			gl->flags |= GRID_LINE_START_PROMPT;
+			if (!(gl->flags & (GRID_LINE_START_PROMPT|
+			    GRID_LINE_SECOND_PROMPT))) {
+				gl->osc133_data.prompt_col = s->cx;
+				if (strstr(p + 1, ";k=s") != NULL)
+					gl->flags |= GRID_LINE_SECOND_PROMPT;
+				else
+					gl->flags |= GRID_LINE_START_PROMPT;
+			}
 		}
 		if (wp != NULL) {
 			wp->last_prompt_time = time(NULL);
@@ -3291,22 +3298,25 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 	case 'P':
 		if (gl != NULL) {
 			cp = strstr(p, ";k=s");
-			if (cp != NULL && (cp[4] == ';' || cp[4] == '\0'))
-				gl->flags |= GRID_LINE_SECOND_PROMPT;
-			else
-				gl->flags |= GRID_LINE_START_PROMPT;
-			gl->osc133_data.prompt_col = s->cx;
+			if (!(gl->flags & (GRID_LINE_START_PROMPT|
+			    GRID_LINE_SECOND_PROMPT))) {
+				gl->osc133_data.prompt_col = s->cx;
+				if (cp != NULL && (cp[4] == ';' || cp[4] == '\0'))
+					gl->flags |= GRID_LINE_SECOND_PROMPT;
+				else
+					gl->flags |= GRID_LINE_START_PROMPT;
+			}
 		}
 		break;
 	case 'B':
 	case 'I':
-		if (gl != NULL) {
+		if (gl != NULL && !(gl->flags & GRID_LINE_START_COMMAND)) {
 			gl->flags |= GRID_LINE_START_COMMAND;
 			gl->osc133_data.cmd_col = s->cx;
 		}
 		break;
 	case 'C':
-		if (gl != NULL) {
+		if (gl != NULL && !(gl->flags & GRID_LINE_START_OUTPUT)) {
 			gl->flags |= GRID_LINE_START_OUTPUT;
 			gl->osc133_data.out_start_col = s->cx;
 		}
@@ -3319,7 +3329,7 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 		}
 		break;
 	case 'D':
-		status = input_osc_133_exit_status(p);
+		status = input_osc_133_exit_status(p, &status_present);
 		if (wp != NULL) {
 			wp->cmd_end_time = time(NULL);
 			wp->flags &= ~PANE_CMDRUNNING;
@@ -3328,6 +3338,8 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 		}
 		if (gl != NULL) {
 			gl->flags |= GRID_LINE_END_OUTPUT;
+			if (status_present)
+				gl->flags |= GRID_LINE_END_OUTPUT_STATUS;
 			gl->osc133_data.out_end_col = s->cx;
 			gl->osc133_data.exit_status = status;
 		}
