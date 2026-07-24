@@ -172,13 +172,54 @@ window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
     u_int *sxp, u_int *syp)
 {
 	struct layout_cell	*lc = wp->saved_layout_cell;
-	int			 status;
+	int			 status, xoff, yoff;
 	u_int			 x, y, sx, sy, x2, y2;
 
 	if (lc == NULL)
 		lc = wp->layout_cell;
 	if (lc == NULL || osx == 0 || osy == 0 || dsx == 0 || dsy == 0)
 		return (0);
+
+	/*
+	 * When per-window-border is on and the pane is not zoomed, use the live
+	 * pane geometry so display-panes matches normal redraw exactly.
+	 */
+	if (wp->saved_layout_cell == NULL &&
+	    options_get_number(wp->window->options, "per-window-border") &&
+	    !window_panes_pane_floating(wp)) {
+		if (wp->xoff < 0 || wp->yoff < 0)
+			return (0);
+		if (osx <= dsx && osy <= dsy) {
+			x = wp->xoff;
+			y = wp->yoff;
+			sx = wp->sx;
+			sy = wp->sy;
+		} else {
+			x = (u_int)wp->xoff * dsx / osx;
+			y = (u_int)wp->yoff * dsy / osy;
+			x2 = ((u_int)wp->xoff + wp->sx) * dsx / osx;
+			y2 = ((u_int)wp->yoff + wp->sy) * dsy / osy;
+			if (x2 <= x)
+				x2 = x + 1;
+			if (y2 <= y)
+				y2 = y + 1;
+			sx = x2 - x;
+			sy = y2 - y;
+		}
+		if (x >= dsx || y >= dsy || sx == 0 || sy == 0)
+			return (0);
+		if (x + sx > dsx)
+			sx = dsx - x;
+		if (y + sy > dsy)
+			sy = dsy - y;
+		if (sx == 0 || sy == 0)
+			return (0);
+		*xp = x;
+		*yp = y;
+		*sxp = sx;
+		*syp = sy;
+		return (1);
+	}
 
 	if (osx <= dsx && osy <= dsy) {
 		x = lc->g.xoff;
@@ -205,6 +246,21 @@ window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
 
 	sx = x2 - x;
 	sy = y2 - y;
+	if (sx == 0 || sy == 0)
+		return (0);
+
+	xoff = x;
+	yoff = y;
+	layout_apply_per_window_border(wp->window, root, lc, &xoff, &yoff, &sx,
+	    &sy);
+	if (xoff < 0 || yoff < 0 || (u_int)xoff >= dsx || (u_int)yoff >= dsy)
+		return (0);
+	x = xoff;
+	y = yoff;
+	if (x + sx > dsx)
+		sx = dsx - x;
+	if (y + sy > dsy)
+		sy = dsy - y;
 	if (sx == 0 || sy == 0)
 		return (0);
 
@@ -394,6 +450,52 @@ window_panes_mark_pane_status_borders(u_char *map, struct window *w,
 			y = y2 - 1;
 		}
 		window_panes_mark_hline(map, dsx, dsy, x, x2, y);
+	}
+}
+
+/*
+ * Mark borders around each tiled pane, matching normal redraw when
+ * per-window-border insets the panes. Unlike layout-tree borders, this draws
+ * a full rectangle around every pane so adjacent panes share a double border.
+ */
+static void
+window_panes_mark_per_window_borders(u_char *map, struct window *w,
+    struct layout_cell *root, u_int osx, u_int osy, u_int dsx, u_int dsy)
+{
+	struct window_pane	*wp;
+	u_int			 x, y, sx, sy;
+	int			 left, right, top, bottom;
+	int			 mark_left, mark_right, mark_top, mark_bottom;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (window_panes_pane_floating(wp))
+			continue;
+		if (!window_panes_get_geometry(wp, root, osx, osy, dsx, dsy, &x,
+		    &y, &sx, &sy))
+			continue;
+
+		left = (int)x - 1;
+		right = (int)x + (int)sx;
+		top = (int)y - 1;
+		bottom = (int)y + (int)sy;
+
+		mark_left = (left >= 0);
+		mark_top = (top >= 0);
+		mark_right = (right < (int)dsx);
+		mark_bottom = (bottom < (int)dsy);
+
+		if (mark_top)
+			window_panes_mark_hline(map, dsx, dsy, left,
+			    right + 1, top);
+		if (mark_bottom)
+			window_panes_mark_hline(map, dsx, dsy, left,
+			    right + 1, bottom);
+		if (mark_left)
+			window_panes_mark_vline(map, dsx, dsy, left, top,
+			    bottom + 1);
+		if (mark_right)
+			window_panes_mark_vline(map, dsx, dsy, right, top,
+			    bottom + 1);
 	}
 }
 
@@ -587,10 +689,19 @@ window_panes_draw_borders(struct screen_write_ctx *ctx, struct window *w,
 		return;
 
 	map = xcalloc(dsx, dsy);
-	window_panes_mark_borders_cell(map, lc, osx, osy, dsx, dsy);
-	window_panes_mark_pane_status_borders(map, w, lc, osx, osy, dsx,
-	    dsy);
-	window_panes_mark_border_joins_cell(map, lc, osx, osy, dsx, dsy);
+	if (options_get_number(w->options, "per-window-border")) {
+		/*
+		 * With per-window-border, borders come from each pane's inset
+		 * rectangle (same as normal redraw), not the layout-tree gaps.
+		 */
+		window_panes_mark_per_window_borders(map, w, lc, osx, osy, dsx,
+		    dsy);
+	} else {
+		window_panes_mark_borders_cell(map, lc, osx, osy, dsx, dsy);
+		window_panes_mark_pane_status_borders(map, w, lc, osx, osy, dsx,
+		    dsy);
+		window_panes_mark_border_joins_cell(map, lc, osx, osy, dsx, dsy);
+	}
 
 	for (yy = 0; yy < dsy; yy++) {
 		for (xx = 0; xx < dsx; xx++) {

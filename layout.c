@@ -456,6 +456,33 @@ layout_add_horizontal_border(struct layout_cell *root, struct layout_cell *lc,
 	return (0);
 }
 
+/*
+ * Inset pane geometry for per-window-border: one cell on the left and top of
+ * every pane, plus one on the right and bottom of panes on the window edge.
+ */
+void
+layout_apply_per_window_border(struct window *w, struct layout_cell *root,
+    struct layout_cell *lc, int *xoff, int *yoff, u_int *sx, u_int *sy)
+{
+	if (lc == NULL || root == NULL)
+		return;
+	if (!options_get_number(w->options, "per-window-border"))
+		return;
+	if (lc->flags & LAYOUT_CELL_FLOATING)
+		return;
+
+	(*xoff)++;
+	if (*sx > 1)
+		(*sx)--;
+	(*yoff)++;
+	if (*sy > 1)
+		(*sy)--;
+	if (layout_cell_is_right(root, lc) && *sx > 1)
+		(*sx)--;
+	if (layout_cell_is_bottom(root, lc) && *sy > 1)
+		(*sy)--;
+}
+
 /* Update pane offsets and sizes based on their cells. */
 void
 layout_fix_panes(struct window *w, struct window_pane *skip)
@@ -464,10 +491,7 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 	struct layout_cell	*lc, *root = w->layout_root;
 	int			 status, sb_w, sb_pad;
 	int			 old_xoff, old_yoff, changed = 0;
-	int			 per_window_border;
 	u_int			 sx, sy, old_sx, old_sy;
-
-	per_window_border = options_get_number(w->options, "per-window-border");
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if ((lc = wp->layout_cell) == NULL || wp == skip)
@@ -483,24 +507,13 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		sx = lc->g.sx;
 		sy = lc->g.sy;
 
-		if (per_window_border && !window_pane_is_floating(wp)) {
-			/*
-			 * Inset every pane by one cell on the left and top so
-			 * there is a border column/row on those sides. Right
-			 * and bottom borders are only needed on the outer
-			 * edges of the window.
-			 */
-			wp->xoff++;
-			if (sx > 1)
-				sx--;
-			wp->yoff++;
-			if (sy > 1)
-				sy--;
-			if (layout_cell_is_right(root, lc) && sx > 1)
-				sx--;
-			if (layout_cell_is_bottom(root, lc) && sy > 1)
-				sy--;
-		}
+		/*
+		 * Do not inset the live layout while zoomed: display-panes zooms
+		 * to fill the window and draws the unzoomed layout itself.
+		 */
+		if (~w->flags & WINDOW_ZOOMED)
+			layout_apply_per_window_border(w, root, lc, &wp->xoff,
+			    &wp->yoff, &sx, &sy);
 
 		status = window_pane_get_pane_status(wp);
 		if (!window_pane_is_floating(wp) &&
