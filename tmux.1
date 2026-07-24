@@ -3741,6 +3741,18 @@ The
 string may contain the special character sequences supported by the
 .Ic status\-left
 option.
+Some format variables (such as
+.Ic pane_title
+and
+.Ic pane_path )
+are set by escape sequences from processes in the pane and may contain
+arbitrary content including shell metacharacters.
+Use
+.Ql #{q:variable}
+to escape
+.Xr sh 1
+special characters when interpolating these into
+.Ar shell\-command .
 If no
 .Ar shell\-command
 is given, the current pipe (if any) is closed.
@@ -8688,6 +8700,18 @@ is expanded using the rules specified in the
 .Sx FORMATS
 section, including those relevant to
 .Ar target\-pane .
+Some format variables (such as
+.Ic pane_title
+and
+.Ic pane_path )
+are set by escape sequences from processes in the pane and may contain
+arbitrary content including shell metacharacters.
+Use
+.Ql #{q:variable}
+to escape
+.Xr sh 1
+special characters when interpolating these into
+.Ar shell\-command .
 With
 .Fl b ,
 .Ar shell\-command
@@ -8728,6 +8752,18 @@ Before being executed,
 is expanded using the rules specified in the
 .Sx FORMATS
 section.
+Some format variables (such as
+.Ic pane_title
+and
+.Ic pane_path )
+are set by escape sequences from processes in the pane and may contain
+arbitrary content including shell metacharacters.
+Use
+.Ql #{q:variable}
+to escape
+.Xr sh 1
+special characters when interpolating these into
+.Ar shell\-command .
 If
 .Ar argument
 values are given, they are available as
