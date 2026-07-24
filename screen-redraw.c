@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.156 2026/07/23 09:38:27 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.157 2026/07/24 08:49:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -547,7 +547,8 @@ redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
 	 * merged.
 	 */
 	if (!floating) {
-		if (bc->data.type == REDRAW_SPAN_EMPTY)
+		if (bc->data.type == REDRAW_SPAN_EMPTY ||
+		    bc->data.type == REDRAW_SPAN_OUTSIDE)
 			reset = 1;
 		else if (bc->data.type != REDRAW_SPAN_BORDER)
 			return;
