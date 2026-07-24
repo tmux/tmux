@@ -86,6 +86,10 @@ static int	window_copy_last_regex(struct grid *, u_int, u_int, u_int,
 		    int);
 static int	window_copy_search_mark_at(struct window_copy_mode_data *,
 		    u_int, u_int, u_int *);
+static int	window_copy_grow_searchpos(struct window_copy_mode_data *,
+		    u_int, u_int, u_int);
+static void	window_copy_search_set_index(struct window_copy_mode_data *,
+		    u_int, u_int);
 static char    *window_copy_stringify(struct grid *, u_int, u_int, u_int,
 		    char *, u_int *);
 static void	window_copy_cstrtocellpos(struct grid *, u_int, u_int *,
@@ -340,6 +344,10 @@ struct window_copy_mode_data {
 	char		*searchstr;
 	u_char		*searchmark;
 	int		 searchcount;
+	int		 searchindex;
+	u_int		*searchpos;
+	u_int		 searchposcount;
+	u_int		 searchpossize;
 	int		 searchmore;
 	int		 searchall;
 	int		 searchx;
@@ -580,6 +588,7 @@ window_copy_common_init(struct window_mode_entry *wme)
 		data->searchstr = NULL;
 	}
 	data->searchx = data->searchy = data->searcho = -1;
+	data->searchindex = -1;
 	data->searchall = 1;
 
 	data->jumptype = WINDOW_COPY_OFF;
@@ -681,6 +690,7 @@ window_copy_free(struct window_mode_entry *wme)
 	evtimer_del(&data->refresh_timer);
 
 	free(data->searchmark);
+	free(data->searchpos);
 	free(data->searchstr);
 	free(data->jumpchar);
 
@@ -1166,8 +1176,12 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 	format_add(ft, "search_present", "%d", data->searchmark != NULL);
 	format_add(ft, "search_timed_out", "%d", data->timeout);
 	if (data->searchcount != -1) {
+		format_add(ft, "search_count_present", "1");
 		format_add(ft, "search_count", "%d", data->searchcount);
 		format_add(ft, "search_count_partial", "%d", data->searchmore);
+		if (data->searchindex != -1)
+			format_add(ft, "search_count_current", "%d",
+			    data->searchindex);
 	}
 	format_add_cb(ft, "search_match", window_copy_search_match_cb);
 
@@ -1192,9 +1206,11 @@ window_copy_size_changed(struct window_mode_entry *wme)
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx		 ctx;
 	int				 search = (data->searchmark != NULL);
+	int				 searchindex = data->searchindex;
 
 	window_copy_clear_selection(wme);
 	window_copy_clear_marks(wme);
+	data->searchindex = searchindex;
 
 	screen_write_start(&ctx, s);
 	window_copy_write_lines(wme, &ctx, 0, screen_size_y(s));
@@ -2908,20 +2924,16 @@ window_copy_cmd_search_backward_incremental(struct window_copy_cmd_state *cs)
 		data->searchregex = 0;
 		free(data->searchstr);
 		data->searchstr = xstrdup(arg0);
-		if (!window_copy_search_up(wme, 0)) {
-			window_copy_clear_marks(wme);
+		if (!window_copy_search_up(wme, 0))
 			return (WINDOW_COPY_CMD_REDRAW);
-		}
 		break;
 	case '+':
 		data->searchtype = WINDOW_COPY_SEARCHDOWN;
 		data->searchregex = 0;
 		free(data->searchstr);
 		data->searchstr = xstrdup(arg0);
-		if (!window_copy_search_down(wme, 0)) {
-			window_copy_clear_marks(wme);
+		if (!window_copy_search_down(wme, 0))
 			return (WINDOW_COPY_CMD_REDRAW);
-		}
 		break;
 	}
 	return (action);
@@ -2965,20 +2977,16 @@ window_copy_cmd_search_forward_incremental(struct window_copy_cmd_state *cs)
 		data->searchregex = 0;
 		free(data->searchstr);
 		data->searchstr = xstrdup(arg0);
-		if (!window_copy_search_down(wme, 0)) {
-			window_copy_clear_marks(wme);
+		if (!window_copy_search_down(wme, 0))
 			return (WINDOW_COPY_CMD_REDRAW);
-		}
 		break;
 	case '-':
 		data->searchtype = WINDOW_COPY_SEARCHUP;
 		data->searchregex = 0;
 		free(data->searchstr);
 		data->searchstr = xstrdup(arg0);
-		if (!window_copy_search_up(wme, 0)) {
-			window_copy_clear_marks(wme);
+		if (!window_copy_search_up(wme, 0))
 			return (WINDOW_COPY_CMD_REDRAW);
-		}
 	}
 	return (action);
 }
@@ -4587,6 +4595,7 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 		return (0);
 
 	if (data->searchall || wp->searchstr == NULL ||
+	    data->searchpos == NULL ||
 	    wp->searchregex != regex) {
 		visible_only = 0;
 		data->searchall = 0;
@@ -4664,6 +4673,7 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 			fx = data->cx;
 			fy = screen_hsize(data->backing) - data->oy + data->cy;
 		}
+		window_copy_search_set_index(data, fx, fy);
 
 		if (direction) {
 			/*
@@ -4700,7 +4710,8 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 				}
 			}
 		}
-	}
+	} else if (!visible_only)
+		window_copy_search_marks(wme, &ss, regex, 0);
 	window_copy_redraw_screen(wme);
 
 	screen_free(&ss);
@@ -4743,6 +4754,51 @@ window_copy_clip_width(u_int width, u_int b, u_int sx, u_int sy)
 	return ((b + width > sx * sy) ? (sx * sy) - b : width);
 }
 
+static int
+window_copy_grow_searchpos(struct window_copy_mode_data *data, u_int px,
+    u_int py, u_int sx)
+{
+	u_int	 pos;
+
+	if (py > (UINT_MAX - px) / sx) {
+		free(data->searchpos);
+		data->searchpos = NULL;
+		data->searchposcount = 0;
+		data->searchpossize = 0;
+		return (0);
+	}
+	if (data->searchposcount == data->searchpossize) {
+		data->searchpossize *= 2;
+		data->searchpos = xreallocarray(data->searchpos,
+		    data->searchpossize, sizeof *data->searchpos);
+	}
+	pos = py * sx + px;
+	data->searchpos[data->searchposcount++] = pos;
+	return (1);
+}
+
+static void
+window_copy_search_set_index(struct window_copy_mode_data *data, u_int px,
+    u_int py)
+{
+	u_int	 position, left = 0, right = data->searchposcount, middle;
+	u_int	 sx = data->backing->grid->sx;
+
+	data->searchindex = -1;
+	if (py > (UINT_MAX - px) / sx)
+		return;
+	position = py * sx + px;
+	while (left < right) {
+		middle = left + ((right - left) / 2);
+		if (data->searchpos[middle] < position)
+			left = middle + 1;
+		else
+			right = middle;
+	}
+	if (left < data->searchposcount && data->searchpos[left] == position)
+		data->searchindex = left + 1;
+}
+
 static u_int
 window_copy_search_mark_match(struct window_copy_mode_data *data, u_int px,
     u_int py, u_int width, int regex)
@@ -4783,7 +4839,8 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 	struct screen_write_ctx		 ctx;
 	struct grid			*gd = s->grid;
 	struct grid_cell		 gc;
-	int				 found, cis, stopped = 0;
+	int				 found, cis, stopped = 0, oldindex;
+	int				 trackpos = 0;
 	int				 cflags = REG_EXTENDED;
 	u_int				 px, py, nfound = 0, width;
 	u_int				 ssize = 1, start, end, sx = gd->sx;
@@ -4826,6 +4883,14 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 		start = 0;
 		end = gd->hsize + sy;
 		stop = get_timer() + WINDOW_COPY_SEARCH_ALL_TIMEOUT;
+		oldindex = data->searchindex;
+		data->searchindex = -1;
+		free(data->searchpos);
+		data->searchpos = xreallocarray(NULL, 64,
+		    sizeof *data->searchpos);
+		data->searchposcount = 0;
+		data->searchpossize = 64;
+		trackpos = 1;
 	}
 
 again:
@@ -4851,6 +4916,9 @@ again:
 					break;
 			}
 			nfound++;
+			if (!visible_only && trackpos)
+				trackpos = window_copy_grow_searchpos(data, px, py,
+				    sx);
 			px += window_copy_search_mark_match(data, px, py, width,
 			    regex);
 		}
@@ -4879,6 +4947,14 @@ again:
 
 	if (!visible_only) {
 		if (stopped) {
+			data->searchindex = -1;
+			if (trackpos) {
+				/* Keep this non-NULL to avoid another full search. */
+				data->searchpos = xreallocarray(data->searchpos, 1,
+				    sizeof *data->searchpos);
+				data->searchpossize = 1;
+			}
+			data->searchposcount = 0;
 			if (nfound > 1000)
 				data->searchcount = 1000;
 			else if (nfound > 100)
@@ -4891,6 +4967,9 @@ again:
 		} else {
 			data->searchcount = nfound;
 			data->searchmore = 0;
+			if (data->searchindex == -1 && oldindex > 0 &&
+			    oldindex <= data->searchcount)
+				data->searchindex = oldindex;
 		}
 	}
 
@@ -4908,7 +4987,12 @@ window_copy_clear_marks(struct window_mode_entry *wme)
 	struct window_copy_mode_data	*data = wme->data;
 
 	data->searchcount = -1;
+	data->searchindex = -1;
 	data->searchmore = 0;
+	free(data->searchpos);
+	data->searchpos = NULL;
+	data->searchposcount = 0;
+	data->searchpossize = 0;
 
 	free(data->searchmark);
 	data->searchmark = NULL;
