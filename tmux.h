@@ -3869,6 +3869,9 @@ int		 layout_cell_is_tiled(struct layout_cell *);
 int		 layout_cell_has_tiled_child(struct layout_cell *);
 int		 layout_add_horizontal_border(struct layout_cell *,
 		     struct layout_cell *, int);
+void		 layout_apply_per_window_border(struct window *,
+		     struct layout_cell *, struct layout_cell *, int *, int *,
+		     u_int *, u_int *);
 void		 layout_fix_offsets(struct window *);
 void		 layout_fix_panes(struct window *, struct window_pane *);
 void		 layout_resize_adjust(struct window *, struct layout_cell *,
