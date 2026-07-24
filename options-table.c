@@ -1654,11 +1654,11 @@ const struct options_table_entry options_table[] = {
 	  .text = "Pane scrollbar position."
 	},
 
-	{ .name = "per-window-border",
+	{ .name = "per-pane-border",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_num = 0,
-	  .text = "Whether to draw a border around the outside of the window."
+	  .text = "Whether to draw a full border around each pane."
 	},
 
 	{ .name = "popup-style",

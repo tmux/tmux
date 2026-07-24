@@ -224,7 +224,7 @@ window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
 
 	xoff = x;
 	yoff = y;
-	layout_apply_per_window_border(wp->window, root, lc, &xoff, &yoff, &sx,
+	layout_apply_per_pane_border(wp->window, root, lc, &xoff, &yoff, &sx,
 	    &sy);
 	if (xoff < 0 || yoff < 0 || (u_int)xoff >= dsx || (u_int)yoff >= dsy)
 		return (0);
@@ -239,11 +239,11 @@ window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
 
 	status = window_get_pane_status(wp->window);
 	/*
-	 * Skip the extra status inset when per-window-border already reserved
+	 * Skip the extra status inset when per-pane-border already reserved
 	 * the top/bottom border row for every pane.
 	 */
 	if (layout_add_horizontal_border(root, lc, status) &&
-	    !options_get_number(wp->window->options, "per-window-border") &&
+	    !options_get_number(wp->window->options, "per-pane-border") &&
 	    sy > 1) {
 		if (status == PANE_STATUS_TOP)
 			y++;
@@ -434,11 +434,11 @@ window_panes_mark_pane_status_borders(u_char *map, struct window *w,
 
 /*
  * Mark borders around each tiled pane, matching normal redraw when
- * per-window-border insets the panes. Unlike layout-tree borders, this draws
+ * per-pane-border insets the panes. Unlike layout-tree borders, this draws
  * a full rectangle around every pane so adjacent panes share a double border.
  */
 static void
-window_panes_mark_per_window_borders(u_char *map, struct window *w,
+window_panes_mark_per_pane_borders(u_char *map, struct window *w,
     struct layout_cell *root, u_int osx, u_int osy, u_int dsx, u_int dsy)
 {
 	struct window_pane	*wp;
@@ -668,17 +668,17 @@ window_panes_draw_borders(struct screen_write_ctx *ctx, struct window *w,
 		return;
 
 	map = xcalloc(dsx, dsy);
-	if (options_get_number(w->options, "per-window-border") &&
+	if (options_get_number(w->options, "per-pane-border") &&
 	    window_count_panes(w, 0) > 1) {
 		/*
-		 * With per-window-border, borders come from each pane's inset
+		 * With per-pane-border, borders come from each pane's inset
 		 * rectangle (same as normal redraw), not the layout-tree gaps.
 		 * A single pane has no internal borders to draw; the window
 		 * border is outside the mode screen.
 		 */
-		window_panes_mark_per_window_borders(map, w, lc, osx, osy, dsx,
+		window_panes_mark_per_pane_borders(map, w, lc, osx, osy, dsx,
 		    dsy);
-	} else if (!options_get_number(w->options, "per-window-border")) {
+	} else if (!options_get_number(w->options, "per-pane-border")) {
 		window_panes_mark_borders_cell(map, lc, osx, osy, dsx, dsy);
 		window_panes_mark_pane_status_borders(map, w, lc, osx, osy, dsx,
 		    dsy);
@@ -1038,7 +1038,7 @@ window_panes_init(struct window_mode_entry *wme, struct cmdq_item *item,
 			window_panes_set_preview(data);
 		/*
 		 * Fill the window while display-panes is active so the overlay
-		 * is not clipped by per-window-border insets.
+		 * is not clipped by per-pane-border insets.
 		 */
 		w->flags |= WINDOW_PANESMODE;
 		if (!data->zoomed) {
