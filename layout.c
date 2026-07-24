@@ -423,6 +423,24 @@ layout_cell_is_bottom(struct layout_cell *root, struct layout_cell *lc)
 	return (1);
 }
 
+/* Is this a right cell? */
+static int
+layout_cell_is_right(struct layout_cell *root, struct layout_cell *lc)
+{
+	struct layout_cell	*next;
+
+	while (lc != root) {
+		next = lc->parent;
+		if (next == NULL)
+			return (0);
+		if (next->type == LAYOUT_LEFTRIGHT &&
+		    !layout_cell_is_last_tiled(lc))
+			return (0);
+		lc = next;
+	}
+	return (1);
+}
+
 /*
  * Returns 1 if we need to add an extra line for the pane status line. This is
  * the case for the most upper or lower panes only.
@@ -446,7 +464,10 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 	struct layout_cell	*lc, *root = w->layout_root;
 	int			 status, sb_w, sb_pad;
 	int			 old_xoff, old_yoff, changed = 0;
+	int			 per_window_border;
 	u_int			 sx, sy, old_sx, old_sy;
+
+	per_window_border = options_get_number(w->options, "per-window-border");
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if ((lc = wp->layout_cell) == NULL || wp == skip)
@@ -461,6 +482,25 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		wp->yoff = lc->g.yoff;
 		sx = lc->g.sx;
 		sy = lc->g.sy;
+
+		if (per_window_border && !window_pane_is_floating(wp)) {
+			/*
+			 * Inset every pane by one cell on the left and top so
+			 * there is a border column/row on those sides. Right
+			 * and bottom borders are only needed on the outer
+			 * edges of the window.
+			 */
+			wp->xoff++;
+			if (sx > 1)
+				sx--;
+			wp->yoff++;
+			if (sy > 1)
+				sy--;
+			if (layout_cell_is_right(root, lc) && sx > 1)
+				sx--;
+			if (layout_cell_is_bottom(root, lc) && sy > 1)
+				sy--;
+		}
 
 		status = window_pane_get_pane_status(wp);
 		if (!window_pane_is_floating(wp) &&
