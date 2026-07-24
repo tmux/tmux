@@ -2437,10 +2437,12 @@ server_client_check_redraw(struct client *c)
 		return;
 	}
 
-	/* Unfreeze the tty and turn off the cursor. */
+	/* Unfreeze the tty and turn off the cursor if not synchronized. */
 	log_debug("%s: redraw needed", c->name);
 	tflags = tty->flags & (TTY_BLOCK|TTY_FREEZE|TTY_NOCURSOR);
-	tty->flags = (tty->flags & ~(TTY_BLOCK|TTY_FREEZE))|TTY_NOCURSOR;
+	tty->flags &= ~(TTY_BLOCK|TTY_FREEZE);
+	if (!tty_sync_start(tty))
+		tty->flags |= TTY_NOCURSOR;
 
 	/*
 	 * If not redrawing the entire window, check whether each pane needs to

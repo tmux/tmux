@@ -1576,19 +1576,22 @@ tty_draw_images(struct client *c, struct window_pane *wp)
 }
 #endif
 
-void
+int
 tty_sync_start(struct tty *tty)
 {
+	int	sync = tty_term_has(tty->term, TTYC_SYNC);
+
 	if (tty->flags & TTY_BLOCK)
-		return;
+		return (0);
 	if (tty->flags & TTY_SYNCING)
-		return;
+		return (sync);
 	tty->flags |= TTY_SYNCING;
 
-	if (tty_term_has(tty->term, TTYC_SYNC)) {
+	if (sync) {
 		log_debug("%s sync start", tty->client->name);
 		tty_putcode_i(tty, TTYC_SYNC, 1);
 	}
+	return (sync);
 }
 
 void

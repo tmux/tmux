@@ -2947,7 +2947,7 @@ const struct grid_cell *tty_check_codeset(struct tty *,
 	    const struct grid_cell *);
 struct visible_ranges *tty_check_overlay_range(struct tty *, u_int, u_int,
 	    u_int);
-void	tty_sync_start(struct tty *);
+int	tty_sync_start(struct tty *);
 void	tty_sync_end(struct tty *);
 int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *);
