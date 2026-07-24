@@ -106,7 +106,7 @@ layout_free_cell(struct layout_cell *lc, int only_nodes)
 		}
 		break;
 	case LAYOUT_WINDOWPANE:
-		if (lc->wp != NULL) {
+		if (lc->wp != NULL && lc->wp->layout_cell != NULL) {
 			lc->wp->layout_cell->parent = NULL;
 			lc->wp->layout_cell = NULL;
 		}
@@ -235,24 +235,23 @@ layout_make_node(struct layout_cell *lc, enum layout_type type)
 
 /* Fix z-indexes. */
 void
-layout_fix_zindexes(struct window *w, struct layout_cell *lc)
+layout_fix_zindexes(struct window *w)
 {
-	struct layout_cell	*lcchild;
+	struct window_pane	*wp, *wpnext;
 
-	if (lc == NULL)
-		return;
+	/* Remove non-floating panes from the z-index. */
+	wp = TAILQ_FIRST(&w->z_index);
+	while (wp != NULL) {
+		wpnext = TAILQ_NEXT(wp, zentry);
+		if (!window_pane_is_floating(wp)) {
+			TAILQ_REMOVE(&w->z_index, wp, zentry);
+		}
+		wp = wpnext;
+	}
 
-	switch (lc->type) {
-	case LAYOUT_WINDOWPANE:
-		TAILQ_INSERT_TAIL(&w->z_index, lc->wp, zentry);
-		break;
-	case LAYOUT_LEFTRIGHT:
-	case LAYOUT_TOPBOTTOM:
-		TAILQ_FOREACH(lcchild, &lc->cells, entry)
-			layout_fix_zindexes(w, lcchild);
-		return;
-	default:
-		fatalx("bad layout type");
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (!window_pane_is_floating(wp))
+			TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 	}
 }
 
@@ -265,7 +264,7 @@ layout_cell_is_tiled(struct layout_cell *lc)
 	return is_leaf && !is_floating;
 }
 
-static int
+int
 layout_cell_has_tiled_child(struct layout_cell *lc)
 {
 	struct layout_cell      *lcchild;

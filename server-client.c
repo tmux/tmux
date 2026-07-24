@@ -2986,6 +2986,8 @@ server_client_control_flags(struct client *c, const char *next)
 		return (CLIENT_CONTROL_NOOUTPUT);
 	if (strcmp(next, "wait-exit") == 0)
 		return (CLIENT_CONTROL_WAITEXIT);
+	if (strcmp(next, "new-layouts") == 0)
+		return (CLIENT_CONTROL_NEWLAYOUTS);
 	return (0);
 }
 
