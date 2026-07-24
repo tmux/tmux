@@ -725,6 +725,11 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 	window_pane_stack_remove(&w->last_panes, wp);
 	window_pane_stack_push(&w->last_panes, lastwp);
 
+	if (window_pane_is_floating(wp)) {
+		TAILQ_REMOVE(&w->z_index, wp, zentry);
+		TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
+	}
+
 	w->active = wp;
 	w->active->active_point = next_active_point++;
 	w->active->flags |= PANE_CHANGED;
@@ -839,7 +844,7 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 		if (!window_pane_is_visible(wp))
 			continue;
 		window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
-		if (!window_pane_is_floating(wp)) {
+		if (layout_cell_is_tiled(wp->layout_cell)) {
 			/*
 			 * Tiled - to and including the right border, excluding
 			 * the bottom border.
@@ -1057,7 +1062,7 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 void
 window_lost_pane(struct window *w, struct window_pane *wp)
 {
-	struct window_pane	*lastwp;
+	struct window_pane	*wpp, *lastwp = NULL;
 
 	log_debug("%s: @%u pane %%%u", __func__, w->id, wp->id);
 
@@ -1070,21 +1075,31 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 
 	window_pane_stack_remove(&w->last_panes, wp);
 	if (wp == w->active) {
-		lastwp = NULL;
 		if (wp == w->modal) {
 			lastwp = w->modal_last;
 			w->modal = NULL;
 			w->modal_last = NULL;
 		}
 		if (lastwp != NULL && window_has_pane(w, lastwp))
-			w->active = lastwp;
+			wpp = lastwp;
 		else
-			w->active = TAILQ_FIRST(&w->last_panes);
-		if (w->active == NULL) {
-			w->active = TAILQ_PREV(wp, window_panes, entry);
-			if (w->active == NULL)
-				w->active = TAILQ_NEXT(wp, entry);
+			wpp = TAILQ_FIRST(&w->last_panes);
+		/* Try to find a good fit. */
+		if (wpp == NULL || window_pane_is_hidden(wpp)) {
+			wpp = TAILQ_PREV(wp, window_panes, entry);
+			if (wpp == NULL || window_pane_is_hidden(wpp))
+				wpp = TAILQ_NEXT(wp, entry);
 		}
+		/* Try to find any fit. */
+		if (wpp == NULL || window_pane_is_hidden(wpp)) {
+			TAILQ_FOREACH(wpp, &w->panes, entry) {
+				if (wpp != wp && !window_pane_is_hidden(wpp))
+					break;
+			}
+		}
+		if (wpp != NULL && window_pane_is_hidden(wpp))
+			wpp = NULL;
+		w->active = wpp;
 		if (w->active != NULL) {
 			window_pane_stack_remove(&w->last_panes, w->active);
 			w->active->flags |= PANE_CHANGED;
@@ -1263,6 +1278,8 @@ window_pane_printable_flags(struct window_pane *wp)
 		flags[pos++] = 'Z';
 	if (window_pane_is_floating(wp))
 		flags[pos++] = 'F';
+	if (window_pane_is_hidden(wp))
+		flags[pos++] = 'H';
 	if (wp == w->modal)
 		flags[pos++] = 'O';
 	flags[pos] = '\0';
@@ -1967,8 +1984,11 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 int
 window_pane_is_visible(struct window_pane *wp)
 {
-	if (~wp->window->flags & WINDOW_ZOOMED)
+	if (~wp->window->flags & WINDOW_ZOOMED) {
+		if (window_pane_is_hidden(wp))
+			return (0);
 		return (1);
+	}
 	return (wp == wp->window->active);
 }
 
@@ -2806,6 +2826,16 @@ window_pane_is_floating(struct window_pane *wp)
 	struct layout_cell	*lc = wp->layout_cell;
 
 	if (lc == NULL || (lc->flags & LAYOUT_CELL_FLOATING) == 0)
+		return (0);
+	return (1);
+}
+
+int
+window_pane_is_hidden(struct window_pane *wp)
+{
+	struct layout_cell	*lc = wp->layout_cell;
+
+	if (lc == NULL || (lc->flags & LAYOUT_CELL_HIDDEN) == 0)
 		return (0);
 	return (1);
 }
