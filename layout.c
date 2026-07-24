@@ -508,10 +508,10 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		sy = lc->g.sy;
 
 		/*
-		 * Do not inset the live layout while zoomed: display-panes zooms
-		 * to fill the window and draws the unzoomed layout itself.
+		 * display-panes sets WINDOW_PANESMODE so its temporary zoom can
+		 * fill the window; the mode draws per-window-border itself.
 		 */
-		if (~w->flags & WINDOW_ZOOMED)
+		if (~w->flags & WINDOW_PANESMODE)
 			layout_apply_per_window_border(w, root, lc, &wp->xoff,
 			    &wp->yoff, &sx, &sy);
 

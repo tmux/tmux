@@ -181,43 +181,16 @@ window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
 		return (0);
 
 	/*
-	 * When per-window-border is on and the pane is not zoomed, use the live
-	 * pane geometry so display-panes matches normal redraw exactly.
+	 * With a single pane, display-panes cannot zoom and runs inside the
+	 * already-inset pane. Fill the mode screen; the window border is drawn
+	 * outside by normal redraw.
 	 */
 	if (wp->saved_layout_cell == NULL &&
-	    options_get_number(wp->window->options, "per-window-border") &&
-	    !window_panes_pane_floating(wp)) {
-		if (wp->xoff < 0 || wp->yoff < 0)
-			return (0);
-		if (osx <= dsx && osy <= dsy) {
-			x = wp->xoff;
-			y = wp->yoff;
-			sx = wp->sx;
-			sy = wp->sy;
-		} else {
-			x = (u_int)wp->xoff * dsx / osx;
-			y = (u_int)wp->yoff * dsy / osy;
-			x2 = ((u_int)wp->xoff + wp->sx) * dsx / osx;
-			y2 = ((u_int)wp->yoff + wp->sy) * dsy / osy;
-			if (x2 <= x)
-				x2 = x + 1;
-			if (y2 <= y)
-				y2 = y + 1;
-			sx = x2 - x;
-			sy = y2 - y;
-		}
-		if (x >= dsx || y >= dsy || sx == 0 || sy == 0)
-			return (0);
-		if (x + sx > dsx)
-			sx = dsx - x;
-		if (y + sy > dsy)
-			sy = dsy - y;
-		if (sx == 0 || sy == 0)
-			return (0);
-		*xp = x;
-		*yp = y;
-		*sxp = sx;
-		*syp = sy;
+	    window_count_panes(wp->window, 0) == 1) {
+		*xp = 0;
+		*yp = 0;
+		*sxp = dsx;
+		*syp = dsy;
 		return (1);
 	}
 
@@ -689,14 +662,17 @@ window_panes_draw_borders(struct screen_write_ctx *ctx, struct window *w,
 		return;
 
 	map = xcalloc(dsx, dsy);
-	if (options_get_number(w->options, "per-window-border")) {
+	if (options_get_number(w->options, "per-window-border") &&
+	    window_count_panes(w, 0) > 1) {
 		/*
 		 * With per-window-border, borders come from each pane's inset
 		 * rectangle (same as normal redraw), not the layout-tree gaps.
+		 * A single pane has no internal borders to draw; the window
+		 * border is outside the mode screen.
 		 */
 		window_panes_mark_per_window_borders(map, w, lc, osx, osy, dsx,
 		    dsy);
-	} else {
+	} else if (!options_get_number(w->options, "per-window-border")) {
 		window_panes_mark_borders_cell(map, lc, osx, osy, dsx, dsy);
 		window_panes_mark_pane_status_borders(map, w, lc, osx, osy, dsx,
 		    dsy);
@@ -1054,8 +1030,18 @@ window_panes_init(struct window_mode_entry *wme, struct cmdq_item *item,
 		data->zoomed = (w->flags & WINDOW_ZOOMED);
 		if (!data->zoomed)
 			window_panes_set_preview(data);
-		if (!data->zoomed && window_zoom(wp) == 0)
-			server_redraw_window(w);
+		/*
+		 * Fill the window while display-panes is active so the overlay
+		 * is not clipped by per-window-border insets.
+		 */
+		w->flags |= WINDOW_PANESMODE;
+		if (!data->zoomed) {
+			if (window_zoom(wp) == 0)
+				server_redraw_window(w);
+			else
+				w->flags &= ~WINDOW_PANESMODE;
+		} else
+			layout_fix_panes(w, NULL);
 	}
 
 	evtimer_set(&data->timer, window_panes_timer_callback, wme);
@@ -1077,8 +1063,11 @@ window_panes_free(struct window_mode_entry *wme)
 
 	evtimer_del(&data->timer);
 
+	w->flags &= ~WINDOW_PANESMODE;
 	if (data->zoomed == 0)
 		server_unzoom_window(w);
+	else if (data->zoomed == 1)
+		layout_fix_panes(w, NULL);
 	server_redraw_window(w);
 	server_redraw_window_borders(w);
 	server_status_window(w);
