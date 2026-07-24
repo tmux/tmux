@@ -238,7 +238,13 @@ window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
 		return (0);
 
 	status = window_get_pane_status(wp->window);
-	if (layout_add_horizontal_border(root, lc, status) && sy > 1) {
+	/*
+	 * Skip the extra status inset when per-window-border already reserved
+	 * the top/bottom border row for every pane.
+	 */
+	if (layout_add_horizontal_border(root, lc, status) &&
+	    !options_get_number(wp->window->options, "per-window-border") &&
+	    sy > 1) {
 		if (status == PANE_STATUS_TOP)
 			y++;
 		sy--;

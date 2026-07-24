@@ -516,8 +516,13 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 			    &wp->yoff, &sx, &sy);
 
 		status = window_pane_get_pane_status(wp);
+		/*
+		 * Skip the extra status inset when per-window-border already
+		 * reserved the top/bottom border row for every pane.
+		 */
 		if (!window_pane_is_floating(wp) &&
-		    layout_add_horizontal_border(root, lc, status)) {
+		    layout_add_horizontal_border(root, lc, status) &&
+		    !options_get_number(w->options, "per-window-border")) {
 			if (status == PANE_STATUS_TOP)
 				wp->yoff++;
 			if (sy > 1)

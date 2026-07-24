@@ -713,10 +713,18 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 	} else {
 		mark_right = (right <= (int)bctx->w->sx);
 		mark_bottom = (bottom <= (int)bctx->w->sy);
-		if (pane_status == PANE_STATUS_TOP)
-			mark_bottom = 0;
-		else if (pane_status == PANE_STATUS_BOTTOM)
-			mark_top = 0;
+		/*
+		 * pane-border-status reuses one edge as the status row and
+		 * suppresses drawing the opposite edge. With per-window-border
+		 * that opposite edge is still a reserved gutter and must be
+		 * drawn as a border or it stays blank/grey.
+		 */
+		if (!options_get_number(bctx->w->options, "per-window-border")) {
+			if (pane_status == PANE_STATUS_TOP)
+				mark_bottom = 0;
+			else if (pane_status == PANE_STATUS_BOTTOM)
+				mark_top = 0;
+		}
 	}
 
 	if (mark_top) {
