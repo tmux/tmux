@@ -4325,7 +4325,7 @@ format_quote_shell(const char *s)
 
 	at = out = xmalloc(strlen(s) * 2 + 1);
 	for (cp = s; *cp != '\0'; cp++) {
-		if (strchr("|&;<>()$`\\\"'*?[# =%", *cp) != NULL)
+		if (strchr("|&;<>()$`\\\"'*?[# =%\n\t", *cp) != NULL)
 			*at++ = '\\';
 		*at++ = *cp;
 	}
