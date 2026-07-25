@@ -18,15 +18,14 @@
 
 #include <ctype.h>
 #include <errno.h>
-#include <limits.h>
-#include <string.h>
-#include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "tmux.h"
 
 #define TOKENS_MAX	4096
+#define ERROR_CTX_LEN	8
 
 /* JSON Token types. */
 enum json_token_type {
@@ -67,7 +66,7 @@ static struct json_node	*json_create_node(struct json_node *,
 			     const void *);
 static void		 json_assign_value(struct json_node *, const void *);
 static struct json_node *json_parse_tokens(struct json_tokens **, char **);
-static int		 layout_parse_key(struct json_token **,
+static int		 json_parse_key(struct json_token **,
 			     struct json_string *, char **);
 static struct json_node	*json_parse_object(struct json_token **,
 			     struct json_node *, struct json_string *, char **);
@@ -80,10 +79,26 @@ static struct json_node	*json_parse_number(struct json_token **,
 static struct json_node	*json_parse_boolean(struct json_token **,
 			     struct json_node *, struct json_string *, char **);
 
-static int
+/* Fill an error cause. */
+static void
 json_error(char **cause, const char *reason, const char *input)
 {
-	return (xasprintf(cause, "%s: %.*s...", reason, 8, input));
+	const char	*ellipsis = "...";
+	int		 i;
+
+	if (input == NULL || *input == '\0') {
+		xasprintf(cause, "%s", reason);
+		return;
+	}
+
+	for (i = 0; i < ERROR_CTX_LEN; i++) {
+		if (input[i] == '\0') {
+			ellipsis = "";
+			break;
+		}
+	}
+
+	xasprintf(cause, "%s: %.*s%s", reason, ERROR_CTX_LEN, input, ellipsis);
 }
 
 /* Wrapper for string views with strcmp semantics. */
@@ -107,12 +122,16 @@ json_tokenize_input(const char *input, char **cause)
 {
 	struct json_tokens	*tokens = json_create_tokens();
 	enum json_token_type	 type;
-	struct json_string	 jstr = { 0 };
+	struct json_string	 jstr;
 	int			 scan;
 
 	while (*input != '\0') {
 		if (tokens->size >= TOKENS_MAX)
 			goto fail;
+
+		jstr.ptr = input;
+		jstr.len = 1;
+
 		switch (*input) {
 		case ' ':
 		case '\t':
@@ -151,8 +170,6 @@ json_tokenize_input(const char *input, char **cause)
 		if (json_add_token(tokens, type, &jstr) != 0)
 			goto fail;
 
-		jstr.ptr = NULL;
-		jstr.len = 0;
 		input++;
 	}
 	if (json_add_token(tokens, TOK_EOF, NULL) != 0)
@@ -167,7 +184,7 @@ fail:
 
 /*
  * Tokenize a value from the input string. Strings are terminated by a '"', and
- * numbers/booleans are terminated by a ',', ']', or '}'.
+ * numbers/booleans are terminated by a ',', ']', '}', or whitespace.
  */
 static int
 json_tokenize_value(struct json_tokens *tokens, const char *input,
@@ -187,14 +204,14 @@ json_tokenize_value(struct json_tokens *tokens, const char *input,
 			else if (escaping)
 				escaping = 0;
 			scan++;
-		} while (input[scan] != '"' && !escaping);
+		} while (input[scan] != '"' || escaping);
 	} else if (prev->type == TOK_COLON) {
 		do {
 			if (input[scan] == '\0')
 				return (-1);
 			scan++;
 		} while (input[scan] != ']' && input[scan] != '}' &&
-		    input[scan] != ',' && !isspace(input[scan]));
+		    input[scan] != ',' && !isspace((u_char) input[scan]));
 	} else
 		return (-1);
 
@@ -241,6 +258,9 @@ json_add_token(struct json_tokens *tokens, enum json_token_type type,
 	if (jstr != NULL) {
 		tok->val.ptr = jstr->ptr;
 		tok->val.len = jstr->len;
+	} else {
+		tok->val.ptr = NULL;
+		tok->val.len = 0;
 	}
 
 	return (0);
@@ -332,6 +352,7 @@ json_destroy_node(struct json_node *node)
 	free(node);
 }
 
+/* Parse an input string into JSON. */
 struct json_node *
 json_parse(const char *input, char **cause)
 {
@@ -348,27 +369,29 @@ static struct json_node *
 json_parse_tokens(struct json_tokens **tokens, char **cause)
 {
 	struct json_token	*toks = (*tokens)->toks;
-	struct json_node	*layout;
+	struct json_node	*json = NULL;
 
 	if (toks->type == TOK_OPENOBJECT)
-		layout = json_parse_object(&toks, NULL, NULL, cause);
+		json = json_parse_object(&toks, NULL, NULL, cause);
 	else {
-		json_error(cause, "must start with object", toks->val.ptr);
+		json_error(cause, "expected object", toks->val.ptr);
 		goto fail;
 	}
 
-	if (layout == NULL)
+	if (json == NULL)
 		goto fail;
 
 	if (toks->type != TOK_EOF) {
-		json_destroy_node(layout);
-		layout = NULL;
+		json_error(cause, "unexpected trailing data", toks->val.ptr);
+		goto fail;
 	}
 	json_free_tokens(*tokens);
 	*tokens = NULL;
 
-	return (layout);
+	return (json);
 fail:
+	if (json != NULL)
+		json_destroy_node(json);
 	json_free_tokens(*tokens);
 	*tokens = NULL;
 	return (NULL);
@@ -376,7 +399,7 @@ fail:
 
 /* Parse and return a key string, and advance the token pointer. */
 static int
-layout_parse_key(struct json_token **toks, struct json_string *jstr,
+json_parse_key(struct json_token **toks, struct json_string *jstr,
     char **cause)
 {
 	const char	*start = (*toks)->val.ptr;
@@ -398,7 +421,7 @@ layout_parse_key(struct json_token **toks, struct json_string *jstr,
 
 	return (0);
 fail:
-	json_error(cause, "invalid key string", start);
+	json_error(cause, "invalid key", start);
 	return (-1);
 }
 
@@ -408,7 +431,8 @@ json_parse_object(struct json_token **toks, struct json_node *parent,
     struct json_string *key, char **cause)
 {
 	struct json_node	*object, *field;
-	struct json_string	 fkey;
+	struct json_string	 fkey, *val;
+	u_char			*valstr;
 
 	if ((*toks)->type != TOK_OPENOBJECT)
 		return (NULL);
@@ -416,7 +440,7 @@ json_parse_object(struct json_token **toks, struct json_node *parent,
 
 	object = json_create_node(parent, NODE_OBJECT, key, NULL);
 	while ((*toks)->type != TOK_CLOSEOBJECT) {
-		if (layout_parse_key(toks, &fkey, cause) != 0)
+		if (json_parse_key(toks, &fkey, cause) != 0)
 			goto fail;
 		if ((*toks)->type != TOK_COLON) {
 			json_error(cause, "missing colon", (*toks)->val.ptr);
@@ -429,13 +453,19 @@ json_parse_object(struct json_token **toks, struct json_node *parent,
 			field = json_parse_string(toks, object, &fkey, cause);
 			break;
 		case TOK_VALUE:
-			if (jstrcmp(&(*toks)->val, "true") == 0 ||
-			    jstrcmp(&(*toks)->val, "false") == 0) {
-				field = json_parse_boolean(toks, object,
-				    &fkey, cause);
+			val = &(*toks)->val;
+			valstr = (u_char *)val->ptr;
+			if (jstrcmp(val, "true") == 0 ||
+			    jstrcmp(val, "false") == 0) {
+				field = json_parse_boolean(toks, object, &fkey,
+				    cause);
+			} else if ((*valstr == '-' && isdigit(valstr[1])) ||
+			    isdigit(*valstr)) {
+				field = json_parse_number(toks, object, &fkey,
+				    cause);
 			} else {
-				field = json_parse_number(toks, object,
-				    &fkey, cause);
+				json_error(cause, "invalid value", val->ptr);
+				goto fail;
 			}
 			break;
 		case TOK_OPENOBJECT:
@@ -445,27 +475,23 @@ json_parse_object(struct json_token **toks, struct json_node *parent,
 			field = json_parse_array(toks, object, &fkey, cause);
 			break;
 		default:
-			json_error(cause, "unsupported token for object",
+			json_error(cause, "unsupported object token",
 			    (*toks)->val.ptr);
 			goto fail;
 		}
-		if (field == NULL) {
-			json_error(cause, "could not parse object value",
-			    (*toks)->val.ptr);
+		if (field == NULL)
 			goto fail;
-		}
-		json_assign_value(object, field);
 
+		json_assign_value(object, field);
 		if ((*toks)->type == TOK_COMMA) {
 			if ((*toks)[1].type == TOK_CLOSEOBJECT) {
-				json_error(cause, "invalid json object",
+				json_error(cause, "invalid object",
 				    (*toks)->val.ptr);
 				goto fail;
 			}
 			(*toks)++;
 		} else if ((*toks)->type != TOK_CLOSEOBJECT) {
-			json_error(cause, "invalid json object",
-				(*toks)->val.ptr);
+			json_error(cause, "invalid object", (*toks)->val.ptr);
 			goto fail;
 		}
 	}
@@ -494,28 +520,25 @@ json_parse_array(struct json_token **toks, struct json_node *parent,
 		case TOK_OPENOBJECT:
 			member = json_parse_object(toks, array, NULL, cause);
 			break;
-		case TOK_COMMA: /* only objects */
-			if ((*toks)[1].type != TOK_OPENOBJECT) {
-				json_error(cause, "only objects in arrays",
+		default:
+			json_error(cause, "invalid array member",
+			    (*toks)->val.ptr);
+			goto fail;
+		}
+		if (member == NULL)
+			goto fail;
+
+		json_assign_value(array, member);
+
+		if ((*toks)->type == TOK_COMMA) {
+			if ((*toks)[1].type == TOK_CLOSEARRAY) {
+				json_error(cause, "invalid array",
 				    (*toks)->val.ptr);
 				goto fail;
 			}
 			(*toks)++;
-			continue;
-		default:
-			goto fail;
-		}
-		if (member == NULL) {
-			json_error(cause, "invalid json array",
-			    (*toks)->val.ptr);
-			goto fail;
-		}
-		json_assign_value(array, member);
-
-		if ((*toks)->type != TOK_COMMA &&
-		    (*toks)->type != TOK_CLOSEARRAY) {
-			json_error(cause, "invalid json array",
-			    (*toks)->val.ptr);
+		} else if ((*toks)->type != TOK_CLOSEARRAY) {
+			json_error(cause, "invalid array", (*toks)->val.ptr);
 			goto fail;
 		}
 	}
@@ -549,7 +572,7 @@ json_parse_string(struct json_token **toks, struct json_node *parent,
 
 	return (json_create_node(parent, NODE_STRING, key, val));
 fail:
-	json_error(cause, "invalid json string", start);
+	json_error(cause, "invalid string", start);
 	return (NULL);
 }
 
@@ -570,7 +593,7 @@ json_parse_number(struct json_token **toks, struct json_node *parent,
 
 	return (json_create_node(parent, NODE_NUMBER, key, &val));
 fail:
-	json_error(cause, "invalid json number", numstr);
+	json_error(cause, "invalid number", numstr);
 	return (NULL);
 }
 
@@ -593,7 +616,7 @@ json_parse_boolean(struct json_token **toks, struct json_node *parent,
 
 	return (json_create_node(parent, NODE_BOOLEAN, key, &val));
 fail:
-	json_error(cause, "invalid json boolean", start);
+	json_error(cause, "invalid boolean", start);
 	return (NULL);
 }
 
@@ -617,7 +640,7 @@ json_val_is_eq(const struct json_node *field, const void *val)
 		return (field->val.boolean == *(int *)val);
 	case NODE_OBJECT:
 	case NODE_ARRAY:
-		fatalx("unknown value comparison");
+		fatalx("cannot compare object or array");
 	}
 	return (0);
 }
