@@ -2462,6 +2462,9 @@ window_pane_show_scrollbar(struct window_pane *wp)
 {
 	if (SCREEN_IS_ALTERNATE(&wp->base))
 		return (0);
+	/* display-panes fills the window; hide scrollbars for the overlay. */
+	if (wp->window->flags & WINDOW_PANESMODE)
+		return (0);
 	if (wp->window->sb == PANE_SCROLLBARS_ALWAYS ||
 	    wp->window->sb == PANE_SCROLLBARS_AUTOHIDE ||
 	    (wp->window->sb == PANE_SCROLLBARS_MODAL &&
