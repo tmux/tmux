@@ -914,7 +914,7 @@ layout_parse_apply_ctx(struct window *w, struct layout_parse_ctx *pctx)
 	int				 i;
 
 	if (pctx->clen == 0)
-		return;
+		fatalx("layouts must have at least one pane");
 
 	/* Apply z-indexes. */
 	while (!TAILQ_EMPTY(&w->z_index)) {
