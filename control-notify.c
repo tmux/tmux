@@ -68,6 +68,7 @@ control_window_layout_changed_cb(__unused const char *name,
 	struct session		*s;
 	struct winlink		*wl;
 	struct window		*w = event_payload_get_window(ep, "window");
+	struct format_tree	*ft;
 	const char		*template;
 	char			*cp;
 
@@ -90,11 +91,16 @@ control_window_layout_changed_cb(__unused const char *name,
 			continue;
 		s = c->session;
 		wl = winlink_find_by_window_id(&s->windows, w->id);
-		if (wl != NULL) {
-			cp = format_single(NULL, template, c, s, wl, NULL);
-			control_write(c, "%s", cp);
-			free(cp);
-		}
+		if (wl == NULL)
+			continue;
+
+		ft = format_create(c, NULL, FORMAT_NONE, 0);
+		format_defaults(ft, c, s, wl, NULL);
+		cp = format_expand(ft, template);
+		format_free(ft);
+
+		control_write(c, "%s", cp);
+		free(cp);
 	}
 }
 

@@ -21,10 +21,9 @@
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
-#include <string.h>
 #include <stdarg.h>
-#include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "tmux.h"
 
@@ -700,7 +699,8 @@ fail:
 static int
 layout_parse_json(struct json_node *json, struct layout_parse_ctx *pctx)
 {
-	struct json_node	*field;
+	struct json_node	 *field;
+	char			**cause = pctx->cause;
 
 	TAILQ_FOREACH(field, &json->val.fields, entry) {
 		switch (field->type) {
@@ -710,8 +710,10 @@ layout_parse_json(struct json_node *json, struct layout_parse_ctx *pctx)
 			break;
 		case NODE_OBJECT:
 			if (json_key_is_eq(field, "L")) {
-				if (pctx->root != NULL)
+				if (pctx->root != NULL) {
+					*cause = xstrdup("duplicate layout");
 					goto fail;
+				}
 				pctx->root = layout_parse_json_layout(field,
 				    NULL, pctx);
 				if (pctx->root== NULL)
@@ -733,8 +735,8 @@ fail:
 		layout_free_cell(pctx->root, 0);
 	return (-1);
 }
-
-/* Evaluate nodes into layout cells. */
+// TODO: add causes for failures.
+/* Parse nodes into layout cells. */
 static struct layout_cell *
 layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
     struct layout_parse_ctx *pctx)
