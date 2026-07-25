@@ -319,32 +319,6 @@ fn maybeClipboard(wp: ?*c.window_pane, buf: []const u8, input_end: c_int) void {
     c.paste_add(null, @ptrCast(out.ptr), @intCast(decoded));
 }
 
-// Write an OSC 10/11/12 or OSC 4 colour reply straight back to the
-// pane's pty in the same rgb:RRRR/GGGG/BBBB form input_osc_colour_reply
-// uses. Sends nothing for an unknown colour, matching stock tmux.
-fn colorReplyOsc(pane: *c.window_pane, n: u32, idx: ?u32, col: c_int, input_end: c_int) void {
-    if (pane.*.event == null or col == -1)
-        return;
-    const rgb = c.colour_force_rgb(col);
-    if (rgb == -1)
-        return;
-    var r: u8 = 0;
-    var g: u8 = 0;
-    var b: u8 = 0;
-    c.colour_split_rgb(rgb, &r, &g, &b);
-    const end = if (input_end == 1) "\x07" else "\x1b\\";
-    var buf: [64]u8 = undefined;
-    const reply = if (idx) |ix|
-        std.fmt.bufPrint(&buf, "\x1b]{d};{d};rgb:{x:0>2}{x:0>2}/{x:0>2}{x:0>2}/{x:0>2}{x:0>2}{s}", .{ n, ix, r, r, g, g, b, b, end }) catch return
-    else
-        std.fmt.bufPrint(&buf, "\x1b]{d};rgb:{x:0>2}{x:0>2}/{x:0>2}{x:0>2}/{x:0>2}{x:0>2}{s}", .{ n, r, r, g, g, b, b, end }) catch return;
-    _ = c.bufferevent_write(pane.*.event, reply.ptr, reply.len);
-}
-
-fn isColorQuery(rest: []const u8) bool {
-    return rest.len >= 1 and rest[0] == '?';
-}
-
 // Mirrors tty_default_colours()/COLOUR_DEFAULT resolution around a
 // "default" marker colour (8 or 9).
 fn isDefaultColour(col: c_int) bool {
@@ -372,42 +346,100 @@ fn resolveFg(pane: *c.window_pane) c_int {
     return col;
 }
 
-// Answer OSC 10/11/12 and OSC 4;n colour QUERIES with tmux's colour for
-// this pane. ghostty ignores colour queries and input.c is bypassed for
-// ghostty panes, so otherwise an app probing the fg/bg (e.g. neovim's
-// `background` autodetect, fzf, delta) gets no reply at all.
+fn parseGhosttyColor(spec: []const u8) ?c_int {
+    var rgb: c.GhosttyColorRgb = undefined;
+    if (c.ghostty_color_parse(spec.ptr, spec.len, &rgb) != c.GHOSTTY_SUCCESS)
+        return null;
+    return c.colour_join_rgb(rgb.r, rgb.g, rgb.b);
+}
+
+fn parseDecimal(buf: []const u8, offset: *usize) ?u32 {
+    const start = offset.*;
+    var end = start;
+    while (end < buf.len and std.ascii.isDigit(buf[end]))
+        end += 1;
+    if (end == start)
+        return null;
+    const value = std.fmt.parseInt(u32, buf[start..end], 10) catch return null;
+    offset.* = end;
+    return value;
+}
+
+fn replyDynamicColor(pane: *c.window_pane, code: u32, input_end: c_int) void {
+    const col: c_int = switch (code) {
+        10 => resolveFg(pane),
+        11 => c.window_pane_get_bg(pane),
+        12 => if (pane.*.base.ccolour != -1)
+            pane.*.base.ccolour
+        else
+            pane.*.base.default_ccolour,
+        else => return,
+    };
+    c.input_reply_colour(pane, @intCast(code), 0, col, input_end);
+}
+
+fn replyDynamicColorQueries(pane: *c.window_pane, first: u32, buf: []const u8, input_end: c_int) void {
+    var code = first;
+    var specs = std.mem.tokenizeScalar(u8, buf, ';');
+    while (specs.next()) |spec| : (code += 1) {
+        if (code > 12)
+            return;
+        if (std.mem.eql(u8, spec, "?"))
+            replyDynamicColor(pane, code, input_end)
+        else if (parseGhosttyColor(spec) == null)
+            return;
+    }
+}
+
+fn replyPaletteColorQueries(pane: *c.window_pane, buf: []const u8, input_end: c_int) void {
+    var set_colors: [256]?c_int = @splat(null);
+    var specs = std.mem.tokenizeScalar(u8, buf, ';');
+    while (true) {
+        const index_spec = specs.next() orelse return;
+        const spec = specs.next() orelse return;
+        const idx = std.fmt.parseInt(u16, index_spec, 10) catch return;
+        // Ghostty accepts xterm's five special colours at 256 through 260.
+        // They have no tmux palette equivalent, but must not end the list.
+        if (idx > 260)
+            return;
+        if (idx > 255) {
+            if (!std.mem.eql(u8, spec, "?") and parseGhosttyColor(spec) == null)
+                return;
+            continue;
+        }
+
+        const palette_idx: u8 = @intCast(idx);
+        if (std.mem.eql(u8, spec, "?")) {
+            const col = set_colors[palette_idx] orelse c.colour_palette_get(
+                &pane.*.palette,
+                @as(c_int, palette_idx) | c.COLOUR_FLAG_256,
+            );
+            if (col == -1)
+                _ = c.input_request_palette(pane, palette_idx, input_end)
+            else
+                c.input_reply_colour(pane, 4, palette_idx, col, input_end);
+            continue;
+        }
+
+        set_colors[palette_idx] = parseGhosttyColor(spec) orelse return;
+    }
+}
+
+// Answer OSC 10/11/12 and OSC 4 colour queries with tmux's effective pane
+// colours. libghostty-vt also emits reports from its internal defaults; those
+// are removed in writePtyCb so they cannot race or duplicate these replies.
 fn maybeColorQuery(wp: ?*c.window_pane, buf: []const u8, input_end: c_int) void {
     const pane = wp orelse return;
 
     var i: usize = 0;
-    var code: u32 = 0;
-    if (i >= buf.len or !std.ascii.isDigit(buf[i]))
-        return;
-    while (i < buf.len and std.ascii.isDigit(buf[i])) : (i += 1)
-        code = code * 10 + @as(u32, buf[i] - '0');
+    const code = parseDecimal(buf, &i) orelse return;
     if (i >= buf.len or buf[i] != ';')
         return;
     i += 1;
 
     switch (code) {
-        10 => if (isColorQuery(buf[i..]))
-            colorReplyOsc(pane, 10, null, resolveFg(pane), input_end),
-        11 => if (isColorQuery(buf[i..]))
-            colorReplyOsc(pane, 11, null, c.window_pane_get_bg(pane), input_end),
-        12 => if (isColorQuery(buf[i..]))
-            colorReplyOsc(pane, 12, null, pane.*.base.default_ccolour, input_end),
-        4 => {
-            var idx: u32 = 0;
-            if (i >= buf.len or !std.ascii.isDigit(buf[i]))
-                return;
-            while (i < buf.len and std.ascii.isDigit(buf[i])) : (i += 1)
-                idx = idx * 10 + @as(u32, buf[i] - '0');
-            if (idx > 255 or i >= buf.len or buf[i] != ';')
-                return;
-            i += 1;
-            if (isColorQuery(buf[i..]))
-                colorReplyOsc(pane, 4, idx, c.colour_palette_get(&pane.*.palette, @intCast(idx)), input_end);
-        },
+        4 => replyPaletteColorQueries(pane, buf[i..], input_end),
+        10, 11, 12 => replyDynamicColorQueries(pane, code, buf[i..], input_end),
         else => {},
     }
 }
@@ -548,11 +580,71 @@ fn scanOscSideEffects(gvt: *GhosttyVT, buf: []const u8) void {
     }
 }
 
+// Return the length of a complete OSC 4/10/11/12 colour report at the start
+// of buf. libghostty-vt invokes WRITE_PTY with complete logical responses, and
+// may concatenate several reports from one OSC request in a single callback.
+fn colorReportLen(buf: []const u8) ?usize {
+    if (!std.mem.startsWith(u8, buf, "\x1b]"))
+        return null;
+    var i: usize = 2;
+    const code = parseDecimal(buf, &i) orelse return null;
+    if (i >= buf.len or buf[i] != ';')
+        return null;
+    i += 1;
+
+    switch (code) {
+        4 => {
+            const idx = parseDecimal(buf, &i) orelse return null;
+            if (idx > 255 or i >= buf.len or buf[i] != ';')
+                return null;
+            i += 1;
+        },
+        10, 11, 12 => {},
+        else => return null,
+    }
+
+    if (!std.mem.startsWith(u8, buf[i..], "rgb:"))
+        return null;
+    i += 4;
+    for (0..3) |component| {
+        const start = i;
+        while (i < buf.len and std.ascii.isHex(buf[i]) and i - start < 4) : (i += 1) {}
+        if (i == start or (i < buf.len and std.ascii.isHex(buf[i])))
+            return null;
+        if (component != 2) {
+            if (i >= buf.len or buf[i] != '/')
+                return null;
+            i += 1;
+        }
+    }
+
+    if (i < buf.len and buf[i] == 0x07)
+        return i + 1;
+    if (i + 1 < buf.len and buf[i] == 0x1b and buf[i + 1] == '\\')
+        return i + 2;
+    return null;
+}
+
 fn writePtyCb(_: c.GhosttyTerminal, userdata: ?*anyopaque, data: [*c]const u8, len: usize) callconv(.c) void {
     const wp = asPane(userdata) orelse return;
     if (wp.*.event == null or len == 0)
         return;
-    _ = c.bufferevent_write(wp.*.event, data, len);
+
+    const bytes = data[0..len];
+    var keep: usize = 0;
+    var i: usize = 0;
+    while (i < bytes.len) {
+        if (colorReportLen(bytes[i..])) |report_len| {
+            if (keep < i)
+                c.input_reply_bytes(wp, bytes[keep..i].ptr, i - keep);
+            i += report_len;
+            keep = i;
+        } else {
+            i += 1;
+        }
+    }
+    if (keep < bytes.len)
+        c.input_reply_bytes(wp, bytes[keep..].ptr, bytes.len - keep);
 }
 
 fn titleChangedCb(terminal: c.GhosttyTerminal, userdata: ?*anyopaque) callconv(.c) void {

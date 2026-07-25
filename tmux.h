@@ -3516,6 +3516,9 @@ tmux_ghostty_vt_pane_write(__unused struct window_pane *wp,
 void	 input_reply_clipboard(struct bufferevent *, const char *, size_t,
 	     const char *, char);
 int	 input_request_clipboard(struct window_pane *, int);
+int	 input_request_palette(struct window_pane *, int, int);
+void	 input_reply_bytes(struct window_pane *, const u_char *, size_t);
+void	 input_reply_colour(struct window_pane *, u_int, int, int, int);
 void	 input_set_buffer_size(size_t);
 void	 input_request_reply(struct client *, enum input_request_type, void *);
 void	 input_cancel_requests(struct client *);
