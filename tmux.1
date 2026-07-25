@@ -2701,8 +2701,8 @@ For example:
 .Bd -literal -offset indent
 $ tmux list\-windows
 0: ksh [159x48]
-    layout: {"v":2,"L":{"t":"h","w":159,"h":48,"x":0,"y":0,"c":[{"t":"p","w":79,"h":48,"x":0,"y":0,"l":0,"i":"%0"},{"t":"p","w":79,"h":48,"x":80,"y":0,"a":true,"i":"%2"}]}}
-$ tmux select\-layout \[aq]{"v":2,"L":{"t":"h","w":159,"h":48,"x":0,"y":0,"c":[{"t":"p","w":79,"h":48,"x":0,"y":0,"l":0,"i":"%0"},{"t":"p","w":79,"h":48,"x":80,"y":0,"a":true,"i":"%2"}]}}\[aq]
+    layout: {"V":2,"L":{"t":"h","w":159,"h":48,"x":0,"y":0,"c":[{"t":"p","w":79,"h":48,"x":0,"y":0,"l":0,"i":0,"I":"%0"},{"t":"p","w":79,"h":48,"x":80,"y":0,"a":true,"i":1,"I":"%2"}]}}
+$ tmux select\-layout \[aq]{"V":2,"L":{"t":"h","w":159,"h":48,"x":0,"y":0,"c":[{"t":"p","w":79,"h":48,"x":0,"y":0,"l":0,"i":0,"I":"%0"},{"t":"p","w":79,"h":48,"x":80,"y":0,"a":true,"i":1","I":"%2"}]}}\[aq]
 .Ed
 .Pp
 .Nm
@@ -9046,7 +9046,8 @@ and flags (currently not used).
 For example:
 .Bd -literal -offset indent
 %begin 1363006971 2 1
-0: ksh* (1 panes) [80x24] [layout {"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"a":true,"i":"%2"}}] @2 (active)
+0: ksh* (1 panes) [80x24] [layout
+{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"a":true,"i":0,"I":"%2"}}] @2 (active)
 %end 1363006971 2 1
 .Ed
 .Pp

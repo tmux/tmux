@@ -78,7 +78,7 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 	struct window		*w = wl->window;
 	struct window_pane	*wp = target->wp;
 	const char		*layoutname;
-	char			*oldlayout, *cause;
+	char			*oldlayout, *cause = NULL;
 	int			 next, previous, layout;
 	int			 flags = 0;
 
