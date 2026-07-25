@@ -38,7 +38,7 @@ const struct cmd_entry cmd_swap_window_entry = {
 	.source = { 's', CMD_FIND_WINDOW, CMD_FIND_DEFAULT_MARKED },
 	.target = { 't', CMD_FIND_WINDOW, 0 },
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_swap_window_exec
 };
 

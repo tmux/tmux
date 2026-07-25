@@ -1944,6 +1944,7 @@ const struct options_table_entry options_table[] = {
 	OPTIONS_TABLE_AFTER_HOOK("show-messages"),
 	OPTIONS_TABLE_AFTER_HOOK("show-options"),
 	OPTIONS_TABLE_AFTER_HOOK("split-window"),
+	OPTIONS_TABLE_AFTER_HOOK("swap-window"),
 	OPTIONS_TABLE_AFTER_HOOK("unbind-key"),
 	OPTIONS_TABLE_HOOK("alert-activity", "",
 	    "Run when a window has activity."),
