@@ -155,7 +155,7 @@ static struct input_request *input_make_request(struct input_ctx *,
 		    enum input_request_type);
 static void	input_free_request(struct input_request *);
 static int	input_add_request(struct input_ctx *, enum input_request_type,
-		    int);
+		    int, enum input_end_type);
 static int	input_split(struct input_ctx *);
 static int	input_get(struct input_ctx *, u_int, int, int);
 static void	input_set_state(struct input_ctx *,
@@ -2956,7 +2956,8 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 				s = next;
 				continue;
 			}
-			input_add_request(ictx, INPUT_REQUEST_PALETTE, idx);
+			input_add_request(ictx, INPUT_REQUEST_PALETTE, idx,
+			    ictx->input_end);
 			s = next;
 			continue;
 		}
@@ -3308,7 +3309,7 @@ input_osc_52_reply(struct input_ctx *ictx, char clip)
 			input_reply_clipboard(ev, buf, len, "\033\\", clip);
 		return;
 	}
-	input_add_request(ictx, INPUT_REQUEST_CLIPBOARD, ictx->input_end);
+	input_add_request(ictx, INPUT_REQUEST_CLIPBOARD, 0, ictx->input_end);
 }
 
 /*
@@ -3457,13 +3458,52 @@ input_reply_clipboard(struct bufferevent *bev, const char *buf, size_t len,
 	free(out);
 }
 
+/* Convert a terminator passed across the public C boundary. */
+static enum input_end_type
+input_end_from_int(int input_end)
+{
+	return (input_end == INPUT_END_BEL ? INPUT_END_BEL : INPUT_END_ST);
+}
+
 /* Request a clipboard reply from a client for a pane. */
 int
 input_request_clipboard(struct window_pane *wp, int input_end)
 {
 	if (wp == NULL || wp->ictx == NULL)
 		return (-1);
-	return (input_add_request(wp->ictx, INPUT_REQUEST_CLIPBOARD, input_end));
+	return (input_add_request(wp->ictx, INPUT_REQUEST_CLIPBOARD, 0,
+	    input_end_from_int(input_end)));
+}
+
+/* Request a palette reply from a client for a pane. */
+int
+input_request_palette(struct window_pane *wp, int idx, int input_end)
+{
+	if (wp == NULL || wp->ictx == NULL || idx < 0 || idx > 255)
+		return (-1);
+	return (input_add_request(wp->ictx, INPUT_REQUEST_PALETTE, idx,
+	    input_end_from_int(input_end)));
+}
+
+/* Queue terminal reply bytes, preserving pending request order. */
+void
+input_reply_bytes(struct window_pane *wp, const u_char *buf, size_t len)
+{
+	if (wp == NULL || wp->ictx == NULL || buf == NULL || len == 0 ||
+	    len > INT_MAX)
+		return;
+	input_reply(wp->ictx, 1, "%.*s", (int)len, (const char *)buf);
+}
+
+/* Queue a colour reply using the native tmux formatter. */
+void
+input_reply_colour(struct window_pane *wp, u_int n, int idx, int c,
+    int input_end)
+{
+	if (wp == NULL || wp->ictx == NULL)
+		return;
+	input_osc_colour_reply(wp->ictx, 1, n, idx, c,
+	    input_end_from_int(input_end));
 }
 
 /* Set input buffer size. */
@@ -3539,7 +3579,8 @@ input_free_request(struct input_request *ir)
 
 /* Add a request. */
 static int
-input_add_request(struct input_ctx *ictx, enum input_request_type type, int idx)
+input_add_request(struct input_ctx *ictx, enum input_request_type type, int idx,
+    enum input_end_type end)
 {
 	struct window_pane	*wp = ictx->wp;
 	struct window		*w;
@@ -3569,7 +3610,7 @@ input_add_request(struct input_ctx *ictx, enum input_request_type type, int idx)
 	ir = input_make_request(ictx, type);
 	ir->c = c;
 	ir->idx = idx;
-	ir->end = ictx->input_end;
+	ir->end = end;
 	TAILQ_INSERT_TAIL(&c->input_requests, ir, centry);
 
 	switch (type) {
@@ -3615,7 +3656,7 @@ input_request_clipboard_reply(struct input_request *ir, void *data)
 		paste_add(NULL, copy, cd->len);
 	}
 
-	if (ir->idx == INPUT_END_BEL)
+	if (ir->end == INPUT_END_BEL)
 		input_reply_clipboard(ev, cd->buf, cd->len, "\007", cd->clip);
 	else
 		input_reply_clipboard(ev, cd->buf, cd->len, "\033\\", cd->clip);
