@@ -93,14 +93,14 @@ static struct layout_cell	*layout_parse_json_layout(struct json_node *,
 				     struct layout_cell *,
 				     struct layout_parse_ctx *);
 
-/* Compare cell contexts in descending order of index. */
+/* Compare cell contexts in ascending order of index. */
 static int
 layout_parse_index_cmp(const void *a, const void *b)
 {
 	const struct layout_parse_cell_ctx	*cca = a;
 	const struct layout_parse_cell_ctx	*ccb = b;
 
-	return (ccb->index - cca->index);
+	return (cca->index - ccb->index);
 }
 
 /* Compare cell contexts in descending order of z-index. */
@@ -114,7 +114,7 @@ layout_parse_zindex_cmp(const void *a, const void *b)
 }
 
 /*
- * Compare cell contexts in descending order of z-index. The active pane has
+ * Compare cell contexts in descending order of last. The active pane has
  * index of -1.
  */
 static int
@@ -196,7 +196,7 @@ layout_parse_remove_cctx(struct layout_parse_ctx *pctx, struct layout_cell *lc)
 	for (i = 0; i < pctx->clen; i++) {
 		if (lc == pctx->cctxs[i].lc) {
 			cctx = &pctx->cctxs[--pctx->clen];
-			memcpy(&pctx->cctxs[i], cctx, sizeof *cctx);
+			memmove(&pctx->cctxs[i], cctx, sizeof *cctx);
 			return (0);
 		}
 	}
@@ -461,7 +461,8 @@ layout_parse(struct window *w, const char *layout, char **cause)
 		 * remain.
 		 */
 		lcchild = layout_find_bottomright(lc);
-		if (layout_parse_remove_cctx(&pctx, lc) != 0)
+		if (pctx.version != 1 && layout_parse_remove_cctx(&pctx,
+		    lcchild) != 0)
 			goto fail;
 		layout_destroy_cell(w, lcchild, &lc);
 	}
@@ -516,7 +517,8 @@ layout_parse(struct window *w, const char *layout, char **cause)
 
 	/* Assign the panes into the cells. */
 	layout_assign(w, &pctx);
-	layout_parse_apply_ctx(w, &pctx);
+	if (pctx.version != 1)
+		layout_parse_apply_ctx(w, &pctx);
 
 	/* Update pane offsets and sizes. */
 	layout_fix_offsets(w);
@@ -524,7 +526,8 @@ layout_parse(struct window *w, const char *layout, char **cause)
 	recalculate_sizes();
 	layout_print_cell(lc, __func__, 0);
 
-	events_fire_window("window-layout-changed", w);
+	if (pctx.version == 1) /* backwards compatibility. */
+		events_fire_window("window-layout-changed", w);
 
 	return (0);
 
@@ -581,7 +584,7 @@ layout_assign_fallback(struct window_pane **wp, struct layout_cell *lc)
 static void
 layout_assign(struct window *w, struct layout_parse_ctx *pctx)
 {
-	struct window_pane	*wp = NULL;
+	struct window_pane	*wp = TAILQ_FIRST(&w->panes);
 
 	if (pctx->clen > 0)
 		return (layout_assign_from_ctx(w, pctx));
@@ -716,7 +719,7 @@ layout_parse_json(struct json_node *json, struct layout_parse_ctx *pctx)
 				}
 				pctx->root = layout_parse_json_layout(field,
 				    NULL, pctx);
-				if (pctx->root== NULL)
+				if (pctx->root == NULL)
 					goto fail;
 			}
 			break;
@@ -724,8 +727,10 @@ layout_parse_json(struct json_node *json, struct layout_parse_ctx *pctx)
 			break;
 		}
 	}
-	if (pctx->root == NULL)
+	if (pctx->root == NULL) {
+		*cause = xstrdup("missing layout");
 		goto fail;
+	}
 	json_destroy_node(json);
 
 	return (0);
@@ -733,9 +738,10 @@ fail:
 	json_destroy_node(json);
 	if (pctx->root != NULL)
 		layout_free_cell(pctx->root, 0);
+	pctx->root = NULL;
 	return (-1);
 }
-// TODO: add causes for failures.
+
 /* Parse nodes into layout cells. */
 static struct layout_cell *
 layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
@@ -745,7 +751,7 @@ layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
 	struct layout_cell	*lc = layout_create_cell(lcparent), *lcchild;
 	enum layout_type	 type = LAYOUT_WINDOWPANE;
 	const char		*numstr;
-	char			*endptr;
+	char			*endptr, *tmp, **cause = pctx->cause;
 	u_int			 sx = UINT_MAX, sy = UINT_MAX;
 	int			 xoff = INT_MAX, yoff = INT_MAX;
 	int			 active = -1, last = -1, id = -1, index = -1;
@@ -764,6 +770,8 @@ layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
 				yoff = field->val.num;
 			else if (json_key_is_eq(field, "l"))
 				last = field->val.num;
+			else if (json_key_is_eq(field, "i"))
+				index = field->val.num;
 			else if (json_key_is_eq(field, "z")) {
 				zindex = field->val.num;
 				lc->flags |= LAYOUT_CELL_FLOATING;
@@ -781,25 +789,32 @@ layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
 					type = LAYOUT_TOPBOTTOM;
 				else if (json_val_is_eq(field, "p"))
 					type = LAYOUT_WINDOWPANE;
-				else
+				else {
+					tmp = xstrndup(field->val.jstr.ptr,
+					    field->val.jstr.len);
+					xasprintf(cause, "invalid cell type %s",
+					    tmp);
+					free(tmp);
 					goto fail;
+				}
 				lc->type = type;
 			} else if (json_key_is_eq(field, "I")) {
 				errno = 0;
 				numstr = field->val.jstr.ptr;
 				numlen = field->val.jstr.len;
-				if (*numstr != '%')
+				if (*numstr != '%') {
+					xasprintf(cause, "pane id must be "
+					    "prefixed by '%%'");
 					goto fail;
+				}
 				id = strtol(numstr + 1, &endptr, 10);
-				if (errno != 0 || endptr != numstr + numlen)
+				if (errno != 0 || endptr != numstr + numlen) {
+					tmp = xstrndup(numstr, numlen);
+					xasprintf(cause, "invalid pane id: %s",
+					    tmp);
+					free(tmp);
 					goto fail;
-			} else if (json_key_is_eq(field, "i")) {
-				errno = 0;
-				numstr = field->val.jstr.ptr;
-				numlen = field->val.jstr.len;
-				index = strtol(numstr, &endptr, 10);
-				if (errno != 0 || endptr != numstr + numlen)
-					goto fail;
+				}
 			}
 			break;
 		case NODE_ARRAY:
@@ -817,14 +832,19 @@ layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
 			break;
 		}
 	}
-	if (type == LAYOUT_WINDOWPANE && !TAILQ_EMPTY(&lc->cells))
+	if (type == LAYOUT_WINDOWPANE && !TAILQ_EMPTY(&lc->cells)) {
+		xasprintf(cause, "pane cells cannot have children");
 		goto fail;
-	if (type != LAYOUT_WINDOWPANE && TAILQ_EMPTY(&lc->cells))
+	} else if (type != LAYOUT_WINDOWPANE && TAILQ_EMPTY(&lc->cells)) {
+		xasprintf(cause, "non-pane cells must have children");
 		goto fail;
+	}
 
 	if (sx == UINT_MAX || sy == UINT_MAX || xoff == INT_MAX ||
-	    yoff == INT_MAX)
+	    yoff == INT_MAX) {
+		xasprintf(cause, "cell geometry must be fully specified");
 		goto fail;
+	}
 
 	layout_set_size(lc, sx, sy, xoff, yoff);
 	if (lc->type == LAYOUT_WINDOWPANE)
@@ -842,7 +862,6 @@ fail:
 	layout_free_cell(lc, 0);
 	return (NULL);
 }
-
 
 /* Construct a layout root from a formatted string. */
 static int
@@ -865,14 +884,22 @@ layout_construct(const char *layout, struct layout_parse_ctx *pctx)
 			*pctx->cause = xstrdup("invalid layout checksum");
 			return (-1);
 		}
-		pctx->root = layout_construct_v1(NULL, &layout);
+		if ((pctx->root = layout_construct_v1(NULL, &layout)) == NULL) {
+			*pctx->cause = xstrdup("invalid layout");
+			return (-1);
+		}
+		pctx->version = 1;
 	} else {
 		if ((json = json_parse(layout, pctx->cause)) == NULL)
 			return (-1);
+
 		if (layout_parse_json(json, pctx) != 0)
 			return (-1);
-		if (pctx->version != 2)
+
+		if (pctx->version != 2) {
+			*pctx->cause = xstrdup("version mismatch.");
 			return (-1);
+		}
 	}
 
 	return (0);
@@ -885,6 +912,9 @@ layout_parse_apply_ctx(struct window *w, struct layout_parse_ctx *pctx)
 	struct layout_parse_cell_ctx	*cctx;
 	struct window_pane		*wp;
 	int				 i;
+
+	if (pctx->clen == 0)
+		return;
 
 	/* Apply z-indexes. */
 	while (!TAILQ_EMPTY(&w->z_index)) {
@@ -901,10 +931,19 @@ layout_parse_apply_ctx(struct window *w, struct layout_parse_ctx *pctx)
 		TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
 	}
 
-	/* Apply active/last. */
+	/* Set the active pane. */
+	for (i = 0; i < pctx->clen; i++) {
+		cctx = &pctx->cctxs[i];
+		if (cctx->active == 1) {
+			window_set_active_pane(w, cctx->lc->wp, 1);
+			break;
+		}
+	}
+
+	/* Apply last panes. */
 	while (!TAILQ_EMPTY(&w->last_panes)) {
 		wp = TAILQ_FIRST(&w->last_panes);
-		TAILQ_REMOVE(&w->last_panes, wp, sentry);
+		window_pane_stack_remove(&w->last_panes, wp);
 	}
 
 	qsort(pctx->cctxs, pctx->clen, sizeof pctx->cctxs[0],
@@ -913,10 +952,9 @@ layout_parse_apply_ctx(struct window *w, struct layout_parse_ctx *pctx)
 	for (i = 0; i < pctx->clen; i++) {
 		cctx = &pctx->cctxs[i];
 		wp = cctx->lc->wp;
-		if (cctx->active) {
-			window_set_active_pane(w, wp, 1);
+		if (cctx->last < 0 || cctx->active == 1) {
 			continue;
 		}
-		TAILQ_INSERT_HEAD(&w->last_panes, wp, sentry);
+		window_pane_stack_push(&w->last_panes, wp);
 	}
 }
