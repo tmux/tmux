@@ -1,4 +1,4 @@
-/* $OpenBSD: file.c,v 1.20 2026/05/17 10:54:01 nicm Exp $ */
+/* $OpenBSD: file.c,v 1.21 2026/07/26 15:08:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -188,6 +188,7 @@ file_can_print(struct client *c)
 {
 	if (c == NULL ||
 	    (c->flags & CLIENT_ATTACHED) ||
+	    (c->flags & CLIENT_DEAD) ||
 	    (c->flags & CLIENT_CONTROL))
 		return (0);
 	return (1);
