@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.408 2026/07/22 08:19:14 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.409 2026/07/26 15:21:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -4325,7 +4325,7 @@ format_quote_shell(const char *s)
 
 	at = out = xmalloc(strlen(s) * 2 + 1);
 	for (cp = s; *cp != '\0'; cp++) {
-		if (strchr("|&;<>()$`\\\"'*?[# =%", *cp) != NULL)
+		if (strchr("|&;<>()$`\\\"'*?[# =%\n\t", *cp) != NULL)
 			*at++ = '\\';
 		*at++ = *cp;
 	}
