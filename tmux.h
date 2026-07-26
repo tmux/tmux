@@ -1157,6 +1157,10 @@ enum pane_lines {
 #define PANE_BORDER_ARROWS 2
 #define PANE_BORDER_BOTH 3
 
+/* Pane border type option. */
+#define PANE_BORDER_TYPE_JOINED 0
+#define PANE_BORDER_TYPE_SEPARATE 1
+
 /* Mode returned by window_pane_mode function. */
 #define WINDOW_PANE_NO_MODE 0
 #define WINDOW_PANE_COPY_MODE 1
@@ -3845,9 +3849,9 @@ void		 layout_fix_zindexes(struct window *, struct layout_cell *);
 int		 layout_cell_is_tiled(struct layout_cell *);
 int		 layout_add_horizontal_border(struct layout_cell *,
 		     struct layout_cell *, int);
-void		 layout_apply_pane_border_surround(struct window *,
-		     struct layout_cell *, struct layout_cell *, int *, int *,
-		     u_int *, u_int *);
+void		 layout_apply_pane_border_type(struct window *,
+		    struct layout_cell *, struct layout_cell *, int *, int *,
+		    u_int *, u_int *);
 void		 layout_fix_offsets(struct window *);
 void		 layout_fix_panes(struct window *, struct window_pane *);
 void		 layout_resize_adjust(struct window *, struct layout_cell *,

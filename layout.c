@@ -457,16 +457,18 @@ layout_add_horizontal_border(struct layout_cell *root, struct layout_cell *lc,
 }
 
 /*
- * Inset pane geometry for pane-border-surround: one cell on the left and top of
- * every pane, plus one on the right and bottom of panes on the window edge.
+ * Inset pane geometry for pane-border-type separate: one cell on the left and
+ * top of every pane, plus one on the right and bottom of panes on the window
+ * edge.
  */
 void
-layout_apply_pane_border_surround(struct window *w, struct layout_cell *root,
+layout_apply_pane_border_type(struct window *w, struct layout_cell *root,
     struct layout_cell *lc, int *xoff, int *yoff, u_int *sx, u_int *sy)
 {
 	if (lc == NULL || root == NULL)
 		return;
-	if (!options_get_number(w->options, "pane-border-surround"))
+	if (options_get_number(w->options, "pane-border-type") !=
+	    PANE_BORDER_TYPE_SEPARATE)
 		return;
 	if (lc->flags & LAYOUT_CELL_FLOATING)
 		return;
@@ -510,8 +512,8 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 
 		/*
 		 * A mode may zoom temporarily to fill the window (such as
-		 * display-panes) and draw pane-border-surround itself, so do
-		 * not inset its pane.
+		 * display-panes) and draw pane-border-type separate itself, so
+		 * do not inset its pane.
 		 */
 		fill = 0;
 		if (w->flags & WINDOW_ZOOMED) {
@@ -521,17 +523,18 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 				fill = 1;
 		}
 		if (!fill)
-			layout_apply_pane_border_surround(w, root, lc,
-			    &wp->xoff, &wp->yoff, &sx, &sy);
+			layout_apply_pane_border_type(w, root, lc, &wp->xoff,
+			    &wp->yoff, &sx, &sy);
 
 		status = window_pane_get_pane_status(wp);
 		/*
-		 * Skip the extra status inset when pane-border-surround already
-		 * reserved the top/bottom border row for every pane.
+		 * Skip the extra status inset when pane-border-type separate
+		 * already reserved the top/bottom border row for every pane.
 		 */
 		if (!window_pane_is_floating(wp) &&
 		    layout_add_horizontal_border(root, lc, status) &&
-		    !options_get_number(w->options, "pane-border-surround")) {
+		    options_get_number(w->options, "pane-border-type") !=
+		    PANE_BORDER_TYPE_SEPARATE) {
 			if (status == PANE_STATUS_TOP)
 				wp->yoff++;
 			if (sy > 1)

@@ -224,7 +224,7 @@ struct redraw_build_ctx {
 	u_int					 sy;
 
 	int					 ind;
-	int					 surround;
+	int					 border_type;
 
 	struct redraw_build_cell		*cells;
 };
@@ -304,7 +304,7 @@ redraw_set_context(struct client *c, struct redraw_build_ctx *bctx)
 	redraw_get_window_offset(c, &bctx->ox, &bctx->oy, &bctx->sx, &bctx->sy);
 
 	bctx->ind = options_get_number(w->options, "pane-border-indicators");
-	bctx->surround = options_get_number(w->options, "pane-border-surround");
+	bctx->border_type = options_get_number(w->options, "pane-border-type");
 }
 
 /* Return a cell. */
@@ -717,11 +717,11 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 		mark_bottom = (bottom <= (int)bctx->w->sy);
 		/*
 		 * pane-border-status reuses one edge as the status row and
-		 * suppresses drawing the opposite edge. With pane-border-surround
-		 * that opposite edge is still a reserved gutter and must be
-		 * drawn as a border or it stays blank/grey.
+		 * suppresses drawing the opposite edge. With pane-border-type
+		 * separate that opposite edge is still a reserved gutter and
+		 * must be drawn as a border or it stays blank/grey.
 		 */
-		if (!bctx->surround) {
+		if (bctx->border_type != PANE_BORDER_TYPE_SEPARATE) {
 			if (pane_status == PANE_STATUS_TOP)
 				mark_bottom = 0;
 			else if (pane_status == PANE_STATUS_BOTTOM)
