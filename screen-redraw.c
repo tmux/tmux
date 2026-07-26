@@ -224,6 +224,7 @@ struct redraw_build_ctx {
 	u_int					 sy;
 
 	int					 ind;
+	int					 surround;
 
 	struct redraw_build_cell		*cells;
 };
@@ -303,6 +304,7 @@ redraw_set_context(struct client *c, struct redraw_build_ctx *bctx)
 	redraw_get_window_offset(c, &bctx->ox, &bctx->oy, &bctx->sx, &bctx->sy);
 
 	bctx->ind = options_get_number(w->options, "pane-border-indicators");
+	bctx->surround = options_get_number(w->options, "pane-border-surround");
 }
 
 /* Return a cell. */
@@ -719,7 +721,7 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 		 * that opposite edge is still a reserved gutter and must be
 		 * drawn as a border or it stays blank/grey.
 		 */
-		if (!options_get_number(bctx->w->options, "pane-border-surround")) {
+		if (!bctx->surround) {
 			if (pane_status == PANE_STATUS_TOP)
 				mark_bottom = 0;
 			else if (pane_status == PANE_STATUS_BOTTOM)

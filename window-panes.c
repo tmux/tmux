@@ -463,18 +463,22 @@ window_panes_mark_pane_border_surround(u_char *map, struct window *w,
 		mark_right = (right < (int)dsx);
 		mark_bottom = (bottom < (int)dsy);
 
-		if (mark_top)
+		if (mark_top) {
 			window_panes_mark_hline(map, dsx, dsy, left,
 			    right + 1, top);
-		if (mark_bottom)
+		}
+		if (mark_bottom) {
 			window_panes_mark_hline(map, dsx, dsy, left,
 			    right + 1, bottom);
-		if (mark_left)
+		}
+		if (mark_left) {
 			window_panes_mark_vline(map, dsx, dsy, left, top,
 			    bottom + 1);
-		if (mark_right)
+		}
+		if (mark_right) {
 			window_panes_mark_vline(map, dsx, dsy, right, top,
 			    bottom + 1);
+		}
 	}
 }
 
