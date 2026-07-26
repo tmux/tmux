@@ -143,6 +143,7 @@ cmd_capture_pane_grid(struct window_pane *wp, size_t *len)
 	    gd->hlimit);
 	buf = cmd_capture_pane_append(buf, len, line, strlen(line));
 	free(line);
+	line = NULL;
 
 	for (yy = 0; yy < total; yy++) {
 		gl = grid_get_line(gd, yy);
@@ -166,12 +167,14 @@ cmd_capture_pane_grid(struct window_pane *wp, size_t *len)
 		}
 		buf = cmd_capture_pane_append(buf, len, line, strlen(line));
 		free(line);
+		line = NULL;
 
 		for (xx = 0; xx < gd->sx; xx++) {
 			line = cmd_capture_pane_cell(s, xx, yy);
 			buf = cmd_capture_pane_append(buf, len, line,
 			    strlen(line));
 			free(line);
+			line = NULL;
 		}
 	}
 	return (buf);
@@ -356,6 +359,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 		}
 		if (hyperlinks && linelen == 0) {
 			free(line);
+			line = NULL;
 			continue;
 		}
 
