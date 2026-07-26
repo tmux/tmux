@@ -457,16 +457,16 @@ layout_add_horizontal_border(struct layout_cell *root, struct layout_cell *lc,
 }
 
 /*
- * Inset pane geometry for per-pane-border: one cell on the left and top of
+ * Inset pane geometry for pane-border-surround: one cell on the left and top of
  * every pane, plus one on the right and bottom of panes on the window edge.
  */
 void
-layout_apply_per_pane_border(struct window *w, struct layout_cell *root,
+layout_apply_pane_border_surround(struct window *w, struct layout_cell *root,
     struct layout_cell *lc, int *xoff, int *yoff, u_int *sx, u_int *sy)
 {
 	if (lc == NULL || root == NULL)
 		return;
-	if (!options_get_number(w->options, "per-pane-border"))
+	if (!options_get_number(w->options, "pane-border-surround"))
 		return;
 	if (lc->flags & LAYOUT_CELL_FLOATING)
 		return;
@@ -509,20 +509,20 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 
 		/*
 		 * display-panes sets WINDOW_PANESMODE so its temporary zoom can
-		 * fill the window; the mode draws per-pane-border itself.
+		 * fill the window; the mode draws pane-border-surround itself.
 		 */
 		if (~w->flags & WINDOW_PANESMODE)
-			layout_apply_per_pane_border(w, root, lc, &wp->xoff,
+			layout_apply_pane_border_surround(w, root, lc, &wp->xoff,
 			    &wp->yoff, &sx, &sy);
 
 		status = window_pane_get_pane_status(wp);
 		/*
-		 * Skip the extra status inset when per-pane-border already
+		 * Skip the extra status inset when pane-border-surround already
 		 * reserved the top/bottom border row for every pane.
 		 */
 		if (!window_pane_is_floating(wp) &&
 		    layout_add_horizontal_border(root, lc, status) &&
-		    !options_get_number(w->options, "per-pane-border")) {
+		    !options_get_number(w->options, "pane-border-surround")) {
 			if (status == PANE_STATUS_TOP)
 				wp->yoff++;
 			if (sy > 1)

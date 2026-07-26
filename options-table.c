@@ -1611,6 +1611,14 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of the pane status lines."
 	},
 
+	{ .name = "pane-border-surround",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_num = 0,
+	  .text = "Draw a full border around each pane instead of "
+		  "sharing borders between adjacent panes."
+	},
+
 	{ .name = "pane-colours",
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
@@ -1652,13 +1660,6 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_pane_scrollbars_position_list,
 	  .default_num = PANE_SCROLLBARS_RIGHT,
 	  .text = "Pane scrollbar position."
-	},
-
-	{ .name = "per-pane-border",
-	  .type = OPTIONS_TABLE_FLAG,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 0,
-	  .text = "Whether to draw a full border around each pane."
 	},
 
 	{ .name = "popup-style",
