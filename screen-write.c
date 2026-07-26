@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.284 2026/07/20 11:16:33 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.285 2026/07/26 09:02:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2783,7 +2783,7 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 
 	/* Check if this combined character would be too long. */
 	if (last.data.size + ud->size > sizeof last.data.data)
-		return (0);
+		return (zero_width);
 
 	/* Combining; flush any pending output. */
 	screen_write_collect_flush(ctx, 0, __func__);
