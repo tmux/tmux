@@ -1,4 +1,4 @@
-/* $OpenBSD: screen.c,v 1.106 2026/07/26 09:17:30 nicm Exp $ */
+/* $OpenBSD: screen.c,v 1.107 2026/07/26 09:20:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -82,6 +82,7 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 
 	s->title = xstrdup("");
 	s->titles = NULL;
+	s->ntitles = 0;
 	s->path = NULL;
 
 	s->cstyle = SCREEN_CURSOR_DEFAULT;
