@@ -487,11 +487,12 @@ layout_apply_pane_border_surround(struct window *w, struct layout_cell *root,
 void
 layout_fix_panes(struct window *w, struct window_pane *skip)
 {
-	struct window_pane	*wp;
-	struct layout_cell	*lc, *root = w->layout_root;
-	int			 status, sb_w, sb_pad;
-	int			 old_xoff, old_yoff, changed = 0;
-	u_int			 sx, sy, old_sx, old_sy;
+	struct window_pane		*wp;
+	struct layout_cell		*lc, *root = w->layout_root;
+	struct window_mode_entry	*wme;
+	int				 status, sb_w, sb_pad, fill;
+	int				 old_xoff, old_yoff, changed = 0;
+	u_int				 sx, sy, old_sx, old_sy;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if ((lc = wp->layout_cell) == NULL || wp == skip)
@@ -508,12 +509,20 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		sy = lc->g.sy;
 
 		/*
-		 * display-panes sets WINDOW_PANESMODE so its temporary zoom can
-		 * fill the window; the mode draws pane-border-surround itself.
+		 * A mode may zoom temporarily to fill the window (such as
+		 * display-panes) and draw pane-border-surround itself, so do
+		 * not inset its pane.
 		 */
-		if (~w->flags & WINDOW_PANESMODE)
-			layout_apply_pane_border_surround(w, root, lc, &wp->xoff,
-			    &wp->yoff, &sx, &sy);
+		fill = 0;
+		if (w->flags & WINDOW_ZOOMED) {
+			wme = TAILQ_FIRST(&wp->modes);
+			if (wme != NULL &&
+			    (wme->mode->flags & WINDOW_MODE_FILL_WINDOW))
+				fill = 1;
+		}
+		if (!fill)
+			layout_apply_pane_border_surround(w, root, lc,
+			    &wp->xoff, &wp->yoff, &sx, &sy);
 
 		status = window_pane_get_pane_status(wp);
 		/*

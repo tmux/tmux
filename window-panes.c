@@ -35,7 +35,8 @@ static void		 window_panes_key(struct window_mode_entry *,
 
 const struct window_mode window_panes_mode = {
 	.name = "panes-mode",
-	.flags = WINDOW_MODE_HIDE_PANE_STATUS|WINDOW_MODE_NO_STACK,
+	.flags = WINDOW_MODE_HIDE_PANE_STATUS|WINDOW_MODE_NO_STACK|
+	    WINDOW_MODE_FILL_WINDOW|WINDOW_MODE_HIDE_SCROLLBARS,
 
 	.init = window_panes_init,
 	.free = window_panes_free,
@@ -1040,18 +1041,8 @@ window_panes_init(struct window_mode_entry *wme, struct cmdq_item *item,
 		data->zoomed = (w->flags & WINDOW_ZOOMED);
 		if (!data->zoomed)
 			window_panes_set_preview(data);
-		/*
-		 * Fill the window while display-panes is active so the overlay
-		 * is not clipped by pane-border-surround insets.
-		 */
-		w->flags |= WINDOW_PANESMODE;
-		if (!data->zoomed) {
-			if (window_zoom(wp) == 0)
-				server_redraw_window(w);
-			else
-				w->flags &= ~WINDOW_PANESMODE;
-		} else
-			layout_fix_panes(w, NULL);
+		if (!data->zoomed && window_zoom(wp) == 0)
+			server_redraw_window(w);
 	}
 
 	evtimer_set(&data->timer, window_panes_timer_callback, wme);
@@ -1073,11 +1064,8 @@ window_panes_free(struct window_mode_entry *wme)
 
 	evtimer_del(&data->timer);
 
-	w->flags &= ~WINDOW_PANESMODE;
 	if (data->zoomed == 0)
 		server_unzoom_window(w);
-	else if (data->zoomed == 1)
-		layout_fix_panes(w, NULL);
 	server_redraw_window(w);
 	server_redraw_window_borders(w);
 	server_status_window(w);

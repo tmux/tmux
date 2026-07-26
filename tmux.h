@@ -1194,6 +1194,8 @@ struct window_mode {
 	int		 flags;
 #define WINDOW_MODE_HIDE_PANE_STATUS 0x1
 #define WINDOW_MODE_NO_STACK 0x2
+#define WINDOW_MODE_FILL_WINDOW 0x4
+#define WINDOW_MODE_HIDE_SCROLLBARS 0x8
 
 	struct screen	*(*init)(struct window_mode_entry *,
 			     struct cmdq_item *, struct cmd_find_state *,
@@ -1482,7 +1484,6 @@ struct window {
 #define WINDOW_WASZOOMED 0x10
 #define WINDOW_RESIZE 0x20
 #define WINDOW_WASMODALZOOMED 0x40
-#define WINDOW_PANESMODE 0x80
 #define WINDOW_ALERTFLAGS (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_SILENCE)
 
 	int			 alerts_queued;
