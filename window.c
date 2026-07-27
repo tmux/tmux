@@ -885,7 +885,7 @@ struct window_pane *
 window_find_string(struct window *w, const char *s)
 {
 	u_int	x, y, top = 0, bottom = w->sy - 1;
-	int	status;
+	int	status, separate;
 
 	x = w->sx / 2;
 	y = w->sy / 2;
@@ -895,6 +895,8 @@ window_find_string(struct window *w, const char *s)
 		top++;
 	else if (status == PANE_STATUS_BOTTOM)
 		bottom--;
+	separate = options_get_number(w->options, "pane-border-type") ==
+	    PANE_BORDER_TYPE_SEPARATE;
 
 	if (strcasecmp(s, "top") == 0)
 		y = top;
@@ -918,6 +920,21 @@ window_find_string(struct window *w, const char *s)
 		y = bottom;
 	} else
 		return (NULL);
+
+	/*
+	 * pane-border-type separate reserves a border cell around every pane,
+	 * so prefer the adjacent content cell over the outer border cell.
+	 */
+	if (separate) {
+		if (x == 0)
+			x = 1;
+		else if (x == w->sx - 1 && w->sx > 1)
+			x = w->sx - 2;
+		if (y == top)
+			y = top + 1;
+		else if (y == bottom && bottom > top)
+			y = bottom - 1;
+	}
 
 	return (window_get_active_at(w, x, y));
 }
@@ -2089,7 +2106,7 @@ window_pane_find_up(struct window_pane *wp)
 {
 	struct window		*w;
 	struct window_pane	*next, *best, **list;
-	int			 edge, left, right, end, status, found;
+	int			 edge, left, right, end, status, found, gap;
 	int			 xoff, yoff;
 	u_int			 size, sx, sy;
 
@@ -2097,6 +2114,10 @@ window_pane_find_up(struct window_pane *wp)
 		return (NULL);
 	w = wp->window;
 	status = window_get_pane_status(w);
+	gap = 1;
+	if (options_get_number(w->options, "pane-border-type") ==
+	    PANE_BORDER_TYPE_SEPARATE)
+		gap = 2;
 
 	list = NULL;
 	size = 0;
@@ -2111,7 +2132,7 @@ window_pane_find_up(struct window_pane *wp)
 		if (edge == 0)
 			edge = (int)w->sy;
 	} else {
-		if (edge == 0)
+		if (edge == gap - 1)
 			edge = (int)w->sy + 1;
 	}
 
@@ -2122,7 +2143,7 @@ window_pane_find_up(struct window_pane *wp)
 		window_pane_full_size_offset(next, &xoff, &yoff, &sx, &sy);
 		if (next == wp)
 			continue;
-		if (yoff + (int)sy + 1 != edge)
+		if (yoff + (int)sy + gap != edge)
 			continue;
 		end = xoff + (int)sx - 1;
 
@@ -2150,7 +2171,7 @@ window_pane_find_down(struct window_pane *wp)
 {
 	struct window		*w;
 	struct window_pane	*next, *best, **list;
-	int			 edge, left, right, end, status, found;
+	int			 edge, left, right, end, status, found, gap;
 	int			 xoff, yoff;
 	u_int			 size, sx, sy;
 
@@ -2158,13 +2179,17 @@ window_pane_find_down(struct window_pane *wp)
 		return (NULL);
 	w = wp->window;
 	status = window_get_pane_status(w);
+	gap = 1;
+	if (options_get_number(w->options, "pane-border-type") ==
+	    PANE_BORDER_TYPE_SEPARATE)
+		gap = 2;
 
 	list = NULL;
 	size = 0;
 
 	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
 
-	edge = yoff + (int)sy + 1;
+	edge = yoff + (int)sy + gap;
 	if (status == PANE_STATUS_TOP) {
 		if (edge >= (int)w->sy)
 			edge = 1;
@@ -2173,7 +2198,7 @@ window_pane_find_down(struct window_pane *wp)
 			edge = 0;
 	} else {
 		if (edge >= (int)w->sy)
-			edge = 0;
+			edge = gap - 1;
 	}
 
 	left = wp->xoff;
@@ -2211,13 +2236,17 @@ window_pane_find_left(struct window_pane *wp)
 {
 	struct window		*w;
 	struct window_pane	*next, *best, **list;
-	int			 edge, top, bottom, end, found;
+	int			 edge, top, bottom, end, found, gap;
 	int			 xoff, yoff;
 	u_int			 size, sx, sy;
 
 	if (wp == NULL)
 		return (NULL);
 	w = wp->window;
+	gap = 1;
+	if (options_get_number(w->options, "pane-border-type") ==
+	    PANE_BORDER_TYPE_SEPARATE)
+		gap = 2;
 
 	list = NULL;
 	size = 0;
@@ -2225,7 +2254,7 @@ window_pane_find_left(struct window_pane *wp)
 	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
 
 	edge = xoff;
-	if (edge == 0)
+	if (edge == gap - 1)
 		edge = (int)w->sx + 1;
 
 	top = yoff;
@@ -2235,7 +2264,7 @@ window_pane_find_left(struct window_pane *wp)
 		window_pane_full_size_offset(next, &xoff, &yoff, &sx, &sy);
 		if (next == wp)
 			continue;
-		if (xoff + (int)sx + 1 != edge)
+		if (xoff + (int)sx + gap != edge)
 			continue;
 		end = yoff + (int)sy - 1;
 
@@ -2263,22 +2292,26 @@ window_pane_find_right(struct window_pane *wp)
 {
 	struct window		*w;
 	struct window_pane	*next, *best, **list;
-	int			 edge, top, bottom, end, found;
+	int			 edge, top, bottom, end, found, gap;
 	int			 xoff, yoff;
 	u_int			 size, sx, sy;
 
 	if (wp == NULL)
 		return (NULL);
 	w = wp->window;
+	gap = 1;
+	if (options_get_number(w->options, "pane-border-type") ==
+	    PANE_BORDER_TYPE_SEPARATE)
+		gap = 2;
 
 	list = NULL;
 	size = 0;
 
 	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
 
-	edge = xoff + (int)sx + 1;
+	edge = xoff + (int)sx + gap;
 	if (edge >= (int)w->sx)
-		edge = 0;
+		edge = gap - 1;
 
 	top = wp->yoff;
 	bottom = wp->yoff + (int)wp->sy;
