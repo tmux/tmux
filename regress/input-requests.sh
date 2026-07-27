@@ -20,7 +20,7 @@ server = [tmux, "-L" + label, "-f/dev/null"]
 
 def run(*args, check=True):
     return subprocess.run(server + list(args), check=check,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 def attach():
     pid, fd = os.forkpty()
