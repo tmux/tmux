@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.241 2026/07/23 09:38:27 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.242 2026/07/27 08:03:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1944,6 +1944,7 @@ const struct options_table_entry options_table[] = {
 	OPTIONS_TABLE_AFTER_HOOK("show-messages"),
 	OPTIONS_TABLE_AFTER_HOOK("show-options"),
 	OPTIONS_TABLE_AFTER_HOOK("split-window"),
+	OPTIONS_TABLE_AFTER_HOOK("swap-window"),
 	OPTIONS_TABLE_AFTER_HOOK("unbind-key"),
 	OPTIONS_TABLE_HOOK("alert-activity", "",
 	    "Run when a window has activity."),
