@@ -805,10 +805,12 @@ struct window_pane *
 window_get_active_at(struct window *w, u_int x, u_int y)
 {
 	struct window_pane	*wp;
-	int			 pane_status, xoff, yoff;
+	int			 pane_status, xoff, yoff, separate;
 	u_int			 sx, sy;
 
 	pane_status = window_get_pane_status(w);
+	separate = options_get_number(w->options, "pane-border-type") ==
+	    PANE_BORDER_TYPE_SEPARATE;
 
 	if (w->modal != NULL) {
 		if (window_pane_contains(w->modal, x, y))
@@ -842,11 +844,18 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 		if (!window_pane_is_floating(wp)) {
 			/*
 			 * Tiled - to and including the right border, excluding
-			 * the bottom border.
+			 * the bottom border. pane-border-type separate draws a
+			 * full border around each pane, so include the left and
+			 * top borders as well.
 			 */
-			if ((int)x < xoff || x > xoff + sx)
+			if (separate) {
+				if ((int)x < xoff - 1 || x > xoff + sx)
+					continue;
+				if ((int)y < yoff - 1 || y > yoff + sy)
+					continue;
+			} else if ((int)x < xoff || x > xoff + sx)
 				continue;
-			if (pane_status == PANE_STATUS_TOP) {
+			else if (pane_status == PANE_STATUS_TOP) {
 				if ((int)y < yoff - 1 || y > yoff + sy)
 					continue;
 			} else {
