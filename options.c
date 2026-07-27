@@ -1,4 +1,4 @@
-/* $OpenBSD: options.c,v 1.91 2026/07/23 09:38:27 nicm Exp $ */
+/* $OpenBSD: options.c,v 1.92 2026/07/27 19:15:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -107,7 +107,10 @@ struct options_entry {
 
 	int					 cached;
 	struct style				 style;
+
 	void					*monitor_data;
+	u_int					 fire_count;
+	time_t					 fire_time;
 
 	RB_ENTRY(options_entry)			 entry;
 };
@@ -438,6 +441,25 @@ void
 options_set_monitor_data(struct options_entry *o, void *data)
 {
 	o->monitor_data = data;
+}
+
+void
+options_hook_fired(struct options_entry *o)
+{
+	o->fire_count++;
+	o->fire_time = current_time;
+}
+
+u_int
+options_get_fire_count(struct options_entry *o)
+{
+	return (o->fire_count);
+}
+
+time_t
+options_get_fire_time(struct options_entry *o)
+{
+	return (o->fire_time);
 }
 
 const struct options_table_entry *
