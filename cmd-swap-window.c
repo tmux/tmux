@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-swap-window.c,v 1.29 2025/10/30 13:52:08 nicm Exp $ */
+/* $OpenBSD: cmd-swap-window.c,v 1.30 2026/07/27 08:03:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -38,7 +38,7 @@ const struct cmd_entry cmd_swap_window_entry = {
 	.source = { 's', CMD_FIND_WINDOW, CMD_FIND_DEFAULT_MARKED },
 	.target = { 't', CMD_FIND_WINDOW, 0 },
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_swap_window_exec
 };
 
