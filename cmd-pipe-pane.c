@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-pipe-pane.c,v 1.63 2026/04/28 08:47:55 nicm Exp $ */
+/* $OpenBSD: cmd-pipe-pane.c,v 1.64 2026/07/27 14:25:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -195,8 +195,12 @@ static void
 cmd_pipe_pane_read_callback(__unused struct bufferevent *bufev, void *data)
 {
 	struct window_pane	*wp = data;
-	struct evbuffer		*evb = wp->pipe_event->input;
+	struct evbuffer		*evb;
 	size_t			 available;
+
+	if (wp->pipe_event == NULL)
+		return;
+	evb = wp->pipe_event->input;
 
 	available = EVBUFFER_LENGTH(evb);
 	log_debug("%%%u pipe read %zu", wp->id, available);
