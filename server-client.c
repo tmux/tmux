@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.499 2026/07/22 08:19:14 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.500 2026/07/28 13:17:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1687,6 +1687,9 @@ server_client_handle_menu_key(struct client *c, struct key_event *event)
 	memcpy(&new_event, event, sizeof new_event);
 	if (KEYC_IS_MOUSE(event->key)) {
 		m = &new_event.m;
+		m->statusat = status_at_line(c);
+		m->statuslines = status_line_size(c);
+
 		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
 		m->x += ox;
 		if (m->statusat == 0) {
@@ -1694,8 +1697,7 @@ server_client_handle_menu_key(struct client *c, struct key_event *event)
 				m->x = m->y = UINT_MAX;
 			else
 				m->y = m->y - m->statuslines + oy;
-		} else if (m->statusat > 0 &&
-		    m->y >= (u_int)m->statusat)
+		} else if (m->statusat > 0 && m->y >= (u_int)m->statusat)
 			m->x = m->y = UINT_MAX;
 		else
 			m->y += oy;
