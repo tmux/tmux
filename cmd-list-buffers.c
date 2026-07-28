@@ -51,13 +51,24 @@ cmd_list_buffers_exec(struct cmd *self, struct cmdq_item *item)
 	struct format_tree	 *ft;
 	const char		 *template, *filter;
 	char			 *line, *expanded;
-	int			  flag;
+	char			 *name, *size, *sample, *trimmed, *preview;
+	int			  flag, human;
 	u_int			  i, n;
 	struct sort_criteria	  sort_crit;
+	struct cmd_output_table	 *table = NULL;
+	const char		 *headers[] = { "NAME", "SIZE", "PREVIEW" };
+	const char		 *cells[3];
+	enum cmd_output_style	  styles[] = {
+		CMD_OUTPUT_IDENTIFIER, CMD_OUTPUT_DIM, CMD_OUTPUT_DEFAULT
+	};
 
-	if ((template = args_get(args, 'F')) == NULL)
+	template = args_get(args, 'F');
+	human = (template == NULL && cmd_output_is_human(item));
+	if (template == NULL)
 		template = LIST_BUFFERS_TEMPLATE;
 	filter = args_get(args, 'f');
+	if (human)
+		table = cmd_output_table_create(item, "Buffers", 3, headers);
 
 	sort_crit.order = sort_order_from_string(args_get(args, 'O'));
 	if (sort_crit.order == SORT_END && args_has(args, 'O')) {
@@ -78,12 +89,40 @@ cmd_list_buffers_exec(struct cmd *self, struct cmdq_item *item)
 		} else
 			flag = 1;
 		if (flag) {
-			line = format_expand(ft, template);
-			cmdq_print(item, "%s", line);
-			free(line);
+			if (human) {
+				name = format_expand(ft, "#{buffer_name}");
+				size = format_expand(ft, "#{buffer_size} B");
+				sample = format_expand(ft, "#{buffer_sample}");
+				/*
+				 * Keep large buffers from dominating the table. Full
+				 * contents are available with show-buffer.
+				 */
+				if (utf8_cstrwidth(sample) > 40) {
+					trimmed = format_trim_right(sample, 37);
+					xasprintf(&preview, "%s...", trimmed);
+					free(trimmed);
+				} else
+					preview = xstrdup(sample);
+				cells[0] = name;
+				cells[1] = size;
+				cells[2] = preview;
+				cmd_output_table_add(table, cells, styles);
+				free(name);
+				free(size);
+				free(sample);
+				free(preview);
+			} else {
+				line = format_expand(ft, template);
+				cmdq_print(item, "%s", line);
+				free(line);
+			}
 		}
 
 		format_free(ft);
+	}
+	if (human) {
+		cmd_output_table_print(table);
+		cmd_output_table_free(table);
 	}
 
 	return (CMD_RETURN_NORMAL);

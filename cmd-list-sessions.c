@@ -58,12 +58,34 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 	struct format_tree	 *ft;
 	const char		 *template, *filter;
 	char			 *line, *expanded;
-	int			  flag;
+	int			  flag, human;
 	struct sort_criteria	  sort_crit;
+	struct cmd_output_table	 *table = NULL;
+	const char		 *headers[] = {
+		"NAME", "WINDOWS", "STATE", "GROUP", "CREATED"
+	};
+	const char		 *formats[] = {
+		"#{session_name}", "#{session_windows}",
+		"#{?session_attached,attached,detached}",
+		"#{?session_grouped,#{session_group},-}",
+		"#{t/p:session_created}"
+	};
+	enum cmd_output_style	  styles[] = {
+		CMD_OUTPUT_IDENTIFIER, CMD_OUTPUT_DEFAULT, CMD_OUTPUT_DEFAULT,
+		CMD_OUTPUT_DIM, CMD_OUTPUT_DIM
+	};
 
-	if ((template = args_get(args, 'F')) == NULL)
+	/*
+	 * Put the fields most useful for choosing a session in the interactive
+	 * view. The default format remains unchanged for nonterminal output.
+	 */
+	template = args_get(args, 'F');
+	human = (template == NULL && cmd_output_is_human(item));
+	if (template == NULL)
 		template = LIST_SESSIONS_TEMPLATE;
 	filter = args_get(args, 'f');
+	if (human)
+		table = cmd_output_table_create(item, "Sessions", 5, headers);
 
 	sort_crit.order = sort_order_from_string(args_get(args, 'O'));
 	if (sort_crit.order == SORT_END && args_has(args, 'O')) {
@@ -85,12 +107,23 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 		} else
 			flag = 1;
 		if (flag) {
-			line = format_expand(ft, template);
-			cmdq_print(item, "%s", line);
-			free(line);
+			if (human) {
+				styles[2] = l[i]->attached ?
+				    CMD_OUTPUT_SUCCESS : CMD_OUTPUT_DIM;
+				cmd_output_table_add_formats(table, ft, formats,
+				    styles);
+			} else {
+				line = format_expand(ft, template);
+				cmdq_print(item, "%s", line);
+				free(line);
+			}
 		}
 
 		format_free(ft);
+	}
+	if (human) {
+		cmd_output_table_print(table);
+		cmd_output_table_free(table);
 	}
 
 	return (CMD_RETURN_NORMAL);

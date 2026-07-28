@@ -728,6 +728,17 @@ Conditionals may be given on one line, for example:
 .Sh COMMANDS
 This section describes the commands supported by
 .Nm .
+.\" Keep the compatibility boundary for richer terminal output explicit.
+When output is sent directly to a terminal, common listing commands use
+compact headings and tables intended for people to read.
+Traditional line-oriented output is retained when output is redirected, for
+control mode clients, or when a custom
+.Fl F
+format is supplied.
+The
+.Ev NO_COLOR
+environment variable disables ANSI colours.
+.Pp
 Most commands accept the optional
 .Fl t
 (and sometimes
@@ -1199,6 +1210,12 @@ to replace the client.
 .D1 Pq alias: Ic has
 Report an error and exit with 1 if the specified session does not exist.
 If it does exist, exit with 0.
+.Tg help
+.It Ic help Op Ar command
+Show a categorized overview of commands.
+If
+.Ar command
+is given, show its purpose, syntax, alias, and examples where available.
 .It Ic kill\-server
 Kill the
 .Nm
@@ -1264,10 +1281,15 @@ is specified, list only clients connected to that session.
 .Op Ar command
 .Xc
 .D1 Pq alias: Ic lscm
-List the syntax of
+When output is a terminal, show categorized command help, or detailed help for
+.Ar command .
+Otherwise, list the syntax of
 .Ar command
-or - if omitted - of all commands supported by
+or, if omitted, of every command supported by
 .Nm .
+The
+.Ic help
+command always shows the human-readable form.
 .Tg ls
 .It Xo Ic list\-sessions
 .Op Fl r

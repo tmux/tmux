@@ -80,13 +80,20 @@ cmd_list_commands(struct cmd *self, struct cmdq_item *item)
 	const char		 *template,  *command;
 	char			 *cause;
 
+	command = args_string(args, 0);
+	/*
+	 * Interactive output is the command catalog. Keep the original syntax
+	 * listing for formats and redirected output.
+	 */
+	if (!args_has(args, 'F') && cmd_output_is_human(item))
+		return (cmd_help_print(item, command));
+
 	if ((template = args_get(args, 'F')) == NULL)
 		template = LIST_COMMANDS_TEMPLATE;
 
 	ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 	format_defaults(ft, NULL, NULL, NULL, NULL);
 
-	command = args_string(args, 0);
 	if (command == NULL) {
 		for (entryp = cmd_table; *entryp != NULL; entryp++)
 			cmd_list_single_command(*entryp, ft, template, item);

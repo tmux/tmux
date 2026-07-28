@@ -83,7 +83,8 @@ if IS_CYGWIN
 AM_CPPFLAGS += -DTMUX_SOCK_PERM=0
 endif
 
-# List of sources.
+# List of sources. cmd-help.c and cmd-output.c provide command discovery and
+# the shared human-readable output path.
 dist_tmux_SOURCES = \
 	alerts.c \
 	arguments.c \
@@ -103,6 +104,7 @@ dist_tmux_SOURCES = \
 	cmd-display-message.c \
 	cmd-find-window.c \
 	cmd-find.c \
+	cmd-help.c \
 	cmd-if-shell.c \
 	cmd-join-pane.c \
 	cmd-kill-pane.c \
@@ -121,6 +123,7 @@ dist_tmux_SOURCES = \
 	cmd-move-window.c \
 	cmd-new-session.c \
 	cmd-new-window.c \
+	cmd-output.c \
 	cmd-parse.y \
 	cmd-paste-buffer.c \
 	cmd-pipe-pane.c \

@@ -176,8 +176,22 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 	char			*line;
 	char			*prefix = NULL;
 	u_int			 i, n;
-	int			 single, notes_only, filter_notes, filter_key;
+	int			 single, notes_only, filter_notes, filter_key, human;
 	struct sort_criteria	 sort_crit;
+	struct cmd_output_table	*output = NULL;
+	const char		*headers[] = {
+		"KEY", "TABLE", "FLAGS", "ACTION"
+	};
+	const char		*formats[] = {
+		"#{key_string}", "#{key_table}",
+		"#{?key_repeat,repeat,-}",
+		/* Prefer a descriptive note when the binding provides one. */
+		"#{?key_note,#{key_note},#{key_command}}"
+	};
+	enum cmd_output_style	 styles[] = {
+		CMD_OUTPUT_IDENTIFIER, CMD_OUTPUT_DIM, CMD_OUTPUT_DIM,
+		CMD_OUTPUT_DEFAULT
+	};
 
 	if ((keystr = args_string(args, 0)) != NULL) {
 		only = key_string_lookup_string(keystr);
@@ -207,7 +221,9 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 	single = args_has(args, '1');
 	notes_only = args_has(args, 'N');
 
-	if ((template = args_get(args, 'F')) == NULL)
+	template = args_get(args, 'F');
+	human = (template == NULL && cmd_output_is_human(item));
+	if (template == NULL)
 		template = LIST_KEYS_TEMPLATE;
 
 	if (table)
@@ -238,18 +254,29 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 	format_add(ft, "key_string_width", "%u", cmd_list_keys_get_width(l, n));
 	format_add(ft, "key_table_width", "%u",
 	    cmd_list_keys_get_table_width(l, n));
+	if (human)
+		output = cmd_output_table_create(item, "Key bindings", 4,
+		    headers);
 	for (i = 0; i < n; i++) {
 		cmd_list_keys_format_add_key_binding(ft, l[i], prefix);
 
-		line = format_expand(ft, template);
-		if (single && tc != NULL && (~tc->flags & CLIENT_CONTROL))
-			status_message_set(tc, -1, 1, 0, 0, "%s", line);
-		else if (*line != '\0')
-			cmdq_print(item, "%s", line);
-		free(line);
+		if (human)
+			cmd_output_table_add_formats(output, ft, formats, styles);
+		else {
+			line = format_expand(ft, template);
+			if (single && tc != NULL && (~tc->flags & CLIENT_CONTROL))
+				status_message_set(tc, -1, 1, 0, 0, "%s", line);
+			else if (*line != '\0')
+				cmdq_print(item, "%s", line);
+			free(line);
+		}
 
 		if (single)
 			break;
+	}
+	if (human) {
+		cmd_output_table_print(output);
+		cmd_output_table_free(output);
 	}
 	format_free(ft);
 	free(prefix);

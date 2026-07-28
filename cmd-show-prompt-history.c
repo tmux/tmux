@@ -26,6 +26,8 @@
 
 static enum cmd_retval	cmd_show_prompt_history_exec(struct cmd *,
 			    struct cmdq_item *);
+static void		cmd_show_prompt_history_table(struct cmdq_item *,
+			    enum prompt_type);
 
 const struct cmd_entry cmd_show_prompt_history_entry = {
 	.name = "show-prompt-history",
@@ -48,6 +50,35 @@ const struct cmd_entry cmd_clear_prompt_history_entry = {
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_show_prompt_history_exec
 };
+
+static void
+cmd_show_prompt_history_table(struct cmdq_item *item, enum prompt_type type)
+{
+	struct cmd_output_table	*table;
+	const char		*headers[] = { "INDEX", "ENTRY" };
+	const char		*cells[2];
+	enum cmd_output_style	 styles[] = {
+		CMD_OUTPUT_IDENTIFIER, CMD_OUTPUT_DEFAULT
+	};
+	const char		*value;
+	char			*index, *title;
+	u_int			 h;
+
+	xasprintf(&title, "History: %s", prompt_type_string(type));
+	table = cmd_output_table_create(item, title, 2, headers);
+	free(title);
+	/* Number entries to make interactive history easier to scan. */
+	for (h = 0; h < prompt_history_size(type); h++) {
+		value = prompt_history_get(type, h);
+		xasprintf(&index, "%u", h + 1);
+		cells[0] = index;
+		cells[1] = value;
+		cmd_output_table_add(table, cells, styles);
+		free(index);
+	}
+	cmd_output_table_print(table);
+	cmd_output_table_free(table);
+}
 
 static enum cmd_retval
 cmd_show_prompt_history_exec(struct cmd *self, struct cmdq_item *item)
@@ -75,6 +106,10 @@ cmd_show_prompt_history_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (typestr == NULL) {
 		for (t = 0; t < PROMPT_NTYPES; t++) {
+			if (cmd_output_is_human(item)) {
+				cmd_show_prompt_history_table(item, t);
+				continue;
+			}
 			typestr = prompt_type_string(t);
 			cmdq_print(item, "History for %s:\n", typestr);
 			for (h = 0; h < prompt_history_size(t); h++) {
@@ -88,6 +123,10 @@ cmd_show_prompt_history_exec(struct cmd *self, struct cmdq_item *item)
 		if (type == PROMPT_TYPE_INVALID) {
 			cmdq_error(item, "invalid type: %s", typestr);
 			return (CMD_RETURN_ERROR);
+		}
+		if (cmd_output_is_human(item)) {
+			cmd_show_prompt_history_table(item, type);
+			return (CMD_RETURN_NORMAL);
 		}
 		cmdq_print(item, "History for %s:\n", prompt_type_string(type));
 		for (h = 0; h < prompt_history_size(type); h++) {

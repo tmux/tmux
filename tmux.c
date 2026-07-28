@@ -70,10 +70,41 @@ __asan_default_options(void)
 static __dead void
 usage(int status)
 {
-	fprintf(status ? stderr : stdout,
+	FILE		*f = status ? stderr : stdout;
+	const char	*bold = "", *cyan = "", *dim = "", *reset = "";
+	const char	*term;
+
+	term = getenv("TERM");
+	if (!status && isatty(STDOUT_FILENO) && getenv("NO_COLOR") == NULL &&
+	    (term == NULL || strcmp(term, "dumb") != 0)) {
+		bold = "\033[1m";
+		cyan = "\033[36m";
+		dim = "\033[2m";
+		reset = "\033[0m";
+	}
+
+	fprintf(f,
 	    "usage: %s [-2CDhlNuVv] [-c shell-command] [-f file] [-L socket-name]\n"
 	    "            [-S socket-path] [-T features] [command [flags]]\n",
 	    getprogname());
+	/* Keep error usage terse; show the command guide only for explicit help. */
+	if (!status) {
+		fprintf(f, "\n%sCommon commands%s\n", bold, reset);
+		fprintf(f, "   %s%-18s%s %s%s%s\n", cyan, "new-session",
+		    reset, dim, "Create a new session", reset);
+		fprintf(f, "   %s%-18s%s %s%s%s\n", cyan, "attach-session",
+		    reset, dim, "Attach to an existing session", reset);
+		fprintf(f, "   %s%-18s%s %s%s%s\n", cyan, "list-sessions",
+		    reset, dim, "List sessions and their state", reset);
+		fprintf(f, "   %s%-18s%s %s%s%s\n", cyan, "new-window",
+		    reset, dim, "Create a window", reset);
+		fprintf(f, "   %s%-18s%s %s%s%s\n", cyan, "split-window",
+		    reset, dim, "Create a new pane", reset);
+		fprintf(f, "   %s%-18s%s %s%s%s\n", cyan, "help", reset,
+		    dim, "Show command help and examples", reset);
+		fprintf(f, "\n%sSee 'tmux help <command>' for more information.%s\n",
+		    dim, reset);
+	}
 	exit(status);
 }
 

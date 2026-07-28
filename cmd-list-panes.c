@@ -28,11 +28,13 @@
 
 static enum cmd_retval	cmd_list_panes_exec(struct cmd *, struct cmdq_item *);
 
-static void	cmd_list_panes_server(struct cmd *, struct cmdq_item *);
+static void	cmd_list_panes_server(struct cmd *, struct cmdq_item *,
+		    struct cmd_output_table *);
 static void	cmd_list_panes_session(struct cmd *, struct session *,
-		    struct cmdq_item *, int);
+		    struct cmdq_item *, int, struct cmd_output_table *);
 static void	cmd_list_panes_window(struct cmd *, struct session *,
-		    struct winlink *, struct cmdq_item *, int);
+		    struct winlink *, struct cmdq_item *, int,
+		    struct cmd_output_table *);
 
 const struct cmd_entry cmd_list_panes_entry = {
 	.name = "list-panes",
@@ -56,6 +58,17 @@ cmd_list_panes_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*s = target->s;
 	struct winlink		*wl = target->wl;
 	enum sort_order		 order;
+	struct cmd_output_table	*table = NULL;
+	const char		*headers[] = {
+		"TARGET", "SIZE", "HISTORY", "STATE", "COMMAND", "ID"
+	};
+
+	/*
+	 * Accumulate one table across the selected scope so -a and -s do not
+	 * repeat headings for every window.
+	 */
+	if (!args_has(args, 'F') && cmd_output_is_human(item))
+		table = cmd_output_table_create(item, "Panes", 6, headers);
 
 	order = sort_order_from_string(args_get(args, 'O'));
 	if (order == SORT_END && args_has(args, 'O')) {
@@ -64,37 +77,43 @@ cmd_list_panes_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(args, 'a'))
-		cmd_list_panes_server(self, item);
+		cmd_list_panes_server(self, item, table);
 	else if (args_has(args, 's'))
-		cmd_list_panes_session(self, s, item, 1);
+		cmd_list_panes_session(self, s, item, 1, table);
 	else
-		cmd_list_panes_window(self, s, wl, item, 0);
+		cmd_list_panes_window(self, s, wl, item, 0, table);
+
+	if (table != NULL) {
+		cmd_output_table_print(table);
+		cmd_output_table_free(table);
+	}
 
 	return (CMD_RETURN_NORMAL);
 }
 
 static void
-cmd_list_panes_server(struct cmd *self, struct cmdq_item *item)
+cmd_list_panes_server(struct cmd *self, struct cmdq_item *item,
+    struct cmd_output_table *table)
 {
 	struct session	*s;
 
 	RB_FOREACH(s, sessions, &sessions)
-		cmd_list_panes_session(self, s, item, 2);
+		cmd_list_panes_session(self, s, item, 2, table);
 }
 
 static void
 cmd_list_panes_session(struct cmd *self, struct session *s,
-    struct cmdq_item *item, int type)
+    struct cmdq_item *item, int type, struct cmd_output_table *table)
 {
 	struct winlink	*wl;
 
 	RB_FOREACH(wl, winlinks, &s->windows)
-		cmd_list_panes_window(self, s, wl, item, type);
+		cmd_list_panes_window(self, s, wl, item, type, table);
 }
 
 static void
 cmd_list_panes_window(struct cmd *self, struct session *s, struct winlink *wl,
-    struct cmdq_item *item, int type)
+    struct cmdq_item *item, int type, struct cmd_output_table *table)
 {
 	struct args		*args = cmd_get_args(self);
 	struct window_pane	*wp, **l;
@@ -104,6 +123,18 @@ cmd_list_panes_window(struct cmd *self, struct session *s, struct winlink *wl,
 	char			*line, *expanded;
 	int			 flag;
 	struct sort_criteria	 sort_crit;
+	const char		*formats[] = {
+		"#{session_name}:#{window_index}.#{pane_index}",
+		"#{pane_width}x#{pane_height}",
+		"#{history_size}/#{history_limit}",
+		"#{?pane_dead,dead,#{?pane_floating_flag,floating,"
+		"#{?pane_active,active,-}}}",
+		"#{pane_current_command}", "#{pane_id}"
+	};
+	enum cmd_output_style	 styles[] = {
+		CMD_OUTPUT_IDENTIFIER, CMD_OUTPUT_DIM, CMD_OUTPUT_DIM,
+		CMD_OUTPUT_DEFAULT, CMD_OUTPUT_DEFAULT, CMD_OUTPUT_DIM
+	};
 
 	template = args_get(args, 'F');
 	if (template == NULL) {
@@ -156,9 +187,22 @@ cmd_list_panes_window(struct cmd *self, struct session *s, struct winlink *wl,
 		} else
 			flag = 1;
 		if (flag) {
-			line = format_expand(ft, template);
-			cmdq_print(item, "%s", line);
-			free(line);
+			if (table != NULL) {
+				if (wp->fd == -1)
+					styles[3] = CMD_OUTPUT_ERROR;
+				else if (wp == wl->window->active)
+					styles[3] = CMD_OUTPUT_SUCCESS;
+				else if (window_pane_is_floating(wp))
+					styles[3] = CMD_OUTPUT_WARNING;
+				else
+					styles[3] = CMD_OUTPUT_DIM;
+				cmd_output_table_add_formats(table, ft, formats,
+				    styles);
+			} else {
+				line = format_expand(ft, template);
+				cmdq_print(item, "%s", line);
+				free(line);
+			}
 		}
 
 		format_free(ft);
