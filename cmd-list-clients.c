@@ -92,8 +92,6 @@ cmd_list_clients_exec(struct cmd *self, struct cmdq_item *item)
 	if (template == NULL)
 		template = LIST_CLIENTS_TEMPLATE;
 	filter = args_get(args, 'f');
-	if (human)
-		table = cmd_output_table_create(item, "Clients", 6, headers);
 
 	sort_crit.order = sort_order_from_string(args_get(args, 'O'));
 	if (sort_crit.order == SORT_END && args_has(args, 'O')) {
@@ -102,6 +100,8 @@ cmd_list_clients_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	sort_crit.reversed = args_has(args, 'r');
 
+	if (human)
+		table = cmd_output_table_create(item, "Clients", 6, headers);
 	l = sort_get_clients(&n, &sort_crit);
 	for (i = 0; i < n; i++) {
 		if (l[i]->session == NULL || (s != NULL && s != l[i]->session))

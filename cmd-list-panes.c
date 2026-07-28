@@ -63,18 +63,18 @@ cmd_list_panes_exec(struct cmd *self, struct cmdq_item *item)
 		"TARGET", "SIZE", "HISTORY", "STATE", "COMMAND", "ID"
 	};
 
+	order = sort_order_from_string(args_get(args, 'O'));
+	if (order == SORT_END && args_has(args, 'O')) {
+		cmdq_error(item, "invalid sort order");
+		return (CMD_RETURN_ERROR);
+	}
+
 	/*
 	 * Accumulate one table across the selected scope so -a and -s do not
 	 * repeat headings for every window.
 	 */
 	if (!args_has(args, 'F') && cmd_output_is_human(item))
 		table = cmd_output_table_create(item, "Panes", 6, headers);
-
-	order = sort_order_from_string(args_get(args, 'O'));
-	if (order == SORT_END && args_has(args, 'O')) {
-		cmdq_error(item, "invalid sort order");
-		return (CMD_RETURN_ERROR);
-	}
 
 	if (args_has(args, 'a'))
 		cmd_list_panes_server(self, item, table);
@@ -127,8 +127,8 @@ cmd_list_panes_window(struct cmd *self, struct session *s, struct winlink *wl,
 		"#{session_name}:#{window_index}.#{pane_index}",
 		"#{pane_width}x#{pane_height}",
 		"#{history_size}/#{history_limit}",
-		"#{?pane_dead,dead,#{?pane_floating_flag,floating,"
-		"#{?pane_active,active,-}}}",
+		("#{?pane_dead,dead,#{?pane_floating_flag,floating,"
+		 "#{?pane_active,active,-}}}"),
 		"#{pane_current_command}", "#{pane_id}"
 	};
 	enum cmd_output_style	 styles[] = {

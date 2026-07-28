@@ -84,8 +84,6 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 	if (template == NULL)
 		template = LIST_SESSIONS_TEMPLATE;
 	filter = args_get(args, 'f');
-	if (human)
-		table = cmd_output_table_create(item, "Sessions", 5, headers);
 
 	sort_crit.order = sort_order_from_string(args_get(args, 'O'));
 	if (sort_crit.order == SORT_END && args_has(args, 'O')) {
@@ -94,6 +92,8 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	sort_crit.reversed = args_has(args, 'r');
 
+	if (human)
+		table = cmd_output_table_create(item, "Sessions", 5, headers);
 	l = sort_get_sessions(&n, &sort_crit);
 	for (i = 0; i < n; i++) {
 		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);

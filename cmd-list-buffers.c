@@ -67,8 +67,6 @@ cmd_list_buffers_exec(struct cmd *self, struct cmdq_item *item)
 	if (template == NULL)
 		template = LIST_BUFFERS_TEMPLATE;
 	filter = args_get(args, 'f');
-	if (human)
-		table = cmd_output_table_create(item, "Buffers", 3, headers);
 
 	sort_crit.order = sort_order_from_string(args_get(args, 'O'));
 	if (sort_crit.order == SORT_END && args_has(args, 'O')) {
@@ -77,6 +75,8 @@ cmd_list_buffers_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	sort_crit.reversed = args_has(args, 'r');
 
+	if (human)
+		table = cmd_output_table_create(item, "Buffers", 3, headers);
 	l = sort_get_buffers(&n, &sort_crit);
 	for (i = 0; i < n; i++) {
 		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
