@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1415 2026/07/23 09:38:27 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1416 2026/07/27 19:15:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2796,6 +2796,8 @@ void	 hooks_monitor_free(void *);
 char	*hooks_monitor_to_string(struct options_entry *);
 int	 hooks_monitor_get(struct options_entry *, enum monitor_type *, int *,
 	     const char **);
+u_int	 hooks_monitor_get_fire_count(struct options_entry *);
+time_t	 hooks_monitor_get_fire_time(struct options_entry *);
 
 /* options.c */
 struct options	*options_create(struct options *);
@@ -2813,6 +2815,9 @@ const char	*options_name(struct options_entry *);
 struct options	*options_owner(struct options_entry *);
 void		*options_get_monitor_data(struct options_entry *);
 void		 options_set_monitor_data(struct options_entry *, void *);
+void		 options_hook_fired(struct options_entry *);
+u_int		 options_get_fire_count(struct options_entry *);
+time_t		 options_get_fire_time(struct options_entry *);
 const struct options_table_entry *options_table_entry(struct options_entry *);
 struct options_entry *options_get_only(struct options *, const char *);
 struct options_entry *options_get(struct options *, const char *);
@@ -4020,6 +4025,8 @@ int	monitor_parse(const char *, char **, enum monitor_type *, int *,
 void	monitor_add(struct monitor_set *, const char *, enum monitor_type, int,
 	    const char *, int);
 void	monitor_remove(struct monitor_set *, const char *);
+u_int	monitor_get_fire_count(struct monitor_set *, const char *);
+time_t	monitor_get_fire_time(struct monitor_set *, const char *);
 
 /* control.c */
 void	control_discard(struct client *);

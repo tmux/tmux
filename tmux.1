@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1149 2026/07/23 09:38:27 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1151 2026/07/28 07:04:18 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: July 23 2026 $
+.Dd $Mdocdate: July 28 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -7053,6 +7053,20 @@ escape
 command arguments; with
 .Ql s
 use single quotes.
+.Pp
+Some variables such as
+.Ic pane_title
+and
+.Ic pane_path
+are set by escape sequences received from pane and may contain arbitrary
+content including shell metacharacters.
+.Ql q:\&
+should be used to escape these with commands passed to
+.Ic run\-shell ,
+.Ic if\-shell ,
+or
+.Ic pipe\-pane .
+.Pp
 .Ql E:\&
 will expand the format twice, for example
 .Ql #{E:status\-left}
@@ -7302,6 +7316,8 @@ The following variables are available, where appropriate:
 .It Li "history_size" Ta "" Ta "Size of history in lines"
 .It Li "hook" Ta "" Ta "Name of running hook, if any"
 .It Li "hook_client" Ta "" Ta "Name of client where hook was run, if any"
+.It Li "hook_fire_count" Ta "" Ta "Number of times hook has fired"
+.It Li "hook_fire_time" Ta "" Ta "Time hook last fired"
 .It Li "hook_last" Ta "" Ta "Previous value for a monitor hook"
 .It Li "hook_monitor_format" Ta "" Ta "Format for a monitor hook"
 .It Li "hook_monitor_target" Ta "" Ta "Target for a monitor hook"

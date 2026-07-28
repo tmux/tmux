@@ -81,6 +81,11 @@ assert_unchanged @seen 0
 
 $TMUX rename-session two || fail "rename-session two failed"
 wait_for @seen '@session-name:two'
+shown=$($TMUX show-hooks -g -BF '#{hook_fire_count}:#{t/p:hook_fire_time}' \
+	@session-name) ||
+	fail "show-hooks -BF fire failed"
+echo "$shown" | grep -q '^1:[^-][^ ]*$' ||
+	fail "unexpected show-hooks -BF fire output: $shown"
 
 $TMUX set -g @seen-last 0 || fail "set @seen-last failed"
 $TMUX set-hook -g -B '@session-name::#{session_name}' \

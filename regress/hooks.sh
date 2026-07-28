@@ -85,6 +85,11 @@ echo "$shown" | grep -q '^session-created\[0\]' ||
 	fail "missing first array item: $shown"
 echo "$shown" | grep -q '^session-created\[1\]' ||
 	fail "missing second array item: $shown"
+shown=$($TMUX show-hooks -gF '#{option_name}:#{hook_fire_count}:#{t/p:hook_fire_time}' \
+	session-created) ||
+	fail "show-hooks -gF failed"
+echo "$shown" | grep -q '^session-created:[1-9][0-9]*:[^-][^ ]*$' ||
+	fail "missing hook fire formats: $shown"
 
 # User hooks are options, but show-hooks should list only registered @ hooks
 # and not ordinary user options.

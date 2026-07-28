@@ -1,4 +1,4 @@
-/* $OpenBSD: hooks.c,v 1.15 2026/07/22 20:12:58 nicm Exp $ */
+/* $OpenBSD: hooks.c,v 1.16 2026/07/27 19:15:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -25,7 +25,7 @@
 #include "tmux.h"
 
 /* Hook monitor state owned by an option entry. */
-struct hook_monitor {
+struct hooks_monitor {
 	struct options		*oo;
 
 	struct monitor_set	*set;
@@ -143,6 +143,7 @@ hooks_insert(struct cmdq_item *item, struct hooks_data *hd)
 		log_debug("%s: hook %s not found", __func__, hd->name);
 		return;
 	}
+	options_hook_fired(o);
 
 	if (item == NULL)
 		state = cmdq_new_state(&fs, NULL, CMDQ_STATE_NOHOOKS);
@@ -233,7 +234,7 @@ hooks_event_cb(const char *name, struct event_payload *ep,
 {
 	struct cmdq_item	*item;
 
-	if (event_payload_get_pointer(ep, "_hook_monitor") != NULL)
+	if (event_payload_get_pointer(ep, "_hooks_monitor") != NULL)
 		return;
 
 	item = event_payload_get_pointer(ep, "_cmdq_item");
@@ -324,7 +325,7 @@ hooks_run(struct cmdq_item *item, const char *name)
 void
 hooks_monitor_free(void *data)
 {
-	struct hook_monitor	*hm = data;
+	struct hooks_monitor	*hm = data;
 
 	events_remove_sink(hm->sink);
 	monitor_destroy(hm->set);
@@ -337,7 +338,7 @@ void
 hooks_monitor_remove(struct options *oo, const char *name)
 {
 	struct options_entry	*o;
-	struct hook_monitor	*hm;
+	struct hooks_monitor	*hm;
 
 	o = options_get_only(oo, name);
 	if (o == NULL)
@@ -355,9 +356,9 @@ static void
 hooks_monitor_hook_cb(const char *name, struct event_payload *ep,
     void *sink_data)
 {
-	struct hook_monitor	*hm = sink_data;
+	struct hooks_monitor	*hm = sink_data;
 
-	if (event_payload_get_pointer(ep, "_hook_monitor") == hm)
+	if (event_payload_get_pointer(ep, "_hooks_monitor") == hm)
 		hooks_insert_event(cmdq_running(NULL), name, ep, hm->oo, 1);
 }
 
@@ -365,14 +366,14 @@ hooks_monitor_hook_cb(const char *name, struct event_payload *ep,
 static void
 hooks_monitor_cb(struct monitor_change *change, void *data)
 {
-	struct hook_monitor	*hm = data;
+	struct hooks_monitor	*hm = data;
 	struct event_payload	*ep;
 	struct winlink		*wl = change->wl;
 	struct window_pane	*wp = change->wp;
 	struct cmd_find_state	 fs;
 
 	ep = event_payload_create();
-	event_payload_set_pointer(ep, "_hook_monitor", data, NULL, NULL);
+	event_payload_set_pointer(ep, "_hooks_monitor", data, NULL, NULL);
 
 	cmd_find_clear_state(&fs, 0);
 	if (wl != NULL && wp != NULL && wp->window == wl->window)
@@ -402,8 +403,7 @@ hooks_monitor_cb(struct monitor_change *change, void *data)
 		event_payload_set_session(ep, "session", change->s);
 	if (wl != NULL) {
 		if (change->s == NULL)
-			event_payload_set_session(ep, "session",
-			    wl->session);
+			event_payload_set_session(ep, "session", wl->session);
 		event_payload_set_window(ep, "window", wl->window);
 		event_payload_set_int(ep, "window_index", wl->idx);
 	}
@@ -423,7 +423,7 @@ hooks_monitor_add(__unused struct cmdq_item *item, struct options *oo,
     int flags, struct cmd_find_state *fs, struct session *s)
 {
 	struct options_entry	*o;
-	struct hook_monitor	*hm;
+	struct hooks_monitor	*hm;
 
 	hooks_monitor_remove(oo, name);
 	o = options_get_only(oo, name);
@@ -446,7 +446,7 @@ hooks_monitor_add(__unused struct cmdq_item *item, struct options *oo,
 char *
 hooks_monitor_to_string(struct options_entry *o)
 {
-	struct hook_monitor	*hm = options_get_monitor_data(o);
+	struct hooks_monitor	*hm = options_get_monitor_data(o);
 	const char		*name = options_name(o);
 	char			*s;
 
@@ -478,7 +478,7 @@ int
 hooks_monitor_get(struct options_entry *o, enum monitor_type *type, int *id,
     const char **format)
 {
-	struct hook_monitor	*hm = options_get_monitor_data(o);
+	struct hooks_monitor	*hm = options_get_monitor_data(o);
 
 	if (hm == NULL)
 		return (0);
@@ -486,4 +486,26 @@ hooks_monitor_get(struct options_entry *o, enum monitor_type *type, int *id,
 	*id = hm->id;
 	*format = hm->format;
 	return (1);
+}
+
+/* Get hook monitor firing count. */
+u_int
+hooks_monitor_get_fire_count(struct options_entry *o)
+{
+	struct hooks_monitor	*hm = options_get_monitor_data(o);
+
+	if (hm == NULL)
+		return (0);
+	return (monitor_get_fire_count(hm->set, options_name(o)));
+}
+
+/* Get hook monitor firing time. */
+time_t
+hooks_monitor_get_fire_time(struct options_entry *o)
+{
+	struct hooks_monitor	*hm = options_get_monitor_data(o);
+
+	if (hm == NULL)
+		return (0);
+	return (monitor_get_fire_time(hm->set, options_name(o)));
 }
