@@ -809,8 +809,8 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 	u_int			 sx, sy;
 
 	pane_status = window_get_pane_status(w);
-	separate = options_get_number(w->options, "pane-border-type") ==
-	    PANE_BORDER_TYPE_SEPARATE;
+	separate = PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
+	    "pane-border-type"));
 
 	if (w->modal != NULL) {
 		if (window_pane_contains(w->modal, x, y))
@@ -895,8 +895,8 @@ window_find_string(struct window *w, const char *s)
 		top++;
 	else if (status == PANE_STATUS_BOTTOM)
 		bottom--;
-	separate = options_get_number(w->options, "pane-border-type") ==
-	    PANE_BORDER_TYPE_SEPARATE;
+	separate = PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
+	    "pane-border-type"));
 
 	if (strcasecmp(s, "top") == 0)
 		y = top;
@@ -2115,8 +2115,8 @@ window_pane_find_up(struct window_pane *wp)
 	w = wp->window;
 	status = window_get_pane_status(w);
 	gap = 1;
-	if (options_get_number(w->options, "pane-border-type") ==
-	    PANE_BORDER_TYPE_SEPARATE)
+	if (PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
+	    "pane-border-type")))
 		gap = 2;
 
 	list = NULL;
@@ -2180,8 +2180,8 @@ window_pane_find_down(struct window_pane *wp)
 	w = wp->window;
 	status = window_get_pane_status(w);
 	gap = 1;
-	if (options_get_number(w->options, "pane-border-type") ==
-	    PANE_BORDER_TYPE_SEPARATE)
+	if (PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
+	    "pane-border-type")))
 		gap = 2;
 
 	list = NULL;
@@ -2244,8 +2244,8 @@ window_pane_find_left(struct window_pane *wp)
 		return (NULL);
 	w = wp->window;
 	gap = 1;
-	if (options_get_number(w->options, "pane-border-type") ==
-	    PANE_BORDER_TYPE_SEPARATE)
+	if (PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
+	    "pane-border-type")))
 		gap = 2;
 
 	list = NULL;
@@ -2300,8 +2300,8 @@ window_pane_find_right(struct window_pane *wp)
 		return (NULL);
 	w = wp->window;
 	gap = 1;
-	if (options_get_number(w->options, "pane-border-type") ==
-	    PANE_BORDER_TYPE_SEPARATE)
+	if (PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
+	    "pane-border-type")))
 		gap = 2;
 
 	list = NULL;

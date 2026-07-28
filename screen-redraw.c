@@ -721,7 +721,7 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 		 * separate that opposite edge is still a reserved gutter and
 		 * must be drawn as a border or it stays blank/grey.
 		 */
-		if (bctx->border_type != PANE_BORDER_TYPE_SEPARATE) {
+		if (!PANE_BORDER_TYPE_IS_SEPARATE(bctx->border_type)) {
 			if (pane_status == PANE_STATUS_TOP)
 				mark_bottom = 0;
 			else if (pane_status == PANE_STATUS_BOTTOM)
@@ -1232,16 +1232,37 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 	struct grid_cell	 gc;
 	enum pane_lines		 pane_lines;
 	u_int			 i, cell_type;
-	int			 isolates = 0;
+	int			 isolates = 0, blank = 0;
 
 	if (span->data.type != REDRAW_SPAN_BORDER)
 		cell_type = CELL_NONE;
 	else {
 		wp = redraw_get_pane_for_border_style(dctx, span);
 		cell_type = span->data.b.cell_type;
+		/*
+		 * separate-active keeps the same gutter layout as separate, but
+		 * only draws line characters around the active pane. Inactive
+		 * border cells stay blank so focus changes do not resize.
+		 */
+		if (options_get_number(w->options, "pane-border-type") ==
+		    PANE_BORDER_TYPE_SEPARATE_ACTIVE &&
+		    (dctx->active == NULL ||
+		    !redraw_data_has_pane(&span->data, dctx->active)))
+			blank = 1;
 	}
 
-	if (wp == NULL) {
+	if (blank) {
+		/*
+		 * Keep pane-border-style colours on inactive gutters; only the
+		 * line drawing characters are suppressed.
+		 */
+		if (wp != NULL)
+			window_pane_get_border_style(wp, c, &gc);
+		else
+			redraw_get_default_border_style(dctx, &gc, &pane_lines);
+		gc.attr &= ~GRID_ATTR_CHARSET;
+		utf8_set(&gc.data, ' ');
+	} else if (wp == NULL) {
 		redraw_get_default_border_style(dctx, &gc, &pane_lines);
 		if (span->data.type == REDRAW_SPAN_OUTSIDE)
 			window_get_fill_cell(w, 0, &gc);
@@ -1257,11 +1278,13 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 		window_pane_get_border_cell(wp, cell_type, &gc);
 	}
 
-	if (span->data.type == REDRAW_SPAN_BORDER &&
+	if (!blank &&
+	    span->data.type == REDRAW_SPAN_BORDER &&
 	    dctx->marked != NULL &&
 	    redraw_data_has_pane(&span->data, dctx->marked))
 		gc.attr ^= GRID_ATTR_REVERSE;
-	redraw_draw_border_arrow(dctx, span, &gc);
+	if (!blank)
+		redraw_draw_border_arrow(dctx, span, &gc);
 
 	if (cell_type == CELL_UD && (dctx->flags & REDRAW_ISOLATES))
 		isolates = 1;
