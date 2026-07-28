@@ -1,10 +1,7 @@
 CHANGES FROM 3.7b TO 3.8
 
 * Add a help command with categorized command descriptions, syntax, aliases,
-  and practical examples. Improve interactive list and show commands with
-  terminal-aware tables and colour while preserving traditional output for
-  pipes, control clients, and custom -F formats. Together, these changes make
-  commands easier to discover without changing scripted use.
+  and practical examples.
 
 * Build with jemalloc on macOS to avoid what appears to be a bug in the system
   calloc(3) (issue 5385).
