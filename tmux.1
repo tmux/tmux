@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1150 2026/07/27 19:15:58 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1151 2026/07/28 07:04:18 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: July 27 2026 $
+.Dd $Mdocdate: July 28 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -7036,6 +7036,20 @@ escape
 command arguments; with
 .Ql s
 use single quotes.
+.Pp
+Some variables such as
+.Ic pane_title
+and
+.Ic pane_path
+are set by escape sequences received from pane and may contain arbitrary
+content including shell metacharacters.
+.Ql q:\&
+should be used to escape these with commands passed to
+.Ic run\-shell ,
+.Ic if\-shell ,
+or
+.Ic pipe\-pane .
+.Pp
 .Ql E:\&
 will expand the format twice, for example
 .Ql #{E:status\-left}
