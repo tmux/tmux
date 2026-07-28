@@ -7036,6 +7036,19 @@ escape
 command arguments; with
 .Ql s
 use single quotes.
+.Pp
+Some variables such as
+.Ic pane_title
+and
+.Ic pane_path
+are set by escape sequences from processes in the pane and may contain
+arbitrary content including shell metacharacters.
+.Ql q:\&
+should be used to escape these when interpolating into commands passed to
+.Ic run\-shell ,
+.Ic if\-shell ,
+or
+.Ic pipe\-pane .
 .Ql E:\&
 will expand the format twice, for example
 .Ql #{E:status\-left}
