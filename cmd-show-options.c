@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-show-options.c,v 1.75 2026/07/22 20:12:58 nicm Exp $ */
+/* $OpenBSD: cmd-show-options.c,v 1.76 2026/07/27 19:15:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -190,6 +190,9 @@ cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
 	const char			 *name = options_name(o);
 	const char			 *template = args_get(args, 'F');
 	char				 *value, *line;
+	struct timeval			  tv = { 0 };
+	u_int				  fire_count;
+	time_t				  fire_time;
 	int				  is_hook = 0, is_user = 0;
 	int				  has_value = 1;
 	const struct options_table_entry *oe = options_table_entry(o);
@@ -232,6 +235,16 @@ cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
 	format_add(ft, "option_is_hook", "%d", is_hook);
 	format_add(ft, "option_is_user", "%d", is_user);
 	format_add(ft, "option_has_value", "%d", has_value);
+	if (cmd_get_entry(self) == &cmd_show_hooks_entry) {
+		fire_count = options_get_fire_count(o);
+		format_add(ft, "hook_fire_count", "%u", fire_count);
+
+		fire_time = options_get_fire_time(o);
+		if (fire_time != 0) {
+			tv.tv_sec = fire_time;
+			format_add_tv(ft, "hook_fire_time", &tv);
+		}
+	}
 	if (array_key != NULL) {
 		format_add(ft, "option_array_key", "%s", array_key);
 		format_add(ft, "option_has_array_key", "1");
@@ -256,6 +269,9 @@ cmd_show_hooks_print_monitor(struct cmd *self, struct cmdq_item *item,
 	enum monitor_type	 type;
 	const char		*template = args_get(args, 'F'), *format;
 	char			*value, *target, *line;
+	struct timeval		 tv = { 0 };
+	u_int			 fire_count;
+	time_t			 fire_time;
 	int			 id;
 
 	value = hooks_monitor_to_string(o);
@@ -298,8 +314,19 @@ cmd_show_hooks_print_monitor(struct cmd *self, struct cmdq_item *item,
 	format_add(ft, "option_has_value", "%d", 1);
 	format_add(ft, "option_array_key", "%s", "");
 	format_add(ft, "option_has_array_key", "0");
+
 	format_add(ft, "hook_monitor_target", "%s", target);
 	format_add(ft, "hook_monitor_format", "%s", format);
+
+	fire_count = hooks_monitor_get_fire_count(o);
+	format_add(ft, "hook_fire_count", "%u", fire_count);
+
+	fire_time = hooks_monitor_get_fire_time(o);
+	if (fire_time != 0) {
+		tv.tv_sec = fire_time;
+		format_add_tv(ft, "hook_fire_time", &tv);
+	}
+
 	line = format_expand(ft, template);
 	format_free(ft);
 
