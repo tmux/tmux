@@ -1,10 +1,11 @@
 #!/bin/sh
 
-# Tests for pane-border-type joined|separate:
+# Tests for pane-border-type joined|separate|separate-active:
 #
 #   - option parsing and default;
 #   - separate insets each tiled pane and leaves a double border between
 #     adjacent panes;
+#   - separate-active uses the same inset geometry as separate;
 #   - resize-pane respects a larger layout-cell minimum so panes stay inside
 #     the window;
 #   - select-pane -L/-R/-U/-D and {left}/{top}/… targets work with the
@@ -66,6 +67,8 @@ $TMUX new-session -d -s opt -x 80 -y 24 'cat' || exit 1
 must_equal "$($TMUX show -gv pane-border-type)" "joined"
 $TMUX set -g pane-border-type separate || fail "set separate failed"
 must_equal "$($TMUX show -gv pane-border-type)" "separate"
+$TMUX set -g pane-border-type separate-active || fail "set separate-active failed"
+must_equal "$($TMUX show -gv pane-border-type)" "separate-active"
 $TMUX set -g pane-border-type joined || fail "set joined failed"
 must_equal "$($TMUX show -gv pane-border-type)" "joined"
 $TMUX set -g pane-border-type nope >/dev/null 2>&1 &&
@@ -102,7 +105,33 @@ must_equal "$right_left_border" "41"
 [ "$left_right_border" != "$right_left_border" ] ||
 	fail "separate should use two border columns, got one at $left_right_border"
 
+# separate-active must keep the same inset geometry as separate.
+$TMUX set -w -t geo:0 pane-border-type separate-active ||
+	fail "set separate-active failed"
+must_equal "$(pane_fmt "$p0" '#{pane_left}')" "1"
+must_equal "$(pane_fmt "$p0" '#{pane_top}')" "1"
+must_equal "$(pane_fmt "$p1" '#{pane_left}')" "42"
+must_equal "$(pane_fmt "$p1" '#{pane_top}')" "1"
+must_equal "$(pane_fmt "$p0" '#{e|+:#{pane_left},#{pane_width}}')" "40"
+must_equal "$(pane_fmt "$p1" '#{e|-:#{pane_left},1}')" "41"
+# Switching focus must not change pane sizes.
+w0=$(pane_fmt "$p0" '#{pane_width}')
+h0=$(pane_fmt "$p0" '#{pane_height}')
+w1=$(pane_fmt "$p1" '#{pane_width}')
+h1=$(pane_fmt "$p1" '#{pane_height}')
+$TMUX select-pane -t "$p0" || fail "select left failed"
+must_equal "$(pane_fmt "$p0" '#{pane_width}')" "$w0"
+must_equal "$(pane_fmt "$p0" '#{pane_height}')" "$h0"
+must_equal "$(pane_fmt "$p1" '#{pane_width}')" "$w1"
+must_equal "$(pane_fmt "$p1" '#{pane_height}')" "$h1"
+$TMUX select-pane -t "$p1" || fail "select right failed"
+must_equal "$(pane_fmt "$p0" '#{pane_width}')" "$w0"
+must_equal "$(pane_fmt "$p0" '#{pane_height}')" "$h0"
+must_equal "$(pane_fmt "$p1" '#{pane_width}')" "$w1"
+must_equal "$(pane_fmt "$p1" '#{pane_height}')" "$h1"
+
 # Vertical split gets a double border too.
+$TMUX set -w -t geo:0 pane-border-type separate || fail "set separate failed"
 $TMUX kill-pane -t "$p1" || fail "kill right pane failed"
 $TMUX split-window -v -t geo:0 'cat' || fail "split -v failed"
 p1=$($TMUX display-message -p -t geo:0.1 '#{pane_id}')

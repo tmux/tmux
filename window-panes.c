@@ -244,8 +244,8 @@ window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
 	 * reserved the top/bottom border row for every pane.
 	 */
 	if (layout_add_horizontal_border(root, lc, status) &&
-	    options_get_number(wp->window->options, "pane-border-type") !=
-	    PANE_BORDER_TYPE_SEPARATE &&
+	    !PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(wp->window->options,
+	    "pane-border-type")) &&
 	    sy > 1) {
 		if (status == PANE_STATUS_TOP)
 			y++;
@@ -674,8 +674,8 @@ window_panes_draw_borders(struct screen_write_ctx *ctx, struct window *w,
 		return;
 
 	map = xcalloc(dsx, dsy);
-	if (options_get_number(w->options, "pane-border-type") ==
-	    PANE_BORDER_TYPE_SEPARATE &&
+	if (PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
+	    "pane-border-type")) &&
 	    window_count_panes(w, 0) > 1) {
 		/*
 		 * With pane-border-type separate, borders come from each pane's
@@ -685,8 +685,8 @@ window_panes_draw_borders(struct screen_write_ctx *ctx, struct window *w,
 		 */
 		window_panes_mark_pane_border_separate(map, w, lc, osx, osy, dsx,
 		    dsy);
-	} else if (options_get_number(w->options, "pane-border-type") !=
-	    PANE_BORDER_TYPE_SEPARATE) {
+	} else if (!PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
+	    "pane-border-type"))) {
 		window_panes_mark_borders_cell(map, lc, osx, osy, dsx, dsy);
 		window_panes_mark_pane_status_borders(map, w, lc, osx, osy, dsx,
 		    dsy);

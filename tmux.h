@@ -1163,6 +1163,10 @@ enum pane_lines {
 /* Pane border type option. */
 #define PANE_BORDER_TYPE_JOINED 0
 #define PANE_BORDER_TYPE_SEPARATE 1
+#define PANE_BORDER_TYPE_SEPARATE_ACTIVE 2
+#define PANE_BORDER_TYPE_IS_SEPARATE(t) \
+	((t) == PANE_BORDER_TYPE_SEPARATE || \
+	 (t) == PANE_BORDER_TYPE_SEPARATE_ACTIVE)
 
 /* Mode returned by window_pane_mode function. */
 #define WINDOW_PANE_NO_MODE 0
