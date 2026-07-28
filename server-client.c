@@ -1689,6 +1689,8 @@ server_client_handle_menu_key(struct client *c, struct key_event *event)
 	memcpy(&new_event, event, sizeof new_event);
 	if (KEYC_IS_MOUSE(event->key)) {
 		m = &new_event.m;
+		m->statusat = status_at_line(c);
+		m->statuslines = status_line_size(c);
 		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
 		m->x += ox;
 		if (m->statusat == 0) {
