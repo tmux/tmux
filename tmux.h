@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1417 2026/07/29 14:06:32 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1418 2026/07/29 17:42:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3510,6 +3510,7 @@ void	 grid_reflow(struct grid *, u_int);
 void	 grid_wrap_position(struct grid *, u_int, u_int, u_int *, u_int *);
 void	 grid_unwrap_position(struct grid *, u_int *, u_int *, u_int, u_int);
 u_int	 grid_line_length(struct grid *, u_int);
+u_int	 grid_line_limit(struct grid *, u_int);
 int	 grid_in_set(struct grid *, u_int, u_int, const char *);
 
 /* grid-reader.c */

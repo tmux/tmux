@@ -1,4 +1,4 @@
-/* $OpenBSD: grid-reader.c,v 1.10 2026/05/17 13:12:21 nicm Exp $ */
+/* $OpenBSD: grid-reader.c,v 1.11 2026/07/29 17:42:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Anindya Mukherjee <anindya49@hotmail.com>
@@ -54,11 +54,8 @@ grid_reader_cursor_right(struct grid_reader *gr, int wrap, int all, int onemore)
 		px = gr->gd->sx;
 	else if (onemore)
 		px = grid_reader_line_length(gr);
-	else {
-		px = grid_reader_line_length(gr);
-		if (px != 0)
-			px--;
-	}
+	else
+		px = grid_line_limit(gr->gd, gr->cy);
 
 	if (wrap && gr->cx >= px && gr->cy < gr->gd->hsize + gr->gd->sy - 1) {
 		grid_reader_cursor_start_of_line(gr, 0);

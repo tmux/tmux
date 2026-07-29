@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.423 2026/07/21 11:52:13 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.424 2026/07/29 17:42:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -6215,16 +6215,13 @@ static u_int
 window_copy_cursor_limit(struct window_mode_entry *wme, u_int py,
     int allow_onemore)
 {
+	struct window_copy_mode_data	*data = wme->data;
 	struct options			*oo = wme->wp->window->options;
-	u_int				 len;
 
-	len = window_copy_find_length(wme, py);
 	if (allow_onemore ||
 	    options_get_number(oo, "mode-keys") != MODEKEY_VI)
-		return (len);
-	if (len == 0)
-		return (0);
-	return (len - 1);
+		return (window_copy_find_length(wme, py));
+	return (grid_line_limit(data->backing->grid, py));
 }
 
 static void
