@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.154 2026/07/20 11:16:33 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.155 2026/07/29 17:42:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1624,6 +1624,26 @@ grid_line_length(struct grid *gd, u_int py)
 		if ((gc.flags & GRID_FLAG_PADDING) ||
 		    gc.data.size != 1 ||
 		    *gc.data.data != ' ')
+			break;
+		px--;
+	}
+	return (px);
+}
+
+/* Get last position on line, not including padding. */
+u_int
+grid_line_limit(struct grid *gd, u_int py)
+{
+	struct grid_cell	gc;
+	u_int			px;
+
+	px = grid_line_length(gd, py);
+	if (px == 0)
+		return (0);
+	px--;
+	while (px > 0) {
+		grid_get_cell(gd, px, py, &gc);
+		if (~gc.flags & GRID_FLAG_PADDING)
 			break;
 		px--;
 	}
