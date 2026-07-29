@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1416 2026/07/27 19:15:58 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1417 2026/07/29 14:06:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1160,6 +1160,8 @@ struct window_mode {
 	int		 flags;
 #define WINDOW_MODE_HIDE_PANE_STATUS 0x1
 #define WINDOW_MODE_NO_STACK 0x2
+#define WINDOW_MODE_FILL_WINDOW 0x4
+#define WINDOW_MODE_HIDE_SCROLLBARS 0x8
 
 	struct screen	*(*init)(struct window_mode_entry *,
 			     struct cmdq_item *, struct cmd_find_state *,

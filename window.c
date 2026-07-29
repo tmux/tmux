@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.368 2026/07/23 09:38:27 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.369 2026/07/29 14:06:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2449,11 +2449,21 @@ window_pane_mode(struct window_pane *wp)
 int
 window_pane_show_scrollbar(struct window_pane *wp)
 {
+	struct window			*w = wp->window;
+	struct window_mode_entry	*wme;
+
 	if (SCREEN_IS_ALTERNATE(&wp->base))
 		return (0);
-	if (wp->window->sb == PANE_SCROLLBARS_ALWAYS ||
-	    wp->window->sb == PANE_SCROLLBARS_AUTOHIDE ||
-	    (wp->window->sb == PANE_SCROLLBARS_MODAL &&
+	if ((w->flags & WINDOW_ZOOMED) && w->active != NULL) {
+		wme = TAILQ_FIRST(&w->active->modes);
+		if (wme != NULL &&
+		    (wme->mode->flags & WINDOW_MODE_HIDE_SCROLLBARS)) {
+			return (0);
+		}
+	}
+	if (w->sb == PANE_SCROLLBARS_ALWAYS ||
+	    w->sb == PANE_SCROLLBARS_AUTOHIDE ||
+	    (w->sb == PANE_SCROLLBARS_MODAL &&
 	    window_pane_mode(wp) != WINDOW_PANE_NO_MODE))
 		return (1);
 	return (0);
