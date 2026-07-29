@@ -442,16 +442,15 @@ are arguments.
 .Pp
 .Nm
 distinguishes between command parsing and execution.
-In order to execute a command,
-.Nm
-needs it to be split up into its name and arguments.
-This is command parsing.
-If a command is run from the shell, the shell parses it; from inside
+When commands are run from the shell, the shell parses its command line first;
+from inside
 .Nm
 or from a configuration file,
 .Nm
-does.
-Examples of when
+parses the
+.Nm
+command language.
+Examples of places where
 .Nm
 parses commands are:
 .Bl -dash -offset indent
@@ -470,42 +469,60 @@ or
 .Ic confirm\-before .
 .El
 .Pp
-To execute commands, each client has a
-.Ql command queue .
-A global command queue not attached to any client is used on startup
-for configuration files like
-.Pa \[ti]/.tmux.conf .
-Parsed commands added to the queue are executed in order.
-Some commands, like
-.Ic if\-shell
-and
-.Ic confirm\-before ,
-parse their argument to create a new command which is inserted immediately
-after themselves.
-This means that arguments can be parsed twice or more - once when the parent
-command (such as
-.Ic if\-shell )
-is parsed and again when it parses and executes its command.
-Commands like
+Some commands accept other
+.Nm
+commands as arguments.
+For example,
 .Ic if\-shell ,
 .Ic run\-shell
+.Fl C
 and
-.Ic display\-panes
-stop execution of subsequent commands on the queue until something happens -
+.Ic confirm\-before
+take a command to run later.
+That command may be given as a string or as a command list in braces.
+Braces avoid the need for extra escaping when the argument contains
+.Nm
+commands.
+For example:
+.Bd -literal -offset indent
+if\-shell true { display \-p \[aq]it worked\[aq] }
+.Ed
+.Pp
+is equivalent to:
+.Bd -literal -offset indent
+if\-shell true "display \-p \[aq]it worked\[aq]"
+.Ed
+.Pp
+Commands given as strings to commands such as
+.Ic if\-shell ,
+.Ic run\-shell
+.Fl C
+or
+.Ic confirm\-before
+are parsed when they are run.
+Commands given in braces are parsed when the outer command is parsed.
+.Pp
+Commands are executed in order.
+Commands like
 .Ic if\-shell
 and
 .Ic run\-shell
-until a shell command finishes and
+may run other commands before later commands continue.
+Commands such as
+.Ic if\-shell
+and
+.Ic run\-shell
+wait for a shell command to finish before continuing, and
 .Ic display\-panes
-until a key is pressed.
+waits for a key to be pressed.
 For example, the following commands:
 .Bd -literal -offset indent
 new\-session; new\-window
-if\-shell "true" "split\-window"
+if\-shell "true" { split\-window }
 kill\-session
 .Ed
 .Pp
-Will execute
+execute
 .Ic new\-session ,
 .Ic new\-window ,
 .Ic if\-shell ,
@@ -515,6 +532,14 @@ the shell command
 and
 .Ic kill\-session
 in that order.
+.Pp
+Commands separated by semicolons are in the same command sequence.
+If a command fails, any following commands in that sequence are skipped, but
+later command sequences continue.
+Newlines normally start a new command sequence, so a failure on one line does
+not skip commands on later lines.
+When a string argument is parsed as commands, its commands are parsed as one
+sequence even if the string contains newlines.
 .Pp
 The
 .Sx COMMANDS
@@ -532,10 +557,8 @@ or
 .Xr csh 1 .
 .Pp
 Each command is terminated by a newline or a semicolon (;).
-Commands separated by semicolons together form a
-.Ql command sequence
-- if a command in the sequence encounters an error, no subsequent commands are
-executed.
+A newline starts a new command sequence; commands separated by semicolons are
+in the same command sequence.
 .Pp
 It is recommended that a semicolon used as a command separator should be
 written as an individual token, for example from
@@ -604,33 +627,38 @@ comment is ignored until the end of the line.
 If the last character of a line is \e, the line is joined with the following
 line (the \e and the newline are completely removed).
 This is called line continuation and applies both inside and outside quoted
-strings and in comments, but not inside braces.
+strings, in comments and inside braces.
 .Pp
-Command arguments may be specified as strings surrounded by single (\[aq])
-quotes or double quotes (\[dq]), or as command lists surrounded by braces ({}).
+Command arguments may be strings surrounded by single (\[aq]) quotes or double
+quotes (\[dq]).
 .\" "
-This is required when the argument contains any special character.
+Quoting or escaping is required when a string argument contains any special
+character.
 Single and double quoted strings cannot span multiple lines except with line
 continuation.
-Braces can span multiple lines.
+Some arguments may be command lists surrounded by braces ({}).
+Braces can span multiple lines and are parsed as
+.Nm
+command syntax.
 .Pp
-Outside of quotes and inside double quotes, these replacements are performed:
+Outside single quotes, these replacements are recognized:
 .Bl -dash -offset indent
 .It
-Environment variables preceded by $ are replaced with their value from the
-global environment (see the
+Environment variables preceded by $ are replaced when the command is run
+with their value from the client environment, if present, or the global
+environment (see the
 .Sx GLOBAL AND SESSION ENVIRONMENT
 section).
 .It
-A leading \[ti] or \[ti]user is expanded to the home directory of the current or
-specified user.
+A leading \[ti] or \[ti]user is replaced when the command is run by the
+home directory of the current or specified user.
 .It
 \euXXXX or \euXXXXXXXX is replaced by the Unicode codepoint corresponding to
 the given four or eight digit hexadecimal number.
 .It
-When preceded (escaped) by a \e, the following characters are replaced: \ee by
-the escape character; \er by a carriage return; \en by a newline; and \et by a
-tab.
+When preceded (escaped) by a \e, the following characters are replaced: \ea by
+bell; \eb by backspace; \ee by escape; \ef by form feed; \er by carriage
+return; \en by newline; \es by space; \et by tab; and \ev by vertical tab.
 .It
 \eooo is replaced by a character of the octal value ooo.
 Three octal digits are required, for example \e001.
@@ -642,16 +670,12 @@ is removed) and are not treated as having any special meaning - so for example
 variable.
 .El
 .Pp
-Braces are parsed as a configuration file (so conditions such as
-.Ql %if
-are processed) and then converted into a string.
-They are designed to avoid the need for additional escaping when passing a
-group of
+Braces are designed to avoid additional escaping when passing a group of
 .Nm
 commands as an argument (for example to
 .Ic if\-shell ) .
-These two examples produce an identical command - note that no escaping is
-needed when using {}:
+These two examples have the same effect - note that no escaping is needed when
+using {}:
 .Bd -literal -offset indent
 if\-shell true {
     display \-p \[aq]brace\-dollar\-foo: }$foo\[aq]
@@ -673,7 +697,8 @@ Environment variables may be set by using the syntax
 .Ql name=value ,
 for example
 .Ql HOME=/home/user .
-Variables set during parsing are added to the global environment.
+Variables set this way are added to the global environment when the command is
+run.
 A hidden variable may be set with
 .Ql %hidden ,
 for example:
@@ -687,7 +712,7 @@ See the
 .Sx GLOBAL AND SESSION ENVIRONMENT
 section.
 .Pp
-Commands may be parsed conditionally by surrounding them with
+Commands may be made conditional by surrounding them with
 .Ql %if ,
 .Ql %elif ,
 .Ql %else
@@ -697,14 +722,11 @@ The argument to
 .Ql %if
 and
 .Ql %elif
-is expanded as a format (see
+is expanded as a format when it is evaluated (see
 .Sx FORMATS )
-and if it evaluates to false (zero or empty), subsequent text is ignored until
-the closing
-.Ql %elif ,
-.Ql %else
-or
-.Ql %endif .
+and the first true branch is executed.
+Branches which are not selected are not executed.
+All branches must still be syntactically valid.
 For example:
 .Bd -literal -offset indent
 %if "#{==:#{host},myhost}"
@@ -4387,7 +4409,7 @@ to list from.
 .Fl 1
 lists only the first matching key.
 .Fl p
-allows each command to use multiple lines.
+prints each command using multiple lines where possible.
 .Fl O
 specifies the sort order: one of
 .Ql key ,
@@ -4751,10 +4773,16 @@ length.
 .Ar name=value
 .Xc
 This is an array of custom aliases for commands.
-If an unknown command matches
+If a command name matches
 .Ar name ,
-it is replaced with
-.Ar value .
+the alias
+.Ar value
+is parsed as
+.Nm
+commands and used instead.
+Any arguments after
+.Ar name
+are appended to the last command in the alias.
 For example, after:
 .Pp
 .Dl set \-s command\-alias[zoom] zoom=\[aq]resize\-pane \-Z\[aq]
@@ -4767,10 +4795,9 @@ Is equivalent to:
 .Pp
 .Dl resize\-pane \-Z \-t:.1
 .Pp
-Note that aliases are expanded when a command is parsed rather than when it is
-executed, so binding an alias with
-.Ic bind\-key
-will bind the expanded form.
+Aliases are expanded when commands are run, so a change to
+.Ic command\-alias[]
+affects stored commands such as key bindings when they are next run.
 .It Ic codepoint\-widths[] Ar string
 An array option allowing widths of Unicode codepoints to be overridden.
 Note the new width applies to all clients.
