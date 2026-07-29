@@ -35,7 +35,8 @@ static void		 window_panes_key(struct window_mode_entry *,
 
 const struct window_mode window_panes_mode = {
 	.name = "panes-mode",
-	.flags = WINDOW_MODE_HIDE_PANE_STATUS|WINDOW_MODE_NO_STACK,
+	.flags = WINDOW_MODE_HIDE_PANE_STATUS|WINDOW_MODE_NO_STACK|
+	    WINDOW_MODE_FILL_WINDOW|WINDOW_MODE_HIDE_SCROLLBARS,
 
 	.init = window_panes_init,
 	.free = window_panes_free,
