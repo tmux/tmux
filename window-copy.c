@@ -5939,6 +5939,12 @@ window_copy_line_number_mode(struct window_mode_entry *wme)
 static int
 window_copy_line_number_is_absolute(struct window_mode_entry *wme)
 {
+	struct window_copy_mode_data	*data = wme->data;
+
+	if (data->output_gutter &&
+	    window_copy_line_number_mode(wme) ==
+	    WINDOW_COPY_LINE_NUMBERS_DEFAULT)
+		return (1);
 	switch (window_copy_line_number_mode(wme)) {
 	case WINDOW_COPY_LINE_NUMBERS_ABSOLUTE:
 	case WINDOW_COPY_LINE_NUMBERS_RELATIVE:
@@ -6142,7 +6148,10 @@ window_copy_write_line(struct window_mode_entry *wme,
 		if (data->lines != NULL && backing_y < data->line_count)
 			absolute = data->lines[backing_y].source_line + 1;
 		mode = window_copy_line_number_mode(wme);
-		if (mode == WINDOW_COPY_LINE_NUMBERS_DEFAULT) {
+		if (mode == WINDOW_COPY_LINE_NUMBERS_DEFAULT &&
+		    data->output_gutter)
+			line_number = absolute;
+		else if (mode == WINDOW_COPY_LINE_NUMBERS_DEFAULT) {
 			if (py < data->oy)
 				line_number = data->oy - py;
 			else
@@ -7681,8 +7690,7 @@ window_copy_scroll_up(struct window_mode_entry *wme, u_int ny)
 		return;
 	}
 	if (window_copy_line_numbers_active(wme)) {
-		if (window_copy_line_number_mode(wme) !=
-		    WINDOW_COPY_LINE_NUMBERS_ABSOLUTE) {
+		if (!window_copy_line_number_is_absolute(wme)) {
 			window_copy_redraw_screen(wme);
 			return;
 		}
@@ -7752,8 +7760,7 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 		return;
 	}
 	if (window_copy_line_numbers_active(wme)) {
-		if (window_copy_line_number_mode(wme) !=
-		    WINDOW_COPY_LINE_NUMBERS_ABSOLUTE) {
+		if (!window_copy_line_number_is_absolute(wme)) {
 			window_copy_redraw_screen(wme);
 			return;
 		}

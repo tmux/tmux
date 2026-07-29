@@ -63,6 +63,10 @@ capture
 check_grep "!+ p\$ two"
 check_grep "!  p\$ silent"
 check_no_grep "!+ p\$ silent"
+$TMUX2 send -X line-numbers-on || exit 1
+sleep 1
+capture
+check_grep "  3 !+ p\$ two"
 
 # A format wider than the standard three-column gutter is not truncated.
 $TMUX2 send -X cancel || exit 1
