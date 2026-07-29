@@ -723,10 +723,11 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 		 */
 		if (!PANE_BORDER_TYPE_IS_SEPARATE(bctx->border_type)) {
 			if (pane_status == PANE_STATUS_TOP &&
-			    bottom < (int)bctx->w->sy)
+			    bottom < (int)bctx->w->sy) {
 				mark_bottom = 0;
-			else if (pane_status == PANE_STATUS_BOTTOM)
+			} else if (pane_status == PANE_STATUS_BOTTOM) {
 				mark_top = 0;
+			}
 		}
 	}
 
