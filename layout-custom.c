@@ -70,7 +70,7 @@ struct layout_parse_cell_ctx {
 };
 
 struct layout_parse_ctx {
-	int				  version;
+	int64_t				  version;
 	struct layout_cell		 *root;
 	char				**cause;
 
@@ -700,42 +700,41 @@ fail:
  * layout root. Consumes json input.
  */
 static int
-layout_parse_json(struct json_node *json, struct layout_parse_ctx *pctx)
+layout_parse_json(struct json_node *jnroot, struct layout_parse_ctx *pctx)
 {
-	struct json_node	 *field;
+	struct json_node	 *jn, *field, *object;
 	char			**cause = pctx->cause;
 
-	TAILQ_FOREACH(field, &json->val.fields, entry) {
-		switch (field->type) {
-		case NODE_NUMBER:
-			if (json_key_is_eq(field, "V"))
-				pctx->version = field->val.num;
-			break;
-		case NODE_OBJECT:
-			if (json_key_is_eq(field, "L")) {
-				if (pctx->root != NULL) {
-					*cause = xstrdup("duplicate layout");
-					goto fail;
-				}
-				pctx->root = layout_parse_json_layout(field,
-				    NULL, pctx);
-				if (pctx->root == NULL)
-					goto fail;
-			}
-			break;
-		default:
-			break;
-		}
+	if (json_get_object(jnroot, &jn) != 0) {
+		*cause = xstrdup("invalid json");
+		goto fail;
 	}
-	if (pctx->root == NULL) {
+	if ((field = json_find(jn, "V")) == NULL) {
+		*cause = xstrdup("missing version");
+		goto fail;
+	}
+	if (json_get_number(field, &pctx->version) != 0) {
+		*cause = xstrdup("invalid version type");
+		goto fail;
+	}
+	if ((field = json_find(jn, "L")) == NULL) {
 		*cause = xstrdup("missing layout");
 		goto fail;
 	}
-	json_destroy_node(json);
+	if (json_get_object(field, &object) != 0) {
+		*cause = xstrdup("invalid version type");
+		goto fail;
+	}
+	pctx->root = layout_parse_json_layout(object, NULL, pctx);
+	if (pctx->root == NULL)
+		goto fail;
+
+	json_destroy_node(jnroot);
 
 	return (0);
+
 fail:
-	json_destroy_node(json);
+	json_destroy_node(jnroot);
 	if (pctx->root != NULL)
 		layout_free_cell(pctx->root, 0);
 	pctx->root = NULL;
@@ -747,118 +746,110 @@ static struct layout_cell *
 layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
     struct layout_parse_ctx *pctx)
 {
-	struct json_node	*field, *fieldc;
+	struct json_node	*field, *array, *member;
 	struct layout_cell	*lc = layout_create_cell(lcparent), *lcchild;
-	enum layout_type	 type = LAYOUT_WINDOWPANE;
-	const char		*numstr;
-	char			*endptr, *tmp, **cause = pctx->cause;
-	u_int			 sx = UINT_MAX, sy = UINT_MAX;
-	int			 xoff = INT_MAX, yoff = INT_MAX;
-	int			 active = -1, last = -1, id = -1, index = -1;
-	int			 zindex = INT_MAX, numlen;
+	const char		*str;
+	char			*endptr;
+	int64_t			 num;
+	u_int			 id, index, zindex, active = -1, last = -1;
+	int			 boolean;
 
-	TAILQ_FOREACH(field, &node->val.fields, entry) {
-		switch (field->type) {
-		case NODE_NUMBER:
-			if (json_key_is_eq(field, "w"))
-				sx = field->val.num;
-			else if (json_key_is_eq(field, "h"))
-				sy = field->val.num;
-			else if (json_key_is_eq(field, "x"))
-				xoff = field->val.num;
-			else if (json_key_is_eq(field, "y"))
-				yoff = field->val.num;
-			else if (json_key_is_eq(field, "l"))
-				last = field->val.num;
-			else if (json_key_is_eq(field, "i"))
-				index = field->val.num;
-			else if (json_key_is_eq(field, "z")) {
-				zindex = field->val.num;
-				lc->flags |= LAYOUT_CELL_FLOATING;
-			}
-			break;
-		case NODE_BOOLEAN:
-			if (json_key_is_eq(field, "a"))
-				active = field->val.boolean;
-			break;
-		case NODE_STRING:
-			if (json_key_is_eq(field, "t")) {
-				if (json_val_is_eq(field, "h"))
-					type = LAYOUT_LEFTRIGHT;
-				else if (json_val_is_eq(field, "v"))
-					type = LAYOUT_TOPBOTTOM;
-				else if (json_val_is_eq(field, "p"))
-					type = LAYOUT_WINDOWPANE;
-				else {
-					tmp = xstrndup(field->val.jstr.ptr,
-					    field->val.jstr.len);
-					xasprintf(cause, "invalid cell type %s",
-					    tmp);
-					free(tmp);
-					goto fail;
-				}
-				lc->type = type;
-			} else if (json_key_is_eq(field, "I")) {
-				errno = 0;
-				numstr = field->val.jstr.ptr;
-				numlen = field->val.jstr.len;
-				if (*numstr != '%') {
-					xasprintf(cause, "pane id must be "
-					    "prefixed by '%%'");
-					goto fail;
-				}
-				id = strtol(numstr + 1, &endptr, 10);
-				if (errno != 0 || endptr != numstr + numlen) {
-					tmp = xstrndup(numstr, numlen);
-					xasprintf(cause, "invalid pane id: %s",
-					    tmp);
-					free(tmp);
-					goto fail;
-				}
-			}
-			break;
-		case NODE_ARRAY:
-			if (!json_key_is_eq(field, "c"))
-				break;
-			TAILQ_FOREACH(fieldc, &field->val.fields, entry) {
-				lcchild = layout_parse_json_layout(fieldc, lc,
-				    pctx);
-				if (lcchild == NULL)
-					goto fail;
-				TAILQ_INSERT_TAIL(&lc->cells, lcchild, entry);
-			}
-			break;
-		default:
-			break;
+	if ((field = json_find(node, "t")) == NULL)
+		goto fail;
+	if (json_get_string(field, &str) != 0)
+		goto fail;
+	if (strcmp(str, "p") == 0)
+		lc->type = LAYOUT_WINDOWPANE;
+	else if (strcmp(str, "v") == 0)
+		lc->type = LAYOUT_TOPBOTTOM;
+	else if (strcmp(str, "h") == 0)
+		lc->type = LAYOUT_LEFTRIGHT;
+	else
+		goto fail;
+
+	if ((field = json_find(node, "w")) == NULL)
+		goto fail;
+	if (json_get_number(field, &num) != 0)
+		goto fail;
+	lc->g.sx = num;
+
+	if ((field = json_find(node, "h")) == NULL)
+		goto fail;
+	if (json_get_number(field, &num) != 0)
+		goto fail;
+	lc->g.sy = num;
+
+	if ((field = json_find(node, "x")) == NULL)
+		goto fail;
+	if (json_get_number(field, &num) != 0)
+		goto fail;
+	lc->g.xoff = num;
+
+	if ((field = json_find(node, "y")) == NULL)
+		goto fail;
+	if (json_get_number(field, &num) != 0)
+		goto fail;
+	lc->g.yoff = num;
+
+	if (lc->type == LAYOUT_WINDOWPANE) {
+		if ((field = json_find(node, "I")) == NULL)
+			goto fail;
+		if (json_get_string(field, &str) != 0)
+			goto fail;
+		errno = 0;
+		if (*str != '%') {
+			goto fail;
 		}
-	}
-	if (type == LAYOUT_WINDOWPANE && !TAILQ_EMPTY(&lc->cells)) {
-		xasprintf(cause, "pane cells cannot have children");
-		goto fail;
-	} else if (type != LAYOUT_WINDOWPANE && TAILQ_EMPTY(&lc->cells)) {
-		xasprintf(cause, "non-pane cells must have children");
-		goto fail;
-	}
+		id = strtol(str + 1, &endptr, 10);
+		if (errno != 0 || endptr != str + strlen(str)) {
+			goto fail;
+		}
+		if ((field = json_find(node, "i")) == NULL)
+			goto fail;
+		if (json_get_number(field, &num) != 0)
+			goto fail;
+		index = num;
 
-	if (sx == UINT_MAX || sy == UINT_MAX || xoff == INT_MAX ||
-	    yoff == INT_MAX) {
-		xasprintf(cause, "cell geometry must be fully specified");
-		goto fail;
-	}
+		if ((field = json_find(node, "a")) != NULL) {
+			if (json_get_boolean(field, &boolean) != 0)
+				goto fail;
+			active = boolean;
+		} else if ((field = json_find(node, "l")) != NULL) {
+			if (json_get_number(field, &num) != 0)
+				goto fail;
+			last = num;
+		}
 
-	layout_set_size(lc, sx, sy, xoff, yoff);
-	if (lc->type == LAYOUT_WINDOWPANE)
+		if ((field = json_find(node, "z")) != NULL) {
+			if (json_get_number(field, &num) != 0)
+				goto fail;
+			zindex = num;
+			lc->flags |= LAYOUT_CELL_FLOATING;
+		} else
+			zindex = INT_MAX;
+
 		layout_parse_add_cctx(pctx, lc, active, last, id, index,
 		    zindex);
-	return (lc);
-fail:
-	/*
-	 * Ensure the children are freed if the child field is parsed and fails
-	 * before the layout type is set.
-	 */
-	if (type == LAYOUT_WINDOWPANE && !TAILQ_EMPTY(&lc->cells))
-		lc->type = LAYOUT_TOPBOTTOM;
+	} else {
+		if ((field = json_find(node, "c")) == NULL)
+			goto fail;
+		if (json_get_array(field, &array) != 0)
+			goto fail;
+		if ((member = json_array_first(array)) == NULL)
+			goto fail;
+		while (member != NULL) {
+			lcchild = layout_parse_json_layout(member, lc,
+				pctx);
+			if (lcchild == NULL)
+				goto fail;
+			TAILQ_INSERT_TAIL(&lc->cells, lcchild, entry);
+			member = json_array_next(member);
+		}
+	}
 
+	return (lc);
+
+fail:
 	layout_free_cell(lc, 0);
 	return (NULL);
 }
