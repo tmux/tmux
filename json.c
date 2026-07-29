@@ -1,3 +1,5 @@
+/* $OpenBSD$ */
+
 /*
  * Copyright (c) 2026 Dane Jensen <dhcjensen@gmail.com>
  *
@@ -42,14 +44,47 @@ enum json_token_type {
 
 /* JSON token. */
 struct json_token {
-	enum json_token_type	type;
-	struct json_string	val;
+	enum json_token_type	 type;
+	const char		*loc;
+	int			 len;
 };
 
 /* JSON tokens. */
 struct json_tokens {
 	struct json_token	*toks;
 	int			 size;
+};
+
+/* JSON node type. */
+enum json_node_type {
+	NODE_STRING,
+	NODE_NUMBER,
+	NODE_BOOLEAN,
+	NODE_OBJECT,
+	NODE_ARRAY
+};
+
+/* JSON field tree. */
+RB_HEAD(json_fields, json_node);
+
+/* JSON array queue. */
+TAILQ_HEAD(json_members, json_node);
+
+/* JSON node. */
+struct json_node {
+	enum json_node_type		 type;
+	const char			*key;
+	const char			*loc;
+	struct json_node		*parent;
+	union {
+		const char		*str;
+		int64_t			 num;
+		int			 boolean;
+		struct json_fields	 fields;
+		struct json_members	 members;
+	} val;
+	RB_ENTRY(json_node)		 oentry;
+	TAILQ_ENTRY(json_node)		 aentry;
 };
 
 static struct json_tokens *json_tokenize_input(const char *, char **);
@@ -66,18 +101,117 @@ static struct json_node	*json_create_node(struct json_node *,
 			     const void *);
 static void		 json_assign_value(struct json_node *, const void *);
 static struct json_node *json_parse_tokens(struct json_tokens **, char **);
-static int		 json_parse_key(struct json_token **,
-			     struct json_string *, char **);
-static struct json_node	*json_parse_object(struct json_token **,
-			     struct json_node *, struct json_string *, char **);
-static struct json_node	*json_parse_array(struct json_token **,
-			     struct json_node *, struct json_string *, char **);
-static struct json_node	*json_parse_string(struct json_token **,
-			     struct json_node *, struct json_string *, char **);
-static struct json_node	*json_parse_number(struct json_token **,
-			     struct json_node *, struct json_string *, char **);
-static struct json_node	*json_parse_boolean(struct json_token **,
-			     struct json_node *, struct json_string *, char **);
+static int		 json_parse_key(struct json_token **, const char **,
+			     char **);
+static struct json_node	*json_parse_object(struct json_token **, const char *,
+			     struct json_node *, char **);
+static struct json_node	*json_parse_array(struct json_token **, const char *,
+			     struct json_node *, char **);
+static struct json_node	*json_parse_string(struct json_token **, const char *,
+			     struct json_node *, char **);
+static struct json_node	*json_parse_number(struct json_token **, const char *,
+			     struct json_node *, char **);
+static struct json_node	*json_parse_boolean(struct json_token **, const char *,
+			     struct json_node *, char **);
+static int		 json_node_cmp(struct json_node *, struct json_node *);
+RB_GENERATE_STATIC(json_fields, json_node, oentry, json_node_cmp);
+
+static int
+json_node_cmp(struct json_node *a, struct json_node *b)
+{
+	return (strcmp(a->key, b->key));
+}
+
+/* Parse an input string into JSON. */
+struct json_node *
+json_parse(const char *input, char **cause)
+{
+	struct json_tokens	*tokens;
+
+	if ((tokens = json_tokenize_input(input, cause)) == NULL)
+		return (NULL);
+
+	return (json_parse_tokens(&tokens, cause));
+}
+
+struct json_node *
+json_find(struct json_node *jn, const char *key)
+{
+	struct json_node	tmp = { 0 };
+
+	if (jn->type != NODE_OBJECT)
+		return (NULL);
+
+	tmp.key = key;
+	return (RB_FIND(json_tree, jn, &tmp));
+}
+
+struct json_node *
+json_array_first(struct json_node *jn)
+{
+	if (jn->type != NODE_ARRAY)
+		return (NULL);
+
+	return (TAILQ_FIRST(&jn->val.members));
+}
+
+struct json_node *
+json_array_next(struct json_node *jn)
+{
+	if (jn->parent->type != NODE_ARRAY)
+		return (NULL);
+
+	return (TAILQ_NEXT(jn, aentry));
+}
+
+int
+json_get_string(struct json_node *jn, const char **s)
+{
+	if (jn->type != NODE_STRING)
+		return (-1);
+
+	*s = xstrdup(jn->val.str);
+	return (0);
+}
+
+int
+json_get_number(struct json_node *jn, const int *)
+{
+	if (jn->type != NODE_NUMBER)
+		return (-1);
+
+	*i = jn->val.num;
+	return (0);
+}
+
+int
+json_get_boolean(struct json_node *jn, const int *b)
+{
+	if (jn->type != NODE_BOOLEAN)
+		return (-1);
+
+	*b = jn->val.boolean;
+	return (0);
+}
+
+int
+json_get_object(struct json_node *jn, const struct json_node **o)
+{
+	if (jn->type != NODE_OBJECT)
+		return (-1);
+
+	*o = jn->val.fields;
+	return (0);
+}
+int
+json_get_array(struct json_node *jn, const struct json_node **a)
+{
+	if (jn->type != NODE_ARRAY)
+		return (-1);
+
+	*a = jn->val.members;
+	return (0);
+}
 
 /* Fill an error cause. */
 static void
@@ -101,36 +235,21 @@ json_error(char **cause, const char *reason, const char *input)
 	xasprintf(cause, "%s: %.*s%s", reason, ERROR_CTX_LEN, input, ellipsis);
 }
 
-/* Wrapper for string views with strcmp semantics. */
-static int
-jstrcmp(const struct json_string *jstr, const char *s)
-{
-	size_t	slen;
-
-	slen = strlen(s);
-	if ((size_t)jstr->len < slen)
-		return (-1);
-	if ((size_t)jstr->len > slen)
-		return (1);
-
-	return (memcmp(jstr->ptr, s, jstr->len));
-}
-
 /* Tokenize the json string. */
 static struct json_tokens *
 json_tokenize_input(const char *input, char **cause)
 {
 	struct json_tokens	*tokens = json_create_tokens();
 	enum json_token_type	 type;
-	struct json_string	 jstr;
+	const char		*loc;
 	int			 scan;
 
 	while (*input != '\0') {
 		if (tokens->size >= TOKENS_MAX)
 			goto fail;
 
-		jstr.ptr = input;
-		jstr.len = 1;
+		loc = input;
+		scan = 1;
 
 		switch (*input) {
 		case ' ':
@@ -162,20 +281,21 @@ json_tokenize_input(const char *input, char **cause)
 			break;
 		default:
 			type = TOK_VALUE;
-			scan = json_tokenize_value(tokens, input, &jstr);
+			scan = json_tokenize_value(tokens, loc);
 			if (scan == -1)
 				goto fail;
 			input += scan - 1;
 		}
-		if (json_add_token(tokens, type, &jstr) != 0)
+		if (json_add_token(tokens, type, loc, scan) != 0)
 			goto fail;
 
 		input++;
 	}
-	if (json_add_token(tokens, TOK_EOF, NULL) != 0)
+	if (json_add_token(tokens, TOK_EOF, NULL, 0) != 0)
 		goto fail;
 
 	return (tokens);
+
 fail:
 	json_error(cause, "tokenization error", input);
 	json_free_tokens(tokens);
@@ -187,8 +307,7 @@ fail:
  * numbers/booleans are terminated by a ',', ']', '}', or whitespace.
  */
 static int
-json_tokenize_value(struct json_tokens *tokens, const char *input,
-    struct json_string *jstr)
+json_tokenize_value(struct json_tokens *tokens, const char *loc)
 {
 	const struct json_token	*prev = json_tokens_tail(tokens);
 	int			 scan = 0, escaping = 0;
@@ -197,26 +316,23 @@ json_tokenize_value(struct json_tokens *tokens, const char *input,
 		return (-1);
 	if (prev->type == TOK_QUOTE) {
 		do {
-			if (input[scan] == '\0')
+			if (loc[scan] == '\0')
 				return (-1);
-			if (input[scan] == '\\' && !escaping)
+			if (loc[scan] == '\\' && !escaping)
 				escaping = 1;
 			else if (escaping)
 				escaping = 0;
 			scan++;
-		} while (input[scan] != '"' || escaping);
+		} while (loc[scan] != '"' || escaping);
 	} else if (prev->type == TOK_COLON) {
 		do {
-			if (input[scan] == '\0')
+			if (loc[scan] == '\0')
 				return (-1);
 			scan++;
-		} while (input[scan] != ']' && input[scan] != '}' &&
-		    input[scan] != ',' && !isspace((u_char) input[scan]));
+		} while (loc[scan] != ']' && loc[scan] != '}' &&
+		    loc[scan] != ',' && !isspace((u_char) loc[scan]));
 	} else
 		return (-1);
-
-	jstr->ptr = input;
-	jstr->len = scan;
 
 	return (scan);
 }
@@ -246,7 +362,7 @@ json_free_tokens(struct json_tokens *tokens)
 /* Add a token to tokens. */
 static int
 json_add_token(struct json_tokens *tokens, enum json_token_type type,
-    struct json_string *jstr)
+    const char *loc, int len)
 {
 	struct json_token	*tok;
 
@@ -255,13 +371,8 @@ json_add_token(struct json_tokens *tokens, enum json_token_type type,
 
 	tok = &tokens->toks[tokens->size++];
 	tok->type = type;
-	if (jstr != NULL) {
-		tok->val.ptr = jstr->ptr;
-		tok->val.len = jstr->len;
-	} else {
-		tok->val.ptr = NULL;
-		tok->val.len = 0;
-	}
+	tok->loc = loc;
+	tok->len = len;
 
 	return (0);
 }
@@ -278,36 +389,67 @@ json_tokens_tail(struct json_tokens *tokens)
 /* Create a node and assign given values. */
 static struct json_node *
 json_create_node(struct json_node *parent, enum json_node_type type,
-    struct json_string *key, const void *val)
+    const char *key, const char *loc, const void *val)
 {
 	struct json_node	*node;
 
 	node = xcalloc(1, sizeof *node);
 	node->parent = parent;
-	if (key != NULL) {
-		node->key.ptr = key->ptr;
-		node->key.len = key->len;
-	}
+	node->key = key;
+	node->loc = loc;
 	node->type = type;
-	TAILQ_INIT(&node->val.fields);
+	RB_INIT(&node->val.fields);
 	if (val != NULL)
 		json_assign_value(node, val);
 
 	return (node);
 }
 
+/* Destroy a node and all of the node's fields. */
+void
+json_destroy_node(struct json_node *node)
+{
+	struct json_node	*field, *field1, *member;
+
+	if (node == NULL)
+		return;
+
+	switch (node->type) {
+	case NODE_STRING:
+		free(node->val.str);
+		break;
+	case NODE_NUMBER:
+	case NODE_BOOLEAN:
+		break;
+	case NODE_OBJECT:
+		RB_FOREACH_SAFE(field, json_tree, &node->val.fields, field1) {
+			RB_REMOVE(json_tree, &node->val.fields, field);
+			json_destroy_node(field);
+			free(field);
+		}
+	case NODE_ARRAY:
+		while (!TAILQ_EMPTY(&node->val.members)) {
+			member = TAILQ_FIRST(&node->val.members);
+			TAILQ_REMOVE(&node->val.members, member, aentry);
+			json_destroy_node(member);
+		}
+		break;
+	}
+
+	if (node->key != NULL)
+		free(node->key);
+	free(node);
+}
+
 /* Assign a value to a node. */
 static void
 json_assign_value(struct json_node *node, const void *val)
 {
-	struct json_node	*child;
-	struct json_string	*jstr;
+	struct json_node	*child = (struct json_node *)val;
 
 	switch (node->type) {
 	case NODE_STRING:
-		jstr = (struct json_string *)val;
-		node->val.jstr.ptr = jstr->ptr;
-		node->val.jstr.len = jstr->len;
+		node->val.str = (const char *)val;
 		break;
 	case NODE_NUMBER:
 		node->val.num = *(int64_t *)val;
@@ -316,52 +458,14 @@ json_assign_value(struct json_node *node, const void *val)
 		node->val.boolean = *(int *)val;
 		break;
 	case NODE_OBJECT:
+		RB_INSERT(json_tree, &node->val.fields, child);
+		break;
 	case NODE_ARRAY:
-		child = (struct json_node *)val;
-		TAILQ_INSERT_TAIL(&node->val.fields, child, entry);
+		TAILQ_INSERT_TAIL(&node->val.members, child, aentry);
 		break;
 	default:
 		fatalx("unknown node type");
 	}
-}
-
-/* Destroy a node and all of the node's fields. */
-void
-json_destroy_node(struct json_node *node)
-{
-	struct json_node	*field;
-
-	if (node == NULL)
-		return;
-
-	switch (node->type) {
-	case NODE_STRING:
-	case NODE_NUMBER:
-	case NODE_BOOLEAN:
-		break;
-	case NODE_OBJECT:
-	case NODE_ARRAY:
-		while (!TAILQ_EMPTY(&node->val.fields)) {
-			field = TAILQ_FIRST(&node->val.fields);
-			TAILQ_REMOVE(&node->val.fields, field, entry);
-			json_destroy_node(field);
-		}
-		break;
-	}
-
-	free(node);
-}
-
-/* Parse an input string into JSON. */
-struct json_node *
-json_parse(const char *input, char **cause)
-{
-	struct json_tokens	*tokens;
-
-	if ((tokens = json_tokenize_input(input, cause)) == NULL)
-		return (NULL);
-
-	return (json_parse_tokens(&tokens, cause));
 }
 
 /* Parse a stream of tokens into nodes. Consumes the tokens. */
@@ -374,7 +478,7 @@ json_parse_tokens(struct json_tokens **tokens, char **cause)
 	if (toks->type == TOK_OPENOBJECT)
 		json = json_parse_object(&toks, NULL, NULL, cause);
 	else {
-		json_error(cause, "expected object", toks->val.ptr);
+		json_error(cause, "expected object", toks->loc);
 		goto fail;
 	}
 
@@ -382,13 +486,14 @@ json_parse_tokens(struct json_tokens **tokens, char **cause)
 		goto fail;
 
 	if (toks->type != TOK_EOF) {
-		json_error(cause, "unexpected trailing data", toks->val.ptr);
+		json_error(cause, "unexpected trailing data", toks->loc);
 		goto fail;
 	}
 	json_free_tokens(*tokens);
 	*tokens = NULL;
 
 	return (json);
+
 fail:
 	if (json != NULL)
 		json_destroy_node(json);
@@ -399,39 +504,41 @@ fail:
 
 /* Parse and return a key string, and advance the token pointer. */
 static int
-json_parse_key(struct json_token **toks, struct json_string *jstr,
-    char **cause)
+json_parse_key(struct json_token **toks, const char **key, char **cause)
 {
-	const char	*start = (*toks)->val.ptr;
+	const char	*loc;
+	int		 len;
 
 	if ((*toks)->type != TOK_QUOTE)
 		goto fail;
 	(*toks)++;
+
+	loc = (*toks)->loc;
+	len = (*toks)->len;
+
 	if ((*toks)->type != TOK_VALUE)
 		goto fail;
-
-	jstr->ptr = (*toks)->val.ptr;
-	jstr->len = (*toks)->val.len;
-
 	(*toks)++;
 	if ((*toks)->type != TOK_QUOTE)
 		goto fail;
 
+	*key = xstrndup(loc, len);
 	(*toks)++;
 
 	return (0);
+
 fail:
-	json_error(cause, "invalid key", start);
+	json_error(cause, "invalid key", loc);
 	return (-1);
 }
 
 /* Parse an object value, return the node, and advance the token pointer. */
 static struct json_node *
-json_parse_object(struct json_token **toks, struct json_node *parent,
-    struct json_string *key, char **cause)
+json_parse_object(struct json_token **toks, const char *key,
+    struct json_node *parent, char **cause)
 {
 	struct json_node	*object, *field;
-	struct json_string	 fkey, *val;
+	const char *		*fkey = NULL;
 	u_char			*valstr;
 
 	if ((*toks)->type != TOK_OPENOBJECT)
@@ -443,7 +550,7 @@ json_parse_object(struct json_token **toks, struct json_node *parent,
 		if (json_parse_key(toks, &fkey, cause) != 0)
 			goto fail;
 		if ((*toks)->type != TOK_COLON) {
-			json_error(cause, "missing colon", (*toks)->val.ptr);
+			json_error(cause, "missing colon", (*toks)->loc);
 			goto fail;
 		}
 		(*toks)++;
@@ -453,20 +560,14 @@ json_parse_object(struct json_token **toks, struct json_node *parent,
 			field = json_parse_string(toks, object, &fkey, cause);
 			break;
 		case TOK_VALUE:
-			val = &(*toks)->val;
-			valstr = (u_char *)val->ptr;
-			if (jstrcmp(val, "true") == 0 ||
-			    jstrcmp(val, "false") == 0) {
+			valstr = (u_char *)(*toks)->loc;
+			if ((*valstr == '-' && isdigit(valstr[1])) ||
+			    isdigit(*valstr)) {
 				field = json_parse_boolean(toks, object, &fkey,
 				    cause);
-			} else if ((*valstr == '-' && isdigit(valstr[1])) ||
-			    isdigit(*valstr)) {
+			} else
 				field = json_parse_number(toks, object, &fkey,
 				    cause);
-			} else {
-				json_error(cause, "invalid value", val->ptr);
-				goto fail;
-			}
 			break;
 		case TOK_OPENOBJECT:
 			field = json_parse_object(toks, object, &fkey, cause);
@@ -476,7 +577,7 @@ json_parse_object(struct json_token **toks, struct json_node *parent,
 			break;
 		default:
 			json_error(cause, "unsupported object token",
-			    (*toks)->val.ptr);
+			    (*toks)->loc);
 			goto fail;
 		}
 		if (field == NULL)
@@ -486,17 +587,18 @@ json_parse_object(struct json_token **toks, struct json_node *parent,
 		if ((*toks)->type == TOK_COMMA) {
 			if ((*toks)[1].type == TOK_CLOSEOBJECT) {
 				json_error(cause, "invalid object",
-				    (*toks)->val.ptr);
+				    (*toks)->loc);
 				goto fail;
 			}
 			(*toks)++;
 		} else if ((*toks)->type != TOK_CLOSEOBJECT) {
-			json_error(cause, "invalid object", (*toks)->val.ptr);
+			json_error(cause, "invalid object", (*toks)->loc);
 			goto fail;
 		}
 	}
 	(*toks)++;
 	return (object);
+
 fail:
 	json_destroy_node(object);
 	return (NULL);
@@ -504,8 +606,8 @@ fail:
 
 /* Parse an array value, return the node, and advance the token pointer. */
 static struct json_node *
-json_parse_array(struct json_token **toks, struct json_node *parent,
-    struct json_string *key, char **cause)
+json_parse_array(struct json_token **toks, const char *key,
+    struct json_node *parent, char **cause)
 {
 	struct json_node	*array;
 	struct json_node	*member;
@@ -521,8 +623,7 @@ json_parse_array(struct json_token **toks, struct json_node *parent,
 			member = json_parse_object(toks, array, NULL, cause);
 			break;
 		default:
-			json_error(cause, "invalid array member",
-			    (*toks)->val.ptr);
+			json_error(cause, "invalid array member", (*toks)->loc);
 			goto fail;
 		}
 		if (member == NULL)
@@ -532,18 +633,18 @@ json_parse_array(struct json_token **toks, struct json_node *parent,
 
 		if ((*toks)->type == TOK_COMMA) {
 			if ((*toks)[1].type == TOK_CLOSEARRAY) {
-				json_error(cause, "invalid array",
-				    (*toks)->val.ptr);
+				json_error(cause, "invalid array", (*toks)->loc);
 				goto fail;
 			}
 			(*toks)++;
 		} else if ((*toks)->type != TOK_CLOSEARRAY) {
-			json_error(cause, "invalid array", (*toks)->val.ptr);
+			json_error(cause, "invalid array", (*toks)->loc);
 			goto fail;
 		}
 	}
 	(*toks)++;
 	return (array);
+
 fail:
 	json_destroy_node(array);
 	return (NULL);
@@ -551,11 +652,10 @@ fail:
 
 /* Parse a string value, return the node, and advance the token pointer. */
 static struct json_node *
-json_parse_string(struct json_token **toks, struct json_node *parent,
-    struct json_string *key, char **cause)
+json_parse_string(struct json_token **toks, const char *key,
+    struct json_node *parent, char **cause)
 {
-	struct json_string	*val;
-	const char		*start = (*toks)->val.ptr;
+	const char		*str, *start = (*toks)->loc;
 
 	if ((*toks)->type != TOK_QUOTE)
 		goto fail;
@@ -563,14 +663,17 @@ json_parse_string(struct json_token **toks, struct json_node *parent,
 	if ((*toks)->type != TOK_VALUE)
 		goto fail;
 
-	val = &(*toks)->val;
+	str = (*toks)->loc;
+	len = (*toks)->len
 	(*toks)++;
 
 	if ((*toks)->type != TOK_QUOTE)
 		goto fail;
 	(*toks)++;
 
-	return (json_create_node(parent, NODE_STRING, key, val));
+	str = xstrndup(str, len);
+	return (json_create_node(parent, NODE_STRING, key, str));
+
 fail:
 	json_error(cause, "invalid string", start);
 	return (NULL);
@@ -578,20 +681,21 @@ fail:
 
 /* Parse a number value, return the node, and advance the token pointer. */
 static struct json_node *
-json_parse_number(struct json_token **toks, struct json_node *parent,
-    struct json_string *key, char **cause)
+json_parse_number(struct json_token **toks, const char *key,
+    struct json_node *parent, char **cause)
 {
-	const char	*numstr = (*toks)->val.ptr;
+	const char	*numstr = (*toks)->loc;
 	char		*endptr;
-	int64_t		 val;
+	int64_t		 num;
 
 	errno = 0;
-	val = strtoll(numstr, &endptr, 10);
-	if (errno != 0 || endptr != numstr + (*toks)->val.len)
+	num = strtoll(numstr, &endptr, 10);
+	if (errno != 0 || endptr != numstr + (*toks)->len)
 		goto fail;
 	(*toks)++;
 
-	return (json_create_node(parent, NODE_NUMBER, key, &val));
+	return (json_create_node(parent, NODE_NUMBER, key, &num));
+
 fail:
 	json_error(cause, "invalid number", numstr);
 	return (NULL);
@@ -599,48 +703,24 @@ fail:
 
 /* Parse a boolean value, return the node, and advance the token pointer. */
 static struct json_node *
-json_parse_boolean(struct json_token **toks, struct json_node *parent,
-    struct json_string *key, char **cause)
+json_parse_boolean(struct json_token **toks, const char *key,
+    struct json_node *parent, char **cause)
 {
-	const char	*start = (*toks)->val.ptr;
-	int		 val;
+	const char	*start = (*toks)->loc;
+	int		 len = (*toks)->len, boolean;
 
-	if (jstrcmp(&(*toks)->val, "true") == 0)
-		val = 1;
-	else if (jstrcmp(&(*toks)->val, "false") == 0)
-		val = 0;
+	if (strncmp(start, "true") == 0)
+		boolean = 1;
+	else if (strncmp(start, "false") == 0)
+		boolean = 0;
 	else
 		goto fail;
 
 	(*toks)++;
 
-	return (json_create_node(parent, NODE_BOOLEAN, key, &val));
+	return (json_create_node(parent, NODE_BOOLEAN, key, &boolean));
+
 fail:
 	json_error(cause, "invalid boolean", start);
 	return (NULL);
-}
-
-/* Return 1 when the node's key is equal to the parameter. */
-int
-json_key_is_eq(const struct json_node *field, const char *key)
-{
-	return (jstrcmp(&field->key, key) == 0);
-}
-
-/* Return 1 when the node's value is equal to the parameter. */
-int
-json_val_is_eq(const struct json_node *field, const void *val)
-{
-	switch (field->type) {
-	case NODE_STRING:
-		return (jstrcmp(&field->val.jstr, val) == 0);
-	case NODE_NUMBER:
-		return (field->val.num == *(int64_t *)val);
-	case NODE_BOOLEAN:
-		return (field->val.boolean == *(int *)val);
-	case NODE_OBJECT:
-	case NODE_ARRAY:
-		fatalx("cannot compare object or array");
-	}
-	return (0);
 }

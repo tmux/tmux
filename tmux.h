@@ -60,6 +60,7 @@ struct input_ctx;
 struct input_request;
 struct input_requests;
 struct job;
+struct json_node;
 struct menu_data;
 struct mode_tree_data;
 struct mouse_event;
@@ -1581,38 +1582,6 @@ struct layout_cell {
 	struct layout_cells	 cells;
 
 	TAILQ_ENTRY(layout_cell) entry;
-};
-
-/* JSON string view. */
-struct json_string {
-	const char	*ptr;
-	int		 len;
-};
-
-/* JSON node type. */
-enum json_node_type {
-	NODE_STRING,
-	NODE_NUMBER,
-	NODE_BOOLEAN,
-	NODE_OBJECT,
-	NODE_ARRAY
-};
-
-/* JSON node queue. */
-TAILQ_HEAD(json_nodes, json_node);
-
-/* JSON node. */
-struct json_node {
-	struct json_node		*parent;
-	struct json_string		 key;
-	enum json_node_type		 type;
-	union {
-		struct json_string	 jstr;
-		int64_t			 num;
-		int			 boolean;
-		struct json_nodes	 fields;
-	} val;
-	TAILQ_ENTRY(json_node)		 entry;
 };
 
 /* Environment variable. */
@@ -4282,7 +4251,15 @@ void			 hyperlinks_free(struct hyperlinks *);
 /* json.c */
 struct json_node	*json_parse(const char *, char **);
 void			 json_destroy_node(struct json_node *);
-int			 json_key_is_eq(const struct json_node *, const char *);
-int			 json_val_is_eq(const struct json_node *, const void *);
+struct json_node	*json_array_next(struct json_node *);
+int			 json_get_string(struct json_node *, const char **);
+int			 json_get_number(struct json_node *, const int *);
+int			 json_get_boolean(struct json_node *, const int *);
+int			 json_get_object(struct json_node *,
+			     const struct json_node **);
+int			 json_get_array(struct json_node *,
+			     const struct json_node **);
+struct json_node	*json_find(struct json_node *, const char *);
+struct json_node	*json_array_first(struct json_node *);
 
 #endif /* TMUX_H */
