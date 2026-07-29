@@ -39,6 +39,8 @@ $TMUX2 new-session -d -x80 -y10 \
 	exit 1
 $TMUX2 set -g status off || exit 1
 $TMUX2 set -g copy-mode-position-format '#[align=left]POS' || exit 1
+$TMUX2 list-keys -Tcopy-mode O | grep -Fq 'fold-view-toggle' || exit 1
+$TMUX2 list-keys -Tcopy-mode-vi O | grep -Fq 'fold-view-toggle' || exit 1
 
 $TMUX new-session -d -x80 -y10 || exit 1
 $TMUX set -g status off || exit 1
@@ -67,6 +69,17 @@ $TMUX2 send -X line-numbers-on || exit 1
 sleep 1
 capture
 check_grep "  3 !+ p\$ two"
+$TMUX2 send -X fold-view-toggle || exit 1
+[ "$($TMUX2 display -p '#{copy_fold_view}')" = 0 ] || exit 1
+sleep 1
+capture
+check_grep "out2"
+check_no_grep "!+ p\$ two"
+$TMUX2 send -X fold-view-toggle || exit 1
+[ "$($TMUX2 display -p '#{copy_fold_view}')" = 1 ] || exit 1
+sleep 1
+capture
+check_grep "  3 !- p\$ two"
 
 # A format wider than the standard three-column gutter is not truncated.
 $TMUX2 send -X cancel || exit 1

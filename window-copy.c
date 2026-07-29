@@ -83,6 +83,8 @@ static int	window_copy_set_output(struct window_mode_entry *, int, int,
 		    u_int, int);
 static int	window_copy_find_output(struct window_mode_entry *, u_int,
 		    u_int *, u_int *);
+static void	window_copy_cursor_source(struct window_mode_entry *, u_int *,
+		    u_int *);
 static int	window_copy_restore_cursor(struct window_mode_entry *, u_int,
 		    u_int);
 static int	window_copy_restore_command_end(struct window_mode_entry *,
@@ -1550,6 +1552,7 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 	format_add(ft, "copy_position_limit", "%u", limit);
 	format_add(ft, "copy_line_numbers", "%d",
 	    window_copy_line_numbers_active(wme));
+	format_add(ft, "copy_fold_view", "%d", data->output_controls);
 	format_add(ft, "refresh_active", "%d", data->refresh_active);
 	format_add(ft, "rectangle_toggle", "%d", data->rectflag);
 
@@ -3623,6 +3626,36 @@ window_copy_cmd_line_numbers_toggle(struct window_copy_cmd_state *cs)
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
+static enum window_copy_cmd_action
+window_copy_cmd_fold_view_toggle(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct window_copy_mode_data	*data = wme->data;
+	u_int				 source_x, source_y, hsize;
+
+	if (data->source == NULL)
+		return (WINDOW_COPY_CMD_NOTHING);
+	window_copy_cursor_source(wme, &source_x, &source_y);
+	memset(data->outputs, 0, data->output_count * sizeof *data->outputs);
+	data->top_output = 0;
+	data->output_controls = !data->output_controls;
+	window_copy_clear_selection(wme);
+	window_copy_clear_marks(wme);
+	window_copy_rebuild_backing(wme);
+	if (window_copy_restore_cursor(wme, source_x, source_y))
+		return (WINDOW_COPY_CMD_REDRAW);
+
+	hsize = screen_hsize(data->backing);
+	if (source_y < hsize) {
+		data->cy = 0;
+		data->oy = hsize - source_y;
+	} else {
+		data->cy = source_y - hsize;
+		data->oy = 0;
+	}
+	return (WINDOW_COPY_CMD_REDRAW);
+}
+
 static int
 window_copy_find_output(struct window_mode_entry *wme, u_int target,
     u_int *prompt, u_int *chosen)
@@ -4226,6 +4259,12 @@ static const struct {
 	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
 	  .f = window_copy_cmd_line_numbers_toggle
+	},
+	{ .command = "fold-view-toggle",
+	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_fold_view_toggle
 	},
 	{ .command = "collapse-output",
 	  .args = { "a", 0, 0, NULL },

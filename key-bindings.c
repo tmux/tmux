@@ -50,6 +50,7 @@
 	" '#{?#{m/r:(copy|view)-mode,#{pane_mode}},Go To Bottom,}' '>' {send -X history-bottom}" \
 	" ''" \
 	" '#{?#{==:#{pane_mode},copy-mode},#{?copy_line_numbers,Hide Line Numbers,Show Line Numbers},}' 'L' {send -X line-numbers-toggle}" \
+	" '#{?#{==:#{pane_mode},copy-mode},#{?copy_fold_view,Fold View Off,Fold View On},}' 'O' {send -X fold-view-toggle}" \
 	" '#{?#{==:#{pane_mode},copy-mode},#{?refresh_active,Refresh Off,Refresh On},}' 'r' {send -X refresh-toggle}" \
 	" ''" \
 	" '#{?#{&&:#{buffer_size},#{!:#{pane_in_mode}}},Paste #[underscore]#{=/9/...:buffer_sample},}' 'p' {paste-buffer}" \
@@ -584,6 +585,7 @@ key_bindings_init(void)
 		"bind -Tcopy-mode F { command-prompt -P -1p'(jump backward)' { send -X jump-backward -- '%%' } }",
 		"bind -Tcopy-mode L { send -X line-numbers-toggle }",
 		"bind -Tcopy-mode N { send -X search-reverse }",
+		"bind -Tcopy-mode O { send -X fold-view-toggle }",
 		"bind -Tcopy-mode P { send -X toggle-position }",
 		"bind -Tcopy-mode R { send -X rectangle-toggle }",
 		"bind -Tcopy-mode T { command-prompt -P -1p'(jump to backward)' { send -X jump-to-backward -- '%%' } }",
@@ -686,6 +688,7 @@ key_bindings_init(void)
 		"bind -Tcopy-mode-vi L { send -X bottom-line }",
 		"bind -Tcopy-mode-vi M { send -X middle-line }",
 		"bind -Tcopy-mode-vi N { send -X search-reverse }",
+		"bind -Tcopy-mode-vi O { send -X fold-view-toggle }",
 		"bind -Tcopy-mode-vi P { send -X toggle-position }",
 		"bind -Tcopy-mode-vi T { command-prompt -P -1p'(jump to backward)' { send -X jump-to-backward -- '%%' } }",
 		"bind -Tcopy-mode-vi V { send -X select-line }",
