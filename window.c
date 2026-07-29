@@ -2501,19 +2501,16 @@ window_pane_show_scrollbar(struct window_pane *wp)
 
 	if (SCREEN_IS_ALTERNATE(&wp->base))
 		return (0);
-	/*
-	 * A mode that zooms to fill the window (such as display-panes) hides
-	 * every scrollbar in the window so its overlay is not shifted.
-	 */
 	if ((w->flags & WINDOW_ZOOMED) && w->active != NULL) {
 		wme = TAILQ_FIRST(&w->active->modes);
 		if (wme != NULL &&
-		    (wme->mode->flags & WINDOW_MODE_HIDE_SCROLLBARS))
+		    (wme->mode->flags & WINDOW_MODE_HIDE_SCROLLBARS)) {
 			return (0);
+		}
 	}
-	if (wp->window->sb == PANE_SCROLLBARS_ALWAYS ||
-	    wp->window->sb == PANE_SCROLLBARS_AUTOHIDE ||
-	    (wp->window->sb == PANE_SCROLLBARS_MODAL &&
+	if (w->sb == PANE_SCROLLBARS_ALWAYS ||
+	    w->sb == PANE_SCROLLBARS_AUTOHIDE ||
+	    (w->sb == PANE_SCROLLBARS_MODAL &&
 	    window_pane_mode(wp) != WINDOW_PANE_NO_MODE))
 		return (1);
 	return (0);
