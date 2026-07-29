@@ -208,11 +208,7 @@ window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
 	wp->status_screen.mode = 0;
 	screen_write_start(&ctx, &wp->status_screen);
 
-	/*
-	 * pane-border-type separate-active leaves inactive pane gutters without
-	 * line characters. Keep pane-border-style colours and only suppress the
-	 * glyphs so the gap between title and icons matches the gutter.
-	 */
+	/* separate-active: blank status glyphs to match inactive gutters. */
 	active = c->session->curw->window->active;
 	blank = (options_get_number(wp->window->options, "pane-border-type") ==
 	    PANE_BORDER_TYPE_SEPARATE_ACTIVE && wp != active);

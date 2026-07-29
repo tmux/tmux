@@ -423,7 +423,6 @@ layout_cell_is_bottom(struct layout_cell *root, struct layout_cell *lc)
 	return (1);
 }
 
-/* Is this a right cell? */
 static int
 layout_cell_is_right(struct layout_cell *root, struct layout_cell *lc)
 {
@@ -441,10 +440,7 @@ layout_cell_is_right(struct layout_cell *root, struct layout_cell *lc)
 	return (1);
 }
 
-/*
- * Minimum layout-cell size for a leaf pane. pane-border-type separate insets
- * each pane, so the cell must be large enough that the pane stays inside it.
- */
+/* Separate borders need a larger cell so the inset pane stays inside it. */
 static u_int
 layout_pane_minimum_size(struct window *w, struct layout_cell *lc,
     enum layout_type type)
@@ -495,11 +491,7 @@ layout_add_horizontal_border(struct layout_cell *root, struct layout_cell *lc,
 	return (0);
 }
 
-/*
- * Inset pane geometry for pane-border-type separate: one cell on the left and
- * top of every pane, plus one on the right and bottom of panes on the window
- * edge. Never move the pane outside its layout cell.
- */
+/* Inset for separate: L/T always, R/B on the window edge. */
 void
 layout_apply_pane_border_type(struct window *w, struct layout_cell *root,
     struct layout_cell *lc, int *xoff, int *yoff, u_int *sx, u_int *sy)
@@ -570,11 +562,6 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		sx = lc->g.sx;
 		sy = lc->g.sy;
 
-		/*
-		 * A mode may zoom temporarily to fill the window (such as
-		 * display-panes) and draw pane-border-type separate itself, so
-		 * do not inset its pane.
-		 */
 		fill = 0;
 		if (w->flags & WINDOW_ZOOMED) {
 			wme = TAILQ_FIRST(&wp->modes);
@@ -587,10 +574,6 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 			    &wp->yoff, &sx, &sy);
 
 		status = window_pane_get_pane_status(wp);
-		/*
-		 * Skip the extra status inset when pane-border-type separate
-		 * already reserved the top/bottom border row for every pane.
-		 */
 		if (!window_pane_is_floating(wp) &&
 		    layout_add_horizontal_border(root, lc, status) &&
 		    !window_border_type_is_separate(w)) {
@@ -972,10 +955,7 @@ layout_resize_pane_to(struct window_pane *wp, enum layout_type type,
 	if (lcparent == NULL)
 		return;
 
-	/*
-	 * resize-pane -x/-y is a content size. pane-border-type separate keeps
-	 * borders inside the layout cell, so convert to the cell size needed.
-	 */
+	/* -x/-y are content size; grow to include separate borders. */
 	separate = window_border_type_is_separate(w);
 	if (separate && (~lc->flags & LAYOUT_CELL_FLOATING)) {
 		new_size++;

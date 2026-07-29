@@ -181,11 +181,7 @@ window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
 	if (lc == NULL || osx == 0 || osy == 0 || dsx == 0 || dsy == 0)
 		return (0);
 
-	/*
-	 * With a single pane, display-panes cannot zoom and runs inside the
-	 * already-inset pane. Fill the mode screen; the window border is drawn
-	 * outside by normal redraw.
-	 */
+	/* Single pane cannot zoom; fill the already-inset mode screen. */
 	if (wp->saved_layout_cell == NULL &&
 	    window_count_panes(wp->window, 0) == 1) {
 		*xp = 0;
@@ -239,10 +235,6 @@ window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
 		return (0);
 
 	status = window_get_pane_status(wp->window);
-	/*
-	 * Skip the extra status inset when pane-border-type separate already
-	 * reserved the top/bottom border row for every pane.
-	 */
 	if (layout_add_horizontal_border(root, lc, status) &&
 	    !window_border_type_is_separate(wp->window) &&
 	    sy > 1) {
@@ -433,11 +425,7 @@ window_panes_mark_pane_status_borders(u_char *map, struct window *w,
 	}
 }
 
-/*
- * Mark borders around each tiled pane, matching normal redraw when
- * pane-border-type is separate. Unlike layout-tree borders, this draws a full
- * rectangle around every pane so adjacent panes share a double border.
- */
+/* Mark a full rectangle around each tiled pane for separate borders. */
 static void
 window_panes_mark_pane_border_separate(u_char *map, struct window *w,
     struct layout_cell *root, u_int osx, u_int osy, u_int dsx, u_int dsy)
@@ -675,12 +663,6 @@ window_panes_draw_borders(struct screen_write_ctx *ctx, struct window *w,
 	map = xcalloc(dsx, dsy);
 	if (window_border_type_is_separate(w) &&
 	    window_count_panes(w, 0) > 1) {
-		/*
-		 * With pane-border-type separate, borders come from each pane's
-		 * inset rectangle (same as normal redraw), not the layout-tree
-		 * gaps. A single pane has no internal borders to draw; the
-		 * window border is outside the mode screen.
-		 */
 		window_panes_mark_pane_border_separate(map, w, lc, osx, osy, dsx,
 		    dsy);
 	} else if (!window_border_type_is_separate(w)) {

@@ -715,12 +715,7 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 	} else {
 		mark_right = (right <= (int)bctx->w->sx);
 		mark_bottom = (bottom <= (int)bctx->w->sy);
-		/*
-		 * pane-border-status reuses one edge as the status row and
-		 * suppresses drawing the opposite edge. With pane-border-type
-		 * separate that opposite edge is still a reserved gutter and
-		 * must be drawn as a border or it stays blank/grey.
-		 */
+		/* Separate still needs the opposite gutter drawn. */
 		if (!PANE_BORDER_TYPE_IS_SEPARATE(bctx->border_type)) {
 			if (pane_status == PANE_STATUS_TOP) {
 				mark_bottom = 0;
@@ -1240,11 +1235,7 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 	else {
 		wp = redraw_get_pane_for_border_style(dctx, span);
 		cell_type = span->data.b.cell_type;
-		/*
-		 * separate-active keeps the same gutter layout as separate, but
-		 * only draws line characters around the active pane. Inactive
-		 * border cells stay blank so focus changes do not resize.
-		 */
+		/* separate-active: blank inactive gutters so focus does not resize. */
 		if (options_get_number(w->options, "pane-border-type") ==
 		    PANE_BORDER_TYPE_SEPARATE_ACTIVE &&
 		    (dctx->active == NULL ||
@@ -1253,10 +1244,7 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 	}
 
 	if (blank) {
-		/*
-		 * Keep pane-border-style colours on inactive gutters; only the
-		 * line drawing characters are suppressed.
-		 */
+		/* Keep border colours; suppress line glyphs only. */
 		if (wp != NULL)
 			window_pane_get_border_style(wp, c, &gc);
 		else

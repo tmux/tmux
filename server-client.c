@@ -827,11 +827,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 			    py <= fwp->yoff + (int)fwp->sy) {
 				if (px == bdr_right)
 					break;
-				/*
-				 * Left borders are used by floating panes and by
-				 * pane-border-type separate (each pane has its
-				 * own left border cell).
-				 */
+				/* Separate and floating panes own the left border. */
 				if (px == bdr_left &&
 				    (window_pane_is_floating(fwp) || separate))
 					break;
