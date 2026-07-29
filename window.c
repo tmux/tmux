@@ -919,10 +919,6 @@ window_find_string(struct window *w, const char *s)
 	} else
 		return (NULL);
 
-	/*
-	 * pane-border-type separate reserves a border cell around every pane,
-	 * so prefer the adjacent content cell over the outer border cell.
-	 */
 	if (separate) {
 		if (x == 0)
 			x = 1;

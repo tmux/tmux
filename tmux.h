@@ -1160,7 +1160,6 @@ enum pane_lines {
 #define PANE_BORDER_ARROWS 2
 #define PANE_BORDER_BOTH 3
 
-/* Pane border type option. */
 #define PANE_BORDER_TYPE_JOINED 0
 #define PANE_BORDER_TYPE_SEPARATE 1
 #define PANE_BORDER_TYPE_SEPARATE_ACTIVE 2
