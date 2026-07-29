@@ -809,8 +809,7 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 	u_int			 sx, sy;
 
 	pane_status = window_get_pane_status(w);
-	separate = PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
-	    "pane-border-type"));
+	separate = window_border_type_is_separate(w);
 
 	if (w->modal != NULL) {
 		if (window_pane_contains(w->modal, x, y))
@@ -895,8 +894,7 @@ window_find_string(struct window *w, const char *s)
 		top++;
 	else if (status == PANE_STATUS_BOTTOM)
 		bottom--;
-	separate = PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
-	    "pane-border-type"));
+	separate = window_border_type_is_separate(w);
 
 	if (strcasecmp(s, "top") == 0)
 		y = top;
@@ -2115,8 +2113,7 @@ window_pane_find_up(struct window_pane *wp)
 	w = wp->window;
 	status = window_get_pane_status(w);
 	gap = 1;
-	if (PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
-	    "pane-border-type")))
+	if (window_border_type_is_separate(w))
 		gap = 2;
 
 	list = NULL;
@@ -2180,8 +2177,7 @@ window_pane_find_down(struct window_pane *wp)
 	w = wp->window;
 	status = window_get_pane_status(w);
 	gap = 1;
-	if (PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
-	    "pane-border-type")))
+	if (window_border_type_is_separate(w))
 		gap = 2;
 
 	list = NULL;
@@ -2244,8 +2240,7 @@ window_pane_find_left(struct window_pane *wp)
 		return (NULL);
 	w = wp->window;
 	gap = 1;
-	if (PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
-	    "pane-border-type")))
+	if (window_border_type_is_separate(w))
 		gap = 2;
 
 	list = NULL;
@@ -2300,8 +2295,7 @@ window_pane_find_right(struct window_pane *wp)
 		return (NULL);
 	w = wp->window;
 	gap = 1;
-	if (PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
-	    "pane-border-type")))
+	if (window_border_type_is_separate(w))
 		gap = 2;
 
 	list = NULL;
@@ -2828,6 +2822,13 @@ window_get_pane_status(struct window *w)
 	    status == PANE_STATUS_BOTTOM_FLOATING)
 		return (PANE_STATUS_OFF);
 	return (status);
+}
+
+int
+window_border_type_is_separate(struct window *w)
+{
+	return (PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
+	    "pane-border-type")));
 }
 
 int

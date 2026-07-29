@@ -455,8 +455,7 @@ layout_pane_minimum(struct window *w, struct layout_cell *lc,
 	int			 status, separate;
 
 	status = window_get_pane_status(w);
-	separate = PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
-	    "pane-border-type"));
+	separate = window_border_type_is_separate(w);
 
 	if (type == LAYOUT_LEFTRIGHT) {
 		if (w->sb == PANE_SCROLLBARS_ALWAYS)
@@ -510,8 +509,7 @@ layout_apply_pane_border_type(struct window *w, struct layout_cell *root,
 
 	if (lc == NULL || root == NULL)
 		return;
-	if (!PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
-	    "pane-border-type")))
+	if (!window_border_type_is_separate(w))
 		return;
 	if (lc->flags & LAYOUT_CELL_FLOATING)
 		return;
@@ -595,8 +593,7 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		 */
 		if (!window_pane_is_floating(wp) &&
 		    layout_add_horizontal_border(root, lc, status) &&
-		    !PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
-	    "pane-border-type"))) {
+		    !window_border_type_is_separate(w)) {
 			if (status == PANE_STATUS_TOP)
 				wp->yoff++;
 			if (sy > 1)
@@ -979,8 +976,7 @@ layout_resize_pane_to(struct window_pane *wp, enum layout_type type,
 	 * resize-pane -x/-y is a content size. pane-border-type separate keeps
 	 * borders inside the layout cell, so convert to the cell size needed.
 	 */
-	separate = PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
-	    "pane-border-type"));
+	separate = window_border_type_is_separate(w);
 	if (separate && (~lc->flags & LAYOUT_CELL_FLOATING)) {
 		new_size++;
 		if (type == LAYOUT_LEFTRIGHT) {
@@ -1414,8 +1410,7 @@ layout_split_check_space(struct window_pane *wp, struct layout_cell *lc,
 		fatalx("floating cells cannot be split");
 
 	status = window_get_pane_status(w);
-	separate = PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
-	    "pane-border-type"));
+	separate = window_border_type_is_separate(w);
 
 	switch (type) {
 	case LAYOUT_LEFTRIGHT:
@@ -1483,8 +1478,7 @@ layout_split_sizes(struct layout_cell *lc, int size, int before,
 	min1 = PANE_MINIMUM;
 	min2 = PANE_MINIMUM;
 	if (w != NULL &&
-	    PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
-	    "pane-border-type"))) {
+	    window_border_type_is_separate(w)) {
 		min1++;
 		min2++;
 		if (type == LAYOUT_LEFTRIGHT) {

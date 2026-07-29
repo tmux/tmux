@@ -710,8 +710,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 
 	pane_status = window_pane_get_pane_status(wp);
 	sb_overlay = window_pane_scrollbar_overlay(wp);
-	separate = PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
-	    "pane-border-type"));
+	separate = window_border_type_is_separate(w);
 
 	if (window_pane_scrollbar_visible(wp)) {
 		sb_w = wp->scrollbar_style.width;
