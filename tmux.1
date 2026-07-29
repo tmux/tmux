@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1151 2026/07/28 07:04:18 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1152 2026/07/29 08:58:33 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: July 28 2026 $
+.Dd $Mdocdate: July 29 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -8750,7 +8750,7 @@ values are given, they are available as
 and so on.
 For example:
 .Bd -literal -offset indent
-run-shell 'myscript.sh #1 #2' foo bar
+run-shell 'myscript.sh #{1} #{2}' foo bar
 .Ed
 .Pp
 With
