@@ -36,6 +36,7 @@ static void	 cmd_show_environment_print(struct cmd *, struct cmdq_item *,
 
 const struct cmd_entry cmd_show_environment_entry = {
 	.name = "show-environment",
+	.description = "Show environment variables.",
 	.alias = "showenv",
 
 	.args = { "hgst:", 0, 1, NULL },

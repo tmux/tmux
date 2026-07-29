@@ -40,6 +40,7 @@ static void	cmd_command_prompt_free(void *);
 
 const struct cmd_entry cmd_command_prompt_entry = {
 	.name = "command-prompt",
+	.description = "Open an interactive command prompt.",
 	.alias = NULL,
 
 	.args = { "1CbeFiklI:NPp:t:T:", 0, 1, cmd_command_prompt_args_parse },

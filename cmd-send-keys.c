@@ -31,6 +31,7 @@ static enum cmd_retval	cmd_send_keys_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_send_keys_entry = {
 	.name = "send-keys",
+	.description = "Send keys to a pane or client.",
 	.alias = "send",
 
 	.args = { "c:FHKlMN:Rt:X", 0, -1, NULL },
@@ -46,6 +47,7 @@ const struct cmd_entry cmd_send_keys_entry = {
 
 const struct cmd_entry cmd_send_prefix_entry = {
 	.name = "send-prefix",
+	.description = "Send the prefix key to a pane.",
 	.alias = NULL,
 
 	.args = { "2t:", 0, 0, NULL },

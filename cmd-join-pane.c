@@ -36,6 +36,7 @@ static void		cmd_join_pane_mouse_move(struct client *,
 
 const struct cmd_entry cmd_join_pane_entry = {
 	.name = "join-pane",
+	.description = "Move a pane into another window.",
 	.alias = "joinp",
 
 	.args = { "bdfhvp:l:s:t:", 0, 0, NULL },
@@ -50,6 +51,7 @@ const struct cmd_entry cmd_join_pane_entry = {
 
 const struct cmd_entry cmd_move_pane_entry = {
 	.name = "move-pane",
+	.description = "Move or float a pane.",
 	.alias = "movep",
 
 	.args = { "bdD::fhMvl:L::P:R::s:t:U::X:Y:z:", 0, 0, NULL },

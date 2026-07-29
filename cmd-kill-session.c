@@ -36,6 +36,7 @@ static int		cmd_kill_session_filter(struct cmdq_item *,
 
 const struct cmd_entry cmd_kill_session_entry = {
 	.name = "kill-session",
+	.description = "Destroy one or more sessions.",
 	.alias = NULL,
 
 	.args = { "aCgf:t:", 0, 0, NULL },

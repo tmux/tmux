@@ -35,6 +35,7 @@ static enum cmd_retval	cmd_load_buffer_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_load_buffer_entry = {
 	.name = "load-buffer",
+	.description = "Load a file into a paste buffer.",
 	.alias = "loadb",
 
 	.args = { "b:t:w", 1, 1, NULL },

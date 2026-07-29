@@ -37,6 +37,7 @@ static enum cmd_retval	cmd_display_message_exec(struct cmd *,
 
 const struct cmd_entry cmd_display_message_entry = {
 	.name = "display-message",
+	.description = "Display a message or expand formats.",
 	.alias = "display",
 
 	.args = { "aCc:d:lINpt:F:v", 0, 1, NULL },

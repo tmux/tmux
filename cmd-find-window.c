@@ -30,6 +30,7 @@ static enum cmd_retval	cmd_find_window_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_find_window_entry = {
 	.name = "find-window",
+	.description = "Find windows by content or name.",
 	.alias = "findw",
 
 	.args = { "CiNrt:TZ", 1, 1, NULL },

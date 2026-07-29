@@ -39,6 +39,7 @@ static enum cmd_retval	cmd_list_clients_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_list_clients_entry = {
 	.name = "list-clients",
+	.description = "List connected clients.",
 	.alias = "lsc",
 
 	.args = { "F:f:O:rt:", 0, 0, NULL },
@@ -61,35 +62,15 @@ cmd_list_clients_exec(struct cmd *self, struct cmdq_item *item)
 	const char		 *template, *filter;
 	u_int			  i, n;
 	char			 *line, *expanded;
-	int			  flag, human;
+	int			  flag;
 	struct sort_criteria	  sort_crit;
-	struct cmd_output_table	 *table = NULL;
-	const char		 *headers[] = {
-		"CLIENT", "SESSION", "SIZE", "TERM", "USER", "FLAGS"
-	};
-	const char		 *formats[] = {
-		"#{client_name}", "#{session_name}",
-		"#{client_width}x#{client_height}", "#{client_termname}",
-		"#{?client_user,#{client_user},#{client_uid}}",
-		"#{?client_flags,#{client_flags},-}"
-	};
-	enum cmd_output_style	  styles[] = {
-		CMD_OUTPUT_IDENTIFIER, CMD_OUTPUT_SUCCESS, CMD_OUTPUT_DIM,
-		CMD_OUTPUT_DIM, CMD_OUTPUT_DEFAULT, CMD_OUTPUT_DIM
-	};
 
 	if (args_has(args, 't'))
 		s = target->s;
 	else
 		s = NULL;
 
-	/*
-	 * Keep the common identity and connection fields together. Less common
-	 * fields remain available through an explicit format.
-	 */
-	template = args_get(args, 'F');
-	human = (template == NULL && cmd_output_is_human(item));
-	if (template == NULL)
+	if ((template = args_get(args, 'F')) == NULL)
 		template = LIST_CLIENTS_TEMPLATE;
 	filter = args_get(args, 'f');
 
@@ -100,8 +81,6 @@ cmd_list_clients_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	sort_crit.reversed = args_has(args, 'r');
 
-	if (human)
-		table = cmd_output_table_create(item, "Clients", 6, headers);
 	l = sort_get_clients(&n, &sort_crit);
 	for (i = 0; i < n; i++) {
 		if (l[i]->session == NULL || (s != NULL && s != l[i]->session))
@@ -118,21 +97,12 @@ cmd_list_clients_exec(struct cmd *self, struct cmdq_item *item)
 		} else
 			flag = 1;
 		if (flag) {
-			if (human)
-				cmd_output_table_add_formats(table, ft, formats,
-				    styles);
-			else {
-				line = format_expand(ft, template);
-				cmdq_print(item, "%s", line);
-				free(line);
-			}
+			line = format_expand(ft, template);
+			cmdq_print(item, "%s", line);
+			free(line);
 		}
 
 		format_free(ft);
-	}
-	if (human) {
-		cmd_output_table_print(table);
-		cmd_output_table_free(table);
 	}
 
 	return (CMD_RETURN_NORMAL);

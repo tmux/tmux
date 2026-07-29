@@ -36,6 +36,7 @@ static enum cmd_retval		cmd_display_popup_exec(struct cmd *,
 
 const struct cmd_entry cmd_display_menu_entry = {
 	.name = "display-menu",
+	.description = "Display an interactive menu.",
 	.alias = "menu",
 
 	.args = { "b:c:C:H:s:S:MOt:T:x:y:", 1, -1, cmd_display_menu_args_parse },
@@ -52,6 +53,7 @@ const struct cmd_entry cmd_display_menu_entry = {
 
 const struct cmd_entry cmd_display_popup_entry = {
 	.name = "display-popup",
+	.description = "Display a popup running a command.",
 	.alias = "popup",
 
 	.args = { "Bb:Cc:d:e:Eh:kNs:S:t:T:w:x:y:", 0, -1, NULL },

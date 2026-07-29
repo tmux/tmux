@@ -2884,20 +2884,6 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		return (0);
 	c->flags |= CLIENT_IDENTIFIED;
 
-	/*
-	 * Save stdout state before out_fd is closed later in client setup so
-	 * one-shot commands can still select and size interactive output.
-	 */
-	c->stdout_tty = (c->out_fd != -1 && isatty(c->out_fd));
-	c->stdout_width = 80;
-	if (c->stdout_tty) {
-		struct winsize	ws;
-
-		if (ioctl(c->out_fd, TIOCGWINSZ, &ws) == 0 &&
-		    ws.ws_col != 0)
-			c->stdout_width = ws.ws_col;
-	}
-
 	if (c->term_name == NULL || *c->term_name == '\0') {
 		free(c->term_name);
 		c->term_name = xstrdup("unknown");

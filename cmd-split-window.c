@@ -38,6 +38,7 @@ static void		cmd_split_window_mouse_resize(struct client *,
 
 const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
+	.description = "Create a pane.",
 	.alias = "newp",
 
 	.args = { "bB:Cc:de:EfF:hIkl:LMm:Op:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
@@ -57,6 +58,7 @@ const struct cmd_entry cmd_new_pane_entry = {
 
 const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
+	.description = "Create a new pane by splitting a window.",
 	.alias = "splitw",
 
 	.args = { "bB:c:de:EfF:hIkl:m:p:PR:s:S:t:T:vWZ", 0, -1, NULL },

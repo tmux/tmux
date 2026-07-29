@@ -31,6 +31,7 @@ static enum cmd_retval	cmd_select_pane_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_select_pane_entry = {
 	.name = "select-pane",
+	.description = "Select or mark a pane.",
 	.alias = "selectp",
 
 	.args = { "DdegLlMmP:RT:t:UZ", 0, 0, NULL }, /* -P and -g deprecated */
@@ -44,6 +45,7 @@ const struct cmd_entry cmd_select_pane_entry = {
 
 const struct cmd_entry cmd_last_pane_entry = {
 	.name = "last-pane",
+	.description = "Select the previously active pane.",
 	.alias = "lastp",
 
 	.args = { "det:Z", 0, 0, NULL },

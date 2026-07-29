@@ -34,6 +34,7 @@ static int		cmd_kill_pane_filter(struct cmdq_item *,
 
 const struct cmd_entry cmd_kill_pane_entry = {
 	.name = "kill-pane",
+	.description = "Destroy one or more panes.",
 	.alias = "killp",
 
 	.args = { "af:t:", 0, 0, NULL },

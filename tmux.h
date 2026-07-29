@@ -2038,6 +2038,7 @@ struct cmd_entry_flag {
 /* Command definition. */
 struct cmd_entry {
 	const char		*name;
+	const char		*description;
 	const char		*alias;
 
 	struct args_parse	 args;
@@ -2206,8 +2207,6 @@ struct client {
 	pid_t			 pid;
 	int			 fd;
 	int			 out_fd;
-	int			 stdout_tty;
-	u_int			 stdout_width;
 	struct event		 event;
 	int			 retval;
 
@@ -3153,44 +3152,6 @@ struct winlink	*cmd_mouse_window(struct mouse_event *, struct session **);
 struct window_pane *cmd_mouse_pane(struct mouse_event *, struct session **,
 		     struct winlink **);
 char		*cmd_template_replace(const char *, const char *, int);
-
-/*
- * Shared output helpers keep terminal detection, styling and table layout
- * consistent across commands.
- */
-enum cmd_output_style {
-	CMD_OUTPUT_DEFAULT,
-	CMD_OUTPUT_HEADING,
-	CMD_OUTPUT_IDENTIFIER,
-	CMD_OUTPUT_SUCCESS,
-	CMD_OUTPUT_WARNING,
-	CMD_OUTPUT_ERROR,
-	CMD_OUTPUT_DIM
-};
-struct cmd_output_table;
-int		 cmd_output_is_human(struct cmdq_item *);
-int		 cmd_output_has_colour(struct cmdq_item *);
-u_int		 cmd_output_width(struct cmdq_item *);
-void printflike(3, 4) cmd_output_print(struct cmdq_item *,
-		     enum cmd_output_style, const char *, ...);
-void		 cmd_output_print_wrapped(struct cmdq_item *,
-		     enum cmd_output_style, u_int, const char *);
-struct cmd_output_table *cmd_output_table_create(struct cmdq_item *,
-		     const char *, u_int, const char **);
-void		 cmd_output_table_add(struct cmd_output_table *,
-		     const char **, const enum cmd_output_style *);
-void		 cmd_output_table_add_formats(struct cmd_output_table *,
-		     struct format_tree *, const char **,
-		     const enum cmd_output_style *);
-void		 cmd_output_table_print(struct cmd_output_table *);
-void		 cmd_output_table_free(struct cmd_output_table *);
-
-/* cmd-help.c */
-extern const struct cmd_entry cmd_help_entry;
-const char	*cmd_help_description(const char *);
-int		 cmd_help_complete(void);
-enum cmd_retval	 cmd_help_print(struct cmdq_item *, const char *);
-void		 cmd_help_print_catalog(struct cmdq_item *);
 
 /* cmd-attach-session.c */
 enum cmd_retval	 cmd_attach_session(struct cmdq_item *, const char *, int, int,

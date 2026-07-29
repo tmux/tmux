@@ -32,6 +32,7 @@ static enum cmd_retval	cmd_set_environment_exec(struct cmd *,
 
 const struct cmd_entry cmd_set_environment_entry = {
 	.name = "set-environment",
+	.description = "Set or remove an environment variable.",
 	.alias = "setenv",
 
 	.args = { "Fhgrt:u", 1, 2, NULL },

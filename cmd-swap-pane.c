@@ -30,6 +30,7 @@ static enum cmd_retval	cmd_swap_pane_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_swap_pane_entry = {
 	.name = "swap-pane",
+	.description = "Swap two panes.",
 	.alias = "swapp",
 
 	.args = { "dDs:t:UZ", 0, 0, NULL },

@@ -35,6 +35,7 @@ static enum cmd_retval	cmd_attach_session_exec(struct cmd *,
 
 const struct cmd_entry cmd_attach_session_entry = {
 	.name = "attach-session",
+	.description = "Attach to an existing session.",
 	.alias = "attach",
 
 	.args = { "c:dEf:rt:x", 0, 0, NULL },

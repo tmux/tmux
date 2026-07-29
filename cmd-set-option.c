@@ -38,6 +38,7 @@ static enum cmd_retval		cmd_set_hook_monitor_exec(struct cmdq_item *,
 
 const struct cmd_entry cmd_set_option_entry = {
 	.name = "set-option",
+	.description = "Set a server, session, or pane option.",
 	.alias = "set",
 
 	.args = { "aFgopqst:uUw", 1, 2, cmd_set_option_args_parse },
@@ -51,6 +52,7 @@ const struct cmd_entry cmd_set_option_entry = {
 
 const struct cmd_entry cmd_set_window_option_entry = {
 	.name = "set-window-option",
+	.description = "Set a window option.",
 	.alias = "setw",
 
 	.args = { "aFgoqt:u", 1, 2, cmd_set_option_args_parse },
@@ -64,6 +66,7 @@ const struct cmd_entry cmd_set_window_option_entry = {
 
 const struct cmd_entry cmd_set_hook_entry = {
 	.name = "set-hook",
+	.description = "Set or remove a hook.",
 	.alias = NULL,
 
 	.args = { "agpERTt:uB:w", 0, 2, cmd_set_option_args_parse },

@@ -40,6 +40,7 @@ static void	cmd_if_shell_free(void *);
 
 const struct cmd_entry cmd_if_shell_entry = {
 	.name = "if-shell",
+	.description = "Run a command conditionally.",
 	.alias = "if",
 
 	.args = { "bFt:", 2, 3, cmd_if_shell_args_parse },

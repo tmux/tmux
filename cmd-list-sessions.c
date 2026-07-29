@@ -40,6 +40,7 @@ static enum cmd_retval	cmd_list_sessions_exec(struct cmd *,
 
 const struct cmd_entry cmd_list_sessions_entry = {
 	.name = "list-sessions",
+	.description = "List sessions and their state.",
 	.alias = "ls",
 
 	.args = { "F:f:O:r", 0, 0, NULL },
@@ -58,30 +59,10 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 	struct format_tree	 *ft;
 	const char		 *template, *filter;
 	char			 *line, *expanded;
-	int			  flag, human;
+	int			  flag;
 	struct sort_criteria	  sort_crit;
-	struct cmd_output_table	 *table = NULL;
-	const char		 *headers[] = {
-		"NAME", "WINDOWS", "STATE", "GROUP", "CREATED"
-	};
-	const char		 *formats[] = {
-		"#{session_name}", "#{session_windows}",
-		"#{?session_attached,attached,detached}",
-		"#{?session_grouped,#{session_group},-}",
-		"#{t/p:session_created}"
-	};
-	enum cmd_output_style	  styles[] = {
-		CMD_OUTPUT_IDENTIFIER, CMD_OUTPUT_DEFAULT, CMD_OUTPUT_DEFAULT,
-		CMD_OUTPUT_DIM, CMD_OUTPUT_DIM
-	};
 
-	/*
-	 * Put the fields most useful for choosing a session in the interactive
-	 * view. The default format remains unchanged for nonterminal output.
-	 */
-	template = args_get(args, 'F');
-	human = (template == NULL && cmd_output_is_human(item));
-	if (template == NULL)
+	if ((template = args_get(args, 'F')) == NULL)
 		template = LIST_SESSIONS_TEMPLATE;
 	filter = args_get(args, 'f');
 
@@ -92,8 +73,6 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	sort_crit.reversed = args_has(args, 'r');
 
-	if (human)
-		table = cmd_output_table_create(item, "Sessions", 5, headers);
 	l = sort_get_sessions(&n, &sort_crit);
 	for (i = 0; i < n; i++) {
 		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
@@ -107,23 +86,12 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 		} else
 			flag = 1;
 		if (flag) {
-			if (human) {
-				styles[2] = l[i]->attached ?
-				    CMD_OUTPUT_SUCCESS : CMD_OUTPUT_DIM;
-				cmd_output_table_add_formats(table, ft, formats,
-				    styles);
-			} else {
-				line = format_expand(ft, template);
-				cmdq_print(item, "%s", line);
-				free(line);
-			}
+			line = format_expand(ft, template);
+			cmdq_print(item, "%s", line);
+			free(line);
 		}
 
 		format_free(ft);
-	}
-	if (human) {
-		cmd_output_table_print(table);
-		cmd_output_table_free(table);
 	}
 
 	return (CMD_RETURN_NORMAL);

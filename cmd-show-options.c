@@ -41,16 +41,15 @@
 static enum cmd_retval	cmd_show_options_exec(struct cmd *, struct cmdq_item *);
 
 static void		cmd_show_options_print(struct cmd *, struct cmdq_item *,
-			    struct options_entry *, const char *, int,
-			    struct cmd_output_table *);
+			    struct options_entry *, const char *, int);
 static void		cmd_show_hooks_print_monitor(struct cmd *,
-			    struct cmdq_item *, struct options_entry *,
-			    struct cmd_output_table *);
+			    struct cmdq_item *, struct options_entry *);
 static enum cmd_retval	cmd_show_options_all(struct cmd *, struct cmdq_item *,
-			    int, struct options *, struct cmd_output_table *);
+			    int, struct options *);
 
 const struct cmd_entry cmd_show_options_entry = {
 	.name = "show-options",
+	.description = "Show server, session, or pane options.",
 	.alias = "show",
 
 	.args = { "AgF:Hpqst:vw", 0, 1, NULL },
@@ -64,6 +63,7 @@ const struct cmd_entry cmd_show_options_entry = {
 
 const struct cmd_entry cmd_show_window_options_entry = {
 	.name = "show-window-options",
+	.description = "Show window options.",
 	.alias = "showw",
 
 	.args = { "F:gvt:", 0, 1, NULL },
@@ -77,6 +77,7 @@ const struct cmd_entry cmd_show_window_options_entry = {
 
 const struct cmd_entry cmd_show_hooks_entry = {
 	.name = "show-hooks",
+	.description = "Show hooks.",
 	.alias = NULL,
 
 	.args = { "BF:gpt:w", 0, 1, NULL },
@@ -94,55 +95,33 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 	struct args			*args = cmd_get_args(self);
 	struct cmd_find_state		*target = cmdq_get_target(item);
 	struct options			*oo;
-	char				*argument = NULL, *name = NULL, *cause;
+	char				*argument, *name = NULL, *cause;
 	char				*array_key = NULL;
 	int				 window, ambiguous, parent, print_parent, scope;
 	struct options_entry		*o;
-	struct cmd_output_table		*table = NULL;
-	enum cmd_retval			 retval = CMD_RETURN_NORMAL;
-	const char			*headers[] = {
-		"OPTION", "VALUE", "SOURCE"
-	};
 
 	window = (cmd_get_entry(self) == &cmd_show_window_options_entry);
-	/*
-	 * Formats and value-only output are commonly consumed by scripts, so
-	 * only the unformatted interactive form becomes a table.
-	 */
-	if (!args_has(args, 'F') && !args_has(args, 'v') &&
-	    cmd_output_is_human(item)) {
-		table = cmd_output_table_create(item,
-		    cmd_get_entry(self) == &cmd_show_hooks_entry ?
-		    "Hooks" : "Options", 3, headers);
-	}
 
 	if (args_count(args) == 0) {
 		scope = options_scope_from_flags(args, window, target, &oo,
 		    &cause);
 		if (scope == OPTIONS_TABLE_NONE) {
-			if (args_has(args, 'q')) {
-				if (table != NULL)
-					cmd_output_table_free(table);
+			if (args_has(args, 'q'))
 				return (CMD_RETURN_NORMAL);
-			}
 			cmdq_error(item, "%s", cause);
 			free(cause);
-			if (table != NULL)
-				cmd_output_table_free(table);
 			return (CMD_RETURN_ERROR);
 		}
 		if (cmd_get_entry(self) == &cmd_show_hooks_entry &&
 		    args_has(args, 'B')) {
 			o = options_first(oo);
 			while (o != NULL) {
-				cmd_show_hooks_print_monitor(self, item, o,
-				    table);
+				cmd_show_hooks_print_monitor(self, item, o);
 				o = options_next(o);
 			}
-			goto done;
+			return (CMD_RETURN_NORMAL);
 		}
-		retval = cmd_show_options_all(self, item, scope, oo, table);
-		goto done;
+		return (cmd_show_options_all(self, item, scope, oo));
 	}
 	argument = format_single_from_target(item, args_string(args, 0));
 
@@ -174,7 +153,7 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 	if (o != NULL) {
 		if (cmd_get_entry(self) == &cmd_show_hooks_entry &&
 		    args_has(args, 'B'))
-			cmd_show_hooks_print_monitor(self, item, o, table);
+			cmd_show_hooks_print_monitor(self, item, o);
 		else {
 			print_parent = parent;
 			if (array_key == NULL && options_is_array(o) &&
@@ -182,7 +161,7 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 				print_parent = 0;
 			}
 			cmd_show_options_print(self, item, o, array_key,
-			    print_parent, table);
+			    print_parent);
 		}
 	} else if (*name == '@') {
 		if (args_has(args, 'q'))
@@ -192,19 +171,12 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 out:
-done:
-	if (table != NULL) {
-		cmd_output_table_print(table);
-		cmd_output_table_free(table);
-	}
 	free(name);
 	free(array_key);
 	free(argument);
-	return (retval);
+	return (CMD_RETURN_NORMAL);
 
 fail:
-	if (table != NULL)
-		cmd_output_table_free(table);
 	free(name);
 	free(array_key);
 	free(argument);
@@ -213,8 +185,7 @@ fail:
 
 static void
 cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
-    struct options_entry *o, const char *array_key, int parent,
-    struct cmd_output_table *table)
+    struct options_entry *o, const char *array_key, int parent)
 {
 	struct args			 *args = cmd_get_args(self);
 	struct options_array_item	 *a;
@@ -237,7 +208,7 @@ cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
 			while (a != NULL) {
 				array_key = options_array_item_key(a);
 				cmd_show_options_print(self, item, o, array_key,
-				    parent, table);
+				    parent);
 				a = options_array_next(a);
 			}
 			return;
@@ -285,31 +256,16 @@ cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
 		format_add(ft, "option_has_array_key", "0");
 	}
 	line = format_expand(ft, template);
-	if (table != NULL) {
-		const char		*formats[] = {
-			"#{option_name}#{?option_has_array_key,"
-			"[#{option_array_key}],}",
-			"#{?option_has_value,#{option_value},-}",
-			"#{?option_is_parent,inherited,local}"
-		};
-		enum cmd_output_style	 styles[] = {
-			CMD_OUTPUT_IDENTIFIER, CMD_OUTPUT_DEFAULT,
-			parent ? CMD_OUTPUT_DIM : CMD_OUTPUT_SUCCESS
-		};
-
-		cmd_output_table_add_formats(table, ft, formats, styles);
-	}
 	format_free(ft);
 
-	if (table == NULL)
-		cmdq_print(item, "%s", line);
+	cmdq_print(item, "%s", line);
 	free(line);
 	free(value);
 }
 
 static void
 cmd_show_hooks_print_monitor(struct cmd *self, struct cmdq_item *item,
-    struct options_entry *o, struct cmd_output_table *table)
+    struct options_entry *o)
 {
 	struct args		*args = cmd_get_args(self);
 	struct format_tree	*ft;
@@ -375,22 +331,9 @@ cmd_show_hooks_print_monitor(struct cmd *self, struct cmdq_item *item,
 	}
 
 	line = format_expand(ft, template);
-	if (table != NULL) {
-		const char		*formats[] = {
-			"#{option_name}:#{hook_monitor_target}",
-			"#{hook_monitor_format}", "local"
-		};
-		enum cmd_output_style	 styles[] = {
-			CMD_OUTPUT_IDENTIFIER, CMD_OUTPUT_DEFAULT,
-			CMD_OUTPUT_SUCCESS
-		};
-
-		cmd_output_table_add_formats(table, ft, formats, styles);
-	}
 	format_free(ft);
 
-	if (table == NULL)
-		cmdq_print(item, "%s", line);
+	cmdq_print(item, "%s", line);
 	free(line);
 	free(target);
 	free(value);
@@ -398,7 +341,7 @@ cmd_show_hooks_print_monitor(struct cmd *self, struct cmdq_item *item,
 
 static enum cmd_retval
 cmd_show_options_all(struct cmd *self, struct cmdq_item *item, int scope,
-    struct options *oo, struct cmd_output_table *table)
+    struct options *oo)
 {
 	struct args				*args = cmd_get_args(self);
 	const struct options_table_entry	*oe;
@@ -420,11 +363,10 @@ cmd_show_options_all(struct cmd *self, struct cmdq_item *item, int scope,
 			if (cmd_get_entry(self) != &cmd_show_hooks_entry) {
 				if (!is_user_hook || args_has(args, 'H')) {
 					cmd_show_options_print(self, item, o,
-					    NULL, 0, table);
+					    NULL, 0);
 				}
 			} else if (is_user_hook)
-				cmd_show_options_print(self, item, o, NULL, 0,
-				    table);
+				cmd_show_options_print(self, item, o, NULL, 0);
 		}
 		o = options_next(o);
 	}
@@ -450,7 +392,7 @@ cmd_show_options_all(struct cmd *self, struct cmdq_item *item, int scope,
 		} else
 			parent = 0;
 
-		cmd_show_options_print(self, item, o, NULL, parent, table);
+		cmd_show_options_print(self, item, o, NULL, parent);
 	}
 	return (CMD_RETURN_NORMAL);
 }

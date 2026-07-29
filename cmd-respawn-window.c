@@ -32,6 +32,7 @@ static enum cmd_retval	cmd_respawn_window_exec(struct cmd *,
 
 const struct cmd_entry cmd_respawn_window_entry = {
 	.name = "respawn-window",
+	.description = "Restart every pane in a window.",
 	.alias = "respawnw",
 
 	.args = { "c:e:Ekt:", 0, -1, NULL },

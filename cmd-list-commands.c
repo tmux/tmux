@@ -31,15 +31,18 @@
 	"#{command_list_name}"					\
 	"#{?command_list_alias, (#{command_list_alias}),} "	\
 	"#{command_list_usage}"
+#define LIST_COMMANDS_HELP_TEMPLATE				\
+	LIST_COMMANDS_TEMPLATE "\n    #{command_list_description}"
 
 static enum cmd_retval cmd_list_commands(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_list_commands_entry = {
 	.name = "list-commands",
+	.description = "List commands or show command syntax.",
 	.alias = "lscm",
 
-	.args = { "F:", 0, 1, NULL },
-	.usage = "[-F format] [command]",
+	.args = { "F:h", 0, 1, NULL },
+	.usage = "[-h] [-F format] [command]",
 
 	.flags = CMD_STARTSERVER|CMD_AFTERHOOK,
 	.exec = cmd_list_commands
@@ -63,6 +66,11 @@ cmd_list_single_command(const struct cmd_entry *entry, struct format_tree *ft,
 	else
 		s = "";
 	format_add(ft, "command_list_usage", "%s", s);
+	if (entry->description != NULL)
+		s = entry->description;
+	else
+		s = "";
+	format_add(ft, "command_list_description", "%s", s);
 
 	line = format_expand(ft, template);
 	if (*line != '\0')
@@ -80,20 +88,17 @@ cmd_list_commands(struct cmd *self, struct cmdq_item *item)
 	const char		 *template,  *command;
 	char			 *cause;
 
-	command = args_string(args, 0);
-	/*
-	 * Interactive output is the command catalog. Keep the original syntax
-	 * listing for formats and redirected output.
-	 */
-	if (!args_has(args, 'F') && cmd_output_is_human(item))
-		return (cmd_help_print(item, command));
-
-	if ((template = args_get(args, 'F')) == NULL)
-		template = LIST_COMMANDS_TEMPLATE;
+	if ((template = args_get(args, 'F')) == NULL) {
+		if (args_has(args, 'h'))
+			template = LIST_COMMANDS_HELP_TEMPLATE;
+		else
+			template = LIST_COMMANDS_TEMPLATE;
+	}
 
 	ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 	format_defaults(ft, NULL, NULL, NULL, NULL);
 
+	command = args_string(args, 0);
 	if (command == NULL) {
 		for (entryp = cmd_table; *entryp != NULL; entryp++)
 			cmd_list_single_command(*entryp, ft, template, item);

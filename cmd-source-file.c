@@ -37,6 +37,7 @@ static enum cmd_retval	cmd_source_file_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_source_file_entry = {
 	.name = "source-file",
+	.description = "Load commands from a configuration file.",
 	.alias = "source",
 
 	.args = { "t:Fnqv", 1, -1, NULL },

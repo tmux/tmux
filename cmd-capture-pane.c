@@ -40,6 +40,7 @@ static char	*cmd_capture_pane_hyperlinks(struct grid *, struct screen *,
 
 const struct cmd_entry cmd_capture_pane_entry = {
 	.name = "capture-pane",
+	.description = "Capture pane content.",
 	.alias = "capturep",
 
 	.args = { "ab:CeE:FHJLMNpPqRS:Tt:", 0, 0, NULL },
@@ -54,6 +55,7 @@ const struct cmd_entry cmd_capture_pane_entry = {
 
 const struct cmd_entry cmd_clear_history_entry = {
 	.name = "clear-history",
+	.description = "Clear a pane's history.",
 	.alias = "clearhist",
 
 	.args = { "Ht:", 0, 0, NULL },

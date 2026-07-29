@@ -1,7 +1,6 @@
 CHANGES FROM 3.7b TO 3.8
 
-* Add a help command with categorized command descriptions, syntax, aliases,
-  and practical examples.
+* Add -h to list-commands to show short command descriptions.
 
 * Build with jemalloc on macOS to avoid what appears to be a bug in the system
   calloc(3) (issue 5385).

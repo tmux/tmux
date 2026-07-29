@@ -31,6 +31,7 @@ static enum cmd_retval	cmd_paste_buffer_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_paste_buffer_entry = {
 	.name = "paste-buffer",
+	.description = "Paste a buffer into a pane.",
 	.alias = "pasteb",
 
 	.args = { "db:prSs:t:", 0, 0, NULL },
