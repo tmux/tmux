@@ -446,7 +446,7 @@ layout_cell_is_right(struct layout_cell *root, struct layout_cell *lc)
  * each pane, so the cell must be large enough that the pane stays inside it.
  */
 static u_int
-layout_pane_minimum(struct window *w, struct layout_cell *lc,
+layout_pane_minimum_size(struct window *w, struct layout_cell *lc,
     enum layout_type type)
 {
 	struct layout_cell	*root = w->layout_root;
@@ -670,7 +670,7 @@ layout_resize_check(struct window *w, struct layout_cell *lc,
 			available = lc->g.sx;
 		else
 			available = lc->g.sy;
-		minimum = layout_pane_minimum(w, lc, type);
+		minimum = layout_pane_minimum_size(w, lc, type);
 		if (available > minimum)
 			available -= minimum;
 		else
@@ -1246,7 +1246,7 @@ layout_new_pane_size(struct window *w, u_int previous, struct layout_cell *lc,
 	max = size_left - min;
 	if (new_size > max)
 		new_size = max;
-	minimum = layout_pane_minimum(w, lc, type);
+	minimum = layout_pane_minimum_size(w, lc, type);
 	if (new_size < minimum)
 		new_size = minimum;
 	return (new_size);
@@ -1262,7 +1262,7 @@ layout_set_size_check(struct window *w, struct layout_cell *lc,
 
 	/* Cells with no children must just be bigger than minimum. */
 	if (lc->type == LAYOUT_WINDOWPANE)
-		return (size >= (int)layout_pane_minimum(w, lc, type));
+		return (size >= (int)layout_pane_minimum_size(w, lc, type));
 	available = size;
 
 	/* Count number of children. */
