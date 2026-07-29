@@ -330,7 +330,7 @@ struct window_copy_mode_data {
 	int		 rectflag;	/* in rectangle copy mode? */
 	int		 scroll_exit;	/* exit on scroll to end? */
 	int		 hide_position;	/* hide position marker */
-	int		 line_numbers;	/* 0 off, 1 from option, 2 default */
+	int		 line_numbers;	/* 0 off, 1 from option, 2 absolute */
 	int		 output_gutter;
 	int		 output_controls;
 	int		 top_output;
@@ -5971,7 +5971,7 @@ window_copy_line_number_mode(struct window_mode_entry *wme)
 		return (WINDOW_COPY_LINE_NUMBERS_OFF);
 	mode = options_get_number(oo, "copy-mode-line-numbers");
 	if (data->line_numbers == 2 && mode == WINDOW_COPY_LINE_NUMBERS_OFF)
-		return (WINDOW_COPY_LINE_NUMBERS_DEFAULT);
+		return (WINDOW_COPY_LINE_NUMBERS_ABSOLUTE);
 	return (mode);
 }
 

@@ -75,6 +75,7 @@ sleep 1
 capture
 check_grep "out2"
 check_no_grep "!+ p\$ two"
+check_grep "  3 p\$ two"
 $TMUX2 send -X fold-view-toggle || exit 1
 [ "$($TMUX2 display -p '#{copy_fold_view}')" = 1 ] || exit 1
 sleep 1

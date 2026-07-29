@@ -49,7 +49,7 @@
 	" '#{?#{m/r:(copy|view)-mode,#{pane_mode}},Go To Top,}' '<' {send -X history-top}" \
 	" '#{?#{m/r:(copy|view)-mode,#{pane_mode}},Go To Bottom,}' '>' {send -X history-bottom}" \
 	" ''" \
-	" '#{?#{==:#{pane_mode},copy-mode},#{?copy_line_numbers,Hide Line Numbers,Show Line Numbers},}' 'L' {send -X line-numbers-toggle}" \
+	" '#{?#{==:#{pane_mode},copy-mode},#{?copy_line_numbers,Line Numbers Off,Line Numbers On},}' 'L' {send -X line-numbers-toggle}" \
 	" '#{?#{==:#{pane_mode},copy-mode},#{?copy_fold_view,Fold View Off,Fold View On},}' 'O' {send -X fold-view-toggle}" \
 	" '#{?#{==:#{pane_mode},copy-mode},#{?refresh_active,Refresh Off,Refresh On},}' 'r' {send -X refresh-toggle}" \
 	" ''" \
