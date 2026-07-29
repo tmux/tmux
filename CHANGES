@@ -1,6 +1,7 @@
 CHANGES FROM 3.7b TO 3.8
 
-* Add -h to list-commands to show short command descriptions.
+* Add -h to list-commands to show short command descriptions, and -hh to
+  include full command syntax.
 
 * Build with jemalloc on macOS to avoid what appears to be a bug in the system
   calloc(3) (issue 5385).

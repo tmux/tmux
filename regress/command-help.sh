@@ -28,12 +28,27 @@ contains "$plain" '^split-window (splitw) '
 
 help=$($TMUX list-commands -h split-window) ||
 	fail "list-commands -h split-window failed"
-contains "$help" '^split-window (splitw) '
-contains "$help" '^    Create a new pane by splitting a window\.$'
+[ "$help" = "split-window Create a new pane by splitting a window." ] ||
+	fail "unexpected short help: $help"
 
 alias_help=$($TMUX list-commands -h splitw) ||
 	fail "list-commands -h splitw failed"
 [ "$alias_help" = "$help" ] || fail "alias help differs from command help"
+
+all_help=$($TMUX list-commands -h) ||
+	fail "list-commands -h failed"
+contains "$all_help" '^attach-session[[:space:]][[:space:]]*Attach to an existing session\.$'
+contains "$all_help" '^bind-key[[:space:]][[:space:]]*Bind a key to one or more commands\.$'
+
+verbose=$($TMUX list-commands -hh split-window) ||
+	fail "list-commands -hh split-window failed"
+contains "$verbose" '^split-window (splitw) '
+contains "$verbose" '^    Create a new pane by splitting a window\.$'
+
+separate_verbose=$($TMUX list-commands -h -h split-window) ||
+	fail "list-commands -h -h split-window failed"
+[ "$separate_verbose" = "$verbose" ] ||
+	fail "-hh and -h -h output differs"
 
 description=$($TMUX list-commands -F '#{command_list_description}' \
     split-window) || fail "command description format failed"
