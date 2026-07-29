@@ -1279,13 +1279,14 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 		window_pane_get_border_cell(wp, cell_type, &gc);
 	}
 
-	if (!blank &&
-	    span->data.type == REDRAW_SPAN_BORDER &&
-	    dctx->marked != NULL &&
-	    redraw_data_has_pane(&span->data, dctx->marked))
-		gc.attr ^= GRID_ATTR_REVERSE;
-	if (!blank)
+	if (!blank) {
+		if (span->data.type == REDRAW_SPAN_BORDER &&
+		    dctx->marked != NULL &&
+		    redraw_data_has_pane(&span->data, dctx->marked)) {
+			gc.attr ^= GRID_ATTR_REVERSE;
+		}
 		redraw_draw_border_arrow(dctx, span, &gc);
+	}
 
 	if (cell_type == CELL_UD && (dctx->flags & REDRAW_ISOLATES))
 		isolates = 1;
