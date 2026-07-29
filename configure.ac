@@ -1137,6 +1137,11 @@ if test "x$enable_asan" = xyes; then
 else
 	AC_MSG_NOTICE([ASAN: off])
 fi
+if test "x$enable_sixel" = xyes; then
+	AC_MSG_NOTICE([SIXEL: on])
+else
+	AC_MSG_NOTICE([SIXEL: off])
+fi
 if test "x$enable_debug" = xyes; then
 	AC_MSG_NOTICE([debug: on])
 else
