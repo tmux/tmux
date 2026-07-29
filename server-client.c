@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.497 2026/07/17 12:42:51 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.499 2026/07/22 08:19:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -525,6 +525,8 @@ server_client_lost(struct client *c)
 
 	evtimer_del(&c->repeat_timer);
 	evtimer_del(&c->click_timer);
+	if (event_initialized(&c->cycle_timer))
+		evtimer_del(&c->cycle_timer);
 
 	key_bindings_unref_table(c->keytable);
 
@@ -1057,6 +1059,11 @@ have_event:
 				c->tty.mouse_scrolling_flag = 0;
 				c->tty.mouse_slider_mpos = -1;
 				c->tty.mouse_last_pane = -1;
+				if ((w->modal->flags & PANE_CLOSEONCLICK) &&
+				    (type == KEYC_TYPE_MOUSEDOWN ||
+				    type == KEYC_TYPE_SECONDCLICK ||
+				    type == KEYC_TYPE_TRIPLECLICK))
+					server_kill_pane(w->modal);
 				return (KEYC_UNKNOWN);
 			}
 		}

@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1411 2026/07/20 11:16:33 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1416 2026/07/27 19:15:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1335,6 +1335,7 @@ struct window_pane {
 #define PANE_DESTROYED 0x10000
 #define PANE_CMDRUNNING 0x20000
 #define PANE_ACTIVITY 0x40000
+#define PANE_CLOSEONCLICK 0x80000
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;
@@ -1474,7 +1475,8 @@ struct window {
 	int			 sb;
 	int			 sb_pos;
 
-	struct utf8_data	*fill_character;
+	struct grid_cell	 inside_cell;
+	struct grid_cell	 outside_cell;
 	int			 flags;
 #define WINDOW_BELL 0x1
 #define WINDOW_ACTIVITY 0x2
@@ -2219,6 +2221,7 @@ struct client {
 	struct mouse_event	 click_event;
 
 	struct status_line	 status;
+	struct event		 cycle_timer;
 	enum client_theme	 theme;
 
 	struct input_requests	 input_requests;
@@ -2757,6 +2760,10 @@ void	 hooks_monitor_add(struct cmdq_item *, struct options *,
 void	 hooks_monitor_remove(struct options *, const char *);
 void	 hooks_monitor_free(void *);
 char	*hooks_monitor_to_string(struct options_entry *);
+int	 hooks_monitor_get(struct options_entry *, enum monitor_type *, int *,
+	     const char **);
+u_int	 hooks_monitor_get_fire_count(struct options_entry *);
+time_t	 hooks_monitor_get_fire_time(struct options_entry *);
 
 /* options.c */
 struct options	*options_create(struct options *);
@@ -2774,6 +2781,9 @@ const char	*options_name(struct options_entry *);
 struct options	*options_owner(struct options_entry *);
 void		*options_get_monitor_data(struct options_entry *);
 void		 options_set_monitor_data(struct options_entry *, void *);
+void		 options_hook_fired(struct options_entry *);
+u_int		 options_get_fire_count(struct options_entry *);
+time_t		 options_get_fire_time(struct options_entry *);
 const struct options_table_entry *options_table_entry(struct options_entry *);
 struct options_entry *options_get_only(struct options *, const char *);
 struct options_entry *options_get(struct options *, const char *);
@@ -3729,7 +3739,6 @@ void		*window_pane_get_new_data(struct window_pane *,
 		     struct window_pane_offset *, size_t *);
 void		 window_pane_update_used_data(struct window_pane *,
 		     struct window_pane_offset *, size_t);
-void		 window_set_fill_character(struct window *);
 void		 window_pane_default_cursor(struct window_pane *);
 int		 window_pane_mode(struct window_pane *);
 int		 window_pane_show_scrollbar(struct window_pane *);
@@ -3757,8 +3766,10 @@ struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
 int		 window_pane_is_floating(struct window_pane *);
 
 /* window-border.c */
-void		 window_get_border_cell(struct window *, struct window_pane *,
-		     enum pane_lines, int, struct grid_cell *);
+void		 window_set_fill_cells(struct window *);
+void		 window_get_border_cell(struct window_pane *, enum pane_lines,
+		     int, struct grid_cell *);
+void		 window_get_fill_cell(struct window *, int, struct grid_cell *);
 void		 window_pane_get_border_cell(struct window_pane *, int,
 		     struct grid_cell *);
 void		 window_pane_get_border_style(struct window_pane *,
@@ -3952,6 +3963,8 @@ int	monitor_parse(const char *, char **, enum monitor_type *, int *,
 void	monitor_add(struct monitor_set *, const char *, enum monitor_type, int,
 	    const char *, int);
 void	monitor_remove(struct monitor_set *, const char *);
+u_int	monitor_get_fire_count(struct monitor_set *, const char *);
+time_t	monitor_get_fire_time(struct monitor_set *, const char *);
 
 /* control.c */
 void	control_discard(struct client *);

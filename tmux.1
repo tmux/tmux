@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1144 2026/07/19 17:36:38 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1151 2026/07/28 07:04:18 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: July 19 2026 $
+.Dd $Mdocdate: July 28 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -3638,7 +3638,7 @@ but a different format may be specified with
 .Fl F .
 .Tg newp
 .It Xo Ic new\-pane
-.Op Fl bdefhIkLMOPvWZ
+.Op Fl bCdefhIkLMOPvWZ
 .Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
@@ -3694,6 +3694,9 @@ creates a modal pane.
 A modal pane is always the active pane and prevents interaction with any other
 panes while it is active.
 A window can only have one modal pane and it must be a floating pane.
+With
+.Fl C ,
+the modal pane is closed when the mouse is clicked outside it.
 .Pp
 The
 .Fl L
@@ -4690,6 +4693,7 @@ the result would be the default background and a blue foreground.
 .Tg show
 .It Xo Ic show\-options
 .Op Fl AgHpqsvw
+.Op Fl F Ar format
 .Op Fl t Ar target\-pane
 .Op Ar option
 .Xc
@@ -4717,6 +4721,10 @@ Global session or window options are listed if
 is used.
 .Fl v
 shows only the option value, not the name.
+With
+.Fl F ,
+.Ar format
+is used for each option.
 If
 .Fl q
 is set, no error will be returned if
@@ -5708,8 +5716,13 @@ Set the time in milliseconds for which the indicators shown by the
 .Ic display\-panes
 command appear.
 .Pp
-.It Ic fill\-character Ar character
-Set the character used to fill areas of the terminal unused by a window.
+.It Ic fill\-character Ar format
+Set the format used to fill areas of the terminal unused by a pane.
+The format is expanded once for areas inside the window with
+.Ql is_inside
+set, and once for areas outside the window with
+.Ql is_outside
+set.
 .Pp
 .It Ic main\-pane\-height Ar height
 .It Ic main\-pane\-width Ar width
@@ -5769,6 +5782,14 @@ section.
 .Pp
 .It Ic copy\-mode\-current\-line\-number\-style Ar style
 Set style of current line number in copy mode.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
+.It Ic copy\-mode\-current\-line\-style Ar style
+Set the style of the line containing the cursor in copy mode.
 For how to specify
 .Ar style ,
 see the
@@ -6586,6 +6607,7 @@ run
 immediately.
 .It Xo Ic show\-hooks
 .Op Fl Bgpw
+.Op Fl F Ar format
 .Op Fl t Ar target\-pane
 .Op Ar hook
 .Xc
@@ -6598,6 +6620,10 @@ With
 shows the subscriptions installed with
 .Em set\-hook
 .Fl B .
+With
+.Fl F ,
+.Ar format
+is used for each hook.
 .El
 .Sh MOUSE SUPPORT
 If the
@@ -7012,6 +7038,20 @@ escape
 command arguments; with
 .Ql s
 use single quotes.
+.Pp
+Some variables such as
+.Ic pane_title
+and
+.Ic pane_path
+are set by escape sequences received from pane and may contain arbitrary
+content including shell metacharacters.
+.Ql q:\&
+should be used to escape these with commands passed to
+.Ic run\-shell ,
+.Ic if\-shell ,
+or
+.Ic pipe\-pane .
+.Pp
 .Ql E:\&
 will expand the format twice, for example
 .Ql #{E:status\-left}
@@ -7176,6 +7216,26 @@ For example
 will be replaced by
 .Ql #{?pane_in_mode,yes,no} .
 .Pp
+The
+.Ql A
+modifier shows one of a list of frames in turn:
+.Ql #{A/count:frame,frame,...}
+or
+.Ql #{A:frame,frame,...} .
+Each frame is shown for
+.Ar count
+periods of 100 milliseconds before the next, wrapping back to the first after
+the last.
+If no count is given, one is used.
+The
+.Ql A
+modifier is expanded only in the status line and
+.Ic pane\-border\-format ;
+if present, the status line or pane borders are redrawn every 100 milliseconds.
+For example,
+.Ql #{A/2:|,/,\-,\e}
+shows the four frames in turn, changing every 200 milliseconds.
+.Pp
 The following variables are available, where appropriate:
 .Bl -column "XXXXXXXXXXXXXXXXXXX" "XXXXX"
 .It Sy "Variable name" Ta Sy "Alias" Ta Sy "Replaced with"
@@ -7241,7 +7301,11 @@ The following variables are available, where appropriate:
 .It Li "history_size" Ta "" Ta "Size of history in lines"
 .It Li "hook" Ta "" Ta "Name of running hook, if any"
 .It Li "hook_client" Ta "" Ta "Name of client where hook was run, if any"
+.It Li "hook_fire_count" Ta "" Ta "Number of times hook has fired"
+.It Li "hook_fire_time" Ta "" Ta "Time hook last fired"
 .It Li "hook_last" Ta "" Ta "Previous value for a monitor hook"
+.It Li "hook_monitor_format" Ta "" Ta "Format for a monitor hook"
+.It Li "hook_monitor_target" Ta "" Ta "Target for a monitor hook"
 .It Li "hook_pane" Ta "" Ta "ID of pane where hook was run, if any"
 .It Li "hook_session" Ta "" Ta "ID of session where hook was run, if any"
 .It Li "hook_session_name" Ta "" Ta "Name of session where hook was run, if any"
@@ -7283,6 +7347,17 @@ The following variables are available, where appropriate:
 .It Li "next_session_id" Ta "" Ta "Unique session ID for next new session"
 .It Li "next_window_active" Ta "" Ta "1 if next window in W: loop is active"
 .It Li "next_window_index" Ta "" Ta "Index of next window in W: loop"
+.It Li "option_array_key" Ta "" Ta "Array key, if option is an array item"
+.It Li "option_has_array_key" Ta "" Ta "1 if option array key is present"
+.It Li "option_has_value" Ta "" Ta "1 if option value is present"
+.It Li "option_is_array" Ta "" Ta "1 if option is an array"
+.It Li "option_is_hook" Ta "" Ta "1 if option is a hook"
+.It Li "option_is_parent" Ta "" Ta "1 if option is inherited"
+.It Li "option_is_string" Ta "" Ta "1 if option is a string"
+.It Li "option_is_user" Ta "" Ta "1 if option is a user option"
+.It Li "option_name" Ta "" Ta "Name of option"
+.It Li "option_value" Ta "" Ta "Value of option"
+.It Li "option_value_only" Ta "" Ta "1 if only option values will be shown"
 .It Li "origin_flag" Ta "" Ta "Pane origin flag"
 .It Li "pane_active" Ta "" Ta "1 if active pane"
 .It Li "pane_at_bottom" Ta "" Ta "1 if pane is at the bottom of window"

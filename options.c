@@ -1,4 +1,4 @@
-/* $OpenBSD: options.c,v 1.90 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: options.c,v 1.92 2026/07/27 19:15:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -107,7 +107,10 @@ struct options_entry {
 
 	int					 cached;
 	struct style				 style;
+
 	void					*monitor_data;
+	u_int					 fire_count;
+	time_t					 fire_time;
 
 	RB_ENTRY(options_entry)			 entry;
 };
@@ -432,6 +435,25 @@ void
 options_set_monitor_data(struct options_entry *o, void *data)
 {
 	o->monitor_data = data;
+}
+
+void
+options_hook_fired(struct options_entry *o)
+{
+	o->fire_count++;
+	o->fire_time = current_time;
+}
+
+u_int
+options_get_fire_count(struct options_entry *o)
+{
+	return (o->fire_count);
+}
+
+time_t
+options_get_fire_time(struct options_entry *o)
+{
+	return (o->fire_time);
 }
 
 const struct options_table_entry *
@@ -1361,7 +1383,7 @@ options_push_changes(const char *name)
 	}
 	if (strcmp(name, "fill-character") == 0) {
 		RB_FOREACH(w, windows, &windows)
-			window_set_fill_character(w);
+			window_set_fill_cells(w);
 	}
 	if (strcmp(name, "key-table") == 0) {
 		TAILQ_FOREACH(loop, &clients, entry)
