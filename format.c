@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.409 2026/07/26 15:21:53 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.410 2026/07/29 20:43:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2614,20 +2614,23 @@ format_cb_pane_unzoomed_width(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
 	struct layout_cell	*lc;
-	int			 sb_w, sb_pad;
+	int			 saved, sb_w, sb_pad;
 	u_int			 sx;
 
 	if (wp == NULL)
 		return (NULL);
 
 	lc = wp->saved_layout_cell;
+	saved = (lc != NULL);
 	if (lc == NULL)
 		lc = wp->layout_cell;
 	if (lc == NULL)
 		return (NULL);
 	sx = lc->g.sx;
 
-	if (window_pane_scrollbar_reserve(wp)) {
+	if ((saved && !SCREEN_IS_ALTERNATE(&wp->base) &&
+	    wp->window->sb == PANE_SCROLLBARS_ALWAYS) ||
+	    (!saved && window_pane_scrollbar_reserve(wp))) {
 		sb_w = wp->scrollbar_style.width;
 		sb_pad = wp->scrollbar_style.pad;
 		if (sb_w < 1)
