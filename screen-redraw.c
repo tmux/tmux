@@ -722,10 +722,11 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 		 * must be drawn as a border or it stays blank/grey.
 		 */
 		if (!PANE_BORDER_TYPE_IS_SEPARATE(bctx->border_type)) {
-			if (pane_status == PANE_STATUS_TOP)
+			if (pane_status == PANE_STATUS_TOP) {
 				mark_bottom = 0;
-			else if (pane_status == PANE_STATUS_BOTTOM)
+			} else if (pane_status == PANE_STATUS_BOTTOM) {
 				mark_top = 0;
+			}
 		}
 	}
 
