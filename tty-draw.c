@@ -121,6 +121,11 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	struct grid		*gd = s->grid;
 	const struct grid_cell	*gcp;
 	struct grid_cell	 gc, ngc, last;
+#ifdef ENABLE_IMAGES
+	struct grid_cell	 image_gc;
+	struct image		*im;
+	const char		*ascii;
+#endif
 	struct grid_line	*gl;
 	u_int			 i, j, last_i, cx, ex, width;
 	u_int			 cellsize, bg;
@@ -251,14 +256,36 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				/* Get the current cell. */
 				grid_view_get_cell(gd, px + i, py, &gc);
 
+#ifdef ENABLE_IMAGES
+				/* Text terminals render image blocks as ASCII. */
+				if (gc.flags & GRID_FLAG_IMAGE) {
+					memcpy(&image_gc, &gc, sizeof image_gc);
+					im = image_find(gc.image_id);
+					if ((tty->term->flags & TERM_KITTY) ||
+					    ((tty->term->flags & TERM_SIXEL) &&
+					    tty->xpixel != 0 &&
+					    tty->ypixel != 0))
+						ascii = " ";
+					else
+						ascii = image_get_ascii(im,
+						    gc.image_x, gc.image_y);
+					utf8_set(&image_gc.data, *ascii);
+					image_gc.flags &= ~GRID_FLAG_IMAGE;
+					gcp = &image_gc;
+				} else
+					gcp = &gc;
+#else
+				gcp = &gc;
+#endif
+
 				/* Work out empty cells. */
-				empty = tty_draw_line_get_empty(&gc, &last,
+				empty = tty_draw_line_get_empty(gcp, &last,
 				    nx - i);
 				if (empty != 0)
-					gcp = &gc;
+					;
 				else {
 					/* Update for codeset if needed. */
-					gcp = tty_check_codeset(tty, &gc);
+					gcp = tty_check_codeset(tty, gcp);
 
 					/* And for selection. */
 					if (gcp->flags & GRID_FLAG_SELECTED) {

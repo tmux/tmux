@@ -482,15 +482,35 @@ if test "x$enable_cgroups" = xyes; then
 	fi
 fi
 
-# Enable sixel support.
+# Enable protocol-neutral image support.
+AC_ARG_WITH(
+	image-support,
+	AS_HELP_STRING(--with-image-support, enable Kitty/SIXEL/ASCII images)
+)
+
+# Keep the old option as an alias for one compatibility cycle.
 AC_ARG_ENABLE(
 	sixel,
-	AS_HELP_STRING(--enable-sixel, enable sixel images)
+	AS_HELP_STRING(--enable-sixel, deprecated alias for --with-image-support)
 )
 if test "x$enable_sixel" = xyes; then
+	with_image_support=yes
+fi
+if test "x$with_image_support" = xyes; then
+	PKG_CHECK_MODULES(
+		IMAGE,
+		[libpng >= 1.6 zlib],
+		[
+			AM_CPPFLAGS="$IMAGE_CFLAGS $AM_CPPFLAGS"
+			CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
+			LIBS="$IMAGE_LIBS $LIBS"
+		],
+		AC_MSG_ERROR("image support requires libpng 1.6 and zlib")
+	)
+	AC_DEFINE(ENABLE_IMAGES)
 	AC_DEFINE(ENABLE_SIXEL)
 fi
-AM_CONDITIONAL(ENABLE_SIXEL, [test "x$enable_sixel" = xyes])
+AM_CONDITIONAL(ENABLE_IMAGES, [test "x$with_image_support" = xyes])
 
 # Check for b64_ntop. If we have b64_ntop, we assume b64_pton as well.
 AC_MSG_CHECKING(for b64_ntop)

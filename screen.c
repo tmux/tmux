@@ -91,11 +91,6 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->tabs = NULL;
 	s->sel = NULL;
 
-#ifdef ENABLE_SIXEL
-	TAILQ_INIT(&s->images);
-	TAILQ_INIT(&s->saved_images);
-#endif
-
 	s->write_list = NULL;
 	s->hyperlinks = NULL;
 
@@ -152,10 +147,6 @@ screen_reset_hyperlinks(struct screen *s)
 void
 screen_free(struct screen *s)
 {
-#ifdef ENABLE_SIXEL
-	struct image	*im;
-#endif
-
 	free(s->sel);
 	free(s->tabs);
 	free(s->path);
@@ -172,17 +163,6 @@ screen_free(struct screen *s)
 		hyperlinks_free(s->hyperlinks);
 	screen_free_titles(s);
 
-#ifdef ENABLE_SIXEL
-	/*
-	 * Images saved when entering the alternate screen stay linked in the
-	 * global list; move them back so they are freed and unlinked here, or
-	 * a later eviction would write through this freed screen.
-	 */
-	TAILQ_CONCAT(&s->images, &s->saved_images, entry);
-	TAILQ_FOREACH(im, &s->images, entry)
-		im->list = &s->images;
-	image_free_all(s);
-#endif
 }
 
 /* Reset tabs to default, eight spaces apart. */
@@ -374,10 +354,6 @@ screen_resize_cursor(struct screen *s, u_int sx, u_int sy, int reflow,
 
 	if (sy != screen_size_y(s))
 		screen_resize_y(s, sy, eat_empty, &cy);
-
-#ifdef ENABLE_SIXEL
-	image_free_all(s);
-#endif
 
 	if (reflow)
 		screen_reflow(s, sx, &cx, &cy, cursor);
@@ -690,10 +666,6 @@ int
 screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 {
 	u_int		 sx, sy;
-#ifdef ENABLE_SIXEL
-	struct image	*im;
-#endif
-
 	if (SCREEN_IS_ALTERNATE(s))
 		return 0;
 	sx = screen_size_x(s);
@@ -706,12 +678,6 @@ screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 		s->saved_cy = s->cy;
 	}
 	memcpy(&s->saved_cell, gc, sizeof s->saved_cell);
-
-#ifdef ENABLE_SIXEL
-	TAILQ_CONCAT(&s->saved_images, &s->images, entry);
-	TAILQ_FOREACH(im, &s->saved_images, entry)
-	    im->list = &s->saved_images;
-#endif
 
 	grid_view_clear(s->grid, 0, 0, sx, sy, 8);
 
@@ -726,10 +692,6 @@ int
 screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 {
 	u_int		 sx = screen_size_x(s), sy = screen_size_y(s);
-#ifdef ENABLE_SIXEL
-	struct image	*im;
-#endif
-
 	/*
 	 * If the current size is different, temporarily resize to the old size
 	 * before copying back.
@@ -771,13 +733,6 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 
 	grid_destroy(s->saved_grid);
 	s->saved_grid = NULL;
-
-#ifdef ENABLE_SIXEL
-	image_free_all(s);
-	TAILQ_CONCAT(&s->images, &s->saved_images, entry);
-	TAILQ_FOREACH(im, &s->images, entry)
-	    im->list = &s->images;
-#endif
 
 	if (s->cx > screen_size_x(s) - 1)
 		s->cx = screen_size_x(s) - 1;

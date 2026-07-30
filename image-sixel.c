@@ -397,6 +397,10 @@ sixel_log(struct sixel_image *si)
 void
 sixel_size_in_cells(struct sixel_image *si, u_int *x, u_int *y)
 {
+	if (si->xpixel == 0)
+		si->xpixel = 8;
+	if (si->ypixel == 0)
+		si->ypixel = 16;
 	if ((si->x % si->xpixel) == 0)
 		*x = (si->x / si->xpixel);
 	else
@@ -406,6 +410,92 @@ sixel_size_in_cells(struct sixel_image *si, u_int *x, u_int *y)
 	else
 		*y = 1 + (si->y / si->ypixel);
 }
+
+#ifdef ENABLE_IMAGES
+static double
+sixel_hue(double p, double q, double t)
+{
+	if (t < 0)
+		t += 1;
+	if (t > 1)
+		t -= 1;
+	if (t < 1.0 / 6)
+		return (p + (q - p) * 6 * t);
+	if (t < 1.0 / 2)
+		return (q);
+	if (t < 2.0 / 3)
+		return (p + (q - p) * (2.0 / 3 - t) * 6);
+	return (p);
+}
+
+static void
+sixel_colour_to_rgb(u_int colour, u_char *r, u_char *g, u_char *b)
+{
+	u_int	type = colour >> 25;
+	double	h, l, s, p, q;
+
+	if (type == 2) {
+		*r = ((colour >> 16) & 0x1ff) * 255 / 100;
+		*g = ((colour >> 8) & 0xff) * 255 / 100;
+		*b = (colour & 0xff) * 255 / 100;
+		return;
+	}
+	if (type != 1) {
+		*r = *g = *b = 0;
+		return;
+	}
+
+	h = ((colour >> 16) & 0x1ff) / 360.0;
+	l = ((colour >> 8) & 0xff) / 100.0;
+	s = (colour & 0xff) / 100.0;
+	if (s == 0) {
+		*r = *g = *b = l * 255;
+		return;
+	}
+	q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+	p = 2 * l - q;
+	*r = sixel_hue(p, q, h + 1.0 / 3) * 255;
+	*g = sixel_hue(p, q, h) * 255;
+	*b = sixel_hue(p, q, h - 1.0 / 3) * 255;
+}
+
+/* Convert decoded SIXEL data into the protocol-neutral immutable image. */
+struct image *
+sixel_to_image(struct sixel_image *si)
+{
+	u_char	*pixels, *pixel, r, g, b;
+	u_int	 x, y, c, sx, sy;
+	struct image	*im;
+
+	if ((uint64_t)si->x * si->y * 4 > SIZE_MAX)
+		return (NULL);
+	pixels = xcalloc(si->x * si->y, 4);
+	for (y = 0; y < si->y; y++) {
+		for (x = 0; x < si->x; x++) {
+			c = sixel_get_pixel(si, x, y);
+			pixel = pixels + ((size_t)y * si->x + x) * 4;
+			if (c == 0) {
+				pixel[3] = si->p2 == 1 ? 0 : 255;
+				continue;
+			}
+			c--;
+			if (c < si->ncolours)
+				sixel_colour_to_rgb(si->colours[c], &r, &g, &b);
+			else
+				r = g = b = 0;
+			pixel[0] = r;
+			pixel[1] = g;
+			pixel[2] = b;
+			pixel[3] = 255;
+		}
+	}
+	sixel_size_in_cells(si, &sx, &sy);
+	im = image_create(si->x, si->y, sx, sy, pixels);
+	if (im == NULL)
+		free(pixels);
+	return (im);
+}
+#endif
 
 struct sixel_image *
 sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
@@ -647,6 +737,115 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 	free(chunks);
 
 	return (buf);
+}
+
+static struct sixel_image *
+sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells,
+    u_int xpixel, u_int ypixel)
+{
+	struct sixel_image	*si;
+	const u_char		*pixel;
+	u_int			 x, y, sx, sy, sourcex, sourcey, sourcey0;
+	u_int			 sourcey1;
+	u_int			 r, g, b, colour, i;
+
+	sx = cells * xpixel;
+	sy = ypixel;
+	if (sx == 0 || sy == 0 || sx > SIXEL_WIDTH_LIMIT ||
+	    sy > SIXEL_HEIGHT_LIMIT)
+		return (NULL);
+
+	si = xcalloc(1, sizeof *si);
+	si->xpixel = xpixel;
+	si->ypixel = ypixel;
+	si->p2 = 1;
+	si->set_ra = 1;
+	si->ra_x = sx;
+	si->ra_y = sy;
+	si->ncolours = si->used_colours = 216;
+	si->colours = xcalloc(si->ncolours, sizeof *si->colours);
+	for (i = 0; i < si->ncolours; i++) {
+		r = (i / 36) * 20;
+		g = ((i / 6) % 6) * 20;
+		b = (i % 6) * 20;
+		si->colours[i] = (2U << 25)|(r << 16)|(g << 8)|b;
+	}
+
+	for (y = 0; y < sy; y++) {
+		sourcey0 = (uint64_t)oy * im->height / im->sy;
+		sourcey1 = (uint64_t)(oy + 1) * im->height / im->sy;
+		sourcey = sourcey0 +
+		    (uint64_t)y * (sourcey1 - sourcey0) / sy;
+		if (sourcey >= im->height)
+			sourcey = im->height - 1;
+		for (x = 0; x < sx; x++) {
+			sourcex = ((uint64_t)ox * im->width / im->sx) +
+			    (uint64_t)x * im->width * cells /
+			    ((uint64_t)im->sx * sx);
+			if (sourcex >= im->width)
+				sourcex = im->width - 1;
+			pixel = im->pixels + sourcey * im->stride + sourcex * 4;
+			if (pixel[3] < 128)
+				continue;
+			r = (pixel[0] * 5 + 127) / 255;
+			g = (pixel[1] * 5 + 127) / 255;
+			b = (pixel[2] * 5 + 127) / 255;
+			colour = r * 36 + g * 6 + b + 1;
+			if (sixel_set_pixel(si, x, y, colour) != 0) {
+				sixel_free(si);
+				return (NULL);
+			}
+		}
+	}
+	return (si);
+}
+
+void
+sixel_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py,
+    u_int nx, u_int atx, u_int aty)
+{
+	struct grid_cell	 gc, next;
+	struct image		*im;
+	struct sixel_image	*si;
+	char			*data;
+	size_t			 size;
+	u_int			 i, run;
+
+	for (i = 0; i < nx; i += run) {
+		grid_view_get_cell(s->grid, px + i, py, &gc);
+		if (~gc.flags & GRID_FLAG_IMAGE) {
+			run = 1;
+			continue;
+		}
+		im = image_find(gc.image_id);
+		if (im == NULL) {
+			run = 1;
+			continue;
+		}
+		for (run = 1; i + run < nx; run++) {
+			grid_view_get_cell(s->grid, px + i + run, py, &next);
+			if (~next.flags & GRID_FLAG_IMAGE ||
+			    next.image_id != gc.image_id ||
+			    next.image_y != gc.image_y ||
+			    next.image_x != gc.image_x + run)
+				break;
+		}
+		si = sixel_from_image(im, gc.image_x, gc.image_y, run,
+		    tty->xpixel, tty->ypixel);
+		if (si == NULL)
+			continue;
+		data = sixel_print(si, NULL, &size);
+		sixel_free(si);
+		if (data == NULL)
+			continue;
+		tty_region_off(tty);
+		tty_margin_off(tty);
+		tty_cursor(tty, atx + i, aty);
+		tty->flags |= TTY_NOBLOCK;
+		tty_putn(tty, data, size, 0);
+		tty_invalidate(tty);
+		free(data);
+	}
 }
 
 struct screen *
