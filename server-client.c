@@ -37,6 +37,7 @@ static key_code	server_client_check_mouse(struct client *, struct key_event *);
 static void	server_client_repeat_timer(int, short, void *);
 static void	server_client_click_timer(int, short, void *);
 static void	server_client_check_exit(struct client *);
+static void	server_client_exit_timer(int, short, void *);
 static void	server_client_check_redraw(struct client *);
 static void	server_client_check_modes(struct client *);
 static void	server_client_set_title(struct client *);
@@ -309,6 +310,7 @@ server_client_create(int fd)
 
 	evtimer_set(&c->repeat_timer, server_client_repeat_timer, c);
 	evtimer_set(&c->click_timer, server_client_click_timer, c);
+	evtimer_set(&c->exit_timer, server_client_exit_timer, c);
 
 	c->click_wp = -1;
 
@@ -525,6 +527,7 @@ server_client_lost(struct client *c)
 
 	evtimer_del(&c->repeat_timer);
 	evtimer_del(&c->click_timer);
+	evtimer_del(&c->exit_timer);
 	if (event_initialized(&c->cycle_timer))
 		evtimer_del(&c->cycle_timer);
 
@@ -2285,6 +2288,61 @@ server_client_click_timer(__unused int fd, __unused short events, void *data)
 	c->flags &= ~(CLIENT_DOUBLECLICK|CLIENT_TRIPLECLICK);
 }
 
+/*
+ * Number of seconds to wait for an exiting client to flush its remaining
+ * output and then to close its connection. A client whose terminal has gone
+ * away (for example a control client whose ssh or terminal emulator has died)
+ * may never do either and must not be allowed to prevent the server exiting.
+ */
+#define CLIENT_EXIT_TIMEOUT 10
+
+/* Bound how long an exiting client may take, if not already bounded. */
+static void
+server_client_exit_deadline(struct client *c)
+{
+	struct timeval	tv = { .tv_sec = CLIENT_EXIT_TIMEOUT };
+
+	if (!evtimer_pending(&c->exit_timer, NULL))
+		evtimer_add(&c->exit_timer, &tv);
+}
+
+/* Exit timer has expired: stop waiting for the client to exit gracefully. */
+static void
+server_client_exit_timer(__unused int fd, __unused short events, void *data)
+{
+	struct client		*c = data;
+	struct client_file	*cf;
+
+	if (c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED))
+		return;
+	if (c->flags & CLIENT_EXITED) {
+		/*
+		 * MSG_EXIT was sent but the client has not closed its
+		 * connection, perhaps because it is stuck writing to a dead
+		 * terminal. Drop it or it will prevent the server exiting.
+		 */
+		log_debug("%s: %s took too long to exit, dropping", __func__,
+		    c->name);
+		server_client_lost(c);
+		return;
+	}
+	if (~c->flags & CLIENT_EXIT)
+		return;
+
+	/*
+	 * The client has stopped accepting the output that must be flushed
+	 * before MSG_EXIT can be sent. It is never going to be delivered, so
+	 * discard it and let the exit continue.
+	 */
+	log_debug("%s: %s took too long to flush, discarding output", __func__,
+	    c->name);
+	if (c->flags & CLIENT_CONTROL)
+		control_discard_all(c);
+	RB_FOREACH(cf, client_files, &c->files)
+		evbuffer_drain(cf->buffer, EVBUFFER_LENGTH(cf->buffer));
+	server_client_check_exit(c);
+}
+
 /* Check if client should be exited. */
 static void
 server_client_check_exit(struct client *c)
@@ -2301,14 +2359,22 @@ server_client_check_exit(struct client *c)
 
 	if (c->flags & CLIENT_CONTROL) {
 		control_discard(c);
-		if (!control_all_done(c))
+		if (!control_all_done(c)) {
+			server_client_exit_deadline(c);
 			return;
+		}
 	}
 	RB_FOREACH(cf, client_files, &c->files) {
-		if (EVBUFFER_LENGTH(cf->buffer) != 0)
+		if (EVBUFFER_LENGTH(cf->buffer) != 0) {
+			server_client_exit_deadline(c);
 			return;
+		}
 	}
 	c->flags |= CLIENT_EXITED;
+
+	/* Now wait (bounded) for the client to process MSG_EXIT and close. */
+	evtimer_del(&c->exit_timer);
+	server_client_exit_deadline(c);
 
 	switch (c->exit_type) {
 	case CLIENT_EXIT_RETURN:

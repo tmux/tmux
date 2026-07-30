@@ -878,6 +878,24 @@ control_discard(struct client *c)
 	bufferevent_disable(cs->read_event, EV_READ);
 }
 
+/*
+ * Discard all output for a client, including output which has already been
+ * queued to be written. Used when the client has stopped accepting output so
+ * it is never going to be delivered.
+ */
+void
+control_discard_all(struct client *c)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_block	*cb, *cb1;
+
+	control_discard(c);
+	TAILQ_FOREACH_SAFE(cb, &cs->all_blocks, all_entry, cb1)
+		control_free_block(cs, cb);
+	evbuffer_drain(cs->write_event->output,
+	    EVBUFFER_LENGTH(cs->write_event->output));
+}
+
 /* Stop control mode. */
 void
 control_stop(struct client *c)

@@ -2243,6 +2243,8 @@ struct client {
 	struct event		 click_timer;
 	int			 click_loc;
 	int			 click_wp;
+
+	struct event		 exit_timer;
 	u_int			 click_button;
 	struct mouse_event	 click_event;
 
@@ -4020,6 +4022,7 @@ time_t	monitor_get_fire_time(struct monitor_set *, const char *);
 
 /* control.c */
 void	control_discard(struct client *);
+void	control_discard_all(struct client *);
 void	control_start(struct client *);
 void	control_ready(struct client *);
 void	control_stop(struct client *);
