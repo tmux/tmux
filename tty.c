@@ -2121,6 +2121,11 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
     const struct tty_style_ctx *style_ctx)
 {
 	const struct grid_cell	*gcp;
+#ifdef ENABLE_IMAGES
+	struct grid_cell	 image_gc;
+	struct image		*im;
+	const char		*ascii;
+#endif
 
 	/* Skip last character if terminal is stupid. */
 	if ((tty->term->flags & TERM_NOAM) &&
@@ -2135,6 +2140,26 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 	/* Check if character is covered by overlay or floating pane. */
 	if (!tty_check_overlay(tty, tty->cx, tty->cy))
 		return;
+
+#ifdef ENABLE_IMAGES
+	/*
+	 * Graphical image cells are drawn by the redraw scene. In particular,
+	 * do not erase one with a selected space while copy mode is moving the
+	 * selection; the unchanged image would then need to be drawn again.
+	 */
+	if (gc->flags & GRID_FLAG_IMAGE) {
+		if ((tty->term->flags & TERM_KITTY) ||
+		    ((tty->term->flags & TERM_SIXEL) &&
+		    tty->xpixel != 0 && tty->ypixel != 0))
+			return;
+		memcpy(&image_gc, gc, sizeof image_gc);
+		im = image_find(gc->image_id);
+		ascii = image_get_ascii(im, gc->image_x, gc->image_y);
+		utf8_set(&image_gc.data, *ascii);
+		image_gc.flags &= ~GRID_FLAG_IMAGE;
+		gc = &image_gc;
+	}
+#endif
 
 	/* Check the output codeset and apply attributes. */
 	gcp = tty_check_codeset(tty, gc);
