@@ -286,9 +286,14 @@ grid_set_tab(struct grid_cell *gc, u_int width)
 static void
 grid_free_line(struct grid *gd, u_int py)
 {
-	free(gd->linedata[py].celldata);
-	free(gd->linedata[py].extddata);
-	memset(&gd->linedata[py], 0, sizeof gd->linedata[py]);
+	struct grid_line	*gl = &gd->linedata[py];
+
+	if (gl->celldata == NULL && gl->extddata == NULL)
+		return;
+
+	free(gl->celldata);
+	free(gl->extddata);
+	memset(gl, 0, sizeof *gl);
 }
 
 /* Free several lines. */
@@ -741,11 +746,15 @@ grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny, u_int bg)
 	    ny * (sizeof *gd->linedata));
 
 	/*
-	 * Wipe any lines that have been moved (without freeing them - they are
-	 * still present).
+	 * Wipe any lines that have been moved. For source positions within the
+	 * destination region, zero the struct to break pointer aliasing (the
+	 * memory is now owned by the destination). For positions outside the
+	 * destination, empty normally.
 	 */
 	for (yy = py; yy < py + ny; yy++) {
-		if (yy < dy || yy >= dy + ny)
+		if (yy >= dy && yy < dy + ny)
+			memset(&gd->linedata[yy], 0, sizeof gd->linedata[yy]);
+		else
 			grid_empty_line(gd, yy, bg);
 	}
 	if (py != 0 && (py < dy || py >= dy + ny))
