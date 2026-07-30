@@ -3098,57 +3098,14 @@ void
 screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
     u_int bg)
 {
-	struct screen		*s = ctx->s;
-	struct grid		*gd = s->grid;
-	struct tty_ctx		 ttyctx;
-	u_int			 x, y, sx, sy, cx = s->cx, cy = s->cy, i, lines;
-	struct sixel_image	*new;
+	struct image	*im;
 
-	if (screen_size_y(s) == 1)
+	im = sixel_to_image(si);
+	sixel_free(si);
+	if (im == NULL)
 		return;
-
-	sixel_size_in_cells(si, &x, &y);
-	if (x > screen_size_x(s) || y > screen_size_y(s) - 1) {
-		if (x > screen_size_x(s) - cx)
-			sx = screen_size_x(s) - cx;
-		else
-			sx = x;
-		if (y > screen_size_y(s) - 1)
-			sy = screen_size_y(s) - 1;
-		else
-			sy = y;
-		new = sixel_scale(si, 0, 0, 0, y - sy, sx, sy, 1);
-		sixel_free(si);
-		if (new == NULL)
-			return;
-		sixel_size_in_cells(new, &x, &y);
-		si = new;
-	}
-
-	sy = screen_size_y(s) - cy;
-	if (sy <= y) {
-		lines = y - sy + 1;
-		if (image_scroll_up(s, lines) && ctx->wp != NULL)
-			ctx->wp->flags |= PANE_REDRAW;
-		for (i = 0; i < lines; i++) {
-			grid_view_scroll_region_up(gd, 0, screen_size_y(s) - 1,
-			    bg);
-			screen_write_collect_scroll(ctx, bg);
-		}
-		ctx->scrolled += lines;
-		if (lines > cy)
-			screen_write_cursormove(ctx, -1, 0, 0);
-		else
-			screen_write_cursormove(ctx, -1, cy - lines, 0);
-	}
-	screen_write_collect_flush(ctx, 0, __func__);
-
-	screen_write_initctx(ctx, &ttyctx, 0, 0);
-	ttyctx.image = image_store(s, si);
-
-	tty_write(tty_cmd_sixelimage, &ttyctx);
-
-	screen_write_cursormove(ctx, 0, cy + y, 0);
+	image_write(ctx, im, bg);
+	image_free(im->id);
 }
 #endif
 

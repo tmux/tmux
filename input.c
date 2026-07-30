@@ -145,6 +145,9 @@ struct input_ctx {
 	 */
 	struct evbuffer			*since_ground;
 	struct event			 ground_timer;
+#ifdef ENABLE_IMAGES
+	void				*kitty_state;
+#endif
 };
 
 /* Helper functions. */
@@ -916,6 +919,9 @@ input_free(struct input_ctx *ictx)
 	event_del(&ictx->request_timer);
 
 	free(ictx->input_buf);
+#ifdef ENABLE_IMAGES
+	kitty_free_state(ictx->kitty_state);
+#endif
 	evbuffer_free(ictx->since_ground);
 	event_del(&ictx->ground_timer);
 
@@ -2794,10 +2800,53 @@ input_exit_apc(struct input_ctx *ictx)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct window_pane	*wp = ictx->wp;
+#ifdef ENABLE_IMAGES
+	struct image		*im;
+	u_int			 image_id = 0, quiet = 0;
+	char			 action = '\0';
+	int			 status;
+#endif
 
 	if (ictx->flags & INPUT_DISCARD)
 		return;
 	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
+
+#ifdef ENABLE_IMAGES
+	if (wp != NULL && ictx->input_len > 1 && ictx->input_buf[0] == 'G') {
+		im = kitty_parse_image(&ictx->kitty_state, ictx->input_buf + 1,
+		    ictx->input_len - 1, wp->window->xpixel,
+		    wp->window->ypixel, &image_id, &quiet, &action, &status);
+		if (status == KITTY_PARSE_MORE)
+			return;
+		if (status != KITTY_PARSE_OK) {
+			if (quiet < 2 && action != '\0') {
+				if (status == KITTY_PARSE_MISSING)
+					input_reply(ictx, 0,
+					    "\033_Gi=%u;ENOENT\033\\",
+					    image_id);
+				else
+					input_reply(ictx, 0,
+					    "\033_Gi=%u;EINVAL\033\\",
+					    image_id);
+			}
+			return;
+		}
+		if (im != NULL) {
+			if (action == 'd')
+				image_clear(sctx->s, im->id);
+			else
+				image_write(sctx, im, ictx->cell.cell.bg);
+			image_free(im->id);
+			if (quiet == 0 && image_id != 0)
+				input_reply(ictx, 0, "\033_Gi=%u;OK\033\\",
+				    image_id);
+		} else if (action == 'd' && image_id == 0) {
+			image_clear(sctx->s, 0);
+		} else if ((action == 't' || action == 'q') && quiet == 0)
+			input_reply(ictx, 0, "\033_Gi=%u;OK\033\\", image_id);
+		return;
+	}
+#endif
 
 	if (wp != NULL &&
 	    options_get_number(wp->options, "allow-set-title") &&

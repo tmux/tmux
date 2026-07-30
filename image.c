@@ -1,7 +1,7 @@
 /* $OpenBSD$ */
 
 /*
- * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
+ * Copyright (c) 2026 Nicholas Marriott <nicholas@roaima.co.uk>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -23,205 +23,201 @@
 
 #include "tmux.h"
 
-static struct images	all_images = TAILQ_HEAD_INITIALIZER(all_images);
-static u_int		all_images_count;
-#define MAX_IMAGE_COUNT 20
+static struct images	images = RB_INITIALIZER(&images);
+static u_int		image_next_id;
 
-static void printflike(3, 4)
-image_log(struct image *im, const char* from, const char* fmt, ...)
+static int
+image_cmp(struct image *a, struct image *b)
 {
-	va_list	ap;
-	char	s[128];
+	if (a->id < b->id)
+		return (-1);
+	if (a->id > b->id)
+		return (1);
+	return (0);
+}
+RB_GENERATE_STATIC(images, image, entry, image_cmp);
 
-	if (log_get_level() == 0)
-		return;
+struct image *
+image_find(u_int id)
+{
+	struct image	find;
 
-	if (fmt == NULL) {
-		log_debug("%s: %p (%ux%u %u,%u)", from, im, im->sx, im->sy,
-		    im->px, im->py);
-		return;
-	}
-
-	va_start(ap, fmt);
-	vsnprintf(s, sizeof s, fmt, ap);
-	va_end(ap);
-
-	log_debug("%s: %p (%ux%u %u,%u): %s", from, im, im->sx, im->sy,
-	    im->px, im->py, s);
+	find.id = id;
+	return (RB_FIND(images, &images, &find));
 }
 
-static void
-image_free(struct image *im)
-{
-	image_log(im, __func__, NULL);
-
-	TAILQ_REMOVE(&all_images, im, all_entry);
-	all_images_count--;
-
-	TAILQ_REMOVE(im->list, im, entry);
-	sixel_free(im->data);
-	free(im->fallback);
-	free(im);
-}
-
-int
-image_free_all(struct screen *s)
-{
-	struct image	*im, *im1;
-	int		 redraw = !TAILQ_EMPTY(&s->images);
-
-	if (redraw)
-		log_debug ("%s", __func__);
-	TAILQ_FOREACH_SAFE(im, &s->images, entry, im1)
-		image_free(im);
-	return (redraw);
-}
-
-/* Create text placeholder for an image. */
-static void
-image_fallback(char **ret, u_int sx, u_int sy)
-{
-	char	*buf, *label;
-	u_int	 py, size, lsize;
-
-	if (sy == 0) {
-		*ret = xstrdup("");
-		return;
-	}
-
-	/* Allocate first line. */
-	lsize = xasprintf(&label, "SIXEL IMAGE (%ux%u)\r\n", sx, sy) + 1;
-	if (sx < lsize - 3)
-		size = lsize - 1;
-	else
-		size = sx + 2;
-
-	/* Remaining lines. Every placeholder line has \r\n at the end. */
-	size += (sx + 2) * (sy - 1) + 1;
-	*ret = buf = xmalloc(size);
-
-	/* Render first line. */
-	if (sx < lsize - 3) {
-		memcpy(buf, label, lsize);
-		buf += lsize - 1;
-	} else {
-		memcpy(buf, label, lsize - 3);
-		buf += lsize - 3;
-		memset(buf, '+', sx - lsize + 3);
-		buf += sx - lsize + 3;
-		snprintf(buf, 3, "\r\n");
-		buf += 2;
-	}
-
-	/* Remaining lines. */
-	for (py = 1; py < sy; py++) {
-		memset(buf, '+', sx);
-		buf += sx;
-		snprintf(buf, 3, "\r\n");
-		buf += 2;
-	}
-
-	free(label);
-}
-
-struct image*
-image_store(struct screen *s, struct sixel_image *si)
+struct image *
+image_create(u_int width, u_int height, u_int sx, u_int sy, u_char *pixels)
 {
 	struct image	*im;
 
+	if (width == 0 || height == 0 || sx == 0 || sy == 0 || pixels == NULL)
+		return (NULL);
+	if ((uint64_t)width * height * 4 > SIZE_MAX)
+		return (NULL);
+	if ((uint64_t)sx * sy > SIZE_MAX)
+		return (NULL);
+
 	im = xcalloc(1, sizeof *im);
-	im->s = s;
-	im->data = si;
+	do {
+		if (++image_next_id == 0)
+			image_next_id++;
+		im->id = image_next_id;
+	} while (image_find(im->id) != NULL);
 
-	im->px = s->cx;
-	im->py = s->cy;
-	sixel_size_in_cells(si, &im->sx, &im->sy);
+	im->references = 1;
+	im->width = width;
+	im->height = height;
+	im->sx = sx;
+	im->sy = sy;
+	im->stride = (size_t)width * 4;
+	im->size = im->stride * height;
+	im->pixels = pixels;
+	image_make_ascii(im);
 
-	image_fallback(&im->fallback, im->sx, im->sy);
-
-	image_log(im, __func__, NULL);
-	im->list = &s->images;
-	TAILQ_INSERT_TAIL(im->list, im, entry);
-
-	TAILQ_INSERT_TAIL(&all_images, im, all_entry);
-	if (++all_images_count == MAX_IMAGE_COUNT)
-		image_free(TAILQ_FIRST(&all_images));
-
+	RB_INSERT(images, &images, im);
+	log_debug("%s: image %u is %ux%u pixels, %ux%u cells", __func__,
+	    im->id, width, height, sx, sy);
 	return (im);
 }
 
-int
-image_check_line(struct screen *s, u_int py, u_int ny)
+void
+image_ref(u_int id)
 {
-	struct image	*im, *im1;
-	int		 redraw = 0, in;
+	struct image	*im = image_find(id);
 
-	TAILQ_FOREACH_SAFE(im, &s->images, entry, im1) {
-		in = (py + ny > im->py && py < im->py + im->sy);
-		image_log(im, __func__, "py=%u, ny=%u, in=%d", py, ny, in);
-		if (in) {
-			image_free(im);
-			redraw = 1;
+	if (im == NULL)
+		fatalx("reference to missing image %u", id);
+	if (im->references == UINT_MAX)
+		fatalx("too many references to image %u", id);
+	im->references++;
+}
+
+void
+image_free(u_int id)
+{
+	struct image	*im = image_find(id);
+
+	if (im == NULL)
+		fatalx("free of missing image %u", id);
+	if (--im->references != 0)
+		return;
+
+	log_debug("%s: freeing image %u", __func__, id);
+	RB_REMOVE(images, &images, im);
+	free(im->pixels);
+	free(im->ascii);
+	free(im);
+}
+
+void
+image_set_cell(struct grid_cell *gc, struct image *im, u_int x, u_int y)
+{
+	memcpy(gc, &grid_default_cell, sizeof *gc);
+	gc->flags |= GRID_FLAG_IMAGE;
+	gc->image_id = im->id;
+	gc->image_x = x;
+	gc->image_y = y;
+}
+
+void
+image_clear(struct screen *s, u_int id)
+{
+	struct grid		*gd = s->grid;
+	struct grid_cell	 gc;
+	u_int			 x, y;
+
+	for (y = 0; y < gd->hsize + gd->sy; y++) {
+		for (x = 0; x < gd->sx; x++) {
+			grid_get_cell(gd, x, y, &gc);
+			if ((gc.flags & GRID_FLAG_IMAGE) &&
+			    (id == 0 || gc.image_id == id))
+				grid_set_cell(gd, x, y, &grid_default_cell);
 		}
 	}
-	return (redraw);
 }
 
 int
 image_check_area(struct screen *s, u_int px, u_int py, u_int nx, u_int ny)
 {
-	struct image	*im, *im1;
-	int		 redraw = 0, in;
+	struct grid_cell	 gc;
+	u_int			 x, y, ex, ey;
 
-	TAILQ_FOREACH_SAFE(im, &s->images, entry, im1) {
-		in = (py < im->py + im->sy &&
-		    py + ny > im->py &&
-		    px < im->px + im->sx &&
-		    px + nx > im->px);
-		image_log(im, __func__, "py=%u, ny=%u, in=%d", py, ny, in);
-		if (in) {
-			image_free(im);
-			redraw = 1;
+	ex = px + nx;
+	if (ex > screen_size_x(s))
+		ex = screen_size_x(s);
+	ey = py + ny;
+	if (ey > screen_size_y(s))
+		ey = screen_size_y(s);
+	for (y = py; y < ey; y++) {
+		for (x = px; x < ex; x++) {
+			grid_view_get_cell(s->grid, x, y, &gc);
+			if (gc.flags & GRID_FLAG_IMAGE)
+				return (1);
 		}
 	}
-	return (redraw);
+	return (0);
 }
 
 int
-image_scroll_up(struct screen *s, u_int lines)
+image_check_line(struct screen *s, u_int py, u_int ny)
 {
-	struct image		*im, *im1;
-	int			 redraw = 0;
-	u_int			 sx, sy;
-	struct sixel_image	*new;
+	return (image_check_area(s, 0, py, screen_size_x(s), ny));
+}
 
-	TAILQ_FOREACH_SAFE(im, &s->images, entry, im1) {
-		if (im->py >= lines) {
-			image_log(im, __func__, "1, lines=%u", lines);
-			im->py -= lines;
-			redraw = 1;
-			continue;
-		}
-		if (im->py + im->sy <= lines) {
-			image_log(im, __func__, "2, lines=%u", lines);
-			image_free(im);
-			redraw = 1;
-			continue;
-		}
-		sx = im->sx;
-		sy = (im->py + im->sy) - lines;
-		image_log(im, __func__, "3, lines=%u, sy=%u", lines, sy);
+int
+image_free_all(struct screen *s)
+{
+	return (image_check_area(s, 0, 0, screen_size_x(s),
+	    screen_size_y(s)));
+}
 
-		new = sixel_scale(im->data, 0, 0, 0, im->sy - sy, sx, sy, 1);
-		sixel_free(im->data);
-		im->data = new;
+int
+image_scroll_up(struct screen *s, __unused u_int lines)
+{
+	return (image_free_all(s));
+}
 
-		im->py = 0;
-		sixel_size_in_cells(im->data, &im->sx, &im->sy);
+/*
+ * Put image marker cells at the cursor. The pixel object is immutable; only
+ * the marker rectangle is clipped to the available pane cells.
+ */
+void
+image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
+{
+	struct screen		*s = ctx->s;
+	struct grid		*gd = s->grid;
+	struct grid_cell		 gc;
+	u_int			 cx = s->cx, cy = s->cy;
+	u_int			 x, y, sx, sy, lines;
 
-		free(im->fallback);
-		image_fallback(&im->fallback, im->sx, im->sy);
-		redraw = 1;
+	sx = im->sx;
+	if (sx > screen_size_x(s) - cx)
+		sx = screen_size_x(s) - cx;
+	sy = im->sy;
+	if (sy > screen_size_y(s) - 1)
+		sy = screen_size_y(s) - 1;
+	if (sx == 0 || sy == 0)
+		return;
+
+	if (screen_size_y(s) - cy <= sy) {
+		lines = sy - (screen_size_y(s) - cy) + 1;
+		screen_write_scrollup(ctx, lines, bg);
+		if (lines > cy)
+			screen_write_cursormove(ctx, -1, 0, 0);
+		else
+			screen_write_cursormove(ctx, -1, cy - lines, 0);
+		cy = s->cy;
 	}
-	return (redraw);
+
+	for (y = 0; y < sy; y++) {
+		for (x = 0; x < sx; x++) {
+			image_set_cell(&gc, im, x, y);
+			gc.bg = bg;
+			grid_view_set_cell(gd, cx + x, cy + y, &gc);
+		}
+	}
+	if (ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
+	screen_write_cursormove(ctx, 0, cy + sy, 0);
 }
