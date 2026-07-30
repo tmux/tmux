@@ -4245,7 +4245,7 @@ struct image	*kitty_parse_image(void **, const u_char *, size_t, u_int,
 		     u_int, u_int *, u_int *, char *, int *);
 void		 kitty_free_state(void *);
 void		 kitty_draw_line(struct tty *, struct screen *, u_int, u_int,
-		     u_int, u_int, u_int);
+		     u_int, u_int, u_int, const struct tty_style_ctx *);
 void		 kitty_images_free(struct tty *, int);
 void		 sixel_draw_line(struct tty *, struct screen *, u_int, u_int,
 		     u_int, u_int, u_int);

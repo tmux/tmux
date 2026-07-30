@@ -224,9 +224,11 @@ static const struct tty_feature tty_feature_strikethrough = {
 	0
 };
 
+#define TTY_FEATURE_SYNC "Sync=\\E[?2026%?%p1%{1}%-%tl%eh%;"
+
 /* Terminal supports synchronized updates. */
 static const char *const tty_feature_sync_capabilities[] = {
-	"Sync=\\E[?2026%?%p1%{1}%-%tl%eh%;",
+	TTY_FEATURE_SYNC,
 	NULL
 };
 static const struct tty_feature tty_feature_sync = {
@@ -349,6 +351,7 @@ static const struct tty_feature tty_feature_ignorefkeys = {
 /* Terminal has sixel capability. */
 static const char *const tty_feature_sixel_capabilities[] = {
 	"Sxl",
+	TTY_FEATURE_SYNC,
 	NULL
 };
 static const struct tty_feature tty_feature_sixel = {
@@ -360,6 +363,7 @@ static const struct tty_feature tty_feature_sixel = {
 /* Terminal has Kitty graphics protocol capability. */
 static const char *const tty_feature_kitty_capabilities[] = {
 	"Kty",
+	TTY_FEATURE_SYNC,
 	NULL
 };
 static const struct tty_feature tty_feature_kitty = {
