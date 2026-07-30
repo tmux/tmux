@@ -22,6 +22,16 @@ check_capture rename 'X'
 start_pane apc-title 20 3 '\033_test-title\033\\X\n'
 check_capture apc-title 'X'
 
+cmd='i=0; while [ "$i" -lt 12 ]; do '
+cmd="${cmd}printf '\\033[22;0t'; i=\$((i + 1)); done; "
+cmd="${cmd}printf X; sleep 2"
+start_cmd title-stack 20 3 "$cmd"
+check_capture title-stack 'X'
+$TMUX respawn-pane -k -t title-stack: \
+    "printf '\\033[22;0tY'; sleep 2" || exit 1
+sleep 0.3
+check_capture title-stack 'Y'
+
 $TMUX kill-server 2>/dev/null
 sleep 0.1
 $TMUX new-session -d -x 20 -y 3 -s osc52 "sleep 2" || exit 1

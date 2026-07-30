@@ -140,6 +140,24 @@ update-environment[notify] EEE"
 # sorts by ascending numeric key and keeps the gap at [1].
 check_ok set -g status-format ""
 check_array "-g status-format" "status-format"
+out=$($TMUX show -gF \
+	'#{option_name}:#{option_has_value}:#{option_value}:#{option_is_array}:#{option_has_array_key}:#{option_array_key}' \
+	status-format 2>&1)
+[ "$out" = "status-format:0::1:0:" ] || {
+	echo "show -F empty status-format failed."
+	echo "Expected: 'status-format:0::1:0:'"
+	echo "But got:  '$out'"
+	exit 1
+}
+out=$($TMUX show -gvF \
+	'#{option_name}:#{option_value_only}:#{option_has_value}:#{option_value}' \
+	status-format 2>&1)
+[ "$out" = "status-format:1:0:" ] || {
+	echo "show -vF empty status-format failed."
+	echo "Expected: 'status-format:1:0:'"
+	echo "But got:  '$out'"
+	exit 1
+}
 check_ok set -g status-format[5] "five"
 check_ok set -g status-format[0] "zero"
 check_ok set -g status-format[2] "two"
@@ -154,6 +172,21 @@ status-format[5] five
 status-format[foo-bar] foo-bar
 status-format[xterm-256color] xterm
 status-format[zoom] zoom"
+out=$($TMUX show -gF \
+	'#{option_name}:#{option_array_key}:#{option_is_array}:#{option_has_value}:#{option_has_array_key}:#{option_value}' \
+	status-format 2>&1)
+[ "$out" = "$(printf '%s' 'status-format:0:1:1:1:zero
+status-format:1:1:1:1:one
+status-format:2:1:1:1:two
+status-format:5:1:1:1:five
+status-format:foo-bar:1:1:1:foo-bar
+status-format:xterm-256color:1:1:1:xterm
+status-format:zoom:1:1:1:zoom')" ] || {
+	echo "show -F status-format failed."
+	echo "Expected formatted array output"
+	echo "But got:"; printf '%s\n' "$out"
+	exit 1
+}
 check_value "-gv status-format[01]" "one"
 check_ok set -gu status-format[zoom]
 check_value "-gv status-format[zoom]" ""

@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.153 2026/07/17 12:42:51 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.157 2026/07/24 08:49:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -320,7 +320,7 @@ redraw_reset_cell(struct redraw_build_ctx *bctx, u_int x, u_int y)
 	struct window			*w = bctx->w;
 
 	memset(bc, 0, sizeof *bc);
-	if (bctx->ox + x <= w->sx && bctx->oy + y <= w->sy)
+	if (bctx->ox + x < w->sx && bctx->oy + y < w->sy)
 		bc->data.type = REDRAW_SPAN_EMPTY;
 	else
 		bc->data.type = REDRAW_SPAN_OUTSIDE;
@@ -547,7 +547,8 @@ redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
 	 * merged.
 	 */
 	if (!floating) {
-		if (bc->data.type == REDRAW_SPAN_EMPTY)
+		if (bc->data.type == REDRAW_SPAN_EMPTY ||
+		    bc->data.type == REDRAW_SPAN_OUTSIDE)
 			reset = 1;
 		else if (bc->data.type != REDRAW_SPAN_BORDER)
 			return;
@@ -696,20 +697,22 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 	bottom = wp->yoff + wp->sy;
 
 	mark_left = (left >= 0);
-	mark_right = (right <= (int)bctx->w->sx);
 	mark_top = (top >= 0);
-	mark_bottom = (bottom <= (int)bctx->w->sy);
 
 	if (floating) {
+		mark_right = (right < (int)bctx->w->sx);
+		mark_bottom = (bottom < (int)bctx->w->sy);
 		if (left < 0)
 			left = 0;
-		if (right > (int)bctx->w->sx)
+		if (right >= (int)bctx->w->sx)
 			right = (int)bctx->w->sx - 1;
 		if (top < 0)
 			top = 0;
-		if (bottom > (int)bctx->w->sy)
+		if (bottom >= (int)bctx->w->sy)
 			bottom = (int)bctx->w->sy - 1;
 	} else {
+		mark_right = (right <= (int)bctx->w->sx);
+		mark_bottom = (bottom <= (int)bctx->w->sy);
 		if (pane_status == PANE_STATUS_TOP)
 			mark_bottom = 0;
 		else if (pane_status == PANE_STATUS_BOTTOM)
@@ -1237,7 +1240,15 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 
 	if (wp == NULL) {
 		redraw_get_default_border_style(dctx, &gc, &pane_lines);
-		window_get_border_cell(w, NULL, pane_lines, cell_type, &gc);
+		if (span->data.type == REDRAW_SPAN_OUTSIDE)
+			window_get_fill_cell(w, 0, &gc);
+		else if (span->data.type == REDRAW_SPAN_EMPTY)
+			window_get_fill_cell(w, 1, &gc);
+		else {
+			if (span->data.type != REDRAW_SPAN_BORDER)
+				pane_lines = PANE_LINES_SINGLE;
+			window_get_border_cell(NULL, pane_lines, cell_type, &gc);
+		}
 	} else {
 		window_pane_get_border_style(wp, c, &gc);
 		window_pane_get_border_cell(wp, cell_type, &gc);

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-break-pane.c,v 1.74 2026/07/15 13:02:33 nicm Exp $ */
+/* $OpenBSD: cmd-break-pane.c,v 1.75 2026/07/23 09:38:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -172,6 +172,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 		w->name = clean_name(name, 0);
 		options_set_number(w->options, "automatic-rename", 0);
 	}
+	window_set_fill_cells(w);
 
 	layout_init(w, wp);
 	wp->flags |= PANE_CHANGED;

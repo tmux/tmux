@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.366 2026/07/19 19:53:11 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.369 2026/07/29 14:06:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -437,8 +437,6 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 	w->id = next_window_id++;
 	RB_INSERT(windows, &windows, w);
 
-	window_set_fill_character(w);
-
 	if (gettimeofday(&w->creation_time, NULL) != 0)
 		fatal("gettimeofday failed");
 	window_update_activity(w);
@@ -472,7 +470,6 @@ window_destroy(struct window *w)
 		event_del(&w->offset_timer);
 
 	options_free(w->options);
-	free(w->fill_character);
 
 	free(w->name);
 	free(w);
@@ -571,13 +568,13 @@ window_resize(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 	w->sy = sy;
 	if (w->menu != NULL) {
 		menu_resize(w->menu, w);
-		redraw_invalidate_scene(w);
 		server_redraw_window(w);
 	}
 	if (xpixel != -1)
 		w->xpixel = xpixel;
 	if (ypixel != -1)
 		w->ypixel = ypixel;
+	redraw_invalidate_scene(w);
 }
 
 void
@@ -2443,25 +2440,6 @@ window_pane_update_used_data(struct window_pane *wp,
 }
 
 void
-window_set_fill_character(struct window *w)
-{
-	const char		*value;
-	struct utf8_data	*ud;
-
-	free(w->fill_character);
-	w->fill_character = NULL;
-
-	value = options_get_string(w->options, "fill-character");
-	if (*value != '\0' && utf8_isvalid(value)) {
-		ud = utf8_fromcstr(value);
-		if (ud != NULL && ud[0].width == 1)
-			w->fill_character = ud;
-		else
-			free(ud);
-	}
-}
-
-void
 window_pane_default_cursor(struct window_pane *wp)
 {
 	screen_set_default_cursor(wp->screen, wp->options);
@@ -2482,11 +2460,21 @@ window_pane_mode(struct window_pane *wp)
 int
 window_pane_show_scrollbar(struct window_pane *wp)
 {
+	struct window			*w = wp->window;
+	struct window_mode_entry	*wme;
+
 	if (SCREEN_IS_ALTERNATE(&wp->base))
 		return (0);
-	if (wp->window->sb == PANE_SCROLLBARS_ALWAYS ||
-	    wp->window->sb == PANE_SCROLLBARS_AUTOHIDE ||
-	    (wp->window->sb == PANE_SCROLLBARS_MODAL &&
+	if ((w->flags & WINDOW_ZOOMED) && w->active != NULL) {
+		wme = TAILQ_FIRST(&w->active->modes);
+		if (wme != NULL &&
+		    (wme->mode->flags & WINDOW_MODE_HIDE_SCROLLBARS)) {
+			return (0);
+		}
+	}
+	if (w->sb == PANE_SCROLLBARS_ALWAYS ||
+	    w->sb == PANE_SCROLLBARS_AUTOHIDE ||
+	    (w->sb == PANE_SCROLLBARS_MODAL &&
 	    window_pane_mode(wp) != WINDOW_PANE_NO_MODE))
 		return (1);
 	return (0);

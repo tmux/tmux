@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1410 2026/07/19 19:53:11 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1418 2026/07/29 17:42:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -814,8 +814,19 @@ struct colour_palette {
 #define GRID_LINE_EXTENDED 0x2
 #define GRID_LINE_DEAD 0x4
 #define GRID_LINE_START_PROMPT 0x8
-#define GRID_LINE_START_OUTPUT 0x10
-#define GRID_LINE_HYPERLINK 0x20
+#define GRID_LINE_SECOND_PROMPT 0x10
+#define GRID_LINE_START_COMMAND 0x20
+#define GRID_LINE_START_OUTPUT 0x40
+#define GRID_LINE_END_OUTPUT 0x80
+#define GRID_LINE_HYPERLINK 0x100
+
+/* All OSC 133 flags. */
+#define GRID_LINE_OSC133_FLAGS \
+	(GRID_LINE_START_PROMPT| \
+	 GRID_LINE_SECOND_PROMPT| \
+	 GRID_LINE_START_COMMAND| \
+	 GRID_LINE_START_OUTPUT| \
+	 GRID_LINE_END_OUTPUT)
 
 /* Grid string flags. */
 #define GRID_STRING_WITH_SEQUENCES 0x1
@@ -894,17 +905,27 @@ struct grid_cell_entry {
 	u_short			flags;
 } __packed;
 
+/* OSC 133 data for a grid line. */
+struct osc133_data {
+	u_short			 prompt_col;
+	u_short			 cmd_col;
+	u_short			 out_start_col;
+	u_short			 out_end_col;
+	u_char			 exit_status;
+};
+
 /* Grid line. */
 struct grid_line {
 	struct grid_cell_entry	*celldata;
-	u_int			 cellused;
-	u_int			 cellsize;
-
 	struct grid_extd_entry	*extddata;
+
+	u_short			 cellused;
+	u_short			 cellsize;
 	u_int			 extdsize;
 
-	int			 flags;
-	time_t			 time;
+	u_int			 time;
+	struct osc133_data	 osc133_data;
+	u_short			 flags;
 };
 
 /* Entire grid of cells. */
@@ -1182,6 +1203,8 @@ struct window_mode {
 	int		 flags;
 #define WINDOW_MODE_HIDE_PANE_STATUS 0x1
 #define WINDOW_MODE_NO_STACK 0x2
+#define WINDOW_MODE_FILL_WINDOW 0x4
+#define WINDOW_MODE_HIDE_SCROLLBARS 0x8
 
 	struct screen	*(*init)(struct window_mode_entry *,
 			     struct cmdq_item *, struct cmd_find_state *,
@@ -1320,6 +1343,7 @@ struct window_pane {
 #define PANE_DESTROYED 0x10000
 #define PANE_CMDRUNNING 0x20000
 #define PANE_ACTIVITY 0x40000
+#define PANE_CLOSEONCLICK 0x80000
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;
@@ -1459,7 +1483,8 @@ struct window {
 	int			 sb;
 	int			 sb_pos;
 
-	struct utf8_data	*fill_character;
+	struct grid_cell	 inside_cell;
+	struct grid_cell	 outside_cell;
 	int			 flags;
 #define WINDOW_BELL 0x1
 #define WINDOW_ACTIVITY 0x2
@@ -2236,6 +2261,7 @@ struct client {
 	struct mouse_event	 click_event;
 
 	struct status_line	 status;
+	struct event		 cycle_timer;
 	enum client_theme	 theme;
 
 	struct input_requests	 input_requests;
@@ -2774,6 +2800,10 @@ void	 hooks_monitor_add(struct cmdq_item *, struct options *,
 void	 hooks_monitor_remove(struct options *, const char *);
 void	 hooks_monitor_free(void *);
 char	*hooks_monitor_to_string(struct options_entry *);
+int	 hooks_monitor_get(struct options_entry *, enum monitor_type *, int *,
+	     const char **);
+u_int	 hooks_monitor_get_fire_count(struct options_entry *);
+time_t	 hooks_monitor_get_fire_time(struct options_entry *);
 
 /* options.c */
 struct options	*options_create(struct options *);
@@ -2791,6 +2821,9 @@ const char	*options_name(struct options_entry *);
 struct options	*options_owner(struct options_entry *);
 void		*options_get_monitor_data(struct options_entry *);
 void		 options_set_monitor_data(struct options_entry *, void *);
+void		 options_hook_fired(struct options_entry *);
+u_int		 options_get_fire_count(struct options_entry *);
+time_t		 options_get_fire_time(struct options_entry *);
 const struct options_table_entry *options_table_entry(struct options_entry *);
 struct options_entry *options_get_only(struct options *, const char *);
 struct options_entry *options_get(struct options *, const char *);
@@ -3461,6 +3494,7 @@ int	 grid_compare(struct grid *, struct grid *);
 const char *grid_line_flags_string(int);
 const char *grid_cell_flags_string(int);
 const char *grid_cell_attr_string(int);
+time_t	 grid_line_time(const struct grid_line *);
 void	 grid_collect_history(struct grid *, int);
 void	 grid_remove_history(struct grid *, u_int );
 void	 grid_scroll_history(struct grid *, u_int);
@@ -3486,6 +3520,7 @@ void	 grid_reflow(struct grid *, u_int);
 void	 grid_wrap_position(struct grid *, u_int, u_int, u_int *, u_int *);
 void	 grid_unwrap_position(struct grid *, u_int *, u_int *, u_int, u_int);
 u_int	 grid_line_length(struct grid *, u_int);
+u_int	 grid_line_limit(struct grid *, u_int);
 int	 grid_in_set(struct grid *, u_int, u_int, const char *);
 
 /* grid-reader.c */
@@ -3766,7 +3801,6 @@ void		*window_pane_get_new_data(struct window_pane *,
 		     struct window_pane_offset *, size_t *);
 void		 window_pane_update_used_data(struct window_pane *,
 		     struct window_pane_offset *, size_t);
-void		 window_set_fill_character(struct window *);
 void		 window_pane_default_cursor(struct window_pane *);
 int		 window_pane_mode(struct window_pane *);
 int		 window_pane_show_scrollbar(struct window_pane *);
@@ -3794,8 +3828,10 @@ struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
 int		 window_pane_is_floating(struct window_pane *);
 
 /* window-border.c */
-void		 window_get_border_cell(struct window *, struct window_pane *,
-		     enum pane_lines, int, struct grid_cell *);
+void		 window_set_fill_cells(struct window *);
+void		 window_get_border_cell(struct window_pane *, enum pane_lines,
+		     int, struct grid_cell *);
+void		 window_get_fill_cell(struct window *, int, struct grid_cell *);
 void		 window_pane_get_border_cell(struct window_pane *, int,
 		     struct grid_cell *);
 void		 window_pane_get_border_style(struct window_pane *,
@@ -3989,6 +4025,8 @@ int	monitor_parse(const char *, char **, enum monitor_type *, int *,
 void	monitor_add(struct monitor_set *, const char *, enum monitor_type, int,
 	    const char *, int);
 void	monitor_remove(struct monitor_set *, const char *);
+u_int	monitor_get_fire_count(struct monitor_set *, const char *);
+time_t	monitor_get_fire_time(struct monitor_set *, const char *);
 
 /* control.c */
 void	control_discard(struct client *);

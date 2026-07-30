@@ -31,6 +31,10 @@
 #include <ncurses.h>
 #endif
 
+#ifdef HAVE_JEMALLOC
+#include <jemalloc/jemalloc.h>
+#endif
+
 #include "tmux.h"
 
 struct tmuxproc {
@@ -181,6 +185,10 @@ proc_start(const char *name)
 {
 	struct tmuxproc	*tp;
 	struct utsname	 u;
+#ifdef HAVE_JEMALLOC
+	const char	*version;
+	size_t		 size = sizeof version;
+#endif
 
 	log_open(name);
 	setproctitle("%s (%s)", name, socket_path);
@@ -194,6 +202,11 @@ proc_start(const char *name)
 	log_debug("using libevent %s %s", event_get_version(), event_get_method());
 #ifdef HAVE_UTF8PROC
 	log_debug("using utf8proc %s", utf8proc_version());
+#endif
+#ifdef HAVE_JEMALLOC
+	if (mallctl("version", &version, &size, NULL, 0) != 0)
+		version = "(unknown version)";
+	log_debug("using jemalloc %s", version);
 #endif
 #ifdef NCURSES_VERSION
 	log_debug("using ncurses %s %06u", NCURSES_VERSION, NCURSES_VERSION_PATCH);
