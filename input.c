@@ -3197,7 +3197,7 @@ input_osc_133_exit_status(const char *p, int *present)
 {
 	const char	*end;
 	char		*copy;
-	const char	*errstr;
+	char		*endptr;
 	long long	 status;
 
 	*present = 0;
@@ -3215,9 +3215,10 @@ input_osc_133_exit_status(const char *p, int *present)
 		return (0);
 	}
 	*present = 1;
-	status = strtonum(copy, 0, 255, &errstr);
+	errno = 0;
+	status = (int)strtol(copy, &endptr, 10);
 	free(copy);
-	if (errstr != NULL)
+	if (errno != 0 || endptr == copy || status < 0 || status > 255)
 		return (255);
 	return (status);
 }
@@ -3262,6 +3263,22 @@ input_fire_command_event(struct window_pane *wp, const char *name)
 	events_fire(name, ep);
 }
 
+/* Check if an OSC 133 prompt is secondary or a continuation. */
+static int
+input_osc_133_secondary_prompt(const char *p)
+{
+	const char	*cp;
+
+	while ((cp = strstr(p, ";k=")) != NULL) {
+		cp += 3;
+		if ((*cp == 's' || *cp == 'c') &&
+		    (cp[1] == '\0' || cp[1] == ';'))
+			return (1);
+		p = cp;
+	}
+	return (0);
+}
+
 /* Handle the OSC 133 sequence. */
 static void
 input_osc_133(struct input_ctx *ictx, const char *p)
@@ -3271,7 +3288,6 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 	struct grid		*gd = s->grid;
 	u_int			 line = s->cy + gd->hsize;
 	struct grid_line	*gl = NULL;
-	const char		*cp;
 	int			 status, status_present;
 
 	if (line < gd->hsize + gd->sy)
@@ -3284,7 +3300,7 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 			if (!(gl->flags & (GRID_LINE_START_PROMPT|
 			    GRID_LINE_SECOND_PROMPT))) {
 				gl->osc133_data.prompt_col = s->cx;
-				if (strstr(p + 1, ";k=s") != NULL)
+				if (input_osc_133_secondary_prompt(p))
 					gl->flags |= GRID_LINE_SECOND_PROMPT;
 				else
 					gl->flags |= GRID_LINE_START_PROMPT;
@@ -3297,11 +3313,10 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 		break;
 	case 'P':
 		if (gl != NULL) {
-			cp = strstr(p, ";k=s");
 			if (!(gl->flags & (GRID_LINE_START_PROMPT|
 			    GRID_LINE_SECOND_PROMPT))) {
 				gl->osc133_data.prompt_col = s->cx;
-				if (cp != NULL && (cp[4] == ';' || cp[4] == '\0'))
+				if (input_osc_133_secondary_prompt(p))
 					gl->flags |= GRID_LINE_SECOND_PROMPT;
 				else
 					gl->flags |= GRID_LINE_START_PROMPT;
