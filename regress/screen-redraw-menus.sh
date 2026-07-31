@@ -106,7 +106,13 @@ compare menu-over-split
 
 # Menu with no border lines.
 setup 40 14
-menu -b none -x6 -y8
+$TMUX2 display-menu -T "This title must not reserve width" -C 1 \
+    -b none -x6 -y8 \
+    "Alpha item" a "" \
+    "Beta item" b "" \
+    "" "" "" \
+    "Gamma item" g "" || exit 1
+sleep 1
 compare menu-noborder
 
 # Menu with double border lines.
