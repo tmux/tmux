@@ -828,7 +828,7 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu, int choice,
 	struct screen		*s = ctx->s;
 	struct grid_cell	 default_gc;
 	const struct grid_cell	*gc = &default_gc;
-	u_int			 cx, cy, i, j, width = menu->width;
+	u_int			 border, cx, cy, i, j, width;
 	const char		*name;
 
 	cx = s->cx;
@@ -836,26 +836,34 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu, int choice,
 
 	memcpy(&default_gc, menu_gc, sizeof default_gc);
 
-	screen_write_box(ctx, menu->width + 4, menu->count + 2, lines,
-	    border_gc, menu->title);
+	border = (lines != BOX_LINES_NONE);
+	if (border)
+		width = menu->width;
+	else
+		width = menu->item_width;
+	if (border) {
+		screen_write_box(ctx, width + 4, menu->count + 2, lines,
+		    border_gc, menu->title);
+	}
 
 	for (i = 0; i < menu->count; i++) {
 		name = menu->items[i].name;
 		if (name == NULL) {
-			screen_write_cursormove(ctx, cx, cy + 1 + i, 0);
-			screen_write_hline(ctx, width + 4, 1, 1, lines,
-			    border_gc);
+			screen_write_cursormove(ctx, cx, cy + border + i, 0);
+			screen_write_hline(ctx, width + 2 + (2 * border), 1,
+			    1, lines, border_gc);
 			continue;
 		}
 
 		if (choice >= 0 && i == (u_int)choice && *name != '-')
 			gc = choice_gc;
 
-		screen_write_cursormove(ctx, cx + 1, cy + 1 + i, 0);
+		screen_write_cursormove(ctx, cx + border, cy + border + i, 0);
 		for (j = 0; j < width + 2; j++)
 			screen_write_putc(ctx, gc, ' ');
 
-		screen_write_cursormove(ctx, cx + 2, cy + 1 + i, 0);
+		screen_write_cursormove(ctx, cx + border + 1,
+		    cy + border + i, 0);
 		if (*name == '-') {
 			default_gc.attr |= GRID_ATTR_DIM;
 			format_draw(ctx, gc, width, name + 1, NULL, 0);
