@@ -1523,6 +1523,7 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define WINDOW_SIZE_SMALLEST 1
 #define WINDOW_SIZE_MANUAL 2
 #define WINDOW_SIZE_LATEST 3
+#define WINDOW_SIZE_MANUAL_OR_SMALLEST 4
 
 /* Pane border status option. */
 #define PANE_STATUS_OFF 0

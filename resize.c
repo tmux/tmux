@@ -138,13 +138,14 @@ clients_calculate_size(int type, int current, struct client *c,
 	u_int		 cx, cy, n = 0;
 
 	/*
-	 * Start comparing with 0 for largest and UINT_MAX for smallest or
-	 * latest.
+	 * Start comparing with 0 for largest, the manual size for manual
+	 * choices and UINT_MAX for smallest or latest.
 	 */
 	if (type == WINDOW_SIZE_LARGEST) {
 		*sx = 0;
 		*sy = 0;
-	} else if (w != NULL && type == WINDOW_SIZE_MANUAL) {
+	} else if (w != NULL && (type == WINDOW_SIZE_MANUAL ||
+	    type == WINDOW_SIZE_MANUAL_OR_SMALLEST)) {
 		*sx = w->manual_sx;
 		*sy = w->manual_sy;
 		log_debug("%s: manual size %ux%u", __func__, *sx, *sy);
@@ -264,6 +265,8 @@ skip:
 	}
 	if (type == WINDOW_SIZE_LATEST)
 		log_debug("%s: type is latest", __func__);
+	else if (type == WINDOW_SIZE_MANUAL_OR_SMALLEST)
+		log_debug("%s: type is manual-or-smallest", __func__);
 	else
 		log_debug("%s: type is smallest", __func__);
 	return (*sx != UINT_MAX && *sy != UINT_MAX);
@@ -285,6 +288,7 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 	u_int *sx, u_int *sy, u_int *xpixel, u_int *ypixel, int type)
 {
 	const char	*value;
+	u_int		 manual_sx, manual_sy;
 
 	/* Get type if not provided. */
 	if (type == -1)
@@ -312,8 +316,9 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 		c = NULL;
 
 	/*
-	 * Look for a client to base the size on. If none exists (or the type
-	 * is manual), use the default-size option.
+	 * Look for a client to base the size on. If none exists (or the type is
+	 * manual), use the default-size option. For manual-or-smallest, also use
+	 * default-size to cap the size of a new window.
 	 */
 	if (!clients_calculate_size(type, 0, c, s, w,
 	    default_window_size_skip_client, sx, sy, xpixel, ypixel)) {
@@ -324,6 +329,16 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 		}
 		log_debug("%s: using %ux%u from default-size", __func__, *sx,
 		    *sy);
+	} else if (type == WINDOW_SIZE_MANUAL_OR_SMALLEST && w == NULL) {
+		value = options_get_string(s->options, "default-size");
+		if (sscanf(value, "%ux%u", &manual_sx, &manual_sy) != 2) {
+			manual_sx = 80;
+			manual_sy = 24;
+		}
+		if (*sx > manual_sx)
+			*sx = manual_sx;
+		if (*sy > manual_sy)
+			*sy = manual_sy;
 	}
 
 done:
@@ -370,9 +385,9 @@ recalculate_size(struct window *w, int now)
 	log_debug("%s: @%u is %ux%u", __func__, w->id, w->sx, w->sy);
 
 	/*
-	 * Type is manual, smallest, largest, latest. Current is the
-	 * aggressive-resize option (do not resize based on clients where the
-	 * window is not the current window).
+	 * Type is manual, smallest, largest, latest or manual-or-smallest.
+	 * Current is the aggressive-resize option (do not resize based on
+	 * clients where the window is not the current window).
 	 */
 	type = options_get_number(w->options, "window-size");
 	current = options_get_number(w->options, "aggressive-resize");
@@ -404,12 +419,12 @@ recalculate_size(struct window *w, int now)
 	}
 
 	/*
-	 * If the now flag is set or if the window is sized manually, change
-	 * the size immediately. Otherwise set the flag and it will be done
-	 * later.
+	 * If the now flag is set or if the window has a manual size, change the
+	 * size immediately. Otherwise set the flag and it will be done later.
 	 */
 	log_debug("%s: @%u new size %ux%u", __func__, w->id, sx, sy);
-	if (now || type == WINDOW_SIZE_MANUAL)
+	if (now || type == WINDOW_SIZE_MANUAL ||
+	    type == WINDOW_SIZE_MANUAL_OR_SMALLEST)
 		resize_window(w, sx, sy, xpixel, ypixel);
 	else {
 		w->new_sx = sx;

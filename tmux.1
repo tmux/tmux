@@ -3888,7 +3888,10 @@ sets the size of the largest session containing the window;
 the size of the smallest.
 This command will automatically set
 .Ic window\-size
-to manual in the window options.
+to
+.Ar manual
+in the window options, unless it is already
+.Ar manual-or-smallest .
 .Tg respawnp
 .It Xo Ic respawn\-pane
 .Op Fl \&Ek
@@ -6192,7 +6195,7 @@ see the
 section.
 .Pp
 .It Xo Ic window\-size
-.Ar largest | Ar smallest | Ar manual | Ar latest
+.Ar largest | Ar smallest | Ar manual | Ar latest | Ar manual-or-smallest
 .Xc
 Configure how
 .Nm
@@ -6207,6 +6210,9 @@ If
 the size of a new window is set from the
 .Ic default\-size
 option and windows are resized automatically.
+If set to
+.Ar manual-or-smallest ,
+the manually set size is used unless an attached client is smaller.
 With
 .Ar latest ,
 .Nm

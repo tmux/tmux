@@ -3098,10 +3098,13 @@ static void *
 format_cb_window_manual_height(struct format_tree *ft)
 {
 	struct window	*w = ft->w;
+	int		 type;
 
 	if (w == NULL)
 		return (NULL);
-	if (options_get_number(w->options, "window-size") != WINDOW_SIZE_MANUAL)
+	type = options_get_number(w->options, "window-size");
+	if (type != WINDOW_SIZE_MANUAL &&
+	    type != WINDOW_SIZE_MANUAL_OR_SMALLEST)
 		return (xstrdup(""));
 	return (format_printf("%u", w->manual_sy));
 }
@@ -3300,10 +3303,13 @@ static void *
 format_cb_window_manual_width(struct format_tree *ft)
 {
 	struct window	*w = ft->w;
+	int		 type;
 
 	if (w == NULL)
 		return (NULL);
-	if (options_get_number(w->options, "window-size") != WINDOW_SIZE_MANUAL)
+	type = options_get_number(w->options, "window-size");
+	if (type != WINDOW_SIZE_MANUAL &&
+	    type != WINDOW_SIZE_MANUAL_OR_SMALLEST)
 		return (xstrdup(""));
 	return (format_printf("%u", w->manual_sx));
 }
