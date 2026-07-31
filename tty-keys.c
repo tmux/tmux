@@ -977,7 +977,7 @@ partial_key:
 		if (delay < 500)
 			delay = 500;
 	}
-	if (tty->flags & (TTY_WAITFG|TTY_WAITBG) ||
+	if (tty->flags & (TTY_WAITFG|TTY_WAITBG|TTY_WAITCCOLOUR) ||
 	    tty->flags & (TTY_OSC52QUERY|TTY_WINSIZEQUERY) ||
 	    (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS ||
 	    !TAILQ_EMPTY(&c->input_requests)) {
@@ -1679,8 +1679,8 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 }
 
 /*
- * Handle foreground or background input. Returns 0 for success, -1 for
- * failure, 1 for partial.
+ * Handle foreground, background or cursor colour input. Returns 0 for success,
+ * -1 for failure, 1 for partial.
  */
 int
 tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size,
@@ -1693,7 +1693,7 @@ tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size,
 
 	*size = 0;
 
-	/* First four bytes are always \033]1 and 0 or 1 and ;. */
+	/* First four bytes are always \033]1 and 0, 1 or 2 and ;. */
 	if (buf[0] != '\033')
 		return (-1);
 	if (len == 1)
@@ -1706,7 +1706,7 @@ tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size,
 		return (-1);
 	if (len == 3)
 		return (1);
-	if (buf[3] != '0' && buf[3] != '1')
+	if (buf[3] != '0' && buf[3] != '1' && buf[3] != '2')
 		return (-1);
 	if (len == 4)
 		return (1);
@@ -1744,13 +1744,21 @@ tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size,
 			log_debug("fg is %s", colour_tostring(n));
 		*fg = n;
 		tty->flags &= ~TTY_WAITFG;
-	} else if (n != -1) {
+	} else if (n != -1 && buf[3] == '1') {
 		if (c != NULL)
 			log_debug("%s bg is %s", c->name, colour_tostring(n));
 		else
 			log_debug("bg is %s", colour_tostring(n));
 		*bg = n;
 		tty->flags &= ~TTY_WAITBG;
+	} else if (n != -1) {
+		if (c != NULL) {
+			log_debug("%s cursor colour is %s", c->name,
+			    colour_tostring(n));
+		} else
+			log_debug("cursor colour is %s", colour_tostring(n));
+		tty->default_ccolour = n;
+		tty->flags &= ~TTY_WAITCCOLOUR;
 	}
 
 	return (0);

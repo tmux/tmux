@@ -111,7 +111,7 @@ tty_init(struct tty *tty, struct client *c)
 	tty->client = c;
 
 	tty->cstyle = SCREEN_CURSOR_DEFAULT;
-	tty->ccolour = -1;
+	tty->ccolour = tty->default_ccolour = -1;
 	tty->fg = tty->bg = -1;
 	tty->mouse_last_pane = -1;
 
@@ -319,7 +319,7 @@ tty_start_timer_callback(__unused int fd, __unused short events, void *data)
 		tty_update_features(tty);
 	tty->flags |= TTY_ALL_REQUEST_FLAGS;
 
-	tty->flags &= ~(TTY_WAITBG|TTY_WAITFG);
+	tty->flags &= ~(TTY_WAITBG|TTY_WAITFG|TTY_WAITCCOLOUR);
 }
 
 static void
@@ -403,8 +403,8 @@ tty_send_requests(struct tty *tty)
 			tty_puts(tty, "\033[>c");
 		if (~tty->flags & TTY_HAVEXDA)
 			tty_puts(tty, "\033[>q");
-		tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\");
-		tty->flags |= (TTY_WAITBG|TTY_WAITFG);
+		tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\\033]12;?\033\\");
+		tty->flags |= (TTY_WAITBG|TTY_WAITFG|TTY_WAITCCOLOUR);
 	} else
 		tty->flags |= TTY_ALL_REQUEST_FLAGS;
 	tty->last_requests = time(NULL);
@@ -430,8 +430,8 @@ tty_repeat_requests(struct tty *tty, int force)
 	tty->last_requests = t;
 
 	if (tty->term->flags & TERM_VT100LIKE) {
-		tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\");
-		tty->flags |= (TTY_WAITBG|TTY_WAITFG);
+		tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\\033]12;?\033\\");
+		tty->flags |= (TTY_WAITBG|TTY_WAITFG|TTY_WAITCCOLOUR);
 	}
 	tty_start_start_timer(tty);
 }

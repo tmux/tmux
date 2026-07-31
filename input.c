@@ -3163,6 +3163,8 @@ static void
 input_osc_12(struct input_ctx *ictx, const char *p)
 {
 	struct window_pane	*wp = ictx->wp;
+	struct window		*w;
+	struct client		*loop;
 	int			 c;
 
 	if (strcmp(p, "?") == 0) {
@@ -3170,6 +3172,20 @@ input_osc_12(struct input_ctx *ictx, const char *p)
 			c = ictx->ctx.s->ccolour;
 			if (c == -1)
 				c = ictx->ctx.s->default_ccolour;
+			if (c == -1 || COLOUR_DEFAULT(c)) {
+				w = wp->window;
+				TAILQ_FOREACH(loop, &clients, entry) {
+					if (loop->flags & CLIENT_UNATTACHEDFLAGS)
+						continue;
+					if (loop->session == NULL ||
+					    !session_has(loop->session, w))
+						continue;
+					if (loop->tty.default_ccolour == -1)
+						continue;
+					c = loop->tty.default_ccolour;
+					break;
+				}
+			}
 			input_osc_colour_reply(ictx, 1, 12, 0, c,
 			    ictx->input_end);
 		}

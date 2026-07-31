@@ -1762,6 +1762,7 @@ struct tty {
 	u_int		 cy;
 	enum screen_cursor_style cstyle;
 	int		 ccolour;
+	int		 default_ccolour;
 
         /* Properties of the area being drawn on. */
         /* When true, the drawing area is bigger than the terminal. */
@@ -1810,6 +1811,7 @@ struct tty {
 #define TTY_WAITFG 0x2000
 #define TTY_WAITBG 0x4000
 #define TTY_BRACKETPASTE 0x8000
+#define TTY_WAITCCOLOUR 0x10000
 #define TTY_ALL_REQUEST_FLAGS \
 	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA)
 	int		 flags;

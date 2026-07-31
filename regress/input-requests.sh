@@ -82,6 +82,20 @@ pid, fd = attach()
 try:
     time.sleep(0.5)
 
+    read_until(fd, b"\033]12;?\033\\")
+    os.write(fd, b"\033]12;rgb:1212/3434/5656\033\\")
+    with tempfile.NamedTemporaryFile(delete=False) as f:
+        cursor_out = f.name
+    respawn("stty raw -echo min 1 time 50; "
+        "printf '\\033]12;?\\033\\\\'; "
+        "dd bs=1 count=25 2>/dev/null | cat -v >%s; sleep 1" %
+        cursor_out)
+    got = wait_file(cursor_out)
+    expected = b"^[]12;rgb:1212/3434/5656^[\\"
+    if got != expected:
+        raise AssertionError("cursor reply: expected %r got %r" %
+            (expected, got))
+
     with tempfile.NamedTemporaryFile(delete=False) as f:
         palette_out = f.name
     respawn("stty raw -echo min 1 time 50; "
