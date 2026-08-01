@@ -1,5 +1,12 @@
 CHANGES FROM 3.7b TO 3.8
 
+* Add a vertical status line at the left or right of the terminal, enabled
+  with the side-status option, sized with side-status-width and drawn from
+  the side-status-format array. Formats may produce multiple rows with the
+  new nl style, the window list is scrolled to keep the current window
+  visible, and ranges know the row they were drawn on so the mouse works as
+  on the status line.
+
 * Build with jemalloc on macOS to avoid what appears to be a bug in the system
   calloc(3) (issue 5385).
 
