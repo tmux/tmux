@@ -365,6 +365,124 @@ status_redraw(struct client *c)
 	return (force || changed);
 }
 
+/* Prepare side status line. */
+void
+side_status_init(struct client *c)
+{
+	struct side_status_line	*ss = &c->side_status;
+
+	screen_init(&ss->screen, 1, 1, 0);
+	style_ranges_init(&ss->ranges);
+}
+
+/* Free side status line. */
+void
+side_status_free(struct client *c)
+{
+	struct side_status_line	*ss = &c->side_status;
+
+	style_ranges_free(&ss->ranges);
+	free(ss->expanded);
+	screen_free(&ss->screen);
+}
+
+/* Draw side status line for client. Returns 1 if changed. */
+int
+side_status_redraw(struct client *c)
+{
+	struct side_status_line		*ss = &c->side_status;
+	struct session			*s = c->session;
+	struct screen_write_ctx		 ctx;
+	struct grid_cell		 gc;
+	struct options_entry		*o;
+	struct options_array_item	*a;
+	union options_value		*ov;
+	struct format_tree		*ft;
+	char				*expanded, *joined, *tmp;
+	u_int				 width, rows, n;
+	int				 flags, force = 0, fg, bg;
+
+	log_debug("%s enter", __func__);
+
+	/* No side status line? */
+	width = side_status_size(c);
+	rows = side_status_rows(c);
+	if (width == 0 || rows == 0)
+		return (0);
+
+	/* Create format tree. */
+	flags = FORMAT_STATUS;
+	if (c->flags & CLIENT_STATUSFORCE)
+		flags |= FORMAT_FORCE;
+	ft = format_create(c, NULL, FORMAT_NONE, flags);
+	format_defaults(ft, c, NULL, NULL, NULL);
+
+	/* Set up default colour. */
+	style_apply(&gc, s->options, "status-style", ft);
+	fg = options_get_number(s->options, "status-fg");
+	if (!COLOUR_DEFAULT(fg))
+		gc.fg = fg;
+	bg = options_get_number(s->options, "status-bg");
+	if (!COLOUR_DEFAULT(bg))
+		gc.bg = bg;
+	if (!grid_cells_equal(&gc, &ss->style)) {
+		force = 1;
+		memcpy(&ss->style, &gc, sizeof ss->style);
+	}
+
+	/* Resize the target screen. */
+	if (screen_size_x(&ss->screen) != width ||
+	    screen_size_y(&ss->screen) != rows) {
+		screen_resize(&ss->screen, width, rows, 0);
+		force = 1;
+	}
+
+	/* Join the members with newlines so each follows the previous. */
+	joined = xstrdup("");
+	o = options_get(s->options, "side-status-format");
+	if (o != NULL) {
+		a = options_array_first(o);
+		while (a != NULL) {
+			ov = options_array_item_value(a);
+			expanded = format_expand_time(ft, ov->string);
+			if (*joined != '\0') {
+				xasprintf(&tmp, "%s\n%s", joined, expanded);
+				free(expanded);
+			} else
+				tmp = expanded;
+			free(joined);
+			joined = tmp;
+			a = options_array_next(a);
+		}
+	}
+	format_free(ft);
+
+	/* Skip the redraw if nothing has changed. */
+	if (!force &&
+	    ss->expanded != NULL &&
+	    strcmp(joined, ss->expanded) == 0) {
+		free(joined);
+		log_debug("%s exit: unchanged", __func__);
+		return (0);
+	}
+
+	/* Draw the rows over a blank background. */
+	screen_write_start(&ctx, &ss->screen);
+	screen_write_cursormove(&ctx, 0, 0, 0);
+	for (n = 0; n < width * rows; n++)
+		screen_write_putc(&ctx, &gc, ' ');
+	screen_write_cursormove(&ctx, 0, 0, 0);
+	style_ranges_free(&ss->ranges);
+	format_draw_lines(&ctx, &gc, width, rows, joined, &ss->ranges, 0);
+	screen_write_stop(&ctx);
+
+	free(ss->expanded);
+	ss->expanded = joined;
+
+	log_debug("%s exit: changed", __func__);
+	return (1);
+}
+
 /* Escape # characters in a string so format_draw treats them as literal. */
 static char *
 status_message_escape(const char *s)
