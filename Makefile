@@ -1,4 +1,4 @@
-# $OpenBSD: Makefile,v 1.121 2026/07/14 17:17:17 nicm Exp $
+# $OpenBSD: Makefile,v 1.122 2026/08/01 17:04:12 miod Exp $
 
 PROG=	tmux
 SRCS=	alerts.c \
@@ -152,5 +152,10 @@ CFLAGS += -I${.CURDIR}
 
 LDADD=	-lutil -lcurses -levent -lm
 DPADD=	${LIBUTIL} ${LIBCURSES} ${LIBEVENT} ${LIBM}
+
+.if "${MACHINE_ARCH}" == "sh"
+screen-redraw.o:
+	${CC} ${CFLAGS} -fno-stack-protector ${CPPFLAGS} -c ${.IMPSRC}
+.endif
 
 .include <bsd.prog.mk>
