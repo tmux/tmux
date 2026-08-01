@@ -44,6 +44,8 @@ static struct style style_default = {
 
 	STYLE_DEFAULT_BASE,
 
+	0,
+
 	0
 };
 
@@ -110,6 +112,8 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 			sy->default_type = STYLE_DEFAULT_POP;
 		else if (strcasecmp(tmp, "set-default") == 0)
 			sy->default_type = STYLE_DEFAULT_SET;
+		else if (strcasecmp(tmp, "nl") == 0)
+			sy->nl = 1;
 		else if (strcasecmp(tmp, "nolist") == 0)
 			sy->list = STYLE_LIST_OFF;
 		else if (strncasecmp(tmp, "list=", 5) == 0) {
