@@ -67,6 +67,11 @@ $TMUX new-session -d -x80 -y20 "sh -c 'printf \"\\033]133;A\\007P0> \\033]133;B\
 sleep 1
 
 $TMUX copy-mode -c || exit 1
+collapsed=$($TMUX capture-pane -p)
+case "$collapsed" in
+*"+ P0>"*) ;;
+*) exit 1 ;;
+esac
 $TMUX send-keys -X search-backward empty-separator || exit 1
 hidden=$($TMUX display-message -p '#{copy_cursor_line}')
 [ "$hidden" != empty-separator ] || exit 1

@@ -730,12 +730,17 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 	}
 	if (y != 0 && y != total)
 		/*
-		 * There are some initial lines from a command or output before
-		 * first osc133 marked output line.
+		 * The source begins in an existing command or its output. Treat its
+		 * first line as a synthetic command for the region before the first A.
 		 */
 		initial = 1;
 
 	screen_write_start(&ctx, dst);
+	/*
+	 * Markers may occur at any column, so copy the source one cell boundary at
+	 * a time. The final boundary (cellused) is included to handle a marker
+	 * immediately after the last cell on a line.
+	 */
 	for (y = 0; y < total; y++) {
 		sgl = grid_get_line(sgd, y);
 		osc133 = &sgl->osc133_data;
@@ -743,27 +748,54 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 			dy = dst->grid->hsize + dst->cy;
 			was_hiding = hiding;
 			if (!hiding)
+				/*
+				 * Row is visible.  Records the source
+				 * row and current output-block identity
+				 * for cursor restoration, selection,
+				 * gutter drawing, and line numbers.
+				 */
 				window_copy_set_line(data, dy, y, output_line, 0);
+			/*
+			 * Continue even if row is folded because
+			 * there may be markers to process.
+			 */
 			dgl = grid_get_line(dst->grid, dy);
 			if (initial && y == 0 && x == 0)
+				/* Top line of buffer, no osc133 marker yet.
+				 * Attach controls to top line, make it a
+				 * "synthetic command" so top lines can fold.
+				 */
 				window_copy_set_line(data, dy, y, UINT_MAX,
 				    WINDOW_COPY_LINE_CONTROL | WINDOW_COPY_LINE_INITIAL);
 			if ((sgl->flags & GRID_LINE_START_OUTPUT) &&
 			    x == osc133->out_start_col) {
+				/*
+				 * osc133 C starts the collapsible region
+				 * controlled by this source line.
+				 */
 				dgl->flags |= GRID_LINE_START_OUTPUT;
 				dgl->osc133_data.out_start_col = dst->cx;
 				output_line = y;
-				tree = 1;
+				tree = 1;  /* used to draw the | or L in gutter */
 				in_output = 1;
 				output_empty = 1;
 				collapsed = data->source_flags[y] &
 				    WINDOW_COPY_FOLD_COLLAPSED;
-				hiding = collapsed;
+				hiding = collapsed;  /* Start/stop hiding cells */
 				if (prompt_dy != UINT_MAX)
-					window_copy_set_control(data, prompt_dy, output_line, 1);
+					/* Attach +/- controls to the prompt. */
+					window_copy_set_control(data, prompt_dy,
+					    output_line, 1);
 			}
 			if ((sgl->flags & GRID_LINE_END_OUTPUT) &&
 			    x == osc133->out_end_col) {
+				/*
+				 * Command output ends at the osc133 D
+				 * marker.  There may be more lines
+				 * (like pre-prompt output) before next A
+				 * marker.  Fold these with previous output
+				 * until the following A marker.
+				 */
 				dgl->flags |= GRID_LINE_END_OUTPUT;
 				if (sgl->flags & GRID_LINE_END_OUTPUT_STATUS)
 					dgl->flags |= GRID_LINE_END_OUTPUT_STATUS;
@@ -772,32 +804,61 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 				if (in_output && output_empty && prompt_dy != UINT_MAX) {
 					line = window_copy_get_line_info(data, prompt_dy);
 					if (line != NULL)
+						/* No output to hide, no +/-. */
 						line->flags &= ~WINDOW_COPY_LINE_OUTPUT;
 				}
 				in_output = 0;
 				if (output_line == UINT_MAX && command) {
+					/*
+					 * Saw osc133 B but not C marker.
+					 * This could be user pressed enter
+					 * or command like 'true' with no
+					 * output.
+					 */
 					output_line = y;
 					tree = 1;
+					/* Block is collapsed? */
 					collapsed = data->source_flags[y] &
 					    WINDOW_COPY_FOLD_COLLAPSED;
 					if (prompt_dy != UINT_MAX)
+						/*
+						 * Make this a +/- control row
+						 * but without the +/- for now
+						 * since we don't know what
+						 * comes below.
+						 */
 						window_copy_set_control(data, prompt_dy,
 						    output_line, 0);
 				}
 				if (prompt_dy != UINT_MAX &&
 				    sgl->flags & GRID_LINE_END_OUTPUT_STATUS)
+					/*
+					 * osc133 D, record exit status on the
+					 * command's prompt row.
+					 */
 					window_copy_set_exit_status(data, prompt_dy,
 					    osc133->exit_status);
 				if (initial && prompt_dy == UINT_MAX)
+					/* At top of buffer before first osc A
+					 * marker use first line's fold state.
+					 */
 					hiding = data->source_flags[0] &
 					    WINDOW_COPY_FOLD_COLLAPSED;
 				else
+					/*
+					 * Otherwise, use the current block's
+					 * fold state.
+					 */
 					hiding = collapsed;
 				command = 0;
 			}
-			/* Process C and D before a following prompt at the same column. */
+			/*
+			 * Process osc133 C and D before a following prompt
+			 * at the same column.
+			 */
 			if ((sgl->flags & GRID_LINE_START_PROMPT) &&
 			    x == osc133->prompt_col) {
+				/* osc133 A ends region, starts new prompt. */
 				dgl->flags |= GRID_LINE_START_PROMPT;
 				dgl->osc133_data.prompt_col = dst->cx;
 				prompt_dy = dy;
@@ -807,15 +868,21 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 			}
 			if ((sgl->flags & GRID_LINE_SECOND_PROMPT) &&
 			    x == osc133->prompt_col) {
+				/* osc133 A;k=s, marks secondary prompt. */
 				dgl->flags |= GRID_LINE_SECOND_PROMPT;
 				dgl->osc133_data.prompt_col = dst->cx;
 			}
 			if ((sgl->flags & GRID_LINE_START_COMMAND) &&
 			    x == osc133->cmd_col) {
+				/* osc133 B marks start/continue of command. */
 				dgl->flags |= GRID_LINE_START_COMMAND;
 				dgl->osc133_data.cmd_col = dst->cx;
 				command = 1;
 			}
+			/*
+			 * An osc133 A may expose the remainder of this source
+			 * line after a folded region.
+			 */
 			if (was_hiding && !hiding)
 				window_copy_set_line(data, dy, y, output_line, 0);
 			if (x == sgl->cellused)
@@ -823,6 +890,14 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 			grid_get_cell(sgd, x, y, &gc);
 			if (in_output && !(gc.flags & GRID_FLAG_PADDING))
 				output_empty = 0;
+			/* Separator text after D is also expandable. */
+			if (!in_output && tree && output_line != UINT_MAX &&
+			    !(gc.flags & GRID_FLAG_PADDING) && prompt_dy != UINT_MAX)
+				window_copy_set_control(data, prompt_dy, output_line, 1);
+			/*
+			 * osc133 marker processing continues while folded, but
+			 * cell output does not.
+			 */
 			if (hiding)
 				continue;
 			if (!(gc.flags & GRID_FLAG_PADDING)) {
@@ -835,14 +910,24 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 		if (!hiding && tree && sgl->cellused == 0 &&
 		    ~(sgl->flags) & (GRID_LINE_START_PROMPT |
 		    GRID_LINE_START_OUTPUT | GRID_LINE_END_OUTPUT))
+			/* Mark empty visible lines so gutter tree continues */
 			window_copy_set_line(data, dy, y, output_line,
 			    WINDOW_COPY_LINE_MEMBER);
 		if (y + 1 != total && !(sgl->flags & GRID_LINE_WRAPPED) &&
 		    (!hiding || (initial && y == 0))) {
+			/*
+			 * Hide folded line breaks, except after the initial
+			 * synthetic command line (top line of copy buffer).
+			 */
 			screen_write_carriagereturn(&ctx);
 			screen_write_linefeed(&ctx, 0, 8);
 		}
 		if (initial && y == 0) {
+			/*
+			 * Top line of buffer (which may not be a command)
+			 * becomes our "synthisied" commmand to anchor lines
+			 * folded below it up to first osc133 A.
+			 */
 			tree = 1;
 			hiding = data->source_flags[0] &
 			    WINDOW_COPY_FOLD_COLLAPSED;
