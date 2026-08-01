@@ -388,6 +388,15 @@ side_status_free(struct client *c)
 	screen_free(&ss->screen);
 }
 
+/* Get side status range for position. */
+struct style_range *
+side_status_get_range(struct client *c, u_int x, u_int y)
+{
+	struct side_status_line	*ss = &c->side_status;
+
+	return (style_ranges_get_range_at(&ss->ranges, x, y));
+}
+
 /* Draw side status line for client. Returns 1 if changed. */
 int
 side_status_redraw(struct client *c)

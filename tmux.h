@@ -1688,6 +1688,8 @@ struct mouse_event {
 
 	int		statusat;
 	u_int		statuslines;
+	int		sideat;
+	u_int		sidecols;
 
 	u_int		x;
 	u_int		y;
@@ -3389,6 +3391,7 @@ u_int	 side_status_rows(struct client *);
 void	 side_status_init(struct client *);
 void	 side_status_free(struct client *);
 int	 side_status_redraw(struct client *);
+struct style_range *side_status_get_range(struct client *, u_int, u_int);
 struct style_range *status_get_range(struct client *, u_int, u_int);
 void	 status_init(struct client *);
 void	 status_free(struct client *);
