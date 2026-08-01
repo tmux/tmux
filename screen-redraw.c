@@ -93,6 +93,7 @@ enum redraw_span_type {
 #define REDRAW_PANE_SCROLLBAR 0x20
 #define REDRAW_STATUS 0x40
 #define REDRAW_MENU 0x80
+#define REDRAW_SIDE_STATUS 0x100
 
 /* Draw everything. */
 #define REDRAW_ALL 0x7fffffff
@@ -1810,7 +1811,8 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	struct screen		*sl;
 	struct redraw_scene	*scene;
 	struct window_pane	*loop;
-	u_int			 width, i, y, lines;
+	u_int			 width, i, y, lines, side_cols;
+	int			 side_x;
 	struct redraw_span	*first;
 	int			 redraw;
 
@@ -1831,6 +1833,15 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 			if (flags == 0)
 				return;
 		}
+	}
+
+	if (flags & REDRAW_SIDE_STATUS) {
+		if (side_status_size(c) == 0)
+			flags &= ~REDRAW_SIDE_STATUS;
+		else if (!side_status_redraw(c) && !REDRAW_IS_ALL(flags))
+			flags &= ~REDRAW_SIDE_STATUS;
+		if (flags == 0)
+			return;
 	}
 
 	if (log_get_level() != 0) {
@@ -1912,6 +1923,21 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	if (w->menu != NULL && (flags & REDRAW_MENU))
 		redraw_draw_menu_lines(&dctx);
 
+	if (flags & REDRAW_SIDE_STATUS) {
+		side_cols = side_status_size(c);
+		side_x = side_status_at_column(c);
+		if (side_cols != 0 && side_x != -1) {
+			if (dctx.flags & REDRAW_STATUS_TOP)
+				y = dctx.status_lines;
+			else
+				y = 0;
+			for (i = 0; i < side_status_rows(c); i++) {
+				tty_draw_line(tty, &c->side_status.screen, 0, i,
+				    side_cols, side_x, y + i, NULL);
+			}
+		}
+	}
+
 	if (flags & REDRAW_STATUS) {
 		lines = dctx.status_lines;
 		if (c->message_string != NULL || c->prompt != NULL)
@@ -1985,7 +2011,8 @@ redraw_screen(struct client *c)
 		if (c->flags & CLIENT_REDRAWBORDERS)
 			flags |= (REDRAW_PANE_BORDER|REDRAW_PANE_STATUS);
 		if (c->flags & (CLIENT_REDRAWSTATUS|CLIENT_REDRAWSTATUSALWAYS))
-			flags |= (REDRAW_STATUS|REDRAW_PANE_STATUS);
+			flags |= (REDRAW_STATUS|REDRAW_PANE_STATUS|
+			    REDRAW_SIDE_STATUS);
 		if (c->flags & CLIENT_REDRAWMENU)
 			flags |= REDRAW_MENU;
 		if (c->session->curw->window->menu != NULL)
