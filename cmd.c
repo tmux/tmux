@@ -777,6 +777,8 @@ cmd_mouse_at(struct window_pane *wp, struct mouse_event *m, u_int *xp,
 
 	if (m->statusat == 0 && y >= m->statuslines)
 		y -= m->statuslines;
+	if (m->sideat == 0 && x >= m->sidecols)
+		x -= m->sidecols;
 
 	if ((int)x < wp->xoff || (int)x >= wp->xoff + (int)wp->sx)
 		return (-1);
