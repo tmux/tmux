@@ -303,6 +303,7 @@ server_client_create(int fd)
 	c->theme = THEME_UNKNOWN;
 
 	status_init(c);
+	side_status_init(c);
 	c->flags |= CLIENT_FOCUSED;
 
 	c->keytable = key_bindings_get_table("root", 1);
@@ -520,6 +521,7 @@ server_client_lost(struct client *c)
 	tty_term_free_list(c->term_caps, c->term_ncaps);
 
 	status_free(c);
+	side_status_free(c);
 	input_cancel_requests(c);
 
 	free(c->title);

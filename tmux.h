@@ -2079,6 +2079,15 @@ struct status_line {
 	struct style_line_entry entries[STATUS_LINES_LIMIT];
 };
 
+/* Side status line. */
+struct side_status_line {
+	struct screen		 screen;
+
+	struct grid_cell	 style;
+	char			*expanded;
+	struct style_ranges	 ranges;
+};
+
 /* File in client. */
 typedef void (*client_file_cb) (struct client *, const char *, int, int,
     struct evbuffer *, void *);
@@ -2254,6 +2263,7 @@ struct client {
 	struct mouse_event	 click_event;
 
 	struct status_line	 status;
+	struct side_status_line	 side_status;
 	struct event		 cycle_timer;
 	enum client_theme	 theme;
 
@@ -3378,6 +3388,9 @@ u_int	 status_line_size(struct client *);
 u_int	 side_status_size(struct client *);
 int	 side_status_at_column(struct client *);
 u_int	 side_status_rows(struct client *);
+void	 side_status_init(struct client *);
+void	 side_status_free(struct client *);
+int	 side_status_redraw(struct client *);
 struct style_range *status_get_range(struct client *, u_int, u_int);
 void	 status_init(struct client *);
 void	 status_free(struct client *);
