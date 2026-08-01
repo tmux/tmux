@@ -577,3 +577,18 @@ style_ranges_get_range(struct style_ranges *srs, u_int x)
 	}
 	return (NULL);
 }
+
+/* Get range for position and row from style ranges. */
+struct style_range *
+style_ranges_get_range_at(struct style_ranges *srs, u_int x, u_int y)
+{
+	struct style_range	*sr;
+
+	if (srs == NULL)
+		return (NULL);
+	TAILQ_FOREACH(sr, srs, entry) {
+		if (x >= sr->start && x < sr->end && y == sr->y)
+			return (sr);
+	}
+	return (NULL);
+}
