@@ -1034,6 +1034,8 @@ struct style {
 
 	enum style_default_type	default_type;
 
+	int			nl;
+
 	u_int			link;
 };
 
