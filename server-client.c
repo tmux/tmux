@@ -2012,6 +2012,8 @@ server_client_prompt_cursor(struct client *c, struct window_pane *wp, int *mode,
 	if (window_position_is_visible(r, *cx)) {
 		if (status_at_line(c) == 0)
 			*cy += status_line_size(c);
+		if (side_status_at_column(c) == 0)
+			*cx += side_status_size(c);
 		*mode |= MODE_CURSOR;
 	}
 	return (1);
@@ -2080,6 +2082,8 @@ server_client_reset_state(struct client *c)
 				cy -= oy;
 				if (status_at_line(c) == 0)
 					cy += status_line_size(c);
+				if (side_status_at_column(c) == 0)
+					cx += side_status_size(c);
 			}
 			prompt = 1;
 		} else {
@@ -2119,6 +2123,8 @@ server_client_reset_state(struct client *c)
 
 				if (status_at_line(c) == 0)
 					cy += status_line_size(c);
+				if (side_status_at_column(c) == 0)
+					cx += side_status_size(c);
 			}
 
 			if (!cursor)

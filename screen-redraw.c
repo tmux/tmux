@@ -235,6 +235,7 @@ struct redraw_draw_ctx {
 	struct window_pane	*marked;
 
 	u_int			 status_lines;
+	u_int			 side_left;
 	enum pane_lines		 pane_lines;
 	struct grid_cell	 default_gc;
 
@@ -279,7 +280,7 @@ redraw_get_window_offset(struct client *c, u_int *ox, u_int *oy, u_int *sx,
 
 	tty_window_offset(&c->tty, ox, oy, sx, sy);
 
-	tty_sx = c->tty.sx;
+	tty_sx = c->tty.sx - side_status_size(c);
 	tty_sy = c->tty.sy - status_line_size(c);
 	if (*sx < tty_sx)
 		*sx = tty_sx;
@@ -1119,7 +1120,7 @@ redraw_draw_pane_span(struct redraw_draw_ctx *dctx,
 	style_ctx.palette = &wp->palette;
 	style_ctx.hyperlinks = s->hyperlinks;
 
-	px = span->data.p.px + (x - span->x);
+	px = span->data.p.px + (x - dctx->side_left - span->x);
 	py = span->data.p.py;
 	tty_draw_line(tty, s, px, py, n, x, y, &style_ctx);
 }
@@ -1273,7 +1274,7 @@ redraw_draw_status_span(struct redraw_draw_ctx *dctx,
 	struct screen		*s = &wp->status_screen;
 	u_int			 px, sx = screen_size_x(s);
 
-	px = span->data.st.offset + (x - span->x);
+	px = span->data.st.offset + (x - dctx->side_left - span->x);
 	if (px < sx) {
 		if (n > sx - px)
 			n = sx - px;
@@ -1335,7 +1336,7 @@ redraw_draw_scrollbar_span(struct redraw_draw_ctx *dctx,
 
 	sb_w = sb_style->width;
 	sb_pad = sb_style->pad;
-	off = x - span->x;
+	off = x - dctx->side_left - span->x;
 
 	tty_cursor(tty, x, y);
 	for (i = 0; i < n; i++) {
@@ -1369,7 +1370,7 @@ redraw_draw_menu_span(struct redraw_draw_ctx *dctx,
 	struct screen		*s = menu_screen(span->data.m.md);
 	u_int			 px;
 
-	px = span->data.m.px + (x - span->x);
+	px = span->data.m.px + (x - dctx->side_left - span->x);
 	tty_draw_line(tty, s, px, span->data.m.py, n, x, y, NULL);
 }
 
@@ -1380,27 +1381,28 @@ redraw_draw_span(struct redraw_draw_ctx *dctx, struct redraw_span *span,
 {
 	struct redraw_span_data	*data = &span->data;
 	enum redraw_span_type	 type = data->type;
+	u_int			 x = dctx->side_left + span->x;
 
 	if (type == REDRAW_SPAN_STATUS && ~data->st.wp->flags & PANE_NEWSTATUS)
 		return;
 
 	switch (span->data.type) {
 	case REDRAW_SPAN_PANE:
-		redraw_draw_pane_span(dctx, span, span->x, y, span->width);
+		redraw_draw_pane_span(dctx, span, x, y, span->width);
 		break;
 	case REDRAW_SPAN_BORDER:
 	case REDRAW_SPAN_EMPTY:
 	case REDRAW_SPAN_OUTSIDE:
-		redraw_draw_border_span(dctx, span, span->x, y, span->width);
+		redraw_draw_border_span(dctx, span, x, y, span->width);
 		break;
 	case REDRAW_SPAN_STATUS:
-		redraw_draw_status_span(dctx, span, span->x, y, span->width);
+		redraw_draw_status_span(dctx, span, x, y, span->width);
 		break;
 	case REDRAW_SPAN_SCROLLBAR:
-		redraw_draw_scrollbar_span(dctx, span, span->x, y, span->width);
+		redraw_draw_scrollbar_span(dctx, span, x, y, span->width);
 		break;
 	case REDRAW_SPAN_MENU:
-		redraw_draw_menu_span(dctx, span, span->x, y, span->width);
+		redraw_draw_menu_span(dctx, span, x, y, span->width);
 		break;
 	}
 }
@@ -1599,6 +1601,9 @@ redraw_set_draw_context(struct redraw_draw_ctx *dctx,
 		dctx->flags |= REDRAW_STATUS_TOP;
 	dctx->status_lines = lines;
 
+	if (side_status_at_column(c) == 0)
+		dctx->side_left = side_status_size(c);
+
 	if ((c->flags & CLIENT_UTF8) && tty_term_has(tty->term, TTYC_BIDI))
 		dctx->flags |= REDRAW_ISOLATES;
 }
@@ -1655,7 +1660,8 @@ redraw_draw_pane_prompt(struct redraw_draw_ctx *dctx, struct window_pane *wp)
 	prompt_draw(wp->prompt, &pdd);
 	screen_write_stop(&ctx);
 
-	tty_draw_line(tty, &screen, 0, offset, width, px, cy, NULL);
+	tty_draw_line(tty, &screen, 0, offset, width, dctx->side_left + px, cy,
+	    NULL);
 	screen_free(&screen);
 }
 
