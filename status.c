@@ -93,6 +93,20 @@ status_update_cache(struct session *s)
 		s->statusat = 0;
 	else
 		s->statusat = 1;
+
+	switch (options_get_number(s->options, "side-status")) {
+	case 1:
+		s->sidestatusat = 0;
+		break;
+	case 2:
+		s->sidestatusat = 1;
+		break;
+	default:
+		s->sidestatusat = -1;
+		break;
+	}
+	s->sidestatuswidth = options_get_number(s->options,
+	    "side-status-width");
 }
 
 /* Get screen line of status line. -1 means off. */
@@ -119,6 +133,46 @@ status_line_size(struct client *c)
 	if (s == NULL)
 		return (options_get_number(global_s_options, "status"));
 	return (s->statuslines);
+}
+
+/* Get width of side status line for client's session. 0 means off. */
+u_int
+side_status_size(struct client *c)
+{
+	struct session	*s = c->session;
+
+	if (c->flags & (CLIENT_SIDESTATUSOFF|CLIENT_CONTROL))
+		return (0);
+	if (s == NULL || s->sidestatusat == -1)
+		return (0);
+	if (c->tty.sx <= s->sidestatuswidth)
+		return (0);
+	return (s->sidestatuswidth);
+}
+
+/* Get starting column of side status line. -1 means off. */
+int
+side_status_at_column(struct client *c)
+{
+	struct session	*s = c->session;
+	u_int		 width = side_status_size(c);
+
+	if (width == 0)
+		return (-1);
+	if (s->sidestatusat == 0)
+		return (0);
+	return (c->tty.sx - width);
+}
+
+/* Get number of rows of side status line for client. */
+u_int
+side_status_rows(struct client *c)
+{
+	u_int	lines = status_line_size(c);
+
+	if (side_status_size(c) == 0 || c->tty.sy <= lines)
+		return (0);
+	return (c->tty.sy - lines);
 }
 
 /* Get the prompt line number for client's session. 1 means at the bottom. */

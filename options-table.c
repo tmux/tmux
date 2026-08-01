@@ -53,6 +53,9 @@ static const char *options_table_status_justify_list[] = {
 static const char *options_table_status_position_list[] = {
 	"top", "bottom", NULL
 };
+static const char *options_table_side_status_list[] = {
+	"off", "left", "right", NULL
+};
 static const char *options_table_bell_action_list[] = {
 	"none", "any", "current", "other", NULL
 };
@@ -235,6 +238,34 @@ static const char *options_table_status_format_default[] = {
 	OPTIONS_TABLE_STATUS_FORMAT1,
 	OPTIONS_TABLE_STATUS_FORMAT2,
 	OPTIONS_TABLE_STATUS_FORMAT3,
+	NULL
+};
+
+/* Default side status line format: one row for each window. */
+#define OPTIONS_TABLE_SIDE_STATUS_FORMAT1 \
+	"#[list=on]" \
+	"#[list=left-marker]^#[nl]" \
+	"#[list=right-marker]v#[nl]" \
+	"#{W:" \
+		"#[range=window|#{window_index} #{E:window-status-style}]" \
+		"#[push-default]" \
+		"#{T:window-status-format}" \
+		"#[pop-default]" \
+		"#[norange default]#[nl]" \
+	"," \
+		"#[range=window|#{window_index} list=focus " \
+			"#{?#{!=:#{E:window-status-current-style},default}," \
+				"#{E:window-status-current-style}," \
+				"#{E:window-status-style}" \
+			"}" \
+		"]" \
+		"#[push-default]" \
+		"#{T:window-status-current-format}" \
+		"#[pop-default]" \
+		"#[norange list=on default]#[nl]" \
+	"}"
+static const char *options_table_side_status_format_default[] = {
+	OPTIONS_TABLE_SIDE_STATUS_FORMAT1,
 	NULL
 };
 
@@ -979,6 +1010,35 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .default_str = "#S:#I:#W - \"#T\" #{session_alerts}",
 	  .text = "Format of the terminal title to set."
+	},
+
+	{ .name = "side-status",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_side_status_list,
+	  .default_num = 0,
+	  .text = "Whether to draw a vertical status line at the left or "
+		  "right of the terminal."
+	},
+
+	{ .name = "side-status-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .flags = OPTIONS_TABLE_IS_ARRAY,
+	  .default_arr = options_table_side_status_format_default,
+	  .text = "Formats for the side status line. "
+		  "Each array member may produce multiple rows with the nl "
+		  "style; the rows for each member follow those of the "
+		  "previous member."
+	},
+
+	{ .name = "side-status-width",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .minimum = 1,
+	  .maximum = SHRT_MAX,
+	  .default_num = 24,
+	  .text = "Width of the side status line."
 	},
 
 	{ .name = "silence-action",
