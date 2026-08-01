@@ -1007,6 +1007,14 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	 */
 	switch (list_align) {
 	case STYLE_ALIGN_DEFAULT:
+		if (s[LIST].cx != 0 || s[AFTER].cx != 0) {
+			/* A list with default alignment is part of the left. */
+			format_draw_left(octx, available, ocx, ocy, &s[LEFT],
+			    &s[CENTRE], &s[RIGHT], &s[ABSOLUTE_CENTRE],
+			    &s[LIST], &s[LIST_LEFT], &s[LIST_RIGHT], &s[AFTER],
+			    focus_start, focus_end, &frs);
+			break;
+		}
 		/* No list. */
 		format_draw_none(octx, available, ocx, ocy, &s[LEFT],
 		    &s[CENTRE], &s[RIGHT], &s[ABSOLUTE_CENTRE], &frs);
