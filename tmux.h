@@ -975,6 +975,7 @@ struct style_range {
 
 	u_int			 start;
 	u_int			 end; /* not included */
+	u_int			 y; /* row for multi-row areas */
 
 	TAILQ_ENTRY(style_range) entry;
 };
@@ -4202,6 +4203,8 @@ void		 style_set_scrollbar_style_from_option(struct style *,
 void		 style_ranges_init(struct style_ranges *);
 void		 style_ranges_free(struct style_ranges *);
 struct style_range *style_ranges_get_range(struct style_ranges *, u_int);
+struct style_range *style_ranges_get_range_at(struct style_ranges *, u_int,
+		     u_int);
 
 /* spawn.c */
 struct winlink	*spawn_window(struct spawn_context *, char **);
