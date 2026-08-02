@@ -226,7 +226,7 @@ cfg_print_causes(struct cmdq_item *item)
 
 	for (i = 0; i < cfg_ncauses; i++) {
 		if (c != NULL && (c->flags & CLIENT_CONTROL))
-			control_write(c, "%%config-error %s", cfg_causes[i]);
+			control_notify_write(c, "%%config-error %s", cfg_causes[i]);
 		else
 			cmdq_print(item, "%s", cfg_causes[i]);
 		free(cfg_causes[i]);
@@ -250,7 +250,7 @@ cfg_show_causes(struct session *s)
 
 	if (c != NULL && (c->flags & CLIENT_CONTROL)) {
 		for (i = 0; i < cfg_ncauses; i++) {
-			control_write(c, "%%config-error %s", cfg_causes[i]);
+			control_notify_write(c, "%%config-error %s", cfg_causes[i]);
 			free(cfg_causes[i]);
 		}
 		goto out;

@@ -802,7 +802,7 @@ cmdq_guard(struct cmdq_item *item, const char *guard, int flags)
 	u_int		 number = item->number;
 
 	if (c != NULL && (c->flags & CLIENT_CONTROL))
-		control_write(c, "%%%s %ld %u %d", guard, t, number, flags);
+		control_write_guard(c, guard, t, number, flags);
 }
 
 /* Show message from command. */
