@@ -1,7 +1,7 @@
 /* $OpenBSD$ */
 
 /*
- * Copyright (c) 2026 Nicholas Marriott <nicholas@roaima.co.uk>
+ * Copyright (c) 2026 Michael Grant <mgrant@grant.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
