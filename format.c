@@ -2101,6 +2101,60 @@ format_cb_synchronized_output_flag(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_private_modes. */
+static void *
+format_cb_pane_private_modes(struct format_tree *ft)
+{
+	static const struct {
+		int	mode;
+		int	number;
+	} table[] = {
+		{ MODE_KCURSOR,		1 },	/* DECCKM */
+		{ MODE_ORIGIN,		6 },	/* DECOM */
+		{ MODE_WRAP,		7 },	/* DECAWM */
+		{ MODE_CURSOR_BLINKING,	12 },	/* cursor blinking */
+		{ MODE_CURSOR,		25 },	/* DECTCEM */
+		{ MODE_MOUSE_STANDARD,	1000 },	/* mouse: normal tracking */
+		{ MODE_MOUSE_BUTTON,	1002 },	/* mouse: button-event tracking */
+		{ MODE_MOUSE_ALL,	1003 },	/* mouse: any-event tracking */
+		{ MODE_FOCUSON,		1004 },	/* focus reporting */
+		{ MODE_MOUSE_UTF8,	1005 },	/* mouse: UTF-8 */
+		{ MODE_MOUSE_SGR,	1006 },	/* mouse: SGR */
+		{ MODE_BRACKETPASTE,	2004 },	/* bracketed paste */
+		{ MODE_SYNC,		2026 },	/* synchronized output */
+		{ MODE_THEME_UPDATES,	2031 },	/* theme update notifications */
+	};
+	int	 mode;
+	char	*value = NULL, *tmp;
+	u_int	 i;
+
+	if (ft->wp == NULL)
+		return (NULL);
+	mode = ft->wp->base.mode;
+
+	for (i = 0; i < nitems(table); i++) {
+		if (~mode & table[i].mode)
+			continue;
+		/*
+		 * Only report cursor blinking when set by the application, not
+		 * when it comes from the cursor-style option.
+		 */
+		if (table[i].mode == MODE_CURSOR_BLINKING &&
+		    (~mode & MODE_CURSOR_BLINKING_SET))
+			continue;
+		if (value == NULL)
+			xasprintf(&value, "%d", table[i].number);
+		else {
+			xasprintf(&tmp, "%s %d", value, table[i].number);
+			free(value);
+			value = tmp;
+		}
+	}
+	if (value == NULL)
+		return (xstrdup(""));
+	return (value);
+}
+
 /* Callback for pane_active. */
 static void *
 format_cb_pane_active(struct format_tree *ft)
@@ -3812,6 +3866,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_pipe_pid", FORMAT_TABLE_STRING,
 	  format_cb_pane_pipe_pid
+	},
+	{ "pane_private_modes", FORMAT_TABLE_STRING,
+	  format_cb_pane_private_modes
 	},
 	{ "pane_right", FORMAT_TABLE_STRING,
 	  format_cb_pane_right
