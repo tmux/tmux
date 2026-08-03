@@ -901,6 +901,23 @@ struct osc133_data {
 	u_char			 exit_status;
 };
 
+/* Parsed OSC 133 line marker. */
+enum input_osc133_type {
+	INPUT_OSC133_NONE,
+	INPUT_OSC133_PROMPT,
+	INPUT_OSC133_PROMPT_MARK,
+	INPUT_OSC133_SECOND_PROMPT,
+	INPUT_OSC133_COMMAND,
+	INPUT_OSC133_OUTPUT,
+	INPUT_OSC133_END
+};
+
+struct input_osc133_marker {
+	enum input_osc133_type	 type;
+	u_short			 column;
+	u_char			 exit_status;
+};
+
 /* Grid line. */
 struct grid_line {
 	struct grid_cell_entry	*celldata;
@@ -3438,6 +3455,16 @@ void	 input_parse_pane(struct window_pane *);
 void	 input_parse_buffer(struct window_pane *, const u_char *, size_t);
 void	 input_parse_screen(struct input_ctx *, struct screen *,
 	     screen_write_init_ctx_cb, void *, const u_char *, size_t);
+void	 input_set_pane_title(struct window_pane *, const char *);
+void	 input_set_pane_path(struct window_pane *, const char *);
+void	 input_osc_133_parse(const char *, u_int,
+	     struct input_osc133_marker *);
+void	 input_osc_133_pane(struct window_pane *,
+	     const struct input_osc133_marker *);
+void	 input_osc_133_apply_line(struct grid_line *,
+	     const struct input_osc133_marker *);
+void	 input_push_title_pane(struct window_pane *);
+void	 input_pop_title_pane(struct window_pane *);
 
 #ifdef HAVE_GHOSTTY_VT
 /* ghostty-vt.zig */

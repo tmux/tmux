@@ -808,6 +808,47 @@ input_fire_pane_title_changed(struct window_pane *wp, const char *title)
 	events_fire("pane-title-changed", ep);
 }
 
+/* Set a pane title using the same policy and notifications as native input. */
+void
+input_set_pane_title(struct window_pane *wp, const char *title)
+{
+	if (!options_get_number(wp->options, "allow-set-title") ||
+	    !screen_set_title(&wp->base, title, 1))
+		return;
+
+	input_fire_pane_title_changed(wp, title);
+	server_redraw_window_borders(wp->window);
+	server_status_window(wp->window);
+}
+
+/* Set a pane path using the same notifications as native input. */
+void
+input_set_pane_path(struct window_pane *wp, const char *path)
+{
+	if (!screen_set_path(&wp->base, path, 1))
+		return;
+
+	server_redraw_window_borders(wp->window);
+	server_status_window(wp->window);
+}
+
+/* Push a title for a Ghostty-backed pane. */
+void
+input_push_title_pane(struct window_pane *wp)
+{
+	screen_push_title(&wp->base);
+}
+
+/* Pop a title using the same notifications as native input. */
+void
+input_pop_title_pane(struct window_pane *wp)
+{
+	screen_pop_title(&wp->base);
+	input_fire_pane_title_changed(wp, wp->base.title);
+	server_redraw_window_borders(wp->window);
+	server_status_window(wp->window);
+}
+
 /*
  * Timer - if this expires then have been waiting for a terminator for too
  * long, so reset to ground.
@@ -2724,22 +2765,19 @@ input_exit_osc(struct input_ctx *ictx)
 	switch (option) {
 	case 0:
 	case 2:
-		if (wp != NULL &&
-		    options_get_number(wp->options, "allow-set-title") &&
-		    screen_set_title(sctx->s, p, 1)) {
-			input_fire_pane_title_changed(wp, p);
-			server_redraw_window_borders(wp->window);
-			server_status_window(wp->window);
-		}
+		if (wp != NULL)
+			input_set_pane_title(wp, p);
+		else
+			screen_set_title(sctx->s, p, 1);
 		break;
 	case 4:
 		input_osc_4(ictx, p);
 		break;
 	case 7:
-		if (wp != NULL && screen_set_path(sctx->s, p, 1)) {
-			server_redraw_window_borders(wp->window);
-			server_status_window(wp->window);
-		}
+		if (wp != NULL)
+			input_set_pane_path(wp, p);
+		else
+			screen_set_path(sctx->s, p, 1);
 		break;
 	case 8:
 		input_osc_8(ictx, p);
@@ -2802,13 +2840,10 @@ input_exit_apc(struct input_ctx *ictx)
 		return;
 	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
 
-	if (wp != NULL &&
-	    options_get_number(wp->options, "allow-set-title") &&
-	    screen_set_title(sctx->s, ictx->input_buf, 1)) {
-		input_fire_pane_title_changed(wp, ictx->input_buf);
-		server_redraw_window_borders(wp->window);
-		server_status_window(wp->window);
-	}
+	if (wp != NULL)
+		input_set_pane_title(wp, ictx->input_buf);
+	else
+		screen_set_title(sctx->s, ictx->input_buf, 1);
 }
 
 /* Rename string started. */
@@ -3195,35 +3230,6 @@ input_osc_112(struct input_ctx *ictx, const char *p)
 		screen_set_cursor_colour(ictx->ctx.s, -1);
 }
 
-/* Parse the OSC 133 D exit status. */
-static int
-input_osc_133_exit_status(const char *p)
-{
-	const char	*end;
-	char		*copy;
-	const char	*errstr;
-	long long	 status;
-
-	if (p[1] != ';' || p[2] == '\0' || strchr(p + 2, '=') == p + 2)
-		return (0);
-	end = strchr(p + 2, ';');
-	if (end == p + 2)
-		return (0);
-	if (end == NULL)
-		copy = xstrdup(p + 2);
-	else
-		copy = xstrndup(p + 2, end - (p + 2));
-	if (strchr(copy, '=') != NULL) {
-		free(copy);
-		return (0);
-	}
-	status = strtonum(copy, 0, 255, &errstr);
-	free(copy);
-	if (errstr != NULL)
-		return (255);
-	return (status);
-}
-
 /* Fire an OSC 133 command event. */
 static void
 input_fire_command_event(struct window_pane *wp, const char *name)
@@ -3264,79 +3270,89 @@ input_fire_command_event(struct window_pane *wp, const char *name)
 	events_fire(name, ep);
 }
 
+/* input_osc_133_parse and input_osc_133_apply_line live in src/osc133.zig. */
+
+/* Apply only the pane state and event portion of OSC 133. */
+static void
+input_osc_133_apply_pane(struct window_pane *wp,
+    const struct input_osc133_marker *marker)
+{
+	if (wp == NULL)
+		return;
+
+	switch (marker->type) {
+	case INPUT_OSC133_PROMPT:
+		wp->last_prompt_time = time(NULL);
+		events_fire_pane("pane-shell-prompt", wp);
+		break;
+	case INPUT_OSC133_OUTPUT:
+		wp->cmd_start_time = time(NULL);
+		wp->cmd_end_time = 0;
+		wp->flags |= PANE_CMDRUNNING;
+		wp->cmd_status = -1;
+		input_fire_command_event(wp, "pane-command-started");
+		break;
+	case INPUT_OSC133_END:
+		wp->cmd_end_time = time(NULL);
+		wp->flags &= ~PANE_CMDRUNNING;
+		wp->cmd_status = marker->exit_status;
+		input_fire_command_event(wp, "pane-command-finished");
+		break;
+	case INPUT_OSC133_NONE:
+	case INPUT_OSC133_PROMPT_MARK:
+	case INPUT_OSC133_SECOND_PROMPT:
+	case INPUT_OSC133_COMMAND:
+		break;
+	}
+}
+
+/* Keep native line updates and pane events in their established order. */
+static void
+input_osc_133_apply(struct window_pane *wp, struct grid_line *gl,
+    const struct input_osc133_marker *marker)
+{
+	if (marker->type == INPUT_OSC133_END) {
+		input_osc_133_apply_pane(wp, marker);
+		if (gl != NULL)
+			input_osc_133_apply_line(gl, marker);
+		return;
+	}
+
+	if (gl != NULL)
+		input_osc_133_apply_line(gl, marker);
+	input_osc_133_apply_pane(wp, marker);
+}
+
 /* Handle the OSC 133 sequence. */
 static void
 input_osc_133(struct input_ctx *ictx, const char *p)
 {
-	struct window_pane	*wp = ictx->wp;
-	struct screen		*s = ictx->ctx.s;
-	struct grid		*gd = s->grid;
-	u_int			 line = s->cy + gd->hsize;
-	struct grid_line	*gl = NULL;
-	const char		*cp;
-	int			 status;
+	struct window_pane		*wp = ictx->wp;
+	struct screen			*s = ictx->ctx.s;
+	struct grid			*gd = s->grid;
+	u_int				 line = s->cy + gd->hsize;
+	struct grid_line		*gl = NULL;
+	struct input_osc133_marker	 marker;
 
 	if (line < gd->hsize + gd->sy)
 		gl = grid_get_line(gd, line);
+	input_osc_133_parse(p, s->cx, &marker);
+	input_osc_133_apply(wp, gl, &marker);
+}
 
-	switch (*p) {
-	case 'A':
-	case 'N':
-		if (gl != NULL) {
-			memset(&gl->osc133_data, 0, sizeof gl->osc133_data);
-			gl->osc133_data.prompt_col = s->cx;
-			gl->flags |= GRID_LINE_START_PROMPT;
-		}
-		if (wp != NULL) {
-			wp->last_prompt_time = time(NULL);
-			events_fire_pane("pane-shell-prompt", wp);
-		}
-		break;
-	case 'P':
-		if (gl != NULL) {
-			cp = strstr(p, ";k=s");
-			if (cp != NULL && (cp[4] == ';' || cp[4] == '\0'))
-				gl->flags |= GRID_LINE_SECOND_PROMPT;
-			else
-				gl->flags |= GRID_LINE_START_PROMPT;
-			gl->osc133_data.prompt_col = s->cx;
-		}
-		break;
-	case 'B':
-	case 'I':
-		if (gl != NULL) {
-			gl->flags |= GRID_LINE_START_COMMAND;
-			gl->osc133_data.cmd_col = s->cx;
-		}
-		break;
-	case 'C':
-		if (gl != NULL) {
-			gl->flags |= GRID_LINE_START_OUTPUT;
-			gl->osc133_data.out_start_col = s->cx;
-		}
-		if (wp != NULL) {
-			wp->cmd_start_time = time(NULL);
-			wp->cmd_end_time = 0;
-			wp->flags |= PANE_CMDRUNNING;
-			wp->cmd_status = -1;
-			input_fire_command_event(wp, "pane-command-started");
-		}
-		break;
-	case 'D':
-		status = input_osc_133_exit_status(p);
-		if (wp != NULL) {
-			wp->cmd_end_time = time(NULL);
-			wp->flags &= ~PANE_CMDRUNNING;
-			wp->cmd_status = status;
-			input_fire_command_event(wp, "pane-command-finished");
-		}
-		if (gl != NULL) {
-			gl->flags |= GRID_LINE_END_OUTPUT;
-			gl->osc133_data.out_end_col = s->cx;
-			gl->osc133_data.exit_status = status;
-		}
-		break;
-	}
+/* Apply OSC 133 at the cursor maintained by the Ghostty-backed pane. */
+void
+input_osc_133_pane(struct window_pane *wp,
+    const struct input_osc133_marker *marker)
+{
+	struct screen		*s = &wp->base;
+	struct grid		*gd = s->grid;
+	u_int			 line = s->cy + gd->hsize;
+	struct grid_line	*gl = NULL;
+
+	if (line < gd->hsize + gd->sy)
+		gl = grid_get_line(gd, line);
+	input_osc_133_apply(wp, gl, marker);
 }
 
 /* Handle OSC 52 reply. */

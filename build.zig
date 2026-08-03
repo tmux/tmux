@@ -254,6 +254,22 @@ pub fn build(b: *std.Build) void {
         mod.linkSystemLibrary("utf8proc", .{ .needed = true });
     }
 
+    // Zig implementations shared by both the native and Ghostty VT
+    // parsers; compiled regardless of the ghostty-vt option.
+    const osc133_mod = b.createModule(.{
+        .root_source_file = b.path("src/osc133.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    addTmuxModuleIncludes(b, osc133_mod, target.result.os.tag);
+    addPkgConfigIncludes(b, osc133_mod, &.{ "libevent_core", "ncurses" });
+    const osc133_obj = b.addObject(.{
+        .name = "osc133",
+        .root_module = osc133_mod,
+    });
+    mod.addObject(osc133_obj);
+
     if (enable_ghostty_vt) {
         mod.addCMacro("HAVE_GHOSTTY_VT", "1");
         const ghostty_mod = b.createModule(.{
@@ -262,13 +278,8 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .link_libc = true,
         });
-        ghostty_mod.addIncludePath(b.path("."));
-        ghostty_mod.addIncludePath(b.path("compat"));
+        addTmuxModuleIncludes(b, ghostty_mod, target.result.os.tag);
         addPkgConfigIncludes(b, ghostty_mod, &.{ "libevent_core", "ncurses", "libghostty-vt" });
-        addCommonDefines(ghostty_mod);
-        addTargetDefines(ghostty_mod, target.result.os.tag);
-        if (target.result.os.tag == .macos)
-            addDarwinSDKIncludes(ghostty_mod, b);
         if (enable_utf8proc) {
             ghostty_mod.addCMacro("HAVE_UTF8PROC", "1");
             addPkgConfigIncludes(b, ghostty_mod, &.{ "libutf8proc" });
@@ -318,6 +329,17 @@ pub fn build(b: *std.Build) void {
     if (b.args) |args| valgrind_cmd.addArgs(args);
     const valgrind_step = b.step("valgrind", "Run tmux under Valgrind memcheck");
     valgrind_step.dependOn(&valgrind_cmd.step);
+}
+
+// Project include paths and defines every Zig module needs to cImport
+// tmux.h: the source roots, the config macros, and the target SDK.
+fn addTmuxModuleIncludes(b: *std.Build, mod: *std.Build.Module, os_tag: std.Target.Os.Tag) void {
+    mod.addIncludePath(b.path("."));
+    mod.addIncludePath(b.path("compat"));
+    addCommonDefines(mod);
+    addTargetDefines(mod, os_tag);
+    if (os_tag == .macos)
+        addDarwinSDKIncludes(mod, b);
 }
 
 fn addPkgConfigIncludes(b: *std.Build, mod: *std.Build.Module, packages: []const []const u8) void {
