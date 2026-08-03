@@ -463,7 +463,7 @@ image_clear(struct screen_write_ctx *ctx, u_int id)
 			if (im != NULL && (id == 0 || gc.image_id == id ||
 			    im->source_id == id)) {
 				if (y >= gd->hsize)
-					image_damage_area(ctx, x, y - gd->hsize,
+					image_redraw_area(ctx, x, y - gd->hsize,
 					    1, 1);
 				grid_set_cell(gd, x, y, &grid_default_cell);
 			}
@@ -499,7 +499,7 @@ image_check_area(struct screen *s, u_int px, u_int py, u_int nx, u_int ny)
 }
 
 void
-image_damage_area(struct screen_write_ctx *ctx, u_int px, u_int py, u_int nx,
+image_redraw_area(struct screen_write_ctx *ctx, u_int px, u_int py, u_int nx,
     u_int ny)
 {
 	if (ctx->wp != NULL && image_check_area(ctx->s, px, py, nx, ny))
@@ -507,16 +507,16 @@ image_damage_area(struct screen_write_ctx *ctx, u_int px, u_int py, u_int nx,
 }
 
 void
-image_damage_all(struct screen_write_ctx *ctx)
+image_redraw_all(struct screen_write_ctx *ctx)
 {
-	image_damage_area(ctx, 0, 0, screen_size_x(ctx->s),
+	image_redraw_area(ctx, 0, 0, screen_size_x(ctx->s),
 	    screen_size_y(ctx->s));
 }
 
 void
-image_damage_scroll(struct screen_write_ctx *ctx, __unused u_int lines)
+image_redraw_scroll(struct screen_write_ctx *ctx, __unused u_int lines)
 {
-	image_damage_all(ctx);
+	image_redraw_all(ctx);
 }
 
 /* Draw the graphical image marker runs in one visible scene span. */
@@ -605,6 +605,6 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
 			grid_view_set_cell(gd, cx + x, cy + y, &gc);
 		}
 	}
-	image_damage_area(ctx, cx, cy, sx, sy);
+	image_redraw_area(ctx, cx, cy, sx, sy);
 	screen_write_cursormove(ctx, 0, cy + sy, 0);
 }
