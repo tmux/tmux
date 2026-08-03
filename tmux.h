@@ -3494,23 +3494,10 @@ tmux_ghostty_vt_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	tmux_ghostty_vt_resize(wp->ghostty_vt, sx, sy);
 }
 
-/*
- * The option is re-checked on every write so toggling it takes effect
- * for existing panes. The parser taking over starts with no state for
- * bytes the other consumed; the next full write resynchronizes the
- * visible content.
- */
 static inline int
 tmux_ghostty_vt_pane_write(struct window_pane *wp, const u_char *buf,
     size_t len)
 {
-	if (!options_get_number(wp->options, "ghostty-vt")) {
-		if (wp->ghostty_vt != NULL)
-			tmux_ghostty_vt_pane_free(wp);
-		return (0);
-	}
-	if (wp->ghostty_vt == NULL)
-		tmux_ghostty_vt_pane_init(wp);
 	if (wp->ghostty_vt == NULL)
 		return (0);
 	tmux_ghostty_vt_write(wp->ghostty_vt, buf, len);

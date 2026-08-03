@@ -1467,7 +1467,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_num = 0,
-	  .text = "Whether to use the Ghostty VT parser for this pane."
+	  .text = "Whether new or respawned panes use the Ghostty VT parser."
 	},
 
 	{ .name = "main-pane-height",

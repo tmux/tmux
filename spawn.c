@@ -331,6 +331,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 			input_free(sc->wp0->ictx);
 			sc->wp0->ictx = NULL;
 		}
+		tmux_ghostty_vt_pane_free(sc->wp0);
 		new_wp = sc->wp0;
 		new_wp->flags &= ~(PANE_STATUSREADY|PANE_STATUSDRAWN);
 	} else {
@@ -571,6 +572,8 @@ complete:
 	new_wp->flags &= ~PANE_EXITED;
 
 	sigprocmask(SIG_SETMASK, &oldset, NULL);
+	if (sc->flags & SPAWN_RESPAWN)
+		tmux_ghostty_vt_pane_init(new_wp);
 	window_pane_set_event(new_wp);
 	environ_free(child);
 	spawn_fire_pane_created(sc, new_wp);

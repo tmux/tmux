@@ -65,6 +65,12 @@ After starting the built binary, enable the backend globally with:
 Or enable it for only the current pane with:
 
 	:set -p ghostty-vt on
+	:respawn-pane -k
+
+The backend is selected when a pane process starts. Changing the option does
+not switch a running process because the two parsers cannot safely transfer a
+partially consumed VT sequence or terminal state. Respawn the pane to apply a
+new value.
 
 If tmux was built without -Dghostty-vt=true, the ghostty-vt option will not
 switch panes to the Ghostty VT backend because the backend code is not linked
