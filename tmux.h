@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1420 2026/08/03 13:38:42 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1421 2026/08/03 20:18:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2243,6 +2243,8 @@ struct client {
 	struct event		 click_timer;
 	int			 click_loc;
 	int			 click_wp;
+
+	struct event		 exit_timer;
 	u_int			 click_button;
 	struct mouse_event	 click_event;
 
@@ -4020,6 +4022,7 @@ time_t	monitor_get_fire_time(struct monitor_set *, const char *);
 
 /* control.c */
 void	control_discard(struct client *);
+void	control_discard_all(struct client *);
 void	control_start(struct client *);
 void	control_ready(struct client *);
 void	control_stop(struct client *);

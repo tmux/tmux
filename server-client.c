@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.500 2026/07/28 13:17:45 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.501 2026/08/03 20:18:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -37,6 +37,7 @@ static key_code	server_client_check_mouse(struct client *, struct key_event *);
 static void	server_client_repeat_timer(int, short, void *);
 static void	server_client_click_timer(int, short, void *);
 static void	server_client_check_exit(struct client *);
+static void	server_client_exit_timer(int, short, void *);
 static void	server_client_check_redraw(struct client *);
 static void	server_client_check_modes(struct client *);
 static void	server_client_set_title(struct client *);
@@ -309,6 +310,7 @@ server_client_create(int fd)
 
 	evtimer_set(&c->repeat_timer, server_client_repeat_timer, c);
 	evtimer_set(&c->click_timer, server_client_click_timer, c);
+	evtimer_set(&c->exit_timer, server_client_exit_timer, c);
 
 	c->click_wp = -1;
 
@@ -525,6 +527,7 @@ server_client_lost(struct client *c)
 
 	evtimer_del(&c->repeat_timer);
 	evtimer_del(&c->click_timer);
+	evtimer_del(&c->exit_timer);
 	if (event_initialized(&c->cycle_timer))
 		evtimer_del(&c->cycle_timer);
 
@@ -2285,6 +2288,39 @@ server_client_click_timer(__unused int fd, __unused short events, void *data)
 	c->flags &= ~(CLIENT_DOUBLECLICK|CLIENT_TRIPLECLICK);
 }
 
+/* Start client exit timer. */
+static void
+server_client_start_exit_timer(struct client *c)
+{
+	struct timeval	tv = { .tv_sec = 10 };
+
+	if (!evtimer_pending(&c->exit_timer, NULL))
+		evtimer_add(&c->exit_timer, &tv);
+}
+
+/* Exit timer has expired: stop waiting for the client. */
+static void
+server_client_exit_timer(__unused int fd, __unused short events, void *data)
+{
+	struct client		*c = data;
+	struct client_file	*cf;
+
+	if (c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED))
+		return;
+
+	if (c->flags & CLIENT_EXITED) {
+		log_debug("%s: %s took too long to exit", __func__, c->name);
+		server_client_lost(c);
+	} else if (c->flags & CLIENT_EXIT) {
+		log_debug("%s: %s took too long to flush", __func__, c->name);
+		if (c->flags & CLIENT_CONTROL)
+			control_discard_all(c);
+		RB_FOREACH(cf, client_files, &c->files)
+		    evbuffer_drain(cf->buffer, EVBUFFER_LENGTH(cf->buffer));
+		server_client_check_exit(c);
+	}
+}
+
 /* Check if client should be exited. */
 static void
 server_client_check_exit(struct client *c)
@@ -2301,14 +2337,21 @@ server_client_check_exit(struct client *c)
 
 	if (c->flags & CLIENT_CONTROL) {
 		control_discard(c);
-		if (!control_all_done(c))
+		if (!control_all_done(c)) {
+			server_client_start_exit_timer(c);
 			return;
+		}
 	}
 	RB_FOREACH(cf, client_files, &c->files) {
-		if (EVBUFFER_LENGTH(cf->buffer) != 0)
+		if (EVBUFFER_LENGTH(cf->buffer) != 0) {
+			server_client_start_exit_timer(c);
 			return;
+		}
 	}
 	c->flags |= CLIENT_EXITED;
+
+	evtimer_del(&c->exit_timer);
+	server_client_start_exit_timer(c);
 
 	switch (c->exit_type) {
 	case CLIENT_EXIT_RETURN:
