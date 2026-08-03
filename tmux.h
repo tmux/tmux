@@ -60,6 +60,7 @@ struct input_ctx;
 struct input_request;
 struct input_requests;
 struct job;
+struct json_node;
 struct menu_data;
 struct mode_tree_data;
 struct mouse_event;
@@ -2283,7 +2284,7 @@ struct client {
 #define CLIENT_STARTSERVER 0x10000000
 #define CLIENT_REDRAWMENU 0x20000000
 #define CLIENT_NOFORK 0x40000000
-/* 0x80000000ULL unused */
+#define CLIENT_CONTROL_NEWLAYOUTS 0x80000000ULL
 #define CLIENT_CONTROL_PAUSEAFTER 0x100000000ULL
 #define CLIENT_CONTROL_WAITEXIT 0x200000000ULL
 #define CLIENT_WINDOWSIZECHANGED 0x400000000ULL
@@ -3736,6 +3737,7 @@ struct window_pane *window_pane_previous_by_number(struct window *,
 			struct window_pane *, u_int);
 int		 window_pane_index(struct window_pane *, u_int *);
 int		 window_pane_zindex(struct window_pane *, u_int *);
+int		 window_pane_last_index(struct window_pane *, u_int *);
 u_int		 window_count_panes(struct window *, int);
 void		 window_destroy_panes(struct window *);
 struct window_pane *window_pane_find_by_id_str(const char *);
@@ -3847,8 +3849,9 @@ struct layout_cell *layout_search_by_border(struct layout_cell *, u_int, u_int);
 void		 layout_set_size(struct layout_cell *, u_int, u_int, int, int);
 void		 layout_make_leaf(struct layout_cell *, struct window_pane *);
 void		 layout_make_node(struct layout_cell *, enum layout_type);
-void		 layout_fix_zindexes(struct window *, struct layout_cell *);
+void		 layout_fix_zindexes(struct window *);
 int		 layout_cell_is_tiled(struct layout_cell *);
+int		 layout_cell_has_tiled_child(struct layout_cell *);
 int		 layout_add_horizontal_border(struct layout_cell *,
 		     struct layout_cell *, int);
 void		 layout_fix_offsets(struct window *);
@@ -3899,7 +3902,8 @@ int		 layout_remove_tile(struct window *, struct layout_cell *);
 int		 layout_insert_tile(struct window *, struct layout_cell *);
 
 /* layout-custom.c */
-char		*layout_dump(struct window *, struct layout_cell *);
+#define LAYOUT_CUSTOM_OLD_FORMAT 0x1
+char		*layout_dump(struct window *, struct layout_cell *, int);
 int		 layout_parse(struct window *, const char *, char **);
 
 /* layout-set.c */
@@ -4253,5 +4257,19 @@ struct hyperlinks	*hyperlinks_init(void);
 struct hyperlinks	*hyperlinks_copy(struct hyperlinks *);
 void			 hyperlinks_reset(struct hyperlinks *);
 void			 hyperlinks_free(struct hyperlinks *);
+
+/* json.c */
+struct json_node	*json_parse(const char *, char **);
+void			 json_destroy_node(struct json_node *);
+struct json_node	*json_array_next(struct json_node *);
+int			 json_get_string(struct json_node *, const char **);
+int			 json_get_number(struct json_node *, const int *);
+int			 json_get_boolean(struct json_node *, const int *);
+int			 json_get_object(struct json_node *,
+			     const struct json_node **);
+int			 json_get_array(struct json_node *,
+			     const struct json_node **);
+struct json_node	*json_find(struct json_node *, const char *);
+struct json_node	*json_array_first(struct json_node *);
 
 #endif /* TMUX_H */
