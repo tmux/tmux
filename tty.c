@@ -109,9 +109,6 @@ tty_init(struct tty *tty, struct client *c)
 	tty->ccolour = -1;
 	tty->fg = tty->bg = -1;
 	tty->mouse_last_pane = -1;
-#ifdef ENABLE_IMAGES
-	tty->image_next_id = arc4random_uniform(0xffff00) + 1;
-#endif
 
 	if (tcgetattr(c->fd, &tty->tio) != 0)
 		return (-1);
@@ -161,10 +158,19 @@ tty_resize(struct tty *tty)
 void
 tty_set_size(struct tty *tty, u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 {
+#ifdef ENABLE_IMAGES
+	int	geometry_changed;
+
+	geometry_changed = (tty->xpixel != xpixel || tty->ypixel != ypixel);
+#endif
 	tty->sx = sx;
 	tty->sy = sy;
 	tty->xpixel = xpixel;
 	tty->ypixel = ypixel;
+#ifdef ENABLE_IMAGES
+	if (geometry_changed)
+		image_tty_geometry_changed(tty);
+#endif
 }
 
 static void
@@ -512,7 +518,7 @@ tty_close(struct tty *tty)
 
 	if (tty->flags & TTY_OPENED) {
 #ifdef ENABLE_IMAGES
-		kitty_images_free(tty, 1);
+		image_tty_free(tty, 1);
 #endif
 		evbuffer_free(tty->in);
 		event_del(&tty->event_in);
@@ -531,7 +537,7 @@ tty_free(struct tty *tty)
 {
 	tty_close(tty);
 #ifdef ENABLE_IMAGES
-	kitty_images_free(tty, 0);
+	image_tty_free(tty, 0);
 #endif
 
 	free(tty->r.ranges);
@@ -544,6 +550,9 @@ tty_update_features(struct tty *tty)
 
 	if (tty_apply_features(tty->term))
 		tty_term_apply_overrides(tty->term);
+#ifdef ENABLE_IMAGES
+	image_tty_update(tty);
+#endif
 
 	if (tty_use_margin(tty))
 		tty_putcode(tty, TTYC_ENMG);
@@ -2124,7 +2133,6 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 #ifdef ENABLE_IMAGES
 	struct grid_cell	 image_gc;
 	struct image		*im;
-	const char		*ascii;
 #endif
 
 	/* Skip last character if terminal is stupid. */
@@ -2148,15 +2156,11 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 	 * selection; the unchanged image would then need to be drawn again.
 	 */
 	if (gc->flags & GRID_FLAG_IMAGE) {
-		if ((tty->term->flags & TERM_KITTY) ||
-		    ((tty->term->flags & TERM_SIXEL) &&
-		    tty->xpixel != 0 && tty->ypixel != 0))
+		if (image_tty_is_graphical(tty))
 			return;
-		memcpy(&image_gc, gc, sizeof image_gc);
 		im = image_find(gc->image_id);
-		ascii = image_get_ascii(im, gc->image_x, gc->image_y);
-		utf8_set(&image_gc.data, *ascii);
-		image_gc.flags &= ~GRID_FLAG_IMAGE;
+		image_get_text_cell(tty, im, gc->image_x, gc->image_y, gc,
+		    &image_gc, style_ctx);
 		gc = &image_gc;
 	}
 #endif

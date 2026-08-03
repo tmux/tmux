@@ -54,13 +54,20 @@ $TMUX new-window -d "
 sleep 1
 [ "$($TMUX display-message -pt:2 '#{cursor_y}')" = 1 ] || exit 1
 
+# PNG Kitty input uses the shared image decoder and canonical cell sizing.
+$TMUX new-window -d "
+	printf '\033_Ga=T,q=2,f=100;iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQMAAAAl21bKAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAAGUExURf8AAP///0EdNBEAAAABYktHRAH/Ai3eAAAAB3RJTUUH6ggCDAECH324BwAAAApJREFUCNdjYAAAAAIAAeIhvDMAAAAASUVORK5CYII=\033\\'
+	sleep 10"
+sleep 1
+[ "$($TMUX display-message -pt:3 '#{cursor_y}')" = 1 ] || exit 1
+
 # SIXEL input reaches the same grid marker and copy-mode paths.
 $TMUX new-window -d "cat '$FIXTURE'; sleep 10"
 sleep 1
-[ "$($TMUX display-message -pt:3 '#{cursor_y}')" -gt 0 ] || exit 1
-$TMUX copy-mode -t:3 || exit 1
-$TMUX send-keys -t:3 -X history-top || exit 1
-$TMUX capture-pane -pt:3 >$TMP || exit 1
+[ "$($TMUX display-message -pt:4 '#{cursor_y}')" -gt 0 ] || exit 1
+$TMUX copy-mode -t:4 || exit 1
+$TMUX send-keys -t:4 -X history-top || exit 1
+$TMUX capture-pane -pt:4 >$TMP || exit 1
 
 # A client without an image feature gets the brightness-based ASCII backend.
 $TMUX kill-server 2>/dev/null

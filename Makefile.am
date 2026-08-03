@@ -5,7 +5,8 @@ CLEANFILES = tmux.1.mdoc tmux.1.man cmd-parse.c
 # Distribution tarball options.
 EXTRA_DIST = \
 	CHANGES README COPYING example_tmux.conf \
-	osdep-*.c mdoc2man.awk tmux.1
+	osdep-*.c mdoc2man.awk tmux.1 \
+	tools/generate-image-diacritics.sh tools/image-ascii-test.c
 dist_EXTRA_tmux_SOURCES = compat/*.[ch]
 
 # Preprocessor flags.
@@ -248,8 +249,7 @@ endif
 
 # Enable image support.
 if ENABLE_IMAGES
-dist_tmux_SOURCES += image.c image-sixel.c image-kitty.c image-ascii.c \
-	image-diacritics.h
+dist_tmux_SOURCES += image.c image-sixel.c image-kitty.c image-ascii.c
 endif
 
 # Add bits for fuzzing if enabled.

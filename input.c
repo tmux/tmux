@@ -2833,7 +2833,7 @@ input_exit_apc(struct input_ctx *ictx)
 		}
 		if (im != NULL) {
 			if (action == 'd')
-				image_clear(sctx->s, im->id);
+				image_clear(sctx, im->id);
 			else
 				image_write(sctx, im, ictx->cell.cell.bg);
 			image_free(im->id);
@@ -2841,7 +2841,7 @@ input_exit_apc(struct input_ctx *ictx)
 				input_reply(ictx, 0, "\033_Gi=%u;OK\033\\",
 				    image_id);
 		} else if (action == 'd' && image_id == 0) {
-			image_clear(sctx->s, 0);
+			image_clear(sctx, 0);
 		} else if ((action == 't' || action == 'q') && quiet == 0)
 			input_reply(ictx, 0, "\033_Gi=%u;OK\033\\", image_id);
 		return;

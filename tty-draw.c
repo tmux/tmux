@@ -128,7 +128,6 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 #ifdef ENABLE_IMAGES
 	struct grid_cell	 image_gc;
 	struct image		*im;
-	const char		*ascii;
 #endif
 	struct grid_line	*gl;
 	u_int			 i, j, last_i, cx, ex, width;
@@ -265,19 +264,19 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 #ifdef ENABLE_IMAGES
 				/* Text terminals render image blocks as ASCII. */
 				if (gc.flags & GRID_FLAG_IMAGE) {
-					memcpy(&image_gc, &gc, sizeof image_gc);
 					im = image_find(gc.image_id);
-					if ((tty->term->flags & TERM_KITTY) ||
-					    ((tty->term->flags & TERM_SIXEL) &&
-					    tty->xpixel != 0 &&
-					    tty->ypixel != 0)) {
-						ascii = " ";
+					if (image_tty_is_graphical(tty)) {
+						memcpy(&image_gc, &gc,
+						    sizeof image_gc);
+						utf8_set(&image_gc.data, ' ');
+						image_gc.flags &=
+						    ~GRID_FLAG_IMAGE;
 						skip = 1;
-					} else
-						ascii = image_get_ascii(im,
-						    gc.image_x, gc.image_y);
-					utf8_set(&image_gc.data, *ascii);
-					image_gc.flags &= ~GRID_FLAG_IMAGE;
+					} else {
+						image_get_text_cell(tty, im,
+						    gc.image_x, gc.image_y, &gc,
+						    &image_gc, style_ctx);
+					}
 					if (skip)
 						image_gc.flags &=
 						    ~GRID_FLAG_SELECTED;

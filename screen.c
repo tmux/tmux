@@ -126,11 +126,6 @@ screen_reinit(struct screen *s, int check)
 
 	screen_clear_selection(s);
 	screen_free_titles(s);
-
-#ifdef ENABLE_SIXEL
-	image_free_all(s);
-#endif
-
 	screen_set_progress_bar(s, PROGRESS_BAR_HIDDEN, 0);
 	screen_reset_hyperlinks(s);
 }
