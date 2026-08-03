@@ -4302,10 +4302,10 @@ void		 image_size_in_cells(u_int, u_int, u_int, u_int, u_int *,
 u_char		*image_base64_decode(const char *, size_t, size_t, size_t *);
 u_char		*image_png_decode(const u_char *, size_t, size_t, u_int *,
 		     u_int *);
-void		 image_damage_area(struct screen_write_ctx *, u_int, u_int,
+void		 image_redraw_area(struct screen_write_ctx *, u_int, u_int,
 		     u_int, u_int);
-void		 image_damage_all(struct screen_write_ctx *);
-void		 image_damage_scroll(struct screen_write_ctx *, u_int);
+void		 image_redraw_all(struct screen_write_ctx *);
+void		 image_redraw_scroll(struct screen_write_ctx *, u_int);
 int		 image_tty_is_graphical(struct tty *);
 int		 image_tty_scrolls(struct tty *);
 void		 image_tty_update(struct tty *);

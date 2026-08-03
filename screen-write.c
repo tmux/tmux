@@ -1338,7 +1338,7 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 	utf8_set(&gc.data, 'E');
 
 #ifdef ENABLE_IMAGES
-	image_damage_all(ctx);
+	image_redraw_all(ctx);
 #endif
 
 	for (yy = 0; yy < screen_size_y(s); yy++) {
@@ -1384,7 +1384,7 @@ screen_write_insertcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 		return;
 
 #ifdef ENABLE_IMAGES
-	image_damage_area(ctx, 0, s->cy, screen_size_x(s), 1);
+	image_redraw_area(ctx, 0, s->cy, screen_size_x(s), 1);
 #endif
 
 	screen_write_initctx(ctx, &ttyctx, 0, 1);
@@ -1424,7 +1424,7 @@ screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 		return;
 
 #ifdef ENABLE_IMAGES
-	image_damage_area(ctx, 0, s->cy, screen_size_x(s), 1);
+	image_redraw_area(ctx, 0, s->cy, screen_size_x(s), 1);
 #endif
 
 	screen_write_initctx(ctx, &ttyctx, 0, 1);
@@ -1464,7 +1464,7 @@ screen_write_clearcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 		return;
 
 #ifdef ENABLE_IMAGES
-	image_damage_area(ctx, 0, s->cy, screen_size_x(s), 1);
+	image_redraw_area(ctx, 0, s->cy, screen_size_x(s), 1);
 #endif
 
 	screen_write_initctx(ctx, &ttyctx, 0, 1);
@@ -1498,7 +1498,7 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 		ny = 1;
 
 #ifdef ENABLE_IMAGES
-	image_damage_area(ctx, 0, s->cy, screen_size_x(s), sy - s->cy);
+	image_redraw_area(ctx, 0, s->cy, screen_size_x(s), sy - s->cy);
 #endif
 
 	if (s->cy < s->rupper || s->cy > s->rlower) {
@@ -1565,7 +1565,7 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 		ny = 1;
 
 #ifdef ENABLE_IMAGES
-	image_damage_area(ctx, 0, s->cy, screen_size_x(s), sy - s->cy);
+	image_redraw_area(ctx, 0, s->cy, screen_size_x(s), sy - s->cy);
 #endif
 
 	if (s->cy < s->rupper || s->cy > s->rlower) {
@@ -1637,7 +1637,7 @@ screen_write_clearline(struct screen_write_ctx *ctx, u_int bg)
 		return;
 
 #ifdef ENABLE_IMAGES
-	image_damage_area(ctx, 0, s->cy, screen_size_x(s), 1);
+	image_redraw_area(ctx, 0, s->cy, screen_size_x(s), 1);
 #endif
 
 	flags = gl->flags & GRID_LINE_OSC133_FLAGS;
@@ -1675,7 +1675,7 @@ screen_write_clearendofline(struct screen_write_ctx *ctx, u_int bg)
 		return;
 
 #ifdef ENABLE_IMAGES
-	image_damage_area(ctx, 0, s->cy, screen_size_x(s), 1);
+	image_redraw_area(ctx, 0, s->cy, screen_size_x(s), 1);
 #endif
 
 	grid_view_clear(s->grid, s->cx, s->cy, sx - s->cx, 1, bg);
@@ -1701,7 +1701,7 @@ screen_write_clearstartofline(struct screen_write_ctx *ctx, u_int bg)
 	}
 
 #ifdef ENABLE_IMAGES
-	image_damage_area(ctx, 0, s->cy, screen_size_x(s), 1);
+	image_redraw_area(ctx, 0, s->cy, screen_size_x(s), 1);
 #endif
 
 	if (s->cx > sx - 1)
@@ -1754,7 +1754,7 @@ screen_write_reverseindex(struct screen_write_ctx *ctx, u_int bg)
 	}
 
 #ifdef ENABLE_IMAGES
-	image_damage_all(ctx);
+	image_redraw_all(ctx);
 #endif
 
 	grid_view_scroll_region_down(s->grid, s->rupper, s->rlower, bg);
@@ -1826,9 +1826,9 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped, u_int bg)
 
 #ifdef ENABLE_IMAGES
 	if (rlower == screen_size_y(s) - 1)
-		image_damage_scroll(ctx, 1);
+		image_redraw_scroll(ctx, 1);
 	else
-		image_damage_area(ctx, 0, rupper, screen_size_x(s),
+		image_redraw_area(ctx, 0, rupper, screen_size_x(s),
 		    rlower - rupper);
 #endif
 
@@ -1856,7 +1856,7 @@ screen_write_scrollup(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 	}
 
 #ifdef ENABLE_IMAGES
-	image_damage_scroll(ctx, lines);
+	image_redraw_scroll(ctx, lines);
 #endif
 
 	for (i = 0; i < lines; i++) {
@@ -1884,7 +1884,7 @@ screen_write_scrolldown(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 		lines = s->rlower - s->rupper + 1;
 
 #ifdef ENABLE_IMAGES
-	image_damage_all(ctx);
+	image_redraw_all(ctx);
 #endif
 
 	for (i = 0; i < lines; i++)
@@ -1924,7 +1924,7 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct visible_range	*ri;
 
 #ifdef ENABLE_IMAGES
-	image_damage_area(ctx, 0, s->cy, screen_size_x(s), sy - s->cy);
+	image_redraw_area(ctx, 0, s->cy, screen_size_x(s), sy - s->cy);
 #endif
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
@@ -2004,7 +2004,7 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct visible_range	*ri;
 
 #ifdef ENABLE_IMAGES
-	image_damage_area(ctx, 0, 0, screen_size_x(s), s->cy + 1);
+	image_redraw_area(ctx, 0, 0, screen_size_x(s), s->cy + 1);
 #endif
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
@@ -2076,7 +2076,7 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct visible_range	*ri;
 
 #ifdef ENABLE_IMAGES
-	image_damage_all(ctx);
+	image_redraw_all(ctx);
 #endif
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
@@ -2580,7 +2580,7 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 	}
 
 #ifdef ENABLE_IMAGES
-	image_damage_area(ctx, s->cx, s->cy, ci->used, 1);
+	image_redraw_area(ctx, s->cx, s->cy, ci->used, 1);
 #endif
 
 	grid_view_set_cells(s->grid, s->cx, s->cy, &ci->gc, cl->data + ci->x,
