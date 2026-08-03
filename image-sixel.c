@@ -26,6 +26,10 @@
 
 #define SIXEL_WIDTH_LIMIT 10000
 #define SIXEL_HEIGHT_LIMIT 10000
+#define SIXEL_PALETTE_SIZE 256
+#define SIXEL_HISTOGRAM_LEVELS 32
+#define SIXEL_HISTOGRAM_SIZE (SIXEL_HISTOGRAM_LEVELS * \
+	SIXEL_HISTOGRAM_LEVELS * SIXEL_HISTOGRAM_LEVELS)
 
 struct sixel_line {
 	u_int		 x;
@@ -740,15 +744,261 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 	return (buf);
 }
 
+struct sixel_histogram {
+	u_int		 count;
+	uint64_t	 red;
+	uint64_t	 green;
+	uint64_t	 blue;
+};
+
+struct sixel_box {
+	u_int	 red_min, red_max;
+	u_int	 green_min, green_max;
+	u_int	 blue_min, blue_max;
+	u_int	 count;
+};
+
+struct sixel_rgb {
+	u_char	 red;
+	u_char	 green;
+	u_char	 blue;
+};
+
+/* Split a 5-bit RGB histogram into an adaptive palette using median cut. */
+static void
+sixel_box_update(struct sixel_box *box, struct sixel_histogram *histogram)
+{
+	struct sixel_histogram	*entry;
+	u_int			 red, green, blue, index;
+	u_int			 red_min = SIXEL_HISTOGRAM_LEVELS;
+	u_int			 green_min = SIXEL_HISTOGRAM_LEVELS;
+	u_int			 blue_min = SIXEL_HISTOGRAM_LEVELS;
+	u_int			 red_max = 0, green_max = 0, blue_max = 0;
+	u_int			 count = 0;
+
+	for (red = box->red_min; red <= box->red_max; red++) {
+		for (green = box->green_min; green <= box->green_max; green++) {
+			for (blue = box->blue_min; blue <= box->blue_max; blue++) {
+				index = (red << 10)|(green << 5)|blue;
+				entry = &histogram[index];
+				if (entry->count == 0)
+					continue;
+				if (red < red_min)
+					red_min = red;
+				if (red > red_max)
+					red_max = red;
+				if (green < green_min)
+					green_min = green;
+				if (green > green_max)
+					green_max = green;
+				if (blue < blue_min)
+					blue_min = blue;
+				if (blue > blue_max)
+					blue_max = blue;
+				count += entry->count;
+			}
+		}
+	}
+	box->count = count;
+	if (count == 0)
+		return;
+	box->red_min = red_min;
+	box->red_max = red_max;
+	box->green_min = green_min;
+	box->green_max = green_max;
+	box->blue_min = blue_min;
+	box->blue_max = blue_max;
+}
+
+static int
+sixel_box_split(struct sixel_box *box, struct sixel_box *new,
+    struct sixel_histogram *histogram)
+{
+	u_int	 levels[SIXEL_HISTOGRAM_LEVELS] = { 0 };
+	u_int	 red, green, blue, index, channel, first, last, level;
+	u_int	 red_range, green_range, blue_range, count = 0;
+
+	red_range = box->red_max - box->red_min;
+	green_range = box->green_max - box->green_min;
+	blue_range = box->blue_max - box->blue_min;
+	if (red_range == 0 && green_range == 0 && blue_range == 0)
+		return (0);
+	if (green_range >= red_range && green_range >= blue_range)
+		channel = 1;
+	else if (red_range >= blue_range)
+		channel = 0;
+	else
+		channel = 2;
+
+	for (red = box->red_min; red <= box->red_max; red++) {
+		for (green = box->green_min; green <= box->green_max; green++) {
+			for (blue = box->blue_min; blue <= box->blue_max; blue++) {
+				index = (red << 10)|(green << 5)|blue;
+				if (channel == 0)
+					levels[red] += histogram[index].count;
+				else if (channel == 1)
+					levels[green] += histogram[index].count;
+				else
+					levels[blue] += histogram[index].count;
+			}
+		}
+	}
+	if (channel == 0) {
+		first = box->red_min;
+		last = box->red_max;
+	} else if (channel == 1) {
+		first = box->green_min;
+		last = box->green_max;
+	} else {
+		first = box->blue_min;
+		last = box->blue_max;
+	}
+	for (level = first; level < last; level++) {
+		count += levels[level];
+		if (count >= box->count / 2)
+			break;
+	}
+	memcpy(new, box, sizeof *new);
+	if (channel == 0) {
+		box->red_max = level;
+		new->red_min = level + 1;
+	} else if (channel == 1) {
+		box->green_max = level;
+		new->green_min = level + 1;
+	} else {
+		box->blue_max = level;
+		new->blue_min = level + 1;
+	}
+	sixel_box_update(box, histogram);
+	sixel_box_update(new, histogram);
+	return (box->count != 0 && new->count != 0);
+}
+
+static u_int
+sixel_make_palette(struct sixel_histogram *histogram,
+    struct sixel_rgb *palette)
+{
+	struct sixel_box	 boxes[SIXEL_PALETTE_SIZE], new;
+	struct sixel_box	*box;
+	uint64_t	 best_score, score, red, green, blue, count;
+	u_int		 i, nboxes = 1, best, r, g, b, index;
+	u_int		 red_range, green_range, blue_range;
+
+	memset(&boxes[0], 0, sizeof boxes[0]);
+	boxes[0].red_max = boxes[0].green_max = boxes[0].blue_max =
+	    SIXEL_HISTOGRAM_LEVELS - 1;
+	sixel_box_update(&boxes[0], histogram);
+	if (boxes[0].count == 0)
+		return (0);
+
+	while (nboxes < SIXEL_PALETTE_SIZE) {
+		best = nboxes;
+		best_score = 0;
+		for (i = 0; i < nboxes; i++) {
+			box = &boxes[i];
+			red_range = box->red_max - box->red_min;
+			green_range = box->green_max - box->green_min;
+			blue_range = box->blue_max - box->blue_min;
+			score = (uint64_t)box->count *
+			    (red_range * red_range + green_range * green_range +
+			    blue_range * blue_range);
+			if (score > best_score) {
+				best = i;
+				best_score = score;
+			}
+		}
+		if (best == nboxes ||
+		    !sixel_box_split(&boxes[best], &new, histogram))
+			break;
+		memcpy(&boxes[nboxes++], &new, sizeof new);
+	}
+
+	for (i = 0; i < nboxes; i++) {
+		box = &boxes[i];
+		red = green = blue = count = 0;
+		for (r = box->red_min; r <= box->red_max; r++) {
+			for (g = box->green_min; g <= box->green_max; g++) {
+				for (b = box->blue_min; b <= box->blue_max; b++) {
+					index = (r << 10)|(g << 5)|b;
+					red += histogram[index].red;
+					green += histogram[index].green;
+					blue += histogram[index].blue;
+					count += histogram[index].count;
+				}
+			}
+		}
+		palette[i].red = (red + count / 2) / count;
+		palette[i].green = (green + count / 2) / count;
+		palette[i].blue = (blue + count / 2) / count;
+	}
+	return (nboxes);
+}
+
+static u_int
+sixel_nearest_colour(struct sixel_rgb *palette, u_int ncolours,
+    uint16_t *cache, u_int red, u_int green, u_int blue)
+{
+	uint64_t	 distance, best_distance = UINT64_MAX;
+	int		 dr, dg, db;
+	u_int		 i, best = 0, index;
+
+	index = ((red >> 3) << 10)|((green >> 3) << 5)|(blue >> 3);
+	if (cache[index] != UINT16_MAX)
+		return (cache[index]);
+	for (i = 0; i < ncolours; i++) {
+		dr = (int)red - palette[i].red;
+		dg = (int)green - palette[i].green;
+		db = (int)blue - palette[i].blue;
+		distance = 3ULL * dr * dr + 6ULL * dg * dg + db * db;
+		if (distance < best_distance) {
+			best = i;
+			best_distance = distance;
+		}
+	}
+	cache[index] = best;
+	return (best);
+}
+
+static u_int
+sixel_clamp_colour(int colour)
+{
+	if (colour < 0)
+		return (0);
+	if (colour > 255)
+		return (255);
+	return (colour);
+}
+
+static const u_char *
+sixel_from_image_pixel(struct image *im, u_int sourcex0, u_int sourcey0,
+    u_int sourcewidth, u_int sourceheight, u_int sx, u_int sy, u_int x,
+    u_int y)
+{
+	u_int	 sourcex, sourcey;
+
+	sourcex = sourcex0 + (uint64_t)x * sourcewidth / sx;
+	sourcey = sourcey0 + (uint64_t)y * sourceheight / sy;
+	if (sourcex >= im->width)
+		sourcex = im->width - 1;
+	if (sourcey >= im->height)
+		sourcey = im->height - 1;
+	return (im->pixels + sourcey * im->stride + sourcex * 4);
+}
+
 static struct sixel_image *
 sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
     u_int cells_y, u_int xpixel, u_int ypixel)
 {
-	struct sixel_image	*si;
-	const u_char		*pixel;
-	u_int			 x, y, sx, sy, sourcex, sourcey;
+	struct sixel_image		*si;
+	struct sixel_histogram		*histogram, *entry;
+	struct sixel_rgb		 palette[SIXEL_PALETTE_SIZE];
+	const u_char			*pixel;
+	uint16_t			*cache;
+	int				*current, *next, *tmp;
+	int				 red_error, green_error, blue_error;
+	u_int				 x, y, sx, sy, index, error_index;
 	u_int			 sourcex0, sourcey0, sourcewidth, sourceheight;
-	u_int			 r, g, b, colour, i;
+	u_int			 red, green, blue, colour, i, ncolours;
 	uint64_t		 destination_width, destination_height;
 	uint64_t		 content_width, content_height, x0, x1, y0, y1;
 
@@ -780,6 +1030,27 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 	if (sourcewidth == 0 || sourceheight == 0)
 		return (NULL);
 
+	histogram = xcalloc(SIXEL_HISTOGRAM_SIZE, sizeof *histogram);
+	for (y = 0; y < sy; y++) {
+		for (x = 0; x < sx; x++) {
+			pixel = sixel_from_image_pixel(im, sourcex0, sourcey0,
+			    sourcewidth, sourceheight, sx, sy, x, y);
+			if (pixel[3] < 128)
+				continue;
+			index = ((pixel[0] >> 3) << 10)|
+			    ((pixel[1] >> 3) << 5)|(pixel[2] >> 3);
+			entry = &histogram[index];
+			entry->count++;
+			entry->red += pixel[0];
+			entry->green += pixel[1];
+			entry->blue += pixel[2];
+		}
+	}
+	ncolours = sixel_make_palette(histogram, palette);
+	free(histogram);
+	if (ncolours == 0)
+		return (NULL);
+
 	si = xcalloc(1, sizeof *si);
 	si->xpixel = xpixel;
 	si->ypixel = ypixel;
@@ -787,37 +1058,69 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 	si->set_ra = 1;
 	si->ra_x = sx;
 	si->ra_y = sy;
-	si->ncolours = si->used_colours = 216;
+	si->ncolours = si->used_colours = ncolours;
 	si->colours = xcalloc(si->ncolours, sizeof *si->colours);
 	for (i = 0; i < si->ncolours; i++) {
-		r = (i / 36) * 20;
-		g = ((i / 6) % 6) * 20;
-		b = (i % 6) * 20;
-		si->colours[i] = (2U << 25)|(r << 16)|(g << 8)|b;
+		red = (palette[i].red * 100 + 127) / 255;
+		green = (palette[i].green * 100 + 127) / 255;
+		blue = (palette[i].blue * 100 + 127) / 255;
+		si->colours[i] = (2U << 25)|(red << 16)|(green << 8)|blue;
 	}
 
+	cache = xmalloc(SIXEL_HISTOGRAM_SIZE * sizeof *cache);
+	memset(cache, 0xff, SIXEL_HISTOGRAM_SIZE * sizeof *cache);
+	current = xcalloc(((size_t)sx + 2) * 3, sizeof *current);
+	next = xcalloc(((size_t)sx + 2) * 3, sizeof *next);
 	for (y = 0; y < sy; y++) {
-		sourcey = sourcey0 + (uint64_t)y * sourceheight / sy;
-		if (sourcey >= im->height)
-			sourcey = im->height - 1;
 		for (x = 0; x < sx; x++) {
-			sourcex = sourcex0 + (uint64_t)x * sourcewidth / sx;
-			if (sourcex >= im->width)
-				sourcex = im->width - 1;
-			pixel = im->pixels + sourcey * im->stride + sourcex * 4;
+			pixel = sixel_from_image_pixel(im, sourcex0, sourcey0,
+			    sourcewidth, sourceheight, sx, sy, x, y);
 			if (pixel[3] < 128)
 				continue;
-			r = (pixel[0] * 5 + 127) / 255;
-			g = (pixel[1] * 5 + 127) / 255;
-			b = (pixel[2] * 5 + 127) / 255;
-			colour = r * 36 + g * 6 + b + 1;
-			if (sixel_set_pixel(si, x, y, colour) != 0) {
-				sixel_free(si);
-				return (NULL);
-			}
+			error_index = (x + 1) * 3;
+			red = sixel_clamp_colour((int)pixel[0] +
+			    current[error_index] / 16);
+			green = sixel_clamp_colour((int)pixel[1] +
+			    current[error_index + 1] / 16);
+			blue = sixel_clamp_colour((int)pixel[2] +
+			    current[error_index + 2] / 16);
+			colour = sixel_nearest_colour(palette, ncolours, cache,
+			    red, green, blue);
+			if (sixel_set_pixel(si, x, y, colour + 1) != 0)
+				goto fail;
+
+			red_error = (int)red - palette[colour].red;
+			green_error = (int)green - palette[colour].green;
+			blue_error = (int)blue - palette[colour].blue;
+			current[error_index + 3] += red_error * 7;
+			current[error_index + 4] += green_error * 7;
+			current[error_index + 5] += blue_error * 7;
+			next[error_index - 3] += red_error * 3;
+			next[error_index - 2] += green_error * 3;
+			next[error_index - 1] += blue_error * 3;
+			next[error_index] += red_error * 5;
+			next[error_index + 1] += green_error * 5;
+			next[error_index + 2] += blue_error * 5;
+			next[error_index + 3] += red_error;
+			next[error_index + 4] += green_error;
+			next[error_index + 5] += blue_error;
 		}
+		tmp = current;
+		current = next;
+		next = tmp;
+		memset(next, 0, ((size_t)sx + 2) * 3 * sizeof *next);
 	}
+	free(current);
+	free(next);
+	free(cache);
 	return (si);
+
+fail:
+	free(current);
+	free(next);
+	free(cache);
+	sixel_free(si);
+	return (NULL);
 }
 
 void
