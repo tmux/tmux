@@ -360,7 +360,7 @@ static const struct tty_feature tty_feature_sixel = {
 	TERM_SIXEL
 };
 
-/* Terminal has Kitty graphics protocol capability. */
+/* Terminal has Kitty graphics protocol Unicode placeholder capability. */
 static const char *const tty_feature_kitty_capabilities[] = {
 	"Kty",
 	TTY_FEATURE_SYNC,
@@ -625,6 +625,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "extkeys,"
 			      "focus,"
 		  	      "hyperlinks,"
+			      "sixel,"
 			      "usstyle"
 		},
 		{ .name = "ghostty",
