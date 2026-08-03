@@ -429,9 +429,9 @@ sixel_colour_to_rgb(u_int colour, u_char *r, u_char *g, u_char *b)
 	double	h, l, s, p, q;
 
 	if (type == 2) {
-		*r = ((colour >> 16) & 0x1ff) * 255 / 100;
-		*g = ((colour >> 8) & 0xff) * 255 / 100;
-		*b = (colour & 0xff) * 255 / 100;
+		*r = (((colour >> 16) & 0xff) * 255 + 50) / 100;
+		*g = (((colour >> 8) & 0xff) * 255 + 50) / 100;
+		*b = ((colour & 0xff) * 255 + 50) / 100;
 		return;
 	}
 	if (type != 1) {
@@ -443,14 +443,15 @@ sixel_colour_to_rgb(u_int colour, u_char *r, u_char *g, u_char *b)
 	l = ((colour >> 8) & 0xff) / 100.0;
 	s = (colour & 0xff) / 100.0;
 	if (s == 0) {
-		*r = *g = *b = l * 255;
+		*r = *g = *b = l * 255 + 0.5;
 		return;
 	}
 	q = l < 0.5 ? l * (1 + s) : l + s - l * s;
 	p = 2 * l - q;
-	*r = sixel_hue(p, q, h + 1.0 / 3) * 255;
-	*g = sixel_hue(p, q, h) * 255;
-	*b = sixel_hue(p, q, h - 1.0 / 3) * 255;
+	/* SIXEL HLS has blue at 0, red at 120 and green at 240 degrees. */
+	*r = sixel_hue(p, q, h) * 255 + 0.5;
+	*g = sixel_hue(p, q, h - 1.0 / 3) * 255 + 0.5;
+	*b = sixel_hue(p, q, h + 1.0 / 3) * 255 + 0.5;
 }
 
 /* Convert decoded SIXEL data into the protocol-neutral immutable image. */
