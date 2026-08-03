@@ -421,6 +421,7 @@ key_bindings_init(void)
 		"bind -N 'Spread panes out evenly' E { select-layout -E }",
 		"bind -N 'Switch to the last client' L { switch-client -l }",
 		"bind -N 'Clear the marked pane' M { select-pane -M }",
+		"bind -N 'Change the current pane title' T { command-prompt -I'#T' { select-pane -T '%%' } }",
 		"bind -N 'Enter copy mode' [ { copy-mode }",
 		"bind -N 'Paste the most recent paste buffer' ] { paste-buffer -p }",
 		"bind -N 'Create a new window' c { new-window }",
