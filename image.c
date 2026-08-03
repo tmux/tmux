@@ -38,8 +38,8 @@ struct image_backend {
 		    const struct image_rectangle *, const struct tty_style_ctx *);
 };
 
-static const struct image_backend image_backend_ascii = {
-	"ascii", IMAGE_BACKEND_SCROLLS, NULL
+static const struct image_backend image_backend_fallback = {
+	"fallback", IMAGE_BACKEND_SCROLLS, NULL
 };
 static const struct image_backend image_backend_sixel = {
 	"sixel", IMAGE_BACKEND_GRAPHICAL, sixel_draw_rectangle
@@ -51,7 +51,7 @@ image_tty_find_backend(struct tty *tty)
 	if (tty->term != NULL && tty->term->flags & TERM_SIXEL &&
 	    tty->xpixel != 0 && tty->ypixel != 0)
 		return (&image_backend_sixel);
-	return (&image_backend_ascii);
+	return (&image_backend_fallback);
 }
 
 void
@@ -250,6 +250,7 @@ image_free(u_int id)
 	RB_REMOVE(images, &images, im);
 	free(im->pixels);
 	free(im->cells);
+	image_free_fallback(im);
 	free(im);
 }
 

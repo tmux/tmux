@@ -2152,7 +2152,7 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 		if (image_tty_is_graphical(tty))
 			return;
 		im = image_find(gc->image_id);
-		image_get_text_cell(tty, im, gc->image_x, gc->image_y, gc,
+		image_get_fallback_cell(tty, im, gc->image_x, gc->image_y, gc,
 		    &image_gc, style_ctx);
 		gc = &image_gc;
 	}

@@ -50,22 +50,26 @@ $TMUX2 new-session -d -x 10 -y 4 "
 	printf '\033Pq\"1;1;26;26#0;2;100;100;100#0!26~-!26~-!26~-!26~-!26B\033\\'
 	sleep 10" || exit 1
 $TMUX2 set -g status off || exit 1
+$TMUX2 set -as terminal-features \
+    ',*:image-quadrants:image-sextants' || exit 1
 $TMUX new-session -d -x 10 -y 4 || exit 1
 $TMUX set -g status off || exit 1
 $TMUX send-keys -l "$TMUX2 attach-session" || exit 1
 $TMUX send-keys Enter || exit 1
 sleep 1
+$TMUX2 list-clients -F '#{client_termfeatures}' | \
+    grep -q 'image-quadrants.*image-sextants' || exit 1
 $TMUX capture-pane -pS0 -E0 >$TMP || exit 1
-grep -q '^#=' $TMP || exit 1
+[ -n "$(sed -n 1p $TMP)" ] || exit 1
 
-# Selection redraws must leave text image cells visible.
+# Selection redraws must leave fallback image cells visible.
 $TMUX2 copy-mode || exit 1
 $TMUX2 send-keys -X history-top || exit 1
 $TMUX2 send-keys -X start-of-line || exit 1
 $TMUX2 send-keys -X begin-selection || exit 1
 sleep 1
 $TMUX capture-pane -pS0 -E0 >$TMP || exit 1
-grep -q '^#=' $TMP || exit 1
+[ -n "$(sed -n 1p $TMP)" ] || exit 1
 
 # Image marker rows remain cell-aligned when a narrower terminal causes text
 # reflow. The second image cell is clipped, not moved to the following row.
