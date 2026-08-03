@@ -1061,6 +1061,8 @@ struct image {
 	u_int			 references;
 	u_int			 width;
 	u_int			 height;
+	u_int			 canvas_width;
+	u_int			 canvas_height;
 	u_int			 sx;
 	u_int			 sy;
 	size_t			 stride;
@@ -4255,7 +4257,8 @@ char		*regsub(const char *, const char *, const char *, int);
 
 #ifdef ENABLE_IMAGES
 /* image.c */
-struct image	*image_create(u_int, u_int, u_int, u_int, u_char *);
+struct image	*image_create(u_int, u_int, u_int, u_int, u_int, u_int,
+		     u_char *);
 struct image	*image_find(u_int);
 void		 image_ref(u_int);
 void		 image_free(u_int);
