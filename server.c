@@ -240,6 +240,7 @@ server_start(struct tmuxproc *client, uint64_t flags, struct event_base *base,
 	if (cause != NULL) {
 		if (c != NULL) {
 			c->exit_message = cause;
+			c->retval = 1;
 			c->flags |= CLIENT_EXIT;
 		} else {
 			fprintf(stderr, "%s\n", cause);
