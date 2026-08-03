@@ -30,7 +30,11 @@
 
 /* Default style. */
 static struct style style_default = {
-	{ { { ' ' }, 0, 1, 1 }, 0, 0, 8, 8, 0, 0 },
+	{ { { ' ' }, 0, 1, 1 }, 0, 0, 8, 8, 0, 0
+#ifdef ENABLE_IMAGES
+	  , 0, 0, 0
+#endif
+	},
 	0,
 	0,
 

@@ -75,6 +75,11 @@ struct screen_write_cline;
 struct screen_write_ctx;
 struct session;
 
+#ifdef ENABLE_IMAGES
+struct image;
+struct image_backend;
+struct image_rectangle;
+#endif
 #ifdef ENABLE_SIXEL
 struct sixel_image;
 #endif
@@ -803,6 +808,7 @@ struct colour_palette {
 #define GRID_FLAG_NOPALETTE 0x20
 #define GRID_FLAG_CLEARED 0x40
 #define GRID_FLAG_TAB 0x80
+#define GRID_FLAG_IMAGE 0x100
 
 /* Grid line flags. */
 #define GRID_LINE_WRAPPED 0x1
@@ -858,22 +864,32 @@ struct colour_palette {
 struct grid_cell {
 	struct utf8_data	data;
 	u_short			attr;
-	u_char			flags;
+	u_short			flags;
 	int			fg;
 	int			bg;
 	int			us;
 	u_int			link;
+#ifdef ENABLE_IMAGES
+	u_int			image_id;
+	u_int			image_x;
+	u_int			image_y;
+#endif
 };
 
 /* Grid extended cell entry. */
 struct grid_extd_entry {
 	utf8_char		data;
 	u_short			attr;
-	u_char			flags;
+	u_short			flags;
 	int			fg;
 	int			bg;
 	int			us;
 	u_int			link;
+#ifdef ENABLE_IMAGES
+	u_int			image_id;
+	u_int			image_x;
+	u_int			image_y;
+#endif
 } __packed;
 
 /* Grid cell entry. */
@@ -887,7 +903,7 @@ struct grid_cell_entry {
 			u_char	data;
 		} data;
 	};
-	u_char			flags;
+	u_short			flags;
 } __packed;
 
 /* OSC 133 data for a grid line. */
@@ -1021,24 +1037,54 @@ struct style {
 	u_int			link;
 };
 
-#ifdef ENABLE_SIXEL
-/* Image. */
-struct image {
-	struct screen		*s;
-	struct sixel_image	*data;
-	char			*fallback;
+#ifdef ENABLE_IMAGES
+/* A protocol-neutral average of part of an image cell. RGB is premultiplied. */
+struct image_sample {
+	u_char			 red;
+	u_char			 green;
+	u_char			 blue;
+	u_char			 alpha;
+	u_char			 brightness;
+};
 
-	u_int			 px;
-	u_int			 py;
+/* Half blocks, quadrants and sextants all divide evenly into a 2 by 6 grid. */
+#define IMAGE_SAMPLE_COLUMNS 2
+#define IMAGE_SAMPLE_ROWS 6
+struct image_cell {
+	struct image_sample	 whole;
+	struct image_sample	 samples[IMAGE_SAMPLE_ROWS][IMAGE_SAMPLE_COLUMNS];
+};
+
+/* Immutable protocol-neutral image placement. */
+struct image {
+	u_int			 id;
+	u_int			 references;
+	u_int			 width;
+	u_int			 height;
 	u_int			 sx;
 	u_int			 sy;
+	size_t			 stride;
+	size_t			 size;
+	u_char			*pixels;
+	struct image_cell	*cells; /* lazily generated text samples */
 
-	struct images		*list;
-	TAILQ_ENTRY (image)	 entry;
-
-	TAILQ_ENTRY (image)	 all_entry;
+	RB_ENTRY(image)		 entry;
 };
-TAILQ_HEAD(images, image);
+RB_HEAD(images, image);
+
+/* A cell-aligned part of an image to draw at a terminal position. */
+struct image_rectangle {
+	struct image		*image;
+	struct grid_cell	 cell;
+	u_int			 source_x;
+	u_int			 source_y;
+	u_int			 width;
+	u_int			 height;
+	u_int			 destination_x;
+	u_int			 destination_y;
+};
+
+#define IMAGE_SIZE_LIMIT (64 * 1024 * 1024)
 #endif
 
 /* Cursor style. */
@@ -1096,11 +1142,6 @@ struct screen {
 
 	bitstr_t			*tabs;
 	struct screen_sel		*sel;
-
-#ifdef ENABLE_SIXEL
-	struct images			 images;
-	struct images			 saved_images;
-#endif
 
 	struct screen_write_cline	*write_list;
 
@@ -1832,6 +1873,9 @@ struct tty {
 
 	struct event	 key_timer;
 	struct tty_key	*key_tree;
+#ifdef ENABLE_IMAGES
+	const struct image_backend *image_backend;
+#endif
 };
 
 /* Terminal command context. */
@@ -2984,10 +3028,6 @@ void	tty_cmd_scrolldown(struct tty *, const struct tty_ctx *);
 void	tty_cmd_reverseindex(struct tty *, const struct tty_ctx *);
 void	tty_cmd_setselection(struct tty *, const struct tty_ctx *);
 void	tty_cmd_rawstring(struct tty *, const struct tty_ctx *);
-#ifdef ENABLE_SIXEL
-void	tty_cmd_sixelimage(struct tty *, const struct tty_ctx *);
-void	tty_draw_images(struct client *, struct window_pane *);
-#endif
 void	tty_cmd_syncstart(struct tty *, const struct tty_ctx *);
 void	tty_default_colours(struct grid_cell *, struct window_pane *, u_int *);
 
@@ -4211,14 +4251,38 @@ void		 spawn_editor_finish(struct window_pane *);
 /* regsub.c */
 char		*regsub(const char *, const char *, const char *, int);
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 /* image.c */
-int		 image_free_all(struct screen *);
-struct image	*image_store(struct screen *, struct sixel_image *);
-int		 image_check_line(struct screen *, u_int, u_int);
-int		 image_check_area(struct screen *, u_int, u_int, u_int, u_int);
-int		 image_scroll_up(struct screen *, u_int);
+struct image	*image_create(u_int, u_int, u_int, u_int, u_char *);
+struct image	*image_find(u_int);
+void		 image_ref(u_int);
+void		 image_free(u_int);
+void		 image_set_cell(struct grid_cell *, struct image *, u_int,
+		     u_int);
+void		 image_write(struct screen_write_ctx *, struct image *, u_int);
+void		 image_get_pixel_rectangle(const struct image *, u_int, u_int,
+		     u_int, u_int, u_int *, u_int *, u_int *, u_int *);
+void		 image_size_in_cells(u_int, u_int, u_int, u_int, u_int *,
+		     u_int *);
+void		 image_damage_area(struct screen_write_ctx *, u_int, u_int,
+		     u_int, u_int);
+void		 image_damage_all(struct screen_write_ctx *);
+void		 image_damage_scroll(struct screen_write_ctx *, u_int);
+int		 image_tty_is_graphical(struct tty *);
+int		 image_tty_scrolls(struct tty *);
+void		 image_tty_update(struct tty *);
+void		 image_tty_geometry_changed(struct tty *);
+void		 image_draw_line(struct tty *, struct screen *, u_int, u_int,
+		     u_int, u_int, u_int, const struct tty_style_ctx *);
+const struct image_cell *image_get_cell(struct image *, u_int, u_int);
+void		 image_get_text_cell(struct tty *, struct image *, u_int,
+		     u_int, const struct grid_cell *, struct grid_cell *,
+		     const struct tty_style_ctx *);
+void		 sixel_draw_rectangle(struct tty *,
+		     const struct image_rectangle *, const struct tty_style_ctx *);
+#endif
 
+#ifdef ENABLE_SIXEL
 /* image-sixel.c */
 #define SIXEL_COLOUR_REGISTERS 1024
 struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int);
@@ -4230,6 +4294,7 @@ struct sixel_image *sixel_scale(struct sixel_image *, u_int, u_int, u_int,
 char		*sixel_print(struct sixel_image *, struct sixel_image *,
 		     size_t *);
 struct screen	*sixel_to_screen(struct sixel_image *);
+struct image	*sixel_to_image(struct sixel_image *);
 #endif
 
 /* server-acl.c */

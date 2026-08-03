@@ -29,6 +29,7 @@ enum tty_draw_line_state {
 	TTY_DRAW_LINE_NEW1,
 	TTY_DRAW_LINE_NEW2,
 	TTY_DRAW_LINE_EMPTY,
+	TTY_DRAW_LINE_IMAGE,
 	TTY_DRAW_LINE_SAME,
 	TTY_DRAW_LINE_DONE
 };
@@ -38,6 +39,7 @@ static const char* tty_draw_line_states[] = {
 	"NEW1",
 	"NEW2",
 	"EMPTY",
+	"IMAGE",
 	"SAME",
 	"DONE"
 };
@@ -123,10 +125,14 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	struct grid		*gd = s->grid;
 	const struct grid_cell	*gcp;
 	struct grid_cell	 gc, ngc, last;
+#ifdef ENABLE_IMAGES
+	struct grid_cell	 image_gc;
+	struct image		*im;
+#endif
 	struct grid_line	*gl;
 	u_int			 i, j, last_i, cx, ex, width;
 	u_int			 cellsize, bg;
-	int			 flags, empty, wrapped = 0;
+	int			 flags, empty, skip, wrapped = 0;
 	char			 buf[1000];
 	size_t			 len;
 	enum tty_draw_line_state current_state, next_state;
@@ -231,6 +237,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	width = 0;
 	current_state = TTY_DRAW_LINE_FIRST;
 	for (;;) {
+		skip = 0;
+
 		/* Work out the next state. */
 		if (i == nx) {
 			/*
@@ -253,14 +261,43 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				/* Get the current cell. */
 				grid_view_get_cell(gd, px + i, py, &gc);
 
-				/* Work out empty cells. */
-				empty = tty_draw_line_get_empty(&gc, &last,
-				    nx - i);
-				if (empty != 0)
+#ifdef ENABLE_IMAGES
+				/* Text terminals render image blocks as ASCII. */
+				if (gc.flags & GRID_FLAG_IMAGE) {
+					im = image_find(gc.image_id);
+					if (image_tty_is_graphical(tty)) {
+						memcpy(&image_gc, &gc,
+						    sizeof image_gc);
+						utf8_set(&image_gc.data, ' ');
+						image_gc.flags &=
+						    ~GRID_FLAG_IMAGE;
+						skip = 1;
+					} else {
+						image_get_text_cell(tty, im,
+						    gc.image_x, gc.image_y, &gc,
+						    &image_gc, style_ctx);
+					}
+					if (skip)
+						image_gc.flags &=
+						    ~GRID_FLAG_SELECTED;
+					gcp = &image_gc;
+				} else
 					gcp = &gc;
+#else
+				gcp = &gc;
+#endif
+
+				/* Work out empty cells. */
+				if (skip)
+					empty = 0;
+				else
+					empty = tty_draw_line_get_empty(gcp,
+					    &last, nx - i);
+				if (empty != 0 || skip)
+					;
 				else {
 					/* Update for codeset if needed. */
-					gcp = tty_check_codeset(tty, &gc);
+					gcp = tty_check_codeset(tty, gcp);
 
 					/* And for selection. */
 					if (gcp->flags & GRID_FLAG_SELECTED) {
@@ -273,7 +310,9 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			}
 
 			/* Work out the next state. */
-			if (empty != 0)
+			if (skip)
+				next_state = TTY_DRAW_LINE_IMAGE;
+			else if (empty != 0)
 				next_state = TTY_DRAW_LINE_EMPTY;
 			else if (current_state == TTY_DRAW_LINE_FIRST)
 				next_state = TTY_DRAW_LINE_SAME;
@@ -320,7 +359,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		}
 
 		/* Append the cell if it is not empty and not padding. */
-		if (next_state != TTY_DRAW_LINE_EMPTY) {
+		if (next_state != TTY_DRAW_LINE_EMPTY &&
+		    next_state != TTY_DRAW_LINE_IMAGE) {
 			memcpy(buf + len, gcp->data.data, gcp->data.size);
 			len += gcp->data.size;
 			width += gcp->data.width;
