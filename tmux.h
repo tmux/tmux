@@ -77,7 +77,8 @@ struct session;
 
 #ifdef ENABLE_IMAGES
 struct image;
-struct tty_image_cache;
+struct image_backend;
+struct image_rectangle;
 #endif
 #ifdef ENABLE_SIXEL
 struct sixel_image;
@@ -1037,6 +1038,23 @@ struct style {
 };
 
 #ifdef ENABLE_IMAGES
+/* A protocol-neutral average of part of an image cell. RGB is premultiplied. */
+struct image_sample {
+	u_char			 red;
+	u_char			 green;
+	u_char			 blue;
+	u_char			 alpha;
+	u_char			 brightness;
+};
+
+/* Half blocks, quadrants and sextants all divide evenly into a 2 by 6 grid. */
+#define IMAGE_SAMPLE_COLUMNS 2
+#define IMAGE_SAMPLE_ROWS 6
+struct image_cell {
+	struct image_sample	 whole;
+	struct image_sample	 samples[IMAGE_SAMPLE_ROWS][IMAGE_SAMPLE_COLUMNS];
+};
+
 /* Immutable protocol-neutral image placement. */
 struct image {
 	u_int			 id;
@@ -1048,11 +1066,25 @@ struct image {
 	size_t			 stride;
 	size_t			 size;
 	u_char			*pixels;
-	char			*ascii;
+	struct image_cell	*cells; /* lazily generated text samples */
 
 	RB_ENTRY(image)		 entry;
 };
 RB_HEAD(images, image);
+
+/* A cell-aligned part of an image to draw at a terminal position. */
+struct image_rectangle {
+	struct image		*image;
+	struct grid_cell	 cell;
+	u_int			 source_x;
+	u_int			 source_y;
+	u_int			 width;
+	u_int			 height;
+	u_int			 destination_x;
+	u_int			 destination_y;
+};
+
+#define IMAGE_SIZE_LIMIT (64 * 1024 * 1024)
 #endif
 
 /* Cursor style. */
@@ -1843,8 +1875,8 @@ struct tty {
 	struct event	 key_timer;
 	struct tty_key	*key_tree;
 #ifdef ENABLE_IMAGES
-	struct tty_image_cache *images;
-	u_int		 image_next_id;
+	const struct image_backend *image_backend;
+	void		*image_data;
 #endif
 };
 
@@ -4227,16 +4259,32 @@ struct image	*image_create(u_int, u_int, u_int, u_int, u_char *);
 struct image	*image_find(u_int);
 void		 image_ref(u_int);
 void		 image_free(u_int);
-int		 image_free_all(struct screen *);
-int		 image_check_line(struct screen *, u_int, u_int);
-int		 image_check_area(struct screen *, u_int, u_int, u_int, u_int);
-int		 image_scroll_up(struct screen *, u_int);
 void		 image_set_cell(struct grid_cell *, struct image *, u_int,
 		     u_int);
 void		 image_write(struct screen_write_ctx *, struct image *, u_int);
-void		 image_make_ascii(struct image *);
-const char	*image_get_ascii(struct image *, u_int, u_int);
-void		 image_clear(struct screen *, u_int);
+void		 image_get_pixel_rectangle(const struct image *, u_int, u_int,
+		     u_int, u_int, u_int *, u_int *, u_int *, u_int *);
+void		 image_size_in_cells(u_int, u_int, u_int, u_int, u_int *,
+		     u_int *);
+u_char		*image_base64_decode(const char *, size_t, size_t, size_t *);
+u_char		*image_png_decode(const u_char *, size_t, size_t, u_int *,
+		     u_int *);
+void		 image_damage_area(struct screen_write_ctx *, u_int, u_int,
+		     u_int, u_int);
+void		 image_damage_all(struct screen_write_ctx *);
+void		 image_damage_scroll(struct screen_write_ctx *, u_int);
+int		 image_tty_is_graphical(struct tty *);
+int		 image_tty_scrolls(struct tty *);
+void		 image_tty_update(struct tty *);
+void		 image_tty_geometry_changed(struct tty *);
+void		 image_tty_free(struct tty *, int);
+void		 image_draw_line(struct tty *, struct screen *, u_int, u_int,
+		     u_int, u_int, u_int, const struct tty_style_ctx *);
+const struct image_cell *image_get_cell(struct image *, u_int, u_int);
+void		 image_get_text_cell(struct tty *, struct image *, u_int,
+		     u_int, const struct grid_cell *, struct grid_cell *,
+		     const struct tty_style_ctx *);
+void		 image_clear(struct screen_write_ctx *, u_int);
 #define KITTY_PARSE_ERROR -1
 #define KITTY_PARSE_OK 0
 #define KITTY_PARSE_MORE 1
@@ -4244,11 +4292,12 @@ void		 image_clear(struct screen *, u_int);
 struct image	*kitty_parse_image(void **, const u_char *, size_t, u_int,
 		     u_int, u_int *, u_int *, char *, int *);
 void		 kitty_free_state(void *);
-void		 kitty_draw_line(struct tty *, struct screen *, u_int, u_int,
-		     u_int, u_int, u_int, const struct tty_style_ctx *);
-void		 kitty_images_free(struct tty *, int);
-void		 sixel_draw_line(struct tty *, struct screen *, u_int, u_int,
-		     u_int, u_int, u_int);
+void		 kitty_draw_rectangle(struct tty *,
+		     const struct image_rectangle *, const struct tty_style_ctx *);
+void		 kitty_free_output(struct tty *, int);
+void		 kitty_geometry_changed(struct tty *);
+void		 sixel_draw_rectangle(struct tty *,
+		     const struct image_rectangle *, const struct tty_style_ctx *);
 #endif
 
 #ifdef ENABLE_SIXEL

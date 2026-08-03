@@ -25,3 +25,4 @@ regress/logs/
 tags
 tmux
 tmux.1.*
+tools/image-ascii-test

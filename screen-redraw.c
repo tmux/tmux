@@ -1126,11 +1126,7 @@ redraw_draw_pane_span(struct redraw_draw_ctx *dctx,
 	py = span->data.p.py;
 	tty_draw_line(tty, s, px, py, n, x, y, &style_ctx);
 #ifdef ENABLE_IMAGES
-	if (tty->term->flags & TERM_KITTY)
-		kitty_draw_line(tty, s, px, py, n, x, y, &style_ctx);
-	else if ((tty->term->flags & TERM_SIXEL) &&
-	    tty->xpixel != 0 && tty->ypixel != 0)
-		sixel_draw_line(tty, s, px, py, n, x, y);
+	image_draw_line(tty, s, px, py, n, x, y, &style_ctx);
 #endif
 }
 

@@ -18,7 +18,6 @@
 #include <sys/types.h>
 
 #include <limits.h>
-#include <png.h>
 #include <resolv.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,7 +25,7 @@
 
 #include "tmux.h"
 
-/* Generated from Kitty's Unicode 6.0 rowcolumn-diacritics.txt. */
+/* Generated from Unicode 6.0.0 by tools/generate-image-diacritics.sh. */
 static const uint32_t kitty_diacritics[] = {
 	0x0305, 0x030D, 0x030E, 0x0310, 0x0312, 0x033D, 0x033E, 0x033F,
 	0x0346, 0x034A, 0x034B, 0x034C, 0x0350, 0x0351, 0x0352, 0x0357,
@@ -68,8 +67,6 @@ static const uint32_t kitty_diacritics[] = {
 	0x1D244
 };
 
-#define KITTY_IMAGE_LIMIT (64 * 1024 * 1024)
-
 struct kitty_state {
 	char	 action;
 	char	 delete;
@@ -100,13 +97,31 @@ struct kitty_context {
 	struct kitty_source	*sources;
 };
 
-struct tty_image_cache {
+struct kitty_image_cache {
 	u_int			 server_id;
 	u_int			 kitty_id;
 	u_int			 xpixel;
 	u_int			 ypixel;
-	struct tty_image_cache	*next;
+	struct kitty_image_cache	*next;
 };
+
+struct kitty_output {
+	struct kitty_image_cache	*images;
+	u_int			 next_id;
+};
+
+static struct kitty_output *
+kitty_get_output(struct tty *tty)
+{
+	struct kitty_output	*ko = tty->image_data;
+
+	if (ko == NULL) {
+		ko = xcalloc(1, sizeof *ko);
+		ko->next_id = arc4random_uniform(0xffff00) + 1;
+		tty->image_data = ko;
+	}
+	return (ko);
+}
 
 static size_t
 kitty_utf8(char *out, uint32_t value)
@@ -143,25 +158,38 @@ kitty_delete(struct tty *tty, u_int id)
 }
 
 void
-kitty_images_free(struct tty *tty, int send)
+kitty_free_output(struct tty *tty, int send)
 {
-	struct tty_image_cache	*cache, *next;
+	struct kitty_output	*ko = tty->image_data;
+	struct kitty_image_cache	*cache, *next;
 
-	for (cache = tty->images; cache != NULL; cache = next) {
+	if (ko == NULL)
+		return;
+	for (cache = ko->images; cache != NULL; cache = next) {
 		next = cache->next;
 		if (send)
 			kitty_delete(tty, cache->kitty_id);
 		free(cache);
 	}
-	tty->images = NULL;
+	free(ko);
+	tty->image_data = NULL;
+}
+
+void
+kitty_geometry_changed(struct tty *tty)
+{
+	kitty_free_output(tty, !!(tty->flags & TTY_OPENED));
 }
 
 static void
 kitty_images_collect(struct tty *tty)
 {
-	struct tty_image_cache	**pp, *cache;
+	struct kitty_output	*ko = tty->image_data;
+	struct kitty_image_cache	**pp, *cache;
 
-	for (pp = &tty->images; (cache = *pp) != NULL; ) {
+	if (ko == NULL)
+		return;
+	for (pp = &ko->images; (cache = *pp) != NULL; ) {
 		if (image_find(cache->server_id) != NULL) {
 			pp = &cache->next;
 			continue;
@@ -183,23 +211,12 @@ kitty_place(struct tty *tty, struct image *im, u_int id)
 		rows = im->sy - y;
 		if (rows > nitems(kitty_diacritics))
 			rows = nitems(kitty_diacritics);
-		py = (uint64_t)y * im->height / im->sy;
-		pheight = (uint64_t)(y + rows) * im->height / im->sy - py;
-		if (pheight == 0) {
-			py = im->height - 1;
-			pheight = 1;
-		}
 		for (x = 0; x < im->sx; x += nitems(kitty_diacritics)) {
 			columns = im->sx - x;
 			if (columns > nitems(kitty_diacritics))
 				columns = nitems(kitty_diacritics);
-			px = (uint64_t)x * im->width / im->sx;
-			pwidth = (uint64_t)(x + columns) * im->width /
-			    im->sx - px;
-			if (pwidth == 0) {
-				px = im->width - 1;
-				pwidth = 1;
-			}
+			image_get_pixel_rectangle(im, x, y, columns, rows, &px,
+			    &py, &pwidth, &pheight);
 			xsnprintf(control, sizeof control,
 			    "\033_Ga=p,U=1,i=%u,p=%u,x=%u,y=%u,w=%u,h=%u,"
 			    "c=%u,r=%u,q=2\033\\", id, placement++, px, py,
@@ -209,16 +226,17 @@ kitty_place(struct tty *tty, struct image *im, u_int id)
 	}
 }
 
-static struct tty_image_cache *
+static struct kitty_image_cache *
 kitty_upload(struct tty *tty, struct image *im)
 {
-	struct tty_image_cache	*cache;
+	struct kitty_output	*ko = kitty_get_output(tty);
+	struct kitty_image_cache	*cache;
 	char			 control[128], encoded[4097];
 	size_t			 offset, size;
 	int			 encodedlen;
 	u_int			 id;
 
-	for (cache = tty->images; cache != NULL; cache = cache->next) {
+	for (cache = ko->images; cache != NULL; cache = cache->next) {
 		if (cache->server_id != im->id)
 			continue;
 		if (cache->xpixel == tty->xpixel &&
@@ -230,11 +248,11 @@ kitty_upload(struct tty *tty, struct image *im)
 	}
 	if (cache == NULL) {
 		cache = xcalloc(1, sizeof *cache);
-		cache->next = tty->images;
-		tty->images = cache;
+		cache->next = ko->images;
+		ko->images = cache;
 	}
 	do {
-		id = ++tty->image_next_id & 0xffffff;
+		id = ++ko->next_id & 0xffffff;
 	} while (id == 0);
 	cache->server_id = im->id;
 	cache->kitty_id = id;
@@ -278,7 +296,7 @@ kitty_placement(struct image *im, u_int x, u_int y)
 }
 
 static void
-kitty_placeholder(struct tty *tty, struct tty_image_cache *cache,
+kitty_placeholder(struct tty *tty, struct kitty_image_cache *cache,
     struct image *im, u_int x, u_int y, u_int count)
 {
 	char		 buf[8192], sgr[96];
@@ -307,52 +325,38 @@ kitty_placeholder(struct tty *tty, struct tty_image_cache *cache,
 	tty_puts(tty, "\033[39;59m");
 }
 
-/*
- * Draw only the marker cells present in a scene-selected horizontal span.
- * Overlay and pane clipping have already been applied by screen-redraw.c.
- */
 void
-kitty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py,
-    u_int nx, u_int atx, u_int aty, const struct tty_style_ctx *style_ctx)
+kitty_draw_rectangle(struct tty *tty, const struct image_rectangle *rectangle,
+    const struct tty_style_ctx *style_ctx)
 {
-	struct grid_cell	 gc, next, draw_gc;
-	struct image		*im;
-	struct tty_image_cache	*cache;
-	u_int			 i, run, tile;
+	struct grid_cell	 draw_gc;
+	struct kitty_image_cache	*cache;
+	struct image		*im = rectangle->image;
+	u_int			 x, y, run, available;
 
 	kitty_images_collect(tty);
-	for (i = 0; i < nx; i += run) {
-		grid_view_get_cell(s->grid, px + i, py, &gc);
-		if (~gc.flags & GRID_FLAG_IMAGE) {
-			run = 1;
-			continue;
+	cache = kitty_upload(tty, im);
+	if (cache == NULL)
+		return;
+	memcpy(&draw_gc, &rectangle->cell, sizeof draw_gc);
+	draw_gc.flags &= ~(GRID_FLAG_IMAGE|GRID_FLAG_SELECTED);
+	utf8_set(&draw_gc.data, ' ');
+	for (y = 0; y < rectangle->height; y++) {
+		for (x = 0; x < rectangle->width; x += run) {
+			available = nitems(kitty_diacritics) -
+			    (rectangle->source_x + x) %
+			    nitems(kitty_diacritics);
+			run = rectangle->width - x;
+			if (run > available)
+				run = available;
+			tty_cursor(tty, rectangle->destination_x + x,
+			    rectangle->destination_y + y);
+			tty_attributes(tty, &draw_gc, style_ctx);
+			kitty_placeholder(tty, cache, im,
+			    rectangle->source_x + x,
+			    rectangle->source_y + y, run);
+			tty_reset(tty);
 		}
-		im = image_find(gc.image_id);
-		if (im == NULL) {
-			run = 1;
-			continue;
-		}
-		tile = gc.image_x / nitems(kitty_diacritics);
-		for (run = 1; i + run < nx; run++) {
-			grid_view_get_cell(s->grid, px + i + run, py, &next);
-			if (~next.flags & GRID_FLAG_IMAGE ||
-			    next.image_id != gc.image_id ||
-			    next.image_y != gc.image_y ||
-			    next.image_x != gc.image_x + run ||
-			    next.image_x / nitems(kitty_diacritics) != tile)
-				break;
-		}
-		cache = kitty_upload(tty, im);
-		if (cache == NULL)
-			continue;
-		tty_cursor(tty, atx + i, aty);
-		memcpy(&draw_gc, &gc, sizeof draw_gc);
-		draw_gc.flags &= ~(GRID_FLAG_IMAGE|GRID_FLAG_SELECTED);
-		utf8_set(&draw_gc.data, ' ');
-		tty_attributes(tty, &draw_gc, style_ctx);
-		kitty_placeholder(tty, cache, im, gc.image_x, gc.image_y,
-		    run);
-		tty_reset(tty);
 	}
 }
 
@@ -535,62 +539,14 @@ kitty_source_get(struct kitty_context *kc, u_int id)
 static int
 kitty_append(struct kitty_state *ks, const u_char *buf, size_t len)
 {
-	if (len > KITTY_IMAGE_LIMIT ||
-	    ks->encodedlen > KITTY_IMAGE_LIMIT - len)
+	if (len > IMAGE_SIZE_LIMIT ||
+	    ks->encodedlen > IMAGE_SIZE_LIMIT - len)
 		return (-1);
 	ks->encoded = xrealloc(ks->encoded, ks->encodedlen + len + 1);
 	memcpy(ks->encoded + ks->encodedlen, buf, len);
 	ks->encodedlen += len;
 	ks->encoded[ks->encodedlen] = '\0';
 	return (0);
-}
-
-static u_char *
-kitty_base64(struct kitty_state *ks, size_t *size)
-{
-	u_char	*out;
-	size_t	 needed;
-	int	 result;
-
-	if (ks->encodedlen > (SIZE_MAX - 3) / 3 * 4)
-		return (NULL);
-	needed = (ks->encodedlen + 3) / 4 * 3;
-	out = xmalloc(needed == 0 ? 1 : needed);
-	result = b64_pton(ks->encoded, out, needed);
-	if (result < 0) {
-		free(out);
-		return (NULL);
-	}
-	*size = result;
-	return (out);
-}
-
-static u_char *
-kitty_png(const u_char *data, size_t size, u_int *width, u_int *height)
-{
-	png_image	 pi;
-	u_char		*pixels;
-
-	memset(&pi, 0, sizeof pi);
-	pi.version = PNG_IMAGE_VERSION;
-	if (!png_image_begin_read_from_memory(&pi, data, size))
-		return (NULL);
-	pi.format = PNG_FORMAT_RGBA;
-	if (pi.width == 0 || pi.height == 0 ||
-	    PNG_IMAGE_SIZE(pi) > KITTY_IMAGE_LIMIT) {
-		png_image_free(&pi);
-		return (NULL);
-	}
-	pixels = xmalloc(PNG_IMAGE_SIZE(pi));
-	if (!png_image_finish_read(&pi, NULL, pixels, 0, NULL)) {
-		free(pixels);
-		png_image_free(&pi);
-		return (NULL);
-	}
-	*width = pi.width;
-	*height = pi.height;
-	png_image_free(&pi);
-	return (pixels);
 }
 
 static u_char *
@@ -603,7 +559,7 @@ kitty_raw(struct kitty_state *ks, u_char *data, size_t size)
 
 	bytes = (ks->format == 24 ? 3 : 4);
 	if (ks->width == 0 || ks->height == 0 ||
-	    (uint64_t)ks->width * ks->height * bytes > KITTY_IMAGE_LIMIT)
+	    (uint64_t)ks->width * ks->height * bytes > IMAGE_SIZE_LIMIT)
 		return (NULL);
 	expected = (size_t)ks->width * ks->height * bytes;
 	raw = data;
@@ -720,13 +676,14 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 	if (ks->action != 'T' && ks->action != 't' && ks->action != 'q')
 		goto fail;
 
-	decoded = kitty_base64(ks, &decodedlen);
+	decoded = image_base64_decode(ks->encoded, ks->encodedlen,
+	    IMAGE_SIZE_LIMIT, &decodedlen);
 	if (decoded == NULL)
 		goto fail;
 	if (ks->format == 100) {
 		if (ks->compression == 'z') {
 			if (ks->data_size == 0 ||
-			    ks->data_size > KITTY_IMAGE_LIMIT) {
+			    ks->data_size > IMAGE_SIZE_LIMIT) {
 				free(decoded);
 				goto fail;
 			}
@@ -746,7 +703,8 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 				free(decoded);
 				goto fail;
 		}
-		pixels = kitty_png(decoded, decodedlen, &ks->width, &ks->height);
+		pixels = image_png_decode(decoded, decodedlen, IMAGE_SIZE_LIMIT,
+		    &ks->width, &ks->height);
 		free(decoded);
 	} else if (ks->format == 24 || ks->format == 32) {
 		pixels = kitty_raw(ks, decoded, decodedlen);
@@ -759,16 +717,11 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 	if (pixels == NULL)
 		goto fail;
 
-	sx = ks->columns;
-	sy = ks->rows;
-	if (xpixel == 0)
-		xpixel = 8;
-	if (ypixel == 0)
-		ypixel = 16;
-	if (sx == 0)
-		sx = (ks->width + xpixel - 1) / xpixel;
-	if (sy == 0)
-		sy = (ks->height + ypixel - 1) / ypixel;
+	image_size_in_cells(ks->width, ks->height, xpixel, ypixel, &sx, &sy);
+	if (ks->columns != 0)
+		sx = ks->columns;
+	if (ks->rows != 0)
+		sy = ks->rows;
 	im = image_create(ks->width, ks->height, sx, sy, pixels);
 	if (im == NULL)
 		free(pixels);

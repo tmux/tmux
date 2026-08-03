@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -401,14 +402,7 @@ sixel_size_in_cells(struct sixel_image *si, u_int *x, u_int *y)
 		si->xpixel = 8;
 	if (si->ypixel == 0)
 		si->ypixel = 16;
-	if ((si->x % si->xpixel) == 0)
-		*x = (si->x / si->xpixel);
-	else
-		*x = 1 + (si->x / si->xpixel);
-	if ((si->y % si->ypixel) == 0)
-		*y = (si->y / si->ypixel);
-	else
-		*y = 1 + (si->y / si->ypixel);
+	image_size_in_cells(si->x, si->y, si->xpixel, si->ypixel, x, y);
 }
 
 #ifdef ENABLE_IMAGES
@@ -740,19 +734,26 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 }
 
 static struct sixel_image *
-sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells,
-    u_int xpixel, u_int ypixel)
+sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
+    u_int cells_y, u_int xpixel, u_int ypixel)
 {
 	struct sixel_image	*si;
 	const u_char		*pixel;
-	u_int			 x, y, sx, sy, sourcex, sourcey, sourcey0;
-	u_int			 sourcey1;
+	u_int			 x, y, sx, sy, sourcex, sourcey;
+	u_int			 sourcex0, sourcey0, sourcewidth, sourceheight;
 	u_int			 r, g, b, colour, i;
 
-	sx = cells * xpixel;
-	sy = ypixel;
+	if ((uint64_t)cells_x * xpixel > UINT_MAX ||
+	    (uint64_t)cells_y * ypixel > UINT_MAX)
+		return (NULL);
+	sx = cells_x * xpixel;
+	sy = cells_y * ypixel;
 	if (sx == 0 || sy == 0 || sx > SIXEL_WIDTH_LIMIT ||
 	    sy > SIXEL_HEIGHT_LIMIT)
+		return (NULL);
+	image_get_pixel_rectangle(im, ox, oy, cells_x, cells_y, &sourcex0,
+	    &sourcey0, &sourcewidth, &sourceheight);
+	if (sourcewidth == 0 || sourceheight == 0)
 		return (NULL);
 
 	si = xcalloc(1, sizeof *si);
@@ -772,16 +773,11 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells,
 	}
 
 	for (y = 0; y < sy; y++) {
-		sourcey0 = (uint64_t)oy * im->height / im->sy;
-		sourcey1 = (uint64_t)(oy + 1) * im->height / im->sy;
-		sourcey = sourcey0 +
-		    (uint64_t)y * (sourcey1 - sourcey0) / sy;
+		sourcey = sourcey0 + (uint64_t)y * sourceheight / sy;
 		if (sourcey >= im->height)
 			sourcey = im->height - 1;
 		for (x = 0; x < sx; x++) {
-			sourcex = ((uint64_t)ox * im->width / im->sx) +
-			    (uint64_t)x * im->width * cells /
-			    ((uint64_t)im->sx * sx);
+			sourcex = sourcex0 + (uint64_t)x * sourcewidth / sx;
 			if (sourcex >= im->width)
 				sourcex = im->width - 1;
 			pixel = im->pixels + sourcey * im->stride + sourcex * 4;
@@ -801,51 +797,29 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells,
 }
 
 void
-sixel_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py,
-    u_int nx, u_int atx, u_int aty)
+sixel_draw_rectangle(struct tty *tty, const struct image_rectangle *rectangle,
+    __unused const struct tty_style_ctx *style_ctx)
 {
-	struct grid_cell	 gc, next;
-	struct image		*im;
 	struct sixel_image	*si;
 	char			*data;
 	size_t			 size;
-	u_int			 i, run;
 
-	for (i = 0; i < nx; i += run) {
-		grid_view_get_cell(s->grid, px + i, py, &gc);
-		if (~gc.flags & GRID_FLAG_IMAGE) {
-			run = 1;
-			continue;
-		}
-		im = image_find(gc.image_id);
-		if (im == NULL) {
-			run = 1;
-			continue;
-		}
-		for (run = 1; i + run < nx; run++) {
-			grid_view_get_cell(s->grid, px + i + run, py, &next);
-			if (~next.flags & GRID_FLAG_IMAGE ||
-			    next.image_id != gc.image_id ||
-			    next.image_y != gc.image_y ||
-			    next.image_x != gc.image_x + run)
-				break;
-		}
-		si = sixel_from_image(im, gc.image_x, gc.image_y, run,
-		    tty->xpixel, tty->ypixel);
-		if (si == NULL)
-			continue;
-		data = sixel_print(si, NULL, &size);
-		sixel_free(si);
-		if (data == NULL)
-			continue;
-		tty_region_off(tty);
-		tty_margin_off(tty);
-		tty_cursor(tty, atx + i, aty);
-		tty->flags |= TTY_NOBLOCK;
-		tty_putn(tty, data, size, 0);
-		tty_invalidate(tty);
-		free(data);
-	}
+	si = sixel_from_image(rectangle->image, rectangle->source_x,
+	    rectangle->source_y, rectangle->width, rectangle->height,
+	    tty->xpixel, tty->ypixel);
+	if (si == NULL)
+		return;
+	data = sixel_print(si, NULL, &size);
+	sixel_free(si);
+	if (data == NULL)
+		return;
+	tty_region_off(tty);
+	tty_margin_off(tty);
+	tty_cursor(tty, rectangle->destination_x, rectangle->destination_y);
+	tty->flags |= TTY_NOBLOCK;
+	tty_putn(tty, data, size, 0);
+	tty_invalidate(tty);
+	free(data);
 }
 
 struct screen *
