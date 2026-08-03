@@ -3474,6 +3474,8 @@ struct tmux_ghostty_vt *tmux_ghostty_vt_new(struct window_pane *);
 void	 tmux_ghostty_vt_free(struct tmux_ghostty_vt *);
 void	 tmux_ghostty_vt_resize(struct tmux_ghostty_vt *, u_int, u_int);
 void	 tmux_ghostty_vt_write(struct tmux_ghostty_vt *, const u_char *, size_t);
+void	 tmux_ghostty_vt_update_default_cursor(struct tmux_ghostty_vt *);
+void	 tmux_ghostty_vt_sync_stopped(struct tmux_ghostty_vt *);
 void	 tmux_ghostty_vt_osc_timeout(struct tmux_ghostty_vt *);
 
 static inline void
@@ -3495,6 +3497,18 @@ static inline void
 tmux_ghostty_vt_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
 	tmux_ghostty_vt_resize(wp->ghostty_vt, sx, sy);
+}
+
+static inline void
+tmux_ghostty_vt_pane_update_default_cursor(struct window_pane *wp)
+{
+	tmux_ghostty_vt_update_default_cursor(wp->ghostty_vt);
+}
+
+static inline void
+tmux_ghostty_vt_pane_sync_stopped(struct window_pane *wp)
+{
+	tmux_ghostty_vt_sync_stopped(wp->ghostty_vt);
 }
 
 static inline int
@@ -3520,6 +3534,16 @@ tmux_ghostty_vt_pane_free(__unused struct window_pane *wp)
 static inline void
 tmux_ghostty_vt_pane_resize(__unused struct window_pane *wp,
     __unused u_int sx, __unused u_int sy)
+{
+}
+
+static inline void
+tmux_ghostty_vt_pane_update_default_cursor(__unused struct window_pane *wp)
+{
+}
+
+static inline void
+tmux_ghostty_vt_pane_sync_stopped(__unused struct window_pane *wp)
 {
 }
 
@@ -3702,6 +3726,7 @@ void	 screen_write_mode_set(struct screen_write_ctx *, int);
 void	 screen_write_mode_clear(struct screen_write_ctx *, int);
 void	 screen_write_start_sync(struct window_pane *);
 void	 screen_write_stop_sync(struct window_pane *);
+void	 screen_write_set_sync_dirty(struct window_pane *, u_int, u_int);
 void	 screen_write_clear_dirty(struct window_pane *);
 void	 screen_write_cursorup(struct screen_write_ctx *, u_int);
 void	 screen_write_cursordown(struct screen_write_ctx *, u_int);

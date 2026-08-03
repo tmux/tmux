@@ -2464,6 +2464,7 @@ void
 window_pane_default_cursor(struct window_pane *wp)
 {
 	screen_set_default_cursor(wp->screen, wp->options);
+	tmux_ghostty_vt_pane_update_default_cursor(wp);
 }
 
 int

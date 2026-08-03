@@ -1783,6 +1783,14 @@ fn syncModes(gvt: *GhosttyVT, s: *c.screen) void {
 fn syncLifecycleModes(gvt: *GhosttyVT) void {
     const s = &gvt.wp.*.base;
     var enabled = false;
+    if (c.ghostty_terminal_mode_get(gvt.terminal, ghosttyMode(2026, false), &enabled) == c.GHOSTTY_SUCCESS) {
+        if (enabled and s.*.mode & c.MODE_SYNC == 0)
+            c.screen_write_start_sync(gvt.wp)
+        else if (!enabled and s.*.mode & c.MODE_SYNC != 0)
+            c.screen_write_stop_sync(gvt.wp);
+    }
+
+    enabled = false;
     if (c.ghostty_terminal_mode_get(gvt.terminal, ghosttyMode(2031, false), &enabled) != c.GHOSTTY_SUCCESS)
         return;
     if (enabled and s.*.mode & c.MODE_THEME_UPDATES == 0) {
@@ -2417,6 +2425,18 @@ fn syncCursor(gvt: *GhosttyVT, s: *c.screen) void {
     };
 }
 
+fn updateDefaultCursor(gvt: *GhosttyVT) void {
+    const value = c.options_get_number(gvt.wp.*.options, "cursor-style");
+    var style: c.GhosttyTerminalCursorStyle = switch (value) {
+        3, 4 => c.GHOSTTY_TERMINAL_CURSOR_STYLE_UNDERLINE,
+        5, 6 => c.GHOSTTY_TERMINAL_CURSOR_STYLE_BAR,
+        else => c.GHOSTTY_TERMINAL_CURSOR_STYLE_BLOCK,
+    };
+    var blink = value == 1 or value == 3 or value == 5;
+    _ = c.ghostty_terminal_set(gvt.terminal, c.GHOSTTY_TERMINAL_OPT_DEFAULT_CURSOR_STYLE, &style);
+    _ = c.ghostty_terminal_set(gvt.terminal, c.GHOSTTY_TERMINAL_OPT_DEFAULT_CURSOR_BLINK, &blink);
+}
+
 fn colorEq(a: c.GhosttyColorRgb, b: c.GhosttyColorRgb) bool {
     return a.r == b.r and a.g == b.g and a.b == b.b;
 }
@@ -2441,8 +2461,8 @@ fn syncColors(gvt: *GhosttyVT, s: *c.screen) bool {
     var changed = false;
 
     const cursor = overriddenColor(gvt, c.GHOSTTY_TERMINAL_DATA_COLOR_CURSOR, c.GHOSTTY_TERMINAL_DATA_COLOR_CURSOR_DEFAULT, -1);
-    if (s.*.default_ccolour != cursor) {
-        s.*.default_ccolour = cursor;
+    if (s.*.ccolour != cursor) {
+        s.*.ccolour = cursor;
         changed = true;
     }
 
@@ -2675,6 +2695,7 @@ export fn tmux_ghostty_vt_new(wp: ?*c.window_pane) ?*GhosttyVT {
     _ = c.ghostty_terminal_set(gvt.terminal, c.GHOSTTY_TERMINAL_OPT_COLOR_SCHEME, @ptrCast(&colorSchemeCb));
     _ = c.ghostty_terminal_set(gvt.terminal, c.GHOSTTY_TERMINAL_OPT_DEVICE_ATTRIBUTES, @ptrCast(&deviceAttributesCb));
     _ = c.ghostty_terminal_set(gvt.terminal, c.GHOSTTY_TERMINAL_OPT_PWD_CHANGED, @ptrCast(&pwdChangedCb));
+    updateDefaultCursor(gvt);
 
     var kitty_built = false;
     _ = c.ghostty_build_info(c.GHOSTTY_BUILD_INFO_KITTY_GRAPHICS, &kitty_built);
@@ -2734,6 +2755,19 @@ export fn tmux_ghostty_vt_resize(gvt_: ?*GhosttyVT, sx: c_uint, sy: c_uint) void
         gvt.wp.*.flags |= c.PANE_CHANGED | c.PANE_REDRAW;
 }
 
+export fn tmux_ghostty_vt_update_default_cursor(gvt_: ?*GhosttyVT) void {
+    const gvt = gvt_ orelse return;
+    updateDefaultCursor(gvt);
+    gvt.saw_esc = true;
+    _ = sync(gvt, &gvt.wp.*.base, false);
+    gvt.wp.*.flags |= c.PANE_CHANGED | c.PANE_REDRAW;
+}
+
+export fn tmux_ghostty_vt_sync_stopped(gvt_: ?*GhosttyVT) void {
+    const gvt = gvt_ orelse return;
+    _ = c.ghostty_terminal_mode_set(gvt.terminal, 2026, false);
+}
+
 export fn tmux_ghostty_vt_osc_timeout(gvt_: ?*GhosttyVT) void {
     const gvt = gvt_ orelse return;
     resetOsc(gvt);
@@ -2791,7 +2825,11 @@ fn syncPane(gvt: *GhosttyVT) void {
     if (gvt.saw_esc)
         syncLifecycleModes(gvt);
     gvt.wp.*.flags |= c.PANE_CHANGED;
-    if (sync(gvt, &gvt.wp.*.base, false))
+    if (!sync(gvt, &gvt.wp.*.base, false))
+        return;
+    if (gvt.wp.*.base.mode & c.MODE_SYNC != 0)
+        c.screen_write_set_sync_dirty(gvt.wp, 0, gvt.wp.*.sy)
+    else
         gvt.wp.*.flags |= c.PANE_REDRAW;
 }
 

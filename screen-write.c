@@ -39,6 +39,8 @@ static int	screen_write_overwrite(struct screen_write_ctx *,
 static int	screen_write_combine(struct screen_write_ctx *,
 		    const struct grid_cell *);
 static void	screen_write_flush_dirty(struct window_pane *);
+static void	screen_write_set_sync_dirty_size(struct window_pane *, u_int,
+		    u_int, u_int);
 
 struct screen_write_citem {
 	u_int				x;
@@ -221,33 +223,52 @@ screen_write_should_draw_lines(struct screen_write_ctx *ctx, u_int y, u_int ny)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = ctx->s;
-	u_int			 sy = screen_size_y(s);
-	bitstr_t		*bs;
 
 	if (wp != NULL && (wp->flags & (PANE_REDRAW|PANE_DROP)))
 		return (0);
 	if (s->mode & MODE_SYNC) {
-		if (wp != NULL && y < sy && ny != 0) {
-			bs = wp->sync_dirty;
-			if (ny > sy - y)
-				ny = sy - y;
-			if (bs == NULL || wp->sync_dirty_size != sy) {
-				if (bs != NULL && wp->sync_dirty_size != sy) {
-					y = 0;
-					ny = sy;
-				}
-				free(bs);
-
-				bs = wp->sync_dirty = bit_alloc(sy);
-				if (bs == NULL)
-					fatal("bit_alloc failed");
-				wp->sync_dirty_size = sy;
-			}
-			bit_nset(bs, y, y + ny - 1);
-		}
+		screen_write_set_sync_dirty_size(wp, screen_size_y(s), y, ny);
 		return (0);
 	}
 	return (1);
+}
+
+static void
+screen_write_set_sync_dirty_size(struct window_pane *wp, u_int sy, u_int y,
+    u_int ny)
+{
+	bitstr_t	*bs;
+
+	if (wp == NULL || ny == 0)
+		return;
+	if (y >= sy)
+		return;
+	if (ny > sy - y)
+		ny = sy - y;
+
+	bs = wp->sync_dirty;
+	if (bs == NULL || wp->sync_dirty_size != sy) {
+		if (bs != NULL && wp->sync_dirty_size != sy) {
+			y = 0;
+			ny = sy;
+		}
+		free(bs);
+
+		bs = wp->sync_dirty = bit_alloc(sy);
+		if (bs == NULL)
+			fatal("bit_alloc failed");
+		wp->sync_dirty_size = sy;
+	}
+	bit_nset(bs, y, y + ny - 1);
+}
+
+/* Mark base-screen lines changed while synchronized output is active. */
+void
+screen_write_set_sync_dirty(struct window_pane *wp, u_int y, u_int ny)
+{
+	if (wp != NULL)
+		screen_write_set_sync_dirty_size(wp, screen_size_y(&wp->base), y,
+		    ny);
 }
 
 /* Should we draw this line to the TTY? */
@@ -1018,12 +1039,7 @@ screen_write_sync_callback(__unused int fd, __unused short events, void *arg)
 	struct window_pane	*wp = arg;
 
 	log_debug("%s: %%%u sync timer expired", __func__, wp->id);
-	evtimer_del(&wp->sync_timer);
-
-	if (wp->base.mode & MODE_SYNC) {
-		wp->base.mode &= ~MODE_SYNC;
-		screen_write_flush_dirty(wp);
-	}
+	screen_write_stop_sync(wp);
 }
 
 /* Start sync mode. */
@@ -1047,7 +1063,10 @@ screen_write_start_sync(struct window_pane *wp)
 void
 screen_write_stop_sync(struct window_pane *wp)
 {
-	if (wp == NULL || (~wp->base.mode & MODE_SYNC))
+	if (wp == NULL)
+		return;
+	tmux_ghostty_vt_pane_sync_stopped(wp);
+	if (~wp->base.mode & MODE_SYNC)
 		return;
 
 	if (event_initialized(&wp->sync_timer))
