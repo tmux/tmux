@@ -1400,7 +1400,7 @@ fn syncRowFlagsLine(grid: *c.grid, line_y: c_uint, row: c.GhosttyRow) void {
     if (wrapped)
         line.*.flags |= c.GRID_LINE_WRAPPED
     else
-        line.*.flags &= ~@as(c_int, c.GRID_LINE_WRAPPED);
+        line.*.flags &= ~@as(c_ushort, c.GRID_LINE_WRAPPED);
 }
 
 fn resetRowFlags(grid: *c.grid, line_y: c_uint) void {
