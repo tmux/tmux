@@ -168,8 +168,10 @@ tty_set_size(struct tty *tty, u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 	tty->xpixel = xpixel;
 	tty->ypixel = ypixel;
 #ifdef ENABLE_IMAGES
-	if (geometry_changed)
+	if (geometry_changed) {
 		image_tty_geometry_changed(tty);
+		server_redraw_client(tty->client);
+	}
 #endif
 }
 
