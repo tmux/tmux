@@ -1,7 +1,7 @@
 /* $OpenBSD$ */
 
 /*
- * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
+ * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
  * Copyright (c) 2026 Michael Grant <mgrant@grant.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
