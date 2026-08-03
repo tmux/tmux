@@ -6,7 +6,7 @@ CLEANFILES = tmux.1.mdoc tmux.1.man cmd-parse.c
 EXTRA_DIST = \
 	CHANGES README COPYING example_tmux.conf \
 	osdep-*.c mdoc2man.awk tmux.1 \
-	tools/generate-image-diacritics.sh tools/image-ascii-test.c
+	tools/generate-image-diacritics.sh
 dist_EXTRA_tmux_SOURCES = compat/*.[ch]
 
 # Preprocessor flags.
