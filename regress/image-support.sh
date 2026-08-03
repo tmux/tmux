@@ -69,10 +69,12 @@ $TMUX copy-mode -t:4 || exit 1
 $TMUX send-keys -t:4 -X history-top || exit 1
 $TMUX capture-pane -pt:4 >$TMP || exit 1
 
-# A client without an image feature gets the brightness-based ASCII backend.
+# A 26-pixel raster occupies two default 16-pixel cells, but the final cell
+# remains only partially filled instead of stretching the raster to 32 pixels.
+# A client without an image feature exposes this in the sampled text backend.
 $TMUX kill-server 2>/dev/null
 $TMUX2 new-session -d -x 10 -y 4 "
-	printf '\033_Ga=T,q=2,f=32,s=2,v=2,c=2,r=2;/wAA/wD/AP8AAP///////w==\033\\'
+	printf '\033Pq\"1;1;26;26#0;2;100;100;100#0!26~-!26~-!26~-!26~-!26B\033\\'
 	sleep 10" || exit 1
 $TMUX2 set -g status off || exit 1
 $TMUX new-session -d -x 10 -y 4 || exit 1
@@ -80,9 +82,8 @@ $TMUX set -g status off || exit 1
 $TMUX send-keys -l "$TMUX2 attach-session" || exit 1
 $TMUX send-keys Enter || exit 1
 sleep 1
-$TMUX capture-pane -pS0 -E1 >$TMP || exit 1
-[ "$(sed -n 1p $TMP)" = ".*" ] || exit 1
-[ "$(sed -n 2p $TMP)" = " @" ] || exit 1
+$TMUX capture-pane -pS0 -E0 >$TMP || exit 1
+grep -q '^#=' $TMP || exit 1
 
 # A selection redraw uses the single-cell path. It must leave ASCII image
 # cells visible (graphical clients skip these cells to avoid erasing pixels).
@@ -92,8 +93,7 @@ $TMUX2 send-keys -X start-of-line || exit 1
 $TMUX2 send-keys -X begin-selection || exit 1
 $TMUX2 send-keys -X cursor-right || exit 1
 sleep 1
-$TMUX capture-pane -pS0 -E1 >$TMP || exit 1
-sed -n 1p $TMP | grep -q '^\.\*' || exit 1
-sed -n 2p $TMP | grep -q '^ @' || exit 1
+$TMUX capture-pane -pS0 -E0 >$TMP || exit 1
+grep -q '^#=' $TMP || exit 1
 
 exit 0

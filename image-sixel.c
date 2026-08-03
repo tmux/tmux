@@ -485,7 +485,13 @@ sixel_to_image(struct sixel_image *si)
 		}
 	}
 	sixel_size_in_cells(si, &sx, &sy);
-	im = image_create(si->x, si->y, sx, sy, pixels);
+	if ((uint64_t)sx * si->xpixel > UINT_MAX ||
+	    (uint64_t)sy * si->ypixel > UINT_MAX) {
+		free(pixels);
+		return (NULL);
+	}
+	im = image_create(si->x, si->y, sx * si->xpixel, sy * si->ypixel,
+	    sx, sy, pixels);
 	if (im == NULL)
 		free(pixels);
 	return (im);
@@ -743,12 +749,29 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 	u_int			 x, y, sx, sy, sourcex, sourcey;
 	u_int			 sourcex0, sourcey0, sourcewidth, sourceheight;
 	u_int			 r, g, b, colour, i;
+	uint64_t		 destination_width, destination_height;
+	uint64_t		 content_width, content_height, x0, x1, y0, y1;
 
-	if ((uint64_t)cells_x * xpixel > UINT_MAX ||
-	    (uint64_t)cells_y * ypixel > UINT_MAX)
+	destination_width = (uint64_t)im->sx * xpixel;
+	destination_height = (uint64_t)im->sy * ypixel;
+	if (destination_width > UINT_MAX || destination_height > UINT_MAX)
 		return (NULL);
-	sx = cells_x * xpixel;
-	sy = cells_y * ypixel;
+	content_width = ((uint64_t)im->width * destination_width +
+	    im->canvas_width - 1) / im->canvas_width;
+	content_height = ((uint64_t)im->height * destination_height +
+	    im->canvas_height - 1) / im->canvas_height;
+	x0 = (uint64_t)ox * xpixel;
+	y0 = (uint64_t)oy * ypixel;
+	x1 = ((uint64_t)ox + cells_x) * xpixel;
+	y1 = ((uint64_t)oy + cells_y) * ypixel;
+	if (x1 > content_width)
+		x1 = content_width;
+	if (y1 > content_height)
+		y1 = content_height;
+	if (x1 <= x0 || y1 <= y0)
+		return (NULL);
+	sx = x1 - x0;
+	sy = y1 - y0;
 	if (sx == 0 || sy == 0 || sx > SIXEL_WIDTH_LIMIT ||
 	    sy > SIXEL_HEIGHT_LIMIT)
 		return (NULL);
