@@ -42,10 +42,12 @@ $TMUX new-window -d "
 sleep 1
 [ "$($TMUX capture-pane -pt:1 -S0 -E0)" = "XY" ] || exit 1
 
-# A client without an image feature gets the brightness-based text backend.
+# A 26-pixel raster occupies two default 16-pixel cells, but the final cell
+# remains only partially filled instead of stretching the raster to 32 pixels.
+# A client without an image feature exposes this in the sampled text backend.
 $TMUX kill-server 2>/dev/null
 $TMUX2 new-session -d -x 10 -y 4 "
-	printf '\033Pq\"1;1;8;16#0;2;100;100;100#0~~~~~~~~\044-~~~~~~~~\033\\'
+	printf '\033Pq\"1;1;26;26#0;2;100;100;100#0!26~-!26~-!26~-!26~-!26B\033\\'
 	sleep 10" || exit 1
 $TMUX2 set -g status off || exit 1
 $TMUX new-session -d -x 10 -y 4 || exit 1
@@ -54,7 +56,7 @@ $TMUX send-keys -l "$TMUX2 attach-session" || exit 1
 $TMUX send-keys Enter || exit 1
 sleep 1
 $TMUX capture-pane -pS0 -E0 >$TMP || exit 1
-grep -q '[.:-=+*#%@]' $TMP || exit 1
+grep -q '^#=' $TMP || exit 1
 
 # Selection redraws must leave text image cells visible.
 $TMUX2 copy-mode || exit 1
@@ -63,6 +65,6 @@ $TMUX2 send-keys -X start-of-line || exit 1
 $TMUX2 send-keys -X begin-selection || exit 1
 sleep 1
 $TMUX capture-pane -pS0 -E0 >$TMP || exit 1
-grep -q '[.:-=+*#%@]' $TMP || exit 1
+grep -q '^#=' $TMP || exit 1
 
 exit 0
