@@ -96,4 +96,22 @@ sleep 1
 $TMUX capture-pane -pS0 -E0 >$TMP || exit 1
 grep -q '^#=' $TMP || exit 1
 
+# A retained Kitty image may be placed repeatedly using source rectangles.
+# Crop the green and white right column from a red/green/blue/white image.
+$TMUX kill-server 2>/dev/null
+$TMUX2 kill-server 2>/dev/null
+$TMUX2 new-session -d -x 10 -y 4 "
+	printf '\033_Ga=t,q=2,f=32,s=2,v=2,i=10;/wAA/wD/AP8AAP///////w==\033\\'
+	printf '\033_Ga=p,q=2,i=10,x=1,y=0,w=1,h=2,c=1,r=2\033\\'
+	sleep 10" || exit 1
+$TMUX2 set -g status off || exit 1
+$TMUX new-session -d -x 10 -y 4 || exit 1
+$TMUX set -g status off || exit 1
+$TMUX send-keys -l "$TMUX2 attach-session" || exit 1
+$TMUX send-keys Enter || exit 1
+sleep 1
+$TMUX capture-pane -pS0 -E1 >$TMP || exit 1
+[ "$(sed -n 1p $TMP)" = "*" ] || exit 1
+[ "$(sed -n 2p $TMP)" = "@" ] || exit 1
+
 exit 0

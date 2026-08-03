@@ -75,6 +75,10 @@ struct kitty_state {
 	char	 compression;
 	u_int	 width;
 	u_int	 height;
+	u_int	 source_x;
+	u_int	 source_y;
+	u_int	 source_width;
+	u_int	 source_height;
 	u_int	 columns;
 	u_int	 rows;
 	u_int	 image_id;
@@ -232,7 +236,8 @@ kitty_upload(struct tty *tty, struct image *im)
 	struct kitty_output	*ko = kitty_get_output(tty);
 	struct kitty_image_cache	*cache;
 	char			 control[128], encoded[4097];
-	size_t			 offset, size;
+	u_char			 raw[3072];
+	size_t			 offset, size, copied, row, column, available;
 	int			 encodedlen;
 	u_int			 id;
 
@@ -261,9 +266,18 @@ kitty_upload(struct tty *tty, struct image *im)
 
 	for (offset = 0; offset < im->size; offset += size) {
 		size = im->size - offset;
-		if (size > 3072)
-			size = 3072;
-		encodedlen = b64_ntop(im->pixels + offset, size, encoded,
+		if (size > sizeof raw)
+			size = sizeof raw;
+		for (copied = 0; copied < size; copied += available) {
+			row = (offset + copied) / ((size_t)im->width * 4);
+			column = (offset + copied) % ((size_t)im->width * 4);
+			available = (size_t)im->width * 4 - column;
+			if (available > size - copied)
+				available = size - copied;
+			memcpy(raw + copied, im->pixels + row * im->stride +
+			    column, available);
+		}
+		encodedlen = b64_ntop(raw, size, encoded,
 		    sizeof encoded);
 		if (encodedlen < 0)
 			return (NULL);
@@ -418,6 +432,10 @@ kitty_control(struct kitty_state *ks, const u_char *buf, size_t len)
 		case 'f':
 		case 's':
 		case 'v':
+		case 'x':
+		case 'y':
+		case 'w':
+		case 'h':
 		case 'c':
 		case 'r':
 		case 'i':
@@ -431,6 +449,10 @@ kitty_control(struct kitty_state *ks, const u_char *buf, size_t len)
 			case 'f': ks->format = number; break;
 			case 's': ks->width = number; break;
 			case 'v': ks->height = number; break;
+			case 'x': ks->source_x = number; break;
+			case 'y': ks->source_y = number; break;
+			case 'w': ks->source_width = number; break;
+			case 'h': ks->source_height = number; break;
 			case 'c': ks->columns = number; break;
 			case 'r': ks->rows = number; break;
 			case 'i': ks->image_id = number; break;
@@ -594,9 +616,87 @@ kitty_raw(struct kitty_state *ks, u_char *data, size_t size)
 	return (pixels);
 }
 
+static struct image *
+kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
+    u_int ypixel)
+{
+	uint64_t	 numerator, denominator, value;
+	u_int		 x, y, width, height, sx, sy, canvas_width;
+	u_int		 canvas_height, cell_width, cell_height;
+
+	x = ks->source_x;
+	y = ks->source_y;
+	if (x >= source->width || y >= source->height)
+		return (NULL);
+	width = ks->source_width;
+	if (width == 0 || width > source->width - x)
+		width = source->width - x;
+	height = ks->source_height;
+	if (height == 0 || height > source->height - y)
+		height = source->height - y;
+
+	cell_width = (xpixel == 0 ? 8 : xpixel);
+	cell_height = (ypixel == 0 ? 16 : ypixel);
+	if (ks->columns == 0 && ks->rows == 0) {
+		image_size_in_cells(width, height, cell_width, cell_height,
+		    &sx, &sy);
+		value = (uint64_t)sx * cell_width;
+		if (value > UINT_MAX)
+			return (NULL);
+		canvas_width = value;
+		value = (uint64_t)sy * cell_height;
+		if (value > UINT_MAX)
+			return (NULL);
+		canvas_height = value;
+	} else if (ks->columns != 0 && ks->rows != 0) {
+		sx = ks->columns;
+		sy = ks->rows;
+		canvas_width = width;
+		canvas_height = height;
+	} else if (ks->columns != 0) {
+		sx = ks->columns;
+		numerator = (uint64_t)height * sx * cell_width;
+		denominator = (uint64_t)width * cell_height;
+		value = (numerator + denominator - 1) / denominator;
+		if (value == 0 || value > UINT_MAX)
+			return (NULL);
+		sy = value;
+		canvas_width = width;
+		numerator = (uint64_t)sy * cell_height * width;
+		denominator = (uint64_t)sx * cell_width;
+		value = (numerator + denominator - 1) / denominator;
+		if (value < height)
+			value = height;
+		if (value > UINT_MAX)
+			return (NULL);
+		canvas_height = value;
+	} else {
+		sy = ks->rows;
+		numerator = (uint64_t)width * sy * cell_height;
+		denominator = (uint64_t)height * cell_width;
+		value = (numerator + denominator - 1) / denominator;
+		if (value == 0 || value > UINT_MAX)
+			return (NULL);
+		sx = value;
+		canvas_height = height;
+		numerator = (uint64_t)sx * cell_width * height;
+		denominator = (uint64_t)sy * cell_height;
+		value = (numerator + denominator - 1) / denominator;
+		if (value < width)
+			value = width;
+		if (value > UINT_MAX)
+			return (NULL);
+		canvas_width = value;
+	}
+
+	return (image_create_view(source, x, y, width, height, canvas_width,
+	    canvas_height, sx, sy));
+}
+
 /*
  * Parse one Kitty graphics APC body (without the leading G). Only direct
- * static images are accepted. The returned image owns decoded RGBA pixels.
+ * static images are accepted. The returned image retains immutable RGBA
+ * pixels for the lifetime of its placement.
  */
 struct image *
 kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
@@ -609,8 +709,9 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 	u_char			*uncompressed;
 	size_t			 controllen, payloadlen, decodedlen;
 	uLongf			 uncompressedlen;
-	u_int			 sx, sy;
-	struct image		*im;
+	u_int			 sx, sy, cell_width, cell_height;
+	uint64_t		 canvas_width, canvas_height;
+	struct image		*im = NULL, *source;
 
 	if (kc == NULL) {
 		kc = xcalloc(1, sizeof *kc);
@@ -650,9 +751,16 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 	}
 	kc->transfer = NULL;
 	if (ks->action == 'p') {
-		im = kitty_source_get(kc, ks->image_id);
-		*status = (im == NULL ? KITTY_PARSE_MISSING :
-		    KITTY_PARSE_OK);
+		source = kitty_source_get(kc, ks->image_id);
+		if (source == NULL) {
+			*status = KITTY_PARSE_MISSING;
+			im = NULL;
+		} else {
+			im = kitty_place_image(source, ks, xpixel, ypixel);
+			image_free(source->id);
+			if (im != NULL)
+				*status = KITTY_PARSE_OK;
+		}
 		kitty_state_free(ks);
 		return (im);
 	}
@@ -717,21 +825,30 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 	if (pixels == NULL)
 		goto fail;
 
-	image_size_in_cells(ks->width, ks->height, xpixel, ypixel, &sx, &sy);
-	if (ks->columns != 0)
-		sx = ks->columns;
-	if (ks->rows != 0)
-		sy = ks->rows;
-	im = image_create(ks->width, ks->height, sx, sy, pixels);
-	if (im == NULL)
-		free(pixels);
+	cell_width = (xpixel == 0 ? 8 : xpixel);
+	cell_height = (ypixel == 0 ? 16 : ypixel);
+	image_size_in_cells(ks->width, ks->height, cell_width, cell_height,
+	    &sx, &sy);
+	canvas_width = (uint64_t)sx * cell_width;
+	canvas_height = (uint64_t)sy * cell_height;
+	if (canvas_width > UINT_MAX || canvas_height > UINT_MAX)
+		source = NULL;
 	else
+		source = image_create(ks->width, ks->height, canvas_width,
+		    canvas_height, sx, sy, pixels);
+	if (source == NULL)
+		free(pixels);
+	else {
 		*status = KITTY_PARSE_OK;
-	if (im != NULL && ks->action != 'q')
-		kitty_source_set(kc, ks->image_id, im);
-	if (im != NULL && (ks->action == 'q' || ks->action == 't')) {
-		image_free(im->id);
-		im = NULL;
+		if (ks->action != 'q')
+			kitty_source_set(kc, ks->image_id, source);
+		if (ks->action == 'T') {
+			im = kitty_place_image(source, ks, xpixel, ypixel);
+			if (im == NULL)
+				*status = KITTY_PARSE_ERROR;
+		} else
+			im = NULL;
+		image_free(source->id);
 	}
 	kitty_state_free(ks);
 	return (im);
