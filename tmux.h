@@ -3465,6 +3465,8 @@ void	 input_osc_133_apply_line(struct grid_line *,
 	     const struct input_osc133_marker *);
 void	 input_push_title_pane(struct window_pane *);
 void	 input_pop_title_pane(struct window_pane *);
+void	 input_ghostty_start_ground_timer(struct window_pane *);
+void	 input_ghostty_stop_ground_timer(struct window_pane *);
 
 #ifdef HAVE_GHOSTTY_VT
 /* ghostty-vt.zig */
@@ -3472,6 +3474,7 @@ struct tmux_ghostty_vt *tmux_ghostty_vt_new(struct window_pane *);
 void	 tmux_ghostty_vt_free(struct tmux_ghostty_vt *);
 void	 tmux_ghostty_vt_resize(struct tmux_ghostty_vt *, u_int, u_int);
 void	 tmux_ghostty_vt_write(struct tmux_ghostty_vt *, const u_char *, size_t);
+void	 tmux_ghostty_vt_osc_timeout(struct tmux_ghostty_vt *);
 
 static inline void
 tmux_ghostty_vt_pane_init(struct window_pane *wp)

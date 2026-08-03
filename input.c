@@ -859,6 +859,10 @@ input_ground_timer_callback(__unused int fd, __unused short events, void *arg)
 	struct input_ctx	*ictx = arg;
 
 	log_debug("%s: %s expired" , __func__, ictx->state->name);
+#ifdef HAVE_GHOSTTY_VT
+	if (ictx->wp != NULL && ictx->wp->ghostty_vt != NULL)
+		tmux_ghostty_vt_osc_timeout(ictx->wp->ghostty_vt);
+#endif
 	input_reset(ictx, 0);
 }
 
@@ -870,6 +874,22 @@ input_start_ground_timer(struct input_ctx *ictx)
 
 	event_del(&ictx->ground_timer);
 	event_add(&ictx->ground_timer, &tv);
+}
+
+/* Start the native five-second escape timer for the Ghostty sidecar. */
+void
+input_ghostty_start_ground_timer(struct window_pane *wp)
+{
+	if (wp->ictx != NULL)
+		input_start_ground_timer(wp->ictx);
+}
+
+/* Stop the native escape timer when the Ghostty sidecar reaches ground. */
+void
+input_ghostty_stop_ground_timer(struct window_pane *wp)
+{
+	if (wp->ictx != NULL)
+		event_del(&wp->ictx->ground_timer);
 }
 
 /* Reset cell state to default. */

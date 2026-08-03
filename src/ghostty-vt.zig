@@ -10,16 +10,48 @@ extern fn log_debug(fmt: [*c]const u8, ...) void;
 
 const allocator = std.heap.c_allocator;
 const max_size = std.math.maxInt(u16);
-const max_osc_len = 1024 * 1024;
+const max_osc_len: usize = c.INPUT_BUF_DEFAULT_SIZE - 1;
 const max_hyperlink_uri = 4096;
 const kitty_storage_limit: u64 = 64 * 1024 * 1024;
 const alt_pending_max = 64;
+const title_csi_max = 63;
+const osc133_markers_per_line = 6;
 const version = "tmux next-3.7-zig";
 
 const ClearScanState = enum {
     ground,
     esc,
     csi,
+};
+
+const OscEffect = enum {
+    none,
+    title,
+    path,
+    osc133,
+};
+
+const Osc133Marker = struct {
+    ref: c.GhosttyTrackedGridRef,
+    guard_ref: c.GhosttyTrackedGridRef,
+    above_ref: c.GhosttyTrackedGridRef,
+    action: c.input_osc133_marker,
+    sequence: u64,
+    last_line: ?c_uint,
+    next_line: ?c_uint,
+    next_visible: bool,
+};
+
+const Osc133MarkerStore = struct {
+    items: ?[*]Osc133Marker,
+    len: usize,
+    cap: usize,
+};
+
+const ResolvedOsc133Marker = struct {
+    sequence: u64,
+    line: c_uint,
+    action: c.input_osc133_marker,
 };
 
 const GhosttyVT = struct {
@@ -30,6 +62,7 @@ const GhosttyVT = struct {
     sx: c_uint,
     sy: c_uint,
     last_scrollback: usize,
+    max_scrollback: usize,
     active_screen: c.GhosttyTerminalScreen,
     osc_buf: ?[*]u8,
     osc_len: usize,
@@ -37,6 +70,10 @@ const GhosttyVT = struct {
     osc_active: bool,
     osc_esc: bool,
     osc_pending_esc: bool,
+    osc_discard: bool,
+    osc_c1: bool,
+    suppress_title_callback: bool,
+    suppress_pwd_callback: bool,
     alt_pending: [alt_pending_max]u8,
     alt_pending_len: usize,
     kitty_iter: c.GhosttyKittyGraphicsPlacementIterator,
@@ -49,6 +86,15 @@ const GhosttyVT = struct {
     clear_param: u16,
     clear_param_active: bool,
     clear_param_done: bool,
+    title_state: ClearScanState,
+    title_buf: [title_csi_max]u8,
+    title_len: usize,
+    osc133_active: Osc133MarkerStore,
+    osc133_history: Osc133MarkerStore,
+    osc133_sequence: u64,
+    osc133_rebuild: bool,
+    osc133_grid_scroll_collected: c_uint,
+    osc133_grid_scroll_generation: c_uint,
 };
 
 fn sizeValid(sx: c_uint, sy: c_uint) bool {
@@ -65,8 +111,13 @@ fn pixelSize(wp: *c.window_pane) struct { width: u32, height: u32 } {
     return .{ .width = 0, .height = 0 };
 }
 
-fn asPane(userdata: ?*anyopaque) ?*c.window_pane {
+fn asGhostty(userdata: ?*anyopaque) ?*GhosttyVT {
     return @ptrCast(@alignCast(userdata orelse return null));
+}
+
+fn asPane(userdata: ?*anyopaque) ?*c.window_pane {
+    const gvt = asGhostty(userdata) orelse return null;
+    return gvt.wp;
 }
 
 fn alternateMode(mode: c_uint) bool {
@@ -444,10 +495,572 @@ fn maybeColorQuery(wp: ?*c.window_pane, buf: []const u8, input_end: c_int) void 
     }
 }
 
+// OSC 133 markers mirror tmux's line metadata through Ghostty's tracked
+// grid references. Ghostty pins follow slot offsets, not line identity:
+// when a row is pruned from the scrollback ring or deleted in place, the
+// pin slides onto whichever row survives in its slot with the pin
+// geometry intact, so the reference alone can never report the loss.
+// Scrollback pruning is therefore reconciled against tmux's own grid
+// epochs (see dropCollectedOsc133Markers and the fill-time import in
+// feedTerminal), and full-history mismatches rebuild from line metadata.
+//
+// Known divergence: in-place line deletion (DL) inside the viewport
+// slides a deleted row's pins onto the surviving next row the same way,
+// but tmux's grid gives no epoch for viewport deletions, so the marker
+// reattaches where the native parser would drop it with the line.
+// Representing that would take a second terminal-state engine; the
+// discrepancy is accepted and recorded here rather than papered over.
+fn osc133MarkerLimit(rows: c_uint) usize {
+    return @as(usize, @intCast(rows)) * osc133_markers_per_line;
+}
+
+fn appendOsc133Marker(store: *Osc133MarkerStore, limit: usize, marker: Osc133Marker) bool {
+    if (store.len == limit)
+        return false;
+    if (store.len == store.cap) {
+        const new_cap = @min(limit, @max(@as(usize, 8), store.cap * 2));
+        if (new_cap == store.cap)
+            return false;
+        if (store.items) |items| {
+            const next = allocator.realloc(items[0..store.cap], new_cap) catch return false;
+            store.items = next.ptr;
+        } else {
+            const next = allocator.alloc(Osc133Marker, new_cap) catch return false;
+            store.items = next.ptr;
+        }
+        store.cap = new_cap;
+    }
+    store.items.?[store.len] = marker;
+    store.len += 1;
+    return true;
+}
+
+fn removeOsc133Marker(store: *Osc133MarkerStore, index: usize, free_ref: bool) void {
+    const items = store.items orelse return;
+    if (free_ref) {
+        c.ghostty_tracked_grid_ref_free(items[index].ref);
+        c.ghostty_tracked_grid_ref_free(items[index].guard_ref);
+        c.ghostty_tracked_grid_ref_free(items[index].above_ref);
+    }
+    if (index + 1 < store.len)
+        std.mem.copyForwards(Osc133Marker, items[index .. store.len - 1], items[index + 1 .. store.len]);
+    store.len -= 1;
+}
+
+fn clearOsc133MarkerStore(store: *Osc133MarkerStore) void {
+    if (store.items) |items| {
+        for (items[0..store.len]) |marker| {
+            c.ghostty_tracked_grid_ref_free(marker.ref);
+            c.ghostty_tracked_grid_ref_free(marker.guard_ref);
+            c.ghostty_tracked_grid_ref_free(marker.above_ref);
+        }
+    }
+    store.len = 0;
+}
+
+fn freeOsc133MarkerStore(store: *Osc133MarkerStore) void {
+    clearOsc133MarkerStore(store);
+    if (store.items) |items|
+        allocator.free(items[0..store.cap]);
+    store.* = .{ .items = null, .len = 0, .cap = 0 };
+}
+
+fn clearOsc133Line(grid: *c.grid, line_y: c_uint) void {
+    const total = @as(usize, @intCast(grid.*.hsize)) + @as(usize, @intCast(grid.*.sy));
+    if (@as(usize, @intCast(line_y)) >= total)
+        return;
+    const line = c.grid_get_line(grid, line_y);
+    line.*.flags &= ~@as(c_ushort, c.GRID_LINE_OSC133_FLAGS);
+    line.*.osc133_data = std.mem.zeroes(c.osc133_data);
+}
+
+fn resolveOsc133Marker(
+    grid: *c.grid,
+    screen: c.GhosttyTerminalScreen,
+    marker: *Osc133Marker,
+) bool {
+    marker.next_line = null;
+    marker.next_visible = false;
+    if (!c.ghostty_tracked_grid_ref_has_value(marker.ref))
+        return false;
+
+    var point = std.mem.zeroes(c.GhosttyPointCoordinate);
+    const tag: c.GhosttyPointTag = if (screen == c.GHOSTTY_TERMINAL_SCREEN_ALTERNATE)
+        @intCast(c.GHOSTTY_POINT_TAG_VIEWPORT)
+    else
+        @intCast(c.GHOSTTY_POINT_TAG_SCREEN);
+    if (c.ghostty_tracked_grid_ref_point(marker.ref, tag, &point) != c.GHOSTTY_SUCCESS)
+        return false;
+    if (marker.guard_ref != null) {
+        var guard = std.mem.zeroes(c.GhosttyPointCoordinate);
+        if (c.ghostty_tracked_grid_ref_point(marker.guard_ref, tag, &guard) != c.GHOSTTY_SUCCESS or
+            guard.y != point.y)
+            return false;
+        // Ghostty clamps tracked pins on a discarded top in-place scroll row
+        // to column zero. A nonzero guard distinguishes that recycled row
+        // from a marker that legitimately moved into viewport row zero.
+        if (guard.x == 0)
+            return false;
+        if (marker.above_ref != null) {
+            var above = std.mem.zeroes(c.GhosttyPointCoordinate);
+            if (c.ghostty_tracked_grid_ref_point(marker.above_ref, tag, &above) == c.GHOSTTY_SUCCESS and
+                above.x != 0 and above.y == point.y)
+                return false;
+        }
+    }
+
+    const line_y = if (screen == c.GHOSTTY_TERMINAL_SCREEN_ALTERNATE)
+        @as(usize, @intCast(grid.*.hsize)) + @as(usize, @intCast(point.y))
+    else
+        @as(usize, @intCast(point.y));
+    const total = @as(usize, @intCast(grid.*.hsize)) + @as(usize, @intCast(grid.*.sy));
+    if (line_y >= total or line_y > std.math.maxInt(c_uint))
+        return false;
+
+    marker.next_line = @intCast(line_y);
+    marker.next_visible = screen == c.GHOSTTY_TERMINAL_SCREEN_ALTERNATE or
+        line_y >= grid.*.hsize;
+    return true;
+}
+
+fn applyResolvedOsc133Marker(grid: *c.grid, marker: *const Osc133Marker) void {
+    const line_y = marker.next_line orelse return;
+    c.input_osc_133_apply_line(c.grid_get_line(grid, line_y), &marker.action);
+}
+
+fn syncActiveOsc133Markers(
+    gvt: *GhosttyVT,
+    grid: *c.grid,
+    screen: c.GhosttyTerminalScreen,
+) void {
+    const items = gvt.osc133_active.items orelse return;
+
+    for (items[0..gvt.osc133_active.len]) |*marker| {
+        _ = resolveOsc133Marker(grid, screen, marker);
+        if (marker.last_line) |line_y|
+            clearOsc133Line(grid, line_y);
+        if (marker.next_line) |line_y|
+            clearOsc133Line(grid, line_y);
+    }
+    for (items[0..gvt.osc133_active.len]) |*marker|
+        applyResolvedOsc133Marker(grid, marker);
+
+    var index: usize = 0;
+    while (index < gvt.osc133_active.len) {
+        const marker = &gvt.osc133_active.items.?[index];
+        const line_y = marker.next_line orelse {
+            removeOsc133Marker(&gvt.osc133_active, index, true);
+            continue;
+        };
+        marker.last_line = line_y;
+        if (screen == c.GHOSTTY_TERMINAL_SCREEN_PRIMARY and !marker.next_visible) {
+            const moved = marker.*;
+            if (!appendOsc133Marker(
+                &gvt.osc133_history,
+                osc133MarkerLimit(grid.*.hlimit),
+                moved,
+            )) {
+                removeOsc133Marker(&gvt.osc133_active, index, true);
+                continue;
+            }
+            removeOsc133Marker(&gvt.osc133_active, index, false);
+            continue;
+        }
+        index += 1;
+    }
+}
+
+fn resolvedOsc133Less(_: void, a: ResolvedOsc133Marker, b: ResolvedOsc133Marker) bool {
+    return a.sequence < b.sequence;
+}
+
+fn resolveOsc133Store(
+    grid: *c.grid,
+    screen: c.GhosttyTerminalScreen,
+    store: *Osc133MarkerStore,
+    resolved: []ResolvedOsc133Marker,
+    resolved_len: *usize,
+) void {
+    const items = store.items orelse return;
+    for (items[0..store.len]) |*marker| {
+        _ = resolveOsc133Marker(grid, screen, marker);
+        if (marker.last_line) |line_y|
+            clearOsc133Line(grid, line_y);
+        if (marker.next_line) |line_y| {
+            clearOsc133Line(grid, line_y);
+            resolved[resolved_len.*] = .{
+                .sequence = marker.sequence,
+                .line = line_y,
+                .action = marker.action,
+            };
+            resolved_len.* += 1;
+        }
+    }
+}
+
+fn commitOsc133History(gvt: *GhosttyVT, grid: *c.grid) void {
+    var index: usize = 0;
+    while (index < gvt.osc133_history.len) {
+        const marker = &gvt.osc133_history.items.?[index];
+        const line_y = marker.next_line orelse {
+            removeOsc133Marker(&gvt.osc133_history, index, true);
+            continue;
+        };
+        marker.last_line = line_y;
+        if (marker.next_visible) {
+            const moved = marker.*;
+            if (!appendOsc133Marker(
+                &gvt.osc133_active,
+                osc133MarkerLimit(grid.*.sy),
+                moved,
+            )) {
+                removeOsc133Marker(&gvt.osc133_history, index, true);
+                continue;
+            }
+            removeOsc133Marker(&gvt.osc133_history, index, false);
+            continue;
+        }
+        index += 1;
+    }
+}
+
+fn commitOsc133Active(
+    gvt: *GhosttyVT,
+    grid: *c.grid,
+    screen: c.GhosttyTerminalScreen,
+) void {
+    var index: usize = 0;
+    while (index < gvt.osc133_active.len) {
+        const marker = &gvt.osc133_active.items.?[index];
+        const line_y = marker.next_line orelse {
+            removeOsc133Marker(&gvt.osc133_active, index, true);
+            continue;
+        };
+        marker.last_line = line_y;
+        if (screen == c.GHOSTTY_TERMINAL_SCREEN_PRIMARY and !marker.next_visible) {
+            const moved = marker.*;
+            if (!appendOsc133Marker(
+                &gvt.osc133_history,
+                osc133MarkerLimit(grid.*.hlimit),
+                moved,
+            )) {
+                removeOsc133Marker(&gvt.osc133_active, index, true);
+                continue;
+            }
+            removeOsc133Marker(&gvt.osc133_active, index, false);
+            continue;
+        }
+        index += 1;
+    }
+}
+
+fn syncAllOsc133Markers(
+    gvt: *GhosttyVT,
+    grid: *c.grid,
+    screen: c.GhosttyTerminalScreen,
+) void {
+    const total = gvt.osc133_active.len + gvt.osc133_history.len;
+    if (total == 0)
+        return;
+    const resolved = allocator.alloc(ResolvedOsc133Marker, total) catch {
+        syncActiveOsc133Markers(gvt, grid, screen);
+        return;
+    };
+    defer allocator.free(resolved);
+
+    var resolved_len: usize = 0;
+    resolveOsc133Store(grid, screen, &gvt.osc133_history, resolved, &resolved_len);
+    resolveOsc133Store(grid, screen, &gvt.osc133_active, resolved, &resolved_len);
+    std.mem.sort(ResolvedOsc133Marker, resolved[0..resolved_len], {}, resolvedOsc133Less);
+    for (resolved[0..resolved_len]) |marker|
+        c.input_osc_133_apply_line(c.grid_get_line(grid, marker.line), &marker.action);
+
+    commitOsc133History(gvt, grid);
+    commitOsc133Active(gvt, grid, screen);
+}
+
+fn trackOsc133Point(
+    gvt: *GhosttyVT,
+    tag: c.GhosttyPointTag,
+    x: u16,
+    y: u32,
+    ref: *c.GhosttyTrackedGridRef,
+) bool {
+    var point = std.mem.zeroes(c.GhosttyPoint);
+    point.tag = tag;
+    point.value.coordinate.x = x;
+    point.value.coordinate.y = y;
+    ref.* = null;
+    return c.ghostty_terminal_grid_ref_track(gvt.terminal, point, ref) == c.GHOSTTY_SUCCESS;
+}
+
+fn trackOsc133Guards(
+    gvt: *GhosttyVT,
+    cursor_y: u16,
+    guard_ref: *c.GhosttyTrackedGridRef,
+    above_ref: *c.GhosttyTrackedGridRef,
+) void {
+    guard_ref.* = null;
+    above_ref.* = null;
+    if (gvt.sx <= 1)
+        return;
+    const guard_x: u16 = @intCast(gvt.sx - 1);
+    _ = trackOsc133Point(gvt, c.GHOSTTY_POINT_TAG_ACTIVE, guard_x, cursor_y, guard_ref);
+    if (cursor_y > 0)
+        _ = trackOsc133Point(gvt, c.GHOSTTY_POINT_TAG_ACTIVE, guard_x, cursor_y - 1, above_ref);
+}
+
+fn addOsc133BoundaryMarker(
+    gvt: *GhosttyVT,
+    ref: c.GhosttyTrackedGridRef,
+    guard_ref: c.GhosttyTrackedGridRef,
+    above_ref: c.GhosttyTrackedGridRef,
+    action: c.input_osc133_marker,
+    cursor_y: u16,
+) void {
+    var index: usize = 0;
+    while (index < gvt.osc133_active.len) {
+        const existing = &gvt.osc133_active.items.?[index];
+        var point = std.mem.zeroes(c.GhosttyPointCoordinate);
+        if (existing.action.type == action.type and
+            c.ghostty_tracked_grid_ref_point(existing.ref, c.GHOSTTY_POINT_TAG_ACTIVE, &point) == c.GHOSTTY_SUCCESS and
+            point.y == cursor_y)
+        {
+            removeOsc133Marker(&gvt.osc133_active, index, true);
+            continue;
+        }
+        index += 1;
+    }
+
+    const grid = gvt.wp.*.base.grid orelse {
+        c.ghostty_tracked_grid_ref_free(ref);
+        c.ghostty_tracked_grid_ref_free(guard_ref);
+        c.ghostty_tracked_grid_ref_free(above_ref);
+        return;
+    };
+    gvt.osc133_sequence +%= 1;
+    const line_y = grid.*.hsize + gvt.wp.*.base.cy;
+    const marker = Osc133Marker{
+        .ref = ref,
+        .guard_ref = guard_ref,
+        .above_ref = above_ref,
+        .action = action,
+        .sequence = gvt.osc133_sequence,
+        .last_line = line_y,
+        .next_line = null,
+        .next_visible = false,
+    };
+    if (!appendOsc133Marker(
+        &gvt.osc133_active,
+        osc133MarkerLimit(grid.*.sy),
+        marker,
+    )) {
+        c.ghostty_tracked_grid_ref_free(ref);
+        c.ghostty_tracked_grid_ref_free(guard_ref);
+        c.ghostty_tracked_grid_ref_free(above_ref);
+    }
+}
+
+fn applyOsc133(gvt: *GhosttyVT, payload: [*:0]const u8) void {
+    var cursor_x: u16 = @intCast(gvt.wp.*.base.cx);
+    var cursor_y: u16 = @intCast(gvt.wp.*.base.cy);
+    const have_cursor = c.ghostty_terminal_get(
+        gvt.terminal,
+        c.GHOSTTY_TERMINAL_DATA_CURSOR_X,
+        &cursor_x,
+    ) == c.GHOSTTY_SUCCESS and c.ghostty_terminal_get(
+        gvt.terminal,
+        c.GHOSTTY_TERMINAL_DATA_CURSOR_Y,
+        &cursor_y,
+    ) == c.GHOSTTY_SUCCESS;
+
+    var action = std.mem.zeroes(c.input_osc133_marker);
+    c.input_osc_133_parse(payload, cursor_x, &action);
+    if (action.type == c.INPUT_OSC133_NONE)
+        return;
+
+    var ref: c.GhosttyTrackedGridRef = null;
+    if (have_cursor)
+        _ = trackOsc133Point(gvt, c.GHOSTTY_POINT_TAG_ACTIVE, cursor_x, cursor_y, &ref);
+
+    var guard_ref: c.GhosttyTrackedGridRef = null;
+    var above_ref: c.GhosttyTrackedGridRef = null;
+    if (ref != null)
+        trackOsc133Guards(gvt, cursor_y, &guard_ref, &above_ref);
+
+    c.input_osc_133_pane(gvt.wp, &action);
+    if (ref != null)
+        addOsc133BoundaryMarker(gvt, ref, guard_ref, above_ref, action, cursor_y);
+}
+
+fn rebuildOsc133Marker(
+    gvt: *GhosttyVT,
+    grid: *c.grid,
+    screen: c.GhosttyTerminalScreen,
+    line_y: c_uint,
+    marker_type: c.enum_input_osc133_type,
+    column: u16,
+    exit_status: u8,
+) void {
+    if (grid.*.sx == 0)
+        return;
+    const tracked_column: u16 = @intCast(@min(column, grid.*.sx - 1));
+    const point_y: u32 = if (screen == c.GHOSTTY_TERMINAL_SCREEN_ALTERNATE)
+        @intCast(line_y - grid.*.hsize)
+    else
+        @intCast(line_y);
+    const tag: c.GhosttyPointTag = if (screen == c.GHOSTTY_TERMINAL_SCREEN_ALTERNATE)
+        @intCast(c.GHOSTTY_POINT_TAG_VIEWPORT)
+    else
+        @intCast(c.GHOSTTY_POINT_TAG_SCREEN);
+    var ref: c.GhosttyTrackedGridRef = null;
+    if (!trackOsc133Point(gvt, tag, tracked_column, point_y, &ref))
+        return;
+    const visible = screen == c.GHOSTTY_TERMINAL_SCREEN_ALTERNATE or
+        line_y >= grid.*.hsize;
+    var guard_ref: c.GhosttyTrackedGridRef = null;
+    var above_ref: c.GhosttyTrackedGridRef = null;
+    if (visible)
+        trackOsc133Guards(gvt, @intCast(line_y - grid.*.hsize), &guard_ref, &above_ref);
+
+    var action = std.mem.zeroes(c.input_osc133_marker);
+    action.type = marker_type;
+    action.column = column;
+    action.exit_status = exit_status;
+    gvt.osc133_sequence +%= 1;
+    const marker = Osc133Marker{
+        .ref = ref,
+        .guard_ref = guard_ref,
+        .above_ref = above_ref,
+        .action = action,
+        .sequence = gvt.osc133_sequence,
+        .last_line = line_y,
+        .next_line = null,
+        .next_visible = false,
+    };
+    const store = if (visible) &gvt.osc133_active else &gvt.osc133_history;
+    const limit = if (visible)
+        osc133MarkerLimit(grid.*.sy)
+    else
+        osc133MarkerLimit(grid.*.hlimit);
+    if (!appendOsc133Marker(store, limit, marker)) {
+        c.ghostty_tracked_grid_ref_free(ref);
+        c.ghostty_tracked_grid_ref_free(guard_ref);
+        c.ghostty_tracked_grid_ref_free(above_ref);
+    }
+}
+
+fn rebuildOsc133Markers(
+    gvt: *GhosttyVT,
+    grid: *c.grid,
+    screen: c.GhosttyTerminalScreen,
+) void {
+    const start_y = if (screen == c.GHOSTTY_TERMINAL_SCREEN_ALTERNATE)
+        grid.*.hsize
+    else
+        0;
+    const end_y = grid.*.hsize + grid.*.sy;
+    var line_y = start_y;
+    while (line_y < end_y) : (line_y += 1) {
+        const line = c.grid_get_line(grid, line_y);
+        const flags = line.*.flags;
+        const data = line.*.osc133_data;
+        if (flags & c.GRID_LINE_START_PROMPT != 0)
+            rebuildOsc133Marker(gvt, grid, screen, line_y, c.INPUT_OSC133_PROMPT_MARK, data.prompt_col, 0);
+        if (flags & c.GRID_LINE_SECOND_PROMPT != 0)
+            rebuildOsc133Marker(gvt, grid, screen, line_y, c.INPUT_OSC133_SECOND_PROMPT, data.prompt_col, 0);
+        if (flags & c.GRID_LINE_START_COMMAND != 0)
+            rebuildOsc133Marker(gvt, grid, screen, line_y, c.INPUT_OSC133_COMMAND, data.cmd_col, 0);
+        if (flags & c.GRID_LINE_START_OUTPUT != 0)
+            rebuildOsc133Marker(gvt, grid, screen, line_y, c.INPUT_OSC133_OUTPUT, data.out_start_col, 0);
+        if (flags & c.GRID_LINE_END_OUTPUT != 0)
+            rebuildOsc133Marker(gvt, grid, screen, line_y, c.INPUT_OSC133_END, data.out_end_col, data.exit_status);
+    }
+}
+
+// grid_collect_history freed the grid's first delta lines since the
+// last sync. Markers anchored to a freed line must die with it: Ghostty
+// pins follow slot offsets, not line identity, through scrollback
+// pruning, so a pruned marker's pins silently slide onto whichever line
+// survived in its place and would reattach there. Survivors keep their
+// pins (their rows were not pruned) but their line index shifted down.
+fn dropCollectedOsc133Markers(store: *Osc133MarkerStore, delta: c_uint) void {
+    var index: usize = 0;
+    while (index < store.len) {
+        const marker = &store.items.?[index];
+        const line_y = marker.last_line orelse {
+            removeOsc133Marker(store, index, true);
+            continue;
+        };
+        if (line_y < delta) {
+            removeOsc133Marker(store, index, true);
+            continue;
+        }
+        marker.last_line = line_y - delta;
+        index += 1;
+    }
+}
+
+fn syncOsc133Markers(gvt: *GhosttyVT, grid: *c.grid, force: bool) void {
+    const collected_delta = grid.*.scroll_collected -% gvt.osc133_grid_scroll_collected;
+    if (collected_delta != 0) {
+        dropCollectedOsc133Markers(&gvt.osc133_history, collected_delta);
+        dropCollectedOsc133Markers(&gvt.osc133_active, collected_delta);
+    }
+    if (gvt.osc133_rebuild) {
+        rebuildOsc133Markers(gvt, grid, gvt.active_screen);
+        gvt.osc133_rebuild = false;
+    } else if (force or
+        grid.*.scroll_collected != gvt.osc133_grid_scroll_collected or
+        grid.*.scroll_generation != gvt.osc133_grid_scroll_generation)
+    {
+        syncAllOsc133Markers(gvt, grid, gvt.active_screen);
+    } else {
+        syncActiveOsc133Markers(gvt, grid, gvt.active_screen);
+    }
+    gvt.osc133_grid_scroll_collected = grid.*.scroll_collected;
+    gvt.osc133_grid_scroll_generation = grid.*.scroll_generation;
+}
+
+fn freeOsc133Markers(gvt: *GhosttyVT) void {
+    freeOsc133MarkerStore(&gvt.osc133_active);
+    freeOsc133MarkerStore(&gvt.osc133_history);
+}
+
+fn applyTmuxOsc(gvt: *GhosttyVT, buf: []const u8) OscEffect {
+    const pane = gvt.wp;
+    var i: usize = 0;
+    const code = parseDecimal(buf, &i) orelse return .none;
+    if (i < buf.len and buf[i] != ';')
+        return .none;
+    const value = if (i == buf.len) buf[i..i] else buf[i + 1 ..];
+
+    const payload = allocator.dupeZ(u8, value) catch return .none;
+    defer allocator.free(payload);
+    return switch (code) {
+        0, 2 => effect: {
+            c.input_set_pane_title(pane, payload.ptr);
+            break :effect .title;
+        },
+        7 => effect: {
+            c.input_set_pane_path(pane, payload.ptr);
+            break :effect .path;
+        },
+        133 => effect: {
+            applyOsc133(gvt, payload.ptr);
+            break :effect .osc133;
+        },
+        else => .none,
+    };
+}
+
 fn resetOsc(gvt: *GhosttyVT) void {
+    c.input_ghostty_stop_ground_timer(gvt.wp);
     gvt.osc_len = 0;
     gvt.osc_active = false;
     gvt.osc_esc = false;
+    gvt.osc_discard = false;
+    gvt.osc_c1 = false;
 }
 
 fn freeOsc(gvt: *GhosttyVT) void {
@@ -480,12 +1093,33 @@ fn appendOsc(gvt: *GhosttyVT, ch: u8) bool {
     return true;
 }
 
-fn finishOsc(gvt: *GhosttyVT, input_end: c_int) void {
-    if (gvt.osc_buf) |buf| {
-        const osc = buf[0..gvt.osc_len];
-        maybeProgressBar(gvt.wp, osc);
-        maybeClipboard(gvt.wp, osc, input_end);
-        maybeColorQuery(gvt.wp, osc, input_end);
+fn writeOscToTerminal(gvt: *GhosttyVT, payload: []const u8, end: []const u8) void {
+    writeTerminalSegment(gvt, if (gvt.osc_c1) "\x9d" else "\x1b]");
+    writeTerminalSegment(gvt, payload);
+    writeTerminalSegment(gvt, end);
+}
+
+fn finishOsc(gvt: *GhosttyVT, input_end: c_int, end: []const u8) void {
+    if (!gvt.osc_discard) {
+        if (gvt.osc_buf) |buf| {
+            const osc = buf[0..gvt.osc_len];
+            const effect = applyTmuxOsc(gvt, osc);
+            maybeProgressBar(gvt.wp, osc);
+            maybeClipboard(gvt.wp, osc, input_end);
+            maybeColorQuery(gvt.wp, osc, input_end);
+            // Ghostty's OSC 133 A/N implementation moves to a fresh line,
+            // unlike tmux. tmux handles all OSC 133 state above, so do not
+            // apply the sequence a second time inside Ghostty.
+            const title_allowed = effect != .title or
+                c.options_get_number(gvt.wp.*.options, "allow-set-title") != 0;
+            if (effect != .osc133 and title_allowed) {
+                gvt.suppress_title_callback = effect == .title;
+                gvt.suppress_pwd_callback = effect == .path;
+                writeOscToTerminal(gvt, osc, end);
+                gvt.suppress_title_callback = false;
+                gvt.suppress_pwd_callback = false;
+            }
+        }
     }
     resetOsc(gvt);
 }
@@ -533,50 +1167,58 @@ fn scanClearScreen(gvt: *GhosttyVT, buf: []const u8) void {
     }
 }
 
-fn scanOscSideEffects(gvt: *GhosttyVT, buf: []const u8) void {
+fn applyTitleCsi(gvt: *GhosttyVT) void {
+    var offset: usize = 0;
+    while (offset < gvt.title_len) {
+        const command = parseDecimal(gvt.title_buf[0..gvt.title_len], &offset) orelse return;
+        if (offset >= gvt.title_len or gvt.title_buf[offset] != ';')
+            return;
+        offset += 1;
+        const argument = parseDecimal(gvt.title_buf[0..gvt.title_len], &offset) orelse return;
+        if (argument == 0 or argument == 2) {
+            if (command == 22)
+                c.input_push_title_pane(gvt.wp)
+            else if (command == 23)
+                c.input_pop_title_pane(gvt.wp);
+        }
+        if (offset == gvt.title_len)
+            return;
+        if (gvt.title_buf[offset] != ';')
+            return;
+        offset += 1;
+    }
+}
+
+fn scanTitleStack(gvt: *GhosttyVT, buf: []const u8) void {
     for (buf) |ch| {
-        if (!gvt.osc_active) {
-            if (gvt.osc_pending_esc) {
-                gvt.osc_pending_esc = false;
-                if (ch == ']') {
-                    resetOsc(gvt);
-                    gvt.osc_active = true;
-                    continue;
+        switch (gvt.title_state) {
+            .ground => {
+                if (ch == 0x1b)
+                    gvt.title_state = .esc;
+            },
+            .esc => {
+                if (ch == '[') {
+                    gvt.title_state = .csi;
+                    gvt.title_len = 0;
+                } else if (ch != 0x1b) {
+                    gvt.title_state = .ground;
                 }
-            }
-            if (ch == 0x1b)
-                gvt.osc_pending_esc = true;
-            continue;
+            },
+            .csi => {
+                if (std.ascii.isDigit(ch) or ch == ';') {
+                    if (gvt.title_len == gvt.title_buf.len) {
+                        gvt.title_state = .ground;
+                        continue;
+                    }
+                    gvt.title_buf[gvt.title_len] = ch;
+                    gvt.title_len += 1;
+                } else {
+                    if (ch == 't')
+                        applyTitleCsi(gvt);
+                    gvt.title_state = if (ch == 0x1b) .esc else .ground;
+                }
+            },
         }
-
-        if (gvt.osc_esc) {
-            gvt.osc_esc = false;
-            if (ch == '\\') {
-                finishOsc(gvt, 0);
-                continue;
-            }
-            resetOsc(gvt);
-            if (ch == ']') {
-                gvt.osc_active = true;
-                continue;
-            }
-            continue;
-        }
-
-        if (ch == 0x18 or ch == 0x1a) {
-            resetOsc(gvt);
-            continue;
-        }
-        if (ch == 0x07) {
-            finishOsc(gvt, 1);
-            continue;
-        }
-        if (ch == 0x1b) {
-            gvt.osc_esc = true;
-            continue;
-        }
-        if (!appendOsc(gvt, ch))
-            resetOsc(gvt);
     }
 }
 
@@ -648,35 +1290,38 @@ fn writePtyCb(_: c.GhosttyTerminal, userdata: ?*anyopaque, data: [*c]const u8, l
 }
 
 fn titleChangedCb(terminal: c.GhosttyTerminal, userdata: ?*anyopaque) callconv(.c) void {
-    const wp = asPane(userdata) orelse return;
+    const gvt = asGhostty(userdata) orelse return;
+    if (gvt.suppress_title_callback)
+        return;
+    const wp = gvt.wp;
     var title: c.GhosttyString = undefined;
-    if (c.ghostty_terminal_get(terminal, c.GHOSTTY_TERMINAL_DATA_TITLE, &title) != c.GHOSTTY_SUCCESS or title.len == 0)
+    if (c.ghostty_terminal_get(terminal, c.GHOSTTY_TERMINAL_DATA_TITLE, &title) != c.GHOSTTY_SUCCESS)
         return;
 
-    const copy = allocator.dupeZ(u8, title.ptr[0..title.len]) catch return;
+    const bytes: []const u8 = if (title.len == 0) "" else title.ptr[0..title.len];
+    const copy = allocator.dupeZ(u8, bytes) catch return;
     defer allocator.free(copy);
-    if (c.screen_set_title(&wp.*.base, copy.ptr, 1) != 0)
-        wp.*.flags |= c.PANE_NEWSTATUS;
+    c.input_set_pane_title(wp, copy.ptr);
 }
 
 fn pwdChangedCb(terminal: c.GhosttyTerminal, userdata: ?*anyopaque) callconv(.c) void {
-    const wp = asPane(userdata) orelse return;
+    const gvt = asGhostty(userdata) orelse return;
+    if (gvt.suppress_pwd_callback)
+        return;
+    const wp = gvt.wp;
     var pwd: c.GhosttyString = undefined;
-    if (c.ghostty_terminal_get(terminal, c.GHOSTTY_TERMINAL_DATA_PWD, &pwd) != c.GHOSTTY_SUCCESS or pwd.len == 0)
+    if (c.ghostty_terminal_get(terminal, c.GHOSTTY_TERMINAL_DATA_PWD, &pwd) != c.GHOSTTY_SUCCESS)
         return;
 
-    const copy = allocator.dupeZ(u8, pwd.ptr[0..pwd.len]) catch return;
+    const bytes: []const u8 = if (pwd.len == 0) "" else pwd.ptr[0..pwd.len];
+    const copy = allocator.dupeZ(u8, bytes) catch return;
     defer allocator.free(copy);
-    if (c.screen_set_path(&wp.*.base, copy.ptr, 1) != 0) {
-        if (wp.*.window) |window| {
-            c.server_redraw_window_borders(window);
-            c.server_status_window(window);
-        }
-    }
+    c.input_set_pane_path(wp, copy.ptr);
 }
 
 fn bellCb(_: c.GhosttyTerminal, userdata: ?*anyopaque) callconv(.c) void {
     const wp = asPane(userdata) orelse return;
+    c.events_fire_pane("pane-bell", wp);
     if (wp.*.window) |window|
         c.alerts_queue(window, c.WINDOW_BELL);
 }
@@ -707,11 +1352,15 @@ fn sizeCb(_: c.GhosttyTerminal, userdata: ?*anyopaque, out_size: ?*c.GhosttySize
 
 fn colorSchemeCb(_: c.GhosttyTerminal, userdata: ?*anyopaque, out_scheme: ?*c.GhosttyColorScheme) callconv(.c) bool {
     const scheme = out_scheme orelse return false;
-    const wp = asPane(userdata);
-    scheme.* = if (wp != null and c.window_pane_get_theme(wp.?) == c.THEME_LIGHT)
-        c.GHOSTTY_COLOR_SCHEME_LIGHT
-    else
-        c.GHOSTTY_COLOR_SCHEME_DARK;
+    const wp = asPane(userdata) orelse return false;
+    const theme = c.window_pane_get_theme(wp);
+    scheme.* = switch (theme) {
+        c.THEME_LIGHT => c.GHOSTTY_COLOR_SCHEME_LIGHT,
+        c.THEME_DARK => c.GHOSTTY_COLOR_SCHEME_DARK,
+        else => return false,
+    };
+    wp.*.last_theme = theme;
+    wp.*.flags &= ~@as(c_int, c.PANE_THEMECHANGED);
     return true;
 }
 
@@ -1131,6 +1780,21 @@ fn syncModes(gvt: *GhosttyVT, s: *c.screen) void {
         s.*.mode |= c.MODE_KEYS_EXTENDED_2;
 }
 
+fn syncLifecycleModes(gvt: *GhosttyVT) void {
+    const s = &gvt.wp.*.base;
+    var enabled = false;
+    if (c.ghostty_terminal_mode_get(gvt.terminal, ghosttyMode(2031, false), &enabled) != c.GHOSTTY_SUCCESS)
+        return;
+    if (enabled and s.*.mode & c.MODE_THEME_UPDATES == 0) {
+        s.*.mode |= c.MODE_THEME_UPDATES;
+        gvt.wp.*.last_theme = c.window_pane_get_theme(gvt.wp);
+        gvt.wp.*.flags &= ~@as(c_int, c.PANE_THEMECHANGED);
+    } else if (!enabled and s.*.mode & c.MODE_THEME_UPDATES != 0) {
+        s.*.mode &= ~@as(c_int, c.MODE_THEME_UPDATES);
+        gvt.wp.*.flags &= ~@as(c_int, c.PANE_THEMECHANGED);
+    }
+}
+
 fn syncHistoryRow(gvt: *GhosttyVT, s: *c.screen, history_y: usize, target_y: c_uint) void {
     const grid = s.*.grid orelse return;
     var ref: c.GhosttyGridRef = undefined;
@@ -1345,6 +2009,9 @@ fn syncScrollback(gvt: *GhosttyVT, s: *c.screen) bool {
             return true;
         }
         c.grid_clear_history(grid);
+        clearOsc133MarkerStore(&gvt.osc133_active);
+        clearOsc133MarkerStore(&gvt.osc133_history);
+        gvt.osc133_rebuild = true;
         importHistoryRows(gvt, s, grid, 0, scrollback_rows);
         return true;
     }
@@ -1352,6 +2019,9 @@ fn syncScrollback(gvt: *GhosttyVT, s: *c.screen) bool {
     var changed = false;
     if (scrollback_rows < gvt.last_scrollback) {
         c.grid_clear_history(grid);
+        clearOsc133MarkerStore(&gvt.osc133_active);
+        clearOsc133MarkerStore(&gvt.osc133_history);
+        gvt.osc133_rebuild = true;
         gvt.last_scrollback = 0;
         changed = true;
     }
@@ -1367,6 +2037,14 @@ fn syncActiveScreen(gvt: *GhosttyVT, s: *c.screen) bool {
     var active: c.GhosttyTerminalScreen = undefined;
     if (c.ghostty_terminal_get(gvt.terminal, c.GHOSTTY_TERMINAL_DATA_ACTIVE_SCREEN, &active) != c.GHOSTTY_SUCCESS)
         return false;
+
+    const screen_switched = active != gvt.active_screen;
+    if (screen_switched) {
+        if (s.*.grid) |grid|
+            syncAllOsc133Markers(gvt, grid, gvt.active_screen);
+        clearOsc133MarkerStore(&gvt.osc133_active);
+        clearOsc133MarkerStore(&gvt.osc133_history);
+    }
 
     var changed = false;
     var gc = c.grid_default_cell;
@@ -1388,6 +2066,8 @@ fn syncActiveScreen(gvt: *GhosttyVT, s: *c.screen) bool {
     }
 
     gvt.active_screen = active;
+    if (screen_switched)
+        gvt.osc133_rebuild = true;
     return changed;
 }
 
@@ -1404,7 +2084,8 @@ fn syncRowFlagsLine(grid: *c.grid, line_y: c_uint, row: c.GhosttyRow) void {
 }
 
 fn resetRowFlags(grid: *c.grid, line_y: c_uint) void {
-    c.grid_get_line(grid, line_y).*.flags = 0;
+    const line = c.grid_get_line(grid, line_y);
+    line.*.flags &= c.GRID_LINE_OSC133_FLAGS;
 }
 
 fn syncRowFlags(grid: *c.grid, py: c_uint, row: c.GhosttyRow) void {
@@ -1809,6 +2490,7 @@ fn sync(gvt: *GhosttyVT, s: *c.screen, force: bool) bool {
     const grid = s.*.grid orelse return false;
     bumpStyleCacheGen();
     const screen_changed = syncActiveScreen(gvt, s);
+    defer syncOsc133Markers(gvt, grid, force or screen_changed);
     var changed = screen_changed;
     if (gvt.active_screen == c.GHOSTTY_TERMINAL_SCREEN_PRIMARY) {
         if (syncScrollback(gvt, s))
@@ -1913,6 +2595,7 @@ export fn tmux_ghostty_vt_new(wp: ?*c.window_pane) ?*GhosttyVT {
         .sx = pane.*.sx,
         .sy = pane.*.sy,
         .last_scrollback = 0,
+        .max_scrollback = pane.*.base.grid.?.*.hlimit,
         .active_screen = c.GHOSTTY_TERMINAL_SCREEN_PRIMARY,
         .osc_buf = null,
         .osc_len = 0,
@@ -1920,6 +2603,10 @@ export fn tmux_ghostty_vt_new(wp: ?*c.window_pane) ?*GhosttyVT {
         .osc_active = false,
         .osc_esc = false,
         .osc_pending_esc = false,
+        .osc_discard = false,
+        .osc_c1 = false,
+        .suppress_title_callback = false,
+        .suppress_pwd_callback = false,
         .alt_pending = std.mem.zeroes([alt_pending_max]u8),
         .alt_pending_len = 0,
         .kitty_iter = null,
@@ -1932,6 +2619,15 @@ export fn tmux_ghostty_vt_new(wp: ?*c.window_pane) ?*GhosttyVT {
         .clear_param = 0,
         .clear_param_active = false,
         .clear_param_done = false,
+        .title_state = .ground,
+        .title_buf = std.mem.zeroes([title_csi_max]u8),
+        .title_len = 0,
+        .osc133_active = .{ .items = null, .len = 0, .cap = 0 },
+        .osc133_history = .{ .items = null, .len = 0, .cap = 0 },
+        .osc133_sequence = 0,
+        .osc133_rebuild = false,
+        .osc133_grid_scroll_collected = 0,
+        .osc133_grid_scroll_generation = 0,
     };
 
     const options = c.GhosttyTerminalOptions{
@@ -1969,7 +2665,7 @@ export fn tmux_ghostty_vt_new(wp: ?*c.window_pane) ?*GhosttyVT {
         return null;
     }
 
-    _ = c.ghostty_terminal_set(gvt.terminal, c.GHOSTTY_TERMINAL_OPT_USERDATA, pane);
+    _ = c.ghostty_terminal_set(gvt.terminal, c.GHOSTTY_TERMINAL_OPT_USERDATA, gvt);
     _ = c.ghostty_terminal_set(gvt.terminal, c.GHOSTTY_TERMINAL_OPT_WRITE_PTY, @ptrCast(&writePtyCb));
     _ = c.ghostty_terminal_set(gvt.terminal, c.GHOSTTY_TERMINAL_OPT_TITLE_CHANGED, @ptrCast(&titleChangedCb));
     _ = c.ghostty_terminal_set(gvt.terminal, c.GHOSTTY_TERMINAL_OPT_BELL, @ptrCast(&bellCb));
@@ -1995,6 +2691,7 @@ export fn tmux_ghostty_vt_new(wp: ?*c.window_pane) ?*GhosttyVT {
 
 export fn tmux_ghostty_vt_free(gvt_: ?*GhosttyVT) void {
     const gvt = gvt_ orelse return;
+    freeOsc133Markers(gvt);
     c.ghostty_render_state_row_iterator_free(gvt.row_iter);
     c.ghostty_render_state_free(gvt.render_state);
     c.ghostty_terminal_free(gvt.terminal);
@@ -2024,8 +2721,12 @@ export fn tmux_ghostty_vt_resize(gvt_: ?*GhosttyVT, sx: c_uint, sy: c_uint) void
     // longer lines up; rebuild it from scratch. The caller has already
     // resized the tmux grid, so resync immediately rather than leaving
     // the history empty until the next write.
-    if (gvt.wp.*.base.grid != null)
-        c.grid_clear_history(gvt.wp.*.base.grid);
+    if (gvt.wp.*.base.grid) |grid| {
+        clearOsc133MarkerStore(&gvt.osc133_active);
+        clearOsc133MarkerStore(&gvt.osc133_history);
+        rebuildOsc133Markers(gvt, grid, gvt.active_screen);
+        c.grid_clear_history(grid);
+    }
     gvt.last_scrollback = 0;
     gvt.last_kitty_sig = null;
     _ = c.image_free_all(&gvt.wp.*.base);
@@ -2033,12 +2734,174 @@ export fn tmux_ghostty_vt_resize(gvt_: ?*GhosttyVT, sx: c_uint, sy: c_uint) void
         gvt.wp.*.flags |= c.PANE_CHANGED | c.PANE_REDRAW;
 }
 
+export fn tmux_ghostty_vt_osc_timeout(gvt_: ?*GhosttyVT) void {
+    const gvt = gvt_ orelse return;
+    resetOsc(gvt);
+    gvt.osc_pending_esc = false;
+}
+
+fn feedTerminal(gvt: *GhosttyVT, buf: []const u8) void {
+    // While the primary scrollback ring is filling, feed in slices the
+    // ring can absorb: one byte appends at most one row, so a slice of
+    // (max - rows) bytes cannot push Ghostty past a prune. The moment
+    // the ring fills, import its rows into tmux's grid. Once Ghostty
+    // prunes a row, that row's tracked pins slide onto the surviving
+    // slot without invalidating, and OSC 133 markers can no longer tell
+    // their line from the replacement; importing first keeps every
+    // prunable row observable through grid_collect_history instead.
+    var rest = buf;
+    while (rest.len != 0) {
+        var rows: usize = 0;
+        if (gvt.active_screen != c.GHOSTTY_TERMINAL_SCREEN_PRIMARY or
+            gvt.max_scrollback == 0 or
+            c.ghostty_terminal_get(gvt.terminal, c.GHOSTTY_TERMINAL_DATA_SCROLLBACK_ROWS, &rows) != c.GHOSTTY_SUCCESS or
+            rows >= gvt.max_scrollback)
+        {
+            c.ghostty_terminal_vt_write(gvt.terminal, rest.ptr, rest.len);
+            return;
+        }
+        const slice = rest[0..@min(rest.len, gvt.max_scrollback - rows)];
+        c.ghostty_terminal_vt_write(gvt.terminal, slice.ptr, slice.len);
+        rest = rest[slice.len..];
+        var filled: usize = 0;
+        if (c.ghostty_terminal_get(gvt.terminal, c.GHOSTTY_TERMINAL_DATA_SCROLLBACK_ROWS, &filled) == c.GHOSTTY_SUCCESS and
+            filled >= gvt.max_scrollback)
+            _ = syncScrollback(gvt, &gvt.wp.*.base);
+    }
+}
+
+fn writeTerminalSegment(gvt: *GhosttyVT, data: []const u8) void {
+    if (data.len == 0)
+        return;
+
+    scanClearScreen(gvt, data);
+    scanTitleStack(gvt, data);
+    var buf = data;
+    var filtered: ?AltFiltered = null;
+    if (gvt.wp.*.options != null and c.options_get_number(gvt.wp.*.options, "alternate-screen") == 0)
+        filtered = filterAlternateScreen(gvt, buf);
+    defer if (filtered) |f| allocator.free(f.data.ptr[0..f.cap]);
+    if (filtered) |f|
+        buf = f.data;
+    if (buf.len != 0)
+        feedTerminal(gvt, buf);
+}
+
+fn syncPane(gvt: *GhosttyVT) void {
+    if (gvt.saw_esc)
+        syncLifecycleModes(gvt);
+    gvt.wp.*.flags |= c.PANE_CHANGED;
+    if (sync(gvt, &gvt.wp.*.base, false))
+        gvt.wp.*.flags |= c.PANE_REDRAW;
+}
+
+fn writeOscAware(gvt: *GhosttyVT, buf: []const u8) void {
+    var start: usize = 0;
+    var i: usize = 0;
+    while (i < buf.len) {
+        const ch = buf[i];
+        if (gvt.osc_active) {
+            if (gvt.osc_esc) {
+                gvt.osc_esc = false;
+                if (ch == '\\') {
+                    finishOsc(gvt, 0, "\x1b\\");
+                    start = i + 1;
+                    i += 1;
+                    continue;
+                }
+                resetOsc(gvt);
+                gvt.osc_pending_esc = true;
+                start = i;
+                continue;
+            }
+            if (ch == 0x07) {
+                finishOsc(gvt, 1, "\x07");
+                start = i + 1;
+                i += 1;
+                continue;
+            }
+            if (ch == 0x9c) {
+                finishOsc(gvt, 0, "\x9c");
+                start = i + 1;
+                i += 1;
+                continue;
+            }
+            if (ch == 0x18 or ch == 0x1a) {
+                resetOsc(gvt);
+                start = i + 1;
+                i += 1;
+                continue;
+            }
+            if (ch == 0x1b) {
+                gvt.osc_esc = true;
+                i += 1;
+                continue;
+            }
+            if (gvt.osc_discard) {
+                i += 1;
+                continue;
+            }
+            if (!appendOsc(gvt, ch)) {
+                gvt.osc_discard = true;
+                i += 1;
+                continue;
+            }
+            i += 1;
+            continue;
+        }
+
+        if (gvt.osc_pending_esc) {
+            if (ch == ']') {
+                gvt.osc_pending_esc = false;
+                resetOsc(gvt);
+                gvt.osc_active = true;
+                c.input_ghostty_start_ground_timer(gvt.wp);
+                syncPane(gvt);
+                start = i + 1;
+                i += 1;
+                continue;
+            }
+            if (ch == 0x1b) {
+                start = i + 1;
+                i += 1;
+                continue;
+            }
+            gvt.osc_pending_esc = false;
+            writeTerminalSegment(gvt, "\x1b");
+            start = i;
+            continue;
+        }
+
+        if (ch == 0x1b) {
+            writeTerminalSegment(gvt, buf[start..i]);
+            gvt.osc_pending_esc = true;
+            start = i + 1;
+            i += 1;
+            continue;
+        }
+        if (ch == 0x9d) {
+            writeTerminalSegment(gvt, buf[start..i]);
+            resetOsc(gvt);
+            gvt.osc_active = true;
+            gvt.osc_c1 = true;
+            c.input_ghostty_start_ground_timer(gvt.wp);
+            syncPane(gvt);
+            start = i + 1;
+            i += 1;
+            continue;
+        }
+        i += 1;
+    }
+    if (!gvt.osc_active and !gvt.osc_pending_esc)
+        writeTerminalSegment(gvt, buf[start..]);
+}
+
 export fn tmux_ghostty_vt_write(gvt_: ?*GhosttyVT, data: [*c]const u8, len: usize) void {
     const gvt = gvt_ orelse return;
     if (len == 0)
         return;
 
-    var buf = data[0..len];
+    const buf = data[0..len];
     // Both scanners only ever act on ESC/BEL/CAN/SUB bytes when idle,
     // so a plain-text buffer can skip the byte-by-byte state machines.
     // The same test gates the mode/palette sync: modes and colors can
@@ -2048,22 +2911,9 @@ export fn tmux_ghostty_vt_write(gvt_: ?*GhosttyVT, data: [*c]const u8, len: usiz
         !gvt.osc_active and !gvt.osc_pending_esc;
     gvt.saw_esc = !scanners_idle or
         std.mem.indexOfScalar(u8, buf, 0x1b) != null;
-    if (gvt.saw_esc) {
-        scanClearScreen(gvt, buf);
-        scanOscSideEffects(gvt, buf);
-    }
-
-    var filtered: ?AltFiltered = null;
-    if (gvt.wp.*.options != null and c.options_get_number(gvt.wp.*.options, "alternate-screen") == 0)
-        filtered = filterAlternateScreen(gvt, buf);
-    defer if (filtered) |f| allocator.free(f.data.ptr[0..f.cap]);
-    if (filtered) |f|
-        buf = f.data;
-
-    if (buf.len != 0)
-        c.ghostty_terminal_vt_write(gvt.terminal, buf.ptr, buf.len);
-
-    gvt.wp.*.flags |= c.PANE_CHANGED;
-    if (sync(gvt, &gvt.wp.*.base, false))
-        gvt.wp.*.flags |= c.PANE_REDRAW;
+    if (gvt.saw_esc or std.mem.indexOfScalar(u8, buf, 0x9d) != null)
+        writeOscAware(gvt, buf)
+    else
+        writeTerminalSegment(gvt, buf);
+    syncPane(gvt);
 }
