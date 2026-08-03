@@ -371,6 +371,22 @@ static const struct tty_feature tty_feature_kitty = {
 	TERM_KITTY
 };
 
+#ifdef ENABLE_IMAGES
+static const char *const tty_feature_image_capabilities[] = {
+	NULL
+};
+static const struct tty_feature tty_feature_image_quadrants = {
+	"image-quadrants",
+	tty_feature_image_capabilities,
+	TERM_IMAGE_QUADRANTS
+};
+static const struct tty_feature tty_feature_image_sextants = {
+	"image-sextants",
+	tty_feature_image_capabilities,
+	TERM_IMAGE_SEXTANTS
+};
+#endif
+
 /* Terminal supports the OSC 9;4 progress bar. */
 static const char *const tty_feature_progressbar_capabilities[] = {
 	"Spb=\\E]9;4;%p1%d;%p2%d\\E\\\\",
@@ -394,6 +410,10 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_focus,
 	&tty_feature_ignorefkeys,
 	&tty_feature_kitty,
+#ifdef ENABLE_IMAGES
+	&tty_feature_image_quadrants,
+	&tty_feature_image_sextants,
+#endif
 	&tty_feature_margins,
 	&tty_feature_mouse,
 	&tty_feature_osc7,

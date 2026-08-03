@@ -1034,6 +1034,63 @@ struct style {
 };
 
 #ifdef ENABLE_IMAGES
+/* Private ACS keys used by the text image backend. */
+#define TTY_ACS_IMAGE_SHADE_LIGHT 0x80
+#define TTY_ACS_IMAGE_SHADE_MEDIUM 0x81
+#define TTY_ACS_IMAGE_SHADE_DARK 0x82
+#define TTY_ACS_IMAGE_BLOCK 0x83
+#define TTY_ACS_IMAGE_HALF_UPPER 0x84
+#define TTY_ACS_IMAGE_HALF_LOWER 0x85
+#define TTY_ACS_IMAGE_HALF_LEFT 0x86
+#define TTY_ACS_IMAGE_HALF_RIGHT 0x87
+#define TTY_ACS_IMAGE_QUADRANT_LOWER_LEFT 0x88
+#define TTY_ACS_IMAGE_QUADRANT_LOWER_RIGHT 0x89
+#define TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT 0x8a
+#define TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT_LOWER_LEFT_LOWER_RIGHT 0x8b
+#define TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT_LOWER_RIGHT 0x8c
+#define TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT_UPPER_RIGHT_LOWER_LEFT 0x8d
+#define TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT_UPPER_RIGHT_LOWER_RIGHT 0x8e
+#define TTY_ACS_IMAGE_QUADRANT_UPPER_RIGHT 0x8f
+#define TTY_ACS_IMAGE_QUADRANT_UPPER_RIGHT_LOWER_LEFT 0x90
+#define TTY_ACS_IMAGE_QUADRANT_UPPER_RIGHT_LOWER_LEFT_LOWER_RIGHT 0x91
+#define TTY_ACS_IMAGE_SEXTANT_FIRST 0x92
+#define TTY_ACS_IMAGE_SEXTANT_LAST 0xcd
+
+struct image_sample {
+	u_char			 red;
+	u_char			 green;
+	u_char			 blue;
+	u_char			 alpha;
+	u_char			 brightness;
+};
+#define IMAGE_SAMPLE_COLUMNS 2
+#define IMAGE_SAMPLE_ROWS 6
+struct image_cell {
+	struct image_sample	 whole;
+	struct image_sample	 samples[IMAGE_SAMPLE_ROWS][IMAGE_SAMPLE_COLUMNS];
+};
+struct image {
+	u_int			 id;
+	u_int			 references;
+	u_int			 flags;
+	u_int			 parent_id;
+	u_int			 source_id;
+	u_int			 width;
+	u_int			 height;
+	u_int			 canvas_width;
+	u_int			 canvas_height;
+	u_int			 sx;
+	u_int			 sy;
+	size_t			 stride;
+	size_t			 size;
+	u_char			*pixels;
+	struct sixel_image	*sixel;
+	struct image_cell	*cells;
+	void			*fallback_data;
+
+	RB_ENTRY(image)		 entry;
+};
+RB_HEAD(images, image);
 #define IMAGE_SIZE_LIMIT (64 * 1024 * 1024)
 #endif
 
@@ -1731,6 +1788,10 @@ struct tty_term {
 #define TERM_SIXEL 0x40
 #define TERM_INVALIDMS 0x80
 #define TERM_KITTY 0x100
+#ifdef ENABLE_IMAGES
+#define TERM_IMAGE_QUADRANTS 0x200
+#define TERM_IMAGE_SEXTANTS 0x400
+#endif
 	int		 flags;
 
 	LIST_ENTRY(tty_term) entry;
@@ -3034,6 +3095,7 @@ void		 tty_default_features(struct client *, const char *, u_int);
 /* tty-acs.c */
 int		 tty_acs_needed(struct tty *);
 const char	*tty_acs_get(struct tty *, u_char);
+u_char		 tty_acs_image_sextant(u_int);
 int		 tty_acs_reverse_get(struct tty *, const char *, size_t);
 const struct utf8_data *tty_acs_double_borders(int);
 const struct utf8_data *tty_acs_heavy_borders(int);
@@ -4274,6 +4336,8 @@ void		 image_draw_line(struct tty *, struct screen *, u_int, u_int,
 void		 image_get_fallback_cell(struct tty *, struct image *, u_int,
 		     u_int, const struct grid_cell *, struct grid_cell *,
 		     const struct tty_style_ctx *);
+const struct image_cell *image_get_cell(struct image *, u_int, u_int);
+void		 image_free_fallback(struct image *);
 int		 image_get_fallback_at(struct tty *, struct screen *, u_int,
 		     u_int, const struct grid_cell *, struct grid_cell *,
 		     const struct tty_style_ctx *);

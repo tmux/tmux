@@ -249,7 +249,7 @@ endif
 
 # Enable image support.
 if ENABLE_IMAGES
-dist_tmux_SOURCES += image.c image-sixel.c image-kitty.c
+dist_tmux_SOURCES += image.c image-sixel.c image-kitty.c image-fallback.c
 endif
 
 # Add bits for fuzzing if enabled.

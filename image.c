@@ -27,48 +27,8 @@
 
 #include "tmux.h"
 
-/* An average of part of an image cell. RGB is premultiplied. */
-struct image_sample {
-	u_char			 red;
-	u_char			 green;
-	u_char			 blue;
-	u_char			 alpha;
-	u_char			 brightness;
-};
-
-/* Half blocks, quadrants and sextants all divide evenly into a 2 by 6 grid. */
-#define IMAGE_SAMPLE_COLUMNS 2
-#define IMAGE_SAMPLE_ROWS 6
 #define IMAGE_FLAG_NO_CURSOR 0x1
 #define IMAGE_Z_BELOW_BACKGROUND (INT32_MIN / 2)
-struct image_cell {
-	struct image_sample	 whole;
-	struct image_sample	 samples[IMAGE_SAMPLE_ROWS][IMAGE_SAMPLE_COLUMNS];
-};
-
-/* Immutable image data and cell geometry. */
-struct image {
-	u_int			 id;
-	u_int			 references;
-	u_int			 flags;
-	u_int			 parent_id;
-	u_int			 source_id;
-	u_int			 width;
-	u_int			 height;
-	u_int			 canvas_width;
-	u_int			 canvas_height;
-	u_int			 sx;
-	u_int			 sy;
-	size_t			 stride;
-	size_t			 size;
-	u_char			*pixels;
-	/* Original indexed SIXEL data, if this image arrived as SIXEL. */
-	struct sixel_image	*sixel;
-	struct image_cell	*cells;
-
-	RB_ENTRY(image)		 entry;
-};
-RB_HEAD(images, image);
 
 /* A cell-aligned part of an image to draw at a terminal position. */
 struct image_rect {
@@ -1055,7 +1015,7 @@ image_free(u_int id)
 }
 
 /* Return a precomputed fallback cell sample. */
-static const struct image_cell *
+const struct image_cell *
 image_get_cell(struct image *im, u_int x, u_int y)
 {
 	if (im == NULL || x >= im->sx || y >= im->sy)
@@ -1063,23 +1023,6 @@ image_get_cell(struct image *im, u_int x, u_int y)
 	if (im->cells == NULL)
 		image_make_cells(im);
 	return (&im->cells[(size_t)y * im->sx + x]);
-}
-
-/* Fill a grid cell with a fallback image glyph. */
-void
-image_get_fallback_cell(__unused struct tty *tty, struct image *im, u_int x,
-    u_int y, const struct grid_cell *gc, struct grid_cell *out,
-    __unused const struct tty_style_ctx *style_ctx)
-{
-	static const char	 ramp[] = " .:-=+*#%@";
-	const struct image_cell	*cell;
-	u_int			 level = 0;
-
-	memcpy(out, gc, sizeof *out);
-	cell = image_get_cell(im, x, y);
-	if (cell != NULL)
-		level = cell->whole.brightness * (sizeof ramp - 2) / 255;
-	utf8_set(&out->data, ramp[level]);
 }
 
 /* Return one for a fallback cell, minus one to continue along an image line. */
