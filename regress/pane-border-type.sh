@@ -367,6 +367,26 @@ must_equal "$($TMUX display-message -p -t '{bottom}' '#{pane_id}')" "%2" \
 $TMUX kill-server
 
 # ---------------------------------------------------------------------------
+# Switching to separate after a joined -l1 split grows undersized cells
+# ---------------------------------------------------------------------------
+# Full-height split -fhl1 under joined leaves a 1-column right cell. Separate
+# needs at least 3 columns for the right edge (content + both gutters).
+$TMUX new-session -d -s reflow -x 80 -y 12 'cat' || exit 1
+$TMUX set -g status off || fail "status off failed"
+$TMUX set -w pane-border-type joined || fail "set joined failed"
+$TMUX split-window -fh -l 1 -t reflow:0 'cat' || fail "split -fhl1 failed"
+$TMUX set -w pane-border-type separate || fail "set separate failed"
+right_w=$($TMUX display-message -p -t reflow:0.1 '#{pane_width}')
+right_l=$($TMUX display-message -p -t reflow:0.1 '#{pane_left}')
+right_r=$($TMUX display-message -p -t reflow:0.1 '#{pane_right}')
+win_w=$($TMUX display-message -p -t reflow:0 '#{window_width}')
+must_equal "$right_w" "1" "right content width after separate reflow"
+[ "$right_l" -ge 1 ] || fail "right pane missing left inset ($right_l)"
+[ "$right_r" -lt "$win_w" ] ||
+	fail "right pane missing right inset: R=$right_r win=$win_w"
+$TMUX kill-server
+
+# ---------------------------------------------------------------------------
 # Always-on scrollbars: joined horizontal split needs space for both bars
 # ---------------------------------------------------------------------------
 # Default style is width 1 pad 0: min is (1+1)+(1+1)+1 = 5. Width 4 must fail.

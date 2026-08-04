@@ -3863,6 +3863,7 @@ void		 layout_apply_pane_border_type(struct window *,
 		    u_int *, u_int *);
 void		 layout_fix_offsets(struct window *);
 void		 layout_fix_panes(struct window *, struct window_pane *);
+void		 layout_enforce_minimums(struct window *);
 void		 layout_resize_adjust(struct window *, struct layout_cell *,
 		     enum layout_type, int);
 void		 layout_resize_set_size(struct window *, struct layout_cell *,
