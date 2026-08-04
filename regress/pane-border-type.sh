@@ -8,6 +8,8 @@
 #   - separate-active uses the same inset geometry as separate;
 #   - resize-pane respects a larger layout-cell minimum so panes stay inside
 #     the window;
+#   - full-size split and select-layout -E honour separate cell minimums;
+#   - resize-window will not shrink below the separate layout floor;
 #   - select-pane -L/-R/-U/-D and {left}/{top}/… targets work with the
 #     double-border gap;
 #   - both cells of a separate double border are mouse borders, not pane
@@ -189,6 +191,95 @@ must_equal "$(pane_fmt "$p1" '#{pane_height}')" "1"
 bottom=$(pane_fmt "$p1" '#{pane_bottom}')
 [ "$bottom" -lt "$win_h" ] ||
 	fail "bottom pane outside window after -y 1: B=$bottom win=$win_h"
+$TMUX kill-server
+
+# ---------------------------------------------------------------------------
+# Full-size split: separate mins apply when the layout root is a node
+# ---------------------------------------------------------------------------
+# splitw -fh -l 1 after a vertical stack used to create a 1-column cell (the
+# size path could not see the window when lc->wp was NULL on a node root).
+$TMUX new-session -d -s fsplit -x 80 -y 24 'cat' || exit 1
+$TMUX set -g status off || fail "status off failed"
+$TMUX set -w pane-border-type separate || fail "set separate failed"
+$TMUX split-window -v -t fsplit:0 'cat' || fail "split -v failed"
+$TMUX split-window -fh -l 1 -t fsplit:0 'cat' || fail "split -fh -l 1 failed"
+layout=$($TMUX display-message -p -t fsplit:0 '#{window_layout}')
+# New pane is the last index after two splits (0,1 stacked; 2 full-height).
+right_w=$($TMUX display-message -p -t fsplit:0.2 '#{pane_width}')
+right_l=$($TMUX display-message -p -t fsplit:0.2 '#{pane_left}')
+right_r=$($TMUX display-message -p -t fsplit:0.2 '#{pane_right}')
+win_w=$($TMUX display-message -p -t fsplit:0 '#{window_width}')
+must_equal "$right_w" "1" "full-size -l 1 content width"
+# Content one cell in from both edges of a 3-wide cell: left = win_w - 2.
+must_equal "$right_l" "$((win_w - 2))" "full-size -l 1 left inset"
+[ "$right_r" -lt "$win_w" ] ||
+	fail "full-size -l 1 pane outside window: R=$right_r win=$win_w"
+# Edge cell must be 3 columns wide.
+case "$layout" in
+*,3x*) ;;
+*) fail "full-size -l 1 must use a 3-column edge cell, got $layout" ;;
+esac
+$TMUX kill-server
+
+# ---------------------------------------------------------------------------
+# select-layout -E: every cell keeps its separate minimum
+# ---------------------------------------------------------------------------
+$TMUX new-session -d -s even -x 80 -y 24 'cat' || exit 1
+$TMUX set -g status off || fail "status off failed"
+$TMUX set -w pane-border-type separate || fail "set separate failed"
+$TMUX split-window -h -t even:0 'cat' || fail "split 1 failed"
+$TMUX split-window -h -t even:0 'cat' || fail "split 2 failed"
+$TMUX split-window -h -t even:0 'cat' || fail "split 3 failed"
+# Wide enough that four panes can evenize (mins sum to 12 with separators).
+$TMUX resize-window -t even:0 -x 20 || fail "resize-window -x 20 failed"
+$TMUX select-layout -E -t even:0 || fail "select-layout -E failed"
+layout=$($TMUX display-message -p -t even:0 '#{window_layout}')
+# No 1-column layout cells (non-edge min is 2, edge min is 3).
+case "$layout" in
+*,1x*)
+	fail "evenize left a 1-column cell under separate: $layout"
+	;;
+esac
+win_w=$($TMUX display-message -p -t even:0 '#{window_width}')
+must_equal "$win_w" "20" "evenize should keep requested window width 20"
+# Every pane stays inset and inside the window.
+$TMUX list-panes -t even:0 -F \
+	'#{pane_index} #{pane_width} #{pane_left} #{pane_right}' >"$TMP/even.panes"
+while read -r idx w left right; do
+	[ "$w" -ge 1 ] || fail "evenize pane $idx content width $w"
+	[ "$left" -ge 1 ] || fail "evenize pane $idx left $left (missing inset)"
+	[ "$right" -lt "$win_w" ] ||
+		fail "evenize pane $idx outside window: R=$right win=$win_w"
+done <"$TMP/even.panes"
+$TMUX kill-server
+
+# ---------------------------------------------------------------------------
+# resize-window: layout and window clamp to the separate floor
+# ---------------------------------------------------------------------------
+# Five side-by-side separate panes need width 15 (mins 2+2+2+2+3 + 4 seps).
+# Requesting 10 must clamp to 15, not crush border gutters.
+$TMUX new-session -d -s floor -x 80 -y 12 'cat' || exit 1
+$TMUX set -g status off || fail "status off failed"
+$TMUX set -w pane-border-type separate || fail "set separate failed"
+$TMUX split-window -h -t floor:0 'cat' || fail "split 1 failed"
+$TMUX split-window -h -t floor:0 'cat' || fail "split 2 failed"
+$TMUX split-window -h -t floor:0 'cat' || fail "split 3 failed"
+$TMUX split-window -h -t floor:0 'cat' || fail "split 4 failed"
+$TMUX resize-window -t floor:0 -x 10 || fail "resize-window -x 10 failed"
+must_equal "$($TMUX display-message -p -t floor:0 '#{window_width}')" "15" \
+	"window must clamp to separate floor of 15"
+layout=$($TMUX display-message -p -t floor:0 '#{window_layout}')
+case "$layout" in
+*,15x12,*) ;;
+*) fail "layout floor size should be 15x12, got $layout" ;;
+esac
+$TMUX list-panes -t floor:0 -F '#{pane_width} #{pane_left} #{pane_right}' \
+	>"$TMP/floor.panes"
+while read -r w left right; do
+	must_equal "$w" "1" "crushed floor content width"
+	[ "$left" -ge 1 ] || fail "floor pane missing left inset ($left)"
+	[ "$right" -lt 15 ] || fail "floor pane outside: R=$right"
+done <"$TMP/floor.panes"
 $TMUX kill-server
 
 # ---------------------------------------------------------------------------

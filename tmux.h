@@ -3883,8 +3883,8 @@ void		 layout_assign_pane(struct layout_cell *, struct window_pane *,
 		     int);
 int		 layout_split_check_space(struct window_pane *,
 		     struct layout_cell *, enum layout_type);
-void		 layout_split_sizes(struct layout_cell *, int, int,
-		     enum layout_type, u_int *, u_int *, u_int *);
+void		 layout_split_sizes(struct window *, struct layout_cell *, int,
+		     int, enum layout_type, u_int *, u_int *, u_int *);
 struct layout_cell *layout_replace_with_node(struct window *,
 		     struct layout_cell *, enum layout_type);
 struct layout_cell *layout_split_pane(struct window_pane *, enum layout_type,
