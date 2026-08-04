@@ -239,6 +239,7 @@ struct redraw_draw_ctx {
 	u_int			 status_lines;
 	enum pane_lines		 pane_lines;
 	struct grid_cell	 default_gc;
+	int			 border_type;
 
 	int			 flags;
 #define REDRAW_ISOLATES 0x1
@@ -1236,8 +1237,7 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 		wp = redraw_get_pane_for_border_style(dctx, span);
 		cell_type = span->data.b.cell_type;
 		/* separate-active: blank inactive gutters so focus does not resize. */
-		if (options_get_number(w->options, "pane-border-type") ==
-		    PANE_BORDER_TYPE_SEPARATE_ACTIVE &&
+		if (dctx->border_type == PANE_BORDER_TYPE_SEPARATE_ACTIVE &&
 		    (dctx->active == NULL ||
 		    !redraw_data_has_pane(&span->data, dctx->active)))
 			blank = 1;
@@ -1634,6 +1634,8 @@ redraw_set_draw_context(struct redraw_draw_ctx *dctx,
 	if (server_is_marked(s, s->curw, marked_pane.wp))
 		dctx->marked = marked_pane.wp;
 	dctx->active = s->curw->window->active;
+	dctx->border_type = options_get_number(s->curw->window->options,
+	    "pane-border-type");
 
 	lines = status_line_size(c);
 	if (options_get_number(oo, "status-position") == 0)

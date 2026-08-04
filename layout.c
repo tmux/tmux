@@ -1407,8 +1407,9 @@ layout_split_check_space(struct window_pane *wp, struct layout_cell *lc,
 				min2++;
 			minimum = min1 + 1 + min2;
 		} else if (w->sb == PANE_SCROLLBARS_ALWAYS) {
-			minimum = PANE_MINIMUM * 2 + sb_style->width +
-			    sb_style->pad;
+			min1 = PANE_MINIMUM + sb_style->width + sb_style->pad;
+			min2 = PANE_MINIMUM + sb_style->width + sb_style->pad;
+			minimum = min1 + 1 + min2;
 		} else
 			minimum = PANE_MINIMUM * 2 + 1;
 		if (sx < minimum)

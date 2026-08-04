@@ -2122,8 +2122,8 @@ window_pane_find_up(struct window_pane *wp)
 		if (edge == 1)
 			edge = (int)w->sy + 1;
 	} else if (status == PANE_STATUS_BOTTOM) {
-		if (edge == 0)
-			edge = (int)w->sy;
+		if (edge == gap - 1)
+			edge = (int)w->sy + gap - 1;
 	} else {
 		if (edge == gap - 1)
 			edge = (int)w->sy + 1;
@@ -2186,8 +2186,8 @@ window_pane_find_down(struct window_pane *wp)
 		if (edge >= (int)w->sy)
 			edge = 1;
 	} else if (status == PANE_STATUS_BOTTOM) {
-		if (edge >= (int)w->sy - 1)
-			edge = 0;
+		if (edge >= (int)w->sy + gap - 2)
+			edge = gap - 1;
 	} else {
 		if (edge >= (int)w->sy)
 			edge = gap - 1;
