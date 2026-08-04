@@ -4200,6 +4200,8 @@ format_log_debug_cb(const char *key, const char *value, void *arg)
 void
 format_log_debug(struct format_tree *ft, const char *prefix)
 {
+	if (log_get_level() == 0)
+		return;
 	format_each(ft, format_log_debug_cb, (void *)prefix);
 }
 
