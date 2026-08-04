@@ -1,4 +1,4 @@
-/* $OpenBSD: proc.c,v 1.31 2026/06/08 21:38:19 nicm Exp $ */
+/* $OpenBSD: proc.c,v 1.32 2026/08/04 13:16:03 claudio Exp $ */
 
 /*
  * Copyright (c) 2015 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -74,7 +74,7 @@ static void
 proc_event_cb(__unused int fd, short events, void *arg)
 {
 	struct tmuxpeer	*peer = arg;
-	ssize_t		 n;
+	int		 n;
 	struct imsg	 imsg;
 
 	if (!(peer->flags & PEER_BAD) && (events & EV_READ)) {
@@ -83,7 +83,7 @@ proc_event_cb(__unused int fd, short events, void *arg)
 			return;
 		}
 		for (;;) {
-			if ((n = imsg_get(&peer->ibuf, &imsg)) == -1) {
+			if ((n = imsgbuf_get(&peer->ibuf, &imsg)) == -1) {
 				peer->dispatchcb(NULL, peer->arg);
 				return;
 			}
