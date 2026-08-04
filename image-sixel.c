@@ -72,6 +72,22 @@ struct sixel_chunk {
 	char	*data;
 };
 
+struct sixel_image_cache {
+	u_int			 server_id;
+	u_int			 xpixel;
+	u_int			 ypixel;
+	size_t			 size;
+	uint64_t		 age;
+	struct sixel_image	*si;
+	struct sixel_image_cache	*next;
+};
+
+struct sixel_output {
+	struct sixel_image_cache	*images;
+	size_t			 size;
+	uint64_t		 age;
+};
+
 static int
 sixel_parse_expand_lines(struct sixel_image *si, u_int y)
 {
@@ -499,6 +515,8 @@ sixel_to_image(struct sixel_image *si)
 	    sx, sy, pixels);
 	if (im == NULL)
 		free(pixels);
+	else
+		im->sixel = si;
 	return (im);
 }
 #endif
@@ -1124,21 +1142,175 @@ fail:
 	return (NULL);
 }
 
+static struct sixel_output *
+sixel_get_output(struct tty *tty)
+{
+	struct sixel_output	*so = tty->image_data;
+
+	if (so == NULL) {
+		so = xcalloc(1, sizeof *so);
+		tty->image_data = so;
+	}
+	return (so);
+}
+
+static size_t
+sixel_image_size(struct sixel_image *si)
+{
+	uint64_t	 size;
+
+	if ((uint64_t)si->x * si->y > SIZE_MAX / sizeof(uint16_t))
+		return (0);
+	size = (uint64_t)si->x * si->y * sizeof(uint16_t);
+	if ((uint64_t)si->ncolours * sizeof *si->colours > SIZE_MAX - size)
+		return (0);
+	size += (uint64_t)si->ncolours * sizeof *si->colours;
+	if (size > SIZE_MAX)
+		return (0);
+	return (size);
+}
+
+static void
+sixel_remove_cache(struct sixel_output *so, struct sixel_image_cache **pp)
+{
+	struct sixel_image_cache	*cache = *pp;
+
+	*pp = cache->next;
+	so->size -= cache->size;
+	sixel_free(cache->si);
+	free(cache);
+}
+
+static void
+sixel_collect_images(struct sixel_output *so)
+{
+	struct sixel_image_cache	**pp, *cache;
+
+	for (pp = &so->images; (cache = *pp) != NULL; ) {
+		if (image_find(cache->server_id) == NULL)
+			sixel_remove_cache(so, pp);
+		else
+			pp = &cache->next;
+	}
+}
+
+void
+sixel_free_output(struct tty *tty, __unused int send)
+{
+	struct sixel_output		*so = tty->image_data;
+	struct sixel_image_cache	*cache, *next;
+
+	if (so == NULL)
+		return;
+	for (cache = so->images; cache != NULL; cache = next) {
+		next = cache->next;
+		sixel_free(cache->si);
+		free(cache);
+	}
+	free(so);
+	tty->image_data = NULL;
+}
+
+void
+sixel_geometry_changed(struct tty *tty)
+{
+	sixel_free_output(tty, !!(tty->flags & TTY_OPENED));
+}
+
+static struct sixel_image *
+sixel_render_image(struct image *im, u_int xpixel, u_int ypixel)
+{
+	/* Preserve SIXEL's original palette and indexed pixels when possible. */
+	if (im->sixel != NULL)
+		return (sixel_scale(im->sixel, xpixel, ypixel, 0, 0,
+		    im->sx, im->sy, 1));
+	return (sixel_from_image(im, 0, 0, im->sx, im->sy, xpixel, ypixel));
+}
+
+static struct sixel_image *
+sixel_get_image(struct tty *tty, struct image *im)
+{
+	struct sixel_output		*so = sixel_get_output(tty);
+	struct sixel_image_cache	**pp, *cache, **oldest;
+	struct sixel_image		*si;
+	size_t			 size;
+
+	sixel_collect_images(so);
+	for (cache = so->images; cache != NULL; cache = cache->next) {
+		if (cache->server_id != im->id || cache->xpixel != tty->xpixel ||
+		    cache->ypixel != tty->ypixel)
+			continue;
+		cache->age = ++so->age;
+		return (cache->si);
+	}
+
+	si = sixel_render_image(im, tty->xpixel, tty->ypixel);
+	if (si == NULL)
+		return (NULL);
+	size = sixel_image_size(si);
+	if (size == 0 || size > IMAGE_SIZE_LIMIT) {
+		/* The renderer still has a usable image, but it is not cacheable. */
+		return (si);
+	}
+	while (so->size > IMAGE_SIZE_LIMIT - size) {
+		oldest = NULL;
+		for (pp = &so->images; (cache = *pp) != NULL;
+		    pp = &cache->next) {
+			if (oldest == NULL || cache->age < (*oldest)->age)
+				oldest = pp;
+		}
+		if (oldest == NULL)
+			break;
+		sixel_remove_cache(so, oldest);
+	}
+	cache = xcalloc(1, sizeof *cache);
+	cache->server_id = im->id;
+	cache->xpixel = tty->xpixel;
+	cache->ypixel = tty->ypixel;
+	cache->size = size;
+	cache->age = ++so->age;
+	cache->si = si;
+	cache->next = so->images;
+	so->images = cache;
+	so->size += size;
+	return (si);
+}
+
+static int
+sixel_image_is_cached(struct tty *tty, struct sixel_image *si)
+{
+	struct sixel_output		*so = tty->image_data;
+	struct sixel_image_cache	*cache;
+
+	if (so == NULL)
+		return (0);
+	for (cache = so->images; cache != NULL; cache = cache->next) {
+		if (cache->si == si)
+			return (1);
+	}
+	return (0);
+}
+
 void
 sixel_draw_rectangle(struct tty *tty, const struct image_rectangle *rectangle,
     __unused const struct tty_style_ctx *style_ctx)
 {
-	struct sixel_image	*si;
+	struct sixel_image	*si, *crop;
 	char			*data;
 	size_t			 size;
 
-	si = sixel_from_image(rectangle->image, rectangle->source_x,
-	    rectangle->source_y, rectangle->width, rectangle->height,
-	    tty->xpixel, tty->ypixel);
+	si = sixel_get_image(tty, rectangle->image);
 	if (si == NULL)
 		return;
-	data = sixel_print(si, NULL, &size);
-	sixel_free(si);
+	crop = sixel_scale(si, tty->xpixel, tty->ypixel,
+	    rectangle->source_x, rectangle->source_y, rectangle->width,
+	    rectangle->height, 1);
+	if (!sixel_image_is_cached(tty, si))
+		sixel_free(si);
+	if (crop == NULL)
+		return;
+	data = sixel_print(crop, NULL, &size);
+	sixel_free(crop);
 	if (data == NULL)
 		return;
 	tty_region_off(tty);
