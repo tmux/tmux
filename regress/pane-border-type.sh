@@ -327,6 +327,17 @@ $TMUX select-pane -t "$p0" || fail "select top failed"
 must_equal "$($TMUX display-message -p -t '{down-of}' '#{pane_id}')" "$p1" \
 	"{down-of}"
 
+# Wrap selectp -D/-U with separate + pane-border-status bottom.
+$TMUX set -w pane-border-status bottom || fail "pane-border-status bottom failed"
+$TMUX select-pane -t "$p1" || fail "select bottom for wrap failed"
+$TMUX select-pane -D || fail "select-pane -D wrap failed"
+must_equal "$($TMUX display-message -p -t nav:0 '#{pane_id}')" "$p0" \
+	"select-pane -D wrap to top (separate + bottom status)"
+$TMUX select-pane -U || fail "select-pane -U wrap failed"
+must_equal "$($TMUX display-message -p -t nav:0 '#{pane_id}')" "$p1" \
+	"select-pane -U wrap to bottom (separate + bottom status)"
+$TMUX set -w pane-border-status off || fail "pane-border-status off failed"
+
 # 2x2 grid for absolute edge targets. Same split order as targets-panes.sh so
 # pane ids are deterministic: %0 TL, %1 TR, %2 BL, %3 BR.
 $TMUX kill-server
@@ -353,6 +364,27 @@ must_equal "$($TMUX display-message -p -t '{right}' '#{pane_id}')" "%1" \
 	"{right}"
 must_equal "$($TMUX display-message -p -t '{bottom}' '#{pane_id}')" "%2" \
 	"{bottom}"
+$TMUX kill-server
+
+# ---------------------------------------------------------------------------
+# Always-on scrollbars: joined horizontal split needs space for both bars
+# ---------------------------------------------------------------------------
+# Default style is width 1 pad 0: min is (1+1)+(1+1)+1 = 5. Width 4 must fail.
+$TMUX new-session -d -s sball -x 4 -y 12 'cat' || exit 1
+$TMUX set -g status off || fail "status off failed"
+$TMUX set -g pane-scrollbars on || fail "pane-scrollbars on failed"
+$TMUX set -w pane-border-type joined || fail "set joined failed"
+$TMUX split-window -h -t sball:0 'cat' 2>"$TMP/sball.err" &&
+	fail "joined split with scrollbars on width 4 should fail"
+grep -q 'no space for a new pane' "$TMP/sball.err" ||
+	fail "expected no-space error, got: $(cat "$TMP/sball.err")"
+must_equal "$($TMUX list-panes -t sball:0 | wc -l | tr -d ' ')" "1" \
+	"joined no-space must leave a single pane"
+# Width 5 is the floor and must succeed with sane sizes.
+$TMUX resize-window -t sball:0 -x 5 || fail "resize to 5 failed"
+$TMUX split-window -h -t sball:0 'cat' || fail "joined split width 5 failed"
+must_equal "$($TMUX list-panes -t sball:0 | wc -l | tr -d ' ')" "2" \
+	"joined scrollbars split at floor width"
 $TMUX kill-server
 
 # ---------------------------------------------------------------------------
