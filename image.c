@@ -50,7 +50,8 @@ static const struct image_backend image_backend_kitty = {
 	kitty_draw_rectangle, kitty_free_output, kitty_geometry_changed
 };
 static const struct image_backend image_backend_sixel = {
-	"sixel", IMAGE_BACKEND_GRAPHICAL, sixel_draw_rectangle, NULL, NULL
+	"sixel", IMAGE_BACKEND_GRAPHICAL, sixel_draw_rectangle,
+	sixel_free_output, sixel_geometry_changed
 };
 
 static const struct image_backend *
@@ -311,6 +312,8 @@ image_free(u_int id)
 		free(im->pixels);
 	else
 		image_free(im->parent_id);
+	if (im->sixel != NULL)
+		sixel_free(im->sixel);
 	free(im->cells);
 	free(im);
 }

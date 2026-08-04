@@ -1071,6 +1071,8 @@ struct image {
 	size_t			 stride;
 	size_t			 size;
 	u_char			*pixels;
+	/* Original indexed SIXEL data, if this image arrived as SIXEL. */
+	struct sixel_image	*sixel;
 	struct image_cell	*cells; /* lazily generated text samples */
 
 	RB_ENTRY(image)		 entry;
@@ -4331,6 +4333,8 @@ void		 kitty_free_output(struct tty *, int);
 void		 kitty_geometry_changed(struct tty *);
 void		 sixel_draw_rectangle(struct tty *,
 		     const struct image_rectangle *, const struct tty_style_ctx *);
+void		 sixel_free_output(struct tty *, int);
+void		 sixel_geometry_changed(struct tty *);
 #endif
 
 #ifdef ENABLE_SIXEL
