@@ -1,4 +1,4 @@
-/* $OpenBSD: control.c,v 1.64 2026/08/03 20:18:20 nicm Exp $ */
+/* $OpenBSD: control.c,v 1.65 2026/08/04 11:18:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -968,21 +968,17 @@ control_discard(struct client *c)
 	bufferevent_disable(cs->read_event, EV_READ);
 }
 
-/*
- * Discard all output for a client, including output which has already been
- * queued to be written.
- */
+/* Discard all tmux-owned queued control blocks and stop writing. */
 void
 control_discard_all(struct client *c)
 {
 	struct control_state	*cs = c->control_state;
 	struct control_block	*cb, *cb1;
-	struct evbuffer		*evb = cs->write_event->output;
 
 	control_discard(c);
 	TAILQ_FOREACH_SAFE(cb, &cs->all_blocks, all_entry, cb1)
 		control_free_block(cs, cb);
-	evbuffer_drain(evb, EVBUFFER_LENGTH(evb));
+	bufferevent_disable(cs->write_event, EV_WRITE);
 }
 
 /* Stop control mode. */
