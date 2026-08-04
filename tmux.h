@@ -1090,6 +1090,8 @@ struct image {
 	size_t			 stride;
 	size_t			 size;
 	u_char			*pixels;
+	/* Original indexed SIXEL data, if this image arrived as SIXEL. */
+	struct sixel_image	*sixel;
 	struct image_cell	*cells; /* lazily generated text samples */
 	void			*fallback_data;
 
@@ -1904,6 +1906,7 @@ struct tty {
 	struct tty_key	*key_tree;
 #ifdef ENABLE_IMAGES
 	const struct image_backend *image_backend;
+	void		*image_data;
 #endif
 };
 
@@ -4305,6 +4308,7 @@ int		 image_tty_is_graphical(struct tty *);
 int		 image_tty_scrolls(struct tty *);
 void		 image_tty_update(struct tty *);
 void		 image_tty_geometry_changed(struct tty *);
+void		 image_tty_free(struct tty *, int);
 void		 image_draw_line(struct tty *, struct screen *, u_int, u_int,
 		     u_int, u_int, u_int, const struct tty_style_ctx *);
 const struct image_cell *image_get_cell(struct image *, u_int, u_int);
@@ -4314,6 +4318,8 @@ void		 image_get_fallback_cell(struct tty *, struct image *, u_int,
 void		 image_free_fallback(struct image *);
 void		 sixel_draw_rectangle(struct tty *,
 		     const struct image_rectangle *, const struct tty_style_ctx *);
+void		 sixel_free_output(struct tty *, int);
+void		 sixel_geometry_changed(struct tty *);
 #endif
 
 #ifdef ENABLE_SIXEL
