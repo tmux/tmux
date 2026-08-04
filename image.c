@@ -36,13 +36,16 @@ struct image_backend {
 	int		 flags;
 	void		(*draw_rectangle)(struct tty *,
 		    const struct image_rectangle *, const struct tty_style_ctx *);
+	void		(*free)(struct tty *, int);
+	void		(*geometry_changed)(struct tty *);
 };
 
 static const struct image_backend image_backend_ascii = {
-	"ascii", IMAGE_BACKEND_SCROLLS, NULL
+	"ascii", IMAGE_BACKEND_SCROLLS, NULL, NULL, NULL
 };
 static const struct image_backend image_backend_sixel = {
-	"sixel", IMAGE_BACKEND_GRAPHICAL, sixel_draw_rectangle
+	"sixel", IMAGE_BACKEND_GRAPHICAL, sixel_draw_rectangle,
+	sixel_free_output, sixel_geometry_changed
 };
 
 static const struct image_backend *
@@ -63,6 +66,9 @@ image_tty_update(struct tty *tty)
 	if (tty->image_backend == backend)
 		return;
 
+	if (tty->image_backend != NULL && tty->image_backend->free != NULL)
+		tty->image_backend->free(tty, !!(tty->flags & TTY_OPENED));
+	tty->image_data = NULL;
 	tty->image_backend = backend;
 	log_debug("%s: %s image backend is %s", __func__,
 	    tty->client->name, backend->name);
@@ -86,6 +92,17 @@ void
 image_tty_geometry_changed(struct tty *tty)
 {
 	image_tty_update(tty);
+	if (tty->image_backend->geometry_changed != NULL)
+		tty->image_backend->geometry_changed(tty);
+}
+
+void
+image_tty_free(struct tty *tty, int send)
+{
+	if (tty->image_backend != NULL && tty->image_backend->free != NULL)
+		tty->image_backend->free(tty, send);
+	tty->image_backend = NULL;
+	tty->image_data = NULL;
 }
 
 static int
@@ -249,6 +266,8 @@ image_free(u_int id)
 	log_debug("%s: freeing image %u", __func__, id);
 	RB_REMOVE(images, &images, im);
 	free(im->pixels);
+	if (im->sixel != NULL)
+		sixel_free(im->sixel);
 	free(im->cells);
 	free(im);
 }
