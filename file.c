@@ -333,7 +333,8 @@ file_write(struct client *c, const char *path, int flags, const void *bdata,
 			cf->error = EIO;
 			goto done;
 		}
-		fclose(f);
+		if (fclose(f) != 0)
+			cf->error = errno;
 		goto done;
 	}
 
@@ -500,9 +501,13 @@ file_push(struct client_file *cf)
 		cf->references++;
 		event_once(-1, EV_TIMEOUT, file_push_cb, cf, NULL);
 	} else if (cf->stream > 2) {
+		/*
+		 * The client has all of the data but has not necessarily
+		 * written it yet, so wait for it to say how it went rather
+		 * than reporting success now.
+		 */
 		close.stream = cf->stream;
 		proc_send(cf->peer, MSG_WRITE_CLOSE, -1, &close, sizeof close);
-		file_fire_done(cf);
 	}
 	free(msg);
 }
@@ -527,6 +532,30 @@ file_write_left(struct client_files *files)
 	return (waiting != 0);
 }
 
+/* Finish with a file and tell the server how the write went (client). */
+static void
+file_write_finish(struct client_file *cf)
+{
+	struct msg_write_done	 msg;
+
+	if (cf->event != NULL) {
+		bufferevent_free(cf->event);
+		cf->event = NULL;
+	}
+	if (cf->fd != -1) {
+		if (close(cf->fd) != 0 && cf->error == 0)
+			cf->error = errno;
+		cf->fd = -1;
+	}
+
+	msg.stream = cf->stream;
+	msg.error = cf->error;
+	proc_send(cf->peer, MSG_WRITE_DONE, -1, &msg, sizeof msg);
+
+	RB_REMOVE(client_files, cf->tree, cf);
+	file_free(cf);
+}
+
 /* Client file write error callback. */
 static void
 file_write_error_callback(__unused struct bufferevent *bev, __unused short what,
@@ -536,6 +565,8 @@ file_write_error_callback(__unused struct bufferevent *bev, __unused short what,
 
 	log_debug("write error file %d", cf->stream);
 
+	cf->error = EIO;
+
 	bufferevent_free(cf->event);
 	cf->event = NULL;
 
@@ -544,6 +575,13 @@ file_write_error_callback(__unused struct bufferevent *bev, __unused short what,
 
 	if (cf->cb != NULL)
 		cf->cb(NULL, NULL, 0, -1, NULL, cf->data);
+
+	/*
+	 * The rest of the data cannot be written. If the server has not closed
+	 * the file yet, it is told about the error when it does.
+	 */
+	if (cf->closed)
+		file_write_finish(cf);
 }
 
 /* Client file write callback. */
@@ -557,12 +595,8 @@ file_write_callback(__unused struct bufferevent *bev, void *arg)
 	if (cf->cb != NULL)
 		cf->cb(NULL, NULL, 0, -1, NULL, cf->data);
 
-	if (cf->closed && EVBUFFER_LENGTH(cf->event->output) == 0) {
-		bufferevent_free(cf->event);
-		close(cf->fd);
-		RB_REMOVE(client_files, cf->tree, cf);
-		file_free(cf);
-	}
+	if (cf->closed && EVBUFFER_LENGTH(cf->event->output) == 0)
+		file_write_finish(cf);
 }
 
 /* Handle a file write open message (client). */
@@ -664,14 +698,9 @@ file_write_close(struct client_files *files, struct imsg *imsg)
 		fatalx("unknown stream number");
 	log_debug("close file %d", cf->stream);
 
-	if (cf->event == NULL || EVBUFFER_LENGTH(cf->event->output) == 0) {
-		if (cf->event != NULL)
-			bufferevent_free(cf->event);
-		if (cf->fd != -1)
-			close(cf->fd);
-		RB_REMOVE(client_files, files, cf);
-		file_free(cf);
-	}
+	cf->closed = 1;
+	if (cf->event == NULL || EVBUFFER_LENGTH(cf->event->output) == 0)
+		file_write_finish(cf);
 }
 
 /* Client file read error callback. */
@@ -826,6 +855,26 @@ file_write_ready(struct client_files *files, struct imsg *imsg)
 		file_fire_done(cf);
 	} else
 		file_push(cf);
+	return (0);
+}
+
+/* Handle a write done message (server). */
+int
+file_write_done(struct client_files *files, struct imsg *imsg)
+{
+	struct msg_write_done	*msg = imsg->data;
+	size_t			 msglen = imsg->hdr.len - IMSG_HEADER_SIZE;
+	struct client_file	 find, *cf;
+
+	if (msglen != sizeof *msg)
+		return (-1);
+	find.stream = msg->stream;
+	if ((cf = RB_FIND(client_files, files, &find)) == NULL)
+		return (0);
+
+	log_debug("file %d write done", cf->stream);
+	cf->error = msg->error;
+	file_fire_done(cf);
 	return (0);
 }
 
