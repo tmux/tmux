@@ -712,6 +712,16 @@ client_dispatch_wait(struct imsg *imsg)
 		fprintf(stderr, "server version is too old for client\n");
 		proc_exit(client_proc);
 		break;
+	default:
+		/*
+		 * There is nothing to wait for anymore, so do not just ignore
+		 * the message and hang forever.
+		 */
+		fprintf(stderr, "unknown message type %u from server\n",
+		    imsg->hdr.type);
+		client_exitval = 1;
+		proc_exit(client_proc);
+		break;
 	}
 }
 
