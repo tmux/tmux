@@ -43,6 +43,7 @@ static enum cmd_retval	cmd_list_windows_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_list_windows_entry = {
 	.name = "list-windows",
+	.description = "List windows and their state.",
 	.alias = "lsw",
 
 	.args = { "aF:f:O:rt:", 0, 0, NULL },

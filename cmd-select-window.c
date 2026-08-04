@@ -31,6 +31,7 @@ static enum cmd_retval	cmd_select_window_exec(struct cmd *,
 
 const struct cmd_entry cmd_select_window_entry = {
 	.name = "select-window",
+	.description = "Select a window.",
 	.alias = "selectw",
 
 	.args = { "lnpTt:", 0, 0, NULL },
@@ -44,6 +45,7 @@ const struct cmd_entry cmd_select_window_entry = {
 
 const struct cmd_entry cmd_next_window_entry = {
 	.name = "next-window",
+	.description = "Select the next window.",
 	.alias = "next",
 
 	.args = { "at:", 0, 0, NULL },
@@ -57,6 +59,7 @@ const struct cmd_entry cmd_next_window_entry = {
 
 const struct cmd_entry cmd_previous_window_entry = {
 	.name = "previous-window",
+	.description = "Select the previous window.",
 	.alias = "prev",
 
 	.args = { "at:", 0, 0, NULL },
@@ -70,6 +73,7 @@ const struct cmd_entry cmd_previous_window_entry = {
 
 const struct cmd_entry cmd_last_window_entry = {
 	.name = "last-window",
+	.description = "Select the previously active window.",
 	.alias = "last",
 
 	.args = { "t:", 0, 0, NULL },

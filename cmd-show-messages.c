@@ -36,6 +36,7 @@ static enum cmd_retval	cmd_show_messages_exec(struct cmd *,
 
 const struct cmd_entry cmd_show_messages_entry = {
 	.name = "show-messages",
+	.description = "Show server and client messages.",
 	.alias = "showmsgs",
 
 	.args = { "JTt:", 0, 0, NULL },

@@ -31,6 +31,7 @@ static enum cmd_retval		cmd_choose_tree_exec(struct cmd *,
 
 const struct cmd_entry cmd_choose_tree_entry = {
 	.name = "choose-tree",
+	.description = "Browse sessions and windows interactively.",
 	.alias = NULL,
 
 	.args = { "F:f:GhK:kNO:rst:wyZ", 0, 1, cmd_choose_tree_args_parse },
@@ -45,6 +46,7 @@ const struct cmd_entry cmd_choose_tree_entry = {
 
 const struct cmd_entry cmd_choose_client_entry = {
 	.name = "choose-client",
+	.description = "Choose a client interactively.",
 	.alias = NULL,
 
 	.args = { "F:f:hiK:kNO:rt:yZ", 0, 1, cmd_choose_tree_args_parse },
@@ -59,6 +61,7 @@ const struct cmd_entry cmd_choose_client_entry = {
 
 const struct cmd_entry cmd_choose_buffer_entry = {
 	.name = "choose-buffer",
+	.description = "Choose a paste buffer interactively.",
 	.alias = NULL,
 
 	.args = { "F:f:K:kNO:rt:yZ", 0, 1, cmd_choose_tree_args_parse },
@@ -73,6 +76,7 @@ const struct cmd_entry cmd_choose_buffer_entry = {
 
 const struct cmd_entry cmd_customize_mode_entry = {
 	.name = "customize-mode",
+	.description = "Browse and edit options and key bindings.",
 	.alias = NULL,
 
 	.args = { "F:f:kNt:yZ", 0, 0, NULL },
@@ -86,6 +90,7 @@ const struct cmd_entry cmd_customize_mode_entry = {
 
 const struct cmd_entry cmd_switch_mode_entry = {
 	.name = "switch-mode",
+	.description = "Switch the active pane mode.",
 	.alias = NULL,
 
 	.args = { "F:kst:wZ", 0, 1, cmd_choose_tree_args_parse },
@@ -99,6 +104,7 @@ const struct cmd_entry cmd_switch_mode_entry = {
 
 const struct cmd_entry cmd_display_panes_entry = {
 	.name = "display-panes",
+	.description = "Display pane numbers.",
 	.alias = "displayp",
 
 	.args = { "d:kNs:t:Z", 0, 1, cmd_choose_tree_args_parse },

@@ -34,6 +34,7 @@ static enum cmd_retval	cmd_list_buffers_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_list_buffers_entry = {
 	.name = "list-buffers",
+	.description = "List paste buffers.",
 	.alias = "lsb",
 
 	.args = { "F:f:O:r", 0, 0, NULL },

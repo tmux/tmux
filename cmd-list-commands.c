@@ -31,19 +31,42 @@
 	"#{command_list_name}"					\
 	"#{?command_list_alias, (#{command_list_alias}),} "	\
 	"#{command_list_usage}"
+#define LIST_COMMANDS_HELP_TEMPLATE				\
+	"#{p|#{command_list_name_width}:command_list_name} "	\
+	"#{command_list_description}"
+#define LIST_COMMANDS_VERBOSE_TEMPLATE				\
+	LIST_COMMANDS_TEMPLATE "\n    #{command_list_description}"
 
 static enum cmd_retval cmd_list_commands(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_list_commands_entry = {
 	.name = "list-commands",
+	.description = "List commands or show command syntax.",
 	.alias = "lscm",
 
-	.args = { "F:", 0, 1, NULL },
-	.usage = "[-F format] [command]",
+	.args = { "F:h", 0, 1, NULL },
+	.usage = "[-h] [-F format] [command]",
 
 	.flags = CMD_STARTSERVER|CMD_AFTERHOOK,
 	.exec = cmd_list_commands
 };
+
+static u_int
+cmd_list_commands_get_width(const struct cmd_entry *only)
+{
+	const struct cmd_entry	**entryp;
+	u_int			  width, largest = 0;
+
+	if (only != NULL)
+		return (utf8_cstrwidth(only->name));
+
+	for (entryp = cmd_table; *entryp != NULL; entryp++) {
+		width = utf8_cstrwidth((*entryp)->name);
+		if (width > largest)
+			largest = width;
+	}
+	return (largest);
+}
 
 static void
 cmd_list_single_command(const struct cmd_entry *entry, struct format_tree *ft,
@@ -63,6 +86,11 @@ cmd_list_single_command(const struct cmd_entry *entry, struct format_tree *ft,
 	else
 		s = "";
 	format_add(ft, "command_list_usage", "%s", s);
+	if (entry->description != NULL)
+		s = entry->description;
+	else
+		s = "";
+	format_add(ft, "command_list_description", "%s", s);
 
 	line = format_expand(ft, template);
 	if (*line != '\0')
@@ -79,28 +107,39 @@ cmd_list_commands(struct cmd *self, struct cmdq_item *item)
 	struct format_tree	 *ft;
 	const char		 *template,  *command;
 	char			 *cause;
+	int			  help;
 
-	if ((template = args_get(args, 'F')) == NULL)
-		template = LIST_COMMANDS_TEMPLATE;
+	if ((template = args_get(args, 'F')) == NULL) {
+		help = args_has(args, 'h');
+		if (help > 1)
+			template = LIST_COMMANDS_VERBOSE_TEMPLATE;
+		else if (help == 1)
+			template = LIST_COMMANDS_HELP_TEMPLATE;
+		else
+			template = LIST_COMMANDS_TEMPLATE;
+	}
 
-	ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
-	format_defaults(ft, NULL, NULL, NULL, NULL);
-
+	entry = NULL;
 	command = args_string(args, 0);
-	if (command == NULL) {
-		for (entryp = cmd_table; *entryp != NULL; entryp++)
-			cmd_list_single_command(*entryp, ft, template, item);
-	} else {
+	if (command != NULL) {
 		entry = cmd_find(command, &cause);
-		if (entry != NULL)
-			cmd_list_single_command(entry, ft, template, item);
-		else {
+		if (entry == NULL) {
 			cmdq_error(item, "%s", cause);
 			free(cause);
-			format_free(ft);
 			return (CMD_RETURN_ERROR);
 		}
 	}
+
+	ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
+	format_defaults(ft, NULL, NULL, NULL, NULL);
+	format_add(ft, "command_list_name_width", "%u",
+	    cmd_list_commands_get_width(entry));
+
+	if (entry == NULL) {
+		for (entryp = cmd_table; *entryp != NULL; entryp++)
+			cmd_list_single_command(*entryp, ft, template, item);
+	} else
+		cmd_list_single_command(entry, ft, template, item);
 
 	format_free(ft);
 	return (CMD_RETURN_NORMAL);

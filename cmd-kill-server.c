@@ -31,6 +31,7 @@ static enum cmd_retval	cmd_kill_server_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_kill_server_entry = {
 	.name = "kill-server",
+	.description = "Stop the tmux server.",
 	.alias = NULL,
 
 	.args = { "", 0, 0, NULL },
@@ -42,6 +43,7 @@ const struct cmd_entry cmd_kill_server_entry = {
 
 const struct cmd_entry cmd_start_server_entry = {
 	.name = "start-server",
+	.description = "Start the tmux server.",
 	.alias = "start",
 
 	.args = { "", 0, 0, NULL },

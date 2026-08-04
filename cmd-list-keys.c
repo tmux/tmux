@@ -42,6 +42,7 @@ static enum cmd_retval cmd_list_keys_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_list_keys_entry = {
 	.name = "list-keys",
+	.description = "List key bindings.",
 	.alias = "lsk",
 
 	.args = { "1aF:NO:P:rT:", 0, 1, NULL },

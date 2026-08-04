@@ -32,6 +32,7 @@ static enum cmd_retval	cmd_rename_session_exec(struct cmd *,
 
 const struct cmd_entry cmd_rename_session_entry = {
 	.name = "rename-session",
+	.description = "Rename a session.",
 	.alias = "rename",
 
 	.args = { "t:", 1, 1, NULL },

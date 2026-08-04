@@ -39,6 +39,7 @@ static enum cmd_retval	cmd_list_clients_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_list_clients_entry = {
 	.name = "list-clients",
+	.description = "List connected clients.",
 	.alias = "lsc",
 
 	.args = { "F:f:O:rt:", 0, 0, NULL },

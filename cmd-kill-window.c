@@ -33,6 +33,7 @@ static int		cmd_kill_window_filter(struct cmdq_item *,
 
 const struct cmd_entry cmd_kill_window_entry = {
 	.name = "kill-window",
+	.description = "Destroy one or more windows.",
 	.alias = "killw",
 
 	.args = { "af:t:", 0, 0, NULL },
@@ -46,6 +47,7 @@ const struct cmd_entry cmd_kill_window_entry = {
 
 const struct cmd_entry cmd_unlink_window_entry = {
 	.name = "unlink-window",
+	.description = "Unlink a window from a session.",
 	.alias = "unlinkw",
 
 	.args = { "kt:", 0, 0, NULL },

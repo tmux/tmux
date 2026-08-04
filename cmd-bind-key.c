@@ -34,6 +34,7 @@ static enum cmd_retval		cmd_bind_key_exec(struct cmd *,
 
 const struct cmd_entry cmd_bind_key_entry = {
 	.name = "bind-key",
+	.description = "Bind a key to one or more commands.",
 	.alias = "bind",
 
 	.args = { "nrN:T:", 1, -1, cmd_bind_key_args_parse },

@@ -30,6 +30,7 @@ static enum cmd_retval	cmd_move_window_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_move_window_entry = {
 	.name = "move-window",
+	.description = "Move a window between sessions.",
 	.alias = "movew",
 
 	.args = { "abdkrs:t:", 0, 0, NULL },
@@ -44,6 +45,7 @@ const struct cmd_entry cmd_move_window_entry = {
 
 const struct cmd_entry cmd_link_window_entry = {
 	.name = "link-window",
+	.description = "Link a window into another session.",
 	.alias = "linkw",
 
 	.args = { "abdks:t:", 0, 0, NULL },

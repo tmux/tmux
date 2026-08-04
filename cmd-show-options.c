@@ -49,6 +49,7 @@ static enum cmd_retval	cmd_show_options_all(struct cmd *, struct cmdq_item *,
 
 const struct cmd_entry cmd_show_options_entry = {
 	.name = "show-options",
+	.description = "Show server, session, or pane options.",
 	.alias = "show",
 
 	.args = { "AgF:Hpqst:vw", 0, 1, NULL },
@@ -62,6 +63,7 @@ const struct cmd_entry cmd_show_options_entry = {
 
 const struct cmd_entry cmd_show_window_options_entry = {
 	.name = "show-window-options",
+	.description = "Show window options.",
 	.alias = "showw",
 
 	.args = { "F:gvt:", 0, 1, NULL },
@@ -75,6 +77,7 @@ const struct cmd_entry cmd_show_window_options_entry = {
 
 const struct cmd_entry cmd_show_hooks_entry = {
 	.name = "show-hooks",
+	.description = "Show hooks.",
 	.alias = NULL,
 
 	.args = { "BF:gpt:w", 0, 1, NULL },

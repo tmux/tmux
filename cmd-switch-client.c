@@ -33,6 +33,7 @@ static enum cmd_retval	cmd_switch_client_exec(struct cmd *,
 
 const struct cmd_entry cmd_switch_client_entry = {
 	.name = "switch-client",
+	.description = "Switch a client to another session.",
 	.alias = "switchc",
 
 	.args = { "c:EFlnO:pt:rT:Z", 0, 0, NULL },

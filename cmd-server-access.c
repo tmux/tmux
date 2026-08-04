@@ -36,6 +36,7 @@ static enum cmd_retval cmd_server_access_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_server_access_entry = {
 	.name = "server-access",
+	.description = "Manage access to the tmux server.",
 	.alias = NULL,
 
 	.args = { "adglrw", 0, 1, NULL },

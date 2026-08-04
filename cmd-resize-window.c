@@ -31,6 +31,7 @@ static enum cmd_retval	cmd_resize_window_exec(struct cmd *,
 
 const struct cmd_entry cmd_resize_window_entry = {
 	.name = "resize-window",
+	.description = "Resize a window.",
 	.alias = "resizew",
 
 	.args = { "aADLRt:Ux:y:", 0, 1, NULL },

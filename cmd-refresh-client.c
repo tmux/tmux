@@ -32,6 +32,7 @@ static enum cmd_retval	cmd_refresh_client_exec(struct cmd *,
 
 const struct cmd_entry cmd_refresh_client_entry = {
 	.name = "refresh-client",
+	.description = "Refresh or resize a client.",
 	.alias = "refresh",
 
 	.args = { "A:B:cC:Df:r:F:lLRSt:U", 0, 1, NULL },

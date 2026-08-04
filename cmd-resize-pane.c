@@ -39,6 +39,7 @@ static void		cmd_resize_pane_mouse_resize_tiled(struct client *,
 
 const struct cmd_entry cmd_resize_pane_entry = {
 	.name = "resize-pane",
+	.description = "Resize or zoom a pane.",
 	.alias = "resizep",
 
 	.args = { "D::L::MR::Tt:U::x:y:Z", 0, 1, NULL },

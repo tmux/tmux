@@ -42,6 +42,7 @@ static void	cmd_run_shell_print(struct job *, const char *);
 
 const struct cmd_entry cmd_run_shell_entry = {
 	.name = "run-shell",
+	.description = "Run a shell command.",
 	.alias = "run",
 
 	.args = { "bd:Ct:Es:c:", 0, -1, cmd_run_shell_args_parse },

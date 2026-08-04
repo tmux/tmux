@@ -32,6 +32,7 @@ static enum cmd_retval cmd_wait_for_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_wait_for_entry = {
 	.name = "wait-for",
+	.description = "Coordinate clients with named channels.",
 	.alias = "wait",
 
 	.args = { "EF:LSUlvw:", 1, 1, NULL },

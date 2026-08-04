@@ -36,6 +36,7 @@ static void	cmd_list_panes_window(struct cmd *, struct session *,
 
 const struct cmd_entry cmd_list_panes_entry = {
 	.name = "list-panes",
+	.description = "List panes and their state.",
 	.alias = "lsp",
 
 	.args = { "aF:f:O:rst:", 0, 0, NULL },

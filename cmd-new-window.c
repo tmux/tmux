@@ -36,6 +36,7 @@ static enum cmd_retval	cmd_new_window_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_new_window_entry = {
 	.name = "new-window",
+	.description = "Create a window.",
 	.alias = "neww",
 
 	.args = { "abc:de:EF:kn:PSt:", 0, -1, NULL },

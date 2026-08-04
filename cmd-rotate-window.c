@@ -29,6 +29,7 @@ static enum cmd_retval	cmd_rotate_window_exec(struct cmd *,
 
 const struct cmd_entry cmd_rotate_window_entry = {
 	.name = "rotate-window",
+	.description = "Rotate panes in a window.",
 	.alias = "rotatew",
 
 	.args = { "Dt:UZ", 0, 0, NULL },

@@ -35,6 +35,7 @@ static enum cmd_retval	cmd_save_buffer_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_save_buffer_entry = {
 	.name = "save-buffer",
+	.description = "Save a paste buffer to a file.",
 	.alias = "saveb",
 
 	.args = { "ab:", 1, 1, NULL },
@@ -46,6 +47,7 @@ const struct cmd_entry cmd_save_buffer_entry = {
 
 const struct cmd_entry cmd_show_buffer_entry = {
 	.name = "show-buffer",
+	.description = "Print a paste buffer.",
 	.alias = "showb",
 
 	.args = { "b:", 0, 0, NULL },
