@@ -190,7 +190,7 @@ clients_calculate_size(int type, int current, struct client *c,
 		if (w == NULL ||
 		    !control_get_window_size(loop, w->id, &cx, &cy) ||
 		    cx == 0 || cy == 0) {
-			cx = loop->tty.sx - side_status_size(loop);
+			cx = loop->tty.sx - status_side_size(loop);
 			cy = loop->tty.sy - status_line_size(loop);
 		}
 
@@ -295,7 +295,7 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 	 * client and no window, use the default size as for manual type.
 	 */
 	if (type == WINDOW_SIZE_LATEST && c != NULL && !ignore_client_size(c)) {
-		*sx = c->tty.sx - side_status_size(c);
+		*sx = c->tty.sx - status_side_size(c);
 		*sy = c->tty.sy - status_line_size(c);
 		*xpixel = c->tty.xpixel;
 		*ypixel = c->tty.ypixel;
