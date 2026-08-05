@@ -978,16 +978,6 @@ sixel_nearest_colour(struct sixel_rgb *palette, u_int ncolours,
 	return (best);
 }
 
-static u_int
-sixel_clamp_colour(int colour)
-{
-	if (colour < 0)
-		return (0);
-	if (colour > 255)
-		return (255);
-	return (colour);
-}
-
 static const u_char *
 sixel_from_image_pixel(struct image *im, u_int sourcex0, u_int sourcey0,
     u_int sourcewidth, u_int sourceheight, u_int sx, u_int sy, u_int x,
@@ -1013,9 +1003,7 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 	struct sixel_rgb		 palette[SIXEL_PALETTE_SIZE];
 	const u_char			*pixel;
 	uint16_t			*cache;
-	int				*current, *next, *tmp;
-	int				 red_error, green_error, blue_error;
-	u_int				 x, y, sx, sy, index, error_index;
+	u_int				 x, y, sx, sy, index;
 	u_int			 sourcex0, sourcey0, sourcewidth, sourceheight;
 	u_int			 red, green, blue, colour, i, ncolours;
 	uint64_t		 destination_width, destination_height;
@@ -1088,55 +1076,22 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 
 	cache = xmalloc(SIXEL_HISTOGRAM_SIZE * sizeof *cache);
 	memset(cache, 0xff, SIXEL_HISTOGRAM_SIZE * sizeof *cache);
-	current = xcalloc(((size_t)sx + 2) * 3, sizeof *current);
-	next = xcalloc(((size_t)sx + 2) * 3, sizeof *next);
 	for (y = 0; y < sy; y++) {
 		for (x = 0; x < sx; x++) {
 			pixel = sixel_from_image_pixel(im, sourcex0, sourcey0,
 			    sourcewidth, sourceheight, sx, sy, x, y);
 			if (pixel[3] < 128)
 				continue;
-			error_index = (x + 1) * 3;
-			red = sixel_clamp_colour((int)pixel[0] +
-			    current[error_index] / 16);
-			green = sixel_clamp_colour((int)pixel[1] +
-			    current[error_index + 1] / 16);
-			blue = sixel_clamp_colour((int)pixel[2] +
-			    current[error_index + 2] / 16);
 			colour = sixel_nearest_colour(palette, ncolours, cache,
-			    red, green, blue);
+			    pixel[0], pixel[1], pixel[2]);
 			if (sixel_set_pixel(si, x, y, colour + 1) != 0)
 				goto fail;
-
-			red_error = (int)red - palette[colour].red;
-			green_error = (int)green - palette[colour].green;
-			blue_error = (int)blue - palette[colour].blue;
-			current[error_index + 3] += red_error * 7;
-			current[error_index + 4] += green_error * 7;
-			current[error_index + 5] += blue_error * 7;
-			next[error_index - 3] += red_error * 3;
-			next[error_index - 2] += green_error * 3;
-			next[error_index - 1] += blue_error * 3;
-			next[error_index] += red_error * 5;
-			next[error_index + 1] += green_error * 5;
-			next[error_index + 2] += blue_error * 5;
-			next[error_index + 3] += red_error;
-			next[error_index + 4] += green_error;
-			next[error_index + 5] += blue_error;
 		}
-		tmp = current;
-		current = next;
-		next = tmp;
-		memset(next, 0, ((size_t)sx + 2) * 3 * sizeof *next);
 	}
-	free(current);
-	free(next);
 	free(cache);
 	return (si);
 
 fail:
-	free(current);
-	free(next);
 	free(cache);
 	sixel_free(si);
 	return (NULL);

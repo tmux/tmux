@@ -125,7 +125,7 @@ $TMUX2 select-window -t:1 || exit 1
 sleep 1
 [ "$($TMUX2 display-message -p '#{cursor_x},#{cursor_y}')" = "2,1" ] || exit 1
 $TMUX capture-pane -pS0 -E3 >$TMP || exit 1
-[ "$(sed -n 3p $TMP)" = "  :" ] || exit 1
+[ "$(sed -n 3p $TMP)" = "  -" ] || exit 1
 [ "$(sed -n 4p $TMP)" = "  *" ] || exit 1
 
 # With normal cursor movement, scrolling is calculated from the full image
@@ -139,7 +139,7 @@ $TMUX2 select-window -t:2 || exit 1
 sleep 1
 [ "$($TMUX2 display-message -p '#{cursor_y}')" = 3 ] || exit 1
 $TMUX capture-pane -pS0 -E3 >$TMP || exit 1
-[ "$(sed -n 1p $TMP)" = ":" ] || exit 1
+[ "$(sed -n 1p $TMP)" = "-" ] || exit 1
 [ "$(sed -n 2p $TMP)" = "*" ] || exit 1
 [ "$(sed -n 3p $TMP)" = "@" ] || exit 1
 
