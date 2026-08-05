@@ -5475,12 +5475,11 @@ colours, draws a vertical line on the edge next to the window area and is
 updated every
 .Ic status\-interval
 seconds like the status line.
-.It Ic side\-status\-format[] Ar format
-Specify the formats used for the side status line.
-Each array member may produce multiple rows using the
+.It Ic side\-status\-format Ar format
+Specify the format used for the side status line.
+The format may produce multiple rows using the
 .Ic nl
-style or a newline character; the rows for each member follow those of the
-previous member.
+style or a newline character.
 The default shows one row for each window in the current session using the
 window status styles (but not the window status formats, which lay text out
 for a horizontal line); with more than one session, it shows a row for each
@@ -5511,7 +5510,7 @@ section.
 .It Ic side\-status\-width Ar width
 Set the width of the side status line, including the vertical line on the
 edge next to the window area.
-The default is 10.
+The default is 14.
 .It Xo Ic silence\-action
 .Op Ic any | none | current | other
 .Xc

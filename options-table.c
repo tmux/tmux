@@ -290,10 +290,6 @@ static const char *options_table_status_format_default[] = {
 			OPTIONS_TABLE_SIDE_STATUS_CURRENT \
 		"}" \
 	"}"
-static const char *options_table_side_status_format_default[] = {
-	OPTIONS_TABLE_SIDE_STATUS_FORMAT1,
-	NULL
-};
 
 /* Helpers for hook options. */
 #define OPTIONS_TABLE_HOOK(hook_name, default_value, hook_text) \
@@ -1050,12 +1046,9 @@ const struct options_table_entry options_table[] = {
 	{ .name = "side-status-format",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .flags = OPTIONS_TABLE_IS_ARRAY,
-	  .default_arr = options_table_side_status_format_default,
-	  .text = "Formats for the side status line. "
-		  "Each array member may produce multiple rows with the nl "
-		  "style; the rows for each member follow those of the "
-		  "previous member. "
+	  .default_str = OPTIONS_TABLE_SIDE_STATUS_FORMAT1,
+	  .text = "Format for the side status line. "
+		  "The format may produce multiple rows with the nl style. "
 		  "The default shows a row for each window and, with more "
 		  "than one session, a row for each session."
 	},
@@ -1074,7 +1067,7 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .minimum = 1,
 	  .maximum = SHRT_MAX,
-	  .default_num = 10,
+	  .default_num = 14,
 	  .text = "Width of the side status line."
 	},
 
