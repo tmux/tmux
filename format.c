@@ -1419,7 +1419,7 @@ format_cb_mouse_status_range(struct format_tree *ft)
 			y = ft->m.y - ft->m.statuslines;
 		else
 			y = ft->m.y;
-		sr = side_status_get_range(ft->c, x, y);
+		sr = status_side_get_range(ft->c, x, y);
 	} else
 		return (NULL);
 

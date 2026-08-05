@@ -303,7 +303,7 @@ server_client_create(int fd)
 	c->theme = THEME_UNKNOWN;
 
 	status_init(c);
-	side_status_init(c);
+	status_side_init(c);
 	c->flags |= CLIENT_FOCUSED;
 
 	c->keytable = key_bindings_get_table("root", 1);
@@ -521,7 +521,7 @@ server_client_lost(struct client *c)
 	tty_term_free_list(c->term_caps, c->term_ncaps);
 
 	status_free(c);
-	side_status_free(c);
+	status_side_free(c);
 	input_cancel_requests(c);
 
 	free(c->title);
@@ -1018,8 +1018,8 @@ have_event:
 	/* Is this on the status line? */
 	m->statusat = status_at_line(c);
 	m->statuslines = status_line_size(c);
-	m->sideat = side_status_at_column(c);
-	m->sidecols = side_status_size(c);
+	m->sideat = status_side_at_column(c);
+	m->sidecols = status_side_size(c);
 	if (m->statusat != -1 &&
 	    y >= (u_int)m->statusat &&
 	    y < m->statusat + m->statuslines) {
@@ -1039,8 +1039,8 @@ have_event:
 			sidey = m->statuslines;
 		else
 			sidey = 0;
-		if (y >= sidey && y - sidey < side_status_rows(c)) {
-			sr = side_status_get_range(c, x - m->sideat,
+		if (y >= sidey && y - sidey < status_side_rows(c)) {
+			sr = status_side_get_range(c, x - m->sideat,
 			    y - sidey);
 			if (sr == NULL)
 				loc = KEYC_MOUSE_LOCATION_STATUS_DEFAULT;
@@ -1728,8 +1728,8 @@ server_client_handle_menu_key(struct client *c, struct key_event *event)
 		m = &new_event.m;
 		m->statusat = status_at_line(c);
 		m->statuslines = status_line_size(c);
-		m->sideat = side_status_at_column(c);
-		m->sidecols = side_status_size(c);
+		m->sideat = status_side_at_column(c);
+		m->sidecols = status_side_size(c);
 
 		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
 		if (m->sideat == 0 && m->x < m->sidecols)
@@ -2146,8 +2146,8 @@ server_client_prompt_cursor(struct client *c, struct window_pane *wp, int *mode,
 	if (window_position_is_visible(r, *cx)) {
 		if (status_at_line(c) == 0)
 			*cy += status_line_size(c);
-		if (side_status_at_column(c) == 0)
-			*cx += side_status_size(c);
+		if (status_side_at_column(c) == 0)
+			*cx += status_side_size(c);
 		*mode |= MODE_CURSOR;
 	}
 	return (1);
@@ -2219,8 +2219,8 @@ server_client_reset_state(struct client *c)
 				cy -= oy;
 				if (status_at_line(c) == 0)
 					cy += status_line_size(c);
-				if (side_status_at_column(c) == 0)
-					cx += side_status_size(c);
+				if (status_side_at_column(c) == 0)
+					cx += status_side_size(c);
 			}
 			prompt = 1;
 		} else {
@@ -2260,8 +2260,8 @@ server_client_reset_state(struct client *c)
 
 				if (status_at_line(c) == 0)
 					cy += status_line_size(c);
-				if (side_status_at_column(c) == 0)
-					cx += side_status_size(c);
+				if (status_side_at_column(c) == 0)
+					cx += status_side_size(c);
 			}
 
 			if ((pane_mode & MODE_SYNC) || !cursor)

@@ -284,7 +284,7 @@ redraw_get_window_offset(struct client *c, u_int *ox, u_int *oy, u_int *sx,
 
 	tty_window_offset(&c->tty, ox, oy, sx, sy);
 
-	tty_sx = c->tty.sx - side_status_size(c);
+	tty_sx = c->tty.sx - status_side_size(c);
 	tty_sy = c->tty.sy - status_line_size(c);
 	if (*sx < tty_sx)
 		*sx = tty_sx;
@@ -1620,8 +1620,8 @@ redraw_set_draw_context(struct redraw_draw_ctx *dctx,
 		dctx->flags |= REDRAW_STATUS_TOP;
 	dctx->status_lines = lines;
 
-	if (side_status_at_column(c) == 0)
-		dctx->side_left = side_status_size(c);
+	if (status_side_at_column(c) == 0)
+		dctx->side_left = status_side_size(c);
 
 	if ((c->flags & CLIENT_UTF8) && tty_term_has(tty->term, TTYC_BIDI))
 		dctx->flags |= REDRAW_ISOLATES;
@@ -1720,9 +1720,9 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	}
 
 	if (flags & REDRAW_SIDE_STATUS) {
-		if (side_status_size(c) == 0)
+		if (status_side_size(c) == 0)
 			flags &= ~REDRAW_SIDE_STATUS;
-		else if (!side_status_redraw(c) && !REDRAW_IS_ALL(flags))
+		else if (!status_side_redraw(c) && !REDRAW_IS_ALL(flags))
 			flags &= ~REDRAW_SIDE_STATUS;
 		if (flags == 0)
 			return;
@@ -1809,14 +1809,14 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		redraw_draw_menu_lines(&dctx);
 
 	if (flags & REDRAW_SIDE_STATUS) {
-		side_cols = side_status_size(c);
-		side_x = side_status_at_column(c);
+		side_cols = status_side_size(c);
+		side_x = status_side_at_column(c);
 		if (side_cols != 0 && side_x != -1) {
 			if (dctx.flags & REDRAW_STATUS_TOP)
 				y = dctx.status_lines;
 			else
 				y = 0;
-			for (i = 0; i < side_status_rows(c); i++) {
+			for (i = 0; i < status_side_rows(c); i++) {
 				r = tty_check_overlay_range(tty, side_x, y + i,
 				    side_cols);
 				for (j = 0; j < r->used; j++) {

@@ -939,7 +939,7 @@ tty_window_bigger(struct tty *tty)
 	struct client	*c = tty->client;
 	struct window	*w = c->session->curw->window;
 
-	return (tty->sx - side_status_size(c) < w->sx ||
+	return (tty->sx - status_side_size(c) < w->sx ||
 	    tty->sy - status_line_size(c) < w->sy);
 }
 
@@ -965,7 +965,7 @@ tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 	u_int			 cx, cy, lines, side;
 
 	lines = status_line_size(c);
-	side = side_status_size(c);
+	side = status_side_size(c);
 
 	if (tty->sx - side >= w->sx && tty->sy - lines >= w->sy) {
 		*ox = 0;
@@ -1546,8 +1546,8 @@ tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	ttyctx->yoff = ttyctx->ryoff = wp->yoff;
 	if (status_at_line(c) == 0)
 		ttyctx->yoff += status_line_size(c);
-	if (side_status_at_column(c) == 0)
-		ttyctx->xoff += side_status_size(c);
+	if (status_side_at_column(c) == 0)
+		ttyctx->xoff += status_side_size(c);
 
 	return (1);
 }
