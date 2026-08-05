@@ -81,6 +81,7 @@ struct kitty_state {
 	u_int	 columns;
 	u_int	 rows;
 	u_int	 image_id;
+	u_int	 placement_id;
 	u_int	 quiet;
 	int	 no_cursor;
 	int	 virtual;
@@ -91,10 +92,17 @@ struct kitty_state {
 	size_t	 encodedlen;
 };
 
+struct kitty_placement {
+	u_int			 placement_id;
+	u_int			 server_id;
+	struct kitty_placement	*next;
+};
+
 struct kitty_source {
 	u_int			 app_id;
 	u_int			 server_id;
 	u_int			 virtual_id;
+	struct kitty_placement	*placements;
 	struct kitty_source	*next;
 };
 
@@ -441,6 +449,7 @@ kitty_control(struct kitty_state *ks, const u_char *buf, size_t len)
 		case 'c':
 		case 'r':
 		case 'i':
+		case 'p':
 		case 'q':
 		case 'm':
 		case 'S':
@@ -460,6 +469,7 @@ kitty_control(struct kitty_state *ks, const u_char *buf, size_t len)
 			case 'c': ks->columns = number; break;
 			case 'r': ks->rows = number; break;
 			case 'i': ks->image_id = number; break;
+			case 'p': ks->placement_id = number; break;
 			case 'q': ks->quiet = number; break;
 			case 'm': ks->more = (number != 0); break;
 			case 'S': ks->data_size = number; break;
@@ -481,6 +491,29 @@ kitty_state_free(struct kitty_state *ks)
 	free(ks);
 }
 
+static void
+kitty_placements_free(struct kitty_source *source)
+{
+	struct kitty_placement	*placement, *next;
+
+	for (placement = source->placements; placement != NULL;
+	    placement = next) {
+		next = placement->next;
+		image_free(placement->server_id);
+		free(placement);
+	}
+	source->placements = NULL;
+}
+
+static void
+kitty_placements_free_all(struct kitty_context *kc)
+{
+	struct kitty_source	*source;
+
+	for (source = kc->sources; source != NULL; source = source->next)
+		kitty_placements_free(source);
+}
+
 void
 kitty_free_state(void *state)
 {
@@ -492,6 +525,7 @@ kitty_free_state(void *state)
 	kitty_state_free(kc->transfer);
 	for (source = kc->sources; source != NULL; source = next) {
 		next = source->next;
+		kitty_placements_free(source);
 		if (source->virtual_id != 0)
 			image_free(source->virtual_id);
 		image_free(source->server_id);
@@ -512,13 +546,14 @@ kitty_source_find(struct kitty_context *kc, u_int id)
 	return (NULL);
 }
 
-static void
+static u_int
 kitty_source_set(struct kitty_context *kc, u_int id, struct image *im)
 {
 	struct kitty_source	*source;
+	u_int			 old_id = 0;
 
 	if (id == 0)
-		return;
+		return (0);
 	source = kitty_source_find(kc, id);
 	if (source == NULL) {
 		source = xcalloc(1, sizeof *source);
@@ -526,6 +561,8 @@ kitty_source_set(struct kitty_context *kc, u_int id, struct image *im)
 		source->next = kc->sources;
 		kc->sources = source;
 	} else {
+		old_id = source->server_id;
+		kitty_placements_free(source);
 		if (source->virtual_id != 0) {
 			image_free(source->virtual_id);
 			source->virtual_id = 0;
@@ -534,6 +571,65 @@ kitty_source_set(struct kitty_context *kc, u_int id, struct image *im)
 	}
 	image_ref(im->id);
 	source->server_id = im->id;
+	return (old_id);
+}
+
+static u_int
+kitty_placement_set(struct kitty_context *kc, u_int image_id,
+    u_int placement_id, struct image *im)
+{
+	struct kitty_source	*source;
+	struct kitty_placement	*placement;
+	u_int			 old_id;
+
+	if (placement_id == 0)
+		return (0);
+	source = kitty_source_find(kc, image_id);
+	if (source == NULL)
+		return (0);
+	for (placement = source->placements; placement != NULL;
+	    placement = placement->next) {
+		if (placement->placement_id == placement_id)
+			break;
+	}
+	if (placement == NULL) {
+		placement = xcalloc(1, sizeof *placement);
+		placement->placement_id = placement_id;
+		placement->next = source->placements;
+		source->placements = placement;
+	}
+	old_id = placement->server_id;
+	image_ref(im->id);
+	placement->server_id = im->id;
+	if (old_id != 0)
+		image_free(old_id);
+	return (old_id);
+}
+
+static struct image *
+kitty_placement_remove(struct kitty_context *kc, u_int image_id,
+    u_int placement_id)
+{
+	struct kitty_source	*source;
+	struct kitty_placement	**pp, *placement;
+	struct image		*im;
+
+	source = kitty_source_find(kc, image_id);
+	if (source == NULL)
+		return (NULL);
+	for (pp = &source->placements; (placement = *pp) != NULL;
+	    pp = &placement->next) {
+		if (placement->placement_id != placement_id)
+			continue;
+		im = image_find(placement->server_id);
+		if (im != NULL)
+			image_ref(im->id);
+		*pp = placement->next;
+		image_free(placement->server_id);
+		free(placement);
+		return (im);
+	}
+	return (NULL);
 }
 
 static void
@@ -563,6 +659,7 @@ kitty_source_remove(struct kitty_context *kc, u_int id)
 		if (im != NULL)
 			image_ref(im->id);
 		*pp = source->next;
+		kitty_placements_free(source);
 		if (source->virtual_id != 0)
 			image_free(source->virtual_id);
 		image_free(source->server_id);
@@ -733,7 +830,8 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
  */
 struct image *
 kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
-    u_int ypixel, u_int *image_id, u_int *quiet, char *action, int *status)
+    u_int ypixel, u_int *image_id, u_int *replace_id, u_int *quiet,
+    char *action, int *status)
 {
 	struct kitty_context	*kc = *state;
 	struct kitty_state	*ks;
@@ -745,12 +843,14 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 	u_int			 sx, sy, cell_width, cell_height;
 	uint64_t		 canvas_width, canvas_height;
 	struct image		*im = NULL, *source;
+	struct kitty_source	*stored;
 
 	if (kc == NULL) {
 		kc = xcalloc(1, sizeof *kc);
 		*state = kc;
 	}
 	*image_id = 0;
+	*replace_id = 0;
 	*quiet = 0;
 	*action = '\0';
 	*status = KITTY_PARSE_ERROR;
@@ -802,18 +902,33 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 		} else {
 			im = kitty_place_image(source, ks, xpixel, ypixel);
 			image_free(source->id);
-			if (im != NULL)
+			if (im != NULL) {
+				*replace_id = kitty_placement_set(kc, ks->image_id,
+				    ks->placement_id, im);
 				*status = KITTY_PARSE_OK;
+			}
 		}
 		kitty_state_free(ks);
 		return (im);
 	}
 	if (ks->action == 'd') {
-		if (ks->delete == 'a' || ks->delete == 'A')
+		if (ks->delete == 'a' || ks->delete == 'A') {
+			kitty_placements_free_all(kc);
 			im = NULL;
-		else if (ks->delete == 'i')
-			im = kitty_source_get(kc, ks->image_id);
-		else if (ks->delete == 'I')
+		} else if (ks->delete == 'i') {
+			if (ks->placement_id != 0)
+				im = kitty_placement_remove(kc, ks->image_id,
+				    ks->placement_id);
+			else {
+				source = kitty_source_get(kc, ks->image_id);
+				if (source != NULL) {
+					stored = kitty_source_find(kc,
+					    ks->image_id);
+					kitty_placements_free(stored);
+				}
+				im = source;
+			}
+		} else if (ks->delete == 'I')
 			im = kitty_source_remove(kc, ks->image_id);
 		else
 			goto fail;
@@ -885,11 +1000,14 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 	else {
 		*status = KITTY_PARSE_OK;
 		if (ks->action != 'q')
-			kitty_source_set(kc, ks->image_id, source);
+			*replace_id = kitty_source_set(kc, ks->image_id, source);
 		if (ks->action == 'T' && !ks->virtual) {
 			im = kitty_place_image(source, ks, xpixel, ypixel);
 			if (im == NULL)
 				*status = KITTY_PARSE_ERROR;
+			else if (ks->placement_id != 0)
+				(void)kitty_placement_set(kc, ks->image_id,
+				    ks->placement_id, im);
 		} else if (ks->virtual) {
 			im = kitty_place_image(source, ks, xpixel, ypixel);
 			if (im == NULL)

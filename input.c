@@ -2817,7 +2817,7 @@ input_handle_kitty(struct input_ctx *ictx, const u_char *buf, size_t len)
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct window_pane	*wp = ictx->wp;
 	struct image		*im;
-	u_int			 image_id = 0, quiet = 0;
+	u_int			 image_id = 0, replace_id = 0, quiet = 0;
 	char			 action = '\0';
 	int			 status;
 
@@ -2825,7 +2825,8 @@ input_handle_kitty(struct input_ctx *ictx, const u_char *buf, size_t len)
 		return (0);
 	im = kitty_parse_image(&ictx->kitty_state, buf, len,
 		    wp->window->xpixel,
-		    wp->window->ypixel, &image_id, &quiet, &action, &status);
+		    wp->window->ypixel, &image_id, &replace_id, &quiet, &action,
+		    &status);
 	if (status == KITTY_PARSE_MORE)
 		return (1);
 	if (status != KITTY_PARSE_OK) {
@@ -2839,6 +2840,8 @@ input_handle_kitty(struct input_ctx *ictx, const u_char *buf, size_t len)
 		}
 		return (1);
 	}
+	if (replace_id != 0)
+		image_clear(sctx, replace_id);
 	if (im != NULL) {
 		if (action == 'd')
 			image_clear(sctx, im->id);
