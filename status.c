@@ -137,7 +137,7 @@ status_line_size(struct client *c)
 
 /* Get width of side status line for client's session. 0 means off. */
 u_int
-side_status_size(struct client *c)
+status_side_size(struct client *c)
 {
 	struct session	*s = c->session;
 
@@ -150,10 +150,10 @@ side_status_size(struct client *c)
 
 /* Get starting column of side status line. -1 means off. */
 int
-side_status_at_column(struct client *c)
+status_side_at_column(struct client *c)
 {
 	struct session	*s = c->session;
-	u_int		 width = side_status_size(c);
+	u_int		 width = status_side_size(c);
 
 	if (width == 0)
 		return (-1);
@@ -164,11 +164,11 @@ side_status_at_column(struct client *c)
 
 /* Get number of rows of side status line for client. */
 u_int
-side_status_rows(struct client *c)
+status_side_rows(struct client *c)
 {
 	u_int	lines = status_line_size(c);
 
-	if (side_status_size(c) == 0 || c->tty.sy <= lines)
+	if (status_side_size(c) == 0 || c->tty.sy <= lines)
 		return (0);
 	return (c->tty.sy - lines);
 }
@@ -367,7 +367,7 @@ status_redraw(struct client *c)
 
 /* Prepare side status line. */
 void
-side_status_init(struct client *c)
+status_side_init(struct client *c)
 {
 	struct side_status_line	*ss = &c->side_status;
 
@@ -377,7 +377,7 @@ side_status_init(struct client *c)
 
 /* Free side status line. */
 void
-side_status_free(struct client *c)
+status_side_free(struct client *c)
 {
 	struct side_status_line	*ss = &c->side_status;
 
@@ -388,7 +388,7 @@ side_status_free(struct client *c)
 
 /* Get side status range for position. */
 struct style_range *
-side_status_get_range(struct client *c, u_int x, u_int y)
+status_side_get_range(struct client *c, u_int x, u_int y)
 {
 	struct side_status_line	*ss = &c->side_status;
 
@@ -397,7 +397,7 @@ side_status_get_range(struct client *c, u_int x, u_int y)
 
 /* Draw side status line for client. Returns 1 if changed. */
 int
-side_status_redraw(struct client *c)
+status_side_redraw(struct client *c)
 {
 	struct side_status_line		*ss = &c->side_status;
 	struct session			*s = c->session;
@@ -414,8 +414,8 @@ side_status_redraw(struct client *c)
 	log_debug("%s enter", __func__);
 
 	/* No side status line? */
-	width = side_status_size(c);
-	rows = side_status_rows(c);
+	width = status_side_size(c);
+	rows = status_side_rows(c);
 	if (width == 0 || rows == 0)
 		return (0);
 
