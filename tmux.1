@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1153 2026/08/05 07:31:08 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1154 2026/08/05 12:23:25 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -2317,9 +2317,13 @@ the bottom and is paused while a selection is in progress.
 .Xc
 Turn off automatic refresh of the content from the pane.
 .It Xo
-.Ic refresh\-toggle
+.Ic refresh\-now
 (vi: r)
 (emacs: r)
+.Xc
+Refresh the content from the pane once.
+.It Xo
+.Ic refresh\-toggle
 .Xc
 Toggle automatic refresh of the content from the pane.
 .It Xo
