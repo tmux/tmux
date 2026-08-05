@@ -1051,6 +1051,7 @@ struct image_sample {
 /* Half blocks, quadrants and sextants all divide evenly into a 2 by 6 grid. */
 #define IMAGE_SAMPLE_COLUMNS 2
 #define IMAGE_SAMPLE_ROWS 6
+#define IMAGE_FLAG_NO_CURSOR 0x1
 struct image_cell {
 	struct image_sample	 whole;
 	struct image_sample	 samples[IMAGE_SAMPLE_ROWS][IMAGE_SAMPLE_COLUMNS];
@@ -1060,6 +1061,7 @@ struct image_cell {
 struct image {
 	u_int			 id;
 	u_int			 references;
+	u_int			 flags;
 	u_int			 parent_id;
 	u_int			 source_id;
 	u_int			 width;
