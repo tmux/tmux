@@ -427,13 +427,9 @@ status_side_redraw(struct client *c)
 	struct side_status_line		*ss = &c->side_status;
 	struct session			*s = c->session;
 	struct screen_write_ctx		 ctx;
-	struct grid_cell		 gc;
-	struct options_entry		*o;
-	struct options_array_item	*a;
-	union options_value		*ov;
+	struct grid_cell		 gc, lgc;
 	struct format_tree		*ft;
-	char				*expanded, *joined, *tmp;
-	struct grid_cell		 lgc;
+	char				*expanded;
 	u_int				 width, rows, n;
 	int				 flags, force = 0, linex;
 
@@ -473,31 +469,16 @@ status_side_redraw(struct client *c)
 		ss->linex = linex;
 	}
 
-	/* Join the members with newlines so each follows the previous. */
-	joined = xstrdup("");
-	o = options_get(s->options, "side-status-format");
-	if (o != NULL) {
-		a = options_array_first(o);
-		while (a != NULL) {
-			ov = options_array_item_value(a);
-			expanded = format_expand_time(ft, ov->string);
-			if (*joined != '\0') {
-				xasprintf(&tmp, "%s\n%s", joined, expanded);
-				free(expanded);
-			} else
-				tmp = expanded;
-			free(joined);
-			joined = tmp;
-			a = options_array_next(a);
-		}
-	}
+	/* Expand the format. */
+	expanded = format_expand_time(ft,
+	    options_get_string(s->options, "side-status-format"));
 	format_free(ft);
 
 	/* Skip the redraw if nothing has changed. */
 	if (!force &&
 	    ss->expanded != NULL &&
-	    strcmp(joined, ss->expanded) == 0) {
-		free(joined);
+	    strcmp(expanded, ss->expanded) == 0) {
+		free(expanded);
 		log_debug("%s exit: unchanged", __func__);
 		return (0);
 	}
@@ -521,12 +502,12 @@ status_side_redraw(struct client *c)
 	}
 
 	screen_write_cursormove(&ctx, 0, 0, 0);
-	format_draw_lines(&ctx, &gc, linex == 0 ? 1 : 0, width, rows, joined,
+	format_draw_lines(&ctx, &gc, linex == 0 ? 1 : 0, width, rows, expanded,
 	    &ss->ranges, 0);
 	screen_write_stop(&ctx);
 
 	free(ss->expanded);
-	ss->expanded = joined;
+	ss->expanded = expanded;
 
 	log_debug("%s exit: changed", __func__);
 	return (1);
