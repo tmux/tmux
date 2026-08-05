@@ -1,4 +1,4 @@
-/* $OpenBSD: session.c,v 1.106 2026/07/13 13:01:14 nicm Exp $ */
+/* $OpenBSD: session.c,v 1.107 2026/08/05 07:35:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -711,8 +711,10 @@ session_group_synchronize1(struct session *target, struct session *s)
 	/* Fix up the current window. */
 	if (s->curw != NULL)
 		s->curw = winlink_find_by_index(&s->windows, s->curw->idx);
-	else
+	else if (target->curw != NULL)
 		s->curw = winlink_find_by_index(&s->windows, target->curw->idx);
+	if (s->curw == NULL)
+		s->curw = RB_MIN(winlinks, &s->windows);
 
 	/* Fix up the last window stack. */
 	memcpy(&old_lastw, &s->lastw, sizeof old_lastw);
