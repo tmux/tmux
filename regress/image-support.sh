@@ -54,20 +54,31 @@ $TMUX new-window -d "
 sleep 1
 [ "$($TMUX display-message -pt:2 '#{cursor_y}')" = 1 ] || exit 1
 
+# A transmitted Kitty image followed by a Unicode placeholder placement is
+# converted into shared image cells rather than retained as placeholder text.
+$TMUX new-window -d "
+	printf '\033Ptmux;\033\033_Ga=t,q=2,f=32,o=z,m=1,s=2,v=1,i=588707642;eJz7z8Dw\033\033\\\033\\'
+	printf '\033Ptmux;\033\033_Ga=t,q=2;HwQAFvEF+w\033\033\\\033\\'
+	printf '\033Ptmux;\033\033_Ga=p,U=1,q=2,i=588707642,c=2,r=1\033\033\\\033\\'
+	printf '\033[38;2;22;247;58m\364\216\273\256\314\205\314\205\326\222\364\216\273\256\033[39m'
+	sleep 10"
+sleep 1
+[ -z "$($TMUX capture-pane -pt:3 -S0 -E0)" ] || exit 1
+
 # PNG Kitty input uses the shared image decoder and canonical cell sizing.
 $TMUX new-window -d "
 	printf '\033_Ga=T,q=2,f=100;iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQMAAAAl21bKAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAAGUExURf8AAP///0EdNBEAAAABYktHRAH/Ai3eAAAAB3RJTUUH6ggCDAECH324BwAAAApJREFUCNdjYAAAAAIAAeIhvDMAAAAASUVORK5CYII=\033\\'
 	sleep 10"
 sleep 1
-[ "$($TMUX display-message -pt:3 '#{cursor_y}')" = 1 ] || exit 1
+[ "$($TMUX display-message -pt:4 '#{cursor_y}')" = 1 ] || exit 1
 
 # SIXEL input reaches the same grid marker and copy-mode paths.
 $TMUX new-window -d "cat '$FIXTURE'; sleep 10"
 sleep 1
-[ "$($TMUX display-message -pt:4 '#{cursor_y}')" -gt 0 ] || exit 1
-$TMUX copy-mode -t:4 || exit 1
-$TMUX send-keys -t:4 -X history-top || exit 1
-$TMUX capture-pane -pt:4 >$TMP || exit 1
+[ "$($TMUX display-message -pt:5 '#{cursor_y}')" -gt 0 ] || exit 1
+$TMUX copy-mode -t:5 || exit 1
+$TMUX send-keys -t:5 -X history-top || exit 1
+$TMUX capture-pane -pt:5 >$TMP || exit 1
 
 # A 26-pixel raster occupies two default 16-pixel cells, but the final cell
 # remains only partially filled instead of stretching the raster to 32 pixels.

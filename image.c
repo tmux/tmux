@@ -394,18 +394,23 @@ image_base64_decode(const char *data, size_t len, size_t limit, size_t *size)
 {
 	char	*copy;
 	u_char	*out;
-	size_t	 needed;
+	size_t	 needed, padded, padding;
 	int	 result;
 
 	if (len > SIZE_MAX - 3)
 		return (NULL);
-	needed = (len + 3) / 4 * 3;
+	padding = (4 - len % 4) % 4;
+	if (padding == 3)
+		return (NULL);
+	padded = len + padding;
+	needed = padded / 4 * 3;
 	if (needed > limit || needed > INT_MAX)
 		return (NULL);
 
-	copy = xmalloc(len + 1);
+	copy = xmalloc(padded + 1);
 	memcpy(copy, data, len);
-	copy[len] = '\0';
+	memset(copy + len, '=', padding);
+	copy[padded] = '\0';
 	out = xmalloc(needed == 0 ? 1 : needed);
 	result = b64_pton(copy, out, needed);
 	free(copy);

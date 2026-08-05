@@ -83,6 +83,7 @@ struct kitty_state {
 	u_int	 image_id;
 	u_int	 quiet;
 	int	 no_cursor;
+	int	 virtual;
 	u_int	 data_size;
 	int	 more;
 
@@ -93,6 +94,7 @@ struct kitty_state {
 struct kitty_source {
 	u_int			 app_id;
 	u_int			 server_id;
+	u_int			 virtual_id;
 	struct kitty_source	*next;
 };
 
@@ -443,6 +445,7 @@ kitty_control(struct kitty_state *ks, const u_char *buf, size_t len)
 		case 'm':
 		case 'S':
 		case 'C':
+		case 'U':
 			if (kitty_number((const char *)value, valuelen,
 			    &number) != 0)
 				return (-1);
@@ -461,6 +464,7 @@ kitty_control(struct kitty_state *ks, const u_char *buf, size_t len)
 			case 'm': ks->more = (number != 0); break;
 			case 'S': ks->data_size = number; break;
 			case 'C': ks->no_cursor = (number != 0); break;
+			case 'U': ks->virtual = (number != 0); break;
 			}
 			break;
 		}
@@ -488,6 +492,8 @@ kitty_free_state(void *state)
 	kitty_state_free(kc->transfer);
 	for (source = kc->sources; source != NULL; source = next) {
 		next = source->next;
+		if (source->virtual_id != 0)
+			image_free(source->virtual_id);
 		image_free(source->server_id);
 		free(source);
 	}
@@ -519,10 +525,29 @@ kitty_source_set(struct kitty_context *kc, u_int id, struct image *im)
 		source->app_id = id;
 		source->next = kc->sources;
 		kc->sources = source;
-	} else
+	} else {
+		if (source->virtual_id != 0) {
+			image_free(source->virtual_id);
+			source->virtual_id = 0;
+		}
 		image_free(source->server_id);
+	}
 	image_ref(im->id);
 	source->server_id = im->id;
+}
+
+static void
+kitty_virtual_set(struct kitty_context *kc, u_int id, struct image *im)
+{
+	struct kitty_source	*source;
+
+	source = kitty_source_find(kc, id);
+	if (source == NULL)
+		return;
+	if (source->virtual_id != 0)
+		image_free(source->virtual_id);
+	image_ref(im->id);
+	source->virtual_id = im->id;
 }
 
 static struct image *
@@ -538,6 +563,8 @@ kitty_source_remove(struct kitty_context *kc, u_int id)
 		if (im != NULL)
 			image_ref(im->id);
 		*pp = source->next;
+		if (source->virtual_id != 0)
+			image_free(source->virtual_id);
 		image_free(source->server_id);
 		free(source);
 		return (im);
@@ -738,6 +765,7 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 		ks->format = 32;
 		ks->medium = 'd';
 	}
+	ks->more = 0;
 	*image_id = ks->image_id;
 	*quiet = ks->quiet;
 	*action = ks->action;
@@ -761,6 +789,16 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 		if (source == NULL) {
 			*status = KITTY_PARSE_MISSING;
 			im = NULL;
+		} else if (ks->virtual) {
+			im = kitty_place_image(source, ks, xpixel, ypixel);
+			image_free(source->id);
+			if (im != NULL) {
+				kitty_virtual_set(kc, ks->image_id, im);
+				image_free(im->id);
+				im = NULL;
+				*action = 'u';
+				*status = KITTY_PARSE_OK;
+			}
 		} else {
 			im = kitty_place_image(source, ks, xpixel, ypixel);
 			image_free(source->id);
@@ -814,8 +852,8 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 			decoded = uncompressed;
 			decodedlen = uncompressedlen;
 		} else if (ks->compression != '\0') {
-				free(decoded);
-				goto fail;
+			free(decoded);
+			goto fail;
 		}
 		pixels = image_png_decode(decoded, decodedlen, IMAGE_SIZE_LIMIT,
 		    &ks->width, &ks->height);
@@ -848,12 +886,23 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 		*status = KITTY_PARSE_OK;
 		if (ks->action != 'q')
 			kitty_source_set(kc, ks->image_id, source);
-		if (ks->action == 'T') {
+		if (ks->action == 'T' && !ks->virtual) {
 			im = kitty_place_image(source, ks, xpixel, ypixel);
 			if (im == NULL)
 				*status = KITTY_PARSE_ERROR;
-		} else
+		} else if (ks->virtual) {
+			im = kitty_place_image(source, ks, xpixel, ypixel);
+			if (im == NULL)
+				*status = KITTY_PARSE_ERROR;
+			else {
+				kitty_virtual_set(kc, ks->image_id, im);
+				image_free(im->id);
+				im = NULL;
+				*action = 'u';
+			}
+		} else {
 			im = NULL;
+		}
 		image_free(source->id);
 	}
 	kitty_state_free(ks);
@@ -863,4 +912,129 @@ fail:
 	kc->transfer = NULL;
 	kitty_state_free(ks);
 	return (NULL);
+}
+
+static int
+kitty_placeholder_character(const u_char *data, size_t size, size_t *offset,
+    uint32_t *value)
+{
+	u_char	 ch;
+	u_int	 needed, i;
+	uint32_t result;
+
+	if (*offset >= size)
+		return (0);
+	ch = data[(*offset)++];
+	if (ch < 0x80) {
+		*value = ch;
+		return (1);
+	}
+	if ((ch & 0xe0) == 0xc0) {
+		needed = 1;
+		result = ch & 0x1f;
+	} else if ((ch & 0xf0) == 0xe0) {
+		needed = 2;
+		result = ch & 0x0f;
+	} else if ((ch & 0xf8) == 0xf0) {
+		needed = 3;
+		result = ch & 0x07;
+	} else
+		return (0);
+	if (needed > size - *offset)
+		return (0);
+	for (i = 0; i < needed; i++) {
+		ch = data[(*offset)++];
+		if ((ch & 0xc0) != 0x80)
+			return (0);
+		result = (result << 6)|(ch & 0x3f);
+	}
+	*value = result;
+	return (1);
+}
+
+static int
+kitty_placeholder_index(uint32_t value, u_int *index)
+{
+	u_int	i;
+
+	for (i = 0; i < nitems(kitty_diacritics); i++) {
+		if (kitty_diacritics[i] == value) {
+			*index = i;
+			return (1);
+		}
+	}
+	return (0);
+}
+
+/* Replace a Kitty Unicode placeholder with a shared image marker cell. */
+int
+kitty_placeholder_to_cell(void *state, struct grid_cell *gc,
+    const struct grid_cell *left)
+{
+	struct kitty_context	*kc = state;
+	struct kitty_source	*source;
+	struct image		*im;
+	uint32_t		 value;
+	size_t			 offset = 0;
+	u_int			 values[3], nvalues = 0, id, x, y;
+	struct utf8_data	 data;
+	int			 fg, bg, us;
+
+	if (kc == NULL ||
+	    !kitty_placeholder_character(gc->data.data, gc->data.size, &offset,
+	    &value) || value != 0x10eeee)
+		return (0);
+	while (offset < gc->data.size && nvalues < nitems(values)) {
+		if (!kitty_placeholder_character(gc->data.data, gc->data.size,
+		    &offset, &value) ||
+		    !kitty_placeholder_index(value, &values[nvalues]))
+			return (0);
+		nvalues++;
+	}
+	if (offset != gc->data.size)
+		return (0);
+
+	if (gc->fg & COLOUR_FLAG_RGB)
+		id = gc->fg & 0xffffff;
+	else if (gc->fg >= 0 && gc->fg <= 255)
+		id = gc->fg;
+	else
+		return (0);
+	if (nvalues == 3)
+		id |= values[2] << 24;
+	source = kitty_source_find(kc, id);
+	if (source == NULL)
+		return (0);
+	im = image_find(source->virtual_id != 0 ? source->virtual_id :
+	    source->server_id);
+	if (im == NULL)
+		return (0);
+
+	if (nvalues >= 1)
+		y = values[0];
+	else if (left != NULL && left->flags & GRID_FLAG_IMAGE &&
+	    left->image_id == im->id)
+		y = left->image_y;
+	else
+		return (0);
+	if (nvalues >= 2)
+		x = values[1];
+	else if (left != NULL && left->flags & GRID_FLAG_IMAGE &&
+	    left->image_id == im->id && left->image_x != UINT_MAX)
+		x = left->image_x + 1;
+	else
+		return (0);
+	if (x >= im->sx || y >= im->sy)
+		return (0);
+
+	utf8_copy(&data, &gc->data);
+	fg = gc->fg;
+	bg = gc->bg;
+	us = gc->us;
+	image_set_cell(gc, im, x, y);
+	utf8_copy(&gc->data, &data);
+	gc->fg = fg;
+	gc->bg = bg;
+	gc->us = us;
+	return (1);
 }

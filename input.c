@@ -186,6 +186,9 @@ static void	input_enter_osc(struct input_ctx *);
 static void	input_exit_osc(struct input_ctx *);
 static void	input_enter_apc(struct input_ctx *);
 static void	input_exit_apc(struct input_ctx *);
+#ifdef ENABLE_IMAGES
+static int	input_handle_kitty(struct input_ctx *, const u_char *, size_t);
+#endif
 static void	input_enter_rename(struct input_ctx *);
 static void	input_exit_rename(struct input_ctx *);
 
@@ -2648,6 +2651,18 @@ input_dcs_dispatch(struct input_ctx *ictx)
 		return (0);
 	}
 
+#ifdef ENABLE_IMAGES
+	/* Kitty uses this wrapper automatically when it detects tmux. */
+	if (wp != NULL && len >= prefixlen + 5 &&
+	    memcmp(buf, prefix, prefixlen) == 0 &&
+	    memcmp(buf + prefixlen, "\033_G", 3) == 0 &&
+	    memcmp(buf + len - 2, "\033\\", 2) == 0) {
+		input_handle_kitty(ictx, buf + prefixlen + 3,
+		    len - prefixlen - 5);
+		return (0);
+	}
+#endif
+
 #ifdef ENABLE_SIXEL
 	if (wp != NULL && buf[0] == 'q' && ictx->interm_len == 0) {
 		w = wp->window;
@@ -2795,57 +2810,66 @@ input_enter_apc(struct input_ctx *ictx)
 }
 
 /* APC terminator (ST) received. */
+#ifdef ENABLE_IMAGES
+static int
+input_handle_kitty(struct input_ctx *ictx, const u_char *buf, size_t len)
+{
+	struct screen_write_ctx	*sctx = &ictx->ctx;
+	struct window_pane	*wp = ictx->wp;
+	struct image		*im;
+	u_int			 image_id = 0, quiet = 0;
+	char			 action = '\0';
+	int			 status;
+
+	if (wp == NULL)
+		return (0);
+	im = kitty_parse_image(&ictx->kitty_state, buf, len,
+		    wp->window->xpixel,
+		    wp->window->ypixel, &image_id, &quiet, &action, &status);
+	if (status == KITTY_PARSE_MORE)
+		return (1);
+	if (status != KITTY_PARSE_OK) {
+		if (quiet < 2 && action != '\0') {
+			if (status == KITTY_PARSE_MISSING)
+				input_reply(ictx, 0, "\033_Gi=%u;ENOENT\033\\",
+				    image_id);
+			else
+				input_reply(ictx, 0, "\033_Gi=%u;EINVAL\033\\",
+				    image_id);
+		}
+		return (1);
+	}
+	if (im != NULL) {
+		if (action == 'd')
+			image_clear(sctx, im->id);
+		else
+			image_write(sctx, im, ictx->cell.cell.bg);
+		image_free(im->id);
+		if (quiet == 0 && image_id != 0)
+			input_reply(ictx, 0, "\033_Gi=%u;OK\033\\", image_id);
+	} else if (action == 'd' && image_id == 0)
+		image_clear(sctx, 0);
+	else if ((action == 't' || action == 'q' || action == 'u') && quiet == 0)
+		input_reply(ictx, 0, "\033_Gi=%u;OK\033\\", image_id);
+	return (1);
+}
+#endif
+
 static void
 input_exit_apc(struct input_ctx *ictx)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct window_pane	*wp = ictx->wp;
-#ifdef ENABLE_IMAGES
-	struct image		*im;
-	u_int			 image_id = 0, quiet = 0;
-	char			 action = '\0';
-	int			 status;
-#endif
 
 	if (ictx->flags & INPUT_DISCARD)
 		return;
 	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
 
 #ifdef ENABLE_IMAGES
-	if (wp != NULL && ictx->input_len > 1 && ictx->input_buf[0] == 'G') {
-		im = kitty_parse_image(&ictx->kitty_state, ictx->input_buf + 1,
-		    ictx->input_len - 1, wp->window->xpixel,
-		    wp->window->ypixel, &image_id, &quiet, &action, &status);
-		if (status == KITTY_PARSE_MORE)
-			return;
-		if (status != KITTY_PARSE_OK) {
-			if (quiet < 2 && action != '\0') {
-				if (status == KITTY_PARSE_MISSING)
-					input_reply(ictx, 0,
-					    "\033_Gi=%u;ENOENT\033\\",
-					    image_id);
-				else
-					input_reply(ictx, 0,
-					    "\033_Gi=%u;EINVAL\033\\",
-					    image_id);
-			}
-			return;
-		}
-		if (im != NULL) {
-			if (action == 'd')
-				image_clear(sctx, im->id);
-			else
-				image_write(sctx, im, ictx->cell.cell.bg);
-			image_free(im->id);
-			if (quiet == 0 && image_id != 0)
-				input_reply(ictx, 0, "\033_Gi=%u;OK\033\\",
-				    image_id);
-		} else if (action == 'd' && image_id == 0) {
-			image_clear(sctx, 0);
-		} else if ((action == 't' || action == 'q') && quiet == 0)
-			input_reply(ictx, 0, "\033_Gi=%u;OK\033\\", image_id);
+	if (ictx->input_len > 1 && ictx->input_buf[0] == 'G' &&
+	    input_handle_kitty(ictx, ictx->input_buf + 1,
+	    ictx->input_len - 1))
 		return;
-	}
 #endif
 
 	if (wp != NULL &&
@@ -2934,6 +2958,23 @@ input_top_bit_set(struct input_ctx *ictx)
 
 	utf8_copy(&ictx->cell.cell.data, ud);
 	screen_write_collect_add(sctx, &ictx->cell.cell);
+
+#ifdef ENABLE_IMAGES
+	if (sctx->s->cx != 0) {
+		struct grid_cell	 gc, left;
+		u_int			 x = sctx->s->cx - 1;
+
+		grid_view_get_cell(sctx->s->grid, x, sctx->s->cy, &gc);
+		if (x != 0)
+			grid_view_get_cell(sctx->s->grid, x - 1, sctx->s->cy,
+			    &left);
+		if (kitty_placeholder_to_cell(ictx->kitty_state, &gc,
+		    x == 0 ? NULL : &left)) {
+			grid_view_set_cell(sctx->s->grid, x, sctx->s->cy, &gc);
+			image_redraw_area(sctx, x, sctx->s->cy, 1, 1);
+		}
+	}
+#endif
 
 	utf8_copy(&ictx->last, &ictx->cell.cell.data);
 	ictx->flags |= INPUT_LAST;
