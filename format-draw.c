@@ -1308,13 +1308,13 @@ format_draw_lines_split(struct format_lines *fls, const char *expanded,
 /* Draw one row and give any ranges it produces the row's y position. */
 static void
 format_draw_lines_row(struct screen_write_ctx *octx,
-    const struct grid_cell *base, u_int width, u_int py, const char *chunk,
-    struct style_ranges *srs, int default_colours)
+    const struct grid_cell *base, u_int ox, u_int width, u_int py,
+    const char *chunk, struct style_ranges *srs, int default_colours)
 {
 	struct style_ranges	 row_srs;
 	struct style_range	*sr, *sr1;
 
-	screen_write_cursormove(octx, 0, py, 0);
+	screen_write_cursormove(octx, ox, py, 0);
 	if (srs == NULL) {
 		format_draw(octx, base, width, chunk, NULL, default_colours);
 		return;
@@ -1329,15 +1329,15 @@ format_draw_lines_row(struct screen_write_ctx *octx,
 }
 
 /*
- * Draw a multi-row format into no more than height rows at the cursor, each
- * row drawn by format_draw. The list section is scrolled to keep the focus
- * row visible; ranges get the screen row they were drawn on. Returns the
- * number of rows drawn.
+ * Draw a multi-row format into no more than height rows starting at column
+ * ox, each row drawn by format_draw. The list section is scrolled to keep
+ * the focus row visible; ranges get the screen row they were drawn on and
+ * columns relative to ox. Returns the number of rows drawn.
  */
 u_int
 format_draw_lines(struct screen_write_ctx *octx, const struct grid_cell *base,
-    u_int width, u_int height, const char *expanded, struct style_ranges *srs,
-    int default_colours)
+    u_int ox, u_int width, u_int height, const char *expanded,
+    struct style_ranges *srs, int default_colours)
 {
 	struct format_lines	 fls;
 	struct format_line	*fl;
@@ -1420,7 +1420,7 @@ format_draw_lines(struct screen_write_ctx *octx, const struct grid_cell *base,
 	y = 0;
 	for (i = 0; i < vis_top; i++) {
 		fl = &fls.lines[top[i]];
-		format_draw_lines_row(octx, base, width, ocy + y, fl->chunk,
+		format_draw_lines_row(octx, base, ox, width, ocy + y, fl->chunk,
 		    srs, default_colours);
 		y++;
 	}
@@ -1431,13 +1431,13 @@ format_draw_lines(struct screen_write_ctx *octx, const struct grid_cell *base,
 		else if (i == vis_list - 1 && lstart + vis_list < n_list &&
 		    down != -1)
 			fl = &fls.lines[down];
-		format_draw_lines_row(octx, base, width, ocy + y, fl->chunk,
+		format_draw_lines_row(octx, base, ox, width, ocy + y, fl->chunk,
 		    srs, default_colours);
 		y++;
 	}
 	for (i = 0; i < vis_bottom; i++) {
 		fl = &fls.lines[bottom[i]];
-		format_draw_lines_row(octx, base, width, ocy + y, fl->chunk,
+		format_draw_lines_row(octx, base, ox, width, ocy + y, fl->chunk,
 		    srs, default_colours);
 		y++;
 	}
