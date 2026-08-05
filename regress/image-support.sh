@@ -143,4 +143,42 @@ $TMUX capture-pane -pS0 -E3 >$TMP || exit 1
 [ "$(sed -n 2p $TMP)" = "*" ] || exit 1
 [ "$(sed -n 3p $TMP)" = "@" ] || exit 1
 
+# Image marker rows remain cell-aligned when a narrower terminal causes text
+# reflow. The ten-column rows are clipped to five columns, not split into four
+# wrapped rows.
+$TMUX2 new-window -d "
+	printf '\033_Ga=T,q=2,C=1,f=32,s=1,v=2,c=10,r=2;/wAA//////8=\033\\'
+	sleep 10" || exit 1
+$TMUX2 select-window -t:3 || exit 1
+sleep 1
+$TMUX resize-window -x 5 -y 4 || exit 1
+sleep 1
+[ "$($TMUX2 display-message -p '#{window_width}x#{window_height}')" = "5x4" ] || exit 1
+$TMUX capture-pane -pS0 -E3 >$TMP || exit 1
+[ "$(sed -n 1p $TMP)" = "....." ] || exit 1
+[ "$(sed -n 2p $TMP)" = "@@@@@" ] || exit 1
+[ -z "$(sed -n 3p $TMP)" ] || exit 1
+
+# Kitty virtual placements use U+10EEEE placeholder cells. Keep their rows at
+# fixed coordinates when narrowing the terminal, clipping instead of reflowing
+# the second half onto the following row.
+$TMUX resize-window -x 10 -y 4 || exit 1
+sleep 1
+$TMUX2 new-window -d "
+	printf '\\364\\216\\273\\256\\314\\205\\364\\216\\273\\256\\314\\205\\364\\216\\273\\256\\314\\205\\364\\216\\273\\256\\314\\205\\364\\216\\273\\256\\314\\205'
+	printf '\\364\\216\\273\\256\\314\\205\\364\\216\\273\\256\\314\\205\\364\\216\\273\\256\\314\\205\\364\\216\\273\\256\\314\\205\\364\\216\\273\\256\\314\\205'
+	sleep 10" || exit 1
+$TMUX2 select-window -t:4 || exit 1
+sleep 1
+$TMUX resize-window -x 5 -y 4 || exit 1
+sleep 1
+$TMUX capture-pane -pS0 -E3 >$TMP || exit 1
+[ -n "$(sed -n 1p $TMP)" ] || exit 1
+[ -z "$(sed -n 2p $TMP)" ] || exit 1
+$TMUX resize-window -x 10 -y 4 || exit 1
+sleep 1
+$TMUX capture-pane -pS0 -E3 >$TMP || exit 1
+[ "$(sed -n 1p $TMP | wc -c)" = 61 ] || exit 1
+[ -z "$(sed -n 2p $TMP)" ] || exit 1
+
 exit 0
