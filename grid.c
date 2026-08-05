@@ -1448,6 +1448,30 @@ grid_reflow_dead(struct grid_line *gl)
 	gl->flags = GRID_LINE_DEAD;
 }
 
+/* Image rows are cell-aligned and must not be reflowed like text. */
+static int
+grid_reflow_has_image(struct grid_line *gl)
+{
+	struct grid_cell	 gc;
+	u_int			 i;
+
+	if (~gl->flags & GRID_LINE_EXTENDED)
+		return (0);
+	for (i = 0; i < gl->cellused; i++) {
+		grid_get_cell1(gl, i, &gc);
+#ifdef ENABLE_IMAGES
+		if (gc.flags & GRID_FLAG_IMAGE)
+			return (1);
+#endif
+		/* Kitty Unicode placeholder base character (U+10EEEE). */
+		if (gc.data.size >= 4 && gc.data.data[0] == 0xf4 &&
+		    gc.data.data[1] == 0x8e && gc.data.data[2] == 0xbb &&
+		    gc.data.data[3] == 0xae)
+			return (1);
+	}
+	return (0);
+}
+
 /* Add lines, return the first new one. */
 static struct grid_line *
 grid_reflow_add(struct grid *gd, u_int n)
@@ -1509,6 +1533,10 @@ grid_reflow_join(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 		if (yy + 1 + lines == gd->hsize + gd->sy)
 			break;
 		line = yy + 1 + lines;
+
+		/* Do not join wrapped text to a cell-aligned image row. */
+		if (grid_reflow_has_image(&gd->linedata[line]))
+			break;
 
 		/* If the next line is empty, skip it. */
 		if (~gd->linedata[line].flags & GRID_LINE_WRAPPED)
@@ -1680,6 +1708,12 @@ grid_reflow(struct grid *gd, u_int sx)
 		gl = &gd->linedata[yy];
 		if (gl->flags & GRID_LINE_DEAD)
 			continue;
+
+		/* Keep image markers at their original cell coordinates. */
+		if (grid_reflow_has_image(gl)) {
+			grid_reflow_move(target, gl);
+			continue;
+		}
 
 		/*
 		 * Work out the width of this line. at is the point at which
