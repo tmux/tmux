@@ -82,6 +82,7 @@ struct kitty_state {
 	u_int	 rows;
 	u_int	 image_id;
 	u_int	 quiet;
+	int	 no_cursor;
 	u_int	 data_size;
 	int	 more;
 
@@ -441,6 +442,7 @@ kitty_control(struct kitty_state *ks, const u_char *buf, size_t len)
 		case 'q':
 		case 'm':
 		case 'S':
+		case 'C':
 			if (kitty_number((const char *)value, valuelen,
 			    &number) != 0)
 				return (-1);
@@ -458,6 +460,7 @@ kitty_control(struct kitty_state *ks, const u_char *buf, size_t len)
 			case 'q': ks->quiet = number; break;
 			case 'm': ks->more = (number != 0); break;
 			case 'S': ks->data_size = number; break;
+			case 'C': ks->no_cursor = (number != 0); break;
 			}
 			break;
 		}
@@ -622,6 +625,7 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 	uint64_t	 numerator, denominator, value;
 	u_int		 x, y, width, height, sx, sy, canvas_width;
 	u_int		 canvas_height, cell_width, cell_height;
+	struct image	*im;
 
 	x = ks->source_x;
 	y = ks->source_y;
@@ -688,8 +692,11 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 		canvas_width = value;
 	}
 
-	return (image_create_view(source, x, y, width, height, canvas_width,
-	    canvas_height, sx, sy));
+	im = image_create_view(source, x, y, width, height, canvas_width,
+	    canvas_height, sx, sy);
+	if (im != NULL && ks->no_cursor)
+		im->flags |= IMAGE_FLAG_NO_CURSOR;
+	return (im);
 }
 
 /*

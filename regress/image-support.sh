@@ -114,4 +114,33 @@ $TMUX capture-pane -pS0 -E1 >$TMP || exit 1
 [ "$(sed -n 1p $TMP)" = "*" ] || exit 1
 [ "$(sed -n 2p $TMP)" = "@" ] || exit 1
 
+# C=1 places the image without moving the cursor or scrolling. The four-row
+# image is clipped at the bottom of this four-row pane, leaving its white last
+# row off screen.
+$TMUX2 new-window -d "
+	printf '\033[2;3H'
+	printf '\033_Ga=T,q=2,C=1,f=32,s=1,v=4,c=1,r=4;AAAA/1VVVf+qqqr//////w==\033\\'
+	sleep 10" || exit 1
+$TMUX2 select-window -t:1 || exit 1
+sleep 1
+[ "$($TMUX2 display-message -p '#{cursor_x},#{cursor_y}')" = "2,1" ] || exit 1
+$TMUX capture-pane -pS0 -E3 >$TMP || exit 1
+[ "$(sed -n 3p $TMP)" = "  :" ] || exit 1
+[ "$(sed -n 4p $TMP)" = "  *" ] || exit 1
+
+# With normal cursor movement, scrolling is calculated from the full image
+# height. Rows which scrolled above the pane are then cropped from the top, so
+# the bottom three source rows remain visible and the cursor is on the last row.
+$TMUX2 new-window -d "
+	printf '\033[3;1H'
+	printf '\033_Ga=T,q=2,f=32,s=1,v=4,c=1,r=4;AAAA/1VVVf+qqqr//////w==\033\\'
+	sleep 10" || exit 1
+$TMUX2 select-window -t:2 || exit 1
+sleep 1
+[ "$($TMUX2 display-message -p '#{cursor_y}')" = 3 ] || exit 1
+$TMUX capture-pane -pS0 -E3 >$TMP || exit 1
+[ "$(sed -n 1p $TMP)" = ":" ] || exit 1
+[ "$(sed -n 2p $TMP)" = "*" ] || exit 1
+[ "$(sed -n 3p $TMP)" = "@" ] || exit 1
+
 exit 0

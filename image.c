@@ -580,34 +580,38 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
 	struct grid		*gd = s->grid;
 	struct grid_cell		 gc;
 	u_int			 cx = s->cx, cy = s->cy;
-	u_int			 x, y, sx, sy, lines;
+	u_int			 x, y, sx, sy, lines, origin_y = 0;
 
 	sx = im->sx;
 	if (sx > screen_size_x(s) - cx)
 		sx = screen_size_x(s) - cx;
 	sy = im->sy;
-	if (sy > screen_size_y(s) - 1)
-		sy = screen_size_y(s) - 1;
-	if (sx == 0 || sy == 0)
+	if (sx == 0)
 		return;
 
-	if (screen_size_y(s) - cy <= sy) {
+	if (im->flags & IMAGE_FLAG_NO_CURSOR) {
+		if (sy > screen_size_y(s) - cy)
+			sy = screen_size_y(s) - cy;
+	} else if (screen_size_y(s) - cy <= sy) {
 		lines = sy - (screen_size_y(s) - cy) + 1;
 		screen_write_scrollup(ctx, lines, bg);
-		if (lines > cy)
+		if (lines > cy) {
+			origin_y = lines - cy;
 			screen_write_cursormove(ctx, -1, 0, 0);
-		else
+		} else
 			screen_write_cursormove(ctx, -1, cy - lines, 0);
 		cy = s->cy;
+		sy -= origin_y;
 	}
 
 	for (y = 0; y < sy; y++) {
 		for (x = 0; x < sx; x++) {
-			image_set_cell(&gc, im, x, y);
+			image_set_cell(&gc, im, x, origin_y + y);
 			gc.bg = bg;
 			grid_view_set_cell(gd, cx + x, cy + y, &gc);
 		}
 	}
 	image_redraw_area(ctx, cx, cy, sx, sy);
-	screen_write_cursormove(ctx, 0, cy + sy, 0);
+	if (!(im->flags & IMAGE_FLAG_NO_CURSOR))
+		screen_write_cursormove(ctx, 0, cy + sy, 0);
 }
