@@ -192,6 +192,32 @@ $TMUX capture-pane -pS0 -E3 >$TMP || exit 1
 [ "$(sed -n 1p $TMP | wc -c)" = 61 ] || exit 1
 [ -z "$(sed -n 2p $TMP)" ] || exit 1
 
+# A nonzero Kitty placement ID identifies one placement of an image. Reusing
+# the same image and placement IDs moves it rather than leaving the old cells.
+PLACEMENT_WINDOW=$($TMUX2 new-window -dP -F '#{window_id}' "
+	printf '\033_Ga=t,q=2,f=32,s=1,v=1,i=11;/////w==\033\\'
+	printf '\033[2;2H\033_Ga=p,q=2,C=1,i=11,p=7,c=2,r=1\033\\'
+	printf '\033[4;6H\033_Ga=p,q=2,C=1,i=11,p=7,c=2,r=1\033\\'
+	sleep 10") || exit 1
+$TMUX2 select-window -t"$PLACEMENT_WINDOW" || exit 1
+sleep 1
+$TMUX capture-pane -pS0 -E3 >$TMP || exit 1
+[ -z "$(sed -n 2p $TMP)" ] || exit 1
+[ "$(sed -n 4p $TMP)" = "     @@" ] || exit 1
+
+# Deleting one placement ID leaves other placements of the image intact.
+PLACEMENT_WINDOW=$($TMUX2 new-window -dP -F '#{window_id}' "
+	printf '\033_Ga=t,q=2,f=32,s=1,v=1,i=12;/////w==\033\\'
+	printf '\033[2;2H\033_Ga=p,q=2,C=1,i=12,p=7,c=2,r=1\033\\'
+	printf '\033[4;6H\033_Ga=p,q=2,C=1,i=12,p=8,c=2,r=1\033\\'
+	printf '\033_Ga=d,d=i,q=2,i=12,p=7\033\\'
+	sleep 10") || exit 1
+$TMUX2 select-window -t"$PLACEMENT_WINDOW" || exit 1
+sleep 1
+$TMUX capture-pane -pS0 -E3 >$TMP || exit 1
+[ -z "$(sed -n 2p $TMP)" ] || exit 1
+[ "$(sed -n 4p $TMP)" = "     @@" ] || exit 1
+
 # A weighted median at the maximum channel level must still leave colours on
 # both sides of the split. This skewed black, grey and white image used to stop
 # palette generation after one colour instead of producing three.

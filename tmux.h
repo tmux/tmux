@@ -4327,7 +4327,7 @@ void		 image_clear(struct screen_write_ctx *, u_int);
 #define KITTY_PARSE_MORE 1
 #define KITTY_PARSE_MISSING 2
 struct image	*kitty_parse_image(void **, const u_char *, size_t, u_int,
-		     u_int, u_int *, u_int *, char *, int *);
+		     u_int, u_int *, u_int *, u_int *, char *, int *);
 int		 kitty_placeholder_to_cell(void *, struct grid_cell *,
 		     const struct grid_cell *);
 void		 kitty_free_state(void *);
