@@ -244,7 +244,8 @@ static const char *options_table_status_format_default[] = {
 /*
  * Default side status line format: one row for each window in the current
  * session and, if there are other sessions, a row for each session with the
- * current session's windows indented below it. The window rows use the
+ * current session's windows below it with tree branch markers like tree
+ * mode. The window rows use the
  * window status styles but not the window status formats, which lay text out
  * for a horizontal line.
  */
@@ -261,10 +262,12 @@ static const char *options_table_status_format_default[] = {
 	"]" \
 	"#I:#W#{?window_flags,#{window_flags}, }" \
 	"#[norange list=on default]#[nl]"
+#define OPTIONS_TABLE_SIDE_STATUS_BRANCH \
+	"#[acs]#{?window_end_flag,mq,tq}+#[noacs] "
 #define OPTIONS_TABLE_SIDE_STATUS_FORMAT1 \
 	"#[list=on]" \
-	"#[list=left-marker]^#[nl]" \
-	"#[list=right-marker]v#[nl]" \
+	"#[list=left-marker]#[acs]-#[noacs]#[nl]" \
+	"#[list=right-marker]#[acs].#[noacs]#[nl]" \
 	"#{?#{e|>:#{server_sessions},1}," \
 		"#{S:" \
 			"#[range=session|#{session_id}]" \
@@ -272,9 +275,11 @@ static const char *options_table_status_format_default[] = {
 			"#[norange]#[nl]" \
 			"#{?#{==:#{session_name},#{client_session}}," \
 				"#{W:" \
-					"  " OPTIONS_TABLE_SIDE_STATUS_WINDOW \
+					OPTIONS_TABLE_SIDE_STATUS_BRANCH \
+					OPTIONS_TABLE_SIDE_STATUS_WINDOW \
 				"," \
-					"  " OPTIONS_TABLE_SIDE_STATUS_CURRENT \
+					OPTIONS_TABLE_SIDE_STATUS_BRANCH \
+					OPTIONS_TABLE_SIDE_STATUS_CURRENT \
 				"}" \
 			",}" \
 		"}" \
