@@ -5470,8 +5470,9 @@ section.
 .Xc
 Show a vertical status line at the left or right of the terminal.
 The side status line uses the
-.Ic status\-style
-colours and is updated every
+.Ic side\-status\-style
+colours, draws a vertical line on the edge next to the window area and is
+updated every
 .Ic status\-interval
 seconds like the status line.
 .It Ic side\-status\-format[] Ar format
@@ -5500,8 +5501,16 @@ and
 .Ic list=right\-marker
 replace the first and last visible list row when rows are hidden above or
 below.
+.It Ic side\-status\-style Ar style
+Set the style of the side status line.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
 .It Ic side\-status\-width Ar width
-Set the width of the side status line.
+Set the width of the side status line, including the vertical line on the
+edge next to the window area.
 The default is 10.
 .It Xo Ic silence\-action
 .Op Ic any | none | current | other

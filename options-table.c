@@ -1060,6 +1060,15 @@ const struct options_table_entry options_table[] = {
 		  "than one session, a row for each session."
 	},
 
+	{ .name = "side-status-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = "bg=themeblack,fg=themegreen",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of the side status line."
+	},
+
 	{ .name = "side-status-width",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_SESSION,

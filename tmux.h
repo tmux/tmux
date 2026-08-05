@@ -2087,6 +2087,7 @@ struct side_status_line {
 
 	struct grid_cell	 style;
 	char			*expanded;
+	int			 linex;
 	struct style_ranges	 ranges;
 };
 
@@ -2790,7 +2791,7 @@ void	 events_fire_winlink(const char *, struct winlink *);
 void	 format_draw(struct screen_write_ctx *, const struct grid_cell *,
 	     u_int, const char *, struct style_ranges *, int);
 u_int	 format_draw_lines(struct screen_write_ctx *,
-	     const struct grid_cell *, u_int, u_int, const char *,
+	     const struct grid_cell *, u_int, u_int, u_int, const char *,
 	     struct style_ranges *, int);
 u_int	 format_width(const char *);
 char	*format_trim_left(const char *, u_int);
