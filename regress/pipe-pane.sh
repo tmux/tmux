@@ -35,9 +35,9 @@ check_alive()
 
 # A pipe-pane -I child may write after the pane process has exited. With
 # remain-on-exit, the pane stays around but its bufferevent has been freed.
-check_ok new-session -d -s pipe -x 80 -y 24 'sleep 0.2'
+check_ok new-session -d -s pipe -x 80 -y 24 'sleep 1'
 check_ok set-option -t pipe:0 remain-on-exit on
-check_ok pipe-pane -t pipe:0.0 -I 'sleep 0.6; printf x'
+check_ok pipe-pane -t pipe:0.0 -I 'sleep 2; printf x'
 
 i=0
 while [ "$($TMUX display-message -p -t pipe:0.0 '#{pane_dead}')" != "1" ]; do
@@ -46,7 +46,7 @@ while [ "$($TMUX display-message -p -t pipe:0.0 '#{pane_dead}')" != "1" ]; do
 	sleep 0.1
 done
 
-sleep 0.7
+sleep 2
 check_alive
 
 $TMUX kill-server 2>/dev/null
