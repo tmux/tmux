@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.285 2026/07/26 09:02:08 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.286 2026/08/03 12:58:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2461,15 +2461,62 @@ screen_write_collect_insert_clear(struct screen_write_ctx *ctx, u_int px,
 	}
 }
 
+/*
+ * Clear a cell that is being broken up by a write over part of it, keeping the
+ * background so the columns it covered do not lose their colour.
+ */
+static void
+screen_write_clear_cell(struct grid *gd, u_int px, u_int py)
+{
+	struct grid_cell	 gc;
+	int			 bg;
+
+	grid_view_get_cell(gd, px, py, &gc);
+	bg = gc.bg;
+
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+	gc.bg = bg;
+	grid_view_set_cell(gd, px, py, &gc);
+}
+
+/*
+ * Insert clears for a range of cells already cleared in the grid. Adjacent
+ * cells may have come from different characters and so have different
+ * backgrounds, so this is done in runs of the same colour.
+ */
+static void
+screen_write_insert_clears(struct screen_write_ctx *ctx, u_int px, u_int nx)
+{
+	struct screen		*s = ctx->s;
+	struct grid_cell	 gc;
+	u_int			 xx, start = px, n;
+	int			 bg = 8;
+
+	for (xx = px; xx < px + nx; xx++) {
+		grid_view_get_cell(s->grid, xx, s->cy, &gc);
+		if (xx == start)
+			bg = gc.bg;
+		else if (gc.bg != bg) {
+			n = xx - start;
+			log_debug("%s: from %u, size %u", __func__, start, n);
+			screen_write_collect_insert_clear(ctx, start, n, bg);
+			start = xx;
+			bg = gc.bg;
+		}
+	}
+	log_debug("%s: from %u, size %u", __func__, start, xx - start);
+	screen_write_collect_insert_clear(ctx, start, xx - start, bg);
+}
+
 /* Finish and store collected cells. */
 void
 screen_write_collect_end(struct screen_write_ctx *ctx)
 {
 	struct screen			*s = ctx->s;
-	struct screen_write_citem	*ci = ctx->item, *bci = NULL, *aci;
+	struct screen_write_citem	*ci = ctx->item;
 	struct screen_write_cline	*cl = &s->write_list[s->cy];
 	struct grid_cell		 gc;
-	u_int				 xx;
+	u_int				 xx, bx = 0, bnx = 0;
 
 	if (ci->used == 0)
 		return;
@@ -2485,8 +2532,7 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 			grid_view_get_cell(s->grid, xx, s->cy, &gc);
 			if (~gc.flags & GRID_FLAG_PADDING)
 				break;
-			grid_view_set_cell(s->grid, xx, s->cy,
-			    &grid_default_cell);
+			screen_write_clear_cell(s->grid, xx, s->cy);
 			log_debug("%s: padding erased (before) at %u (cx %u)",
 			    __func__, xx, s->cx);
 		}
@@ -2495,20 +2541,12 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 				grid_view_get_cell(s->grid, 0, s->cy, &gc);
 			if (gc.data.width > 1 ||
 			    (gc.flags & GRID_FLAG_PADDING)) {
-				grid_view_set_cell(s->grid, xx, s->cy,
-				    &grid_default_cell);
+				screen_write_clear_cell(s->grid, xx, s->cy);
 				log_debug("%s: padding erased (before) at %u "
 				    "(cx %u)", __func__, xx, s->cx);
 			}
-		}
-		if (xx != s->cx) {
-			bci = ctx->item;
-			bci->type = CLEAR;
-			bci->x = xx;
-			bci->bg = 8;
-			bci->used = s->cx - xx;
-			log_debug("%s: padding erased (before): from %u, "
-			    "size %u", __func__, bci->x, bci->used);
+			bx = xx;
+			bnx = s->cx - xx;
 		}
 	}
 
@@ -2518,28 +2556,20 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 
 	grid_view_set_cells(s->grid, s->cx, s->cy, &ci->gc, cl->data + ci->x,
 	    ci->used);
-	if (bci != NULL)
-		screen_write_collect_insert(ctx, bci);
+	if (bnx != 0)
+		screen_write_insert_clears(ctx, bx, bnx);
 	screen_write_set_cursor(ctx, s->cx + ci->used, -1);
 
 	for (xx = s->cx; xx < screen_size_x(s); xx++) {
 		grid_view_get_cell(s->grid, xx, s->cy, &gc);
 		if (~gc.flags & GRID_FLAG_PADDING)
 			break;
-		grid_view_set_cell(s->grid, xx, s->cy, &grid_default_cell);
-		log_debug("%s: padding erased (after) at %u (cx %u)",
-		    __func__, xx, s->cx);
+		screen_write_clear_cell(s->grid, xx, s->cy);
+		log_debug("%s: padding erased (after) at %u (cx %u)", __func__,
+		    xx, s->cx);
 	}
-	if (xx != s->cx) {
-		aci = ctx->item;
-		aci->type = CLEAR;
-		aci->x = s->cx;
-		aci->bg = 8;
-		aci->used = xx - s->cx;
-		log_debug("%s: padding erased (after): from %u, size %u",
-		    __func__, aci->x, aci->used);
-		screen_write_collect_insert(ctx, aci);
-	}
+	if (xx != s->cx)
+		screen_write_insert_clears(ctx, s->cx, xx - s->cx);
 }
 
 /* Write cell data, collecting if necessary. */
@@ -2667,7 +2697,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	 */
 	for (xx = s->cx + 1; xx < s->cx + width; xx++) {
 		log_debug("%s: new padding at %u,%u", __func__, xx, s->cy);
-		grid_view_set_padding(gd, xx, s->cy);
+		grid_view_set_padding(gd, xx, s->cy, gc->bg);
 		skip = 0;
 	}
 
@@ -2879,7 +2909,7 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	/* Set the new cell. */
 	grid_view_set_cell(gd, cx - n, cy, &last);
 	if (force_wide)
-		grid_view_set_padding(gd, cx - 1, cy);
+		grid_view_set_padding(gd, cx - 1, cy, last.bg);
 
 	/*
 	 * Check if all of this character is visible. No character will be
@@ -2948,12 +2978,12 @@ screen_write_overwrite(struct screen_write_ctx *ctx, struct grid_cell *gc,
 			if (~tmp_gc.flags & GRID_FLAG_PADDING)
 				break;
 			log_debug("%s: padding at %u,%u", __func__, xx, s->cy);
-			grid_view_set_cell(gd, xx, s->cy, &grid_default_cell);
+			screen_write_clear_cell(gd, xx, s->cy);
 		}
 
 		/* Overwrite the character at the start of this padding. */
 		log_debug("%s: character at %u,%u", __func__, xx, s->cy);
-		grid_view_set_cell(gd, xx, s->cy, &grid_default_cell);
+		screen_write_clear_cell(gd, xx, s->cy);
 		done = 1;
 	}
 
@@ -2971,17 +3001,7 @@ screen_write_overwrite(struct screen_write_ctx *ctx, struct grid_cell *gc,
 				break;
 			log_debug("%s: overwrite at %u,%u", __func__, xx,
 			    s->cy);
-			if (gc->flags & GRID_FLAG_TAB) {
-				memcpy(&tmp_gc, gc, sizeof tmp_gc);
-				memset(tmp_gc.data.data, 0,
-				    sizeof tmp_gc.data.data);
-				*tmp_gc.data.data = ' ';
-				tmp_gc.data.width = tmp_gc.data.size =
-				    tmp_gc.data.have = 1;
-				grid_view_set_cell(gd, xx, s->cy, &tmp_gc);
-			} else
-				grid_view_set_cell(gd, xx, s->cy,
-				    &grid_default_cell);
+			screen_write_clear_cell(gd, xx, s->cy);
 			done = 1;
 		}
 	}

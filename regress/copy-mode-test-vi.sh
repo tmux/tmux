@@ -117,6 +117,7 @@ $TMUX send-keys -X copy-selection
 # Test that vi cursor movement does not stop on the padding cell of a wide
 # character at the end of a line.
 $TMUX kill-server 2>/dev/null
+sleep 1
 $TMUX new -d -x20 -y5 \
       "printf 'abc中\nxyz\n'; exec cat" || exit 1
 $TMUX set-window-option -g mode-keys vi

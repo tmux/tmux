@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1418 2026/07/29 17:42:56 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1421 2026/08/03 20:18:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2295,6 +2295,8 @@ struct client {
 	struct event		 click_timer;
 	int			 click_loc;
 	int			 click_wp;
+
+	struct event		 exit_timer;
 	u_int			 click_button;
 	struct mouse_event	 click_event;
 
@@ -3541,7 +3543,7 @@ void	 grid_clear_history(struct grid *);
 const struct grid_line *grid_peek_line(struct grid *, u_int);
 void	 grid_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
 void	 grid_set_cell(struct grid *, u_int, u_int, const struct grid_cell *);
-void	 grid_set_padding(struct grid *, u_int, u_int);
+void	 grid_set_padding(struct grid *, u_int, u_int, int);
 void	 grid_set_cells(struct grid *, u_int, u_int, const struct grid_cell *,
 	     const char *, size_t);
 struct grid_line *grid_get_line(struct grid *, u_int);
@@ -3586,7 +3588,7 @@ void	 grid_reader_cursor_back_to_indentation(struct grid_reader *);
 void	 grid_view_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
 void	 grid_view_set_cell(struct grid *, u_int, u_int,
 	     const struct grid_cell *);
-void	 grid_view_set_padding(struct grid *, u_int, u_int);
+void	 grid_view_set_padding(struct grid *, u_int, u_int, int);
 void	 grid_view_set_cells(struct grid *, u_int, u_int,
 	     const struct grid_cell *, const char *, size_t);
 void	 grid_view_clear_history(struct grid *, u_int);
@@ -4068,6 +4070,7 @@ time_t	monitor_get_fire_time(struct monitor_set *, const char *);
 
 /* control.c */
 void	control_discard(struct client *);
+void	control_discard_all(struct client *);
 void	control_start(struct client *);
 void	control_ready(struct client *);
 void	control_stop(struct client *);
@@ -4083,6 +4086,8 @@ struct window_pane_offset *control_pane_offset(struct client *,
 	   struct window_pane *, int *);
 void	control_reset_offsets(struct client *);
 void printflike(2, 3) control_write(struct client *, const char *, ...);
+void printflike(2, 3) control_notify_write(struct client *, const char *, ...);
+void	control_write_guard(struct client *, const char *, long, u_int, int);
 void	control_write_output(struct client *, struct window_pane *);
 int	control_all_done(struct client *);
 void	control_add_sub(struct client *, const char *, enum monitor_type, int,

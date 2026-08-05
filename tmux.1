@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1152 2026/07/29 08:58:33 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1153 2026/08/05 07:31:08 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: July 29 2026 $
+.Dd $Mdocdate: August 5 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -7401,6 +7401,7 @@ The following variables are available, where appropriate:
 .It Li "pane_pid" Ta "" Ta "PID of first process in pane"
 .It Li "pane_pipe" Ta "" Ta "1 if pane is being piped"
 .It Li "pane_pipe_pid" Ta "" Ta "PID of pipe process, if any"
+.It Li "pane_private_modes" Ta "" Ta "List of enabled DECSET private modes"
 .It Li "pane_pb_state" Ta "" Ta "Pane progress bar state, one of hidden, normal, error, indeterminate, paused (can be set by application)"
 .It Li "pane_pb_progress" Ta "" Ta "Pane progress bar progress percentage (can be set by application)"
 .It Li "pane_right" Ta "" Ta "Right of pane"

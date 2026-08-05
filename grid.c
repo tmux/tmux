@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.155 2026/07/29 17:42:56 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.156 2026/08/03 12:58:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -765,9 +765,13 @@ grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 
 /* Set padding at position. */
 void
-grid_set_padding(struct grid *gd, u_int px, u_int py)
+grid_set_padding(struct grid *gd, u_int px, u_int py, int bg)
 {
-	grid_set_cell(gd, px, py, &grid_padding_cell);
+	struct grid_cell	gc;
+
+	memcpy(&gc, &grid_padding_cell, sizeof gc);
+	gc.bg = bg;
+	grid_set_cell(gd, px, py, &gc);
 }
 
 /* Set cells at position. */
