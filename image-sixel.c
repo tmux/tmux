@@ -877,6 +877,9 @@ sixel_box_split(struct sixel_box *box, struct sixel_box *new,
 		if (count >= box->count / 2)
 			break;
 	}
+	/* Keep the maximum occupied level in the new box. */
+	if (level == last)
+		level--;
 	memcpy(new, box, sizeof *new);
 	if (channel == 0) {
 		box->red_max = level;

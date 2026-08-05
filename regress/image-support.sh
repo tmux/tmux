@@ -125,7 +125,7 @@ $TMUX2 select-window -t:1 || exit 1
 sleep 1
 [ "$($TMUX2 display-message -p '#{cursor_x},#{cursor_y}')" = "2,1" ] || exit 1
 $TMUX capture-pane -pS0 -E3 >$TMP || exit 1
-[ "$(sed -n 3p $TMP)" = "  :" ] || exit 1
+[ "$(sed -n 3p $TMP)" = "  -" ] || exit 1
 [ "$(sed -n 4p $TMP)" = "  *" ] || exit 1
 
 # With normal cursor movement, scrolling is calculated from the full image
@@ -139,7 +139,7 @@ $TMUX2 select-window -t:2 || exit 1
 sleep 1
 [ "$($TMUX2 display-message -p '#{cursor_y}')" = 3 ] || exit 1
 $TMUX capture-pane -pS0 -E3 >$TMP || exit 1
-[ "$(sed -n 1p $TMP)" = ":" ] || exit 1
+[ "$(sed -n 1p $TMP)" = "-" ] || exit 1
 [ "$(sed -n 2p $TMP)" = "*" ] || exit 1
 [ "$(sed -n 3p $TMP)" = "@" ] || exit 1
 
@@ -180,5 +180,23 @@ sleep 1
 $TMUX capture-pane -pS0 -E3 >$TMP || exit 1
 [ "$(sed -n 1p $TMP | wc -c)" = 61 ] || exit 1
 [ -z "$(sed -n 2p $TMP)" ] || exit 1
+
+# A weighted median at the maximum channel level must still leave colours on
+# both sides of the split. This skewed black, grey and white image used to stop
+# palette generation after one colour instead of producing three.
+$TMUX kill-server 2>/dev/null
+$TMUX2 kill-server 2>/dev/null
+$TMUX2 new-session -d -x 20 -y 4 "
+	printf '\033_Ga=T,q=2,C=1,f=24,s=100,v=1,c=10,r=1;AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////\033\\'
+	sleep 10" || exit 1
+$TMUX2 set -g status off || exit 1
+$TMUX2 set -as terminal-features ',*:sixel' || exit 1
+$TMUX new-session -d -x 20 -y 4 || exit 1
+$TMUX set -g status off || exit 1
+$TMUX pipe-pane -O "cat >$TMP" || exit 1
+$TMUX send-keys -l "$TMUX2 attach-session" || exit 1
+$TMUX send-keys Enter || exit 1
+sleep 1
+grep -a '#2;2;' $TMP >/dev/null || exit 1
 
 exit 0
