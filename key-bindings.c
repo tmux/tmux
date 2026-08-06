@@ -1,4 +1,4 @@
-/* $OpenBSD: key-bindings.c,v 1.191 2026/08/05 12:23:25 nicm Exp $ */
+/* $OpenBSD: key-bindings.c,v 1.192 2026/08/06 09:05:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -421,6 +421,7 @@ key_bindings_init(void)
 		"bind -N 'Spread panes out evenly' E { select-layout -E }",
 		"bind -N 'Switch to the last client' L { switch-client -l }",
 		"bind -N 'Clear the marked pane' M { select-pane -M }",
+		"bind -N 'Change the pane title' T { command-prompt -I'#T' { select-pane -T '%%' } }",
 		"bind -N 'Enter copy mode' [ { copy-mode }",
 		"bind -N 'Paste the most recent paste buffer' ] { paste-buffer -p }",
 		"bind -N 'Create a new window' c { new-window }",
