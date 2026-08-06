@@ -556,7 +556,6 @@ if test "x$with_image_support" = xyes; then
 		AC_MSG_ERROR("image support requires libpng 1.6 and zlib")
 	)
 	AC_DEFINE(ENABLE_IMAGES)
-	AC_DEFINE(ENABLE_SIXEL)
 fi
 AM_CONDITIONAL(ENABLE_IMAGES, [test "x$with_image_support" = xyes])
 
