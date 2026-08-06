@@ -80,7 +80,7 @@ grid_entry_image(struct grid_line *gl, struct grid_cell_entry *gce)
 	gee = &gl->extddata[gce->offset];
 	if (~gee->flags & GRID_FLAG_IMAGE)
 		return (0);
-	return (gee->image_id);
+	return (image_get_id_by_grid_id(gee->image_id));
 }
 #endif
 
@@ -211,7 +211,7 @@ grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 	gee->us = gc->us;
 	gee->link = gc->link;
 #ifdef ENABLE_IMAGES
-	gee->image_id = gc->image_id;
+	gee->image_id = image_get_grid_id(gc->image_id);
 	gee->image_x = gc->image_x;
 	gee->image_y = gc->image_y;
 #endif
@@ -684,7 +684,7 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 			gc->us = gee->us;
 			gc->link = gee->link;
 #ifdef ENABLE_IMAGES
-			gc->image_id = gee->image_id;
+			gc->image_id = image_get_id_by_grid_id(gee->image_id);
 			gc->image_x = gee->image_x;
 			gc->image_y = gee->image_y;
 #endif
