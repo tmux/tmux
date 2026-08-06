@@ -3086,7 +3086,7 @@ screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
 		return;
 	}
 	image_write(ctx, im, bg);
-	image_free(im->id);
+	image_free(image_get_id(im));
 }
 #endif
 

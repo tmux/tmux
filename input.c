@@ -2844,10 +2844,10 @@ input_handle_kitty(struct input_ctx *ictx, const u_char *buf, size_t len)
 		image_clear(sctx, replace_id);
 	if (im != NULL) {
 		if (action == 'd')
-			image_clear(sctx, im->id);
+			image_clear(sctx, image_get_id(im));
 		else
 			image_write(sctx, im, ictx->cell.cell.bg);
-		image_free(im->id);
+		image_free(image_get_id(im));
 		if (quiet == 0 && image_id != 0)
 			input_reply(ictx, 0, "\033_Gi=%u;OK\033\\", image_id);
 	} else if (action == 'd' && image_id == 0)
