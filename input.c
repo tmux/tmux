@@ -2652,18 +2652,6 @@ input_dcs_dispatch(struct input_ctx *ictx)
 	}
 
 #ifdef ENABLE_IMAGES
-	/* Kitty uses this wrapper automatically when it detects tmux. */
-	if (wp != NULL && len >= prefixlen + 5 &&
-	    memcmp(buf, prefix, prefixlen) == 0 &&
-	    memcmp(buf + prefixlen, "\033_G", 3) == 0 &&
-	    memcmp(buf + len - 2, "\033\\", 2) == 0) {
-		input_handle_kitty(ictx, buf + prefixlen + 3,
-		    len - prefixlen - 5);
-		return (0);
-	}
-#endif
-
-#ifdef ENABLE_IMAGES
 	if (wp != NULL && buf[0] == 'q' && ictx->interm_len == 0) {
 		w = wp->window;
 		if (input_split(ictx) != 0)
