@@ -48,7 +48,7 @@ struct image_rgb {
 	u_char	b;
 };
 
-struct image_glyph_data {
+struct image_fallback_data {
 	u_char	*shade5;
 	u_char	*shade8;
 };
@@ -235,28 +235,30 @@ image_glyph_block_key(enum image_glyph_detail detail, u_int mask)
 static u_char *
 image_glyph_make_shades(struct image *im, u_int levels)
 {
-	struct image_glyph_data	*data = im->fallback_data;
-	const struct image_cell	*cell;
+	struct image_fallback_data *data;
 	int			*values, value, represented, error;
 	size_t			 cells, index;
 	u_int			 x, y, scan, level, minimum = 255, maximum = 0;
+	u_int			 sx, sy;
 	int			 reverse;
 	u_char			*result;
 
+	data = image_get_fallback_data(im);
 	if (data == NULL) {
-		data = im->fallback_data = xcalloc(1, sizeof *data);
+		data = xcalloc(1, sizeof *data);
+		image_set_fallback_data(im, data);
 	}
 	result = (levels == 5 ? data->shade5 : data->shade8);
 	if (result != NULL)
 		return (result);
-	cells = (size_t)im->sx * im->sy;
+	image_get_cell_dimensions(im, &sx, &sy);
+	cells = (size_t)sx * sy;
 	values = xcalloc(cells, sizeof *values);
 	result = xcalloc(cells, 1);
-	for (y = 0; y < im->sy; y++) {
-		for (x = 0; x < im->sx; x++) {
-			index = (size_t)y * im->sx + x;
-			cell = image_get_cell(im, x, y);
-			value = cell->whole.brightness;
+	for (y = 0; y < sy; y++) {
+		for (x = 0; x < sx; x++) {
+			index = (size_t)y * sx + x;
+			value = image_get_brightness(im, x, y);
 			if ((u_int)value < minimum)
 				minimum = value;
 			if ((u_int)value > maximum)
@@ -269,11 +271,11 @@ image_glyph_make_shades(struct image *im, u_int levels)
 			values[index] = (values[index] - minimum) * 255 /
 			    (maximum - minimum);
 	}
-	for (y = 0; y < im->sy; y++) {
+	for (y = 0; y < sy; y++) {
 		reverse = (y & 1);
-		for (scan = 0; scan < im->sx; scan++) {
-			x = (reverse ? im->sx - scan - 1 : scan);
-			index = (size_t)y * im->sx + x;
+		for (scan = 0; scan < sx; scan++) {
+			x = (reverse ? sx - scan - 1 : scan);
+			index = (size_t)y * sx + x;
 			value = values[index];
 			if (value < 0)
 				value = 0;
@@ -283,21 +285,21 @@ image_glyph_make_shades(struct image *im, u_int levels)
 			result[index] = level;
 			represented = level * 255 / (levels - 1);
 			error = value - represented;
-			if (!reverse && x + 1 < im->sx)
+			if (!reverse && x + 1 < sx)
 				values[index + 1] += error * 7 / 16;
 			if (reverse && x != 0)
 				values[index - 1] += error * 7 / 16;
-			if (y + 1 == im->sy)
+			if (y + 1 == sy)
 				continue;
 			if (!reverse && x != 0)
-				values[index + im->sx - 1] += error * 3 / 16;
-			if (reverse && x + 1 < im->sx)
-				values[index + im->sx + 1] += error * 3 / 16;
-			values[index + im->sx] += error * 5 / 16;
-			if (!reverse && x + 1 < im->sx)
-				values[index + im->sx + 1] += error / 16;
+				values[index + sx - 1] += error * 3 / 16;
+			if (reverse && x + 1 < sx)
+				values[index + sx + 1] += error * 3 / 16;
+			values[index + sx] += error * 5 / 16;
+			if (!reverse && x + 1 < sx)
+				values[index + sx + 1] += error / 16;
 			if (reverse && x != 0)
-				values[index + im->sx - 1] += error / 16;
+				values[index + sx - 1] += error / 16;
 		}
 	}
 	free(values);
@@ -346,10 +348,8 @@ image_glyph_block(struct tty *tty, struct image *im, u_int x, u_int y,
     enum image_glyph_detail detail, enum image_glyph_palette palette,
     struct grid_cell *out)
 {
-	const struct image_cell	*cell = image_get_cell(im, x, y);
 	struct image_rgb	 samples[6], centres[2], quantized[2];
-	u_int			 columns, rows, sx, sy, ix, iy, i, n, mask;
-	u_int			 x0, x1, y0, y1, red, green, blue, count;
+	u_int			 columns, rows, sx, sy, i, n, mask;
 	int			 colours[2];
 	u_char			 key;
 
@@ -359,22 +359,8 @@ image_glyph_block(struct tty *tty, struct image *im, u_int x, u_int y,
 	i = 0;
 	for (sy = 0; sy < rows; sy++) {
 		for (sx = 0; sx < columns; sx++) {
-			x0 = sx * IMAGE_SAMPLE_COLUMNS / columns;
-			x1 = (sx + 1) * IMAGE_SAMPLE_COLUMNS / columns;
-			y0 = sy * IMAGE_SAMPLE_ROWS / rows;
-			y1 = (sy + 1) * IMAGE_SAMPLE_ROWS / rows;
-			red = green = blue = count = 0;
-			for (iy = y0; iy < y1; iy++) {
-				for (ix = x0; ix < x1; ix++) {
-					red += cell->samples[iy][ix].red;
-					green += cell->samples[iy][ix].green;
-					blue += cell->samples[iy][ix].blue;
-					count++;
-				}
-			}
-			samples[i].r = red / count;
-			samples[i].g = green / count;
-			samples[i].b = blue / count;
+			image_get_cell_average(im, x, y, sx, sy, columns, rows,
+			    &samples[i].r, &samples[i].g, &samples[i].b);
 			i++;
 		}
 	}
@@ -411,30 +397,25 @@ image_get_fallback_cell(struct tty *tty, struct image *im, u_int x, u_int y,
 		TTY_ACS_IMAGE_SHADE_MEDIUM, TTY_ACS_IMAGE_SHADE_MEDIUM,
 		TTY_ACS_IMAGE_SHADE_DARK, TTY_ACS_IMAGE_BLOCK,
 		TTY_ACS_IMAGE_BLOCK };
-	const struct image_cell	*cell;
 	enum image_glyph_palette	 palette;
 	enum image_glyph_detail	 detail;
 	u_char			*levels, key;
-	u_int			 level = 0;
+	u_int			 level = 0, sx;
 
 	memcpy(out, gc, sizeof *out);
 	out->flags &= ~GRID_FLAG_IMAGE;
-	cell = image_get_cell(im, x, y);
-	if (cell == NULL) {
-		utf8_set(&out->data, ' ');
-		return;
-	}
 	palette = image_glyph_get_palette(tty);
 	detail = image_glyph_get_detail(tty, palette);
 	if (detail == IMAGE_GLYPH_ASCII) {
-		level = cell->whole.brightness * (sizeof ascii - 2) / 255;
+		level = image_get_brightness(im, x, y) * (sizeof ascii - 2) / 255;
 		utf8_set(&out->data, ascii[level]);
 		return;
 	}
 	if (detail == IMAGE_GLYPH_SHADE5 || detail == IMAGE_GLYPH_SHADE8) {
 		levels = image_glyph_make_shades(im,
 		    detail == IMAGE_GLYPH_SHADE5 ? 5 : 8);
-		level = levels[(size_t)y * im->sx + x];
+		image_get_cell_dimensions(im, &sx, NULL);
+		level = levels[(size_t)y * sx + x];
 		key = (detail == IMAGE_GLYPH_SHADE5 ? shades[level] :
 		    bold_shades[level]);
 		if (key == 0)
@@ -455,8 +436,9 @@ image_get_fallback_cell(struct tty *tty, struct image *im, u_int x, u_int y,
 void
 image_free_fallback(struct image *im)
 {
-	struct image_glyph_data	*data = im->fallback_data;
+	struct image_fallback_data *data;
 
+	data = image_get_fallback_data(im);
 	if (data == NULL)
 		return;
 	free(data->shade5);
