@@ -530,7 +530,7 @@ if test "x$enable_cgroups" = xyes; then
 	fi
 fi
 
-# Enable protocol-neutral image support.
+# Enable image support.
 AC_ARG_WITH(
 	image-support,
 	AS_HELP_STRING(--with-image-support, enable Kitty/SIXEL/ASCII images)
