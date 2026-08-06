@@ -219,14 +219,15 @@ kitty_place(struct tty *tty, struct image *im, u_int id)
 {
 	char		 control[192];
 	u_int		 x, y, columns, rows, px, py, pwidth, pheight;
-	u_int		 placement = 1;
+	u_int		 placement = 1, sx, sy;
 
-	for (y = 0; y < im->sy; y += nitems(kitty_diacritics)) {
-		rows = im->sy - y;
+	image_get_cell_dimensions(im, &sx, &sy);
+	for (y = 0; y < sy; y += nitems(kitty_diacritics)) {
+		rows = sy - y;
 		if (rows > nitems(kitty_diacritics))
 			rows = nitems(kitty_diacritics);
-		for (x = 0; x < im->sx; x += nitems(kitty_diacritics)) {
-			columns = im->sx - x;
+		for (x = 0; x < sx; x += nitems(kitty_diacritics)) {
+			columns = sx - x;
 			if (columns > nitems(kitty_diacritics))
 				columns = nitems(kitty_diacritics);
 			image_get_pixel_rectangle(im, x, y, columns, rows, &px,
@@ -247,12 +248,14 @@ kitty_upload(struct tty *tty, struct image *im)
 	struct kitty_image_cache	*cache;
 	char			 control[128], encoded[4097];
 	u_char			 raw[3072];
-	size_t			 offset, size, copied, row, column, available;
+	const u_char		*pixels;
+	size_t			 offset, size, copied, row, column, available, stride;
+	size_t			 image_size;
 	int			 encodedlen;
-	u_int			 id;
+	u_int			 id, width, height;
 
 	for (cache = ko->images; cache != NULL; cache = cache->next) {
-		if (cache->server_id != im->id)
+		if (cache->server_id != image_get_id(im))
 			continue;
 		if (cache->xpixel == tty->xpixel &&
 		    cache->ypixel == tty->ypixel)
@@ -269,22 +272,24 @@ kitty_upload(struct tty *tty, struct image *im)
 	do {
 		id = ++ko->next_id & 0xffffff;
 	} while (id == 0);
-	cache->server_id = im->id;
+	cache->server_id = image_get_id(im);
 	cache->kitty_id = id;
 	cache->xpixel = tty->xpixel;
 	cache->ypixel = tty->ypixel;
 
-	for (offset = 0; offset < im->size; offset += size) {
-		size = im->size - offset;
+	pixels = image_get_pixels(im, &stride, &image_size);
+	image_get_dimensions(im, &width, &height);
+	for (offset = 0; offset < image_size; offset += size) {
+		size = image_size - offset;
 		if (size > sizeof raw)
 			size = sizeof raw;
 		for (copied = 0; copied < size; copied += available) {
-			row = (offset + copied) / ((size_t)im->width * 4);
-			column = (offset + copied) % ((size_t)im->width * 4);
-			available = (size_t)im->width * 4 - column;
+			row = (offset + copied) / ((size_t)width * 4);
+			column = (offset + copied) % ((size_t)width * 4);
+			available = (size_t)width * 4 - column;
 			if (available > size - copied)
 				available = size - copied;
-			memcpy(raw + copied, im->pixels + row * im->stride +
+			memcpy(raw + copied, pixels + row * stride +
 			    column, available);
 		}
 		encodedlen = b64_ntop(raw, size, encoded,
@@ -294,11 +299,10 @@ kitty_upload(struct tty *tty, struct image *im)
 		if (offset == 0) {
 			xsnprintf(control, sizeof control,
 			    "\033_Ga=t,f=32,s=%u,v=%u,i=%u,q=2,m=%d;",
-			    im->width, im->height, id,
-			    offset + size < im->size);
+			    width, height, id, offset + size < image_size);
 		} else {
 			xsnprintf(control, sizeof control, "\033_Gm=%d;",
-			    offset + size < im->size);
+			    offset + size < image_size);
 		}
 		tty_puts(tty, control);
 		tty_putn(tty, encoded, encodedlen, 0);
@@ -311,9 +315,10 @@ kitty_upload(struct tty *tty, struct image *im)
 static u_int
 kitty_placement(struct image *im, u_int x, u_int y)
 {
-	u_int	across;
+	u_int	across, sx;
 
-	across = (im->sx + nitems(kitty_diacritics) - 1) /
+	image_get_cell_dimensions(im, &sx, NULL);
+	across = (sx + nitems(kitty_diacritics) - 1) /
 	    nitems(kitty_diacritics);
 	return ((y / nitems(kitty_diacritics)) * across +
 	    x / nitems(kitty_diacritics) + 1);
@@ -355,30 +360,32 @@ kitty_draw_rectangle(struct tty *tty, const struct image_rectangle *rectangle,
 {
 	struct grid_cell	 draw_gc;
 	struct kitty_image_cache	*cache;
-	struct image		*im = rectangle->image;
-	u_int			 x, y, run, available;
+	struct image		*im;
+	u_int			 x, y, run, available, source_x, source_y;
+	u_int			 width, height, destination_x, destination_y;
 
+	im = image_rectangle_get_image(rectangle);
 	kitty_images_collect(tty);
 	cache = kitty_upload(tty, im);
 	if (cache == NULL)
 		return;
-	memcpy(&draw_gc, &rectangle->cell, sizeof draw_gc);
+	memcpy(&draw_gc, image_rectangle_get_cell(rectangle), sizeof draw_gc);
+	image_rectangle_get_coordinates(rectangle, &source_x, &source_y, &width,
+	    &height, &destination_x, &destination_y);
 	draw_gc.flags &= ~(GRID_FLAG_IMAGE|GRID_FLAG_SELECTED);
 	utf8_set(&draw_gc.data, ' ');
-	for (y = 0; y < rectangle->height; y++) {
-		for (x = 0; x < rectangle->width; x += run) {
+	for (y = 0; y < height; y++) {
+		for (x = 0; x < width; x += run) {
 			available = nitems(kitty_diacritics) -
-			    (rectangle->source_x + x) %
+			    (source_x + x) %
 			    nitems(kitty_diacritics);
-			run = rectangle->width - x;
+			run = width - x;
 			if (run > available)
 				run = available;
-			tty_cursor(tty, rectangle->destination_x + x,
-			    rectangle->destination_y + y);
+			tty_cursor(tty, destination_x + x, destination_y + y);
 			tty_attributes(tty, &draw_gc, style_ctx);
-			kitty_placeholder(tty, cache, im,
-			    rectangle->source_x + x,
-			    rectangle->source_y + y, run);
+			kitty_placeholder(tty, cache, im, source_x + x,
+			    source_y + y, run);
 			tty_reset(tty);
 		}
 	}
@@ -569,8 +576,8 @@ kitty_source_set(struct kitty_context *kc, u_int id, struct image *im)
 		}
 		image_free(source->server_id);
 	}
-	image_ref(im->id);
-	source->server_id = im->id;
+	image_ref(image_get_id(im));
+	source->server_id = image_get_id(im);
 	return (old_id);
 }
 
@@ -599,8 +606,8 @@ kitty_placement_set(struct kitty_context *kc, u_int image_id,
 		source->placements = placement;
 	}
 	old_id = placement->server_id;
-	image_ref(im->id);
-	placement->server_id = im->id;
+	image_ref(image_get_id(im));
+	placement->server_id = image_get_id(im);
 	if (old_id != 0)
 		image_free(old_id);
 	return (old_id);
@@ -623,7 +630,7 @@ kitty_placement_remove(struct kitty_context *kc, u_int image_id,
 			continue;
 		im = image_find(placement->server_id);
 		if (im != NULL)
-			image_ref(im->id);
+			image_ref(image_get_id(im));
 		*pp = placement->next;
 		image_free(placement->server_id);
 		free(placement);
@@ -642,8 +649,8 @@ kitty_virtual_set(struct kitty_context *kc, u_int id, struct image *im)
 		return;
 	if (source->virtual_id != 0)
 		image_free(source->virtual_id);
-	image_ref(im->id);
-	source->virtual_id = im->id;
+	image_ref(image_get_id(im));
+	source->virtual_id = image_get_id(im);
 }
 
 static struct image *
@@ -657,7 +664,7 @@ kitty_source_remove(struct kitty_context *kc, u_int id)
 			continue;
 		im = image_find(source->server_id);
 		if (im != NULL)
-			image_ref(im->id);
+			image_ref(image_get_id(im));
 		*pp = source->next;
 		kitty_placements_free(source);
 		if (source->virtual_id != 0)
@@ -680,7 +687,7 @@ kitty_source_get(struct kitty_context *kc, u_int id)
 		return (NULL);
 	im = image_find(source->server_id);
 	if (im != NULL)
-		image_ref(im->id);
+		image_ref(image_get_id(im));
 	return (im);
 }
 
@@ -748,19 +755,21 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 {
 	uint64_t	 numerator, denominator, value;
 	u_int		 x, y, width, height, sx, sy, canvas_width;
-	u_int		 canvas_height, cell_width, cell_height;
+	u_int		 canvas_height, cell_width, cell_height, source_width;
+	u_int		 source_height;
 	struct image	*im;
 
 	x = ks->source_x;
 	y = ks->source_y;
-	if (x >= source->width || y >= source->height)
+	image_get_dimensions(source, &source_width, &source_height);
+	if (x >= source_width || y >= source_height)
 		return (NULL);
 	width = ks->source_width;
-	if (width == 0 || width > source->width - x)
-		width = source->width - x;
+	if (width == 0 || width > source_width - x)
+		width = source_width - x;
 	height = ks->source_height;
-	if (height == 0 || height > source->height - y)
-		height = source->height - y;
+	if (height == 0 || height > source_height - y)
+		height = source_height - y;
 
 	cell_width = (xpixel == 0 ? 8 : xpixel);
 	cell_height = (ypixel == 0 ? 16 : ypixel);
@@ -819,7 +828,7 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 	im = image_create_view(source, x, y, width, height, canvas_width,
 	    canvas_height, sx, sy);
 	if (im != NULL && ks->no_cursor)
-		im->flags |= IMAGE_FLAG_NO_CURSOR;
+		image_set_no_cursor(im);
 	return (im);
 }
 
@@ -891,17 +900,17 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 			im = NULL;
 		} else if (ks->virtual) {
 			im = kitty_place_image(source, ks, xpixel, ypixel);
-			image_free(source->id);
+			image_free(image_get_id(source));
 			if (im != NULL) {
 				kitty_virtual_set(kc, ks->image_id, im);
-				image_free(im->id);
+				image_free(image_get_id(im));
 				im = NULL;
 				*action = 'u';
 				*status = KITTY_PARSE_OK;
 			}
 		} else {
 			im = kitty_place_image(source, ks, xpixel, ypixel);
-			image_free(source->id);
+			image_free(image_get_id(source));
 			if (im != NULL) {
 				*replace_id = kitty_placement_set(kc, ks->image_id,
 				    ks->placement_id, im);
@@ -1014,14 +1023,14 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 				*status = KITTY_PARSE_ERROR;
 			else {
 				kitty_virtual_set(kc, ks->image_id, im);
-				image_free(im->id);
+				image_free(image_get_id(im));
 				im = NULL;
 				*action = 'u';
 			}
 		} else {
 			im = NULL;
 		}
-		image_free(source->id);
+		image_free(image_get_id(source));
 	}
 	kitty_state_free(ks);
 	return (im);
@@ -1094,7 +1103,7 @@ kitty_placeholder_to_cell(void *state, struct grid_cell *gc,
 	struct image		*im;
 	uint32_t		 value;
 	size_t			 offset = 0;
-	u_int			 values[3], nvalues = 0, id, x, y;
+	u_int			 values[3], nvalues = 0, id, x, y, sx, sy;
 	struct utf8_data	 data;
 	int			 fg, bg, us;
 
@@ -1127,22 +1136,23 @@ kitty_placeholder_to_cell(void *state, struct grid_cell *gc,
 	    source->server_id);
 	if (im == NULL)
 		return (0);
+	image_get_cell_dimensions(im, &sx, &sy);
 
 	if (nvalues >= 1)
 		y = values[0];
 	else if (left != NULL && left->flags & GRID_FLAG_IMAGE &&
-	    left->image_id == im->id)
+	    left->image_id == image_get_id(im))
 		y = left->image_y;
 	else
 		return (0);
 	if (nvalues >= 2)
 		x = values[1];
 	else if (left != NULL && left->flags & GRID_FLAG_IMAGE &&
-	    left->image_id == im->id && left->image_x != UINT_MAX)
+	    left->image_id == image_get_id(im) && left->image_x != UINT_MAX)
 		x = left->image_x + 1;
 	else
 		return (0);
-	if (x >= im->sx || y >= im->sy)
+	if (x >= sx || y >= sy)
 		return (0);
 
 	utf8_copy(&data, &gc->data);
