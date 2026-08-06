@@ -192,6 +192,22 @@ $TMUX capture-pane -pS0 -E3 >$TMP || exit 1
 [ "$(sed -n 1p $TMP | wc -c)" = 61 ] || exit 1
 [ -z "$(sed -n 2p $TMP)" ] || exit 1
 
+# A placement ID supplied with transmit-and-place is reused by a later place.
+# This is the sequence used by chawan: the newline moves the cursor down before
+# the second command, so the folder moves down one row without leaving a copy.
+PLACEMENT_WINDOW=$($TMUX2 new-window -dP -F '#{window_id}' "
+	printf '\033_GC=1,s=26,v=26,p=1,q=2,i=1,a=T,f=100,m=0;iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAACmUlEQVR4XmOgF2CEWVRfX8/w//9/BkZGRgy7YeKNjY1kuwtsam1tLQMTE5MG0MBsoEWW6KYBxf8DxScD6UVNTU1kWcZYU1MD0qjLzMx8EmgYJy5TgJb8/ffvn+2vX7+Od3Z2kmwZC9AnIE0FIEuAhl0H4ulA9k9kk4Bi4UB1TkA8H2iRYXl5+Xd2dna8loGCG2Q2LLgZQXED1PEIaLjs379/g4Ds9VDLwQYBxRiAPpFmZWW9DFQjCDRgLxDfJeQloJpdQHPWA9X9A1kGs+gZ0BBJoKQtUOIIeqSDgheoKR6IF5ASZkAH3gKaCzLzFQsxGltaWhjq6uoWguIJ6hi82oCG8wIV+AEdpga0LBfIrmUh1oWg1AYM5iVA9UuI1JMGVDcTiCNIsghkOChIQ0NDwfasXr0ap33QeL8GUgD0HTeIZmIgAUAtYQZqYYZZSKx2oi2CWaKpqbkIhEm1jOg40tLSAjleEBgUUSAGkJ8PpN8Q6yOCFoF8AvQBTvOAqZHh+vXrDPjijGAcIcXJUqBPQOXda5iNQP5rkBiQv5SYYMTrIxUVFZC5IkDCCk8QWQHVgdS8xBeMeBNDe3s7A7CwfQl0uSmwKDIBYhdQGQbCIDZIDCQHUgNSS7ZFII2gUgEU6UADzwJz+kUgDa6zoOyzIDmoGgaKLAJpBheKkArxC7BIeQDCQPEvIEuJrQyJzkdQA38ADbcHYaBFP0ipcVGqCWDYBwPxOkYs1TkDCeA/pEkQBDRnLZD9GKhVjgUkCGTsBgomAekWIJYG4p8MlAFQrZgJMgJo/m4QzQJ1fT9QIBLI1gTiSRRaAm/gAM38DjSvH2QeuHECLW1xNk7IsRhoyXGgJVOBem+AExPMEHzNLTItYiAlVTJQCwAAJxkMkgbHo2UAAAAASUVORK5CYII=\033\\'
+	printf '\n'
+	sleep 1
+	printf '\033_GC=1,s=26,v=26,p=1,q=2,i=1,a=p;\033\\'
+	printf '\n'
+	sleep 10") || exit 1
+$TMUX2 select-window -t"$PLACEMENT_WINDOW" || exit 1
+sleep 1
+$TMUX capture-pane -pS0 -E3 >$TMP || exit 1
+[ -z "$(sed -n 1p $TMP)" ] || exit 1
+[ -n "$(sed -n 2p $TMP)" ] || exit 1
+
 # A nonzero Kitty placement ID identifies one placement of an image. Reusing
 # the same image and placement IDs moves it rather than leaving the old cells.
 PLACEMENT_WINDOW=$($TMUX2 new-window -dP -F '#{window_id}' "
