@@ -81,7 +81,7 @@ struct image_backend;
 struct image_fallback_data;
 struct image_rectangle;
 #endif
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 struct sixel_image;
 #endif
 
@@ -1894,7 +1894,7 @@ struct tty_ctx {
 			size_t		 size;
 		} sel;
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 		struct image		*image;
 #endif
 	};
@@ -3653,7 +3653,7 @@ void	 screen_write_setselection(struct screen_write_ctx *, const char *,
 	     u_char *, u_int);
 void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int,
 	     int);
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 void	 screen_write_sixelimage(struct screen_write_ctx *,
 	     struct sixel_image *, u_int);
 #endif
@@ -4283,7 +4283,7 @@ void		 image_rectangle_get_coordinates(const struct image_rectangle *,
 		     u_int *, u_int *, u_int *, u_int *, u_int *, u_int *);
 #endif
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 /* image-sixel.c */
 #define SIXEL_COLOUR_REGISTERS 1024
 void		 sixel_draw_rectangle(struct tty *,
