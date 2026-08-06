@@ -27,7 +27,7 @@
 
 #include "tmux.h"
 
-/* A protocol-neutral average of part of an image cell. RGB is premultiplied. */
+/* An average of part of an image cell. RGB is premultiplied. */
 struct image_sample {
 	u_char			 red;
 	u_char			 green;
@@ -45,7 +45,7 @@ struct image_cell {
 	struct image_sample	 samples[IMAGE_SAMPLE_ROWS][IMAGE_SAMPLE_COLUMNS];
 };
 
-/* Immutable protocol-neutral image placement. */
+/* Immutable image data and cell geometry. */
 struct image {
 	u_int			 id;
 	u_int			 references;

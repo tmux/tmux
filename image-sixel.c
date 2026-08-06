@@ -509,7 +509,7 @@ sixel_colour_to_rgb(u_int colour, u_char *r, u_char *g, u_char *b)
 	*b = sixel_hue(p, q, h + 1.0 / 3) * 255 + 0.5;
 }
 
-/* Convert decoded SIXEL data into the protocol-neutral immutable image. */
+/* Convert decoded SIXEL data into the immutable image. */
 struct image *
 sixel_to_image(struct sixel_image *si)
 {
