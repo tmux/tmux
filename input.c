@@ -1583,7 +1583,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case -1:
 			break;
 		case 0:
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 			input_reply(ictx, 1, "\033[?1;2;4c");
 #else
 			input_reply(ictx, 1, "\033[?1;2c");
@@ -2101,7 +2101,7 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 static void
 input_csi_dispatch_sm_graphics(__unused struct input_ctx *ictx)
 {
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	int	n, m, o;
 
 	if (ictx->param_list_len > 3)
@@ -2626,7 +2626,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 	const char		 prefix[] = "tmux;";
 	const u_int		 prefixlen = (sizeof prefix) - 1;
 	long long		 allow_passthrough = 0;
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	struct window		*w;
 	struct sixel_image	*si;
 	int			 p2;
@@ -2642,7 +2642,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 		return (0);
 	}
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	if (wp != NULL && buf[0] == 'q' && ictx->interm_len == 0) {
 		w = wp->window;
 		if (input_split(ictx) != 0)

@@ -546,7 +546,6 @@ if test "x$enable_sixel" = xyes; then
 fi
 if test "x$with_image_support" = xyes; then
 	AC_DEFINE(ENABLE_IMAGES)
-	AC_DEFINE(ENABLE_SIXEL)
 fi
 AM_CONDITIONAL(ENABLE_IMAGES, [test "x$with_image_support" = xyes])
 

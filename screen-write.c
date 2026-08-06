@@ -3020,7 +3020,7 @@ screen_write_rawstring(struct screen_write_ctx *ctx, u_char *str, u_int len,
 	tty_write(tty_cmd_rawstring, &ttyctx);
 }
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 /* Write a SIXEL image. */
 void
 screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
