@@ -4318,7 +4318,7 @@ void		 image_tty_free(struct tty *, int);
 void		 image_draw_line(struct tty *, struct screen *, u_int, u_int,
 		     u_int, u_int, u_int, const struct tty_style_ctx *);
 const struct image_cell *image_get_cell(struct image *, u_int, u_int);
-void		 image_get_text_cell(struct tty *, struct image *, u_int,
+void		 image_get_fallback_cell(struct tty *, struct image *, u_int,
 		     u_int, const struct grid_cell *, struct grid_cell *,
 		     const struct tty_style_ctx *);
 void		 image_clear(struct screen_write_ctx *, u_int);

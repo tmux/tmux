@@ -273,7 +273,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 						    ~GRID_FLAG_IMAGE;
 						skip = 1;
 					} else {
-						image_get_text_cell(tty, im,
+						image_get_fallback_cell(tty, im,
 						    gc.image_x, gc.image_y, &gc,
 						    &image_gc, style_ctx);
 					}
