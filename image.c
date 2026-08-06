@@ -42,8 +42,8 @@ struct image_backend {
 	void		(*geometry_changed)(struct tty *);
 };
 
-static const struct image_backend image_backend_ascii = {
-	"ascii", IMAGE_BACKEND_SCROLLS, NULL, NULL, NULL
+static const struct image_backend image_backend_fallback = {
+	"fallback", IMAGE_BACKEND_SCROLLS, NULL, NULL, NULL
 };
 static const struct image_backend image_backend_kitty = {
 	"kitty", IMAGE_BACKEND_GRAPHICAL|IMAGE_BACKEND_SCROLLS,
@@ -62,7 +62,7 @@ image_tty_find_backend(struct tty *tty)
 	if (tty->term != NULL && tty->term->flags & TERM_SIXEL &&
 	    tty->xpixel != 0 && tty->ypixel != 0)
 		return (&image_backend_sixel);
-	return (&image_backend_ascii);
+	return (&image_backend_fallback);
 }
 
 void
@@ -326,6 +326,24 @@ image_get_cell(struct image *im, u_int x, u_int y)
 	if (im->cells == NULL)
 		image_make_cells(im);
 	return (&im->cells[(size_t)y * im->sx + x]);
+}
+
+/* Character-cell fallback for clients without a graphical image protocol. */
+void
+image_get_fallback_cell(__unused struct tty *tty, struct image *im, u_int x,
+    u_int y, const struct grid_cell *gc, struct grid_cell *out,
+    __unused const struct tty_style_ctx *style_ctx)
+{
+	static const char	 ramp[] = " .:-=+*#%@";
+	const struct image_cell	*cell;
+	u_int			 level = 0;
+
+	memcpy(out, gc, sizeof *out);
+	cell = image_get_cell(im, x, y);
+	if (cell != NULL)
+		level = cell->whole.brightness * (sizeof ramp - 2) / 255;
+	utf8_set(&out->data, ramp[level]);
+	out->flags &= ~GRID_FLAG_IMAGE;
 }
 
 void
