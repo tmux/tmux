@@ -887,9 +887,9 @@ struct grid_extd_entry {
 	int			us;
 	u_int			link;
 #ifdef ENABLE_IMAGES
-	u_int			image_id;
-	u_int			image_x;
-	u_int			image_y;
+	u_short			image_id;
+	u_short			image_x;
+	u_short			image_y;
 #endif
 } __packed;
 
@@ -4241,6 +4241,8 @@ struct image	*image_create_view(struct image *, u_int, u_int, u_int,
 		     u_int, u_int, u_int, u_int, u_int);
 struct image	*image_find(u_int);
 u_int		 image_get_id(const struct image *);
+u_short		 image_get_grid_id(u_int);
+u_int		 image_get_id_by_grid_id(u_short);
 void		 image_get_dimensions(const struct image *, u_int *, u_int *);
 void		 image_get_canvas_dimensions(const struct image *, u_int *, u_int *);
 void		 image_get_cell_dimensions(const struct image *, u_int *, u_int *);
