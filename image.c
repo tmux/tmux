@@ -45,6 +45,7 @@ struct image_cell {
 /* Immutable image data and cell geometry. */
 struct image {
 	u_int			 id;
+	u_short			 grid_id;
 	u_int			 references;
 	u_int			 width;
 	u_int			 height;
@@ -77,6 +78,8 @@ struct image_rectangle {
 
 static struct images	images = RB_INITIALIZER(&images);
 static u_int		image_next_id;
+static u_short		image_next_grid_id;
+static struct image	*image_grid_ids[USHRT_MAX + 1];
 
 #define IMAGE_BACKEND_GRAPHICAL 0x1
 #define IMAGE_BACKEND_SCROLLS   0x2
@@ -332,6 +335,7 @@ image_create(u_int width, u_int height, u_int canvas_width,
     u_int canvas_height, u_int sx, u_int sy, u_char *pixels)
 {
 	struct image	*im;
+	u_int		 i;
 
 	if (width == 0 || height == 0 || canvas_width < width ||
 	    canvas_height < height || sx == 0 || sy == 0 || pixels == NULL)
@@ -339,6 +343,16 @@ image_create(u_int width, u_int height, u_int canvas_width,
 	if ((uint64_t)width * height * 4 > SIZE_MAX)
 		return (NULL);
 	if ((uint64_t)sx * sy > SIZE_MAX / sizeof *im->cells)
+		return (NULL);
+	if (sx > USHRT_MAX || sy > USHRT_MAX)
+		return (NULL);
+	for (i = 0; i < USHRT_MAX; i++) {
+		if (++image_next_grid_id == 0)
+			image_next_grid_id++;
+		if (image_grid_ids[image_next_grid_id] == NULL)
+			break;
+	}
+	if (i == USHRT_MAX)
 		return (NULL);
 
 	im = xcalloc(1, sizeof *im);
@@ -349,6 +363,7 @@ image_create(u_int width, u_int height, u_int canvas_width,
 	} while (image_find(im->id) != NULL);
 
 	im->references = 1;
+	im->grid_id = image_next_grid_id;
 	im->width = width;
 	im->height = height;
 	im->canvas_width = canvas_width;
@@ -360,10 +375,31 @@ image_create(u_int width, u_int height, u_int canvas_width,
 	im->pixels = pixels;
 
 	RB_INSERT(images, &images, im);
+	image_grid_ids[im->grid_id] = im;
 	log_debug("%s: image %u is %ux%u pixels on %ux%u canvas, "
 	    "%ux%u cells", __func__, im->id, width, height, canvas_width,
 	    canvas_height, sx, sy);
 	return (im);
+}
+
+u_short
+image_get_grid_id(u_int id)
+{
+	struct image	*im = image_find(id);
+
+	if (im == NULL)
+		return (0);
+	return (im->grid_id);
+}
+
+u_int
+image_get_id_by_grid_id(u_short grid_id)
+{
+	struct image	*im;
+
+	if (grid_id == 0 || (im = image_grid_ids[grid_id]) == NULL)
+		return (0);
+	return (im->id);
 }
 
 void
@@ -390,6 +426,7 @@ image_free(u_int id)
 
 	log_debug("%s: freeing image %u", __func__, id);
 	RB_REMOVE(images, &images, im);
+	image_grid_ids[im->grid_id] = NULL;
 	free(im->pixels);
 	if (im->sixel != NULL)
 		sixel_free(im->sixel);
