@@ -1038,56 +1038,6 @@ struct style {
 };
 
 #ifdef ENABLE_IMAGES
-/* A protocol-neutral average of part of an image cell. RGB is premultiplied. */
-struct image_sample {
-	u_char			 red;
-	u_char			 green;
-	u_char			 blue;
-	u_char			 alpha;
-	u_char			 brightness;
-};
-
-/* Half blocks, quadrants and sextants all divide evenly into a 2 by 6 grid. */
-#define IMAGE_SAMPLE_COLUMNS 2
-#define IMAGE_SAMPLE_ROWS 6
-struct image_cell {
-	struct image_sample	 whole;
-	struct image_sample	 samples[IMAGE_SAMPLE_ROWS][IMAGE_SAMPLE_COLUMNS];
-};
-
-/* Immutable protocol-neutral image placement. */
-struct image {
-	u_int			 id;
-	u_int			 references;
-	u_int			 width;
-	u_int			 height;
-	u_int			 canvas_width;
-	u_int			 canvas_height;
-	u_int			 sx;
-	u_int			 sy;
-	size_t			 stride;
-	size_t			 size;
-	u_char			*pixels;
-	/* Original indexed SIXEL data, if this image arrived as SIXEL. */
-	struct sixel_image	*sixel;
-	struct image_cell	*cells; /* lazily generated text samples */
-
-	RB_ENTRY(image)		 entry;
-};
-RB_HEAD(images, image);
-
-/* A cell-aligned part of an image to draw at a terminal position. */
-struct image_rectangle {
-	struct image		*image;
-	struct grid_cell	 cell;
-	u_int			 source_x;
-	u_int			 source_y;
-	u_int			 width;
-	u_int			 height;
-	u_int			 destination_x;
-	u_int			 destination_y;
-};
-
 #define IMAGE_SIZE_LIMIT (64 * 1024 * 1024)
 #endif
 
@@ -4261,6 +4211,13 @@ char		*regsub(const char *, const char *, const char *, int);
 struct image	*image_create(u_int, u_int, u_int, u_int, u_int, u_int,
 		     u_char *);
 struct image	*image_find(u_int);
+u_int		 image_get_id(const struct image *);
+void		 image_get_dimensions(const struct image *, u_int *, u_int *);
+void		 image_get_canvas_dimensions(const struct image *, u_int *, u_int *);
+void		 image_get_cell_dimensions(const struct image *, u_int *, u_int *);
+const u_char	*image_get_pixels(const struct image *, size_t *, size_t *);
+struct sixel_image *image_get_sixel(const struct image *);
+void		 image_set_sixel(struct image *, struct sixel_image *);
 void		 image_ref(u_int);
 void		 image_free(u_int);
 void		 image_set_cell(struct grid_cell *, struct image *, u_int,
@@ -4281,19 +4238,22 @@ void		 image_tty_geometry_changed(struct tty *);
 void		 image_tty_free(struct tty *, int);
 void		 image_draw_line(struct tty *, struct screen *, u_int, u_int,
 		     u_int, u_int, u_int, const struct tty_style_ctx *);
-const struct image_cell *image_get_cell(struct image *, u_int, u_int);
+u_char		 image_get_brightness(struct image *, u_int, u_int);
 void		 image_get_text_cell(struct tty *, struct image *, u_int,
 		     u_int, const struct grid_cell *, struct grid_cell *,
 		     const struct tty_style_ctx *);
-void		 sixel_draw_rectangle(struct tty *,
-		     const struct image_rectangle *, const struct tty_style_ctx *);
-void		 sixel_free_output(struct tty *, int);
-void		 sixel_geometry_changed(struct tty *);
+struct image	*image_rectangle_get_image(const struct image_rectangle *);
+void		 image_rectangle_get_coordinates(const struct image_rectangle *,
+		     u_int *, u_int *, u_int *, u_int *, u_int *, u_int *);
 #endif
 
 #ifdef ENABLE_SIXEL
 /* image-sixel.c */
 #define SIXEL_COLOUR_REGISTERS 1024
+void		 sixel_draw_rectangle(struct tty *,
+		     const struct image_rectangle *, const struct tty_style_ctx *);
+void		 sixel_free_output(struct tty *, int);
+void		 sixel_geometry_changed(struct tty *);
 struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int);
 void		 sixel_free(struct sixel_image *);
 void		 sixel_log(struct sixel_image *);

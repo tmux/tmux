@@ -25,6 +25,56 @@
 
 #include "tmux.h"
 
+/* A protocol-neutral average of part of an image cell. RGB is premultiplied. */
+struct image_sample {
+	u_char			 red;
+	u_char			 green;
+	u_char			 blue;
+	u_char			 alpha;
+	u_char			 brightness;
+};
+
+/* Half blocks, quadrants and sextants all divide evenly into a 2 by 6 grid. */
+#define IMAGE_SAMPLE_COLUMNS 2
+#define IMAGE_SAMPLE_ROWS 6
+struct image_cell {
+	struct image_sample	 whole;
+	struct image_sample	 samples[IMAGE_SAMPLE_ROWS][IMAGE_SAMPLE_COLUMNS];
+};
+
+/* Immutable protocol-neutral image placement. */
+struct image {
+	u_int			 id;
+	u_int			 references;
+	u_int			 width;
+	u_int			 height;
+	u_int			 canvas_width;
+	u_int			 canvas_height;
+	u_int			 sx;
+	u_int			 sy;
+	size_t			 stride;
+	size_t			 size;
+	u_char			*pixels;
+	/* Original indexed SIXEL data, if this image arrived as SIXEL. */
+	struct sixel_image	*sixel;
+	struct image_cell	*cells; /* lazily generated text samples */
+
+	RB_ENTRY(image)		 entry;
+};
+RB_HEAD(images, image);
+
+/* A cell-aligned part of an image to draw at a terminal position. */
+struct image_rectangle {
+	struct image		*image;
+	struct grid_cell	 cell;
+	u_int			 source_x;
+	u_int			 source_y;
+	u_int			 width;
+	u_int			 height;
+	u_int			 destination_x;
+	u_int			 destination_y;
+};
+
 static struct images	images = RB_INITIALIZER(&images);
 static u_int		image_next_id;
 
@@ -202,6 +252,81 @@ image_find(u_int id)
 	return (RB_FIND(images, &images, &find));
 }
 
+u_int
+image_get_id(const struct image *im)
+{
+	return (im->id);
+}
+
+void
+image_get_dimensions(const struct image *im, u_int *width, u_int *height)
+{
+	if (width != NULL)
+		*width = im->width;
+	if (height != NULL)
+		*height = im->height;
+}
+
+void
+image_get_canvas_dimensions(const struct image *im, u_int *width,
+    u_int *height)
+{
+	if (width != NULL)
+		*width = im->canvas_width;
+	if (height != NULL)
+		*height = im->canvas_height;
+}
+
+void
+image_get_cell_dimensions(const struct image *im, u_int *sx, u_int *sy)
+{
+	if (sx != NULL)
+		*sx = im->sx;
+	if (sy != NULL)
+		*sy = im->sy;
+}
+
+const u_char *
+image_get_pixels(const struct image *im, size_t *stride, size_t *size)
+{
+	if (stride != NULL)
+		*stride = im->stride;
+	if (size != NULL)
+		*size = im->size;
+	return (im->pixels);
+}
+
+struct sixel_image *
+image_get_sixel(const struct image *im)
+{
+	return (im->sixel);
+}
+
+void
+image_set_sixel(struct image *im, struct sixel_image *si)
+{
+	im->sixel = si;
+}
+
+struct image *
+image_rectangle_get_image(const struct image_rectangle *rectangle)
+{
+	return (rectangle->image);
+}
+
+void
+image_rectangle_get_coordinates(const struct image_rectangle *rectangle,
+    u_int *source_x, u_int *source_y, u_int *width, u_int *height,
+    u_int *destination_x, u_int *destination_y)
+{
+	*source_x = rectangle->source_x;
+	*source_y = rectangle->source_y;
+	*width = rectangle->width;
+	*height = rectangle->height;
+	*destination_x = rectangle->destination_x;
+	*destination_y = rectangle->destination_y;
+}
+
 struct image *
 image_create(u_int width, u_int height, u_int canvas_width,
     u_int canvas_height, u_int sx, u_int sy, u_char *pixels)
@@ -272,7 +397,7 @@ image_free(u_int id)
 	free(im);
 }
 
-const struct image_cell *
+static const struct image_cell *
 image_get_cell(struct image *im, u_int x, u_int y)
 {
 	if (im == NULL || x >= im->sx || y >= im->sy)
@@ -280,6 +405,17 @@ image_get_cell(struct image *im, u_int x, u_int y)
 	if (im->cells == NULL)
 		image_make_cells(im);
 	return (&im->cells[(size_t)y * im->sx + x]);
+}
+
+u_char
+image_get_brightness(struct image *im, u_int x, u_int y)
+{
+	const struct image_cell	*cell;
+
+	cell = image_get_cell(im, x, y);
+	if (cell == NULL)
+		return (0);
+	return (cell->whole.brightness);
 }
 
 void
@@ -451,10 +587,9 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
 	u_int			 cx = s->cx, cy = s->cy;
 	u_int			 x, y, sx, sy, lines;
 
-	sx = im->sx;
+	image_get_cell_dimensions(im, &sx, &sy);
 	if (sx > screen_size_x(s) - cx)
 		sx = screen_size_x(s) - cx;
-	sy = im->sy;
 	if (sy > screen_size_y(s) - 1)
 		sy = screen_size_y(s) - 1;
 	if (sx == 0 || sy == 0)

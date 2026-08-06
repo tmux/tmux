@@ -28,13 +28,10 @@ image_get_text_cell(__unused struct tty *tty, struct image *im, u_int x,
     __unused const struct tty_style_ctx *style_ctx)
 {
 	static const char	 ramp[] = " .:-=+*#%@";
-	const struct image_cell	*cell;
 	u_int			 level = 0;
 
 	memcpy(out, gc, sizeof *out);
-	cell = image_get_cell(im, x, y);
-	if (cell != NULL)
-		level = cell->whole.brightness * (sizeof ramp - 2) / 255;
+	level = image_get_brightness(im, x, y) * (sizeof ramp - 2) / 255;
 	utf8_set(&out->data, ramp[level]);
 	out->flags &= ~GRID_FLAG_IMAGE;
 }
