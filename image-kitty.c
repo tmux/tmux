@@ -135,6 +135,7 @@ struct kitty_output {
 	u_int			 next_id;
 };
 
+/* Return the Kitty output state for a terminal. */
 static struct kitty_output *
 kitty_get_output(struct tty *tty)
 {
@@ -148,6 +149,7 @@ kitty_get_output(struct tty *tty)
 	return (ko);
 }
 
+/* Delete a Kitty image and its placements. */
 static void
 kitty_delete(struct tty *tty, u_int id)
 {
@@ -157,6 +159,7 @@ kitty_delete(struct tty *tty, u_int id)
 	tty_puts(tty, s);
 }
 
+/* Free cached output placement records. */
 static void
 kitty_free_placements(struct kitty_image_cache *cache)
 {
@@ -170,6 +173,7 @@ kitty_free_placements(struct kitty_image_cache *cache)
 	cache->placements = NULL;
 }
 
+/* Delete Kitty placements intersecting a redraw area. */
 void
 kitty_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
     u_int height)
@@ -200,6 +204,7 @@ kitty_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
 	}
 }
 
+/* Free Kitty output state for a terminal. */
 void
 kitty_free_output(struct tty *tty, int send)
 {
@@ -219,12 +224,14 @@ kitty_free_output(struct tty *tty, int send)
 	tty->image_data = NULL;
 }
 
+/* Discard Kitty output state after a terminal geometry change. */
 void
 kitty_geometry_changed(struct tty *tty)
 {
 	kitty_free_output(tty, !!(tty->flags & TTY_OPENED));
 }
 
+/* Remove cached Kitty images no longer held by the server. */
 static void
 kitty_images_collect(struct tty *tty)
 {
@@ -245,6 +252,7 @@ kitty_images_collect(struct tty *tty)
 	}
 }
 
+/* Place an image rectangle using the Kitty graphics protocol. */
 static void
 kitty_place(struct tty *tty, struct kitty_image_cache *cache,
     struct image *im, u_int source_x, u_int source_y, u_int width,
@@ -281,6 +289,7 @@ kitty_place(struct tty *tty, struct kitty_image_cache *cache,
 	tty_puts(tty, control);
 }
 
+/* Upload an image to Kitty and return its output cache entry. */
 static struct kitty_image_cache *
 kitty_upload(struct tty *tty, struct image *im)
 {
@@ -369,6 +378,7 @@ kitty_upload(struct tty *tty, struct image *im)
 	return (cache);
 }
 
+/* Draw an image rectangle using the Kitty graphics protocol. */
 void
 kitty_draw_rectangle(struct tty *tty, const struct image_rectangle *rectangle,
     __unused const struct tty_style_ctx *style_ctx)
@@ -389,6 +399,7 @@ kitty_draw_rectangle(struct tty *tty, const struct image_rectangle *rectangle,
 	    destination_x, destination_y);
 }
 
+/* Parse an unsigned Kitty graphics control value. */
 static int
 kitty_number(const char *s, size_t len, u_int *value)
 {
@@ -407,6 +418,7 @@ kitty_number(const char *s, size_t len, u_int *value)
 	return (0);
 }
 
+/* Parse a Kitty graphics control string. */
 static int
 kitty_control(struct kitty_state *ks, const u_char *buf, size_t len)
 {
@@ -487,6 +499,7 @@ kitty_control(struct kitty_state *ks, const u_char *buf, size_t len)
 	return (0);
 }
 
+/* Free a partially parsed Kitty graphics command. */
 static void
 kitty_state_free(struct kitty_state *ks)
 {
@@ -496,6 +509,7 @@ kitty_state_free(struct kitty_state *ks)
 	free(ks);
 }
 
+/* Free placement images belonging to a Kitty source image. */
 static void
 kitty_placements_free(struct kitty_source *source)
 {
@@ -510,6 +524,7 @@ kitty_placements_free(struct kitty_source *source)
 	source->placements = NULL;
 }
 
+/* Free placement images belonging to all Kitty source images. */
 static void
 kitty_placements_free_all(struct kitty_context *kc)
 {
@@ -519,6 +534,7 @@ kitty_placements_free_all(struct kitty_context *kc)
 		kitty_placements_free(source);
 }
 
+/* Free Kitty graphics parser state. */
 void
 kitty_free_state(void *state)
 {
@@ -539,6 +555,7 @@ kitty_free_state(void *state)
 	free(kc);
 }
 
+/* Find a Kitty source image by application ID. */
 static struct kitty_source *
 kitty_source_find(struct kitty_context *kc, u_int id)
 {
@@ -551,6 +568,7 @@ kitty_source_find(struct kitty_context *kc, u_int id)
 	return (NULL);
 }
 
+/* Replace the source image associated with a Kitty application ID. */
 static u_int
 kitty_source_set(struct kitty_context *kc, u_int id, struct image *im)
 {
@@ -579,6 +597,7 @@ kitty_source_set(struct kitty_context *kc, u_int id, struct image *im)
 	return (old_id);
 }
 
+/* Associate a placement ID with an image. */
 static u_int
 kitty_placement_set(struct kitty_context *kc, u_int image_id,
     u_int placement_id, struct image *im)
@@ -611,6 +630,7 @@ kitty_placement_set(struct kitty_context *kc, u_int image_id,
 	return (old_id);
 }
 
+/* Remove and return the image associated with a Kitty placement ID. */
 static struct image *
 kitty_placement_remove(struct kitty_context *kc, u_int image_id,
     u_int placement_id)
@@ -637,6 +657,7 @@ kitty_placement_remove(struct kitty_context *kc, u_int image_id,
 	return (NULL);
 }
 
+/* Replace the virtual image associated with a Kitty source image. */
 static void
 kitty_virtual_set(struct kitty_context *kc, u_int id, struct image *im)
 {
@@ -651,6 +672,7 @@ kitty_virtual_set(struct kitty_context *kc, u_int id, struct image *im)
 	source->virtual_id = image_get_id(im);
 }
 
+/* Remove and return a Kitty source image. */
 static struct image *
 kitty_source_remove(struct kitty_context *kc, u_int id)
 {
@@ -674,6 +696,7 @@ kitty_source_remove(struct kitty_context *kc, u_int id)
 	return (NULL);
 }
 
+/* Find and reference a Kitty source image. */
 static struct image *
 kitty_source_get(struct kitty_context *kc, u_int id)
 {
@@ -689,6 +712,7 @@ kitty_source_get(struct kitty_context *kc, u_int id)
 	return (im);
 }
 
+/* Append encoded payload data to a Kitty graphics command. */
 static int
 kitty_append(struct kitty_state *ks, const u_char *buf, size_t len)
 {
@@ -702,6 +726,7 @@ kitty_append(struct kitty_state *ks, const u_char *buf, size_t len)
 	return (0);
 }
 
+/* Decode raw Kitty graphics data into RGBA pixels. */
 static u_char *
 kitty_raw(struct kitty_state *ks, u_char *data, size_t size)
 {
@@ -747,6 +772,7 @@ kitty_raw(struct kitty_state *ks, u_char *data, size_t size)
 	return (pixels);
 }
 
+/* Create an image view for a Kitty placement. */
 static struct image *
 kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
     u_int ypixel)
@@ -835,6 +861,7 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
  * static images are accepted. The returned image retains immutable RGBA
  * pixels for the lifetime of its placement.
  */
+/* Parse Kitty graphics data and return a placed image when appropriate. */
 struct image *
 kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
     u_int ypixel, u_int *image_id, u_int *replace_id, u_int *quiet,
@@ -1039,6 +1066,7 @@ fail:
 	return (NULL);
 }
 
+/* Decode one UTF-8 character from a Kitty placeholder. */
 static int
 kitty_placeholder_character(const u_char *data, size_t size, size_t *offset,
     uint32_t *value)
@@ -1077,6 +1105,7 @@ kitty_placeholder_character(const u_char *data, size_t size, size_t *offset,
 	return (1);
 }
 
+/* Return the Kitty placeholder diacritic index for a character. */
 static int
 kitty_placeholder_index(uint32_t value, u_int *index)
 {
@@ -1092,6 +1121,7 @@ kitty_placeholder_index(uint32_t value, u_int *index)
 }
 
 /* Replace a Kitty Unicode placeholder with a shared image marker cell. */
+/* Convert a Kitty Unicode placeholder cell into an image marker. */
 int
 kitty_placeholder_to_cell(void *state, struct grid_cell *gc,
     const struct grid_cell *left)
