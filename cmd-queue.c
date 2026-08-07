@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-queue.c,v 1.121 2026/07/14 17:17:17 nicm Exp $ */
+/* $OpenBSD: cmd-queue.c,v 1.122 2026/08/03 13:38:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2013 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -802,7 +802,7 @@ cmdq_guard(struct cmdq_item *item, const char *guard, int flags)
 	u_int		 number = item->number;
 
 	if (c != NULL && (c->flags & CLIENT_CONTROL))
-		control_write(c, "%%%s %ld %u %d", guard, t, number, flags);
+		control_write_guard(c, guard, t, number, flags);
 }
 
 /* Show message from command. */

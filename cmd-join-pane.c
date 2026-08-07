@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-join-pane.c,v 1.73 2026/07/17 15:24:30 nicm Exp $ */
+/* $OpenBSD: cmd-join-pane.c,v 1.74 2026/08/03 20:29:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 George Nachman <tmux@georgester.com>
@@ -431,25 +431,23 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (cmd_get_entry(self) == &cmd_move_pane_entry) {
 		if (args_has(args, 'M'))
 			return (cmd_join_pane_mouse_update(item));
-		if (!window_pane_is_floating(dst_wp)) {
-			cmdq_error(item, "pane is not floating");
-			return (CMD_RETURN_ERROR);
-		}
-		if ((s = args_get(args, 'P')) != NULL) {
-			server_unzoom_window(dst_w);
-			return (cmd_join_pane_place(item, dst_wl, dst_wp, s));
-		}
-		if ((s = args_get(args, 'z')) != NULL) {
-			server_unzoom_window(dst_w);
-			return (cmd_join_pane_zindex(item, dst_wl, dst_wp, s));
-		}
-		if (args_has(args, 'X') ||
+		if (args_has(args, 'P') ||
+		    args_has(args, 'z') ||
+		    args_has(args, 'X') ||
 		    args_has(args, 'Y') ||
 		    args_has(args, 'U') ||
 		    args_has(args, 'D') ||
 		    args_has(args, 'L') ||
 		    args_has(args, 'R')) {
+			if (!window_pane_is_floating(dst_wp)) {
+				cmdq_error(item, "pane is not floating");
+				return (CMD_RETURN_ERROR);
+			}
 			server_unzoom_window(dst_w);
+			if ((s = args_get(args, 'P')) != NULL)
+				return (cmd_join_pane_place(item, dst_wl, dst_wp, s));
+			if ((s = args_get(args, 'z')) != NULL)
+				return (cmd_join_pane_zindex(item, dst_wl, dst_wp, s));
 			return (cmd_join_pane_move(item, args, dst_wl, dst_wp));
 		}
 	}

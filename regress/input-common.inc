@@ -174,3 +174,17 @@ check_raw_matches()
 		fi
 	done
 }
+
+check_raw_no_matches()
+{
+	name=$1
+	shift
+
+	capture_raw "$name" >"$TMP"
+	for unexpected in "$@"; do
+		if grep -Eq "$unexpected" "$TMP"; then
+			printf "%s\n" "$unexpected" >"$EXP"
+			fail "$name raw unexpected"
+		fi
+	done
+}

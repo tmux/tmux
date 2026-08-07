@@ -192,13 +192,13 @@ check_fail "invalid window name: $(printf 'a\377b')" \
 	break-pane -d -n "$(printf 'a\377b')" -s "$p1" -t P:
 
 # join-pane can move a pane from one window to another without destroying
-# the source window if other panes remain. (On this branch move-pane is
-# reserved for floating panes, covered by floating-pane-geometry.sh.)
+# the source window if other panes remain. move-pane does the same when no
+# floating-pane movement flags are given.
 check_ok new-window -d -t P:5 -n other
 check_ok join-pane -d -s "$p1" -t P:5.0
 check_fmt 'P:5' '#{window_panes}' '2'
 check_fmt 'P:0' '#{window_panes}' '3'
-check_ok join-pane -d -v -s "$p1" -t "$p2"
+check_ok move-pane -d -v -s "$p1" -t "$p2"
 check_fmt 'P:0' '#{window_panes}' '4'
 check_fmt 'P:5' '#{window_panes}' '1'
 
