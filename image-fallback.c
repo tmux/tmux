@@ -64,6 +64,7 @@ static const struct image_rgb image_ansi_colours[16] = {
 	{ 0x00, 0xff, 0xff }, { 0xff, 0xff, 0xff }
 };
 
+/* Return squared distance between two RGB colours. */
 static u_int
 image_glyph_distance(struct image_rgb a, struct image_rgb b)
 {
@@ -72,6 +73,7 @@ image_glyph_distance(struct image_rgb a, struct image_rgb b)
 	return (r * r + g * g + bl * bl);
 }
 
+/* Return if an RGB colour is close to grey. */
 static int
 image_glyph_low_saturation(struct image_rgb colour)
 {
@@ -89,6 +91,7 @@ image_glyph_low_saturation(struct image_rgb colour)
 	return (maximum == 0 || (maximum - minimum) * 4 <= maximum);
 }
 
+/* Find the closest ANSI colour. */
 static u_int
 image_glyph_nearest_ansi(struct image_rgb colour, u_int colours)
 {
@@ -108,6 +111,7 @@ image_glyph_nearest_ansi(struct image_rgb colour, u_int colours)
 	return (best);
 }
 
+/* Quantize an RGB colour for a fallback palette. */
 static struct image_rgb
 image_glyph_quantize(struct image_rgb colour, enum image_glyph_palette palette,
     int *output)
@@ -136,6 +140,7 @@ image_glyph_quantize(struct image_rgb colour, enum image_glyph_palette palette,
 	return (result);
 }
 
+/* Fit two representative colours to image samples. */
 static void
 image_glyph_fit_colours(const struct image_rgb *samples, u_int count,
     struct image_rgb centres[2])
@@ -176,6 +181,7 @@ image_glyph_fit_colours(const struct image_rgb *samples, u_int count,
 	}
 }
 
+/* Set UTF-8 data from an ACS key. */
 static int
 image_glyph_set_acs(struct tty *tty, struct utf8_data *data, u_char key)
 {
@@ -194,6 +200,7 @@ image_glyph_set_acs(struct tty *tty, struct utf8_data *data, u_char key)
 	return (1);
 }
 
+/* Return the ACS key for a fallback block mask. */
 static u_char
 image_glyph_block_key(enum image_glyph_detail detail, u_int mask)
 {
@@ -232,6 +239,7 @@ image_glyph_block_key(enum image_glyph_detail detail, u_int mask)
 	return (tty_acs_image_sextant(mask));
 }
 
+/* Dither image brightness into cached shade levels. */
 static u_char *
 image_glyph_make_shades(struct image *im, u_int levels)
 {
@@ -310,6 +318,7 @@ image_glyph_make_shades(struct image *im, u_int levels)
 	return (result);
 }
 
+/* Select the best fallback colour palette for a terminal. */
 static enum image_glyph_palette
 image_glyph_get_palette(struct tty *tty)
 {
@@ -327,6 +336,7 @@ image_glyph_get_palette(struct tty *tty)
 	return (IMAGE_GLYPH_PALETTE_8);
 }
 
+/* Select the best fallback glyph detail for a terminal. */
 static enum image_glyph_detail
 image_glyph_get_detail(struct tty *tty, enum image_glyph_palette palette)
 {
@@ -343,6 +353,7 @@ image_glyph_get_detail(struct tty *tty, enum image_glyph_palette palette)
 	return (IMAGE_GLYPH_SHADE8);
 }
 
+/* Draw one image cell with a coloured block glyph. */
 static void
 image_glyph_block(struct tty *tty, struct image *im, u_int x, u_int y,
     enum image_glyph_detail detail, enum image_glyph_palette palette,
@@ -383,6 +394,7 @@ image_glyph_block(struct tty *tty, struct image *im, u_int x, u_int y,
 	out->bg = colours[0];
 }
 
+/* Fill a grid cell with an image fallback glyph. */
 void
 image_get_fallback_cell(struct tty *tty, struct image *im, u_int x, u_int y,
     const struct grid_cell *gc, struct grid_cell *out,
@@ -433,6 +445,7 @@ image_get_fallback_cell(struct tty *tty, struct image *im, u_int x, u_int y,
 	image_glyph_block(tty, im, x, y, detail, palette, out);
 }
 
+/* Free cached fallback rendering data for an image. */
 void
 image_free_fallback(struct image *im)
 {
