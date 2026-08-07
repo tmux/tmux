@@ -1331,12 +1331,13 @@ sixel_image_is_cached(struct tty *tty, struct sixel_image *si)
 
 void
 sixel_draw_rectangle(struct tty *tty, const struct image_rectangle *rectangle,
-    __unused const struct tty_style_ctx *style_ctx)
+    const struct tty_style_ctx *style_ctx)
 {
 	struct sixel_image	*si, *crop;
+	struct grid_cell	 draw_gc;
 	char			*data;
 	size_t			 size;
-	u_int			 source_x, source_y, width, height;
+	u_int			 source_x, source_y, width, height, y;
 	u_int			 destination_x, destination_y;
 
 	si = sixel_get_image(tty, image_rectangle_get_image(rectangle));
@@ -1354,6 +1355,15 @@ sixel_draw_rectangle(struct tty *tty, const struct image_rectangle *rectangle,
 	sixel_free(crop);
 	if (data == NULL)
 		return;
+	memcpy(&draw_gc, image_rectangle_get_cell(rectangle), sizeof draw_gc);
+	draw_gc.flags &= ~(GRID_FLAG_IMAGE|GRID_FLAG_SELECTED);
+	utf8_set(&draw_gc.data, ' ');
+	for (y = 0; y < height; y++) {
+		tty_cursor(tty, destination_x, destination_y + y);
+		tty_attributes(tty, &draw_gc, style_ctx);
+		tty_repeat_space(tty, width);
+		tty_reset(tty);
+	}
 	tty_region_off(tty);
 	tty_margin_off(tty);
 	tty_cursor(tty, destination_x, destination_y);
