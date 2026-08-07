@@ -114,7 +114,6 @@ static const char *options_table_theme_list[] = {
 static const char *options_table_copy_mode_line_numbers_list[] = {
 	"off", "default", "absolute", "relative", "hybrid", NULL
 };
-
 /* Status line format. */
 #define OPTIONS_TABLE_STATUS_FORMAT1 \
 	"#[align=left range=left #{E:status-left-style}]" \
@@ -1371,6 +1370,13 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of search matches in copy mode."
+	},
+
+	{ .name = "copy-mode-exit-status-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_str = "#{?exit_status,#[fg=themered]!, }",
+	  .text = "Format of OSC 133 exit status indicator in copy mode."
 	},
 
 	{ .name = "copy-mode-current-match-style",
