@@ -4246,6 +4246,7 @@ void		 image_redraw_area(struct screen_write_ctx *, u_int, u_int,
 		     u_int, u_int);
 void		 image_redraw_all(struct screen_write_ctx *);
 void		 image_redraw_scroll(struct screen_write_ctx *, u_int);
+void		 image_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
 int		 image_tty_is_graphical(struct tty *);
 int		 image_tty_scrolls(struct tty *);
 void		 image_tty_update(struct tty *);
@@ -4273,6 +4274,7 @@ int		 kitty_placeholder_to_cell(void *, struct grid_cell *,
 void		 kitty_free_state(void *);
 void		 kitty_draw_rectangle(struct tty *,
 		     const struct image_rectangle *, const struct tty_style_ctx *);
+void		 kitty_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
 void		 kitty_free_output(struct tty *, int);
 void		 kitty_geometry_changed(struct tty *);
 #endif

@@ -1447,6 +1447,30 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 	if (bottom > (int)scene->sy)
 		bottom = scene->sy;
 
+#ifdef ENABLE_IMAGES
+	if (flags & REDRAW_PANE) {
+		int	left, right, image_y;
+
+		left = wp->xoff - (int)scene->ox;
+		if (left < 0)
+			left = 0;
+		if (left > (int)scene->sx)
+			left = scene->sx;
+		right = wp->xoff + (int)wp->sx - (int)scene->ox;
+		if (right < 0)
+			right = 0;
+		if (right > (int)scene->sx)
+			right = scene->sx;
+		if (left < right && top < bottom) {
+			image_y = top;
+			if (dctx->flags & REDRAW_STATUS_TOP)
+				image_y += dctx->status_lines;
+			image_redraw_start(&scene->c->tty, left, image_y,
+			    right - left, bottom - top);
+		}
+	}
+#endif
+
 	for (y = top; y < bottom; y++) {
 		line = &scene->lines[y];
 		if (dctx->flags & REDRAW_STATUS_TOP)
@@ -1774,6 +1798,10 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		}
 	}
 	tty_sync_start(tty);
+#ifdef ENABLE_IMAGES
+	if (wp == NULL && (flags & REDRAW_PANE))
+		image_redraw_start(tty, 0, 0, tty->sx, tty->sy);
+#endif
 	tty_update_mode(tty, tty->mode & ~CURSOR_MODES, NULL);
 
 	if (wp != NULL)
