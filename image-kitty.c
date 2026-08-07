@@ -116,7 +116,18 @@ struct kitty_image_cache {
 	u_int			 kitty_id;
 	u_int			 xpixel;
 	u_int			 ypixel;
+	struct kitty_placement_cache *placements;
+	u_int			 next_placement;
 	struct kitty_image_cache	*next;
+};
+
+struct kitty_placement_cache {
+	u_int			 id;
+	u_int			 x;
+	u_int			 y;
+	u_int			 width;
+	u_int			 height;
+	struct kitty_placement_cache *next;
 };
 
 struct kitty_output {
@@ -137,31 +148,6 @@ kitty_get_output(struct tty *tty)
 	return (ko);
 }
 
-static size_t
-kitty_utf8(char *out, uint32_t value)
-{
-	if (value < 0x80) {
-		out[0] = value;
-		return (1);
-	}
-	if (value < 0x800) {
-		out[0] = 0xc0 | (value >> 6);
-		out[1] = 0x80 | (value & 0x3f);
-		return (2);
-	}
-	if (value < 0x10000) {
-		out[0] = 0xe0 | (value >> 12);
-		out[1] = 0x80 | ((value >> 6) & 0x3f);
-		out[2] = 0x80 | (value & 0x3f);
-		return (3);
-	}
-	out[0] = 0xf0 | (value >> 18);
-	out[1] = 0x80 | ((value >> 12) & 0x3f);
-	out[2] = 0x80 | ((value >> 6) & 0x3f);
-	out[3] = 0x80 | (value & 0x3f);
-	return (4);
-}
-
 static void
 kitty_delete(struct tty *tty, u_int id)
 {
@@ -169,6 +155,49 @@ kitty_delete(struct tty *tty, u_int id)
 
 	xsnprintf(s, sizeof s, "\033_Ga=d,d=I,i=%u,q=2\033\\", id);
 	tty_puts(tty, s);
+}
+
+static void
+kitty_free_placements(struct kitty_image_cache *cache)
+{
+	struct kitty_placement_cache	*placement, *next;
+
+	for (placement = cache->placements; placement != NULL;
+	    placement = next) {
+		next = placement->next;
+		free(placement);
+	}
+	cache->placements = NULL;
+}
+
+void
+kitty_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
+    u_int height)
+{
+	struct kitty_output		*ko = tty->image_data;
+	struct kitty_image_cache	*cache;
+	struct kitty_placement_cache	**pp, *placement;
+	char				 s[64];
+
+	if (ko == NULL)
+		return;
+	for (cache = ko->images; cache != NULL; cache = cache->next) {
+		for (pp = &cache->placements; (placement = *pp) != NULL; ) {
+			if (placement->x >= x + width ||
+			    placement->x + placement->width <= x ||
+			    placement->y >= y + height ||
+			    placement->y + placement->height <= y) {
+				pp = &placement->next;
+				continue;
+			}
+			xsnprintf(s, sizeof s,
+			    "\033_Ga=d,d=i,i=%u,p=%u,q=2\033\\", cache->kitty_id,
+			    placement->id);
+			tty_puts(tty, s);
+			*pp = placement->next;
+			free(placement);
+		}
+	}
 }
 
 void
@@ -183,6 +212,7 @@ kitty_free_output(struct tty *tty, int send)
 		next = cache->next;
 		if (send)
 			kitty_delete(tty, cache->kitty_id);
+		kitty_free_placements(cache);
 		free(cache);
 	}
 	free(ko);
@@ -210,41 +240,45 @@ kitty_images_collect(struct tty *tty)
 		}
 		kitty_delete(tty, cache->kitty_id);
 		*pp = cache->next;
+		kitty_free_placements(cache);
 		free(cache);
 	}
 }
 
 static void
-kitty_place(struct tty *tty, struct image *im, u_int id)
+kitty_place(struct tty *tty, struct kitty_image_cache *cache,
+    struct image *im, u_int source_x, u_int source_y, u_int width,
+    u_int height, u_int destination_x, u_int destination_y)
 {
 	char		 control[192];
-	u_int		 x, y, columns, rows, px, py, pwidth, pheight;
-	u_int		 placement = 1, sx, sy, canvas_width, canvas_height;
+	u_int		 px, py, pwidth, pheight, sx, sy;
+	u_int		 canvas_width, canvas_height;
+	struct kitty_placement_cache *placement;
 
 	image_get_cell_dimensions(im, &sx, &sy);
-	for (y = 0; y < sy; y += nitems(kitty_diacritics)) {
-		rows = sy - y;
-		if (rows > nitems(kitty_diacritics))
-			rows = nitems(kitty_diacritics);
-		for (x = 0; x < sx; x += nitems(kitty_diacritics)) {
-			columns = sx - x;
-			if (columns > nitems(kitty_diacritics))
-				columns = nitems(kitty_diacritics);
-			image_get_canvas_dimensions(im, &canvas_width,
-			    &canvas_height);
-			px = (uint64_t)x * canvas_width / sx;
-			py = (uint64_t)y * canvas_height / sy;
-			pwidth = ((uint64_t)(x + columns) * canvas_width + sx - 1) /
-			    sx - px;
-			pheight = ((uint64_t)(y + rows) * canvas_height + sy - 1) /
-			    sy - py;
-			xsnprintf(control, sizeof control,
-			    "\033_Ga=p,U=1,i=%u,p=%u,x=%u,y=%u,w=%u,h=%u,"
-			    "c=%u,r=%u,q=2\033\\", id, placement++, px, py,
-			    pwidth, pheight, columns, rows);
-			tty_puts(tty, control);
-		}
-	}
+	image_get_canvas_dimensions(im, &canvas_width, &canvas_height);
+	px = (uint64_t)source_x * canvas_width / sx;
+	py = (uint64_t)source_y * canvas_height / sy;
+	pwidth = ((uint64_t)(source_x + width) * canvas_width + sx - 1) /
+	    sx - px;
+	pheight = ((uint64_t)(source_y + height) * canvas_height + sy - 1) /
+	    sy - py;
+	placement = xcalloc(1, sizeof *placement);
+	do {
+		placement->id = ++cache->next_placement;
+	} while (placement->id == 0);
+	placement->x = destination_x;
+	placement->y = destination_y;
+	placement->width = width;
+	placement->height = height;
+	placement->next = cache->placements;
+	cache->placements = placement;
+	tty_cursor(tty, destination_x, destination_y);
+	xsnprintf(control, sizeof control,
+	    "\033_Ga=p,i=%u,p=%llu,x=%u,y=%u,w=%u,h=%u,c=%u,r=%u,C=1,"
+	    "q=2\033\\", cache->kitty_id, (unsigned long long)placement->id, px, py,
+	    pwidth, pheight, width, height);
+	tty_puts(tty, control);
 }
 
 static struct kitty_image_cache *
@@ -268,6 +302,7 @@ kitty_upload(struct tty *tty, struct image *im)
 		    cache->ypixel == tty->ypixel)
 			return (cache);
 		kitty_delete(tty, cache->kitty_id);
+		kitty_free_placements(cache);
 		cache->server_id = 0;
 		break;
 	}
@@ -283,6 +318,7 @@ kitty_upload(struct tty *tty, struct image *im)
 	cache->kitty_id = id;
 	cache->xpixel = tty->xpixel;
 	cache->ypixel = tty->ypixel;
+	cache->next_placement = 0;
 
 	pixels = image_get_pixels(im, &stride, &image_size);
 	image_get_dimensions(im, &width, &height);
@@ -330,60 +366,16 @@ kitty_upload(struct tty *tty, struct image *im)
 		tty_puts(tty, "\033\\");
 	}
 	free(padded);
-	kitty_place(tty, im, id);
 	return (cache);
-}
-
-static u_int
-kitty_placement(struct image *im, u_int x, u_int y)
-{
-	u_int	across, sx;
-
-	image_get_cell_dimensions(im, &sx, NULL);
-	across = (sx + nitems(kitty_diacritics) - 1) /
-	    nitems(kitty_diacritics);
-	return ((y / nitems(kitty_diacritics)) * across +
-	    x / nitems(kitty_diacritics) + 1);
-}
-
-static void
-kitty_placeholder(struct tty *tty, struct kitty_image_cache *cache,
-    struct image *im, u_int x, u_int y, u_int count)
-{
-	char		 buf[8192], sgr[96];
-	size_t		 used = 0;
-	u_int		 localx, localy, placement, i;
-
-	localx = x % nitems(kitty_diacritics);
-	localy = y % nitems(kitty_diacritics);
-	placement = kitty_placement(im, x, y);
-	xsnprintf(sgr, sizeof sgr,
-	    "\033[38;2;%u;%u;%um\033[58;2;%u;%u;%um",
-	    (cache->kitty_id >> 16) & 0xff, (cache->kitty_id >> 8) & 0xff,
-	    cache->kitty_id & 0xff, (placement >> 16) & 0xff,
-	    (placement >> 8) & 0xff, placement & 0xff);
-	tty_puts(tty, sgr);
-	for (i = 0; i < count; i++) {
-		used += kitty_utf8(buf + used, 0x10eeee);
-		if (i == 0) {
-			used += kitty_utf8(buf + used,
-			    kitty_diacritics[localy]);
-			used += kitty_utf8(buf + used,
-			    kitty_diacritics[localx]);
-		}
-	}
-	tty_putn(tty, buf, used, count);
-	tty_puts(tty, "\033[39;59m");
 }
 
 void
 kitty_draw_rectangle(struct tty *tty, const struct image_rectangle *rectangle,
-    const struct tty_style_ctx *style_ctx)
+    __unused const struct tty_style_ctx *style_ctx)
 {
-	struct grid_cell	 draw_gc;
 	struct kitty_image_cache	*cache;
 	struct image		*im;
-	u_int			 x, y, run, available, source_x, source_y;
+	u_int			 source_x, source_y;
 	u_int			 width, height, destination_x, destination_y;
 
 	im = image_rectangle_get_image(rectangle);
@@ -391,26 +383,10 @@ kitty_draw_rectangle(struct tty *tty, const struct image_rectangle *rectangle,
 	cache = kitty_upload(tty, im);
 	if (cache == NULL)
 		return;
-	memcpy(&draw_gc, image_rectangle_get_cell(rectangle), sizeof draw_gc);
 	image_rectangle_get_coordinates(rectangle, &source_x, &source_y, &width,
 	    &height, &destination_x, &destination_y);
-	draw_gc.flags &= ~(GRID_FLAG_IMAGE|GRID_FLAG_SELECTED);
-	utf8_set(&draw_gc.data, ' ');
-	for (y = 0; y < height; y++) {
-		for (x = 0; x < width; x += run) {
-			available = nitems(kitty_diacritics) -
-			    (source_x + x) %
-			    nitems(kitty_diacritics);
-			run = width - x;
-			if (run > available)
-				run = available;
-			tty_cursor(tty, destination_x + x, destination_y + y);
-			tty_attributes(tty, &draw_gc, style_ctx);
-			kitty_placeholder(tty, cache, im, source_x + x,
-			    source_y + y, run);
-			tty_reset(tty);
-		}
-	}
+	kitty_place(tty, cache, im, source_x, source_y, width, height,
+	    destination_x, destination_y);
 }
 
 static int

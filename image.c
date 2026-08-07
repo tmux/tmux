@@ -139,6 +139,15 @@ image_tty_update(struct tty *tty)
 	    tty->client->name, backend->name);
 }
 
+void
+image_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
+    u_int height)
+{
+	image_tty_update(tty);
+	if (tty->image_backend == &image_backend_kitty)
+		kitty_redraw_start(tty, x, y, width, height);
+}
+
 int
 image_tty_is_graphical(struct tty *tty)
 {
