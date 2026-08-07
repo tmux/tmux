@@ -219,7 +219,7 @@ kitty_place(struct tty *tty, struct image *im, u_int id)
 {
 	char		 control[192];
 	u_int		 x, y, columns, rows, px, py, pwidth, pheight;
-	u_int		 placement = 1, sx, sy;
+	u_int		 placement = 1, sx, sy, canvas_width, canvas_height;
 
 	image_get_cell_dimensions(im, &sx, &sy);
 	for (y = 0; y < sy; y += nitems(kitty_diacritics)) {
@@ -230,8 +230,14 @@ kitty_place(struct tty *tty, struct image *im, u_int id)
 			columns = sx - x;
 			if (columns > nitems(kitty_diacritics))
 				columns = nitems(kitty_diacritics);
-			image_get_pixel_rectangle(im, x, y, columns, rows, &px,
-			    &py, &pwidth, &pheight);
+			image_get_canvas_dimensions(im, &canvas_width,
+			    &canvas_height);
+			px = (uint64_t)x * canvas_width / sx;
+			py = (uint64_t)y * canvas_height / sy;
+			pwidth = ((uint64_t)(x + columns) * canvas_width + sx - 1) /
+			    sx - px;
+			pheight = ((uint64_t)(y + rows) * canvas_height + sy - 1) /
+			    sy - py;
 			xsnprintf(control, sizeof control,
 			    "\033_Ga=p,U=1,i=%u,p=%u,x=%u,y=%u,w=%u,h=%u,"
 			    "c=%u,r=%u,q=2\033\\", id, placement++, px, py,
@@ -249,10 +255,11 @@ kitty_upload(struct tty *tty, struct image *im)
 	char			 control[128], encoded[4097];
 	u_char			 raw[3072];
 	const u_char		*pixels;
+	u_char			*padded;
 	size_t			 offset, size, copied, row, column, available, stride;
 	size_t			 image_size;
 	int			 encodedlen;
-	u_int			 id, width, height;
+	u_int			 id, width, height, canvas_width, canvas_height;
 
 	for (cache = ko->images; cache != NULL; cache = cache->next) {
 		if (cache->server_id != image_get_id(im))
@@ -279,6 +286,18 @@ kitty_upload(struct tty *tty, struct image *im)
 
 	pixels = image_get_pixels(im, &stride, &image_size);
 	image_get_dimensions(im, &width, &height);
+	image_get_canvas_dimensions(im, &canvas_width, &canvas_height);
+	if ((uint64_t)canvas_width * canvas_height * 4 > IMAGE_SIZE_LIMIT)
+		return (NULL);
+	padded = xcalloc((size_t)canvas_width * canvas_height, 4);
+	for (row = 0; row < height; row++)
+		memcpy(padded + (size_t)row * canvas_width * 4,
+		    pixels + row * stride, (size_t)width * 4);
+	pixels = padded;
+	width = canvas_width;
+	height = canvas_height;
+	image_size = (size_t)width * height * 4;
+	stride = (size_t)width * 4;
 	for (offset = 0; offset < image_size; offset += size) {
 		size = image_size - offset;
 		if (size > sizeof raw)
@@ -294,8 +313,10 @@ kitty_upload(struct tty *tty, struct image *im)
 		}
 		encodedlen = b64_ntop(raw, size, encoded,
 		    sizeof encoded);
-		if (encodedlen < 0)
+		if (encodedlen < 0) {
+			free(padded);
 			return (NULL);
+		}
 		if (offset == 0) {
 			xsnprintf(control, sizeof control,
 			    "\033_Ga=t,f=32,s=%u,v=%u,i=%u,q=2,m=%d;",
@@ -308,6 +329,7 @@ kitty_upload(struct tty *tty, struct image *im)
 		tty_putn(tty, encoded, encodedlen, 0);
 		tty_puts(tty, "\033\\");
 	}
+	free(padded);
 	kitty_place(tty, im, id);
 	return (cache);
 }
