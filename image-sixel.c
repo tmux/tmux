@@ -122,6 +122,7 @@ struct sixel_source {
 	u_int		 sy;
 };
 
+/* Grow a SIXEL image to contain a line. */
 static int
 sixel_parse_expand_lines(struct sixel_image *si, u_int y)
 {
@@ -134,6 +135,7 @@ sixel_parse_expand_lines(struct sixel_image *si, u_int y)
 	return (0);
 }
 
+/* Grow a SIXEL line to contain a pixel. */
 static int
 sixel_parse_expand_line(struct sixel_image *si, struct sixel_line *sl, u_int x)
 {
@@ -148,6 +150,7 @@ sixel_parse_expand_line(struct sixel_image *si, struct sixel_line *sl, u_int x)
 	return (0);
 }
 
+/* Return a SIXEL palette index at a pixel. */
 static u_int
 sixel_get_pixel(struct sixel_image *si, u_int x, u_int y)
 {
@@ -161,6 +164,7 @@ sixel_get_pixel(struct sixel_image *si, u_int x, u_int y)
 	return (sl->data[x]);
 }
 
+/* Set a SIXEL palette index at a pixel. */
 static int
 sixel_set_pixel(struct sixel_image *si, u_int x, u_int y, u_int c)
 {
@@ -175,6 +179,7 @@ sixel_set_pixel(struct sixel_image *si, u_int x, u_int y, u_int c)
 	return (0);
 }
 
+/* Write a SIXEL six-pixel column. */
 static int
 sixel_parse_write(struct sixel_image *si, u_int ch)
 {
@@ -189,6 +194,7 @@ sixel_parse_write(struct sixel_image *si, u_int ch)
 	return (0);
 }
 
+/* Parse a SIXEL raster attribute sequence. */
 static const char *
 sixel_parse_attributes(struct sixel_image *si, const char *cp, const char *end)
 {
@@ -242,6 +248,7 @@ sixel_parse_attributes(struct sixel_image *si, const char *cp, const char *end)
 	return (last);
 }
 
+/* Parse a SIXEL colour register sequence. */
 static const char *
 sixel_parse_colour(struct sixel_image *si, const char *cp, const char *end)
 {
@@ -305,6 +312,7 @@ sixel_parse_colour(struct sixel_image *si, const char *cp, const char *end)
 	return (last);
 }
 
+/* Parse a SIXEL repeat sequence. */
 static const char *
 sixel_parse_repeat(struct sixel_image *si, const char *cp, const char *end)
 {
@@ -346,6 +354,7 @@ sixel_parse_repeat(struct sixel_image *si, const char *cp, const char *end)
 	return (last);
 }
 
+/* Parse SIXEL data into an indexed image. */
 struct sixel_image *
 sixel_parse(const char *buf, size_t len, u_int p2, u_int xpixel, u_int ypixel)
 {
@@ -411,6 +420,7 @@ bad:
 	return (NULL);
 }
 
+/* Free an indexed SIXEL image. */
 void
 sixel_free(struct sixel_image *si)
 {
@@ -424,6 +434,7 @@ sixel_free(struct sixel_image *si)
 	free(si);
 }
 
+/* Write a SIXEL image to the debug log. */
 void
 sixel_log(struct sixel_image *si)
 {
@@ -450,6 +461,7 @@ sixel_log(struct sixel_image *si)
 	}
 }
 
+/* Return the cell dimensions occupied by a SIXEL image. */
 void
 sixel_size_in_cells(struct sixel_image *si, u_int *x, u_int *y)
 {
@@ -461,6 +473,7 @@ sixel_size_in_cells(struct sixel_image *si, u_int *x, u_int *y)
 }
 
 #ifdef ENABLE_IMAGES
+/* Convert one HLS component to RGB. */
 static double
 sixel_hue(double p, double q, double t)
 {
@@ -477,6 +490,7 @@ sixel_hue(double p, double q, double t)
 	return (p);
 }
 
+/* Convert a SIXEL colour register to RGB. */
 static void
 sixel_colour_to_rgb(u_int colour, u_char *r, u_char *g, u_char *b)
 {
@@ -555,6 +569,7 @@ sixel_to_image(struct sixel_image *si)
 }
 #endif
 
+/* Scale or crop an indexed SIXEL image. */
 struct sixel_image *
 sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
     u_int oy, u_int sx, u_int sy, int colours)
@@ -625,6 +640,7 @@ sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
 	return (new);
 }
 
+/* Append data to a growing SIXEL output buffer. */
 static void
 sixel_print_add(char **buf, size_t *len, size_t *used, const char *s,
     size_t slen)
@@ -637,6 +653,7 @@ sixel_print_add(char **buf, size_t *len, size_t *used, const char *s,
 	(*used) += slen;
 }
 
+/* Append a SIXEL character repetition to an output buffer. */
 static void
 sixel_print_repeat(char **buf, size_t *len, size_t *used, u_int count, char ch)
 {
@@ -658,6 +675,7 @@ sixel_print_repeat(char **buf, size_t *len, size_t *used, u_int count, char ch)
 	}
 }
 
+/* Build compressed SIXEL output chunks for a sixel row. */
 static void
 sixel_print_compress_colors(struct sixel_image *si, struct sixel_chunk *chunks,
     u_int y, u_int *active, u_int *nactive)
@@ -710,6 +728,7 @@ sixel_print_compress_colors(struct sixel_image *si, struct sixel_chunk *chunks,
 	}
 }
 
+/* Encode an indexed SIXEL image for terminal output. */
 char *
 sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 {
@@ -843,6 +862,7 @@ sixel_box_update(struct sixel_box *box, struct sixel_histogram *histogram)
 	box->blue_max = blue_max;
 }
 
+/* Split a histogram box at its weighted median. */
 static int
 sixel_box_split(struct sixel_box *box, struct sixel_box *new,
     struct sixel_histogram *histogram)
@@ -910,6 +930,7 @@ sixel_box_split(struct sixel_box *box, struct sixel_box *new,
 	return (box->count != 0 && new->count != 0);
 }
 
+/* Build an adaptive palette from an RGB histogram. */
 static u_int
 sixel_make_palette(struct sixel_histogram *histogram,
     struct sixel_rgb *palette)
@@ -970,6 +991,7 @@ sixel_make_palette(struct sixel_histogram *histogram,
 	return (nboxes);
 }
 
+/* Find the closest adaptive palette entry for an RGB colour. */
 static u_int
 sixel_nearest_colour(struct sixel_rgb *palette, u_int ncolours,
     uint16_t *cache, u_int red, u_int green, u_int blue)
@@ -995,6 +1017,7 @@ sixel_nearest_colour(struct sixel_rgb *palette, u_int ncolours,
 	return (best);
 }
 
+/* Clamp an RGB component to the valid range. */
 static u_int
 sixel_clamp_colour(int colour)
 {
@@ -1005,6 +1028,7 @@ sixel_clamp_colour(int colour)
 	return (colour);
 }
 
+/* Return a source pixel mapped to an output SIXEL pixel. */
 static const u_char *
 sixel_from_image_pixel(const struct sixel_source *source, u_int sourcex0,
     u_int sourcey0,
@@ -1022,6 +1046,7 @@ sixel_from_image_pixel(const struct sixel_source *source, u_int sourcex0,
 	return (source->pixels + sourcey * source->stride + sourcex * 4);
 }
 
+/* Render an image rectangle as an indexed SIXEL image. */
 static struct sixel_image *
 sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
     u_int cells_y, u_int xpixel, u_int ypixel)
@@ -1175,6 +1200,7 @@ fail:
 	return (NULL);
 }
 
+/* Return the SIXEL output cache for a terminal. */
 static struct sixel_output *
 sixel_get_output(struct tty *tty)
 {
@@ -1187,6 +1213,7 @@ sixel_get_output(struct tty *tty)
 	return (so);
 }
 
+/* Return the memory used by an indexed SIXEL image. */
 static size_t
 sixel_image_size(struct sixel_image *si)
 {
@@ -1203,6 +1230,7 @@ sixel_image_size(struct sixel_image *si)
 	return (size);
 }
 
+/* Remove an image from the SIXEL output cache. */
 static void
 sixel_remove_cache(struct sixel_output *so, struct sixel_image_cache **pp)
 {
@@ -1214,6 +1242,7 @@ sixel_remove_cache(struct sixel_output *so, struct sixel_image_cache **pp)
 	free(cache);
 }
 
+/* Drop SIXEL cache entries whose source images have gone away. */
 static void
 sixel_collect_images(struct sixel_output *so)
 {
@@ -1227,6 +1256,7 @@ sixel_collect_images(struct sixel_output *so)
 	}
 }
 
+/* Free SIXEL output state for a terminal. */
 void
 sixel_free_output(struct tty *tty, __unused int send)
 {
@@ -1244,12 +1274,14 @@ sixel_free_output(struct tty *tty, __unused int send)
 	tty->image_data = NULL;
 }
 
+/* Discard SIXEL output state after a terminal geometry change. */
 void
 sixel_geometry_changed(struct tty *tty)
 {
 	sixel_free_output(tty, !!(tty->flags & TTY_OPENED));
 }
 
+/* Render an image at a terminal's current pixel geometry. */
 static struct sixel_image *
 sixel_render_image(struct image *im, u_int xpixel, u_int ypixel)
 {
@@ -1264,6 +1296,7 @@ sixel_render_image(struct image *im, u_int xpixel, u_int ypixel)
 	return (sixel_from_image(im, 0, 0, sx, sy, xpixel, ypixel));
 }
 
+/* Return a rendered image from the SIXEL output cache. */
 static struct sixel_image *
 sixel_get_image(struct tty *tty, struct image *im)
 {
@@ -1314,6 +1347,7 @@ sixel_get_image(struct tty *tty, struct image *im)
 	return (si);
 }
 
+/* Return if a SIXEL image is held by the output cache. */
 static int
 sixel_image_is_cached(struct tty *tty, struct sixel_image *si)
 {
@@ -1329,6 +1363,7 @@ sixel_image_is_cached(struct tty *tty, struct sixel_image *si)
 	return (0);
 }
 
+/* Draw an image rectangle with SIXEL output. */
 void
 sixel_draw_rectangle(struct tty *tty, const struct image_rectangle *rectangle,
     __unused const struct tty_style_ctx *style_ctx)
@@ -1363,6 +1398,7 @@ sixel_draw_rectangle(struct tty *tty, const struct image_rectangle *rectangle,
 	free(data);
 }
 
+/* Convert a SIXEL image to a fallback screen. */
 struct screen *
 sixel_to_screen(struct sixel_image *si)
 {
