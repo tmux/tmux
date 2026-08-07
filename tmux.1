@@ -5471,6 +5471,52 @@ is on.
 Formats are expanded, see the
 .Sx FORMATS
 section.
+.It Xo Ic side\-status
+.Op Ic off | left | right
+.Xc
+Show a vertical status line at the left or right of the terminal.
+The side status line uses the
+.Ic side\-status\-style
+colours, draws a vertical line on the edge next to the window area and is
+updated every
+.Ic status\-interval
+seconds like the status line.
+.It Ic side\-status\-format Ar format
+Specify the format used for the side status line.
+The format may produce multiple rows using the
+.Ic nl
+style or a newline character.
+The default shows one row for each window in the current session using the
+window status styles (but not the window status formats, which lay text out
+for a horizontal line); with more than one session, it shows a row for each
+session with the current session's windows below it with tree branch markers.
+Rows for other content come from the formats, for example a row for each
+pane:
+.Bd -literal -offset indent
+#{W:#{P:  #{pane_index}:#{pane_title}#[nl]}}
+.Ed
+.Pp
+Rows drawn with
+.Ic list=on
+are trimmed to the available height and scrolled to keep the row drawn with
+.Ic list=focus
+visible; rows drawn with
+.Ic list=left\-marker
+and
+.Ic list=right\-marker
+replace the first and last visible list row when rows are hidden above or
+below.
+.It Ic side\-status\-style Ar style
+Set the style of the side status line.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.It Ic side\-status\-width Ar width
+Set the width of the side status line, including the vertical line on the
+edge next to the window area.
+The default is 14.
 .It Xo Ic silence\-action
 .Op Ic any | none | current | other
 .Xc
@@ -7647,6 +7693,13 @@ and
 .Ic list=right\-marker
 mark the text to be used to mark that text has been trimmed from the left or
 right of the list if there is not enough space.
+.It Ic nl
+End the current row in areas drawn over multiple rows, such as the side
+status line (see the
+.Ic side\-status
+option).
+Colours, attributes and any open range continue on the next row.
+Ignored in areas of a single line.
 .It Ic noattr
 Do not copy attributes from the default style.
 .It Xo Ic push\-default ,

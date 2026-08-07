@@ -1377,6 +1377,13 @@ format_cb_mouse_status_line(struct format_tree *ft)
 		y = ft->m.y;
 	} else if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat) {
 		y = ft->m.y - ft->m.statusat;
+	} else if (ft->m.sideat != -1 &&
+	    ft->m.x >= (u_int)ft->m.sideat &&
+	    ft->m.x < ft->m.sideat + ft->m.sidecols) {
+		if (ft->m.statusat == 0)
+			y = ft->m.y - ft->m.statuslines;
+		else
+			y = ft->m.y;
 	} else
 		return (NULL);
 	xasprintf(&value, "%u", y);
@@ -1399,13 +1406,23 @@ format_cb_mouse_status_range(struct format_tree *ft)
 	if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines) {
 		x = ft->m.x;
 		y = ft->m.y;
+		sr = status_get_range(ft->c, x, y);
 	} else if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat) {
 		x = ft->m.x;
 		y = ft->m.y - ft->m.statusat;
+		sr = status_get_range(ft->c, x, y);
+	} else if (ft->m.sideat != -1 &&
+	    ft->m.x >= (u_int)ft->m.sideat &&
+	    ft->m.x < ft->m.sideat + ft->m.sidecols) {
+		x = ft->m.x - ft->m.sideat;
+		if (ft->m.statusat == 0)
+			y = ft->m.y - ft->m.statuslines;
+		else
+			y = ft->m.y;
+		sr = status_side_get_range(ft->c, x, y);
 	} else
 		return (NULL);
 
-	sr = status_get_range(ft->c, x, y);
 	if (sr == NULL)
 		return (NULL);
 	switch (sr->type) {
@@ -2045,6 +2062,10 @@ format_cb_mouse_x(struct format_tree *ft)
 			return (format_printf("%u", ft->m.x));
 		if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat)
 			return (format_printf("%u", ft->m.x));
+		if (ft->m.sideat != -1 &&
+		    ft->m.x >= (u_int)ft->m.sideat &&
+		    ft->m.x < ft->m.sideat + ft->m.sidecols)
+			return (format_printf("%u", ft->m.x - ft->m.sideat));
 	}
 	return (NULL);
 }
@@ -2066,6 +2087,15 @@ format_cb_mouse_y(struct format_tree *ft)
 			return (format_printf("%u", ft->m.y));
 		if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat)
 			return (format_printf("%u", ft->m.y - ft->m.statusat));
+		if (ft->m.sideat != -1 &&
+		    ft->m.x >= (u_int)ft->m.sideat &&
+		    ft->m.x < ft->m.sideat + ft->m.sidecols) {
+			if (ft->m.statusat == 0)
+				y = ft->m.y - ft->m.statuslines;
+			else
+				y = ft->m.y;
+			return (format_printf("%u", y));
+		}
 	}
 	return (NULL);
 }

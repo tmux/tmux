@@ -313,7 +313,16 @@ cmd_display_menu_get_menu_pos(struct client *tc, struct cmdq_item *item,
 
 	ft = format_create_from_target(item);
 	if (event->m.valid) {
-		mouse_x = event->m.x + ox;
+		if (event->m.sideat == 0) {
+			if (event->m.x >= event->m.sidecols)
+				mouse_x = event->m.x - event->m.sidecols + ox;
+			else
+				mouse_x = ox;
+		} else if (event->m.sideat > 0 &&
+		    event->m.x >= (u_int)event->m.sideat)
+			mouse_x = ox + sx - 1;
+		else
+			mouse_x = event->m.x + ox;
 		if (event->m.statusat == 0) {
 			if (event->m.y >= event->m.statuslines)
 				mouse_y = event->m.y - event->m.statuslines + oy;
