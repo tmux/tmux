@@ -1,4 +1,4 @@
-/* $OpenBSD: mode-tree.c,v 1.100 2026/07/14 19:07:03 nicm Exp $ */
+/* $OpenBSD: mode-tree.c,v 1.101 2026/08/05 07:50:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -47,7 +47,7 @@ enum mode_tree_preview {
 	"#[acs]x" MODE_TREE_PREFIX_STYLE "   }," \
 	"#{mode_tree_repeat}}" \
 	"#{?mode_tree_branch," \
-	"#[acs]#{?mode_tree_last,mq,tq}" MODE_TREE_PREFIX_STYLE "> ,}" \
+	"#[acs]#{?mode_tree_last,mq,tq}+" MODE_TREE_PREFIX_STYLE " ,}" \
 	"#{?mode_tree_has_children," \
 	"#{?mode_tree_expanded,#[fg=themered]-" MODE_TREE_PREFIX_STYLE " ," \
 	"#[fg=themegreen]+" MODE_TREE_PREFIX_STYLE " }," \

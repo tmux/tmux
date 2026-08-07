@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.423 2026/07/21 11:52:13 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.425 2026/08/05 12:23:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -54,6 +54,7 @@ static void	window_copy_redraw_screen(struct window_mode_entry *);
 static void	window_copy_do_refresh(struct window_mode_entry *, int);
 static void	window_copy_refresh_timer(int, short, void *);
 static void	window_copy_refresh_arm(struct window_mode_entry *);
+static int	window_copy_refresh_allowed(struct window_mode_entry *);
 static void	window_copy_refresh_start(struct window_mode_entry *);
 static void	window_copy_refresh_stop(struct window_mode_entry *);
 static void	window_copy_style_changed(struct window_mode_entry *);
@@ -3036,6 +3037,20 @@ window_copy_refresh_arm(struct window_mode_entry *wme)
 		evtimer_add(&data->refresh_timer, &tv);
 }
 
+static int
+window_copy_refresh_allowed(struct window_mode_entry *wme)
+{
+	struct window_copy_mode_data	*data = wme->data;
+
+	/*
+	 * Do not refresh a view of another pane (copy-mode -s): the source may
+	 * disappear and changes are not tracked on this pane.
+	 */
+	if (data->viewmode || wme->swp != wme->wp)
+		return (0);
+	return (1);
+}
+
 static void
 window_copy_refresh_timer(__unused int fd, __unused short events, void *arg)
 {
@@ -3070,11 +3085,7 @@ window_copy_refresh_start(struct window_mode_entry *wme)
 {
 	struct window_copy_mode_data	*data = wme->data;
 
-	/*
-	 * Do not refresh a view of another pane (copy-mode -s): the source may
-	 * disappear and changes are not tracked on this pane.
-	 */
-	if (data->viewmode || wme->swp != wme->wp || data->refresh_active)
+	if (!window_copy_refresh_allowed(wme) || data->refresh_active)
 		return;
 	data->refresh_active = 1;
 	window_copy_refresh_arm(wme);
@@ -3087,6 +3098,25 @@ window_copy_refresh_stop(struct window_mode_entry *wme)
 
 	data->refresh_active = 0;
 	evtimer_del(&data->refresh_timer);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_refresh_now(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry		*wme = cs->wme;
+	struct window_copy_mode_data	*data = wme->data;
+	struct window_pane		*wp = wme->wp;
+	int				 follow;
+
+	if (!window_copy_refresh_allowed(wme))
+		return (WINDOW_COPY_CMD_NOTHING);
+
+	follow = (data->oy == 0 &&
+	    data->cy == screen_size_y(&data->screen) - 1);
+	window_copy_do_refresh(wme, follow);
+	wp->flags &= ~PANE_UNSEENCHANGES;
+
+	return (WINDOW_COPY_CMD_REDRAW);
 }
 
 static enum window_copy_cmd_action
@@ -3630,6 +3660,12 @@ static const struct {
 	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
 	  .f = window_copy_cmd_refresh_off
+	},
+	{ .command = "refresh-now",
+	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_refresh_now
 	},
 	{ .command = "refresh-toggle",
 	  .args = { "", 0, 0, NULL },
@@ -6215,16 +6251,13 @@ static u_int
 window_copy_cursor_limit(struct window_mode_entry *wme, u_int py,
     int allow_onemore)
 {
+	struct window_copy_mode_data	*data = wme->data;
 	struct options			*oo = wme->wp->window->options;
-	u_int				 len;
 
-	len = window_copy_find_length(wme, py);
 	if (allow_onemore ||
 	    options_get_number(oo, "mode-keys") != MODEKEY_VI)
-		return (len);
-	if (len == 0)
-		return (0);
-	return (len - 1);
+		return (window_copy_find_length(wme, py));
+	return (grid_line_limit(data->backing->grid, py));
 }
 
 static void

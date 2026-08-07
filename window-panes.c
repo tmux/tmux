@@ -1,4 +1,4 @@
-/* $OpenBSD: window-panes.c,v 1.3 2026/07/19 19:53:11 nicm Exp $ */
+/* $OpenBSD: window-panes.c,v 1.4 2026/07/29 14:06:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -35,7 +35,8 @@ static void		 window_panes_key(struct window_mode_entry *,
 
 const struct window_mode window_panes_mode = {
 	.name = "panes-mode",
-	.flags = WINDOW_MODE_HIDE_PANE_STATUS|WINDOW_MODE_NO_STACK,
+	.flags = WINDOW_MODE_HIDE_PANE_STATUS|WINDOW_MODE_NO_STACK|
+	    WINDOW_MODE_FILL_WINDOW|WINDOW_MODE_HIDE_SCROLLBARS,
 
 	.init = window_panes_init,
 	.free = window_panes_free,
