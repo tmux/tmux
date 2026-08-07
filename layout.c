@@ -261,8 +261,9 @@ layout_cell_is_tiled(struct layout_cell *lc)
 {
 	int	is_leaf = lc->type == LAYOUT_WINDOWPANE;
 	int	is_floating = lc->flags & LAYOUT_CELL_FLOATING;
+	int	is_hidden = lc->flags & LAYOUT_CELL_HIDDEN;
 
-	return is_leaf && !is_floating;
+	return is_leaf && !(is_floating || is_hidden);
 }
 
 static int
