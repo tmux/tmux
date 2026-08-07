@@ -84,5 +84,10 @@ sleep 1
 $TMUX capture-pane -pS0 -E3 >$TMP || exit 1
 [ -n "$(sed -n 1p $TMP)" ] || exit 1
 [ -z "$(sed -n 2p $TMP)" ] || exit 1
+$TMUX resize-window -x 10 -y 4 || exit 1
+sleep 1
+$TMUX capture-pane -pS0 -E3 >$TMP || exit 1
+[ "$(sed -n 1p $TMP | wc -c)" = 61 ] || exit 1
+[ -z "$(sed -n 2p $TMP)" ] || exit 1
 
 exit 0
