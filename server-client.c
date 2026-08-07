@@ -706,13 +706,14 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 {
 	struct window		*w = wp->window;
 	struct window_pane	*fwp;
-	int			 pane_status, sb_w, sb_pad;
+	int			 pane_status, sb_w, sb_pad, separate;
 	int			 pane_status_line, sl_top, sl_bottom;
 	int			 bdr_bottom, bdr_top, bdr_left, bdr_right;
 	int			 sb_start, sb_end, sb_overlay;
 
 	pane_status = window_pane_get_pane_status(wp);
 	sb_overlay = window_pane_scrollbar_overlay(wp);
+	separate = window_border_type_is_separate(w);
 
 	if (window_pane_scrollbar_visible(wp)) {
 		sb_w = wp->scrollbar_style.width;
@@ -765,8 +766,10 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 	    (wp->yoff == 0 && py < (int)wp->sy) ||
 	    (py >= wp->yoff && py < wp->yoff + (int)wp->sy)) &&
 	    ((w->sb_pos == PANE_SCROLLBARS_RIGHT &&
+	    px >= wp->xoff &&
 	    px < wp->xoff + (int)wp->sx + sb_pad + sb_w) ||
 	    (w->sb_pos == PANE_SCROLLBARS_LEFT &&
+	    px >= wp->xoff - sb_pad - sb_w &&
 	    px < wp->xoff + (int)wp->sx - sb_pad - sb_w))) {
 		/* Check if in the scrollbar. */
 		if ((w->sb_pos == PANE_SCROLLBARS_RIGHT &&
@@ -827,11 +830,10 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 			    py <= fwp->yoff + (int)fwp->sy) {
 				if (px == bdr_right)
 					break;
-				if (window_pane_is_floating(wp)) {
-					/* Floating pane, check left border. */
-					if (px == bdr_left)
-						break;
-				}
+				/* Separate and floating panes own the left border. */
+				if (px == bdr_left &&
+				    (window_pane_is_floating(fwp) || separate))
+					break;
 			}
 			if (px >= bdr_left && px <= fwp->xoff + (int)fwp->sx) {
 				bdr_bottom = fwp->yoff + fwp->sy;
