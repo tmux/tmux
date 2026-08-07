@@ -782,6 +782,10 @@ grid_set_cells(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc,
 	struct grid_line	*gl;
 	struct grid_cell_entry	*gce;
 	struct grid_extd_entry	*gee;
+	const struct grid_cell	*new_gc;
+#ifdef ENABLE_IMAGES
+	struct grid_cell	 old_gc, image_gc;
+#endif
 	u_int			 i;
 
 	if (grid_check_y(gd, __func__, py) != 0)
@@ -795,11 +799,25 @@ grid_set_cells(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc,
 
 	for (i = 0; i < slen; i++) {
 		gce = &gl->celldata[px + i];
+		new_gc = gc;
 #ifdef ENABLE_IMAGES
 		{
 			u_int old_id = grid_entry_image(gl, gce);
-			u_int new_id = (gc->flags & GRID_FLAG_IMAGE) ?
-			    gc->image_id : 0;
+			u_int new_id;
+
+			if (old_id != 0 && (~gc->flags & GRID_FLAG_IMAGE)) {
+				grid_get_cell1(gl, px + i, &old_gc);
+				memcpy(&image_gc, gc, sizeof image_gc);
+				image_gc.flags |= GRID_FLAG_IMAGE;
+				image_gc.image_id = old_gc.image_id;
+				image_gc.image_x = old_gc.image_x;
+				image_gc.image_y = old_gc.image_y;
+				new_gc = &image_gc;
+			}
+			if (new_gc->flags & GRID_FLAG_IMAGE)
+				new_id = new_gc->image_id;
+			else
+				new_id = 0;
 
 			if (old_id != new_id) {
 				if (old_id != 0)
@@ -809,11 +827,11 @@ grid_set_cells(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc,
 			}
 		}
 #endif
-		if (grid_need_extended_cell(gce, gc)) {
-			gee = grid_extended_cell(gl, gce, gc);
+		if (grid_need_extended_cell(gce, new_gc)) {
+			gee = grid_extended_cell(gl, gce, new_gc);
 			gee->data = utf8_build_one(s[i]);
 		} else
-			grid_store_cell(gce, gc, s[i]);
+			grid_store_cell(gce, new_gc, s[i]);
 	}
 }
 
