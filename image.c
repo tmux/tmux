@@ -458,7 +458,7 @@ image_get_brightness(struct image *im, u_int x, u_int y)
 void
 image_set_cell(struct grid_cell *gc, struct image *im, u_int x, u_int y)
 {
-	memcpy(gc, &grid_default_cell, sizeof *gc);
+	/* Keep the cell contents as the underlay for transparent pixels. */
 	gc->flags |= GRID_FLAG_IMAGE;
 	gc->image_id = im->id;
 	gc->image_x = x;
@@ -644,8 +644,8 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
 
 	for (y = 0; y < sy; y++) {
 		for (x = 0; x < sx; x++) {
+			grid_view_get_cell(gd, cx + x, cy + y, &gc);
 			image_set_cell(&gc, im, x, y);
-			gc.bg = bg;
 			grid_view_set_cell(gd, cx + x, cy + y, &gc);
 		}
 	}
