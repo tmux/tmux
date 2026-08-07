@@ -22,6 +22,7 @@
 
 #include "tmux.h"
 
+/* Fill a grid cell with an ASCII brightness glyph. */
 void
 image_get_text_cell(__unused struct tty *tty, struct image *im, u_int x,
     u_int y, const struct grid_cell *gc, struct grid_cell *out,
