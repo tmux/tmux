@@ -1065,6 +1065,7 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 	uint64_t		 destination_width, destination_height;
 	uint64_t		 content_width, content_height, x0, x1, y0, y1;
 
+	/* Work out the requested cell crop in destination pixel coordinates. */
 	source.pixels = image_get_pixels(im, &source.stride, NULL);
 	image_get_dimensions(im, &source.width, &source.height);
 	image_get_canvas_dimensions(im, &source.canvas_width,
@@ -1078,6 +1079,8 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 	    source.canvas_width - 1) / source.canvas_width;
 	content_height = ((uint64_t)source.height * destination_height +
 	    source.canvas_height - 1) / source.canvas_height;
+
+	/* Convert the requested cell rectangle to clipped output pixel bounds. */
 	x0 = (uint64_t)ox * xpixel;
 	y0 = (uint64_t)oy * ypixel;
 	x1 = ((uint64_t)ox + cells_x) * xpixel;
@@ -1088,16 +1091,21 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 		y1 = content_height;
 	if (x1 <= x0 || y1 <= y0)
 		return (NULL);
+
+	/* The clipped output bounds determine the SIXEL image dimensions. */
 	sx = x1 - x0;
 	sy = y1 - y0;
 	if (sx == 0 || sy == 0 || sx > SIXEL_WIDTH_LIMIT ||
 	    sy > SIXEL_HEIGHT_LIMIT)
 		return (NULL);
+
+	/* Map the requested cell crop to the source image's pixel rectangle. */
 	image_get_pixel_rectangle(im, ox, oy, cells_x, cells_y, &sourcex0,
 	    &sourcey0, &sourcewidth, &sourceheight);
 	if (sourcewidth == 0 || sourceheight == 0)
 		return (NULL);
 
+	/* Build an adaptive palette from the visible nontransparent pixels. */
 	histogram = xcalloc(SIXEL_HISTOGRAM_SIZE, sizeof *histogram);
 	for (y = 0; y < sy; y++) {
 		for (x = 0; x < sx; x++) {
@@ -1105,6 +1113,8 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 			    sourcewidth, sourceheight, sx, sy, x, y);
 			if (pixel[3] == 0)
 				continue;
+
+			/* Add this opaque pixel to its 5-bit RGB histogram bucket. */
 			index = ((pixel[0] >> 3) << 10)|
 			    ((pixel[1] >> 3) << 5)|(pixel[2] >> 3);
 			entry = &histogram[index];
@@ -1119,6 +1129,7 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 	if (ncolours == 0)
 		return (NULL);
 
+	/* Create the indexed SIXEL image and convert its palette to SIXEL RGB. */
 	si = xcalloc(1, sizeof *si);
 	si->xpixel = xpixel;
 	si->ypixel = ypixel;
@@ -1135,6 +1146,7 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 		si->colours[i] = (2U << 25)|(red << 16)|(green << 8)|blue;
 	}
 
+	/* Floyd-Steinberg dither colour and alpha into the indexed image. */
 	cache = xmalloc(SIXEL_HISTOGRAM_SIZE * sizeof *cache);
 	memset(cache, 0xff, SIXEL_HISTOGRAM_SIZE * sizeof *cache);
 	current = xcalloc(((size_t)sx + 2) * 4, sizeof *current);
@@ -1161,9 +1173,14 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 				if (sixel_set_pixel(si, x, y, colour + 1) != 0)
 					goto fail;
 
+				/* Calculate the RGB error introduced by palette quantization. */
 				red_error = (int)red - palette[colour].red;
 				green_error = (int)green - palette[colour].green;
 				blue_error = (int)blue - palette[colour].blue;
+				/*
+				 * Diffuse the error with the Floyd-Steinberg 7/16, 3/16,
+				 * 5/16, 1/16 kernel; the accumulated error is divided by 16.
+				 */
 				current[error_index + 4] += red_error * 7;
 				current[error_index + 5] += green_error * 7;
 				current[error_index + 6] += blue_error * 7;
@@ -1177,22 +1194,28 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 				next[error_index + 5] += green_error;
 				next[error_index + 6] += blue_error;
 			}
+			/* Diffuse alpha independently using the same kernel. */
 			current[error_index + 7] += alpha_error * 7;
 			next[error_index - 1] += alpha_error * 3;
 			next[error_index + 3] += alpha_error * 5;
 			next[error_index + 7] += alpha_error;
 		}
+		/* Advance to the next output row's accumulated error. */
 		tmp = current;
 		current = next;
 		next = tmp;
+
+		/* Reuse the old row buffer to accumulate the row after that. */
 		memset(next, 0, ((size_t)sx + 2) * 4 * sizeof *next);
 	}
+
 	free(current);
 	free(next);
 	free(cache);
 	return (si);
 
 fail:
+	/* Discard a partially built image after an allocation or size failure. */
 	free(current);
 	free(next);
 	free(cache);
