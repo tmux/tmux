@@ -50,6 +50,7 @@ const struct cmd_entry cmd_source_file_entry = {
 
 struct cmd_source_file_data {
 	struct cmdq_item	 *item;
+	struct client		 *c;
 	int			  flags;
 
 	struct cmdq_item	 *after;
@@ -61,9 +62,9 @@ struct cmd_source_file_data {
 };
 
 static enum cmd_retval
-cmd_source_file_complete_cb(struct cmdq_item *item, __unused void *data)
+cmd_source_file_complete_cb(struct cmdq_item *item, void *data)
 {
-	struct client	*c = cmdq_get_client(item);
+	struct client	*c = data;
 
 	if (c == NULL) {
 		cmd_source_file_depth--;
@@ -71,6 +72,7 @@ cmd_source_file_complete_cb(struct cmdq_item *item, __unused void *data)
 	} else {
 		c->source_file_depth--;
 		log_debug("%s: depth now %u", __func__, c->source_file_depth);
+		server_client_unref(c);
 	}
 
 	cfg_print_causes(item);
@@ -78,8 +80,9 @@ cmd_source_file_complete_cb(struct cmdq_item *item, __unused void *data)
 }
 
 static void
-cmd_source_file_complete(struct client *c, struct cmd_source_file_data *cdata)
+cmd_source_file_complete(struct cmd_source_file_data *cdata)
 {
+	struct client		*c = cdata->c;
 	struct cmdq_item	*new_item;
 	u_int			 i;
 
@@ -88,7 +91,9 @@ cmd_source_file_complete(struct client *c, struct cmd_source_file_data *cdata)
 		    c != NULL &&
 		    c->session == NULL)
 			c->retval = 1;
-		new_item = cmdq_get_callback(cmd_source_file_complete_cb, NULL);
+		if (c != NULL)
+			c->references++;
+		new_item = cmdq_get_callback(cmd_source_file_complete_cb, c);
 		cmdq_insert_after(cdata->after, new_item);
 	}
 
@@ -127,7 +132,7 @@ cmd_source_file_done(struct client *c, const char *path, int error,
 	if (n < cdata->nfiles)
 		file_read(c, cdata->files[n], cmd_source_file_done, cdata);
 	else {
-		cmd_source_file_complete(c, cdata);
+		cmd_source_file_complete(cdata);
 		cmdq_continue(item);
 	}
 }
@@ -187,6 +192,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 
 	cdata = xcalloc(1, sizeof *cdata);
 	cdata->item = item;
+	cdata->c = c;
 
 	if (args_has(args, 'q'))
 		cdata->flags |= CMD_PARSE_QUIET;
@@ -249,7 +255,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 		file_read(c, cdata->files[0], cmd_source_file_done, cdata);
 		retval = CMD_RETURN_WAIT;
 	} else
-		cmd_source_file_complete(c, cdata);
+		cmd_source_file_complete(cdata);
 
 	free(cwd);
 	return (retval);
