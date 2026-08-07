@@ -223,6 +223,18 @@ $TMUX capture-pane -pS0 -E3 >$TMP || exit 1
 [ -z "$(sed -n 2p $TMP)" ] || exit 1
 [ "$(sed -n 4p $TMP)" = "     @@" ] || exit 1
 
+# Image markers retain the cells beneath them. Deleting a transparent image
+# must reveal the original text rather than replacing it with spaces.
+PLACEMENT_WINDOW=$($TMUX2 new-window -dP -F '#{window_id}' "
+	printf 'XY'
+	printf '\033[H'
+	printf '\033_Ga=T,q=2,C=1,f=32,s=1,v=1,c=2,r=1,i=13,p=7;////AA==\033\\'
+	printf '\033_Ga=d,d=i,q=2,i=13,p=7\033\\'
+	sleep 10") || exit 1
+$TMUX2 select-window -t"$PLACEMENT_WINDOW" || exit 1
+sleep 1
+[ "$($TMUX2 capture-pane -pS0 -E0)" = "XY" ] || exit 1
+
 # A weighted median at the maximum channel level must still leave colours on
 # both sides of the split. This skewed black, grey and white image used to stop
 # palette generation after one colour instead of producing three.

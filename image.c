@@ -530,7 +530,7 @@ image_get_fallback_cell(__unused struct tty *tty, struct image *im, u_int x,
 void
 image_set_cell(struct grid_cell *gc, struct image *im, u_int x, u_int y)
 {
-	memcpy(gc, &grid_default_cell, sizeof *gc);
+	/* Keep the cell contents as the underlay for transparent pixels. */
 	gc->flags |= GRID_FLAG_IMAGE;
 	gc->image_id = im->id;
 	gc->image_x = x;
@@ -672,7 +672,9 @@ image_clear(struct screen_write_ctx *ctx, u_int id)
 				if (y >= gd->hsize)
 					image_redraw_area(ctx, x, y - gd->hsize,
 					    1, 1);
-				grid_set_cell(gd, x, y, &grid_default_cell);
+				gc.flags &= ~GRID_FLAG_IMAGE;
+				gc.image_id = gc.image_x = gc.image_y = 0;
+				grid_set_cell(gd, x, y, &gc);
 			}
 		}
 	}
@@ -810,8 +812,8 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
 
 	for (y = 0; y < sy; y++) {
 		for (x = 0; x < sx; x++) {
+			grid_view_get_cell(gd, cx + x, cy + y, &gc);
 			image_set_cell(&gc, im, x, origin_y + y);
-			gc.bg = bg;
 			grid_view_set_cell(gd, cx + x, cy + y, &gc);
 		}
 	}
