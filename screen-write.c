@@ -2666,6 +2666,9 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct grid_line	*gl;
 	struct grid_cell_entry	*gce;
 	struct grid_cell	 tmp_gc, now_gc;
+#ifdef ENABLE_IMAGES
+	struct grid_cell	 image_gc;
+#endif
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
 	u_int			 width = ud->width, xx, not_wrap, i, n, vis;
@@ -2709,6 +2712,21 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	if (s->cx > sx - width || s->cy > sy - 1)
 		return;
 	screen_write_initctx(ctx, &ttyctx, 0, 0);
+
+#ifdef ENABLE_IMAGES
+	/* Update the text underlay without removing an image placement. */
+	grid_view_get_cell(gd, s->cx, s->cy, &now_gc);
+	if ((now_gc.flags & GRID_FLAG_IMAGE) &&
+	    (~gc->flags & GRID_FLAG_IMAGE)) {
+		image_redraw_area(ctx, s->cx, s->cy, width, 1);
+		memcpy(&image_gc, gc, sizeof image_gc);
+		image_gc.flags |= GRID_FLAG_IMAGE;
+		image_gc.image_id = now_gc.image_id;
+		image_gc.image_x = now_gc.image_x;
+		image_gc.image_y = now_gc.image_y;
+		gc = &image_gc;
+	}
+#endif
 
 	/* Handle overwriting of UTF-8 characters. */
 	gl = grid_get_line(s->grid, s->grid->hsize + s->cy);

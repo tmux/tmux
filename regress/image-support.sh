@@ -36,10 +36,12 @@ $TMUX send-keys -X history-top || exit 1
 $TMUX capture-pane -p >$TMP || exit 1
 $TMUX send-keys -X cancel || exit 1
 
-# Ordinary text overwrites marker cells through the normal grid write path.
+# Ordinary text updates the image underlay through the normal grid write path.
+# Deleting the image reveals the newly written text.
 $TMUX new-window -d "
-	printf '\033_Ga=T,q=2,f=32,s=2,v=2,c=2,r=2;/wAA/wD/AP8AAP///////w==\033\\'
+	printf '\033_Ga=T,q=2,f=32,s=2,v=2,c=2,r=2,i=8;/wAA/wD/AP8AAP///////w==\033\\'
 	printf '\033[HXY'
+	printf '\033_Ga=d,d=i,q=2,i=8\033\\'
 	sleep 10"
 sleep 1
 [ "$($TMUX capture-pane -pt:1 -S0 -E0)" = "XY" ] || exit 1
@@ -234,6 +236,28 @@ PLACEMENT_WINDOW=$($TMUX2 new-window -dP -F '#{window_id}' "
 $TMUX2 select-window -t"$PLACEMENT_WINDOW" || exit 1
 sleep 1
 [ "$($TMUX2 capture-pane -pS0 -E0)" = "XY" ] || exit 1
+
+# Text written over a Kitty placement updates its underlay without deleting
+# the image. Deleting the placement afterwards reveals the updated text.
+TEXT_WINDOW=$($TMUX2 new-window -dP -F '#{window_id}' "
+	printf 'test\r'
+	printf '\033_Ga=T,q=2,C=1,f=32,s=2,v=2,c=2,r=2,i=14,p=7;/wAA/wD/AP8AAP///////w==\033\\'
+	printf '\r'
+	printf 'test\n'
+	printf 'test\n'
+	$TEST_TMUX wait-for image-text-delete-$$
+	printf '\033_Ga=d,d=i,q=2,i=14,p=7\033\\'
+	sleep 10") || exit 1
+$TMUX2 select-window -t"$TEXT_WINDOW" || exit 1
+sleep 1
+$TMUX capture-pane -pS0 -E1 >$TMP || exit 1
+[ "$(sed -n 1p $TMP)" = ".*st" ] || exit 1
+[ "$(sed -n 2p $TMP)" = " @st" ] || exit 1
+$TMUX2 wait-for -S image-text-delete-$$ || exit 1
+sleep 1
+$TMUX capture-pane -pS0 -E1 >$TMP || exit 1
+[ "$(sed -n 1p $TMP)" = "test" ] || exit 1
+[ "$(sed -n 2p $TMP)" = "test" ] || exit 1
 
 # A weighted median at the maximum channel level must still leave colours on
 # both sides of the split. This skewed black, grey and white image used to stop
