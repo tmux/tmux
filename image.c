@@ -111,6 +111,7 @@ static const struct image_backend image_backend_sixel = {
 	sixel_free_output, sixel_geometry_changed
 };
 
+/* Find the image backend supported by a terminal. */
 static const struct image_backend *
 image_tty_find_backend(struct tty *tty)
 {
@@ -122,6 +123,7 @@ image_tty_find_backend(struct tty *tty)
 	return (&image_backend_fallback);
 }
 
+/* Update a terminal's image backend after its capabilities change. */
 void
 image_tty_update(struct tty *tty)
 {
@@ -139,6 +141,7 @@ image_tty_update(struct tty *tty)
 	    tty->client->name, backend->name);
 }
 
+/* Remove Kitty placements which will be replaced by a redraw. */
 void
 image_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
     u_int height)
@@ -148,6 +151,7 @@ image_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
 		kitty_redraw_start(tty, x, y, width, height);
 }
 
+/* Return if a terminal can draw graphical images. */
 int
 image_tty_is_graphical(struct tty *tty)
 {
@@ -155,6 +159,7 @@ image_tty_is_graphical(struct tty *tty)
 	return (!!(tty->image_backend->flags & IMAGE_BACKEND_GRAPHICAL));
 }
 
+/* Return if image output advances the terminal screen. */
 int
 image_tty_scrolls(struct tty *tty)
 {
@@ -162,6 +167,7 @@ image_tty_scrolls(struct tty *tty)
 	return (!!(tty->image_backend->flags & IMAGE_BACKEND_SCROLLS));
 }
 
+/* Discard image backend state after a terminal geometry change. */
 void
 image_tty_geometry_changed(struct tty *tty)
 {
@@ -170,6 +176,7 @@ image_tty_geometry_changed(struct tty *tty)
 		tty->image_backend->geometry_changed(tty);
 }
 
+/* Free image backend state for a terminal. */
 void
 image_tty_free(struct tty *tty, int send)
 {
@@ -179,6 +186,7 @@ image_tty_free(struct tty *tty, int send)
 	tty->image_data = NULL;
 }
 
+/* Compare images by server ID. */
 static int
 image_cmp(struct image *a, struct image *b)
 {
@@ -190,6 +198,7 @@ image_cmp(struct image *a, struct image *b)
 }
 RB_GENERATE_STATIC(images, image, entry, image_cmp);
 
+/* Average a rectangle of image pixels into one fallback sample. */
 static void
 image_sample(struct image *im, uint64_t sample_x, uint64_t sample_y,
     uint64_t sample_columns, uint64_t sample_rows, struct image_sample *sample)
@@ -238,6 +247,7 @@ image_sample(struct image *im, uint64_t sample_x, uint64_t sample_y,
 	sample->brightness = brightness / count;
 }
 
+/* Build fallback samples for every image cell. */
 static void
 image_make_cells(struct image *im)
 {
@@ -267,6 +277,7 @@ image_make_cells(struct image *im)
 	}
 }
 
+/* Find an image by server ID. */
 struct image *
 image_find(u_int id)
 {
@@ -276,12 +287,14 @@ image_find(u_int id)
 	return (RB_FIND(images, &images, &find));
 }
 
+/* Return an image's server ID. */
 u_int
 image_get_id(const struct image *im)
 {
 	return (im->id);
 }
 
+/* Return an image's pixel dimensions. */
 void
 image_get_dimensions(const struct image *im, u_int *width, u_int *height)
 {
@@ -291,6 +304,7 @@ image_get_dimensions(const struct image *im, u_int *width, u_int *height)
 		*height = im->height;
 }
 
+/* Return an image canvas's pixel dimensions. */
 void
 image_get_canvas_dimensions(const struct image *im, u_int *width,
     u_int *height)
@@ -301,6 +315,7 @@ image_get_canvas_dimensions(const struct image *im, u_int *width,
 		*height = im->canvas_height;
 }
 
+/* Return an image's cell dimensions. */
 void
 image_get_cell_dimensions(const struct image *im, u_int *sx, u_int *sy)
 {
@@ -310,6 +325,7 @@ image_get_cell_dimensions(const struct image *im, u_int *sx, u_int *sy)
 		*sy = im->sy;
 }
 
+/* Return an image's RGBA pixels and layout. */
 const u_char *
 image_get_pixels(const struct image *im, size_t *stride, size_t *size)
 {
@@ -320,36 +336,42 @@ image_get_pixels(const struct image *im, size_t *stride, size_t *size)
 	return (im->pixels);
 }
 
+/* Suppress cursor movement when writing an image. */
 void
 image_set_no_cursor(struct image *im)
 {
 	im->flags |= IMAGE_FLAG_NO_CURSOR;
 }
 
+/* Return an image's original SIXEL data. */
 struct sixel_image *
 image_get_sixel(const struct image *im)
 {
 	return (im->sixel);
 }
 
+/* Associate original SIXEL data with an image. */
 void
 image_set_sixel(struct image *im, struct sixel_image *si)
 {
 	im->sixel = si;
 }
 
+/* Return the image for a drawing rectangle. */
 struct image *
 image_rectangle_get_image(const struct image_rectangle *rectangle)
 {
 	return (rectangle->image);
 }
 
+/* Return the source grid cell for a drawing rectangle. */
 const struct grid_cell *
 image_rectangle_get_cell(const struct image_rectangle *rectangle)
 {
 	return (&rectangle->cell);
 }
 
+/* Return the source and destination coordinates of a drawing rectangle. */
 void
 image_rectangle_get_coordinates(const struct image_rectangle *rectangle,
     u_int *source_x, u_int *source_y, u_int *width, u_int *height,
@@ -363,6 +385,7 @@ image_rectangle_get_coordinates(const struct image_rectangle *rectangle,
 	*destination_y = rectangle->destination_y;
 }
 
+/* Create and register an immutable image. */
 static struct image *
 image_create1(u_int width, u_int height, u_int canvas_width,
     u_int canvas_height, u_int sx, u_int sy, size_t stride, u_char *pixels)
@@ -407,6 +430,7 @@ image_create1(u_int width, u_int height, u_int canvas_width,
 	return (im);
 }
 
+/* Create an image from decoded pixel data. */
 struct image *
 image_create(u_int width, u_int height, u_int canvas_width,
     u_int canvas_height, u_int sx, u_int sy, u_char *pixels)
@@ -427,6 +451,7 @@ image_create(u_int width, u_int height, u_int canvas_width,
 }
 
 /* Create an immutable rectangular view without copying its source pixels. */
+/* Create a cell-aligned view of an existing image. */
 struct image *
 image_create_view(struct image *source, u_int x, u_int y, u_int width,
     u_int height, u_int canvas_width, u_int canvas_height, u_int sx, u_int sy)
@@ -453,6 +478,7 @@ image_create_view(struct image *source, u_int x, u_int y, u_int width,
 	return (im);
 }
 
+/* Return the compact grid ID for an image. */
 u_short
 image_get_grid_id(u_int id)
 {
@@ -463,6 +489,7 @@ image_get_grid_id(u_int id)
 	return (im->grid_id);
 }
 
+/* Return the server image ID for a compact grid ID. */
 u_int
 image_get_id_by_grid_id(u_short grid_id)
 {
@@ -473,6 +500,7 @@ image_get_id_by_grid_id(u_short grid_id)
 	return (im->id);
 }
 
+/* Add a reference to an image. */
 void
 image_ref(u_int id)
 {
@@ -485,6 +513,7 @@ image_ref(u_int id)
 	im->references++;
 }
 
+/* Drop a reference to an image. */
 void
 image_free(u_int id)
 {
@@ -508,6 +537,7 @@ image_free(u_int id)
 	free(im);
 }
 
+/* Return a precomputed fallback cell sample. */
 static const struct image_cell *
 image_get_cell(struct image *im, u_int x, u_int y)
 {
@@ -519,6 +549,7 @@ image_get_cell(struct image *im, u_int x, u_int y)
 }
 
 /* Character-cell fallback for clients without a graphical image protocol. */
+/* Fill a grid cell with a fallback image glyph. */
 void
 image_get_fallback_cell(__unused struct tty *tty, struct image *im, u_int x,
     u_int y, const struct grid_cell *gc, struct grid_cell *out,
@@ -536,6 +567,7 @@ image_get_fallback_cell(__unused struct tty *tty, struct image *im, u_int x,
 	out->flags &= ~GRID_FLAG_IMAGE;
 }
 
+/* Store an image marker in a grid cell. */
 void
 image_set_cell(struct grid_cell *gc, struct image *im, u_int x, u_int y)
 {
@@ -547,6 +579,7 @@ image_set_cell(struct grid_cell *gc, struct image *im, u_int x, u_int y)
 }
 
 /* Convert a cell-aligned image rectangle into source pixel coordinates. */
+/* Convert an image cell rectangle to pixel coordinates. */
 void
 image_get_pixel_rectangle(const struct image *im, u_int x, u_int y,
     u_int width, u_int height, u_int *px, u_int *py, u_int *pwidth,
@@ -585,6 +618,7 @@ image_get_pixel_rectangle(const struct image *im, u_int x, u_int y,
 	*pheight = y1 - *py;
 }
 
+/* Calculate the cell dimensions required for pixel dimensions. */
 void
 image_size_in_cells(u_int width, u_int height, u_int xpixel, u_int ypixel,
     u_int *sx, u_int *sy)
@@ -597,6 +631,7 @@ image_size_in_cells(u_int width, u_int height, u_int xpixel, u_int ypixel,
 	*sy = ((uint64_t)height + ypixel - 1) / ypixel;
 }
 
+/* Decode a base64 payload with a size limit. */
 u_char *
 image_base64_decode(const char *data, size_t len, size_t limit, size_t *size)
 {
@@ -630,6 +665,7 @@ image_base64_decode(const char *data, size_t len, size_t limit, size_t *size)
 	return (out);
 }
 
+/* Decode a PNG payload into RGBA pixels. */
 u_char *
 image_png_decode(const u_char *data, size_t size, size_t limit, u_int *width,
     u_int *height)
@@ -661,6 +697,7 @@ image_png_decode(const u_char *data, size_t size, size_t limit, u_int *width,
 	return (pixels);
 }
 
+/* Clear image markers with an image ID from a screen. */
 void
 image_clear(struct screen_write_ctx *ctx, u_int id)
 {
@@ -689,6 +726,7 @@ image_clear(struct screen_write_ctx *ctx, u_int id)
 	}
 }
 
+/* Return if a screen area contains image markers. */
 static int
 image_check_area(struct screen *s, u_int px, u_int py, u_int nx, u_int ny)
 {
@@ -716,6 +754,7 @@ image_check_area(struct screen *s, u_int px, u_int py, u_int nx, u_int ny)
 	return (0);
 }
 
+/* Redraw image markers in a screen area. */
 void
 image_redraw_area(struct screen_write_ctx *ctx, u_int px, u_int py, u_int nx,
     u_int ny)
@@ -724,6 +763,7 @@ image_redraw_area(struct screen_write_ctx *ctx, u_int px, u_int py, u_int nx,
 		ctx->wp->flags |= PANE_REDRAW;
 }
 
+/* Redraw all image markers on a screen. */
 void
 image_redraw_all(struct screen_write_ctx *ctx)
 {
@@ -731,6 +771,7 @@ image_redraw_all(struct screen_write_ctx *ctx)
 	    screen_size_y(ctx->s));
 }
 
+/* Redraw images after a scrolling operation. */
 void
 image_redraw_scroll(struct screen_write_ctx *ctx, __unused u_int lines)
 {
