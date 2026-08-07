@@ -1378,7 +1378,6 @@ static void
 redraw_draw_span(struct redraw_draw_ctx *dctx, struct redraw_span *span,
     u_int y)
 {
-	struct redraw_scene	*scene = dctx->scene;
 	struct redraw_span_data	*data = &span->data;
 	enum redraw_span_type	 type = data->type;
 
@@ -1840,12 +1839,9 @@ redraw_screen(struct client *c)
 {
 	int	flags = 0;
 
-	if (c->flags & CLIENT_REDRAWWINDOW) {
-		if (c->flags & CLIENT_REDRAWOVERLAY)
-			redraw_draw(c, NULL, REDRAW_ALL);
-		else
-			redraw_draw(c, NULL, REDRAW_ALL & ~REDRAW_OVERLAY);
-	} else {
+	if (c->flags & CLIENT_REDRAWWINDOW)
+		redraw_draw(c, NULL, REDRAW_ALL);
+	else {
 		if (c->flags & CLIENT_REDRAWBORDERS)
 			flags |= (REDRAW_PANE_BORDER|REDRAW_PANE_STATUS);
 		if (c->flags & CLIENT_REDRAWSTATUS)
