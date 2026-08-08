@@ -145,6 +145,9 @@ struct input_ctx {
 	 */
 	struct evbuffer			*since_ground;
 	struct event			 ground_timer;
+#ifdef ENABLE_IMAGES
+	void				*kitty_state;
+#endif
 };
 
 /* Helper functions. */
@@ -183,6 +186,9 @@ static void	input_enter_osc(struct input_ctx *);
 static void	input_exit_osc(struct input_ctx *);
 static void	input_enter_apc(struct input_ctx *);
 static void	input_exit_apc(struct input_ctx *);
+#ifdef ENABLE_IMAGES
+static int	input_handle_kitty(struct input_ctx *, const u_char *, size_t);
+#endif
 static void	input_enter_rename(struct input_ctx *);
 static void	input_exit_rename(struct input_ctx *);
 
@@ -916,6 +922,9 @@ input_free(struct input_ctx *ictx)
 	event_del(&ictx->request_timer);
 
 	free(ictx->input_buf);
+#ifdef ENABLE_IMAGES
+	kitty_free_state(ictx->kitty_state);
+#endif
 	evbuffer_free(ictx->since_ground);
 	event_del(&ictx->ground_timer);
 
@@ -1583,7 +1592,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case -1:
 			break;
 		case 0:
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 			input_reply(ictx, 1, "\033[?1;2;4c");
 #else
 			input_reply(ictx, 1, "\033[?1;2c");
@@ -2101,7 +2110,7 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 static void
 input_csi_dispatch_sm_graphics(__unused struct input_ctx *ictx)
 {
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	int	n, m, o;
 
 	if (ictx->param_list_len > 3)
@@ -2626,7 +2635,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 	const char		 prefix[] = "tmux;";
 	const u_int		 prefixlen = (sizeof prefix) - 1;
 	long long		 allow_passthrough = 0;
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	struct window		*w;
 	struct sixel_image	*si;
 	int			 p2;
@@ -2642,7 +2651,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 		return (0);
 	}
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	if (wp != NULL && buf[0] == 'q' && ictx->interm_len == 0) {
 		w = wp->window;
 		if (input_split(ictx) != 0)
@@ -2789,6 +2798,54 @@ input_enter_apc(struct input_ctx *ictx)
 }
 
 /* APC terminator (ST) received. */
+#ifdef ENABLE_IMAGES
+static int
+input_handle_kitty(struct input_ctx *ictx, const u_char *buf, size_t len)
+{
+	struct screen_write_ctx	*sctx = &ictx->ctx;
+	struct window_pane	*wp = ictx->wp;
+	struct image		*im;
+	u_int			 image_id = 0, replace_id = 0, quiet = 0;
+	char			 action = '\0';
+	int			 status;
+
+	if (wp == NULL)
+		return (0);
+	im = kitty_parse_image(&ictx->kitty_state, buf, len,
+		    wp->window->xpixel,
+		    wp->window->ypixel, &image_id, &replace_id, &quiet, &action,
+		    &status);
+	if (status == KITTY_PARSE_MORE)
+		return (1);
+	if (status != KITTY_PARSE_OK) {
+		if (quiet < 2 && action != '\0') {
+			if (status == KITTY_PARSE_MISSING)
+				input_reply(ictx, 0, "\033_Gi=%u;ENOENT\033\\",
+				    image_id);
+			else
+				input_reply(ictx, 0, "\033_Gi=%u;EINVAL\033\\",
+				    image_id);
+		}
+		return (1);
+	}
+	if (replace_id != 0)
+		image_clear(sctx, replace_id);
+	if (im != NULL) {
+		if (action == 'd')
+			image_clear(sctx, image_get_id(im));
+		else
+			image_write(sctx, im, ictx->cell.cell.bg);
+		image_free(image_get_id(im));
+		if (quiet == 0 && image_id != 0)
+			input_reply(ictx, 0, "\033_Gi=%u;OK\033\\", image_id);
+	} else if (action == 'd' && image_id == 0)
+		image_clear(sctx, 0);
+	else if ((action == 't' || action == 'q' || action == 'u') && quiet == 0)
+		input_reply(ictx, 0, "\033_Gi=%u;OK\033\\", image_id);
+	return (1);
+}
+#endif
+
 static void
 input_exit_apc(struct input_ctx *ictx)
 {
@@ -2798,6 +2855,13 @@ input_exit_apc(struct input_ctx *ictx)
 	if (ictx->flags & INPUT_DISCARD)
 		return;
 	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
+
+#ifdef ENABLE_IMAGES
+	if (ictx->input_len > 1 && ictx->input_buf[0] == 'G' &&
+	    input_handle_kitty(ictx, ictx->input_buf + 1,
+	    ictx->input_len - 1))
+		return;
+#endif
 
 	if (wp != NULL &&
 	    options_get_number(wp->options, "allow-set-title") &&
@@ -2885,6 +2949,23 @@ input_top_bit_set(struct input_ctx *ictx)
 
 	utf8_copy(&ictx->cell.cell.data, ud);
 	screen_write_collect_add(sctx, &ictx->cell.cell);
+
+#ifdef ENABLE_IMAGES
+	if (sctx->s->cx != 0) {
+		struct grid_cell	 gc, left;
+		u_int			 x = sctx->s->cx - 1;
+
+		grid_view_get_cell(sctx->s->grid, x, sctx->s->cy, &gc);
+		if (x != 0)
+			grid_view_get_cell(sctx->s->grid, x - 1, sctx->s->cy,
+			    &left);
+		if (kitty_placeholder_to_cell(ictx->kitty_state, &gc,
+		    x == 0 ? NULL : &left)) {
+			grid_view_set_cell(sctx->s->grid, x, sctx->s->cy, &gc);
+			image_redraw_area(sctx, x, sctx->s->cy, 1, 1);
+		}
+	}
+#endif
 
 	utf8_copy(&ictx->last, &ictx->cell.cell.data);
 	ictx->flags |= INPUT_LAST;

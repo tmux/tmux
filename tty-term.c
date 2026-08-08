@@ -524,6 +524,7 @@ tty_term_apply_overrides(struct tty_term *term)
 	tty_term_validate(term);
 }
 
+/* Mark terminals whose Ms capability does not contain a clipboard argument. */
 static void
 tty_term_validate(struct tty_term *term)
 {
