@@ -546,8 +546,8 @@ image_size_in_cells(u_int width, u_int height, u_int xpixel, u_int ypixel,
 		xpixel = 8;
 	if (ypixel == 0)
 		ypixel = 16;
-	*sx = ((uint64_t)width + xpixel - 1) / xpixel;
-	*sy = ((uint64_t)height + ypixel - 1) / ypixel;
+	*sx = width / xpixel + (width % xpixel != 0);
+	*sy = height / ypixel + (height % ypixel != 0);
 }
 
 /* Return if a screen area contains image markers. */
