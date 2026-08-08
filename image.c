@@ -71,7 +71,7 @@ struct image {
 RB_HEAD(images, image);
 
 /* A cell-aligned part of an image to draw at a terminal position. */
-struct image_rectangle {
+struct image_rect {
 	struct image		*image;
 	struct grid_cell	 cell;
 	u_int			 source_x;
@@ -90,8 +90,8 @@ static struct image	*image_grid_ids[USHRT_MAX + 1];
 struct image_backend {
 	const char	*name;
 	int		 flags;
-	void		(*draw_rectangle)(struct tty *,
-		    const struct image_rectangle *, const struct tty_style_ctx *);
+	void		(*draw_rect)(struct tty *,
+		    const struct image_rect *, const struct tty_style_ctx *);
 	void		(*free)(struct tty *, int);
 	void		(*geometry_changed)(struct tty *);
 };
@@ -104,7 +104,7 @@ static const struct image_backend image_backend_kitty = {
 	kitty_draw_rectangle, kitty_free_output, kitty_geometry_changed
 };
 static const struct image_backend image_backend_sixel = {
-	"sixel", IMAGE_BACKEND_GRAPHICAL, sixel_draw_rectangle,
+	"sixel", IMAGE_BACKEND_GRAPHICAL, sixel_draw_rect,
 	sixel_free_output, sixel_geometry_changed
 };
 
@@ -285,7 +285,7 @@ image_get_id(const struct image *im)
 
 /* Return an image's pixel dimensions. */
 void
-image_get_dimensions(const struct image *im, u_int *width, u_int *height)
+image_get_size(const struct image *im, u_int *width, u_int *height)
 {
 	if (width != NULL)
 		*width = im->width;
@@ -295,7 +295,7 @@ image_get_dimensions(const struct image *im, u_int *width, u_int *height)
 
 /* Return an image canvas's pixel dimensions. */
 void
-image_get_canvas_dimensions(const struct image *im, u_int *width,
+image_get_canvas_size(const struct image *im, u_int *width,
     u_int *height)
 {
 	if (width != NULL)
@@ -306,7 +306,7 @@ image_get_canvas_dimensions(const struct image *im, u_int *width,
 
 /* Return an image's cell dimensions. */
 void
-image_get_cell_dimensions(const struct image *im, u_int *sx, u_int *sy)
+image_get_cell_size(const struct image *im, u_int *sx, u_int *sy)
 {
 	if (sx != NULL)
 		*sx = im->sx;
@@ -348,21 +348,21 @@ image_set_sixel(struct image *im, struct sixel_image *si)
 
 /* Return the image for a drawing rectangle. */
 struct image *
-image_rectangle_get_image(const struct image_rectangle *rectangle)
+image_rect_get_image(const struct image_rect *rectangle)
 {
 	return (rectangle->image);
 }
 
 /* Return the source grid cell for a drawing rectangle. */
 const struct grid_cell *
-image_rectangle_get_cell(const struct image_rectangle *rectangle)
+image_rect_get_cell(const struct image_rect *rectangle)
 {
 	return (&rectangle->cell);
 }
 
 /* Return the source and destination coordinates of a drawing rectangle. */
 void
-image_rectangle_get_coordinates(const struct image_rectangle *rectangle,
+image_rect_get_coords(const struct image_rect *rectangle,
     u_int *source_x, u_int *source_y, u_int *width, u_int *height,
     u_int *destination_x, u_int *destination_y)
 {
@@ -587,7 +587,7 @@ image_set_cell(struct grid_cell *gc, struct image *im, u_int x, u_int y)
 /* Convert a cell-aligned image rectangle into source pixel coordinates. */
 /* Convert an image cell rectangle to pixel coordinates. */
 void
-image_get_pixel_rectangle(const struct image *im, u_int x, u_int y,
+image_get_pixel_rect(const struct image *im, u_int x, u_int y,
     u_int width, u_int height, u_int *px, u_int *py, u_int *pwidth,
     u_int *pheight)
 {
@@ -790,7 +790,7 @@ image_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py,
     u_int nx, u_int atx, u_int aty, const struct tty_style_ctx *style_ctx)
 {
 	const struct image_backend	*backend;
-	struct image_rectangle		 rectangle;
+	struct image_rect		 rectangle;
 	struct grid_cell		 gc, next;
 	struct image			*im;
 	u_int				 i, run;
@@ -827,7 +827,7 @@ image_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py,
 		rectangle.height = 1;
 		rectangle.destination_x = atx + i;
 		rectangle.destination_y = aty;
-		backend->draw_rectangle(tty, &rectangle, style_ctx);
+		backend->draw_rect(tty, &rectangle, style_ctx);
 	}
 }
 
