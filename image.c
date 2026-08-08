@@ -101,7 +101,7 @@ static const struct image_backend image_backend_fallback = {
 };
 static const struct image_backend image_backend_kitty = {
 	"kitty", IMAGE_BACKEND_GRAPHICAL|IMAGE_BACKEND_SCROLLS,
-	kitty_draw_rectangle, kitty_free_output, kitty_geometry_changed
+	kitty_draw_rect, kitty_free_output, kitty_geometry_changed
 };
 static const struct image_backend image_backend_sixel = {
 	"sixel", IMAGE_BACKEND_GRAPHICAL, sixel_draw_rect,
