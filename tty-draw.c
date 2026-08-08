@@ -125,7 +125,6 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	struct grid_cell	 gc, ngc, last;
 #ifdef ENABLE_IMAGES
 	struct grid_cell	 image_gc;
-	struct image		*im;
 #endif
 	struct grid_line	*gl;
 	u_int			 i, j, last_i, cx, ex, width;
@@ -258,23 +257,9 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				grid_view_get_cell(gd, px + i, py, &gc);
 
 #ifdef ENABLE_IMAGES
-				/*
-				 * Graphical terminals draw the saved cell underlay
-				 * before the image; text terminals use ASCII.
-				 */
 				if (gc.flags & GRID_FLAG_IMAGE) {
-					im = image_find(gc.image_id);
-					if (image_backend_flags(tty) &
-					    IMAGE_BACKEND_GRAPHICAL) {
-						memcpy(&image_gc, &gc,
-						    sizeof image_gc);
-						image_gc.flags &= ~(GRID_FLAG_IMAGE|
-						    GRID_FLAG_SELECTED);
-					} else {
-						image_get_text_cell(tty, im,
-						    gc.image_x, gc.image_y, &gc,
-						    &image_gc, style_ctx);
-					}
+					(void)image_get_draw_cell(tty, &gc, &image_gc,
+					    style_ctx);
 					gcp = &image_gc;
 				} else
 					gcp = &gc;

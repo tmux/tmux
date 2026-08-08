@@ -2131,7 +2131,6 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 	const struct grid_cell	*gcp;
 #ifdef ENABLE_IMAGES
 	struct grid_cell	 image_gc;
-	struct image		*im;
 #endif
 
 	/* Skip last character if terminal is stupid. */
@@ -2149,17 +2148,9 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 		return;
 
 #ifdef ENABLE_IMAGES
-	/*
-	 * Graphical image cells are drawn by the redraw scene. In particular,
-	 * do not erase one with a selected space while copy mode is moving the
-	 * selection; the unchanged image would then need to be drawn again.
-	 */
 	if (gc->flags & GRID_FLAG_IMAGE) {
-		if (image_backend_flags(tty) & IMAGE_BACKEND_GRAPHICAL)
+		if (image_get_draw_cell(tty, gc, &image_gc, style_ctx))
 			return;
-		im = image_find(gc->image_id);
-		image_get_text_cell(tty, im, gc->image_x, gc->image_y, gc,
-		    &image_gc, style_ctx);
 		gc = &image_gc;
 	}
 #endif
