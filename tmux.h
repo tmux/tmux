@@ -809,6 +809,7 @@ struct colour_palette {
 #define GRID_FLAG_CLEARED 0x40
 #define GRID_FLAG_TAB 0x80
 #define GRID_FLAG_IMAGE 0x100
+#define GRID_FLAG_IMAGE_DAMAGED 0x200
 
 /* Grid line flags. */
 #define GRID_LINE_WRAPPED 0x1
@@ -4210,6 +4211,7 @@ char		*regsub(const char *, const char *, const char *, int);
 /* image.c */
 #define IMAGE_BACKEND_GRAPHICAL 0x1
 #define IMAGE_BACKEND_SCROLLS   0x2
+#define IMAGE_BACKEND_TEMPORAL  0x4
 
 struct image	*image_create(u_int, u_int, u_int, u_int, u_int, u_int,
 		     u_char *);
