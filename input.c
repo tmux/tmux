@@ -2923,6 +2923,11 @@ input_top_bit_set(struct input_ctx *ictx)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct utf8_data	*ud = &ictx->utf8data;
+#ifdef ENABLE_IMAGES
+	struct grid_cell	 gc, left;
+	const struct grid_cell	*gcl;
+	u_int			 x;
+#endif
 
 	ictx->flags &= ~INPUT_LAST;
 
@@ -2952,15 +2957,18 @@ input_top_bit_set(struct input_ctx *ictx)
 
 #ifdef ENABLE_IMAGES
 	if (sctx->s->cx != 0) {
-		struct grid_cell	 gc, left;
-		u_int			 x = sctx->s->cx - 1;
-
+		x = sctx->s->cx - 1; /* cx-1 is the cell just written. */
 		grid_view_get_cell(sctx->s->grid, x, sctx->s->cy, &gc);
-		if (x != 0)
-			grid_view_get_cell(sctx->s->grid, x - 1, sctx->s->cy,
-			    &left);
-		if (kitty_placeholder_to_cell(ictx->kitty_state, &gc,
-		    x == 0 ? NULL : &left)) {
+		/* The preceding cell provides context for implicit coordinates. */
+		if (x == 0) {
+			gcl = NULL;
+		} else {
+			grid_view_get_cell(sctx->s->grid, x - 1, sctx->s->cy, &left);
+			gcl = &left;
+		}
+
+		/* Convert a recognized Kitty placeholder in gc to an image marker. */
+		if (kitty_placeholder_to_cell(ictx->kitty_state, &gc, gcl)) {
 			grid_view_set_cell(sctx->s->grid, x, sctx->s->cy, &gc);
 			image_redraw_area(sctx, x, sctx->s->cy, 1, 1);
 		}

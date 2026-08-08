@@ -861,7 +861,6 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
  * static images are accepted. The returned image retains immutable RGBA
  * pixels for the lifetime of its placement.
  */
-/* Parse Kitty graphics data and return a placed image when appropriate. */
 struct image *
 kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
     u_int ypixel, u_int *image_id, u_int *replace_id, u_int *quiet,
@@ -1120,7 +1119,6 @@ kitty_placeholder_index(uint32_t value, u_int *index)
 	return (0);
 }
 
-/* Replace a Kitty Unicode placeholder with a shared image marker cell. */
 /* Convert a Kitty Unicode placeholder cell into an image marker. */
 int
 kitty_placeholder_to_cell(void *state, struct grid_cell *gc,
