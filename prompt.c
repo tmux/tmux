@@ -1334,7 +1334,7 @@ process_key:
 		if (pr->index != size) {
 			memmove(pr->buffer + pr->index,
 			    pr->buffer + pr->index + 1,
-			    (size + 1 - pr->index) *
+			    (size - pr->index) *
 			    sizeof *pr->buffer);
 			goto changed;
 		}
