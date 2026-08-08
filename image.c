@@ -101,6 +101,18 @@ static const struct image_backend image_backend_sixel = {
 	sixel_free_output, sixel_geometry_changed
 };
 
+/* Compare images by server ID. */
+static int
+image_cmp(struct image *a, struct image *b)
+{
+	if (a->id < b->id)
+		return (-1);
+	if (a->id > b->id)
+		return (1);
+	return (0);
+}
+RB_GENERATE_STATIC(images, image, entry, image_cmp);
+
 /* Find the image backend supported by a terminal. */
 static const struct image_backend *
 image_tty_find_backend(struct tty *tty)
@@ -163,18 +175,6 @@ image_tty_free(struct tty *tty, int send)
 	tty->image_backend = NULL;
 	tty->image_data = NULL;
 }
-
-/* Compare images by server ID. */
-static int
-image_cmp(struct image *a, struct image *b)
-{
-	if (a->id < b->id)
-		return (-1);
-	if (a->id > b->id)
-		return (1);
-	return (0);
-}
-RB_GENERATE_STATIC(images, image, entry, image_cmp);
 
 /* Average a rectangle of image pixels into one fallback sample. */
 static void
