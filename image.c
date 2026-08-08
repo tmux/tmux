@@ -104,7 +104,8 @@ static const struct image_backend image_backend_kitty = {
 	kitty_draw_rect, kitty_free_output, kitty_geometry_changed
 };
 static const struct image_backend image_backend_sixel = {
-	"sixel", IMAGE_BACKEND_GRAPHICAL, sixel_draw_rect,
+	"sixel", IMAGE_BACKEND_GRAPHICAL|IMAGE_BACKEND_TEMPORAL,
+	sixel_draw_rect,
 	sixel_free_output, sixel_geometry_changed
 };
 
@@ -553,7 +554,7 @@ image_get_fallback_cell(__unused struct tty *tty, struct image *im, u_int x,
 	if (cell != NULL)
 		level = cell->whole.brightness * (sizeof ramp - 2) / 255;
 	utf8_set(&out->data, ramp[level]);
-	out->flags &= ~GRID_FLAG_IMAGE;
+	out->flags &= ~(GRID_FLAG_IMAGE|GRID_FLAG_IMAGE_DAMAGED);
 }
 
 /* Get the terminal cell used to draw an image marker. */
@@ -565,7 +566,8 @@ image_get_draw_cell(struct tty *tty, const struct grid_cell *gc,
 
 	if (image_backend_flags(tty) & IMAGE_BACKEND_GRAPHICAL) {
 		memcpy(out, gc, sizeof *out);
-		out->flags &= ~(GRID_FLAG_IMAGE|GRID_FLAG_SELECTED);
+		out->flags &= ~(GRID_FLAG_IMAGE|GRID_FLAG_IMAGE_DAMAGED|
+		    GRID_FLAG_SELECTED);
 		return (1);
 	}
 	image_get_fallback_cell(tty, im, gc->image_x, gc->image_y, gc, out,
@@ -578,6 +580,7 @@ void
 image_set_cell(struct grid_cell *gc, struct image *im, u_int x, u_int y)
 {
 	/* Keep the cell contents as the underlay for transparent pixels. */
+	gc->flags &= ~GRID_FLAG_IMAGE_DAMAGED;
 	gc->flags |= GRID_FLAG_IMAGE;
 	gc->image_id = im->id;
 	gc->image_x = x;
@@ -724,7 +727,7 @@ image_clear(struct screen_write_ctx *ctx, u_int id)
 				if (y >= gd->hsize)
 					image_redraw_area(ctx, x, y - gd->hsize,
 					    1, 1);
-				gc.flags &= ~GRID_FLAG_IMAGE;
+		gc.flags &= ~(GRID_FLAG_IMAGE|GRID_FLAG_IMAGE_DAMAGED);
 				gc.image_id = gc.image_x = gc.image_y = 0;
 				grid_set_cell(gd, x, y, &gc);
 			}
@@ -806,6 +809,11 @@ image_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py,
 			run = 1;
 			continue;
 		}
+		if ((backend->flags & IMAGE_BACKEND_TEMPORAL) &&
+		    (gc.flags & GRID_FLAG_IMAGE_DAMAGED)) {
+			run = 1;
+			continue;
+		}
 		im = image_find(gc.image_id);
 		if (im == NULL) {
 			run = 1;
@@ -814,6 +822,8 @@ image_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py,
 		for (run = 1; i + run < nx; run++) {
 			grid_view_get_cell(s->grid, px + i + run, py, &next);
 			if (~next.flags & GRID_FLAG_IMAGE ||
+			    ((backend->flags & IMAGE_BACKEND_TEMPORAL) &&
+			    (next.flags & GRID_FLAG_IMAGE_DAMAGED)) ||
 			    next.image_id != gc.image_id ||
 			    next.image_y != gc.image_y ||
 			    next.image_x != gc.image_x + run)
