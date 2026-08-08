@@ -556,6 +556,23 @@ image_get_fallback_cell(__unused struct tty *tty, struct image *im, u_int x,
 	out->flags &= ~GRID_FLAG_IMAGE;
 }
 
+/* Get the terminal cell used to draw an image marker. */
+int
+image_get_draw_cell(struct tty *tty, const struct grid_cell *gc,
+    struct grid_cell *out, const struct tty_style_ctx *style_ctx)
+{
+	struct image	*im = image_find(gc->image_id);
+
+	if (image_backend_flags(tty) & IMAGE_BACKEND_GRAPHICAL) {
+		memcpy(out, gc, sizeof *out);
+		out->flags &= ~(GRID_FLAG_IMAGE|GRID_FLAG_SELECTED);
+		return (1);
+	}
+	image_get_fallback_cell(tty, im, gc->image_x, gc->image_y, gc, out,
+	    style_ctx);
+	return (0);
+}
+
 /* Store an image marker in a grid cell. */
 void
 image_set_cell(struct grid_cell *gc, struct image *im, u_int x, u_int y)

@@ -4271,6 +4271,8 @@ void		 image_redraw_all(struct screen_write_ctx *);
 void		 image_redraw_scroll(struct screen_write_ctx *, u_int);
 void		 image_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
 int		 image_backend_flags(struct tty *);
+int		 image_get_draw_cell(struct tty *, const struct grid_cell *,
+		     struct grid_cell *, const struct tty_style_ctx *);
 void		 image_tty_update(struct tty *);
 void		 image_tty_geometry_changed(struct tty *);
 void		 image_tty_free(struct tty *, int);
