@@ -533,6 +533,7 @@ file_write_error_callback(__unused struct bufferevent *bev, __unused short what,
     void *arg)
 {
 	struct client_file	*cf = arg;
+	int			 error = errno;
 
 	log_debug("write error file %d", cf->stream);
 
@@ -542,8 +543,10 @@ file_write_error_callback(__unused struct bufferevent *bev, __unused short what,
 	close(cf->fd);
 	cf->fd = -1;
 
+	if (error == 0)
+		error = EIO;
 	if (cf->cb != NULL)
-		cf->cb(NULL, NULL, 0, -1, NULL, cf->data);
+		cf->cb(NULL, NULL, error, -1, NULL, cf->data);
 }
 
 /* Client file write callback. */
