@@ -818,7 +818,7 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 
 /* Split a 5-bit RGB histogram into an adaptive palette using median cut. */
 static void
-sixel_box_update(struct sixel_box *box, struct sixel_hgram *histogram)
+sixel_box_update(struct sixel_box *box, struct sixel_hgram *hg)
 {
 	struct sixel_hgram	*entry;
 	u_int			 red, green, blue, index;
@@ -832,7 +832,7 @@ sixel_box_update(struct sixel_box *box, struct sixel_hgram *histogram)
 		for (green = box->green_min; green <= box->green_max; green++) {
 			for (blue = box->blue_min; blue <= box->blue_max; blue++) {
 				index = (red << 10)|(green << 5)|blue;
-				entry = &histogram[index];
+				entry = &hg[index];
 				if (entry->count == 0)
 					continue;
 				if (red < red_min)
@@ -865,7 +865,7 @@ sixel_box_update(struct sixel_box *box, struct sixel_hgram *histogram)
 /* Split a histogram box at its weighted median. */
 static int
 sixel_box_split(struct sixel_box *box, struct sixel_box *new,
-    struct sixel_hgram *histogram)
+    struct sixel_hgram *hg)
 {
 	u_int	 levels[SIXEL_HISTOGRAM_LEVELS] = { 0 };
 	u_int	 red, green, blue, index, channel, first, last, level;
@@ -888,11 +888,11 @@ sixel_box_split(struct sixel_box *box, struct sixel_box *new,
 			for (blue = box->blue_min; blue <= box->blue_max; blue++) {
 				index = (red << 10)|(green << 5)|blue;
 				if (channel == 0)
-					levels[red] += histogram[index].count;
+					levels[red] += hg[index].count;
 				else if (channel == 1)
-					levels[green] += histogram[index].count;
+					levels[green] += hg[index].count;
 				else
-					levels[blue] += histogram[index].count;
+					levels[blue] += hg[index].count;
 			}
 		}
 	}
@@ -925,14 +925,14 @@ sixel_box_split(struct sixel_box *box, struct sixel_box *new,
 		box->blue_max = level;
 		new->blue_min = level + 1;
 	}
-	sixel_box_update(box, histogram);
-	sixel_box_update(new, histogram);
+	sixel_box_update(box, hg);
+	sixel_box_update(new, hg);
 	return (box->count != 0 && new->count != 0);
 }
 
 /* Build an adaptive palette from an RGB histogram. */
 static u_int
-sixel_make_palette(struct sixel_hgram *histogram,
+sixel_make_palette(struct sixel_hgram *hg,
     struct sixel_rgb *palette)
 {
 	struct sixel_box	 boxes[SIXEL_PALETTE_SIZE], new;
@@ -944,7 +944,7 @@ sixel_make_palette(struct sixel_hgram *histogram,
 	memset(&boxes[0], 0, sizeof boxes[0]);
 	boxes[0].red_max = boxes[0].green_max = boxes[0].blue_max =
 	    SIXEL_HISTOGRAM_LEVELS - 1;
-	sixel_box_update(&boxes[0], histogram);
+	sixel_box_update(&boxes[0], hg);
 	if (boxes[0].count == 0)
 		return (0);
 
@@ -965,7 +965,7 @@ sixel_make_palette(struct sixel_hgram *histogram,
 			}
 		}
 		if (best == nboxes ||
-		    !sixel_box_split(&boxes[best], &new, histogram))
+		    !sixel_box_split(&boxes[best], &new, hg))
 			break;
 		memcpy(&boxes[nboxes++], &new, sizeof new);
 	}
@@ -977,10 +977,10 @@ sixel_make_palette(struct sixel_hgram *histogram,
 			for (g = box->green_min; g <= box->green_max; g++) {
 				for (b = box->blue_min; b <= box->blue_max; b++) {
 					index = (r << 10)|(g << 5)|b;
-					red += histogram[index].red;
-					green += histogram[index].green;
-					blue += histogram[index].blue;
-					count += histogram[index].count;
+					red += hg[index].red;
+					green += hg[index].green;
+					blue += hg[index].blue;
+					count += hg[index].count;
 				}
 			}
 		}
@@ -1053,7 +1053,7 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 {
 	struct sixel_image		*si;
 	struct sixel_source		 source;
-	struct sixel_hgram		*histogram, *entry;
+	struct sixel_hgram		*hg, *entry;
 	struct sixel_rgb		 palette[SIXEL_PALETTE_SIZE];
 	const u_char			*pixel;
 	uint16_t			*cache;
@@ -1106,7 +1106,7 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 		return (NULL);
 
 	/* Build an adaptive palette from the visible nontransparent pixels. */
-	histogram = xcalloc(SIXEL_HISTOGRAM_SIZE, sizeof *histogram);
+	hg = xcalloc(SIXEL_HISTOGRAM_SIZE, sizeof *hg);
 	for (y = 0; y < sy; y++) {
 		for (x = 0; x < sx; x++) {
 			pixel = sixel_from_image_pixel(&source, sourcex0, sourcey0,
@@ -1117,15 +1117,15 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 			/* Add this opaque pixel to its 5-bit RGB histogram bucket. */
 			index = ((pixel[0] >> 3) << 10)|
 			    ((pixel[1] >> 3) << 5)|(pixel[2] >> 3);
-			entry = &histogram[index];
+			entry = &hg[index];
 			entry->count++;
 			entry->red += pixel[0];
 			entry->green += pixel[1];
 			entry->blue += pixel[2];
 		}
 	}
-	ncolours = sixel_make_palette(histogram, palette);
-	free(histogram);
+	ncolours = sixel_make_palette(hg, palette);
+	free(hg);
 	if (ncolours == 0)
 		return (NULL);
 
