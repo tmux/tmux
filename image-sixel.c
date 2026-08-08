@@ -88,7 +88,7 @@ struct sixel_output {
 	uint64_t		 age;
 };
 
-struct sixel_histogram {
+struct sixel_hgram {
 	u_int		 count;
 	uint64_t	 red;
 	uint64_t	 green;
@@ -818,9 +818,9 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 
 /* Split a 5-bit RGB histogram into an adaptive palette using median cut. */
 static void
-sixel_box_update(struct sixel_box *box, struct sixel_histogram *histogram)
+sixel_box_update(struct sixel_box *box, struct sixel_hgram *histogram)
 {
-	struct sixel_histogram	*entry;
+	struct sixel_hgram	*entry;
 	u_int			 red, green, blue, index;
 	u_int			 red_min = SIXEL_HISTOGRAM_LEVELS;
 	u_int			 green_min = SIXEL_HISTOGRAM_LEVELS;
@@ -865,7 +865,7 @@ sixel_box_update(struct sixel_box *box, struct sixel_histogram *histogram)
 /* Split a histogram box at its weighted median. */
 static int
 sixel_box_split(struct sixel_box *box, struct sixel_box *new,
-    struct sixel_histogram *histogram)
+    struct sixel_hgram *histogram)
 {
 	u_int	 levels[SIXEL_HISTOGRAM_LEVELS] = { 0 };
 	u_int	 red, green, blue, index, channel, first, last, level;
@@ -932,7 +932,7 @@ sixel_box_split(struct sixel_box *box, struct sixel_box *new,
 
 /* Build an adaptive palette from an RGB histogram. */
 static u_int
-sixel_make_palette(struct sixel_histogram *histogram,
+sixel_make_palette(struct sixel_hgram *histogram,
     struct sixel_rgb *palette)
 {
 	struct sixel_box	 boxes[SIXEL_PALETTE_SIZE], new;
@@ -1053,7 +1053,7 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 {
 	struct sixel_image		*si;
 	struct sixel_source		 source;
-	struct sixel_histogram		*histogram, *entry;
+	struct sixel_hgram		*histogram, *entry;
 	struct sixel_rgb		 palette[SIXEL_PALETTE_SIZE];
 	const u_char			*pixel;
 	uint16_t			*cache;
@@ -1067,10 +1067,10 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 
 	/* Work out the requested cell crop in destination pixel coordinates. */
 	source.pixels = image_get_pixels(im, &source.stride, NULL);
-	image_get_dimensions(im, &source.width, &source.height);
-	image_get_canvas_dimensions(im, &source.canvas_width,
+	image_get_size(im, &source.width, &source.height);
+	image_get_canvas_size(im, &source.canvas_width,
 	    &source.canvas_height);
-	image_get_cell_dimensions(im, &source.sx, &source.sy);
+	image_get_cell_size(im, &source.sx, &source.sy);
 	destination_width = (uint64_t)source.sx * xpixel;
 	destination_height = (uint64_t)source.sy * ypixel;
 	if (destination_width > UINT_MAX || destination_height > UINT_MAX)
@@ -1100,7 +1100,7 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 		return (NULL);
 
 	/* Map the requested cell crop to the source image's pixel rectangle. */
-	image_get_pixel_rectangle(im, ox, oy, cells_x, cells_y, &sourcex0,
+	image_get_pixel_rect(im, ox, oy, cells_x, cells_y, &sourcex0,
 	    &sourcey0, &sourcewidth, &sourceheight);
 	if (sourcewidth == 0 || sourceheight == 0)
 		return (NULL);
@@ -1311,7 +1311,7 @@ sixel_render_image(struct image *im, u_int xpixel, u_int ypixel)
 	struct sixel_image	*original;
 	u_int			 sx, sy;
 
-	image_get_cell_dimensions(im, &sx, &sy);
+	image_get_cell_size(im, &sx, &sy);
 	/* Preserve SIXEL's original palette and indexed pixels when possible. */
 	original = image_get_sixel(im);
 	if (original != NULL)
@@ -1388,7 +1388,7 @@ sixel_image_is_cached(struct tty *tty, struct sixel_image *si)
 
 /* Draw an image rectangle with SIXEL output. */
 void
-sixel_draw_rectangle(struct tty *tty, const struct image_rectangle *rectangle,
+sixel_draw_rect(struct tty *tty, const struct image_rect *rectangle,
     __unused const struct tty_style_ctx *style_ctx)
 {
 	struct sixel_image	*si, *crop;
@@ -1397,10 +1397,10 @@ sixel_draw_rectangle(struct tty *tty, const struct image_rectangle *rectangle,
 	u_int			 source_x, source_y, width, height;
 	u_int			 destination_x, destination_y;
 
-	si = sixel_get_image(tty, image_rectangle_get_image(rectangle));
+	si = sixel_get_image(tty, image_rect_get_image(rectangle));
 	if (si == NULL)
 		return;
-	image_rectangle_get_coordinates(rectangle, &source_x, &source_y, &width,
+	image_rect_get_coords(rectangle, &source_x, &source_y, &width,
 	    &height, &destination_x, &destination_y);
 	crop = sixel_scale(si, tty->xpixel, tty->ypixel,
 	    source_x, source_y, width, height, 1);
