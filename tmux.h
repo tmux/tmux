@@ -4296,7 +4296,7 @@ struct image	*kitty_parse_image(void **, const u_char *, size_t, u_int,
 int		 kitty_placeholder_to_cell(void *, struct grid_cell *,
 		     const struct grid_cell *);
 void		 kitty_free_state(void *);
-void		 kitty_draw_rectangle(struct tty *,
+void		 kitty_draw_rect(struct tty *,
 			     const struct image_rect *, const struct tty_style_ctx *);
 void		 kitty_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
 void		 kitty_free_output(struct tty *, int);

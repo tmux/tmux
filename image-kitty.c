@@ -263,8 +263,8 @@ kitty_place(struct tty *tty, struct kitty_image_cache *cache,
 	u_int		 canvas_width, canvas_height;
 	struct kitty_placement_cache *placement;
 
-	image_get_cell_dimensions(im, &sx, &sy);
-	image_get_canvas_dimensions(im, &canvas_width, &canvas_height);
+	image_get_cell_size(im, &sx, &sy);
+	image_get_canvas_size(im, &canvas_width, &canvas_height);
 	px = (uint64_t)source_x * canvas_width / sx;
 	py = (uint64_t)source_y * canvas_height / sy;
 	pwidth = ((uint64_t)(source_x + width) * canvas_width + sx - 1) /
@@ -330,8 +330,8 @@ kitty_upload(struct tty *tty, struct image *im)
 	cache->next_placement = 0;
 
 	pixels = image_get_pixels(im, &stride, &image_size);
-	image_get_dimensions(im, &width, &height);
-	image_get_canvas_dimensions(im, &canvas_width, &canvas_height);
+	image_get_size(im, &width, &height);
+	image_get_canvas_size(im, &canvas_width, &canvas_height);
 	if ((uint64_t)canvas_width * canvas_height * 4 > IMAGE_SIZE_LIMIT)
 		return (NULL);
 	padded = xcalloc((size_t)canvas_width * canvas_height, 4);
@@ -380,7 +380,7 @@ kitty_upload(struct tty *tty, struct image *im)
 
 /* Draw an image rectangle using the Kitty graphics protocol. */
 void
-kitty_draw_rectangle(struct tty *tty, const struct image_rectangle *rectangle,
+kitty_draw_rect(struct tty *tty, const struct image_rect *rectangle,
     __unused const struct tty_style_ctx *style_ctx)
 {
 	struct kitty_image_cache	*cache;
@@ -388,12 +388,12 @@ kitty_draw_rectangle(struct tty *tty, const struct image_rectangle *rectangle,
 	u_int			 source_x, source_y;
 	u_int			 width, height, destination_x, destination_y;
 
-	im = image_rectangle_get_image(rectangle);
+	im = image_rect_get_image(rectangle);
 	kitty_images_collect(tty);
 	cache = kitty_upload(tty, im);
 	if (cache == NULL)
 		return;
-	image_rectangle_get_coordinates(rectangle, &source_x, &source_y, &width,
+	image_rect_get_coords(rectangle, &source_x, &source_y, &width,
 	    &height, &destination_x, &destination_y);
 	kitty_place(tty, cache, im, source_x, source_y, width, height,
 	    destination_x, destination_y);
@@ -785,7 +785,7 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 
 	x = ks->source_x;
 	y = ks->source_y;
-	image_get_dimensions(source, &source_width, &source_height);
+	image_get_size(source, &source_width, &source_height);
 	if (x >= source_width || y >= source_height)
 		return (NULL);
 	width = ks->source_width;
@@ -1164,7 +1164,7 @@ kitty_placeholder_to_cell(void *state, struct grid_cell *gc,
 	    source->server_id);
 	if (im == NULL)
 		return (0);
-	image_get_cell_dimensions(im, &sx, &sy);
+	image_get_cell_size(im, &sx, &sy);
 
 	if (nvalues >= 1)
 		y = values[0];
