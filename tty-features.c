@@ -351,7 +351,6 @@ static const struct tty_feature tty_feature_ignorefkeys = {
 /* Terminal has sixel capability. */
 static const char *const tty_feature_sixel_capabilities[] = {
 	"Sxl",
-	TTY_FEATURE_SYNC,
 	NULL
 };
 static const struct tty_feature tty_feature_sixel = {
