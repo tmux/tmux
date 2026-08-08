@@ -224,9 +224,11 @@ static const struct tty_feature tty_feature_strikethrough = {
 	0
 };
 
+#define TTY_FEATURE_SYNC "Sync=\\E[?2026%?%p1%{1}%-%tl%eh%;"
+
 /* Terminal supports synchronized updates. */
 static const char *const tty_feature_sync_capabilities[] = {
-	"Sync=\\E[?2026%?%p1%{1}%-%tl%eh%;",
+	TTY_FEATURE_SYNC,
 	NULL
 };
 static const struct tty_feature tty_feature_sync = {
@@ -581,6 +583,7 @@ tty_default_features(int *feat, const char *name, u_int version)
 			      "extkeys,"
 			      "focus,"
 		  	      "hyperlinks,"
+			      "sixel,"
 			      "usstyle"
 		},
 		{ .name = "ghostty",
