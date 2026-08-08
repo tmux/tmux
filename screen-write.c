@@ -2720,7 +2720,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	    (~gc->flags & GRID_FLAG_IMAGE)) {
 		image_redraw_area(ctx, s->cx, s->cy, width, 1);
 		memcpy(&image_gc, gc, sizeof image_gc);
-		image_gc.flags |= GRID_FLAG_IMAGE;
+		image_gc.flags |= GRID_FLAG_IMAGE|GRID_FLAG_IMAGE_DAMAGED;
 		image_gc.image_id = now_gc.image_id;
 		image_gc.image_x = now_gc.image_x;
 		image_gc.image_y = now_gc.image_y;

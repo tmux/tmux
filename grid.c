@@ -808,7 +808,7 @@ grid_set_cells(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc,
 			if (old_id != 0 && (~gc->flags & GRID_FLAG_IMAGE)) {
 				grid_get_cell1(gl, px + i, &old_gc);
 				memcpy(&image_gc, gc, sizeof image_gc);
-				image_gc.flags |= GRID_FLAG_IMAGE;
+				image_gc.flags |= GRID_FLAG_IMAGE|GRID_FLAG_IMAGE_DAMAGED;
 				image_gc.image_id = old_gc.image_id;
 				image_gc.image_x = old_gc.image_x;
 				image_gc.image_y = old_gc.image_y;
@@ -1344,7 +1344,7 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 #ifdef ENABLE_IMAGES
 		if (gc.flags & GRID_FLAG_IMAGE) {
 			utf8_set(&gc.data, ' ');
-			gc.flags &= ~GRID_FLAG_IMAGE;
+			gc.flags &= ~(GRID_FLAG_IMAGE|GRID_FLAG_IMAGE_DAMAGED);
 			gc.image_id = gc.image_x = gc.image_y = 0;
 		}
 #endif
