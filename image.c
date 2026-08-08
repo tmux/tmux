@@ -87,9 +87,6 @@ static u_int		image_next_id;
 static u_short		image_next_grid_id;
 static struct image	*image_grid_ids[USHRT_MAX + 1];
 
-#define IMAGE_BACKEND_GRAPHICAL 0x1
-#define IMAGE_BACKEND_SCROLLS   0x2
-
 struct image_backend {
 	const char	*name;
 	int		 flags;
@@ -151,20 +148,12 @@ image_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
 		kitty_redraw_start(tty, x, y, width, height);
 }
 
-/* Return if a terminal can draw graphical images. */
+/* Return the flags for a terminal's image backend. */
 int
-image_tty_is_graphical(struct tty *tty)
+image_backend_flags(struct tty *tty)
 {
 	image_tty_update(tty);
-	return (!!(tty->image_backend->flags & IMAGE_BACKEND_GRAPHICAL));
-}
-
-/* Return if image output advances the terminal screen. */
-int
-image_tty_scrolls(struct tty *tty)
-{
-	image_tty_update(tty);
-	return (!!(tty->image_backend->flags & IMAGE_BACKEND_SCROLLS));
+	return (tty->image_backend->flags);
 }
 
 /* Discard image backend state after a terminal geometry change. */
