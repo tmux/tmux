@@ -4208,6 +4208,9 @@ char		*regsub(const char *, const char *, const char *, int);
 
 #ifdef ENABLE_IMAGES
 /* image.c */
+#define IMAGE_BACKEND_GRAPHICAL 0x1
+#define IMAGE_BACKEND_SCROLLS   0x2
+
 struct image	*image_create(u_int, u_int, u_int, u_int, u_int, u_int,
 		     u_char *);
 struct image	*image_find(u_int);
@@ -4233,8 +4236,7 @@ void		 image_redraw_area(struct screen_write_ctx *, u_int, u_int,
 		     u_int, u_int);
 void		 image_redraw_all(struct screen_write_ctx *);
 void		 image_redraw_scroll(struct screen_write_ctx *, u_int);
-int		 image_tty_is_graphical(struct tty *);
-int		 image_tty_scrolls(struct tty *);
+int		 image_backend_flags(struct tty *);
 void		 image_tty_update(struct tty *);
 void		 image_tty_geometry_changed(struct tty *);
 void		 image_tty_free(struct tty *, int);

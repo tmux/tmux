@@ -264,7 +264,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				 */
 				if (gc.flags & GRID_FLAG_IMAGE) {
 					im = image_find(gc.image_id);
-					if (image_tty_is_graphical(tty)) {
+					if (image_backend_flags(tty) &
+					    IMAGE_BACKEND_GRAPHICAL) {
 						memcpy(&image_gc, &gc,
 						    sizeof image_gc);
 						image_gc.flags &= ~(GRID_FLAG_IMAGE|

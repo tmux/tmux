@@ -2155,7 +2155,7 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 	 * selection; the unchanged image would then need to be drawn again.
 	 */
 	if (gc->flags & GRID_FLAG_IMAGE) {
-		if (image_tty_is_graphical(tty))
+		if (image_backend_flags(tty) & IMAGE_BACKEND_GRAPHICAL)
 			return;
 		im = image_find(gc->image_id);
 		image_get_text_cell(tty, im, gc->image_x, gc->image_y, gc,
