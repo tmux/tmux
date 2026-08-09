@@ -285,7 +285,7 @@ image_get_canvas_size(const struct image *im, u_int *width,
 
 /* Return an image's cell dimensions. */
 void
-image_get_cell_size(const struct image *im, u_int *sx, u_int *sy)
+image_get_size_in_cells(const struct image *im, u_int *sx, u_int *sy)
 {
 	if (sx != NULL)
 		*sx = im->sx;
