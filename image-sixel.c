@@ -50,6 +50,7 @@ struct sixel_image {
 	u_int			*colours;
 	u_int			 ncolours;
 	u_int			 used_colours;
+	u_int			 p1;
 	u_int			 p2;
 
 	u_int			 dx;
@@ -356,7 +357,8 @@ sixel_parse_repeat(struct sixel_image *si, const char *cp, const char *end)
 
 /* Parse SIXEL data into an indexed image. */
 struct sixel_image *
-sixel_parse(const char *buf, size_t len, u_int p2, u_int xpixel, u_int ypixel)
+sixel_parse(const char *buf, size_t len, u_int p1, u_int p2, u_int xpixel,
+    u_int ypixel)
 {
 	struct sixel_image	*si;
 	const char		*cp = buf, *end = buf + len;
@@ -370,6 +372,7 @@ sixel_parse(const char *buf, size_t len, u_int p2, u_int xpixel, u_int ypixel)
 	si = xcalloc (1, sizeof *si);
 	si->xpixel = xpixel;
 	si->ypixel = ypixel;
+	si->p1 = p1;
 	si->p2 = p2;
 
 	while (cp != end) {
@@ -609,18 +612,13 @@ sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
 	new = xcalloc (1, sizeof *si);
 	new->xpixel = xpixel;
 	new->ypixel = ypixel;
+	new->p1 = si->p1;
 	new->p2 = si->p2;
 
 	new->set_ra = si->set_ra;
-	/* subtract offset */
-	new->ra_x = si->ra_x > pox ? si->ra_x - pox : 0;
-	new->ra_y = si->ra_y > poy ? si->ra_y - poy : 0;
-	/* clamp to size */
-	new->ra_x = new->ra_x < psx ? new->ra_x : psx;
-	new->ra_y = new->ra_y < psy ? new->ra_y : psy;
-	/* resize */
-	new->ra_x = new->ra_x * xpixel / si->xpixel;
-	new->ra_y = new->ra_y * ypixel / si->ypixel;
+	/* The raster attributes describe the scaled output rectangle. */
+	new->ra_x = tsx;
+	new->ra_y = tsy;
 
 	new->used_colours = si->used_colours;
 	for (y = 0; y < tsy; y++) {
@@ -753,7 +751,7 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 	len = 8192;
 	buf = xmalloc(len);
 
-	tmplen = xsnprintf(tmp, sizeof tmp, "\033P9;%uq", si->p2);
+	tmplen = xsnprintf(tmp, sizeof tmp, "\033P%u;%uq", si->p1, si->p2);
 	sixel_print_add(&buf, &len, &used, tmp, tmplen);
 
 	if (si->set_ra) {
@@ -1133,6 +1131,7 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 	si = xcalloc(1, sizeof *si);
 	si->xpixel = xpixel;
 	si->ypixel = ypixel;
+	si->p1 = 9;
 	si->p2 = 1;
 	si->set_ra = 1;
 	si->ra_x = sx;
@@ -1417,7 +1416,8 @@ sixel_draw_rect(struct tty *tty, const struct image_rect *rectangle,
 	tty_cursor(tty, destination_x, destination_y);
 	tty->flags |= TTY_NOBLOCK;
 	tty_putn(tty, data, size, 0);
-	tty_invalidate(tty);
+	/* SIXEL moves the cursor, but does not change terminal attributes. */
+	tty->cx = tty->cy = UINT_MAX;
 	free(data);
 }
 

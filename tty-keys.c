@@ -728,6 +728,7 @@ tty_keys_winsz(struct tty *tty, const char *buf, size_t len, size_t *size)
 		char_y = (ypixel && tty->sy) ? ypixel / tty->sy : 0;
 		tty_set_size(tty, tty->sx, tty->sy, char_x, char_y);
 		tty_invalidate(tty);
+		recalculate_sizes();
 
 		tty->flags &= ~TTY_WINSIZEQUERY;
 		*size = end + 1;

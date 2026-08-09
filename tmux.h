@@ -4245,7 +4245,7 @@ void		 image_tty_update(struct tty *);
 void		 image_tty_geometry_changed(struct tty *);
 void		 image_tty_free(struct tty *, int);
 void		 image_draw_line(struct tty *, struct screen *, u_int, u_int,
-		     u_int, u_int, u_int, const struct tty_style_ctx *);
+		     u_int, u_int, u_int, int, const struct tty_style_ctx *);
 u_char		 image_get_brightness(struct image *, u_int, u_int);
 void		 image_get_text_cell(struct tty *, struct image *, u_int,
 		     u_int, const struct grid_cell *, struct grid_cell *,
@@ -4262,7 +4262,8 @@ void		 sixel_draw_rect(struct tty *,
 			     const struct image_rect *, const struct tty_style_ctx *);
 void		 sixel_free_output(struct tty *, int);
 void		 sixel_geometry_changed(struct tty *);
-struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int);
+struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int,
+    u_int);
 void		 sixel_free(struct sixel_image *);
 void		 sixel_log(struct sixel_image *);
 void		 sixel_size_in_cells(struct sixel_image *, u_int *, u_int *);
