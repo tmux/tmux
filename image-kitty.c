@@ -263,7 +263,7 @@ kitty_place(struct tty *tty, struct kitty_image_cache *cache,
 	u_int		 canvas_width, canvas_height;
 	struct kitty_placement_cache *placement;
 
-	image_get_cell_size(im, &sx, &sy);
+	image_get_size_in_cells(im, &sx, &sy);
 	image_get_canvas_size(im, &canvas_width, &canvas_height);
 	px = (uint64_t)source_x * canvas_width / sx;
 	py = (uint64_t)source_y * canvas_height / sy;
@@ -1162,7 +1162,7 @@ kitty_placeholder_to_cell(void *state, struct grid_cell *gc,
 	    source->server_id);
 	if (im == NULL)
 		return (0);
-	image_get_cell_size(im, &sx, &sy);
+	image_get_size_in_cells(im, &sx, &sy);
 
 	if (nvalues >= 1)
 		y = values[0];
