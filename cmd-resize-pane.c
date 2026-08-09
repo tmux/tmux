@@ -93,6 +93,12 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	server_unzoom_window(w);
 
+	/*
+	 * Unzooming frees and rebuilds the layout, so the cell captured above
+	 * may have been freed; re-read it from the pane.
+	 */
+	lc = wp->layout_cell;
+
 	if (args_has(args, 'x')) {
 		x = args_percentage(args, 'x', 0, PANE_MAXIMUM, w->sx, &cause);
 		if (cause != NULL) {
