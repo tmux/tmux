@@ -570,6 +570,11 @@ image_get_draw_cell(struct tty *tty, const struct grid_cell *gc,
 		    GRID_FLAG_SELECTED);
 		return (1);
 	}
+	if (gc->flags & GRID_FLAG_IMAGE_DAMAGED) {
+		memcpy(out, gc, sizeof *out);
+		out->flags &= ~(GRID_FLAG_IMAGE|GRID_FLAG_IMAGE_DAMAGED);
+		return (0);
+	}
 	image_get_fallback_cell(tty, im, gc->image_x, gc->image_y, gc, out,
 	    style_ctx);
 	return (0);
@@ -787,10 +792,11 @@ image_redraw_scroll(struct screen_write_ctx *ctx, __unused u_int lines)
 	image_redraw_all(ctx);
 }
 
-/* Draw the graphical image marker runs in one visible scene span. */
+/* Draw a span's graphical image markers before or after its text. */
 void
 image_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py,
-    u_int nx, u_int atx, u_int aty, const struct tty_style_ctx *style_ctx)
+    u_int nx, u_int atx, u_int aty, int before,
+    const struct tty_style_ctx *style_ctx)
 {
 	const struct image_backend	*backend;
 	struct image_rect		 rectangle;
@@ -802,6 +808,8 @@ image_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py,
 	backend = tty->image_backend;
 	if (~backend->flags & IMAGE_BACKEND_GRAPHICAL)
 		return;
+	if (before && (~backend->flags & IMAGE_BACKEND_TEMPORAL))
+		return;
 
 	for (i = 0; i < nx; i += run) {
 		grid_view_get_cell(s->grid, px + i, py, &gc);
@@ -809,10 +817,12 @@ image_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py,
 			run = 1;
 			continue;
 		}
-		if ((backend->flags & IMAGE_BACKEND_TEMPORAL) &&
-		    (gc.flags & GRID_FLAG_IMAGE_DAMAGED)) {
-			run = 1;
-			continue;
+		if (backend->flags & IMAGE_BACKEND_TEMPORAL) {
+			if ((before && (~gc.flags & GRID_FLAG_IMAGE_DAMAGED)) ||
+			    (!before && (gc.flags & GRID_FLAG_IMAGE_DAMAGED))) {
+				run = 1;
+				continue;
+			}
 		}
 		im = image_find(gc.image_id);
 		if (im == NULL) {
@@ -821,10 +831,13 @@ image_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py,
 		}
 		for (run = 1; i + run < nx; run++) {
 			grid_view_get_cell(s->grid, px + i + run, py, &next);
-			if (~next.flags & GRID_FLAG_IMAGE ||
-			    ((backend->flags & IMAGE_BACKEND_TEMPORAL) &&
-			    (next.flags & GRID_FLAG_IMAGE_DAMAGED)) ||
-			    next.image_id != gc.image_id ||
+			if (~next.flags & GRID_FLAG_IMAGE)
+				break;
+			if ((backend->flags & IMAGE_BACKEND_TEMPORAL) &&
+			    ((before && (~next.flags & GRID_FLAG_IMAGE_DAMAGED)) ||
+			    (!before && (next.flags & GRID_FLAG_IMAGE_DAMAGED))))
+				break;
+			if (next.image_id != gc.image_id ||
 			    next.image_y != gc.image_y ||
 			    next.image_x != gc.image_x + run)
 				break;

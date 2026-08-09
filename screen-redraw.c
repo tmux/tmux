@@ -99,6 +99,12 @@ enum redraw_span_type {
 #define REDRAW_ALL 0x7fffffff
 #define REDRAW_IS_ALL(flags) ((flags) == REDRAW_ALL)
 
+enum redraw_image_phase {
+	REDRAW_IMAGES_BEFORE,
+	REDRAW_TEXT,
+	REDRAW_IMAGES_AFTER
+};
+
 /* UTF-8 isolate characters. */
 #define REDRAW_START_ISOLATE "\342\201\246"
 #define REDRAW_END_ISOLATE "\342\201\251"
@@ -1237,7 +1243,8 @@ redraw_get_scene(struct client *c)
 /* Draw a pane span. */
 static void
 redraw_draw_pane_span(struct redraw_draw_ctx *dctx,
-    struct redraw_span *span, u_int x, u_int y, u_int n)
+    struct redraw_span *span, u_int x, u_int y, u_int n,
+    enum redraw_image_phase phase)
 {
 	struct redraw_scene	*scene = dctx->scene;
 	struct client		*c = scene->c;
@@ -1255,10 +1262,14 @@ redraw_draw_pane_span(struct redraw_draw_ctx *dctx,
 
 	px = span->data.p.px + (x - span->x);
 	py = span->data.p.py;
-	tty_draw_line(tty, s, px, py, n, x, y, &style_ctx);
 #ifdef ENABLE_IMAGES
-	image_draw_line(tty, s, px, py, n, x, y, &style_ctx);
+	if (phase != REDRAW_TEXT)
+		image_draw_line(tty, s, px, py, n, x, y,
+		    phase == REDRAW_IMAGES_BEFORE, &style_ctx);
+	else
 #endif
+	if (phase == REDRAW_TEXT)
+		tty_draw_line(tty, s, px, py, n, x, y, &style_ctx);
 }
 
 /* Get default border style for spans without a pane. */
@@ -1518,7 +1529,7 @@ redraw_draw_menu_span(struct redraw_draw_ctx *dctx,
  */
 static void
 redraw_draw_span(struct redraw_draw_ctx *dctx, struct redraw_span *span,
-    u_int y, u_int clip_x, u_int clip_n)
+    u_int y, u_int clip_x, u_int clip_n, enum redraw_image_phase phase)
 {
 	struct redraw_scene	*scene = dctx->scene;
 	struct redraw_span_data	*data = &span->data;
@@ -1539,10 +1550,12 @@ redraw_draw_span(struct redraw_draw_ctx *dctx, struct redraw_span *span,
 			continue;
 		x = rr->px;
 		n = rr->nx;
+		if (phase != REDRAW_TEXT && type != REDRAW_SPAN_PANE)
+			continue;
 
 		switch (span->data.type) {
 		case REDRAW_SPAN_PANE:
-			redraw_draw_pane_span(dctx, span, x, y, n);
+			redraw_draw_pane_span(dctx, span, x, y, n, phase);
 			break;
 		case REDRAW_SPAN_BORDER:
 		case REDRAW_SPAN_EMPTY:
@@ -1607,27 +1620,29 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 	}
 #endif
 
-	for (y = top; y < bottom; y++) {
-		line = &scene->lines[y];
-		if (dctx->flags & REDRAW_STATUS_TOP)
-			cy = dctx->status_lines + y;
-		else
-			cy = y;
-		if (flags & REDRAW_PANE) {
-			spans = &line->spans[REDRAW_SPAN_PANE];
-			TAILQ_FOREACH(span, spans, entry) {
-				if (span->data.p.wp == wp) {
-					redraw_draw_span(dctx, span, cy,
-					    span->x, span->width);
+	for (enum redraw_image_phase phase = REDRAW_IMAGES_BEFORE;
+	    phase <= REDRAW_IMAGES_AFTER; phase++) {
+		for (y = top; y < bottom; y++) {
+			line = &scene->lines[y];
+			if (dctx->flags & REDRAW_STATUS_TOP)
+				cy = dctx->status_lines + y;
+			else
+				cy = y;
+			if (flags & REDRAW_PANE) {
+				spans = &line->spans[REDRAW_SPAN_PANE];
+				TAILQ_FOREACH(span, spans, entry) {
+					if (span->data.p.wp == wp)
+						redraw_draw_span(dctx, span, cy, span->x,
+						    span->width, phase);
 				}
 			}
-		}
-		if (flags & REDRAW_PANE_SCROLLBAR) {
-			spans = &line->spans[REDRAW_SPAN_SCROLLBAR];
-			TAILQ_FOREACH(span, spans, entry) {
-				if (span->data.sb.wp == wp) {
-					redraw_draw_span(dctx, span, cy,
-					    span->x, span->width);
+			if (phase == REDRAW_TEXT &&
+			    (flags & REDRAW_PANE_SCROLLBAR)) {
+				spans = &line->spans[REDRAW_SPAN_SCROLLBAR];
+				TAILQ_FOREACH(span, spans, entry) {
+					if (span->data.sb.wp == wp)
+						redraw_draw_span(dctx, span, cy, span->x,
+						    span->width, phase);
 				}
 			}
 		}
@@ -1644,13 +1659,17 @@ redraw_draw_lines(struct redraw_draw_ctx *dctx, int flags)
 	struct redraw_span	*span;
 	u_int			 y, cy, type;
 
-	for (y = 0; y < scene->sy; y++) {
-		line = &scene->lines[y];
-		if (dctx->flags & REDRAW_STATUS_TOP)
-			cy = dctx->status_lines + y;
-		else
-			cy = y;
-		for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
+	for (enum redraw_image_phase phase = REDRAW_IMAGES_BEFORE;
+	    phase <= REDRAW_IMAGES_AFTER; phase++) {
+		for (y = 0; y < scene->sy; y++) {
+			line = &scene->lines[y];
+			if (dctx->flags & REDRAW_STATUS_TOP)
+				cy = dctx->status_lines + y;
+			else
+				cy = y;
+			for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
+				if (phase != REDRAW_TEXT && type != REDRAW_SPAN_PANE)
+					continue;
 			if (!REDRAW_IS_ALL(flags)) {
 				switch (type) {
 				case REDRAW_SPAN_PANE:
@@ -1686,9 +1705,9 @@ redraw_draw_lines(struct redraw_draw_ctx *dctx, int flags)
 				}
 			}
 			spans = &line->spans[type];
-			TAILQ_FOREACH(span, spans, entry) {
-				redraw_draw_span(dctx, span, cy, span->x,
-				    span->width);
+			TAILQ_FOREACH(span, spans, entry)
+				redraw_draw_span(dctx, span, cy, span->x, span->width,
+				    phase);
 			}
 		}
 	}
@@ -1709,10 +1728,9 @@ redraw_draw_menu_lines(struct redraw_draw_ctx *dctx)
 			cy = dctx->status_lines + y;
 		else
 			cy = y;
-		TAILQ_FOREACH(span, &line->spans[REDRAW_SPAN_MENU], entry) {
-			redraw_draw_span(dctx, span, cy, span->x,
-			    span->width);
-		}
+		TAILQ_FOREACH(span, &line->spans[REDRAW_SPAN_MENU], entry)
+			redraw_draw_span(dctx, span, cy, span->x, span->width,
+			    REDRAW_TEXT);
 	}
 }
 
@@ -2191,13 +2209,17 @@ redraw_draw_damage_rect(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 	if (sx == 0 || sy == 0)
 		return;
 
-	for (yy = y; yy < y + sy; yy++) {
-		line = &scene->lines[yy];
-		if (dctx->flags & REDRAW_STATUS_TOP)
-			cy = dctx->status_lines + yy;
-		else
-			cy = yy;
-		for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
+	for (enum redraw_image_phase phase = REDRAW_IMAGES_BEFORE;
+	    phase <= REDRAW_IMAGES_AFTER; phase++) {
+		for (yy = y; yy < y + sy; yy++) {
+			line = &scene->lines[yy];
+			if (dctx->flags & REDRAW_STATUS_TOP)
+				cy = dctx->status_lines + yy;
+			else
+				cy = yy;
+			for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
+				if (phase != REDRAW_TEXT && type != REDRAW_SPAN_PANE)
+					continue;
 			spans = &line->spans[type];
 			TAILQ_FOREACH(span, spans, entry) {
 				clip_x = (span->x > x) ? span->x : x;
@@ -2212,13 +2234,14 @@ redraw_draw_damage_rect(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 				redraw_damage_grow_span_clip(span, &clip_x,
 				    &clip_end);
 				redraw_draw_span(dctx, span, cy, clip_x,
-				    clip_end - clip_x);
-				if (type == REDRAW_SPAN_PANE) {
+				    clip_end - clip_x, phase);
+				if (phase == REDRAW_TEXT && type == REDRAW_SPAN_PANE) {
 					redraw_damage_draw_pane_prompt(dctx,
 					    span, cy, clip_x,
 					    clip_end - clip_x);
 				}
 			}
+		}
 		}
 	}
 }
