@@ -259,7 +259,7 @@ image_glyph_make_shades(struct image *im, u_int levels)
 	result = (levels == 5 ? data->shade5 : data->shade8);
 	if (result != NULL)
 		return (result);
-	image_get_cell_size(im, &sx, &sy);
+	image_get_size_in_cells(im, &sx, &sy);
 	cells = (size_t)sx * sy;
 	values = xcalloc(cells, sizeof *values);
 	result = xcalloc(cells, 1);
@@ -426,7 +426,7 @@ image_get_fallback_cell(struct tty *tty, struct image *im, u_int x, u_int y,
 	if (detail == IMAGE_GLYPH_SHADE5 || detail == IMAGE_GLYPH_SHADE8) {
 		levels = image_glyph_make_shades(im,
 		    detail == IMAGE_GLYPH_SHADE5 ? 5 : 8);
-		image_get_cell_size(im, &sx, NULL);
+		image_get_size_in_cells(im, &sx, NULL);
 		level = levels[(size_t)y * sx + x];
 		key = (detail == IMAGE_GLYPH_SHADE5 ? shades[level] :
 		    bold_shades[level]);

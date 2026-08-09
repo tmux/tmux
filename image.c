@@ -730,7 +730,7 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
 	u_int			 cx = s->cx, cy = s->cy;
 	u_int			 x, y, sx, sy, lines;
 
-	image_get_cell_size(im, &sx, &sy);
+	image_get_size_in_cells(im, &sx, &sy);
 	if (sx > screen_size_x(s) - cx)
 		sx = screen_size_x(s) - cx;
 	if (sy > screen_size_y(s) - 1)

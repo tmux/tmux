@@ -1070,7 +1070,7 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 	image_get_size(im, &source.width, &source.height);
 	image_get_canvas_size(im, &source.canvas_width,
 	    &source.canvas_height);
-	image_get_cell_size(im, &source.sx, &source.sy);
+	image_get_size_in_cells(im, &source.sx, &source.sy);
 	destination_width = (uint64_t)source.sx * xpixel;
 	destination_height = (uint64_t)source.sy * ypixel;
 	if (destination_width > UINT_MAX || destination_height > UINT_MAX)
@@ -1311,7 +1311,7 @@ sixel_render_image(struct image *im, u_int xpixel, u_int ypixel)
 	struct sixel_image	*original;
 	u_int			 sx, sy;
 
-	image_get_cell_size(im, &sx, &sy);
+	image_get_size_in_cells(im, &sx, &sy);
 	/* Preserve SIXEL's original palette and indexed pixels when possible. */
 	original = image_get_sixel(im);
 	if (original != NULL)
