@@ -4230,7 +4230,7 @@ u_short		 image_get_grid_id(u_int);
 u_int		 image_get_id_by_grid_id(u_short);
 void		 image_get_size(const struct image *, u_int *, u_int *);
 void		 image_get_canvas_size(const struct image *, u_int *, u_int *);
-void		 image_get_cell_size(const struct image *, u_int *, u_int *);
+void		 image_get_size_in_cells(const struct image *, u_int *, u_int *);
 const u_char	*image_get_pixels(const struct image *, size_t *, size_t *);
 void		 image_set_no_cursor(struct image *);
 struct sixel_image *image_get_sixel(const struct image *);
