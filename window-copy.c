@@ -4301,7 +4301,7 @@ window_copy_stringify(struct grid *gd, u_int py, u_int first, u_int last,
 		}
 		if (dlen == 1)
 			buf[bx++] = *d;
-		else {
+		else if (dlen != 0) {
 			memcpy(buf + bx, d, dlen);
 			bx += dlen;
 		}
