@@ -602,6 +602,7 @@ sixel_scale(struct sixel_image *si, u_int cell_w, u_int cell_h, u_int ox,
     u_int oy, u_int sx, u_int sy, int colours)
 {
 	struct sixel_image	*new;
+	uint64_t		 x0, x1, y0, y1;
 	u_int			 cx, cy, pox, poy, psx, psy, tsx, tsy, px, py;
 	u_int			 x, y, i;
 
@@ -625,10 +626,19 @@ sixel_scale(struct sixel_image *si, u_int cell_w, u_int cell_h, u_int ox,
 	if (cell_h == 0)
 		cell_h = si->cell_h;
 
-	pox = ox * si->cell_w;
-	poy = oy * si->cell_h;
-	psx = sx * si->cell_w;
-	psy = sy * si->cell_h;
+	/*
+	 * Map cell boundaries over the actual raster, not the rounded-up cell
+	 * canvas. Otherwise a raster shorter than its last cell row produces an
+	 * empty strip when it is scaled for output.
+	 */
+	x0 = (uint64_t)ox * si->sx / cx;
+	x1 = (uint64_t)(ox + sx) * si->sx / cx;
+	y0 = (uint64_t)oy * si->sy / cy;
+	y1 = (uint64_t)(oy + sy) * si->sy / cy;
+	pox = x0;
+	poy = y0;
+	psx = x1 - x0;
+	psy = y1 - y0;
 
 	tsx = sx * cell_w;
 	tsy = sy * cell_h;
