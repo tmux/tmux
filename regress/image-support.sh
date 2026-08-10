@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Grid-resident image markers: Kitty input, history, copy and overwrite.
+# Grid-resident image layers: Kitty input, history, copy and overwrite.
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -30,7 +30,7 @@ sleep 1
 $TMUX capture-pane -pS- >$TMP || exit 1
 grep '_G' $TMP >/dev/null && exit 1
 
-# Copy mode duplicates the backing grid, including image marker references.
+# Copy mode duplicates the backing grid, including image layers.
 $TMUX copy-mode || exit 1
 $TMUX send-keys -X history-top || exit 1
 $TMUX capture-pane -p >$TMP || exit 1
@@ -63,7 +63,7 @@ $TMUX new-window -d "
 sleep 1
 [ "$($TMUX display-message -pt:3 '#{cursor_y}')" = 1 ] || exit 1
 
-# SIXEL input reaches the same grid marker and copy-mode paths.
+# SIXEL input reaches the same grid layer and copy-mode paths.
 $TMUX new-window -d "cat '$FIXTURE'; sleep 10"
 sleep 1
 [ "$($TMUX display-message -pt:4 '#{cursor_y}')" -gt 0 ] || exit 1
@@ -145,7 +145,7 @@ $TMUX capture-pane -pS0 -E3 >$TMP || exit 1
 [ "$(sed -n 2p $TMP)" = "*" ] || exit 1
 [ "$(sed -n 3p $TMP)" = "@" ] || exit 1
 
-# Image marker rows remain cell-aligned when a narrower terminal causes text
+# Image rows remain cell-aligned when a narrower terminal causes text
 # reflow. The ten-column rows are clipped to five columns, not split into four
 # wrapped rows.
 $TMUX2 new-window -d "
@@ -225,7 +225,7 @@ $TMUX capture-pane -pS0 -E3 >$TMP || exit 1
 [ -z "$(sed -n 2p $TMP)" ] || exit 1
 [ "$(sed -n 4p $TMP)" = "     @@" ] || exit 1
 
-# Image markers retain the cells beneath them. Deleting a transparent image
+# Image layers retain the cells beneath them. Deleting a transparent image
 # must reveal the original text rather than replacing it with spaces.
 PLACEMENT_WINDOW=$($TMUX2 new-window -dP -F '#{window_id}' "
 	printf 'XY'
@@ -259,6 +259,44 @@ $TMUX capture-pane -pS0 -E1 >$TMP || exit 1
 [ "$(sed -n 1p $TMP)" = "test" ] || exit 1
 [ "$(sed -n 2p $TMP)" = "test" ] || exit 1
 
+# Kitty z-indexes and SIXEL's temporal plane are properties of the input, not
+# of the outer terminal. Exercise the logical scene through the fallback
+# backend: higher nonnegative z-indexes cover lower ones and text, ordinary
+# negative z-indexes cover backgrounds but not text, and very negative ones
+# remain below the background.
+Z_WINDOW=$($TMUX2 new-window -dP -F '#{window_id}' "
+	printf '\033_Ga=t,q=2,f=32,s=1,v=1,i=21;/wAA/w==\033\\'
+	printf '\033_Ga=t,q=2,f=32,s=1,v=1,i=22;/////w==\033\\'
+	printf 'X\r'
+	printf '\033_Ga=p,q=2,C=1,i=21,p=1,z=2,c=1,r=1\033\\'
+	printf '\033_Ga=p,q=2,C=1,i=22,p=2,z=1,c=1,r=1\033\\'
+	printf '\033[2;1H\033[41m \033[0m\r'
+	printf '\033_Ga=p,q=2,C=1,i=21,p=3,z=-1,c=1,r=1\033\\'
+	printf '\033[3;1HY\r'
+	printf '\033_Ga=p,q=2,C=1,i=21,p=4,z=-1,c=1,r=1\033\\'
+	printf '\033[4;1H\033[41m \033[0m\r'
+	printf '\033_Ga=p,q=2,C=1,i=21,p=5,z=-1073741825,c=1,r=1\033\\'
+	$TEST_TMUX wait-for image-z-top-$$
+	printf '\033_Ga=d,d=z,q=2,z=2\033\\'
+	$TEST_TMUX wait-for image-z-lower-$$
+	printf '\033_Ga=d,d=z,q=2,z=1\033\\'
+	sleep 10") || exit 1
+$TMUX2 select-window -t"$Z_WINDOW" || exit 1
+sleep 1
+$TMUX capture-pane -pS0 -E3 >$TMP || exit 1
+[ "$(sed -n 1p $TMP)" = "." ] || exit 1
+[ "$(sed -n 2p $TMP)" = "." ] || exit 1
+[ "$(sed -n 3p $TMP)" = "Y" ] || exit 1
+[ -z "$(sed -n 4p $TMP)" ] || exit 1
+$TMUX2 wait-for -S image-z-top-$$ || exit 1
+sleep 1
+$TMUX capture-pane -pS0 -E0 >$TMP || exit 1
+[ "$(sed -n 1p $TMP)" = "@" ] || exit 1
+$TMUX2 wait-for -S image-z-lower-$$ || exit 1
+sleep 1
+$TMUX capture-pane -pS0 -E0 >$TMP || exit 1
+[ "$(sed -n 1p $TMP)" = "X" ] || exit 1
+
 # A weighted median at the maximum channel level must still leave colours on
 # both sides of the split. This skewed black, grey and white image used to stop
 # palette generation after one colour instead of producing three.
@@ -276,5 +314,23 @@ $TMUX send-keys -l "$TMUX2 attach-session" || exit 1
 $TMUX send-keys Enter || exit 1
 sleep 1
 grep -a '#2;2;' $TMP >/dev/null || exit 1
+
+# A pane redraw on a SIXEL terminal must not clear the status line, which is
+# outside the window scene and may not be redrawn after the pane scrolls.
+$TMUX kill-server 2>/dev/null
+$TMUX2 kill-server 2>/dev/null
+$TMUX2 new-session -d -x 20 -y 8 || exit 1
+$TMUX2 set -g 'status-format[0]' 'STATUS' || exit 1
+$TMUX2 set -as terminal-features ',*:sixel' || exit 1
+$TMUX new-session -d -x 20 -y 8 || exit 1
+$TMUX set -g status off || exit 1
+$TMUX send-keys -l "$TMUX2 attach-session" || exit 1
+$TMUX send-keys Enter || exit 1
+sleep 1
+$TMUX2 send-keys -l 'seq 30' || exit 1
+$TMUX2 send-keys Enter || exit 1
+sleep 1
+$TMUX capture-pane -p >$TMP || exit 1
+[ "$(tail -n 1 $TMP)" = "STATUS" ] || exit 1
 
 exit 0

@@ -41,9 +41,6 @@
 /* Default grid cell data. */
 const struct grid_cell grid_default_cell = {
 	{ { ' ' }, 0, 1, 1 }, 0, 0, 8, 8, 8, 0
-#ifdef ENABLE_IMAGES
-	, 0, 0, 0
-#endif
 };
 
 /*
@@ -52,37 +49,15 @@ const struct grid_cell grid_default_cell = {
  */
 static const struct grid_cell grid_padding_cell = {
 	{ { '!' }, 0, 0, 0 }, 0, GRID_FLAG_PADDING, 8, 8, 8, 0
-#ifdef ENABLE_IMAGES
-	, 0, 0, 0
-#endif
 };
 
 /* Cleared grid cell data. */
 static const struct grid_cell grid_cleared_cell = {
 	{ { ' ' }, 0, 1, 1 }, 0, GRID_FLAG_CLEARED, 8, 8, 8, 0
-#ifdef ENABLE_IMAGES
-	, 0, 0, 0
-#endif
 };
 static const struct grid_cell_entry grid_cleared_entry = {
 	{ .data = { 0, 8, 8, ' ' } }, GRID_FLAG_CLEARED
 };
-
-#ifdef ENABLE_IMAGES
-/* Return the image referenced by a stored cell, or zero. */
-static u_int
-grid_entry_image(struct grid_line *gl, struct grid_cell_entry *gce)
-{
-	struct grid_extd_entry	*gee;
-
-	if (~gce->flags & GRID_FLAG_EXTENDED || gce->offset >= gl->extdsize)
-		return (0);
-	gee = &gl->extddata[gce->offset];
-	if (~gee->flags & GRID_FLAG_IMAGE)
-		return (0);
-	return (image_get_id_by_grid_id(gee->image_id));
-}
-#endif
 
 #ifdef __APPLE__
 void
@@ -111,6 +86,9 @@ grid_check_is_clear(struct grid *gd)
 		assert(gl->extdsize == 0);
 		assert(gl->flags == 0);
 		assert(gl->time == 0);
+#ifdef ENABLE_IMAGES
+		assert(gl->images == NULL);
+#endif
 	}
 }
 #else
@@ -159,10 +137,6 @@ grid_need_extended_cell(const struct grid_cell_entry *gce,
 		return (1);
 	if (gc->flags & GRID_FLAG_TAB)
 		return (1);
-#ifdef ENABLE_IMAGES
-	if (gc->flags & GRID_FLAG_IMAGE)
-		return (1);
-#endif
 	return (0);
 }
 
@@ -210,11 +184,6 @@ grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 	gee->bg = gc->bg;
 	gee->us = gc->us;
 	gee->link = gc->link;
-#ifdef ENABLE_IMAGES
-	gee->image_id = image_get_grid_id(gc->image_id);
-	gee->image_x = gc->image_x;
-	gee->image_y = gc->image_y;
-#endif
 	return (gee);
 }
 
@@ -302,12 +271,6 @@ grid_clear_cell(struct grid *gd, u_int px, u_int py, u_int bg, int moved)
 	struct grid_extd_entry	*gee;
 	u_int			 old_offset = gce->offset;
 	int			 had_extd = (gce->flags & GRID_FLAG_EXTENDED);
-#ifdef ENABLE_IMAGES
-	u_int			 image_id = grid_entry_image(gl, gce);
-
-	if (!moved && image_id != 0)
-		image_free(image_id);
-#endif
 
 	memcpy(gce, &grid_cleared_entry, sizeof *gce);
 	if (!moved && had_extd && old_offset < gl->extdsize) {
@@ -354,13 +317,6 @@ grid_cells_look_equal(const struct grid_cell *gc1, const struct grid_cell *gc2)
 		return (0);
 	if (gc1->link != gc2->link)
 		return (0);
-#ifdef ENABLE_IMAGES
-	if ((gc1->flags & GRID_FLAG_IMAGE) &&
-	    (gc1->image_id != gc2->image_id ||
-	    gc1->image_x != gc2->image_x ||
-	    gc1->image_y != gc2->image_y))
-		return (0);
-#endif
 	return (1);
 }
 
@@ -393,10 +349,6 @@ static void
 grid_free_line(struct grid *gd, u_int py)
 {
 	struct grid_line	*gl = &gd->linedata[py];
-#ifdef ENABLE_IMAGES
-	struct grid_cell_entry	*gce;
-	u_int			 image_id, px;
-#endif
 
 #ifdef __APPLE__
 	assert(gl->cellused <= gl->cellsize);
@@ -405,12 +357,7 @@ grid_free_line(struct grid *gd, u_int py)
 #endif
 
 #ifdef ENABLE_IMAGES
-	for (px = 0; px < gl->cellsize; px++) {
-		gce = &gl->celldata[px];
-		image_id = grid_entry_image(gl, gce);
-		if (image_id != 0)
-			image_free(image_id);
-	}
+	image_grid_free_line(gd, gl);
 #endif
 	free(gl->celldata);
 	free(gl->extddata);
@@ -456,6 +403,9 @@ void
 grid_destroy(struct grid *gd)
 {
 	grid_free_lines(gd, 0, gd->hsize + gd->sy);
+#ifdef ENABLE_IMAGES
+	image_grid_free(gd);
+#endif
 	free(gd->linedata);
 	free(gd);
 }
@@ -683,11 +633,6 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 			gc->bg = gee->bg;
 			gc->us = gee->us;
 			gc->link = gee->link;
-#ifdef ENABLE_IMAGES
-			gc->image_id = image_get_id_by_grid_id(gee->image_id);
-			gc->image_x = gee->image_x;
-			gc->image_y = gee->image_y;
-#endif
 
 			if (gc->flags & GRID_FLAG_TAB)
 				grid_set_tab(gc, gee->data);
@@ -708,11 +653,6 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 	gc->us = 8;
 	utf8_set(&gc->data, gce->data.data);
 	gc->link = 0;
-#ifdef ENABLE_IMAGES
-	gc->image_id = 0;
-	gc->image_x = 0;
-	gc->image_y = 0;
-#endif
 }
 
 /* Get cell for reading. */
@@ -732,9 +672,6 @@ grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 {
 	struct grid_line	*gl;
 	struct grid_cell_entry	*gce;
-#ifdef ENABLE_IMAGES
-	u_int			 old_id, new_id = 0;
-#endif
 
 	if (grid_check_y(gd, __func__, py) != 0)
 		return;
@@ -746,17 +683,6 @@ grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 		gl->cellused = px + 1;
 
 	gce = &gl->celldata[px];
-#ifdef ENABLE_IMAGES
-	old_id = grid_entry_image(gl, gce);
-	if (gc->flags & GRID_FLAG_IMAGE)
-		new_id = gc->image_id;
-	if (old_id != new_id) {
-		if (old_id != 0)
-			image_free(old_id);
-		if (new_id != 0)
-			image_ref(new_id);
-	}
-#endif
 	if (grid_need_extended_cell(gce, gc))
 		grid_extended_cell(gl, gce, gc);
 	else
@@ -782,10 +708,6 @@ grid_set_cells(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc,
 	struct grid_line	*gl;
 	struct grid_cell_entry	*gce;
 	struct grid_extd_entry	*gee;
-	const struct grid_cell	*new_gc;
-#ifdef ENABLE_IMAGES
-	struct grid_cell	 old_gc, image_gc;
-#endif
 	u_int			 i;
 
 	if (grid_check_y(gd, __func__, py) != 0)
@@ -799,39 +721,11 @@ grid_set_cells(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc,
 
 	for (i = 0; i < slen; i++) {
 		gce = &gl->celldata[px + i];
-		new_gc = gc;
-#ifdef ENABLE_IMAGES
-		{
-			u_int old_id = grid_entry_image(gl, gce);
-			u_int new_id;
-
-			if (old_id != 0 && (~gc->flags & GRID_FLAG_IMAGE)) {
-				grid_get_cell1(gl, px + i, &old_gc);
-				memcpy(&image_gc, gc, sizeof image_gc);
-				image_gc.flags |= GRID_FLAG_IMAGE|GRID_FLAG_IMAGE_DAMAGED;
-				image_gc.image_id = old_gc.image_id;
-				image_gc.image_x = old_gc.image_x;
-				image_gc.image_y = old_gc.image_y;
-				new_gc = &image_gc;
-			}
-			if (new_gc->flags & GRID_FLAG_IMAGE)
-				new_id = new_gc->image_id;
-			else
-				new_id = 0;
-
-			if (old_id != new_id) {
-				if (old_id != 0)
-					image_free(old_id);
-				if (new_id != 0)
-					image_ref(new_id);
-			}
-		}
-#endif
-		if (grid_need_extended_cell(gce, new_gc)) {
-			gee = grid_extended_cell(gl, gce, new_gc);
+		if (grid_need_extended_cell(gce, gc)) {
+			gee = grid_extended_cell(gl, gce, gc);
 			gee->data = utf8_build_one(s[i]);
 		} else
-			grid_store_cell(gce, new_gc, s[i]);
+			grid_store_cell(gce, gc, s[i]);
 	}
 }
 
@@ -844,6 +738,9 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny, u_int bg)
 
 	if (nx == 0 || ny == 0)
 		return;
+#ifdef ENABLE_IMAGES
+	image_grid_damage(gd, px, py, nx, ny);
+#endif
 
 	if (px == 0 && nx == gd->sx) {
 		grid_clear_lines(gd, py, ny, bg);
@@ -879,6 +776,10 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny, u_int bg)
 void
 grid_clear_lines(struct grid *gd, u_int py, u_int ny, u_int bg)
 {
+	struct grid_line	*gl;
+#ifdef ENABLE_IMAGES
+	struct image_line	*images;
+#endif
 	u_int	yy;
 
 	if (ny == 0)
@@ -890,8 +791,18 @@ grid_clear_lines(struct grid *gd, u_int py, u_int ny, u_int bg)
 		return;
 
 	for (yy = py; yy < py + ny; yy++) {
-		grid_free_line(gd, yy);
+		gl = &gd->linedata[yy];
+#ifdef ENABLE_IMAGES
+		image_grid_damage(gd, 0, yy, gd->sx, 1);
+		images = gl->images;
+#endif
+		free(gl->celldata);
+		free(gl->extddata);
+		memset(gl, 0, sizeof *gl);
 		grid_empty_line(gd, yy, bg);
+#ifdef ENABLE_IMAGES
+		gl->images = images;
+#endif
 	}
 	if (py != 0)
 		gd->linedata[py - 1].flags &= ~GRID_LINE_WRAPPED;
@@ -946,9 +857,6 @@ grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx,
 {
 	struct grid_line	*gl;
 	u_int			 xx;
-#ifdef ENABLE_IMAGES
-	u_int			 image_id;
-#endif
 
 	if (nx == 0 || px == dx)
 		return;
@@ -960,14 +868,7 @@ grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx,
 	grid_expand_line(gd, py, px + nx, 8);
 	grid_expand_line(gd, py, dx + nx, 8);
 #ifdef ENABLE_IMAGES
-	/* References in the source range are transferred, not duplicated. */
-	for (xx = dx; xx < dx + nx; xx++) {
-		if (xx >= px && xx < px + nx)
-			continue;
-		image_id = grid_entry_image(gl, &gl->celldata[xx]);
-		if (image_id != 0)
-			image_free(image_id);
-	}
+	image_grid_move_cells(gd, dx, px, py, nx);
 #endif
 	memmove(&gl->celldata[dx], &gl->celldata[px],
 	    nx * sizeof *gl->celldata);
@@ -1341,14 +1242,6 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 		grid_get_cell(gd, xx, py, &gc);
 		if (gc.flags & GRID_FLAG_PADDING)
 			continue;
-#ifdef ENABLE_IMAGES
-		if (gc.flags & GRID_FLAG_IMAGE) {
-			utf8_set(&gc.data, ' ');
-			gc.flags &= ~(GRID_FLAG_IMAGE|GRID_FLAG_IMAGE_DAMAGED);
-			gc.image_id = gc.image_x = gc.image_y = 0;
-		}
-#endif
-
 		if (lastgc != NULL && (flags & GRID_STRING_WITH_SEQUENCES)) {
 			grid_string_cells_code(*lastgc, &gc, code, sizeof code,
 			    flags, s, &has_link);
@@ -1416,13 +1309,17 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 	struct grid_line	*dstl, *srcl;
 	u_int			 yy;
 #ifdef ENABLE_IMAGES
-	u_int			 px, image_id;
+	u_int			 original_dy, original_sy;
 #endif
 
 	if (dy + ny > dst->hsize + dst->sy)
 		ny = dst->hsize + dst->sy - dy;
 	if (sy + ny > src->hsize + src->sy)
 		ny = src->hsize + src->sy - sy;
+#ifdef ENABLE_IMAGES
+	original_dy = dy;
+	original_sy = sy;
+#endif
 	grid_free_lines(dst, dy, ny);
 
 	for (yy = 0; yy < ny; yy++) {
@@ -1430,6 +1327,9 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 		dstl = &dst->linedata[dy];
 
 		memcpy(dstl, srcl, sizeof *dstl);
+#ifdef ENABLE_IMAGES
+		dstl->images = NULL;
+#endif
 		if (srcl->cellsize != 0) {
 			dstl->celldata = xreallocarray(NULL,
 			    srcl->cellsize, sizeof *dstl->celldata);
@@ -1446,16 +1346,12 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 		} else
 			dstl->extddata = NULL;
 
-#ifdef ENABLE_IMAGES
-		for (px = 0; px < dstl->cellsize; px++) {
-			image_id = grid_entry_image(dstl, &dstl->celldata[px]);
-			if (image_id != 0)
-				image_ref(image_id);
-		}
-#endif
 		sy++;
 		dy++;
 	}
+#ifdef ENABLE_IMAGES
+	image_grid_duplicate_lines(dst, original_dy, src, original_sy, ny);
+#endif
 }
 
 /* Mark line as dead. */
@@ -1473,14 +1369,14 @@ grid_reflow_has_image(struct grid_line *gl)
 	struct grid_cell	 gc;
 	u_int			 i;
 
+#ifdef ENABLE_IMAGES
+	if (image_grid_line_has_images(gl))
+		return (1);
+#endif
 	if (~gl->flags & GRID_LINE_EXTENDED)
 		return (0);
 	for (i = 0; i < gl->cellused; i++) {
 		grid_get_cell1(gl, i, &gc);
-#ifdef ENABLE_IMAGES
-		if (gc.flags & GRID_FLAG_IMAGE)
-			return (1);
-#endif
 		/* Kitty Unicode placeholder base character (U+10EEEE). */
 		if (gc.data.size >= 4 && gc.data.data[0] == 0xf4 &&
 		    gc.data.data[1] == 0x8e && gc.data.data[2] == 0xbb &&
@@ -1672,15 +1568,6 @@ grid_reflow_split(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 		}
 		width += gc.data.width;
 		grid_set_cell(target, xx, line, &gc);
-#ifdef ENABLE_IMAGES
-		/*
-		 * The tail of the original line is discarded below. Transfer
-		 * its image reference to the new cell rather than duplicating
-		 * it.
-		 */
-		if (gc.flags & GRID_FLAG_IMAGE)
-			image_free(gc.image_id);
-#endif
 		xx++;
 	}
 	if (flags & GRID_LINE_WRAPPED)
@@ -1727,7 +1614,7 @@ grid_reflow(struct grid *gd, u_int sx)
 		if (gl->flags & GRID_LINE_DEAD)
 			continue;
 
-		/* Keep image markers at their original cell coordinates. */
+		/* Keep image layers at their original cell coordinates. */
 		if (grid_reflow_has_image(gl)) {
 			grid_reflow_move(target, gl);
 			continue;

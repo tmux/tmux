@@ -82,6 +82,7 @@ struct kitty_state {
 	u_int	 rows;
 	u_int	 image_id;
 	u_int	 placement_id;
+	int32_t	 z;
 	u_int	 quiet;
 	int	 no_cursor;
 	int	 virtual;
@@ -95,6 +96,7 @@ struct kitty_state {
 struct kitty_placement {
 	u_int			 placement_id;
 	u_int			 server_id;
+	int32_t			 z;
 	struct kitty_placement	*next;
 };
 
@@ -256,7 +258,7 @@ kitty_images_collect(struct tty *tty)
 static void
 kitty_place(struct tty *tty, struct kitty_image_cache *cache,
     struct image *im, u_int source_x, u_int source_y, u_int width,
-    u_int height, u_int destination_x, u_int destination_y)
+    u_int height, u_int destination_x, u_int destination_y, int32_t z)
 {
 	char		 control[192];
 	u_int		 px, py, pwidth, pheight, sx, sy;
@@ -271,6 +273,9 @@ kitty_place(struct tty *tty, struct kitty_image_cache *cache,
 	    sx - px;
 	pheight = ((uint64_t)(source_y + height) * canvas_height + sy - 1) /
 	    sy - py;
+	/* Account for the duplicate-pixel border added by kitty_upload(). */
+	px++;
+	py++;
 	placement = xcalloc(1, sizeof *placement);
 	do {
 		placement->id = ++cache->next_placement;
@@ -283,9 +288,10 @@ kitty_place(struct tty *tty, struct kitty_image_cache *cache,
 	cache->placements = placement;
 	tty_cursor(tty, destination_x, destination_y);
 	xsnprintf(control, sizeof control,
-	    "\033_Ga=p,i=%u,p=%llu,x=%u,y=%u,w=%u,h=%u,c=%u,r=%u,C=1,"
-	    "q=2\033\\", cache->kitty_id, (unsigned long long)placement->id, px, py,
-	    pwidth, pheight, width, height);
+	    "\033_Ga=p,i=%u,p=%llu,x=%u,y=%u,w=%u,h=%u,c=%u,r=%u,z=%d,"
+	    "C=1,q=2\033\\", cache->kitty_id,
+	    (unsigned long long)placement->id, px, py, pwidth, pheight, width,
+	    height, z);
 	tty_puts(tty, control);
 }
 
@@ -303,6 +309,7 @@ kitty_upload(struct tty *tty, struct image *im)
 	size_t			 image_size;
 	int			 encodedlen;
 	u_int			 id, width, height, canvas_width, canvas_height;
+	u_int			 upload_width, upload_height;
 
 	for (cache = ko->images; cache != NULL; cache = cache->next) {
 		if (cache->server_id != image_get_id(im))
@@ -332,15 +339,36 @@ kitty_upload(struct tty *tty, struct image *im)
 	pixels = image_get_pixels(im, &stride, &image_size);
 	image_get_size(im, &width, &height);
 	image_get_canvas_size(im, &canvas_width, &canvas_height);
-	if ((uint64_t)canvas_width * canvas_height * 4 > IMAGE_SIZE_LIMIT)
+	if (canvas_width > UINT_MAX - 2 || canvas_height > UINT_MAX - 2)
 		return (NULL);
-	padded = xcalloc((size_t)canvas_width * canvas_height, 4);
+	upload_width = canvas_width + 2;
+	upload_height = canvas_height + 2;
+	if ((uint64_t)upload_width * upload_height * 4 > IMAGE_SIZE_LIMIT)
+		return (NULL);
+	/*
+	 * Pad the upload with duplicate edge pixels. Kitty linearly filters scaled
+	 * textures against transparent border pixels, which otherwise darkens the
+	 * outermost pixels of an opaque image.
+	 */
+	padded = xcalloc((size_t)upload_width * upload_height, 4);
 	for (row = 0; row < height; row++)
-		memcpy(padded + (size_t)row * canvas_width * 4,
+		memcpy(padded + ((size_t)(row + 1) * upload_width + 1) * 4,
 		    pixels + row * stride, (size_t)width * 4);
+	for (row = 1; row <= canvas_height; row++) {
+		memcpy(padded + (size_t)row * upload_width * 4,
+		    padded + ((size_t)row * upload_width + 1) * 4, 4);
+		memcpy(padded + ((size_t)row * upload_width + upload_width - 1) * 4,
+		    padded + ((size_t)row * upload_width + upload_width - 2) * 4,
+		    4);
+	}
+	memcpy(padded, padded + (size_t)upload_width * 4,
+	    (size_t)upload_width * 4);
+	memcpy(padded + (size_t)(upload_height - 1) * upload_width * 4,
+	    padded + (size_t)(upload_height - 2) * upload_width * 4,
+	    (size_t)upload_width * 4);
 	pixels = padded;
-	width = canvas_width;
-	height = canvas_height;
+	width = upload_width;
+	height = upload_height;
 	image_size = (size_t)width * height * 4;
 	stride = (size_t)width * 4;
 	for (offset = 0; offset < image_size; offset += size) {
@@ -387,6 +415,7 @@ kitty_draw_rect(struct tty *tty, const struct image_rect *rectangle,
 	struct image		*im;
 	u_int			 source_x, source_y;
 	u_int			 width, height, destination_x, destination_y;
+	int32_t			 z;
 
 	im = image_rect_get_image(rectangle);
 	kitty_images_collect(tty);
@@ -395,8 +424,9 @@ kitty_draw_rect(struct tty *tty, const struct image_rect *rectangle,
 		return;
 	image_rect_get_coords(rectangle, &source_x, &source_y, &width,
 	    &height, &destination_x, &destination_y);
+	z = image_rect_get_z(rectangle);
 	kitty_place(tty, cache, im, source_x, source_y, width, height,
-	    destination_x, destination_y);
+	    destination_x, destination_y, z);
 }
 
 /* Parse an unsigned Kitty graphics control value. */
@@ -412,6 +442,25 @@ kitty_number(const char *s, size_t len, u_int *value)
 	memcpy(copy, s, len);
 	copy[len] = '\0';
 	ll = strtonum(copy, 0, UINT_MAX, &errstr);
+	if (errstr != NULL)
+		return (-1);
+	*value = ll;
+	return (0);
+}
+
+/* Parse a signed Kitty graphics control value. */
+static int
+kitty_signed_number(const char *s, size_t len, int32_t *value)
+{
+	char		 copy[32];
+	const char	*errstr;
+	long long	 ll;
+
+	if (len == 0 || len >= sizeof copy)
+		return (-1);
+	memcpy(copy, s, len);
+	copy[len] = '\0';
+	ll = strtonum(copy, INT32_MIN, INT32_MAX, &errstr);
 	if (errstr != NULL)
 		return (-1);
 	*value = ll;
@@ -455,6 +504,11 @@ kitty_control(struct kitty_state *ks, const u_char *buf, size_t len)
 			break;
 		case 'o':
 			ks->compression = value[0];
+			break;
+		case 'z':
+			if (kitty_signed_number((const char *)value, valuelen,
+			    &ks->z) != 0)
+				return (-1);
 			break;
 		case 'f':
 		case 's':
@@ -534,6 +588,26 @@ kitty_placements_free_all(struct kitty_context *kc)
 		kitty_placements_free(source);
 }
 
+/* Remove all parser-side placements at a Kitty z-index. */
+static void
+kitty_placements_remove_z(struct kitty_context *kc, int32_t z)
+{
+	struct kitty_source	*source;
+	struct kitty_placement	**pp, *placement;
+
+	for (source = kc->sources; source != NULL; source = source->next) {
+		for (pp = &source->placements; (placement = *pp) != NULL; ) {
+			if (placement->z != z) {
+				pp = &placement->next;
+				continue;
+			}
+			*pp = placement->next;
+			image_free(placement->server_id);
+			free(placement);
+		}
+	}
+}
+
 /* Free Kitty graphics parser state. */
 void
 kitty_free_state(void *state)
@@ -600,7 +674,7 @@ kitty_source_set(struct kitty_context *kc, u_int id, struct image *im)
 /* Associate a placement ID with an image. */
 static u_int
 kitty_placement_set(struct kitty_context *kc, u_int image_id,
-    u_int placement_id, struct image *im)
+    u_int placement_id, int32_t z, struct image *im)
 {
 	struct kitty_source	*source;
 	struct kitty_placement	*placement;
@@ -623,6 +697,7 @@ kitty_placement_set(struct kitty_context *kc, u_int image_id,
 		source->placements = placement;
 	}
 	old_id = placement->server_id;
+	placement->z = z;
 	image_ref(image_get_id(im));
 	placement->server_id = image_get_id(im);
 	if (old_id != 0)
@@ -864,7 +939,7 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 struct image *
 kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
     u_int ypixel, u_int *image_id, u_int *replace_id, u_int *quiet,
-    char *action, int *status)
+    char *action, char *delete, u_int *placement_id, int32_t *z, int *status)
 {
 	struct kitty_context	*kc = *state;
 	struct kitty_state	*ks;
@@ -886,6 +961,9 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 	*replace_id = 0;
 	*quiet = 0;
 	*action = '\0';
+	*delete = '\0';
+	*placement_id = 0;
+	*z = 0;
 	*status = KITTY_PARSE_ERROR;
 	ks = kc->transfer;
 	semi = memchr(buf, ';', len);
@@ -902,6 +980,9 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 	*image_id = ks->image_id;
 	*quiet = ks->quiet;
 	*action = ks->action;
+	*delete = ks->delete;
+	*placement_id = ks->placement_id;
+	*z = ks->z;
 	if (kitty_control(ks, buf, controllen) != 0 ||
 	    ks->medium != 'd' ||
 	    (payloadlen != 0 &&
@@ -911,6 +992,9 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 	*image_id = ks->image_id;
 	*quiet = ks->quiet;
 	*action = ks->action;
+	*delete = ks->delete;
+	*placement_id = ks->placement_id;
+	*z = ks->z;
 	if (ks->more) {
 		kc->transfer = ks;
 		*status = KITTY_PARSE_MORE;
@@ -937,7 +1021,7 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 			image_free(image_get_id(source));
 			if (im != NULL) {
 				*replace_id = kitty_placement_set(kc, ks->image_id,
-				    ks->placement_id, im);
+				    ks->placement_id, ks->z, im);
 				*status = KITTY_PARSE_OK;
 			}
 		}
@@ -963,7 +1047,10 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 			}
 		} else if (ks->delete == 'I')
 			im = kitty_source_remove(kc, ks->image_id);
-		else
+		else if (ks->delete == 'z' || ks->delete == 'Z') {
+			kitty_placements_remove_z(kc, ks->z);
+			im = NULL;
+		} else
 			goto fail;
 		if ((ks->delete == 'i' || ks->delete == 'I') &&
 		    im == NULL)
@@ -1040,7 +1127,7 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 				*status = KITTY_PARSE_ERROR;
 			else if (ks->placement_id != 0)
 				(void)kitty_placement_set(kc, ks->image_id,
-				    ks->placement_id, im);
+				    ks->placement_id, ks->z, im);
 		} else if (ks->virtual) {
 			im = kitty_place_image(source, ks, xpixel, ypixel);
 			if (im == NULL)
@@ -1119,10 +1206,11 @@ kitty_placeholder_index(uint32_t value, u_int *index)
 	return (0);
 }
 
-/* Convert a Kitty Unicode placeholder cell into an image marker. */
+/* Resolve a Kitty Unicode placeholder to an image and source cell. */
 int
-kitty_placeholder_to_cell(void *state, struct grid_cell *gc,
-    const struct grid_cell *left)
+kitty_placeholder_to_image(void *state, struct grid *gd, struct grid_cell *gc,
+    u_int grid_x, u_int grid_y, struct image **image, u_int *source_x,
+    u_int *source_y, u_int *image_id, u_int *placement_id, int32_t *z)
 {
 	struct kitty_context	*kc = state;
 	struct kitty_source	*source;
@@ -1130,8 +1218,7 @@ kitty_placeholder_to_cell(void *state, struct grid_cell *gc,
 	uint32_t		 value;
 	size_t			 offset = 0;
 	u_int			 values[3], nvalues = 0, id, x, y, sx, sy;
-	struct utf8_data	 data;
-	int			 fg, bg, us;
+	u_int			 left_x, left_y;
 
 	if (kc == NULL ||
 	    !kitty_placeholder_character(gc->data.data, gc->data.size, &offset,
@@ -1166,29 +1253,33 @@ kitty_placeholder_to_cell(void *state, struct grid_cell *gc,
 
 	if (nvalues >= 1)
 		y = values[0];
-	else if (left != NULL && left->flags & GRID_FLAG_IMAGE &&
-	    left->image_id == image_get_id(im))
-		y = left->image_y;
-	else
-		return (0);
+	else {
+		if (grid_x == 0 || !image_grid_get_source(gd, grid_x - 1,
+		    gd->hsize + grid_y, im, &left_x, &left_y))
+			return (0);
+		y = left_y;
+	}
 	if (nvalues >= 2)
 		x = values[1];
-	else if (left != NULL && left->flags & GRID_FLAG_IMAGE &&
-	    left->image_id == image_get_id(im) && left->image_x != UINT_MAX)
-		x = left->image_x + 1;
-	else
-		return (0);
+	else {
+		if (grid_x == 0 || !image_grid_get_source(gd, grid_x - 1,
+		    gd->hsize + grid_y, im, &left_x, &left_y) ||
+		    left_x == UINT_MAX)
+			return (0);
+		x = left_x + 1;
+	}
 	if (x >= sx || y >= sy)
 		return (0);
 
-	utf8_copy(&data, &gc->data);
-	fg = gc->fg;
-	bg = gc->bg;
-	us = gc->us;
-	image_set_cell(gc, im, x, y);
-	utf8_copy(&gc->data, &data);
-	gc->fg = fg;
-	gc->bg = bg;
-	gc->us = us;
+	*image = im;
+	*source_x = x;
+	*source_y = y;
+	*image_id = id;
+	if (gc->us & COLOUR_FLAG_RGB)
+		*placement_id = gc->us & 0xffffff;
+	else
+		*placement_id = 0;
+	*z = 0;
+	utf8_set(&gc->data, ' ');
 	return (1);
 }

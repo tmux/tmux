@@ -2132,9 +2132,6 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
     const struct tty_style_ctx *style_ctx)
 {
 	const struct grid_cell	*gcp;
-#ifdef ENABLE_IMAGES
-	struct grid_cell	 image_gc;
-#endif
 
 	/* Skip last character if terminal is stupid. */
 	if ((tty->term->flags & TERM_NOAM) &&
@@ -2149,14 +2146,6 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 	/* Check if character is covered by overlay or floating pane. */
 	if (!tty_check_overlay(tty, tty->cx, tty->cy))
 		return;
-
-#ifdef ENABLE_IMAGES
-	if (gc->flags & GRID_FLAG_IMAGE) {
-		if (image_get_draw_cell(tty, gc, &image_gc, style_ctx))
-			return;
-		gc = &image_gc;
-	}
-#endif
 
 	/* Check the output codeset and apply attributes. */
 	gcp = tty_check_codeset(tty, gc);

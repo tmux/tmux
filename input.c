@@ -947,6 +947,7 @@ input_reset(struct input_ctx *ictx, int clear)
 			screen_write_start_pane(sctx, wp, &wp->base);
 		else
 			screen_write_start(sctx, &wp->base);
+		sctx->flags |= SCREEN_WRITE_INPUT;
 		screen_write_reset(sctx);
 		screen_write_stop(sctx);
 	}
@@ -1074,6 +1075,7 @@ input_parse_buffer(struct window_pane *wp, const u_char *buf, size_t len)
 		screen_write_start_pane(sctx, wp, &wp->base);
 	else
 		screen_write_start(sctx, &wp->base);
+	sctx->flags |= SCREEN_WRITE_INPUT;
 
 	log_debug("%s: %%%u %s, %zu bytes: %.*s", __func__, wp->id,
 	    ictx->state->name, len, (int)len, buf);
@@ -1093,6 +1095,7 @@ input_parse_screen(struct input_ctx *ictx, struct screen *s,
 		return;
 
 	screen_write_start_callback(sctx, s, cb, arg);
+	sctx->flags |= SCREEN_WRITE_INPUT;
 	input_parse(ictx, buf, len);
 	screen_write_stop(sctx);
 }
@@ -2809,7 +2812,9 @@ input_handle_kitty(struct input_ctx *ictx, const u_char *buf, size_t len)
 	struct window_pane	*wp = ictx->wp;
 	struct image		*im;
 	u_int			 image_id = 0, replace_id = 0, quiet = 0;
-	char			 action = '\0';
+	u_int			 placement_id = 0;
+	int32_t			 z = 0;
+	char			 action = '\0', delete = '\0';
 	int			 status;
 
 	if (wp == NULL)
@@ -2817,7 +2822,7 @@ input_handle_kitty(struct input_ctx *ictx, const u_char *buf, size_t len)
 	im = kitty_parse_image(&ictx->kitty_state, buf, len,
 		    wp->window->xpixel,
 		    wp->window->ypixel, &image_id, &replace_id, &quiet, &action,
-		    &status);
+		    &delete, &placement_id, &z, &status);
 	if (status == KITTY_PARSE_MORE)
 		return (1);
 	if (status != KITTY_PARSE_OK) {
@@ -2835,14 +2840,15 @@ input_handle_kitty(struct input_ctx *ictx, const u_char *buf, size_t len)
 		image_clear(sctx, replace_id);
 	if (im != NULL) {
 		if (action == 'd')
-			image_clear(sctx, image_get_id(im));
+			image_clear_kitty(sctx, delete, image_id, placement_id, z);
 		else
-			image_write(sctx, im, ictx->cell.cell.bg);
+			image_write_kitty(sctx, im, ictx->cell.cell.bg, image_id,
+			    placement_id, z);
 		image_free(image_get_id(im));
 		if (quiet == 0 && image_id != 0)
 			input_reply(ictx, 0, "\033_Gi=%u;OK\033\\", image_id);
-	} else if (action == 'd' && image_id == 0)
-		image_clear(sctx, 0);
+	} else if (action == 'd')
+		image_clear_kitty(sctx, delete, image_id, placement_id, z);
 	else if ((action == 't' || action == 'q' || action == 'u') && quiet == 0)
 		input_reply(ictx, 0, "\033_Gi=%u;OK\033\\", image_id);
 	return (1);
@@ -2927,9 +2933,10 @@ input_top_bit_set(struct input_ctx *ictx)
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct utf8_data	*ud = &ictx->utf8data;
 #ifdef ENABLE_IMAGES
-	struct grid_cell	 gc, left;
-	const struct grid_cell	*gcl;
-	u_int			 x;
+	struct grid_cell	 gc;
+	struct image		*im;
+	u_int			 x, source_x, source_y, image_id, placement_id;
+	int32_t			 z;
 #endif
 
 	ictx->flags &= ~INPUT_LAST;
@@ -2962,18 +2969,12 @@ input_top_bit_set(struct input_ctx *ictx)
 	if (sctx->s->cx != 0) {
 		x = sctx->s->cx - 1; /* cx-1 is the cell just written. */
 		grid_view_get_cell(sctx->s->grid, x, sctx->s->cy, &gc);
-		/* The preceding cell provides context for implicit coordinates. */
-		if (x == 0) {
-			gcl = NULL;
-		} else {
-			grid_view_get_cell(sctx->s->grid, x - 1, sctx->s->cy, &left);
-			gcl = &left;
-		}
-
-		/* Convert a recognized Kitty placeholder in gc to an image marker. */
-		if (kitty_placeholder_to_cell(ictx->kitty_state, &gc, gcl)) {
+		if (kitty_placeholder_to_image(ictx->kitty_state,
+		    sctx->s->grid, &gc, x, sctx->s->cy, &im, &source_x,
+		    &source_y, &image_id, &placement_id, &z)) {
 			grid_view_set_cell(sctx->s->grid, x, sctx->s->cy, &gc);
-			image_redraw_area(sctx, x, sctx->s->cy, 1, 1);
+			image_place_cell_kitty(sctx, im, x, sctx->s->cy, source_x,
+			    source_y, image_id, placement_id, z);
 		}
 	}
 #endif

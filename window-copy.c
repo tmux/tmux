@@ -5408,6 +5408,14 @@ window_copy_write_line(struct window_mode_entry *wme,
 	window_copy_write_one(wme, ctx, width, py, hsize - data->oy + py,
 	    content_sx, &mgc, &cgc, &mkgc, &clgc);
 
+#ifdef ENABLE_IMAGES
+	/* Copy the backing line's image layers separately from its text cells. */
+	image_grid_free_line(s->grid,
+	    &s->grid->linedata[s->grid->hsize + py]);
+	image_grid_copy_area(s->grid, width, s->grid->hsize + py,
+	    data->backing->grid, 0, hsize - data->oy + py, content_sx, 1);
+#endif
+
 	if (py == 0 && s->rupper < s->rlower && !data->hide_position) {
 		value = options_get_string(oo, "copy-mode-position-format");
 		if (*value != '\0') {
@@ -6188,9 +6196,7 @@ window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
 			grid_get_cell(gd, i, sy, &gc);
 			if (gc.flags & GRID_FLAG_PADDING)
 				continue;
-			if (gc.flags & GRID_FLAG_IMAGE)
-				utf8_set(&ud, ' ');
-			else if (gc.flags & GRID_FLAG_TAB)
+			if (gc.flags & GRID_FLAG_TAB)
 				utf8_set(&ud, '\t');
 			else
 				utf8_copy(&ud, &gc.data);
