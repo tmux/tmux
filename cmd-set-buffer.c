@@ -61,6 +61,7 @@ cmd_set_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	char			*bufname = NULL, *bufdata = NULL, *cause = NULL;
 	const char		*olddata;
 	size_t			 bufsize = 0, newsize;
+	const char		*clip;
 
 	if (args_get(args, 'b') != NULL) {
 		bufname = xstrdup(args_get(args, 'b'));
@@ -124,8 +125,10 @@ cmd_set_buffer_exec(struct cmd *self, struct cmdq_item *item)
 		cmdq_error(item, "%s", cause);
 		goto fail;
 	}
-	if (args_has(args, 'w') && tc != NULL)
- 		tty_set_selection(&tc->tty, "", bufdata, bufsize);
+	if (args_has(args, 'w') && tc != NULL) {
+		clip = window_copy_clipboard_target();
+		tty_set_selection(&tc->tty, clip, bufdata, bufsize);
+	}
 
 	return (CMD_RETURN_NORMAL);
 

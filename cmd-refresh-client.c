@@ -182,6 +182,7 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*errstr;
 	u_int			 adjust;
 	struct args_value	*av;
+	const char			*clip;
 
 	if (args_has(args, 'c') ||
 	    args_has(args, 'L') ||
@@ -235,7 +236,8 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(args, 'l')) {
-		tty_clipboard_query(&tc->tty);
+		clip = window_copy_clipboard_target();
+		tty_clipboard_query(&tc->tty, clip);
 		return (CMD_RETURN_NORMAL);
 	}
 

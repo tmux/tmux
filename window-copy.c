@@ -6035,6 +6035,7 @@ window_copy_copy_buffer(struct window_mode_entry *wme, const char *prefix,
 	struct window_pane	*wp = wme->wp;
 	struct screen_write_ctx	 ctx;
 	int			 redraw = 0;
+	const char *clip;
 
 	if (set_clip &&
 	    options_get_number(global_options, "set-clipboard") != 0) {
@@ -6045,7 +6046,8 @@ window_copy_copy_buffer(struct window_mode_entry *wme, const char *prefix,
 			wp->flags &= ~PANE_REDRAW;
 		}
 		screen_write_start_pane(&ctx, wp, NULL);
-		screen_write_setselection(&ctx, "", buf, len);
+		clip = window_copy_clipboard_target();
+		screen_write_setselection(&ctx, clip, buf, len);
 		screen_write_stop(&ctx);
 		wp->flags |= redraw;
 		events_fire_pane("pane-set-clipboard", wp);
@@ -6124,6 +6126,7 @@ window_copy_append_selection(struct window_mode_entry *wme)
 	const char			*bufdata;
 	size_t				 len, bufsize;
 	struct screen_write_ctx		 ctx;
+	const char			*clip;
 
 	buf = window_copy_get_selection(wme, &len);
 	if (buf == NULL)
@@ -6131,7 +6134,8 @@ window_copy_append_selection(struct window_mode_entry *wme)
 
 	if (options_get_number(global_options, "set-clipboard") != 0) {
 		screen_write_start_pane(&ctx, wp, NULL);
-		screen_write_setselection(&ctx, "", buf, len);
+		clip = window_copy_clipboard_target();
+		screen_write_setselection(&ctx, clip, buf, len);
 		screen_write_stop(&ctx);
 		events_fire_pane("pane-set-clipboard", wp);
 	}
@@ -7233,4 +7237,17 @@ window_copy_acquire_cursor_down(struct window_mode_entry *wme, u_int hsize,
 		window_copy_update_cursor(wme, px, cy);
 	if (window_copy_update_selection(wme, 1, no_reset))
 		window_copy_redraw_lines(wme, oldy, nd);
+}
+
+const char *
+window_copy_clipboard_target(void)
+{
+	int target = options_get_number(global_options, "clipboard-target");
+	switch (target) {
+		case 0: return "";   /* let the terminal choose */
+		case 1: return "c";  /* clipboard */
+		case 2: return "p";  /* primary */
+		case 3: return "s";  /* selection */
+		default: return "";
+	}
 }

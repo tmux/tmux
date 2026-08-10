@@ -3184,12 +3184,12 @@ tty_clipboard_query_callback(__unused int fd, __unused short events, void *data)
 }
 
 void
-tty_clipboard_query(struct tty *tty)
+tty_clipboard_query(struct tty *tty, const char* clip)
 {
 	struct timeval	 tv = { .tv_sec = TTY_QUERY_TIMEOUT };
 
 	if ((tty->flags & TTY_STARTED) && (~tty->flags & TTY_OSC52QUERY)) {
-		tty_putcode_ss(tty, TTYC_MS, "", "?");
+		tty_putcode_ss(tty, TTYC_MS, clip, "?");
 		tty->flags |= TTY_OSC52QUERY;
 		evtimer_add(&tty->clipboard_timer, &tv);
 	}

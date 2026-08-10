@@ -61,6 +61,7 @@ cmd_load_buffer_done(__unused struct client *c, const char *path, int error,
 	size_t				 bsize = EVBUFFER_LENGTH(buffer);
 	void				*copy;
 	char				*cause;
+	const char			*clip;
 
 	if (!closed)
 		return;
@@ -76,8 +77,10 @@ cmd_load_buffer_done(__unused struct client *c, const char *path, int error,
 			free(copy);
 		} else if (tc != NULL &&
 		    tc->session != NULL &&
-		    (~tc->flags & CLIENT_DEAD))
-			tty_set_selection(&tc->tty, "", copy, bsize);
+		    (~tc->flags & CLIENT_DEAD)) {
+			clip = window_copy_clipboard_target();
+			tty_set_selection(&tc->tty, clip, copy, bsize);
+		}
 		if (tc != NULL)
 			server_client_unref(tc);
 	}

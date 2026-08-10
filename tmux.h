@@ -2926,7 +2926,7 @@ void	tty_margin_off(struct tty *);
 void	tty_cursor(struct tty *, u_int, u_int);
 int	tty_fake_bce(const struct tty *, const struct grid_cell *, u_int);
 void	tty_repeat_space(struct tty *, u_int);
-void	tty_clipboard_query(struct tty *);
+void	tty_clipboard_query(struct tty *, const char*);
 void	tty_putcode(struct tty *, enum tty_code_code);
 void	tty_putcode_i(struct tty *, enum tty_code_code, int);
 void	tty_putcode_ii(struct tty *, enum tty_code_code, int, int);
@@ -4000,6 +4000,7 @@ int		 window_copy_get_current_offset(struct window_pane *, u_int *,
 		     u_int *);
 char		*window_copy_get_hyperlink(struct window_pane *, u_int, u_int);
 void		 window_copy_set_line_numbers(struct window_pane *, int);
+const char	*window_copy_clipboard_target(void);
 
 /* window-customize.c */
 extern const struct window_mode window_customize_mode;

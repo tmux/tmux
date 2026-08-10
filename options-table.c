@@ -114,6 +114,9 @@ static const char *options_table_theme_list[] = {
 static const char *options_table_copy_mode_line_numbers_list[] = {
 	"off", "default", "absolute", "relative", "hybrid", NULL
 };
+static const char *options_table_clipboard_target_list[] = {
+	"default", "clipboard", "primary", "selection", NULL,
+};
 
 /* Status line format. */
 #define OPTIONS_TABLE_STATUS_FORMAT1 \
@@ -303,6 +306,16 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 50,
 	  .text = "The maximum number of automatic buffers. "
 		  "When this is reached, the oldest buffer is deleted."
+	},
+
+	{ .name = "clipboard-target",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .choices = options_table_clipboard_target_list,
+	  .default_num = 0,
+	  .text = "Choose which buffer to read selection from/write "
+	          "selection to. default delegates the decision to the "
+	          "terminal."
 	},
 
 	{ .name = "command-alias",

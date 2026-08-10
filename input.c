@@ -3587,6 +3587,7 @@ input_add_request(struct input_ctx *ictx, enum input_request_type type, int idx)
 	struct client		*c = NULL, *loop;
 	struct input_request	*ir;
 	char			 s[64];
+	const char		*clip;
 
 	if (wp == NULL)
 		return (-1);
@@ -3619,7 +3620,8 @@ input_add_request(struct input_ctx *ictx, enum input_request_type type, int idx)
 		tty_puts(&c->tty, s);
 		break;
 	case INPUT_REQUEST_CLIPBOARD:
-		tty_putcode_ss(&c->tty, TTYC_MS, "", "?");
+		clip = window_copy_clipboard_target();
+		tty_putcode_ss(&c->tty, TTYC_MS, clip, "?");
 		break;
 	case INPUT_REQUEST_QUEUE:
 		break;
