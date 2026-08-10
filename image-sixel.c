@@ -603,6 +603,7 @@ sixel_scale(struct sixel_image *si, u_int cell_w, u_int cell_h, u_int ox,
 {
 	struct sixel_image	*new;
 	u_int			 cx, cy, pox, poy, psx, psy, tsx, tsy, px, py;
+	uint64_t	 x0, x1, y0, y1;
 	u_int			 x, y, i;
 
 	/*
@@ -625,10 +626,19 @@ sixel_scale(struct sixel_image *si, u_int cell_w, u_int cell_h, u_int ox,
 	if (cell_h == 0)
 		cell_h = si->cell_h;
 
-	pox = ox * si->cell_w;
-	poy = oy * si->cell_h;
-	psx = sx * si->cell_w;
-	psy = sy * si->cell_h;
+	/*
+	 * Map cell boundaries over the actual raster, not the rounded-up cell
+	 * canvas. Otherwise a raster shorter than its last cell row produces an
+	 * empty strip when it is scaled for output.
+	 */
+	x0 = (uint64_t)ox * si->sx / cx;
+	x1 = (uint64_t)(ox + sx) * si->sx / cx;
+	y0 = (uint64_t)oy * si->sy / cy;
+	y1 = (uint64_t)(oy + sy) * si->sy / cy;
+	pox = x0;
+	poy = y0;
+	psx = x1 - x0;
+	psy = y1 - y0;
 
 	tsx = sx * cell_w;
 	tsy = sy * cell_h;
@@ -1443,6 +1453,21 @@ sixel_draw_rect(struct tty *tty, const struct image_rect *rectangle,
 	/* SIXEL moves the cursor, but does not change terminal attributes. */
 	tty->cx = tty->cy = UINT_MAX;
 	free(data);
+}
+
+/* Remove old SIXEL pixels before replaying a dirty image area. */
+void
+sixel_redraw_start(struct tty *tty, u_int x, u_int y, u_int sx, u_int sy)
+{
+	u_int	yy;
+
+	for (yy = y; yy < y + sy; yy++) {
+		tty_cursor(tty, x, yy);
+		if (tty_term_has(tty->term, TTYC_ECH))
+			tty_putcode_i(tty, TTYC_ECH, sx);
+		else
+			tty_repeat_space(tty, sx);
+	}
 }
 
 /* Convert a SIXEL image to a fallback screen. */

@@ -79,8 +79,8 @@ struct session;
 struct image;
 struct image_backend;
 struct image_rect;
-#endif
-#ifdef ENABLE_IMAGES
+struct image_line;
+struct image_store;
 struct sixel_image;
 #endif
 
@@ -808,8 +808,6 @@ struct colour_palette {
 #define GRID_FLAG_NOPALETTE 0x20
 #define GRID_FLAG_CLEARED 0x40
 #define GRID_FLAG_TAB 0x80
-#define GRID_FLAG_IMAGE 0x100
-#define GRID_FLAG_IMAGE_DAMAGED 0x200
 
 /* Grid line flags. */
 #define GRID_LINE_WRAPPED 0x1
@@ -870,11 +868,6 @@ struct grid_cell {
 	int			bg;
 	int			us;
 	u_int			link;
-#ifdef ENABLE_IMAGES
-	u_int			image_id;
-	u_int			image_x;
-	u_int			image_y;
-#endif
 };
 
 /* Grid extended cell entry. */
@@ -886,11 +879,6 @@ struct grid_extd_entry {
 	int			bg;
 	int			us;
 	u_int			link;
-#ifdef ENABLE_IMAGES
-	u_short			image_id;
-	u_short			image_x;
-	u_short			image_y;
-#endif
 } __packed;
 
 /* Grid cell entry. */
@@ -928,6 +916,9 @@ struct grid_line {
 	u_int			 time;
 	struct osc133_data	 osc133_data;
 	u_short			 flags;
+#ifdef ENABLE_IMAGES
+	struct image_line	*images;
+#endif
 };
 
 /* Entire grid of cells. */
@@ -947,6 +938,9 @@ struct grid {
 	u_int			 scroll_generation;
 
 	struct grid_line	*linedata;
+#ifdef ENABLE_IMAGES
+	struct image_store	*images;
+#endif
 };
 
 /* Virtual cursor in a grid. */
@@ -1115,6 +1109,7 @@ struct screen_write_ctx {
 #define SCREEN_WRITE_SYNC 0x1
 #define SCREEN_WRITE_OBSCURED 0x2
 #define SCREEN_WRITE_CHECKED_IF_OBSCURED 0x4
+#define SCREEN_WRITE_INPUT 0x8
 
 	screen_write_init_ctx_cb	 init_ctx_cb;
 	void				*arg;
@@ -4218,7 +4213,6 @@ char		*regsub(const char *, const char *, const char *, int);
 /* image.c */
 #define IMAGE_BACKEND_GRAPHICAL 0x1
 #define IMAGE_BACKEND_SCROLLS   0x2
-#define IMAGE_BACKEND_TEMPORAL  0x4
 
 struct image	*image_create(u_int, u_int, u_int, u_int, u_int, u_int,
 		     u_char *);
@@ -4226,8 +4220,6 @@ struct image	*image_create_view(struct image *, u_int, u_int, u_int,
 		     u_int, u_int, u_int, u_int, u_int);
 struct image	*image_find(u_int);
 u_int		 image_get_id(const struct image *);
-u_short		 image_get_grid_id(u_int);
-u_int		 image_get_id_by_grid_id(u_short);
 void		 image_get_size(const struct image *, u_int *, u_int *);
 void		 image_get_canvas_size(const struct image *, u_int *, u_int *);
 void		 image_get_size_in_cells(const struct image *, u_int *, u_int *);
@@ -4237,9 +4229,10 @@ struct sixel_image *image_get_sixel(const struct image *);
 void		 image_set_sixel(struct image *, struct sixel_image *);
 void		 image_ref(u_int);
 void		 image_free(u_int);
-void		 image_set_cell(struct grid_cell *, struct image *, u_int,
+void		 image_write_sixel(struct screen_write_ctx *, struct image *,
 		     u_int);
-void		 image_write(struct screen_write_ctx *, struct image *, u_int);
+void		 image_write_kitty(struct screen_write_ctx *, struct image *,
+		     u_int, u_int, u_int, int32_t);
 void		 image_get_pixel_rect(const struct image *, u_int, u_int,
 		     u_int, u_int, u_int *, u_int *, u_int *, u_int *);
 void		 image_size_in_cells(u_int, u_int, u_int, u_int, u_int *,
@@ -4253,8 +4246,6 @@ void		 image_redraw_all(struct screen_write_ctx *);
 void		 image_redraw_scroll(struct screen_write_ctx *, u_int);
 void		 image_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
 int		 image_backend_flags(struct tty *);
-int		 image_get_draw_cell(struct tty *, const struct grid_cell *,
-		     struct grid_cell *, const struct tty_style_ctx *);
 void		 image_tty_update(struct tty *);
 void		 image_tty_geometry_changed(struct tty *);
 void		 image_tty_free(struct tty *, int);
@@ -4263,20 +4254,44 @@ void		 image_draw_line(struct tty *, struct screen *, u_int, u_int,
 void		 image_get_fallback_cell(struct tty *, struct image *, u_int,
 		     u_int, const struct grid_cell *, struct grid_cell *,
 		     const struct tty_style_ctx *);
+int		 image_get_fallback_at(struct tty *, struct screen *, u_int,
+		     u_int, const struct grid_cell *, struct grid_cell *,
+		     const struct tty_style_ctx *);
 struct image	*image_rect_get_image(const struct image_rect *);
 const struct grid_cell *image_rect_get_cell(
 			     const struct image_rect *);
 void		 image_rect_get_coords(const struct image_rect *,
 		     u_int *, u_int *, u_int *, u_int *, u_int *, u_int *);
+int32_t		 image_rect_get_z(const struct image_rect *);
 void		 image_clear(struct screen_write_ctx *, u_int);
+void		 image_clear_kitty(struct screen_write_ctx *, char, u_int,
+		     u_int, int32_t);
+void		 image_grid_damage(struct grid *, u_int, u_int, u_int, u_int);
+void		 image_grid_free_line(struct grid *, struct grid_line *);
+void		 image_grid_free(struct grid *);
+void		 image_grid_move_cells(struct grid *, u_int, u_int, u_int,
+		     u_int);
+void		 image_grid_duplicate_lines(struct grid *, u_int, struct grid *,
+		     u_int, u_int);
+void		 image_grid_copy_area(struct grid *, u_int, u_int, struct grid *,
+		     u_int, u_int, u_int, u_int);
+int		 image_grid_line_has_images(const struct grid_line *);
+int		 image_grid_check_area(struct grid *, u_int, u_int, u_int,
+		     u_int);
+int		 image_grid_get_source(struct grid *, u_int, u_int,
+		     struct image *, u_int *, u_int *);
+void		 image_place_cell_kitty(struct screen_write_ctx *, struct image *,
+		     u_int, u_int, u_int, u_int, u_int, u_int, int32_t);
 #define KITTY_PARSE_ERROR -1
 #define KITTY_PARSE_OK 0
 #define KITTY_PARSE_MORE 1
 #define KITTY_PARSE_MISSING 2
 struct image	*kitty_parse_image(void **, const u_char *, size_t, u_int,
-		     u_int, u_int *, u_int *, u_int *, char *, int *);
-int		 kitty_placeholder_to_cell(void *, struct grid_cell *,
-		     const struct grid_cell *);
+		     u_int, u_int *, u_int *, u_int *, char *, char *, u_int *,
+		     int32_t *, int *);
+int		 kitty_placeholder_to_image(void *, struct grid *,
+		     struct grid_cell *, u_int, u_int, struct image **, u_int *,
+		     u_int *, u_int *, u_int *, int32_t *);
 void		 kitty_free_state(void *);
 void		 kitty_draw_rect(struct tty *,
 			     const struct image_rect *, const struct tty_style_ctx *);
@@ -4289,7 +4304,8 @@ void		 kitty_geometry_changed(struct tty *);
 /* image-sixel.c */
 #define SIXEL_COLOUR_REGISTERS 1024
 void		 sixel_draw_rect(struct tty *,
-			     const struct image_rect *, const struct tty_style_ctx *);
+		     const struct image_rect *, const struct tty_style_ctx *);
+void		 sixel_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
 void		 sixel_free_output(struct tty *, int);
 void		 sixel_geometry_changed(struct tty *);
 struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int,

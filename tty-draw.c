@@ -125,6 +125,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	struct grid_cell	 gc, ngc, last;
 #ifdef ENABLE_IMAGES
 	struct grid_cell	 image_gc;
+	int			 image_status;
 #endif
 	struct grid_line	*gl;
 	u_int			 i, j, last_i, cx, ex, width;
@@ -250,21 +251,26 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 
 			if (px >= ex || i >= ex - px) {
 				/* Outside the area being drawn. */
-				empty = nx - i;
 				gcp = &grid_default_cell;
+#ifdef ENABLE_IMAGES
+				image_status = image_get_fallback_at(tty, s, px + i,
+				    py, gcp, &image_gc, style_ctx);
+				if (image_status == 1) {
+					gcp = &image_gc;
+					empty = 0;
+				} else if (image_status == -1)
+					empty = 1;
+				else
+#endif
+					empty = nx - i;
 			} else {
 				/* Get the current cell. */
 				grid_view_get_cell(gd, px + i, py, &gc);
-
-#ifdef ENABLE_IMAGES
-				if (gc.flags & GRID_FLAG_IMAGE) {
-					(void)image_get_draw_cell(tty, &gc, &image_gc,
-					    style_ctx);
-					gcp = &image_gc;
-				} else
-					gcp = &gc;
-#else
 				gcp = &gc;
+#ifdef ENABLE_IMAGES
+				if (image_get_fallback_at(tty, s, px + i, py, &gc,
+				    &image_gc, style_ctx) == 1)
+					gcp = &image_gc;
 #endif
 
 				/* Work out empty cells. */

@@ -1821,8 +1821,12 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	}
 	tty_sync_start(tty);
 #ifdef ENABLE_IMAGES
-	if (wp == NULL && (flags & REDRAW_PANE))
-		image_redraw_start(tty, 0, 0, tty->sx, tty->sy);
+	if (wp == NULL && (flags & REDRAW_PANE)) {
+		y = 0;
+		if (dctx.flags & REDRAW_STATUS_TOP)
+			y = dctx.status_lines;
+		image_redraw_start(tty, 0, y, scene->sx, scene->sy);
+	}
 #endif
 	tty_update_mode(tty, tty->mode & ~CURSOR_MODES, NULL);
 

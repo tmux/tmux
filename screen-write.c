@@ -34,6 +34,10 @@ static void	screen_write_collect_clear(struct screen_write_ctx *, u_int,
 static void	screen_write_collect_scroll(struct screen_write_ctx *, u_int);
 static void	screen_write_collect_flush(struct screen_write_ctx *, int,
 		    const char *);
+#ifdef ENABLE_IMAGES
+static void	screen_write_image_damage(struct screen_write_ctx *, u_int,
+		    u_int, u_int, u_int);
+#endif
 static int	screen_write_overwrite(struct screen_write_ctx *,
 		    struct grid_cell *, u_int);
 static int	screen_write_combine(struct screen_write_ctx *,
@@ -360,6 +364,19 @@ screen_write_init(struct screen_write_ctx *ctx, struct screen *s)
 	ctx->scrolled = 0;
 	ctx->bg = 8;
 }
+
+#ifdef ENABLE_IMAGES
+/* Damage temporal images when application input writes text cells. */
+static void
+screen_write_image_damage(struct screen_write_ctx *ctx, u_int x, u_int y,
+    u_int sx, u_int sy)
+{
+	image_redraw_area(ctx, x, y, sx, sy);
+	if (ctx->flags & SCREEN_WRITE_INPUT)
+		image_grid_damage(ctx->s->grid, x, ctx->s->grid->hsize + y,
+		    sx, sy);
+}
+#endif
 
 /* Initialize writing with a pane. */
 void
@@ -1310,6 +1327,9 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 
 #ifdef ENABLE_IMAGES
 	image_redraw_all(ctx);
+	if (ctx->flags & SCREEN_WRITE_INPUT)
+		image_grid_damage(s->grid, 0, s->grid->hsize,
+		    screen_size_x(s), screen_size_y(s));
 #endif
 
 	for (yy = 0; yy < screen_size_y(s); yy++) {
@@ -2551,7 +2571,7 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 	}
 
 #ifdef ENABLE_IMAGES
-	image_redraw_area(ctx, s->cx, s->cy, ci->used, 1);
+	screen_write_image_damage(ctx, s->cx, s->cy, ci->used, 1);
 #endif
 
 	grid_view_set_cells(s->grid, s->cx, s->cy, &ci->gc, cl->data + ci->x,
@@ -2637,9 +2657,6 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct grid_line	*gl;
 	struct grid_cell_entry	*gce;
 	struct grid_cell	 tmp_gc, now_gc;
-#ifdef ENABLE_IMAGES
-	struct grid_cell	 image_gc;
-#endif
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
 	u_int			 width = ud->width, xx, not_wrap, i, n, vis;
@@ -2685,18 +2702,8 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	screen_write_initctx(ctx, &ttyctx, 0, 0);
 
 #ifdef ENABLE_IMAGES
-	/* Update the text underlay without removing an image placement. */
-	grid_view_get_cell(gd, s->cx, s->cy, &now_gc);
-	if ((now_gc.flags & GRID_FLAG_IMAGE) &&
-	    (~gc->flags & GRID_FLAG_IMAGE)) {
-		image_redraw_area(ctx, s->cx, s->cy, width, 1);
-		memcpy(&image_gc, gc, sizeof image_gc);
-		image_gc.flags |= GRID_FLAG_IMAGE|GRID_FLAG_IMAGE_DAMAGED;
-		image_gc.image_id = now_gc.image_id;
-		image_gc.image_x = now_gc.image_x;
-		image_gc.image_y = now_gc.image_y;
-		gc = &image_gc;
-	}
+	/* Input semantics decide which image layers this text damages. */
+	screen_write_image_damage(ctx, s->cx, s->cy, width, 1);
 #endif
 
 	/* Handle overwriting of UTF-8 characters. */
@@ -2925,6 +2932,9 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		force_wide = 0;
 
 	/* Set the new cell. */
+#ifdef ENABLE_IMAGES
+	screen_write_image_damage(ctx, cx - n, cy, n, 1);
+#endif
 	grid_view_set_cell(gd, cx - n, cy, &last);
 	if (force_wide)
 		grid_view_set_padding(gd, cx - 1, cy, last.bg);
@@ -3071,7 +3081,7 @@ screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
 		sixel_free(si);
 		return;
 	}
-	image_write(ctx, im, bg);
+	image_write_sixel(ctx, im, bg);
 	image_free(image_get_id(im));
 }
 #endif
