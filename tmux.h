@@ -4217,7 +4217,7 @@ char		*regsub(const char *, const char *, const char *, int);
 struct image	*image_create(u_int, u_int, u_int, u_int, u_int, u_int,
 		     u_char *);
 struct image	*image_create_view(struct image *, u_int, u_int, u_int,
-		     u_int, u_int, u_int, u_int, u_int);
+		     u_int, u_int, u_int, u_int, u_int, u_int, u_int);
 struct image	*image_find(u_int);
 u_int		 image_get_id(const struct image *);
 void		 image_get_size(const struct image *, u_int *, u_int *);

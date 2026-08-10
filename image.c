@@ -971,13 +971,15 @@ image_create(u_int width, u_int height, u_int canvas_width,
 	return (im);
 }
 
-/* Create an immutable rectangular view without copying its source pixels. */
-/* Create a cell-aligned view of an existing image. */
+/* Create a cell-aligned view of an existing image with an optional offset. */
 struct image *
 image_create_view(struct image *source, u_int x, u_int y, u_int width,
-    u_int height, u_int canvas_width, u_int canvas_height, u_int sx, u_int sy)
+    u_int height, u_int canvas_width, u_int canvas_height, u_int sx, u_int sy,
+    u_int x_offset, u_int y_offset)
 {
 	struct image	*im;
+	u_char		*pixels;
+	u_int		padded_width, padded_height, yy;
 
 	if (source == NULL || x >= source->width || y >= source->height ||
 	    width == 0 || width > source->width - x || height == 0 ||
@@ -988,9 +990,28 @@ image_create_view(struct image *source, u_int x, u_int y, u_int width,
 	    sx > USHRT_MAX || sy > USHRT_MAX)
 		return (NULL);
 
-	im = image_create1(width, height, canvas_width, canvas_height, sx, sy,
-	    source->stride, source->pixels + (size_t)y * source->stride +
-	    (size_t)x * 4);
+	if (x_offset == 0 && y_offset == 0) {
+		im = image_create1(width, height, canvas_width, canvas_height,
+		    sx, sy, source->stride, source->pixels +
+		    (size_t)y * source->stride + (size_t)x * 4);
+	} else {
+		if (x_offset > UINT_MAX - width ||
+		    y_offset > UINT_MAX - height)
+			return (NULL);
+		padded_width = width + x_offset;
+		padded_height = height + y_offset;
+		if ((uint64_t)padded_width * padded_height * 4 > SIZE_MAX)
+			return (NULL);
+		pixels = xcalloc((size_t)padded_width * padded_height, 4);
+		for (yy = 0; yy < height; yy++) {
+			memcpy(pixels + (size_t)(yy + y_offset) * padded_width * 4 +
+			    (size_t)x_offset * 4,
+			    source->pixels + (size_t)(y + yy) * source->stride +
+			    (size_t)x * 4, (size_t)width * 4);
+		}
+		im = image_create1(padded_width, padded_height, canvas_width,
+		    canvas_height, sx, sy, (size_t)padded_width * 4, pixels);
+	}
 	if (im == NULL)
 		return (NULL);
 	im->parent_id = source->id;

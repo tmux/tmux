@@ -76,6 +76,8 @@ struct kitty_state {
 	u_int	 height;
 	u_int	 source_x;
 	u_int	 source_y;
+	u_int	 x_offset;
+	u_int	 y_offset;
 	u_int	 source_width;
 	u_int	 source_height;
 	u_int	 columns;
@@ -526,6 +528,8 @@ kitty_control(struct kitty_state *ks, const u_char *buf, size_t len)
 		case 'S':
 		case 'C':
 		case 'U':
+		case 'X':
+		case 'Y':
 			if (kitty_number((const char *)value, valuelen,
 			    &number) != 0)
 				return (-1);
@@ -546,6 +550,8 @@ kitty_control(struct kitty_state *ks, const u_char *buf, size_t len)
 			case 'S': ks->data_size = number; break;
 			case 'C': ks->no_cursor = (number != 0); break;
 			case 'U': ks->virtual = (number != 0); break;
+			case 'X': ks->x_offset = number; break;
+			case 'Y': ks->y_offset = number; break;
 			}
 			break;
 		}
@@ -855,7 +861,7 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 	uint64_t	 numerator, denominator, value;
 	u_int		 x, y, width, height, sx, sy, canvas_width;
 	u_int		 canvas_height, cell_width, cell_height, source_width;
-	u_int		 source_height;
+	u_int		 source_height, display_width, display_height;
 	struct image	*im;
 
 	x = ks->source_x;
@@ -869,11 +875,17 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 	height = ks->source_height;
 	if (height == 0 || height > source_height - y)
 		height = source_height - y;
+	if (ks->x_offset > UINT_MAX - width ||
+	    ks->y_offset > UINT_MAX - height)
+		return (NULL);
+	display_width = width + ks->x_offset;
+	display_height = height + ks->y_offset;
 
 	cell_width = (xpixel == 0 ? 8 : xpixel);
 	cell_height = (ypixel == 0 ? 16 : ypixel);
 	if (ks->columns == 0 && ks->rows == 0) {
-		image_size_in_cells(width, height, cell_width, cell_height,
+		image_size_in_cells(display_width, display_height, cell_width,
+		    cell_height,
 		    &sx, &sy);
 		value = (uint64_t)sx * cell_width;
 		if (value > UINT_MAX)
@@ -886,46 +898,46 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 	} else if (ks->columns != 0 && ks->rows != 0) {
 		sx = ks->columns;
 		sy = ks->rows;
-		canvas_width = width;
-		canvas_height = height;
+		canvas_width = display_width;
+		canvas_height = display_height;
 	} else if (ks->columns != 0) {
 		sx = ks->columns;
-		numerator = (uint64_t)height * sx * cell_width;
-		denominator = (uint64_t)width * cell_height;
+		numerator = (uint64_t)display_height * sx * cell_width;
+		denominator = (uint64_t)display_width * cell_height;
 		value = (numerator + denominator - 1) / denominator;
 		if (value == 0 || value > UINT_MAX)
 			return (NULL);
 		sy = value;
-		canvas_width = width;
-		numerator = (uint64_t)sy * cell_height * width;
+		canvas_width = display_width;
+		numerator = (uint64_t)sy * cell_height * display_width;
 		denominator = (uint64_t)sx * cell_width;
 		value = (numerator + denominator - 1) / denominator;
-		if (value < height)
-			value = height;
+		if (value < display_height)
+			value = display_height;
 		if (value > UINT_MAX)
 			return (NULL);
 		canvas_height = value;
 	} else {
 		sy = ks->rows;
-		numerator = (uint64_t)width * sy * cell_height;
-		denominator = (uint64_t)height * cell_width;
+		numerator = (uint64_t)display_width * sy * cell_height;
+		denominator = (uint64_t)display_height * cell_width;
 		value = (numerator + denominator - 1) / denominator;
 		if (value == 0 || value > UINT_MAX)
 			return (NULL);
 		sx = value;
-		canvas_height = height;
-		numerator = (uint64_t)sx * cell_width * height;
+		canvas_height = display_height;
+		numerator = (uint64_t)sx * cell_width * display_height;
 		denominator = (uint64_t)sy * cell_height;
 		value = (numerator + denominator - 1) / denominator;
-		if (value < width)
-			value = width;
+		if (value < display_width)
+			value = display_width;
 		if (value > UINT_MAX)
 			return (NULL);
 		canvas_width = value;
 	}
 
 	im = image_create_view(source, x, y, width, height, canvas_width,
-	    canvas_height, sx, sy);
+	    canvas_height, sx, sy, ks->x_offset, ks->y_offset);
 	if (im != NULL && ks->no_cursor)
 		image_set_no_cursor(im);
 	return (im);
