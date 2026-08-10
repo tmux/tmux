@@ -4851,6 +4851,8 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 			cflags |= REG_ICASE;
 		if (regcomp(&reg, sbuf, cflags) != 0) {
 			free(sbuf);
+			free(data->searchmark);
+			data->searchmark = NULL;
 			return (0);
 		}
 		free(sbuf);
