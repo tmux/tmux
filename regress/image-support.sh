@@ -50,13 +50,23 @@ $TMUX2 new-session -d -x 10 -y 4 "
 	printf '\033Pq\"1;1;26;26#0;2;100;100;100#0!26~-!26~-!26~-!26~-!26B\033\\'
 	sleep 10" || exit 1
 $TMUX2 set -g status off || exit 1
+$TMUX2 set -as terminal-features ',*:sixel' || exit 1
 $TMUX new-session -d -x 10 -y 4 || exit 1
 $TMUX set -g status off || exit 1
+$TMUX pipe-pane -O "cat >$TMP" || exit 1
 $TMUX send-keys -l "$TMUX2 attach-session" || exit 1
 $TMUX send-keys Enter || exit 1
 sleep 1
 $TMUX capture-pane -pS0 -E0 >$TMP || exit 1
 grep -q '^#=' $TMP || exit 1
+
+# Re-emitting the image preserves the 26-pixel raster rather than expanding
+# it to the two complete 16-pixel grid cells occupied by the image.
+$TMUX pipe-pane || exit 1
+$TMUX pipe-pane -O "cat >$TMP" || exit 1
+$TMUX2 refresh-client -R || exit 1
+sleep 1
+grep -a '"1;1;26;26' $TMP >/dev/null || exit 1
 
 # Selection redraws must leave text image cells visible.
 $TMUX2 copy-mode || exit 1

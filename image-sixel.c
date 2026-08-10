@@ -602,7 +602,7 @@ sixel_scale(struct sixel_image *si, u_int cell_w, u_int cell_h, u_int ox,
     u_int oy, u_int sx, u_int sy, int colours)
 {
 	struct sixel_image	*new;
-	uint64_t		 x0, x1, y0, y1;
+	uint64_t		 x0, x1, y0, y1, tx0, tx1, ty0, ty1;
 	u_int			 cx, cy, pox, poy, psx, psy, tsx, tsy, px, py;
 	u_int			 x, y, i;
 
@@ -640,8 +640,27 @@ sixel_scale(struct sixel_image *si, u_int cell_w, u_int cell_h, u_int ox,
 	psx = x1 - x0;
 	psy = y1 - y0;
 
-	tsx = sx * cell_w;
-	tsy = sy * cell_h;
+	/*
+	 * Preserve any partial final source cell. The grid still covers whole
+	 * cells, but the SIXEL raster must end at the corresponding pixel offset
+	 * rather than stretching to the cell boundary.
+	 */
+	tx1 = ((uint64_t)si->sx * cell_w + si->cell_w - 1) / si->cell_w;
+	ty1 = ((uint64_t)si->sy * cell_h + si->cell_h - 1) / si->cell_h;
+	if (tx1 > UINT_MAX || ty1 > UINT_MAX)
+		return (NULL);
+	tx0 = (uint64_t)ox * cell_w;
+	ty0 = (uint64_t)oy * cell_h;
+	if (tx0 >= tx1 || ty0 >= ty1)
+		return (NULL);
+	if ((uint64_t)(ox + sx) * cell_w < tx1)
+		tx1 = (uint64_t)(ox + sx) * cell_w;
+	if ((uint64_t)(oy + sy) * cell_h < ty1)
+		ty1 = (uint64_t)(oy + sy) * cell_h;
+	tsx = tx1 - tx0;
+	tsy = ty1 - ty0;
+	if (tsx == 0 || tsy == 0)
+		return (NULL);
 
 	new = xcalloc (1, sizeof *si);
 	new->cell_w = cell_w;
