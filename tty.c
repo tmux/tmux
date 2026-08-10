@@ -290,6 +290,10 @@ tty_open(struct tty *tty, char **cause)
 	}
 	tty->flags |= TTY_OPENED;
 
+#ifdef ENABLE_IMAGES
+	image_tty_update(tty);
+#endif
+
 	tty->flags &= ~(TTY_NOCURSOR|TTY_FREEZE|TTY_BLOCK|TTY_TIMER);
 
 	event_set(&tty->event_in, c->fd, EV_PERSIST|EV_READ,
