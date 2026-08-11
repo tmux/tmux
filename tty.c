@@ -403,6 +403,9 @@ tty_send_requests(struct tty *tty)
 			tty_puts(tty, "\033[>c");
 		if (~tty->flags & TTY_HAVEXDA)
 			tty_puts(tty, "\033[>q");
+		if (~tty->flags & TTY_HAVESYNC &&
+		    !tty_feature_present(tty->term, "sync"))
+			tty_puts(tty, "\033[?2026$p");
 		tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\");
 		tty->flags |= (TTY_WAITBG|TTY_WAITFG);
 	} else

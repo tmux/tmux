@@ -59,6 +59,7 @@ static int	tty_keys_device_attributes2(struct tty *, const char *, size_t,
 		    size_t *);
 static int	tty_keys_extended_device_attributes(struct tty *, const char *,
 		    size_t, size_t *);
+static int	tty_keys_sync(struct tty *, const char *, size_t, size_t *);
 static int	tty_keys_palette(struct tty *, const char *, size_t, size_t *);
 
 /* A key tree entry. */
@@ -762,6 +763,17 @@ tty_keys_next(struct tty *tty)
 
 	/* Is this a clipboard response? */
 	switch (tty_keys_clipboard(tty, buf, len, &size)) {
+	case 0:		/* yes */
+		key = KEYC_UNKNOWN;
+		goto complete_key;
+	case -1:	/* no, or not valid */
+		break;
+	case 1:		/* partial */
+		goto partial_key;
+	}
+
+	/* Is this a synchronized update mode response? */
+	switch (tty_keys_sync(tty, buf, len, &size)) {
 	case 0:		/* yes */
 		key = KEYC_UNKNOWN;
 		goto complete_key;
@@ -1518,6 +1530,56 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 
 	tty_update_features(tty);
 	tty->flags |= TTY_HAVEDA;
+
+	return (0);
+}
+
+/*
+ * Handle a synchronized update mode response. Returns 0 for success, -1 for
+ * failure, 1 for partial.
+ */
+static int
+tty_keys_sync(struct tty *tty, const char *buf, size_t len, size_t *size)
+{
+	struct client		*c = tty->client;
+	static const char	 prefix[] = "\033[?2026;";
+	size_t			 i;
+	int			 status;
+
+	*size = 0;
+	if (tty->flags & TTY_HAVESYNC)
+		return (-1);
+
+	/* The response is always \033[?2026;Ps$y. */
+	for (i = 0; i < (sizeof prefix) - 1; i++) {
+		if (i == len)
+			return (1);
+		if (buf[i] != prefix[i])
+			return (-1);
+	}
+	if (i == len)
+		return (1);
+	if (buf[i] < '0' || buf[i] > '4')
+		return (-1);
+	status = buf[i++] - '0';
+	if (i == len)
+		return (1);
+	if (buf[i++] != '$')
+		return (-1);
+	if (i == len)
+		return (1);
+	if (buf[i++] != 'y')
+		return (-1);
+	*size = i;
+
+	if (status == 1 || status == 2 || status == 3) {
+		log_debug("%s: synchronized updates supported", c->name);
+		tty_add_features(&c->term_features, "sync", ",");
+		tty_update_features(tty);
+	}
+	log_debug("%s: received synchronized update response %.*s", c->name,
+	    (int)*size, buf);
+	tty->flags |= TTY_HAVESYNC;
 
 	return (0);
 }

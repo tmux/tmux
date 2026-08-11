@@ -5030,6 +5030,10 @@ entry in use.
 can detect features for a few common terminals; this option can be used to
 easily tell tmux about features supported by terminals it cannot detect.
 The
+.Ic sync
+feature is detected automatically using DECRQM if it is not already provided
+by the terminal description or this option.
+The
 .Ic terminal\-overrides
 option allows individual
 .Xr terminfo 5
