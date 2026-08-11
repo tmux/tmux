@@ -536,6 +536,7 @@ tty_update_features(struct tty *tty)
 {
 	struct client	*c = tty->client;
 
+	c->term_features &= ~c->term_nofeatures;
 	if (tty_apply_features(tty->term, c->term_features))
 		tty_term_apply_overrides(tty->term);
 

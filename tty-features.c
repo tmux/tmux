@@ -394,16 +394,21 @@ static const struct tty_feature *const tty_features[] = {
 };
 
 void
-tty_add_features(int *feat, const char *s, const char *separators)
+tty_add_features(int *feat, int *nofeat, const char *s,
+    const char *separators)
 {
 	const struct tty_feature	 *tf;
 	char				 *next, *loop, *copy;
 	u_int				  i;
+	int				  remove;
 
 	log_debug("adding terminal features %s", s);
 
 	loop = copy = xstrdup(s);
 	while ((next = strsep(&loop, separators)) != NULL) {
+		remove = (*next != '\0' && next[strlen(next) - 1] == '@');
+		if (remove)
+			next[strlen(next) - 1] = '\0';
 		for (i = 0; i < nitems(tty_features); i++) {
 			tf = tty_features[i];
 			if (strcasecmp(tf->name, next) == 0)
@@ -413,6 +418,15 @@ tty_add_features(int *feat, const char *s, const char *separators)
 			log_debug("unknown terminal feature: %s", next);
 			break;
 		}
+		if (remove) {
+			log_debug("removing terminal feature: %s", tf->name);
+			*feat &= ~(1 << i);
+			if (nofeat != NULL)
+				*nofeat |= 1 << i;
+			continue;
+		}
+		if (nofeat != NULL && *nofeat & (1 << i))
+			continue;
 		if (~(*feat) & (1 << i)) {
 			log_debug("adding terminal feature: %s", tf->name);
 			(*feat) |= (1 << i);
@@ -453,6 +467,8 @@ tty_feature_present(struct tty_term *term, const char *name)
 	for (i = 0; i < nitems(tty_features); i++) {
 		tf = tty_features[i];
 		if (strcmp(tf->name, name) == 0) {
+			if (term->tty->client->term_nofeatures & (1 << i))
+				return (0);
 			if (term->features & (1 << i))
 			    return (1);
 			break;
@@ -488,6 +504,7 @@ tty_apply_features(struct tty_term *term, int feat)
 	const char *const		*capability;
 	u_int				 i;
 
+	feat &= ~term->tty->client->term_nofeatures;
 	if (feat == 0)
 		return (0);
 	log_debug("applying terminal features: %s", tty_get_features(feat));
@@ -515,7 +532,7 @@ tty_apply_features(struct tty_term *term, int feat)
 }
 
 void
-tty_default_features(int *feat, const char *name, u_int version)
+tty_default_features(int *feat, int *nofeat, const char *name, u_int version)
 {
 	static const struct {
 		const char	*name;
@@ -616,6 +633,6 @@ tty_default_features(int *feat, const char *name, u_int version)
 			continue;
 		if (version != 0 && version < table[i].version)
 			continue;
-		tty_add_features(feat, table[i].features, ",");
+		tty_add_features(feat, nofeat, table[i].features, ",");
 	}
 }

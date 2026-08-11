@@ -5045,6 +5045,11 @@ This is an array option where each entry is a colon-separated string made up
 of a terminal type pattern (matched using
 .Xr glob 7
 patterns) followed by a list of terminal features.
+A feature may be suffixed with an at sign to disable it, even if it is present
+in the terminal description or detected automatically; for example,
+.Ql xterm*:sync@ .
+This follows the capability removal syntax used by
+.Ic terminal-overrides .
 The available features are:
 .Bl -tag -width Ds
 .It 256

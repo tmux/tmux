@@ -425,7 +425,7 @@ main(int argc, char **argv)
 	while ((opt = getopt(argc, argv, "2c:CDdf:hlL:NqS:T:uUvV")) != -1) {
 		switch (opt) {
 		case '2':
-			tty_add_features(&feat, "256", ":,");
+			tty_add_features(&feat, NULL, "256", ":,");
 			break;
 		case 'c':
 			shell_command = optarg;
@@ -473,7 +473,7 @@ main(int argc, char **argv)
 			path = xstrdup(optarg);
 			break;
 		case 'T':
-			tty_add_features(&feat, optarg, ":,");
+			tty_add_features(&feat, NULL, optarg, ":,");
 			break;
 		case 'u':
 			flags |= CLIENT_UTF8;
