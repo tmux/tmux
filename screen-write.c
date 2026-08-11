@@ -1059,6 +1059,19 @@ screen_write_stop_sync(struct window_pane *wp)
 	log_debug("%s: %%%u stopped sync mode", __func__, wp->id);
 }
 
+/* Flush pending output before ESU clears sync mode. */
+void
+screen_write_end_sync(struct screen_write_ctx *ctx)
+{
+	struct window_pane	*wp = ctx->wp;
+
+	if (wp == NULL)
+		return;
+	if (wp->base.mode & MODE_SYNC)
+		screen_write_collect_flush(ctx, 0, __func__);
+	screen_write_stop_sync(wp);
+}
+
 /* Cursor up by ny. */
 void
 screen_write_cursorup(struct screen_write_ctx *ctx, u_int ny)

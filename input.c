@@ -1978,7 +1978,7 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 			screen_write_mode_clear(sctx, MODE_BRACKETPASTE);
 			break;
 		case 2026:
-			screen_write_stop_sync(ictx->wp);
+			screen_write_end_sync(sctx);
 			break;
 		case 2031:
 			screen_write_mode_clear(sctx, MODE_THEME_UPDATES);
