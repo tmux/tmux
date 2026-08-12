@@ -1667,6 +1667,8 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 		tty_default_features(features, "WezTerm", 0);
 	else if (strncmp(tmp, "ghostty ", 8) == 0)
 		tty_default_features(features, "ghostty", 0);
+	else if (strncmp(tmp, "Rio ", 4) == 0)
+		tty_default_features(features, "Rio", 0);
 	log_debug("%s: received extended DA %.*s", c->name, (int)*size, buf);
 
 	free(c->term_type);
