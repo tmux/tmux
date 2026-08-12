@@ -712,6 +712,10 @@ client_dispatch_wait(struct imsg *imsg)
 		fprintf(stderr, "server version is too old for client\n");
 		proc_exit(client_proc);
 		break;
+	default:
+		log_debug("%s: unknown message type %#x", __func__,
+		    imsg->hdr.type);
+		break;
 	}
 }
 
@@ -797,6 +801,10 @@ client_dispatch_attached(struct imsg *imsg)
 
 		system(data);
 		proc_send(client_peer, MSG_UNLOCK, -1, NULL, 0);
+		break;
+	default:
+		log_debug("%s: unknown message type %#x", __func__,
+		    imsg->hdr.type);
 		break;
 	}
 }
