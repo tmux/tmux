@@ -552,7 +552,6 @@ file_write_finish(struct client_file *cf)
 	msg.error = cf->error;
 	proc_send(cf->peer, MSG_WRITE_DONE, -1, &msg, sizeof msg);
 
-	RB_REMOVE(client_files, cf->tree, cf);
 	file_free(cf);
 }
 
@@ -721,7 +720,6 @@ file_read_error_callback(__unused struct bufferevent *bev, short what,
 
 	bufferevent_free(cf->event);
 	close(cf->fd);
-	RB_REMOVE(client_files, cf->tree, cf);
 	file_free(cf);
 }
 
