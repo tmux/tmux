@@ -35,10 +35,30 @@ $TMUX load-buffer -b big "$DATA" || exit 1
 sleep 1
 $TMUX save-buffer -b big "$PIPE" 2>"$OUT" && exit 1
 [ -s "$OUT" ] || exit 1
+# The message has to say what actually went wrong, not just that something did.
+grep -q 'Broken pipe' "$OUT" || exit 1
 wait
 
-# A write that works must still be reported as working.
-$TMUX save-buffer -b big "$TMP/copy" || exit 1
+# Appending has the same problem and must report it the same way.
+(head -c 8 <"$PIPE" >/dev/null) &
+sleep 1
+$TMUX save-buffer -a -b big "$PIPE" 2>"$OUT" && exit 1
+[ -s "$OUT" ] || exit 1
+wait
+
+# A write to somewhere that cannot be opened at all was always reported and
+# still has to be.
+$TMUX save-buffer -b big "$TMP/nosuchdir/out" 2>"$OUT" && exit 1
+[ -s "$OUT" ] || exit 1
+
+# A write that works must still be reported as working, and say nothing.
+$TMUX save-buffer -b big "$TMP/copy" 2>"$OUT" || exit 1
+[ -s "$OUT" ] && exit 1
 cmp -s "$DATA" "$TMP/copy" || exit 1
+
+# So must appending to it.
+$TMUX save-buffer -a -b big "$TMP/copy" 2>"$OUT" || exit 1
+[ -s "$OUT" ] && exit 1
+[ "$(wc -c <"$TMP/copy")" -eq "$(($(wc -c <"$DATA") * 2))" ] || exit 1
 
 exit 0

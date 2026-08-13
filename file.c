@@ -563,9 +563,11 @@ file_write_error_callback(__unused struct bufferevent *bev, __unused short what,
 {
 	struct client_file	*cf = arg;
 
-	log_debug("write error file %d", cf->stream);
-
-	cf->error = EIO;
+	/* errno is still from the write that failed, so it is worth keeping. */
+	cf->error = errno;
+	if (cf->error == 0)
+		cf->error = EIO;
+	log_debug("write error file %d: %s", cf->stream, strerror(cf->error));
 
 	bufferevent_free(cf->event);
 	cf->event = NULL;
