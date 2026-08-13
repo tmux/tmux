@@ -664,6 +664,7 @@ client_dispatch_wait(struct imsg *imsg)
 		    "(client %d, server %u)\n", PROTOCOL_VERSION,
 		    imsg->hdr.peerid & 0xff);
 		client_exitval = 1;
+		client_exitflag = 1;
 		proc_exit(client_proc);
 		break;
 	case MSG_FLAGS:
@@ -720,6 +721,7 @@ client_dispatch_wait(struct imsg *imsg)
 		fprintf(stderr, "unknown message type %u from server\n",
 		    imsg->hdr.type);
 		client_exitval = 1;
+		client_exitflag = 1;
 		proc_exit(client_proc);
 		break;
 	}
