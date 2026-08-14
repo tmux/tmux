@@ -382,8 +382,10 @@ grid_create(u_int sx, u_int sy, u_int hlimit)
 		gd->flags = GRID_HISTORY;
 	gd->hlimit = hlimit;
 
-	if (gd->sy != 0)
+	if (gd->sy != 0) {
 		gd->linedata = xcalloc(gd->sy, sizeof *gd->linedata);
+		memset(gd->linedata, 0, gd->sy * sizeof *gd->linedata);
+	}
 
 #ifdef __APPLE__
 	assert(gd->hsize == 0);
