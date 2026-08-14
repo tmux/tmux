@@ -1,4 +1,4 @@
-/* $OpenBSD: window-customize.c,v 1.34 2026/07/14 17:17:18 nicm Exp $ */
+/* $OpenBSD: window-customize.c,v 1.36 2026/07/28 10:35:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -276,6 +276,36 @@ window_customize_scope_text(enum window_customize_scope scope,
 	return (s);
 }
 
+static int
+window_customize_write_hook_fire(struct screen_write_ctx *ctx, u_int cx,
+    u_int sx, u_int sy, struct options_entry *o)
+{
+	char	*fire_time_string;
+	u_int	 fire_count;
+	time_t	 fire_time;
+
+	if (options_get_monitor_data(o) != NULL) {
+		fire_count = hooks_monitor_get_fire_count(o);
+		fire_time = hooks_monitor_get_fire_time(o);
+	} else {
+		fire_count = options_get_fire_count(o);
+		fire_time = options_get_fire_time(o);
+	}
+	if (fire_time != 0) {
+		fire_time_string = format_pretty_time(fire_time, 0);
+		if (!screen_write_text(ctx, cx, sx, sy, 0, &grid_default_cell,
+		    "This hook has been fired %u times, last %s.", fire_count,
+		    fire_time_string)) {
+			free(fire_time_string);
+			return (0);
+		}
+		free(fire_time_string);
+		return (1);
+	}
+	return (screen_write_text(ctx, cx, sx, sy, 0, &grid_default_cell,
+	    "This hook has been fired %u times.", fire_count));
+}
+
 static struct window_customize_itemdata *
 window_customize_add_item(struct window_customize_modedata *data)
 {
@@ -397,6 +427,8 @@ window_customize_draw_waiting(struct window_customize_modedata *data)
 	screen_write_start(&ctx, s);
 	screen_write_cursormove(&ctx, x, y, 0);
 	screen_write_box(&ctx, box_w, box_h, BOX_LINES_DEFAULT, &gc, NULL);
+	screen_write_cursormove(&ctx, x + 1, y + 1, 0);
+	screen_write_clearcharacter(&ctx, box_w - 2, gc.bg);
 	screen_write_cursormove(&ctx, text_x, y + 1, 0);
 	screen_write_nputs(&ctx, box_w - 2, &gc, "%s", text);
 	screen_write_stop(&ctx);
@@ -652,7 +684,7 @@ window_customize_build_option(struct window_customize_modedata *data,
 	char					*text, *expanded, *value;
 	int					 global = 0, array = 0;
 	int					 is_hook = 0, is_monitor = 0;
-	int					 is_user_hook = 0;
+	int					 is_user_hook = 0, is_any_hook;
 	uint64_t				 tag;
 
 	if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_HOOK))
@@ -661,13 +693,14 @@ window_customize_build_option(struct window_customize_modedata *data,
 		is_monitor = 1;
 	if (*name == '@' && hooks_is_event(name))
 		is_user_hook = 1;
+	is_any_hook = (is_hook || is_monitor || is_user_hook);
 	switch (type) {
 	case WINDOW_CUSTOMIZE_OPTIONS:
-		if (is_hook || is_monitor || is_user_hook)
+		if (is_any_hook)
 			return (0);
 		break;
 	case WINDOW_CUSTOMIZE_HOOKS:
-		if (!is_hook && !is_monitor && !is_user_hook)
+		if (!is_any_hook)
 			return (0);
 		break;
 	}
@@ -1186,6 +1219,7 @@ window_customize_draw_option(struct window_customize_modedata *data,
 	struct cmd_find_state			  fs;
 	struct format_tree			 *ft;
 	int					  is_hook, is_monitor, is_user_hook;
+	int					  is_any_hook;
 
 	if (!window_customize_check_item(data, item, &fs))
 		return;
@@ -1199,6 +1233,7 @@ window_customize_draw_option(struct window_customize_modedata *data,
 	is_hook = (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_HOOK));
 	is_monitor = (options_get_monitor_data(o) != NULL);
 	is_user_hook = (*name == '@' && hooks_is_event(name));
+	is_any_hook = (is_hook || is_monitor || is_user_hook);
 
 	if (oe != NULL && oe->unit != NULL) {
 		space = " ";
@@ -1265,8 +1300,16 @@ monitor:
 	}
 	if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_ARRAY)) {
 		if (is_hook) {
-			if (array_key == NULL)
+			if (array_key == NULL) {
+				if (!screen_write_text(ctx, cx, sx,
+				    sy - (s->cy - cy), 0, &grid_default_cell,
+				    "This is an array hook."))
+					goto out;
+				if (!window_customize_write_hook_fire(ctx, cx,
+				    sx, sy - (s->cy - cy), o))
+					goto out;
 				goto out;
+			}
 		} else if (array_key != NULL) {
 			if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy),
 			    0, &grid_default_cell,
@@ -1292,9 +1335,12 @@ monitor:
 			default_value = NULL;
 		}
 	}
-	if (is_hook || is_monitor || is_user_hook) {
+	if (is_any_hook) {
 		if (!window_customize_write_value(ctx, cx, sx, sy - (s->cy - cy),
 		    0, "Hook command: ", "%s%s%s", value, space, unit))
+			goto out;
+		if (!window_customize_write_hook_fire(ctx, cx, sx,
+		    sy - (s->cy - cy), o))
 			goto out;
 	} else {
 		if (!window_customize_write_value(ctx, cx, sx, sy - (s->cy - cy),

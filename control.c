@@ -1,4 +1,4 @@
-/* $OpenBSD: control.c,v 1.61 2026/07/10 15:45:11 nicm Exp $ */
+/* $OpenBSD: control.c,v 1.65 2026/08/04 11:18:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -53,6 +53,17 @@ struct control_block {
 	TAILQ_ENTRY(control_block)	 all_entry;
 };
 
+/*
+ * A notification line deferred because it was generated while a command's
+ * %begin/%end guard block was open. Notifications must never appear inside a
+ * guard block, so they are held here and flushed once the block closes.
+ */
+struct control_line {
+	char				*line;
+
+	TAILQ_ENTRY(control_line)	 entry;
+};
+
 /* Control client pane. */
 struct control_pane {
 	u_int				 pane;
@@ -78,9 +89,20 @@ struct control_pane {
 };
 RB_HEAD(control_panes, control_pane);
 
+/* Control client window size. */
+struct control_window {
+	u_int				 window;
+	u_int				 sx;
+	u_int				 sy;
+
+	RB_ENTRY(control_window)	 entry;
+};
+RB_HEAD(control_windows, control_window);
+
 /* Control client state. */
 struct control_state {
 	struct control_panes		 panes;
+	struct control_windows		 windows;
 
 	TAILQ_HEAD(, control_pane)	 pending_list;
 	u_int				 pending_count;
@@ -91,6 +113,13 @@ struct control_state {
 	struct bufferevent		*write_event;
 
 	struct monitor_set		*subs;
+
+	/*
+	 * Depth of open %begin/%end guard blocks and notifications deferred
+	 * until the outermost block closes.
+	 */
+	int				 guard_depth;
+	TAILQ_HEAD(, control_line)	 deferred;
 };
 
 /* Low and high watermarks. */
@@ -119,6 +148,18 @@ control_pane_cmp(struct control_pane *cp1, struct control_pane *cp2)
 	return (0);
 }
 RB_GENERATE_STATIC(control_panes, control_pane, entry, control_pane_cmp);
+
+/* Compare control windows. */
+static int
+control_window_cmp(struct control_window *cw1, struct control_window *cw2)
+{
+	if (cw1->window < cw2->window)
+		return (-1);
+	if (cw1->window > cw2->window)
+		return (1);
+	return (0);
+}
+RB_GENERATE_STATIC(control_windows, control_window, entry, control_window_cmp);
 
 /* Free a block. */
 static void
@@ -159,6 +200,66 @@ control_add_pane(struct client *c, struct window_pane *wp)
 	TAILQ_INIT(&cp->blocks);
 
 	return (cp);
+}
+
+/* Get window for this client. */
+static struct control_window *
+control_get_window(struct client *c, u_int window)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_window	 cw = { .window = window };
+
+	if (cs == NULL)
+		return (NULL);
+	return (RB_FIND(control_windows, &cs->windows, &cw));
+}
+
+/* Set window size for this client. */
+void
+control_set_window_size(struct client *c, u_int window, u_int sx, u_int sy)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_window	*cw;
+
+	if (cs == NULL)
+		return;
+	cw = control_get_window(c, window);
+	if (cw == NULL) {
+		cw = xcalloc(1, sizeof *cw);
+		cw->window = window;
+		RB_INSERT(control_windows, &cs->windows, cw);
+	}
+	cw->sx = sx;
+	cw->sy = sy;
+}
+
+/* Get window size for this client. */
+int
+control_get_window_size(struct client *c, u_int window, u_int *sx, u_int *sy)
+{
+	struct control_window	*cw;
+
+	if ((cw = control_get_window(c, window)) == NULL)
+		return (0);
+	*sx = cw->sx;
+	*sy = cw->sy;
+	return (1);
+}
+
+/* Clear window size for this client. */
+void
+control_clear_window_size(struct client *c, u_int window)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_window	*cw;
+
+	if (cs == NULL)
+		return;
+	cw = control_get_window(c, window);
+	if (cw != NULL) {
+		RB_REMOVE(control_windows, &cs->windows, cw);
+		free(cw);
+	}
 }
 
 /* Discard output for a pane. */
@@ -269,7 +370,7 @@ control_continue_pane(struct client *c, struct window_pane *wp)
 		cp->flags &= ~CONTROL_PANE_PAUSED;
 		memcpy(&cp->offset, &wp->offset, sizeof cp->offset);
 		memcpy(&cp->queued, &wp->offset, sizeof cp->queued);
-		control_write(c, "%%continue %%%u", wp->id);
+		control_notify_write(c, "%%continue %%%u", wp->id);
 	}
 }
 
@@ -283,52 +384,120 @@ control_pause_pane(struct client *c, struct window_pane *wp)
 	if (~cp->flags & CONTROL_PANE_PAUSED) {
 		cp->flags |= CONTROL_PANE_PAUSED;
 		control_discard_pane(c, cp);
-		control_write(c, "%%pause %%%u", wp->id);
+		control_notify_write(c, "%%pause %%%u", wp->id);
 	}
 }
 
-/* Write a line. */
-static void printflike(2, 0)
-control_vwrite(struct client *c, const char *fmt, va_list ap)
-{
-	struct control_state	*cs = c->control_state;
-	char			*s;
-
-	xvasprintf(&s, fmt, ap);
-	log_debug("%s: %s: writing line: %s", __func__, c->name, s);
-
-	bufferevent_write(cs->write_event, s, strlen(s));
-	bufferevent_write(cs->write_event, "\n", 1);
-
-	bufferevent_enable(cs->write_event, EV_WRITE);
-	free(s);
-}
-
-/* Write a line. */
-void
-control_write(struct client *c, const char *fmt, ...)
+/* Write an already-formatted line, queueing it behind %output if needed. */
+static void
+control_write_line(struct client *c, char *line)
 {
 	struct control_state	*cs = c->control_state;
 	struct control_block	*cb;
-	va_list			 ap;
-
-	va_start(ap, fmt);
 
 	if (TAILQ_EMPTY(&cs->all_blocks)) {
-		control_vwrite(c, fmt, ap);
-		va_end(ap);
+		log_debug("%s: %s: writing line: %s", __func__, c->name, line);
+		bufferevent_write(cs->write_event, line, strlen(line));
+		bufferevent_write(cs->write_event, "\n", 1);
+		bufferevent_enable(cs->write_event, EV_WRITE);
+		free(line);
 		return;
 	}
 
 	cb = xcalloc(1, sizeof *cb);
-	xvasprintf(&cb->line, fmt, ap);
+	cb->line = line;
 	TAILQ_INSERT_TAIL(&cs->all_blocks, cb, all_entry);
 	cb->t = get_timer();
 
 	log_debug("%s: %s: storing line: %s", __func__, c->name, cb->line);
 	bufferevent_enable(cs->write_event, EV_WRITE);
+}
 
+/* Flush notifications that were deferred while a guard block was open. */
+static void
+control_flush_deferred(struct client *c)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_line	*cl, *cl1;
+
+	TAILQ_FOREACH_SAFE(cl, &cs->deferred, entry, cl1) {
+		TAILQ_REMOVE(&cs->deferred, cl, entry);
+		control_write_line(c, cl->line);
+		free(cl);
+	}
+}
+
+/*
+ * Write a line of command output or error text. This is a sink for arbitrary
+ * user-controlled text (command output, capture-pane, error messages), so it
+ * must never try to interpret the content: guard tracking is done only in
+ * control_write_guard.
+ */
+void
+control_write(struct client *c, const char *fmt, ...)
+{
+	va_list	 ap;
+	char	*line;
+
+	va_start(ap, fmt);
+	xvasprintf(&line, fmt, ap);
 	va_end(ap);
+
+	control_write_line(c, line);
+}
+
+/*
+ * Write a %begin, %end or %error guard around a command's output. This is the
+ * only place guard lines are produced, so the block depth is maintained here;
+ * when the outermost block closes any deferred notifications are flushed after
+ * it. "guard" is always one of the fixed strings from cmdq_guard, never user
+ * text.
+ */
+void
+control_write_guard(struct client *c, const char *guard, long t, u_int number,
+    int flags)
+{
+	struct control_state	*cs = c->control_state;
+	char			*line;
+
+	if (strcmp(guard, "begin") == 0)
+		cs->guard_depth++;
+
+	xasprintf(&line, "%%%s %ld %u %d", guard, t, number, flags);
+	control_write_line(c, line);
+
+	if (strcmp(guard, "begin") != 0 && cs->guard_depth > 0 &&
+	    --cs->guard_depth == 0)
+		control_flush_deferred(c);
+}
+
+/*
+ * Write a notification line. Notifications must never appear inside a command's
+ * %begin/%end guard block, so if one is open the line is deferred until it
+ * closes.
+ */
+void
+control_notify_write(struct client *c, const char *fmt, ...)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_line	*cl;
+	va_list			 ap;
+	char			*line;
+
+	va_start(ap, fmt);
+	xvasprintf(&line, fmt, ap);
+	va_end(ap);
+
+	if (cs->guard_depth == 0) {
+		control_write_line(c, line);
+		return;
+	}
+
+	log_debug("%s: %s: deferring notification: %s", __func__, c->name,
+	    line);
+	cl = xcalloc(1, sizeof *cl);
+	cl->line = line;
+	TAILQ_INSERT_TAIL(&cs->deferred, cl, entry);
 }
 
 /* Check age for this pane. */
@@ -355,7 +524,7 @@ control_check_age(struct client *c, struct window_pane *wp,
 			return (0);
 		cp->flags |= CONTROL_PANE_PAUSED;
 		control_discard_pane(c, cp);
-		control_write(c, "%%pause %%%u", wp->id);
+		control_notify_write(c, "%%pause %%%u", wp->id);
 	} else {
 		if (age < CONTROL_MAXIMUM_AGE)
 			return (0);
@@ -722,14 +891,17 @@ control_sub_change(struct monitor_change *change, __unused void *data)
 
 	if (wp != NULL) {
 		w = wp->window;
-		control_write(c, "%%subscription-changed %s $%u @%u %u %%%u : %s",
+		control_notify_write(c,
+		    "%%subscription-changed %s $%u @%u %u %%%u : %s",
 		    change->name, s->id, w->id, wl->idx, wp->id, change->value);
 	} else if (wl != NULL) {
 		w = wl->window;
-		control_write(c, "%%subscription-changed %s $%u @%u %u - : %s",
+		control_notify_write(c,
+		    "%%subscription-changed %s $%u @%u %u - : %s",
 		    change->name, s->id, w->id, wl->idx, change->value);
 	} else {
-		control_write(c, "%%subscription-changed %s $%u - - - : %s",
+		control_notify_write(c,
+		    "%%subscription-changed %s $%u - - - : %s",
 		    change->name, s->id, change->value);
 	}
 }
@@ -749,8 +921,10 @@ control_start(struct client *c)
 
 	cs = c->control_state = xcalloc(1, sizeof *cs);
 	RB_INIT(&cs->panes);
+	RB_INIT(&cs->windows);
 	TAILQ_INIT(&cs->pending_list);
 	TAILQ_INIT(&cs->all_blocks);
+	TAILQ_INIT(&cs->deferred);
 	cs->subs = monitor_create_client(c, control_sub_change, NULL);
 
 	cs->read_event = bufferevent_new(c->fd, control_read_callback,
@@ -794,23 +968,48 @@ control_discard(struct client *c)
 	bufferevent_disable(cs->read_event, EV_READ);
 }
 
+/* Discard all tmux-owned queued control blocks and stop writing. */
+void
+control_discard_all(struct client *c)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_block	*cb, *cb1;
+
+	control_discard(c);
+	TAILQ_FOREACH_SAFE(cb, &cs->all_blocks, all_entry, cb1)
+		control_free_block(cs, cb);
+	bufferevent_disable(cs->write_event, EV_WRITE);
+}
+
 /* Stop control mode. */
 void
 control_stop(struct client *c)
 {
 	struct control_state	*cs = c->control_state;
 	struct control_block	*cb, *cb1;
+	struct control_window	*cw, *cw1;
+	struct control_line	*cl, *cl1;
 
 	if (cs == NULL)
 		return;
 
 	monitor_destroy(cs->subs);
 
+	TAILQ_FOREACH_SAFE(cl, &cs->deferred, entry, cl1) {
+		TAILQ_REMOVE(&cs->deferred, cl, entry);
+		free(cl->line);
+		free(cl);
+	}
+
 	if (~c->flags & CLIENT_CONTROLCONTROL)
 		bufferevent_free(cs->write_event);
 	bufferevent_free(cs->read_event);
 
 	control_reset_offsets(c);
+	RB_FOREACH_SAFE(cw, control_windows, &cs->windows, cw1) {
+		RB_REMOVE(control_windows, &cs->windows, cw);
+		free(cw);
+	}
 	TAILQ_FOREACH_SAFE(cb, &cs->all_blocks, all_entry, cb1)
 		control_free_block(cs, cb);
 

@@ -1,4 +1,4 @@
-/* $OpenBSD: monitor.c,v 1.6 2026/07/10 15:20:06 nicm Exp $ */
+/* $OpenBSD: monitor.c,v 1.7 2026/07/27 19:15:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -58,6 +58,9 @@ struct monitor_item {
 	char				*last;
 	struct monitor_panes		 panes;
 	struct monitor_windows		 windows;
+
+	u_int				 fire_count;
+	time_t				 fire_time;
 
 	RB_ENTRY(monitor_item)		 entry;
 };
@@ -179,6 +182,9 @@ monitor_report(struct monitor_set *ms, struct monitor_item *me,
 	struct monitor_change	change = { 0 };
 
 	log_debug("%s: %s changed to %s", __func__, me->name, value);
+
+	me->fire_count++;
+	me->fire_time = current_time;
 
 	change.name = me->name;
 	change.value = value;
@@ -658,4 +664,26 @@ monitor_remove(struct monitor_set *ms, const char *name)
 		monitor_free_item(ms, me);
 	if (RB_EMPTY(&ms->items) && evtimer_initialized(&ms->timer))
 		evtimer_del(&ms->timer);
+}
+
+/* Get subscription firing count. */
+u_int
+monitor_get_fire_count(struct monitor_set *ms, const char *name)
+{
+	struct monitor_item	*me, find = { .name = (char *)name };
+
+	if ((me = RB_FIND(monitor_items, &ms->items, &find)) == NULL)
+		return (0);
+	return (me->fire_count);
+}
+
+/* Get subscription firing time. */
+time_t
+monitor_get_fire_time(struct monitor_set *ms, const char *name)
+{
+	struct monitor_item	*me, find = { .name = (char *)name };
+
+	if ((me = RB_FIND(monitor_items, &ms->items, &find)) == NULL)
+		return (0);
+	return (me->fire_time);
 }

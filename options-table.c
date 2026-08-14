@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.237 2026/07/14 17:17:17 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.242 2026/07/27 08:03:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1350,7 +1350,8 @@ const struct options_table_entry options_table[] = {
 	{ .name = "display-panes-format",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "#[align=right]#{pane_width}x#{pane_height}",
+	  .default_str = "#[align=right]"
+	                 "#{pane_unzoomed_width}x#{pane_unzoomed_height}",
 	  .text = "Format of text shown by 'display-panes', expanded for each "
 		  "pane."
 	},
@@ -1431,6 +1432,15 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of current line number in copy mode."
 	},
 
+	{ .name = "copy-mode-current-line-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of the line containing the cursor in copy mode."
+	},
+
 	{ .name = "copy-mode-line-number-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
@@ -1451,8 +1461,8 @@ const struct options_table_entry options_table[] = {
 	{ .name = "fill-character",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "",
-	  .text = "Character used to fill unused parts of window."
+	  .default_str = "#{?is_inside,#[bg=themedarkgrey] ,#[fg=themelightgrey]#[acs]~}",
+	  .text = "Format used to fill unused parts of window."
 	},
 
 	{ .name = "main-pane-height",
@@ -1532,9 +1542,10 @@ const struct options_table_entry options_table[] = {
 	{ .name = "pane-active-border-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
-	  .default_str = "fg=#{?pane_marked,thememagenta,"
+	  .default_str = "fg=#{?pane_modal_flag,themeblue,"
+			 "#{?pane_marked,thememagenta,"
 			 "#{?synchronize-panes,themered,"
-			 "#{?pane_in_mode,themeyellow,themegreen}}}",
+			 "#{?pane_in_mode,themeyellow,themegreen}}}}",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the active pane border."
@@ -1935,6 +1946,7 @@ const struct options_table_entry options_table[] = {
 	OPTIONS_TABLE_AFTER_HOOK("show-messages"),
 	OPTIONS_TABLE_AFTER_HOOK("show-options"),
 	OPTIONS_TABLE_AFTER_HOOK("split-window"),
+	OPTIONS_TABLE_AFTER_HOOK("swap-window"),
 	OPTIONS_TABLE_AFTER_HOOK("unbind-key"),
 	OPTIONS_TABLE_HOOK("alert-activity", "",
 	    "Run when a window has activity."),

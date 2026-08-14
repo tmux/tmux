@@ -1,4 +1,4 @@
-/* $OpenBSD: layout.c,v 1.95 2026/07/14 17:17:17 nicm Exp $ */
+/* $OpenBSD: layout.c,v 1.96 2026/07/15 13:02:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1677,7 +1677,10 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 			return (NULL);
 	}
 
-	window_push_zoom(wp->window, 1, (flags & SPAWN_ZOOM));
+	if (flags & SPAWN_MODAL)
+		window_push_modal_zoom(w);
+	else
+		window_push_zoom(wp->window, 1, (flags & SPAWN_ZOOM));
 	lcnew = layout_floating_pane(w, wp, &fg);
 	return (lcnew);
 }

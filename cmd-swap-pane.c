@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-swap-pane.c,v 1.54 2026/07/13 13:01:14 nicm Exp $ */
+/* $OpenBSD: cmd-swap-pane.c,v 1.55 2026/07/15 13:02:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -76,6 +76,11 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	src_w = source->wl->window;
 	src_wp = source->wp;
 	src_idx = source->wl->idx;
+
+	if (src_wp == src_w->modal || dst_wp == dst_w->modal) {
+		cmdq_error(item, "pane is modal");
+		return (CMD_RETURN_ERROR);
+	}
 
 	if (window_push_zoom(dst_w, 0, args_has(args, 'Z')))
 		server_redraw_window(dst_w);

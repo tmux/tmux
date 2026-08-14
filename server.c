@@ -1,4 +1,4 @@
-/* $OpenBSD: server.c,v 1.214 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: server.c,v 1.215 2026/08/03 10:07:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -240,6 +240,7 @@ server_start(struct tmuxproc *client, uint64_t flags, struct event_base *base,
 	if (cause != NULL) {
 		if (c != NULL) {
 			c->exit_message = cause;
+			c->retval = 1;
 			c->flags |= CLIENT_EXIT;
 		} else {
 			fprintf(stderr, "%s\n", cause);
@@ -398,6 +399,7 @@ server_accept(int fd, short events, __unused void *data)
 	c = server_client_create(newfd);
 	if (!server_acl_join(c)) {
 		c->exit_message = xstrdup("access not allowed");
+		c->retval = 1;
 		c->flags |= CLIENT_EXIT;
 	}
 }

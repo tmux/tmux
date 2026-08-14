@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-break-pane.c,v 1.73 2026/07/13 13:01:14 nicm Exp $ */
+/* $OpenBSD: cmd-break-pane.c,v 1.75 2026/07/23 09:38:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -103,6 +103,11 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	int			 idx = target->idx, before, old_idx = wl->idx;
 	const char		*template, *name = args_get(args, 'n');
 
+	if (wp == w->modal) {
+		cmdq_error(item, "pane is modal");
+		return (CMD_RETURN_ERROR);
+	}
+
 	if (args_has(args, 'W'))
 		return (cmd_break_pane_float(item, args, w, wp));
 
@@ -167,6 +172,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 		w->name = clean_name(name, 0);
 		options_set_number(w->options, "automatic-rename", 0);
 	}
+	window_set_fill_cells(w);
 
 	layout_init(w, wp);
 	wp->flags |= PANE_CHANGED;

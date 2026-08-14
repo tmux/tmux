@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-select-pane.c,v 1.76 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: cmd-select-pane.c,v 1.77 2026/07/17 12:42:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -150,13 +150,12 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	const struct cmd_entry	*entry = cmd_get_entry(self);
 	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
-	struct client		*c = cmdq_get_client(item);
 	struct event_payload	*ep;
 	struct cmd_find_state	 fs;
 	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
 	struct session		*s = target->s;
-	struct window_pane	*wp = target->wp, *activewp, *lastwp;
+	struct window_pane	*wp = target->wp, *lastwp;
 	struct options		*oo = wp->options;
 	char			*title;
 	const char		*style;
@@ -267,18 +266,12 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (c != NULL && c->session != NULL && (c->flags & CLIENT_ACTIVEPANE))
-		activewp = server_client_get_pane(c);
-	else
-		activewp = w->active;
-	if (wp == activewp)
+	if (wp == w->active)
 		return (CMD_RETURN_NORMAL);
 	if (window_push_zoom(w, 0, args_has(args, 'Z')))
 		server_redraw_window(w);
 	window_redraw_active_switch(w, wp);
-	if (c != NULL && c->session != NULL && (c->flags & CLIENT_ACTIVEPANE))
-		server_client_set_pane(c, wp);
-	else if (window_set_active_pane(w, wp, 1))
+	if (window_set_active_pane(w, wp, 1))
 		cmd_find_from_winlink_pane(current, wl, wp, 0);
 	cmdq_insert_hook(s, item, current, "after-select-pane");
 	cmd_select_pane_redraw(w);

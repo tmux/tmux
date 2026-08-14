@@ -1,4 +1,4 @@
-/* $OpenBSD: proc.c,v 1.31 2026/06/08 21:38:19 nicm Exp $ */
+/* $OpenBSD: proc.c,v 1.32 2026/08/04 13:16:03 claudio Exp $ */
 
 /*
  * Copyright (c) 2015 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -29,6 +29,10 @@
 
 #if defined(HAVE_NCURSES_H)
 #include <ncurses.h>
+#endif
+
+#ifdef HAVE_JEMALLOC
+#include <jemalloc/jemalloc.h>
 #endif
 
 #include "tmux.h"
@@ -75,7 +79,7 @@ static void
 proc_event_cb(__unused int fd, short events, void *arg)
 {
 	struct tmuxpeer	*peer = arg;
-	ssize_t		 n;
+	int		 n;
 	struct imsg	 imsg;
 
 	if (!(peer->flags & PEER_BAD) && (events & EV_READ)) {
@@ -84,7 +88,7 @@ proc_event_cb(__unused int fd, short events, void *arg)
 			return;
 		}
 		for (;;) {
-			if ((n = imsg_get(&peer->ibuf, &imsg)) == -1) {
+			if ((n = imsgbuf_get(&peer->ibuf, &imsg)) == -1) {
 				peer->dispatchcb(NULL, peer->arg);
 				return;
 			}
@@ -181,6 +185,10 @@ proc_start(const char *name)
 {
 	struct tmuxproc	*tp;
 	struct utsname	 u;
+#ifdef HAVE_JEMALLOC
+	const char	*version;
+	size_t		 size = sizeof version;
+#endif
 
 	log_open(name);
 	setproctitle("%s (%s)", name, socket_path);
@@ -194,6 +202,11 @@ proc_start(const char *name)
 	log_debug("using libevent %s %s", event_get_version(), event_get_method());
 #ifdef HAVE_UTF8PROC
 	log_debug("using utf8proc %s", utf8proc_version());
+#endif
+#ifdef HAVE_JEMALLOC
+	if (mallctl("version", &version, &size, NULL, 0) != 0)
+		version = "(unknown version)";
+	log_debug("using jemalloc %s", version);
 #endif
 #ifdef NCURSES_VERSION
 	log_debug("using ncurses %s %06u", NCURSES_VERSION, NCURSES_VERSION_PATCH);

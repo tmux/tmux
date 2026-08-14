@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.491 2026/07/14 19:07:03 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.502 2026/08/04 11:18:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -36,7 +36,8 @@ static void	server_client_check_window_resize(struct window *);
 static key_code	server_client_check_mouse(struct client *, struct key_event *);
 static void	server_client_repeat_timer(int, short, void *);
 static void	server_client_click_timer(int, short, void *);
-static void	server_client_check_exit(struct client *);
+static void	server_client_check_exit(struct client *, int);
+static void	server_client_exit_timer(int, short, void *);
 static void	server_client_check_redraw(struct client *);
 static void	server_client_check_modes(struct client *);
 static void	server_client_set_title(struct client *);
@@ -49,19 +50,6 @@ static int	server_client_dispatch_command(struct client *, struct imsg *);
 static int	server_client_dispatch_identify(struct client *, struct imsg *);
 static int	server_client_dispatch_shell(struct client *);
 static void	server_client_report_theme(struct client *, enum client_theme);
-
-/* Compare client windows. */
-static int
-server_client_window_cmp(struct client_window *cw1,
-    struct client_window *cw2)
-{
-	if (cw1->window < cw2->window)
-		return (-1);
-	if (cw1->window > cw2->window)
-		return (1);
-	return (0);
-}
-RB_GENERATE(client_windows, client_window, entry, server_client_window_cmp);
 
 /* Number of attached clients. */
 u_int
@@ -305,7 +293,6 @@ server_client_create(int fd)
 	c->out_fd = -1;
 
 	c->queue = cmdq_new();
-	RB_INIT(&c->windows);
 	RB_INIT(&c->files);
 
 	c->tty.sx = 80;
@@ -323,6 +310,7 @@ server_client_create(int fd)
 
 	evtimer_set(&c->repeat_timer, server_client_repeat_timer, c);
 	evtimer_set(&c->click_timer, server_client_click_timer, c);
+	evtimer_set(&c->exit_timer, server_client_exit_timer, c);
 
 	c->click_wp = -1;
 
@@ -496,8 +484,9 @@ void
 server_client_lost(struct client *c)
 {
 	struct client_file	*cf, *cf1;
-	struct client_window	*cw, *cw1;
 
+	if (cfg_client == c)
+		cfg_client = NULL;
 	c->flags |= CLIENT_DEAD;
 
 	server_client_clear_overlay(c);
@@ -507,10 +496,6 @@ server_client_lost(struct client *c)
 	RB_FOREACH_SAFE(cf, client_files, &c->files, cf1) {
 		cf->error = EINTR;
 		file_fire_done(cf);
-	}
-	RB_FOREACH_SAFE(cw, client_windows, &c->windows, cw1) {
-		RB_REMOVE(client_windows, &c->windows, cw);
-		free(cw);
 	}
 
 	TAILQ_REMOVE(&clients, c, entry);
@@ -542,6 +527,9 @@ server_client_lost(struct client *c)
 
 	evtimer_del(&c->repeat_timer);
 	evtimer_del(&c->click_timer);
+	evtimer_del(&c->exit_timer);
+	if (event_initialized(&c->cycle_timer))
+		evtimer_del(&c->cycle_timer);
 
 	key_bindings_unref_table(c->keytable);
 
@@ -871,6 +859,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	u_int				 x, y, sx, sy, px, py, n, sl_mpos = 0;
 	u_int				 b, bn;
 	int				 ignore = 0;
+	int				 modal_drag = 0;
 	key_code			 key;
 	struct timeval			 tv;
 	struct style_range		*sr;
@@ -1029,46 +1018,78 @@ have_event:
 	 * Not on status line. Adjust position and check for border, pane, or
 	 * scrollbar.
 	 */
-	if (loc == KEYC_MOUSE_LOCATION_NOWHERE) {
-		if (c->tty.mouse_scrolling_flag) {
-			if (lwp != NULL) {
-				loc = KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER;
-				m->wp = lwp->id;
-				m->w = lwp->window->id;
-			}
-		} else {
-			px = x;
-			if (m->statusat == 0 && y >= m->statuslines)
-				py = y - m->statuslines;
-			else if (m->statusat > 0 && y >= (u_int)m->statusat)
-				py = m->statusat - 1;
-			else
-				py = y;
+	if (loc == KEYC_MOUSE_LOCATION_NOWHERE && c->tty.mouse_scrolling_flag) {
+		if (lwp != NULL) {
+			loc = KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER;
+			m->wp = lwp->id;
+			m->w = lwp->window->id;
+		}
+	} else if (loc == KEYC_MOUSE_LOCATION_NOWHERE) {
+		px = x;
+		if (m->statusat == 0 && y >= m->statuslines)
+			py = y - m->statuslines;
+		else if (m->statusat > 0 && y >= (u_int)m->statusat)
+			py = m->statusat - 1;
+		else
+			py = y;
 
-			tty_window_offset(&c->tty, &m->ox, &m->oy, &sx, &sy);
-			log_debug("mouse window @%u at %u,%u (%ux%u)",
-				  w->id, m->ox, m->oy, sx, sy);
-			if (px > sx || py > sy) {
+		tty_window_offset(&c->tty, &m->ox, &m->oy, &sx, &sy);
+		log_debug("mouse window @%u at %u,%u (%ux%u)", w->id, m->ox,
+		    m->oy, sx, sy);
+		if (px > sx || py > sy) {
+			server_client_update_scrollbar_hover(c, type, -1, -1);
+			return (KEYC_UNKNOWN);
+		}
+		px = px + m->ox;
+		py = py + m->oy;
+		if (w->modal != NULL &&
+		    !window_pane_contains(w->modal, px, py)) {
+			if (lwp == w->modal &&
+			    c->tty.mouse_drag_flag != 0 &&
+			    (type == KEYC_TYPE_MOUSEDRAG ||
+			    type == KEYC_TYPE_MOUSEUP)) {
+				modal_drag = 1;
+				wp = lwp;
+				loc = KEYC_MOUSE_LOCATION_PANE;
+				m->wp = wp->id;
+				m->w = wp->window->id;
+			} else {
 				server_client_update_scrollbar_hover(c, type,
 				    -1, -1);
+				c->tty.mouse_drag_update = NULL;
+				c->tty.mouse_drag_release = NULL;
+				c->tty.mouse_drag_flag = 0;
+				c->tty.mouse_scrolling_flag = 0;
+				c->tty.mouse_slider_mpos = -1;
+				c->tty.mouse_last_pane = -1;
+				if ((w->modal->flags & PANE_CLOSEONCLICK) &&
+				    (type == KEYC_TYPE_MOUSEDOWN ||
+				    type == KEYC_TYPE_SECONDCLICK ||
+				    type == KEYC_TYPE_TRIPLECLICK))
+					server_kill_pane(w->modal);
 				return (KEYC_UNKNOWN);
 			}
-			px = px + m->ox;
-			py = py + m->oy;
-			server_client_update_scrollbar_hover(c, type, px, py);
+		}
+		server_client_update_scrollbar_hover(c, type, px, py);
 
-			if (type == KEYC_TYPE_MOUSEDRAG && lwp != NULL) {
-				/* Use pane from last mouse event. */
-				wp = lwp;
-			} else {
-				/* Try inside the pane. */
-				wp = window_get_active_at(w, px, py);
+		if (modal_drag) {
+			/* Keep the drag with the modal pane. */
+		} else if (type == KEYC_TYPE_MOUSEDRAG && lwp != NULL) {
+			/* Use pane from last mouse event. */
+			wp = lwp;
+		} else {
+			/* Try inside the pane. */
+			wp = window_get_active_at(w, px, py);
+		}
+		if (wp == NULL) {
+			loc = KEYC_MOUSE_LOCATION_EMPTY;
+			m->w = w->id;
+			log_debug("mouse %u,%u on empty area", x, y);
+		} else {
+			if (!modal_drag) {
+				loc = server_client_check_mouse_in_pane(wp, px,
+				    py, &sl_mpos);
 			}
-			if (wp == NULL)
-				return (KEYC_UNKNOWN);
-			loc = server_client_check_mouse_in_pane(wp, px, py,
-			    &sl_mpos);
-
 			if (loc == KEYC_MOUSE_LOCATION_PANE) {
 				log_debug("mouse %u,%u on pane %%%u", x, y,
 				    wp->id);
@@ -1664,6 +1685,9 @@ server_client_handle_menu_key(struct client *c, struct key_event *event)
 	memcpy(&new_event, event, sizeof new_event);
 	if (KEYC_IS_MOUSE(event->key)) {
 		m = &new_event.m;
+		m->statusat = status_at_line(c);
+		m->statuslines = status_line_size(c);
+
 		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
 		m->x += ox;
 		if (m->statusat == 0) {
@@ -1671,8 +1695,7 @@ server_client_handle_menu_key(struct client *c, struct key_event *event)
 				m->x = m->y = UINT_MAX;
 			else
 				m->y = m->y - m->statuslines + oy;
-		} else if (m->statusat > 0 &&
-		    m->y >= (u_int)m->statusat)
+		} else if (m->statusat > 0 && m->y >= (u_int)m->statusat)
 			m->x = m->y = UINT_MAX;
 		else
 			m->y += oy;
@@ -1829,7 +1852,7 @@ server_client_loop(void)
 
 	/* Check clients. */
 	TAILQ_FOREACH(c, &clients, entry) {
-		server_client_check_exit(c);
+		server_client_check_exit(c, 0);
 		if (c->session != NULL && c->session->curw != NULL) {
 			server_client_check_modes(c);
 			server_client_check_redraw(c);
@@ -2297,9 +2320,37 @@ server_client_click_timer(__unused int fd, __unused short events, void *data)
 	c->flags &= ~(CLIENT_DOUBLECLICK|CLIENT_TRIPLECLICK);
 }
 
-/* Check if client should be exited. */
+/* Start client exit timer. */
 static void
-server_client_check_exit(struct client *c)
+server_client_start_exit_timer(struct client *c)
+{
+	struct timeval	tv = { .tv_sec = 10 };
+
+	if (!evtimer_pending(&c->exit_timer, NULL))
+		evtimer_add(&c->exit_timer, &tv);
+}
+
+/* Exit timer has expired: stop waiting for the client. */
+static void
+server_client_exit_timer(__unused int fd, __unused short events, void *data)
+{
+	struct client	*c = data;
+
+	if (c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED))
+		return;
+
+	if (c->flags & CLIENT_EXITED) {
+		log_debug("%s: %s took too long to exit", __func__, c->name);
+		server_client_lost(c);
+	} else if (c->flags & CLIENT_EXIT) {
+		log_debug("%s: %s took too long to flush", __func__, c->name);
+		server_client_check_exit(c, 1);
+	}
+}
+
+/* Check if client should be exited, abandoning buffered output if forced. */
+static void
+server_client_check_exit(struct client *c, int force)
 {
 	struct client_file	*cf;
 	const char		*name = c->exit_session;
@@ -2312,15 +2363,28 @@ server_client_check_exit(struct client *c)
 		return;
 
 	if (c->flags & CLIENT_CONTROL) {
-		control_discard(c);
-		if (!control_all_done(c))
-			return;
+		if (force)
+			control_discard_all(c);
+		else {
+			control_discard(c);
+			if (!control_all_done(c)) {
+				server_client_start_exit_timer(c);
+				return;
+			}
+		}
 	}
-	RB_FOREACH(cf, client_files, &c->files) {
-		if (EVBUFFER_LENGTH(cf->buffer) != 0)
-			return;
+	if (!force) {
+		RB_FOREACH(cf, client_files, &c->files) {
+			if (EVBUFFER_LENGTH(cf->buffer) != 0) {
+				server_client_start_exit_timer(c);
+				return;
+			}
+		}
 	}
 	c->flags |= CLIENT_EXITED;
+
+	evtimer_del(&c->exit_timer);
+	server_client_start_exit_timer(c);
 
 	switch (c->exit_type) {
 	case CLIENT_EXIT_RETURN:
@@ -3025,8 +3089,6 @@ server_client_set_flags(struct client *c, const char *flags)
 			flag = CLIENT_READONLY;
 		else if (strcmp(next, "ignore-size") == 0)
 			flag = CLIENT_IGNORESIZE;
-		else if (strcmp(next, "active-pane") == 0)
-			flag = CLIENT_ACTIVEPANE;
 		else if (strcmp(next, "no-detach-on-destroy") == 0)
 			flag = CLIENT_NO_DETACH_ON_DESTROY;
 		if (flag == 0)
@@ -3075,8 +3137,6 @@ server_client_get_flags(struct client *c)
 	}
 	if (c->flags & CLIENT_READONLY)
 		strlcat(s, "read-only,", sizeof s);
-	if (c->flags & CLIENT_ACTIVEPANE)
-		strlcat(s, "active-pane,", sizeof s);
 	if (c->flags & CLIENT_SUSPENDED)
 		strlcat(s, "suspended,", sizeof s);
 	if (c->flags & CLIENT_UTF8)
@@ -3086,77 +3146,13 @@ server_client_get_flags(struct client *c)
 	return (s);
 }
 
-/* Get client window. */
-struct client_window *
-server_client_get_client_window(struct client *c, u_int id)
-{
-	struct client_window	cw = { .window = id };
-
-	return (RB_FIND(client_windows, &c->windows, &cw));
-}
-
-/* Add client window. */
-struct client_window *
-server_client_add_client_window(struct client *c, u_int id)
-{
-	struct client_window	*cw;
-
-	cw = server_client_get_client_window(c, id);
-	if (cw == NULL) {
-		cw = xcalloc(1, sizeof *cw);
-		cw->window = id;
-		RB_INSERT(client_windows, &c->windows, cw);
-	}
-	return (cw);
-}
-
-/* Get client active pane. */
-struct window_pane *
-server_client_get_pane(struct client *c)
-{
-	struct session		*s = c->session;
-	struct client_window	*cw;
-
-	if (s == NULL)
-		return (NULL);
-
-	if (~c->flags & CLIENT_ACTIVEPANE)
-		return (s->curw->window->active);
-	cw = server_client_get_client_window(c, s->curw->window->id);
-	if (cw == NULL)
-		return (s->curw->window->active);
-	return (cw->pane);
-}
-
-/* Set client active pane. */
-void
-server_client_set_pane(struct client *c, struct window_pane *wp)
-{
-	struct session		*s = c->session;
-	struct client_window	*cw;
-
-	if (s == NULL)
-		return;
-
-	cw = server_client_add_client_window(c, s->curw->window->id);
-	cw->pane = wp;
-	log_debug("%s pane now %%%u", c->name, wp->id);
-}
-
-/* Remove pane from client lists. */
+/* Remove pane from client state. */
 void
 server_client_remove_pane(struct window_pane *wp)
 {
-	struct client		*c;
-	struct window		*w = wp->window;
-	struct client_window	*cw;
+	struct client			*c;
 
 	TAILQ_FOREACH(c, &clients, entry) {
-		cw = server_client_get_client_window(c, w->id);
-		if (cw != NULL && cw->pane == wp) {
-			RB_REMOVE(client_windows, &c->windows, cw);
-			free(cw);
-		}
 		if (c->tty.mouse_last_pane == (int)wp->id) {
 			c->tty.mouse_last_pane = -1;
 			c->tty.mouse_drag_update = NULL;
@@ -3209,7 +3205,7 @@ server_client_print(struct client *c, int parse, struct evbuffer *evb)
 		goto out;
 	}
 
-	wp = server_client_get_pane(c);
+	wp = c->session->curw->window->active;
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme == NULL || wme->mode != &window_view_mode)
 		window_pane_set_mode(wp, NULL, &window_view_mode, NULL, NULL,

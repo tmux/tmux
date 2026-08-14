@@ -16,6 +16,7 @@ concurrency:
 jobs:
   action:
     runs-on: ubuntu-latest
+    if: github.repository == 'tmux/tmux'
     steps:
       - uses: dessant/lock-threads@v6
         with:

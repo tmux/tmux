@@ -73,11 +73,14 @@ $TMUX new-session -d -s m -x 80 -y 24 'cat' || exit 1
 $TMUX split-window -t m:0 'cat' || exit 1
 p0=$($TMUX display-message -p -t m:0.0 '#{pane_id}')
 p1=$($TMUX display-message -p -t m:0.1 '#{pane_id}')
-$TMUX set -g display-panes-format 'P#{pane_index}' ||
+$TMUX set -g display-panes-format \
+    'P#{pane_index}:#{pane_unzoomed_width}x#{pane_unzoomed_height}' ||
 	fail "set display-panes-format failed"
 
 $TMUX2 new-session -d -s out -x 80 -y 24 "$TMUX attach -t m" || exit 1
 wait_clients 1
+p0_size=$($TMUX display-message -p -t "$p0" '#{pane_width}x#{pane_height}')
+p1_size=$($TMUX display-message -p -t "$p1" '#{pane_width}x#{pane_height}')
 
 capture()
 {
@@ -100,11 +103,38 @@ wait_capture()
 $TMUX display-panes -d 0 -t "$p0" || fail "display-panes failed"
 wait_format "$p0" '#{pane_mode}' 'panes-mode'
 wait_format "$p0" '#{window_zoomed_flag}' '1'
-wait_capture 'P0'
-wait_capture 'P1'
+wait_format "$p0" '#{pane_unzoomed_width}x#{pane_unzoomed_height}' \
+    "$p0_size"
+wait_capture "P0:$p0_size"
+wait_capture "P1:$p1_size"
 $TMUX send-keys -t "$p0" q || fail "exit panes mode failed"
 wait_format "$p0" '#{pane_in_mode}' '0'
 wait_format "$p0" '#{window_zoomed_flag}' '0'
+$TMUX set -g display-panes-format 'P#{pane_index}' ||
+	fail "reset display-panes-format failed"
+
+# Unzoomed sizes match the visible pane size when scrollbars reserve space.
+$TMUX set -w -t m:0 pane-scrollbars on ||
+	fail "set pane-scrollbars failed"
+$TMUX set -w -t m:0 pane-scrollbars-style "width=2,pad=1" ||
+	fail "set pane-scrollbars-style failed"
+p0_size=$($TMUX display-message -p -t "$p0" '#{pane_width}x#{pane_height}')
+p1_size=$($TMUX display-message -p -t "$p1" '#{pane_width}x#{pane_height}')
+$TMUX set -g display-panes-format \
+    'S#{pane_index}:#{pane_unzoomed_width}x#{pane_unzoomed_height}' ||
+	fail "set scrollbar display-panes-format failed"
+$TMUX display-panes -d 0 -t "$p0" || fail "display-panes scrollbar failed"
+wait_format "$p0" '#{window_zoomed_flag}' '1'
+wait_format "$p0" '#{pane_unzoomed_width}x#{pane_unzoomed_height}' \
+    "$p0_size"
+wait_capture "S0:$p0_size"
+wait_capture "S1:$p1_size"
+$TMUX send-keys -t "$p0" q || fail "exit scrollbar panes mode failed"
+wait_format "$p0" '#{pane_in_mode}' '0'
+$TMUX set -w -t m:0 pane-scrollbars off ||
+	fail "reset pane-scrollbars failed"
+$TMUX set -g display-panes-format 'P#{pane_index}' ||
+	fail "reset display-panes-format after scrollbars failed"
 
 # -Z starts unzoomed.
 $TMUX display-panes -Zd 0 -t "$p0" || fail "display-panes -Z failed"
@@ -192,13 +222,21 @@ $TMUX set -g display-panes-format 'P#{pane_index}' ||
 # pane content into the status row.
 $TMUX set -w -t m:0 pane-border-status top ||
 	fail "set pane-border-status failed"
-$TMUX set -g display-panes-format '' || fail "clear display-panes-format failed"
+status_p0_size=$($TMUX display-message -p -t "$p0" \
+    '#{pane_width}x#{pane_height}')
+status_p1_size=$($TMUX display-message -p -t "$p1" \
+    '#{pane_width}x#{pane_height}')
+$TMUX set -g display-panes-format \
+    '#[align=right]T#{pane_index}:#{pane_unzoomed_width}x#{pane_unzoomed_height}' ||
+	fail "set status display-panes-format failed"
 $TMUX respawn-pane -k -t "$p0" 'printf "STATUS-TOP\n"; exec cat' ||
 	fail "write status marker failed"
 wait_capture 'STATUS-TOP'
 $TMUX display-panes -d 0 -t "$p0" || fail "display-panes status failed"
 wait_format "$p0" '#{pane_mode}' 'panes-mode'
 wait_capture 'STATUS-TOP'
+wait_capture "T0:$status_p0_size"
+wait_capture "T1:$status_p1_size"
 CAPTURED=$(capture)
 first=$(printf '%s\n' "$CAPTURED" | sed -n '1p')
 second=$(printf '%s\n' "$CAPTURED" | sed -n '2p')
@@ -230,13 +268,18 @@ wait_format "$fp" '#{pane_mode}' 'panes-mode'
 wait_format "$fp" '#{window_zoomed_flag}' '1'
 wait_capture '┌'
 wait_capture '┘'
+fp_size=$($TMUX display-message -p -t "$fp" \
+    '#{pane_unzoomed_width}x#{pane_unzoomed_height}')
+[ "$fp_size" = "30x8" ] ||
+	fail "expected floating unzoomed size 30x8, got $fp_size"
 $TMUX send-keys -t "$fp" q || fail "exit zoomed floating panes mode failed"
 wait_format "$fp" '#{pane_in_mode}' '0'
 wait_format "$fp" '#{window_zoomed_flag}' '0'
 
 $TMUX resize-pane -t "$fp" -x 48 -y 14 ||
 	fail "resize floating pane larger failed"
-$TMUX set -g display-panes-format '#[align=right]FP#{pane_width}x#{pane_height}' ||
+$TMUX set -g display-panes-format \
+    '#[align=right]FP#{pane_unzoomed_width}x#{pane_unzoomed_height}' ||
 	fail "set floating display-panes-format failed"
 $TMUX display-panes -Zd 0 -t "$fp" || fail "display-panes floating format failed"
 wait_format "$fp" '#{pane_mode}' 'panes-mode'

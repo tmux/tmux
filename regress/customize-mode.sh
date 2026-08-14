@@ -280,6 +280,7 @@ test_user_hook()
 	settle
 	assert_equals "$($TMUX show-option -qv @cm_hook)" \
 		"display-message hook" "add user hook"
+	$TMUX set-hook -E @cm_hook || fail "fire user hook failed"
 
 	send q
 	wait_mode 0
@@ -287,7 +288,10 @@ test_user_hook()
 	repeat_key j 3
 	send Right j
 	settle
-	assert_contains "$(capture)" "@cm_hook" "user hook shown as hook"
+	screen=$(capture)
+	assert_contains "$screen" "@cm_hook" "user hook shown as hook"
+	assert_contains "$screen" "This hook has been fired 1 times, last " \
+		"user hook fire count and time"
 
 	send u y
 	settle
@@ -302,10 +306,17 @@ test_hook_array()
 
 	$TMUX set-hook -g 'after-new-session[0]' 'display-message old' ||
 		fail "set hook array failed"
+	$TMUX set-hook -g -R after-new-session || fail "fire hook array failed"
 
 	open_customize '#{==:#{option_name},after-new-session}'
 	repeat_key j 3
-	send Right j Right j
+	send Right j
+	settle
+	screen=$(capture)
+	assert_contains "$screen" "This hook has been fired " \
+		"array hook fire count"
+	assert_contains "$screen" ", last " "array hook fire time"
+	send Right j
 	settle
 
 	send a
