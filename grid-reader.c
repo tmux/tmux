@@ -234,7 +234,7 @@ grid_reader_cursor_next_word(struct grid_reader *gr, const char *separators)
 void
 grid_reader_cursor_next_word_end(struct grid_reader *gr, const char *separators)
 {
-	u_int	xx, yy;
+	u_int	xx, yy, width;
 
 	/* Do not break up wrapped words. */
 	if (grid_get_line(gr->gd, gr->cy)->flags & GRID_LINE_WRAPPED)
@@ -263,16 +263,19 @@ grid_reader_cursor_next_word_end(struct grid_reader *gr, const char *separators)
 			while (grid_reader_handle_wrap(gr, &xx, &yy) &&
 			    grid_reader_in_set(gr, separators) &&
 			    !grid_reader_in_set(gr, WHITESPACE));
-			return;
+			break;
 		} else {
 			do
 				gr->cx++;
 			while (grid_reader_handle_wrap(gr, &xx, &yy) &&
 			    !(grid_reader_in_set(gr, WHITESPACE) ||
 			    grid_reader_in_set(gr, separators)));
-			return;
+			break;
 		}
 	}
+	while (grid_reader_handle_wrap(gr, &xx, &yy) &&
+	    (width = grid_reader_in_set(gr, WHITESPACE)))
+		gr->cx += width;
 }
 
 /* Move to the previous place where a word begins. */
