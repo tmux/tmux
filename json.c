@@ -26,7 +26,8 @@
 
 #include "tmux.h"
 
-#define TOKENS_MAX	4096
+#define INPUT_MAX	8192
+#define TOKENS_MAX	(INPUT_MAX)
 #define ERROR_CTX_LEN	8
 
 /* JSON Token types. */
@@ -115,6 +116,7 @@ static struct json_node	*json_parse_boolean(struct json_token **, const char *,
 static int		 json_node_cmp(struct json_node *, struct json_node *);
 RB_GENERATE_STATIC(json_fields, json_node, oentry, json_node_cmp);
 
+/* Comparator for the json_fields tree. */
 static int
 json_node_cmp(struct json_node *a, struct json_node *b)
 {
@@ -133,6 +135,7 @@ json_parse(const char *input, char **cause)
 	return (json_parse_tokens(&tokens, cause));
 }
 
+/* Returns a field node from an object node. */
 struct json_node *
 json_find(struct json_node *jn, const char *key)
 {
@@ -145,8 +148,9 @@ json_find(struct json_node *jn, const char *key)
 	return (RB_FIND(json_fields, &jn->fields, &tmp));
 }
 
+/* Returns the first member of an array node. */
 struct json_node *
-json_array_first(struct json_node *jn)
+json_array_first(const struct json_node *jn)
 {
 	if (jn->type != NODE_ARRAY)
 		return (NULL);
@@ -154,8 +158,9 @@ json_array_first(struct json_node *jn)
 	return (TAILQ_FIRST(&jn->members));
 }
 
+/* Returns the next member of an array's member node. */
 struct json_node *
-json_array_next(struct json_node *jn)
+json_array_next(const struct json_node *jn)
 {
 	if (jn->parent->type != NODE_ARRAY)
 		return (NULL);
@@ -163,6 +168,7 @@ json_array_next(struct json_node *jn)
 	return (TAILQ_NEXT(jn, aentry));
 }
 
+/* Returns the string value from a node. */
 int
 json_get_string(struct json_node *jn, const char **s)
 {
@@ -173,6 +179,7 @@ json_get_string(struct json_node *jn, const char **s)
 	return (0);
 }
 
+/* Returns the number value from a node. */
 int
 json_get_number(struct json_node *jn, int64_t *i)
 {
@@ -183,6 +190,7 @@ json_get_number(struct json_node *jn, int64_t *i)
 	return (0);
 }
 
+/* Returns the boolean value from a node. */
 int
 json_get_boolean(struct json_node *jn, int *b)
 {
@@ -193,6 +201,7 @@ json_get_boolean(struct json_node *jn, int *b)
 	return (0);
 }
 
+/* Returns the object value from a node. */
 int
 json_get_object(struct json_node *jn, struct json_node **o)
 {
@@ -202,6 +211,8 @@ json_get_object(struct json_node *jn, struct json_node **o)
 	*o = jn;
 	return (0);
 }
+
+/* Returns the array value from a node. */
 int
 json_get_array(struct json_node *jn, struct json_node **a)
 {
@@ -210,6 +221,123 @@ json_get_array(struct json_node *jn, struct json_node **a)
 
 	*a = jn;
 	return (0);
+}
+
+/* Returns the string value from a given key in an object node. */
+const char *
+json_find_string(const struct json_node *jn, const char *key, char **cause)
+{
+	struct json_node	*field;
+	static char		 ret[INPUT_MAX];
+
+	if ((field = json_find((struct json_node *)jn, key)) == NULL) {
+		if (cause != NULL)
+			xasprintf(cause, "key \"%s\" not found", key);
+		return (NULL);
+	}
+	
+	if (field->type != NODE_STRING) {
+		if (cause != NULL)
+			xasprintf(cause, "key \"%s\" expected STRING value",
+			    key);
+		return (NULL);
+	}
+
+	if (xsnprintf(ret, sizeof ret, "%s", field->str) >= (int)sizeof ret) {
+		if (cause != NULL)
+			xasprintf(cause, "string overflow for key \"%s\"", key);
+		return (NULL);
+	}
+
+	return (ret);
+}
+
+/* Returns the number value from a given key in an object node. */
+const int64_t *
+json_find_number(const struct json_node *jn, const char *key, char **cause)
+{
+	struct json_node	*field;
+	static int64_t		 ret;
+
+	if ((field = json_find((struct json_node *)jn, key)) == NULL) {
+		if (cause != NULL)
+			xasprintf(cause, "key \"%s\" not found", key);
+		return (NULL);
+	}
+	if (field->type != NODE_NUMBER) {
+		if (cause != NULL)
+			xasprintf(cause, "key \"%s\" expected NUMBER value",
+			    key);
+		return (NULL);
+	}
+	ret = field->num;
+
+	return (&ret);
+}
+
+/* Returns the boolean value from a given key in an object node. */
+const int *
+json_find_boolean(const struct json_node *jn, const char *key, char **cause)
+{
+	struct json_node	*field;
+	static int		 ret;
+
+	if ((field = json_find((struct json_node *)jn, key)) == NULL) {
+		if (cause != NULL)
+			xasprintf(cause, "key \"%s\" not found", key);
+		return (NULL);
+	}
+	if (field->type != NODE_BOOLEAN) {
+		if (cause != NULL)
+			xasprintf(cause, "key \"%s\" expected BOOLEAN value",
+			    key);
+		return (NULL);
+	}
+	ret = field->boolean;
+
+	return (&ret);
+}
+
+/* Returns the object value from a given key in an object node. */
+const struct json_node *
+json_find_object(const struct json_node *jn, const char *key, char **cause)
+{
+	struct json_node	*field;
+
+	if ((field = json_find((struct json_node *)jn, key)) == NULL) {
+		if (cause != NULL)
+			xasprintf(cause, "key \"%s\" not found", key);
+		return (NULL);
+	}
+	if (field->type != NODE_OBJECT) {
+		if (cause != NULL)
+			xasprintf(cause, "key \"%s\" expected OBJECT value",
+			    key);
+		return (NULL);
+	}
+
+	return (field);
+}
+
+/* Returns the array value from a given key in an object node. */
+const struct json_node *
+json_find_array(const struct json_node *jn, const char *key, char **cause)
+{
+	struct json_node	*field;
+
+	if ((field = json_find((struct json_node *)jn, key)) == NULL) {
+		if (cause != NULL)
+			xasprintf(cause, "key \"%s\" not found", key);
+		return (NULL);
+	}
+	if (field->type != NODE_ARRAY) {
+		if (cause != NULL)
+			xasprintf(cause, "key \"%s\" expected ARRAY value",
+			    key);
+		return (NULL);
+	}
+
+	return (field);
 }
 
 /* Fill an error cause. */
