@@ -4032,6 +4032,7 @@ void	control_set_pane_on(struct client *, struct window_pane *);
 void	control_set_pane_off(struct client *, struct window_pane *);
 void	control_continue_pane(struct client *, struct window_pane *);
 void	control_pause_pane(struct client *, struct window_pane *);
+void	control_reset_pane(struct client *, struct window_pane *);
 void	control_set_window_size(struct client *, u_int, u_int, u_int);
 int	control_get_window_size(struct client *, u_int, u_int *, u_int *);
 void	control_clear_window_size(struct client *, u_int);

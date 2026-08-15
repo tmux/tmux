@@ -388,6 +388,25 @@ control_pause_pane(struct client *c, struct window_pane *wp)
 	}
 }
 
+/*
+ * Reset a pane after its buffer has been replaced: drop any output still
+ * queued from the old buffer and start again from the pane's own offset.
+ */
+void
+control_reset_pane(struct client *c, struct window_pane *wp)
+{
+	struct control_pane	*cp;
+
+	if (c->control_state == NULL)
+		return;
+	cp = control_get_pane(c, wp);
+	if (cp == NULL)
+		return;
+	control_discard_pane(c, cp);
+	memcpy(&cp->offset, &wp->offset, sizeof cp->offset);
+	memcpy(&cp->queued, &wp->offset, sizeof cp->queued);
+}
+
 /* Write an already-formatted line, queueing it behind %output if needed. */
 static void
 control_write_line(struct client *c, char *line)
