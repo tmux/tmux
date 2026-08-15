@@ -89,7 +89,8 @@ static void			 layout_assign(struct window *,
 				     struct layout_parse_ctx *);                                  
 static void			 layout_parse_apply_ctx(struct window *,
 				     struct layout_parse_ctx *);
-static struct layout_cell	*layout_parse_json_layout(struct json_node *,
+static struct layout_cell	*layout_parse_json_layout(
+				     const struct json_node *,
 				     struct layout_cell *,
 				     struct layout_parse_ctx *);
 
@@ -702,27 +703,22 @@ fail:
 static int
 layout_parse_json(struct json_node *jnroot, struct layout_parse_ctx *pctx)
 {
-	struct json_node	 *jn, *field, *object;
+	struct json_node	 *jn;
+	const struct json_node	 *object;
+	const int64_t		 *num;
 	char			**cause = pctx->cause;
 
 	if (json_get_object(jnroot, &jn) != 0) {
-		*cause = xstrdup("invalid json");
+		*cause = xstrdup("invalid layout json");
 		goto fail;
 	}
-	if ((field = json_find(jn, "V")) == NULL) {
-		*cause = xstrdup("missing version");
+
+	if ((num = json_find_number(jn, "V", cause)) == NULL) {
 		goto fail;
 	}
-	if (json_get_number(field, &pctx->version) != 0) {
-		*cause = xstrdup("invalid version type");
-		goto fail;
-	}
-	if ((field = json_find(jn, "L")) == NULL) {
-		*cause = xstrdup("missing layout");
-		goto fail;
-	}
-	if (json_get_object(field, &object) != 0) {
-		*cause = xstrdup("invalid version type");
+	pctx->version = *num;
+
+	if ((object = json_find_object(jn, "L", cause)) == NULL) {
 		goto fail;
 	}
 	pctx->root = layout_parse_json_layout(object, NULL, pctx);
@@ -743,20 +739,19 @@ fail:
 
 /* Parse nodes into layout cells. */
 static struct layout_cell *
-layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
-    struct layout_parse_ctx *pctx)
+layout_parse_json_layout(const struct json_node *node,
+    struct layout_cell *lcparent, struct layout_parse_ctx *pctx)
 {
-	struct json_node	*field, *array, *member;
+	struct json_node	*member;
 	struct layout_cell	*lc = layout_create_cell(lcparent), *lcchild;
+	const struct json_node	*array;
 	const char		*str;
-	char			*endptr;
-	int64_t			 num;
+	const int64_t		*num;
+	const int		*boolean;
+	char			*endptr, **cause = pctx->cause;
 	u_int			 id, index, zindex, active = -1, last = -1;
-	int			 boolean;
 
-	if ((field = json_find(node, "t")) == NULL)
-		goto fail;
-	if (json_get_string(field, &str) != 0)
+	if ((str = json_find_string(node, "t", cause)) == NULL)
 		goto fail;
 	if (strcmp(str, "p") == 0)
 		lc->type = LAYOUT_WINDOWPANE;
@@ -767,63 +762,56 @@ layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
 	else
 		goto fail;
 
-	if ((field = json_find(node, "w")) == NULL)
+	if ((num = json_find_number(node, "w", cause)) == NULL)
 		goto fail;
-	if (json_get_number(field, &num) != 0)
-		goto fail;
-	lc->g.sx = num;
+	lc->g.sx = *num;
 
-	if ((field = json_find(node, "h")) == NULL)
+	if ((num = json_find_number(node, "h", cause)) == NULL)
 		goto fail;
-	if (json_get_number(field, &num) != 0)
-		goto fail;
-	lc->g.sy = num;
+	lc->g.sy = *num;
 
-	if ((field = json_find(node, "x")) == NULL)
+	if ((num = json_find_number(node, "x", cause)) == NULL)
 		goto fail;
-	if (json_get_number(field, &num) != 0)
-		goto fail;
-	lc->g.xoff = num;
+	lc->g.xoff = *num;
 
-	if ((field = json_find(node, "y")) == NULL)
+	if ((num = json_find_number(node, "y", cause)) == NULL)
 		goto fail;
-	if (json_get_number(field, &num) != 0)
-		goto fail;
-	lc->g.yoff = num;
+	lc->g.yoff = *num;
 
 	if (lc->type == LAYOUT_WINDOWPANE) {
-		if ((field = json_find(node, "I")) == NULL)
-			goto fail;
-		if (json_get_string(field, &str) != 0)
+		if ((str = json_find_string(node, "I", cause)) == NULL)
 			goto fail;
 		errno = 0;
 		if (*str != '%') {
+			*cause = xstrdup("pane id must begin with '%'");
 			goto fail;
 		}
 		id = strtol(str + 1, &endptr, 10);
 		if (errno != 0 || endptr != str + strlen(str)) {
+			*cause = xstrdup("invalid number string '%s'");
 			goto fail;
 		}
-		if ((field = json_find(node, "i")) == NULL)
+		if ((num = json_find_number(node, "i", cause)) == NULL)
 			goto fail;
-		if (json_get_number(field, &num) != 0)
-			goto fail;
-		index = num;
+		index = *num;
 
-		if ((field = json_find(node, "a")) != NULL) {
-			if (json_get_boolean(field, &boolean) != 0)
+		if (json_find((struct json_node *)node, "a") != NULL) {
+			boolean = json_find_boolean(node, "a", cause);
+			if (boolean == NULL)
 				goto fail;
-			active = boolean;
-		} else if ((field = json_find(node, "l")) != NULL) {
-			if (json_get_number(field, &num) != 0)
+			active = *boolean;
+		} else if (json_find((struct json_node *)node, "l") != NULL) {
+			num = json_find_number(node, "l", cause);
+			if (num == NULL)
 				goto fail;
-			last = num;
+			last = *num;
 		}
 
-		if ((field = json_find(node, "z")) != NULL) {
-			if (json_get_number(field, &num) != 0)
+		if (json_find((struct json_node *)node, "z") != NULL) {
+			num = json_find_number(node, "z", cause);
+			if (num == NULL)
 				goto fail;
-			zindex = num;
+			zindex = *num;
 			lc->flags |= LAYOUT_CELL_FLOATING;
 		} else
 			zindex = INT_MAX;
@@ -831,12 +819,12 @@ layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
 		layout_parse_add_cctx(pctx, lc, active, last, id, index,
 		    zindex);
 	} else {
-		if ((field = json_find(node, "c")) == NULL)
+		if ((array = json_find_array(node, "c", cause)) == NULL)
 			goto fail;
-		if (json_get_array(field, &array) != 0)
+		if ((member = json_array_first(array)) == NULL) {
+			*cause = xstrdup("nodes must have children");
 			goto fail;
-		if ((member = json_array_first(array)) == NULL)
-			goto fail;
+		}
 		while (member != NULL) {
 			lcchild = layout_parse_json_layout(member, lc,
 				pctx);
