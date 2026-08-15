@@ -551,6 +551,7 @@ server_check_unattached(void)
 				continue;
 			break;
 		}
+		server_destroy_session(s);
 		session_destroy(s, 1, __func__);
 	}
 }
