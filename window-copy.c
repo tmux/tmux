@@ -6668,8 +6668,13 @@ window_copy_cursor_next_word_end_pos(struct window_mode_entry *wme,
 
 	grid_reader_start(&gr, back_s->grid, px, py);
 	if (options_get_number(oo, "mode-keys") == MODEKEY_VI) {
+		/*
+		 * Step over the character under the cursor, wrapping if it is
+		 * the last one on the line - otherwise the end of the last
+		 * word on a line is found again and the cursor never moves.
+		 */
 		if (!grid_reader_in_set(&gr, WHITESPACE))
-			grid_reader_cursor_right(&gr, 0, 0, 0);
+			grid_reader_cursor_right(&gr, 1, 0, 0);
 		grid_reader_cursor_next_word_end(&gr, separators);
 		grid_reader_cursor_left(&gr, 1);
 	} else
@@ -6698,8 +6703,13 @@ window_copy_cursor_next_word_end(struct window_mode_entry *wme,
 
 	grid_reader_start(&gr, back_s->grid, px, py);
 	if (options_get_number(oo, "mode-keys") == MODEKEY_VI) {
+		/*
+		 * Step over the character under the cursor, wrapping if it is
+		 * the last one on the line - otherwise the end of the last
+		 * word on a line is found again and the cursor never moves.
+		 */
 		if (!grid_reader_in_set(&gr, WHITESPACE))
-			grid_reader_cursor_right(&gr, 0, 0, 0);
+			grid_reader_cursor_right(&gr, 1, 0, 0);
 		grid_reader_cursor_next_word_end(&gr, separators);
 		grid_reader_cursor_left(&gr, 1);
 	} else
