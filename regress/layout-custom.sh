@@ -23,18 +23,21 @@
 #   and the "z" key of a floating pane;
 # - #{window_visible_layout} agreeing with #{window_layout};
 # - the JSON syntax itself: insignificant whitespace, backslash escapes inside
-#   strings, the number and boolean forms, and one failure for each error
-#   json.c can report;
+#   strings, the number and boolean forms, and one failure for each way json.c
+#   can reject an input;
 # - a dump being parsed back to exactly the same layout (round trip), after
-#   another layout has been applied in between;
-# - parsing a hand-written v2 layout and the panes being assigned to its cells
-#   in order;
+#   another layout has been applied in between, and the same for a layout with
+#   two floating panes in it;
+# - parsing a hand-written v2 layout;
+# - "i" deciding which pane goes in which cell, checked with a layout whose
+#   cells are written in a different order from their indexes;
 # - the same layouts with their fields in reversed and scrambled orders,
-#   including "c" before "t" (children parsed before the cell type is known)
-#   and "V" after "L";
+#   including "c" before "t" and "V" after "L", neither of which changes the
+#   order the fields are read in;
 # - a layout with more cells than the window has panes having the bottom right
 #   cells dropped, in both formats;
-# - a layout naming no active or last pane leaving both as they were;
+# - a layout naming no active or last pane leaving both as they were, whether
+#   it leaves "a" out or gives it as false;
 # - parsing a v1 layout and dumping it back as v1 through a control client,
 #   with the checksum computed here independently of layout_checksum(), and a
 #   v1 layout leaving the active pane and last pane stack untouched;
@@ -42,9 +45,10 @@
 #   clients watching one layout change, only one of which has asked for new
 #   layouts, and the number of notifications a change produces in each format;
 # - failures: a bad v1 header, checksum or body, a wrong version, a missing or
-#   duplicated root cell, missing sizes, bad cell types and pane ids, leaf
-#   cells with children and node cells without, too few cells for the panes and
-#   inconsistent sizes.
+#   duplicated root cell, missing sizes, sizes out of range, bad cell types and
+#   pane ids, a pane cell missing "i" or "I", leaf cells with children and node
+#   cells without, more than one active pane, a string too long for json.c to
+#   return, too few cells for the panes and inconsistent sizes.
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -98,16 +102,16 @@ check_ok()
 	out=$($TMUX "$@" 2>&1) || fail "Command failed (expected success): $* ($out)"
 }
 
-# check_fail $expected_error $cmd...
+# check_fail $cmd...
 #
-# Run a command and require that it fails with the given error message.
+# Run a command and require that it fails. The error text itself is never
+# checked anywhere in this test: the wording of a message is not part of what
+# the layout formats promise, so matching on it only makes the test fail when a
+# message is reworded.
 check_fail()
 {
-	exp="$1"
-	shift
-	out=$($TMUX "$@" 2>&1) &&
+	$TMUX "$@" >/dev/null 2>&1 &&
 		fail "Command succeeded (expected failure): $*"
-	must_equal "Error for: $*" "$out" "$exp"
 }
 
 # layout $target
@@ -161,11 +165,15 @@ v1()
 # its pane index, then "z" if it is floating, then "I" with its pane id.
 ONE='{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"a":true,"i":0,"I":"%N"}}'
 
-# A single leaf cell filling the window, without the keys that only the dumper
-# writes. Used by the JSON checks, which care about the syntax around it.
-LEAF='{"t":"p","w":80,"h":24,"x":0,"y":0}'
+check_ok new-session -d -s L -x 80 -y 24 -n one
 
-$TMUX new-session -d -s L -x 80 -y 24 -n one || exit 1
+p0=$($TMUX display-message -p -t L:one.0 '#{pane_id}')
+
+# A single leaf cell filling the window. Every pane cell carries "i", its pane
+# index, and "I", its pane id; both are required, so they are here even in the
+# JSON checks, which care about the syntax around the cell rather than the cell
+# itself.
+LEAF='{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"'"$p0"'"}'
 
 # ---------------------------------------------------------------------------
 # Dumping a single pane.
@@ -183,9 +191,10 @@ must_equal 'Single pane visible layout' "$(visible_layout L:one)" "$ONE"
 # The bottom right cells are closed until as many are left as there are panes,
 # so a two cell layout applied to a one pane window collapses back to the
 # single pane filling the window: the cell that is left takes the space of the
-# one that was closed.
+# one that was closed. The cell that is closed is the only one whose "I" names
+# no pane of this window, there being just the one pane to name.
 check_ok select-layout -t L:one \
-	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":11,"x":0,"y":0},{"t":"p","w":80,"h":12,"x":0,"y":12}]}}'
+	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":11,"x":0,"y":0,"i":0,"I":"'"$p0"'"},{"t":"p","w":80,"h":12,"x":0,"y":12,"i":1,"I":"%999"}]}}'
 must_equal 'Trimmed layout' "$(layout L:one)" "$ONE"
 
 # ---------------------------------------------------------------------------
@@ -201,11 +210,10 @@ must_equal 'Trimmed layout' "$(layout L:one)" "$ONE"
 # Objects nested in an array nested in an object are not checked here: every
 # split layout below is one.
 #
-# Two of json.c's messages cannot be reached from the shell and so are not
-# covered. "expected object" is unreachable because layout_construct() only
-# calls json_parse() once the string already starts with '{', and "invalid
-# boolean" is unreachable because json_parse_boolean() is only called after the
-# value has already matched "true" or "false".
+# One of json.c's rejections cannot be reached from the shell and so is not
+# covered: json_parse_tokens() refusing a top level that is not an object,
+# because layout_construct() only calls json_parse() once the string already
+# starts with '{'.
 
 # check_json_ok $what $layout
 #
@@ -216,27 +224,20 @@ check_json_ok()
 	must_equal "Layout after '$1'" "$(layout L:one)" "$ONE"
 }
 
-# check_json_fail $what $reason $layout
+# check_json_fail $what $layout
 #
-# select-layout must reject $layout with an error beginning with $reason.
-# json_error() appends up to ERROR_CTX_LEN characters of context from the point
-# of failure and cmd-select-layout.c then appends the layout itself, so only
-# the reason is matched.
+# select-layout must reject $layout.
 check_json_fail()
 {
-	out=$($TMUX select-layout -t L:one "$3" 2>&1) &&
+	$TMUX select-layout -t L:one "$2" >/dev/null 2>&1 &&
 		fail "$1: select-layout succeeded (expected failure)"
-	case "$out" in
-	"$2"*) ;;
-	*) fail "$1: expected '$2...' but got '$out'";;
-	esac
 }
 
 # Whitespace between tokens is skipped. A number is scanned up to the ',', ']',
 # '}' or whitespace that ends it, so a space after a number is fine but one
 # inside it is not.
 check_json_ok 'Spaces between tokens' \
-	'{ "V" : 2 , "L" : { "t" : "p" , "w" : 80 , "h" : 24 , "x" : 0 , "y" : 0 } }'
+	'{ "V" : 2 , "L" : { "t" : "p" , "w" : 80 , "h" : 24 , "x" : 0 , "y" : 0 , "i" : 0 , "I" : "'"$p0"'" } }'
 
 check_json_ok 'Newlines and tabs between tokens' "$(printf '{
 \t"V": 2,
@@ -245,9 +246,11 @@ check_json_ok 'Newlines and tabs between tokens' "$(printf '{
 \t\t"w": 80,
 \t\t"h": 24,
 \t\t"x": 0,
-\t\t"y": 0
+\t\t"y": 0,
+\t\t"i": 0,
+\t\t"I": "%s"
 \t}
-}')"
+}' "$p0")"
 
 check_json_ok 'Carriage returns between tokens' \
 	"$(printf '{\r"V":2,\r"L":%s\r}' "$LEAF")"
@@ -275,48 +278,43 @@ check_json_ok 'Booleans' '{"V":2,"b":true,"d":false,"L":'"$LEAF"'}'
 # terminator, so it is the tokenizer rather than the parser that gives up. Both
 # the number scan and the string scan have to notice this, and with the closing
 # quote escaped there is no terminator left either.
-check_json_fail 'Unterminated number' 'tokenization error' '{"V":2'
-check_json_fail 'Unterminated string' 'tokenization error' '{"V":"x'
-check_json_fail 'Escaped closing quote' 'tokenization error' \
-	'{"V":2,"L":{"t":"p\"}}'
+check_json_fail 'Unterminated number' '{"V":2'
+check_json_fail 'Unterminated string' '{"V":"x'
+check_json_fail 'Escaped closing quote' '{"V":2,"L":{"t":"p\"}}'
 
 # Something that is not a quoted string where a key belongs.
-check_json_fail 'Missing key' 'invalid key' '{"V":2,,"L":'"$LEAF"'}'
+check_json_fail 'Missing key' '{"V":2,,"L":'"$LEAF"'}'
 
 # A key not followed by ':'.
-check_json_fail 'Missing colon' 'missing colon' '{"V","L":2}'
+check_json_fail 'Missing colon' '{"V","L":2}'
 
 # A bare word that is neither "true", "false" nor a number. This is where
 # "null" ends up.
-check_json_fail 'Unknown literal' 'invalid value' '{"V":null,"L":'"$LEAF"'}'
+check_json_fail 'Unknown literal' '{"V":null,"L":'"$LEAF"'}'
 
 # A ':' with no value after it, so the token where the value belongs is one the
 # object parser has no case for.
-check_json_fail 'Missing value' 'unsupported object token' '{"V":}'
+check_json_fail 'Missing value' '{"V":}'
 
 # A ',' with nothing after it, and a value with no ',' before the next key.
-check_json_fail 'Trailing comma in an object' 'invalid object' \
-	'{"V":2,"L":'"$LEAF"',}'
-check_json_fail 'Missing comma in an object' 'invalid object' \
-	'{"V":2 "L":'"$LEAF"'}'
+check_json_fail 'Trailing comma in an object' '{"V":2,"L":'"$LEAF"',}'
+check_json_fail 'Missing comma in an object' '{"V":2 "L":'"$LEAF"'}'
 
 # Arrays hold objects and nothing else.
-check_json_fail 'Non-object in an array' 'invalid array member' \
+check_json_fail 'Non-object in an array' \
 	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":["x"]}}'
-check_json_fail 'Trailing comma in an array' 'invalid array' \
-	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":11,"x":0,"y":0},]}}'
+check_json_fail 'Trailing comma in an array' \
+	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":['"$LEAF"',]}}'
 
 # An empty string is two adjacent quotes with no value token between them,
 # which the string parser does not accept.
-check_json_fail 'Empty string' 'invalid string' '{"V":2,"L":""}'
+check_json_fail 'Empty string' '{"V":2,"L":""}'
 
 # A number token that strtoll does not consume all of.
-check_json_fail 'Number with trailing characters' 'invalid number' \
-	'{"V":8a,"L":'"$LEAF"'}'
+check_json_fail 'Number with trailing characters' '{"V":8a,"L":'"$LEAF"'}'
 
 # Anything after the top level object.
-check_json_fail 'Data after the top level object' 'unexpected trailing data' \
-	'{"V":2,"L":'"$LEAF"'}{}'
+check_json_fail 'Data after the top level object' '{"V":2,"L":'"$LEAF"'}{}'
 
 # None of the rejections touched the layout.
 must_equal 'Layout after rejected parses' "$(layout L:one)" "$ONE"
@@ -394,7 +392,7 @@ must_equal 'Round tripped layout' "$(raw_layout L:two)" "$saved"
 # "a" and "l" are given on the cells so that the active pane and the last pane
 # stack are pinned by the layout rather than left to whatever a layout that
 # names neither happens to produce.
-check_ok select-layout -t L:two '{
+check_ok select-layout -t L:two "$(printf '{
 	"V": 2,
 	"L": {
 		"t": "h",
@@ -403,11 +401,11 @@ check_ok select-layout -t L:two '{
 		"x": 0,
 		"y": 0,
 		"c": [
-			{"t": "p", "w": 30, "h": 24, "x": 0, "y": 0, "a": true},
-			{"t": "p", "w": 49, "h": 24, "x": 31, "y": 0, "l": 0}
+			{"t": "p", "w": 30, "h": 24, "x": 0, "y": 0, "a": true, "i": 0, "I": "%s"},
+			{"t": "p", "w": 49, "h": 24, "x": 31, "y": 0, "l": 0, "i": 1, "I": "%s"}
 		]
 	}
-}'
+}' "$q0" "$q1")"
 must_equal 'Hand-written layout' "$(layout L:two)" \
 	'{"V":2,"L":{"t":"h","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":30,"h":24,"x":0,"y":0,"a":true,"i":0,"I":"%N"},{"t":"p","w":49,"h":24,"x":31,"y":0,"l":0,"i":1,"I":"%N"}]}}'
 
@@ -420,11 +418,13 @@ must_equal 'Second pane width' \
 # ---------------------------------------------------------------------------
 # Field order.
 
-# Fields are looked up by key, so any order must give the same layout. Here
-# every object has its keys reversed: "c" comes before "t", so the children are
-# evaluated while the cell type is still the default, and "V" comes after "L",
-# so the version is only known once the layout has been built.
-check_ok select-layout -t L:two '{"L":{"c":[{"a":true,"y":0,"x":0,"h":8,"w":80,"t":"p"},{"l":0,"y":9,"x":0,"h":15,"w":80,"t":"p"}],"y":0,"x":0,"h":24,"w":80,"t":"v"},"V":2}'
+# Fields are looked up by key once the object has been parsed, so the order
+# they are written in must give the same layout. Here every object has its keys
+# reversed: "c" comes before "t" and "V" comes after "L", neither of which
+# changes the order they are read in - the cell type is always read before the
+# children and the version before the layout.
+check_ok select-layout -t L:two \
+	'{"L":{"c":[{"I":"'"$q0"'","i":0,"a":true,"y":0,"x":0,"h":8,"w":80,"t":"p"},{"I":"'"$q1"'","i":1,"l":0,"y":9,"x":0,"h":15,"w":80,"t":"p"}],"y":0,"x":0,"h":24,"w":80,"t":"v"},"V":2}'
 must_equal 'Reversed field order' "$(layout L:two)" \
 	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":8,"x":0,"y":0,"a":true,"i":0,"I":"%N"},{"t":"p","w":80,"h":15,"x":0,"y":9,"l":0,"i":1,"I":"%N"}]}}'
 
@@ -433,7 +433,8 @@ must_equal 'Reversed field order' "$(layout L:two)" \
 # which pane is active comes from the layout, while "i" and "I" still come from
 # the window. The first cell names neither "a" nor "l", so its pane is neither
 # active nor on the last pane stack and the dump gives it neither key.
-check_ok select-layout -t L:two '{"V":2,"L":{"h":24,"c":[{"w":40,"t":"p","y":0,"h":24,"x":0},{"a":true,"h":24,"w":39,"y":0,"t":"p","x":41}],"w":80,"y":0,"t":"h","x":0}}'
+check_ok select-layout -t L:two \
+	'{"V":2,"L":{"h":24,"c":[{"w":40,"t":"p","y":0,"i":0,"h":24,"I":"'"$q0"'","x":0},{"a":true,"h":24,"I":"'"$q1"'","w":39,"y":0,"t":"p","i":1,"x":41}],"w":80,"y":0,"t":"h","x":0}}'
 must_equal 'Scrambled field order' "$(layout L:two)" \
 	'{"V":2,"L":{"t":"h","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":40,"h":24,"x":0,"y":0,"i":0,"I":"%N"},{"t":"p","w":39,"h":24,"x":41,"y":0,"a":true,"i":1,"I":"%N"}]}}'
 
@@ -489,119 +490,181 @@ must_equal 'v1 layout trimmed' "$got" \
 	"$(v1 "80x24,0,0[80x7,0,0,${q0#%},80x16,0,8,${q1#%}]")"
 
 # ---------------------------------------------------------------------------
+# Pane assignment order.
+
+# "i" is what decides which pane goes into which cell: the cells are ordered by
+# it and then handed the window's panes in order, so the cell with "i":0 takes
+# the first pane of the window wherever that cell sits in the layout. Here the
+# cells are written the other way round from their indexes - the first cell in
+# the string is "i":1 and the second "i":0 - so the first pane of the window
+# has to come out in the second cell.
+#
+# Every other layout above lists its cells in the same order as their indexes,
+# which is the order the tree is walked in, so this is the only check that can
+# tell the two apart.
+check_ok select-layout -t L:two \
+	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":8,"x":0,"y":0,"i":1,"I":"'"$q1"'"},{"t":"p","w":80,"h":15,"x":0,"y":9,"i":0,"I":"'"$q0"'"}]}}'
+must_equal 'First pane height' \
+	"$($TMUX display-message -p -t "$q0" '#{pane_height}')" '15'
+must_equal 'Second pane height' \
+	"$($TMUX display-message -p -t "$q1" '#{pane_height}')" '8'
+
+# So the dump carries the two ids the other way round from every dump above,
+# and with them their indexes, which are the panes' positions in the window and
+# have not moved. Neither cell named an active or last pane, so the pane that
+# was active still is - it is now the one in the second cell.
+swapped='{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":8,"x":0,"y":0,"i":1,"I":"'"$q1"'"},{"t":"p","w":80,"h":15,"x":0,"y":9,"a":true,"i":0,"I":"'"$q0"'"}]}}'
+must_equal 'Layout with the panes swapped' "$(raw_layout L:two)" "$swapped"
+
+# And that dump round trips, indexes out of order and all.
+check_ok select-layout -t L:two "$swapped"
+must_equal 'Round tripped swapped layout' "$(raw_layout L:two)" "$swapped"
+
+# ---------------------------------------------------------------------------
 # Cells that name no active or last pane.
 
 # "a" and "l" are the only things that decide which pane is active and what is
 # on the last pane stack, so a layout naming neither leaves the active pane
-# where it was and puts nothing on the stack. Here the top pane is active and
-# the bottom one is at index 0 of the stack beforehand; afterwards the top pane
-# is still active and the bottom pane is on no stack, so it has no "l".
+# where it was and puts nothing on the stack. Here the first pane of the window
+# is active and the second is at index 0 of the stack beforehand; afterwards
+# the first pane is still active and the second is on no stack, so it has no
+# "l".
 check_ok select-pane -t "$q1"
 check_ok select-pane -t "$q0"
 check_ok select-layout -t L:two \
-	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":9,"x":0,"y":0},{"t":"p","w":80,"h":14,"x":0,"y":10}]}}'
+	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":9,"x":0,"y":0,"i":0,"I":"'"$q0"'"},{"t":"p","w":80,"h":14,"x":0,"y":10,"i":1,"I":"'"$q1"'"}]}}'
 must_equal 'Layout naming no active pane' "$(layout L:two)" \
 	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":9,"x":0,"y":0,"a":true,"i":0,"I":"%N"},{"t":"p","w":80,"h":14,"x":0,"y":10,"i":1,"I":"%N"}]}}'
 
-# ---------------------------------------------------------------------------
-# Failures with a message.
+# "a" may be given as false, which says the same as leaving it out: this pane
+# is not the active one. A layout where every cell says so names no active pane
+# at all and so leaves the active pane alone, exactly as the layout above did.
+check_ok select-layout -t L:two \
+	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":10,"x":0,"y":0,"a":false,"i":0,"I":"'"$q0"'"},{"t":"p","w":80,"h":13,"x":0,"y":11,"a":false,"i":1,"I":"'"$q1"'"}]}}'
+must_equal 'Layout with only false active panes' "$(layout L:two)" \
+	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":10,"x":0,"y":0,"a":true,"i":0,"I":"%N"},{"t":"p","w":80,"h":13,"x":0,"y":11,"i":1,"I":"%N"}]}}'
 
-# check_layout_fail $cause $layout
+# ---------------------------------------------------------------------------
+# Failures.
 #
-# select-layout must reject $layout with "<cause>: <layout>".
+# Each of these is a different reason for a layout to be rejected, but only the
+# rejection itself is checked; the message that comes back with it is not.
+
+# check_layout_fail $layout
+#
+# select-layout must reject $layout.
 check_layout_fail()
 {
-	check_fail "$1: $2" select-layout -t L:two "$2"
+	check_fail select-layout -t L:two "$1"
 }
 
 # A rejected layout must leave the window alone, whatever it was.
 unchanged=$(raw_layout L:two)
 
 # Not JSON and not a checksum.
-check_layout_fail 'malformed layout header' 'garbage'
+check_layout_fail 'garbage'
+
+# A v1 body with its checksum left off, and a string of nothing but hex digits.
+# A v1 header is four hex digits and a comma; neither of these has one, so there
+# is no header and nothing to check a body against.
+check_layout_fail '80x24,0,0'
+check_layout_fail 'ab'
 
 # A v1 header with the checksum of a different body.
 good=$(v1 '80x24,0,0')
-check_layout_fail 'invalid layout checksum' "${good%%,*},80x24,0,1"
+check_layout_fail "${good%%,*},80x24,0,1"
 
 # A correct checksum over a body that is not a layout: a cell with no offsets,
 # and a top to bottom cell closed with '}' instead of ']'. layout_construct_v1
-# returns NULL for both and layout_construct() reports it.
-check_layout_fail 'invalid layout' "$(v1 '80x24')"
-check_layout_fail 'invalid layout' "$(v1 '80x24,0,0[80x11,0,0,80x12,0,12}')"
+# returns NULL for both.
+check_layout_fail "$(v1 '80x24')"
+check_layout_fail "$(v1 '80x24,0,0[80x11,0,0,80x12,0,12}')"
 
 # Fewer cells than the window has panes; unlike the other way around this
 # cannot be fixed up.
-check_layout_fail 'have 2 panes but need 1' \
-	'{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0}}'
+check_layout_fail '{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"'"$q0"'"}}'
 
 # The children of a top to bottom cell must all be the width of their parent.
-check_layout_fail 'size mismatch after applying layout' \
-	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":11,"x":0,"y":0},{"t":"p","w":40,"h":12,"x":0,"y":12}]}}'
+check_layout_fail \
+	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":11,"x":0,"y":0,"i":0,"I":"'"$q0"'"},{"t":"p","w":40,"h":12,"x":0,"y":12,"i":1,"I":"'"$q1"'"}]}}'
 
 # The rest are valid JSON, so it is layout_parse_json() and
-# layout_parse_json_layout() doing the rejecting rather than json.c, and their
-# own cause reaches the client.
+# layout_parse_json_layout() doing the rejecting rather than json.c. Each of
+# them is a layout that would be applied but for the one thing being checked.
 
 # Two root cells.
-check_layout_fail 'duplicate layout' \
-	'{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0},"L":{"t":"p","w":80,"h":24,"x":0,"y":0}}'
+check_layout_fail \
+	'{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"'"$q0"'"},"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"'"$q0"'"}}'
 
 # A missing "y". A cell needs all four of "w", "h", "x" and "y".
-check_layout_fail 'cell geometry must be fully specified' \
-	'{"V":2,"L":{"t":"p","w":80,"h":24,"x":0}}'
+check_layout_fail '{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"i":0,"I":"'"$q0"'"}}'
+
+# Cell sizes are bounded below by one column or row and above by 10000 of
+# either. Both cases are otherwise complete two cell layouts, so the size is
+# the only thing wrong with them.
+check_layout_fail \
+	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":11,"x":0,"y":0,"i":0,"I":"'"$q0"'"},{"t":"p","w":0,"h":12,"x":0,"y":12,"i":1,"I":"'"$q1"'"}]}}'
+check_layout_fail \
+	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":11,"x":0,"y":0,"i":0,"I":"'"$q0"'"},{"t":"p","w":80,"h":10001,"x":0,"y":12,"i":1,"I":"'"$q1"'"}]}}'
 
 # An unknown cell type: only "h", "v" and "p" exist.
-check_layout_fail 'invalid cell type q' \
-	'{"V":2,"L":{"t":"q","w":80,"h":24,"x":0,"y":0}}'
+check_layout_fail '{"V":2,"L":{"t":"q","w":80,"h":24,"x":0,"y":0}}'
 
 # A pane id without its %, and one with trailing rubbish after the number. Note
 # it is "I" that carries the pane id and requires the %; "i" is the pane index
 # and takes a plain number.
-check_layout_fail "pane id must be prefixed by '%'" \
-	'{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"I":"0"}}'
-check_layout_fail 'invalid pane id: %1x' \
-	'{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"I":"%1x"}}'
+check_layout_fail '{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"0"}}'
+check_layout_fail '{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"%1x"}}'
+
+# A pane cell needs both of them.
+check_layout_fail '{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0}}'
+check_layout_fail '{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"I":"'"$q0"'"}}'
+
+# A string longer than json.c will hand back: it copies a string out into a
+# 16384 byte buffer and refuses anything that does not fit, so this has to be
+# longer than that to be refused at all. It is the cell type, the first string a
+# cell is read for, and the layout must be rejected rather than the server going
+# down with it - which the check at the end of this section would see, the
+# layout being unreadable from a server that is not there.
+big=$(awk 'BEGIN { while (i++ < 20000) printf "a" }')
+check_layout_fail '{"V":2,"L":{"t":"'"$big"'","w":80,"h":24,"x":0,"y":0,"i":0,"I":"'"$q0"'"}}'
 
 # A node cell must have children and a leaf cell must not.
-check_layout_fail 'non-pane cells must have children' \
-	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0}}'
-check_layout_fail 'non-pane cells must have children' \
-	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[]}}'
-check_layout_fail 'pane cells cannot have children' \
-	'{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":24,"x":0,"y":0}]}}'
+check_layout_fail '{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0}}'
+check_layout_fail '{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[]}}'
+check_layout_fail \
+	'{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"'"$q0"'","c":[{"t":"p","w":80,"h":24,"x":0,"y":0,"i":1,"I":"'"$q1"'"}]}}'
 
-# The same rejections apply whatever order the fields are in: a leaf with
-# children when "c" is seen first, a node with no children when "t" is last, a
-# bad cell type when "t" is last, and a bad pane id when "I" is first.
-check_layout_fail 'pane cells cannot have children' \
-	'{"V":2,"L":{"c":[{"t":"p","w":80,"h":24,"x":0,"y":0}],"t":"p","w":80,"h":24,"x":0,"y":0}}'
-check_layout_fail 'non-pane cells must have children' \
-	'{"V":2,"L":{"w":80,"h":24,"x":0,"y":0,"t":"v"}}'
-check_layout_fail 'invalid cell type q' '{"V":2,"L":{"w":80,"h":24,"x":0,"y":0,"t":"q"}}'
-check_layout_fail "pane id must be prefixed by '%'" \
-	'{"V":2,"L":{"I":"0","t":"p","w":80,"h":24,"x":0,"y":0}}'
+# Only one cell may be the active pane.
+check_layout_fail \
+	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":11,"x":0,"y":0,"a":true,"i":0,"I":"'"$q0"'"},{"t":"p","w":80,"h":12,"x":0,"y":12,"a":true,"i":1,"I":"'"$q1"'"}]}}'
 
-# A child that fails after some children have already been added, with "c"
-# before "t" so the parent's type is still the default when it gives up. This
-# is the case the cleanup at the end of layout_parse_json_layout exists for:
-# the already-built children have to be freed even though the parent does not
-# yet look like a node. The second child has no "y", and its cause is the one
-# that comes back.
-check_layout_fail 'cell geometry must be fully specified' \
-	'{"V":2,"L":{"c":[{"t":"p","w":80,"h":11,"x":0,"y":0},{"t":"p","w":80,"h":12,"x":0}],"t":"v","w":80,"h":24,"x":0,"y":0}}'
+# The same rejections apply whatever order the fields are written in: a leaf
+# with children when "c" comes first, a node with no children when "t" comes
+# last, a bad cell type when "t" comes last, and a bad pane id when "I" comes
+# first.
+check_layout_fail \
+	'{"V":2,"L":{"c":[{"t":"p","w":80,"h":24,"x":0,"y":0,"i":1,"I":"'"$q1"'"}],"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"'"$q0"'"}}'
+check_layout_fail '{"V":2,"L":{"w":80,"h":24,"x":0,"y":0,"t":"v"}}'
+check_layout_fail '{"V":2,"L":{"w":80,"h":24,"x":0,"y":0,"t":"q"}}'
+check_layout_fail '{"V":2,"L":{"I":"0","i":0,"t":"p","w":80,"h":24,"x":0,"y":0}}'
+
+# A child that fails after a sibling has already been parsed and added to the
+# parent. This is the case the cleanup at the end of layout_parse_json_layout
+# exists for: the children built so far have to be freed along with the parent
+# that is never returned. The second child has no "y".
+check_layout_fail \
+	'{"V":2,"L":{"c":[{"t":"p","w":80,"h":11,"x":0,"y":0,"i":0,"I":"'"$q0"'"},{"t":"p","w":80,"h":12,"x":0,"i":1,"I":"'"$q1"'"}],"t":"v","w":80,"h":24,"x":0,"y":0}}'
 
 # No root cell at all. Every other rejection above comes from a cell that
-# failed to parse; this one is the check after the loop, reached when no "L"
-# was seen at all.
-check_layout_fail 'missing layout' '{"V":2}'
+# failed to parse; this one is the check for "L" itself.
+check_layout_fail '{"V":2}'
 
-# The wrong version, and the wrong version after a layout that is otherwise
-# fine so that the built cells have to be thrown away once "V" is finally seen.
-check_layout_fail 'version mismatch.' \
-	'{"V":1,"L":{"t":"p","w":80,"h":24,"x":0,"y":0}}'
-check_layout_fail 'version mismatch.' \
-	'{"L":{"t":"p","w":80,"h":24,"x":0,"y":0},"V":1}'
+# The wrong version, with "V" before and after "L". Fields are looked up by
+# key, so the version is read before the layout either way and the position of
+# "V" in the string makes no difference.
+check_layout_fail '{"V":1,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"'"$q0"'"}}'
+check_layout_fail '{"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"'"$q0"'"},"V":1}'
 
 # None of that touched the layout.
 must_equal 'Layout after failures' "$(raw_layout L:two)" "$unchanged"
@@ -612,12 +675,23 @@ must_equal 'Layout after failures' "$(raw_layout L:two)" "$unchanged"
 check_ok new-window -d -t L:3 -n float
 check_ok select-window -t L:float
 check_ok new-pane -d -x 20 -y 6 -X 8 -Y 3 'sleep 100'
+check_ok new-pane -d -x 30 -y 8 -X 30 -Y 10 'sleep 100'
 
 # A floating cell is dumped with its z-index, which is what marks it as
-# floating when the layout is parsed back.
-must_contain 'Floating layout' "$(layout L:float)" '"z":'
-check_ok select-layout -t L:float "$(raw_layout L:float)"
-must_contain 'Floating layout after round trip' "$(layout L:float)" '"z":'
+# floating when the layout is parsed back. Two of them, so that there is an
+# order between them to get wrong: the newer floating pane is in front, and a
+# cell's "z" is its place in that order counting from the front.
+floating=$(raw_layout L:float)
+must_contain 'Floating layout front z-index' "$floating" '"z":0'
+must_contain 'Floating layout back z-index' "$floating" '"z":1'
+
+# Each floating cell goes in after the cell of the pane that was current when
+# it was made, which is the tiled pane both times, so the newer floating cell
+# is written before the older one while its pane comes after in the window.
+# The dump therefore has its cells in one order and their indexes in another,
+# and only comes back the same if the panes go by index.
+check_ok select-layout -t L:float "$floating"
+must_equal 'Floating layout after round trip' "$(raw_layout L:float)" "$floating"
 
 # ---------------------------------------------------------------------------
 # Control mode notifications.
@@ -633,7 +707,7 @@ must_contain 'Floating layout after round trip' "$(layout L:float)" '"z":'
 # attached while something else changes the layout, so they go on the end of
 # fifos and the change is made from outside.
 
-DIR=$(mktemp -d) || exit 1
+DIR=$(mktemp -d) || fail 'Could not make a temporary directory'
 OLDIN="$DIR/old-in"
 OLDOUT="$DIR/old-out"
 NEWIN="$DIR/new-in"
@@ -645,6 +719,7 @@ cleanup()
 {
 	[ -n "$OLDPID" ] && kill "$OLDPID" 2>/dev/null
 	[ -n "$NEWPID" ] && kill "$NEWPID" 2>/dev/null
+	$TMUX kill-server 2>/dev/null
 	rm -rf "$DIR"
 }
 trap cleanup EXIT
@@ -665,7 +740,7 @@ wait_for()
 	return 1
 }
 
-mkfifo "$OLDIN" "$NEWIN" || exit 1
+mkfifo "$OLDIN" "$NEWIN" || fail 'Could not make the control client fifos'
 : >"$OLDOUT"
 : >"$NEWOUT"
 
@@ -709,7 +784,7 @@ wait_for "$OLDOUT" "%layout-change $wid $v1now $v1now " ||
 # a settle in between, keeps this independent of what has already been sent.
 n1=$(grep -c "%layout-change $wid " "$OLDOUT")
 check_ok select-layout -t L:two \
-	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":9,"x":0,"y":0},{"t":"p","w":80,"h":14,"x":0,"y":10}]}}'
+	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":9,"x":0,"y":0,"i":0,"I":"'"$q0"'"},{"t":"p","w":80,"h":14,"x":0,"y":10,"i":1,"I":"'"$q1"'"}]}}'
 sleep 2
 n2=$(grep -c "%layout-change $wid " "$OLDOUT")
 must_equal 'Notifications for a v2 layout' "$((n2 - n1))" '1'

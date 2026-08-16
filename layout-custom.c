@@ -48,16 +48,18 @@
  *  If the cell is a leaf cell (that is, containing a pane and no child cells),
  *  it additionally has:
  *    "I": pane ID as %n
- *    "l": index into last panes list, if not the active pane
+ *    "l": index into last panes list if visited and not the active pane
  *    "a": true if the active pane
  *    "i": pane index
  *    "z": z-index, if a floating pane
  */
 
+#define LAYOUT_STRING_MAX	(1 << 14)
+
 /* Layout string. */
 struct layout_string {
 	char	*write;
-	char	 dat[8192];
+	char	 dat[LAYOUT_STRING_MAX];
 };
 
 struct layout_parse_cell_ctx {
@@ -71,22 +73,23 @@ struct layout_parse_cell_ctx {
 
 struct layout_parse_ctx {
 	int64_t				  version;
+	int				  num_active;
 	struct layout_cell		 *root;
 	char				**cause;
 
-#define CCTX_MAX	512
+#define CCTX_MAX	(LAYOUT_STRING_MAX >> 5) /* min 32 bytes per pane */
 	int				  clen;
 	struct layout_parse_cell_ctx	  cctxs[CCTX_MAX];
 };
 
-static struct layout_cell	*layout_find_bottomright(struct layout_cell *);  
-static u_short			 layout_checksum(const char *);                      
-static int			 layout_append(struct layout_cell *,                     
-				     struct layout_string *, int);                           
+static struct layout_cell	*layout_find_bottomright(struct layout_cell *);
+static u_short			 layout_checksum(const char *);
+static int			 layout_append(struct layout_cell *,
+				     struct layout_string *, int);
 static int			 layout_construct(const char *,
 				     struct layout_parse_ctx *);
-static void			 layout_assign(struct window *,                
-				     struct layout_parse_ctx *);                                  
+static void			 layout_assign(struct window *,
+				     struct layout_parse_ctx *);
 static void			 layout_parse_apply_ctx(struct window *,
 				     struct layout_parse_ctx *);
 static struct layout_cell	*layout_parse_json_layout(
@@ -100,8 +103,13 @@ layout_parse_index_cmp(const void *a, const void *b)
 {
 	const struct layout_parse_cell_ctx	*cca = a;
 	const struct layout_parse_cell_ctx	*ccb = b;
+	int					 retval = 0;
 
-	return (cca->index - ccb->index);
+	if (cca->index < ccb->index)
+		retval = -1;
+	if (cca->index > ccb->index)
+		retval = 1;
+	return (retval);
 }
 
 /* Compare cell contexts in descending order of z-index. */
@@ -110,21 +118,28 @@ layout_parse_zindex_cmp(const void *a, const void *b)
 {
 	const struct layout_parse_cell_ctx	*cca = a;
 	const struct layout_parse_cell_ctx	*ccb = b;
+	int					 retval = 0;
 
-	return (ccb->zindex - cca->zindex);
+	if (cca->zindex > ccb->zindex)
+		retval = -1;
+	if (cca->zindex < ccb->zindex)
+		retval = 1;
+	return (retval);
 }
 
-/*
- * Compare cell contexts in descending order of last. The active pane has
- * index of -1.
- */
+/* Compare cell contexts in descending order of last. */
 static int
 layout_parse_last_cmp(const void *a, const void *b)
 {
 	const struct layout_parse_cell_ctx	*cca = a;
 	const struct layout_parse_cell_ctx	*ccb = b;
+	int					 retval = 0;
 
-	return (ccb->last - cca->last);
+	if (cca->last > ccb->last)
+		retval = -1;
+	if (cca->last < ccb->last)
+		retval = 1;
+	return (retval);
 }
 
 /* Initialize a layout string. */
@@ -158,6 +173,7 @@ static void
 layout_parse_init_ctx(struct layout_parse_ctx *pctx, char **cause)
 {
 	pctx->version = -1;
+	pctx->num_active = 0;
 	pctx->root = NULL;
 	pctx->cause = cause;
 	pctx->clen = 0;
@@ -190,9 +206,6 @@ layout_parse_remove_cctx(struct layout_parse_ctx *pctx, struct layout_cell *lc)
 {
 	struct layout_parse_cell_ctx	*cctx;
 	int				 i;
-
-	if (pctx->clen == 0)
-		return (-1);
 
 	for (i = 0; i < pctx->clen; i++) {
 		if (lc == pctx->cctxs[i].lc) {
@@ -304,12 +317,12 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 					return (-1);
 			}
 		}
-		if (window_pane_index(wp, &i) != -1) {
+		if (window_pane_index(wp, &i) == 0) {
 			if (layout_string_write(ls, ",\"i\":%u", i) != 0)
 				return (-1);
 		}
 		if (lc->flags & LAYOUT_CELL_FLOATING) {
-			if (window_pane_zindex(wp, &i) != -1) {
+			if (window_pane_zindex(wp, &i) == 0) {
 				if (layout_string_write(ls, ",\"z\":%u", i)
 				    != 0)
 					return (-1);
@@ -443,12 +456,11 @@ layout_parse(struct window *w, const char *layout, char **cause)
 			layout_free_cell(pctx.root, 0);
 		return (-1);
 	}
-	lc = pctx.root;
 
 	/* Check this window will fit into the layout. */
 	npanes = window_count_panes(w, 1);
 	for (;;) {
-		ncells = layout_count_cells(lc);
+		ncells = layout_count_cells(pctx.root);
 		if (npanes > ncells) {
 			xasprintf(cause, "have %u panes but need %u", npanes,
 			    ncells);
@@ -461,12 +473,15 @@ layout_parse(struct window *w, const char *layout, char **cause)
 		 * Fewer panes than cells, close the bottom right until none
 		 * remain.
 		 */
-		lcchild = layout_find_bottomright(lc);
+		lcchild = layout_find_bottomright(pctx.root);
 		if (pctx.version != 1 && layout_parse_remove_cctx(&pctx,
-		    lcchild) != 0)
+		    lcchild) != 0) {
+			*cause = xstrdup("empty/missing layout parse context");
 			goto fail;
-		layout_destroy_cell(w, lcchild, &lc);
+		}
+		layout_destroy_cell(w, lcchild, &pctx.root);
 	}
+	lc = pctx.root;
 
 	/*
 	 * It appears older versions of tmux were able to generate layouts with
@@ -518,16 +533,17 @@ layout_parse(struct window *w, const char *layout, char **cause)
 
 	/* Assign the panes into the cells. */
 	layout_assign(w, &pctx);
-	if (pctx.version != 1)
-		layout_parse_apply_ctx(w, &pctx);
 
-	/* Update pane offsets and sizes. */
+	/* Update pane attributes. */
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
+	if (pctx.version != 1)
+		layout_parse_apply_ctx(w, &pctx);
 	recalculate_sizes();
 	layout_print_cell(lc, __func__, 0);
 
-	if (pctx.version == 1) /* backwards compatibility. */
+	/* Backwards compatibility. */
+	if (pctx.version == 1)
 		events_fire_window("window-layout-changed", w);
 
 	return (0);
@@ -588,8 +604,9 @@ layout_assign(struct window *w, struct layout_parse_ctx *pctx)
 	struct window_pane	*wp = TAILQ_FIRST(&w->panes);
 
 	if (pctx->clen > 0)
-		return (layout_assign_from_ctx(w, pctx));
-	return (layout_assign_fallback(&wp, pctx->root));
+		layout_assign_from_ctx(w, pctx);
+	else
+		layout_assign_fallback(&wp, pctx->root);
 }
 
 /* Construct a cell from the legacy (v1) format. */
@@ -713,14 +730,12 @@ layout_parse_json(struct json_node *jnroot, struct layout_parse_ctx *pctx)
 		goto fail;
 	}
 
-	if ((num = json_find_number(jn, "V", cause)) == NULL) {
+	if ((num = json_find_number(jn, "V", cause)) == NULL)
 		goto fail;
-	}
 	pctx->version = *num;
 
-	if ((object = json_find_object(jn, "L", cause)) == NULL) {
+	if ((object = json_find_object(jn, "L", cause)) == NULL)
 		goto fail;
-	}
 	pctx->root = layout_parse_json_layout(object, NULL, pctx);
 	if (pctx->root == NULL)
 		goto fail;
@@ -749,7 +764,7 @@ layout_parse_json_layout(const struct json_node *node,
 	const int64_t		*num;
 	const int		*boolean;
 	char			*endptr, **cause = pctx->cause;
-	u_int			 id, index, zindex, active = -1, last = -1;
+	int			 id, index, zindex, active = -1, last = -1;
 
 	if ((str = json_find_string(node, "t", cause)) == NULL)
 		goto fail;
@@ -759,65 +774,106 @@ layout_parse_json_layout(const struct json_node *node,
 		lc->type = LAYOUT_TOPBOTTOM;
 	else if (strcmp(str, "h") == 0)
 		lc->type = LAYOUT_LEFTRIGHT;
-	else
+	else {
+		xasprintf(cause, "unknown cell type \"%s\"", str);
 		goto fail;
+	}
 
 	if ((num = json_find_number(node, "w", cause)) == NULL)
 		goto fail;
+	if (*num < PANE_MINIMUM || *num > PANE_MAXIMUM) {
+		xasprintf(cause, "invalid width %lld", (long long)*num);
+		goto fail;
+	}
 	lc->g.sx = *num;
 
 	if ((num = json_find_number(node, "h", cause)) == NULL)
 		goto fail;
+	if (*num < PANE_MINIMUM || *num > PANE_MAXIMUM) {
+		xasprintf(cause, "invalid height %lld", (long long)*num);
+		goto fail;
+	}
 	lc->g.sy = *num;
 
 	if ((num = json_find_number(node, "x", cause)) == NULL)
 		goto fail;
+	if (*num < -WINDOW_MAXIMUM || *num > WINDOW_MAXIMUM) {
+		xasprintf(cause, "invalid x-offset %lld", (long long)*num);
+		goto fail;
+	}
 	lc->g.xoff = *num;
 
 	if ((num = json_find_number(node, "y", cause)) == NULL)
 		goto fail;
+	if (*num < -WINDOW_MAXIMUM || *num > WINDOW_MAXIMUM) {
+		xasprintf(cause, "invalid y-offset %lld", (long long)*num);
+		goto fail;
+	}
 	lc->g.yoff = *num;
 
 	if (lc->type == LAYOUT_WINDOWPANE) {
+		if (json_find(node, "c") != NULL) {
+			*cause = xstrdup("panes cannot have children");
+			goto fail;
+		}
 		if ((str = json_find_string(node, "I", cause)) == NULL)
 			goto fail;
-		errno = 0;
 		if (*str != '%') {
 			*cause = xstrdup("pane id must begin with '%'");
 			goto fail;
 		}
+		errno = 0;
 		id = strtol(str + 1, &endptr, 10);
 		if (errno != 0 || endptr != str + strlen(str)) {
-			*cause = xstrdup("invalid number string '%s'");
+			xasprintf(cause, "invalid number string '%s'", str);
 			goto fail;
 		}
 		if ((num = json_find_number(node, "i", cause)) == NULL)
 			goto fail;
+		if (*num < 0 || *num > INT_MAX) {
+			xasprintf(cause, "invalid index %lld", (long long)*num);
+			goto fail;
+		}
 		index = *num;
 
-		if (json_find((struct json_node *)node, "a") != NULL) {
+		if (json_find(node, "a") != NULL) {
 			boolean = json_find_boolean(node, "a", cause);
 			if (boolean == NULL)
 				goto fail;
 			active = *boolean;
-		} else if (json_find((struct json_node *)node, "l") != NULL) {
+			if (active)
+				pctx->num_active++;
+		} else if (json_find(node, "l") != NULL) {
 			num = json_find_number(node, "l", cause);
 			if (num == NULL)
 				goto fail;
+			if (*num < 0 || *num > INT_MAX) {
+				xasprintf(cause, "invalid last %lld",
+				    (long long)*num);
+				goto fail;
+			}
 			last = *num;
 		}
 
-		if (json_find((struct json_node *)node, "z") != NULL) {
+		if (json_find(node, "z") != NULL) {
 			num = json_find_number(node, "z", cause);
 			if (num == NULL)
 				goto fail;
+			if (*num < 0 || *num > INT_MAX - 1) {
+				xasprintf(cause, "invalid floating zindex %lld",
+				    (long long)*num);
+				goto fail;
+			}
 			zindex = *num;
 			lc->flags |= LAYOUT_CELL_FLOATING;
 		} else
 			zindex = INT_MAX;
 
-		layout_parse_add_cctx(pctx, lc, active, last, id, index,
-		    zindex);
+		if (layout_parse_add_cctx(pctx, lc, active, last, id, index,
+		    zindex) != 0) {
+			*cause = xstrdup("too many panes");
+			goto fail;
+		}
 	} else {
 		if ((array = json_find_array(node, "c", cause)) == NULL)
 			goto fail;
@@ -848,7 +904,7 @@ layout_construct(const char *layout, struct layout_parse_ctx *pctx)
 {
 	struct json_node	*json;
 	u_short			 csum;
-	int			 n;
+	int			 n = 0;
 
 	while (isspace((u_char) *layout))
 		layout++;
@@ -876,7 +932,15 @@ layout_construct(const char *layout, struct layout_parse_ctx *pctx)
 			return (-1);
 
 		if (pctx->version != 2) {
-			*pctx->cause = xstrdup("version mismatch.");
+			*pctx->cause = xstrdup("version mismatch");
+			return (-1);
+		}
+		if (pctx->num_active > 1) {
+			*pctx->cause = xstrdup("more than one active pane");
+			return (-1);
+		}
+		if (pctx->clen == 0) {
+			*pctx->cause = xstrdup("no panes");
 			return (-1);
 		}
 	}
@@ -888,17 +952,17 @@ layout_construct(const char *layout, struct layout_parse_ctx *pctx)
 static void
 layout_parse_apply_ctx(struct window *w, struct layout_parse_ctx *pctx)
 {
-	struct layout_parse_cell_ctx	*cctx;
-	struct window_pane		*wp;
-	int				 i;
-
-	if (pctx->clen == 0)
-		fatalx("layouts must have at least one pane");
+	struct layout_parse_cell_ctx	 *cctx;
+	struct window_pane		 *wp, *wpnext;
+	int				  i;
 
 	/* Apply z-indexes. */
-	while (!TAILQ_EMPTY(&w->z_index)) {
-		wp = TAILQ_FIRST(&w->z_index);
-		TAILQ_REMOVE(&w->z_index, wp, zentry);
+	wp = TAILQ_FIRST(&w->z_index);
+	while (wp != NULL) {
+		wpnext = TAILQ_NEXT(wp, zentry);
+		if (window_pane_is_floating(wp))
+			TAILQ_REMOVE(&w->z_index, wp, zentry);
+		wp = wpnext;
 	}
 
 	qsort(pctx->cctxs, pctx->clen, sizeof pctx->cctxs[0],
@@ -907,7 +971,8 @@ layout_parse_apply_ctx(struct window *w, struct layout_parse_ctx *pctx)
 	for (i = 0; i < pctx->clen; i++) {
 		cctx = &pctx->cctxs[i];
 		wp = cctx->lc->wp;
-		TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
+		if (window_pane_is_floating(wp))
+			TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
 	}
 
 	/* Set the active pane. */
@@ -931,9 +996,8 @@ layout_parse_apply_ctx(struct window *w, struct layout_parse_ctx *pctx)
 	for (i = 0; i < pctx->clen; i++) {
 		cctx = &pctx->cctxs[i];
 		wp = cctx->lc->wp;
-		if (cctx->last < 0 || cctx->active == 1) {
+		if (cctx->last < 0 || cctx->active == 1)
 			continue;
-		}
 		window_pane_stack_push(&w->last_panes, wp);
 	}
 }

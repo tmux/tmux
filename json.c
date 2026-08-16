@@ -26,7 +26,21 @@
 
 #include "tmux.h"
 
-#define INPUT_MAX	8192
+/*
+ * Parse a subset of JSON.
+ *
+ * The subset accepted is:
+ *
+ * - Arrays may only hold objects.
+ * - Numbers are 64-bit signed integers in base 10; there are no
+ *   fractions and no exponents.
+ * - There is no null, and a string may not be empty.
+ * - Escapes are not decoded. '\' is only used to skip past \" pairs.
+ * - A key may not appear twice in the same object. Note that because escapes
+ *   are not decoded, duplicate keys may go undetected.
+ */
+
+#define INPUT_MAX	(1 << 14)
 #define TOKENS_MAX	(INPUT_MAX)
 #define ERROR_CTX_LEN	8
 
@@ -95,14 +109,14 @@ static void		 json_free_tokens(struct json_tokens *);
 static int		 json_add_token(struct json_tokens *,
 			     enum json_token_type, const char *, int);
 static const struct json_token *json_tokens_tail(struct json_tokens *);
+static void		 json_error(char **, const char *, const char *);
 
 static struct json_node	*json_create_node(struct json_node *,
 			     enum json_node_type, const char *, const char *,
 			     const void *);
 static void		 json_assign_value(struct json_node *, const void *);
 static struct json_node *json_parse_tokens(struct json_tokens **, char **);
-static int		 json_parse_key(struct json_token **, const char **,
-			     char **);
+static const char	*json_parse_key(struct json_token **, char **);
 static struct json_node	*json_parse_object(struct json_token **, const char *,
 			     struct json_node *, char **);
 static struct json_node	*json_parse_array(struct json_token **, const char *,
@@ -137,15 +151,15 @@ json_parse(const char *input, char **cause)
 
 /* Returns a field node from an object node. */
 struct json_node *
-json_find(struct json_node *jn, const char *key)
+json_find(const struct json_node *jn, const char *key)
 {
-	struct json_node	tmp = { 0 };
+	struct json_node	*node = (struct json_node *)jn, tmp = { 0 };
 
 	if (jn->type != NODE_OBJECT)
 		return (NULL);
 
 	tmp.key = key;
-	return (RB_FIND(json_fields, &jn->fields, &tmp));
+	return (RB_FIND(json_fields, &node->fields, &tmp));
 }
 
 /* Returns the first member of an array node. */
@@ -160,12 +174,12 @@ json_array_first(const struct json_node *jn)
 
 /* Returns the next member of an array's member node. */
 struct json_node *
-json_array_next(const struct json_node *jn)
+json_array_next(const struct json_node *member)
 {
-	if (jn->parent->type != NODE_ARRAY)
+	if (member == NULL || member->parent->type != NODE_ARRAY)
 		return (NULL);
 
-	return (TAILQ_NEXT(jn, aentry));
+	return (TAILQ_NEXT(member, aentry));
 }
 
 /* Returns the string value from a node. */
@@ -230,12 +244,11 @@ json_find_string(const struct json_node *jn, const char *key, char **cause)
 	struct json_node	*field;
 	static char		 ret[INPUT_MAX];
 
-	if ((field = json_find((struct json_node *)jn, key)) == NULL) {
+	if ((field = json_find(jn, key)) == NULL) {
 		if (cause != NULL)
 			xasprintf(cause, "key \"%s\" not found", key);
 		return (NULL);
 	}
-	
 	if (field->type != NODE_STRING) {
 		if (cause != NULL)
 			xasprintf(cause, "key \"%s\" expected STRING value",
@@ -243,7 +256,7 @@ json_find_string(const struct json_node *jn, const char *key, char **cause)
 		return (NULL);
 	}
 
-	if (xsnprintf(ret, sizeof ret, "%s", field->str) >= (int)sizeof ret) {
+	if (snprintf(ret, sizeof ret, "%s", field->str) >= (int)sizeof ret) {
 		if (cause != NULL)
 			xasprintf(cause, "string overflow for key \"%s\"", key);
 		return (NULL);
@@ -259,7 +272,7 @@ json_find_number(const struct json_node *jn, const char *key, char **cause)
 	struct json_node	*field;
 	static int64_t		 ret;
 
-	if ((field = json_find((struct json_node *)jn, key)) == NULL) {
+	if ((field = json_find(jn, key)) == NULL) {
 		if (cause != NULL)
 			xasprintf(cause, "key \"%s\" not found", key);
 		return (NULL);
@@ -282,7 +295,7 @@ json_find_boolean(const struct json_node *jn, const char *key, char **cause)
 	struct json_node	*field;
 	static int		 ret;
 
-	if ((field = json_find((struct json_node *)jn, key)) == NULL) {
+	if ((field = json_find(jn, key)) == NULL) {
 		if (cause != NULL)
 			xasprintf(cause, "key \"%s\" not found", key);
 		return (NULL);
@@ -304,7 +317,7 @@ json_find_object(const struct json_node *jn, const char *key, char **cause)
 {
 	struct json_node	*field;
 
-	if ((field = json_find((struct json_node *)jn, key)) == NULL) {
+	if ((field = json_find(jn, key)) == NULL) {
 		if (cause != NULL)
 			xasprintf(cause, "key \"%s\" not found", key);
 		return (NULL);
@@ -325,7 +338,7 @@ json_find_array(const struct json_node *jn, const char *key, char **cause)
 {
 	struct json_node	*field;
 
-	if ((field = json_find((struct json_node *)jn, key)) == NULL) {
+	if ((field = json_find(jn, key)) == NULL) {
 		if (cause != NULL)
 			xasprintf(cause, "key \"%s\" not found", key);
 		return (NULL);
@@ -352,7 +365,7 @@ json_error(char **cause, const char *reason, const char *input)
 		return;
 	}
 
-	for (i = 0; i < ERROR_CTX_LEN; i++) {
+	for (i = 0; i < ERROR_CTX_LEN + 1; i++) {
 		if (input[i] == '\0') {
 			ellipsis = "";
 			break;
@@ -522,7 +535,8 @@ json_create_node(struct json_node *parent, enum json_node_type type,
 
 	node = xcalloc(1, sizeof *node);
 	node->parent = parent;
-	node->key = key;
+	if (key != NULL)
+		node->key = xstrdup(key);
 	node->loc = loc;
 	node->type = type;
 	if (type == NODE_ARRAY)
@@ -556,6 +570,7 @@ json_destroy_node(struct json_node *node)
 			RB_REMOVE(json_fields, &node->fields, field);
 			json_destroy_node(field);
 		}
+		break;
 	case NODE_ARRAY:
 		while (!TAILQ_EMPTY(&node->members)) {
 			member = TAILQ_FIRST(&node->members);
@@ -632,10 +647,10 @@ fail:
 }
 
 /* Parse and return a key string, and advance the token pointer. */
-static int
-json_parse_key(struct json_token **toks, const char **key, char **cause)
+static const char *
+json_parse_key(struct json_token **toks, char **cause)
 {
-	const char	*loc;
+	const char	*key, *loc = (*toks)->loc;
 	int		 len;
 
 	if ((*toks)->type != TOK_QUOTE)
@@ -651,14 +666,14 @@ json_parse_key(struct json_token **toks, const char **key, char **cause)
 	if ((*toks)->type != TOK_QUOTE)
 		goto fail;
 
-	*key = xstrndup(loc, len);
+	key = xstrndup(loc, len);
 	(*toks)++;
 
-	return (0);
+	return (key);
 
 fail:
 	json_error(cause, "invalid key", loc);
-	return (-1);
+	return (NULL);
 }
 
 /* Parse an object value, return the node, and advance the token pointer. */
@@ -677,8 +692,12 @@ json_parse_object(struct json_token **toks, const char *key,
 
 	object = json_create_node(parent, NODE_OBJECT, key, loc, NULL);
 	while ((*toks)->type != TOK_CLOSEOBJECT) {
-		if (json_parse_key(toks, &fkey, cause) != 0)
+		if ((fkey = json_parse_key(toks, cause)) == NULL)
 			goto fail;
+		if (json_find(object, fkey) != NULL) {
+			json_error(cause, "duplicate key", (*toks)->loc);
+			goto fail;
+		}
 		if ((*toks)->type != TOK_COLON) {
 			json_error(cause, "missing colon", (*toks)->loc);
 			goto fail;
@@ -725,11 +744,14 @@ json_parse_object(struct json_token **toks, const char *key,
 			json_error(cause, "invalid object", (*toks)->loc);
 			goto fail;
 		}
+		free((char *)fkey);
 	}
 	(*toks)++;
 	return (object);
 
 fail:
+	if (fkey != NULL)
+		free((char *)fkey);
 	json_destroy_node(object);
 	return (NULL);
 }
@@ -739,14 +761,15 @@ static struct json_node *
 json_parse_array(struct json_token **toks, const char *key,
     struct json_node *parent, char **cause)
 {
-	struct json_node	*array;
-	struct json_node	*member;
+	struct json_node	*array, *member;
+	const char		*loc;
 
 	if ((*toks)->type != TOK_OPENARRAY)
 		return (NULL);
+	loc = (*toks)->loc;
 	(*toks)++;
 
-	array = json_create_node(parent, NODE_ARRAY, key, (*toks)->loc, NULL);
+	array = json_create_node(parent, NODE_ARRAY, key, loc, NULL);
 	while ((*toks)->type != TOK_CLOSEARRAY) {
 		switch ((*toks)->type) {
 		case TOK_OPENOBJECT:
@@ -815,20 +838,20 @@ static struct json_node *
 json_parse_number(struct json_token **toks, const char *key,
     struct json_node *parent, char **cause)
 {
-	const char	*numstr = (*toks)->loc;
+	const char	*start = (*toks)->loc;
 	char		*endptr;
 	int64_t		 num;
 
 	errno = 0;
-	num = strtoll(numstr, &endptr, 10);
-	if (errno != 0 || endptr != numstr + (*toks)->len)
+	num = strtoll(start, &endptr, 10);
+	if (errno != 0 || endptr != start + (*toks)->len)
 		goto fail;
 	(*toks)++;
 
-	return (json_create_node(parent, NODE_NUMBER, key, (*toks)->loc, &num));
+	return (json_create_node(parent, NODE_NUMBER, key, start, &num));
 
 fail:
-	json_error(cause, "invalid number", numstr);
+	json_error(cause, "invalid number", start);
 	return (NULL);
 }
 
