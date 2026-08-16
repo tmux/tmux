@@ -71,8 +71,14 @@ struct sixel_image {
 	struct sixel_line	*lines;
 };
 
-struct sixel_chunk {
-	/* Position of the next encoded chunk. */
+struct sixel_plane {
+	/*
+	 * A sixel_plane represents a single-colour SIXEL matrix for
+	 * the current six-row band. stream contains the six-bit columns
+	 * and sixel controls such as repeats and gaps for this colour.
+	 */
+
+	/* Position of the next encoded colour plane. */
 	u_int	 next_x;
 	u_int	 next_y;
 
@@ -82,9 +88,9 @@ struct sixel_chunk {
 	char	 next_pattern;
 
 	/* Output buffer and its allocation/used lengths. */
-	size_t	 len;
-	size_t	 used;
-	char	*data;
+	size_t	 stream_len;
+	size_t	 stream_used;
+	char	*stream;
 };
 
 struct sixel_image_cache {
@@ -726,55 +732,55 @@ sixel_print_repeat(char **buf, size_t *len, size_t *used, u_int count, char ch)
 	}
 }
 
-/* Build compressed SIXEL output chunks for a sixel row. */
+/* Build compressed SIXEL output planes for a sixel row. */
 static void
-sixel_print_compress_colors(struct sixel_image *si, struct sixel_chunk *chunks,
+sixel_print_compress_colors(struct sixel_image *si, struct sixel_plane *planes,
     u_int y, u_int *active, u_int *nactive)
 {
-	u_int			 i, x, c, dx, colors[6];
-	struct sixel_chunk	*chunk = NULL;
+	u_int			 i, x, c, dx, pixels[6];
+	struct sixel_plane	*plane = NULL;
 	struct sixel_line	*sl;
 
 	for (x = 0; x < si->sx; x++) {
 		for (i = 0; i < 6; i++) {
-			colors[i] = 0;
+			pixels[i] = 0;
 			if (y + i < si->sy) {
 				sl = &si->lines[y + i];
 				if (x < sl->sx && sl->pixels[x] != 0) {
-					colors[i] = sl->pixels[x];
+					pixels[i] = sl->pixels[x];
 					c = sl->pixels[x] - 1;
-					chunks[c].next_pattern |= 1 << i;
+					planes[c].next_pattern |= 1 << i;
 				}
 			}
 		}
 
 		for (i = 0; i < 6; i++) {
-			if (colors[i] == 0)
+			if (pixels[i] == 0)
 				continue;
 
-			c = colors[i] - 1;
-			chunk = &chunks[c];
-			if (chunk->next_x == x + 1)
+			c = pixels[i] - 1;
+			plane = &planes[c];
+			if (plane->next_x == x + 1)
 				continue;
 
-			if (chunk->next_y < y + 1) {
-				chunk->next_y = y + 1;
+			if (plane->next_y < y + 1) {
+				plane->next_y = y + 1;
 				active[(*nactive)++] = c;
 			}
 
-			dx = x - chunk->next_x;
-			if (chunk->pattern != chunk->next_pattern || dx != 0) {
-				sixel_print_repeat(&chunk->data, &chunk->len,
-				    &chunk->used, chunk->count,
-				    chunk->pattern + 0x3f);
-				sixel_print_repeat(&chunk->data, &chunk->len,
-				    &chunk->used, dx, '?');
-				chunk->pattern = chunk->next_pattern;
-				chunk->count = 0;
+			dx = x - plane->next_x;
+			if (plane->pattern != plane->next_pattern || dx != 0) {
+				sixel_print_repeat(&plane->stream, &plane->stream_len,
+				    &plane->stream_used, plane->count,
+				    plane->pattern + 0x3f);
+				sixel_print_repeat(&plane->stream, &plane->stream_len,
+				    &plane->stream_used, dx, '?');
+				plane->pattern = plane->next_pattern;
+				plane->count = 0;
 			}
-			chunk->count++;
-			chunk->next_pattern = 0;
-			chunk->next_x = x + 1;
+			plane->count++;
+			plane->next_pattern = 0;
+			plane->next_x = x + 1;
 		}
 	}
 }
@@ -787,7 +793,7 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 	size_t			 len, used = 0, tmplen;
 	u_int			*colours, ncolours, used_colours, i, c, y;
 	u_int			*active, nactive;
-	struct sixel_chunk	*chunks, *chunk;
+	struct sixel_plane	*planes, *plane;
 
 	if (map != NULL) {
 		colours = map->colours;
@@ -813,7 +819,12 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 		sixel_print_add(&buf, &len, &used, tmp, tmplen);
 	}
 
-	chunks = xcalloc(used_colours, sizeof *chunks);
+	/* The colour panes in the current sixel-row band. */
+	planes = xcalloc(used_colours, sizeof *planes);
+	/*
+	 * active records which colour planes actually contain pixels
+	 * in the current sixel-row band.
+	 */
 	active = xcalloc(used_colours, sizeof *active);
 
 	for (i = 0; i < ncolours; i++) {
@@ -824,26 +835,26 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 	}
 
 	for (i = 0; i < used_colours; i++) {
-		chunk = &chunks[i];
-		chunk->len = 8;
-		chunk->data = xmalloc(chunk->len);
+		plane = &planes[i];
+		plane->stream_len = 8;
+		plane->stream = xmalloc(plane->stream_len);
 	}
 
 	for (y = 0; y < si->sy; y += 6) {
 		nactive = 0;
-		sixel_print_compress_colors(si, chunks, y, active, &nactive);
+		sixel_print_compress_colors(si, planes, y, active, &nactive);
 
 		for (i = 0; i < nactive; i++) {
 			c = active[i];
-			chunk = &chunks[c];
+			plane = &planes[c];
 			tmplen = xsnprintf(tmp, sizeof tmp, "#%u", c);
 			sixel_print_add(&buf, &len, &used, tmp, tmplen);
-			sixel_print_add(&buf, &len, &used, chunk->data,
-			    chunk->used);
-			sixel_print_repeat(&buf, &len, &used, chunk->count,
-			    chunk->pattern + 0x3f);
+			sixel_print_add(&buf, &len, &used, plane->stream,
+			    plane->stream_used);
+			sixel_print_repeat(&buf, &len, &used, plane->count,
+			    plane->pattern + 0x3f);
 			sixel_print_add(&buf, &len, &used, "$", 1);
-			chunk->used = chunk->next_x = chunk->count = 0;
+			plane->stream_used = plane->next_x = plane->count = 0;
 		}
 
 		if (buf[used - 1] == '$')
@@ -860,9 +871,9 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 		*size = used;
 
 	for (i = 0; i < used_colours; i++)
-		free(chunks[i].data);
+		free(planes[i].stream);
 	free(active);
-	free(chunks);
+	free(planes);
 
 	return (buf);
 }
