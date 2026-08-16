@@ -4277,7 +4277,7 @@ void			 hyperlinks_free(struct hyperlinks *);
 /* json.c */
 struct json_node	*json_parse(const char *, char **);
 void			 json_destroy_node(struct json_node *);
-struct json_node	*json_find(struct json_node *, const char *);
+struct json_node	*json_find(const struct json_node *, const char *);
 struct json_node	*json_array_first(const struct json_node *);
 struct json_node	*json_array_next(const struct json_node *);
 int			 json_get_string(struct json_node *, const char **);
