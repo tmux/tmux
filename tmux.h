@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1422 2026/08/05 08:54:56 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1423 2026/08/17 07:56:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2252,7 +2252,7 @@ struct client {
 /* 0x800000000ULL unused */
 #define CLIENT_BRACKETPASTING 0x1000000000ULL
 #define CLIENT_ASSUMEPASTING 0x2000000000ULL
-/* 0x4000000000ULL unused */
+#define CLIENT_WRITE_ACK 0x4000000000ULL
 #define CLIENT_NO_DETACH_ON_DESTROY 0x8000000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
@@ -3235,6 +3235,7 @@ void	 file_write_close(struct client_files *, struct imsg *);
 void	 file_read_open(struct client_files *, struct tmuxpeer *, struct imsg *,
 	     int, int, client_file_cb, void *);
 int	 file_write_ready(struct client_files *, struct imsg *);
+int	 file_write_done(struct client_files *, struct imsg *);
 int	 file_read_data(struct client_files *, struct imsg *);
 int	 file_read_done(struct client_files *, struct imsg *);
 void	 file_read_cancel(struct client_files *, struct imsg *);

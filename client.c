@@ -1,4 +1,4 @@
-/* $OpenBSD: client.c,v 1.166 2026/07/10 15:45:11 nicm Exp $ */
+/* $OpenBSD: client.c,v 1.167 2026/08/17 07:56:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -277,7 +277,7 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 	proc_set_signals(client_proc, client_signal);
 
 	/* Save the flags. */
-	client_flags = flags;
+	client_flags = flags|CLIENT_WRITE_ACK;
 	log_debug("flags are %#llx", (unsigned long long)client_flags);
 
 	/* Initialize the client socket and start the server. */
