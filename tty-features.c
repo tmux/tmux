@@ -467,7 +467,7 @@ tty_feature_present(struct tty_term *term, const char *name)
 	for (i = 0; i < nitems(tty_features); i++) {
 		tf = tty_features[i];
 		if (strcmp(tf->name, name) == 0) {
-			if (term->tty->client->term_nofeatures & (1 << i))
+			if (term->nofeatures & (1 << i))
 				return (0);
 			if (term->features & (1 << i))
 			    return (1);
@@ -504,7 +504,7 @@ tty_apply_features(struct tty_term *term, int feat)
 	const char *const		*capability;
 	u_int				 i;
 
-	feat &= ~term->tty->client->term_nofeatures;
+	feat &= ~term->nofeatures;
 	if (feat == 0)
 		return (0);
 	log_debug("applying terminal features: %s", tty_get_features(feat));

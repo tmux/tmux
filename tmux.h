@@ -1719,6 +1719,7 @@ struct tty_term {
 	char		*name;
 	struct tty	*tty;
 	int		 features;
+	int		 nofeatures;
 
 	char		 acs[UCHAR_MAX + 1][2];
 
@@ -2226,7 +2227,6 @@ struct client {
 
 	char			*term_name;
 	int			 term_features;
-	int			 term_nofeatures;
 	char			*term_type;
 	char		       **term_caps;
 	u_int			 term_ncaps;

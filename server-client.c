@@ -2845,7 +2845,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		if (datalen != sizeof feat)
 			return (-1);
 		memcpy(&feat, data, sizeof feat);
-		c->term_features |= feat & ~c->term_nofeatures;
+		c->term_features |= feat;
 		log_debug("client %p IDENTIFY_FEATURES %s", c,
 		    tty_get_features(feat));
 		break;

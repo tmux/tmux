@@ -617,7 +617,7 @@ tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
 		offset = 0;
 		first = tty_term_override_next(s, &offset);
 		if (first != NULL && fnmatch(first, term->name, 0) == 0)
-			tty_add_features(feat, &tty->client->term_nofeatures,
+			tty_add_features(feat, &term->nofeatures,
 			    s + offset, ":");
 		a = options_array_next(a);
 	}
@@ -633,9 +633,9 @@ tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
 		log_debug("%s COLORTERM=%s", tty->client->name, envent->value);
 		if (strcasecmp(envent->value, "truecolor") == 0 ||
 		    strcasecmp(envent->value, "24bit") == 0)
-			tty_add_features(feat, &tty->client->term_nofeatures, "RGB", ",");
+			tty_add_features(feat, &term->nofeatures, "RGB", ",");
  		else if (strstr(envent->value, "256") != NULL)
-			tty_add_features(feat, &tty->client->term_nofeatures, "256", ",");
+			tty_add_features(feat, &term->nofeatures, "256", ",");
 	}
 
 	/* Apply overrides so any capabilities used for features are changed. */
@@ -666,7 +666,7 @@ tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
 	s = tty_term_string(term, TTYC_CLEAR);
 	if (tty_term_flag(term, TTYC_XT) || strncmp(s, "\033[", 2) == 0) {
 		term->flags |= TERM_VT100LIKE;
-		tty_add_features(feat, &tty->client->term_nofeatures,
+		tty_add_features(feat, &term->nofeatures,
 		    "bpaste,focus,title", ",");
 	}
 
@@ -674,7 +674,7 @@ tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
 	if ((tty_term_flag(term, TTYC_TC) || tty_term_has(term, TTYC_RGB)) &&
 	    (!tty_term_has(term, TTYC_SETRGBF) ||
 	    !tty_term_has(term, TTYC_SETRGBB)))
-		tty_add_features(feat, &tty->client->term_nofeatures, "RGB", ",");
+		tty_add_features(feat, &term->nofeatures, "RGB", ",");
 
 	/* Apply the features and overrides again. */
 	if (tty_apply_features(term, *feat))
