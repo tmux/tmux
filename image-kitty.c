@@ -165,16 +165,16 @@ kitty_delete(struct tty *tty, u_int id)
 
 /* Free cached output placement records. */
 static void
-kitty_free_placements(struct kitty_image_cache *cache)
+kitty_free_placements(struct kitty_image_cache *entry)
 {
 	struct kitty_placement_cache	*placement, *next;
 
-	for (placement = cache->placements; placement != NULL;
+	for (placement = entry->placements; placement != NULL;
 	    placement = next) {
 		next = placement->next;
 		free(placement);
 	}
-	cache->placements = NULL;
+	entry->placements = NULL;
 }
 
 /* Delete Kitty placements intersecting a redraw area. */
@@ -183,23 +183,23 @@ kitty_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
     u_int height)
 {
 	struct kitty_output		 *ko = tty->image_data;
-	struct kitty_image_cache	 *cache;
+	struct kitty_image_cache	 *entry;
 	struct kitty_placement_cache	**pp, *placement;
 	char				  s[64];
 
 	if (ko == NULL)
 		return;
-	for (cache = ko->images; cache != NULL; cache = cache->next) {
-		for (pp = &cache->placements; (placement = *pp) != NULL; ) {
+	for (entry = ko->images; entry != NULL; entry = entry->next) {
+		for (pp = &entry->placements; (placement = *pp) != NULL; ) {
 			if (placement->x >= x + width ||
 			    placement->x + placement->width <= x ||
 			    placement->y >= y + height ||
 			    placement->y + placement->height <= y) {
 				pp = &placement->next;
 				continue;
-			}
-			xsnprintf(s, sizeof s,
-			    "\033_Ga=d,d=i,i=%u,p=%u,q=2\033\\", cache->kitty_id,
+		}
+		xsnprintf(s, sizeof s,
+		    "\033_Ga=d,d=i,i=%u,p=%u,q=2\033\\", entry->kitty_id,
 			    placement->id);
 			tty_puts(tty, s);
 			*pp = placement->next;
@@ -208,57 +208,65 @@ kitty_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
 	}
 }
 
+/* Free a cached Kitty image. */
+static void
+kitty_free_entry(struct tty *tty, struct kitty_image_cache *entry, int send)
+{
+	if (send)
+		kitty_delete(tty, entry->kitty_id);
+	kitty_free_placements(entry);
+	free(entry);
+}
+
 /* Free Kitty output state for a terminal. */
 void
-kitty_free_output(struct tty *tty, int send)
+kitty_free_output_state(struct tty *tty, int send)
 {
 	struct kitty_output		*ko = tty->image_data;
-	struct kitty_image_cache	*cache, *next;
+	struct kitty_image_cache	*entry, *next;
 
 	if (ko == NULL)
 		return;
-	for (cache = ko->images; cache != NULL; cache = next) {
-		next = cache->next;
-		if (send)
-			kitty_delete(tty, cache->kitty_id);
-		kitty_free_placements(cache);
-		free(cache);
+	/* Free all cached image entries. */
+	for (entry = ko->images; entry != NULL; entry = next) {
+		next = entry->next;
+		kitty_free_entry(tty, entry, send);
 	}
 	free(ko);
 	tty->image_data = NULL;
 }
 
-/* Discard Kitty output state after a terminal geometry change. */
-void
-kitty_geometry_changed(struct tty *tty)
-{
-	kitty_free_output(tty, !!(tty->flags & TTY_OPENED));
-}
-
 /* Remove cached Kitty images no longer held by the server. */
 static void
-kitty_images_collect(struct tty *tty)
+kitty_free_stale_images(struct tty *tty)
 {
 	struct kitty_output		*ko = tty->image_data;
-	struct kitty_image_cache	**pp, *cache;
+	struct kitty_image_cache	*entry, *next, *previous;
 
 	if (ko == NULL)
 		return;
-	for (pp = &ko->images; (cache = *pp) != NULL; ) {
-		if (image_find(cache->server_id) != NULL) {
-			pp = &cache->next;
+	previous = NULL;
+	for (entry = ko->images; entry != NULL; entry = next) {
+		/* Save the successor before this entry may be removed. */
+		next = entry->next;
+		if (image_find(entry->server_id) != NULL) {
+			/* Retained entries become the predecessor of the next one. */
+			previous = entry;
 			continue;
 		}
-		kitty_delete(tty, cache->kitty_id);
-		*pp = cache->next;
-		kitty_free_placements(cache);
-		free(cache);
+
+		/* Unlink stale entries, including the first entry in the list. */
+		if (previous == NULL)
+			ko->images = next;
+		else
+			previous->next = next;
+		kitty_free_entry(tty, entry, 1);
 	}
 }
 
 /* Place an image rectangle using the Kitty graphics protocol. */
 static void
-kitty_place(struct tty *tty, struct kitty_image_cache *cache,
+kitty_place(struct tty *tty, struct kitty_image_cache *entry,
     struct image *im, u_int source_x, u_int source_y, u_int width,
     u_int height, u_int destination_x, u_int destination_y, int32_t z)
 {
@@ -281,19 +289,19 @@ kitty_place(struct tty *tty, struct kitty_image_cache *cache,
 	py++;
 	placement = xcalloc(1, sizeof *placement);
 	do {
-		placement->id = ++cache->next_placement;
+		placement->id = ++entry->next_placement;
 	} while (placement->id == 0);
 
 	placement->x = destination_x;
 	placement->y = destination_y;
 	placement->width = width;
 	placement->height = height;
-	placement->next = cache->placements;
-	cache->placements = placement;
+	placement->next = entry->placements;
+	entry->placements = placement;
 	tty_cursor(tty, destination_x, destination_y);
 	xsnprintf(control, sizeof control,
 	    "\033_Ga=p,i=%u,p=%llu,x=%u,y=%u,w=%u,h=%u,c=%u,r=%u,z=%d,"
-	    "C=1,q=2\033\\", cache->kitty_id,
+	    "C=1,q=2\033\\", entry->kitty_id,
 	    (unsigned long long)placement->id, px, py, pwidth, pheight, width,
 	    height, z);
 	tty_puts(tty, control);
@@ -304,7 +312,7 @@ static struct kitty_image_cache *
 kitty_upload(struct tty *tty, struct image *im)
 {
 	struct kitty_output		*ko = kitty_get_output(tty);
-	struct kitty_image_cache	*cache;
+	struct kitty_image_cache	*entry;
 	char				 control[128], encoded[4097];
 	u_char				 raw[3072];
 	const u_char			*pixels;
@@ -316,30 +324,30 @@ kitty_upload(struct tty *tty, struct image *im)
 	u_int				 canvas_width, canvas_height;
 	u_int				 upload_width, upload_height;
 
-	for (cache = ko->images; cache != NULL; cache = cache->next) {
-		if (cache->server_id != image_get_id(im))
+	for (entry = ko->images; entry != NULL; entry = entry->next) {
+		if (entry->server_id != image_get_id(im))
 			continue;
-		if (cache->xpixel == tty->xpixel &&
-		    cache->ypixel == tty->ypixel)
-			return (cache);
-		kitty_delete(tty, cache->kitty_id);
-		kitty_free_placements(cache);
-		cache->server_id = 0;
+		if (entry->xpixel == tty->xpixel &&
+		    entry->ypixel == tty->ypixel)
+			return (entry);
+		kitty_delete(tty, entry->kitty_id);
+		kitty_free_placements(entry);
+		entry->server_id = 0;
 		break;
 	}
-	if (cache == NULL) {
-		cache = xcalloc(1, sizeof *cache);
-		cache->next = ko->images;
-		ko->images = cache;
+	if (entry == NULL) {
+		entry = xcalloc(1, sizeof *entry);
+		entry->next = ko->images;
+		ko->images = entry;
 	}
 	do {
 		id = ++ko->next_id & 0xffffff;
 	} while (id == 0);
-	cache->server_id = image_get_id(im);
-	cache->kitty_id = id;
-	cache->xpixel = tty->xpixel;
-	cache->ypixel = tty->ypixel;
-	cache->next_placement = 0;
+	entry->server_id = image_get_id(im);
+	entry->kitty_id = id;
+	entry->xpixel = tty->xpixel;
+	entry->ypixel = tty->ypixel;
+	entry->next_placement = 0;
 
 	pixels = image_get_pixels(im, &stride, &image_size);
 	image_get_size(im, &width, &height);
@@ -408,7 +416,7 @@ kitty_upload(struct tty *tty, struct image *im)
 		tty_puts(tty, "\033\\");
 	}
 	free(padded);
-	return (cache);
+	return (entry);
 }
 
 /* Draw an image rectangle using the Kitty graphics protocol. */
@@ -416,21 +424,21 @@ void
 kitty_draw_rect(struct tty *tty, const struct image_rect *rectangle,
     __unused const struct tty_style_ctx *style_ctx)
 {
-	struct kitty_image_cache	*cache;
+	struct kitty_image_cache	*entry;
 	struct image			*im;
 	u_int				 source_x, source_y;
 	u_int				 width, height, destination_x, destination_y;
 	int32_t				 z;
 
 	im = image_rect_get_image(rectangle);
-	kitty_images_collect(tty);
-	cache = kitty_upload(tty, im);
-	if (cache == NULL)
+	kitty_free_stale_images(tty);
+	entry = kitty_upload(tty, im);
+	if (entry == NULL)
 		return;
 	image_rect_get_coords(rectangle, &source_x, &source_y, &width,
 	    &height, &destination_x, &destination_y);
 	z = image_rect_get_z(rectangle);
-	kitty_place(tty, cache, im, source_x, source_y, width, height,
+	kitty_place(tty, entry, im, source_x, source_y, width, height,
 	    destination_x, destination_y, z);
 }
 
