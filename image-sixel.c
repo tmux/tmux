@@ -1307,13 +1307,6 @@ sixel_free_output(struct tty *tty, __unused int send)
 	tty->image_data = NULL;
 }
 
-/* Discard SIXEL output state after a terminal geometry change. */
-void
-sixel_geometry_changed(struct tty *tty)
-{
-	sixel_free_output(tty, !!(tty->flags & TTY_OPENED));
-}
-
 /* Render an image at a terminal's current pixel geometry. */
 static struct sixel_image *
 sixel_render_image(struct image *im, u_int xpixel, u_int ypixel)
