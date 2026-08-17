@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-keys.c,v 1.210 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: tty-keys.c,v 1.212 2026/08/17 07:52:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -977,8 +977,9 @@ partial_key:
 		if (delay < 500)
 			delay = 500;
 	}
-	if ((tty->flags & (TTY_WAITFG|TTY_WAITBG) ||
-	    (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS) ||
+	if (tty->flags & (TTY_WAITFG|TTY_WAITBG) ||
+	    tty->flags & (TTY_OSC52QUERY|TTY_WINSIZEQUERY) ||
+	    (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS ||
 	    !TAILQ_EMPTY(&c->input_requests)) {
 		log_debug("%s: increasing delay (active query)", c->name);
 		if (delay < 500)
@@ -1666,6 +1667,8 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 		tty_default_features(features, "WezTerm", 0);
 	else if (strncmp(tmp, "ghostty ", 8) == 0)
 		tty_default_features(features, "ghostty", 0);
+	else if (strncmp(tmp, "Rio ", 4) == 0)
+		tty_default_features(features, "Rio", 0);
 	log_debug("%s: received extended DA %.*s", c->name, (int)*size, buf);
 
 	free(c->term_type);

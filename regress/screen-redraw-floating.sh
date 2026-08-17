@@ -125,6 +125,13 @@ new_scene 28 8
 $TMUX2 new-pane -x16 -y5 -X18 -Y4 "sh -c 'printf OUT; exec sleep 100'" || exit 1
 compare floating-outside
 
+# Floating pane whose right border is exactly on the window right edge. The
+# floating pane is clipped so the tiled pane's right border remains unbroken.
+new_scene 28 8
+$TMUX2 respawnp -k "sh -c 'i=0; while [ \$i -lt 8 ]; do printf \"%02d:abcdefghijklmnopq\n\" \$i; i=\$((i + 1)); done; exec sleep 100'" || exit 1
+$TMUX2 new-pane -x10 -y5 -X19 -Y2 "sh -c 'printf EDGE; exec sleep 100'" || exit 1
+compare floating-clip-window-edge
+
 # Floating pane clipped at the top-left corner (negative offsets).
 new_scene 40 12
 $TMUX2 new-pane -x18 -y6 -X-4 -Y-2 "sh -c 'printf TL; exec sleep 100'" || exit 1
@@ -208,14 +215,21 @@ $TMUX2 new-pane -x20 -y6 -X8 -Y7 "sh -c 'printf OVERST; exec sleep 100'" || exit
 compare floating-over-status
 
 # A window left with only a floating pane: killing the single tiled pane removes
-# it from the layout, so the area it occupied is no longer owned by any pane and
-# is drawn as EMPTY cells (middle dots) around the float. This is the only way to
-# produce a REDRAW_SPAN_EMPTY span.
+# it from the layout, so the area it occupied is no longer owned by any pane.
+# Use a visible fill character for the EMPTY cells around the float.
+$TMUX2 set -g fill-character '#[acs]~' || exit 1
 new_scene 40 12
 $TMUX2 new-pane -x20 -y6 -X8 -Y3 "sh -c 'printf FLOAT; exec sleep 100'" || exit 1
 tiled=$($TMUX2 list-panes -F '#{pane_floating_flag} #{pane_id}' | \
 	awk '$1==0{print $2; exit}') || exit 1
 $TMUX2 kill-pane -t "$tiled" || exit 1
 compare floating-empty
+
+# Same after pane-border-lines is set to none: empty window background is not a
+# pane border and should still use the dotted window fill.
+new_scene 40 12
+$TMUX2 breakp -W || exit 1
+$TMUX2 set pane-border-lines none || exit 1
+compare floating-empty-noborder
 
 exit 0

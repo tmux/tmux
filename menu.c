@@ -1,4 +1,4 @@
-/* $OpenBSD: menu.c,v 1.69 2026/07/14 19:07:03 nicm Exp $ */
+/* $OpenBSD: menu.c,v 1.70 2026/08/17 07:33:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -337,6 +337,7 @@ menu_key(struct client *c, struct menu_data *md, struct key_event *event)
 	struct cmdq_state		*state;
 	enum cmd_parse_status		 status;
 	char				*error;
+	key_code			 key;
 
 	if (KEYC_IS_MOUSE(event->key)) {
 		/*
@@ -387,7 +388,8 @@ menu_key(struct client *c, struct menu_data *md, struct key_event *event)
 		name = menu->items[i].name;
 		if (name == NULL || *name == '-')
 			continue;
-		if ((event->key & ~KEYC_MASK_FLAGS) == menu->items[i].key) {
+		key = (event->key & ~KEYC_MASK_FLAGS);
+		if (key == (menu->items[i].key & ~KEYC_MASK_FLAGS)) {
 			md->choice = i;
 			goto chosen;
 		}

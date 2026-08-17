@@ -31,7 +31,7 @@ getpeereid(int s, uid_t *uid, gid_t *gid)
 {
 #ifdef HAVE_SO_PEERCRED
 	struct ucred	uc;
-	int		len = sizeof uc;
+	socklen_t	len = sizeof uc;
 
 	if (getsockopt(s, SOL_SOCKET, SO_PEERCRED, &uc, &len) == -1)
 		return (-1);

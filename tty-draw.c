@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-draw.c,v 1.14 2026/06/19 10:38:29 nicm Exp $ */
+/* $OpenBSD: tty-draw.c,v 1.15 2026/07/26 09:02:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -99,6 +99,8 @@ tty_draw_line_get_empty(const struct grid_cell *gc,
 	if (gc->data.width > nx)
 		empty = nx;
 	else if (gc->flags & GRID_FLAG_PADDING)
+		empty = 1;
+	else if (gc->data.width == 0)
 		empty = 1;
 	else if (gc->flags & GRID_FLAG_SELECTED)
 		empty = 0;

@@ -269,6 +269,22 @@ test_customize_mode()
 	assert_alive "customize-mode exit"
 }
 
+test_customize_break_pane()
+{
+	start_client option-break
+	side=$($TMUX split-window -d -P -F '#{pane_id}' \
+	    -t option-break:0 'cat') || fail "customize split failed"
+
+	$TMUX customize-mode -t "$side" || fail "customize-mode failed"
+	wait_mode "$side" 1
+	$TMUX break-pane -d -s "$side" || fail "customize break-pane failed"
+
+	assert_alive "customize-mode break-pane"
+	wait_mode "$side" 1
+	$TMUX send-keys -t "$side" q || fail "customize-mode quit failed"
+	wait_mode "$side" 0
+}
+
 test_copy_mode()
 {
 	start_client copy-a 'i=0; while [ $i -lt 200 ]; do echo "copy mutation line $i"; i=$((i + 1)); done; cat'
@@ -302,6 +318,7 @@ test_choose_tree
 test_choose_buffer
 test_choose_client
 test_customize_mode
+test_customize_break_pane
 test_copy_mode
 cleanup
 exit 0

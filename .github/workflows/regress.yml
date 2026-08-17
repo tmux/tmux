@@ -16,6 +16,7 @@ jobs:
   regress:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
+    if: github.repository == 'tmux/tmux'
     timeout-minutes: 45
 
     strategy:
@@ -61,6 +62,7 @@ jobs:
             automake \
             bison \
             libevent \
+            jemalloc \
             make \
             ncurses \
             utf8proc \
