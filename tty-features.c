@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.41 2026/08/17 07:52:16 nicm Exp $ */
+/* $OpenBSD: tty-features.c,v 1.42 2026/08/17 14:47:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -383,17 +383,29 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_usstyle
 };
 
+/* Parse features for client. */
 void
-tty_add_features(int *feat, const char *s, const char *separators)
+tty_parse_client_features(struct client *c, const char *s, const char *sep)
+{
+	tty_parse_features(s, sep, &c->term_features, &c->term_nofeatures);
+}
+
+/* Parse features list. */
+void
+tty_parse_features(const char *s, const char *sep, int *enabled, int *disabled)
 {
 	const struct tty_feature	 *tf;
 	char				 *next, *loop, *copy;
 	u_int				  i;
+	int				  remove;
 
 	log_debug("adding terminal features %s", s);
 
 	loop = copy = xstrdup(s);
-	while ((next = strsep(&loop, separators)) != NULL) {
+	while ((next = strsep(&loop, sep)) != NULL) {
+		remove = (*next != '\0' && next[strlen(next) - 1] == '@');
+		if (remove)
+			next[strlen(next) - 1] = '\0';
 		for (i = 0; i < nitems(tty_features); i++) {
 			tf = tty_features[i];
 			if (strcasecmp(tf->name, next) == 0)
@@ -403,14 +415,24 @@ tty_add_features(int *feat, const char *s, const char *separators)
 			log_debug("unknown terminal feature: %s", next);
 			break;
 		}
-		if (~(*feat) & (1 << i)) {
+		if (remove) {
+			log_debug("removing terminal feature: %s", tf->name);
+			*enabled &= ~(1 << i);
+			if (disabled != NULL)
+				*disabled |= 1 << i;
+			continue;
+		}
+		if (disabled != NULL && *disabled & (1 << i))
+			continue;
+		if (~(*enabled) & (1 << i)) {
 			log_debug("adding terminal feature: %s", tf->name);
-			(*feat) |= (1 << i);
+			(*enabled) |= (1 << i);
 		}
 	}
 	free(copy);
 }
 
+/* Get features as string. */
 const char *
 tty_get_features(int feat)
 {
@@ -432,6 +454,7 @@ tty_get_features(int feat)
 	return (s);
 }
 
+/* Check if feature is present. */
 int
 tty_feature_present(struct tty_term *term, const char *name)
 {
@@ -443,8 +466,8 @@ tty_feature_present(struct tty_term *term, const char *name)
 	for (i = 0; i < nitems(tty_features); i++) {
 		tf = tty_features[i];
 		if (strcmp(tf->name, name) == 0) {
-			if (term->features & (1 << i))
-			    return (1);
+			if (term->applied_features & (1 << i))
+				return (1);
 			break;
 		}
 	}
@@ -471,19 +494,23 @@ tty_feature_present(struct tty_term *term, const char *name)
 	return (1);
 }
 
+/* Apply featurs to terminal. */
 int
-tty_apply_features(struct tty_term *term, int feat)
+tty_apply_features(struct tty_term *term)
 {
+	struct client			*c = term->tty->client;
 	const struct tty_feature	*tf;
 	const char *const		*capability;
+	int				 feat;
 	u_int				 i;
 
+	feat = (c->term_features & ~c->term_nofeatures);
 	if (feat == 0)
 		return (0);
 	log_debug("applying terminal features: %s", tty_get_features(feat));
 
 	for (i = 0; i < nitems(tty_features); i++) {
-		if ((term->features & (1 << i)) || (~feat & (1 << i)))
+		if ((term->applied_features & (1 << i)) || (~feat & (1 << i)))
 			continue;
 		tf = tty_features[i];
 
@@ -498,14 +525,15 @@ tty_apply_features(struct tty_term *term, int feat)
 		}
 		term->flags |= tf->flags;
 	}
-	if ((term->features | feat) == term->features)
+	if ((term->applied_features|feat) == term->applied_features)
 		return (0);
-	term->features |= feat;
+	term->applied_features |= feat;
 	return (1);
 }
 
+/* Add default features for a terminal identified by name and version. */
 void
-tty_default_features(int *feat, const char *name, u_int version)
+tty_default_features(struct client *c, const char *name, u_int version)
 {
 	static const struct {
 		const char	*name;
@@ -618,6 +646,6 @@ tty_default_features(int *feat, const char *name, u_int version)
 			continue;
 		if (version != 0 && version < table[i].version)
 			continue;
-		tty_add_features(feat, table[i].features, ",");
+		tty_parse_client_features(c, table[i].features, ",");
 	}
 }

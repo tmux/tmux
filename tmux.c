@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.c,v 1.222 2026/07/19 19:09:30 nicm Exp $ */
+/* $OpenBSD: tmux.c,v 1.223 2026/08/17 14:47:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -418,7 +418,7 @@ main(int argc, char **argv)
 	while ((opt = getopt(argc, argv, "2c:CDdf:hlL:NqS:T:uUvV")) != -1) {
 		switch (opt) {
 		case '2':
-			tty_add_features(&feat, "256", ":,");
+			tty_parse_features("256", ":,", &feat, NULL);
 			break;
 		case 'c':
 			shell_command = optarg;
@@ -466,7 +466,7 @@ main(int argc, char **argv)
 			path = xstrdup(optarg);
 			break;
 		case 'T':
-			tty_add_features(&feat, optarg, ":,");
+			tty_parse_features(optarg, ":,", &feat, NULL);
 			break;
 		case 'u':
 			flags |= CLIENT_UTF8;

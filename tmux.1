@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1155 2026/08/06 09:05:04 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1156 2026/08/17 14:47:41 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 6 2026 $
+.Dd $Mdocdate: August 17 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -5045,6 +5045,10 @@ This is an array option where each entry is a colon-separated string made up
 of a terminal type pattern (matched using
 .Xr glob 7
 patterns) followed by a list of terminal features.
+A feature may be suffixed with
+.Ql @
+to disable it; for example,
+.Ql xterm*:sync@ .
 The available features are:
 .Bl -tag -width Ds
 .It 256
