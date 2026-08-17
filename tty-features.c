@@ -394,7 +394,7 @@ static const struct tty_feature *const tty_features[] = {
 };
 
 void
-tty_add_features(int *feat, int *nofeat, const char *s,
+tty_add_features(int *feat, int *disabled, const char *s,
     const char *separators)
 {
 	const struct tty_feature	 *tf;
@@ -421,11 +421,11 @@ tty_add_features(int *feat, int *nofeat, const char *s,
 		if (remove) {
 			log_debug("removing terminal feature: %s", tf->name);
 			*feat &= ~(1 << i);
-			if (nofeat != NULL)
-				*nofeat |= 1 << i;
+			if (disabled != NULL)
+				*disabled |= 1 << i;
 			continue;
 		}
-		if (nofeat != NULL && *nofeat & (1 << i))
+		if (disabled != NULL && *disabled & (1 << i))
 			continue;
 		if (~(*feat) & (1 << i)) {
 			log_debug("adding terminal feature: %s", tf->name);
@@ -532,7 +532,8 @@ tty_apply_features(struct tty_term *term, int feat)
 }
 
 void
-tty_default_features(int *feat, int *nofeat, const char *name, u_int version)
+tty_default_features(int *feat, int *disabled, const char *name,
+    u_int version)
 {
 	static const struct {
 		const char	*name;
@@ -633,6 +634,6 @@ tty_default_features(int *feat, int *nofeat, const char *name, u_int version)
 			continue;
 		if (version != 0 && version < table[i].version)
 			continue;
-		tty_add_features(feat, nofeat, table[i].features, ",");
+		tty_add_features(feat, disabled, table[i].features, ",");
 	}
 }
