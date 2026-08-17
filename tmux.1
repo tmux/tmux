@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1153 2026/08/05 07:31:08 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1155 2026/08/06 09:05:04 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 5 2026 $
+.Dd $Mdocdate: August 6 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -356,6 +356,8 @@ Force redraw of the attached client.
 Select a new session for the attached client interactively.
 .It t
 Show the time.
+.It T
+Change the current pane title.
 .It w
 Choose the current window interactively.
 .It x
@@ -2319,9 +2321,13 @@ the bottom and is paused while a selection is in progress.
 .Xc
 Turn off automatic refresh of the content from the pane.
 .It Xo
-.Ic refresh\-toggle
+.Ic refresh\-now
 (vi: r)
 (emacs: r)
+.Xc
+Refresh the content from the pane once.
+.It Xo
+.Ic refresh\-toggle
 .Xc
 Toggle automatic refresh of the content from the pane.
 .It Xo
