@@ -4259,9 +4259,8 @@ void		 image_rect_get_coords(const struct image_rect *,
 /* image-sixel.c */
 #define SIXEL_COLOUR_REGISTERS 1024
 void		 sixel_draw_rect(struct tty *,
-			     const struct image_rect *, const struct tty_style_ctx *);
+		     const struct image_rect *, const struct tty_style_ctx *);
 void		 sixel_free_output(struct tty *, int);
-void		 sixel_geometry_changed(struct tty *);
 struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int,
     u_int);
 void		 sixel_free(struct sixel_image *);

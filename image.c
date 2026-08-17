@@ -87,16 +87,14 @@ struct image_backend {
 	void		(*draw_rect)(struct tty *,
 		    const struct image_rect *, const struct tty_style_ctx *);
 	void		(*free)(struct tty *, int);
-	void		(*geometry_changed)(struct tty *);
 };
 
 static const struct image_backend image_backend_ascii = {
-	"ascii", IMAGE_BACKEND_SCROLLS, NULL, NULL, NULL
+	"ascii", IMAGE_BACKEND_SCROLLS, NULL, NULL
 };
 static const struct image_backend image_backend_sixel = {
 	"sixel", IMAGE_BACKEND_GRAPHICAL|IMAGE_BACKEND_TEMPORAL,
-	sixel_draw_rect,
-	sixel_free_output, sixel_geometry_changed
+	sixel_draw_rect, sixel_free_output
 };
 
 /* Compare images by server ID. */
@@ -152,8 +150,8 @@ void
 image_tty_geometry_changed(struct tty *tty)
 {
 	image_tty_update(tty);
-	if (tty->image_backend->geometry_changed != NULL)
-		tty->image_backend->geometry_changed(tty);
+	if (tty->image_backend->free != NULL)
+		tty->image_backend->free(tty, !!(tty->flags & TTY_OPENED));
 }
 
 /* Free image backend state for a terminal. */
