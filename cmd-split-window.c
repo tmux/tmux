@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-split-window.c,v 1.146 2026/07/21 12:28:43 nicm Exp $ */
+/* $OpenBSD: cmd-split-window.c,v 1.148 2026/08/07 08:10:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -99,6 +99,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (cmd_get_entry(self) == &cmd_new_pane_entry)
 		is_floating = !args_has(args, 'L');
 	else {
+		window_unzoom(w, 1);
 		is_floating = window_pane_is_floating(wp);
 		flags |= SPAWN_SPLIT;
 	}
