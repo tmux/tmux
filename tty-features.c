@@ -393,8 +393,9 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_usstyle
 };
 
+/* Parse feature list s and update the enabled and disabled bitmasks. */
 void
-tty_add_features(int *feat, int *disabled, const char *s,
+tty_add_features(int *enabled, int *disabled, const char *s,
     const char *separators)
 {
 	const struct tty_feature	 *tf;
@@ -420,16 +421,16 @@ tty_add_features(int *feat, int *disabled, const char *s,
 		}
 		if (remove) {
 			log_debug("removing terminal feature: %s", tf->name);
-			*feat &= ~(1 << i);
+			*enabled &= ~(1 << i);
 			if (disabled != NULL)
 				*disabled |= 1 << i;
 			continue;
 		}
 		if (disabled != NULL && *disabled & (1 << i))
 			continue;
-		if (~(*feat) & (1 << i)) {
+		if (~(*enabled) & (1 << i)) {
 			log_debug("adding terminal feature: %s", tf->name);
-			(*feat) |= (1 << i);
+			(*enabled) |= (1 << i);
 		}
 	}
 	free(copy);
@@ -531,8 +532,9 @@ tty_apply_features(struct tty_term *term, int feat)
 	return (1);
 }
 
+/* Add default features for a terminal identified by name and version. */
 void
-tty_default_features(int *feat, int *disabled, const char *name,
+tty_default_features(int *enabled, int *disabled, const char *name,
     u_int version)
 {
 	static const struct {
@@ -634,6 +636,6 @@ tty_default_features(int *feat, int *disabled, const char *name,
 			continue;
 		if (version != 0 && version < table[i].version)
 			continue;
-		tty_add_features(feat, disabled, table[i].features, ",");
+		tty_add_features(enabled, disabled, table[i].features, ",");
 	}
 }
