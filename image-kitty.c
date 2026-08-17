@@ -116,27 +116,27 @@ struct kitty_context {
 };
 
 struct kitty_image_cache {
-	u_int			 server_id;
-	u_int			 kitty_id;
-	u_int			 xpixel;
-	u_int			 ypixel;
-	struct kitty_placement_cache *placements;
-	u_int			 next_placement;
+	u_int				 server_id;
+	u_int				 kitty_id;
+	u_int				 xpixel;
+	u_int				 ypixel;
+	struct kitty_placement_cache	*placements;
+	u_int				 next_placement;
 	struct kitty_image_cache	*next;
 };
 
 struct kitty_placement_cache {
-	u_int			 id;
-	u_int			 x;
-	u_int			 y;
-	u_int			 width;
-	u_int			 height;
-	struct kitty_placement_cache *next;
+	u_int				 id;
+	u_int				 x;
+	u_int				 y;
+	u_int				 width;
+	u_int				 height;
+	struct kitty_placement_cache	*next;
 };
 
 struct kitty_output {
 	struct kitty_image_cache	*images;
-	u_int			 next_id;
+	u_int				 next_id;
 };
 
 /* Return the Kitty output state for a terminal. */
@@ -182,10 +182,10 @@ void
 kitty_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
     u_int height)
 {
-	struct kitty_output		*ko = tty->image_data;
-	struct kitty_image_cache	*cache;
+	struct kitty_output		 *ko = tty->image_data;
+	struct kitty_image_cache	 *cache;
 	struct kitty_placement_cache	**pp, *placement;
-	char				 s[64];
+	char				  s[64];
 
 	if (ko == NULL)
 		return;
@@ -212,7 +212,7 @@ kitty_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
 void
 kitty_free_output(struct tty *tty, int send)
 {
-	struct kitty_output	*ko = tty->image_data;
+	struct kitty_output		*ko = tty->image_data;
 	struct kitty_image_cache	*cache, *next;
 
 	if (ko == NULL)
@@ -239,7 +239,7 @@ kitty_geometry_changed(struct tty *tty)
 static void
 kitty_images_collect(struct tty *tty)
 {
-	struct kitty_output	*ko = tty->image_data;
+	struct kitty_output		*ko = tty->image_data;
 	struct kitty_image_cache	**pp, *cache;
 
 	if (ko == NULL)
@@ -262,10 +262,10 @@ kitty_place(struct tty *tty, struct kitty_image_cache *cache,
     struct image *im, u_int source_x, u_int source_y, u_int width,
     u_int height, u_int destination_x, u_int destination_y, int32_t z)
 {
-	char		 control[192];
-	u_int		 px, py, pwidth, pheight, sx, sy;
-	u_int		 canvas_width, canvas_height;
-	struct kitty_placement_cache *placement;
+	char				 control[192];
+	u_int				 px, py, pwidth, pheight, sx, sy;
+	u_int				 canvas_width, canvas_height;
+	struct kitty_placement_cache	*placement;
 
 	image_get_size_in_cells(im, &sx, &sy);
 	image_get_canvas_size(im, &canvas_width, &canvas_height);
@@ -275,6 +275,7 @@ kitty_place(struct tty *tty, struct kitty_image_cache *cache,
 	    sx - px;
 	pheight = ((uint64_t)(source_y + height) * canvas_height + sy - 1) /
 	    sy - py;
+
 	/* Account for the duplicate-pixel border added by kitty_upload(). */
 	px++;
 	py++;
@@ -282,6 +283,7 @@ kitty_place(struct tty *tty, struct kitty_image_cache *cache,
 	do {
 		placement->id = ++cache->next_placement;
 	} while (placement->id == 0);
+
 	placement->x = destination_x;
 	placement->y = destination_y;
 	placement->width = width;
@@ -301,17 +303,18 @@ kitty_place(struct tty *tty, struct kitty_image_cache *cache,
 static struct kitty_image_cache *
 kitty_upload(struct tty *tty, struct image *im)
 {
-	struct kitty_output	*ko = kitty_get_output(tty);
+	struct kitty_output		*ko = kitty_get_output(tty);
 	struct kitty_image_cache	*cache;
-	char			 control[128], encoded[4097];
-	u_char			 raw[3072];
-	const u_char		*pixels;
-	u_char			*padded;
-	size_t			 offset, size, copied, row, column, available, stride;
-	size_t			 image_size;
-	int			 encodedlen;
-	u_int			 id, width, height, canvas_width, canvas_height;
-	u_int			 upload_width, upload_height;
+	char				 control[128], encoded[4097];
+	u_char				 raw[3072];
+	const u_char			*pixels;
+	u_char				*padded;
+	size_t				 offset, size, copied, row, column;
+	size_t				 available, stride, image_size;
+	int				 encodedlen;
+	u_int				 id, width, height;
+	u_int				 canvas_width, canvas_height;
+	u_int				 upload_width, upload_height;
 
 	for (cache = ko->images; cache != NULL; cache = cache->next) {
 		if (cache->server_id != image_get_id(im))
@@ -414,10 +417,10 @@ kitty_draw_rect(struct tty *tty, const struct image_rect *rectangle,
     __unused const struct tty_style_ctx *style_ctx)
 {
 	struct kitty_image_cache	*cache;
-	struct image		*im;
-	u_int			 source_x, source_y;
-	u_int			 width, height, destination_x, destination_y;
-	int32_t			 z;
+	struct image			*im;
+	u_int				 source_x, source_y;
+	u_int				 width, height, destination_x, destination_y;
+	int32_t				 z;
 
 	im = image_rect_get_image(rectangle);
 	kitty_images_collect(tty);
