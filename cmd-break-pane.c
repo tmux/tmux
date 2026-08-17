@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-break-pane.c,v 1.74 2026/07/15 13:02:33 nicm Exp $ */
+/* $OpenBSD: cmd-break-pane.c,v 1.76 2026/08/17 07:04:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -190,14 +190,16 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 		w->name = clean_name(name, 0);
 		options_set_number(w->options, "automatic-rename", 0);
 	}
+	window_set_fill_cells(w);
+
+	if (idx == -1)
+		idx = -1 - options_get_number(dst_s->options, "base-index");
+	wl = session_attach(dst_s, w, idx, &cause); /* can't fail */
 
 	layout_init(w, wp);
 	wp->flags |= PANE_CHANGED;
 	colour_palette_from_option(&wp->palette, wp->options);
 
-	if (idx == -1)
-		idx = -1 - options_get_number(dst_s->options, "base-index");
-	wl = session_attach(dst_s, w, idx, &cause); /* can't fail */
 	window_remove_ref(w, __func__);
 	events_fire_window("window-created", w);
 	window_fire_pane_moved(wp, old_w, old_idx, w, wl->idx);

@@ -1,4 +1,4 @@
-/* $OpenBSD: control-notify.c,v 1.37 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: control-notify.c,v 1.38 2026/08/03 13:38:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -44,7 +44,8 @@ control_pane_mode_changed_cb(__unused const char *name,
 		TAILQ_FOREACH(c, &clients, entry) {
 			if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
 				continue;
-			control_write(c, "%%pane-mode-changed %%%u", wp->id);
+			control_notify_write(c, "%%pane-mode-changed %%%u",
+			    wp->id);
 		}
 		return;
 	}
@@ -53,8 +54,9 @@ control_pane_mode_changed_cb(__unused const char *name,
 	if (value == NULL)
 		return;
 	TAILQ_FOREACH(c, &clients, entry) {
-		if (CONTROL_SHOULD_NOTIFY_CLIENT(c))
-			control_write(c, "%%pane-mode-changed %s", value);
+		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
+			continue;
+		control_notify_write(c, "%%pane-mode-changed %s", value);
 	}
 	free(value);
 }
@@ -92,7 +94,7 @@ control_window_layout_changed_cb(__unused const char *name,
 			continue;
 		s = c->session;
 		if (winlink_find_by_window_id(&s->windows, w->id) != NULL)
-			control_write(c, "%s", cp);
+			control_notify_write(c, "%s", cp);
 	}
 	free(cp);
 }
@@ -111,7 +113,7 @@ control_window_pane_changed_cb(__unused const char *name,
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
 			continue;
 
-		control_write(c, "%%window-pane-changed @%u %%%u", w->id,
+		control_notify_write(c, "%%window-pane-changed @%u %%%u", w->id,
 		    w->active->id);
 	}
 }
@@ -133,9 +135,11 @@ control_window_unlinked_cb(__unused const char *name, struct event_payload *ep,
 		cs = c->session;
 
 		if (winlink_find_by_window_id(&cs->windows, w->id) != NULL)
-			control_write(c, "%%window-close @%u", w->id);
-		else
-			control_write(c, "%%unlinked-window-close @%u", w->id);
+			control_notify_write(c, "%%window-close @%u", w->id);
+		else {
+			control_notify_write(c, "%%unlinked-window-close @%u",
+			    w->id);
+		}
 	}
 }
 
@@ -156,9 +160,11 @@ control_window_linked_cb(__unused const char *name, struct event_payload *ep,
 		cs = c->session;
 
 		if (winlink_find_by_window_id(&cs->windows, w->id) != NULL)
-			control_write(c, "%%window-add @%u", w->id);
-		else
-			control_write(c, "%%unlinked-window-add @%u", w->id);
+			control_notify_write(c, "%%window-add @%u", w->id);
+		else {
+			control_notify_write(c, "%%unlinked-window-add @%u",
+			    w->id);
+		}
 	}
 }
 
@@ -179,11 +185,11 @@ control_window_renamed_cb(__unused const char *name, struct event_payload *ep,
 		cs = c->session;
 
 		if (winlink_find_by_window_id(&cs->windows, w->id) != NULL) {
-			control_write(c, "%%window-renamed @%u %s", w->id,
-			    w->name);
-		} else {
-			control_write(c, "%%unlinked-window-renamed @%u %s",
+			control_notify_write(c, "%%window-renamed @%u %s",
 			    w->id, w->name);
+		} else {
+			control_notify_write(c,
+			    "%%unlinked-window-renamed @%u %s", w->id, w->name);
 		}
 	}
 }
@@ -206,11 +212,12 @@ control_client_session_changed_cb(__unused const char *name,
 			continue;
 
 		if (cc == c) {
-			control_write(c, "%%session-changed $%u %s", s->id,
-			    s->name);
+			control_notify_write(c, "%%session-changed $%u %s",
+			    s->id, s->name);
 		} else {
-			control_write(c, "%%client-session-changed %s $%u %s",
-			    cc->name, s->id, s->name);
+			control_notify_write(c,
+			    "%%client-session-changed %s $%u %s", cc->name,
+			    s->id, s->name);
 		}
 	}
 }
@@ -248,8 +255,9 @@ control_client_detached_cb(__unused const char *name, struct event_payload *ep,
 	if (cc == NULL)
 		return;
 	TAILQ_FOREACH(c, &clients, entry) {
-		if (CONTROL_SHOULD_NOTIFY_CLIENT(c))
-			control_write(c, "%%client-detached %s", cc->name);
+		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
+			continue;
+		control_notify_write(c, "%%client-detached %s", cc->name);
 	}
 }
 
@@ -266,8 +274,8 @@ control_session_renamed_cb(__unused const char *name, struct event_payload *ep,
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
 			continue;
-
-		control_write(c, "%%session-renamed $%u %s", s->id, s->name);
+		control_notify_write(c, "%%session-renamed $%u %s", s->id,
+		    s->name);
 	}
 }
 
@@ -281,8 +289,7 @@ control_session_created_cb(__unused const char *name,
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
 			continue;
-
-		control_write(c, "%%sessions-changed");
+		control_notify_write(c, "%%sessions-changed");
 	}
 }
 
@@ -296,8 +303,7 @@ control_session_closed_cb(__unused const char *name,
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
 			continue;
-
-		control_write(c, "%%sessions-changed");
+		control_notify_write(c, "%%sessions-changed");
 	}
 }
 
@@ -320,9 +326,8 @@ control_session_window_changed_cb(__unused const char *name,
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
 			continue;
-
-		control_write(c, "%%session-window-changed $%u @%u", s->id,
-		    s->curw->window->id);
+		control_notify_write(c, "%%session-window-changed $%u @%u",
+		    s->id, s->curw->window->id);
 	}
 }
 
@@ -339,8 +344,7 @@ control_paste_buffer_changed_cb(__unused const char *name,
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
 			continue;
-
-		control_write(c, "%%paste-buffer-changed %s", pbname);
+		control_notify_write(c, "%%paste-buffer-changed %s", pbname);
 	}
 }
 
@@ -357,8 +361,7 @@ control_paste_buffer_deleted_cb(__unused const char *name,
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
 			continue;
-
-		control_write(c, "%%paste-buffer-deleted %s", pbname);
+		control_notify_write(c, "%%paste-buffer-deleted %s", pbname);
 	}
 }
 

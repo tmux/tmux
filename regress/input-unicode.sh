@@ -41,5 +41,9 @@ start_pane combining-left 10 3 '\314\201A\n'
 check_capture combining-left 'A'
 check_cursor combining-left '0,1'
 
+start_pane combining-overflow 10 3 'u\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\n'
+check_raw_matches combining-overflow '^		C 0,0 data=\(1,31,u'
+check_raw_no_matches combining-overflow 'data=\(0,'
+
 $TMUX kill-server 2>/dev/null
 exit $exit_status

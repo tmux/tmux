@@ -34,6 +34,18 @@ captureen() {
 	$TMUX capturep -peNS0 -E- >$TMP || exit 1
 }
 
+timed() {
+	if command -v timeout >/dev/null 2>&1; then
+		timeout 5 "$@"
+	else
+		"$@"
+	fi
+}
+
+capture_timed() {
+	timed $TMUX capturep -pS0 -E- >$TMP || exit 1
+}
+
 check_line() {
 	line=$1
 	want=$2
@@ -81,6 +93,8 @@ $TMUX2 neww -d \
 	"printf '\033(0x\033(B'; exec sleep 100" || exit 1
 $TMUX2 neww -d \
 	"awk 'BEGIN { for (i = 0; i < 1100; i++) printf \"a\" }'; exec sleep 100" || exit 1
+$TMUX2 neww -d \
+	"printf 'u\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245\314\245'; exec sleep 100" || exit 1
 $TMUX2 selectw -t:0 || exit 1
 
 $TMUX -f/dev/null new -d -x20 -y6 || exit 1
@@ -244,5 +258,13 @@ sleep 1
 capture
 len=$(sed -n 1p $TMP | wc -c)
 [ "$len" -ge 1100 ] || fail "long same-style line was truncated"
+
+# Too many combining marks on one base character must not leave a standalone
+# width-zero cell that can make tty_draw_line loop forever on redraw.
+$TMUX resizew -x20 -y6 || exit 1
+timed $TMUX2 selectw -t:13 || fail "zero-width overflow select hung"
+sleep 1
+capture_timed
+check_grep '^u'
 
 exit 0

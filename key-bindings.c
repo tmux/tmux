@@ -1,4 +1,4 @@
-/* $OpenBSD: key-bindings.c,v 1.189 2026/07/15 10:38:31 nicm Exp $ */
+/* $OpenBSD: key-bindings.c,v 1.192 2026/08/06 09:05:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -47,6 +47,9 @@
 	" ''" \
 	" 'New After' 'w' {new-window -a}" \
 	" 'New At End' 'W' {new-window}"
+#define DEFAULT_EMPTY_MENU \
+	" 'New Pane' 'p' {new-pane; join-pane}" \
+	" 'New Window' 'w' {new-window}"
 #define DEFAULT_PANE_MENU \
 	" '#{?#{m/r:(copy|view)-mode,#{pane_mode}},Go To Top,}' '<' {send -X history-top}" \
 	" '#{?#{m/r:(copy|view)-mode,#{pane_mode}},Go To Bottom,}' '>' {send -X history-bottom}" \
@@ -420,6 +423,7 @@ key_bindings_init(void)
 		"bind -N 'Spread panes out evenly' E { select-layout -E }",
 		"bind -N 'Switch to the last client' L { switch-client -l }",
 		"bind -N 'Clear the marked pane' M { select-pane -M }",
+		"bind -N 'Change the pane title' T { command-prompt -I'#T' { select-pane -T '%%' } }",
 		"bind -N 'Enter copy mode' [ { copy-mode }",
 		"bind -N 'Paste the most recent paste buffer' ] { paste-buffer -p }",
 		"bind -N 'Create a new window' c { new-window }",
@@ -553,6 +557,8 @@ key_bindings_init(void)
 		/* Mouse button 3 down on pane. */
 		"bind -n MouseDown3Pane { if -Ft= '#{||:#{mouse_any_flag},#{&&:#{pane_in_mode},#{?#{m/r:(copy|view)-mode,#{pane_mode}},0,1}}}' { select-pane -t=; send -M } { display-menu -t= -xM -yM -T '#[align=centre]#{pane_index} (#{pane_id})' " DEFAULT_PANE_MENU " } }",
 		"bind -n M-MouseDown3Pane { display-menu -t= -xM -yM -T '#[align=centre]#{pane_index} (#{pane_id})' " DEFAULT_PANE_MENU " }",
+		"bind -n MouseDown3Empty { display-menu -t= -xM -yM -T '#[align=centre]#{window_index}:#{window_name}' " DEFAULT_EMPTY_MENU " }",
+		"bind -n M-MouseDown3Empty { display-menu -t= -xM -yM -T '#[align=centre]#{window_index}:#{window_name}' " DEFAULT_EMPTY_MENU " }",
 
 		/* Mouse on scrollbar. */
 		"bind -n MouseDown1ScrollbarUp { if -Ft= '#{pane_in_mode}' { send -X page-up } {copy-mode -u } }",
@@ -592,7 +598,7 @@ key_bindings_init(void)
 		"bind -Tcopy-mode g { command-prompt -P -p'(goto line)' { send -X goto-line -- '%%' } }",
 		"bind -Tcopy-mode n { send -X search-again }",
 		"bind -Tcopy-mode q { send -X cancel }",
-		"bind -Tcopy-mode r { send -X refresh-toggle }",
+		"bind -Tcopy-mode r { send -X refresh-now }",
 		"bind -Tcopy-mode t { command-prompt -P -1p'(jump to forward)' { send -X jump-to-forward -- '%%' } }",
 		"bind -Tcopy-mode Home { send -X start-of-line }",
 		"bind -Tcopy-mode End { send -X end-of-line }",
@@ -702,7 +708,7 @@ key_bindings_init(void)
 		"bind -Tcopy-mode-vi n { send -X search-again }",
 		"bind -Tcopy-mode-vi o { send -X other-end }",
 		"bind -Tcopy-mode-vi q { send -X cancel }",
-		"bind -Tcopy-mode-vi r { send -X refresh-toggle }",
+		"bind -Tcopy-mode-vi r { send -X refresh-now }",
 		"bind -Tcopy-mode-vi t { command-prompt -P -1p'(jump to forward)' { send -X jump-to-forward -- '%%' } }",
 		"bind -Tcopy-mode-vi v { send -X rectangle-toggle }",
 		"bind -Tcopy-mode-vi w { send -X next-word }",

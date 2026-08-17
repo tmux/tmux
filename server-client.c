@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.497 2026/07/17 12:42:51 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.503 2026/08/17 07:56:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -36,7 +36,8 @@ static void	server_client_check_window_resize(struct window *);
 static key_code	server_client_check_mouse(struct client *, struct key_event *);
 static void	server_client_repeat_timer(int, short, void *);
 static void	server_client_click_timer(int, short, void *);
-static void	server_client_check_exit(struct client *);
+static void	server_client_check_exit(struct client *, int);
+static void	server_client_exit_timer(int, short, void *);
 static void	server_client_check_redraw(struct client *);
 static void	server_client_check_modes(struct client *);
 static void	server_client_set_title(struct client *);
@@ -309,6 +310,7 @@ server_client_create(int fd)
 
 	evtimer_set(&c->repeat_timer, server_client_repeat_timer, c);
 	evtimer_set(&c->click_timer, server_client_click_timer, c);
+	evtimer_set(&c->exit_timer, server_client_exit_timer, c);
 
 	c->click_wp = -1;
 
@@ -527,6 +529,9 @@ server_client_lost(struct client *c)
 
 	evtimer_del(&c->repeat_timer);
 	evtimer_del(&c->click_timer);
+	evtimer_del(&c->exit_timer);
+	if (event_initialized(&c->cycle_timer))
+		evtimer_del(&c->cycle_timer);
 
 	key_bindings_unref_table(c->keytable);
 
@@ -1059,6 +1064,11 @@ have_event:
 				c->tty.mouse_scrolling_flag = 0;
 				c->tty.mouse_slider_mpos = -1;
 				c->tty.mouse_last_pane = -1;
+				if ((w->modal->flags & PANE_CLOSEONCLICK) &&
+				    (type == KEYC_TYPE_MOUSEDOWN ||
+				    type == KEYC_TYPE_SECONDCLICK ||
+				    type == KEYC_TYPE_TRIPLECLICK))
+					server_kill_pane(w->modal);
 				return (KEYC_UNKNOWN);
 			}
 		}
@@ -1677,6 +1687,9 @@ server_client_handle_menu_key(struct client *c, struct key_event *event)
 	memcpy(&new_event, event, sizeof new_event);
 	if (KEYC_IS_MOUSE(event->key)) {
 		m = &new_event.m;
+		m->statusat = status_at_line(c);
+		m->statuslines = status_line_size(c);
+
 		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
 		m->x += ox;
 		if (m->statusat == 0) {
@@ -1684,8 +1697,7 @@ server_client_handle_menu_key(struct client *c, struct key_event *event)
 				m->x = m->y = UINT_MAX;
 			else
 				m->y = m->y - m->statuslines + oy;
-		} else if (m->statusat > 0 &&
-		    m->y >= (u_int)m->statusat)
+		} else if (m->statusat > 0 && m->y >= (u_int)m->statusat)
 			m->x = m->y = UINT_MAX;
 		else
 			m->y += oy;
@@ -1844,7 +1856,7 @@ server_client_loop(void)
 
 	/* Check clients. */
 	TAILQ_FOREACH(c, &clients, entry) {
-		server_client_check_exit(c);
+		server_client_check_exit(c, 0);
 		if (c->session != NULL && c->session->curw != NULL) {
 			server_client_check_modes(c);
 			server_client_check_redraw(c);
@@ -2280,9 +2292,37 @@ server_client_click_timer(__unused int fd, __unused short events, void *data)
 	c->flags &= ~(CLIENT_DOUBLECLICK|CLIENT_TRIPLECLICK);
 }
 
-/* Check if client should be exited. */
+/* Start client exit timer. */
 static void
-server_client_check_exit(struct client *c)
+server_client_start_exit_timer(struct client *c)
+{
+	struct timeval	tv = { .tv_sec = 10 };
+
+	if (!evtimer_pending(&c->exit_timer, NULL))
+		evtimer_add(&c->exit_timer, &tv);
+}
+
+/* Exit timer has expired: stop waiting for the client. */
+static void
+server_client_exit_timer(__unused int fd, __unused short events, void *data)
+{
+	struct client	*c = data;
+
+	if (c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED))
+		return;
+
+	if (c->flags & CLIENT_EXITED) {
+		log_debug("%s: %s took too long to exit", __func__, c->name);
+		server_client_lost(c);
+	} else if (c->flags & CLIENT_EXIT) {
+		log_debug("%s: %s took too long to flush", __func__, c->name);
+		server_client_check_exit(c, 1);
+	}
+}
+
+/* Check if client should be exited, abandoning buffered output if forced. */
+static void
+server_client_check_exit(struct client *c, int force)
 {
 	struct client_file	*cf;
 	const char		*name = c->exit_session;
@@ -2295,15 +2335,28 @@ server_client_check_exit(struct client *c)
 		return;
 
 	if (c->flags & CLIENT_CONTROL) {
-		control_discard(c);
-		if (!control_all_done(c))
-			return;
+		if (force)
+			control_discard_all(c);
+		else {
+			control_discard(c);
+			if (!control_all_done(c)) {
+				server_client_start_exit_timer(c);
+				return;
+			}
+		}
 	}
-	RB_FOREACH(cf, client_files, &c->files) {
-		if (EVBUFFER_LENGTH(cf->buffer) != 0)
-			return;
+	if (!force) {
+		RB_FOREACH(cf, client_files, &c->files) {
+			if (EVBUFFER_LENGTH(cf->buffer) != 0) {
+				server_client_start_exit_timer(c);
+				return;
+			}
+		}
 	}
 	c->flags |= CLIENT_EXITED;
+
+	evtimer_del(&c->exit_timer);
+	server_client_start_exit_timer(c);
 
 	switch (c->exit_type) {
 	case CLIENT_EXIT_RETURN:
@@ -2647,6 +2700,10 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 		break;
 	case MSG_WRITE_READY:
 		if (file_write_ready(&c->files, imsg) != 0)
+			goto bad;
+		break;
+	case MSG_WRITE_DONE:
+		if (file_write_done(&c->files, imsg) != 0)
 			goto bad;
 		break;
 	case MSG_READ:
