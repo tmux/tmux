@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1423 2026/08/17 07:56:56 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1424 2026/08/17 14:47:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1718,7 +1718,7 @@ struct key_event {
 struct tty_term {
 	char		*name;
 	struct tty	*tty;
-	int		 features;
+	int		 applied_features;
 
 	char		 acs[UCHAR_MAX + 1][2];
 
@@ -2226,6 +2226,7 @@ struct client {
 
 	char			*term_name;
 	int			 term_features;
+	int		 	 term_nofeatures;
 	char			*term_type;
 	char		       **term_caps;
 	u_int			 term_ncaps;
@@ -2999,8 +3000,7 @@ extern struct tty_terms tty_terms;
 u_int		 tty_term_ncodes(void);
 void		 tty_term_apply(struct tty_term *, const char *, int);
 void		 tty_term_apply_overrides(struct tty_term *);
-struct tty_term *tty_term_create(struct tty *, char *, char **, u_int, int *,
-		     char **);
+struct tty_term *tty_term_create(struct tty *, char *, char **, u_int, char **);
 void		 tty_term_free(struct tty_term *);
 int		 tty_term_read_list(const char *, int, char ***, u_int *,
 		     char **);
@@ -3022,11 +3022,13 @@ int		 tty_term_flag(struct tty_term *, enum tty_code_code);
 const char	*tty_term_describe(struct tty_term *, enum tty_code_code);
 
 /* tty-features.c */
-void		 tty_add_features(int *, const char *, const char *);
+void		 tty_parse_client_features(struct client *, const char *,
+		     const char *);
+void		 tty_parse_features(const char *, const char *, int *, int *);
 const char	*tty_get_features(int);
 int		 tty_feature_present(struct tty_term *, const char *);
-int		 tty_apply_features(struct tty_term *, int);
-void		 tty_default_features(int *, const char *, u_int);
+int		 tty_apply_features(struct tty_term *);
+void		 tty_default_features(struct client *, const char *, u_int);
 
 /* tty-acs.c */
 int		 tty_acs_needed(struct tty *);

@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-keys.c,v 1.212 2026/08/17 07:52:16 nicm Exp $ */
+/* $OpenBSD: tty-keys.c,v 1.213 2026/08/17 14:47:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1447,7 +1447,6 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
     size_t *size)
 {
 	struct client	*c = tty->client;
-	int		*features = &c->term_features;
 	u_int		 i, n = 0;
 	char		 tmp[128], *endptr, p[32] = { 0 }, *cp, *next;
 
@@ -1504,13 +1503,13 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		for (i = 1; i < n; i++) {
 			log_debug("%s: DA feature: %d", c->name, p[i]);
 			if (p[i] == 4)
-				tty_add_features(features, "sixel", ",");
+				tty_parse_client_features(c, "sixel", ",");
 			if (p[i] == 21)
-				tty_add_features(features, "margins", ",");
+				tty_parse_client_features(c, "margins", ",");
 			if (p[i] == 28)
-				tty_add_features(features, "rectfill", ",");
+				tty_parse_client_features(c, "rectfill", ",");
 			if (p[i] == 52)
-				tty_add_features(features, "clipboard", ",");
+				tty_parse_client_features(c, "clipboard", ",");
 		}
 		break;
 	}
@@ -1531,7 +1530,6 @@ tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
     size_t *size)
 {
 	struct client	*c = tty->client;
-	int		*features = &c->term_features;
 	u_int		 i, n = 0;
 	char		 tmp[128], *endptr, p[32] = { 0 }, *cp, *next;
 
@@ -1585,13 +1583,13 @@ tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
 	 */
 	switch (p[0]) {
 	case 'M': /* mintty */
-		tty_default_features(features, "mintty", 0);
+		tty_default_features(c, "mintty", 0);
 		break;
 	case 'T': /* tmux */
-		tty_default_features(features, "tmux", 0);
+		tty_default_features(c, "tmux", 0);
 		break;
 	case 'U': /* rxvt-unicode */
-		tty_default_features(features, "rxvt-unicode", 0);
+		tty_default_features(c, "rxvt-unicode", 0);
 		break;
 	}
 	log_debug("%s: received secondary DA %.*s", c->name, (int)*size, buf);
@@ -1611,7 +1609,6 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
     size_t len, size_t *size)
 {
 	struct client	*c = tty->client;
-	int		*features = &c->term_features;
 	u_int		 i;
 	char		 tmp[128];
 
@@ -1654,21 +1651,21 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 
 	/* Add terminal features. */
 	if (strncmp(tmp, "iTerm2 ", 7) == 0)
-		tty_default_features(features, "iTerm2", 0);
+		tty_default_features(c, "iTerm2", 0);
 	else if (strncmp(tmp, "tmux ", 5) == 0)
-		tty_default_features(features, "tmux", 0);
+		tty_default_features(c, "tmux", 0);
 	else if (strncmp(tmp, "XTerm(", 6) == 0)
-		tty_default_features(features, "XTerm", 0);
+		tty_default_features(c, "XTerm", 0);
 	else if (strncmp(tmp, "mintty ", 7) == 0)
-		tty_default_features(features, "mintty", 0);
+		tty_default_features(c, "mintty", 0);
 	else if (strncmp(tmp, "foot(", 5) == 0)
-		tty_default_features(features, "foot", 0);
+		tty_default_features(c, "foot", 0);
 	else if (strncmp(tmp, "WezTerm ", 7) == 0)
-		tty_default_features(features, "WezTerm", 0);
+		tty_default_features(c, "WezTerm", 0);
 	else if (strncmp(tmp, "ghostty ", 8) == 0)
-		tty_default_features(features, "ghostty", 0);
+		tty_default_features(c, "ghostty", 0);
 	else if (strncmp(tmp, "Rio ", 4) == 0)
-		tty_default_features(features, "Rio", 0);
+		tty_default_features(c, "Rio", 0);
 	log_debug("%s: received extended DA %.*s", c->name, (int)*size, buf);
 
 	free(c->term_type);
