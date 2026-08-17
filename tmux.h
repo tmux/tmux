@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1424 2026/08/17 14:47:41 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1425 2026/08/17 20:04:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3600,6 +3600,7 @@ void	 screen_write_mode_set(struct screen_write_ctx *, int);
 void	 screen_write_mode_clear(struct screen_write_ctx *, int);
 void	 screen_write_start_sync(struct window_pane *);
 void	 screen_write_stop_sync(struct window_pane *);
+void	 screen_write_end_sync(struct screen_write_ctx *);
 void	 screen_write_clear_dirty(struct window_pane *);
 void	 screen_write_cursorup(struct screen_write_ctx *, u_int);
 void	 screen_write_cursordown(struct screen_write_ctx *, u_int);
