@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.40 2026/07/01 06:17:58 nicm Exp $ */
+/* $OpenBSD: tty-features.c,v 1.41 2026/08/17 07:52:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -578,6 +578,18 @@ tty_default_features(int *feat, const char *name, u_int version)
 			      "ccolour,"
 			      "cstyle,"
 			      "extkeys,"
+			      "focus,"
+			      "overline,"
+			      "hyperlinks,"
+			      "osc7,"
+			      "sync,"
+			      "usstyle,"
+			      "progressbar"
+		},
+		{ .name = "Rio",
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
+			      "ccolour,"
+			      "cstyle,"
 			      "focus,"
 			      "overline,"
 			      "hyperlinks,"
