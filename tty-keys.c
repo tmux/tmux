@@ -1504,13 +1504,17 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		for (i = 1; i < n; i++) {
 			log_debug("%s: DA feature: %d", c->name, p[i]);
 			if (p[i] == 4)
-				tty_add_features(features, &tty->term->nofeatures, "sixel", ",");
+				tty_parse_features("sixel", ",", features,
+				    &tty->term->nofeatures);
 			if (p[i] == 21)
-				tty_add_features(features, &tty->term->nofeatures, "margins", ",");
+				tty_parse_features("margins", ",", features,
+				    &tty->term->nofeatures);
 			if (p[i] == 28)
-				tty_add_features(features, &tty->term->nofeatures, "rectfill", ",");
+				tty_parse_features("rectfill", ",", features,
+				    &tty->term->nofeatures);
 			if (p[i] == 52)
-				tty_add_features(features, &tty->term->nofeatures, "clipboard", ",");
+				tty_parse_features("clipboard", ",", features,
+				    &tty->term->nofeatures);
 		}
 		break;
 	}

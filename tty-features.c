@@ -395,8 +395,8 @@ static const struct tty_feature *const tty_features[] = {
 
 /* Parse feature list s and update the enabled and disabled bitmasks. */
 void
-tty_add_features(int *enabled, int *disabled, const char *s,
-    const char *separators)
+tty_parse_features(const char *s, const char *separators, int *enabled,
+    int *disabled)
 {
 	const struct tty_feature	 *tf;
 	char				 *next, *loop, *copy;
@@ -636,6 +636,6 @@ tty_default_features(int *enabled, int *disabled, const char *name,
 			continue;
 		if (version != 0 && version < table[i].version)
 			continue;
-		tty_add_features(enabled, disabled, table[i].features, ",");
+		tty_parse_features(table[i].features, ",", enabled, disabled);
 	}
 }
