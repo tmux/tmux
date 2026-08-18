@@ -129,6 +129,7 @@ server_create_socket(uint64_t flags, char **cause)
 		mask = umask(S_IXUSR|S_IRWXG|S_IRWXO);
 	if (bind(fd, (struct sockaddr *)&sa, sizeof sa) == -1) {
 		saved_errno = errno;
+		umask(mask);
 		close(fd);
 		errno = saved_errno;
 		goto fail;
