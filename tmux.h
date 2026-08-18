@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1426 2026/08/18 07:43:44 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1427 2026/08/18 09:01:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1811,8 +1811,9 @@ struct tty {
 #define TTY_WAITFG 0x2000
 #define TTY_WAITBG 0x4000
 #define TTY_BRACKETPASTE 0x8000
+#define TTY_HAVESYNC 0x10000
 #define TTY_ALL_REQUEST_FLAGS \
-	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA)
+	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVESYNC)
 	int		 flags;
 
 	struct tty_term	*term;
