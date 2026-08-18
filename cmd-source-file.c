@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-source-file.c,v 1.62 2025/11/18 08:42:09 nicm Exp $ */
+/* $OpenBSD: cmd-source-file.c,v 1.63 2026/08/18 08:05:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Tiago Cunha <me@tiagocunha.org>
@@ -51,6 +51,7 @@ const struct cmd_entry cmd_source_file_entry = {
 
 struct cmd_source_file_data {
 	struct cmdq_item	 *item;
+	struct client		 *client;
 	int			  flags;
 
 	struct cmdq_item	 *after;
@@ -61,10 +62,24 @@ struct cmd_source_file_data {
 	u_int			  nfiles;
 };
 
-static enum cmd_retval
-cmd_source_file_complete_cb(struct cmdq_item *item, __unused void *data)
+static void
+cmd_source_file_free_data(struct cmd_source_file_data *cdata)
 {
-	struct client	*c = cmdq_get_client(item);
+	u_int	i;
+
+	for (i = 0; i < cdata->nfiles; i++)
+		free(cdata->files[i]);
+	free(cdata->files);
+	if (cdata->client != NULL)
+		server_client_unref(cdata->client);
+	free(cdata);
+}
+
+static enum cmd_retval
+cmd_source_file_complete_cb(struct cmdq_item *item, void *data)
+{
+	struct cmd_source_file_data	*cdata = data;
+	struct client			*c = cdata->client;
 
 	if (c == NULL) {
 		cmd_source_file_depth--;
@@ -75,36 +90,36 @@ cmd_source_file_complete_cb(struct cmdq_item *item, __unused void *data)
 	}
 
 	cfg_print_causes(item);
+	cmd_source_file_free_data(cdata);
 	return (CMD_RETURN_NORMAL);
 }
 
 static void
-cmd_source_file_complete(struct client *c, struct cmd_source_file_data *cdata)
+cmd_source_file_complete(struct cmd_source_file_data *cdata)
 {
+	struct client		*c = cdata->client;
 	struct cmdq_item	*new_item;
-	u_int			 i;
 
-	if (cfg_finished) {
-		if (cdata->retval == CMD_RETURN_ERROR &&
-		    c != NULL &&
-		    c->session == NULL)
-			c->retval = 1;
-		new_item = cmdq_get_callback(cmd_source_file_complete_cb, NULL);
-		cmdq_insert_after(cdata->after, new_item);
+	if (!cfg_finished) {
+		cmd_source_file_free_data(cdata);
+		return;
 	}
 
-	for (i = 0; i < cdata->nfiles; i++)
-		free(cdata->files[i]);
-	free(cdata->files);
-	free(cdata);
+	if (cdata->retval == CMD_RETURN_ERROR &&
+	    c != NULL &&
+	    c->session == NULL)
+		c->retval = 1;
+	new_item = cmdq_get_callback(cmd_source_file_complete_cb, cdata);
+	cmdq_insert_after(cdata->after, new_item);
 }
 
 static void
-cmd_source_file_done(struct client *c, const char *path, int error,
-    int closed, struct evbuffer *buffer, void *data)
+cmd_source_file_done(__unused struct client *oc, const char *path,
+    int error, int closed, struct evbuffer *buffer, void *data)
 {
 	struct cmd_source_file_data	*cdata = data;
 	struct cmdq_item		*item = cdata->item;
+	struct client			*c = cdata->client;
 	void				*bdata = EVBUFFER_DATA(buffer);
 	size_t				 bsize = EVBUFFER_LENGTH(buffer);
 	u_int				 n;
@@ -128,7 +143,7 @@ cmd_source_file_done(struct client *c, const char *path, int error,
 	if (n < cdata->nfiles)
 		file_read(c, cdata->files[n], cmd_source_file_done, cdata);
 	else {
-		cmd_source_file_complete(c, cdata);
+		cmd_source_file_complete(cdata);
 		cmdq_continue(item);
 	}
 }
@@ -188,6 +203,9 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 
 	cdata = xcalloc(1, sizeof *cdata);
 	cdata->item = item;
+	cdata->client = c;
+	if (c != NULL)
+		c->references++;
 
 	if (args_has(args, 'q'))
 		cdata->flags |= CMD_PARSE_QUIET;
@@ -250,7 +268,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 		file_read(c, cdata->files[0], cmd_source_file_done, cdata);
 		retval = CMD_RETURN_WAIT;
 	} else
-		cmd_source_file_complete(c, cdata);
+		cmd_source_file_complete(cdata);
 
 	free(cwd);
 	return (retval);
