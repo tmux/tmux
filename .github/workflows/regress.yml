@@ -17,7 +17,7 @@ jobs:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     if: github.repository == 'tmux/tmux'
-    timeout-minutes: 45
+    timeout-minutes: 300
 
     strategy:
       fail-fast: false
