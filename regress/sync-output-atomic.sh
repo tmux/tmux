@@ -14,8 +14,8 @@ DIR=$(mktemp -d) || exit 1
 TMUX_TMPDIR=$DIR
 export TMUX_TMPDIR
 
-INNER="$TEST_TMUX -Lsync-output-inner-$$ -f/dev/null"
-OUTER="$TEST_TMUX -Lsync-output-outer-$$ -f/dev/null"
+INNER="$TEST_TMUX -Li$$ -f/dev/null"
+OUTER="$TEST_TMUX -Lo$$ -f/dev/null"
 CLIENT_BYTES=$DIR/client-bytes
 CONTROL=$DIR/control
 EMITTER=$DIR/emitter.pl
@@ -112,7 +112,7 @@ $INNER set-option -g window-size manual || exit 1
 $INNER set-option -as terminal-features '*:sync' || exit 1
 
 $OUTER new-session -d -s outer -x 80 -y 24 \
-    "$TEST_TMUX -Lsync-output-inner-$$ -f/dev/null attach-session -t inner" ||
+    "$TEST_TMUX -Li$$ -f/dev/null attach-session -t inner" ||
     exit 1
 $OUTER set-option -g status off || exit 1
 $OUTER set-option -g window-size manual || exit 1
