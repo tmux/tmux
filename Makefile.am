@@ -248,7 +248,7 @@ endif
 
 # Enable image support.
 if ENABLE_IMAGES
-dist_tmux_SOURCES += image.c image-sixel.c image-ascii.c
+dist_tmux_SOURCES += image.c image-sixel.c
 endif
 
 # Add bits for fuzzing if enabled.

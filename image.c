@@ -469,10 +469,24 @@ image_get_brightness(struct image *im, u_int x, u_int y)
 	return (cell->whole.brightness);
 }
 
+/* Fill a grid cell with an ASCII brightness glyph. */
+static void
+image_get_text_cell(struct image *im, u_int x, u_int y,
+    const struct grid_cell *gc, struct grid_cell *out)
+{
+	static const char	 ramp[] = " .:-=+*#%@";
+	u_int			 level;
+
+	memcpy(out, gc, sizeof *out);
+	level = image_get_brightness(im, x, y) * (sizeof ramp - 2) / 255;
+	utf8_set(&out->data, ramp[level]);
+	out->flags &= ~GRID_FLAG_IMAGE;
+}
+
 /* Get the terminal cell used to draw an image marker. */
 int
 image_get_draw_cell(struct tty *tty, const struct grid_cell *gc,
-    struct grid_cell *out, const struct tty_style_ctx *style_ctx)
+    struct grid_cell *out)
 {
 	struct image	*im = image_find(gc->image_id);
 
@@ -487,8 +501,7 @@ image_get_draw_cell(struct tty *tty, const struct grid_cell *gc,
 		out->flags &= ~(GRID_FLAG_IMAGE|GRID_FLAG_IMAGE_DAMAGED);
 		return (0);
 	}
-	image_get_text_cell(tty, im, gc->image_x, gc->image_y, gc, out,
-	    style_ctx);
+	image_get_text_cell(im, gc->image_x, gc->image_y, gc, out);
 	return (0);
 }
 

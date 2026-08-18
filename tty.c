@@ -2149,7 +2149,7 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 
 #ifdef ENABLE_IMAGES
 	if (gc->flags & GRID_FLAG_IMAGE) {
-		if (image_get_draw_cell(tty, gc, &image_gc, style_ctx))
+		if (image_get_draw_cell(tty, gc, &image_gc))
 			return;
 		gc = &image_gc;
 	}

@@ -4240,16 +4240,13 @@ void		 image_redraw_all(struct screen_write_ctx *);
 void		 image_redraw_scroll(struct screen_write_ctx *, u_int);
 int		 image_backend_flags(struct tty *);
 int		 image_get_draw_cell(struct tty *, const struct grid_cell *,
-		     struct grid_cell *, const struct tty_style_ctx *);
+		     struct grid_cell *);
 void		 image_tty_update(struct tty *);
 void		 image_tty_geometry_changed(struct tty *);
 void		 image_tty_free(struct tty *, int);
 void		 image_draw_line(struct tty *, struct screen *, u_int, u_int,
 		     u_int, u_int, u_int, int, const struct tty_style_ctx *);
 u_char		 image_get_brightness(struct image *, u_int, u_int);
-void		 image_get_text_cell(struct tty *, struct image *, u_int,
-		     u_int, const struct grid_cell *, struct grid_cell *,
-		     const struct tty_style_ctx *);
 struct image	*image_rect_get_image(const struct image_rect *);
 void		 image_rect_get_coords(const struct image_rect *,
 		     u_int *, u_int *, u_int *, u_int *, u_int *, u_int *);

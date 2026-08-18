@@ -258,8 +258,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 
 #ifdef ENABLE_IMAGES
 				if (gc.flags & GRID_FLAG_IMAGE) {
-					(void)image_get_draw_cell(tty, &gc, &image_gc,
-					    style_ctx);
+					(void)image_get_draw_cell(tty, &gc, &image_gc);
 					gcp = &image_gc;
 				} else
 					gcp = &gc;
