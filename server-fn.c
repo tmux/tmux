@@ -1,4 +1,4 @@
-/* $OpenBSD: server-fn.c,v 1.149 2026/07/27 14:25:46 nicm Exp $ */
+/* $OpenBSD: server-fn.c,v 1.150 2026/08/18 07:32:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -551,6 +551,7 @@ server_check_unattached(void)
 				continue;
 			break;
 		}
+		server_destroy_session(s);
 		session_destroy(s, 1, __func__);
 	}
 }
