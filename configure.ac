@@ -531,23 +531,23 @@ if test "x$enable_cgroups" = xyes; then
 fi
 
 # Enable image support.
-AC_ARG_WITH(
-	image-support,
-	AS_HELP_STRING(--with-image-support, enable SIXEL and ASCII images)
+AC_ARG_ENABLE(
+	images,
+	AS_HELP_STRING(--enable-images, enable SIXEL and ASCII images)
 )
 
 # Keep the old option as an alias for one compatibility cycle.
 AC_ARG_ENABLE(
 	sixel,
-	AS_HELP_STRING(--enable-sixel, deprecated alias for --with-image-support)
+	AS_HELP_STRING(--enable-sixel, deprecated alias for --enable-images)
 )
 if test "x$enable_sixel" = xyes; then
-	with_image_support=yes
+	enable_images=yes
 fi
-if test "x$with_image_support" = xyes; then
+if test "x$enable_images" = xyes; then
 	AC_DEFINE(ENABLE_IMAGES)
 fi
-AM_CONDITIONAL(ENABLE_IMAGES, [test "x$with_image_support" = xyes])
+AM_CONDITIONAL(ENABLE_IMAGES, [test "x$enable_images" = xyes])
 
 # Check for b64_ntop. If we have b64_ntop, we assume b64_pton as well.
 AC_MSG_CHECKING(for b64_ntop)
@@ -1146,7 +1146,7 @@ if test "x$enable_asan" = xyes; then
 else
 	AC_MSG_NOTICE([ASAN: off])
 fi
-if test "x$with_image_support" = xyes; then
+if test "x$enable_images" = xyes; then
 	AC_MSG_NOTICE([images: on])
 else
 	AC_MSG_NOTICE([images: off])
