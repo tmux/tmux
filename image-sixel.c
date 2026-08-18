@@ -43,6 +43,9 @@ struct sixel_image {
 	/* Decoded image dimensions in pixels. */
 	u_int			 sx;
 	u_int			 sy;
+	/* Raster extent inside a padded output canvas, if different. */
+	u_int			 raster_sx;
+	u_int			 raster_sy;
 
 	/* Terminal cell pixel dimensions used for scaling. */
 	u_int			 cell_w;
@@ -608,7 +611,8 @@ sixel_scale(struct sixel_image *si, u_int cell_w, u_int cell_h, u_int ox,
     u_int oy, u_int sx, u_int sy, int colours)
 {
 	struct sixel_image	*new;
-	u_int			 cx, cy, pox, poy, psx, psy, tsx, tsy, px, py;
+	u_int			 cx, cy, raster_sx, raster_sy;
+	u_int			 pox, poy, psx, psy, tsx, tsy, px, py;
 	uint64_t	 x0, x1, y0, y1, tx0, tx1, ty0, ty1;
 	u_int			 x, y, i;
 
@@ -631,16 +635,28 @@ sixel_scale(struct sixel_image *si, u_int cell_w, u_int cell_h, u_int ox,
 		cell_w = si->cell_w;
 	if (cell_h == 0)
 		cell_h = si->cell_h;
+	raster_sx = (si->raster_sx != 0 ? si->raster_sx : si->sx);
+	raster_sy = (si->raster_sy != 0 ? si->raster_sy : si->sy);
+	if (raster_sx > si->sx)
+		raster_sx = si->sx;
+	if (raster_sy > si->sy)
+		raster_sy = si->sy;
 
 	/*
-	 * Map cell boundaries over the actual raster, not the rounded-up cell
-	 * canvas. Otherwise a raster shorter than its last cell row produces an
-	 * empty strip when it is scaled for output.
+	 * Map complete source cells at their real pixel boundaries and clamp
+	 * only the final partial cell to the raster. Dividing the raster evenly
+	 * between cells would stretch every complete cell and squash the last.
 	 */
-	x0 = (uint64_t)ox * si->sx / cx;
-	x1 = (uint64_t)(ox + sx) * si->sx / cx;
-	y0 = (uint64_t)oy * si->sy / cy;
-	y1 = (uint64_t)(oy + sy) * si->sy / cy;
+	x0 = (uint64_t)ox * si->cell_w;
+	x1 = (uint64_t)(ox + sx) * si->cell_w;
+	y0 = (uint64_t)oy * si->cell_h;
+	y1 = (uint64_t)(oy + sy) * si->cell_h;
+	if (x1 > raster_sx)
+		x1 = raster_sx;
+	if (y1 > raster_sy)
+		y1 = raster_sy;
+	if (x1 <= x0 || y1 <= y0)
+		return (NULL);
 	pox = x0;
 	poy = y0;
 	psx = x1 - x0;
@@ -651,8 +667,10 @@ sixel_scale(struct sixel_image *si, u_int cell_w, u_int cell_h, u_int ox,
 	 * cells, but the SIXEL raster must end at the corresponding pixel offset
 	 * rather than stretching to the cell boundary.
 	 */
-	tx1 = ((uint64_t)si->sx * cell_w + si->cell_w - 1) / si->cell_w;
-	ty1 = ((uint64_t)si->sy * cell_h + si->cell_h - 1) / si->cell_h;
+	tx1 = ((uint64_t)raster_sx * cell_w + si->cell_w - 1) /
+	    si->cell_w;
+	ty1 = ((uint64_t)raster_sy * cell_h + si->cell_h - 1) /
+	    si->cell_h;
 	if (tx1 > UINT_MAX || ty1 > UINT_MAX)
 		return (NULL);
 	tx0 = (uint64_t)ox * cell_w;
@@ -687,8 +705,96 @@ sixel_scale(struct sixel_image *si, u_int cell_w, u_int cell_h, u_int ox,
 			sixel_set_pixel(new, x, y, sixel_get_pixel(si, px, py));
 		}
 	}
+	/* Keep transparent edges in the scaled raster canvas as well. */
+	if (sixel_parse_expand_lines(new, tsy) != 0) {
+		sixel_free(new);
+		return (NULL);
+	}
+	new->sx = tsx;
 
 	if (colours && si->ncolours != 0) {
+		new->colours = xmalloc(si->ncolours * sizeof *new->colours);
+		for (i = 0; i < si->ncolours; i++)
+			new->colours[i] = si->colours[i];
+		new->ncolours = si->ncolours;
+	}
+	return (new);
+}
+
+/* Fit an indexed SIXEL image into a terminal cell canvas. */
+static struct sixel_image *
+sixel_fit(struct sixel_image *si, u_int cell_w, u_int cell_h, u_int cells_x,
+    u_int cells_y)
+{
+	struct sixel_image	*new;
+	uint64_t		 canvas_width, canvas_height;
+	u_int			 width, height, x, y, px, py, i;
+
+	if (si->cell_w == 0)
+		si->cell_w = 8;
+	if (si->cell_h == 0)
+		si->cell_h = 16;
+	if (cell_w == 0)
+		cell_w = si->cell_w;
+	if (cell_h == 0)
+		cell_h = si->cell_h;
+
+	canvas_width = (uint64_t)cells_x * cell_w;
+	canvas_height = (uint64_t)cells_y * cell_h;
+	if (si->sx == 0 || si->sy == 0 || canvas_width == 0 ||
+	    canvas_height == 0 || canvas_width > SIXEL_WIDTH_LIMIT ||
+	    canvas_height > SIXEL_HEIGHT_LIMIT)
+		return (NULL);
+
+	/* Use one scale factor so different terminal cell shapes do not distort. */
+	if ((uint64_t)cell_w * si->cell_h <=
+	    (uint64_t)cell_h * si->cell_w) {
+		width = ((uint64_t)si->sx * cell_w + si->cell_w / 2) /
+		    si->cell_w;
+		height = ((uint64_t)si->sy * cell_w + si->cell_w / 2) /
+		    si->cell_w;
+	} else {
+		width = ((uint64_t)si->sx * cell_h + si->cell_h / 2) /
+		    si->cell_h;
+		height = ((uint64_t)si->sy * cell_h + si->cell_h / 2) /
+		    si->cell_h;
+	}
+	if (width == 0)
+		width = 1;
+	if (height == 0)
+		height = 1;
+	if (width > canvas_width)
+		width = canvas_width;
+	if (height > canvas_height)
+		height = canvas_height;
+
+	new = xcalloc(1, sizeof *new);
+	new->cell_w = cell_w;
+	new->cell_h = cell_h;
+	new->p1 = si->p1;
+	new->p2 = si->p2;
+	new->set_ra = 1;
+	new->ra_x = width;
+	new->ra_y = height;
+	new->raster_sx = width;
+	new->raster_sy = height;
+	new->used_colours = si->used_colours;
+
+	for (y = 0; y < height; y++) {
+		py = (uint64_t)y * si->sy / height;
+		for (x = 0; x < width; x++) {
+			px = (uint64_t)x * si->sx / width;
+			sixel_set_pixel(new, x, y, sixel_get_pixel(si, px, py));
+		}
+	}
+	/* Keep the unused part of the cell canvas as blank padding. */
+	if (sixel_parse_expand_lines(new, canvas_height) != 0) {
+		sixel_free(new);
+		return (NULL);
+	}
+	new->sx = canvas_width;
+
+	if (si->ncolours != 0) {
 		new->colours = xmalloc(si->ncolours * sizeof *new->colours);
 		for (i = 0; i < si->ncolours; i++)
 			new->colours[i] = si->colours[i];
@@ -1371,7 +1477,7 @@ sixel_render_image(struct image *im, u_int cell_w, u_int cell_h)
 	/* Preserve SIXEL's original palette and indexed pixels when possible. */
 	original = image_get_sixel(im);
 	if (original != NULL)
-		return (sixel_scale(original, cell_w, cell_h, 0, 0, sx, sy, 1));
+		return (sixel_fit(original, cell_w, cell_h, sx, sy));
 	return (sixel_from_image(im, 0, 0, sx, sy, cell_w, cell_h));
 }
 
