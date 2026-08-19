@@ -1,4 +1,4 @@
-/* $OpenBSD: prompt.c,v 1.5 2026/07/13 10:29:17 nicm Exp $ */
+/* $OpenBSD: prompt.c,v 1.6 2026/08/17 06:45:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1334,7 +1334,7 @@ process_key:
 		if (pr->index != size) {
 			memmove(pr->buffer + pr->index,
 			    pr->buffer + pr->index + 1,
-			    (size + 1 - pr->index) *
+			    (size - pr->index) *
 			    sizeof *pr->buffer);
 			goto changed;
 		}

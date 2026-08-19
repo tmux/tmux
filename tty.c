@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.477 2026/07/17 12:42:51 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.479 2026/08/18 09:01:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -277,7 +277,7 @@ tty_open(struct tty *tty, char **cause)
 	struct client	*c = tty->client;
 
 	tty->term = tty_term_create(tty, c->term_name, c->term_caps,
-	    c->term_ncaps, &c->term_features, cause);
+	    c->term_ncaps, cause);
 	if (tty->term == NULL) {
 		tty_close(tty);
 		return (-1);
@@ -403,6 +403,8 @@ tty_send_requests(struct tty *tty)
 			tty_puts(tty, "\033[>c");
 		if (~tty->flags & TTY_HAVEXDA)
 			tty_puts(tty, "\033[>q");
+		if (~tty->flags & TTY_HAVESYNC)
+			tty_puts(tty, "\033[?2026$p");
 		tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\");
 		tty->flags |= (TTY_WAITBG|TTY_WAITFG);
 	} else
@@ -536,7 +538,7 @@ tty_update_features(struct tty *tty)
 {
 	struct client	*c = tty->client;
 
-	if (tty_apply_features(tty->term, c->term_features))
+	if (tty_apply_features(tty->term))
 		tty_term_apply_overrides(tty->term);
 
 	if (tty_use_margin(tty))

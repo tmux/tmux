@@ -1,4 +1,4 @@
-/* $OpenBSD: server.c,v 1.215 2026/08/03 10:07:57 nicm Exp $ */
+/* $OpenBSD: server.c,v 1.216 2026/08/18 07:24:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -129,6 +129,7 @@ server_create_socket(uint64_t flags, char **cause)
 		mask = umask(S_IXUSR|S_IRWXG|S_IRWXO);
 	if (bind(fd, (struct sockaddr *)&sa, sizeof sa) == -1) {
 		saved_errno = errno;
+		umask(mask);
 		close(fd);
 		errno = saved_errno;
 		goto fail;

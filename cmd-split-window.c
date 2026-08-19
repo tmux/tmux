@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-split-window.c,v 1.148 2026/08/07 08:10:53 nicm Exp $ */
+/* $OpenBSD: cmd-split-window.c,v 1.149 2026/08/19 10:56:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -40,8 +40,8 @@ const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
 	.alias = "newp",
 
-	.args = { "bB:Cc:de:EfF:hIkl:LMm:Op:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
-	.usage = "[-bCdefhIklMOPvWZ] [-B border-lines] "
+	.args = { "bB:Cc:de:EfF:hIkl:KLMm:Op:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
+	.usage = "[-bCdefhIkKLMOPvWZ] [-B border-lines] "
 		 "[-c start-directory] [-e environment] "
 		 "[-F format] [-l size] [-m message] [-p percentage] "
 		 "[-s style] [-S active-border-style] "
@@ -202,6 +202,8 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		 */
 		goto fail;
 	}
+	if (args_has(args, 'K') && args_has(args, 'O'))
+		new_wp->flags |= PANE_CAPTUREALLKEYS;
 	if (args_has(args, 'C') && args_has(args, 'O'))
 		new_wp->flags |= PANE_CLOSEONCLICK;
 

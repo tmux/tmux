@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.286 2026/08/03 12:58:53 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.287 2026/08/17 20:04:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1074,6 +1074,19 @@ screen_write_stop_sync(struct window_pane *wp)
 	screen_write_flush_dirty(wp);
 
 	log_debug("%s: %%%u stopped sync mode", __func__, wp->id);
+}
+
+/* Flush pending output before clearing sync mode. */
+void
+screen_write_end_sync(struct screen_write_ctx *ctx)
+{
+	struct window_pane	*wp = ctx->wp;
+
+	if (wp == NULL)
+		return;
+	if (wp->base.mode & MODE_SYNC)
+		screen_write_collect_flush(ctx, 0, __func__);
+	screen_write_stop_sync(wp);
 }
 
 /* Cursor up by ny. */

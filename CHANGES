@@ -1,7 +1,4 @@
-CHANGES FROM 3.7b TO 3.8
-
-* Build with jemalloc on macOS to avoid what appears to be a bug in the system
-  calloc(3) (issue 5385).
+CHANGES FROM 3.7c TO 3.8
 
 * Many improvements to floating panes:
 
@@ -121,8 +118,6 @@ CHANGES FROM 3.7b TO 3.8
 * Copy mode no longer exits at the bottom while a selection is in progress
   (issue 5349).
 
-* Fix scrollbar initial state so scrollbars appear on new windows (issue 5339).
-
 * Add style attributes for dimming colours (dim=) and for hyperlinks (link= and
   nolink) (issues 4842 and 4280 from Moritz Angermann).
 
@@ -169,7 +164,18 @@ CHANGES FROM 3.7b TO 3.8
 * Do not crash looking for the next or previous session (issue 5344), or when
   no client is available.
 
-* Check time periodically in loops rather than for every item (issue 5367).
+CHANGES FROM 3.7b TO 3.7c
+
+* Build with jemalloc on macOS to avoid what appears to be a bug in calloc
+  (issue 5385).
+
+* Fix scrollbar initial state so they appear on new windows (issue 5339).
+
+* Check time periodically in loops rather than every one (issue 5367).
+
+* Use message-style again as default for message-format.
+
+* Unzoom before creating floating panes to avoid a crash.
 
 CHANGES FROM 3.7a TO 3.7b
 
