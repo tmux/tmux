@@ -1335,6 +1335,7 @@ struct window_pane {
 #define PANE_CMDRUNNING 0x20000
 #define PANE_ACTIVITY 0x40000
 #define PANE_CLOSEONCLICK 0x80000
+#define PANE_CAPTUREALLKEYS 0x100000
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;

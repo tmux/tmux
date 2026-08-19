@@ -3644,7 +3644,7 @@ but a different format may be specified with
 .Fl F .
 .Tg newp
 .It Xo Ic new\-pane
-.Op Fl bCdefhIkLMOPvWZ
+.Op Fl bCdefhIkKLMOPvWZ
 .Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
@@ -3700,6 +3700,9 @@ creates a modal pane.
 A modal pane is always the active pane and prevents interaction with any other
 panes while it is active.
 A window can only have one modal pane and it must be a floating pane.
+With
+.Fl K ,
+all keys, including the prefix key, are passed directly to the modal pane.
 With
 .Fl C ,
 the modal pane is closed when the mouse is clicked outside it.

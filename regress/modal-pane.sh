@@ -105,6 +105,24 @@ drag()
 	sleep 1
 }
 
+meta_drag()
+{
+	scol="$1"
+	srow="$2"
+	ecol="$3"
+	erow="$4"
+
+	seq=$(printf '\033[<8;%s;%sM' "$scol" "$srow")
+	$TMUX2 send-keys -t "$OUTER" -l "$seq" 2>/dev/null
+	sleep 0.2
+	seq=$(printf '\033[<40;%s;%sM' "$ecol" "$erow")
+	$TMUX2 send-keys -t "$OUTER" -l "$seq" 2>/dev/null
+	sleep 0.2
+	seq=$(printf '\033[<8;%s;%sm' "$ecol" "$erow")
+	$TMUX2 send-keys -t "$OUTER" -l "$seq" 2>/dev/null
+	sleep 1
+}
+
 cleanup
 
 check_ok new-session -d -s modal -x 80 -y 24 'cat'
@@ -303,6 +321,62 @@ check_ok kill-pane -t "$modal"
 sleep 1
 must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
 must_equal "$(fmt modal:0 '#{pane_id}')" "$p0"
+
+ignored=$($TMUX new-pane -KdPF '#{pane_id}' -t "$p0" 'cat') ||
+	fail "new-pane -K without -O failed"
+check_ok kill-pane -t "$ignored"
+
+$TMUX set -g @modal-prefix no
+$TMUX set -g @modal-root no
+$TMUX bind -n z set -g @modal-root yes
+
+modal=$($TMUX new-pane -OKPF '#{pane_id}' -t "$p0" \
+    -x 20 -y 5 -X 20 -Y 10 'cat') ||
+	fail "new-pane -OK failed"
+sleep 1
+$TMUX2 send-keys -t "$OUTER" C-b x z Enter
+sleep 1
+must_equal "$($TMUX show -gv @modal-prefix)" no
+must_equal "$($TMUX show -gv @modal-root)" no
+case "$($TMUX capture-pane -pt "$modal")" in
+*xz*) ;;
+*) fail "keys did not reach key-capturing modal pane" ;;
+esac
+left=$(fmt "$modal" '#{pane_left}')
+top=$(fmt "$modal" '#{pane_top}')
+meta_drag $((left + 2)) $((top + 2)) $((left + 7)) $((top + 4))
+new_left=$(fmt "$modal" '#{pane_left}')
+new_top=$(fmt "$modal" '#{pane_top}')
+[ "$new_left" -gt "$left" ] || [ "$new_top" -gt "$top" ] ||
+	fail "key-capturing modal pane did not move"
+check_ok kill-pane -t "$modal"
+sleep 1
+
+$TMUX bind P display-popup -E -t "$p0" -w 20 -h 5 'cat'
+$TMUX2 send-keys -t "$OUTER" C-b P
+sleep 1
+modal=$(fmt modal:0 '#{window_modal_pane}')
+[ -n "$modal" ] || fail "display-popup did not create a modal pane"
+$TMUX2 send-keys -t "$OUTER" C-b x z Enter
+sleep 1
+must_equal "$($TMUX show -gv @modal-prefix)" no
+must_equal "$($TMUX show -gv @modal-root)" no
+case "$($TMUX capture-pane -pt "$modal")" in
+*xz*) ;;
+*) fail "keys did not reach display-popup pane" ;;
+esac
+check_ok kill-pane -t "$modal"
+sleep 1
+
+$TMUX bind D display-popup -t "$p0" -w 20 -h 5 'printf done'
+$TMUX2 send-keys -t "$OUTER" C-b D
+sleep 2
+modal=$(fmt modal:0 '#{window_modal_pane}')
+[ -n "$modal" ] || fail "retained display-popup was not created"
+must_equal "$(fmt "$modal" '#{pane_dead}')" 1
+$TMUX2 send-keys -t "$OUTER" a
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
 
 cleanup
 exit 0

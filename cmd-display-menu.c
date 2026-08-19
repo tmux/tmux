@@ -502,6 +502,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		window_pop_modal_zoom(w);
 		goto fail;
 	}
+	new_wp->flags |= PANE_CAPTUREALLKEYS;
 
 	options_set_number(new_wp->options, "pane-border-lines", lines);
 	if (args_has(args, 'E') > 1)
