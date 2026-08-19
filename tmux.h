@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1422 2026/08/05 08:54:56 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1427 2026/08/18 09:01:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1718,7 +1718,7 @@ struct key_event {
 struct tty_term {
 	char		*name;
 	struct tty	*tty;
-	int		 features;
+	int		 applied_features;
 
 	char		 acs[UCHAR_MAX + 1][2];
 
@@ -1811,8 +1811,9 @@ struct tty {
 #define TTY_WAITFG 0x2000
 #define TTY_WAITBG 0x4000
 #define TTY_BRACKETPASTE 0x8000
+#define TTY_HAVESYNC 0x10000
 #define TTY_ALL_REQUEST_FLAGS \
-	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA)
+	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVESYNC)
 	int		 flags;
 
 	struct tty_term	*term;
@@ -2215,6 +2216,7 @@ struct client {
 
 	char			*term_name;
 	int			 term_features;
+	int		 	 term_nofeatures;
 	char			*term_type;
 	char		       **term_caps;
 	u_int			 term_ncaps;
@@ -2282,7 +2284,7 @@ struct client {
 /* 0x800000000ULL unused */
 #define CLIENT_BRACKETPASTING 0x1000000000ULL
 #define CLIENT_ASSUMEPASTING 0x2000000000ULL
-/* 0x4000000000ULL unused */
+#define CLIENT_WRITE_ACK 0x4000000000ULL
 #define CLIENT_NO_DETACH_ON_DESTROY 0x8000000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
@@ -2976,8 +2978,7 @@ extern struct tty_terms tty_terms;
 u_int		 tty_term_ncodes(void);
 void		 tty_term_apply(struct tty_term *, const char *, int);
 void		 tty_term_apply_overrides(struct tty_term *);
-struct tty_term *tty_term_create(struct tty *, char *, char **, u_int, int *,
-		     char **);
+struct tty_term *tty_term_create(struct tty *, char *, char **, u_int, char **);
 void		 tty_term_free(struct tty_term *);
 int		 tty_term_read_list(const char *, int, char ***, u_int *,
 		     char **);
@@ -2999,11 +3000,13 @@ int		 tty_term_flag(struct tty_term *, enum tty_code_code);
 const char	*tty_term_describe(struct tty_term *, enum tty_code_code);
 
 /* tty-features.c */
-void		 tty_add_features(int *, const char *, const char *);
+void		 tty_parse_client_features(struct client *, const char *,
+		     const char *);
+void		 tty_parse_features(const char *, const char *, int *, int *);
 const char	*tty_get_features(int);
 int		 tty_feature_present(struct tty_term *, const char *);
-int		 tty_apply_features(struct tty_term *, int);
-void		 tty_default_features(int *, const char *, u_int);
+int		 tty_apply_features(struct tty_term *);
+void		 tty_default_features(struct client *, const char *, u_int);
 
 /* tty-acs.c */
 int		 tty_acs_needed(struct tty *);
@@ -3257,6 +3260,7 @@ void	 file_write_close(struct client_files *, struct imsg *);
 void	 file_read_open(struct client_files *, struct tmuxpeer *, struct imsg *,
 	     int, int, client_file_cb, void *);
 int	 file_write_ready(struct client_files *, struct imsg *);
+int	 file_write_done(struct client_files *, struct imsg *);
 int	 file_read_data(struct client_files *, struct imsg *);
 int	 file_read_done(struct client_files *, struct imsg *);
 void	 file_read_cancel(struct client_files *, struct imsg *);
@@ -3568,6 +3572,7 @@ void	 screen_write_mode_set(struct screen_write_ctx *, int);
 void	 screen_write_mode_clear(struct screen_write_ctx *, int);
 void	 screen_write_start_sync(struct window_pane *);
 void	 screen_write_stop_sync(struct window_pane *);
+void	 screen_write_end_sync(struct screen_write_ctx *);
 void	 screen_write_clear_dirty(struct window_pane *);
 void	 screen_write_cursorup(struct screen_write_ctx *, u_int);
 void	 screen_write_cursordown(struct screen_write_ctx *, u_int);
@@ -4003,6 +4008,7 @@ void	control_set_pane_on(struct client *, struct window_pane *);
 void	control_set_pane_off(struct client *, struct window_pane *);
 void	control_continue_pane(struct client *, struct window_pane *);
 void	control_pause_pane(struct client *, struct window_pane *);
+void	control_reset_pane(struct client *, struct window_pane *);
 void	control_set_window_size(struct client *, u_int, u_int, u_int);
 int	control_get_window_size(struct client *, u_int, u_int *, u_int *);
 void	control_clear_window_size(struct client *, u_int);
