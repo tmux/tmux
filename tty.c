@@ -62,9 +62,12 @@ static void	tty_region(struct tty *, u_int, u_int);
 static void	tty_margin_pane(struct tty *, const struct tty_ctx *);
 static void	tty_margin(struct tty *, u_int, u_int);
 static int	tty_large_region(struct tty *, const struct tty_ctx *);
+static int	tty_scroll_images(struct tty *, const struct tty_ctx *, int *);
 static void	tty_redraw_region(struct tty *, const struct tty_ctx *);
 static void	tty_emulate_repeat(struct tty *, enum tty_code_code,
 		    enum tty_code_code, u_int);
+static void	tty_draw_pane_line(struct tty *, const struct tty_ctx *, u_int,
+		    u_int, u_int, u_int, u_int);
 static void	tty_draw_pane(struct tty *, const struct tty_ctx *, u_int);
 static int	tty_check_overlay(struct tty *, u_int, u_int);
 
@@ -1090,6 +1093,26 @@ tty_large_region(__unused struct tty *tty, const struct tty_ctx *ctx)
 	return (ctx->orlower - ctx->orupper >= ctx->sy / 2);
 }
 
+/* Work out whether and how the terminal can scroll image pixels. */
+static int
+tty_scroll_images(struct tty *tty, const struct tty_ctx *ctx, int *full_width)
+{
+	*full_width = 0;
+#ifdef ENABLE_IMAGES
+	if (~ctx->flags & TTY_CTX_IMAGE_SCROLL)
+		return (1);
+	if (image_backend_flags(tty) & IMAGE_BACKEND_SCROLLS)
+		return (1);
+	if (ctx->flags & TTY_CTX_PANE_FULL_WIDTH) {
+		*full_width = 1;
+		return (1);
+	}
+	return (0);
+#else
+	return (1);
+#endif
+}
+
 /*
  * Return if BCE is needed but the terminal doesn't have it - it'll need to be
  * emulated.
@@ -1423,11 +1446,34 @@ tty_clear_pane_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 		tty_clear_area(tty, ctx, y, ry, x, rx, bg);
 }
 
+/* Redraw part of a pane line, including its ordered image layers. */
+static void
+tty_draw_pane_line(struct tty *tty, const struct tty_ctx *ctx, u_int px,
+    u_int py, u_int nx, u_int atx, u_int aty)
+{
+#ifdef ENABLE_IMAGES
+	int	has_images;
+
+	has_images = image_grid_check_area(ctx->s->grid, px,
+	    ctx->s->grid->hsize + py, nx, 1);
+	if (has_images) {
+		image_redraw_start(tty, atx, aty, nx, 1);
+		image_draw_line(tty, ctx->s, px, py, nx, atx, aty, 1,
+		    &ctx->style_ctx);
+	}
+#endif
+	tty_draw_line(tty, ctx->s, px, py, nx, atx, aty, &ctx->style_ctx);
+#ifdef ENABLE_IMAGES
+	if (has_images)
+		image_draw_line(tty, ctx->s, px, py, nx, atx, aty, 0,
+		    &ctx->style_ctx);
+#endif
+}
+
 /* Redraw a line of a screen at py. */
 static void
 tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 {
-	struct screen		*s = ctx->s;
 	u_int			 nx = ctx->sx, i, x, rx, ry, j;
 	struct visible_ranges	*r;
 	struct visible_range	*rr;
@@ -1440,8 +1486,8 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 			rr = &r->ranges[j];
 			if (rr->nx == 0)
 				continue;
-			tty_draw_line(tty, s, rr->px - ctx->xoff, py, rr->nx,
-			    rr->px, ctx->yoff + py, &ctx->style_ctx);
+			tty_draw_pane_line(tty, ctx, rr->px - ctx->xoff, py,
+			    rr->nx, rr->px, ctx->yoff + py);
 		}
 		return;
 	}
@@ -1451,8 +1497,8 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 			rr = &r->ranges[j];
 			if (rr->nx == 0)
 				continue;
-			tty_draw_line(tty, s, i + rr->px - x, py, rr->nx,
-			    rr->px, ry, &ctx->style_ctx);
+			tty_draw_pane_line(tty, ctx, i + rr->px - x, py,
+			    rr->nx, rr->px, ry);
 		}
 	}
 }
@@ -1661,9 +1707,19 @@ tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_clearcharacter(struct tty *tty, const struct tty_ctx *ctx)
 {
+#ifdef ENABLE_IMAGES
+	u_int	px, py;
+#endif
+
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_clear_pane_line(tty, ctx, ctx->ocy, ctx->ocx, ctx->n, ctx->bg);
+#ifdef ENABLE_IMAGES
+	px = ctx->xoff + ctx->ocx - ctx->wox;
+	py = ctx->yoff + ctx->ocy - ctx->woy;
+	image_draw_after_text(tty, ctx->s, ctx->ocx, ctx->ocy, ctx->n,
+	    px, py, &ctx->style_ctx);
+#endif
 }
 
 void
@@ -1672,7 +1728,8 @@ tty_cmd_insertline(struct tty *tty, const struct tty_ctx *ctx)
 	struct client	*c = tty->client;
 
 	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
-	    !tty_full_width(tty, ctx) ||
+	    (!tty_full_width(tty, ctx) &&
+	    (~ctx->flags & TTY_CTX_PANE_FULL_WIDTH)) ||
 	    tty_fake_bce(tty, &ctx->defaults, ctx->bg) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    !tty_term_has(tty->term, TTYC_IL1) ||
@@ -1699,7 +1756,8 @@ tty_cmd_deleteline(struct tty *tty, const struct tty_ctx *ctx)
 	struct client	*c = tty->client;
 
 	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
-	    !tty_full_width(tty, ctx) ||
+	    (!tty_full_width(tty, ctx) &&
+	    (~ctx->flags & TTY_CTX_PANE_FULL_WIDTH)) ||
 	    tty_fake_bce(tty, &ctx->defaults, ctx->bg) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    !tty_term_has(tty->term, TTYC_DL1) ||
@@ -1750,12 +1808,15 @@ void
 tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct client	*c = tty->client;
+	int		 full_width;
 
 	if (ctx->ocy != ctx->orupper)
 		return;
 
-	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
-	    (!tty_full_width(tty, ctx) && !tty_use_margin(tty)) ||
+	if (!tty_scroll_images(tty, ctx, &full_width) ||
+	    (ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
+	    (!full_width && !tty_full_width(tty, ctx) &&
+	    !tty_use_margin(tty)) ||
 	    tty_fake_bce(tty, &ctx->defaults, 8) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    (!tty_term_has(tty->term, TTYC_RI) &&
@@ -1770,7 +1831,10 @@ tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
-	tty_margin_pane(tty, ctx);
+	if (full_width)
+		tty_margin_off(tty);
+	else
+		tty_margin_pane(tty, ctx);
 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->orupper);
 
 	if (tty_term_has(tty->term, TTYC_RI))
@@ -1783,12 +1847,15 @@ void
 tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct client	*c = tty->client;
+	int		 full_width;
 
 	if (ctx->ocy != ctx->orlower)
 		return;
 
-	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
-	    (!tty_full_width(tty, ctx) && !tty_use_margin(tty)) ||
+	if (!tty_scroll_images(tty, ctx, &full_width) ||
+	    (ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
+	    (!full_width && !tty_full_width(tty, ctx) &&
+	    !tty_use_margin(tty)) ||
 	    tty_fake_bce(tty, &ctx->defaults, 8) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    ctx->sx == 1 ||
@@ -1801,7 +1868,10 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
-	tty_margin_pane(tty, ctx);
+	if (full_width)
+		tty_margin_off(tty);
+	else
+		tty_margin_pane(tty, ctx);
 
 	/*
 	 * If we want to wrap a pane while using margins, the cursor needs to
@@ -1826,9 +1896,12 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct client		*c = tty->client;
 	u_int			 i;
+	int			 full_width;
 
-	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
-	    (!tty_full_width(tty, ctx) && !tty_use_margin(tty)) ||
+	if (!tty_scroll_images(tty, ctx, &full_width) ||
+	    (ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
+	    (!full_width && !tty_full_width(tty, ctx) &&
+	    !tty_use_margin(tty)) ||
 	    tty_fake_bce(tty, &ctx->defaults, 8) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    ctx->sx == 1 ||
@@ -1841,7 +1914,10 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
-	tty_margin_pane(tty, ctx);
+	if (full_width)
+		tty_margin_off(tty);
+	else
+		tty_margin_pane(tty, ctx);
 
 	if (ctx->n == 1 || !tty_term_has(tty->term, TTYC_INDN)) {
 		if (!tty_use_margin(tty))
@@ -1864,9 +1940,12 @@ tty_cmd_scrolldown(struct tty *tty, const struct tty_ctx *ctx)
 {
 	u_int		 i;
 	struct client	*c = tty->client;
+	int		 full_width;
 
-	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
-	    (!tty_full_width(tty, ctx) && !tty_use_margin(tty)) ||
+	if (!tty_scroll_images(tty, ctx, &full_width) ||
+	    (ctx->flags & TTY_CTX_WINDOW_BIGGER) ||
+	    (!full_width && !tty_full_width(tty, ctx) &&
+	    !tty_use_margin(tty)) ||
 	    tty_fake_bce(tty, &ctx->defaults, 8) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    (!tty_term_has(tty->term, TTYC_RI) &&
@@ -1881,7 +1960,10 @@ tty_cmd_scrolldown(struct tty *tty, const struct tty_ctx *ctx)
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
-	tty_margin_pane(tty, ctx);
+	if (full_width)
+		tty_margin_off(tty);
+	else
+		tty_margin_pane(tty, ctx);
 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->orupper);
 
 	if (tty_term_has(tty->term, TTYC_RIN))
@@ -2004,6 +2086,16 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 		if (vis < gcp->data.width) {
 			tty_draw_line(tty, s, s->cx, s->cy, gcp->data.width,
 			    px, py, &ctx->style_ctx);
+#ifdef ENABLE_IMAGES
+			for (i = 0; i < r->used; i++) {
+				if (r->ranges[i].nx == 0)
+					continue;
+				image_draw_after_text(tty, s,
+				    ctx->ocx + r->ranges[i].px - px, ctx->ocy,
+				    r->ranges[i].nx, r->ranges[i].px, py,
+				    &ctx->style_ctx);
+			}
+#endif
 			return;
 		}
 	}
@@ -2019,6 +2111,11 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	tty_cursor_pane_unless_wrap(tty, ctx, ctx->ocx, ctx->ocy);
 
 	tty_cell(tty, ctx->cell, &ctx->style_ctx);
+
+#ifdef ENABLE_IMAGES
+	image_draw_after_text(tty, s, ctx->ocx, ctx->ocy, gcp->data.width,
+	    px, py, &ctx->style_ctx);
+#endif
 
 	if (ctx->flags & TTY_CTX_CELL_INVALIDATE)
 		tty_invalidate(tty);
@@ -2067,6 +2164,10 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 			cx = ri->px - ctx->xoff + ctx->wox;
 			tty_cursor_pane_unless_wrap(tty, ctx, cx, ctx->ocy);
 			tty_putn(tty, cp + ri->px - px, ri->nx, ri->nx);
+#ifdef ENABLE_IMAGES
+			image_draw_after_text(tty, ctx->s, cx, ctx->ocy,
+			    ri->nx, ri->px, py, &ctx->style_ctx);
+#endif
 		}
 	}
 }

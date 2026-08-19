@@ -102,11 +102,53 @@ grep -a '"1;1;26;26' $TMP >/dev/null || exit 1
 $TMUX2 copy-mode || exit 1
 $TMUX2 send-keys -X history-top || exit 1
 $TMUX2 send-keys -X start-of-line || exit 1
+$TMUX2 send-keys -N 4 -X cursor-right || exit 1
 $TMUX2 send-keys -X begin-selection || exit 1
+$TMUX pipe-pane || exit 1
+$TMUX pipe-pane -O "cat >$TMP" || exit 1
 $TMUX2 send-keys -X cursor-right || exit 1
 sleep 1
+$TMUX pipe-pane || exit 1
+grep -a '"1;1;' $TMP >/dev/null && exit 1
 $TMUX capture-pane -pS0 -E0 >$TMP || exit 1
 grep -q '^#=' $TMP || exit 1
+
+# Selection must also leave transparent cells inside the image canvas alone.
+# This 26-pixel canvas paints only its first pixel column, while the text below
+# it keeps the copy-mode cursor movable across both occupied terminal cells.
+$TMUX2 send-keys -X cancel || exit 1
+$TMUX2 new-window -d "
+	printf 'ab\r'
+	printf '\033Pq\"1;1;26;26#0;2;100;100;100#0~-#0~-#0~-#0~-#0B\033\\'
+	sleep 10" || exit 1
+$TMUX2 select-window -t:1 || exit 1
+sleep 1
+$TMUX2 copy-mode || exit 1
+$TMUX2 send-keys -X top-line || exit 1
+$TMUX2 send-keys -X start-of-line || exit 1
+$TMUX2 send-keys -X cursor-right || exit 1
+$TMUX2 send-keys -X begin-selection || exit 1
+$TMUX pipe-pane || exit 1
+$TMUX pipe-pane -O "cat >$TMP" || exit 1
+$TMUX2 send-keys -X cursor-right || exit 1
+sleep 1
+$TMUX pipe-pane || exit 1
+grep -a 'b' $TMP >/dev/null && exit 1
+
+# Scrolling moves the terminal's image rows with its text rows. It must not
+# force tmux to erase and retransmit the complete SIXEL image.
+$TMUX2 send-keys -X cancel || exit 1
+SCROLL_WINDOW=$($TMUX2 new-window -P -F '#{window_id}' \
+    "cat '$FIXTURE'; exec sh") || exit 1
+sleep 1
+$TMUX pipe-pane || exit 1
+$TMUX pipe-pane -O "cat >$TMP" || exit 1
+$TMUX2 send-keys -t"$SCROLL_WINDOW" -l \
+    "i=0; while [ \$i -lt 12 ]; do printf 'scroll-marker-%d\\n' \$i; i=\$((i + 1)); done" || exit 1
+$TMUX2 send-keys -t"$SCROLL_WINDOW" Enter || exit 1
+sleep 1
+grep -a 'scroll-marker-11' $TMP >/dev/null || exit 1
+grep -a '"1;1;' $TMP >/dev/null && exit 1
 
 # A retained Kitty image may be placed repeatedly using source rectangles.
 # Crop the green and white right column from a red/green/blue/white image.
@@ -342,5 +384,54 @@ $TMUX2 send-keys Enter || exit 1
 sleep 1
 $TMUX capture-pane -p >$TMP || exit 1
 [ "$(tail -n 1 $TMP)" = "STATUS" ] || exit 1
+
+# A partial redraw of a tiled pane must clear only its visible scene spans.
+# Clearing its entire rectangle would erase a floating pane above it, while
+# the tiled pane redraw correctly skips the obscured area and cannot restore it.
+$TMUX kill-server 2>/dev/null
+$TMUX2 kill-server 2>/dev/null
+$TMUX2 new-session -d -x 40 -y 15 \
+    "printf 'TILED PANE'; sleep 10" || exit 1
+TILED_PANE=$($TMUX2 display-message -p '#{pane_id}') || exit 1
+FLOATING_PANE=$($TMUX2 new-pane -dP -F '#{pane_id}' -x 20 -y 6 -X 10 -Y 4 \
+    "printf 'FLOATING PANE'; sleep 10") || exit 1
+$TMUX2 set -g status off || exit 1
+$TMUX2 set -as terminal-features ',*:sixel' || exit 1
+$TMUX2 select-pane -t"$FLOATING_PANE" || exit 1
+$TMUX new-session -d -x 40 -y 15 || exit 1
+$TMUX set -g status off || exit 1
+$TMUX send-keys -l "$TMUX2 attach-session" || exit 1
+$TMUX send-keys Enter || exit 1
+sleep 1
+$TMUX2 copy-mode -t"$TILED_PANE" || exit 1
+sleep 1
+$TMUX capture-pane -p >$TMP || exit 1
+grep 'TILED PANE' $TMP >/dev/null || exit 1
+grep 'FLOATING PANE' $TMP >/dev/null || exit 1
+
+# An obscured pane is normally redrawn a line at a time when it scrolls, but
+# that path cannot restore graphical image layers. It must defer to the scene
+# redraw so the visible part of the image is emitted around the floating pane.
+IMAGE_PANE=$($TMUX2 new-window -dP -F '#{pane_id}' \
+    "cat '$FIXTURE'; exec sh") || exit 1
+$TMUX2 set -g pane-border-status top || exit 1
+$TMUX2 set -pt"$IMAGE_PANE" pane-border-format 'IMAGE STATUS' || exit 1
+FLOATING_PANE=$($TMUX2 new-pane -dP -F '#{pane_id}' -x 20 -y 6 -X 10 -Y 4 \
+    "printf 'FLOATING PANE'; sleep 10") || exit 1
+$TMUX2 set -pt"$FLOATING_PANE" pane-border-format 'FLOAT STATUS' || exit 1
+$TMUX2 select-pane -t"$FLOATING_PANE" || exit 1
+sleep 1
+$TMUX pipe-pane || exit 1
+$TMUX pipe-pane -O "cat >$TMP" || exit 1
+$TMUX2 send-keys -t"$IMAGE_PANE" -l \
+    "i=0; while [ \$i -lt 5 ]; do printf 'image-scroll-%d\\n' \$i; i=\$((i + 1)); done" || exit 1
+$TMUX2 send-keys -t"$IMAGE_PANE" Enter || exit 1
+sleep 1
+$TMUX pipe-pane || exit 1
+grep -a 'image-scroll-4' $TMP >/dev/null || exit 1
+grep -a '"1;1;' $TMP >/dev/null || exit 1
+$TMUX capture-pane -p >$TMP || exit 1
+grep 'IMAGE STATUS' $TMP >/dev/null || exit 1
+grep 'FLOAT STATUS' $TMP >/dev/null || exit 1
 
 exit 0

@@ -1116,6 +1116,9 @@ struct screen_write_ctx {
 
 	struct screen_write_citem	*item;
 	u_int				 scrolled;
+#ifdef ENABLE_IMAGES
+	int				 scrolled_images;
+#endif
 	u_int				 bg;
 };
 
@@ -1850,6 +1853,8 @@ struct tty_ctx {
 #define TTY_CTX_OVERLAY_SYNC 0x10
 #define TTY_CTX_CELL_INVALIDATE 0x20
 #define TTY_CTX_PANE_OBSCURED 0x40
+#define TTY_CTX_IMAGE_SCROLL 0x80
+#define TTY_CTX_PANE_FULL_WIDTH 0x100
 
 	union {
 		u_int			 n;
@@ -2283,7 +2288,7 @@ struct client {
 #define CLIENT_STARTSERVER 0x10000000
 #define CLIENT_REDRAWMENU 0x20000000
 #define CLIENT_NOFORK 0x40000000
-/* 0x80000000ULL unused */
+#define CLIENT_REDRAWSCROLLBARS 0x80000000ULL
 #define CLIENT_CONTROL_PAUSEAFTER 0x100000000ULL
 #define CLIENT_CONTROL_WAITEXIT 0x200000000ULL
 #define CLIENT_WINDOWSIZECHANGED 0x400000000ULL
@@ -4246,7 +4251,6 @@ u_char		*image_png_decode(const u_char *, size_t, size_t, u_int *,
 void		 image_redraw_area(struct screen_write_ctx *, u_int, u_int,
 		     u_int, u_int);
 void		 image_redraw_all(struct screen_write_ctx *);
-void		 image_redraw_scroll(struct screen_write_ctx *, u_int);
 void		 image_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
 int		 image_backend_flags(struct tty *);
 void		 image_tty_update(struct tty *);
@@ -4254,6 +4258,8 @@ void		 image_tty_geometry_changed(struct tty *);
 void		 image_tty_free(struct tty *, int);
 void		 image_draw_line(struct tty *, struct screen *, u_int, u_int,
 		     u_int, u_int, u_int, int, const struct tty_style_ctx *);
+void		 image_draw_after_text(struct tty *, struct screen *, u_int,
+		     u_int, u_int, u_int, u_int, const struct tty_style_ctx *);
 void		 image_get_fallback_cell(struct tty *, struct image *, u_int,
 		     u_int, const struct grid_cell *, struct grid_cell *,
 		     const struct tty_style_ctx *);

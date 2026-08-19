@@ -128,6 +128,8 @@ struct image_store {
 static struct images	images = RB_INITIALIZER(&images);
 static u_int		image_next_id;
 
+static int	image_cell_has_alpha(struct image *, u_int, u_int);
+
 struct image_backend {
 	const char	*name;
 	int		 flags;
@@ -1105,6 +1107,9 @@ image_get_fallback_at(struct tty *tty, struct screen *s, u_int x, u_int y,
 	if (found == NULL)
 		return (-1);
 	placement = found->placement;
+	if (!image_cell_has_alpha(placement->image,
+	    found->source_x + x - found->x, found->source_y))
+		return (-1);
 	if (placement->input == IMAGE_INPUT_KITTY && placement->z < 0) {
 		if (gc->data.size != 1 || gc->data.data[0] != ' ')
 			return (-1);
@@ -1322,13 +1327,6 @@ image_redraw_all(struct screen_write_ctx *ctx)
 	    screen_size_y(ctx->s));
 }
 
-/* Redraw images after a scrolling operation. */
-void
-image_redraw_scroll(struct screen_write_ctx *ctx, __unused u_int lines)
-{
-	image_redraw_all(ctx);
-}
-
 /* Draw a clipped part of one image span. */
 static void
 image_draw_span(const struct image_backend *backend, struct tty *tty,
@@ -1432,6 +1430,23 @@ image_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py,
 	}
 }
 
+/* Restore image layers disturbed by a text write. */
+void
+image_draw_after_text(struct tty *tty, struct screen *s, u_int px, u_int py,
+    u_int nx, u_int atx, u_int aty, const struct tty_style_ctx *style_ctx)
+{
+	const struct image_backend	*backend;
+
+	if (!image_grid_check_area(s->grid, px, s->grid->hsize + py, nx, 1))
+		return;
+	image_tty_update(tty);
+	backend = tty->image_backend;
+	if (backend == &image_backend_sixel)
+		image_draw_line(tty, s, px, py, nx, atx, aty, 0, style_ctx);
+	else if (backend == &image_backend_fallback)
+		tty_draw_line(tty, s, px, py, nx, atx, aty, style_ctx);
+}
+
 /* Return whether an image cell contains at least one nontransparent pixel. */
 static int
 image_cell_has_alpha(struct image *im, u_int x, u_int y)
@@ -1462,7 +1477,7 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 	struct image_placement	*placement;
 	struct image_line	*line;
 	u_int			 cx = s->cx, cy = s->cy;
-	u_int			 x, y, run, sx, sy, lines, origin_y = 0;
+	u_int			 y, sx, sy, lines, origin_y = 0;
 
 	sx = im->sx;
 	if (sx > screen_size_x(s) - cx)
@@ -1490,19 +1505,7 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 	    app_placement_id, z);
 	for (y = 0; y < sy; y++) {
 		line = image_line_get(&gd->linedata[gd->hsize + cy + y]);
-		for (x = 0; x < sx; x += run) {
-			if (!image_cell_has_alpha(im, x, origin_y + y)) {
-				run = 1;
-				continue;
-			}
-			for (run = 1; x + run < sx; run++) {
-				if (!image_cell_has_alpha(im, x + run,
-				    origin_y + y))
-					break;
-			}
-			image_span_add(line, placement, cx + x, run, x,
-			    origin_y + y);
-		}
+		image_span_add(line, placement, cx, sx, 0, origin_y + y);
 	}
 	image_store_prune(gd->images);
 	image_redraw_area(ctx, cx, cy, sx, sy);

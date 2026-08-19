@@ -102,7 +102,8 @@ enum redraw_span_type {
 enum redraw_image_phase {
 	REDRAW_IMAGES_BEFORE,
 	REDRAW_TEXT,
-	REDRAW_IMAGES_AFTER
+	REDRAW_IMAGES_AFTER,
+	REDRAW_CHROME
 };
 
 /* UTF-8 isolate characters. */
@@ -1414,7 +1415,10 @@ redraw_draw_span(struct redraw_draw_ctx *dctx, struct redraw_span *span,
 			continue;
 		x = rr->px;
 		n = rr->nx;
-		if (phase != REDRAW_TEXT && type != REDRAW_SPAN_PANE)
+		if (type == REDRAW_SPAN_PANE) {
+			if (phase == REDRAW_CHROME)
+				continue;
+		} else if (phase != REDRAW_CHROME)
 			continue;
 
 		switch (span->data.type) {
@@ -1448,6 +1452,11 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 	struct redraw_line	*line;
 	struct redraw_spans	*spans;
 	struct redraw_span	*span;
+#ifdef ENABLE_IMAGES
+	struct visible_ranges	*r;
+	struct visible_range	*rr;
+	u_int			 i;
+#endif
 	u_int			 cy;
 	int			 y, top, bottom;
 
@@ -1462,30 +1471,31 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 
 #ifdef ENABLE_IMAGES
 	if (flags & REDRAW_PANE) {
-		int	left, right, image_y;
-
-		left = wp->xoff - (int)scene->ox;
-		if (left < 0)
-			left = 0;
-		if (left > (int)scene->sx)
-			left = scene->sx;
-		right = wp->xoff + (int)wp->sx - (int)scene->ox;
-		if (right < 0)
-			right = 0;
-		if (right > (int)scene->sx)
-			right = scene->sx;
-		if (left < right && top < bottom) {
-			image_y = top;
+		for (y = top; y < bottom; y++) {
+			line = &scene->lines[y];
+			cy = y;
 			if (dctx->flags & REDRAW_STATUS_TOP)
-				image_y += dctx->status_lines;
-			image_redraw_start(&scene->c->tty, left, image_y,
-			    right - left, bottom - top);
+				cy += dctx->status_lines;
+			spans = &line->spans[REDRAW_SPAN_PANE];
+			TAILQ_FOREACH(span, spans, entry) {
+				if (span->data.p.wp != wp)
+					continue;
+				r = tty_check_overlay_range(&scene->c->tty,
+				    span->x, cy, span->width);
+				for (i = 0; i < r->used; i++) {
+					rr = &r->ranges[i];
+					if (rr->nx != 0) {
+						image_redraw_start(&scene->c->tty,
+						    rr->px, cy, rr->nx, 1);
+					}
+				}
+			}
 		}
 	}
 #endif
 
 	for (enum redraw_image_phase phase = REDRAW_IMAGES_BEFORE;
-	    phase <= REDRAW_IMAGES_AFTER; phase++) {
+	    phase <= REDRAW_CHROME; phase++) {
 		for (y = top; y < bottom; y++) {
 			line = &scene->lines[y];
 			if (dctx->flags & REDRAW_STATUS_TOP)
@@ -1499,7 +1509,7 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 						redraw_draw_span(dctx, span, cy, phase);
 				}
 			}
-			if (phase == REDRAW_TEXT &&
+			if (phase == REDRAW_CHROME &&
 			    (flags & REDRAW_PANE_SCROLLBAR)) {
 				spans = &line->spans[REDRAW_SPAN_SCROLLBAR];
 				TAILQ_FOREACH(span, spans, entry) {
@@ -1522,7 +1532,7 @@ redraw_draw_lines(struct redraw_draw_ctx *dctx, int flags)
 	u_int			 y, cy, type;
 
 	for (enum redraw_image_phase phase = REDRAW_IMAGES_BEFORE;
-	    phase <= REDRAW_IMAGES_AFTER; phase++) {
+	    phase <= REDRAW_CHROME; phase++) {
 		for (y = 0; y < scene->sy; y++) {
 			line = &scene->lines[y];
 			if (dctx->flags & REDRAW_STATUS_TOP)
@@ -1530,8 +1540,6 @@ redraw_draw_lines(struct redraw_draw_ctx *dctx, int flags)
 			else
 				cy = y;
 			for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
-				if (phase != REDRAW_TEXT && type != REDRAW_SPAN_PANE)
-					continue;
 			if (!REDRAW_IS_ALL(flags)) {
 				switch (type) {
 				case REDRAW_SPAN_PANE:
@@ -1780,9 +1788,10 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	}
 
 	if (flags & REDRAW_PANE_STATUS) {
-		redraw = 0;
+		redraw = !!(flags & REDRAW_PANE_BORDER);
 		TAILQ_FOREACH(loop, &scene->w->panes, entry) {
-			if (REDRAW_IS_ALL(flags))
+			if (REDRAW_IS_ALL(flags) ||
+			    (flags & REDRAW_PANE_BORDER))
 				loop->flags |= PANE_NEWSTATUS;
 			else
 				loop->flags &= ~PANE_NEWSTATUS;

@@ -5363,6 +5363,14 @@ window_copy_write_line(struct window_mode_entry *wme,
 	else
 		content_sx = sx;
 
+#ifdef ENABLE_IMAGES
+	/* Make the backing line's image layers available before drawing text. */
+	image_grid_free_line(s->grid,
+	    &s->grid->linedata[s->grid->hsize + py]);
+	image_grid_copy_area(s->grid, width, s->grid->hsize + py,
+	    data->backing->grid, 0, hsize - data->oy + py, content_sx, 1);
+#endif
+
 	screen_write_cursormove(ctx, 0, py, 0);
 
 	ft = format_create_defaults(NULL, NULL, NULL, NULL, wp);
@@ -5406,15 +5414,6 @@ window_copy_write_line(struct window_mode_entry *wme,
 
 	window_copy_write_one(wme, ctx, width, py, hsize - data->oy + py,
 	    content_sx, &mgc, &cgc, &mkgc, &clgc);
-
-#ifdef ENABLE_IMAGES
-	/* Copy the backing line's image layers separately from its text cells. */
-	image_grid_free_line(s->grid,
-	    &s->grid->linedata[s->grid->hsize + py]);
-	image_grid_copy_area(s->grid, width, s->grid->hsize + py,
-	    data->backing->grid, 0, hsize - data->oy + py, content_sx, 1);
-#endif
-
 	if (py == 0 && s->rupper < s->rlower && !data->hide_position) {
 		value = options_get_string(oo, "copy-mode-position-format");
 		if (*value != '\0') {
