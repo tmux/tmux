@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-split-window.c,v 1.148 2026/08/07 08:10:53 nicm Exp $ */
+/* $OpenBSD: cmd-split-window.c,v 1.149 2026/08/19 10:56:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>

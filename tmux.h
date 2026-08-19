@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1427 2026/08/18 09:01:20 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1428 2026/08/19 10:56:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>

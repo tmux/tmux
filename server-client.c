@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.503 2026/08/17 07:56:56 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.504 2026/08/19 10:56:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
