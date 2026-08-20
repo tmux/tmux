@@ -49,6 +49,7 @@ extern const struct cmd_entry cmd_display_popup_entry;
 extern const struct cmd_entry cmd_display_panes_entry;
 extern const struct cmd_entry cmd_find_window_entry;
 extern const struct cmd_entry cmd_has_session_entry;
+extern const struct cmd_entry cmd_hide_pane_entry;
 extern const struct cmd_entry cmd_if_shell_entry;
 extern const struct cmd_entry cmd_join_pane_entry;
 extern const struct cmd_entry cmd_kill_pane_entry;
@@ -106,6 +107,7 @@ extern const struct cmd_entry cmd_show_environment_entry;
 extern const struct cmd_entry cmd_show_hooks_entry;
 extern const struct cmd_entry cmd_show_messages_entry;
 extern const struct cmd_entry cmd_show_options_entry;
+extern const struct cmd_entry cmd_show_pane_entry;
 extern const struct cmd_entry cmd_show_prompt_history_entry;
 extern const struct cmd_entry cmd_show_window_options_entry;
 extern const struct cmd_entry cmd_source_file_entry;
@@ -143,6 +145,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_display_panes_entry,
 	&cmd_find_window_entry,
 	&cmd_has_session_entry,
+	&cmd_hide_pane_entry,
 	&cmd_if_shell_entry,
 	&cmd_join_pane_entry,
 	&cmd_kill_pane_entry,
@@ -200,6 +203,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_show_hooks_entry,
 	&cmd_show_messages_entry,
 	&cmd_show_options_entry,
+	&cmd_show_pane_entry,
 	&cmd_show_prompt_history_entry,
 	&cmd_show_window_options_entry,
 	&cmd_source_file_entry,
