@@ -106,6 +106,31 @@ the implementation.
    intersect image data or graphical overlays, existing fast text output and
    native scrolling should remain available.
 
+## Established image semantics
+
+The image semantics present at the `ec9859b1` recovery point are a
+compatibility requirement. They resulted from the review discussion in PR
+#5445, particularly the temporal-versus-positional model described in
+[Theory and Practice of Sprixels](https://nick-black.com/dankwiki/index.php?title=Theory_and_Practice_of_Sprixels#Transparency_and_z-ordering),
+and were accepted after commit `a4abd616`, which added the corresponding
+manual visual checks.
+
+- SIXEL input is temporal. Transparent pixels preserve what existed when the
+  SIXEL was emitted. A later text write annihilates the affected SIXEL cells;
+  the SIXEL does not remain logically behind that text.
+- Kitty input is positional. Negative-z placements remain below the text plane;
+  nonnegative placements remain above it. Text writes do not convert or remove
+  Kitty placements merely because the output client uses SIXEL.
+- Overlapping placements remain separate ordered layers. Transparent pixels in
+  an upper placement reveal retained lower placements or text.
+- Input protocol, z-index, and placement order determine the logical scene. The
+  attached client's output protocol only determines how that scene is encoded.
+- Redraw, damage, scrolling, copy mode, and backend conversion must preserve
+  these rules exactly.
+
+The manual checks introduced by `a4abd616` and the corresponding regression
+cases are semantic compatibility tests, not merely visual diagnostics.
+
 ## Coordinate spaces
 
 Keep conversions explicit. Do not pass ambiguous `x` and `y` values between
@@ -501,7 +526,10 @@ be used where a test needs to prove that SIXEL or Kitty data was or was not
 emitted.
 
 **Gate:** Each test either passes on the baseline or has a documented expected
-failure. Tests must not depend on timing races or visual screenshots.
+failure. Tests must not depend on timing races or visual screenshots. The
+existing edge-case checks introduced by `a4abd616` must pass unchanged on the
+recovery baseline and establish the semantic compatibility result expected by
+later gates.
 
 **Not included:** No redraw implementation changes.
 
@@ -544,7 +572,8 @@ prototypes in `tmux.h`.
 
 **Gate:** Rendering a whole image as adjacent damaged rectangles produces the
 same final scene as rendering it in one operation. Test transparent and
-overlapping placements on both output backends.
+overlapping placements on both output backends. The `a4abd616` semantic
+compatibility checks must continue to pass unchanged.
 
 **Not included:** No changes to individual tty text commands and no native
 scroll optimization.
@@ -580,7 +609,8 @@ state changed and follow the policy of not overwriting image-covered cells.
 
 **Gate:** Dragging selection across an image never damages it, entering/leaving
 copy mode restores the same scene, and selection outside images emits no image
-data.
+data. The `a4abd616` semantic compatibility checks must continue to pass
+unchanged.
 
 **Not included:** Do not add image callbacks to `tty_cmd_cell`,
 `tty_cmd_cells`, or `tty_cmd_clearcharacter`.
@@ -617,6 +647,7 @@ compose it. Do not use special image repair from `tty.c`.
 scroll regions, scrollbars, and scrolling beneath floating panes are correct on
 Kitty, Microsoft Terminal, Mintty, and WezTerm. This step may redraw more than
 the final optimized version, but must not redraw outside the scroll rectangle.
+The `a4abd616` semantic compatibility checks must continue to pass unchanged.
 
 ### Step 8: enable native scrolling for unobstructed rectangles
 
@@ -661,7 +692,8 @@ bounds, output byte counts, and behaviour without image support. Run the entire
 regression suite and the manual terminal matrix.
 
 **Gate:** All completion criteria below are satisfied. Synchronized output may
-improve appearance, but disabling it does not alter final contents.
+improve appearance, but disabling it does not alter final contents. The
+`a4abd616` semantic compatibility checks must continue to pass unchanged.
 
 Do not squash these implementation steps during development. Keeping their
 boundaries visible makes it possible to bisect correctness and performance
