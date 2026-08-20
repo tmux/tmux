@@ -2852,10 +2852,11 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct grid		*gd = s->grid;
 	const struct utf8_data	*ud = &gc->data;
 	struct options		*oo = global_options;
-	u_int			 i, n, cx = s->cx, cy = s->cy, vis, yoff = 0;
+	u_int			 i, n, cx = s->cx, cy = s->cy, vis;
 	struct grid_cell	 last;
 	struct tty_ctx		 ttyctx;
 	int			 force_wide = 0, zero_width = 0;
+	int			 xoff = 0, yoff = 0;
 	struct visible_ranges	*r;
 
 	/* Ignore U+3164 HANGUL_FILLER entirely. */
@@ -2949,9 +2950,11 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	 * obscured in the middle, only on left or right, but there could be an
 	 * empty range in the visible ranges so we add them all up.
 	 */
-	if (wp != NULL)
+	if (wp != NULL) {
+		xoff = wp->xoff;
 		yoff = wp->yoff;
-	r = window_visible_ranges(wp, cx - n, cy + yoff, n, NULL);
+	}
+	r = window_visible_ranges(wp, xoff + cx - n, cy + yoff, n, NULL);
 	for (i = 0, vis = 0; i < r->used; i++)
 		vis += r->ranges[i].nx;
 	if (vis < n) {
