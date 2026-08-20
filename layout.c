@@ -1,4 +1,4 @@
-/* $OpenBSD: layout.c,v 1.96 2026/07/15 13:02:33 nicm Exp $ */
+/* $OpenBSD: layout.c,v 1.97 2026/08/20 09:19:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1650,7 +1650,10 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 		return (NULL);
 	}
 
-	window_push_zoom(wp->window, 1, (flags & SPAWN_ZOOM));
+	if (window_active_pane_is_over_zoom(w))
+		window_push_zoom(w, 0, 1);
+	else
+		window_push_zoom(w, 1, (flags & SPAWN_ZOOM));
 	lc = layout_split_pane(wp, type, size, flags);
 	if (lc == NULL)
 		*cause = xstrdup("no space for a new pane");
@@ -1677,8 +1680,10 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 			return (NULL);
 	}
 
-	if (flags & SPAWN_MODAL)
-		window_push_modal_zoom(w);
+	if (flags & SPAWN_FLOATOVERZOOM)
+		window_push_zoom(wp->window, 0, 1);
+	else if (window_active_pane_is_over_zoom(w))
+		window_push_zoom(wp->window, 0, 1);
 	else
 		window_push_zoom(wp->window, 1, (flags & SPAWN_ZOOM));
 	lcnew = layout_floating_pane(w, wp, &fg);

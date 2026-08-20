@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1428 2026/08/19 10:56:10 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1429 2026/08/20 09:19:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1302,6 +1302,7 @@ struct window_pane {
 #define PANE_ACTIVITY 0x40000
 #define PANE_CLOSEONCLICK 0x80000
 #define PANE_CAPTUREALLKEYS 0x100000
+#define PANE_FLOATOVERZOOM 0x200000
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;
@@ -1408,6 +1409,7 @@ struct window {
 	struct window_pane	*active;
 	struct window_pane	*modal;
 	struct window_pane	*modal_last;
+	struct window_pane	*was_zoomed;
 	struct window_panes 	 last_panes;
 	struct window_panes      z_index;
 	struct window_panes	 panes;
@@ -1450,7 +1452,6 @@ struct window {
 #define WINDOW_ZOOMED 0x8
 #define WINDOW_WASZOOMED 0x10
 #define WINDOW_RESIZE 0x20
-#define WINDOW_WASMODALZOOMED 0x40
 #define WINDOW_ALERTFLAGS (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_SILENCE)
 
 	int			 alerts_queued;
@@ -2494,6 +2495,7 @@ struct spawn_context {
 #define SPAWN_HORIZONTAL 0x200
 #define SPAWN_SPLIT 0x400
 #define SPAWN_MODAL 0x800
+#define SPAWN_FLOATOVERZOOM 0x1000
 };
 
 /* Paste buffer. */
@@ -3682,8 +3684,8 @@ void		 window_resize(struct window *, u_int, u_int, int, int);
 void		 window_pane_send_resize(struct window_pane *, u_int, u_int);
 int		 window_zoom(struct window_pane *);
 int		 window_unzoom(struct window *, int);
-void		 window_push_modal_zoom(struct window *);
-int		 window_pop_modal_zoom(struct window *);
+int		 window_active_pane_is_over_zoom(struct window *);
+struct window_pane *window_zoomed_pane(struct window *);
 int		 window_push_zoom(struct window *, int, int);
 int		 window_pop_zoom(struct window *);
 void		 window_lost_pane(struct window *, struct window_pane *);

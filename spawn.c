@@ -1,4 +1,4 @@
-/* $OpenBSD: spawn.c,v 1.51 2026/08/18 07:43:44 nicm Exp $ */
+/* $OpenBSD: spawn.c,v 1.52 2026/08/20 09:19:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -362,6 +362,8 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		}
 		if (sc->flags & SPAWN_FLOATING)
 			new_wp->layout_cell->flags |= LAYOUT_CELL_FLOATING;
+		if (sc->flags & SPAWN_FLOATOVERZOOM)
+			new_wp->flags |= PANE_FLOATOVERZOOM;
 
 		/*
 		 * If window currently zoomed, window_set_active_pane calls
@@ -725,10 +727,10 @@ spawn_editor(struct client *c, const char *buf, size_t len,
 	lg.sy = w->sy * 9 / 10;
 	lg.xoff = w->sx / 2 - lg.sx / 2;
 	lg.yoff = w->sy / 2 - lg.sy / 2;
-	window_push_modal_zoom(w);
+	window_push_zoom(w, 0, 1);
 	lc = layout_floating_pane(w, NULL, &lg);
 	if (lc == NULL) {
-		window_pop_modal_zoom(w);
+		window_pop_zoom(w);
 		spawn_editor_free(es);
 		return (NULL);
 	}
@@ -745,17 +747,18 @@ spawn_editor(struct client *c, const char *buf, size_t len,
 	sc.environ = env;
 	sc.idx = -1;
 	sc.cwd = _PATH_TMP;
-	sc.flags = SPAWN_FLOATING|SPAWN_MODAL;
+	sc.flags = SPAWN_FLOATING|SPAWN_MODAL|SPAWN_FLOATOVERZOOM;
 
 	wp = spawn_pane(&sc, &cause);
 	free(cmd);
 	environ_free(env);
 	if (wp == NULL) {
 		free(cause);
-		window_pop_modal_zoom(w);
+		window_pop_zoom(w);
 		spawn_editor_free(es);
 		return (NULL);
 	}
+	window_pop_zoom(w);
 	options_set_number(wp->options, "remain-on-exit", 0);
 	es->pid = wp->pid;
 	wp->editor = es;
