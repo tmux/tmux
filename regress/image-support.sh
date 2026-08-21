@@ -79,7 +79,7 @@ $TMUX2 new-session -d -x 10 -y 4 "
 	printf '\033Pq\"1;1;26;26#0;2;100;100;100#0!26~-!26~-!26~-!26~-!26B\033\\'
 	sleep 10" || exit 1
 $TMUX2 set -g status off || exit 1
-$TMUX2 set -as terminal-features ',*:sixel' || exit 1
+$TMUX2 set -as terminal-features ',*:sixel@' || exit 1
 $TMUX new-session -d -x 10 -y 4 || exit 1
 $TMUX set -g status off || exit 1
 $TMUX pipe-pane -O "cat >$TMP" || exit 1
@@ -91,14 +91,30 @@ grep -q '^#=' $TMP || exit 1
 
 # Re-emitting the image preserves the 26-pixel raster rather than expanding
 # it to the two complete 16-pixel grid cells occupied by the image.
+# terminal-features is only detected when a client attaches, so switch to a
+# SIXEL-capable client by detaching and reattaching rather than toggling the
+# option on the client already attached above.
+$TMUX2 set -u terminal-features || exit 1
+$TMUX2 set -as terminal-features ',*:sixel' || exit 1
+$TMUX2 detach-client || exit 1
+sleep 1
 $TMUX pipe-pane || exit 1
 $TMUX pipe-pane -O "cat >$TMP" || exit 1
-$TMUX2 refresh-client -R || exit 1
+$TMUX send-keys -l "$TMUX2 attach-session" || exit 1
+$TMUX send-keys Enter || exit 1
 sleep 1
 grep -a '"1;1;26;26' $TMP >/dev/null || exit 1
 
 # A selection redraw uses the single-cell path. It must leave ASCII image
 # cells visible (graphical clients skip these cells to avoid erasing pixels).
+# Switch back to a fallback client the same way.
+$TMUX2 set -u terminal-features || exit 1
+$TMUX2 set -as terminal-features ',*:sixel@' || exit 1
+$TMUX2 detach-client || exit 1
+sleep 1
+$TMUX send-keys -l "$TMUX2 attach-session" || exit 1
+$TMUX send-keys Enter || exit 1
+sleep 1
 $TMUX2 copy-mode || exit 1
 $TMUX2 send-keys -X history-top || exit 1
 $TMUX2 send-keys -X start-of-line || exit 1
