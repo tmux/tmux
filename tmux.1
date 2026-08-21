@@ -5980,6 +5980,23 @@ see the
 section.
 Attributes are ignored.
 .Pp
+.It Xo Ic pane\-border\-type
+.Op Ic joined | separate | separate\-active
+.Xc
+Set how pane borders are drawn.
+When set to
+.Ic joined
+(the default), adjacent panes share a single border.
+When set to
+.Ic separate ,
+a full border is drawn around each pane.
+When set to
+.Ic separate\-active ,
+each pane is inset the same way as
+.Ic separate
+so content does not reflow when changing the active pane, but the border is
+only drawn around the active pane (inactive panes keep a blank gutter).
+.Pp
 .It Ic popup\-style Ar style
 Set the popup style.
 See the

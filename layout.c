@@ -423,6 +423,59 @@ layout_cell_is_bottom(struct layout_cell *root, struct layout_cell *lc)
 	return (1);
 }
 
+static int
+layout_cell_is_right(struct layout_cell *root, struct layout_cell *lc)
+{
+	struct layout_cell	*next;
+
+	while (lc != root) {
+		next = lc->parent;
+		if (next == NULL)
+			return (0);
+		if (next->type == LAYOUT_LEFTRIGHT &&
+		    !layout_cell_is_last_tiled(lc))
+			return (0);
+		lc = next;
+	}
+	return (1);
+}
+
+/* Separate borders need a larger cell so the inset pane stays inside it. */
+static u_int
+layout_pane_minimum_size(struct window *w, struct layout_cell *lc,
+    enum layout_type type)
+{
+	struct layout_cell	*root = w->layout_root;
+	struct style		*sb_style = &w->active->scrollbar_style;
+	u_int			 minimum;
+	int			 status, separate;
+
+	status = window_get_pane_status(w);
+	separate = window_border_type_is_separate(w);
+
+	if (type == LAYOUT_LEFTRIGHT) {
+		if (w->sb == PANE_SCROLLBARS_ALWAYS)
+			minimum = PANE_MINIMUM + sb_style->width +
+			    sb_style->pad;
+		else
+			minimum = PANE_MINIMUM;
+		if (separate) {
+			minimum++;
+			if (layout_cell_is_right(root, lc))
+				minimum++;
+		}
+	} else {
+		minimum = PANE_MINIMUM;
+		if (separate) {
+			minimum++;
+			if (layout_cell_is_bottom(root, lc))
+				minimum++;
+		} else if (layout_add_horizontal_border(root, lc, status))
+			minimum++;
+	}
+	return (minimum);
+}
+
 /*
  * Returns 1 if we need to add an extra line for the pane status line. This is
  * the case for the most upper or lower panes only.
@@ -438,15 +491,62 @@ layout_add_horizontal_border(struct layout_cell *root, struct layout_cell *lc,
 	return (0);
 }
 
+/* Inset for separate: L/T always, R/B on the window edge. */
+void
+layout_apply_pane_border_type(struct window *w, struct layout_cell *root,
+    struct layout_cell *lc, int *xoff, int *yoff, u_int *sx, u_int *sy)
+{
+	int	ox, oy;
+	u_int	osx, osy, need;
+
+	if (lc == NULL || root == NULL)
+		return;
+	if (!window_border_type_is_separate(w))
+		return;
+	if (lc->flags & LAYOUT_CELL_FLOATING)
+		return;
+
+	ox = *xoff;
+	oy = *yoff;
+	osx = *sx;
+	osy = *sy;
+
+	need = 1 + (layout_cell_is_right(root, lc) ? 1 : 0);
+	if (osx >= need + PANE_MINIMUM) {
+		(*xoff)++;
+		(*sx)--;
+		if (layout_cell_is_right(root, lc))
+			(*sx)--;
+	}
+
+	need = 1 + (layout_cell_is_bottom(root, lc) ? 1 : 0);
+	if (osy >= need + PANE_MINIMUM) {
+		(*yoff)++;
+		(*sy)--;
+		if (layout_cell_is_bottom(root, lc))
+			(*sy)--;
+	}
+
+	if (*xoff < ox)
+		*xoff = ox;
+	if (*yoff < oy)
+		*yoff = oy;
+	if (*xoff + (int)*sx > ox + (int)osx)
+		*sx = ox + osx - *xoff;
+	if (*yoff + (int)*sy > oy + (int)osy)
+		*sy = oy + osy - *yoff;
+}
+
 /* Update pane offsets and sizes based on their cells. */
 void
 layout_fix_panes(struct window *w, struct window_pane *skip)
 {
-	struct window_pane	*wp;
-	struct layout_cell	*lc, *root = w->layout_root;
-	int			 status, sb_w, sb_pad;
-	int			 old_xoff, old_yoff, changed = 0;
-	u_int			 sx, sy, old_sx, old_sy;
+	struct window_pane		*wp;
+	struct layout_cell		*lc, *root = w->layout_root;
+	struct window_mode_entry	*wme;
+	int				 status, sb_w, sb_pad, fill;
+	int				 old_xoff, old_yoff, changed = 0;
+	u_int				 sx, sy, old_sx, old_sy;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if ((lc = wp->layout_cell) == NULL || wp == skip)
@@ -462,9 +562,21 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		sx = lc->g.sx;
 		sy = lc->g.sy;
 
+		fill = 0;
+		if (w->flags & WINDOW_ZOOMED) {
+			wme = TAILQ_FIRST(&wp->modes);
+			if (wme != NULL &&
+			    (wme->mode->flags & WINDOW_MODE_FILL_WINDOW))
+				fill = 1;
+		}
+		if (!fill)
+			layout_apply_pane_border_type(w, root, lc, &wp->xoff,
+			    &wp->yoff, &sx, &sy);
+
 		status = window_pane_get_pane_status(wp);
 		if (!window_pane_is_floating(wp) &&
-		    layout_add_horizontal_border(root, lc, status)) {
+		    layout_add_horizontal_border(root, lc, status) &&
+		    !window_border_type_is_separate(w)) {
 			if (status == PANE_STATUS_TOP)
 				wp->yoff++;
 			if (sy > 1)
@@ -532,29 +644,16 @@ static u_int
 layout_resize_check(struct window *w, struct layout_cell *lc,
     enum layout_type type)
 {
-	struct layout_cell	*lcchild, *root = w->layout_root;
-	struct style		*sb_style = &w->active->scrollbar_style;
+	struct layout_cell	*lcchild;
 	u_int			 available, minimum;
-	int			 status;
-
-	status = window_get_pane_status(w);
 
 	if (lc->type == LAYOUT_WINDOWPANE) {
 		/* Space available in this cell only. */
-		if (type == LAYOUT_LEFTRIGHT) {
+		if (type == LAYOUT_LEFTRIGHT)
 			available = lc->g.sx;
-			if (w->sb == PANE_SCROLLBARS_ALWAYS)
-				minimum = PANE_MINIMUM + sb_style->width +
-				    sb_style->pad;
-			else
-				minimum = PANE_MINIMUM;
-		} else {
+		else
 			available = lc->g.sy;
-			if (layout_add_horizontal_border(root, lc, status))
-				minimum = PANE_MINIMUM + 1;
-			else
-				minimum = PANE_MINIMUM;
-		}
+		minimum = layout_pane_minimum_size(w, lc, type);
 		if (available > minimum)
 			available -= minimum;
 		else
@@ -841,8 +940,9 @@ void
 layout_resize_pane_to(struct window_pane *wp, enum layout_type type,
     u_int new_size)
 {
+	struct window	       *w = wp->window;
 	struct layout_cell     *lc, *lcparent;
-	int			change, size;
+	int			change, size, separate;
 
 	lc = wp->layout_cell;
 
@@ -854,6 +954,19 @@ layout_resize_pane_to(struct window_pane *wp, enum layout_type type,
 	}
 	if (lcparent == NULL)
 		return;
+
+	/* -x/-y are content size; grow to include separate borders. */
+	separate = window_border_type_is_separate(w);
+	if (separate && (~lc->flags & LAYOUT_CELL_FLOATING)) {
+		new_size++;
+		if (type == LAYOUT_LEFTRIGHT) {
+			if (layout_cell_is_right(w->layout_root, lc))
+				new_size++;
+		} else {
+			if (layout_cell_is_bottom(w->layout_root, lc))
+				new_size++;
+		}
+	}
 
 	/* Work out the size adjustment. */
 	if (type == LAYOUT_LEFTRIGHT)
@@ -1085,7 +1198,7 @@ static u_int
 layout_new_pane_size(struct window *w, u_int previous, struct layout_cell *lc,
     enum layout_type type, u_int size, u_int count_left, u_int size_left)
 {
-	u_int	new_size, min, max, available;
+	u_int	new_size, min, max, available, minimum;
 
 	/* If this is the last cell, it can take all of the remaining size. */
 	if (count_left == 1)
@@ -1113,8 +1226,9 @@ layout_new_pane_size(struct window *w, u_int previous, struct layout_cell *lc,
 	max = size_left - min;
 	if (new_size > max)
 		new_size = max;
-	if (new_size < PANE_MINIMUM)
-		new_size = PANE_MINIMUM;
+	minimum = layout_pane_minimum_size(w, lc, type);
+	if (new_size < minimum)
+		new_size = minimum;
 	return (new_size);
 }
 
@@ -1128,7 +1242,7 @@ layout_set_size_check(struct window *w, struct layout_cell *lc,
 
 	/* Cells with no children must just be bigger than minimum. */
 	if (lc->type == LAYOUT_WINDOWPANE)
-		return (size >= PANE_MINIMUM);
+		return (size >= (int)layout_pane_minimum_size(w, lc, type));
 	available = size;
 
 	/* Count number of children. */
@@ -1265,28 +1379,50 @@ int
 layout_split_check_space(struct window_pane *wp, struct layout_cell *lc,
    enum layout_type type)
 {
-	struct layout_cell	*root = wp->window->layout_root;
+	struct window		*w = wp->window;
+	struct layout_cell	*root = w->layout_root;
 	struct style		*sb_style = &wp->scrollbar_style;
 	u_int			 minimum, sx = lc->g.sx, sy = lc->g.sy;
-	int			 status;
+	u_int			 min1, min2;
+	int			 status, separate;
 
 	if (lc->flags & LAYOUT_CELL_FLOATING)
 		fatalx("floating cells cannot be split");
 
-	status = window_get_pane_status(wp->window);
+	status = window_get_pane_status(w);
+	separate = window_border_type_is_separate(w);
 
 	switch (type) {
 	case LAYOUT_LEFTRIGHT:
-		if (wp->window->sb == PANE_SCROLLBARS_ALWAYS) {
-			minimum = PANE_MINIMUM * 2 + sb_style->width +
-			    sb_style->pad;
+		if (separate) {
+			min1 = PANE_MINIMUM;
+			min2 = PANE_MINIMUM;
+			if (w->sb == PANE_SCROLLBARS_ALWAYS) {
+				min1 += sb_style->width + sb_style->pad;
+				min2 += sb_style->width + sb_style->pad;
+			}
+			min1++;
+			min2++;
+			if (layout_cell_is_right(root, lc))
+				min2++;
+			minimum = min1 + 1 + min2;
+		} else if (w->sb == PANE_SCROLLBARS_ALWAYS) {
+			min1 = PANE_MINIMUM + sb_style->width + sb_style->pad;
+			min2 = PANE_MINIMUM + sb_style->width + sb_style->pad;
+			minimum = min1 + 1 + min2;
 		} else
 			minimum = PANE_MINIMUM * 2 + 1;
 		if (sx < minimum)
 			return (0);
 		break;
 	case LAYOUT_TOPBOTTOM:
-		if (layout_add_horizontal_border(root, lc, status))
+		if (separate) {
+			min1 = PANE_MINIMUM + 1;
+			min2 = PANE_MINIMUM + 1;
+			if (layout_cell_is_bottom(root, lc))
+				min2++;
+			minimum = min1 + 1 + min2;
+		} else if (layout_add_horizontal_border(root, lc, status))
 			minimum = PANE_MINIMUM * 2 + 2;
 		else
 			minimum = PANE_MINIMUM * 2 + 1;
@@ -1302,11 +1438,13 @@ layout_split_check_space(struct window_pane *wp, struct layout_cell *lc,
 
 /* Calculates the new cell sizes when splitting a pane. */
 void
-layout_split_sizes(struct layout_cell *lc, int size, int before,
-    enum layout_type type, u_int *size1, u_int *size2, u_int *saved_size)
+layout_split_sizes(struct window *w, struct layout_cell *lc, int size,
+    int before, enum layout_type type, u_int *size1, u_int *size2,
+    u_int *saved_size)
 {
-	u_int	s1, s2, ss;
-	u_int	sx = lc->g.sx, sy = lc->g.sy;
+	u_int		 s1, s2, ss, min1, min2;
+	u_int		 sx = lc->g.sx, sy = lc->g.sy;
+	int		 separate, edge;
 
 	if (type == LAYOUT_LEFTRIGHT)
 		ss = sx;
@@ -1318,10 +1456,45 @@ layout_split_sizes(struct layout_cell *lc, int size, int before,
 		s2 = ss - size - 1;
 	else
 		s2 = size;
-	if (s2 < PANE_MINIMUM)
-		s2 = PANE_MINIMUM;
-	else if (s2 > ss - 2)
-		s2 = ss - 2;
+
+	min1 = PANE_MINIMUM;
+	min2 = PANE_MINIMUM;
+	if (w != NULL) {
+		separate = window_border_type_is_separate(w);
+		if (type == LAYOUT_LEFTRIGHT &&
+		    w->sb == PANE_SCROLLBARS_ALWAYS) {
+			min1 += w->active->scrollbar_style.width +
+			    w->active->scrollbar_style.pad;
+			min2 += w->active->scrollbar_style.width +
+			    w->active->scrollbar_style.pad;
+		}
+		if (separate) {
+			/* Content size -l -> cell size; edge pane needs both gutters. */
+			if (type == LAYOUT_LEFTRIGHT)
+				edge = layout_cell_is_right(w->layout_root, lc);
+			else
+				edge = layout_cell_is_bottom(w->layout_root, lc);
+			min1++;
+			min2++;
+			if (edge)
+				min2++;
+			if (size >= 0) {
+				if (before) {
+					size++;
+					s2 = ss - size - 1;
+				} else {
+					size++;
+					if (edge)
+						size++;
+					s2 = size;
+				}
+			}
+		}
+	}
+	if (s2 < min2)
+		s2 = min2;
+	else if (s2 > ss - min1 - 1)
+		s2 = ss - min1 - 1;
 	s1 = ss - 1 - s2;
 
 	*size1 = s1;
@@ -1366,7 +1539,8 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 	 * Calculate new cell sizes. size is the target size or -1 for middle
 	 * split, size1 is the size of the top/left and size2 the bottom/right.
 	 */
-	layout_split_sizes(lc, size, before, type, &size1, &size2, &saved_size);
+	layout_split_sizes(wp->window, lc, size, before, type, &size1, &size2,
+	    &saved_size);
 
 	/* Which size are we using? */
 	if (flags & SPAWN_BEFORE)
@@ -1519,65 +1693,64 @@ layout_close_pane(struct window_pane *wp)
 int
 layout_spread_cell(struct window *w, struct layout_cell *parent)
 {
-	struct layout_cell	*lc, *root = w->layout_root;
-	u_int			 number, each, size, this, remainder;
-	int			 change, changed, status;
+	struct layout_cell	*lc;
+	u_int			 number, size, this, remainder, total_min, min;
+	u_int			 available, extra;
+	int			 change, changed;
+	enum layout_type	 type = parent->type;
 
 	number = 0;
-	TAILQ_FOREACH (lc, &parent->cells, entry)
+	TAILQ_FOREACH (lc, &parent->cells, entry) {
 		if (layout_cell_is_tiled(lc))
 			number++;
+	}
 	if (number <= 1)
 		return (0);
-	status = window_get_pane_status(w);
 
-	if (parent->type == LAYOUT_LEFTRIGHT)
+	if (type == LAYOUT_LEFTRIGHT)
 		size = parent->g.sx;
-	else if (parent->type == LAYOUT_TOPBOTTOM) {
-		if (layout_add_horizontal_border(root, parent, status))
-			size = parent->g.sy - 1;
-		else
-			size = parent->g.sy;
-	} else
+	else if (type == LAYOUT_TOPBOTTOM)
+		size = parent->g.sy;
+	else
 		return (0);
 	if (size < number - 1)
 		return (0);
-	each = (size - (number - 1)) / number;
-	if (each == 0)
-		return (0);
 
 	/*
-	 * Remaining space after assigning that which can be evenly
-	 * distributed.
+	 * Keep every cell at layout minimum (includes separate gutters), then
+	 * share leftover space evenly.
 	 */
-	remainder = size - (number * (each + 1)) + 1;
+	available = size - (number - 1);
+	total_min = 0;
+	TAILQ_FOREACH (lc, &parent->cells, entry) {
+		if (!layout_cell_is_tiled(lc))
+			continue;
+		total_min += layout_pane_minimum_size(w, lc, type);
+	}
+	if (available < total_min)
+		return (0);
+	extra = available - total_min;
+	remainder = extra % number;
+	extra = extra / number;
 
 	changed = 0;
 	TAILQ_FOREACH (lc, &parent->cells, entry) {
 		if (!layout_cell_is_tiled(lc))
 			continue;
-		change = 0;
-		if (parent->type == LAYOUT_LEFTRIGHT) {
-			change = each - (int)lc->g.sx;
-			if (remainder > 0) {
-				change++;
-				remainder--;
-			}
-			layout_resize_adjust(w, lc, LAYOUT_LEFTRIGHT, change);
-		} else if (parent->type == LAYOUT_TOPBOTTOM) {
-			if (layout_add_horizontal_border(root, lc, status))
-				this = each + 1;
-			else
-				this = each;
-			if (remainder > 0) {
-				this++;
-				remainder--;
-			}
-			change = this - (int)lc->g.sy;
-			layout_resize_adjust(w, lc, LAYOUT_TOPBOTTOM, change);
+		min = layout_pane_minimum_size(w, lc, type);
+		this = min + extra;
+		if (remainder > 0) {
+			this++;
+			remainder--;
 		}
-		if (change != 0)
+		if (type == LAYOUT_LEFTRIGHT)
+			change = this - (int)lc->g.sx;
+		else
+			change = this - (int)lc->g.sy;
+		if (change != 0) {
+			layout_resize_adjust(w, lc, type, change);
 			changed = 1;
+		}
 	}
 	return (changed);
 }
@@ -1995,7 +2168,7 @@ layout_insert_tile(struct window *w, struct layout_cell *lc)
 		lctiled = layout_cell_get_first_tiled(lcneighbour);
 		if (!layout_split_check_space(lctiled->wp, lcneighbour, type))
 			return (-1);
-		layout_split_sizes(lcneighbour, -1, 0, type, &size1, &size2,
+		layout_split_sizes(w, lcneighbour, -1, 0, type, &size1, &size2,
 		    &saved_size);
 		layout_resize_set_size(w, lc, type, size1);
 		layout_resize_set_size(w, lcneighbour, type, size2);
