@@ -1179,6 +1179,7 @@ struct menu {
 	struct menu_item	*items;
 	u_int			 count;
 	u_int			 width;
+	u_int			 item_width;
 };
 typedef void (*menu_choice_cb)(struct menu *, u_int, key_code, void *);
 
@@ -4164,6 +4165,7 @@ void		 menu_add_item(struct menu *, const struct menu_item *,
 		    struct cmdq_item *, struct client *,
 		    struct cmd_find_state *);
 void		 menu_free(struct menu *);
+void		 menu_dimensions(struct menu *, enum box_lines, u_int *, u_int *);
 int		 menu_display(struct menu *, int, int, struct cmdq_item *,
 		    u_int, u_int, struct client *, enum box_lines, const char *,
 		    const char *, const char *, struct cmd_find_state *,
