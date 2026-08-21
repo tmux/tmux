@@ -6188,7 +6188,9 @@ window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
 			grid_get_cell(gd, i, sy, &gc);
 			if (gc.flags & GRID_FLAG_PADDING)
 				continue;
-			if (gc.flags & GRID_FLAG_TAB)
+			if (gc.flags & GRID_FLAG_IMAGE)
+				utf8_set(&ud, ' ');
+			else if (gc.flags & GRID_FLAG_TAB)
 				utf8_set(&ud, '\t');
 			else
 				utf8_copy(&ud, &gc.data);
