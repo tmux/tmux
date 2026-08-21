@@ -1461,25 +1461,26 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 		bottom = scene->sy;
 
 #ifdef ENABLE_IMAGES
+	/*
+	 * Only erase cells this pane currently owns in the scene, not its raw
+	 * geometry - a floating pane may be occluding part of this pane's
+	 * rectangle, and erasing under it would leave those cells blank with
+	 * nothing to redraw them back in.
+	 */
 	if (flags & REDRAW_PANE) {
-		int	left, right, image_y;
-
-		left = wp->xoff - (int)scene->ox;
-		if (left < 0)
-			left = 0;
-		if (left > (int)scene->sx)
-			left = scene->sx;
-		right = wp->xoff + (int)wp->sx - (int)scene->ox;
-		if (right < 0)
-			right = 0;
-		if (right > (int)scene->sx)
-			right = scene->sx;
-		if (left < right && top < bottom) {
-			image_y = top;
+		for (y = top; y < bottom; y++) {
+			line = &scene->lines[y];
 			if (dctx->flags & REDRAW_STATUS_TOP)
-				image_y += dctx->status_lines;
-			image_redraw_start(&scene->c->tty, left, image_y,
-			    right - left, bottom - top);
+				cy = dctx->status_lines + y;
+			else
+				cy = y;
+			spans = &line->spans[REDRAW_SPAN_PANE];
+			TAILQ_FOREACH(span, spans, entry) {
+				if (span->data.p.wp == wp) {
+					image_redraw_start(&scene->c->tty,
+					    span->x, cy, span->width, 1);
+				}
+			}
 		}
 	}
 #endif
