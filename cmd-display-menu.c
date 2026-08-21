@@ -402,7 +402,6 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*value, *style = args_get(args, 's');
 	const char		*border_style = args_get(args, 'S');
 	char			*cause = NULL, *title = NULL;
-	int			 flags = SPAWN_FLOATING|SPAWN_MODAL;
 	enum pane_lines		 lines = PANE_LINES_SINGLE;
 	u_int			 px, py, sx, sy, count = args_count(args);
 	struct args_value	*av;
@@ -468,10 +467,10 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		lg.yoff++;
 	}
 
-	window_push_modal_zoom(w);
+	window_push_zoom(w, 0, 1);
 	lc = layout_floating_pane(w, wp, &lg);
 	if (lc == NULL) {
-		window_pop_modal_zoom(w);
+		window_pop_zoom(w);
 		goto out;
 	}
 
@@ -483,7 +482,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	sc.lc = lc;
 	sc.idx = -1;
 	sc.cwd = args_get(args, 'd');
-	sc.flags = flags;
+	sc.flags = (SPAWN_FLOATING|SPAWN_MODAL|SPAWN_FLOATOVERZOOM);
 
 	if (count != 1 || *args_string(args, 0) != '\0')
 		args_to_vector(args, &sc.argc, &sc.argv);
@@ -499,9 +498,10 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		cmdq_error(item, "create pane failed: %s", cause);
 		free(cause);
 		cause = NULL;
-		window_pop_modal_zoom(w);
+		window_pop_zoom(w);
 		goto fail;
 	}
+	window_pop_zoom(w);
 	new_wp->flags |= PANE_CAPTUREALLKEYS;
 
 	options_set_number(new_wp->options, "pane-border-lines", lines);

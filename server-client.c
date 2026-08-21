@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.504 2026/08/19 10:56:10 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.505 2026/08/20 09:19:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -683,8 +683,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 	} else {
 		/* Try the pane borders. */
 		TAILQ_FOREACH(fwp, &w->panes, entry) {
-			if ((w->flags & WINDOW_ZOOMED) &&
-			    (~fwp->flags & PANE_ZOOMED))
+			if (!window_pane_is_visible(fwp))
 				continue;
 			if (window_pane_is_floating(fwp) &&
 			    window_pane_get_pane_lines(fwp) == PANE_LINES_NONE)

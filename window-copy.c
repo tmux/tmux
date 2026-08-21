@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.425 2026/08/05 12:23:25 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.426 2026/08/19 19:55:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -4093,7 +4093,7 @@ window_copy_search_lr_regex(struct grid *gd, u_int *ppx, u_int *psx, u_int py,
 	endline = gd->hsize + gd->sy - 1;
 	pywrap = py;
 	while (buf != NULL &&
-	    pywrap <= endline &&
+	    pywrap < endline &&
 	    len < WINDOW_COPY_SEARCH_MAX_LINE) {
 		gl = grid_get_line(gd, pywrap);
 		if (~gl->flags & GRID_LINE_WRAPPED)
@@ -4152,7 +4152,7 @@ window_copy_search_rl_regex(struct grid *gd, u_int *ppx, u_int *psx, u_int py,
 	endline = gd->hsize + gd->sy - 1;
 	pywrap = py;
 	while (buf != NULL &&
-	    pywrap <= endline &&
+	    pywrap < endline &&
 	    len < WINDOW_COPY_SEARCH_MAX_LINE) {
 		gl = grid_get_line(gd, pywrap);
 		if (~gl->flags & GRID_LINE_WRAPPED)
@@ -4353,6 +4353,7 @@ window_copy_cstrtocellpos(struct grid *gd, u_int ncells, u_int *ppx, u_int *ppy,
 				break;
 		}
 	}
+	ncells = cell;
 
 	/* Locate starting cell. */
 	cell = 0;
