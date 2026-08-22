@@ -713,6 +713,7 @@ int
 window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 {
 	struct window_pane *lastwp;
+	int		    was_zoomed;
 
 	log_debug("%s: pane %%%u", __func__, wp->id);
 
@@ -720,7 +721,8 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 		return (0);
 	if (w->modal != NULL && wp != w->modal)
 		return (0);
-	if (w->flags & WINDOW_ZOOMED)
+	was_zoomed = (w->flags & WINDOW_ZOOMED) != 0;
+	if (was_zoomed)
 		window_unzoom(w, 1);
 	lastwp = w->active;
 
@@ -737,7 +739,19 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 	}
 
 	tty_update_window_offset(w);
-	server_redraw_window(w);
+
+	/*
+	 * Unzooming changes every pane's geometry and needs a full window
+	 * redraw. Otherwise, only the previous and new active pane's border
+	 * and status appearance changed, so avoid redrawing unaffected pane
+	 * content.
+	 */
+	if (was_zoomed)
+		server_redraw_window(w);
+	else {
+		server_redraw_window_borders(w);
+		server_status_window(w);
+	}
 
 	if (notify)
 		window_fire_pane_changed(w, w->active, lastwp);
