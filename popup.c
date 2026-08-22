@@ -320,11 +320,42 @@ popup_resize_cb(__unused struct client *c, void *data)
 	}
 }
 
+/*
+ * Report damage on the current window for a popup's rectangle, given in raw
+ * client/tty coordinates - translated into window coordinates by removing
+ * any top status lines and adding the client's pan/window offset, the same
+ * way mouse coordinates are translated elsewhere (e.g. cmd-join-pane.c,
+ * cmd-split-window.c). redraw_damage_window() safely clips or drops
+ * anything that ends up out of the window's own bounds (a popup can cover
+ * the status line, which has no corresponding window content), so this
+ * does not need to be exact for those edge cases.
+ */
+static void
+popup_damage(struct client *c, u_int px, u_int py, u_int sx, u_int sy)
+{
+	struct window	*w;
+	u_int		 ox, oy, osx, osy, wy;
+
+	if (c->session == NULL)
+		return;
+	w = c->session->curw->window;
+
+	tty_window_offset(&c->tty, &ox, &oy, &osx, &osy);
+	if (status_at_line(c) == 0 && py >= status_line_size(c))
+		wy = py - status_line_size(c);
+	else
+		wy = py;
+
+	redraw_damage_window(w, px + ox, wy + oy, sx, sy);
+}
+
 static void
 popup_handle_drag(struct client *c, struct popup_data *pd,
     struct mouse_event *m)
 {
 	u_int	px, py;
+	u_int	old_px = pd->px, old_py = pd->py;
+	u_int	old_sx = pd->sx, old_sy = pd->sy;
 
 	if (!MOUSE_DRAG(m->b))
 		pd->dragging = OFF;
@@ -347,7 +378,9 @@ popup_handle_drag(struct client *c, struct popup_data *pd,
 		pd->dy = m->y - pd->py;
 		pd->ppx = px;
 		pd->ppy = py;
-		server_redraw_client(c);
+
+		popup_damage(c, old_px, old_py, old_sx, old_sy);
+		c->flags |= CLIENT_REDRAWOVERLAY;
 	} else if (pd->dragging == SIZE) {
 		if (pd->border_lines == BOX_LINES_NONE) {
 			if (m->x < pd->px + 1)
@@ -374,7 +407,9 @@ popup_handle_drag(struct client *c, struct popup_data *pd,
 			if (pd->job != NULL)
 				job_resize(pd->job, pd->sx - 2, pd->sy - 2);
 		}
-		server_redraw_client(c);
+
+		popup_damage(c, old_px, old_py, old_sx, old_sy);
+		c->flags |= CLIENT_REDRAWOVERLAY;
 	}
 }
 
