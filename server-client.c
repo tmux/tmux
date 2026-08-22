@@ -38,7 +38,7 @@ static void	server_client_repeat_timer(int, short, void *);
 static void	server_client_click_timer(int, short, void *);
 static void	server_client_check_exit(struct client *, int);
 static void	server_client_exit_timer(int, short, void *);
-static void	server_client_check_redraw(struct client *);
+static int	server_client_check_redraw(struct client *);
 static void	server_client_check_modes(struct client *);
 static void	server_client_set_title(struct client *);
 static void	server_client_set_path(struct client *);
@@ -472,7 +472,25 @@ server_client_set_session(struct client *c, struct session *s)
 		tty_update_client_offset(c);
 		status_timer_start(c);
 		server_client_fire_session_changed(c, old);
-		server_redraw_client(c);
+
+		/*
+		 * A full redraw is only needed if the client's session or
+		 * current window actually changed - not if this merely
+		 * confirmed the client is still looking at the same window
+		 * (as happens when switch-client -t targets a pane in the
+		 * already-current window, e.g. clicking a pane name in a
+		 * second #{P:} status line: the default MouseDown1Status
+		 * binding resolves that click to switch-client -t=, which
+		 * reaches here regardless of whether anything besides the
+		 * active pane changed). Redrawing unconditionally here
+		 * forced every image in the window to be erased and
+		 * retransmitted for what should have been just an
+		 * active-pane change, already handled narrowly by
+		 * window_set_active_pane() and window_redraw_active_switch()
+		 * before this is reached.
+		 */
+		if (old == NULL || old != s || old->curw != s->curw)
+			server_redraw_client(c);
 	}
 
 	server_check_unattached();
@@ -1444,8 +1462,21 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 		/*
 		 * Mouse drag is in progress, so fire the callback (now that
 		 * the mouse event is valid).
+		 *
+		 * Start a synchronized-output region here rather than
+		 * leaving it to whatever redraw eventually follows: a drag
+		 * callback (e.g. copy-mode's selection/scroll-to-mouse) may
+		 * write directly via the pane's fast path immediately, with
+		 * any correction (e.g. an image redraw via reported damage)
+		 * only arriving later via redraw_client_damage(), which
+		 * opens its own sync region. Since tty_sync_end() is only
+		 * called once, at the very end of this client's pass in
+		 * server_client_reset_state(), starting it here merges both
+		 * into one atomic terminal update instead of two visible
+		 * frames.
 		 */
 		if ((key & KEYC_MASK_KEY) == KEYC_DRAGGING) {
+			tty_sync_start(&c->tty);
 			c->tty.mouse_drag_update(c, m);
 			goto out;
 		}
@@ -1855,14 +1886,25 @@ server_client_loop(void)
 		server_client_check_exit(c, 0);
 		if (c->session != NULL && c->session->curw != NULL) {
 			server_client_check_modes(c);
-			server_client_check_redraw(c);
+			if (server_client_check_redraw(c))
+				c->session->curw->window->redraw_deferred = 1;
 			server_client_reset_state(c);
 		}
 	}
 
 	/*
 	 * Any windows will have been redrawn as part of clients, so clear
-	 * their flags now.
+	 * their flags now. Neither window damage nor PANE_REDRAW/
+	 * PANE_REDRAWSCROLLBAR are lossy to leave for a later pass, so only
+	 * clear them once every client actually viewing the window has
+	 * drawn (none deferred this pass, per the loop above), otherwise
+	 * leave them for the deferred redraw timer to retry. Checking
+	 * EVBUFFER_LENGTH(tty->out) here instead would be wrong: a redraw
+	 * that was NOT deferred still just wrote fresh bytes into that same
+	 * buffer, which libevent has not flushed to the fd yet, so it would
+	 * look identical to a deferred one and nothing would ever clear.
+	 * PANE_ACTIVITY is unrelated bookkeeping (activity monitoring, not
+	 * redraw) and keeps its original unconditional-clear behaviour.
 	 */
 	RB_FOREACH(w, windows, &windows) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -1870,9 +1912,16 @@ server_client_loop(void)
 				server_client_check_pane_resize(wp);
 				server_client_check_pane_buffer(wp);
 			}
-			wp->flags &= ~(PANE_REDRAW|PANE_REDRAWSCROLLBAR|
-			    PANE_ACTIVITY);
+			wp->flags &= ~PANE_ACTIVITY;
+			if (!w->redraw_deferred)
+				wp->flags &= ~(PANE_REDRAW|
+				    PANE_REDRAWSCROLLBAR);
 		}
+
+		if (!w->redraw_deferred)
+			redraw_free_damage(w);
+		w->redraw_deferred = 0;
+
 		check_window_name(w);
 	}
 
@@ -2419,6 +2468,8 @@ server_client_any_pane_redraw(struct client *c)
 
 	if (c->flags & CLIENT_REDRAWWINDOW)
 		return (1);
+	if (!TAILQ_EMPTY(&w->damage))
+		return (1);
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (wp->flags & (PANE_REDRAW|PANE_REDRAWSCROLLBAR))
 			return (1);
@@ -2426,8 +2477,11 @@ server_client_any_pane_redraw(struct client *c)
 	return (0);
 }
 
-/* Check for client redraws. */
-static void
+/*
+ * Check for client redraws. Returns 1 if the redraw was deferred (waiting
+ * for outstanding tty output to drain) rather than actually performed.
+ */
+static int
 server_client_check_redraw(struct client *c)
 {
 	struct session		*s = c->session;
@@ -2440,7 +2494,7 @@ server_client_check_redraw(struct client *c)
 	size_t			 n;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
-		return;
+		return (0);
 	if (c->flags & CLIENT_ALLREDRAWFLAGS) {
 		log_debug("%s: redraw%s%s%s%s%s", c->name,
 		    (c->flags & CLIENT_REDRAWWINDOW) ? " window" : "",
@@ -2458,13 +2512,21 @@ server_client_check_redraw(struct client *c)
 		needed = 1;
 	if (!needed) {
 		c->flags &= ~CLIENT_STATUSFORCE;
-		return;
+		return (0);
 	}
 
 	/*
 	 * If there is outstanding data, defer the redraw until it has been
 	 * consumed. We can just add a timer to get out of the event loop and
-	 * end up back here.
+	 * end up back here. Unlike before, this does not need to escalate to
+	 * a full CLIENT_REDRAWWINDOW redraw to avoid losing whatever is
+	 * pending: server_client_loop() only clears PANE_REDRAW,
+	 * PANE_REDRAWSCROLLBAR and window damage once a pass actually drew
+	 * them (see the redraw_deferred handling there), so they are simply
+	 * left in place and retried in their normal, narrowly-scoped form
+	 * next time - escalating here used to mean any deferred redraw
+	 * while dragging or resizing a floating pane over an image blanked
+	 * and retransmitted every image in the window.
 	 */
 	n = EVBUFFER_LENGTH(tty->out);
 	if (n != 0 || (tty->flags & TTY_BLOCK)) {
@@ -2478,9 +2540,7 @@ server_client_check_redraw(struct client *c)
 			log_debug("redraw timer started");
 			evtimer_add(&ev, &tv);
 		}
-		if (server_client_any_pane_redraw(c))
-			c->flags |= CLIENT_REDRAWWINDOW;
-		return;
+		return (1);
 	}
 
 	/* Unfreeze the tty and turn off the cursor. */
@@ -2504,6 +2564,7 @@ server_client_check_redraw(struct client *c)
 				redraw_pane_scrollbar(c, wp);
 			}
 		}
+		redraw_client_damage(c);
 	}
 
 	/*
@@ -2531,6 +2592,7 @@ server_client_check_redraw(struct client *c)
 	c->flags &= ~(CLIENT_ALLREDRAWFLAGS|CLIENT_STATUSFORCE);
 	c->redraw = EVBUFFER_LENGTH(tty->out);
 	log_debug("%s: redraw added %zu bytes", c->name, c->redraw);
+	return (0);
 }
 
 /* Set client title. */

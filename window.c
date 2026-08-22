@@ -415,6 +415,7 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 	TAILQ_INIT(&w->panes);
 	TAILQ_INIT(&w->z_index);
 	TAILQ_INIT(&w->last_panes);
+	TAILQ_INIT(&w->damage);
 	w->active = NULL;
 
 	w->lastlayout = -1;
@@ -460,6 +461,7 @@ window_destroy(struct window *w)
 
 	menu_destroy(w);
 	window_destroy_panes(w);
+	redraw_free_damage(w);
 
 	if (event_initialized(&w->name_event))
 		evtimer_del(&w->name_event);
