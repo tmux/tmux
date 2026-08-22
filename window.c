@@ -1584,6 +1584,10 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 
 	log_debug("%s: %%%u resize %ux%u", __func__, wp->id, sx, sy);
 	screen_resize(&wp->base, sx, sy, wp->base.saved_grid == NULL);
+#ifdef ENABLE_IMAGES
+	if (sx > r->osx)
+		image_grid_resize_width(wp->base.grid, sx);
+#endif
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL && wme->mode->resize != NULL)
