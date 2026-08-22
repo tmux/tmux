@@ -2821,3 +2821,117 @@ window_pane_is_floating(struct window_pane *wp)
 		return (0);
 	return (1);
 }
+
+/* Does a pane's current rectangle intersect a window-coordinate rectangle? */
+int
+window_pane_intersects(struct window_pane *wp, u_int x, u_int y, u_int sx,
+    u_int sy)
+{
+	int	ix = (int)x, iy = (int)y, isx = (int)sx, isy = (int)sy;
+
+	return (wp->xoff < ix + isx && wp->xoff + (int)wp->sx > ix &&
+	    wp->yoff < iy + isy && wp->yoff + (int)wp->sy > iy);
+}
+
+/*
+ * Report damage for a floating pane's rectangle, grown by one cell on every
+ * side - a floating pane draws its border frame at xoff-1/yoff-1 through
+ * xoff+sx/yoff+sy (see the "floating" case in screen-redraw.c), one cell
+ * outside its own content area, so damage for just the content area leaves
+ * the frame's previous position undrawn as the pane moves. If a scrollbar
+ * is reserved, its side of the frame is pushed out further still by its
+ * width and padding (also matched in screen-redraw.c), so grow that side
+ * to match.
+ */
+static void
+window_pane_damage_floating(struct window *w, struct window_pane *wp,
+    int xoff, int yoff, int sx, int sy)
+{
+	int	x0, x1, y0, y1, sb_left = 0, sb_right = 0;
+
+	if (window_pane_scrollbar_reserve(wp)) {
+		if (w->sb_pos == PANE_SCROLLBARS_LEFT)
+			sb_left = wp->scrollbar_style.width +
+			    wp->scrollbar_style.pad;
+		else
+			sb_right = wp->scrollbar_style.width +
+			    wp->scrollbar_style.pad;
+	}
+
+	x0 = xoff - 1 - sb_left;
+	x1 = xoff + sx + sb_right;
+	y0 = yoff - 1;
+	y1 = yoff + sy;
+	if (x0 < 0)
+		x0 = 0;
+	if (y0 < 0)
+		y0 = 0;
+	if (x1 < x0 || y1 < y0)
+		return;
+	redraw_damage_window(w, (u_int)x0, (u_int)y0, (u_int)(x1 - x0) + 1,
+	    (u_int)(y1 - y0) + 1);
+}
+
+/*
+ * Whether a pane's scrollbar strip - not its whole body - intersects a
+ * window-coordinate rectangle. A reserved scrollbar occupies a strip of
+ * scrollbar_style.width+pad columns just outside the pane's own content
+ * area (see the scrollbar-reserve case in layout_fix_panes(), layout.c),
+ * on whichever side w->sb_pos points to.
+ */
+static int
+window_pane_scrollbar_intersects(struct window *w, struct window_pane *loop,
+    u_int x, u_int y, u_int sx, u_int sy)
+{
+	int	sb_x, sb_w, ix = (int)x, iy = (int)y, isx = (int)sx;
+	int	isy = (int)sy;
+
+	if (!window_pane_scrollbar_reserve(loop))
+		return (0);
+	sb_w = loop->scrollbar_style.width + loop->scrollbar_style.pad;
+	if (w->sb_pos == PANE_SCROLLBARS_LEFT)
+		sb_x = (int)loop->xoff - sb_w;
+	else
+		sb_x = (int)loop->xoff + (int)loop->sx;
+
+	return (sb_x < ix + isx && sb_x + sb_w > ix &&
+	    (int)loop->yoff < iy + isy && (int)loop->yoff + (int)loop->sy > iy);
+}
+
+/*
+ * Report damage for only a floating pane's old and new area, rather than
+ * the whole window - a floating pane move or resize only disturbs what it
+ * was covering and what it now covers. Scrollbars aren't covered by the
+ * damage system, so a pane whose *scrollbar strip* (not its whole body)
+ * intersects either area is still flagged directly for a scrollbar redraw.
+ * Checking the whole pane body here, rather than just its narrow scrollbar
+ * strip, meant merely dragging over a pane's ordinary content set
+ * PANE_REDRAWSCROLLBAR on every such pane on every motion event, triggering
+ * a needless scrollbar redraw (and the redraw pass it forces) each time
+ * even though the scrollbar itself never moved.
+ *
+ * Shared by every command that drags a floating pane around by the mouse:
+ * resize-pane's own border drag (cmd-resize-pane.c), move-pane -M's
+ * alternate Alt-drag (cmd-join-pane.c), and split-window/new-pane's
+ * interactive resize of a newly-created floating pane (cmd-split-window.c).
+ */
+void
+window_pane_redraw_floating(struct window *w, struct window_pane *wp,
+    int old_xoff, int old_yoff, int old_sx, int old_sy)
+{
+	struct window_pane	*loop;
+
+	window_pane_damage_floating(w, wp, old_xoff, old_yoff, old_sx,
+	    old_sy);
+	window_pane_damage_floating(w, wp, wp->xoff, wp->yoff, wp->sx,
+	    wp->sy);
+
+	TAILQ_FOREACH(loop, &w->panes, entry) {
+		if (window_pane_scrollbar_intersects(w, loop,
+		    (u_int)old_xoff, (u_int)old_yoff, (u_int)old_sx,
+		    (u_int)old_sy) ||
+		    window_pane_scrollbar_intersects(w, loop, wp->xoff,
+		    wp->yoff, wp->sx, wp->sy))
+			loop->flags |= PANE_REDRAWSCROLLBAR;
+	}
+}
