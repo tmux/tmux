@@ -120,14 +120,23 @@ screen_write_set_cursor(struct screen_write_ctx *ctx, int cx, int cy)
 		evtimer_add(&w->offset_timer, &tv);
 }
 
-/* Do a full redraw. */
+/*
+ * Called when a write could not be applied directly to the terminal and
+ * needs a redraw instead. Report damage for just the row the write was
+ * targeting rather than the whole pane - ttyctx->ocy is the cursor row
+ * within the pane's own screen at the point the write was issued, and
+ * wp->yoff is already adjusted past any top pane-border-status row, so
+ * wp->yoff + ocy is the correct window-coordinate row.
+ */
 static void
 screen_write_redraw_cb(const struct tty_ctx *ttyctx)
 {
 	struct window_pane	*wp = ttyctx->arg;
 
-	if (wp != NULL)
-		wp->flags |= PANE_REDRAW;
+	if (wp == NULL)
+		return;
+	redraw_damage_window(wp->window, wp->xoff, wp->yoff + ttyctx->ocy,
+	    wp->sx, 1);
 }
 
 /* Update context for client. */

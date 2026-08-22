@@ -68,6 +68,7 @@ struct options_array_item;
 struct options_entry;
 struct prompt;
 struct window_pane_prompt;
+struct redraw_damage;
 struct redraw_scene;
 struct redraw_span;
 struct screen_write_citem;
@@ -1422,6 +1423,7 @@ struct window_pane {
 TAILQ_HEAD(window_panes, window_pane);
 TAILQ_HEAD(window_panes_zindex, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
+TAILQ_HEAD(redraw_damages, redraw_damage);
 
 /* Window structure. */
 struct window {
@@ -1463,6 +1465,10 @@ struct window {
 	u_int			 new_ypixel;
 
 	uint64_t		 redraw_scene_generation;
+
+	struct redraw_damages	 damage;
+	u_int			 damage_count;
+	int			 redraw_deferred;
 
 	struct menu_data	*menu;
 	u_int			 menu_last_px;
@@ -3650,6 +3656,9 @@ void	 redraw_pane_scrollbar(struct client *, struct window_pane *);
 void	 redraw_free_scene(struct redraw_scene *);
 void	 redraw_invalidate_scene(struct window *);
 void	 redraw_invalidate_all_scenes(void);
+void	 redraw_damage_window(struct window *, u_int, u_int, u_int, u_int);
+void	 redraw_free_damage(struct window *);
+void	 redraw_client_damage(struct client *);
 int	 redraw_get_status_border_cell_type(struct redraw_span **, u_int);
 
 /* screen.c */
