@@ -1476,6 +1476,112 @@ image_cell_has_alpha(struct image *im, u_int x, u_int y)
 	return (0);
 }
 
+/* Add spans for one row of a placement between two source columns. */
+static void
+image_extend_row(struct image_line *line, struct image_placement *placement,
+    u_int cx, u_int source_y, u_int old_end, u_int new_end)
+{
+	struct image	*im = placement->image;
+	u_int		 x, run;
+
+	for (x = old_end; x < new_end; x += run) {
+		if (!image_cell_has_alpha(im, x, source_y)) {
+			run = 1;
+			continue;
+		}
+		for (run = 1; x + run < new_end; run++) {
+			if (!image_cell_has_alpha(im, x + run, source_y))
+				break;
+		}
+		image_span_add(line, placement, cx + x, run, x, source_y);
+	}
+}
+
+/*
+ * Extend existing image placements to reveal more of their original width
+ * after a pane has grown wider.
+ *
+ * image_write() (below) only creates spans for as much of an image as fit
+ * in the pane at the time it was placed - the rest of the image's pixels
+ * are still retained (struct image is immutable and kept for as long as
+ * any placement references it), but nothing ever revisits that clipping
+ * decision, so a pane that was too narrow when an image was displayed
+ * stays clipped forever, even after growing wide enough to fit the rest.
+ * Unlike height, which recovers via ordinary scrollback (image_write()
+ * scrolls rather than clips when a placement is taller than the pane),
+ * there is no equivalent "scroll right" - this is the only way the extra
+ * width is ever recovered.
+ *
+ * For every grid row with image spans, this finds each distinct placement
+ * referenced there, works out how far its spans already reach (source_x +
+ * width) and its origin column (a span's x - source_x, which is the same
+ * for every span of the same placement), and adds spans for any newly
+ * revealed columns up to whichever is smaller: the image's own full width
+ * or the new pane width.
+ */
+void
+image_grid_resize_width(struct grid *gd, u_int new_sx)
+{
+	struct grid_line		*gl;
+	struct image_line		*line;
+	struct image_span		*span;
+	struct image_placement		*placement;
+	struct image_placement		*seen[64];
+	u_int				 nseen, i, row, cx, end_x, avail;
+	u_int				 source_y;
+	int				 found;
+
+	if (gd->images == NULL)
+		return;
+	for (row = 0; row < gd->hsize + gd->sy; row++) {
+		gl = &gd->linedata[row];
+		line = gl->images;
+		if (line == NULL)
+			continue;
+
+		nseen = 0;
+		TAILQ_FOREACH(span, &line->spans, line_entry) {
+			found = 0;
+			for (i = 0; i < nseen; i++) {
+				if (seen[i] == span->placement) {
+					found = 1;
+					break;
+				}
+			}
+			if (!found && nseen < nitems(seen))
+				seen[nseen++] = span->placement;
+		}
+
+		for (i = 0; i < nseen; i++) {
+			placement = seen[i];
+
+			cx = end_x = source_y = 0;
+			found = 0;
+			TAILQ_FOREACH(span, &line->spans, line_entry) {
+				if (span->placement != placement)
+					continue;
+				if (!found) {
+					cx = span->x - span->source_x;
+					source_y = span->source_y;
+					found = 1;
+				}
+				if (span->source_x + span->sx > end_x)
+					end_x = span->source_x + span->sx;
+			}
+			if (!found || cx >= new_sx)
+				continue;
+
+			avail = new_sx - cx;
+			if (avail > placement->image->sx)
+				avail = placement->image->sx;
+			if (avail <= end_x)
+				continue;
+			image_extend_row(line, placement, cx, source_y, end_x,
+			    avail);
+		}
+	}
+}
+
 /* Place an image at the cursor using the supplied input semantics. */
 static void
 image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
