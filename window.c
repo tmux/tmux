@@ -415,6 +415,7 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 	TAILQ_INIT(&w->panes);
 	TAILQ_INIT(&w->z_index);
 	TAILQ_INIT(&w->last_panes);
+	TAILQ_INIT(&w->damage);
 	w->active = NULL;
 
 	w->lastlayout = -1;
@@ -460,6 +461,7 @@ window_destroy(struct window *w)
 
 	menu_destroy(w);
 	window_destroy_panes(w);
+	redraw_free_damage(w);
 
 	if (event_initialized(&w->name_event))
 		evtimer_del(&w->name_event);
@@ -1652,6 +1654,10 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 
 	log_debug("%s: %%%u resize %ux%u", __func__, wp->id, sx, sy);
 	screen_resize(&wp->base, sx, sy, wp->base.saved_grid == NULL);
+#ifdef ENABLE_IMAGES
+	if (sx > r->osx)
+		image_grid_resize_width(wp->base.grid, sx);
+#endif
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL && wme->mode->resize != NULL)

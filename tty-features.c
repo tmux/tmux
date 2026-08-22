@@ -224,9 +224,11 @@ static const struct tty_feature tty_feature_strikethrough = {
 	0
 };
 
+#define TTY_FEATURE_SYNC "Sync=\\E[?2026%?%p1%{1}%-%tl%eh%;"
+
 /* Terminal supports synchronized updates. */
 static const char *const tty_feature_sync_capabilities[] = {
-	"Sync=\\E[?2026%?%p1%{1}%-%tl%eh%;",
+	TTY_FEATURE_SYNC,
 	NULL
 };
 static const struct tty_feature tty_feature_sync = {
@@ -357,6 +359,18 @@ static const struct tty_feature tty_feature_sixel = {
 	TERM_SIXEL
 };
 
+/* Terminal has Kitty graphics protocol Unicode placeholder capability. */
+static const char *const tty_feature_kitty_capabilities[] = {
+	"Kty",
+	TTY_FEATURE_SYNC,
+	NULL
+};
+static const struct tty_feature tty_feature_kitty = {
+	"kitty",
+	tty_feature_kitty_capabilities,
+	TERM_KITTY
+};
+
 /* Terminal supports the OSC 9;4 progress bar. */
 static const char *const tty_feature_progressbar_capabilities[] = {
 	"Spb=\\E]9;4;%p1%d;%p2%d\\E\\\\",
@@ -379,6 +393,7 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_extkeys,
 	&tty_feature_focus,
 	&tty_feature_ignorefkeys,
+	&tty_feature_kitty,
 	&tty_feature_margins,
 	&tty_feature_mouse,
 	&tty_feature_osc7,
@@ -609,6 +624,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "extkeys,"
 			      "focus,"
 		  	      "hyperlinks,"
+			      "sixel,"
 			      "usstyle"
 		},
 		{ .name = "ghostty",
@@ -622,7 +638,20 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "osc7,"
 			      "sync,"
 			      "usstyle,"
-			      "progressbar"
+			      "progressbar,"
+			      "kitty"
+		},
+		{ .name = "kitty",
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
+			      "ccolour,"
+			      "cstyle,"
+			      "extkeys,"
+			      "focus,"
+			      "hyperlinks,"
+			      "osc7,"
+			      "sync,"
+			      "usstyle,"
+			      "kitty"
 		},
 		{ .name = "Rio",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
