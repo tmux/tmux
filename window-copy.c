@@ -73,6 +73,10 @@ static void	window_copy_write_line(struct window_mode_entry *,
 		    struct screen_write_ctx *, u_int);
 static void	window_copy_write_lines(struct window_mode_entry *,
 		    struct screen_write_ctx *, u_int, u_int);
+#ifdef ENABLE_IMAGES
+static void	window_copy_update_image_refresh(struct window_copy_mode_data *);
+static int	window_copy_visible_has_images(struct window_copy_mode_data *);
+#endif
 static char    *window_copy_match_at_cursor(struct window_copy_mode_data *);
 static void	window_copy_scroll_to(struct window_mode_entry *, u_int, u_int,
 		    int);
@@ -278,6 +282,10 @@ struct window_copy_mode_data {
 	int		 viewmode;	/* view mode entered */
 
 	u_int		 oy;		/* number of lines scrolled up */
+
+	u_int		 image_base;	/* hsize - oy images were last drawn for */
+	int		 image_base_set;
+	int		 image_refresh;	/* current redraw needs image refresh */
 
 	u_int		 selx;		/* beginning of selection */
 	u_int		 sely;
@@ -636,6 +644,9 @@ window_copy_init(struct window_mode_entry *wme,
 	data->my = screen_hsize(data->backing) + data->cy - data->oy;
 	data->showmark = 0;
 
+#ifdef ENABLE_IMAGES
+	window_copy_update_image_refresh(data);
+#endif
 	screen_write_start(&ctx, &data->screen);
 	for (i = 0; i < screen_size_y(&data->screen); i++)
 		window_copy_write_line(wme, &ctx, i);
@@ -1197,6 +1208,9 @@ window_copy_size_changed(struct window_mode_entry *wme)
 	window_copy_clear_selection(wme);
 	window_copy_clear_marks(wme);
 
+#ifdef ENABLE_IMAGES
+	window_copy_update_image_refresh(data);
+#endif
 	screen_write_start(&ctx, s);
 	window_copy_write_lines(wme, &ctx, 0, screen_size_y(s));
 	screen_write_stop(&ctx);
@@ -5160,6 +5174,34 @@ window_copy_write_one(struct window_mode_entry *wme,
 	for (fx = 0; fx < nx; fx++) {
 		grid_get_cell(gd, fx, fy, &gc);
 		if (fx + gc.data.width <= nx) {
+#ifdef ENABLE_IMAGES
+			/*
+			 * Write image-covered cells directly into the grid,
+			 * skipping both window_copy_update_style() (so a
+			 * selection, current-line or search-mark highlight
+			 * never sweeps visibly over the image before it is
+			 * recomposited separately - see the
+			 * image_redraw_area() call below) and
+			 * screen_write_cell(), whose built-in
+			 * screen_write_image_damage() call (screen-write.c)
+			 * fires on every write regardless of whether
+			 * anything actually changed, which would needlessly
+			 * re-damage - and so retransmit - the image on every
+			 * redraw. The cell must still land in the grid as
+			 * normal: a non-graphical client's ASCII fallback for
+			 * the image is an ordinary character here, not
+			 * something recomposited separately, and depends on
+			 * this write the same as any other cell.
+			 */
+			if (image_grid_check_area(gd, fx, fy, gc.data.width,
+			    1)) {
+				grid_view_set_cell(ctx->s->grid, px + fx, py,
+				    &gc);
+				screen_write_cursormove(ctx,
+				    px + fx + gc.data.width, py, 0);
+				continue;
+			}
+#endif
 			window_copy_update_style(wme, fx, fy, &gc, mgc, cgc,
 			    mkgc, clgc);
 			if (gc.flags & GRID_FLAG_PADDING) {
@@ -5409,11 +5451,26 @@ window_copy_write_line(struct window_mode_entry *wme,
 	    content_sx, &mgc, &cgc, &mkgc, &clgc);
 
 #ifdef ENABLE_IMAGES
-	/* Copy the backing line's image layers separately from its text cells. */
+	/*
+	 * Copy the backing line's image layers separately from its text
+	 * cells. This is not implied by the text cells just written above:
+	 * those go via the pane's normal (frequently fast, direct-write)
+	 * path, which knows nothing about image content.
+	 *
+	 * Only report it as needing a redraw when the view has actually
+	 * moved (data->image_refresh, set once per window_copy_redraw_lines
+	 * call) - text writes never touch image-covered cells (see
+	 * window_copy_write_one), so if the view is unmoved this row's
+	 * images are already exactly as they should be and redrawing them
+	 * anyway just flashes the image on every unrelated redraw (e.g.
+	 * every step of a selection drag) for no visible benefit.
+	 */
 	image_grid_free_line(s->grid,
 	    &s->grid->linedata[s->grid->hsize + py]);
 	image_grid_copy_area(s->grid, width, s->grid->hsize + py,
 	    data->backing->grid, 0, hsize - data->oy + py, content_sx, 1);
+	if (data->image_refresh)
+		image_redraw_area(ctx, width, py, content_sx, 1);
 #endif
 
 	if (py == 0 && s->rupper < s->rlower && !data->hide_position) {
@@ -5476,6 +5533,55 @@ window_copy_redraw_selection(struct window_mode_entry *wme, u_int old_y)
 	window_copy_redraw_lines(wme, start, end - start + 1);
 }
 
+#ifdef ENABLE_IMAGES
+/*
+ * Only rows whose underlying history position has moved since the last
+ * call need their images recomposited - most redraws are just a selection
+ * or cursor-line style change with the view otherwise unmoved, and that
+ * never touches image-covered cells (see window_copy_write_one()), so
+ * redrawing images for it is needless: on a fast drag it is visible as the
+ * image briefly flashing on every step even though nothing about it
+ * actually changed.
+ *
+ * Every place that calls window_copy_write_line()/window_copy_write_lines()
+ * must call this first - it is not implied by them, since some (the
+ * initial full-screen draw on entering copy mode, window_copy_scroll_up(),
+ * window_copy_scroll_down()) write directly rather than going through
+ * window_copy_redraw_lines().
+ */
+static void
+window_copy_update_image_refresh(struct window_copy_mode_data *data)
+{
+	u_int	base;
+
+	base = screen_hsize(data->backing) - data->oy;
+	data->image_refresh = !data->image_base_set || base != data->image_base;
+	data->image_base = base;
+	data->image_base_set = 1;
+}
+
+/*
+ * Whether any part of the currently visible backing range carries image
+ * data. A terminal's line insert/delete only shifts character cells - the
+ * pixels of a sixel or Kitty image already on screen stay exactly where
+ * they were sent, so a scroll that uses that fast path (see
+ * window_copy_scroll_up()/window_copy_scroll_down()) leaves stale or
+ * missing image content for every row except the single new one it
+ * explicitly rewrites. When this returns true, callers should fall back to
+ * a full window_copy_redraw_screen() instead, so every visible row's image
+ * is recomposited at its correct new position.
+ */
+static int
+window_copy_visible_has_images(struct window_copy_mode_data *data)
+{
+	struct grid	*gd = data->backing->grid;
+	u_int		 sy = screen_size_y(&data->screen);
+
+	return (image_grid_check_area(gd, 0, screen_hsize(data->backing) -
+	    data->oy, screen_size_x(&data->screen), sy));
+}
+#endif
+
 static void
 window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 {
@@ -5484,6 +5590,10 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx 	 ctx;
 	u_int				 i;
+
+#ifdef ENABLE_IMAGES
+	window_copy_update_image_refresh(data);
+#endif
 
 	if (window_copy_line_number_width(wme) != 0) {
 		screen_write_start(&ctx, &data->screen);
@@ -6873,6 +6983,13 @@ window_copy_scroll_up(struct window_mode_entry *wme, u_int ny)
 		window_copy_redraw_screen(wme);
 		return;
 	}
+#ifdef ENABLE_IMAGES
+	if (window_copy_visible_has_images(data)) {
+		window_copy_redraw_screen(wme);
+		return;
+	}
+	window_copy_update_image_refresh(data);
+#endif
 	if (window_copy_line_numbers_active(wme)) {
 		if (window_copy_line_number_mode(wme) !=
 		    WINDOW_COPY_LINE_NUMBERS_ABSOLUTE) {
@@ -6944,6 +7061,13 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 		window_copy_redraw_screen(wme);
 		return;
 	}
+#ifdef ENABLE_IMAGES
+	if (window_copy_visible_has_images(data)) {
+		window_copy_redraw_screen(wme);
+		return;
+	}
+	window_copy_update_image_refresh(data);
+#endif
 	if (window_copy_line_numbers_active(wme)) {
 		if (window_copy_line_number_mode(wme) !=
 		    WINDOW_COPY_LINE_NUMBERS_ABSOLUTE) {
