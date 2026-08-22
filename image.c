@@ -1304,14 +1304,29 @@ image_clear_kitty(struct screen_write_ctx *ctx, char how, u_int image_id,
 		ctx->wp->flags |= PANE_REDRAW;
 }
 
-/* Redraw image layers in a screen area. */
+/*
+ * Redraw image layers in a screen area. Reports damage for just this
+ * area (translated from screen-relative to window coordinates) rather
+ * than marking the whole pane with PANE_REDRAW - a pane can be much
+ * taller than the area actually disturbed (e.g. a small scroll region,
+ * or a single line insert/delete far from where an image sits), and the
+ * old whole-pane flag caused every image anywhere in the pane to be
+ * erased and retransmitted regardless of whether it was anywhere near
+ * the affected area.
+ */
 void
 image_redraw_area(struct screen_write_ctx *ctx, u_int px, u_int py, u_int nx,
     u_int ny)
 {
-	if (ctx->wp != NULL && image_grid_check_area(ctx->s->grid, px,
-	    ctx->s->grid->hsize + py, nx, ny))
-		ctx->wp->flags |= PANE_REDRAW;
+	struct window_pane	*wp = ctx->wp;
+
+	if (wp == NULL)
+		return;
+	if (!image_grid_check_area(ctx->s->grid, px, ctx->s->grid->hsize + py,
+	    nx, ny))
+		return;
+	redraw_damage_window(wp->window, wp->xoff + px, wp->yoff + py, nx,
+	    ny);
 }
 
 /* Redraw all image layers on a screen. */
@@ -1322,11 +1337,20 @@ image_redraw_all(struct screen_write_ctx *ctx)
 	    screen_size_y(ctx->s));
 }
 
-/* Redraw images after a scrolling operation. */
+/*
+ * Redraw images after a scrolling operation. Scoped to the current scroll
+ * region (screen->rupper..rlower), not the whole pane - a scroll only
+ * disturbs what is inside its region, and the region is very often
+ * smaller than the pane (e.g. a pager with a fixed header/footer, or
+ * $PAGER's status line).
+ */
 void
 image_redraw_scroll(struct screen_write_ctx *ctx, __unused u_int lines)
 {
-	image_redraw_all(ctx);
+	struct screen	*s = ctx->s;
+
+	image_redraw_area(ctx, 0, s->rupper, screen_size_x(s),
+	    s->rlower - s->rupper + 1);
 }
 
 /* Draw a clipped part of one image span. */
