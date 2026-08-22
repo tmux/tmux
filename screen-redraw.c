@@ -717,6 +717,22 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 			mark_bottom = 0;
 		else if (pane_status == PANE_STATUS_BOTTOM)
 			mark_top = 0;
+
+		/*
+		 * A collapsed separator is covered by pane content, so no
+		 * border is drawn along that side. The cells at either end of
+		 * it belong to other panes and must not be given a line
+		 * pointing this way, or they are drawn as a T instead of a
+		 * straight line.
+		 */
+		if (layout_pane_separator_collapsed(wp, LAYOUT_TOPBOTTOM, 1))
+			mark_top = 0;
+		if (layout_pane_separator_collapsed(wp, LAYOUT_TOPBOTTOM, 0))
+			mark_bottom = 0;
+		if (layout_pane_separator_collapsed(wp, LAYOUT_LEFTRIGHT, 1))
+			mark_left = 0;
+		if (layout_pane_separator_collapsed(wp, LAYOUT_LEFTRIGHT, 0))
+			mark_right = 0;
 	}
 
 	if (mark_top) {

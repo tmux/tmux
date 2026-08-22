@@ -55,6 +55,8 @@ static int	layout_set_size_check(struct window *, struct layout_cell *,
 		    enum layout_type, int);
 static void	layout_resize_child_cells(struct window *,
 		    struct layout_cell *);
+static int	layout_pane_grows_over_separator(struct window_pane *,
+		    enum layout_type, int);
 
 /* Initializes cell geometry to sentinel values. */
 static void
@@ -471,6 +473,25 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 				sy--;
 		}
 
+		/*
+		 * Grow over each separator this pane has collapsed. The cell
+		 * keeps its size and only the pane inside it is made larger,
+		 * so the rest of the layout - and the layout string - are the
+		 * same as they would be without the option.
+		 */
+		if (layout_pane_grows_over_separator(wp, LAYOUT_TOPBOTTOM, 1)) {
+			wp->yoff--;
+			sy++;
+		}
+		if (layout_pane_grows_over_separator(wp, LAYOUT_TOPBOTTOM, 0))
+			sy++;
+		if (layout_pane_grows_over_separator(wp, LAYOUT_LEFTRIGHT, 1)) {
+			wp->xoff--;
+			sx++;
+		}
+		if (layout_pane_grows_over_separator(wp, LAYOUT_LEFTRIGHT, 0))
+			sx++;
+
 		if (window_pane_scrollbar_reserve(wp)) {
 			sb_w = wp->scrollbar_style.width;
 			sb_pad = wp->scrollbar_style.pad;
@@ -702,6 +723,173 @@ layout_cell_get_neighbour(struct layout_cell *lc)
 	return (lcother);
 }
 
+/* Find the first or last child of a cell that is tiled or contains a tile. */
+static struct layout_cell *
+layout_cell_get_end_tiled(struct layout_cell *lc, int last)
+{
+	struct layout_cell	*lcchild;
+
+	if (last) {
+		TAILQ_FOREACH_REVERSE(lcchild, &lc->cells, layout_cells,
+		    entry) {
+			if (layout_cell_is_tiled(lcchild) ||
+			    layout_cell_has_tiled_child(lcchild))
+				return (lcchild);
+		}
+		return (NULL);
+	}
+	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+		if (layout_cell_is_tiled(lcchild) ||
+		    layout_cell_has_tiled_child(lcchild))
+			return (lcchild);
+	}
+	return (NULL);
+}
+
+/*
+ * Check every pane along one edge of a cell has asked to be drawn over the
+ * separator on that edge. type is the axis the separator lies across and last
+ * is whether this is the bottom or right edge of the cell rather than the top
+ * or left. A pane with a status line never claims a separator because the
+ * status line is drawn in it.
+ */
+static int
+layout_cell_claims_separator(struct layout_cell *lc, enum layout_type type,
+    int last)
+{
+	struct layout_cell	*lcchild;
+	int			 collapse, want;
+
+	if (lc->type == LAYOUT_WINDOWPANE) {
+		if (lc->wp == NULL)
+			return (0);
+		if (window_pane_get_pane_status(lc->wp) != PANE_STATUS_OFF)
+			return (0);
+		collapse = options_get_number(lc->wp->options,
+		    "pane-border-collapse");
+		if (collapse == PANE_COLLAPSE_ALL)
+			return (1);
+		if (type == LAYOUT_TOPBOTTOM)
+			want = last ? PANE_COLLAPSE_BOTTOM : PANE_COLLAPSE_TOP;
+		else
+			want = last ? PANE_COLLAPSE_RIGHT : PANE_COLLAPSE_LEFT;
+		return (collapse == want);
+	}
+
+	/*
+	 * Cells stacked along the axis of the separator reach the edge only
+	 * with the one at the end, cells running across it all reach it.
+	 */
+	if (lc->type == type) {
+		lcchild = layout_cell_get_end_tiled(lc, last);
+		if (lcchild == NULL)
+			return (0);
+		return (layout_cell_claims_separator(lcchild, type, last));
+	}
+	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+		if (!layout_cell_is_tiled(lcchild) &&
+		    !layout_cell_has_tiled_child(lcchild))
+			continue;
+		if (!layout_cell_claims_separator(lcchild, type, last))
+			return (0);
+	}
+	return (1);
+}
+
+/*
+ * Return the cell drawn over the separator after a cell, or NULL if it is
+ * drawn as a border. When the cells on both sides claim it the one before it
+ * wins, so setting the option for a whole window removes every separator
+ * rather than none of them.
+ */
+static struct layout_cell *
+layout_cell_separator_owner(struct layout_cell *lc)
+{
+	struct layout_cell	*lcnext;
+	enum layout_type	 type;
+
+	if (lc->parent == NULL)
+		return (NULL);
+	type = lc->parent->type;
+	if (type != LAYOUT_LEFTRIGHT && type != LAYOUT_TOPBOTTOM)
+		return (NULL);
+
+	lcnext = layout_cell_get_neighbour_direction(lc, 1);
+	if (lcnext == NULL)
+		return (NULL);
+
+	if (layout_cell_claims_separator(lc, type, 1))
+		return (lc);
+	if (layout_cell_claims_separator(lcnext, type, 0))
+		return (lcnext);
+	return (NULL);
+}
+
+/*
+ * Find the cell immediately before the separator on one side of a cell, or
+ * NULL if that side is the edge of the window. before is whether to look at
+ * the top or left side rather than the bottom or right.
+ */
+static struct layout_cell *
+layout_cell_find_separator(struct layout_cell *lc, enum layout_type type,
+    int before)
+{
+	struct layout_cell	*lcother;
+
+	while (lc->parent != NULL) {
+		if (lc->parent->type == type) {
+			lcother = layout_cell_get_neighbour_direction(lc,
+			    !before);
+			if (lcother != NULL)
+				return (before ? lcother : lc);
+		}
+		lc = lc->parent;
+	}
+	return (NULL);
+}
+
+/* Is the separator on one side of a pane collapsed? */
+int
+layout_pane_separator_collapsed(struct window_pane *wp, enum layout_type type,
+    int before)
+{
+	struct layout_cell	*lc = wp->layout_cell;
+
+	if (lc == NULL || (lc->flags & LAYOUT_CELL_FLOATING))
+		return (0);
+	lc = layout_cell_find_separator(lc, type, before);
+	if (lc == NULL)
+		return (0);
+	return (layout_cell_separator_owner(lc) != NULL);
+}
+
+/*
+ * Is this the pane that grows over the separator on one side of it? Walking up
+ * from a pane reaches the cell that owns the separator only when the pane is
+ * on the edge of that cell facing it, so the panes further inside are left
+ * alone.
+ */
+static int
+layout_pane_grows_over_separator(struct window_pane *wp, enum layout_type type,
+    int before)
+{
+	struct layout_cell	*lc = wp->layout_cell, *lcsep, *lcowner;
+
+	if (lc == NULL || (lc->flags & LAYOUT_CELL_FLOATING))
+		return (0);
+	lcsep = layout_cell_find_separator(lc, type, before);
+	if (lcsep == NULL)
+		return (0);
+	lcowner = layout_cell_separator_owner(lcsep);
+	if (lcowner == NULL)
+		return (0);
+
+	for (; lc != NULL; lc = lc->parent) {
+		if (lc == lcowner)
+			return (1);
+	}
+	return (0);
+}
 
 /* Destroy a cell and redistribute the space. */
 void

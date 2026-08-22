@@ -5926,6 +5926,32 @@ Like
 .Ic base\-index ,
 but set the starting index for pane numbers.
 .Pp
+.It Xo Ic pane\-border\-collapse
+.Op Ic off | top | bottom | left | right | all
+.Xc
+Draw the pane over the separator between it and the next pane on the given
+side instead of leaving a cell for a border.
+The pane grows by one cell and the pane on the other side of the separator is
+not moved or resized, so a one row pane may sit directly on top of another
+with nothing in between.
+.Pp
+A separator is only covered if every pane along that side of it asks for it,
+so a pane which shares a separator with a neighbour that does not ask is left
+alone.
+If the panes on both sides ask for it, the pane before it wins, so
+.Ic all
+removes every separator in a window rather than none of them.
+A pane with a pane border status line never covers a separator because the
+status line is drawn in it.
+.Pp
+Only the size of the pane is changed and not the layout, so the layout
+described by
+.Ic list\-windows
+is the same whether or not this option is set.
+A covered separator cannot be dragged with the mouse, but the panes either
+side of it may still be resized with
+.Ic resize\-pane .
+.Pp
 .It Ic pane\-border\-format Ar format
 Set the text shown in pane border status lines.
 .Pp

@@ -1533,6 +1533,14 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_STATUS_TOP_FLOATING 3
 #define PANE_STATUS_BOTTOM_FLOATING 4
 
+/* Pane border collapse option. */
+#define PANE_COLLAPSE_OFF 0
+#define PANE_COLLAPSE_TOP 1
+#define PANE_COLLAPSE_BOTTOM 2
+#define PANE_COLLAPSE_LEFT 3
+#define PANE_COLLAPSE_RIGHT 4
+#define PANE_COLLAPSE_ALL 5
+
 /* Pane scrollbars option. */
 #define PANE_SCROLLBARS_OFF 0
 #define PANE_SCROLLBARS_MODAL 1
@@ -3860,6 +3868,8 @@ void		 layout_make_leaf(struct layout_cell *, struct window_pane *);
 void		 layout_make_node(struct layout_cell *, enum layout_type);
 void		 layout_fix_zindexes(struct window *, struct layout_cell *);
 int		 layout_cell_is_tiled(struct layout_cell *);
+int		 layout_pane_separator_collapsed(struct window_pane *,
+		     enum layout_type, int);
 int		 layout_add_horizontal_border(struct layout_cell *,
 		     struct layout_cell *, int);
 void		 layout_fix_offsets(struct window *);
