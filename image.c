@@ -1593,6 +1593,7 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 	struct image_line	*line;
 	u_int			 cx = s->cx, cy = s->cy;
 	u_int			 x, y, run, sx, sy, lines, origin_y = 0;
+	u_int			 hist_origin_y, region_height, remaining, chunk;
 
 	sx = im->sx;
 	if (sx > screen_size_x(s) - cx)
@@ -1606,7 +1607,28 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 			sy = screen_size_y(s) - cy;
 	} else if (screen_size_y(s) - cy <= sy) {
 		lines = sy - (screen_size_y(s) - cy) + 1;
-		screen_write_scrollup(ctx, lines, bg);
+
+		/*
+		 * screen_write_scrollup() clamps its own lines argument to
+		 * at most one scroll region height per call, so a single
+		 * call cannot push more than that much history however
+		 * large lines is - call it repeatedly to actually push the
+		 * full amount, so the history-row loop below (which is
+		 * itself bounded against gd->hsize, so it is safe even if
+		 * this loop's assumptions are ever wrong) has real rows to
+		 * use instead of just whatever fit in one call.
+		 */
+		region_height = s->rlower - s->rupper + 1;
+		if (region_height == 0)
+			region_height = 1;
+		remaining = lines;
+		while (remaining > 0) {
+			chunk = (remaining < region_height) ? remaining :
+			    region_height;
+			screen_write_scrollup(ctx, chunk, bg);
+			remaining -= chunk;
+		}
+
 		if (lines > cy) {
 			origin_y = lines - cy;
 			screen_write_cursormove(ctx, -1, 0, 0);
@@ -1618,6 +1640,34 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 
 	placement = image_placement_create(gd, im, input, app_image_id,
 	    app_placement_id, z);
+	/*
+	 * The rows above origin_y were only ever needed to make the image
+	 * fit on screen at all - screen_write_scrollup() already pushed
+	 * blank rows into history to make room, so those absolute grid rows
+	 * exist and are otherwise unused. Give them spans too, instead of
+	 * silently discarding that part of the image: unlike width, which
+	 * has no "scroll right" to recover a permanent clip, height already
+	 * has ordinary scrollback - it would be wasted if these rows were
+	 * left with nothing to show when scrolled back to.
+	 *
+	 * screen_write_scrollup() clamps its own lines argument to at most
+	 * one screen height per call, however many were requested, so it
+	 * may not have created a history row for every one of the origin_y
+	 * rows this is trying to place - cap to however many actually
+	 * exist (gd->hsize) to avoid reading before the start of the grid,
+	 * and place the rows closest to the visible area (the highest
+	 * source rows below origin_y) in whatever history space there is,
+	 * since those are the ones the scrolled-off area would show first.
+	 */
+	hist_origin_y = origin_y;
+	if (hist_origin_y > gd->hsize)
+		hist_origin_y = gd->hsize;
+	for (y = 0; y < hist_origin_y; y++) {
+		line = image_line_get(
+		    &gd->linedata[gd->hsize - hist_origin_y + y]);
+		image_extend_row(line, placement, cx,
+		    origin_y - hist_origin_y + y, 0, sx);
+	}
 	for (y = 0; y < sy; y++) {
 		line = image_line_get(&gd->linedata[gd->hsize + cy + y]);
 		for (x = 0; x < sx; x += run) {
