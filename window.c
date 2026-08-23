@@ -1555,6 +1555,7 @@ window_pane_free(struct window_pane *wp)
 	cmd_free_argv(wp->argc, wp->argv);
 	colour_palette_free(&wp->palette);
 	style_ranges_free(&wp->border_status_line.ranges);
+	free(wp->border_status_line.expanded);
 	free(wp);
 }
 
