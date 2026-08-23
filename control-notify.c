@@ -101,7 +101,7 @@ control_window_layout_changed_cb(__unused const char *name,
 		cp = format_expand(ft, template);
 		format_free(ft);
 
-		control_write(c, "%s", cp);
+		control_notify_write(c, "%s", cp);
 		free(cp);
 	}
 }

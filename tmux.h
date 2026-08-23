@@ -4287,15 +4287,15 @@ int			 json_get_object(struct json_node *,
 			     struct json_node **);
 int			 json_get_array(struct json_node *,
 			     struct json_node **);
-const char		*json_find_string(const struct json_node *,
-			     const char *, char **);
-const int64_t		*json_find_number(const struct json_node *,
-			     const char *, char **);
-const int		*json_find_boolean(const struct json_node *,
-			     const char *, char **);
-const struct json_node	*json_find_object(const struct json_node *,
-			     const char *, char **);
-const struct json_node	*json_find_array(const struct json_node *,
-			     const char *, char **);
+int			 json_find_string(const struct json_node *,
+			     const char *, const char **, char **);
+int			 json_find_number(const struct json_node *,
+			     const char *, int64_t *, char **);
+int			 json_find_boolean(const struct json_node *,
+			     const char *, int *, char **);
+int			 json_find_object(const struct json_node *,
+			     const char *, struct json_node **, char **);
+int			 json_find_array(const struct json_node *,
+			     const char *, struct json_node **, char **);
 
 #endif /* TMUX_H */

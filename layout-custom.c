@@ -66,7 +66,6 @@ struct layout_parse_cell_ctx {
 	struct layout_cell	*lc;
 	int			 active;
 	int			 last;
-	int			 id;
 	int			 index;
 	int			 zindex;
 };
@@ -95,6 +94,8 @@ static void			 layout_parse_apply_ctx(struct window *,
 static struct layout_cell	*layout_parse_json_layout(
 				     const struct json_node *,
 				     struct layout_cell *,
+				     struct layout_parse_ctx *);
+static int			 layout_parse_ctx_check_indexes(
 				     struct layout_parse_ctx *);
 
 /* Compare cell contexts in ascending order of index. */
@@ -182,7 +183,7 @@ layout_parse_init_ctx(struct layout_parse_ctx *pctx, char **cause)
 /* Add a cell context to the parse context. */
 static int
 layout_parse_add_cctx(struct layout_parse_ctx *pctx, struct layout_cell *lc,
-    int active, int last, int id, int index, int zindex)
+    int active, int last, int index, int zindex)
 {
 	struct layout_parse_cell_ctx	*cctx;
 
@@ -193,7 +194,6 @@ layout_parse_add_cctx(struct layout_parse_ctx *pctx, struct layout_cell *lc,
 	cctx->lc = lc;
 	cctx->active = active;
 	cctx->last = last;
-	cctx->id = id;
 	cctx->index = index;
 	cctx->zindex = zindex;
 
@@ -458,7 +458,10 @@ layout_parse(struct window *w, const char *layout, char **cause)
 	}
 
 	/* Check this window will fit into the layout. */
-	npanes = window_count_panes(w, 1);
+	if (pctx.version < 2)
+		npanes = window_count_panes(w, 0);
+	else
+		npanes = window_count_panes(w, 1);
 	for (;;) {
 		ncells = layout_count_cells(pctx.root);
 		if (npanes > ncells) {
@@ -720,9 +723,8 @@ fail:
 static int
 layout_parse_json(struct json_node *jnroot, struct layout_parse_ctx *pctx)
 {
-	struct json_node	 *jn;
-	const struct json_node	 *object;
-	const int64_t		 *num;
+	struct json_node	 *jn, *object;
+	int64_t			  num;
 	char			**cause = pctx->cause;
 
 	if (json_get_object(jnroot, &jn) != 0) {
@@ -730,11 +732,11 @@ layout_parse_json(struct json_node *jnroot, struct layout_parse_ctx *pctx)
 		goto fail;
 	}
 
-	if ((num = json_find_number(jn, "V", cause)) == NULL)
+	if (json_find_number(jn, "V", &num, cause) != 0)
 		goto fail;
-	pctx->version = *num;
+	pctx->version = num;
 
-	if ((object = json_find_object(jn, "L", cause)) == NULL)
+	if (json_find_object(jn, "L", &object, cause) != 0)
 		goto fail;
 	pctx->root = layout_parse_json_layout(object, NULL, pctx);
 	if (pctx->root == NULL)
@@ -757,16 +759,15 @@ static struct layout_cell *
 layout_parse_json_layout(const struct json_node *node,
     struct layout_cell *lcparent, struct layout_parse_ctx *pctx)
 {
-	struct json_node	*member;
-	struct layout_cell	*lc = layout_create_cell(lcparent), *lcchild;
-	const struct json_node	*array;
-	const char		*str;
-	const int64_t		*num;
-	const int		*boolean;
-	char			*endptr, **cause = pctx->cause;
-	int			 id, index, zindex, active = -1, last = -1;
+	struct json_node	 *member, *array;
+	struct layout_cell	 *lc = layout_create_cell(lcparent), *lcchild;
+	const char		 *str;
+	int64_t			  num;
+	char			**cause = pctx->cause;
+	int			  boolean, index, zindex, active = -1;
+	int			  last = -1;
 
-	if ((str = json_find_string(node, "t", cause)) == NULL)
+	if (json_find_string(node, "t", &str, cause) != 0)
 		goto fail;
 	if (strcmp(str, "p") == 0)
 		lc->type = LAYOUT_WINDOWPANE;
@@ -779,103 +780,88 @@ layout_parse_json_layout(const struct json_node *node,
 		goto fail;
 	}
 
-	if ((num = json_find_number(node, "w", cause)) == NULL)
+	if (json_find_number(node, "w", &num, cause) != 0)
 		goto fail;
-	if (*num < PANE_MINIMUM || *num > PANE_MAXIMUM) {
-		xasprintf(cause, "invalid width %lld", (long long)*num);
-		goto fail;
-	}
-	lc->g.sx = *num;
-
-	if ((num = json_find_number(node, "h", cause)) == NULL)
-		goto fail;
-	if (*num < PANE_MINIMUM || *num > PANE_MAXIMUM) {
-		xasprintf(cause, "invalid height %lld", (long long)*num);
+	if (num < PANE_MINIMUM || num > PANE_MAXIMUM) {
+		xasprintf(cause, "invalid width %lld", (long long)num);
 		goto fail;
 	}
-	lc->g.sy = *num;
+	lc->g.sx = num;
 
-	if ((num = json_find_number(node, "x", cause)) == NULL)
+	if (json_find_number(node, "h", &num, cause) != 0)
 		goto fail;
-	if (*num < -WINDOW_MAXIMUM || *num > WINDOW_MAXIMUM) {
-		xasprintf(cause, "invalid x-offset %lld", (long long)*num);
+	if (num < PANE_MINIMUM || num > PANE_MAXIMUM) {
+		xasprintf(cause, "invalid height %lld", (long long)num);
 		goto fail;
 	}
-	lc->g.xoff = *num;
+	lc->g.sy = num;
 
-	if ((num = json_find_number(node, "y", cause)) == NULL)
+	if (json_find_number(node, "x", &num, cause) != 0)
 		goto fail;
-	if (*num < -WINDOW_MAXIMUM || *num > WINDOW_MAXIMUM) {
-		xasprintf(cause, "invalid y-offset %lld", (long long)*num);
+	if (num < -WINDOW_MAXIMUM || num > WINDOW_MAXIMUM) {
+		xasprintf(cause, "invalid x-offset %lld", (long long)num);
 		goto fail;
 	}
-	lc->g.yoff = *num;
+	lc->g.xoff = num;
 
-	if (lc->type == LAYOUT_WINDOWPANE) {
+	if (json_find_number(node, "y", &num, cause) != 0)
+		goto fail;
+	if (num < -WINDOW_MAXIMUM || num > WINDOW_MAXIMUM) {
+		xasprintf(cause, "invalid y-offset %lld", (long long)num);
+		goto fail;
+	}
+	lc->g.yoff = num;
+
+	if (lc->type == LAYOUT_WINDOWPANE) { /* "I" is currently ignored */
 		if (json_find(node, "c") != NULL) {
 			*cause = xstrdup("panes cannot have children");
 			goto fail;
 		}
-		if ((str = json_find_string(node, "I", cause)) == NULL)
+		if (json_find_number(node, "i", &num, cause) != 0)
 			goto fail;
-		if (*str != '%') {
-			*cause = xstrdup("pane id must begin with '%'");
-			goto fail;
-		}
-		errno = 0;
-		id = strtol(str + 1, &endptr, 10);
-		if (errno != 0 || endptr != str + strlen(str)) {
-			xasprintf(cause, "invalid number string '%s'", str);
+		if (num < 0 || num > INT_MAX) {
+			xasprintf(cause, "invalid index %lld", (long long)num);
 			goto fail;
 		}
-		if ((num = json_find_number(node, "i", cause)) == NULL)
-			goto fail;
-		if (*num < 0 || *num > INT_MAX) {
-			xasprintf(cause, "invalid index %lld", (long long)*num);
-			goto fail;
-		}
-		index = *num;
+		index = num;
 
 		if (json_find(node, "a") != NULL) {
-			boolean = json_find_boolean(node, "a", cause);
-			if (boolean == NULL)
+			if (json_find_boolean(node, "a", &boolean, cause) != 0)
 				goto fail;
-			active = *boolean;
+			active = boolean;
 			if (active)
 				pctx->num_active++;
 		} else if (json_find(node, "l") != NULL) {
-			num = json_find_number(node, "l", cause);
-			if (num == NULL)
+			if (json_find_number(node, "l", &num, cause) != 0)
 				goto fail;
-			if (*num < 0 || *num > INT_MAX) {
+			if (num < 0 || num > INT_MAX) {
 				xasprintf(cause, "invalid last %lld",
-				    (long long)*num);
+				    (long long)num);
 				goto fail;
 			}
-			last = *num;
+			last = num;
 		}
 
 		if (json_find(node, "z") != NULL) {
-			num = json_find_number(node, "z", cause);
-			if (num == NULL)
+			if (json_find_number(node, "z", &num, cause) != 0)
 				goto fail;
-			if (*num < 0 || *num > INT_MAX - 1) {
+			if (num < 0 || num > INT_MAX - 1) {
 				xasprintf(cause, "invalid floating zindex %lld",
-				    (long long)*num);
+				    (long long)num);
 				goto fail;
 			}
-			zindex = *num;
+			zindex = num;
 			lc->flags |= LAYOUT_CELL_FLOATING;
 		} else
 			zindex = INT_MAX;
 
-		if (layout_parse_add_cctx(pctx, lc, active, last, id, index,
+		if (layout_parse_add_cctx(pctx, lc, active, last, index,
 		    zindex) != 0) {
 			*cause = xstrdup("too many panes");
 			goto fail;
 		}
 	} else {
-		if ((array = json_find_array(node, "c", cause)) == NULL)
+		if (json_find_array(node, "c", &array, cause) != 0)
 			goto fail;
 		if ((member = json_array_first(array)) == NULL) {
 			*cause = xstrdup("nodes must have children");
@@ -943,6 +929,8 @@ layout_construct(const char *layout, struct layout_parse_ctx *pctx)
 			*pctx->cause = xstrdup("no panes");
 			return (-1);
 		}
+		if (!layout_parse_ctx_check_indexes(pctx))
+			return (-1);
 	}
 
 	return (0);
@@ -1000,4 +988,57 @@ layout_parse_apply_ctx(struct window *w, struct layout_parse_ctx *pctx)
 			continue;
 		window_pane_stack_push(&w->last_panes, wp);
 	}
+}
+
+/* Checks for duplicate pane indexes, z-indexes, and last indexes. */
+static int
+layout_parse_ctx_check_indexes(struct layout_parse_ctx *pctx)
+{
+	int	i, n;
+
+	qsort(pctx->cctxs, pctx->clen, sizeof pctx->cctxs[0],
+	    layout_parse_index_cmp);
+
+	for (i = 1; i < pctx->clen; i++) {
+		if (pctx->cctxs[i].index == pctx->cctxs[i - 1].index) {
+			*pctx->cause = xstrdup("duplicate pane index");
+			return (0);
+		}
+	}
+
+	qsort(pctx->cctxs, pctx->clen, sizeof pctx->cctxs[0],
+	    layout_parse_zindex_cmp);
+
+	/*
+	 * Sorted in descending order, so the panes without a z-index come first
+	 * and the floating panes run to the end.
+	 */
+	n = 0;
+	while (n < pctx->clen && pctx->cctxs[n].zindex == INT_MAX)
+		n++;
+	for (i = n + 1; i < pctx->clen; i++) {
+		if (pctx->cctxs[i].zindex == pctx->cctxs[i - 1].zindex) {
+			*pctx->cause = xstrdup("duplicate pane z-index");
+			return (0);
+		}
+	}
+
+	qsort(pctx->cctxs, pctx->clen, sizeof pctx->cctxs[0],
+	    layout_parse_last_cmp);
+
+	/*
+	 * Sorted in descending order, so the panes without a last index come
+	 * last.
+	 */
+	n = 0;
+	while (n < pctx->clen && pctx->cctxs[n].last >= 0)
+		n++;
+	for (i = 1; i < n; i++) {
+		if (pctx->cctxs[i].last == pctx->cctxs[i - 1].last) {
+			*pctx->cause = xstrdup("duplicate last pane index");
+			return (0);
+		}
+	}
+
+	return (1);
 }
