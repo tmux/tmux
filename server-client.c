@@ -526,6 +526,8 @@ server_client_lost(struct client *c)
 	free(c->title);
 	free(c->path);
 	free((void *)c->cwd);
+	free(c->exit_session);
+	free(c->exit_message);
 
 	evtimer_del(&c->repeat_timer);
 	evtimer_del(&c->click_timer);
@@ -2407,8 +2409,6 @@ server_client_check_exit(struct client *c, int force)
 		proc_send(c->peer, c->exit_msgtype, -1, name, strlen(name) + 1);
 		break;
 	}
-	free(c->exit_session);
-	free(c->exit_message);
 }
 
 /* Redraw timer callback. */
