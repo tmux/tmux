@@ -1549,6 +1549,8 @@ window_pane_free(struct window_pane *wp)
 	screen_free(&wp->status_screen);
 	screen_free(&wp->base);
 
+	free(wp->r.ranges);
+
 	options_free(wp->options);
 	free((void *)wp->cwd);
 	free(wp->shell);
