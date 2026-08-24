@@ -98,6 +98,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_ERROR);
 		new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
 		cmdq_insert_after(item, new_item);
+		cmd_list_free(cmdlist);
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -164,9 +165,11 @@ cmd_if_shell_callback(struct job *job)
 	} else if (item == NULL) {
 		new_item = cmdq_get_command(cmdlist, NULL);
 		cmdq_append(c, new_item);
+		cmd_list_free(cmdlist);
 	} else {
 		new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
 		cmdq_insert_after(item, new_item);
+		cmd_list_free(cmdlist);
 	}
 
 out:

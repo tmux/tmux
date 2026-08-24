@@ -1009,6 +1009,7 @@ window_panes_run_command(struct window_panes_modedata *data, struct client *c,
 	} else {
 		new_item = cmdq_get_command(cmdlist, NULL);
 		cmdq_append(c, new_item);
+		cmd_list_free(cmdlist);
 	}
 	free(expanded);
 }
