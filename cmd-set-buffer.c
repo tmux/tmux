@@ -100,6 +100,7 @@ cmd_set_buffer_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "%s", cause);
 			goto fail;
 		}
+		free(bufname);
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -107,8 +108,10 @@ cmd_set_buffer_exec(struct cmd *self, struct cmdq_item *item)
 		cmdq_error(item, "no data specified");
 		goto fail;
 	}
-	if ((newsize = strlen(args_string(args, 0))) == 0)
+	if ((newsize = strlen(args_string(args, 0))) == 0) {
+		free(bufname);
 		return (CMD_RETURN_NORMAL);
+	}
 
 	if (args_has(args, 'a') && pb != NULL) {
 		olddata = paste_buffer_data(pb, &bufsize);
@@ -127,6 +130,7 @@ cmd_set_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'w') && tc != NULL)
  		tty_set_selection(&tc->tty, "", bufdata, bufsize);
 
+	free(bufname);
 	return (CMD_RETURN_NORMAL);
 
 fail:
