@@ -2559,6 +2559,18 @@ server_client_check_redraw(struct client *c)
 				redraw_pane_scrollbar(c, wp);
 			}
 		}
+
+		/*
+		 * Window damage is also what makes server_client_any_pane_
+		 * redraw() decide a redraw is needed at all, independently of
+		 * any CLIENT_ALLREDRAWFLAGS bit. Every current damage source
+		 * happens to set one of those flags too, so the block below
+		 * always consumes it - but fall back to consuming it here in
+		 * case that ever stops holding, rather than silently
+		 * dropping it when redraw_free_damage() clears it next loop.
+		 */
+		if (!TAILQ_EMPTY(&w->damage) && (~c->flags & CLIENT_ALLREDRAWFLAGS))
+			redraw_client_damage(c);
 	}
 
 	/*
