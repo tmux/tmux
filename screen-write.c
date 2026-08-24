@@ -338,10 +338,18 @@ screen_write_make_list(struct screen *s)
 void
 screen_write_free_list(struct screen *s)
 {
-	u_int	y;
+	struct screen_write_cline	*cl;
+	struct screen_write_citem	*ci, *ci1;
+	u_int				 y;
 
-	for (y = 0; y < screen_size_y(s); y++)
-		free(s->write_list[y].data);
+	for (y = 0; y < screen_size_y(s); y++) {
+		cl = &s->write_list[y];
+		TAILQ_FOREACH_SAFE(ci, &cl->items, entry, ci1) {
+			TAILQ_REMOVE(&cl->items, ci, entry);
+			screen_write_free_citem(ci);
+		}
+		free(cl->data);
+	}
 	free(s->write_list);
 }
 
