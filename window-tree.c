@@ -1,4 +1,4 @@
-/* $OpenBSD: window-tree.c,v 1.94 2026/07/14 17:17:18 nicm Exp $ */
+/* $OpenBSD: window-tree.c,v 1.95 2026/08/24 07:06:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -642,6 +642,7 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 			}
 			free(label);
 		}
+		format_free(ft);
 
 		if (loop != end - 1) {
 			screen_write_cursormove(ctx, cx + offset + width, cy,
@@ -790,6 +791,7 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 			}
 			free(label);
 		}
+		format_free(ft);
 
 		if (loop != end - 1) {
 			screen_write_cursormove(ctx, cx + offset + width, cy,
