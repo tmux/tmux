@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.370 2026/08/20 09:19:24 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.372 2026/08/24 07:14:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1545,16 +1545,16 @@ window_pane_free(struct window_pane *wp)
 	log_debug("pane %%%u freed (%d references)", wp->id, wp->references);
 
 	free(wp->searchstr);
-
 	screen_free(&wp->status_screen);
 	screen_free(&wp->base);
-
+	free(wp->r.ranges);
 	options_free(wp->options);
 	free((void *)wp->cwd);
 	free(wp->shell);
 	cmd_free_argv(wp->argc, wp->argv);
 	colour_palette_free(&wp->palette);
 	style_ranges_free(&wp->border_status_line.ranges);
+	free(wp->border_status_line.expanded);
 	free(wp);
 }
 
