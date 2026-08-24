@@ -2836,17 +2836,6 @@ window_pane_is_floating(struct window_pane *wp)
 	return (1);
 }
 
-/* Does a pane's current rectangle intersect a window-coordinate rectangle? */
-int
-window_pane_intersects(struct window_pane *wp, u_int x, u_int y, u_int sx,
-    u_int sy)
-{
-	int	ix = (int)x, iy = (int)y, isx = (int)sx, isy = (int)sy;
-
-	return (wp->xoff < ix + isx && wp->xoff + (int)wp->sx > ix &&
-	    wp->yoff < iy + isy && wp->yoff + (int)wp->sy > iy);
-}
-
 /*
  * Report damage for a floating pane's rectangle, grown by one cell on every
  * side - a floating pane draws its border frame at xoff-1/yoff-1 through
@@ -2894,22 +2883,22 @@ window_pane_damage_floating(struct window *w, struct window_pane *wp,
  * on whichever side w->sb_pos points to.
  */
 static int
-window_pane_scrollbar_intersects(struct window *w, struct window_pane *loop,
+window_pane_scrollbar_intersects(struct window *w, struct window_pane *wp,
     u_int x, u_int y, u_int sx, u_int sy)
 {
 	int	sb_x, sb_w, ix = (int)x, iy = (int)y, isx = (int)sx;
 	int	isy = (int)sy;
 
-	if (!window_pane_scrollbar_reserve(loop))
+	if (!window_pane_scrollbar_reserve(wp))
 		return (0);
-	sb_w = loop->scrollbar_style.width + loop->scrollbar_style.pad;
+	sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
 	if (w->sb_pos == PANE_SCROLLBARS_LEFT)
-		sb_x = (int)loop->xoff - sb_w;
+		sb_x = (int)wp->xoff - sb_w;
 	else
-		sb_x = (int)loop->xoff + (int)loop->sx;
+		sb_x = (int)wp->xoff + (int)wp->sx;
 
 	return (sb_x < ix + isx && sb_x + sb_w > ix &&
-	    (int)loop->yoff < iy + isy && (int)loop->yoff + (int)loop->sy > iy);
+	    (int)wp->yoff < iy + isy && (int)wp->yoff + (int)wp->sy > iy);
 }
 
 /*

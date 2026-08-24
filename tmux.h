@@ -3831,8 +3831,6 @@ int		 window_pane_get_pane_status(struct window_pane *);
 struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
 		     u_int);
 int		 window_pane_is_floating(struct window_pane *);
-int		 window_pane_intersects(struct window_pane *, u_int, u_int,
-		     u_int, u_int);
 void		 window_pane_redraw_floating(struct window *,
 		     struct window_pane *, int, int, int, int);
 
