@@ -1,3 +1,7 @@
+CHANGES FROM 3.7c TO 3.7d
+
+* Fix problem where list-keys output can go to view mode instead of stdout.
+
 CHANGES FROM 3.7b TO 3.7c
 
 * Build with jemalloc on macOS to avoid what appears to be a bug in calloc
