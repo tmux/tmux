@@ -1,4 +1,4 @@
-/* $OpenBSD: window-buffer.c,v 1.51 2026/07/15 12:45:39 nicm Exp $ */
+/* $OpenBSD: window-buffer.c,v 1.52 2026/08/24 21:19:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -567,9 +567,7 @@ window_buffer_edit_close_cb(char *buf, size_t len, void *arg)
 	}
 
 	oldbuf = paste_buffer_data(pb, &oldlen);
-	if (oldlen != '\0' &&
-	    oldbuf[oldlen - 1] != '\n' &&
-	    buf[len - 1] == '\n')
+	if (oldlen != 0 && oldbuf[oldlen - 1] != '\n' && buf[len - 1] == '\n')
 		len--;
 	if (len != 0)
 		paste_replace(pb, buf, len);
