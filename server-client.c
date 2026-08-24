@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.505 2026/08/20 09:19:24 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.506 2026/08/24 07:08:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -529,6 +529,7 @@ server_client_lost(struct client *c)
 	input_cancel_requests(c);
 
 	free(c->title);
+	free(c->path);
 	free((void *)c->cwd);
 
 	evtimer_del(&c->repeat_timer);
