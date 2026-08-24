@@ -1,5 +1,7 @@
 CHANGES FROM 3.7c TO 3.7d
 
+* Do not use stale pointers to windows when panes in modes are joined.
+
 * Fix problem where list-keys output can go to view mode instead of stdout.
 
 CHANGES FROM 3.7b TO 3.7c
