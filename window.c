@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.372 2026/08/24 07:14:54 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.373 2026/08/24 21:17:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1471,6 +1471,8 @@ window_pane_scrollbar_overlay_visible(struct window_pane *wp)
 void
 window_pane_scrollbar_redraw(struct window_pane *wp)
 {
+	if (!window_pane_scrollbar_visible(wp))
+		return;
 	if (window_pane_scrollbar_overlay_visible(wp)) {
 		wp->flags |= PANE_REDRAW;
 		return;

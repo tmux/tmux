@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.506 2026/08/24 07:08:19 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.507 2026/08/24 21:17:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2489,7 +2489,7 @@ server_client_check_redraw(struct client *c)
 
 	/* Work out if a redraw is actually needed. */
 	needed = 0;
-	if (c->flags & CLIENT_ALLREDRAWFLAGS)
+	if (c->flags & (CLIENT_ALLREDRAWFLAGS|CLIENT_REDRAWSCROLLBARS))
 		needed = 1;
 	else if (server_client_any_pane_redraw(c))
 		needed = 1;
@@ -2515,8 +2515,14 @@ server_client_check_redraw(struct client *c)
 			log_debug("redraw timer started");
 			evtimer_add(&ev, &tv);
 		}
-		if (server_client_any_pane_redraw(c))
-			c->flags |= CLIENT_REDRAWWINDOW;
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (wp->flags & PANE_REDRAW) {
+				c->flags |= CLIENT_REDRAWWINDOW;
+				break;
+			}
+			if (wp->flags & PANE_REDRAWSCROLLBAR)
+				c->flags |= CLIENT_REDRAWSCROLLBARS;
+		}
 		return;
 	}
 
@@ -2535,7 +2541,8 @@ server_client_check_redraw(struct client *c)
 				log_debug("%s: redraw pane %%%u", __func__,
 				    wp->id);
 				redraw_pane(c, wp);
-			} else if (wp->flags & PANE_REDRAWSCROLLBAR) {
+			} else if ((wp->flags & PANE_REDRAWSCROLLBAR) ||
+			    (c->flags & CLIENT_REDRAWSCROLLBARS)) {
 				log_debug("%s: redraw scrollbar %%%u", __func__,
 				    wp->id);
 				redraw_pane_scrollbar(c, wp);
@@ -2565,7 +2572,8 @@ server_client_check_redraw(struct client *c)
 	 * All the redraw flags can now be cleared. Also record how many bytes
 	 * were written.
 	 */
-	c->flags &= ~(CLIENT_ALLREDRAWFLAGS|CLIENT_STATUSFORCE);
+	c->flags &= ~(CLIENT_ALLREDRAWFLAGS|CLIENT_REDRAWSCROLLBARS|
+	    CLIENT_STATUSFORCE);
 	c->redraw = EVBUFFER_LENGTH(tty->out);
 	log_debug("%s: redraw added %zu bytes", c->name, c->redraw);
 }
