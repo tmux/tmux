@@ -3016,4 +3016,5 @@ window_pane_redraw_floating(struct window *w, struct window_pane *wp,
 
 	/* Session status formats may depend on the pane's new geometry. */
 	server_status_window(w);
+	server_redraw_window(w);
 }
