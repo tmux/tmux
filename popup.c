@@ -135,7 +135,8 @@ popup_reapply_styles(struct popup_data *pd)
 }
 
 static void
-popup_redraw_cb(const struct tty_ctx *ttyctx)
+popup_redraw_cb(const struct tty_ctx *ttyctx, __unused u_int py,
+    __unused u_int ny)
 {
 	struct popup_data	*pd = ttyctx->arg;
 

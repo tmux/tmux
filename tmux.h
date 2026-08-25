@@ -1844,7 +1844,7 @@ struct tty {
 };
 
 /* Terminal command context. */
-typedef void (*tty_ctx_redraw_cb)(const struct tty_ctx *);
+typedef void (*tty_ctx_redraw_cb)(const struct tty_ctx *, u_int, u_int);
 typedef int (*tty_ctx_set_client_cb)(struct tty_ctx *, struct client *);
 struct tty_ctx {
 	struct screen		*s;

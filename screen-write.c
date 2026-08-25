@@ -122,21 +122,18 @@ screen_write_set_cursor(struct screen_write_ctx *ctx, int cx, int cy)
 
 /*
  * Called when a write could not be applied directly to the terminal and
- * needs a redraw instead. Report damage for just the row the write was
- * targeting rather than the whole pane - ttyctx->ocy is the cursor row
- * within the pane's own screen at the point the write was issued, and
- * wp->yoff is already adjusted past any top pane-border-status row, so
- * wp->yoff + ocy is the correct window-coordinate row.
+ * needs a redraw instead. Report damage for the requested rows. wp->yoff is
+ * already adjusted past any top pane-border-status row, so wp->yoff + py is
+ * the correct window-coordinate row.
  */
 static void
-screen_write_redraw_cb(const struct tty_ctx *ttyctx)
+screen_write_redraw_cb(const struct tty_ctx *ttyctx, u_int py, u_int ny)
 {
 	struct window_pane	*wp = ttyctx->arg;
 
 	if (wp == NULL)
 		return;
-	redraw_damage_window(wp->window, wp->xoff, wp->yoff + ttyctx->ocy,
-	    wp->sx, 1);
+	redraw_damage_window(wp->window, wp->xoff, wp->yoff + py, wp->sx, ny);
 }
 
 /* Update context for client. */
@@ -2164,7 +2161,7 @@ screen_write_fullredraw(struct screen_write_ctx *ctx)
 
 	screen_write_initctx(ctx, &ttyctx, 1, 0);
 	if (ttyctx.redraw_cb != NULL)
-		ttyctx.redraw_cb(&ttyctx);
+		ttyctx.redraw_cb(&ttyctx, 0, ttyctx.sy);
 }
 
 /* Trim collected items. */
@@ -3184,7 +3181,7 @@ screen_write_alternateon(struct screen_write_ctx *ctx, struct grid_cell *gc,
 
 	screen_write_initctx(ctx, &ttyctx, 1, 0);
 	if (ttyctx.redraw_cb != NULL)
-		ttyctx.redraw_cb(&ttyctx);
+		ttyctx.redraw_cb(&ttyctx, 0, ttyctx.sy);
 }
 
 /* Turn alternate screen off. */
@@ -3209,5 +3206,5 @@ screen_write_alternateoff(struct screen_write_ctx *ctx, struct grid_cell *gc,
 
 	screen_write_initctx(ctx, &ttyctx, 1, 0);
 	if (ttyctx.redraw_cb != NULL)
-		ttyctx.redraw_cb(&ttyctx);
+		ttyctx.redraw_cb(&ttyctx, 0, ttyctx.sy);
 }

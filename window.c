@@ -3009,4 +3009,7 @@ window_pane_redraw_floating(struct window *w, struct window_pane *wp,
 		    wp->yoff, wp->sx, wp->sy))
 			loop->flags |= PANE_REDRAWSCROLLBAR;
 	}
+
+	/* Session status formats may depend on the pane's new geometry. */
+	server_status_window(w);
 }
