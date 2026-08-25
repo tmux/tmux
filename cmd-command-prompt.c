@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-command-prompt.c,v 1.75 2026/06/25 11:39:11 nicm Exp $ */
+/* $OpenBSD: cmd-command-prompt.c,v 1.76 2026/08/25 06:04:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -242,9 +242,11 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 	} else if (item == NULL) {
 		new_item = cmdq_get_command(cmdlist, NULL);
 		cmdq_append(c, new_item);
+		cmd_list_free(cmdlist);
 	} else {
 		new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
 		cmdq_insert_after(item, new_item);
+		cmd_list_free(cmdlist);
 	}
 	cmd_free_argv(argc, argv);
 
