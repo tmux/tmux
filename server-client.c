@@ -488,8 +488,17 @@ server_client_set_session(struct client *c, struct session *s)
 		 * just an active-pane change, already handled narrowly by
 		 * window_set_active_pane() and window_redraw_active_switch()
 		 * before this is reached.
+		 *
+		 * old and s may be the same session object, whose curw was
+		 * already updated to the new window before this function was
+		 * called - old->curw and s->curw would then read the same,
+		 * already-current value, so comparing them can never detect
+		 * a same-session window change. Compare against the client's
+		 * own cached scene instead, which only reflects what it has
+		 * actually drawn.
 		 */
-		if (old == NULL || old != s || old->curw != s->curw)
+		if (old == NULL || old != s ||
+		    !redraw_client_has_window(c, s->curw->window))
 			server_redraw_client(c);
 	}
 

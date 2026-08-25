@@ -1073,6 +1073,13 @@ redraw_free_scene(struct redraw_scene *scene)
 	free(scene);
 }
 
+/* Does a client's cached scene show this window? */
+int
+redraw_client_has_window(struct client *c, struct window *w)
+{
+	return (c->redraw_scene != NULL && c->redraw_scene->w == w);
+}
+
 /* Mark a window's cached redraw scenes as out of date. */
 void
 redraw_invalidate_scene(struct window *w)
@@ -1758,6 +1765,24 @@ redraw_set_draw_context(struct redraw_draw_ctx *dctx,
 		dctx->flags |= REDRAW_ISOLATES;
 }
 
+/* Build a pane prompt into a one-line screen. */
+static void
+redraw_make_pane_prompt(struct window_pane *wp, struct screen *screen)
+{
+	struct screen_write_ctx	 ctx;
+	struct prompt_draw_data	 pdd;
+
+	screen_init(screen, wp->sx, 1, 0);
+	screen_write_start(&ctx, screen);
+	pdd.ctx = &ctx;
+	pdd.cursor_x = &wp->prompt_cx;
+	pdd.area_x = 0;
+	pdd.area_width = wp->sx;
+	pdd.prompt_line = 0;
+	prompt_draw(wp->prompt, &pdd);
+	screen_write_stop(&ctx);
+}
+
 /* Draw a pane's prompt over its content. */
 static void
 redraw_draw_pane_prompt(struct redraw_draw_ctx *dctx, struct window_pane *wp)
@@ -1766,8 +1791,6 @@ redraw_draw_pane_prompt(struct redraw_draw_ctx *dctx, struct window_pane *wp)
 	struct client		*c = scene->c;
 	struct tty		*tty = &c->tty;
 	struct screen		 screen;
-	struct screen_write_ctx	 ctx;
-	struct prompt_draw_data	 pdd;
 	int			 ox = scene->ox, oy = scene->oy;
 	int			 sx = scene->sx, sy = scene->sy;
 	int			 line, cy, px, offset, width, wy;
@@ -1800,16 +1823,7 @@ redraw_draw_pane_prompt(struct redraw_draw_ctx *dctx, struct window_pane *wp)
 	if (px + width > sx)
 		width = sx - px;
 
-	screen_init(&screen, wp->sx, 1, 0);
-	screen_write_start(&ctx, &screen);
-	pdd.ctx = &ctx;
-	pdd.cursor_x = &wp->prompt_cx;
-	pdd.area_x = 0;
-	pdd.area_width = wp->sx;
-	pdd.prompt_line = 0;
-	prompt_draw(wp->prompt, &pdd);
-	screen_write_stop(&ctx);
-
+	redraw_make_pane_prompt(wp, &screen);
 	tty_draw_line(tty, &screen, 0, offset, width, px, cy, NULL);
 	screen_free(&screen);
 }
@@ -1841,7 +1855,8 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 			redraw = status_prompt_redraw(c);
 		else
 			redraw = status_redraw(c);
-		if (!redraw && !REDRAW_IS_ALL(flags)) {
+		if (!redraw && (~c->flags & CLIENT_REDRAWSTATUSALWAYS) &&
+		    !REDRAW_IS_ALL(flags)) {
 			flags &= ~REDRAW_STATUS;
 			if (flags == 0)
 				return;
@@ -2014,7 +2029,7 @@ redraw_screen(struct client *c)
 	} else {
 		if (c->flags & CLIENT_REDRAWBORDERS)
 			flags |= (REDRAW_PANE_BORDER|REDRAW_PANE_STATUS);
-		if (c->flags & CLIENT_REDRAWSTATUS)
+		if (c->flags & (CLIENT_REDRAWSTATUS|CLIENT_REDRAWSTATUSALWAYS))
 			flags |= (REDRAW_STATUS|REDRAW_PANE_STATUS);
 		if (c->flags & CLIENT_REDRAWOVERLAY)
 			flags |= REDRAW_OVERLAY;
@@ -2072,6 +2087,64 @@ redraw_damage_refresh_status(struct redraw_draw_ctx *dctx,
 }
 
 /*
+ * Grow a clipped span range by one cell on either edge that isn't already at
+ * the span's own boundary. A clip edge that lands mid-character (this is a
+ * damage rectangle, so its edges are geometric and have no idea what's in
+ * the grid) may be sitting on the second, padding half of a wide character
+ * whose first half falls just outside the requested range - growing by one
+ * cell is always enough to pull the whole character back in, since no grid
+ * cell is ever wider than two columns, and clamping to the span's own x and
+ * width keeps this from bleeding into a neighbouring span.
+ */
+static void
+redraw_damage_grow_span_clip(struct redraw_span *span, u_int *xp, u_int *endp)
+{
+	if (*xp > span->x)
+		(*xp)--;
+	if (*endp < span->x + span->width)
+		(*endp)++;
+}
+
+/* Recompose a pane's prompt over a damaged section of its display row. */
+static void
+redraw_damage_draw_pane_prompt(struct redraw_draw_ctx *dctx,
+    struct redraw_span *span, u_int y, u_int x, u_int n)
+{
+	struct redraw_scene	*scene = dctx->scene;
+	struct window_pane	*wp = span->data.p.wp;
+	struct tty		*tty = &scene->c->tty;
+	struct visible_ranges	*r;
+	struct visible_range	*rr;
+	struct screen		 screen;
+	u_int			 i, px, width, prompt_y;
+
+	if (wp->prompt == NULL || wp->sx == 0 || wp->sy == 0)
+		return;
+	if (dctx->flags & REDRAW_STATUS_TOP)
+		prompt_y = 0;
+	else
+		prompt_y = wp->sy - 1;
+	if (span->data.p.py != prompt_y)
+		return;
+
+	redraw_make_pane_prompt(wp, &screen);
+	r = tty_check_overlay_range(tty, x, y, n);
+	for (i = 0; i < r->used; i++) {
+		rr = &r->ranges[i];
+		if (rr->nx == 0)
+			continue;
+		px = span->data.p.px + (rr->px - span->x);
+		if (px >= screen_size_x(&screen))
+			continue;
+		width = rr->nx;
+		if (width > screen_size_x(&screen) - px)
+			width = screen_size_x(&screen) - px;
+		tty_draw_line(tty, &screen, px, 0, width, rr->px, y, NULL);
+	}
+	screen_free(&screen);
+}
+
+/*
  * Compose exactly the cells within a damaged rectangle (already in this
  * client's own scene coordinates), rather than a whole pane. For each row
  * in range, every span of every type whose x-range intersects the
@@ -2114,8 +2187,15 @@ redraw_draw_damage_rect(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 					redraw_damage_refresh_status(dctx,
 					    span->data.st.wp);
 				}
+				redraw_damage_grow_span_clip(span, &clip_x,
+				    &clip_end);
 				redraw_draw_span(dctx, span, cy, clip_x,
 				    clip_end - clip_x);
+				if (type == REDRAW_SPAN_PANE) {
+					redraw_damage_draw_pane_prompt(dctx,
+					    span, cy, clip_x,
+					    clip_end - clip_x);
+				}
 			}
 		}
 	}
