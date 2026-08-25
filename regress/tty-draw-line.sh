@@ -105,6 +105,21 @@ sleep 1
 CLIENT=$($TMUX2 list-clients -F '#{client_name}' | head -1)
 [ -n "$CLIENT" ] || fail "no inner client"
 
+# A variation selector which widens the previous character must use window
+# coordinates when checking visibility in a pane with a nonzero x offset.
+$TMUX2 set -s variation-selector-always-wide on || exit 1
+WINDOW=$($TMUX2 neww -dPF '#{window_id}' "exec sleep 100") || exit 1
+PANE=$($TMUX2 splitw -dhPF '#{pane_id}' -t "$WINDOW" \
+	"exec sleep 100") || exit 1
+$TMUX2 selectw -t "$WINDOW" || exit 1
+$TMUX2 respawnp -k -t "$PANE" \
+	"printf '\nA\342\234\217\357\270\217B'; exec sleep 100" || exit 1
+sleep 1
+$TMUX2 capturep -p -t "$PANE" >$TMP || exit 1
+EXPECTED=$(printf 'A\342\234\217\357\270\217B')
+check_line 2 "$EXPECTED"
+$TMUX2 killw -t "$WINDOW" || exit 1
+
 # Long line, then short line: default cells after cellsize must clear stale text.
 capture
 check_line 1 "abcdefghijklmnopqrst"

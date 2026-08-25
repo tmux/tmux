@@ -1,4 +1,4 @@
-/* $OpenBSD: client.c,v 1.167 2026/08/17 07:56:56 nicm Exp $ */
+/* $OpenBSD: client.c,v 1.168 2026/08/17 20:14:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -712,6 +712,9 @@ client_dispatch_wait(struct imsg *imsg)
 		fprintf(stderr, "server version is too old for client\n");
 		proc_exit(client_proc);
 		break;
+	default:
+		log_debug("unknown message type %u", imsg->hdr.type);
+		break;
 	}
 }
 
@@ -797,6 +800,9 @@ client_dispatch_attached(struct imsg *imsg)
 
 		system(data);
 		proc_send(client_peer, MSG_UNLOCK, -1, NULL, 0);
+		break;
+	default:
+		log_debug("unknown message type %u", imsg->hdr.type);
 		break;
 	}
 }

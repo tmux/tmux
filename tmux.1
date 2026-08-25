@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1156 2026/08/17 14:47:41 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1158 2026/08/20 09:19:24 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 17 2026 $
+.Dd $Mdocdate: August 20 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -3644,7 +3644,7 @@ but a different format may be specified with
 .Fl F .
 .Tg newp
 .It Xo Ic new\-pane
-.Op Fl bCdefhIkLMOPvWZ
+.Op Fl AbCdefhIkKLMOPvWZ
 .Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
@@ -3693,13 +3693,16 @@ sets the pane border lines for floating panes; see
 .Fl M
 may be used when bound to a mouse drag key; the new floating pane is resized to
 follow the mouse drag.
-It has no effect with
-.Fl L .
+.Fl A
+creates a floating pane which remains visible above a zoomed pane.
 .Fl O
 creates a modal pane.
 A modal pane is always the active pane and prevents interaction with any other
 panes while it is active.
 A window can only have one modal pane and it must be a floating pane.
+With
+.Fl K ,
+all keys, including the prefix key, are passed directly to the modal pane.
 With
 .Fl C ,
 the modal pane is closed when the mouse is clicked outside it.

@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.286 2026/08/03 12:58:53 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.290 2026/08/24 15:05:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -314,12 +314,14 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 
 	if (~ctx->flags & SCREEN_WRITE_SYNC) {
 		/*
-		 * For the active pane or for an overlay (no pane), we want to
-		 * only use synchronized updates if requested (commands that
-		 * move the cursor); for other panes, always use it, since the
-		 * cursor will have to move.
+		 * For the active pane showing its base screen or for an
+		 * overlay (no pane), only use synchronized updates if
+		 * requested (commands that move the cursor); for other panes
+		 * or a pane in a mode, always use it, since the cursor will
+		 * have to move.
 		 */
-		if (ctx->wp != NULL && ctx->wp != ctx->wp->window->active)
+		if (ctx->wp != NULL && (ctx->wp != ctx->wp->window->active ||
+		    ctx->wp->screen != &ctx->wp->base))
 			ttyctx->flags |= TTY_CTX_SYNC;
 		else {
 			if (ctx->wp == NULL)
@@ -347,10 +349,18 @@ screen_write_make_list(struct screen *s)
 void
 screen_write_free_list(struct screen *s)
 {
-	u_int	y;
+	struct screen_write_cline	*cl;
+	struct screen_write_citem	*ci, *ci1;
+	u_int				 y;
 
-	for (y = 0; y < screen_size_y(s); y++)
-		free(s->write_list[y].data);
+	for (y = 0; y < screen_size_y(s); y++) {
+		cl = &s->write_list[y];
+		TAILQ_FOREACH_SAFE(ci, &cl->items, entry, ci1) {
+			TAILQ_REMOVE(&cl->items, ci, entry);
+			screen_write_free_citem(ci);
+		}
+		free(cl->data);
+	}
 	free(s->write_list);
 }
 
@@ -1066,6 +1076,19 @@ screen_write_stop_sync(struct window_pane *wp)
 	screen_write_flush_dirty(wp);
 
 	log_debug("%s: %%%u stopped sync mode", __func__, wp->id);
+}
+
+/* Flush pending output before clearing sync mode. */
+void
+screen_write_end_sync(struct screen_write_ctx *ctx)
+{
+	struct window_pane	*wp = ctx->wp;
+
+	if (wp == NULL)
+		return;
+	if (wp->base.mode & MODE_SYNC)
+		screen_write_collect_flush(ctx, 0, __func__);
+	screen_write_stop_sync(wp);
 }
 
 /* Cursor up by ny. */
@@ -2848,10 +2871,11 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct grid		*gd = s->grid;
 	const struct utf8_data	*ud = &gc->data;
 	struct options		*oo = global_options;
-	u_int			 i, n, cx = s->cx, cy = s->cy, vis, yoff = 0;
+	u_int			 i, n, cx = s->cx, cy = s->cy, vis;
 	struct grid_cell	 last;
 	struct tty_ctx		 ttyctx;
 	int			 force_wide = 0, zero_width = 0;
+	int			 xoff = 0, yoff = 0;
 	struct visible_ranges	*r;
 
 	/* Ignore U+3164 HANGUL_FILLER entirely. */
@@ -2945,9 +2969,11 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	 * obscured in the middle, only on left or right, but there could be an
 	 * empty range in the visible ranges so we add them all up.
 	 */
-	if (wp != NULL)
+	if (wp != NULL) {
+		xoff = wp->xoff;
 		yoff = wp->yoff;
-	r = window_visible_ranges(wp, cx - n, cy + yoff, n, NULL);
+	}
+	r = window_visible_ranges(wp, xoff + cx - n, cy + yoff, n, NULL);
 	for (i = 0, vis = 0; i < r->used; i++)
 		vis += r->ranges[i].nx;
 	if (vis < n) {

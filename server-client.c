@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.503 2026/08/17 07:56:56 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.507 2026/08/24 21:17:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -38,13 +38,14 @@ static void	server_client_repeat_timer(int, short, void *);
 static void	server_client_click_timer(int, short, void *);
 static void	server_client_check_exit(struct client *, int);
 static void	server_client_exit_timer(int, short, void *);
-static int	server_client_check_redraw(struct client *);
+static void	server_client_check_redraw(struct client *);
 static void	server_client_check_modes(struct client *);
 static void	server_client_set_title(struct client *);
 static void	server_client_set_path(struct client *);
 static void	server_client_set_progress_bar(struct client *);
 static void	server_client_reset_state(struct client *);
 static void	server_client_update_latest(struct client *);
+static int	server_client_handle_dead_key(struct window_pane *, key_code);
 static void	server_client_dispatch(struct imsg *, void *);
 static int	server_client_dispatch_command(struct client *, struct imsg *);
 static int	server_client_dispatch_identify(struct client *, struct imsg *);
@@ -540,6 +541,7 @@ server_client_lost(struct client *c)
 	input_cancel_requests(c);
 
 	free(c->title);
+	free(c->path);
 	free((void *)c->cwd);
 
 	evtimer_del(&c->repeat_timer);
@@ -817,8 +819,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 	} else {
 		/* Try the pane borders. */
 		TAILQ_FOREACH(fwp, &w->panes, entry) {
-			if ((w->flags & WINDOW_ZOOMED) &&
-			    (~fwp->flags & PANE_ZOOMED))
+			if (!window_pane_is_visible(fwp))
 				continue;
 			if (window_pane_is_floating(fwp) &&
 			    window_pane_get_pane_lines(fwp) == PANE_LINES_NONE)
@@ -1405,6 +1406,21 @@ server_client_repeat_time(struct client *c, struct key_binding *bd)
 	return (repeat);
 }
 
+/* Handle a key press on a dead pane waiting for a key. */
+static int
+server_client_handle_dead_key(struct window_pane *wp, key_code key)
+{
+	if (wp == NULL ||
+	    (~wp->flags & PANE_EXITED) ||
+	    KEYC_IS_MOUSE(key) ||
+	    KEYC_IS_PASTE(key) ||
+	    options_get_number(wp->options, "remain-on-exit") != 3)
+		return (0);
+	options_set_number(wp->options, "remain-on-exit", 0);
+	server_destroy_pane(wp, 0);
+	return (1);
+}
+
 /*
  * Handle data key input from client. This owns and can modify the key event it
  * is given and is responsible for freeing it.
@@ -1500,6 +1516,14 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	    (~key & KEYC_SENT) &&
 	    server_client_is_assume_paste(c))
 		goto paste_key;
+
+	/* Forward keys directly if this pane is capturing all keys. */
+	if (wp != NULL &&
+	    (wp->flags & PANE_CAPTUREALLKEYS) &&
+	    (~wp->flags & PANE_EXITED) &&
+	    !KEYC_IS_MOUSE(key) &&
+	    TAILQ_EMPTY(&wp->modes))
+		goto forward_key;
 
 	/*
 	 * Work out the current key table. If the pane is in a mode, use
@@ -1665,15 +1689,8 @@ try_again:
 	}
 
 forward_key:
-	if (wp != NULL &&
-	    (wp->flags & PANE_EXITED) &&
-	    !KEYC_IS_MOUSE(key) &&
-	    !KEYC_IS_PASTE(key) &&
-	    options_get_number(wp->options, "remain-on-exit") == 3) {
-		options_set_number(wp->options, "remain-on-exit", 0);
-		server_destroy_pane(wp, 0);
+	if (server_client_handle_dead_key(wp, key))
 		goto out;
-	}
 	if (c->flags & CLIENT_READONLY)
 		goto out;
 	if (wp != NULL)
@@ -1761,9 +1778,9 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 	}
 
 	/*
-	 * Key presses in overlay mode and the command prompt are a special
-	 * case. The queue might be blocked so they need to be processed
-	 * immediately rather than queued.
+	 * Key presses in overlay mode, for panes capturing all keys and in the
+	 * command prompt are a special case. The queue might be blocked so they
+	 * need to be processed immediately rather than queued.
 	 */
 	if (~c->flags & CLIENT_READONLY) {
 		if (c->message_string != NULL) {
@@ -1783,6 +1800,21 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 		}
 
 		server_client_clear_overlay(c);
+
+		wp = s->curw->window->active;
+		if (wp != NULL &&
+		    (wp->flags & PANE_CAPTUREALLKEYS) &&
+		    TAILQ_EMPTY(&wp->modes) &&
+		    !KEYC_IS_MOUSE(event->key)) {
+			if (server_client_handle_dead_key(wp, event->key))
+				return (0);
+			if (~wp->flags & PANE_EXITED) {
+				window_pane_key(wp, c, s, s->curw, event->key,
+				    &event->m);
+				return (0);
+			}
+		}
+
 		if (server_client_handle_menu_key(c, event))
 			return (0);
 		if (c->prompt != NULL) {
@@ -1883,25 +1915,19 @@ server_client_loop(void)
 		server_client_check_exit(c, 0);
 		if (c->session != NULL && c->session->curw != NULL) {
 			server_client_check_modes(c);
-			if (server_client_check_redraw(c))
-				c->session->curw->window->redraw_deferred = 1;
+			server_client_check_redraw(c);
 			server_client_reset_state(c);
 		}
 	}
 
 	/*
 	 * Any windows will have been redrawn as part of clients, so clear
-	 * their flags now. Neither window damage nor PANE_REDRAW/
-	 * PANE_REDRAWSCROLLBAR are lossy to leave for a later pass, so only
-	 * clear them once every client actually viewing the window has
-	 * drawn (none deferred this pass, per the loop above), otherwise
-	 * leave them for the deferred redraw timer to retry. Checking
-	 * EVBUFFER_LENGTH(tty->out) here instead would be wrong: a redraw
-	 * that was NOT deferred still just wrote fresh bytes into that same
-	 * buffer, which libevent has not flushed to the fd yet, so it would
-	 * look identical to a deferred one and nothing would ever clear.
-	 * PANE_ACTIVITY is unrelated bookkeeping (activity monitoring, not
-	 * redraw) and keeps its original unconditional-clear behaviour.
+	 * their flags now. A client whose redraw was deferred this pass
+	 * (waiting for outstanding tty output to drain) has already
+	 * escalated to CLIENT_REDRAWWINDOW or CLIENT_REDRAWSCROLLBARS in
+	 * server_client_check_redraw() to cover whatever it is about to
+	 * lose here, so PANE_REDRAW/PANE_REDRAWSCROLLBAR and window damage
+	 * can simply be cleared unconditionally.
 	 */
 	RB_FOREACH(w, windows, &windows) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -1909,15 +1935,10 @@ server_client_loop(void)
 				server_client_check_pane_resize(wp);
 				server_client_check_pane_buffer(wp);
 			}
-			wp->flags &= ~PANE_ACTIVITY;
-			if (!w->redraw_deferred)
-				wp->flags &= ~(PANE_REDRAW|
-				    PANE_REDRAWSCROLLBAR);
+			wp->flags &= ~(PANE_REDRAW|PANE_REDRAWSCROLLBAR|
+			    PANE_ACTIVITY);
 		}
-
-		if (!w->redraw_deferred)
-			redraw_free_damage(w);
-		w->redraw_deferred = 0;
+		redraw_free_damage(w);
 
 		check_window_name(w);
 	}
@@ -2474,11 +2495,8 @@ server_client_any_pane_redraw(struct client *c)
 	return (0);
 }
 
-/*
- * Check for client redraws. Returns 1 if the redraw was deferred (waiting
- * for outstanding tty output to drain) rather than actually performed.
- */
-static int
+/* Check for client redraws. */
+static void
 server_client_check_redraw(struct client *c)
 {
 	struct session		*s = c->session;
@@ -2491,7 +2509,7 @@ server_client_check_redraw(struct client *c)
 	size_t			 n;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
-		return (0);
+		return;
 	if (c->flags & CLIENT_ALLREDRAWFLAGS) {
 		log_debug("%s: redraw%s%s%s%s%s", c->name,
 		    (c->flags & CLIENT_REDRAWWINDOW) ? " window" : "",
@@ -2503,25 +2521,24 @@ server_client_check_redraw(struct client *c)
 
 	/* Work out if a redraw is actually needed. */
 	needed = 0;
-	if (c->flags & CLIENT_ALLREDRAWFLAGS)
+	if (c->flags & (CLIENT_ALLREDRAWFLAGS|CLIENT_REDRAWSCROLLBARS))
 		needed = 1;
 	else if (server_client_any_pane_redraw(c))
 		needed = 1;
 	if (!needed) {
 		c->flags &= ~CLIENT_STATUSFORCE;
-		return (0);
+		return;
 	}
 
 	/*
 	 * If there is outstanding data, defer the redraw until it has been
 	 * consumed. We can just add a timer to get out of the event loop and
-	 * end up back here. Unlike before, this does not need to escalate to
-	 * a full CLIENT_REDRAWWINDOW redraw to avoid losing whatever is
-	 * pending: server_client_loop() only clears PANE_REDRAW,
-	 * PANE_REDRAWSCROLLBAR and window damage once a pass actually drew
-	 * them (see the redraw_deferred handling there), so they are simply
-	 * left in place and retried in their normal, narrowly-scoped form
-	 * next time.
+	 * end up back here. server_client_loop() clears PANE_REDRAW,
+	 * PANE_REDRAWSCROLLBAR and window damage unconditionally every pass,
+	 * so escalate to a coarser, persistent client flag that survives
+	 * that clear and forces a full catch-up redraw once this client is
+	 * unblocked, rather than trying to keep the fine-grained state
+	 * around for a retry.
 	 */
 	n = EVBUFFER_LENGTH(tty->out);
 	if (n != 0 || (tty->flags & TTY_BLOCK)) {
@@ -2535,7 +2552,17 @@ server_client_check_redraw(struct client *c)
 			log_debug("redraw timer started");
 			evtimer_add(&ev, &tv);
 		}
-		return (1);
+		if (!TAILQ_EMPTY(&w->damage))
+			c->flags |= CLIENT_REDRAWWINDOW;
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (wp->flags & PANE_REDRAW) {
+				c->flags |= CLIENT_REDRAWWINDOW;
+				break;
+			}
+			if (wp->flags & PANE_REDRAWSCROLLBAR)
+				c->flags |= CLIENT_REDRAWSCROLLBARS;
+		}
+		return;
 	}
 
 	/* Unfreeze the tty and turn off the cursor. */
@@ -2553,7 +2580,8 @@ server_client_check_redraw(struct client *c)
 				log_debug("%s: redraw pane %%%u", __func__,
 				    wp->id);
 				redraw_pane(c, wp);
-			} else if (wp->flags & PANE_REDRAWSCROLLBAR) {
+			} else if ((wp->flags & PANE_REDRAWSCROLLBAR) ||
+			    (c->flags & CLIENT_REDRAWSCROLLBARS)) {
 				log_debug("%s: redraw scrollbar %%%u", __func__,
 				    wp->id);
 				redraw_pane_scrollbar(c, wp);
@@ -2565,9 +2593,10 @@ server_client_check_redraw(struct client *c)
 		 * redraw() decide a redraw is needed at all, independently of
 		 * any CLIENT_ALLREDRAWFLAGS bit. Every current damage source
 		 * happens to set one of those flags too, so the block below
-		 * always consumes it - but fall back to consuming it here in
-		 * case that ever stops holding, rather than silently
-		 * dropping it when redraw_free_damage() clears it next loop.
+		 * always consumes it - but consume it here too in case that
+		 * ever stops holding, since server_client_loop() clears
+		 * window damage unconditionally every pass regardless of
+		 * whether it was actually drawn.
 		 */
 		if (!TAILQ_EMPTY(&w->damage) && (~c->flags & CLIENT_ALLREDRAWFLAGS))
 			redraw_client_damage(c);
@@ -2596,10 +2625,10 @@ server_client_check_redraw(struct client *c)
 	 * All the redraw flags can now be cleared. Also record how many bytes
 	 * were written.
 	 */
-	c->flags &= ~(CLIENT_ALLREDRAWFLAGS|CLIENT_STATUSFORCE);
+	c->flags &= ~(CLIENT_ALLREDRAWFLAGS|CLIENT_REDRAWSCROLLBARS|
+	    CLIENT_STATUSFORCE);
 	c->redraw = EVBUFFER_LENGTH(tty->out);
 	log_debug("%s: redraw added %zu bytes", c->name, c->redraw);
-	return (0);
 }
 
 /* Set client title. */
