@@ -542,6 +542,7 @@ AC_ARG_ENABLE(
 	AS_HELP_STRING(--enable-sixel, deprecated alias for --enable-images)
 )
 if test "x$enable_sixel" = xyes; then
+	AC_MSG_WARN([--enable-sixel is deprecated, use --enable-images instead to enable.])
 	enable_images=yes
 fi
 if test "x$enable_images" = xyes; then
