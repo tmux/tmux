@@ -17,6 +17,7 @@ jobs:
   action:
     runs-on: ubuntu-latest
     if: github.repository == 'tmux/tmux'
+    timeout-minutes: 10
     steps:
       - uses: dessant/lock-threads@v6
         with:
