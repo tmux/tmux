@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1158 2026/08/20 09:19:24 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1159 2026/08/25 08:37:08 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 20 2026 $
+.Dd $Mdocdate: August 25 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -4752,6 +4752,15 @@ for backspace.
 Set the number of buffers; as new buffers are added to the top of the stack,
 old ones are removed from the bottom if necessary to maintain this maximum
 length.
+.It Xo Ic clear\-on\-attach
+.Op Ic on | off
+.Xc
+When enabled (the default), the client terminal switches to the alternate
+screen and clears it when a client is attached.
+When disabled,
+.Nm
+does not enter the alternate screen; instead the existing terminal content is
+scrolled into the scrollback buffer so it remains accessible.
 .It Xo Ic command\-alias[]
 .Ar name=value
 .Xc

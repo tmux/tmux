@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.479 2026/08/18 09:01:20 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.480 2026/08/25 08:37:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -333,6 +333,7 @@ tty_start_tty(struct tty *tty)
 {
 	struct client	*c = tty->client;
 	struct termios	 tio;
+	u_int		 i;
 
 	setblocking(c->fd, 0);
 	event_add(&tty->event_in, NULL);
@@ -348,10 +349,21 @@ tty_start_tty(struct tty *tty)
 	if (tcsetattr(c->fd, TCSANOW, &tio) == 0)
 		tcflush(c->fd, TCOFLUSH);
 
-	tty_putcode(tty, TTYC_SMCUP);
-
+	if (options_get_number(global_options, "clear-on-attach")) {
+		tty_putcode(tty, TTYC_SMCUP);
+		tty_putcode(tty, TTYC_CLEAR);
+	} else {
+		tty_putcode_ii(tty, TTYC_CSR, 0, tty->sy - 1);
+		tty_putcode_ii(tty, TTYC_CUP, 0, tty->sy - 1);
+		if (tty_term_has(tty->term, TTYC_INDN))
+			tty_putcode_i(tty, TTYC_INDN, tty->sy + 1);
+		else if (tty_term_has(tty->term, TTYC_IND)) {
+			for (i = 0; i < tty->sy + 1; i++)
+				tty_putcode(tty, TTYC_IND);
+		} else
+			tty_putcode(tty, TTYC_CLEAR);
+	}
 	tty_putcode(tty, TTYC_SMKX);
-	tty_putcode(tty, TTYC_CLEAR);
 
 	if (tty_acs_needed(tty)) {
 		log_debug("%s: using capabilities for ACS", c->name);
@@ -467,7 +479,8 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, tty_term_string(tty->term, TTYC_RMACS));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_SGR0));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMKX));
-	tty_raw(tty, tty_term_string(tty->term, TTYC_CLEAR));
+	if (options_get_number(global_options, "clear-on-attach"))
+		tty_raw(tty, tty_term_string(tty->term, TTYC_CLEAR));
 	if (tty->cstyle != SCREEN_CURSOR_DEFAULT) {
 		if (tty_term_has(tty->term, TTYC_SE))
 			tty_raw(tty, tty_term_string(tty->term, TTYC_SE));
@@ -492,7 +505,10 @@ tty_stop_tty(struct tty *tty)
 
 	if (tty_use_margin(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_DSMG));
-	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
+	if (options_get_number(global_options, "clear-on-attach"))
+		tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
+	else
+		tty_raw(tty, tty_term_string(tty->term, TTYC_CLEAR));
 
 	if (tty->term->flags & TERM_VT100LIKE)
 		tty_raw(tty, "\033[?2031l");

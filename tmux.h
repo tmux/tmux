@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1430 2026/08/24 21:17:19 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1431 2026/08/25 08:37:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -474,6 +474,7 @@ enum tty_code_code {
 	TTYC_ICH1,
 	TTYC_IL,
 	TTYC_IL1,
+	TTYC_IND,
 	TTYC_INDN,
 	TTYC_INVIS,
 	TTYC_KCBT,
