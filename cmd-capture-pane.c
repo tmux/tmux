@@ -166,6 +166,7 @@ cmd_capture_pane_grid(struct window_pane *wp, size_t *len)
 		}
 		buf = cmd_capture_pane_append(buf, len, line, strlen(line));
 		free(line);
+		line = NULL;
 
 		for (xx = 0; xx < gd->sx; xx++) {
 			line = cmd_capture_pane_cell(s, xx, yy);
