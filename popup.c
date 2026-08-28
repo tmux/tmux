@@ -110,7 +110,8 @@ popup_free(struct popup_data *pd)
 
 	if (pd->job != NULL)
 		job_free(pd->job);
-	input_free(pd->ictx);
+	if (pd->ictx != NULL)
+		input_free(pd->ictx);
 
 	free(pd->or[0].ranges);
 	free(pd->or[1].ranges);
