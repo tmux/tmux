@@ -1201,6 +1201,8 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 
 		for (i = 0; i < r->used; i++) {
 			ri = &r->ranges[i];
+			if (ri->nx == 0)
+				continue;
 			if (w->sb_pos == PANE_SCROLLBARS_LEFT) {
 				if (wp->xoff > sb_w)
 					lb = wp->xoff - 1 - sb_w;
@@ -1218,6 +1220,8 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, int px,
 				rb = wp->xoff + wp->sx + sb_w;
 			if (rb > (int)w->sx)
 				rb = w->sx - 1;
+			if (lb > rb)
+				continue;
 
 			sx = ri->px;
 			ex = sx + ri->nx - 1;
