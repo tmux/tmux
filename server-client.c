@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.508 2026/08/25 06:14:16 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.509 2026/08/28 07:36:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1502,6 +1502,10 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	    (~wp->flags & PANE_EXITED) &&
 	    !KEYC_IS_MOUSE(key) &&
 	    TAILQ_EMPTY(&wp->modes))
+		goto forward_key;
+
+	/* Focus events are not keys and cannot be bound. */
+	if (key == KEYC_FOCUS_IN || key == KEYC_FOCUS_OUT)
 		goto forward_key;
 
 	/*
