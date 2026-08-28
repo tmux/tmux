@@ -39,6 +39,8 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: dependencies
         if: runner.os == 'Linux'
