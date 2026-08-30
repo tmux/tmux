@@ -508,18 +508,20 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 
 /* Count the number of available cells in a layout. */
 u_int
-layout_count_cells(struct layout_cell *lc)
+layout_count_cells(struct layout_cell *lc, int with_floating)
 {
 	struct layout_cell	*lcchild;
 	u_int			 count = 0;
 
 	switch (lc->type) {
 	case LAYOUT_WINDOWPANE:
+		if (lc->flags & LAYOUT_CELL_FLOATING && !with_floating)
+			return 0;
 		return (1);
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
-			count += layout_count_cells(lcchild);
+			count += layout_count_cells(lcchild, with_floating);
 		return (count);
 	default:
 		fatalx("bad layout type");

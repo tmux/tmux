@@ -3849,7 +3849,7 @@ struct visible_ranges *window_visible_ranges(struct window_pane *, int, int,
 		     u_int, struct visible_ranges *);
 
 /* layout.c */
-u_int		 layout_count_cells(struct layout_cell *);
+u_int		 layout_count_cells(struct layout_cell *, int);
 struct layout_cell *layout_create_cell(struct layout_cell *);
 void		 layout_free_cell(struct layout_cell *, int);
 void		 layout_print_cell(struct layout_cell *, const char *, u_int);

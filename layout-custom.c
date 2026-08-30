@@ -445,9 +445,11 @@ layout_check(struct layout_cell *lc)
 int
 layout_parse(struct window *w, const char *layout, char **cause)
 {
+	struct window_pane	*wp;
 	struct layout_cell	*lcchild, *lc = NULL;
 	struct layout_parse_ctx	 pctx;
 	u_int			 npanes, ncells, sx = 0, sy = 0;
+	int			 with_floating;
 
 	/* Build the layout. */
 	layout_parse_init_ctx(&pctx, cause);
@@ -456,14 +458,12 @@ layout_parse(struct window *w, const char *layout, char **cause)
 			layout_free_cell(pctx.root, 0);
 		return (-1);
 	}
+	with_floating = pctx.version >= 2;
 
 	/* Check this window will fit into the layout. */
-	if (pctx.version < 2)
-		npanes = window_count_panes(w, 0);
-	else
-		npanes = window_count_panes(w, 1);
+	npanes = window_count_panes(w, with_floating);
 	for (;;) {
-		ncells = layout_count_cells(pctx.root);
+		ncells = layout_count_cells(pctx.root, with_floating);
 		if (npanes > ncells) {
 			xasprintf(cause, "have %u panes but need %u", npanes,
 			    ncells);
@@ -483,6 +483,19 @@ layout_parse(struct window *w, const char *layout, char **cause)
 			goto fail;
 		}
 		layout_destroy_cell(w, lcchild, &pctx.root);
+	}
+
+	/* Stitch in floating panes to version 1. */
+	if (pctx.version < 2) {
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (!window_pane_is_floating(wp))
+				continue;
+			lc = wp->layout_cell;
+			TAILQ_REMOVE(&lc->parent->cells, lc, entry);
+			/* A root node is guaranteed by this point. */
+			TAILQ_INSERT_TAIL(&pctx.root->cells, lc, entry);
+			lc->parent = pctx.root;
+		}
 	}
 	lc = pctx.root;
 
@@ -589,13 +602,18 @@ layout_assign_fallback(struct window_pane **wp, struct layout_cell *lc)
 
 	switch (lc->type) {
 	case LAYOUT_WINDOWPANE:
+		while ((*wp)->layout_cell != NULL) /* skipping floats */
+			*wp = TAILQ_NEXT(*wp, entry);
 		layout_make_leaf(lc, *wp);
 		*wp = TAILQ_NEXT(*wp, entry);
 		return;
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
-		TAILQ_FOREACH(lcchild, &lc->cells, entry)
+		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+			if (lcchild->flags & LAYOUT_CELL_FLOATING)
+				continue;
 			layout_assign_fallback(wp, lcchild);
+		}
 		return;
 	}
 }

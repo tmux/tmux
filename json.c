@@ -40,7 +40,7 @@
  *   are not decoded, duplicate keys may go undetected.
  */
 
-#define TOKENS_MAX	1000
+#define TOKENS_MAX	8192
 #define ERROR_CTX_LEN	8
 
 /* JSON Token types. */
