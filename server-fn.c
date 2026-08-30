@@ -372,6 +372,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 		close(wp->fd);
 		wp->fd = -1;
 	}
+	window_pane_resize_sync_forget(wp);
 	if (wp->pipe_fd != -1) {
 		bufferevent_free(wp->pipe_event);
 		wp->pipe_event = NULL;

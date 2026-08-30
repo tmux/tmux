@@ -75,6 +75,11 @@ static void	window_pane_free(struct window_pane *);
 static void	window_pane_scrollbar_timer(int, short, void *);
 static void	window_pane_full_size_offset(struct window_pane *, int *, int *,
 		    u_int *, u_int *);
+static void	window_resize_sync_callback(int, short, void *);
+static void	window_resize_sync_cancel(struct window *);
+static void	window_resize_sync_prepare(struct window *);
+static void	window_resize_sync_release(struct window *, const char *);
+static int	window_pane_resize_sync_capable(struct window_pane *);
 
 RB_GENERATE(windows, window, entry, window_cmp);
 RB_GENERATE(winlinks, winlink, entry, winlink_cmp);
@@ -458,6 +463,7 @@ window_destroy(struct window *w)
 	layout_free_cell(w->saved_layout_root, 0);
 	free(w->old_layout);
 
+	window_resize_sync_cancel(w);
 	menu_destroy(w);
 	window_destroy_panes(w);
 
@@ -582,11 +588,20 @@ window_pane_send_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
 	struct window	*w = wp->window;
 	struct winsize	 ws;
+	int		 expected = 0;
 
-	if (wp->fd == -1)
+	if (wp->fd == -1) {
+		window_pane_resize_sync_forget(wp);
 		return;
+	}
 
 	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, sx, sy);
+	if (window_resize_sync_dirty(w)) {
+		expected = wp->resize_sync_expected ||
+		    wp->resize_sync_phase != WINDOW_PANE_RESIZE_SYNC_NONE ||
+		    window_pane_resize_sync_capable(wp);
+		screen_write_stop_sync(wp);
+	}
 
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = sx;
@@ -604,6 +619,308 @@ window_pane_send_resize(struct window_pane *wp, u_int sx, u_int sy)
 		if (errno != EINVAL && errno != ENXIO)
 #endif
 		fatal("ioctl failed");
+
+	if (window_resize_sync_dirty(w)) {
+		wp->resize_sync_expected = expected;
+		if (expected) {
+			wp->resize_sync_phase =
+			    WINDOW_PANE_RESIZE_SYNC_WAIT_START;
+		} else
+			wp->resize_sync_phase = WINDOW_PANE_RESIZE_SYNC_NONE;
+	}
+}
+
+static void
+window_resize_sync_release(struct window *w, const char *from)
+{
+	struct window_pane	*wp;
+
+	if (w->resize_sync_state == WINDOW_RESIZE_SYNC_IDLE)
+		return;
+
+	log_debug("%s: @%u resize sync released (%s)", __func__, w->id, from);
+
+	if (event_initialized(&w->resize_sync_timer))
+		evtimer_del(&w->resize_sync_timer);
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		wp->resize_sync_phase = WINDOW_PANE_RESIZE_SYNC_NONE;
+		wp->resize_sync_expected = 0;
+	}
+	w->resize_sync_state = WINDOW_RESIZE_SYNC_IDLE;
+	server_redraw_window(w);
+}
+
+static void
+window_resize_sync_cancel(struct window *w)
+{
+	struct window_pane	*wp;
+
+	if (event_initialized(&w->resize_sync_timer))
+		evtimer_del(&w->resize_sync_timer);
+	w->resize_sync_state = WINDOW_RESIZE_SYNC_IDLE;
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		wp->resize_sync_phase = WINDOW_PANE_RESIZE_SYNC_NONE;
+		wp->resize_sync_expected = 0;
+	}
+}
+
+static int
+window_resize_sync_has_phase(struct window *w,
+    enum window_pane_resize_sync_phase phase)
+{
+	struct window_pane	*wp;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp->resize_sync_phase == phase)
+			return (1);
+	}
+	return (0);
+}
+
+static int
+window_resize_sync_has_pending(struct window *w)
+{
+	struct window_pane	*wp;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp->resize_sync_phase != WINDOW_PANE_RESIZE_SYNC_NONE)
+			return (1);
+	}
+	return (0);
+}
+
+static void
+window_resize_sync_callback(__unused int fd, __unused short events, void *data)
+{
+	struct window		*w = data;
+	struct window_pane	*wp, **open = NULL;
+	struct timeval		 tv;
+	u_int			 i, nopen = 0;
+
+	if (w->resize_sync_state == WINDOW_RESIZE_SYNC_WAIT_SOFT) {
+		w->resize_sync_state = WINDOW_RESIZE_SYNC_WAIT_HARD;
+		tv.tv_sec = WINDOW_RESIZE_SYNC_HARD_TIMEOUT / 1000000;
+		tv.tv_usec = WINDOW_RESIZE_SYNC_HARD_TIMEOUT % 1000000;
+		evtimer_add(&w->resize_sync_timer, &tv);
+		log_debug("%s: @%u resize sync soft timeout", __func__, w->id);
+		server_redraw_window(w);
+		return;
+	}
+	if (w->resize_sync_state != WINDOW_RESIZE_SYNC_WAIT_HARD)
+		return;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp->resize_sync_phase == WINDOW_PANE_RESIZE_SYNC_IN_FRAME)
+			nopen++;
+	}
+	if (nopen != 0)
+		open = xcalloc(nopen, sizeof *open);
+	i = 0;
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp->resize_sync_phase == WINDOW_PANE_RESIZE_SYNC_IN_FRAME)
+			open[i++] = wp;
+		wp->resize_sync_phase = WINDOW_PANE_RESIZE_SYNC_NONE;
+		wp->resize_sync_expected = 0;
+	}
+	for (i = 0; i < nopen; i++)
+		screen_write_stop_sync(open[i]);
+	free(open);
+
+	log_debug("%s: @%u resize sync hard timeout", __func__, w->id);
+	w->resize_sync_state = WINDOW_RESIZE_SYNC_IDLE;
+	server_redraw_window(w);
+}
+
+/*
+ * Hold client output from the moment geometry changes. The redraw marked here
+ * is what stops a pane writing lines straight to the terminal, so this must
+ * run before anything flushes a frame drawn at the old size.
+ */
+static void
+window_resize_sync_prepare(struct window *w)
+{
+	if (w->resize_sync_state != WINDOW_RESIZE_SYNC_DIRTY)
+		log_debug("%s: @%u resize sync dirty", __func__, w->id);
+	if (event_initialized(&w->resize_sync_timer))
+		evtimer_del(&w->resize_sync_timer);
+	w->resize_sync_state = WINDOW_RESIZE_SYNC_DIRTY;
+	server_redraw_window(w);
+}
+
+void
+window_resize_sync_arm(struct window *w)
+{
+	struct window_pane	*wp;
+	struct timeval		 tv = {
+		.tv_usec = WINDOW_RESIZE_SYNC_SOFT_TIMEOUT
+	};
+
+	if (w->resize_sync_state != WINDOW_RESIZE_SYNC_DIRTY)
+		return;
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp->fd == -1) {
+			wp->resize_sync_phase = WINDOW_PANE_RESIZE_SYNC_NONE;
+			wp->resize_sync_expected = 0;
+		}
+	}
+	if (!window_resize_sync_has_pending(w)) {
+		window_resize_sync_release(w, "no participants");
+		return;
+	}
+	w->resize_sync_state = WINDOW_RESIZE_SYNC_WAIT_SOFT;
+
+	if (!event_initialized(&w->resize_sync_timer)) {
+		evtimer_set(&w->resize_sync_timer, window_resize_sync_callback,
+		    w);
+	}
+	evtimer_add(&w->resize_sync_timer, &tv);
+	log_debug("%s: @%u resize sync armed", __func__, w->id);
+}
+
+int
+window_resize_sync_active(struct window *w)
+{
+	return (w->resize_sync_state != WINDOW_RESIZE_SYNC_IDLE);
+}
+
+int
+window_resize_sync_dirty(struct window *w)
+{
+	return (w->resize_sync_state == WINDOW_RESIZE_SYNC_DIRTY);
+}
+
+int
+window_resize_sync_redraw_ready(struct window *w)
+{
+	if (w->resize_sync_state == WINDOW_RESIZE_SYNC_IDLE)
+		return (1);
+	if (w->resize_sync_state != WINDOW_RESIZE_SYNC_WAIT_HARD)
+		return (0);
+	return (!window_resize_sync_has_phase(w,
+	    WINDOW_PANE_RESIZE_SYNC_IN_FRAME));
+}
+
+int
+window_resize_sync_commit(struct window *w)
+{
+	struct window_pane	*wp;
+
+	if (w->resize_sync_state == WINDOW_RESIZE_SYNC_IDLE)
+		return (1);
+	if (!window_resize_sync_redraw_ready(w))
+		return (0);
+
+	if (event_initialized(&w->resize_sync_timer))
+		evtimer_del(&w->resize_sync_timer);
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		wp->resize_sync_phase = WINDOW_PANE_RESIZE_SYNC_NONE;
+		wp->resize_sync_expected = 0;
+	}
+	w->resize_sync_state = WINDOW_RESIZE_SYNC_IDLE;
+	log_debug("%s: @%u resize sync committed", __func__, w->id);
+	return (1);
+}
+
+/*
+ * A pane is worth holding the barrier for while it is inside a synchronized
+ * frame, or while both the alternate screen and the foreground process group
+ * it last used one in are still current. Without that lease the shell left
+ * behind by an exited full screen application would delay every later resize.
+ */
+static int
+window_pane_resize_sync_capable(struct window_pane *wp)
+{
+	if (wp->fd == -1)
+		return (0);
+	if (wp->base.mode & MODE_SYNC)
+		return (1);
+	if (~wp->flags & PANE_RESIZE_SYNC_CAPABLE)
+		return (0);
+	if (!SCREEN_IS_ALTERNATE(&wp->base))
+		return (0);
+	if (wp->resize_sync_pgrp == -1)
+		return (0);
+	return (tcgetpgrp(wp->fd) == wp->resize_sync_pgrp);
+}
+
+void
+window_pane_resize_sync_capture(struct window_pane *wp)
+{
+	if (wp->fd == -1)
+		return;
+	if (SCREEN_IS_ALTERNATE(&wp->base)) {
+		wp->flags |= PANE_RESIZE_SYNC_CAPABLE;
+		wp->resize_sync_pgrp = tcgetpgrp(wp->fd);
+	}
+	if (window_resize_sync_dirty(wp->window))
+		wp->resize_sync_expected = 1;
+	if (window_resize_sync_active(wp->window) &&
+	    wp->resize_sync_phase == WINDOW_PANE_RESIZE_SYNC_WAIT_START) {
+		wp->resize_sync_phase = WINDOW_PANE_RESIZE_SYNC_IN_FRAME;
+	}
+}
+
+void
+window_pane_resize_sync_stop(struct window_pane *wp)
+{
+	struct window	*w = wp->window;
+
+	if (wp->resize_sync_phase != WINDOW_PANE_RESIZE_SYNC_IN_FRAME)
+		return;
+	wp->resize_sync_phase = WINDOW_PANE_RESIZE_SYNC_NONE;
+
+	if (w->resize_sync_state == WINDOW_RESIZE_SYNC_WAIT_SOFT &&
+	    !window_resize_sync_has_pending(w))
+		window_resize_sync_release(w, "frames complete");
+	else if (w->resize_sync_state == WINDOW_RESIZE_SYNC_WAIT_HARD)
+		server_redraw_window(w);
+}
+
+void
+window_pane_resize_sync_detach(struct window *w, struct window_pane *wp,
+    struct window_pane_resize_sync_token *token)
+{
+	int		 participated;
+
+	participated = wp->resize_sync_phase != WINDOW_PANE_RESIZE_SYNC_NONE;
+	if (token != NULL) {
+		token->phase = wp->resize_sync_phase;
+		token->expected = wp->resize_sync_expected;
+	}
+	wp->resize_sync_phase = WINDOW_PANE_RESIZE_SYNC_NONE;
+	wp->resize_sync_expected = 0;
+
+	if (!participated)
+		return;
+	if (w->resize_sync_state == WINDOW_RESIZE_SYNC_WAIT_SOFT &&
+	    !window_resize_sync_has_pending(w))
+		window_resize_sync_release(w, "pane removed");
+	else if (w->resize_sync_state == WINDOW_RESIZE_SYNC_WAIT_HARD)
+		server_redraw_window(w);
+}
+
+void
+window_pane_resize_sync_attach(struct window_pane *wp,
+    const struct window_pane_resize_sync_token *token)
+{
+	wp->resize_sync_phase = WINDOW_PANE_RESIZE_SYNC_NONE;
+	wp->resize_sync_expected = token->expected;
+	if (token->phase == WINDOW_PANE_RESIZE_SYNC_NONE && !token->expected)
+		return;
+
+	window_resize_sync_prepare(wp->window);
+	if (token->phase == WINDOW_PANE_RESIZE_SYNC_IN_FRAME)
+		wp->resize_sync_phase = WINDOW_PANE_RESIZE_SYNC_IN_FRAME;
+	else
+		wp->resize_sync_phase = WINDOW_PANE_RESIZE_SYNC_WAIT_START;
+}
+
+void
+window_pane_resize_sync_forget(struct window_pane *wp)
+{
+	window_pane_resize_sync_detach(wp->window, wp, NULL);
+	wp->flags &= ~PANE_RESIZE_SYNC_CAPABLE;
+	wp->resize_sync_pgrp = -1;
 }
 
 int
@@ -1173,6 +1490,7 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 void
 window_remove_pane(struct window *w, struct window_pane *wp)
 {
+	window_pane_resize_sync_forget(wp);
 	window_lost_pane(w, wp);
 	TAILQ_REMOVE(&w->panes, wp, entry);
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
@@ -1604,6 +1922,8 @@ window_pane_error_callback(__unused struct bufferevent *bufev,
 void
 window_pane_set_event(struct window_pane *wp)
 {
+	window_pane_resize_sync_forget(wp);
+
 	setblocking(wp->fd, 0);
 
 	wp->event = bufferevent_new(wp->fd, window_pane_read_callback,
@@ -1621,6 +1941,8 @@ window_pane_clear_resizes(struct window_pane *wp,
 {
 	struct window_pane_resize	*r, *r1;
 
+	if (except == NULL)
+		wp->resize_timer_second = 0;
 	TAILQ_FOREACH_SAFE(r, &wp->resize_queue, entry, r1) {
 		if (r == except)
 			continue;
@@ -1636,9 +1958,17 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	struct window_pane_resize	*r;
 	struct event_payload		*ep;
 	struct cmd_find_state		 fs;
+	int				 capable;
 
 	if (sx == wp->sx && sy == wp->sy)
 		return;
+
+	capable = window_pane_resize_sync_capable(wp);
+	if (window_resize_sync_active(wp->window) || capable) {
+		window_resize_sync_prepare(wp->window);
+		if (capable)
+			wp->resize_sync_expected = 1;
+	}
 
 	screen_write_stop_sync(wp);
 

@@ -30,7 +30,9 @@
 #include "tmux.h"
 
 static void	server_client_free(int, short, void *);
-static void	server_client_check_pane_resize(struct window_pane *);
+static int	server_client_pane_resize_ready(struct window_pane *);
+static void	server_client_check_pane_resize(struct window_pane *, int);
+static void	server_client_check_window_pane_resize(struct window *);
 static void	server_client_check_pane_buffer(struct window_pane *);
 static void	server_client_check_window_resize(struct window *);
 static key_code	server_client_check_mouse(struct client *, struct key_event *);
@@ -1888,6 +1890,10 @@ server_client_loop(void)
 		}
 	}
 
+	/* Notify resized panes before redrawing their new geometry. */
+	RB_FOREACH(w, windows, &windows)
+		server_client_check_window_pane_resize(w);
+
 	/* Check clients. */
 	TAILQ_FOREACH(c, &clients, entry) {
 		server_client_check_exit(c, 0);
@@ -1904,10 +1910,8 @@ server_client_loop(void)
 	 */
 	RB_FOREACH(w, windows, &windows) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (wp->fd != -1) {
-				server_client_check_pane_resize(wp);
+			if (wp->fd != -1)
 				server_client_check_pane_buffer(wp);
-			}
 			wp->flags &= ~(PANE_REDRAW|PANE_REDRAWSCROLLBAR|
 			    PANE_ACTIVITY);
 		}
@@ -1919,6 +1923,49 @@ server_client_loop(void)
 		TAILQ_FOREACH(wp, &w->panes, entry)
 			window_pane_send_theme_update(wp);
 	}
+}
+
+static int
+server_client_pane_resize_ready(struct window_pane *wp)
+{
+	if (TAILQ_EMPTY(&wp->resize_queue))
+		return (0);
+	if (event_initialized(&wp->resize_timer) &&
+	    evtimer_pending(&wp->resize_timer, NULL))
+		return (0);
+	return (1);
+}
+
+/*
+ * Tell panes about their new size. While the barrier is dirty every queued
+ * resize is drained at once, including from panes still inside their debounce,
+ * so that the deadline started afterwards covers every pane in the window
+ * rather than only the ones that happened to be ready.
+ */
+static void
+server_client_check_window_pane_resize(struct window *w)
+{
+	struct window_pane	*wp;
+	int			 drain, queued = 0;
+
+	drain = window_resize_sync_dirty(w);
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp->fd == -1)
+			continue;
+		if (!drain) {
+			if (server_client_pane_resize_ready(wp))
+				server_client_check_pane_resize(wp, 0);
+			continue;
+		}
+		if (!TAILQ_EMPTY(&wp->resize_queue))
+			server_client_check_pane_resize(wp, 1);
+		if (!TAILQ_EMPTY(&wp->resize_queue))
+			queued = 1;
+	}
+	if (!drain)
+		return;
+	if (!queued)
+		window_resize_sync_arm(w);
 }
 
 /* Check if window needs to be resized. */
@@ -1948,12 +1995,13 @@ server_client_resize_timer(__unused int fd, __unused short events, void *data)
 	struct window_pane	*wp = data;
 
 	log_debug("%s: %%%u resize timer expired", __func__, wp->id);
+	wp->resize_timer_second = 0;
 	evtimer_del(&wp->resize_timer);
 }
 
 /* Check if pane should be resized. */
 static void
-server_client_check_pane_resize(struct window_pane *wp)
+server_client_check_pane_resize(struct window_pane *wp, int force)
 {
 	struct window_pane_resize	*r, *first, *last;
 	struct timeval			 tv = { .tv_usec = 250000 };
@@ -1963,8 +2011,12 @@ server_client_check_pane_resize(struct window_pane *wp)
 
 	if (!event_initialized(&wp->resize_timer))
 		evtimer_set(&wp->resize_timer, server_client_resize_timer, wp);
-	if (evtimer_pending(&wp->resize_timer, NULL))
-		return;
+	if (evtimer_pending(&wp->resize_timer, NULL)) {
+		if (!force || wp->resize_timer_second)
+			return;
+		evtimer_del(&wp->resize_timer);
+	}
+	wp->resize_timer_second = 0;
 
 	log_debug("%s: %%%u needs to be resized", __func__, wp->id);
 	TAILQ_FOREACH(r, &wp->resize_queue, entry) {
@@ -2008,6 +2060,7 @@ server_client_check_pane_resize(struct window_pane *wp)
 		window_pane_send_resize(wp, r->sx, r->sy);
 		window_pane_clear_resizes(wp, last);
 		tv.tv_usec = 10000;
+		wp->resize_timer_second = 1;
 	}
 	evtimer_add(&wp->resize_timer, &tv);
 }
@@ -2161,6 +2214,20 @@ server_client_reset_state(struct client *c)
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
+	/*
+	 * Do not apply state for the new geometry before its redraw. A
+	 * synchronized update opened before the barrier engaged must still be
+	 * ended here: it is this function that closes the ones begun by pane
+	 * output, the terminal presents nothing until it arrives, and tmux
+	 * itself gives an unfinished update only a second.
+	 */
+	if (window_resize_sync_active(w)) {
+		flags = (tty->flags & TTY_BLOCK);
+		tty->flags &= ~TTY_BLOCK;
+		tty_sync_end(tty);
+		tty->flags |= flags;
+		return;
+	}
 
 	/* Disable the block flag. */
 	flags = (tty->flags & TTY_BLOCK);
@@ -2496,6 +2563,10 @@ server_client_check_redraw(struct client *c)
 		c->flags &= ~CLIENT_STATUSFORCE;
 		return;
 	}
+	if (!window_resize_sync_redraw_ready(w)) {
+		log_debug("%s: redraw deferred for resize sync", c->name);
+		return;
+	}
 
 	/*
 	 * If there is outstanding data, defer the redraw until it has been
@@ -2522,6 +2593,10 @@ server_client_check_redraw(struct client *c)
 			if (wp->flags & PANE_REDRAWSCROLLBAR)
 				c->flags |= CLIENT_REDRAWSCROLLBARS;
 		}
+		return;
+	}
+	if (!window_resize_sync_commit(w)) {
+		log_debug("%s: commit deferred for resize sync", c->name);
 		return;
 	}
 

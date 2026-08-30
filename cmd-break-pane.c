@@ -99,6 +99,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*dst_s = target->s;
 	struct window_pane	*wp = source->wp;
 	struct window		*w = wl->window, *old_w = w;
+	struct window_pane_resize_sync_token token = { 0 };
 	char			*cause, *cp;
 	int			 idx = target->idx, before, old_idx = wl->idx;
 	const char		*template, *name = args_get(args, 'n');
@@ -150,6 +151,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
+	window_pane_resize_sync_detach(w, wp, &token);
 	TAILQ_REMOVE(&w->panes, wp, entry);
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
 	server_client_remove_pane(wp);
@@ -164,6 +166,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
 	w->active = wp;
 	w->latest = tc;
+	window_pane_resize_sync_attach(wp, &token);
 
 	free(w->name);
 	if (name == NULL)

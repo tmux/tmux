@@ -66,6 +66,8 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct window		*src_w, *dst_w;
 	struct window_pane	*tmp_wp, *src_wp, *dst_wp;
+	struct window_pane_resize_sync_token src_token = { 0 };
+	struct window_pane_resize_sync_token dst_token = { 0 };
 	struct layout_cell	*src_lc, *dst_lc;
 	u_int			 sx, sy, xoff, yoff;
 	int			 src_idx, dst_idx;
@@ -117,6 +119,10 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (src_wp == dst_wp)
 		goto out;
 
+	if (src_w != dst_w) {
+		window_pane_resize_sync_detach(src_w, src_wp, &src_token);
+		window_pane_resize_sync_detach(dst_w, dst_wp, &dst_token);
+	}
 	server_client_remove_pane(src_wp);
 	server_client_remove_pane(dst_wp);
 
@@ -153,6 +159,10 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	dst_wp->window = src_w;
 	options_set_parent(dst_wp->options, src_w->options);
 	dst_wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
+	if (src_w != dst_w) {
+		window_pane_resize_sync_attach(src_wp, &src_token);
+		window_pane_resize_sync_attach(dst_wp, &dst_token);
+	}
 
 	sx = src_wp->sx; sy = src_wp->sy;
 	xoff = src_wp->xoff; yoff = src_wp->yoff;

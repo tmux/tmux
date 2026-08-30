@@ -417,6 +417,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*src_wl, *dst_wl;
 	struct window		*src_w, *dst_w;
 	struct window_pane	*src_wp, *dst_wp;
+	struct window_pane_resize_sync_token token = { 0 };
 	const char		*s;
 	char			*cause = NULL;
 	int			 flags = 0, dst_idx;
@@ -485,8 +486,9 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
+	if (src_w != dst_w)
+		window_pane_resize_sync_detach(src_w, src_wp, &token);
 	layout_close_pane(src_wp);
-
 	server_client_remove_pane(src_wp);
 	window_lost_pane(src_w, src_wp);
 	TAILQ_REMOVE(&src_w->panes, src_wp, entry);
@@ -502,6 +504,8 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 		TAILQ_INSERT_AFTER(&dst_w->panes, dst_wp, src_wp, entry);
 		TAILQ_INSERT_AFTER(&dst_w->z_index, dst_wp, src_wp, zentry);
 	}
+	if (src_w != dst_w)
+		window_pane_resize_sync_attach(src_wp, &token);
 	layout_assign_pane(lc, src_wp, 0);
 	colour_palette_from_option(&src_wp->palette, src_wp->options);
 

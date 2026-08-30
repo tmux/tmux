@@ -1274,6 +1274,27 @@ struct window_pane_resize {
 };
 TAILQ_HEAD(window_pane_resizes, window_pane_resize);
 
+enum window_resize_sync_state {
+	WINDOW_RESIZE_SYNC_IDLE,
+	WINDOW_RESIZE_SYNC_DIRTY,
+	WINDOW_RESIZE_SYNC_WAIT_SOFT,
+	WINDOW_RESIZE_SYNC_WAIT_HARD
+};
+
+enum window_pane_resize_sync_phase {
+	WINDOW_PANE_RESIZE_SYNC_NONE,
+	WINDOW_PANE_RESIZE_SYNC_WAIT_START,
+	WINDOW_PANE_RESIZE_SYNC_IN_FRAME
+};
+
+struct window_pane_resize_sync_token {
+	enum window_pane_resize_sync_phase	 phase;
+	int					 expected;
+};
+
+#define WINDOW_RESIZE_SYNC_SOFT_TIMEOUT 150000
+#define WINDOW_RESIZE_SYNC_HARD_TIMEOUT 1000000
+
 /*
  * Client theme, this is worked out from the background colour if not reported
  * by terminal.
@@ -1338,9 +1359,13 @@ struct window_pane {
 #define PANE_CLOSEONCLICK 0x80000
 #define PANE_CAPTUREALLKEYS 0x100000
 #define PANE_FLOATOVERZOOM 0x200000
+#define PANE_RESIZE_SYNC_CAPABLE 0x400000
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;
+	pid_t		 resize_sync_pgrp;
+	enum window_pane_resize_sync_phase resize_sync_phase;
+	int		 resize_sync_expected;
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
@@ -1374,6 +1399,7 @@ struct window_pane {
 
 	struct window_pane_resizes resize_queue;
 	struct event	 resize_timer;
+	int		 resize_timer_second;
 	struct event	 sync_timer;
 
 	struct input_ctx *ictx;
@@ -1467,6 +1493,8 @@ struct window {
 	u_int			 new_ypixel;
 
 	uint64_t		 redraw_scene_generation;
+	enum window_resize_sync_state resize_sync_state;
+	struct event		 resize_sync_timer;
 
 	struct menu_data	*menu;
 	u_int			 menu_last_px;
@@ -3733,6 +3761,19 @@ struct window_pane *window_add_pane(struct window *, struct window_pane *,
 		     u_int, int);
 void		 window_resize(struct window *, u_int, u_int, int, int);
 void		 window_pane_send_resize(struct window_pane *, u_int, u_int);
+void		 window_resize_sync_arm(struct window *);
+int		 window_resize_sync_active(struct window *);
+int		 window_resize_sync_dirty(struct window *);
+int		 window_resize_sync_redraw_ready(struct window *);
+int		 window_resize_sync_commit(struct window *);
+void		 window_pane_resize_sync_capture(struct window_pane *);
+void		 window_pane_resize_sync_stop(struct window_pane *);
+void		 window_pane_resize_sync_detach(struct window *,
+		     struct window_pane *,
+		     struct window_pane_resize_sync_token *);
+void		 window_pane_resize_sync_attach(struct window_pane *,
+		     const struct window_pane_resize_sync_token *);
+void		 window_pane_resize_sync_forget(struct window_pane *);
 int		 window_zoom(struct window_pane *);
 int		 window_unzoom(struct window *, int);
 int		 window_active_pane_is_over_zoom(struct window *);
