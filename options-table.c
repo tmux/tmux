@@ -1731,6 +1731,24 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of matched characters in switch mode."
 	},
 
+	{ .name = "scroll-passthrough",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_num = 0,
+	  .text = "Whether to paint pending output to the client before each "
+		  "line scrolls off the top. tmux normally batches writes and "
+		  "emits the scroll before painting them, discarding the "
+		  "pending write for the outgoing line and clamping a batch of "
+		  "scrolls to the height of the scroll region. Neither is "
+		  "visible in the pane, but a client whose terminal keeps its "
+		  "own scrollback (smcup and rmcup removed with "
+		  "terminal-overrides) only keeps what tmux sends, so those "
+		  "lines never reach its history. With this set the outgoing "
+		  "row is replayed and its scroll emitted one at a time, which "
+		  "costs extra output. No effect in copy mode or inside a "
+		  "synchronized update."
+	},
+
 	{ .name = "synchronize-panes",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
