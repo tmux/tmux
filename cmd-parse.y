@@ -802,6 +802,7 @@ cmd_parse_expand_alias(struct cmd_parse_command *cmd,
 	if (last == NULL) {
 		pr->status = CMD_PARSE_SUCCESS;
 		pr->cmdlist = cmd_list_new();
+		cmd_parse_free_commands(cmds);
 		return (1);
 	}
 
@@ -814,6 +815,7 @@ cmd_parse_expand_alias(struct cmd_parse_command *cmd,
 	pi->flags |= CMD_PARSE_NOALIAS;
 	cmd_parse_build_commands(cmds, pi, pr);
 	pi->flags &= ~CMD_PARSE_NOALIAS;
+	cmd_parse_free_commands(cmds);
 	return (1);
 }
 
