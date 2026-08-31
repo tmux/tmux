@@ -149,4 +149,3 @@ head -1 $TMP | grep -q TILEDTITLE ||
 	fail "base pane title still blank after floating pane moved away"
 
 exit 0
-

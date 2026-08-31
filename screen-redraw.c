@@ -1201,6 +1201,29 @@ redraw_damage_window(struct window *w, u_int x, u_int y, u_int sx, u_int sy)
 		redraw_collapse_damage(w);
 }
 
+/* Record damage for every pane border-status row in a window. */
+static void
+redraw_damage_window_pane_status(struct window *w)
+{
+	struct window_pane	*wp;
+	u_int			 y;
+	int			 status;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		status = window_pane_get_pane_status(wp);
+		if (status == PANE_STATUS_TOP) {
+			if (wp->yoff == 0)
+				continue;
+			y = wp->yoff - 1;
+		} else if (status == PANE_STATUS_BOTTOM)
+			y = wp->yoff + wp->sy;
+		else
+			continue;
+		if (y < w->sy)
+			redraw_damage_window(w, 0, y, w->sx, 1);
+	}
+}
+
 /* Mark all cached redraw scenes as out of date. */
 void
 redraw_invalidate_all_scenes(void)
@@ -1983,6 +2006,13 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		redraw_draw_pane_lines(&dctx, wp, flags);
 	else
 		redraw_draw_lines(&dctx, flags);
+#ifdef ENABLE_IMAGES
+	if ((flags & REDRAW_PANE) &&
+	    (image_backend_flags(tty) &
+	    (IMAGE_BACKEND_GRAPHICAL|IMAGE_BACKEND_SCROLLS)) ==
+	    IMAGE_BACKEND_GRAPHICAL)
+		redraw_damage_window_pane_status(scene->w);
+#endif
 
 	if (flags & REDRAW_PANE) {
 		if (wp != NULL)
@@ -2225,6 +2255,8 @@ redraw_draw_damage_rect(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 			for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
 				if (phase != REDRAW_TEXT && type != REDRAW_SPAN_PANE)
 					continue;
+				if (type == REDRAW_SPAN_STATUS)
+					continue;
 			spans = &line->spans[type];
 			TAILQ_FOREACH(span, spans, entry) {
 				clip_x = (span->x > x) ? span->x : x;
@@ -2247,6 +2279,27 @@ redraw_draw_damage_rect(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 				}
 			}
 		}
+		}
+	}
+
+	/* SIXEL image output may disturb status cells; compose them last. */
+	for (yy = y; yy < y + sy; yy++) {
+		line = &scene->lines[yy];
+		if (dctx->flags & REDRAW_STATUS_TOP)
+			cy = dctx->status_lines + yy;
+		else
+			cy = yy;
+		spans = &line->spans[REDRAW_SPAN_STATUS];
+		TAILQ_FOREACH(span, spans, entry) {
+			clip_x = (span->x > x) ? span->x : x;
+			clip_end = (span->x + span->width < x + sx) ?
+			    span->x + span->width : x + sx;
+			if (clip_end <= clip_x)
+				continue;
+			redraw_damage_refresh_status(dctx, span->data.st.wp);
+			redraw_damage_grow_span_clip(span, &clip_x, &clip_end);
+			redraw_draw_span(dctx, span, cy, clip_x, clip_end - clip_x,
+			    REDRAW_TEXT);
 		}
 	}
 }
