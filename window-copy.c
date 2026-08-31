@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.427 2026/08/31 07:41:48 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.428 2026/08/31 07:42:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -4301,7 +4301,7 @@ window_copy_stringify(struct grid *gd, u_int py, u_int first, u_int last,
 		}
 		if (dlen == 1)
 			buf[bx++] = *d;
-		else {
+		else if (dlen != 0) {
 			memcpy(buf + bx, d, dlen);
 			bx += dlen;
 		}
