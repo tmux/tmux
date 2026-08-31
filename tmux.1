@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1159 2026/08/25 08:37:08 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1160 2026/08/31 12:41:03 kirill Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 25 2026 $
+.Dd $Mdocdate: August 31 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -5111,6 +5111,8 @@ Supports
 title setting.
 .It usstyle
 Allows underscore style and colour to be set.
+.It utf8
+Supports UTF\-8 output.
 .El
 .It Ic terminal\-overrides[] Ar string
 Allow terminal descriptions read using

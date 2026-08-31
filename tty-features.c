@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.42 2026/08/17 14:47:41 nicm Exp $ */
+/* $OpenBSD: tty-features.c,v 1.43 2026/08/31 12:41:03 kirill Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -358,6 +358,13 @@ static const struct tty_feature tty_feature_progressbar = {
 	0
 };
 
+/* Terminal supports UTF-8. */
+static const struct tty_feature tty_feature_utf8 = {
+	"utf8",
+	NULL,
+	0
+};
+
 /* Available terminal features. */
 static const struct tty_feature *const tty_features[] = {
 	&tty_feature_256,
@@ -380,7 +387,8 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_strikethrough,
 	&tty_feature_sync,
 	&tty_feature_title,
-	&tty_feature_usstyle
+	&tty_feature_usstyle,
+	&tty_feature_utf8
 };
 
 /* Parse features for client. */
@@ -463,6 +471,9 @@ tty_feature_present(struct tty_term *term, const char *name)
 	u_int				 i;
 	char				*copy;
 
+	if (strcmp(name, "utf8") == 0)
+		return ((term->tty->client->flags & CLIENT_UTF8) != 0);
+
 	for (i = 0; i < nitems(tty_features); i++) {
 		tf = tty_features[i];
 		if (strcmp(tf->name, name) == 0) {
@@ -476,7 +487,8 @@ tty_feature_present(struct tty_term *term, const char *name)
 	 * We don't just have the feature flag set. Check if the capabilities
 	 * supported by the client are actual set instead.
 	 */
-	if (tf == NULL || strcmp(name, "ignorefkeys") == 0)
+	if (tf == NULL || tf->capabilities == NULL ||
+	    strcmp(name, "ignorefkeys") == 0)
 		return (0);
 	if (tf->flags != 0 && (term->flags & tf->flags) != tf->flags)
 		return (0);
@@ -524,6 +536,8 @@ tty_apply_features(struct tty_term *term)
 			}
 		}
 		term->flags |= tf->flags;
+		if (tf == &tty_feature_utf8)
+			c->flags |= CLIENT_UTF8;
 	}
 	if ((term->applied_features|feat) == term->applied_features)
 		return (0);
