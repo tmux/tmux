@@ -603,32 +603,13 @@ utf8_towc(const struct utf8_data *ud, wchar_t *wc)
 	return (UTF8_DONE);
 }
 
-/* Unicode White_Space property, from Unicode 17.0.0 PropList.txt. */
-static const struct {
-	u_int	first;
-	u_int	last;
-} utf8_whitespace[] = {
-	{ 0x0009, 0x000d },
-	{ 0x0020, 0x0020 },
-	{ 0x0085, 0x0085 },
-	{ 0x00a0, 0x00a0 },
-	{ 0x1680, 0x1680 },
-	{ 0x2000, 0x200a },
-	{ 0x2028, 0x2028 },
-	{ 0x2029, 0x2029 },
-	{ 0x202f, 0x202f },
-	{ 0x205f, 0x205f },
-	{ 0x3000, 0x3000 }
-};
-
-/* Check whether a grid cell contains a Unicode whitespace character. */
+/* Check for a Unicode 17.0.0 White_Space character in a grid cell. */
 int
 utf8_has_whitespace(const struct utf8_data *ud)
 {
 	struct utf8_data	 tmp;
 	wchar_t		 wc;
 	size_t		 offset = 0, size;
-	u_int		 i, cp;
 	u_char		 ch;
 
 	while (offset < ud->size) {
@@ -656,11 +637,33 @@ utf8_has_whitespace(const struct utf8_data *ud)
 		}
 		offset += size;
 
-		cp = wc;
-		for (i = 0; i < nitems(utf8_whitespace); i++) {
-			if (cp >= utf8_whitespace[i].first &&
-			    cp <= utf8_whitespace[i].last)
-				return (1);
+		switch (wc) {
+		case 0x0009:
+		case 0x000A:
+		case 0x000B:
+		case 0x000C:
+		case 0x000D:
+		case 0x0020:
+		case 0x0085:
+		case 0x00A0:
+		case 0x1680:
+		case 0x2000:
+		case 0x2001:
+		case 0x2002:
+		case 0x2003:
+		case 0x2004:
+		case 0x2005:
+		case 0x2006:
+		case 0x2007:
+		case 0x2008:
+		case 0x2009:
+		case 0x200A:
+		case 0x2028:
+		case 0x2029:
+		case 0x202F:
+		case 0x205F:
+		case 0x3000:
+			return (1);
 		}
 	}
 	return (0);
