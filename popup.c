@@ -279,6 +279,7 @@ popup_check_cb(struct client* c, void *data, u_int px, u_int py, u_int nx)
 				k++;
 			}
 		}
+		r->used = k;
 		return (r);
 	}
 
