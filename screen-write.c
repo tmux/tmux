@@ -1774,7 +1774,7 @@ screen_write_reverseindex(struct screen_write_ctx *ctx, u_int bg)
 	}
 
 #ifdef ENABLE_IMAGES
-	image_redraw_all(ctx);
+	image_redraw_scroll(ctx, 1);
 #endif
 
 	grid_view_scroll_region_down(s->grid, s->rupper, s->rlower, bg);
@@ -1904,7 +1904,7 @@ screen_write_scrolldown(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 		lines = s->rlower - s->rupper + 1;
 
 #ifdef ENABLE_IMAGES
-	image_redraw_all(ctx);
+	image_redraw_scroll(ctx, lines);
 #endif
 
 	for (i = 0; i < lines; i++)

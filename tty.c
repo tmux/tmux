@@ -1765,9 +1765,16 @@ tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 	    ctx->sx == 1 ||
 	    ctx->sy == 1 ||
 	    c->overlay_check != NULL) {
+#ifdef ENABLE_IMAGES
+		redraw_image_scroll_result(tty, ctx, 1);
+#endif
 		tty_redraw_region(tty, ctx);
 		return;
 	}
+
+#ifdef ENABLE_IMAGES
+	redraw_image_scroll_result(tty, ctx, 0);
+#endif
 
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
@@ -1836,9 +1843,16 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 	    ctx->sx == 1 ||
 	    ctx->sy == 1 ||
 	    c->overlay_check != NULL) {
+#ifdef ENABLE_IMAGES
+		redraw_image_scroll_result(tty, ctx, 1);
+#endif
 		tty_redraw_region(tty, ctx);
 		return;
 	}
+
+#ifdef ENABLE_IMAGES
+	redraw_image_scroll_result(tty, ctx, 0);
+#endif
 
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
@@ -1876,9 +1890,16 @@ tty_cmd_scrolldown(struct tty *tty, const struct tty_ctx *ctx)
 	    ctx->sx == 1 ||
 	    ctx->sy == 1 ||
 	    c->overlay_check != NULL) {
+#ifdef ENABLE_IMAGES
+		redraw_image_scroll_result(tty, ctx, 1);
+#endif
 		tty_redraw_region(tty, ctx);
 		return;
 	}
+
+#ifdef ENABLE_IMAGES
+	redraw_image_scroll_result(tty, ctx, 0);
+#endif
 
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 

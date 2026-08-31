@@ -1291,8 +1291,15 @@ void
 image_redraw_scroll(struct screen_write_ctx *ctx, __unused u_int lines)
 {
 	struct screen	*s = ctx->s;
+	struct window_pane *wp = ctx->wp;
 
-	image_redraw_area(ctx, 0, s->rupper, screen_size_x(s),
+	if (wp == NULL)
+		return;
+	if (!image_grid_check_area(s->grid, 0, s->grid->hsize + s->rupper,
+	    screen_size_x(s), s->rlower - s->rupper + 1))
+		return;
+	redraw_damage_window_scroll(wp->window, wp->xoff,
+	    wp->yoff + s->rupper, screen_size_x(s),
 	    s->rlower - s->rupper + 1);
 }
 

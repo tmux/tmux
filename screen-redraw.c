@@ -217,6 +217,8 @@ struct redraw_damage {
 	u_int			 y;
 	u_int			 sx;
 	u_int			 sy;
+	int			 flags;
+#define REDRAW_DAMAGE_SCROLL 0x1
 
 	TAILQ_ENTRY(redraw_damage) entry;
 };
@@ -1104,6 +1106,9 @@ redraw_free_damage(struct window *w)
 		free(rd);
 	}
 	w->damage_count = 0;
+#ifdef ENABLE_IMAGES
+	w->image_scroll_pending = 0;
+#endif
 }
 
 /* Collapse all pending damage for a window into one rectangle - its union. */
@@ -1130,6 +1135,7 @@ redraw_collapse_damage(struct window *w)
 			x1 = rd->x + rd->sx;
 		if (rd->y + rd->sy > y1)
 			y1 = rd->y + rd->sy;
+		first->flags &= rd->flags;
 		if (rd != first) {
 			TAILQ_REMOVE(&w->damage, rd, entry);
 			free(rd);
@@ -1151,8 +1157,9 @@ redraw_collapse_damage(struct window *w)
  *
  * This only records damage - nothing consumes it yet.
  */
-void
-redraw_damage_window(struct window *w, u_int x, u_int y, u_int sx, u_int sy)
+static void
+redraw_damage_window_flags(struct window *w, u_int x, u_int y, u_int sx,
+    u_int sy, int flags)
 {
 	struct redraw_damage	*rd;
 	u_int			 x0, y0, x1, y1, area, union_area;
@@ -1186,6 +1193,7 @@ redraw_damage_window(struct window *w, u_int x, u_int y, u_int sx, u_int sy)
 		rd->y = y0;
 		rd->sx = x1 - x0;
 		rd->sy = y1 - y0;
+		rd->flags &= flags;
 		return;
 	}
 
@@ -1194,12 +1202,53 @@ redraw_damage_window(struct window *w, u_int x, u_int y, u_int sx, u_int sy)
 	rd->y = y;
 	rd->sx = sx;
 	rd->sy = sy;
+	rd->flags = flags;
 	TAILQ_INSERT_TAIL(&w->damage, rd, entry);
 	w->damage_count++;
 
 	if (w->damage_count > REDRAW_DAMAGE_MAX)
 		redraw_collapse_damage(w);
 }
+
+void
+redraw_damage_window(struct window *w, u_int x, u_int y, u_int sx, u_int sy)
+{
+	redraw_damage_window_flags(w, x, y, sx, sy, 0);
+}
+
+#ifdef ENABLE_IMAGES
+/* Record damage caused by an image moving with a terminal scroll. */
+void
+redraw_damage_window_scroll(struct window *w, u_int x, u_int y, u_int sx,
+    u_int sy)
+{
+	if (!w->image_scroll_pending) {
+		w->image_scroll_epoch++;
+		w->image_scroll_pending = 1;
+	}
+	redraw_damage_window_flags(w, x, y, sx, sy, REDRAW_DAMAGE_SCROLL);
+}
+
+/* Remember whether this client used terminal scrolling for the damage. */
+void
+redraw_image_scroll_result(struct tty *tty, const struct tty_ctx *ctx,
+    int failed)
+{
+	struct window_pane	*wp = ctx->arg;
+	struct window		*w;
+
+	if (wp == NULL || (w = wp->window) == NULL || !w->image_scroll_pending)
+		return;
+	if (tty->image_scroll_window != w ||
+	    tty->image_scroll_epoch != w->image_scroll_epoch) {
+		tty->image_scroll_window = w;
+		tty->image_scroll_epoch = w->image_scroll_epoch;
+		tty->image_scroll_failed = 0;
+	}
+	if (failed)
+		tty->image_scroll_failed = 1;
+}
+#endif
 
 /* Record damage for every pane border-status row in a window. */
 static void
@@ -2227,7 +2276,7 @@ redraw_damage_draw_pane_prompt(struct redraw_draw_ctx *dctx,
  */
 static void
 redraw_draw_damage_rect(struct redraw_draw_ctx *dctx, u_int x, u_int y,
-    u_int sx, u_int sy)
+    u_int sx, u_int sy, int skip_images)
 {
 	struct redraw_scene	*scene = dctx->scene;
 	struct redraw_line	*line;
@@ -2246,6 +2295,8 @@ redraw_draw_damage_rect(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 
 	for (enum redraw_image_phase phase = REDRAW_IMAGES_BEFORE;
 	    phase <= REDRAW_IMAGES_AFTER; phase++) {
+		if (skip_images && phase != REDRAW_TEXT)
+			continue;
 		for (yy = y; yy < y + sy; yy++) {
 			line = &scene->lines[yy];
 			if (dctx->flags & REDRAW_STATUS_TOP)
@@ -2321,6 +2372,7 @@ redraw_client_damage(struct client *c)
 	struct redraw_draw_ctx	 dctx;
 	struct redraw_damage	*rd;
 	u_int			 ox, oy, sx, sy, x0, y0, x1, y1;
+	int			 skip_images;
 
 	if (TAILQ_EMPTY(&w->damage))
 		return;
@@ -2335,6 +2387,15 @@ redraw_client_damage(struct client *c)
 	tty_update_mode(&c->tty, c->tty.mode & ~CURSOR_MODES, NULL);
 
 	TAILQ_FOREACH(rd, &w->damage, entry) {
+		skip_images = 0;
+#ifdef ENABLE_IMAGES
+		if ((rd->flags & REDRAW_DAMAGE_SCROLL) &&
+		    (image_backend_flags(&c->tty) & IMAGE_BACKEND_SCROLLS) &&
+		    c->tty.image_scroll_window == w &&
+		    c->tty.image_scroll_epoch == w->image_scroll_epoch &&
+		    !c->tty.image_scroll_failed)
+			skip_images = 1;
+#endif
 		x0 = (rd->x > ox) ? rd->x : ox;
 		y0 = (rd->y > oy) ? rd->y : oy;
 		x1 = (rd->x + rd->sx < ox + sx) ? rd->x + rd->sx : ox + sx;
@@ -2344,6 +2405,6 @@ redraw_client_damage(struct client *c)
 		log_debug("%s: %s composing damage %u,%u %ux%u", __func__,
 		    c->name, x0 - ox, y0 - oy, x1 - x0, y1 - y0);
 		redraw_draw_damage_rect(&dctx, x0 - ox, y0 - oy, x1 - x0,
-		    y1 - y0);
+		    y1 - y0, skip_images);
 	}
 }
