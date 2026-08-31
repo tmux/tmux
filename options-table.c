@@ -1250,7 +1250,8 @@ const struct options_table_entry options_table[] = {
 	   * underscore.
 	   */
 	  .default_str = "!\"#$%&'()*+,-./:;<=>?@[\\]^`{|}~",
-	  .text = "Characters considered to separate words."
+	  .text = "Characters considered to separate words; a space matches "
+		  "any character with the Unicode White_Space property."
 	},
 
 	/* Window options. */

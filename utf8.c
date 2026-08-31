@@ -603,6 +603,69 @@ utf8_towc(const struct utf8_data *ud, wchar_t *wc)
 	return (UTF8_DONE);
 }
 
+/* Unicode White_Space property, from Unicode 17.0.0 PropList.txt. */
+static const struct {
+	u_int	first;
+	u_int	last;
+} utf8_whitespace[] = {
+	{ 0x0009, 0x000d },
+	{ 0x0020, 0x0020 },
+	{ 0x0085, 0x0085 },
+	{ 0x00a0, 0x00a0 },
+	{ 0x1680, 0x1680 },
+	{ 0x2000, 0x200a },
+	{ 0x2028, 0x2028 },
+	{ 0x2029, 0x2029 },
+	{ 0x202f, 0x202f },
+	{ 0x205f, 0x205f },
+	{ 0x3000, 0x3000 }
+};
+
+/* Check whether a grid cell contains a Unicode whitespace character. */
+int
+utf8_has_whitespace(const struct utf8_data *ud)
+{
+	struct utf8_data	 tmp;
+	wchar_t		 wc;
+	size_t		 offset = 0, size;
+	u_int		 i, cp;
+	u_char		 ch;
+
+	while (offset < ud->size) {
+		ch = ud->data[offset];
+		if (ch < 0x80) {
+			wc = ch;
+			size = 1;
+		} else {
+			if (ch >= 0xc2 && ch <= 0xdf)
+				size = 2;
+			else if (ch >= 0xe0 && ch <= 0xef)
+				size = 3;
+			else if (ch >= 0xf0 && ch <= 0xf4)
+				size = 4;
+			else
+				return (0);
+			if (size > ud->size - offset)
+				return (0);
+
+			memset(&tmp, 0, sizeof tmp);
+			memcpy(tmp.data, ud->data + offset, size);
+			tmp.size = tmp.have = size;
+			if (utf8_towc(&tmp, &wc) != UTF8_DONE)
+				return (0);
+		}
+		offset += size;
+
+		cp = wc;
+		for (i = 0; i < nitems(utf8_whitespace); i++) {
+			if (cp >= utf8_whitespace[i].first &&
+			    cp <= utf8_whitespace[i].last)
+				return (1);
+		}
+	}
+	return (0);
+}
+
 /* Convert wide character to UTF-8 character. */
 enum utf8_state
 utf8_fromwc(wchar_t wc, struct utf8_data *ud)

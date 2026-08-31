@@ -4106,6 +4106,7 @@ void		 session_update_history(struct session *);
 /* utf8.c */
 enum utf8_state	 utf8_towc (const struct utf8_data *, wchar_t *);
 enum utf8_state	 utf8_fromwc(wchar_t wc, struct utf8_data *);
+int		 utf8_has_whitespace(const struct utf8_data *);
 void		 utf8_update_width_cache(void);
 utf8_char	 utf8_build_one(u_char);
 enum utf8_state	 utf8_from_data(const struct utf8_data *, utf8_char *);
