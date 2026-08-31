@@ -1049,6 +1049,7 @@ input_parse_buffer(struct window_pane *wp, const u_char *buf, size_t len)
 	if (len == 0)
 		return;
 
+	wp->output_generation++;
 	window_update_activity(wp->window);
 	if (~wp->flags & PANE_ACTIVITY) {
 		wp->flags |= PANE_ACTIVITY;

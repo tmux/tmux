@@ -2276,6 +2276,17 @@ format_cb_pane_last_output_time(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_output_generation. */
+static void *
+format_cb_pane_output_generation(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL)
+		return (format_printf("%llu", (unsigned long long)wp->output_generation));
+	return (NULL);
+}
+
 /* Callback for pane_last_prompt_time. */
 static void *
 format_cb_pane_last_prompt_time(struct format_tree *ft)
@@ -3848,6 +3859,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_mode", FORMAT_TABLE_STRING,
 	  format_cb_pane_mode
+	},
+	{ "pane_output_generation", FORMAT_TABLE_STRING,
+	  format_cb_pane_output_generation
 	},
 	{ "pane_path", FORMAT_TABLE_STRING,
 	  format_cb_pane_path

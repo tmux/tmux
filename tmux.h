@@ -1360,6 +1360,7 @@ struct window_pane {
 	struct cmdq_item *wait_item;	/* new-pane -W: waiting for pane exit */
 	struct spawn_editor_state *editor;
 
+	uint64_t	 output_generation;
 	time_t		 last_output_time;
 	time_t		 last_prompt_time;
 	time_t		 cmd_start_time;

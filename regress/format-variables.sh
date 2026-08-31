@@ -124,6 +124,7 @@ pane_left
 pane_marked
 pane_marked_set
 pane_mode
+pane_output_generation
 pane_path
 pane_pb_progress
 pane_pb_state
