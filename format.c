@@ -1887,6 +1887,41 @@ format_cb_cursor_blinking(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for history_added. */
+static void *
+format_cb_history_added(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%u", ft->wp->base.grid->scroll_added));
+	return (NULL);
+}
+
+/* Callback for history_collected. */
+static void *
+format_cb_history_collected(struct format_tree *ft)
+{
+	u_int	value;
+
+	if (ft->wp != NULL) {
+		value = ft->wp->base.grid->scroll_collected;
+		return (format_printf("%u", value));
+	}
+	return (NULL);
+}
+
+/* Callback for history_generation. */
+static void *
+format_cb_history_generation(struct format_tree *ft)
+{
+	u_int	value;
+
+	if (ft->wp != NULL) {
+		value = ft->wp->base.grid->scroll_generation;
+		return (format_printf("%u", value));
+	}
+	return (NULL);
+}
+
 /* Callback for history_limit. */
 static void *
 format_cb_history_limit(struct format_tree *ft)
@@ -3663,11 +3698,20 @@ static const struct format_table_entry format_table[] = {
 	{ "cursor_y", FORMAT_TABLE_STRING,
 	  format_cb_cursor_y
 	},
+	{ "history_added", FORMAT_TABLE_STRING,
+	  format_cb_history_added
+	},
 	{ "history_all_bytes", FORMAT_TABLE_STRING,
 	  format_cb_history_all_bytes
 	},
 	{ "history_bytes", FORMAT_TABLE_STRING,
 	  format_cb_history_bytes
+	},
+	{ "history_collected", FORMAT_TABLE_STRING,
+	  format_cb_history_collected
+	},
+	{ "history_generation", FORMAT_TABLE_STRING,
+	  format_cb_history_generation
 	},
 	{ "history_limit", FORMAT_TABLE_STRING,
 	  format_cb_history_limit

@@ -70,8 +70,11 @@ cursor_shape
 cursor_very_visible
 cursor_x
 cursor_y
+history_added
 history_all_bytes
 history_bytes
+history_collected
+history_generation
 history_limit
 history_size
 host
