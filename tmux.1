@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1160 2026/08/31 12:41:03 kirill Exp $
+.\" $OpenBSD: tmux.1,v 1.1161 2026/08/31 19:27:46 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -7316,7 +7316,10 @@ The following variables are available, where appropriate:
 .It Li "cursor_very_visible" Ta "" Ta "1 if the cursor is in very visible mode"
 .It Li "cursor_x" Ta "" Ta "Cursor X position in pane"
 .It Li "cursor_y" Ta "" Ta "Cursor Y position in pane"
+.It Li "history_added" Ta "" Ta "Number of lines scrolled into pane history"
 .It Li "history_bytes" Ta "" Ta "Number of bytes in window history"
+.It Li "history_collected" Ta "" Ta "Number of oldest pane history lines discarded at the history limit"
+.It Li "history_generation" Ta "" Ta "Generation incremented when pane history is cleared or reflowed"
 .It Li "history_limit" Ta "" Ta "Maximum window history lines"
 .It Li "history_size" Ta "" Ta "Size of history in lines"
 .It Li "hook" Ta "" Ta "Name of running hook, if any"
