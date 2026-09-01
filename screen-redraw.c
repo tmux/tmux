@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.157 2026/07/24 08:49:23 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.158 2026/09/01 19:50:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1738,8 +1738,7 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 			else
 				loop->flags &= ~PANE_NEWSTATUS;
 
-			width = redraw_pane_status_width(&dctx, loop,
-			    &first);
+			width = redraw_pane_status_width(&dctx, loop, &first);
 			if (width == 0)
 				continue;
 
@@ -1770,7 +1769,7 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 			}
 		}
 	}
-	tty_sync_start(tty);
+	tty_sync_start(tty); /* end in server_client_reset_state */
 	tty_update_mode(tty, tty->mode & ~CURSOR_MODES, NULL);
 
 	if (wp != NULL)
@@ -1815,7 +1814,6 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		c->overlay_draw(c, c->overlay_data);
 
 	tty_reset(tty);
-	tty_sync_end(tty);
 
 	log_debug("%s: finished @%u redraw", c->name, scene->w->id);
 
