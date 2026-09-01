@@ -101,6 +101,7 @@ dist_tmux_SOURCES = \
 	cmd-detach-client.c \
 	cmd-display-menu.c \
 	cmd-display-message.c \
+	cmd-dump.c \
 	cmd-find-window.c \
 	cmd-find.c \
 	cmd-if-shell.c \
@@ -132,6 +133,7 @@ dist_tmux_SOURCES = \
 	cmd-resize-window.c \
 	cmd-respawn-pane.c \
 	cmd-respawn-window.c \
+	cmd-restore.c \
 	cmd-rotate-window.c \
 	cmd-run-shell.c \
 	cmd-save-buffer.c \

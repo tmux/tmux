@@ -1198,6 +1198,27 @@ With
 run
 .Ar shell\-command
 to replace the client.
+.Tg dump
+.It Xo Ic dump
+.Op Fl f Ar path
+.Xc
+Write the layout of every session, window and pane on the server -
+splits, pane sizes and each pane's current working directory - to
+.Ar path
+as a plain text script of
+.Nm
+commands.
+If
+.Fl f
+is not given, the file is written next to the configuration file in use
+(see
+.Sx FILES ) ,
+named
+.Pa .tmux\-dump .
+The dump does not record what was running in each pane; use
+.Ic restore
+to recreate the layout, which starts a fresh shell in each pane at its
+recorded directory.
 .Tg has
 .It Ic has\-session Op Fl t Ar target\-session
 .D1 Pq alias: Ic has
@@ -1586,6 +1607,22 @@ option.
 .D1 Pq alias: Ic rename
 Rename the session to
 .Ar new\-name .
+.Tg restore
+.It Xo Ic restore
+.Op Fl f Ar path
+.Xc
+Recreate the sessions, windows and panes previously written by
+.Ic dump ,
+reading the script from
+.Ar path
+or, if
+.Fl f
+is not given, from the default dump file location (see
+.Ic dump ) .
+Each pane is respawned with a fresh shell in its recorded working
+directory - nothing that was previously running in it is relaunched.
+If a session named in the dump file already exists, that session's
+block is skipped.
 .It Xo Ic server\-access
 .Op Fl adglrw
 .Op Ar user | group
