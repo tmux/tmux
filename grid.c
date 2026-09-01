@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.157 2026/08/28 08:11:08 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.158 2026/09/01 12:49:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1711,21 +1711,29 @@ grid_in_set(struct grid *gd, u_int px, u_int py, const char *set)
 {
 	struct grid_cell	gc, tmp_gc;
 	u_int			pxx;
+	int			has_tab, has_space;
+
+	has_tab = (strchr(set, '\t') != NULL);
+	has_space = (strchr(set, ' ') != NULL);
 
 	grid_get_cell(gd, px, py, &gc);
-	if (strchr(set, '\t')) {
-		if (gc.flags & GRID_FLAG_PADDING) {
-			pxx = px;
-			do
-				grid_get_cell(gd, --pxx, py, &tmp_gc);
-			while (pxx > 0 && tmp_gc.flags & GRID_FLAG_PADDING);
-			if (tmp_gc.flags & GRID_FLAG_TAB)
-				return (tmp_gc.data.width - (px - pxx));
-		} else if (gc.flags & GRID_FLAG_TAB)
-			return (gc.data.width);
-	}
-	if (gc.flags & GRID_FLAG_PADDING)
+	if (gc.flags & GRID_FLAG_PADDING) {
+		if (!has_tab && !has_space)
+			return (0);
+		pxx = px;
+		do
+			grid_get_cell(gd, --pxx, py, &tmp_gc);
+		while (pxx > 0 && tmp_gc.flags & GRID_FLAG_PADDING);
+		if (((has_tab || has_space) &&
+		    (tmp_gc.flags & GRID_FLAG_TAB)) ||
+		    (has_space && utf8_has_whitespace(&tmp_gc.data)))
+			return (tmp_gc.data.width - (px - pxx));
 		return (0);
+	}
+	if ((has_tab || has_space) && (gc.flags & GRID_FLAG_TAB))
+		return (gc.data.width);
+	if (has_space && utf8_has_whitespace(&gc.data))
+		return (gc.data.width == 0 ? 1 : gc.data.width);
 	return (utf8_cstrhas(set, &gc.data));
 }
 

@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1162 2026/08/31 19:34:09 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1163 2026/09/01 12:49:49 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 31 2026 $
+.Dd $Mdocdate: September 1 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -2208,14 +2208,14 @@ Move to the end of the next word.
 .Xc
 Same as
 .Ic next\-word
-but use a space alone as the word separator.
+but treat all non-whitespace characters as part of a word.
 .It Xo
 .Ic next\-space\-end
 (vi: E)
 .Xc
 Same as
 .Ic next\-word\-end
-but use a space alone as the word separator.
+but treat all non-whitespace characters as part of a word.
 .It Xo
 .Ic other\-end
 (vi: o)
@@ -2289,7 +2289,7 @@ Move to the previous word.
 .Xc
 Same as
 .Ic previous\-word
-but use a space alone as the word separator.
+but treat all non-whitespace characters as part of a word.
 .It Xo
 .Ic rectangle\-on
 .Xc
@@ -2574,8 +2574,8 @@ Word separators can be customized with the
 session option.
 Next word moves to the start of the next word, next word end to the end of the
 next word and previous word to the start of the previous word.
-The three next and previous space keys work similarly but use a space alone as
-the word separator.
+The three next and previous space keys work similarly but treat all
+non-whitespace characters as part of a word.
 Setting
 .Em word\-separators
 to the empty string makes next/previous word equivalent to next/previous space.
@@ -5649,6 +5649,11 @@ If set to both, a bell and a message are produced.
 Sets the session's conception of what characters are considered word
 separators, for the purposes of the next and previous word commands in
 copy mode.
+A space in
+.Ar string
+matches any character with the Unicode
+.Em White_Space
+property.
 .El
 .Pp
 Available window options are:
