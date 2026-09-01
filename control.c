@@ -108,6 +108,7 @@ struct control_state {
 	u_int				 pending_count;
 
 	TAILQ_HEAD(, control_block)	 all_blocks;
+	size_t				 queued_reply_bytes;
 
 	struct bufferevent		*read_event;
 	struct bufferevent		*write_event;
@@ -131,6 +132,9 @@ struct control_state {
 
 /* Maximum age for clients that are not using pause mode. */
 #define CONTROL_MAXIMUM_AGE 300000
+
+/* Maximum buffered command replies for a client that is not reading. */
+#define CONTROL_MAXIMUM_REPLY_BUFFER (64 * 1024 * 1024)
 
 /* Flags to ignore client. */
 #define CONTROL_IGNORE_FLAGS \
@@ -165,6 +169,15 @@ RB_GENERATE_STATIC(control_windows, control_window, entry, control_window_cmp);
 static void
 control_free_block(struct control_state *cs, struct control_block *cb)
 {
+	size_t	 size;
+
+	if (cb->size == 0 && cb->line != NULL) {
+		size = strlen(cb->line) + 1;
+		if (cs->queued_reply_bytes > size)
+			cs->queued_reply_bytes -= size;
+		else
+			cs->queued_reply_bytes = 0;
+	}
 	free(cb->line);
 	TAILQ_REMOVE(&cs->all_blocks, cb, all_entry);
 	free(cb);
@@ -407,12 +420,41 @@ control_reset_pane(struct client *c, struct window_pane *wp)
 	memcpy(&cp->queued, &wp->offset, sizeof cp->queued);
 }
 
+/*
+ * Check if the replies buffered for a client have grown too large and kill
+ * it if so. Returns 1 if the client is over the limit.
+ */
+static int
+control_check_reply_buffer(struct client *c)
+{
+	struct control_state	*cs = c->control_state;
+	size_t			 size;
+
+	size = EVBUFFER_LENGTH(cs->write_event->output);
+	size += cs->queued_reply_bytes;
+	if (size < CONTROL_MAXIMUM_REPLY_BUFFER)
+		return (0);
+	if (~c->flags & CLIENT_EXIT) {
+		log_debug("%s: %s: %zu bytes of replies buffered", __func__,
+		    c->name, size);
+		c->exit_message = xstrdup("too far behind");
+		c->flags |= CLIENT_EXIT;
+		control_discard(c);
+	}
+	return (1);
+}
+
 /* Write an already-formatted line, queueing it behind %output if needed. */
 static void
 control_write_line(struct client *c, char *line)
 {
 	struct control_state	*cs = c->control_state;
 	struct control_block	*cb;
+
+	if (control_check_reply_buffer(c)) {
+		free(line);
+		return;
+	}
 
 	if (TAILQ_EMPTY(&cs->all_blocks)) {
 		log_debug("%s: %s: writing line: %s", __func__, c->name, line);
@@ -426,6 +468,7 @@ control_write_line(struct client *c, char *line)
 	cb = xcalloc(1, sizeof *cb);
 	cb->line = line;
 	TAILQ_INSERT_TAIL(&cs->all_blocks, cb, all_entry);
+	cs->queued_reply_bytes += strlen(cb->line) + 1;
 	cb->t = get_timer();
 
 	log_debug("%s: %s: storing line: %s", __func__, c->name, cb->line);
@@ -997,6 +1040,7 @@ control_discard_all(struct client *c)
 	control_discard(c);
 	TAILQ_FOREACH_SAFE(cb, &cs->all_blocks, all_entry, cb1)
 		control_free_block(cs, cb);
+	cs->queued_reply_bytes = 0;
 	bufferevent_disable(cs->write_event, EV_WRITE);
 }
 
