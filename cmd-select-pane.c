@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-select-pane.c,v 1.77 2026/07/17 12:42:51 nicm Exp $ */
+/* $OpenBSD: cmd-select-pane.c,v 1.78 2026/08/20 09:19:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -164,6 +164,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	char			*title;
 	const char		*style;
 	struct options_entry	*o;
+	int			 visible, Zflag = args_has(args, 'Z');
 
 	if (args_has(args, 's') || args_has(args, 'S')) {
 		if (c == NULL || c->session == NULL) {
@@ -202,7 +203,11 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 			server_redraw_window_borders(lastwp->window);
 			server_status_window(lastwp->window);
 		} else {
-			if (window_push_zoom(w, 0, args_has(args, 'Z')))
+			if (w->modal != NULL && lastwp != w->modal)
+				visible = 1;
+			else
+				visible = window_pane_is_visible(lastwp);
+			if (!visible && window_push_zoom(w, 0, Zflag))
 				server_redraw_window(w);
 			if (!active_has_local_pane(c, w))
 				window_redraw_active_switch(w, lastwp);
@@ -210,7 +215,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 				cmd_find_from_winlink(current, wl, 0);
 				cmd_select_pane_redraw(w);
 			}
-			if (window_pop_zoom(w))
+			if (!visible && window_pop_zoom(w))
 				server_redraw_window(w);
 		}
 		return (CMD_RETURN_NORMAL);
@@ -287,7 +292,11 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	activewp = active_get_effective_pane(c, w);
 	if (wp == activewp)
 		return (CMD_RETURN_NORMAL);
-	if (window_push_zoom(w, 0, args_has(args, 'Z')))
+	if (w->modal != NULL && wp != w->modal)
+		visible = 1;
+	else
+		visible = window_pane_is_visible(wp);
+	if (!visible && window_push_zoom(w, 0, Zflag))
 		server_redraw_window(w);
 	if (!active_has_local_pane(c, w))
 		window_redraw_active_switch(w, wp);
@@ -295,7 +304,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 		cmd_find_from_winlink_pane(current, wl, wp, 0);
 	cmdq_insert_hook(s, item, current, "after-select-pane");
 	cmd_select_pane_redraw(w);
-	if (window_pop_zoom(w))
+	if (!visible && window_pop_zoom(w))
 		server_redraw_window(w);
 
 	return (CMD_RETURN_NORMAL);

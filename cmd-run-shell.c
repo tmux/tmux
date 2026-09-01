@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-run-shell.c,v 1.93 2026/07/17 12:42:51 nicm Exp $ */
+/* $OpenBSD: cmd-run-shell.c,v 1.94 2026/08/25 06:04:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -239,9 +239,11 @@ cmd_run_shell_timer(__unused int fd, __unused short events, void* arg)
 	} else if (item == NULL) {
 		new_item = cmdq_get_command(cmdlist, NULL);
 		cmdq_append(c, new_item);
+		cmd_list_free(cmdlist);
 	} else {
 		new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
 		cmdq_insert_after(item, new_item);
+		cmd_list_free(cmdlist);
 	}
 
 	if (cdata->item != NULL)

@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.503 2026/08/17 07:56:56 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.509 2026/08/28 07:36:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -45,6 +45,7 @@ static void	server_client_set_path(struct client *);
 static void	server_client_set_progress_bar(struct client *);
 static void	server_client_reset_state(struct client *);
 static void	server_client_update_latest(struct client *);
+static int	server_client_handle_dead_key(struct window_pane *, key_code);
 static void	server_client_dispatch(struct imsg *, void *);
 static int	server_client_dispatch_command(struct client *, struct imsg *);
 static int	server_client_dispatch_identify(struct client *, struct imsg *);
@@ -526,7 +527,10 @@ server_client_lost(struct client *c)
 	input_cancel_requests(c);
 
 	free(c->title);
+	free(c->path);
 	free((void *)c->cwd);
+	free(c->exit_session);
+	free(c->exit_message);
 
 	evtimer_del(&c->repeat_timer);
 	evtimer_del(&c->click_timer);
@@ -803,8 +807,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 	} else {
 		/* Try the pane borders. */
 		TAILQ_FOREACH(fwp, &w->panes, entry) {
-			if ((w->flags & WINDOW_ZOOMED) &&
-			    (~fwp->flags & PANE_ZOOMED))
+			if (!window_pane_is_visible(fwp))
 				continue;
 			if (window_pane_is_floating(fwp) &&
 			    window_pane_get_pane_lines(fwp) == PANE_LINES_NONE)
@@ -1391,6 +1394,21 @@ server_client_repeat_time(struct client *c, struct key_binding *bd)
 	return (repeat);
 }
 
+/* Handle a key press on a dead pane waiting for a key. */
+static int
+server_client_handle_dead_key(struct window_pane *wp, key_code key)
+{
+	if (wp == NULL ||
+	    (~wp->flags & PANE_EXITED) ||
+	    KEYC_IS_MOUSE(key) ||
+	    KEYC_IS_PASTE(key) ||
+	    options_get_number(wp->options, "remain-on-exit") != 3)
+		return (0);
+	options_set_number(wp->options, "remain-on-exit", 0);
+	server_destroy_pane(wp, 0);
+	return (1);
+}
+
 /*
  * Handle data key input from client. This owns and can modify the key event it
  * is given and is responsible for freeing it.
@@ -1475,6 +1493,18 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	    (~key & KEYC_SENT) &&
 	    server_client_is_assume_paste(c))
 		goto paste_key;
+
+	/* Forward keys directly if this pane is capturing all keys. */
+	if (wp != NULL &&
+	    (wp->flags & PANE_CAPTUREALLKEYS) &&
+	    (~wp->flags & PANE_EXITED) &&
+	    !KEYC_IS_MOUSE(key) &&
+	    TAILQ_EMPTY(&wp->modes))
+		goto forward_key;
+
+	/* Focus events are not keys and cannot be bound. */
+	if (key == KEYC_FOCUS_IN || key == KEYC_FOCUS_OUT)
+		goto forward_key;
 
 	/*
 	 * Work out the current key table. If the pane is in a mode, use
@@ -1640,15 +1670,8 @@ try_again:
 	}
 
 forward_key:
-	if (wp != NULL &&
-	    (wp->flags & PANE_EXITED) &&
-	    !KEYC_IS_MOUSE(key) &&
-	    !KEYC_IS_PASTE(key) &&
-	    options_get_number(wp->options, "remain-on-exit") == 3) {
-		options_set_number(wp->options, "remain-on-exit", 0);
-		server_destroy_pane(wp, 0);
+	if (server_client_handle_dead_key(wp, key))
 		goto out;
-	}
 	if (c->flags & CLIENT_READONLY)
 		goto out;
 	if (wp != NULL)
@@ -1737,9 +1760,9 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 	}
 
 	/*
-	 * Key presses in overlay mode and the command prompt are a special
-	 * case. The queue might be blocked so they need to be processed
-	 * immediately rather than queued.
+	 * Key presses in overlay mode, for panes capturing all keys and in the
+	 * command prompt are a special case. The queue might be blocked so they
+	 * need to be processed immediately rather than queued.
 	 */
 	if (~c->flags & CLIENT_READONLY) {
 		if (c->message_string != NULL) {
@@ -1759,6 +1782,21 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 		}
 
 		server_client_clear_overlay(c);
+
+		wp = s->curw->window->active;
+		if (wp != NULL &&
+		    (wp->flags & PANE_CAPTUREALLKEYS) &&
+		    TAILQ_EMPTY(&wp->modes) &&
+		    !KEYC_IS_MOUSE(event->key)) {
+			if (server_client_handle_dead_key(wp, event->key))
+				return (0);
+			if (~wp->flags & PANE_EXITED) {
+				window_pane_key(wp, c, s, s->curw, event->key,
+				    &event->m);
+				return (0);
+			}
+		}
+
 		if (server_client_handle_menu_key(c, event))
 			return (0);
 		if (c->prompt != NULL) {
@@ -2381,8 +2419,6 @@ server_client_check_exit(struct client *c, int force)
 		proc_send(c->peer, c->exit_msgtype, -1, name, strlen(name) + 1);
 		break;
 	}
-	free(c->exit_session);
-	free(c->exit_message);
 }
 
 /* Redraw timer callback. */
@@ -2459,7 +2495,7 @@ server_client_check_redraw(struct client *c)
 
 	/* Work out if a redraw is actually needed. */
 	needed = 0;
-	if (c->flags & CLIENT_ALLREDRAWFLAGS)
+	if (c->flags & (CLIENT_ALLREDRAWFLAGS|CLIENT_REDRAWSCROLLBARS))
 		needed = 1;
 	else if (server_client_any_pane_redraw(c))
 		needed = 1;
@@ -2485,8 +2521,14 @@ server_client_check_redraw(struct client *c)
 			log_debug("redraw timer started");
 			evtimer_add(&ev, &tv);
 		}
-		if (server_client_any_pane_redraw(c))
-			c->flags |= CLIENT_REDRAWWINDOW;
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (wp->flags & PANE_REDRAW) {
+				c->flags |= CLIENT_REDRAWWINDOW;
+				break;
+			}
+			if (wp->flags & PANE_REDRAWSCROLLBAR)
+				c->flags |= CLIENT_REDRAWSCROLLBARS;
+		}
 		return;
 	}
 
@@ -2505,7 +2547,8 @@ server_client_check_redraw(struct client *c)
 				log_debug("%s: redraw pane %%%u", __func__,
 				    wp->id);
 				redraw_pane(c, wp);
-			} else if (wp->flags & PANE_REDRAWSCROLLBAR) {
+			} else if ((wp->flags & PANE_REDRAWSCROLLBAR) ||
+			    (c->flags & CLIENT_REDRAWSCROLLBARS)) {
 				log_debug("%s: redraw scrollbar %%%u", __func__,
 				    wp->id);
 				redraw_pane_scrollbar(c, wp);
@@ -2535,7 +2578,8 @@ server_client_check_redraw(struct client *c)
 	 * All the redraw flags can now be cleared. Also record how many bytes
 	 * were written.
 	 */
-	c->flags &= ~(CLIENT_ALLREDRAWFLAGS|CLIENT_STATUSFORCE);
+	c->flags &= ~(CLIENT_ALLREDRAWFLAGS|CLIENT_REDRAWSCROLLBARS|
+	    CLIENT_STATUSFORCE);
 	c->redraw = EVBUFFER_LENGTH(tty->out);
 	log_debug("%s: redraw added %zu bytes", c->name, c->redraw);
 }

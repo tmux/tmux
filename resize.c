@@ -1,4 +1,4 @@
-/* $OpenBSD: resize.c,v 1.58 2026/07/17 08:37:29 nicm Exp $ */
+/* $OpenBSD: resize.c,v 1.59 2026/08/20 09:19:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -42,8 +42,8 @@ resize_fire_window_resized(struct window *w, u_int old_sx, u_int old_sy)
 void
 resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 {
-	u_int	old_sx = w->sx, old_sy = w->sy;
-	int	zoomed;
+	struct window_pane	*zwp;
+	u_int			 old_sx = w->sx, old_sy = w->sy;
 
 	/* Check size limits. */
 	if (sx < WINDOW_MINIMUM)
@@ -56,8 +56,8 @@ resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 		sy = WINDOW_MAXIMUM;
 
 	/* If the window is zoomed, unzoom. */
-	zoomed = w->flags & WINDOW_ZOOMED;
-	if (zoomed)
+	zwp = window_zoomed_pane(w);
+	if (zwp != NULL)
 		window_unzoom(w, 1);
 
 	/* Resize the layout first. */
@@ -73,8 +73,8 @@ resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 	    sx, sy, w->layout_root->g.sx, w->layout_root->g.sy);
 
 	/* Restore the window zoom state. */
-	if (zoomed)
-		window_zoom(w->active);
+	if (zwp != NULL && window_has_pane(w, zwp))
+		window_zoom(zwp);
 
 	tty_update_window_offset(w);
 	server_redraw_window(w);
