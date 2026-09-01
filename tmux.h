@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1423 2026/08/17 07:56:56 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1433 2026/09/01 12:49:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -483,6 +483,7 @@ enum tty_code_code {
 	TTYC_ICH1,
 	TTYC_IL,
 	TTYC_IL1,
+	TTYC_IND,
 	TTYC_INDN,
 	TTYC_INVIS,
 	TTYC_KCBT,
@@ -1335,6 +1336,8 @@ struct window_pane {
 #define PANE_CMDRUNNING 0x20000
 #define PANE_ACTIVITY 0x40000
 #define PANE_CLOSEONCLICK 0x80000
+#define PANE_CAPTUREALLKEYS 0x100000
+#define PANE_FLOATOVERZOOM 0x200000
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;
@@ -1354,9 +1357,10 @@ struct window_pane {
 	char		 tty[TTY_NAME_MAX];
 	int		 status;
 	struct timeval	 dead_time;
-	struct cmdq_item *wait_item;	/* new-pane -W: waiting for pane exit */
+	struct cmdq_item *wait_item;
 	struct spawn_editor_state *editor;
 
+	uint64_t	 output_generation;
 	time_t		 last_output_time;
 	time_t		 last_prompt_time;
 	time_t		 cmd_start_time;
@@ -1441,6 +1445,7 @@ struct window {
 	struct window_pane	*active;
 	struct window_pane	*modal;
 	struct window_pane	*modal_last;
+	struct window_pane	*was_zoomed;
 	struct window_panes 	 last_panes;
 	struct window_panes      z_index;
 	struct window_panes	 panes;
@@ -1483,7 +1488,6 @@ struct window {
 #define WINDOW_ZOOMED 0x8
 #define WINDOW_WASZOOMED 0x10
 #define WINDOW_RESIZE 0x20
-#define WINDOW_WASMODALZOOMED 0x40
 #define WINDOW_ALERTFLAGS (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_SILENCE)
 
 	int			 alerts_queued;
@@ -1718,7 +1722,7 @@ struct key_event {
 struct tty_term {
 	char		*name;
 	struct tty	*tty;
-	int		 features;
+	int		 applied_features;
 
 	char		 acs[UCHAR_MAX + 1][2];
 
@@ -1811,8 +1815,9 @@ struct tty {
 #define TTY_WAITFG 0x2000
 #define TTY_WAITBG 0x4000
 #define TTY_BRACKETPASTE 0x8000
+#define TTY_HAVESYNC 0x10000
 #define TTY_ALL_REQUEST_FLAGS \
-	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA)
+	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVESYNC)
 	int		 flags;
 
 	struct tty_term	*term;
@@ -2226,6 +2231,7 @@ struct client {
 
 	char			*term_name;
 	int			 term_features;
+	int		 	 term_nofeatures;
 	char			*term_type;
 	char		       **term_caps;
 	u_int			 term_ncaps;
@@ -2286,7 +2292,7 @@ struct client {
 #define CLIENT_STARTSERVER 0x10000000
 #define CLIENT_REDRAWMENU 0x20000000
 #define CLIENT_NOFORK 0x40000000
-/* 0x80000000ULL unused */
+#define CLIENT_REDRAWSCROLLBARS 0x80000000ULL
 #define CLIENT_CONTROL_PAUSEAFTER 0x100000000ULL
 #define CLIENT_CONTROL_WAITEXIT 0x200000000ULL
 #define CLIENT_WINDOWSIZECHANGED 0x400000000ULL
@@ -2532,6 +2538,7 @@ struct spawn_context {
 #define SPAWN_HORIZONTAL 0x200
 #define SPAWN_SPLIT 0x400
 #define SPAWN_MODAL 0x800
+#define SPAWN_FLOATOVERZOOM 0x1000
 };
 
 /* Paste buffer. */
@@ -3025,8 +3032,7 @@ extern struct tty_terms tty_terms;
 u_int		 tty_term_ncodes(void);
 void		 tty_term_apply(struct tty_term *, const char *, int);
 void		 tty_term_apply_overrides(struct tty_term *);
-struct tty_term *tty_term_create(struct tty *, char *, char **, u_int, int *,
-		     char **);
+struct tty_term *tty_term_create(struct tty *, char *, char **, u_int, char **);
 void		 tty_term_free(struct tty_term *);
 int		 tty_term_read_list(const char *, int, char ***, u_int *,
 		     char **);
@@ -3048,11 +3054,13 @@ int		 tty_term_flag(struct tty_term *, enum tty_code_code);
 const char	*tty_term_describe(struct tty_term *, enum tty_code_code);
 
 /* tty-features.c */
-void		 tty_add_features(int *, const char *, const char *);
+void		 tty_parse_client_features(struct client *, const char *,
+		     const char *);
+void		 tty_parse_features(const char *, const char *, int *, int *);
 const char	*tty_get_features(int);
 int		 tty_feature_present(struct tty_term *, const char *);
-int		 tty_apply_features(struct tty_term *, int);
-void		 tty_default_features(int *, const char *, u_int);
+int		 tty_apply_features(struct tty_term *);
+void		 tty_default_features(struct client *, const char *, u_int);
 
 /* tty-acs.c */
 int		 tty_acs_needed(struct tty *);
@@ -3624,6 +3632,7 @@ void	 screen_write_mode_set(struct screen_write_ctx *, int);
 void	 screen_write_mode_clear(struct screen_write_ctx *, int);
 void	 screen_write_start_sync(struct window_pane *);
 void	 screen_write_stop_sync(struct window_pane *);
+void	 screen_write_end_sync(struct screen_write_ctx *);
 void	 screen_write_clear_dirty(struct window_pane *);
 void	 screen_write_cursorup(struct screen_write_ctx *, u_int);
 void	 screen_write_cursordown(struct screen_write_ctx *, u_int);
@@ -3753,8 +3762,8 @@ void		 window_resize(struct window *, u_int, u_int, int, int);
 void		 window_pane_send_resize(struct window_pane *, u_int, u_int);
 int		 window_zoom(struct window_pane *);
 int		 window_unzoom(struct window *, int);
-void		 window_push_modal_zoom(struct window *);
-int		 window_pop_modal_zoom(struct window *);
+int		 window_active_pane_is_over_zoom(struct window *);
+struct window_pane *window_zoomed_pane(struct window *);
 int		 window_push_zoom(struct window *, int, int);
 int		 window_pop_zoom(struct window *);
 void		 window_lost_pane(struct window *, struct window_pane *);
@@ -4059,6 +4068,7 @@ void	control_set_pane_on(struct client *, struct window_pane *);
 void	control_set_pane_off(struct client *, struct window_pane *);
 void	control_continue_pane(struct client *, struct window_pane *);
 void	control_pause_pane(struct client *, struct window_pane *);
+void	control_reset_pane(struct client *, struct window_pane *);
 void	control_set_window_size(struct client *, u_int, u_int, u_int);
 int	control_get_window_size(struct client *, u_int, u_int *, u_int *);
 void	control_clear_window_size(struct client *, u_int);
@@ -4123,6 +4133,7 @@ void		 session_update_history(struct session *);
 /* utf8.c */
 enum utf8_state	 utf8_towc (const struct utf8_data *, wchar_t *);
 enum utf8_state	 utf8_fromwc(wchar_t wc, struct utf8_data *);
+int		 utf8_has_whitespace(const struct utf8_data *);
 void		 utf8_update_width_cache(void);
 utf8_char	 utf8_build_one(u_char);
 enum utf8_state	 utf8_from_data(const struct utf8_data *, utf8_char *);

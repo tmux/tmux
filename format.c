@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.412 2026/08/05 07:31:08 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.415 2026/08/31 19:34:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1887,6 +1887,37 @@ format_cb_cursor_blinking(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for history_added. */
+static void *
+format_cb_history_added(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%u", ft->wp->base.grid->scroll_added));
+	return (NULL);
+}
+
+/* Callback for history_collected. */
+static void *
+format_cb_history_collected(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL)
+		return (format_printf("%u", wp->base.grid->scroll_collected));
+	return (NULL);
+}
+
+/* Callback for history_generation. */
+static void *
+format_cb_history_generation(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL)
+		return (format_printf("%u", wp->base.grid->scroll_generation));
+	return (NULL);
+}
+
 /* Callback for history_limit. */
 static void *
 format_cb_history_limit(struct format_tree *ft)
@@ -2272,6 +2303,19 @@ format_cb_pane_last_output_time(struct format_tree *ft)
 		tv.tv_sec = wp->last_output_time;
 		tv.tv_usec = 0;
 		return (&tv);
+	}
+	return (NULL);
+}
+
+/* Callback for pane_output_generation. */
+static void *
+format_cb_pane_output_generation(struct format_tree *ft)
+{
+	unsigned long long	 value;
+
+	if (ft->wp != NULL) {
+		value = ft->wp->output_generation;
+		return (format_printf("%llu", value));
 	}
 	return (NULL);
 }
@@ -3709,11 +3753,20 @@ static const struct format_table_entry format_table[] = {
 	{ "cursor_y", FORMAT_TABLE_STRING,
 	  format_cb_cursor_y
 	},
+	{ "history_added", FORMAT_TABLE_STRING,
+	  format_cb_history_added
+	},
 	{ "history_all_bytes", FORMAT_TABLE_STRING,
 	  format_cb_history_all_bytes
 	},
 	{ "history_bytes", FORMAT_TABLE_STRING,
 	  format_cb_history_bytes
+	},
+	{ "history_collected", FORMAT_TABLE_STRING,
+	  format_cb_history_collected
+	},
+	{ "history_generation", FORMAT_TABLE_STRING,
+	  format_cb_history_generation
 	},
 	{ "history_limit", FORMAT_TABLE_STRING,
 	  format_cb_history_limit
@@ -3897,6 +3950,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_mode", FORMAT_TABLE_STRING,
 	  format_cb_pane_mode
+	},
+	{ "pane_output_generation", FORMAT_TABLE_STRING,
+	  format_cb_pane_output_generation
 	},
 	{ "pane_path", FORMAT_TABLE_STRING,
 	  format_cb_pane_path
@@ -4436,7 +4492,7 @@ format_quote_shell(const char *s)
 
 	at = out = xmalloc(strlen(s) * 2 + 1);
 	for (cp = s; *cp != '\0'; cp++) {
-		if (strchr("|&;<>()$`\\\"'*?[# =%\n\t", *cp) != NULL)
+		if (strchr("|&;<>(){}$`\\\"'*?[# =%\n\t", *cp) != NULL)
 			*at++ = '\\';
 		*at++ = *cp;
 	}

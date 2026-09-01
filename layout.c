@@ -1,4 +1,4 @@
-/* $OpenBSD: layout.c,v 1.96 2026/07/15 13:02:33 nicm Exp $ */
+/* $OpenBSD: layout.c,v 1.98 2026/08/25 18:38:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -539,6 +539,10 @@ layout_resize_check(struct window *w, struct layout_cell *lc,
 
 	status = window_get_pane_status(w);
 
+	/* Floating cells do not take space from the tiled layout. */
+	if (!layout_cell_is_tiled(lc) && !layout_cell_has_tiled_child(lc))
+		return (0);
+
 	if (lc->type == LAYOUT_WINDOWPANE) {
 		/* Space available in this cell only. */
 		if (type == LAYOUT_LEFTRIGHT) {
@@ -568,6 +572,9 @@ layout_resize_check(struct window *w, struct layout_cell *lc,
 		/* Different type: minimum of available space in child cells. */
 		minimum = UINT_MAX;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+			if (!layout_cell_is_tiled(lcchild) &&
+			    !layout_cell_has_tiled_child(lcchild))
+				continue;
 			available = layout_resize_check(w, lcchild, type);
 			if (available < minimum)
 				minimum = available;
@@ -661,7 +668,7 @@ layout_resize_set_size(struct window *w, struct layout_cell *lc,
 
 /* Find and return the nearest neighbour to a cell in a specific direction. */
 static struct layout_cell *
-layout_cell_get_neighbour_direction(struct layout_cell *lc, int direction)
+layout_cell_get_neighbour_dir(struct layout_cell *lc, int direction)
 {
 	struct layout_cell	*lcn = lc;
 
@@ -695,9 +702,9 @@ layout_cell_get_neighbour(struct layout_cell *lc)
 	if (lc == TAILQ_LAST(&lcparent->cells, layout_cells))
 		direction = !direction;
 
-	lcother = layout_cell_get_neighbour_direction(lc, direction);
+	lcother = layout_cell_get_neighbour_dir(lc, direction);
 	if (lcother == NULL)
-		lcother = layout_cell_get_neighbour_direction(lc, !direction);
+		lcother = layout_cell_get_neighbour_dir(lc, !direction);
 
 	return (lcother);
 }
@@ -860,7 +867,7 @@ layout_resize_pane_to(struct window_pane *wp, enum layout_type type,
 		size = lc->g.sx;
 	else
 		size = lc->g.sy;
-	if (lc == TAILQ_LAST(&lcparent->cells, layout_cells))
+	if (layout_cell_is_last_tiled(lc))
 		change = size - new_size;
 	else
 		change = new_size - size;
@@ -985,11 +992,11 @@ layout_resize_pane(struct window_pane *wp, enum layout_type type, int change,
 	if (lcparent == NULL)
 		return;
 
-	/* If this is the last cell, move back one. */
-	if (lc == TAILQ_LAST(&lcparent->cells, layout_cells)) {
-		do
-			lc = TAILQ_PREV(lc, layout_cells, entry);
-		while (lc->flags & LAYOUT_CELL_FLOATING);
+	/* If this is the last tiled cell, move back one. */
+	if (layout_cell_is_last_tiled(lc)) {
+		lc = layout_cell_get_neighbour_dir(lc, 0);
+		if (lc == NULL)
+			return;
 	}
 
 	layout_resize_layout(wp->window, lc, type, change, opposite);
@@ -1007,22 +1014,22 @@ layout_resize_pane_grow(struct window *w, struct layout_cell *lc,
 	lcadd = lc;
 
 	/* Look towards the tail for a suitable cell for reduction. */
-	lcremove = TAILQ_NEXT(lc, entry);
+	lcremove = layout_cell_get_neighbour_dir(lc, 1);
 	while (lcremove != NULL) {
 		size = layout_resize_check(w, lcremove, type);
 		if (size > 0)
 			break;
-		lcremove = TAILQ_NEXT(lcremove, entry);
+		lcremove = layout_cell_get_neighbour_dir(lcremove, 1);
 	}
 
 	/* If none found, look towards the head. */
 	if (opposite && lcremove == NULL) {
-		lcremove = TAILQ_PREV(lc, layout_cells, entry);
+		lcremove = layout_cell_get_neighbour_dir(lc, 0);
 		while (lcremove != NULL) {
 			size = layout_resize_check(w, lcremove, type);
 			if (size > 0)
 				break;
-			lcremove = TAILQ_PREV(lcremove, layout_cells, entry);
+			lcremove = layout_cell_get_neighbour_dir(lcremove, 0);
 		}
 	}
 	if (lcremove == NULL)
@@ -1050,13 +1057,13 @@ layout_resize_pane_shrink(struct window *w, struct layout_cell *lc,
 		size = layout_resize_check(w, lcremove, type);
 		if (size != 0)
 			break;
-		lcremove = TAILQ_PREV(lcremove, layout_cells, entry);
+		lcremove = layout_cell_get_neighbour_dir(lcremove, 0);
 	} while (lcremove != NULL);
 	if (lcremove == NULL)
 		return (0);
 
 	/* And add onto the next cell (from the original cell). */
-	lcadd = TAILQ_NEXT(lc, entry);
+	lcadd = layout_cell_get_neighbour_dir(lc, 1);
 	if (lcadd == NULL)
 		return (0);
 
@@ -1650,7 +1657,10 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 		return (NULL);
 	}
 
-	window_push_zoom(wp->window, 1, (flags & SPAWN_ZOOM));
+	if (window_active_pane_is_over_zoom(w))
+		window_push_zoom(w, 0, 1);
+	else
+		window_push_zoom(w, 1, (flags & SPAWN_ZOOM));
 	lc = layout_split_pane(wp, type, size, flags);
 	if (lc == NULL)
 		*cause = xstrdup("no space for a new pane");
@@ -1677,8 +1687,10 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 			return (NULL);
 	}
 
-	if (flags & SPAWN_MODAL)
-		window_push_modal_zoom(w);
+	if (flags & SPAWN_FLOATOVERZOOM)
+		window_push_zoom(wp->window, 0, 1);
+	else if (window_active_pane_is_over_zoom(w))
+		window_push_zoom(wp->window, 0, 1);
 	else
 		window_push_zoom(wp->window, 1, (flags & SPAWN_ZOOM));
 	lcnew = layout_floating_pane(w, wp, &fg);

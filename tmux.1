@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1155 2026/08/06 09:05:04 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1163 2026/09/01 12:49:49 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 6 2026 $
+.Dd $Mdocdate: September 1 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -2208,14 +2208,14 @@ Move to the end of the next word.
 .Xc
 Same as
 .Ic next\-word
-but use a space alone as the word separator.
+but treat all non-whitespace characters as part of a word.
 .It Xo
 .Ic next\-space\-end
 (vi: E)
 .Xc
 Same as
 .Ic next\-word\-end
-but use a space alone as the word separator.
+but treat all non-whitespace characters as part of a word.
 .It Xo
 .Ic other\-end
 (vi: o)
@@ -2289,7 +2289,7 @@ Move to the previous word.
 .Xc
 Same as
 .Ic previous\-word
-but use a space alone as the word separator.
+but treat all non-whitespace characters as part of a word.
 .It Xo
 .Ic rectangle\-on
 .Xc
@@ -2574,8 +2574,8 @@ Word separators can be customized with the
 session option.
 Next word moves to the start of the next word, next word end to the end of the
 next word and previous word to the start of the previous word.
-The three next and previous space keys work similarly but use a space alone as
-the word separator.
+The three next and previous space keys work similarly but treat all
+non-whitespace characters as part of a word.
 Setting
 .Em word\-separators
 to the empty string makes next/previous word equivalent to next/previous space.
@@ -3644,7 +3644,7 @@ but a different format may be specified with
 .Fl F .
 .Tg newp
 .It Xo Ic new\-pane
-.Op Fl bCdefhIkLMOPvWZ
+.Op Fl AbCdefhIkKLMOPvWZ
 .Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
@@ -3693,13 +3693,16 @@ sets the pane border lines for floating panes; see
 .Fl M
 may be used when bound to a mouse drag key; the new floating pane is resized to
 follow the mouse drag.
-It has no effect with
-.Fl L .
+.Fl A
+creates a floating pane which remains visible above a zoomed pane.
 .Fl O
 creates a modal pane.
 A modal pane is always the active pane and prevents interaction with any other
 panes while it is active.
 A window can only have one modal pane and it must be a floating pane.
+With
+.Fl K ,
+all keys, including the prefix key, are passed directly to the modal pane.
 With
 .Fl C ,
 the modal pane is closed when the mouse is clicked outside it.
@@ -4761,6 +4764,15 @@ for backspace.
 Set the number of buffers; as new buffers are added to the top of the stack,
 old ones are removed from the bottom if necessary to maintain this maximum
 length.
+.It Xo Ic clear\-on\-attach
+.Op Ic on | off
+.Xc
+When enabled (the default), the client terminal switches to the alternate
+screen and clears it when a client is attached.
+When disabled,
+.Nm
+does not enter the alternate screen; instead the existing terminal content is
+scrolled into the scrollback buffer so it remains accessible.
 .It Xo Ic command\-alias[]
 .Ar name=value
 .Xc
@@ -5057,6 +5069,10 @@ This is an array option where each entry is a colon-separated string made up
 of a terminal type pattern (matched using
 .Xr glob 7
 patterns) followed by a list of terminal features.
+A feature may be suffixed with
+.Ql @
+to disable it; for example,
+.Ql xterm*:sync@ .
 The available features are:
 .Bl -tag -width Ds
 .It 256
@@ -5107,6 +5123,8 @@ Supports
 title setting.
 .It usstyle
 Allows underscore style and colour to be set.
+.It utf8
+Supports UTF\-8 output.
 .El
 .It Ic terminal\-overrides[] Ar string
 Allow terminal descriptions read using
@@ -5641,6 +5659,11 @@ If set to both, a bell and a message are produced.
 Sets the session's conception of what characters are considered word
 separators, for the purposes of the next and previous word commands in
 copy mode.
+A space in
+.Ar string
+matches any character with the Unicode
+.Em White_Space
+property.
 .El
 .Pp
 Available window options are:
@@ -7313,7 +7336,10 @@ The following variables are available, where appropriate:
 .It Li "cursor_very_visible" Ta "" Ta "1 if the cursor is in very visible mode"
 .It Li "cursor_x" Ta "" Ta "Cursor X position in pane"
 .It Li "cursor_y" Ta "" Ta "Cursor Y position in pane"
+.It Li "history_added" Ta "" Ta "Number of lines scrolled into pane history"
 .It Li "history_bytes" Ta "" Ta "Number of bytes in window history"
+.It Li "history_collected" Ta "" Ta "Number of oldest pane history lines discarded at the history limit"
+.It Li "history_generation" Ta "" Ta "Generation incremented when pane history is cleared or reflowed"
 .It Li "history_limit" Ta "" Ta "Maximum window history lines"
 .It Li "history_size" Ta "" Ta "Size of history in lines"
 .It Li "hook" Ta "" Ta "Name of running hook, if any"
@@ -7412,6 +7438,7 @@ The following variables are available, where appropriate:
 .It Li "pane_marked_set" Ta "" Ta "1 if a marked pane is set"
 .It Li "pane_modal_flag" Ta "" Ta "1 if pane is modal"
 .It Li "pane_mode" Ta "" Ta "Name of pane mode, if any"
+.It Li "pane_output_generation" Ta "" Ta "Generation incremented when pane output is processed"
 .It Li "pane_path" Ta "" Ta "Path of pane (can be set by application)"
 .It Li "pane_pid" Ta "" Ta "PID of first process in pane"
 .It Li "pane_pipe" Ta "" Ta "1 if pane is being piped"
