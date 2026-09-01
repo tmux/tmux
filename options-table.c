@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.243 2026/08/25 08:37:08 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.244 2026/09/01 12:49:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1251,7 +1251,8 @@ const struct options_table_entry options_table[] = {
 	   * underscore.
 	   */
 	  .default_str = "!\"#$%&'()*+,-./:;<=>?@[\\]^`{|}~",
-	  .text = "Characters considered to separate words."
+	  .text = "Characters considered to separate words; a space matches "
+		  "any character with the Unicode White_Space property."
 	},
 
 	/* Window options. */
