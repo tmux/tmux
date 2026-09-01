@@ -1828,13 +1828,17 @@ server_client_reset_state(struct client *c)
 				cy += status_line_size(c);
 		}
 
-		if ((pane_mode & MODE_SYNC) || !cursor)
+		if (!cursor)
 			mode &= ~MODE_CURSOR;
 	} else if (c->overlay_mode == NULL || s == NULL)
 		mode &= ~MODE_CURSOR;
 	if (~pane_mode & MODE_SYNC) {
 		log_debug("%s: cursor to %u,%u", __func__, cx, cy);
 		tty_cursor(tty, cx, cy);
+	} else {
+		mode &= ~CURSOR_MODES;
+		mode |= tty->mode & CURSOR_MODES;
+		s = NULL;
 	}
 
 	/*
