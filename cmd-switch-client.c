@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-switch-client.c,v 1.74 2026/05/22 15:22:43 nicm Exp $ */
+/* $OpenBSD: cmd-switch-client.c,v 1.75 2026/08/20 09:19:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -53,7 +53,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	 target;
 	const char		*tflag = args_get(args, 't');
 	enum cmd_find_type	 type;
-	int			 flags;
+	int			 flags, visible, Zflag = args_has(args, 'Z');
 	struct client		*c = cmdq_get_client(item);
 	struct client		*tc = cmdq_get_target_client(item);
 	struct session		*s;
@@ -139,11 +139,15 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_NORMAL);
 		if (wl != NULL && wp != NULL && wp != wl->window->active) {
 			w = wl->window;
-			if (window_push_zoom(w, 0, args_has(args, 'Z')))
+			if (w->modal != NULL && wp != w->modal)
+				visible = 1;
+			else
+				visible = window_pane_is_visible(wp);
+			if (!visible && window_push_zoom(w, 0, Zflag))
 				server_redraw_window(w);
 			window_redraw_active_switch(w, wp);
 			window_set_active_pane(w, wp, 1);
-			if (window_pop_zoom(w))
+			if (!visible && window_pop_zoom(w))
 				server_redraw_window(w);
 		}
 		if (wl != NULL) {

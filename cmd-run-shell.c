@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-run-shell.c,v 1.93 2026/07/17 12:42:51 nicm Exp $ */
+/* $OpenBSD: cmd-run-shell.c,v 1.94 2026/08/25 06:04:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>

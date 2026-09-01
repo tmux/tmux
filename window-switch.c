@@ -1,4 +1,4 @@
-/* $OpenBSD: window-switch.c,v 1.2 2026/07/14 17:17:18 nicm Exp $ */
+/* $OpenBSD: window-switch.c,v 1.3 2026/08/25 07:23:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -227,7 +227,8 @@ window_switch_build(struct window_switch_modedata *data)
 		m = xreallocarray(m, n + 1, sizeof *m);
 		m[n++] = item;
 	}
-	qsort(m, n, sizeof *m, window_switch_compare);
+	if (n > 1)
+		qsort(m, n, sizeof *m, window_switch_compare);
 
 	free(data->matches);
 	data->matches = m;

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-command-prompt.c,v 1.75 2026/06/25 11:39:11 nicm Exp $ */
+/* $OpenBSD: cmd-command-prompt.c,v 1.76 2026/08/25 06:04:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>

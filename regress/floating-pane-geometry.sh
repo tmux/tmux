@@ -199,5 +199,74 @@ must_fail $TMUX resize-pane -t "$id" -x 0
 must_fail $TMUX resize-pane -t "$id" -y 0
 $TMUX kill-pane -t "$id" || exit 1
 
+# --- Tiled pane resize with floating cells in the layout ---
+
+$TMUX set-option -w -u pane-border-lines || exit 1
+base=$($TMUX display-message -p '#{pane_id}')
+
+# A floating cell after the last tiled cell must not become the recipient of a
+# relative or absolute resize. This is the sequence from GitHub issue 5135.
+floating=$($TMUX new-pane -dPF '#{pane_id}' -t "$base" \
+	-x 50% -y 50% -X 50% -Y 50% 'sleep 100') ||
+	fail "new-pane for tiled resize test failed"
+lower=$($TMUX split-window -dPF '#{pane_id}' -t "$base" 'sleep 100') ||
+	fail "split-window for tiled resize test failed"
+
+$TMUX resize-pane -t "$lower" -U 5 || fail "relative tiled resize failed"
+must_equal "$($TMUX display-message -p -t "$base" '#{pane_height}')" 7
+must_equal "$($TMUX display-message -p -t "$lower" '#{pane_top}')" 8
+must_equal "$($TMUX display-message -p -t "$lower" '#{pane_height}')" 16
+must_equal "$($TMUX display-message -p -t "$floating" '#{pane_top}')" 13
+must_equal "$($TMUX display-message -p -t "$floating" '#{pane_height}')" 10
+
+$TMUX resize-pane -t "$lower" -y 11 || fail "absolute tiled reset failed"
+$TMUX resize-pane -t "$lower" -y 16 || fail "absolute tiled resize failed"
+must_equal "$($TMUX display-message -p -t "$base" '#{pane_height}')" 7
+must_equal "$($TMUX display-message -p -t "$lower" '#{pane_top}')" 8
+must_equal "$($TMUX display-message -p -t "$lower" '#{pane_height}')" 16
+must_equal "$($TMUX display-message -p -t "$floating" '#{pane_height}')" 10
+
+$TMUX kill-pane -t "$floating" || exit 1
+$TMUX kill-pane -t "$lower" || exit 1
+
+# A floating cell between tiled siblings must be skipped when finding the cell
+# which donates space to a resize.
+lower=$($TMUX split-window -dPF '#{pane_id}' -t "$base" 'sleep 100') ||
+	fail "split-window for middle floating cell test failed"
+floating=$($TMUX new-pane -dPF '#{pane_id}' -t "$base" \
+	-x 20 -y 8 -X 30 -Y 8 'sleep 100') ||
+	fail "new-pane for middle floating cell test failed"
+
+$TMUX resize-pane -t "$base" -D 3 || fail "resize past floating cell failed"
+must_equal "$($TMUX display-message -p -t "$base" '#{pane_height}')" 15
+must_equal "$($TMUX display-message -p -t "$lower" '#{pane_top}')" 16
+must_equal "$($TMUX display-message -p -t "$lower" '#{pane_height}')" 8
+must_equal "$($TMUX display-message -p -t "$floating" '#{pane_height}')" 6
+
+$TMUX kill-pane -t "$floating" || exit 1
+$TMUX kill-pane -t "$lower" || exit 1
+
+# A small floating child must not limit the available tiled space in a nested
+# layout with a different split direction.
+lower=$($TMUX split-window -dPF '#{pane_id}' -t "$base" 'sleep 100') ||
+	fail "split-window for nested floating cell test failed"
+right=$($TMUX split-window -dhPF '#{pane_id}' -t "$lower" 'sleep 100') ||
+	fail "horizontal split for nested floating cell test failed"
+floating=$($TMUX new-pane -dPF '#{pane_id}' -t "$lower" \
+	-x 20 -y 3 -X 30 -Y 10 'sleep 100') ||
+	fail "new-pane for nested floating cell test failed"
+
+$TMUX resize-pane -t "$base" -D 3 || fail "nested tiled resize failed"
+must_equal "$($TMUX display-message -p -t "$base" '#{pane_height}')" 15
+must_equal "$($TMUX display-message -p -t "$lower" '#{pane_top}')" 16
+must_equal "$($TMUX display-message -p -t "$lower" '#{pane_height}')" 8
+must_equal "$($TMUX display-message -p -t "$right" '#{pane_top}')" 16
+must_equal "$($TMUX display-message -p -t "$right" '#{pane_height}')" 8
+must_equal "$($TMUX display-message -p -t "$floating" '#{pane_height}')" 1
+
+$TMUX kill-pane -t "$floating" || exit 1
+$TMUX kill-pane -t "$right" || exit 1
+$TMUX kill-pane -t "$lower" || exit 1
+
 $TMUX kill-server 2>/dev/null
 exit 0

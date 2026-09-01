@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.425 2026/08/05 12:23:25 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.429 2026/09/01 13:04:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2207,15 +2207,76 @@ window_copy_cmd_selection_mode(struct window_copy_cmd_state *cs)
 	struct window_mode_entry	*wme = cs->wme;
 	struct options			*so = cs->s->options;
 	struct window_copy_mode_data	*data = wme->data;
+	struct grid_reader		 gr;
 	const char			*s = args_string(cs->wargs, 0);
+	u_int				 sx, sy, ex, ey, fx, fy, x, y;
 
 	if (s == NULL || strcasecmp(s, "char") == 0 || strcasecmp(s, "c") == 0)
 		data->selflag = SEL_CHAR;
 	else if (strcasecmp(s, "word") == 0 || strcasecmp(s, "w") == 0) {
 		data->separators = options_get_string(so, "word-separators");
 		data->selflag = SEL_WORD;
-	} else if (strcasecmp(s, "line") == 0 || strcasecmp(s, "l") == 0)
+	} else if (strcasecmp(s, "line") == 0 || strcasecmp(s, "l") == 0) {
 		data->selflag = SEL_LINE;
+		if (data->screen.sel == NULL)
+			return (WINDOW_COPY_CMD_MOVE);
+
+		/*
+		 * Line selection normally starts with select-line, which sets
+		 * up the reset positions used when the cursor changes
+		 * direction. Do the same when changing an existing selection
+		 * to line mode.
+		 */
+		if (data->cursordrag == CURSORDRAG_SEL) {
+			fx = data->endselx;
+			fy = data->endsely;
+		} else {
+			fx = data->selx;
+			fy = data->sely;
+		}
+
+		sx = data->selx;
+		sy = data->sely;
+		ex = data->endselx;
+		ey = data->endsely;
+		if (ey < sy || (ey == sy && ex < sx)) {
+			x = sx; sx = ex; ex = x;
+			y = sy; sy = ey; ey = y;
+		}
+		grid_reader_start(&gr, data->backing->grid, sx, sy);
+		grid_reader_cursor_start_of_line(&gr, 1);
+		grid_reader_get_cursor(&gr, &sx, &sy);
+		grid_reader_start(&gr, data->backing->grid, ex, ey);
+		grid_reader_cursor_end_of_line(&gr, 1, 0);
+		grid_reader_get_cursor(&gr, &ex, &ey);
+
+		data->rectflag = 0;
+		data->selrx = data->selx = sx;
+		data->selry = data->sely = sy;
+		data->endselrx = data->endselx = ex;
+		data->endselry = data->endsely = ey;
+
+		x = data->cx;
+		y = screen_hsize(data->backing) + data->cy - data->oy;
+		data->dx = fx;
+		data->dy = fy;
+		if (data->cursordrag != CURSORDRAG_NONE &&
+		    (y < fy || (y == fy && x < fx))) {
+			data->lineflag = LINE_SEL_RIGHT_LEFT;
+			data->cursordrag = CURSORDRAG_SEL;
+			window_copy_scroll_to(wme, sx, sy, 1);
+		} else {
+			data->lineflag = LINE_SEL_LEFT_RIGHT;
+			if (data->cursordrag != CURSORDRAG_NONE) {
+				data->cursordrag = CURSORDRAG_ENDSEL;
+				x = window_copy_cursor_limit(wme, ey, 0);
+				window_copy_scroll_to(wme, x, ey, 1);
+			}
+		}
+		if (data->cursordrag == CURSORDRAG_NONE)
+			window_copy_set_selection(wme, 0, 0);
+		return (WINDOW_COPY_CMD_REDRAW);
+	}
 	return (WINDOW_COPY_CMD_MOVE);
 }
 
@@ -4093,7 +4154,7 @@ window_copy_search_lr_regex(struct grid *gd, u_int *ppx, u_int *psx, u_int py,
 	endline = gd->hsize + gd->sy - 1;
 	pywrap = py;
 	while (buf != NULL &&
-	    pywrap <= endline &&
+	    pywrap < endline &&
 	    len < WINDOW_COPY_SEARCH_MAX_LINE) {
 		gl = grid_get_line(gd, pywrap);
 		if (~gl->flags & GRID_LINE_WRAPPED)
@@ -4152,7 +4213,7 @@ window_copy_search_rl_regex(struct grid *gd, u_int *ppx, u_int *psx, u_int py,
 	endline = gd->hsize + gd->sy - 1;
 	pywrap = py;
 	while (buf != NULL &&
-	    pywrap <= endline &&
+	    pywrap < endline &&
 	    len < WINDOW_COPY_SEARCH_MAX_LINE) {
 		gl = grid_get_line(gd, pywrap);
 		if (~gl->flags & GRID_LINE_WRAPPED)
@@ -4301,7 +4362,7 @@ window_copy_stringify(struct grid *gd, u_int py, u_int first, u_int last,
 		}
 		if (dlen == 1)
 			buf[bx++] = *d;
-		else {
+		else if (dlen != 0) {
 			memcpy(buf + bx, d, dlen);
 			bx += dlen;
 		}
@@ -4353,6 +4414,7 @@ window_copy_cstrtocellpos(struct grid *gd, u_int ncells, u_int *ppx, u_int *ppy,
 				break;
 		}
 	}
+	ncells = cell;
 
 	/* Locate starting cell. */
 	cell = 0;
@@ -4850,6 +4912,8 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 			cflags |= REG_ICASE;
 		if (regcomp(&reg, sbuf, cflags) != 0) {
 			free(sbuf);
+			free(data->searchmark);
+			data->searchmark = NULL;
 			return (0);
 		}
 		free(sbuf);

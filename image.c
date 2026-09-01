@@ -84,6 +84,11 @@ image_fallback(char **ret, u_int sx, u_int sy)
 	char	*buf, *label;
 	u_int	 py, size, lsize;
 
+	if (sy == 0) {
+		*ret = xstrdup("");
+		return;
+	}
+
 	/* Allocate first line. */
 	lsize = xasprintf(&label, "SIXEL IMAGE (%ux%u)\r\n", sx, sy) + 1;
 	if (sx < lsize - 3)

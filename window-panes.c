@@ -1,4 +1,4 @@
-/* $OpenBSD: window-panes.c,v 1.4 2026/07/29 14:06:32 nicm Exp $ */
+/* $OpenBSD: window-panes.c,v 1.5 2026/08/25 06:04:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
