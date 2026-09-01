@@ -123,6 +123,10 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	struct grid		*gd = s->grid;
 	const struct grid_cell	*gcp;
 	struct grid_cell	 gc, ngc, last;
+#ifdef ENABLE_IMAGES
+	struct grid_cell	 image_gc;
+	int			 image_status;
+#endif
 	struct grid_line	*gl;
 	u_int			 i, j, last_i, cx, ex, width;
 	u_int			 cellsize, bg;
@@ -247,20 +251,35 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 
 			if (px >= ex || i >= ex - px) {
 				/* Outside the area being drawn. */
-				empty = nx - i;
 				gcp = &grid_default_cell;
+#ifdef ENABLE_IMAGES
+				image_status = image_get_fallback_at(tty, s, px + i,
+				    py, gcp, &image_gc, style_ctx);
+				if (image_status == 1) {
+					gcp = &image_gc;
+					empty = 0;
+				} else if (image_status == -1)
+					empty = 1;
+				else
+#endif
+					empty = nx - i;
 			} else {
 				/* Get the current cell. */
 				grid_view_get_cell(gd, px + i, py, &gc);
+				gcp = &gc;
+#ifdef ENABLE_IMAGES
+				if (image_get_fallback_at(tty, s, px + i, py, &gc,
+				    &image_gc, style_ctx) == 1)
+					gcp = &image_gc;
+#endif
 
 				/* Work out empty cells. */
-				empty = tty_draw_line_get_empty(&gc, &last,
-				    nx - i);
+				empty = tty_draw_line_get_empty(gcp, &last, nx - i);
 				if (empty != 0)
-					gcp = &gc;
+					;
 				else {
 					/* Update for codeset if needed. */
-					gcp = tty_check_codeset(tty, &gc);
+					gcp = tty_check_codeset(tty, gcp);
 
 					/* And for selection. */
 					if (gcp->flags & GRID_FLAG_SELECTED) {

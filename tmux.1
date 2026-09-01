@@ -5079,12 +5079,20 @@ Supports extended keys.
 Supports focus reporting.
 .It hyperlinks
 Supports OSC 8 hyperlinks.
+.It image-quadrants
+Allows image fallbacks to use Unicode quadrant block characters.
+.It image-sextants
+Allows image fallbacks to use Unicode sextant block characters.
 .It ignorefkeys
 Ignore function keys from
 .Xr terminfo 5
 and use the
 .Nm
 internal set only.
+.It kitty
+Supports Kitty graphics using Unicode placeholders.
+The terminal must support the Kitty Unicode placeholder extension, not only
+the basic Kitty graphics protocol.
 .It margins
 Supports DECSLRM margins.
 .It mouse
