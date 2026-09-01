@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.270 2026/08/17 20:04:00 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.271 2026/08/31 19:34:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1047,6 +1047,7 @@ input_parse_buffer(struct window_pane *wp, const u_char *buf, size_t len)
 	if (len == 0)
 		return;
 
+	wp->output_generation++;
 	window_update_activity(wp->window);
 	if (~wp->flags & PANE_ACTIVITY) {
 		wp->flags |= PANE_ACTIVITY;

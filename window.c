@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.370 2026/08/20 09:19:24 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.373 2026/08/24 21:17:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1477,6 +1477,8 @@ window_pane_scrollbar_overlay_visible(struct window_pane *wp)
 void
 window_pane_scrollbar_redraw(struct window_pane *wp)
 {
+	if (!window_pane_scrollbar_visible(wp))
+		return;
 	if (window_pane_scrollbar_overlay_visible(wp)) {
 		wp->flags |= PANE_REDRAW;
 		return;
@@ -1544,16 +1546,16 @@ window_pane_free(struct window_pane *wp)
 	log_debug("pane %%%u freed (%d references)", wp->id, wp->references);
 
 	free(wp->searchstr);
-
 	screen_free(&wp->status_screen);
 	screen_free(&wp->base);
-
+	free(wp->r.ranges);
 	options_free(wp->options);
 	free((void *)wp->cwd);
 	free(wp->shell);
 	cmd_free_argv(wp->argc, wp->argv);
 	colour_palette_free(&wp->palette);
 	style_ranges_free(&wp->border_status_line.ranges);
+	free(wp->border_status_line.expanded);
 	free(wp);
 }
 

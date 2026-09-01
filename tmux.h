@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1429 2026/08/20 09:19:24 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1433 2026/09/01 12:49:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -483,6 +483,7 @@ enum tty_code_code {
 	TTYC_ICH1,
 	TTYC_IL,
 	TTYC_IL1,
+	TTYC_IND,
 	TTYC_INDN,
 	TTYC_INVIS,
 	TTYC_KCBT,
@@ -1356,9 +1357,10 @@ struct window_pane {
 	char		 tty[TTY_NAME_MAX];
 	int		 status;
 	struct timeval	 dead_time;
-	struct cmdq_item *wait_item;	/* new-pane -W: waiting for pane exit */
+	struct cmdq_item *wait_item;
 	struct spawn_editor_state *editor;
 
+	uint64_t	 output_generation;
 	time_t		 last_output_time;
 	time_t		 last_prompt_time;
 	time_t		 cmd_start_time;
@@ -2279,7 +2281,7 @@ struct client {
 #define CLIENT_STARTSERVER 0x10000000
 #define CLIENT_REDRAWMENU 0x20000000
 #define CLIENT_NOFORK 0x40000000
-/* 0x80000000ULL unused */
+#define CLIENT_REDRAWSCROLLBARS 0x80000000ULL
 #define CLIENT_CONTROL_PAUSEAFTER 0x100000000ULL
 #define CLIENT_CONTROL_WAITEXIT 0x200000000ULL
 #define CLIENT_WINDOWSIZECHANGED 0x400000000ULL
@@ -4076,6 +4078,7 @@ void		 session_update_history(struct session *);
 /* utf8.c */
 enum utf8_state	 utf8_towc (const struct utf8_data *, wchar_t *);
 enum utf8_state	 utf8_fromwc(wchar_t wc, struct utf8_data *);
+int		 utf8_has_whitespace(const struct utf8_data *);
 void		 utf8_update_width_cache(void);
 utf8_char	 utf8_build_one(u_char);
 enum utf8_state	 utf8_from_data(const struct utf8_data *, utf8_char *);

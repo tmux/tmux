@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.288 2026/08/21 09:53:04 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.290 2026/08/24 15:05:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -305,11 +305,13 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 
 	if (~ctx->flags & SCREEN_WRITE_SYNC) {
 		/*
-		 * For the active pane, only use synchronized updates if
-		 * requested (commands that move the cursor); for other panes,
-		 * always use it, since the cursor will have to move.
+		 * For the active pane showing its base screen, only use
+		 * synchronized updates if requested (commands that move the
+		 * cursor); for other panes or a pane in a mode, always use it,
+		 * since the cursor will have to move.
 		 */
-		if (ctx->wp != NULL && ctx->wp != ctx->wp->window->active)
+		if (ctx->wp != NULL && (ctx->wp != ctx->wp->window->active ||
+		    ctx->wp->screen != &ctx->wp->base))
 			ttyctx->flags |= TTY_CTX_SYNC;
 		else if (is_sync)
 			ttyctx->flags |= TTY_CTX_SYNC;
@@ -333,10 +335,18 @@ screen_write_make_list(struct screen *s)
 void
 screen_write_free_list(struct screen *s)
 {
-	u_int	y;
+	struct screen_write_cline	*cl;
+	struct screen_write_citem	*ci, *ci1;
+	u_int				 y;
 
-	for (y = 0; y < screen_size_y(s); y++)
-		free(s->write_list[y].data);
+	for (y = 0; y < screen_size_y(s); y++) {
+		cl = &s->write_list[y];
+		TAILQ_FOREACH_SAFE(ci, &cl->items, entry, ci1) {
+			TAILQ_REMOVE(&cl->items, ci, entry);
+			screen_write_free_citem(ci);
+		}
+		free(cl->data);
+	}
 	free(s->write_list);
 }
 

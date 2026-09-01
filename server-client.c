@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.505 2026/08/20 09:19:24 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.509 2026/08/28 07:36:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -406,7 +406,10 @@ server_client_lost(struct client *c)
 	input_cancel_requests(c);
 
 	free(c->title);
+	free(c->path);
 	free((void *)c->cwd);
+	free(c->exit_session);
+	free(c->exit_message);
 
 	evtimer_del(&c->repeat_timer);
 	evtimer_del(&c->click_timer);
@@ -1378,6 +1381,10 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	    TAILQ_EMPTY(&wp->modes))
 		goto forward_key;
 
+	/* Focus events are not keys and cannot be bound. */
+	if (key == KEYC_FOCUS_IN || key == KEYC_FOCUS_OUT)
+		goto forward_key;
+
 	/*
 	 * Work out the current key table. If the pane is in a mode, use
 	 * the mode table instead of the default key table.
@@ -2269,8 +2276,6 @@ server_client_check_exit(struct client *c, int force)
 		proc_send(c->peer, c->exit_msgtype, -1, name, strlen(name) + 1);
 		break;
 	}
-	free(c->exit_session);
-	free(c->exit_message);
 }
 
 /* Redraw timer callback. */
@@ -2345,7 +2350,7 @@ server_client_check_redraw(struct client *c)
 
 	/* Work out if a redraw is actually needed. */
 	needed = 0;
-	if (c->flags & CLIENT_ALLREDRAWFLAGS)
+	if (c->flags & (CLIENT_ALLREDRAWFLAGS|CLIENT_REDRAWSCROLLBARS))
 		needed = 1;
 	else if (server_client_any_pane_redraw(c))
 		needed = 1;
@@ -2371,8 +2376,14 @@ server_client_check_redraw(struct client *c)
 			log_debug("redraw timer started");
 			evtimer_add(&ev, &tv);
 		}
-		if (server_client_any_pane_redraw(c))
-			c->flags |= CLIENT_REDRAWWINDOW;
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (wp->flags & PANE_REDRAW) {
+				c->flags |= CLIENT_REDRAWWINDOW;
+				break;
+			}
+			if (wp->flags & PANE_REDRAWSCROLLBAR)
+				c->flags |= CLIENT_REDRAWSCROLLBARS;
+		}
 		return;
 	}
 
@@ -2391,7 +2402,8 @@ server_client_check_redraw(struct client *c)
 				log_debug("%s: redraw pane %%%u", __func__,
 				    wp->id);
 				redraw_pane(c, wp);
-			} else if (wp->flags & PANE_REDRAWSCROLLBAR) {
+			} else if ((wp->flags & PANE_REDRAWSCROLLBAR) ||
+			    (c->flags & CLIENT_REDRAWSCROLLBARS)) {
 				log_debug("%s: redraw scrollbar %%%u", __func__,
 				    wp->id);
 				redraw_pane_scrollbar(c, wp);
@@ -2421,7 +2433,8 @@ server_client_check_redraw(struct client *c)
 	 * All the redraw flags can now be cleared. Also record how many bytes
 	 * were written.
 	 */
-	c->flags &= ~(CLIENT_ALLREDRAWFLAGS|CLIENT_STATUSFORCE);
+	c->flags &= ~(CLIENT_ALLREDRAWFLAGS|CLIENT_REDRAWSCROLLBARS|
+	    CLIENT_STATUSFORCE);
 	c->redraw = EVBUFFER_LENGTH(tty->out);
 	log_debug("%s: redraw added %zu bytes", c->name, c->redraw);
 }

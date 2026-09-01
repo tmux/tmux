@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.242 2026/07/27 08:03:01 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.244 2026/09/01 12:49:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -303,6 +303,16 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 50,
 	  .text = "The maximum number of automatic buffers. "
 		  "When this is reached, the oldest buffer is deleted."
+	},
+
+	{ .name = "clear-on-attach",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_num = 1,
+	  .text = "Whether to use the alternate screen and clear it when "
+		  "a client is attached. When disabled, tmux does not "
+		  "enter the alternate screen on attach so terminal "
+		  "content before tmux remains in scrollback."
 	},
 
 	{ .name = "command-alias",
@@ -1240,7 +1250,8 @@ const struct options_table_entry options_table[] = {
 	   * underscore.
 	   */
 	  .default_str = "!\"#$%&'()*+,-./:;<=>?@[\\]^`{|}~",
-	  .text = "Characters considered to separate words."
+	  .text = "Characters considered to separate words; a space matches "
+		  "any character with the Unicode White_Space property."
 	},
 
 	/* Window options. */

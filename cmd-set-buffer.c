@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-set-buffer.c,v 1.37 2026/02/15 17:43:26 nicm Exp $ */
+/* $OpenBSD: cmd-set-buffer.c,v 1.38 2026/08/24 07:05:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -100,6 +100,7 @@ cmd_set_buffer_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "%s", cause);
 			goto fail;
 		}
+		free(bufname);
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -107,8 +108,10 @@ cmd_set_buffer_exec(struct cmd *self, struct cmdq_item *item)
 		cmdq_error(item, "no data specified");
 		goto fail;
 	}
-	if ((newsize = strlen(args_string(args, 0))) == 0)
+	if ((newsize = strlen(args_string(args, 0))) == 0) {
+		free(bufname);
 		return (CMD_RETURN_NORMAL);
+	}
 
 	if (args_has(args, 'a') && pb != NULL) {
 		olddata = paste_buffer_data(pb, &bufsize);
@@ -127,6 +130,7 @@ cmd_set_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'w') && tc != NULL)
  		tty_set_selection(&tc->tty, "", bufdata, bufsize);
 
+	free(bufname);
 	return (CMD_RETURN_NORMAL);
 
 fail:

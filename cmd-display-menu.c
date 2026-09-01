@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-display-menu.c,v 1.52 2026/07/14 19:07:03 nicm Exp $ */
+/* $OpenBSD: cmd-display-menu.c,v 1.53 2026/08/31 07:46:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -412,7 +412,8 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 			server_kill_pane(w->modal);
 		return (CMD_RETURN_NORMAL);
 	}
-
+	if (tc->flags & CLIENT_CONTROL)
+		return (CMD_RETURN_NORMAL);
 	if (w->modal != NULL)
 		return (CMD_RETURN_NORMAL);
 
