@@ -88,7 +88,7 @@ escape=$(printf '\033')
 if ! LC_ALL=C grep -Eq "${escape}\\[[0-9]+S" "$off"; then
 	hex=$(od -An -tx1 -v "$off" | tr -d ' \n')
 	case "$hex" in
-	*0a0a0a0a0a0a0a0a0a0a0a0a*) ;;
+	*0a0a0a0a0a0a0a0a0a0a0a*) ;;
 	*) fail "clear-on-attach off did not scroll the old contents away" ;;
 	esac
 fi
