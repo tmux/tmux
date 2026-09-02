@@ -81,10 +81,16 @@ if grep -Fq "$smcup" "$off"; then
 	fail "clear-on-attach off used smcup"
 fi
 
-# screen has the indn capability (CSI Ps S), which the preserving path uses
-# after setting the scrolling region and moving to its last line.
+# Some screen terminfo entries have indn (CSI Ps S), while older ones only
+# have ind (newline). The preserving path uses indn once or repeats ind once
+# for every line in the terminal plus one.
 escape=$(printf '\033')
-LC_ALL=C grep -Eq "${escape}\\[[0-9]+S" "$off" ||
-	fail "clear-on-attach off did not scroll the old contents away"
+if ! LC_ALL=C grep -Eq "${escape}\\[[0-9]+S" "$off"; then
+	hex=$(od -An -tx1 -v "$off" | tr -d ' \n')
+	case "$hex" in
+	*0a0a0a0a0a0a0a0a0a0a0a0a*) ;;
+	*) fail "clear-on-attach off did not scroll the old contents away" ;;
+	esac
+fi
 
 exit 0

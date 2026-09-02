@@ -53,7 +53,7 @@ $INNER set-option -g status off || exit 1
 $INNER set-option -g window-size manual || exit 1
 $INNER set-option -g mouse on || exit 1
 $INNER set-window-option pane-scrollbars auto-hide || exit 1
-$INNER set-window-option pane-scrollbars-timeout 300 || exit 1
+$INNER set-window-option pane-scrollbars-timeout 3000 || exit 1
 $INNER set-window-option pane-scrollbars-style \
 	'bg=colour196,fg=colour231,width=1,pad=0' || exit 1
 
@@ -66,7 +66,7 @@ wait_for_client
 # to expire before taking the hidden reference capture.
 $INNER copy-mode -H || exit 1
 $INNER send-keys -X history-top || exit 1
-sleep 0.7
+sleep 3.5
 capture "$HIDDEN"
 
 # A copy-mode page movement shows the overlay and starts its timer. Capture
@@ -74,7 +74,7 @@ capture "$HIDDEN"
 $INNER send-keys -X page-down || exit 1
 sleep 0.1
 capture "$VISIBLE"
-sleep 0.7
+sleep 3.5
 capture "$AFTER"
 cmp -s "$VISIBLE" "$AFTER" && fail "scrollbar did not hide after timeout"
 
@@ -89,7 +89,7 @@ capture "$VISIBLE"
 cmp -s "$HIDDEN" "$VISIBLE" && fail "scrollbar did not appear on hover"
 away=$(printf '\033[<35;5;5M')
 $OUTER send-keys -l "$away" || exit 1
-sleep 0.7
+sleep 3.5
 capture "$AFTER"
 cmp -s "$HIDDEN" "$AFTER" || fail "scrollbar did not hide after hover"
 
