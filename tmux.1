@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1163 2026/09/01 12:49:49 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1164 2026/09/03 21:04:11 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: September 1 2026 $
+.Dd $Mdocdate: September 3 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -3588,13 +3588,20 @@ represents the window to be created; if the target already exists an error is
 shown, unless the
 .Fl k
 flag is used, in which case it is destroyed.
+.Ar window\-name
+is the name given to the new window, if any.
+.Pp
 If
 .Fl S
-is given and a window named
-.Ar window\-name
-already exists, it is selected (unless
+is given, an existing window is selected instead of creating a new one
+(unless
 .Fl d
-is also given in which case the command does nothing).
+is also given in which case the command does nothing):
+.Ar target\-window
+is preferred if it already identifies an existing window; otherwise a
+window named
+.Ar window\-name
+is selected if one exists.
 .Pp
 .Ar shell\-command
 is the command to execute.
