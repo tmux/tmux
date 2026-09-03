@@ -1,4 +1,4 @@
-/* $OpenBSD: server-fn.c,v 1.151 2026/08/20 09:19:24 nicm Exp $ */
+/* $OpenBSD: server-fn.c,v 1.152 2026/09/03 19:12:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -379,9 +379,9 @@ server_destroy_pane(struct window_pane *wp, int notify)
 		wp->pipe_fd = -1;
 	}
 
-	remain_on_exit = options_get_number(wp->options, "remain-on-exit");
-	if (remain_on_exit != 0 && (~wp->flags & PANE_STATUSREADY))
+	if (~wp->flags & PANE_STATUSREADY)
 		return;
+	remain_on_exit = options_get_number(wp->options, "remain-on-exit");
 	switch (remain_on_exit) {
 	case 0:
 		break;
