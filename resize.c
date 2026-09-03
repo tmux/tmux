@@ -283,6 +283,65 @@ default_window_size_skip_client(struct client *loop, __unused int type,
 	return (0);
 }
 
+static int
+resize_window_get_manual_size(struct session *s, u_int *sx, u_int *sy)
+{
+	const char	*value;
+
+	value = options_get_string(s->options, "default-size");
+	if (sscanf(value, "%ux%u", sx, sy) != 2)
+		return (0);
+	if (*sx < WINDOW_MINIMUM)
+		*sx = WINDOW_MINIMUM;
+	if (*sx > WINDOW_MAXIMUM)
+		*sx = WINDOW_MAXIMUM;
+	if (*sy < WINDOW_MINIMUM)
+		*sy = WINDOW_MINIMUM;
+	if (*sy > WINDOW_MAXIMUM)
+		*sy = WINDOW_MAXIMUM;
+	return (1);
+}
+
+void
+resize_window_update_manual_size(struct cmd_find_state *target,
+    struct options *oo, int old)
+{
+	struct session	*s;
+	struct winlink	*wl;
+	struct window	*w;
+	u_int		 sx, sy;
+
+	if (old < 0 || old == WINDOW_SIZE_MANUAL_OR_SMALLEST ||
+	    options_get_number(oo, "window-size") !=
+	    WINDOW_SIZE_MANUAL_OR_SMALLEST)
+		return;
+
+	if (oo == global_w_options) {
+		RB_FOREACH(w, windows, &windows) {
+			if (w->manual_size_set ||
+			    options_get_only(w->options, "window-size") != NULL)
+				continue;
+			TAILQ_FOREACH(wl, &w->winlinks, wentry) {
+				s = wl->session;
+				if (!resize_window_get_manual_size(s, &sx, &sy))
+					continue;
+				w->manual_sx = sx;
+				w->manual_sy = sy;
+				break;
+			}
+		}
+		return;
+	}
+
+	if (target == NULL || target->w == NULL || target->s == NULL ||
+	    target->w->manual_size_set)
+		return;
+	if (!resize_window_get_manual_size(target->s, &sx, &sy))
+		return;
+	target->w->manual_sx = sx;
+	target->w->manual_sy = sy;
+}
+
 void
 default_window_size(struct client *c, struct session *s, struct window *w,
 	u_int *sx, u_int *sy, u_int *xpixel, u_int *ypixel, int type)

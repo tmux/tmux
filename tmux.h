@@ -1454,6 +1454,7 @@ struct window {
 	u_int			 sy;
 	u_int			 manual_sx;
 	u_int			 manual_sy;
+	int			 manual_size_set;
 	u_int			 xpixel;
 	u_int			 ypixel;
 
@@ -3410,6 +3411,8 @@ void	 prompt_save_history(void);
 
 /* resize.c */
 void	 resize_window(struct window *, u_int, u_int, int, int);
+void	 resize_window_update_manual_size(struct cmd_find_state *,
+	     struct options *, int);
 void	 default_window_size(struct client *, struct session *, struct window *,
 	     u_int *, u_int *, u_int *, u_int *, int);
 void	 recalculate_size(struct window *, int);

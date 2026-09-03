@@ -32,9 +32,14 @@ wait_size()
 	fail "expected size $expected, got $actual"
 }
 
-$TMUX new-session -d -s test -x 100 -y 40 || exit 1
-$TMUX resize-window -t test: -x 100 -y 40 || exit 1
-$TMUX set-option -w -t test: window-size manual-or-smallest || exit 1
+$TMUX new-session -d -s test || exit 1
+$TMUX new-session -d -s local || exit 1
+$TMUX set -g default-size 100x40 || exit 1
+$TMUX set-window-option -t local: window-size manual-or-smallest || exit 1
+local_manual=$($TMUX display -t local: -p \
+    '#{window_manual_width}x#{window_manual_height}')
+[ "$local_manual" = "100x40" ] || fail "unexpected local manual size: $local_manual"
+$TMUX set -g window-size manual-or-smallest || exit 1
 
 manual=$($TMUX display -t test: -p \
     '#{window_manual_width}x#{window_manual_height}')
@@ -48,7 +53,7 @@ wait_size 80x24
 
 # A manual resize keeps the mode and changes the size cap.
 $TMUX resize-window -t test: -x 70 -y 20 || exit 1
-mode=$($TMUX show-option -wv -t test: window-size)
+mode=$($TMUX show -wAv -t test: window-size)
 [ "$mode" = "manual-or-smallest" ] || fail "unexpected mode: $mode"
 wait_size 70x20
 
@@ -62,5 +67,15 @@ client=$($TMUX list-clients -F '#{client_name}')
 exec 3>&-
 wait "$client_pid" 2>/dev/null || true
 wait_size 100x40
+
+# Preserve an explicitly resized cap when changing the global mode.
+$TMUX set -g window-size smallest || exit 1
+$TMUX resize-window -t test: -x 70 -y 20 || exit 1
+$TMUX set-window-option -t test: window-size manual-or-smallest || exit 1
+manual=$($TMUX display -t test: -p \
+    '#{window_manual_width}x#{window_manual_height}')
+[ "$manual" = "70x20" ] || fail "unexpected resized manual size: $manual"
+$TMUX set -g window-size manual-or-smallest || exit 1
+wait_size 70x20
 
 exit 0
