@@ -8,7 +8,7 @@
 # This exercises:
 # - new-window placement: next free index, explicit index, index in use with
 #   and without -k, -a (after) and -b (before) insertion with shuffling, and
-#   -S selecting an existing window by name instead of creating;
+#   -S selecting an existing window by name or target instead of creating;
 # - move-window to a free index, to an occupied index with and without -k,
 #   -a insertion and -r renumbering (including base-index);
 # - renumber-windows closing gaps;
@@ -139,6 +139,36 @@ check_ok select-window -t W:0
 check_ok new-window -S -t W: -n w3
 check_windows W '0:wB 1:w0 2:w1 3:wA 4:w2 5:w3 9:w9k'
 check_fmt 'W:' '#{window_index}:#{window_name}' '5:w3'
+
+# -S with a target-window that already exists selects it directly, ignoring
+# -n (with -d it does not switch).
+check_ok select-window -t W:0
+check_ok new-window -S -t W:9 -n ignored
+check_windows W '0:wB 1:w0 2:w1 3:wA 4:w2 5:w3 9:w9k'
+check_fmt 'W:' '#{window_index}:#{window_name}' '9:w9k'
+check_ok select-window -t W:0
+check_ok new-window -S -d -t W:9 -n ignored
+check_windows W '0:wB 1:w0 2:w1 3:wA 4:w2 5:w3 9:w9k'
+check_fmt 'W:' '#{window_index}:#{window_name}' '0:wB'
+
+# -S with a target-window that does not yet exist still creates it normally.
+check_ok new-window -S -t W:20 -n w20
+check_windows W '0:wB 1:w0 2:w1 3:wA 4:w2 5:w3 9:w9k 20:w20'
+check_fmt 'W:' '#{window_index}:#{window_name}' '20:w20'
+check_ok kill-window -t W:20
+
+# -S also works with a relative target-window (+N): selects the window at
+# that offset if it exists, or creates it there if not.
+check_ok select-window -t W:0
+check_ok new-window -S -t W:+1
+check_fmt 'W:' '#{window_index}:#{window_name}' '1:w0'
+check_windows W '0:wB 1:w0 2:w1 3:wA 4:w2 5:w3 9:w9k'
+
+check_ok select-window -t W:0
+check_ok new-window -S -t W:+6 -n rel6
+check_fmt 'W:' '#{window_index}:#{window_name}' '6:rel6'
+check_windows W '0:wB 1:w0 2:w1 3:wA 4:w2 5:w3 6:rel6 9:w9k'
+check_ok kill-window -t W:6
 
 # Clean up to a known arrangement.
 check_ok kill-window -t W:wB
