@@ -1,4 +1,4 @@
-/* $OpenBSD: control.c,v 1.66 2026/08/18 07:43:44 nicm Exp $ */
+/* $OpenBSD: control.c,v 1.67 2026/09/03 21:35:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -455,8 +455,12 @@ control_flush_deferred(struct client *c)
 void
 control_write(struct client *c, const char *fmt, ...)
 {
-	va_list	 ap;
-	char	*line;
+	struct control_state	*cs = c->control_state;
+	char			*line;
+	va_list			 ap;
+
+	if (cs == NULL)
+		return;
 
 	va_start(ap, fmt);
 	xvasprintf(&line, fmt, ap);
@@ -478,6 +482,9 @@ control_write_guard(struct client *c, const char *guard, long t, u_int number,
 {
 	struct control_state	*cs = c->control_state;
 	char			*line;
+
+	if (cs == NULL)
+		return;
 
 	if (strcmp(guard, "begin") == 0)
 		cs->guard_depth++;
@@ -502,6 +509,9 @@ control_notify_write(struct client *c, const char *fmt, ...)
 	struct control_line	*cl;
 	va_list			 ap;
 	char			*line;
+
+	if (cs == NULL)
+		return;
 
 	va_start(ap, fmt);
 	xvasprintf(&line, fmt, ap);
