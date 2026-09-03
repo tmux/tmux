@@ -74,8 +74,10 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	/*
-	 * If -S and -n are given and -t is not and a single window with this
-	 * name already exists, select it.
+	 * If -S is given, select an existing window instead of creating a
+	 * new one: preferring -t if it already points at a window, or
+	 * otherwise -n if one exists with that name. If neither matches,
+	 * fall through and create a window as normal.
 	 */
 	name = args_get(args, 'n');
 	if (name != NULL) {
@@ -88,32 +90,38 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 		wname = clean_name(expanded, 0);
 		free(expanded);
 	}
-	if (args_has(args, 'S') && wname != NULL && target->idx == -1) {
-		expanded = format_single(item, wname, c, s, NULL, NULL);
-		RB_FOREACH(wl, winlinks, &s->windows) {
-			if (strcmp(wl->window->name, expanded) != 0)
-				continue;
-			if (new_wl == NULL) {
-				new_wl = wl;
-				continue;
+	if (args_has(args, 'S')) {
+		if (target->idx != -1) {
+			new_wl = winlink_find_by_index(&s->windows, target->idx);
+		} else if (wname != NULL) {
+			expanded = format_single(item, wname, c, s, NULL, NULL);
+			RB_FOREACH(wl, winlinks, &s->windows) {
+				if (strcmp(wl->window->name, expanded) != 0)
+					continue;
+				if (new_wl == NULL) {
+					new_wl = wl;
+					continue;
+				}
+				cmdq_error(item, "multiple windows named %s", wname);
+				free(wname);
+				free(expanded);
+				return (CMD_RETURN_ERROR);
 			}
-			cmdq_error(item, "multiple windows named %s", wname);
-			free(wname);
 			free(expanded);
-			return (CMD_RETURN_ERROR);
 		}
-		free(expanded);
-		if (new_wl != NULL) {
-			free(wname);
-			if (args_has(args, 'd'))
-				return (CMD_RETURN_NORMAL);
-			if (session_set_current(s, new_wl) == 0)
-				server_redraw_session(s);
-			if (c != NULL && c->session != NULL)
-				s->curw->window->latest = c;
-			recalculate_sizes();
+	}
+
+	/* Found an existing window to select instead of creating a new one. */
+	if (new_wl != NULL) {
+		free(wname);
+		if (args_has(args, 'd'))
 			return (CMD_RETURN_NORMAL);
-		}
+		if (session_set_current(s, new_wl) == 0)
+			server_redraw_session(s);
+		if (c != NULL && c->session != NULL)
+			s->curw->window->latest = c;
+		recalculate_sizes();
+		return (CMD_RETURN_NORMAL);
 	}
 
 	before = args_has(args, 'b');
