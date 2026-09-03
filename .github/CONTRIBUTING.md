@@ -1,3 +1,8 @@
+# Reporting issues
+
+See [Code contributions](../CONTRIBUTING.md) for code and documentation
+changes. The guidance below covers bug reports and support requests.
+
 ## What should I do before opening an issue?
 
 Before opening an issue, please ensure that:
