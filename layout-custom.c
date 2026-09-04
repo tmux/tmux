@@ -28,7 +28,17 @@ static u_short			 layout_checksum(const char *);
 static int			 layout_append(struct layout_cell *, char *,
 				     size_t);
 static int			 layout_construct(struct layout_cell *,
-				     const char **, struct layout_cell **);
+				     const char **, struct layout_cell **,
+				     u_int);
+
+/*
+ * Maximum nesting depth for a layout string. This exists purely to bound
+ * layout_construct's recursion: without it, a layout string with enough
+ * nested { or [ groups drives unbounded recursion and exhausts the stack
+ * long before any other limit in the parser kicks in. No real layout tmux
+ * itself ever produces comes remotely close to this.
+ */
+#define LAYOUT_MAX_DEPTH 1000
 static void			 layout_assign(struct window_pane **,
 				     struct layout_cell *, int);
 
@@ -191,7 +201,7 @@ layout_parse(struct window *w, const char *layout, char **cause)
 	}
 
 	/* Build the layout. */
-	if (layout_construct(NULL, &layout, &tiled_lc) != 0) {
+	if (layout_construct(NULL, &layout, &tiled_lc, 0) != 0) {
 		*cause = xstrdup("invalid layout");
 		return (-1);
 	}
@@ -374,9 +384,12 @@ layout_construct_cell(struct layout_cell *lcparent, const char **layout)
  */
 static int
 layout_construct(struct layout_cell *lcparent, const char **layout,
-    struct layout_cell **lc)
+    struct layout_cell **lc, u_int depth)
 {
 	struct layout_cell	*lcchild;
+
+	if (depth > LAYOUT_MAX_DEPTH)
+		return (-1);
 
 	*lc = layout_construct_cell(lcparent, layout);
 	if (*lc == NULL)
@@ -401,7 +414,7 @@ layout_construct(struct layout_cell *lcparent, const char **layout,
 
 	do {
 		(*layout)++;
-		if (layout_construct(*lc, layout, &lcchild) != 0)
+		if (layout_construct(*lc, layout, &lcchild, depth + 1) != 0)
 			goto fail;
 		TAILQ_INSERT_TAIL(&(*lc)->cells, lcchild, entry);
 	} while (**layout == ',');
