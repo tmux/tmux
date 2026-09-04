@@ -78,6 +78,9 @@ static const char *options_table_pane_border_indicators_list[] = {
 static const char *options_table_pane_border_lines_list[] = {
 	"single", "double", "heavy", "simple", "number", "spaces", "none", NULL
 };
+static const char *options_table_pane_border_type_list[] = {
+	"joined", "separate", "separate-active", NULL
+};
 static const char *options_table_popup_border_lines_list[] = {
 	"single", "double", "heavy", "simple", "rounded", "padded", "none", NULL
 };
@@ -1620,6 +1623,17 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the pane status lines."
+	},
+
+	{ .name = "pane-border-type",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_pane_border_type_list,
+	  .default_num = PANE_BORDER_TYPE_JOINED,
+	  .text = "How pane borders are drawn: 'joined' shares borders "
+		  "between adjacent panes, 'separate' draws a full border "
+		  "around each pane, 'separate-active' uses the same layout "
+		  "but only draws the border around the active pane."
 	},
 
 	{ .name = "pane-colours",

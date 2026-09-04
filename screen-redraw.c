@@ -224,6 +224,7 @@ struct redraw_build_ctx {
 	u_int					 sy;
 
 	int					 ind;
+	int					 border_type;
 
 	struct redraw_build_cell		*cells;
 };
@@ -238,6 +239,7 @@ struct redraw_draw_ctx {
 	u_int			 status_lines;
 	enum pane_lines		 pane_lines;
 	struct grid_cell	 default_gc;
+	int			 border_type;
 
 	int			 flags;
 #define REDRAW_ISOLATES 0x1
@@ -303,6 +305,7 @@ redraw_set_context(struct client *c, struct redraw_build_ctx *bctx)
 	redraw_get_window_offset(c, &bctx->ox, &bctx->oy, &bctx->sx, &bctx->sy);
 
 	bctx->ind = options_get_number(w->options, "pane-border-indicators");
+	bctx->border_type = options_get_number(w->options, "pane-border-type");
 }
 
 /* Return a cell. */
@@ -713,10 +716,14 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 	} else {
 		mark_right = (right <= (int)bctx->w->sx);
 		mark_bottom = (bottom <= (int)bctx->w->sy);
-		if (pane_status == PANE_STATUS_TOP)
-			mark_bottom = 0;
-		else if (pane_status == PANE_STATUS_BOTTOM)
-			mark_top = 0;
+		/* Separate still needs the opposite gutter drawn. */
+		if (!PANE_BORDER_TYPE_IS_SEPARATE(bctx->border_type)) {
+			if (pane_status == PANE_STATUS_TOP) {
+				mark_bottom = 0;
+			} else if (pane_status == PANE_STATUS_BOTTOM) {
+				mark_top = 0;
+			}
+		}
 	}
 
 	if (mark_top) {
@@ -1222,16 +1229,29 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 	struct grid_cell	 gc;
 	enum pane_lines		 pane_lines;
 	u_int			 i, cell_type;
-	int			 isolates = 0;
+	int			 isolates = 0, blank = 0;
 
 	if (span->data.type != REDRAW_SPAN_BORDER)
 		cell_type = CELL_NONE;
 	else {
 		wp = redraw_get_pane_for_border_style(dctx, span);
 		cell_type = span->data.b.cell_type;
+		/* separate-active: blank inactive gutters so focus does not resize. */
+		if (dctx->border_type == PANE_BORDER_TYPE_SEPARATE_ACTIVE &&
+		    (dctx->active == NULL ||
+		    !redraw_data_has_pane(&span->data, dctx->active)))
+			blank = 1;
 	}
 
-	if (wp == NULL) {
+	if (blank) {
+		/* Keep border colours; suppress line glyphs only. */
+		if (wp != NULL)
+			window_pane_get_border_style(wp, c, &gc);
+		else
+			redraw_get_default_border_style(dctx, &gc, &pane_lines);
+		gc.attr &= ~GRID_ATTR_CHARSET;
+		utf8_set(&gc.data, ' ');
+	} else if (wp == NULL) {
 		redraw_get_default_border_style(dctx, &gc, &pane_lines);
 		if (span->data.type == REDRAW_SPAN_OUTSIDE)
 			window_get_fill_cell(w, 0, &gc);
@@ -1247,11 +1267,14 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 		window_pane_get_border_cell(wp, cell_type, &gc);
 	}
 
-	if (span->data.type == REDRAW_SPAN_BORDER &&
-	    dctx->marked != NULL &&
-	    redraw_data_has_pane(&span->data, dctx->marked))
-		gc.attr ^= GRID_ATTR_REVERSE;
-	redraw_draw_border_arrow(dctx, span, &gc);
+	if (!blank) {
+		if (span->data.type == REDRAW_SPAN_BORDER &&
+		    dctx->marked != NULL &&
+		    redraw_data_has_pane(&span->data, dctx->marked)) {
+			gc.attr ^= GRID_ATTR_REVERSE;
+		}
+		redraw_draw_border_arrow(dctx, span, &gc);
+	}
 
 	if (cell_type == CELL_UD && (dctx->flags & REDRAW_ISOLATES))
 		isolates = 1;
@@ -1611,6 +1634,8 @@ redraw_set_draw_context(struct redraw_draw_ctx *dctx,
 	if (server_is_marked(s, s->curw, marked_pane.wp))
 		dctx->marked = marked_pane.wp;
 	dctx->active = s->curw->window->active;
+	dctx->border_type = options_get_number(s->curw->window->options,
+	    "pane-border-type");
 
 	lines = status_line_size(c);
 	if (options_get_number(oo, "status-position") == 0)

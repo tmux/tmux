@@ -1158,6 +1158,13 @@ enum pane_lines {
 #define PANE_BORDER_ARROWS 2
 #define PANE_BORDER_BOTH 3
 
+#define PANE_BORDER_TYPE_JOINED 0
+#define PANE_BORDER_TYPE_SEPARATE 1
+#define PANE_BORDER_TYPE_SEPARATE_ACTIVE 2
+#define PANE_BORDER_TYPE_IS_SEPARATE(t) \
+	((t) == PANE_BORDER_TYPE_SEPARATE || \
+	 (t) == PANE_BORDER_TYPE_SEPARATE_ACTIVE)
+
 /* Mode returned by window_pane_mode function. */
 #define WINDOW_PANE_NO_MODE 0
 #define WINDOW_PANE_COPY_MODE 1
@@ -3825,6 +3832,7 @@ void		 window_pane_send_theme_update(struct window_pane *);
 enum pane_lines	 window_pane_get_pane_lines(struct window_pane *);
 enum pane_lines	 window_get_pane_lines(struct window *);
 int		 window_get_pane_status(struct window *);
+int		 window_border_type_is_separate(struct window *);
 int		 window_pane_get_pane_status(struct window_pane *);
 struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
 		     u_int);
@@ -3864,6 +3872,9 @@ void		 layout_fix_zindexes(struct window *, struct layout_cell *);
 int		 layout_cell_is_tiled(struct layout_cell *);
 int		 layout_add_horizontal_border(struct layout_cell *,
 		     struct layout_cell *, int);
+void		 layout_apply_pane_border_type(struct window *,
+		    struct layout_cell *, struct layout_cell *, int *, int *,
+		    u_int *, u_int *);
 void		 layout_fix_offsets(struct window *);
 void		 layout_fix_panes(struct window *, struct window_pane *);
 void		 layout_resize_adjust(struct window *, struct layout_cell *,
@@ -3886,8 +3897,8 @@ void		 layout_assign_pane(struct layout_cell *, struct window_pane *,
 		     int);
 int		 layout_split_check_space(struct window_pane *,
 		     struct layout_cell *, enum layout_type);
-void		 layout_split_sizes(struct layout_cell *, int, int,
-		     enum layout_type, u_int *, u_int *, u_int *);
+void		 layout_split_sizes(struct window *, struct layout_cell *, int,
+		     int, enum layout_type, u_int *, u_int *, u_int *);
 struct layout_cell *layout_replace_with_node(struct window *,
 		     struct layout_cell *, enum layout_type);
 struct layout_cell *layout_split_pane(struct window_pane *, enum layout_type,
