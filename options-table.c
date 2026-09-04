@@ -88,7 +88,7 @@ static const char *options_table_get_clipboard_list[] = {
 	"off", "buffer", "request", "both", NULL
 };
 static const char *options_table_window_size_list[] = {
-	"largest", "smallest", "manual", "latest", NULL
+	"largest", "smallest", "manual", "latest", "manual-or-smallest", NULL
 };
 static const char *options_table_remain_on_exit_list[] = {
 	"off", "on", "failed", "key", NULL
@@ -1822,7 +1822,8 @@ const struct options_table_entry options_table[] = {
 		  "'latest' uses the size of the most recently used client, "
 		  "'largest' the largest client, 'smallest' the smallest "
 		  "client and 'manual' a size set by the 'resize-window' "
-		  "command."
+		  "command. 'manual-or-smallest' uses the manual size or "
+		  "the smallest client if it is smaller."
 	},
 
 	{ .name = "window-style",

@@ -1459,6 +1459,7 @@ struct window {
 	u_int			 sy;
 	u_int			 manual_sx;
 	u_int			 manual_sy;
+	int			 manual_size_set;
 	u_int			 xpixel;
 	u_int			 ypixel;
 
@@ -1527,6 +1528,7 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define WINDOW_SIZE_SMALLEST 1
 #define WINDOW_SIZE_MANUAL 2
 #define WINDOW_SIZE_LATEST 3
+#define WINDOW_SIZE_MANUAL_OR_SMALLEST 4
 
 /* Pane border status option. */
 #define PANE_STATUS_OFF 0
@@ -3421,6 +3423,8 @@ void	 prompt_save_history(void);
 
 /* resize.c */
 void	 resize_window(struct window *, u_int, u_int, int, int);
+void	 resize_window_update_manual_size(struct cmd_find_state *,
+	     struct options *, int);
 void	 default_window_size(struct client *, struct session *, struct window *,
 	     u_int *, u_int *, u_int *, u_int *, int);
 void	 recalculate_size(struct window *, int);
