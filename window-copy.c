@@ -4202,29 +4202,49 @@ window_copy_find_previous_output_range(struct screen *s, u_int *sx, u_int *sy,
 {
 	struct grid		*gd = s->grid;
 	struct grid_line	*gl;
-	u_int			 y, total;
+	void			*buf;
+	u_int			 start_x, start_y, end_x, end_y, y, total;
+	size_t			 len;
 	int			 found = 0, pending = 0;
 
 	total = gd->hsize + gd->sy;
 	for (y = 0; y < total; y++) {
 		gl = grid_get_line(gd, y);
 		if (gl->flags & GRID_LINE_START_OUTPUT) {
-			*sx = gl->osc133_data.out_start_col;
-			*sy = y;
+			start_x = gl->osc133_data.out_start_col;
+			start_y = y;
 			pending = 1;
 		}
 		if (pending && gl->flags & GRID_LINE_END_OUTPUT) {
-			*ex = gl->osc133_data.out_end_col;
-			*ey = y;
-			found = 1;
+			end_x = gl->osc133_data.out_end_col;
+			end_y = y;
+			buf = window_copy_get_grid_range(gd, start_x, start_y,
+			    end_x, end_y, &len);
+			if (buf != NULL) {
+				free(buf);
+				*sx = start_x;
+				*sy = start_y;
+				*ex = end_x;
+				*ey = end_y;
+				found = 1;
+			}
 			pending = 0;
 		}
 		if (gl->flags & GRID_LINE_START_PROMPT)
 			pending = 0;
 	}
 	if (pending) {
-		window_copy_output_end(s, ex, ey);
-		return (1);
+		window_copy_output_end(s, &end_x, &end_y);
+		buf = window_copy_get_grid_range(gd, start_x, start_y, end_x,
+		    end_y, &len);
+		if (buf != NULL) {
+			free(buf);
+			*sx = start_x;
+			*sy = start_y;
+			*ex = end_x;
+			*ey = end_y;
+			return (1);
+		}
 	}
 	return (found);
 }
@@ -7618,8 +7638,7 @@ window_copy_copy_buffer(struct window_mode_entry *wme, const char *prefix,
 
 	if (set_clip &&
 	    options_get_number(global_options, "set-clipboard") != 0) {
-		if (window_copy_line_numbers_active(wme) &&
-		    (wp->flags & PANE_REDRAW)) {
+		if (wp->flags & PANE_REDRAW) {
 			/* Clear PANE_REDRAW so clipboard write not skipped. */
 			redraw = PANE_REDRAW;
 			wp->flags &= ~PANE_REDRAW;
