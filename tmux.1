@@ -2004,6 +2004,25 @@ Same as
 .Ic copy\-pipe
 but also exit copy mode.
 .It Xo
+.Ic copy\-pipe\-output
+.Op Fl aCP
+.Op Ar command
+.Op Ar prefix
+.Xc
+Copy the current OSC 133 command output, pipe it to
+.Ar command ,
+and clear the selection.
+.Ar prefix
+is used to name the new paste buffer.
+.It Xo
+.Ic copy\-output
+.Op Fl aCP
+.Op Ar prefix
+.Xc
+Copy the current OSC 133 command output and clear the selection.
+.Ar prefix
+is used to name the new paste buffer.
+.It Xo
 .Ic copy\-selection
 .Op Fl CP
 .Op Ar prefix
@@ -2243,6 +2262,32 @@ but treat all non-whitespace characters as part of a word.
 .Xc
 Switch at which end of the selection the cursor sits.
 .It Xo
+.Ic open\-output
+.Op Fl a
+.Op Ar command
+.Xc
+Open the current OSC 133 command output in an editor.
+If
+.Ar command
+is given, it is used as the editor command; otherwise, the
+.Ic editor
+option is used.
+.It Xo
+.Ic open\-selection
+.Op Ar command
+.Xc
+Open the current selection in an editor.
+If
+.Ar command
+is given, it is used as the editor command; otherwise, the
+.Ic editor
+option is used.
+In emacs mode,
+.Ql e ,
+and in vi mode,
+.Ql M\-e ,
+opens the selection if one is present, otherwise the command output.
+.It Xo
 .Ic page\-down
 (vi: C\-f)
 (emacs: PageDown)
@@ -2282,6 +2327,14 @@ but do not clear the selection.
 Same as
 .Ic pipe
 but also exit copy mode.
+.It Xo
+.Ic pipe\-output
+.Op Fl a
+.Op Ar command
+.Xc
+Pipe the current OSC 133 command output to
+.Ar command
+and clear the selection.
 .It Xo
 .Ic previous\-matching\-bracket
 (emacs: M\-C\-b)
@@ -2477,6 +2530,16 @@ backward becomes forward).
 .Xc
 Select the current line.
 .It Xo
+.Ic select\-output
+.Op Fl a
+.Xc
+Select the current OSC 133 command output.
+If it is collapsed, it is expanded first.
+The default emacs binding is
+.Ql C\-o
+and the default vi binding is
+.Ql M\-o .
+.It Xo
 .Ic select\-word
 .Xc
 Select the current word.
@@ -2514,6 +2577,12 @@ Toggle the visibility of the position indicator in the top right.
 .Xc
 Move to the top line.
 .El
+.Pp
+The output commands use OSC 133 output text from the C marker to the D marker.
+If there is no D marker, the output ends at the end of the copy-mode buffer.
+With
+.Fl a ,
+they use the entire copy-mode buffer instead.
 .Pp
 The search commands come in several varieties:
 .Ql search\-forward
@@ -2559,6 +2628,15 @@ flag jumps to the beginning of the command output instead of the shell prompt.
 Finding the beginning of command output requires the shell to emit an escape
 sequence (\e033]133;C\e033\e\e) to tell tmux where the output begins.
 If the shell does not send these escape sequences, these commands do nothing.
+.Pp
+The output commands operate on text from an OSC 133
+.Ql C
+marker up to its matching
+.Ql D
+marker, or the current end of the buffer if there is no
+.Ql D
+marker.
+They do nothing if the cursor is not associated with an output range.
 .Pp
 Copy commands may take an optional buffer prefix argument which is used
 to generate the buffer name (the default is
@@ -2673,6 +2751,60 @@ bind PageDown copy\-mode \-ed
 .Pp
 .Fl k
 kills the pane when the mode is exited.
+.El
+.Pp
+The following commands operate on OSC 133 command output. In copy mode, they
+use the output on the cursor line; otherwise, they use the most recent output
+in the target pane. If an output has a C marker but no D marker, it ends at the
+end of the pane buffer. If there is no OSC 133 output, they do nothing unless
+.Fl a
+is given, which uses the entire buffer.
+.Bl -tag -width Ds
+.It Xo Ic select\-output
+.Op Fl a
+.Op Fl t Ar target\-pane
+.Xc
+Enter copy mode if necessary and select the output.
+.It Xo Ic copy\-output
+.Op Fl aCP
+.Op Fl t Ar target\-pane
+.Op Ar prefix
+.Xc
+Copy the output to a paste buffer.
+.It Xo Ic copy\-pipe\-output
+.Op Fl aCP
+.Op Fl t Ar target\-pane
+.Op Ar command
+.Op Ar prefix
+.Xc
+Copy the output to a paste buffer and pipe it to
+.Ar command .
+.It Xo Ic pipe\-output
+.Op Fl a
+.Op Fl t Ar target\-pane
+.Op Ar command
+.Xc
+Pipe the output to
+.Ar command .
+.It Xo Ic open\-output
+.Op Fl a
+.Op Fl t Ar target\-pane
+.Op Ar command
+.Xc
+Open the output in an editor. If
+.Ar command
+is given, it is used as the editor command; otherwise the
+.Ic editor
+option is used.
+.It Xo Ic open\-selection
+.Op Fl t Ar target\-pane
+.Op Ar command
+.Xc
+Open the current copy-mode selection in an editor. If
+.Ar command
+is given, it is used as the editor command; otherwise the
+.Ic editor
+option is used.
 .El
 .Pp
 A number of preset arrangements of panes are available, these are called
