@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.407 2026/07/20 07:42:13 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.415 2026/08/31 19:34:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -128,6 +128,7 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_OPTIONS 0x40000000
 #define FORMAT_ENVIRON 0x80000000ULL
 #define FORMAT_DIFFERENCE 0x100000000ULL
+#define FORMAT_CYCLE 0x200000000ULL
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 100
@@ -138,9 +139,13 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 /* How often to check the time in long loops. */
 #define FORMAT_TIME_LOOP_CHECK 10000
 
+/* Fixed animation period (ms): redraw interval and shortest frame step. */
+#define FORMAT_CYCLE_PERIOD 100
+
 /* Format expand flags. */
 #define FORMAT_EXPAND_TIME 0x1
 #define FORMAT_EXPAND_NOJOBS 0x2
+#define FORMAT_EXPAND_NOCYCLE 0x4
 
 /* Entry in format tree. */
 struct format_entry {
@@ -413,7 +418,8 @@ format_job_get(struct format_expand_state *es, const char *cmd)
 		RB_INSERT(format_job_tree, jobs, fj);
 	}
 
-	format_copy_state(&next, es, FORMAT_EXPAND_NOJOBS);
+	format_copy_state(&next, es, FORMAT_EXPAND_NOJOBS|
+	    FORMAT_EXPAND_NOCYCLE);
 	next.flags &= ~FORMAT_EXPAND_TIME;
 
 	expanded = format_expand1(&next, cmd);
@@ -1881,6 +1887,37 @@ format_cb_cursor_blinking(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for history_added. */
+static void *
+format_cb_history_added(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%u", ft->wp->base.grid->scroll_added));
+	return (NULL);
+}
+
+/* Callback for history_collected. */
+static void *
+format_cb_history_collected(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL)
+		return (format_printf("%u", wp->base.grid->scroll_collected));
+	return (NULL);
+}
+
+/* Callback for history_generation. */
+static void *
+format_cb_history_generation(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL)
+		return (format_printf("%u", wp->base.grid->scroll_generation));
+	return (NULL);
+}
+
 /* Callback for history_limit. */
 static void *
 format_cb_history_limit(struct format_tree *ft)
@@ -2095,6 +2132,60 @@ format_cb_synchronized_output_flag(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_private_modes. */
+static void *
+format_cb_pane_private_modes(struct format_tree *ft)
+{
+	static const struct {
+		int	mode;
+		int	number;
+	} table[] = {
+		{ MODE_KCURSOR,		1 },	/* DECCKM */
+		{ MODE_ORIGIN,		6 },	/* DECOM */
+		{ MODE_WRAP,		7 },	/* DECAWM */
+		{ MODE_CURSOR_BLINKING,	12 },	/* cursor blinking */
+		{ MODE_CURSOR,		25 },	/* DECTCEM */
+		{ MODE_MOUSE_STANDARD,	1000 },	/* mouse normal tracking */
+		{ MODE_MOUSE_BUTTON,	1002 },	/* mouse button tracking */
+		{ MODE_MOUSE_ALL,	1003 },	/* mouse any tracking */
+		{ MODE_FOCUSON,		1004 },	/* focus reporting */
+		{ MODE_MOUSE_UTF8,	1005 },	/* mouse: UTF-8 */
+		{ MODE_MOUSE_SGR,	1006 },	/* mouse: SGR */
+		{ MODE_BRACKETPASTE,	2004 },	/* bracketed paste */
+		{ MODE_SYNC,		2026 },	/* synchronized output */
+		{ MODE_THEME_UPDATES,	2031 },	/* theme update notifications */
+	};
+	int	 mode;
+	char	*value = NULL, *tmp;
+	u_int	 i;
+
+	if (ft->wp == NULL)
+		return (NULL);
+	mode = ft->wp->base.mode;
+
+	for (i = 0; i < nitems(table); i++) {
+		if (~mode & table[i].mode)
+			continue;
+		/*
+		 * Only report cursor blinking when set by the application, not
+		 * when it comes from the cursor-style option.
+		 */
+		if (table[i].mode == MODE_CURSOR_BLINKING &&
+		    (~mode & MODE_CURSOR_BLINKING_SET))
+			continue;
+		if (value == NULL)
+			xasprintf(&value, "%d", table[i].number);
+		else {
+			xasprintf(&tmp, "%s,%d", value, table[i].number);
+			free(value);
+			value = tmp;
+		}
+	}
+	if (value == NULL)
+		return (xstrdup(""));
+	return (value);
+}
+
 /* Callback for pane_active. */
 static void *
 format_cb_pane_active(struct format_tree *ft)
@@ -2212,6 +2303,19 @@ format_cb_pane_last_output_time(struct format_tree *ft)
 		tv.tv_sec = wp->last_output_time;
 		tv.tv_usec = 0;
 		return (&tv);
+	}
+	return (NULL);
+}
+
+/* Callback for pane_output_generation. */
+static void *
+format_cb_pane_output_generation(struct format_tree *ft)
+{
+	unsigned long long	 value;
+
+	if (ft->wp != NULL) {
+		value = ft->wp->output_generation;
+		return (format_printf("%llu", value));
 	}
 	return (NULL);
 }
@@ -2622,20 +2726,23 @@ format_cb_pane_unzoomed_width(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
 	struct layout_cell	*lc;
-	int			 sb_w, sb_pad;
+	int			 saved, sb_w, sb_pad;
 	u_int			 sx;
 
 	if (wp == NULL)
 		return (NULL);
 
 	lc = wp->saved_layout_cell;
+	saved = (lc != NULL);
 	if (lc == NULL)
 		lc = wp->layout_cell;
 	if (lc == NULL)
 		return (NULL);
 	sx = lc->g.sx;
 
-	if (window_pane_scrollbar_reserve(wp)) {
+	if ((saved && !SCREEN_IS_ALTERNATE(&wp->base) &&
+	    wp->window->sb == PANE_SCROLLBARS_ALWAYS) ||
+	    (!saved && window_pane_scrollbar_reserve(wp))) {
 		sb_w = wp->scrollbar_style.width;
 		sb_pad = wp->scrollbar_style.pad;
 		if (sb_w < 1)
@@ -3600,11 +3707,20 @@ static const struct format_table_entry format_table[] = {
 	{ "cursor_y", FORMAT_TABLE_STRING,
 	  format_cb_cursor_y
 	},
+	{ "history_added", FORMAT_TABLE_STRING,
+	  format_cb_history_added
+	},
 	{ "history_all_bytes", FORMAT_TABLE_STRING,
 	  format_cb_history_all_bytes
 	},
 	{ "history_bytes", FORMAT_TABLE_STRING,
 	  format_cb_history_bytes
+	},
+	{ "history_collected", FORMAT_TABLE_STRING,
+	  format_cb_history_collected
+	},
+	{ "history_generation", FORMAT_TABLE_STRING,
+	  format_cb_history_generation
 	},
 	{ "history_limit", FORMAT_TABLE_STRING,
 	  format_cb_history_limit
@@ -3786,6 +3902,9 @@ static const struct format_table_entry format_table[] = {
 	{ "pane_mode", FORMAT_TABLE_STRING,
 	  format_cb_pane_mode
 	},
+	{ "pane_output_generation", FORMAT_TABLE_STRING,
+	  format_cb_pane_output_generation
+	},
 	{ "pane_path", FORMAT_TABLE_STRING,
 	  format_cb_pane_path
 	},
@@ -3803,6 +3922,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_pipe_pid", FORMAT_TABLE_STRING,
 	  format_cb_pane_pipe_pid
+	},
+	{ "pane_private_modes", FORMAT_TABLE_STRING,
+	  format_cb_pane_private_modes
 	},
 	{ "pane_right", FORMAT_TABLE_STRING,
 	  format_cb_pane_right
@@ -4191,6 +4313,8 @@ format_log_debug_cb(const char *key, const char *value, void *arg)
 void
 format_log_debug(struct format_tree *ft, const char *prefix)
 {
+	if (log_get_level() == 0)
+		return;
 	format_each(ft, format_log_debug_cb, (void *)prefix);
 }
 
@@ -4319,7 +4443,7 @@ format_quote_shell(const char *s)
 
 	at = out = xmalloc(strlen(s) * 2 + 1);
 	for (cp = s; *cp != '\0'; cp++) {
-		if (strchr("|&;<>()$`\\\"'*?[# =%", *cp) != NULL)
+		if (strchr("|&;<>(){}$`\\\"'*?[# =%\n\t", *cp) != NULL)
 			*at++ = '\\';
 		*at++ = *cp;
 	}
@@ -4797,7 +4921,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 
 	/*
 	 * Modifiers are a ; separated list of the forms:
-	 *	l,m,C,a,b,c,d,I,n,t,w,q,E,T,S,W,P,O,V,R,<,>
+	 *	l,m,C,a,b,c,d,I,n,t,w,q,E,T,S,W,P,O,V,R,A,<,>
 	 *	=a
 	 *	=/a
 	 *	=/a/
@@ -4816,7 +4940,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 			break;
 
 		/* Check single character modifiers with no arguments. */
-		if (strchr("labdnwETSWPOVL!<>", cp[0]) != NULL &&
+		if (strchr("labdnwETSWPOVL!<>A", cp[0]) != NULL &&
 		    format_is_end(cp[1])) {
 			format_add_modifier(&list, count, cp, 1, NULL, 0);
 			cp++;
@@ -4838,7 +4962,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 		}
 
 		/* Now try single character with arguments. */
-		if (strchr("ImCLNPSOVst=pReqWc", cp[0]) == NULL)
+		if (strchr("ImCLNPSOVst=pReqWcA", cp[0]) == NULL)
 			break;
 		c = cp[0];
 
@@ -5797,6 +5921,74 @@ fail:
 	return (NULL);
 }
 
+/* Callback for the cycle timer; redraw the status line. */
+static void
+format_cycle_callback(__unused int fd, __unused short events, void *arg)
+{
+	struct client	*c = arg;
+
+	if (c->message_string == NULL && c->prompt == NULL)
+		c->flags |= CLIENT_REDRAWSTATUS;
+}
+
+/* Arm the cycle timer to redraw the status line if it is not already. */
+static void
+format_cycle_start_timer(struct client *c)
+{
+	struct timeval	tv;
+
+	tv.tv_sec = FORMAT_CYCLE_PERIOD / 1000;
+	tv.tv_usec = (FORMAT_CYCLE_PERIOD % 1000) * 1000L;
+
+	if (!event_initialized(&c->cycle_timer))
+		evtimer_set(&c->cycle_timer, format_cycle_callback, c);
+	if (!evtimer_pending(&c->cycle_timer, NULL))
+		evtimer_add(&c->cycle_timer, &tv);
+}
+
+/* Expand the "A" animation modifier; see the manual for the syntax. */
+static char *
+format_cycle(struct format_expand_state *es, const char *frames, u_int count)
+{
+	struct format_tree	*ft = es->ft;
+	const char		*start, *end, *cp;
+	u_int			 n, index, i;
+
+	/*
+	 * A cycle is only expanded in a status format, and never in the
+	 * command or output of #() where it would change on every frame and
+	 * make the job run again.
+	 */
+	if (!(ft->flags & FORMAT_STATUS) || (es->flags & FORMAT_EXPAND_NOCYCLE))
+		return (xstrdup(""));
+	if (*frames == '\0')
+		return (xstrdup(""));
+
+	/* Count the comma-separated frames (there is at least one). */
+	n = 1;
+	for (cp = frames; *cp != '\0'; cp++) {
+		if (*cp == ',')
+			n++;
+	}
+	index = (es->start_time / (count * FORMAT_CYCLE_PERIOD)) % n;
+
+	/*
+	 * Redraw the status line so the frames advance on their own; a
+	 * single frame never changes so there is nothing to redraw for.
+	 */
+	if (n > 1 && ft->client != NULL)
+		format_cycle_start_timer(ft->client);
+
+	/* Walk to the chosen frame and return a copy of it. */
+	start = frames;
+	for (i = 0; i < index; i++)
+		start = strchr(start, ',') + 1;
+	end = strchr(start, ',');
+	if (end == NULL)
+		end = start + strlen(start);
+	return (xstrndup(start, end - start));
+}
+
 /* Replace a key. */
 static int
 format_replace(struct format_expand_state *es, const char *key, size_t keylen,
@@ -5817,6 +6009,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	struct format_modifier		 *list, *cmp = NULL, *search = NULL;
 	struct format_modifier		**sub = NULL, *mexp = NULL, *fm;
 	struct format_modifier		 *bool_op_n = NULL;
+	u_int				  cycle_count = 1;
 	u_int				  i, count, nsub = 0, nrep, check = 0;
 	const char			 *loop_flags = "";
 	struct format_expand_state	  next;
@@ -5876,6 +6069,15 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 				    FORMAT_MAX_WIDTH, &errstr);
 				if (errstr != NULL)
 					width = 0;
+				break;
+			case 'A':
+				modifiers |= FORMAT_CYCLE;
+				if (fm->argc < 1)
+					break;
+				cycle_count = strtonum(fm->argv[0], 1, 100,
+				    &errstr);
+				if (errstr != NULL)
+					cycle_count = 1;
 				break;
 			case 'w':
 				modifiers |= FORMAT_WIDTH;
@@ -6095,6 +6297,13 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			else
 				value = xstrdup("");
 		}
+		goto done;
+	}
+
+	/* Is this an animation cycle? */
+	if (modifiers & FORMAT_CYCLE) {
+		value = format_cycle(es, copy, cycle_count);
+		format_log(es, "cycle '%s' is: %s", copy, value);
 		goto done;
 	}
 

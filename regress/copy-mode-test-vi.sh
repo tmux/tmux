@@ -114,5 +114,30 @@ $TMUX send-keys -X next-space-end
 $TMUX send-keys -X copy-selection
 [ "$($TMUX show-buffer)" = "500xyz" ] || exit 1
 
+# Test that vi cursor movement does not stop on the padding cell of a wide
+# character at the end of a line.
+$TMUX kill-server 2>/dev/null
+sleep 1
+$TMUX new -d -x20 -y5 \
+      "printf 'abc中\nxyz\n'; exec cat" || exit 1
+$TMUX set-window-option -g mode-keys vi
+$TMUX copy-mode
+$TMUX send-keys -X history-top
+$TMUX send-keys -X start-of-line
+$TMUX send-keys -X cursor-right
+$TMUX send-keys -X cursor-right
+$TMUX send-keys -X cursor-right
+[ "$($TMUX display -p '#{copy_cursor_x},#{copy_cursor_y}')" = "3,0" ] ||
+    exit 1
+$TMUX send-keys -X cursor-right
+[ "$($TMUX display -p '#{copy_cursor_x},#{copy_cursor_y}')" = "0,1" ] ||
+    exit 1
+$TMUX send-keys -X cursor-left
+[ "$($TMUX display -p '#{copy_cursor_x},#{copy_cursor_y}')" = "3,0" ] ||
+    exit 1
+$TMUX send-keys -X cursor-left
+[ "$($TMUX display -p '#{copy_cursor_x},#{copy_cursor_y}')" = "2,0" ] ||
+    exit 1
+
 $TMUX kill-server 2>/dev/null
 exit 0

@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.423 2026/07/21 11:52:13 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.429 2026/09/01 13:04:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -61,6 +61,7 @@ static void	window_copy_redraw_screen(struct window_mode_entry *);
 static void	window_copy_do_refresh(struct window_mode_entry *, int);
 static void	window_copy_refresh_timer(int, short, void *);
 static void	window_copy_refresh_arm(struct window_mode_entry *);
+static int	window_copy_refresh_allowed(struct window_mode_entry *);
 static void	window_copy_refresh_start(struct window_mode_entry *);
 static void	window_copy_refresh_stop(struct window_mode_entry *);
 static void	window_copy_style_changed(struct window_mode_entry *);
@@ -2738,15 +2739,76 @@ window_copy_cmd_selection_mode(struct window_copy_cmd_state *cs)
 	struct window_mode_entry	*wme = cs->wme;
 	struct options			*so = cs->s->options;
 	struct window_copy_mode_data	*data = wme->data;
+	struct grid_reader		 gr;
 	const char			*s = args_string(cs->wargs, 0);
+	u_int				 sx, sy, ex, ey, fx, fy, x, y;
 
 	if (s == NULL || strcasecmp(s, "char") == 0 || strcasecmp(s, "c") == 0)
 		data->selflag = SEL_CHAR;
 	else if (strcasecmp(s, "word") == 0 || strcasecmp(s, "w") == 0) {
 		data->separators = options_get_string(so, "word-separators");
 		data->selflag = SEL_WORD;
-	} else if (strcasecmp(s, "line") == 0 || strcasecmp(s, "l") == 0)
+	} else if (strcasecmp(s, "line") == 0 || strcasecmp(s, "l") == 0) {
 		data->selflag = SEL_LINE;
+		if (data->screen.sel == NULL)
+			return (WINDOW_COPY_CMD_MOVE);
+
+		/*
+		 * Line selection normally starts with select-line, which sets
+		 * up the reset positions used when the cursor changes
+		 * direction. Do the same when changing an existing selection
+		 * to line mode.
+		 */
+		if (data->cursordrag == CURSORDRAG_SEL) {
+			fx = data->endselx;
+			fy = data->endsely;
+		} else {
+			fx = data->selx;
+			fy = data->sely;
+		}
+
+		sx = data->selx;
+		sy = data->sely;
+		ex = data->endselx;
+		ey = data->endsely;
+		if (ey < sy || (ey == sy && ex < sx)) {
+			x = sx; sx = ex; ex = x;
+			y = sy; sy = ey; ey = y;
+		}
+		grid_reader_start(&gr, data->backing->grid, sx, sy);
+		grid_reader_cursor_start_of_line(&gr, 1);
+		grid_reader_get_cursor(&gr, &sx, &sy);
+		grid_reader_start(&gr, data->backing->grid, ex, ey);
+		grid_reader_cursor_end_of_line(&gr, 1, 0);
+		grid_reader_get_cursor(&gr, &ex, &ey);
+
+		data->rectflag = 0;
+		data->selrx = data->selx = sx;
+		data->selry = data->sely = sy;
+		data->endselrx = data->endselx = ex;
+		data->endselry = data->endsely = ey;
+
+		x = data->cx;
+		y = screen_hsize(data->backing) + data->cy - data->oy;
+		data->dx = fx;
+		data->dy = fy;
+		if (data->cursordrag != CURSORDRAG_NONE &&
+		    (y < fy || (y == fy && x < fx))) {
+			data->lineflag = LINE_SEL_RIGHT_LEFT;
+			data->cursordrag = CURSORDRAG_SEL;
+			window_copy_scroll_to(wme, sx, sy, 1);
+		} else {
+			data->lineflag = LINE_SEL_LEFT_RIGHT;
+			if (data->cursordrag != CURSORDRAG_NONE) {
+				data->cursordrag = CURSORDRAG_ENDSEL;
+				x = window_copy_cursor_limit(wme, ey, 0);
+				window_copy_scroll_to(wme, x, ey, 1);
+			}
+		}
+		if (data->cursordrag == CURSORDRAG_NONE)
+			window_copy_set_selection(wme, 0, 0);
+		return (WINDOW_COPY_CMD_REDRAW);
+	}
 	return (WINDOW_COPY_CMD_MOVE);
 }
 
@@ -3574,6 +3636,20 @@ window_copy_refresh_arm(struct window_mode_entry *wme)
 		evtimer_add(&data->refresh_timer, &tv);
 }
 
+static int
+window_copy_refresh_allowed(struct window_mode_entry *wme)
+{
+	struct window_copy_mode_data	*data = wme->data;
+
+	/*
+	 * Do not refresh a view of another pane (copy-mode -s): the source may
+	 * disappear and changes are not tracked on this pane.
+	 */
+	if (data->viewmode || wme->swp != wme->wp)
+		return (0);
+	return (1);
+}
+
 static void
 window_copy_refresh_timer(__unused int fd, __unused short events, void *arg)
 {
@@ -3608,11 +3684,7 @@ window_copy_refresh_start(struct window_mode_entry *wme)
 {
 	struct window_copy_mode_data	*data = wme->data;
 
-	/*
-	 * Do not refresh a view of another pane (copy-mode -s): the source may
-	 * disappear and changes are not tracked on this pane.
-	 */
-	if (data->viewmode || wme->swp != wme->wp || data->refresh_active)
+	if (!window_copy_refresh_allowed(wme) || data->refresh_active)
 		return;
 	data->refresh_active = 1;
 	window_copy_refresh_arm(wme);
@@ -3625,6 +3697,25 @@ window_copy_refresh_stop(struct window_mode_entry *wme)
 
 	data->refresh_active = 0;
 	evtimer_del(&data->refresh_timer);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_refresh_now(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry		*wme = cs->wme;
+	struct window_copy_mode_data	*data = wme->data;
+	struct window_pane		*wp = wme->wp;
+	int				 follow;
+
+	if (!window_copy_refresh_allowed(wme))
+		return (WINDOW_COPY_CMD_NOTHING);
+
+	follow = (data->oy == 0 &&
+	    data->cy == screen_size_y(&data->screen) - 1);
+	window_copy_do_refresh(wme, follow);
+	wp->flags &= ~PANE_UNSEENCHANGES;
+
+	return (WINDOW_COPY_CMD_REDRAW);
 }
 
 static enum window_copy_cmd_action
@@ -4548,6 +4639,12 @@ static const struct {
 	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
 	  .f = window_copy_cmd_refresh_off
 	},
+	{ .command = "refresh-now",
+	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_refresh_now
+	},
 	{ .command = "refresh-toggle",
 	  .args = { "", 0, 0, NULL },
 	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
@@ -4980,7 +5077,7 @@ window_copy_search_lr_regex(struct grid *gd, u_int *ppx, u_int *psx, u_int py,
 	endline = gd->hsize + gd->sy - 1;
 	pywrap = py;
 	while (buf != NULL &&
-	    pywrap <= endline &&
+	    pywrap < endline &&
 	    len < WINDOW_COPY_SEARCH_MAX_LINE) {
 		gl = grid_get_line(gd, pywrap);
 		if (~gl->flags & GRID_LINE_WRAPPED)
@@ -5039,7 +5136,7 @@ window_copy_search_rl_regex(struct grid *gd, u_int *ppx, u_int *psx, u_int py,
 	endline = gd->hsize + gd->sy - 1;
 	pywrap = py;
 	while (buf != NULL &&
-	    pywrap <= endline &&
+	    pywrap < endline &&
 	    len < WINDOW_COPY_SEARCH_MAX_LINE) {
 		gl = grid_get_line(gd, pywrap);
 		if (~gl->flags & GRID_LINE_WRAPPED)
@@ -5188,7 +5285,7 @@ window_copy_stringify(struct grid *gd, u_int py, u_int first, u_int last,
 		}
 		if (dlen == 1)
 			buf[bx++] = *d;
-		else {
+		else if (dlen != 0) {
 			memcpy(buf + bx, d, dlen);
 			bx += dlen;
 		}
@@ -5240,6 +5337,7 @@ window_copy_cstrtocellpos(struct grid *gd, u_int ncells, u_int *ppx, u_int *ppy,
 				break;
 		}
 	}
+	ncells = cell;
 
 	/* Locate starting cell. */
 	cell = 0;
@@ -5737,6 +5835,8 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 			cflags |= REG_ICASE;
 		if (regcomp(&reg, sbuf, cflags) != 0) {
 			free(sbuf);
+			free(data->searchmark);
+			data->searchmark = NULL;
 			return (0);
 		}
 		free(sbuf);
@@ -7221,16 +7321,13 @@ static u_int
 window_copy_cursor_limit(struct window_mode_entry *wme, u_int py,
     int allow_onemore)
 {
+	struct window_copy_mode_data	*data = wme->data;
 	struct options			*oo = wme->wp->window->options;
-	u_int				 len;
 
-	len = window_copy_find_length(wme, py);
 	if (allow_onemore ||
 	    options_get_number(oo, "mode-keys") != MODEKEY_VI)
-		return (len);
-	if (len == 0)
-		return (0);
-	return (len - 1);
+		return (window_copy_find_length(wme, py));
+	return (grid_line_limit(data->backing->grid, py));
 }
 
 static void

@@ -1,4 +1,4 @@
-/* $OpenBSD: spawn.c,v 1.49 2026/07/15 13:02:33 nicm Exp $ */
+/* $OpenBSD: spawn.c,v 1.52 2026/08/20 09:19:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -222,6 +222,7 @@ spawn_window(struct spawn_context *sc, char **cause)
 			w->name = xstrdup(sc->name);
 			options_set_number(w->options, "automatic-rename", 0);
 		}
+		window_set_fill_cells(w);
 	}
 
 	/* Switch to the new window if required. */
@@ -242,7 +243,7 @@ struct window_pane *
 spawn_pane(struct spawn_context *sc, char **cause)
 {
 	struct cmdq_item	 *item = sc->item;
-	struct client		 *c;
+	struct client		 *c, *loop;
 	struct session		 *s = sc->s;
 	struct session		 *ts;
 	struct window		 *w = sc->wl->window;
@@ -330,6 +331,20 @@ spawn_pane(struct spawn_context *sc, char **cause)
 			input_free(sc->wp0->ictx);
 			sc->wp0->ictx = NULL;
 		}
+
+		/*
+		 * The old buffer is gone and the new one starts empty, so
+		 * offsets into the old buffer no longer mean anything. Reset
+		 * them, and drop output control clients still had queued.
+		 */
+		sc->wp0->offset.used = 0;
+		sc->wp0->base_offset = 0;
+		sc->wp0->pipe_offset.used = 0;
+		TAILQ_FOREACH(loop, &clients, entry) {
+			if (loop->flags & CLIENT_CONTROL)
+				control_reset_pane(loop, sc->wp0);
+		}
+
 		new_wp = sc->wp0;
 		new_wp->flags &= ~(PANE_STATUSREADY|PANE_STATUSDRAWN);
 	} else {
@@ -345,6 +360,8 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		}
 		if (sc->flags & SPAWN_FLOATING)
 			new_wp->layout_cell->flags |= LAYOUT_CELL_FLOATING;
+		if (sc->flags & SPAWN_FLOATOVERZOOM)
+			new_wp->flags |= PANE_FLOATOVERZOOM;
 
 		/*
 		 * If window currently zoomed, window_set_active_pane calls
@@ -730,10 +747,10 @@ spawn_editor(struct client *c, const char *buf, size_t len,
 	lg.sy = w->sy * 9 / 10;
 	lg.xoff = w->sx / 2 - lg.sx / 2;
 	lg.yoff = w->sy / 2 - lg.sy / 2;
-	window_push_modal_zoom(w);
+	window_push_zoom(w, 0, 1);
 	lc = layout_floating_pane(w, NULL, &lg);
 	if (lc == NULL) {
-		window_pop_modal_zoom(w);
+		window_pop_zoom(w);
 		spawn_editor_free(es);
 		return (NULL);
 	}
@@ -750,17 +767,18 @@ spawn_editor(struct client *c, const char *buf, size_t len,
 	sc.environ = env;
 	sc.idx = -1;
 	sc.cwd = _PATH_TMP;
-	sc.flags = SPAWN_FLOATING|SPAWN_MODAL;
+	sc.flags = SPAWN_FLOATING|SPAWN_MODAL|SPAWN_FLOATOVERZOOM;
 
 	wp = spawn_pane(&sc, &cause);
 	free(cmd);
 	environ_free(env);
 	if (wp == NULL) {
 		free(cause);
-		window_pop_modal_zoom(w);
+		window_pop_zoom(w);
 		spawn_editor_free(es);
 		return (NULL);
 	}
+	window_pop_zoom(w);
 	options_set_number(wp->options, "remain-on-exit", 0);
 	es->pid = wp->pid;
 	wp->editor = es;

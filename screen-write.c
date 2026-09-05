@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.284 2026/07/20 11:16:33 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.290 2026/08/24 15:05:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -305,12 +305,14 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 
 	if (~ctx->flags & SCREEN_WRITE_SYNC) {
 		/*
-		 * For the active pane or for an overlay (no pane), we want to
-		 * only use synchronized updates if requested (commands that
-		 * move the cursor); for other panes, always use it, since the
-		 * cursor will have to move.
+		 * For the active pane showing its base screen or for an
+		 * overlay (no pane), only use synchronized updates if
+		 * requested (commands that move the cursor); for other panes
+		 * or a pane in a mode, always use it, since the cursor will
+		 * have to move.
 		 */
-		if (ctx->wp != NULL && ctx->wp != ctx->wp->window->active)
+		if (ctx->wp != NULL && (ctx->wp != ctx->wp->window->active ||
+		    ctx->wp->screen != &ctx->wp->base))
 			ttyctx->flags |= TTY_CTX_SYNC;
 		else {
 			if (ctx->wp == NULL)
@@ -338,10 +340,18 @@ screen_write_make_list(struct screen *s)
 void
 screen_write_free_list(struct screen *s)
 {
-	u_int	y;
+	struct screen_write_cline	*cl;
+	struct screen_write_citem	*ci, *ci1;
+	u_int				 y;
 
-	for (y = 0; y < screen_size_y(s); y++)
-		free(s->write_list[y].data);
+	for (y = 0; y < screen_size_y(s); y++) {
+		cl = &s->write_list[y];
+		TAILQ_FOREACH_SAFE(ci, &cl->items, entry, ci1) {
+			TAILQ_REMOVE(&cl->items, ci, entry);
+			screen_write_free_citem(ci);
+		}
+		free(cl->data);
+	}
 	free(s->write_list);
 }
 
@@ -1057,6 +1067,19 @@ screen_write_stop_sync(struct window_pane *wp)
 	screen_write_flush_dirty(wp);
 
 	log_debug("%s: %%%u stopped sync mode", __func__, wp->id);
+}
+
+/* Flush pending output before clearing sync mode. */
+void
+screen_write_end_sync(struct screen_write_ctx *ctx)
+{
+	struct window_pane	*wp = ctx->wp;
+
+	if (wp == NULL)
+		return;
+	if (wp->base.mode & MODE_SYNC)
+		screen_write_collect_flush(ctx, 0, __func__);
+	screen_write_stop_sync(wp);
 }
 
 /* Cursor up by ny. */
@@ -2480,15 +2503,62 @@ screen_write_collect_insert_clear(struct screen_write_ctx *ctx, u_int px,
 	}
 }
 
+/*
+ * Clear a cell that is being broken up by a write over part of it, keeping the
+ * background so the columns it covered do not lose their colour.
+ */
+static void
+screen_write_clear_cell(struct grid *gd, u_int px, u_int py)
+{
+	struct grid_cell	 gc;
+	int			 bg;
+
+	grid_view_get_cell(gd, px, py, &gc);
+	bg = gc.bg;
+
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+	gc.bg = bg;
+	grid_view_set_cell(gd, px, py, &gc);
+}
+
+/*
+ * Insert clears for a range of cells already cleared in the grid. Adjacent
+ * cells may have come from different characters and so have different
+ * backgrounds, so this is done in runs of the same colour.
+ */
+static void
+screen_write_insert_clears(struct screen_write_ctx *ctx, u_int px, u_int nx)
+{
+	struct screen		*s = ctx->s;
+	struct grid_cell	 gc;
+	u_int			 xx, start = px, n;
+	int			 bg = 8;
+
+	for (xx = px; xx < px + nx; xx++) {
+		grid_view_get_cell(s->grid, xx, s->cy, &gc);
+		if (xx == start)
+			bg = gc.bg;
+		else if (gc.bg != bg) {
+			n = xx - start;
+			log_debug("%s: from %u, size %u", __func__, start, n);
+			screen_write_collect_insert_clear(ctx, start, n, bg);
+			start = xx;
+			bg = gc.bg;
+		}
+	}
+	log_debug("%s: from %u, size %u", __func__, start, xx - start);
+	screen_write_collect_insert_clear(ctx, start, xx - start, bg);
+}
+
 /* Finish and store collected cells. */
 void
 screen_write_collect_end(struct screen_write_ctx *ctx)
 {
 	struct screen			*s = ctx->s;
-	struct screen_write_citem	*ci = ctx->item, *bci = NULL, *aci;
+	struct screen_write_citem	*ci = ctx->item;
 	struct screen_write_cline	*cl = &s->write_list[s->cy];
 	struct grid_cell		 gc;
-	u_int				 xx;
+	u_int				 xx, bx = 0, bnx = 0;
 
 	if (ci->used == 0)
 		return;
@@ -2504,8 +2574,7 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 			grid_view_get_cell(s->grid, xx, s->cy, &gc);
 			if (~gc.flags & GRID_FLAG_PADDING)
 				break;
-			grid_view_set_cell(s->grid, xx, s->cy,
-			    &grid_default_cell);
+			screen_write_clear_cell(s->grid, xx, s->cy);
 			log_debug("%s: padding erased (before) at %u (cx %u)",
 			    __func__, xx, s->cx);
 		}
@@ -2514,20 +2583,12 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 				grid_view_get_cell(s->grid, 0, s->cy, &gc);
 			if (gc.data.width > 1 ||
 			    (gc.flags & GRID_FLAG_PADDING)) {
-				grid_view_set_cell(s->grid, xx, s->cy,
-				    &grid_default_cell);
+				screen_write_clear_cell(s->grid, xx, s->cy);
 				log_debug("%s: padding erased (before) at %u "
 				    "(cx %u)", __func__, xx, s->cx);
 			}
-		}
-		if (xx != s->cx) {
-			bci = ctx->item;
-			bci->type = CLEAR;
-			bci->x = xx;
-			bci->bg = 8;
-			bci->used = s->cx - xx;
-			log_debug("%s: padding erased (before): from %u, "
-			    "size %u", __func__, bci->x, bci->used);
+			bx = xx;
+			bnx = s->cx - xx;
 		}
 	}
 
@@ -2538,28 +2599,20 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 
 	grid_view_set_cells(s->grid, s->cx, s->cy, &ci->gc, cl->data + ci->x,
 	    ci->used);
-	if (bci != NULL)
-		screen_write_collect_insert(ctx, bci);
+	if (bnx != 0)
+		screen_write_insert_clears(ctx, bx, bnx);
 	screen_write_set_cursor(ctx, s->cx + ci->used, -1);
 
 	for (xx = s->cx; xx < screen_size_x(s); xx++) {
 		grid_view_get_cell(s->grid, xx, s->cy, &gc);
 		if (~gc.flags & GRID_FLAG_PADDING)
 			break;
-		grid_view_set_cell(s->grid, xx, s->cy, &grid_default_cell);
-		log_debug("%s: padding erased (after) at %u (cx %u)",
-		    __func__, xx, s->cx);
+		screen_write_clear_cell(s->grid, xx, s->cy);
+		log_debug("%s: padding erased (after) at %u (cx %u)", __func__,
+		    xx, s->cx);
 	}
-	if (xx != s->cx) {
-		aci = ctx->item;
-		aci->type = CLEAR;
-		aci->x = s->cx;
-		aci->bg = 8;
-		aci->used = xx - s->cx;
-		log_debug("%s: padding erased (after): from %u, size %u",
-		    __func__, aci->x, aci->used);
-		screen_write_collect_insert(ctx, aci);
-	}
+	if (xx != s->cx)
+		screen_write_insert_clears(ctx, s->cx, xx - s->cx);
 }
 
 /* Write cell data, collecting if necessary. */
@@ -2687,7 +2740,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	 */
 	for (xx = s->cx + 1; xx < s->cx + width; xx++) {
 		log_debug("%s: new padding at %u,%u", __func__, xx, s->cy);
-		grid_view_set_padding(gd, xx, s->cy);
+		grid_view_set_padding(gd, xx, s->cy, gc->bg);
 		skip = 0;
 	}
 
@@ -2809,10 +2862,11 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct grid		*gd = s->grid;
 	const struct utf8_data	*ud = &gc->data;
 	struct options		*oo = global_options;
-	u_int			 i, n, cx = s->cx, cy = s->cy, vis, yoff = 0;
+	u_int			 i, n, cx = s->cx, cy = s->cy, vis;
 	struct grid_cell	 last;
 	struct tty_ctx		 ttyctx;
 	int			 force_wide = 0, zero_width = 0;
+	int			 xoff = 0, yoff = 0;
 	struct visible_ranges	*r;
 
 	/* Ignore U+3164 HANGUL_FILLER entirely. */
@@ -2875,7 +2929,7 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 
 	/* Check if this combined character would be too long. */
 	if (last.data.size + ud->size > sizeof last.data.data)
-		return (0);
+		return (zero_width);
 
 	/* Combining; flush any pending output. */
 	screen_write_collect_flush(ctx, 0, __func__);
@@ -2899,16 +2953,18 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	/* Set the new cell. */
 	grid_view_set_cell(gd, cx - n, cy, &last);
 	if (force_wide)
-		grid_view_set_padding(gd, cx - 1, cy);
+		grid_view_set_padding(gd, cx - 1, cy, last.bg);
 
 	/*
 	 * Check if all of this character is visible. No character will be
 	 * obscured in the middle, only on left or right, but there could be an
 	 * empty range in the visible ranges so we add them all up.
 	 */
-	if (wp != NULL)
+	if (wp != NULL) {
+		xoff = wp->xoff;
 		yoff = wp->yoff;
-	r = window_visible_ranges(wp, cx - n, cy + yoff, n, NULL);
+	}
+	r = window_visible_ranges(wp, xoff + cx - n, cy + yoff, n, NULL);
 	for (i = 0, vis = 0; i < r->used; i++)
 		vis += r->ranges[i].nx;
 	if (vis < n) {
@@ -2968,12 +3024,12 @@ screen_write_overwrite(struct screen_write_ctx *ctx, struct grid_cell *gc,
 			if (~tmp_gc.flags & GRID_FLAG_PADDING)
 				break;
 			log_debug("%s: padding at %u,%u", __func__, xx, s->cy);
-			grid_view_set_cell(gd, xx, s->cy, &grid_default_cell);
+			screen_write_clear_cell(gd, xx, s->cy);
 		}
 
 		/* Overwrite the character at the start of this padding. */
 		log_debug("%s: character at %u,%u", __func__, xx, s->cy);
-		grid_view_set_cell(gd, xx, s->cy, &grid_default_cell);
+		screen_write_clear_cell(gd, xx, s->cy);
 		done = 1;
 	}
 
@@ -2991,17 +3047,7 @@ screen_write_overwrite(struct screen_write_ctx *ctx, struct grid_cell *gc,
 				break;
 			log_debug("%s: overwrite at %u,%u", __func__, xx,
 			    s->cy);
-			if (gc->flags & GRID_FLAG_TAB) {
-				memcpy(&tmp_gc, gc, sizeof tmp_gc);
-				memset(tmp_gc.data.data, 0,
-				    sizeof tmp_gc.data.data);
-				*tmp_gc.data.data = ' ';
-				tmp_gc.data.width = tmp_gc.data.size =
-				    tmp_gc.data.have = 1;
-				grid_view_set_cell(gd, xx, s->cy, &tmp_gc);
-			} else
-				grid_view_set_cell(gd, xx, s->cy,
-				    &grid_default_cell);
+			screen_write_clear_cell(gd, xx, s->cy);
 			done = 1;
 		}
 	}

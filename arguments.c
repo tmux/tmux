@@ -1,4 +1,4 @@
-/* $OpenBSD: arguments.c,v 1.66 2026/06/26 09:54:56 nicm Exp $ */
+/* $OpenBSD: arguments.c,v 1.67 2026/08/25 06:04:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2010 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -762,8 +762,6 @@ args_make_commands_now(struct cmd *self, struct cmdq_item *item, u_int idx,
 		cmdq_error(item, "%s", error);
 		free(error);
 	}
-	else
-		cmdlist->references++;
 	args_make_commands_free(state);
 	return (cmdlist);
 }
@@ -827,8 +825,10 @@ args_make_commands(struct args_command_state *state, int argc, char **argv,
 	int			 i;
 
 	if (state->cmdlist != NULL) {
-		if (argc == 0)
+		if (argc == 0) {
+			state->cmdlist->references++;
 			return (state->cmdlist);
+		}
 		return (cmd_list_copy(state->cmdlist, argc, argv));
 	}
 

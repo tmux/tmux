@@ -1,4 +1,4 @@
-/* $OpenBSD: window-client.c,v 1.47 2026/07/14 17:17:18 nicm Exp $ */
+/* $OpenBSD: window-client.c,v 1.49 2026/08/31 12:41:03 kirill Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -102,7 +102,8 @@ static const char *window_client_info_lines[] = {
 	WINDOW_CLIENT_FEATURE(sync) " "
 	WINDOW_CLIENT_FEATURE(title),
 	"              #[#{E:tree-mode-border-style},acs]x#[default] "
-	WINDOW_CLIENT_FEATURE(usstyle),
+	WINDOW_CLIENT_FEATURE(usstyle) " "
+	WINDOW_CLIENT_FEATURE(utf8),
 	"#[#{E:tree-mode-border-style},acs]qqqqqqqqqqqqqqn#{R:q,#{window_width}}#[default]",
 
 	"#[fg=themelightgrey]prefix        #[#{E:tree-mode-border-style},acs]x#[default] "
@@ -113,14 +114,16 @@ static const char *window_client_info_lines[] = {
 	"#{?#{I/c:kmous},,#[align=right]unavailable: [kmous] missing}",
 
 	"#[fg=themelightgrey]set-clipboard #[#{E:tree-mode-border-style},acs]x#[default] "
-	"#{?#{!=:#{set-clipboard},off},#{?#{I/f:clipboard},,"
+	"#{?#{!=:#{set-clipboard},off},#{?#{I/c:Ms},,"
 	"#[fg=themered]}#{set-clipboard},#[fg=themelightgrey]off} "
-	"#{?#{I/f:clipboard},,#[align=right]unavailable: [Ms] missing}",
+	"#{?#{I/c:Ms},,#[align=right]unavailable: [Ms] "
+	"#{?clipboard_invalid,invalid,missing}}",
 
 	"#[fg=themelightgrey]get-clipboard #[#{E:tree-mode-border-style},acs]x#[default] "
-	"#{?#{!=:#{get-clipboard},off},#{?#{I/f:clipboard},,"
+	"#{?#{!=:#{get-clipboard},off},#{?#{I/c:Ms},,"
 	"#[fg=themered]}#{get-clipboard},#[fg=themelightgrey]off} "
-	"#{?#{I/f:clipboard},,#[align=right]unavailable: [Ms] missing}",
+	"#{?#{I/c:Ms},,#[align=right]unavailable: [Ms] "
+	"#{?clipboard_invalid,invalid,missing}}",
 
 	"#[fg=themelightgrey]focus-events  #[#{E:tree-mode-border-style},acs]x#[default] "
 	"#{?focus-events,#{?#{I/f:focus},,#[fg=themered]}on,#[fg=themelightgrey]off} "
@@ -273,6 +276,10 @@ window_client_draw_info(__unused void *modedata, void *itemdata,
 	char				*expanded;
 
 	ft = format_create_defaults(NULL, c, NULL, NULL, NULL);
+	if (c->tty.term->flags & TERM_INVALIDMS)
+		format_add(ft, "clipboard_invalid", "1");
+	else
+		format_add(ft, "clipboard_invalid", "0");
 
 	screen_write_cursormove(ctx, cx, cy, 0);
 	for (i = 0; i < nitems(window_client_info_lines); i++) {

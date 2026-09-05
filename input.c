@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.269 2026/07/20 11:16:33 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.271 2026/08/31 19:34:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1049,6 +1049,7 @@ input_parse_buffer(struct window_pane *wp, const u_char *buf, size_t len)
 	if (len == 0)
 		return;
 
+	wp->output_generation++;
 	window_update_activity(wp->window);
 	if (~wp->flags & PANE_ACTIVITY) {
 		wp->flags |= PANE_ACTIVITY;
@@ -1978,7 +1979,7 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 			screen_write_mode_clear(sctx, MODE_BRACKETPASTE);
 			break;
 		case 2026:
-			screen_write_stop_sync(ictx->wp);
+			screen_write_end_sync(sctx);
 			break;
 		case 2031:
 			screen_write_mode_clear(sctx, MODE_THEME_UPDATES);

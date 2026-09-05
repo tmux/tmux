@@ -215,9 +215,9 @@ $TMUX2 new-pane -x20 -y6 -X8 -Y7 "sh -c 'printf OVERST; exec sleep 100'" || exit
 compare floating-over-status
 
 # A window left with only a floating pane: killing the single tiled pane removes
-# it from the layout, so the area it occupied is no longer owned by any pane and
-# is drawn as EMPTY cells (middle dots) around the float. This is the only way to
-# produce a REDRAW_SPAN_EMPTY span.
+# it from the layout, so the area it occupied is no longer owned by any pane.
+# Use a visible fill character for the EMPTY cells around the float.
+$TMUX2 set -g fill-character '#[acs]~' || exit 1
 new_scene 40 12
 $TMUX2 new-pane -x20 -y6 -X8 -Y3 "sh -c 'printf FLOAT; exec sleep 100'" || exit 1
 tiled=$($TMUX2 list-panes -F '#{pane_floating_flag} #{pane_id}' | \

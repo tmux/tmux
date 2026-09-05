@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.240 2026/07/21 11:52:13 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.244 2026/09/01 12:49:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -302,6 +302,16 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 50,
 	  .text = "The maximum number of automatic buffers. "
 		  "When this is reached, the oldest buffer is deleted."
+	},
+
+	{ .name = "clear-on-attach",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_num = 1,
+	  .text = "Whether to use the alternate screen and clear it when "
+		  "a client is attached. When disabled, tmux does not "
+		  "enter the alternate screen on attach so terminal "
+		  "content before tmux remains in scrollback."
 	},
 
 	{ .name = "command-alias",
@@ -1239,7 +1249,8 @@ const struct options_table_entry options_table[] = {
 	   * underscore.
 	   */
 	  .default_str = "!\"#$%&'()*+,-./:;<=>?@[\\]^`{|}~",
-	  .text = "Characters considered to separate words."
+	  .text = "Characters considered to separate words; a space matches "
+		  "any character with the Unicode White_Space property."
 	},
 
 	/* Window options. */
@@ -1465,8 +1476,8 @@ const struct options_table_entry options_table[] = {
 	{ .name = "fill-character",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "",
-	  .text = "Character used to fill unused parts of window."
+	  .default_str = "#{?is_inside,#[bg=themedarkgrey] ,#[fg=themelightgrey]#[acs]~}",
+	  .text = "Format used to fill unused parts of window."
 	},
 
 	{ .name = "main-pane-height",
@@ -1950,6 +1961,7 @@ const struct options_table_entry options_table[] = {
 	OPTIONS_TABLE_AFTER_HOOK("show-messages"),
 	OPTIONS_TABLE_AFTER_HOOK("show-options"),
 	OPTIONS_TABLE_AFTER_HOOK("split-window"),
+	OPTIONS_TABLE_AFTER_HOOK("swap-window"),
 	OPTIONS_TABLE_AFTER_HOOK("unbind-key"),
 	OPTIONS_TABLE_HOOK("alert-activity", "",
 	    "Run when a window has activity."),

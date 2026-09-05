@@ -1,4 +1,4 @@
-/* $OpenBSD: server-fn.c,v 1.148 2026/07/14 19:07:03 nicm Exp $ */
+/* $OpenBSD: server-fn.c,v 1.152 2026/09/03 19:12:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -226,10 +226,11 @@ server_kill_pane(struct window_pane *wp)
 		server_kill_window(w, 1);
 		recalculate_sizes();
 	} else {
-		server_unzoom_window(w);
+		window_push_zoom(w, 0, wp->flags & PANE_FLOATOVERZOOM);
 		server_client_remove_pane(wp);
 		layout_close_pane(wp);
 		window_remove_pane(w, wp);
+		window_pop_zoom(w);
 		server_redraw_window(w);
 	}
 }
@@ -371,10 +372,16 @@ server_destroy_pane(struct window_pane *wp, int notify)
 		close(wp->fd);
 		wp->fd = -1;
 	}
+	if (wp->pipe_fd != -1) {
+		bufferevent_free(wp->pipe_event);
+		wp->pipe_event = NULL;
+		close(wp->pipe_fd);
+		wp->pipe_fd = -1;
+	}
 
-	remain_on_exit = options_get_number(wp->options, "remain-on-exit");
-	if (remain_on_exit != 0 && (~wp->flags & PANE_STATUSREADY))
+	if (~wp->flags & PANE_STATUSREADY)
 		return;
+	remain_on_exit = options_get_number(wp->options, "remain-on-exit");
 	switch (remain_on_exit) {
 	case 0:
 		break;
@@ -415,15 +422,17 @@ server_destroy_pane(struct window_pane *wp, int notify)
 	if (notify)
 		server_fire_pane_exit("pane-exited", wp);
 
-	server_unzoom_window(w);
+	window_push_zoom(w, 0, wp->flags & PANE_FLOATOVERZOOM);
 	server_client_remove_pane(wp);
 	layout_close_pane(wp);
 	window_remove_pane(w, wp);
 
 	if (TAILQ_EMPTY(&w->panes))
 		server_kill_window(w, 1);
-	else
+	else {
+		window_pop_zoom(w);
 		server_redraw_window(w);
+	}
 }
 
 static void
@@ -545,6 +554,7 @@ server_check_unattached(void)
 				continue;
 			break;
 		}
+		server_destroy_session(s);
 		session_destroy(s, 1, __func__);
 	}
 }

@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.155 2026/07/21 13:27:41 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.158 2026/09/01 19:50:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -320,7 +320,7 @@ redraw_reset_cell(struct redraw_build_ctx *bctx, u_int x, u_int y)
 	struct window			*w = bctx->w;
 
 	memset(bc, 0, sizeof *bc);
-	if (bctx->ox + x <= w->sx && bctx->oy + y <= w->sy)
+	if (bctx->ox + x < w->sx && bctx->oy + y < w->sy)
 		bc->data.type = REDRAW_SPAN_EMPTY;
 	else
 		bc->data.type = REDRAW_SPAN_OUTSIDE;
@@ -547,7 +547,8 @@ redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
 	 * merged.
 	 */
 	if (!floating) {
-		if (bc->data.type == REDRAW_SPAN_EMPTY)
+		if (bc->data.type == REDRAW_SPAN_EMPTY ||
+		    bc->data.type == REDRAW_SPAN_OUTSIDE)
 			reset = 1;
 		else if (bc->data.type != REDRAW_SPAN_BORDER)
 			return;
@@ -1232,9 +1233,15 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 
 	if (wp == NULL) {
 		redraw_get_default_border_style(dctx, &gc, &pane_lines);
-		if (span->data.type != REDRAW_SPAN_BORDER)
-			pane_lines = PANE_LINES_SINGLE;
-		window_get_border_cell(w, NULL, pane_lines, cell_type, &gc);
+		if (span->data.type == REDRAW_SPAN_OUTSIDE)
+			window_get_fill_cell(w, 0, &gc);
+		else if (span->data.type == REDRAW_SPAN_EMPTY)
+			window_get_fill_cell(w, 1, &gc);
+		else {
+			if (span->data.type != REDRAW_SPAN_BORDER)
+				pane_lines = PANE_LINES_SINGLE;
+			window_get_border_cell(NULL, pane_lines, cell_type, &gc);
+		}
 	} else {
 		window_pane_get_border_style(wp, c, &gc);
 		window_pane_get_border_cell(wp, cell_type, &gc);
@@ -1731,8 +1738,7 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 			else
 				loop->flags &= ~PANE_NEWSTATUS;
 
-			width = redraw_pane_status_width(&dctx, loop,
-			    &first);
+			width = redraw_pane_status_width(&dctx, loop, &first);
 			if (width == 0)
 				continue;
 
@@ -1763,7 +1769,7 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 			}
 		}
 	}
-	tty_sync_start(tty);
+	tty_sync_start(tty); /* end in server_client_reset_state */
 	tty_update_mode(tty, tty->mode & ~CURSOR_MODES, NULL);
 
 	if (wp != NULL)
@@ -1808,7 +1814,6 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		c->overlay_draw(c, c->overlay_data);
 
 	tty_reset(tty);
-	tty_sync_end(tty);
 
 #ifdef ENABLE_SIXEL
 	if (wp != NULL)

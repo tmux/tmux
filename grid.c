@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.154 2026/07/20 11:16:33 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.158 2026/09/01 12:49:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -682,9 +682,13 @@ grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 
 /* Set padding at position. */
 void
-grid_set_padding(struct grid *gd, u_int px, u_int py)
+grid_set_padding(struct grid *gd, u_int px, u_int py, int bg)
 {
-	grid_set_cell(gd, px, py, &grid_padding_cell);
+	struct grid_cell	gc;
+
+	memcpy(&gc, &grid_padding_cell, sizeof gc);
+	gc.bg = bg;
+	grid_set_cell(gd, px, py, &gc);
 }
 
 /* Set cells at position. */
@@ -1631,7 +1635,7 @@ grid_wrap_position(struct grid *gd, u_int px, u_int py, u_int *wx, u_int *wy)
 void
 grid_unwrap_position(struct grid *gd, u_int *px, u_int *py, u_int wx, u_int wy)
 {
-	u_int	yy, ay = 0;
+	u_int	yy, ay = 0, ey = gd->hsize + gd->sy - 1;
 
 	for (yy = 0; yy < gd->hsize + gd->sy - 1; yy++) {
 		if (ay == wy)
@@ -1645,7 +1649,7 @@ grid_unwrap_position(struct grid *gd, u_int *px, u_int *py, u_int wx, u_int wy)
 	 * until we find the end or the line now containing wx.
 	 */
 	if (wx == UINT_MAX) {
-		while (gd->linedata[yy].flags & GRID_LINE_WRAPPED)
+		while (yy < ey && gd->linedata[yy].flags & GRID_LINE_WRAPPED)
 			yy++;
 		wx = gd->linedata[yy].cellused;
 	} else {
@@ -1681,27 +1685,55 @@ grid_line_length(struct grid *gd, u_int py)
 	return (px);
 }
 
+/* Get last position on line, not including padding. */
+u_int
+grid_line_limit(struct grid *gd, u_int py)
+{
+	struct grid_cell	gc;
+	u_int			px;
+
+	px = grid_line_length(gd, py);
+	if (px == 0)
+		return (0);
+	px--;
+	while (px > 0) {
+		grid_get_cell(gd, px, py, &gc);
+		if (~gc.flags & GRID_FLAG_PADDING)
+			break;
+		px--;
+	}
+	return (px);
+}
+
 /* Check if character is in set. */
 int
 grid_in_set(struct grid *gd, u_int px, u_int py, const char *set)
 {
 	struct grid_cell	gc, tmp_gc;
 	u_int			pxx;
+	int			has_tab, has_space;
+
+	has_tab = (strchr(set, '\t') != NULL);
+	has_space = (strchr(set, ' ') != NULL);
 
 	grid_get_cell(gd, px, py, &gc);
-	if (strchr(set, '\t')) {
-		if (gc.flags & GRID_FLAG_PADDING) {
-			pxx = px;
-			do
-				grid_get_cell(gd, --pxx, py, &tmp_gc);
-			while (pxx > 0 && tmp_gc.flags & GRID_FLAG_PADDING);
-			if (tmp_gc.flags & GRID_FLAG_TAB)
-				return (tmp_gc.data.width - (px - pxx));
-		} else if (gc.flags & GRID_FLAG_TAB)
-			return (gc.data.width);
-	}
-	if (gc.flags & GRID_FLAG_PADDING)
+	if (gc.flags & GRID_FLAG_PADDING) {
+		if (!has_tab && !has_space)
+			return (0);
+		pxx = px;
+		do
+			grid_get_cell(gd, --pxx, py, &tmp_gc);
+		while (pxx > 0 && tmp_gc.flags & GRID_FLAG_PADDING);
+		if (((has_tab || has_space) &&
+		    (tmp_gc.flags & GRID_FLAG_TAB)) ||
+		    (has_space && utf8_has_whitespace(&tmp_gc.data)))
+			return (tmp_gc.data.width - (px - pxx));
 		return (0);
+	}
+	if ((has_tab || has_space) && (gc.flags & GRID_FLAG_TAB))
+		return (gc.data.width);
+	if (has_space && utf8_has_whitespace(&gc.data))
+		return (gc.data.width == 0 ? 1 : gc.data.width);
 	return (utf8_cstrhas(set, &gc.data));
 }
 

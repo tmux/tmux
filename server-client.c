@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.498 2026/07/21 12:28:43 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.510 2026/09/01 19:50:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -36,7 +36,8 @@ static void	server_client_check_window_resize(struct window *);
 static key_code	server_client_check_mouse(struct client *, struct key_event *);
 static void	server_client_repeat_timer(int, short, void *);
 static void	server_client_click_timer(int, short, void *);
-static void	server_client_check_exit(struct client *);
+static void	server_client_check_exit(struct client *, int);
+static void	server_client_exit_timer(int, short, void *);
 static void	server_client_check_redraw(struct client *);
 static void	server_client_check_modes(struct client *);
 static void	server_client_set_title(struct client *);
@@ -44,6 +45,7 @@ static void	server_client_set_path(struct client *);
 static void	server_client_set_progress_bar(struct client *);
 static void	server_client_reset_state(struct client *);
 static void	server_client_update_latest(struct client *);
+static int	server_client_handle_dead_key(struct window_pane *, key_code);
 static void	server_client_dispatch(struct imsg *, void *);
 static int	server_client_dispatch_command(struct client *, struct imsg *);
 static int	server_client_dispatch_identify(struct client *, struct imsg *);
@@ -309,6 +311,7 @@ server_client_create(int fd)
 
 	evtimer_set(&c->repeat_timer, server_client_repeat_timer, c);
 	evtimer_set(&c->click_timer, server_client_click_timer, c);
+	evtimer_set(&c->exit_timer, server_client_exit_timer, c);
 
 	c->click_wp = -1;
 
@@ -521,10 +524,16 @@ server_client_lost(struct client *c)
 	input_cancel_requests(c);
 
 	free(c->title);
+	free(c->path);
 	free((void *)c->cwd);
+	free(c->exit_session);
+	free(c->exit_message);
 
 	evtimer_del(&c->repeat_timer);
 	evtimer_del(&c->click_timer);
+	evtimer_del(&c->exit_timer);
+	if (event_initialized(&c->cycle_timer))
+		evtimer_del(&c->cycle_timer);
 
 	key_bindings_unref_table(c->keytable);
 
@@ -795,8 +804,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 	} else {
 		/* Try the pane borders. */
 		TAILQ_FOREACH(fwp, &w->panes, entry) {
-			if ((w->flags & WINDOW_ZOOMED) &&
-			    (~fwp->flags & PANE_ZOOMED))
+			if (!window_pane_is_visible(fwp))
 				continue;
 			if (window_pane_is_floating(fwp) &&
 			    window_pane_get_pane_lines(fwp) == PANE_LINES_NONE)
@@ -1383,6 +1391,21 @@ server_client_repeat_time(struct client *c, struct key_binding *bd)
 	return (repeat);
 }
 
+/* Handle a key press on a dead pane waiting for a key. */
+static int
+server_client_handle_dead_key(struct window_pane *wp, key_code key)
+{
+	if (wp == NULL ||
+	    (~wp->flags & PANE_EXITED) ||
+	    KEYC_IS_MOUSE(key) ||
+	    KEYC_IS_PASTE(key) ||
+	    options_get_number(wp->options, "remain-on-exit") != 3)
+		return (0);
+	options_set_number(wp->options, "remain-on-exit", 0);
+	server_destroy_pane(wp, 0);
+	return (1);
+}
+
 /*
  * Handle data key input from client. This owns and can modify the key event it
  * is given and is responsible for freeing it.
@@ -1467,6 +1490,18 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	    (~key & KEYC_SENT) &&
 	    server_client_is_assume_paste(c))
 		goto paste_key;
+
+	/* Forward keys directly if this pane is capturing all keys. */
+	if (wp != NULL &&
+	    (wp->flags & PANE_CAPTUREALLKEYS) &&
+	    (~wp->flags & PANE_EXITED) &&
+	    !KEYC_IS_MOUSE(key) &&
+	    TAILQ_EMPTY(&wp->modes))
+		goto forward_key;
+
+	/* Focus events are not keys and cannot be bound. */
+	if (key == KEYC_FOCUS_IN || key == KEYC_FOCUS_OUT)
+		goto forward_key;
 
 	/*
 	 * Work out the current key table. If the pane is in a mode, use
@@ -1632,15 +1667,8 @@ try_again:
 	}
 
 forward_key:
-	if (wp != NULL &&
-	    (wp->flags & PANE_EXITED) &&
-	    !KEYC_IS_MOUSE(key) &&
-	    !KEYC_IS_PASTE(key) &&
-	    options_get_number(wp->options, "remain-on-exit") == 3) {
-		options_set_number(wp->options, "remain-on-exit", 0);
-		server_destroy_pane(wp, 0);
+	if (server_client_handle_dead_key(wp, key))
 		goto out;
-	}
 	if (c->flags & CLIENT_READONLY)
 		goto out;
 	if (wp != NULL)
@@ -1680,6 +1708,9 @@ server_client_handle_menu_key(struct client *c, struct key_event *event)
 	memcpy(&new_event, event, sizeof new_event);
 	if (KEYC_IS_MOUSE(event->key)) {
 		m = &new_event.m;
+		m->statusat = status_at_line(c);
+		m->statuslines = status_line_size(c);
+
 		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
 		m->x += ox;
 		if (m->statusat == 0) {
@@ -1687,8 +1718,7 @@ server_client_handle_menu_key(struct client *c, struct key_event *event)
 				m->x = m->y = UINT_MAX;
 			else
 				m->y = m->y - m->statuslines + oy;
-		} else if (m->statusat > 0 &&
-		    m->y >= (u_int)m->statusat)
+		} else if (m->statusat > 0 && m->y >= (u_int)m->statusat)
 			m->x = m->y = UINT_MAX;
 		else
 			m->y += oy;
@@ -1726,9 +1756,9 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 	}
 
 	/*
-	 * Key presses in overlay mode and the command prompt are a special
-	 * case. The queue might be blocked so they need to be processed
-	 * immediately rather than queued.
+	 * Key presses in overlay mode, for panes capturing all keys and in the
+	 * command prompt are a special case. The queue might be blocked so they
+	 * need to be processed immediately rather than queued.
 	 */
 	if (~c->flags & CLIENT_READONLY) {
 		if (c->message_string != NULL) {
@@ -1748,6 +1778,21 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 		}
 
 		server_client_clear_overlay(c);
+
+		wp = s->curw->window->active;
+		if (wp != NULL &&
+		    (wp->flags & PANE_CAPTUREALLKEYS) &&
+		    TAILQ_EMPTY(&wp->modes) &&
+		    !KEYC_IS_MOUSE(event->key)) {
+			if (server_client_handle_dead_key(wp, event->key))
+				return (0);
+			if (~wp->flags & PANE_EXITED) {
+				window_pane_key(wp, c, s, s->curw, event->key,
+				    &event->m);
+				return (0);
+			}
+		}
+
 		if (server_client_handle_menu_key(c, event))
 			return (0);
 		if (c->prompt != NULL) {
@@ -1845,7 +1890,7 @@ server_client_loop(void)
 
 	/* Check clients. */
 	TAILQ_FOREACH(c, &clients, entry) {
-		server_client_check_exit(c);
+		server_client_check_exit(c, 0);
 		if (c->session != NULL && c->session->curw != NULL) {
 			server_client_check_modes(c);
 			server_client_check_redraw(c);
@@ -2199,7 +2244,7 @@ server_client_reset_state(struct client *c)
 					cy += status_line_size(c);
 			}
 
-			if ((pane_mode & MODE_SYNC) || !cursor)
+			if (!cursor)
 				mode &= ~MODE_CURSOR;
 		}
 	} else if (c->overlay_mode == NULL || s == NULL)
@@ -2207,6 +2252,10 @@ server_client_reset_state(struct client *c)
 	if (~pane_mode & MODE_SYNC) {
 		log_debug("%s: cursor to %u,%u", __func__, cx, cy);
 		tty_cursor(tty, cx, cy);
+	} else {
+		mode &= ~CURSOR_MODES;
+		mode |= tty->mode & CURSOR_MODES;
+		s = NULL;
 	}
 
 	/*
@@ -2281,9 +2330,37 @@ server_client_click_timer(__unused int fd, __unused short events, void *data)
 	c->flags &= ~(CLIENT_DOUBLECLICK|CLIENT_TRIPLECLICK);
 }
 
-/* Check if client should be exited. */
+/* Start client exit timer. */
 static void
-server_client_check_exit(struct client *c)
+server_client_start_exit_timer(struct client *c)
+{
+	struct timeval	tv = { .tv_sec = 10 };
+
+	if (!evtimer_pending(&c->exit_timer, NULL))
+		evtimer_add(&c->exit_timer, &tv);
+}
+
+/* Exit timer has expired: stop waiting for the client. */
+static void
+server_client_exit_timer(__unused int fd, __unused short events, void *data)
+{
+	struct client	*c = data;
+
+	if (c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED))
+		return;
+
+	if (c->flags & CLIENT_EXITED) {
+		log_debug("%s: %s took too long to exit", __func__, c->name);
+		server_client_lost(c);
+	} else if (c->flags & CLIENT_EXIT) {
+		log_debug("%s: %s took too long to flush", __func__, c->name);
+		server_client_check_exit(c, 1);
+	}
+}
+
+/* Check if client should be exited, abandoning buffered output if forced. */
+static void
+server_client_check_exit(struct client *c, int force)
 {
 	struct client_file	*cf;
 	const char		*name = c->exit_session;
@@ -2296,15 +2373,28 @@ server_client_check_exit(struct client *c)
 		return;
 
 	if (c->flags & CLIENT_CONTROL) {
-		control_discard(c);
-		if (!control_all_done(c))
-			return;
+		if (force)
+			control_discard_all(c);
+		else {
+			control_discard(c);
+			if (!control_all_done(c)) {
+				server_client_start_exit_timer(c);
+				return;
+			}
+		}
 	}
-	RB_FOREACH(cf, client_files, &c->files) {
-		if (EVBUFFER_LENGTH(cf->buffer) != 0)
-			return;
+	if (!force) {
+		RB_FOREACH(cf, client_files, &c->files) {
+			if (EVBUFFER_LENGTH(cf->buffer) != 0) {
+				server_client_start_exit_timer(c);
+				return;
+			}
+		}
 	}
 	c->flags |= CLIENT_EXITED;
+
+	evtimer_del(&c->exit_timer);
+	server_client_start_exit_timer(c);
 
 	switch (c->exit_type) {
 	case CLIENT_EXIT_RETURN:
@@ -2327,8 +2417,6 @@ server_client_check_exit(struct client *c)
 		proc_send(c->peer, c->exit_msgtype, -1, name, strlen(name) + 1);
 		break;
 	}
-	free(c->exit_session);
-	free(c->exit_message);
 }
 
 /* Redraw timer callback. */
@@ -2404,7 +2492,7 @@ server_client_check_redraw(struct client *c)
 
 	/* Work out if a redraw is actually needed. */
 	needed = 0;
-	if (c->flags & CLIENT_ALLREDRAWFLAGS)
+	if (c->flags & (CLIENT_ALLREDRAWFLAGS|CLIENT_REDRAWSCROLLBARS))
 		needed = 1;
 	else if (server_client_any_pane_redraw(c))
 		needed = 1;
@@ -2430,8 +2518,14 @@ server_client_check_redraw(struct client *c)
 			log_debug("redraw timer started");
 			evtimer_add(&ev, &tv);
 		}
-		if (server_client_any_pane_redraw(c))
-			c->flags |= CLIENT_REDRAWWINDOW;
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (wp->flags & PANE_REDRAW) {
+				c->flags |= CLIENT_REDRAWWINDOW;
+				break;
+			}
+			if (wp->flags & PANE_REDRAWSCROLLBAR)
+				c->flags |= CLIENT_REDRAWSCROLLBARS;
+		}
 		return;
 	}
 
@@ -2450,7 +2544,8 @@ server_client_check_redraw(struct client *c)
 				log_debug("%s: redraw pane %%%u", __func__,
 				    wp->id);
 				redraw_pane(c, wp);
-			} else if (wp->flags & PANE_REDRAWSCROLLBAR) {
+			} else if ((wp->flags & PANE_REDRAWSCROLLBAR) ||
+			    (c->flags & CLIENT_REDRAWSCROLLBARS)) {
 				log_debug("%s: redraw scrollbar %%%u", __func__,
 				    wp->id);
 				redraw_pane_scrollbar(c, wp);
@@ -2480,7 +2575,8 @@ server_client_check_redraw(struct client *c)
 	 * All the redraw flags can now be cleared. Also record how many bytes
 	 * were written.
 	 */
-	c->flags &= ~(CLIENT_ALLREDRAWFLAGS|CLIENT_STATUSFORCE);
+	c->flags &= ~(CLIENT_ALLREDRAWFLAGS|CLIENT_REDRAWSCROLLBARS|
+	    CLIENT_STATUSFORCE);
 	c->redraw = EVBUFFER_LENGTH(tty->out);
 	log_debug("%s: redraw added %zu bytes", c->name, c->redraw);
 }
@@ -2645,6 +2741,10 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 		break;
 	case MSG_WRITE_READY:
 		if (file_write_ready(&c->files, imsg) != 0)
+			goto bad;
+		break;
+	case MSG_WRITE_DONE:
+		if (file_write_done(&c->files, imsg) != 0)
 			goto bad;
 		break;
 	case MSG_READ:

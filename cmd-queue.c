@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-queue.c,v 1.121 2026/07/14 17:17:17 nicm Exp $ */
+/* $OpenBSD: cmd-queue.c,v 1.123 2026/08/24 20:34:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2013 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -802,7 +802,7 @@ cmdq_guard(struct cmdq_item *item, const char *guard, int flags)
 	u_int		 number = item->number;
 
 	if (c != NULL && (c->flags & CLIENT_CONTROL))
-		control_write(c, "%%%s %ld %u %d", guard, t, number, flags);
+		control_write_guard(c, guard, t, number, flags);
 }
 
 /* Show message from command. */
@@ -850,7 +850,18 @@ cmdq_error(struct cmdq_item *item, const char *fmt, ...)
 
 	if (c == NULL) {
 		cmd_get_source(cmd, &file, &line);
-		cfg_add_cause("%s:%u: %s", file, line, msg);
+		if (!cfg_finished) {
+			if (file != NULL)
+				cfg_add_cause("%s:%u: %s", file, line, msg);
+			else
+				cfg_add_cause("%s", msg);
+		} else {
+			if (file != NULL) {
+				server_add_message("message: %s:%u: %s", file,
+				    line, msg);
+			} else
+				server_add_message("message: %s", msg);
+		}
 	} else if (c->session == NULL || (c->flags & CLIENT_CONTROL)) {
 		server_add_message("%s message: %s", c->name, msg);
 		if (~c->flags & CLIENT_UTF8) {
