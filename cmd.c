@@ -39,6 +39,8 @@ extern const struct cmd_entry cmd_clear_prompt_history_entry;
 extern const struct cmd_entry cmd_clock_mode_entry;
 extern const struct cmd_entry cmd_command_prompt_entry;
 extern const struct cmd_entry cmd_confirm_before_entry;
+extern const struct cmd_entry cmd_copy_output_entry;
+extern const struct cmd_entry cmd_copy_pipe_output_entry;
 extern const struct cmd_entry cmd_copy_mode_entry;
 extern const struct cmd_entry cmd_customize_mode_entry;
 extern const struct cmd_entry cmd_delete_buffer_entry;
@@ -76,8 +78,11 @@ extern const struct cmd_entry cmd_new_session_entry;
 extern const struct cmd_entry cmd_new_window_entry;
 extern const struct cmd_entry cmd_next_layout_entry;
 extern const struct cmd_entry cmd_next_window_entry;
+extern const struct cmd_entry cmd_open_output_entry;
+extern const struct cmd_entry cmd_open_selection_entry;
 extern const struct cmd_entry cmd_paste_buffer_entry;
 extern const struct cmd_entry cmd_pipe_pane_entry;
+extern const struct cmd_entry cmd_pipe_output_entry;
 extern const struct cmd_entry cmd_previous_layout_entry;
 extern const struct cmd_entry cmd_previous_window_entry;
 extern const struct cmd_entry cmd_refresh_client_entry;
@@ -91,6 +96,7 @@ extern const struct cmd_entry cmd_rotate_window_entry;
 extern const struct cmd_entry cmd_run_shell_entry;
 extern const struct cmd_entry cmd_save_buffer_entry;
 extern const struct cmd_entry cmd_select_layout_entry;
+extern const struct cmd_entry cmd_select_output_entry;
 extern const struct cmd_entry cmd_select_pane_entry;
 extern const struct cmd_entry cmd_select_window_entry;
 extern const struct cmd_entry cmd_send_keys_entry;
@@ -134,6 +140,8 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_command_prompt_entry,
 	&cmd_confirm_before_entry,
 	&cmd_copy_mode_entry,
+	&cmd_copy_output_entry,
+	&cmd_copy_pipe_output_entry,
 	&cmd_customize_mode_entry,
 	&cmd_delete_buffer_entry,
 	&cmd_detach_client_entry,
@@ -170,8 +178,11 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_new_window_entry,
 	&cmd_next_layout_entry,
 	&cmd_next_window_entry,
+	&cmd_open_output_entry,
+	&cmd_open_selection_entry,
 	&cmd_paste_buffer_entry,
 	&cmd_pipe_pane_entry,
+	&cmd_pipe_output_entry,
 	&cmd_previous_layout_entry,
 	&cmd_previous_window_entry,
 	&cmd_refresh_client_entry,
@@ -185,6 +196,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_run_shell_entry,
 	&cmd_save_buffer_entry,
 	&cmd_select_layout_entry,
+	&cmd_select_output_entry,
 	&cmd_select_pane_entry,
 	&cmd_select_window_entry,
 	&cmd_send_keys_entry,
