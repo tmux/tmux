@@ -54,12 +54,11 @@
  *    "z": z-index, if a floating pane
  */
 
-#define LAYOUT_STRING_MAX	(1 << 14)
-
 /* Layout string. */
 struct layout_string {
-	char	*write;
-	char	 dat[LAYOUT_STRING_MAX];
+	char	*dat;
+	size_t	 size;		/* length written, not including terminator */
+	size_t	 capacity;	/* bytes allocated */
 };
 
 struct layout_parse_cell_ctx {
@@ -76,9 +75,9 @@ struct layout_parse_ctx {
 	struct layout_cell		 *root;
 	char				**cause;
 
-#define CCTX_MAX	(LAYOUT_STRING_MAX >> 5) /* min 32 bytes per pane */
-	int				  clen;
-	struct layout_parse_cell_ctx	  cctxs[CCTX_MAX];
+	int				  size;		/* number used */
+	int				  capacity;	/* number allocated */
+	struct layout_parse_cell_ctx	 *cctxs;
 };
 
 static struct layout_cell	*layout_find_bottomright(struct layout_cell *);
@@ -91,8 +90,7 @@ static void			 layout_assign(struct window *,
 				     struct layout_parse_ctx *);
 static void			 layout_parse_apply_ctx(struct window *,
 				     struct layout_parse_ctx *);
-static struct layout_cell	*layout_parse_json_layout(
-				     const struct json_node *,
+static struct layout_cell	*layout_parse_json_layout( struct json_node *,
 				     struct layout_cell *,
 				     struct layout_parse_ctx *);
 static int			 layout_parse_ctx_check_indexes(
@@ -147,27 +145,43 @@ layout_parse_last_cmp(const void *a, const void *b)
 static void
 layout_string_init(struct layout_string *ls)
 {
+	ls->capacity = 1024;
+	ls->dat = xmalloc(ls->capacity);
 	ls->dat[0] = '\0';
-	ls->write = ls->dat;
+	ls->size = 0;
+}
+
+/* Free a layout string. */
+static void
+layout_string_free(struct layout_string *ls)
+{
+	free(ls->dat);
+	ls->dat = NULL;
+	ls->size = 0;
+	ls->capacity = 0;
 }
 
 /* Write an optionally formatted string to the end of the layout string. */
-static int
+static void printflike(2, 3)
 layout_string_write(struct layout_string *ls, const char *fmt, ...)
 {
-	int	len, remaining = sizeof ls->dat - (ls->write - ls->dat);
-	va_list ap;
+	va_list	 ap;
+	char	*s;
+	size_t	 slen;
 
 	va_start(ap, fmt);
-
-	len = vsnprintf(ls->write, remaining, fmt, ap);
+	slen = xvasprintf(&s, fmt, ap);
 	va_end(ap);
 
-	if (len < 0 || len >= remaining)
-		return (-1);
-	ls->write += len;
+	while (ls->size + slen + 1 > ls->capacity) {
+		ls->dat = xreallocarray(ls->dat, 2, ls->capacity);
+		ls->capacity *= 2;
+	}
+	memcpy(ls->dat + ls->size, s, slen);
+	ls->size += slen;
+	ls->dat[ls->size] = '\0';
 
-	return (0);
+	free(s);
 }
 
 static void
@@ -177,27 +191,42 @@ layout_parse_init_ctx(struct layout_parse_ctx *pctx, char **cause)
 	pctx->num_active = 0;
 	pctx->root = NULL;
 	pctx->cause = cause;
-	pctx->clen = 0;
+	pctx->size = 0;
+	pctx->capacity = 64;
+	pctx->cctxs = xcalloc(pctx->capacity, sizeof *pctx->cctxs);
+}
+
+/* Free a parse context. */
+static void
+layout_parse_free_ctx(struct layout_parse_ctx *pctx)
+{
+	layout_free_cell(pctx->root, 0);
+	pctx->root = NULL;
+	free(pctx->cctxs);
+	pctx->cctxs = NULL;
+	pctx->size = 0;
+	pctx->capacity = 0;
 }
 
 /* Add a cell context to the parse context. */
-static int
+static void
 layout_parse_add_cctx(struct layout_parse_ctx *pctx, struct layout_cell *lc,
     int active, int last, int index, int zindex)
 {
 	struct layout_parse_cell_ctx	*cctx;
 
-	if (pctx->clen == CCTX_MAX)
-		return (-1);
-	cctx = &pctx->cctxs[pctx->clen++];
+	if (pctx->size >= pctx->capacity) {
+		pctx->capacity *= 2;
+		pctx->cctxs = xreallocarray(pctx->cctxs, pctx->capacity,
+		    sizeof *pctx->cctxs);
+	}
+	cctx = &pctx->cctxs[pctx->size++];
 
 	cctx->lc = lc;
 	cctx->active = active;
 	cctx->last = last;
 	cctx->index = index;
 	cctx->zindex = zindex;
-
-	return (0);
 }
 
 /* Remove a cell context from the parse context. Does not preserve ordering. */
@@ -207,9 +236,9 @@ layout_parse_remove_cctx(struct layout_parse_ctx *pctx, struct layout_cell *lc)
 	struct layout_parse_cell_ctx	*cctx;
 	int				 i;
 
-	for (i = 0; i < pctx->clen; i++) {
+	for (i = 0; i < pctx->size; i++) {
 		if (lc == pctx->cctxs[i].lc) {
-			cctx = &pctx->cctxs[--pctx->clen];
+			cctx = &pctx->cctxs[--pctx->size];
 			memmove(&pctx->cctxs[i], cctx, sizeof *cctx);
 			return (0);
 		}
@@ -246,18 +275,19 @@ char *
 layout_dump(__unused struct window *w, struct layout_cell *root, int flags)
 {
 	struct layout_string	 layout;
-	char			*out;
+	char			*out = NULL;
 
 	layout_string_init(&layout);
 
-	if (layout_append(root, &layout, flags) != 0)
-		return (NULL);
+	if (layout_append(root, &layout, flags) == 0) {
+		if (flags & LAYOUT_CUSTOM_OLD_FORMAT)
+			xasprintf(&out, "%04hx,%s", layout_checksum(layout.dat),
+			    layout.dat);
+		else
+			xasprintf(&out, "{\"V\":2,\"L\":%s}", layout.dat);
+	}
+	layout_string_free(&layout);
 
-	if (flags & LAYOUT_CUSTOM_OLD_FORMAT)
-		xasprintf(&out, "%04hx,%s", layout_checksum(layout.dat),
-		    layout.dat);
-	else
-		xasprintf(&out, "{\"V\":2,\"L\":%s}", layout.dat);
 	return (out);
 }
 
@@ -284,56 +314,38 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 	else
 		return (-1);
 
-	if (layout_string_write(ls, "{\"t\":\"%c\",\"w\":%u,\"h\":%u,\"x\":%d"
-	    ",\"y\":%d", c, lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff) != 0)
-		return (-1);
+	layout_string_write(ls, "{\"t\":\"%c\",\"w\":%u,\"h\":%u,\"x\":%d"
+	    ",\"y\":%d", c, lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff);
 	if (type != LAYOUT_WINDOWPANE) {
-		if (layout_string_write(ls, ",\"c\":[") != 0)
-			return (-1);
+		layout_string_write(ls, ",\"c\":[");
 		n = 0;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			if (layout_append_v2(lcchild, ls) != 0)
 				return (-1);
-			if (layout_string_write(ls, ",") != 0)
-				return (-1);
+			layout_string_write(ls, ",");
 			n++;
 		}
 		if (n == 0)
 			return (-1);
-		*(--ls->write) = '\0'; /* removing trailing comma */
-		if (layout_string_write(ls, "]") != 0)
-			return (-1);
+		ls->dat[--ls->size] = '\0'; /* removing trailing comma */
+		layout_string_write(ls, "]");
 	} else {
 		wp = lc->wp;
 		if (wp == NULL)
 			return (-1);
-		if (wp == wp->window->active) {
-			if (layout_string_write(ls, ",\"a\":true") != 0)
-				return (-1);
-		} else {
-			if (window_pane_last_index(wp, &i) == 0) {
-				if (layout_string_write(ls, ",\"l\":%u", i)
-				    != 0)
-					return (-1);
-			}
-		}
-		if (window_pane_index(wp, &i) == 0) {
-			if (layout_string_write(ls, ",\"i\":%u", i) != 0)
-				return (-1);
-		}
-		if (lc->flags & LAYOUT_CELL_FLOATING) {
-			if (window_pane_zindex(wp, &i) == 0) {
-				if (layout_string_write(ls, ",\"z\":%u", i)
-				    != 0)
-					return (-1);
-			}
-		}
-		if (layout_string_write(ls, ",\"I\":\"%%%u\"", wp->id) != 0)
-			return (-1);
+		if (wp == wp->window->active)
+			layout_string_write(ls, ",\"a\":true");
+		else if (window_pane_last_index(wp, &i) == 0)
+			layout_string_write(ls, ",\"l\":%u", i);
+		if (window_pane_index(wp, &i) == 0)
+			layout_string_write(ls, ",\"i\":%u", i);
+		if ((lc->flags & LAYOUT_CELL_FLOATING) &&
+		    window_pane_zindex(wp, &i) == 0)
+			layout_string_write(ls, ",\"z\":%u", i);
+		layout_string_write(ls, ",\"I\":\"%%%u\"", wp->id);
 	}
 
-	if (layout_string_write(ls, "}") != 0)
-		return (-1);
+	layout_string_write(ls, "}");
 
 	return (0);
 }
@@ -350,21 +362,18 @@ layout_append_v1(struct layout_cell *lc, struct layout_string *ls)
 		return (0);
 
 	if (lc->wp != NULL) {
-		if (layout_string_write(ls, "%ux%u,%d,%d,%u", lc->g.sx,
-		    lc->g.sy, lc->g.xoff, lc->g.yoff, lc->wp->id) != 0)
-			return (-1);
+		layout_string_write(ls, "%ux%u,%d,%d,%u", lc->g.sx, lc->g.sy,
+		    lc->g.xoff, lc->g.yoff, lc->wp->id);
 	} else {
-		if (layout_string_write(ls, "%ux%u,%d,%d", lc->g.sx,
-		    lc->g.sy, lc->g.xoff, lc->g.yoff) != 0)
-			return (-1);
+		layout_string_write(ls, "%ux%u,%d,%d", lc->g.sx, lc->g.sy,
+		    lc->g.xoff, lc->g.yoff);
 	}
 	switch (lc->type) {
 	case LAYOUT_LEFTRIGHT:
 		brackets = "{}";
 		/* FALLTHROUGH */
 	case LAYOUT_TOPBOTTOM:
-		if (layout_string_write(ls, "%c", brackets[0]) != 0)
-			return (-1);
+		layout_string_write(ls, "%c", brackets[0]);
 		n = 0;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			if (!layout_cell_is_tiled(lcchild) &&
@@ -372,16 +381,14 @@ layout_append_v1(struct layout_cell *lc, struct layout_string *ls)
 				continue;
 			if (layout_append_v1(lcchild, ls) != 0)
 				return (-1);
-			if (layout_string_write(ls, ",") != 0)
-				return (-1);
+			layout_string_write(ls, ",");
 			n++;
 		}
 		if (n == 0)
 			return (-1);
 
-		*(--ls->write) = '\0'; /* removing trailing comma */
-		if (layout_string_write(ls, "%c", brackets[1]) != 0)
-			return (-1);
+		ls->dat[--ls->size] = '\0'; /* removing trailing comma */
+		layout_string_write(ls, "%c", brackets[1]);
 		break;
 	case LAYOUT_WINDOWPANE:
 		break;
@@ -454,8 +461,7 @@ layout_parse(struct window *w, const char *layout, char **cause)
 	/* Build the layout. */
 	layout_parse_init_ctx(&pctx, cause);
 	if (layout_construct(layout, &pctx) != 0) {
-		if (pctx.root != NULL)
-			layout_free_cell(pctx.root, 0);
+		layout_parse_free_ctx(&pctx);
 		return (-1);
 	}
 	with_floating = pctx.version >= 2;
@@ -497,7 +503,9 @@ layout_parse(struct window *w, const char *layout, char **cause)
 			lc->parent = pctx.root;
 		}
 	}
+	/* The root is now owned by lc. */
 	lc = pctx.root;
+	pctx.root = NULL;
 
 	/*
 	 * It appears older versions of tmux were able to generate layouts with
@@ -562,10 +570,12 @@ layout_parse(struct window *w, const char *layout, char **cause)
 	if (pctx.version == 1)
 		events_fire_window("window-layout-changed", w);
 
+	layout_parse_free_ctx(&pctx);
 	return (0);
 
 fail:
 	layout_free_cell(lc, 0);
+	layout_parse_free_ctx(&pctx);
 	return (-1);
 }
 
@@ -577,11 +587,11 @@ layout_assign_from_ctx(struct window *w, struct layout_parse_ctx *pctx)
 	struct window_pane	*wp;
 	int			 i;
 
-	qsort(pctx->cctxs, pctx->clen, sizeof pctx->cctxs[0],
+	qsort(pctx->cctxs, pctx->size, sizeof pctx->cctxs[0],
 	    layout_parse_index_cmp);
 
 	wp = TAILQ_FIRST(&w->panes);
-	for (i = 0; i < pctx->clen; i++) {
+	for (i = 0; i < pctx->size; i++) {
 		lc = pctx->cctxs[i].lc;
 		layout_make_leaf(lc, wp);
 		wp = TAILQ_NEXT(wp, entry);
@@ -624,10 +634,10 @@ layout_assign(struct window *w, struct layout_parse_ctx *pctx)
 {
 	struct window_pane	*wp = TAILQ_FIRST(&w->panes);
 
-	if (pctx->clen > 0)
+	if (pctx->size > 0)
 		layout_assign_from_ctx(w, pctx);
 	else
-		layout_assign_fallback(&wp, pctx->root);
+		layout_assign_fallback(&wp, w->layout_root);
 }
 
 /* Construct a cell from the legacy (v1) format. */
@@ -774,8 +784,8 @@ fail:
 
 /* Parse nodes into layout cells. */
 static struct layout_cell *
-layout_parse_json_layout(const struct json_node *node,
-    struct layout_cell *lcparent, struct layout_parse_ctx *pctx)
+layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
+    struct layout_parse_ctx *pctx)
 {
 	struct json_node	 *member, *array;
 	struct layout_cell	 *lc = layout_create_cell(lcparent), *lcchild;
@@ -873,11 +883,7 @@ layout_parse_json_layout(const struct json_node *node,
 		} else
 			zindex = INT_MAX;
 
-		if (layout_parse_add_cctx(pctx, lc, active, last, index,
-		    zindex) != 0) {
-			*cause = xstrdup("too many panes");
-			goto fail;
-		}
+		layout_parse_add_cctx(pctx, lc, active, last, index, zindex);
 	} else {
 		if (json_find_array(node, "c", &array, cause) != 0)
 			goto fail;
@@ -943,7 +949,7 @@ layout_construct(const char *layout, struct layout_parse_ctx *pctx)
 			*pctx->cause = xstrdup("more than one active pane");
 			return (-1);
 		}
-		if (pctx->clen == 0) {
+		if (pctx->size == 0) {
 			*pctx->cause = xstrdup("no panes");
 			return (-1);
 		}
@@ -971,10 +977,10 @@ layout_parse_apply_ctx(struct window *w, struct layout_parse_ctx *pctx)
 		wp = wpnext;
 	}
 
-	qsort(pctx->cctxs, pctx->clen, sizeof pctx->cctxs[0],
+	qsort(pctx->cctxs, pctx->size, sizeof pctx->cctxs[0],
 	    layout_parse_zindex_cmp);
 
-	for (i = 0; i < pctx->clen; i++) {
+	for (i = 0; i < pctx->size; i++) {
 		cctx = &pctx->cctxs[i];
 		wp = cctx->lc->wp;
 		if (window_pane_is_floating(wp))
@@ -982,7 +988,7 @@ layout_parse_apply_ctx(struct window *w, struct layout_parse_ctx *pctx)
 	}
 
 	/* Set the active pane. */
-	for (i = 0; i < pctx->clen; i++) {
+	for (i = 0; i < pctx->size; i++) {
 		cctx = &pctx->cctxs[i];
 		if (cctx->active == 1) {
 			window_set_active_pane(w, cctx->lc->wp, 1);
@@ -996,10 +1002,10 @@ layout_parse_apply_ctx(struct window *w, struct layout_parse_ctx *pctx)
 		window_pane_stack_remove(&w->last_panes, wp);
 	}
 
-	qsort(pctx->cctxs, pctx->clen, sizeof pctx->cctxs[0],
+	qsort(pctx->cctxs, pctx->size, sizeof pctx->cctxs[0],
 	    layout_parse_last_cmp);
 
-	for (i = 0; i < pctx->clen; i++) {
+	for (i = 0; i < pctx->size; i++) {
 		cctx = &pctx->cctxs[i];
 		wp = cctx->lc->wp;
 		if (cctx->last < 0 || cctx->active == 1)
@@ -1014,17 +1020,17 @@ layout_parse_ctx_check_indexes(struct layout_parse_ctx *pctx)
 {
 	int	i, n;
 
-	qsort(pctx->cctxs, pctx->clen, sizeof pctx->cctxs[0],
+	qsort(pctx->cctxs, pctx->size, sizeof pctx->cctxs[0],
 	    layout_parse_index_cmp);
 
-	for (i = 1; i < pctx->clen; i++) {
+	for (i = 1; i < pctx->size; i++) {
 		if (pctx->cctxs[i].index == pctx->cctxs[i - 1].index) {
 			*pctx->cause = xstrdup("duplicate pane index");
 			return (0);
 		}
 	}
 
-	qsort(pctx->cctxs, pctx->clen, sizeof pctx->cctxs[0],
+	qsort(pctx->cctxs, pctx->size, sizeof pctx->cctxs[0],
 	    layout_parse_zindex_cmp);
 
 	/*
@@ -1032,16 +1038,16 @@ layout_parse_ctx_check_indexes(struct layout_parse_ctx *pctx)
 	 * and the floating panes run to the end.
 	 */
 	n = 0;
-	while (n < pctx->clen && pctx->cctxs[n].zindex == INT_MAX)
+	while (n < pctx->size && pctx->cctxs[n].zindex == INT_MAX)
 		n++;
-	for (i = n + 1; i < pctx->clen; i++) {
+	for (i = n + 1; i < pctx->size; i++) {
 		if (pctx->cctxs[i].zindex == pctx->cctxs[i - 1].zindex) {
 			*pctx->cause = xstrdup("duplicate pane z-index");
 			return (0);
 		}
 	}
 
-	qsort(pctx->cctxs, pctx->clen, sizeof pctx->cctxs[0],
+	qsort(pctx->cctxs, pctx->size, sizeof pctx->cctxs[0],
 	    layout_parse_last_cmp);
 
 	/*
@@ -1049,7 +1055,7 @@ layout_parse_ctx_check_indexes(struct layout_parse_ctx *pctx)
 	 * last.
 	 */
 	n = 0;
-	while (n < pctx->clen && pctx->cctxs[n].last >= 0)
+	while (n < pctx->size && pctx->cctxs[n].last >= 0)
 		n++;
 	for (i = 1; i < n; i++) {
 		if (pctx->cctxs[i].last == pctx->cctxs[i - 1].last) {
