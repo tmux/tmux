@@ -70,6 +70,7 @@ control_window_layout_changed_cb(__unused const char *name,
 	struct session		*s;
 	struct winlink		*wl;
 	struct window		*w = event_payload_get_window(ep, "window");
+	struct format_tree	*ft;
 	const char		*template;
 	char			*cp;
 
@@ -84,19 +85,25 @@ control_window_layout_changed_cb(__unused const char *name,
 	 * and we don't need to inform the client about the layout change
 	 * because the whole window will go away soon.
 	 */
-	wl = TAILQ_FIRST(&w->winlinks);
-	if (wl == NULL || w->layout_root == NULL)
+	if (TAILQ_FIRST(&w->winlinks) == NULL || w->layout_root == NULL)
 		return;
-	cp = format_single(NULL, template, NULL, NULL, wl, NULL);
 
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c) || c->session == NULL)
 			continue;
 		s = c->session;
-		if (winlink_find_by_window_id(&s->windows, w->id) != NULL)
-			control_notify_write(c, "%s", cp);
+		wl = winlink_find_by_window_id(&s->windows, w->id);
+		if (wl == NULL)
+			continue;
+
+		ft = format_create(c, NULL, FORMAT_NONE, 0);
+		format_defaults(ft, c, s, wl, NULL);
+		cp = format_expand(ft, template);
+		format_free(ft);
+
+		control_notify_write(c, "%s", cp);
+		free(cp);
 	}
-	free(cp);
 }
 
 /* Notify control clients that window pane changed. */
