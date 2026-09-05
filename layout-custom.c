@@ -491,18 +491,17 @@ layout_parse(struct window *w, const char *layout, char **cause)
 		layout_destroy_cell(w, lcchild, &pctx.root);
 	}
 
-	/* Stitch in floating panes to version 1. */
+	/* Preserve floating panes for version 1. */
 	if (pctx.version < 2) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (!window_pane_is_floating(wp))
 				continue;
 			lc = wp->layout_cell;
 			TAILQ_REMOVE(&lc->parent->cells, lc, entry);
-			/* A root node is guaranteed by this point. */
-			TAILQ_INSERT_TAIL(&pctx.root->cells, lc, entry);
-			lc->parent = pctx.root;
+			lc->parent = NULL;
 		}
 	}
+
 	/* The root is now owned by lc. */
 	lc = pctx.root;
 	pctx.root = NULL;
@@ -599,11 +598,11 @@ layout_assign_from_ctx(struct window *w, struct layout_parse_ctx *pctx)
 }
 
 /*
- * Assign panes into cells when there are no cell contexts. This will be removed
- * when the non-JSON format is deprecated.
+ * Assign tiled cells to availible panes. Skips paness that already have a cell,
+ * which are guaranteed to be floating.
  */
 static void
-layout_assign_fallback(struct window_pane **wp, struct layout_cell *lc)
+layout_assign_fallback_tiled(struct window_pane **wp, struct layout_cell *lc)
 {
 	struct layout_cell	*lcchild;
 
@@ -612,19 +611,43 @@ layout_assign_fallback(struct window_pane **wp, struct layout_cell *lc)
 
 	switch (lc->type) {
 	case LAYOUT_WINDOWPANE:
-		while ((*wp)->layout_cell != NULL) /* skipping floats */
-			*wp = TAILQ_NEXT(*wp, entry);
-		layout_make_leaf(lc, *wp);
+		if ((*wp)->layout_cell == NULL)
+			layout_make_leaf(lc, *wp);
 		*wp = TAILQ_NEXT(*wp, entry);
 		return;
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (lcchild->flags & LAYOUT_CELL_FLOATING)
-				continue;
-			layout_assign_fallback(wp, lcchild);
+			layout_assign_fallback_tiled(wp, lcchild);
 		}
 		return;
+	}
+}
+
+/*
+ * Assign panes into cells when there are no cell contexts. This will be removed
+ * when the non-JSON format is deprecated.
+ */
+static void
+layout_assign_fallback(struct window *w, struct layout_cell *lcroot)
+{
+	struct window_pane	*wp = TAILQ_FIRST(&w->panes);
+	struct layout_cell	*lc;
+
+	layout_assign_fallback_tiled(&wp, lcroot);
+
+	if (layout_count_cells(lcroot, 1) > 1 &&
+	    lcroot->type == LAYOUT_WINDOWPANE)
+		lcroot = layout_replace_with_node(w, lcroot, LAYOUT_TOPBOTTOM);
+
+	wp = TAILQ_FIRST(&w->panes);
+	while (wp != NULL) {
+		if (window_pane_is_floating(wp)) {
+			lc = wp->layout_cell;
+			lc->parent = lcroot;
+			TAILQ_INSERT_TAIL(&lcroot->cells, lc, entry);
+		}
+		wp = TAILQ_NEXT(wp, entry);
 	}
 }
 
@@ -632,12 +655,10 @@ layout_assign_fallback(struct window_pane **wp, struct layout_cell *lc)
 static void
 layout_assign(struct window *w, struct layout_parse_ctx *pctx)
 {
-	struct window_pane	*wp = TAILQ_FIRST(&w->panes);
-
 	if (pctx->size > 0)
 		layout_assign_from_ctx(w, pctx);
 	else
-		layout_assign_fallback(&wp, w->layout_root);
+		layout_assign_fallback(w, w->layout_root);
 }
 
 /* Construct a cell from the legacy (v1) format. */
