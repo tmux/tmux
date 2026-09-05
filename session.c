@@ -499,6 +499,7 @@ int
 session_set_current(struct session *s, struct winlink *wl)
 {
 	struct winlink	*old = s->curw;
+	struct client	*loop;
 
 	if (wl == NULL)
 		return (-1);
@@ -516,6 +517,16 @@ session_set_current(struct session *s, struct winlink *wl)
 	winlink_clear_flags(wl);
 	window_update_activity(wl->window);
 	tty_update_window_offset(wl->window);
+
+	/*
+	 * Mark clients on this session so the next redraw can replay the new
+	 * window's history to a terminal that keeps its own scrollback.
+	 */
+	TAILQ_FOREACH(loop, &clients, entry) {
+		if (loop->session == s)
+			loop->flags |= CLIENT_REPLAYSCROLL;
+	}
+
 	session_fire_window_changed(s, wl, old);
 	return (0);
 }

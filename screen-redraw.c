@@ -1769,7 +1769,14 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 			}
 		}
 	}
-	tty_sync_start(tty); /* end in server_client_reset_state */
+	tty_sync_start(tty);
+
+	/*
+	 * Replay the window's history inside the same synchronized update as
+	 * the redraw so the two are painted as one frame.
+	 */
+	if (c->flags & CLIENT_REPLAYSCROLL)
+		server_client_replay_scroll(c); /* end in server_client_reset_state */
 	tty_update_mode(tty, tty->mode & ~CURSOR_MODES, NULL);
 
 	if (wp != NULL)

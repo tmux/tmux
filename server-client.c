@@ -2467,6 +2467,83 @@ server_client_any_pane_redraw(struct client *c)
 }
 
 /* Check for client redraws. */
+/*
+ * Replay the current window's history to a client whose terminal keeps its
+ * own scrollback. The terminal has one buffer for every window, so clear it
+ * and write this window's history and screen in its place. Only a pane that
+ * fills the window can reach the terminal's scrollback.
+ */
+void
+server_client_replay_scroll(struct client *c)
+{
+	struct window		*w;
+	struct window_pane	*wp;
+	struct grid		*gd;
+	struct grid_cell	*gc = NULL;
+	u_int			 lines, n, total, i, start;
+	char			*line, *buf;
+	size_t			 linelen, buflen;
+
+	c->flags &= ~CLIENT_REPLAYSCROLL;
+
+	if (c->session == NULL || c->session->curw == NULL)
+		return;
+	w = c->session->curw->window;
+	if ((wp = w->active) == NULL)
+		return;
+	lines = options_get_number(w->options, "scroll-replay");
+	if (lines == 0)
+		return;
+	if (wp->xoff != 0 || wp->yoff != 0 || wp->sx != w->sx || wp->sy != w->sy)
+		return;
+	if (!tty_term_has(c->tty.term, TTYC_E3))
+		return;
+
+	gd = wp->base.grid;
+	n = gd->hsize;
+	total = n + gd->sy;
+	start = (n > lines) ? n - lines : 0;
+
+	/* A deliberate large write; do not let tty_block_maybe() drop it. */
+	c->tty.flags |= TTY_NOBLOCK;
+
+	tty_putcode(&c->tty, TTYC_CLEAR);
+	tty_putcode(&c->tty, TTYC_E3);
+
+	/*
+	 * Write the history then the visible rows, with no newline after the
+	 * last, so the terminal shows the pane's screen with the history above
+	 * it and the redraw repaints the same rows in place. History alone
+	 * would leave its last screenful on screen for the redraw to overwrite.
+	 */
+	buf = NULL;
+	buflen = 0;
+	for (i = start; i < total; i++) {
+		line = grid_string_cells(gd, 0, i, gd->sx, &gc,
+		    GRID_STRING_WITH_SEQUENCES|GRID_STRING_TRIM_SPACES,
+		    &wp->base);
+		linelen = strlen(line);
+		buf = xrealloc(buf, buflen + linelen + 3);
+		memcpy(buf + buflen, line, linelen);
+		buflen += linelen;
+		if (i + 1 < total) {
+			buf[buflen++] = '\r';
+			buf[buflen++] = '\n';
+		}
+		free(line);
+	}
+	if (buf != NULL) {
+		buf[buflen] = '\0';
+		tty_puts(&c->tty, buf);
+		free(buf);
+	}
+	log_debug("%s: replayed %u history + %u visible lines", c->name,
+	    n - start, gd->sy);
+
+	/* The tty contents are now unknown; force a full redraw. */
+	tty_invalidate(&c->tty);
+}
+
 static void
 server_client_check_redraw(struct client *c)
 {
