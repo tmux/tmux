@@ -34,6 +34,26 @@
 
 static enum cmd_retval	cmd_dump_exec(struct cmd *, struct cmdq_item *);
 
+/*
+ * wp->cwd only records the directory the pane's shell was originally
+ * spawned in - it never changes after that. What we want here is the
+ * pane's current directory, which has to be queried live from the
+ * process running in the pane (the same thing the pane_current_path
+ * format variable does).
+ */
+static char *
+cmd_dump_pane_cwd(struct window_pane *wp)
+{
+	char	*cwd;
+
+	cwd = osdep_get_cwd(wp->fd);
+	if (cwd != NULL)
+		return (xstrdup(cwd));
+	if (wp->cwd != NULL)
+		return (xstrdup(wp->cwd));
+	return (xstrdup(""));
+}
+
 const struct cmd_entry cmd_dump_entry = {
 	.name = "dump",
 	.alias = NULL,
@@ -57,7 +77,8 @@ cmd_dump_exec(struct cmd *self, struct cmdq_item *item)
 	struct window		*w;
 	struct window_pane	*wp;
 	char			*sess_esc, *name_esc, *cwd_esc, *layout, *layout_esc;
-	long long		 base_index;
+	char			*cwd;
+	long long		 base_index, global_base_index;
 	u_int			 active_pane_index;
 	int			 first_window, npanes;
 	time_t			 now;
@@ -85,6 +106,8 @@ cmd_dump_exec(struct cmd *self, struct cmdq_item *item)
 	evbuffer_add_printf(evb, "# recreated with 'tmux restore'; does not "
 	    "relaunch previous pane processes\n");
 
+	global_base_index = options_get_number(global_s_options, "base-index");
+
 	RB_FOREACH(s, sessions, &sessions) {
 		sess_esc = args_escape(s->name);
 		base_index = options_get_number(s->options, "base-index");
@@ -95,9 +118,16 @@ cmd_dump_exec(struct cmd *self, struct cmdq_item *item)
 
 			wp = TAILQ_FIRST(&w->panes);
 			name_esc = args_escape(w->name);
-			cwd_esc = args_escape(wp->cwd);
+			cwd = cmd_dump_pane_cwd(wp);
+			cwd_esc = args_escape(cwd);
+			free(cwd);
 
 			if (first_window) {
+				/* Pin base-index so this window lands at the
+				 * recorded idx regardless of the restoring
+				 * environment's own config. */
+				evbuffer_add_printf(evb,
+				    "set -g base-index %lld\n", base_index);
 				evbuffer_add_printf(evb,
 				    "new-session -d -s %s -n %s -c %s\n",
 				    sess_esc, name_esc, cwd_esc);
@@ -119,7 +149,9 @@ cmd_dump_exec(struct cmd *self, struct cmdq_item *item)
 			npanes = 0;
 			TAILQ_FOREACH(wp, &w->panes, entry) {
 				if (npanes > 0) {
-					cwd_esc = args_escape(wp->cwd);
+					cwd = cmd_dump_pane_cwd(wp);
+					cwd_esc = args_escape(cwd);
+					free(cwd);
 					evbuffer_add_printf(evb,
 					    "split-window -t %s:%u -c %s\n",
 					    sess_esc, wl->idx, cwd_esc);
@@ -152,6 +184,9 @@ cmd_dump_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		free(sess_esc);
 	}
+
+	/* Put back the base-index that was in effect before the per-session overrides above. */
+	evbuffer_add_printf(evb, "set -g base-index %lld\n", global_base_index);
 
 	data = evbuffer_pullup(evb, -1);
 	size = evbuffer_get_length(evb);

@@ -92,7 +92,7 @@ struct winlink;
 #define TMUX_CONF "/etc/tmux.conf:~/.tmux.conf"
 #endif
 #ifndef TMUX_DUMP_FILE
-#define TMUX_DUMP_FILE ".tmux-dump"
+#define TMUX_DUMP_FILE ".tmux.dump"
 #endif
 #ifndef TMUX_SOCK
 #define TMUX_SOCK "$TMUX_TMPDIR:" _PATH_TMP
