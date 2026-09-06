@@ -614,8 +614,10 @@ monitor_parse(const char *value, char **name, enum monitor_type *type, int *id,
 		*type = MONITOR_ALL_WINDOWS;
 	else if (sscanf(what, "@%d", id) == 1 && *id >= 0)
 		*type = MONITOR_WINDOW;
-	else
+	else if (*what == '\0')
 		*type = MONITOR_SESSION;
+	else
+		goto fail;
 	*name = xstrdup(copy);
 	*format = xstrdup(split);
 
