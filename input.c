@@ -3305,6 +3305,9 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 					gl->flags |= GRID_LINE_SECOND_PROMPT;
 				else
 					gl->flags |= GRID_LINE_START_PROMPT;
+				log_debug("%s: osc133 %s at %u,%u", __func__,
+				    input_osc_133_secondary_prompt(p) ? "secondary prompt" :
+				    "prompt", s->cx, line);
 			}
 		}
 		if (wp != NULL) {
@@ -3321,6 +3324,8 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 					gl->flags |= GRID_LINE_SECOND_PROMPT;
 				else
 					gl->flags |= GRID_LINE_START_PROMPT;
+				log_debug("%s: osc133 prompt at %u,%u", __func__, s->cx,
+				    line);
 			}
 		}
 		break;
@@ -3329,12 +3334,16 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 		if (gl != NULL && !(gl->flags & GRID_LINE_START_COMMAND)) {
 			gl->flags |= GRID_LINE_START_COMMAND;
 			gl->osc133_data.cmd_col = s->cx;
+			log_debug("%s: osc133 command at %u,%u", __func__, s->cx,
+			    line);
 		}
 		break;
 	case 'C':
 		if (gl != NULL && !(gl->flags & GRID_LINE_START_OUTPUT)) {
 			gl->flags |= GRID_LINE_START_OUTPUT;
 			gl->osc133_data.out_start_col = s->cx;
+			log_debug("%s: osc133 output start at %u,%u", __func__, s->cx,
+			    line);
 		}
 		if (wp != NULL) {
 			wp->cmd_start_time = time(NULL);
@@ -3358,6 +3367,8 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 				gl->flags |= GRID_LINE_END_OUTPUT_STATUS;
 			gl->osc133_data.out_end_col = s->cx;
 			gl->osc133_data.exit_status = status;
+			log_debug("%s: osc133 output end at %u,%u (status %d)",
+			    __func__, s->cx, line, status);
 		}
 		break;
 	}

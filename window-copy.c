@@ -4143,6 +4143,7 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 	if (data->source == NULL)
 		return (0);
 	window_copy_cursor_source(wme, &cursor_x, &cursor_y);
+	log_debug("%s: cursor at %u,%u", __func__, cursor_x, cursor_y);
 
 	gd = data->source->grid;
 	total = gd->hsize + gd->sy;
@@ -4156,8 +4157,11 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 		prompt_y = y;
 		prompt_x = gl->osc133_data.prompt_col;
 	}
-	if (prompt_y == UINT_MAX)
+	if (prompt_y == UINT_MAX) {
+		log_debug("%s: no osc133 prompt before cursor", __func__);
 		return (0);
+	}
+	log_debug("%s: prompt at %u,%u", __func__, prompt_x, prompt_y);
 
 	for (y = prompt_y; y < total; y++) {
 		gl = grid_get_line(gd, y);
@@ -4179,19 +4183,29 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 	}
 	if (!found_start) {
 		/* At the live prompt, use the most recent command output. */
-		if (cursor_y == screen_hsize(data->source) + data->source->cy)
+		if (cursor_y == screen_hsize(data->source) + data->source->cy) {
+			log_debug("%s: no output after live prompt", __func__);
 			return (window_copy_find_previous_output_range(data->source,
 			    sx, sy, ex, ey));
+		}
+		log_debug("%s: no osc133 output after prompt", __func__);
 		return (0);
 	}
 	if (!found_end) {
-		if (y != total)
+		if (y != total) {
+			log_debug("%s: output interrupted by next prompt", __func__);
 			return (0);
+		}
 		window_copy_output_end(data->source, ex, ey);
 	}
 	if (cursor_y > *ey || (cursor_y == *ey &&
-	    (found_end ? cursor_x >= *ex : cursor_x > *ex)))
+	    (found_end ? cursor_x >= *ex : cursor_x > *ex))) {
+		log_debug("%s: cursor after output end %u,%u", __func__, *ex,
+		    *ey);
 		return (0);
+	}
+	log_debug("%s: output from %u,%u to %u,%u", __func__, *sx, *sy,
+	    *ex, *ey);
 	return (1);
 }
 
