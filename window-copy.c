@@ -350,7 +350,6 @@ struct window_copy_mode_data {
 	int		 hide_position;	/* hide position marker */
 	int		 line_numbers;	/* 0 off, 1 from option, 2 absolute */
 	int		 fold_view;
-	int		 output_previous;
 	u_int		 output_status_width;
 
 	enum {
@@ -2151,10 +2150,6 @@ window_copy_cmd_select_output(struct window_copy_cmd_state *cs)
 		total = data->source->grid->hsize + data->source->grid->sy;
 		ey = total - 1;
 		ex = grid_get_line(data->source->grid, ey)->cellused;
-	} else if (data->output_previous) {
-		if (!window_copy_find_previous_output_range(data->source, &sx, &sy,
-		    &ex, &ey))
-			return (WINDOW_COPY_CMD_NOTHING);
 	} else if (!window_copy_find_output_range(wme, &sx, &sy, &ex, &ey))
 		return (WINDOW_COPY_CMD_NOTHING);
 	buf = window_copy_get_output(wme, &len, all);
@@ -5320,69 +5315,6 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 	}
 }
 
-void
-window_copy_output(struct window_pane *wp, struct client *c,
-    struct session *s, struct winlink *wl, struct cmdq_item *item,
-    const char *command, struct args *args)
-{
-	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
-	struct window_copy_mode_data	*data;
-	struct window_copy_cmd_state	 cs;
-	struct args			*mode_args;
-	enum window_copy_cmd_action	 action;
-	int				 temporary = 0;
-
-	if (wme == NULL || wme->mode != &window_copy_mode) {
-		if (strcmp(command, "open-selection") == 0)
-			return;
-		mode_args = args_create();
-		if (window_pane_set_mode(wp, wp, &window_copy_mode, item, NULL,
-		    mode_args)) {
-			args_free(mode_args);
-			return;
-		}
-		args_free(mode_args);
-		wme = TAILQ_FIRST(&wp->modes);
-		temporary = 1;
-	}
-
-	cs.wme = wme;
-	cs.args = args;
-	cs.wargs = args;
-	cs.m = NULL;
-	cs.c = c;
-	cs.s = s;
-	cs.wl = wl;
-
-	data = wme->data;
-	data->output_previous = temporary;
-	if (strcmp(command, "select-output") == 0)
-		action = window_copy_cmd_select_output(&cs);
-	else if (strcmp(command, "copy-output") == 0)
-		action = window_copy_cmd_copy_output(&cs);
-	else if (strcmp(command, "copy-pipe-output") == 0)
-		action = window_copy_cmd_copy_pipe_output(&cs);
-	else if (strcmp(command, "pipe-output") == 0)
-		action = window_copy_cmd_pipe_output(&cs);
-	else if (strcmp(command, "open-output") == 0)
-		action = window_copy_cmd_open_output(&cs);
-	else if (strcmp(command, "open-selection") == 0)
-		action = window_copy_cmd_open_selection(&cs);
-	else {
-		data->output_previous = 0;
-		if (temporary)
-			window_pane_reset_mode(wp);
-		return;
-	}
-	data->output_previous = 0;
-
-	if (temporary && (strcmp(command, "select-output") != 0 ||
-	    action != WINDOW_COPY_CMD_REDRAW))
-		window_pane_reset_mode(wp);
-	else if (action == WINDOW_COPY_CMD_REDRAW)
-		window_copy_redraw_screen(wme);
-}
-
 static void
 window_copy_scroll_to(struct window_mode_entry *wme, u_int px, u_int py,
     int no_redraw)
@@ -7594,12 +7526,6 @@ window_copy_get_output(struct window_mode_entry *wme, size_t *len, int all)
 		sx = sy = 0;
 		ey = total - 1;
 		ex = grid_get_line(gd, ey)->cellused;
-	} else if (data->output_previous) {
-		if (!window_copy_find_previous_output_range(data->source, &sx, &sy,
-		    &ex, &ey)) {
-			*len = 0;
-			return (NULL);
-		}
 	} else if (!window_copy_find_output_range(wme, &sx, &sy, &ex, &ey)) {
 		*len = 0;
 		return (NULL);
