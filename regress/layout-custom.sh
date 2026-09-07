@@ -24,7 +24,7 @@
 # - #{window_visible_layout} agreeing with #{window_layout};
 # - the JSON syntax itself: insignificant whitespace, backslash escapes inside
 #   strings, the number and boolean forms, and one failure for each way json.c
-#   can reject an input;
+#   can reject an input that a layout string can carry;
 # - a dump being parsed back to exactly the same layout (round trip), after
 #   another layout has been applied in between, and the same for a layout with
 #   two floating panes in it;
@@ -36,19 +36,28 @@
 #   order the fields are read in;
 # - a layout with more cells than the window has panes having the bottom right
 #   cells dropped, in both formats;
-# - a layout naming no active or last pane leaving both as they were, whether
-#   it leaves "a" out or gives it as false;
+# - a layout naming no active or last pane leaving the active pane where it was
+#   and emptying the last pane stack, whether it leaves "a" out or gives it as
+#   false;
 # - parsing a v1 layout and dumping it back as v1 through a control client,
 #   with the checksum computed here independently of layout_checksum(), and a
 #   v1 layout leaving the active pane and last pane stack untouched;
+# - the legacy format meeting the floating panes it cannot represent: a v1 dump
+#   dropping the floating cells, both where that leaves the node they were in
+#   with one child so that it collapses and where it does not, and a v1 layout
+#   being applied to a window that has floating panes without disturbing them,
+#   whether the tiled layout it names is a single cell or a split;
+# - a window whose only tiled pane has been killed, which leaves it with a
+#   floating cell as its layout root or with a root node holding nothing but
+#   floating cells, producing no v1 dump at all, and being parsed as v1;
 # - the %layout-change notification, in both formats at once: two control
 #   clients watching one layout change, only one of which has asked for new
 #   layouts, and the number of notifications a change produces in each format;
 # - failures: a bad v1 header, checksum or body, a wrong version, a missing or
-#   duplicated root cell, missing sizes, sizes out of range, bad cell types and
-#   pane ids, a pane cell missing "i" or "I", leaf cells with children and node
-#   cells without, more than one active pane, a string too long for json.c to
-#   return, too few cells for the panes and inconsistent sizes.
+#   duplicated root cell, missing sizes, sizes out of range, bad cell types, a
+#   pane cell missing "i", leaf cells with children and node cells with fewer
+#   than two, more than one active pane, too few cells for the panes and
+#   inconsistent sizes.
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -141,6 +150,16 @@ raw_layout()
 	$TMUX display-message -p -t "$1" '#{window_layout}'
 }
 
+# v1_layout $target
+#
+# The legacy (v1) dump of a window, which is what a control client that has not
+# asked for the "new-layouts" flag is sent. A control client wraps its output in
+# %begin/%end guard lines, which are dropped here.
+v1_layout()
+{
+	$TMUX -C display-message -p -t "$1" '#{window_layout}' | grep -v '^%'
+}
+
 # v1 $body
 #
 # Prefix a legacy (v1) layout body with its checksum. This is a separate
@@ -169,10 +188,10 @@ check_ok new-session -d -s L -x 80 -y 24 -n one
 
 p0=$($TMUX display-message -p -t L:one.0 '#{pane_id}')
 
-# A single leaf cell filling the window. Every pane cell carries "i", its pane
-# index, and "I", its pane id; both are required, so they are here even in the
-# JSON checks, which care about the syntax around the cell rather than the cell
-# itself.
+# A single leaf cell filling the window. A pane cell must carry "i", its pane
+# index; "I", its pane id, is written by the dumper and is here so that the cell
+# is the same shape as a dumped one. The JSON checks below care about the syntax
+# around the cell rather than the cell itself.
 LEAF='{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"'"$p0"'"}'
 
 # ---------------------------------------------------------------------------
@@ -191,8 +210,8 @@ must_equal 'Single pane visible layout' "$(visible_layout L:one)" "$ONE"
 # The bottom right cells are closed until as many are left as there are panes,
 # so a two cell layout applied to a one pane window collapses back to the
 # single pane filling the window: the cell that is left takes the space of the
-# one that was closed. The cell that is closed is the only one whose "I" names
-# no pane of this window, there being just the one pane to name.
+# one that was closed. The window has one pane to name, so the cell that is
+# closed carries an id belonging to no pane of it.
 check_ok select-layout -t L:one \
 	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":11,"x":0,"y":0,"i":0,"I":"'"$p0"'"},{"t":"p","w":80,"h":12,"x":0,"y":12,"i":1,"I":"%999"}]}}'
 must_equal 'Trimmed layout' "$(layout L:one)" "$ONE"
@@ -210,10 +229,11 @@ must_equal 'Trimmed layout' "$(layout L:one)" "$ONE"
 # Objects nested in an array nested in an object are not checked here: every
 # split layout below is one.
 #
-# One of json.c's rejections cannot be reached from the shell and so is not
+# Two of json.c's rejections cannot be reached from the shell and so are not
 # covered: json_parse_tokens() refusing a top level that is not an object,
 # because layout_construct() only calls json_parse() once the string already
-# starts with '{'.
+# starts with '{'; and the maximum object depth, which needs a layout built by a
+# program rather than one written out here.
 
 # check_json_ok $what $layout
 #
@@ -446,10 +466,8 @@ must_equal 'Scrambled field order' "$(layout L:two)" \
 # the leading %.
 v1body="80x24,0,0{40x24,0,0,${q0#%},39x24,41,0,${q1#%}}"
 
-# A control client that has not asked for new layouts is dumped v1. Its output
-# is wrapped in %begin/%end guard lines.
-got=$($TMUX -C display-message -p -t L:two '#{window_layout}' | grep -v '^%')
-must_equal 'v1 dump' "$got" "$(v1 "$v1body")"
+# A control client that has not asked for new layouts is dumped v1.
+must_equal 'v1 dump' "$(v1_layout L:two)" "$(v1 "$v1body")"
 
 # With the new-layouts flag the same client is dumped v2 instead. The flag is
 # set with "attach -f" rather than refresh-client because refresh-client needs
@@ -466,8 +484,7 @@ must_contain 'v2 dump for control client' "$got" '{"V":2,"L":'
 # on - the active pane, the last pane stack, the pane index - comes into it.
 v1vsplit="80x24,0,0[80x11,0,0,${q0#%},80x12,0,12,${q1#%}]"
 check_ok select-layout -t L:two "$(v1 "$v1vsplit")"
-got=$($TMUX -C display-message -p -t L:two '#{window_layout}' | grep -v '^%')
-must_equal 'v1 round trip' "$got" "$(v1 "$v1vsplit")"
+must_equal 'v1 round trip' "$(v1_layout L:two)" "$(v1 "$v1vsplit")"
 
 # v1 names no active pane, last pane or z-index and must disturb none of them.
 # Applying the v1 form of the layout the window already has therefore leaves
@@ -485,8 +502,7 @@ must_equal 'v1 leaves the active and last panes alone' \
 # used to place panes, so the third cell can carry any id.
 v1three="80x24,0,0[80x7,0,0,${q0#%},80x7,0,8,${q1#%},80x8,0,16,999]"
 check_ok select-layout -t L:two "$(v1 "$v1three")"
-got=$($TMUX -C display-message -p -t L:two '#{window_layout}' | grep -v '^%')
-must_equal 'v1 layout trimmed' "$got" \
+must_equal 'v1 layout trimmed' "$(v1_layout L:two)" \
 	"$(v1 "80x24,0,0[80x7,0,0,${q0#%},80x16,0,8,${q1#%}]")"
 
 # ---------------------------------------------------------------------------
@@ -525,9 +541,9 @@ must_equal 'Round tripped swapped layout' "$(raw_layout L:two)" "$swapped"
 
 # "a" and "l" are the only things that decide which pane is active and what is
 # on the last pane stack, so a layout naming neither leaves the active pane
-# where it was and puts nothing on the stack. Here the first pane of the window
-# is active and the second is at index 0 of the stack beforehand; afterwards
-# the first pane is still active and the second is on no stack, so it has no
+# where it was and empties the stack. Here the first pane of the window is
+# active and the second is at index 0 of the stack beforehand; afterwards the
+# first pane is still active and the stack is empty, so the second pane has no
 # "l".
 check_ok select-pane -t "$q1"
 check_ok select-pane -t "$q0"
@@ -610,28 +626,16 @@ check_layout_fail \
 # An unknown cell type: only "h", "v" and "p" exist.
 check_layout_fail '{"V":2,"L":{"t":"q","w":80,"h":24,"x":0,"y":0}}'
 
-# A pane id without its %, and one with trailing rubbish after the number. Note
-# it is "I" that carries the pane id and requires the %; "i" is the pane index
-# and takes a plain number.
-check_layout_fail '{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"0"}}'
-check_layout_fail '{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"%1x"}}'
-
-# A pane cell needs both of them.
-check_layout_fail '{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0}}'
+# A pane cell needs "i", its pane index. It is "i" that says which pane goes in
+# the cell; "I" is the pane id the cell was dumped with and is not read back.
 check_layout_fail '{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"I":"'"$q0"'"}}'
 
-# A string longer than json.c will hand back: it copies a string out into a
-# 16384 byte buffer and refuses anything that does not fit, so this has to be
-# longer than that to be refused at all. It is the cell type, the first string a
-# cell is read for, and the layout must be rejected rather than the server going
-# down with it - which the check at the end of this section would see, the
-# layout being unreadable from a server that is not there.
-big=$(awk 'BEGIN { while (i++ < 20000) printf "a" }')
-check_layout_fail '{"V":2,"L":{"t":"'"$big"'","w":80,"h":24,"x":0,"y":0,"i":0,"I":"'"$q0"'"}}'
-
-# A node cell must have children and a leaf cell must not.
+# A node cell must have more than one child and a leaf cell must have none. A
+# node is written with no "c" at all, with an empty one and with a single child.
 check_layout_fail '{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0}}'
 check_layout_fail '{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[]}}'
+check_layout_fail \
+	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"'"$q0"'"}]}}'
 check_layout_fail \
 	'{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"'"$q0"'","c":[{"t":"p","w":80,"h":24,"x":0,"y":0,"i":1,"I":"'"$q1"'"}]}}'
 
@@ -640,14 +644,12 @@ check_layout_fail \
 	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"p","w":80,"h":11,"x":0,"y":0,"a":true,"i":0,"I":"'"$q0"'"},{"t":"p","w":80,"h":12,"x":0,"y":12,"a":true,"i":1,"I":"'"$q1"'"}]}}'
 
 # The same rejections apply whatever order the fields are written in: a leaf
-# with children when "c" comes first, a node with no children when "t" comes
-# last, a bad cell type when "t" comes last, and a bad pane id when "I" comes
-# first.
+# with children when "c" comes first, and a node with no children and a bad cell
+# type when "t" comes last.
 check_layout_fail \
 	'{"V":2,"L":{"c":[{"t":"p","w":80,"h":24,"x":0,"y":0,"i":1,"I":"'"$q1"'"}],"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"'"$q0"'"}}'
 check_layout_fail '{"V":2,"L":{"w":80,"h":24,"x":0,"y":0,"t":"v"}}'
 check_layout_fail '{"V":2,"L":{"w":80,"h":24,"x":0,"y":0,"t":"q"}}'
-check_layout_fail '{"V":2,"L":{"I":"0","i":0,"t":"p","w":80,"h":24,"x":0,"y":0}}'
 
 # A child that fails after a sibling has already been parsed and added to the
 # parent. This is the case the cleanup at the end of layout_parse_json_layout
@@ -677,6 +679,13 @@ check_ok select-window -t L:float
 check_ok new-pane -d -x 20 -y 6 -X 8 -Y 3 'sleep 100'
 check_ok new-pane -d -x 30 -y 8 -X 30 -Y 10 'sleep 100'
 
+# The tiled pane and the two floating ones. A floating pane goes on the end of
+# the window's pane list, so the pane indexes are in the order the panes were
+# made whatever order their cells end up in.
+f0=$($TMUX display-message -p -t L:float.0 '#{pane_id}')
+fa=$($TMUX display-message -p -t L:float.1 '#{pane_id}')
+fb=$($TMUX display-message -p -t L:float.2 '#{pane_id}')
+
 # A floating cell is dumped with its z-index, which is what marks it as
 # floating when the layout is parsed back. Two of them, so that there is an
 # order between them to get wrong: the newer floating pane is in front, and a
@@ -692,6 +701,153 @@ must_contain 'Floating layout back z-index' "$floating" '"z":1'
 # and only comes back the same if the panes go by index.
 check_ok select-layout -t L:float "$floating"
 must_equal 'Floating layout after round trip' "$(raw_layout L:float)" "$floating"
+
+# ---------------------------------------------------------------------------
+# Floating panes and the legacy (v1) format.
+#
+# v1 has no way to write a floating pane down, so the two formats cannot say the
+# same thing about a window that has one. Dumping v1 takes a copy of the layout,
+# deletes the floating cells from the copy and dumps what is left; parsing v1
+# rearranges the tiled panes and leaves the floating ones where they are. None
+# of this is reached above: every v1 check so far runs on a window that has no
+# floating panes, and every floating pane check so far is in v2.
+
+# float_state $target
+#
+# Everything about a floating pane that a v1 layout has no way to carry, so that
+# applying one can be checked against all of it at once.
+float_state()
+{
+	$TMUX display-message -p -t "$1" \
+		'#{pane_floating_flag} #{pane_width}x#{pane_height} #{pane_left},#{pane_top} #{pane_z}'
+}
+
+# Deleting both floating cells from the copy leaves the root node with a single
+# child, and a node with a single child collapses into it, so the root of the
+# copy is the tiled cell and the dump is that cell on its own filling the
+# window.
+must_equal 'v1 dump with floating panes' "$(v1_layout L:float)" \
+	"$(v1 "80x24,0,0,${f0#%}")"
+
+# The cells are deleted from the copy, so the window itself comes through a v1
+# dump untouched - floating panes, z-indexes and all.
+must_equal 'Layout after a v1 dump' "$(raw_layout L:float)" "$floating"
+
+# The same with a split, where deleting the floating cell still leaves two
+# children behind and the node it was in does not collapse.
+check_ok new-window -d -t L:4 -n mixed
+m0=$($TMUX display-message -p -t L:mixed.0 '#{pane_id}')
+check_ok split-window -d -v -l 12 -t L:mixed.0
+m1=$($TMUX display-message -p -t L:mixed.1 '#{pane_id}')
+check_ok new-pane -d -x 20 -y 6 -X 8 -Y 3 -t L:mixed.0 'sleep 100'
+mf=$($TMUX display-message -p -t L:mixed.2 '#{pane_id}')
+
+# A floating pane takes no space from the tiled layout, so the two tiled cells
+# are the same 11 and 12 rows the split gave them.
+must_equal 'v1 dump with a split and a floating pane' "$(v1_layout L:mixed)" \
+	"$(v1 "80x24,0,0[80x11,0,0,${m0#%},80x12,0,12,${m1#%}]")"
+
+# A v1 layout applied to a window that has a floating pane rearranges the tiled
+# panes and must leave the floating one exactly as it was: v1 names no floating
+# pane, so there is nothing in it for one to be changed by. The top pane goes
+# from 11 rows to 7 and the bottom one from 12 to 16.
+v1mixed="80x24,0,0[80x7,0,0,${m0#%},80x16,0,8,${m1#%}]"
+mfbefore=$(float_state "$mf")
+check_ok select-layout -t L:mixed "$(v1 "$v1mixed")"
+must_equal 'v1 layout with a floating pane' "$(v1_layout L:mixed)" \
+	"$(v1 "$v1mixed")"
+must_equal 'Floating pane after a v1 layout' "$(float_state "$mf")" "$mfbefore"
+must_equal 'Panes after a v1 layout' \
+	"$($TMUX display-message -p -t L:mixed '#{window_panes}')" '3'
+
+# When the tiled layout a v1 string names is a single cell there is no node in
+# the new layout for the floating cells to go back into, so one is made: the
+# root cell is replaced by a top to bottom node holding it and the floating
+# cells go on the end. Nothing else here reaches that.
+fabefore=$(float_state "$fa")
+fbbefore=$(float_state "$fb")
+check_ok select-layout -t L:float "$(v1 "80x24,0,0,${f0#%}")"
+must_equal 'v1 single cell layout with floating panes' "$(v1_layout L:float)" \
+	"$(v1 "80x24,0,0,${f0#%}")"
+must_equal 'Front floating pane after a v1 layout' "$(float_state "$fb")" \
+	"$fbbefore"
+must_equal 'Back floating pane after a v1 layout' "$(float_state "$fa")" \
+	"$fabefore"
+must_equal 'Panes after a v1 single cell layout' \
+	"$($TMUX display-message -p -t L:float '#{window_panes}')" '3'
+
+# ---------------------------------------------------------------------------
+# A window with no tiled panes.
+#
+# Killing the last tiled pane of a window that has floating panes does not kill
+# the window: that only happens when the pane being killed is the last one
+# counting the floating ones. What is left is a window whose layout root is
+# either a floating cell on its own, or a node holding nothing but floating
+# cells, depending on how many are left. v1 has no way to write either down, so
+# it must not try: a layout with no tiled panes in it produces no v1 dump at
+# all, and #{window_layout} comes back empty for a client being sent v1. What v2
+# makes of such a window is a separate question and is not checked here.
+#
+# A dead server dumps nothing either, so the checks below have to establish that
+# the server is still there before an empty dump is allowed to mean anything.
+
+# no_hang $cmd...
+#
+# Run a command whose result is not being checked, but which has to come back:
+# only the server surviving it is checked afterwards, and a server wedged rather
+# than killed would otherwise show up as the test never finishing.
+no_hang()
+{
+	if command -v timeout >/dev/null 2>&1; then
+		timeout 10 "$@" >/dev/null 2>&1
+	else
+		"$@" >/dev/null 2>&1
+	fi
+	return 0
+}
+
+# One floating pane left. The node it and the tiled cell were in is down to a
+# single child, so it collapses and the floating cell becomes the root.
+check_ok new-window -d -t L:5 -n gone1
+g0=$($TMUX display-message -p -t L:gone1.0 '#{pane_id}')
+check_ok new-pane -d -x 20 -y 6 -X 8 -Y 3 -t L:gone1.0 'sleep 100'
+check_ok kill-pane -t "$g0"
+must_equal 'Panes left with one floating pane' \
+	"$($TMUX display-message -p -t L:gone1 '#{window_panes}')" '1'
+
+# The floating cell is the root and there is nothing tiled under it, so there is
+# no v1 dump to make. In particular the floating cell must not be written out on
+# its own, which would be a layout claiming the window is the size and position
+# of the floating pane with no pane in it at all.
+got=$(v1_layout L:gone1)
+check_ok display-message -p alive
+must_equal 'v1 dump with one floating pane and no tiled panes' "$got" ''
+
+# Two floating panes left, so the node keeps two children, does not collapse,
+# and stays the root with nothing but floating cells in it.
+check_ok new-window -d -t L:6 -n gone2
+h0=$($TMUX display-message -p -t L:gone2.0 '#{pane_id}')
+check_ok new-pane -d -x 20 -y 6 -X 8 -Y 3 -t L:gone2.0 'sleep 100'
+check_ok new-pane -d -x 30 -y 8 -X 30 -Y 10 -t L:gone2.0 'sleep 100'
+check_ok kill-pane -t "$h0"
+must_equal 'Panes left with two floating panes' \
+	"$($TMUX display-message -p -t L:gone2 '#{window_panes}')" '2'
+
+# The node is the root this time rather than the floating cell, but it has no
+# tiled cell anywhere under it either, so there is still no v1 dump to make -
+# and making one must not take the server with it.
+got=$(v1_layout L:gone2)
+check_ok display-message -p alive
+must_equal 'v1 dump with two floating panes and no tiled panes' "$got" ''
+
+# Nor must parsing a v1 layout against it. There is no tiled pane for the
+# layout to name, so whether it is applied or rejected is the format's business;
+# it just has to be one of the two.
+no_hang $TMUX select-layout -t L:gone2 "$(v1 '80x24,0,0,999')"
+check_ok display-message -p alive
+
+check_ok kill-window -t L:gone1
+check_ok kill-window -t L:gone2
 
 # ---------------------------------------------------------------------------
 # Control mode notifications.

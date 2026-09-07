@@ -47,7 +47,7 @@
  *    "c": array of child cells
  *  If the cell is a leaf cell (that is, containing a pane and no child cells),
  *  it additionally has:
- *    "I": pane ID as %n
+ *    "I": pane ID as %n (currently ignored on parse)
  *    "l": index into last panes list if visited and not the active pane
  *    "a": true if the active pane
  *    "i": pane index
@@ -61,6 +61,7 @@ struct layout_string {
 	size_t	 capacity;	/* bytes allocated */
 };
 
+/* Layout parse cell context. */
 struct layout_parse_cell_ctx {
 	struct layout_cell	*lc;
 	int			 active;
@@ -69,6 +70,7 @@ struct layout_parse_cell_ctx {
 	int			 zindex;
 };
 
+/* Layout parse context. */
 struct layout_parse_ctx {
 	int64_t				  version;
 	int				  num_active;
@@ -90,7 +92,7 @@ static void			 layout_assign(struct window *,
 				     struct layout_parse_ctx *);
 static void			 layout_parse_apply_ctx(struct window *,
 				     struct layout_parse_ctx *);
-static struct layout_cell	*layout_parse_json_layout( struct json_node *,
+static struct layout_cell	*layout_parse_json_layout(struct json_node *,
 				     struct layout_cell *,
 				     struct layout_parse_ctx *);
 static int			 layout_parse_ctx_check_indexes(
@@ -167,7 +169,7 @@ layout_string_write(struct layout_string *ls, const char *fmt, ...)
 {
 	va_list	 ap;
 	char	*s;
-	size_t	 slen;
+	int	 slen;
 
 	va_start(ap, fmt);
 	slen = xvasprintf(&s, fmt, ap);
@@ -184,6 +186,7 @@ layout_string_write(struct layout_string *ls, const char *fmt, ...)
 	free(s);
 }
 
+/* Initialize a parse context. */
 static void
 layout_parse_init_ctx(struct layout_parse_ctx *pctx, char **cause)
 {
@@ -272,21 +275,26 @@ layout_checksum(const char *layout)
 
 /* Dump layout as a string. */
 char *
-layout_dump(__unused struct window *w, struct layout_cell *root, int flags)
+layout_dump(__unused struct window *w, struct layout_cell *lcroot, int flags)
 {
-	struct layout_string	 layout;
+	struct layout_string	 layout_string;
 	char			*out = NULL;
 
-	layout_string_init(&layout);
+	if (lcroot == NULL)
+		return NULL;
 
-	if (layout_append(root, &layout, flags) == 0) {
+	layout_string_init(&layout_string);
+
+	if (layout_append(lcroot, &layout_string, flags) == 0) {
 		if (flags & LAYOUT_CUSTOM_OLD_FORMAT)
-			xasprintf(&out, "%04hx,%s", layout_checksum(layout.dat),
-			    layout.dat);
+			xasprintf(&out, "%04hx,%s",
+			    layout_checksum(layout_string.dat),
+			    layout_string.dat);
 		else
-			xasprintf(&out, "{\"V\":2,\"L\":%s}", layout.dat);
+			xasprintf(&out, "{\"V\":2,\"L\":%s}",
+			    layout_string.dat);
 	}
-	layout_string_free(&layout);
+	layout_string_free(&layout_string);
 
 	return (out);
 }
@@ -302,7 +310,7 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 	u_int			 i, n;
 
 	if (lc == NULL)
-		return (0);
+		return (-1);
 
 	type = lc->type;
 	if (type == LAYOUT_TOPBOTTOM)
@@ -337,8 +345,9 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 			layout_string_write(ls, ",\"a\":true");
 		else if (window_pane_last_index(wp, &i) == 0)
 			layout_string_write(ls, ",\"l\":%u", i);
-		if (window_pane_index(wp, &i) == 0)
-			layout_string_write(ls, ",\"i\":%u", i);
+		if (window_pane_index(wp, &i) != 0)
+			return (-1);
+		layout_string_write(ls, ",\"i\":%u", i);
 		if ((lc->flags & LAYOUT_CELL_FLOATING) &&
 		    window_pane_zindex(wp, &i) == 0)
 			layout_string_write(ls, ",\"z\":%u", i);
@@ -356,10 +365,9 @@ layout_append_v1(struct layout_cell *lc, struct layout_string *ls)
 {
 	struct layout_cell	*lcchild;
 	const char		*brackets = "[]";
-	int			 n;
 
 	if (lc == NULL)
-		return (0);
+		return (-1);
 
 	if (lc->wp != NULL) {
 		layout_string_write(ls, "%ux%u,%d,%d,%u", lc->g.sx, lc->g.sy,
@@ -374,18 +382,11 @@ layout_append_v1(struct layout_cell *lc, struct layout_string *ls)
 		/* FALLTHROUGH */
 	case LAYOUT_TOPBOTTOM:
 		layout_string_write(ls, "%c", brackets[0]);
-		n = 0;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (!layout_cell_is_tiled(lcchild) &&
-			    !layout_cell_has_tiled_child(lcchild))
-				continue;
 			if (layout_append_v1(lcchild, ls) != 0)
 				return (-1);
 			layout_string_write(ls, ",");
-			n++;
 		}
-		if (n == 0)
-			return (-1);
 
 		ls->dat[--ls->size] = '\0'; /* removing trailing comma */
 		layout_string_write(ls, "%c", brackets[1]);
@@ -397,13 +398,128 @@ layout_append_v1(struct layout_cell *lc, struct layout_string *ls)
 	return (0);
 }
 
+/*
+ * Copies a layout. Only populates what is necessary to dump a V1 layout string.
+ */
+static struct layout_cell *
+layout_custom_copy_layout(struct layout_cell *lc)
+{
+	struct layout_cell	*lcchild, *lcnewchild;
+	struct layout_cell	*lcnew = layout_create_cell(NULL);
+
+	lcnew->type = lc->type;
+	lcnew->flags = lc->flags;
+	if (~lc->flags & LAYOUT_CELL_FLOATING)
+		lcnew->wp = lc->wp;
+	layout_set_size(lcnew, lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff);
+
+	switch (lc->type) {
+	case LAYOUT_WINDOWPANE:
+		break;
+	case LAYOUT_TOPBOTTOM:
+	case LAYOUT_LEFTRIGHT:
+		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+			lcnewchild = layout_custom_copy_layout(lcchild);
+			TAILQ_INSERT_TAIL(&lcnew->cells, lcnewchild, entry);
+			lcnewchild->parent = lcnew;
+		}
+		break;
+	}
+
+	return (lcnew);
+}
+
+/* Deletes floating cells from the provided layout. */
+static void
+layout_custom_delete_floating_cells(struct layout_cell *lc,
+    struct layout_cell **lcroot)
+{
+	struct layout_cell	*lcchild, *lcnext;
+
+	switch (lc->type) {
+	case LAYOUT_WINDOWPANE:
+		break;
+	case LAYOUT_TOPBOTTOM:
+	case LAYOUT_LEFTRIGHT:
+		lcchild = TAILQ_FIRST(&lc->cells);
+		while (lcchild != NULL) {
+			lcnext = TAILQ_NEXT(lcchild, entry);
+
+			switch (lcchild->type) {
+			case LAYOUT_WINDOWPANE:
+				if (lcchild->flags & LAYOUT_CELL_FLOATING)
+					layout_destroy_cell(NULL, lcchild,
+					    lcroot);
+				break;
+			case LAYOUT_TOPBOTTOM:
+			case LAYOUT_LEFTRIGHT:
+				layout_custom_delete_floating_cells(lcchild,
+				    lcroot);
+				break;
+			}
+
+			lcchild = lcnext;
+		}
+		break;
+	}
+}
+
+/* Create a compatibility layout for dumping a V1 layout string. */
+static struct layout_cell *
+layout_custom_create_compat(struct layout_cell *lcroot)
+{
+	struct layout_cell	*lccompat;
+
+	lccompat = layout_custom_copy_layout(lcroot);
+	layout_custom_delete_floating_cells(lccompat, &lccompat);
+
+	return (lccompat);
+}
+
+/* Unlinks all panes from the given layout. */
+static void
+layout_custom_unlink_panes(struct layout_cell *lc)
+{
+	struct layout_cell	*lcchild;
+
+	switch (lc->type) {
+	case LAYOUT_WINDOWPANE:
+		lc->wp = NULL;
+		break;
+	case LAYOUT_LEFTRIGHT:
+	case LAYOUT_TOPBOTTOM:
+		TAILQ_FOREACH(lcchild, &lc->cells, entry)
+			layout_custom_unlink_panes(lcchild);
+		break;
+	}
+}
+
+/* Frees the compatibility layout. */
+static void
+layout_custom_free_compat(struct layout_cell *lcroot)
+{
+	layout_custom_unlink_panes(lcroot);
+	layout_free_cell(lcroot, 0);
+}
+
 /* Dispatch to append the appropriate version. */
 static int
-layout_append(struct layout_cell *lc, struct layout_string *ls, int flags)
+layout_append(struct layout_cell *lcroot, struct layout_string *ls, int flags)
 {
-	if (flags & LAYOUT_CUSTOM_OLD_FORMAT)
-		return (layout_append_v1(lc, ls));
-	return (layout_append_v2(lc, ls));
+	struct layout_cell	*lccompat;
+	int			 result;
+
+	if (flags & LAYOUT_CUSTOM_OLD_FORMAT) {
+		if (!layout_cell_is_tiled(lcroot) &&
+		    !layout_cell_has_tiled_child(lcroot))
+			return (-1);
+		lccompat = layout_custom_create_compat(lcroot);
+		result = layout_append_v1(lccompat, ls);
+		layout_custom_free_compat(lccompat);
+	} else
+		result = layout_append_v2(lcroot, ls);
+
+	return (result);
 }
 
 /* Check layout sizes fit. */
@@ -450,7 +566,7 @@ layout_check(struct layout_cell *lc)
 
 /* Parse a layout string and arrange window as layout. */
 int
-layout_parse(struct window *w, const char *layout, char **cause)
+layout_parse(struct window *w, const char *input, char **cause)
 {
 	struct window_pane	*wp;
 	struct layout_cell	*lcchild, *lc = NULL;
@@ -460,14 +576,18 @@ layout_parse(struct window *w, const char *layout, char **cause)
 
 	/* Build the layout. */
 	layout_parse_init_ctx(&pctx, cause);
-	if (layout_construct(layout, &pctx) != 0) {
+	if (layout_construct(input, &pctx) != 0) {
 		layout_parse_free_ctx(&pctx);
 		return (-1);
 	}
-	with_floating = pctx.version >= 2;
+	with_floating = pctx.version > 1;
 
 	/* Check this window will fit into the layout. */
 	npanes = window_count_panes(w, with_floating);
+	if (npanes == 0) {
+		xasprintf(cause, "window @%u has no panes", w->id);
+		goto fail;
+	}
 	for (;;) {
 		ncells = layout_count_cells(pctx.root, with_floating);
 		if (npanes > ncells) {
@@ -483,23 +603,12 @@ layout_parse(struct window *w, const char *layout, char **cause)
 		 * remain.
 		 */
 		lcchild = layout_find_bottomright(pctx.root);
-		if (pctx.version != 1 && layout_parse_remove_cctx(&pctx,
+		if (pctx.version > 1 && layout_parse_remove_cctx(&pctx,
 		    lcchild) != 0) {
 			*cause = xstrdup("empty/missing layout parse context");
 			goto fail;
 		}
-		layout_destroy_cell(w, lcchild, &pctx.root);
-	}
-
-	/* Preserve floating panes for version 1. */
-	if (pctx.version < 2) {
-		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (!window_pane_is_floating(wp))
-				continue;
-			lc = wp->layout_cell;
-			TAILQ_REMOVE(&lc->parent->cells, lc, entry);
-			lc->parent = NULL;
-		}
+		layout_destroy_cell(NULL, lcchild, &pctx.root);
 	}
 
 	/* The root is now owned by lc. */
@@ -550,6 +659,17 @@ layout_parse(struct window *w, const char *layout, char **cause)
 	    layout_cell_has_tiled_child(lc))
 		window_resize(w, lc->g.sx, lc->g.sy, -1, -1);
 
+	/* Preserve floating panes for version 1. */
+	if (pctx.version == 1) {
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (!window_pane_is_floating(wp))
+				continue;
+			lcchild = wp->layout_cell;
+			TAILQ_REMOVE(&lcchild->parent->cells, lcchild, entry);
+			lcchild->parent = NULL;
+		}
+	}
+
 	/* Destroy the old layout and swap to the new. */
 	layout_free_cell(w->layout_root, 0);
 	w->layout_root = lc;
@@ -560,7 +680,7 @@ layout_parse(struct window *w, const char *layout, char **cause)
 	/* Update pane attributes. */
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
-	if (pctx.version != 1)
+	if (pctx.version > 1)
 		layout_parse_apply_ctx(w, &pctx);
 	recalculate_sizes();
 	layout_print_cell(lc, __func__, 0);
@@ -598,8 +718,8 @@ layout_assign_from_ctx(struct window *w, struct layout_parse_ctx *pctx)
 }
 
 /*
- * Assign tiled cells to availible panes. Skips paness that already have a cell,
- * which are guaranteed to be floating.
+ * Assign tiled cells to available panes. Panes that already have a cell are
+ * floating and are skipped over.
  */
 static void
 layout_assign_fallback_tiled(struct window_pane **wp, struct layout_cell *lc)
@@ -611,8 +731,11 @@ layout_assign_fallback_tiled(struct window_pane **wp, struct layout_cell *lc)
 
 	switch (lc->type) {
 	case LAYOUT_WINDOWPANE:
-		if ((*wp)->layout_cell == NULL)
-			layout_make_leaf(lc, *wp);
+		while (*wp != NULL && (*wp)->layout_cell != NULL)
+			*wp = TAILQ_NEXT(*wp, entry);
+		if (*wp == NULL)
+			return;
+		layout_make_leaf(lc, *wp);
 		*wp = TAILQ_NEXT(*wp, entry);
 		return;
 	case LAYOUT_LEFTRIGHT:
@@ -636,7 +759,7 @@ layout_assign_fallback(struct window *w, struct layout_cell *lcroot)
 
 	layout_assign_fallback_tiled(&wp, lcroot);
 
-	if (layout_count_cells(lcroot, 1) > 1 &&
+	if (window_count_panes(w, 1) > 1 &&
 	    lcroot->type == LAYOUT_WINDOWPANE)
 		lcroot = layout_replace_with_node(w, lcroot, LAYOUT_TOPBOTTOM);
 
@@ -727,10 +850,10 @@ layout_construct_v1(struct layout_cell *lcparent, const char **layout)
 	case '\0':
 		return (lc);
 	case '{':
-		(lc)->type = LAYOUT_LEFTRIGHT;
+		lc->type = LAYOUT_LEFTRIGHT;
 		break;
 	case '[':
-		(lc)->type = LAYOUT_TOPBOTTOM;
+		lc->type = LAYOUT_TOPBOTTOM;
 		break;
 	default:
 		goto fail;
@@ -810,7 +933,7 @@ layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
 {
 	struct json_node	 *member, *array;
 	struct layout_cell	 *lc = layout_create_cell(lcparent), *lcchild;
-	const char		 *str;
+	char			 *str;
 	int64_t			  num;
 	char			**cause = pctx->cause;
 	int			  boolean, index, zindex, active = -1;
@@ -908,8 +1031,9 @@ layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
 	} else {
 		if (json_find_array(node, "c", &array, cause) != 0)
 			goto fail;
-		if ((member = json_array_first(array)) == NULL) {
-			*cause = xstrdup("nodes must have children");
+		if ((member = json_array_first(array)) == NULL ||
+		    json_array_next(member) == NULL) {
+			*cause = xstrdup("nodes must have more than one child");
 			goto fail;
 		}
 		while (member != NULL) {
@@ -931,32 +1055,36 @@ fail:
 
 /* Construct a layout root from a formatted string. */
 static int
-layout_construct(const char *layout, struct layout_parse_ctx *pctx)
+layout_construct(const char *input, struct layout_parse_ctx *pctx)
 {
 	struct json_node	*json;
 	u_short			 csum;
 	int			 n = 0;
 
-	while (isspace((u_char) *layout))
-		layout++;
+	while (isspace((u_char) *input))
+		input++;
 
-	if (*layout != '{') { /* sniffing version */
-		if (sscanf(layout, "%hx,%n", &csum, &n) != 1 || n != 5) {
+	if (*input != '{') { /* sniffing version */
+		if (sscanf(input, "%hx,%n", &csum, &n) != 1 || n != 5) {
 			*pctx->cause = xstrdup("malformed layout header");
 			return (-1);
 		}
-		layout += n;
-		if (csum != layout_checksum(layout)) {
+		input += n;
+		if (csum != layout_checksum(input)) {
 			*pctx->cause = xstrdup("invalid layout checksum");
 			return (-1);
 		}
-		if ((pctx->root = layout_construct_v1(NULL, &layout)) == NULL) {
+		if ((pctx->root = layout_construct_v1(NULL, &input)) == NULL) {
 			*pctx->cause = xstrdup("invalid layout");
+			return (-1);
+		}
+		if (*input != '\0') {
+			*pctx->cause = xstrdup("trailing data");
 			return (-1);
 		}
 		pctx->version = 1;
 	} else {
-		if ((json = json_parse(layout, pctx->cause)) == NULL)
+		if ((json = json_parse(input, pctx->cause)) == NULL)
 			return (-1);
 
 		if (layout_parse_json(json, pctx) != 0)

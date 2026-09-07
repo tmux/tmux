@@ -722,7 +722,7 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 	/* If no parent, this is the last pane in a window. */
 	lcparent = lc->parent;
 	if (lcparent == NULL) {
-		if (lc->wp != NULL)
+		if (*lcroot == lc)
 			*lcroot = NULL;
 		layout_free_cell(lc, 0);
 		return;

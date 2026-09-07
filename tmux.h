@@ -4280,7 +4280,7 @@ void			 json_destroy_node(struct json_node *);
 struct json_node	*json_find(struct json_node *, const char *);
 struct json_node	*json_array_first(struct json_node *);
 struct json_node	*json_array_next(struct json_node *);
-int			 json_get_string(struct json_node *, const char **);
+int			 json_get_string(struct json_node *, char **);
 int			 json_get_number(struct json_node *, int64_t *);
 int			 json_get_boolean(struct json_node *, int *);
 int			 json_get_object(struct json_node *,
@@ -4288,7 +4288,7 @@ int			 json_get_object(struct json_node *,
 int			 json_get_array(struct json_node *,
 			     struct json_node **);
 int			 json_find_string(struct json_node *, const char *,
-			     const char **, char **);
+			     char **, char **);
 int			 json_find_number(struct json_node *, const char *,
 			     int64_t *, char **);
 int			 json_find_boolean(struct json_node *, const char *,
