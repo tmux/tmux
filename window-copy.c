@@ -4182,8 +4182,13 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 			break;
 		}
 	}
-	if (!found_start)
+	if (!found_start) {
+		/* At the live prompt, use the most recent command output. */
+		if (cursor_y == screen_hsize(data->source) + data->source->cy)
+			return (window_copy_find_previous_output_range(data->source,
+			    sx, sy, ex, ey));
 		return (0);
+	}
 	if (!found_end) {
 		if (y != total)
 			return (0);
