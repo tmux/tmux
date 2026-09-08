@@ -4782,6 +4782,9 @@ not scroll the terminal's scrollback away and the scrollback is restored when
 the application exits.
 This does not happen when the window is split or the pane is in a mode such
 as copy mode.
+When disabled, each line is also written to the client before it scrolls off a
+full-window pane, so the terminal's scrollback receives every line; this is
+about 18% more output for a full-screen repaint.
 .It Xo Ic command\-alias[]
 .Ar name=value
 .Xc
