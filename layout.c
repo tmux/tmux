@@ -233,28 +233,6 @@ layout_make_node(struct layout_cell *lc, enum layout_type type)
 	lc->wp = NULL;
 }
 
-/* Fix z-indexes. */
-void
-layout_fix_zindexes(struct window *w)
-{
-	struct window_pane	*wp, *wpnext;
-
-	/* Remove non-floating panes from the z-index. */
-	wp = TAILQ_FIRST(&w->z_index);
-	while (wp != NULL) {
-		wpnext = TAILQ_NEXT(wp, zentry);
-		if (!window_pane_is_floating(wp)) {
-			TAILQ_REMOVE(&w->z_index, wp, zentry);
-		}
-		wp = wpnext;
-	}
-
-	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (!window_pane_is_floating(wp))
-			TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
-	}
-}
-
 int
 layout_cell_is_tiled(struct layout_cell *lc)
 {
