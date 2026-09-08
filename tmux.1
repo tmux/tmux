@@ -6373,6 +6373,22 @@ see the
 .Sx STYLES
 section.
 .Pp
+\.It Ic scroll\-replay Ar lines
+With
+.Ic clear\-on\-attach
+disabled, replay up to
+.Ar lines
+lines of the window's history to the client terminal when it becomes the
+current window, after erasing the terminal's scrollback, so the terminal's
+scrollback shows this window's history rather than the previous window's.
+The default of 0 disables it.
+This erases whatever the terminal's scrollback held, including output from
+before
+.Nm
+was attached; it needs the
+.Em E3
+capability, is deferred while the terminal is on its alternate screen, and
+does not happen when the window is split.
 .It Xo Ic synchronize\-panes
 .Op Ic on | off
 .Xc

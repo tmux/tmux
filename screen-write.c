@@ -38,7 +38,7 @@ static u_int	screen_write_collect_flush_line(struct screen_write_ctx *,
 		    u_int);
 
 /* Does the pane fill its window? Only then do its scrolls reach the client. */
-static int
+int
 screen_write_full_window(struct window_pane *wp)
 {
 	if (wp == NULL || wp->window == NULL)

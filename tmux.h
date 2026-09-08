@@ -2303,6 +2303,7 @@ struct client {
 #define CLIENT_ASSUMEPASTING 0x2000000000ULL
 #define CLIENT_WRITE_ACK 0x4000000000ULL
 #define CLIENT_NO_DETACH_ON_DESTROY 0x8000000000ULL
+#define CLIENT_REPLAYSCROLL 0x10000000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
@@ -3316,6 +3317,7 @@ int	 server_create_socket(uint64_t, char **);
 
 /* server-client.c */
 u_int	 server_client_how_many(void);
+void	 server_client_replay_scroll(struct client *);
 void	 server_client_set_overlay(struct client *, u_int, overlay_check_cb,
 	     overlay_mode_cb, overlay_draw_cb, overlay_key_cb,
 	     overlay_free_cb, overlay_resize_cb, void *);
@@ -3572,6 +3574,7 @@ char	*grid_view_string_cells(struct grid *, u_int, u_int, u_int);
 /* screen-write.c */
 void	 screen_write_make_list(struct screen *);
 void	 screen_write_free_list(struct screen *);
+int	 screen_write_full_window(struct window_pane *);
 void	 screen_write_start_pane(struct screen_write_ctx *,
 	     struct window_pane *, struct screen *);
 void	 screen_write_start(struct screen_write_ctx *, struct screen *);

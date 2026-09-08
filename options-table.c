@@ -1723,6 +1723,17 @@ const struct options_table_entry options_table[] = {
 		  "history when clearing the whole screen."
 	},
 
+	{ .name = "scroll-replay",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .minimum = 0,
+	  .maximum = 100000,
+	  .default_num = 0,
+	  .text = "Number of lines of history to write to the client's terminal, "
+		  "after clearing its saved lines, when a window becomes current. "
+		  "For terminals that keep their own scrollback. Zero disables."
+	},
+
 	{ .name = "switch-mode-match-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
@@ -1731,6 +1742,8 @@ const struct options_table_entry options_table[] = {
 	  .separator = ",",
 	  .text = "Style of matched characters in switch mode."
 	},
+
+
 
 	{ .name = "synchronize-panes",
 	  .type = OPTIONS_TABLE_FLAG,
