@@ -9072,8 +9072,7 @@ and flags (currently not used).
 For example:
 .Bd -literal -offset indent
 %begin 1363006971 2 1
-0: ksh* (1 panes) [80x24] [layout
-{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"a":true,"i":0,"I":"%2"}}] @2 (active)
+0: ksh* (1 panes) [80x24] [layout {"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"a":true,"i":0,"I":"%2"}}] @2 (active)
 %end 1363006971 2 1
 .Ed
 .Pp
@@ -9135,15 +9134,14 @@ The layout of a window with ID
 changed.
 The new layout is
 .Ar window\-layout
-(if the
+and the window's visible layout is
+.Ar window\-visible\-layout .
+If the
 .Ar new\-layouts
-flag is set, the new format string is used.
-See
+flag is set, both layout fields use the new format string; see
 .Ic refresh\-client
-.Fl f ) .
-The window's visible layout is
-.Ar window\-visible\-layout
-and the window flags are
+.Fl f .
+The window flags are
 .Ar window\-flags .
 .It Ic %message Ar message
 A message sent with the
