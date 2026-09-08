@@ -399,17 +399,24 @@ layout_append_v1(struct layout_cell *lc, struct layout_string *ls)
 }
 
 /*
- * Copies a layout. Only populates what is necessary to dump a V1 layout string.
+ * Copies the tiled part of a layout. Only populates what is necessary to dump a
+ * V1 layout string.
  */
 static struct layout_cell *
 layout_custom_copy_layout(struct layout_cell *lc)
 {
-	struct layout_cell	*lcchild, *lcnewchild;
-	struct layout_cell	*lcnew = layout_create_cell(NULL);
+	struct layout_cell	*lcchild, *lcnewchild, *lconly;
+	struct layout_cell	*lcnew;
+
+	if (lc->type == LAYOUT_WINDOWPANE &&
+	    (lc->flags & LAYOUT_CELL_FLOATING))
+		return (NULL);
+
+	lcnew = layout_create_cell(NULL);
 
 	lcnew->type = lc->type;
 	lcnew->flags = lc->flags;
-	if (~lc->flags & LAYOUT_CELL_FLOATING)
+	if (lc->type == LAYOUT_WINDOWPANE)
 		lcnew->wp = lc->wp;
 	layout_set_size(lcnew, lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff);
 
@@ -420,48 +427,27 @@ layout_custom_copy_layout(struct layout_cell *lc)
 	case LAYOUT_LEFTRIGHT:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			lcnewchild = layout_custom_copy_layout(lcchild);
+			if (lcnewchild == NULL)
+				continue;
 			TAILQ_INSERT_TAIL(&lcnew->cells, lcnewchild, entry);
 			lcnewchild->parent = lcnew;
+		}
+
+		lconly = TAILQ_FIRST(&lcnew->cells);
+		if (lconly == NULL) {
+			layout_free_cell(lcnew, 0);
+			return (NULL);
+		}
+		if (TAILQ_NEXT(lconly, entry) == NULL) {
+			TAILQ_REMOVE(&lcnew->cells, lconly, entry);
+			lconly->parent = NULL;
+			layout_free_cell(lcnew, 0);
+			return (lconly);
 		}
 		break;
 	}
 
 	return (lcnew);
-}
-
-/* Deletes floating cells from the provided layout. */
-static void
-layout_custom_delete_floating_cells(struct layout_cell *lc,
-    struct layout_cell **lcroot)
-{
-	struct layout_cell	*lcchild, *lcnext;
-
-	switch (lc->type) {
-	case LAYOUT_WINDOWPANE:
-		break;
-	case LAYOUT_TOPBOTTOM:
-	case LAYOUT_LEFTRIGHT:
-		lcchild = TAILQ_FIRST(&lc->cells);
-		while (lcchild != NULL) {
-			lcnext = TAILQ_NEXT(lcchild, entry);
-
-			switch (lcchild->type) {
-			case LAYOUT_WINDOWPANE:
-				if (lcchild->flags & LAYOUT_CELL_FLOATING)
-					layout_destroy_cell(NULL, lcchild,
-					    lcroot);
-				break;
-			case LAYOUT_TOPBOTTOM:
-			case LAYOUT_LEFTRIGHT:
-				layout_custom_delete_floating_cells(lcchild,
-				    lcroot);
-				break;
-			}
-
-			lcchild = lcnext;
-		}
-		break;
-	}
 }
 
 /* Create a compatibility layout for dumping a V1 layout string. */
@@ -471,7 +457,10 @@ layout_custom_create_compat(struct layout_cell *lcroot)
 	struct layout_cell	*lccompat;
 
 	lccompat = layout_custom_copy_layout(lcroot);
-	layout_custom_delete_floating_cells(lccompat, &lccompat);
+	if (lccompat != NULL && layout_cell_is_tiled(lccompat)) {
+		lccompat->g.xoff = 0;
+		lccompat->g.yoff = 0;
+	}
 
 	return (lccompat);
 }
@@ -498,6 +487,8 @@ layout_custom_unlink_panes(struct layout_cell *lc)
 static void
 layout_custom_free_compat(struct layout_cell *lcroot)
 {
+	if (lcroot == NULL)
+		return;
 	layout_custom_unlink_panes(lcroot);
 	layout_free_cell(lcroot, 0);
 }
@@ -933,7 +924,7 @@ layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
 {
 	struct json_node	 *member, *array;
 	struct layout_cell	 *lc = layout_create_cell(lcparent), *lcchild;
-	char			 *str;
+	const char		 *str;
 	int64_t			  num;
 	char			**cause = pctx->cause;
 	int			  boolean, index, zindex, active = -1;

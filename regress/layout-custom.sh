@@ -44,9 +44,10 @@
 #   v1 layout leaving the active pane and last pane stack untouched;
 # - the legacy format meeting the floating panes it cannot represent: a v1 dump
 #   dropping the floating cells, both where that leaves the node they were in
-#   with one child so that it collapses and where it does not, and a v1 layout
-#   being applied to a window that has floating panes without disturbing them,
-#   whether the tiled layout it names is a single cell or a split;
+#   with one child so that it collapses, where it does not, and where adjacent
+#   nested floating-only subtrees are dropped, and a v1 layout being applied to
+#   a window that has floating panes without disturbing them, whether the tiled
+#   layout it names is a single cell or a split;
 # - a window whose only tiled pane has been killed, which leaves it with a
 #   floating cell as its layout root or with a root node holding nothing but
 #   floating cells, producing no v1 dump at all, and being parsed as v1;
@@ -775,6 +776,27 @@ must_equal 'Back floating pane after a v1 layout' "$(float_state "$fa")" \
 	"$fabefore"
 must_equal 'Panes after a v1 single cell layout' \
 	"$($TMUX display-message -p -t L:float '#{window_panes}')" '3'
+
+# Adjacent subtrees containing only floating panes used to be a distinct case:
+# dumping v1 made a copy of the v2 tree and deleted floating cells from the
+# copy, but deleting the last floating cell in the first subtree collapsed the
+# parent and could leave the outer traversal holding a stale pointer to the
+# second subtree.
+check_ok new-window -d -t L:5 -n nested
+n0=$($TMUX display-message -p -t L:nested.0 '#{pane_id}')
+check_ok split-window -d -v -l 12 -t L:nested.0
+n1=$($TMUX display-message -p -t L:nested.1 '#{pane_id}')
+check_ok split-window -d -v -l 6 -t L:nested.1
+n2=$($TMUX display-message -p -t L:nested.2 '#{pane_id}')
+check_ok split-window -d -v -l 3 -t L:nested.2
+n3=$($TMUX display-message -p -t L:nested.3 '#{pane_id}')
+check_ok split-window -d -v -l 2 -t L:nested.3
+n4=$($TMUX display-message -p -t L:nested.4 '#{pane_id}')
+check_ok select-layout -t L:nested \
+	'{"V":2,"L":{"t":"v","w":80,"h":24,"x":0,"y":0,"c":[{"t":"h","w":30,"h":10,"x":0,"y":0,"c":[{"t":"p","w":10,"h":5,"x":2,"y":2,"i":0,"z":0},{"t":"p","w":12,"h":6,"x":5,"y":5,"i":1,"z":1}]},{"t":"h","w":30,"h":10,"x":0,"y":0,"c":[{"t":"p","w":14,"h":7,"x":8,"y":8,"i":2,"z":2},{"t":"p","w":16,"h":8,"x":11,"y":11,"i":3,"z":3}]},{"t":"p","w":80,"h":24,"x":0,"y":0,"i":4}]}}'
+must_equal 'v1 dump with nested floating-only subtrees' \
+	"$(v1_layout L:nested)" "$(v1 "80x24,0,0,${n4#%}")"
+check_ok kill-window -t L:nested
 
 # ---------------------------------------------------------------------------
 # A window with no tiled panes.
