@@ -4774,6 +4774,14 @@ When disabled,
 .Nm
 does not enter the alternate screen; instead the existing terminal content is
 scrolled into the scrollback buffer so it remains accessible.
+When disabled and the active pane fills the window, an application using the
+pane's alternate screen (see the
+.Ic alternate\-screen
+option) also switches the client terminal to its alternate screen, so it does
+not scroll the terminal's scrollback away and the scrollback is restored when
+the application exits.
+This does not happen when the window is split or the pane is in a mode such
+as copy mode.
 .It Xo Ic command\-alias[]
 .Ar name=value
 .Xc
