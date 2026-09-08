@@ -171,6 +171,8 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 
 	if (status_at_line(c) == 0)
 		ttyctx->yoff += status_line_size(c);
+	if (status_side_at_column(c) == 0)
+		ttyctx->xoff += status_side_size(c);
 
 	return (1);
 }

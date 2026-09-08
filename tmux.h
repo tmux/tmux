@@ -976,6 +976,7 @@ struct style_range {
 
 	u_int			 start;
 	u_int			 end; /* not included */
+	u_int			 y; /* row for multi-row areas */
 
 	TAILQ_ENTRY(style_range) entry;
 };
@@ -1018,6 +1019,8 @@ struct style {
 	int			pad;
 
 	enum style_default_type	default_type;
+
+	int			nl;
 
 	u_int			link;
 };
@@ -1628,6 +1631,8 @@ struct session {
 
 	int		 statusat;
 	u_int		 statuslines;
+	int		 sidestatusat; /* -1 off, 0 left, 1 right */
+	u_int		 sidestatuswidth;
 
 	struct options	*options;
 
@@ -1687,6 +1692,8 @@ struct mouse_event {
 
 	int		statusat;
 	u_int		statuslines;
+	int		sideat;
+	u_int		sidecols;
 
 	u_int		x;
 	u_int		y;
@@ -2080,6 +2087,16 @@ struct status_line {
 	struct style_line_entry entries[STATUS_LINES_LIMIT];
 };
 
+/* Side status line. */
+struct side_status_line {
+	struct screen		 screen;
+
+	struct grid_cell	 style;
+	char			*expanded;
+	int			 linex;
+	struct style_ranges	 ranges;
+};
+
 /* File in client. */
 typedef void (*client_file_cb) (struct client *, const char *, int, int,
     struct evbuffer *, void *);
@@ -2256,6 +2273,7 @@ struct client {
 	struct mouse_event	 click_event;
 
 	struct status_line	 status;
+	struct side_status_line	 side_status;
 	struct event		 cycle_timer;
 	enum client_theme	 theme;
 
@@ -2296,7 +2314,7 @@ struct client {
 #define CLIENT_CONTROL_PAUSEAFTER 0x100000000ULL
 #define CLIENT_CONTROL_WAITEXIT 0x200000000ULL
 #define CLIENT_WINDOWSIZECHANGED 0x400000000ULL
-/* 0x800000000ULL unused */
+#define CLIENT_SIDESTATUSOFF 0x800000000ULL
 #define CLIENT_BRACKETPASTING 0x1000000000ULL
 #define CLIENT_ASSUMEPASTING 0x2000000000ULL
 #define CLIENT_WRITE_ACK 0x4000000000ULL
@@ -2780,6 +2798,9 @@ void	 events_fire_winlink(const char *, struct winlink *);
 /* format-draw.c */
 void	 format_draw(struct screen_write_ctx *, const struct grid_cell *,
 	     u_int, const char *, struct style_ranges *, int);
+u_int	 format_draw_lines(struct screen_write_ctx *,
+	     const struct grid_cell *, u_int, u_int, u_int, const char *,
+	     struct style_ranges *, int);
 u_int	 format_width(const char *);
 char	*format_trim_left(const char *, u_int);
 char	*format_trim_right(const char *, u_int);
@@ -3377,6 +3398,13 @@ void	 status_update_cache(struct session *);
 u_int	 status_prompt_line_at(struct client *);
 int	 status_at_line(struct client *);
 u_int	 status_line_size(struct client *);
+u_int	 status_side_size(struct client *);
+int	 status_side_at_column(struct client *);
+u_int	 status_side_rows(struct client *);
+void	 status_side_init(struct client *);
+void	 status_side_free(struct client *);
+int	 status_side_redraw(struct client *);
+struct style_range *status_side_get_range(struct client *, u_int, u_int);
 struct style_range *status_get_range(struct client *, u_int, u_int);
 void	 status_init(struct client *);
 void	 status_free(struct client *);
@@ -4215,6 +4243,8 @@ void		 style_set_scrollbar_style_from_option(struct style *,
 void		 style_ranges_init(struct style_ranges *);
 void		 style_ranges_free(struct style_ranges *);
 struct style_range *style_ranges_get_range(struct style_ranges *, u_int);
+struct style_range *style_ranges_get_range_at(struct style_ranges *, u_int,
+		     u_int);
 
 /* spawn.c */
 struct winlink	*spawn_window(struct spawn_context *, char **);

@@ -377,6 +377,10 @@ cmd_split_window_mouse_resize(struct client *c, struct mouse_event *m)
 		y -= m->statuslines;
 	else if (m->statusat > 0 && y >= m->statusat)
 		y = m->statusat - 1;
+	if (m->sideat == 0 && x >= (int)m->sidecols)
+		x -= m->sidecols;
+	else if (m->sideat > 0 && x >= m->sideat)
+		x = m->sideat - 1;
 
 	lines = window_pane_get_pane_lines(wp);
 	border = (lines != PANE_LINES_NONE);
