@@ -789,6 +789,60 @@ layout_free(struct window *w, int only_nodes)
 	layout_free_cell(w->layout_root, only_nodes);
 }
 
+/*
+ * Move, and if necessary shrink, floating panes so they stay inside the
+ * window. layout_resize_adjust walks only tiled cells, so a floating cell
+ * keeps the geometry it was given when it was created: after the window
+ * shrinks it can be left partly or entirely outside, where it cannot be seen
+ * or reached.
+ *
+ * A floating cell is the inside of the pane, so the borders around it have to
+ * be counted here as they are when it is created (see
+ * layout_floating_args_parse).
+ */
+static void
+layout_clamp_floating_panes(struct window *w, u_int sx, u_int sy)
+{
+	struct window_pane	*wp;
+	struct layout_cell	*lc;
+	u_int			 pad, avail, csx, csy;
+
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
+		lc = wp->layout_cell;
+		if (lc == NULL || (~lc->flags & LAYOUT_CELL_FLOATING))
+			continue;
+		if (window_pane_get_pane_lines(wp) == PANE_LINES_NONE)
+			pad = 0;
+		else
+			pad = 1;
+
+		csx = lc->g.sx;
+		avail = (sx > 2 * pad) ? sx - 2 * pad : 0;
+		if (csx > avail)
+			csx = (avail > PANE_MINIMUM) ? avail : PANE_MINIMUM;
+		csy = lc->g.sy;
+		avail = (sy > 2 * pad) ? sy - 2 * pad : 0;
+		if (csy > avail)
+			csy = (avail > PANE_MINIMUM) ? avail : PANE_MINIMUM;
+		if (csx != lc->g.sx || csy != lc->g.sy)
+			layout_set_size(lc, csx, csy, lc->g.xoff,
+			    lc->g.yoff);
+
+		if (lc->g.xoff + lc->g.sx + pad > sx) {
+			if (lc->g.sx + 2 * pad >= sx)
+				lc->g.xoff = pad;
+			else
+				lc->g.xoff = sx - lc->g.sx - pad;
+		}
+		if (lc->g.yoff + lc->g.sy + pad > sy) {
+			if (lc->g.sy + 2 * pad >= sy)
+				lc->g.yoff = pad;
+			else
+				lc->g.yoff = sy - lc->g.sy - pad;
+		}
+	}
+}
+
 /* Resize the entire layout after window resize. */
 void
 layout_resize(struct window *w, u_int sx, u_int sy)
@@ -840,6 +894,7 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 
 	/* Fix cell offsets. */
 	layout_fix_offsets(w);
+	layout_clamp_floating_panes(w, sx, sy);
 	layout_fix_panes(w, NULL);
 }
 
