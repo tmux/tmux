@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-select-layout.c,v 1.43 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: cmd-select-layout.c,v 1.44 2026/09/08 10:20:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>

@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1431 2026/08/25 08:37:08 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1436 2026/09/08 10:20:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1358,9 +1358,10 @@ struct window_pane {
 	char		 tty[TTY_NAME_MAX];
 	int		 status;
 	struct timeval	 dead_time;
-	struct cmdq_item *wait_item;	/* new-pane -W: waiting for pane exit */
+	struct cmdq_item *wait_item;
 	struct spawn_editor_state *editor;
 
+	uint64_t	 output_generation;
 	time_t		 last_output_time;
 	time_t		 last_prompt_time;
 	time_t		 cmd_start_time;
@@ -4110,6 +4111,7 @@ void		 session_update_history(struct session *);
 /* utf8.c */
 enum utf8_state	 utf8_towc (const struct utf8_data *, wchar_t *);
 enum utf8_state	 utf8_fromwc(wchar_t wc, struct utf8_data *);
+int		 utf8_has_whitespace(const struct utf8_data *);
 void		 utf8_update_width_cache(void);
 utf8_char	 utf8_build_one(u_char);
 enum utf8_state	 utf8_from_data(const struct utf8_data *, utf8_char *);
@@ -4277,6 +4279,7 @@ void			 hyperlinks_free(struct hyperlinks *);
 /* json.c */
 struct json_node	*json_parse(const char *, char **);
 void			 json_destroy_node(struct json_node *);
+char			*json_to_string(struct json_node *);
 struct json_node	*json_find(struct json_node *, const char *);
 struct json_node	*json_array_first(struct json_node *);
 struct json_node	*json_array_next(struct json_node *);

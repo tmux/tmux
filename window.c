@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.373 2026/08/24 21:17:19 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.374 2026/09/08 08:37:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1263,12 +1263,10 @@ window_pane_last_index(struct window_pane *wp, u_int *i)
 
 	*i = 0;
 	TAILQ_FOREACH(wq, &w->last_panes, sentry) {
-		if (wq == wp) {
+		if (wq == wp)
 			return (0);
-		}
 		(*i)++;
 	}
-
 	return (-1);
 }
 

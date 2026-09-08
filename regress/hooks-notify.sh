@@ -218,11 +218,13 @@ $TMUX set-hook -gu pane-mode-changed || fail "unset pane-mode-changed failed"
 
 # pane-exited when a pane's command exits with remain-on-exit off.
 $TMUX set -g @x 0 || fail "set @x failed"
-$TMUX set-hook -g pane-exited 'set -gF @x "#{hook}:#{hook_pane}"' ||
+$TMUX set-hook -g pane-exited \
+	'set -gF @x "#{hook}:#{hook_pane}:#{hook_exit_status}:#{hook_exit_success}"' ||
 	fail "set-hook pane-exited failed"
-pane=$($TMUX splitw -d -t main:0 -P -F '#{pane_id}' 'true') ||
-	fail "split-window true failed"
-wait_for @x "pane-exited:$pane"
+pane=$($TMUX splitw -d -t main:0 -P -F '#{pane_id}' \
+	'trap "" HUP; exec </dev/null >/dev/null 2>&1; sleep 1; exit 42') ||
+	fail "split-window exit 42 failed"
+wait_for @x "pane-exited:$pane:42:0"
 $TMUX set-hook -gu pane-exited || fail "unset pane-exited failed"
 
 # pane-died when a pane's command exits with remain-on-exit on.

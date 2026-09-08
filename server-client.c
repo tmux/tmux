@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.509 2026/08/28 07:36:01 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.511 2026/09/08 10:20:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2244,7 +2244,7 @@ server_client_reset_state(struct client *c)
 					cy += status_line_size(c);
 			}
 
-			if ((pane_mode & MODE_SYNC) || !cursor)
+			if (!cursor)
 				mode &= ~MODE_CURSOR;
 		}
 	} else if (c->overlay_mode == NULL || s == NULL)
@@ -2252,6 +2252,10 @@ server_client_reset_state(struct client *c)
 	if (~pane_mode & MODE_SYNC) {
 		log_debug("%s: cursor to %u,%u", __func__, cx, cy);
 		tty_cursor(tty, cx, cy);
+	} else {
+		mode &= ~CURSOR_MODES;
+		mode |= tty->mode & CURSOR_MODES;
+		s = NULL;
 	}
 
 	/*
@@ -3148,6 +3152,8 @@ server_client_get_flags(struct client *c)
 		strlcat(s, "no-output,", sizeof s);
 	if (c->flags & CLIENT_CONTROL_WAITEXIT)
 		strlcat(s, "wait-exit,", sizeof s);
+	if (c->flags & CLIENT_CONTROL_NEWLAYOUTS)
+		strlcat(s, "new-layouts,", sizeof s);
 	if (c->flags & CLIENT_CONTROL_PAUSEAFTER) {
 		xsnprintf(tmp, sizeof tmp, "pause-after=%u,",
 		    c->pause_age / 1000);

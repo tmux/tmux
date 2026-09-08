@@ -1,4 +1,4 @@
-/* $OpenBSD: layout-custom.c,v 1.38 2026/07/16 12:36:58 nicm Exp $ */
+/* $OpenBSD: layout-custom.c,v 1.39 2026/09/08 10:20:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2010 Nicholas Marriott <nicholas.marriott@gmail.com>

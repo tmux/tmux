@@ -1,4 +1,4 @@
-/* $OpenBSD: control-notify.c,v 1.38 2026/08/03 13:38:42 nicm Exp $ */
+/* $OpenBSD: control-notify.c,v 1.39 2026/09/08 10:20:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Nicholas Marriott <nicholas.marriott@gmail.com>

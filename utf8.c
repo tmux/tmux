@@ -1,4 +1,4 @@
-/* $OpenBSD: utf8.c,v 1.71 2026/05/12 09:37:25 nicm Exp $ */
+/* $OpenBSD: utf8.c,v 1.72 2026/09/01 12:49:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -601,6 +601,72 @@ utf8_towc(const struct utf8_data *ud, wchar_t *wc)
 	}
 	log_debug("UTF-8 %.*s is U+%06X", (int)ud->size, ud->data, (u_int)*wc);
 	return (UTF8_DONE);
+}
+
+/* Check for a Unicode whitespace character. */
+int
+utf8_has_whitespace(const struct utf8_data *ud)
+{
+	struct utf8_data tmp;
+	wchar_t		 wc;
+	u_int		 offset = 0, size;
+	u_char		 ch;
+
+	while (offset < ud->size) {
+		ch = ud->data[offset];
+		if (ch < 0x80) {
+			wc = ch;
+			size = 1;
+		} else {
+			if (ch >= 0xc2 && ch <= 0xdf)
+				size = 2;
+			else if (ch >= 0xe0 && ch <= 0xef)
+				size = 3;
+			else if (ch >= 0xf0 && ch <= 0xf4)
+				size = 4;
+			else
+				return (0);
+			if (size > ud->size - offset)
+				return (0);
+
+			memset(&tmp, 0, sizeof tmp);
+			memcpy(tmp.data, ud->data + offset, size);
+			tmp.size = tmp.have = size;
+			if (utf8_towc(&tmp, &wc) != UTF8_DONE)
+				return (0);
+		}
+		offset += size;
+
+		switch (wc) {
+		case 0x0009:
+		case 0x000A:
+		case 0x000B:
+		case 0x000C:
+		case 0x000D:
+		case 0x0020:
+		case 0x0085:
+		case 0x00A0:
+		case 0x1680:
+		case 0x2000:
+		case 0x2001:
+		case 0x2002:
+		case 0x2003:
+		case 0x2004:
+		case 0x2005:
+		case 0x2006:
+		case 0x2007:
+		case 0x2008:
+		case 0x2009:
+		case 0x200A:
+		case 0x2028:
+		case 0x2029:
+		case 0x202F:
+		case 0x205F:
+		case 0x3000:
+			return (1);
+		}
+	}
+	return (0);
 }
 
 /* Convert wide character to UTF-8 character. */

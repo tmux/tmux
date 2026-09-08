@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-list-panes.c,v 1.40 2026/06/01 14:01:09 nicm Exp $ */
+/* $OpenBSD: cmd-list-panes.c,v 1.41 2026/09/08 10:20:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
