@@ -124,7 +124,6 @@ static void		 json_add_token(struct json_tokens *,
 static int		 json_tokenize_value(struct json_tokens *,
 			     const char *);
 static void		 json_error(char **, const char *, const char *);
-
 static struct json_node	*json_create_node(struct json_node *,
 			     enum json_node_type, const char *, void *);
 static void		 json_assign_value(struct json_node *, void *);
@@ -206,7 +205,7 @@ json_array_next(struct json_node *member)
 
 /* Returns the string value from a node. */
 int
-json_get_string(struct json_node *jn, char **s)
+json_get_string(struct json_node *jn, const char **s)
 {
 	if (jn->type != NODE_STRING)
 		return (-1);
@@ -261,7 +260,7 @@ json_get_array(struct json_node *jn, struct json_node **a)
 
 /* Returns the string value from a given key in an object node. */
 int
-json_find_string(struct json_node *jn, const char *key, char **out,
+json_find_string(struct json_node *jn, const char *key, const char **out,
     char **cause)
 {
 	struct json_node	*field;
