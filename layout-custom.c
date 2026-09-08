@@ -29,11 +29,12 @@
 
 /*
  * Layouts can be represented as strings in a JSON format (v2). The legacy
- * format (v1) will be deprecated in the future and should no longer be used.
+ * format (v1) will be removed in the future and should no longer be used.
  *
  * The current (v2) format is JSON. The top level has two keys:
  *    "V": version number, currently 2
  *    "L": root layout cell
+ *
  * Each cell is an object with:
  *    "t": cell type:
  *        "h": horizontal
@@ -43,10 +44,12 @@
  *    "h": cell height
  *    "x": horizontal position
  *    "y": vertical position
- *  If the cell is a node cell (with child cells), it additionally has:
+ *
+ * If the cell is a node cell (with child cells), it additionally has:
  *    "c": array of child cells
- *  If the cell is a leaf cell (that is, containing a pane and no child cells),
- *  it additionally has:
+ *
+ * If the cell is a leaf cell (that is, containing a pane and no child cells),
+ * it additionally has:
  *    "I": pane ID as %n (currently ignored on parse)
  *    "l": index into last panes list if visited and not the active pane
  *    "a": true if the active pane
