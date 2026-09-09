@@ -47,7 +47,6 @@ extern const struct cmd_entry cmd_display_menu_entry;
 extern const struct cmd_entry cmd_display_message_entry;
 extern const struct cmd_entry cmd_display_popup_entry;
 extern const struct cmd_entry cmd_display_panes_entry;
-extern const struct cmd_entry cmd_dump_entry;
 extern const struct cmd_entry cmd_find_window_entry;
 extern const struct cmd_entry cmd_has_session_entry;
 extern const struct cmd_entry cmd_if_shell_entry;
@@ -67,6 +66,7 @@ extern const struct cmd_entry cmd_list_panes_entry;
 extern const struct cmd_entry cmd_list_sessions_entry;
 extern const struct cmd_entry cmd_list_windows_entry;
 extern const struct cmd_entry cmd_load_buffer_entry;
+extern const struct cmd_entry cmd_load_layout_entry;
 extern const struct cmd_entry cmd_lock_client_entry;
 extern const struct cmd_entry cmd_lock_server_entry;
 extern const struct cmd_entry cmd_lock_session_entry;
@@ -88,10 +88,10 @@ extern const struct cmd_entry cmd_resize_pane_entry;
 extern const struct cmd_entry cmd_resize_window_entry;
 extern const struct cmd_entry cmd_respawn_pane_entry;
 extern const struct cmd_entry cmd_respawn_window_entry;
-extern const struct cmd_entry cmd_restore_entry;
 extern const struct cmd_entry cmd_rotate_window_entry;
 extern const struct cmd_entry cmd_run_shell_entry;
 extern const struct cmd_entry cmd_save_buffer_entry;
+extern const struct cmd_entry cmd_save_layout_entry;
 extern const struct cmd_entry cmd_select_layout_entry;
 extern const struct cmd_entry cmd_select_pane_entry;
 extern const struct cmd_entry cmd_select_window_entry;
@@ -143,7 +143,6 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_display_message_entry,
 	&cmd_display_popup_entry,
 	&cmd_display_panes_entry,
-	&cmd_dump_entry,
 	&cmd_find_window_entry,
 	&cmd_has_session_entry,
 	&cmd_if_shell_entry,
@@ -163,6 +162,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_list_sessions_entry,
 	&cmd_list_windows_entry,
 	&cmd_load_buffer_entry,
+	&cmd_load_layout_entry,
 	&cmd_lock_client_entry,
 	&cmd_lock_server_entry,
 	&cmd_lock_session_entry,
@@ -184,10 +184,10 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_resize_window_entry,
 	&cmd_respawn_pane_entry,
 	&cmd_respawn_window_entry,
-	&cmd_restore_entry,
 	&cmd_rotate_window_entry,
 	&cmd_run_shell_entry,
 	&cmd_save_buffer_entry,
+	&cmd_save_layout_entry,
 	&cmd_select_layout_entry,
 	&cmd_select_pane_entry,
 	&cmd_select_window_entry,

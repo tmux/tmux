@@ -39,14 +39,14 @@ char                    **cfg_files;
 u_int                     cfg_nfiles;
 
 /*
- * Return the path to the tmux dump file used by the 'dump' and 'restore'
- * commands. This lives alongside the tmux configuration file so it is
- * easy to find, falling back to the home directory if no configuration
- * file is in use or its directory is not writable (for example when
- * -f /dev/null is used to skip loading a configuration file).
+ * Return the path to the tmux layout file used by the 'save-layout' and
+ * 'load-layout' commands. This lives alongside the tmux configuration file
+ * so it is easy to find, falling back to the home directory if no
+ * configuration file is in use or its directory is not writable (for
+ * example when -f /dev/null is used to skip loading a configuration file).
  */
 char *
-dump_get_path(void)
+layout_get_path(void)
 {
 	const char	*home;
 	char		*copy, *dir, *path;
@@ -55,7 +55,7 @@ dump_get_path(void)
 		copy = xstrdup(cfg_files[cfg_nfiles - 1]);
 		dir = dirname(copy);
 		if (access(dir, W_OK) == 0) {
-			xasprintf(&path, "%s/%s", dir, TMUX_DUMP_FILE);
+			xasprintf(&path, "%s/%s", dir, TMUX_LAYOUT_FILE);
 			free(copy);
 			return (path);
 		}
@@ -63,7 +63,7 @@ dump_get_path(void)
 	}
 
 	if ((home = find_home()) != NULL) {
-		xasprintf(&path, "%s/%s", home, TMUX_DUMP_FILE);
+		xasprintf(&path, "%s/%s", home, TMUX_LAYOUT_FILE);
 		return (path);
 	}
 

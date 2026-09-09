@@ -101,7 +101,6 @@ dist_tmux_SOURCES = \
 	cmd-detach-client.c \
 	cmd-display-menu.c \
 	cmd-display-message.c \
-	cmd-dump.c \
 	cmd-find-window.c \
 	cmd-find.c \
 	cmd-if-shell.c \
@@ -118,6 +117,7 @@ dist_tmux_SOURCES = \
 	cmd-list-sessions.c \
 	cmd-list-windows.c \
 	cmd-load-buffer.c \
+	cmd-load-layout.c \
 	cmd-lock-server.c \
 	cmd-move-window.c \
 	cmd-new-session.c \
@@ -133,10 +133,10 @@ dist_tmux_SOURCES = \
 	cmd-resize-window.c \
 	cmd-respawn-pane.c \
 	cmd-respawn-window.c \
-	cmd-restore.c \
 	cmd-rotate-window.c \
 	cmd-run-shell.c \
 	cmd-save-buffer.c \
+	cmd-save-layout.c \
 	cmd-select-layout.c \
 	cmd-select-pane.c \
 	cmd-select-window.c \
