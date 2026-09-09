@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1167 2026/09/08 10:20:08 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1168 2026/09/09 07:03:39 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: September 8 2026 $
+.Dd $Mdocdate: September 9 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -2699,8 +2699,8 @@ For example:
 .Bd -literal -offset indent
 $ tmux list\-windows
 0: ksh [159x48]
-    layout: bb62,159x48,0,0{79x48,0,0,79x48,80,0}
-$ tmux select\-layout \[aq]bb62,159x48,0,0{79x48,0,0,79x48,80,0}\[aq]
+    layout: {"V":2,"L":{"t":"h","w":159,"h":48,"x":0,"y":0,"c":[{"t":"p","w":79,"h":48,"x":0,"y":0,"l":0,"i":0,"I":"%0"},{"t":"p","w":79,"h":48,"x":80,"y":0,"a":true,"i":1,"I":"%2"}]}}
+$ tmux select\-layout \[aq]{"V":2,"L":{"t":"h","w":159,"h":48,"x":0,"y":0,"c":[{"t":"p","w":79,"h":48,"x":0,"y":0,"l":0,"i":0,"I":"%0"},{"t":"p","w":79,"h":48,"x":80,"y":0,"a":true,"i":1,"I":"%2"}]}}\[aq]
 .Ed
 .Pp
 .Nm
@@ -9070,7 +9070,7 @@ and flags (currently not used).
 For example:
 .Bd -literal -offset indent
 %begin 1363006971 2 1
-0: ksh* (1 panes) [80x24] [layout b25f,80x24,0,0,2] @2 (active)
+0: ksh* (1 panes) [80x24] [layout {"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"a":true,"i":0,"I":"%2"}}] @2 (active)
 %end 1363006971 2 1
 .Ed
 .Pp
@@ -9131,10 +9131,15 @@ The layout of a window with ID
 .Ar window\-id
 changed.
 The new layout is
-.Ar window\-layout .
-The window's visible layout is
-.Ar window\-visible\-layout
-and the window flags are
+.Ar window\-layout
+and the window's visible layout is
+.Ar window\-visible\-layout .
+If the
+.Ar new\-layouts
+flag is set, both layout fields use the new format string; see
+.Ic refresh\-client
+.Fl f .
+The window flags are
 .Ar window\-flags .
 .It Ic %message Ar message
 A message sent with the
