@@ -163,13 +163,23 @@ layout_set_even(struct window *w, enum layout_type type)
 	if (n <= 1)
 		return;
 
+	/*
+	 * Minimum layout size: n panes and n-1 separators. With separate, each
+	 * pane needs an extra cell and the far edge another.
+	 */
 	if (type == LAYOUT_LEFTRIGHT) {
-		sx = (n * (PANE_MINIMUM + 1)) - 1;
+		if (window_border_type_is_separate(w))
+			sx = n * (PANE_MINIMUM + 2);
+		else
+			sx = (n * (PANE_MINIMUM + 1)) - 1;
 		if (sx < w->sx)
 			sx = w->sx;
 		sy = w->sy;
 	} else {
-		sy = (n * (PANE_MINIMUM + 1)) - 1;
+		if (window_border_type_is_separate(w))
+			sy = n * (PANE_MINIMUM + 2);
+		else
+			sy = (n * (PANE_MINIMUM + 1)) - 1;
 		if (sy < w->sy)
 			sy = w->sy;
 		sx = w->sx;
