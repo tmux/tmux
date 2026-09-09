@@ -33,9 +33,7 @@ CHANGES FROM 3.7c TO 3.8
     line;
 
   - pane-border-status has top-floating and bottom-floating, and there are new
-    default bindings under C-b g for common move and resize operations;
-
-  - floating panes are unzoomed before creation to avoid a crash.
+    default bindings under C-b g for common move and resize operations.
 
 * Layout strings now use a JSON subset format which includes floating panes.
   The old format is still accepted; control mode clients receive old layouts
