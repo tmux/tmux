@@ -37,6 +37,10 @@ CHANGES FROM 3.7c TO 3.8
 
   - floating panes are unzoomed before creation to avoid a crash.
 
+* Layout strings now use a JSON subset format which includes floating panes.
+  The old format is still accepted; control mode clients receive old layouts
+  unless they set the new-layouts flag.
+
 * Add support for themes and improve default colours:
 
   - tmux now has builtin light and dark colour themes for terminals with 256 or
@@ -126,6 +130,8 @@ CHANGES FROM 3.7c TO 3.8
 * Add new-window -E, respawn-pane -E and respawn-window -E as more convenient
   methods to create an empty pane (rather than using '' for the command).
 
+* Add capture-pane -I to include the time each line entered history.
+
 * Add a default C-b T binding to change the current pane title.
 
 * Menus now belong to the window, so appear on all clients.
@@ -172,6 +178,8 @@ CHANGES FROM 3.7c TO 3.8
 
 * The mouse option now defaults to on.
 
+* The active-pane client flag has been removed.
+
 * Fix send-keys -K so keys are inserted in the correct place in the input
   queue, like keys from key bindings (issue 3476).
 
@@ -180,7 +188,8 @@ CHANGES FROM 3.7c TO 3.8
   already exiting (Ben Maurer, issue 5357). Queue notifications so they are not
   sent inside %begin/%end (issue 5458), do not let a stuck client prevent the
   server from exiting (issue 5444), and reset control mode offsets when a pane
-  is respawned (issue 5498).
+  is respawned (issue 5498). Bound buffered command replies so a control mode
+  client that stops reading cannot consume unlimited memory (issue 5565).
 
 * Fix grouped sessions sometimes being left as unusable command targets while
   they are being killed (Bryce Miller, issue 5180).
