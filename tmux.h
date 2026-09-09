@@ -1795,7 +1795,6 @@ struct tty {
 	size_t		 discarded;
 
 	struct termios	 tio;
-	struct visible_ranges r;
 
 	struct grid_cell cell;
 	struct grid_cell last_cell;

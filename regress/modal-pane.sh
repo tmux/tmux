@@ -375,6 +375,25 @@ esac
 check_ok kill-pane -t "$modal"
 sleep 1
 
+# Creating a popup pane must not fire the split-window hook.
+check_ok set-hook -t modal after-split-window \
+	"set-option -g @popup-after-split yes"
+check_ok set-option -g @popup-after-split no
+check_ok display-popup -E -t "$p0" true
+must_equal "$($TMUX show-option -gv @popup-after-split)" no
+check_ok set-hook -u -t modal after-split-window
+
+# A borderless popup must not create a zero-sized pane in a tiny window.
+check_ok new-window -d -t modal: -n popup-small 'cat'
+check_ok set-option -w -t modal:popup-small window-size manual
+check_ok resize-window -t modal:popup-small -x 1 -y 1
+small=$(fmt modal:popup-small '#{pane_id}')
+check_ok bind Z display-popup -B -t "$small" 'cat'
+$TMUX2 send-keys -t "$OUTER" C-b Z
+sleep 1
+must_equal "$(fmt modal:popup-small '#{window_panes}')" 1
+must_equal "$(fmt modal:popup-small '#{window_modal_pane}')" ''
+
 $TMUX bind D display-popup -t "$p0" -w 20 -h 5 'printf done'
 $TMUX2 send-keys -t "$OUTER" C-b D
 sleep 2

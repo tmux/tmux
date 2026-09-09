@@ -452,7 +452,8 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		sx = w->sx;
 	if (sy > w->sy)
 		sy = w->sy;
-	if (lines != PANE_LINES_NONE && (sx < 3 || sy < 3))
+	if ((lines == PANE_LINES_NONE && (sx < 1 || sy < 1)) ||
+	    (lines != PANE_LINES_NONE && (sx < 3 || sy < 3)))
 		goto out;
 	if (!cmd_display_menu_get_menu_pos(tc, item, args, &px, &py, sx, sy))
 		goto out;
@@ -545,9 +546,6 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		event_payload_set_string(ep, "new_title", "%s", title);
 		events_fire("pane-title-changed", ep);
 	}
-
-	cmd_find_from_winlink_pane(&fs, wl, new_wp, 0);
-	cmdq_insert_hook(s, item, &fs, "after-split-window");
 
 	new_wp->wait_item = item;
 	server_redraw_session(s);

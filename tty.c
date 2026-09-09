@@ -544,8 +544,6 @@ void
 tty_free(struct tty *tty)
 {
 	tty_close(tty);
-
-	free(tty->r.ranges);
 }
 
 void
