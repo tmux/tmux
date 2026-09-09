@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-capture-pane.c,v 1.68 2026/07/20 11:16:33 nicm Exp $ */
+/* $OpenBSD: cmd-capture-pane.c,v 1.69 2026/09/08 07:31:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Jonathan Alvarado <radobobo@users.sourceforge.net>
@@ -42,8 +42,8 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	.name = "capture-pane",
 	.alias = "capturep",
 
-	.args = { "ab:CeE:FHJLMNpPqRS:Tt:", 0, 0, NULL },
-	.usage = "[-aCeFHJLMNpPqRT] " CMD_BUFFER_USAGE " [-E end-line] "
+	.args = { "ab:CeE:FHIJLMNpPqRS:Tt:", 0, 0, NULL },
+	.usage = "[-aCeFHIJLMNpPqRT] " CMD_BUFFER_USAGE " [-E end-line] "
 		 "[-S start-line] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -200,7 +200,7 @@ cmd_capture_pane_pending(struct args *args, struct window_pane *wp,
 				tmp[0] = line[i];
 				tmp[1] = '\0';
 			} else
-				xsnprintf(tmp, sizeof tmp, "\\%03hho", line[i]);
+				snprintf(tmp, sizeof tmp, "\\%03hho", line[i]);
 			buf = cmd_capture_pane_append(buf, len, tmp,
 			    strlen(tmp));
 		}
@@ -259,7 +259,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 	struct grid_cell		*gc = NULL;
 	struct window_mode_entry	*wme;
 	int				 n, join_lines, number_lines, flags = 0;
-	int				 show_flags, hyperlinks;
+	int				 show_flags, show_time, hyperlinks;
 	u_int				*links = NULL, nlinks = 0;
 	u_int				 i, sx, top, bottom, tmp;
 	char				*cause, *buf = NULL, *line, b[64], *cp;
@@ -342,6 +342,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 		flags |= GRID_STRING_TRIM_SPACES;
 	number_lines = args_has(args, 'L');
 	show_flags = args_has(args, 'F');
+	show_time = args_has(args, 'I');
 	hyperlinks = args_has(args, 'H');
 	if (hyperlinks)
 		links = xreallocarray(NULL, gd->sx, sizeof *links);
@@ -358,6 +359,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 			free(line);
 			continue;
 		}
+		gl = grid_peek_line(gd, i);
 
 		if (number_lines) {
 			if (i >= gd->hsize)
@@ -368,11 +370,16 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 			if (n >= 0)
 				buf = cmd_capture_pane_append(buf, len, b, n);
 		}
+		if (show_time) {
+			n = snprintf(b, sizeof b, "%llu ",
+			    (unsigned long long)grid_line_time(gl));
+			if (n >= 0)
+				buf = cmd_capture_pane_append(buf, len, b, n);
+		}
 		if (show_flags) {
 			cp = b;
 			*cp = '\0';
 
-			gl = grid_peek_line(gd, i);
 			if (gl->flags & GRID_LINE_DEAD)
 				*cp++ = 'D';
 			if (gl->flags & GRID_LINE_HYPERLINK)
@@ -393,7 +400,6 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 		}
 		buf = cmd_capture_pane_append(buf, len, line, linelen);
 
-		gl = grid_peek_line(gd, i);
 		if (!join_lines || !(gl->flags & GRID_LINE_WRAPPED))
 			buf[(*len)++] = '\n';
 

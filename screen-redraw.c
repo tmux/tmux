@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.157 2026/07/24 08:49:23 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.159 2026/09/09 08:31:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -729,7 +729,7 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 	} else {
 		mark_right = (right <= (int)bctx->w->sx);
 		mark_bottom = (bottom <= (int)bctx->w->sy);
-		if (pane_status == PANE_STATUS_TOP)
+		if (pane_status == PANE_STATUS_TOP && bottom < (int)bctx->w->sy)
 			mark_bottom = 0;
 		else if (pane_status == PANE_STATUS_BOTTOM)
 			mark_top = 0;
@@ -1890,8 +1890,7 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 			else
 				loop->flags &= ~PANE_NEWSTATUS;
 
-			width = redraw_pane_status_width(&dctx, loop,
-			    &first);
+			width = redraw_pane_status_width(&dctx, loop, &first);
 			if (width == 0)
 				continue;
 
@@ -1922,7 +1921,7 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 			}
 		}
 	}
-	tty_sync_start(tty);
+	tty_sync_start(tty); /* end in server_client_reset_state */
 	tty_update_mode(tty, tty->mode & ~CURSOR_MODES, NULL);
 
 	if (wp != NULL)
@@ -1967,7 +1966,6 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		c->overlay_draw(c, c->overlay_data);
 
 	tty_reset(tty);
-	tty_sync_end(tty);
 
 #ifdef ENABLE_SIXEL
 	if (wp != NULL)

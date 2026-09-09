@@ -1,4 +1,4 @@
-/* $OpenBSD: window-panes.c,v 1.4 2026/07/29 14:06:32 nicm Exp $ */
+/* $OpenBSD: window-panes.c,v 1.5 2026/08/25 06:04:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1009,6 +1009,7 @@ window_panes_run_command(struct window_panes_modedata *data, struct client *c,
 	} else {
 		new_item = cmdq_get_command(cmdlist, NULL);
 		cmdq_append(c, new_item);
+		cmd_list_free(cmdlist);
 	}
 	free(expanded);
 }

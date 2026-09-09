@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1158 2026/08/20 09:19:24 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1168 2026/09/09 07:03:39 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 20 2026 $
+.Dd $Mdocdate: September 9 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1116,6 +1116,8 @@ The flags are:
 .Bl -tag -width Ds
 .It ignore\-size
 the client does not affect the size of other clients
+.It new\-layouts
+use the new layout string format
 .It no\-detach\-on\-destroy
 do not detach the client when the session it is attached to is destroyed if
 there are any other sessions
@@ -2208,14 +2210,14 @@ Move to the end of the next word.
 .Xc
 Same as
 .Ic next\-word
-but use a space alone as the word separator.
+but treat all non-whitespace characters as part of a word.
 .It Xo
 .Ic next\-space\-end
 (vi: E)
 .Xc
 Same as
 .Ic next\-word\-end
-but use a space alone as the word separator.
+but treat all non-whitespace characters as part of a word.
 .It Xo
 .Ic other\-end
 (vi: o)
@@ -2289,7 +2291,7 @@ Move to the previous word.
 .Xc
 Same as
 .Ic previous\-word
-but use a space alone as the word separator.
+but treat all non-whitespace characters as part of a word.
 .It Xo
 .Ic rectangle\-on
 .Xc
@@ -2574,8 +2576,8 @@ Word separators can be customized with the
 session option.
 Next word moves to the start of the next word, next word end to the end of the
 next word and previous word to the start of the previous word.
-The three next and previous space keys work similarly but use a space alone as
-the word separator.
+The three next and previous space keys work similarly but treat all
+non-whitespace characters as part of a word.
 Setting
 .Em word\-separators
 to the empty string makes next/previous word equivalent to next/previous space.
@@ -2699,8 +2701,8 @@ For example:
 .Bd -literal -offset indent
 $ tmux list\-windows
 0: ksh [159x48]
-    layout: bb62,159x48,0,0{79x48,0,0,79x48,80,0}
-$ tmux select\-layout \[aq]bb62,159x48,0,0{79x48,0,0,79x48,80,0}\[aq]
+    layout: {"V":2,"L":{"t":"h","w":159,"h":48,"x":0,"y":0,"c":[{"t":"p","w":79,"h":48,"x":0,"y":0,"l":0,"i":0,"I":"%0"},{"t":"p","w":79,"h":48,"x":80,"y":0,"a":true,"i":1,"I":"%2"}]}}
+$ tmux select\-layout \[aq]{"V":2,"L":{"t":"h","w":159,"h":48,"x":0,"y":0,"c":[{"t":"p","w":79,"h":48,"x":0,"y":0,"l":0,"i":0,"I":"%0"},{"t":"p","w":79,"h":48,"x":80,"y":0,"a":true,"i":1,"I":"%2"}]}}\[aq]
 .Ed
 .Pp
 .Nm
@@ -2788,7 +2790,7 @@ The pane must not already be floating or hidden, and the window must not
 be zoomed.
 .Tg capturep
 .It Xo Ic capture\-pane
-.Op Fl aeFHLpPRqCJMN
+.Op Fl aeFHILpPRqCJMN
 .Op Fl b Ar buffer\-name
 .Op Fl E Ar end\-line
 .Op Fl S Ar start\-line
@@ -2830,6 +2832,8 @@ captures only any output that the pane has received that is the beginning of an
 as-yet incomplete escape sequence.
 .Fl L
 includes the line number at the start of each line and
+.Fl I
+includes the time each line entered the history, or zero if not available.
 .Fl F
 includes the flags (where
 .Ql -
@@ -3590,13 +3594,20 @@ represents the window to be created; if the target already exists an error is
 shown, unless the
 .Fl k
 flag is used, in which case it is destroyed.
+.Ar window\-name
+is the name given to the new window, if any.
+.Pp
 If
 .Fl S
-is given and a window named
-.Ar window\-name
-already exists, it is selected (unless
+is given, an existing window is selected instead of creating a new one
+(unless
 .Fl d
-is also given in which case the command does nothing).
+is also given in which case the command does nothing):
+.Ar target\-window
+is preferred if it already identifies an existing window; otherwise a
+window named
+.Ar window\-name
+is selected if one exists.
 .Pp
 .Ar shell\-command
 is the command to execute.
@@ -4754,6 +4765,15 @@ for backspace.
 Set the number of buffers; as new buffers are added to the top of the stack,
 old ones are removed from the bottom if necessary to maintain this maximum
 length.
+.It Xo Ic clear\-on\-attach
+.Op Ic on | off
+.Xc
+When enabled (the default), the client terminal switches to the alternate
+screen and clears it when a client is attached.
+When disabled,
+.Nm
+does not enter the alternate screen; instead the existing terminal content is
+scrolled into the scrollback buffer so it remains accessible.
 .It Xo Ic command\-alias[]
 .Ar name=value
 .Xc
@@ -5104,6 +5124,8 @@ Supports
 title setting.
 .It usstyle
 Allows underscore style and colour to be set.
+.It utf8
+Supports UTF\-8 output.
 .El
 .It Ic terminal\-overrides[] Ar string
 Allow terminal descriptions read using
@@ -5638,6 +5660,11 @@ If set to both, a bell and a message are produced.
 Sets the session's conception of what characters are considered word
 separators, for the purposes of the next and previous word commands in
 copy mode.
+A space in
+.Ar string
+matches any character with the Unicode
+.Em White_Space
+property.
 .El
 .Pp
 Available window options are:
@@ -7307,7 +7334,10 @@ The following variables are available, where appropriate:
 .It Li "cursor_very_visible" Ta "" Ta "1 if the cursor is in very visible mode"
 .It Li "cursor_x" Ta "" Ta "Cursor X position in pane"
 .It Li "cursor_y" Ta "" Ta "Cursor Y position in pane"
+.It Li "history_added" Ta "" Ta "Number of lines scrolled into pane history"
 .It Li "history_bytes" Ta "" Ta "Number of bytes in window history"
+.It Li "history_collected" Ta "" Ta "Number of oldest pane history lines discarded at the history limit"
+.It Li "history_generation" Ta "" Ta "Generation incremented when pane history is cleared or reflowed"
 .It Li "history_limit" Ta "" Ta "Maximum window history lines"
 .It Li "history_size" Ta "" Ta "Size of history in lines"
 .It Li "hook" Ta "" Ta "Name of running hook, if any"
@@ -7406,6 +7436,7 @@ The following variables are available, where appropriate:
 .It Li "pane_marked_set" Ta "" Ta "1 if a marked pane is set"
 .It Li "pane_modal_flag" Ta "" Ta "1 if pane is modal"
 .It Li "pane_mode" Ta "" Ta "Name of pane mode, if any"
+.It Li "pane_output_generation" Ta "" Ta "Generation incremented when pane output is processed"
 .It Li "pane_path" Ta "" Ta "Path of pane (can be set by application)"
 .It Li "pane_pid" Ta "" Ta "PID of first process in pane"
 .It Li "pane_pipe" Ta "" Ta "1 if pane is being piped"
@@ -8250,7 +8281,7 @@ The following keys are available in menus:
 .El
 .Tg display
 .It Xo Ic display\-message
-.Op Fl aCIlNpv
+.Op Fl aCIjlNpv
 .Op Fl c Ar target\-client
 .Op Fl d Ar delay
 .Op Fl t Ar target\-pane
@@ -8289,6 +8320,12 @@ section; information is taken from
 if
 .Fl t
 is given, otherwise the active pane.
+.Pp
+If
+.Fl j
+is given,
+.Ar message
+is parsed as JSON and printed.
 .Pp
 .Fl v
 prints verbose logging as the format is parsed and
@@ -9035,7 +9072,7 @@ and flags (currently not used).
 For example:
 .Bd -literal -offset indent
 %begin 1363006971 2 1
-0: ksh* (1 panes) [80x24] [layout b25f,80x24,0,0,2] @2 (active)
+0: ksh* (1 panes) [80x24] [layout {"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"a":true,"i":0,"I":"%2"}}] @2 (active)
 %end 1363006971 2 1
 .Ed
 .Pp
@@ -9096,10 +9133,15 @@ The layout of a window with ID
 .Ar window\-id
 changed.
 The new layout is
-.Ar window\-layout .
-The window's visible layout is
-.Ar window\-visible\-layout
-and the window flags are
+.Ar window\-layout
+and the window's visible layout is
+.Ar window\-visible\-layout .
+If the
+.Ar new\-layouts
+flag is set, both layout fields use the new format string; see
+.Ic refresh\-client
+.Fl f .
+The window flags are
 .Ar window\-flags .
 .It Ic %message Ar message
 A message sent with the
