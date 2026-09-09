@@ -4165,6 +4165,14 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 
 	for (y = prompt_y; y < total; y++) {
 		gl = grid_get_line(gd, y);
+		/* An output may end on the next prompt's line. */
+		if (found_start && gl->flags & GRID_LINE_END_OUTPUT &&
+		    (y != prompt_y || gl->osc133_data.out_end_col >= prompt_x)) {
+			*ex = gl->osc133_data.out_end_col;
+			*ey = y;
+			found_end = 1;
+			break;
+		}
 		if (y != prompt_y && gl->flags & GRID_LINE_START_PROMPT)
 			break;
 		if (gl->flags & GRID_LINE_START_OUTPUT &&
@@ -4172,13 +4180,6 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 			*sx = gl->osc133_data.out_start_col;
 			*sy = y;
 			found_start = 1;
-		}
-		if (found_start && gl->flags & GRID_LINE_END_OUTPUT &&
-		    (y != prompt_y || gl->osc133_data.out_end_col >= prompt_x)) {
-			*ex = gl->osc133_data.out_end_col;
-			*ey = y;
-			found_end = 1;
-			break;
 		}
 	}
 	if (!found_start) {

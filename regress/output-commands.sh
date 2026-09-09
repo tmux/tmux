@@ -111,6 +111,15 @@ $TMUX send-keys -t :prompt.0 -X copy-output || exit 1
 [ "$($TMUX show-buffer)" = one ] || exit 1
 $TMUX send-keys -t :prompt.0 -X cancel || exit 1
 
+$TMUX new-window -d -n same "printf '\\033]133;A\\007p\\$ \\033]133;B\\007echo\\n\\033]133;C\\007one\\033]133;D;0\\007\\033]133;A\\007p\\$ \\033]133;B\\007'; exec sleep 100" || exit 1
+sleep 1
+$TMUX copy-mode -U -t :same || exit 1
+$TMUX send-keys -t :same.0 -X search-backward one || exit 1
+$TMUX send-keys -t :same.0 -X select-output || exit 1
+$TMUX send-keys -t :same.0 -X copy-selection || exit 1
+[ "$($TMUX show-buffer)" = one ] || exit 1
+$TMUX send-keys -t :same.0 -X cancel || exit 1
+
 $TMUX copy-mode -t :plain || exit 1
 $TMUX send-keys -t :plain.0 -X copy-output -a || exit 1
 all=$($TMUX show-buffer)
