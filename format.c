@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.415 2026/08/31 19:34:09 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.417 2026/09/08 15:42:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -855,26 +855,42 @@ format_cb_window_active_clients_list(struct format_tree *ft)
 static void *
 format_cb_window_layout(struct format_tree *ft)
 {
-	struct window	*w = ft->w;
+	struct client		*c = ft->client;
+	struct window		*w = ft->w;
+	struct layout_cell	*lcroot;
+	int			 flags = 0;
 
 	if (w == NULL)
 		return (NULL);
 
 	if (w->saved_layout_root != NULL)
-		return (layout_dump(w, w->saved_layout_root));
-	return (layout_dump(w, w->layout_root));
+		lcroot = w->saved_layout_root;
+	else
+		lcroot = w->layout_root;
+
+	if (c != NULL &&
+	    (c->flags & CLIENT_CONTROL) &&
+	    (~c->flags & CLIENT_CONTROL_NEWLAYOUTS))
+		flags |= LAYOUT_CUSTOM_OLD_FORMAT;
+	return (layout_dump(w, lcroot, flags));
 }
 
 /* Callback for window_visible_layout. */
 static void *
 format_cb_window_visible_layout(struct format_tree *ft)
 {
+	struct client	*c = ft->client;
 	struct window	*w = ft->w;
+	int		 flags = 0;
 
 	if (w == NULL)
 		return (NULL);
 
-	return (layout_dump(w, w->layout_root));
+	if (c != NULL &&
+	    (c->flags & CLIENT_CONTROL) &&
+	    (~c->flags & CLIENT_CONTROL_NEWLAYOUTS))
+		flags |= LAYOUT_CUSTOM_OLD_FORMAT;
+	return (layout_dump(w, w->layout_root, flags));
 }
 
 /* Callback for pane_start_command. */
@@ -5234,6 +5250,7 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 		format_log(es, "session loop: $%u", s->id);
 		if (active != NULL &&
 		    ft->c != NULL &&
+		    ft->c->session != NULL &&
 		    s->id == ft->c->session->id)
 			use = active;
 		else

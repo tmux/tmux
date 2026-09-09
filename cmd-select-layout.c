@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-select-layout.c,v 1.43 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: cmd-select-layout.c,v 1.45 2026/09/09 07:03:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -73,12 +73,13 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct client		*c = cmdq_get_target_client(item);
 	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
 	struct window_pane	*wp = target->wp;
 	const char		*layoutname;
-	char			*oldlayout, *cause;
-	int			 next, previous, layout;
+	char			*oldlayout, *cause = NULL;
+	int			 next, previous, layout, flags = 0;
 
 	server_unzoom_window(w);
 
@@ -89,8 +90,12 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'p'))
 		previous = 1;
 
+	if (c != NULL &&
+	    (c->flags & CLIENT_CONTROL) &&
+	    (~c->flags & CLIENT_CONTROL_NEWLAYOUTS))
+		flags |= LAYOUT_CUSTOM_OLD_FORMAT;
 	oldlayout = w->old_layout;
-	w->old_layout = layout_dump(w, w->layout_root);
+	w->old_layout = layout_dump(w, w->layout_root, flags);
 
 	if (next || previous) {
 		if (next)

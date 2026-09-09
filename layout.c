@@ -1,4 +1,4 @@
-/* $OpenBSD: layout.c,v 1.98 2026/08/25 18:38:05 nicm Exp $ */
+/* $OpenBSD: layout.c,v 1.99 2026/09/09 07:03:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -106,7 +106,7 @@ layout_free_cell(struct layout_cell *lc, int only_nodes)
 		}
 		break;
 	case LAYOUT_WINDOWPANE:
-		if (lc->wp != NULL) {
+		if (lc->wp != NULL && lc->wp->layout_cell != NULL) {
 			lc->wp->layout_cell->parent = NULL;
 			lc->wp->layout_cell = NULL;
 		}
@@ -233,29 +233,6 @@ layout_make_node(struct layout_cell *lc, enum layout_type type)
 	lc->wp = NULL;
 }
 
-/* Fix z-indexes. */
-void
-layout_fix_zindexes(struct window *w, struct layout_cell *lc)
-{
-	struct layout_cell	*lcchild;
-
-	if (lc == NULL)
-		return;
-
-	switch (lc->type) {
-	case LAYOUT_WINDOWPANE:
-		TAILQ_INSERT_TAIL(&w->z_index, lc->wp, zentry);
-		break;
-	case LAYOUT_LEFTRIGHT:
-	case LAYOUT_TOPBOTTOM:
-		TAILQ_FOREACH(lcchild, &lc->cells, entry)
-			layout_fix_zindexes(w, lcchild);
-		return;
-	default:
-		fatalx("bad layout type");
-	}
-}
-
 int
 layout_cell_is_tiled(struct layout_cell *lc)
 {
@@ -265,7 +242,7 @@ layout_cell_is_tiled(struct layout_cell *lc)
 	return is_leaf && !is_floating;
 }
 
-static int
+int
 layout_cell_has_tiled_child(struct layout_cell *lc)
 {
 	struct layout_cell      *lcchild;
@@ -509,18 +486,20 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 
 /* Count the number of available cells in a layout. */
 u_int
-layout_count_cells(struct layout_cell *lc)
+layout_count_cells(struct layout_cell *lc, int with_floating)
 {
 	struct layout_cell	*lcchild;
 	u_int			 count = 0;
 
 	switch (lc->type) {
 	case LAYOUT_WINDOWPANE:
+		if (lc->flags & LAYOUT_CELL_FLOATING && !with_floating)
+			return 0;
 		return (1);
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
-			count += layout_count_cells(lcchild);
+			count += layout_count_cells(lcchild, with_floating);
 		return (count);
 	default:
 		fatalx("bad layout type");
@@ -721,7 +700,7 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 	/* If no parent, this is the last pane in a window. */
 	lcparent = lc->parent;
 	if (lcparent == NULL) {
-		if (lc->wp != NULL)
+		if (*lcroot == lc)
 			*lcroot = NULL;
 		layout_free_cell(lc, 0);
 		return;
