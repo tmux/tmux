@@ -30,8 +30,11 @@ killw
 EOF
 sleep 1
 $TMUX has || exit 1
-$TMUX lsp -aF '#{pane_id} #{window_layout}' >$TMP || exit 1
-cat <<EOF|cmp -s $TMP - || exit 1
+# Use a control client to request legacy layouts, keeping only pane lines
+# from the control protocol output.
+$TMUX -C lsp -aF '#{pane_id} #{window_layout}' |
+	grep '^%[0-9]' >$TMP || exit 1
+cat <<EOF|cmp $TMP - || exit 1
 %0 f5ab,200x200,0,0[200x50,0,0,0,200x149,0,51,3]
 %3 f5ab,200x200,0,0[200x50,0,0,0,200x149,0,51,3]
 %2 dcbd,200x200,0,0[200x100,0,0,2,200x99,0,101,4]
