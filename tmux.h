@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1438 2026/09/09 08:30:05 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1439 2026/09/10 11:02:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1339,6 +1339,7 @@ struct window_pane {
 #define PANE_CLOSEONCLICK 0x80000
 #define PANE_CAPTUREALLKEYS 0x100000
 #define PANE_FLOATOVERZOOM 0x200000
+#define PANE_CLOSEONCANCEL 0x400000
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;

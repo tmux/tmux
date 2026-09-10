@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1168 2026/09/09 07:03:39 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1169 2026/09/10 11:02:18 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: September 9 2026 $
+.Dd $Mdocdate: September 10 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -3655,7 +3655,7 @@ but a different format may be specified with
 .Fl F .
 .Tg newp
 .It Xo Ic new\-pane
-.Op Fl AbCdefhIkKLMOPvWZ
+.Op Fl AbCDefhIkKLMOPvWZ
 .Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
@@ -3717,6 +3717,13 @@ all keys, including the prefix key, are passed directly to the modal pane.
 With
 .Fl C ,
 the modal pane is closed when the mouse is clicked outside it.
+With
+.Fl D ,
+the modal pane is closed when
+.Ql Escape
+or
+.Ql C-c
+is pressed.
 .Pp
 The
 .Fl L
@@ -6328,7 +6335,7 @@ uses when the colour with that index is requested.
 The index may be from zero to 255.
 .Pp
 .It Xo Ic remain\-on\-exit
-.Op Ic on | off | failed | key
+.Op Ic on | off | failed | key | failed\-key
 .Xc
 A pane with this flag set is not destroyed when the program running in it
 exits.
@@ -6338,6 +6345,10 @@ then only when the program exit status is not zero.
 If set to
 .Ic key ,
 the pane stays open and closes when a key is pressed.
+If set to
+.Ic failed\-key ,
+the pane stays open and closes when a key is pressed only if the program exit
+status is not zero.
 The pane may be reactivated with the
 .Ic respawn\-pane
 command.
