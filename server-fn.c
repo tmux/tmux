@@ -1,4 +1,4 @@
-/* $OpenBSD: server-fn.c,v 1.152 2026/09/03 19:12:36 nicm Exp $ */
+/* $OpenBSD: server-fn.c,v 1.153 2026/09/10 11:02:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -383,6 +383,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 	case 0:
 		break;
 	case 2:
+	case 4:
 		if (WIFEXITED(wp->status) && WEXITSTATUS(wp->status) == 0)
 			break;
 		/* FALLTHROUGH */
