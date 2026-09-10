@@ -1339,6 +1339,7 @@ struct window_pane {
 #define PANE_CLOSEONCLICK 0x80000
 #define PANE_CAPTUREALLKEYS 0x100000
 #define PANE_FLOATOVERZOOM 0x200000
+#define PANE_CLOSEONCANCEL 0x400000
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;

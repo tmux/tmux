@@ -337,9 +337,9 @@ $TMUX set -g @modal-prefix no
 $TMUX set -g @modal-root no
 $TMUX bind -n z set -g @modal-root yes
 
-modal=$($TMUX new-pane -OKPF '#{pane_id}' -t "$p0" \
+modal=$($TMUX new-pane -ODKPF '#{pane_id}' -t "$p0" \
     -x 20 -y 5 -X 20 -Y 10 'cat') ||
-	fail "new-pane -OK failed"
+	fail "new-pane -ODK failed"
 sleep 1
 $TMUX2 send-keys -t "$OUTER" C-b x z Enter
 sleep 1
@@ -356,6 +356,28 @@ new_left=$(fmt "$modal" '#{pane_left}')
 new_top=$(fmt "$modal" '#{pane_top}')
 [ "$new_left" -gt "$left" ] || [ "$new_top" -gt "$top" ] ||
 	fail "key-capturing modal pane did not move"
+$TMUX2 send-keys -t "$OUTER" Escape
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
+
+modal=$($TMUX new-pane -ODKPF '#{pane_id}' -t "$p0" \
+    -x 20 -y 5 -X 20 -Y 10 'trap "" INT; exec cat') ||
+	fail "new-pane -ODK failed"
+sleep 1
+$TMUX2 send-keys -t "$OUTER" C-c
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
+
+# A dead modal does not close on Escape or C-c without -D.
+modal=$($TMUX new-pane -OPF '#{pane_id}' -t "$p0" \
+    -x 20 -y 5 -X 20 -Y 10 'sleep 1') ||
+	fail "new-pane -O failed"
+check_ok set-option -p -t "$modal" remain-on-exit on
+sleep 2
+must_equal "$(fmt "$modal" '#{pane_dead}:#{pane_modal_flag}')" 1:1
+$TMUX2 send-keys -t "$OUTER" Escape
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" "$modal"
 check_ok kill-pane -t "$modal"
 sleep 1
 
@@ -372,8 +394,12 @@ case "$($TMUX capture-pane -pt "$modal")" in
 *xz*) ;;
 *) fail "keys did not reach display-popup pane" ;;
 esac
-check_ok kill-pane -t "$modal"
+$TMUX2 send-keys -t "$OUTER" Escape
 sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" "$modal"
+$TMUX2 send-keys -t "$OUTER" C-c
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
 
 # Creating a popup pane must not fire the split-window hook.
 check_ok set-hook -t modal after-split-window \
@@ -400,8 +426,56 @@ sleep 2
 modal=$(fmt modal:0 '#{window_modal_pane}')
 [ -n "$modal" ] || fail "retained display-popup was not created"
 must_equal "$(fmt "$modal" '#{pane_dead}')" 1
+case "$($TMUX capture-pane -pt "$modal")" in
+*'Pane is dead'*) fail "display-popup showed remain-on-exit message" ;;
+esac
 $TMUX2 send-keys -t "$OUTER" a
 sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" "$modal"
+$TMUX2 send-keys -t "$OUTER" Escape
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
+
+$TMUX bind K display-popup -k -t "$p0" -w 20 -h 5 'printf done'
+$TMUX2 send-keys -t "$OUTER" C-b K
+sleep 2
+modal=$(fmt modal:0 '#{window_modal_pane}')
+[ -n "$modal" ] || fail "display-popup -k was not created"
+must_equal "$(fmt "$modal" '#{pane_dead}')" 1
+$TMUX2 send-keys -t "$OUTER" a
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
+
+$TMUX bind F display-popup -EE -t "$p0" -w 20 -h 5 'exit 1'
+$TMUX2 send-keys -t "$OUTER" C-b F
+sleep 2
+modal=$(fmt modal:0 '#{window_modal_pane}')
+[ -n "$modal" ] || fail "failed display-popup -EE did not remain"
+must_equal "$(fmt "$modal" '#{pane_dead}')" 1
+$TMUX2 send-keys -t "$OUTER" a
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" "$modal"
+$TMUX2 send-keys -t "$OUTER" Escape
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" "$modal"
+check_ok kill-pane -t "$modal"
+sleep 1
+
+check_ok display-popup -EE -t "$p0" true
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
+
+$TMUX bind G display-popup -EE -k -t "$p0" -w 20 -h 5 'exit 1'
+$TMUX2 send-keys -t "$OUTER" C-b G
+sleep 2
+modal=$(fmt modal:0 '#{window_modal_pane}')
+[ -n "$modal" ] || fail "failed display-popup -EE -k did not remain"
+must_equal "$(fmt "$modal" '#{pane_dead}')" 1
+must_equal "$($TMUX show-options -pv -t "$modal" remain-on-exit)" failed-key
+$TMUX2 send-keys -t "$OUTER" a
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
+
+check_ok display-popup -EE -k -t "$p0" true
 must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
 
 # A nonmodal floating pane may remain above zoom, and switching between it and

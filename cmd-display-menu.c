@@ -54,8 +54,8 @@ const struct cmd_entry cmd_display_popup_entry = {
 	.name = "display-popup",
 	.alias = "popup",
 
-	.args = { "Bb:Cc:d:e:Eh:kNs:S:t:T:w:x:y:", 0, -1, NULL },
-	.usage = "[-BCEkN] [-b border-lines] [-c target-client] "
+	.args = { "Bb:Cc:d:e:Eh:ks:S:t:T:w:x:y:", 0, -1, NULL },
+	.usage = "[-BCEk] [-b border-lines] [-c target-client] "
 		 "[-d start-directory] [-e environment] [-h height] "
 		 "[-s style] [-S border-style] " CMD_TARGET_PANE_USAGE
 		 " [-T title] [-w width] [-x position] [-y position] "
@@ -505,14 +505,22 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	window_pop_zoom(w);
 	new_wp->flags |= PANE_CAPTUREALLKEYS;
+	if (!args_has(args, 'E'))
+		new_wp->flags |= PANE_CLOSEONCANCEL;
 
 	options_set_number(new_wp->options, "pane-border-lines", lines);
-	if (args_has(args, 'E') > 1)
-		options_set_number(new_wp->options, "remain-on-exit", 2);
-	else if (args_has(args, 'E'))
+	if (args_has(args, 'E') > 1) {
+		if (args_has(args, 'k'))
+			options_set_number(new_wp->options, "remain-on-exit", 4);
+		else
+			options_set_number(new_wp->options, "remain-on-exit", 2);
+	} else if (args_has(args, 'E'))
 		options_set_number(new_wp->options, "remain-on-exit", 0);
-	else
+	else if (args_has(args, 'k'))
 		options_set_number(new_wp->options, "remain-on-exit", 3);
+	else
+		options_set_number(new_wp->options, "remain-on-exit", 1);
+	options_set_string(new_wp->options, "remain-on-exit-format", 0, "%s", "");
 
 	if (style != NULL) {
 		if (options_set_string(new_wp->options, "window-style", 0,

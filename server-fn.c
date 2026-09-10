@@ -386,6 +386,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 	case 0:
 		break;
 	case 2:
+	case 4:
 		if (WIFEXITED(wp->status) && WEXITSTATUS(wp->status) == 0)
 			break;
 		/* FALLTHROUGH */

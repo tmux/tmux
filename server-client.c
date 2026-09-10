@@ -1273,15 +1273,19 @@ server_client_repeat_time(struct client *c, struct key_binding *bd)
 	return (repeat);
 }
 
-/* Handle a key press on a dead pane waiting for a key. */
+/* Handle a key press which closes a dead pane. */
 static int
 server_client_handle_dead_key(struct window_pane *wp, key_code key)
 {
+	int	remain_on_exit;
+
 	if (wp == NULL ||
 	    (~wp->flags & PANE_EXITED) ||
 	    KEYC_IS_MOUSE(key) ||
-	    KEYC_IS_PASTE(key) ||
-	    options_get_number(wp->options, "remain-on-exit") != 3)
+	    KEYC_IS_PASTE(key))
+		return (0);
+	remain_on_exit = options_get_number(wp->options, "remain-on-exit");
+	if (remain_on_exit != 3 && remain_on_exit != 4)
 		return (0);
 	options_set_number(wp->options, "remain-on-exit", 0);
 	server_destroy_pane(wp, 0);
@@ -1634,9 +1638,9 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 	}
 
 	/*
-	 * Key presses for panes capturing all keys and in the command prompt are
-	 * a special case. The queue might be blocked so they need to be processed
-	 * immediately rather than queued.
+	 * Dead panes waiting for a key, modal cancel keys, panes capturing all keys
+	 * and the command prompt are special cases. The queue might be blocked so
+	 * they need to be processed immediately rather than queued.
 	 */
 	if (~c->flags & CLIENT_READONLY) {
 		if (c->message_string != NULL) {
@@ -1646,12 +1650,19 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 		}
 
 		wp = s->curw->window->active;
+		if (server_client_handle_dead_key(wp, event->key))
+			return (0);
+		if (wp != NULL &&
+		    wp == wp->window->modal &&
+		    (wp->flags & PANE_CLOSEONCANCEL) &&
+		    (event->key == '\033' || event->key == ('c'|KEYC_CTRL))) {
+			server_kill_pane(wp);
+			return (0);
+		}
 		if (wp != NULL &&
 		    (wp->flags & PANE_CAPTUREALLKEYS) &&
 		    TAILQ_EMPTY(&wp->modes) &&
 		    !KEYC_IS_MOUSE(event->key)) {
-			if (server_client_handle_dead_key(wp, event->key))
-				return (0);
 			if (~wp->flags & PANE_EXITED) {
 				window_pane_key(wp, c, s, s->curw, event->key,
 				    &event->m);
