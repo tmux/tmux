@@ -117,6 +117,7 @@ dist_tmux_SOURCES = \
 	cmd-list-sessions.c \
 	cmd-list-windows.c \
 	cmd-load-buffer.c \
+	cmd-load-layout.c \
 	cmd-lock-server.c \
 	cmd-move-window.c \
 	cmd-new-session.c \
@@ -135,6 +136,7 @@ dist_tmux_SOURCES = \
 	cmd-rotate-window.c \
 	cmd-run-shell.c \
 	cmd-save-buffer.c \
+	cmd-save-layout.c \
 	cmd-select-layout.c \
 	cmd-select-pane.c \
 	cmd-select-window.c \

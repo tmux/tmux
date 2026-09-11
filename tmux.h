@@ -91,6 +91,9 @@ struct winlink;
 #ifndef TMUX_CONF
 #define TMUX_CONF "/etc/tmux.conf:~/.tmux.conf"
 #endif
+#ifndef TMUX_LAYOUT_FILE
+#define TMUX_LAYOUT_FILE ".tmux.layout"
+#endif
 #ifndef TMUX_SOCK
 #define TMUX_SOCK "$TMUX_TMPDIR:" _PATH_TMP
 #endif
@@ -2632,6 +2635,7 @@ int	load_cfg_from_buffer(const void *, size_t, const char *,
 void printflike(1, 2) cfg_add_cause(const char *, ...);
 void	cfg_print_causes(struct cmdq_item *);
 void	cfg_show_causes(struct session *);
+char	*layout_get_path(void);
 
 /* paste.c */
 const char	*paste_buffer_name(struct paste_buffer *);

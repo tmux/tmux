@@ -1299,6 +1299,29 @@ specifies the sort order: one of
 (time).
 .Fl r
 reverses the sort order.
+.Tg loadlayout
+.It Xo Ic load\-layout
+.Op Fl f Ar path
+.Xc
+Recreate the sessions, windows and panes previously written by
+.Ic save\-layout ,
+reading the layout from
+.Ar path
+or, if
+.Fl f
+is not given, from the default layout file location (see
+.Ic save\-layout ) .
+As with
+.Ic load\-buffer ,
+if
+.Ar path
+is
+.Ql \- ,
+the layout is read from stdin.
+Each pane is respawned with a fresh shell in its recorded working
+directory - nothing that was previously running in it is relaunched.
+If a session named in the layout file already exists, that session is
+skipped.
 .Tg lockc
 .It Ic lock\-client Op Fl t Ar target\-client
 .D1 Pq alias: Ic lockc
@@ -1586,6 +1609,33 @@ option.
 .D1 Pq alias: Ic rename
 Rename the session to
 .Ar new\-name .
+.Tg savelayout
+.It Xo Ic save\-layout
+.Op Fl f Ar path
+.Xc
+Write the layout of every session, window and pane on the server -
+names, indexes, splits, pane sizes and each pane's current working
+directory - to
+.Ar path
+as JSON.
+As with
+.Ic save\-buffer ,
+if
+.Ar path
+is
+.Ql \- ,
+the layout is written to stdout.
+If
+.Fl f
+is not given, the file is written next to the configuration file in use
+(see
+.Sx FILES ) ,
+named
+.Pa .tmux.layout .
+The layout does not record what was running in each pane; use
+.Ic load\-layout
+to recreate it, which starts a fresh shell in each pane at its recorded
+directory.
 .It Xo Ic server\-access
 .Op Fl adglrw
 .Op Ar user | group

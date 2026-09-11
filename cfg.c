@@ -20,9 +20,11 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
@@ -35,6 +37,38 @@ static struct cmdq_item	 *cfg_item;
 int                       cfg_quiet = 1;
 char                    **cfg_files;
 u_int                     cfg_nfiles;
+
+/*
+ * Return the path to the tmux layout file used by the 'save-layout' and
+ * 'load-layout' commands. This lives alongside the tmux configuration file
+ * so it is easy to find, falling back to the home directory if no
+ * configuration file is in use or its directory is not writable (for
+ * example when -f /dev/null is used to skip loading a configuration file).
+ */
+char *
+layout_get_path(void)
+{
+	const char	*home;
+	char		*copy, *dir, *path;
+
+	if (cfg_nfiles > 0) {
+		copy = xstrdup(cfg_files[cfg_nfiles - 1]);
+		dir = dirname(copy);
+		if (access(dir, W_OK) == 0) {
+			xasprintf(&path, "%s/%s", dir, TMUX_LAYOUT_FILE);
+			free(copy);
+			return (path);
+		}
+		free(copy);
+	}
+
+	if ((home = find_home()) != NULL) {
+		xasprintf(&path, "%s/%s", home, TMUX_LAYOUT_FILE);
+		return (path);
+	}
+
+	return (NULL);
+}
 
 static enum cmd_retval
 cfg_client_done(__unused struct cmdq_item *item, __unused void *data)
