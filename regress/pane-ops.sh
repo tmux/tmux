@@ -104,6 +104,25 @@ assert_alive()
 	fi
 }
 
+# Compare layout geometry and pane ordering, ignoring the active pane and
+# last-pane history in the JSON layout. Selection is checked separately.
+pane_layout()
+{
+	$TMUX display-message -p -t "$1" '#{window_layout}' |
+		sed 's/,"a":true//g; s/,"l":[0-9][0-9]*//g'
+}
+
+check_layout()
+{
+	out=$(pane_layout "$1")
+	if [ "$out" != "$2" ]; then
+		echo "Layout for '$1' wrong."
+		echo "Expected: '$2'"
+		echo "But got:  '$out'"
+		exit 1
+	fi
+}
+
 # ---------------------------------------------------------------------------
 # split-window geometry.
 
@@ -309,12 +328,12 @@ check_ok kill-pane -t "$p6"
 
 # Zoom and unzoom preserve the exact tiled layout. Selecting another pane
 # without -Z unzooms, while -Z transfers zoom to the selected pane.
-layout=$($TMUX display-message -p -t P:0 '#{window_layout}')
+layout=$(pane_layout P:0)
 check_ok select-pane -t "$p0"
 check_ok resize-pane -Z -t "$p0"
 check_ok select-pane -t "$p2"
 check_fmt "$p2" '#{window_zoomed_flag}:#{pane_active}' '0:1'
-check_fmt P:0 '#{window_layout}' "$layout"
+check_layout P:0 "$layout"
 
 check_ok select-pane -t "$p0"
 check_ok resize-pane -Z -t "$p0"
@@ -322,7 +341,7 @@ check_ok select-pane -Z -t "$p2"
 check_fmt "$p2" '#{window_zoomed_flag}:#{pane_zoomed_flag}:#{pane_active}' \
 	'1:1:1'
 check_ok resize-pane -Z -t "$p2"
-check_fmt P:0 '#{window_layout}' "$layout"
+check_layout P:0 "$layout"
 
 # Directional selection temporarily restores the full layout to find its
 # neighbour, then follows the same unzoom or -Z transfer rules.
@@ -340,7 +359,7 @@ check_ok select-pane -D -Z -t "$p0"
 check_fmt "$p2" '#{window_zoomed_flag}:#{pane_zoomed_flag}:#{pane_active}' \
 	'1:1:1'
 check_ok resize-pane -Z -t "$p2"
-check_fmt P:0 '#{window_layout}' "$layout"
+check_layout P:0 "$layout"
 
 # The last-pane path has separate zoom handling, both with and without -Z.
 check_ok select-pane -t "$p0"
@@ -357,7 +376,7 @@ check_ok select-pane -l -Z -t P:0
 check_fmt "$p0" '#{window_zoomed_flag}:#{pane_zoomed_flag}:#{pane_active}' \
 	'1:1:1'
 check_ok resize-pane -Z -t "$p0"
-check_fmt P:0 '#{window_layout}' "$layout"
+check_layout P:0 "$layout"
 
 # Killing either a hidden ordinary pane or the zoom target unzooms.
 check_ok new-window -d -t P:12 -n zoom-kill 'cat'

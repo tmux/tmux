@@ -381,6 +381,25 @@ must_equal "$(fmt modal:0 '#{window_modal_pane}')" "$modal"
 check_ok kill-pane -t "$modal"
 sleep 1
 
+# failed-key closes successful panes and retains failed panes until a key.
+modal=$($TMUX new-pane -OPF '#{pane_id}' -t "$p0" \
+    -x 20 -y 5 -X 20 -Y 10 'sleep 1') ||
+	fail "new-pane -O failed"
+check_ok set-option -p -t "$modal" remain-on-exit failed-key
+sleep 2
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
+
+modal=$($TMUX new-pane -OPF '#{pane_id}' -t "$p0" \
+    -x 20 -y 5 -X 20 -Y 10 'sleep 1; exit 1') ||
+	fail "new-pane -O failed"
+check_ok set-option -p -t "$modal" remain-on-exit failed-key
+sleep 2
+must_equal "$(fmt "$modal" '#{pane_dead}:#{pane_modal_flag}')" 1:1
+must_equal "$($TMUX show-options -pv -t "$modal" remain-on-exit)" failed-key
+$TMUX2 send-keys -t "$OUTER" a
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
+
 $TMUX bind P display-popup -E -t "$p0" -w 20 -h 5 'cat'
 $TMUX2 send-keys -t "$OUTER" C-b P
 sleep 1

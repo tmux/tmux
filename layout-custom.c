@@ -1,4 +1,4 @@
-/* $OpenBSD: layout-custom.c,v 1.40 2026/09/09 07:03:39 nicm Exp $ */
+/* $OpenBSD: layout-custom.c,v 1.41 2026/09/09 09:01:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2010 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -28,8 +28,8 @@
 #include "tmux.h"
 
 /*
- * Layouts can be represented as strings in a JSON format (v2). The legacy
- * format (v1) will be removed in the future and should no longer be used.
+ * Layouts can be represented as strings in a JSON format (v2). The version 1
+ * format will be removed in the future and should no longer be used.
  *
  * The current (v2) format is JSON. The top level has two keys:
  *    "V": version number, currently 2
@@ -56,6 +56,9 @@
  *    "i": pane index
  *    "z": z-index, if a floating pane
  */
+
+/* Maximum nesting depth for version 1 layouts. */
+#define LAYOUT_V1_MAX_DEPTH 1000
 
 /* Layout string. */
 struct layout_string {
@@ -362,7 +365,7 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 	return (0);
 }
 
-/* Append information for a single cell in the legacy (v1) format. */
+/* Append information for a single cell in the version 1 format. */
 static int
 layout_append_v1(struct layout_cell *lc, struct layout_string *ls)
 {
@@ -778,7 +781,7 @@ layout_assign(struct window *w, struct layout_parse_ctx *pctx)
 		layout_assign_fallback(w, w->layout_root);
 }
 
-/* Construct a cell from the legacy (v1) format. */
+/* Construct a cell from the version 1 format. */
 static struct layout_cell *
 layout_construct_cell(struct layout_cell *lcparent, const char **layout)
 {
@@ -827,11 +830,14 @@ layout_construct_cell(struct layout_cell *lcparent, const char **layout)
 	return (lc);
 }
 
-/* Construct a layout from the legacy (v1) format. */
+/* Construct a layout from the version 1 format. */
 static struct layout_cell *
-layout_construct_v1(struct layout_cell *lcparent, const char **layout)
+layout_construct_v1(struct layout_cell *lcparent, const char **layout, u_int depth)
 {
 	struct layout_cell	*lc, *lcchild;
+
+	if (depth > LAYOUT_V1_MAX_DEPTH)
+		return (NULL);
 
 	lc = layout_construct_cell(lcparent, layout);
 	if (lc == NULL)
@@ -855,7 +861,7 @@ layout_construct_v1(struct layout_cell *lcparent, const char **layout)
 
 	do {
 		(*layout)++;
-		lcchild = layout_construct_v1(lc, layout);
+		lcchild = layout_construct_v1(lc, layout, depth + 1);
 		if (lcchild == NULL)
 			goto fail;
 		TAILQ_INSERT_TAIL(&lc->cells, lcchild, entry);
@@ -1068,7 +1074,8 @@ layout_construct(const char *input, struct layout_parse_ctx *pctx)
 			*pctx->cause = xstrdup("invalid layout checksum");
 			return (-1);
 		}
-		if ((pctx->root = layout_construct_v1(NULL, &input)) == NULL) {
+		pctx->root = layout_construct_v1(NULL, &input, 0);
+		if (pctx->root == NULL) {
 			*pctx->cause = xstrdup("invalid layout");
 			return (-1);
 		}
