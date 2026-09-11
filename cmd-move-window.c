@@ -62,7 +62,7 @@ cmd_move_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*source = cmdq_get_source(item);
 	struct cmd_find_state	 target;
-	const char		*tflag = args_get(args, 't');
+	const char		*tflag = args_get_target(args, item);
 	struct session		*src = source->s;
 	struct session		*dst;
 	struct winlink		*wl = source->wl;
