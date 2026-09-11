@@ -136,7 +136,8 @@ popup_reapply_styles(struct popup_data *pd)
 }
 
 static void
-popup_redraw_cb(const struct tty_ctx *ttyctx)
+popup_redraw_cb(const struct tty_ctx *ttyctx, __unused u_int py,
+    __unused u_int ny)
 {
 	struct popup_data	*pd = ttyctx->arg;
 
@@ -321,11 +322,60 @@ popup_resize_cb(__unused struct client *c, void *data)
 	}
 }
 
+/*
+ * Report damage for a popup's rectangle, given in raw client/tty
+ * coordinates. Status-line cells are outside the window scene - they have no
+ * corresponding window content and redraw_damage_window() can't reach them -
+ * so if the popup's rectangle overlaps the status line, force it to redraw
+ * separately. The rest of the rectangle is clipped to the actual pane area
+ * (above or below the status line, whichever side it's on) before being
+ * translated into window coordinates and reported the normal way, the same
+ * way mouse coordinates are translated elsewhere (e.g. cmd-join-pane.c,
+ * cmd-split-window.c).
+ */
+static void
+popup_damage(struct client *c, u_int px, u_int py, u_int sx, u_int sy)
+{
+	struct window	*w;
+	int		 statusat;
+	u_int		 ox, oy, osx, osy, lines, top, bottom, y0, y1;
+
+	if (c->session == NULL)
+		return;
+	w = c->session->curw->window;
+
+	lines = status_line_size(c);
+	statusat = status_at_line(c);
+	if (statusat >= 0 && py < (u_int)statusat + lines &&
+	    py + sy > (u_int)statusat)
+		c->flags |= (CLIENT_REDRAWSTATUS|CLIENT_REDRAWSTATUSALWAYS);
+
+	if (statusat == 0) {
+		top = lines;
+		bottom = c->tty.sy;
+	} else if (statusat > 0) {
+		top = 0;
+		bottom = statusat;
+	} else {
+		top = 0;
+		bottom = c->tty.sy;
+	}
+	y0 = (py > top) ? py : top;
+	y1 = (py + sy < bottom) ? py + sy : bottom;
+	if (y0 >= y1)
+		return;
+
+	tty_window_offset(&c->tty, &ox, &oy, &osx, &osy);
+	redraw_damage_window(w, px + ox, y0 - top + oy, sx, y1 - y0);
+}
+
 static void
 popup_handle_drag(struct client *c, struct popup_data *pd,
     struct mouse_event *m)
 {
 	u_int	px, py;
+	u_int	old_px = pd->px, old_py = pd->py;
+	u_int	old_sx = pd->sx, old_sy = pd->sy;
 
 	if (!MOUSE_DRAG(m->b))
 		pd->dragging = OFF;
@@ -348,7 +398,9 @@ popup_handle_drag(struct client *c, struct popup_data *pd,
 		pd->dy = m->y - pd->py;
 		pd->ppx = px;
 		pd->ppy = py;
-		server_redraw_client(c);
+
+		popup_damage(c, old_px, old_py, old_sx, old_sy);
+		c->flags |= CLIENT_REDRAWOVERLAY;
 	} else if (pd->dragging == SIZE) {
 		if (pd->border_lines == BOX_LINES_NONE) {
 			if (m->x < pd->px + 1)
@@ -375,7 +427,9 @@ popup_handle_drag(struct client *c, struct popup_data *pd,
 			if (pd->job != NULL)
 				job_resize(pd->job, pd->sx - 2, pd->sy - 2);
 		}
-		server_redraw_client(c);
+
+		popup_damage(c, old_px, old_py, old_sx, old_sy);
+		c->flags |= CLIENT_REDRAWOVERLAY;
 	}
 }
 
