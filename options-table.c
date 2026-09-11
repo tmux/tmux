@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.245 2026/09/10 11:02:18 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.246 2026/09/11 10:17:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -76,7 +76,8 @@ static const char *options_table_pane_border_indicators_list[] = {
 	"off", "colour", "arrows", "both", NULL
 };
 static const char *options_table_pane_border_lines_list[] = {
-	"single", "double", "heavy", "simple", "number", "spaces", "none", NULL
+	"single", "double", "heavy", "simple", "number", "spaces", "none",
+	"rounded", NULL
 };
 static const char *options_table_popup_border_lines_list[] = {
 	"single", "double", "heavy", "simple", "rounded", "padded", "none", NULL
