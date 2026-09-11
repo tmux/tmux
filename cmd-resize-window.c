@@ -106,7 +106,11 @@ cmd_resize_window_exec(struct cmd *self, struct cmdq_item *item)
 		    WINDOW_SIZE_SMALLEST);
 	}
 
-	options_set_number(w->options, "window-size", WINDOW_SIZE_MANUAL);
+	if (options_get_number(w->options, "window-size") !=
+	    WINDOW_SIZE_MANUAL_OR_SMALLEST) {
+		options_set_number(w->options, "window-size", WINDOW_SIZE_MANUAL);
+	}
+	w->manual_size_set = 1;
 	w->manual_sx = sx;
 	w->manual_sy = sy;
 	recalculate_size(w, 1);
