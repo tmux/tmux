@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1439 2026/09/10 11:02:18 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1440 2026/09/11 10:17:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1116,7 +1116,8 @@ enum pane_lines {
 	PANE_LINES_SIMPLE,
 	PANE_LINES_NUMBER,
 	PANE_LINES_SPACES,
-	PANE_LINES_NONE
+	PANE_LINES_NONE,
+	PANE_LINES_ROUNDED
 };
 
 /* Pane border indicator option. */
