@@ -86,6 +86,11 @@ check_value "-gv status-keys" "vi"
 check_fail "unknown value: bogus" set -g status-keys bogus
 check_value "-gv status-keys" "vi"
 
+# pane-border-lines accepts rounded as a pane border style.
+check_ok set -gw pane-border-lines rounded
+check_value "-gwv pane-border-lines" "rounded"
+check_ok set -gw pane-border-lines single
+
 # --- flag options ---------------------------------------------------------
 #
 # focus-events is an on/off flag.  Setting with no value toggles it; explicit
