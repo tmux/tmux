@@ -400,11 +400,15 @@ $TMUX2 send-keys -t "$OUTER" a
 sleep 1
 must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
 
-$TMUX bind P display-popup -E -t "$p0" -w 20 -h 5 'cat'
+$TMUX bind P display-popup -E -t "$p0" -w 20 -h 5 -T popup-title 'cat'
 $TMUX2 send-keys -t "$OUTER" C-b P
 sleep 1
 modal=$(fmt modal:0 '#{window_modal_pane}')
 [ -n "$modal" ] || fail "display-popup did not create a modal pane"
+must_equal "$(fmt "$modal" '#{pane_title}')" popup-title
+must_equal "$($TMUX show-options -pv -t "$modal" pane-border-status)" top
+must_equal "$($TMUX show-options -pv -t "$modal" pane-border-format)" \
+	'#{pane_title}'
 $TMUX2 send-keys -t "$OUTER" C-b x z Enter
 sleep 1
 must_equal "$($TMUX show -gv @modal-prefix)" no

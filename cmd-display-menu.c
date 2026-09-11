@@ -545,6 +545,10 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'T'))
 		title = format_single_from_target(item, args_get(args, 'T'));
 	if (title != NULL) {
+		options_set_number(new_wp->options, "pane-border-status",
+		    PANE_STATUS_TOP);
+		options_set_string(new_wp->options, "pane-border-format", 0,
+		    "%s", "#{pane_title}");
 		screen_set_title(&new_wp->base, title, 0);
 		ep = event_payload_create();
 		cmd_find_from_pane(&fs, new_wp, 0);
