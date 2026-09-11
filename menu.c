@@ -52,6 +52,18 @@ struct menu_data {
 };
 
 void
+menu_dimensions(struct menu *menu, enum box_lines lines, u_int *sx, u_int *sy)
+{
+	if (lines == BOX_LINES_NONE)
+		*sx = menu->item_width + 2;
+	else
+		*sx = menu->width + 4;
+	*sy = menu->count;
+	if (lines != BOX_LINES_NONE)
+		*sy += 2;
+}
+
+void
 menu_add_items(struct menu *menu, const struct menu_item *items,
     struct cmdq_item *qitem, struct client *c, struct cmd_find_state *fs)
 {
@@ -142,6 +154,8 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 	width = format_width(new_item->name);
 	if (*new_item->name == '-')
 		width--;
+	if (width > menu->item_width)
+		menu->item_width = width;
 	if (width > menu->width)
 		menu->width = width;
 }
@@ -238,7 +252,7 @@ menu_update(struct menu_data *md)
 	screen_write_clearscreen(&ctx, 8);
 
 	if (md->border_lines != BOX_LINES_NONE) {
-		screen_write_box(&ctx, menu->width + 4, menu->count + 2,
+		screen_write_box(&ctx, menu_width(md), menu_height(md),
 		    md->border_lines, &md->border_style_gc, menu->title);
 	}
 
@@ -286,11 +300,13 @@ menu_destroy(struct window *w)
 void
 menu_get_cursor(struct menu_data *md, u_int *cx, u_int *cy)
 {
-	*cx = md->px + 2;
+	u_int	border = (md->border_lines != BOX_LINES_NONE);
+
+	*cx = md->px + 1 + border;
 	if (md->choice == -1)
 		*cy = md->py;
 	else
-		*cy = md->py + 1 + md->choice;
+		*cy = md->py + border + md->choice;
 }
 
 struct screen *
@@ -302,13 +318,19 @@ menu_screen(struct menu_data *md)
 u_int
 menu_width(struct menu_data *md)
 {
-	return (md->menu->width + 4);
+	u_int	sx, sy;
+
+	menu_dimensions(md->menu, md->border_lines, &sx, &sy);
+	return (sx);
 }
 
 u_int
 menu_height(struct menu_data *md)
 {
-	return (md->menu->count + 2);
+	u_int	sx, sy;
+
+	menu_dimensions(md->menu, md->border_lines, &sx, &sy);
+	return (sy);
 }
 
 u_int
@@ -338,6 +360,9 @@ menu_key(struct client *c, struct menu_data *md, struct key_event *event)
 	enum cmd_parse_status		 status;
 	char				*error;
 	key_code			 key;
+	u_int				 border;
+
+	border = (md->border_lines != BOX_LINES_NONE);
 
 	if (KEYC_IS_MOUSE(event->key)) {
 		/*
@@ -353,10 +378,9 @@ menu_key(struct client *c, struct menu_data *md, struct key_event *event)
 				return (1);
 			return (0);
 		}
-		if (m->x < md->px ||
-		    m->x > md->px + 4 + menu->width ||
-		    m->y < md->py + 1 ||
-		    m->y > md->py + 1 + n - 1) {
+		if (m->x < md->px || m->x >= md->px + menu_width(md) ||
+		    m->y < md->py + border ||
+		    m->y >= md->py + border + n) {
 			if (~md->flags & MENU_STAYOPEN) {
 				if (!move && MOUSE_RELEASE(m->b))
 					return (1);
@@ -379,7 +403,7 @@ menu_key(struct client *c, struct menu_data *md, struct key_event *event)
 			if (!MOUSE_WHEEL(m->b) && !MOUSE_DRAG(m->b))
 				goto chosen;
 		}
-		md->choice = m->y - (md->py + 1);
+		md->choice = m->y - (md->py + border);
 		if (md->choice != old)
 			server_redraw_window_menu(md->w);
 		return (0);
@@ -550,8 +574,7 @@ menu_resize(struct menu_data *md, struct window *w)
 	nx = md->px;
 	ny = md->py;
 
-	sx = md->menu->width + 4;
-	sy = md->menu->count + 2;
+	menu_dimensions(md->menu, md->border_lines, &sx, &sy);
 
 	if (nx + sx > w->sx) {
 		if (w->sx <= sx)
@@ -591,8 +614,9 @@ menu_display(struct menu *menu, int flags, int starting_choice,
 		w = fs->w;
 	o = w->options;
 
-	sx = menu->width + 4;
-	sy = menu->count + 2;
+	if (lines == BOX_LINES_DEFAULT)
+		lines = options_get_number(o, "menu-border-lines");
+	menu_dimensions(menu, lines, &sx, &sy);
 	if (sx >= w->sx)
 		px = 0;
 	else if (px + sx > w->sx)
@@ -603,9 +627,6 @@ menu_display(struct menu *menu, int flags, int starting_choice,
 		py = w->sy - sy;
 	w->menu_last_px = px;
 	w->menu_last_py = py;
-
-	if (lines == BOX_LINES_DEFAULT)
-		lines = options_get_number(o, "menu-border-lines");
 
 	md = xcalloc(1, sizeof *md);
 	md->w = w;
