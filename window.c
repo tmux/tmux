@@ -449,9 +449,25 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 static void
 window_destroy(struct window *w)
 {
+	struct window_pane	*wp;
+
 	log_debug("window @%u destroyed (%d references)", w->id, w->references);
 
-	window_unzoom(w, 0);
+	/*
+	 * Clear any zoom rather than calling window_unzoom(): that resizes
+	 * the panes and fires pane-resized, whose payload takes a reference
+	 * on the window, and releasing it with the count already at zero
+	 * destroys the window a second time. Both layouts are freed below,
+	 * but the flags must go so nothing tries to unzoom while the panes
+	 * are destroyed (GitHub issue 3717).
+	 */
+	if (w->flags & WINDOW_ZOOMED) {
+		w->flags &= ~WINDOW_ZOOMED;
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			wp->flags &= ~PANE_ZOOMED;
+			wp->saved_layout_cell = NULL;
+		}
+	}
 	RB_REMOVE(windows, &windows, w);
 
 	layout_free_cell(w->layout_root, 0);
