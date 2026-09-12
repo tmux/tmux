@@ -1433,6 +1433,12 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 
 	log_debug("%s: %s %u", __func__, tty->client->name, py);
 
+	/* the scene must clip a whole-line fallback around the window menu. */
+	if (tty->client->session->curw->window->menu != NULL) {
+		ctx->redraw_cb(ctx);
+		return;
+	}
+
 	if (~ctx->flags & TTY_CTX_WINDOW_BIGGER) {
 		r = tty_check_overlay_range(tty, ctx->xoff, ctx->yoff + py, nx);
 		for (j = 0; j < r->used; j++) {
@@ -1690,6 +1696,7 @@ tty_cmd_insertcharacter(struct tty *tty, const struct tty_ctx *ctx)
 	    tty_fake_bce(tty, &ctx->defaults, ctx->bg) ||
 	    (!tty_term_has(tty->term, TTYC_ICH) &&
 	    !tty_term_has(tty->term, TTYC_ICH1)) ||
+	    c->session->curw->window->menu != NULL ||
 	    c->overlay_check != NULL) {
 		tty_draw_pane(tty, ctx, ctx->ocy);
 		return;
