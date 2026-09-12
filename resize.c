@@ -139,12 +139,13 @@ clients_calculate_size(int type, int current, struct client *c,
 
 	/*
 	 * Start comparing with 0 for largest and UINT_MAX for smallest or
-	 * latest.
+	 * latest. Manual types start from the stored manual size so they
+	 * never grow past it; manual-or-smallest then mins with clients.
 	 */
 	if (type == WINDOW_SIZE_LARGEST) {
 		*sx = 0;
 		*sy = 0;
-	} else if (w != NULL && type == WINDOW_SIZE_MANUAL) {
+	} else if (w != NULL && WINDOW_SIZE_USES_MANUAL(type)) {
 		*sx = w->manual_sx;
 		*sy = w->manual_sy;
 		log_debug("%s: manual size %ux%u", __func__, *sx, *sy);
@@ -161,7 +162,7 @@ clients_calculate_size(int type, int current, struct client *c,
 	if (type == WINDOW_SIZE_LATEST && w != NULL)
 		n = clients_with_window(w);
 
-	/* Skip setting the size if manual */
+	/* Skip setting the size if manual (but not manual-or-smallest). */
 	if (type == WINDOW_SIZE_MANUAL)
 		goto skip;
 
@@ -254,19 +255,25 @@ skip:
 		log_debug("%s: no calculated size", __func__);
 
 	/* Return whether a suitable size was found. */
-	if (type == WINDOW_SIZE_MANUAL) {
+	switch (type) {
+	case WINDOW_SIZE_MANUAL:
 		log_debug("%s: type is manual", __func__);
 		return (w != NULL);
-	}
-	if (type == WINDOW_SIZE_LARGEST) {
+	case WINDOW_SIZE_MANUAL_OR_SMALLEST:
+		log_debug("%s: type is manual-or-smallest", __func__);
+		if (w != NULL)
+			return (1);
+		return (*sx != UINT_MAX && *sy != UINT_MAX);
+	case WINDOW_SIZE_LARGEST:
 		log_debug("%s: type is largest", __func__);
 		return (*sx != 0 && *sy != 0);
-	}
-	if (type == WINDOW_SIZE_LATEST)
+	case WINDOW_SIZE_LATEST:
 		log_debug("%s: type is latest", __func__);
-	else
+		return (*sx != UINT_MAX && *sy != UINT_MAX);
+	default:
 		log_debug("%s: type is smallest", __func__);
-	return (*sx != UINT_MAX && *sy != UINT_MAX);
+		return (*sx != UINT_MAX && *sy != UINT_MAX);
+	}
 }
 
 static int
@@ -370,9 +377,9 @@ recalculate_size(struct window *w, int now)
 	log_debug("%s: @%u is %ux%u", __func__, w->id, w->sx, w->sy);
 
 	/*
-	 * Type is manual, smallest, largest, latest. Current is the
-	 * aggressive-resize option (do not resize based on clients where the
-	 * window is not the current window).
+	 * Type is manual, manual-or-smallest, smallest, largest, latest.
+	 * Current is the aggressive-resize option (do not resize based on
+	 * clients where the window is not the current window).
 	 */
 	type = options_get_number(w->options, "window-size");
 	current = options_get_number(w->options, "aggressive-resize");
@@ -404,12 +411,12 @@ recalculate_size(struct window *w, int now)
 	}
 
 	/*
-	 * If the now flag is set or if the window is sized manually, change
-	 * the size immediately. Otherwise set the flag and it will be done
-	 * later.
+	 * If the now flag is set or if the window is sized from a manual
+	 * size, change the size immediately. Otherwise set the flag and it
+	 * will be done later.
 	 */
 	log_debug("%s: @%u new size %ux%u", __func__, w->id, sx, sy);
-	if (now || type == WINDOW_SIZE_MANUAL)
+	if (now || WINDOW_SIZE_USES_MANUAL(type))
 		resize_window(w, sx, sy, xpixel, ypixel);
 	else {
 		w->new_sx = sx;

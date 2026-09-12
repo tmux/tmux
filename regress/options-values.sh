@@ -91,6 +91,14 @@ check_ok set -gw pane-border-lines rounded
 check_value "-gwv pane-border-lines" "rounded"
 check_ok set -gw pane-border-lines single
 
+# window-size accepts the manual-or-smallest choice and rejects unknown names.
+check_ok set -gw window-size manual-or-smallest
+check_value "-gwv window-size" "manual-or-smallest"
+check_fail "unknown value: manual-or-largest" set -gw window-size \
+    manual-or-largest
+check_value "-gwv window-size" "manual-or-smallest"
+check_ok set -gw window-size latest
+
 # --- flag options ---------------------------------------------------------
 #
 # focus-events is an on/off flag.  Setting with no value toggles it; explicit

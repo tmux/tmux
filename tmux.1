@@ -5249,7 +5249,11 @@ is used as a login shell.
 .It Ic default\-size Ar XxY
 Set the default size of new windows when the
 .Ic window\-size
-option is set to manual or when a session is created with
+option is set to
+.Ar manual
+or
+.Ar manual-or-smallest
+or when a session is created with
 .Ic new\-session
 .Fl d .
 The value is the width and height separated by an
@@ -6241,7 +6245,8 @@ see the
 section.
 .Pp
 .It Xo Ic window\-size
-.Ar largest | Ar smallest | Ar manual | Ar latest
+.Ar largest | Ar smallest | Ar manual | Ar latest |
+.Ar manual-or-smallest
 .Xc
 Configure how
 .Nm
@@ -6256,6 +6261,10 @@ If
 the size of a new window is set from the
 .Ic default\-size
 option and windows are resized automatically.
+If
+.Ar manual-or-smallest ,
+the window uses its manual size unless an attached client is smaller,
+in which case the smallest client is used.
 With
 .Ar latest ,
 .Nm
