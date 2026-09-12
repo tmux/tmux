@@ -89,7 +89,7 @@ static const char *options_table_get_clipboard_list[] = {
 	"off", "buffer", "request", "both", NULL
 };
 static const char *options_table_window_size_list[] = {
-	"largest", "smallest", "manual", "latest", NULL
+	"largest", "smallest", "manual", "latest", "manual-or-smallest", NULL
 };
 static const char *options_table_remain_on_exit_list[] = {
 	"off", "on", "failed", "key", "failed-key", NULL
@@ -1260,10 +1260,10 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_num = 0,
-	  .text = "When 'window-size' is 'smallest', whether the maximum size "
-		  "of a window is the smallest attached session where it is "
-		  "the current window ('on') or the smallest session it is "
-		  "linked to ('off')."
+	  .text = "When 'window-size' is 'smallest' or 'manual-or-smallest', "
+		  "whether the maximum size of a window is the smallest "
+		  "attached session where it is the current window ('on') or "
+		  "the smallest session it is linked to ('off')."
 	},
 
 	{ .name = "allow-passthrough",
@@ -1823,8 +1823,9 @@ const struct options_table_entry options_table[] = {
 	  .text = "How window size is calculated. "
 		  "'latest' uses the size of the most recently used client, "
 		  "'largest' the largest client, 'smallest' the smallest "
-		  "client and 'manual' a size set by the 'resize-window' "
-		  "command."
+		  "client, 'manual' a size set by the 'resize-window' "
+		  "command and 'manual-or-smallest' the manual size unless a "
+		  "smaller client exists."
 	},
 
 	{ .name = "window-style",

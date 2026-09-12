@@ -3215,7 +3215,8 @@ format_cb_window_manual_height(struct format_tree *ft)
 
 	if (w == NULL)
 		return (NULL);
-	if (options_get_number(w->options, "window-size") != WINDOW_SIZE_MANUAL)
+	if (!WINDOW_SIZE_USES_MANUAL(options_get_number(w->options,
+	    "window-size")))
 		return (xstrdup(""));
 	return (format_printf("%u", w->manual_sy));
 }
@@ -3417,7 +3418,8 @@ format_cb_window_manual_width(struct format_tree *ft)
 
 	if (w == NULL)
 		return (NULL);
-	if (options_get_number(w->options, "window-size") != WINDOW_SIZE_MANUAL)
+	if (!WINDOW_SIZE_USES_MANUAL(options_get_number(w->options,
+	    "window-size")))
 		return (xstrdup(""));
 	return (format_printf("%u", w->manual_sx));
 }
