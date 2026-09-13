@@ -427,6 +427,19 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 			goto out;
 		}
 	}
+
+	/*
+	 * Write pasted text to the job as it was received instead of encoding
+	 * it key by key, the same as window_pane_paste() does for a pane.
+	 * Otherwise keys inside the paste are sent as escape sequences when
+	 * the application has asked for extended keys.
+	 */
+	if (server_client_is_bracket_paste(c, event->key) && pd->job != NULL) {
+		if (event->buf != NULL)
+			bufferevent_write(job_get_event(pd->job),
+			    event->buf, event->len);
+		return (0);
+	}
 	if ((((pd->flags & (POPUP_CLOSEEXIT|POPUP_CLOSEEXITZERO)) == 0) ||
 	    pd->job == NULL) &&
 	    (event->key == '\033' || event->key == ('c'|KEYC_CTRL)))

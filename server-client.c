@@ -1301,7 +1301,7 @@ server_client_update_theme_colours(struct client *c)
 }
 
 /* Is this a bracket paste key? */
-static int
+int
 server_client_is_bracket_paste(struct client *c, key_code key)
 {
 	if ((key & KEYC_MASK_KEY) == KEYC_PASTE_START) {
