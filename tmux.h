@@ -3332,6 +3332,7 @@ int	 server_client_check_nested(struct client *);
 int	 server_client_handle_key(struct client *, struct key_event *);
 int	 server_client_handle_key_after(struct client *, struct key_event *,
 	     struct cmdq_item *, struct cmdq_item **);
+int	 server_client_is_bracket_paste(struct client *, key_code);
 struct client *server_client_create(int);
 int	 server_client_open(struct client *, char **);
 void	 server_client_unref(struct client *);
