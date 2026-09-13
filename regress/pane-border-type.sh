@@ -52,6 +52,19 @@ pane_fmt()
 	$TMUX display-message -p -t "$1" "$2"
 }
 
+# layout_cell_w layout width — true if JSON #{window_layout} has a cell w:WIDTH.
+layout_cell_w()
+{
+	echo "$1" | grep -E '"w":'"$2"'(,|})' >/dev/null
+}
+
+# layout_no_cell_w layout width — true if no cell has w:WIDTH.
+layout_no_cell_w()
+{
+	echo "$1" | grep -E '"w":'"$2"'(,|})' >/dev/null && return 1
+	return 0
+}
+
 # click COL ROW — SGR button-1 press+release at 1-based outer coords.
 click()
 {
@@ -168,10 +181,9 @@ left=$(pane_fmt "$p1" '#{pane_left}')
 	fail "right pane outside window after -x 1: L=$left R=$right win=$win_w"
 [ "$left" -ge 0 ] || fail "right pane left < 0: $left"
 # Layout cell must keep room for both side borders (width 3).
-case "$($TMUX display-message -p -t rsz:0 '#{window_layout}')" in
-*,3x*) ;;
-*) fail "expected 3-column right cell, got $($TMUX display-message -p -t rsz:0 '#{window_layout}')" ;;
-esac
+layout=$($TMUX display-message -p -t rsz:0 '#{window_layout}')
+layout_cell_w "$layout" 3 ||
+	fail "expected 3-column right cell, got $layout"
 
 # Crushing the right pane by growing the left must also stop at the minimum.
 $TMUX select-pane -t "$p0" || fail "select left failed"
@@ -215,10 +227,8 @@ must_equal "$right_l" "$((win_w - 2))" "full-size -l 1 left inset"
 [ "$right_r" -lt "$win_w" ] ||
 	fail "full-size -l 1 pane outside window: R=$right_r win=$win_w"
 # Edge cell must be 3 columns wide.
-case "$layout" in
-*,3x*) ;;
-*) fail "full-size -l 1 must use a 3-column edge cell, got $layout" ;;
-esac
+layout_cell_w "$layout" 3 ||
+	fail "full-size -l 1 must use a 3-column edge cell, got $layout"
 $TMUX kill-server
 
 # ---------------------------------------------------------------------------
@@ -235,11 +245,8 @@ $TMUX resize-window -t even:0 -x 20 || fail "resize-window -x 20 failed"
 $TMUX select-layout -E -t even:0 || fail "select-layout -E failed"
 layout=$($TMUX display-message -p -t even:0 '#{window_layout}')
 # No 1-column layout cells (non-edge min is 2, edge min is 3).
-case "$layout" in
-*,1x*)
+layout_no_cell_w "$layout" 1 ||
 	fail "evenize left a 1-column cell under separate: $layout"
-	;;
-esac
 win_w=$($TMUX display-message -p -t even:0 '#{window_width}')
 must_equal "$win_w" "20" "evenize should keep requested window width 20"
 # Every pane stays inset and inside the window.
@@ -269,10 +276,9 @@ $TMUX resize-window -t floor:0 -x 10 || fail "resize-window -x 10 failed"
 must_equal "$($TMUX display-message -p -t floor:0 '#{window_width}')" "15" \
 	"window must clamp to separate floor of 15"
 layout=$($TMUX display-message -p -t floor:0 '#{window_layout}')
-case "$layout" in
-*,15x12,*) ;;
-*) fail "layout floor size should be 15x12, got $layout" ;;
-esac
+layout_cell_w "$layout" 15 || fail "layout floor width should be 15, got $layout"
+echo "$layout" | grep -E '"h":12(,|})' >/dev/null ||
+	fail "layout floor height should be 12, got $layout"
 $TMUX list-panes -t floor:0 -F '#{pane_width} #{pane_left} #{pane_right}' \
 	>"$TMP/floor.panes"
 while read -r w left right; do
