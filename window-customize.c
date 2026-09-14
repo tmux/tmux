@@ -2104,8 +2104,8 @@ window_customize_start_edit(struct window_customize_modedata *data,
 		buf = "\n";
 		len = 1;
 	}
-	ed->editor = spawn_editor(c, buf, len, window_customize_edit_close_cb,
-	    ed);
+	ed->editor = spawn_editor(c, buf, len, NULL,
+	    window_customize_edit_close_cb, ed);
 	free(value);
 	if (ed->editor == NULL)
 		window_customize_finish_edit(ed);
