@@ -38,6 +38,13 @@ $TMUX send-keys -X copy-selection || exit 1
 $TMUX send-keys -X cancel || exit 1
 
 $TMUX copy-mode || exit 1
+$TMUX send-keys -X select-output || exit 1
+$TMUX send-keys -X pipe-selection "wc -c >$OUT" || exit 1
+sleep 1
+[ "$(cat "$OUT")" = 10 ] || exit 1
+$TMUX send-keys -X cancel || exit 1
+
+$TMUX copy-mode || exit 1
 $TMUX send-keys -X search-backward separator || exit 1
 $TMUX send-keys -X copy-output || exit 1
 [ "$($TMUX show-buffer)" = "$EXPECTED" ] || exit 1
