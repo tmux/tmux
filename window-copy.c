@@ -3904,6 +3904,12 @@ static const struct {
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_pipe_output
 	},
+	{ .command = "pipe-selection",
+	  .args = { "", 0, 1, NULL },
+	  .flags = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_pipe
+	},
 	{ .command = "previous-matching-bracket",
 	  .args = { "", 0, 0, NULL },
 	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
