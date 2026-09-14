@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1164 2026/09/03 21:04:11 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1170 2026/09/11 10:17:16 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: September 3 2026 $
+.Dd $Mdocdate: September 11 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1116,6 +1116,8 @@ The flags are:
 .Bl -tag -width Ds
 .It ignore\-size
 the client does not affect the size of other clients
+.It new\-layouts
+use the new layout string format
 .It no\-detach\-on\-destroy
 do not detach the client when the session it is attached to is destroyed if
 there are any other sessions
@@ -2004,6 +2006,25 @@ Same as
 .Ic copy\-pipe
 but also exit copy mode.
 .It Xo
+.Ic copy\-pipe\-output
+.Op Fl aCP
+.Op Ar command
+.Op Ar prefix
+.Xc
+Copy the current OSC 133 command output, pipe it to
+.Ar command ,
+and clear the selection.
+.Ar prefix
+is used to name the new paste buffer.
+.It Xo
+.Ic copy\-output
+.Op Fl aCP
+.Op Ar prefix
+.Xc
+Copy the current OSC 133 command output and clear the selection.
+.Ar prefix
+is used to name the new paste buffer.
+.It Xo
 .Ic copy\-selection
 .Op Fl CP
 .Op Ar prefix
@@ -2243,6 +2264,32 @@ but treat all non-whitespace characters as part of a word.
 .Xc
 Switch at which end of the selection the cursor sits.
 .It Xo
+.Ic open\-output
+.Op Fl a
+.Op Ar command
+.Xc
+Open the current OSC 133 command output in an editor.
+If
+.Ar command
+is given, it is used as the editor command; otherwise, the
+.Ic editor
+option is used.
+.It Xo
+.Ic open\-selection
+.Op Ar command
+.Xc
+Open the current selection in an editor.
+If
+.Ar command
+is given, it is used as the editor command; otherwise, the
+.Ic editor
+option is used.
+In emacs mode,
+.Ql e ,
+and in vi mode,
+.Ql M\-e ,
+opens the selection if one is present, otherwise the command output.
+.It Xo
 .Ic page\-down
 (vi: C\-f)
 (emacs: PageDown)
@@ -2282,6 +2329,14 @@ but do not clear the selection.
 Same as
 .Ic pipe
 but also exit copy mode.
+.It Xo
+.Ic pipe\-output
+.Op Fl a
+.Op Ar command
+.Xc
+Pipe the current OSC 133 command output to
+.Ar command
+and clear the selection.
 .It Xo
 .Ic previous\-matching\-bracket
 (emacs: M\-C\-b)
@@ -2472,6 +2527,15 @@ Search forward for the specified plain text.
 Repeat the last search in the reverse direction (forward becomes backward and
 backward becomes forward).
 .It Xo
+.Ic select\-output
+.Op Fl a
+.Xc
+Select the current OSC 133 command output.
+The default emacs binding is
+.Ql C\-o
+and the default vi binding is
+.Ql M\-o .
+.It Xo
 .Ic select\-line
 (vi: V)
 .Xc
@@ -2514,6 +2578,20 @@ Toggle the visibility of the position indicator in the top right.
 .Xc
 Move to the top line.
 .El
+.Pp
+The output commands use OSC 133 output text from the
+.Ql C
+marker up to its matching
+.Ql D
+marker.
+If there is no
+.Ql D
+marker, the output ends at the end of the copy-mode buffer.
+At the following prompt or below it, they use the most recent nonempty output.
+With
+.Fl a ,
+they use the entire copy-mode buffer instead.
+If no output range can be found, they do nothing.
 .Pp
 The search commands come in several varieties:
 .Ql search\-forward
@@ -2727,8 +2805,8 @@ For example:
 .Bd -literal -offset indent
 $ tmux list\-windows
 0: ksh [159x48]
-    layout: bb62,159x48,0,0{79x48,0,0,79x48,80,0}
-$ tmux select\-layout \[aq]bb62,159x48,0,0{79x48,0,0,79x48,80,0}\[aq]
+    layout: {"V":2,"L":{"t":"h","w":159,"h":48,"x":0,"y":0,"c":[{"t":"p","w":79,"h":48,"x":0,"y":0,"l":0,"i":0,"I":"%0"},{"t":"p","w":79,"h":48,"x":80,"y":0,"a":true,"i":1,"I":"%2"}]}}
+$ tmux select\-layout \[aq]{"V":2,"L":{"t":"h","w":159,"h":48,"x":0,"y":0,"c":[{"t":"p","w":79,"h":48,"x":0,"y":0,"l":0,"i":0,"I":"%0"},{"t":"p","w":79,"h":48,"x":80,"y":0,"a":true,"i":1,"I":"%2"}]}}\[aq]
 .Ed
 .Pp
 .Nm
@@ -2816,7 +2894,7 @@ The pane must not already be floating or hidden, and the window must not
 be zoomed.
 .Tg capturep
 .It Xo Ic capture\-pane
-.Op Fl aeFHLpPRqCJMN
+.Op Fl aeFHILpPRqCJMN
 .Op Fl b Ar buffer\-name
 .Op Fl E Ar end\-line
 .Op Fl S Ar start\-line
@@ -2858,6 +2936,8 @@ captures only any output that the pane has received that is the beginning of an
 as-yet incomplete escape sequence.
 .Fl L
 includes the line number at the start of each line and
+.Fl I
+includes the time each line entered the history, or zero if not available.
 .Fl F
 includes the flags (where
 .Ql -
@@ -3679,7 +3759,7 @@ but a different format may be specified with
 .Fl F .
 .Tg newp
 .It Xo Ic new\-pane
-.Op Fl AbCdefhIkKLMOPvWZ
+.Op Fl AbCDefhIkKLMOPvWZ
 .Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
@@ -3741,6 +3821,13 @@ all keys, including the prefix key, are passed directly to the modal pane.
 With
 .Fl C ,
 the modal pane is closed when the mouse is clicked outside it.
+With
+.Fl D ,
+the modal pane is closed when
+.Ql Escape
+or
+.Ql C-c
+is pressed.
 .Pp
 The
 .Fl L
@@ -6011,6 +6098,8 @@ single lines using ACS or UTF\-8 characters
 double lines using UTF\-8 characters
 .It heavy
 heavy lines using UTF\-8 characters
+.It rounded
+single lines with rounded corners using UTF\-8 characters
 .It simple
 simple ASCII characters
 .It number
@@ -6366,7 +6455,7 @@ uses when the colour with that index is requested.
 The index may be from zero to 255.
 .Pp
 .It Xo Ic remain\-on\-exit
-.Op Ic on | off | failed | key
+.Op Ic on | off | failed | key | failed\-key
 .Xc
 A pane with this flag set is not destroyed when the program running in it
 exits.
@@ -6376,6 +6465,10 @@ then only when the program exit status is not zero.
 If set to
 .Ic key ,
 the pane stays open and closes when a key is pressed.
+If set to
+.Ic failed\-key ,
+the pane stays open and closes when a key is pressed only if the program exit
+status is not zero.
 The pane may be reactivated with the
 .Ic respawn\-pane
 command.
@@ -8319,7 +8412,7 @@ The following keys are available in menus:
 .El
 .Tg display
 .It Xo Ic display\-message
-.Op Fl aCIlNpv
+.Op Fl aCIjlNpv
 .Op Fl c Ar target\-client
 .Op Fl d Ar delay
 .Op Fl t Ar target\-pane
@@ -8358,6 +8451,12 @@ section; information is taken from
 if
 .Fl t
 is given, otherwise the active pane.
+.Pp
+If
+.Fl j
+is given,
+.Ar message
+is parsed as JSON and printed.
 .Pp
 .Fl v
 prints verbose logging as the format is parsed and
@@ -9104,7 +9203,7 @@ and flags (currently not used).
 For example:
 .Bd -literal -offset indent
 %begin 1363006971 2 1
-0: ksh* (1 panes) [80x24] [layout b25f,80x24,0,0,2] @2 (active)
+0: ksh* (1 panes) [80x24] [layout {"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"a":true,"i":0,"I":"%2"}}] @2 (active)
 %end 1363006971 2 1
 .Ed
 .Pp
@@ -9165,10 +9264,15 @@ The layout of a window with ID
 .Ar window\-id
 changed.
 The new layout is
-.Ar window\-layout .
-The window's visible layout is
-.Ar window\-visible\-layout
-and the window flags are
+.Ar window\-layout
+and the window's visible layout is
+.Ar window\-visible\-layout .
+If the
+.Ar new\-layouts
+flag is set, both layout fields use the new format string; see
+.Ic refresh\-client
+.Fl f .
+The window flags are
 .Ar window\-flags .
 .It Ic %message Ar message
 A message sent with the

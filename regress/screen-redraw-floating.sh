@@ -107,6 +107,12 @@ $TMUX2 new-pane -x28 -y8 -X4 -Y1 -B double \
 	"sh -c 'printf FLOAT; exec sleep 100'" || exit 1
 compare floating-border-double
 
+# Larger floating pane with rounded border lines.
+new_scene 40 12
+$TMUX2 new-pane -x28 -y8 -X4 -Y1 -B rounded \
+	"sh -c 'printf FLOAT; exec sleep 100'" || exit 1
+compare floating-border-rounded
+
 # Floating pane with no border lines: redraw_mark_pane_borders returns early so
 # the float has no border at all, only its (clipped) content over the base pane.
 new_scene 40 12

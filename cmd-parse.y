@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-parse.y,v 1.59 2026/08/31 07:51:56 nicm Exp $ */
+/* $OpenBSD: cmd-parse.y,v 1.60 2026/09/08 10:20:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -210,7 +210,7 @@ expanded	: format
 				cmd_find_from_client(&fs, c, 0);
 				fsp = &fs;
 			}
-			ft = format_create(NULL, pi->item, FORMAT_NONE, flags);
+			ft = format_create(c, pi->item, FORMAT_NONE, flags);
 			format_defaults(ft, c, fsp->s, fsp->wl, fsp->wp);
 
 			$$ = format_expand(ft, $1);

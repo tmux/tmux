@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-display-message.c,v 1.65 2026/02/23 08:46:57 nicm Exp $ */
+/* $OpenBSD: cmd-display-message.c,v 1.66 2026/09/08 08:33:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -39,8 +39,8 @@ const struct cmd_entry cmd_display_message_entry = {
 	.name = "display-message",
 	.alias = "display",
 
-	.args = { "aCc:d:lINpt:F:v", 0, 1, NULL },
-	.usage = "[-aCIlNpv] [-c target-client] [-d delay] [-F format] "
+	.args = { "aCc:d:jlINpt:F:v", 0, 1, NULL },
+	.usage = "[-aCIjlNpv] [-c target-client] [-d delay] [-F format] "
 		 CMD_TARGET_PANE_USAGE " [message]",
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
@@ -67,14 +67,15 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*wl = target->wl;
 	struct window_pane	*wp = target->wp;
 	const char		*template;
-	char			*msg, *cause;
+	char			*msg, *cause = NULL;
 	int			 delay = -1, flags, Nflag = args_has(args, 'N');
 	int			 Cflag = args_has(args, 'C');
 	struct format_tree	*ft;
 	u_int			 count = args_count(args);
 	struct evbuffer		*evb;
+	struct json_node	*jn;
 
-	if (args_has(args, 'I')) {
+	if (args_has(args, 'I') && !args_has(args, 'j')) {
 		if (wp == NULL)
 			return (CMD_RETURN_NORMAL);
 		switch (window_pane_start_input(wp, item, &cause)) {
@@ -107,7 +108,9 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 		template = args_string(args, 0);
 	else
 		template = args_get(args, 'F');
-	if (template == NULL)
+	if (args_has(args, 'j') && template == NULL)
+		template = "";
+	else if (template == NULL)
 		template = DISPLAY_MESSAGE_TEMPLATE;
 
 	/*
@@ -129,7 +132,7 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, flags);
 	format_defaults(ft, c, s, wl, wp);
 
-	if (args_has(args, 'a')) {
+	if (args_has(args, 'a') && !args_has(args, 'j')) {
 		format_each(ft, cmd_display_message_each, item);
 		format_free(ft);
 		return (CMD_RETURN_NORMAL);
@@ -139,6 +142,19 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 		msg = xstrdup(template);
 	else
 		msg = format_expand_time(ft, template);
+	if (args_has(args, 'j')) {
+		jn = json_parse(msg, &cause);
+		if (jn == NULL) {
+			cmdq_error(item, "%s", cause);
+			free(cause);
+			free(msg);
+			format_free(ft);
+			return (CMD_RETURN_ERROR);
+		}
+		free(msg);
+		msg = json_to_string(jn);
+		json_destroy_node(jn);
+	}
 
 	if (cmdq_get_client(item) == NULL)
 		cmdq_error(item, "%s", msg);

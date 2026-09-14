@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.158 2026/09/01 19:50:58 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.159 2026/09/09 08:31:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -713,7 +713,7 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 	} else {
 		mark_right = (right <= (int)bctx->w->sx);
 		mark_bottom = (bottom <= (int)bctx->w->sy);
-		if (pane_status == PANE_STATUS_TOP)
+		if (pane_status == PANE_STATUS_TOP && bottom < (int)bctx->w->sy)
 			mark_bottom = 0;
 		else if (pane_status == PANE_STATUS_BOTTOM)
 			mark_top = 0;
