@@ -45,6 +45,29 @@ static const struct {
 	{ "F10",	KEYC_F10|KEYC_IMPLIED_META },
 	{ "F11",	KEYC_F11|KEYC_IMPLIED_META },
 	{ "F12",	KEYC_F12|KEYC_IMPLIED_META },
+	{ "F13",	KEYC_F13|KEYC_IMPLIED_META },
+	{ "F14",	KEYC_F14|KEYC_IMPLIED_META },
+	{ "F15",	KEYC_F15|KEYC_IMPLIED_META },
+	{ "F16",	KEYC_F16|KEYC_IMPLIED_META },
+	{ "F17",	KEYC_F17|KEYC_IMPLIED_META },
+	{ "F18",	KEYC_F18|KEYC_IMPLIED_META },
+	{ "F19",	KEYC_F19|KEYC_IMPLIED_META },
+	{ "F20",	KEYC_F20|KEYC_IMPLIED_META },
+	{ "F21",	KEYC_F21|KEYC_IMPLIED_META },
+	{ "F22",	KEYC_F22|KEYC_IMPLIED_META },
+	{ "F23",	KEYC_F23|KEYC_IMPLIED_META },
+	{ "F24",	KEYC_F24|KEYC_IMPLIED_META },
+	{ "F25",	KEYC_F25|KEYC_IMPLIED_META },
+	{ "F26",	KEYC_F26|KEYC_IMPLIED_META },
+	{ "F27",	KEYC_F27|KEYC_IMPLIED_META },
+	{ "F28",	KEYC_F28|KEYC_IMPLIED_META },
+	{ "F29",	KEYC_F29|KEYC_IMPLIED_META },
+	{ "F30",	KEYC_F30|KEYC_IMPLIED_META },
+	{ "F31",	KEYC_F31|KEYC_IMPLIED_META },
+	{ "F32",	KEYC_F32|KEYC_IMPLIED_META },
+	{ "F33",	KEYC_F33|KEYC_IMPLIED_META },
+	{ "F34",	KEYC_F34|KEYC_IMPLIED_META },
+	{ "F35",	KEYC_F35|KEYC_IMPLIED_META },
 	{ "IC",		KEYC_IC|KEYC_IMPLIED_META },
 	{ "Insert",	KEYC_IC|KEYC_IMPLIED_META },
 	{ "DC",		KEYC_DC|KEYC_IMPLIED_META },
@@ -122,6 +145,54 @@ static const struct {
 	{ "KPEnter",	KEYC_KP_ENTER|KEYC_KEYPAD },
 	{ "KP0",	KEYC_KP_ZERO|KEYC_KEYPAD },
 	{ "KP.",	KEYC_KP_PERIOD|KEYC_KEYPAD },
+	{ "KP=",	KEYC_KP_EQUAL|KEYC_KEYPAD },
+	{ "KP,",	KEYC_KP_SEPARATOR|KEYC_KEYPAD },
+	{ "KPLeft",	KEYC_KP_LEFT|KEYC_KEYPAD },
+	{ "KPRight",	KEYC_KP_RIGHT|KEYC_KEYPAD },
+	{ "KPUp",	KEYC_KP_UP|KEYC_KEYPAD },
+	{ "KPDown",	KEYC_KP_DOWN|KEYC_KEYPAD },
+	{ "KPPageUp",	KEYC_KP_PPAGE|KEYC_KEYPAD },
+	{ "KPPageDown",	KEYC_KP_NPAGE|KEYC_KEYPAD },
+	{ "KPHome",	KEYC_KP_HOME|KEYC_KEYPAD },
+	{ "KPEnd",	KEYC_KP_END|KEYC_KEYPAD },
+	{ "KPInsert",	KEYC_KP_IC|KEYC_KEYPAD },
+	{ "KPDelete",	KEYC_KP_DC|KEYC_KEYPAD },
+	{ "KPBegin",	KEYC_KP_BEGIN|KEYC_KEYPAD },
+
+	/* Other function keys. */
+	{ "CapsLock",	KEYC_CAPSLOCK },
+	{ "ScrollLock",	KEYC_SCROLLLOCK },
+	{ "NumLock",	KEYC_NUMLOCK },
+	{ "PrintScreen", KEYC_PRINTSCREEN },
+	{ "Pause",	KEYC_PAUSE },
+	{ "Menu",	KEYC_MENU },
+	{ "MediaPlay",	KEYC_MEDIA_PLAY },
+	{ "MediaPause", KEYC_MEDIA_PAUSE },
+	{ "MediaPlayPause", KEYC_MEDIA_PLAYPAUSE },
+	{ "MediaReverse", KEYC_MEDIA_REVERSE },
+	{ "MediaStop",	KEYC_MEDIA_STOP },
+	{ "MediaFastForward", KEYC_MEDIA_FASTFORWARD },
+	{ "MediaRewind", KEYC_MEDIA_REWIND },
+	{ "MediaNext",	KEYC_MEDIA_NEXT },
+	{ "MediaPrevious", KEYC_MEDIA_PREVIOUS },
+	{ "MediaRecord", KEYC_MEDIA_RECORD },
+	{ "VolumeDown", KEYC_VOLUME_DOWN },
+	{ "VolumeUp",	KEYC_VOLUME_UP },
+	{ "VolumeMute", KEYC_VOLUME_MUTE },
+	{ "LeftShift",	KEYC_LEFT_SHIFT },
+	{ "LeftControl", KEYC_LEFT_CTRL },
+	{ "LeftAlt",	KEYC_LEFT_ALT },
+	{ "LeftSuper",	KEYC_LEFT_SUPER },
+	{ "LeftHyper",	KEYC_LEFT_HYPER },
+	{ "LeftMeta",	KEYC_LEFT_META },
+	{ "RightShift", KEYC_RIGHT_SHIFT },
+	{ "RightControl", KEYC_RIGHT_CTRL },
+	{ "RightAlt",	KEYC_RIGHT_ALT },
+	{ "RightSuper", KEYC_RIGHT_SUPER },
+	{ "RightHyper", KEYC_RIGHT_HYPER },
+	{ "RightMeta",	KEYC_RIGHT_META },
+	{ "ISOLevel3Shift", KEYC_ISO_LEVEL3_SHIFT },
+	{ "ISOLevel5Shift", KEYC_ISO_LEVEL5_SHIFT },
 
 	/* Mouse keys. */
 	KEYC_MOUSE_STRING(MOUSEDOWN1, MouseDown1),
@@ -226,8 +297,13 @@ key_string_get_modifiers(const char **string)
 			modifiers |= KEYC_META;
 			break;
 		case 'S':
-		case 's':
 			modifiers |= KEYC_SHIFT;
+			break;
+		case 's':
+			modifiers |= KEYC_SUPER;
+			break;
+		case 'H':
+			modifiers |= KEYC_HYPER;
 			break;
 		default:
 			*string = NULL;
@@ -349,6 +425,10 @@ key_string_lookup_key(key_code key, int with_flags)
 		strlcat(out, "M-", sizeof out);
 	if (key & KEYC_SHIFT)
 		strlcat(out, "S-", sizeof out);
+	if (key & KEYC_SUPER)
+		strlcat(out, "s-", sizeof out);
+	if (key & KEYC_HYPER)
+		strlcat(out, "H-", sizeof out);
 	key &= KEYC_MASK_KEY;
 
 	/* Handle no key. */

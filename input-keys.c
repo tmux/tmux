@@ -395,7 +395,8 @@ input_key_build(void)
 
 /* Translate a key code into an output key sequence for a pane. */
 int
-input_key_pane(struct window_pane *wp, key_code key, struct mouse_event *m)
+input_key_pane(struct window_pane *wp, key_code key, struct mouse_event *m,
+    int extended_encoding)
 {
 	if (log_get_level() != 0) {
 		log_debug("writing key 0x%llx (%s) to %%%u", key,
@@ -407,7 +408,21 @@ input_key_pane(struct window_pane *wp, key_code key, struct mouse_event *m)
 			input_key_mouse(wp, m);
 		return (0);
 	}
-	return (input_key(wp->screen, wp->event, key));
+	return (input_key(wp->screen, wp->event, key, extended_encoding));
+}
+
+/* Return whether a key may use the configured extended encoding. */
+int
+input_key_client_supports_extended(struct client *c, key_code key)
+{
+	if (c == NULL || (key & KEYC_SENT))
+		return (1);
+	if (options_get_number(global_options, "extended-keys") == 0)
+		return (0);
+	if (options_get_number(global_options, "extended-keys-format") ==
+	    EXTENDED_KEYS_KITTY)
+		return ((c->tty.flags & TTY_KKBPUSHED) != 0);
+	return (tty_term_has(c->tty.term, TTYC_ENEKS));
 }
 
 static void
@@ -464,7 +479,8 @@ input_key_extended(struct bufferevent *bev, key_code key)
 	} else
 		key &= KEYC_MASK_KEY;
 
-	if (options_get_number(global_options, "extended-keys-format") == 1)
+	if (options_get_number(global_options, "extended-keys-format") ==
+	    EXTENDED_KEYS_XTERM)
 		xsnprintf(tmp, sizeof tmp, "\033[27;%c;%llu~", modifier, key);
 	else
 		xsnprintf(tmp, sizeof tmp, "\033[%llu;%cu", key, modifier);
@@ -571,7 +587,8 @@ input_key_mode1(struct bufferevent *bev, key_code key)
 
 /* Translate a key code into an output key sequence. */
 int
-input_key(struct screen *s, struct bufferevent *bev, key_code key)
+input_key(struct screen *s, struct bufferevent *bev, key_code key,
+    int extended_encoding)
 {
 	struct input_key_entry	*ike = NULL;
 	key_code		 newkey;
@@ -587,6 +604,11 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		input_key_write(__func__, bev, &ud.data[0], 1);
 		return (0);
 	}
+
+	if (extended_encoding &&
+	    options_get_number(global_options, "extended-keys-format") ==
+	    EXTENDED_KEYS_KITTY && input_key_kitty(s, bev, key) == 0)
+		return (0);
 
 	/* Is this backspace? */
 	if ((key & KEYC_MASK_KEY) == KEYC_BSPACE) {
@@ -677,6 +699,11 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		log_debug("%s: ignoring key 0x%llx", __func__, key);
 		return (0);
 	}
+	if (key & (KEYC_SUPER|KEYC_HYPER))
+		return (input_key_vt10x(bev, key));
+	if (options_get_number(global_options, "extended-keys-format") ==
+	    EXTENDED_KEYS_KITTY)
+		return (input_key_vt10x(bev, key));
 
 	/*
 	 * No builtin key sequence; construct an extended key sequence
