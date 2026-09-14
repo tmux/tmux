@@ -139,6 +139,14 @@ $TMUX send-keys -t :below.0 -X copy-selection || exit 1
 [ "$($TMUX show-buffer)" = "$(printf 'PID TTY\\n1 pts/0')" ] || exit 1
 $TMUX send-keys -t :below.0 -X cancel || exit 1
 
+$TMUX new-window -d -n clear "printf 'old1\\nold2\\nold3\\nold4\\nold5\\nold6\\n\\033]133;A\\007p\\$ \\033]133;B\\007echo 1; clear; ps\\n\\033]133;C\\0071\\n\\033[H\\033[2JPID TTY\\n1 pts/0\\n\\033]133;D;0\\007separator\\n\\033]133;A\\007p\\$ \\033]133;B\\007'; exec sleep 100" || exit 1
+sleep 1
+$TMUX copy-mode -t :clear || exit 1
+$TMUX send-keys -t :clear.0 C-o || exit 1
+$TMUX send-keys -t :clear.0 -X copy-selection || exit 1
+[ "$($TMUX show-buffer)" = "$(printf 'PID TTY\\n1 pts/0')" ] || exit 1
+$TMUX send-keys -t :clear.0 -X cancel || exit 1
+
 $TMUX new-window -d -n same "printf '\\033]133;A\\007p\\$ \\033]133;B\\007echo\\n\\033]133;C\\007one\\033]133;D;0\\007\\033]133;A\\007p\\$ \\033]133;B\\007'; exec sleep 100" || exit 1
 sleep 1
 $TMUX copy-mode -U -t :same || exit 1

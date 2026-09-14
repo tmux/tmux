@@ -4211,7 +4211,7 @@ window_copy_find_previous_output_range(struct screen *s, u_int cursor_x,
 	void			*buf;
 	u_int			 start_x, start_y, end_x, end_y, y, total;
 	size_t			 len;
-	int			 found = 0, pending = 0;
+	int			 found = 0, have_prompt = 0, pending = 0;
 
 	total = gd->hsize + gd->sy;
 	for (y = 0; y < total && y <= cursor_y; y++) {
@@ -4220,6 +4220,14 @@ window_copy_find_previous_output_range(struct screen *s, u_int cursor_x,
 		    (y != cursor_y || gl->osc133_data.out_start_col <= cursor_x)) {
 			start_x = gl->osc133_data.out_start_col;
 			start_y = y;
+			pending = 1;
+		}
+		/* The output may have cleared its C marker from the screen. */
+		if (!pending && !have_prompt &&
+		    gl->flags & GRID_LINE_END_OUTPUT &&
+		    (~gl->flags & GRID_LINE_START_PROMPT ||
+		    gl->osc133_data.out_end_col <= gl->osc133_data.prompt_col)) {
+			start_x = start_y = 0;
 			pending = 1;
 		}
 		if (pending && gl->flags & GRID_LINE_END_OUTPUT &&
@@ -4238,8 +4246,10 @@ window_copy_find_previous_output_range(struct screen *s, u_int cursor_x,
 			}
 			pending = 0;
 		}
-		if (gl->flags & GRID_LINE_START_PROMPT)
+		if (gl->flags & GRID_LINE_START_PROMPT) {
 			pending = 0;
+			have_prompt = 1;
+		}
 	}
 	return (found);
 }
