@@ -701,7 +701,7 @@ spawn_editor_finish(struct window_pane *wp)
 
 struct spawn_editor_state *
 spawn_editor(struct client *c, const char *buf, size_t len,
-    spawn_finish_edit_cb cb, void *arg)
+    const char *editor, spawn_finish_edit_cb cb, void *arg)
 {
 	struct spawn_editor_state	*es;
 	struct spawn_context		 sc = { 0 };
@@ -715,13 +715,13 @@ spawn_editor(struct client *c, const char *buf, size_t len,
 	FILE				*f;
 	char				*cmd, *cause = NULL;
 	char				 path[] = _PATH_TMP "tmux.XXXXXXXX";
-	const char			*editor;
 	int				 fd;
 
 	if (w->modal != NULL)
 		return (NULL);
 
-	editor = options_get_string(global_options, "editor");
+	if (editor == NULL)
+		editor = options_get_string(global_options, "editor");
 	fd = mkstemp(path);
 	if (fd == -1)
 		return (NULL);
