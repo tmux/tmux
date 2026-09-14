@@ -2487,7 +2487,17 @@ format_cb_pane_unseen_changes(struct format_tree *ft)
 static void *
 format_cb_pane_key_mode(struct format_tree *ft)
 {
+	char	*s;
+
 	if (ft->wp != NULL && ft->wp->screen != NULL) {
+		if (options_get_number(global_options, "extended-keys-format") ==
+		    EXTENDED_KEYS_KITTY) {
+			if (ft->wp->screen->kitty_keys.flags == 0)
+				return (xstrdup("VT10x"));
+			xasprintf(&s, "Kitty %u",
+			    ft->wp->screen->kitty_keys.flags);
+			return (s);
+		}
 		switch (ft->wp->screen->mode & EXTENDED_KEY_MODES) {
 		case MODE_KEYS_EXTENDED:
 			return (xstrdup("Ext 1"));

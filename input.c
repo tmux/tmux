@@ -279,6 +279,10 @@ enum input_csi_type {
 	INPUT_CSI_HPA,
 	INPUT_CSI_ICH,
 	INPUT_CSI_IL,
+	INPUT_CSI_KITTY_POP,
+	INPUT_CSI_KITTY_PUSH,
+	INPUT_CSI_KITTY_QUERY,
+	INPUT_CSI_KITTY_SET,
 	INPUT_CSI_MODOFF,
 	INPUT_CSI_MODSET,
 	INPUT_CSI_QUERY,
@@ -344,7 +348,11 @@ static const struct input_table_entry input_csi_table[] = {
 	{ 'r', "",  INPUT_CSI_DECSTBM },
 	{ 's', "",  INPUT_CSI_SCP },
 	{ 't', "",  INPUT_CSI_WINOPS },
-	{ 'u', "",  INPUT_CSI_RCP }
+	{ 'u', "",  INPUT_CSI_RCP },
+	{ 'u', "<", INPUT_CSI_KITTY_POP },
+	{ 'u', "=", INPUT_CSI_KITTY_SET },
+	{ 'u', ">", INPUT_CSI_KITTY_PUSH },
+	{ 'u', "?", INPUT_CSI_KITTY_QUERY }
 };
 
 /* Input transition. */
@@ -1525,6 +1533,9 @@ input_csi_dispatch(struct input_ctx *ictx)
 			screen_write_cursormove(sctx, m - 1, n - 1, 1);
 		break;
 	case INPUT_CSI_MODSET:
+		if (options_get_number(global_options, "extended-keys-format") ==
+		    EXTENDED_KEYS_KITTY)
+			break;
 		n = input_get(ictx, 0, 0, 0);
 		if (n != 4)
 			break;
@@ -1544,6 +1555,9 @@ input_csi_dispatch(struct input_ctx *ictx)
 			screen_write_mode_set(sctx, MODE_KEYS_EXTENDED);
 		break;
 	case INPUT_CSI_MODOFF:
+		if (options_get_number(global_options, "extended-keys-format") ==
+		    EXTENDED_KEYS_KITTY)
+			break;
 		n = input_get(ictx, 0, 0, 0);
 		if (n != 4)
 			break;
@@ -1556,6 +1570,41 @@ input_csi_dispatch(struct input_ctx *ictx)
 		    MODE_KEYS_EXTENDED|MODE_KEYS_EXTENDED_2);
 		if (options_get_number(global_options, "extended-keys") == 2)
 			screen_write_mode_set(sctx, MODE_KEYS_EXTENDED);
+		break;
+	case INPUT_CSI_KITTY_QUERY:
+		if (options_get_number(global_options, "extended-keys") == 0 ||
+		    options_get_number(global_options, "extended-keys-format") !=
+		    EXTENDED_KEYS_KITTY)
+			break;
+		input_reply(ictx, 1, "\033[?%uu", s->kitty_keys.flags);
+		break;
+	case INPUT_CSI_KITTY_SET:
+		if (options_get_number(global_options, "extended-keys") == 0 ||
+		    options_get_number(global_options, "extended-keys-format") !=
+		    EXTENDED_KEYS_KITTY)
+			break;
+		n = input_get(ictx, 0, 0, 0);
+		m = input_get(ictx, 1, 1, 1);
+		if (n >= 0 && m >= 1 && m <= 3)
+			input_kitty_set(s, n, m);
+		break;
+	case INPUT_CSI_KITTY_PUSH:
+		if (options_get_number(global_options, "extended-keys") == 0 ||
+		    options_get_number(global_options, "extended-keys-format") !=
+		    EXTENDED_KEYS_KITTY)
+			break;
+		n = input_get(ictx, 0, 0, 0);
+		if (n >= 0)
+			input_kitty_push(s, n);
+		break;
+	case INPUT_CSI_KITTY_POP:
+		if (options_get_number(global_options, "extended-keys") == 0 ||
+		    options_get_number(global_options, "extended-keys-format") !=
+		    EXTENDED_KEYS_KITTY)
+			break;
+		n = input_get(ictx, 0, 1, 1);
+		if (n >= 0)
+			input_kitty_pop(s, n);
 		break;
 	case INPUT_CSI_WINOPS:
 		input_csi_dispatch_winops(ictx);

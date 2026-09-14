@@ -4907,12 +4907,18 @@ If enabled, the server will exit when there are no attached clients.
 .It Xo Ic extended\-keys
 .Op Ic on | off | always
 .Xc
-Controls how modified keys (keys pressed together with Control, Meta, or Shift)
-are reported.
-This is the equivalent of the
+Controls how modified keys are reported.
+For the
+.Ic csi\-u
+and
+.Ic xterm
+formats, this controls the
 .Ic modifyOtherKeys
 .Xr xterm 1
 resource.
+For the
+.Ic kitty
+format, this controls the progressive keyboard protocol enhancements.
 .Pp
 When set to
 .Ic on ,
@@ -4939,11 +4945,24 @@ option and the
 .Ic pane_key_mode
 variable.
 .It Xo Ic extended\-keys\-format
-.Op Ic csi\-u | xterm
+.Op Ic csi\-u | xterm | kitty
 .Xc
-Selects one of the two possible formats for reporting modified keys to
-applications.
-This is the equivalent of the
+Selects the format for reporting modified keys to applications.
+The
+.Ic kitty
+format uses the Kitty keyboard protocol and supports the Super and Hyper
+modifiers.
+Their key name prefixes are
+.Ql s-
+and
+.Ql H- .
+The disambiguate and report-all enhancements are supported; event types,
+alternate keys and associated text are not requested.
+For the
+.Ic csi\-u
+and
+.Ic xterm
+formats, this is the equivalent of the
 .Ic formatOtherKeys
 .Xr xterm 1
 resource.
@@ -4955,6 +4974,10 @@ and as
 .Ql \[ha][[65;6u
 when set to
 .Ic csi\-u .
+With
+.Ic kitty ,
+it will be reported as
+.Ql \[ha][[97;6u .
 .It Xo Ic focus\-events
 .Op Ic on | off
 .Xc
