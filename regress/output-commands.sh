@@ -50,6 +50,13 @@ $TMUX send-keys -X copy-output || exit 1
 [ "$($TMUX show-buffer)" = "$EXPECTED" ] || exit 1
 $TMUX send-keys -X cancel || exit 1
 
+$TMUX copy-mode -c || exit 1
+$TMUX send-keys -X search-backward echo || exit 1
+$TMUX send-keys -X select-output || exit 1
+$TMUX send-keys -X copy-selection || exit 1
+[ "$($TMUX show-buffer)" = "$EXPECTED" ] || exit 1
+$TMUX send-keys -X cancel || exit 1
+
 $TMUX copy-mode || exit 1
 $TMUX send-keys -X search-backward one || exit 1
 $TMUX send-keys -X copy-output || exit 1
@@ -84,6 +91,15 @@ $TMUX new-window -d -n prompt "printf '\\033]133;A\\007p\\$ \\033]133;B\\007echo
 sleep 1
 $TMUX copy-mode -t :prompt || exit 1
 $TMUX send-keys -t :prompt.0 -X copy-output || exit 1
+[ "$($TMUX show-buffer)" = one ] || exit 1
+$TMUX send-keys -t :prompt.0 -X cancel || exit 1
+
+$TMUX copy-mode -c -t :prompt || exit 1
+$TMUX send-keys -t :prompt.0 -X expand-output || exit 1
+$TMUX send-keys -t :prompt.0 -X -N 100 cursor-down || exit 1
+$TMUX send-keys -t :prompt.0 -X select-output || exit 1
+[ "$($TMUX display-message -p -t :prompt.0 '#{selection_present}')" = 1 ] || exit 1
+$TMUX send-keys -t :prompt.0 -X copy-selection || exit 1
 [ "$($TMUX show-buffer)" = one ] || exit 1
 $TMUX send-keys -t :prompt.0 -X cancel || exit 1
 
