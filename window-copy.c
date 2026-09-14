@@ -88,8 +88,8 @@ static int	window_copy_find_fold(struct window_mode_entry *, u_int,
 		    u_int *, u_int *);
 static int	window_copy_find_output_range(struct window_mode_entry *,
 		    u_int *, u_int *, u_int *, u_int *);
-static int	window_copy_find_previous_output_range(struct screen *, u_int *,
-		    u_int *, u_int *, u_int *);
+static int	window_copy_find_previous_output_range(struct screen *, u_int,
+		     u_int, u_int *, u_int *, u_int *, u_int *);
 static void	window_copy_output_end(struct screen *, u_int *, u_int *);
 static void	window_copy_cursor_source(struct window_mode_entry *, u_int *,
 		    u_int *);
@@ -737,8 +737,10 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 	free(data->lines);
 	data->lines = xcalloc(total, sizeof *data->lines);
 	data->line_count = total;
-	for (y = 0; y < total; y++)
+	for (y = 0; y < total; y++) {
+		data->lines[y].source_line = UINT_MAX;
 		data->lines[y].output_line = UINT_MAX;
+	}
 	for (y = 0; y < total; y++) {
 		sgl = grid_get_line(sgd, y);
 		if (sgl->flags & GRID_LINE_START_PROMPT)
@@ -4183,14 +4185,9 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 		}
 	}
 	if (!found_start) {
-		/* At the live prompt, use the most recent command output. */
-		if (cursor_y == screen_hsize(data->source) + data->source->cy) {
-			log_debug("%s: no output after live prompt", __func__);
-			return (window_copy_find_previous_output_range(data->source,
-			    sx, sy, ex, ey));
-		}
-		log_debug("%s: no osc133 output after prompt", __func__);
-		return (0);
+		log_debug("%s: no output after prompt", __func__);
+		return (window_copy_find_previous_output_range(data->source,
+		    cursor_x, cursor_y, sx, sy, ex, ey));
 	}
 	if (!found_end) {
 		if (y != total) {
@@ -4199,21 +4196,15 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 		}
 		window_copy_output_end(data->source, ex, ey);
 	}
-	if (cursor_y > *ey || (cursor_y == *ey &&
-	    (found_end ? cursor_x >= *ex : cursor_x > *ex))) {
-		log_debug("%s: cursor after output end %u,%u", __func__, *ex,
-		    *ey);
-		return (0);
-	}
 	log_debug("%s: output from %u,%u to %u,%u", __func__, *sx, *sy,
 	    *ex, *ey);
 	return (1);
 }
 
-/* Find the most recent complete output, or one still running at buffer end. */
+/* Find the most recent complete output at or before a position. */
 static int
-window_copy_find_previous_output_range(struct screen *s, u_int *sx, u_int *sy,
-    u_int *ex, u_int *ey)
+window_copy_find_previous_output_range(struct screen *s, u_int cursor_x,
+    u_int cursor_y, u_int *sx, u_int *sy, u_int *ex, u_int *ey)
 {
 	struct grid		*gd = s->grid;
 	struct grid_line	*gl;
@@ -4223,14 +4214,16 @@ window_copy_find_previous_output_range(struct screen *s, u_int *sx, u_int *sy,
 	int			 found = 0, pending = 0;
 
 	total = gd->hsize + gd->sy;
-	for (y = 0; y < total; y++) {
+	for (y = 0; y < total && y <= cursor_y; y++) {
 		gl = grid_get_line(gd, y);
-		if (gl->flags & GRID_LINE_START_OUTPUT) {
+		if (gl->flags & GRID_LINE_START_OUTPUT &&
+		    (y != cursor_y || gl->osc133_data.out_start_col <= cursor_x)) {
 			start_x = gl->osc133_data.out_start_col;
 			start_y = y;
 			pending = 1;
 		}
-		if (pending && gl->flags & GRID_LINE_END_OUTPUT) {
+		if (pending && gl->flags & GRID_LINE_END_OUTPUT &&
+		    (y != cursor_y || gl->osc133_data.out_end_col <= cursor_x)) {
 			end_x = gl->osc133_data.out_end_col;
 			end_y = y;
 			buf = window_copy_get_grid_range(gd, start_x, start_y,
@@ -4247,19 +4240,6 @@ window_copy_find_previous_output_range(struct screen *s, u_int *sx, u_int *sy,
 		}
 		if (gl->flags & GRID_LINE_START_PROMPT)
 			pending = 0;
-	}
-	if (pending) {
-		window_copy_output_end(s, &end_x, &end_y);
-		buf = window_copy_get_grid_range(gd, start_x, start_y, end_x,
-		    end_y, &len);
-		if (buf != NULL) {
-			free(buf);
-			*sx = start_x;
-			*sy = start_y;
-			*ex = end_x;
-			*ey = end_y;
-			return (1);
-		}
 	}
 	return (found);
 }
@@ -4284,7 +4264,10 @@ window_copy_cursor_source(struct window_mode_entry *wme, u_int *source_x,
 	line = window_copy_get_line_info(data, y);
 	if (line == NULL)
 		*source_y = y;
-	else
+	else if (line->source_line == UINT_MAX) {
+		*source_x = UINT_MAX;
+		*source_y = data->source_line_count - 1;
+	} else
 		*source_y = line->source_line;
 }
 
@@ -4550,7 +4533,7 @@ window_copy_cmd_toggle_output(struct window_copy_cmd_state *cs)
 			return (WINDOW_COPY_CMD_NOTHING);
 		target = screen_hsize(data->backing) + y - data->oy;
 		line = window_copy_get_line_info(data, target);
-		if (line == NULL)
+		if (line == NULL || line->source_line == UINT_MAX)
 			return (WINDOW_COPY_CMD_NOTHING);
 		initial = line->flags & WINDOW_COPY_LINE_INITIAL;
 		window_copy_cursor_source(cs->wme, &x, &current);
@@ -6826,8 +6809,11 @@ window_copy_write_line(struct window_mode_entry *wme,
 		current = (py == data->cy);
 		backing_y = hsize - data->oy + py;
 		absolute = backing_y + 1;
-		if (data->lines != NULL && backing_y < data->line_count)
+		if (data->lines != NULL && backing_y < data->line_count &&
+		    data->lines[backing_y].source_line != UINT_MAX)
 			absolute = data->lines[backing_y].source_line + 1;
+		else if (data->fold_view && data->source_line_count != 0)
+			absolute = data->source_line_count;
 		mode = window_copy_line_number_mode(wme);
 		if (mode == WINDOW_COPY_LINE_NUMBERS_DEFAULT && data->fold_view)
 			line_number = absolute;

@@ -38,6 +38,13 @@ $TMUX send-keys -X copy-selection || exit 1
 $TMUX send-keys -X cancel || exit 1
 
 $TMUX copy-mode -U || exit 1
+$TMUX send-keys -X search-backward separator || exit 1
+$TMUX send-keys -X copy-output || exit 1
+copied=$($TMUX show-buffer)
+[ "$copied" = "$EXPECTED" ] || exit 1
+$TMUX send-keys -X cancel || exit 1
+
+$TMUX copy-mode -U || exit 1
 $TMUX send-keys -X search-backward one || exit 1
 $TMUX send-keys -X copy-output || exit 1
 copied=$($TMUX show-buffer)
@@ -110,6 +117,27 @@ $TMUX copy-mode -U -t :prompt || exit 1
 $TMUX send-keys -t :prompt.0 -X copy-output || exit 1
 [ "$($TMUX show-buffer)" = one ] || exit 1
 $TMUX send-keys -t :prompt.0 -X cancel || exit 1
+
+$TMUX copy-mode -c -t :prompt || exit 1
+$TMUX send-keys -t :prompt.0 -X expand-output || exit 1
+$TMUX send-keys -t :prompt.0 -X -N 10 cursor-down || exit 1
+$TMUX send-keys -t :prompt.0 -X select-output || exit 1
+[ "$($TMUX display-message -p -t :prompt.0 '#{selection_present}')" = 1 ] || exit 1
+$TMUX send-keys -t :prompt.0 -X copy-selection || exit 1
+[ "$($TMUX show-buffer)" = one ] || exit 1
+$TMUX send-keys -t :prompt.0 -X cancel || exit 1
+
+$TMUX new-window -d -n below "printf '\\033]133;A\\007p\\$ \\033]133;B\\007old\\n\\033]133;C\\007old1\\nold2\\nold3\\nold4\\nold5\\n\\033]133;D;0\\007separator\\n\\033]133;A\\007p\\$ \\033]133;B\\007ps\\n\\033]133;C\\007PID TTY\\n1 pts/0\\n\\033]133;D;0\\007separator\\n\\033]133;A\\007p\\$ \\033]133;B\\007'; exec sleep 100" || exit 1
+sleep 1
+$TMUX copy-mode -c -t :below || exit 1
+$TMUX send-keys -t :below.0 -X search-backward ps || exit 1
+$TMUX send-keys -t :below.0 -X expand-output || exit 1
+$TMUX send-keys -t :below.0 -X -N 100 cursor-down || exit 1
+$TMUX send-keys -t :below.0 C-o || exit 1
+[ "$($TMUX display-message -p -t :below.0 '#{selection_present}')" = 1 ] || exit 1
+$TMUX send-keys -t :below.0 -X copy-selection || exit 1
+[ "$($TMUX show-buffer)" = "$(printf 'PID TTY\\n1 pts/0')" ] || exit 1
+$TMUX send-keys -t :below.0 -X cancel || exit 1
 
 $TMUX new-window -d -n same "printf '\\033]133;A\\007p\\$ \\033]133;B\\007echo\\n\\033]133;C\\007one\\033]133;D;0\\007\\033]133;A\\007p\\$ \\033]133;B\\007'; exec sleep 100" || exit 1
 sleep 1
