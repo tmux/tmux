@@ -461,6 +461,11 @@ tty_send_requests(struct tty *tty)
 		return;
 	}
 
+	if (~flags & TTY_HAVEKKB &&
+	    options_get_number(global_options, "extended-keys") != 0 &&
+	    options_get_number(global_options, "extended-keys-format") ==
+	    EXTENDED_KEYS_KITTY)
+		tty_puts(tty, "\033[?u");
 	if (~flags & TTY_HAVEDA2)
 		tty_puts(tty, "\033[>c");
 	if (~flags & TTY_HAVEXDA)
@@ -576,6 +581,10 @@ tty_stop_tty(struct tty *tty)
 	tty_raw(tty, tty_term_string(tty->term, TTYC_DSESC));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_DSFCS));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_DSEKS));
+	if (tty->flags & TTY_KKBPUSHED) {
+		tty_raw(tty, "\033[<u");
+		tty->flags &= ~TTY_KKBPUSHED;
+	}
 
 #ifdef ENABLE_IMAGES
 	image_tty_free(tty, 1);
@@ -644,8 +653,12 @@ tty_update_features(struct tty *tty)
 
 	if (tty_use_margin(tty))
 		tty_putcode(tty, TTYC_ENMG);
-	if (options_get_number(global_options, "extended-keys"))
+	if (options_get_number(global_options, "extended-keys-format") ==
+	    EXTENDED_KEYS_KITTY)
+		tty_puts(tty, tty_term_string(tty->term, TTYC_DSEKS));
+	else if (options_get_number(global_options, "extended-keys"))
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENEKS));
+	tty_update_kitty(tty, NULL);
 	if (options_get_number(global_options, "focus-events"))
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENFCS));
 	tty_puts(tty, tty_term_string(tty->term, TTYC_ENESC));

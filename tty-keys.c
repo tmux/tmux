@@ -1051,6 +1051,9 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	utf8_char	 uc;
 
 	*size = 0;
+	if (options_get_number(global_options, "extended-keys-format") ==
+	    EXTENDED_KEYS_KITTY)
+		return (-1);
 
 	/* First two bytes are always \033[. */
 	if (buf[0] != '\033')
@@ -1544,6 +1547,9 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	}
 	log_debug("%s: received primary DA %.*s", c->name, (int)*size, buf);
 
+	/* A DA response without a preceding keyboard response means no support. */
+	if (~tty->flags & TTY_HAVEKKB)
+		tty->flags |= TTY_HAVEKKB;
 	tty_update_features(tty);
 	tty->flags |= TTY_ALL_REQUEST_FLAGS;
 	tty->flags &= ~(TTY_WAITBG|TTY_WAITFG);
