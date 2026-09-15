@@ -419,9 +419,8 @@ input_key_client_supports_extended(struct client *c, key_code key)
 		return (1);
 	if (options_get_number(global_options, "extended-keys") == 0)
 		return (0);
-	if (options_get_number(global_options, "extended-keys-format") ==
-	    EXTENDED_KEYS_KITTY)
-		return ((c->tty.flags & TTY_KKBPUSHED) != 0);
+	if (c->tty.flags & TTY_KKBPUSHED)
+		return (1);
 	return (tty_term_has(c->tty.term, TTYC_ENEKS));
 }
 
