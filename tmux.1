@@ -4942,6 +4942,9 @@ do not support it use standard extended keys if available, or standard VT10x
 keys otherwise.
 Input from standard extended-key clients is translated to Kitty encoding for
 applications which have requested it.
+A Kitty keyboard state query reflects the clients attached to the window at
+the time of the query; if none are attached, the requested state is reported.
+Applications are not notified if client support changes after the reply.
 See also the
 .Ic extkeys
 feature for the
