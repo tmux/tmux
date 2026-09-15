@@ -562,16 +562,21 @@ void
 tty_update_features(struct tty *tty)
 {
 	struct client	*c = tty->client;
+	int		 extended_keys, format;
 
 	if (tty_apply_features(tty->term))
 		tty_term_apply_overrides(tty->term);
 
 	if (tty_use_margin(tty))
 		tty_putcode(tty, TTYC_ENMG);
-	if (options_get_number(global_options, "extended-keys-format") ==
-	    EXTENDED_KEYS_KITTY)
+	extended_keys = options_get_number(global_options, "extended-keys");
+	format = options_get_number(global_options, "extended-keys-format");
+	if (extended_keys == 0 ||
+	    (format == EXTENDED_KEYS_KITTY &&
+	    (tty->flags & (TTY_HAVEKKB|TTY_KKBSUPPORT)) ==
+	    (TTY_HAVEKKB|TTY_KKBSUPPORT)))
 		tty_puts(tty, tty_term_string(tty->term, TTYC_DSEKS));
-	else if (options_get_number(global_options, "extended-keys"))
+	else
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENEKS));
 	tty_update_kitty(tty, NULL);
 	if (options_get_number(global_options, "focus-events"))

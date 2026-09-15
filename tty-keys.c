@@ -1112,8 +1112,7 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	utf8_char	 uc;
 
 	*size = 0;
-	if (options_get_number(global_options, "extended-keys-format") ==
-	    EXTENDED_KEYS_KITTY)
+	if (tty->flags & TTY_KKBPUSHED)
 		return (-1);
 
 	/* First two bytes are always \033[. */

@@ -4935,6 +4935,13 @@ this feature is disabled and only standard keys are reported.
 .Pp
 .Nm
 will always request extended keys itself if the terminal supports them.
+When the
+.Ic kitty
+format is selected, it is preferred separately for each client; clients which
+do not support it use standard extended keys if available, or standard VT10x
+keys otherwise.
+Input from standard extended-key clients is translated to Kitty encoding for
+applications which have requested it.
 See also the
 .Ic extkeys
 feature for the

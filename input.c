@@ -162,6 +162,7 @@ static void	input_set_state(struct input_ctx *,
 		    const struct input_transition *);
 static void	input_reset_cell(struct input_ctx *);
 static void	input_report_current_theme(struct input_ctx *);
+static int	input_pane_supports_extended(struct window_pane *);
 static void	input_osc_4(struct input_ctx *, const char *);
 static void	input_osc_8(struct input_ctx *, const char *);
 static void	input_osc_9(struct input_ctx *, const char *);
@@ -1179,6 +1180,29 @@ input_send_reply(struct input_ctx *ictx, const char *reply)
 	}
 }
 
+/* Return whether attached tty clients can provide extended keys to a pane. */
+static int
+input_pane_supports_extended(struct window_pane *wp)
+{
+	struct client	*c;
+
+	if (wp == NULL)
+		return (1);
+	TAILQ_FOREACH(c, &clients, entry) {
+		if ((c->flags & (CLIENT_TERMINAL|CLIENT_ATTACHED)) !=
+		    (CLIENT_TERMINAL|CLIENT_ATTACHED))
+			continue;
+		if (c->flags &
+		    (CLIENT_UNATTACHEDFLAGS|CLIENT_CONTROL|CLIENT_READONLY))
+			continue;
+		if (c->session == NULL || !session_has(c->session, wp->window))
+			continue;
+		if (!input_key_client_supports_extended(c, 0))
+			return (0);
+	}
+	return (1);
+}
+
 /* Reply to terminal query. */
 static void printflike(3, 4)
 input_reply(struct input_ctx *ictx, int add, const char *fmt, ...)
@@ -1576,7 +1600,10 @@ input_csi_dispatch(struct input_ctx *ictx)
 		    options_get_number(global_options, "extended-keys-format") !=
 		    EXTENDED_KEYS_KITTY)
 			break;
-		input_reply(ictx, 1, "\033[?%uu", s->kitty_keys.flags);
+		n = s->kitty_keys.flags;
+		if (!input_pane_supports_extended(ictx->wp))
+			n = 0;
+		input_reply(ictx, 1, "\033[?%uu", n);
 		break;
 	case INPUT_CSI_KITTY_SET:
 		if (options_get_number(global_options, "extended-keys") == 0 ||
