@@ -93,6 +93,20 @@ status_update_cache(struct session *s)
 		s->statusat = 0;
 	else
 		s->statusat = 1;
+
+	switch (options_get_number(s->options, "side-status")) {
+	case 1:
+		s->sidestatusat = 0;
+		break;
+	case 2:
+		s->sidestatusat = 1;
+		break;
+	default:
+		s->sidestatusat = -1;
+		break;
+	}
+	s->sidestatuswidth = options_get_number(s->options,
+	    "side-status-width");
 }
 
 /* Get screen line of status line. -1 means off. */
@@ -119,6 +133,44 @@ status_line_size(struct client *c)
 	if (s == NULL)
 		return (options_get_number(global_s_options, "status"));
 	return (s->statuslines);
+}
+
+/* Get width of side status line for client's session. 0 means off. */
+u_int
+status_side_size(struct client *c)
+{
+	struct session	*s = c->session;
+
+	if (c->flags & (CLIENT_SIDESTATUSOFF|CLIENT_CONTROL))
+		return (0);
+	if (s == NULL || s->sidestatusat == -1)
+		return (0);
+	return (s->sidestatuswidth);
+}
+
+/* Get starting column of side status line. -1 means off. */
+int
+status_side_at_column(struct client *c)
+{
+	struct session	*s = c->session;
+	u_int		 width = status_side_size(c);
+
+	if (width == 0)
+		return (-1);
+	if (s->sidestatusat == 0)
+		return (0);
+	return (c->tty.sx - width);
+}
+
+/* Get number of rows of side status line for client. */
+u_int
+status_side_rows(struct client *c)
+{
+	u_int	lines = status_line_size(c);
+
+	if (status_side_size(c) == 0 || c->tty.sy <= lines)
+		return (0);
+	return (c->tty.sy - lines);
 }
 
 /* Get the prompt line number for client's session. 1 means at the bottom. */
@@ -311,6 +363,154 @@ status_redraw(struct client *c)
 	/* Return if the status line has changed. */
 	log_debug("%s exit: force=%d, changed=%d", __func__, force, changed);
 	return (force || changed);
+}
+
+/* Prepare side status line. */
+void
+status_side_init(struct client *c)
+{
+	struct side_status_line	*ss = &c->side_status;
+
+	screen_init(&ss->screen, 1, 1, 0);
+	ss->linex = -1;
+	style_ranges_init(&ss->ranges);
+}
+
+/* Free side status line. */
+void
+status_side_free(struct client *c)
+{
+	struct side_status_line	*ss = &c->side_status;
+
+	style_ranges_free(&ss->ranges);
+	free(ss->expanded);
+	screen_free(&ss->screen);
+}
+
+/*
+ * Get the column of the ACS line separating the side status line from the
+ * window area, or -1 if there is none. The line takes the edge column
+ * nearest the window area out of the side status width.
+ */
+static int
+status_side_line_at(struct client *c)
+{
+	struct session	*s = c->session;
+	u_int		 width = status_side_size(c);
+
+	if (width < 2)
+		return (-1);
+	if (s->sidestatusat == 0)
+		return (width - 1);
+	return (0);
+}
+
+/* Get side status range for position. */
+struct style_range *
+status_side_get_range(struct client *c, u_int x, u_int y)
+{
+	struct side_status_line	*ss = &c->side_status;
+
+	/* On a right side status line, content starts after the line. */
+	if (status_side_line_at(c) == 0) {
+		if (x == 0)
+			return (NULL);
+		x--;
+	}
+	return (style_ranges_get_range_at(&ss->ranges, x, y));
+}
+
+/* Draw side status line for client. Returns 1 if changed. */
+int
+status_side_redraw(struct client *c)
+{
+	struct side_status_line		*ss = &c->side_status;
+	struct session			*s = c->session;
+	struct screen_write_ctx		 ctx;
+	struct grid_cell		 gc, lgc;
+	struct format_tree		*ft;
+	char				*expanded;
+	u_int				 width, rows, n;
+	int				 flags, force = 0, linex;
+
+	log_debug("%s enter", __func__);
+
+	/* No side status line? */
+	width = status_side_size(c);
+	rows = status_side_rows(c);
+	if (width == 0 || rows == 0)
+		return (0);
+
+	/* Create format tree. */
+	flags = FORMAT_STATUS;
+	if (c->flags & CLIENT_STATUSFORCE)
+		flags |= FORMAT_FORCE;
+	ft = format_create(c, NULL, FORMAT_NONE, flags);
+	format_defaults(ft, c, NULL, NULL, NULL);
+
+	/* Set up default colour. */
+	style_apply(&gc, s->options, "side-status-style", ft);
+	if (!grid_cells_equal(&gc, &ss->style)) {
+		force = 1;
+		memcpy(&ss->style, &gc, sizeof ss->style);
+	}
+
+	/* Resize the target screen. */
+	if (screen_size_x(&ss->screen) != width ||
+	    screen_size_y(&ss->screen) != rows) {
+		screen_resize(&ss->screen, width, rows, 0);
+		force = 1;
+	}
+
+	/* The line moves if the side status line changes side. */
+	linex = status_side_line_at(c);
+	if (linex != ss->linex) {
+		force = 1;
+		ss->linex = linex;
+	}
+
+	/* Expand the format. */
+	expanded = format_expand_time(ft,
+	    options_get_string(s->options, "side-status-format"));
+	format_free(ft);
+
+	/* Skip the redraw if nothing has changed. */
+	if (!force &&
+	    ss->expanded != NULL &&
+	    strcmp(expanded, ss->expanded) == 0) {
+		free(expanded);
+		log_debug("%s exit: unchanged", __func__);
+		return (0);
+	}
+
+	/* Draw the rows over a blank background. */
+	screen_write_start(&ctx, &ss->screen);
+	screen_write_cursormove(&ctx, 0, 0, 0);
+	for (n = 0; n < width * rows; n++)
+		screen_write_putc(&ctx, &gc, ' ');
+	style_ranges_free(&ss->ranges);
+
+	/* Draw the line on the edge next to the window area. */
+	if (linex != -1) {
+		memcpy(&lgc, &gc, sizeof lgc);
+		lgc.attr |= GRID_ATTR_CHARSET;
+		for (n = 0; n < rows; n++) {
+			screen_write_cursormove(&ctx, linex, n, 0);
+			screen_write_putc(&ctx, &lgc, 'x');
+		}
+		width--;
+	}
+
+	screen_write_cursormove(&ctx, 0, 0, 0);
+	format_draw_lines(&ctx, &gc, linex == 0 ? 1 : 0, width, rows, expanded,
+	    &ss->ranges, 0);
+	screen_write_stop(&ctx);
+
+	free(ss->expanded);
+	ss->expanded = expanded;
+
+	log_debug("%s exit: changed", __func__);
+	return (1);
 }
 
 /* Escape # characters in a string so format_draw treats them as literal. */
