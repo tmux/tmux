@@ -51,6 +51,33 @@ wait_for_output()
 	[ -s "$1" ]
 }
 
+client_mode()
+{
+	tmux=$1
+	session=$2
+
+	if [ -z "$session" ]; then
+		$tmux list-clients -F '#{client_key_mode}'
+	else
+		$tmux list-clients -F '#{client_session}:#{client_key_mode}' |
+		    sed -n "s/^$session://p"
+	fi
+}
+
+wait_for_client_mode()
+{
+	tmux=$1
+	session=$2
+	wanted=$3
+	i=0
+	while [ "$(client_mode "$tmux" "$session")" != "$wanted" ] &&
+	    [ "$i" -lt 50 ]; do
+		sleep 0.1
+		i=$((i + 1))
+	done
+	[ "$(client_mode "$tmux" "$session")" = "$wanted" ]
+}
+
 # A server preferring Kitty must negotiate each client independently.
 M="$TEST_TMUX -LtestKmc$$ -f$KCONF"
 KA="$TEST_TMUX -LtestKka$$ -f$KCONF"
@@ -62,6 +89,10 @@ $UA new-session -d -x80 -y24 "$M attach-session -t csiu" || exit 1
 wait_for_mode "$KA" 'Kitty 1' || exit 1
 wait_for_mode "$UA" 'Ext 2' || exit 1
 
+# Each client must report the protocol its own terminal negotiated.
+wait_for_client_mode "$M" kitty 'Kitty 1' || exit 1
+wait_for_client_mode "$M" csiu 'Ext' || exit 1
+
 uc=$($M list-clients -F '#{client_name} #{client_session}' |
     awk '$2 == "csiu" { print $1 }')
 [ -n "$uc" ] || exit 1
@@ -71,6 +102,14 @@ sleep 0.2
 $UA send-keys 'Escape [97;5u'
 wait "$pid"
 [ "$(tr -d '[:space:]' <"$TMP")" = 'C-a' ] || exit 1
+
+# A Kitty-capable terminal must still be reported when it is not in use.
+$M set-option -g extended-keys off
+wait_for_client_mode "$M" kitty 'VT10x (Kitty)' || exit 1
+wait_for_client_mode "$M" csiu 'VT10x' || exit 1
+$M set-option -g extended-keys on
+wait_for_client_mode "$M" kitty 'Kitty 1' || exit 1
+
 $KA kill-server 2>/dev/null
 $UA kill-server 2>/dev/null
 $M kill-server 2>/dev/null
@@ -83,6 +122,7 @@ $R new-session -d -x80 -y24 \
     "stty raw -echo; printf '\033[>1u'; dd bs=1 count=7 2>/dev/null | od -An -v -t x1 >'$OUT'; sleep 5" || exit 1
 $RU new-session -d -x80 -y24 "$R attach-session" || exit 1
 wait_for_mode "$RU" 'Ext 2' || exit 1
+wait_for_client_mode "$R" '' 'Ext' || exit 1
 $RU send-keys C-a
 wait_for_output "$OUT" || exit 1
 [ "$(tr -d ' \n' <"$OUT")" = '1b5b39373b3575' ] || exit 1
@@ -99,5 +139,6 @@ $LQ new-session -d -x80 -y24 \
 $LU new-session -d -x80 -y24 "$LQ attach-session" || exit 1
 wait_for_output "$OUT" || exit 1
 [ "$(tr -d ' \n' <"$OUT")" = '1b5b3f3075' ] || exit 1
+wait_for_client_mode "$LQ" '' 'VT10x' || exit 1
 
 exit 0
