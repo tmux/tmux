@@ -4929,6 +4929,9 @@ When set to
 .Ic always ,
 modes 1 and 2 can still be requested by applications, but mode 1 will be forced
 instead of the standard mode.
+This applies only to applications inside panes and does not change what
+.Nm
+requests from the terminal.
 When set to
 .Ic off ,
 this feature is disabled and only standard keys are reported.
@@ -4953,7 +4956,9 @@ option, the
 .Ic extended\-keys\-format
 option and the
 .Ic pane_key_mode
-variable.
+and
+.Ic client_key_mode
+variables.
 .It Xo Ic extended\-keys\-format
 .Op Ic csi\-u | xterm | kitty
 .Xc
@@ -7342,6 +7347,7 @@ The following variables are available, where appropriate:
 .It Li "client_discarded" Ta "" Ta "Bytes discarded when client behind"
 .It Li "client_flags" Ta "" Ta "List of client flags"
 .It Li "client_height" Ta "" Ta "Height of client"
+.It Li "client_key_mode" Ta "" Ta "Extended key reporting mode for this client"
 .It Li "client_key_table" Ta "" Ta "Current key table"
 .It Li "client_last_session" Ta "" Ta "Name of the client's last session"
 .It Li "client_name" Ta "" Ta "Name of client"
