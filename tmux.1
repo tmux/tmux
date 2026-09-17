@@ -994,13 +994,18 @@ Will run:
 /bin/sh \-c \[aq]vi \[ti]/.tmux.conf\[aq]
 .Ed
 .Pp
+Unless specified, tmux uses the value of
+.Ic default\-shell
+in place of /bin/sh.
+.Pp
 Additionally, the
 .Ic new\-window ,
 .Ic new\-session ,
 .Ic split\-window ,
-.Ic respawn\-window
-and
+.Ic respawn\-window ,
 .Ic respawn\-pane
+and
+.Ic display\-popup
 commands allow
 .Ar shell\-command
 to be given as multiple arguments and executed directly (without
