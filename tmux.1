@@ -991,16 +991,18 @@ new\-window \[aq]vi \[ti]/.tmux.conf\[aq]
 .Pp
 Will run:
 .Bd -literal -offset indent
-/bin/sh \-c \[aq]vi \[ti]/.tmux.conf\[aq]
+.Ic default\-shell
+\-c \[aq]vi \[ti]/.tmux.conf\[aq]
 .Ed
 .Pp
 Additionally, the
 .Ic new\-window ,
 .Ic new\-session ,
 .Ic split\-window ,
-.Ic respawn\-window
-and
+.Ic respawn\-window ,
 .Ic respawn\-pane
+and
+.Ic display\-popup
 commands allow
 .Ar shell\-command
 to be given as multiple arguments and executed directly (without
