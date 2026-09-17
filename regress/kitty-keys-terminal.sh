@@ -2,8 +2,12 @@
 
 # Test the Kitty keyboard protocol against a real terminal rather than against
 # another copy of tmux. This drives kitty through its remote control interface
-# so that kitty itself encodes the key presses. It is skipped unless kitty, a
-# display and a kitty new enough to have send-key are all available.
+# so that kitty itself encodes the key presses.
+#
+# This has to be run by hand from this directory. The Makefile runs tests with
+# env -i, which removes DISPLAY and HOME, so kitty cannot start and this exits
+# immediately without testing anything. It is also skipped unless kitty is
+# installed and is new enough to have send-key.
 
 PATH=/bin:/usr/bin
 
