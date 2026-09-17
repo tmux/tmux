@@ -88,6 +88,8 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->default_cstyle = SCREEN_CURSOR_DEFAULT;
 	s->mode = MODE_CURSOR;
 	s->default_mode = 0;
+	memset(&s->kitty_keys, 0, sizeof s->kitty_keys);
+	memset(&s->saved_kitty_keys, 0, sizeof s->saved_kitty_keys);
 	s->ccolour = -1;
 	s->default_ccolour = -1;
 	s->tabs = NULL;
@@ -116,11 +118,13 @@ screen_reinit(struct screen *s, int check)
 
 	s->mode = MODE_CURSOR|MODE_WRAP|(s->mode & MODE_CRLF);
 
-	if (options_get_number(global_options, "extended-keys") == 2)
+	if (options_get_number(global_options, "extended-keys") == 2 &&
+	    options_get_number(global_options, "extended-keys-format") !=
+	    EXTENDED_KEYS_KITTY)
 		s->mode = (s->mode & ~EXTENDED_KEY_MODES)|MODE_KEYS_EXTENDED;
-
 	if (SCREEN_IS_ALTERNATE(s))
 		screen_alternate_off(s, NULL, 0);
+	input_kitty_reset(s);
 	s->saved_cx = UINT_MAX;
 	s->saved_cy = UINT_MAX;
 
@@ -698,6 +702,7 @@ screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 
 	if (SCREEN_IS_ALTERNATE(s))
 		return 0;
+	input_kitty_alternate_on(s);
 	sx = screen_size_x(s);
 	sy = screen_size_y(s);
 
@@ -758,6 +763,7 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 			s->cy = screen_size_y(s) - 1;
 		return 0;
 	}
+	input_kitty_alternate_off(s);
 
 	/* Restore the saved grid. */
 	grid_duplicate_lines(s->grid, screen_hsize(s), s->saved_grid, 0,

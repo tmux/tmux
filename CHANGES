@@ -111,6 +111,18 @@ CHANGES FROM 3.7c TO 3.8
 
 * Change show-options and show-hooks to use formats and add a -F flag to each.
 
+* Add support for the Kitty keyboard protocol, selected with a new kitty
+  value for the extended-keys-format option. This can report the Super and
+  Hyper modifiers (key name prefixes s- and H-) as well as Control, Meta
+  and Shift. The protocol is negotiated separately with each client, so
+  terminals with different capabilities may be attached at the same time;
+  clients without it use standard extended keys, or VT10x keys if those
+  are also unavailable, and their input is translated for applications
+  which have asked for Kitty encoding.
+
+* Add a client_key_mode format giving the extended key reporting mode in
+  use for a client, alongside the existing pane_key_mode for a pane.
+
 * Allow individual terminal features to be disabled by adding @ to their names
   in terminal-features, and add a utf8 feature for terminals which support
   UTF-8 output.
