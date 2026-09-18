@@ -2120,6 +2120,9 @@ struct side_status_line {
 
 	/* A direct write was dropped so the area must be redrawn. */
 	int			 dirty;
+
+	/* The mouse button went down on the line next to the window area. */
+	int			 linehit;
 };
 
 /* File in client. */

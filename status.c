@@ -716,17 +716,26 @@ status_side_key(struct client *c, struct key_event *event)
 
 	/*
 	 * Dragging the line next to the window area resizes the side status.
-	 * The first drag sample from the line registers the tty drag callback;
-	 * later samples reach it directly and the release clears it.
+	 * A button press on the line arms it; the first drag sample then
+	 * registers the tty drag callback and marks the drag as started so
+	 * the release clears it again, as for a pane border drag. Any other
+	 * event disarms it.
 	 */
 	linex = status_side_line_at(c);
-	if (MOUSE_DRAG(m->b) && c->tty.mouse_drag_update == NULL &&
-	    linex != -1 &&
-	    m->lx == (u_int)status_side_at_column(c) + linex &&
-	    m->ly >= oy && m->ly < oy + rows) {
-		c->tty.mouse_drag_update = status_side_drag;
-		status_side_drag(c, m);
-		return (1);
+	if (MOUSE_DRAG(m->b)) {
+		if (ss->linehit && c->tty.mouse_drag_update == NULL) {
+			c->tty.mouse_drag_update = status_side_drag;
+			c->tty.mouse_drag_flag = MOUSE_BUTTONS(m->b) + 1;
+			status_side_drag(c, m);
+			return (1);
+		}
+	} else {
+		ss->linehit = (!MOUSE_RELEASE(m->b) && !MOUSE_WHEEL(m->b) &&
+		    linex != -1 &&
+		    m->x == (u_int)status_side_at_column(c) + linex &&
+		    m->y >= oy && m->y < oy + rows);
+		if (c->tty.mouse_drag_update == status_side_drag)
+			c->tty.mouse_drag_update = NULL;
 	}
 
 	inside = (m->x >= ox &&
