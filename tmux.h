@@ -2111,9 +2111,15 @@ struct side_status_line {
 	struct input_ctx	*ictx;
 	struct colour_palette	 palette;
 	char			*command;
-	time_t			 started; /* when the job was last started */
-	int			 changed; /* jobscreen changed since last copy */
-	int			 dirty;   /* a direct write was dropped: redraw */
+
+	/* When the job was last started. */
+	time_t			 started;
+
+	/* Job screen changed since it was last copied. */
+	int			 changed;
+
+	/* A direct write was dropped so the area must be redrawn. */
+	int			 dirty;
 };
 
 /* File in client. */
@@ -2330,7 +2336,7 @@ struct client {
 #define CLIENT_NO_DETACH_ON_DESTROY 0x8000000000ULL
 #define CLIENT_CONTROL_DISCARD 0x10000000000ULL
 #define CLIENT_SIDESTATUSOFF 0x20000000000ULL
-#define CLIENT_SIDEFOCUS 0x40000000000ULL
+#define CLIENT_SIDESTATUSFOCUS 0x40000000000ULL
 #define CLIENT_REDRAWSIDESTATUS 0x80000000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
@@ -3397,16 +3403,16 @@ int	 status_at_line(struct client *);
 u_int	 status_line_size(struct client *);
 u_int	 status_side_size(struct client *);
 int	 status_side_at_column(struct client *);
+u_int	 status_side_at_row(struct client *);
 u_int	 status_side_rows(struct client *);
 void	 status_side_init(struct client *);
 void	 status_side_free(struct client *);
 int	 status_side_redraw(struct client *);
 struct style_range *status_side_get_range(struct client *, u_int, u_int);
-u_int	 status_side_at_row(struct client *);
+struct tty_style_ctx *status_side_style_ctx(struct client *,
+	     struct grid_cell *, struct tty_style_ctx *);
 void	 status_side_check(struct client *);
-void	 status_side_stop(struct client *);
 int	 status_side_focused(struct client *);
-void	 status_side_set_focus(struct client *, int);
 int	 status_side_key(struct client *, struct key_event *);
 struct screen *status_side_cursor(struct client *, u_int *, u_int *);
 struct style_range *status_get_range(struct client *, u_int, u_int);

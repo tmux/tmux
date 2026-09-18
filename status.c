@@ -35,8 +35,8 @@ static void	 status_timer_callback(int, short, void *);
 static int	 status_side_line_at(struct client *);
 static void	 status_side_job_offset(struct client *, u_int *, u_int *);
 static void	 status_side_check1(struct client *);
-static void	 status_side_drag(struct client *, struct mouse_event *);
-static void	 status_side_drag_release(struct client *, struct mouse_event *);
+static void	 status_side_stop(struct client *);
+static void	 status_side_set_focus(struct client *, int);
 
 /* Status timer callback. */
 static void
@@ -430,6 +430,7 @@ status_side_content(struct client *c, u_int *x, u_int *width)
  * status_side_redraw.
  */
 
+/* Job output could not be written directly: redraw the side status line. */
 static void
 status_side_redraw_cb(const struct tty_ctx *ttyctx)
 {
@@ -439,6 +440,7 @@ status_side_redraw_cb(const struct tty_ctx *ttyctx)
 	c->flags |= CLIENT_REDRAWSIDESTATUS;
 }
 
+/* Write job output straight to the owning client at the job's offset. */
 static int
 status_side_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 {
@@ -463,12 +465,14 @@ status_side_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	return (1);
 }
 
+/* Set up the tty context for job output. */
 static void
 status_side_init_ctx_cb(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx)
 {
 	struct client	*c = ctx->arg;
 
-	memcpy(&ttyctx->defaults, &grid_default_cell, sizeof ttyctx->defaults);
+	memcpy(&ttyctx->defaults, &c->side_status.style,
+	    sizeof ttyctx->defaults);
 	ttyctx->flags &= ~TTY_CTX_WINDOW_BIGGER;
 	ttyctx->style_ctx.defaults = &ttyctx->defaults;
 	ttyctx->style_ctx.palette = &c->side_status.palette;
@@ -477,6 +481,7 @@ status_side_init_ctx_cb(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx)
 	ttyctx->arg = c;
 }
 
+/* Job produced output: parse it into the job screen. */
 static void
 status_side_job_update_cb(struct job *job)
 {
@@ -511,7 +516,9 @@ status_side_job_gone(struct client *c)
 
 /*
  * Job exited; job.c frees it after this returns. status_side_check restarts
- * it on the next status redraw, at most once a second, like #() jobs.
+ * it straight away, unless it exited within a second of starting, in which
+ * case it waits for the next status redraw so a failing command does not
+ * run in a loop.
  */
 static void
 status_side_job_complete_cb(struct job *job)
@@ -523,7 +530,7 @@ status_side_job_complete_cb(struct job *job)
 }
 
 /* Kill the side job, if any, and forget the command. */
-void
+static void
 status_side_stop(struct client *c)
 {
 	struct side_status_line	*ss = &c->side_status;
@@ -541,6 +548,7 @@ status_side_stop(struct client *c)
 	ss->expanded = NULL;
 }
 
+/* Start the side job for a client. */
 static void
 status_side_start(struct client *c)
 {
@@ -552,7 +560,6 @@ status_side_start(struct client *c)
 
 	ss->started = time(NULL);
 	env = environ_create();
-	environ_set(env, "TMUX_SIDE", 0, "1");
 	environ_set(env, "TMUX_SIDE_CLIENT", 0, "%s", c->name);
 	ss->job = job_run(ss->command, 0, NULL, env, s,
 	    server_client_get_cwd(c, s), status_side_job_update_cb,
@@ -562,7 +569,8 @@ status_side_start(struct client *c)
 	if (ss->job == NULL)
 		return;
 	ss->ictx = input_init(NULL, job_get_event(ss->job), &ss->palette);
-	if (c->flags & CLIENT_SIDEFOCUS) /* requested before the job existed */
+	/* Focus may have been requested before the job existed. */
+	if (c->flags & CLIENT_SIDESTATUSFOCUS)
 		window_update_focus(s->curw->window);
 	log_debug("%s: side job for client %s: %s", __func__, c->name,
 	    ss->command);
@@ -581,6 +589,7 @@ status_side_check(struct client *c)
 		status_side_check1(c);
 }
 
+/* Check the side job for a client; see status_side_check. */
 static void
 status_side_check1(struct client *c)
 {
@@ -613,9 +622,7 @@ status_side_check1(struct client *c)
 	if (screen_size_x(&ss->jobscreen) != jx ||
 	    screen_size_y(&ss->jobscreen) != jy) {
 		screen_resize(&ss->jobscreen, jx, jy, 0);
-		/* While the line is dragged, the pty is resized on release. */
-		if (ss->job != NULL &&
-		    c->tty.mouse_drag_update != status_side_drag)
+		if (ss->job != NULL)
 			job_resize(ss->job, jx, jy);
 		ss->changed = ss->dirty = 1;
 		c->flags |= CLIENT_REDRAWSIDESTATUS;
@@ -626,23 +633,24 @@ status_side_check1(struct client *c)
 }
 
 /* Give keyboard focus to the side job or back to the active pane. */
-void
+static void
 status_side_set_focus(struct client *c, int on)
 {
-	if (on == ((c->flags & CLIENT_SIDEFOCUS) != 0))
+	if (on == ((c->flags & CLIENT_SIDESTATUSFOCUS) != 0))
 		return;
 	if (on)
-		c->flags |= CLIENT_SIDEFOCUS;
+		c->flags |= CLIENT_SIDESTATUSFOCUS;
 	else
-		c->flags &= ~CLIENT_SIDEFOCUS;
+		c->flags &= ~CLIENT_SIDESTATUSFOCUS;
 	if (c->session != NULL)
 		window_update_focus(c->session->curw->window);
 }
 
+/* Does the side job have keyboard focus? */
 int
 status_side_focused(struct client *c)
 {
-	return (c->side_status.job != NULL && (c->flags & CLIENT_SIDEFOCUS));
+	return (c->side_status.job != NULL && (c->flags & CLIENT_SIDESTATUSFOCUS));
 }
 
 /* Terminal position of the job area's top-left cell. */
@@ -667,7 +675,8 @@ status_side_drag(struct client *c, struct mouse_event *m)
 		width = m->x + 1;
 	else
 		width = c->tty.sx - m->x;
-	if (width < 2) /* the line needs a column of its own */
+	/* The line next to the window area needs a column of its own. */
+	if (width < 2)
 		width = 2;
 	if (width > c->tty.sx - 1)
 		width = c->tty.sx - 1;
@@ -675,18 +684,6 @@ status_side_drag(struct client *c, struct mouse_event *m)
 		return;
 	options_set_number(s->options, "side-status-width", width);
 	options_push_changes("side-status-width");
-}
-
-/* Drag finished: give the job its final size in one go. */
-static void
-status_side_drag_release(struct client *c, __unused struct mouse_event *m)
-{
-	struct side_status_line	*ss = &c->side_status;
-
-	if (ss->job != NULL) {
-		job_resize(ss->job, screen_size_x(&ss->jobscreen),
-		    screen_size_y(&ss->jobscreen));
-	}
 }
 
 /*
@@ -707,7 +704,7 @@ status_side_key(struct client *c, struct key_event *event)
 	if (ss->job == NULL)
 		return (0);
 	if (!KEYC_IS_MOUSE(event->key)) {
-		if (~c->flags & CLIENT_SIDEFOCUS)
+		if (~c->flags & CLIENT_SIDESTATUSFOCUS)
 			return (0);
 		input_key(&ss->jobscreen, job_get_event(ss->job), event->key);
 		return (1);
@@ -727,7 +724,6 @@ status_side_key(struct client *c, struct key_event *event)
 	    m->lx == (u_int)status_side_at_column(c) + linex &&
 	    m->ly >= oy && m->ly < oy + rows) {
 		c->tty.mouse_drag_update = status_side_drag;
-		c->tty.mouse_drag_release = status_side_drag_release;
 		status_side_drag(c, m);
 		return (1);
 	}
@@ -740,8 +736,9 @@ status_side_key(struct client *c, struct key_event *event)
 		status_side_set_focus(c, inside);
 	if (!inside)
 		return (0);
+	/* Ignore the synthesized double click event. */
 	if (m->ignore)
-		return (1); /* synthesized double click */
+		return (1);
 	if (input_key_get_mouse(&ss->jobscreen, m, m->x - ox, m->y - oy, &buf,
 	    &len))
 		bufferevent_write(job_get_event(ss->job), buf, len);
@@ -759,6 +756,28 @@ status_side_cursor(struct client *c, u_int *cx, u_int *cy)
 	*cx = ox + ss->jobscreen.cx;
 	*cy = oy + ss->jobscreen.cy;
 	return (&ss->jobscreen);
+}
+
+/*
+ * Fill in a style context for drawing the side status screen so job
+ * output keeps its palette and hyperlinks, as popup_draw_cb does.
+ */
+struct tty_style_ctx *
+status_side_style_ctx(struct client *c, struct grid_cell *defaults,
+    struct tty_style_ctx *style_ctx)
+{
+	struct side_status_line	*ss = &c->side_status;
+
+	memcpy(defaults, &ss->style, sizeof *defaults);
+	if (defaults->fg == 8)
+		defaults->fg = ss->palette.fg;
+	if (defaults->bg == 8)
+		defaults->bg = ss->palette.bg;
+	style_ctx->defaults = defaults;
+	style_ctx->palette = &ss->palette;
+	style_ctx->dim = 0;
+	style_ctx->hyperlinks = ss->screen.hyperlinks;
+	return (style_ctx);
 }
 
 /*
@@ -799,6 +818,10 @@ status_side_redraw_job(struct client *c, const struct grid_cell *gc,
 	}
 	status_side_content(c, &x, &width);
 	screen_write_cursormove(&ctx, x, 0, 0);
+	if (ss->jobscreen.hyperlinks != NULL) {
+		hyperlinks_free(ss->screen.hyperlinks);
+		ss->screen.hyperlinks = hyperlinks_copy(ss->jobscreen.hyperlinks);
+	}
 	screen_write_fast_copy(&ctx, &ss->jobscreen, 0, 0,
 	    screen_size_x(&ss->jobscreen), screen_size_y(&ss->jobscreen));
 	screen_write_stop(&ctx);
