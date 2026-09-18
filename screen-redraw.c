@@ -1791,10 +1791,7 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		side_cols = status_side_size(c);
 		side_x = status_side_at_column(c);
 		if (side_cols != 0 && side_x != -1) {
-			if (dctx.flags & REDRAW_STATUS_TOP)
-				y = dctx.status_lines;
-			else
-				y = 0;
+			y = status_side_at_row(c);
 			for (i = 0; i < status_side_rows(c); i++) {
 				tty_draw_line(tty, &c->side_status.screen, 0, i,
 				    side_cols, side_x, y + i, NULL);
@@ -1877,6 +1874,8 @@ redraw_screen(struct client *c)
 		if (c->flags & CLIENT_REDRAWSTATUS)
 			flags |= (REDRAW_STATUS|REDRAW_PANE_STATUS|
 			    REDRAW_SIDE_STATUS);
+		if (c->flags & CLIENT_REDRAWSIDESTATUS)
+			flags |= REDRAW_SIDE_STATUS;
 		if (c->flags & CLIENT_REDRAWMENU)
 			flags |= REDRAW_MENU;
 		if (c->session->curw->window->menu != NULL)

@@ -32,6 +32,11 @@
 static void	 status_message_area(struct client *, u_int *, u_int *);
 static void	 status_message_callback(int, short, void *);
 static void	 status_timer_callback(int, short, void *);
+static int	 status_side_line_at(struct client *);
+static void	 status_side_job_offset(struct client *, u_int *, u_int *);
+static void	 status_side_check1(struct client *);
+static void	 status_side_drag(struct client *, struct mouse_event *);
+static void	 status_side_drag_release(struct client *, struct mouse_event *);
 
 /* Status timer callback. */
 static void
@@ -162,6 +167,15 @@ status_side_at_column(struct client *c)
 	if (s->sidestatusat == 0)
 		return (0);
 	return (c->tty.sx - width);
+}
+
+/* Get the terminal row where the side status line starts. */
+u_int
+status_side_at_row(struct client *c)
+{
+	if (status_at_line(c) == 0)
+		return (status_line_size(c));
+	return (0);
 }
 
 /* Get number of rows of side status line for client. */
@@ -376,6 +390,11 @@ status_side_init(struct client *c)
 	screen_init(&ss->screen, 1, 1, 0);
 	ss->linex = -1;
 	style_ranges_init(&ss->ranges);
+
+	screen_init(&ss->jobscreen, 1, 1, 0);
+	screen_set_default_cursor(&ss->jobscreen, global_w_options);
+	colour_palette_init(&ss->palette);
+	colour_palette_from_option(&ss->palette, global_w_options);
 }
 
 /* Free side status line. */
@@ -384,9 +403,408 @@ status_side_free(struct client *c)
 {
 	struct side_status_line	*ss = &c->side_status;
 
+	status_side_stop(c);
 	style_ranges_free(&ss->ranges);
 	free(ss->expanded);
 	screen_free(&ss->screen);
+	screen_free(&ss->jobscreen);
+	colour_palette_free(&ss->palette);
+}
+
+/* Content area of the side status line: x offset and width beside the line. */
+static void
+status_side_content(struct client *c, u_int *x, u_int *width)
+{
+	int	linex = status_side_line_at(c);
+
+	*x = (linex == 0 ? 1 : 0);
+	*width = status_side_size(c) - (linex != -1 ? 1 : 0);
+}
+
+/*
+ * Side status line job. When side-status-command is set, each client runs
+ * it in a pty the size of the side status line and shows its screen there.
+ * Like a popup, the job's output is written straight to the owning client's
+ * tty at the side status line's offset; when that is not possible, or on a
+ * side status redraw, its screen is copied into the side status screen by
+ * status_side_redraw.
+ */
+
+static void
+status_side_redraw_cb(const struct tty_ctx *ttyctx)
+{
+	struct client	*c = ttyctx->arg;
+
+	c->side_status.dirty = 1;
+	c->flags |= CLIENT_REDRAWSIDESTATUS;
+}
+
+static int
+status_side_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
+{
+	u_int	ox, oy;
+
+	if (c != ttyctx->arg)
+		return (0);
+	if ((c->flags & (CLIENT_REDRAWSTATUS|CLIENT_REDRAWSIDESTATUS)) ||
+	    status_side_at_column(c) < 0) {
+		/* Dropped: the pending redraw must repaint the area. */
+		c->side_status.dirty = 1;
+		return (0);
+	}
+	status_side_job_offset(c, &ox, &oy);
+
+	ttyctx->wox = 0;
+	ttyctx->woy = 0;
+	ttyctx->wsx = c->tty.sx;
+	ttyctx->wsy = c->tty.sy;
+	ttyctx->xoff = ttyctx->rxoff = ox;
+	ttyctx->yoff = ttyctx->ryoff = oy;
+	return (1);
+}
+
+static void
+status_side_init_ctx_cb(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx)
+{
+	struct client	*c = ctx->arg;
+
+	memcpy(&ttyctx->defaults, &grid_default_cell, sizeof ttyctx->defaults);
+	ttyctx->flags &= ~TTY_CTX_WINDOW_BIGGER;
+	ttyctx->style_ctx.defaults = &ttyctx->defaults;
+	ttyctx->style_ctx.palette = &c->side_status.palette;
+	ttyctx->redraw_cb = status_side_redraw_cb;
+	ttyctx->set_client_cb = status_side_set_client_cb;
+	ttyctx->arg = c;
+}
+
+static void
+status_side_job_update_cb(struct job *job)
+{
+	struct client		*c = job_get_data(job);
+	struct side_status_line	*ss = &c->side_status;
+	struct evbuffer		*evb = job_get_event(job)->input;
+	void			*data = EVBUFFER_DATA(evb);
+	size_t			 size = EVBUFFER_LENGTH(evb);
+
+	if (size == 0)
+		return;
+	input_parse_screen(ss->ictx, &ss->jobscreen, status_side_init_ctx_cb,
+	    c, data, size);
+	evbuffer_drain(evb, size);
+	ss->changed = 1;
+}
+
+/* Forget a job that has exited or been killed; its screen stays visible. */
+static void
+status_side_job_gone(struct client *c)
+{
+	struct side_status_line	*ss = &c->side_status;
+
+	if (ss->ictx != NULL) {
+		input_free(ss->ictx);
+		ss->ictx = NULL;
+	}
+	ss->job = NULL;
+	status_side_set_focus(c, 0);
+	c->flags |= CLIENT_REDRAWSIDESTATUS;
+}
+
+/*
+ * Job exited; job.c frees it after this returns. status_side_check restarts
+ * it on the next status redraw, at most once a second, like #() jobs.
+ */
+static void
+status_side_job_complete_cb(struct job *job)
+{
+	struct client	*c = job_get_data(job);
+
+	log_debug("%s: side job for client %s exited", __func__, c->name);
+	status_side_job_gone(c);
+}
+
+/* Kill the side job, if any, and forget the command. */
+void
+status_side_stop(struct client *c)
+{
+	struct side_status_line	*ss = &c->side_status;
+
+	if (ss->command == NULL && ss->job == NULL)
+		return;
+	if (ss->job != NULL)
+		job_free(ss->job);
+	status_side_job_gone(c);
+	free(ss->command);
+	ss->command = NULL;
+
+	/* Make the format path redraw when it takes over again. */
+	free(ss->expanded);
+	ss->expanded = NULL;
+}
+
+static void
+status_side_start(struct client *c)
+{
+	struct side_status_line	*ss = &c->side_status;
+	struct session		*s = c->session;
+	struct environ		*env;
+	u_int			 jx = screen_size_x(&ss->jobscreen);
+	u_int			 jy = screen_size_y(&ss->jobscreen);
+
+	ss->started = time(NULL);
+	env = environ_create();
+	environ_set(env, "TMUX_SIDE", 0, "1");
+	environ_set(env, "TMUX_SIDE_CLIENT", 0, "%s", c->name);
+	ss->job = job_run(ss->command, 0, NULL, env, s,
+	    server_client_get_cwd(c, s), status_side_job_update_cb,
+	    status_side_job_complete_cb, NULL, c,
+	    JOB_NOWAIT|JOB_PTY|JOB_KEEPWRITE|JOB_DEFAULTSHELL, jx, jy);
+	environ_free(env);
+	if (ss->job == NULL)
+		return;
+	ss->ictx = input_init(NULL, job_get_event(ss->job), &ss->palette);
+	if (c->flags & CLIENT_SIDEFOCUS) /* requested before the job existed */
+		window_update_focus(s->curw->window);
+	log_debug("%s: side job for client %s: %s", __func__, c->name,
+	    ss->command);
+}
+
+/*
+ * Keep the side job in step with the option and the side status line size,
+ * and restart it if it has exited. Every change that matters (options,
+ * resize, session switch, job exit, status interval) sets a redraw flag, so
+ * the check only runs when one is set.
+ */
+void
+status_side_check(struct client *c)
+{
+	if (c->flags & (CLIENT_REDRAWSTATUS|CLIENT_REDRAWSIDESTATUS))
+		status_side_check1(c);
+}
+
+static void
+status_side_check1(struct client *c)
+{
+	struct side_status_line	*ss = &c->side_status;
+	struct session		*s = c->session;
+	const char		*cmd;
+	u_int			 x, jx, jy = status_side_rows(c);
+
+	if (s == NULL || s->sidestatusat == -1 || (c->flags & CLIENT_CONTROL)) {
+		status_side_stop(c);
+		return;
+	}
+	cmd = options_get_string(s->options, "side-status-command");
+	if (*cmd == '\0') {
+		status_side_stop(c);
+		return;
+	}
+	if (ss->command == NULL || strcmp(ss->command, cmd) != 0) {
+		status_side_stop(c);
+		ss->command = xstrdup(cmd);
+	}
+
+	/* Too narrow for now (or a size-ignored client): keep the job. */
+	if (status_side_at_column(c) < 0 || jy == 0) {
+		status_side_set_focus(c, 0);
+		return;
+	}
+
+	status_side_content(c, &x, &jx);
+	if (screen_size_x(&ss->jobscreen) != jx ||
+	    screen_size_y(&ss->jobscreen) != jy) {
+		screen_resize(&ss->jobscreen, jx, jy, 0);
+		/* While the line is dragged, the pty is resized on release. */
+		if (ss->job != NULL &&
+		    c->tty.mouse_drag_update != status_side_drag)
+			job_resize(ss->job, jx, jy);
+		ss->changed = ss->dirty = 1;
+		c->flags |= CLIENT_REDRAWSIDESTATUS;
+	}
+
+	if (ss->job == NULL && ss->started != time(NULL))
+		status_side_start(c);
+}
+
+/* Give keyboard focus to the side job or back to the active pane. */
+void
+status_side_set_focus(struct client *c, int on)
+{
+	if (on == ((c->flags & CLIENT_SIDEFOCUS) != 0))
+		return;
+	if (on)
+		c->flags |= CLIENT_SIDEFOCUS;
+	else
+		c->flags &= ~CLIENT_SIDEFOCUS;
+	if (c->session != NULL)
+		window_update_focus(c->session->curw->window);
+}
+
+int
+status_side_focused(struct client *c)
+{
+	return (c->side_status.job != NULL && (c->flags & CLIENT_SIDEFOCUS));
+}
+
+/* Terminal position of the job area's top-left cell. */
+static void
+status_side_job_offset(struct client *c, u_int *ox, u_int *oy)
+{
+	u_int	x, width;
+
+	status_side_content(c, &x, &width);
+	*ox = status_side_at_column(c) + x;
+	*oy = status_side_at_row(c);
+}
+
+/* Set the side status width from the mouse position during a drag. */
+static void
+status_side_drag(struct client *c, struct mouse_event *m)
+{
+	struct session	*s = c->session;
+	u_int		 width;
+
+	if (s->sidestatusat == 0)
+		width = m->x + 1;
+	else
+		width = c->tty.sx - m->x;
+	if (width < 2) /* the line needs a column of its own */
+		width = 2;
+	if (width > c->tty.sx - 1)
+		width = c->tty.sx - 1;
+	if (width == s->sidestatuswidth)
+		return;
+	options_set_number(s->options, "side-status-width", width);
+	options_push_changes("side-status-width");
+}
+
+/* Drag finished: give the job its final size in one go. */
+static void
+status_side_drag_release(struct client *c, __unused struct mouse_event *m)
+{
+	struct side_status_line	*ss = &c->side_status;
+
+	if (ss->job != NULL) {
+		job_resize(ss->job, screen_size_x(&ss->jobscreen),
+		    screen_size_y(&ss->jobscreen));
+	}
+}
+
+/*
+ * Offer a key or mouse event to the side job. Mouse events inside the job
+ * area focus it and are forwarded; keys are forwarded while it is focused.
+ * Returns 1 if the event was consumed.
+ */
+int
+status_side_key(struct client *c, struct key_event *event)
+{
+	struct side_status_line	*ss = &c->side_status;
+	struct mouse_event	*m = &event->m;
+	const char		*buf;
+	size_t			 len;
+	u_int			 ox, oy, rows;
+	int			 inside, linex;
+
+	if (ss->job == NULL)
+		return (0);
+	if (!KEYC_IS_MOUSE(event->key)) {
+		if (~c->flags & CLIENT_SIDEFOCUS)
+			return (0);
+		input_key(&ss->jobscreen, job_get_event(ss->job), event->key);
+		return (1);
+	}
+
+	status_side_job_offset(c, &ox, &oy);
+	rows = screen_size_y(&ss->jobscreen);
+
+	/*
+	 * Dragging the line next to the window area resizes the side status.
+	 * The first drag sample from the line registers the tty drag callback;
+	 * later samples reach it directly and the release clears it.
+	 */
+	linex = status_side_line_at(c);
+	if (MOUSE_DRAG(m->b) && c->tty.mouse_drag_update == NULL &&
+	    linex != -1 &&
+	    m->lx == (u_int)status_side_at_column(c) + linex &&
+	    m->ly >= oy && m->ly < oy + rows) {
+		c->tty.mouse_drag_update = status_side_drag;
+		c->tty.mouse_drag_release = status_side_drag_release;
+		status_side_drag(c, m);
+		return (1);
+	}
+
+	inside = (m->x >= ox &&
+	    m->x < ox + screen_size_x(&ss->jobscreen) &&
+	    m->y >= oy && m->y < oy + rows);
+	/* Only a button press moves the focus, not motion or the wheel. */
+	if (!MOUSE_RELEASE(m->b) && !MOUSE_DRAG(m->b) && !MOUSE_WHEEL(m->b))
+		status_side_set_focus(c, inside);
+	if (!inside)
+		return (0);
+	if (m->ignore)
+		return (1); /* synthesized double click */
+	if (input_key_get_mouse(&ss->jobscreen, m, m->x - ox, m->y - oy, &buf,
+	    &len))
+		bufferevent_write(job_get_event(ss->job), buf, len);
+	return (1);
+}
+
+/* Cursor position of the side job in terminal coordinates. */
+struct screen *
+status_side_cursor(struct client *c, u_int *cx, u_int *cy)
+{
+	struct side_status_line	*ss = &c->side_status;
+	u_int			 ox, oy;
+
+	status_side_job_offset(c, &ox, &oy);
+	*cx = ox + ss->jobscreen.cx;
+	*cy = oy + ss->jobscreen.cy;
+	return (&ss->jobscreen);
+}
+
+/*
+ * Copy the job screen into the side status screen, behind the line on the
+ * edge next to the window area. Only runs on side status redraws. Returns
+ * 1 if the area must be drawn to the tty: direct writes normally keep it
+ * current, so that is only after a dropped write, a resize or a forced
+ * redraw.
+ */
+static int
+status_side_redraw_job(struct client *c, const struct grid_cell *gc,
+    int force)
+{
+	struct side_status_line	*ss = &c->side_status;
+	struct screen_write_ctx	 ctx;
+	struct grid_cell	 lgc;
+	u_int			 x, width = status_side_size(c);
+	u_int			 rows = status_side_rows(c), n;
+	int			 linex = ss->linex;
+
+	if (!force && !ss->changed)
+		return (0);
+	force = (force || ss->dirty);
+	ss->changed = ss->dirty = 0;
+
+	screen_write_start(&ctx, &ss->screen);
+	screen_write_cursormove(&ctx, 0, 0, 0);
+	for (n = 0; n < width * rows; n++)
+		screen_write_putc(&ctx, gc, ' ');
+	style_ranges_free(&ss->ranges);
+	if (linex != -1) {
+		memcpy(&lgc, gc, sizeof lgc);
+		lgc.attr |= GRID_ATTR_CHARSET;
+		for (n = 0; n < rows; n++) {
+			screen_write_cursormove(&ctx, linex, n, 0);
+			screen_write_putc(&ctx, &lgc, 'x');
+		}
+	}
+	status_side_content(c, &x, &width);
+	screen_write_cursormove(&ctx, x, 0, 0);
+	screen_write_fast_copy(&ctx, &ss->jobscreen, 0, 0,
+	    screen_size_x(&ss->jobscreen), screen_size_y(&ss->jobscreen));
+	screen_write_stop(&ctx);
+
+	/* Direct writes already painted the tty unless something was dropped. */
+	return (force);
 }
 
 /*
@@ -469,6 +887,12 @@ status_side_redraw(struct client *c)
 	if (linex != ss->linex) {
 		force = 1;
 		ss->linex = linex;
+	}
+
+	/* A command replaces the format: show its screen instead. */
+	if (ss->command != NULL) {
+		format_free(ft);
+		return (status_side_redraw_job(c, &gc, force));
 	}
 
 	/* Expand the format. */

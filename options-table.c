@@ -1054,6 +1054,15 @@ const struct options_table_entry options_table[] = {
 		  "right of the terminal."
 	},
 
+	{ .name = "side-status-command",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = "",
+	  .text = "Command to run in the side status line. "
+		  "If set, its output replaces side-status-format and keys "
+		  "are sent to it while the client has the side-focus flag."
+	},
+
 	{ .name = "side-status-format",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,

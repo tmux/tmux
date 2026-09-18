@@ -1135,6 +1135,10 @@ output is paused once the pane is
 behind in control mode
 .It read\-only
 the client is read-only
+.It side\-focus
+keys go to the
+.Ic side\-status\-command
+job instead of the active pane
 .It wait\-exit
 wait for an empty line input before exiting in control mode
 .El
@@ -5532,6 +5536,28 @@ colours, draws a vertical line on the edge next to the window area and is
 updated every
 .Ic status\-interval
 seconds like the status line.
+.It Ic side\-status\-command Ar shell-command
+Run
+.Ar shell-command
+in a pseudo terminal the size of the side status line and show its screen
+there instead of
+.Ic side\-status\-format .
+The command is started once per client, restarted if it exits, and receives
+the environment variables
+.Ev TMUX_SIDE
+(set to 1) and
+.Ev TMUX_SIDE_CLIENT
+(the client name).
+Dragging the line next to the window area with the mouse changes
+.Ic side\-status\-width .
+Mouse events inside the side status line are sent to the command and give the
+client the
+.Ic side\-focus
+flag; while the flag is set, keys other than the prefix keys are sent to the
+command instead of the active pane.
+The flag can also be set and cleared with
+.Ic refresh\-client
+.Fl f .
 .It Ic side\-status\-format Ar format
 Specify the format used for the side status line.
 The format may produce multiple rows using the
