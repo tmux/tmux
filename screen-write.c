@@ -39,6 +39,9 @@ static int	screen_write_overwrite(struct screen_write_ctx *,
 static int	screen_write_combine(struct screen_write_ctx *,
 		    const struct grid_cell *);
 static void	screen_write_flush_dirty(struct window_pane *);
+static void	screen_write_sync_scrolled(struct screen_write_ctx *);
+static void	screen_write_sync_replay_scroll(struct screen_write_ctx *,
+		    struct tty_ctx *);
 
 struct screen_write_citem {
 	u_int				x;
@@ -215,6 +218,28 @@ screen_write_pane_is_obscured(struct screen_write_ctx *ctx)
 	return (0);
 }
 
+/* Get the dirty line bitmap for a pane, allocating if necessary. */
+static bitstr_t *
+screen_write_sync_dirty_bits(struct window_pane *wp, u_int sy)
+{
+	bitstr_t	*bs = wp->sync_dirty;
+
+	if (bs != NULL && wp->sync_dirty_size == sy)
+		return (bs);
+
+	free(bs);
+	bs = wp->sync_dirty = bit_alloc(sy);
+	if (bs == NULL)
+		fatal("bit_alloc failed");
+	if (wp->sync_dirty_size != 0) {
+		/* Size has changed, everything is dirty. */
+		bit_nset(bs, 0, sy - 1);
+		wp->sync_scrolled = 0;
+	}
+	wp->sync_dirty_size = sy;
+	return (bs);
+}
+
 /* Should we draw to the TTY? */
 static int
 screen_write_should_draw_lines(struct screen_write_ctx *ctx, u_int y, u_int ny)
@@ -228,21 +253,9 @@ screen_write_should_draw_lines(struct screen_write_ctx *ctx, u_int y, u_int ny)
 		return (0);
 	if (s->mode & MODE_SYNC) {
 		if (wp != NULL && y < sy && ny != 0) {
-			bs = wp->sync_dirty;
 			if (ny > sy - y)
 				ny = sy - y;
-			if (bs == NULL || wp->sync_dirty_size != sy) {
-				if (bs != NULL && wp->sync_dirty_size != sy) {
-					y = 0;
-					ny = sy;
-				}
-				free(bs);
-
-				bs = wp->sync_dirty = bit_alloc(sy);
-				if (bs == NULL)
-					fatal("bit_alloc failed");
-				wp->sync_dirty_size = sy;
-			}
+			bs = screen_write_sync_dirty_bits(wp, sy);
 			bit_nset(bs, y, y + ny - 1);
 		}
 		return (0);
@@ -1285,10 +1298,15 @@ screen_write_flush_dirty(struct window_pane *wp)
 	screen_write_start_pane(&ctx, wp, s);
 	screen_write_initctx(&ctx, &ttyctx, 1, 1);
 
-	for (y = 0; y < sy; y++) {
-		if (bit_test(wp->sync_dirty, y)) {
-			screen_write_redraw_line(&ctx, &ttyctx, y);
-			lines++;
+	if (wp->sync_scrolled != 0)
+		screen_write_sync_replay_scroll(&ctx, &ttyctx);
+
+	if (~wp->flags & PANE_REDRAW) {
+		for (y = 0; y < sy; y++) {
+			if (bit_test(wp->sync_dirty, y)) {
+				screen_write_redraw_line(&ctx, &ttyctx, y);
+				lines++;
+			}
 		}
 	}
 	log_debug("%s: %%%u had %u dirty lines", __func__, wp->id, lines);
@@ -1306,6 +1324,122 @@ screen_write_clear_dirty(struct window_pane *wp)
 		wp->sync_dirty = NULL;
 		wp->sync_dirty_size = 0;
 	}
+	if (wp != NULL)
+		wp->sync_scrolled = 0;
+}
+
+/*
+ * The screen has scrolled while synchronized updates are in progress. Rather
+ * than marking the whole scroll region dirty (so it is redrawn in full when
+ * the update ends), remember the scroll so it can be sent to the terminal
+ * when the update ends, followed by only the lines that actually changed.
+ * This is what happens without synchronized updates and keeps the output for
+ * programs that scroll a few lines per frame (such as a TUI streaming text
+ * above an inline viewport) proportional to the change rather than to the
+ * size of the pane.
+ *
+ * Only a single scroll region can be deferred per update; if the scrolled
+ * region changes, everything is marked dirty instead.
+ */
+static void
+screen_write_sync_scrolled(struct screen_write_ctx *ctx)
+{
+	struct window_pane	*wp = ctx->wp;
+	struct screen		*s = ctx->s;
+	u_int			 n = ctx->scrolled, ry = s->rlower + 1 - s->rupper;
+	u_int			 y, sy = screen_size_y(s);
+	bitstr_t		*bs;
+
+	if (n > ry)
+		n = ry;
+	if (wp == NULL || n == ry || s->rlower >= sy) {
+		screen_write_should_draw_lines(ctx, s->rupper, ry);
+		return;
+	}
+	if (wp->flags & (PANE_REDRAW|PANE_DROP))
+		return;
+	bs = screen_write_sync_dirty_bits(wp, sy);
+
+	if (wp->sync_scrolled != 0 &&
+	    (wp->sync_rupper != s->rupper || wp->sync_rlower != s->rlower)) {
+		/*
+		 * A different region has already been scrolled in this
+		 * update: give up and redraw everything.
+		 */
+		log_debug("%s: %%%u region changed, redrawing all", __func__,
+		    wp->id);
+		bit_nset(bs, 0, sy - 1);
+		wp->sync_scrolled = 0;
+		return;
+	}
+
+	/*
+	 * Lines already marked dirty will move up with the scroll when it is
+	 * replayed, so move their dirty bits too, then mark the newly exposed
+	 * lines at the bottom of the region dirty.
+	 */
+	for (y = s->rupper; y + n <= s->rlower; y++) {
+		if (bit_test(bs, y + n))
+			bit_set(bs, y);
+		else
+			bit_clear(bs, y);
+	}
+	bit_nset(bs, s->rlower + 1 - n, s->rlower);
+
+	wp->sync_rupper = s->rupper;
+	wp->sync_rlower = s->rlower;
+	wp->sync_scrolled += n;
+	if (wp->sync_scrolled >= ry) {
+		/* The whole region has been replaced, no need to scroll. */
+		bit_nset(bs, s->rupper, s->rlower);
+		wp->sync_scrolled = 0;
+	}
+	log_debug("%s: %%%u deferred scroll of %u (region %u-%u)", __func__,
+	    wp->id, wp->sync_scrolled, s->rupper, s->rlower);
+}
+
+/* Replay a scroll deferred during synchronized updates. */
+static void
+screen_write_sync_replay_scroll(struct screen_write_ctx *ctx,
+    struct tty_ctx *ttyctx)
+{
+	struct window_pane	*wp = ctx->wp;
+	struct screen		*s = ctx->s;
+	u_int			 sy = screen_size_y(s), n = wp->sync_scrolled;
+
+	wp->sync_scrolled = 0;
+	if (wp->flags & PANE_REDRAW)
+		return;
+	if (wp->sync_rlower >= sy || wp->sync_rupper > wp->sync_rlower) {
+		/* The pane has been resized, redraw everything. */
+		bit_nset(wp->sync_dirty, 0, sy - 1);
+		return;
+	}
+	if (ttyctx->flags & TTY_CTX_PANE_OBSCURED) {
+		bit_nset(wp->sync_dirty, wp->sync_rupper, wp->sync_rlower);
+		return;
+	}
+	if (window_pane_scrollbar_overlay_visible(wp)) {
+		wp->flags |= PANE_REDRAW;
+		return;
+	}
+
+	log_debug("%s: %%%u replaying scroll of %u (region %u-%u)", __func__,
+	    wp->id, n, wp->sync_rupper, wp->sync_rlower);
+
+	ttyctx->orupper = wp->sync_rupper;
+	ttyctx->orlower = wp->sync_rlower;
+	if (wp->yoff + wp->sy > wp->window->sy)
+		ttyctx->orlower -= (wp->yoff + wp->sy - wp->window->sy);
+	ttyctx->n = n;
+	ttyctx->bg = 8;
+	tty_write(tty_cmd_scrollup, ttyctx);
+
+	ttyctx->orupper = s->rupper;
+	ttyctx->orlower = s->rlower;
+	ttyctx->n = 0;
+
+	window_pane_scrollbar_redraw(wp);
 }
 
 /* Redraw all visible cells in a pane. */
@@ -2427,10 +2561,8 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	if (wp != NULL && (wp->flags & (PANE_REDRAW|PANE_DROP)))
 		goto discard;
 	if (s->mode & MODE_SYNC) {
-		if (ctx->scrolled != 0) {
-			screen_write_should_draw_lines(ctx, s->rupper,
-			    s->rlower + 1 - s->rupper);
-		}
+		if (ctx->scrolled != 0)
+			screen_write_sync_scrolled(ctx);
 		for (y = 0; y < screen_size_y(s); y++) {
 			cl = &s->write_list[y];
 			if (!TAILQ_EMPTY(&cl->items))

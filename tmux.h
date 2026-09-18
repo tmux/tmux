@@ -1344,6 +1344,9 @@ struct window_pane {
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;
+	u_int		 sync_scrolled;
+	u_int		 sync_rupper;
+	u_int		 sync_rlower;
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
