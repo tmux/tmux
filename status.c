@@ -682,7 +682,8 @@ status_side_drag(struct client *c, struct mouse_event *m)
 		width = c->tty.sx - 1;
 	if (width == s->sidestatuswidth)
 		return;
-	options_set_number(s->options, "side-status-width", width);
+	/* Set the global option so every session follows the drag. */
+	options_set_number(global_s_options, "side-status-width", width);
 	options_push_changes("side-status-width");
 }
 
