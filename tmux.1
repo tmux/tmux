@@ -8328,11 +8328,17 @@ Otherwise, the format of
 .Ar message
 is described in the
 .Sx FORMATS
-section; information is taken from
+section; session, window and pane information is taken from
 .Ar target\-pane
 if
 .Fl t
 is given, otherwise the active pane.
+If
+.Fl c
+is given, the
+.Ql #{client_*}
+variables are taken from
+.Ar target\-client .
 .Pp
 If
 .Fl j
