@@ -261,10 +261,6 @@ tty_keys_kitty_query(struct tty *tty, const char *buf, size_t len,
 	*size = 0;
 	if (tty->flags & TTY_HAVEKKB)
 		return (-1);
-	if (options_get_number(global_options, "extended-keys") == 0 ||
-	    options_get_number(global_options, "extended-keys-format") !=
-	    EXTENDED_KEYS_KITTY)
-		return (-1);
 
 	if (buf[0] != '\033')
 		return (-1);
@@ -291,8 +287,9 @@ tty_keys_kitty_query(struct tty *tty, const char *buf, size_t len,
 
 	*size = i + 1;
 	tty->kitty_keys = flags;
-	tty->flags |= (TTY_HAVEKKB|TTY_KKBSUPPORT);
+	tty->flags |= TTY_HAVEKKB;
 	log_debug("%s: received Kitty keyboard flags %u", c->name, flags);
+	tty_parse_client_features(c, "kittykeys", ",");
 	tty_update_features(tty);
 	return (0);
 }
@@ -304,18 +301,13 @@ tty_update_kitty(struct tty *tty, struct screen *s)
 	char	buf[32];
 
 	if (options_get_number(global_options, "extended-keys") == 0 ||
-	    options_get_number(global_options, "extended-keys-format") !=
-	    EXTENDED_KEYS_KITTY) {
+	    (~tty->term->flags & TERM_KITTYKEYS)) {
 		if (tty->flags & TTY_KKBPUSHED) {
 			tty_puts(tty, "\033[<u");
 			tty->flags &= ~TTY_KKBPUSHED;
 		}
 		return;
 	}
-	if ((tty->flags & (TTY_HAVEKKB|TTY_KKBSUPPORT)) !=
-	    (TTY_HAVEKKB|TTY_KKBSUPPORT))
-		return;
-
 	flags = KITTY_KEY_DISAMBIGUATE;
 	if (s != NULL && (s->kitty_keys.flags & KITTY_KEY_SUPPORTED) != 0)
 		flags = s->kitty_keys.flags & KITTY_KEY_SUPPORTED;
@@ -345,9 +337,7 @@ tty_keys_kitty(struct tty *tty, const char *buf, size_t len, size_t *size,
 	int		 result;
 
 	*size = 0;
-	if ((tty->flags & TTY_KKBPUSHED) == 0 ||
-	    options_get_number(global_options, "extended-keys-format") !=
-	    EXTENDED_KEYS_KITTY)
+	if ((tty->flags & TTY_KKBPUSHED) == 0)
 		return (-1);
 	if (len == 0 || buf[0] != '\033')
 		return (-1);

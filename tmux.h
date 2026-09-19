@@ -1931,6 +1931,7 @@ struct tty_term {
 #define TERM_DIRECTCUP 0x400
 #define TERM_DIRECTRGB 0x800
 #define TERM_PROGRAMSTATUS 0x1000
+#define TERM_KITTYKEYS 0x2000
 	int			 flags;
 
 	LIST_ENTRY(tty_term)	 entry;
@@ -2024,7 +2025,6 @@ struct tty {
 #define TTY_HAVEPROGRAMSTATUS 0x400000
 #define TTY_HAVEKKB 0x800000
 #define TTY_KKBPUSHED 0x1000000
-#define TTY_KKBSUPPORT 0x2000000
 #define TTY_ALL_REQUEST_FLAGS	\
 	(TTY_HAVEDA|		\
 	 TTY_HAVEDA2|		\
@@ -3686,12 +3686,10 @@ void	 input_cancel_requests(struct client *);
 
 /* input-key.c */
 void	 input_key_build(void);
-int	 input_key_pane(struct window_pane *, key_code, struct mouse_event *,
-	     int);
-int	 input_key(struct screen *, struct bufferevent *, key_code, int);
+int	 input_key_pane(struct window_pane *, key_code, struct mouse_event *);
+int	 input_key(struct screen *, struct bufferevent *, key_code);
 int	 input_key_get_mouse(struct screen *, struct mouse_event *, u_int,
 	     u_int, const char **, size_t *);
-int	 input_key_client_supports_extended(struct client *, key_code);
 
 /* input-kitty.c */
 void	 input_kitty_reset(struct screen *);

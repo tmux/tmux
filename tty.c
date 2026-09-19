@@ -461,10 +461,7 @@ tty_send_requests(struct tty *tty)
 		return;
 	}
 
-	if (~flags & TTY_HAVEKKB &&
-	    options_get_number(global_options, "extended-keys") != 0 &&
-	    options_get_number(global_options, "extended-keys-format") ==
-	    EXTENDED_KEYS_KITTY)
+	if (~flags & TTY_HAVEKKB)
 		tty_puts(tty, "\033[?u");
 	if (~flags & TTY_HAVEDA2)
 		tty_puts(tty, "\033[>c");
@@ -641,7 +638,6 @@ tty_update_features(struct tty *tty)
 {
 	struct client	*c = tty->client;
 	int		 changed = 0;
-	int		 extended_keys, format;
 
 	if (tty_apply_features(tty->term)) {
 		tty_term_apply_overrides(tty->term);
@@ -654,12 +650,8 @@ tty_update_features(struct tty *tty)
 
 	if (tty_use_margin(tty))
 		tty_putcode(tty, TTYC_ENMG);
-	extended_keys = options_get_number(global_options, "extended-keys");
-	format = options_get_number(global_options, "extended-keys-format");
-	if (extended_keys == 0 ||
-	    (format == EXTENDED_KEYS_KITTY &&
-	    (tty->flags & (TTY_HAVEKKB|TTY_KKBSUPPORT)) ==
-	    (TTY_HAVEKKB|TTY_KKBSUPPORT)))
+	if (options_get_number(global_options, "extended-keys") == 0 ||
+	    (tty->term->flags & TERM_KITTYKEYS))
 		tty_puts(tty, tty_term_string(tty->term, TTYC_DSEKS));
 	else
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENEKS));

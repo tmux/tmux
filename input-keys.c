@@ -395,8 +395,7 @@ input_key_build(void)
 
 /* Translate a key code into an output key sequence for a pane. */
 int
-input_key_pane(struct window_pane *wp, key_code key, struct mouse_event *m,
-    int extended_encoding)
+input_key_pane(struct window_pane *wp, key_code key, struct mouse_event *m)
 {
 	log_debug("writing key 0x%llx (%s) to %%%u", key,
 	    key_string_lookup_key(key, 1), wp->id);
@@ -406,20 +405,7 @@ input_key_pane(struct window_pane *wp, key_code key, struct mouse_event *m,
 			input_key_mouse(wp, m);
 		return (0);
 	}
-	return (input_key(wp->screen, wp->event, key, extended_encoding));
-}
-
-/* Return whether a key may use the configured extended encoding. */
-int
-input_key_client_supports_extended(struct client *c, key_code key)
-{
-	if (c == NULL || (key & KEYC_SENT))
-		return (1);
-	if (options_get_number(global_options, "extended-keys") == 0)
-		return (0);
-	if (c->tty.flags & TTY_KKBPUSHED)
-		return (1);
-	return (tty_term_has(c->tty.term, TTYC_ENEKS));
+	return (input_key(wp->screen, wp->event, key));
 }
 
 static void
@@ -584,8 +570,7 @@ input_key_mode1(struct bufferevent *bev, key_code key)
 
 /* Translate a key code into an output key sequence. */
 int
-input_key(struct screen *s, struct bufferevent *bev, key_code key,
-    int extended_encoding)
+input_key(struct screen *s, struct bufferevent *bev, key_code key)
 {
 	struct input_key_entry	*ike = NULL;
 	key_code		 newkey;
@@ -605,9 +590,8 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key,
 		return (0);
 	}
 
-	if (extended_encoding &&
-	    options_get_number(global_options, "extended-keys-format") ==
-	    EXTENDED_KEYS_KITTY && input_key_kitty(s, bev, key) == 0)
+	/* Kitty keys take precedence if the application asked for them. */
+	if (input_key_kitty(s, bev, key) == 0)
 		return (0);
 
 	/* Is this backspace? */
@@ -701,8 +685,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key,
 	}
 	if (key & (KEYC_SUPER|KEYC_HYPER))
 		return (input_key_vt10x(bev, key));
-	if (options_get_number(global_options, "extended-keys-format") ==
-	    EXTENDED_KEYS_KITTY)
+	if (s->kitty_keys.flags & KITTY_KEY_SUPPORTED)
 		return (input_key_vt10x(bev, key));
 
 	/*
