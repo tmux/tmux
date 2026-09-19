@@ -13,8 +13,7 @@ TMUX="$TEST_TMUX -LtestK$$ -f$CONF"
 
 trap 'rm -f "$CONF" "$OUT"; $TMUX kill-server 2>/dev/null' 0 1 15
 
-printf '%s\n' 'set -g extended-keys on' \
-    'set -g extended-keys-format kitty' >"$CONF"
+printf '%s\n' 'set -g extended-keys on' >"$CONF"
 
 wait_for_output()
 {
@@ -90,11 +89,13 @@ wait_for_output
 check_output 1b5b3f31751b5b3f3075
 
 : >"$OUT"
+# "always" forces modifyOtherKeys mode 1, not Kitty keys.
 $TMUX set-option -g extended-keys always
 $TMUX respawn-pane -k -t: \
     "stty raw -echo; printf '\033[>0u\033[?u'; dd bs=1 count=5 2>/dev/null | od -An -v -t x1 >'$OUT'; sleep 5"
 wait_for_output
-check_output 1b5b3f3175
+check_output 1b5b3f3075
+wait_for_mode 'Ext 1'
 $TMUX set-option -g extended-keys on
 
 : >"$OUT"

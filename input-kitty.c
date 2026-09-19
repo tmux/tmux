@@ -145,21 +145,10 @@ static const struct input_kitty_key input_kitty_keys[] = {
 	{ KEYC_ISO_LEVEL5_SHIFT, 57454, 'u' }
 };
 
-static u_int
-input_kitty_default_flags(void)
-{
-	if (options_get_number(global_options, "extended-keys") == 2 &&
-	    options_get_number(global_options, "extended-keys-format") ==
-	    EXTENDED_KEYS_KITTY)
-		return (KITTY_KEY_DISAMBIGUATE);
-	return (0);
-}
-
 void
 input_kitty_reset(struct screen *s)
 {
 	memset(&s->kitty_keys, 0, sizeof s->kitty_keys);
-	s->kitty_keys.flags = input_kitty_default_flags();
 }
 
 void
@@ -186,7 +175,6 @@ input_kitty_set(struct screen *s, u_int flags, int mode)
 		s->kitty_keys.flags &= ~flags;
 	else
 		s->kitty_keys.flags = flags;
-	s->kitty_keys.flags |= input_kitty_default_flags();
 }
 
 void
@@ -194,8 +182,7 @@ input_kitty_push(struct screen *s, u_int flags)
 {
 	s->kitty_keys.saved_flags = s->kitty_keys.flags;
 	s->kitty_keys.have_saved = 1;
-	s->kitty_keys.flags = (flags & KITTY_KEY_SUPPORTED)|
-	    input_kitty_default_flags();
+	s->kitty_keys.flags = flags & KITTY_KEY_SUPPORTED;
 }
 
 void
@@ -206,9 +193,8 @@ input_kitty_pop(struct screen *s, u_int count)
 	if (s->kitty_keys.have_saved && count == 1)
 		s->kitty_keys.flags = s->kitty_keys.saved_flags;
 	else
-		s->kitty_keys.flags = input_kitty_default_flags();
+		s->kitty_keys.flags = 0;
 	s->kitty_keys.have_saved = 0;
-	s->kitty_keys.flags |= input_kitty_default_flags();
 }
 
 static u_int

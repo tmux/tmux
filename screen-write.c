@@ -437,9 +437,7 @@ screen_write_reset(struct screen_write_ctx *ctx)
 
 	s->mode = MODE_CURSOR|MODE_WRAP;
 
-	if (options_get_number(global_options, "extended-keys") == 2 &&
-	    options_get_number(global_options, "extended-keys-format") !=
-	    EXTENDED_KEYS_KITTY)
+	if (options_get_number(global_options, "extended-keys") == 2)
 		s->mode = (s->mode & ~EXTENDED_KEY_MODES)|MODE_KEYS_EXTENDED;
 	input_kitty_reset(s);
 

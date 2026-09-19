@@ -111,14 +111,14 @@ CHANGES FROM 3.7c TO 3.8
 
 * Change show-options and show-hooks to use formats and add a -F flag to each.
 
-* Add support for the Kitty keyboard protocol, selected with a new kitty
-  value for the extended-keys-format option. This can report the Super and
-  Hyper modifiers (key name prefixes s- and H-) as well as Control, Meta
-  and Shift. The protocol is negotiated separately with each client, so
-  terminals with different capabilities may be attached at the same time;
-  clients without it use standard extended keys, or VT10x keys if those
-  are also unavailable, and their input is translated for applications
-  which have asked for Kitty encoding.
+* Add support for the Kitty keyboard protocol. When extended-keys is on,
+  tmux uses it with terminals which support it, detected when a client
+  attaches or set with a new kittykeys terminal feature, and standard
+  extended keys or VT10x keys with other terminals, so terminals with
+  different capabilities may be attached at the same time. Programs inside
+  tmux may ask for either the Kitty protocol or modifyOtherKeys and get keys
+  in the form they asked for. The Kitty protocol can report the Super and
+  Hyper modifiers (key name prefixes s- and H-).
 
 * Add a client_key_mode format giving the extended key reporting mode in
   use for a client, alongside the existing pane_key_mode for a pane.
