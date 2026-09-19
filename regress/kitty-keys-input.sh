@@ -12,8 +12,7 @@ TERM=screen
 CONF=$(mktemp)
 TMP=$(mktemp)
 
-printf '%s\n' 'set -g extended-keys on' \
-    'set -g extended-keys-format kitty' >"$CONF"
+printf '%s\n' 'set -g extended-keys on' >"$CONF"
 
 TMUX="$TEST_TMUX -LtestKIA$$ -f$CONF"
 TMUX2="$TEST_TMUX -LtestKIB$$ -f$CONF"
@@ -44,7 +43,9 @@ assert_key()
 
 	$TMUX2 command-prompt -k 'display-message -pl "%%"' >"$TMP" &
 	sleep 0.15
-	$TMUX send-keys $keys
+	# Send raw bytes so the outer tmux does not encode them itself.
+	raw=$(printf '%s' "$keys" | sed -e 's/Escape /\\033/g' -e 's/ //g')
+	$TMUX send-keys -H $(printf "$raw" | od -An -v -t x1)
 	wait
 
 	actual=$(tr -d '[:space:]' <"$TMP")
@@ -61,10 +62,6 @@ if ! wait_for_mode 'Kitty 1'; then
 	echo "[FAIL] inner tmux did not enable the Kitty protocol"
 	exit 1
 fi
-
-# The handshake is done, so stop the outer tmux encoding the raw sequences
-# below as Kitty keys itself.
-$TMUX set-option -g extended-keys-format csi-u
 
 # Modifiers, including the Kitty-only Super and Hyper.
 assert_key 'Escape [97;2u' 'S-a'

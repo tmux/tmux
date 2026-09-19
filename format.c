@@ -1635,11 +1635,9 @@ format_cb_client_key_mode(struct format_tree *ft)
 	}
 
 	/* This mirrors the choice made in tty_update_features(). */
-	kitty = ((c->tty.flags & (TTY_HAVEKKB|TTY_KKBSUPPORT)) ==
-	    (TTY_HAVEKKB|TTY_KKBSUPPORT));
+	kitty = ((c->tty.term->flags & TERM_KITTYKEYS) != 0);
 	eks = (options_get_number(global_options, "extended-keys") != 0);
-	if (kitty && options_get_number(global_options,
-	    "extended-keys-format") == EXTENDED_KEYS_KITTY)
+	if (kitty)
 		eks = 0;
 	if (eks && tty_term_has(c->tty.term, TTYC_ENEKS))
 		mode = "Ext";
@@ -2527,10 +2525,7 @@ format_cb_pane_key_mode(struct format_tree *ft)
 	char	*s;
 
 	if (ft->wp != NULL && ft->wp->screen != NULL) {
-		if (options_get_number(global_options, "extended-keys-format") ==
-		    EXTENDED_KEYS_KITTY) {
-			if (ft->wp->screen->kitty_keys.flags == 0)
-				return (xstrdup("VT10x"));
+		if (ft->wp->screen->kitty_keys.flags != 0) {
 			xasprintf(&s, "Kitty %u",
 			    ft->wp->screen->kitty_keys.flags);
 			return (s);
