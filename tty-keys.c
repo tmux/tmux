@@ -772,6 +772,17 @@ tty_keys_next(struct tty *tty)
 		goto partial_key;
 	}
 
+	/* Is this a Kitty keyboard protocol response? */
+	switch (tty_keys_kitty_query(tty, buf, len, &size)) {
+	case 0:		/* yes */
+		key = KEYC_UNKNOWN;
+		goto complete_key;
+	case -1:	/* no, or not valid */
+		break;
+	case 1:		/* partial */
+		goto partial_key;
+	}
+
 	/* Is this a synchronized update mode response? */
 	switch (tty_keys_sync(tty, buf, len, &size)) {
 	case 0:		/* yes */
@@ -853,6 +864,18 @@ tty_keys_next(struct tty *tty)
 		break;
 	case -2:	/* yes, but we don't care. */
 		key = KEYC_MOUSE;
+		goto discard_key;
+	case 1:		/* partial */
+		goto partial_key;
+	}
+
+	/* Is this an extended key press? */
+	switch (tty_keys_kitty(tty, buf, len, &size, &key)) {
+	case 0:		/* yes */
+		goto complete_key;
+	case -1:	/* no, or not valid */
+		break;
+	case -2:	/* yes, but not representable by tmux */
 		goto discard_key;
 	case 1:		/* partial */
 		goto partial_key;
@@ -1089,6 +1112,8 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	utf8_char	 uc;
 
 	*size = 0;
+	if (tty->flags & TTY_KKBPUSHED)
+		return (-1);
 
 	/* First two bytes are always \033[. */
 	if (buf[0] != '\033')
@@ -1527,6 +1552,8 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	}
 	log_debug("%s: received primary DA %.*s", c->name, (int)*size, buf);
 
+	/* A DA response without a preceding keyboard response means no support. */
+	tty->flags |= TTY_HAVEKKB;
 	tty_update_features(tty);
 	tty->flags |= TTY_HAVEDA;
 

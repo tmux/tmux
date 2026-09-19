@@ -4907,14 +4907,30 @@ If enabled, the server will exit when there are no attached clients.
 .It Xo Ic extended\-keys
 .Op Ic on | off | always
 .Xc
-Controls how modified keys (keys pressed together with Control, Meta, or Shift)
-are reported.
-This is the equivalent of the
+Controls how modified keys are reported.
+When enabled,
+.Nm
+uses the Kitty keyboard protocol with terminals which support it, and the
 .Ic modifyOtherKeys
 .Xr xterm 1
-resource.
+resource with other terminals which support extended keys.
+Each client uses the best that its terminal supports, so clients with different
+terminals may be attached at the same time.
 .Pp
-When set to
+Programs inside panes may request either the Kitty keyboard protocol or
+.Ic modifyOtherKeys ,
+and keys are sent to each program in the form it requested, whichever client
+they were typed on.
+The Kitty keyboard protocol can report the Super and Hyper modifiers, whose key
+name prefixes are
+.Ql s-
+and
+.Ql H- ;
+its disambiguate and report-all enhancements are supported.
+.Pp
+For
+.Ic modifyOtherKeys ,
+when set to
 .Ic on ,
 the program inside the pane can request one of two modes: mode 1 which changes
 the sequence for only keys which lack an existing well-known representation; or
@@ -4923,26 +4939,35 @@ When set to
 .Ic always ,
 modes 1 and 2 can still be requested by applications, but mode 1 will be forced
 instead of the standard mode.
+This applies only to applications inside panes; it does not force the Kitty
+keyboard protocol or change what
+.Nm
+requests from the terminal.
 When set to
 .Ic off ,
 this feature is disabled and only standard keys are reported.
 .Pp
 .Nm
 will always request extended keys itself if the terminal supports them.
+Support for the Kitty keyboard protocol is detected when a client attaches.
 See also the
+.Ic kittykeys
+and
 .Ic extkeys
-feature for the
+features for the
 .Ic terminal\-features
 option, the
 .Ic extended\-keys\-format
 option and the
 .Ic pane_key_mode
-variable.
+and
+.Ic client_key_mode
+variables.
 .It Xo Ic extended\-keys\-format
-.Op Ic csi\-u | xterm
+.Op Ic csi\-u | xterm | kitty
 .Xc
-Selects one of the two possible formats for reporting modified keys to
-applications.
+Selects the format for reporting modified keys to programs which request
+.Ic modifyOtherKeys .
 This is the equivalent of the
 .Ic formatOtherKeys
 .Xr xterm 1
@@ -4955,6 +4980,11 @@ and as
 .Ql \[ha][[65;6u
 when set to
 .Ic csi\-u .
+.Ic kitty
+is accepted for compatibility and is the same as
+.Ic csi\-u ;
+programs which request the Kitty keyboard protocol receive it whatever this
+option is set to.
 .It Xo Ic focus\-events
 .Op Ic on | off
 .Xc
@@ -5103,6 +5133,9 @@ Ignore function keys from
 and use the
 .Nm
 internal set only.
+.It kittykeys
+Supports the Kitty keyboard protocol.
+This is added automatically if the terminal answers the Kitty keyboard query.
 .It margins
 Supports DECSLRM margins.
 .It mouse
@@ -7309,6 +7342,7 @@ The following variables are available, where appropriate:
 .It Li "client_discarded" Ta "" Ta "Bytes discarded when client behind"
 .It Li "client_flags" Ta "" Ta "List of client flags"
 .It Li "client_height" Ta "" Ta "Height of client"
+.It Li "client_key_mode" Ta "" Ta "Extended key reporting mode for this client"
 .It Li "client_key_table" Ta "" Ta "Current key table"
 .It Li "client_last_session" Ta "" Ta "Name of the client's last session"
 .It Li "client_name" Ta "" Ta "Name of client"
