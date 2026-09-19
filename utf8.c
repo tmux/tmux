@@ -343,7 +343,7 @@ utf8_add_to_width_cache(const char *s)
 		n = strtoull(copy + 2, &endptr, 16);
 		if (copy[2] == '\0' ||
 		    n == 0 ||
-		    n > WCHAR_MAX ||
+		    n >= WCHAR_MAX ||
 		    (errno == ERANGE && n == ULLONG_MAX)) {
 			free(copy);
 			return;
@@ -359,7 +359,7 @@ utf8_add_to_width_cache(const char *s)
 			n = strtoull(endptr + 2, &endptr, 16);
 			if (*endptr != '\0' ||
 			    n == 0 ||
-			    n > WCHAR_MAX ||
+			    n >= WCHAR_MAX ||
 			    (errno == ERANGE && n == ULLONG_MAX) ||
 			    (wchar_t)n < wc_start) {
 				free(copy);
