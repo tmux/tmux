@@ -7363,9 +7363,9 @@ window_copy_find_previous_output_range(struct screen *s, u_int cursor_x,
 {
 	struct grid			*gd = s->grid;
 	struct grid_line		*gl;
-	u_int				 start_x, start_y;
+	u_int				 start_x, start_y, end_x, end_y;
 	u_int				 y, total;
-	int				 found = 0, have_prompt = 0;
+	int				 found = 0, found_empty = 0, have_prompt = 0;
 	int				 pending = 0, started_here;
 
 	total = gd->hsize + gd->sy;
@@ -7390,11 +7390,25 @@ window_copy_find_previous_output_range(struct screen *s, u_int cursor_x,
 		}
 		if (pending && gl->flags & GRID_LINE_END_OUTPUT &&
 		    (y != cursor_y || gl->osc133_data.out_end_col <= cursor_x)) {
-			*sx = start_x;
-			*sy = start_y;
-			*ex = gl->osc133_data.out_end_col;
-			*ey = y;
-			found = 1;
+			end_x = gl->osc133_data.out_end_col;
+			end_y = y;
+
+			/*
+			 * Prefer a previously found non-empty output over a
+			 * later one that turns out to be empty (for example a
+			 * command with no output immediately followed by the
+			 * cursor's prompt).
+			 */
+			if (!found || found_empty ||
+			    start_x != end_x || start_y != end_y) {
+				*sx = start_x;
+				*sy = start_y;
+				*ex = end_x;
+				*ey = end_y;
+				found = 1;
+				found_empty = (start_x == end_x &&
+				    start_y == end_y);
+			}
 			pending = 0;
 		}
 		if (gl->flags & GRID_LINE_START_PROMPT) {
