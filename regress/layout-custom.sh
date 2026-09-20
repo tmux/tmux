@@ -50,7 +50,8 @@
 #   layout it names is a single cell or a split;
 # - a window whose only tiled pane has been killed, which leaves it with a
 #   floating cell as its layout root or with a root node holding nothing but
-#   floating cells, producing no v1 dump at all, and being parsed as v1;
+#   floating cells, producing an empty v1 body with a checksum, and being
+#   parsed as v1;
 # - the %layout-change notification, in both formats at once: two control
 #   clients watching one layout change, only one of which has asked for new
 #   layouts, and the number of notifications a change produces in each format;
@@ -838,12 +839,12 @@ must_equal 'Panes left with one floating pane' \
 	"$($TMUX display-message -p -t L:gone1 '#{window_panes}')" '1'
 
 # The floating cell is the root and there is nothing tiled under it, so there is
-# no v1 dump to make. In particular the floating cell must not be written out on
+# only an empty v1 body to dump. The floating cell must not be written out on
 # its own, which would be a layout claiming the window is the size and position
 # of the floating pane with no pane in it at all.
 got=$(v1_layout L:gone1)
 check_ok display-message -p alive
-must_equal 'v1 dump with one floating pane and no tiled panes' "$got" ''
+must_equal 'v1 dump with one floating pane and no tiled panes' "$got" '0000,'
 
 # Two floating panes left, so the node keeps two children, does not collapse,
 # and stays the root with nothing but floating cells in it.
@@ -856,11 +857,11 @@ must_equal 'Panes left with two floating panes' \
 	"$($TMUX display-message -p -t L:gone2 '#{window_panes}')" '2'
 
 # The node is the root this time rather than the floating cell, but it has no
-# tiled cell anywhere under it either, so there is still no v1 dump to make -
+# tiled cell anywhere under it either, so the v1 body is still empty -
 # and making one must not take the server with it.
 got=$(v1_layout L:gone2)
 check_ok display-message -p alive
-must_equal 'v1 dump with two floating panes and no tiled panes' "$got" ''
+must_equal 'v1 dump with two floating panes and no tiled panes' "$got" '0000,'
 
 # Nor must parsing a v1 layout against it. There is no tiled pane for the
 # layout to name, so whether it is applied or rejected is the format's business;
