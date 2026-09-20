@@ -1,4 +1,4 @@
-/* $OpenBSD: popup.c,v 1.76 2026/07/14 19:07:03 nicm Exp $ */
+/* $OpenBSD: popup.c,v 1.77 2026/08/28 08:02:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -79,7 +79,8 @@ popup_free(struct popup_data *pd)
 
 	if (pd->job != NULL)
 		job_free(pd->job);
-	input_free(pd->ictx);
+	if (pd->ictx != NULL)
+		input_free(pd->ictx);
 
 	free(pd->r.ranges);
 	screen_free(&pd->s);

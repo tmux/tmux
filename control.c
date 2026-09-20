@@ -1,4 +1,4 @@
-/* $OpenBSD: control.c,v 1.66 2026/08/18 07:43:44 nicm Exp $ */
+/* $OpenBSD: control.c,v 1.68 2026/09/09 08:30:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -108,6 +108,7 @@ struct control_state {
 	u_int				 pending_count;
 
 	TAILQ_HEAD(, control_block)	 all_blocks;
+	size_t				 queued_reply_bytes;
 
 	struct bufferevent		*read_event;
 	struct bufferevent		*write_event;
@@ -131,6 +132,9 @@ struct control_state {
 
 /* Maximum age for clients that are not using pause mode. */
 #define CONTROL_MAXIMUM_AGE 300000
+
+/* Maximum buffered command replies for a client that is not reading. */
+#define CONTROL_MAXIMUM_REPLY_BUFFER (64 * 1024 * 1024)
 
 /* Flags to ignore client. */
 #define CONTROL_IGNORE_FLAGS \
@@ -165,6 +169,15 @@ RB_GENERATE_STATIC(control_windows, control_window, entry, control_window_cmp);
 static void
 control_free_block(struct control_state *cs, struct control_block *cb)
 {
+	size_t	 size;
+
+	if (cb->size == 0 && cb->line != NULL) {
+		size = strlen(cb->line) + 1;
+		if (cs->queued_reply_bytes > size)
+			cs->queued_reply_bytes -= size;
+		else
+			cs->queued_reply_bytes = 0;
+	}
 	free(cb->line);
 	TAILQ_REMOVE(&cs->all_blocks, cb, all_entry);
 	free(cb);
@@ -407,16 +420,52 @@ control_reset_pane(struct client *c, struct window_pane *wp)
 	memcpy(&cp->queued, &wp->offset, sizeof cp->queued);
 }
 
+/*
+ * Check if the replies buffered for a client, including one about to be
+ * added, have grown too large and kill it if so. Returns 1 if further output
+ * for the client should be dropped.
+ */
+static int
+control_check_reply_buffer(struct client *c, size_t added)
+{
+	struct control_state	*cs = c->control_state;
+	size_t			 size;
+
+	if (c->flags & CLIENT_CONTROL_DISCARD)
+		return (1);
+	size = EVBUFFER_LENGTH(cs->write_event->output);
+	size += cs->queued_reply_bytes;
+	size += added;
+	if (size < CONTROL_MAXIMUM_REPLY_BUFFER)
+		return (0);
+
+	log_debug("%s: %s: %zu bytes of replies buffered", __func__, c->name,
+	    size);
+	if (~c->flags & CLIENT_EXIT) {
+		c->exit_message = xstrdup("too far behind");
+		c->flags |= CLIENT_EXIT;
+		control_discard(c);
+	}
+	c->flags |= CLIENT_CONTROL_DISCARD;
+	return (1);
+}
+
 /* Write an already-formatted line, queueing it behind %output if needed. */
 static void
 control_write_line(struct client *c, char *line)
 {
 	struct control_state	*cs = c->control_state;
 	struct control_block	*cb;
+	size_t			 size = strlen(line) + 1;
+
+	if (control_check_reply_buffer(c, size)) {
+		free(line);
+		return;
+	}
 
 	if (TAILQ_EMPTY(&cs->all_blocks)) {
 		log_debug("%s: %s: writing line: %s", __func__, c->name, line);
-		bufferevent_write(cs->write_event, line, strlen(line));
+		bufferevent_write(cs->write_event, line, size - 1);
 		bufferevent_write(cs->write_event, "\n", 1);
 		bufferevent_enable(cs->write_event, EV_WRITE);
 		free(line);
@@ -426,6 +475,7 @@ control_write_line(struct client *c, char *line)
 	cb = xcalloc(1, sizeof *cb);
 	cb->line = line;
 	TAILQ_INSERT_TAIL(&cs->all_blocks, cb, all_entry);
+	cs->queued_reply_bytes += size;
 	cb->t = get_timer();
 
 	log_debug("%s: %s: storing line: %s", __func__, c->name, cb->line);
@@ -455,8 +505,12 @@ control_flush_deferred(struct client *c)
 void
 control_write(struct client *c, const char *fmt, ...)
 {
-	va_list	 ap;
-	char	*line;
+	struct control_state	*cs = c->control_state;
+	char			*line;
+	va_list			 ap;
+
+	if (cs == NULL)
+		return;
 
 	va_start(ap, fmt);
 	xvasprintf(&line, fmt, ap);
@@ -478,6 +532,9 @@ control_write_guard(struct client *c, const char *guard, long t, u_int number,
 {
 	struct control_state	*cs = c->control_state;
 	char			*line;
+
+	if (cs == NULL)
+		return;
 
 	if (strcmp(guard, "begin") == 0)
 		cs->guard_depth++;
@@ -502,6 +559,9 @@ control_notify_write(struct client *c, const char *fmt, ...)
 	struct control_line	*cl;
 	va_list			 ap;
 	char			*line;
+
+	if (cs == NULL)
+		return;
 
 	va_start(ap, fmt);
 	xvasprintf(&line, fmt, ap);
@@ -997,6 +1057,7 @@ control_discard_all(struct client *c)
 	control_discard(c);
 	TAILQ_FOREACH_SAFE(cb, &cs->all_blocks, all_entry, cb1)
 		control_free_block(cs, cb);
+	cs->queued_reply_bytes = 0;
 	bufferevent_disable(cs->write_event, EV_WRITE);
 }
 

@@ -1,4 +1,4 @@
-/* $OpenBSD: window-border.c,v 1.3 2026/07/23 09:38:27 nicm Exp $ */
+/* $OpenBSD: window-border.c,v 1.4 2026/09/11 10:17:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -119,6 +119,10 @@ window_get_border_cell(struct window_pane *wp, enum pane_lines pane_lines,
 	case PANE_LINES_HEAVY:
 		gc->attr &= ~GRID_ATTR_CHARSET;
 		utf8_copy(&gc->data, tty_acs_heavy_borders(cell_type));
+		break;
+	case PANE_LINES_ROUNDED:
+		gc->attr &= ~GRID_ATTR_CHARSET;
+		utf8_copy(&gc->data, tty_acs_rounded_borders(cell_type));
 		break;
 	case PANE_LINES_SIMPLE:
 		gc->attr &= ~GRID_ATTR_CHARSET;

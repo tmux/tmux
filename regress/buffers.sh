@@ -28,7 +28,7 @@ $TMUX kill-server 2>/dev/null
 
 TMP=$(mktemp)
 TMP2=$(mktemp)
-trap 'rm -f "$TMP" "$TMP2"; $TMUX kill-server 2>/dev/null' 0 1 15
+trap 'rm -f "$TMP" "$TMP2" "$TMP".*; $TMUX kill-server 2>/dev/null' 0 1 15
 
 # check_ok $cmd...
 #
@@ -269,6 +269,27 @@ if [ $? -eq 0 ]; then
 	echo "save-buffer to bad path succeeded."
 	exit 1
 fi
+
+# A write error after a successful open must be reported to the server.
+dd if=/dev/zero of="$TMP.big" bs=100000 count=1 2>/dev/null
+check_ok load-buffer -b write-error "$TMP.big"
+mkfifo "$TMP.fifo" || exit 1
+dd if="$TMP.fifo" of="$TMP.got" bs=1 count=8 2>/dev/null &
+reader=$!
+exec 3>"$TMP.fifo"
+out=$($TMUX save-buffer -b write-error "$TMP.fifo" 3>&- 2>&1)
+status=$?
+exec 3>&-
+wait "$reader"
+if [ $status -eq 0 ]; then
+	echo "save-buffer after write error succeeded."
+	exit 1
+fi
+if [ "$(wc -c <"$TMP.got")" -ne 8 ]; then
+	echo "save-buffer write error test wrote wrong amount."
+	exit 1
+fi
+check_ok delete-buffer -b write-error
 
 # save-buffer - writes to stdout and load-buffer - reads from stdin.
 out=$($TMUX save-buffer -b sb -)

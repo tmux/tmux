@@ -1,4 +1,4 @@
-/* $OpenBSD: sort.c,v 1.9 2026/06/29 07:45:09 nicm Exp $ */
+/* $OpenBSD: sort.c,v 1.10 2026/08/25 07:23:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Dane Jensen <dhcjensen@gmail.com>
@@ -32,7 +32,7 @@ sort_qsort(void *l, u_int len, u_int size, int (*cmp)(const void *,
 	u_int	 i;
 	void	*tmp, **ll;
 
-	if (sort_crit->order == SORT_END)
+	if (len < 2 || sort_crit->order == SORT_END)
 		return;
 
 	if (sort_crit->order == SORT_ORDER) {

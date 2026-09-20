@@ -1,4 +1,4 @@
-/* $OpenBSD: window-tree.c,v 1.95 2026/08/24 07:06:58 nicm Exp $ */
+/* $OpenBSD: window-tree.c,v 1.96 2026/08/25 07:23:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1022,6 +1022,10 @@ window_tree_swap(void *cur_itemdata, void *other_itemdata,
 	window_tree_pull_item(other, &other_session, &other_winlink,
 	    &other_pane);
 
+	if (cur_session == NULL || cur_winlink == NULL)
+		return (0);
+	if (other_session == NULL || other_winlink == NULL)
+		return (0);
 	if (cur_session != other_session)
 		return (0);
 

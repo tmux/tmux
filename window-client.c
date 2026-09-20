@@ -1,4 +1,4 @@
-/* $OpenBSD: window-client.c,v 1.48 2026/08/05 08:54:56 nicm Exp $ */
+/* $OpenBSD: window-client.c,v 1.49 2026/08/31 12:41:03 kirill Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -102,7 +102,8 @@ static const char *window_client_info_lines[] = {
 	WINDOW_CLIENT_FEATURE(sync) " "
 	WINDOW_CLIENT_FEATURE(title),
 	"              #[#{E:tree-mode-border-style},acs]x#[default] "
-	WINDOW_CLIENT_FEATURE(usstyle),
+	WINDOW_CLIENT_FEATURE(usstyle) " "
+	WINDOW_CLIENT_FEATURE(utf8),
 	"#[#{E:tree-mode-border-style},acs]qqqqqqqqqqqqqqn#{R:q,#{window_width}}#[default]",
 
 	"#[fg=themelightgrey]prefix        #[#{E:tree-mode-border-style},acs]x#[default] "

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-new-window.c,v 1.103 2026/07/08 08:07:42 nicm Exp $ */
+/* $OpenBSD: cmd-new-window.c,v 1.104 2026/09/03 21:04:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -60,7 +60,8 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*tc = cmdq_get_target_client(item);
 	struct session		*s = target->s;
 	struct winlink		*wl = target->wl, *new_wl = NULL;
-	int			 idx = target->idx, before, count = args_count(args);
+	int			 idx = target->idx, before;
+	int			 count = args_count(args);
 	char			*cause = NULL, *cp, *expanded, *wname = NULL;
 	const char		*template, *name;
 	struct cmd_find_state	 fs;
@@ -74,8 +75,10 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	/*
-	 * If -S and -n are given and -t is not and a single window with this
-	 * name already exists, select it.
+	 * If -S is given, select an existing window instead of creating a
+	 * new one: preferring -t if it already points at a window, or
+	 * otherwise -n if one exists with that name. If neither matches,
+	 * fall through and create a window as normal.
 	 */
 	name = args_get(args, 'n');
 	if (name != NULL) {
@@ -88,32 +91,39 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 		wname = clean_name(expanded, 0);
 		free(expanded);
 	}
-	if (args_has(args, 'S') && wname != NULL && target->idx == -1) {
-		expanded = format_single(item, wname, c, s, NULL, NULL);
-		RB_FOREACH(wl, winlinks, &s->windows) {
-			if (strcmp(wl->window->name, expanded) != 0)
-				continue;
-			if (new_wl == NULL) {
-				new_wl = wl;
-				continue;
+	if (args_has(args, 'S')) {
+		if (idx != -1)
+			new_wl = winlink_find_by_index(&s->windows, idx);
+		else if (wname != NULL) {
+			expanded = format_single(item, wname, c, s, NULL, NULL);
+			RB_FOREACH(wl, winlinks, &s->windows) {
+				if (strcmp(wl->window->name, expanded) != 0)
+					continue;
+				if (new_wl == NULL) {
+					new_wl = wl;
+					continue;
+				}
+				cmdq_error(item, "multiple windows named %s",
+				    wname);
+				free(wname);
+				free(expanded);
+				return (CMD_RETURN_ERROR);
 			}
-			cmdq_error(item, "multiple windows named %s", wname);
-			free(wname);
 			free(expanded);
-			return (CMD_RETURN_ERROR);
 		}
-		free(expanded);
-		if (new_wl != NULL) {
-			free(wname);
-			if (args_has(args, 'd'))
-				return (CMD_RETURN_NORMAL);
-			if (session_set_current(s, new_wl) == 0)
-				server_redraw_session(s);
-			if (c != NULL && c->session != NULL)
-				s->curw->window->latest = c;
-			recalculate_sizes();
+	}
+
+	/* Found an existing window to select instead of creating a new one. */
+	if (new_wl != NULL) {
+		free(wname);
+		if (args_has(args, 'd'))
 			return (CMD_RETURN_NORMAL);
-		}
+		if (session_set_current(s, new_wl) == 0)
+			server_redraw_session(s);
+		if (c != NULL && c->session != NULL)
+			s->curw->window->latest = c;
+		recalculate_sizes();
+		return (CMD_RETURN_NORMAL);
 	}
 
 	before = args_has(args, 'b');

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-split-window.c,v 1.150 2026/08/20 09:19:24 nicm Exp $ */
+/* $OpenBSD: cmd-split-window.c,v 1.151 2026/09/10 11:02:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -40,8 +40,8 @@ const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
 	.alias = "newp",
 
-	.args = { "AbB:Cc:de:EfF:hIkl:KLMm:Op:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
-	.usage = "[-AbCdefhIkKLMOPvWZ] [-B border-lines] "
+	.args = { "AbB:Cc:Dde:EfF:hIkl:KLMm:Op:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
+	.usage = "[-AbCDefhIkKLMOPvWZ] [-B border-lines] "
 		 "[-c start-directory] [-e environment] "
 		 "[-F format] [-l size] [-m message] [-p percentage] "
 		 "[-s style] [-S active-border-style] "
@@ -219,6 +219,8 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		new_wp->flags |= PANE_CAPTUREALLKEYS;
 	if (args_has(args, 'C') && args_has(args, 'O'))
 		new_wp->flags |= PANE_CLOSEONCLICK;
+	if (args_has(args, 'D') && args_has(args, 'O'))
+		new_wp->flags |= PANE_CLOSEONCANCEL;
 
 	style = args_get(args, 's');
 	if (style != NULL) {

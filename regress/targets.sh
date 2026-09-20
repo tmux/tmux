@@ -154,6 +154,13 @@ check "alpha:{previous}" "3"
 check "alpha:!" "2"		# last window
 check "alpha:{last}" "2"
 
+# Malformed relative offsets must fail rather than silently selecting the
+# current window.
+check_fail "can't find window: +0" "alpha:+0"
+check_fail "can't find window: +foo" "alpha:+foo"
+check_fail "can't find window: -0" "alpha:-0"
+check_fail "can't find window: -foo" "alpha:-foo"
+
 # --- combined and empty forms ---------------------------------------------
 #
 # Empty targets use the current pane from TMUX_PANE when there is no client.

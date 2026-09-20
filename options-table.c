@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.242 2026/07/27 08:03:01 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.246 2026/09/11 10:17:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -76,7 +76,8 @@ static const char *options_table_pane_border_indicators_list[] = {
 	"off", "colour", "arrows", "both", NULL
 };
 static const char *options_table_pane_border_lines_list[] = {
-	"single", "double", "heavy", "simple", "number", "spaces", "none", NULL
+	"single", "double", "heavy", "simple", "number", "spaces", "none",
+	"rounded", NULL
 };
 static const char *options_table_popup_border_lines_list[] = {
 	"single", "double", "heavy", "simple", "rounded", "padded", "none", NULL
@@ -91,7 +92,7 @@ static const char *options_table_window_size_list[] = {
 	"largest", "smallest", "manual", "latest", NULL
 };
 static const char *options_table_remain_on_exit_list[] = {
-	"off", "on", "failed", "key", NULL
+	"off", "on", "failed", "key", "failed-key", NULL
 };
 static const char *options_table_destroy_unattached_list[] = {
 	"off", "on", "keep-last", "keep-group", NULL
@@ -303,6 +304,16 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 50,
 	  .text = "The maximum number of automatic buffers. "
 		  "When this is reached, the oldest buffer is deleted."
+	},
+
+	{ .name = "clear-on-attach",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_num = 1,
+	  .text = "Whether to use the alternate screen and clear it when "
+		  "a client is attached. When disabled, tmux does not "
+		  "enter the alternate screen on attach so terminal "
+		  "content before tmux remains in scrollback."
 	},
 
 	{ .name = "command-alias",
@@ -1241,7 +1252,8 @@ const struct options_table_entry options_table[] = {
 	   * underscore.
 	   */
 	  .default_str = "!\"#$%&'()*+,-./:;<=>?@[\\]^`{|}~",
-	  .text = "Characters considered to separate words."
+	  .text = "Characters considered to separate words; a space matches "
+		  "any character with the Unicode White_Space property."
 	},
 
 	/* Window options. */
@@ -1688,7 +1700,8 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_remain_on_exit_list,
 	  .default_num = 0,
 	  .text = "Whether panes should remain ('on'), remain until a key is "
-		  "pressed ('key') or be automatically killed ('off' or "
+		  "pressed after any exit ('key') or after a failure "
+		  "('failed-key'), or be automatically killed ('off' or "
 		  "'failed') when the program inside exits."
 	},
 
