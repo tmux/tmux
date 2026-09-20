@@ -1,4 +1,4 @@
-/* $OpenBSD: utf8.c,v 1.72 2026/09/01 12:49:49 nicm Exp $ */
+/* $OpenBSD: utf8.c,v 1.73 2026/09/20 08:11:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -373,8 +373,13 @@ utf8_add_to_width_cache(const char *s)
 			wc_end = wc_start;
 		}
 
-		for (wc = wc_start; wc <= wc_end; wc++)
+		wc = wc_start;
+		for (;;) {
 			utf8_insert_width_cache(wc, width);
+			if (wc == wc_end)
+				break;
+			wc++;
+		}
 	} else {
 		utf8_no_width = 1;
 		ud = utf8_fromcstr(copy);
