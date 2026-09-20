@@ -4316,6 +4316,7 @@ char		*regsub(const char *, const char *, const char *, int);
 /* image.c */
 #define IMAGE_BACKEND_GRAPHICAL 0x1
 #define IMAGE_BACKEND_SCROLLS   0x2
+#define IMAGE_BACKEND_CLIPPED   0x4
 
 struct image	*image_create(u_int, u_int, u_int, u_int, u_int, u_int,
 		     u_char *);

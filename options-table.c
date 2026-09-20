@@ -538,6 +538,18 @@ const struct options_table_entry options_table[] = {
 		  "paste buffers with an escape sequence ('on' only)."
 	},
 
+	{ .name = "sixel-region-scrolling",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_num = 1,
+	  .text = "Whether to assume the terminal moves SIXEL image content "
+		  "along with the rest of a scrolling region, rather than "
+		  "redrawing the image after every scroll. There is no way "
+		  "to detect this, so if a terminal does not do it, images "
+		  "may be left in the wrong place after scrolling - turn "
+		  "this off in that case."
+	},
+
 	{ .name = "terminal-overrides",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,

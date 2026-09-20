@@ -100,7 +100,8 @@ static const struct image_backend image_backend_fallback = {
 	"fallback", IMAGE_BACKEND_SCROLLS, NULL, NULL
 };
 static const struct image_backend image_backend_kitty = {
-	"kitty", IMAGE_BACKEND_GRAPHICAL|IMAGE_BACKEND_SCROLLS,
+	"kitty",
+	IMAGE_BACKEND_GRAPHICAL|IMAGE_BACKEND_SCROLLS|IMAGE_BACKEND_CLIPPED,
 	kitty_draw_rect, kitty_free_output_state
 };
 static const struct image_backend image_backend_sixel = {
@@ -168,8 +169,22 @@ image_draw_flush(struct tty *tty)
 int
 image_backend_flags(struct tty *tty)
 {
+	int	flags;
+
 	image_tty_update(tty);
-	return (tty->image_backend->flags);
+	flags = tty->image_backend->flags;
+
+	/*
+	 * There is no way to ask a terminal whether it moves SIXEL image
+	 * content along with the rest of a scrolling region, so this is an
+	 * assumption the user can turn off with sixel-region-scrolling if
+	 * their terminal gets it wrong.
+	 */
+	if (tty->image_backend == &image_backend_sixel &&
+	    options_get_number(global_options, "sixel-region-scrolling"))
+		flags |= IMAGE_BACKEND_SCROLLS;
+
+	return (flags);
 }
 
 /* Discard image backend state after a terminal geometry change. */

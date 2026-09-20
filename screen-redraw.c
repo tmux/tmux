@@ -2063,7 +2063,7 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 #ifdef ENABLE_IMAGES
 	if ((flags & REDRAW_PANE) &&
 	    (image_backend_flags(tty) &
-	    (IMAGE_BACKEND_GRAPHICAL|IMAGE_BACKEND_SCROLLS)) ==
+	    (IMAGE_BACKEND_GRAPHICAL|IMAGE_BACKEND_CLIPPED)) ==
 	    IMAGE_BACKEND_GRAPHICAL)
 		redraw_damage_window_pane_status(scene->w);
 #endif
