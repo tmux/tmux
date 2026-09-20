@@ -452,7 +452,18 @@ window_destroy(struct window *w)
 {
 	log_debug("window @%u destroyed (%d references)", w->id, w->references);
 
+	/*
+	 * Pin the window while unzooming: layout_fix_panes() resizes panes,
+	 * which fires the pane-resized hook, and its event payload takes and
+	 * drops its own reference on the window. references is already 0
+	 * here, so that reference reaching 0 again would call window_destroy()
+	 * a second time from inside this call, freeing w (and its panes)
+	 * out from under the rest of this function.
+	 */
+	w->references++;
 	window_unzoom(w, 0);
+	w->references--;
+
 	RB_REMOVE(windows, &windows, w);
 
 	layout_free_cell(w->layout_root, 0);
