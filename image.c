@@ -120,15 +120,19 @@ image_tty_find_backend(struct tty *tty)
 	return (&image_backend_fallback);
 }
 
-/* Update a terminal's image backend after its capabilities change. */
-void
+/*
+ * Update a terminal's image backend after its capabilities change. Returns 1
+ * if the backend changed (so the caller knows a redraw is actually needed),
+ * 0 if not.
+ */
+int
 image_tty_update(struct tty *tty)
 {
 	const struct image_backend	*backend;
 
 	backend = image_tty_find_backend(tty);
 	if (tty->image_backend == backend)
-		return;
+		return (0);
 
 	if (tty->image_backend != NULL && tty->image_backend->free != NULL)
 		tty->image_backend->free(tty, !!(tty->flags & TTY_OPENED));
@@ -136,6 +140,7 @@ image_tty_update(struct tty *tty)
 	tty->image_backend = backend;
 	log_debug("%s: %s image backend is %s", __func__,
 	    tty->client->name, backend->name);
+	return (1);
 }
 
 /* Remove Kitty placements which will be replaced by a redraw. */
@@ -148,6 +153,15 @@ image_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
 		kitty_redraw_start(tty, x, y, width, height);
 	else if (tty->image_backend == &image_backend_sixel)
 		sixel_redraw_start(tty, x, y, width, height);
+}
+
+/* Write out any image output the backend is still holding back. */
+void
+image_draw_flush(struct tty *tty)
+{
+	image_tty_update(tty);
+	if (tty->image_backend == &image_backend_sixel)
+		sixel_flush_output(tty);
 }
 
 /* Return the flags for a terminal's image backend. */

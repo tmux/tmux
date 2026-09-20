@@ -4348,8 +4348,9 @@ void		 image_redraw_area(struct screen_write_ctx *, u_int, u_int,
 void		 image_redraw_all(struct screen_write_ctx *);
 void		 image_redraw_scroll(struct screen_write_ctx *, u_int);
 void		 image_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
+void		 image_draw_flush(struct tty *);
 int		 image_backend_flags(struct tty *);
-void		 image_tty_update(struct tty *);
+int		 image_tty_update(struct tty *);
 void		 image_tty_geometry_changed(struct tty *);
 void		 image_tty_free(struct tty *, int);
 void		 image_draw_line(struct tty *, struct screen *, u_int, u_int,
@@ -4412,6 +4413,7 @@ void		 sixel_draw_rect(struct tty *,
 		     const struct image_rect *, const struct tty_style_ctx *);
 void		 sixel_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
 void		 sixel_free_output(struct tty *, int);
+void		 sixel_flush_output(struct tty *);
 struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int,
     u_int);
 void		 sixel_free(struct sixel_image *);

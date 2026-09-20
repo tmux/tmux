@@ -1719,6 +1719,9 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 				}
 			}
 		}
+#ifdef ENABLE_IMAGES
+		image_draw_flush(&scene->c->tty);
+#endif
 	}
 }
 
@@ -1783,6 +1786,9 @@ redraw_draw_lines(struct redraw_draw_ctx *dctx, int flags)
 				    phase);
 			}
 		}
+#ifdef ENABLE_IMAGES
+		image_draw_flush(&scene->c->tty);
+#endif
 	}
 }
 
@@ -2329,6 +2335,9 @@ redraw_draw_damage_rect(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 			}
 		}
 		}
+#ifdef ENABLE_IMAGES
+		image_draw_flush(&scene->c->tty);
+#endif
 	}
 
 	/* SIXEL image output may disturb status cells; compose them last. */

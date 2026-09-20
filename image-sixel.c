@@ -109,11 +109,27 @@ struct sixel_image_cache {
 	struct sixel_image_cache	*next;
 };
 
+/*
+ * Contiguous rows of one placement, held back so that they can be written as
+ * a single SIXEL instead of one per row. See sixel_draw_rect.
+ */
+struct sixel_pending {
+	struct image	*image;
+	u_int		 source_x;
+	u_int		 source_y;
+	u_int		 width;
+	u_int		 height;
+	u_int		 destination_x;
+	u_int		 destination_y;
+};
+
 struct sixel_output {
 	/* Per-terminal cached images and aggregate cache state. */
 	struct sixel_image_cache	*images;
 	size_t			 size;
 	uint64_t		 age;
+	/* Rows waiting to be written as one SIXEL. */
+	struct sixel_pending	 pending;
 };
 
 struct sixel_hgram {
@@ -1457,6 +1473,8 @@ sixel_free_output(struct tty *tty, __unused int send)
 
 	if (so == NULL)
 		return;
+	/* The run is dropped, not written: the geometry it was measured at is gone. */
+	so->pending.image = NULL;
 	for (cache = so->images; cache != NULL; cache = next) {
 		next = cache->next;
 		sixel_free(cache->si);
@@ -1548,24 +1566,26 @@ sixel_image_is_cached(struct tty *tty, struct sixel_image *si)
 	return (0);
 }
 
-/* Draw an image rectangle with SIXEL output. */
+/* Write the rows held in the pending run as a single SIXEL. */
 void
-sixel_draw_rect(struct tty *tty, const struct image_rect *rectangle,
-    __unused const struct tty_style_ctx *style_ctx)
+sixel_flush_output(struct tty *tty)
 {
+	struct sixel_output	*so = tty->image_data;
+	struct sixel_pending	*sp;
 	struct sixel_image	*si, *crop;
 	char			*data;
 	size_t			 size;
-	u_int			 source_x, source_y, width, height;
-	u_int			 destination_x, destination_y;
 
-	si = sixel_get_image(tty, image_rect_get_image(rectangle));
+	if (so == NULL || so->pending.image == NULL)
+		return;
+	sp = &so->pending;
+
+	si = sixel_get_image(tty, sp->image);
+	sp->image = NULL;
 	if (si == NULL)
 		return;
-	image_rect_get_coords(rectangle, &source_x, &source_y, &width,
-	    &height, &destination_x, &destination_y);
-	crop = sixel_scale(si, tty->xpixel, tty->ypixel,
-	    source_x, source_y, width, height, 1);
+	crop = sixel_scale(si, tty->xpixel, tty->ypixel, sp->source_x,
+	    sp->source_y, sp->width, sp->height, 1);
 	if (!sixel_image_is_cached(tty, si))
 		sixel_free(si);
 	if (crop == NULL)
@@ -1576,12 +1596,60 @@ sixel_draw_rect(struct tty *tty, const struct image_rect *rectangle,
 		return;
 	tty_region_off(tty);
 	tty_margin_off(tty);
-	tty_cursor(tty, destination_x, destination_y);
+	tty_cursor(tty, sp->destination_x, sp->destination_y);
 	tty->flags |= TTY_NOBLOCK;
 	tty_putn(tty, data, size, 0);
 	/* SIXEL moves the cursor, but does not change terminal attributes. */
 	tty->cx = tty->cy = UINT_MAX;
 	free(data);
+}
+
+/*
+ * Queue an image rectangle for SIXEL output.
+ *
+ * The redraw loop hands images to the backend one grid line at a time, so a
+ * placement 24 rows tall arrives as 24 separate one-row rectangles. Writing
+ * each of them straight out means 24 scale and encode passes and 24 DCS
+ * sequences carrying 24 copies of the palette, for what the application sent
+ * as one image - and terminals have to allocate and composite each one. The
+ * rows of a placement arrive in order, so hold a run of vertically adjacent
+ * rows back and write them as one SIXEL when the run ends.
+ *
+ * Anything that is not a continuation of the run flushes it first, and
+ * image_draw_flush at the end of the redraw flushes whatever is left, so no
+ * other terminal output can be reordered across a pending run.
+ */
+void
+sixel_draw_rect(struct tty *tty, const struct image_rect *rectangle,
+    __unused const struct tty_style_ctx *style_ctx)
+{
+	struct sixel_output	*so = sixel_get_output(tty);
+	struct sixel_pending	*sp = &so->pending;
+	struct image		*im = image_rect_get_image(rectangle);
+	u_int			 source_x, source_y, width, height;
+	u_int			 destination_x, destination_y;
+
+	image_rect_get_coords(rectangle, &source_x, &source_y, &width,
+	    &height, &destination_x, &destination_y);
+
+	if (sp->image == im &&
+	    sp->source_x == source_x &&
+	    sp->width == width &&
+	    sp->destination_x == destination_x &&
+	    sp->source_y + sp->height == source_y &&
+	    sp->destination_y + sp->height == destination_y) {
+		sp->height += height;
+		return;
+	}
+
+	sixel_flush_output(tty);
+	sp->image = im;
+	sp->source_x = source_x;
+	sp->source_y = source_y;
+	sp->width = width;
+	sp->height = height;
+	sp->destination_x = destination_x;
+	sp->destination_y = destination_y;
 }
 
 /* Remove old SIXEL pixels before replaying a dirty image area. */

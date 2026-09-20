@@ -569,11 +569,15 @@ void
 tty_update_features(struct tty *tty)
 {
 	struct client	*c = tty->client;
+	int		 changed = 0;
 
-	if (tty_apply_features(tty->term))
+	if (tty_apply_features(tty->term)) {
 		tty_term_apply_overrides(tty->term);
+		changed = 1;
+	}
 #ifdef ENABLE_IMAGES
-	image_tty_update(tty);
+	if (image_tty_update(tty))
+		changed = 1;
 #endif
 
 	if (tty_use_margin(tty))
@@ -588,7 +592,22 @@ tty_update_features(struct tty *tty)
 	/*
 	 * Features might have changed since the first draw during attach. For
 	 * example, this happens when DA responses are received.
+	 *
+	 * Only redraw when something actually did change. This function is
+	 * called for every DA, secondary DA and extended DA answer, and from
+	 * the start timer when none arrive - answers which usually just
+	 * confirm what is already known, either from a previous answer or
+	 * from terminal-features in the configuration. The redraw is not
+	 * free: it repaints the pane from tmux's own grid, which discards
+	 * anything the pane put on the terminal that tmux does not model,
+	 * notably an image written through DCS passthrough. That makes an
+	 * unnecessary redraw here visible to the user as an image that
+	 * appears and then vanishes a moment later, once per client, with no
+	 * way for the application to detect it and redraw.
 	 */
+	if (!changed)
+		return;
+
 	server_redraw_client(c);
 
 	tty_invalidate(tty);
