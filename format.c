@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.417 2026/09/08 15:42:26 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.418 2026/09/20 08:19:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2862,10 +2862,10 @@ format_cb_session_activity_flag(struct format_tree *ft)
 
 	if (ft->s != NULL) {
 		RB_FOREACH(wl, winlinks, &ft->s->windows) {
-			if (ft->wl->flags & WINLINK_ACTIVITY)
+			if (wl->flags & WINLINK_ACTIVITY)
 				return (xstrdup("1"));
-			return (xstrdup("0"));
 		}
+		return (xstrdup("0"));
 	}
 	return (NULL);
 }
@@ -2880,8 +2880,8 @@ format_cb_session_bell_flag(struct format_tree *ft)
 		RB_FOREACH(wl, winlinks, &ft->s->windows) {
 			if (wl->flags & WINLINK_BELL)
 				return (xstrdup("1"));
-			return (xstrdup("0"));
 		}
+		return (xstrdup("0"));
 	}
 	return (NULL);
 }
@@ -2894,10 +2894,10 @@ format_cb_session_silence_flag(struct format_tree *ft)
 
 	if (ft->s != NULL) {
 		RB_FOREACH(wl, winlinks, &ft->s->windows) {
-			if (ft->wl->flags & WINLINK_SILENCE)
+			if (wl->flags & WINLINK_SILENCE)
 				return (xstrdup("1"));
-			return (xstrdup("0"));
 		}
+		return (xstrdup("0"));
 	}
 	return (NULL);
 }
