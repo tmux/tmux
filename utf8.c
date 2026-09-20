@@ -374,8 +374,17 @@ utf8_add_to_width_cache(const char *s)
 			wc_end = wc_start;
 		}
 
-		for (wc = wc_start; wc <= wc_end; wc++)
+		/*
+		 * wc_end may be WCHAR_MAX, so incrementing wc past it would
+		 * overflow (wc_start <= wc_end is already guaranteed above).
+		 */
+		wc = wc_start;
+		for (;;) {
 			utf8_insert_width_cache(wc, width);
+			if (wc == wc_end)
+				break;
+			wc++;
+		}
 	} else {
 		utf8_no_width = 1;
 		ud = utf8_fromcstr(copy);
