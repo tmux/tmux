@@ -4520,8 +4520,8 @@ format_pretty_time(time_t t, int seconds)
 		now = t;
 	age = now - t;
 
-	localtime_r(&now, &now_tm);
-	localtime_r(&t, &tm);
+	if (localtime_r(&now, &now_tm) == NULL || localtime_r(&t, &tm) == NULL)
+		return (xstrdup(""));
 
 	/* Last 24 hours. */
 	if (age < 24 * 3600) {
@@ -4692,10 +4692,12 @@ found:
 			found = format_pretty_time(t, 0);
 		else {
 			if (time_format != NULL) {
-				localtime_r(&t, &tm);
+				if (localtime_r(&t, &tm) == NULL)
+					return (NULL);
 				format_strftime(s, sizeof s, time_format, &tm);
 			} else {
-				ctime_r(&t, s);
+				if (ctime_r(&t, s) == NULL)
+					return (NULL);
 				s[strcspn(s, "\n")] = '\0';
 			}
 			found = xstrdup(s);
