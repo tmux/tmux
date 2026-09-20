@@ -50,6 +50,13 @@ $TMUX send-keys -X copy-output || exit 1
 [ "$($TMUX show-buffer)" = "$EXPECTED" ] || exit 1
 $TMUX send-keys -X cancel || exit 1
 
+$TMUX copy-mode -c || exit 1
+$TMUX send-keys -X search-backward echo || exit 1
+$TMUX send-keys -X select-output || exit 1
+$TMUX send-keys -X copy-selection || exit 1
+[ "$($TMUX show-buffer)" = "$EXPECTED" ] || exit 1
+$TMUX send-keys -X cancel || exit 1
+
 $TMUX copy-mode || exit 1
 $TMUX send-keys -X search-backward one || exit 1
 $TMUX send-keys -X copy-output || exit 1
@@ -73,7 +80,7 @@ $TMUX send-keys -t :plain.0 -X copy-output || exit 1
 [ "$($TMUX show-buffer -b keep)" = unchanged ] || exit 1
 $TMUX send-keys -t :plain.0 -X cancel || exit 1
 
-$TMUX new-window -d -n empty "printf '\\033]133;A\\007p\\$ \\033]133;B\\007echo\\033]133;C\\007one\\n\\033]133;D;0\\007\\033]133;A\\007p\\$ \\033]133;B\\007true\\033]133;C\\033]133;D;0\\007'; exec sleep 100" || exit 1
+$TMUX new-window -d -n empty "printf '\\033]133;A\\007p\\$ \\033]133;B\\007echo\\n\\033]133;C\\007one\\n\\033]133;D;0\\007\\033]133;A\\007p\\$ \\033]133;B\\007true\\n\\033]133;C\\033]133;D;0\\007'; exec sleep 100" || exit 1
 sleep 1
 $TMUX copy-mode -t :empty || exit 1
 $TMUX send-keys -t :empty.0 -X copy-output || exit 1
@@ -84,6 +91,15 @@ $TMUX new-window -d -n prompt "printf '\\033]133;A\\007p\\$ \\033]133;B\\007echo
 sleep 1
 $TMUX copy-mode -t :prompt || exit 1
 $TMUX send-keys -t :prompt.0 -X copy-output || exit 1
+[ "$($TMUX show-buffer)" = one ] || exit 1
+$TMUX send-keys -t :prompt.0 -X cancel || exit 1
+
+$TMUX copy-mode -c -t :prompt || exit 1
+$TMUX send-keys -t :prompt.0 -X expand-output || exit 1
+$TMUX send-keys -t :prompt.0 -X -N 100 cursor-down || exit 1
+$TMUX send-keys -t :prompt.0 -X select-output || exit 1
+[ "$($TMUX display-message -p -t :prompt.0 '#{selection_present}')" = 1 ] || exit 1
+$TMUX send-keys -t :prompt.0 -X copy-selection || exit 1
 [ "$($TMUX show-buffer)" = one ] || exit 1
 $TMUX send-keys -t :prompt.0 -X cancel || exit 1
 
@@ -104,6 +120,7 @@ $TMUX send-keys -t :same.0 -X copy-selection || exit 1
 [ "$($TMUX show-buffer)" = one ] || exit 1
 $TMUX send-keys -t :same.0 -X cancel || exit 1
 
+$TMUX set-option -g scroll-on-clear off || exit 1
 $TMUX new-window -d -n clear "printf 'old1\\nold2\\nold3\\nold4\\nold5\\nold6\\n\\033]133;A\\007p\\$ \\033]133;B\\007echo 1; clear; ps\\n\\033]133;C\\0071\\n\\033[H\\033[2JPID TTY\\n1 pts/0\\n\\033]133;D;0\\007separator\\n\\033]133;A\\007p\\$ \\033]133;B\\007'; exec sleep 100" || exit 1
 sleep 1
 $TMUX copy-mode -t :clear || exit 1
