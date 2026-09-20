@@ -1,4 +1,4 @@
-/* $OpenBSD: layout-custom.c,v 1.41 2026/09/09 09:01:19 nicm Exp $ */
+/* $OpenBSD: layout-custom.c,v 1.42 2026/09/20 08:37:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2010 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -283,26 +283,28 @@ layout_checksum(const char *layout)
 char *
 layout_dump(__unused struct window *w, struct layout_cell *lcroot, int flags)
 {
-	struct layout_string	 layout_string;
-	char			*out = NULL;
+	struct layout_string	 layout_string = { 0 };
+	char			*out;
 
 	if (lcroot == NULL)
-		return NULL;
-
+		goto bad;
 	layout_string_init(&layout_string);
-
-	if (layout_append(lcroot, &layout_string, flags) == 0) {
-		if (flags & LAYOUT_CUSTOM_OLD_FORMAT)
-			xasprintf(&out, "%04hx,%s",
-			    layout_checksum(layout_string.dat),
-			    layout_string.dat);
-		else
-			xasprintf(&out, "{\"V\":2,\"L\":%s}",
-			    layout_string.dat);
+	if (layout_append(lcroot, &layout_string, flags) != 0)
+		goto bad;
+	if (~flags & LAYOUT_CUSTOM_OLD_FORMAT)
+		xasprintf(&out, "{\"V\":2,\"L\":%s}", layout_string.dat);
+	else {
+		xasprintf(&out, "%04hx,%s", layout_checksum(layout_string.dat),
+		    layout_string.dat);
 	}
 	layout_string_free(&layout_string);
-
 	return (out);
+
+bad:
+	layout_string_free(&layout_string);
+	if (~flags & LAYOUT_CUSTOM_OLD_FORMAT)
+		return (NULL);
+	return (xstrdup("0000,"));
 }
 
 /* Append information for a single cell in a JSON (v2) format. */
