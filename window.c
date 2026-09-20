@@ -2436,7 +2436,7 @@ winlink_shuffle_up(struct session *s, struct winlink *wl, int before)
 {
 	int	 idx, last;
 
-	if (wl == NULL)
+	if (wl == NULL || wl->idx == INT_MAX)
 		return (-1);
 	if (before)
 		idx = wl->idx;
