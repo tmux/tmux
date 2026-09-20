@@ -120,6 +120,7 @@ $TMUX send-keys -t :same.0 -X copy-selection || exit 1
 [ "$($TMUX show-buffer)" = one ] || exit 1
 $TMUX send-keys -t :same.0 -X cancel || exit 1
 
+$TMUX set-option -g scroll-on-clear off || exit 1
 $TMUX new-window -d -n clear "printf 'old1\\nold2\\nold3\\nold4\\nold5\\nold6\\n\\033]133;A\\007p\\$ \\033]133;B\\007echo 1; clear; ps\\n\\033]133;C\\0071\\n\\033[H\\033[2JPID TTY\\n1 pts/0\\n\\033]133;D;0\\007separator\\n\\033]133;A\\007p\\$ \\033]133;B\\007'; exec sleep 100" || exit 1
 sleep 1
 $TMUX copy-mode -t :clear || exit 1

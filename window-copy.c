@@ -7345,6 +7345,12 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 		}
 		window_copy_output_end(data->source, ex, ey);
 	}
+	if (*sx == *ex && *sy == *ey) {
+		log_debug("%s: output at cursor is empty, look for previous",
+		    __func__);
+		return (window_copy_find_previous_output_range(data->source,
+		    cursor_x, cursor_y, sx, sy, ex, ey));
+	}
 	log_debug("%s: output from %u,%u to %u,%u", __func__, *sx, *sy,
 	    *ex, *ey);
 	return (1);
@@ -7357,21 +7363,21 @@ window_copy_find_previous_output_range(struct screen *s, u_int cursor_x,
 {
 	struct grid			*gd = s->grid;
 	struct grid_line		*gl;
-	void				*buf;
-	u_int				 start_x, start_y, end_x, end_y;
+	u_int				 start_x, start_y;
 	u_int				 y, total;
-	size_t				 len;
 	int				 found = 0, have_prompt = 0;
-	int				 pending = 0;
+	int				 pending = 0, started_here;
 
 	total = gd->hsize + gd->sy;
 	for (y = 0; y < total && y <= cursor_y; y++) {
 		gl = grid_get_line(gd, y);
+		started_here = 0;
 		if (gl->flags & GRID_LINE_START_OUTPUT &&
 		    (y != cursor_y || gl->osc133_data.out_start_col <= cursor_x)) {
 			start_x = gl->osc133_data.out_start_col;
 			start_y = y;
 			pending = 1;
+			started_here = 1;
 		}
 		/* The output may have cleared its C marker from the screen. */
 		if (!pending && !have_prompt &&
@@ -7380,26 +7386,21 @@ window_copy_find_previous_output_range(struct screen *s, u_int cursor_x,
 		    gl->osc133_data.out_end_col <= gl->osc133_data.prompt_col)) {
 			start_x = start_y = 0;
 			pending = 1;
+			started_here = 1;
 		}
 		if (pending && gl->flags & GRID_LINE_END_OUTPUT &&
 		    (y != cursor_y || gl->osc133_data.out_end_col <= cursor_x)) {
-			end_x = gl->osc133_data.out_end_col;
-			end_y = y;
-			buf = window_copy_get_grid_range(gd, start_x, start_y,
-			    end_x, end_y, &len);
-			if (buf != NULL) {
-				free(buf);
-				*sx = start_x;
-				*sy = start_y;
-				*ex = end_x;
-				*ey = end_y;
-				found = 1;
-			}
+			*sx = start_x;
+			*sy = start_y;
+			*ex = gl->osc133_data.out_end_col;
+			*ey = y;
+			found = 1;
 			pending = 0;
 		}
 		if (gl->flags & GRID_LINE_START_PROMPT) {
-			pending = 0;
 			have_prompt = 1;
+			if (!started_here)
+				pending = 0;
 		}
 	}
 	return (found);
