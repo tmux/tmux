@@ -163,9 +163,11 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	if (cdata->client != NULL)
 		cdata->client->references++;
-	if (args_has(args, 'c'))
-		cdata->cwd = xstrdup(args_get(args, 'c'));
-	else
+	if (args_has(args, 'c')) {
+		ft = format_create_from_target(item);
+		cdata->cwd = format_expand(ft, args_get(args, 'c'));
+		format_free(ft);
+	} else
 		cdata->cwd = xstrdup(server_client_get_cwd(c, s));
 
 	if (args_has(args, 'E'))
