@@ -72,14 +72,14 @@ jobs:
 
       - name: build
         run: |
-         sh autogen.sh
+          sh autogen.sh
           ./configure ${{ matrix.configure }}
           ${{ matrix.make }} -j"$(getconf _NPROCESSORS_ONLN)"
 
       - name: test
         run: |
           cd regress
-          ${{ matrix.make }}
+          ${{ matrix.make }} -j"$(getconf _NPROCESSORS_ONLN)"
 
       - name: logs
         if: failure()

@@ -76,14 +76,14 @@ $TMUX set-hook -g session-closed \
 	fail "set-hook session-closed failed"
 
 # The only pane of the only window of a session exits: pane-exited, then
-# window-unlinked, then session-closed, each seeing the dead object in the
+# session-closed, then window-unlinked, each seeing the dead object in the
 # hook formats.
 pane=$($TMUX new -d -s doomed -n dwin -P -F '#{pane_id}' 'true') ||
 	fail "new-session doomed failed"
 wait_for @log \
-	"|pane-exited:$pane|window-unlinked:doomed:dwin|session-closed:doomed"
+	"|pane-exited:$pane|session-closed:doomed|window-unlinked:doomed:dwin"
 assert_unchanged @log \
-	"|pane-exited:$pane|window-unlinked:doomed:dwin|session-closed:doomed"
+	"|pane-exited:$pane|session-closed:doomed|window-unlinked:doomed:dwin"
 
 # The dead pane, window and session cannot be used as targets but the
 # server survives.
@@ -110,14 +110,14 @@ $TMUX set-hook -g pane-exited \
 	'set -gF @log "#{@log}|pane-exited:#{hook_pane}"' ||
 	fail "restore pane-exited hook failed"
 
-# kill-window on the last window: window-unlinked then session-closed but
+# kill-window on the last window: session-closed then window-unlinked but
 # no pane-exited for the panes in the killed window.
 $TMUX set -g @log '' || fail "reset @log failed"
 $TMUX new -d -s doomed2 -n dwin2 || fail "new-session doomed2 failed"
 $TMUX splitw -d -t doomed2:0 || fail "split-window doomed2 failed"
 $TMUX kill-window -t doomed2:0 || fail "kill-window failed"
-wait_for @log '|window-unlinked:doomed2:dwin2|session-closed:doomed2'
-assert_unchanged @log '|window-unlinked:doomed2:dwin2|session-closed:doomed2'
+wait_for @log '|session-closed:doomed2|window-unlinked:doomed2:dwin2'
+assert_unchanged @log '|session-closed:doomed2|window-unlinked:doomed2:dwin2'
 $TMUX has -t main || fail "server died after kill-window chain"
 
 # kill-session: session-closed fires first, then window-unlinked for its
