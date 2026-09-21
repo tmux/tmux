@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1442 2026/09/21 10:22:31 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1444 2026/09/21 12:14:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1182,6 +1182,7 @@ struct menu {
 	struct menu_item	*items;
 	u_int			 count;
 	u_int			 width;
+	u_int			 item_width;
 };
 typedef void (*menu_choice_cb)(struct menu *, u_int, key_code, void *);
 
@@ -3804,6 +3805,7 @@ int		 window_pane_get_pane_status(struct window_pane *);
 struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
 		     u_int);
 int		 window_pane_is_floating(struct window_pane *);
+int		 window_pane_is_floating_with_hidden(struct window_pane *);
 
 /* window-border.c */
 void		 window_set_fill_cells(struct window *);
@@ -4143,6 +4145,7 @@ void		 menu_add_item(struct menu *, const struct menu_item *,
 		    struct cmdq_item *, struct client *,
 		    struct cmd_find_state *);
 void		 menu_free(struct menu *);
+void		 menu_get_size(struct menu *, enum box_lines, u_int *, u_int *);
 int		 menu_display(struct menu *, int, int, struct cmdq_item *,
 		    u_int, u_int, struct client *, enum box_lines, const char *,
 		    const char *, const char *, struct cmd_find_state *,
