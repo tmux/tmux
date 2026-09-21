@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1438 2026/09/09 08:30:05 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1440 2026/09/11 10:17:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1151,7 +1151,8 @@ enum pane_lines {
 	PANE_LINES_SIMPLE,
 	PANE_LINES_NUMBER,
 	PANE_LINES_SPACES,
-	PANE_LINES_NONE
+	PANE_LINES_NONE,
+	PANE_LINES_ROUNDED
 };
 
 /* Pane border indicator option. */
@@ -1340,6 +1341,7 @@ struct window_pane {
 #define PANE_CLOSEONCLICK 0x80000
 #define PANE_CAPTUREALLKEYS 0x100000
 #define PANE_FLOATOVERZOOM 0x200000
+#define PANE_CLOSEONCANCEL 0x400000
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;

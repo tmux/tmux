@@ -1,4 +1,4 @@
-/* $OpenBSD: layout.c,v 1.99 2026/09/09 07:03:39 nicm Exp $ */
+/* $OpenBSD: layout.c,v 1.101 2026/09/20 08:42:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -770,6 +770,49 @@ layout_free(struct window *w, int only_nodes)
 	layout_free_cell(w->layout_root, only_nodes);
 }
 
+/* Move and resize floating panes so they stay inside the window. */
+static void
+layout_clamp_floating_panes(struct window *w, u_int sx, u_int sy)
+{
+	struct window_pane	*wp;
+	struct layout_cell	*lc;
+	u_int			 pad, avail, csx, csy;
+
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
+		lc = wp->layout_cell;
+		if (lc == NULL || (~lc->flags & LAYOUT_CELL_FLOATING))
+			continue;
+		if (window_pane_get_pane_lines(wp) == PANE_LINES_NONE)
+			pad = 0;
+		else
+			pad = 1;
+
+		csx = lc->g.sx;
+		avail = (sx > 2 * pad) ? sx - 2 * pad : 0;
+		if (csx > avail)
+			csx = (avail > PANE_MINIMUM) ? avail : PANE_MINIMUM;
+		csy = lc->g.sy;
+		avail = (sy > 2 * pad) ? sy - 2 * pad : 0;
+		if (csy > avail)
+			csy = (avail > PANE_MINIMUM) ? avail : PANE_MINIMUM;
+		if (csx != lc->g.sx || csy != lc->g.sy)
+			layout_set_size(lc, csx, csy, lc->g.xoff, lc->g.yoff);
+
+		if (lc->g.xoff + lc->g.sx + pad > sx) {
+			if (lc->g.sx + 2 * pad >= sx)
+				lc->g.xoff = pad;
+			else
+				lc->g.xoff = sx - lc->g.sx - pad;
+		}
+		if (lc->g.yoff + lc->g.sy + pad > sy) {
+			if (lc->g.sy + 2 * pad >= sy)
+				lc->g.yoff = pad;
+			else
+				lc->g.yoff = sy - lc->g.sy - pad;
+		}
+	}
+}
+
 /* Resize the entire layout after window resize. */
 void
 layout_resize(struct window *w, u_int sx, u_int sy)
@@ -790,8 +833,11 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 	 * out proportionately - this should leave the layout fitting the new
 	 * window size.
 	 */
-	if (lc->type == LAYOUT_WINDOWPANE && (lc->flags & LAYOUT_CELL_FLOATING))
+	if (lc->type == LAYOUT_WINDOWPANE && (lc->flags & LAYOUT_CELL_FLOATING)) {
+		layout_clamp_floating_panes(w, sx, sy);
+		layout_fix_panes(w, NULL);
 		return;
+	}
 	xchange = sx - lc->g.sx;
 	xlimit = layout_resize_check(w, lc, LAYOUT_LEFTRIGHT);
 	if (xchange < 0 && xchange < -xlimit)
@@ -821,6 +867,7 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 
 	/* Fix cell offsets. */
 	layout_fix_offsets(w);
+	layout_clamp_floating_panes(w, sx, sy);
 	layout_fix_panes(w, NULL);
 }
 
@@ -1683,7 +1730,7 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
     enum pane_lines lines, struct window *w, struct layout_geometry *lg,
     char **cause)
 {
-	int	 sx, sy, ox, oy;
+	int	 sx, sy, ox, oy, pad;
 	char	*error = NULL;
 
 	sx = lg->sx == UINT_MAX ? w->sx / 2 : lg->sx;
@@ -1732,12 +1779,20 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 		}
 	}
 
+	if (!window_has_floating_panes(w)) {
+		w->last_new_pane_x = 0;
+		w->last_new_pane_y = 0;
+	}
 	if (ox == INT_MAX) {
 		if (w->last_new_pane_x == 0)
 			ox = 4;
 		else {
+			if (lines != PANE_LINES_NONE)
+				pad = 1;
+			else
+				pad = 0;
 			ox = w->last_new_pane_x + 4;
-			if (w->last_new_pane_x > w->sx)
+			if (ox + sx + pad > (int)w->sx)
 				ox = 4;
 		}
 		w->last_new_pane_x = ox;
@@ -1748,8 +1803,12 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 		if (w->last_new_pane_y == 0)
 			oy = 2;
 		else {
+			if (lines != PANE_LINES_NONE)
+				pad = 1;
+			else
+				pad = 0;
 			oy = w->last_new_pane_y + 2;
-			if (w->last_new_pane_y > w->sy)
+			if (oy + sy + pad > (int)w->sy)
 				oy = 2;
 		}
 		w->last_new_pane_y = oy;

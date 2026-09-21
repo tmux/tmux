@@ -130,6 +130,8 @@ CHANGES FROM 3.7c TO 3.8
 
 * Add capture-pane -I to include the time each line entered history.
 
+* Various memory leak fixes from Heon Jeong.
+
 * Add a default C-b T binding to change the current pane title.
 
 * Menus now belong to the window, so appear on all clients.

@@ -1,4 +1,4 @@
-/* $OpenBSD: layout-custom.c,v 1.40 2026/09/09 07:03:39 nicm Exp $ */
+/* $OpenBSD: layout-custom.c,v 1.42 2026/09/20 08:37:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2010 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -28,8 +28,8 @@
 #include "tmux.h"
 
 /*
- * Layouts can be represented as strings in a JSON format (v2). The legacy
- * format (v1) will be removed in the future and should no longer be used.
+ * Layouts can be represented as strings in a JSON format (v2). The version 1
+ * format will be removed in the future and should no longer be used.
  *
  * The current (v2) format is JSON. The top level has two keys:
  *    "V": version number, currently 2
@@ -56,6 +56,9 @@
  *    "i": pane index
  *    "z": z-index, if a floating pane
  */
+
+/* Maximum nesting depth for version 1 layouts. */
+#define LAYOUT_V1_MAX_DEPTH 1000
 
 /* Layout string. */
 struct layout_string {
@@ -280,26 +283,28 @@ layout_checksum(const char *layout)
 char *
 layout_dump(__unused struct window *w, struct layout_cell *lcroot, int flags)
 {
-	struct layout_string	 layout_string;
-	char			*out = NULL;
+	struct layout_string	 layout_string = { 0 };
+	char			*out;
 
 	if (lcroot == NULL)
-		return NULL;
-
+		goto bad;
 	layout_string_init(&layout_string);
-
-	if (layout_append(lcroot, &layout_string, flags) == 0) {
-		if (flags & LAYOUT_CUSTOM_OLD_FORMAT)
-			xasprintf(&out, "%04hx,%s",
-			    layout_checksum(layout_string.dat),
-			    layout_string.dat);
-		else
-			xasprintf(&out, "{\"V\":2,\"L\":%s}",
-			    layout_string.dat);
+	if (layout_append(lcroot, &layout_string, flags) != 0)
+		goto bad;
+	if (~flags & LAYOUT_CUSTOM_OLD_FORMAT)
+		xasprintf(&out, "{\"V\":2,\"L\":%s}", layout_string.dat);
+	else {
+		xasprintf(&out, "%04hx,%s", layout_checksum(layout_string.dat),
+		    layout_string.dat);
 	}
 	layout_string_free(&layout_string);
-
 	return (out);
+
+bad:
+	layout_string_free(&layout_string);
+	if (~flags & LAYOUT_CUSTOM_OLD_FORMAT)
+		return (NULL);
+	return (xstrdup("0000,"));
 }
 
 /* Append information for a single cell in a JSON (v2) format. */
@@ -362,7 +367,7 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 	return (0);
 }
 
-/* Append information for a single cell in the legacy (v1) format. */
+/* Append information for a single cell in the version 1 format. */
 static int
 layout_append_v1(struct layout_cell *lc, struct layout_string *ls)
 {
@@ -778,7 +783,7 @@ layout_assign(struct window *w, struct layout_parse_ctx *pctx)
 		layout_assign_fallback(w, w->layout_root);
 }
 
-/* Construct a cell from the legacy (v1) format. */
+/* Construct a cell from the version 1 format. */
 static struct layout_cell *
 layout_construct_cell(struct layout_cell *lcparent, const char **layout)
 {
@@ -827,11 +832,14 @@ layout_construct_cell(struct layout_cell *lcparent, const char **layout)
 	return (lc);
 }
 
-/* Construct a layout from the legacy (v1) format. */
+/* Construct a layout from the version 1 format. */
 static struct layout_cell *
-layout_construct_v1(struct layout_cell *lcparent, const char **layout)
+layout_construct_v1(struct layout_cell *lcparent, const char **layout, u_int depth)
 {
 	struct layout_cell	*lc, *lcchild;
+
+	if (depth > LAYOUT_V1_MAX_DEPTH)
+		return (NULL);
 
 	lc = layout_construct_cell(lcparent, layout);
 	if (lc == NULL)
@@ -855,7 +863,7 @@ layout_construct_v1(struct layout_cell *lcparent, const char **layout)
 
 	do {
 		(*layout)++;
-		lcchild = layout_construct_v1(lc, layout);
+		lcchild = layout_construct_v1(lc, layout, depth + 1);
 		if (lcchild == NULL)
 			goto fail;
 		TAILQ_INSERT_TAIL(&lc->cells, lcchild, entry);
@@ -1068,7 +1076,8 @@ layout_construct(const char *input, struct layout_parse_ctx *pctx)
 			*pctx->cause = xstrdup("invalid layout checksum");
 			return (-1);
 		}
-		if ((pctx->root = layout_construct_v1(NULL, &input)) == NULL) {
+		pctx->root = layout_construct_v1(NULL, &input, 0);
+		if (pctx->root == NULL) {
 			*pctx->cause = xstrdup("invalid layout");
 			return (-1);
 		}
