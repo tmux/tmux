@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.429 2026/09/01 13:04:29 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.431 2026/09/21 10:43:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -401,7 +401,7 @@ window_copy_clone_screen(struct screen *src, struct screen *hint, u_int *cx,
 
 	sy = screen_hsize(src) + screen_size_y(src);
 	if (trim) {
-		while (sy > screen_hsize(src)) {
+		while (sy > screen_hsize(src) + 1) {
 			gl = grid_peek_line(src->grid, sy - 1);
 			if (gl == NULL || gl->cellused != 0)
 				break;
@@ -665,7 +665,7 @@ window_copy_view_init(struct window_mode_entry *wme,
 
 	data->backing = xmalloc(sizeof *data->backing);
 	screen_init(data->backing, sx, screen_size_y(base), UINT_MAX);
-	data->ictx = input_init(NULL, NULL, NULL, NULL);
+	data->ictx = input_init(NULL, NULL, NULL);
 	data->mx = data->cx;
 	data->my = screen_hsize(data->backing) + data->cy - data->oy;
 	data->showmark = 0;

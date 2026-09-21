@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.159 2026/09/09 08:31:42 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.160 2026/09/21 10:22:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -33,7 +33,7 @@
  * this is done at various points, such as when a pane is moved or resized. The
  * scene only includes the part of the client used for the window: panes, pane
  * status lines, borders, scrollbars, and any area outside the window. The
- * client status line and overlay are not included.
+ * client status line is not included.
  *
  * A scene is made from spans. A span is a horizontal run of cells on one
  * visible line that can be drawn in the same way. Each span has a type, for
@@ -93,7 +93,6 @@ enum redraw_span_type {
 #define REDRAW_PANE_SCROLLBAR 0x20
 #define REDRAW_STATUS 0x40
 #define REDRAW_MENU 0x80
-#define REDRAW_OVERLAY 0x100
 
 /* Draw everything. */
 #define REDRAW_ALL 0x7fffffff
@@ -280,8 +279,6 @@ redraw_flags_to_string(int flags)
 		strlcat(s, "scrollbar ", sizeof s);
 	if (flags & REDRAW_MENU)
 		strlcat(s, "menu ", sizeof s);
-	if (flags & REDRAW_OVERLAY)
-		strlcat(s, "overlay ", sizeof s);
 	if (REDRAW_IS_ALL(flags))
 		strlcat(s, "all ", sizeof s);
 	if (*s != '\0')
@@ -1510,52 +1507,36 @@ redraw_draw_menu_span(struct redraw_draw_ctx *dctx,
 /*
  * Draw a span, restricted to [clip_x, clip_x + clip_n) - a caller drawing
  * the whole span passes the span's own x/width here; a caller drawing only
- * a damaged sub-range passes that range instead. Overlay clipping (menus,
- * popups) is then applied on top of this, exactly as before.
+ * a damaged sub-range passes that range instead.
  */
 static void
 redraw_draw_span(struct redraw_draw_ctx *dctx, struct redraw_span *span,
     u_int y, u_int clip_x, u_int clip_n)
 {
-	struct redraw_scene	*scene = dctx->scene;
 	struct redraw_span_data	*data = &span->data;
 	enum redraw_span_type	 type = data->type;
-	struct client		*c = scene->c;
-	struct tty		*tty = &c->tty;
-	struct visible_ranges	*r;
-	struct visible_range	*rr;
-	u_int			 i, x, n;
 
 	if (type == REDRAW_SPAN_STATUS && ~data->st.wp->flags & PANE_NEWSTATUS)
 		return;
 
-	r = tty_check_overlay_range(tty, clip_x, y, clip_n);
-	for (i = 0; i < r->used; i++) {
-		rr = &r->ranges[i];
-		if (rr->nx == 0)
-			continue;
-		x = rr->px;
-		n = rr->nx;
-
-		switch (span->data.type) {
-		case REDRAW_SPAN_PANE:
-			redraw_draw_pane_span(dctx, span, x, y, n);
-			break;
-		case REDRAW_SPAN_BORDER:
-		case REDRAW_SPAN_EMPTY:
-		case REDRAW_SPAN_OUTSIDE:
-			redraw_draw_border_span(dctx, span, x, y, n);
-			break;
-		case REDRAW_SPAN_STATUS:
-			redraw_draw_status_span(dctx, span, x, y, n);
-			break;
-		case REDRAW_SPAN_SCROLLBAR:
-			redraw_draw_scrollbar_span(dctx, span, x, y, n);
-			break;
-		case REDRAW_SPAN_MENU:
-			redraw_draw_menu_span(dctx, span, x, y, n);
-			break;
-		}
+	switch (span->data.type) {
+	case REDRAW_SPAN_PANE:
+		redraw_draw_pane_span(dctx, span, clip_x, y, clip_n);
+		break;
+	case REDRAW_SPAN_BORDER:
+	case REDRAW_SPAN_EMPTY:
+	case REDRAW_SPAN_OUTSIDE:
+		redraw_draw_border_span(dctx, span, clip_x, y, clip_n);
+		break;
+	case REDRAW_SPAN_STATUS:
+		redraw_draw_status_span(dctx, span, clip_x, y, clip_n);
+		break;
+	case REDRAW_SPAN_SCROLLBAR:
+		redraw_draw_scrollbar_span(dctx, span, clip_x, y, clip_n);
+		break;
+	case REDRAW_SPAN_MENU:
+		redraw_draw_menu_span(dctx, span, clip_x, y, clip_n);
+		break;
 	}
 }
 
@@ -1839,10 +1820,8 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	struct screen		*sl;
 	struct redraw_scene	*scene;
 	struct window_pane	*loop;
-	u_int			 width, i, y, lines, j;
+	u_int			 width, i, y, lines;
 	struct redraw_span	*first;
-	struct visible_ranges	*r;
-	struct visible_range	*rr;
 	int			 redraw;
 
 	if (c->flags & CLIENT_SUSPENDED)
@@ -1951,19 +1930,9 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		else
 			y = c->tty.sy - lines;
 		sl = c->status.active;
-		for (i = 0; i < lines; i++) {
-			r = tty_check_overlay_range(tty, 0, y + i, tty->sx);
-			for (j = 0; j < r->used; j++) {
-				rr = &r->ranges[j];
-				if (rr->nx == 0)
-					continue;
-				tty_draw_line(tty, sl, rr->px, i, rr->nx,
-				    rr->px, y + i, NULL);
-			}
-		}
+		for (i = 0; i < lines; i++)
+			tty_draw_line(tty, sl, 0, i, tty->sx, 0, y + i, NULL);
 	}
-	if (c->overlay_draw != NULL && (flags & REDRAW_OVERLAY))
-		c->overlay_draw(c, c->overlay_data);
 
 	tty_reset(tty);
 
@@ -2019,18 +1988,13 @@ redraw_screen(struct client *c)
 {
 	int	flags = 0;
 
-	if (c->flags & CLIENT_REDRAWWINDOW) {
-		if (c->flags & CLIENT_REDRAWOVERLAY)
-			redraw_draw(c, NULL, REDRAW_ALL);
-		else
-			redraw_draw(c, NULL, REDRAW_ALL & ~REDRAW_OVERLAY);
-	} else {
+	if (c->flags & CLIENT_REDRAWWINDOW)
+		redraw_draw(c, NULL, REDRAW_ALL);
+	else {
 		if (c->flags & CLIENT_REDRAWBORDERS)
 			flags |= (REDRAW_PANE_BORDER|REDRAW_PANE_STATUS);
 		if (c->flags & (CLIENT_REDRAWSTATUS|CLIENT_REDRAWSTATUSALWAYS))
 			flags |= (REDRAW_STATUS|REDRAW_PANE_STATUS);
-		if (c->flags & CLIENT_REDRAWOVERLAY)
-			flags |= REDRAW_OVERLAY;
 		if (c->flags & CLIENT_REDRAWMENU)
 			flags |= REDRAW_MENU;
 		if (c->session->curw->window->menu != NULL)
@@ -2111,10 +2075,8 @@ redraw_damage_draw_pane_prompt(struct redraw_draw_ctx *dctx,
 	struct redraw_scene	*scene = dctx->scene;
 	struct window_pane	*wp = span->data.p.wp;
 	struct tty		*tty = &scene->c->tty;
-	struct visible_ranges	*r;
-	struct visible_range	*rr;
 	struct screen		 screen;
-	u_int			 i, px, width, prompt_y;
+	u_int			 px, width, prompt_y;
 
 	if (wp->prompt == NULL || wp->sx == 0 || wp->sy == 0)
 		return;
@@ -2126,18 +2088,12 @@ redraw_damage_draw_pane_prompt(struct redraw_draw_ctx *dctx,
 		return;
 
 	redraw_make_pane_prompt(wp, &screen);
-	r = tty_check_overlay_range(tty, x, y, n);
-	for (i = 0; i < r->used; i++) {
-		rr = &r->ranges[i];
-		if (rr->nx == 0)
-			continue;
-		px = span->data.p.px + (rr->px - span->x);
-		if (px >= screen_size_x(&screen))
-			continue;
-		width = rr->nx;
+	px = span->data.p.px + (x - span->x);
+	if (px < screen_size_x(&screen)) {
+		width = n;
 		if (width > screen_size_x(&screen) - px)
 			width = screen_size_x(&screen) - px;
-		tty_draw_line(tty, &screen, px, 0, width, rr->px, y, NULL);
+		tty_draw_line(tty, &screen, px, 0, width, x, y, NULL);
 	}
 	screen_free(&screen);
 }

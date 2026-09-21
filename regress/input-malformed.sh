@@ -2,6 +2,21 @@
 
 . ./input-common.inc
 
+# Large strings may take longer than start_cmd's delay to reach the parser.
+check_discard()
+{
+	name=$1
+	printf 'OK\n' >"$EXP"
+	i=0
+	while [ "$i" -lt 100 ]; do
+		capture_grid "$name" >"$TMP"
+		cmp -s "$TMP" "$EXP" && return 0
+		sleep 0.05
+		i=$((i + 1))
+	done
+	fail "$name (timed out waiting for discard)"
+}
+
 start_cmd csi-param-discard 8 3 \
     "perl -e 'print qq{\e[}, q{1} x 80, qq{\030OK}'; sleep 2"
 check_capture csi-param-discard 'OK'
@@ -11,12 +26,12 @@ start_cmd csi-interm-discard 8 3 \
 check_capture csi-interm-discard 'OK'
 
 start_cmd osc-discard 8 3 \
-    "perl -e 'print qq{\e]2;}, q{x} x 1100000, qq{\e\\\\OK}'; sleep 2"
-check_capture osc-discard 'OK'
+    "perl -e 'print qq{\e]2;}, q{x} x 1100000, qq{\e\\\\OK}'; exec cat"
+check_discard osc-discard
 
 start_cmd apc-discard 8 3 \
-    "perl -e 'print qq{\e_}, q{x} x 1100000, qq{\e\\\\OK}'; sleep 2"
-check_capture apc-discard 'OK'
+    "perl -e 'print qq{\e_}, q{x} x 1100000, qq{\e\\\\OK}'; exec cat"
+check_discard apc-discard
 
 start_pane unknown-csi 8 3 '\033[?9999zOK'
 check_capture unknown-csi 'OK'

@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.290 2026/08/24 15:05:26 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.292 2026/09/21 12:14:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -311,21 +311,16 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 
 	if (~ctx->flags & SCREEN_WRITE_SYNC) {
 		/*
-		 * For the active pane showing its base screen or for an
-		 * overlay (no pane), only use synchronized updates if
-		 * requested (commands that move the cursor); for other panes
-		 * or a pane in a mode, always use it, since the cursor will
-		 * have to move.
+		 * For the active pane showing its base screen, only use
+		 * synchronized updates if requested (commands that move the
+		 * cursor); for other panes or a pane in a mode, always use it,
+		 * since the cursor will have to move.
 		 */
 		if (ctx->wp != NULL && (ctx->wp != ctx->wp->window->active ||
 		    ctx->wp->screen != &ctx->wp->base))
 			ttyctx->flags |= TTY_CTX_SYNC;
-		else {
-			if (ctx->wp == NULL)
-				ttyctx->flags |= TTY_CTX_OVERLAY_SYNC;
-			if (is_sync)
-				ttyctx->flags |= TTY_CTX_SYNC;
-		}
+		else if (is_sync)
+			ttyctx->flags |= TTY_CTX_SYNC;
 		tty_write(tty_cmd_syncstart, ttyctx);
 		ctx->flags |= SCREEN_WRITE_SYNC;
 	}
@@ -720,7 +715,7 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 			if (!window_position_is_visible(r, xoff + s->cx))
 				break;
 			ttyctx.cell = &gc;
-			ttyctx.flags &= (TTY_CTX_OVERLAY_SYNC|TTY_CTX_SYNC);
+			ttyctx.flags &= TTY_CTX_SYNC;
 			tty_write(tty_cmd_cell, &ttyctx);
 			ttyctx.ocx++;
 
@@ -844,34 +839,39 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu, int choice,
 	struct screen		*s = ctx->s;
 	struct grid_cell	 default_gc;
 	const struct grid_cell	*gc = &default_gc;
-	u_int			 cx, cy, i, j, width = menu->width;
+	u_int			 border, cx = s->cx, cy = s->cy, i, j, width;
 	const char		*name;
-
-	cx = s->cx;
-	cy = s->cy;
 
 	memcpy(&default_gc, menu_gc, sizeof default_gc);
 
-	screen_write_box(ctx, menu->width + 4, menu->count + 2, lines,
-	    border_gc, menu->title);
+	if (lines == BOX_LINES_NONE) {
+		border = 0;
+		width = menu->item_width;
+	} else {
+		border = 1;
+		width = menu->width;
+		screen_write_box(ctx, width + 4, menu->count + 2, lines,
+		    border_gc, menu->title);
+	}
 
 	for (i = 0; i < menu->count; i++) {
 		name = menu->items[i].name;
 		if (name == NULL) {
-			screen_write_cursormove(ctx, cx, cy + 1 + i, 0);
-			screen_write_hline(ctx, width + 4, 1, 1, lines,
-			    border_gc);
+			screen_write_cursormove(ctx, cx, cy + border + i, 0);
+			screen_write_hline(ctx, width + 2 + (2 * border), 1, 1,
+			    lines, border_gc);
 			continue;
 		}
 
 		if (choice >= 0 && i == (u_int)choice && *name != '-')
 			gc = choice_gc;
 
-		screen_write_cursormove(ctx, cx + 1, cy + 1 + i, 0);
+		screen_write_cursormove(ctx, cx + border, cy + border + i, 0);
 		for (j = 0; j < width + 2; j++)
 			screen_write_putc(ctx, gc, ' ');
 
-		screen_write_cursormove(ctx, cx + 2, cy + 1 + i, 0);
+		screen_write_cursormove(ctx, cx + border + 1, cy + border + i,
+		    0);
 		if (*name == '-') {
 			default_gc.attr |= GRID_ATTR_DIM;
 			format_draw(ctx, gc, width, name + 1, NULL, 0);

@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.375 2026/09/20 07:35:06 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.377 2026/09/21 10:33:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -693,7 +693,6 @@ window_pane_update_focus(struct window_pane *wp)
 				    c->session->attached != 0 &&
 				    (c->flags & CLIENT_FOCUSED) &&
 				    c->session->curw->window == wp->window &&
-				    c->overlay_draw == NULL &&
 				    wp->window->menu == NULL) {
 					focused = 1;
 					break;
@@ -1649,7 +1648,7 @@ window_pane_set_event(struct window_pane *wp)
 	    NULL, window_pane_error_callback, wp);
 	if (wp->event == NULL)
 		fatalx("out of memory");
-	wp->ictx = input_init(wp, wp->event, &wp->palette, NULL);
+	wp->ictx = input_init(wp, wp->event, &wp->palette);
 
 	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 }
@@ -2926,6 +2925,18 @@ window_pane_is_floating(struct window_pane *wp)
 {
 	struct layout_cell	*lc = wp->layout_cell;
 
+	if (lc == NULL || (lc->flags & LAYOUT_CELL_FLOATING) == 0)
+		return (0);
+	return (1);
+}
+
+int
+window_pane_is_floating_with_hidden(struct window_pane *wp)
+{
+	struct layout_cell	*lc = wp->layout_cell;
+
+	if (lc == NULL)
+		lc = wp->saved_layout_cell;
 	if (lc == NULL || (lc->flags & LAYOUT_CELL_FLOATING) == 0)
 		return (0);
 	return (1);
