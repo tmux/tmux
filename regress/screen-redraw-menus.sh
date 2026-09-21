@@ -106,8 +106,27 @@ compare menu-over-split
 
 # Menu with no border lines.
 setup 40 14
-menu -b none -x6 -y8
+$TMUX2 display-menu -T "This title must not reserve width" -C 1 \
+    -b none -x6 -y8 \
+    "Alpha item" a "" \
+    "Beta item" b "" \
+    "" "" "" \
+    "Gamma item" g "" || exit 1
+sleep 1
 compare menu-noborder
+
+# Menu border style follows the explicitly targeted window, not the current
+# window when a different pane is selected.
+setup 40 14
+$TMUX2 set menu-border-lines none || exit 1
+$TMUX2 neww || exit 1
+$TMUX2 display-menu -t%0 -T "Menu" -C 1 \
+    "Alpha item" a "" \
+    "Beta item" b "" \
+    "" "" "" \
+    "Gamma item" g "" || exit 1
+$TMUX2 selectw -t%0 || exit 1
+compare menu-target-window-noborder
 
 # Menu with double border lines.
 setup 40 14
