@@ -2742,23 +2742,21 @@ format_cb_pane_unzoomed_width(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
 	struct layout_cell	*lc;
-	int			 saved, sb_w, sb_pad;
+	int			 sb_w, sb_pad;
 	u_int			 sx;
 
 	if (wp == NULL)
 		return (NULL);
 
 	lc = wp->saved_layout_cell;
-	saved = (lc != NULL);
 	if (lc == NULL)
 		lc = wp->layout_cell;
 	if (lc == NULL)
 		return (NULL);
 	sx = lc->g.sx;
 
-	if ((saved && !SCREEN_IS_ALTERNATE(&wp->base) &&
-	    wp->window->sb == PANE_SCROLLBARS_ALWAYS) ||
-	    (!saved && window_pane_scrollbar_reserve(wp))) {
+	if (!SCREEN_IS_ALTERNATE(&wp->base) &&
+	    window_pane_scrollbar_reserve(wp)) {
 		sb_w = wp->scrollbar_style.width;
 		sb_pad = wp->scrollbar_style.pad;
 		if (sb_w < 1)
