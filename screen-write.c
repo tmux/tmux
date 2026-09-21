@@ -175,11 +175,12 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	return (1);
 }
 
-/* Return 1 if there is a floating window pane overlapping this pane. */
+/* return 1 if a menu or floating pane overlaps this pane. */
 static int
 screen_write_pane_is_obscured(struct screen_write_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
+	struct menu_data	*md;
 
 	if (ctx->wp == NULL)
 		return (0);
@@ -189,6 +190,16 @@ screen_write_pane_is_obscured(struct screen_write_ctx *ctx)
 		return (0);
 	}
 	ctx->flags |= SCREEN_WRITE_CHECKED_IF_OBSCURED;
+
+	md = wp->window->menu;
+	if (md != NULL &&
+	    (int)menu_x(md) < wp->xoff + (int)wp->sx &&
+	    (int)(menu_x(md) + menu_width(md)) > wp->xoff &&
+	    (int)menu_y(md) < wp->yoff + (int)wp->sy &&
+	    (int)(menu_y(md) + menu_height(md)) > wp->yoff) {
+		ctx->flags |= SCREEN_WRITE_OBSCURED;
+		return (1);
+	}
 
 	if (ctx->wp->xoff < 0 ||
 	    ctx->wp->yoff < 0 ||

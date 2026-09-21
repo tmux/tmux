@@ -53,6 +53,7 @@ window_visible_ranges(struct window_pane *base_wp, int px, int py, u_int width,
 {
 	struct window_pane		*wp;
 	struct window			*w;
+	struct menu_data			*md;
 	struct visible_range		*ri;
 	static struct visible_ranges	 sr = { NULL, 0, 0 };
 	int				 found_self, sb_w, sb_pos;
@@ -95,6 +96,34 @@ window_visible_ranges(struct window_pane *base_wp, int px, int py, u_int width,
 		r->used = 1;
 	}
 
+	/* exclude the menu, which is above every pane in the window. */
+	md = w->menu;
+	if (md != NULL && (u_int)py >= menu_y(md) &&
+	    (u_int)py - menu_y(md) < menu_height(md)) {
+		lb = menu_x(md);
+		rb = lb + menu_width(md);
+		for (i = 0; i < r->used; i++) {
+			ri = &r->ranges[i];
+			sx = ri->px;
+			ex = sx + ri->nx;
+			if (ri->nx == 0 || rb <= sx || lb >= ex)
+				continue;
+			if (lb <= sx) {
+				ri->px = rb < ex ? rb : ex;
+				ri->nx = ex - ri->px;
+			} else {
+				ri->nx = lb - sx;
+				if (rb < ex) {
+					server_client_ensure_ranges(r, r->used + 1);
+					memmove(&r->ranges[i + 2], &r->ranges[i + 1],
+					    (r->used - i - 1) * sizeof *r->ranges);
+					r->ranges[i + 1].px = rb;
+					r->ranges[i + 1].nx = ex - rb;
+					r->used++;
+				}
+			}
+		}
+	}
 
 	found_self = 0;
 	TAILQ_FOREACH_REVERSE(wp, &w->z_index, window_panes_zindex, zentry) {
