@@ -293,6 +293,16 @@ assert_key 'Escape [24@' 'C-S-F12'
 assert_key 'Escape [I' 'FocusIn'
 assert_key 'Escape [O' 'FocusOut'
 
+# Focus events do not leave the prefix table.
+$TMUX2 bind C-c set -g @focus-prefix yes
+$TMUX2 set -g focus-events on
+$TMUX send-keys C-b Escape '[O' Escape '[I' C-c
+sleep 0.05
+if [ "$($TMUX2 show -gv @focus-prefix)" != yes ]; then
+	echo "[FAIL] FocusIn and FocusOut left the prefix table"
+	exit_status=1
+fi
+
 # Paste keys
 assert_key 'Escape [200~' 'PasteStart'
 assert_key 'Escape [201~' 'PasteEnd'
