@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-display-menu.c,v 1.53 2026/08/31 07:46:55 nicm Exp $ */
+/* $OpenBSD: cmd-display-menu.c,v 1.54 2026/09/21 10:22:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>

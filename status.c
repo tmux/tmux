@@ -1,4 +1,4 @@
-/* $OpenBSD: status.c,v 1.273 2026/07/06 14:29:10 nicm Exp $ */
+/* $OpenBSD: status.c,v 1.274 2026/09/21 10:22:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>

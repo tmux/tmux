@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.429 2026/09/01 13:04:29 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.430 2026/09/21 10:22:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>

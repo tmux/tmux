@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.246 2026/09/11 10:17:16 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.247 2026/09/21 10:22:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -79,7 +79,7 @@ static const char *options_table_pane_border_lines_list[] = {
 	"single", "double", "heavy", "simple", "number", "spaces", "none",
 	"rounded", NULL
 };
-static const char *options_table_box_lines_list[] = {
+static const char *options_table_menu_border_lines_list[] = {
 	"single", "double", "heavy", "simple", "rounded", "padded", "none", NULL
 };
 static const char *options_table_set_clipboard_list[] = {
@@ -493,7 +493,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "menu-border-lines",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .choices = options_table_box_lines_list,
+	  .choices = options_table_menu_border_lines_list,
 	  .default_num = BOX_LINES_SINGLE,
 	  .text = "Type of characters used to draw menu border lines. Some of "
 		  "these are only supported on terminals with UTF-8 support."

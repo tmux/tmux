@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-draw.c,v 1.15 2026/07/26 09:02:08 nicm Exp $ */
+/* $OpenBSD: tty-draw.c,v 1.16 2026/09/21 10:22:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
