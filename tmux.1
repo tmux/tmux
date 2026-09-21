@@ -4907,12 +4907,18 @@ If enabled, the server will exit when there are no attached clients.
 .It Xo Ic extended\-keys
 .Op Ic on | off | always
 .Xc
-Controls how modified keys (keys pressed together with Control, Meta, or Shift)
-are reported.
-This is the equivalent of the
+Controls how modified keys are reported.
+For the
+.Ic csi\-u
+and
+.Ic xterm
+formats, this controls the
 .Ic modifyOtherKeys
 .Xr xterm 1
 resource.
+For the
+.Ic kitty
+format, this controls the progressive keyboard protocol enhancements.
 .Pp
 When set to
 .Ic on ,
@@ -4923,12 +4929,25 @@ When set to
 .Ic always ,
 modes 1 and 2 can still be requested by applications, but mode 1 will be forced
 instead of the standard mode.
+This applies only to applications inside panes and does not change what
+.Nm
+requests from the terminal.
 When set to
 .Ic off ,
 this feature is disabled and only standard keys are reported.
 .Pp
 .Nm
 will always request extended keys itself if the terminal supports them.
+When the
+.Ic kitty
+format is selected, it is preferred separately for each client; clients which
+do not support it use standard extended keys if available, or standard VT10x
+keys otherwise.
+Input from standard extended-key clients is translated to Kitty encoding for
+applications which have requested it.
+A Kitty keyboard state query reflects the clients attached to the window at
+the time of the query; if none are attached, the requested state is reported.
+Applications are not notified if client support changes after the reply.
 See also the
 .Ic extkeys
 feature for the
@@ -4937,13 +4956,28 @@ option, the
 .Ic extended\-keys\-format
 option and the
 .Ic pane_key_mode
-variable.
+and
+.Ic client_key_mode
+variables.
 .It Xo Ic extended\-keys\-format
-.Op Ic csi\-u | xterm
+.Op Ic csi\-u | xterm | kitty
 .Xc
-Selects one of the two possible formats for reporting modified keys to
-applications.
-This is the equivalent of the
+Selects the format for reporting modified keys to applications.
+The
+.Ic kitty
+format uses the Kitty keyboard protocol and supports the Super and Hyper
+modifiers.
+Their key name prefixes are
+.Ql s-
+and
+.Ql H- .
+The disambiguate and report-all enhancements are supported; event types,
+alternate keys and associated text are not requested.
+For the
+.Ic csi\-u
+and
+.Ic xterm
+formats, this is the equivalent of the
 .Ic formatOtherKeys
 .Xr xterm 1
 resource.
@@ -4955,6 +4989,10 @@ and as
 .Ql \[ha][[65;6u
 when set to
 .Ic csi\-u .
+With
+.Ic kitty ,
+it will be reported as
+.Ql \[ha][[97;6u .
 .It Xo Ic focus\-events
 .Op Ic on | off
 .Xc
@@ -7309,6 +7347,7 @@ The following variables are available, where appropriate:
 .It Li "client_discarded" Ta "" Ta "Bytes discarded when client behind"
 .It Li "client_flags" Ta "" Ta "List of client flags"
 .It Li "client_height" Ta "" Ta "Height of client"
+.It Li "client_key_mode" Ta "" Ta "Extended key reporting mode for this client"
 .It Li "client_key_table" Ta "" Ta "Current key table"
 .It Li "client_last_session" Ta "" Ta "Name of the client's last session"
 .It Li "client_name" Ta "" Ta "Name of client"
