@@ -35,7 +35,7 @@ The usual local layout is:
 ```sh
 cd /some/where/useful
 git clone https://github.com/tmux/tmux.git tmux-portable
-git clone https://github.com/ThomasAdam/tmux-obsd.git tmux-openbsd-cutover
+git clone https://github.com/tmux/tmux-openbsd-cutover.git tmux-openbsd-cutover
 ```
 
 The exact directory names do not matter, but the examples below use:
@@ -56,24 +56,51 @@ The cutover repository has three important branches:
 
 # Adding the OpenBSD remote to portable
 
-In the portable repository, add the cutover repository as a remote:
+In the portable repository, add the published cutover repository as a remote.
+This works regardless of which branch is checked out in a local cutover clone:
 
 ```sh
 cd /path/to/tmux-portable
-git remote add tmux-openbsd /path/to/tmux-openbsd-cutover
+git remote add tmux-openbsd https://github.com/tmux/tmux-openbsd-cutover.git
 git config remote.tmux-openbsd.tagOpt --no-tags
 ```
 
 If the remote already exists, update it instead:
 
 ```sh
-git remote set-url tmux-openbsd /path/to/tmux-openbsd-cutover
+git remote set-url tmux-openbsd https://github.com/tmux/tmux-openbsd-cutover.git
 git config remote.tmux-openbsd.tagOpt --no-tags
 ```
 
 Fetch the cutover master branch explicitly:
 
 ```sh
+git fetch --no-tags tmux-openbsd master:refs/remotes/tmux-openbsd/master
+```
+
+To merge unpublished changes from a local cutover clone instead, first ensure
+it has an up-to-date local `master` branch. A normal clone may check out
+`automation` and have only `origin/master`; fetching `master` from that clone
+will then fail with `couldn't find remote ref master`.
+
+With a clean cutover working tree:
+
+```sh
+cd /path/to/tmux-openbsd-cutover
+git fetch --no-tags origin
+git switch master
+git merge --ff-only origin/master
+```
+
+`git switch master` creates a tracking branch from `origin/master` if there is
+no local `master` yet. If the fast-forward fails, reconcile the local cutover
+changes before continuing; do not reset them away.
+
+Then, in portable, point the remote at that clone and fetch its local `master`:
+
+```sh
+cd /path/to/tmux-portable
+git remote set-url tmux-openbsd /path/to/tmux-openbsd-cutover
 git fetch --no-tags tmux-openbsd master:refs/remotes/tmux-openbsd/master
 ```
 
@@ -99,7 +126,9 @@ OpenBSD changes.
 If the workflow fails while merging into portable, do the merge locally and
 push the result.
 
-Start from an up-to-date portable master:
+Start with a clean working tree and an up-to-date portable master. If a merge
+is already in progress, skip to resolving conflicts, or abort it before
+starting again:
 
 ```sh
 cd /path/to/tmux-portable
@@ -108,10 +137,15 @@ git checkout master
 git pull --ff-only origin master
 ```
 
-Fetch the cutover branch:
+Fetch the published cutover branch. Update an existing remote as well, since
+it may point at a local clone without a `master` branch or with a stale one:
 
 ```sh
-git remote add tmux-openbsd /path/to/tmux-openbsd-cutover 2>/dev/null || true
+if git remote get-url tmux-openbsd >/dev/null 2>&1; then
+    git remote set-url tmux-openbsd https://github.com/tmux/tmux-openbsd-cutover.git
+else
+    git remote add tmux-openbsd https://github.com/tmux/tmux-openbsd-cutover.git
+fi
 git config remote.tmux-openbsd.tagOpt --no-tags
 git fetch --no-tags tmux-openbsd master:refs/remotes/tmux-openbsd/master
 ```
@@ -122,7 +156,22 @@ Merge it:
 git merge --no-ff --log refs/remotes/tmux-openbsd/master
 ```
 
-Resolve conflicts by deciding whether portable or OpenBSD owns the file.
+If merging a local cutover branch instead, use the local-clone preparation
+and fetch commands above in place of this fetch block.
+
+When the merge reports conflicts, it leaves the merge in progress. List the
+unresolved files, edit the conflict markers to combine the required portable
+and OpenBSD changes, then stage each resolved file:
+
+```sh
+git diff --name-only --diff-filter=U
+git diff -- path/to/file
+git add path/to/file
+```
+
+For files that should come entirely from one side, decide whether portable or
+OpenBSD owns the file before using the commands below. They replace the whole
+file, including changes outside the conflicting hunks.
 
 Useful commands:
 
@@ -140,11 +189,25 @@ git add path/to/file
 
 This takes the OpenBSD/cutover version of a conflicted file.
 
+For a modify/delete conflict, the side that deleted the file has no version
+to check out. For example, portable generates `Makefile` using autotools and
+does not track OpenBSD's `Makefile`. If Git reports that `Makefile` was deleted
+in HEAD and modified in cutover, keep the portable deletion with:
+
+```sh
+git rm -- Makefile
+```
+
+This removes the OpenBSD file left by the merge; regenerate the portable
+`Makefile` with your usual configure command before building. Use this only
+for the unmerged OpenBSD file, not an existing generated build file.
+
 Before committing, inspect the result:
 
 ```sh
 git status
 git diff --check
+git diff --cached --check
 git diff --cached --stat
 ```
 
