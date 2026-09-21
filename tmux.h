@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1439 2026/09/10 11:02:18 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1443 2026/09/21 10:33:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3833,6 +3833,7 @@ int		 window_pane_get_pane_status(struct window_pane *);
 struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
 		     u_int);
 int		 window_pane_is_floating(struct window_pane *);
+int		 window_pane_is_floating_with_hidden(struct window_pane *);
 
 /* window-border.c */
 void		 window_set_fill_cells(struct window *);
