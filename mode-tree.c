@@ -1,4 +1,4 @@
-/* $OpenBSD: mode-tree.c,v 1.101 2026/08/05 07:50:21 nicm Exp $ */
+/* $OpenBSD: mode-tree.c,v 1.102 2026/09/21 12:14:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1375,12 +1375,14 @@ static void
 mode_tree_display_menu(struct mode_tree_data *mtd, struct client *c, u_int x,
     u_int y, int outside)
 {
+	struct window		*w = mtd->wp->window;
 	struct mode_tree_item	*mti;
 	struct menu		*menu;
 	const struct menu_item	*items;
 	struct mode_tree_menu	*mtm;
 	char			*title;
-	u_int			 line;
+	enum box_lines		 lines;
+	u_int			 line, sx, sy;
 
 	if (mtd->offset + y > mtd->line_size - 1)
 		line = mtd->current;
@@ -1405,14 +1407,17 @@ mode_tree_display_menu(struct mode_tree_data *mtd, struct client *c, u_int x,
 	mtm->line = line;
 	mtd->references++;
 
-	if (x >= (menu->width + 4) / 2)
-		x -= (menu->width + 4) / 2;
+	lines = options_get_number(w->options, "menu-border-lines");
+	menu_get_size(menu, lines, &sx, &sy);
+	if (x >= sx / 2)
+		x -= sx / 2;
 	else
 		x = 0;
 	x += mtd->wp->xoff;
 	y += mtd->wp->yoff;
-	if (menu_display(menu, 0, 0, NULL, x, y, c, BOX_LINES_DEFAULT, NULL,
-	    NULL, NULL, NULL, mode_tree_menu_callback, mtm) != 0) {
+
+	if (menu_display(menu, 0, 0, NULL, x, y, c, lines, NULL, NULL, NULL,
+	    NULL, mode_tree_menu_callback, mtm) != 0) {
 		mode_tree_remove_ref(mtd);
 		free(mtm);
 		menu_free(menu);

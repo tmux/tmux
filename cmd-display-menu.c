@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-display-menu.c,v 1.54 2026/09/21 10:22:31 nicm Exp $ */
+/* $OpenBSD: cmd-display-menu.c,v 1.55 2026/09/21 12:14:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -286,8 +286,8 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	enum box_lines		 lines = BOX_LINES_DEFAULT;
 	char			*title, *cause = NULL;
 	int			 flags = 0, starting_choice = 0;
-	u_int			 px, py, i, count = args_count(args);
-	struct options		*o = target->s->curw->window->options;
+	u_int			 px, py, sx, sy, i, count = args_count(args);
+	struct options		*o = target->w->options;
 	struct options_entry	*oe;
 
 	if (args_has(args, 'C')) {
@@ -335,9 +335,6 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	if (menu->count == 0)
 		goto out;
-	if (!cmd_display_menu_get_menu_pos(tc, item, args, &px, &py,
-	    menu->width + 4, menu->count + 2))
-		goto out;
 
 	value = args_get(args, 'b');
 	if (value != NULL) {
@@ -348,7 +345,11 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "menu-border-lines %s", cause);
 			goto fail;
 		}
-	}
+	} else
+		lines = options_get_number(o, "menu-border-lines");
+	menu_get_size(menu, lines, &sx, &sy);
+	if (!cmd_display_menu_get_menu_pos(tc, item, args, &px, &py, sx, sy))
+		goto out;
 
 	if (args_has(args, 'O'))
 		flags |= MENU_STAYOPEN;
