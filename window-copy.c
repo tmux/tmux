@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.430 2026/09/21 10:22:31 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.431 2026/09/21 10:43:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -401,7 +401,7 @@ window_copy_clone_screen(struct screen *src, struct screen *hint, u_int *cx,
 
 	sy = screen_hsize(src) + screen_size_y(src);
 	if (trim) {
-		while (sy > screen_hsize(src)) {
+		while (sy > screen_hsize(src) + 1) {
 			gl = grid_peek_line(src->grid, sy - 1);
 			if (gl == NULL || gl->cellused != 0)
 				break;
