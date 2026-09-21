@@ -340,6 +340,9 @@ session_attach(struct session *s, struct window *w, int idx, char **cause)
 int
 session_detach(struct session *s, struct winlink *wl)
 {
+	if (winlink_count(&s->windows) == 1)
+		return (1);
+
 	if (s->curw == wl &&
 	    session_last(s) != 0 &&
 	    session_previous(s, 0) != 0)
@@ -352,8 +355,6 @@ session_detach(struct session *s, struct winlink *wl)
 
 	session_group_synchronize_from(s);
 
-	if (RB_EMPTY(&s->windows))
-		return (1);
 	return (0);
 }
 
