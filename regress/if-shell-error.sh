@@ -12,7 +12,8 @@ $TMUX kill-server 2>/dev/null
 
 TMP=$(mktemp)
 OUT=$(mktemp)
-trap "rm -f $TMP $OUT" 0 1 15
+trap 'rm -f "$TMP" "$OUT"; $TMUX kill-server 2>/dev/null' 0
+trap 'exit 1' 1 2 15
 
 cat <<EOF >$TMP
 if 'true' 'wibble wobble'
