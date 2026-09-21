@@ -1,4 +1,4 @@
-/* $OpenBSD: spawn.c,v 1.52 2026/08/20 09:19:24 nicm Exp $ */
+/* $OpenBSD: spawn.c,v 1.53 2026/09/21 12:43:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -168,8 +168,8 @@ spawn_window(struct spawn_context *sc, char **cause)
 		}
 		if (wl != NULL) {
 			/*
-			 * Can't use session_detach as it will destroy session
-			 * if this makes it empty.
+			 * Can't use session_detach as it won't detach the only
+			 * window.
 			 */
 			wl->flags &= ~WINLINK_ALERTFLAGS;
 			events_fire_winlink("window-unlinked", wl);

@@ -1,4 +1,4 @@
-/* $OpenBSD: session.c,v 1.107 2026/08/05 07:35:35 nicm Exp $ */
+/* $OpenBSD: session.c,v 1.108 2026/09/21 12:43:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -338,10 +338,17 @@ session_attach(struct session *s, struct window *w, int idx, char **cause)
 	return (wl);
 }
 
-/* Detach a window from a session. */
+/*
+ * Detach a window from a session. Returns 1 if the window has not been
+ * detached - the caller must destroy the session.
+ */
 int
 session_detach(struct session *s, struct winlink *wl)
 {
+	if (RB_MIN(winlinks, &s->windows) == wl &&
+	    RB_MAX(winlinks, &s->windows) == wl)
+		return (1);
+
 	if (s->curw == wl &&
 	    session_last(s) != 0 &&
 	    session_previous(s, 0) != 0)
@@ -354,8 +361,6 @@ session_detach(struct session *s, struct winlink *wl)
 
 	session_group_synchronize_from(s);
 
-	if (RB_EMPTY(&s->windows))
-		return (1);
 	return (0);
 }
 
