@@ -1111,14 +1111,27 @@ redraw_free_damage(struct window *w)
 #endif
 }
 
-/* Collapse all pending damage for a window into one rectangle - its union. */
+/* Free all entries on an arbitrary damage list (used for pending_damage). */
 static void
-redraw_collapse_damage(struct window *w)
+redraw_free_damage_list(struct redraw_damages *damage, u_int *count)
+{
+	struct redraw_damage	*rd, *rd1;
+
+	TAILQ_FOREACH_SAFE(rd, damage, entry, rd1) {
+		TAILQ_REMOVE(damage, rd, entry);
+		free(rd);
+	}
+	*count = 0;
+}
+
+/* Collapse a damage list into one rectangle - its union. */
+static void
+redraw_collapse_damage(struct redraw_damages *damage, u_int *count)
 {
 	struct redraw_damage	*rd, *rd1, *first;
 	u_int			 x0, y0, x1, y1;
 
-	first = TAILQ_FIRST(&w->damage);
+	first = TAILQ_FIRST(damage);
 	if (first == NULL)
 		return;
 	x0 = first->x;
@@ -1126,7 +1139,7 @@ redraw_collapse_damage(struct window *w)
 	x1 = first->x + first->sx;
 	y1 = first->y + first->sy;
 
-	TAILQ_FOREACH_SAFE(rd, &w->damage, entry, rd1) {
+	TAILQ_FOREACH_SAFE(rd, damage, entry, rd1) {
 		if (rd->x < x0)
 			x0 = rd->x;
 		if (rd->y < y0)
@@ -1137,7 +1150,7 @@ redraw_collapse_damage(struct window *w)
 			y1 = rd->y + rd->sy;
 		first->flags &= rd->flags;
 		if (rd != first) {
-			TAILQ_REMOVE(&w->damage, rd, entry);
+			TAILQ_REMOVE(damage, rd, entry);
 			free(rd);
 		}
 	}
@@ -1146,34 +1159,35 @@ redraw_collapse_damage(struct window *w)
 	first->y = y0;
 	first->sx = x1 - x0;
 	first->sy = y1 - y0;
-	w->damage_count = 1;
+	*count = 1;
 }
 
 /*
- * Record a damaged window-coordinate rectangle. Clips it to the window,
- * merges it with an existing rectangle where doing so does not make the
- * result substantially larger than the two combined, and collapses the
- * whole list to its union once it grows past a modest cap.
+ * Record a damaged window-coordinate rectangle on an arbitrary damage list,
+ * clipped to a bsx x bsy area. Merges it with an existing rectangle where
+ * doing so does not make the result substantially larger than the two
+ * combined, and collapses the whole list to its union once it grows past a
+ * modest cap.
  *
  * This only records damage - nothing consumes it yet.
  */
 static void
-redraw_damage_window_flags(struct window *w, u_int x, u_int y, u_int sx,
-    u_int sy, int flags)
+redraw_add_damage(struct redraw_damages *damage, u_int *count, u_int bsx,
+    u_int bsy, u_int x, u_int y, u_int sx, u_int sy, int flags)
 {
 	struct redraw_damage	*rd;
 	u_int			 x0, y0, x1, y1, area, union_area;
 
-	if (x >= w->sx || y >= w->sy)
+	if (x >= bsx || y >= bsy)
 		return;
-	if (x + sx > w->sx)
-		sx = w->sx - x;
-	if (y + sy > w->sy)
-		sy = w->sy - y;
+	if (x + sx > bsx)
+		sx = bsx - x;
+	if (y + sy > bsy)
+		sy = bsy - y;
 	if (sx == 0 || sy == 0)
 		return;
 
-	TAILQ_FOREACH(rd, &w->damage, entry) {
+	TAILQ_FOREACH(rd, damage, entry) {
 		/* Skip unless overlapping or directly adjacent. */
 		if (x > rd->x + rd->sx || rd->x > x + sx ||
 		    y > rd->y + rd->sy || rd->y > y + sy)
@@ -1203,17 +1217,58 @@ redraw_damage_window_flags(struct window *w, u_int x, u_int y, u_int sx,
 	rd->sx = sx;
 	rd->sy = sy;
 	rd->flags = flags;
-	TAILQ_INSERT_TAIL(&w->damage, rd, entry);
-	w->damage_count++;
+	TAILQ_INSERT_TAIL(damage, rd, entry);
+	(*count)++;
 
-	if (w->damage_count > REDRAW_DAMAGE_MAX)
-		redraw_collapse_damage(w);
+	if (*count > REDRAW_DAMAGE_MAX)
+		redraw_collapse_damage(damage, count);
+}
+
+/*
+ * Record a damaged window-coordinate rectangle. Clips it to the window.
+ * This only records damage - nothing consumes it yet.
+ */
+static void
+redraw_damage_window_flags(struct window *w, u_int x, u_int y, u_int sx,
+    u_int sy, int flags)
+{
+	redraw_add_damage(&w->damage, &w->damage_count, w->sx, w->sy, x, y,
+	    sx, sy, flags);
 }
 
 void
 redraw_damage_window(struct window *w, u_int x, u_int y, u_int sx, u_int sy)
 {
 	redraw_damage_window_flags(w, x, y, sx, sy, 0);
+}
+
+/* Free a client's retained damage from a previously deferred redraw. */
+void
+redraw_free_pending_damage(struct client *c)
+{
+	redraw_free_damage_list(&c->pending_damage, &c->pending_damage_count);
+}
+
+/*
+ * Copy a window's currently pending damage onto a client whose redraw was
+ * deferred this pass, so it survives server_client_loop()'s unconditional
+ * per-pass free of w->damage and can still be composed precisely on a later
+ * pass instead of escalating to a full-window redraw.
+ */
+void
+redraw_defer_damage(struct client *c)
+{
+	struct window		*w = c->session->curw->window;
+	struct redraw_damage	*rd;
+
+	if (c->pending_damage_id != w->id) {
+		redraw_free_pending_damage(c);
+		c->pending_damage_id = w->id;
+	}
+	TAILQ_FOREACH(rd, &w->damage, entry) {
+		redraw_add_damage(&c->pending_damage, &c->pending_damage_count,
+		    w->sx, w->sy, rd->x, rd->y, rd->sx, rd->sy, rd->flags);
+	}
 }
 
 #ifdef ENABLE_IMAGES
@@ -2101,7 +2156,7 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 			}
 		}
 	}
-	if (c->overlay_draw != NULL && (flags & REDRAW_OVERLAY))
+	if (c->overlay_draw != NULL && (c->flags & CLIENT_REDRAWOVERLAY))
 		c->overlay_draw(c, c->overlay_data);
 
 	tty_reset(tty);
@@ -2150,10 +2205,16 @@ redraw_screen(struct client *c)
 	int	flags = 0;
 
 	if (c->flags & CLIENT_REDRAWWINDOW) {
-		if (c->flags & CLIENT_REDRAWOVERLAY)
-			redraw_draw(c, NULL, REDRAW_ALL);
-		else
-			redraw_draw(c, NULL, REDRAW_ALL & ~REDRAW_OVERLAY);
+		/*
+		 * Always pass the literal REDRAW_ALL here, even when no
+		 * overlay is open - whether the overlay callback below
+		 * actually fires is decided by CLIENT_REDRAWOVERLAY directly,
+		 * not by this flags value. REDRAW_IS_ALL()/flags==REDRAW_ALL
+		 * checks elsewhere (e.g. the PANE_NEWSTATUS force-refresh in
+		 * the REDRAW_PANE_STATUS block below) rely on a real window
+		 * redraw always being bit-exact REDRAW_ALL.
+		 */
+		redraw_draw(c, NULL, REDRAW_ALL);
 	} else {
 		if (c->flags & CLIENT_REDRAWBORDERS)
 			flags |= (REDRAW_PANE_BORDER|REDRAW_PANE_STATUS);
@@ -2362,6 +2423,35 @@ redraw_draw_damage_rect(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 	}
 }
 
+/* Compose one damaged rectangle, clipped to what this client can see. */
+static void
+redraw_client_damage_rect(struct client *c, struct redraw_draw_ctx *dctx,
+    struct window *w, u_int ox, u_int oy, u_int sx, u_int sy,
+    struct redraw_damage *rd)
+{
+	u_int	x0, y0, x1, y1;
+	int	skip_images = 0;
+
+#ifdef ENABLE_IMAGES
+	if ((rd->flags & REDRAW_DAMAGE_SCROLL) &&
+	    (image_backend_flags(&c->tty) & IMAGE_BACKEND_SCROLLS) &&
+	    c->tty.image_scroll_window == w &&
+	    c->tty.image_scroll_epoch == w->image_scroll_epoch &&
+	    !c->tty.image_scroll_failed)
+		skip_images = 1;
+#endif
+	x0 = (rd->x > ox) ? rd->x : ox;
+	y0 = (rd->y > oy) ? rd->y : oy;
+	x1 = (rd->x + rd->sx < ox + sx) ? rd->x + rd->sx : ox + sx;
+	y1 = (rd->y + rd->sy < oy + sy) ? rd->y + rd->sy : oy + sy;
+	if (x0 >= x1 || y0 >= y1)
+		return;
+	log_debug("%s: %s composing damage %u,%u %ux%u", __func__, c->name,
+	    x0 - ox, y0 - oy, x1 - x0, y1 - y0);
+	redraw_draw_damage_rect(dctx, x0 - ox, y0 - oy, x1 - x0, y1 - y0,
+	    skip_images);
+}
+
 /*
  * Consume a client's window's pending damage by composing exactly the
  * damaged cells, after clipping each rectangle to what this client can see
@@ -2370,6 +2460,12 @@ redraw_draw_damage_rect(struct redraw_draw_ctx *dctx, u_int x, u_int y,
  * Unlike redraw_pane(), this does not redraw a whole pane's worth of cells
  * for a small disturbance - only the cells within the (clipped) rectangle
  * are touched, via redraw_draw_damage_rect().
+ *
+ * Also drains any damage this client missed on a previously deferred pass
+ * (see redraw_defer_damage()) - discarding it first instead if it was
+ * copied for a different window, or if CLIENT_REDRAWWINDOW is set (a full
+ * redraw already ran this pass, so composing old rectangles now would only
+ * retransmit content that redraw just drew).
  */
 void
 redraw_client_damage(struct client *c)
@@ -2377,11 +2473,12 @@ redraw_client_damage(struct client *c)
 	struct window		*w = c->session->curw->window;
 	struct redraw_scene	*scene;
 	struct redraw_draw_ctx	 dctx;
-	struct redraw_damage	*rd;
-	u_int			 ox, oy, sx, sy, x0, y0, x1, y1;
-	int			 skip_images;
+	struct redraw_damage	*rd, *rd1;
+	u_int			 ox, oy, sx, sy;
 
-	if (TAILQ_EMPTY(&w->damage))
+	if (c->pending_damage_id != w->id || (c->flags & CLIENT_REDRAWWINDOW))
+		redraw_free_pending_damage(c);
+	if (TAILQ_EMPTY(&w->damage) && TAILQ_EMPTY(&c->pending_damage))
 		return;
 
 	scene = redraw_get_scene(c);
@@ -2393,25 +2490,13 @@ redraw_client_damage(struct client *c)
 	tty_sync_start(&c->tty);
 	tty_update_mode(&c->tty, c->tty.mode & ~CURSOR_MODES, NULL);
 
-	TAILQ_FOREACH(rd, &w->damage, entry) {
-		skip_images = 0;
-#ifdef ENABLE_IMAGES
-		if ((rd->flags & REDRAW_DAMAGE_SCROLL) &&
-		    (image_backend_flags(&c->tty) & IMAGE_BACKEND_SCROLLS) &&
-		    c->tty.image_scroll_window == w &&
-		    c->tty.image_scroll_epoch == w->image_scroll_epoch &&
-		    !c->tty.image_scroll_failed)
-			skip_images = 1;
-#endif
-		x0 = (rd->x > ox) ? rd->x : ox;
-		y0 = (rd->y > oy) ? rd->y : oy;
-		x1 = (rd->x + rd->sx < ox + sx) ? rd->x + rd->sx : ox + sx;
-		y1 = (rd->y + rd->sy < oy + sy) ? rd->y + rd->sy : oy + sy;
-		if (x0 >= x1 || y0 >= y1)
-			continue;
-		log_debug("%s: %s composing damage %u,%u %ux%u", __func__,
-		    c->name, x0 - ox, y0 - oy, x1 - x0, y1 - y0);
-		redraw_draw_damage_rect(&dctx, x0 - ox, y0 - oy, x1 - x0,
-		    y1 - y0, skip_images);
+	TAILQ_FOREACH_SAFE(rd, &c->pending_damage, entry, rd1) {
+		redraw_client_damage_rect(c, &dctx, w, ox, oy, sx, sy, rd);
+		TAILQ_REMOVE(&c->pending_damage, rd, entry);
+		free(rd);
+		c->pending_damage_count--;
 	}
+
+	TAILQ_FOREACH(rd, &w->damage, entry)
+		redraw_client_damage_rect(c, &dctx, w, ox, oy, sx, sy, rd);
 }

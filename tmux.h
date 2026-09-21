@@ -2317,6 +2317,23 @@ struct client {
 
 	struct redraw_scene	*redraw_scene;
 
+	/*
+	 * Damage this client missed because its redraw was deferred (pending
+	 * tty output) on the pass it was reported - server_client_loop()
+	 * frees w->damage unconditionally every pass regardless of whether
+	 * every attached client got to consume it, so a deferred client's
+	 * copy is kept here to compose precisely on a later pass instead of
+	 * escalating to a full-window redraw. See redraw_defer_damage() and
+	 * redraw_client_damage() (screen-redraw.c). pending_damage_id is the
+	 * id of the window these rectangles were copied for (window ids are
+	 * unique and never reused), used to discard them if the client's
+	 * current window has since changed instead of composing them
+	 * against the wrong window's scene.
+	 */
+	struct redraw_damages	 pending_damage;
+	u_int			 pending_damage_count;
+	u_int			 pending_damage_id;
+
 	struct event		 repeat_timer;
 
 	struct event		 click_timer;
@@ -3736,6 +3753,8 @@ void	 redraw_image_scroll_result(struct tty *, const struct tty_ctx *, int);
 #endif
 void	 redraw_free_damage(struct window *);
 void	 redraw_client_damage(struct client *);
+void	 redraw_defer_damage(struct client *);
+void	 redraw_free_pending_damage(struct client *);
 int	 redraw_get_status_border_cell_type(struct redraw_span **, u_int);
 
 /* screen.c */

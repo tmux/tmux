@@ -316,6 +316,7 @@ server_client_create(int fd)
 	c->click_wp = -1;
 
 	TAILQ_INIT(&c->input_requests);
+	TAILQ_INIT(&c->pending_damage);
 
 	TAILQ_INSERT_TAIL(&clients, c, entry);
 	log_debug("new client %p", c);
@@ -548,6 +549,7 @@ server_client_lost(struct client *c)
 
 	status_free(c);
 	input_cancel_requests(c);
+	redraw_free_pending_damage(c);
 
 	free(c->title);
 	free(c->path);
@@ -1949,11 +1951,13 @@ server_client_loop(void)
 	/*
 	 * Any windows will have been redrawn as part of clients, so clear
 	 * their flags now. A client whose redraw was deferred this pass
-	 * (waiting for outstanding tty output to drain) has already
-	 * escalated to CLIENT_REDRAWWINDOW or CLIENT_REDRAWSCROLLBARS in
-	 * server_client_check_redraw() to cover whatever it is about to
-	 * lose here, so PANE_REDRAW/PANE_REDRAWSCROLLBAR and window damage
-	 * can simply be cleared unconditionally.
+	 * (waiting for outstanding tty output to drain) has already copied
+	 * window damage onto its own pending_damage in
+	 * server_client_check_redraw() (see redraw_defer_damage()) to
+	 * compose precisely on a later pass, or escalated to
+	 * CLIENT_REDRAWWINDOW/CLIENT_REDRAWSCROLLBARS for whole-pane needs
+	 * that aren't rectangle-shaped, so PANE_REDRAW/PANE_REDRAWSCROLLBAR
+	 * and window damage can simply be cleared unconditionally here.
 	 */
 	RB_FOREACH(w, windows, &windows) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -2516,6 +2520,8 @@ server_client_any_pane_redraw(struct client *c)
 		return (1);
 	if (!TAILQ_EMPTY(&w->damage))
 		return (1);
+	if (!TAILQ_EMPTY(&c->pending_damage))
+		return (1);
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (wp->flags & (PANE_REDRAW|PANE_REDRAWSCROLLBAR))
 			return (1);
@@ -2563,10 +2569,11 @@ server_client_check_redraw(struct client *c)
 	 * consumed. We can just add a timer to get out of the event loop and
 	 * end up back here. server_client_loop() clears PANE_REDRAW,
 	 * PANE_REDRAWSCROLLBAR and window damage unconditionally every pass,
-	 * so escalate to a coarser, persistent client flag that survives
-	 * that clear and forces a full catch-up redraw once this client is
-	 * unblocked, rather than trying to keep the fine-grained state
-	 * around for a retry.
+	 * so window damage is copied onto this client's own pending_damage
+	 * (redraw_defer_damage()) to survive that and still be composed
+	 * precisely on a later pass; a whole-pane need (PANE_REDRAW) or a
+	 * pane's scrollbar isn't rectangle-shaped the same way, so those
+	 * still escalate to a coarser, persistent client flag as before.
 	 */
 	n = EVBUFFER_LENGTH(tty->out);
 	if (n != 0 || (tty->flags & TTY_BLOCK)) {
@@ -2581,7 +2588,7 @@ server_client_check_redraw(struct client *c)
 			evtimer_add(&ev, &tv);
 		}
 		if (!TAILQ_EMPTY(&w->damage))
-			c->flags |= CLIENT_REDRAWWINDOW;
+			redraw_defer_damage(c);
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->flags & PANE_REDRAW) {
 				c->flags |= CLIENT_REDRAWWINDOW;
@@ -2617,16 +2624,16 @@ server_client_check_redraw(struct client *c)
 		}
 
 		/*
-		 * Window damage is also what makes server_client_any_pane_
-		 * redraw() decide a redraw is needed at all, independently of
-		 * any CLIENT_ALLREDRAWFLAGS bit. Every current damage source
-		 * happens to set one of those flags too, so the block below
-		 * always consumes it - but consume it here too in case that
-		 * ever stops holding, since server_client_loop() clears
-		 * window damage unconditionally every pass regardless of
-		 * whether it was actually drawn.
+		 * Window damage (and any damage this client missed on a
+		 * previous deferred pass - see redraw_defer_damage()) is
+		 * also what makes server_client_any_pane_redraw() decide a
+		 * redraw is needed at all, independently of any
+		 * CLIENT_ALLREDRAWFLAGS bit. Consume both here, since
+		 * server_client_loop() clears window damage unconditionally
+		 * every pass regardless of whether it was actually drawn.
 		 */
-		if (!TAILQ_EMPTY(&w->damage) && (~c->flags & CLIENT_ALLREDRAWFLAGS))
+		if ((!TAILQ_EMPTY(&w->damage) || !TAILQ_EMPTY(&c->pending_damage)) &&
+		    !(c->flags & CLIENT_ALLREDRAWFLAGS))
 			redraw_client_damage(c);
 	}
 
