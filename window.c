@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.376 2026/09/21 10:22:31 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.377 2026/09/21 10:33:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2898,6 +2898,18 @@ window_pane_is_floating(struct window_pane *wp)
 {
 	struct layout_cell	*lc = wp->layout_cell;
 
+	if (lc == NULL || (lc->flags & LAYOUT_CELL_FLOATING) == 0)
+		return (0);
+	return (1);
+}
+
+int
+window_pane_is_floating_with_hidden(struct window_pane *wp)
+{
+	struct layout_cell	*lc = wp->layout_cell;
+
+	if (lc == NULL)
+		lc = wp->saved_layout_cell;
 	if (lc == NULL || (lc->flags & LAYOUT_CELL_FLOATING) == 0)
 		return (0);
 	return (1);
