@@ -9,14 +9,37 @@ $TMUX kill-server 2>/dev/null
 TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
 $TMUX2 kill-server 2>/dev/null
 
-TMP=$(mktemp)
-trap "rm -f $TMP" 0 1 15
+TMP=$(mktemp) || exit 1
+prompt_pid=
+
+cleanup () {
+	if [ -n "$prompt_pid" ]; then
+		kill "$prompt_pid" 2>/dev/null
+		wait "$prompt_pid" 2>/dev/null
+	fi
+	$TMUX kill-server 2>/dev/null
+	$TMUX2 kill-server 2>/dev/null
+	rm -f "$TMP"
+}
+trap cleanup 0
+trap 'exit 1' 1 2 15
+
+fail () {
+	echo "[FAIL] $*" >&2
+	exit 1
+}
 
 $TMUX2 -f/dev/null new -d || exit 1
 $TMUX -f/dev/null new -d "$TMUX2 attach" || exit 1
-sleep 1
+i=0
+while [ -z "$($TMUX2 list-clients -F '#{client_name}')" ]; do
+	[ "$i" -lt 100 ] || fail "inner client did not attach"
+	sleep 0.05
+	i=$((i + 1))
+done
 
 exit_status=0
+assertion=0
 
 format_string () {
 	case $1 in
@@ -34,12 +57,33 @@ assert_key () {
 	expected_name=$2
 	format_string=$(format_string "$expected_name")
 
-	$TMUX2 command-prompt -k 'display-message -pl '"$format_string" > "$TMP" &
-	sleep 0.05
+	# Use a different prompt each time so a stale redraw cannot look ready.
+	assertion=$((assertion + 1))
+	prompt="tty-keys-$assertion:"
+	$TMUX2 command-prompt -k -p "$prompt" \
+	    'display-message -pl '"$format_string" > "$TMP" &
+	prompt_pid=$!
+	i=0
+	while ! $TMUX capture-pane -p | grep -Fq "$prompt"; do
+		kill -0 "$prompt_pid" 2>/dev/null || \
+		    fail "$keys -> $expected_name: prompt exited before becoming ready"
+		[ "$i" -lt 100 ] || \
+		    fail "$keys -> $expected_name: timed out waiting for prompt"
+		sleep 0.05
+		i=$((i + 1))
+	done
 
-	$TMUX send-keys $keys
+	$TMUX send-keys $keys || fail "could not send $keys"
 
-	wait
+	i=0
+	while kill -0 "$prompt_pid" 2>/dev/null; do
+		[ "$i" -lt 100 ] || \
+		    fail "$keys -> $expected_name: timed out waiting for key"
+		sleep 0.05
+		i=$((i + 1))
+	done
+	wait "$prompt_pid" || fail "$keys -> $expected_name: prompt failed"
+	prompt_pid=
 
 	keys=$(printf '%s' "$keys" | sed -e 's/Escape/\\\\033/g' | tr -d '[:space:]')
 	actual_name=$(tr -d '[:space:]' < "$TMP")
@@ -364,8 +408,5 @@ assert_key 'Escape [32;2u' 'S-Space'
 
 assert_key 'Escape [9;5u' 'C-Tab'
 assert_key 'Escape [1;5Z' 'C-S-Tab'
-
-$TMUX kill-server 2>/dev/null
-$TMUX2 kill-server 2>/dev/null
 
 exit $exit_status
