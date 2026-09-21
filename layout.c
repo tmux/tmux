@@ -1,4 +1,4 @@
-/* $OpenBSD: layout.c,v 1.100 2026/09/11 08:16:14 nicm Exp $ */
+/* $OpenBSD: layout.c,v 1.101 2026/09/20 08:42:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1730,7 +1730,7 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
     enum pane_lines lines, struct window *w, struct layout_geometry *lg,
     char **cause)
 {
-	int	 sx, sy, ox, oy;
+	int	 sx, sy, ox, oy, pad;
 	char	*error = NULL;
 
 	sx = lg->sx == UINT_MAX ? w->sx / 2 : lg->sx;
@@ -1779,12 +1779,20 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 		}
 	}
 
+	if (!window_has_floating_panes(w)) {
+		w->last_new_pane_x = 0;
+		w->last_new_pane_y = 0;
+	}
 	if (ox == INT_MAX) {
 		if (w->last_new_pane_x == 0)
 			ox = 4;
 		else {
+			if (lines != PANE_LINES_NONE)
+				pad = 1;
+			else
+				pad = 0;
 			ox = w->last_new_pane_x + 4;
-			if (w->last_new_pane_x > w->sx)
+			if (ox + sx + pad > (int)w->sx)
 				ox = 4;
 		}
 		w->last_new_pane_x = ox;
@@ -1795,8 +1803,12 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 		if (w->last_new_pane_y == 0)
 			oy = 2;
 		else {
+			if (lines != PANE_LINES_NONE)
+				pad = 1;
+			else
+				pad = 0;
 			oy = w->last_new_pane_y + 2;
-			if (w->last_new_pane_y > w->sy)
+			if (oy + sy + pad > (int)w->sy)
 				oy = 2;
 		}
 		w->last_new_pane_y = oy;

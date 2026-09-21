@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.417 2026/09/08 15:42:26 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.418 2026/09/20 08:19:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>

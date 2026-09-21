@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.374 2026/09/08 08:37:56 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.375 2026/09/20 07:35:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -450,20 +450,17 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 static void
 window_destroy(struct window *w)
 {
+	struct window_pane	*wp;
+
 	log_debug("window @%u destroyed (%d references)", w->id, w->references);
 
-	/*
-	 * Pin the window while unzooming: layout_fix_panes() resizes panes,
-	 * which fires the pane-resized hook, and its event payload takes and
-	 * drops its own reference on the window. references is already 0
-	 * here, so that reference reaching 0 again would call window_destroy()
-	 * a second time from inside this call, freeing w (and its panes)
-	 * out from under the rest of this function.
-	 */
-	w->references++;
-	window_unzoom(w, 0);
-	w->references--;
-
+	if (w->flags & WINDOW_ZOOMED) {
+		w->flags &= ~WINDOW_ZOOMED;
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			wp->flags &= ~PANE_ZOOMED;
+			wp->saved_layout_cell = NULL;
+		}
+	}
 	RB_REMOVE(windows, &windows, w);
 
 	layout_free_cell(w->layout_root, 0);
