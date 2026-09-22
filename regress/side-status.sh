@@ -1,9 +1,10 @@
 #!/bin/sh
 
-# Side status line rendering: geometry on the left and right, coexistence
-# with the horizontal status line, width changes and turning it off. Scenes
-# are rendered in an inner tmux attached inside an outer tmux pane; the outer
-# pane is captured and compared with goldens in side-status-results/.
+# Side status line rendering: geometry on the left and right, a floating pane
+# against the window edge, coexistence with the horizontal status line, width
+# changes and turning it off. Scenes are rendered in an inner tmux attached
+# inside an outer tmux pane; the outer pane is captured and compared with
+# goldens in side-status-results/.
 #
 # Run with GENERATE=1 to (re)create the golden files.
 
@@ -56,6 +57,13 @@ $TMUX2 set -g side-status left
 $TMUX send-keys "exec $TEST_TMUX -LtestB$$ -f/dev/null attach" Enter
 sleep 1
 compare side-left
+
+# A floating pane at the window's top left corner sits beside the side status
+# line, not over it.
+id=$($TMUX2 new-pane -dPF '#{pane_id}' -x 12 -y 4 -X 0 -Y 0 \
+    "sh -c 'printf FLOAT; exec sleep 100'") || exit 1
+compare side-left-floating
+$TMUX2 kill-pane -t "$id" || exit 1
 
 $TMUX2 set -g side-status right
 compare side-right
