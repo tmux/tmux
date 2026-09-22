@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1169 2026/09/10 11:02:18 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1172 2026/09/22 06:58:05 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: September 10 2026 $
+.Dd $Mdocdate: September 22 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -5085,6 +5085,9 @@ The available features are:
 .Bl -tag -width Ds
 .It 256
 Supports 256 colours with the SGR escape sequences.
+.It appesc
+Supports application escape key mode, where the Escape key sends a sequence
+that cannot be mistaken for the start of another key.
 .It clipboard
 Allows setting the system clipboard.
 .It ccolour
@@ -8968,6 +8971,8 @@ These are set automatically if the
 capability is present.
 .It Em \&Dseks , \&Eneks
 Disable and enable extended keys.
+.It Em \&Dsesc , \&Enesc
+Disable and enable application escape key mode.
 .It Em \&Dsfcs , \&Enfcs
 Disable and enable focus reporting.
 These are set automatically if the
