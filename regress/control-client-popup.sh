@@ -1,6 +1,7 @@
 #!/bin/sh
 
-# Popups require a tty overlay and cannot be displayed by a control client.
+# Popups require an attached terminal and cannot be displayed by a control
+# client.
 # A popup command from control mode must be ignored cleanly, leaving the
 # client command queue and server usable.
 

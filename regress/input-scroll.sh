@@ -51,7 +51,7 @@ $TMUX kill-server 2>/dev/null
 sleep 0.1
 $TMUX new-session -d -x 5 -y 3 -s history \; \
     set-option -g history-limit 3 \; \
-    respawn-pane -k "printf '01\n02\n03\n04\n05\n06'; sleep 2" || exit 1
+    respawn-pane -k "printf '01\n02\n03\n04\n05\n06'; $INPUT_HOLD" || exit 1
 sleep 0.3
 $TMUX capture-pane -pN -t history: -S - -E - | normalize_capture >"$TMP"
 printf "%s\n" '01

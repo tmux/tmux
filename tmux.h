@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1440 2026/09/11 10:17:16 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1444 2026/09/21 12:14:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1231,6 +1231,7 @@ struct menu {
 	struct menu_item	*items;
 	u_int			 count;
 	u_int			 width;
+	u_int			 item_width;
 };
 typedef void (*menu_choice_cb)(struct menu *, u_int, key_code, void *);
 
@@ -1859,7 +1860,6 @@ struct tty {
 	size_t		 discarded;
 
 	struct termios	 tio;
-	struct visible_ranges r;
 
 	struct grid_cell cell;
 	struct grid_cell last_cell;
@@ -1928,7 +1928,6 @@ struct tty_ctx {
 #define TTY_CTX_INVISIBLE_PANES 0x2
 #define TTY_CTX_WINDOW_BIGGER 0x4
 #define TTY_CTX_SYNC 0x8
-#define TTY_CTX_OVERLAY_SYNC 0x10
 #define TTY_CTX_CELL_INVALIDATE 0x20
 #define TTY_CTX_PANE_OBSCURED 0x40
 
@@ -2263,16 +2262,6 @@ struct prompt_draw_data {
 	u_int			 prompt_line;
 };
 
-/* Overlay callbacks */
-typedef struct visible_ranges *(*overlay_check_cb)(struct client *, void *,
-    u_int, u_int, u_int);
-typedef struct screen *(*overlay_mode_cb)(struct client *, void *, u_int *,
-    u_int *);
-typedef void (*overlay_draw_cb)(struct client *, void *);
-typedef int (*overlay_key_cb)(struct client *, void *, struct key_event *);
-typedef void (*overlay_free_cb)(struct client *, void *);
-typedef void (*overlay_resize_cb)(struct client *, void *);
-
 /* Client connection. */
 struct client {
 	const char		*name;
@@ -2375,7 +2364,7 @@ struct client {
 #define CLIENT_SIZECHANGED 0x400000
 #define CLIENT_STATUSOFF 0x800000
 #define CLIENT_REDRAWSTATUSALWAYS 0x1000000
-#define CLIENT_REDRAWOVERLAY 0x2000000
+/* 0x2000000 unused */
 #define CLIENT_CONTROL_NOOUTPUT 0x4000000
 #define CLIENT_DEFAULTSOCKET 0x8000000
 #define CLIENT_STARTSERVER 0x10000000
@@ -2390,13 +2379,12 @@ struct client {
 #define CLIENT_ASSUMEPASTING 0x2000000000ULL
 #define CLIENT_WRITE_ACK 0x4000000000ULL
 #define CLIENT_NO_DETACH_ON_DESTROY 0x8000000000ULL
-#define CLIENT_CONTROL_DISCARD 0x1000000000ULL
+#define CLIENT_CONTROL_DISCARD 0x10000000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
 	 CLIENT_REDRAWSTATUSALWAYS|	\
 	 CLIENT_REDRAWBORDERS|		\
-	 CLIENT_REDRAWOVERLAY|		\
 	 CLIENT_REDRAWMENU)
 #define CLIENT_UNATTACHEDFLAGS	\
 	(CLIENT_DEAD|		\
@@ -2441,15 +2429,6 @@ struct client {
 	void			*pan_window;
 	u_int			 pan_ox;
 	u_int			 pan_oy;
-
-	overlay_check_cb	 overlay_check;
-	overlay_mode_cb		 overlay_mode;
-	overlay_draw_cb		 overlay_draw;
-	overlay_key_cb		 overlay_key;
-	overlay_free_cb		 overlay_free;
-	overlay_resize_cb	 overlay_resize;
-	void			*overlay_data;
-	struct event		 overlay_timer;
 
 	struct client_files	 files;
 	u_int			 source_file_depth;
@@ -3052,8 +3031,6 @@ void	tty_default_attributes(struct tty *, u_int,
 void	tty_update_mode(struct tty *, int, struct screen *);
 const struct grid_cell *tty_check_codeset(struct tty *,
 	    const struct grid_cell *);
-struct visible_ranges *tty_check_overlay_range(struct tty *, u_int, u_int,
-	    u_int);
 void	tty_sync_start(struct tty *);
 void	tty_sync_end(struct tty *);
 int	tty_open(struct tty *, char **);
@@ -3401,14 +3378,8 @@ int	 server_create_socket(uint64_t, char **);
 
 /* server-client.c */
 u_int	 server_client_how_many(void);
-void	 server_client_set_overlay(struct client *, u_int, overlay_check_cb,
-	     overlay_mode_cb, overlay_draw_cb, overlay_key_cb,
-	     overlay_free_cb, overlay_resize_cb, void *);
-void	 server_client_clear_overlay(struct client *);
 void	 server_client_ensure_ranges(struct visible_ranges *, u_int);
 int	 server_client_ranges_is_empty(struct visible_ranges *);
-void	 server_client_overlay_range(u_int, u_int, u_int, u_int, u_int, u_int,
-	     u_int, struct visible_ranges *);
 void	 server_client_set_key_table(struct client *, const char *);
 const char *server_client_get_key_table(struct client *);
 int	 server_client_check_nested(struct client *);
@@ -3517,7 +3488,7 @@ void	 recalculate_sizes_now(int);
 /* input.c */
 #define INPUT_BUF_DEFAULT_SIZE 1048576
 struct input_ctx *input_init(struct window_pane *, struct bufferevent *,
-	     struct colour_palette *, struct client *);
+	     struct colour_palette *);
 void	 input_free(struct input_ctx *);
 void	 input_reset(struct input_ctx *, int);
 struct evbuffer *input_pending(struct input_ctx *);
@@ -3930,6 +3901,7 @@ struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
 int		 window_pane_is_floating(struct window_pane *);
 void		 window_pane_redraw_floating(struct window *,
 		     struct window_pane *, int, int, int, int);
+int		 window_pane_is_floating_with_hidden(struct window_pane *);
 
 /* window-border.c */
 void		 window_set_fill_cells(struct window *);
@@ -4269,6 +4241,7 @@ void		 menu_add_item(struct menu *, const struct menu_item *,
 		    struct cmdq_item *, struct client *,
 		    struct cmd_find_state *);
 void		 menu_free(struct menu *);
+void		 menu_get_size(struct menu *, enum box_lines, u_int *, u_int *);
 int		 menu_display(struct menu *, int, int, struct cmdq_item *,
 		    u_int, u_int, struct client *, enum box_lines, const char *,
 		    const char *, const char *, struct cmd_find_state *,
@@ -4284,20 +4257,6 @@ u_int		 menu_y(struct menu_data *);
 void		 menu_get_cursor(struct menu_data *, u_int *, u_int *);
 void		 menu_resize(struct menu_data *, struct window *);
 int		 menu_key(struct client *, struct menu_data *, struct key_event *);
-
-/* popup.c */
-#define POPUP_CLOSEEXIT 0x1
-#define POPUP_CLOSEEXITZERO 0x2
-#define POPUP_CLOSEANYKEY 0x4
-typedef void (*popup_close_cb)(int, void *);
-int		 popup_display(int, enum box_lines, struct cmdq_item *, u_int,
-                    u_int, u_int, u_int, struct environ *, const char *, int,
-                    char **, const char *, const char *, struct client *,
-                    struct session *, const char *, const char *,
-                    popup_close_cb, void *);
-int		 popup_present(struct client *);
-int		 popup_modify(struct client *, const char *, const char *,
-		    const char *, enum box_lines, int);
 
 /* style.c */
 int		 style_parse(struct style *,const struct grid_cell *,
