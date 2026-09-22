@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.44 2026/09/22 06:58:06 nicm Exp $ */
+/* $OpenBSD: tty-features.c,v 1.45 2026/09/22 14:10:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -210,7 +210,7 @@ static const char *const tty_feature_cstyle_capabilities[] = {
 static const struct tty_feature tty_feature_cstyle = {
 	"cstyle",
 	tty_feature_cstyle_capabilities,
-	0
+	TERM_NOREPLACE
 };
 
 /* Terminal supports cursor colours. */
@@ -554,11 +554,11 @@ tty_apply_features(struct tty_term *term)
 			capability = tf->capabilities;
 			while (*capability != NULL) {
 				log_debug("adding capability: %s", *capability);
-				tty_term_apply(term, *capability, 1);
+				tty_term_apply(term, *capability, 1, tf->flags);
 				capability++;
 			}
 		}
-		term->flags |= tf->flags;
+		term->flags |= (tf->flags & ~TERM_NOREPLACE);
 		if (tf == &tty_feature_utf8)
 			c->flags |= CLIENT_UTF8;
 	}
