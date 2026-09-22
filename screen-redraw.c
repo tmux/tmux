@@ -228,6 +228,12 @@ struct redraw_build_cell {
 static struct redraw_build_cell	*redraw_cells;
 static size_t			 redraw_ncells;
 
+/*
+ * Bumped once per redraw_client_damage() call (one client's one redraw
+ * pass) - see redraw_damage_refresh_status().
+ */
+static u_int			 redraw_status_serial;
+
 /* Context for building the scene. */
 struct redraw_build_ctx {
 	struct client				*c;
@@ -2031,6 +2037,17 @@ redraw_pane_scrollbar(struct client *c, struct window_pane *wp)
  * whenever PANE_NEWSTATUS is not set, leaving a pane's border-status title
  * blank until some unrelated redraw happens to touch it (e.g. a focus
  * change or window resize).
+ *
+ * wp->status_screen/PANE_NEWSTATUS are per-pane, but the formatted content
+ * (window_make_pane_status() expands pane-border-format, which can read
+ * per-client fields like #{client_name}) is per-client. Gating purely on
+ * PANE_NEWSTATUS would let one client's damage pass render its own text,
+ * set the flag, and leave every other client's pass - this tick or any
+ * later one, since nothing else clears it here - reusing that stale,
+ * wrong-client text. redraw_status_serial (bumped once per
+ * redraw_client_damage() call, i.e. once per client per pass) still
+ * dedupes repeat calls within that same pass, but forces a fresh,
+ * correctly-client-formatted render on every distinct client/pass.
  */
 static void
 redraw_damage_refresh_status(struct redraw_draw_ctx *dctx,
@@ -2039,13 +2056,17 @@ redraw_damage_refresh_status(struct redraw_draw_ctx *dctx,
 	struct redraw_span	*first;
 	u_int			 width;
 
-	if (wp->flags & PANE_NEWSTATUS)
+	if ((wp->flags & PANE_NEWSTATUS) &&
+	    wp->status_serial == redraw_status_serial)
 		return;
 	width = redraw_pane_status_width(dctx, wp, &first);
 	if (width == 0)
 		return;
+	log_debug("%s: regenerated pane %%%u status for %s", __func__, wp->id,
+	    dctx->scene->c->name);
 	window_make_pane_status(wp, dctx->scene->c, width, first);
 	wp->flags |= PANE_NEWSTATUS;
+	wp->status_serial = redraw_status_serial;
 }
 
 /*
@@ -2231,6 +2252,7 @@ redraw_client_damage(struct client *c)
 
 	if (TAILQ_EMPTY(&w->damage))
 		return;
+	redraw_status_serial++;
 
 	scene = redraw_get_scene(c);
 	if (scene == NULL)

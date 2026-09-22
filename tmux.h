@@ -1401,6 +1401,7 @@ struct window_pane {
 	struct screen	 base;
 
 	struct screen	 status_screen;
+	u_int		 status_serial;
 
 	TAILQ_HEAD(, window_mode_entry) modes;
 
