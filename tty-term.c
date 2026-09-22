@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-term.c,v 1.109 2026/08/25 08:37:08 nicm Exp $ */
+/* $OpenBSD: tty-term.c,v 1.110 2026/09/22 06:58:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -87,6 +87,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_DL1] = { TTYCODE_STRING, "dl1" },
 	[TTYC_DL] = { TTYCODE_STRING, "dl" },
 	[TTYC_DSEKS] = { TTYCODE_STRING, "Dseks" },
+	[TTYC_DSESC] = { TTYCODE_STRING, "Dsesc" },
 	[TTYC_DSFCS] = { TTYCODE_STRING, "Dsfcs" },
 	[TTYC_DSBP] = { TTYCODE_STRING, "Dsbp" },
 	[TTYC_DSMG] = { TTYCODE_STRING, "Dsmg" },
@@ -98,6 +99,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_ENACS] = { TTYCODE_STRING, "enacs" },
 	[TTYC_ENBP] = { TTYCODE_STRING, "Enbp" },
 	[TTYC_ENEKS] = { TTYCODE_STRING, "Eneks" },
+	[TTYC_ENESC] = { TTYCODE_STRING, "Enesc" },
 	[TTYC_ENFCS] = { TTYCODE_STRING, "Enfcs" },
 	[TTYC_ENMG] = { TTYCODE_STRING, "Enmg" },
 	[TTYC_FSL] = { TTYCODE_STRING, "fsl" },
