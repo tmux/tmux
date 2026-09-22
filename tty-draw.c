@@ -218,7 +218,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	}
 
 	/* Did the previous line wrap on to this one? */
-	if (py != 0 && atx == 0 && tty->cx >= tty->sx && nx == tty->sx) {
+	if (py != 0 && atx == 0 && tty->cx >= tty->sx &&
+	    tty->cy != UINT_MAX && tty->cy + 1 == aty && nx == tty->sx) {
 		gl = grid_get_line(gd, gd->hsize + py - 1);
 		if (gl->flags & GRID_LINE_WRAPPED)
 			wrapped = 1;
