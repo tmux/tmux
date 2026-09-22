@@ -189,6 +189,18 @@ static const struct tty_feature tty_feature_focus = {
 	0
 };
 
+/* Terminal supports application escape key mode. */
+static const char *const tty_feature_appesc_capabilities[] = {
+	"Enesc=\\E[?7727h",
+	"Dsesc=\\E[?7727l",
+	NULL
+};
+static const struct tty_feature tty_feature_appesc = {
+	"appesc",
+	tty_feature_appesc_capabilities,
+	0
+};
+
 /* Terminal supports cursor styles. */
 static const char *const tty_feature_cstyle_capabilities[] = {
 	"Ss=\\E[%p1%d q",
@@ -378,6 +390,7 @@ static const struct tty_feature tty_feature_utf8 = {
 /* Available terminal features. */
 static const struct tty_feature *const tty_features[] = {
 	&tty_feature_256,
+	&tty_feature_appesc,
 	&tty_feature_bpaste,
 	&tty_feature_ccolour,
 	&tty_feature_clipboard,
@@ -568,6 +581,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 	"256,RGB,bpaste,clipboard,mouse,strikethrough,title"
 		{ .name = "mintty",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
+			      "appesc,"
 			      "ccolour,"
 			      "cstyle,"
 			      "extkeys,"
