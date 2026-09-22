@@ -68,7 +68,9 @@ status_timer_start(struct client *c)
 	else
 		evtimer_set(&c->status.timer, status_timer_callback, c);
 
-	if (s != NULL && options_get_number(s->options, "status"))
+	if (s != NULL &&
+	    (options_get_number(s->options, "status") ||
+	    options_get_number(s->options, "side-status")))
 		status_timer_callback(-1, 0, c);
 }
 
