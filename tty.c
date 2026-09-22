@@ -1739,9 +1739,16 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1) {
+#ifdef ENABLE_IMAGES
+		redraw_image_scroll_result(tty, ctx, 1);
+#endif
 		tty_redraw_region(tty, ctx);
 		return;
 	}
+
+#ifdef ENABLE_IMAGES
+	redraw_image_scroll_result(tty, ctx, 0);
+#endif
 
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 

@@ -1,16 +1,20 @@
 #!/bin/sh
 
 # Regression test for the image-region-scrolling option (options-table.c),
-# SIXEL side - see image-kitty-region-scroll.sh for the Kitty side of the
-# same option: scrolling a pane that has a SIXEL image in it must not
-# retransmit the image when the option is on - tmux trusts the terminal to
-# have moved the image along with the rest of the scrolling region. With
-# the option off, today's always-redraw-on-scroll behaviour is unchanged.
+# Kitty side - see image-sixel-region-scroll.sh for the SIXEL side of the
+# same option.
 #
-# There is no way to query a terminal for whether it actually moves SIXEL
-# pixels along with a scroll, so this only proves tmux's own decision to
-# skip or redraw is wired correctly - not that any particular terminal
-# renders the result correctly. That needs a human, on real terminals.
+# The Kitty backend used to hardcode IMAGE_BACKEND_SCROLLS unconditionally
+# (image.c), so tmux always trusted the terminal to have moved a Kitty
+# placement along with the rest of a scrolling region, with no way to turn
+# that assumption off. At least Windows Terminal does not actually do
+# this: it drops the placement entirely on a plain newline- or
+# reverse-index-driven scroll (though not on a delete-line/insert-line
+# scroll simulation, which goes through a different, always-redraw path).
+# image-region-scrolling now gates Kitty exactly like SIXEL: scrolling
+# must not retransmit the placement when the option is on (the previously
+# unconditional behaviour), and must retransmit it when off (the escape
+# hatch this test exists to prove is actually wired up for Kitty too).
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -38,7 +42,8 @@ cleanup
 TMP=$(mktemp)
 trap "cleanup; rm -f $TMP" 0 1 15
 
-HEADER='\033Pq"1;1;26;26#0;2;100;100;100#0!26~-!26~-!26~-!26~-!26B\033\\'
+IMAGEID=424242
+HEADER=$(printf '\033_Ga=T,q=2,f=32,s=1,v=1,i=%s;/wAA/w==\033\\' "$IMAGEID")
 
 # A small image near the top of a tall pane, then enough plain output below
 # it to force several ordinary (no DECSTBM sub-region) linefeed scrolls,
@@ -48,20 +53,20 @@ $TMUX new-session -d -s inner -x 40 -y 20 "printf '$HEADER'; exec sh" ||
 sleep 0.3
 
 [ "$($TMUX display-message -p '#{image_support}')" = 0 ] && exit 0
-$TMUX set -as terminal-features ',*:sixel' || exit 1
+$TMUX set -as terminal-features ',*:kitty' || exit 1
 
 $TMUX2 new-session -d -x 40 -y 20 || exit 1
 OUTER=$($TMUX2 list-panes -F '#{pane_id}' | head -1)
 [ -n "$OUTER" ] || fail "No outer pane."
-$TMUX2 set -as terminal-features ',*:sixel@' || fail "disable outer sixel failed"
+$TMUX2 set -as terminal-features ',*:kitty@' || fail "disable outer kitty failed"
 $TMUX2 pipe-pane -t "$OUTER" -O "cat >$TMP" || fail "pipe-pane failed"
 $TMUX2 send-keys -t "$OUTER" -l "$TMUX attach -t inner" || fail "send attach failed"
 $TMUX2 send-keys -t "$OUTER" Enter || fail "send enter failed"
 sleep 2
 
-grep -qa '"1;1;26;26' "$TMP" || fail "sanity: image never reached the client"
+grep -qa "$(printf '\033_Ga=p')" "$TMP" || fail "sanity: image never reached the client"
 
-# --- Phase 1: image-region-scrolling on (the default) - expect no DCS. ---
+# --- Phase 1: image-region-scrolling on (the default) - expect no APC. ---
 $TMUX set -s image-region-scrolling on || fail "set option on failed"
 sleep 0.5
 : >"$TMP"
@@ -69,7 +74,7 @@ $TMUX send-keys -t inner -l "yes | head -n 30" || fail "send scroll failed"
 $TMUX send-keys -t inner Enter || fail "send enter failed"
 sleep 1
 
-n_on=$(grep -ac "$(printf '\033P')" "$TMP")
+n_on=$(grep -ac "$(printf '\033_Ga=p')" "$TMP")
 [ "$n_on" -eq 0 ] ||
 	fail "image was retransmitted ($n_on times) scrolling with image-region-scrolling on"
 
@@ -78,7 +83,7 @@ n_on=$(grep -ac "$(printf '\033P')" "$TMP")
 $TMUX send-keys -t inner -l "printf '$HEADER'" || fail "resend image failed"
 $TMUX send-keys -t inner Enter || fail "send enter failed"
 sleep 1.5
-grep -qa '"1;1;26;26' "$TMP" || fail "sanity: image did not reappear before phase 2"
+grep -qa "$(printf '\033_Ga=p')" "$TMP" || fail "sanity: image did not reappear before phase 2"
 
 $TMUX set -s image-region-scrolling off || fail "set option off failed"
 sleep 0.5
@@ -87,7 +92,7 @@ $TMUX send-keys -t inner -l "yes | head -n 30" || fail "send scroll failed"
 $TMUX send-keys -t inner Enter || fail "send enter failed"
 sleep 1
 
-n_off=$(grep -ac "$(printf '\033P')" "$TMP")
+n_off=$(grep -ac "$(printf '\033_Ga=p')" "$TMP")
 [ "$n_off" -gt 0 ] ||
 	fail "image was not retransmitted scrolling with image-region-scrolling off - expected the old always-redraw behaviour"
 
