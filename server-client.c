@@ -2499,7 +2499,8 @@ server_client_check_redraw(struct client *c)
 		 * window damage unconditionally every pass regardless of
 		 * whether it was actually drawn.
 		 */
-		if (!TAILQ_EMPTY(&w->damage) && (~c->flags & CLIENT_ALLREDRAWFLAGS))
+		if (!TAILQ_EMPTY(&w->damage) &&
+		    (c->flags & CLIENT_ALLREDRAWFLAGS) == 0)
 			redraw_client_damage(c);
 	}
 
