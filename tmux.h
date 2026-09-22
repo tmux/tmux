@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1444 2026/09/21 12:14:32 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1445 2026/09/22 06:46:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3160,6 +3160,7 @@ void 		 cmdq_print_data(struct cmdq_item *, struct evbuffer *);
 void printflike(2, 3) cmdq_error(struct cmdq_item *, const char *, ...);
 
 /* cmd-wait-for.c */
+void	cmd_wait_for_client_lost(struct client *);
 void	cmd_wait_for_flush(void);
 
 /* client.c */

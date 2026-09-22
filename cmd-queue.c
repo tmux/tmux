@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-queue.c,v 1.123 2026/08/24 20:34:26 nicm Exp $ */
+/* $OpenBSD: cmd-queue.c,v 1.124 2026/09/22 06:46:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2013 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -580,6 +580,9 @@ cmdq_fire_command(struct cmdq_item *item)
 	struct cmd_find_state	*fsp, fs;
 	int			 flags, quiet = 0;
 	char			*tmp;
+
+	if (item->client != NULL && (item->client->flags & CLIENT_DEAD))
+		return (CMD_RETURN_ERROR);
 
 	if (cfg_finished)
 		cmdq_add_message(item);
