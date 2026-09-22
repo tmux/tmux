@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1445 2026/09/22 06:46:50 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1447 2026/09/22 14:10:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1738,6 +1738,7 @@ struct tty_term {
 #define TERM_VT100LIKE 0x20
 #define TERM_SIXEL 0x40
 #define TERM_INVALIDMS 0x80
+#define TERM_NOREPLACE 0x100
 	int		 flags;
 
 	LIST_ENTRY(tty_term) entry;
@@ -3007,7 +3008,7 @@ void	tty_default_colours(struct grid_cell *, struct window_pane *, u_int *);
 /* tty-term.c */
 extern struct tty_terms tty_terms;
 u_int		 tty_term_ncodes(void);
-void		 tty_term_apply(struct tty_term *, const char *, int);
+void		 tty_term_apply(struct tty_term *, const char *, int, int);
 void		 tty_term_apply_overrides(struct tty_term *);
 struct tty_term *tty_term_create(struct tty *, char *, char **, u_int, char **);
 void		 tty_term_free(struct tty_term *);

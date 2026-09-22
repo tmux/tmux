@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-term.c,v 1.109 2026/08/25 08:37:08 nicm Exp $ */
+/* $OpenBSD: tty-term.c,v 1.111 2026/09/22 14:10:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -362,7 +362,8 @@ tty_term_override_next(const char *s, size_t *offset)
 }
 
 void
-tty_term_apply(struct tty_term *term, const char *capabilities, int quiet)
+tty_term_apply(struct tty_term *term, const char *capabilities, int quiet,
+    int flags)
 {
 	const struct tty_term_code_entry	*ent;
 	struct tty_code				*code;
@@ -405,6 +406,9 @@ tty_term_apply(struct tty_term *term, const char *capabilities, int quiet)
 			if (strcmp(s, ent->name) != 0)
 				continue;
 			code = &term->codes[i];
+			if ((flags & TERM_NOREPLACE) &&
+			    code->type != TTYCODE_NONE)
+				continue;
 
 			if (remove) {
 				code->type = TTYCODE_NONE;
@@ -457,7 +461,7 @@ tty_term_apply_overrides(struct tty_term *term)
 		offset = 0;
 		first = tty_term_override_next(s, &offset);
 		if (first != NULL && fnmatch(first, term->name, 0) == 0)
-			tty_term_apply(term, s + offset, 0);
+			tty_term_apply(term, s + offset, 0, 0);
 		a = options_array_next(a);
 	}
 
