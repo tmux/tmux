@@ -2234,20 +2234,26 @@ redraw_damage_refresh_status(struct redraw_draw_ctx *dctx,
 }
 
 /*
- * Whether growing a damage clip's left edge left by one, to pull in the
- * rest of a wide character, is correct at scene x-coordinate x within this
- * span. True unconditionally for span types with no real backing screen
+ * Whether the cell at scene x-coordinate x within this span is the second
+ * (padding) half of a wide character - the condition under which growing a
+ * damage clip's edge toward it, to pull in the rest of that character, is
+ * correct. True unconditionally for span types with no real backing screen
  * (border, scrollbar) - these only ever draw single synthesized cells, so
  * growing them is always harmless. For span types with a real screen (pane
- * content, a pane's status line, a menu), only true when x is actually the
- * second (padding) half of a wide character there - if x is instead the
- * start of an unrelated, already-complete character, growing left would
- * walk into the *previous* character's padding half and blank it, since
- * tty_draw_line() treats any leading padding cell as proof its own range
- * starts mid-character.
+ * content, a pane's status line, a menu), only true when x is actually a
+ * padding cell there - if x is instead the start of an unrelated,
+ * already-complete character, growing toward it would walk into that
+ * character's opposite half and corrupt it: tty_draw_line() clears a
+ * leading padding cell in its draw range (proof the range starts
+ * mid-character) and, via a different check (tty_draw_line_get_empty()'s
+ * gc->data.width > nx test), also clears a trailing base cell that has no
+ * room left for its own padding (proof the range ends mid-character) - so
+ * growing either edge onto a base cell is equally destructive to whatever
+ * character lies just outside the range, just through a different part of
+ * tty_draw_line().
  */
 static int
-redraw_span_left_grow_ok(struct redraw_span *span, u_int x)
+redraw_span_cell_is_padding(struct redraw_span *span, u_int x)
 {
 	struct screen		*s;
 	struct grid_cell	 gc;
@@ -2283,20 +2289,22 @@ redraw_span_left_grow_ok(struct redraw_span *span, u_int x)
  * the span's own boundary. A clip edge that lands mid-character (this is a
  * damage rectangle, so its edges are geometric and have no idea what's in
  * the grid) may be sitting on the second, padding half of a wide character
- * whose first half falls just outside the requested range - growing by one
+ * whose other half falls just outside the requested range - growing by one
  * cell is enough to pull the whole character back in, since no grid cell is
  * ever wider than two columns, and clamping to the span's own x and width
- * keeps this from bleeding into a neighbouring span. The right edge never
- * needs the same care as the left: tty_draw_line() already draws a wide
- * character in full even when the requested range clips off its trailing
- * padding half, so growing right is at worst redundant, never destructive.
+ * keeps this from bleeding into a neighbouring span. Both edges need the
+ * same padding check before growing: growing onto a cell that isn't padding
+ * (an unrelated, already-complete character just outside the range) is
+ * destructive on either side, not just the left - see
+ * redraw_span_cell_is_padding().
  */
 static void
 redraw_damage_grow_span_clip(struct redraw_span *span, u_int *xp, u_int *endp)
 {
-	if (*xp > span->x && redraw_span_left_grow_ok(span, *xp))
+	if (*xp > span->x && redraw_span_cell_is_padding(span, *xp))
 		(*xp)--;
-	if (*endp < span->x + span->width)
+	if (*endp < span->x + span->width &&
+	    redraw_span_cell_is_padding(span, *endp))
 		(*endp)++;
 }
 

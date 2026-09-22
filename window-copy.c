@@ -779,6 +779,7 @@ window_copy_scroll(struct window_pane *wp, int sl_mpos, u_int my,
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
 
 	if (wme != NULL) {
+		window_redraw_active_switch(wp->window, wp);
 		window_set_active_pane(wp->window, wp, 0);
 		window_copy_scroll1(wme, wp, sl_mpos, my, tty_oy, scroll_exit);
 	}
