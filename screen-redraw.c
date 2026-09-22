@@ -2069,6 +2069,18 @@ redraw_damage_refresh_status(struct redraw_draw_ctx *dctx,
 	wp->status_serial = redraw_status_serial;
 }
 
+/* Whether the cell at (px, py) in screen s is a padding cell. */
+static int
+redraw_screen_cell_is_padding(struct screen *s, u_int px, u_int py)
+{
+	struct grid_cell	gc;
+
+	if (px >= screen_size_x(s))
+		return (0);
+	grid_view_get_cell(s->grid, px, py, &gc);
+	return ((gc.flags & GRID_FLAG_PADDING) != 0);
+}
+
 /*
  * Whether the cell at scene x-coordinate x within this span is the second
  * (padding) half of a wide character - the condition under which growing a
@@ -2092,7 +2104,6 @@ static int
 redraw_span_cell_is_padding(struct redraw_span *span, u_int x)
 {
 	struct screen		*s;
-	struct grid_cell	 gc;
 	u_int			 px, py;
 
 	switch (span->data.type) {
@@ -2114,10 +2125,7 @@ redraw_span_cell_is_padding(struct redraw_span *span, u_int x)
 	default:
 		return (1);
 	}
-	if (px >= screen_size_x(s))
-		return (0);
-	grid_view_get_cell(s->grid, px, py, &gc);
-	return ((gc.flags & GRID_FLAG_PADDING) != 0);
+	return (redraw_screen_cell_is_padding(s, px, py));
 }
 
 /*
@@ -2144,6 +2152,26 @@ redraw_damage_grow_span_clip(struct redraw_span *span, u_int *xp, u_int *endp)
 		(*endp)++;
 }
 
+/*
+ * As redraw_damage_grow_span_clip(), but against an explicit screen: px0 is
+ * the column in that screen corresponding to span->x, py the row. Used for
+ * a span's separately rendered content (e.g. a pane's prompt) that isn't
+ * span->data.p.wp->screen (or whichever grid redraw_span_cell_is_padding()
+ * would otherwise consult for this span's type), and so has its own,
+ * unrelated wide-character boundaries at the same columns.
+ */
+static void
+redraw_damage_grow_screen_clip(struct redraw_span *span, struct screen *s,
+    u_int px0, u_int py, u_int *xp, u_int *endp)
+{
+	if (*xp > span->x &&
+	    redraw_screen_cell_is_padding(s, px0 + (*xp - span->x), py))
+		(*xp)--;
+	if (*endp < span->x + span->width &&
+	    redraw_screen_cell_is_padding(s, px0 + (*endp - span->x), py))
+		(*endp)++;
+}
+
 /* Recompose a pane's prompt over a damaged section of its display row. */
 static void
 redraw_damage_draw_pane_prompt(struct redraw_draw_ctx *dctx,
@@ -2153,7 +2181,7 @@ redraw_damage_draw_pane_prompt(struct redraw_draw_ctx *dctx,
 	struct window_pane	*wp = span->data.p.wp;
 	struct tty		*tty = &scene->c->tty;
 	struct screen		 screen;
-	u_int			 px, width, prompt_y;
+	u_int			 px, width, prompt_y, x0, x1;
 
 	if (wp->prompt == NULL || wp->sx == 0 || wp->sy == 0)
 		return;
@@ -2165,12 +2193,25 @@ redraw_damage_draw_pane_prompt(struct redraw_draw_ctx *dctx,
 		return;
 
 	redraw_make_pane_prompt(wp, &screen);
-	px = span->data.p.px + (x - span->x);
+
+	/*
+	 * x and n were clipped and grown against wp->screen, whose character
+	 * boundaries have nothing to do with the prompt's separately
+	 * rendered screen - realign the range on the prompt's own grid
+	 * instead, clamped to this span so it cannot bleed into a
+	 * neighbouring one.
+	 */
+	x0 = x;
+	x1 = x + n;
+	redraw_damage_grow_screen_clip(span, &screen, span->data.p.px, 0, &x0,
+	    &x1);
+
+	px = span->data.p.px + (x0 - span->x);
 	if (px < screen_size_x(&screen)) {
-		width = n;
+		width = x1 - x0;
 		if (width > screen_size_x(&screen) - px)
 			width = screen_size_x(&screen) - px;
-		tty_draw_line(tty, &screen, px, 0, width, x, y, NULL);
+		tty_draw_line(tty, &screen, px, 0, width, x0, y, NULL);
 	}
 	screen_free(&screen);
 }
