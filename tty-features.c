@@ -235,6 +235,13 @@ static const struct tty_feature tty_feature_sync = {
 	0
 };
 
+/* Terminal supports the Kitty keyboard protocol. */
+static const struct tty_feature tty_feature_kittykeys = {
+	"kittykeys",
+	NULL,
+	TERM_KITTYKEYS
+};
+
 /* Terminal supports extended keys. */
 static const char *const tty_feature_extkeys_capabilities[] = {
 	"Eneks=\\E[>4;2m",
@@ -386,6 +393,7 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_extkeys,
 	&tty_feature_focus,
 	&tty_feature_ignorefkeys,
+	&tty_feature_kittykeys,
 	&tty_feature_margins,
 	&tty_feature_mouse,
 	&tty_feature_osc7,

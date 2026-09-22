@@ -464,7 +464,8 @@ input_key_extended(struct bufferevent *bev, key_code key)
 	} else
 		key &= KEYC_MASK_KEY;
 
-	if (options_get_number(global_options, "extended-keys-format") == 1)
+	if (options_get_number(global_options, "extended-keys-format") ==
+	    EXTENDED_KEYS_XTERM)
 		xsnprintf(tmp, sizeof tmp, "\033[27;%c;%llu~", modifier, key);
 	else
 		xsnprintf(tmp, sizeof tmp, "\033[%llu;%cu", key, modifier);
@@ -588,6 +589,10 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		return (0);
 	}
 
+	/* Kitty keys take precedence if the application asked for them. */
+	if (input_key_kitty(s, bev, key) == 0)
+		return (0);
+
 	/* Is this backspace? */
 	if ((key & KEYC_MASK_KEY) == KEYC_BSPACE) {
 		newkey = options_get_number(global_options, "backspace");
@@ -677,6 +682,10 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		log_debug("%s: ignoring key 0x%llx", __func__, key);
 		return (0);
 	}
+	if (key & (KEYC_SUPER|KEYC_HYPER))
+		return (input_key_vt10x(bev, key));
+	if (s->kitty_keys.flags & KITTY_KEY_SUPPORTED)
+		return (input_key_vt10x(bev, key));
 
 	/*
 	 * No builtin key sequence; construct an extended key sequence
