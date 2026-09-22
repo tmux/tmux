@@ -1519,6 +1519,7 @@ tty_sync_start(struct tty *tty)
 	if (tty->flags & TTY_SYNCING)
 		return;
 	tty->flags |= TTY_SYNCING;
+	tty->sync_offset = EVBUFFER_LENGTH(tty->out);
 
 	if (tty_term_has(tty->term, TTYC_SYNC)) {
 		log_debug("%s sync start", tty->client->name);

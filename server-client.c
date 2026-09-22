@@ -2429,8 +2429,19 @@ server_client_check_redraw(struct client *c)
 	 * that clear and forces a full catch-up redraw once this client is
 	 * unblocked, rather than trying to keep the fine-grained state
 	 * around for a retry.
+	 *
+	 * If a synchronized-output frame is open, discount anything queued
+	 * since it started (down to sync_offset, the length when it opened):
+	 * those bytes are already part of the frame this pass is committed
+	 * to flushing (see tty_sync_start()), not a reason to defer this
+	 * pass's redraw - without this, a mouse-drag callback that itself
+	 * opens the frame before writing anything would see its own
+	 * just-queued bytes as "outstanding output" and defer against
+	 * itself every single motion event.
 	 */
 	n = EVBUFFER_LENGTH(tty->out);
+	if ((tty->flags & TTY_SYNCING) && n > tty->sync_offset)
+		n = tty->sync_offset;
 	if (n != 0 || (tty->flags & TTY_BLOCK)) {
 		if (n != 0)
 			log_debug("%s: redraw deferred (%zu left)", c->name, n);

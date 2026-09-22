@@ -1802,6 +1802,14 @@ struct tty {
 	struct event	 timer;
 	size_t		 discarded;
 
+	/*
+	 * Buffer length at the instant a synchronized-output frame opened
+	 * (tty_sync_start()), so server_client_check_redraw()'s "is there
+	 * already outstanding output" check can discount whatever this
+	 * pass itself queued into that frame - see tty_sync_start().
+	 */
+	size_t		 sync_offset;
+
 	struct termios	 tio;
 
 	struct grid_cell cell;
