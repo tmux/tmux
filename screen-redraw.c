@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.160 2026/09/21 10:22:31 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.161 2026/09/22 16:56:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1655,7 +1655,7 @@ redraw_draw_pane_prompt(struct redraw_draw_ctx *dctx, struct window_pane *wp)
 	prompt_draw(wp->prompt, &pdd);
 	screen_write_stop(&ctx);
 
-	tty_draw_line(tty, &screen, 0, offset, width, px, cy, NULL);
+	tty_draw_line(tty, &screen, offset, 0, width, px, cy, NULL);
 	screen_free(&screen);
 }
 
