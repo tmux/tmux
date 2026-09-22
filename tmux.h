@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1444 2026/09/21 12:14:32 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1446 2026/09/22 06:58:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -464,6 +464,7 @@ enum tty_code_code {
 	TTYC_DL1,
 	TTYC_DSBP,
 	TTYC_DSEKS,
+	TTYC_DSESC,
 	TTYC_DSFCS,
 	TTYC_DSMG,
 	TTYC_E3,
@@ -474,6 +475,7 @@ enum tty_code_code {
 	TTYC_ENACS,
 	TTYC_ENBP,
 	TTYC_ENEKS,
+	TTYC_ENESC,
 	TTYC_ENFCS,
 	TTYC_ENMG,
 	TTYC_FSL,
@@ -3205,6 +3207,7 @@ void 		 cmdq_print_data(struct cmdq_item *, struct evbuffer *);
 void printflike(2, 3) cmdq_error(struct cmdq_item *, const char *, ...);
 
 /* cmd-wait-for.c */
+void	cmd_wait_for_client_lost(struct client *);
 void	cmd_wait_for_flush(void);
 
 /* client.c */
