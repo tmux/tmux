@@ -44,6 +44,8 @@ static struct style style_default = {
 
 	STYLE_DEFAULT_BASE,
 
+	0,
+
 	0
 };
 
@@ -110,6 +112,8 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 			sy->default_type = STYLE_DEFAULT_POP;
 		else if (strcasecmp(tmp, "set-default") == 0)
 			sy->default_type = STYLE_DEFAULT_SET;
+		else if (strcasecmp(tmp, "nl") == 0)
+			sy->nl = 1;
 		else if (strcasecmp(tmp, "nolist") == 0)
 			sy->list = STYLE_LIST_OFF;
 		else if (strncasecmp(tmp, "list=", 5) == 0) {
@@ -573,6 +577,21 @@ style_ranges_get_range(struct style_ranges *srs, u_int x)
 		return (NULL);
 	TAILQ_FOREACH(sr, srs, entry) {
 		if (x >= sr->start && x < sr->end)
+			return (sr);
+	}
+	return (NULL);
+}
+
+/* Get range for position and row from style ranges. */
+struct style_range *
+style_ranges_get_range_at(struct style_ranges *srs, u_int x, u_int y)
+{
+	struct style_range	*sr;
+
+	if (srs == NULL)
+		return (NULL);
+	TAILQ_FOREACH(sr, srs, entry) {
+		if (x >= sr->start && x < sr->end && y == sr->y)
 			return (sr);
 	}
 	return (NULL);

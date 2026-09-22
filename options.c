@@ -1407,10 +1407,13 @@ options_push_changes(const char *name)
 		}
 	}
 	if (strcmp(name, "status") == 0 ||
-	    strcmp(name, "status-interval") == 0)
+	    strcmp(name, "status-interval") == 0 ||
+	    strcmp(name, "side-status") == 0)
 		status_timer_start_all();
 	if (strcmp(name, "status") == 0 ||
 	    strcmp(name, "status-position") == 0 ||
+	    strcmp(name, "side-status") == 0 ||
+	    strcmp(name, "side-status-width") == 0 ||
 	    strcmp(name, "pane-border-indicators") == 0 ||
 	    strcmp(name, "pane-border-lines") == 0 ||
 	    strcmp(name, "pane-border-status") == 0 ||
