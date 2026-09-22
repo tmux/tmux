@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.512 2026/09/10 11:02:18 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.514 2026/09/22 06:46:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -501,6 +501,9 @@ server_client_lost(struct client *c)
 
 	TAILQ_REMOVE(&clients, c, entry);
 	log_debug("lost client %p", c);
+
+	cmd_wait_for_client_lost(c);
+	cmdq_next(c);
 
 	if (c->flags & CLIENT_ATTACHED) {
 		server_client_attached_lost(c);
