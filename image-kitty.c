@@ -131,6 +131,9 @@ struct kitty_placement_cache {
 	u_int				 y;
 	u_int				 width;
 	u_int				 height;
+	u_int				 source_x;
+	u_int				 source_y;
+	int32_t				 z;
 	int				 pending_delete;
 	struct kitty_placement_cache	*next;
 };
@@ -178,6 +181,61 @@ kitty_free_placements(struct kitty_image_cache *entry)
 	entry->placements = NULL;
 }
 
+static void	kitty_place(struct tty *, struct kitty_image_cache *,
+		    struct image *, u_int, u_int, u_int, u_int, u_int, u_int,
+		    int32_t);
+
+/* Place one piece of an existing placement again as a new placement. */
+static void
+kitty_redraw_keep_piece(struct tty *tty, struct kitty_image_cache *entry,
+    struct image *im, struct kitty_placement_cache *placement, u_int x,
+    u_int y, u_int width, u_int height)
+{
+	if (width == 0 || height == 0)
+		return;
+	kitty_place(tty, entry, im, placement->source_x + (x - placement->x),
+	    placement->source_y + (y - placement->y), width, height, x, y,
+	    placement->z);
+}
+
+/*
+ * Place the parts of a placement outside a redraw area again, since the
+ * redraw will not replace them.
+ */
+static void
+kitty_redraw_keep(struct tty *tty, struct kitty_image_cache *entry,
+    struct kitty_placement_cache *placement, u_int x, u_int y, u_int width,
+    u_int height)
+{
+	struct image	*im;
+	u_int		 px0, px1, py0, py1, ix0, ix1, iy0, iy1;
+
+	px0 = placement->x;
+	px1 = placement->x + placement->width;
+	py0 = placement->y;
+	py1 = placement->y + placement->height;
+	ix0 = (x > px0 ? x : px0);
+	ix1 = (x + width < px1 ? x + width : px1);
+	iy0 = (y > py0 ? y : py0);
+	iy1 = (y + height < py1 ? y + height : py1);
+	if (ix0 == px0 && ix1 == px1 && iy0 == py0 && iy1 == py1)
+		return;
+
+	im = image_find(entry->server_id);
+	if (im == NULL)
+		return;
+
+	/* Callers have checked the areas intersect, so ix0 < ix1, iy0 < iy1. */
+	kitty_redraw_keep_piece(tty, entry, im, placement, px0, py0,
+	    px1 - px0, iy0 - py0);
+	kitty_redraw_keep_piece(tty, entry, im, placement, px0, iy1,
+	    px1 - px0, py1 - iy1);
+	kitty_redraw_keep_piece(tty, entry, im, placement, px0, iy0,
+	    ix0 - px0, iy1 - iy0);
+	kitty_redraw_keep_piece(tty, entry, im, placement, ix1, iy0,
+	    px1 - ix1, iy1 - iy0);
+}
+
 /*
  * Mark Kitty placements intersecting a redraw area as stale, without
  * deleting them yet - see kitty_redraw_finish(). Deleting immediately here
@@ -186,6 +244,10 @@ kitty_free_placements(struct kitty_image_cache *entry)
  * implementations free an image's pixel data once it has no placements
  * left, which would leave the replacement referencing already-discarded
  * data and render as nothing.
+ *
+ * A placement only partly inside the area is deleted as a whole, but the
+ * redraw only replaces the part inside, so the parts outside are placed
+ * again first - otherwise they would vanish from cells nothing redraws.
  */
 void
 kitty_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
@@ -200,12 +262,16 @@ kitty_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
 	for (entry = ko->images; entry != NULL; entry = entry->next) {
 		for (placement = entry->placements; placement != NULL;
 		    placement = placement->next) {
+			if (placement->pending_delete)
+				continue;
 			if (placement->x >= x + width ||
 			    placement->x + placement->width <= x ||
 			    placement->y >= y + height ||
 			    placement->y + placement->height <= y)
 				continue;
 			placement->pending_delete = 1;
+			kitty_redraw_keep(tty, entry, placement, x, y, width,
+			    height);
 		}
 	}
 }
@@ -330,6 +396,9 @@ kitty_place(struct tty *tty, struct kitty_image_cache *entry,
 	placement->y = destination_y;
 	placement->width = width;
 	placement->height = height;
+	placement->source_x = source_x;
+	placement->source_y = source_y;
+	placement->z = z;
 	placement->next = entry->placements;
 	entry->placements = placement;
 	tty_cursor(tty, destination_x, destination_y);

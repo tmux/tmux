@@ -2488,6 +2488,11 @@ redraw_draw_damage_rect(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 	 * path) leaves every previous placement behind, all still visible
 	 * and now overlapping the newly placed ones. Skipped when trusting a
 	 * scroll to have moved the image itself - nothing is being replaced.
+	 *
+	 * Every span type is included, not just panes: when a floating pane
+	 * moves, cells where its image was placed can now belong to a border
+	 * (or anything else), and a Kitty placement left there would stay
+	 * drawn over it.
 	 */
 	if (!skip_images) {
 		for (yy = y; yy < y + sy; yy++) {
@@ -2496,15 +2501,20 @@ redraw_draw_damage_rect(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 				cy = dctx->status_lines + yy;
 			else
 				cy = yy;
-			spans = &line->spans[REDRAW_SPAN_PANE];
-			TAILQ_FOREACH(span, spans, entry) {
-				clip_x = (span->x > x) ? span->x : x;
-				clip_end = (span->x + span->width < x + sx) ?
-				    span->x + span->width : x + sx;
-				if (clip_end <= clip_x)
+			for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
+				if (type == REDRAW_SPAN_STATUS)
 					continue;
-				image_redraw_start(&scene->c->tty, clip_x, cy,
-				    clip_end - clip_x, 1);
+				spans = &line->spans[type];
+				TAILQ_FOREACH(span, spans, entry) {
+					clip_x = (span->x > x) ? span->x : x;
+					clip_end = (span->x + span->width <
+					    x + sx) ? span->x + span->width :
+					    x + sx;
+					if (clip_end <= clip_x)
+						continue;
+					image_redraw_start(&scene->c->tty,
+					    clip_x, cy, clip_end - clip_x, 1);
+				}
 			}
 		}
 	}
