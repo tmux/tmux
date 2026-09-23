@@ -236,6 +236,12 @@ struct redraw_build_cell {
 static struct redraw_build_cell	*redraw_cells;
 static size_t			 redraw_ncells;
 
+/*
+ * Bumped once per redraw_client_damage() call (one client's one redraw
+ * pass) - see redraw_damage_refresh_status().
+ */
+static u_int			 redraw_status_serial;
+
 /* Context for building the scene. */
 struct redraw_build_ctx {
 	struct client				*c;
@@ -2216,6 +2222,17 @@ redraw_pane_scrollbar(struct client *c, struct window_pane *wp)
  * whenever PANE_NEWSTATUS is not set, leaving a pane's border-status title
  * blank until some unrelated redraw happens to touch it (e.g. a focus
  * change or window resize).
+ *
+ * wp->status_screen/PANE_NEWSTATUS are per-pane, but the formatted content
+ * (window_make_pane_status() expands pane-border-format, which can read
+ * per-client fields like #{client_name}) is per-client. Gating purely on
+ * PANE_NEWSTATUS would let one client's damage pass render its own text,
+ * set the flag, and leave every other client's pass - this tick or any
+ * later one, since nothing else clears it here - reusing that stale,
+ * wrong-client text. redraw_status_serial (bumped once per
+ * redraw_client_damage() call, i.e. once per client per pass) still
+ * dedupes repeat calls within that same pass, but forces a fresh,
+ * correctly-client-formatted render on every distinct client/pass.
  */
 static void
 redraw_damage_refresh_status(struct redraw_draw_ctx *dctx,
@@ -2224,13 +2241,29 @@ redraw_damage_refresh_status(struct redraw_draw_ctx *dctx,
 	struct redraw_span	*first;
 	u_int			 width;
 
-	if (wp->flags & PANE_NEWSTATUS)
+	if ((wp->flags & PANE_NEWSTATUS) &&
+	    wp->status_serial == redraw_status_serial)
 		return;
 	width = redraw_pane_status_width(dctx, wp, &first);
 	if (width == 0)
 		return;
+	log_debug("%s: regenerated pane %%%u status for %s", __func__, wp->id,
+	    dctx->scene->c->name);
 	window_make_pane_status(wp, dctx->scene->c, width, first);
 	wp->flags |= PANE_NEWSTATUS;
+	wp->status_serial = redraw_status_serial;
+}
+
+/* Whether the cell at (px, py) in screen s is a padding cell. */
+static int
+redraw_screen_cell_is_padding(struct screen *s, u_int px, u_int py)
+{
+	struct grid_cell	gc;
+
+	if (px >= screen_size_x(s))
+		return (0);
+	grid_view_get_cell(s->grid, px, py, &gc);
+	return ((gc.flags & GRID_FLAG_PADDING) != 0);
 }
 
 /*
@@ -2256,7 +2289,6 @@ static int
 redraw_span_cell_is_padding(struct redraw_span *span, u_int x)
 {
 	struct screen		*s;
-	struct grid_cell	 gc;
 	u_int			 px, py;
 
 	switch (span->data.type) {
@@ -2278,10 +2310,7 @@ redraw_span_cell_is_padding(struct redraw_span *span, u_int x)
 	default:
 		return (1);
 	}
-	if (px >= screen_size_x(s))
-		return (0);
-	grid_view_get_cell(s->grid, px, py, &gc);
-	return ((gc.flags & GRID_FLAG_PADDING) != 0);
+	return (redraw_screen_cell_is_padding(s, px, py));
 }
 
 /*
@@ -2308,6 +2337,26 @@ redraw_damage_grow_span_clip(struct redraw_span *span, u_int *xp, u_int *endp)
 		(*endp)++;
 }
 
+/*
+ * As redraw_damage_grow_span_clip(), but against an explicit screen: px0 is
+ * the column in that screen corresponding to span->x, py the row. Used for
+ * a span's separately rendered content (e.g. a pane's prompt) that isn't
+ * span->data.p.wp->screen (or whichever grid redraw_span_cell_is_padding()
+ * would otherwise consult for this span's type), and so has its own,
+ * unrelated wide-character boundaries at the same columns.
+ */
+static void
+redraw_damage_grow_screen_clip(struct redraw_span *span, struct screen *s,
+    u_int px0, u_int py, u_int *xp, u_int *endp)
+{
+	if (*xp > span->x &&
+	    redraw_screen_cell_is_padding(s, px0 + (*xp - span->x), py))
+		(*xp)--;
+	if (*endp < span->x + span->width &&
+	    redraw_screen_cell_is_padding(s, px0 + (*endp - span->x), py))
+		(*endp)++;
+}
+
 /* Recompose a pane's prompt over a damaged section of its display row. */
 static void
 redraw_damage_draw_pane_prompt(struct redraw_draw_ctx *dctx,
@@ -2317,7 +2366,7 @@ redraw_damage_draw_pane_prompt(struct redraw_draw_ctx *dctx,
 	struct window_pane	*wp = span->data.p.wp;
 	struct tty		*tty = &scene->c->tty;
 	struct screen		 screen;
-	u_int			 px, width, prompt_y;
+	u_int			 px, width, prompt_y, x0, x1;
 
 	if (wp->prompt == NULL || wp->sx == 0 || wp->sy == 0)
 		return;
@@ -2329,12 +2378,25 @@ redraw_damage_draw_pane_prompt(struct redraw_draw_ctx *dctx,
 		return;
 
 	redraw_make_pane_prompt(wp, &screen);
-	px = span->data.p.px + (x - span->x);
+
+	/*
+	 * x and n were clipped and grown against wp->screen, whose character
+	 * boundaries have nothing to do with the prompt's separately
+	 * rendered screen - realign the range on the prompt's own grid
+	 * instead, clamped to this span so it cannot bleed into a
+	 * neighbouring one.
+	 */
+	x0 = x;
+	x1 = x + n;
+	redraw_damage_grow_screen_clip(span, &screen, span->data.p.px, 0, &x0,
+	    &x1);
+
+	px = span->data.p.px + (x0 - span->x);
 	if (px < screen_size_x(&screen)) {
-		width = n;
+		width = x1 - x0;
 		if (width > screen_size_x(&screen) - px)
 			width = screen_size_x(&screen) - px;
-		tty_draw_line(tty, &screen, px, 0, width, x, y, NULL);
+		tty_draw_line(tty, &screen, px, 0, width, x0, y, NULL);
 	}
 	screen_free(&screen);
 }
@@ -2486,6 +2548,7 @@ redraw_client_damage(struct client *c)
 		redraw_free_pending_damage(c);
 	if (TAILQ_EMPTY(&w->damage) && TAILQ_EMPTY(&c->pending_damage))
 		return;
+	redraw_status_serial++;
 
 	scene = redraw_get_scene(c);
 	if (scene == NULL)
