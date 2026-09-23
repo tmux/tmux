@@ -1308,6 +1308,7 @@ redraw_image_scroll_result(struct tty *tty, const struct tty_ctx *ctx,
 }
 #endif
 
+#ifdef ENABLE_IMAGES
 /* Record damage for every pane border-status row in a window. */
 static void
 redraw_damage_window_pane_status(struct window *w)
@@ -1330,6 +1331,7 @@ redraw_damage_window_pane_status(struct window *w)
 			redraw_damage_window(w, 0, y, w->sx, 1);
 	}
 }
+#endif
 
 /* Mark all cached redraw scenes as out of date. */
 void
@@ -1383,7 +1385,7 @@ redraw_get_scene(struct client *c)
 static void
 redraw_draw_pane_span(struct redraw_draw_ctx *dctx,
     struct redraw_span *span, u_int x, u_int y, u_int n,
-    enum redraw_image_phase phase, int skip_images)
+    enum redraw_image_phase phase, __unused int skip_images)
 {
 	struct redraw_scene	*scene = dctx->scene;
 	struct client		*c = scene->c;
@@ -2580,7 +2582,7 @@ redraw_draw_damage_rect(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 /* Compose one damaged rectangle, clipped to what this client can see. */
 static void
 redraw_client_damage_rect(struct client *c, struct redraw_draw_ctx *dctx,
-    struct window *w, u_int ox, u_int oy, u_int sx, u_int sy,
+    __unused struct window *w, u_int ox, u_int oy, u_int sx, u_int sy,
     struct redraw_damage *rd)
 {
 	u_int	x0, y0, x1, y1;
