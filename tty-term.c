@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-term.c,v 1.109 2026/08/25 08:37:08 nicm Exp $ */
+/* $OpenBSD: tty-term.c,v 1.111 2026/09/22 14:10:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -90,6 +90,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_DL1] = { TTYCODE_STRING, "dl1" },
 	[TTYC_DL] = { TTYCODE_STRING, "dl" },
 	[TTYC_DSEKS] = { TTYCODE_STRING, "Dseks" },
+	[TTYC_DSESC] = { TTYCODE_STRING, "Dsesc" },
 	[TTYC_DSFCS] = { TTYCODE_STRING, "Dsfcs" },
 	[TTYC_DSBP] = { TTYCODE_STRING, "Dsbp" },
 	[TTYC_DSMG] = { TTYCODE_STRING, "Dsmg" },
@@ -101,6 +102,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_ENACS] = { TTYCODE_STRING, "enacs" },
 	[TTYC_ENBP] = { TTYCODE_STRING, "Enbp" },
 	[TTYC_ENEKS] = { TTYCODE_STRING, "Eneks" },
+	[TTYC_ENESC] = { TTYCODE_STRING, "Enesc" },
 	[TTYC_ENFCS] = { TTYCODE_STRING, "Enfcs" },
 	[TTYC_ENMG] = { TTYCODE_STRING, "Enmg" },
 	[TTYC_FSL] = { TTYCODE_STRING, "fsl" },
@@ -362,7 +364,8 @@ tty_term_override_next(const char *s, size_t *offset)
 }
 
 void
-tty_term_apply(struct tty_term *term, const char *capabilities, int quiet)
+tty_term_apply(struct tty_term *term, const char *capabilities, int quiet,
+    int flags)
 {
 	const struct tty_term_code_entry	*ent;
 	struct tty_code				*code;
@@ -405,6 +408,9 @@ tty_term_apply(struct tty_term *term, const char *capabilities, int quiet)
 			if (strcmp(s, ent->name) != 0)
 				continue;
 			code = &term->codes[i];
+			if ((flags & TERM_NOREPLACE) &&
+			    code->type != TTYCODE_NONE)
+				continue;
 
 			if (remove) {
 				code->type = TTYCODE_NONE;
@@ -457,7 +463,7 @@ tty_term_apply_overrides(struct tty_term *term)
 		offset = 0;
 		first = tty_term_override_next(s, &offset);
 		if (first != NULL && fnmatch(first, term->name, 0) == 0)
-			tty_term_apply(term, s + offset, 0);
+			tty_term_apply(term, s + offset, 0, 0);
 		a = options_array_next(a);
 	}
 
@@ -638,6 +644,15 @@ tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
  		else if (strstr(envent->value, "256") != NULL)
 			tty_parse_client_features(c, "256", ",");
 	}
+
+	/*
+	 * Windows Terminal cannot be identified by XTVERSION (its
+	 * maintainers have declined to implement it), but it sets
+	 * WT_SESSION for every child process - see the WindowsTerminal
+	 * entry in tty_default_features()'s table (tty-features.c).
+	 */
+	if (environ_find(c->environ, "WT_SESSION") != NULL)
+		tty_default_features(c, "WindowsTerminal", 0);
 
 	/* Apply overrides so any capabilities used for features are changed. */
 	tty_term_apply_overrides(term);

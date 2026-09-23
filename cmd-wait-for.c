@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-wait-for.c,v 1.23 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: cmd-wait-for.c,v 1.24 2026/09/22 06:46:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2013 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -478,6 +478,40 @@ cmd_wait_for_unlock(struct cmdq_item *item, const char *name,
 	}
 
 	return (CMD_RETURN_NORMAL);
+}
+
+void
+cmd_wait_for_client_lost(struct client *c)
+{
+	struct wait_channel	*wc, *wc1;
+	struct wait_item	*wi, *wi1;
+	struct wait_event_item	*wei, *wei1;
+
+	TAILQ_FOREACH_SAFE(wei, &wait_event_items, entry, wei1) {
+		if (cmdq_get_client(wei->item) == c) {
+			TAILQ_REMOVE(&wait_event_items, wei, entry);
+			cmdq_continue(wei->item);
+			cmd_wait_for_event_free(wei);
+		}
+	}
+
+	RB_FOREACH_SAFE(wc, wait_channels, &wait_channels, wc1) {
+		TAILQ_FOREACH_SAFE(wi, &wc->waiters, entry, wi1) {
+			if (cmdq_get_client(wi->item) == c) {
+				cmdq_continue(wi->item);
+				TAILQ_REMOVE(&wc->waiters, wi, entry);
+				free(wi);
+			}
+		}
+		TAILQ_FOREACH_SAFE(wi, &wc->lockers, entry, wi1) {
+			if (cmdq_get_client(wi->item) == c) {
+				cmdq_continue(wi->item);
+				TAILQ_REMOVE(&wc->lockers, wi, entry);
+				free(wi);
+			}
+		}
+		cmd_wait_for_remove_empty(wc);
+	}
 }
 
 void
