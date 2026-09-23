@@ -1804,6 +1804,7 @@ struct tty_term {
 #ifdef ENABLE_IMAGES
 #define TERM_IMAGE_QUADRANTS 0x200
 #define TERM_IMAGE_SEXTANTS 0x400
+#define TERM_IMAGESCROLL 0x1000
 #endif
 #define TERM_NOREPLACE 0x800
 	int		 flags;

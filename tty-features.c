@@ -397,6 +397,22 @@ static const struct tty_feature tty_feature_image_sextants = {
 	tty_feature_image_capabilities,
 	TERM_IMAGE_SEXTANTS
 };
+
+/*
+ * Terminal moves SIXEL or Kitty image content along with the rest of a
+ * scrolling region, rather than needing it redrawn after every scroll.
+ * There is no way to ask a terminal this, and it does not correlate with
+ * DECSLRM/margins support - confirmed by direct testing that mintty
+ * scrolls text within a margin-bounded region correctly but drops sixel
+ * content placed there, while WezTerm and Windows Terminal move it
+ * correctly - so this is granted per terminal individually rather than
+ * assumed from any other capability.
+ */
+static const struct tty_feature tty_feature_imagescroll = {
+	"imagescroll",
+	tty_feature_image_capabilities,
+	TERM_IMAGESCROLL
+};
 #endif
 
 /* Terminal supports the OSC 9;4 progress bar. */
@@ -433,6 +449,7 @@ static const struct tty_feature *const tty_features[] = {
 #ifdef ENABLE_IMAGES
 	&tty_feature_image_quadrants,
 	&tty_feature_image_sextants,
+	&tty_feature_imagescroll,
 #endif
 	&tty_feature_margins,
 	&tty_feature_mouse,
@@ -672,6 +689,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "extkeys,"
 			      "focus,"
 		  	      "hyperlinks,"
+			      "imagescroll,"
 			      "margins,"
 			      "sixel,"
 			      "usstyle"
@@ -682,6 +700,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "cstyle,"
 			      "extkeys,"
 			      "focus,"
+			      "imagescroll,"
 			      "margins,"
 			      "overline,"
 			      "hyperlinks,"

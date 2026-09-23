@@ -176,14 +176,17 @@ image_backend_flags(struct tty *tty)
 
 	/*
 	 * There is no way to ask a terminal whether it moves SIXEL or Kitty
-	 * image content along with the rest of a scrolling region, so this
-	 * is an assumption the user can turn off with image-region-scrolling
-	 * if their terminal gets it wrong (as at least Windows Terminal does
-	 * for Kitty placements, which it drops rather than moves).
+	 * image content along with the rest of a scrolling region, and it
+	 * does not correlate with DECSLRM/margins support (confirmed by
+	 * direct testing that mintty scrolls text within a margin-bounded
+	 * region correctly but drops sixel content placed there, while
+	 * WezTerm and Windows Terminal move it correctly) - so this is
+	 * granted per terminal via the imagescroll terminal-feature, not
+	 * assumed.
 	 */
 	if ((tty->image_backend == &image_backend_sixel ||
 	    tty->image_backend == &image_backend_kitty) &&
-	    options_get_number(global_options, "image-region-scrolling"))
+	    (tty->term->flags & TERM_IMAGESCROLL))
 		flags |= IMAGE_BACKEND_SCROLLS;
 
 	return (flags);

@@ -1,11 +1,13 @@
 #!/bin/sh
 
-# Regression test for the image-region-scrolling option (options-table.c),
+# Regression test for the imagescroll terminal-feature (tty-features.c),
 # SIXEL side - see image-kitty-region-scroll.sh for the Kitty side of the
-# same option: scrolling a pane that has a SIXEL image in it must not
-# retransmit the image when the option is on - tmux trusts the terminal to
-# have moved the image along with the rest of the scrolling region. With
-# the option off, today's always-redraw-on-scroll behaviour is unchanged.
+# same feature: scrolling a pane that has a SIXEL image in it must not
+# retransmit the image when the client's terminal has imagescroll - tmux
+# trusts the terminal to have moved the image along with the rest of the
+# scrolling region. Without imagescroll (the default for any terminal not
+# individually confirmed and added to tty-features.c's table), today's
+# always-redraw-on-scroll behaviour is unchanged.
 #
 # There is no way to query a terminal for whether it actually moves SIXEL
 # pixels along with a scroll, so this only proves tmux's own decision to
@@ -61,8 +63,8 @@ sleep 2
 
 grep -qa '"1;1;26;26' "$TMP" || fail "sanity: image never reached the client"
 
-# --- Phase 1: image-region-scrolling on (the default) - expect no DCS. ---
-$TMUX set -s image-region-scrolling on || fail "set option on failed"
+# --- Phase 1: imagescroll granted - expect no DCS. ---
+$TMUX set -as terminal-features ',*:imagescroll' || fail "grant imagescroll failed"
 sleep 0.5
 : >"$TMP"
 $TMUX send-keys -t inner -l "yes | head -n 30" || fail "send scroll failed"
@@ -71,16 +73,16 @@ sleep 1
 
 n_on=$(grep -ac "$(printf '\033P')" "$TMP")
 [ "$n_on" -eq 0 ] ||
-	fail "image was retransmitted ($n_on times) scrolling with image-region-scrolling on"
+	fail "image was retransmitted ($n_on times) scrolling with imagescroll granted"
 
-# --- Phase 2: image-region-scrolling off - expect the image back, then
-# more scrolling to redraw it. ---
+# --- Phase 2: imagescroll not granted (the default) - expect the image
+# back, then more scrolling to redraw it. ---
 $TMUX send-keys -t inner -l "printf '$HEADER'" || fail "resend image failed"
 $TMUX send-keys -t inner Enter || fail "send enter failed"
 sleep 1.5
 grep -qa '"1;1;26;26' "$TMP" || fail "sanity: image did not reappear before phase 2"
 
-$TMUX set -s image-region-scrolling off || fail "set option off failed"
+$TMUX set -as terminal-features ',*:imagescroll@' || fail "revoke imagescroll failed"
 sleep 0.5
 : >"$TMP"
 $TMUX send-keys -t inner -l "yes | head -n 30" || fail "send scroll failed"
@@ -89,6 +91,6 @@ sleep 1
 
 n_off=$(grep -ac "$(printf '\033P')" "$TMP")
 [ "$n_off" -gt 0 ] ||
-	fail "image was not retransmitted scrolling with image-region-scrolling off - expected the old always-redraw behaviour"
+	fail "image was not retransmitted scrolling without imagescroll - expected the default always-redraw behaviour"
 
 exit 0
