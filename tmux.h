@@ -4378,6 +4378,8 @@ void		 image_grid_resize_width(struct grid *, u_int);
 int		 image_grid_line_has_images(const struct grid_line *);
 int		 image_grid_check_area(struct grid *, u_int, u_int, u_int,
 		     u_int);
+int		 image_grid_next_span(struct grid *, u_int, u_int, u_int,
+		     u_int *, u_int *);
 int		 image_grid_get_source(struct grid *, u_int, u_int,
 		     struct image *, u_int *, u_int *);
 void		 image_place_cell_kitty(struct screen_write_ctx *, struct image *,

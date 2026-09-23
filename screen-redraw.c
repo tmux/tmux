@@ -1370,11 +1370,20 @@ redraw_get_scene(struct client *c)
 	return (scene);
 }
 
-/* Draw a pane span. */
+/*
+ * Draw a pane span. skip_images is only set for a REDRAW_TEXT pass standing
+ * in for a trusted scroll's skipped image phases (redraw_draw_damage_rect())
+ * - text is normally drawn first and images composited on top straight
+ * after, so a plain grid cell (usually blank, since an image is a separate
+ * overlay) is a harmless intermediate state. When the image phases are
+ * skipped because the terminal is trusted to have preserved the image
+ * itself, nothing corrects that draw afterwards, so any x-range with an
+ * image span attached must be left alone here instead.
+ */
 static void
 redraw_draw_pane_span(struct redraw_draw_ctx *dctx,
     struct redraw_span *span, u_int x, u_int y, u_int n,
-    enum redraw_image_phase phase)
+    enum redraw_image_phase phase, int skip_images)
 {
 	struct redraw_scene	*scene = dctx->scene;
 	struct client		*c = scene->c;
@@ -1384,6 +1393,10 @@ redraw_draw_pane_span(struct redraw_draw_ctx *dctx,
 	struct grid_cell	 defaults;
 	struct tty_style_ctx	 style_ctx;
 	u_int			 px, py;
+#ifdef ENABLE_IMAGES
+	u_int			 gy, cur, end, span_x, span_end;
+	int			 xoff;
+#endif
 
 	tty_default_colours(&defaults, wp, &style_ctx.dim);
 	style_ctx.defaults = &defaults;
@@ -1393,10 +1406,34 @@ redraw_draw_pane_span(struct redraw_draw_ctx *dctx,
 	px = span->data.p.px + (x - span->x);
 	py = span->data.p.py;
 #ifdef ENABLE_IMAGES
-	if (phase != REDRAW_TEXT)
+	if (phase != REDRAW_TEXT) {
 		image_draw_line(tty, s, px, py, n, x, y,
 		    phase == REDRAW_IMAGES_BEFORE, &style_ctx);
-	else
+		return;
+	}
+	if (skip_images) {
+		gy = s->grid->hsize + py;
+		xoff = (int)x - (int)px;
+		cur = px;
+		end = px + n;
+		while (cur < end) {
+			if (!image_grid_next_span(s->grid, cur, end, gy,
+			    &span_x, &span_end))
+				span_x = end;
+			else {
+				log_debug("%s: skipping %u-%u on row %u (image)",
+				    __func__, span_x, span_end, gy);
+			}
+			if (span_x > cur) {
+				tty_draw_line(tty, s, cur, py, span_x - cur,
+				    (u_int)((int)cur + xoff), y, &style_ctx);
+			}
+			if (span_x >= end)
+				break;
+			cur = span_end;
+		}
+		return;
+	}
 #endif
 	if (phase == REDRAW_TEXT)
 		tty_draw_line(tty, s, px, py, n, x, y, &style_ctx);
@@ -1654,11 +1691,14 @@ redraw_draw_menu_span(struct redraw_draw_ctx *dctx,
 /*
  * Draw a span, restricted to [clip_x, clip_x + clip_n) - a caller drawing
  * the whole span passes the span's own x/width here; a caller drawing only
- * a damaged sub-range passes that range instead.
+ * a damaged sub-range passes that range instead. skip_images is only ever
+ * set from redraw_draw_damage_rect(), for a REDRAW_TEXT pass standing in
+ * for a trusted scroll's skipped image phases - see redraw_draw_pane_span().
  */
 static void
 redraw_draw_span(struct redraw_draw_ctx *dctx, struct redraw_span *span,
-    u_int y, u_int clip_x, u_int clip_n, enum redraw_image_phase phase)
+    u_int y, u_int clip_x, u_int clip_n, enum redraw_image_phase phase,
+    int skip_images)
 {
 	struct redraw_span_data	*data = &span->data;
 	enum redraw_span_type	 type = data->type;
@@ -1670,7 +1710,8 @@ redraw_draw_span(struct redraw_draw_ctx *dctx, struct redraw_span *span,
 
 	switch (span->data.type) {
 	case REDRAW_SPAN_PANE:
-		redraw_draw_pane_span(dctx, span, clip_x, y, clip_n, phase);
+		redraw_draw_pane_span(dctx, span, clip_x, y, clip_n, phase,
+		    skip_images);
 		break;
 	case REDRAW_SPAN_BORDER:
 	case REDRAW_SPAN_EMPTY:
@@ -1748,7 +1789,7 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 				TAILQ_FOREACH(span, spans, entry) {
 					if (span->data.p.wp == wp)
 						redraw_draw_span(dctx, span, cy, span->x,
-						    span->width, phase);
+						    span->width, phase, 0);
 				}
 			}
 			if (phase == REDRAW_TEXT &&
@@ -1757,7 +1798,7 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 				TAILQ_FOREACH(span, spans, entry) {
 					if (span->data.sb.wp == wp)
 						redraw_draw_span(dctx, span, cy, span->x,
-						    span->width, phase);
+						    span->width, phase, 0);
 				}
 			}
 		}
@@ -1825,7 +1866,7 @@ redraw_draw_lines(struct redraw_draw_ctx *dctx, int flags)
 			spans = &line->spans[type];
 			TAILQ_FOREACH(span, spans, entry)
 				redraw_draw_span(dctx, span, cy, span->x, span->width,
-				    phase);
+				    phase, 0);
 			}
 		}
 #ifdef ENABLE_IMAGES
@@ -1851,7 +1892,7 @@ redraw_draw_menu_lines(struct redraw_draw_ctx *dctx)
 			cy = y;
 		TAILQ_FOREACH(span, &line->spans[REDRAW_SPAN_MENU], entry)
 			redraw_draw_span(dctx, span, cy, span->x, span->width,
-			    REDRAW_TEXT);
+			    REDRAW_TEXT, 0);
 	}
 }
 
@@ -2426,6 +2467,38 @@ redraw_draw_damage_rect(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 	if (sx == 0 || sy == 0)
 		return;
 
+#ifdef ENABLE_IMAGES
+	/*
+	 * Remove any stale Kitty placements this redraw is about to replace,
+	 * the same as redraw_draw_pane_lines() does for a full pane redraw -
+	 * unlike a plain overwrite of SIXEL pixels, a Kitty placement is a
+	 * discrete object that persists until explicitly deleted, so without
+	 * this a scroll-triggered redraw (this function, not the full-pane
+	 * path) leaves every previous placement behind, all still visible
+	 * and now overlapping the newly placed ones. Skipped when trusting a
+	 * scroll to have moved the image itself - nothing is being replaced.
+	 */
+	if (!skip_images) {
+		for (yy = y; yy < y + sy; yy++) {
+			line = &scene->lines[yy];
+			if (dctx->flags & REDRAW_STATUS_TOP)
+				cy = dctx->status_lines + yy;
+			else
+				cy = yy;
+			spans = &line->spans[REDRAW_SPAN_PANE];
+			TAILQ_FOREACH(span, spans, entry) {
+				clip_x = (span->x > x) ? span->x : x;
+				clip_end = (span->x + span->width < x + sx) ?
+				    span->x + span->width : x + sx;
+				if (clip_end <= clip_x)
+					continue;
+				image_redraw_start(&scene->c->tty, clip_x, cy,
+				    clip_end - clip_x, 1);
+			}
+		}
+	}
+#endif
+
 	for (enum redraw_image_phase phase = REDRAW_IMAGES_BEFORE;
 	    phase <= REDRAW_IMAGES_AFTER; phase++) {
 		if (skip_images && phase != REDRAW_TEXT)
@@ -2455,7 +2528,7 @@ redraw_draw_damage_rect(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 				redraw_damage_grow_span_clip(span, &clip_x,
 				    &clip_end);
 				redraw_draw_span(dctx, span, cy, clip_x,
-				    clip_end - clip_x, phase);
+				    clip_end - clip_x, phase, skip_images);
 				if (phase == REDRAW_TEXT && type == REDRAW_SPAN_PANE) {
 					redraw_damage_draw_pane_prompt(dctx,
 					    span, cy, clip_x,
@@ -2486,7 +2559,7 @@ redraw_draw_damage_rect(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 			redraw_damage_refresh_status(dctx, span->data.st.wp);
 			redraw_damage_grow_span_clip(span, &clip_x, &clip_end);
 			redraw_draw_span(dctx, span, cy, clip_x, clip_end - clip_x,
-			    REDRAW_TEXT);
+			    REDRAW_TEXT, 0);
 		}
 	}
 }

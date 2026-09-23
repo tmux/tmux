@@ -653,6 +653,42 @@ image_grid_check_area(struct grid *gd, u_int x, u_int y, u_int width,
 	return (0);
 }
 
+/*
+ * Find the leftmost image span intersecting [x, end) on one grid row.
+ * Used to avoid drawing text over cells that a trusted scroll (imagescroll)
+ * is assumed to have preserved image content in - text is always drawn
+ * before images are composited on top, and when compositing is skipped for
+ * a trusted scroll, nothing would otherwise correct that draw. Returns 1
+ * and sets out_x and out_end to the clipped intersection, or 0 if none.
+ */
+int
+image_grid_next_span(struct grid *gd, u_int x, u_int end, u_int y,
+    u_int *out_x, u_int *out_end)
+{
+	struct image_line	*line;
+	struct image_span	*span;
+	u_int			 sx, sxend;
+	int			 found = 0;
+
+	if (gd->images == NULL || y >= gd->hsize + gd->sy)
+		return (0);
+	line = gd->linedata[y].images;
+	if (line == NULL)
+		return (0);
+	TAILQ_FOREACH(span, &line->spans, line_entry) {
+		if (span->x >= end || span->x + span->sx <= x)
+			continue;
+		sx = (span->x > x) ? span->x : x;
+		sxend = (span->x + span->sx < end) ? span->x + span->sx : end;
+		if (!found || sx < *out_x) {
+			*out_x = sx;
+			*out_end = sxend;
+			found = 1;
+		}
+	}
+	return (found);
+}
+
 /* Find source coordinates for an image span at one grid cell. */
 int
 image_grid_get_source(struct grid *gd, u_int x, u_int y, struct image *im,
