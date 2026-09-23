@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1172 2026/09/22 06:58:05 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1173 2026/09/23 12:37:50 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: September 22 2026 $
+.Dd $Mdocdate: September 23 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -994,13 +994,19 @@ Will run:
 /bin/sh \-c \[aq]vi \[ti]/.tmux.conf\[aq]
 .Ed
 .Pp
+Unless specified, tmux uses the value of
+.Ic default\-shell
+in place of
+.Pa /bin/sh .
+.Pp
 Additionally, the
 .Ic new\-window ,
 .Ic new\-session ,
 .Ic split\-window ,
-.Ic respawn\-window
-and
+.Ic respawn\-window ,
 .Ic respawn\-pane
+and
+.Ic display\-popup
 commands allow
 .Ar shell\-command
 to be given as multiple arguments and executed directly (without
