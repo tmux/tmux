@@ -678,22 +678,6 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "extkeys,"
 			      "focus"
 		},
-		/*
-		 * Windows Terminal cannot be identified by the XTVERSION
-		 * mechanism used for the other entries above - its
-		 * maintainers have declined to implement it (see
-		 * github.com/microsoft/terminal issue 18382). It is instead
-		 * detected via the WT_SESSION environment variable it sets
-		 * for every child process (tty_term_create(), tty-term.c).
-		 * DECSLRM support was independently confirmed by direct
-		 * (non-tmux) testing; other capabilities have not been
-		 * verified, so only margins is granted here - deliberately
-		 * not the full modern-xterm feature bundle other entries
-		 * get.
-		 */
-		{ .name = "WindowsTerminal",
-		  .features = "margins"
-		}
 	};
 	u_int	i;
 
