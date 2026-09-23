@@ -717,6 +717,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "extkeys,"
 			      "focus,"
 			      "hyperlinks,"
+			      "imagescroll,"
 			      "osc7,"
 			      "sync,"
 			      "usstyle,"
