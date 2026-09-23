@@ -377,10 +377,7 @@ must_equal 'Layout after select-pane back' "$(layout L:two)" "$SPLIT"
 
 # With nothing zoomed the two layout formats agree.
 #
-# The zoomed case is deliberately not covered here. While a pane is zoomed
-# #{window_layout} dumps the saved (unzoomed) layout and
-# #{window_visible_layout} the zoomed one, but that depends on how zooming
-# stashes the layout root rather than on anything in layout-custom.c.
+# Zoomed layouts are checked below with floating panes.
 must_equal 'Visible layout' "$(visible_layout L:two)" "$SPLIT"
 
 # ---------------------------------------------------------------------------
@@ -703,6 +700,42 @@ must_contain 'Floating layout back z-index' "$floating" '"z":1'
 # and only comes back the same if the panes go by index.
 check_ok select-layout -t L:float "$floating"
 must_equal 'Floating layout after round trip' "$(raw_layout L:float)" "$floating"
+
+# A dump taken while zoomed must retain the unzoomed floating z-indexes.
+# Check hidden floats, floats above zoom, and a mixture of the two.
+for flags in '' A mixed; do
+	check_ok new-window -d -t L: -n zoom
+	zt=$($TMUX display-message -p -t L:zoom '#{pane_id}')
+	check_ok split-window -d -h -t "$zt"
+	case "$flags" in
+	A|mixed) first=-Ad ;;
+	*) first=-d ;;
+	esac
+	case "$flags" in
+	A) second=-Ad ;;
+	*) second=-d ;;
+	esac
+	check_ok new-pane "$first" -t "$zt" -x 20 -y 6 ''
+	check_ok new-pane "$second" -t "$zt" -x 30 -y 8 ''
+	for pane in 0 2 3; do
+		check_ok select-pane -t "L:zoom.$pane"
+		before=$(raw_layout L:zoom)
+		legacy=$(v1_layout L:zoom)
+		check_ok resize-pane -Z -t "L:zoom.$pane"
+		during=$(raw_layout L:zoom)
+		must_equal 'Layout while zoomed' "$during" "$before"
+		must_equal 'Legacy layout while zoomed' \
+		    "$(v1_layout L:zoom)" "$legacy"
+		must_equal 'Zoom after dumping layout' \
+		    "$($TMUX display-message -p -t L:zoom '#{window_zoomed_flag}')" 1
+		must_differ 'Visible layout while zoomed' \
+		    "$(visible_layout L:zoom)" "$(layout L:zoom)"
+		check_ok select-layout -t L:zoom "$during"
+		must_equal 'Round trip from zoomed layout' \
+		    "$(raw_layout L:zoom)" "$before"
+	done
+	check_ok kill-window -t L:zoom
+done
 
 # ---------------------------------------------------------------------------
 # Floating panes and the legacy (v1) format.

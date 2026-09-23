@@ -1,4 +1,4 @@
-/* $OpenBSD: layout-custom.c,v 1.42 2026/09/20 08:37:47 nicm Exp $ */
+/* $OpenBSD: layout-custom.c,v 1.43 2026/09/22 06:48:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2010 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -307,6 +307,37 @@ bad:
 	return (xstrdup("0000,"));
 }
 
+/* Get a floating pane cell's z-index in the layout being dumped. */
+static u_int
+layout_cell_zindex(struct layout_cell *lc)
+{
+	struct window_pane	*wp = lc->wp, *wq;
+	struct window		*w = wp->window;
+	struct layout_cell	*other;
+	int			 saved = (lc == wp->saved_layout_cell);
+	u_int			 i = 0;
+
+	if (saved &&
+	    w->active != NULL &&
+	    (w->active->flags & PANE_ZOOMED) &&
+	    (w->active->saved_layout_cell->flags & LAYOUT_CELL_FLOATING)) {
+		if (wp == w->active)
+			return (0);
+		i++;
+	}
+	TAILQ_FOREACH(wq, &w->z_index, zentry) {
+		if (wq == wp)
+			break;
+		if (saved)
+			other = wq->saved_layout_cell;
+		else
+			other = wq->layout_cell;
+		if (other != NULL && (other->flags & LAYOUT_CELL_FLOATING))
+			i++;
+	}
+	return (i);
+}
+
 /* Append information for a single cell in a JSON (v2) format. */
 static int
 layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
@@ -315,7 +346,7 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 	struct window_pane	*wp;
 	enum layout_type	 type;
 	char			 c;
-	u_int			 i, n;
+	u_int			 i, n, z;
 
 	if (lc == NULL)
 		return (-1);
@@ -356,9 +387,10 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 		if (window_pane_index(wp, &i) != 0)
 			return (-1);
 		layout_string_write(ls, ",\"i\":%u", i);
-		if ((lc->flags & LAYOUT_CELL_FLOATING) &&
-		    window_pane_zindex(wp, &i) == 0)
-			layout_string_write(ls, ",\"z\":%u", i);
+		if (lc->flags & LAYOUT_CELL_FLOATING) {
+			z = layout_cell_zindex(lc);
+			layout_string_write(ls, ",\"z\":%u", z);
+		}
 		layout_string_write(ls, ",\"I\":\"%%%u\"", wp->id);
 	}
 

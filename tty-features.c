@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.43 2026/08/31 12:41:03 kirill Exp $ */
+/* $OpenBSD: tty-features.c,v 1.45 2026/09/22 14:10:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -189,6 +189,18 @@ static const struct tty_feature tty_feature_focus = {
 	0
 };
 
+/* Terminal supports application escape key mode. */
+static const char *const tty_feature_appesc_capabilities[] = {
+	"Enesc=\\E[?7727h",
+	"Dsesc=\\E[?7727l",
+	NULL
+};
+static const struct tty_feature tty_feature_appesc = {
+	"appesc",
+	tty_feature_appesc_capabilities,
+	0
+};
+
 /* Terminal supports cursor styles. */
 static const char *const tty_feature_cstyle_capabilities[] = {
 	"Ss=\\E[%p1%d q",
@@ -198,7 +210,7 @@ static const char *const tty_feature_cstyle_capabilities[] = {
 static const struct tty_feature tty_feature_cstyle = {
 	"cstyle",
 	tty_feature_cstyle_capabilities,
-	0
+	TERM_NOREPLACE
 };
 
 /* Terminal supports cursor colours. */
@@ -408,6 +420,7 @@ static const struct tty_feature tty_feature_utf8 = {
 /* Available terminal features. */
 static const struct tty_feature *const tty_features[] = {
 	&tty_feature_256,
+	&tty_feature_appesc,
 	&tty_feature_bpaste,
 	&tty_feature_ccolour,
 	&tty_feature_clipboard,
@@ -576,11 +589,11 @@ tty_apply_features(struct tty_term *term)
 			capability = tf->capabilities;
 			while (*capability != NULL) {
 				log_debug("adding capability: %s", *capability);
-				tty_term_apply(term, *capability, 1);
+				tty_term_apply(term, *capability, 1, tf->flags);
 				capability++;
 			}
 		}
-		term->flags |= tf->flags;
+		term->flags |= (tf->flags & ~TERM_NOREPLACE);
 		if (tf == &tty_feature_utf8)
 			c->flags |= CLIENT_UTF8;
 	}
@@ -603,6 +616,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 	"256,RGB,bpaste,clipboard,mouse,strikethrough,title"
 		{ .name = "mintty",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
+			      "appesc,"
 			      "ccolour,"
 			      "cstyle,"
 			      "extkeys,"
@@ -658,6 +672,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "extkeys,"
 			      "focus,"
 		  	      "hyperlinks,"
+			      "margins,"
 			      "sixel,"
 			      "usstyle"
 		},
@@ -667,6 +682,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "cstyle,"
 			      "extkeys,"
 			      "focus,"
+			      "margins,"
 			      "overline,"
 			      "hyperlinks,"
 			      "osc7,"
@@ -710,6 +726,22 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "cstyle,"
 			      "extkeys,"
 			      "focus"
+		},
+		/*
+		 * Windows Terminal cannot be identified by the XTVERSION
+		 * mechanism used for the other entries above - its
+		 * maintainers have declined to implement it (see
+		 * github.com/microsoft/terminal issue 18382). It is instead
+		 * detected via the WT_SESSION environment variable it sets
+		 * for every child process (tty_term_create(), tty-term.c).
+		 * DECSLRM support was independently confirmed by direct
+		 * (non-tmux) testing; other capabilities have not been
+		 * verified, so only margins is granted here - deliberately
+		 * not the full modern-xterm feature bundle other entries
+		 * get.
+		 */
+		{ .name = "WindowsTerminal",
+		  .features = "margins"
 		}
 	};
 	u_int	i;

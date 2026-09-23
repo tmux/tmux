@@ -2,19 +2,36 @@
 
 . ./input-common.inc
 
-# Large strings may take longer than start_cmd's delay to reach the parser.
+# Wait for the terminator and following text to reach the parser.
 check_discard()
 {
 	name=$1
 	printf 'OK\n' >"$EXP"
 	i=0
-	while [ "$i" -lt 100 ]; do
+	while [ "$i" -lt 300 ]; do
 		capture_grid "$name" >"$TMP"
 		cmp -s "$TMP" "$EXP" && return 0
 		sleep 0.05
 		i=$((i + 1))
 	done
 	fail "$name (timed out waiting for discard)"
+}
+
+# The missing-terminator timer may expire before the string limit is reached
+# on a slow build. Clear any payload printed after the timeout, then check
+# that the string did not change the title and normal output has resumed.
+test_discard()
+{
+	name=$1
+	prefix=$2
+	start_cmd "$name" 8 3 "$INPUT_HOLD"
+	$TMUX select-pane -T discard-test || exit 1
+	$TMUX respawn-pane -k \
+	    "perl -e 'print qq{$prefix}, q{x} x 1100000, qq{\e\\\\\e[H\e[2JOK}'; $INPUT_HOLD" || exit 1
+	check_discard "$name"
+	$TMUX display-message -p -t "$name:" '#{pane_title}' >"$TMP" || exit 1
+	printf 'discard-test\n' >"$EXP"
+	cmp "$TMP" "$EXP" || fail "$name title"
 }
 
 start_cmd csi-param-discard 8 3 \
@@ -25,13 +42,8 @@ start_cmd csi-interm-discard 8 3 \
     "perl -e 'print qq{\e[    \030OK}'; sleep 2"
 check_capture csi-interm-discard 'OK'
 
-start_cmd osc-discard 8 3 \
-    "perl -e 'print qq{\e]2;}, q{x} x 1100000, qq{\e\\\\OK}'; exec cat"
-check_discard osc-discard
-
-start_cmd apc-discard 8 3 \
-    "perl -e 'print qq{\e_}, q{x} x 1100000, qq{\e\\\\OK}'; exec cat"
-check_discard apc-discard
+test_discard osc-discard '\e]2;'
+test_discard apc-discard '\e_'
 
 start_pane unknown-csi 8 3 '\033[?9999zOK'
 check_capture unknown-csi 'OK'

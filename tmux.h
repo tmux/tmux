@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1444 2026/09/21 12:14:32 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1447 2026/09/22 14:10:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -470,6 +470,7 @@ enum tty_code_code {
 	TTYC_DL1,
 	TTYC_DSBP,
 	TTYC_DSEKS,
+	TTYC_DSESC,
 	TTYC_DSFCS,
 	TTYC_DSMG,
 	TTYC_E3,
@@ -480,6 +481,7 @@ enum tty_code_code {
 	TTYC_ENACS,
 	TTYC_ENBP,
 	TTYC_ENEKS,
+	TTYC_ENESC,
 	TTYC_ENFCS,
 	TTYC_ENMG,
 	TTYC_FSL,
@@ -1803,6 +1805,7 @@ struct tty_term {
 #define TERM_IMAGE_QUADRANTS 0x200
 #define TERM_IMAGE_SEXTANTS 0x400
 #endif
+#define TERM_NOREPLACE 0x800
 	int		 flags;
 
 	LIST_ENTRY(tty_term) entry;
@@ -3076,7 +3079,7 @@ void	tty_default_colours(struct grid_cell *, struct window_pane *, u_int *);
 /* tty-term.c */
 extern struct tty_terms tty_terms;
 u_int		 tty_term_ncodes(void);
-void		 tty_term_apply(struct tty_term *, const char *, int);
+void		 tty_term_apply(struct tty_term *, const char *, int, int);
 void		 tty_term_apply_overrides(struct tty_term *);
 struct tty_term *tty_term_create(struct tty *, char *, char **, u_int, char **);
 void		 tty_term_free(struct tty_term *);
@@ -3297,6 +3300,7 @@ void 		 cmdq_print_data(struct cmdq_item *, struct evbuffer *);
 void printflike(2, 3) cmdq_error(struct cmdq_item *, const char *, ...);
 
 /* cmd-wait-for.c */
+void	cmd_wait_for_client_lost(struct client *);
 void	cmd_wait_for_flush(void);
 
 /* client.c */
