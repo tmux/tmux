@@ -3219,6 +3219,50 @@ input_osc_133_exit_status(const char *p)
 	return (status);
 }
 
+/* Maximum length of a command line captured from OSC 133. */
+#define INPUT_OSC_133_CMDLINE_MAX 1024
+
+/* Parse the OSC 133 C command line. */
+static char *
+input_osc_133_cmdline(const char *p)
+{
+	const char	*cp, *value;
+	char		*copy, *result;
+	size_t		 size;
+
+	if (p[1] != ';')
+		return (NULL);
+	value = NULL;
+	for (cp = p + 1; cp != NULL; cp = strchr(cp + 1, ';')) {
+		if (strncmp(cp + 1, "cmdline=", 8) == 0) {
+			value = cp + 9;
+			break;
+		}
+	}
+	if (value == NULL)
+		return (NULL);
+
+	/*
+	 * cmdline= is the last parameter and its value runs to the end of the
+	 * string; that is what lets the value contain ';' and '='.
+	 */
+	size = strlen(value);
+	if (size <= INPUT_OSC_133_CMDLINE_MAX)
+		return (clean_name(value, 1));
+
+	/*
+	 * clean_name rejects invalid UTF-8, so pull the cut back off any
+	 * continuation bytes rather than splitting a character in half.
+	 */
+	size = INPUT_OSC_133_CMDLINE_MAX;
+	while (size > 0 && (value[size] & 0xc0) == 0x80)
+		size--;
+	copy = xstrndup(value, size);
+	result = clean_name(copy, 1);
+	free(copy);
+	return (result);
+}
+
 /* Fire an OSC 133 command event. */
 static void
 input_fire_command_event(struct window_pane *wp, const char *name)
@@ -3310,6 +3354,8 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 			gl->osc133_data.out_start_col = s->cx;
 		}
 		if (wp != NULL) {
+			free(wp->cmd_line);
+			wp->cmd_line = input_osc_133_cmdline(p);
 			wp->cmd_start_time = time(NULL);
 			wp->cmd_end_time = 0;
 			wp->flags |= PANE_CMDRUNNING;

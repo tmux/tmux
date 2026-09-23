@@ -2454,6 +2454,17 @@ format_cb_pane_command_status(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_command_line. */
+static void *
+format_cb_pane_command_line(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL && wp->cmd_line != NULL)
+		return (xstrdup(wp->cmd_line));
+	return (NULL);
+}
+
 /* Callback for pane_format. */
 static void *
 format_cb_pane_format(struct format_tree *ft)
@@ -3869,6 +3880,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_command_end_time", FORMAT_TABLE_TIME,
 	  format_cb_pane_command_end_time
+	},
+	{ "pane_command_line", FORMAT_TABLE_STRING,
+	  format_cb_pane_command_line
 	},
 	{ "pane_command_running", FORMAT_TABLE_STRING,
 	  format_cb_pane_command_running

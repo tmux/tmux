@@ -1616,6 +1616,7 @@ window_pane_free(struct window_pane *wp)
 	log_debug("pane %%%u freed (%d references)", wp->id, wp->references);
 
 	free(wp->searchstr);
+	free(wp->cmd_line);
 	screen_free(&wp->status_screen);
 	screen_free(&wp->base);
 	free(wp->r.ranges);
