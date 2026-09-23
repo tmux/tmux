@@ -4341,6 +4341,7 @@ void		 image_redraw_area(struct screen_write_ctx *, u_int, u_int,
 void		 image_redraw_all(struct screen_write_ctx *);
 void		 image_redraw_scroll(struct screen_write_ctx *, u_int);
 void		 image_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
+void		 image_redraw_finish(struct tty *);
 void		 image_draw_flush(struct tty *);
 int		 image_backend_flags(struct tty *);
 int		 image_tty_update(struct tty *);
@@ -4398,6 +4399,7 @@ void		 kitty_free_state(void *);
 void		 kitty_draw_rect(struct tty *,
 			     const struct image_rect *, const struct tty_style_ctx *);
 void		 kitty_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
+void		 kitty_redraw_finish(struct tty *);
 void		 kitty_free_output_state(struct tty *, int);
 #endif
 

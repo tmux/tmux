@@ -1806,6 +1806,10 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 		image_draw_flush(&scene->c->tty);
 #endif
 	}
+#ifdef ENABLE_IMAGES
+	if (flags & REDRAW_PANE)
+		image_redraw_finish(&scene->c->tty);
+#endif
 }
 
 /* Draw lines. */
@@ -2139,8 +2143,13 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 
 	if (wp != NULL)
 		redraw_draw_pane_lines(&dctx, wp, flags);
-	else
+	else {
 		redraw_draw_lines(&dctx, flags);
+#ifdef ENABLE_IMAGES
+		if (flags & REDRAW_PANE)
+			image_redraw_finish(tty);
+#endif
+	}
 #ifdef ENABLE_IMAGES
 	if ((flags & REDRAW_PANE) &&
 	    (image_backend_flags(tty) &
@@ -2541,6 +2550,10 @@ redraw_draw_damage_rect(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 		image_draw_flush(&scene->c->tty);
 #endif
 	}
+#ifdef ENABLE_IMAGES
+	if (!skip_images)
+		image_redraw_finish(&scene->c->tty);
+#endif
 
 	/* SIXEL image output may disturb status cells; compose them last. */
 	for (yy = y; yy < y + sy; yy++) {

@@ -131,6 +131,7 @@ struct kitty_placement_cache {
 	u_int				 y;
 	u_int				 width;
 	u_int				 height;
+	int				 pending_delete;
 	struct kitty_placement_cache	*next;
 };
 
@@ -177,13 +178,49 @@ kitty_free_placements(struct kitty_image_cache *entry)
 	entry->placements = NULL;
 }
 
-/* Delete Kitty placements intersecting a redraw area. */
+/*
+ * Mark Kitty placements intersecting a redraw area as stale, without
+ * deleting them yet - see kitty_redraw_finish(). Deleting immediately here
+ * would, for an image whose only placements are in this area, leave it
+ * with none at all until the replacement is placed - some Kitty
+ * implementations free an image's pixel data once it has no placements
+ * left, which would leave the replacement referencing already-discarded
+ * data and render as nothing.
+ */
 void
 kitty_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
     u_int height)
 {
-	struct kitty_output		 *ko = tty->image_data;
-	struct kitty_image_cache	 *entry;
+	struct kitty_output		*ko = tty->image_data;
+	struct kitty_image_cache	*entry;
+	struct kitty_placement_cache	*placement;
+
+	if (ko == NULL)
+		return;
+	for (entry = ko->images; entry != NULL; entry = entry->next) {
+		for (placement = entry->placements; placement != NULL;
+		    placement = placement->next) {
+			if (placement->x >= x + width ||
+			    placement->x + placement->width <= x ||
+			    placement->y >= y + height ||
+			    placement->y + placement->height <= y)
+				continue;
+			placement->pending_delete = 1;
+		}
+	}
+}
+
+/*
+ * Delete placements marked stale by kitty_redraw_start() - called once any
+ * replacement placements have already been created, so an image already
+ * placed elsewhere in the same redraw is never left with none at all in
+ * between the two.
+ */
+void
+kitty_redraw_finish(struct tty *tty)
+{
+	struct kitty_output		*ko = tty->image_data;
+	struct kitty_image_cache	*entry;
 	struct kitty_placement_cache	**pp, *placement;
 	char				  s[64];
 
@@ -191,15 +228,12 @@ kitty_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
 		return;
 	for (entry = ko->images; entry != NULL; entry = entry->next) {
 		for (pp = &entry->placements; (placement = *pp) != NULL; ) {
-			if (placement->x >= x + width ||
-			    placement->x + placement->width <= x ||
-			    placement->y >= y + height ||
-			    placement->y + placement->height <= y) {
+			if (!placement->pending_delete) {
 				pp = &placement->next;
 				continue;
-		}
-		xsnprintf(s, sizeof s,
-		    "\033_Ga=d,d=i,i=%u,p=%u,q=2\033\\", entry->kitty_id,
+			}
+			xsnprintf(s, sizeof s,
+			    "\033_Ga=d,d=i,i=%u,p=%u,q=2\033\\", entry->kitty_id,
 			    placement->id);
 			tty_puts(tty, s);
 			*pp = placement->next;

@@ -156,6 +156,20 @@ image_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
 		sixel_redraw_start(tty, x, y, width, height);
 }
 
+/*
+ * Delete placements marked stale by image_redraw_start() - called once any
+ * replacement placements a redraw is making have already been created. Only
+ * meaningful for Kitty (see kitty_redraw_finish()) - SIXEL has no separate
+ * placement/data distinction for sixel_redraw_start()'s plain erase to
+ * leave dangling.
+ */
+void
+image_redraw_finish(struct tty *tty)
+{
+	if (tty->image_backend == &image_backend_kitty)
+		kitty_redraw_finish(tty);
+}
+
 /* Write out any image output the backend is still holding back. */
 void
 image_draw_flush(struct tty *tty)
