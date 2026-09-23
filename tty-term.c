@@ -645,15 +645,6 @@ tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
 			tty_parse_client_features(c, "256", ",");
 	}
 
-	/*
-	 * Windows Terminal cannot be identified by XTVERSION (its
-	 * maintainers have declined to implement it), but it sets
-	 * WT_SESSION for every child process - see the WindowsTerminal
-	 * entry in tty_default_features()'s table (tty-features.c).
-	 */
-	if (environ_find(c->environ, "WT_SESSION") != NULL)
-		tty_default_features(c, "WindowsTerminal", 0);
-
 	/* Apply overrides so any capabilities used for features are changed. */
 	tty_term_apply_overrides(term);
 
