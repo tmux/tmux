@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1447 2026/09/22 14:10:26 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1448 2026/09/24 11:19:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1347,6 +1347,10 @@ struct window_pane {
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;
+	u_int		 sync_scrolled;
+	u_int		 sync_rupper;
+	u_int		 sync_rlower;
+	u_int		 sync_bg;
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
@@ -3586,7 +3590,7 @@ void	 screen_write_mode_clear(struct screen_write_ctx *, int);
 void	 screen_write_start_sync(struct window_pane *);
 void	 screen_write_stop_sync(struct window_pane *);
 void	 screen_write_end_sync(struct screen_write_ctx *);
-void	 screen_write_clear_dirty(struct window_pane *);
+void	 screen_write_sync_clear_dirty(struct window_pane *);
 void	 screen_write_cursorup(struct screen_write_ctx *, u_int);
 void	 screen_write_cursordown(struct screen_write_ctx *, u_int);
 void	 screen_write_cursorright(struct screen_write_ctx *, u_int);
