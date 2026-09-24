@@ -204,13 +204,35 @@ struct redraw_scene {
 	u_int			 oy;
 };
 
+/* A damaged rectangle in a window. */
+struct redraw_damage {
+	u_int				 x;
+	u_int				 y;
+	u_int				 sx;
+	u_int				 sy;
+
+	TAILQ_ENTRY(redraw_damage)	entry;
+};
+
+/*
+ * If there are more damage rectangles than this, they are collapsed into
+ * one.
+ */
+#define REDRAW_DAMAGE_MAX 16
+
 /* Cell for building the scene. */
 struct redraw_build_cell {
 	struct redraw_span_data	 data;
 };
-
 static struct redraw_build_cell	*redraw_cells;
 static size_t			 redraw_ncells;
+
+/*
+ * We can reuse the same pane status lines during one damage redraw, but when
+ * we enter a new one, the client or format variables may have changed, so we
+ * need to make them again. The generation is increased so this happens.
+ */
+static u_int	redraw_status_generation;
 
 /* Context for building the scene. */
 struct redraw_build_ctx {
@@ -1054,11 +1076,116 @@ redraw_free_scene(struct redraw_scene *scene)
 	free(scene);
 }
 
+/* Does a client's cached scene show this window? */
+int
+redraw_client_has_window(struct client *c, struct window *w)
+{
+	return (c->redraw_scene != NULL && c->redraw_scene->w == w);
+}
+
 /* Mark a window's cached redraw scenes as out of date. */
 void
 redraw_invalidate_scene(struct window *w)
 {
 	w->redraw_scene_generation++;
+}
+
+/* Free all pending damage for a window. */
+void
+redraw_free_damage(struct window *w)
+{
+	struct redraw_damage	*rd, *rd1;
+
+	TAILQ_FOREACH_SAFE(rd, &w->damage, entry, rd1) {
+		TAILQ_REMOVE(&w->damage, rd, entry);
+		free(rd);
+	}
+	w->damage_count = 0;
+}
+
+/* Collapse all pending damage for a window into one rectangle. */
+static void
+redraw_collapse_damage(struct window *w)
+{
+	struct redraw_damage	*rd, *rd1, *first;
+	u_int			 x0, y0, x1, y1;
+
+	first = TAILQ_FIRST(&w->damage);
+	if (first == NULL)
+		return;
+	x0 = first->x;
+	y0 = first->y;
+	x1 = first->x + first->sx;
+	y1 = first->y + first->sy;
+
+	TAILQ_FOREACH_SAFE(rd, &w->damage, entry, rd1) {
+		if (rd->x < x0)
+			x0 = rd->x;
+		if (rd->y < y0)
+			y0 = rd->y;
+		if (rd->x + rd->sx > x1)
+			x1 = rd->x + rd->sx;
+		if (rd->y + rd->sy > y1)
+			y1 = rd->y + rd->sy;
+		if (rd != first) {
+			TAILQ_REMOVE(&w->damage, rd, entry);
+			free(rd);
+		}
+	}
+
+	first->x = x0;
+	first->y = y0;
+	first->sx = x1 - x0;
+	first->sy = y1 - y0;
+	w->damage_count = 1;
+}
+
+/* Record window damage, merging nearby rectangles and limiting the count. */
+void
+redraw_damage_window(struct window *w, u_int x, u_int y, u_int sx, u_int sy)
+{
+	struct redraw_damage	*rd;
+	u_int			 x0, y0, x1, y1, area, union_area;
+
+	if (x >= w->sx || y >= w->sy)
+		return;
+	if (x + sx > w->sx)
+		sx = w->sx - x;
+	if (y + sy > w->sy)
+		sy = w->sy - y;
+	if (sx == 0 || sy == 0)
+		return;
+
+	TAILQ_FOREACH(rd, &w->damage, entry) {
+		if (x > rd->x + rd->sx || rd->x > x + sx ||
+		    y > rd->y + rd->sy || rd->y > y + sy)
+			continue;
+
+		x0 = (x < rd->x) ? x : rd->x;
+		y0 = (y < rd->y) ? y : rd->y;
+		x1 = (x + sx > rd->x + rd->sx) ? x + sx : rd->x + rd->sx;
+		y1 = (y + sy > rd->y + rd->sy) ? y + sy : rd->y + rd->sy;
+
+		area = sx * sy + rd->sx * rd->sy;
+		union_area = (x1 - x0) * (y1 - y0);
+		if (union_area > 2 * area)
+			continue;
+
+		rd->x = x0;
+		rd->y = y0;
+		rd->sx = x1 - x0;
+		rd->sy = y1 - y0;
+		return;
+	}
+
+	rd = xcalloc(1, sizeof *rd);
+	rd->x = x;
+	rd->y = y;
+	rd->sx = sx;
+	rd->sy = sy;
+	TAILQ_INSERT_TAIL(&w->damage, rd, entry);
+	if (++w->damage_count > REDRAW_DAMAGE_MAX)
+		redraw_collapse_damage(w);
 }
 
 /* Mark all cached redraw scenes as out of date. */
@@ -1603,6 +1730,24 @@ redraw_set_draw_context(struct redraw_draw_ctx *dctx,
 		dctx->flags |= REDRAW_ISOLATES;
 }
 
+/* Build a pane prompt. */
+static void
+redraw_make_pane_prompt(struct window_pane *wp, struct screen *screen)
+{
+	struct screen_write_ctx	 ctx;
+	struct prompt_draw_data	 pdd;
+
+	screen_init(screen, wp->sx, 1, 0);
+	screen_write_start(&ctx, screen);
+	pdd.ctx = &ctx;
+	pdd.cursor_x = &wp->prompt_cx;
+	pdd.area_x = 0;
+	pdd.area_width = wp->sx;
+	pdd.prompt_line = 0;
+	prompt_draw(wp->prompt, &pdd);
+	screen_write_stop(&ctx);
+}
+
 /* Draw a pane's prompt over its content. */
 static void
 redraw_draw_pane_prompt(struct redraw_draw_ctx *dctx, struct window_pane *wp)
@@ -1611,8 +1756,6 @@ redraw_draw_pane_prompt(struct redraw_draw_ctx *dctx, struct window_pane *wp)
 	struct client		*c = scene->c;
 	struct tty		*tty = &c->tty;
 	struct screen		 screen;
-	struct screen_write_ctx	 ctx;
-	struct prompt_draw_data	 pdd;
 	int			 ox = scene->ox, oy = scene->oy;
 	int			 sx = scene->sx, sy = scene->sy;
 	int			 line, cy, px, offset, width, wy;
@@ -1645,16 +1788,7 @@ redraw_draw_pane_prompt(struct redraw_draw_ctx *dctx, struct window_pane *wp)
 	if (px + width > sx)
 		width = sx - px;
 
-	screen_init(&screen, wp->sx, 1, 0);
-	screen_write_start(&ctx, &screen);
-	pdd.ctx = &ctx;
-	pdd.cursor_x = &wp->prompt_cx;
-	pdd.area_x = 0;
-	pdd.area_width = wp->sx;
-	pdd.prompt_line = 0;
-	prompt_draw(wp->prompt, &pdd);
-	screen_write_stop(&ctx);
-
+	redraw_make_pane_prompt(wp, &screen);
 	tty_draw_line(tty, &screen, offset, 0, width, px, cy, NULL);
 	screen_free(&screen);
 }
@@ -1684,7 +1818,9 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 			redraw = status_prompt_redraw(c);
 		else
 			redraw = status_redraw(c);
-		if (!redraw && !REDRAW_IS_ALL(flags)) {
+		if (!redraw &&
+		    (~c->flags & CLIENT_REDRAWSTATUSALWAYS) &&
+		    !REDRAW_IS_ALL(flags)) {
 			flags &= ~REDRAW_STATUS;
 			if (flags == 0)
 				return;
@@ -1842,7 +1978,7 @@ redraw_screen(struct client *c)
 	else {
 		if (c->flags & CLIENT_REDRAWBORDERS)
 			flags |= (REDRAW_PANE_BORDER|REDRAW_PANE_STATUS);
-		if (c->flags & CLIENT_REDRAWSTATUS)
+		if (c->flags & (CLIENT_REDRAWSTATUS|CLIENT_REDRAWSTATUSALWAYS))
 			flags |= (REDRAW_STATUS|REDRAW_PANE_STATUS);
 		if (c->flags & CLIENT_REDRAWMENU)
 			flags |= REDRAW_MENU;
@@ -1867,4 +2003,139 @@ void
 redraw_pane_scrollbar(struct client *c, struct window_pane *wp)
 {
 	redraw_draw(c, wp, REDRAW_PANE_SCROLLBAR);
+}
+
+/* Rebuild damaged pane status. */
+static void
+redraw_damage_refresh_status(struct redraw_draw_ctx *dctx,
+    struct window_pane *wp)
+{
+	struct redraw_span	*first;
+	u_int			 g = wp->status_generation, width;
+
+	if ((wp->flags & PANE_NEWSTATUS) && g == redraw_status_generation)
+		return;
+	width = redraw_pane_status_width(dctx, wp, &first);
+	if (width != 0) {
+		window_make_pane_status(wp, dctx->scene->c, width, first);
+		wp->flags |= PANE_NEWSTATUS;
+		wp->status_generation = redraw_status_generation;
+	}
+}
+
+/* Draw a pane's prompt over a damaged span. */
+static void
+redraw_damage_draw_pane_prompt(struct redraw_draw_ctx *dctx,
+    struct redraw_span *span, u_int y)
+{
+	struct redraw_scene	*scene = dctx->scene;
+	struct window_pane	*wp = span->data.p.wp;
+	struct tty		*tty = &scene->c->tty;
+	struct screen		 screen;
+	u_int			 px = span->data.p.px, width, prompt_y;
+
+	if (wp->prompt == NULL || wp->sx == 0 || wp->sy == 0)
+		return;
+	if (dctx->flags & REDRAW_STATUS_TOP)
+		prompt_y = 0;
+	else
+		prompt_y = wp->sy - 1;
+	if (span->data.p.py != prompt_y)
+		return;
+	redraw_make_pane_prompt(wp, &screen);
+	if (px < screen_size_x(&screen)) {
+		width = span->width;
+		if (width > screen_size_x(&screen) - px)
+			width = screen_size_x(&screen) - px;
+		tty_draw_line(tty, &screen, px, 0, width, span->x, y, NULL);
+	}
+	screen_free(&screen);
+}
+
+/* Draw the spans intersecting a damaged rectangle. */
+static void
+redraw_draw_damage_rectangle(struct redraw_draw_ctx *dctx, u_int x, u_int y,
+    u_int sx, u_int sy)
+{
+	struct redraw_scene	*scene = dctx->scene;
+	struct redraw_line	*line;
+	struct redraw_spans	*spans;
+	struct redraw_span	*span;
+	u_int			 cy, yy, type;
+
+	if (x >= scene->sx || y >= scene->sy)
+		return;
+	if (x + sx > scene->sx)
+		sx = scene->sx - x;
+	if (y + sy > scene->sy)
+		sy = scene->sy - y;
+	if (sx == 0 || sy == 0)
+		return;
+
+	for (yy = y; yy < y + sy; yy++) {
+		line = &scene->lines[yy];
+		if (dctx->flags & REDRAW_STATUS_TOP)
+			cy = dctx->status_lines + yy;
+		else
+			cy = yy;
+		for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
+			spans = &line->spans[type];
+			TAILQ_FOREACH(span, spans, entry) {
+				if (span->x >= x + sx)
+					continue;
+				if (span->x + span->width <= x)
+					continue;
+				if (type == REDRAW_SPAN_STATUS) {
+					redraw_damage_refresh_status(dctx,
+					    span->data.st.wp);
+				}
+				redraw_draw_span(dctx, span, cy);
+				if (type == REDRAW_SPAN_PANE) {
+					redraw_damage_draw_pane_prompt(dctx,
+					    span, cy);
+				}
+			}
+		}
+	}
+}
+
+/* Draw pending window damage on this client. */
+void
+redraw_client_damage(struct client *c)
+{
+	struct window		*w = c->session->curw->window;
+	struct window_pane	*wp;
+	struct redraw_scene	*scene;
+	struct redraw_draw_ctx	 dctx;
+	struct redraw_damage	*rd;
+	u_int			 ox, oy, sx, sy, x0, y0, x1, y1;
+
+	if (TAILQ_EMPTY(&w->damage))
+		return;
+	redraw_status_generation++;
+
+	scene = redraw_get_scene(c);
+	if (scene == NULL)
+		return;
+	redraw_set_draw_context(&dctx, scene);
+	redraw_get_window_offset(c, &ox, &oy, &sx, &sy);
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		wp->border_gc_set = 0;
+		wp->active_border_gc_set = 0;
+	}
+
+	tty_sync_start(&c->tty);
+	tty_update_mode(&c->tty, c->tty.mode & ~CURSOR_MODES, NULL);
+
+	TAILQ_FOREACH(rd, &w->damage, entry) {
+		x0 = (rd->x > ox) ? rd->x : ox;
+		y0 = (rd->y > oy) ? rd->y : oy;
+		x1 = (rd->x + rd->sx < ox + sx) ? rd->x + rd->sx : ox + sx;
+		y1 = (rd->y + rd->sy < oy + sy) ? rd->y + rd->sy : oy + sy;
+		if (x0 < x1 && y0 < y1) {
+			redraw_draw_damage_rectangle(&dctx, x0 - ox, y0 - oy,
+			    x1 - x0, y1 - y0);
+		}
+	}
 }
