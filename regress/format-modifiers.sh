@@ -18,6 +18,24 @@ export TZ LANG LC_ALL
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
+FIFO1="${TMPDIR:-/tmp}/fmt-l-$$-1"
+FIFO2="${TMPDIR:-/tmp}/fmt-l-$$-2"
+HOLD1=
+HOLD2=
+CC1=
+CC2=
+
+cleanup()
+{
+	for pid in $HOLD1 $HOLD2 $CC1 $CC2; do
+		kill "$pid" 2>/dev/null
+		wait "$pid" 2>/dev/null
+	done
+	$TMUX kill-server 2>/dev/null
+	rm -f "$FIFO1" "$FIFO2"
+}
+trap cleanup 0
+trap 'exit 1' 1 2 15
 
 ESC=$(printf '\033')
 
@@ -579,8 +597,6 @@ assert_alive "verbose loop expansion"
 
 # L loops over attached clients.  Attach two control-mode clients, each held
 # open by a background process keeping a FIFO's write end open.
-FIFO1="${TMPDIR:-/tmp}/fmt-l-$$-1"
-FIFO2="${TMPDIR:-/tmp}/fmt-l-$$-2"
 rm -f "$FIFO1" "$FIFO2"
 mkfifo "$FIFO1" "$FIFO2" || exit 1
 # Hold the write ends open so the control clients stay attached.
@@ -605,9 +621,9 @@ test_format "#{L/nr:x}" "xx"
 test_format "#{L/r:x}" "xx"
 # Now detach one and confirm the count drops to one.
 kill $HOLD2 2>/dev/null
+wait $HOLD2 2>/dev/null
+HOLD2=
 sleep 1
 test_format "#{L:x}" "x"
-kill $HOLD1 $CC1 $CC2 2>/dev/null
-rm -f "$FIFO1" "$FIFO2"
 
 exit 0

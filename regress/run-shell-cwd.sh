@@ -22,14 +22,26 @@ check_directory()
 	fi
 }
 
-# Expand the current pane's directory in the same command queue as creation.
+# The start path is available immediately, before the child is scheduled.
+# Use it to test the format context in the same command queue as creation.
 $TMUX new-session -d -s test -c "$TMP/first" 'sleep 60' \; \
-	 run-shell -c '#{pane_current_path}' "pwd >'$TMP/out'" || exit 1
+	 run-shell -c '#{pane_start_path}' "pwd >'$TMP/out'" || exit 1
 check_directory "$TMP/first"
 
 # An explicit target must supply the format context, including with a delay.
 pane=$($TMUX new-window -d -P -F '#{pane_id}' -t test \
 	-c "$TMP/second dir" 'sleep 60') || exit 1
+# The current path depends on the operating system finding the child process.
+i=0
+while [ "$($TMUX display-message -p -t "$pane" '#{pane_current_path}')" != \
+    "$TMP/second dir" ]; do
+	if [ "$i" -ge 100 ]; then
+		echo "Timed out waiting for pane current directory"
+		exit 1
+	fi
+	sleep 0.05
+	i=$((i + 1))
+done
 $TMUX run-shell -t "$pane" -d 0.1 -c '#{pane_current_path}' \
 	"pwd >'$TMP/out'" || exit 1
 check_directory "$TMP/second dir"
