@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.45 2026/09/22 14:10:26 nicm Exp $ */
+/* $OpenBSD: tty-features.c,v 1.46 2026/09/24 08:16:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -637,6 +637,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "extkeys,"
 			      "focus,"
 		  	      "hyperlinks,"
+			      "margins,"
 			      "usstyle"
 		},
 		{ .name = "ghostty",
@@ -645,6 +646,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "cstyle,"
 			      "extkeys,"
 			      "focus,"
+			      "margins,"
 			      "overline,"
 			      "hyperlinks,"
 			      "osc7,"
@@ -675,7 +677,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "cstyle,"
 			      "extkeys,"
 			      "focus"
-		}
+		},
 	};
 	u_int	i;
 
