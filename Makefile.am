@@ -83,6 +83,11 @@ if IS_CYGWIN
 AM_CPPFLAGS += -DTMUX_SOCK_PERM=0
 endif
 
+# Set the socket directory list if given to configure.
+if HAVE_TMUX_SOCK
+AM_CPPFLAGS += -DTMUX_SOCK='"@TMUX_SOCK@"'
+endif
+
 # List of sources.
 dist_tmux_SOURCES = \
 	alerts.c \
