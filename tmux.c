@@ -201,10 +201,33 @@ expand_paths(const char *s, char ***paths, u_int *n, int no_realpath)
 	free(copy);
 }
 
+/* Check a socket directory is an absolute path with no ".." component. */
+static int
+check_socket_path(const char *path, char **cause)
+{
+	char	*copy, *next, *tmp;
+
+	if (*path != '/') {
+		xasprintf(cause, "socket directory %s is not an absolute path",
+		    path);
+		return (0);
+	}
+	copy = tmp = xstrdup(path);
+	while ((next = strsep(&tmp, "/")) != NULL) {
+		if (strcmp(next, "..") == 0) {
+			xasprintf(cause, "socket directory %s contains ..", path);
+			free(copy);
+			return (0);
+		}
+	}
+	free(copy);
+	return (1);
+}
+
 static char *
 make_label(const char *label, char **cause)
 {
-	char		**paths, *path, *base;
+	char		**paths, *path = NULL, *base, resolved[PATH_MAX];
 	u_int		  i, n;
 	struct stat	  sb;
 	uid_t		  uid;
@@ -214,15 +237,34 @@ make_label(const char *label, char **cause)
 		label = "default";
 	uid = getuid();
 
-	expand_paths(TMUX_SOCK, &paths, &n, 0);
-	if (n == 0) {
-		xasprintf(cause, "no suitable socket path");
-		return (NULL);
+	/*
+	 * An unset variable has already been dropped and an empty one is
+	 * skipped, but anything else must be an existing absolute path with no
+	 * ".." or it is an error.
+	 */
+	expand_paths(TMUX_SOCK, &paths, &n, 1);
+	for (i = 0; i < n; i++) {
+		if (*paths[i] == '\0')
+			continue;
+		if (!check_socket_path(paths[i], cause))
+			break;
+		if (realpath(paths[i], resolved) == NULL) {
+			xasprintf(cause,
+			    "couldn't resolve socket directory %s (%s)",
+			    paths[i], strerror(errno));
+			break;
+		}
+		path = xstrdup(resolved);
+		break;
 	}
-	path = paths[0]; /* can only have one socket! */
-	for (i = 1; i < n; i++)
+	for (i = 0; i < n; i++)
 		free(paths[i]);
 	free(paths);
+	if (path == NULL) {
+		if (*cause == NULL)
+			xasprintf(cause, "no suitable socket path");
+		return (NULL);
+	}
 
 	xasprintf(&base, "%s/tmux-%ld", path, (long)uid);
 	free(path);

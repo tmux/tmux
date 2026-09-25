@@ -9192,6 +9192,9 @@ See the
 option for details.
 .It Ev TMUX_TMPDIR
 The parent directory of the directory containing the server sockets.
+It must be an absolute path to an existing directory and must not contain
+.Ql .. ;
+if it is empty it is ignored.
 See the
 .Fl L
 option for details.
