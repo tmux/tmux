@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-keys.c,v 1.214 2026/08/18 09:01:20 nicm Exp $ */
+/* $OpenBSD: tty-keys.c,v 1.215 2026/09/25 10:37:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -760,6 +760,16 @@ tty_keys_next(struct tty *tty)
 	if (len == 0)
 		return (0);
 	log_debug("%s: keys are %zu (%.*s)", c->name, len, (int)len, buf);
+
+	/* If the client has no session, there is nowhere to send input. */
+	if (c->session == NULL) {
+		log_debug("%s: discard keys with no session", c->name);
+		if (event_initialized(&tty->key_timer))
+			evtimer_del(&tty->key_timer);
+		tty->flags &= ~TTY_TIMER;
+		evbuffer_drain(tty->in, len);
+		return (1);
+	}
 
 	/* Is this a clipboard response? */
 	switch (tty_keys_clipboard(tty, buf, len, &size)) {
