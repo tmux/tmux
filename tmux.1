@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1173 2026/09/23 12:37:50 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1174 2026/09/25 13:44:49 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: September 23 2026 $
+.Dd $Mdocdate: September 25 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -9190,6 +9190,9 @@ See the
 option for details.
 .It Ev TMUX_TMPDIR
 The parent directory of the directory containing the server sockets.
+It must be an absolute path to an existing directory and must not contain
+.Ql .. ;
+if it is empty it is ignored.
 See the
 .Fl L
 option for details.
