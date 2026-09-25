@@ -1,4 +1,4 @@
-/* $OpenBSD: session.c,v 1.108 2026/09/21 12:43:36 nicm Exp $ */
+/* $OpenBSD: session.c,v 1.109 2026/09/25 08:46:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -749,14 +749,21 @@ session_renumber_windows(struct session *s)
 	struct winlink		*wl, *wl1, *wl_new;
 	struct winlinks		 old_wins;
 	struct winlink_stack	 old_lastw;
+	u_int			 n;
 	int			 new_idx, new_curw_idx, marked_idx = -1;
+
+	/* Start renumbering from the base-index if it's set. */
+	new_idx = options_get_number(s->options, "base-index");
+
+	/* Leave the indexes alone if they do not all fit from there. */
+	n = winlink_count(&s->windows);
+	if (n > (u_int)INT_MAX - (u_int)new_idx + 1)
+		return;
 
 	/* Save and replace old window list. */
 	memcpy(&old_wins, &s->windows, sizeof old_wins);
 	RB_INIT(&s->windows);
 
-	/* Start renumbering from the base-index if it's set. */
-	new_idx = options_get_number(s->options, "base-index");
 	new_curw_idx = 0;
 
 	/* Go through the winlinks and assign new indexes. */
@@ -771,7 +778,8 @@ session_renumber_windows(struct session *s)
 		if (wl == s->curw)
 			new_curw_idx = wl_new->idx;
 
-		new_idx++;
+		if (RB_NEXT(winlinks, &old_wins, wl) != NULL)
+			new_idx++;
 	}
 
 	/* Fix the stack of last windows now. */
