@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.c,v 1.223 2026/08/17 14:47:41 nicm Exp $ */
+/* $OpenBSD: tmux.c,v 1.224 2026/09/25 09:11:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -178,8 +178,8 @@ expand_paths(const char *s, char ***paths, u_int *n, int no_realpath)
 			path = expanded;
 		else {
 			if (realpath(expanded, resolved) == NULL) {
-				log_debug("%s: realpath(\"%s\") failed: %s", __func__,
-			  expanded, strerror(errno));
+				log_debug("%s: realpath(\"%s\") failed: %s",
+				    __func__, expanded, strerror(errno));
 				free(expanded);
 				continue;
 			}

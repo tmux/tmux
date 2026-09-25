@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.378 2026/09/24 11:19:39 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.379 2026/09/25 08:46:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2436,7 +2436,7 @@ winlink_shuffle_up(struct session *s, struct winlink *wl, int before)
 {
 	int	 idx, last;
 
-	if (wl == NULL)
+	if (wl == NULL || wl->idx == INT_MAX)
 		return (-1);
 	if (before)
 		idx = wl->idx;
