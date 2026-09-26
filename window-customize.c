@@ -1699,20 +1699,24 @@ window_customize_set_option_callback(struct client *c, void *itemdata,
 	struct options_entry			*o;
 	const struct options_table_entry	*oe;
 	struct options				*oo = item->oo;
+	struct cmd_find_state			 fs;
 	const char				*name = item->name;
 	const char				*array_key = item->array_key;
 	char					*cause;
 	u_int					 idx;
 	char					 keybuf[32];
+	int					 old_window_size = -1;
 
 	if (s == NULL || *s == '\0' || data->dead)
 		return (PROMPT_CLOSE);
-	if (item == NULL || !window_customize_check_item(data, item, NULL))
+	if (item == NULL || !window_customize_check_item(data, item, &fs))
 		return (PROMPT_CLOSE);
 	o = options_get(oo, name);
 	if (o == NULL)
 		return (PROMPT_CLOSE);
 	oe = options_table_entry(o);
+	if (strcmp(name, "window-size") == 0)
+		old_window_size = options_get_number(oo, name);
 
 	if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_ARRAY)) {
 		if (array_key == NULL) {
@@ -1729,6 +1733,7 @@ window_customize_set_option_callback(struct client *c, void *itemdata,
 		if (options_from_string(oo, oe, name, s, 0, &cause) != 0)
 			goto fail;
 	}
+	resize_window_update_manual_size(&fs, oo, old_window_size);
 	if (item->option_type == WINDOW_CUSTOMIZE_HOOKS && *name == '@')
 		hooks_add_event(name);
 
@@ -2131,6 +2136,7 @@ window_customize_set_option(struct client *c,
 	const char				*array_key = item->array_key;
 	char					*prompt, *value, *text;
 	struct cmd_find_state			 fs;
+	int					 old_window_size = -1;
 
 	if (item == NULL || !window_customize_check_item(data, item, &fs))
 		return;
@@ -2199,6 +2205,8 @@ window_customize_set_option(struct client *c,
 		else
 			oo = window_customize_get_tree(scope, &fs);
 	}
+	if (strcmp(name, "window-size") == 0)
+		old_window_size = options_get_number(oo, name);
 
 	if (oe != NULL && oe->type == OPTIONS_TABLE_FLAG) {
 		flag = options_get_number(oo, name);
@@ -2249,6 +2257,7 @@ window_customize_set_option(struct client *c,
 		free(prompt);
 		free(value);
 	}
+	resize_window_update_manual_size(&fs, oo, old_window_size);
 }
 
 static enum prompt_result
@@ -2348,11 +2357,15 @@ static void
 window_customize_unset_option(struct window_customize_modedata *data,
     struct window_customize_itemdata *item)
 {
+	struct cmd_find_state	 fs;
 	struct options_entry	*o;
+	int			 old_window_size = -1;
 
-	if (item == NULL || !window_customize_check_item(data, item, NULL))
+	if (item == NULL || !window_customize_check_item(data, item, &fs))
 		return;
 
+	if (strcmp(item->name, "window-size") == 0)
+		old_window_size = options_get_number(item->oo, item->name);
 	o = options_get(item->oo, item->name);
 	if (o == NULL)
 		return;
@@ -2360,20 +2373,25 @@ window_customize_unset_option(struct window_customize_modedata *data,
 	    item == mode_tree_get_current(data->data))
 		mode_tree_up(data->data, 0);
 	options_remove_or_default(o, item->array_key, NULL);
+	resize_window_update_manual_size(&fs, item->oo, old_window_size);
 }
 
 static void
 window_customize_reset_option(struct window_customize_modedata *data,
     struct window_customize_itemdata *item)
 {
+	struct cmd_find_state	 fs;
 	struct options		*oo;
 	struct options_entry	*o;
+	int			 old_window_size = -1;
 
-	if (item == NULL || !window_customize_check_item(data, item, NULL))
+	if (item == NULL || !window_customize_check_item(data, item, &fs))
 		return;
 	if (item->array_key != NULL)
 		return;
 
+	if (strcmp(item->name, "window-size") == 0)
+		old_window_size = options_get_number(item->oo, item->name);
 	oo = item->oo;
 	while (oo != NULL) {
 		o = options_get_only(oo, item->name);
@@ -2381,6 +2399,7 @@ window_customize_reset_option(struct window_customize_modedata *data,
 			options_remove_or_default(o, NULL, NULL);
 		oo = options_get_parent(oo);
 	}
+	resize_window_update_manual_size(&fs, item->oo, old_window_size);
 }
 
 static enum prompt_result
