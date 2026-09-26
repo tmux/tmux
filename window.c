@@ -1440,7 +1440,7 @@ window_pane_wait_finish(struct window_pane *wp)
 {
 	struct cmdq_item	*item = wp->wait_item;
 	struct client		*c;
-	int			 retval = 0;
+	int			 retval = 128 + SIGHUP;
 
 	if (item == NULL)
 		return;
