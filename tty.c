@@ -67,11 +67,6 @@ static void	tty_emulate_repeat(struct tty *, enum tty_code_code,
 		    enum tty_code_code, u_int);
 static void	tty_draw_pane(struct tty *, const struct tty_ctx *, u_int);
 
-#ifdef ENABLE_SIXEL
-static void	tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
-		    struct client *, struct tty_ctx *);
-#endif
-
 #define tty_use_margin(tty) \
 	(tty->term->flags & TERM_DECSLRM)
 #define tty_full_width(tty, ctx) \
@@ -162,10 +157,21 @@ tty_resize(struct tty *tty)
 void
 tty_set_size(struct tty *tty, u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 {
+#ifdef ENABLE_IMAGES
+	int	geometry_changed;
+
+	geometry_changed = (tty->xpixel != xpixel || tty->ypixel != ypixel);
+#endif
 	tty->sx = sx;
 	tty->sy = sy;
 	tty->xpixel = xpixel;
 	tty->ypixel = ypixel;
+#ifdef ENABLE_IMAGES
+	if (geometry_changed) {
+		image_tty_geometry_changed(tty);
+		server_redraw_client(tty->client);
+	}
+#endif
 }
 
 static void
@@ -282,6 +288,10 @@ tty_open(struct tty *tty, char **cause)
 		return (-1);
 	}
 	tty->flags |= TTY_OPENED;
+
+#ifdef ENABLE_IMAGES
+	image_tty_update(tty);
+#endif
 
 	tty->flags &= ~(TTY_NOCURSOR|TTY_FREEZE|TTY_BLOCK|TTY_TIMER);
 
@@ -527,6 +537,9 @@ tty_close(struct tty *tty)
 	tty_stop_tty(tty);
 
 	if (tty->flags & TTY_OPENED) {
+#ifdef ENABLE_IMAGES
+		image_tty_free(tty, 1);
+#endif
 		evbuffer_free(tty->in);
 		event_del(&tty->event_in);
 		evbuffer_free(tty->out);
@@ -543,15 +556,25 @@ void
 tty_free(struct tty *tty)
 {
 	tty_close(tty);
+#ifdef ENABLE_IMAGES
+	image_tty_free(tty, 0);
+#endif
 }
 
 void
 tty_update_features(struct tty *tty)
 {
 	struct client	*c = tty->client;
+	int		 changed = 0;
 
-	if (tty_apply_features(tty->term))
+	if (tty_apply_features(tty->term)) {
 		tty_term_apply_overrides(tty->term);
+		changed = 1;
+	}
+#ifdef ENABLE_IMAGES
+	if (image_tty_update(tty))
+		changed = 1;
+#endif
 
 	if (tty_use_margin(tty))
 		tty_putcode(tty, TTYC_ENMG);
@@ -564,7 +587,22 @@ tty_update_features(struct tty *tty)
 	/*
 	 * Features might have changed since the first draw during attach. For
 	 * example, this happens when DA responses are received.
+	 *
+	 * Only redraw when something actually did change. This function is
+	 * called for every DA, secondary DA and extended DA answer, and from
+	 * the start timer when none arrive - answers which usually just
+	 * confirm what is already known, either from a previous answer or
+	 * from terminal-features in the configuration. The redraw is not
+	 * free: it repaints the pane from tmux's own grid, which discards
+	 * anything the pane put on the terminal that tmux does not model,
+	 * notably an image written through DCS passthrough. That makes an
+	 * unnecessary redraw here visible to the user as an image that
+	 * appears and then vanishes a moment later, once per client, with no
+	 * way for the application to detect it and redraw.
 	 */
+	if (!changed)
+		return;
+
 	server_redraw_client(c);
 
 	tty_invalidate(tty);
@@ -1115,7 +1153,7 @@ tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 	 */
 	if (tty_large_region(tty, ctx) || ctx->flags & TTY_CTX_PANE_OBSCURED) {
 		log_debug("%s: %s large region redraw", __func__, c->name);
-		ctx->redraw_cb(ctx);
+		ctx->redraw_cb(ctx, ctx->orupper, ctx->orlower - ctx->orupper + 1);
 		return;
 	}
 
@@ -1455,59 +1493,6 @@ tty_check_codeset(struct tty *tty, const struct grid_cell *gc)
 	return (&new);
 }
 
-#ifdef ENABLE_SIXEL
-/* Update context for client. */
-static int
-tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
-{
-	struct window_pane	*wp = ttyctx->arg;
-
-	if (c->session->curw->window != wp->window)
-		return (0);
-	if (wp->layout_cell == NULL)
-		return (0);
-
-	if (tty_window_offset(&c->tty, &ttyctx->wox, &ttyctx->woy, &ttyctx->wsx,
-	    &ttyctx->wsy))
-		ttyctx->flags |= TTY_CTX_WINDOW_BIGGER;
-	else
-		ttyctx->flags &= ~TTY_CTX_WINDOW_BIGGER;
-
-	ttyctx->yoff = ttyctx->ryoff = wp->yoff;
-	if (status_at_line(c) == 0)
-		ttyctx->yoff += status_line_size(c);
-
-	return (1);
-}
-
-void
-tty_draw_images(struct client *c, struct window_pane *wp)
-{
-	struct image	*im;
-	struct tty_ctx	 ttyctx;
-
-	TAILQ_FOREACH(im, &wp->screen->images, entry) {
-		memset(&ttyctx, 0, sizeof ttyctx);
-
-		/* Set the client independent properties. */
-		ttyctx.ocx = im->px;
-		ttyctx.ocy = im->py;
-
-		ttyctx.orlower = wp->screen->rlower;
-		ttyctx.orupper = wp->screen->rupper;
-
-		ttyctx.xoff = ttyctx.rxoff = wp->xoff;
-		ttyctx.sx = wp->sx;
-		ttyctx.sy = wp->sy;
-
-		ttyctx.image = im;
-		ttyctx.arg = wp;
-		ttyctx.set_client_cb = tty_set_client_cb;
-		ttyctx.flags |= TTY_CTX_INVISIBLE_PANES;
-		tty_write_one(tty_cmd_sixelimage, c, &ttyctx);
-	}
-}
-#endif
 
 void
 tty_sync_start(struct tty *tty)
@@ -1517,6 +1502,7 @@ tty_sync_start(struct tty *tty)
 	if (tty->flags & TTY_SYNCING)
 		return;
 	tty->flags |= TTY_SYNCING;
+	tty->sync_offset = EVBUFFER_LENGTH(tty->out);
 
 	if (tty_term_has(tty->term, TTYC_SYNC)) {
 		log_debug("%s sync start", tty->client->name);
@@ -1581,19 +1567,6 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 		}
 	}
 }
-
-#ifdef ENABLE_SIXEL
-/* Only write to the incoming tty instead of every client. */
-static void
-tty_write_one(void (*cmdfn)(struct tty *, const struct tty_ctx *),
-    struct client *c, struct tty_ctx *ctx)
-{
-	if (ctx->set_client_cb == NULL)
-		return;
-	if ((ctx->set_client_cb(ctx, c)) == 1)
-		cmdfn(&c->tty, ctx);
-}
-#endif
 
 void
 tty_cmd_insertcharacter(struct tty *tty, const struct tty_ctx *ctx)
@@ -1729,9 +1702,16 @@ tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_RIN)) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1) {
+#ifdef ENABLE_IMAGES
+		redraw_image_scroll_result(tty, ctx, 1);
+#endif
 		tty_redraw_region(tty, ctx);
 		return;
 	}
+
+#ifdef ENABLE_IMAGES
+	redraw_image_scroll_result(tty, ctx, 0);
+#endif
 
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
@@ -1757,9 +1737,16 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1) {
+#ifdef ENABLE_IMAGES
+		redraw_image_scroll_result(tty, ctx, 1);
+#endif
 		tty_redraw_region(tty, ctx);
 		return;
 	}
+
+#ifdef ENABLE_IMAGES
+	redraw_image_scroll_result(tty, ctx, 0);
+#endif
 
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
@@ -1795,9 +1782,16 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1) {
+#ifdef ENABLE_IMAGES
+		redraw_image_scroll_result(tty, ctx, 1);
+#endif
 		tty_redraw_region(tty, ctx);
 		return;
 	}
+
+#ifdef ENABLE_IMAGES
+	redraw_image_scroll_result(tty, ctx, 0);
+#endif
 
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
@@ -1833,9 +1827,16 @@ tty_cmd_scrolldown(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_RIN)) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1) {
+#ifdef ENABLE_IMAGES
+		redraw_image_scroll_result(tty, ctx, 1);
+#endif
 		tty_redraw_region(tty, ctx);
 		return;
 	}
+
+#ifdef ENABLE_IMAGES
+	redraw_image_scroll_result(tty, ctx, 0);
+#endif
 
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
@@ -1923,7 +1924,7 @@ tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 	u_int		 i, j;
 
 	if (ctx->flags & TTY_CTX_WINDOW_BIGGER) {
-		ctx->redraw_cb(ctx);
+		ctx->redraw_cb(ctx, 0, ctx->sy);
 		return;
 	}
 
@@ -1982,7 +1983,7 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 		    tty->cy == tty->rlower)
 			tty_draw_pane(tty, ctx, ctx->ocy);
 		else
-			ctx->redraw_cb(ctx);
+			ctx->redraw_cb(ctx, ctx->ocy, 1);
 		return;
 	}
 
@@ -2027,58 +2028,6 @@ tty_cmd_rawstring(struct tty *tty, const struct tty_ctx *ctx)
 	tty_add(tty, ctx->data.data, ctx->data.size);
 	tty_invalidate(tty);
 }
-
-#ifdef ENABLE_SIXEL
-void
-tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
-{
-	struct image		*im = ctx->image;
-	struct sixel_image	*si = im->data;
-	struct sixel_image	*new;
-	char			*data;
-	size_t			 size;
-	u_int			 cx = ctx->ocx, cy = ctx->ocy, sx, sy;
-	u_int			 i, j, x, y, rx, ry;
-	int			 fallback = 0;
-
-	if ((~tty->term->flags & TERM_SIXEL) &&
-            !tty_term_has(tty->term, TTYC_SXL))
-		fallback = 1;
-	if (tty->xpixel == 0 || tty->ypixel == 0)
-		fallback = 1;
-
-	sixel_size_in_cells(si, &sx, &sy);
-	log_debug("%s: image is %ux%u", __func__, sx, sy);
-	if (!tty_clamp_area(tty, ctx, cx, cy, sx, sy, &i, &j, &x, &y, &rx, &ry))
-		return;
-	log_debug("%s: clamping to %u,%u-%u,%u", __func__, i, j, rx, ry);
-
-	if (fallback == 1) {
-		data = xstrdup(im->fallback);
-		size = strlen(data);
-	} else {
-		new = sixel_scale(si, tty->xpixel, tty->ypixel, i, j, rx, ry, 0);
-		if (new == NULL)
-			return;
-
-		data = sixel_print(new, si, &size);
-	}
-	if (data != NULL) {
-		log_debug("%s: %zu bytes: %s", __func__, size, data);
-		tty_region_off(tty);
-		tty_margin_off(tty);
-		tty_cursor(tty, x, y);
-
-		tty->flags |= TTY_NOBLOCK;
-		tty_add(tty, data, size);
-		tty_invalidate(tty);
-		free(data);
-	}
-
-	if (fallback == 0)
-		sixel_free(new);
-}
-#endif
 
 void
 tty_cmd_syncstart(struct tty *tty, const struct tty_ctx *ctx)

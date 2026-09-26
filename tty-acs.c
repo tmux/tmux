@@ -64,8 +64,64 @@ static const struct tty_acs_entry tty_acs_table[] = {
 	{ '{', "\317\200" },		/* greek pi */
 	{ '|', "\342\211\240" },	/* not-equal */
 	{ '}', "\302\243" },		/* UK pound sign */
-	{ '~', "\302\267" }		/* bullet */
+	{ '~', "\302\267" },		/* bullet */
+#ifdef ENABLE_IMAGES
+	{ TTY_ACS_IMAGE_SHADE_LIGHT, "\342\226\221" },
+	{ TTY_ACS_IMAGE_SHADE_MEDIUM, "\342\226\222" },
+	{ TTY_ACS_IMAGE_SHADE_DARK, "\342\226\223" },
+	{ TTY_ACS_IMAGE_BLOCK, "\342\226\210" },
+	{ TTY_ACS_IMAGE_HALF_UPPER, "\342\226\200" },
+	{ TTY_ACS_IMAGE_HALF_LOWER, "\342\226\204" },
+	{ TTY_ACS_IMAGE_HALF_LEFT, "\342\226\214" },
+	{ TTY_ACS_IMAGE_HALF_RIGHT, "\342\226\220" },
+	{ TTY_ACS_IMAGE_QUADRANT_LOWER_LEFT, "\342\226\226" },
+	{ TTY_ACS_IMAGE_QUADRANT_LOWER_RIGHT, "\342\226\227" },
+	{ TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT, "\342\226\230" },
+	{ TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT_LOWER_LEFT_LOWER_RIGHT,
+	    "\342\226\231" },
+	{ TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT_LOWER_RIGHT, "\342\226\232" },
+	{ TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT_UPPER_RIGHT_LOWER_LEFT,
+	    "\342\226\233" },
+	{ TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT_UPPER_RIGHT_LOWER_RIGHT,
+	    "\342\226\234" },
+	{ TTY_ACS_IMAGE_QUADRANT_UPPER_RIGHT, "\342\226\235" },
+	{ TTY_ACS_IMAGE_QUADRANT_UPPER_RIGHT_LOWER_LEFT, "\342\226\236" },
+	{ TTY_ACS_IMAGE_QUADRANT_UPPER_RIGHT_LOWER_LEFT_LOWER_RIGHT,
+	    "\342\226\237" }
+#endif
 };
+
+#ifdef ENABLE_IMAGES
+static char tty_acs_image_sextants[60][5];
+
+static void
+tty_acs_image_sextants_init(void)
+{
+	u_int	 cp, i;
+
+	if (tty_acs_image_sextants[0][0] != '\0')
+		return;
+	for (i = 0; i < nitems(tty_acs_image_sextants); i++) {
+		cp = 0x1fb00 + i;
+		tty_acs_image_sextants[i][0] = 0xf0 | (cp >> 18);
+		tty_acs_image_sextants[i][1] = 0x80 | ((cp >> 12) & 0x3f);
+		tty_acs_image_sextants[i][2] = 0x80 | ((cp >> 6) & 0x3f);
+		tty_acs_image_sextants[i][3] = 0x80 | (cp & 0x3f);
+	}
+}
+
+u_char
+tty_acs_image_sextant(u_int mask)
+{
+	if (mask == 0 || mask == 21 || mask == 42 || mask >= 63)
+		return (0);
+	if (mask < 21)
+		return (TTY_ACS_IMAGE_SEXTANT_FIRST + mask - 1);
+	if (mask < 42)
+		return (TTY_ACS_IMAGE_SEXTANT_FIRST + mask - 2);
+	return (TTY_ACS_IMAGE_SEXTANT_FIRST + mask - 3);
+}
+#endif
 
 /* Table mapping UTF-8 to ACS entries. */
 struct tty_acs_reverse_entry {
@@ -238,6 +294,15 @@ tty_acs_get(struct tty *tty, u_char ch)
 			return (NULL);
 		return (&tty->term->acs[ch][0]);
 	}
+
+#ifdef ENABLE_IMAGES
+	if (ch >= TTY_ACS_IMAGE_SEXTANT_FIRST &&
+	    ch <= TTY_ACS_IMAGE_SEXTANT_LAST) {
+		tty_acs_image_sextants_init();
+		return (tty_acs_image_sextants[
+		    ch - TTY_ACS_IMAGE_SEXTANT_FIRST]);
+	}
+#endif
 
 	/* Otherwise look up the UTF-8 translation. */
 	entry = bsearch(&ch, tty_acs_table, nitems(tty_acs_table),

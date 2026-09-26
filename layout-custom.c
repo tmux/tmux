@@ -543,7 +543,7 @@ layout_append(struct layout_cell *lcroot, struct layout_string *ls, int flags)
 	if (flags & LAYOUT_CUSTOM_OLD_FORMAT) {
 		if (!layout_cell_is_tiled(lcroot) &&
 		    !layout_cell_has_tiled_child(lcroot))
-			return (-1);
+			return (0); /* no tiled cell anywhere: empty v1 body */
 		lccompat = layout_custom_create_compat(lcroot);
 		result = layout_append_v1(lccompat, ls);
 		layout_custom_free_compat(lccompat);
