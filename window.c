@@ -823,6 +823,16 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 		return (NULL);
 	}
 
+	/*
+	 * A floating pane is above every tiled pane, including their status
+	 * lines, so check those first.
+	 */
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
+		if (window_pane_is_floating(wp) &&
+		    window_pane_contains(wp, x, y))
+			return (wp);
+	}
+
 	if (pane_status == PANE_STATUS_TOP) {
 		/*
 		 * Prefer a pane's top border status line over the pane above's
