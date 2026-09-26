@@ -2088,7 +2088,7 @@ server_client_reset_state(struct client *c)
 		}
 		if (!prompt) {
 			cursor = 0;
-			pane_mode = wp->base.mode;
+			pane_mode = s->mode;
 
 			tty_window_offset(tty, &ox, &oy, &sx, &sy);
 			if (wp->xoff + (int)s->cx >= (int)ox &&
