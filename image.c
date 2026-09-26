@@ -371,9 +371,14 @@ image_span_free(struct image_span *span)
 	free(span);
 }
 
-/* Remove a range from selected spans on a line. */
+/*
+ * Remove a range from selected spans on a line - those of one placement if
+ * only is not NULL, otherwise those of the given input type (or all of them
+ * if that is -1).
+ */
 static void
-image_line_remove(struct image_line *line, u_int x, u_int width, int input)
+image_line_remove(struct image_line *line, u_int x, u_int width, int input,
+    struct image_placement *only)
 {
 	struct image_span	*span, *next;
 	u_int			 end, span_end, right;
@@ -384,6 +389,8 @@ image_line_remove(struct image_line *line, u_int x, u_int width, int input)
 	if (end < x)
 		end = UINT_MAX;
 	TAILQ_FOREACH_SAFE(span, &line->spans, line_entry, next) {
+		if (only != NULL && span->placement != only)
+			continue;
 		if (input != -1 && span->placement->input != (u_int)input)
 			continue;
 		span_end = span->x + span->sx;
@@ -439,7 +446,7 @@ image_grid_damage(struct grid *gd, u_int x, u_int y, u_int width,
 		height = gd->hsize + gd->sy - y;
 	for (row = y; row < y + height; row++)
 		image_line_remove(gd->linedata[row].images, x, width,
-		    IMAGE_INPUT_SIXEL);
+		    IMAGE_INPUT_SIXEL, NULL);
 	image_store_prune(gd->images);
 }
 
@@ -508,8 +515,8 @@ image_grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py,
 		moves[count].source_y = span->source_y;
 		count++;
 	}
-	image_line_remove(line, px, nx, -1);
-	image_line_remove(line, dx, nx, -1);
+	image_line_remove(line, px, nx, -1, NULL);
+	image_line_remove(line, dx, nx, -1, NULL);
 	for (size_t i = 0; i < count; i++)
 		image_span_add(line, moves[i].placement, moves[i].x,
 		    moves[i].sx, moves[i].source_x, moves[i].source_y);
@@ -1474,6 +1481,66 @@ image_cell_has_alpha(struct image *im, u_int x, u_int y)
 	return (0);
 }
 
+/*
+ * Return whether every visible pixel of one cell of an old image is also
+ * visible in the same cell of a new image, so that drawing the new image
+ * over the old one leaves nothing of the old cell showing. Only works if
+ * both images divide their cells into the same number of pixels.
+ */
+static int
+image_cell_covers(struct image *new, u_int nx, u_int ny, struct image *old,
+    u_int ox, u_int oy)
+{
+	u_int		 npx, npy, nsx, nsy, opx, opy, osx, osy, xx, yy;
+	const u_char	*np, *op;
+
+	if (new->canvas_width / new->sx != old->canvas_width / old->sx ||
+	    new->canvas_height / new->sy != old->canvas_height / old->sy)
+		return (0);
+	image_get_pixel_rect(new, nx, ny, 1, 1, &npx, &npy, &nsx, &nsy);
+	image_get_pixel_rect(old, ox, oy, 1, 1, &opx, &opy, &osx, &osy);
+
+	for (yy = 0; yy < osy; yy++) {
+		op = old->pixels + (size_t)(opy + yy) * old->stride +
+		    (size_t)opx * 4;
+		np = new->pixels + (size_t)(npy + yy) * new->stride +
+		    (size_t)npx * 4;
+		for (xx = 0; xx < osx; xx++) {
+			if (op[xx * 4 + 3] == 0)
+				continue;
+			if (yy >= nsy || xx >= nsx || np[xx * 4 + 3] != 255)
+				return (0);
+		}
+	}
+	return (1);
+}
+
+/*
+ * Remove the cells at one column of a line that a new SIXEL image completely
+ * covers. SIXEL is a single bitmap: drawing over another image replaces its
+ * pixels for good, so there is no point keeping the old cell to be drawn
+ * again underneath the new one on every repaint.
+ */
+static void
+image_line_cover(struct image_line *line, struct image_placement *placement,
+    u_int x, u_int source_x, u_int source_y)
+{
+	struct image_span	*span, *next;
+	struct image_placement	*old;
+
+	TAILQ_FOREACH_SAFE(span, &line->spans, line_entry, next) {
+		old = span->placement;
+		if (old == placement || old->input != IMAGE_INPUT_SIXEL)
+			continue;
+		if (x < span->x || x >= span->x + span->sx)
+			continue;
+		if (!image_cell_covers(placement->image, source_x, source_y,
+		    old->image, span->source_x + x - span->x, span->source_y))
+			continue;
+		image_line_remove(line, x, 1, -1, old);
+	}
+}
+
 /* Add spans for one row of a placement between two source columns. */
 static void
 image_extend_row(struct image_line *line, struct image_placement *placement,
@@ -1590,7 +1657,7 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 	struct image_placement	*placement;
 	struct image_line	*line;
 	u_int			 cx = s->cx, cy = s->cy;
-	u_int			 x, y, run, sx, sy, lines, origin_y = 0;
+	u_int			 x, y, i, run, sx, sy, lines, origin_y = 0;
 	u_int			 hist_origin_y, region_height, remaining, chunk;
 
 	sx = im->sx;
@@ -1677,6 +1744,12 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 				if (!image_cell_has_alpha(im, x + run,
 				    origin_y + y))
 					break;
+			}
+			if (input == IMAGE_INPUT_SIXEL) {
+				for (i = 0; i < run; i++) {
+					image_line_cover(line, placement,
+					    cx + x + i, x + i, origin_y + y);
+				}
 			}
 			image_span_add(line, placement, cx + x, run, x,
 			    origin_y + y);
