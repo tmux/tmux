@@ -172,6 +172,10 @@ layout_set_even(struct window *w, enum layout_type type)
 		lcchild = wp->layout_cell;
 		TAILQ_INSERT_TAIL(&lcroot->cells, lcchild, entry);
 		lcchild->parent = lcroot;
+		if (layout_cell_is_tiled(lcchild)) {
+			lcchild->g.sx = w->sx;
+			lcchild->g.sy = w->sy;
+		}
 	}
 
 	if (type == LAYOUT_LEFTRIGHT) {
