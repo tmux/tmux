@@ -1,4 +1,4 @@
-/* $OpenBSD: mode-tree.c,v 1.102 2026/09/21 12:14:32 nicm Exp $ */
+/* $OpenBSD: mode-tree.c,v 1.103 2026/09/24 18:59:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -277,11 +277,22 @@ mode_tree_free_items(struct mode_tree_list *mtl)
 static void
 mode_tree_check_selected(struct mode_tree_data *mtd)
 {
+	if (mtd->height == 0)
+		return;
+
+	/* If the list has shrunk, do not leave empty lines at the bottom. */
+	if (mtd->line_size <= mtd->height)
+		mtd->offset = 0;
+	else if (mtd->offset > mtd->line_size - mtd->height)
+		mtd->offset = mtd->line_size - mtd->height;
+
 	/*
-	 * If the current line would now be off screen reset the offset to the
-	 * last visible line.
+	 * If the current line would now be off screen move the offset so it is
+	 * visible.
 	 */
-	if (mtd->current > mtd->height - 1)
+	if (mtd->current < mtd->offset)
+		mtd->offset = mtd->current;
+	else if (mtd->current > mtd->offset + mtd->height - 1)
 		mtd->offset = mtd->current - mtd->height + 1;
 }
 
@@ -501,20 +512,14 @@ mode_tree_set_current(struct mode_tree_data *mtd, uint64_t tag)
 
 	if (mode_tree_get_tag(mtd, tag, &found)) {
 		mtd->current = found;
-		if (mtd->current > mtd->height - 1)
-			mtd->offset = mtd->current - mtd->height + 1;
-		else
-			mtd->offset = 0;
+		mode_tree_check_selected(mtd);
 		return (1);
 	}
 	if (mtd->current >= mtd->line_size) {
 		if (mtd->line_size == 0)
 			return (0);
 		mtd->current = mtd->line_size - 1;
-		if (mtd->current > mtd->height - 1)
-			mtd->offset = mtd->current - mtd->height + 1;
-		else
-			mtd->offset = 0;
+		mode_tree_check_selected(mtd);
 	}
 	return (0);
 }
@@ -683,13 +688,13 @@ mode_tree_build(struct mode_tree_data *mtd)
 
 	if (mtd->line_list != NULL && tag == UINT64_MAX)
 		tag = mtd->line_list[mtd->current].item->tag;
-	mode_tree_set_current(mtd, tag);
 
 	mtd->width = screen_size_x(s);
 	if (mtd->preview != MODE_TREE_PREVIEW_OFF)
 		mode_tree_set_height(mtd);
 	else
 		mtd->height = screen_size_y(s);
+	mode_tree_set_current(mtd, tag);
 	mode_tree_check_selected(mtd);
 }
 

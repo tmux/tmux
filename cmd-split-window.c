@@ -362,7 +362,7 @@ cmd_split_window_mouse_resize(struct client *c, struct mouse_event *m)
 	enum pane_lines		 lines;
 	u_int			 sx, sy;
 	int			 x, y, xoff, yoff, border;
-	int			 old_xoff, old_yoff, old_sx, old_sy;
+	int			 oxoff, oyoff, osx, osy;
 
 	if (c->tty.mouse_last_pane == -1)
 		return;
@@ -418,15 +418,14 @@ cmd_split_window_mouse_resize(struct client *c, struct mouse_event *m)
 	if (sy < PANE_MINIMUM)
 		sy = PANE_MINIMUM;
 
-	old_xoff = wp->xoff;
-	old_yoff = wp->yoff;
-	old_sx = wp->sx;
-	old_sy = wp->sy;
+	oxoff = wp->xoff;
+	oyoff = wp->yoff;
+	osx = wp->sx;
+	osy = wp->sy;
 
 	layout_set_size(lc, sx, sy, xoff, yoff);
 	layout_fix_panes(w, NULL);
 
-	window_pane_redraw_floating(w, wp, old_xoff, old_yoff, old_sx,
-	    old_sy);
+	window_redraw_floating_pane(wp, oxoff, oyoff, osx, osy);
 	server_redraw_window_borders(w);
 }

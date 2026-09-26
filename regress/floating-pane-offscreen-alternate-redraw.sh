@@ -1,20 +1,7 @@
 #!/bin/sh
 
-# A floating pane positioned partly off the window's left/top edge (e.g.
-# created with -X -5) has a negative wp->xoff/wp->yoff. screen_write_
-# redraw_cb() (screen-write.c) used to pass these straight through as u_int
-# to redraw_damage_window(), which wraps a negative offset to a huge value
-# - redraw_damage_window()'s own bounds check then rejects the whole
-# rectangle, so nothing gets redrawn, not even the pane's visible portion.
-#
-# This fires on returning from the alternate screen (screen_write_
-# alternateoff()) among other paths. This test exercises exactly that:
-# fills the pane's primary screen, switches it to the alternate screen and
-# back, and checks the client actually receives the restored primary
-# content in the pane's visible (on-screen) columns - using an attached
-# client's own received bytes (via a nested outer client), not
-# capture-pane, which reads the grid directly and would pass regardless of
-# whether the client was ever actually told to redraw it.
+# Returning from the alternate screen must redraw the visible part of a
+# floating pane clipped at the left edge, the top edge, or both.
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -57,28 +44,24 @@ wait_outer_has()
 	fail "outer client did not show $marker"
 }
 
-wait_visible_restored()
-{
-	i=0
-	while [ "$i" -lt 50 ]; do
-		$OUTER capture-pane -p -t outer:0.0 >"$CAPTURE" 2>/dev/null || true
-		sed -n "${CONTENTROW}p" "$CAPTURE" | grep -q '^AAAAA' && return 0
-		sleep 0.1
-		i=$((i + 1))
-	done
-	fail "primary-screen content was not restored in the pane's visible columns after returning from the alternate screen"
-}
-
 cat >"$EMITTER" <<'PERL'
 use strict;
 use warnings;
 
 $| = 1;
-print "\e[1;1H", 'A' x 15;
-sleep 2;
+for my $row (1 .. 5) {
+	print "\e[$row;1H", 'A' x 15;
+}
+while (!-e "$ENV{TRIGGER}-alternate") {
+	select undef, undef, undef, 0.01;
+}
 print "\e[?1049h";
-print "\e[1;1H", 'B' x 15;
-sleep 2;
+for my $row (1 .. 5) {
+	print "\e[$row;1H", 'B' x 15;
+}
+while (!-e "$ENV{TRIGGER}-restore") {
+	select undef, undef, undef, 0.01;
+}
 print "\e[?1049l";
 sleep 100;
 PERL
@@ -86,15 +69,6 @@ PERL
 $INNER new-session -d -s inner -x 40 -y 10 'sleep 100' || exit 1
 $INNER set-option -g status off || exit 1
 $INNER set-option -g window-size manual || exit 1
-
-# Content pane spans window columns -5..9 (partly off the left edge); only
-# columns 0..9 are ever visible.
-FLOAT=$($INNER new-pane -d -PF '#{pane_id}' -x 15 -y 5 -X -5 -Y 2 \
-    "perl '$EMITTER'") || exit 1
-XOFF=$($INNER display-message -p -t "$FLOAT" '#{pane_left}')
-YOFF=$($INNER display-message -p -t "$FLOAT" '#{pane_top}')
-[ "$XOFF" -lt 0 ] || fail "sanity: floating pane is not off-screen (xoff=$XOFF)"
-CONTENTROW=$((YOFF + 1))
 
 $OUTER new-session -d -s outer -x 40 -y 10 'sleep 100' || exit 1
 $OUTER set-option -g status off || exit 1
@@ -104,8 +78,25 @@ $OUTER respawn-pane -k -t outer:0.0 \
     "$TEST_TMUX -Loffscreen-inner-$$ -f/dev/null attach-session -t inner" ||
     exit 1
 
-wait_outer_has AAAAA
-wait_outer_has BBBBB
-wait_visible_restored
+for position in left top both; do
+	case "$position" in
+	left) x=-5; y=2 ;;
+	top) x=5; y=-2 ;;
+	both) x=-5; y=-2 ;;
+	esac
+	FLOAT=$($INNER new-pane -d -PF '#{pane_id}' -x 15 -y 5 -X "$x" -Y "$y" \
+	    "TRIGGER='$DIR/$position' perl '$EMITTER'") || exit 1
+	[ "$($INNER display-message -p -t "$FLOAT" '#{pane_left},#{pane_top}')" = "$((x + 1)),$((y + 1))" ] ||
+	    fail "$position: floating pane has unexpected position"
+	wait_outer_has AAAAA
+	cp "$CAPTURE" "$DIR/primary"
+	: >"$DIR/$position-alternate"
+	wait_outer_has BBBBB
+	: >"$DIR/$position-restore"
+	wait_outer_has AAAAA
+	cmp -s "$DIR/primary" "$CAPTURE" ||
+	    fail "$position: primary screen was not completely restored"
+	$INNER kill-pane -t "$FLOAT" || exit 1
+done
 
 exit 0

@@ -199,7 +199,6 @@ server_client_create(int fd)
 	c->click_wp = -1;
 
 	TAILQ_INIT(&c->input_requests);
-	TAILQ_INIT(&c->pending_damage);
 
 	TAILQ_INSERT_TAIL(&clients, c, entry);
 	log_debug("new client %p", c);
@@ -359,30 +358,10 @@ server_client_set_session(struct client *c, struct session *s)
 		server_client_fire_session_changed(c, old);
 
 		/*
-		 * A full redraw is only needed if the client's session or
-		 * current window actually changed - not if this merely
-		 * confirmed the client is still looking at the same window
-		 * (as happens when switch-client -t targets a pane in the
-		 * already-current window, e.g. clicking a pane name in a
-		 * second #{P:} status line: the default MouseDown1Status
-		 * binding resolves that click to switch-client -t=, which
-		 * reaches here regardless of whether anything besides the
-		 * active pane changed). Redrawing unconditionally here
-		 * forced a full window redraw for what should have been
-		 * just an active-pane change, already handled narrowly by
-		 * window_set_active_pane() and window_redraw_active_switch()
-		 * before this is reached.
-		 *
-		 * old and s may be the same session object, whose curw was
-		 * already updated to the new window before this function was
-		 * called - old->curw and s->curw would then read the same,
-		 * already-current value, so comparing them can never detect
-		 * a same-session window change. Compare against the client's
-		 * own cached scene instead, which only reflects what it has
-		 * actually drawn.
+		 * Redraw if the session or displayed window changed. Use the
+		 * cached scene because the session's current window is already set.
 		 */
-		if (old == NULL || old != s ||
-		    !redraw_client_has_window(c, s->curw->window))
+		if (old != s || !redraw_client_has_window(c, s->curw->window))
 			server_redraw_client(c);
 	}
 
@@ -434,7 +413,6 @@ server_client_lost(struct client *c)
 
 	status_free(c);
 	input_cancel_requests(c);
-	redraw_free_pending_damage(c);
 
 	free(c->title);
 	free(c->path);
@@ -1377,18 +1355,8 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 		m->key = key;
 
 		/*
-		 * Mouse drag is in progress, so fire the callback (now that
-		 * the mouse event is valid).
-		 *
-		 * Start a synchronized-output region here rather than
-		 * leaving it to whatever redraw eventually follows: a drag
-		 * callback may write directly via the pane's fast path
-		 * immediately, with any correction only arriving later via
-		 * redraw_client_damage(), which opens its own sync region.
-		 * Since tty_sync_end() is only called once, at the very end
-		 * of this client's pass in server_client_reset_state(),
-		 * starting it here merges both into one atomic terminal
-		 * update instead of two visible frames.
+		 * Synchronize direct drag output with the later damage redraw
+		 * before invoking the drag callback.
 		 */
 		if ((key & KEYC_MASK_KEY) == KEYC_DRAGGING) {
 			tty_sync_start(&c->tty);
@@ -1818,15 +1786,8 @@ server_client_loop(void)
 	}
 
 	/*
-	 * Any windows will have been redrawn as part of clients, so clear
-	 * their flags now. A client whose redraw was deferred this pass
-	 * (waiting for outstanding tty output to drain) has already copied
-	 * window damage onto its own pending_damage in
-	 * server_client_check_redraw() (see redraw_defer_damage()) to
-	 * compose precisely on a later pass, or escalated to
-	 * CLIENT_REDRAWWINDOW/CLIENT_REDRAWSCROLLBARS for whole-pane needs
-	 * that aren't rectangle-shaped, so PANE_REDRAW/PANE_REDRAWSCROLLBAR
-	 * and window damage can simply be cleared unconditionally here.
+	 * Clear window redraw state after processing all clients. Deferred
+	 * redraws are preserved in client flags.
 	 */
 	RB_FOREACH(w, windows, &windows) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -2386,8 +2347,6 @@ server_client_any_pane_redraw(struct client *c)
 		return (1);
 	if (!TAILQ_EMPTY(&w->damage))
 		return (1);
-	if (!TAILQ_EMPTY(&c->pending_damage))
-		return (1);
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (wp->flags & (PANE_REDRAW|PANE_REDRAWSCROLLBAR))
 			return (1);
@@ -2404,6 +2363,7 @@ server_client_check_redraw(struct client *c)
 	struct window		*w = s->curw->window;
 	struct window_pane	*wp;
 	int			 needed, tflags, mode = tty->mode;
+	int			 damaged = !TAILQ_EMPTY(&w->damage);
 	struct timeval		 tv = { .tv_usec = 1000 };
 	static struct event	 ev;
 	size_t			 n;
@@ -2429,29 +2389,12 @@ server_client_check_redraw(struct client *c)
 		return;
 	}
 
-	/*
-	 * If there is outstanding data, defer the redraw until it has been
-	 * consumed. We can just add a timer to get out of the event loop and
-	 * end up back here. server_client_loop() clears PANE_REDRAW,
-	 * PANE_REDRAWSCROLLBAR and window damage unconditionally every pass,
-	 * so window damage is copied onto this client's own pending_damage
-	 * (redraw_defer_damage()) to survive that and still be composed
-	 * precisely on a later pass; a whole-pane need (PANE_REDRAW) or a
-	 * pane's scrollbar isn't rectangle-shaped the same way, so those
-	 * still escalate to a coarser, persistent client flag as before.
-	 *
-	 * If a synchronized-output frame is open, discount anything queued
-	 * since it started (down to sync_offset, the length when it opened):
-	 * those bytes are already part of the frame this pass is committed
-	 * to flushing (see tty_sync_start()), not a reason to defer this
-	 * pass's redraw - without this, a mouse-drag callback that itself
-	 * opens the frame before writing anything would see its own
-	 * just-queued bytes as "outstanding output" and defer against
-	 * itself every single motion event.
-	 */
+	/* Ignore output queued within the current synchronized frame. */
 	n = EVBUFFER_LENGTH(tty->out);
 	if ((tty->flags & TTY_SYNCING) && n > tty->sync_offset)
 		n = tty->sync_offset;
+
+	/* Defer until output drains, preserving damage in client flags. */
 	if (n != 0 || (tty->flags & TTY_BLOCK)) {
 		if (n != 0)
 			log_debug("%s: redraw deferred (%zu left)", c->name, n);
@@ -2463,8 +2406,10 @@ server_client_check_redraw(struct client *c)
 			log_debug("redraw timer started");
 			evtimer_add(&ev, &tv);
 		}
-		if (!TAILQ_EMPTY(&w->damage))
-			redraw_defer_damage(c);
+		if (damaged) {
+			c->flags |= CLIENT_REDRAWWINDOW;
+			return;
+		}
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->flags & PANE_REDRAW) {
 				c->flags |= CLIENT_REDRAWWINDOW;
@@ -2499,17 +2444,8 @@ server_client_check_redraw(struct client *c)
 			}
 		}
 
-		/*
-		 * Window damage (and any damage this client missed on a
-		 * previous deferred pass - see redraw_defer_damage()) is
-		 * also what makes server_client_any_pane_redraw() decide a
-		 * redraw is needed at all, independently of any
-		 * CLIENT_ALLREDRAWFLAGS bit. Consume both here, since
-		 * server_client_loop() clears window damage unconditionally
-		 * every pass regardless of whether it was actually drawn.
-		 */
-		if ((!TAILQ_EMPTY(&w->damage) || !TAILQ_EMPTY(&c->pending_damage)) &&
-		    !(c->flags & CLIENT_ALLREDRAWFLAGS))
+		/* Draw damage here if no client redraw flags will handle it. */
+		if (damaged && (c->flags & CLIENT_ALLREDRAWFLAGS) == 0)
 			redraw_client_damage(c);
 	}
 

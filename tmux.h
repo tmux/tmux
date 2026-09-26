@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1447 2026/09/22 14:10:26 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1448 2026/09/24 11:19:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1396,6 +1396,10 @@ struct window_pane {
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;
+	u_int		 sync_scrolled;
+	u_int		 sync_rupper;
+	u_int		 sync_rlower;
+	u_int		 sync_bg;
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
@@ -1451,7 +1455,7 @@ struct window_pane {
 	struct screen	 base;
 
 	struct screen	 status_screen;
-	u_int		 status_serial;
+	u_int		 status_generation;
 
 	TAILQ_HEAD(, window_mode_entry) modes;
 
@@ -1864,12 +1868,6 @@ struct tty {
 	struct event	 timer;
 	size_t		 discarded;
 
-	/*
-	 * Buffer length at the instant a synchronized-output frame opened
-	 * (tty_sync_start()), so server_client_check_redraw()'s "is there
-	 * already outstanding output" check can discount whatever this
-	 * pass itself queued into that frame - see tty_sync_start().
-	 */
 	size_t		 sync_offset;
 
 	struct termios	 tio;
@@ -2318,23 +2316,6 @@ struct client {
 	size_t			 redraw;
 
 	struct redraw_scene	*redraw_scene;
-
-	/*
-	 * Damage this client missed because its redraw was deferred (pending
-	 * tty output) on the pass it was reported - server_client_loop()
-	 * frees w->damage unconditionally every pass regardless of whether
-	 * every attached client got to consume it, so a deferred client's
-	 * copy is kept here to compose precisely on a later pass instead of
-	 * escalating to a full-window redraw. See redraw_defer_damage() and
-	 * redraw_client_damage() (screen-redraw.c). pending_damage_id is the
-	 * id of the window these rectangles were copied for (window ids are
-	 * unique and never reused), used to discard them if the client's
-	 * current window has since changed instead of composing them
-	 * against the wrong window's scene.
-	 */
-	struct redraw_damages	 pending_damage;
-	u_int			 pending_damage_count;
-	u_int			 pending_damage_id;
 
 	struct event		 repeat_timer;
 
@@ -3679,7 +3660,7 @@ void	 screen_write_mode_clear(struct screen_write_ctx *, int);
 void	 screen_write_start_sync(struct window_pane *);
 void	 screen_write_stop_sync(struct window_pane *);
 void	 screen_write_end_sync(struct screen_write_ctx *);
-void	 screen_write_clear_dirty(struct window_pane *);
+void	 screen_write_sync_clear_dirty(struct window_pane *);
 void	 screen_write_cursorup(struct screen_write_ctx *, u_int);
 void	 screen_write_cursordown(struct screen_write_ctx *, u_int);
 void	 screen_write_cursorright(struct screen_write_ctx *, u_int);
@@ -3738,8 +3719,6 @@ void	 redraw_image_scroll_result(struct tty *, const struct tty_ctx *, int);
 #endif
 void	 redraw_free_damage(struct window *);
 void	 redraw_client_damage(struct client *);
-void	 redraw_defer_damage(struct client *);
-void	 redraw_free_pending_damage(struct client *);
 int	 redraw_get_status_border_cell_type(struct redraw_span **, u_int);
 
 /* screen.c */
@@ -3913,9 +3892,9 @@ int		 window_pane_get_pane_status(struct window_pane *);
 struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
 		     u_int);
 int		 window_pane_is_floating(struct window_pane *);
-void		 window_pane_redraw_floating(struct window *,
-		     struct window_pane *, int, int, int, int);
 int		 window_pane_is_floating_with_hidden(struct window_pane *);
+void		 window_redraw_floating_pane(struct window_pane *, int, int,
+		     int, int);
 
 /* window-border.c */
 void		 window_set_fill_cells(struct window *);
@@ -4379,8 +4358,6 @@ void		 image_grid_resize_width(struct grid *, u_int);
 int		 image_grid_line_has_images(const struct grid_line *);
 int		 image_grid_check_area(struct grid *, u_int, u_int, u_int,
 		     u_int);
-int		 image_grid_next_span(struct grid *, u_int, u_int, u_int,
-		     u_int *, u_int *);
 int		 image_grid_get_source(struct grid *, u_int, u_int,
 		     struct image *, u_int *, u_int *);
 void		 image_place_cell_kitty(struct screen_write_ctx *, struct image *,

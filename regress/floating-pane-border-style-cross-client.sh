@@ -1,7 +1,7 @@
 #!/bin/sh
 
-# Damage redraws must show each client's own pane status, even though the
-# cached status screen is shared between clients.
+# Damage-only redraws must evaluate both active and inactive border styles
+# for each client, even though the cached border cells belong to the pane.
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -11,14 +11,13 @@ export PATH TERM LC_ALL
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 
 DIR=$(mktemp -d) || exit 1
-INNER="$TEST_TMUX -Lstatuscc-inner-$$ -f/dev/null"
-OUTER="$TEST_TMUX -Lstatuscc-outer-$$ -f/dev/null"
+INNER="$TEST_TMUX -Lborder-style-inner-$$ -f/dev/null"
+OUTER="$TEST_TMUX -Lborder-style-outer-$$ -f/dev/null"
 CAPTURE=$DIR/capture
 
 fail()
 {
 	echo "$*" >&2
-	[ -s "$CAPTURE" ] && cat "$CAPTURE" >&2
 	exit 1
 }
 
@@ -61,7 +60,7 @@ use strict;
 use warnings;
 
 $| = 1;
-for my $phase (1 .. 4) {
+for my $phase (1 .. 2) {
 	while (!-e "$ENV{TRIGGER}-$phase") {
 		select undef, undef, undef, 0.01;
 	}
@@ -79,7 +78,7 @@ $INNER set -g automatic-rename off || exit 1
 $INNER set -g status-interval 0 || exit 1
 $INNER set -g pane-border-lines simple || exit 1
 $INNER set -g pane-border-status top || exit 1
-$INNER set -g pane-border-format 'CLIENT=<#{client_name}>' || exit 1
+$INNER set -g pane-border-format 'CLIENT=#{client_name}' || exit 1
 FLOAT=$($INNER new-pane -d -PF '#{pane_id}' -x 35 -y 6 -X 5 -Y 5 \
     'sleep 100') || exit 1
 
@@ -97,55 +96,40 @@ wait_for_clients
 
 NAME1=$($OUTER display-message -p -t "$LEFT" '#{pane_tty}') || exit 1
 NAME2=$($OUTER display-message -p -t "$RIGHT" '#{pane_tty}') || exit 1
+STYLE="fg=#{?#{==:#{client_name},$NAME1},red,blue}"
+$INNER set -g pane-border-style "$STYLE" || exit 1
+$INNER set -g pane-active-border-style "$STYLE" || exit 1
 
-# Disable periodic status updates above and trigger damage without a command
-# that also requests a status redraw. Each client must keep its own title.
-$INNER refresh-client -t "$NAME1" || exit 1
-$INNER refresh-client -t "$NAME2" || exit 1
-sleep 0.5
-for phase in 0 1 2; do
-	if [ "$phase" -ne 0 ]; then
-		: >"$DIR/trigger-$phase"
-		wait_for_marker "$LEFT" "DAMAGE$phase"
-		wait_for_marker "$RIGHT" "DAMAGE$phase"
-		sleep 0.2
+# Capture just the floating pane's rows, excluding the acknowledgement in
+# the tiled pane. Exercise each cache by changing the floating pane's focus.
+phase=1
+while [ "$phase" -le 2 ]; do
+	if [ "$phase" -eq 2 ]; then
+		$INNER select-pane -t "$FLOAT" || exit 1
 	fi
+	$INNER refresh-client -t "$NAME1" || exit 1
+	$INNER refresh-client -t "$NAME2" || exit 1
+	sleep 0.5
 	for target in "$LEFT" "$RIGHT"; do
-		if [ "$target" = "$LEFT" ]; then
-			name=$NAME1
-			other=$NAME2
-		else
-			name=$NAME2
-			other=$NAME1
-		fi
-		$OUTER capture-pane -p -S 5 -E 10 -t "$target" \
-		    >"$CAPTURE" || exit 1
-		grep -Fq "CLIENT=<$name>" "$CAPTURE" ||
-		    fail "phase $phase: missing $name's pane status"
-		if grep -Fq "CLIENT=<$other>" "$CAPTURE"; then
-			fail "phase $phase: $name received $other's pane status"
-		fi
+		$OUTER capture-pane -pe -S 5 -E 10 -t "$target" \
+		    >"$DIR/before-$target" || exit 1
 	done
-done
+	RED=$(printf '\033[31m')
+	BLUE=$(printf '\033[34m')
+	grep -Fq "$RED" "$DIR/before-$LEFT" || fail "missing red border"
+	grep -Fq "$BLUE" "$DIR/before-$RIGHT" || fail "missing blue border"
 
-# Leave just one client so a cache keyed only by client would remain stale.
-$OUTER respawn-pane -k -t "$RIGHT" 'sleep 100' || exit 1
-i=0
-while [ "$($INNER list-clients | wc -l)" -ne 1 ]; do
-	[ "$i" -lt 50 ] || fail "second client did not detach"
-	sleep 0.1
-	i=$((i + 1))
-done
-$INNER set-environment -g TEST_STATUS_VALUE initial || exit 1
-$INNER set -g pane-border-format 'VALUE=#{TEST_STATUS_VALUE}' || exit 1
-$INNER refresh-client -t "$NAME1" || exit 1
-wait_for_marker "$LEFT" VALUE=initial
-for phase in 3 4; do
-	# Changing the environment does not itself request a status redraw.
-	$INNER set-environment -g TEST_STATUS_VALUE "phase$phase" || exit 1
 	: >"$DIR/trigger-$phase"
 	wait_for_marker "$LEFT" "DAMAGE$phase"
-	wait_for_marker "$LEFT" "VALUE=phase$phase"
+	wait_for_marker "$RIGHT" "DAMAGE$phase"
+	sleep 0.2
+	for target in "$LEFT" "$RIGHT"; do
+		$OUTER capture-pane -pe -S 5 -E 10 -t "$target" \
+		    >"$CAPTURE" || exit 1
+		diff -u "$DIR/before-$target" "$CAPTURE" ||
+		    fail "phase $phase changed $target's border style"
+	done
+	phase=$((phase + 1))
 done
 
 exit 0

@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.377 2026/09/21 10:33:16 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.378 2026/09/24 11:19:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1544,7 +1544,7 @@ window_pane_destroy(struct window_pane *wp)
 	window_pane_clear_prompt(wp);
 
 	window_pane_free_modes(wp);
-	screen_write_clear_dirty(wp);
+	screen_write_sync_clear_dirty(wp);
 
 	if (wp->fd != -1) {
 #ifdef HAVE_UTEMPTER
@@ -2946,31 +2946,21 @@ window_pane_is_floating_with_hidden(struct window_pane *wp)
 	return (1);
 }
 
-/*
- * Report damage for a floating pane's rectangle, grown by one cell on every
- * side - a floating pane draws its border frame at xoff-1/yoff-1 through
- * xoff+sx/yoff+sy (see the "floating" case in screen-redraw.c), one cell
- * outside its own content area, so damage for just the content area leaves
- * the frame's previous position undrawn as the pane moves. If a scrollbar
- * is reserved, its side of the frame is pushed out further still by its
- * width and padding (also matched in screen-redraw.c), so grow that side
- * to match.
- */
+/* Report damage for a floating pane, including its border and scrollbar. */
 static void
-window_pane_damage_floating(struct window *w, struct window_pane *wp,
-    int xoff, int yoff, int sx, int sy)
+window_damage_floating_pane(struct window_pane *wp, int xoff, int yoff,
+    int sx, int sy)
 {
-	int	x0, x1, y0, y1, sb_left = 0, sb_right = 0;
+	struct window	*w = wp->window;
+	int		 x0, x1, y0, y1, sb_left = 0, sb_right = 0;
+	struct style	*sb_sy = &wp->scrollbar_style;
 
 	if (window_pane_scrollbar_reserve(wp)) {
 		if (w->sb_pos == PANE_SCROLLBARS_LEFT)
-			sb_left = wp->scrollbar_style.width +
-			    wp->scrollbar_style.pad;
+			sb_left = sb_sy->width + sb_sy->pad;
 		else
-			sb_right = wp->scrollbar_style.width +
-			    wp->scrollbar_style.pad;
+			sb_right = sb_sy->width + sb_sy->pad;
 	}
-
 	x0 = xoff - 1 - sb_left;
 	x1 = xoff + sx + sb_right;
 	y0 = yoff - 1;
@@ -2979,75 +2969,16 @@ window_pane_damage_floating(struct window *w, struct window_pane *wp,
 		x0 = 0;
 	if (y0 < 0)
 		y0 = 0;
-	if (x1 < x0 || y1 < y0)
-		return;
-	redraw_damage_window(w, (u_int)x0, (u_int)y0, (u_int)(x1 - x0) + 1,
-	    (u_int)(y1 - y0) + 1);
+	if (x1 >= x0 && y1 >= y0)
+		redraw_damage_window(w, x0, y0, x1 - x0 + 1U, y1 - y0 + 1U);
 }
 
-/*
- * Whether a pane's scrollbar strip - not its whole body - intersects a
- * window-coordinate rectangle. A reserved scrollbar occupies a strip of
- * scrollbar_style.width+pad columns just outside the pane's own content
- * area (see the scrollbar-reserve case in layout_fix_panes(), layout.c),
- * on whichever side w->sb_pos points to.
- */
-static int
-window_pane_scrollbar_intersects(struct window *w, struct window_pane *wp,
-    u_int x, u_int y, u_int sx, u_int sy)
-{
-	int	sb_x, sb_w, ix = (int)x, iy = (int)y, isx = (int)sx;
-	int	isy = (int)sy;
-
-	if (!window_pane_scrollbar_reserve(wp))
-		return (0);
-	sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
-	if (w->sb_pos == PANE_SCROLLBARS_LEFT)
-		sb_x = (int)wp->xoff - sb_w;
-	else
-		sb_x = (int)wp->xoff + (int)wp->sx;
-
-	return (sb_x < ix + isx && sb_x + sb_w > ix &&
-	    (int)wp->yoff < iy + isy && (int)wp->yoff + (int)wp->sy > iy);
-}
-
-/*
- * Report damage for only a floating pane's old and new area, rather than
- * the whole window - a floating pane move or resize only disturbs what it
- * was covering and what it now covers. Scrollbars aren't covered by the
- * damage system, so a pane whose *scrollbar strip* (not its whole body)
- * intersects either area is still flagged directly for a scrollbar redraw.
- * Checking the whole pane body here, rather than just its narrow scrollbar
- * strip, meant merely dragging over a pane's ordinary content set
- * PANE_REDRAWSCROLLBAR on every such pane on every motion event, triggering
- * a needless scrollbar redraw (and the redraw pass it forces) each time
- * even though the scrollbar itself never moved.
- *
- * Shared by every command that drags a floating pane around by the mouse:
- * resize-pane's own border drag (cmd-resize-pane.c), move-pane -M's
- * alternate Alt-drag (cmd-join-pane.c), and split-window/new-pane's
- * interactive resize of a newly-created floating pane (cmd-split-window.c).
- */
+/* Report damage for a floating pane's old and new areas. */
 void
-window_pane_redraw_floating(struct window *w, struct window_pane *wp,
-    int old_xoff, int old_yoff, int old_sx, int old_sy)
+window_redraw_floating_pane(struct window_pane *wp, int oxoff, int oyoff,
+    int osx, int osy)
 {
-	struct window_pane	*loop;
-
-	window_pane_damage_floating(w, wp, old_xoff, old_yoff, old_sx,
-	    old_sy);
-	window_pane_damage_floating(w, wp, wp->xoff, wp->yoff, wp->sx,
-	    wp->sy);
-
-	TAILQ_FOREACH(loop, &w->panes, entry) {
-		if (window_pane_scrollbar_intersects(w, loop,
-		    (u_int)old_xoff, (u_int)old_yoff, (u_int)old_sx,
-		    (u_int)old_sy) ||
-		    window_pane_scrollbar_intersects(w, loop, wp->xoff,
-		    wp->yoff, wp->sx, wp->sy))
-			loop->flags |= PANE_REDRAWSCROLLBAR;
-	}
-
-	/* Session status formats may depend on the pane's new geometry. */
-	server_status_window(w);
+	window_damage_floating_pane(wp, oxoff, oyoff, osx, osy);
+	window_damage_floating_pane(wp, wp->xoff, wp->yoff, wp->sx, wp->sy);
+	server_status_window(wp->window);
 }

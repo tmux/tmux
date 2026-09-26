@@ -1,16 +1,6 @@
 #!/bin/sh
 
-# server_client_key_callback()'s mouse-drag dispatch opens a synchronized-
-# output frame (tty_sync_start()) before running the drag callback, on
-# every single drag motion event. server_client_check_redraw() then checks
-# EVBUFFER_LENGTH(tty->out) != 0 later in the same pass to decide whether
-# to defer this pass's redraw - nothing drains tty->out in between, so the
-# frame-open sequence just queued (8 bytes: "\033[?2026h") makes that check
-# see "outstanding output" and defer against itself, escalating the drag's
-# damage to a full-window redraw on every motion event on any
-# synchronized-output-capable terminal. This checks the server's own -vv
-# log for that exact self-inflicted "8 left" deferral pattern during a
-# drag, and requires it never appears.
+# Synchronized drag output must not cause a full redraw of untouched rows.
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -21,7 +11,7 @@ export PATH TERM LC_ALL
 
 DIR=$(mktemp -d) || exit 1
 cd "$DIR" || exit 1
-INNER="$TEST_TMUX -vv -Lsyncdefer-inner-$$ -f/dev/null"
+INNER="$TEST_TMUX -Lsyncdefer-inner-$$ -f/dev/null"
 OUTER="$TEST_TMUX -Lsyncdefer-outer-$$ -f/dev/null"
 
 fail()
@@ -46,18 +36,20 @@ mouse()
 	sleep 0.15
 }
 
-$INNER new-session -d -s inner -x 40 -y 10 'sleep 100' || exit 1
+$INNER new-session -d -s inner -x 40 -y 15 "printf '\\033[15;1HOUTSIDE'; exec sleep 100" || exit 1
 $INNER set-option -g status off || exit 1
 $INNER set-option -g window-size manual || exit 1
 $INNER set-option -g mouse on || exit 1
+$INNER set-option -g status-interval 0 || exit 1
+$INNER set-option -g automatic-rename off || exit 1
 FLOAT=$($INNER new-pane -d -PF '#{pane_id}' -x 15 -y 5 -X 5 -Y 2 \
-    'sleep 100') || exit 1
+    "printf 'DRAGMARK'; exec sleep 100") || exit 1
 
-$OUTER new-session -d -s outer -x 40 -y 10 'sleep 100' || exit 1
+$OUTER new-session -d -s outer -x 40 -y 15 'sleep 100' || exit 1
 $OUTER set-option -g status off || exit 1
 $OUTER set-option -g window-size manual || exit 1
 $OUTER set-option -g default-terminal screen-256color || exit 1
-$OUTER set-option -as terminal-features ',screen-256color:sync' || exit 1
+$INNER set-option -as terminal-features ',screen-256color:sync' || exit 1
 $OUTER respawn-pane -k -t outer:0.0 \
     "$TEST_TMUX -Lsyncdefer-inner-$$ -f/dev/null attach-session -t inner" ||
     exit 1
@@ -68,13 +60,18 @@ YOFF=$($INNER display-message -p -t "$FLOAT" '#{pane_top}')
 GRABCOL=$((XOFF + 3))
 BORDERROW=$YOFF
 
-# Plain (non-Alt) top-border drag: "MouseDrag1Border" -> resize-pane -M ->
-# a move, since grabbing the top border moves rather than resizes. Several
-# small steps, each its own drag-motion event and so its own pass through
-# the code under test.
+# Begin capture after focus changes from the initial mouse press have settled.
 mouse 0 "$GRABCOL" "$BORDERROW" M
+$OUTER pipe-pane -O -t outer:0.0 "cat >'$DIR/output'" || exit 1
+$INNER refresh-client || exit 1
+sleep 0.5
+grep -aq DRAGMARK "$DIR/output" || fail "capture missed floating pane content"
+grep -aq OUTSIDE "$DIR/output" || fail "capture missed untouched row"
+offset=$(wc -c <"$DIR/output")
+
 i=0
-while [ $i -lt 6 ]; do
+steps=6
+while [ "$i" -lt "$steps" ]; do
 	GRABCOL=$((GRABCOL + 1))
 	mouse 32 "$GRABCOL" "$BORDERROW" M
 	i=$((i + 1))
@@ -83,13 +80,14 @@ mouse 0 "$GRABCOL" "$BORDERROW" m
 sleep 0.3
 
 NEWXOFF=$($INNER display-message -p -t "$FLOAT" '#{pane_left}')
-[ "$NEWXOFF" != "$XOFF" ] || fail "sanity: floating pane did not move (still at $XOFF)"
-
-LOG=$(ls tmux-server*.log 2>/dev/null | head -1)
-[ -n "$LOG" ] || fail "sanity: no server -vv log was produced"
-
-n=$(grep -c "redraw deferred (8 left)" "$LOG")
-[ "$n" -eq 0 ] ||
-	fail "drag self-deferred against its own queued sync bytes $n time(s)"
+[ "$NEWXOFF" -eq "$((XOFF + steps))" ] || fail "floating pane did not move six columns"
+tail -c +"$((offset + 1))" "$DIR/output" >"$DIR/drag-output"
+n=$(perl -0777 -ne '$n = () = /DRAGMARK/g; print "$n\n"' "$DIR/drag-output")
+[ "$n" -ge "$steps" ] || fail "drag output did not reach the client"
+perl -0777 -ne 'exit(/\e\[\?2026h/ ? 0 : 1)' "$DIR/drag-output" ||
+    fail "drag did not use synchronized output"
+if grep -aq OUTSIDE "$DIR/drag-output"; then
+	fail "synchronized drag redrew an untouched row"
+fi
 
 exit 0

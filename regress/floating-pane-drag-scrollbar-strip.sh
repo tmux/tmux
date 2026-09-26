@@ -137,4 +137,23 @@ n=$(grep -ac '48;5;201' $TMP)
 [ "$n" -eq 0 ] ||
 	fail "left pane's scrollbar was redrawn $n times while dragging over its body only"
 
+# Cross the scrollbar and return, comparing each damaged redraw with a full
+# refresh to check that covering and uncovering its cells leaves no artifacts.
+offset=$((ALEFT + AWIDTH - FLEFT - FWIDTH / 2))
+for delta in "$offset" "$((-offset))"; do
+	oldleft=$($TMUX display-message -p -t "$FLOAT" '#{pane_left}')
+	newcol=$((GRABCOL + delta))
+	drag "$GRABCOL" "$row" "$newcol" "$row"
+	GRABCOL=$newcol
+	newleft=$($TMUX display-message -p -t "$FLOAT" '#{pane_left}')
+	[ "$newleft" -eq "$((oldleft + delta))" ] ||
+		fail "floating pane did not move across the scrollbar as expected"
+	before=$($TMUX2 capture-pane -pe -t "$OUTER" -S 0 -E "$((AHEIGHT - 1))")
+	$TMUX refresh-client || fail "refresh-client failed"
+	sleep 0.5
+	after=$($TMUX2 capture-pane -pe -t "$OUTER" -S 0 -E "$((AHEIGHT - 1))")
+	[ "$before" = "$after" ] ||
+		fail "scrollbar crossing differs from a full redraw"
+done
+
 exit 0
