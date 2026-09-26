@@ -103,6 +103,172 @@ job_removed_handler(sd_bus_message *m, void *userdata,
 	return (0);
 }
 
+static int
+systemd_new_scope_message(sd_bus *bus, int oom_policy, sd_bus_message **mp,
+    char **cause)
+{
+	char		*name, *desc, *slice, *unit;
+	sd_id128_t	 uuid;
+	int		 r;
+	pid_t		 pid, parent_pid;
+
+	/* Start building the method call. */
+	r = sd_bus_message_new_method_call(bus, mp,
+	    "org.freedesktop.systemd1",
+	    "/org/freedesktop/systemd1",
+	    "org.freedesktop.systemd1.Manager",
+	    "StartTransientUnit");
+	if (r < 0) {
+		xasprintf(cause, "failed to create bus message: %s",
+		    strerror(-r));
+		return (r);
+	}
+
+	/* Generate a unique name for the new scope, to avoid collisions. */
+	r = sd_id128_randomize(&uuid);
+	if (r < 0) {
+		xasprintf(cause, "failed to generate uuid: %s", strerror(-r));
+		return (r);
+	}
+	xasprintf(&name, "tmux-spawn-" SD_ID128_UUID_FORMAT_STR ".scope",
+	    SD_ID128_FORMAT_VAL(uuid));
+	r = sd_bus_message_append(*mp, "s", name);
+	free(name);
+	if (r < 0) {
+		xasprintf(cause, "failed to append to bus message: %s",
+		    strerror(-r));
+		return (r);
+	}
+
+	/* Mode: fail if there's a queued unit with the same name. */
+	r = sd_bus_message_append(*mp, "s", "fail");
+	if (r < 0) {
+		xasprintf(cause, "failed to append to bus message: %s",
+		    strerror(-r));
+		return (r);
+	}
+
+	/* Start properties array. */
+	r = sd_bus_message_open_container(*mp, 'a', "(sv)");
+	if (r < 0) {
+		xasprintf(cause, "failed to start properties array: %s",
+		    strerror(-r));
+		return (r);
+	}
+
+	pid = getpid();
+	parent_pid = getppid();
+	xasprintf(&desc, "tmux child pane %ld launched by process %ld",
+	    (long)pid, (long)parent_pid);
+	r = sd_bus_message_append(*mp, "(sv)", "Description", "s", desc);
+	free(desc);
+	if (r < 0) {
+		xasprintf(cause, "failed to append to properties: %s",
+		    strerror(-r));
+		return (r);
+	}
+
+	/*
+	 * Make sure that the session shells are terminated with SIGHUP since
+	 * bash and friends tend to ignore SIGTERM.
+	 */
+	r = sd_bus_message_append(*mp, "(sv)", "SendSIGHUP", "b", 1);
+	if (r < 0) {
+		xasprintf(cause, "failed to append to properties: %s",
+		    strerror(-r));
+		return (r);
+	}
+
+	/*
+	 * Inherit the slice from the parent process, or default to
+	 * "app-tmux.slice" if that fails.
+	 */
+	r = sd_pid_get_user_slice(parent_pid, &slice);
+	if (r < 0) {
+		slice = xstrdup("app-tmux.slice");
+	}
+	r = sd_bus_message_append(*mp, "(sv)", "Slice", "s", slice);
+	free(slice);
+	if (r < 0) {
+		xasprintf(cause, "failed to append to properties: %s",
+		    strerror(-r));
+		return (r);
+	}
+
+	/* PIDs to add to the scope: length - 1 array of uint32_t. */
+	r = sd_bus_message_append(*mp, "(sv)", "PIDs", "au", 1, pid);
+	if (r < 0) {
+		xasprintf(cause, "failed to append to properties: %s",
+		    strerror(-r));
+		return (r);
+	}
+
+	/*
+	 * A pane is an interactive session like a login, so one process in
+	 * it being killed by the OOM killer must not take the shell and every
+	 * other process in the pane with it. systemd defaults scopes to
+	 * OOMPolicy=stop, which does exactly that; logind uses continue for
+	 * session scopes.
+	 */
+	if (oom_policy) {
+		r = sd_bus_message_append(*mp, "(sv)", "OOMPolicy", "s",
+		    "continue");
+		if (r < 0) {
+			xasprintf(cause, "failed to append to properties: %s",
+			    strerror(-r));
+			return (r);
+		}
+	}
+
+	/* Clean up the scope even if it fails. */
+	r = sd_bus_message_append(*mp, "(sv)", "CollectMode", "s",
+	    "inactive-or-failed");
+	if (r < 0) {
+		xasprintf(cause, "failed to append to properties: %s",
+		    strerror(-r));
+		return (r);
+	}
+
+	/*
+	 * Try locating systemd unit that started the server, and mark pane units
+	 * as dependent on it. Use "Before" to make sure systemd will not try to
+	 * kill them first.
+	 */
+	if (sd_pid_get_user_unit(parent_pid, &unit) == 0 ||
+	    sd_pid_get_unit(parent_pid, &unit) == 0) {
+		r = sd_bus_message_append(*mp, "(sv)", "Before", "as", 1,
+		    unit);
+		if (r >= 0) {
+			r = sd_bus_message_append(*mp, "(sv)", "PartOf", "as",
+			    1, unit);
+		}
+		free(unit);
+		if (r < 0) {
+			xasprintf(cause, "failed to append to properties: %s",
+			    strerror(-r));
+			return (r);
+		}
+	}
+
+	/* End properties array. */
+	r = sd_bus_message_close_container(*mp);
+	if (r < 0) {
+		xasprintf(cause, "failed to end properties array: %s",
+		    strerror(-r));
+		return (r);
+	}
+
+	/* aux is currently unused and should be passed an empty array. */
+	r = sd_bus_message_append(*mp, "a(sa(sv))", 0);
+	if (r < 0) {
+		xasprintf(cause, "failed to append to bus message: %s",
+		    strerror(-r));
+		return (r);
+	}
+
+	return (0);
+}
+
 int
 systemd_move_to_new_cgroup(char **cause)
 {
@@ -110,11 +276,8 @@ systemd_move_to_new_cgroup(char **cause)
 	sd_bus_message		*m = NULL, *reply = NULL;
 	sd_bus 			*bus = NULL;
 	sd_bus_slot		*slot = NULL;
-	char			*name, *desc, *slice, *unit;
-	sd_id128_t		 uuid;
 	int			 r;
 	uint64_t		 elapsed_usec;
-	pid_t			 pid, parent_pid;
 	struct timeval		 start, now;
 	struct systemd_job_watch watch = {};
 
@@ -142,144 +305,23 @@ systemd_move_to_new_cgroup(char **cause)
 		goto finish;
 	}
 
-	/* Start building the method call. */
-	r = sd_bus_message_new_method_call(bus, &m,
-	    "org.freedesktop.systemd1",
-	    "/org/freedesktop/systemd1",
-	    "org.freedesktop.systemd1.Manager",
-	    "StartTransientUnit");
-	if (r < 0) {
-		xasprintf(cause, "failed to create bus message: %s",
-		    strerror(-r));
-		goto finish;
-	}
-
-	/* Generate a unique name for the new scope, to avoid collisions. */
-	r = sd_id128_randomize(&uuid);
-	if (r < 0) {
-		xasprintf(cause, "failed to generate uuid: %s", strerror(-r));
-		goto finish;
-	}
-	xasprintf(&name, "tmux-spawn-" SD_ID128_UUID_FORMAT_STR ".scope",
-	    SD_ID128_FORMAT_VAL(uuid));
-	r = sd_bus_message_append(m, "s", name);
-	free(name);
-	if (r < 0) {
-		xasprintf(cause, "failed to append to bus message: %s",
-		    strerror(-r));
-		goto finish;
-	}
-
-	/* Mode: fail if there's a queued unit with the same name. */
-	r = sd_bus_message_append(m, "s", "fail");
-	if (r < 0) {
-		xasprintf(cause, "failed to append to bus message: %s",
-		    strerror(-r));
-		goto finish;
-	}
-
-	/* Start properties array. */
-	r = sd_bus_message_open_container(m, 'a', "(sv)");
-	if (r < 0) {
-		xasprintf(cause, "failed to start properties array: %s",
-		    strerror(-r));
-		goto finish;
-	}
-
-	pid = getpid();
-	parent_pid = getppid();
-	xasprintf(&desc, "tmux child pane %ld launched by process %ld",
-	    (long)pid, (long)parent_pid);
-	r = sd_bus_message_append(m, "(sv)", "Description", "s", desc);
-	free(desc);
-	if (r < 0) {
-		xasprintf(cause, "failed to append to properties: %s",
-		    strerror(-r));
-		goto finish;
-	}
-
 	/*
-	 * Make sure that the session shells are terminated with SIGHUP since
-	 * bash and friends tend to ignore SIGTERM.
+	 * Build and send the request. systemd before 253 rejects OOMPolicy on a
+	 * scope as an unknown property, so try once more without it.
 	 */
-	r = sd_bus_message_append(m, "(sv)", "SendSIGHUP", "b", 1);
-	if (r < 0) {
-		xasprintf(cause, "failed to append to properties: %s",
-		    strerror(-r));
+	r = systemd_new_scope_message(bus, 1, &m, cause);
+	if (r < 0)
 		goto finish;
-	}
-
-	/*
-	 * Inherit the slice from the parent process, or default to
-	 * "app-tmux.slice" if that fails.
-	 */
-	r = sd_pid_get_user_slice(parent_pid, &slice);
-	if (r < 0) {
-		slice = xstrdup("app-tmux.slice");
-	}
-	r = sd_bus_message_append(m, "(sv)", "Slice", "s", slice);
-	free(slice);
-	if (r < 0) {
-		xasprintf(cause, "failed to append to properties: %s",
-		    strerror(-r));
-		goto finish;
-	}
-
-	/* PIDs to add to the scope: length - 1 array of uint32_t. */
-	r = sd_bus_message_append(m, "(sv)", "PIDs", "au", 1, pid);
-	if (r < 0) {
-		xasprintf(cause, "failed to append to properties: %s",
-		    strerror(-r));
-		goto finish;
-	}
-
-	/* Clean up the scope even if it fails. */
-	r = sd_bus_message_append(m, "(sv)", "CollectMode", "s",
-	    "inactive-or-failed");
-	if (r < 0) {
-		xasprintf(cause, "failed to append to properties: %s",
-		    strerror(-r));
-		goto finish;
-	}
-
-	/*
-	 * Try locating systemd unit that started the server, and mark pane units
-	 * as dependent on it. Use "Before" to make sure systemd will not try to
-	 * kill them first.
-	 */
-	if (sd_pid_get_user_unit(parent_pid, &unit) == 0 ||
-	    sd_pid_get_unit(parent_pid, &unit) == 0) {
-		r = sd_bus_message_append(m, "(sv)", "Before", "as", 1, unit);
-		if (r >= 0) {
-			r = sd_bus_message_append(m, "(sv)", "PartOf", "as", 1,
-			    unit);
-		}
-		free(unit);
-		if (r < 0) {
-			xasprintf(cause, "failed to append to properties: %s",
-			    strerror(-r));
-			goto finish;
-		}
-	}
-
-	/* End properties array. */
-	r = sd_bus_message_close_container(m);
-	if (r < 0) {
-		xasprintf(cause, "failed to end properties array: %s",
-		    strerror(-r));
-		goto finish;
-	}
-
-	/* aux is currently unused and should be passed an empty array. */
-	r = sd_bus_message_append(m, "a(sa(sv))", 0);
-	if (r < 0) {
-		xasprintf(cause, "failed to append to bus message: %s",
-		    strerror(-r));
-		goto finish;
-	}
-
-	/* Call the method with a timeout of 1 second = 1e6 us. */
 	r = sd_bus_call(bus, m, 1000000, &error, &reply);
+	if (r < 0 && sd_bus_error_has_name(&error,
+	    SD_BUS_ERROR_PROPERTY_READ_ONLY)) {
+		sd_bus_error_free(&error);
+		m = sd_bus_message_unref(m);
+		r = systemd_new_scope_message(bus, 0, &m, cause);
+		if (r < 0)
+			goto finish;
+		r = sd_bus_call(bus, m, 1000000, &error, &reply);
+	}
 	if (r < 0) {
 		if (error.message != NULL) {
 			/* We have a specific error message from sd-bus. */
