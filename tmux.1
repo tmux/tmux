@@ -2012,6 +2012,25 @@ Same as
 .Ic copy\-pipe
 but also exit copy mode.
 .It Xo
+.Ic copy\-pipe\-output
+.Op Fl aCP
+.Op Ar command
+.Op Ar prefix
+.Xc
+Copy the current OSC 133 command output, pipe it to
+.Ar command ,
+and clear the selection.
+.Ar prefix
+is used to name the new paste buffer.
+.It Xo
+.Ic copy\-output
+.Op Fl aCP
+.Op Ar prefix
+.Xc
+Copy the current OSC 133 command output and clear the selection.
+.Ar prefix
+is used to name the new paste buffer.
+.It Xo
 .Ic copy\-selection
 .Op Fl CP
 .Op Ar prefix
@@ -2230,6 +2249,32 @@ but treat all non-whitespace characters as part of a word.
 .Xc
 Switch at which end of the selection the cursor sits.
 .It Xo
+.Ic open\-output
+.Op Fl a
+.Op Ar command
+.Xc
+Open the current OSC 133 command output in an editor.
+If
+.Ar command
+is given, it is used as the editor command; otherwise, the
+.Ic editor
+option is used.
+.It Xo
+.Ic open\-selection
+.Op Ar command
+.Xc
+Open the current selection in an editor.
+If
+.Ar command
+is given, it is used as the editor command; otherwise, the
+.Ic editor
+option is used.
+In emacs mode,
+.Ql e ,
+and in vi mode,
+.Ql M\-e ,
+opens the selection if one is present, otherwise the command output.
+.It Xo
 .Ic page\-down
 (vi: C\-f)
 (emacs: PageDown)
@@ -2269,6 +2314,21 @@ but do not clear the selection.
 Same as
 .Ic pipe
 but also exit copy mode.
+.It Xo
+.Ic pipe\-output
+.Op Fl a
+.Op Ar command
+.Xc
+Pipe the current OSC 133 command output to
+.Ar command
+and clear the selection.
+.It Xo
+.Ic pipe\-selection
+.Op Ar command
+.Xc
+Pipe the selected text to
+.Ar command
+and clear the selection.
 .It Xo
 .Ic previous\-matching\-bracket
 (emacs: M\-C\-b)
@@ -2459,6 +2519,15 @@ Search forward for the specified plain text.
 Repeat the last search in the reverse direction (forward becomes backward and
 backward becomes forward).
 .It Xo
+.Ic select\-output
+.Op Fl a
+.Xc
+Select the current OSC 133 command output.
+The default emacs binding is
+.Ql C\-o
+and the default vi binding is
+.Ql M\-o .
+.It Xo
 .Ic select\-line
 (vi: V)
 .Xc
@@ -2501,6 +2570,20 @@ Toggle the visibility of the position indicator in the top right.
 .Xc
 Move to the top line.
 .El
+.Pp
+The output commands use OSC 133 output text from the
+.Ql C
+marker up to its matching
+.Ql D
+marker.
+If there is no
+.Ql D
+marker, the output ends at the end of the copy-mode buffer.
+At the following prompt or below it, they use the most recent nonempty output.
+With
+.Fl a ,
+they use the entire copy-mode buffer instead.
+If no output range can be found, they do nothing.
 .Pp
 The search commands come in several varieties:
 .Ql search\-forward
