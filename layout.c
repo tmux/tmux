@@ -469,7 +469,6 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 					sx = PANE_MINIMUM;
 				else
 					sx = sx - sb_w - sb_pad;
-			wp->flags |= PANE_REDRAWSCROLLBAR;
 		}
 
 		window_pane_resize(wp, sx, sy);
@@ -477,8 +476,11 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		if (wp->xoff != old_xoff ||
 		    wp->yoff != old_yoff ||
 		    wp->sx != old_sx ||
-		    wp->sy != old_sy)
+		    wp->sy != old_sy) {
 			changed = 1;
+			if (window_pane_scrollbar_reserve(wp))
+				wp->flags |= PANE_REDRAWSCROLLBAR;
+		}
 	}
 	if (changed)
 		redraw_invalidate_scene(w);

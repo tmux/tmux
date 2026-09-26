@@ -122,14 +122,39 @@ screen_write_set_cursor(struct screen_write_ctx *ctx, int cx, int cy)
 		evtimer_add(&w->offset_timer, &tv);
 }
 
-/* Do a full redraw. */
+/*
+ * Called when a write could not be applied directly to the terminal and
+ * needs a redraw instead. Report damage for the requested rows. wp->yoff is
+ * already adjusted past any top pane-border-status row, so wp->yoff + py is
+ * the correct window-coordinate row. wp->xoff/wp->yoff are signed and can be
+ * negative for a floating pane positioned partly off the window's left or
+ * top edge, so clip to the window's own origin here before converting to
+ * the unsigned coordinates redraw_damage_window() takes - passing a
+ * negative offset through unclipped wraps to a huge value that its own
+ * bounds check then silently rejects, losing the pane's visible portion
+ * entirely rather than just the off-screen part.
+ */
 static void
-screen_write_redraw_cb(const struct tty_ctx *ttyctx)
+screen_write_redraw_cb(const struct tty_ctx *ttyctx, u_int py, u_int ny)
 {
 	struct window_pane	*wp = ttyctx->arg;
+	int			 x0, y0, x1, y1;
 
-	if (wp != NULL)
-		wp->flags |= PANE_REDRAW;
+	if (wp == NULL)
+		return;
+
+	x0 = wp->xoff;
+	y0 = wp->yoff + (int)py;
+	x1 = x0 + (int)wp->sx;
+	y1 = y0 + (int)ny;
+	if (x0 < 0)
+		x0 = 0;
+	if (y0 < 0)
+		y0 = 0;
+	if (x1 <= x0 || y1 <= y0)
+		return;
+	redraw_damage_window(wp->window, (u_int)x0, (u_int)y0,
+	    (u_int)(x1 - x0), (u_int)(y1 - y0));
 }
 
 /* Update context for client. */
@@ -2280,7 +2305,7 @@ screen_write_fullredraw(struct screen_write_ctx *ctx)
 
 	screen_write_initctx(ctx, &ttyctx, 1, 0);
 	if (ttyctx.redraw_cb != NULL)
-		ttyctx.redraw_cb(&ttyctx);
+		ttyctx.redraw_cb(&ttyctx, 0, ttyctx.sy);
 }
 
 /* Trim collected items. */
@@ -3298,7 +3323,7 @@ screen_write_alternateon(struct screen_write_ctx *ctx, struct grid_cell *gc,
 
 	screen_write_initctx(ctx, &ttyctx, 1, 0);
 	if (ttyctx.redraw_cb != NULL)
-		ttyctx.redraw_cb(&ttyctx);
+		ttyctx.redraw_cb(&ttyctx, 0, ttyctx.sy);
 }
 
 /* Turn alternate screen off. */
@@ -3323,5 +3348,5 @@ screen_write_alternateoff(struct screen_write_ctx *ctx, struct grid_cell *gc,
 
 	screen_write_initctx(ctx, &ttyctx, 1, 0);
 	if (ttyctx.redraw_cb != NULL)
-		ttyctx.redraw_cb(&ttyctx);
+		ttyctx.redraw_cb(&ttyctx, 0, ttyctx.sy);
 }

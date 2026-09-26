@@ -1115,7 +1115,7 @@ tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 	 */
 	if (tty_large_region(tty, ctx) || ctx->flags & TTY_CTX_PANE_OBSCURED) {
 		log_debug("%s: %s large region redraw", __func__, c->name);
-		ctx->redraw_cb(ctx);
+		ctx->redraw_cb(ctx, ctx->orupper, ctx->orlower - ctx->orupper + 1);
 		return;
 	}
 
@@ -1517,6 +1517,7 @@ tty_sync_start(struct tty *tty)
 	if (tty->flags & TTY_SYNCING)
 		return;
 	tty->flags |= TTY_SYNCING;
+	tty->sync_offset = EVBUFFER_LENGTH(tty->out);
 
 	if (tty_term_has(tty->term, TTYC_SYNC)) {
 		log_debug("%s sync start", tty->client->name);
@@ -1923,7 +1924,7 @@ tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 	u_int		 i, j;
 
 	if (ctx->flags & TTY_CTX_WINDOW_BIGGER) {
-		ctx->redraw_cb(ctx);
+		ctx->redraw_cb(ctx, 0, ctx->sy);
 		return;
 	}
 
@@ -1982,7 +1983,7 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 		    tty->cy == tty->rlower)
 			tty_draw_pane(tty, ctx, ctx->ocy);
 		else
-			ctx->redraw_cb(ctx);
+			ctx->redraw_cb(ctx, ctx->ocy, 1);
 		return;
 	}
 
