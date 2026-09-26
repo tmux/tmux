@@ -667,6 +667,31 @@ window_pane_contains(struct window_pane *wp, u_int x, u_int y)
 	return (1);
 }
 
+/*
+ * Does floating pane fwp, including its borders and scrollbar, overlap any
+ * cell of pane wp, including its scrollbar?
+ */
+int
+window_pane_floating_overlaps(struct window_pane *fwp, struct window_pane *wp)
+{
+	int	fxoff, fyoff, xoff, yoff, border = 0;
+	u_int	fsx, fsy, sx, sy;
+
+	window_pane_full_size_offset(fwp, &fxoff, &fyoff, &fsx, &fsy);
+	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
+
+	if (window_pane_get_pane_lines(fwp) != PANE_LINES_NONE)
+		border = 1;
+
+	if (fxoff - border >= xoff + (int)sx ||
+	    fxoff + (int)fsx + border <= xoff)
+		return (0);
+	if (fyoff - border >= yoff + (int)sy ||
+	    fyoff + (int)fsy + border <= yoff)
+		return (0);
+	return (1);
+}
+
 void
 window_update_focus(struct window *w)
 {
