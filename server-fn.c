@@ -1,4 +1,4 @@
-/* $OpenBSD: server-fn.c,v 1.153 2026/09/10 11:02:18 nicm Exp $ */
+/* $OpenBSD: server-fn.c,v 1.154 2026/09/21 12:43:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -310,8 +310,8 @@ server_link_window(struct session *src, struct winlink *srcwl,
 		}
 		if (killflag) {
 			/*
-			 * Can't use session_detach as it will destroy session
-			 * if this makes it empty.
+			 * Can't use session_detach as it won't detach the only
+			 * window.
 			 */
 			events_fire_winlink("window-unlinked", dstwl);
 			dstwl->flags &= ~WINLINK_ALERTFLAGS;

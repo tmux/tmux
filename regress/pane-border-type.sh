@@ -438,5 +438,38 @@ click $((content_col + 1)) 12
 must_equal "$($TMUX show -gv @hit)" "pane" \
 	"content click not classified as pane"
 
+# ---------------------------------------------------------------------------
+# pane_at_* and display-panes sizes use layout geometry, not content inset
+# ---------------------------------------------------------------------------
+$TMUX kill-server
+$TMUX new-session -d -s fmt -x 80 -y 24 'cat' || exit 1
+$TMUX set -g status off || fail "status off failed"
+$TMUX set -w pane-border-type separate || fail "set separate failed"
+p0=$($TMUX display-message -p -t fmt:0.0 '#{pane_id}')
+must_equal "$(pane_fmt "$p0" '#{pane_at_left} #{pane_at_right} #{pane_at_top} #{pane_at_bottom}')" \
+	"1 1 1 1" "pane_at_* for lone separate pane"
+must_equal "$(pane_fmt "$p0" '#{pane_unzoomed_width}x#{pane_unzoomed_height}')" \
+	"78x22" "display-panes size for lone separate pane"
+$TMUX kill-server
+
+# ---------------------------------------------------------------------------
+# even-horizontal with scrollbars: panes stay inside after narrow + grow
+# ---------------------------------------------------------------------------
+$TMUX new-session -d -s evsb -x 80 -y 24 'cat' || exit 1
+$TMUX set -g status off || fail "status off failed"
+$TMUX set -g pane-scrollbars on || fail "pane-scrollbars on failed"
+$TMUX split-window -h -t evsb:0 'cat' || fail "split 1 failed"
+$TMUX split-window -h -t evsb:0 'cat' || fail "split 2 failed"
+$TMUX resize-window -t evsb:0 -x 5 || fail "resize-window -x 5 failed"
+$TMUX select-layout -t evsb:0 even-horizontal || fail "even-horizontal failed"
+$TMUX resize-window -t evsb:0 -x 80 || fail "resize-window -x 80 failed"
+win_w=$($TMUX display-message -p -t evsb:0 '#{window_width}')
+$TMUX list-panes -t evsb:0 -F '#{pane_right}' >"$TMP/evsb.panes"
+while read -r right; do
+	[ "$right" -lt "$win_w" ] ||
+		fail "even-horizontal scrollbar pane outside window: R=$right win=$win_w"
+done <"$TMP/evsb.panes"
+$TMUX kill-server
+
 exit 0
 

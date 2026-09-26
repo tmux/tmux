@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-resize-pane.c,v 1.68 2026/08/31 07:44:39 nicm Exp $ */
+/* $OpenBSD: cmd-resize-pane.c,v 1.69 2026/09/21 10:33:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -91,7 +91,8 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		server_redraw_window(w);
 		return (CMD_RETURN_NORMAL);
 	}
-	server_unzoom_window(w);
+	if (!window_pane_is_floating(wp))
+		server_unzoom_window(w);
 	lc = wp->layout_cell; /* may have been replaced by unzoom */
 
 	if (args_has(args, 'x')) {

@@ -163,42 +163,29 @@ layout_set_even(struct window *w, enum layout_type type)
 	if (n <= 1)
 		return;
 
-	/*
-	 * Minimum layout size: n panes and n-1 separators. With separate, each
-	 * pane needs an extra cell and the far edge another.
-	 */
-	if (type == LAYOUT_LEFTRIGHT) {
-		if (window_border_type_is_separate(w))
-			sx = n * (PANE_MINIMUM + 2);
-		else
-			sx = (n * (PANE_MINIMUM + 1)) - 1;
-		if (sx < w->sx)
-			sx = w->sx;
-		sy = w->sy;
-	} else {
-		if (window_border_type_is_separate(w))
-			sy = n * (PANE_MINIMUM + 2);
-		else
-			sy = (n * (PANE_MINIMUM + 1)) - 1;
-		if (sy < w->sy)
-			sy = w->sy;
-		sx = w->sx;
-	}
-
 	layout_free(w, 1);
 	lcroot = w->layout_root = layout_create_cell(NULL);
-	layout_set_size(lcroot, sx, sy, 0, 0);
+	layout_set_size(lcroot, w->sx, w->sy, 0, 0);
 	layout_make_node(lcroot, type);
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		lcchild = wp->layout_cell;
 		TAILQ_INSERT_TAIL(&lcroot->cells, lcchild, entry);
 		lcchild->parent = lcroot;
-		if (layout_cell_is_tiled(lcchild)) {
-			lcchild->g.sx = w->sx;
-			lcchild->g.sy = w->sy;
-		}
 	}
+
+	if (type == LAYOUT_LEFTRIGHT) {
+		sx = layout_cell_tree_minimum(w, lcroot, type);
+		if (sx < w->sx)
+			sx = w->sx;
+		sy = w->sy;
+	} else {
+		sy = layout_cell_tree_minimum(w, lcroot, type);
+		if (sy < w->sy)
+			sy = w->sy;
+		sx = w->sx;
+	}
+	layout_set_size(lcroot, sx, sy, 0, 0);
 
 	layout_spread_cell(w, lcroot);
 

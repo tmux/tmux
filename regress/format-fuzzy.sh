@@ -7,6 +7,8 @@ TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
+trap '$TMUX kill-server 2>/dev/null' 0
+trap 'exit 1' 1 2 15
 
 # test_format $format $expected_result
 test_format()

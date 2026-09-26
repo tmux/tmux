@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.417 2026/09/08 15:42:26 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.418 2026/09/20 08:19:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1229,23 +1229,28 @@ format_cb_pane_in_mode(struct format_tree *ft)
 	return (value);
 }
 
+static struct layout_cell *
+format_pane_layout_cell(struct window_pane *wp)
+{
+	if (wp->saved_layout_cell != NULL)
+		return (wp->saved_layout_cell);
+	return (wp->layout_cell);
+}
+
 /* Callback for pane_at_top. */
 static void *
 format_cb_pane_at_top(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
-	int			 status, flag;
+	struct layout_cell	*lc;
 	char			*value;
 
 	if (wp == NULL)
 		return (NULL);
-
-	status = window_pane_get_pane_status(wp);
-	if (status == PANE_STATUS_TOP)
-		flag = (wp->yoff == 1);
-	else
-		flag = (wp->yoff == 0);
-	xasprintf(&value, "%d", flag);
+	lc = format_pane_layout_cell(wp);
+	if (lc == NULL)
+		return (xstrdup("0"));
+	xasprintf(&value, "%d", lc->g.yoff == 0);
 	return (value);
 }
 
@@ -1255,19 +1260,16 @@ format_cb_pane_at_bottom(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
 	struct window		*w;
-	int			 status, flag;
+	struct layout_cell	*lc;
 	char			*value;
 
 	if (wp == NULL)
 		return (NULL);
 	w = wp->window;
-
-	status = window_pane_get_pane_status(wp);
-	if (status == PANE_STATUS_BOTTOM)
-		flag = (wp->yoff + (int)wp->sy == (int)w->sy - 1);
-	else
-		flag = (wp->yoff + (int)wp->sy == (int)w->sy);
-	xasprintf(&value, "%d", flag);
+	lc = format_pane_layout_cell(wp);
+	if (lc == NULL)
+		return (xstrdup("0"));
+	xasprintf(&value, "%d", lc->g.yoff + lc->g.sy == w->sy);
 	return (value);
 }
 
@@ -2218,24 +2220,32 @@ format_cb_pane_active(struct format_tree *ft)
 static void *
 format_cb_pane_at_left(struct format_tree *ft)
 {
-	if (ft->wp != NULL) {
-		if (ft->wp->xoff == 0)
-			return (xstrdup("1"));
+	struct layout_cell	*lc;
+
+	if (ft->wp == NULL)
+		return (NULL);
+	lc = format_pane_layout_cell(ft->wp);
+	if (lc == NULL)
 		return (xstrdup("0"));
-	}
-	return (NULL);
+	if (lc->g.xoff == 0)
+		return (xstrdup("1"));
+	return (xstrdup("0"));
 }
 
 /* Callback for pane_at_right. */
 static void *
 format_cb_pane_at_right(struct format_tree *ft)
 {
-	if (ft->wp != NULL) {
-		if (ft->wp->xoff + (int)ft->wp->sx == (int)ft->wp->window->sx)
-			return (xstrdup("1"));
+	struct layout_cell	*lc;
+
+	if (ft->wp == NULL)
+		return (NULL);
+	lc = format_pane_layout_cell(ft->wp);
+	if (lc == NULL)
 		return (xstrdup("0"));
-	}
-	return (NULL);
+	if (lc->g.xoff + lc->g.sx == ft->wp->window->sx)
+		return (xstrdup("1"));
+	return (xstrdup("0"));
 }
 
 /* Callback for pane_bottom. */
@@ -2717,7 +2727,7 @@ format_cb_pane_unzoomed_height(struct format_tree *ft)
 		lc = wp->layout_cell;
 	if (lc == NULL)
 		return (NULL);
-	sy = lc->g.sy;
+	sy = layout_pane_content_size(w, lc, LAYOUT_TOPBOTTOM);
 	floating = (lc->flags & LAYOUT_CELL_FLOATING);
 
 	root = w->saved_layout_root;
@@ -2741,19 +2751,21 @@ static void *
 format_cb_pane_unzoomed_width(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
+	struct window		*w;
 	struct layout_cell	*lc;
 	int			 sb_w, sb_pad;
 	u_int			 sx;
 
 	if (wp == NULL)
 		return (NULL);
+	w = wp->window;
 
 	lc = wp->saved_layout_cell;
 	if (lc == NULL)
 		lc = wp->layout_cell;
 	if (lc == NULL)
 		return (NULL);
-	sx = lc->g.sx;
+	sx = layout_pane_content_size(w, lc, LAYOUT_LEFTRIGHT);
 
 	if (!SCREEN_IS_ALTERNATE(&wp->base) &&
 	    window_pane_scrollbar_reserve(wp)) {
@@ -2874,10 +2886,10 @@ format_cb_session_activity_flag(struct format_tree *ft)
 
 	if (ft->s != NULL) {
 		RB_FOREACH(wl, winlinks, &ft->s->windows) {
-			if (ft->wl->flags & WINLINK_ACTIVITY)
+			if (wl->flags & WINLINK_ACTIVITY)
 				return (xstrdup("1"));
-			return (xstrdup("0"));
 		}
+		return (xstrdup("0"));
 	}
 	return (NULL);
 }
@@ -2892,8 +2904,8 @@ format_cb_session_bell_flag(struct format_tree *ft)
 		RB_FOREACH(wl, winlinks, &ft->s->windows) {
 			if (wl->flags & WINLINK_BELL)
 				return (xstrdup("1"));
-			return (xstrdup("0"));
 		}
+		return (xstrdup("0"));
 	}
 	return (NULL);
 }
@@ -2906,10 +2918,10 @@ format_cb_session_silence_flag(struct format_tree *ft)
 
 	if (ft->s != NULL) {
 		RB_FOREACH(wl, winlinks, &ft->s->windows) {
-			if (ft->wl->flags & WINLINK_SILENCE)
+			if (wl->flags & WINLINK_SILENCE)
 				return (xstrdup("1"));
-			return (xstrdup("0"));
 		}
+		return (xstrdup("0"));
 	}
 	return (NULL);
 }

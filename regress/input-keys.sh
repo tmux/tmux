@@ -22,7 +22,19 @@ assert_key () {
 	      clear-history -t$W \; \
 	      send-keys -t$W "$key" 'EOL' || exit 1
 
-	actual_code=$($TMUX capturep -pt$W | \
+	# cat echoes the keys back asynchronously, so wait for the EOL marker
+	# to reach the pane instead of capturing straight away.
+	i=0
+	while [ $i -lt 50 ]; do
+		screen=$($TMUX capturep -pt$W)
+		case "$screen" in
+		*EOL*) break ;;
+		esac
+		i=$((i + 1))
+		sleep 0.1
+	done
+
+	actual_code=$(printf '%s\n' "$screen" | \
 			      head -1 | \
 			      sed -e 's/EOL.*$//')
 

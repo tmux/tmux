@@ -1,4 +1,4 @@
-/* $OpenBSD: layout.c,v 1.100 2026/09/11 08:16:14 nicm Exp $ */
+/* $OpenBSD: layout.c,v 1.101 2026/09/20 08:42:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -451,6 +451,57 @@ layout_pane_minimum_size(struct window *w, struct layout_cell *lc,
 			minimum++;
 	}
 	return (minimum);
+}
+
+/* Minimum size of all tiled children plus separators. */
+u_int
+layout_cell_tree_minimum(struct window *w, struct layout_cell *parent,
+    enum layout_type type)
+{
+	struct layout_cell	*lc;
+	u_int			 n = 0, total = 0;
+
+	TAILQ_FOREACH(lc, &parent->cells, entry) {
+		if (!layout_cell_is_tiled(lc))
+			continue;
+		total += layout_pane_minimum_size(w, lc, type);
+		n++;
+	}
+	if (n <= 1)
+		return (0);
+	return (total + (n - 1));
+}
+
+/* Layout cell size minus separate border gutters. */
+u_int
+layout_pane_content_size(struct window *w, struct layout_cell *lc,
+    enum layout_type type)
+{
+	struct layout_cell	*root = w->layout_root;
+	u_int			 size, need;
+
+	if (lc == NULL)
+		return (0);
+	if (root == NULL)
+		root = w->saved_layout_root;
+	if (type == LAYOUT_LEFTRIGHT)
+		size = lc->g.sx;
+	else
+		size = lc->g.sy;
+	if (!window_border_type_is_separate(w) ||
+	    (lc->flags & LAYOUT_CELL_FLOATING) ||
+	    root == NULL)
+		return (size);
+
+	need = 1;
+	if (type == LAYOUT_LEFTRIGHT) {
+		if (layout_cell_is_right(root, lc))
+			need++;
+	} else if (layout_cell_is_bottom(root, lc))
+		need++;
+	if (size >= need + PANE_MINIMUM)
+		size -= need;
+	return (size);
 }
 
 /*
@@ -1901,7 +1952,7 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
     enum pane_lines lines, struct window *w, struct layout_geometry *lg,
     char **cause)
 {
-	int	 sx, sy, ox, oy;
+	int	 sx, sy, ox, oy, pad;
 	char	*error = NULL;
 
 	sx = lg->sx == UINT_MAX ? w->sx / 2 : lg->sx;
@@ -1950,12 +2001,20 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 		}
 	}
 
+	if (!window_has_floating_panes(w)) {
+		w->last_new_pane_x = 0;
+		w->last_new_pane_y = 0;
+	}
 	if (ox == INT_MAX) {
 		if (w->last_new_pane_x == 0)
 			ox = 4;
 		else {
+			if (lines != PANE_LINES_NONE)
+				pad = 1;
+			else
+				pad = 0;
 			ox = w->last_new_pane_x + 4;
-			if (w->last_new_pane_x > w->sx)
+			if (ox + sx + pad > (int)w->sx)
 				ox = 4;
 		}
 		w->last_new_pane_x = ox;
@@ -1966,8 +2025,12 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 		if (w->last_new_pane_y == 0)
 			oy = 2;
 		else {
+			if (lines != PANE_LINES_NONE)
+				pad = 1;
+			else
+				pad = 0;
 			oy = w->last_new_pane_y + 2;
-			if (w->last_new_pane_y > w->sy)
+			if (oy + sy + pad > (int)w->sy)
 				oy = 2;
 		}
 		w->last_new_pane_y = oy;

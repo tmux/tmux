@@ -1,33 +1,17 @@
 TESTS!= echo *.sh
 LOGDIR=logs
 
-.PHONY: all
-.NOTPARALLEL: all
+.PHONY: all prepare $(TESTS)
 
-all:
-	@mkdir -p "$(LOGDIR)"; \
-	rm -f "$(LOGDIR)"/*.log; \
-	failed=0; failures=; \
+all: prepare $(TESTS)
+	@failed=0; failures=; \
 	for test in $(TESTS); do \
 		base=$${test##*/}; \
 		log="$(LOGDIR)/$${base%.sh}.log"; \
-		rm -f "$$log"; \
-		printf '%-40s ' "$$test"; \
-		start=$$(date +%s); \
-		env -i LC_CTYPE=C.UTF-8 MallocNanoZone=0 \
-		    sh -x "$$test" >"$$log" 2>&1; \
-		if [ $$? -eq 0 ]; then \
-			end=$$(date +%s); \
-			rm -f "$$log"; \
-			echo "PASS ($$((end - start))s)"; \
-		else \
-			end=$$(date +%s); \
-			echo "FAIL ($$((end - start))s)"; \
-			echo " log: $$log"; \
+		if [ -f "$$log" ]; then \
 			failed=1; \
 			failures="$$failures $$test"; \
 		fi; \
-		sleep 1; \
 	done; \
 	if [ "$$failed" -ne 0 ]; then \
 		echo; \
@@ -39,3 +23,22 @@ all:
 		rmdir "$(LOGDIR)" 2>/dev/null || true; \
 	fi; \
 	exit $$failed
+
+prepare:
+	@mkdir -p "$(LOGDIR)"
+	@rm -f "$(LOGDIR)"/*.log
+
+$(TESTS): prepare
+	@base="$@"; base=$${base##*/}; \
+	log="$(LOGDIR)/$${base%.sh}.log"; \
+	start=$$(date +%s); \
+	if env -i LC_CTYPE=C.UTF-8 MallocNanoZone=0 \
+	    sh -x "$@" >"$$log" 2>&1; then \
+		end=$$(date +%s); \
+		rm -f "$$log"; \
+		printf '%-40s PASS (%ss)\n' "$@" "$$((end - start))"; \
+	else \
+		end=$$(date +%s); \
+		printf '%-40s FAIL (%ss)\n log: %s\n' \
+		    "$@" "$$((end - start))" "$$log"; \
+	fi

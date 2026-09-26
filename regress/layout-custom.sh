@@ -50,7 +50,8 @@
 #   layout it names is a single cell or a split;
 # - a window whose only tiled pane has been killed, which leaves it with a
 #   floating cell as its layout root or with a root node holding nothing but
-#   floating cells, producing no v1 dump at all, and being parsed as v1;
+#   floating cells, producing an empty v1 body with a checksum, and being
+#   parsed as v1;
 # - the %layout-change notification, in both formats at once: two control
 #   clients watching one layout change, only one of which has asked for new
 #   layouts, and the number of notifications a change produces in each format;
@@ -376,10 +377,7 @@ must_equal 'Layout after select-pane back' "$(layout L:two)" "$SPLIT"
 
 # With nothing zoomed the two layout formats agree.
 #
-# The zoomed case is deliberately not covered here. While a pane is zoomed
-# #{window_layout} dumps the saved (unzoomed) layout and
-# #{window_visible_layout} the zoomed one, but that depends on how zooming
-# stashes the layout root rather than on anything in layout-custom.c.
+# Zoomed layouts are checked below with floating panes.
 must_equal 'Visible layout' "$(visible_layout L:two)" "$SPLIT"
 
 # ---------------------------------------------------------------------------
@@ -703,6 +701,42 @@ must_contain 'Floating layout back z-index' "$floating" '"z":1'
 check_ok select-layout -t L:float "$floating"
 must_equal 'Floating layout after round trip' "$(raw_layout L:float)" "$floating"
 
+# A dump taken while zoomed must retain the unzoomed floating z-indexes.
+# Check hidden floats, floats above zoom, and a mixture of the two.
+for flags in '' A mixed; do
+	check_ok new-window -d -t L: -n zoom
+	zt=$($TMUX display-message -p -t L:zoom '#{pane_id}')
+	check_ok split-window -d -h -t "$zt"
+	case "$flags" in
+	A|mixed) first=-Ad ;;
+	*) first=-d ;;
+	esac
+	case "$flags" in
+	A) second=-Ad ;;
+	*) second=-d ;;
+	esac
+	check_ok new-pane "$first" -t "$zt" -x 20 -y 6 ''
+	check_ok new-pane "$second" -t "$zt" -x 30 -y 8 ''
+	for pane in 0 2 3; do
+		check_ok select-pane -t "L:zoom.$pane"
+		before=$(raw_layout L:zoom)
+		legacy=$(v1_layout L:zoom)
+		check_ok resize-pane -Z -t "L:zoom.$pane"
+		during=$(raw_layout L:zoom)
+		must_equal 'Layout while zoomed' "$during" "$before"
+		must_equal 'Legacy layout while zoomed' \
+		    "$(v1_layout L:zoom)" "$legacy"
+		must_equal 'Zoom after dumping layout' \
+		    "$($TMUX display-message -p -t L:zoom '#{window_zoomed_flag}')" 1
+		must_differ 'Visible layout while zoomed' \
+		    "$(visible_layout L:zoom)" "$(layout L:zoom)"
+		check_ok select-layout -t L:zoom "$during"
+		must_equal 'Round trip from zoomed layout' \
+		    "$(raw_layout L:zoom)" "$before"
+	done
+	check_ok kill-window -t L:zoom
+done
+
 # ---------------------------------------------------------------------------
 # Floating panes and the legacy (v1) format.
 #
@@ -838,12 +872,12 @@ must_equal 'Panes left with one floating pane' \
 	"$($TMUX display-message -p -t L:gone1 '#{window_panes}')" '1'
 
 # The floating cell is the root and there is nothing tiled under it, so there is
-# no v1 dump to make. In particular the floating cell must not be written out on
+# only an empty v1 body to dump. The floating cell must not be written out on
 # its own, which would be a layout claiming the window is the size and position
 # of the floating pane with no pane in it at all.
 got=$(v1_layout L:gone1)
 check_ok display-message -p alive
-must_equal 'v1 dump with one floating pane and no tiled panes' "$got" ''
+must_equal 'v1 dump with one floating pane and no tiled panes' "$got" '0000,'
 
 # Two floating panes left, so the node keeps two children, does not collapse,
 # and stays the root with nothing but floating cells in it.
@@ -856,11 +890,11 @@ must_equal 'Panes left with two floating panes' \
 	"$($TMUX display-message -p -t L:gone2 '#{window_panes}')" '2'
 
 # The node is the root this time rather than the floating cell, but it has no
-# tiled cell anywhere under it either, so there is still no v1 dump to make -
+# tiled cell anywhere under it either, so the v1 body is still empty -
 # and making one must not take the server with it.
 got=$(v1_layout L:gone2)
 check_ok display-message -p alive
-must_equal 'v1 dump with two floating panes and no tiled panes' "$got" ''
+must_equal 'v1 dump with two floating panes and no tiled panes' "$got" '0000,'
 
 # Nor must parsing a v1 layout against it. There is no tiled pane for the
 # layout to name, so whether it is applied or rejected is the format's business;

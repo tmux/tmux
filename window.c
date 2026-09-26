@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.374 2026/09/08 08:37:56 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.379 2026/09/25 08:46:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -449,9 +449,17 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 static void
 window_destroy(struct window *w)
 {
+	struct window_pane	*wp;
+
 	log_debug("window @%u destroyed (%d references)", w->id, w->references);
 
-	window_unzoom(w, 0);
+	if (w->flags & WINDOW_ZOOMED) {
+		w->flags &= ~WINDOW_ZOOMED;
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			wp->flags &= ~PANE_ZOOMED;
+			wp->saved_layout_cell = NULL;
+		}
+	}
 	RB_REMOVE(windows, &windows, w);
 
 	layout_free_cell(w->layout_root, 0);
@@ -683,7 +691,6 @@ window_pane_update_focus(struct window_pane *wp)
 				    c->session->attached != 0 &&
 				    (c->flags & CLIENT_FOCUSED) &&
 				    c->session->curw->window == wp->window &&
-				    c->overlay_draw == NULL &&
 				    wp->window->menu == NULL) {
 					focused = 1;
 					break;
@@ -1541,7 +1548,7 @@ window_pane_destroy(struct window_pane *wp)
 	window_pane_clear_prompt(wp);
 
 	window_pane_free_modes(wp);
-	screen_write_clear_dirty(wp);
+	screen_write_sync_clear_dirty(wp);
 
 	if (wp->fd != -1) {
 #ifdef HAVE_UTEMPTER
@@ -1645,7 +1652,7 @@ window_pane_set_event(struct window_pane *wp)
 	    NULL, window_pane_error_callback, wp);
 	if (wp->event == NULL)
 		fatalx("out of memory");
-	wp->ictx = input_init(wp, wp->event, &wp->palette, NULL);
+	wp->ictx = input_init(wp, wp->event, &wp->palette);
 
 	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 }
@@ -2461,7 +2468,7 @@ winlink_shuffle_up(struct session *s, struct winlink *wl, int before)
 {
 	int	 idx, last;
 
-	if (wl == NULL)
+	if (wl == NULL || wl->idx == INT_MAX)
 		return (-1);
 	if (before)
 		idx = wl->idx;
@@ -2941,6 +2948,18 @@ window_pane_is_floating(struct window_pane *wp)
 {
 	struct layout_cell	*lc = wp->layout_cell;
 
+	if (lc == NULL || (lc->flags & LAYOUT_CELL_FLOATING) == 0)
+		return (0);
+	return (1);
+}
+
+int
+window_pane_is_floating_with_hidden(struct window_pane *wp)
+{
+	struct layout_cell	*lc = wp->layout_cell;
+
+	if (lc == NULL)
+		lc = wp->saved_layout_cell;
 	if (lc == NULL || (lc->flags & LAYOUT_CELL_FLOATING) == 0)
 		return (0);
 	return (1);

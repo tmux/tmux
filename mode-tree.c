@@ -1,4 +1,4 @@
-/* $OpenBSD: mode-tree.c,v 1.101 2026/08/05 07:50:21 nicm Exp $ */
+/* $OpenBSD: mode-tree.c,v 1.103 2026/09/24 18:59:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -277,11 +277,22 @@ mode_tree_free_items(struct mode_tree_list *mtl)
 static void
 mode_tree_check_selected(struct mode_tree_data *mtd)
 {
+	if (mtd->height == 0)
+		return;
+
+	/* If the list has shrunk, do not leave empty lines at the bottom. */
+	if (mtd->line_size <= mtd->height)
+		mtd->offset = 0;
+	else if (mtd->offset > mtd->line_size - mtd->height)
+		mtd->offset = mtd->line_size - mtd->height;
+
 	/*
-	 * If the current line would now be off screen reset the offset to the
-	 * last visible line.
+	 * If the current line would now be off screen move the offset so it is
+	 * visible.
 	 */
-	if (mtd->current > mtd->height - 1)
+	if (mtd->current < mtd->offset)
+		mtd->offset = mtd->current;
+	else if (mtd->current > mtd->offset + mtd->height - 1)
 		mtd->offset = mtd->current - mtd->height + 1;
 }
 
@@ -501,20 +512,14 @@ mode_tree_set_current(struct mode_tree_data *mtd, uint64_t tag)
 
 	if (mode_tree_get_tag(mtd, tag, &found)) {
 		mtd->current = found;
-		if (mtd->current > mtd->height - 1)
-			mtd->offset = mtd->current - mtd->height + 1;
-		else
-			mtd->offset = 0;
+		mode_tree_check_selected(mtd);
 		return (1);
 	}
 	if (mtd->current >= mtd->line_size) {
 		if (mtd->line_size == 0)
 			return (0);
 		mtd->current = mtd->line_size - 1;
-		if (mtd->current > mtd->height - 1)
-			mtd->offset = mtd->current - mtd->height + 1;
-		else
-			mtd->offset = 0;
+		mode_tree_check_selected(mtd);
 	}
 	return (0);
 }
@@ -683,13 +688,13 @@ mode_tree_build(struct mode_tree_data *mtd)
 
 	if (mtd->line_list != NULL && tag == UINT64_MAX)
 		tag = mtd->line_list[mtd->current].item->tag;
-	mode_tree_set_current(mtd, tag);
 
 	mtd->width = screen_size_x(s);
 	if (mtd->preview != MODE_TREE_PREVIEW_OFF)
 		mode_tree_set_height(mtd);
 	else
 		mtd->height = screen_size_y(s);
+	mode_tree_set_current(mtd, tag);
 	mode_tree_check_selected(mtd);
 }
 
@@ -1375,12 +1380,14 @@ static void
 mode_tree_display_menu(struct mode_tree_data *mtd, struct client *c, u_int x,
     u_int y, int outside)
 {
+	struct window		*w = mtd->wp->window;
 	struct mode_tree_item	*mti;
 	struct menu		*menu;
 	const struct menu_item	*items;
 	struct mode_tree_menu	*mtm;
 	char			*title;
-	u_int			 line;
+	enum box_lines		 lines;
+	u_int			 line, sx, sy;
 
 	if (mtd->offset + y > mtd->line_size - 1)
 		line = mtd->current;
@@ -1405,14 +1412,17 @@ mode_tree_display_menu(struct mode_tree_data *mtd, struct client *c, u_int x,
 	mtm->line = line;
 	mtd->references++;
 
-	if (x >= (menu->width + 4) / 2)
-		x -= (menu->width + 4) / 2;
+	lines = options_get_number(w->options, "menu-border-lines");
+	menu_get_size(menu, lines, &sx, &sy);
+	if (x >= sx / 2)
+		x -= sx / 2;
 	else
 		x = 0;
 	x += mtd->wp->xoff;
 	y += mtd->wp->yoff;
-	if (menu_display(menu, 0, 0, NULL, x, y, c, BOX_LINES_DEFAULT, NULL,
-	    NULL, NULL, NULL, mode_tree_menu_callback, mtm) != 0) {
+
+	if (menu_display(menu, 0, 0, NULL, x, y, c, lines, NULL, NULL, NULL,
+	    NULL, mode_tree_menu_callback, mtm) != 0) {
 		mode_tree_remove_ref(mtd);
 		free(mtm);
 		menu_free(menu);

@@ -95,7 +95,8 @@ layout_tee_down() {		# top/bottom, bottom split: a top tee
 $TMUX kill-server 2>/dev/null
 $TMUX2 kill-server 2>/dev/null
 
-$TMUX2 new -d -x40 -y14 "sh -c 'exec sleep 100'" || exit 1
+# Keep the anchor window alive until cleanup, even on slow test runs.
+$TMUX2 new -d -x40 -y14 'exec cat' || exit 1
 $TMUX2 set -g status off || exit 1
 $TMUX2 set -g window-size manual || exit 1
 $TMUX2 set -g pane-border-format " #{pane_index} " || exit 1

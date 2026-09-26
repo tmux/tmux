@@ -400,6 +400,107 @@ $TMUX2 send-keys -t "$OUTER" a
 sleep 1
 must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
 
+$TMUX bind P display-popup -E -t "$p0" -w 20 -h 5 -T popup-title 'cat'
+$TMUX2 send-keys -t "$OUTER" C-b P
+sleep 1
+modal=$(fmt modal:0 '#{window_modal_pane}')
+[ -n "$modal" ] || fail "display-popup did not create a modal pane"
+must_equal "$(fmt "$modal" '#{pane_title}')" popup-title
+must_equal "$($TMUX show-options -pv -t "$modal" pane-border-status)" top
+must_equal "$($TMUX show-options -pv -t "$modal" pane-border-format)" \
+	'#{pane_title}'
+$TMUX2 send-keys -t "$OUTER" C-b x z Enter
+sleep 1
+must_equal "$($TMUX show -gv @modal-prefix)" no
+must_equal "$($TMUX show -gv @modal-root)" no
+case "$($TMUX capture-pane -pt "$modal")" in
+*xz*) ;;
+*) fail "keys did not reach display-popup pane" ;;
+esac
+$TMUX2 send-keys -t "$OUTER" Escape
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" "$modal"
+$TMUX2 send-keys -t "$OUTER" C-c
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
+
+# Creating a popup pane must not fire the split-window hook.
+check_ok set-hook -t modal after-split-window \
+	"set-option -g @popup-after-split yes"
+check_ok set-option -g @popup-after-split no
+check_ok display-popup -E -t "$p0" true
+must_equal "$($TMUX show-option -gv @popup-after-split)" no
+check_ok set-hook -u -t modal after-split-window
+
+# A borderless popup must not create a zero-sized pane in a tiny window.
+check_ok new-window -d -t modal: -n popup-small 'cat'
+check_ok set-option -w -t modal:popup-small window-size manual
+check_ok resize-window -t modal:popup-small -x 1 -y 1
+small=$(fmt modal:popup-small '#{pane_id}')
+check_ok bind Z display-popup -B -t "$small" 'cat'
+$TMUX2 send-keys -t "$OUTER" C-b Z
+sleep 1
+must_equal "$(fmt modal:popup-small '#{window_panes}')" 1
+must_equal "$(fmt modal:popup-small '#{window_modal_pane}')" ''
+
+$TMUX bind D display-popup -t "$p0" -w 20 -h 5 'printf done'
+$TMUX2 send-keys -t "$OUTER" C-b D
+sleep 2
+modal=$(fmt modal:0 '#{window_modal_pane}')
+[ -n "$modal" ] || fail "retained display-popup was not created"
+must_equal "$(fmt "$modal" '#{pane_dead}')" 1
+case "$($TMUX capture-pane -pt "$modal")" in
+*'Pane is dead'*) fail "display-popup showed remain-on-exit message" ;;
+esac
+$TMUX2 send-keys -t "$OUTER" a
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" "$modal"
+$TMUX2 send-keys -t "$OUTER" Escape
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
+
+$TMUX bind K display-popup -k -t "$p0" -w 20 -h 5 'printf done'
+$TMUX2 send-keys -t "$OUTER" C-b K
+sleep 2
+modal=$(fmt modal:0 '#{window_modal_pane}')
+[ -n "$modal" ] || fail "display-popup -k was not created"
+must_equal "$(fmt "$modal" '#{pane_dead}')" 1
+$TMUX2 send-keys -t "$OUTER" a
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
+
+$TMUX bind F display-popup -EE -t "$p0" -w 20 -h 5 'exit 1'
+$TMUX2 send-keys -t "$OUTER" C-b F
+sleep 2
+modal=$(fmt modal:0 '#{window_modal_pane}')
+[ -n "$modal" ] || fail "failed display-popup -EE did not remain"
+must_equal "$(fmt "$modal" '#{pane_dead}')" 1
+$TMUX2 send-keys -t "$OUTER" a
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" "$modal"
+$TMUX2 send-keys -t "$OUTER" Escape
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" "$modal"
+check_ok kill-pane -t "$modal"
+sleep 1
+
+check_ok display-popup -EE -t "$p0" true
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
+
+$TMUX bind G display-popup -EE -k -t "$p0" -w 20 -h 5 'exit 1'
+$TMUX2 send-keys -t "$OUTER" C-b G
+sleep 2
+modal=$(fmt modal:0 '#{window_modal_pane}')
+[ -n "$modal" ] || fail "failed display-popup -EE -k did not remain"
+must_equal "$(fmt "$modal" '#{pane_dead}')" 1
+must_equal "$($TMUX show-options -pv -t "$modal" remain-on-exit)" failed-key
+$TMUX2 send-keys -t "$OUTER" a
+sleep 1
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
+
+check_ok display-popup -EE -k -t "$p0" true
+must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
+
 # A nonmodal floating pane may remain above zoom, and switching between it and
 # the zoomed tiled pane must not unzoom the window.
 check_ok new-window -d -t modal: -n float-over-zoom 'cat'
