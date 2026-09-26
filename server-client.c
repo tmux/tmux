@@ -369,8 +369,7 @@ server_client_lost(struct client *c)
 {
 	struct client_file	*cf, *cf1;
 
-	if (cfg_client == c)
-		cfg_client = NULL;
+	cfg_client_lost(c);
 	c->flags |= CLIENT_DEAD;
 
 	status_prompt_clear(c);

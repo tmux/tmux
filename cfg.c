@@ -53,12 +53,26 @@ cfg_done(__unused struct cmdq_item *item, __unused void *data)
 
 	cfg_show_causes(NULL);
 
-	if (cfg_item != NULL)
+	if (cfg_item != NULL) {
 		cmdq_continue(cfg_item);
+		cfg_item = NULL;
+	}
 
 	prompt_load_history();
 
 	return (CMD_RETURN_NORMAL);
+}
+
+void
+cfg_client_lost(struct client *c)
+{
+	if (c != cfg_client)
+		return;
+	cfg_client = NULL;
+	if (cfg_item != NULL) {
+		cmdq_continue(cfg_item);
+		cfg_item = NULL;
+	}
 }
 
 void
