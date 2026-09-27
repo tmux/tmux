@@ -24,10 +24,12 @@
 
 /*
  * Recreate the session/window/pane layout previously written by
- * 'save-layout'. This replays the recorded layout as a sequence of
- * new-session/new-window/split-window/select-layout commands - it starts a
- * fresh shell in each pane at the recorded working directory, it does not
- * try to relaunch whatever was actually running there before.
+ * 'save-layout'. This walks the parsed JSON directly and calls the same
+ * internal functions new-session/new-window/split-window/select-layout use
+ * (session_create, spawn_window, spawn_pane, layout_parse) - it does not
+ * generate any tmux commands. It starts a fresh shell in each pane at the
+ * recorded working directory; it does not try to relaunch whatever was
+ * actually running there before.
  */
 
 static enum cmd_retval	cmd_load_layout_exec(struct cmd *,
@@ -50,19 +52,51 @@ struct cmd_load_layout_data {
 };
 
 /*
- * Build a script of tmux commands (understood by cmd-parse, same as a
- * configuration file) from one window's JSON object and append it to
- * 'script'. Returns 0 on success or -1 (with *cause set) on error.
+ * Split off one more pane from the last pane in 'wl's window and spawn a
+ * shell in it at 'cwd'. The split shape here does not matter - it only
+ * exists to get the right number of panes in place before layout_parse()
+ * reshapes them into the recorded geometry.
  */
 static int
-cmd_load_layout_build_window(struct evbuffer *script, struct json_node *win,
-    const char *sess_esc, long long base_index, int *first_window,
-    char **cause)
+cmd_load_layout_add_pane(struct cmdq_item *item, struct winlink *wl,
+    const char *cwd, char **cause)
+{
+	struct window_pane	*wp0;
+	struct layout_cell	*lc;
+	struct spawn_context	 sc;
+
+	wp0 = TAILQ_LAST(&wl->window->panes, window_panes);
+	if ((lc = layout_split_pane(wp0, LAYOUT_TOPBOTTOM, -1, 0)) == NULL) {
+		xasprintf(cause, "no space for pane in window %d", wl->idx);
+		return (-1);
+	}
+
+	memset(&sc, 0, sizeof sc);
+	sc.item = item;
+	sc.s = wl->session;
+	sc.wl = wl;
+	sc.wp0 = wp0;
+	sc.lc = lc;
+	sc.idx = -1;
+	sc.cwd = cwd;
+	sc.flags = 0;
+
+	if (spawn_pane(&sc, cause) == NULL)
+		return (-1);
+	return (0);
+}
+
+/* Create one window (and its panes) from its JSON object. */
+static int
+cmd_load_layout_build_window(struct cmdq_item *item, struct session *s,
+    struct json_node *win, int first, char **cause)
 {
 	struct json_node	*panes, *pane, *layout;
-	int64_t			 index, active_pane;
+	struct winlink		*wl;
+	int64_t			 index;
 	const char		*name, *cwd;
-	char			*name_esc, *cwd_esc, *layout_text, *layout_esc;
+	char			*layout_text;
+	struct spawn_context	 sc;
 	int			 first_pane;
 
 	if (json_find_number(win, "index", &index, cause) != 0)
@@ -79,27 +113,16 @@ cmd_load_layout_build_window(struct evbuffer *script, struct json_node *win,
 	if (json_find_string(pane, "cwd", &cwd, cause) != 0)
 		return (-1);
 
-	name_esc = args_escape(name);
-	cwd_esc = args_escape(cwd);
-	if (*first_window) {
-		evbuffer_add_printf(script, "set -g base-index %lld\n",
-		    base_index);
-		evbuffer_add_printf(script,
-		    "new-session -d -s %s -n %s -c %s\n", sess_esc, name_esc,
-		    cwd_esc);
-		if (index != base_index) {
-			evbuffer_add_printf(script,
-			    "move-window -s %s:%lld -t %s:%lld\n", sess_esc,
-			    base_index, sess_esc, (long long)index);
-		}
-		*first_window = 0;
-	} else {
-		evbuffer_add_printf(script,
-		    "new-window -d -t %s:%lld -n %s -c %s\n", sess_esc,
-		    (long long)index, name_esc, cwd_esc);
-	}
-	free(name_esc);
-	free(cwd_esc);
+	memset(&sc, 0, sizeof sc);
+	sc.item = item;
+	sc.s = s;
+	sc.name = name;
+	sc.idx = (int)index;
+	sc.cwd = cwd;
+	sc.flags = first ? 0 : SPAWN_DETACHED;
+
+	if ((wl = spawn_window(&sc, cause)) == NULL)
+		return (-1);
 
 	first_pane = 1;
 	for (; pane != NULL; pane = json_array_next(pane)) {
@@ -109,102 +132,77 @@ cmd_load_layout_build_window(struct evbuffer *script, struct json_node *win,
 		}
 		if (json_find_string(pane, "cwd", &cwd, cause) != 0)
 			return (-1);
-		cwd_esc = args_escape(cwd);
-		evbuffer_add_printf(script, "split-window -t %s:%lld -c %s\n",
-		    sess_esc, (long long)index, cwd_esc);
-		free(cwd_esc);
+		if (cmd_load_layout_add_pane(item, wl, cwd, cause) != 0)
+			return (-1);
 	}
 
 	if (json_find_object(win, "layout", &layout, NULL) == 0) {
 		layout_text = json_to_string(layout);
-		layout_esc = args_escape(layout_text);
+		if (layout_parse(wl->window, layout_text, cause) != 0) {
+			free(layout_text);
+			return (-1);
+		}
 		free(layout_text);
-		evbuffer_add_printf(script, "select-layout -t %s:%lld %s\n",
-		    sess_esc, (long long)index, layout_esc);
-		free(layout_esc);
-	}
-
-	if (json_find_number(win, "active_pane", &active_pane, NULL) == 0) {
-		evbuffer_add_printf(script, "select-pane -t %s:%lld.%lld\n",
-		    sess_esc, (long long)index, active_pane);
 	}
 
 	return (0);
 }
 
-/* Build a script of tmux commands from one session's JSON object. */
+/* Create one session (and its windows) from its JSON object. */
 static int
-cmd_load_layout_build_session(struct evbuffer *script, struct json_node *sess,
+cmd_load_layout_build_session(struct cmdq_item *item, struct json_node *sess,
     char **cause)
 {
-	struct json_node	*win_array, *win;
-	int64_t			 base_index, current_window;
-	const char		*name;
-	char			*sess_esc;
+	struct json_node	*win_array, *win, *first_panes, *first_pane;
+	struct session		*s;
+	struct options		*oo;
+	struct environ		*env;
+	int64_t			 current_window;
+	const char		*name, *first_cwd;
 	int			 first_window;
 
 	if (json_find_string(sess, "name", &name, cause) != 0)
 		return (-1);
-	if (json_find_number(sess, "base_index", &base_index, cause) != 0)
+	if (session_find(name) != NULL) {
+		xasprintf(cause, "session \"%s\" already exists, skipping",
+		    name);
 		return (-1);
+	}
 	if (json_find_number(sess, "current_window", &current_window,
 	    cause) != 0)
 		return (-1);
 	if (json_find_array(sess, "windows", &win_array, cause) != 0)
 		return (-1);
-
-	sess_esc = args_escape(name);
-
-	first_window = 1;
-	for (win = json_array_first(win_array); win != NULL;
-	    win = json_array_next(win)) {
-		if (cmd_load_layout_build_window(script, win, sess_esc,
-		    base_index, &first_window, cause) != 0) {
-			free(sess_esc);
-			return (-1);
-		}
-	}
-	if (first_window) {
+	if ((win = json_array_first(win_array)) == NULL) {
 		xasprintf(cause, "session \"%s\" has no windows", name);
-		free(sess_esc);
 		return (-1);
 	}
+	if (json_find_array(win, "panes", &first_panes, cause) != 0)
+		return (-1);
+	if ((first_pane = json_array_first(first_panes)) == NULL) {
+		xasprintf(cause, "session \"%s\" has an empty window", name);
+		return (-1);
+	}
+	if (json_find_string(first_pane, "cwd", &first_cwd, cause) != 0)
+		return (-1);
 
-	evbuffer_add_printf(script, "select-window -t %s:%lld\n", sess_esc,
-	    current_window);
-	free(sess_esc);
-	return (0);
-}
+	oo = options_create(global_s_options);
+	env = environ_create();
+	s = session_create(NULL, name, first_cwd, env, oo, NULL);
 
-/* Build a full script of tmux commands from the parsed layout file. */
-static struct evbuffer *
-cmd_load_layout_build_script(struct json_node *root, char **cause)
-{
-	struct evbuffer		*script;
-	struct json_node	*sess_array, *sess;
-	long long		 global_base_index;
-
-	if (json_find_array(root, "sessions", &sess_array, cause) != 0)
-		return (NULL);
-
-	script = evbuffer_new();
-	if (script == NULL)
-		fatalx("out of memory");
-
-	global_base_index = options_get_number(global_s_options,
-	    "base-index");
-
-	for (sess = json_array_first(sess_array); sess != NULL;
-	    sess = json_array_next(sess)) {
-		if (cmd_load_layout_build_session(script, sess, cause) != 0) {
-			evbuffer_free(script);
-			return (NULL);
+	first_window = 1;
+	for (; win != NULL; win = json_array_next(win)) {
+		if (cmd_load_layout_build_window(item, s, win, first_window,
+		    cause) != 0) {
+			session_destroy(s, 0, __func__);
+			return (-1);
 		}
+		first_window = 0;
 	}
 
-	evbuffer_add_printf(script, "set -g base-index %lld\n",
-	    global_base_index);
-	return (script);
+	session_select(s, (int)current_window);
+	events_fire_session("session-created", s);
+	return (0);
 }
 
 static void
@@ -213,11 +211,10 @@ cmd_load_layout_done(__unused struct client *c, const char *path, int error,
 {
 	struct cmd_load_layout_data	*cdata = data;
 	struct cmdq_item		*item = cdata->item;
-	struct cmd_find_state		*current = cmdq_get_current(item);
 	char				*text, *cause = NULL;
-	struct json_node		*root;
-	struct evbuffer			*script;
+	struct json_node		*root, *sess_array, *sess;
 	size_t				 size;
+	int				 any_causes = 0;
 
 	if (!closed)
 		return;
@@ -243,19 +240,25 @@ cmd_load_layout_done(__unused struct client *c, const char *path, int error,
 		goto done;
 	}
 
-	script = cmd_load_layout_build_script(root, &cause);
-	json_destroy_node(root);
-	if (script == NULL) {
+	if (json_find_array(root, "sessions", &sess_array, &cause) != 0) {
 		cmdq_error(item, "%s: %s", path, cause);
 		free(cause);
+		json_destroy_node(root);
 		goto done;
 	}
 
-	if (load_cfg_from_buffer(EVBUFFER_DATA(script),
-	    EVBUFFER_LENGTH(script), path, cmdq_get_client(item), item,
-	    current, 0, NULL) != 0)
+	for (sess = json_array_first(sess_array); sess != NULL;
+	    sess = json_array_next(sess)) {
+		cause = NULL;
+		if (cmd_load_layout_build_session(item, sess, &cause) != 0) {
+			cfg_add_cause("%s: %s", path, cause);
+			free(cause);
+			any_causes = 1;
+		}
+	}
+	json_destroy_node(root);
+	if (any_causes)
 		cfg_print_causes(item);
-	evbuffer_free(script);
 
 done:
 	cmdq_continue(item);

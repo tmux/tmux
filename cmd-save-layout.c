@@ -149,8 +149,7 @@ cmd_save_layout_exec(struct cmd *self, struct cmdq_item *item)
 	struct window			*w;
 	struct window_pane		*wp;
 	char				*name_esc, *cwd, *cwd_esc, *layout;
-	long long			 base_index;
-	u_int				 active_pane;
+	u_int				 pane_index;
 	int				 first_session, first_window, first_pane;
 	time_t				 now;
 	char				 tbuf[32];
@@ -182,10 +181,9 @@ cmd_save_layout_exec(struct cmd *self, struct cmdq_item *item)
 		first_session = 0;
 
 		name_esc = cmd_save_layout_json_escape(s->name);
-		base_index = options_get_number(s->options, "base-index");
 		evbuffer_add_printf(evb,
-		    "{\"name\":\"%s\",\"base_index\":%lld,\"current_window\":"
-		    "%u,\"windows\":[", name_esc, base_index,
+		    "{\"name\":\"%s\",\"current_window\":"
+		    "%u,\"windows\":[", name_esc,
 		    s->curw != NULL ? s->curw->idx : 0);
 		free(name_esc);
 
@@ -208,11 +206,6 @@ cmd_save_layout_exec(struct cmd *self, struct cmdq_item *item)
 				free(layout);
 			}
 
-			if (window_pane_index(w->active, &active_pane) == 0) {
-				evbuffer_add_printf(evb,
-				    ",\"active_pane\":%u", active_pane);
-			}
-
 			evbuffer_add(evb, ",\"panes\":[", 10);
 			first_pane = 1;
 			TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -220,14 +213,14 @@ cmd_save_layout_exec(struct cmd *self, struct cmdq_item *item)
 					evbuffer_add(evb, ",", 1);
 				first_pane = 0;
 
-				window_pane_index(wp, &active_pane);
+				window_pane_index(wp, &pane_index);
 				cwd = cmd_save_layout_pane_cwd(wp);
 				cwd_esc = cmd_save_layout_json_escape(cwd);
 				free(cwd);
 
 				evbuffer_add_printf(evb,
 				    "{\"index\":%u,\"cwd\":\"%s\"}",
-				    active_pane, cwd_esc);
+				    pane_index, cwd_esc);
 				free(cwd_esc);
 			}
 			evbuffer_add(evb, "]}", 2);
