@@ -3262,6 +3262,40 @@ zooms the pane.
 The
 .Ic find-window
 command works only if at least one client is attached.
+.Tg freezepc
+.It Xo Ic freeze\-process\-cgroup
+.Op Fl t Ar target\-pane
+.Xc
+Suspend
+.Ar target\-pane Ns 's
+process using the Linux cgroup v2 freezer, rather than a job\-control
+signal.
+Unlike
+.Ic kill \-s Ar STOP ,
+this does not rely on a signal that
+.Nm
+itself
+(see
+.Ic allow\-stopped\-panes )
+or the pane's own shell may otherwise immediately reverse, and it stops
+the kernel from scheduling the process at all rather than merely asking
+it to stop.
+Only supported on Linux, and only for a pane on a cgroup v2 (unified
+hierarchy) system.
+See also
+.Ic thaw\-process\-cgroup
+and the
+.Ic pane_cgroup_frozen
+format.
+.Tg thawpc
+.It Xo Ic thaw\-process\-cgroup
+.Op Fl t Ar target\-pane
+.Xc
+Resume
+.Ar target\-pane Ns 's
+process previously suspended with
+.Ic freeze\-process\-cgroup .
+Only supported on Linux.
 .Tg joinp
 .It Xo Ic join\-pane
 .Op Fl bdfhv
@@ -7393,6 +7427,7 @@ The following variables are available, where appropriate:
 .It Li "pane_at_top" Ta "" Ta "1 if pane is at the top of window"
 .It Li "pane_bg" Ta "" Ta "Pane background colour"
 .It Li "pane_bottom" Ta "" Ta "Bottom of pane"
+.It Li "pane_cgroup_frozen" Ta "" Ta "1 if pane's process is frozen with freeze-process-cgroup"
 .It Li "pane_command_duration" Ta "" Ta "Current or most recent OSC 133 command duration in seconds"
 .It Li "pane_command_end_time" Ta "" Ta "Time most recent OSC 133 command ended"
 .It Li "pane_command_running" Ta "" Ta "1 if an OSC 133 command is running"

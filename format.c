@@ -2249,6 +2249,48 @@ format_cb_pane_bottom(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_cgroup_frozen. */
+static void *
+format_cb_pane_cgroup_frozen(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+	FILE			*f;
+	char			 procpath[64], line[PATH_MAX + 8], *nl, *base;
+	char			 frozenpath[PATH_MAX], frozen[8];
+	size_t			 got;
+
+	if (wp == NULL || wp->pid <= 0)
+		return (NULL);
+
+	xsnprintf(procpath, sizeof procpath, "/proc/%ld/cgroup",
+	    (long)wp->pid);
+	if ((f = fopen(procpath, "r")) == NULL)
+		return (xstrdup("0"));
+	if (fgets(line, sizeof line, f) == NULL ||
+	    strncmp(line, "0::", 3) != 0) {
+		fclose(f);
+		return (xstrdup("0"));
+	}
+	fclose(f);
+	if ((nl = strchr(line, '\n')) != NULL)
+		*nl = '\0';
+
+	base = strrchr(line + 3, '/');
+	if (base == NULL || strncmp(base + 1, "tmux-freeze", 11) != 0)
+		return (xstrdup("0"));
+
+	xsnprintf(frozenpath, sizeof frozenpath, "/sys/fs/cgroup%s/cgroup.freeze",
+	    line + 3);
+	if ((f = fopen(frozenpath, "r")) == NULL)
+		return (xstrdup("0"));
+	got = fread(frozen, 1, (sizeof frozen) - 1, f);
+	fclose(f);
+	frozen[got] = '\0';
+	if (frozen[0] == '1')
+		return (xstrdup("1"));
+	return (xstrdup("0"));
+}
+
 /* Callback for pane_dead. */
 static void *
 format_cb_pane_dead(struct format_tree *ft)
@@ -3830,6 +3872,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_bottom", FORMAT_TABLE_STRING,
 	  format_cb_pane_bottom
+	},
+	{ "pane_cgroup_frozen", FORMAT_TABLE_STRING,
+	  format_cb_pane_cgroup_frozen
 	},
 	{ "pane_command_duration", FORMAT_TABLE_STRING,
 	  format_cb_pane_command_duration
