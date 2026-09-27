@@ -6274,6 +6274,20 @@ sequence (\eek...\ee\e\e).
 Allow programs in the pane to change the title using the terminal escape
 sequences (\ee]2;...\ee\e\e or \ee]0;...\ee\e\e).
 .Pp
+.It Xo Ic allow\-stopped\-panes
+.Op Ic on | off
+.Xc
+Allow a pane's process to remain in a stopped state, for example after
+receiving
+.Dv SIGTSTP
+or
+.Dv SIGSTOP .
+When off, the default, the
+.Nm
+server immediately sends
+.Dv SIGCONT
+to resume any pane process it finds stopped.
+.Pp
 .It Xo Ic alternate\-screen
 .Op Ic on | off
 .Xc

@@ -1293,6 +1293,16 @@ const struct options_table_entry options_table[] = {
 		  "to set the pane title."
 	},
 
+	{ .name = "allow-stopped-panes",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_num = 0,
+	  .text = "Whether a pane's process is allowed to remain in a "
+		  "stopped state, for example after receiving SIGTSTP or "
+		  "SIGSTOP. When off (the default), tmux immediately sends "
+		  "SIGCONT to resume any pane process it finds stopped."
+	},
+
 	{ .name = "alternate-screen",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
