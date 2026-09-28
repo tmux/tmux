@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.379 2026/09/25 08:46:06 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.380 2026/09/28 09:56:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1433,7 +1433,7 @@ window_pane_wait_finish(struct window_pane *wp)
 {
 	struct cmdq_item	*item = wp->wait_item;
 	struct client		*c;
-	int			 retval = 0;
+	int			 retval = 128 + SIGHUP;
 
 	if (item == NULL)
 		return;
