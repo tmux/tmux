@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.381 2026/09/28 10:10:16 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.382 2026/09/28 10:25:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -842,6 +842,16 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 		if (window_pane_contains(w->modal, x, y))
 			return (w->modal);
 		return (NULL);
+	}
+
+	/*
+	 * A floating pane is above every tiled pane, including their status
+	 * lines, so check those first.
+	 */
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
+		if (window_pane_is_floating(wp) &&
+		    window_pane_contains(wp, x, y))
+			return (wp);
 	}
 
 	if (pane_status == PANE_STATUS_TOP) {
