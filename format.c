@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.420 2026/09/28 16:23:56 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.421 2026/09/28 16:52:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -6001,7 +6001,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	char				 *time_format = NULL;
 	char				 *copy0, *condition, *found, *new;
 	char				 *value, *left, *right;
-	size_t				  valuelen;
+	size_t				  n;
 	uint64_t			  modifiers = 0;
 	int				  limit = 0, width = 0;
 	int				  j, c;
@@ -6408,17 +6408,15 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 		if (errstr != NULL)
 			value = xstrdup("");
 		else {
-			value = xstrdup("");
-			for (i = 0; i < nrep; i++) {
-				if (!format_check_time(es, NULL)) {
-					free(right);
-					free(left);
-					free(value);
-					goto fail;
-				}
-				xasprintf(&new, "%s%s", value, left);
-				free(value);
-				value = new;
+			n = strlen(left);
+			if (n != 0 && nrep > (SIZE_MAX - 1) / n) {
+				format_log(es, "repeat is too long: %s", copy);
+				value = xstrdup("");
+			} else {
+				value = xmalloc((nrep * n) + 1);
+				for (i = 0; i < nrep; i++)
+					memcpy(value + (i * n), left, n);
+				value[nrep * n] = '\0';
 			}
 		}
 		free(right);
@@ -6652,13 +6650,13 @@ done:
 	}
 
 	/* Expand the buffer and copy in the value. */
-	valuelen = strlen(value);
-	while (*len - *off < valuelen + 1) {
+	n = strlen(value);
+	while (*len - *off < n + 1) {
 		*buf = xreallocarray(*buf, 2, *len);
 		*len *= 2;
 	}
-	memcpy(*buf + *off, value, valuelen);
-	*off += valuelen;
+	memcpy(*buf + *off, value, n);
+	*off += n;
 
 	format_log(es, "replaced '%s' with '%s'", copy0, value);
 	free(value);
