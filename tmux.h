@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1447 2026/09/22 14:10:26 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1449 2026/09/28 10:10:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3729,6 +3729,8 @@ struct window_pane *window_find_string(struct window *, const char *);
 int		 window_has_floating_panes(struct window *);
 int		 window_has_pane(struct window *, struct window_pane *);
 int		 window_pane_contains(struct window_pane *, u_int, u_int);
+int		 window_pane_floating_overlaps(struct window_pane *,
+		     struct window_pane *);
 int		 window_set_active_pane(struct window *, struct window_pane *,
 		     int);
 void		 window_fire_pane_moved(struct window_pane *, struct window *,
