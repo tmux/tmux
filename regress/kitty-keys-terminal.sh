@@ -23,8 +23,7 @@ SOCKET=$DIR/kitty
 OUT=$DIR/out
 TMUX="$TEST_TMUX -LtestKrt$$ -f$CONF"
 
-printf '%s\n' 'set -g extended-keys on' \
-    'set -g extended-keys-format kitty' >"$CONF"
+printf '%s\n' 'set -g extended-keys on' >"$CONF"
 
 cleanup()
 {

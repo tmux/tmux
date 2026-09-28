@@ -682,9 +682,8 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		log_debug("%s: ignoring key 0x%llx", __func__, key);
 		return (0);
 	}
-	if (key & (KEYC_SUPER|KEYC_HYPER))
-		return (input_key_vt10x(bev, key));
-	if (s->kitty_keys.flags & KITTY_KEY_SUPPORTED)
+	if ((key & (KEYC_SUPER|KEYC_HYPER)) ||
+	    (s->kitty_keys.flags & KITTY_KEY_SUPPORTED))
 		return (input_key_vt10x(bev, key));
 
 	/*

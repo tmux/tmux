@@ -174,8 +174,8 @@ dist_tmux_SOURCES = \
 	grid.c \
 	hooks.c \
 	hyperlinks.c \
-	input-kitty.c \
 	input-keys.c \
+	input-kitty.c \
 	input.c \
 	job.c \
 	json.c \
@@ -215,8 +215,8 @@ dist_tmux_SOURCES = \
 	tty-acs.c \
 	tty-draw.c \
 	tty-features.c \
-	tty-kitty.c \
 	tty-keys.c \
+	tty-kitty.c \
 	tty-term.c \
 	tty.c \
 	utf8-combined.c \

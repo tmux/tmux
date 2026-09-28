@@ -3134,6 +3134,12 @@ int		tty_keys_next(struct tty *);
 int		tty_keys_colours(struct tty *, const char *, size_t, size_t *,
 		     int *, int *);
 
+/* tty-kitty.c */
+int		tty_keys_kitty(struct tty *, const char *, size_t, size_t *,
+		     key_code *);
+int		tty_keys_kitty_query(struct tty *, const char *, size_t,
+		     size_t *);
+
 /* arguments.c */
 void		 args_set(struct args *, u_char, struct args_value *, int);
 struct args 	*args_create(void);
@@ -3537,11 +3543,6 @@ void	 input_kitty_set(struct screen *, u_int, int);
 void	 input_kitty_push(struct screen *, u_int);
 void	 input_kitty_pop(struct screen *, u_int);
 int	 input_key_kitty(struct screen *, struct bufferevent *, key_code);
-
-/* tty-kitty.c */
-int	 tty_keys_kitty(struct tty *, const char *, size_t, size_t *,
-	     key_code *);
-int	 tty_keys_kitty_query(struct tty *, const char *, size_t, size_t *);
 
 /* colour.c */
 int	 colour_find_rgb(u_char, u_char, u_char);

@@ -879,7 +879,7 @@ tty_keys_next(struct tty *tty)
 		goto partial_key;
 	}
 
-	/* Is this an extended key press? */
+	/* Is this a Kitty keyboard protocol key press? */
 	switch (tty_keys_kitty(tty, buf, len, &size, &key)) {
 	case 0:		/* yes */
 		goto complete_key;
