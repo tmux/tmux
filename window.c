@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.379 2026/09/25 08:46:06 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.383 2026/09/28 10:42:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -92,7 +92,11 @@ struct window_pane_prompt {
 int
 window_cmp(struct window *w1, struct window *w2)
 {
-	return (w1->id - w2->id);
+	if (w1->id < w2->id)
+		return (-1);
+	if (w1->id > w2->id)
+		return (1);
+	return (0);
 }
 
 static void
@@ -199,7 +203,11 @@ winlink_cmp(struct winlink *wl1, struct winlink *wl2)
 int
 window_pane_cmp(struct window_pane *wp1, struct window_pane *wp2)
 {
-	return (wp1->id - wp2->id);
+	if (wp1->id < wp2->id)
+		return (-1);
+	if (wp1->id > wp2->id)
+		return (1);
+	return (0);
 }
 
 struct winlink *
@@ -667,6 +675,34 @@ window_pane_contains(struct window_pane *wp, u_int x, u_int y)
 	return (1);
 }
 
+/*
+ * Does floating pane, including its borders and scrollbar, overlap any cell of
+ * another pane, including its scrollbar?
+ */
+int
+window_pane_floating_overlaps(struct window_pane *fwp, struct window_pane *wp)
+{
+	int	fxoff, fyoff, xoff, yoff, border = 0;
+	u_int	fsx, fsy, sx, sy;
+
+	if (!window_pane_is_floating(fwp))
+		return (0);
+
+	window_pane_full_size_offset(fwp, &fxoff, &fyoff, &fsx, &fsy);
+	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
+
+	if (window_pane_get_pane_lines(fwp) != PANE_LINES_NONE)
+		border = 1;
+
+	if (fxoff - border >= xoff + (int)sx ||
+	    fxoff + (int)fsx + border <= xoff)
+		return (0);
+	if (fyoff - border >= yoff + (int)sy ||
+	    fyoff + (int)fsy + border <= yoff)
+		return (0);
+	return (1);
+}
+
 void
 window_update_focus(struct window *w)
 {
@@ -821,6 +857,16 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 		if (window_pane_contains(w->modal, x, y))
 			return (w->modal);
 		return (NULL);
+	}
+
+	/*
+	 * A floating pane is above every tiled pane, including their status
+	 * lines, so check those first.
+	 */
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
+		if (window_pane_is_floating(wp) &&
+		    window_pane_contains(wp, x, y))
+			return (wp);
 	}
 
 	if (pane_status == PANE_STATUS_TOP) {
@@ -1440,7 +1486,7 @@ window_pane_wait_finish(struct window_pane *wp)
 {
 	struct cmdq_item	*item = wp->wait_item;
 	struct client		*c;
-	int			 retval = 0;
+	int			 retval = 128 + SIGHUP;
 
 	if (item == NULL)
 		return;
