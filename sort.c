@@ -1,4 +1,4 @@
-/* $OpenBSD: sort.c,v 1.10 2026/08/25 07:23:30 nicm Exp $ */
+/* $OpenBSD: sort.c,v 1.11 2026/09/28 09:41:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Dane Jensen <dhcjensen@gmail.com>
@@ -312,7 +312,7 @@ sort_key_binding_cmp(const void *a0, const void *b0)
 		    (b->key & KEYC_MASK_MODIFIERS);
 		break;
 	case SORT_NAME:
-		result = strcasecmp(a->tablename, b->tablename) == 0;
+		result = strcasecmp(a->tablename, b->tablename);
 		break;
 	case SORT_ACTIVITY:
 	case SORT_CREATION:
@@ -324,7 +324,13 @@ sort_key_binding_cmp(const void *a0, const void *b0)
 	}
 
 	if (result == 0)
-		result = strcasecmp(a->tablename, b->tablename) == 0;
+		result = strcasecmp(a->tablename, b->tablename);
+	if (result == 0) {
+		if (a->key < b->key)
+			result = -1;
+		else if (a->key > b->key)
+			result = 1;
+	}
 
 	if (sort_crit->reversed)
 		result = -result;
