@@ -233,7 +233,7 @@ int
 input_key_kitty(struct screen *s, struct bufferevent *bev, key_code key)
 {
 	const struct input_kitty_key	*ikk;
-	struct utf8_data			 ud;
+	struct utf8_data		 ud;
 	wchar_t				 wc;
 	key_code			 modifiers, onlykey;
 	u_int				 flags, number, modifier;
