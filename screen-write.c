@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.293 2026/09/24 11:19:39 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.294 2026/09/28 10:10:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -201,15 +201,7 @@ screen_write_pane_is_obscured(struct screen_write_ctx *ctx)
 	}
 
 	while ((wp = TAILQ_PREV(wp, window_panes, zentry)) != NULL) {
-		if (window_pane_is_floating(wp) &&
-		    ((wp->yoff >= ctx->wp->yoff &&
-		    wp->yoff <= ctx->wp->yoff + (int)ctx->wp->sy) ||
-		    (wp->yoff + (int)wp->sy >= ctx->wp->yoff &&
-		    wp->yoff + wp->sy <= ctx->wp->yoff + ctx->wp->sy)) &&
-		    ((wp->xoff >= ctx->wp->xoff &&
-		    wp->xoff <= ctx->wp->xoff + (int)ctx->wp->sx) ||
-		    (wp->xoff + (int)wp->sx >= ctx->wp->xoff &&
-		    wp->xoff + wp->sx <= ctx->wp->xoff + ctx->wp->sx))) {
+		if (window_pane_floating_overlaps(wp, ctx->wp)) {
 			ctx->flags |= SCREEN_WRITE_OBSCURED;
 			return (1);
 		}

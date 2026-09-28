@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.380 2026/09/28 09:56:05 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.381 2026/09/28 10:10:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -657,6 +657,34 @@ window_pane_contains(struct window_pane *wp, u_int x, u_int y)
 		if ((int)y < yoff - 1 || y > yoff + sy)
 			return (0);
 	}
+	return (1);
+}
+
+/*
+ * Does floating pane, including its borders and scrollbar, overlap any cell of
+ * another pane, including its scrollbar?
+ */
+int
+window_pane_floating_overlaps(struct window_pane *fwp, struct window_pane *wp)
+{
+	int	fxoff, fyoff, xoff, yoff, border = 0;
+	u_int	fsx, fsy, sx, sy;
+
+	if (!window_pane_is_floating(fwp))
+		return (0);
+
+	window_pane_full_size_offset(fwp, &fxoff, &fyoff, &fsx, &fsy);
+	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
+
+	if (window_pane_get_pane_lines(fwp) != PANE_LINES_NONE)
+		border = 1;
+
+	if (fxoff - border >= xoff + (int)sx ||
+	    fxoff + (int)fsx + border <= xoff)
+		return (0);
+	if (fyoff - border >= yoff + (int)sy ||
+	    fyoff + (int)fsy + border <= yoff)
+		return (0);
 	return (1);
 }
 
