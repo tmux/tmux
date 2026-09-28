@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.514 2026/09/22 06:46:50 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.515 2026/09/28 11:25:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2088,7 +2088,7 @@ server_client_reset_state(struct client *c)
 		}
 		if (!prompt) {
 			cursor = 0;
-			pane_mode = wp->base.mode;
+			pane_mode = s->mode;
 
 			tty_window_offset(tty, &ox, &oy, &sx, &sy);
 			if (wp->xoff + (int)s->cx >= (int)ox &&
