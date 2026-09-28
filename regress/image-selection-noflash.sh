@@ -18,59 +18,21 @@
 # output during the cursor movement: with the fix, extending a selection
 # without scrolling never touches the image, so none should appear.
 
-PATH=/bin:/usr/bin
-TERM=screen
-LC_ALL=C.UTF-8
-export TERM LC_ALL
+. ./image-noflash-common.inc
 
-[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
-TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
-
-cleanup()
-{
-	$TMUX kill-server >/dev/null 2>&1
-	$TMUX2 kill-server >/dev/null 2>&1
-}
-fail()
-{
-	echo "$*" >&2
-	cleanup
-	exit 1
-}
-
-cleanup
-
-TMP=$(mktemp)
-trap "cleanup; rm -f $TMP" 0 1 15
-
-# A small, distinctive SIXEL raster (26x26 pixels) at the top of the pane,
-# matching the fixture already used in image-support.sh, followed by
-# enough plain lines that the cursor can move down through the image and
-# past it without the view needing to scroll.
-SIXEL='\033Pq"1;1;26;26#0;2;100;100;100#0!26~-!26~-!26~-!26~-!26B\033\\'
+# The image, at the top of the pane, followed by enough plain lines that the
+# cursor can move down through it and past it without the view needing to
+# scroll.
 $TMUX new-session -d -s inner -x 40 -y 20 \
-    "printf '$SIXEL'; for i in \$(seq 1 15); do echo line\$i; done; exec sh" ||
+    "printf '$SIXEL_HEADER'; for i in \$(seq 1 15); do echo line\$i; done; exec sh" ||
 	exit 1
 sleep 0.5
 
 [ "$($TMUX display-message -p '#{image_support}')" = 0 ] && exit 0
 $TMUX set -as terminal-features ',*:sixel' || exit 1
 
-# Start the outer session with a plain shell, then start capturing before
-# triggering the attach - starting the attach as the outer pane's initial
-# command would mean pipe-pane only starts after the attach-driven initial
-# redraw (which sends the image) has already happened, missing it.
-$TMUX2 new-session -d -x 40 -y 20 || exit 1
-OUTER=$($TMUX2 list-panes -F '#{pane_id}' | head -1)
-[ -n "$OUTER" ] || fail "No outer pane."
-$TMUX2 pipe-pane -t "$OUTER" -O "cat >$TMP" || fail "pipe-pane failed"
-$TMUX2 send-keys -t "$OUTER" -l "$TMUX attach -t inner" || fail "send attach failed"
-$TMUX2 send-keys -t "$OUTER" Enter || fail "send enter failed"
-sleep 1
-
-# Sanity check: the image reached the client at all.
-grep -qa '"1;1;26;26' $TMP || fail "sanity: image never reached the client"
+start_capture 40 20
+assert_image_reached
 : >$TMP
 
 # Enter copy-mode, scroll to the top (where the image is) and select down
@@ -90,11 +52,6 @@ while [ $i -lt 6 ]; do
 done
 sleep 0.5
 
-# No DCS sequence should have been sent - the image's row was never
-# disturbed by any of this. This is expected to fail before the fix - see
-# the header comment.
-dcs=$(grep -ac "$(printf '\033P')" $TMP)
-[ "$dcs" -eq 0 ] ||
-	fail "image was retransmitted ($dcs times) while just moving the selection cursor"
+assert_no_retransmit "while just moving the selection cursor"
 
 exit 0
