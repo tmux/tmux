@@ -595,6 +595,12 @@ check_layout_fail "${good%%,*},80x24,0,1"
 check_layout_fail "$(v1 '80x24')"
 check_layout_fail "$(v1 '80x24,0,0[80x11,0,0,80x12,0,12}')"
 
+# Version 1 cell sizes and offsets have the same limits as version 2. In
+# particular, a width which overflows an unsigned integer must be rejected
+# before it can be used to resize a pane.
+check_layout_fail \
+	"$(v1 '80x24,0,0{20x24,0,0,39999999999999999999999999999x24,21,0}')"
+
 # Fewer cells than the window has panes; unlike the other way around this
 # cannot be fixed up.
 check_layout_fail '{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"'"$q0"'"}}'
