@@ -585,20 +585,12 @@ tty_update_features(struct tty *tty)
 	tty_puts(tty, tty_term_string(tty->term, TTYC_ENESC));
 
 	/*
-	 * Features might have changed since the first draw during attach. For
-	 * example, this happens when DA responses are received.
-	 *
-	 * Only redraw when something actually did change. This function is
-	 * called for every DA, secondary DA and extended DA answer, and from
-	 * the start timer when none arrive - answers which usually just
-	 * confirm what is already known, either from a previous answer or
-	 * from terminal-features in the configuration. The redraw is not
-	 * free: it repaints the pane from tmux's own grid, which discards
-	 * anything the pane put on the terminal that tmux does not model,
-	 * notably an image written through DCS passthrough. That makes an
-	 * unnecessary redraw here visible to the user as an image that
-	 * appears and then vanishes a moment later, once per client, with no
-	 * way for the application to detect it and redraw.
+	 * Features might have changed since the first draw during attach, for
+	 * example on a DA response - but only redraw if something actually
+	 * did change, since this is called for every DA answer (which are
+	 * usually confirming what is already known) and a redraw repaints
+	 * from tmux's own grid, discarding anything the pane put on the
+	 * terminal that tmux does not model (e.g. a DCS-passthrough image).
 	 */
 	if (!changed)
 		return;

@@ -1563,26 +1563,10 @@ image_extend_row(struct image_line *line, struct image_placement *placement,
 }
 
 /*
- * Extend existing image placements to reveal more of their original width
- * after a pane has grown wider.
- *
- * image_write() (below) only creates spans for as much of an image as fit
- * in the pane at the time it was placed - the rest of the image's pixels
- * are still retained (struct image is immutable and kept for as long as
- * any placement references it), but nothing ever revisits that clipping
- * decision, so a pane that was too narrow when an image was displayed
- * stays clipped forever, even after growing wide enough to fit the rest.
- * Unlike height, which recovers via ordinary scrollback (image_write()
- * scrolls rather than clips when a placement is taller than the pane),
- * there is no equivalent "scroll right" - this is the only way the extra
- * width is ever recovered.
- *
- * For every grid row with image spans, this finds each distinct placement
- * referenced there, works out how far its spans already reach (source_x +
- * width) and its origin column (a span's x - source_x, which is the same
- * for every span of the same placement), and adds spans for any newly
- * revealed columns up to whichever is smaller: the image's own full width
- * or the new pane width.
+ * Extend existing image placements to reveal more of an image after a pane
+ * grows wider. image_write() only creates spans for as much as fit at the
+ * time - unlike height, there is no "scroll right" to recover a clipped
+ * width later, so this is the only way the rest is ever shown.
  */
 void
 image_grid_resize_width(struct grid *gd, u_int new_sx)
@@ -1673,16 +1657,7 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 	} else if (screen_size_y(s) - cy <= sy) {
 		lines = sy - (screen_size_y(s) - cy) + 1;
 
-		/*
-		 * screen_write_scrollup() clamps its own lines argument to
-		 * at most one scroll region height per call, so a single
-		 * call cannot push more than that much history however
-		 * large lines is - call it repeatedly to actually push the
-		 * full amount, so the history-row loop below (which is
-		 * itself bounded against gd->hsize, so it is safe even if
-		 * this loop's assumptions are ever wrong) has real rows to
-		 * use instead of just whatever fit in one call.
-		 */
+		/* screen_write_scrollup() clamps lines per call, so loop it. */
 		region_height = s->rlower - s->rupper + 1;
 		if (region_height == 0)
 			region_height = 1;
@@ -1706,23 +1681,10 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 	placement = image_placement_create(gd, im, input, app_image_id,
 	    app_placement_id, z);
 	/*
-	 * The rows above origin_y were only ever needed to make the image
-	 * fit on screen at all - screen_write_scrollup() already pushed
-	 * blank rows into history to make room, so those absolute grid rows
-	 * exist and are otherwise unused. Give them spans too, instead of
-	 * silently discarding that part of the image: unlike width, which
-	 * has no "scroll right" to recover a permanent clip, height already
-	 * has ordinary scrollback - it would be wasted if these rows were
-	 * left with nothing to show when scrolled back to.
-	 *
-	 * screen_write_scrollup() clamps its own lines argument to at most
-	 * one screen height per call, however many were requested, so it
-	 * may not have created a history row for every one of the origin_y
-	 * rows this is trying to place - cap to however many actually
-	 * exist (gd->hsize) to avoid reading before the start of the grid,
-	 * and place the rows closest to the visible area (the highest
-	 * source rows below origin_y) in whatever history space there is,
-	 * since those are the ones the scrolled-off area would show first.
+	 * Give the origin_y rows scrolled into history spans too, so they
+	 * show when scrolled back to instead of appearing blank - cap to
+	 * gd->hsize since screen_write_scrollup() may not have created a
+	 * history row for every one of them.
 	 */
 	hist_origin_y = origin_y;
 	if (hist_origin_y > gd->hsize)

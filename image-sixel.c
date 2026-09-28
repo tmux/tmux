@@ -1605,19 +1605,12 @@ sixel_flush_output(struct tty *tty)
 }
 
 /*
- * Queue an image rectangle for SIXEL output.
- *
- * The redraw loop hands images to the backend one grid line at a time, so a
- * placement 24 rows tall arrives as 24 separate one-row rectangles. Writing
- * each of them straight out means 24 scale and encode passes and 24 DCS
- * sequences carrying 24 copies of the palette, for what the application sent
- * as one image - and terminals have to allocate and composite each one. The
- * rows of a placement arrive in order, so hold a run of vertically adjacent
- * rows back and write them as one SIXEL when the run ends.
- *
- * Anything that is not a continuation of the run flushes it first, and
- * image_draw_flush at the end of the redraw flushes whatever is left, so no
- * other terminal output can be reordered across a pending run.
+ * Queue an image rectangle for SIXEL output. The redraw loop hands images to
+ * the backend one grid line at a time, so hold back a run of vertically
+ * adjacent rows and write them as one SIXEL instead of one per row.
+ * Anything that is not a continuation flushes the run first, and
+ * image_draw_flush() flushes what's left at the end of the redraw, so no
+ * other terminal output is reordered across a pending run.
  */
 void
 sixel_draw_rect(struct tty *tty, const struct image_rect *rectangle,
