@@ -664,7 +664,7 @@ format_cb_session_stack(struct format_tree *ft)
 	struct winlink	*wl;
 	char		 result[1024], tmp[16];
 
-	if (s == NULL)
+	if (s == NULL || s->curw == NULL)
 		return (NULL);
 
 	xsnprintf(result, sizeof result, "%u", s->curw->idx);
@@ -803,7 +803,7 @@ format_cb_window_active_clients(struct format_tree *ft)
 
 	TAILQ_FOREACH(loop, &clients, entry) {
 		client_session = loop->session;
-		if (client_session == NULL)
+		if (client_session == NULL || client_session->curw == NULL)
 			continue;
 
 		if (w == client_session->curw->window)
@@ -835,7 +835,7 @@ format_cb_window_active_clients_list(struct format_tree *ft)
 
 	TAILQ_FOREACH(loop, &clients, entry) {
 		client_session = loop->session;
-		if (client_session == NULL)
+		if (client_session == NULL || client_session->curw == NULL)
 			continue;
 
 		if (w == client_session->curw->window) {
@@ -3082,9 +3082,9 @@ format_cb_sixel_support(__unused struct format_tree *ft)
 static void *
 format_cb_active_window_index(struct format_tree *ft)
 {
-	if (ft->s != NULL)
-		return (format_printf("%u", ft->s->curw->idx));
-	return (NULL);
+	if (ft->s == NULL || ft->s->curw == NULL)
+		return (NULL);
+	return (format_printf("%u", ft->s->curw->idx));
 }
 
 /* Callback for last_window_index. */
@@ -3093,11 +3093,12 @@ format_cb_last_window_index(struct format_tree *ft)
 {
 	struct winlink	*wl;
 
-	if (ft->s != NULL) {
-		wl = RB_MAX(winlinks, &ft->s->windows);
-		return (format_printf("%u", wl->idx));
-	}
-	return (NULL);
+	if (ft->s == NULL)
+		return (NULL);
+	wl = RB_MAX(winlinks, &ft->s->windows);
+	if (wl == NULL)
+		return (NULL);
+	return (format_printf("%u", wl->idx));
 }
 
 /* Callback for window_active. */
