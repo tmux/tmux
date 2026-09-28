@@ -1805,12 +1805,12 @@ struct tty_term {
 #define TERM_SIXEL 0x40
 #define TERM_INVALIDMS 0x80
 #define TERM_KITTY 0x100
+#define TERM_NOREPLACE 0x200
 #ifdef ENABLE_IMAGES
-#define TERM_IMAGE_QUADRANTS 0x200
-#define TERM_IMAGE_SEXTANTS 0x400
+#define TERM_IMAGE_QUADRANTS 0x400
+#define TERM_IMAGE_SEXTANTS 0x800
 #define TERM_IMAGESCROLL 0x1000
 #endif
-#define TERM_NOREPLACE 0x800
 	int		 flags;
 
 	LIST_ENTRY(tty_term) entry;

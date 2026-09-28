@@ -5241,21 +5241,10 @@ window_copy_write_one(struct window_mode_entry *wme,
 #ifdef ENABLE_IMAGES
 			/*
 			 * Write image-covered cells directly into the grid,
-			 * skipping both window_copy_update_style() (so a
-			 * selection, current-line or search-mark highlight
-			 * never sweeps visibly over the image before it is
-			 * recomposited separately - see the
-			 * image_redraw_area() call below) and
-			 * screen_write_cell(), whose built-in
-			 * screen_write_image_damage() call (screen-write.c)
-			 * fires on every write regardless of whether
-			 * anything actually changed, which would needlessly
-			 * re-damage - and so retransmit - the image on every
-			 * redraw. The cell must still land in the grid as
-			 * normal: a non-graphical client's ASCII fallback for
-			 * the image is an ordinary character here, not
-			 * something recomposited separately, and depends on
-			 * this write the same as any other cell.
+			 * skipping window_copy_update_style() (a highlight
+			 * must not sweep over the image) and
+			 * screen_write_cell() (its image-damage call would
+			 * re-damage the image on every redraw for nothing).
 			 */
 			if (image_grid_check_area(gd, fx, fy, gc.data.width,
 			    1)) {
@@ -5516,18 +5505,11 @@ window_copy_write_line(struct window_mode_entry *wme,
 
 #ifdef ENABLE_IMAGES
 	/*
-	 * Copy the backing line's image layers separately from its text
-	 * cells. This is not implied by the text cells just written above:
-	 * those go via the pane's normal (frequently fast, direct-write)
-	 * path, which knows nothing about image content.
-	 *
-	 * Only report it as needing a redraw when the view has actually
-	 * moved (data->image_refresh, set once per window_copy_redraw_lines
-	 * call) - text writes never touch image-covered cells (see
-	 * window_copy_write_one), so if the view is unmoved this row's
-	 * images are already exactly as they should be and redrawing them
-	 * anyway just flashes the image on every unrelated redraw (e.g.
-	 * every step of a selection drag) for no visible benefit.
+	 * Copy the backing line's image layers separately: the text write
+	 * above knows nothing about image content. Only redraw them when the
+	 * view has actually moved (data->image_refresh) - otherwise they are
+	 * already correct and redrawing would just flash them on every
+	 * unrelated redraw.
 	 */
 	image_grid_free_line(s->grid,
 	    &s->grid->linedata[s->grid->hsize + py]);
@@ -5600,17 +5582,10 @@ window_copy_redraw_selection(struct window_mode_entry *wme, u_int old_y)
 #ifdef ENABLE_IMAGES
 /*
  * Only rows whose underlying history position has moved since the last
- * call need their images recomposited - most redraws are just a selection
- * or cursor-line style change with the view otherwise unmoved, and that
- * never touches image-covered cells (see window_copy_write_one()), so
- * redrawing images for it is needless: on a fast drag it is visible as the
- * image briefly flashing on every step even though nothing about it
- * actually changed.
- *
- * Every place that calls window_copy_write_line()/window_copy_write_lines()
- * must call this first - it is not implied by them, since some (the
- * initial full-screen draw on entering copy mode, window_copy_scroll_up(),
- * window_copy_scroll_down()) write directly rather than going through
+ * call need their images recomposited, to avoid flashing them on every
+ * unrelated redraw. Every caller of window_copy_write_line()/
+ * window_copy_write_lines() must call this first - it is not implied by
+ * them, since some write directly rather than via
  * window_copy_redraw_lines().
  */
 static void
@@ -5626,14 +5601,9 @@ window_copy_update_image_refresh(struct window_copy_mode_data *data)
 
 /*
  * Whether any part of the currently visible backing range carries image
- * data. A terminal's line insert/delete only shifts character cells - the
- * pixels of a sixel or Kitty image already on screen stay exactly where
- * they were sent, so a scroll that uses that fast path (see
- * window_copy_scroll_up()/window_copy_scroll_down()) leaves stale or
- * missing image content for every row except the single new one it
- * explicitly rewrites. When this returns true, callers should fall back to
- * a full window_copy_redraw_screen() instead, so every visible row's image
- * is recomposited at its correct new position.
+ * data. A scrolled insert/delete-line fast path only shifts character
+ * cells, leaving image content stale, so callers should fall back to a
+ * full window_copy_redraw_screen() when this returns true.
  */
 static int
 window_copy_visible_has_images(struct window_copy_mode_data *data)

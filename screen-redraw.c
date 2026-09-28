@@ -1633,6 +1633,7 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 	struct redraw_line	*line;
 	struct redraw_spans	*spans;
 	struct redraw_span	*span;
+	enum redraw_image_phase phase;
 	u_int			 cy;
 	int			 y, top, bottom;
 
@@ -1670,8 +1671,8 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 	}
 #endif
 
-	for (enum redraw_image_phase phase = REDRAW_IMAGES_BEFORE;
-	    phase <= REDRAW_IMAGES_AFTER; phase++) {
+	for (phase = REDRAW_IMAGES_BEFORE; phase <= REDRAW_IMAGES_AFTER;
+	    phase++) {
 		for (y = top; y < bottom; y++) {
 			line = &scene->lines[y];
 			if (dctx->flags & REDRAW_STATUS_TOP)
@@ -1714,10 +1715,11 @@ redraw_draw_lines(struct redraw_draw_ctx *dctx, int flags)
 	struct redraw_line	*line;
 	struct redraw_spans	*spans;
 	struct redraw_span	*span;
+	enum redraw_image_phase phase;
 	u_int			 y, cy, type;
 
-	for (enum redraw_image_phase phase = REDRAW_IMAGES_BEFORE;
-	    phase <= REDRAW_IMAGES_AFTER; phase++) {
+	for (phase = REDRAW_IMAGES_BEFORE; phase <= REDRAW_IMAGES_AFTER;
+	    phase++) {
 		for (y = 0; y < scene->sy; y++) {
 			line = &scene->lines[y];
 			if (dctx->flags & REDRAW_STATUS_TOP)
@@ -1725,45 +1727,46 @@ redraw_draw_lines(struct redraw_draw_ctx *dctx, int flags)
 			else
 				cy = y;
 			for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
-				if (phase != REDRAW_TEXT && type != REDRAW_SPAN_PANE)
+				if (phase != REDRAW_TEXT &&
+				    type != REDRAW_SPAN_PANE)
 					continue;
-			if (!REDRAW_IS_ALL(flags)) {
-				switch (type) {
-				case REDRAW_SPAN_PANE:
-					if (~flags & REDRAW_PANE)
+				if (!REDRAW_IS_ALL(flags)) {
+					switch (type) {
+					case REDRAW_SPAN_PANE:
+						if (~flags & REDRAW_PANE)
+							continue;
+						break;
+					case REDRAW_SPAN_OUTSIDE:
+						if (~flags & REDRAW_OUTSIDE)
+							continue;
+						break;
+					case REDRAW_SPAN_EMPTY:
+						if (~flags & REDRAW_EMPTY)
+							continue;
+						break;
+					case REDRAW_SPAN_BORDER:
+						if (~flags & REDRAW_PANE_BORDER)
+							continue;
+						break;
+					case REDRAW_SPAN_STATUS:
+						if (~flags & REDRAW_PANE_STATUS)
+							continue;
+						break;
+					case REDRAW_SPAN_SCROLLBAR:
+						if (~flags & REDRAW_PANE_SCROLLBAR)
+							continue;
+						break;
+					case REDRAW_SPAN_MENU:
+						if (~flags & REDRAW_MENU)
+							continue;
+						break;
+					default:
 						continue;
-					break;
-				case REDRAW_SPAN_OUTSIDE:
-					if (~flags & REDRAW_OUTSIDE)
-						continue;
-					break;
-				case REDRAW_SPAN_EMPTY:
-					if (~flags & REDRAW_EMPTY)
-						continue;
-					break;
-				case REDRAW_SPAN_BORDER:
-					if (~flags & REDRAW_PANE_BORDER)
-						continue;
-					break;
-				case REDRAW_SPAN_STATUS:
-					if (~flags & REDRAW_PANE_STATUS)
-						continue;
-					break;
-				case REDRAW_SPAN_SCROLLBAR:
-					if (~flags & REDRAW_PANE_SCROLLBAR)
-						continue;
-					break;
-				case REDRAW_SPAN_MENU:
-					if (~flags & REDRAW_MENU)
-						continue;
-					break;
-				default:
-					continue;
+					}
 				}
-			}
-			spans = &line->spans[type];
-			TAILQ_FOREACH(span, spans, entry)
-				redraw_draw_span(dctx, span, cy, phase);
+				spans = &line->spans[type];
+				TAILQ_FOREACH(span, spans, entry)
+					redraw_draw_span(dctx, span, cy, phase);
 			}
 		}
 #ifdef ENABLE_IMAGES
@@ -2210,6 +2213,7 @@ redraw_draw_damage_rectangle(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 	struct redraw_line	*line;
 	struct redraw_spans	*spans;
 	struct redraw_span	*span;
+	enum redraw_image_phase phase;
 	u_int			 cy, yy, type;
 
 	if (x >= scene->sx || y >= scene->sy)
@@ -2223,18 +2227,12 @@ redraw_draw_damage_rectangle(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 
 #ifdef ENABLE_IMAGES
 	/*
-	 * Remove any stale Kitty placements this redraw is about to replace,
-	 * the same as redraw_draw_pane_lines() does for a full pane redraw -
-	 * unlike a plain overwrite of SIXEL pixels, a Kitty placement is a
-	 * discrete object that persists until explicitly deleted, so without
-	 * this a scroll-triggered redraw (this function, not the full-pane
-	 * path) leaves every previous placement behind, all still visible
-	 * and now overlapping the newly placed ones.
-	 *
-	 * Every span type is included, not just panes: when a floating pane
-	 * moves, cells where its image was placed can now belong to a border
-	 * (or anything else), and a Kitty placement left there would stay
-	 * drawn over it.
+	 * Remove stale Kitty placements this redraw is about to replace, the
+	 * same as redraw_draw_pane_lines() does for a full pane redraw - a
+	 * placement persists until explicitly deleted, unlike a plain SIXEL
+	 * overwrite. Every span type is included, not just panes, since a
+	 * moved floating pane can leave a placement over cells that now
+	 * belong to something else.
 	 */
 	for (yy = y; yy < y + sy; yy++) {
 		line = &scene->lines[yy];
@@ -2258,8 +2256,8 @@ redraw_draw_damage_rectangle(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 	}
 #endif
 
-	for (enum redraw_image_phase phase = REDRAW_IMAGES_BEFORE;
-	    phase <= REDRAW_IMAGES_AFTER; phase++) {
+	for (phase = REDRAW_IMAGES_BEFORE; phase <= REDRAW_IMAGES_AFTER;
+	    phase++) {
 		for (yy = y; yy < y + sy; yy++) {
 			line = &scene->lines[yy];
 			if (dctx->flags & REDRAW_STATUS_TOP)
@@ -2267,27 +2265,25 @@ redraw_draw_damage_rectangle(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 			else
 				cy = yy;
 			for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
-				if (phase != REDRAW_TEXT && type != REDRAW_SPAN_PANE)
+				if (phase != REDRAW_TEXT &&
+				    type != REDRAW_SPAN_PANE)
 					continue;
 				if (type == REDRAW_SPAN_STATUS)
 					continue;
-			spans = &line->spans[type];
-			TAILQ_FOREACH(span, spans, entry) {
-				if (span->x >= x + sx)
-					continue;
-				if (span->x + span->width <= x)
-					continue;
-				if (type == REDRAW_SPAN_STATUS) {
-					redraw_damage_refresh_status(dctx,
-					    span->data.st.wp);
-				}
-				redraw_draw_span(dctx, span, cy, phase);
-				if (phase == REDRAW_TEXT && type == REDRAW_SPAN_PANE) {
-					redraw_damage_draw_pane_prompt(dctx,
-					    span, cy);
+				spans = &line->spans[type];
+				TAILQ_FOREACH(span, spans, entry) {
+					if (span->x >= x + sx)
+						continue;
+					if (span->x + span->width <= x)
+						continue;
+					redraw_draw_span(dctx, span, cy, phase);
+					if (phase == REDRAW_TEXT &&
+					    type == REDRAW_SPAN_PANE) {
+						redraw_damage_draw_pane_prompt(
+						    dctx, span, cy);
+					}
 				}
 			}
-		}
 		}
 #ifdef ENABLE_IMAGES
 		image_draw_flush(&scene->c->tty);

@@ -237,17 +237,12 @@ kitty_redraw_keep(struct tty *tty, struct kitty_image_cache *entry,
 }
 
 /*
- * Mark Kitty placements intersecting a redraw area as stale, without
- * deleting them yet - see kitty_redraw_finish(). Deleting immediately here
- * would, for an image whose only placements are in this area, leave it
- * with none at all until the replacement is placed - some Kitty
- * implementations free an image's pixel data once it has no placements
- * left, which would leave the replacement referencing already-discarded
- * data and render as nothing.
- *
- * A placement only partly inside the area is deleted as a whole, but the
- * redraw only replaces the part inside, so the parts outside are placed
- * again first - otherwise they would vanish from cells nothing redraws.
+ * Mark placements intersecting a redraw area as stale rather than deleting
+ * them yet (see kitty_redraw_finish()) - some implementations free an
+ * image's pixel data once its last placement is gone, so an image only
+ * placed here would go blank before its replacement lands. A placement only
+ * partly inside the area is deleted as a whole, so place its outside parts
+ * again first or they would vanish from cells nothing redraws.
  */
 void
 kitty_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
