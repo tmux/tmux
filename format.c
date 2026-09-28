@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.418 2026/09/20 08:19:31 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.420 2026/09/28 16:23:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -6027,7 +6027,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	struct format_modifier		**sub = NULL, *mexp = NULL, *fm;
 	struct format_modifier		 *bool_op_n = NULL;
 	u_int				  cycle_count = 1;
-	u_int				  i, count, nsub = 0, nrep, check = 0;
+	u_int				  i, count, nsub = 0, nrep;
 	const char			 *loop_flags = "";
 	struct format_expand_state	  next;
 	struct environ_entry		 *envent;
@@ -6428,7 +6428,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 		else {
 			value = xstrdup("");
 			for (i = 0; i < nrep; i++) {
-				if (!format_check_time(es, &check)) {
+				if (!format_check_time(es, NULL)) {
 					free(right);
 					free(left);
 					free(value);
@@ -6822,6 +6822,19 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 				memcpy(buf + off, fmt - 2, n + 1);
 				off += n + 1;
 				fmt = ptr + 1;
+				continue;
+			}
+			if (ch == '#') {
+				while (len - off < (n / 2) + 1) {
+					buf = xreallocarray(buf, 2, len);
+					len *= 2;
+				}
+				memset(buf + off, '#', n / 2);
+				off += (n / 2);
+				if (n % 2 != 0)
+					fmt = ptr - 1;
+				else
+					fmt = ptr;
 				continue;
 			}
 			/* FALLTHROUGH */
