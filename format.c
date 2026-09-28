@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.418 2026/09/20 08:19:31 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.419 2026/09/28 16:00:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -6009,7 +6009,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	struct format_modifier		**sub = NULL, *mexp = NULL, *fm;
 	struct format_modifier		 *bool_op_n = NULL;
 	u_int				  cycle_count = 1;
-	u_int				  i, count, nsub = 0, nrep, check = 0;
+	u_int				  i, count, nsub = 0, nrep;
 	const char			 *loop_flags = "";
 	struct format_expand_state	  next;
 	struct environ_entry		 *envent;
@@ -6410,7 +6410,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 		else {
 			value = xstrdup("");
 			for (i = 0; i < nrep; i++) {
-				if (!format_check_time(es, &check)) {
+				if (!format_check_time(es, NULL)) {
 					free(right);
 					free(left);
 					free(value);
