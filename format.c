@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.419 2026/09/28 16:00:28 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.420 2026/09/28 16:23:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -6803,6 +6803,19 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 				memcpy(buf + off, fmt - 2, n + 1);
 				off += n + 1;
 				fmt = ptr + 1;
+				continue;
+			}
+			if (ch == '#') {
+				while (len - off < (n / 2) + 1) {
+					buf = xreallocarray(buf, 2, len);
+					len *= 2;
+				}
+				memset(buf + off, '#', n / 2);
+				off += (n / 2);
+				if (n % 2 != 0)
+					fmt = ptr - 1;
+				else
+					fmt = ptr;
 				continue;
 			}
 			/* FALLTHROUGH */
