@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.423 2026/09/29 13:59:10 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.424 2026/09/29 14:12:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1630,7 +1630,7 @@ format_cb_client_last_session(struct format_tree *ft)
 static void *
 format_cb_client_name(struct format_tree *ft)
 {
-	if (ft->c != NULL)
+	if (ft->c != NULL && ft->c->name != NULL)
 		return (xstrdup(ft->c->name));
 	return (NULL);
 }
@@ -1693,7 +1693,7 @@ format_cb_client_termfeatures(struct format_tree *ft)
 static void *
 format_cb_client_termname(struct format_tree *ft)
 {
-	if (ft->c != NULL)
+	if (ft->c != NULL && ft->c->term_name != NULL)
 		return (xstrdup(ft->c->term_name));
 	return (NULL);
 }
@@ -1714,7 +1714,7 @@ format_cb_client_termtype(struct format_tree *ft)
 static void *
 format_cb_client_tty(struct format_tree *ft)
 {
-	if (ft->c != NULL)
+	if (ft->c != NULL && ft->c->ttyname != NULL)
 		return (xstrdup(ft->c->ttyname));
 	return (NULL);
 }
