@@ -1562,7 +1562,7 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	}
 	log_debug("%s: received primary DA %.*s", c->name, (int)*size, buf);
 
-	/* A DA response without a preceding keyboard response means no support. */
+	/* The keyboard query, if sent, is answered first; else nothing is due. */
 	tty->flags |= TTY_HAVEKKB;
 	tty_update_features(tty);
 	tty->flags |= TTY_HAVEDA;
