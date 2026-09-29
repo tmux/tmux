@@ -533,6 +533,7 @@ enum {
 
 	/* Terminal replies, handled in tty-keys.c and never fired. */
 	KEYC_REPORT_CLIPBOARD,
+	KEYC_REPORT_KITTY,
 	KEYC_REPORT_SYNC,
 	KEYC_REPORT_KITTY_GRAPHICS,
 	KEYC_REPORT_DA,
@@ -3187,6 +3188,7 @@ void	tty_invalidate(struct tty *);
 void	tty_start_tty(struct tty *);
 void	tty_send_requests(struct tty *);
 void	tty_repeat_requests(struct tty *, int);
+void	tty_extended_keys_changed(struct tty *);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_set_path(struct tty *, const char *);
@@ -3285,7 +3287,7 @@ int		tty_keys_colours(struct tty *, const char *, size_t, size_t *,
 int		tty_keys_kitty(struct tty *, const char *, size_t, size_t *,
 		     key_code *);
 int		tty_keys_kitty_query(struct tty *, const char *, size_t,
-		     size_t *);
+		     size_t *, int);
 
 /* arguments.c */
 void		 args_set(struct args *, u_char, struct args_value *, int);

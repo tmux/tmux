@@ -252,7 +252,7 @@ tty_kitty_function(u_int number, char final)
 
 int
 tty_keys_kitty_query(struct tty *tty, const char *buf, size_t len,
-    size_t *size)
+    size_t *size, int apply)
 {
 	struct client	*c = tty->client;
 	size_t		 i;
@@ -286,6 +286,9 @@ tty_keys_kitty_query(struct tty *tty, const char *buf, size_t len,
 		return (-1);
 
 	*size = i + 1;
+	if (!apply)
+		return (0);
+
 	tty->kitty_keys = flags;
 	tty->flags |= TTY_HAVEKKB;
 	log_debug("%s: received Kitty keyboard flags %u", c->name, flags);

@@ -96,6 +96,7 @@ static const struct {
 	int	      (*fn)(struct tty *, const char *, size_t, size_t *, int);
 } tty_keys_replies[] = {
 	{ KEYC_REPORT_CLIPBOARD, tty_keys_clipboard },
+	{ KEYC_REPORT_KITTY, tty_keys_kitty_query },
 	{ KEYC_REPORT_PROGRAM_STATUS, tty_keys_program_status },
 	{ KEYC_REPORT_SYNC, tty_keys_sync },
 	{ KEYC_REPORT_DA, tty_keys_device_attributes },
@@ -687,6 +688,18 @@ tty_keys_reply(struct tty *tty, const char *buf, size_t len,
 	case -1:	/* no, or not valid */
 		break;
 	case -2:	/* yes, but we don't care */
+		kp->key = KEYC_UNKNOWN;
+		return (0);
+	case 1:		/* partial */
+		return (1);
+	}
+
+	switch (tty_keys_kitty(tty, buf, len, &kp->size, &kp->key)) {
+	case 0:		/* yes */
+		return (0);
+	case -1:	/* no, or not valid */
+		break;
+	case -2:	/* yes, but not representable by tmux */
 		kp->key = KEYC_UNKNOWN;
 		return (0);
 	case 1:		/* partial */
@@ -1546,7 +1559,7 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	}
 	log_debug("%s: received primary DA %.*s", c->name, (int)*size, buf);
 
-	/* A DA response without a preceding keyboard response means no support. */
+	/* The keyboard query, if sent, is answered first; else nothing is due. */
 	tty->flags |= TTY_HAVEKKB;
 	tty_update_features(tty);
 	tty->flags |= TTY_ALL_REQUEST_FLAGS;

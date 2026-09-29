@@ -10,7 +10,7 @@ KCONF=$(mktemp)
 LCONF=$(mktemp)
 OUT=$(mktemp)
 TMP=$(mktemp)
-SOCKETS="testKmc$$ testKka$$ testKua$$ testKrt$$ testKru$$ testKlq$$ testKlu$$"
+SOCKETS="testKmc$$ testKka$$ testKua$$ testKrt$$ testKru$$ testKlq$$ testKlu$$ testKpo$$ testKpi$$"
 
 printf '%s\n' 'set -g extended-keys on' >"$KCONF"
 printf '%s\n' 'set -g extended-keys off' >"$LCONF"
@@ -142,5 +142,22 @@ wait_for_client_mode "$LQ" '' 'VT10x' || exit 1
 $LU send-keys C-a
 wait_for_output "$TMP" || exit 1
 [ "$(tr -d ' \n' <"$TMP")" = '1b5b39373b3575' ] || exit 1
+$LU kill-server 2>/dev/null
+$LQ kill-server 2>/dev/null
+
+# The Kitty query must not be sent while extended-keys is off, but must be sent
+# and answered once it is turned on.
+: >"$OUT"
+PO="$TEST_TMUX -LtestKpo$$ -f$KCONF"
+PI="$TEST_TMUX -LtestKpi$$ -f$LCONF"
+$PI new-session -d -x80 -y24 -s q || exit 1
+$PO new-session -d -x80 -y24 "sleep 1; $PI attach-session -t q" || exit 1
+$PO pipe-pane -O -t: "cat >>'$OUT'"
+wait_for_client_mode "$PI" '' 'VT10x' || exit 1
+sleep 1
+od -An -v -t x1 <"$OUT" | tr -d ' \n' | grep -q 1b5b3f75 && exit 1
+$PI set-option -g extended-keys on
+wait_for_client_mode "$PI" '' 'Kitty 1' || exit 1
+od -An -v -t x1 <"$OUT" | tr -d ' \n' | grep -q 1b5b3f75 || exit 1
 
 exit 0

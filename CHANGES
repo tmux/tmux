@@ -115,8 +115,8 @@ CHANGES FROM 3.7c TO 3.8
 * Change show-options and show-hooks to use formats and add a -F flag to each.
 
 * Add support for the Kitty keyboard protocol. When extended-keys is on,
-  tmux uses it with terminals which support it, detected when a client
-  attaches or set with a new kittykeys terminal feature, and standard
+  tmux uses it with terminals which support it, detected by querying the
+  terminal or set with a new kittykeys terminal feature, and standard
   extended keys or VT10x keys with other terminals, so terminals with
   different capabilities may be attached at the same time. Programs inside
   tmux may ask for either the Kitty protocol or modifyOtherKeys and get keys
