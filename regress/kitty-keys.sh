@@ -104,5 +104,58 @@ $TMUX respawn-pane -k -t: \
 wait_for_output
 check_output 1b5b3f31751b5b3f30751b5b3f38751b5b3f3175
 
+: >"$OUT"
+# Modified Enter, Tab and Backspace are disambiguated even under flag 1;
+# only the unmodified keys stay in legacy form.
+$TMUX respawn-pane -k -t: \
+    "stty raw -echo; printf '\033[>1u'; dd bs=1 count=7 2>/dev/null | od -An -v -t x1 >'$OUT'; sleep 5"
+wait_for_mode 'Kitty 1'
+$TMUX send-keys -t: S-Enter
+wait_for_output
+check_output 1b5b31333b3275
+
+: >"$OUT"
+$TMUX respawn-pane -k -t: \
+    "stty raw -echo; printf '\033[>1u'; dd bs=1 count=1 2>/dev/null | od -An -v -t x1 >'$OUT'; sleep 5"
+wait_for_mode 'Kitty 1'
+$TMUX send-keys -t: Enter
+wait_for_output
+check_output 0d
+
+: >"$OUT"
+# An unshifted uppercase letter, as delivered by a legacy terminal or by
+# send-keys, is reported as the lowercase code point plus Shift.
+$TMUX respawn-pane -k -t: \
+    "stty raw -echo; printf '\033[>9u'; dd bs=1 count=7 2>/dev/null | od -An -v -t x1 >'$OUT'; sleep 5"
+wait_for_mode 'Kitty 9'
+$TMUX send-keys -t: A
+wait_for_output
+check_output 1b5b39373b3275
+
+: >"$OUT"
+# A modified F3 must use the unambiguous form even under flag 1 alone, since
+# its legacy form ("CSI 1;mR") cannot be told apart from a cursor position
+# report.
+$TMUX respawn-pane -k -t: \
+    "stty raw -echo; printf '\033[>1u'; dd bs=1 count=7 2>/dev/null | od -An -v -t x1 >'$OUT'; sleep 5"
+wait_for_mode 'Kitty 1'
+$TMUX send-keys -t: S-F3
+wait_for_output
+check_output 1b5b31333b327e
+
+# The following are not specific to the Kitty protocol, but were found by
+# the same testing: send-keys must drop a key name it cannot encode for the
+# pane's current mode rather than typing the name itself as text, and must
+# not leave a stray Escape behind while deciding that.
+: >"$OUT"
+$TMUX respawn-pane -k -t: \
+    "stty raw -echo; timeout 2 dd bs=1 2>/dev/null | od -An -v -t x1 >'$OUT'"
+sleep 0.3
+for key in C-Escape C-BSpace M-C-BSpace; do
+	$TMUX send-keys -t: "$key"
+done
+sleep 2.3
+check_output ''
+
 $TMUX kill-server 2>/dev/null
 exit 0
