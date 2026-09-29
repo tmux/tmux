@@ -118,7 +118,6 @@ cmd_send_keys_inject_string(struct cmdq_item *item, struct cmdq_item *after,
 	key_code		 key;
 	char			*endptr;
 	long			 n;
-	int			 literal;
 
 	if (args_has(args, 'H')) {
 		n = strtol(s, &endptr, 16);
@@ -128,8 +127,7 @@ cmd_send_keys_inject_string(struct cmdq_item *item, struct cmdq_item *after,
 		    KEYC_LITERAL|n));
 	}
 
-	literal = args_has(args, 'l');
-	if (!literal) {
+	if (!args_has(args, 'l')) {
 		key = key_string_lookup_string(s);
 		if (key != KEYC_NONE && key != KEYC_UNKNOWN) {
 			/*
@@ -138,25 +136,24 @@ cmd_send_keys_inject_string(struct cmdq_item *item, struct cmdq_item *after,
 			 */
 			after = cmd_send_keys_inject_key(item, after, args,
 			    key);
-			return (after == NULL ? item : after);
+			if (after != NULL)
+				return (after);
+			return (item);
 		}
-		literal = 1;
 	}
-	if (literal) {
-		ud = utf8_fromcstr(s);
-		for (loop = ud; loop->size != 0; loop++) {
-			if (loop->size == 1 && loop->data[0] <= 0x7f)
-				key = loop->data[0];
-			else {
-				if (utf8_from_data(loop, &uc) != UTF8_DONE)
-					continue;
-				key = uc;
-			}
-			after = cmd_send_keys_inject_key(item, after, args,
-			    key);
+
+	ud = utf8_fromcstr(s);
+	for (loop = ud; loop->size != 0; loop++) {
+		if (loop->size == 1 && loop->data[0] <= 0x7f)
+			key = loop->data[0];
+		else {
+			if (utf8_from_data(loop, &uc) != UTF8_DONE)
+				continue;
+			key = uc;
 		}
-		free(ud);
+		after = cmd_send_keys_inject_key(item, after, args, key);
 	}
+	free(ud);
 	return (after);
 }
 
