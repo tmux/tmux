@@ -6236,6 +6236,9 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 	u_int				 cursor_x, cursor_y, prompt_x = 0;
 	u_int				 prompt_y = UINT_MAX, y, total;
 	int				 found_start = 0, found_end = 0;
+	int				 next_prompt, in_range, found;
+	void				*buf;
+	size_t				 len;
 
 	cursor_x = data->cx;
 	cursor_y = screen_hsize(data->backing) + data->cy - data->oy;
@@ -6260,27 +6263,38 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 
 	for (y = prompt_y; y < total; y++) {
 		gl = grid_get_line(gd, y);
-		/* An output may end on the next prompt's line. */
+		next_prompt = (y != prompt_y &&
+		    gl->flags & GRID_LINE_START_PROMPT);
+		/* Output before the next prompt on its line is ours. */
+		if (y == prompt_y)
+			in_range = (gl->osc133_data.out_start_col >= prompt_x);
+		else if (next_prompt)
+			in_range = (gl->osc133_data.out_start_col <
+			    gl->osc133_data.prompt_col);
+		else
+			in_range = 1;
+		if (gl->flags & GRID_LINE_START_OUTPUT && in_range) {
+			*sx = gl->osc133_data.out_start_col;
+			*sy = y;
+			found_start = 1;
+		}
+		/* An output may end on the same line or the next prompt's. */
 		if (found_start && gl->flags & GRID_LINE_END_OUTPUT &&
-		    (y != prompt_y || gl->osc133_data.out_end_col >= prompt_x)) {
+		    (y != prompt_y || gl->osc133_data.out_end_col >= prompt_x) &&
+		    (y != *sy || gl->osc133_data.out_end_col >= *sx)) {
 			*ex = gl->osc133_data.out_end_col;
 			*ey = y;
 			found_end = 1;
 			break;
 		}
-		if (y != prompt_y && gl->flags & GRID_LINE_START_PROMPT)
+		if (next_prompt)
 			break;
-		if (gl->flags & GRID_LINE_START_OUTPUT &&
-		    (y != prompt_y || gl->osc133_data.out_start_col >= prompt_x)) {
-			*sx = gl->osc133_data.out_start_col;
-			*sy = y;
-			found_start = 1;
-		}
 	}
 	if (!found_start) {
 		log_debug("%s: no output after prompt", __func__);
-		return (window_copy_find_previous_output_range(wme, cursor_x,
-		    cursor_y, sx, sy, ex, ey));
+		found = window_copy_find_previous_output_range(wme, cursor_x,
+		    cursor_y, sx, sy, ex, ey);
+		return (found);
 	}
 	if (!found_end) {
 		if (y != total) {
@@ -6289,6 +6303,14 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 		}
 		window_copy_output_end(data->backing, ex, ey);
 	}
+	buf = window_copy_get_grid_range(wme, *sx, *sy, *ex, *ey, &len);
+	if (buf == NULL) {
+		log_debug("%s: empty output", __func__);
+		found = window_copy_find_previous_output_range(wme, cursor_x,
+		    cursor_y, sx, sy, ex, ey);
+		return (found);
+	}
+	free(buf);
 	log_debug("%s: output from %u,%u to %u,%u", __func__, *sx, *sy,
 	    *ex, *ey);
 	return (1);
@@ -6303,19 +6325,28 @@ window_copy_find_previous_output_range(struct window_mode_entry *wme,
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*gd = data->backing->grid;
 	struct grid_line		*gl;
+	struct osc133_data		*od;
 	void				*buf;
 	u_int				 start_x, start_y, end_x, end_y;
 	u_int				 y, total;
 	size_t				 len;
 	int				 found = 0, have_prompt = 0;
 	int				 pending = 0;
+	int				 has_start, has_end, end_first;
 
 	total = gd->hsize + gd->sy;
 	for (y = 0; y < total && y <= cursor_y; y++) {
 		gl = grid_get_line(gd, y);
-		if (gl->flags & GRID_LINE_START_OUTPUT &&
-		    (y != cursor_y || gl->osc133_data.out_start_col <= cursor_x)) {
-			start_x = gl->osc133_data.out_start_col;
+		od = &gl->osc133_data;
+		has_start = (gl->flags & GRID_LINE_START_OUTPUT &&
+		    (y != cursor_y || od->out_start_col <= cursor_x));
+		has_end = (gl->flags & GRID_LINE_END_OUTPUT &&
+		    (y != cursor_y || od->out_end_col <= cursor_x));
+		/* An end before the start ends the previous output. */
+		end_first = (has_start && has_end &&
+		    od->out_end_col < od->out_start_col);
+		if (has_start && !end_first) {
+			start_x = od->out_start_col;
 			start_y = y;
 			pending = 1;
 		}
@@ -6323,13 +6354,12 @@ window_copy_find_previous_output_range(struct window_mode_entry *wme,
 		if (!pending && !have_prompt &&
 		    gl->flags & GRID_LINE_END_OUTPUT &&
 		    (~gl->flags & GRID_LINE_START_PROMPT ||
-		    gl->osc133_data.out_end_col <= gl->osc133_data.prompt_col)) {
+		    od->out_end_col <= od->prompt_col)) {
 			start_x = start_y = 0;
 			pending = 1;
 		}
-		if (pending && gl->flags & GRID_LINE_END_OUTPUT &&
-		    (y != cursor_y || gl->osc133_data.out_end_col <= cursor_x)) {
-			end_x = gl->osc133_data.out_end_col;
+		if (pending && has_end) {
+			end_x = od->out_end_col;
 			end_y = y;
 			buf = window_copy_get_grid_range(wme, start_x, start_y,
 			    end_x, end_y, &len);
@@ -6343,8 +6373,15 @@ window_copy_find_previous_output_range(struct window_mode_entry *wme,
 			}
 			pending = 0;
 		}
+		if (has_start && end_first) {
+			start_x = od->out_start_col;
+			start_y = y;
+			pending = 1;
+		}
 		if (gl->flags & GRID_LINE_START_PROMPT) {
-			pending = 0;
+			/* Output may start after the prompt. */
+			if (!has_start || od->out_start_col < od->prompt_col)
+				pending = 0;
 			have_prompt = 1;
 		}
 	}
