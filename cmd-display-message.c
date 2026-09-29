@@ -114,14 +114,8 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 		template = DISPLAY_MESSAGE_TEMPLATE;
 
 	/*
-	 * -c is intended to be the client where the message should be
-	 * displayed if -p is not given, but it makes sense to use it for the
-	 * client formats too. If it was given explicitly, use it even when it
-	 * is not in the target session, since the formats should describe the
-	 * client which was asked for; the session, window and pane formats
-	 * still come from the target. Otherwise it is just the current client,
-	 * so only use it if it matches the session and fall back to the best
-	 * client for the session if not.
+	 * -c is also used for the client formats. If it was not given, tc is
+	 * only the current client, so use it only if it matches the session.
 	 */
 	if (tc != NULL && (args_has(args, 'c') || tc->session == s))
 		c = tc;
