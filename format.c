@@ -1229,12 +1229,13 @@ format_cb_pane_in_mode(struct format_tree *ft)
 	return (value);
 }
 
-static struct layout_cell *
-format_pane_layout_cell(struct window_pane *wp)
+/* Separate borders inset tiled panes one cell from the window edge. */
+static int
+format_pane_is_separate(struct window_pane *wp)
 {
-	if (wp->saved_layout_cell != NULL)
-		return (wp->saved_layout_cell);
-	return (wp->layout_cell);
+	if (window_pane_is_floating(wp))
+		return (0);
+	return (window_border_type_is_separate(wp->window));
 }
 
 /* Callback for pane_at_top. */
@@ -1242,15 +1243,20 @@ static void *
 format_cb_pane_at_top(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
-	struct layout_cell	*lc;
+	int			 status, flag;
 	char			*value;
 
 	if (wp == NULL)
 		return (NULL);
-	lc = format_pane_layout_cell(wp);
-	if (lc == NULL)
-		return (xstrdup("0"));
-	xasprintf(&value, "%d", lc->g.yoff == 0);
+
+	status = window_pane_get_pane_status(wp);
+	if (format_pane_is_separate(wp))
+		flag = (wp->yoff <= 1);
+	else if (status == PANE_STATUS_TOP)
+		flag = (wp->yoff == 1);
+	else
+		flag = (wp->yoff == 0);
+	xasprintf(&value, "%d", flag);
 	return (value);
 }
 
@@ -1260,16 +1266,21 @@ format_cb_pane_at_bottom(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
 	struct window		*w;
-	struct layout_cell	*lc;
+	int			 status, flag;
 	char			*value;
 
 	if (wp == NULL)
 		return (NULL);
 	w = wp->window;
-	lc = format_pane_layout_cell(wp);
-	if (lc == NULL)
-		return (xstrdup("0"));
-	xasprintf(&value, "%d", lc->g.yoff + lc->g.sy == w->sy);
+
+	status = window_pane_get_pane_status(wp);
+	if (format_pane_is_separate(wp))
+		flag = (wp->yoff + (int)wp->sy >= (int)w->sy - 1);
+	else if (status == PANE_STATUS_BOTTOM)
+		flag = (wp->yoff + (int)wp->sy == (int)w->sy - 1);
+	else
+		flag = (wp->yoff + (int)wp->sy == (int)w->sy);
+	xasprintf(&value, "%d", flag);
 	return (value);
 }
 
@@ -2220,32 +2231,28 @@ format_cb_pane_active(struct format_tree *ft)
 static void *
 format_cb_pane_at_left(struct format_tree *ft)
 {
-	struct layout_cell	*lc;
-
-	if (ft->wp == NULL)
-		return (NULL);
-	lc = format_pane_layout_cell(ft->wp);
-	if (lc == NULL)
+	if (ft->wp != NULL) {
+		if (ft->wp->xoff == 0 ||
+		    (format_pane_is_separate(ft->wp) && ft->wp->xoff == 1))
+			return (xstrdup("1"));
 		return (xstrdup("0"));
-	if (lc->g.xoff == 0)
-		return (xstrdup("1"));
-	return (xstrdup("0"));
+	}
+	return (NULL);
 }
 
 /* Callback for pane_at_right. */
 static void *
 format_cb_pane_at_right(struct format_tree *ft)
 {
-	struct layout_cell	*lc;
-
-	if (ft->wp == NULL)
-		return (NULL);
-	lc = format_pane_layout_cell(ft->wp);
-	if (lc == NULL)
+	if (ft->wp != NULL) {
+		if (ft->wp->xoff + (int)ft->wp->sx == (int)ft->wp->window->sx ||
+		    (format_pane_is_separate(ft->wp) &&
+		    ft->wp->xoff + (int)ft->wp->sx ==
+		    (int)ft->wp->window->sx - 1))
+			return (xstrdup("1"));
 		return (xstrdup("0"));
-	if (lc->g.xoff + lc->g.sx == ft->wp->window->sx)
-		return (xstrdup("1"));
-	return (xstrdup("0"));
+	}
+	return (NULL);
 }
 
 /* Callback for pane_bottom. */
@@ -2715,8 +2722,8 @@ format_cb_pane_unzoomed_height(struct format_tree *ft)
 	struct window_pane	*wp = ft->wp;
 	struct window		*w;
 	struct layout_cell	*lc, *root;
-	int			 status, floating;
-	u_int			 sy;
+	int			 status, floating, xoff, yoff;
+	u_int			 sx, sy;
 
 	if (wp == NULL)
 		return (NULL);
@@ -2727,7 +2734,7 @@ format_cb_pane_unzoomed_height(struct format_tree *ft)
 		lc = wp->layout_cell;
 	if (lc == NULL)
 		return (NULL);
-	sy = layout_pane_content_size(w, lc, LAYOUT_TOPBOTTOM);
+	sy = lc->g.sy;
 	floating = (lc->flags & LAYOUT_CELL_FLOATING);
 
 	root = w->saved_layout_root;
@@ -2737,7 +2744,13 @@ format_cb_pane_unzoomed_height(struct format_tree *ft)
 		status = window_get_pane_status(w);
 	else
 		status = window_pane_get_pane_status(wp);
-	if (!floating &&
+	if (window_border_type_is_separate(w)) {
+		xoff = lc->g.xoff;
+		yoff = lc->g.yoff;
+		sx = lc->g.sx;
+		layout_apply_pane_border_type(w, root, lc, &xoff, &yoff, &sx,
+		    &sy);
+	} else if (!floating &&
 	    root != NULL &&
 	    layout_add_horizontal_border(root, lc, status) &&
 	    sy > 1)
@@ -2752,23 +2765,33 @@ format_cb_pane_unzoomed_width(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
 	struct window		*w;
-	struct layout_cell	*lc;
-	int			 sb_w, sb_pad;
-	u_int			 sx;
+	struct layout_cell	*lc, *root;
+	int			 saved, sb_w, sb_pad, xoff, yoff;
+	u_int			 sx, sy;
 
 	if (wp == NULL)
 		return (NULL);
 	w = wp->window;
 
 	lc = wp->saved_layout_cell;
+	saved = (lc != NULL);
 	if (lc == NULL)
 		lc = wp->layout_cell;
 	if (lc == NULL)
 		return (NULL);
-	sx = layout_pane_content_size(w, lc, LAYOUT_LEFTRIGHT);
+	sx = lc->g.sx;
 
-	if (!SCREEN_IS_ALTERNATE(&wp->base) &&
-	    window_pane_scrollbar_reserve(wp)) {
+	root = w->saved_layout_root;
+	if (root == NULL)
+		root = w->layout_root;
+	xoff = lc->g.xoff;
+	yoff = lc->g.yoff;
+	sy = lc->g.sy;
+	layout_apply_pane_border_type(w, root, lc, &xoff, &yoff, &sx, &sy);
+
+	if ((saved && !SCREEN_IS_ALTERNATE(&wp->base) &&
+	    w->sb == PANE_SCROLLBARS_ALWAYS) ||
+	    (!saved && window_pane_scrollbar_reserve(wp))) {
 		sb_w = wp->scrollbar_style.width;
 		sb_pad = wp->scrollbar_style.pad;
 		if (sb_w < 1)

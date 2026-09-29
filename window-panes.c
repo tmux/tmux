@@ -183,6 +183,7 @@ window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
 
 	/* Single pane cannot zoom; fill the already-inset mode screen. */
 	if (wp->saved_layout_cell == NULL &&
+	    window_border_type_is_separate(wp->window) &&
 	    window_count_panes(wp->window, 0) == 1) {
 		*xp = 0;
 		*yp = 0;
@@ -223,16 +224,8 @@ window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
 	yoff = y;
 	layout_apply_pane_border_type(wp->window, root, lc, &xoff, &yoff, &sx,
 	    &sy);
-	if (xoff < 0 || yoff < 0 || (u_int)xoff >= dsx || (u_int)yoff >= dsy)
-		return (0);
 	x = xoff;
 	y = yoff;
-	if (x + sx > dsx)
-		sx = dsx - x;
-	if (y + sy > dsy)
-		sy = dsy - y;
-	if (sx == 0 || sy == 0)
-		return (0);
 
 	status = window_get_pane_status(wp->window);
 	if (layout_add_horizontal_border(root, lc, status) &&
@@ -433,7 +426,6 @@ window_panes_mark_pane_border_separate(u_char *map, struct window *w,
 	struct window_pane	*wp;
 	u_int			 x, y, sx, sy;
 	int			 left, right, top, bottom;
-	int			 mark_left, mark_right, mark_top, mark_bottom;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (window_panes_pane_floating(wp))
@@ -447,27 +439,18 @@ window_panes_mark_pane_border_separate(u_char *map, struct window *w,
 		top = (int)y - 1;
 		bottom = (int)y + (int)sy;
 
-		mark_left = (left >= 0);
-		mark_top = (top >= 0);
-		mark_right = (right < (int)dsx);
-		mark_bottom = (bottom < (int)dsy);
-
-		if (mark_top) {
-			window_panes_mark_hline(map, dsx, dsy, left,
-			    right + 1, top);
-		}
-		if (mark_bottom) {
-			window_panes_mark_hline(map, dsx, dsy, left,
-			    right + 1, bottom);
-		}
-		if (mark_left) {
+		if (top >= 0)
+			window_panes_mark_hline(map, dsx, dsy, left, right + 1,
+			    top);
+		if (bottom < (int)dsy)
+			window_panes_mark_hline(map, dsx, dsy, left, right + 1,
+			    bottom);
+		if (left >= 0)
 			window_panes_mark_vline(map, dsx, dsy, left, top,
 			    bottom + 1);
-		}
-		if (mark_right) {
+		if (right < (int)dsx)
 			window_panes_mark_vline(map, dsx, dsy, right, top,
 			    bottom + 1);
-		}
 	}
 }
 

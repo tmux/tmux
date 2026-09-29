@@ -596,7 +596,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 	struct window		*w = wp->window;
 	struct window_pane	*fwp;
 	int			 pane_status, sb_w, sb_pad, separate;
-	int			 sl_top, sl_bottom;
+	int			 pane_status_line, sl_top, sl_bottom;
 	int			 bdr_bottom, bdr_top, bdr_left, bdr_right;
 	int			 sb_start, sb_end, sb_overlay;
 
@@ -614,6 +614,12 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 		sb_pad = 0;
 	}
 
+	if (pane_status == PANE_STATUS_TOP)
+		pane_status_line = wp->yoff - 1;
+	else if (pane_status == PANE_STATUS_BOTTOM)
+		pane_status_line = wp->yoff + wp->sy;
+	else
+		pane_status_line = -1; /* not used */
 	bdr_left = wp->xoff - 1;
 	if (!sb_overlay && w->sb_pos == PANE_SCROLLBARS_LEFT)
 		bdr_left -= sb_pad + sb_w;
@@ -644,10 +650,10 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 	}
 
 	/* Check if point is within the pane or scrollbar. */
-	if (((py >= wp->yoff && py < wp->yoff + (int)wp->sy) ||
-	    (pane_status == PANE_STATUS_TOP && py == wp->yoff - 1) ||
-	    (pane_status == PANE_STATUS_BOTTOM &&
-	    py == wp->yoff + (int)wp->sy)) &&
+	if (((pane_status != PANE_STATUS_OFF &&
+	    py != pane_status_line && py != wp->yoff + (int)wp->sy) ||
+	    (wp->yoff == 0 && py < (int)wp->sy) ||
+	    (py >= wp->yoff && py < wp->yoff + (int)wp->sy)) &&
 	    ((w->sb_pos == PANE_SCROLLBARS_RIGHT &&
 	    px >= wp->xoff &&
 	    px < wp->xoff + (int)wp->sx + sb_pad + sb_w) ||
@@ -712,10 +718,11 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 			    py <= fwp->yoff + (int)fwp->sy) {
 				if (px == bdr_right)
 					break;
-				/* Separate and floating panes own the left border. */
-				if (px == bdr_left &&
-				    (window_pane_is_floating(fwp) || separate))
-					break;
+				if (window_pane_is_floating(wp) || separate) {
+					/* Floating or separate, check left border. */
+					if (px == bdr_left)
+						break;
+				}
 			}
 			if (px >= bdr_left && px <= fwp->xoff + (int)fwp->sx) {
 				bdr_bottom = fwp->yoff + fwp->sy;
@@ -1595,6 +1602,7 @@ server_client_handle_menu_key(struct client *c, struct key_event *event)
 		m = &new_event.m;
 		m->statusat = status_at_line(c);
 		m->statuslines = status_line_size(c);
+
 		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
 		m->x += ox;
 		if (m->statusat == 0) {

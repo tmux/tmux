@@ -82,9 +82,6 @@ static const char *options_table_pane_border_lines_list[] = {
 static const char *options_table_pane_border_type_list[] = {
 	"joined", "separate", "separate-active", NULL
 };
-static const char *options_table_popup_border_lines_list[] = {
-	"single", "double", "heavy", "simple", "rounded", "padded", "none", NULL
-};
 static const char *options_table_menu_border_lines_list[] = {
 	"single", "double", "heavy", "simple", "rounded", "padded", "none", NULL
 };

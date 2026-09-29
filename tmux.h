@@ -3859,8 +3859,6 @@ int		 layout_add_horizontal_border(struct layout_cell *,
 		     struct layout_cell *, int);
 u_int		 layout_cell_tree_minimum(struct window *,
 		     struct layout_cell *, enum layout_type);
-u_int		 layout_pane_content_size(struct window *, struct layout_cell *,
-		     enum layout_type);
 void		 layout_apply_pane_border_type(struct window *,
 		    struct layout_cell *, struct layout_cell *, int *, int *,
 		    u_int *, u_int *);

@@ -191,11 +191,10 @@ window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
 	struct style_line_entry	*sle = &wp->border_status_line;
 	struct screen_write_ctx	 ctx;
 	struct screen		 old;
-	struct window_pane	*active;
 	char			*expanded;
 	u_int			 i;
 	enum pane_lines		 pane_lines;
-	int			 pane_status, cell_type, blank;
+	int			 pane_status, cell_type;
 
 	pane_status = window_pane_get_pane_status(wp);
 	if (pane_status == PANE_STATUS_OFF || width == 0)
@@ -212,24 +211,15 @@ window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
 	wp->status_screen.mode = 0;
 	screen_write_start(&ctx, &wp->status_screen);
 
-	/* separate-active: blank status glyphs to match inactive gutters. */
-	active = c->session->curw->window->active;
-	blank = (options_get_number(wp->window->options, "pane-border-type") ==
-	    PANE_BORDER_TYPE_SEPARATE_ACTIVE && wp != active);
-
 	window_pane_get_border_style(wp, c, &gc);
-	if (blank) {
-		gc.attr &= ~GRID_ATTR_CHARSET;
-		utf8_set(&gc.data, ' ');
-		for (i = 0; i < width; i++)
-			screen_write_cell(&ctx, &gc);
-	} else {
-		pane_lines = window_pane_get_pane_lines(wp);
-		for (i = 0; i < width; i++) {
-			cell_type = redraw_get_status_border_cell_type(&span, i);
-			window_get_border_cell(wp, pane_lines, cell_type, &gc);
-			screen_write_cell(&ctx, &gc);
-		}
+	pane_lines = window_pane_get_pane_lines(wp);
+	if (options_get_number(wp->window->options, "pane-border-type") ==
+	    PANE_BORDER_TYPE_SEPARATE_ACTIVE && wp != wp->window->active)
+		pane_lines = PANE_LINES_SPACES;
+	for (i = 0; i < width; i++) {
+		cell_type = redraw_get_status_border_cell_type(&span, i);
+		window_get_border_cell(wp, pane_lines, cell_type, &gc);
+		screen_write_cell(&ctx, &gc);
 	}
 	gc.attr &= ~GRID_ATTR_CHARSET;
 

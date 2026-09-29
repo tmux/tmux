@@ -373,27 +373,6 @@ must_equal "$($TMUX display-message -p -t '{bottom}' '#{pane_id}')" "%2" \
 $TMUX kill-server
 
 # ---------------------------------------------------------------------------
-# Always-on scrollbars: joined horizontal split needs space for both bars
-# ---------------------------------------------------------------------------
-# Default style is width 1 pad 0: min is (1+1)+(1+1)+1 = 5. Width 4 must fail.
-$TMUX new-session -d -s sball -x 4 -y 12 'cat' || exit 1
-$TMUX set -g status off || fail "status off failed"
-$TMUX set -g pane-scrollbars on || fail "pane-scrollbars on failed"
-$TMUX set -w pane-border-type joined || fail "set joined failed"
-$TMUX split-window -h -t sball:0 'cat' 2>"$TMP/sball.err" &&
-	fail "joined split with scrollbars on width 4 should fail"
-grep -q 'no space for a new pane' "$TMP/sball.err" ||
-	fail "expected no-space error, got: $(cat "$TMP/sball.err")"
-must_equal "$($TMUX list-panes -t sball:0 | wc -l | tr -d ' ')" "1" \
-	"joined no-space must leave a single pane"
-# Width 5 is the floor and must succeed with sane sizes.
-$TMUX resize-window -t sball:0 -x 5 || fail "resize to 5 failed"
-$TMUX split-window -h -t sball:0 'cat' || fail "joined split width 5 failed"
-must_equal "$($TMUX list-panes -t sball:0 | wc -l | tr -d ' ')" "2" \
-	"joined scrollbars split at floor width"
-$TMUX kill-server
-
-# ---------------------------------------------------------------------------
 # Mouse: both columns of the separate double border are borders
 # ---------------------------------------------------------------------------
 $TMUX new-session -d -s mouse -x 80 -y 24 'cat' || exit 1
