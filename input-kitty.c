@@ -250,11 +250,23 @@ input_key_kitty(struct screen *s, struct bufferevent *bev, key_code key)
 	ikk = input_kitty_lookup(key);
 	if (ikk != NULL) {
 		if ((flags & KITTY_KEY_REPORT_ALL) == 0) {
-			if (ikk->key == C0_CR || ikk->key == C0_HT ||
-			    ikk->key == KEYC_BSPACE)
+			/*
+			 * Enter, Tab and Backspace stay in legacy form only
+			 * when unmodified, so a plain Enter still works after
+			 * a crash, but a modified one is disambiguated.
+			 */
+			if ((ikk->key == C0_CR || ikk->key == C0_HT ||
+			    ikk->key == KEYC_BSPACE) && modifiers == 0)
 				return (-1);
+
+			/*
+			 * A modified F3 in legacy form ("\033[1;mR") is
+			 * indistinguishable from a cursor position report,
+			 * so it must always be disambiguated too.
+			 */
 			if (ikk->final != 'u' &&
-			    (modifiers & (KEYC_SUPER|KEYC_HYPER)) == 0)
+			    (modifiers & (KEYC_SUPER|KEYC_HYPER)) == 0 &&
+			    (ikk->key != KEYC_F3 || modifiers == 0))
 				return (-1);
 		}
 		number = ikk->number;
@@ -296,8 +308,10 @@ input_key_kitty(struct screen *s, struct bufferevent *bev, key_code key)
 		number = onlykey;
 	else
 		return (-1);
-	if ((key & KEYC_SHIFT) && number >= 'A' && number <= 'Z')
+	if (number >= 'A' && number <= 'Z') {
 		number += 'a' - 'A';
+		key |= KEYC_SHIFT;
+	}
 
 	modifier = input_kitty_modifiers(key);
 	if (modifier == 1)
