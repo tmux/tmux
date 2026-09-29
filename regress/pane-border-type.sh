@@ -418,6 +418,72 @@ must_equal "$($TMUX show -gv @hit)" "pane" \
 	"content click not classified as pane"
 
 # ---------------------------------------------------------------------------
+# Mouse: pane-border-status controls and dragging the border above a pane
+# ---------------------------------------------------------------------------
+# mouse_session TYPE STATUS SPLIT — two panes attached from an outer client.
+mouse_session()
+{
+	$TMUX kill-server 2>/dev/null
+	$TMUX2 kill-server 2>/dev/null
+	$TMUX new-session -d -s ms -x 80 -y 24 'cat' || exit 1
+	$TMUX set -g status off || fail "status off failed"
+	$TMUX set -g mouse on || fail "mouse on failed"
+	$TMUX set -g pane-border-type "$1" || fail "set $1 failed"
+	$TMUX set -g pane-border-status "$2" || fail "set status $2 failed"
+	$TMUX split-window "$3" -t ms:0 'cat' || fail "split $3 failed"
+	$TMUX2 new-session -d -s out -x 80 -y 24 "$TMUX attach -t ms" ||
+		exit 1
+	sleep 0.5
+	OUTER=$($TMUX2 list-panes -F '#{pane_id}' | head -1)
+}
+
+for type in joined separate; do
+	for status in top bottom; do
+		tag="$type/$status"
+
+		# Click [f], [z] and [x] on the right pane's status line.
+		mouse_session "$type" "$status" -h
+		$TMUX bind -n MouseDown1Control7 "set -g @hit f" &&
+		$TMUX bind -n MouseDown1Control8 "set -g @hit z" &&
+		$TMUX bind -n MouseDown1Control9 "set -g @hit x" ||
+			fail "bind controls failed"
+		if [ "$status" = top ]; then row=1; else row=24; fi
+		line=$($TMUX2 capture-pane -p -t "$OUTER" | sed -n "${row}p")
+		for ctl in f z x; do
+			# Last match is the right pane; click inside the brackets.
+			pre=${line%\[$ctl\]*}
+			[ "$pre" != "$line" ] || fail "$tag: no [$ctl] on row $row"
+			col=$(($(printf '%s' "$pre" | wc -m) + 2))
+			$TMUX set -g @hit none || fail "reset @hit failed"
+			click "$col" "$row"
+			must_equal "$($TMUX show -gv @hit)" "$ctl" \
+				"$tag: click on [$ctl] at col $col did not fire"
+		done
+
+		# Drag the border above the bottom pane up four rows. Rows
+		# are 1-based; separate has two gutter rows, try both.
+		mouse_session "$type" "$status" -v
+		top=$($TMUX display-message -p -t ms:0.1 '#{pane_top}')
+		if [ "$type" = separate ]; then
+			rows="$((top - 1)) $top"
+		else
+			rows=$top
+		fi
+		for row in $rows; do
+			mouse_session "$type" "$status" -v
+			seq=$(printf '\033[<0;40;%sM\033[<32;40;%sM\033[<32;40;%sM\033[<0;40;%sm' \
+			    "$row" $((row - 2)) $((row - 4)) $((row - 4)))
+			$TMUX2 send-keys -t "$OUTER" -l "$seq"
+			sleep 0.4
+			after=$($TMUX display-message -p -t ms:0.1 '#{pane_top}')
+			[ "$after" -lt "$top" ] ||
+				fail "$tag: dragging border at row $row did not resize ($top -> $after)"
+		done
+	done
+done
+$TMUX2 kill-server 2>/dev/null
+
+# ---------------------------------------------------------------------------
 # pane_at_* and display-panes sizes use layout geometry, not content inset
 # ---------------------------------------------------------------------------
 $TMUX kill-server
