@@ -14,8 +14,10 @@ export PATH TERM LC_ALL
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 
 DIR=$(mktemp -d) || exit 1
-INNER="$TEST_TMUX -Lscrollbehind-inner-$$ -f/dev/null"
-OUTER="$TEST_TMUX -Lscrollbehind-outer-$$ -f/dev/null"
+INNER_NAME=testA$
+OUTER_NAME=testB$
+INNER="$TEST_TMUX -L$INNER_NAME -f/dev/null"
+OUTER="$TEST_TMUX -L$OUTER_NAME -f/dev/null"
 EMITTER=$DIR/emitter.pl
 FILLER=$DIR/filler.pl
 TRIGGER=$DIR/trigger
@@ -92,6 +94,13 @@ sleep 100;
 PERL
 
 for margins in off on; do
+	if [ "$margins" = on ]; then
+		INNER_NAME=testC$
+		OUTER_NAME=testD$
+		INNER="$TEST_TMUX -L$INNER_NAME -f/dev/null"
+		OUTER="$TEST_TMUX -L$OUTER_NAME -f/dev/null"
+	fi
+
 	rm -f "$TRIGGER"
 	$INNER new-session -d -s inner -x 80 -y 24 'sleep 100' || exit 1
 	$INNER set -g status off || exit 1
@@ -113,7 +122,7 @@ for margins in off on; do
 	$OUTER set -g window-size manual || exit 1
 	$OUTER set -g default-terminal screen-256color || exit 1
 	$OUTER respawn-pane -k -t outer:0.0 \
-	    "$TEST_TMUX -Lscrollbehind-inner-$$ -f/dev/null attach -t inner" ||
+	    "$TEST_TMUX -L$INNER_NAME -f/dev/null attach -t inner" ||
 	    exit 1
 
 	wait_outer_has row18
