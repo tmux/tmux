@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.421 2026/09/28 16:52:55 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.422 2026/09/29 11:57:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -88,8 +88,11 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 /* Maximum pad and trim width. */
 #define FORMAT_MAX_WIDTH 10000
 
-/* Maximum repeat size. */
+/* Maximum repeat count. */
 #define FORMAT_MAX_REPEAT 10000
+
+/* Maximum repeat result size in bytes. */
+#define FORMAT_MAX_REPEAT_SIZE 65536
 
 /* Maximum precision. */
 #define FORMAT_MAX_PRECISION 100
@@ -6409,7 +6412,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			value = xstrdup("");
 		else {
 			n = strlen(left);
-			if (n != 0 && nrep > (SIZE_MAX - 1) / n) {
+			if (n != 0 && nrep > FORMAT_MAX_REPEAT_SIZE / n) {
 				format_log(es, "repeat is too long: %s", copy);
 				value = xstrdup("");
 			} else {
