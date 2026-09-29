@@ -2752,6 +2752,10 @@ screen_write_collect_add(struct screen_write_ctx *ctx,
 	 * Don't need to check that the attributes and whatnot are still the
 	 * same - input_parse will end the collection when anything that isn't
 	 * a plain character is encountered.
+	 *
+	 * Without wrapping, collect up to but not including the last column.
+	 * Leave that cell to screen_write_cell so repeated writes overwrite it
+	 * and the cursor remains at the right edge.
 	 */
 
 	collect = 1;
@@ -2761,7 +2765,8 @@ screen_write_collect_add(struct screen_write_ctx *ctx,
 		collect = 0;
 	else if (gc->attr & GRID_ATTR_CHARSET)
 		collect = 0;
-	else if (~s->mode & MODE_WRAP)
+	else if ((~s->mode & MODE_WRAP) &&
+	    s->cx + ctx->item->used >= sx - 1)
 		collect = 0;
 	else if (s->mode & MODE_INSERT)
 		collect = 0;
