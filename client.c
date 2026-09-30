@@ -682,6 +682,15 @@ client_dispatch_wait(struct imsg *imsg)
 		/* NOTREACHED */
 	case MSG_DETACH:
 	case MSG_DETACHKILL:
+		if (datalen == 0 || data[datalen - 1] != '\0')
+			fatalx("bad MSG_DETACH string");
+
+		client_exitsession = xstrdup(data);
+		client_exittype = imsg->hdr.type;
+		if (imsg->hdr.type == MSG_DETACHKILL)
+			client_exitreason = CLIENT_EXIT_DETACHED_HUP;
+		else
+			client_exitreason = CLIENT_EXIT_DETACHED;
 		proc_send(client_peer, MSG_EXITING, -1, NULL, 0);
 		break;
 	case MSG_EXITED:
