@@ -784,7 +784,7 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 	u_int				 sb_height = wp->sy, sb_top = wp->yoff;
 	u_int				 sy = screen_size_y(data->backing);
 	u_int				 my_w;
-	int				 new_slider_y, delta;
+	int				 new_slider_y, delta, keep;
 
 	/*
 	 * sl_mpos is where in the slider the user is dragging, mouse is
@@ -826,7 +826,9 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 	oy = screen_hsize(data->backing) + data->cy - data->oy;
 	ox = window_copy_find_length(wme, oy);
 
-	if (data->cx != ox) {
+	keep = options_get_number(wme->wp->window->options,
+	    "copy-mode-keep-column");
+	if (data->cx != ox || keep) {
 		data->lastcx = data->cx;
 		data->lastsx = ox;
 	}
@@ -857,7 +859,7 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 	/* Don't also drag tail when dragging a scrollbar, it looks weird. */
 	data->cursordrag = CURSORDRAG_NONE;
 
-	if (data->screen.sel == NULL || !data->rectflag) {
+	if ((data->screen.sel == NULL || !data->rectflag) && !keep) {
 		py = screen_hsize(data->backing) + data->cy - data->oy;
 		px = window_copy_find_length(wme, py);
 		if ((data->cx >= data->lastsx && data->cx != px) ||
@@ -889,11 +891,14 @@ window_copy_pageup1(struct window_mode_entry *wme, int half_page)
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*s = &data->screen;
 	u_int				 n, ox, oy, px, py;
+	int				 keep;
 
 	oy = screen_hsize(data->backing) + data->cy - data->oy;
 	ox = window_copy_find_length(wme, oy);
 
-	if (data->cx != ox) {
+	keep = options_get_number(wme->wp->window->options,
+	    "copy-mode-keep-column");
+	if (data->cx != ox || keep) {
 		data->lastcx = data->cx;
 		data->lastsx = ox;
 	}
@@ -916,7 +921,7 @@ window_copy_pageup1(struct window_mode_entry *wme, int half_page)
 	} else
 		data->oy += n;
 
-	if (data->screen.sel == NULL || !data->rectflag) {
+	if ((data->screen.sel == NULL || !data->rectflag) && !keep) {
 		py = screen_hsize(data->backing) + data->cy - data->oy;
 		px = window_copy_find_length(wme, py);
 		if ((data->cx >= data->lastsx && data->cx != px) ||
@@ -948,11 +953,14 @@ window_copy_pagedown1(struct window_mode_entry *wme, int half_page,
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*s = &data->screen;
 	u_int				 n, ox, oy, px, py;
+	int				 keep;
 
 	oy = screen_hsize(data->backing) + data->cy - data->oy;
 	ox = window_copy_find_length(wme, oy);
 
-	if (data->cx != ox) {
+	keep = options_get_number(wme->wp->window->options,
+	    "copy-mode-keep-column");
+	if (data->cx != ox || keep) {
 		data->lastcx = data->cx;
 		data->lastsx = ox;
 	}
@@ -975,7 +983,7 @@ window_copy_pagedown1(struct window_mode_entry *wme, int half_page,
 	} else
 		data->oy -= n;
 
-	if (data->screen.sel == NULL || !data->rectflag) {
+	if ((data->screen.sel == NULL || !data->rectflag) && !keep) {
 		py = screen_hsize(data->backing) + data->cy - data->oy;
 		px = window_copy_find_length(wme, py);
 		if ((data->cx >= data->lastsx && data->cx != px) ||
@@ -5685,12 +5693,20 @@ window_copy_update_cursor(struct window_mode_entry *wme, u_int cx, u_int cy)
 
 	/*
 	 * Allow rectangle selection to extend past end of current line to
-	 * behave the same as vi with virtualedit=block set.
+	 * behave the same as vi with virtualedit=block set. With
+	 * copy-mode-keep-column, always allow the cursor past the end of the
+	 * line so vertical movement can keep the column.
 	 */
 	if (!data->rectflag && cy < screen_size_y(s)) {
-		allow_onemore = (data->screen.sel != NULL && data->rectflag);
-		py = screen_hsize(data->backing) + cy - data->oy;
-		maxx = window_copy_cursor_limit(wme, py, allow_onemore);
+		if (options_get_number(wp->window->options,
+		    "copy-mode-keep-column"))
+			maxx = screen_size_x(s);
+		else {
+			allow_onemore = (data->screen.sel != NULL &&
+			    data->rectflag);
+			py = screen_hsize(data->backing) + cy - data->oy;
+			maxx = window_copy_cursor_limit(wme, py, allow_onemore);
+		}
 		if (cx > maxx)
 			cx = maxx;
 	}
@@ -6492,12 +6508,13 @@ window_copy_cursor_up(struct window_mode_entry *wme, int scroll_only)
 	struct options			*oo = wme->wp->window->options;
 	struct screen			*s = &data->screen;
 	u_int				 ox, oy, px, py;
-	int				 norectsel;
+	int				 norectsel, keep;
 
 	norectsel = data->screen.sel == NULL || !data->rectflag;
+	keep = options_get_number(oo, "copy-mode-keep-column");
 	oy = screen_hsize(data->backing) + data->cy - data->oy;
 	ox = window_copy_find_length(wme, oy);
-	if (norectsel && data->cx != ox) {
+	if (norectsel && (keep || data->cx != ox)) {
 		data->lastcx = data->cx;
 		data->lastsx = ox;
 	}
@@ -6534,7 +6551,7 @@ window_copy_cursor_up(struct window_mode_entry *wme, int scroll_only)
 		}
 	}
 
-	if (norectsel) {
+	if (norectsel && !keep) {
 		py = screen_hsize(data->backing) + data->cy - data->oy;
 		px = window_copy_find_length(wme, py);
 		if ((data->cx >= data->lastsx && data->cx != px) ||
@@ -6572,12 +6589,13 @@ window_copy_cursor_down(struct window_mode_entry *wme, int scroll_only)
 	struct options			*oo = wme->wp->window->options;
 	struct screen			*s = &data->screen;
 	u_int				 ox, oy, px, py;
-	int				 norectsel;
+	int				 norectsel, keep;
 
 	norectsel = data->screen.sel == NULL || !data->rectflag;
+	keep = options_get_number(oo, "copy-mode-keep-column");
 	oy = screen_hsize(data->backing) + data->cy - data->oy;
 	ox = window_copy_find_length(wme, oy);
-	if (norectsel && data->cx != ox) {
+	if (norectsel && (keep || data->cx != ox)) {
 		data->lastcx = data->cx;
 		data->lastsx = ox;
 	}
@@ -6606,7 +6624,7 @@ window_copy_cursor_down(struct window_mode_entry *wme, int scroll_only)
 			window_copy_redraw_lines(wme, data->cy - 1, 2);
 	}
 
-	if (norectsel) {
+	if (norectsel && !keep) {
 		py = screen_hsize(data->backing) + data->cy - data->oy;
 		px = window_copy_find_length(wme, py);
 		if ((data->cx >= data->lastsx && data->cx != px) ||
