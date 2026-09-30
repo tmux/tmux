@@ -1586,6 +1586,14 @@ window_pane_destroy(struct window_pane *wp)
 		wp->event = NULL;
 		close(wp->fd);
 		wp->fd = -1;
+
+		/*
+		 * A child that has not yet made the pty its controlling
+		 * terminal gets no hangup when the master is closed, so
+		 * signal it directly.
+		 */
+		if (~wp->flags & PANE_EXITED)
+			kill(wp->pid, SIGHUP);
 	}
 	if (wp->ictx != NULL) {
 		input_free(wp->ictx);
