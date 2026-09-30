@@ -172,6 +172,7 @@ window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
     u_int osx, u_int osy, u_int dsx, u_int dsy, u_int *xp, u_int *yp,
     u_int *sxp, u_int *syp)
 {
+	struct window		*w = wp->window;
 	struct layout_cell	*lc = wp->saved_layout_cell;
 	int			 status, xoff, yoff;
 	u_int			 x, y, sx, sy, x2, y2;
@@ -181,10 +182,13 @@ window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
 	if (lc == NULL || osx == 0 || osy == 0 || dsx == 0 || dsy == 0)
 		return (0);
 
-	/* Single pane cannot zoom; fill the already-inset mode screen. */
+	/*
+	 * Single pane cannot zoom; the mode screen is already inside the
+	 * border, so fill it.
+	 */
 	if (wp->saved_layout_cell == NULL &&
-	    window_border_type_is_separate(wp->window) &&
-	    window_count_panes(wp->window, 0) == 1) {
+	    window_border_type_is_separate(w) &&
+	    window_count_panes(w, 0) == 1) {
 		*xp = 0;
 		*yp = 0;
 		*sxp = dsx;
@@ -222,15 +226,13 @@ window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
 
 	xoff = x;
 	yoff = y;
-	layout_apply_pane_border_type(wp->window, root, lc, &xoff, &yoff, &sx,
-	    &sy);
+	layout_apply_pane_border_type(w, root, lc, &xoff, &yoff, &sx, &sy);
 	x = xoff;
 	y = yoff;
 
-	status = window_get_pane_status(wp->window);
+	status = window_get_pane_status(w);
 	if (layout_add_horizontal_border(root, lc, status) &&
-	    !window_border_type_is_separate(wp->window) &&
-	    sy > 1) {
+	    !window_border_type_is_separate(w) && sy > 1) {
 		if (status == PANE_STATUS_TOP)
 			y++;
 		sy--;
@@ -439,18 +441,22 @@ window_panes_mark_pane_border_separate(u_char *map, struct window *w,
 		top = (int)y - 1;
 		bottom = (int)y + (int)sy;
 
-		if (top >= 0)
+		if (top >= 0) {
 			window_panes_mark_hline(map, dsx, dsy, left, right + 1,
 			    top);
-		if (bottom < (int)dsy)
+		}
+		if (bottom < (int)dsy) {
 			window_panes_mark_hline(map, dsx, dsy, left, right + 1,
 			    bottom);
-		if (left >= 0)
+		}
+		if (left >= 0) {
 			window_panes_mark_vline(map, dsx, dsy, left, top,
 			    bottom + 1);
-		if (right < (int)dsx)
+		}
+		if (right < (int)dsx) {
 			window_panes_mark_vline(map, dsx, dsy, right, top,
 			    bottom + 1);
+		}
 	}
 }
 

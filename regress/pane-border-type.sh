@@ -264,7 +264,7 @@ $TMUX kill-server
 # resize-window: layout and window clamp to the separate floor
 # ---------------------------------------------------------------------------
 # Five side-by-side separate panes need width 15 (mins 2+2+2+2+3 + 4 seps).
-# Requesting 10 must clamp to 15, not crush border gutters.
+# Requesting 10 must clamp to 15, not crush the borders.
 $TMUX new-session -d -s floor -x 80 -y 12 'cat' || exit 1
 $TMUX set -g status off || fail "status off failed"
 $TMUX set -w pane-border-type separate || fail "set separate failed"
@@ -461,7 +461,7 @@ for type in joined separate; do
 		done
 
 		# Drag the border above the bottom pane up four rows. Rows
-		# are 1-based; separate has two gutter rows, try both.
+		# are 1-based; separate has two border rows, try both.
 		mouse_session "$type" "$status" -v
 		top=$($TMUX display-message -p -t ms:0.1 '#{pane_top}')
 		if [ "$type" = separate ]; then

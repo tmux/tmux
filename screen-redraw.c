@@ -684,8 +684,8 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 	if (floating && pane_lines == PANE_LINES_NONE)
 		return;
 	pane_status = window_pane_get_pane_status(wp);
-	if (PANE_BORDER_TYPE_IS_SEPARATE(bctx->border_type))
-		pane_status = PANE_STATUS_OFF; /* both gutters are drawn */
+	if (bctx->border_type != PANE_BORDER_TYPE_JOINED)
+		pane_status = PANE_STATUS_OFF; /* both borders are drawn */
 
 	left = wp->xoff - 1;
 	right = wp->xoff + wp->sx;
@@ -1231,7 +1231,7 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 	else {
 		wp = redraw_get_pane_for_border_style(dctx, span);
 		cell_type = span->data.b.cell_type;
-		/* separate-active: blank inactive gutters so focus does not resize. */
+		/* separate-active only draws the active pane's border. */
 		if (dctx->border_type == PANE_BORDER_TYPE_SEPARATE_ACTIVE &&
 		    (dctx->active == NULL ||
 		    !redraw_data_has_pane(&span->data, dctx->active)))
@@ -1599,6 +1599,7 @@ redraw_set_draw_context(struct redraw_draw_ctx *dctx,
 	struct client	*c = scene->c;
 	struct session	*s = c->session;
 	struct options	*oo = s->options;
+	struct window	*w = s->curw->window;
 	struct tty	*tty = &c->tty;
 	u_int		 lines;
 
@@ -1607,9 +1608,8 @@ redraw_set_draw_context(struct redraw_draw_ctx *dctx,
 
 	if (server_is_marked(s, s->curw, marked_pane.wp))
 		dctx->marked = marked_pane.wp;
-	dctx->active = s->curw->window->active;
-	dctx->border_type = options_get_number(s->curw->window->options,
-	    "pane-border-type");
+	dctx->active = w->active;
+	dctx->border_type = options_get_number(w->options, "pane-border-type");
 
 	lines = status_line_size(c);
 	if (options_get_number(oo, "status-position") == 0)

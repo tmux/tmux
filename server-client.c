@@ -683,7 +683,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 		    (px == bdr_left ||
 		    py == wp->yoff - 1 ||
 		    py == wp->yoff + (int)wp->sy)) {
-			/* Floating or separate pane left, bottom or top border. */
+			/* Floating or separate left, bottom or top border. */
 			return (KEYC_MOUSE_LOCATION_BORDER);
 		} else {
 			/* Must be inside the pane. */
@@ -719,7 +719,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 				if (px == bdr_right)
 					break;
 				if (window_pane_is_floating(wp) || separate) {
-					/* Floating or separate, check left border. */
+					/* Also check left border. */
 					if (px == bdr_left)
 						break;
 				}

@@ -400,6 +400,7 @@ layout_cell_is_bottom(struct layout_cell *root, struct layout_cell *lc)
 	return (1);
 }
 
+/* Is this a right cell? */
 static int
 layout_cell_is_right(struct layout_cell *root, struct layout_cell *lc)
 {
@@ -418,11 +419,11 @@ layout_cell_is_right(struct layout_cell *root, struct layout_cell *lc)
 }
 
 /*
- * Cells taken by separate borders: the left or top gutter, and also the right
- * or bottom gutter on the window edge.
+ * Cells taken by separate borders: the left or top border, and also the right
+ * or bottom border on the window edge.
  */
 static u_int
-layout_separate_gutters(struct window *w, struct layout_cell *root,
+layout_separate_borders(struct window *w, struct layout_cell *root,
     struct layout_cell *lc, enum layout_type type)
 {
 	if (!window_border_type_is_separate(w) ||
@@ -448,7 +449,7 @@ layout_pane_minimum_size(struct window *w, struct layout_cell *lc,
 	} else if (!window_border_type_is_separate(w) &&
 	    layout_add_horizontal_border(root, lc, window_get_pane_status(w)))
 		minimum++;
-	return (minimum + layout_separate_gutters(w, root, lc, type));
+	return (minimum + layout_separate_borders(w, root, lc, type));
 }
 
 /* Minimum cell size when laying out; joined borders only need PANE_MINIMUM. */
@@ -495,24 +496,24 @@ layout_add_horizontal_border(struct layout_cell *root, struct layout_cell *lc,
 	return (0);
 }
 
-/* Inset for separate: L/T always, R/B on the window edge. */
+/* Leave room for separate borders: L/T always, R/B on the window edge. */
 void
 layout_apply_pane_border_type(struct window *w, struct layout_cell *root,
     struct layout_cell *lc, int *xoff, int *yoff, u_int *sx, u_int *sy)
 {
-	u_int	gx, gy;
+	u_int	bx, by;
 
 	if (lc == NULL || root == NULL)
 		return;
-	gx = layout_separate_gutters(w, root, lc, LAYOUT_LEFTRIGHT);
-	gy = layout_separate_gutters(w, root, lc, LAYOUT_TOPBOTTOM);
-	if (gx != 0 && *sx >= gx + PANE_MINIMUM) {
+	bx = layout_separate_borders(w, root, lc, LAYOUT_LEFTRIGHT);
+	by = layout_separate_borders(w, root, lc, LAYOUT_TOPBOTTOM);
+	if (bx != 0 && *sx >= bx + PANE_MINIMUM) {
 		(*xoff)++;
-		*sx -= gx;
+		*sx -= bx;
 	}
-	if (gy != 0 && *sy >= gy + PANE_MINIMUM) {
+	if (by != 0 && *sy >= by + PANE_MINIMUM) {
 		(*yoff)++;
-		*sy -= gy;
+		*sy -= by;
 	}
 }
 
@@ -548,9 +549,10 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 			    (wme->mode->flags & WINDOW_MODE_FILL_WINDOW))
 				fill = 1;
 		}
-		if (!fill)
+		if (!fill) {
 			layout_apply_pane_border_type(w, root, lc, &wp->xoff,
 			    &wp->yoff, &sx, &sy);
+		}
 
 		status = window_pane_get_pane_status(wp);
 		if (!window_pane_is_floating(wp) &&
@@ -991,7 +993,7 @@ layout_resize_pane_to(struct window_pane *wp, enum layout_type type,
 		return;
 
 	/* -x/-y are content size; grow to include separate borders. */
-	new_size += layout_separate_gutters(w, w->layout_root, lc, type);
+	new_size += layout_separate_borders(w, w->layout_root, lc, type);
 
 	/* Work out the size adjustment. */
 	if (type == LAYOUT_LEFTRIGHT)
@@ -1408,19 +1410,19 @@ layout_split_check_space(struct window_pane *wp, struct layout_cell *lc,
 	struct layout_cell	*root = w->layout_root;
 	struct style		*sb_style = &wp->scrollbar_style;
 	u_int			 minimum, sx = lc->g.sx, sy = lc->g.sy;
-	u_int			 gutters;
+	u_int			 borders;
 	int			 status;
 
 	if (lc->flags & LAYOUT_CELL_FLOATING)
 		fatalx("floating cells cannot be split");
 
 	status = window_get_pane_status(w);
-	gutters = layout_separate_gutters(w, root, lc, type);
+	borders = layout_separate_borders(w, root, lc, type);
 
 	switch (type) {
 	case LAYOUT_LEFTRIGHT:
-		if (gutters != 0) {
-			minimum = PANE_MINIMUM * 2 + 2 + gutters;
+		if (borders != 0) {
+			minimum = PANE_MINIMUM * 2 + 2 + borders;
 			if (w->sb == PANE_SCROLLBARS_ALWAYS)
 				minimum += 2 * (sb_style->width + sb_style->pad);
 		} else if (w->sb == PANE_SCROLLBARS_ALWAYS) {
@@ -1432,8 +1434,8 @@ layout_split_check_space(struct window_pane *wp, struct layout_cell *lc,
 			return (0);
 		break;
 	case LAYOUT_TOPBOTTOM:
-		if (gutters != 0)
-			minimum = PANE_MINIMUM * 2 + 2 + gutters;
+		if (borders != 0)
+			minimum = PANE_MINIMUM * 2 + 2 + borders;
 		else if (layout_add_horizontal_border(root, lc, status))
 			minimum = PANE_MINIMUM * 2 + 2;
 		else
@@ -1454,7 +1456,7 @@ layout_split_sizes(struct window *w, struct layout_cell *lc, int size,
     int before, enum layout_type type, u_int *size1, u_int *size2,
     u_int *saved_size)
 {
-	u_int		 s1, s2, ss, min1, min2, gutters;
+	u_int		 s1, s2, ss, min1, min2, borders;
 	u_int		 sx = lc->g.sx, sy = lc->g.sy;
 
 	if (type == LAYOUT_LEFTRIGHT)
@@ -1470,8 +1472,8 @@ layout_split_sizes(struct window *w, struct layout_cell *lc, int size,
 
 	min1 = PANE_MINIMUM;
 	min2 = PANE_MINIMUM;
-	gutters = layout_separate_gutters(w, w->layout_root, lc, type);
-	if (gutters != 0) {
+	borders = layout_separate_borders(w, w->layout_root, lc, type);
+	if (borders != 0) {
 		if (type == LAYOUT_LEFTRIGHT &&
 		    w->sb == PANE_SCROLLBARS_ALWAYS) {
 			min1 += w->active->scrollbar_style.width +
@@ -1479,13 +1481,13 @@ layout_split_sizes(struct window *w, struct layout_cell *lc, int size,
 			min2 += w->active->scrollbar_style.width +
 			    w->active->scrollbar_style.pad;
 		}
-		/* -l is content size; the right or bottom cell keeps the edge. */
+		/* -l is the size inside the borders. */
 		min1 += 1;
-		min2 += gutters;
+		min2 += borders;
 		if (size >= 0 && before)
 			s2 = ss - size - 2;
 		else if (size >= 0)
-			s2 = size + gutters;
+			s2 = size + borders;
 	}
 	if (s2 < min2)
 		s2 = min2;
@@ -1685,6 +1687,7 @@ layout_close_pane(struct window_pane *wp)
 	events_fire_window("window-layout-changed", w);
 }
 
+/* Minimum cell size when spreading; top to bottom also counts status lines. */
 static u_int
 layout_spread_minimum(struct window *w, struct layout_cell *lc,
     enum layout_type type)
@@ -1722,7 +1725,7 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 		return (0);
 
 	/*
-	 * Keep every cell at layout minimum (includes separate gutters), then
+	 * Keep every cell at layout minimum (includes separate borders), then
 	 * share leftover space evenly.
 	 */
 	available = size - (number - 1);

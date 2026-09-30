@@ -1229,7 +1229,7 @@ format_cb_pane_in_mode(struct format_tree *ft)
 	return (value);
 }
 
-/* Separate borders inset tiled panes one cell from the window edge. */
+/* Is this a tiled pane with separate borders? */
 static int
 format_pane_is_separate(struct window_pane *wp)
 {
@@ -2232,8 +2232,9 @@ static void *
 format_cb_pane_at_left(struct format_tree *ft)
 {
 	if (ft->wp != NULL) {
-		if (ft->wp->xoff == 0 ||
-		    (format_pane_is_separate(ft->wp) && ft->wp->xoff == 1))
+		if (ft->wp->xoff == 0)
+			return (xstrdup("1"));
+		if (format_pane_is_separate(ft->wp) && ft->wp->xoff == 1)
 			return (xstrdup("1"));
 		return (xstrdup("0"));
 	}
@@ -2244,15 +2245,19 @@ format_cb_pane_at_left(struct format_tree *ft)
 static void *
 format_cb_pane_at_right(struct format_tree *ft)
 {
-	if (ft->wp != NULL) {
-		if (ft->wp->xoff + (int)ft->wp->sx == (int)ft->wp->window->sx ||
-		    (format_pane_is_separate(ft->wp) &&
-		    ft->wp->xoff + (int)ft->wp->sx ==
-		    (int)ft->wp->window->sx - 1))
-			return (xstrdup("1"));
-		return (xstrdup("0"));
-	}
-	return (NULL);
+	struct window_pane	*wp = ft->wp;
+	int			 right, wsx;
+
+	if (wp == NULL)
+		return (NULL);
+	right = wp->xoff + (int)wp->sx;
+	wsx = (int)wp->window->sx;
+
+	if (right == wsx)
+		return (xstrdup("1"));
+	if (format_pane_is_separate(wp) && right == wsx - 1)
+		return (xstrdup("1"));
+	return (xstrdup("0"));
 }
 
 /* Callback for pane_bottom. */

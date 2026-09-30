@@ -859,14 +859,16 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 					continue;
 				if ((int)y < yoff - 1 || y > yoff + sy)
 					continue;
-			} else if ((int)x < xoff || x > xoff + sx)
-				continue;
-			else if (pane_status == PANE_STATUS_TOP) {
-				if ((int)y < yoff - 1 || y > yoff + sy)
-					continue;
 			} else {
-				if ((int)y < yoff || y > yoff + sy)
+				if ((int)x < xoff || x > xoff + sx)
 					continue;
+				if (pane_status == PANE_STATUS_TOP) {
+					if ((int)y < yoff - 1 || y > yoff + sy)
+						continue;
+				} else {
+					if ((int)y < yoff || y > yoff + sy)
+						continue;
+				}
 			}
 		} else {
 			if (window_pane_get_pane_lines(wp) == PANE_LINES_NONE) {
@@ -891,7 +893,7 @@ struct window_pane *
 window_find_string(struct window *w, const char *s)
 {
 	u_int	x, y, top = 0, bottom = w->sy - 1;
-	int	status, separate;
+	int	status;
 
 	x = w->sx / 2;
 	y = w->sy / 2;
@@ -901,7 +903,6 @@ window_find_string(struct window *w, const char *s)
 		top++;
 	else if (status == PANE_STATUS_BOTTOM)
 		bottom--;
-	separate = window_border_type_is_separate(w);
 
 	if (strcasecmp(s, "top") == 0)
 		y = top;
@@ -926,7 +927,7 @@ window_find_string(struct window *w, const char *s)
 	} else
 		return (NULL);
 
-	if (separate) {
+	if (window_border_type_is_separate(w)) {
 		if (x == 0)
 			x = 1;
 		else if (x == w->sx - 1 && w->sx > 1)
@@ -2914,8 +2915,9 @@ window_get_pane_status(struct window *w)
 int
 window_border_type_is_separate(struct window *w)
 {
-	return (PANE_BORDER_TYPE_IS_SEPARATE(options_get_number(w->options,
-	    "pane-border-type")));
+	int	type = options_get_number(w->options, "pane-border-type");
+
+	return (type != PANE_BORDER_TYPE_JOINED);
 }
 
 int
