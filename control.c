@@ -579,6 +579,8 @@ control_notify_write(struct client *c, const char *fmt, ...)
 	TAILQ_INSERT_TAIL(&cs->deferred, cl, entry);
 }
 
+static void	control_flush_all_blocks(struct client *);
+
 /* Check age for this pane. */
 static int
 control_check_age(struct client *c, struct window_pane *wp,
@@ -603,6 +605,7 @@ control_check_age(struct client *c, struct window_pane *wp,
 			return (0);
 		cp->flags |= CONTROL_PANE_PAUSED;
 		control_discard_pane(c, cp);
+		control_flush_all_blocks(c);
 		control_notify_write(c, "%%pause %%%u", wp->id);
 	} else {
 		if (age < CONTROL_MAXIMUM_AGE)
