@@ -26,7 +26,8 @@ FMT="$FMT #{window_active_clients} #{window_active_clients_list}"
 $TMUX kill-server 2>/dev/null
 
 # No session: the callbacks have nothing to read and must return empty.
-out=$($TMUX start\; display-message -p "$FMT") || fail "display with no session"
+out=$($TMUX start\; set -s exit-empty off \; display-message -p "$FMT") ||
+    fail "display with no session"
 [ "$out" = "    " ] || fail "no session expanded to '$out'"
 
 $TMUX new-session -d -s src -n one -- sleep 30 || fail "new-session src"
