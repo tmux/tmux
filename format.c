@@ -866,10 +866,7 @@ format_cb_window_layout(struct format_tree *ft)
 	if (w == NULL)
 		return (NULL);
 
-	if (w->saved_layout_root != NULL)
-		lcroot = w->saved_layout_root;
-	else
-		lcroot = w->layout_root;
+	lcroot = w->layout_root;
 
 	if (c != NULL &&
 	    (c->flags & CLIENT_CONTROL) &&
@@ -893,7 +890,7 @@ format_cb_window_visible_layout(struct format_tree *ft)
 	    (c->flags & CLIENT_CONTROL) &&
 	    (~c->flags & CLIENT_CONTROL_NEWLAYOUTS))
 		flags |= LAYOUT_CUSTOM_OLD_FORMAT;
-	return (layout_dump(w, w->layout_root, flags));
+	return (layout_dump_visible(w, flags));
 }
 
 /* Callback for pane_start_command. */
@@ -2706,36 +2703,12 @@ static void *
 format_cb_pane_unzoomed_height(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
-	struct window		*w;
-	struct layout_cell	*lc, *root;
-	int			 status, floating;
-	u_int			 sy;
+	int			 xoff, yoff;
+	u_int			 sx, sy;
 
-	if (wp == NULL)
+	if (wp == NULL || wp->layout_cell == NULL)
 		return (NULL);
-	w = wp->window;
-
-	lc = wp->saved_layout_cell;
-	if (lc == NULL)
-		lc = wp->layout_cell;
-	if (lc == NULL)
-		return (NULL);
-	sy = lc->g.sy;
-	floating = (lc->flags & LAYOUT_CELL_FLOATING);
-
-	root = w->saved_layout_root;
-	if (root == NULL)
-		root = w->layout_root;
-	if (lc == wp->saved_layout_cell && !floating)
-		status = window_get_pane_status(w);
-	else
-		status = window_pane_get_pane_status(wp);
-	if (!floating &&
-	    root != NULL &&
-	    layout_add_horizontal_border(root, lc, status) &&
-	    sy > 1)
-		sy--;
-
+	layout_get_pane_geometry(wp, 1, &xoff, &yoff, &sx, &sy);
 	return (format_printf("%u", sy));
 }
 
@@ -2744,36 +2717,12 @@ static void *
 format_cb_pane_unzoomed_width(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
-	struct layout_cell	*lc;
-	int			 saved, sb_w, sb_pad;
-	u_int			 sx;
+	int			 xoff, yoff;
+	u_int			 sx, sy;
 
-	if (wp == NULL)
+	if (wp == NULL || wp->layout_cell == NULL)
 		return (NULL);
-
-	lc = wp->saved_layout_cell;
-	saved = (lc != NULL);
-	if (lc == NULL)
-		lc = wp->layout_cell;
-	if (lc == NULL)
-		return (NULL);
-	sx = lc->g.sx;
-
-	if ((saved && !SCREEN_IS_ALTERNATE(&wp->base) &&
-	    wp->window->sb == PANE_SCROLLBARS_ALWAYS) ||
-	    (!saved && window_pane_scrollbar_reserve(wp))) {
-		sb_w = wp->scrollbar_style.width;
-		sb_pad = wp->scrollbar_style.pad;
-		if (sb_w < 1)
-			sb_w = 1;
-		if (sb_pad < 0)
-			sb_pad = 0;
-		if ((int)sx - sb_w - sb_pad < PANE_MINIMUM)
-			sx = PANE_MINIMUM;
-		else
-			sx -= sb_w + sb_pad;
-	}
-
+	layout_get_pane_geometry(wp, 1, &xoff, &yoff, &sx, &sy);
 	return (format_printf("%u", sx));
 }
 

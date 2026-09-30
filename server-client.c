@@ -675,7 +675,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 				return (KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER);
 			} else /* py > sl_bottom */
 				return (KEYC_MOUSE_LOCATION_SCROLLBAR_DOWN);
-		} else if (window_pane_is_floating(wp) &&
+		} else if (window_pane_is_unzoomed_float(wp) &&
 		    window_pane_get_pane_lines(wp) != PANE_LINES_NONE &&
 		    (px == bdr_left ||
 		    py == wp->yoff - 1 ||
@@ -691,7 +691,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 		TAILQ_FOREACH(fwp, &w->panes, entry) {
 			if (!window_pane_is_visible(fwp))
 				continue;
-			if (window_pane_is_floating(fwp) &&
+			if (window_pane_is_unzoomed_float(fwp) &&
 			    window_pane_get_pane_lines(fwp) == PANE_LINES_NONE)
 				continue;
 			if (window_pane_scrollbar_reserve(fwp)) {

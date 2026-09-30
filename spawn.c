@@ -362,13 +362,6 @@ spawn_pane(struct spawn_context *sc, char **cause)
 			new_wp->layout_cell->flags |= LAYOUT_CELL_FLOATING;
 		if (sc->flags & SPAWN_FLOATOVERZOOM)
 			new_wp->flags |= PANE_FLOATOVERZOOM;
-
-		/*
-		 * If window currently zoomed, window_set_active_pane calls
-		 * window_unzoom which it copies back the saved_layout_cell.
-		 */
-		if (w->flags & WINDOW_ZOOMED)
-			new_wp->saved_layout_cell = new_wp->layout_cell;
 	}
 
 	/*
@@ -593,6 +586,8 @@ complete:
 
 	if (sc->flags & SPAWN_RESPAWN)
 		return (new_wp);
+	if (sc->flags & SPAWN_ZOOM)
+		window_zoom(new_wp);
 	if (sc->flags & SPAWN_MODAL) {
 		w->modal_last = w->active;
 		w->modal = new_wp;
@@ -747,10 +742,8 @@ spawn_editor(struct client *c, const char *buf, size_t len,
 	lg.sy = w->sy * 9 / 10;
 	lg.xoff = w->sx / 2 - lg.sx / 2;
 	lg.yoff = w->sy / 2 - lg.sy / 2;
-	window_push_zoom(w, 0, 1);
 	lc = layout_floating_pane(w, NULL, &lg);
 	if (lc == NULL) {
-		window_pop_zoom(w);
 		spawn_editor_free(es);
 		return (NULL);
 	}
@@ -774,11 +767,9 @@ spawn_editor(struct client *c, const char *buf, size_t len,
 	environ_free(env);
 	if (wp == NULL) {
 		free(cause);
-		window_pop_zoom(w);
 		spawn_editor_free(es);
 		return (NULL);
 	}
-	window_pop_zoom(w);
 	options_set_number(wp->options, "remain-on-exit", 0);
 	es->pid = wp->pid;
 	wp->editor = es;

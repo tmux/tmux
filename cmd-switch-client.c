@@ -59,7 +59,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*s;
 	struct winlink		*wl;
 	struct window		*w;
-	struct window_pane	*wp;
+	struct window_pane	*wp, *zwp = NULL;
 	const char		*tablename;
 	struct key_table	*table;
 	struct sort_criteria	 sort_crit;
@@ -143,12 +143,14 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 				visible = 1;
 			else
 				visible = window_pane_is_visible(wp);
-			if (!visible && window_push_zoom(w, 0, Zflag))
-				server_redraw_window(w);
+			if (!visible && Zflag)
+				zwp = window_zoomed_pane(w);
 			window_redraw_active_switch(w, wp);
 			window_set_active_pane(w, wp, 1);
-			if (!visible && window_pop_zoom(w))
+			if (zwp != NULL) {
+				window_zoom_move(zwp, wp);
 				server_redraw_window(w);
+			}
 		}
 		if (wl != NULL) {
 			session_set_current(s, wl);

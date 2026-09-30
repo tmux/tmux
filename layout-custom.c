@@ -307,32 +307,68 @@ bad:
 	return (xstrdup("0000,"));
 }
 
+/*
+ * Dump the layout as it is seen while a pane is zoomed: the zoomed pane fills
+ * the window with the floating panes in front of it. The cells are temporary
+ * and do not belong to the panes.
+ */
+char *
+layout_dump_visible(struct window *w, int flags)
+{
+	struct window_pane	*zwp = window_zoomed_pane(w), *wp;
+	struct layout_cell	*root, *lc, *lcnext;
+	char			*out;
+
+	if (zwp == NULL)
+		return (layout_dump(w, w->layout_root, flags));
+
+	root = layout_create_cell(NULL);
+	layout_set_size(root, w->sx, w->sy, 0, 0);
+	root->wp = zwp;
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
+		if (wp == zwp)
+			break;
+		if (!window_pane_is_unzoomed_float(wp) ||
+		    !window_pane_is_visible(wp))
+			continue;
+		if (root->type == LAYOUT_WINDOWPANE) {
+			lc = layout_create_cell(root);
+			layout_set_size(lc, w->sx, w->sy, 0, 0);
+			lc->wp = zwp;
+			root->wp = NULL;
+			root->type = LAYOUT_TOPBOTTOM;
+			TAILQ_INSERT_TAIL(&root->cells, lc, entry);
+		}
+		lc = layout_create_cell(root);
+		memcpy(&lc->g, &wp->layout_cell->g, sizeof lc->g);
+		lc->flags |= LAYOUT_CELL_FLOATING;
+		lc->wp = wp;
+		TAILQ_INSERT_TAIL(&root->cells, lc, entry);
+	}
+	out = layout_dump(w, root, flags);
+
+	if (root->type != LAYOUT_WINDOWPANE) {
+		TAILQ_FOREACH_SAFE(lc, &root->cells, entry, lcnext) {
+			TAILQ_REMOVE(&root->cells, lc, entry);
+			free(lc);
+		}
+	}
+	free(root);
+	return (out);
+}
+
 /* Get a floating pane cell's z-index in the layout being dumped. */
 static u_int
 layout_cell_zindex(struct layout_cell *lc)
 {
 	struct window_pane	*wp = lc->wp, *wq;
 	struct window		*w = wp->window;
-	struct layout_cell	*other;
-	int			 saved = (lc == wp->saved_layout_cell);
 	u_int			 i = 0;
 
-	if (saved &&
-	    w->active != NULL &&
-	    (w->active->flags & PANE_ZOOMED) &&
-	    (w->active->saved_layout_cell->flags & LAYOUT_CELL_FLOATING)) {
-		if (wp == w->active)
-			return (0);
-		i++;
-	}
 	TAILQ_FOREACH(wq, &w->z_index, zentry) {
 		if (wq == wp)
 			break;
-		if (saved)
-			other = wq->saved_layout_cell;
-		else
-			other = wq->layout_cell;
-		if (other != NULL && (other->flags & LAYOUT_CELL_FLOATING))
+		if (window_pane_is_floating(wq))
 			i++;
 	}
 	return (i);

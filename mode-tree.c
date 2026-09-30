@@ -621,7 +621,7 @@ mode_tree_zoom(struct mode_tree_data *mtd, struct args *args)
 	struct window_pane	*wp = mtd->wp;
 
 	if (args_has(args, 'Z')) {
-		mtd->zoomed = (wp->window->flags & WINDOW_ZOOMED);
+		mtd->zoomed = (wp->flags & PANE_ZOOMED);
 		if (!mtd->zoomed && window_zoom(wp) == 0)
 			server_redraw_window(wp->window);
 	} else
@@ -710,8 +710,8 @@ mode_tree_free(struct mode_tree_data *mtd)
 {
 	struct window_pane	*wp = mtd->wp;
 
-	if (mtd->zoomed == 0)
-		server_unzoom_window(wp->window);
+	if (mtd->zoomed == 0 && window_unzoom_pane(wp, 1) == 0)
+		server_redraw_window(wp->window);
 
 	mode_tree_clear_prompt(mtd);
 	mode_tree_free_items(&mtd->children);

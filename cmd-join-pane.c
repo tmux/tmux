@@ -64,6 +64,59 @@ const struct cmd_entry cmd_move_pane_entry = {
 	.exec = cmd_join_pane_exec
 };
 
+/* Does a position name change the stacking order rather than the geometry? */
+static int
+cmd_join_pane_is_stacking(const char *position)
+{
+	return (strcmp(position, "front") == 0 ||
+	    strcmp(position, "back") == 0 ||
+	    strcmp(position, "forward") == 0 ||
+	    strcmp(position, "backward") == 0 ||
+	    strcmp(position, "forward-loop") == 0 ||
+	    strcmp(position, "backward-loop") == 0);
+}
+
+/* Get the stacking group of a pane: modal, always on top, or other. */
+static int
+cmd_join_pane_group(struct window_pane *wp)
+{
+	if (wp == wp->window->modal)
+		return (0);
+	if (wp->flags & PANE_FLOATOVERZOOM)
+		return (1);
+	return (2);
+}
+
+/* Get the visible pane just in front of a pane in its group, if any. */
+static struct window_pane *
+cmd_join_pane_forward(struct window_pane *wp)
+{
+	struct window_pane	*owp = wp;
+
+	do {
+		owp = TAILQ_PREV(owp, window_panes_zindex, zentry);
+	} while (owp != NULL && !window_pane_is_visible(owp));
+	if (owp == NULL || cmd_join_pane_group(owp) != cmd_join_pane_group(wp))
+		return (NULL);
+	return (owp);
+}
+
+/* Get the visible pane just behind a pane in its group, if any. */
+static struct window_pane *
+cmd_join_pane_backward(struct window_pane *wp)
+{
+	struct window_pane	*owp = wp;
+
+	do {
+		owp = TAILQ_NEXT(owp, zentry);
+	} while (owp != NULL && !window_pane_is_visible(owp));
+	if (owp == NULL ||
+	    !window_pane_is_raised(owp) ||
+	    cmd_join_pane_group(owp) != cmd_join_pane_group(wp))
+		return (NULL);
+	return (owp);
+}
+
 static enum cmd_retval
 cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
     struct window_pane *wp, const char *position)
@@ -128,62 +181,35 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 		xoff = (3 * wx) / 4 - px / 2;
 		yoff = (3 * wy) / 4 - py / 2;
 	} else if (strcmp(position, "front") == 0) {
-		TAILQ_REMOVE(&w->z_index, wp, zentry);
-		TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
+		window_raise_pane(wp);
 	} else if (strcmp(position, "back") == 0) {
-		TAILQ_REMOVE(&w->z_index, wp, zentry);
-		TAILQ_FOREACH(owp, &w->z_index, zentry) {
-			if (!window_pane_is_floating_with_hidden(owp))
-				break;
-		}
-		if (owp != NULL)
-			TAILQ_INSERT_BEFORE(owp, wp, zentry);
-		else
-			TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
+		window_lower_pane(wp);
 	} else if (strcmp(position, "forward") == 0) {
-		owp = TAILQ_PREV(wp, window_panes_zindex, zentry);
-		while (owp != NULL && owp->layout_cell == NULL)
-			owp = TAILQ_PREV(owp, window_panes_zindex, zentry);
+		owp = cmd_join_pane_forward(wp);
 		if (owp != NULL) {
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_BEFORE(owp, wp, zentry);
 		}
 	} else if (strcmp(position, "backward") == 0) {
-		owp = TAILQ_NEXT(wp, zentry);
-		while (owp != NULL && owp->layout_cell == NULL)
-			owp = TAILQ_NEXT(owp, zentry);
-		if (owp != NULL && window_pane_is_floating(owp)) {
+		owp = cmd_join_pane_backward(wp);
+		if (owp != NULL) {
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_AFTER(&w->z_index, owp, wp, zentry);
 		}
 	} else if (strcmp(position, "forward-loop") == 0) {
-		owp = TAILQ_PREV(wp, window_panes_zindex, zentry);
-		while (owp != NULL && owp->layout_cell == NULL)
-			owp = TAILQ_PREV(owp, window_panes_zindex, zentry);
-		TAILQ_REMOVE(&w->z_index, wp, zentry);
-		if (owp != NULL)
+		owp = cmd_join_pane_forward(wp);
+		if (owp != NULL) {
+			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_BEFORE(owp, wp, zentry);
-		else {
-			TAILQ_FOREACH(owp, &w->z_index, zentry) {
-				if (!window_pane_is_floating_with_hidden(owp))
-					break;
-			}
-			if (owp != NULL)
-				TAILQ_INSERT_BEFORE(owp, wp, zentry);
-			else
-				TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
-		}
+		} else
+			window_lower_pane(wp);
 	} else if (strcmp(position, "backward-loop") == 0) {
-		owp = TAILQ_NEXT(wp, zentry);
-		while (owp != NULL && owp->layout_cell == NULL)
-			owp = TAILQ_NEXT(owp, zentry);
-		if (owp != NULL && window_pane_is_floating(owp)) {
+		owp = cmd_join_pane_backward(wp);
+		if (owp != NULL) {
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_AFTER(&w->z_index, owp, wp, zentry);
-		} else {
-			TAILQ_REMOVE(&w->z_index, wp, zentry);
-			TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
-		}
+		} else
+			window_raise_pane(wp);
 	} else {
 		cmdq_error(item, "unknown position: %s", position);
 		return (CMD_RETURN_ERROR);
@@ -345,6 +371,7 @@ cmd_join_pane_zindex(struct cmdq_item *item, struct winlink *wl,
 	struct window_pane	*owp;
 	const char		*errstr;
 	u_int			 n, z;
+	int			 group;
 
 	z = strtonum(s, 0, UINT_MAX, &errstr);
 	if (errstr != NULL) {
@@ -353,11 +380,16 @@ cmd_join_pane_zindex(struct cmdq_item *item, struct winlink *wl,
 	}
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
 
+	/* The pane stays in front of or behind panes of the other groups. */
+	group = cmd_join_pane_group(wp);
 	n = 0;
 	TAILQ_FOREACH(owp, &w->z_index, zentry) {
-		if (!window_pane_is_floating_with_hidden(owp))
+		if (cmd_join_pane_group(owp) < group)
+			continue;
+		if (cmd_join_pane_group(owp) > group ||
+		    !window_pane_is_raised(owp))
 			break;
-		if (owp->layout_cell == NULL)
+		if (!window_pane_is_visible(owp))
 			continue;
 		if (n >= z)
 			break;
@@ -386,10 +418,6 @@ cmd_join_pane_tile(struct cmdq_item *item, struct args *args, struct window *w,
 		cmdq_error(item, "pane is not floating");
 		return (CMD_RETURN_ERROR);
 	}
-	if (w->flags & WINDOW_ZOOMED) {
-		cmdq_error(item, "can't tile a pane while window is zoomed");
-		return (CMD_RETURN_ERROR);
-	}
 
 	lc->fg.sx = lc->g.sx;
 	lc->fg.sy = lc->g.sy;
@@ -402,8 +430,10 @@ cmd_join_pane_tile(struct cmdq_item *item, struct args *args, struct window *w,
 	}
 	lc->flags &= ~LAYOUT_CELL_FLOATING;
 
-	TAILQ_REMOVE(&w->z_index, wp, zentry);
-	TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
+	if (~wp->flags & PANE_ZOOMED) {
+		TAILQ_REMOVE(&w->z_index, wp, zentry);
+		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
+	}
 
 	if (!args_has(args, 'd'))
 		window_set_active_pane(w, wp, 1);
@@ -453,6 +483,12 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 				cmdq_error(item, "pane is not floating");
 				return (CMD_RETURN_ERROR);
 			}
+			/* Moving unzooms a zoomed pane; reordering does not. */
+			s = args_get(args, 'P');
+			if ((dst_wp->flags & PANE_ZOOMED) &&
+			    !args_has(args, 'z') &&
+			    (s == NULL || !cmd_join_pane_is_stacking(s)))
+				window_unzoom_pane(dst_wp, 1);
 			if ((s = args_get(args, 'P')) != NULL)
 				return (cmd_join_pane_place(item, dst_wl, dst_wp, s));
 			if ((s = args_get(args, 'z')) != NULL)
@@ -469,9 +505,6 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 		cmdq_error(item, "pane is modal");
 		return (CMD_RETURN_ERROR);
 	}
-
-	server_unzoom_window(dst_w);
-	server_unzoom_window(src_w);
 
 	if (src_wp == dst_wp) {
 		if (window_pane_is_floating(src_wp))
@@ -504,13 +537,11 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	src_wp->window = dst_w;
 	options_set_parent(src_wp->options, dst_w->options);
 	src_wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
-	if (flags & SPAWN_BEFORE) {
+	if (flags & SPAWN_BEFORE)
 		TAILQ_INSERT_BEFORE(dst_wp, src_wp, entry);
-		TAILQ_INSERT_BEFORE(dst_wp, src_wp, zentry);
-	} else {
+	else
 		TAILQ_INSERT_AFTER(&dst_w->panes, dst_wp, src_wp, entry);
-		TAILQ_INSERT_AFTER(&dst_w->z_index, dst_wp, src_wp, zentry);
-	}
+	TAILQ_INSERT_TAIL(&dst_w->z_index, src_wp, zentry);
 	layout_assign_pane(lc, src_wp, 0);
 	colour_palette_from_option(&src_wp->palette, src_wp->options);
 
