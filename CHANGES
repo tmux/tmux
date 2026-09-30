@@ -124,6 +124,8 @@ CHANGES FROM 3.7c TO 3.8
 * Preserve existing Ss and Se terminfo capabilities for cursor styles and
   restoring the default cursor (issue 5476).
 
+* Enable left and right margins for WezTerm and Ghostty (Michael Grant).
+
 * Add a #{A/count:frames} modifier to show a series of frames as an animation
   in the status line (issue 5412 from Fernando Daciuk).
 
@@ -218,6 +220,9 @@ CHANGES FROM 3.7c TO 3.8
 
 * Fix choose mode filtering when more than one pane exists (issue 5326), and
   fix an infinite loop in customize mode when a filter does not match.
+
+* Preserve the scroll position in tree modes when rebuilding the list
+  (Kim A Brandt, issue 5631).
 
 * Fix regsub when the pattern is anchored at the start (issue 5341).
 
