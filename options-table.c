@@ -313,7 +313,7 @@ const struct options_table_entry options_table[] = {
 	  .text = "Whether to use the alternate screen and clear it when "
 		  "a client is attached. When disabled, tmux does not "
 		  "enter the alternate screen on attach so terminal "
-		  "content before tmux remains in scrollback."
+		  "content before tmux remains in scrollback. A full-window pane in its own alternate screen switches the terminal to its alternate screen."
 	},
 
 	{ .name = "command-alias",
