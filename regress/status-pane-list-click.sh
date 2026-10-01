@@ -88,5 +88,15 @@ check "$b" '#{pane_hidden_flag}' 0
 click $button $row
 check "$f" '#{pane_hidden_flag}' 0
 
+# With every pane hidden the active pane is a hidden one; clicking its entry
+# must still show it.
+$TMUX select-pane -t "$b" || fail "select failed"
+for p in "$f" "$a" "$b"; do
+	$TMUX resize-pane -H -t "$p" || fail "hide failed"
+done
+check "$b" '#{pane_hidden_flag}:#{pane_active}' '1:1'
+click $entry_b $row
+check "$b" '#{pane_hidden_flag}:#{pane_active}' '0:1'
+
 cleanup
 exit 0

@@ -137,7 +137,8 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	} else {
 		if (cmdq_get_client(item) == NULL)
 			return (CMD_RETURN_NORMAL);
-		if (wl != NULL && wp != NULL && wp != wl->window->active) {
+		if (wl != NULL && wp != NULL &&
+		    (wp != wl->window->active || (wp->flags & PANE_HIDDEN))) {
 			w = wl->window;
 			if (w->modal != NULL && wp != w->modal)
 				visible = 1;
