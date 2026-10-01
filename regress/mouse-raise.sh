@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Moving the mouse onto a pane with focus-follows-mouse makes it active without
-# raising it.
+# raising it, but clicking a pane's border always brings it to the front.
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -65,6 +65,16 @@ mouse '\033[<0;54;12M\033[<0;54;12m'
 check "$Y" '#{pane_active}:#{pane_z}' '1:0'
 mouse '\033[<0;14;12M\033[<0;14;12m'
 check "$X" '#{pane_active}:#{pane_z}' '1:0'
+
+# A zoomed pane that is active under a floating pane is not raised by clicking
+# inside it, but is raised by clicking on its border.
+$TMUX resize-pane -Z -t "$A" || fail "zoom failed"
+$TMUX select-pane -t "$Y" || fail "select failed"
+$TMUX select-pane -t "$A" || fail "select failed"
+check "$A" '#{pane_zoomed_flag}:#{pane_active}' '1:1'
+check "$Y" '#{pane_z}' 0
+mouse '\033[<0;3;1M\033[<0;3;1m'
+check "$A" '#{pane_z}' 0
 
 cleanup
 exit 0
