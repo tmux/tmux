@@ -279,6 +279,27 @@ run rotate-window -Z
 check "$A" '#{pane_hidden_flag}' 0
 check "$B" '#{pane_hidden_flag}' 0
 
+# Hiding every pane, then showing and closing them one by one, leaves the last
+# pane hidden as the only pane in the window; showing it must not crash.
+reset
+C=$(run split-window -dPF '#{pane_id}') || exit 1
+for p in "$A" "$B" "$C"; do
+	run resize-pane -H -t "$p"
+done
+for p in "$A" "$B"; do
+	run select-pane -t "$p"
+	hidden "$p" 0
+	run kill-pane -t "$p"
+done
+hidden "$C" 1
+check "$C" '#{window_panes}' 1
+run select-pane -t "$C"
+hidden "$C" 0
+check "$C" '#{pane_active}:#{pane_width}x#{pane_height}' '1:80x24'
+run resize-pane -H -t "$C"
+run resize-pane -H -t "$C"
+hidden "$C" 0
+
 # Floating and tiling a hidden pane keeps it hidden.
 reset
 run resize-pane -H -t "$B"

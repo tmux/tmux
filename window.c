@@ -1027,6 +1027,8 @@ window_count_tiled_siblings(struct layout_cell *lc)
 	struct layout_cell	*lcsib;
 	u_int			 n = 0;
 
+	if (lc->parent == NULL)
+		return (0);
 	TAILQ_FOREACH(lcsib, &lc->parent->cells, entry) {
 		if (lcsib == lc)
 			continue;
