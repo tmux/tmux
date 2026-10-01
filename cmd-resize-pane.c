@@ -41,8 +41,8 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.name = "resize-pane",
 	.alias = "resizep",
 
-	.args = { "aD::L::MR::Tt:U::x:y:Z", 0, 1, NULL },
-	.usage = "[-aMTZ] [-D lines] [-L columns] [-R columns] [-U lines] "
+	.args = { "aD::HL::MR::Tt:U::x:y:Z", 0, 1, NULL },
+	.usage = "[-aHMTZ] [-D lines] [-L columns] [-R columns] [-U lines] "
 		 "[-x width] [-y height] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -50,6 +50,35 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_resize_pane_exec
 };
+
+/*
+ * Show the desktop: hide every pane above the layout, remembering which, or if
+ * any were hidden like that show just those again.
+ */
+static void
+cmd_resize_pane_desktop(struct window *w)
+{
+	struct window_pane	*wp;
+	int			 marked = 0;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp->flags & PANE_HIDDENALL)
+			marked = 1;
+	}
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (marked) {
+			if (wp->flags & PANE_HIDDENALL)
+				window_show_pane(wp);
+			continue;
+		}
+		if (wp == w->modal || (wp->flags & PANE_HIDDEN))
+			continue;
+		if (!window_pane_is_raised(wp))
+			continue;
+		window_hide_pane(wp);
+		wp->flags |= PANE_HIDDENALL;
+	}
+}
 
 static enum cmd_retval
 cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
@@ -83,6 +112,16 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'M'))
 		return (cmd_resize_pane_mouse_update(self, item));
 
+	if (args_has(args, 'H')) {
+		if (args_has(args, 'a'))
+			cmd_resize_pane_desktop(w);
+		else if (wp->flags & PANE_HIDDEN)
+			window_set_active_pane(w, wp, 1);
+		else
+			window_hide_pane(wp);
+		server_redraw_window(w);
+		return (CMD_RETURN_NORMAL);
+	}
 	if (args_has(args, 'Z')) {
 		if (args_has(args, 'a'))
 			window_unzoom(w, 1);
@@ -93,6 +132,8 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		server_redraw_window(w);
 		return (CMD_RETURN_NORMAL);
 	}
+	if ((wp->flags & PANE_HIDDEN) && !window_pane_is_floating(wp))
+		window_show_pane(wp);
 	if (wp->flags & PANE_ZOOMED)
 		window_unzoom_pane(wp, 1);
 

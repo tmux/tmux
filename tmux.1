@@ -364,6 +364,8 @@ Choose the current window interactively.
 Kill the current pane.
 .It z
 Toggle zoom state of the current pane.
+.It _
+Hide the current pane.
 .It Tab
 Choose a new window and session by fuzzy matching.
 .It {
@@ -2794,7 +2796,7 @@ If
 .Fl d
 is given, the active pane is not changed.
 The pane must not already be floating.
-A zoomed pane stays zoomed.
+A hidden or zoomed pane stays hidden or zoomed.
 .Tg capturep
 .It Xo Ic capture\-pane
 .Op Fl aeFHILpPRqCJMN
@@ -3836,7 +3838,7 @@ if specified, to
 .Ar new\-name .
 .Tg resizep
 .It Xo Ic resize\-pane
-.Op Fl aMTZ
+.Op Fl aHMTZ
 .Op Fl D Ar lines
 .Op Fl L Ar columns
 .Op Fl R Ar columns
@@ -3892,6 +3894,19 @@ floating panes in front of a zoomed pane stay visible above it.
 with
 .Fl Z
 unzooms every pane in the window.
+.Pp
+.Fl H
+hides the target pane, or shows it if it is hidden.
+A hidden pane is not shown, cannot be selected with the mouse and is skipped
+when moving to the next or previous pane, but it is otherwise unchanged: a
+hidden tiled pane gives its space to a neighbour and takes it back when shown,
+and a pane that is zoomed or floating is still zoomed or floating when shown.
+Selecting a hidden pane shows it.
+.Fl a
+with
+.Fl H
+hides every floating or zoomed pane in the window, or, if any were hidden in
+this way, shows just those again.
 .Pp
 .Fl M
 begins mouse resizing (only valid if bound to a mouse key binding, see
@@ -6058,8 +6073,9 @@ also raises zoomed panes and
 .Ic off
 raises none.
 A floating or zoomed pane that is covered by a zoomed pane is always raised
-when it is made active; a tiled pane that is covered unzooms every pane
-instead.
+when it is made active, and a hidden pane is shown; a tiled pane that is
+covered hides the zoomed panes instead, as the desktop does, so that the tiled
+panes are shown, and the desktop shows them again.
 Moving the mouse onto a pane with
 .Ic focus\-follows\-mouse
 makes it active without raising it, so
@@ -7445,6 +7461,7 @@ The following variables are available, where appropriate:
 .It Li "pane_floating_flag" Ta "" Ta "1 if pane is floating"
 .It Li "pane_format" Ta "" Ta "1 if format is for a pane"
 .It Li "pane_height" Ta "" Ta "Height of pane"
+.It Li "pane_hidden_flag" Ta "" Ta "1 if pane is hidden"
 .It Li "pane_id" Ta "#D" Ta "Unique pane ID"
 .It Li "pane_in_mode" Ta "" Ta "Number of modes pane is in"
 .It Li "pane_index" Ta "#P" Ta "Index of pane"

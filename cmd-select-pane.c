@@ -264,7 +264,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (wp == w->active)
+	if (wp == w->active && (~wp->flags & PANE_HIDDEN))
 		return (CMD_RETURN_NORMAL);
 	if (w->modal != NULL && wp != w->modal)
 		visible = 1;

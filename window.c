@@ -677,7 +677,7 @@ window_pane_floating_overlaps(struct window_pane *fwp, struct window_pane *wp)
 	int	fxoff, fyoff, xoff, yoff, border = 0;
 	u_int	fsx, fsy, sx, sy;
 
-	if (!window_pane_is_raised(fwp))
+	if (!window_pane_is_raised(fwp) || !window_pane_is_visible(fwp))
 		return (0);
 
 	window_pane_full_size_offset(fwp, &fxoff, &fyoff, &fsx, &fsy);
@@ -763,9 +763,11 @@ window_activate_pane(struct window *w, struct window_pane *wp, int notify,
 
 	log_debug("%s: pane %%%u", __func__, wp->id);
 
-	if (wp == w->active)
-		return (0);
 	if (w->modal != NULL && wp != w->modal)
+		return (0);
+	if (wp->flags & PANE_HIDDEN)
+		window_show_pane(wp);
+	if (wp == w->active)
 		return (0);
 	if (!window_pane_is_visible(wp)) {
 		/*
@@ -1012,6 +1014,82 @@ window_raise_pane(struct window_pane *wp)
 	redraw_invalidate_scene(w);
 }
 
+/*
+ * Hide a pane. It keeps its place in the layout and in the stacking order and
+ * stays zoomed or floating, so showing it again puts it back as it was.
+ */
+void
+window_hide_pane(struct window_pane *wp)
+{
+	struct window		*w = wp->window;
+	struct layout_cell	*lc = wp->layout_cell;
+	struct window_pane	*wp1;
+
+	if ((wp->flags & PANE_HIDDEN) || wp == w->modal || lc == NULL)
+		return;
+
+	/* A tiled pane gives its space to a neighbour. */
+	if (layout_cell_is_tiled(lc)) {
+		memcpy(&lc->tg, &lc->g, sizeof lc->tg);
+		layout_remove_tile(w, lc);
+	}
+	wp->flags |= PANE_HIDDEN;
+	layout_fix_offsets(w);
+	layout_fix_panes(w, NULL);
+
+	/* Move the focus to the last used pane or the top one that is seen. */
+	if (wp == w->active) {
+		TAILQ_FOREACH(wp1, &w->last_panes, sentry) {
+			if (wp1 != wp && window_pane_is_visible(wp1))
+				break;
+		}
+		if (wp1 == NULL) {
+			TAILQ_FOREACH(wp1, &w->z_index, zentry) {
+				if (wp1 != wp && window_pane_is_visible(wp1))
+					break;
+			}
+		}
+		if (wp1 != NULL)
+			window_set_active_pane(w, wp1, 1);
+	}
+
+	events_fire_window("window-layout-changed", w);
+	redraw_invalidate_scene(w);
+	server_redraw_window(w);
+}
+
+/* Show a hidden pane. Returns -1 if a tiled pane has no room. */
+int
+window_show_pane(struct window_pane *wp)
+{
+	struct window		*w = wp->window;
+	struct layout_cell	*lc = wp->layout_cell;
+	int			 tiled;
+
+	if (~wp->flags & PANE_HIDDEN)
+		return (0);
+
+	tiled = (lc != NULL && !window_pane_is_floating(wp));
+	if (tiled && layout_insert_tile(w, lc) != 0)
+		return (-1);
+	wp->flags &= ~(PANE_HIDDEN|PANE_HIDDENALL);
+
+	/* Try to get back the size the pane had. */
+	if (tiled && lc->parent != NULL && lc->tg.sx != UINT_MAX) {
+		if (lc->parent->type == LAYOUT_LEFTRIGHT)
+			layout_resize_pane_to(wp, lc->parent->type, lc->tg.sx);
+		else
+			layout_resize_pane_to(wp, lc->parent->type, lc->tg.sy);
+	}
+	layout_fix_offsets(w);
+	layout_fix_panes(w, NULL);
+
+	events_fire_window("window-layout-changed", w);
+	redraw_invalidate_scene(w);
+	server_redraw_window(w);
+	return (0);
+}
+
 /* Move a pane to the back of the panes it is stacked with. */
 void
 window_lower_pane(struct window_pane *wp)
@@ -1150,7 +1228,7 @@ window_zoomed_pane(struct window *w)
 	if (~w->flags & WINDOW_ZOOMED)
 		return (NULL);
 	TAILQ_FOREACH(wp, &w->z_index, zentry) {
-		if (wp->flags & PANE_ZOOMED)
+		if ((wp->flags & PANE_ZOOMED) && (~wp->flags & PANE_HIDDEN))
 			return (wp);
 	}
 	return (NULL);
@@ -1296,9 +1374,14 @@ window_pane_at_index(struct window *w, u_int idx)
 struct window_pane *
 window_pane_next_by_number(struct window *w, struct window_pane *wp, u_int n)
 {
+	struct window_pane	*start;
+
 	for (; n > 0; n--) {
-		if ((wp = TAILQ_NEXT(wp, entry)) == NULL)
-			wp = TAILQ_FIRST(&w->panes);
+		start = wp;
+		do {
+			if ((wp = TAILQ_NEXT(wp, entry)) == NULL)
+				wp = TAILQ_FIRST(&w->panes);
+		} while ((wp->flags & PANE_HIDDEN) && wp != start);
 	}
 
 	return (wp);
@@ -1308,9 +1391,15 @@ struct window_pane *
 window_pane_previous_by_number(struct window *w, struct window_pane *wp,
     u_int n)
 {
+	struct window_pane	*start;
+
 	for (; n > 0; n--) {
-		if ((wp = TAILQ_PREV(wp, window_panes, entry)) == NULL)
-			wp = TAILQ_LAST(&w->panes, window_panes);
+		start = wp;
+		do {
+			wp = TAILQ_PREV(wp, window_panes, entry);
+			if (wp == NULL)
+				wp = TAILQ_LAST(&w->panes, window_panes);
+		} while ((wp->flags & PANE_HIDDEN) && wp != start);
 	}
 
 	return (wp);
@@ -1375,7 +1464,10 @@ window_count_panes(struct window *w, int with_floating)
 	u_int			 n = 0;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (with_floating || !window_pane_is_floating(wp))
+		if (with_floating)
+			n++;
+		else if (!window_pane_is_floating(wp) &&
+		    (~wp->flags & PANE_HIDDEN))
 			n++;
 	}
 	return (n);
@@ -1444,6 +1536,8 @@ window_pane_printable_flags(struct window_pane *wp)
 		flags[pos++] = 'Z';
 	if (window_pane_is_floating(wp))
 		flags[pos++] = 'F';
+	if (wp->flags & PANE_HIDDEN)
+		flags[pos++] = 'H';
 	if (wp->flags & PANE_FLOATOVERZOOM)
 		flags[pos++] = 'A';
 	if (wp == w->modal)
@@ -2155,6 +2249,8 @@ window_pane_is_visible(struct window_pane *wp)
 	struct window		*w = wp->window;
 	struct window_pane	*wp1;
 
+	if (wp->flags & PANE_HIDDEN)
+		return (0);
 	if (~w->flags & WINDOW_ZOOMED)
 		return (1);
 
@@ -2162,7 +2258,7 @@ window_pane_is_visible(struct window_pane *wp)
 	TAILQ_FOREACH(wp1, &w->z_index, zentry) {
 		if (wp1 == wp)
 			return (1);
-		if (wp1->flags & PANE_ZOOMED)
+		if ((wp1->flags & PANE_ZOOMED) && (~wp1->flags & PANE_HIDDEN))
 			return (0);
 	}
 	return (1);

@@ -80,6 +80,7 @@
 	" 'Respawn' 'R' {respawn-pane -k}" \
 	" '#{?pane_marked,Unmark,Mark}' 'm' {select-pane -m}" \
 	" '#{?#{>:#{window_panes},1},,-}#{?pane_zoomed_flag,Unzoom,Zoom}' 'z' {resize-pane -Z}" \
+	" 'Hide' 'H' {resize-pane -H}" \
 	" '#{?#{||:#{pane_floating_flag},#{pane_zoomed_flag}},Bring To Front,}' 'F' {move-pane -P front}"
 #define DEFAULT_MOVE_MENU \
 	" 'Centre' 'c' {move-pane -P centre}" \
@@ -397,6 +398,7 @@ key_bindings_init(void)
 		"bind -N 'Kill current window' & { confirm-before -p\"kill-window #W? (y/n)\" kill-window }",
 		"bind -N 'Prompt for window index to select' \"'\" { command-prompt -pindex { select-window -t ':%%' } }",
 		"bind -N 'New floating pane' * { new-pane }",
+		"bind -N 'Hide pane' _ { resize-pane -H }",
 		"bind -N 'Toggle pane between floating and tiled' @ { if -F '#{pane_floating_flag}' { join-pane } { break-pane -W } }",
 		"bind -N 'Switch to previous client' ( { switch-client -p }",
 		"bind -N 'Switch to next client' ) { switch-client -n }",
@@ -531,7 +533,7 @@ key_bindings_init(void)
 		"bind -n M-MouseDrag1Border { move-pane -M }",
 
 		/* Mouse button 1 down on status line. */
-		"bind -n MouseDown1Status { switch-client -t= }",
+		"bind -n MouseDown1Status { if -F '#{==:#{mouse_status_range},desktop}' { resize-pane -a -H } { if -Ft= '#{&&:#{==:#{mouse_status_range},pane},#{&&:#{pane_active},#{!:#{pane_hidden_flag}}}}' { resize-pane -H -t= } { switch-client -t= } } }",
 		"bind -n C-MouseDown1Status { swap-window -t@ }",
 
 		/* Mouse button 1 down on default pane-border-format */

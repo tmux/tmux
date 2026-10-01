@@ -1348,6 +1348,8 @@ struct window_pane {
 #define PANE_CAPTUREALLKEYS 0x100000
 #define PANE_FLOATOVERZOOM 0x200000
 #define PANE_CLOSEONCANCEL 0x400000
+#define PANE_HIDDEN 0x800000
+#define PANE_HIDDENALL 0x1000000
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;
@@ -1593,6 +1595,7 @@ struct layout_cell {
 
 	struct layout_geometry	 g;
 	struct layout_geometry	 fg; /* saved floating pane */
+	struct layout_geometry	 tg; /* saved tiled pane, when hidden */
 
 	struct window_pane	*wp;
 	struct layout_cells	 cells;
@@ -3721,6 +3724,8 @@ struct window_pane *window_add_pane(struct window *, struct window_pane *,
 		     u_int, int);
 void		 window_resize(struct window *, u_int, u_int, int, int);
 void		 window_pane_send_resize(struct window_pane *, u_int, u_int);
+void		 window_hide_pane(struct window_pane *);
+int		 window_show_pane(struct window_pane *);
 void		 window_raise_pane(struct window_pane *);
 void		 window_lower_pane(struct window_pane *);
 int		 window_zoom(struct window_pane *);

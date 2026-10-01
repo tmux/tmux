@@ -429,7 +429,12 @@ cmd_join_pane_tile(struct cmdq_item *item, struct args *args, struct window *w,
 	lc->fg.xoff = lc->g.xoff;
 	lc->fg.yoff = lc->g.yoff;
 
-	if (layout_insert_tile(w, lc) != 0) {
+	if (wp->flags & PANE_HIDDEN) {
+		/* It takes its space when it is shown. */
+		if (lc->parent != NULL)
+			layout_set_size(lc, 0, 0, 0, 0);
+		lc->tg.sx = UINT_MAX;
+	} else if (layout_insert_tile(w, lc) != 0) {
 		cmdq_error(item, "no space for a new pane");
 		return (CMD_RETURN_ERROR);
 	}
@@ -440,7 +445,7 @@ cmd_join_pane_tile(struct cmdq_item *item, struct args *args, struct window *w,
 		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 	}
 
-	if (!args_has(args, 'd'))
+	if (!args_has(args, 'd') && (~wp->flags & PANE_HIDDEN))
 		window_set_active_pane(w, wp, 1);
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
@@ -545,6 +550,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	TAILQ_REMOVE(&src_w->z_index, src_wp, zentry);
 
 	src_wp->window = dst_w;
+	src_wp->flags &= ~(PANE_HIDDEN|PANE_HIDDENALL);
 	options_set_parent(src_wp->options, dst_w->options);
 	src_wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
 	if (flags & SPAWN_BEFORE)

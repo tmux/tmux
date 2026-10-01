@@ -209,7 +209,10 @@ static const char *options_table_copy_mode_line_numbers_list[] = {
 		"#{T:window-pane-current-status-format}" \
 		"#[pop-default]" \
 		"#[norange list=on default] " \
-	"}"
+	"}" \
+	"#[nolist align=right range=user|desktop]" \
+	"[_]" \
+	"#[norange default]"
 #define OPTIONS_TABLE_STATUS_FORMAT3 \
 	"#[align=left]#{R: ,#{n:#{session_name}}}S: " \
 	"#[norange default]" \

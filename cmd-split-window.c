@@ -101,6 +101,8 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	else {
 		is_floating = window_pane_is_floating(wp);
 		flags |= SPAWN_SPLIT;
+		if (!is_floating && (wp->flags & PANE_HIDDEN))
+			window_show_pane(wp);
 	}
 
 	if (args_has(args, 'O')) {

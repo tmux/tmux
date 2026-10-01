@@ -75,7 +75,8 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*tmp_wp, *src_wp, *dst_wp;
 	struct layout_cell	*src_lc, *dst_lc;
 	u_int			 sx, sy, xoff, yoff;
-	int			 src_idx, dst_idx, src_zoomed, dst_zoomed;
+	int			 src_idx, dst_idx, flags;
+	int			 src_zoomed, dst_zoomed;
 
 	dst_w = target->wl->window;
 	dst_wp = target->wp;
@@ -119,7 +120,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	src_zoomed = (args_has(args, 'Z') && (src_w->flags & WINDOW_ZOOMED));
 
-	if (src_wp == dst_wp)
+	if (src_wp == NULL || src_wp == dst_wp)
 		goto out;
 
 	server_client_remove_pane(src_wp);
@@ -145,11 +146,11 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		TAILQ_INSERT_AFTER(&dst_w->z_index, tmp_wp, src_wp, zentry);
 
-	/* Zoom belongs to the position in the window, like the cell. */
-	if ((src_wp->flags ^ dst_wp->flags) & PANE_ZOOMED) {
-		src_wp->flags ^= PANE_ZOOMED;
-		dst_wp->flags ^= PANE_ZOOMED;
-	}
+	/* Zoom and being hidden belong to the position, like the cell. */
+	flags = (src_wp->flags ^ dst_wp->flags) &
+	    (PANE_ZOOMED|PANE_HIDDEN|PANE_HIDDENALL);
+	src_wp->flags ^= flags;
+	dst_wp->flags ^= flags;
 
 	src_lc = src_wp->layout_cell;
 	dst_lc = dst_wp->layout_cell;

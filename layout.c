@@ -79,6 +79,7 @@ layout_create_cell(struct layout_cell *lcparent)
 
 	layout_geometry_init(&lc->g);
 	layout_geometry_init(&lc->fg);
+	layout_geometry_init(&lc->tg);
 
 	return (lc);
 }
@@ -238,8 +239,9 @@ layout_cell_is_tiled(struct layout_cell *lc)
 {
 	int	is_leaf = lc->type == LAYOUT_WINDOWPANE;
 	int	is_floating = lc->flags & LAYOUT_CELL_FLOATING;
+	int	is_hidden = lc->wp != NULL && (lc->wp->flags & PANE_HIDDEN);
 
-	return is_leaf && !is_floating;
+	return is_leaf && !is_floating && !is_hidden;
 }
 
 int
@@ -498,6 +500,8 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (wp->layout_cell == NULL || wp == skip)
+			continue;
+		if (wp->flags & PANE_HIDDEN)
 			continue;
 
 		old_xoff = wp->xoff;
