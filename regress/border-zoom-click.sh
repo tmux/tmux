@@ -47,5 +47,15 @@ got=$($TMUX display-message -p -t "$other" '#{pane_zoomed_flag}')
 got=$($TMUX display-message -p -t "$active" '#{pane_zoomed_flag}')
 [ "$got" = "0" ] || fail "active pane zoomed flag '$got', expected '0'"
 
+# Only the zoomed pane shows the unzoom button. A floating pane above it is not
+# zoomed so it shows the zoom button, whatever else is zoomed.
+$TMUX new-pane -d -x 24 -y 5 -X 20 -Y 3 'sleep 100' || fail "new-pane failed."
+sleep 1
+screen=$($TMUX2 capture-pane -p -t "$OUTER")
+u=$(echo "$screen" | grep -o '\[u\]' | wc -l)
+z=$(echo "$screen" | grep -o '\[z\]' | wc -l)
+[ "$u" -eq 1 ] && [ "$z" -eq 1 ] ||
+	fail "found $u unzoom and $z zoom buttons, expected one of each"
+
 cleanup
 exit 0

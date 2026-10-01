@@ -1584,7 +1584,7 @@ const struct options_table_entry options_table[] = {
 					"#{?#{pane_floating_flag},t,f}"
 				"]#[norange]"
 				"#[range=control|8]["
-					"#{?#{window_zoomed_flag},u,z}"
+					"#{?#{pane_zoomed_flag},u,z}"
 				"]#[norange]"
 				"#[range=control|9][x]#[norange]"
 			",}",
