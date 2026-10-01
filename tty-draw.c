@@ -30,6 +30,7 @@ enum tty_draw_line_state {
 	TTY_DRAW_LINE_NEW2,
 	TTY_DRAW_LINE_EMPTY,
 	TTY_DRAW_LINE_SAME,
+	TTY_DRAW_LINE_MULTICELL,
 	TTY_DRAW_LINE_DONE
 };
 static const char* tty_draw_line_states[] = {
@@ -39,8 +40,110 @@ static const char* tty_draw_line_states[] = {
 	"NEW2",
 	"EMPTY",
 	"SAME",
+	"MULTICELL",
 	"DONE"
 };
+
+/* How to draw a multicell cell. */
+enum tty_draw_line_mc {
+	TTY_DRAW_LINE_MC_SKIP,
+	TTY_DRAW_LINE_MC_NATIVE,
+	TTY_DRAW_LINE_MC_FALLBACK
+};
+
+/* Can this multicell character be drawn by the terminal? */
+static int
+tty_draw_line_mc_native(struct tty *tty, struct screen *s,
+    const struct grid_cell *gc, u_int px, u_int py, u_int aty,
+    const struct tty_style_ctx *style_ctx)
+{
+	struct grid_cell	owner;
+	u_int			mc = gc->mc, width, height, ox, oy;
+
+	if (!style_ctx->multicell)
+		return (0);
+	if (~tty->term->flags & TERM_TEXTSIZING) {
+		if (~tty->term->flags & TERM_TEXTSIZINGWIDTH)
+			return (0);
+		if (GRID_MC_SCALE(mc) != 1 || GRID_MC_DENOMINATOR(mc) != 0)
+			return (0);
+	}
+
+	/* All of it must be on the screen and the terminal. */
+	width = GRID_MC_SX(mc);
+	height = GRID_MC_SY(mc);
+	if (GRID_MC_X(mc) > px || GRID_MC_Y(mc) > py || GRID_MC_Y(mc) > aty)
+		return (0);
+	ox = px - GRID_MC_X(mc);
+	oy = py - GRID_MC_Y(mc);
+	if (ox + width > screen_size_x(s) || oy + height > screen_size_y(s))
+		return (0);
+	if (aty - GRID_MC_Y(mc) + height > tty->sy)
+		return (0);
+
+	/* And the first cell must still be there. */
+	if (GRID_MC_X(mc) != 0 || GRID_MC_Y(mc) != 0) {
+		grid_view_get_cell(s->grid, ox, oy, &owner);
+		if ((owner.mc & GRID_MC_ATTRS) != (mc & GRID_MC_ATTRS) ||
+		    GRID_MC_X(owner.mc) != 0 ||
+		    GRID_MC_Y(owner.mc) != 0 ||
+		    (owner.flags & GRID_FLAG_PADDING))
+			return (0);
+	}
+	return (1);
+}
+
+/*
+ * Work out how to draw a multicell cell. Returns the number of cells to move
+ * or 0 to draw it like any other cell.
+ */
+static u_int
+tty_draw_line_mc(struct tty *tty, struct screen *s, const struct grid_cell *gc,
+    u_int px, u_int py, u_int aty, u_int nx,
+    const struct tty_style_ctx *style_ctx, enum tty_draw_line_mc *how)
+{
+	u_int	width = GRID_MC_SX(gc->mc), n;
+	int	native;
+
+	native = tty_draw_line_mc_native(tty, s, gc, px, py, aty, style_ctx);
+	if (~gc->flags & GRID_FLAG_PADDING) {
+		if (native) {
+			*how = TTY_DRAW_LINE_MC_NATIVE;
+			return (width > nx ? nx : width);
+		}
+		if (width > nx)
+			return (0);
+		*how = TTY_DRAW_LINE_MC_FALLBACK;
+		return (width);
+	}
+
+	/*
+	 * For padding, if the terminal is drawing the character, leave it
+	 * alone. Otherwise it is empty.
+	 */
+	if (!native)
+		return (0);
+	*how = TTY_DRAW_LINE_MC_SKIP;
+	n = width - GRID_MC_X(gc->mc);
+	return (n > nx ? nx : n);
+}
+
+/*
+ * If the terminal may have multicell characters, erase cells before writing
+ * over them. Writing into a line after the first of a multicell character
+ * moves the cursor past it rather than replacing it, but erasing any cell
+ * removes all of it.
+ */
+static void
+tty_draw_line_mc_erase(struct tty *tty, u_int px, u_int py, u_int nx)
+{
+	if ((~tty->flags & TTY_MULTICELL) || nx == 0)
+		return;
+	if (!tty_term_has(tty->term, TTYC_ECH))
+		return;
+	tty_cursor(tty, px, py);
+	tty_putcode_i(tty, TTYC_ECH, nx);
+}
 
 /* Clear part of the line. */
 static void
@@ -51,9 +154,13 @@ tty_draw_line_clear(struct tty *tty, u_int px, u_int py, u_int nx,
 	if (nx == 0)
 		return;
 
-	/* If genuine BCE is available, can try escape sequences. */
+	/*
+	 * If genuine BCE is available, can try escape sequences. Always do so
+	 * if there may be multicell characters, because spaces do not remove
+	 * them.
+	 */
 	if (!wrapped &&
-	    nx >= 10 &&
+	    (nx >= 10 || (tty->flags & TTY_MULTICELL)) &&
 	    !tty_fake_bce(tty, defaults, bg)) {
 		/* Off the end of the line, use EL if available. */
 		if (px + nx >= tty->sx && tty_term_has(tty->term, TTYC_EL)) {
@@ -78,6 +185,7 @@ tty_draw_line_clear(struct tty *tty, u_int px, u_int py, u_int nx,
 	}
 
 	/* Couldn't use an escape sequence, use spaces. */
+	tty_draw_line_mc_erase(tty, px, py, nx);
 	if (px != 0 || !wrapped)
 		tty_cursor(tty, px, py);
 	if (nx == 1)
@@ -123,8 +231,9 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	const struct grid_cell	*gcp;
 	struct grid_cell	 gc, ngc, last;
 	struct grid_line	*gl;
-	u_int			 i, j, last_i, cx, ex, width;
+	u_int			 i, j, last_i, cx, ex, width, mc_n;
 	u_int			 cellsize, bg;
+	enum tty_draw_line_mc	 mc_how = TTY_DRAW_LINE_MC_SKIP;
 	int			 flags, empty, wrapped = 0;
 	char			 buf[1000];
 	size_t			 len;
@@ -186,7 +295,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	cx = 0;
 	for (i = px; i < px + nx; i++) {
 		grid_view_get_cell(gd, i, py, &gc);
-		if (~gc.flags & GRID_FLAG_PADDING)
+		if ((~gc.flags & GRID_FLAG_PADDING) || gc.mc != 0)
 			break;
 		cx++;
 	}
@@ -235,6 +344,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	width = 0;
 	current_state = TTY_DRAW_LINE_FIRST;
 	for (;;) {
+		mc_n = 0;
+
 		/* Work out the next state. */
 		if (i == nx) {
 			/*
@@ -257,10 +368,21 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				/* Get the current cell. */
 				grid_view_get_cell(gd, px + i, py, &gc);
 
+				/* Check for multicell characters. */
+				if (gc.mc != 0) {
+					mc_n = tty_draw_line_mc(tty, s, &gc,
+					    px + i, py, aty, nx - i, style_ctx,
+					    &mc_how);
+				}
+
 				/* Work out empty cells. */
-				empty = tty_draw_line_get_empty(&gc, &last,
-				    nx - i);
-				if (empty != 0)
+				if (mc_n != 0) {
+					empty = 0;
+					gcp = &gc;
+				} else
+					empty = tty_draw_line_get_empty(&gc,
+					    &last, nx - i);
+				if (mc_n != 0 || empty != 0)
 					gcp = &gc;
 				else {
 					/* Update for codeset if needed. */
@@ -277,7 +399,9 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			}
 
 			/* Work out the next state. */
-			if (empty != 0)
+			if (mc_n != 0)
+				next_state = TTY_DRAW_LINE_MULTICELL;
+			else if (empty != 0)
 				next_state = TTY_DRAW_LINE_EMPTY;
 			else if (current_state == TTY_DRAW_LINE_FIRST)
 				next_state = TTY_DRAW_LINE_SAME;
@@ -308,7 +432,10 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			} else if (next_state != TTY_DRAW_LINE_SAME &&
 			    len != 0) {
 				tty_attributes(tty, &last, style_ctx);
-				if (atx + i - width != 0 || !wrapped)
+				if (tty->flags & TTY_MULTICELL) {
+					tty_draw_line_mc_erase(tty,
+					    atx + i - width, aty, width);
+				} else if (atx + i - width != 0 || !wrapped)
 					tty_cursor(tty, atx + i - width, aty);
 				if (~last.attr & GRID_ATTR_CHARSET)
 					tty_putn(tty, buf, len, width);
@@ -321,6 +448,51 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				wrapped = 0;
 			}
 			last_i = i;
+		}
+
+		/*
+		 * Draw a multicell character, or leave its cells alone if the
+		 * terminal has drawn it.
+		 */
+		if (next_state == TTY_DRAW_LINE_MULTICELL) {
+			gcp = &gc;
+			if (gc.flags & GRID_FLAG_SELECTED) {
+				memcpy(&ngc, &gc, sizeof ngc);
+				if (screen_select_cell(s, &ngc, &gc)) {
+					ngc.mc = gc.mc;
+					gcp = &ngc;
+				}
+			}
+			if (mc_how == TTY_DRAW_LINE_MC_NATIVE) {
+				/*
+				 * Erase the whole area first so the terminal
+				 * removes any multicell characters left there.
+				 */
+				tty_attributes(tty, gcp, style_ctx);
+				if (tty_term_has(tty->term, TTYC_ECH)) {
+					for (j = 0; j < GRID_MC_SY(gc.mc); j++) {
+						tty_cursor(tty, atx + i,
+						    aty + j);
+						tty_putcode_i(tty, TTYC_ECH,
+						    gc.data.width);
+					}
+				}
+				tty_cursor(tty, atx + i, aty);
+				tty_multicell(tty, gcp, style_ctx);
+			} else if (mc_how == TTY_DRAW_LINE_MC_FALLBACK) {
+				tty_attributes(tty, gcp, style_ctx);
+				tty_draw_line_mc_erase(tty, atx + i, aty,
+				    gc.data.width);
+				tty_cursor(tty, atx + i, aty);
+				tty_multicell_fallback(tty, gcp, style_ctx);
+			}
+			i += mc_n;
+			last_i = i;
+			current_state = TTY_DRAW_LINE_FIRST;
+			memcpy(&last, &grid_default_cell, sizeof last);
+			last.bg = defaults->bg;
+			wrapped = 0;
+			continue;
 		}
 
 		/* Append the cell if it is not empty and not padding. */

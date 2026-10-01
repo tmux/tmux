@@ -705,6 +705,39 @@ window_pane_floating_overlaps(struct window_pane *fwp, struct window_pane *wp)
 	return (1);
 }
 
+/*
+ * Can multicell characters in this pane be drawn by the client's terminal
+ * itself? They cover several lines, so this is only possible if nothing else
+ * is drawn over any part of the pane.
+ */
+int
+window_pane_multicell_native(struct window_pane *wp, struct client *c)
+{
+	struct window		*w = wp->window;
+	struct window_pane	*loop = wp;
+	u_int			 ox, oy, sx, sy;
+
+	if (c->tty.term == NULL ||
+	    (c->tty.term->flags & (TERM_TEXTSIZING|TERM_TEXTSIZINGWIDTH)) == 0)
+		return (0);
+	if (w->menu != NULL || wp->prompt != NULL)
+		return (0);
+	if (wp->xoff < 0 ||
+	    wp->yoff < 0 ||
+	    wp->xoff + wp->sx > w->sx ||
+	    wp->yoff + wp->sy > w->sy)
+		return (0);
+	if (tty_window_offset(&c->tty, &ox, &oy, &sx, &sy))
+		return (0);
+	if (window_pane_scrollbar_overlay_visible(wp))
+		return (0);
+	while ((loop = TAILQ_PREV(loop, window_panes, zentry)) != NULL) {
+		if (window_pane_floating_overlaps(loop, wp))
+			return (0);
+	}
+	return (1);
+}
+
 void
 window_update_focus(struct window *w)
 {

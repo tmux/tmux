@@ -1679,7 +1679,7 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
     size_t len, size_t *size)
 {
 	struct client	*c = tty->client;
-	u_int		 i;
+	u_int		 i, major, minor;
 	char		 tmp[128];
 
 	*size = 0;
@@ -1736,6 +1736,11 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 		tty_default_features(c, "ghostty", 0);
 	else if (strncmp(tmp, "Rio ", 4) == 0)
 		tty_default_features(c, "Rio", 0);
+	else if (strncmp(tmp, "kitty(", 6) == 0) {
+		if (sscanf(tmp + 6, "%u.%u", &major, &minor) != 2)
+			major = 0, minor = 1;
+		tty_default_features(c, "kitty", major * 100 + minor);
+	}
 	log_debug("%s: received extended DA %.*s", c->name, (int)*size, buf);
 
 	free(c->term_type);

@@ -5134,6 +5134,10 @@ Supports SIXEL graphics.
 Supports the strikethrough SGR escape sequence.
 .It sync
 Supports synchronized updates.
+.It textsizing
+Supports the text sizing protocol (OSC 66) for scaled and wide text.
+.It textsizing-width
+Supports only the width part of the text sizing protocol.
 .It title
 Supports
 .Xr xterm 1
@@ -6353,6 +6357,26 @@ section.
 .Xc
 Duplicate input to all other panes in the same window where this option is also
 on (only for panes that are not in any mode).
+.Pp
+.It Xo Ic text\-sizing
+.Op Ic on | off | width
+.Xc
+Allow programs in the pane to use the text sizing protocol (OSC 66) to draw
+text which is scaled or covers a given number of cells.
+If set to
+.Ic width ,
+only the width is used and text is not scaled.
+If set to
+.Ic off ,
+the escape sequence and its text are ignored.
+The text is drawn by the outside terminal if it has the
+.Ic textsizing
+feature (see
+.Ic terminal\-features )
+and nothing covers the pane; otherwise it is drawn at normal size.
+Characters which are only partly visible are also drawn at normal size, and
+characters which would be split by a change to the width of the pane are
+replaced by normal text.
 .Pp
 .It Ic window\-active\-style Ar style
 Set the pane style when it is the active pane.

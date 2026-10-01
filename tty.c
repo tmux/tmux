@@ -85,7 +85,7 @@ static void	tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
 #define TTY_REQUEST_LIMIT 30
 
 static struct tty_style_ctx tty_default_style_ctx = {
-	&grid_default_cell, NULL, 0, NULL
+	&grid_default_cell, NULL, 0, NULL, 0
 };
 
 void
@@ -1125,6 +1125,30 @@ tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 		tty_draw_pane(tty, ctx, i);
 }
 
+/*
+ * Does the scroll region contain multicell characters drawn by the terminal?
+ * If so, it is redrawn rather than scrolled, because the terminal may not keep
+ * characters which are partly scrolled out of the region.
+ */
+static int
+tty_region_has_mc(const struct tty_ctx *ctx)
+{
+	struct screen	*s = ctx->s;
+	struct grid	*gd;
+	u_int		 y;
+
+	if (!ctx->style_ctx.multicell || s == NULL)
+		return (0);
+	gd = s->grid;
+	for (y = ctx->orupper; y <= ctx->orlower; y++) {
+		if (y >= screen_size_y(s))
+			break;
+		if (grid_get_line(gd, gd->hsize + y)->flags & GRID_LINE_MULTICELL)
+			return (1);
+	}
+	return (0);
+}
+
 /* Is this position visible in the pane? */
 static int
 tty_is_visible(__unused struct tty *tty, const struct tty_ctx *ctx, u_int px,
@@ -1651,7 +1675,8 @@ tty_cmd_insertline(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    !tty_term_has(tty->term, TTYC_IL1) ||
 	    ctx->sx == 1 ||
-	    ctx->sy == 1) {
+	    ctx->sy == 1 ||
+	    tty_region_has_mc(ctx)) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1675,7 +1700,8 @@ tty_cmd_deleteline(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    !tty_term_has(tty->term, TTYC_DL1) ||
 	    ctx->sx == 1 ||
-	    ctx->sy == 1) {
+	    ctx->sy == 1 ||
+	    tty_region_has_mc(ctx)) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1729,7 +1755,8 @@ tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 	    (!tty_term_has(tty->term, TTYC_RI) &&
 	    !tty_term_has(tty->term, TTYC_RIN)) ||
 	    ctx->sx == 1 ||
-	    ctx->sy == 1) {
+	    ctx->sy == 1 ||
+	    tty_region_has_mc(ctx)) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1757,7 +1784,8 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	    tty_fake_bce(tty, &ctx->defaults, 8) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    ctx->sx == 1 ||
-	    ctx->sy == 1) {
+	    ctx->sy == 1 ||
+	    tty_region_has_mc(ctx)) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1795,7 +1823,8 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 	    tty_fake_bce(tty, &ctx->defaults, 8) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    ctx->sx == 1 ||
-	    ctx->sy == 1) {
+	    ctx->sy == 1 ||
+	    tty_region_has_mc(ctx)) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1833,7 +1862,8 @@ tty_cmd_scrolldown(struct tty *tty, const struct tty_ctx *ctx)
 	    (!tty_term_has(tty->term, TTYC_RI) &&
 	    !tty_term_has(tty->term, TTYC_RIN)) ||
 	    ctx->sx == 1 ||
-	    ctx->sy == 1) {
+	    ctx->sy == 1 ||
+	    tty_region_has_mc(ctx)) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -2104,6 +2134,15 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 	if (gc->flags & GRID_FLAG_PADDING)
 		return;
 
+	/*
+	 * Multicell characters are normally drawn by tty_draw_line, anything
+	 * else draws them at normal size.
+	 */
+	if (gc->mc != 0) {
+		tty_multicell_fallback(tty, gc, style_ctx);
+		return;
+	}
+
 	/* Check the output codeset and apply attributes. */
 	gcp = tty_check_codeset(tty, gc);
 	tty_attributes(tty, gcp, style_ctx);
@@ -2118,6 +2157,51 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 
 	/* Write the data. */
 	tty_putn(tty, gcp->data.data, gcp->data.size, gcp->data.width);
+}
+
+/* Draw a multicell character with the text sizing sequence. */
+void
+tty_multicell(struct tty *tty, const struct grid_cell *gc,
+    const struct tty_style_ctx *style_ctx)
+{
+	char		 params[64], *buf;
+	const char	*text;
+	size_t		 size;
+
+	tty_attributes(tty, gc, style_ctx);
+
+	grid_mc_params(gc->mc, params, sizeof params);
+	text = grid_mc_get_text(gc, &size);
+	xasprintf(&buf, "\033]66;%s;%.*s\033\\", params, (int)size, text);
+	tty_puts(tty, buf);
+	free(buf);
+	tty->flags |= TTY_MULTICELL;
+
+	/* The cursor stays on the same line but where is up to the terminal. */
+	tty->cx = tty->cy = UINT_MAX;
+}
+
+/* Draw a multicell character at normal size and fill the rest with spaces. */
+void
+tty_multicell_fallback(struct tty *tty, const struct grid_cell *gc,
+    const struct tty_style_ctx *style_ctx)
+{
+	struct grid_cell	 tmp;
+	struct utf8_data	 ud[GRID_MC_MAX_WIDTH];
+	u_int			 i, n, used;
+
+	memcpy(&tmp, gc, sizeof tmp);
+	tmp.mc = 0;
+	tmp.mctext = 0;
+	tty_attributes(tty, &tmp, style_ctx);
+
+	n = grid_mc_fallback(gc, ud, nitems(ud), &used);
+	for (i = 0; i < n; i++) {
+		utf8_copy(&tmp.data, &ud[i]);
+		tty_putn(tty, tmp.data.data, tmp.data.size, tmp.data.width);
+	}
+	if (used < gc->data.width)
+		tty_repeat_space(tty, gc->data.width - used);
 }
 
 void

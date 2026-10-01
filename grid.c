@@ -40,7 +40,7 @@
 
 /* Default grid cell data. */
 const struct grid_cell grid_default_cell = {
-	{ { ' ' }, 0, 1, 1 }, 0, 0, 8, 8, 8, 0
+	{ { ' ' }, 0, 1, 1 }, 0, 0, 8, 8, 8, 0, 0, 0
 };
 
 /*
@@ -48,16 +48,173 @@ const struct grid_cell grid_default_cell = {
  * appears in the grid - because of this, they are always extended cells.
  */
 static const struct grid_cell grid_padding_cell = {
-	{ { '!' }, 0, 0, 0 }, 0, GRID_FLAG_PADDING, 8, 8, 8, 0
+	{ { '!' }, 0, 0, 0 }, 0, GRID_FLAG_PADDING, 8, 8, 8, 0, 0, 0
 };
 
 /* Cleared grid cell data. */
 static const struct grid_cell grid_cleared_cell = {
-	{ { ' ' }, 0, 1, 1 }, 0, GRID_FLAG_CLEARED, 8, 8, 8, 0
+	{ { ' ' }, 0, 1, 1 }, 0, GRID_FLAG_CLEARED, 8, 8, 8, 0, 0, 0
 };
 static const struct grid_cell_entry grid_cleared_entry = {
 	{ .data = { 0, 8, 8, ' ' } }, GRID_FLAG_CLEARED
 };
+
+/*
+ * Text of multicell characters which is too long for a cell. Each extended
+ * cell using one holds a reference and it is freed when there are none left.
+ * Indexes are not reused, so a cell left with an index after the text is
+ * freed falls back to the start of the text kept in the cell.
+ */
+struct grid_mc_text {
+	char				*data;
+	size_t				 size;
+	u_int				 index;
+	u_int				 references;
+
+	RB_ENTRY(grid_mc_text)		 entry;
+};
+RB_HEAD(grid_mc_text_tree, grid_mc_text);
+static int
+grid_mc_text_cmp(struct grid_mc_text *gt1, struct grid_mc_text *gt2)
+{
+	if (gt1->size < gt2->size)
+		return (-1);
+	if (gt1->size > gt2->size)
+		return (1);
+	return (memcmp(gt1->data, gt2->data, gt1->size));
+}
+RB_GENERATE_STATIC(grid_mc_text_tree, grid_mc_text, entry, grid_mc_text_cmp);
+static struct grid_mc_text_tree grid_mc_text_tree =
+    RB_INITIALIZER(grid_mc_text_tree);
+static struct grid_mc_text **grid_mc_text_list;
+static u_int grid_mc_text_count;
+static u_int grid_mc_text_unused;
+
+/* Get multicell text by index. */
+static struct grid_mc_text *
+grid_mc_text_get(u_int index)
+{
+	if (index == 0 || index > grid_mc_text_count)
+		return (NULL);
+	return (grid_mc_text_list[index - 1]);
+}
+
+/* Free multicell text. */
+static void
+grid_mc_text_free(struct grid_mc_text *gt)
+{
+	log_debug("%s: freed %u", __func__, gt->index);
+	if (grid_mc_text_unused == gt->index)
+		grid_mc_text_unused = 0;
+	grid_mc_text_list[gt->index - 1] = NULL;
+	RB_REMOVE(grid_mc_text_tree, &grid_mc_text_tree, gt);
+	free(gt->data);
+	free(gt);
+}
+
+/* Add a reference to multicell text. */
+static void
+grid_mc_text_ref(u_int index)
+{
+	struct grid_mc_text	*gt = grid_mc_text_get(index);
+
+	if (gt != NULL)
+		gt->references++;
+}
+
+/* Remove a reference to multicell text. */
+static void
+grid_mc_text_unref(u_int index)
+{
+	struct grid_mc_text	*gt = grid_mc_text_get(index);
+
+	if (gt == NULL || gt->references == 0)
+		return;
+
+	/*
+	 * Keep the last text set even with no references, it may be about to
+	 * replace a cell with the same text.
+	 */
+	if (--gt->references == 0 && gt->index != grid_mc_text_unused)
+		grid_mc_text_free(gt);
+}
+
+/* Remove the references from the extended cells of a line. */
+static void
+grid_mc_text_unref_line(struct grid_line *gl)
+{
+	u_int	i;
+
+	if (grid_mc_text_count == 0)
+		return;
+	for (i = 0; i < gl->extdsize; i++)
+		grid_mc_text_unref(gl->extddata[i].mctext);
+}
+
+/* Set the text of a multicell character. */
+void
+grid_mc_set_text(struct grid_cell *gc, const char *data, size_t size)
+{
+	struct grid_mc_text	 find, *gt;
+	size_t			 prefix;
+
+	if (size <= GRID_MC_MAX_TEXT) {
+		memcpy(gc->data.data, data, size);
+		gc->data.size = gc->data.have = size;
+		gc->mctext = 0;
+		return;
+	}
+
+	/*
+	 * Text is not referenced until a cell with it is stored, so the last
+	 * text set is kept until the next. If it has no references by then,
+	 * it is not needed.
+	 */
+	gt = grid_mc_text_get(grid_mc_text_unused);
+	grid_mc_text_unused = 0;
+	if (gt != NULL && gt->references == 0)
+		grid_mc_text_free(gt);
+
+	find.data = (char *)data;
+	find.size = size;
+	gt = RB_FIND(grid_mc_text_tree, &grid_mc_text_tree, &find);
+	if (gt == NULL) {
+		gt = xcalloc(1, sizeof *gt);
+		gt->data = xmalloc(size);
+		memcpy(gt->data, data, size);
+		gt->size = size;
+		gt->index = ++grid_mc_text_count;
+		grid_mc_text_list = xreallocarray(grid_mc_text_list,
+		    grid_mc_text_count, sizeof *grid_mc_text_list);
+		grid_mc_text_list[gt->index - 1] = gt;
+		RB_INSERT(grid_mc_text_tree, &grid_mc_text_tree, gt);
+		log_debug("%s: added %.*s = %u", __func__, (int)size, data,
+		    gt->index);
+	}
+	grid_mc_text_unused = gt->index;
+	gc->mctext = gt->index;
+
+	/* Keep as much as fits in the cell for anything else reading it. */
+	prefix = GRID_MC_MAX_TEXT;
+	while (prefix > 0 && ((u_char)data[prefix] & 0xc0) == 0x80)
+		prefix--;
+	memcpy(gc->data.data, data, prefix);
+	gc->data.size = gc->data.have = prefix;
+}
+
+/* Get the text of a multicell character. */
+const char *
+grid_mc_get_text(const struct grid_cell *gc, size_t *size)
+{
+	struct grid_mc_text	*gt = grid_mc_text_get(gc->mctext);
+
+	if (gt == NULL) {
+		*size = gc->data.size;
+		return (gc->data.data);
+	}
+	*size = gt->size;
+	return (gt->data);
+}
 
 #ifdef __APPLE__
 void
@@ -134,6 +291,8 @@ grid_need_extended_cell(const struct grid_cell_entry *gce,
 		return (1);
 	if (gc->flags & GRID_FLAG_TAB)
 		return (1);
+	if (gc->mc != 0)
+		return (1);
 	return (0);
 }
 
@@ -146,6 +305,7 @@ grid_get_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 
 	gl->extddata = xreallocarray(gl->extddata, at, sizeof *gl->extddata);
 	gl->extdsize = at;
+	memset(&gl->extddata[at - 1], 0, sizeof *gl->extddata);
 
 	gce->offset = at - 1;
 	gce->flags = (flags | GRID_FLAG_EXTENDED);
@@ -159,6 +319,7 @@ grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 	struct grid_extd_entry	*gee;
 	int			 flags = (gc->flags & ~GRID_FLAG_CLEARED);
 	utf8_char		 uc;
+	struct utf8_data	 ud;
 
 	if (~gce->flags & GRID_FLAG_EXTENDED)
 		grid_get_extended_cell(gl, gce, flags);
@@ -167,10 +328,20 @@ grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 	gl->flags |= GRID_LINE_EXTENDED;
 	if (gc->link != 0)
 		gl->flags |= GRID_LINE_HYPERLINK;
+	if (gc->mc != 0)
+		gl->flags |= GRID_LINE_MULTICELL;
 
 	if (gc->flags & GRID_FLAG_TAB)
 		uc = gc->data.width;
-	else
+	else if (gc->mc != 0 && gc->data.width > 2) {
+		/*
+		 * The width of a multicell character comes from its
+		 * attributes, so store it as width one.
+		 */
+		memcpy(&ud, &gc->data, sizeof ud);
+		ud.width = 1;
+		utf8_from_data(&ud, &uc);
+	} else
 		utf8_from_data(&gc->data, &uc);
 
 	gee = &gl->extddata[gce->offset];
@@ -181,6 +352,12 @@ grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 	gee->bg = gc->bg;
 	gee->us = gc->us;
 	gee->link = gc->link;
+	gee->mc = gc->mc;
+	if (gee->mctext != gc->mctext) {
+		grid_mc_text_ref(gc->mctext);
+		grid_mc_text_unref(gee->mctext);
+		gee->mctext = gc->mctext;
+	}
 	return (gee);
 }
 
@@ -193,6 +370,7 @@ grid_compact_line(struct grid_line *gl)
 	struct grid_cell_entry	*gce;
 	struct grid_extd_entry	*gee;
 	u_int			 px, idx;
+	u_char			*used;
 
 	if (gl->extdsize == 0)
 		return;
@@ -201,6 +379,22 @@ grid_compact_line(struct grid_line *gl)
 		gce = &gl->celldata[px];
 		if (gce->flags & GRID_FLAG_EXTENDED)
 			new_extdsize++;
+	}
+
+	/* Remove references from entries which are no longer used. */
+	if (grid_mc_text_count != 0) {
+		used = xcalloc(gl->extdsize, 1);
+		for (px = 0; px < gl->cellsize; px++) {
+			gce = &gl->celldata[px];
+			if ((gce->flags & GRID_FLAG_EXTENDED) &&
+			    gce->offset < gl->extdsize)
+				used[gce->offset] = 1;
+		}
+		for (idx = 0; idx < gl->extdsize; idx++) {
+			if (!used[idx])
+				grid_mc_text_unref(gl->extddata[idx].mctext);
+		}
+		free(used);
 	}
 
 	if (new_extdsize == 0) {
@@ -314,6 +508,8 @@ grid_cells_look_equal(const struct grid_cell *gc1, const struct grid_cell *gc2)
 		return (0);
 	if (gc1->link != gc2->link)
 		return (0);
+	if (gc1->mc != gc2->mc || gc1->mctext != gc2->mctext)
+		return (0);
 	return (1);
 }
 
@@ -353,6 +549,7 @@ grid_free_line(struct grid *gd, u_int py)
 	assert(gl->cellsize == 0 || gl->celldata != NULL);
 #endif
 
+	grid_mc_text_unref_line(gl);
 	free(gl->celldata);
 	free(gl->extddata);
 	memset(gl, 0, sizeof *gl);
@@ -624,11 +821,17 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 			gc->bg = gee->bg;
 			gc->us = gee->us;
 			gc->link = gee->link;
+			gc->mc = gee->mc;
+			gc->mctext = gee->mctext;
 
 			if (gc->flags & GRID_FLAG_TAB)
 				grid_set_tab(gc, gee->data);
-			else
+			else {
 				utf8_to_data(gee->data, &gc->data);
+				if (gc->mc != 0 &&
+				    (~gc->flags & GRID_FLAG_PADDING))
+					gc->data.width = GRID_MC_SX(gc->mc);
+			}
 		}
 		return;
 	}
@@ -644,6 +847,8 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 	gc->us = 8;
 	utf8_set(&gc->data, gce->data.data);
 	gc->link = 0;
+	gc->mc = 0;
+	gc->mctext = 0;
 }
 
 /* Get cell for reading. */
@@ -689,6 +894,318 @@ grid_set_padding(struct grid *gd, u_int px, u_int py, int bg)
 	memcpy(&gc, &grid_padding_cell, sizeof gc);
 	gc.bg = bg;
 	grid_set_cell(gd, px, py, &gc);
+}
+
+/* Find the top-left cell of the multicell character covering a cell. */
+int
+grid_mc_owner(struct grid *gd, u_int px, u_int py, u_int *ox, u_int *oy)
+{
+	struct grid_cell	gc;
+
+	grid_get_cell(gd, px, py, &gc);
+	if (gc.mc == 0)
+		return (0);
+	if (GRID_MC_X(gc.mc) > px || GRID_MC_Y(gc.mc) > py)
+		return (0);
+	*ox = px - GRID_MC_X(gc.mc);
+	*oy = py - GRID_MC_Y(gc.mc);
+	return (1);
+}
+
+/*
+ * Erase the multicell character covering a cell, leaving cleared cells with
+ * the same background. Return 1 if anything was erased.
+ */
+int
+grid_mc_erase(struct grid *gd, u_int px, u_int py)
+{
+	struct grid_line	*gl;
+	struct grid_cell	 gc;
+	u_int			 attrs, sx, sy, ox, oy, xx, yy;
+
+	grid_get_cell(gd, px, py, &gc);
+	if (gc.mc == 0)
+		return (0);
+	log_debug("%s: at %u,%u (x=%u, y=%u)", __func__, px, py,
+	    GRID_MC_X(gc.mc), GRID_MC_Y(gc.mc));
+
+	if (!grid_mc_owner(gd, px, py, &ox, &oy)) {
+		/* The rest of this character is gone, clear only this cell. */
+		grid_clear_cell(gd, px, py, gc.bg, 0);
+		return (1);
+	}
+	attrs = gc.mc & GRID_MC_ATTRS;
+	sx = GRID_MC_SX(gc.mc);
+	sy = GRID_MC_SY(gc.mc);
+
+	for (yy = 0; yy < sy; yy++) {
+		if (oy + yy >= gd->hsize + gd->sy)
+			break;
+		gl = &gd->linedata[oy + yy];
+		for (xx = 0; xx < sx; xx++) {
+			if (ox + xx >= gl->cellsize)
+				break;
+			grid_get_cell1(gl, ox + xx, &gc);
+			if ((gc.mc & GRID_MC_ATTRS) != attrs ||
+			    GRID_MC_X(gc.mc) != xx ||
+			    GRID_MC_Y(gc.mc) != yy)
+				continue;
+			grid_clear_cell(gd, ox + xx, oy + yy, gc.bg, 0);
+		}
+	}
+	return (1);
+}
+
+/* Get the width of all the text of a multicell character at normal size. */
+u_int
+grid_mc_text_width(const struct grid_cell *gc)
+{
+	const u_char		*p;
+	struct utf8_data	 ud;
+	enum utf8_state		 more;
+	u_int			 width = 0;
+	size_t			 i = 0, size;
+
+	p = (const u_char *)grid_mc_get_text(gc, &size);
+	while (i < size) {
+		if (utf8_open(&ud, p[i]) != UTF8_MORE) {
+			if (p[i] >= 0x20 && p[i] < 0x7f)
+				width++;
+			i++;
+			continue;
+		}
+		i++;
+		more = UTF8_MORE;
+		while (more == UTF8_MORE && i < size)
+			more = utf8_append(&ud, p[i++]);
+		if (more == UTF8_DONE && ud.width <= 2)
+			width += ud.width;
+	}
+	return (width);
+}
+
+/*
+ * Split the text of a multicell character into characters that fit in its
+ * width at normal size, for terminals which cannot draw it. Returns the number
+ * of characters and the width they use.
+ */
+u_int
+grid_mc_fallback(const struct grid_cell *gc, struct utf8_data *out,
+    u_int nout, u_int *used)
+{
+	const u_char		*p;
+	struct utf8_data	 ud, *last;
+	enum utf8_state		 more;
+	u_int			 n = 0, width = 0;
+	u_int			 max = gc->data.width;
+	size_t			 i = 0, size;
+
+	p = (const u_char *)grid_mc_get_text(gc, &size);
+	while (i < size) {
+		if (utf8_open(&ud, p[i]) != UTF8_MORE) {
+			if (p[i] < 0x20 || p[i] >= 0x7f) {
+				i++;
+				continue;
+			}
+			utf8_set(&ud, p[i++]);
+		} else {
+			i++;
+			more = UTF8_MORE;
+			while (more == UTF8_MORE && i < size)
+				more = utf8_append(&ud, p[i++]);
+			if (more != UTF8_DONE)
+				continue;
+		}
+
+		if (ud.width == 0) {
+			/* Combine with the previous character if possible. */
+			if (n == 0)
+				continue;
+			last = &out[n - 1];
+			if (last->size + ud.size > GRID_MC_MAX_TEXT)
+				continue;
+			memcpy(last->data + last->size, ud.data, ud.size);
+			last->size += ud.size;
+			last->have = last->size;
+			continue;
+		}
+		if (ud.width > 2 || width + ud.width > max || n == nout)
+			break;
+		memcpy(&out[n++], &ud, sizeof out[0]);
+		width += ud.width;
+	}
+	*used = width;
+	return (n);
+}
+
+/*
+ * Replace a cell of a multicell character with the cell that would be there if
+ * the character was drawn at normal size.
+ */
+void
+grid_mc_plain_cell(struct grid *gd, u_int px, u_int py, struct grid_cell *gc)
+{
+	struct grid_cell	 owner;
+	struct utf8_data	 ud[GRID_MC_MAX_WIDTH];
+	u_int			 ox, oy, n, i, used, x, dx = GRID_MC_X(gc->mc);
+	int			 bg = gc->bg;
+
+	if (gc->mc == 0)
+		return;
+	if (GRID_MC_Y(gc->mc) != 0 || !grid_mc_owner(gd, px, py, &ox, &oy))
+		goto blank;
+	grid_get_cell(gd, ox, oy, &owner);
+	if (owner.mc == 0 || (owner.flags & GRID_FLAG_PADDING))
+		goto blank;
+
+	n = grid_mc_fallback(&owner, ud, nitems(ud), &used);
+	for (i = 0, x = 0; i < n; x += ud[i].width, i++) {
+		if (dx == x) {
+			memcpy(gc, &owner, sizeof *gc);
+			gc->mc = 0;
+			gc->mctext = 0;
+			utf8_copy(&gc->data, &ud[i]);
+			return;
+		}
+		if (ud[i].width == 2 && dx == x + 1) {
+			memcpy(gc, &grid_padding_cell, sizeof *gc);
+			gc->bg = owner.bg;
+			return;
+		}
+	}
+	memcpy(gc, &owner, sizeof *gc);
+	gc->mc = 0;
+	gc->mctext = 0;
+	utf8_set(&gc->data, ' ');
+	return;
+
+blank:
+	memcpy(gc, &grid_default_cell, sizeof *gc);
+	gc->bg = bg;
+}
+
+/* Format the parameters of the text sizing sequence for a multicell cell. */
+void
+grid_mc_params(u_int mc, char *buf, size_t len)
+{
+	char	tmp[16];
+
+	xsnprintf(buf, len, "w=%u", GRID_MC_COLUMNS(mc));
+	if (GRID_MC_SCALE(mc) != 1) {
+		xsnprintf(tmp, sizeof tmp, ":s=%u", GRID_MC_SCALE(mc));
+		strlcat(buf, tmp, len);
+	}
+	if (GRID_MC_DENOMINATOR(mc) != 0) {
+		xsnprintf(tmp, sizeof tmp, ":n=%u:d=%u", GRID_MC_NUMERATOR(mc),
+		    GRID_MC_DENOMINATOR(mc));
+		strlcat(buf, tmp, len);
+	}
+	if (GRID_MC_VALIGN(mc) != 0) {
+		xsnprintf(tmp, sizeof tmp, ":v=%u", GRID_MC_VALIGN(mc));
+		strlcat(buf, tmp, len);
+	}
+	if (GRID_MC_HALIGN(mc) != 0) {
+		xsnprintf(tmp, sizeof tmp, ":h=%u", GRID_MC_HALIGN(mc));
+		strlcat(buf, tmp, len);
+	}
+}
+
+/*
+ * Replace the multicell character covering a cell with its text at normal size
+ * on the first line and empty cells on the others.
+ */
+static void
+grid_mc_demote_one(struct grid *gd, u_int px, u_int py)
+{
+	struct grid_line	*gl;
+	struct grid_cell	 gc, tmp;
+	struct utf8_data	 ud[GRID_MC_MAX_WIDTH];
+	u_int			 attrs, sx, sy, ox, oy, xx, yy, i, n, used, x;
+
+	grid_get_cell(gd, px, py, &gc);
+	if (gc.mc == 0)
+		return;
+	if (!grid_mc_owner(gd, px, py, &ox, &oy)) {
+		grid_clear_cell(gd, px, py, gc.bg, 0);
+		return;
+	}
+	grid_get_cell(gd, ox, oy, &gc);
+	if (gc.mc == 0 || (gc.flags & GRID_FLAG_PADDING)) {
+		/* The first cell is gone, so just clear this one. */
+		grid_clear_cell(gd, px, py, gc.bg, 0);
+		return;
+	}
+	attrs = gc.mc & GRID_MC_ATTRS;
+	sx = GRID_MC_SX(gc.mc);
+	sy = GRID_MC_SY(gc.mc);
+	log_debug("%s: %ux%u at %u,%u", __func__, sx, sy, ox, oy);
+
+	/* Clear the lines after the first. */
+	for (yy = 1; yy < sy && oy + yy < gd->hsize + gd->sy; yy++) {
+		gl = &gd->linedata[oy + yy];
+		for (xx = 0; xx < sx && ox + xx < gl->cellsize; xx++) {
+			grid_get_cell1(gl, ox + xx, &tmp);
+			if ((tmp.mc & GRID_MC_ATTRS) != attrs ||
+			    GRID_MC_X(tmp.mc) != xx ||
+			    GRID_MC_Y(tmp.mc) != yy)
+				continue;
+			grid_clear_cell(gd, ox + xx, oy + yy, tmp.bg, 0);
+		}
+	}
+
+	/* Write the text and spaces on the first line. */
+	n = grid_mc_fallback(&gc, ud, nitems(ud), &used);
+	memcpy(&tmp, &gc, sizeof tmp);
+	tmp.mc = 0;
+	tmp.mctext = 0;
+	x = ox;
+	for (i = 0; i < n; i++) {
+		utf8_copy(&tmp.data, &ud[i]);
+		grid_set_cell(gd, x, oy, &tmp);
+		if (ud[i].width == 2)
+			grid_set_padding(gd, x + 1, oy, tmp.bg);
+		x += ud[i].width;
+	}
+	utf8_set(&tmp.data, ' ');
+	for (; x < ox + sx; x++)
+		grid_set_cell(gd, x, oy, &tmp);
+}
+
+/*
+ * Replace multicell characters by their text at normal size before reflowing
+ * to width sx, where they would be split: those on lines which will be joined
+ * or split, and those which are too wide.
+ */
+void
+grid_mc_demote(struct grid *gd, u_int sx)
+{
+	struct grid_line	*gl, *prev;
+	struct grid_cell	 gc;
+	u_int			 yy, xx;
+	int			 reflow;
+
+	for (yy = 0; yy < gd->hsize + gd->sy; yy++) {
+		gl = &gd->linedata[yy];
+		if (~gl->flags & GRID_LINE_MULTICELL)
+			continue;
+		prev = (yy == 0) ? NULL : &gd->linedata[yy - 1];
+
+		reflow = 0;
+		if (gl->flags & GRID_LINE_WRAPPED)
+			reflow = 1;
+		else if (prev != NULL && (prev->flags & GRID_LINE_WRAPPED))
+			reflow = 1;
+		else if (gl->cellused > sx)
+			reflow = 1;
+
+		for (xx = 0; xx < gl->cellsize; xx++) {
+			grid_get_cell1(gl, xx, &gc);
+			if (gc.mc == 0)
+				continue;
+			if (reflow || GRID_MC_SX(gc.mc) > sx)
+				grid_mc_demote_one(gd, xx, yy);
+		}
+	}
 }
 
 /* Set cells at position. */
@@ -1182,10 +1699,10 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 {
 	struct grid_cell	 gc;
 	static struct grid_cell	 lastgc1;
-	const char		*data;
-	char			*buf, code[8192];
-	size_t			 len, off, size, codelen;
-	u_int			 xx, end;
+	const char		*data, *text;
+	char			*buf, code[8192], params[64], *mcbuf = NULL;
+	size_t			 len, off, size, codelen, tsize;
+	u_int			 xx, end, used, pad;
 	int			 has_link = 0;
 	const struct grid_line	*gl;
 
@@ -1211,10 +1728,13 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 		if (xx >= end)
 			break;
 		grid_get_cell(gd, xx, py, &gc);
-		if (gc.flags & GRID_FLAG_PADDING)
+		if ((gc.flags & GRID_FLAG_PADDING) &&
+		    (gc.mc == 0 || GRID_MC_Y(gc.mc) == 0))
 			continue;
 
-		if (lastgc != NULL && (flags & GRID_STRING_WITH_SEQUENCES)) {
+		if (lastgc != NULL &&
+		    (flags & GRID_STRING_WITH_SEQUENCES) &&
+		    (~gc.flags & GRID_FLAG_PADDING)) {
 			grid_string_cells_code(*lastgc, &gc, code, sizeof code,
 			    flags, s, &has_link);
 			codelen = strlen(code);
@@ -1222,9 +1742,46 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 		} else
 			codelen = 0;
 
-		if (gc.flags & GRID_FLAG_TAB) {
+		if (gc.flags & GRID_FLAG_PADDING) {
+			/*
+			 * Lower lines of a multicell character. Move the cursor
+			 * over them if drawing with sequences, since writing
+			 * into them would move the text.
+			 */
+			if (~flags & GRID_STRING_WITH_SEQUENCES)
+				data = " ";
+			else if (flags & GRID_STRING_ESCAPE_SEQUENCES)
+				data = "\\033[C";
+			else
+				data = "\033[C";
+			size = strlen(data);
+		} else if (gc.flags & GRID_FLAG_TAB) {
 			data = "\t";
 			size = 1;
+		} else if (gc.mc != 0 && (~flags & GRID_STRING_WITH_SEQUENCES)) {
+			/*
+			 * All of the text, padded to the width if it is
+			 * narrower at normal size.
+			 */
+			used = grid_mc_text_width(&gc);
+			text = grid_mc_get_text(&gc, &tsize);
+			pad = (used < gc.data.width) ? gc.data.width - used : 0;
+			mcbuf = xmalloc(tsize + pad);
+			memcpy(mcbuf, text, tsize);
+			memset(mcbuf + tsize, ' ', pad);
+			data = mcbuf;
+			size = tsize + pad;
+		} else if (gc.mc != 0) {
+			grid_mc_params(gc.mc, params, sizeof params);
+			text = grid_mc_get_text(&gc, &tsize);
+			if (flags & GRID_STRING_ESCAPE_SEQUENCES) {
+				size = xasprintf(&mcbuf, "\\033]66;%s;%.*s\\033\\\\",
+				    params, (int)tsize, text);
+			} else {
+				size = xasprintf(&mcbuf, "\033]66;%s;%.*s\033\\",
+				    params, (int)tsize, text);
+			}
+			data = mcbuf;
 		} else {
 			data = gc.data.data;
 			size = gc.data.size;
@@ -1247,6 +1804,9 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 		}
 		memcpy(buf + off, data, size);
 		off += size;
+
+		free(mcbuf);
+		mcbuf = NULL;
 	}
 
 	if (has_link) {
@@ -1279,7 +1839,7 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
     u_int ny)
 {
 	struct grid_line	*dstl, *srcl;
-	u_int			 yy;
+	u_int			 yy, xx;
 
 	if (dy + ny > dst->hsize + dst->sy)
 		ny = dst->hsize + dst->sy - dy;
@@ -1305,6 +1865,8 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 			    sizeof *dstl->extddata);
 			memcpy(dstl->extddata, srcl->extddata, dstl->extdsize *
 			    sizeof *dstl->extddata);
+			for (xx = 0; xx < dstl->extdsize; xx++)
+				grid_mc_text_ref(dstl->extddata[xx].mctext);
 		} else
 			dstl->extddata = NULL;
 
@@ -1443,6 +2005,7 @@ grid_reflow_join(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 
 	/* Remove the lines that were completely consumed. */
 	for (i = yy + 1; i < yy + 1 + lines; i++) {
+		grid_mc_text_unref_line(&gd->linedata[i]);
 		free(gd->linedata[i].celldata);
 		free(gd->linedata[i].extddata);
 		grid_reflow_dead(&gd->linedata[i]);
@@ -1531,6 +2094,9 @@ grid_reflow(struct grid *gd, u_int sx)
 	struct grid_line	*gl;
 	struct grid_cell	 gc;
 	u_int			 yy, width, i, at;
+
+	/* Multicell characters cannot be reflowed, so draw them normally. */
+	grid_mc_demote(gd, sx);
 
 	/*
 	 * Create a destination grid. This is just used as a container for the
@@ -1698,7 +2264,7 @@ grid_line_limit(struct grid *gd, u_int py)
 	px--;
 	while (px > 0) {
 		grid_get_cell(gd, px, py, &gc);
-		if (~gc.flags & GRID_FLAG_PADDING)
+		if ((~gc.flags & GRID_FLAG_PADDING) || GRID_MC_START(&gc))
 			break;
 		px--;
 	}

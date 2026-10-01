@@ -380,6 +380,20 @@ static const struct tty_feature tty_feature_progressbar = {
 	0
 };
 
+/* Terminal supports the text sizing protocol (OSC 66). */
+static const struct tty_feature tty_feature_textsizing = {
+	"textsizing",
+	NULL,
+	TERM_TEXTSIZING
+};
+
+/* Terminal supports only the width part of the text sizing protocol. */
+static const struct tty_feature tty_feature_textsizing_width = {
+	"textsizing-width",
+	NULL,
+	TERM_TEXTSIZINGWIDTH
+};
+
 /* Terminal supports UTF-8. */
 static const struct tty_feature tty_feature_utf8 = {
 	"utf8",
@@ -409,6 +423,8 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_sixel,
 	&tty_feature_strikethrough,
 	&tty_feature_sync,
+	&tty_feature_textsizing,
+	&tty_feature_textsizing_width,
 	&tty_feature_title,
 	&tty_feature_usstyle,
 	&tty_feature_utf8
@@ -665,6 +681,20 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "sync,"
 			      "usstyle,"
 			      "progressbar"
+		},
+		{ .name = "kitty",
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
+			      "ccolour,"
+			      "cstyle,"
+			      "focus,"
+			      "hyperlinks,"
+			      "overline,"
+			      "sync,"
+			      "usstyle"
+		},
+		{ .name = "kitty",
+		  .version = 40, /* 0.40.0 */
+		  .features = "textsizing"
 		},
 		{ .name = "XTerm",
 		  /*

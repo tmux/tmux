@@ -168,6 +168,7 @@ static void	input_osc_10(struct input_ctx *, const char *);
 static void	input_osc_11(struct input_ctx *, const char *);
 static void	input_osc_12(struct input_ctx *, const char *);
 static void	input_osc_52(struct input_ctx *, const char *);
+static void	input_osc_66(struct input_ctx *, const char *);
 static void	input_osc_104(struct input_ctx *, const char *);
 static void	input_osc_110(struct input_ctx *, const char *);
 static void	input_osc_111(struct input_ctx *, const char *);
@@ -2755,6 +2756,9 @@ input_exit_osc(struct input_ctx *ictx)
 	case 52:
 		input_osc_52(ictx, p);
 		break;
+	case 66:
+		input_osc_66(ictx, p);
+		break;
 	case 104:
 		input_osc_104(ictx, p);
 		break;
@@ -3009,6 +3013,205 @@ input_osc_8(struct input_ctx *ictx, const char *p)
 bad:
 	log_debug("bad OSC 8 %s", p);
 	free(id);
+}
+
+/* Set U+FFFD REPLACEMENT CHARACTER for invalid OSC 66 text. */
+static void
+input_osc_66_replacement(struct utf8_data *ud)
+{
+	memset(ud, 0, sizeof *ud);
+	memcpy(ud->data, "\357\277\275", 3);
+	ud->size = ud->have = 3;
+	ud->width = 1;
+}
+
+/*
+ * Get the next character from OSC 66 text. Invalid UTF-8 becomes U+FFFD and
+ * control characters are skipped. Returns 0 at the end of the text.
+ */
+static int
+input_osc_66_next(const u_char **pp, struct utf8_data *ud)
+{
+	const u_char	*p = *pp;
+	enum utf8_state	 more;
+
+	while (*p != '\0') {
+		if (utf8_open(ud, *p) == UTF8_MORE) {
+			/*
+			 * A byte which is not a continuation ends the character
+			 * and is tried again as the start of the next.
+			 */
+			more = UTF8_MORE;
+			for (p++; more == UTF8_MORE && *p != '\0'; p++) {
+				if ((*p & 0xc0) != 0x80)
+					break;
+				more = utf8_append(ud, *p);
+			}
+			if (more != UTF8_DONE || ud->width == 0xff)
+				input_osc_66_replacement(ud);
+			*pp = p;
+			return (1);
+		}
+		if (*p >= 0x20 && *p < 0x7f) {
+			utf8_set(ud, *p++);
+			*pp = p;
+			return (1);
+		}
+		if (*p >= 0x80) {
+			input_osc_66_replacement(ud);
+			*pp = p + 1;
+			return (1);
+		}
+		p++;
+	}
+	*pp = p;
+	return (0);
+}
+
+/* Handle the OSC 66 sequence for sized text (the text sizing protocol). */
+static void
+input_osc_66(struct input_ctx *ictx, const char *p)
+{
+	struct screen_write_ctx	*sctx = &ictx->ctx;
+	struct window_pane	*wp = ictx->wp;
+	struct grid_cell	 gc;
+	struct utf8_data	 ud;
+	const char		*text, *start, *end, *cp;
+	char			*buf;
+	size_t			 size;
+	const u_char		*up;
+	u_int			 s = 1, w = 0, n = 0, d = 0, v = 0, h = 0;
+	u_int			 value, max, cols, mc;
+	int			 mode = 1;
+
+	if (wp != NULL)
+		mode = options_get_number(wp->options, "text-sizing");
+	if (mode == 0) {
+		log_debug("%s: text sizing is off", __func__);
+		return;
+	}
+
+	text = strchr(p, ';');
+	if (text == NULL)
+		goto bad;
+	for (start = p; start < text; start = end + 1) {
+		end = memchr(start, ':', text - start);
+		if (end == NULL)
+			end = text;
+		if (end == start)
+			continue;
+		if (end - start < 3 || start[1] != '=')
+			goto bad;
+		value = 0;
+		for (cp = start + 2; cp < end; cp++) {
+			if (*cp < '0' || *cp > '9')
+				goto bad;
+			value = value * 10 + (*cp - '0');
+			if (value > 15)
+				goto bad;
+		}
+		switch (*start) {
+		case 's':
+			max = 7;
+			if (value == 0)
+				goto bad;
+			s = value;
+			break;
+		case 'w':
+			max = 7;
+			w = value;
+			break;
+		case 'n':
+			max = 15;
+			n = value;
+			break;
+		case 'd':
+			max = 15;
+			d = value;
+			break;
+		case 'v':
+			max = 2;
+			v = value;
+			break;
+		case 'h':
+			max = 2;
+			h = value;
+			break;
+		default:
+			log_debug("%s: unknown key %c", __func__, *start);
+			continue;
+		}
+		if (value > max)
+			goto bad;
+	}
+	text++;
+	if (strlen(text) > GRID_MC_MAX_PAYLOAD)
+		goto bad;
+
+	/* A fraction must be less than one. */
+	if (d == 0 || n >= d)
+		n = d = 0;
+	if (d == 0)
+		v = h = 0;
+
+	/* With width only support, the scale is ignored. */
+	if (mode == 2)
+		s = 1, n = d = v = h = 0;
+	log_debug("%s: s=%u w=%u n=%u d=%u v=%u h=%u: %s", __func__, s, w, n, d,
+	    v, h, text);
+
+	memcpy(&gc, &ictx->cell.cell, sizeof gc);
+	gc.attr &= ~GRID_ATTR_CHARSET;
+	ictx->flags &= ~INPUT_LAST;
+	up = (const u_char *)text;
+
+	/* Plain text, draw normally. */
+	if (s == 1 && w == 0 && d == 0) {
+		while (input_osc_66_next(&up, &ud)) {
+			utf8_copy(&gc.data, &ud);
+			screen_write_collect_add(sctx, &gc);
+		}
+		return;
+	}
+	mc = GRID_MC_MAKE(s, w, n, d, v, h);
+
+	/* With a width, all the text goes into one cell. */
+	if (w != 0) {
+		buf = NULL;
+		size = 0;
+		while (input_osc_66_next(&up, &ud)) {
+			buf = xrealloc(buf, size + ud.size);
+			memcpy(buf + size, ud.data, ud.size);
+			size += ud.size;
+		}
+		memset(&gc.data, 0, sizeof gc.data);
+		gc.mctext = 0;
+		if (size == 0)
+			utf8_set(&gc.data, ' ');
+		else
+			grid_mc_set_text(&gc, buf, size);
+		free(buf);
+		gc.data.width = s * w;
+		gc.mc = mc;
+		screen_write_multicell(sctx, &gc);
+		return;
+	}
+
+	/* Otherwise each character is a separate cell. */
+	while (input_osc_66_next(&up, &ud)) {
+		utf8_copy(&gc.data, &ud);
+		cols = (ud.width == 2) ? 2 : 1;
+		gc.mc = mc;
+		if (cols == 2)
+			gc.mc |= GRID_MC_WIDE;
+		if (ud.width != 0)
+			gc.data.width = s * cols;
+		screen_write_multicell(sctx, &gc);
+	}
+	return;
+
+bad:
+	log_debug("bad OSC 66 %s", p);
 }
 
 /* Helper to handle setting the progress bar and redrawing. */

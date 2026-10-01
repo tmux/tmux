@@ -109,6 +109,9 @@ static const char *options_table_extended_keys_format_list[] = {
 static const char *options_table_allow_passthrough_list[] = {
 	"off", "on", "all", NULL
 };
+static const char *options_table_text_sizing_list[] = {
+	"off", "on", "width", NULL
+};
 static const char *options_table_theme_list[] = {
 	"detect", "terminal", "light", "dark", NULL
 };
@@ -1712,6 +1715,16 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_num = 0,
 	  .text = "Whether typing should be sent to all panes simultaneously."
+	},
+
+	{ .name = "text-sizing",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .choices = options_table_text_sizing_list,
+	  .default_num = 1,
+	  .text = "Whether applications can use the text sizing protocol. Can "
+		  "be 'off' (ignored), 'on' (scaled and wide text) or 'width' "
+		  "(only wide text)."
 	},
 
 	{ .name = "tiled-layout-max-columns",

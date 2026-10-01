@@ -129,8 +129,20 @@ static void	window_copy_copy_selection(struct window_mode_entry *,
 		    const char *, int, int);
 static void	window_copy_append_selection(struct window_mode_entry *);
 static void	window_copy_clear_selection(struct window_mode_entry *);
+struct window_copy_mc_copied {
+	struct {
+		u_int	x;
+		u_int	y;
+	}	*list;
+	u_int	 n;
+};
 static void	window_copy_copy_line(struct window_mode_entry *, char **,
-		    size_t *, u_int, u_int, u_int);
+		    size_t *, u_int, u_int, u_int, u_int,
+		    struct window_copy_mc_copied *);
+static int	window_copy_mc_cell(struct window_mode_entry *, u_int, u_int,
+		    u_int *, u_int *);
+static void	window_copy_cursormove(struct window_mode_entry *,
+		    struct screen_write_ctx *);
 static int	window_copy_in_set(struct window_mode_entry *, u_int, u_int,
 		    const char *);
 static u_int	window_copy_find_length(struct window_mode_entry *, u_int);
@@ -145,6 +157,8 @@ static void	window_copy_cursor_left(struct window_mode_entry *);
 static void	window_copy_cursor_right(struct window_mode_entry *, int);
 static void	window_copy_cursor_up(struct window_mode_entry *, int);
 static void	window_copy_cursor_down(struct window_mode_entry *, int);
+static void	window_copy_cursor_up1(struct window_mode_entry *, int);
+static void	window_copy_cursor_down1(struct window_mode_entry *, int);
 static void	window_copy_cursor_jump(struct window_mode_entry *);
 static void	window_copy_cursor_jump_back(struct window_mode_entry *);
 static void	window_copy_cursor_jump_to(struct window_mode_entry *);
@@ -639,8 +653,7 @@ window_copy_init(struct window_mode_entry *wme,
 	screen_write_start(&ctx, &data->screen);
 	for (i = 0; i < screen_size_y(&data->screen); i++)
 		window_copy_write_line(wme, &ctx, i);
-	screen_write_cursormove(&ctx, window_copy_cursor_offset(wme, data->cx,
-	    screen_size_x(&data->screen)), data->cy, 0);
+	window_copy_cursormove(wme, &ctx);
 	screen_write_stop(&ctx);
 
 	data->recentre_state = RECENTRE_MIDDLE;
@@ -5226,7 +5239,10 @@ window_copy_write_one(struct window_mode_entry *wme,
 		if (fx + gc.data.width <= nx) {
 			window_copy_update_style(wme, fx, fy, &gc, mgc, cgc,
 			    mkgc, clgc);
-			if (gc.flags & GRID_FLAG_PADDING) {
+			if (gc.mc != 0) {
+				screen_write_cursormove(ctx, px + fx, py, 0);
+				screen_write_mc_copy(ctx, &gc);
+			} else if (gc.flags & GRID_FLAG_PADDING) {
 				if (ctx->s->cy == py && ctx->s->cx <= px + fx) {
 					gc.flags &= ~GRID_FLAG_PADDING;
 					screen_write_cursormove(ctx, px + fx, py,
@@ -5330,6 +5346,27 @@ window_copy_cursor_offset(struct window_mode_entry *wme, u_int cx, u_int sx)
 	return (width + cx);
 }
 
+/*
+ * Move to where the cursor is shown. On a line after the first of a multicell
+ * character, it is shown on the first cell so it covers all of it.
+ */
+static void
+window_copy_cursormove(struct window_mode_entry *wme,
+    struct screen_write_ctx *ctx)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	u_int				 cx = data->cx, cy = data->cy, ox, oy;
+	int				 line;
+
+	line = window_copy_mc_cell(wme, cx, cy, &ox, &oy);
+	if (line > 0 && (u_int)line <= cy) {
+		cx = ox;
+		cy = oy;
+	}
+	screen_write_cursormove(ctx, window_copy_cursor_offset(wme, cx,
+	    screen_size_x(&data->screen)), cy, 0);
+}
+
 static u_int
 window_copy_cursor_unoffset(struct window_mode_entry *wme, u_int vx, u_int sx)
 {
@@ -5427,6 +5464,17 @@ window_copy_write_line(struct window_mode_entry *wme,
 		content_sx = sx - width;
 	else
 		content_sx = sx;
+
+	/*
+	 * If this line had multicell characters, clear it first so writing the
+	 * new line is not affected by them, and redraw since they cover more
+	 * than one line.
+	 */
+	if (grid_get_line(s->grid, s->grid->hsize + py)->flags &
+	    GRID_LINE_MULTICELL) {
+		grid_view_clear(s->grid, 0, py, sx, 1, 8);
+		screen_write_fullredraw(ctx);
+	}
 
 	screen_write_cursormove(ctx, 0, py, 0);
 
@@ -5532,22 +5580,52 @@ window_copy_redraw_selection(struct window_mode_entry *wme, u_int old_y)
 	window_copy_redraw_lines(wme, start, end - start + 1);
 }
 
+/*
+ * Extend lines to be redrawn up to the first lines of any multicell characters
+ * on them, since the selection on any line changes the first cell.
+ */
+static void
+window_copy_mc_lines(struct window_mode_entry *wme, u_int *py, u_int *ny)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->backing->grid;
+	struct grid_line		*gl;
+	struct grid_cell		 gc;
+	u_int				 i, x, yy, first = *py;
+
+	for (i = *py; i < *py + *ny && i < screen_size_y(&data->screen); i++) {
+		yy = screen_hsize(data->backing) + i - data->oy;
+		gl = grid_get_line(gd, yy);
+		if (~gl->flags & GRID_LINE_MULTICELL)
+			continue;
+		for (x = 0; x < gl->cellsize; x++) {
+			grid_get_cell(gd, x, yy, &gc);
+			if (GRID_MC_START(&gc) && GRID_MC_Y(gc.mc) != 0) {
+				if (GRID_MC_Y(gc.mc) > i)
+					first = 0;
+				else if (i - GRID_MC_Y(gc.mc) < first)
+					first = i - GRID_MC_Y(gc.mc);
+			}
+		}
+	}
+	*ny += *py - first;
+	*py = first;
+}
+
 static void
 window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 {
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
-	struct screen			*s = &data->screen;
 	struct screen_write_ctx 	 ctx;
 	u_int				 i;
 
+	window_copy_mc_lines(wme, &py, &ny);
 	if (window_copy_line_number_width(wme) != 0) {
 		screen_write_start(&ctx, &data->screen);
 		for (i = py; i < py + ny; i++)
 			window_copy_write_line(wme, &ctx, i);
-		screen_write_cursormove(&ctx,
-		    window_copy_cursor_offset(wme, data->cx, screen_size_x(s)),
-		    data->cy, 0);
+		window_copy_cursormove(wme, &ctx);
 		screen_write_stop(&ctx);
 		wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR);
 		return;
@@ -5559,9 +5637,7 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 		screen_write_start_pane(&ctx, wp, NULL);
 	for (i = py; i < py + ny; i++)
 		window_copy_write_line(wme, &ctx, i);
-	screen_write_cursormove(&ctx,
-	    window_copy_cursor_offset(wme, data->cx, screen_size_x(s)), data->cy,
-	    0);
+	window_copy_cursormove(wme, &ctx);
 	screen_write_stop(&ctx);
 
 	window_pane_scrollbar_redraw(wp);
@@ -5716,9 +5792,7 @@ window_copy_update_cursor(struct window_mode_entry *wme, u_int cx, u_int cy)
 			return;
 		}
 		screen_write_start_pane(&ctx, wp, NULL);
-		screen_write_cursormove(&ctx,
-		    window_copy_cursor_offset(wme, data->cx, screen_size_x(s)),
-		    data->cy, 0);
+		window_copy_cursormove(wme, &ctx);
 		screen_write_stop(&ctx);
 		return;
 	}
@@ -5733,9 +5807,7 @@ window_copy_update_cursor(struct window_mode_entry *wme, u_int cx, u_int cy)
 		window_copy_redraw_lines(wme, data->cy, 1);
 	else {
 		screen_write_start_pane(&ctx, wp, NULL);
-		screen_write_cursormove(&ctx,
-		    window_copy_cursor_offset(wme, data->cx, screen_size_x(s)),
-		    data->cy, 0);
+		window_copy_cursormove(wme, &ctx);
 		screen_write_stop(&ctx);
 	}
 }
@@ -5982,6 +6054,7 @@ window_copy_get_selection(struct window_mode_entry *wme, size_t *len)
 	u_int				 i, xx, yy, sx, sy, ex, ey, ey_last;
 	u_int				 firstsx, lastex, restex, restsx, selx;
 	int				 keys;
+	struct window_copy_mc_copied	 copied = { NULL, 0 };
 
 	if (data->screen.sel == NULL && data->lineflag == LINE_SEL_NONE) {
 		buf = window_copy_match_at_cursor(data);
@@ -6074,8 +6147,9 @@ window_copy_get_selection(struct window_mode_entry *wme, size_t *len)
 	for (i = sy; i <= ey; i++) {
 		window_copy_copy_line(wme, &buf, &off, i,
 		    (i == sy ? firstsx : restsx),
-		    (i == ey ? lastex : restex));
+		    (i == ey ? lastex : restex), sy, &copied);
 	}
+	free(copied.list);
 
 	/* Don't bother if no data. */
 	if (off == 0) {
@@ -6214,9 +6288,58 @@ window_copy_append_selection(struct window_mode_entry *wme)
 	free(bufname);
 }
 
+/* Add the text of a multicell character to a copy buffer. */
+static void
+window_copy_copy_mc_text(char **buf, size_t *off, const struct grid_cell *gc)
+{
+	const char	*text;
+	size_t		 size;
+
+	text = grid_mc_get_text(gc, &size);
+	*buf = xrealloc(*buf, (*off) + size);
+	memcpy(*buf + *off, text, size);
+	*off += size;
+}
+
+/*
+ * Copy the text of a multicell character from a line after its first, if its
+ * first line is before the selection, which starts on line fsy (otherwise the
+ * first line decides whether it is copied) and it has not already been copied
+ * from another line.
+ */
+static int
+window_copy_copy_mc(struct window_mode_entry *wme, char **buf, size_t *off,
+    u_int px, u_int py, u_int fsy, struct window_copy_mc_copied *copied)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->backing->grid;
+	struct grid_cell		 gc;
+	u_int				 ox, oy, i;
+
+	if (!grid_mc_owner(gd, px, py, &ox, &oy) || oy == py || oy >= fsy)
+		return (0);
+	grid_get_cell(gd, ox, oy, &gc);
+	if (gc.mc == 0 || (gc.flags & GRID_FLAG_PADDING))
+		return (0);
+
+	for (i = 0; i < copied->n; i++) {
+		if (copied->list[i].x == ox && copied->list[i].y == oy)
+			return (0);
+	}
+	copied->list = xreallocarray(copied->list, copied->n + 1,
+	    sizeof *copied->list);
+	copied->list[copied->n].x = ox;
+	copied->list[copied->n].y = oy;
+	copied->n++;
+
+	window_copy_copy_mc_text(buf, off, &gc);
+	return (1);
+}
+
 static void
 window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
-    u_int sy, u_int sx, u_int ex)
+    u_int sy, u_int sx, u_int ex, u_int fsy,
+    struct window_copy_mc_copied *copied)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*gd = data->backing->grid;
@@ -6224,6 +6347,8 @@ window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
 	struct grid_line		*gl;
 	struct utf8_data		 ud;
 	u_int				 i, xx, wrapped = 0;
+	int				 lower = 0, mc = 0;
+	size_t				 start = *off;
 	const char			*s;
 
 	if (sx > ex)
@@ -6236,6 +6361,25 @@ window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
 	gl = grid_get_line(gd, sy);
 	if (gl->flags & GRID_LINE_WRAPPED && gl->cellsize <= gd->sx)
 		wrapped = 1;
+
+	/*
+	 * Check for lines with only the lines after the first of multicell
+	 * characters. Their text is on the first line, so if nothing is copied
+	 * from them they are skipped.
+	 */
+	if (gl->flags & GRID_LINE_MULTICELL) {
+		for (i = 0; i < gl->cellused; i++) {
+			grid_get_cell(gd, i, sy, &gc);
+			if (gc.mc != 0 && GRID_MC_Y(gc.mc) != 0)
+				lower = 1;
+			else if (gc.mc != 0 ||
+			    gc.data.size != 1 ||
+			    *gc.data.data != ' ')
+				break;
+		}
+		if (i != gl->cellused)
+			lower = 0;
+	}
 
 	/* If the line was wrapped, don't strip spaces (use the full length). */
 	if (wrapped)
@@ -6250,8 +6394,17 @@ window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
 	if (sx < ex) {
 		for (i = sx; i < ex; i++) {
 			grid_get_cell(gd, i, sy, &gc);
-			if (gc.flags & GRID_FLAG_PADDING)
+			if (gc.flags & GRID_FLAG_PADDING) {
+				if (GRID_MC_START(&gc) &&
+				    window_copy_copy_mc(wme, buf, off, i, sy,
+				    fsy, copied))
+					mc = 1;
 				continue;
+			}
+			if (gc.mc != 0) {
+				window_copy_copy_mc_text(buf, off, &gc);
+				continue;
+			}
 			if (gc.flags & GRID_FLAG_TAB)
 				utf8_set(&ud, '\t');
 			else
@@ -6268,6 +6421,10 @@ window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
 			memcpy(*buf + *off, ud.data, ud.size);
 			*off += ud.size;
 		}
+	}
+	if (lower && !mc) {
+		*off = start;
+		return;
 	}
 
 	/* Only add a newline if the line wasn't wrapped. */
@@ -6486,8 +6643,111 @@ window_copy_cursor_right(struct window_mode_entry *wme, int all)
 	    data->oy, oldy, px, py, 0);
 }
 
+/*
+ * Get the multicell character covering a position on the screen. Returns its
+ * line in the character (0 for the first) and sets the position of its first
+ * cell, or returns -1 if there is none.
+ */
+static int
+window_copy_mc_cell(struct window_mode_entry *wme, u_int px, u_int py,
+    u_int *ox, u_int *oy)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->backing->grid;
+	struct grid_cell		 gc;
+	u_int				 yy;
+
+	if (px >= gd->sx || py >= screen_size_y(&data->screen))
+		return (-1);
+	yy = screen_hsize(data->backing) + py - data->oy;
+	grid_get_cell(gd, px, yy, &gc);
+	if (gc.mc == 0 || GRID_MC_X(gc.mc) > px)
+		return (-1);
+	*ox = px - GRID_MC_X(gc.mc);
+	*oy = (GRID_MC_Y(gc.mc) > py) ? 0 : py - GRID_MC_Y(gc.mc);
+	return (GRID_MC_Y(gc.mc));
+}
+
+/*
+ * Move a position on the screen inside a multicell character to its first
+ * cell, so it is treated as one character.
+ */
+static void
+window_copy_mc_adjust(struct window_mode_entry *wme, u_int *px, u_int *py)
+{
+	u_int	ox, oy;
+
+	if (window_copy_mc_cell(wme, *px, *py, &ox, &oy) != -1) {
+		*px = ox;
+		*py = oy;
+	}
+}
+
+/*
+ * After moving up or down, move to the first cell if the cursor is in a
+ * multicell character.
+ */
+static void
+window_copy_mc_cursor(struct window_mode_entry *wme)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	u_int				 ox, oy;
+
+	if (window_copy_mc_cell(wme, data->cx, data->cy, &ox, &oy) != 0)
+		return;
+	if (ox != data->cx) {
+		window_copy_update_cursor(wme, ox, data->cy);
+		if (window_copy_update_selection(wme, 1, 0))
+			window_copy_redraw_lines(wme, data->cy, 1);
+	}
+}
+
+/*
+ * Move the cursor up, past the lines after the first of any multicell
+ * character.
+ */
 static void
 window_copy_cursor_up(struct window_mode_entry *wme, int scroll_only)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	u_int				 i, ox, oy, cy, offset;
+
+	for (i = 0; i < GRID_MC_MAX_SCALE; i++) {
+		cy = data->cy;
+		offset = data->oy;
+		window_copy_cursor_up1(wme, scroll_only);
+		if (scroll_only || (data->cy == cy && data->oy == offset))
+			return;
+		if (window_copy_mc_cell(wme, data->cx, data->cy, &ox, &oy) <= 0)
+			break;
+	}
+	window_copy_mc_cursor(wme);
+}
+
+/*
+ * Move the cursor down, past the lines after the first of any multicell
+ * character.
+ */
+static void
+window_copy_cursor_down(struct window_mode_entry *wme, int scroll_only)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	u_int				 i, ox, oy, cy, offset;
+
+	for (i = 0; i < GRID_MC_MAX_SCALE; i++) {
+		cy = data->cy;
+		offset = data->oy;
+		window_copy_cursor_down1(wme, scroll_only);
+		if (scroll_only || (data->cy == cy && data->oy == offset))
+			return;
+		if (window_copy_mc_cell(wme, data->cx, data->cy, &ox, &oy) <= 0)
+			break;
+	}
+	window_copy_mc_cursor(wme);
+}
+
+static void
+window_copy_cursor_up1(struct window_mode_entry *wme, int scroll_only)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct options			*oo = wme->wp->window->options;
@@ -6567,7 +6827,7 @@ window_copy_cursor_up(struct window_mode_entry *wme, int scroll_only)
 }
 
 static void
-window_copy_cursor_down(struct window_mode_entry *wme, int scroll_only)
+window_copy_cursor_down1(struct window_mode_entry *wme, int scroll_only)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct options			*oo = wme->wp->window->options;
@@ -6946,9 +7206,7 @@ window_copy_scroll_up(struct window_mode_entry *wme, u_int ny)
 			window_copy_write_line(wme, &ctx, screen_size_y(s) - 2);
 		if (s->sel != NULL && screen_size_y(s) > ny)
 			window_copy_write_line(wme, &ctx, screen_size_y(s) - ny - 1);
-		screen_write_cursormove(&ctx,
-		    window_copy_cursor_offset(wme, data->cx, screen_size_x(s)),
-		    data->cy, 0);
+		window_copy_cursormove(wme, &ctx);
 		screen_write_stop(&ctx);
 		wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR);
 		return;
@@ -6968,9 +7226,7 @@ window_copy_scroll_up(struct window_mode_entry *wme, u_int ny)
 		window_copy_write_line(wme, &ctx, screen_size_y(s) - 2);
 	if (s->sel != NULL && screen_size_y(s) > ny)
 		window_copy_write_line(wme, &ctx, screen_size_y(s) - ny - 1);
-	screen_write_cursormove(&ctx,
-	    window_copy_cursor_offset(wme, data->cx, screen_size_x(s)), data->cy,
-	    0);
+	window_copy_cursormove(wme, &ctx);
 	screen_write_stop(&ctx);
 	window_pane_scrollbar_redraw(wp);
 }
@@ -7014,9 +7270,7 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 			window_copy_write_line(wme, &ctx, ny);
 		else if (ny == 1)
 			window_copy_write_line(wme, &ctx, 1);
-		screen_write_cursormove(&ctx,
-		    window_copy_cursor_offset(wme, data->cx, screen_size_x(s)),
-		    data->cy, 0);
+		window_copy_cursormove(wme, &ctx);
 		screen_write_stop(&ctx);
 		wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR);
 		return;
@@ -7033,8 +7287,7 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 		window_copy_write_line(wme, &ctx, ny);
 	else if (ny == 1) /* nuke position */
 		window_copy_write_line(wme, &ctx, 1);
-	screen_write_cursormove(&ctx, window_copy_cursor_offset(wme, data->cx,
-	    screen_size_x(s)), data->cy, 0);
+	window_copy_cursormove(wme, &ctx);
 	screen_write_stop(&ctx);
 	window_pane_scrollbar_redraw(wp);
 }
@@ -7078,6 +7331,7 @@ window_copy_move_mouse(struct mouse_event *m)
 
 	data = wme->data;
 	x = window_copy_cursor_unoffset(wme, x, screen_size_x(&data->screen));
+	window_copy_mc_adjust(wme, &x, &y);
 	window_copy_update_cursor(wme, x, y);
 }
 
@@ -7113,6 +7367,7 @@ window_copy_start_drag(struct client *c, struct mouse_event *m)
 	inside_selection = window_copy_mouse_in_selection(wme, x, y,
 	    &on_start, &on_end);
 	x = window_copy_cursor_unoffset(wme, x, screen_size_x(&data->screen));
+	window_copy_mc_adjust(wme, &x, &y);
 	yg = screen_hsize(data->backing) + y - data->oy;
 	if (on_start || on_end || !inside_selection ||
 	    x < data->selrx || x > data->endselrx || yg != data->selry) {
@@ -7156,7 +7411,7 @@ window_copy_drag_update(struct client *c, struct mouse_event *m)
 	struct window_pane		*wp;
 	struct window_mode_entry	*wme;
 	struct window_copy_mode_data	*data;
-	u_int				 x, y, old_cx, old_cy;
+	u_int				 x, y, cx, cy, old_cx, old_cy;
 	struct timeval			 tv = {
 		.tv_usec = WINDOW_COPY_DRAG_REPEAT_TIME
 	};
@@ -7182,7 +7437,10 @@ window_copy_drag_update(struct client *c, struct mouse_event *m)
 	old_cx = data->cx;
 	old_cy = data->cy;
 
-	window_copy_update_cursor(wme, x, y);
+	cx = x;
+	cy = y;
+	window_copy_mc_adjust(wme, &cx, &cy);
+	window_copy_update_cursor(wme, cx, cy);
 	if (window_copy_update_selection(wme, 1, 0))
 		window_copy_redraw_selection(wme, old_cy);
 	if (old_cy != data->cy || old_cx == data->cx) {

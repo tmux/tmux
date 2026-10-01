@@ -809,6 +809,45 @@ struct colour_palette {
 #define GRID_FLAG_CLEARED 0x40
 #define GRID_FLAG_TAB 0x80
 
+/*
+ * Multicell (text sizing protocol) data. A multicell character is a block of
+ * GRID_MC_SX by GRID_MC_SY cells: the top-left cell holds the text and the
+ * others are padding cells with the same attributes and their offset in the
+ * block. Zero means an ordinary cell.
+ */
+#define GRID_MC_SCALE(mc) ((mc) & 0x7)
+#define GRID_MC_WIDTH(mc) (((mc) >> 3) & 0x7)
+#define GRID_MC_NUMERATOR(mc) (((mc) >> 6) & 0xf)
+#define GRID_MC_DENOMINATOR(mc) (((mc) >> 10) & 0xf)
+#define GRID_MC_VALIGN(mc) (((mc) >> 14) & 0x3)
+#define GRID_MC_HALIGN(mc) (((mc) >> 16) & 0x3)
+#define GRID_MC_WIDE 0x40000
+#define GRID_MC_ATTRS 0x7ffff
+#define GRID_MC_X(mc) (((mc) >> 19) & 0x3f)
+#define GRID_MC_Y(mc) (((mc) >> 25) & 0x7)
+#define GRID_MC_MAKE(s, w, n, d, v, h) \
+	((u_int)(s)|((u_int)(w) << 3)|((u_int)(n) << 6)|((u_int)(d) << 10)| \
+	((u_int)(v) << 14)|((u_int)(h) << 16))
+#define GRID_MC_SET_POS(mc, x, y) \
+	(((mc) & GRID_MC_ATTRS)|((u_int)(x) << 19)|((u_int)(y) << 25))
+#define GRID_MC_COLUMNS(mc) \
+	(GRID_MC_WIDTH(mc) != 0 ? GRID_MC_WIDTH(mc) : \
+	(((mc) & GRID_MC_WIDE) ? 2 : 1))
+#define GRID_MC_SX(mc) (GRID_MC_SCALE(mc) * GRID_MC_COLUMNS(mc))
+#define GRID_MC_SY(mc) GRID_MC_SCALE(mc)
+
+/*
+ * Is this cell the first column of a multicell character on its line? The
+ * cursor can stop here on every line of the character.
+ */
+#define GRID_MC_START(gc) ((gc)->mc != 0 && GRID_MC_X((gc)->mc) == 0)
+#define GRID_MC_MAX_PAYLOAD 4096
+#define GRID_MC_MAX_SCALE 7
+#define GRID_MC_MAX_WIDTH (GRID_MC_MAX_SCALE * 7)
+
+/* Most text kept for a multicell character (stored UTF-8 is under 32 bytes). */
+#define GRID_MC_MAX_TEXT (UTF8_SIZE - 1)
+
 /* Grid line flags. */
 #define GRID_LINE_WRAPPED 0x1
 #define GRID_LINE_EXTENDED 0x2
@@ -819,6 +858,7 @@ struct colour_palette {
 #define GRID_LINE_START_OUTPUT 0x40
 #define GRID_LINE_END_OUTPUT 0x80
 #define GRID_LINE_HYPERLINK 0x100
+#define GRID_LINE_MULTICELL 0x200
 
 /* All OSC 133 flags. */
 #define GRID_LINE_OSC133_FLAGS \
@@ -868,6 +908,8 @@ struct grid_cell {
 	int			bg;
 	int			us;
 	u_int			link;
+	u_int			mc;
+	u_int			mctext;
 };
 
 /* Grid extended cell entry. */
@@ -879,6 +921,8 @@ struct grid_extd_entry {
 	int			bg;
 	int			us;
 	u_int			link;
+	u_int			mc;
+	u_int			mctext;
 } __packed;
 
 /* Grid cell entry. */
@@ -1124,6 +1168,7 @@ struct screen_write_ctx {
 #define SCREEN_WRITE_SYNC 0x1
 #define SCREEN_WRITE_OBSCURED 0x2
 #define SCREEN_WRITE_CHECKED_IF_OBSCURED 0x4
+#define SCREEN_WRITE_MULTICELL 0x8
 
 	screen_write_init_ctx_cb	 init_ctx_cb;
 	void				*arg;
@@ -1753,6 +1798,8 @@ struct tty_term {
 #define TERM_SIXEL 0x40
 #define TERM_INVALIDMS 0x80
 #define TERM_NOREPLACE 0x100
+#define TERM_TEXTSIZING 0x200
+#define TERM_TEXTSIZINGWIDTH 0x400
 	int		 flags;
 
 	LIST_ENTRY(tty_term) entry;
@@ -1765,6 +1812,7 @@ struct tty_style_ctx {
 	struct colour_palette	*palette;
 	u_int			 dim;
 	struct hyperlinks	*hyperlinks;
+	int			 multicell; /* draw multicell natively */
 };
 
 /* Client terminal. */
@@ -1834,6 +1882,7 @@ struct tty {
 #define TTY_WAITBG 0x4000
 #define TTY_BRACKETPASTE 0x8000
 #define TTY_HAVESYNC 0x10000
+#define TTY_MULTICELL 0x20000 /* terminal may have multicell characters */
 #define TTY_ALL_REQUEST_FLAGS \
 	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVESYNC)
 	int		 flags;
@@ -2932,6 +2981,10 @@ void	tty_margin_off(struct tty *);
 void	tty_cursor(struct tty *, u_int, u_int);
 int	tty_fake_bce(const struct tty *, const struct grid_cell *, u_int);
 void	tty_repeat_space(struct tty *, u_int);
+void	tty_multicell(struct tty *, const struct grid_cell *,
+	    const struct tty_style_ctx *);
+void	tty_multicell_fallback(struct tty *, const struct grid_cell *,
+	    const struct tty_style_ctx *);
 void	tty_clipboard_query(struct tty *);
 void	tty_putcode(struct tty *, enum tty_code_code);
 void	tty_putcode_i(struct tty *, enum tty_code_code, int);
@@ -3498,6 +3551,16 @@ const struct grid_line *grid_peek_line(struct grid *, u_int);
 void	 grid_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
 void	 grid_set_cell(struct grid *, u_int, u_int, const struct grid_cell *);
 void	 grid_set_padding(struct grid *, u_int, u_int, int);
+void	 grid_mc_set_text(struct grid_cell *, const char *, size_t);
+const char *grid_mc_get_text(const struct grid_cell *, size_t *);
+u_int	 grid_mc_text_width(const struct grid_cell *);
+int	 grid_mc_owner(struct grid *, u_int, u_int, u_int *, u_int *);
+int	 grid_mc_erase(struct grid *, u_int, u_int);
+u_int	 grid_mc_fallback(const struct grid_cell *, struct utf8_data *, u_int,
+	     u_int *);
+void	 grid_mc_plain_cell(struct grid *, u_int, u_int, struct grid_cell *);
+void	 grid_mc_params(u_int, char *, size_t);
+void	 grid_mc_demote(struct grid *, u_int);
 void	 grid_set_cells(struct grid *, u_int, u_int, const struct grid_cell *,
 	     const char *, size_t);
 struct grid_line *grid_get_line(struct grid *, u_int);
@@ -3629,6 +3692,10 @@ void	 screen_write_collect_end(struct screen_write_ctx *);
 void	 screen_write_collect_add(struct screen_write_ctx *,
 	     const struct grid_cell *);
 void	 screen_write_cell(struct screen_write_ctx *, const struct grid_cell *);
+void	 screen_write_multicell(struct screen_write_ctx *,
+	     const struct grid_cell *);
+void	 screen_write_mc_copy(struct screen_write_ctx *,
+	     const struct grid_cell *);
 void	 screen_write_setselection(struct screen_write_ctx *, const char *,
 	     u_char *, u_int);
 void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int,
@@ -3720,6 +3787,8 @@ int		 window_has_pane(struct window *, struct window_pane *);
 int		 window_pane_contains(struct window_pane *, u_int, u_int);
 int		 window_pane_floating_overlaps(struct window_pane *,
 		     struct window_pane *);
+int		 window_pane_multicell_native(struct window_pane *,
+		     struct client *);
 int		 window_set_active_pane(struct window *, struct window_pane *,
 		     int);
 void		 window_fire_pane_moved(struct window_pane *, struct window *,
