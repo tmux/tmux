@@ -675,7 +675,7 @@ window_pane_floating_overlaps(struct window_pane *fwp, struct window_pane *wp)
 	int	fxoff, fyoff, xoff, yoff, border = 0;
 	u_int	fsx, fsy, sx, sy;
 
-	if (!window_pane_is_unzoomed_float(fwp) && (~fwp->flags & PANE_ZOOMED))
+	if (!window_pane_is_raised(fwp))
 		return (0);
 
 	window_pane_full_size_offset(fwp, &fxoff, &fyoff, &fsx, &fsy);
@@ -867,8 +867,7 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 	 * their status lines, so check those first. They are in stacking order.
 	 */
 	TAILQ_FOREACH(wp, &w->z_index, zentry) {
-		if ((window_pane_is_unzoomed_float(wp) ||
-		    (wp->flags & PANE_ZOOMED)) &&
+		if (window_pane_is_raised(wp) &&
 		    window_pane_contains(wp, x, y))
 			return (wp);
 	}
@@ -982,13 +981,12 @@ window_raise_pane(struct window_pane *wp)
 
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
 	TAILQ_FOREACH(wp1, &w->z_index, zentry) {
-		if (wp == w->modal)
-			break;
 		if (wp1 == w->modal)
 			continue;
-		if ((wp->flags & PANE_FLOATOVERZOOM) ||
-		    (~wp1->flags & PANE_FLOATOVERZOOM))
-			break;
+		if ((wp1->flags & PANE_FLOATOVERZOOM) &&
+		    (~wp->flags & PANE_FLOATOVERZOOM))
+			continue;
+		break;
 	}
 	if (wp1 == NULL)
 		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
@@ -1055,9 +1053,9 @@ window_unzoom_one(struct window_pane *wp)
 	window_update_zoomed(w);
 }
 
-/* Fire the events after panes have been unzoomed. */
+/* Fix the panes and fire the events after panes have been unzoomed. */
 static void
-window_unzoomed(struct window *w, int notify)
+window_unzoom_finish(struct window *w, int notify)
 {
 	layout_fix_panes(w, NULL);
 	if (notify) {
@@ -1107,7 +1105,7 @@ window_unzoom_pane(struct window_pane *wp, int notify)
 	if (~wp->flags & PANE_ZOOMED)
 		return (-1);
 	window_unzoom_one(wp);
-	window_unzoomed(w, notify);
+	window_unzoom_finish(w, notify);
 	return (0);
 }
 
@@ -1123,7 +1121,7 @@ window_unzoom(struct window *w, int notify)
 		if (wp->flags & PANE_ZOOMED)
 			window_unzoom_one(wp);
 	}
-	window_unzoomed(w, notify);
+	window_unzoom_finish(w, notify);
 	return (0);
 }
 
@@ -1142,19 +1140,14 @@ window_zoomed_pane(struct window *w)
 	return (NULL);
 }
 
-/*
- * Move zoom from one pane to another, so a command that made another pane
- * active can leave the window looking zoomed.
- */
+/* Move the zoom from one pane to another. */
 void
 window_zoom_move(struct window_pane *from, struct window_pane *to)
 {
 	if (from == to)
 		return;
-	if (from != NULL)
-		window_unzoom_pane(from, 1);
-	if (to != NULL)
-		window_zoom(to);
+	window_unzoom_pane(from, 1);
+	window_zoom(to);
 }
 
 struct window_pane *
@@ -3045,12 +3038,16 @@ window_pane_is_floating(struct window_pane *wp)
 int
 window_pane_is_unzoomed_float(struct window_pane *wp)
 {
-	return (window_pane_is_floating(wp) && (~wp->flags & PANE_ZOOMED));
+	if (wp->flags & PANE_ZOOMED)
+		return (0);
+	return (window_pane_is_floating(wp));
 }
 
 /* Is the pane a float or a zoomed pane, that is above the tiled panes? */
 int
 window_pane_is_raised(struct window_pane *wp)
 {
-	return (window_pane_is_floating(wp) || (wp->flags & PANE_ZOOMED));
+	if (wp->flags & PANE_ZOOMED)
+		return (1);
+	return (window_pane_is_floating(wp));
 }

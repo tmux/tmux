@@ -321,8 +321,10 @@ layout_dump_visible(struct window *w, int flags)
 	struct layout_cell	*root, *lc, *lcnext;
 	char			*out;
 
-	if (zwp == NULL)
-		return (layout_dump(w, w->layout_root, flags));
+	if (zwp == NULL) {
+		out = layout_dump(w, w->layout_root, flags);
+		return (out);
+	}
 
 	root = layout_create_cell(NULL);
 	layout_set_size(root, w->sx, w->sy, 0, 0);

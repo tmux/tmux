@@ -148,12 +148,6 @@ window_panes_add_area(struct window_panes_modedata *data,
 }
 
 static int
-window_panes_pane_floating(struct window_pane *wp)
-{
-	return (window_pane_is_floating(wp));
-}
-
-static int
 window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
     u_int osx, u_int osy, u_int dsx, u_int dsy, u_int *xp, u_int *yp,
     u_int *sxp, u_int *syp)
@@ -827,14 +821,14 @@ window_panes_draw_screen(struct window_mode_entry *wme)
 	screen_write_start(&ctx, &data->screen);
 	screen_write_clearscreen(&ctx, 8);
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (window_panes_pane_floating(wp))
+		if (window_pane_is_floating(wp))
 			continue;
 		window_panes_draw_pane(data, &ctx, wp, root, osx, osy, sx, sy);
 	}
 	window_panes_get_border_cell(data, &border_gc);
 	window_panes_draw_borders(&ctx, w, root, &border_gc, osx, osy, sx, sy);
 	TAILQ_FOREACH_REVERSE(wp, &w->z_index, window_panes_zindex, zentry) {
-		if (!window_panes_pane_floating(wp))
+		if (!window_pane_is_floating(wp))
 			continue;
 		window_panes_clear_floating_area(&ctx, wp, osx, osy, sx, sy);
 		window_panes_draw_pane(data, &ctx, wp, root, osx, osy, sx, sy);

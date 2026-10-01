@@ -58,6 +58,13 @@ cmd_swap_pane_prev_tiled_pane(struct window_pane *wp)
 	return (wp);
 }
 
+static void
+cmd_swap_pane_zoom(struct window *w)
+{
+	window_unzoom(w, 1);
+	window_zoom(w->active);
+}
+
 static enum cmd_retval
 cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -202,15 +209,9 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 out:
 	/* With -Z, leave the active pane zoomed if the window was. */
-	if (src_zoomed) {
-		window_unzoom(src_w, 1);
-		if (src_w->active != NULL)
-			window_zoom(src_w->active);
-	}
-	if (src_w != dst_w && dst_zoomed) {
-		window_unzoom(dst_w, 1);
-		if (dst_w->active != NULL)
-			window_zoom(dst_w->active);
-	}
+	if (src_zoomed)
+		cmd_swap_pane_zoom(src_w);
+	if (src_w != dst_w && dst_zoomed)
+		cmd_swap_pane_zoom(dst_w);
 	return (CMD_RETURN_NORMAL);
 }

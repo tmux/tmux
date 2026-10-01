@@ -68,12 +68,15 @@ const struct cmd_entry cmd_move_pane_entry = {
 static int
 cmd_join_pane_is_stacking(const char *position)
 {
-	return (strcmp(position, "front") == 0 ||
-	    strcmp(position, "back") == 0 ||
-	    strcmp(position, "forward") == 0 ||
-	    strcmp(position, "backward") == 0 ||
-	    strcmp(position, "forward-loop") == 0 ||
-	    strcmp(position, "backward-loop") == 0);
+	const char	*names[] = { "front", "back", "forward", "backward",
+			      "forward-loop", "backward-loop" };
+	u_int		 i;
+
+	for (i = 0; i < nitems(names); i++) {
+		if (strcmp(position, names[i]) == 0)
+			return (1);
+	}
+	return (0);
 }
 
 /* Get the stacking group of a pane: modal, always on top, or other. */
@@ -92,12 +95,13 @@ static struct window_pane *
 cmd_join_pane_forward(struct window_pane *wp)
 {
 	struct window_pane	*owp = wp;
+	int			 group = cmd_join_pane_group(wp);
 
 	do {
 		owp = TAILQ_PREV(owp, window_panes_zindex, zentry);
 	} while (owp != NULL && !window_pane_is_visible(owp));
-	if (owp == NULL || cmd_join_pane_group(owp) != cmd_join_pane_group(wp))
-		return (NULL);
+	if (owp != NULL && cmd_join_pane_group(owp) != group)
+		owp = NULL;
 	return (owp);
 }
 
@@ -106,14 +110,15 @@ static struct window_pane *
 cmd_join_pane_backward(struct window_pane *wp)
 {
 	struct window_pane	*owp = wp;
+	int			 group = cmd_join_pane_group(wp);
 
 	do {
 		owp = TAILQ_NEXT(owp, zentry);
 	} while (owp != NULL && !window_pane_is_visible(owp));
-	if (owp == NULL ||
-	    !window_pane_is_raised(owp) ||
-	    cmd_join_pane_group(owp) != cmd_join_pane_group(wp))
-		return (NULL);
+	if (owp != NULL && !window_pane_is_raised(owp))
+		owp = NULL;
+	if (owp != NULL && cmd_join_pane_group(owp) != group)
+		owp = NULL;
 	return (owp);
 }
 
@@ -459,7 +464,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*src_wp, *dst_wp;
 	const char		*s;
 	char			*cause = NULL;
-	int			 flags = 0, dst_idx, raised;
+	int			 flags = 0, dst_idx, raised, stacking;
 	struct layout_cell	*lc;
 
 	dst_s = target->s;
@@ -480,8 +485,10 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 		    args_has(args, 'L') ||
 		    args_has(args, 'R')) {
 			s = args_get(args, 'P');
-			if (args_has(args, 'z') ||
-			    (s != NULL && cmd_join_pane_is_stacking(s)))
+			stacking = args_has(args, 'z');
+			if (s != NULL && cmd_join_pane_is_stacking(s))
+				stacking = 1;
+			if (stacking)
 				raised = window_pane_is_raised(dst_wp);
 			else
 				raised = window_pane_is_floating(dst_wp);
@@ -490,9 +497,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 				return (CMD_RETURN_ERROR);
 			}
 			/* Moving unzooms a zoomed pane; reordering does not. */
-			if ((dst_wp->flags & PANE_ZOOMED) &&
-			    !args_has(args, 'z') &&
-			    (s == NULL || !cmd_join_pane_is_stacking(s)))
+			if (!stacking && (dst_wp->flags & PANE_ZOOMED))
 				window_unzoom_pane(dst_wp, 1);
 			if (s != NULL)
 				return (cmd_join_pane_place(item, dst_wl, dst_wp, s));
