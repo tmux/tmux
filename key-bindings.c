@@ -79,7 +79,8 @@
 	" 'Kill' 'X' {kill-pane}" \
 	" 'Respawn' 'R' {respawn-pane -k}" \
 	" '#{?pane_marked,Unmark,Mark}' 'm' {select-pane -m}" \
-	" '#{?#{>:#{window_panes},1},,-}#{?window_zoomed_flag,Unzoom,Zoom}' 'z' {resize-pane -Z}"
+	" '#{?#{>:#{window_panes},1},,-}#{?pane_zoomed_flag,Unzoom,Zoom}' 'z' {resize-pane -Z}" \
+	" '#{?#{||:#{pane_floating_flag},#{pane_zoomed_flag}},Bring To Front,}' 'F' {move-pane -P front}"
 #define DEFAULT_MOVE_MENU \
 	" 'Centre' 'c' {move-pane -P centre}" \
 	" ''" \
@@ -536,6 +537,8 @@ key_bindings_init(void)
 		/* Mouse button 1 down on default pane-border-format */
 		"bind -n MouseDown1Control9 { display-menu -t= -xM -yM -O -T 'Kill pane #{pane_index}?' 'Yes' 'y' { kill-pane -t= } 'No' 'n' {}}",
 		"bind -n MouseDown1Control8 { resize-pane -Z }",
+		"bind -n M-MouseDown1Control8 { move-pane -P front }",
+		"bind -n S-MouseDown1Control8 { move-pane -P front }",
 		"bind -n MouseDown1Control7 { if -Ft= '#{pane_floating_flag}' { join-pane } { break-pane -W } }",
 
 		/* Mouse wheel down on status line. */

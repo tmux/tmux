@@ -459,7 +459,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*src_wp, *dst_wp;
 	const char		*s;
 	char			*cause = NULL;
-	int			 flags = 0, dst_idx;
+	int			 flags = 0, dst_idx, raised;
 	struct layout_cell	*lc;
 
 	dst_s = target->s;
@@ -479,17 +479,22 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 		    args_has(args, 'D') ||
 		    args_has(args, 'L') ||
 		    args_has(args, 'R')) {
-			if (!window_pane_is_floating(dst_wp)) {
+			s = args_get(args, 'P');
+			if (args_has(args, 'z') ||
+			    (s != NULL && cmd_join_pane_is_stacking(s)))
+				raised = window_pane_is_raised(dst_wp);
+			else
+				raised = window_pane_is_floating(dst_wp);
+			if (!raised) {
 				cmdq_error(item, "pane is not floating");
 				return (CMD_RETURN_ERROR);
 			}
 			/* Moving unzooms a zoomed pane; reordering does not. */
-			s = args_get(args, 'P');
 			if ((dst_wp->flags & PANE_ZOOMED) &&
 			    !args_has(args, 'z') &&
 			    (s == NULL || !cmd_join_pane_is_stacking(s)))
 				window_unzoom_pane(dst_wp, 1);
-			if ((s = args_get(args, 'P')) != NULL)
+			if (s != NULL)
 				return (cmd_join_pane_place(item, dst_wl, dst_wp, s));
 			if ((s = args_get(args, 'z')) != NULL)
 				return (cmd_join_pane_zindex(item, dst_wl, dst_wp, s));

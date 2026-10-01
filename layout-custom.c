@@ -74,6 +74,7 @@ struct layout_parse_cell_ctx {
 	int			 last;
 	int			 index;
 	int			 zindex;
+	int			 zoomed;
 };
 
 /* Layout parse context. */
@@ -220,7 +221,7 @@ layout_parse_free_ctx(struct layout_parse_ctx *pctx)
 /* Add a cell context to the parse context. */
 static void
 layout_parse_add_cctx(struct layout_parse_ctx *pctx, struct layout_cell *lc,
-    int active, int last, int index, int zindex)
+    int active, int last, int index, int zindex, int zoomed)
 {
 	struct layout_parse_cell_ctx	*cctx;
 
@@ -236,6 +237,7 @@ layout_parse_add_cctx(struct layout_parse_ctx *pctx, struct layout_cell *lc,
 	cctx->last = last;
 	cctx->index = index;
 	cctx->zindex = zindex;
+	cctx->zoomed = zoomed;
 }
 
 /* Remove a cell context from the parse context. Does not preserve ordering. */
@@ -423,6 +425,8 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 		if (window_pane_index(wp, &i) != 0)
 			return (-1);
 		layout_string_write(ls, ",\"i\":%u", i);
+		if (wp->flags & PANE_ZOOMED)
+			layout_string_write(ls, ",\"Z\":true");
 		if (lc->flags & LAYOUT_CELL_FLOATING) {
 			z = layout_cell_zindex(lc);
 			layout_string_write(ls, ",\"z\":%u", z);
@@ -1012,7 +1016,7 @@ layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
 	int64_t			  num;
 	char			**cause = pctx->cause;
 	int			  boolean, index, zindex, active = -1;
-	int			  last = -1;
+	int			  last = -1, zoomed = 0;
 
 	if (json_find_string(node, "t", &str, cause) != 0)
 		goto fail;
@@ -1102,7 +1106,14 @@ layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
 		} else
 			zindex = INT_MAX;
 
-		layout_parse_add_cctx(pctx, lc, active, last, index, zindex);
+		if (json_find(node, "Z") != NULL) {
+			if (json_find_boolean(node, "Z", &boolean, cause) != 0)
+				goto fail;
+			zoomed = boolean;
+		}
+
+		layout_parse_add_cctx(pctx, lc, active, last, index, zindex,
+		    zoomed);
 	} else {
 		if (json_find_array(node, "c", &array, cause) != 0)
 			goto fail;
@@ -1210,6 +1221,13 @@ layout_parse_apply_ctx(struct window *w, struct layout_parse_ctx *pctx)
 		wp = cctx->lc->wp;
 		if (window_pane_is_floating(wp))
 			TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
+	}
+
+	/* Zoom panes. */
+	for (i = 0; i < pctx->size; i++) {
+		cctx = &pctx->cctxs[i];
+		if (cctx->zoomed)
+			window_zoom(cctx->lc->wp);
 	}
 
 	/* Set the active pane. */
