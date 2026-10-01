@@ -75,6 +75,8 @@ static void	window_pane_free(struct window_pane *);
 static void	window_pane_scrollbar_timer(int, short, void *);
 static int	window_activate_pane(struct window *, struct window_pane *, int,
 		    int);
+static void	window_hide_one(struct window_pane *, int);
+static void	window_hide_zoomed(struct window *);
 static void	window_pane_full_size_offset(struct window_pane *, int *, int *,
 		    u_int *, u_int *);
 
@@ -775,14 +777,14 @@ window_activate_pane(struct window *w, struct window_pane *wp, int notify,
 		return (0);
 	if (!window_pane_is_visible(wp)) {
 		/*
-		 * The pane is covered by a zoomed pane. A tiled pane that is
-		 * not zoomed can only be reached by unzooming (any floats
-		 * stay); anything else can be raised above the zoom.
+		 * The pane is covered by a zoomed pane. Raise it above the zoom
+		 * if it can be, otherwise (a tiled pane that is not zoomed) hide
+		 * the zoomed panes, as the desktop does, to show the tiles.
 		 */
 		if (window_pane_is_raised(wp))
 			window_raise_pane(wp);
 		else
-			window_unzoom(w, 1);
+			window_hide_zoomed(w);
 	} else if (raise) {
 		/* Raise the pane if the option says to. */
 		switch (options_get_number(w->options, "pane-raise-on-focus")) {
@@ -1042,6 +1044,30 @@ window_count_tiled_siblings(struct layout_cell *lc)
 void
 window_hide_pane(struct window_pane *wp)
 {
+	window_hide_one(wp, 1);
+}
+
+/*
+ * Hide every zoomed pane that is not hidden, marking them as the desktop does so
+ * that it shows them again. The focus is left for the caller to move.
+ */
+static void
+window_hide_zoomed(struct window *w)
+{
+	struct window_pane	*wp;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if ((wp->flags & PANE_ZOOMED) && (~wp->flags & PANE_HIDDEN)) {
+			window_hide_one(wp, 0);
+			wp->flags |= PANE_HIDDENALL;
+		}
+	}
+}
+
+/* Hide a pane, moving the focus away from it if it is active and asked to. */
+static void
+window_hide_one(struct window_pane *wp, int refocus)
+{
 	struct window		*w = wp->window;
 	struct layout_cell	*lc = wp->layout_cell;
 	struct window_pane	*wp1;
@@ -1068,7 +1094,7 @@ window_hide_pane(struct window_pane *wp)
 	layout_fix_panes(w, NULL);
 
 	/* Move the focus to the last used pane or the top one that is seen. */
-	if (wp == w->active) {
+	if (refocus && wp == w->active) {
 		TAILQ_FOREACH(wp1, &w->last_panes, sentry) {
 			if (wp1 != wp && window_pane_is_visible(wp1))
 				break;

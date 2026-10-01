@@ -93,6 +93,21 @@ function noZoom(    i)
 			fail("pane " aid[i] " is still zoomed")
 	}
 }
+function hideZoomed(t,    i, id, want)
+{
+	sameZ("")
+	for (i = 1; i <= nb; i++) {
+		id = bid[i]
+		if (id == t || !(id in ina))
+			continue
+		want = (bH[id] || bZ[id]) ? 1 : 0
+		if (aH[id] != want)
+			fail("pane " id " zoomed " bZ[id] " hidden " bH[id] \
+			    " became hidden " aH[id])
+	}
+	if (aH[t])
+		fail("pane " t " is still hidden")
+}
 function covered(t,    i, q)
 {
 	if (bF[t] || bZ[t])
@@ -177,8 +192,9 @@ END {
 	if (op == "select") {
 		if (aA[T] != 1) fail("not active")
 		if (aH[T]) fail("still hidden")
-		if (covered(T)) noZoom(); else sameZ("")
-		sameF(""); sameH(T)
+		if (covered(T)) hideZoomed(T)
+		else { sameZ(""); sameH(T) }
+		sameF("")
 	} else if (op == "zoom") {
 		sameF("")
 		if (bZ[T]) {
@@ -195,12 +211,12 @@ END {
 		if (bH[T]) {
 			if (aH[T]) fail("not shown")
 			if (aA[T] != 1) fail("not active when shown")
-			if (covered(T)) noZoom(); else sameZ("")
+			if (covered(T)) hideZoomed(T)
+			else { sameZ(""); sameH(T) }
 		} else {
 			if (!aH[T]) fail("not hidden")
-			sameZ("")
+			sameZ(""); sameH(T)
 		}
-		sameH(T)
 	} else if (op == "desktop") {
 		sameF(""); sameZ("")
 		for (i = 1; i <= nb; i++) {
@@ -267,11 +283,12 @@ END {
 		sameF(""); sameH(""); noZoom()
 	} else {
 		# Moving around or changing layout: floating panes stay floating
-		# and nothing is hidden.
+		# and only a zoomed pane is hidden, when a covered pane is made
+		# active.
 		sameF("")
 		for (i = 1; i <= nb; i++) {
 			id = bid[i]
-			if (id in ina && aH[id] > bH[id])
+			if (id in ina && aH[id] > bH[id] && !bZ[id])
 				fail("pane " id " was hidden by this")
 		}
 	}

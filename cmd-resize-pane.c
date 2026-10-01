@@ -77,8 +77,18 @@ cmd_resize_pane_desktop(struct window *w)
 			shown = 1;
 		}
 	}
-	if (shown)
+	if (shown) {
+		/* Do not leave the active pane covered by a pane just shown. */
+		if (!window_pane_is_visible(w->active)) {
+			TAILQ_FOREACH(wp, &w->z_index, zentry) {
+				if (window_pane_is_visible(wp))
+					break;
+			}
+			if (wp != NULL)
+				window_set_active_pane(w, wp, 1);
+		}
 		return;
+	}
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (wp == w->modal || (wp->flags & PANE_HIDDEN))

@@ -147,11 +147,11 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 			if (!visible && Zflag)
 				zwp = window_zoomed_pane(w);
 			window_redraw_active_switch(w, wp);
-			window_set_active_pane(w, wp, 1);
 			if (zwp != NULL) {
 				window_zoom_move(zwp, wp);
 				server_redraw_window(w);
 			}
+			window_set_active_pane(w, wp, 1);
 		}
 		if (wl != NULL) {
 			session_set_current(s, wl);

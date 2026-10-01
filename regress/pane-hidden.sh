@@ -237,6 +237,48 @@ run resize-pane -a -H -t "$A"
 hidden "$A" 0
 hidden "$X" 0
 
+# Activating a tiled pane that is covered by zoomed panes hides them, as the
+# desktop does: they stay zoomed, the tiles are shown and the pane is active.
+reset
+C=$(run split-window -dPF '#{pane_id}') || exit 1
+run resize-pane -Z -t "$A"
+run resize-pane -Z -t "$B"
+run select-pane -t "$C"
+check "$C" '#{pane_active}' 1
+for p in "$A" "$B"; do
+	hidden "$p" 1
+	check "$p" '#{pane_zoomed_flag}' 1
+done
+hidden "$C" 0
+check "$C" '#{window_zoomed_flag}' 0
+# The last pane brings back the one that was zoomed.
+run select-pane -l
+check "$B" '#{pane_active}:#{pane_hidden_flag}:#{window_zoomed_flag}' '1:0:1'
+# The desktop shows the others, and the active pane is not left covered.
+run select-pane -t "$C"
+run resize-pane -a -H -t "$A"
+for p in "$A" "$B"; do
+	hidden "$p" 0
+done
+check "$A" '#{window_zoomed_flag}' 1
+visible=$(run list-panes -F '#{pane_active}#{pane_zoomed_flag}' | grep -c '^11$')
+[ "$visible" = 1 ] || fail "active pane is covered after the desktop"
+
+# select-pane -Z moves the zoom to a covered tiled pane without hiding the old
+# one, and so do last-pane -Z and rotate-window -Z.
+reset
+run resize-pane -Z -t "$A"
+run select-pane -Z -t "$B"
+check "$B" '#{pane_zoomed_flag}:#{pane_active}' '1:1'
+check "$A" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '0:0'
+run select-pane -Z -t "$A"
+run select-pane -Z -l
+check "$B" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '1:0'
+check "$A" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '0:0'
+run rotate-window -Z
+check "$A" '#{pane_hidden_flag}' 0
+check "$B" '#{pane_hidden_flag}' 0
+
 # Floating and tiling a hidden pane keeps it hidden.
 reset
 run resize-pane -H -t "$B"

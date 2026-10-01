@@ -144,16 +144,31 @@ zoomed "$Y" 1
 zoomed "$A" 1
 window_zoomed "$X" 1
 
-# Activating a tiled pane that is not zoomed unzooms every pane but the
-# floats stay floats.
+# Activating a tiled pane that is not zoomed hides the zoomed panes, as the
+# desktop does, and shows the tiles. They stay zoomed, and floats that are not
+# zoomed stay where they are.
 run select-pane -t "$B"
 check "$B" '#{pane_active}' 1
-for p in "$A" "$B" "$X" "$Y"; do
+for p in "$A" "$Y"; do
+	zoomed "$p" 1
+	check "$p" '#{pane_hidden_flag}' 1
+done
+for p in "$B" "$X"; do
 	zoomed "$p" 0
+	check "$p" '#{pane_hidden_flag}' 0
 done
 window_zoomed "$B" 0
 check "$X" '#{pane_floating_flag}' 1
 check "$Y" '#{pane_floating_flag}' 1
+
+# The desktop shows them again.
+run resize-pane -a -H -t "$A"
+for p in "$A" "$Y"; do
+	zoomed "$p" 1
+	check "$p" '#{pane_hidden_flag}' 0
+done
+window_zoomed "$B" 1
+run resize-pane -a -Z -t "$A"
 
 # Activating a tiled pane that is itself zoomed does not unzoom it.
 run resize-pane -Z -t "$A"

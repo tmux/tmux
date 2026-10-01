@@ -121,10 +121,10 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (active != -1) {
 		wp = rotated[active];
-		window_set_active_pane(w, wp, 1);
-		cmd_find_from_winlink_pane(current, wl, wp, 0);
 		if (zwp != NULL)
 			window_zoom_move(zwp, wp);
+		window_set_active_pane(w, wp, 1);
+		cmd_find_from_winlink_pane(current, wl, wp, 0);
 	}
 	redraw_invalidate_scene(w);
 	server_redraw_window(w);

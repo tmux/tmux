@@ -193,13 +193,14 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 			if (!visible && Zflag)
 				zwp = window_zoomed_pane(w);
 			window_redraw_active_switch(w, lastwp);
-			if (window_set_active_pane(w, lastwp, 1)) {
-				cmd_find_from_winlink(current, wl, 0);
-				cmd_select_pane_redraw(w);
-			}
 			if (zwp != NULL) {
 				window_zoom_move(zwp, lastwp);
 				server_redraw_window(w);
+			}
+			if (window_set_active_pane(w, lastwp, 1) ||
+			    zwp != NULL) {
+				cmd_find_from_winlink(current, wl, 0);
+				cmd_select_pane_redraw(w);
 			}
 		}
 		return (CMD_RETURN_NORMAL);
@@ -273,14 +274,14 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (!visible && Zflag)
 		zwp = window_zoomed_pane(w);
 	window_redraw_active_switch(w, wp);
-	if (window_set_active_pane(w, wp, 1))
-		cmd_find_from_winlink_pane(current, wl, wp, 0);
-	cmdq_insert_hook(s, item, current, "after-select-pane");
-	cmd_select_pane_redraw(w);
 	if (zwp != NULL) {
 		window_zoom_move(zwp, wp);
 		server_redraw_window(w);
 	}
+	if (window_set_active_pane(w, wp, 1) || zwp != NULL)
+		cmd_find_from_winlink_pane(current, wl, wp, 0);
+	cmdq_insert_hook(s, item, current, "after-select-pane");
+	cmd_select_pane_redraw(w);
 
 	return (CMD_RETURN_NORMAL);
 }
