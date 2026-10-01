@@ -2121,6 +2121,10 @@ server_client_reset_state(struct client *c)
 					cy += status_line_size(c);
 			}
 
+			/* A hidden pane has no cursor. */
+			if (!window_pane_is_visible(wp))
+				cursor = 0;
+
 			if (!cursor)
 				mode &= ~MODE_CURSOR;
 		}
