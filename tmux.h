@@ -3708,6 +3708,7 @@ int		 window_has_pane(struct window *, struct window_pane *);
 int		 window_pane_contains(struct window_pane *, u_int, u_int);
 int		 window_pane_floating_overlaps(struct window_pane *,
 		     struct window_pane *);
+int		 window_focus_pane(struct window *, struct window_pane *, int);
 int		 window_set_active_pane(struct window *, struct window_pane *,
 		     int);
 void		 window_fire_pane_moved(struct window_pane *, struct window *,

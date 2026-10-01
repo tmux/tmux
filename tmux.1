@@ -6060,6 +6060,11 @@ raises none.
 A floating or zoomed pane that is covered by a zoomed pane is always raised
 when it is made active; a tiled pane that is covered unzooms every pane
 instead.
+Moving the mouse onto a pane with
+.Ic focus\-follows\-mouse
+makes it active without raising it, so
+.Ic all
+is usually wanted with that option.
 .Pp
 .It Xo Ic pane\-scrollbars
 .Op Ic off | modal | on | auto\-hide

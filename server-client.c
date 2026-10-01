@@ -1061,7 +1061,7 @@ have_event:
 		    wp != w->active &&
 		    options_get_number(s->options, "focus-follows-mouse")) {
 			window_redraw_active_switch(w, wp);
-			window_set_active_pane(w, wp, 1);
+			window_focus_pane(w, wp, 1);
 			server_redraw_window_borders(w);
 			server_status_window(w);
 		}

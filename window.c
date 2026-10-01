@@ -73,6 +73,8 @@ static struct window_pane *window_pane_create(struct window *, u_int, u_int,
 static void	window_pane_destroy(struct window_pane *);
 static void	window_pane_free(struct window_pane *);
 static void	window_pane_scrollbar_timer(int, short, void *);
+static int	window_activate_pane(struct window *, struct window_pane *, int,
+		    int);
 static void	window_pane_full_size_offset(struct window_pane *, int *, int *,
 		    u_int *, u_int *);
 
@@ -743,6 +745,20 @@ window_pane_update_focus(struct window_pane *wp)
 int
 window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 {
+	return (window_activate_pane(w, wp, notify, 1));
+}
+
+/* Make a pane active without raising it, as when the mouse moves onto it. */
+int
+window_focus_pane(struct window *w, struct window_pane *wp, int notify)
+{
+	return (window_activate_pane(w, wp, notify, 0));
+}
+
+static int
+window_activate_pane(struct window *w, struct window_pane *wp, int notify,
+    int raise)
+{
 	struct window_pane *lastwp;
 
 	log_debug("%s: pane %%%u", __func__, wp->id);
@@ -761,7 +777,7 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 			window_raise_pane(wp);
 		else
 			window_unzoom(w, 1);
-	} else {
+	} else if (raise) {
 		/* Raise the pane if the option says to. */
 		switch (options_get_number(w->options, "pane-raise-on-focus")) {
 		case PANE_RAISE_FLOATING:
