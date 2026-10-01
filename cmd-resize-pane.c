@@ -53,19 +53,29 @@ const struct cmd_entry cmd_resize_pane_entry = {
 
 /*
  * Show the desktop: hide every pane above the layout, remembering which, or if
- * any were hidden like that show just those again.
+ * any were hidden like that show just those again: floating panes first, then
+ * zoomed panes.
  */
 static void
 cmd_resize_pane_desktop(struct window *w)
 {
 	struct window_pane	*wp;
-	int			 shown = 0;
+	int			 shown = 0, zoomed;
 
-	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (~wp->flags & PANE_HIDDENALL)
-			continue;
-		window_show_pane(wp);
-		shown = 1;
+	/*
+	 * Panes hidden by an earlier call are marked. Show the marked panes
+	 * that are not zoomed first, then the zoomed ones on the next call; if
+	 * none are left hide every floating and zoomed pane.
+	 */
+	for (zoomed = 0; zoomed <= 1 && !shown; zoomed++) {
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (~wp->flags & PANE_HIDDENALL)
+				continue;
+			if (zoomed != ((wp->flags & PANE_ZOOMED) != 0))
+				continue;
+			window_show_pane(wp);
+			shown = 1;
+		}
 	}
 	if (shown)
 		return;

@@ -1174,6 +1174,19 @@ window_lower_pane(struct window_pane *wp)
 	redraw_invalidate_scene(w);
 }
 
+/* Is any pane that is not hidden zoomed? */
+int
+window_has_visible_zoom(struct window *w)
+{
+	struct window_pane	*wp;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if ((wp->flags & PANE_ZOOMED) && (~wp->flags & PANE_HIDDEN))
+			return (1);
+	}
+	return (0);
+}
+
 /* Set or clear WINDOW_ZOOMED depending on whether any pane is zoomed. */
 static void
 window_update_zoomed(struct window *w)
@@ -1570,7 +1583,7 @@ window_printable_flags(struct winlink *wl, int escape)
 		flags[pos++] = 'M';
 	if (wl->window->modal != NULL)
 		flags[pos++] = 'O';
-	if (wl->window->flags & WINDOW_ZOOMED)
+	if (window_has_visible_zoom(wl->window))
 		flags[pos++] = 'Z';
 	flags[pos] = '\0';
 	return (flags);

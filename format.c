@@ -3393,7 +3393,7 @@ static void *
 format_cb_window_zoomed_flag(struct format_tree *ft)
 {
 	if (ft->w != NULL) {
-		if (ft->w->flags & WINDOW_ZOOMED)
+		if (window_has_visible_zoom(ft->w))
 			return (xstrdup("1"));
 		return (xstrdup("0"));
 	}

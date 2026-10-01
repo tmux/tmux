@@ -9,7 +9,8 @@
 # expectation from the state before. This covers:
 # - select-pane, including -Z and moving to the next, last or a directional pane;
 # - resize-pane -Z (toggle a zoom), -H (hide or show), -a -Z (unzoom all) and
-#   -a -H (show desktop), which is run twice to check it restores the panes;
+#   -a -H (show desktop), which is run once, twice and three times to check
+#   the hide, floats and zoomed panes steps;
 # - break-pane -W and join-pane to float and tile panes;
 # - split-window, new-pane and kill-pane;
 # - next-layout, select-layout, rotate-window and resize-window.
@@ -19,7 +20,7 @@
 #
 # It also checks properties that must hold after every command: the active pane
 # is not hidden if any pane is not, there is one active pane, a window with one
-# pane is not zoomed, window_zoomed_flag matches the panes and visible panes have
+# pane is not zoomed, window_zoomed_flag matches the visible zoomed panes and visible panes have
 # a size. The status line clicks and the cursor are in other tests.
 
 PATH=/bin:/usr/bin
@@ -147,7 +148,7 @@ END {
 	for (i = 1; i <= na; i++) {
 		id = aid[i]
 		if (aA[id] == 1) { nact++; act = id }
-		if (aZ[id]) anyZ = 1
+		if (aZ[id] && !aH[id]) anyZ = 1
 		if (!aH[id]) anyvis = 1
 	}
 	if (nact != 1)
@@ -155,7 +156,7 @@ END {
 	for (i = 1; i <= na; i++) {
 		id = aid[i]
 		if (aWZ[id] != anyZ)
-			fail("window_zoomed_flag " aWZ[id] " with zoomed panes " anyZ)
+			fail("window_zoomed_flag " aWZ[id] " with visible zoomed panes " anyZ)
 		if (!aH[id] && (aW[id] < 1 || aT[id] < 1))
 			fail("pane " id " is " aW[id] "x" aT[id])
 	}
@@ -209,8 +210,31 @@ END {
 				fail("pane " id " hidden " bH[id] " floating " bF[id] \
 				    " zoomed " bZ[id] " became hidden " aH[id])
 		}
-	} else if (op == "desktop2") {
-		sameF(""); sameZ(""); sameH("")
+	} else if (op == "desktop2" || op == "desktop3") {
+		# The first call hides every floating and zoomed pane, the
+		# second shows the floats and the third the zoomed panes. A
+		# call with nothing to show is skipped, so with only one kind
+		# the second call restores them and the third hides them again.
+		nf = 0; nz = 0
+		for (i = 1; i <= nb; i++) {
+			id = bid[i]
+			if (bH[id]) continue
+			if (bZ[id]) nz++
+			else if (bF[id]) nf++
+		}
+		sameF(""); sameZ("")
+		for (i = 1; i <= nb; i++) {
+			id = bid[i]
+			want = bH[id]
+			if (!bH[id] && bZ[id])
+				want = (op == "desktop2") ? (nf > 0) : (nf == 0 || nz == 0)
+			else if (!bH[id] && bF[id])
+				want = (op == "desktop3") ? (nf == 0 || nz == 0) : 0
+			if (aH[id] != want)
+				fail("pane " id " hidden " bH[id] " floating " bF[id] \
+				    " zoomed " bZ[id] " became hidden " aH[id] \
+				    " after " op " (floats " nf ", zooms " nz ")")
+		}
 	} else if (op == "unzoomall") {
 		sameF(""); sameH(""); noZoom()
 	} else if (op == "break") {
@@ -349,6 +373,11 @@ run_one()
 		tm resize-pane -a -H -t %0 || rc=$?
 		tm resize-pane -a -H -t %0 || rc=$?
 		;;
+	desktop3)
+		tm resize-pane -a -H -t %0 || rc=$?
+		tm resize-pane -a -H -t %0 || rc=$?
+		tm resize-pane -a -H -t %0 || rc=$?
+		;;
 	unzoomall) tm resize-pane -a -Z -t %0 || rc=$? ;;
 	nextlayout) tm next-layout -t %0 || rc=$? ;;
 	tiled) tm select-layout -t %0 tiled || rc=$? ;;
@@ -378,7 +407,7 @@ run_one()
 }
 
 PER_PANE="select selectZ zoom hide break join kill split newpane"
-GLOBAL="desktop desktop2 unzoomall nextlayout tiled rotate nextpane lastpane \
+GLOBAL="desktop desktop2 desktop3 unzoomall nextlayout tiled rotate nextpane lastpane \
     left right up down resize"
 
 # Two panes: every state, every operation.

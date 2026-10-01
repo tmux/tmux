@@ -3743,6 +3743,7 @@ int		 window_zoom(struct window_pane *);
 int		 window_unzoom_pane(struct window_pane *, int);
 int		 window_unzoom(struct window *, int);
 struct window_pane *window_zoomed_pane(struct window *);
+int		 window_has_visible_zoom(struct window *);
 void		 window_zoom_move(struct window_pane *, struct window_pane *);
 void		 window_lost_pane(struct window *, struct window_pane *);
 void		 window_remove_pane(struct window *, struct window_pane *);

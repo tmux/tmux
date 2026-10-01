@@ -159,8 +159,8 @@ run select-pane -t "$B"
 hidden "$B" 0
 check "$B" '#{pane_active}' 1
 
-# resize-pane -a -H hides every visible float and zoomed pane and a second
-# call shows only those, leaving panes that were already hidden alone.
+# resize-pane -a -H hides every visible float and zoomed pane and later calls
+# show only those, floats first, leaving panes that were already hidden alone.
 reset
 X=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 20 -y 8 -X 8 -Y 3 '') || exit 1
 Y=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 20 -y 8 -X 30 -Y 6 '') || exit 1
@@ -179,8 +179,63 @@ run resize-pane -a -H -t "$A"
 hidden "$B" 1
 hidden "$X" 1
 run resize-pane -a -H -t "$A"
+hidden "$X" 0
+hidden "$B" 1
+run resize-pane -a -H -t "$A"
 hidden "$B" 0
 check "$B" '#{pane_zoomed_flag}' 1
+
+# With two zoomed panes and a float the calls cycle: hide all, show the float,
+# show the zooms, hide all again. Hidden zoomed panes are not a zoomed window.
+reset
+run resize-pane -Z -t "$A"
+run resize-pane -Z -t "$B"
+X=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 20 -y 8 -X 8 -Y 3 '') || exit 1
+check "$A" '#{window_zoomed_flag}' 1
+for i in 1 2; do
+	run resize-pane -a -H -t "$A"
+	for p in "$A" "$B" "$X"; do
+		hidden "$p" 1
+	done
+	check "$A" '#{window_zoomed_flag}:#{pane_zoomed_flag}' '0:1'
+	check "$A" '#{window_flags}' '*'
+	run resize-pane -a -H -t "$A"
+	hidden "$X" 0
+	hidden "$A" 1
+	hidden "$B" 1
+	check "$A" '#{window_zoomed_flag}' 0
+	run resize-pane -a -H -t "$A"
+	for p in "$A" "$B" "$X"; do
+		hidden "$p" 0
+	done
+	check "$A" '#{window_zoomed_flag}:#{window_flags}' '1:*Z'
+done
+
+# A stage with nothing to show is skipped, so every call changes something.
+reset
+run resize-pane -Z -t "$A"
+run resize-pane -a -H -t "$A"
+hidden "$A" 1
+run resize-pane -a -H -t "$A"
+hidden "$A" 0
+reset
+X=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 20 -y 8 -X 8 -Y 3 '') || exit 1
+run resize-pane -a -H -t "$A"
+hidden "$X" 1
+run resize-pane -a -H -t "$A"
+hidden "$X" 0
+
+# Showing a pane by hand takes it out of the cycle.
+reset
+run resize-pane -Z -t "$A"
+X=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 20 -y 8 -X 8 -Y 3 '') || exit 1
+run resize-pane -a -H -t "$A"
+run select-pane -t "$X"
+hidden "$X" 0
+hidden "$A" 1
+run resize-pane -a -H -t "$A"
+hidden "$A" 0
+hidden "$X" 0
 
 # Floating and tiling a hidden pane keeps it hidden.
 reset
