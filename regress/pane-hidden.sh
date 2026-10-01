@@ -339,4 +339,36 @@ after=$(run list-panes -F '#{pane_id}:#{pane_height}') || exit 1
 [ "$sizes" = "$after" ] || fail "sizes changed: '$sizes' became '$after'"
 run set-hook -gu window-layout-changed
 
+# Zooming a pane shows it, even if it is hidden and already the active pane.
+reset
+run resize-pane -H -t "$A"
+run resize-pane -H -t "$B"
+act=$(run display-message -p -t "$A" '#{?pane_active,1,0}') || exit 1
+if [ "$act" = 1 ]; then
+	p=$A
+else
+	p=$B
+fi
+hidden "$p" 1
+run resize-pane -Z -t "$p"
+hidden "$p" 0
+check "$p" '#{pane_zoomed_flag}:#{pane_active}' '1:1'
+
+# Moving to the pane at the left or right skips a hidden floating pane. The
+# floating pane is flush with the right edge so moving left from the tiled pane
+# wraps round to it.
+reset
+$TMUX kill-server 2>/dev/null
+run new-session -d -x 80 -y 24
+A=$(run display-message -p '#{pane_id}') || exit 1
+X=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 18 -y 6 -X 63 -Y 5 '') || exit 1
+run select-pane -t "$A"
+run select-pane -L -t "$A"
+check "$X" '#{pane_active}' 1
+run select-pane -t "$A"
+run resize-pane -H -t "$X"
+run select-pane -L -t "$A"
+check "$A" '#{pane_active}' 1
+hidden "$X" 1
+
 exit 0

@@ -1199,8 +1199,7 @@ window_zoom(struct window_pane *wp)
 	w->flags |= WINDOW_ZOOMED;
 	window_raise_pane(wp);
 	layout_fix_panes(w, NULL);
-	if (w->active != wp)
-		window_set_active_pane(w, wp, 1);
+	window_set_active_pane(w, wp, 1);
 
 	if (!was_zoomed)
 		events_fire_window("window-zoomed", w);
@@ -2453,7 +2452,7 @@ window_pane_find_up(struct window_pane *wp)
 
 	TAILQ_FOREACH(next, &w->panes, entry) {
 		window_pane_layout_size_offset(next, &xoff, &yoff, &sx, &sy);
-		if (next == wp)
+		if (next == wp || (next->flags & PANE_HIDDEN))
 			continue;
 		if (yoff + (int)sy + 1 != edge)
 			continue;
@@ -2514,7 +2513,7 @@ window_pane_find_down(struct window_pane *wp)
 
 	TAILQ_FOREACH(next, &w->panes, entry) {
 		window_pane_layout_size_offset(next, &xoff, &yoff, &sx, &sy);
-		if (next == wp)
+		if (next == wp || (next->flags & PANE_HIDDEN))
 			continue;
 		if (yoff != edge)
 			continue;
@@ -2566,7 +2565,7 @@ window_pane_find_left(struct window_pane *wp)
 
 	TAILQ_FOREACH(next, &w->panes, entry) {
 		window_pane_layout_size_offset(next, &xoff, &yoff, &sx, &sy);
-		if (next == wp)
+		if (next == wp || (next->flags & PANE_HIDDEN))
 			continue;
 		if (xoff + (int)sx + 1 != edge)
 			continue;
@@ -2618,7 +2617,7 @@ window_pane_find_right(struct window_pane *wp)
 
 	TAILQ_FOREACH(next, &w->panes, entry) {
 		window_pane_layout_size_offset(next, &xoff, &yoff, &sx, &sy);
-		if (next == wp)
+		if (next == wp || (next->flags & PANE_HIDDEN))
 			continue;
 		if (xoff != edge)
 			continue;
