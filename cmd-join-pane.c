@@ -433,7 +433,7 @@ cmd_join_pane_tile(struct cmdq_item *item, struct args *args, struct window *w,
 		/* It takes its space when it is shown. */
 		if (lc->parent != NULL)
 			layout_set_size(lc, 0, 0, 0, 0);
-		lc->tg.sx = UINT_MAX;
+		lc->hidden.g.sx = UINT_MAX;
 	} else if (layout_insert_tile(w, lc) != 0) {
 		cmdq_error(item, "no space for a new pane");
 		return (CMD_RETURN_ERROR);

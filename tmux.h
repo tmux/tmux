@@ -1581,6 +1581,13 @@ struct layout_geometry {
 	int	yoff;
 };
 
+/* Size of a tiled cell and of the window when its pane was hidden. */
+struct layout_hidden {
+	struct layout_geometry	 g;
+	u_int			 wsx;
+	u_int			 wsy;
+};
+
 /* Layout cells queue. */
 TAILQ_HEAD(layout_cells, layout_cell);
 
@@ -1595,7 +1602,7 @@ struct layout_cell {
 
 	struct layout_geometry	 g;
 	struct layout_geometry	 fg; /* saved floating pane */
-	struct layout_geometry	 tg; /* saved tiled pane, when hidden */
+	struct layout_hidden	 hidden;
 
 	struct window_pane	*wp;
 	struct layout_cells	 cells;

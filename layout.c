@@ -79,7 +79,7 @@ layout_create_cell(struct layout_cell *lcparent)
 
 	layout_geometry_init(&lc->g);
 	layout_geometry_init(&lc->fg);
-	layout_geometry_init(&lc->tg);
+	layout_geometry_init(&lc->hidden.g);
 
 	return (lc);
 }

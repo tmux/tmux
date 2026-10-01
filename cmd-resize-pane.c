@@ -59,18 +59,18 @@ static void
 cmd_resize_pane_desktop(struct window *w)
 {
 	struct window_pane	*wp;
-	int			 marked = 0;
+	int			 shown = 0;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (wp->flags & PANE_HIDDENALL)
-			marked = 1;
-	}
-	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (marked) {
-			if (wp->flags & PANE_HIDDENALL)
-				window_show_pane(wp);
+		if (~wp->flags & PANE_HIDDENALL)
 			continue;
-		}
+		window_show_pane(wp);
+		shown = 1;
+	}
+	if (shown)
+		return;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (wp == w->modal || (wp->flags & PANE_HIDDEN))
 			continue;
 		if (!window_pane_is_raised(wp))

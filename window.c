@@ -1030,7 +1030,9 @@ window_hide_pane(struct window_pane *wp)
 
 	/* A tiled pane gives its space to a neighbour. */
 	if (layout_cell_is_tiled(lc)) {
-		memcpy(&lc->tg, &lc->g, sizeof lc->tg);
+		memcpy(&lc->hidden.g, &lc->g, sizeof lc->hidden.g);
+		lc->hidden.wsx = w->sx;
+		lc->hidden.wsy = w->sy;
 		layout_remove_tile(w, lc);
 	}
 	wp->flags |= PANE_HIDDEN;
@@ -1064,6 +1066,8 @@ window_show_pane(struct window_pane *wp)
 {
 	struct window		*w = wp->window;
 	struct layout_cell	*lc = wp->layout_cell;
+	enum layout_type	 type;
+	u_int			 size, current;
 	int			 tiled;
 
 	if (~wp->flags & PANE_HIDDEN)
@@ -1074,12 +1078,20 @@ window_show_pane(struct window_pane *wp)
 		return (-1);
 	wp->flags &= ~(PANE_HIDDEN|PANE_HIDDENALL);
 
-	/* Try to get back the size the pane had. */
-	if (tiled && lc->parent != NULL && lc->tg.sx != UINT_MAX) {
-		if (lc->parent->type == LAYOUT_LEFTRIGHT)
-			layout_resize_pane_to(wp, lc->parent->type, lc->tg.sx);
-		else
-			layout_resize_pane_to(wp, lc->parent->type, lc->tg.sy);
+	/* Try to get back the size the pane had, scaled to the window. */
+	if (tiled && lc->parent != NULL && lc->hidden.g.sx != UINT_MAX) {
+		type = lc->parent->type;
+		if (type == LAYOUT_LEFTRIGHT) {
+			size = lc->hidden.g.sx * w->sx / lc->hidden.wsx;
+			current = lc->g.sx;
+		} else {
+			size = lc->hidden.g.sy * w->sy / lc->hidden.wsy;
+			current = lc->g.sy;
+		}
+		if (size < PANE_MINIMUM)
+			size = PANE_MINIMUM;
+		if (size != current)
+			layout_resize_pane_to(wp, type, size);
 	}
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
