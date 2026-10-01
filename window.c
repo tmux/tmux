@@ -765,8 +765,11 @@ window_activate_pane(struct window *w, struct window_pane *wp, int notify,
 
 	if (w->modal != NULL && wp != w->modal)
 		return (0);
-	if (wp->flags & PANE_HIDDEN)
+	if (wp->flags & PANE_HIDDEN) {
 		window_show_pane(wp);
+		if (wp == w->active)
+			return (1);
+	}
 	if (wp == w->active)
 		return (0);
 	if (!window_pane_is_visible(wp)) {
@@ -1099,6 +1102,10 @@ window_show_pane(struct window_pane *wp)
 	events_fire_window("window-layout-changed", w);
 	redraw_invalidate_scene(w);
 	server_redraw_window(w);
+
+	/* Keys go nowhere if the active pane is hidden, so use this one. */
+	if (w->active != NULL && (w->active->flags & PANE_HIDDEN))
+		window_set_active_pane(w, wp, 1);
 	return (0);
 }
 
@@ -1327,7 +1334,7 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 			w->active = lastwp;
 		else
 			w->active = TAILQ_FIRST(&w->last_panes);
-		if (w->active != NULL && !window_pane_is_visible(w->active)) {
+		if (w->active == NULL || !window_pane_is_visible(w->active)) {
 			/* Use the topmost pane that can be seen. */
 			TAILQ_FOREACH(lastwp, &w->z_index, zentry) {
 				if (lastwp != wp &&

@@ -254,7 +254,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	char			  path[PATH_MAX];
 	const char		 *cmd, *tmp, *home = find_home();
 	const char		 *actual_cwd = NULL;
-	int			  argc;
+	int			  argc, detached;
 	u_int			  idx;
 	struct termios		  now;
 	u_int			  hlimit;
@@ -588,6 +588,11 @@ complete:
 		return (new_wp);
 	if (sc->flags & SPAWN_ZOOM)
 		window_zoom(new_wp);
+
+	/* Make the pane active, even if detached, if keys would go nowhere. */
+	detached = (sc->flags & SPAWN_DETACHED);
+	if (w->active == NULL || (w->active->flags & PANE_HIDDEN))
+		detached = 0;
 	if (sc->flags & SPAWN_MODAL) {
 		w->modal_last = w->active;
 		w->modal = new_wp;
@@ -596,8 +601,7 @@ complete:
 			window_set_active_pane(w, new_wp, 0);
 		else
 			window_set_active_pane(w, new_wp, 1);
-	} else if (((~sc->flags & SPAWN_DETACHED) || w->active == NULL) &&
-	    w->modal == NULL) {
+	} else if (!detached && w->modal == NULL) {
 		if (sc->flags & SPAWN_NONOTIFY)
 			window_set_active_pane(w, new_wp, 0);
 		else
