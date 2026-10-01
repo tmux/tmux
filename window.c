@@ -766,7 +766,8 @@ window_activate_pane(struct window *w, struct window_pane *wp, int notify,
 	if (w->modal != NULL && wp != w->modal)
 		return (0);
 	if (wp->flags & PANE_HIDDEN) {
-		window_show_pane(wp);
+		if (window_show_pane(wp) != 0)
+			return (0);
 		if (wp == w->active)
 			return (1);
 	}
@@ -1017,6 +1018,23 @@ window_raise_pane(struct window_pane *wp)
 	redraw_invalidate_scene(w);
 }
 
+/* Count the tiled cells next to a cell. */
+static u_int
+window_count_tiled_siblings(struct layout_cell *lc)
+{
+	struct layout_cell	*lcsib;
+	u_int			 n = 0;
+
+	TAILQ_FOREACH(lcsib, &lc->parent->cells, entry) {
+		if (lcsib == lc)
+			continue;
+		if (layout_cell_is_tiled(lcsib) ||
+		    layout_cell_has_tiled_child(lcsib))
+			n++;
+	}
+	return (n);
+}
+
 /*
  * Hide a pane. It keeps its place in the layout and in the stacking order and
  * stays zoomed or floating, so showing it again puts it back as it was.
@@ -1031,11 +1049,18 @@ window_hide_pane(struct window_pane *wp)
 	if ((wp->flags & PANE_HIDDEN) || wp == w->modal || lc == NULL)
 		return;
 
-	/* A tiled pane gives its space to a neighbour. */
+	/*
+	 * A tiled pane gives its space to a neighbour. Its size is only worth
+	 * keeping if it shares the space with one.
+	 */
 	if (layout_cell_is_tiled(lc)) {
-		memcpy(&lc->hidden.g, &lc->g, sizeof lc->hidden.g);
-		lc->hidden.wsx = w->sx;
-		lc->hidden.wsy = w->sy;
+		if (layout_cell_get_neighbour(lc) != NULL) {
+			memcpy(&lc->hidden.g, &lc->g, sizeof lc->hidden.g);
+			lc->hidden.psx = lc->parent->g.sx;
+			lc->hidden.psy = lc->parent->g.sy;
+			lc->hidden.nsib = window_count_tiled_siblings(lc);
+		} else
+			lc->hidden.g.sx = UINT_MAX;
 		layout_remove_tile(w, lc);
 	}
 	wp->flags |= PANE_HIDDEN;
@@ -1068,27 +1093,39 @@ int
 window_show_pane(struct window_pane *wp)
 {
 	struct window		*w = wp->window;
-	struct layout_cell	*lc = wp->layout_cell;
+	struct layout_cell	*lc = wp->layout_cell, *lcneighbour = NULL;
 	enum layout_type	 type;
-	u_int			 size, current;
+	u_int			 size, current, nsib = 0;
 	int			 tiled;
 
 	if (~wp->flags & PANE_HIDDEN)
 		return (0);
 
 	tiled = (lc != NULL && !window_pane_is_floating(wp));
+	if (tiled) {
+		lcneighbour = layout_cell_get_neighbour(lc);
+		nsib = window_count_tiled_siblings(lc);
+	}
 	if (tiled && layout_insert_tile(w, lc) != 0)
 		return (-1);
 	wp->flags &= ~(PANE_HIDDEN|PANE_HIDDENALL);
 
-	/* Try to get back the size the pane had, scaled to the window. */
-	if (tiled && lc->parent != NULL && lc->hidden.g.sx != UINT_MAX) {
+	/*
+	 * Try to get back the size the pane had, scaled to how much its parent
+	 * has changed. If it has no neighbour it fills the space around it, and
+	 * the size is only right if it has the same neighbours as before.
+	 */
+	if (lcneighbour != NULL &&
+	    lc->hidden.g.sx != UINT_MAX &&
+	    lc->hidden.nsib == nsib) {
 		type = lc->parent->type;
 		if (type == LAYOUT_LEFTRIGHT) {
-			size = lc->hidden.g.sx * w->sx / lc->hidden.wsx;
+			size = lc->hidden.g.sx * lc->parent->g.sx /
+			    lc->hidden.psx;
 			current = lc->g.sx;
 		} else {
-			size = lc->hidden.g.sy * w->sy / lc->hidden.wsy;
+			size = lc->hidden.g.sy * lc->parent->g.sy /
+			    lc->hidden.psy;
 			current = lc->g.sy;
 		}
 		if (size < PANE_MINIMUM)

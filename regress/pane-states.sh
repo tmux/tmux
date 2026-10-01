@@ -14,6 +14,9 @@
 # - split-window, new-pane and kill-pane;
 # - next-layout, select-layout, rotate-window and resize-window.
 #
+# The tiled panes are laid out in different shapes: split top to bottom or side
+# by side, and for three panes stacked, in a row or nested.
+#
 # It also checks properties that must hold after every command: the active pane
 # is not hidden if any pane is not, there is one active pane, a window with one
 # pane is not zoomed, window_zoomed_flag matches the panes and visible panes have
@@ -282,12 +285,22 @@ run_one()
 	tgt=$4
 	RUN=$((RUN + 1))
 
+	# The tiled panes are split in different ways: top to bottom or side by
+	# side for two, and stacked, in a row or nested for three.
 	set -- new-session -d -x 80 -y 24 cat
-	i=1
-	while [ $i -lt "$n" ]; do
-		set -- "$@" ';' split-window -d ''
-		i=$((i + 1))
-	done
+	if [ "$n" -eq 2 ]; then
+		shape=$((RUN % 2))
+	else
+		shape=$((RUN % 3))
+	fi
+	case "$n$shape" in
+	20) set -- "$@" ';' split-window -d '' ;;
+	21) set -- "$@" ';' split-window -d -h '' ;;
+	30) set -- "$@" ';' split-window -d '' ';' split-window -d '' ;;
+	31) set -- "$@" ';' split-window -d -h '' ';' split-window -d -h '' ;;
+	32) set -- "$@" ';' split-window -d -h -t %0 '' \
+	    ';' split-window -d -v -t %1 '' ;;
+	esac
 	want=
 	for stage in 1 2 4; do
 		i=0
@@ -381,7 +394,7 @@ while [ $s -lt 64 ]; do
 	s=$((s + 1))
 done
 
-# Three panes: every state, and one operation on each, rotating so that every
+# Three panes: every state, and two operations on each, rotating so that every
 # operation and target is used with many different states.
 ALL="$GLOBAL"
 for op in $PER_PANE; do
@@ -391,13 +404,15 @@ set -- $ALL
 M=$#
 s=0
 while [ $s -lt 512 ]; do
-	set -- $ALL
-	shift $(( (s * 7 + s / M) % M ))
-	item=$1
-	case $item in
-	*:*) run_one 3 $s "${item%:*}" "%${item#*:}" ;;
-	*) run_one 3 $s "$item" %0 ;;
-	esac
+	for k in $(( (s * 7 + s / M) % M )) $(( (s * 5 + 11) % M )); do
+		set -- $ALL
+		shift $k
+		item=$1
+		case $item in
+		*:*) run_one 3 $s "${item%:*}" "%${item#*:}" ;;
+		*) run_one 3 $s "$item" %0 ;;
+		esac
+	done
 	s=$((s + 1))
 done
 

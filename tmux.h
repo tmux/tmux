@@ -1581,11 +1581,15 @@ struct layout_geometry {
 	int	yoff;
 };
 
-/* Size of a tiled cell and of the window when its pane was hidden. */
+/*
+ * Size of a tiled cell, of its parent cell and the number of tiled cells next to
+ * it when its pane was hidden.
+ */
 struct layout_hidden {
 	struct layout_geometry	 g;
-	u_int			 wsx;
-	u_int			 wsy;
+	u_int			 psx;
+	u_int			 psy;
+	u_int			 nsib;
 };
 
 /* Layout cells queue. */

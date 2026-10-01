@@ -115,9 +115,13 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'H')) {
 		if (args_has(args, 'a'))
 			cmd_resize_pane_desktop(w);
-		else if (wp->flags & PANE_HIDDEN)
+		else if (wp->flags & PANE_HIDDEN) {
 			window_set_active_pane(w, wp, 1);
-		else
+			if (wp->flags & PANE_HIDDEN) {
+				cmdq_error(item, "no space to show pane");
+				return (CMD_RETURN_ERROR);
+			}
+		} else
 			window_hide_pane(wp);
 		server_redraw_window(w);
 		return (CMD_RETURN_NORMAL);

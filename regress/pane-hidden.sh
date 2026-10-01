@@ -371,4 +371,181 @@ run select-pane -L -t "$A"
 check "$A" '#{pane_active}' 1
 hidden "$X" 1
 
+# Mixed vertical and horizontal splits, including three or more panes side by
+# side. Hiding and showing each pane puts every pane back where it was. Hiding
+# several panes and showing them again in the reverse order they were hidden
+# leaves every pane within two cells of where it was. In the same order the panes
+# have the wrong neighbours when they are shown so their sizes cannot be exact,
+# but every pane must be back, tiled and not squeezed. Floating panes, including
+# ones that were never tiled, are part of this: they are not moved by hiding
+# other panes and tile somewhere in the layout without squeezing it.
+#
+# geom: id, left, top, width and height of every pane, sorted by id.
+geom()
+{
+	run list-panes -F '#{pane_id} #{pane_left} #{pane_top} #{pane_width} #{pane_height}' |
+	    sort
+}
+
+# near $name $base $now $tolerance
+near()
+{
+	echo "$2
+$3" | awk -v tol="$4" -v name="$1" '
+	NF == 5 && ($1 in seen) {
+		for (i = 2; i <= 5; i++) {
+			d = $i - seen[$1, i]
+			if (d < 0) d = -d
+			if (d > tol) {
+				printf "%s: %s differs by %d (%s became %s)\n", name, $1, d, seen[$1, 0], $0
+				bad = 1
+			}
+		}
+		next
+	}
+	NF == 5 { seen[$1] = 1; for (i = 2; i <= 5; i++) seen[$1, i] = $i; seen[$1, 0] = $0 }
+	END { exit bad }' || fail "layout not restored"
+}
+
+# usable $name $panes $minimum: the panes are tiled, shown and at least the
+# minimum size in both directions.
+usable()
+{
+	for p in $2; do
+		check "$p" '#{pane_floating_flag}:#{pane_hidden_flag}' 0:0
+		w=$(run display-message -p -t "$p" '#{pane_width}') || exit 1
+		h=$(run display-message -p -t "$p" '#{pane_height}') || exit 1
+		[ "$w" -ge "$3" ] && [ "$h" -ge "$3" ] ||
+		    fail "$1: $p is only ${w}x$h"
+	done
+}
+
+# build $size $splits...: a window made of splits, each a flag and a target.
+build()
+{
+	size=$1
+	shift
+	$TMUX kill-server 2>/dev/null
+	run new-session -d -x "${size%x*}" -y "${size#*x}" cat
+	while [ $# -gt 0 ]; do
+		run split-window -d "$1" -t "$2" ''
+		shift 2
+	done
+}
+
+mixed()
+{
+	name=$1
+	size=$2
+	shift 2
+	splits="$*"
+	build $size $splits
+	base=$(geom)
+	ids=$(run list-panes -F '#{pane_id}' | sort)
+	n=$(echo "$ids" | wc -l)
+	last=$(echo "$ids" | tail -1)
+
+	# Each pane in turn.
+	for p in $ids; do
+		run resize-pane -H -t "$p"
+		hidden "$p" 1
+		run resize-pane -H -t "$p"
+		hidden "$p" 0
+		near "$name hiding $p" "$base" "$(geom)" 0
+	done
+
+	# Every pane but the last, shown in the reverse and in the same order.
+	for order in reverse forward; do
+		hide=
+		for p in $ids; do
+			[ "$p" = "$last" ] && continue
+			hide="$hide $p"
+			run resize-pane -H -t "$p"
+		done
+		show=$hide
+		if [ "$order" = reverse ]; then
+			show=
+			for p in $hide; do
+				show="$p $show"
+			done
+		fi
+		for p in $show; do
+			run resize-pane -H -t "$p"
+		done
+		for p in $ids; do
+			hidden "$p" 0
+		done
+		if [ "$order" = reverse ]; then
+			near "$name hiding $((n - 1)) panes, $order" "$base" "$(geom)" 2
+		else
+			usable "$name hiding $((n - 1)) panes, $order" "$ids" 1
+		fi
+	done
+
+	# Any two panes, hidden and shown in the same order, even if they are
+	# next to each other: nothing is squeezed.
+	if [ "$size" = 120x40 ]; then
+		for p in $ids; do
+			for q in $ids; do
+				[ "$p" = "$q" ] && continue
+				build $size $splits
+				run resize-pane -H -t "$p"
+				run resize-pane -H -t "$q"
+				run resize-pane -H -t "$p"
+				run resize-pane -H -t "$q"
+				usable "$name hiding $p and $q" "$ids" 2
+			done
+		done
+	fi
+
+	# A floating pane that was never tiled: hiding and showing it, or any
+	# tiled pane, changes nothing else.
+	build $size $splits
+	f=$(run new-pane -dPF '#{pane_id}' -x 20 -y 6 -X 5 -Y 5 '') || exit 1
+	base=$(geom)
+	for p in $ids $f; do
+		run resize-pane -H -t "$p"
+		run resize-pane -H -t "$p"
+		near "$name with a float, hiding $p" "$base" "$(geom)" 0
+	done
+	check "$f" '#{pane_floating_flag}' 1
+
+	# Tiling it puts it in the layout without squeezing the others, and it
+	# can be floated and tiled again.
+	run join-pane -s "$f" -t "$f"
+	usable "$name tiling a new float" "$ids $f" 1
+	run break-pane -W -s "$f"
+	check "$f" '#{pane_floating_flag}' 1
+	run join-pane -s "$f" -t "$f"
+	usable "$name tiling the float again" "$ids $f" 1
+
+	# Floating, hiding and tiling panes together.
+	for p in $ids; do
+		[ "$p" = "$last" ] && continue
+		build $size $splits
+		f=$(run new-pane -dPF '#{pane_id}' -x 20 -y 6 -X 5 -Y 5 '') || exit 1
+		run break-pane -d -W -s "$p"
+		run resize-pane -H -t "$last"
+		run resize-pane -H -t "$last"
+		run join-pane -d -s "$p" -t "$p"
+		run join-pane -d -s "$f" -t "$f"
+		usable "$name floating $p, hiding $last, tiling both" "$ids $f" 1
+	done
+}
+
+for size in 80x24 120x40; do
+	mixed "A|(B/C) $size" $size -h %0 -v %1
+	mixed "A/(B|C) $size" $size -v %0 -h %1
+	mixed "(A|C)/B $size" $size -v %0 -h %0
+	mixed "(A/C)|B $size" $size -h %0 -v %0
+	mixed "2x2 $size" $size -v %0 -h %0 -h %1
+	mixed "A|(B/(C|D)) $size" $size -h %0 -v %1 -h %2
+	mixed "A/(B|(C/D)) $size" $size -v %0 -h %1 -v %2
+done
+# Three or more side by side need room.
+mixed "A/(B|C|D)/E 120x40" 120x40 -v %0 -v %1 -v %2 -h %1 -h %1
+mixed "(A/B/C)|(D|E) 120x40" 120x40 -h %0 -v %0 -v %0 -h %1
+mixed "A|(B/C/D)|E 120x40" 120x40 -h %0 -h %1 -v %1 -v %1
+mixed "A/(B|(C/D|E))/F 120x40" 120x40 -v %0 -v %1 -h %1 -v %3 -h %3
+
 exit 0
