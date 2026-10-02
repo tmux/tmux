@@ -4680,6 +4680,9 @@ flag unsets an option, so a session inherits the option from the global
 options (or with
 .Fl g ,
 restores a global option to the default).
+For an array option given with a key,
+.Fl u
+removes only that item.
 .Fl U
 unsets an option (like
 .Fl u )
@@ -5547,6 +5550,22 @@ more rows.
 Specify the format to be used for each line of the status line.
 The default builds the top status line from the various individual status
 options below.
+The default second line shows the panes in the current window and the default
+third line shows the sessions.
+A default line may be extended rather than replaced by saving its default value
+in a user option and expanding that in the new value.
+For example, to show the working directory of the active pane on the right of
+the second line:
+.Bd -literal -offset indent
+set \-g status 2
+set \-gu status\-format
+set \-gF @old_status_format1 "#{status\-format[1]}"
+set \-g status\-format[1] "#{E:@old_status_format1}#[nolist align=right]#{pane_current_path}"
+.Ed
+.Pp
+.Ql set \-gu status\-format
+restores the defaults first, so this may be run again, for example when the
+configuration file is reloaded.
 .It Ic status\-interval Ar interval
 Update the status line every
 .Ar interval
