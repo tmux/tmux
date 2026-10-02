@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.294 2026/09/28 10:10:16 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.296 2026/10/02 12:53:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -122,14 +122,26 @@ screen_write_set_cursor(struct screen_write_ctx *ctx, int cx, int cy)
 		evtimer_add(&w->offset_timer, &tv);
 }
 
-/* Do a full redraw. */
+/* Redraw lines. */
 static void
-screen_write_redraw_cb(const struct tty_ctx *ttyctx)
+screen_write_redraw_cb(const struct tty_ctx *ttyctx, u_int py, u_int ny)
 {
 	struct window_pane	*wp = ttyctx->arg;
+	int			 x0, y0, x1, y1;
 
-	if (wp != NULL)
-		wp->flags |= PANE_REDRAW;
+	if (wp == NULL)
+		return;
+
+	x0 = wp->xoff;
+	y0 = wp->yoff + (int)py;
+	x1 = x0 + (int)wp->sx;
+	y1 = y0 + (int)ny;
+	if (x0 < 0)
+		x0 = 0;
+	if (y0 < 0)
+		y0 = 0;
+	if (x1 > x0 && y1 > y0)
+		redraw_damage_window(wp->window, x0, y0, x1 - x0, y1 - y0);
 }
 
 /* Update context for client. */
@@ -1376,11 +1388,11 @@ screen_write_sync_scroll_dirty(struct screen_write_ctx *ctx)
 
 /* Redraw the scrolled lines for a client which cannot scroll them. */
 static void
-screen_write_sync_redraw_cb(const struct tty_ctx *ttyctx)
+screen_write_sync_redraw_cb(const struct tty_ctx *ttyctx, u_int py, u_int ny)
 {
 	struct window_pane	*wp = ttyctx->arg;
 
-	bit_nset(wp->sync_dirty, wp->sync_rupper, wp->sync_rlower);
+	bit_nset(wp->sync_dirty, py, py + ny - 1);
 }
 
 /* Send the deferred scroll to the client. */
@@ -2272,7 +2284,7 @@ screen_write_fullredraw(struct screen_write_ctx *ctx)
 
 	screen_write_initctx(ctx, &ttyctx, 1, 0);
 	if (ttyctx.redraw_cb != NULL)
-		ttyctx.redraw_cb(&ttyctx);
+		ttyctx.redraw_cb(&ttyctx, 0, ttyctx.sy);
 }
 
 /* Trim collected items. */
@@ -3290,7 +3302,7 @@ screen_write_alternateon(struct screen_write_ctx *ctx, struct grid_cell *gc,
 
 	screen_write_initctx(ctx, &ttyctx, 1, 0);
 	if (ttyctx.redraw_cb != NULL)
-		ttyctx.redraw_cb(&ttyctx);
+		ttyctx.redraw_cb(&ttyctx, 0, ttyctx.sy);
 }
 
 /* Turn alternate screen off. */
@@ -3315,5 +3327,5 @@ screen_write_alternateoff(struct screen_write_ctx *ctx, struct grid_cell *gc,
 
 	screen_write_initctx(ctx, &ttyctx, 1, 0);
 	if (ttyctx.redraw_cb != NULL)
-		ttyctx.redraw_cb(&ttyctx);
+		ttyctx.redraw_cb(&ttyctx, 0, ttyctx.sy);
 }
