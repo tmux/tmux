@@ -902,10 +902,23 @@ first_key:
 	 * modifier).
 	 */
 	if (*buf == '\033' && len > 1) {
-		/* A mouse report after Escape is not a meta key. */
+		/*
+		 * A mouse report or extended key after Escape is not a meta
+		 * key: an extended key carries its own modifiers.
+		 */
 		if (len > 2) {
 			n = tty_keys_mouse(tty, buf + 1, len - 1, &size, NULL);
 			if (n == 0 || n == -2) {
+				key = '\033';
+				size = 1;
+				goto complete_key;
+			}
+			if (n == 1 && !expired)
+				goto partial_key;
+
+			n = tty_keys_extended_key(tty, buf + 1, len - 1, &size,
+			    &key);
+			if (n == 0) {
 				key = '\033';
 				size = 1;
 				goto complete_key;
