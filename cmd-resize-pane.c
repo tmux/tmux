@@ -237,8 +237,8 @@ cmd_resize_pane_mouse_resize_move_floating(struct client *c,
 	struct window_pane	*wp;
 	struct layout_cell	*lc;
 	int			 y, ly, x, lx, sx, sy, new_sx, new_sy;
-	int			 left, right;
-	int			 new_xoff, new_yoff, resizes = 0;
+	int			 left, right, resizes = 0;
+	int			 new_xoff, new_yoff, old_xoff, old_yoff;
 
 	wp = cmd_mouse_pane(m, NULL, &wl);
 	if (wp == NULL) {
@@ -249,6 +249,8 @@ cmd_resize_pane_mouse_resize_move_floating(struct client *c,
 	lc = wp->layout_cell;
 	sx = wp->sx;
 	sy = wp->sy;
+	old_xoff = wp->xoff;
+	old_yoff = wp->yoff;
 	left = wp->xoff - 1;
 	right = wp->xoff + sx;
 	if (window_pane_scrollbar_reserve(wp) &&
@@ -348,7 +350,7 @@ cmd_resize_pane_mouse_resize_move_floating(struct client *c,
 	}
 	if (resizes != 0) {
 		layout_fix_panes(w, NULL);
-		server_redraw_window(w);
+		window_redraw_floating_pane(wp, old_xoff, old_yoff, sx, sy);
 		server_redraw_window_borders(w);
 	}
 }

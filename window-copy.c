@@ -73,6 +73,10 @@ static void	window_copy_write_line(struct window_mode_entry *,
 		    struct screen_write_ctx *, u_int);
 static void	window_copy_write_lines(struct window_mode_entry *,
 		    struct screen_write_ctx *, u_int, u_int);
+#ifdef ENABLE_IMAGES
+static void	window_copy_update_image_refresh(struct window_copy_mode_data *);
+static int	window_copy_visible_has_images(struct window_copy_mode_data *);
+#endif
 static char    *window_copy_match_at_cursor(struct window_copy_mode_data *);
 static void	window_copy_scroll_to(struct window_mode_entry *, u_int, u_int,
 		    int);
@@ -278,6 +282,10 @@ struct window_copy_mode_data {
 	int		 viewmode;	/* view mode entered */
 
 	u_int		 oy;		/* number of lines scrolled up */
+
+	u_int		 image_base;	/* hsize - oy images were last drawn for */
+	int		 image_base_set;
+	int		 image_refresh;	/* current redraw needs image refresh */
 
 	u_int		 selx;		/* beginning of selection */
 	u_int		 sely;
@@ -636,6 +644,9 @@ window_copy_init(struct window_mode_entry *wme,
 	data->my = screen_hsize(data->backing) + data->cy - data->oy;
 	data->showmark = 0;
 
+#ifdef ENABLE_IMAGES
+	window_copy_update_image_refresh(data);
+#endif
 	screen_write_start(&ctx, &data->screen);
 	for (i = 0; i < screen_size_y(&data->screen); i++)
 		window_copy_write_line(wme, &ctx, i);
@@ -768,6 +779,7 @@ window_copy_scroll(struct window_pane *wp, int sl_mpos, u_int my,
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
 
 	if (wme != NULL) {
+		window_redraw_active_switch(wp->window, wp);
 		window_set_active_pane(wp->window, wp, 0);
 		window_copy_scroll1(wme, wp, sl_mpos, my, tty_oy, scroll_exit);
 	}
@@ -1197,6 +1209,9 @@ window_copy_size_changed(struct window_mode_entry *wme)
 	window_copy_clear_selection(wme);
 	window_copy_clear_marks(wme);
 
+#ifdef ENABLE_IMAGES
+	window_copy_update_image_refresh(data);
+#endif
 	screen_write_start(&ctx, s);
 	window_copy_write_lines(wme, &ctx, 0, screen_size_y(s));
 	screen_write_stop(&ctx);
@@ -5223,6 +5238,23 @@ window_copy_write_one(struct window_mode_entry *wme,
 	for (fx = 0; fx < nx; fx++) {
 		grid_get_cell(gd, fx, fy, &gc);
 		if (fx + gc.data.width <= nx) {
+#ifdef ENABLE_IMAGES
+			/*
+			 * Write image-covered cells directly into the grid,
+			 * skipping window_copy_update_style() (a highlight
+			 * must not sweep over the image) and
+			 * screen_write_cell() (its image-damage call would
+			 * re-damage the image on every redraw for nothing).
+			 */
+			if (image_grid_check_area(gd, fx, fy, gc.data.width,
+			    1)) {
+				grid_view_set_cell(ctx->s->grid, px + fx, py,
+				    &gc);
+				screen_write_cursormove(ctx,
+				    px + fx + gc.data.width, py, 0);
+				continue;
+			}
+#endif
 			window_copy_update_style(wme, fx, fy, &gc, mgc, cgc,
 			    mkgc, clgc);
 			if (gc.flags & GRID_FLAG_PADDING) {
@@ -5471,6 +5503,22 @@ window_copy_write_line(struct window_mode_entry *wme,
 	window_copy_write_one(wme, ctx, width, py, hsize - data->oy + py,
 	    content_sx, &mgc, &cgc, &mkgc, &clgc);
 
+#ifdef ENABLE_IMAGES
+	/*
+	 * Copy the backing line's image layers separately: the text write
+	 * above knows nothing about image content. Only redraw them when the
+	 * view has actually moved (data->image_refresh) - otherwise they are
+	 * already correct and redrawing would just flash them on every
+	 * unrelated redraw.
+	 */
+	image_grid_free_line(s->grid,
+	    &s->grid->linedata[s->grid->hsize + py]);
+	image_grid_copy_area(s->grid, width, s->grid->hsize + py,
+	    data->backing->grid, 0, hsize - data->oy + py, content_sx, 1);
+	if (data->image_refresh)
+		image_redraw_area(ctx, width, py, content_sx, 1);
+#endif
+
 	if (py == 0 && s->rupper < s->rlower && !data->hide_position) {
 		value = options_get_string(oo, "copy-mode-position-format");
 		if (*value != '\0') {
@@ -5531,6 +5579,43 @@ window_copy_redraw_selection(struct window_mode_entry *wme, u_int old_y)
 	window_copy_redraw_lines(wme, start, end - start + 1);
 }
 
+#ifdef ENABLE_IMAGES
+/*
+ * Only rows whose underlying history position has moved since the last
+ * call need their images recomposited, to avoid flashing them on every
+ * unrelated redraw. Every caller of window_copy_write_line()/
+ * window_copy_write_lines() must call this first - it is not implied by
+ * them, since some write directly rather than via
+ * window_copy_redraw_lines().
+ */
+static void
+window_copy_update_image_refresh(struct window_copy_mode_data *data)
+{
+	u_int	base;
+
+	base = screen_hsize(data->backing) - data->oy;
+	data->image_refresh = !data->image_base_set || base != data->image_base;
+	data->image_base = base;
+	data->image_base_set = 1;
+}
+
+/*
+ * Whether any part of the currently visible backing range carries image
+ * data. A scrolled insert/delete-line fast path only shifts character
+ * cells, leaving image content stale, so callers should fall back to a
+ * full window_copy_redraw_screen() when this returns true.
+ */
+static int
+window_copy_visible_has_images(struct window_copy_mode_data *data)
+{
+	struct grid	*gd = data->backing->grid;
+	u_int		 sy = screen_size_y(&data->screen);
+
+	return (image_grid_check_area(gd, 0, screen_hsize(data->backing) -
+	    data->oy, screen_size_x(&data->screen), sy));
+}
+#endif
+
 static void
 window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 {
@@ -5539,6 +5624,10 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx 	 ctx;
 	u_int				 i;
+
+#ifdef ENABLE_IMAGES
+	window_copy_update_image_refresh(data);
+#endif
 
 	if (window_copy_line_number_width(wme) != 0) {
 		screen_write_start(&ctx, &data->screen);
@@ -6928,6 +7017,13 @@ window_copy_scroll_up(struct window_mode_entry *wme, u_int ny)
 		window_copy_redraw_screen(wme);
 		return;
 	}
+#ifdef ENABLE_IMAGES
+	if (window_copy_visible_has_images(data)) {
+		window_copy_redraw_screen(wme);
+		return;
+	}
+	window_copy_update_image_refresh(data);
+#endif
 	if (window_copy_line_numbers_active(wme)) {
 		if (window_copy_line_number_mode(wme) !=
 		    WINDOW_COPY_LINE_NUMBERS_ABSOLUTE) {
@@ -6999,6 +7095,13 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 		window_copy_redraw_screen(wme);
 		return;
 	}
+#ifdef ENABLE_IMAGES
+	if (window_copy_visible_has_images(data)) {
+		window_copy_redraw_screen(wme);
+		return;
+	}
+	window_copy_update_image_refresh(data);
+#endif
 	if (window_copy_line_numbers_active(wme)) {
 		if (window_copy_line_number_mode(wme) !=
 		    WINDOW_COPY_LINE_NUMBERS_ABSOLUTE) {
