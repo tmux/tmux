@@ -902,6 +902,31 @@ first_key:
 	 * modifier).
 	 */
 	if (*buf == '\033' && len > 1) {
+		/*
+		 * A mouse report or extended key after Escape is not a meta
+		 * key: an extended key carries its own modifiers.
+		 */
+		if (len > 1) {
+			n = tty_keys_mouse(tty, buf + 1, len - 1, &size, NULL);
+			if (n == 0 || n == -2) {
+				key = '\033';
+				size = 1;
+				goto complete_key;
+			}
+			if (n == 1 && !expired)
+				goto partial_key;
+
+			n = tty_keys_extended_key(tty, buf + 1, len - 1, &size,
+			    &key);
+			if (n == 0) {
+				key = '\033';
+				size = 1;
+				goto complete_key;
+			}
+			if (n == 1 && !expired)
+				goto partial_key;
+		}
+
 		/* Look for a key without the escape. */
 		n = tty_keys_next1(tty, buf + 1, len - 1, &key, &size, expired);
 		if (n == 0) {	/* found */
@@ -1327,6 +1352,10 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
 		    return (-2);
 	} else
 		return (-1);
+
+	/* A lookahead must not update the last mouse state. */
+	if (m == NULL)
+		return (0);
 
 	/* Fill mouse event. */
 	m->lx = tty->mouse_last_x;
