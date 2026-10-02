@@ -74,6 +74,8 @@ struct layout_parse_cell_ctx {
 	int			 last;
 	int			 index;
 	int			 zindex;
+	int			 zoomed;
+	int			 hidden;
 };
 
 /* Layout parse context. */
@@ -220,7 +222,7 @@ layout_parse_free_ctx(struct layout_parse_ctx *pctx)
 /* Add a cell context to the parse context. */
 static void
 layout_parse_add_cctx(struct layout_parse_ctx *pctx, struct layout_cell *lc,
-    int active, int last, int index, int zindex)
+    int active, int last, int index, int zindex, int zoomed, int hidden)
 {
 	struct layout_parse_cell_ctx	*cctx;
 
@@ -236,6 +238,8 @@ layout_parse_add_cctx(struct layout_parse_ctx *pctx, struct layout_cell *lc,
 	cctx->last = last;
 	cctx->index = index;
 	cctx->zindex = zindex;
+	cctx->zoomed = zoomed;
+	cctx->hidden = hidden;
 }
 
 /* Remove a cell context from the parse context. Does not preserve ordering. */
@@ -307,32 +311,70 @@ bad:
 	return (xstrdup("0000,"));
 }
 
+/*
+ * Dump the layout as it is seen while a pane is zoomed: the zoomed pane fills
+ * the window with the floating panes in front of it. The cells are temporary
+ * and do not belong to the panes.
+ */
+char *
+layout_dump_visible(struct window *w, int flags)
+{
+	struct window_pane	*zwp = window_zoomed_pane(w), *wp;
+	struct layout_cell	*root, *lc, *lcnext;
+	char			*out;
+
+	if (zwp == NULL) {
+		out = layout_dump(w, w->layout_root, flags);
+		return (out);
+	}
+
+	root = layout_create_cell(NULL);
+	layout_set_size(root, w->sx, w->sy, 0, 0);
+	root->wp = zwp;
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
+		if (wp == zwp)
+			break;
+		if (!window_pane_is_unzoomed_float(wp) ||
+		    !window_pane_is_visible(wp))
+			continue;
+		if (root->type == LAYOUT_WINDOWPANE) {
+			lc = layout_create_cell(root);
+			layout_set_size(lc, w->sx, w->sy, 0, 0);
+			lc->wp = zwp;
+			root->wp = NULL;
+			root->type = LAYOUT_TOPBOTTOM;
+			TAILQ_INSERT_TAIL(&root->cells, lc, entry);
+		}
+		lc = layout_create_cell(root);
+		memcpy(&lc->g, &wp->layout_cell->g, sizeof lc->g);
+		lc->flags |= LAYOUT_CELL_FLOATING;
+		lc->wp = wp;
+		TAILQ_INSERT_TAIL(&root->cells, lc, entry);
+	}
+	out = layout_dump(w, root, flags);
+
+	if (root->type != LAYOUT_WINDOWPANE) {
+		TAILQ_FOREACH_SAFE(lc, &root->cells, entry, lcnext) {
+			TAILQ_REMOVE(&root->cells, lc, entry);
+			free(lc);
+		}
+	}
+	free(root);
+	return (out);
+}
+
 /* Get a floating pane cell's z-index in the layout being dumped. */
 static u_int
 layout_cell_zindex(struct layout_cell *lc)
 {
 	struct window_pane	*wp = lc->wp, *wq;
 	struct window		*w = wp->window;
-	struct layout_cell	*other;
-	int			 saved = (lc == wp->saved_layout_cell);
 	u_int			 i = 0;
 
-	if (saved &&
-	    w->active != NULL &&
-	    (w->active->flags & PANE_ZOOMED) &&
-	    (w->active->saved_layout_cell->flags & LAYOUT_CELL_FLOATING)) {
-		if (wp == w->active)
-			return (0);
-		i++;
-	}
 	TAILQ_FOREACH(wq, &w->z_index, zentry) {
 		if (wq == wp)
 			break;
-		if (saved)
-			other = wq->saved_layout_cell;
-		else
-			other = wq->layout_cell;
-		if (other != NULL && (other->flags & LAYOUT_CELL_FLOATING))
+		if (window_pane_is_floating(wq))
 			i++;
 	}
 	return (i);
@@ -387,6 +429,10 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 		if (window_pane_index(wp, &i) != 0)
 			return (-1);
 		layout_string_write(ls, ",\"i\":%u", i);
+		if (wp->flags & PANE_ZOOMED)
+			layout_string_write(ls, ",\"Z\":true");
+		if (wp->flags & PANE_HIDDEN)
+			layout_string_write(ls, ",\"H\":true");
 		if (lc->flags & LAYOUT_CELL_FLOATING) {
 			z = layout_cell_zindex(lc);
 			layout_string_write(ls, ",\"z\":%u", z);
@@ -439,18 +485,23 @@ layout_append_v1(struct layout_cell *lc, struct layout_string *ls)
 }
 
 /*
- * Copies the tiled part of a layout. Only populates what is necessary to dump a
- * V1 layout string.
+ * Copies the part of a layout that is shown, which leaves out hidden tiled
+ * panes and, unless asked to keep them, floating panes. Only populates what is
+ * necessary to dump a layout string.
  */
 static struct layout_cell *
-layout_custom_copy_layout(struct layout_cell *lc)
+layout_custom_copy_layout(struct layout_cell *lc, int keep_floating)
 {
 	struct layout_cell	*lcchild, *lcnewchild, *lconly;
 	struct layout_cell	*lcnew;
 
-	if (lc->type == LAYOUT_WINDOWPANE &&
-	    (lc->flags & LAYOUT_CELL_FLOATING))
-		return (NULL);
+	if (lc->type == LAYOUT_WINDOWPANE) {
+		if (lc->flags & LAYOUT_CELL_FLOATING) {
+			if (!keep_floating)
+				return (NULL);
+		} else if (lc->wp != NULL && (lc->wp->flags & PANE_HIDDEN))
+			return (NULL);
+	}
 
 	lcnew = layout_create_cell(NULL);
 
@@ -466,7 +517,8 @@ layout_custom_copy_layout(struct layout_cell *lc)
 	case LAYOUT_TOPBOTTOM:
 	case LAYOUT_LEFTRIGHT:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			lcnewchild = layout_custom_copy_layout(lcchild);
+			lcnewchild = layout_custom_copy_layout(lcchild,
+			    keep_floating);
 			if (lcnewchild == NULL)
 				continue;
 			TAILQ_INSERT_TAIL(&lcnew->cells, lcnewchild, entry);
@@ -492,11 +544,11 @@ layout_custom_copy_layout(struct layout_cell *lc)
 
 /* Create a compatibility layout for dumping a V1 layout string. */
 static struct layout_cell *
-layout_custom_create_compat(struct layout_cell *lcroot)
+layout_custom_create_compat(struct layout_cell *lcroot, int keep_floating)
 {
 	struct layout_cell	*lccompat;
 
-	lccompat = layout_custom_copy_layout(lcroot);
+	lccompat = layout_custom_copy_layout(lcroot, keep_floating);
 	if (lccompat != NULL && layout_cell_is_tiled(lccompat)) {
 		lccompat->g.xoff = 0;
 		lccompat->g.yoff = 0;
@@ -544,11 +596,18 @@ layout_append(struct layout_cell *lcroot, struct layout_string *ls, int flags)
 		if (!layout_cell_is_tiled(lcroot) &&
 		    !layout_cell_has_tiled_child(lcroot))
 			return (-1);
-		lccompat = layout_custom_create_compat(lcroot);
+		lccompat = layout_custom_create_compat(lcroot, 0);
 		result = layout_append_v1(lccompat, ls);
 		layout_custom_free_compat(lccompat);
-	} else
-		result = layout_append_v2(lcroot, ls);
+	} else {
+		lccompat = layout_custom_create_compat(lcroot, 1);
+		if (lccompat == NULL)
+			result = layout_append_v2(lcroot, ls);
+		else {
+			result = layout_append_v2(lccompat, ls);
+			layout_custom_free_compat(lccompat);
+		}
+	}
 
 	return (result);
 }
@@ -699,6 +758,12 @@ layout_parse(struct window *w, const char *input, char **cause)
 			TAILQ_REMOVE(&lcchild->parent->cells, lcchild, entry);
 			lcchild->parent = NULL;
 		}
+	}
+
+	/* Hidden tiled panes are in the new layout like the rest. */
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (!window_pane_is_floating(wp))
+			wp->flags &= ~(PANE_HIDDEN|PANE_HIDDENALL);
 	}
 
 	/* Destroy the old layout and swap to the new. */
@@ -976,7 +1041,7 @@ layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
 	int64_t			  num;
 	char			**cause = pctx->cause;
 	int			  boolean, index, zindex, active = -1;
-	int			  last = -1;
+	int			  last = -1, zoomed, hidden;
 
 	if (json_find_string(node, "t", &str, cause) != 0)
 		goto fail;
@@ -1066,7 +1131,20 @@ layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
 		} else
 			zindex = INT_MAX;
 
-		layout_parse_add_cctx(pctx, lc, active, last, index, zindex);
+		zoomed = hidden = 0;
+		if (json_find(node, "Z") != NULL) {
+			if (json_find_boolean(node, "Z", &boolean, cause) != 0)
+				goto fail;
+			zoomed = boolean;
+		}
+		if (json_find(node, "H") != NULL) {
+			if (json_find_boolean(node, "H", &boolean, cause) != 0)
+				goto fail;
+			hidden = boolean;
+		}
+
+		layout_parse_add_cctx(pctx, lc, active, last, index, zindex,
+		    zoomed, hidden);
 	} else {
 		if (json_find_array(node, "c", &array, cause) != 0)
 			goto fail;
@@ -1174,6 +1252,20 @@ layout_parse_apply_ctx(struct window *w, struct layout_parse_ctx *pctx)
 		wp = cctx->lc->wp;
 		if (window_pane_is_floating(wp))
 			TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
+	}
+
+	/* Zoom and hide panes. */
+	for (i = 0; i < pctx->size; i++) {
+		cctx = &pctx->cctxs[i];
+		wp = cctx->lc->wp;
+		if (cctx->zoomed)
+			window_zoom(wp);
+	}
+	for (i = 0; i < pctx->size; i++) {
+		cctx = &pctx->cctxs[i];
+		wp = cctx->lc->wp;
+		if (cctx->hidden && window_pane_is_floating(wp))
+			window_hide_pane(wp);
 	}
 
 	/* Set the active pane. */

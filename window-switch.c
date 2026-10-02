@@ -380,7 +380,7 @@ window_switch_init(struct window_mode_entry *wme,
 	if (!args_has(args, 'Z'))
 		data->zoomed = -1;
 	else {
-		data->zoomed = (wp->window->flags & WINDOW_ZOOMED);
+		data->zoomed = (wp->flags & PANE_ZOOMED);
 		if (!data->zoomed && window_zoom(wp) == 0)
 			server_redraw_window(wp->window);
 	}
@@ -398,8 +398,9 @@ window_switch_free(struct window_mode_entry *wme)
 	struct window_switch_modedata	*data = wme->data;
 	u_int				 i;
 
-	if (data->zoomed == 0)
-		server_unzoom_window(wme->wp->window);
+	if (data->zoomed == 0 &&
+	    window_unzoom_pane(wme->wp, 1) == 0)
+		server_redraw_window(wme->wp->window);
 
 	for (i = 0; i < data->item_size; i++)
 		window_switch_free_item(data->item_list[i]);

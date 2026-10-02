@@ -166,7 +166,8 @@ check_panes P:0 "0:$p3 1:$p0 2:$p2 3:$p1"
 # break-pane and join-pane.
 
 # break-pane moves a pane to a new window; -P -F prints where it went and -n
-# names the new window. Moving a pane out of a zoomed window unzooms it first.
+# names the new window. Moving another pane out of a zoomed window leaves the
+# zoom alone.
 check_ok resize-pane -Z -t "$p0"
 out=$($TMUX break-pane -d -P -F '#{window_index}:#{pane_id}' -n broken \
 	-s "$p1" -t P:)
@@ -176,13 +177,14 @@ if [ "$out" != "1:$p1" ]; then
 fi
 check_fmt 'P:1' '#{window_name}:#{window_panes}' 'broken:1'
 check_fmt 'P:0' '#{window_panes}' '3'
-check_fmt 'P:0' '#{window_zoomed_flag}' '0'
+check_fmt 'P:0' '#{window_zoomed_flag}' '1'
 
 # join-pane -v moves it back (the source window, left empty, is destroyed) and
-# also unzooms the destination before changing its layout.
-check_ok resize-pane -Z -t "$p0"
+# also leaves the destination zoomed while changing its layout.
 check_ok join-pane -d -v -s P:broken.0 -t "$p2"
 check_fmt 'P:0' '#{window_panes}' '4'
+check_fmt 'P:0' '#{window_zoomed_flag}' '1'
+check_ok resize-pane -Z -t "$p0"
 check_fmt 'P:0' '#{window_zoomed_flag}' '0'
 if $TMUX has-session -t P:broken 2>/dev/null; then
 	echo "Window 'broken' still exists after join-pane."
@@ -317,22 +319,40 @@ check_fmt "$p0" '#{window_zoomed_flag}:#{pane_width}x#{pane_height}' \
 check_ok resize-pane -Z -t "$p0"
 check_fmt "$p0" '#{window_zoomed_flag}' '0'
 
-# Splitting while zoomed unzooms first.
+# Splitting while zoomed with -d leaves the zoom alone; without -d the new
+# pane is active and covered, so selecting it hides the zoomed pane.
 check_ok resize-pane -Z -t "$p0"
 check_fmt 'P:0' '#{window_zoomed_flag}' '1'
 check_ok split-window -d -v -t "$p0"
-check_fmt 'P:0' '#{window_zoomed_flag}' '0'
+check_fmt 'P:0' '#{window_zoomed_flag}' '1'
 check_fmt 'P:0' '#{window_panes}' '5'
 p6=$($TMUX display-message -p -t P:0.2 '#{pane_id}')
 check_ok kill-pane -t "$p6"
+check_fmt 'P:0' '#{window_zoomed_flag}' '1'
+check_ok resize-pane -Z -t "$p0"
+check_fmt 'P:0' '#{window_zoomed_flag}' '0'
+check_ok resize-pane -Z -t "$p0"
+check_ok split-window -v -t "$p0"
+check_fmt 'P:0' '#{window_zoomed_flag}' '0'
+check_fmt "$p0" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '1:1'
+p6=$($TMUX display-message -p -t P:0 '#{pane_id}')
+check_ok kill-pane -t "$p6"
+check_ok resize-pane -a -H -t "$p0"
+check_ok resize-pane -a -Z -t "$p0"
 
 # Zoom and unzoom preserve the exact tiled layout. Selecting another pane
-# without -Z unzooms, while -Z transfers zoom to the selected pane.
+# without -Z hides the zoomed pane until the desktop shows it, while -Z
+# transfers zoom to the selected pane.
 layout=$(pane_layout P:0)
 check_ok select-pane -t "$p0"
 check_ok resize-pane -Z -t "$p0"
 check_ok select-pane -t "$p2"
 check_fmt "$p2" '#{window_zoomed_flag}:#{pane_active}' '0:1'
+check_fmt "$p0" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '1:1'
+check_ok resize-pane -a -H -t "$p0"
+check_fmt "$p0" '#{window_zoomed_flag}:#{pane_zoomed_flag}:#{pane_active}' \
+	'1:1:1'
+check_ok resize-pane -a -Z -t "$p0"
 check_layout P:0 "$layout"
 
 check_ok select-pane -t "$p0"
@@ -344,7 +364,7 @@ check_ok resize-pane -Z -t "$p2"
 check_layout P:0 "$layout"
 
 # Directional selection temporarily restores the full layout to find its
-# neighbour, then follows the same unzoom or -Z transfer rules.
+# neighbour, then follows the same hide or -Z transfer rules.
 check_ok select-pane -t "$p0"
 check_ok resize-pane -Z -t "$p0"
 check_ok select-pane -t "$p0"
@@ -352,6 +372,9 @@ check_fmt "$p0" '#{window_zoomed_flag}:#{pane_zoomed_flag}:#{pane_active}' \
 	'1:1:1'
 check_ok select-pane -D -t "$p0"
 check_fmt "$p2" '#{window_zoomed_flag}:#{pane_active}' '0:1'
+check_fmt "$p0" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '1:1'
+check_ok resize-pane -a -H -t "$p0"
+check_ok resize-pane -a -Z -t "$p0"
 
 check_ok select-pane -t "$p0"
 check_ok resize-pane -Z -t "$p0"
@@ -368,6 +391,9 @@ check_ok resize-pane -Z -t "$p2"
 check_ok select-pane -l -t P:0
 check_fmt "$p0" '#{window_zoomed_flag}:#{pane_zoomed_flag}:#{pane_active}' \
 	'0:0:1'
+check_fmt "$p2" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '1:1'
+check_ok resize-pane -a -H -t "$p0"
+check_ok resize-pane -a -Z -t "$p0"
 
 check_ok select-pane -t "$p0"
 check_ok select-pane -t "$p2"
@@ -378,7 +404,8 @@ check_fmt "$p0" '#{window_zoomed_flag}:#{pane_zoomed_flag}:#{pane_active}' \
 check_ok resize-pane -Z -t "$p0"
 check_layout P:0 "$layout"
 
-# Killing either a hidden ordinary pane or the zoom target unzooms.
+# Killing a hidden ordinary pane leaves the zoom, and killing the zoom target
+# shows what was underneath.
 check_ok new-window -d -t P:12 -n zoom-kill 'cat'
 zk0=$($TMUX display-message -p -t P:12.0 '#{pane_id}')
 zk1=$($TMUX split-window -d -P -F '#{pane_id}' -t P:12.0 'cat')
@@ -386,8 +413,7 @@ zk2=$($TMUX split-window -d -P -F '#{pane_id}' -t P:12.0 'cat')
 check_ok resize-pane -Z -t "$zk0"
 check_ok kill-pane -t "$zk1"
 check_fmt "$zk0" '#{window_panes}:#{window_zoomed_flag}:#{pane_zoomed_flag}' \
-	'2:0:0'
-check_ok resize-pane -Z -t "$zk0"
+	'2:1:1'
 check_ok kill-pane -t "$zk0"
 check_fmt "$zk2" '#{window_panes}:#{window_zoomed_flag}:#{pane_zoomed_flag}' \
 	'1:0:0'
@@ -406,7 +432,7 @@ while [ "$($TMUX display-message -p -t P:13 '#{window_panes}')" != 2 ]; do
 	[ $i -gt 50 ] && { echo "Hidden pane did not exit."; exit 1; }
 	sleep 0.1
 done
-check_fmt "$ze0" '#{window_zoomed_flag}:#{pane_zoomed_flag}' '0:0'
+check_fmt "$ze0" '#{window_zoomed_flag}:#{pane_zoomed_flag}' '1:1'
 check_ok resize-pane -Z -t "$ze2"
 check_ok send-keys -t "$ze2" C-d
 i=0

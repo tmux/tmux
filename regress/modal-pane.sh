@@ -537,8 +537,8 @@ case "$(fmt "$ignored" '#{pane_flags}')" in
 *) ;;
 esac
 
-# Existing floating panes are filtered when zoom begins: -A panes remain in the
-# visible layout and ordinary floating panes do not.
+# Existing floating panes stay floating when zoom begins: -A panes remain above
+# the zoom and ordinary floating panes are covered by it.
 check_ok new-window -d -t modal: -n existing-over-zoom 'cat'
 base=$(fmt modal:existing-over-zoom '#{pane_id}')
 check_ok split-window -dh -t "$base" 'cat'
@@ -552,10 +552,10 @@ check_ok select-window -t modal:existing-over-zoom
 check_ok select-pane -t "$base"
 check_ok resize-pane -Z -t "$base"
 must_equal "$(fmt "$over" '#{pane_floating_flag}')" 1
-must_equal "$(fmt "$under" '#{pane_floating_flag}')" 0
+must_equal "$(fmt "$under" '#{pane_floating_flag}')" 1
 must_equal "$(fmt "$base" '#{window_zoomed_flag}:#{pane_zoomed_flag}')" 1:1
 
-# Geometry changed in the visible zoom layout is copied back when unzooming.
+# Geometry changed while zoomed is kept when unzooming.
 check_ok select-pane -t "$over"
 left=$(fmt "$over" '#{pane_left}')
 top=$(fmt "$over" '#{pane_top}')
@@ -593,8 +593,8 @@ done
 must_equal "$(fmt "$base" '#{window_zoomed_flag}:#{pane_zoomed_flag}')" 1:1
 
 # A pane with -A is also above a zoom target which was itself floating. The
-# temporary tiled target must sit behind retained floating panes, then return
-# to the normal floating z order when unzoomed.
+# target must sit behind the -A pane, then return to the normal floating z
+# order when unzoomed.
 check_ok new-window -d -t modal: -n floating-zoom-target 'cat'
 base=$(fmt modal:floating-zoom-target '#{pane_id}')
 check_ok split-window -dh -t "$base" 'cat'
@@ -606,13 +606,13 @@ over=$($TMUX new-pane -AdPF '#{pane_id}' -t "$base" \
 	fail "float-over-zoom pane creation failed"
 check_ok select-window -t modal:floating-zoom-target
 check_ok select-pane -t "$target"
-must_equal "$(fmt "$target" '#{pane_z}')" 0
-must_equal "$(fmt "$over" '#{pane_z}')" 1
+must_equal "$(fmt "$target" '#{pane_z}')" 1
+must_equal "$(fmt "$over" '#{pane_z}')" 0
 
 check_ok resize-pane -Z -t "$target"
 must_equal "$(fmt "$target" \
     '#{window_zoomed_flag}:#{pane_zoomed_flag}:#{pane_floating_flag}:#{pane_z}')" \
-    1:1:0:2
+    1:1:1:1
 must_equal "$(fmt "$over" '#{pane_floating_flag}:#{pane_z}')" 1:0
 check_ok select-pane -t "$over"
 must_equal "$(fmt "$over" '#{window_zoomed_flag}:#{pane_active}')" 1:1
@@ -620,13 +620,14 @@ check_ok resize-pane -Z -t "$target"
 must_equal "$(fmt "$over" '#{pane_active}:#{pane_z}')" 1:0
 must_equal "$(fmt "$target" '#{pane_floating_flag}:#{pane_z}')" 1:1
 
-# If the target remains active, it returns to the front on unzoom.
+# A pane with -A stays in front of the target, even when the target is active
+# and is zoomed and unzoomed again.
 check_ok select-pane -t "$target"
 check_ok resize-pane -Z -t "$target"
 must_equal "$(fmt "$over" '#{pane_floating_flag}:#{pane_z}')" 1:0
 check_ok resize-pane -Z -t "$target"
-must_equal "$(fmt "$target" '#{pane_active}:#{pane_z}')" 1:0
-must_equal "$(fmt "$over" '#{pane_z}')" 1
+must_equal "$(fmt "$target" '#{pane_active}:#{pane_z}')" 1:1
+must_equal "$(fmt "$over" '#{pane_z}')" 0
 
 cleanup
 exit 0

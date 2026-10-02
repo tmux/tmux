@@ -59,24 +59,21 @@ cmd_break_pane_float(struct cmdq_item *item, struct args *args,
 		cmdq_error(item, "pane is already floating");
 		return (CMD_RETURN_ERROR);
 	}
-	if (w->flags & WINDOW_ZOOMED) {
-		cmdq_error(item, "can't float a pane while window is zoomed");
-		return (CMD_RETURN_ERROR);
-	}
 
 	if (layout_floating_args_parse(item, args, lines, w, fg, &cause) != 0) {
 		cmdq_error(item, "failed to float pane: %s", cause);
 		free(cause);
 		return (CMD_RETURN_ERROR);
 	}
-	layout_remove_tile(w, lc);
+	/* A hidden pane has already given up its space. */
+	if (~wp->flags & PANE_HIDDEN)
+		layout_remove_tile(w, lc);
 	layout_set_size(lc, fg->sx, fg->sy, fg->xoff, fg->yoff);
 
 	lc->flags |= LAYOUT_CELL_FLOATING;
-	TAILQ_REMOVE(&w->z_index, wp, zentry);
-	TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
+	window_raise_pane(wp);
 
-	if (!args_has(args, 'd'))
+	if (!args_has(args, 'd') && (~wp->flags & PANE_HIDDEN))
 		window_set_active_pane(w, wp, 1);
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
@@ -125,8 +122,6 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 		if (idx == -1)
 			return (CMD_RETURN_ERROR);
 	}
-	server_unzoom_window(w);
-
 	if (window_count_panes(w, 1) == 1) {
 		if (server_link_window(src_s, wl, dst_s, idx, 0,
 		    !args_has(args, 'd'), &cause) != 0) {
@@ -156,6 +151,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	window_lost_pane(w, wp);
 	layout_close_pane(wp);
 
+	wp->flags &= ~(PANE_HIDDEN|PANE_HIDDENALL);
 	w = wp->window = window_create(w->sx, w->sy, w->xpixel, w->ypixel);
 	window_add_ref(w, __func__);
 	options_set_parent(wp->options, w->options);

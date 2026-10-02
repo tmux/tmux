@@ -40,77 +40,99 @@ const struct cmd_entry cmd_rotate_window_entry = {
 	.exec = cmd_rotate_window_exec
 };
 
+struct cmd_rotate_window_slot {
+	struct layout_cell	*lc;
+	int			 xoff;
+	int			 yoff;
+	u_int			 sx;
+	u_int			 sy;
+};
+
 static enum cmd_retval
 cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = cmd_get_args(self);
-	struct cmd_find_state	*current = cmdq_get_current(item);
-	struct cmd_find_state	*target = cmdq_get_target(item);
-	struct winlink		*wl = target->wl;
-	struct window		*w = wl->window;
-	struct window_pane	*wp, *wp2;
-	struct layout_cell	*lc;
-	u_int			 sx, sy, xoff, yoff;
+	struct args			*args = cmd_get_args(self);
+	struct cmd_find_state		*current = cmdq_get_current(item);
+	struct cmd_find_state		*target = cmdq_get_target(item);
+	struct winlink			*wl = target->wl;
+	struct window			*w = wl->window;
+	struct window_pane		*wp, *zwp = NULL, **all, **tiled;
+	struct window_pane		**rotated;
+	struct cmd_rotate_window_slot	*slots;
+	u_int				 i, j, n = 0, nt = 0;
+	int				 active = -1;
 
-	window_push_zoom(w, 0, args_has(args, 'Z'));
+	if (args_has(args, 'Z'))
+		zwp = window_zoomed_pane(w);
 
-	if (args_has(args, 'D')) {
-		wp = TAILQ_LAST(&w->panes, window_panes);
-		TAILQ_REMOVE(&w->panes, wp, entry);
-		TAILQ_INSERT_HEAD(&w->panes, wp, entry);
+	/*
+	 * Only tiled panes rotate. Floating panes keep their place in the
+	 * list and their cell.
+	 */
+	TAILQ_FOREACH(wp, &w->panes, entry)
+		n++;
+	all = xcalloc(n, sizeof *all);
+	tiled = xcalloc(n, sizeof *tiled);
+	rotated = xcalloc(n, sizeof *rotated);
+	slots = xcalloc(n, sizeof *slots);
 
-		lc = wp->layout_cell;
-		xoff = wp->xoff; yoff = wp->yoff;
-		sx = wp->sx; sy = wp->sy;
-		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if ((wp2 = TAILQ_NEXT(wp, entry)) == NULL)
-				break;
-			wp->layout_cell = wp2->layout_cell;
-			if (wp->layout_cell != NULL)
-				wp->layout_cell->wp = wp;
-			wp->xoff = wp2->xoff; wp->yoff = wp2->yoff;
-			window_pane_resize(wp, wp2->sx, wp2->sy);
-		}
-		wp->layout_cell = lc;
-		if (wp->layout_cell != NULL)
-			wp->layout_cell->wp = wp;
-		wp->xoff = xoff; wp->yoff = yoff;
-		window_pane_resize(wp, sx, sy);
-
-		if ((wp = TAILQ_PREV(w->active, window_panes, entry)) == NULL)
-			wp = TAILQ_LAST(&w->panes, window_panes);
-	} else {
-		wp = TAILQ_FIRST(&w->panes);
-		TAILQ_REMOVE(&w->panes, wp, entry);
-		TAILQ_INSERT_TAIL(&w->panes, wp, entry);
-
-		lc = wp->layout_cell;
-		xoff = wp->xoff; yoff = wp->yoff;
-		sx = wp->sx; sy = wp->sy;
-		TAILQ_FOREACH_REVERSE(wp, &w->panes, window_panes, entry) {
-			if ((wp2 = TAILQ_PREV(wp, window_panes, entry)) == NULL)
-				break;
-			wp->layout_cell = wp2->layout_cell;
-			if (wp->layout_cell != NULL)
-				wp->layout_cell->wp = wp;
-			wp->xoff = wp2->xoff; wp->yoff = wp2->yoff;
-			window_pane_resize(wp, wp2->sx, wp2->sy);
-		}
-		wp->layout_cell = lc;
-		if (wp->layout_cell != NULL)
-			wp->layout_cell->wp = wp;
-		wp->xoff = xoff; wp->yoff = yoff;
-		window_pane_resize(wp, sx, sy);
-
-		if ((wp = TAILQ_NEXT(w->active, entry)) == NULL)
-			wp = TAILQ_FIRST(&w->panes);
+	n = 0;
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		all[n++] = wp;
+		if (!layout_cell_is_tiled(wp->layout_cell))
+			continue;
+		tiled[nt] = wp;
+		slots[nt].lc = wp->layout_cell;
+		slots[nt].xoff = wp->xoff;
+		slots[nt].yoff = wp->yoff;
+		slots[nt].sx = wp->sx;
+		slots[nt].sy = wp->sy;
+		if (wp == w->active)
+			active = nt;
+		nt++;
+	}
+	for (i = 0; i < nt; i++) {
+		if (args_has(args, 'D'))
+			rotated[i] = tiled[(i + nt - 1) % nt];
+		else
+			rotated[i] = tiled[(i + 1) % nt];
 	}
 
-	window_set_active_pane(w, wp, 1);
-	cmd_find_from_winlink_pane(current, wl, wp, 0);
-	window_pop_zoom(w);
+	/* Put the rotated panes back into the tiled places in the list. */
+	for (i = 0; i < n; i++)
+		TAILQ_REMOVE(&w->panes, all[i], entry);
+	for (i = j = 0; i < n; i++) {
+		if (layout_cell_is_tiled(all[i]->layout_cell))
+			wp = rotated[j++];
+		else
+			wp = all[i];
+		TAILQ_INSERT_TAIL(&w->panes, wp, entry);
+	}
+
+	/* Each rotated pane takes over the cell of the place it moved to. */
+	for (i = 0; i < nt; i++) {
+		wp = rotated[i];
+		wp->layout_cell = slots[i].lc;
+		wp->layout_cell->wp = wp;
+		wp->xoff = slots[i].xoff;
+		wp->yoff = slots[i].yoff;
+		window_pane_resize(wp, slots[i].sx, slots[i].sy);
+	}
+
+	if (active != -1) {
+		wp = rotated[active];
+		if (zwp != NULL)
+			window_zoom_move(zwp, wp);
+		window_set_active_pane(w, wp, 1);
+		cmd_find_from_winlink_pane(current, wl, wp, 0);
+	}
 	redraw_invalidate_scene(w);
 	server_redraw_window(w);
+
+	free(all);
+	free(tiled);
+	free(rotated);
+	free(slots);
 
 	return (CMD_RETURN_NORMAL);
 }
