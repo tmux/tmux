@@ -906,7 +906,7 @@ first_key:
 		 * A mouse report or extended key after Escape is not a meta
 		 * key: an extended key carries its own modifiers.
 		 */
-		if (len > 2) {
+		if (len > 1) {
 			n = tty_keys_mouse(tty, buf + 1, len - 1, &size, NULL);
 			if (n == 0 || n == -2) {
 				key = '\033';

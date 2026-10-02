@@ -88,6 +88,8 @@ assert_events 'Escape and xterm' EC "$(printf '\033\033[27;5;97~')"
 assert_events 'Escape and CSI u with Meta' EM "$(printf '\033\033[97;7u')"
 assert_events 'split CSI u' EC "$(printf '\033\033[97;')" '5u'
 assert_events 'split xterm' EC "$(printf '\033\033[27;5')" ';97~'
+assert_events 'CSI u split after two Escapes' EC "$(printf '\033\033')" '[97;5u'
+assert_events 'xterm split after two Escapes' EC "$(printf '\033\033')" '[27;5;97~'
 assert_events 'M-Escape' A "$(printf '\033\033')"
 assert_events 'M-Up' U "$(printf '\033\033[A')"
 assert_events 'M-DC' D "$(printf '\033\033[3~')"

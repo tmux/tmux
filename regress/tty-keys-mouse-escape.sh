@@ -87,6 +87,7 @@ assert_events 'X10 motion' 'E^[[MC##' "$(printf '\033\033[MC##')"
 assert_events 'X10 press' 'E^[[M ##' "$(printf '\033\033[M ##')"
 assert_events 'split SGR report' 'E^[[<35;3;3M' "$(printf '\033\033[<35;')" '3;3M'
 assert_events 'split mouse prefix' 'E^[[<35;3;3M' "$(printf '\033\033[')" '<35;3;3M'
+assert_events 'split after two Escapes' 'E^[[<35;3;3M' "$(printf '\033\033')" '[<35;3;3M'
 assert_events 'invalid SGR coordinates' E "$(printf '\033\033[<35;0;3M')"
 assert_events 'discarded wheel release' E "$(printf '\033\033[<64;3;3m')"
 assert_events 'M-Escape' A "$(printf '\033\033')"
