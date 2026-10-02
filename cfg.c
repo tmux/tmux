@@ -1,4 +1,4 @@
-/* $OpenBSD: cfg.c,v 1.91 2026/08/03 13:38:42 nicm Exp $ */
+/* $OpenBSD: cfg.c,v 1.92 2026/10/02 12:28:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -32,14 +32,17 @@ int			  cfg_finished;
 static char		**cfg_causes;
 static u_int		  cfg_ncauses;
 static struct cmdq_item	 *cfg_item;
+static int		  cfg_started;
 
 int                       cfg_quiet = 1;
 char                    **cfg_files;
 u_int                     cfg_nfiles;
 
 static enum cmd_retval
-cfg_client_done(__unused struct cmdq_item *item, __unused void *data)
+cfg_client_done(struct cmdq_item *item, __unused void *data)
 {
+	if (cmdq_get_client(item)->flags & CLIENT_DEAD)
+		return (CMD_RETURN_NORMAL);
 	if (!cfg_finished)
 		return (CMD_RETURN_WAIT);
 	return (CMD_RETURN_NORMAL);
@@ -54,12 +57,26 @@ cfg_done(__unused struct cmdq_item *item, __unused void *data)
 
 	cfg_show_causes(NULL);
 
-	if (cfg_item != NULL)
+	if (cfg_item != NULL) {
 		cmdq_continue(cfg_item);
+		cfg_item = NULL;
+	}
 
 	prompt_load_history();
 
 	return (CMD_RETURN_NORMAL);
+}
+
+void
+cfg_client_lost(struct client *c)
+{
+	if (c != cfg_client)
+		return;
+	cfg_client = NULL;
+	if (cfg_item != NULL) {
+		cmdq_continue(cfg_item);
+		cfg_item = NULL;
+	}
 }
 
 void
@@ -78,12 +95,19 @@ start_cfg(void)
 	 * Because start_cfg() is called so early, we can be sure the client's
 	 * command queue is currently empty and our callback will be at the
 	 * front - we need to get in before MSG_COMMAND.
+	 *
+	 * If the initial client is lost before the configuration finishes, the
+	 * next client to identify is first in the list and ends up here. Block
+	 * it instead, but do not load the files again.
 	 */
 	cfg_client = c = TAILQ_FIRST(&clients);
 	if (c != NULL) {
 		cfg_item = cmdq_get_callback(cfg_client_done, NULL);
 		cmdq_append(c, cfg_item);
 	}
+	if (cfg_started)
+		return;
+	cfg_started = 1;
 
 	if (cfg_quiet)
 		flags = CMD_PARSE_QUIET;

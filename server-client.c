@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.515 2026/09/28 11:25:51 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.516 2026/10/02 12:28:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -374,8 +374,7 @@ server_client_lost(struct client *c)
 {
 	struct client_file	*cf, *cf1;
 
-	if (cfg_client == c)
-		cfg_client = NULL;
+	cfg_client_lost(c);
 	c->flags |= CLIENT_DEAD;
 
 	status_prompt_clear(c);
