@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.418 2026/09/20 08:19:31 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.424 2026/09/29 14:12:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -88,8 +88,11 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 /* Maximum pad and trim width. */
 #define FORMAT_MAX_WIDTH 10000
 
-/* Maximum repeat size. */
+/* Maximum repeat count. */
 #define FORMAT_MAX_REPEAT 10000
+
+/* Maximum repeat result size in bytes. */
+#define FORMAT_MAX_REPEAT_SIZE 65536
 
 /* Maximum precision. */
 #define FORMAT_MAX_PRECISION 100
@@ -1641,7 +1644,7 @@ format_cb_client_last_session(struct format_tree *ft)
 static void *
 format_cb_client_name(struct format_tree *ft)
 {
-	if (ft->c != NULL)
+	if (ft->c != NULL && ft->c->name != NULL)
 		return (xstrdup(ft->c->name));
 	return (NULL);
 }
@@ -1704,7 +1707,7 @@ format_cb_client_termfeatures(struct format_tree *ft)
 static void *
 format_cb_client_termname(struct format_tree *ft)
 {
-	if (ft->c != NULL)
+	if (ft->c != NULL && ft->c->term_name != NULL)
 		return (xstrdup(ft->c->term_name));
 	return (NULL);
 }
@@ -1725,7 +1728,7 @@ format_cb_client_termtype(struct format_tree *ft)
 static void *
 format_cb_client_tty(struct format_tree *ft)
 {
-	if (ft->c != NULL)
+	if (ft->c != NULL && ft->c->ttyname != NULL)
 		return (xstrdup(ft->c->ttyname));
 	return (NULL);
 }
@@ -4520,8 +4523,8 @@ format_pretty_time(time_t t, int seconds)
 		now = t;
 	age = now - t;
 
-	localtime_r(&now, &now_tm);
-	localtime_r(&t, &tm);
+	if (localtime_r(&now, &now_tm) == NULL || localtime_r(&t, &tm) == NULL)
+		return (xstrdup(""));
 
 	/* Last 24 hours. */
 	if (age < 24 * 3600) {
@@ -4692,10 +4695,12 @@ found:
 			found = format_pretty_time(t, 0);
 		else {
 			if (time_format != NULL) {
-				localtime_r(&t, &tm);
+				if (localtime_r(&t, &tm) == NULL)
+					return (NULL);
 				format_strftime(s, sizeof s, time_format, &tm);
 			} else {
-				ctime_r(&t, s);
+				if (ctime_r(&t, s) == NULL)
+					return (NULL);
 				s[strcspn(s, "\n")] = '\0';
 			}
 			found = xstrdup(s);
@@ -6019,7 +6024,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	char				 *time_format = NULL;
 	char				 *copy0, *condition, *found, *new;
 	char				 *value, *left, *right;
-	size_t				  valuelen;
+	size_t				  n;
 	uint64_t			  modifiers = 0;
 	int				  limit = 0, width = 0;
 	int				  j, c;
@@ -6027,7 +6032,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	struct format_modifier		**sub = NULL, *mexp = NULL, *fm;
 	struct format_modifier		 *bool_op_n = NULL;
 	u_int				  cycle_count = 1;
-	u_int				  i, count, nsub = 0, nrep, check = 0;
+	u_int				  i, count, nsub = 0, nrep;
 	const char			 *loop_flags = "";
 	struct format_expand_state	  next;
 	struct environ_entry		 *envent;
@@ -6426,17 +6431,15 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 		if (errstr != NULL)
 			value = xstrdup("");
 		else {
-			value = xstrdup("");
-			for (i = 0; i < nrep; i++) {
-				if (!format_check_time(es, &check)) {
-					free(right);
-					free(left);
-					free(value);
-					goto fail;
-				}
-				xasprintf(&new, "%s%s", value, left);
-				free(value);
-				value = new;
+			n = strlen(left);
+			if (n != 0 && nrep > FORMAT_MAX_REPEAT_SIZE / n) {
+				format_log(es, "repeat is too long: %s", copy);
+				value = xstrdup("");
+			} else {
+				value = xmalloc((nrep * n) + 1);
+				for (i = 0; i < nrep; i++)
+					memcpy(value + (i * n), left, n);
+				value[nrep * n] = '\0';
 			}
 		}
 		free(right);
@@ -6670,13 +6673,13 @@ done:
 	}
 
 	/* Expand the buffer and copy in the value. */
-	valuelen = strlen(value);
-	while (*len - *off < valuelen + 1) {
+	n = strlen(value);
+	while (*len - *off < n + 1) {
 		*buf = xreallocarray(*buf, 2, *len);
 		*len *= 2;
 	}
-	memcpy(*buf + *off, value, valuelen);
-	*off += valuelen;
+	memcpy(*buf + *off, value, n);
+	*off += n;
 
 	format_log(es, "replaced '%s' with '%s'", copy0, value);
 	free(value);
@@ -6822,6 +6825,19 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 				memcpy(buf + off, fmt - 2, n + 1);
 				off += n + 1;
 				fmt = ptr + 1;
+				continue;
+			}
+			if (ch == '#') {
+				while (len - off < (n / 2) + 1) {
+					buf = xreallocarray(buf, 2, len);
+					len *= 2;
+				}
+				memset(buf + off, '#', n / 2);
+				off += (n / 2);
+				if (n % 2 != 0)
+					fmt = ptr - 1;
+				else
+					fmt = ptr;
 				continue;
 			}
 			/* FALLTHROUGH */
