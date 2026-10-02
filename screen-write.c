@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.295 2026/10/02 12:48:52 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.296 2026/10/02 12:53:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1388,11 +1388,11 @@ screen_write_sync_scroll_dirty(struct screen_write_ctx *ctx)
 
 /* Redraw the scrolled lines for a client which cannot scroll them. */
 static void
-screen_write_sync_redraw_cb(const struct tty_ctx *ttyctx)
+screen_write_sync_redraw_cb(const struct tty_ctx *ttyctx, u_int py, u_int ny)
 {
 	struct window_pane	*wp = ttyctx->arg;
 
-	bit_nset(wp->sync_dirty, wp->sync_rupper, wp->sync_rlower);
+	bit_nset(wp->sync_dirty, py, py + ny - 1);
 }
 
 /* Send the deferred scroll to the client. */
