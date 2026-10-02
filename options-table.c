@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.247 2026/09/21 10:22:31 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.248 2026/10/02 15:04:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -218,7 +218,7 @@ static const char *options_table_copy_mode_line_numbers_list[] = {
 			"#{E:session-status-style}" \
 		"]" \
 		"#[push-default]" \
-		"#S#{session_alert}" \
+		"#S#{q/h:session_alert}" \
 		"#[pop-default]" \
 		"#[norange list=on default]  " \
 	"," \
@@ -229,7 +229,7 @@ static const char *options_table_copy_mode_line_numbers_list[] = {
 			"}" \
 		"]" \
 		"#[push-default]" \
-		"#S*#{session_alert}" \
+		"#S*#{q/h:session_alert}" \
 		"#[pop-default]" \
 		"#[norange list=on default] " \
 	"}"
