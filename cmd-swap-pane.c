@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-swap-pane.c,v 1.55 2026/07/15 13:02:33 nicm Exp $ */
+/* $OpenBSD: cmd-swap-pane.c,v 1.56 2026/10/02 12:23:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -88,7 +88,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'D')) {
 		if (window_pane_is_floating(dst_wp)) {
 			cmdq_error(item, "cannot swap down on floating pane");
-			return (CMD_RETURN_ERROR);
+			goto error;
 		}
 		src_w = dst_w;
 		src_wp = TAILQ_NEXT(dst_wp, entry);
@@ -100,7 +100,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	} else if (args_has(args, 'U')) {
 		if (window_pane_is_floating(dst_wp)) {
 			cmdq_error(item, "cannot swap up on floating pane");
-			return (CMD_RETURN_ERROR);
+			goto error;
 		}
 		src_w = dst_w;
 		src_wp = TAILQ_PREV(dst_wp, window_panes, entry);
@@ -202,4 +202,9 @@ out:
 	if (src_w != dst_w && window_pop_zoom(dst_w))
 		server_redraw_window(dst_w);
 	return (CMD_RETURN_NORMAL);
+
+error:
+	if (window_pop_zoom(dst_w))
+		server_redraw_window(dst_w);
+	return (CMD_RETURN_ERROR);
 }
