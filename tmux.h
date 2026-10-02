@@ -2094,6 +2094,7 @@ struct status_line {
 	u_int			 prompt_cx;
 
 	struct grid_cell	 style;
+	struct grid_cell	 linestyle;
 	struct style_line_entry entries[STATUS_LINES_LIMIT];
 };
 
@@ -2102,6 +2103,7 @@ struct side_status_line {
 	struct screen		 screen;
 
 	struct grid_cell	 style;
+	struct grid_cell	 linestyle;
 	char			*expanded;
 	int			 linex;
 	struct style_ranges	 ranges;
@@ -2209,6 +2211,7 @@ struct prompt_create_data {
 	int			 flags;
 
 	struct grid_cell	 style;
+	struct grid_cell	 linestyle;
 	struct grid_cell	 command_style;
 	const char		*style_str;
 	const char		*command_style_str;

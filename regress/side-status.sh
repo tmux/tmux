@@ -74,6 +74,11 @@ compare side-right-status
 $TMUX2 set -g side-status-width 12
 compare side-right-narrow
 
+# The line next to the window area is drawn with the pane border lines.
+$TMUX2 set -g pane-border-lines heavy
+compare side-right-heavy
+$TMUX2 set -g pane-border-lines single
+
 $TMUX2 set -g side-status off
 compare side-off
 

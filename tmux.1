@@ -5532,8 +5532,11 @@ section.
 Show a vertical status line at the left or right of the terminal.
 The side status line uses the
 .Ic side\-status\-style
-colours, draws a vertical line on the edge next to the window area and is
-updated every
+colours, draws a vertical line on the edge next to the window area with the
+.Ic pane\-border\-style
+and
+.Ic pane\-border\-lines
+of the current window and is updated every
 .Ic status\-interval
 seconds like the status line.
 .It Ic side\-status\-command Ar shell-command
