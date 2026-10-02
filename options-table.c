@@ -72,6 +72,9 @@ static const char *options_table_pane_scrollbars_position_list[] = {
 static const char *options_table_pane_status_list[] = {
 	"off", "top", "bottom", "top-floating", "bottom-floating", NULL
 };
+static const char *options_table_pane_raise_on_focus_list[] = {
+	"floating", "all", "off", NULL
+};
 static const char *options_table_pane_border_indicators_list[] = {
 	"off", "colour", "arrows", "both", NULL
 };
@@ -1581,7 +1584,7 @@ const struct options_table_entry options_table[] = {
 					"#{?#{pane_floating_flag},t,f}"
 				"]#[norange]"
 				"#[range=control|8]["
-					"#{?#{window_zoomed_flag},u,z}"
+					"#{?#{pane_zoomed_flag},u,z}"
 				"]#[norange]"
 				"#[range=control|9][x]#[norange]"
 			",}",
@@ -1629,6 +1632,16 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "",
 	  .flags = OPTIONS_TABLE_IS_ARRAY,
 	  .text = "The default colour palette for colours zero to 255."
+	},
+
+	{ .name = "pane-raise-on-focus",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_pane_raise_on_focus_list,
+	  .default_num = PANE_RAISE_FLOATING,
+	  .text = "Which panes are raised to the front when they are made "
+		  "active: floating panes only, floating and zoomed panes, or "
+		  "none."
 	},
 
 	{ .name = "pane-scrollbars",

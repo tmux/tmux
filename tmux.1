@@ -1742,7 +1742,8 @@ or
 to change session, window and pane.
 In that case,
 .Fl Z
-keeps the window zoomed if it was zoomed.
+moves the zoom to the pane selected if it was covered by a zoomed pane,
+instead of the window being unzoomed.
 If
 .Fl l ,
 .Fl n
@@ -2792,8 +2793,8 @@ options.
 If
 .Fl d
 is given, the active pane is not changed.
-The pane must not already be floating or hidden, and the window must not
-be zoomed.
+The pane must not already be floating.
+A zoomed pane stays zoomed.
 .Tg capturep
 .It Xo Ic capture\-pane
 .Op Fl aeFHILpPRqCJMN
@@ -3348,7 +3349,8 @@ Only windows for which the filter is true are killed.
 .D1 Pq alias: Ic lastp
 Select the last (previously selected) pane.
 .Fl Z
-keeps the window zoomed if it was zoomed.
+moves the zoom to the pane selected if it was covered by a zoomed pane,
+instead of the window being unzoomed.
 .Fl e
 enables or
 .Fl d
@@ -3527,10 +3529,10 @@ which may be one of:
 .It Li "top-right-centre" Ta "Centre of top-right quadrant"
 .It Li "bottom-left-centre" Ta "Centre of bottom-left quadrant"
 .It Li "bottom-right-centre" Ta "Centre of bottom-right quadrant"
-.It Li "front" Ta "Front of floating panes"
-.It Li "back" Ta "Back of floating panes"
-.It Li "forward" Ta "Forward one floating pane"
-.It Li "backward" Ta "Backward one floating pane"
+.It Li "front" Ta "Front of floating and zoomed panes"
+.It Li "back" Ta "Back of floating and zoomed panes"
+.It Li "forward" Ta "Forward one floating or zoomed pane"
+.It Li "backward" Ta "Backward one floating or zoomed pane"
 .It Li "forward-loop" Ta "Forward but back if already at front"
 .It Li "backward-loop" Ta "Backward but front if already at back"
 .El
@@ -3711,7 +3713,9 @@ sets the pane border lines for floating panes; see
 may be used when bound to a mouse drag key; the new floating pane is resized to
 follow the mouse drag.
 .Fl A
-creates a floating pane which remains visible above a zoomed pane.
+creates a floating pane which is always on top: it stays in front of other
+floating and zoomed panes, apart from a modal pane, even when they are
+selected or zoomed.
 .Fl O
 creates a modal pane.
 A modal pane is always the active pane and prevents interaction with any other
@@ -3832,7 +3836,7 @@ if specified, to
 .Ar new\-name .
 .Tg resizep
 .It Xo Ic resize\-pane
-.Op Fl MTZ
+.Op Fl aMTZ
 .Op Fl D Ar lines
 .Op Fl L Ar columns
 .Op Fl R Ar columns
@@ -3879,8 +3883,15 @@ and
 target their respective borders, and negative values may be given.
 With
 .Fl Z ,
-the active pane is toggled between zoomed (occupying the whole of the window)
-and unzoomed (its normal position in the layout).
+the target pane is toggled between zoomed (occupying the whole of the window
+above the layout and above any panes behind it in the stacking order) and
+unzoomed (its normal position).
+Any number of panes may be zoomed and a zoomed pane may be floating or tiled;
+floating panes in front of a zoomed pane stay visible above it.
+.Fl a
+with
+.Fl Z
+unzooms every pane in the window.
 .Pp
 .Fl M
 begins mouse resizing (only valid if bound to a mouse key binding, see
@@ -3991,7 +4002,8 @@ lower) with
 .Fl U
 or downward (numerically higher).
 .Fl Z
-keeps the window zoomed if it was zoomed.
+moves the zoom to the pane selected if it was covered by a zoomed pane,
+instead of the window being unzoomed.
 .Tg selectl
 .It Xo Ic select\-layout
 .Op Fl Enop
@@ -4034,7 +4046,8 @@ or
 is used, respectively the pane below, to the left, to the right, or above the
 target pane is used.
 .Fl Z
-keeps the window zoomed if it was zoomed.
+moves the zoom to the pane selected if it was covered by a zoomed pane,
+instead of the window being unzoomed.
 .Fl l
 is the same as using the
 .Ic last\-pane
@@ -4226,7 +4239,8 @@ instructs
 .Nm
 not to change the active pane and
 .Fl Z
-keeps the window zoomed if it was zoomed.
+moves the zoom to the pane selected if it was covered by a zoomed pane,
+instead of the window being unzoomed.
 .Pp
 If
 .Fl s
@@ -6031,6 +6045,28 @@ see the
 section.
 Attributes are ignored.
 .Pp
+.It Xo Ic pane\-raise\-on\-focus
+.Op Ic floating | all | off
+.Xc
+Which panes are raised to the front when they are made active.
+.Ic floating
+raises floating panes, so that activating a floating pane brings it to the
+front, but not zoomed panes, so that the active pane of a zoomed window can be
+used without floating panes above it being covered.
+.Ic all
+also raises zoomed panes and
+.Ic off
+raises none.
+A floating or zoomed pane that is covered by a zoomed pane is always raised
+when it is made active; a tiled pane that is covered unzooms every pane
+instead.
+Moving the mouse onto a pane with
+.Ic focus\-follows\-mouse
+makes it active without raising it, so
+.Ic all
+is usually wanted with that option, and clicking on the border of a floating or
+zoomed pane always raises it.
+.Pp
 .It Xo Ic pane\-scrollbars
 .Op Ic off | modal | on | auto\-hide
 .Xc
@@ -7536,7 +7572,7 @@ The following variables are available, where appropriate:
 .It Li "window_start_flag" Ta "" Ta "1 if window has the lowest index"
 .It Li "window_visible_layout" Ta "" Ta "Window layout description, respecting zoomed window panes"
 .It Li "window_width" Ta "" Ta "Width of window"
-.It Li "window_zoomed_flag" Ta "" Ta "1 if window is zoomed"
+.It Li "window_zoomed_flag" Ta "" Ta "1 if any pane in the window is zoomed"
 .It Li "wrap_flag" Ta "" Ta "Pane wrap flag"
 .El
 .Sh STYLES
@@ -7946,7 +7982,7 @@ The flag is one of the following symbols appended to the window name:
 .Ic monitor\-silence
 interval.
 .It Li "M" Ta "The window contains the marked pane."
-.It Li "Z" Ta "The window's active pane is zoomed."
+.It Li "Z" Ta "A pane in the window is zoomed."
 .El
 .Pp
 The # symbol relates to the

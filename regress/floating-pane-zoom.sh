@@ -56,6 +56,7 @@ for mode in before after detached modal; do
 	    -x 20 -y 8 -X 8 -Y 3 '') || exit 1
 	if [ "$mode" = before ]; then
 		run resize-pane -Z -t "$base"
+		run select-pane -t "$float"
 	fi
 	run set -gu @unzoomed
 	check_zoom
@@ -131,28 +132,29 @@ for z in 1 0 99; do
 	check_zoom
 done
 run resize-pane -Z -t "$base"
-check "$float" '#{pane_z}' 2
+check "$float" '#{pane_z}' 1
+check "$hidden" '#{pane_z}' 2
 check "$base" '#{pane_z}' 4
 run kill-pane -t "$hidden"
 run kill-pane -t "$back"
 
-# Explicit zoom toggling and operations on tiled panes retain their
-# existing behaviour. The over-zoom flag alone does not make a pane a float:
-# zooming the float itself gives it a tiled cell until unzoom.
+# Zooming a float keeps it floating. Resizing a zoomed float unzooms just that
+# pane, but operations on other panes leave a zoom alone.
 run resize-pane -Z -t "$float"
-check "$float" '#{pane_zoomed_flag}:#{pane_floating_flag}' '1:0'
+check "$float" '#{pane_zoomed_flag}:#{pane_floating_flag}' '1:1'
 run resize-pane -t "$float" -x 25
 check "$float" '#{window_zoomed_flag}:#{pane_floating_flag}:#{pane_width}' \
     '0:1:23'
 run resize-pane -Z -t "$base"
 run resize-pane -t "$other" -D 1
-check "$base" '#{window_zoomed_flag}' 0
+check "$base" '#{window_zoomed_flag}' 1
+run resize-pane -Z -t "$base"
 
-# A hidden ordinary float must still be unzoomed before resizing it.
+# A float covered by a zoom can be resized without unzooming.
 hidden=$(run new-pane -dPF '#{pane_id}' -t "$base" '') || exit 1
 run resize-pane -Z -t "$base"
 run resize-pane -t "$hidden" -x 25
 check "$hidden" '#{window_zoomed_flag}:#{pane_floating_flag}:#{pane_width}' \
-    '0:1:23'
+    '1:1:23'
 
 exit 0

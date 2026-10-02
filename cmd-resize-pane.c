@@ -41,8 +41,8 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.name = "resize-pane",
 	.alias = "resizep",
 
-	.args = { "D::L::MR::Tt:U::x:y:Z", 0, 1, NULL },
-	.usage = "[-MTZ] [-D lines] [-L columns] [-R columns] [-U lines] "
+	.args = { "aD::L::MR::Tt:U::x:y:Z", 0, 1, NULL },
+	.usage = "[-aMTZ] [-D lines] [-L columns] [-R columns] [-U lines] "
 		 "[-x width] [-y height] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -84,16 +84,17 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (cmd_resize_pane_mouse_update(self, item));
 
 	if (args_has(args, 'Z')) {
-		if (w->flags & WINDOW_ZOOMED)
+		if (args_has(args, 'a'))
 			window_unzoom(w, 1);
+		else if (wp->flags & PANE_ZOOMED)
+			window_unzoom_pane(wp, 1);
 		else
 			window_zoom(wp);
 		server_redraw_window(w);
 		return (CMD_RETURN_NORMAL);
 	}
-	if (!window_pane_is_floating(wp))
-		server_unzoom_window(w);
-	lc = wp->layout_cell; /* may have been replaced by unzoom */
+	if (wp->flags & PANE_ZOOMED)
+		window_unzoom_pane(wp, 1);
 
 	if (args_has(args, 'x')) {
 		x = args_percentage(args, 'x', 0, PANE_MAXIMUM, w->sx, &cause);
@@ -207,6 +208,8 @@ cmd_resize_pane_mouse_update(__unused struct cmd *self, struct cmdq_item *item)
 	if (wp == NULL || c == NULL || c->session != s)
 		return (CMD_RETURN_NORMAL);
 
+	if (wp->flags & PANE_ZOOMED)
+		return (CMD_RETURN_NORMAL);
 	if (!window_pane_is_floating(wp)) {
 		c->tty.mouse_drag_update = cmd_resize_pane_mouse_resize_tiled;
 		cmd_resize_pane_mouse_resize_tiled(c, &event->m);

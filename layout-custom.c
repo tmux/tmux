@@ -74,6 +74,7 @@ struct layout_parse_cell_ctx {
 	int			 last;
 	int			 index;
 	int			 zindex;
+	int			 zoomed;
 };
 
 /* Layout parse context. */
@@ -220,7 +221,7 @@ layout_parse_free_ctx(struct layout_parse_ctx *pctx)
 /* Add a cell context to the parse context. */
 static void
 layout_parse_add_cctx(struct layout_parse_ctx *pctx, struct layout_cell *lc,
-    int active, int last, int index, int zindex)
+    int active, int last, int index, int zindex, int zoomed)
 {
 	struct layout_parse_cell_ctx	*cctx;
 
@@ -236,6 +237,7 @@ layout_parse_add_cctx(struct layout_parse_ctx *pctx, struct layout_cell *lc,
 	cctx->last = last;
 	cctx->index = index;
 	cctx->zindex = zindex;
+	cctx->zoomed = zoomed;
 }
 
 /* Remove a cell context from the parse context. Does not preserve ordering. */
@@ -307,32 +309,70 @@ bad:
 	return (xstrdup("0000,"));
 }
 
+/*
+ * Dump the layout as it is seen while a pane is zoomed: the zoomed pane fills
+ * the window with the floating panes in front of it. The cells are temporary
+ * and do not belong to the panes.
+ */
+char *
+layout_dump_visible(struct window *w, int flags)
+{
+	struct window_pane	*zwp = window_zoomed_pane(w), *wp;
+	struct layout_cell	*root, *lc, *lcnext;
+	char			*out;
+
+	if (zwp == NULL) {
+		out = layout_dump(w, w->layout_root, flags);
+		return (out);
+	}
+
+	root = layout_create_cell(NULL);
+	layout_set_size(root, w->sx, w->sy, 0, 0);
+	root->wp = zwp;
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
+		if (wp == zwp)
+			break;
+		if (!window_pane_is_unzoomed_float(wp) ||
+		    !window_pane_is_visible(wp))
+			continue;
+		if (root->type == LAYOUT_WINDOWPANE) {
+			lc = layout_create_cell(root);
+			layout_set_size(lc, w->sx, w->sy, 0, 0);
+			lc->wp = zwp;
+			root->wp = NULL;
+			root->type = LAYOUT_TOPBOTTOM;
+			TAILQ_INSERT_TAIL(&root->cells, lc, entry);
+		}
+		lc = layout_create_cell(root);
+		memcpy(&lc->g, &wp->layout_cell->g, sizeof lc->g);
+		lc->flags |= LAYOUT_CELL_FLOATING;
+		lc->wp = wp;
+		TAILQ_INSERT_TAIL(&root->cells, lc, entry);
+	}
+	out = layout_dump(w, root, flags);
+
+	if (root->type != LAYOUT_WINDOWPANE) {
+		TAILQ_FOREACH_SAFE(lc, &root->cells, entry, lcnext) {
+			TAILQ_REMOVE(&root->cells, lc, entry);
+			free(lc);
+		}
+	}
+	free(root);
+	return (out);
+}
+
 /* Get a floating pane cell's z-index in the layout being dumped. */
 static u_int
 layout_cell_zindex(struct layout_cell *lc)
 {
 	struct window_pane	*wp = lc->wp, *wq;
 	struct window		*w = wp->window;
-	struct layout_cell	*other;
-	int			 saved = (lc == wp->saved_layout_cell);
 	u_int			 i = 0;
 
-	if (saved &&
-	    w->active != NULL &&
-	    (w->active->flags & PANE_ZOOMED) &&
-	    (w->active->saved_layout_cell->flags & LAYOUT_CELL_FLOATING)) {
-		if (wp == w->active)
-			return (0);
-		i++;
-	}
 	TAILQ_FOREACH(wq, &w->z_index, zentry) {
 		if (wq == wp)
 			break;
-		if (saved)
-			other = wq->saved_layout_cell;
-		else
-			other = wq->layout_cell;
-		if (other != NULL && (other->flags & LAYOUT_CELL_FLOATING))
+		if (window_pane_is_floating(wq))
 			i++;
 	}
 	return (i);
@@ -387,6 +427,8 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 		if (window_pane_index(wp, &i) != 0)
 			return (-1);
 		layout_string_write(ls, ",\"i\":%u", i);
+		if (wp->flags & PANE_ZOOMED)
+			layout_string_write(ls, ",\"Z\":true");
 		if (lc->flags & LAYOUT_CELL_FLOATING) {
 			z = layout_cell_zindex(lc);
 			layout_string_write(ls, ",\"z\":%u", z);
@@ -976,7 +1018,7 @@ layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
 	int64_t			  num;
 	char			**cause = pctx->cause;
 	int			  boolean, index, zindex, active = -1;
-	int			  last = -1;
+	int			  last = -1, zoomed = 0;
 
 	if (json_find_string(node, "t", &str, cause) != 0)
 		goto fail;
@@ -1066,7 +1108,14 @@ layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
 		} else
 			zindex = INT_MAX;
 
-		layout_parse_add_cctx(pctx, lc, active, last, index, zindex);
+		if (json_find(node, "Z") != NULL) {
+			if (json_find_boolean(node, "Z", &boolean, cause) != 0)
+				goto fail;
+			zoomed = boolean;
+		}
+
+		layout_parse_add_cctx(pctx, lc, active, last, index, zindex,
+		    zoomed);
 	} else {
 		if (json_find_array(node, "c", &array, cause) != 0)
 			goto fail;
@@ -1174,6 +1223,13 @@ layout_parse_apply_ctx(struct window *w, struct layout_parse_ctx *pctx)
 		wp = cctx->lc->wp;
 		if (window_pane_is_floating(wp))
 			TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
+	}
+
+	/* Zoom panes. */
+	for (i = 0; i < pctx->size; i++) {
+		cctx = &pctx->cctxs[i];
+		if (cctx->zoomed)
+			window_zoom(cctx->lc->wp);
 	}
 
 	/* Set the active pane. */

@@ -59,10 +59,6 @@ cmd_break_pane_float(struct cmdq_item *item, struct args *args,
 		cmdq_error(item, "pane is already floating");
 		return (CMD_RETURN_ERROR);
 	}
-	if (w->flags & WINDOW_ZOOMED) {
-		cmdq_error(item, "can't float a pane while window is zoomed");
-		return (CMD_RETURN_ERROR);
-	}
 
 	if (layout_floating_args_parse(item, args, lines, w, fg, &cause) != 0) {
 		cmdq_error(item, "failed to float pane: %s", cause);
@@ -73,8 +69,7 @@ cmd_break_pane_float(struct cmdq_item *item, struct args *args,
 	layout_set_size(lc, fg->sx, fg->sy, fg->xoff, fg->yoff);
 
 	lc->flags |= LAYOUT_CELL_FLOATING;
-	TAILQ_REMOVE(&w->z_index, wp, zentry);
-	TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
+	window_raise_pane(wp);
 
 	if (!args_has(args, 'd'))
 		window_set_active_pane(w, wp, 1);
@@ -125,8 +120,6 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 		if (idx == -1)
 			return (CMD_RETURN_ERROR);
 	}
-	server_unzoom_window(w);
-
 	if (window_count_panes(w, 1) == 1) {
 		if (server_link_window(src_s, wl, dst_s, idx, 0,
 		    !args_has(args, 'd'), &cause) != 0) {

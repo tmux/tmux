@@ -358,7 +358,7 @@ redraw_pane_to_scene(struct redraw_build_ctx *bctx, struct window_pane *wp,
 	int	wx = wp->xoff + px, wy = wp->yoff + py;
 	int	left, right, top, bottom;
 
-	if (window_pane_is_floating(wp)) {
+	if (window_pane_is_unzoomed_float(wp)) {
 		left = wp->xoff - 1;
 		right = wp->xoff + wp->sx;
 		top = wp->yoff - 1;
@@ -676,7 +676,7 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 	enum pane_lines pane_lines = window_pane_get_pane_lines(wp);
 	int		pane_status, left, right, top, bottom, wx, wy;
 	int		mark_top, mark_bottom, mark_left, mark_right, mask = 0;
-	int		floating = window_pane_is_floating(wp);
+	int		floating = window_pane_is_unzoomed_float(wp);
 
 	if (floating && pane_lines == PANE_LINES_NONE)
 		return;

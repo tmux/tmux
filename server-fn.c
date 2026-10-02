@@ -226,11 +226,9 @@ server_kill_pane(struct window_pane *wp)
 		server_kill_window(w, 1);
 		recalculate_sizes();
 	} else {
-		window_push_zoom(w, 0, wp->flags & PANE_FLOATOVERZOOM);
 		server_client_remove_pane(wp);
 		layout_close_pane(wp);
 		window_remove_pane(w, wp);
-		window_pop_zoom(w);
 		server_redraw_window(w);
 	}
 }
@@ -423,17 +421,14 @@ server_destroy_pane(struct window_pane *wp, int notify)
 	if (notify)
 		server_fire_pane_exit("pane-exited", wp);
 
-	window_push_zoom(w, 0, wp->flags & PANE_FLOATOVERZOOM);
 	server_client_remove_pane(wp);
 	layout_close_pane(wp);
 	window_remove_pane(w, wp);
 
 	if (TAILQ_EMPTY(&w->panes))
 		server_kill_window(w, 1);
-	else {
-		window_pop_zoom(w);
+	else
 		server_redraw_window(w);
-	}
 }
 
 static void

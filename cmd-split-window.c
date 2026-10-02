@@ -89,7 +89,6 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	 fs;
 	struct key_event	*event = cmdq_get_event(item);
 	int			 input, empty, is_floating, flags = 0;
-	int			 restore_zoom = 0;
 	const char		*template, *style, *value;
 	char			*cause = NULL, *cp, *title;
 	const struct options_table_entry *oe;
@@ -97,16 +96,9 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	enum pane_lines		 lines;
 	u_int			 count = args_count(args);
 
-	if (window_active_pane_is_over_zoom(w))
-		restore_zoom = 1;
-
 	if (cmd_get_entry(self) == &cmd_new_pane_entry)
 		is_floating = !args_has(args, 'L');
 	else {
-		if (!window_pane_is_visible(wp))
-			restore_zoom = 0;
-		if (!restore_zoom)
-			window_unzoom(w, 1);
 		is_floating = window_pane_is_floating(wp);
 		flags |= SPAWN_SPLIT;
 	}
@@ -143,8 +135,6 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		flags |= SPAWN_MODAL|SPAWN_FLOATOVERZOOM;
 	if (is_floating && args_has(args, 'A'))
 		flags |= SPAWN_FLOATOVERZOOM;
-	if ((w->flags & WINDOW_ZOOMED) && (flags & SPAWN_FLOATOVERZOOM))
-		restore_zoom = 1;
 
 	input = args_has(args, 'I');
 	if (input || (count == 1 && *args_string(args, 0) == '\0'))
@@ -180,8 +170,6 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (cause != NULL) {
 		cmdq_error(item, "%s", cause);
 		free(cause);
-		if (restore_zoom)
-			window_pop_zoom(w);
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -288,13 +276,6 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (~flags & SPAWN_DETACHED)
 		cmd_find_from_winlink_pane(current, wl, new_wp, 0);
 
-	if (restore_zoom) {
-		window_pop_zoom(wp->window);
-		server_redraw_window(wp->window);
-	} else if ((~flags & SPAWN_FLOATING) && !args_has(args, 'O')) {
-		window_pop_zoom(wp->window);
-		server_redraw_window(wp->window);
-	}
 	server_redraw_session(s);
 
 	if (args_has(args, 'M') && is_floating) {
@@ -343,8 +324,6 @@ fail:
 			layout_close_pane(new_wp);
 		window_remove_pane(wp->window, new_wp);
 	}
-	if (restore_zoom || (~flags & SPAWN_FLOATING))
-		window_pop_zoom(wp->window);
 	if (sc.argv != NULL)
 		cmd_free_argv(sc.argc, sc.argv);
 	environ_free(sc.environ);

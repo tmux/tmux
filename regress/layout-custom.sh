@@ -729,7 +729,8 @@ for flags in '' A mixed; do
 		legacy=$(v1_layout L:zoom)
 		check_ok resize-pane -Z -t "L:zoom.$pane"
 		during=$(raw_layout L:zoom)
-		must_equal 'Layout while zoomed' "$during" "$before"
+		must_equal 'Layout while zoomed' \
+		    "$(echo "$during" | sed 's/"Z":true,//')" "$before"
 		must_equal 'Legacy layout while zoomed' \
 		    "$(v1_layout L:zoom)" "$legacy"
 		must_equal 'Zoom after dumping layout' \
@@ -738,6 +739,9 @@ for flags in '' A mixed; do
 		    "$(visible_layout L:zoom)" "$(layout L:zoom)"
 		check_ok select-layout -t L:zoom "$during"
 		must_equal 'Round trip from zoomed layout' \
+		    "$(raw_layout L:zoom)" "$during"
+		check_ok resize-pane -a -Z -t L:zoom
+		must_equal 'Unzoomed after round trip' \
 		    "$(raw_layout L:zoom)" "$before"
 	done
 	check_ok kill-window -t L:zoom
