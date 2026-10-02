@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-join-pane.c,v 1.75 2026/09/21 10:33:16 nicm Exp $ */
+/* $OpenBSD: cmd-join-pane.c,v 1.76 2026/10/02 12:48:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 George Nachman <tmux@georgester.com>
@@ -308,7 +308,7 @@ cmd_join_pane_mouse_move(struct client *c, struct mouse_event *m)
 	struct window		*w;
 	struct window_pane	*wp;
 	struct layout_cell	*lc;
-	int			 y, ly, x, lx;
+	int			 y, ly, x, lx, oxoff, oyoff, osx, osy;
 
 	wp = cmd_mouse_pane(m, NULL, &wl);
 	if (wp == NULL) {
@@ -330,10 +330,16 @@ cmd_join_pane_mouse_move(struct client *c, struct mouse_event *m)
 		ly = m->statusat - 1;
 
 	if (x != lx || y != ly) {
+		oxoff = wp->xoff;
+		oyoff = wp->yoff;
+		osx = wp->sx;
+		osy = wp->sy;
+
 		lc->g.xoff += x - lx;
 		lc->g.yoff += y - ly;
 		layout_fix_panes(w, NULL);
-		server_redraw_window(w);
+
+		window_redraw_floating_pane(wp, oxoff, oyoff, osx, osy);
 		server_redraw_window_borders(w);
 	}
 }
