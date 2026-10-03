@@ -64,6 +64,7 @@ TMP=$(mktemp)
 trap "cleanup; rm -f $TMP" 0 1 15
 
 $TMUX new-session -d -s inner -x 60 -y 20 'sh -c "sleep 100"' || exit 1
+$TMUX set -g status-right '' || fail "set status-right failed"
 $TMUX set -g mouse on || fail "set mouse failed"
 $TMUX set -g default-command 'sh -c "sleep 100"' || fail "set default-command failed"
 $TMUX set -g pane-scrollbars on || fail "set pane-scrollbars failed"
