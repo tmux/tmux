@@ -1430,6 +1430,7 @@ monitor:
 	if (wo != NULL && options_owner(o) != wo) {
 		parent = options_get_only(wo, name);
 		if (parent != NULL) {
+			free(value);
 			value = options_to_string(parent, NULL, 0);
 			xsnprintf(label, sizeof label,
 			    "Window value (from window %u): ", fs.wl->idx);
@@ -1442,6 +1443,7 @@ monitor:
 	if (go != NULL && options_owner(o) != go) {
 		parent = options_get_only(go, name);
 		if (parent != NULL) {
+			free(value);
 			value = options_to_string(parent, NULL, 0);
 			if (!window_customize_write_value(ctx, s->cx, sx,
 			    sy - (s->cy - cy), 0, "Global value: ", "%s%s%s",
