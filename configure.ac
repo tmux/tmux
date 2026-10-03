@@ -646,6 +646,7 @@ AC_ARG_ENABLE(
 )
 try_jemalloc=no
 require_jemalloc=no
+link_exists_jemalloc=no
 if test "x$enable_asan" = xyes && test "x$enable_jemalloc" = xyes; then
 	AC_MSG_ERROR([--enable-asan and --enable-jemalloc cannot be used together])
 fi
@@ -692,6 +693,40 @@ if test "x$try_jemalloc" = xyes; then
 	else
 		enable_jemalloc=yes
 		AC_DEFINE(HAVE_JEMALLOC)
+
+		# jemalloc 5.4.0 only defines mallctl aliases
+		# when JEMALLOC_MANGLE is defined.
+		#
+		# Check for mallctl and define the CPFLAG if
+		# it is missing
+		AC_MSG_CHECKING([for mallctl])
+		AC_LINK_IFELSE([AC_LANG_PROGRAM(
+			[#include <jemalloc/jemalloc.h>],
+			[
+				const char * version;
+				size_t		 size = sizeof(version);
+				mallctl("version", &version, &size, NULL, 0);
+			]
+		)],
+		[AC_MSG_RESULT(yes)],
+		[AC_MSG_RESULT(no)
+		 AC_MSG_CHECKING([for mallctl with JEMALLOC_MANGLE])
+		 CPPFLAGS="-DJEMALLOC_MANGLE $CPPFLAGS"
+		 AM_CPPFLAGS="-DJEMALLOC_MANGLE $AM_CPPFLAGS"
+		 AC_LINK_IFELSE([AC_LANG_PROGRAM(
+			[#include <jemalloc/jemalloc.h>],
+			[
+				const char * version;
+				size_t		 size = sizeof(version);
+				mallctl("version", &version, &size, NULL, 0);
+			]
+		 )],
+		 [
+			AC_MSG_RESULT(yes)
+			link_exists_jemalloc=yes
+		],
+		 [AC_MSG_RESULT(no)])])
+		
 		test "x$jemalloc_version" = xoff && jemalloc_version=on
 	fi
 fi
@@ -1054,6 +1089,19 @@ case "$host_os" in
 			AC_MSG_NOTICE([])
 			AC_MSG_ERROR([must give --enable-jemalloc or --disable-jemalloc])
 		fi
+		#
+		#
+		#
+		#
+		AS_IF(
+			[test "x$enable_jemalloc" = xyes && test "x$link_exists_jemalloc" = xno],
+			[
+				AC_MSG_NOTICE([])
+				AC_MSG_NOTICE([	  Unable to alias jemalloc mallctl function])
+				AC_MSG_NOTICE([	  Please re-run make with CPPFLAG -DJEMALLOC_MANGLE])
+				AC_MSG_ERROR([	  i.e. make CPPFLAGS=-DJEMALLOC_MANGLE])
+			]
+		)
 		;;
 	*dragonfly*)
 		AC_MSG_RESULT(dragonfly)
