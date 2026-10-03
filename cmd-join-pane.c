@@ -128,7 +128,7 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 {
 	struct window		*w = wl->window;
 	struct layout_cell	*lc = wp->layout_cell;
-	struct window_pane	*owp;
+	struct window_pane	*owp, *prev;
 	int			 wx = w->sx, wy = w->sy;
 	int			 px = lc->g.sx, py = lc->g.sy;
 	int			 xoff = lc->g.xoff, yoff = lc->g.yoff;
@@ -136,6 +136,7 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 
 	if (window_pane_get_pane_lines(wp) == PANE_LINES_NONE)
 		border = 0;
+	prev = TAILQ_PREV(wp, window_panes_zindex, zentry);
 
 	if (strcmp(position, "top-left") == 0) {
 		xoff = border;
@@ -219,6 +220,11 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 		cmdq_error(item, "unknown position: %s", position);
 		return (CMD_RETURN_ERROR);
 	}
+
+	/* Do nothing if the pane did not move, as when raising the top pane. */
+	if (xoff == lc->g.xoff && yoff == lc->g.yoff &&
+	    TAILQ_PREV(wp, window_panes_zindex, zentry) == prev)
+		return (CMD_RETURN_NORMAL);
 
 	if (xoff != lc->g.xoff || yoff != lc->g.yoff) {
 		lc->g.xoff = xoff;
