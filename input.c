@@ -3193,6 +3193,61 @@ input_osc_112(struct input_ctx *ictx, const char *p)
 		screen_set_cursor_colour(ictx->ctx.s, -1);
 }
 
+/* Save the running command's output start before clearing the screen. */
+struct input_osc_133_ctx
+input_osc_133_save_marker(struct window_pane *wp, struct screen *s)
+{
+	struct grid		*gd = s->grid;
+	struct grid_line	*gl;
+	struct input_osc_133_ctx ctx = {0};
+	u_int			 y;
+
+	if (wp == NULL || s != &wp->base || SCREEN_IS_ALTERNATE(s) ||
+	    (~wp->flags & PANE_CMDRUNNING))
+		return (ctx);
+	ctx.running = 1;
+	ctx.start = UINT_MAX;
+	ctx.collected = gd->scroll_collected;
+	for (y = gd->hsize + gd->sy; y > 0; y--) {
+		gl = grid_get_line(gd, y - 1);
+		if ((gl->flags & GRID_LINE_START_OUTPUT) &&
+		    (~gl->flags & GRID_LINE_END_OUTPUT ||
+		    gl->osc133_data.out_end_col < gl->osc133_data.out_start_col) &&
+		    (~gl->flags & GRID_LINE_START_PROMPT ||
+		    gl->osc133_data.prompt_col <= gl->osc133_data.out_start_col)) {
+			ctx.start = y - 1;
+			ctx.col = gl->osc133_data.out_start_col;
+			break;
+		}
+		if (gl->flags & (GRID_LINE_START_PROMPT|GRID_LINE_END_OUTPUT))
+			break;
+	}
+	return (ctx);
+}
+
+/* Restore the running command's output start if a screen clear removed it. */
+void
+input_osc_133_restore_marker(struct screen *s,
+    const struct input_osc_133_ctx *ctx)
+{
+	struct grid		*gd = s->grid;
+	struct grid_line	*gl;
+	u_int			 collected;
+
+	if (!ctx->running)
+		return;
+	collected = gd->scroll_collected - ctx->collected;
+	if (ctx->start != UINT_MAX && ctx->start >= collected) {
+		gl = grid_get_line(gd, ctx->start - collected);
+		if ((gl->flags & GRID_LINE_START_OUTPUT) &&
+		    gl->osc133_data.out_start_col == ctx->col)
+			return;
+	}
+	gl = grid_get_line(gd, gd->hsize);
+	gl->flags |= GRID_LINE_START_OUTPUT;
+	gl->osc133_data.out_start_col = 0;
+}
+
 /* Parse the OSC 133 D exit status. */
 static int
 input_osc_133_exit_status(const char *p, int *present)

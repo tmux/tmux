@@ -2062,71 +2062,6 @@ screen_write_carriagereturn(struct screen_write_ctx *ctx)
 	screen_write_set_cursor(ctx, 0, -1);
 }
 
-/* Saved OSC 133 output marker. */
-struct screen_write_osc_133_ctx {
-	int		 running;
-	u_int		 start;
-	u_int		 col;
-	u_int		 collected;
-};
-
-/* Save the running command's output start before clearing the screen. */
-static struct screen_write_osc_133_ctx
-screen_write_osc_133_save_marker(struct screen_write_ctx *sctx)
-{
-	struct window_pane	*wp = sctx->owner;
-	struct screen		*s = sctx->s;
-	struct grid		*gd = s->grid;
-	struct grid_line	*gl;
-	struct screen_write_osc_133_ctx ctx = {0};
-	u_int			 y;
-
-	if (wp == NULL || s != &wp->base || SCREEN_IS_ALTERNATE(s) ||
-	    (~wp->flags & PANE_CMDRUNNING))
-		return (ctx);
-	ctx.running = 1;
-	ctx.start = UINT_MAX;
-	ctx.collected = gd->scroll_collected;
-	for (y = gd->hsize + gd->sy; y > 0; y--) {
-		gl = grid_get_line(gd, y - 1);
-		if ((gl->flags & GRID_LINE_START_OUTPUT) &&
-		    (~gl->flags & GRID_LINE_END_OUTPUT ||
-		    gl->osc133_data.out_end_col < gl->osc133_data.out_start_col) &&
-		    (~gl->flags & GRID_LINE_START_PROMPT ||
-		    gl->osc133_data.prompt_col <= gl->osc133_data.out_start_col)) {
-			ctx.start = y - 1;
-			ctx.col = gl->osc133_data.out_start_col;
-			break;
-		}
-		if (gl->flags & (GRID_LINE_START_PROMPT|GRID_LINE_END_OUTPUT))
-			break;
-	}
-	return (ctx);
-}
-
-/* Restore the running command's output start if a screen clear removed it. */
-static void
-screen_write_osc_133_restore_marker(struct screen_write_ctx *sctx,
-    const struct screen_write_osc_133_ctx *ctx)
-{
-	struct grid		*gd = sctx->s->grid;
-	struct grid_line	*gl;
-	u_int			 collected;
-
-	if (!ctx->running)
-		return;
-	collected = gd->scroll_collected - ctx->collected;
-	if (ctx->start != UINT_MAX && ctx->start >= collected) {
-		gl = grid_get_line(gd, ctx->start - collected);
-		if ((gl->flags & GRID_LINE_START_OUTPUT) &&
-		    gl->osc133_data.out_start_col == ctx->col)
-			return;
-	}
-	gl = grid_get_line(gd, gd->hsize);
-	gl->flags |= GRID_LINE_START_OUTPUT;
-	gl->osc133_data.out_start_col = 0;
-}
-
 /* Clear to end of screen from cursor. */
 void
 screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
@@ -2138,7 +2073,7 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 	u_int			 y, i, xoff, yoff, ocx, ocy;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
-	struct screen_write_osc_133_ctx osc133 = {0};
+	struct input_osc_133_ctx	 osc133 = {0};
 
 #ifdef ENABLE_SIXEL
 	if (image_check_line(s, s->cy, sy - s->cy) && ctx->wp != NULL)
@@ -2150,7 +2085,7 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 
 	/* Erasing to the end clears the whole screen at 0,0. */
 	if (s->cx == 0 && s->cy == 0)
-		osc133 = screen_write_osc_133_save_marker(ctx);
+		osc133 = input_osc_133_save_marker(ctx->owner, s);
 
 	/* Scroll into history if it is enabled and clearing entire screen. */
 	if (s->cx == 0 &&
@@ -2164,7 +2099,7 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 			grid_view_clear(gd, s->cx, s->cy, sx - s->cx, 1, bg);
 		grid_view_clear(gd, 0, s->cy + 1, sx, sy - (s->cy + 1), bg);
 	}
-	screen_write_osc_133_restore_marker(ctx, &osc133);
+	input_osc_133_restore_marker(s, &osc133);
 
 	screen_write_collect_clear(ctx, s->cy + 1, sy - (s->cy + 1));
 	screen_write_collect_flush(ctx, 0, __func__);
@@ -2298,7 +2233,7 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 	u_int			 y, i, xoff, yoff, ocx, ocy;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
-	struct screen_write_osc_133_ctx osc133;
+	struct input_osc_133_ctx	 osc133;
 
 #ifdef ENABLE_SIXEL
 	if (image_free_all(s) && ctx->wp != NULL)
@@ -2308,7 +2243,7 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
 
-	osc133 = screen_write_osc_133_save_marker(ctx);
+	osc133 = input_osc_133_save_marker(ctx->owner, s);
 
 	/* Scroll into history if it is enabled. */
 	if ((s->grid->flags & GRID_HISTORY) &&
@@ -2317,7 +2252,7 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 		grid_view_clear_history(s->grid, bg);
 	else
 		grid_view_clear(s->grid, 0, 0, sx, sy, bg);
-	screen_write_osc_133_restore_marker(ctx, &osc133);
+	input_osc_133_restore_marker(s, &osc133);
 
 	screen_write_collect_clear(ctx, 0, sy);
 
