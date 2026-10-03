@@ -1097,9 +1097,9 @@ case "$host_os" in
 			[test "x$enable_jemalloc" = xyes && test "x$link_exists_jemalloc" = xno],
 			[
 				AC_MSG_NOTICE([])
-				AC_MSG_NOTICE([	  Unable to alias jemalloc\'s mallctl function])
+				AC_MSG_NOTICE([	  Unable to alias jemalloc mallctl function])
 				AC_MSG_NOTICE([	  Please re-run make with CPPFLAG -DJEMALLOC_MANGLE])
-				AC_MSG_ERROR([	  i.e. \`make CPPFLAGS\=-DJEMALLOC_MANGLE\`])
+				AC_MSG_ERROR([	  i.e. make CPPFLAGS=-DJEMALLOC_MANGLE])
 			]
 		)
 		;;
