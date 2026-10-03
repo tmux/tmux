@@ -202,6 +202,25 @@ for integration in plain marked; do
 	done
 done
 
+# Preserve C when the clear happens while copy mode suppresses tty updates.
+$TMUX set-option -g scroll-on-clear off || exit 1
+$TMUX new-window -d -n modeclear "seq 1 40; printf '\\033]133;A\\007p\\$ \\033]133;B\\007clear; echo hello; echo world\\n\\033]133;C\\007before\\n'; $TMUX wait-for -S modeclear-ready; $TMUX wait-for modeclear-go; printf '\\033[H\\033[2Jhello\\nworld\\n\\033]133;D;0\\007\\033]133;A\\007p\\$ \\033]133;B\\007'; $TMUX wait-for -S modeclear-done; exec sleep 100" || exit 1
+$TMUX wait-for modeclear-ready || exit 1
+$TMUX copy-mode -t :modeclear || exit 1
+$TMUX wait-for -S modeclear-go || exit 1
+$TMUX wait-for modeclear-done || exit 1
+sleep 1
+[ "$($TMUX display-message -p -t :modeclear.0 '#{pane_in_mode}')" = 1 ] || exit 1
+$TMUX send-keys -t :modeclear.0 -X cancel || exit 1
+$TMUX copy-mode -t :modeclear || exit 1
+$TMUX send-keys -t :modeclear.0 -X cursor-up || exit 1
+$TMUX send-keys -t :modeclear.0 C-o || exit 1
+[ "$($TMUX display-message -p -t :modeclear.0 '#{selection_present}')" = 1 ] || exit 1
+$TMUX set-buffer sentinel || exit 1
+$TMUX send-keys -t :modeclear.0 -X copy-selection || exit 1
+[ "$($TMUX show-buffer)" = "$(printf 'hello\nworld')" ] || exit 1
+$TMUX send-keys -t :modeclear.0 -X cancel || exit 1
+
 # Preserve C when scroll-on-clear keeps the command's earlier output.
 $TMUX set-option -g scroll-on-clear on || exit 1
 $TMUX new-window -d -n preserve "printf '\\033]133;A\\007p\\$ \\033]133;B\\007echo before; clear; echo hello; echo world\\n\\033]133;C\\007before\\n\\033[H\\033[2Jhello\\nworld\\n\\033]133;D;0\\007\\033]133;A\\007p\\$ \\033]133;B\\007'; exec sleep 100" || exit 1
