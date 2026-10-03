@@ -115,6 +115,7 @@ static const char *options_table_theme_list[] = {
 static const char *options_table_copy_mode_line_numbers_list[] = {
 	"off", "default", "absolute", "relative", "hybrid", NULL
 };
+
 /* Status line format. */
 #define OPTIONS_TABLE_STATUS_FORMAT1 \
 	"#[align=left range=left #{E:status-left-style}]" \
