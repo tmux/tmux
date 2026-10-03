@@ -906,6 +906,14 @@ struct osc133_data {
 	u_char			 exit_status;
 };
 
+/* Saved OSC 133 output marker. */
+struct input_osc_133_ctx {
+	int			 running;
+	u_int			 start;
+	u_int			 col;
+	u_int			 collected;
+};
+
 /* Grid line. */
 struct grid_line {
 	struct grid_cell_entry	*celldata;
@@ -3438,6 +3446,10 @@ void	 input_reply_clipboard(struct bufferevent *, const char *, size_t,
 void	 input_set_buffer_size(size_t);
 void	 input_request_reply(struct client *, enum input_request_type, void *);
 void	 input_cancel_requests(struct client *);
+struct input_osc_133_ctx input_osc_133_save_marker(struct window_pane *,
+	     struct screen *);
+void	 input_osc_133_restore_marker(struct screen *,
+	     const struct input_osc_133_ctx *);
 
 /* input-key.c */
 void	 input_key_build(void);
