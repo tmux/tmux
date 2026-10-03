@@ -236,6 +236,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	char				*expanded = NULL, *array_key = NULL;
 	const char			*value;
 	int				 window, already, error, ambiguous;
+	int				 old_window_size = -1;
 	int				 scope;
 
 	window = (cmd_get_entry(self) == &cmd_set_window_option_entry);
@@ -290,6 +291,8 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	o = options_get_only(oo, name);
 	parent = options_get(oo, name);
+	if (strcmp(name, "window-size") == 0)
+		old_window_size = options_get_number(oo, name);
 
 	/* Check that array options and keys match up. */
 	if (array_key != NULL && (*name == '@' || !options_is_array(parent))) {
@@ -379,6 +382,8 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
+	if (strcmp(name, "window-size") == 0)
+		resize_window_update_manual_size(target, oo, old_window_size);
 	options_push_changes(name);
 
 out:
