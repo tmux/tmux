@@ -164,6 +164,7 @@ hooks_insert(struct cmdq_item *item, struct hooks_data *hd)
 			break;
 		case CMD_PARSE_SUCCESS:
 			hooks_insert_one(item, hd, pr->cmdlist, state);
+			cmd_list_free(pr->cmdlist);
 			break;
 		}
 	} else {
@@ -178,10 +179,12 @@ hooks_insert(struct cmdq_item *item, struct hooks_data *hd)
 						cmdq_error(item, "%s",
 						    pr->error);
 					}
+					free(pr->error);
 					break;
 				case CMD_PARSE_SUCCESS:
 					item = hooks_insert_one(item, hd,
 					    pr->cmdlist, state);
+					cmd_list_free(pr->cmdlist);
 					break;
 				}
 			} else {
