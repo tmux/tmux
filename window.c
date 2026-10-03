@@ -1579,6 +1579,36 @@ window_pane_scrollbar_redraw_visibility(struct window_pane *wp)
 	server_redraw_window(wp->window);
 }
 
+void
+window_pane_utmp_add(__unused struct window_pane *wp)
+{
+#ifdef HAVE_UTEMPTER
+	char	*cp;
+
+	if (wp->fd == -1 || (wp->flags & (PANE_EMPTY|PANE_EXITED|PANE_UTMP)) ||
+	    !options_get_number(global_options, "utmp"))
+		return;
+	xasprintf(&cp, "tmux(%lu).%%%u", (long)getpid(), wp->id);
+	/* utempter return values differ between implementations. */
+	utempter_add_record(wp->fd, cp);
+	wp->flags |= PANE_UTMP;
+	kill(getpid(), SIGCHLD);
+	free(cp);
+#endif
+}
+
+void
+window_pane_utmp_remove(__unused struct window_pane *wp)
+{
+#ifdef HAVE_UTEMPTER
+	if (~wp->flags & PANE_UTMP)
+		return;
+	utempter_remove_record(wp->fd);
+	kill(getpid(), SIGCHLD);
+	wp->flags &= ~PANE_UTMP;
+#endif
+}
+
 static void
 window_pane_destroy(struct window_pane *wp)
 {
@@ -1593,10 +1623,7 @@ window_pane_destroy(struct window_pane *wp)
 	screen_write_sync_clear_dirty(wp);
 
 	if (wp->fd != -1) {
-#ifdef HAVE_UTEMPTER
-		utempter_remove_record(wp->fd);
-		kill(getpid(), SIGCHLD);
-#endif
+		window_pane_utmp_remove(wp);
 		bufferevent_free(wp->event);
 		wp->event = NULL;
 		close(wp->fd);

@@ -5180,6 +5180,23 @@ For example:
 set \-s user\-keys[0] "\ee[5;30012\[ti]"
 bind User0 resize\-pane \-L 3
 .Ed
+.It Xo Ic utmp
+.Op Ic on | off
+.Xc
+Maintain utmp records for panes using
+.Em utempter .
+The default is on.
+Turning this option off asks utempter to remove existing records and prevents
+new records from being added.
+Turning it on asks utempter to add records for existing panes with running
+commands.
+Empty panes are not recorded.
+Updates to wtmp are performed by
+.Em utempter
+according to the system configuration; existing history is not erased.
+This option has no effect if
+.Nm
+was built without utempter support.
 .It Xo Ic variation\-selector\-always\-wide
 .Op Ic on | off
 .Xc
