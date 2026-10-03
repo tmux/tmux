@@ -5894,6 +5894,15 @@ and
 .Ic hybrid ,
 they use absolute line numbers.
 .Pp
+.It Xo Ic copy\-mode\-keep\-column
+.Op Ic on | off
+.Xc
+When moving vertically in copy mode, keep the cursor in the same column
+rather than moving it to the end of the line if the target line is shorter.
+This is the behaviour of the
+.Xr screen 1
+copy mode.
+.Pp
 .It Xo Ic mode\-keys
 .Op Ic vi | emacs
 .Xc
