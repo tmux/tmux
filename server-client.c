@@ -2752,6 +2752,8 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	} else {
 		values = args_from_vector(argc, argv);
 		pr = cmd_parse_from_arguments(values, argc, NULL);
+		args_free_values(values, argc);
+		free(values);
 		switch (pr->status) {
 		case CMD_PARSE_ERROR:
 			cause = pr->error;
@@ -2759,8 +2761,6 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 		case CMD_PARSE_SUCCESS:
 			break;
 		}
-		args_free_values(values, argc);
-		free(values);
 		cmd_free_argv(argc, argv);
 		if ((c->flags & CLIENT_READONLY) &&
 		    !cmd_list_all_have(pr->cmdlist, CMD_READONLY)) {
