@@ -53,6 +53,7 @@
 	" '#{?#{m/r:(copy|view)-mode,#{pane_mode}},Go To Bottom,}' '>' {send -X history-bottom}" \
 	" ''" \
 	" '#{?#{==:#{pane_mode},copy-mode},#{?copy_line_numbers,Hide Line Numbers,Show Line Numbers},}' 'L' {send -X line-numbers-toggle}" \
+	" '#{?#{==:#{pane_mode},copy-mode},Edit,}' 'e' {if -F '#{selection_present}' {send -X open-selection} {send -X open-output}}" \
 	" '#{?#{==:#{pane_mode},copy-mode},#{?refresh_active,Refresh Off,Refresh On},}' 'r' {send -X refresh-toggle}" \
 	" ''" \
 	" '#{?#{&&:#{buffer_size},#{!:#{pane_in_mode}}},Paste #[underscore]#{=/9/...:buffer_sample},}' 'p' {paste-buffer}" \
@@ -575,6 +576,7 @@ key_bindings_init(void)
 		"bind -Tcopy-mode C-l { send -X recentre-top-bottom }",
 		"bind -Tcopy-mode M-l { send -X cursor-centre-horizontal }",
 		"bind -Tcopy-mode C-n { send -X cursor-down }",
+		"bind -Tcopy-mode C-o { send -X select-output }",
 		"bind -Tcopy-mode C-p { send -X cursor-up }",
 		"bind -Tcopy-mode C-r { command-prompt -P -T search -ip'(search up)' -I'#{pane_search_string}' { send -X search-backward-incremental -- '%%' } }",
 		"bind -Tcopy-mode C-s { command-prompt -P -T search -ip'(search down)' -I'#{pane_search_string}' { send -X search-forward-incremental -- '%%' } }",
@@ -592,6 +594,7 @@ key_bindings_init(void)
 		"bind -Tcopy-mode R { send -X rectangle-toggle }",
 		"bind -Tcopy-mode T { command-prompt -P -1p'(jump to backward)' { send -X jump-to-backward -- '%%' } }",
 		"bind -Tcopy-mode X { send -X set-mark }",
+		"bind -Tcopy-mode e { if -F '#{selection_present}' { send -X open-selection } { send -X open-output } }",
 		"bind -Tcopy-mode f { command-prompt -P -1p'(jump forward)' { send -X jump-forward -- '%%' } }",
 		"bind -Tcopy-mode g { command-prompt -P -p'(goto line)' { send -X goto-line -- '%%' } }",
 		"bind -Tcopy-mode n { send -X search-again }",
@@ -687,6 +690,8 @@ key_bindings_init(void)
 		"bind -Tcopy-mode-vi K { send -X scroll-up }",
 		"bind -Tcopy-mode-vi L { send -X bottom-line }",
 		"bind -Tcopy-mode-vi M { send -X middle-line }",
+		"bind -Tcopy-mode-vi M-e { if -F '#{selection_present}' { send -X open-selection } { send -X open-output } }",
+		"bind -Tcopy-mode-vi M-o { send -X select-output }",
 		"bind -Tcopy-mode-vi N { send -X search-reverse }",
 		"bind -Tcopy-mode-vi P { send -X toggle-position }",
 		"bind -Tcopy-mode-vi T { command-prompt -P -1p'(jump to backward)' { send -X jump-to-backward -- '%%' } }",

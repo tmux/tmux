@@ -606,7 +606,8 @@ window_buffer_start_edit(struct window_buffer_modedata *data,
 	ed->name = xstrdup(paste_buffer_name(pb));
 	ed->pb = pb;
 
-	ed->editor = spawn_editor(c, buf, len, window_buffer_edit_close_cb, ed);
+	ed->editor = spawn_editor(c, buf, len, NULL,
+	    window_buffer_edit_close_cb, ed);
 	if (ed->editor == NULL)
 		window_buffer_finish_edit(ed);
 	else {

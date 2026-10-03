@@ -3278,8 +3278,8 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 	case 'A':
 	case 'N':
 		if (gl != NULL) {
-			memset(&gl->osc133_data, 0, sizeof gl->osc133_data);
 			gl->osc133_data.prompt_col = s->cx;
+			gl->osc133_data.cmd_col = 0;
 			gl->flags |= GRID_LINE_START_PROMPT;
 		}
 		if (wp != NULL) {
