@@ -527,6 +527,9 @@ server_child_stopped(pid_t pid, int status)
 	RB_FOREACH(w, windows, &windows) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->pid == pid) {
+				if (options_get_number(wp->options,
+				    "allow-stopped-panes"))
+					continue;
 				if (killpg(pid, SIGCONT) != 0)
 					kill(pid, SIGCONT);
 			}
