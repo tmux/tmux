@@ -45,6 +45,7 @@ compare() {
 new_scene() {
 	$TMUX2 neww -d "sh -c 'printf base; exec sleep 100'" || exit 1
 	$TMUX2 selectw -t:\$ || exit 1
+	$TMUX2 killw -a || exit 1
 	$TMUX2 resizew -x$1 -y$2 || exit 1
 }
 
