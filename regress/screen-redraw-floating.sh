@@ -43,8 +43,10 @@ compare() {
 
 # new_scene <width> <height>: fresh inner window of the given window size.
 new_scene() {
-	$TMUX2 neww -d "sh -c 'printf base; exec sleep 100'" || exit 1
-	$TMUX2 selectw -t:\$ || exit 1
+	window=$($TMUX2 neww -dP -F '#{window_id}' \
+	    "sh -c 'printf base; exec sleep 100'") || exit 1
+	$TMUX2 selectw -t"$window" || exit 1
+	$TMUX2 killw -a -t"$window" || exit 1
 	$TMUX2 resizew -x$1 -y$2 || exit 1
 }
 

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-display-message.c,v 1.66 2026/09/08 08:33:10 nicm Exp $ */
+/* $OpenBSD: cmd-display-message.c,v 1.67 2026/10/02 15:13:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -114,12 +114,10 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 		template = DISPLAY_MESSAGE_TEMPLATE;
 
 	/*
-	 * -c is intended to be the client where the message should be
-	 * displayed if -p is not given. But it makes sense to use it for the
-	 * formats too, assuming it matches the session. If it doesn't, use the
-	 * best client for the session.
+	 * -c is also used for the client formats. If it was not given, tc is
+	 * only the current client, so use it only if it matches the session.
 	 */
-	if (tc != NULL && tc->session == s)
+	if (tc != NULL && (args_has(args, 'c') || tc->session == s))
 		c = tc;
 	else if (s != NULL)
 		c = cmd_find_best_client(s);
