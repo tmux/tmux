@@ -84,7 +84,7 @@ check_grep "  3 !- p\$ two"
 
 # A format wider than the standard three-column gutter is not truncated.
 $TMUX2 send -X cancel || exit 1
-$TMUX2 set -g copy-mode-exit-status-format \
+$TMUX2 set -p copy-mode-exit-status-format \
 	'#[align=right]#{?exit_status,!#{exit_status}, }' || exit 1
 $TMUX2 copy-mode -c || exit 1
 $TMUX2 send -X history-top || exit 1

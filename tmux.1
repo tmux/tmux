@@ -2214,9 +2214,22 @@ Expand the output for the command on the cursor line.
 With
 .Fl a ,
 expand all command output in the copy-mode buffer.
-.Pp
+.It Xo
+.Ic toggle\-output
+.Op Fl a
+.Xc
+Toggle whether output for the command on the cursor line is collapsed.
+With
+.Fl a ,
+toggle all command output in the copy-mode buffer.
 The Tab key toggles output for the command on the cursor line and S-Tab
 toggles all command output.
+.It Xo
+.Ic fold\-view\-toggle
+(vi: O)
+(emacs: O)
+.Xc
+Toggle OSC 133 output controls in copy mode and expand all command output.
 .It Xo
 .Ic middle\-line
 (vi: M)
@@ -7460,6 +7473,7 @@ The following variables are available, where appropriate:
 .It Li "copy_cursor_word" Ta "" Ta "Word under cursor in copy mode"
 .It Li "copy_cursor_x" Ta "" Ta "Cursor X position in copy mode"
 .It Li "copy_cursor_y" Ta "" Ta "Cursor Y position in copy mode"
+.It Li "copy_fold_view" Ta "" Ta "1 if OSC 133 output controls are shown"
 .It Li "copy_line_numbers" Ta "" Ta "1 if line numbers are shown in copy mode"
 .It Li "copy_position" Ta "" Ta "Position shown in the copy mode indicator"
 .It Li "copy_position_limit" Ta "" Ta "Limit shown in the copy mode indicator"

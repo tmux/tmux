@@ -3199,7 +3199,8 @@ input_osc_133_save_marker(struct window_pane *wp, struct screen *s)
 {
 	struct grid		*gd = s->grid;
 	struct grid_line	*gl;
-	struct input_osc_133_ctx ctx = {0};
+	struct osc133_data	*od;
+	struct input_osc_133_ctx	 ctx = {0};
 	u_int			 y;
 
 	if (wp == NULL || s != &wp->base || SCREEN_IS_ALTERNATE(s) ||
@@ -3210,17 +3211,22 @@ input_osc_133_save_marker(struct window_pane *wp, struct screen *s)
 	ctx.collected = gd->scroll_collected;
 	for (y = gd->hsize + gd->sy; y > 0; y--) {
 		gl = grid_get_line(gd, y - 1);
-		if ((gl->flags & GRID_LINE_START_OUTPUT) &&
-		    (~gl->flags & GRID_LINE_END_OUTPUT ||
-		    gl->osc133_data.out_end_col < gl->osc133_data.out_start_col) &&
-		    (~gl->flags & GRID_LINE_START_PROMPT ||
-		    gl->osc133_data.prompt_col <= gl->osc133_data.out_start_col)) {
-			ctx.start = y - 1;
-			ctx.col = gl->osc133_data.out_start_col;
-			break;
+		if (~gl->flags & GRID_LINE_START_OUTPUT) {
+			if (gl->flags &
+			    (GRID_LINE_START_PROMPT|GRID_LINE_END_OUTPUT))
+				break;
+			continue;
 		}
-		if (gl->flags & (GRID_LINE_START_PROMPT|GRID_LINE_END_OUTPUT))
+		od = &gl->osc133_data;
+		if ((gl->flags & GRID_LINE_END_OUTPUT) &&
+		    od->out_end_col >= od->out_start_col)
 			break;
+		if ((gl->flags & GRID_LINE_START_PROMPT) &&
+		    od->prompt_col > od->out_start_col)
+			break;
+		ctx.start = y - 1;
+		ctx.col = od->out_start_col;
+		break;
 	}
 	return (ctx);
 }
@@ -3252,9 +3258,8 @@ input_osc_133_restore_marker(struct screen *s,
 static int
 input_osc_133_exit_status(const char *p, int *present)
 {
-	const char	*end;
+	const char	*end, *errstr;
 	char		*copy;
-	char		*endptr;
 	long long	 status;
 
 	*present = 0;
@@ -3272,10 +3277,9 @@ input_osc_133_exit_status(const char *p, int *present)
 		return (0);
 	}
 	*present = 1;
-	errno = 0;
-	status = (int)strtol(copy, &endptr, 10);
+	status = strtonum(copy, 0, 255, &errstr);
 	free(copy);
-	if (errno != 0 || endptr == copy || status < 0 || status > 255)
+	if (errstr != NULL)
 		return (255);
 	return (status);
 }

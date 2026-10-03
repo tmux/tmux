@@ -26,5 +26,16 @@ check_raw_matches osc133 \
 	'L 7 \(7\) flags=START_OUTPUT,END_OUTPUT,END_OUTPUT_STATUS\[[0-9a-f]+\].* osc133=0,0,2,5,255' \
 	'L 8 \(8\) flags=START_OUTPUT,END_OUTPUT\[[0-9a-f]+\].* osc133=0,0,3,5,0'
 
+# Reject malformed statuses and distinguish zero from a missing status.
+start_pane osc133-status 20 8 \
+	'\033]133;C\007a\033]133;D;1junk\007\n\033]133;C\007b\033]133;D;4294967296\007\n\033]133;C\007c\033]133;D;255\007\n\033]133;C\007d\033]133;D;0;foo=bar\007\n\033]133;C\007e\033]133;D;foo=bar\007\n\033]133;C\007f\033]133;D;\007\n'
+check_raw_matches osc133-status \
+	'L 0 \(0\) flags=START_OUTPUT,END_OUTPUT,END_OUTPUT_STATUS\[[0-9a-f]+\].* osc133=0,0,0,1,255' \
+	'L 1 \(1\) flags=START_OUTPUT,END_OUTPUT,END_OUTPUT_STATUS\[[0-9a-f]+\].* osc133=0,0,0,1,255' \
+	'L 2 \(2\) flags=START_OUTPUT,END_OUTPUT,END_OUTPUT_STATUS\[[0-9a-f]+\].* osc133=0,0,0,1,255' \
+	'L 3 \(3\) flags=START_OUTPUT,END_OUTPUT,END_OUTPUT_STATUS\[[0-9a-f]+\].* osc133=0,0,0,1,0' \
+	'L 4 \(4\) flags=START_OUTPUT,END_OUTPUT\[[0-9a-f]+\].* osc133=0,0,0,1,0' \
+	'L 5 \(5\) flags=START_OUTPUT,END_OUTPUT\[[0-9a-f]+\].* osc133=0,0,0,1,0'
+
 $TMUX kill-server 2>/dev/null
 exit $exit_status

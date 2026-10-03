@@ -317,4 +317,18 @@ $TMUX show-buffer >$OUT
 grep -q seq "$OUT" && exit 1
 $TMUX send-keys -t :hist.0 -X cancel || exit 1
 
+# View mode has no pane source snapshot.
+$TMUX new-window -d -n view 'exec sleep 100' || exit 1
+$TMUX run-shell -t :view.0 "printf 'view one\nview two\n'" || exit 1
+[ "$($TMUX display-message -p -t :view.0 '#{pane_mode}')" = view-mode ] || exit 1
+$TMUX set-buffer sentinel || exit 1
+$TMUX send-keys -t :view.0 -X copy-output -a || exit 1
+[ "$($TMUX show-buffer)" = "$(printf 'view one\nview two')" ] || exit 1
+$TMUX send-keys -t :view.0 -X select-output -a || exit 1
+[ "$($TMUX display-message -p -t :view.0 '#{selection_present}')" = 1 ] || exit 1
+$TMUX set-buffer sentinel || exit 1
+$TMUX send-keys -t :view.0 -X copy-selection || exit 1
+[ "$($TMUX show-buffer)" = "$(printf 'view one\nview two')" ] || exit 1
+$TMUX send-keys -t :view.0 -X cancel || exit 1
+
 exit 0
