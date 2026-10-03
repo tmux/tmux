@@ -414,6 +414,8 @@ tty_term_apply(struct tty_term *term, const char *capabilities, int quiet,
 				continue;
 
 			if (remove) {
+				if (code->type == TTYCODE_STRING)
+					free(code->value.string);
 				code->type = TTYCODE_NONE;
 				continue;
 			}
