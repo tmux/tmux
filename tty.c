@@ -508,6 +508,15 @@ tty_stop_tty(struct tty *tty)
 
 	if (tty_use_margin(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_DSMG));
+
+	/*
+	 * Leave the alternate screen if a full-window pane put us there (see
+	 * server_client_check_redraw), so the terminal is not left in it.
+	 */
+	if (tty->flags & TTY_ALTSCREEN) {
+		tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
+		tty->flags &= ~TTY_ALTSCREEN;
+	}
 	if (options_get_number(global_options, "clear-on-attach"))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
 	else
