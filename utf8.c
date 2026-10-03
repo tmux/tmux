@@ -51,12 +51,8 @@ static struct utf8_width_cache utf8_width_cache =
     RB_INITIALIZER(utf8_width_cache);
 
 static struct utf8_width_item utf8_default_width_cache[] = {
-	{ .wc = 0x0261D, .width = 2 },
-	{ .wc = 0x026F9, .width = 2 },
 	{ .wc = 0x0270A, .width = 2 },
 	{ .wc = 0x0270B, .width = 2 },
-	{ .wc = 0x0270C, .width = 2 },
-	{ .wc = 0x0270D, .width = 2 },
 	{ .wc = 0x1F1E6, .width = 1 },
 	{ .wc = 0x1F1E7, .width = 1 },
 	{ .wc = 0x1F1E8, .width = 1 },
