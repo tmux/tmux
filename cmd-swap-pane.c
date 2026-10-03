@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-swap-pane.c,v 1.55 2026/07/15 13:02:33 nicm Exp $ */
+/* $OpenBSD: cmd-swap-pane.c,v 1.56 2026/10/02 12:23:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -182,9 +182,15 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 			window_set_active_pane(src_w, tmp_wp, 1);
 		}
 	} else {
+		/*
+		 * Keep the same pane active, unless the swap has covered it
+		 * with a zoomed pane: activating it would hide the zoom. With
+		 * -Z the zoom moves to the active pane afterwards instead.
+		 */
 		if (src_w->active == src_wp)
 			window_set_active_pane(src_w, dst_wp, 1);
-		if (dst_w->active == dst_wp)
+		if (dst_w->active == dst_wp &&
+		    (args_has(args, 'Z') || window_pane_is_visible(src_wp)))
 			window_set_active_pane(dst_w, src_wp, 1);
 	}
 	if (src_w != dst_w) {
