@@ -11,8 +11,6 @@ export PATH TERM LC_ALL
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 
 DIR=$(mktemp -d) || exit 1
-INNER="$TEST_TMUX -Lmarginsscrollbar-inner-$$ -f/dev/null"
-OUTER="$TEST_TMUX -Lmarginsscrollbar-outer-$$ -f/dev/null"
 
 fail()
 {
@@ -40,7 +38,11 @@ print "\r\nNEWROW";
 sleep 100;
 PERL
 
+i=0
 for margins in on off; do
+	INNER="$TEST_TMUX -LA$i$ -f/dev/null"
+	OUTER="$TEST_TMUX -LB$i$ -f/dev/null"
+
 	$INNER new-session -d -s inner -x 40 -y 6 \
 	    "TRIGGER='$DIR/trigger-$margins' perl '$DIR/emitter.pl'" || exit 1
 	$INNER set -g status off || exit 1
@@ -88,6 +90,7 @@ for margins in on off; do
 	    fail "$margins: terminal did not contain the expected scrolled rows"
 	$OUTER kill-server 2>/dev/null
 	$INNER kill-server 2>/dev/null
+	i=$((i + 1))
 done
 
 exit 0
