@@ -945,7 +945,6 @@ input_reset(struct input_ctx *ictx, int clear)
 			screen_write_start_pane(sctx, wp, &wp->base);
 		else
 			screen_write_start(sctx, &wp->base);
-		sctx->owner = wp;
 		sctx->flags |= SCREEN_WRITE_INPUT;
 		screen_write_reset(sctx);
 		screen_write_stop(sctx);
@@ -1119,7 +1118,6 @@ input_parse_buffer(struct window_pane *wp, const u_char *buf, size_t len)
 		screen_write_start_pane(sctx, wp, &wp->base);
 	else
 		screen_write_start(sctx, &wp->base);
-	sctx->owner = wp;
 	sctx->flags |= SCREEN_WRITE_INPUT;
 
 	log_debug("%s: %%%u %s, %zu bytes: %.*s", __func__, wp->id,
@@ -1140,7 +1138,6 @@ input_parse_screen(struct input_ctx *ictx, struct screen *s,
 		return;
 
 	screen_write_start_callback(sctx, s, cb, arg);
-	sctx->owner = ictx->wp;
 	sctx->flags |= SCREEN_WRITE_INPUT;
 	input_parse(ictx, buf, len);
 	screen_write_stop(sctx);
@@ -3509,61 +3506,6 @@ input_osc_112(struct input_ctx *ictx, const char *p)
 		screen_set_cursor_colour(ictx->ctx.s, -1);
 }
 
-/* Save the running command's output start before clearing the screen. */
-struct input_osc_133_ctx
-input_osc_133_save_marker(struct window_pane *wp, struct screen *s)
-{
-	struct grid		*gd = s->grid;
-	struct grid_line	*gl;
-	struct input_osc_133_ctx ctx = {0};
-	u_int			 y;
-
-	if (wp == NULL || s != &wp->base || SCREEN_IS_ALTERNATE(s) ||
-	    (~wp->flags & PANE_CMDRUNNING))
-		return (ctx);
-	ctx.running = 1;
-	ctx.start = UINT_MAX;
-	ctx.collected = gd->scroll_collected;
-	for (y = gd->hsize + gd->sy; y > 0; y--) {
-		gl = grid_get_line(gd, y - 1);
-		if ((gl->flags & GRID_LINE_START_OUTPUT) &&
-		    (~gl->flags & GRID_LINE_END_OUTPUT ||
-		    gl->osc133_data.out_end_col < gl->osc133_data.out_start_col) &&
-		    (~gl->flags & GRID_LINE_START_PROMPT ||
-		    gl->osc133_data.prompt_col <= gl->osc133_data.out_start_col)) {
-			ctx.start = y - 1;
-			ctx.col = gl->osc133_data.out_start_col;
-			break;
-		}
-		if (gl->flags & (GRID_LINE_START_PROMPT|GRID_LINE_END_OUTPUT))
-			break;
-	}
-	return (ctx);
-}
-
-/* Restore the running command's output start if a screen clear removed it. */
-void
-input_osc_133_restore_marker(struct screen *s,
-    const struct input_osc_133_ctx *ctx)
-{
-	struct grid		*gd = s->grid;
-	struct grid_line	*gl;
-	u_int			 collected;
-
-	if (!ctx->running)
-		return;
-	collected = gd->scroll_collected - ctx->collected;
-	if (ctx->start != UINT_MAX && ctx->start >= collected) {
-		gl = grid_get_line(gd, ctx->start - collected);
-		if ((gl->flags & GRID_LINE_START_OUTPUT) &&
-		    gl->osc133_data.out_start_col == ctx->col)
-			return;
-	}
-	gl = grid_get_line(gd, gd->hsize);
-	gl->flags |= GRID_LINE_START_OUTPUT;
-	gl->osc133_data.out_start_col = 0;
-}
-
 /* Parse the OSC 133 D exit status. */
 static int
 input_osc_133_exit_status(const char *p)
@@ -3703,20 +3645,6 @@ input_osc_133_mark_prompt(struct grid_line *gl, u_int col, const char *p)
 	if (cp == NULL)
 		gl->flags |= GRID_LINE_START_PROMPT;
 	gl->osc133_data.prompt_col = col;
-}
-
-/* Record the first primary or secondary prompt marker on a line. */
-static void
-input_osc_133_mark_prompt(struct grid_line *gl, u_int col, const char *p)
-{
-	if (gl == NULL || gl->flags &
-	    (GRID_LINE_START_PROMPT|GRID_LINE_SECOND_PROMPT))
-		return;
-	gl->osc133_data.prompt_col = col;
-	if (input_osc_133_secondary_prompt(p))
-		gl->flags |= GRID_LINE_SECOND_PROMPT;
-	else
-		gl->flags |= GRID_LINE_START_PROMPT;
 }
 
 /* Handle the OSC 133 sequence. */
