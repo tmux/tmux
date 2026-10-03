@@ -2522,12 +2522,10 @@ backward becomes forward).
 .It Xo
 .Ic select\-output
 .Op Fl a
+(vi: M\-o)
+(emacs: C\-o)
 .Xc
 Select the current OSC 133 command output.
-The default emacs binding is
-.Ql C\-o
-and the default vi binding is
-.Ql M\-o .
 .It Xo
 .Ic select\-line
 (vi: V)
@@ -2584,7 +2582,7 @@ At the following prompt or below it, they use the most recent nonempty output.
 With
 .Fl a ,
 they use the entire copy-mode buffer instead.
-If no output range can be found, they do nothing.
+If no output range can be found, no text is copied, piped or opened.
 .Pp
 The search commands come in several varieties:
 .Ql search\-forward

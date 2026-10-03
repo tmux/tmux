@@ -72,6 +72,17 @@ case "$all" in
 esac
 $TMUX send-keys -t :plain.0 -X cancel || exit 1
 
+# Selecting the entire buffer works with either selection convention.
+for keys in emacs vi; do
+	$TMUX set-option -w -t :plain mode-keys "$keys" || exit 1
+	$TMUX copy-mode -t :plain || exit 1
+	$TMUX send-keys -t :plain.0 -X select-output -a || exit 1
+	$TMUX set-buffer sentinel || exit 1
+	$TMUX send-keys -t :plain.0 -X copy-selection || exit 1
+	[ "$($TMUX show-buffer)" = "$(printf 'alpha\nbeta')" ] || exit 1
+	$TMUX send-keys -t :plain.0 -X cancel || exit 1
+done
+
 $TMUX set-buffer -b keep unchanged || exit 1
 $TMUX copy-mode -t :plain || exit 1
 $TMUX set-buffer sentinel || exit 1
