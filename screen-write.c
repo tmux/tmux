@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.293 2026/09/24 11:19:39 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.298 2026/10/02 15:20:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -122,14 +122,26 @@ screen_write_set_cursor(struct screen_write_ctx *ctx, int cx, int cy)
 		evtimer_add(&w->offset_timer, &tv);
 }
 
-/* Do a full redraw. */
+/* Redraw lines. */
 static void
-screen_write_redraw_cb(const struct tty_ctx *ttyctx)
+screen_write_redraw_cb(const struct tty_ctx *ttyctx, u_int py, u_int ny)
 {
 	struct window_pane	*wp = ttyctx->arg;
+	int			 x0, y0, x1, y1;
 
-	if (wp != NULL)
-		wp->flags |= PANE_REDRAW;
+	if (wp == NULL)
+		return;
+
+	x0 = wp->xoff;
+	y0 = wp->yoff + (int)py;
+	x1 = x0 + (int)wp->sx;
+	y1 = y0 + (int)ny;
+	if (x0 < 0)
+		x0 = 0;
+	if (y0 < 0)
+		y0 = 0;
+	if (x1 > x0 && y1 > y0)
+		redraw_damage_window(wp->window, x0, y0, x1 - x0, y1 - y0);
 }
 
 /* Update context for client. */
@@ -177,11 +189,12 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	return (1);
 }
 
-/* Return 1 if there is a floating window pane overlapping this pane. */
+/* Return 1 if a menu or floating pane overlaps this pane. */
 static int
 screen_write_pane_is_obscured(struct screen_write_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
+	struct menu_data	*md;
 
 	if (ctx->wp == NULL)
 		return (0);
@@ -192,6 +205,16 @@ screen_write_pane_is_obscured(struct screen_write_ctx *ctx)
 	}
 	ctx->flags |= SCREEN_WRITE_CHECKED_IF_OBSCURED;
 
+	md = wp->window->menu;
+	if (md != NULL &&
+	    (int)menu_x(md) < wp->xoff + (int)wp->sx &&
+	    (int)(menu_x(md) + menu_width(md)) > wp->xoff &&
+	    (int)menu_y(md) < wp->yoff + (int)wp->sy &&
+	    (int)(menu_y(md) + menu_height(md)) > wp->yoff) {
+		ctx->flags |= SCREEN_WRITE_OBSCURED;
+		return (1);
+	}
+
 	if (ctx->wp->xoff < 0 ||
 	    ctx->wp->yoff < 0 ||
 	    ctx->wp->xoff + ctx->wp->sx > ctx->wp->window->sx ||
@@ -201,15 +224,7 @@ screen_write_pane_is_obscured(struct screen_write_ctx *ctx)
 	}
 
 	while ((wp = TAILQ_PREV(wp, window_panes, zentry)) != NULL) {
-		if (window_pane_is_floating(wp) &&
-		    ((wp->yoff >= ctx->wp->yoff &&
-		    wp->yoff <= ctx->wp->yoff + (int)ctx->wp->sy) ||
-		    (wp->yoff + (int)wp->sy >= ctx->wp->yoff &&
-		    wp->yoff + wp->sy <= ctx->wp->yoff + ctx->wp->sy)) &&
-		    ((wp->xoff >= ctx->wp->xoff &&
-		    wp->xoff <= ctx->wp->xoff + (int)ctx->wp->sx) ||
-		    (wp->xoff + (int)wp->sx >= ctx->wp->xoff &&
-		    wp->xoff + wp->sx <= ctx->wp->xoff + ctx->wp->sx))) {
+		if (window_pane_floating_overlaps(wp, ctx->wp)) {
 			ctx->flags |= SCREEN_WRITE_OBSCURED;
 			return (1);
 		}
@@ -1384,11 +1399,11 @@ screen_write_sync_scroll_dirty(struct screen_write_ctx *ctx)
 
 /* Redraw the scrolled lines for a client which cannot scroll them. */
 static void
-screen_write_sync_redraw_cb(const struct tty_ctx *ttyctx)
+screen_write_sync_redraw_cb(const struct tty_ctx *ttyctx, u_int py, u_int ny)
 {
 	struct window_pane	*wp = ttyctx->arg;
 
-	bit_nset(wp->sync_dirty, wp->sync_rupper, wp->sync_rlower);
+	bit_nset(wp->sync_dirty, py, py + ny - 1);
 }
 
 /* Send the deferred scroll to the client. */
@@ -2280,7 +2295,7 @@ screen_write_fullredraw(struct screen_write_ctx *ctx)
 
 	screen_write_initctx(ctx, &ttyctx, 1, 0);
 	if (ttyctx.redraw_cb != NULL)
-		ttyctx.redraw_cb(&ttyctx);
+		ttyctx.redraw_cb(&ttyctx, 0, ttyctx.sy);
 }
 
 /* Trim collected items. */
@@ -2518,13 +2533,18 @@ screen_write_collect_flush_line(struct screen_write_ctx *ctx, u_int y)
 				ttyctx.n = w_length;
 				tty_write(tty_cmd_clearcharacter, &ttyctx);
 			} else {
-				screen_write_initctx(ctx, &ttyctx, 0, 0);
-				ttyctx.cell = &ci->gc;
-				if (ci->wrapped)
-					ttyctx.flags |= TTY_CTX_WRAPPED;
-				ttyctx.data.data = cl->data + w_start;
-				ttyctx.data.size = w_length;
-				tty_write(tty_cmd_cells, &ttyctx);
+				screen_write_initctx(ctx, &ttyctx, 0, 1);
+				if (ttyctx.flags & TTY_CTX_PANE_OBSCURED) {
+					ttyctx.n = w_length;
+					tty_write(tty_cmd_redrawline, &ttyctx);
+				} else {
+					ttyctx.cell = &ci->gc;
+					if (ci->wrapped)
+						ttyctx.flags |= TTY_CTX_WRAPPED;
+					ttyctx.data.data = cl->data + w_start;
+					ttyctx.data.size = w_length;
+					tty_write(tty_cmd_cells, &ttyctx);
+				}
 			}
 			items++;
 			written = 1;
@@ -2752,6 +2772,10 @@ screen_write_collect_add(struct screen_write_ctx *ctx,
 	 * Don't need to check that the attributes and whatnot are still the
 	 * same - input_parse will end the collection when anything that isn't
 	 * a plain character is encountered.
+	 *
+	 * Without wrapping, collect up to but not including the last column.
+	 * Leave that cell to screen_write_cell so repeated writes overwrite it
+	 * and the cursor remains at the right edge.
 	 */
 
 	collect = 1;
@@ -2761,7 +2785,8 @@ screen_write_collect_add(struct screen_write_ctx *ctx,
 		collect = 0;
 	else if (gc->attr & GRID_ATTR_CHARSET)
 		collect = 0;
-	else if (~s->mode & MODE_WRAP)
+	else if ((~s->mode & MODE_WRAP) &&
+	    s->cx + ctx->item->used >= sx - 1)
 		collect = 0;
 	else if (s->mode & MODE_INSERT)
 		collect = 0;
@@ -2927,6 +2952,11 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	/* Create space for character in insert mode. */
 	if (s->mode & MODE_INSERT) {
 		screen_write_collect_flush(ctx, 0, __func__);
+		if (wp != NULL && screen_write_pane_is_obscured(ctx)) {
+			if (screen_write_should_draw_line(ctx, s->cy))
+				screen_write_redraw_line(ctx, &ttyctx, s->cy);
+			return;
+		}
 		ttyctx.n = width;
 		if (screen_write_should_draw_line(ctx, s->cy))
 			tty_write(tty_cmd_insertcharacter, &ttyctx);
@@ -3298,7 +3328,7 @@ screen_write_alternateon(struct screen_write_ctx *ctx, struct grid_cell *gc,
 
 	screen_write_initctx(ctx, &ttyctx, 1, 0);
 	if (ttyctx.redraw_cb != NULL)
-		ttyctx.redraw_cb(&ttyctx);
+		ttyctx.redraw_cb(&ttyctx, 0, ttyctx.sy);
 }
 
 /* Turn alternate screen off. */
@@ -3323,5 +3353,5 @@ screen_write_alternateoff(struct screen_write_ctx *ctx, struct grid_cell *gc,
 
 	screen_write_initctx(ctx, &ttyctx, 1, 0);
 	if (ttyctx.redraw_cb != NULL)
-		ttyctx.redraw_cb(&ttyctx);
+		ttyctx.redraw_cb(&ttyctx, 0, ttyctx.sy);
 }

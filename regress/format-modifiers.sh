@@ -245,6 +245,19 @@ test_format "#{R:a,3}" "aaa"
 test_format "#{R:ab,2}" "abab"
 # A long repeat exercises output-buffer growth during expansion.
 test_format "#{n:#{R:x,300}}" "300"
+# Limit the result size as well as the repeat count, including nested repeats.
+test_format "#{n:#{R:abcdefgh,8192}}" "65536"
+test_format "#{R:abcdefgh,8193}" ""
+test_format "#{R:,10000}" ""
+test_format "#{n:#{R:#{R:x,256},256}}" "65536"
+test_format "#{R:#{R:x,256},257}" ""
+test_format "#{R:#{R:abcdefgh,8192}x,1}" ""
+test_format "#{n:#{R:中文中,7281}}" "65529"
+test_format "#{R:中文中,7282}" ""
+test_format "#{n:#{R:x,10000}}" "10000"
+test_format "#{R:x,10001}" ""
+# Fuzzy matching must not receive an enormous string from nested repeats.
+test_format "#{m/p:a,#{R:#{R:#{R:a,353},38},90}}" ""
 
 
 # --- Width, padding and truncation ---------------------------------------
