@@ -283,7 +283,7 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 #ifdef HAVE_SYSTEMD
 	if (systemd_activated()) {
 		/* socket-based activation, do not even try to be a client. */
-		fd = server_start(client_proc, flags, base, 0, NULL);
+		fd = server_start(client_proc, flags, base, -1, NULL);
 	} else
 #endif
 	fd = client_connect(base, socket_path, client_flags);
