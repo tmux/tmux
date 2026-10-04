@@ -29,7 +29,25 @@ fail() {
 	exit 1
 }
 
+wait_for_panes() {
+	tries=0
+	while :; do
+		panes=$($TMUX2 listp -t"$window" -F '#{pane_dead}') || exit 1
+		case "$panes" in
+		*0*)
+			;;
+		*)
+			return
+			;;
+		esac
+		tries=$((tries + 1))
+		[ "$tries" -lt 100 ] || fail "timed out waiting for panes to exit"
+		sleep 0.1
+	done
+}
+
 compare() {
+	wait_for_panes
 	sleep 1
 	$TMUX capturep -p $2 >$TMP || exit 1
 	if [ -n "$GENERATE" ]; then
