@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Visual test for sixel-region-scrolling: does this terminal actually move
+# Visual test for imagescroll: does this terminal actually move
 # SIXEL pixels along with tmux's own scroll-region escapes (DECSTBM/DECSLRM
 # + IND/RI/RIN), or does tmux need to fall back to redrawing the image on
 # every scroll?
@@ -19,7 +19,7 @@
 #     looks identical to "off", this terminal is fine. If a band freezes,
 #     duplicates, tears, or drifts out of sync with the counter, this
 #     terminal does not scroll SIXEL regions correctly and
-#     sixel-region-scrolling should stay off for it.
+#     imagescroll should stay off for it.
 #
 # Usage: sh tools/sixel-scroll-region-test.sh [on|off]
 
@@ -32,10 +32,13 @@ on|off) ;;
 *) echo "usage: $0 [on|off]" >&2; exit 1 ;;
 esac
 
-tmux set -s sixel-region-scrolling "$MODE"
+case "$MODE" in
+on) tmux set -as terminal-features ',*:imagescroll' ;;
+off) tmux set -as terminal-features ',*:imagescroll@' ;;
+esac
 tmux set -as terminal-features ',*:sixel'
 
-echo "Testing with sixel-region-scrolling=$MODE. Watch the coloured bands" >&2
+echo "Testing with imagescroll=$MODE. Watch the coloured bands" >&2
 echo "in the floating pane - they should stay locked to the counter." >&2
 sleep 2
 

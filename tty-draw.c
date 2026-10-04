@@ -258,7 +258,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				gcp = &grid_default_cell;
 #ifdef ENABLE_IMAGES
 				image_status = image_get_fallback_at(tty, s, px + i,
-				    py, gcp, &image_gc, style_ctx);
+				    py, gcp, &image_gc);
 				if (image_status == 1) {
 					gcp = &image_gc;
 					empty = 0;
@@ -273,15 +273,13 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				gcp = &gc;
 #ifdef ENABLE_IMAGES
 				if (image_get_fallback_at(tty, s, px + i, py, &gc,
-				    &image_gc, style_ctx) == 1)
+				    &image_gc) == 1)
 					gcp = &image_gc;
 #endif
 
 				/* Work out empty cells. */
 				empty = tty_draw_line_get_empty(gcp, &last, nx - i);
-				if (empty != 0)
-					;
-				else {
+				if (empty == 0) {
 					/* Update for codeset if needed. */
 					gcp = tty_check_codeset(tty, gcp);
 

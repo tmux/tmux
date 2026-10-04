@@ -1,29 +1,6 @@
 #!/bin/sh
 
-# Regression test: an image taller than the pane, at the moment it is first
-# displayed, must remain visible when scrolling back up through history -
-# not show blank space for the part that was scrolled off screen before the
-# user ever got to see it.
-#
-# image_write() (image.c) handles this case by scrolling the screen up
-# (via screen_write_scrollup()) to make room, then only ever wrote spans
-# for the rows that ended up on screen afterwards - the rows that were
-# immediately scrolled off (origin_y of them) were pushed into history as
-# blank, spanless rows and their image data was discarded. Unlike width,
-# which has no "scroll right" to recover a permanent clip, height already
-# has ordinary scrollback, so this was pure waste. image_write() now also
-# calls image_extend_row() for those origin_y history rows (capped to
-# gd->hsize, since screen_write_scrollup() may not have pushed a real
-# history row for every one of them - see tmux-uint-subtraction-underflow-
-# care.md), so scrolling back up recovers the image instead of showing
-# empty space. See tmux-image-redraw-known-bugs.md for the full write-up.
-#
-# This is checked by comparing how many separate SIXEL rasters the client
-# receives right after entering copy mode (a baseline - copy mode itself
-# triggers a redraw of the still-visible rows) against how many it
-# receives after scrolling to the very top of history: with the fix, more
-# rasters appear (covering the newly-revealed, previously-scrolled-off
-# rows); without it, scrolling reveals nothing new.
+# Images scrolled off-screen must reappear when copy mode scrolls back up.
 
 PATH=/bin:/usr/bin
 TERM=screen

@@ -585,12 +585,8 @@ tty_update_features(struct tty *tty)
 	tty_puts(tty, tty_term_string(tty->term, TTYC_ENESC));
 
 	/*
-	 * Features might have changed since the first draw during attach, for
-	 * example on a DA response - but only redraw if something actually
-	 * did change, since this is called for every DA answer (which are
-	 * usually confirming what is already known) and a redraw repaints
-	 * from tmux's own grid, discarding anything the pane put on the
-	 * terminal that tmux does not model (e.g. a DCS-passthrough image).
+	 * Redraw only for changed features; repeated DA replies must not erase
+	 * images sent through DCS passthrough.
 	 */
 	if (!changed)
 		return;

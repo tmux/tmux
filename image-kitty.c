@@ -25,6 +25,8 @@
 
 #include "tmux.h"
 
+#define KITTY_CHUNK_SIZE 3072
+
 static const uint32_t kitty_diacritics[] = {
 	0x0305, 0x030D, 0x030E, 0x0310, 0x0312, 0x033D, 0x033E, 0x033F,
 	0x0346, 0x034A, 0x034B, 0x034C, 0x0350, 0x0351, 0x0352, 0x0357,
@@ -398,9 +400,9 @@ kitty_place(struct tty *tty, struct kitty_image_cache *entry,
 	entry->placements = placement;
 	tty_cursor(tty, destination_x, destination_y);
 	xsnprintf(control, sizeof control,
-	    "\033_Ga=p,i=%u,p=%llu,x=%u,y=%u,w=%u,h=%u,c=%u,r=%u,z=%d,"
+	    "\033_Ga=p,i=%u,p=%u,x=%u,y=%u,w=%u,h=%u,c=%u,r=%u,z=%d,"
 	    "C=1,q=2\033\\", entry->kitty_id,
-	    (unsigned long long)placement->id, px, py, pwidth, pheight, width,
+	    placement->id, px, py, pwidth, pheight, width,
 	    height, z);
 	tty_puts(tty, control);
 }
@@ -412,15 +414,22 @@ kitty_upload(struct tty *tty, struct image *im)
 	struct kitty_output		*ko = kitty_get_output(tty);
 	struct kitty_image_cache	*entry;
 	char				 control[128], encoded[4097];
-	u_char				 raw[3072];
 	const u_char			*pixels;
 	u_char				*padded;
-	size_t				 offset, size, copied, row, column;
-	size_t				 available, stride, image_size;
+	size_t				 offset, size, row, stride, image_size;
 	int				 encodedlen;
 	u_int				 id, width, height;
 	u_int				 canvas_width, canvas_height;
 	u_int				 upload_width, upload_height;
+
+	image_get_size(im, &width, &height);
+	image_get_canvas_size(im, &canvas_width, &canvas_height);
+	if (canvas_width > UINT_MAX - 2 || canvas_height > UINT_MAX - 2)
+		return (NULL);
+	upload_width = canvas_width + 2;
+	upload_height = canvas_height + 2;
+	if ((uint64_t)upload_width * upload_height * 4 > IMAGE_SIZE_LIMIT)
+		return (NULL);
 
 	for (entry = ko->images; entry != NULL; entry = entry->next) {
 		if (entry->server_id != image_get_id(im))
@@ -448,14 +457,6 @@ kitty_upload(struct tty *tty, struct image *im)
 	entry->next_placement = 0;
 
 	pixels = image_get_pixels(im, &stride, &image_size);
-	image_get_size(im, &width, &height);
-	image_get_canvas_size(im, &canvas_width, &canvas_height);
-	if (canvas_width > UINT_MAX - 2 || canvas_height > UINT_MAX - 2)
-		return (NULL);
-	upload_width = canvas_width + 2;
-	upload_height = canvas_height + 2;
-	if ((uint64_t)upload_width * upload_height * 4 > IMAGE_SIZE_LIMIT)
-		return (NULL);
 	/*
 	 * Pad the upload with duplicate edge pixels. Kitty linearly filters scaled
 	 * textures against transparent border pixels, which otherwise darkens the
@@ -481,21 +482,11 @@ kitty_upload(struct tty *tty, struct image *im)
 	width = upload_width;
 	height = upload_height;
 	image_size = (size_t)width * height * 4;
-	stride = (size_t)width * 4;
 	for (offset = 0; offset < image_size; offset += size) {
 		size = image_size - offset;
-		if (size > sizeof raw)
-			size = sizeof raw;
-		for (copied = 0; copied < size; copied += available) {
-			row = (offset + copied) / ((size_t)width * 4);
-			column = (offset + copied) % ((size_t)width * 4);
-			available = (size_t)width * 4 - column;
-			if (available > size - copied)
-				available = size - copied;
-			memcpy(raw + copied, pixels + row * stride +
-			    column, available);
-		}
-		encodedlen = b64_ntop(raw, size, encoded,
+		if (size > KITTY_CHUNK_SIZE)
+			size = KITTY_CHUNK_SIZE;
+		encodedlen = b64_ntop(pixels + offset, size, encoded,
 		    sizeof encoded);
 		if (encodedlen < 0) {
 			free(padded);
@@ -519,8 +510,7 @@ kitty_upload(struct tty *tty, struct image *im)
 
 /* Draw an image rectangle using the Kitty graphics protocol. */
 void
-kitty_draw_rect(struct tty *tty, const struct image_rect *rectangle,
-    __unused const struct tty_style_ctx *style_ctx)
+kitty_draw_rect(struct tty *tty, const struct image_rect *rectangle)
 {
 	struct kitty_image_cache	*entry;
 	struct image			*im;
@@ -1059,8 +1049,7 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
  */
 struct image *
 kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
-    u_int ypixel, u_int *image_id, u_int *replace_id, u_int *quiet,
-    char *action, char *delete, u_int *placement_id, int32_t *z, int *status)
+    u_int ypixel, struct kitty_parse_result *result)
 {
 	struct kitty_context	*kc = *state;
 	struct kitty_state	*ks;
@@ -1078,14 +1067,8 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 		kc = xcalloc(1, sizeof *kc);
 		*state = kc;
 	}
-	*image_id = 0;
-	*replace_id = 0;
-	*quiet = 0;
-	*action = '\0';
-	*delete = '\0';
-	*placement_id = 0;
-	*z = 0;
-	*status = KITTY_PARSE_ERROR;
+	memset(result, 0, sizeof *result);
+	result->status = KITTY_PARSE_ERROR;
 	ks = kc->transfer;
 	semi = memchr(buf, ';', len);
 	controllen = (semi == NULL ? len : (size_t)(semi - buf));
@@ -1098,34 +1081,34 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 		ks->medium = 'd';
 	}
 	ks->more = 0;
-	*image_id = ks->image_id;
-	*quiet = ks->quiet;
-	*action = ks->action;
-	*delete = ks->delete;
-	*placement_id = ks->placement_id;
-	*z = ks->z;
+	result->image_id = ks->image_id;
+	result->quiet = ks->quiet;
+	result->action = ks->action;
+	result->delete = ks->delete;
+	result->placement_id = ks->placement_id;
+	result->z = ks->z;
 	if (kitty_control(ks, buf, controllen) != 0 ||
 	    ks->medium != 'd' ||
 	    (payloadlen != 0 &&
 	    kitty_append(ks, semi + 1, payloadlen) != 0))
 		goto fail;
 
-	*image_id = ks->image_id;
-	*quiet = ks->quiet;
-	*action = ks->action;
-	*delete = ks->delete;
-	*placement_id = ks->placement_id;
-	*z = ks->z;
+	result->image_id = ks->image_id;
+	result->quiet = ks->quiet;
+	result->action = ks->action;
+	result->delete = ks->delete;
+	result->placement_id = ks->placement_id;
+	result->z = ks->z;
 	if (ks->more) {
 		kc->transfer = ks;
-		*status = KITTY_PARSE_MORE;
+		result->status = KITTY_PARSE_MORE;
 		return (NULL);
 	}
 	kc->transfer = NULL;
 	if (ks->action == 'p') {
 		source = kitty_source_get(kc, ks->image_id);
 		if (source == NULL) {
-			*status = KITTY_PARSE_MISSING;
+			result->status = KITTY_PARSE_MISSING;
 			im = NULL;
 		} else if (ks->virtual) {
 			im = kitty_place_image(source, ks, xpixel, ypixel);
@@ -1134,16 +1117,16 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 				kitty_virtual_set(kc, ks->image_id, im);
 				image_free(image_get_id(im));
 				im = NULL;
-				*action = 'u';
-				*status = KITTY_PARSE_OK;
+				result->action = 'u';
+				result->status = KITTY_PARSE_OK;
 			}
 		} else {
 			im = kitty_place_image(source, ks, xpixel, ypixel);
 			image_free(image_get_id(source));
 			if (im != NULL) {
-				*replace_id = kitty_placement_set(kc, ks->image_id,
+				result->replace_id = kitty_placement_set(kc, ks->image_id,
 				    ks->placement_id, ks->z, im);
-				*status = KITTY_PARSE_OK;
+				result->status = KITTY_PARSE_OK;
 			}
 		}
 		kitty_state_free(ks);
@@ -1175,9 +1158,9 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 			goto fail;
 		if ((ks->delete == 'i' || ks->delete == 'I') &&
 		    im == NULL)
-			*status = KITTY_PARSE_MISSING;
+			result->status = KITTY_PARSE_MISSING;
 		else
-			*status = KITTY_PARSE_OK;
+			result->status = KITTY_PARSE_OK;
 		kitty_state_free(ks);
 		return (im);
 	}
@@ -1239,25 +1222,25 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 	if (source == NULL)
 		free(pixels);
 	else {
-		*status = KITTY_PARSE_OK;
+		result->status = KITTY_PARSE_OK;
 		if (ks->action != 'q')
-			*replace_id = kitty_source_set(kc, ks->image_id, source);
+			result->replace_id = kitty_source_set(kc, ks->image_id, source);
 		if (ks->action == 'T' && !ks->virtual) {
 			im = kitty_place_image(source, ks, xpixel, ypixel);
 			if (im == NULL)
-				*status = KITTY_PARSE_ERROR;
+				result->status = KITTY_PARSE_ERROR;
 			else if (ks->placement_id != 0)
 				(void)kitty_placement_set(kc, ks->image_id,
 				    ks->placement_id, ks->z, im);
 		} else if (ks->virtual) {
 			im = kitty_place_image(source, ks, xpixel, ypixel);
 			if (im == NULL)
-				*status = KITTY_PARSE_ERROR;
+				result->status = KITTY_PARSE_ERROR;
 			else {
 				kitty_virtual_set(kc, ks->image_id, im);
 				image_free(image_get_id(im));
 				im = NULL;
-				*action = 'u';
+				result->action = 'u';
 			}
 		} else {
 			im = NULL;
@@ -1330,8 +1313,7 @@ kitty_placeholder_index(uint32_t value, u_int *index)
 /* Resolve a Kitty Unicode placeholder to an image and source cell. */
 int
 kitty_placeholder_to_image(void *state, struct grid *gd, struct grid_cell *gc,
-    u_int grid_x, u_int grid_y, struct image **image, u_int *source_x,
-    u_int *source_y, u_int *image_id, u_int *placement_id, int32_t *z)
+    u_int grid_x, u_int grid_y, struct kitty_placeholder *placeholder)
 {
 	struct kitty_context	*kc = state;
 	struct kitty_source	*source;
@@ -1392,15 +1374,15 @@ kitty_placeholder_to_image(void *state, struct grid *gd, struct grid_cell *gc,
 	if (x >= sx || y >= sy)
 		return (0);
 
-	*image = im;
-	*source_x = x;
-	*source_y = y;
-	*image_id = id;
+	placeholder->image = im;
+	placeholder->source_x = x;
+	placeholder->source_y = y;
+	placeholder->image_id = id;
 	if (gc->us & COLOUR_FLAG_RGB)
-		*placement_id = gc->us & 0xffffff;
+		placeholder->placement_id = gc->us & 0xffffff;
 	else
-		*placement_id = 0;
-	*z = 0;
+		placeholder->placement_id = 0;
+	placeholder->z = 0;
 	utf8_set(&gc->data, ' ');
 	return (1);
 }

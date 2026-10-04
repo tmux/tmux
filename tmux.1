@@ -5198,6 +5198,8 @@ Supports OSC 8 hyperlinks.
 Allows image fallbacks to use Unicode quadrant block characters.
 .It image-sextants
 Allows image fallbacks to use Unicode sextant block characters.
+.It imagescroll
+Moves image content along with scrolling regions.
 .It ignorefkeys
 Ignore function keys from
 .Xr terminfo 5
@@ -5205,9 +5207,7 @@ and use the
 .Nm
 internal set only.
 .It kitty
-Supports Kitty graphics using Unicode placeholders.
-The terminal must support the Kitty Unicode placeholder extension, not only
-the basic Kitty graphics protocol.
+Supports the Kitty graphics protocol.
 .It margins
 Supports DECSLRM margins.
 .It mouse
@@ -7477,6 +7477,7 @@ The following variables are available, where appropriate:
 .It Li "hook_window_name" Ta "" Ta "Name of window where hook was run, if any"
 .It Li "host" Ta "#H" Ta "Hostname of local host"
 .It Li "host_short" Ta "#h" Ta "Hostname of local host (no domain name)"
+.It Li "image_support" Ta "" Ta "1 if server has support for images"
 .It Li "insert_flag" Ta "" Ta "Pane insert flag"
 .It Li "key_string" Ta "" Ta "String representation of the key binding"
 .It Li "key_repeat" Ta "" Ta "1 if key binding is repeatable"

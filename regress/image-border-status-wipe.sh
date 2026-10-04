@@ -1,29 +1,7 @@
 #!/bin/sh
 
-# Regression test for a border-status caching bug: window_make_pane_status()
-# (window-border.c) gates the physical redraw of a pane's border-status
-# title on a logical content diff (grid_compare against a cached copy), not
-# on whether the physical screen cells were disturbed by something else in
-# the meantime - such as a floating pane's own border, drawn on top of a
-# tiled pane's border-status row, sliding across it and then away again.
-# See tmux-image-redraw-known-bugs.md ("border-status text cache ignores
-# physical damage") for the full write-up.
-#
-# Reproduction: a tiled pane with pane-border-status on has a floating pane
-# dragged, by mouse, from directly over its border-status row to somewhere
-# else. The tiled pane's title should reappear once the floating pane has
-# moved off it; without the fix it stays blank.
-#
-# The drag starts and ends away from row 0 rather than grabbing the
-# floating pane's border while it is already sitting on row 0: when a
-# floating pane's own border-status row exactly coincides with the tiled
-# pane's row 0, mouse hit-testing on that row attributes clicks to the
-# tiled pane, not the floating one on top of it (an unrelated tmux quirk,
-# not what this test is about). That only matters for the initial press,
-# though - once a drag is under way, further motion events go straight to
-# the already-bound per-pane callback without re-resolving which pane owns
-# the coordinates, so starting the grab on an unambiguous row and dragging
-# through row 0 works fine.
+# A tiled pane's border title must reappear after a floating pane moves away.
+# Start the drag below row zero so its initial press hits the floating pane.
 
 PATH=/bin:/usr/bin
 TERM=screen

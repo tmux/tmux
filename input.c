@@ -2802,58 +2802,56 @@ input_enter_apc(struct input_ctx *ictx)
 	ictx->flags &= ~INPUT_LAST;
 }
 
-/* APC terminator (ST) received. */
 #ifdef ENABLE_IMAGES
+/* Handle a Kitty graphics command. */
 static int
 input_handle_kitty(struct input_ctx *ictx, const u_char *buf, size_t len)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct window_pane	*wp = ictx->wp;
 	struct image		*im;
-	u_int			 image_id = 0, replace_id = 0, quiet = 0;
-	u_int			 placement_id = 0;
-	int32_t			 z = 0;
-	char			 action = '\0', delete = '\0';
-	int			 status;
+	struct kitty_parse_result result;
 
 	if (wp == NULL)
 		return (0);
 	im = kitty_parse_image(&ictx->kitty_state, buf, len,
-		    wp->window->xpixel,
-		    wp->window->ypixel, &image_id, &replace_id, &quiet, &action,
-		    &delete, &placement_id, &z, &status);
-	if (status == KITTY_PARSE_MORE)
+	    wp->window->xpixel, wp->window->ypixel, &result);
+	if (result.status == KITTY_PARSE_MORE)
 		return (1);
-	if (status != KITTY_PARSE_OK) {
-		if (quiet < 2 && action != '\0') {
-			if (status == KITTY_PARSE_MISSING)
+	if (result.status != KITTY_PARSE_OK) {
+		if (result.quiet < 2 && result.action != '\0') {
+			if (result.status == KITTY_PARSE_MISSING)
 				input_reply(ictx, 0, "\033_Gi=%u;ENOENT\033\\",
-				    image_id);
+				    result.image_id);
 			else
 				input_reply(ictx, 0, "\033_Gi=%u;EINVAL\033\\",
-				    image_id);
+				    result.image_id);
 		}
 		return (1);
 	}
-	if (replace_id != 0)
-		image_clear(sctx, replace_id);
+	if (result.replace_id != 0)
+		image_clear(sctx, result.replace_id);
 	if (im != NULL) {
-		if (action == 'd')
-			image_clear_kitty(sctx, delete, image_id, placement_id, z);
+		if (result.action == 'd')
+			image_clear_kitty(sctx, result.delete, result.image_id,
+			    result.placement_id, result.z);
 		else
-			image_write_kitty(sctx, im, ictx->cell.cell.bg, image_id,
-			    placement_id, z);
+			image_write_kitty(sctx, im, ictx->cell.cell.bg,
+			    result.image_id, result.placement_id, result.z);
 		image_free(image_get_id(im));
-		if (quiet == 0 && image_id != 0)
-			input_reply(ictx, 0, "\033_Gi=%u;OK\033\\", image_id);
-	} else if (action == 'd')
-		image_clear_kitty(sctx, delete, image_id, placement_id, z);
-	else if ((action == 't' || action == 'q' || action == 'u') && quiet == 0)
-		input_reply(ictx, 0, "\033_Gi=%u;OK\033\\", image_id);
+		if (result.quiet == 0 && result.image_id != 0)
+			input_reply(ictx, 0, "\033_Gi=%u;OK\033\\", result.image_id);
+	} else if (result.action == 'd')
+		image_clear_kitty(sctx, result.delete, result.image_id,
+		    result.placement_id, result.z);
+	else if ((result.action == 't' || result.action == 'q' ||
+	    result.action == 'u') && result.quiet == 0)
+		input_reply(ictx, 0, "\033_Gi=%u;OK\033\\", result.image_id);
 	return (1);
 }
 #endif
 
+/* APC terminator (ST) received. */
 static void
 input_exit_apc(struct input_ctx *ictx)
 {
@@ -2933,9 +2931,8 @@ input_top_bit_set(struct input_ctx *ictx)
 	struct utf8_data	*ud = &ictx->utf8data;
 #ifdef ENABLE_IMAGES
 	struct grid_cell	 gc;
-	struct image		*im;
-	u_int			 x, source_x, source_y, image_id, placement_id;
-	int32_t			 z;
+	struct kitty_placeholder placeholder;
+	u_int			 x;
 #endif
 
 	ictx->flags &= ~INPUT_LAST;
@@ -2969,11 +2966,12 @@ input_top_bit_set(struct input_ctx *ictx)
 		x = sctx->s->cx - 1; /* cx-1 is the cell just written. */
 		grid_view_get_cell(sctx->s->grid, x, sctx->s->cy, &gc);
 		if (kitty_placeholder_to_image(ictx->kitty_state,
-		    sctx->s->grid, &gc, x, sctx->s->cy, &im, &source_x,
-		    &source_y, &image_id, &placement_id, &z)) {
+		    sctx->s->grid, &gc, x, sctx->s->cy, &placeholder)) {
 			grid_view_set_cell(sctx->s->grid, x, sctx->s->cy, &gc);
-			image_place_cell_kitty(sctx, im, x, sctx->s->cy, source_x,
-			    source_y, image_id, placement_id, z);
+			image_place_cell_kitty(sctx, placeholder.image, x,
+			    sctx->s->cy, placeholder.source_x,
+			    placeholder.source_y, placeholder.image_id,
+			    placeholder.placement_id, placeholder.z);
 		}
 	}
 #endif

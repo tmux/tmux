@@ -1,29 +1,8 @@
 #!/bin/sh
 
-# Regression test: an image wider than the pane at the time it was
-# displayed must show more of itself once the pane grows wide enough,
-# instead of staying clipped to its original width forever.
-#
-# image_write() (image.c) clips an image's width to whatever fit in the
-# pane when it was first displayed, and never revisits that decision -
-# unlike height, which recovers naturally through ordinary scrollback,
-# there is no "scroll right", so the clipped columns were permanently
-# discarded. window_pane_resize() (window.c) now calls
-# image_grid_resize_width() after a pane grows wider, which extends each
-# existing placement's spans - using the image's own retained, immutable
-# pixel data - up to whichever is smaller: the image's full width or the
-# new pane width. See tmux-image-redraw-known-bugs.md for the full
-# write-up.
-#
-# This is checked via the SIXEL raster widths reported in the client's raw
-# output before and after widening the window. The redraw triggered by the
-# resize is damage-based (only the newly-uncovered columns are dirtied), so
-# it does not redraw the whole row as one wider raster - it sends the
-# already-correct clipped portion's width again untouched, plus a *second*,
-# separate raster covering just the newly-added columns. So rather than
-# looking for a single wider raster, this checks that the widths seen
-# across both redraws, added together, account for the fixture's full
-# pixel width - i.e. the previously-clipped remainder actually appeared.
+# Widening a pane must recover image columns clipped at placement time.
+# A damage redraw can send the newly visible columns as a separate raster,
+# so compare the combined raster widths with the original image width.
 
 PATH=/bin:/usr/bin
 TERM=screen

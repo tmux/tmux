@@ -5598,7 +5598,7 @@ window_copy_write_one(struct window_mode_entry *wme,
 			 * screen_write_cell() (its image-damage call would
 			 * re-damage the image on every redraw for nothing).
 			 */
-			if (image_grid_check_area(gd, fx, fy, gc.data.width,
+			if (image_grid_area_has_images(gd, fx, fy, gc.data.width,
 			    1)) {
 				grid_view_set_cell(ctx->s->grid, px + fx, py,
 				    &gc);
@@ -5952,9 +5952,12 @@ window_copy_visible_has_images(struct window_copy_mode_data *data)
 {
 	struct grid	*gd = data->backing->grid;
 	u_int		 sy = screen_size_y(&data->screen);
+	int		 has_images;
 
-	return (image_grid_check_area(gd, 0, screen_hsize(data->backing) -
-	    data->oy, screen_size_x(&data->screen), sy));
+	has_images = image_grid_area_has_images(gd, 0,
+	    screen_hsize(data->backing) - data->oy,
+	    screen_size_x(&data->screen), sy);
+	return (has_images);
 }
 #endif
 

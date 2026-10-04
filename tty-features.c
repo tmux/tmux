@@ -399,14 +399,8 @@ static const struct tty_feature tty_feature_image_sextants = {
 };
 
 /*
- * Terminal moves SIXEL or Kitty image content along with the rest of a
- * scrolling region, rather than needing it redrawn after every scroll.
- * There is no way to ask a terminal this, and it does not correlate with
- * DECSLRM/margins support - confirmed by direct testing that mintty
- * scrolls text within a margin-bounded region correctly but drops sixel
- * content placed there, while WezTerm and Windows Terminal move it
- * correctly - so this is granted per terminal individually rather than
- * assumed from any other capability.
+ * Terminal moves images with a scrolling region. Text margin support does
+ * not imply this capability.
  */
 static const struct tty_feature tty_feature_imagescroll = {
 	"imagescroll",

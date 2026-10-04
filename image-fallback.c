@@ -216,6 +216,7 @@ image_glyph_block_key(enum image_glyph_detail detail, u_int mask)
 		TTY_ACS_IMAGE_QUADRANT_UPPER_RIGHT_LOWER_LEFT_LOWER_RIGHT,
 		TTY_ACS_IMAGE_BLOCK
 	};
+	u_char	key;
 
 	if (detail == IMAGE_GLYPH_HALF)
 		return (half[mask]);
@@ -229,7 +230,8 @@ image_glyph_block_key(enum image_glyph_detail detail, u_int mask)
 		return (TTY_ACS_IMAGE_HALF_RIGHT);
 	if (mask == 63)
 		return (TTY_ACS_IMAGE_BLOCK);
-	return (tty_acs_image_sextant(mask));
+	key = tty_acs_image_sextant(mask);
+	return (key);
 }
 
 static u_char *
@@ -243,9 +245,8 @@ image_glyph_make_shades(struct image *im, u_int levels)
 	int			 reverse;
 	u_char			*result;
 
-	if (data == NULL) {
+	if (data == NULL)
 		data = im->fallback_data = xcalloc(1, sizeof *data);
-	}
 	result = (levels == 5 ? data->shade5 : data->shade8);
 	if (result != NULL)
 		return (result);
@@ -354,8 +355,7 @@ image_glyph_block(struct tty *tty, struct image *im, u_int x, u_int y,
 	u_char			 key;
 
 	columns = (detail == IMAGE_GLYPH_HALF ? 1 : 2);
-	rows = (detail == IMAGE_GLYPH_HALF ? 2 :
-	    detail == IMAGE_GLYPH_QUADRANT ? 2 : 3);
+	rows = (detail == IMAGE_GLYPH_SEXTANT ? 3 : 2);
 	i = 0;
 	for (sy = 0; sy < rows; sy++) {
 		for (sx = 0; sx < columns; sx++) {
@@ -399,8 +399,7 @@ image_glyph_block(struct tty *tty, struct image *im, u_int x, u_int y,
 
 void
 image_get_fallback_cell(struct tty *tty, struct image *im, u_int x, u_int y,
-    const struct grid_cell *gc, struct grid_cell *out,
-    __unused const struct tty_style_ctx *style_ctx)
+    const struct grid_cell *gc, struct grid_cell *out)
 {
 	static const char	 ascii[] = " .:-=+*#%@";
 	static const u_char	 shades[5] = { 0, TTY_ACS_IMAGE_SHADE_LIGHT,

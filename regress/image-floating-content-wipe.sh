@@ -1,22 +1,7 @@
 #!/bin/sh
 
-# Regression test for a fixed bug: on a client detected as SIXEL-capable, a
-# pane-content redraw (PANE_REDRAW) erased the image backend's rectangle
-# using the redrawing pane's raw nominal geometry (wp->xoff/yoff/sx/sy)
-# instead of the cells it actually owns in the current scene. When a
-# floating pane occluded part of that rectangle, the erase blanked the
-# floating pane's on-screen area, and since the subsequent text redraw
-# correctly only refills cells the redrawing pane owns, nothing repainted
-# it back in - the floating pane's content stayed blank.
-#
-# Fixed in screen-redraw.c:redraw_draw_pane_lines() by erasing only the
-# cell ranges the pane actually owns per line (its REDRAW_SPAN_PANE spans),
-# not its raw rectangle. See tmux-sixel-erase-ignores-occlusion.md and
-# IMAGE-REDRAW-DISCUSSION.md for the full write-up.
-#
-# Confirmed by direct A/B test against this exact sequence: reliably wipes
-# the floating pane's content on the unfixed code, reliably leaves it
-# intact on the fixed code.
+# A SIXEL pane redraw must erase only cells owned by that pane, preserving
+# content in an overlapping floating pane when leaving copy mode.
 
 PATH=/bin:/usr/bin
 TERM=screen

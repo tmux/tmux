@@ -404,7 +404,7 @@ screen_write_image_damage(struct screen_write_ctx *ctx, u_int x, u_int y,
 {
 	image_redraw_area(ctx, x, y, sx, sy);
 	if (ctx->flags & SCREEN_WRITE_INPUT)
-		image_grid_damage(ctx->s->grid, x, ctx->s->grid->hsize + y,
+		image_grid_remove_sixel_spans(ctx->s->grid, x, ctx->s->grid->hsize + y,
 		    sx, sy);
 }
 #endif
@@ -1492,7 +1492,7 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 #ifdef ENABLE_IMAGES
 	image_redraw_all(ctx);
 	if (ctx->flags & SCREEN_WRITE_INPUT)
-		image_grid_damage(s->grid, 0, s->grid->hsize,
+		image_grid_remove_sixel_spans(s->grid, 0, s->grid->hsize,
 		    screen_size_x(s), screen_size_y(s));
 #endif
 
@@ -1909,7 +1909,7 @@ screen_write_reverseindex(struct screen_write_ctx *ctx, u_int bg)
 	}
 
 #ifdef ENABLE_IMAGES
-	image_redraw_scroll(ctx, 1);
+	image_redraw_scroll(ctx);
 #endif
 
 	grid_view_scroll_region_down(s->grid, s->rupper, s->rlower, bg);
@@ -1981,7 +1981,7 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped, u_int bg)
 
 #ifdef ENABLE_IMAGES
 	if (rlower == screen_size_y(s) - 1)
-		image_redraw_scroll(ctx, 1);
+		image_redraw_scroll(ctx);
 	else
 		image_redraw_area(ctx, 0, rupper, screen_size_x(s),
 		    rlower - rupper);
@@ -2011,7 +2011,7 @@ screen_write_scrollup(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 	}
 
 #ifdef ENABLE_IMAGES
-	image_redraw_scroll(ctx, lines);
+	image_redraw_scroll(ctx);
 #endif
 
 	for (i = 0; i < lines; i++) {
@@ -2039,7 +2039,7 @@ screen_write_scrolldown(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 		lines = s->rlower - s->rupper + 1;
 
 #ifdef ENABLE_IMAGES
-	image_redraw_scroll(ctx, lines);
+	image_redraw_scroll(ctx);
 #endif
 
 	for (i = 0; i < lines; i++)

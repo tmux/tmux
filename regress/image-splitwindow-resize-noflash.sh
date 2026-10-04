@@ -1,23 +1,7 @@
 #!/bin/sh
 
-# Regression test: interactively sizing a new floating pane by dragging
-# (new-pane -M, bound by default to C-MouseDrag1Pane/C-MouseDrag1Empty)
-# must not retransmit images in other panes of the same window on ongoing
-# drag steps.
-#
-# cmd_split_window_mouse_resize() (cmd-split-window.c) used to call
-# server_redraw_window() unconditionally on every motion event while
-# sizing the new floating pane, wiping and retransmitting every image in
-# the window on each step even though only the new pane's own rectangle
-# actually changed. See tmux-image-redraw-known-bugs.md for the full
-# write-up.
-#
-# Creating the floating pane itself causes one legitimate, unrelated
-# redraw (pane creation always redraws the session - see
-# server_redraw_session() in cmd-split-window.c), so this checks DCS
-# (\033P) counts only for the *ongoing* drag-motion steps after that
-# initial creation, once c->tty.mouse_drag_update is already bound to the
-# resize callback: with the fix, none should appear there.
+# Sizing a new floating pane must not retransmit images in other panes.
+# Wait for the initial creation redraw before checking subsequent drag steps.
 
 . ./image-noflash-common.inc
 

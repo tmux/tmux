@@ -154,11 +154,8 @@ clients_calculate_size(int type, int current, struct client *c,
 	}
 	if (w != NULL && type == WINDOW_SIZE_MANUAL) {
 		/*
-		 * Manual mode has no separate pixel size to apply, so keep the
-		 * window's own - otherwise this always differs from the real
-		 * w->xpixel/ypixel, and recalculate_size() can never tell a
-		 * later call apart from an actual change, resizing (and
-		 * re-firing window-resized) on every recalculation.
+		 * Keep the window's pixel size in manual mode to avoid scheduling
+		 * a resize on every recalculation.
 		 */
 		*xpixel = w->xpixel;
 		*ypixel = w->ypixel;

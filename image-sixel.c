@@ -524,7 +524,6 @@ sixel_size_in_cells(struct sixel_image *si, u_int *x, u_int *y)
 	image_size_in_cells(si->sx, si->sy, si->cell_w, si->cell_h, x, y);
 }
 
-#ifdef ENABLE_IMAGES
 /* Convert one HLS component to RGB. */
 static double
 sixel_hue(double p, double q, double t)
@@ -619,7 +618,6 @@ sixel_to_image(struct sixel_image *si)
 		image_set_sixel(im, si);
 	return (im);
 }
-#endif
 
 /* Scale or crop an indexed SIXEL image. */
 struct sixel_image *
@@ -629,7 +627,8 @@ sixel_scale(struct sixel_image *si, u_int cell_w, u_int cell_h, u_int ox,
 	struct sixel_image	*new;
 	u_int			 cx, cy, raster_sx, raster_sy;
 	u_int			 pox, poy, psx, psy, tsx, tsy, px, py;
-	uint64_t	 x0, x1, y0, y1, tx0, tx1, ty0, ty1;
+	uint64_t	 source_left, source_right, source_top, source_bottom;
+	uint64_t	 target_left, target_right, target_top, target_bottom;
 	u_int			 x, y, i;
 
 	/*
@@ -663,42 +662,42 @@ sixel_scale(struct sixel_image *si, u_int cell_w, u_int cell_h, u_int ox,
 	 * only the final partial cell to the raster. Dividing the raster evenly
 	 * between cells would stretch every complete cell and squash the last.
 	 */
-	x0 = (uint64_t)ox * si->cell_w;
-	x1 = (uint64_t)(ox + sx) * si->cell_w;
-	y0 = (uint64_t)oy * si->cell_h;
-	y1 = (uint64_t)(oy + sy) * si->cell_h;
-	if (x1 > raster_sx)
-		x1 = raster_sx;
-	if (y1 > raster_sy)
-		y1 = raster_sy;
-	if (x1 <= x0 || y1 <= y0)
+	source_left = (uint64_t)ox * si->cell_w;
+	source_right = (uint64_t)(ox + sx) * si->cell_w;
+	source_top = (uint64_t)oy * si->cell_h;
+	source_bottom = (uint64_t)(oy + sy) * si->cell_h;
+	if (source_right > raster_sx)
+		source_right = raster_sx;
+	if (source_bottom > raster_sy)
+		source_bottom = raster_sy;
+	if (source_right <= source_left || source_bottom <= source_top)
 		return (NULL);
-	pox = x0;
-	poy = y0;
-	psx = x1 - x0;
-	psy = y1 - y0;
+	pox = source_left;
+	poy = source_top;
+	psx = source_right - source_left;
+	psy = source_bottom - source_top;
 
 	/*
 	 * Preserve any partial final source cell. The grid still covers whole
 	 * cells, but the SIXEL raster must end at the corresponding pixel offset
 	 * rather than stretching to the cell boundary.
 	 */
-	tx1 = ((uint64_t)raster_sx * cell_w + si->cell_w - 1) /
+	target_right = ((uint64_t)raster_sx * cell_w + si->cell_w - 1) /
 	    si->cell_w;
-	ty1 = ((uint64_t)raster_sy * cell_h + si->cell_h - 1) /
+	target_bottom = ((uint64_t)raster_sy * cell_h + si->cell_h - 1) /
 	    si->cell_h;
-	if (tx1 > UINT_MAX || ty1 > UINT_MAX)
+	if (target_right > UINT_MAX || target_bottom > UINT_MAX)
 		return (NULL);
-	tx0 = (uint64_t)ox * cell_w;
-	ty0 = (uint64_t)oy * cell_h;
-	if (tx0 >= tx1 || ty0 >= ty1)
+	target_left = (uint64_t)ox * cell_w;
+	target_top = (uint64_t)oy * cell_h;
+	if (target_left >= target_right || target_top >= target_bottom)
 		return (NULL);
-	if ((uint64_t)(ox + sx) * cell_w < tx1)
-		tx1 = (uint64_t)(ox + sx) * cell_w;
-	if ((uint64_t)(oy + sy) * cell_h < ty1)
-		ty1 = (uint64_t)(oy + sy) * cell_h;
-	tsx = tx1 - tx0;
-	tsy = ty1 - ty0;
+	if ((uint64_t)(ox + sx) * cell_w < target_right)
+		target_right = (uint64_t)(ox + sx) * cell_w;
+	if ((uint64_t)(oy + sy) * cell_h < target_bottom)
+		target_bottom = (uint64_t)(oy + sy) * cell_h;
+	tsx = target_right - target_left;
+	tsy = target_bottom - target_top;
 	if (tsx == 0 || tsy == 0)
 		return (NULL);
 
@@ -1214,15 +1213,14 @@ sixel_clamp_colour(int colour)
 
 /* Return a source pixel mapped to an output SIXEL pixel. */
 static const u_char *
-sixel_from_image_pixel(const struct sixel_source *source, u_int sourcex0,
-    u_int sourcey0,
-    u_int sourcewidth, u_int sourceheight, u_int sx, u_int sy, u_int x,
-    u_int y)
+sixel_from_image_pixel(const struct sixel_source *source, u_int source_x,
+    u_int source_y, u_int source_width, u_int source_height, u_int output_sx,
+    u_int output_sy, u_int x, u_int y)
 {
 	u_int	 sourcex, sourcey;
 
-	sourcex = sourcex0 + (uint64_t)x * sourcewidth / sx;
-	sourcey = sourcey0 + (uint64_t)y * sourceheight / sy;
+	sourcex = source_x + (uint64_t)x * source_width / output_sx;
+	sourcey = source_y + (uint64_t)y * source_height / output_sy;
 	if (sourcex >= source->width)
 		sourcex = source->width - 1;
 	if (sourcey >= source->height)
@@ -1232,7 +1230,7 @@ sixel_from_image_pixel(const struct sixel_source *source, u_int sourcex0,
 
 /* Render an image rectangle as an indexed SIXEL image. */
 static struct sixel_image *
-sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
+sixel_from_image(struct image *im, u_int cell_x, u_int cell_y, u_int cells_x,
 	u_int cells_y, u_int cell_w, u_int cell_h)
 {
 	struct sixel_image	*si;
@@ -1244,10 +1242,11 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 	int			*current, *next, *tmp;
 	int			 red_error, green_error, blue_error, alpha_error;
 	u_int			 x, y, sx, sy, index, error_index;
-	u_int			 sourcex0, sourcey0, sourcewidth, sourceheight;
+	u_int			 source_x, source_y, source_width, source_height;
 	u_int			 red, green, blue, alpha, colour, i, ncolours;
 	uint64_t		 destination_width, destination_height;
-	uint64_t		 content_width, content_height, x0, x1, y0, y1;
+	uint64_t		 content_width, content_height;
+	uint64_t		 left, right, top, bottom;
 
 	/* Work out the requested cell crop in destination pixel coordinates. */
 	source.pixels = image_get_pixels(im, &source.stride, NULL);
@@ -1265,36 +1264,36 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 	    source.canvas_height - 1) / source.canvas_height;
 
 	/* Convert the requested cell rectangle to clipped output pixel bounds. */
-	x0 = (uint64_t)ox * cell_w;
-	y0 = (uint64_t)oy * cell_h;
-	x1 = ((uint64_t)ox + cells_x) * cell_w;
-	y1 = ((uint64_t)oy + cells_y) * cell_h;
-	if (x1 > content_width)
-		x1 = content_width;
-	if (y1 > content_height)
-		y1 = content_height;
-	if (x1 <= x0 || y1 <= y0)
+	left = (uint64_t)cell_x * cell_w;
+	top = (uint64_t)cell_y * cell_h;
+	right = ((uint64_t)cell_x + cells_x) * cell_w;
+	bottom = ((uint64_t)cell_y + cells_y) * cell_h;
+	if (right > content_width)
+		right = content_width;
+	if (bottom > content_height)
+		bottom = content_height;
+	if (right <= left || bottom <= top)
 		return (NULL);
 
 	/* The clipped output bounds determine the SIXEL image dimensions. */
-	sx = x1 - x0;
-	sy = y1 - y0;
+	sx = right - left;
+	sy = bottom - top;
 	if (sx == 0 || sy == 0 || sx > SIXEL_WIDTH_LIMIT ||
 	    sy > SIXEL_HEIGHT_LIMIT)
 		return (NULL);
 
 	/* Map the requested cell crop to the source image's pixel rectangle. */
-	image_get_pixel_rect(im, ox, oy, cells_x, cells_y, &sourcex0,
-	    &sourcey0, &sourcewidth, &sourceheight);
-	if (sourcewidth == 0 || sourceheight == 0)
+	image_get_pixel_rect(im, cell_x, cell_y, cells_x, cells_y, &source_x,
+	    &source_y, &source_width, &source_height);
+	if (source_width == 0 || source_height == 0)
 		return (NULL);
 
 	/* Build an adaptive palette from the visible nontransparent pixels. */
 	hg = xcalloc(SIXEL_HISTOGRAM_SIZE, sizeof *hg);
 	for (y = 0; y < sy; y++) {
 		for (x = 0; x < sx; x++) {
-			pixel = sixel_from_image_pixel(&source, sourcex0, sourcey0,
-			    sourcewidth, sourceheight, sx, sy, x, y);
+			pixel = sixel_from_image_pixel(&source, source_x, source_y,
+			    source_width, source_height, sx, sy, x, y);
 			if (pixel[3] == 0)
 				continue;
 
@@ -1338,8 +1337,8 @@ sixel_from_image(struct image *im, u_int ox, u_int oy, u_int cells_x,
 	next = xcalloc(((size_t)sx + 2) * 4, sizeof *next);
 	for (y = 0; y < sy; y++) {
 		for (x = 0; x < sx; x++) {
-			pixel = sixel_from_image_pixel(&source, sourcex0, sourcey0,
-			    sourcewidth, sourceheight, sx, sy, x, y);
+			pixel = sixel_from_image_pixel(&source, source_x, source_y,
+			    source_width, source_height, sx, sy, x, y);
 			error_index = (x + 1) * 4;
 			/* SIXEL pixels are binary, so dither alpha separately. */
 			alpha = sixel_clamp_colour((int)pixel[3] +
@@ -1488,15 +1487,17 @@ sixel_free_output(struct tty *tty, __unused int send)
 static struct sixel_image *
 sixel_render_image(struct image *im, u_int cell_w, u_int cell_h)
 {
-	struct sixel_image	*original;
+	struct sixel_image	*original, *si;
 	u_int			 sx, sy;
 
 	image_get_size_in_cells(im, &sx, &sy);
 	/* Preserve SIXEL's original palette and indexed pixels when possible. */
 	original = image_get_sixel(im);
 	if (original != NULL)
-		return (sixel_fit(original, cell_w, cell_h, sx, sy));
-	return (sixel_from_image(im, 0, 0, sx, sy, cell_w, cell_h));
+		si = sixel_fit(original, cell_w, cell_h, sx, sy);
+	else
+		si = sixel_from_image(im, 0, 0, sx, sy, cell_w, cell_h);
+	return (si);
 }
 
 /* Return a rendered image from the SIXEL output cache. */
@@ -1613,8 +1614,7 @@ sixel_flush_output(struct tty *tty)
  * other terminal output is reordered across a pending run.
  */
 void
-sixel_draw_rect(struct tty *tty, const struct image_rect *rectangle,
-    __unused const struct tty_style_ctx *style_ctx)
+sixel_draw_rect(struct tty *tty, const struct image_rect *rectangle)
 {
 	struct sixel_output	*so = sixel_get_output(tty);
 	struct sixel_pending	*sp = &so->pending;
@@ -1658,39 +1658,4 @@ sixel_redraw_start(struct tty *tty, u_int x, u_int y, u_int sx, u_int sy)
 		else
 			tty_repeat_space(tty, sx);
 	}
-}
-
-/* Convert a SIXEL image to a fallback screen. */
-struct screen *
-sixel_to_screen(struct sixel_image *si)
-{
-	struct screen		*s;
-	struct screen_write_ctx	 ctx;
-	struct grid_cell	 gc;
-	u_int			 x, y, sx, sy;
-
-	sixel_size_in_cells(si, &sx, &sy);
-
-	s = xmalloc(sizeof *s);
-	screen_init(s, sx, sy, 0);
-
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.attr |= (GRID_ATTR_CHARSET|GRID_ATTR_DIM);
-	utf8_set(&gc.data, '~');
-
-	screen_write_start(&ctx, s);
-	if (sx == 1 || sy == 1) {
-		for (y = 0; y < sy; y++) {
-			for (x = 0; x < sx; x++)
-				grid_view_set_cell(s->grid, x, y, &gc);
-		}
-	} else {
-		screen_write_box(&ctx, sx, sy, BOX_LINES_DEFAULT, NULL, NULL);
-		for (y = 1; y < sy - 1; y++) {
-			for (x = 1; x < sx - 1; x++)
-				grid_view_set_cell(s->grid, x, y, &gc);
-		}
-	}
-	screen_write_stop(&ctx);
-	return (s);
 }

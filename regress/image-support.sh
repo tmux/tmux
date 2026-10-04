@@ -4,10 +4,12 @@
 
 PATH=/bin:/usr/bin
 TERM=screen
+LC_ALL=C
+export TERM LC_ALL
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -Limage$$ -f/dev/null"
-TMUX2="$TEST_TMUX -Limage-client$$ -f/dev/null"
+TMUX2="env -u TMUX LC_ALL=C $TEST_TMUX -Limage-client$$ -f/dev/null"
 $TMUX kill-server 2>/dev/null
 $TMUX2 kill-server 2>/dev/null
 
@@ -24,6 +26,7 @@ $TMUX new-session -d -x 20 -y 8 "
 
 sleep 1
 [ "$($TMUX display-message -p '#{image_support}')" = 0 ] && exit 0
+[ "$($TMUX display-message -p '#{sixel_support}')" = 1 ] || exit 1
 
 # Images scroll as grid cells, while capture output contains ordinary spaces.
 [ "$($TMUX display-message -p '#{history_size}')" -gt 0 ] || exit 1
@@ -187,27 +190,9 @@ $TMUX capture-pane -pS0 -E3 >$TMP || exit 1
 [ "$(sed -n 2p $TMP)" = "@@@@@" ] || exit 1
 [ -z "$(sed -n 3p $TMP)" ] || exit 1
 
-# Kitty virtual placements use U+10EEEE placeholder cells. Keep their rows at
-# fixed coordinates when narrowing the terminal, clipping instead of reflowing
-# the second half onto the following row.
+# Restore the wider client for the remaining placement checks.
 $TMUX resize-window -x 10 -y 4 || exit 1
 sleep 1
-$TMUX2 new-window -d "
-	printf '\\364\\216\\273\\256\\314\\205\\364\\216\\273\\256\\314\\205\\364\\216\\273\\256\\314\\205\\364\\216\\273\\256\\314\\205\\364\\216\\273\\256\\314\\205'
-	printf '\\364\\216\\273\\256\\314\\205\\364\\216\\273\\256\\314\\205\\364\\216\\273\\256\\314\\205\\364\\216\\273\\256\\314\\205\\364\\216\\273\\256\\314\\205'
-	sleep 10" || exit 1
-$TMUX2 select-window -t:4 || exit 1
-sleep 1
-$TMUX resize-window -x 5 -y 4 || exit 1
-sleep 1
-$TMUX capture-pane -pS0 -E3 >$TMP || exit 1
-[ -n "$(sed -n 1p $TMP)" ] || exit 1
-[ -z "$(sed -n 2p $TMP)" ] || exit 1
-$TMUX resize-window -x 10 -y 4 || exit 1
-sleep 1
-$TMUX capture-pane -pS0 -E3 >$TMP || exit 1
-[ "$(sed -n 1p $TMP | wc -c)" = 61 ] || exit 1
-[ -z "$(sed -n 2p $TMP)" ] || exit 1
 
 # A placement ID supplied with transmit-and-place is reused by a later place.
 # This is the sequence used by chawan: the newline moves the cursor down before

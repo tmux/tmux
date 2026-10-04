@@ -1,21 +1,6 @@
 #!/bin/sh
 
-# Regression test: Alt-dragging a floating pane by its body (move-pane -M,
-# bound by default to M-MouseDrag1Pane/M-MouseDrag1Border) must not
-# retransmit images in other panes of the same window.
-#
-# cmd_join_pane_mouse_move() (cmd-join-pane.c) is a second, separate
-# implementation of "drag to move a floating pane" - parallel to the one in
-# cmd-resize-pane.c already fixed for plain (non-Alt) border drags - and
-# used to call server_redraw_window() unconditionally on every motion
-# event, wiping and retransmitting every image in the window on each step
-# of the drag even though only the floating pane's own rectangle actually
-# moved. See tmux-image-redraw-known-bugs.md for the full write-up.
-#
-# This is checked by counting DCS (\033P) sequences in the client's raw
-# output while a stationary tiled pane's image is present and an unrelated
-# floating pane is Alt-dragged elsewhere in the window: with the fix, none
-# should appear.
+# Alt-dragging a floating pane must not retransmit images in other panes.
 
 . ./image-noflash-common.inc
 

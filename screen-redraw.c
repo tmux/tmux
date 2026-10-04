@@ -1332,7 +1332,7 @@ redraw_draw_pane_span(struct redraw_draw_ctx *dctx,
 #ifdef ENABLE_IMAGES
 	if (phase != REDRAW_TEXT) {
 		image_draw_line(tty, s, px, py, n, x, y,
-		    phase == REDRAW_IMAGES_BEFORE, &style_ctx);
+		    phase == REDRAW_IMAGES_BEFORE);
 		return;
 	}
 #endif

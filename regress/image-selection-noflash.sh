@@ -1,22 +1,6 @@
 #!/bin/sh
 
-# Regression test: extending a copy-mode selection by cursor movement, with
-# the view otherwise unmoved (no scrolling), must not retransmit an image
-# whose row the cursor passes through.
-#
-# window_copy_write_one() (window-copy.c) used to write text/highlight
-# styling directly over image-covered cells, which - since a character
-# write typically clears whatever pixel content a terminal was showing
-# there - erased the image with nothing to redraw it back in. Separately,
-# window_copy_write_line()'s call to image_redraw_area() used to fire
-# unconditionally on every redraw, so even after fixing the erasure, the
-# image would still be needlessly recomposited (and briefly flash) on
-# every single cursor step even though nothing about it had changed. See
-# tmux-image-redraw-known-bugs.md for the full write-up.
-#
-# This is checked by counting DCS (\033P) sequences in the client's raw
-# output during the cursor movement: with the fix, extending a selection
-# without scrolling never touches the image, so none should appear.
+# Moving a copy-mode selection cursor must not retransmit unchanged images.
 
 . ./image-noflash-common.inc
 
