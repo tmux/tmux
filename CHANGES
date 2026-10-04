@@ -1,5 +1,8 @@
 CHANGES FROM 3.7c TO 3.8
 
+* Add copy-mode-eol to retain the preferred cursor column on short lines,
+  without changing the default copy-mode behaviour.
+
 * Many improvements to floating panes:
 
   - new-pane and split-window can now set the title with -T and border lines
