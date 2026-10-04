@@ -32,7 +32,7 @@ fail() {
 wait_for_panes() {
 	tries=0
 	while :; do
-		panes=$($TMUX2 listp -t"$window" -F '#{pane_dead}') || exit 1
+		panes=$($TMUX2 list-panes -t"$window" -F '#{pane_dead}') || exit 1
 		case "$panes" in
 		*0*)
 			;;
