@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.424 2026/09/29 14:12:21 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.425 2026/10/05 10:59:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -4812,6 +4812,9 @@ format_skip1(struct format_expand_state *es, const char *s, const char *end)
 {
 	int	brackets = 0;
 	u_int	check = 0;
+
+	if (es != NULL && !format_check_time(es, NULL))
+		return (NULL);
 
 	for (; *s != '\0'; s++) {
 		if (es != NULL && !format_check_time(es, &check))
