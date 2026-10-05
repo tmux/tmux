@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.248 2026/10/02 15:04:27 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.249 2026/10/05 09:03:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -184,7 +184,8 @@ static const char *options_table_copy_mode_line_numbers_list[] = {
 	"#[pop-default]" \
 	"#[norange default]"
 #define OPTIONS_TABLE_STATUS_FORMAT2 \
-	"#[align=left]#{R: ,#{n:#{session_name}}}P: " \
+	"#[align=left]" \
+	"#{R: ,#{e|-:#{w;T;=/#{status-left-length}:status-left},3}}P: " \
 	"#[norange default]" \
 	"#[list=on align=#{status-justify}]" \
 	"#[list=left-marker]<#[list=right-marker]>#[list=on]" \
@@ -195,7 +196,8 @@ static const char *options_table_copy_mode_line_numbers_list[] = {
 		"#[push-default]" \
 		"#{T:window-pane-status-format}" \
 		"#[pop-default]" \
-		"#[norange list=on default]  " \
+		"#[norange list=on default]" \
+		"#{?loop_last_flag,,#{E:window-status-separator}}" \
 	"," \
 		"#[range=pane|#{pane_id} list=focus " \
 			"#{?#{!=:#{E:pane-status-current-style},default}," \
@@ -206,10 +208,12 @@ static const char *options_table_copy_mode_line_numbers_list[] = {
 		"#[push-default]" \
 		"#{T:window-pane-current-status-format}" \
 		"#[pop-default]" \
-		"#[norange list=on default] " \
+		"#[norange list=on default]" \
+		"#{?loop_last_flag,,#{E:window-status-separator}}" \
 	"}"
 #define OPTIONS_TABLE_STATUS_FORMAT3 \
-	"#[align=left]#{R: ,#{n:#{session_name}}}S: " \
+	"#[align=left]" \
+	"#{R: ,#{e|-:#{w;T;=/#{status-left-length}:status-left},3}}S: " \
 	"#[norange default]" \
 	"#[list=on align=#{status-justify}]" \
 	"#[list=left-marker]<#[list=right-marker]>#[list=on]" \
