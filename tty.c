@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.483 2026/10/02 12:48:52 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.484 2026/10/05 08:45:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2705,7 +2705,7 @@ tty_colours_fg(struct tty *tty, const struct grid_cell *gc)
 	 * reset because some terminals do not clear bright correctly.
 	 */
 	if (tty->cell.fg >= 90 &&
-	    tty->cell.bg <= 97 &&
+	    tty->cell.fg <= 97 &&
 	    (gc->fg < 90 || gc->fg > 97))
 		tty_reset(tty);
 
