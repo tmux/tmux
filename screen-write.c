@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.294 2026/09/28 10:10:16 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.299 2026/10/05 08:41:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3145,6 +3145,7 @@ screen_write_alternateon(struct screen_write_ctx *ctx, struct grid_cell *gc,
 {
 	struct tty_ctx			 ttyctx;
 	struct window_pane		*wp = ctx->wp;
+	int				 pending;
 
 	if (wp != NULL && !options_get_number(wp->options, "alternate-screen"))
 		return;
@@ -3154,11 +3155,12 @@ screen_write_alternateon(struct screen_write_ctx *ctx, struct grid_cell *gc,
 		return;
 
 	if (wp != NULL) {
+		pending = !TAILQ_EMPTY(&wp->resize_queue);
 		window_pane_clear_resizes(wp, NULL);
 		if (event_initialized(&wp->resize_timer))
 			evtimer_del(&wp->resize_timer);
 		layout_fix_panes(wp->window, NULL);
-		if (!TAILQ_EMPTY(&wp->resize_queue)) {
+		if (pending || !TAILQ_EMPTY(&wp->resize_queue)) {
 			window_pane_send_resize(wp, wp->sx, wp->sy);
 			window_pane_clear_resizes(wp, NULL);
 		}
