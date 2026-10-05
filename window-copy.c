@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.432 2026/10/02 12:48:52 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.433 2026/10/05 15:52:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -6506,7 +6506,9 @@ window_copy_cursor_up(struct window_mode_entry *wme, int scroll_only)
 	if (data->lineflag == LINE_SEL_LEFT_RIGHT && oy == data->sely)
 		window_copy_other_end(wme);
 
-	if (scroll_only && options_get_number(oo, "mode-keys") == MODEKEY_VI) {
+	/* In vi mode, keep cursor on the same line unless dragging. */
+	if (scroll_only && data->cursordrag == CURSORDRAG_NONE &&
+	    options_get_number(oo, "mode-keys") == MODEKEY_VI) {
 		if (data->cy < screen_size_y(s) - 1)
 			window_copy_update_cursor(wme, data->cx, data->cy + 1);
 	}
@@ -6586,7 +6588,9 @@ window_copy_cursor_down(struct window_mode_entry *wme, int scroll_only)
 	if (data->lineflag == LINE_SEL_RIGHT_LEFT && oy == data->endsely)
 		window_copy_other_end(wme);
 
-	if (scroll_only && options_get_number(oo, "mode-keys") == MODEKEY_VI) {
+	/* In vi mode, keep cursor on the same line unless dragging. */
+	if (scroll_only && data->cursordrag == CURSORDRAG_NONE &&
+	    options_get_number(oo, "mode-keys") == MODEKEY_VI) {
 		if (data->cy > 0)
 			window_copy_update_cursor(wme, data->cx, data->cy - 1);
 	}
