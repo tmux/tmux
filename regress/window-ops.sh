@@ -337,14 +337,20 @@ check_fmt 'R:0' '#{pane_index}:#{pane_id}' "0:$p1"
 check_ok rotate-window -D -t R:0
 check_fmt 'R:0' '#{pane_index}:#{pane_id}' "0:$p0"
 
-# Rotation without -Z unzooms. With -Z it preserves zoom and transfers it to
-# the pane which arrives at the active position.
+# Rotation without -Z hides the zoomed pane until the desktop shows it. With -Z
+# it preserves zoom and transfers it to the pane which arrives at the active
+# position.
 layout=$($TMUX display-message -p -t R:0 '#{window_layout}')
 check_ok resize-pane -Z -t "$p0"
 check_ok rotate-window -U -t R:0
 check_fmt "$p1" '#{window_zoomed_flag}:#{pane_zoomed_flag}:#{pane_active}' \
 	'0:0:1'
+check_fmt "$p0" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '1:1'
+check_ok resize-pane -a -H -t "$p0"
+check_ok resize-pane -a -Z -t "$p0"
 check_ok rotate-window -D -t R:0
+check_ok select-pane -t "$p1"
+check_ok select-pane -t "$p0"
 check_fmt 'R:0' '#{window_layout}' "$layout"
 
 check_ok resize-pane -Z -t "$p0"
@@ -354,6 +360,24 @@ check_fmt "$p1" '#{window_zoomed_flag}:#{pane_zoomed_flag}:#{pane_active}' \
 check_ok resize-pane -Z -t "$p1"
 check_ok rotate-window -D -t R:0
 check_fmt 'R:0' '#{window_layout}' "$layout"
+
+# Floating panes are not rotated: they keep their geometry and stay floating
+# while the tiled panes rotate around them.
+fp=$($TMUX new-pane -dPF '#{pane_id}' -t R:0 -x 20 -y 8 -X 8 -Y 3 '')
+fgeom=$($TMUX display-message -p -t "$fp" \
+    '#{pane_floating_flag}:#{pane_left}:#{pane_top}:#{pane_width}:#{pane_height}')
+check_ok select-pane -t "$p0"
+check_ok rotate-window -U -t R:0
+check_fmt "$fp" \
+    '#{pane_floating_flag}:#{pane_left}:#{pane_top}:#{pane_width}:#{pane_height}' \
+    "$fgeom"
+check_fmt "$p1" '#{pane_floating_flag}:#{pane_top}:#{pane_active}' '0:0:1'
+check_ok rotate-window -D -t R:0
+check_fmt "$fp" \
+    '#{pane_floating_flag}:#{pane_left}:#{pane_top}:#{pane_width}:#{pane_height}' \
+    "$fgeom"
+check_fmt "$p0" '#{pane_floating_flag}:#{pane_top}:#{pane_active}' '0:0:1'
+check_ok kill-pane -t "$fp"
 
 # ---------------------------------------------------------------------------
 # kill-window.

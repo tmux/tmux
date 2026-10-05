@@ -148,36 +148,14 @@ window_panes_add_area(struct window_panes_modedata *data,
 }
 
 static int
-window_panes_pane_floating(struct window_pane *wp)
-{
-	struct layout_cell	*lc = wp->saved_layout_cell;
-
-	if (lc == NULL)
-		lc = wp->layout_cell;
-	if (lc == NULL || (~lc->flags & LAYOUT_CELL_FLOATING))
-		return (0);
-	return (1);
-}
-
-static int
-window_panes_pane_visible(struct window_pane *wp)
-{
-	if (wp->saved_layout_cell != NULL)
-		return (1);
-	return (window_pane_is_visible(wp));
-}
-
-static int
 window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
     u_int osx, u_int osy, u_int dsx, u_int dsy, u_int *xp, u_int *yp,
     u_int *sxp, u_int *syp)
 {
-	struct layout_cell	*lc = wp->saved_layout_cell;
+	struct layout_cell	*lc = wp->layout_cell;
 	int			 status;
 	u_int			 x, y, sx, sy, x2, y2;
 
-	if (lc == NULL)
-		lc = wp->layout_cell;
 	if (lc == NULL || osx == 0 || osy == 0 || dsx == 0 || dsy == 0)
 		return (0);
 
@@ -375,12 +353,7 @@ window_panes_mark_pane_status_borders(u_char *map, struct window *w,
 		return;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (!window_panes_pane_visible(wp))
-			continue;
-
-		lc = wp->saved_layout_cell;
-		if (lc == NULL)
-			lc = wp->layout_cell;
+		lc = wp->layout_cell;
 		if (lc == NULL ||
 		    !layout_add_horizontal_border(root, lc, status))
 			continue;
@@ -404,9 +377,7 @@ window_panes_get_floating_borders(struct window_pane *wp, u_int osx, u_int osy,
 {
 	struct layout_cell	*lc;
 
-	lc = wp->saved_layout_cell;
-	if (lc == NULL)
-		lc = wp->layout_cell;
+	lc = wp->layout_cell;
 	if (lc == NULL || (~lc->flags & LAYOUT_CELL_FLOATING))
 		return (0);
 
@@ -801,8 +772,6 @@ window_panes_draw_pane(struct window_panes_modedata *data,
 	struct screen		*s = &wp->base;
 	u_int			 pane, x, y, sx, sy;
 
-	if (!window_panes_pane_visible(wp))
-		return;
 	if (!window_panes_get_geometry(wp, root, osx, osy, dsx, dsy, &x, &y,
 	    &sx, &sy))
 		return;
@@ -839,9 +808,7 @@ window_panes_draw_screen(struct window_mode_entry *wme)
 
 	if (!window_panes_get_source(data, NULL, NULL, &w))
 		return;
-	root = w->saved_layout_root;
-	if (root == NULL)
-		root = w->layout_root;
+	root = w->layout_root;
 	if (root == NULL)
 		return;
 
@@ -854,14 +821,14 @@ window_panes_draw_screen(struct window_mode_entry *wme)
 	screen_write_start(&ctx, &data->screen);
 	screen_write_clearscreen(&ctx, 8);
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (window_panes_pane_floating(wp))
+		if (window_pane_is_floating(wp))
 			continue;
 		window_panes_draw_pane(data, &ctx, wp, root, osx, osy, sx, sy);
 	}
 	window_panes_get_border_cell(data, &border_gc);
 	window_panes_draw_borders(&ctx, w, root, &border_gc, osx, osy, sx, sy);
 	TAILQ_FOREACH_REVERSE(wp, &w->z_index, window_panes_zindex, zentry) {
-		if (!window_panes_pane_floating(wp))
+		if (!window_pane_is_floating(wp))
 			continue;
 		window_panes_clear_floating_area(&ctx, wp, osx, osy, sx, sy);
 		window_panes_draw_pane(data, &ctx, wp, root, osx, osy, sx, sy);
@@ -941,7 +908,7 @@ window_panes_init(struct window_mode_entry *wme, struct cmdq_item *item,
 	if (args_has(args, 'Z'))
 		data->zoomed = -1;
 	else {
-		data->zoomed = (w->flags & WINDOW_ZOOMED);
+		data->zoomed = (wp->flags & PANE_ZOOMED);
 		if (!data->zoomed)
 			window_panes_set_preview(data);
 		if (!data->zoomed && window_zoom(wp) == 0)
@@ -967,8 +934,8 @@ window_panes_free(struct window_mode_entry *wme)
 
 	evtimer_del(&data->timer);
 
-	if (data->zoomed == 0)
-		server_unzoom_window(w);
+	if (data->zoomed == 0 && window_unzoom_pane(wme->wp, 1) == 0)
+		server_redraw_window(w);
 	server_redraw_window(w);
 	server_redraw_window_borders(w);
 	server_status_window(w);
@@ -1092,8 +1059,6 @@ window_panes_key(struct window_mode_entry *wme, struct client *c,
 		return;
 	}
 
-	if (wp->window->flags & WINDOW_ZOOMED)
-		window_unzoom(wp->window, 1);
 	window_panes_run_command(data, c, target);
 	window_pane_reset_mode(wp);
 }

@@ -155,7 +155,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
 	struct session		*s = target->s;
-	struct window_pane	*wp = target->wp, *lastwp;
+	struct window_pane	*wp = target->wp, *lastwp, *zwp = NULL;
 	struct options		*oo = wp->options;
 	char			*title;
 	const char		*style;
@@ -190,15 +190,18 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 				visible = 1;
 			else
 				visible = window_pane_is_visible(lastwp);
-			if (!visible && window_push_zoom(w, 0, Zflag))
-				server_redraw_window(w);
+			if (!visible && Zflag)
+				zwp = window_zoomed_pane(w);
 			window_redraw_active_switch(w, lastwp);
-			if (window_set_active_pane(w, lastwp, 1)) {
+			if (zwp != NULL) {
+				window_zoom_move(zwp, lastwp);
+				server_redraw_window(w);
+			}
+			if (window_set_active_pane(w, lastwp, 1) ||
+			    zwp != NULL) {
 				cmd_find_from_winlink(current, wl, 0);
 				cmd_select_pane_redraw(w);
 			}
-			if (!visible && window_pop_zoom(w))
-				server_redraw_window(w);
 		}
 		return (CMD_RETURN_NORMAL);
 	}
@@ -221,23 +224,14 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (args_has(args, 'L')) {
-		window_push_zoom(w, 0, 1);
+	if (args_has(args, 'L'))
 		wp = window_pane_find_left(wp);
-		window_pop_zoom(w);
-	} else if (args_has(args, 'R')) {
-		window_push_zoom(w, 0, 1);
+	else if (args_has(args, 'R'))
 		wp = window_pane_find_right(wp);
-		window_pop_zoom(w);
-	} else if (args_has(args, 'U')) {
-		window_push_zoom(w, 0, 1);
+	else if (args_has(args, 'U'))
 		wp = window_pane_find_up(wp);
-		window_pop_zoom(w);
-	} else if (args_has(args, 'D')) {
-		window_push_zoom(w, 0, 1);
+	else if (args_has(args, 'D'))
 		wp = window_pane_find_down(wp);
-		window_pop_zoom(w);
-	}
 	if (wp == NULL)
 		return (CMD_RETURN_NORMAL);
 
@@ -271,21 +265,23 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (wp == w->active)
+	if (wp == w->active && (~wp->flags & PANE_HIDDEN))
 		return (CMD_RETURN_NORMAL);
 	if (w->modal != NULL && wp != w->modal)
 		visible = 1;
 	else
 		visible = window_pane_is_visible(wp);
-	if (!visible && window_push_zoom(w, 0, Zflag))
-		server_redraw_window(w);
+	if (!visible && Zflag)
+		zwp = window_zoomed_pane(w);
 	window_redraw_active_switch(w, wp);
-	if (window_set_active_pane(w, wp, 1))
+	if (zwp != NULL) {
+		window_zoom_move(zwp, wp);
+		server_redraw_window(w);
+	}
+	if (window_set_active_pane(w, wp, 1) || zwp != NULL)
 		cmd_find_from_winlink_pane(current, wl, wp, 0);
 	cmdq_insert_hook(s, item, current, "after-select-pane");
 	cmd_select_pane_redraw(w);
-	if (!visible && window_pop_zoom(w))
-		server_redraw_window(w);
 
 	return (CMD_RETURN_NORMAL);
 }

@@ -79,6 +79,7 @@ layout_create_cell(struct layout_cell *lcparent)
 
 	layout_geometry_init(&lc->g);
 	layout_geometry_init(&lc->fg);
+	layout_geometry_init(&lc->hidden.g);
 
 	return (lc);
 }
@@ -238,8 +239,9 @@ layout_cell_is_tiled(struct layout_cell *lc)
 {
 	int	is_leaf = lc->type == LAYOUT_WINDOWPANE;
 	int	is_floating = lc->flags & LAYOUT_CELL_FLOATING;
+	int	is_hidden = lc->wp != NULL && (lc->wp->flags & PANE_HIDDEN);
 
-	return is_leaf && !is_floating;
+	return is_leaf && !is_floating && !is_hidden;
 }
 
 int
@@ -415,18 +417,91 @@ layout_add_horizontal_border(struct layout_cell *root, struct layout_cell *lc,
 	return (0);
 }
 
+/*
+ * Work out the offset and size a pane should have from its cell. A zoomed pane
+ * fills the window unless layout is set, which gives the place it has in the
+ * layout.
+ */
+void
+layout_get_pane_geometry(struct window_pane *wp, int layout, int *xoff,
+    int *yoff, u_int *sx, u_int *sy)
+{
+	struct window		*w = wp->window;
+	struct layout_cell	*lc = wp->layout_cell;
+	int			 status, sb_w, sb_pad, border, reserve;
+
+	if (layout && !window_pane_is_floating(wp))
+		status = window_get_pane_status(w);
+	else
+		status = window_pane_get_pane_status(wp);
+	if ((wp->flags & PANE_ZOOMED) && !layout) {
+		/* A zoomed pane fills the window, whatever its cell. */
+		*xoff = 0;
+		*yoff = 0;
+		*sx = w->sx;
+		*sy = w->sy;
+		border = (status == PANE_STATUS_TOP ||
+		    status == PANE_STATUS_BOTTOM);
+	} else {
+		*xoff = lc->g.xoff;
+		*yoff = lc->g.yoff;
+		*sx = lc->g.sx;
+		*sy = lc->g.sy;
+		border = (!window_pane_is_floating(wp) &&
+		    layout_add_horizontal_border(w->layout_root, lc, status));
+	}
+	if (border) {
+		if (status == PANE_STATUS_TOP)
+			(*yoff)++;
+		if (*sy > 1)
+			(*sy)--;
+	}
+
+	/*
+	 * The layout ignores anything a mode does to the scrollbars while the
+	 * window is zoomed.
+	 */
+	if (layout && (w->flags & WINDOW_ZOOMED))
+		reserve = (!SCREEN_IS_ALTERNATE(&wp->base) &&
+		    w->sb == PANE_SCROLLBARS_ALWAYS);
+	else
+		reserve = window_pane_scrollbar_reserve(wp);
+	if (reserve) {
+		sb_w = wp->scrollbar_style.width;
+		sb_pad = wp->scrollbar_style.pad;
+		if (sb_w < 1)
+			sb_w = 1;
+		if (sb_pad < 0)
+			sb_pad = 0;
+		if (w->sb_pos == PANE_SCROLLBARS_LEFT) {
+			if ((int)*sx - sb_w - sb_pad < PANE_MINIMUM) {
+				*xoff = *xoff + (int)*sx - PANE_MINIMUM;
+				*sx = PANE_MINIMUM;
+			} else {
+				*sx = *sx - sb_w - sb_pad;
+				*xoff = *xoff + sb_w + sb_pad;
+			}
+		} else /* sb_pos == PANE_SCROLLBARS_RIGHT */
+			if ((int)*sx - sb_w - sb_pad < PANE_MINIMUM)
+				*sx = PANE_MINIMUM;
+			else
+				*sx = *sx - sb_w - sb_pad;
+	}
+}
+
 /* Update pane offsets and sizes based on their cells. */
 void
 layout_fix_panes(struct window *w, struct window_pane *skip)
 {
 	struct window_pane	*wp;
-	struct layout_cell	*lc, *root = w->layout_root;
-	int			 status, sb_w, sb_pad;
 	int			 old_xoff, old_yoff, changed = 0;
-	u_int			 sx, sy, old_sx, old_sy;
+	u_int			 old_sx, old_sy, sx, sy;
+	int			 xoff, yoff;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if ((lc = wp->layout_cell) == NULL || wp == skip)
+		if (wp->layout_cell == NULL || wp == skip)
+			continue;
+		if (wp->flags & PANE_HIDDEN)
 			continue;
 
 		old_xoff = wp->xoff;
@@ -434,42 +509,9 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		old_sx = wp->sx;
 		old_sy = wp->sy;
 
-		wp->xoff = lc->g.xoff;
-		wp->yoff = lc->g.yoff;
-		sx = lc->g.sx;
-		sy = lc->g.sy;
-
-		status = window_pane_get_pane_status(wp);
-		if (!window_pane_is_floating(wp) &&
-		    layout_add_horizontal_border(root, lc, status)) {
-			if (status == PANE_STATUS_TOP)
-				wp->yoff++;
-			if (sy > 1)
-				sy--;
-		}
-
-		if (window_pane_scrollbar_reserve(wp)) {
-			sb_w = wp->scrollbar_style.width;
-			sb_pad = wp->scrollbar_style.pad;
-			if (sb_w < 1)
-				sb_w = 1;
-			if (sb_pad < 0)
-				sb_pad = 0;
-			if (w->sb_pos == PANE_SCROLLBARS_LEFT) {
-				if ((int)sx - sb_w - sb_pad < PANE_MINIMUM) {
-					wp->xoff = wp->xoff +
-					    (int)sx - PANE_MINIMUM;
-					sx = PANE_MINIMUM;
-				} else {
-					sx = sx - sb_w - sb_pad;
-					wp->xoff = wp->xoff + sb_w + sb_pad;
-				}
-			} else /* sb_pos == PANE_SCROLLBARS_RIGHT */
-				if ((int)sx - sb_w - sb_pad < PANE_MINIMUM)
-					sx = PANE_MINIMUM;
-				else
-					sx = sx - sb_w - sb_pad;
-		}
+		layout_get_pane_geometry(wp, 0, &xoff, &yoff, &sx, &sy);
+		wp->xoff = xoff;
+		wp->yoff = yoff;
 
 		window_pane_resize(wp, sx, sy);
 
@@ -1685,10 +1727,6 @@ layout_get_tiled_cell(struct cmdq_item *item, struct args *args,
 		return (NULL);
 	}
 
-	if (window_active_pane_is_over_zoom(w))
-		window_push_zoom(w, 0, 1);
-	else
-		window_push_zoom(w, 1, (flags & SPAWN_ZOOM));
 	lc = layout_split_pane(wp, type, size, flags);
 	if (lc == NULL)
 		*cause = xstrdup("no space for a new pane");
@@ -1715,12 +1753,6 @@ layout_get_floating_cell(struct cmdq_item *item, struct args *args,
 			return (NULL);
 	}
 
-	if (flags & SPAWN_FLOATOVERZOOM)
-		window_push_zoom(wp->window, 0, 1);
-	else if (window_active_pane_is_over_zoom(w))
-		window_push_zoom(wp->window, 0, 1);
-	else
-		window_push_zoom(wp->window, 1, (flags & SPAWN_ZOOM));
 	lcnew = layout_floating_pane(w, wp, &fg);
 	return (lcnew);
 }

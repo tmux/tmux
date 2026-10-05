@@ -42,7 +42,6 @@ resize_fire_window_resized(struct window *w, u_int old_sx, u_int old_sy)
 void
 resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 {
-	struct window_pane	*zwp;
 	u_int			 old_sx = w->sx, old_sy = w->sy;
 
 	/* Check size limits. */
@@ -54,11 +53,6 @@ resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 		sy = WINDOW_MINIMUM;
 	if (sy > WINDOW_MAXIMUM)
 		sy = WINDOW_MAXIMUM;
-
-	/* If the window is zoomed, unzoom. */
-	zwp = window_zoomed_pane(w);
-	if (zwp != NULL)
-		window_unzoom(w, 1);
 
 	/* Resize the layout first. */
 	layout_resize(w, sx, sy);
@@ -72,9 +66,9 @@ resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 	log_debug("%s: @%u resized to %ux%u; layout %ux%u", __func__, w->id,
 	    sx, sy, w->layout_root->g.sx, w->layout_root->g.sy);
 
-	/* Restore the window zoom state. */
-	if (zwp != NULL && window_has_pane(w, zwp))
-		window_zoom(zwp);
+	/* Zoomed panes follow the window size. */
+	if (w->flags & WINDOW_ZOOMED)
+		layout_fix_panes(w, NULL);
 
 	tty_update_window_offset(w);
 	server_redraw_window(w);

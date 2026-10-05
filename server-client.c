@@ -680,7 +680,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 				return (KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER);
 			} else /* py > sl_bottom */
 				return (KEYC_MOUSE_LOCATION_SCROLLBAR_DOWN);
-		} else if (window_pane_is_floating(wp) &&
+		} else if (window_pane_is_unzoomed_float(wp) &&
 		    window_pane_get_pane_lines(wp) != PANE_LINES_NONE &&
 		    (px == bdr_left ||
 		    py == wp->yoff - 1 ||
@@ -696,7 +696,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 		TAILQ_FOREACH(fwp, &w->panes, entry) {
 			if (!window_pane_is_visible(fwp))
 				continue;
-			if (window_pane_is_floating(fwp) &&
+			if (window_pane_is_unzoomed_float(fwp) &&
 			    window_pane_get_pane_lines(fwp) == PANE_LINES_NONE)
 				continue;
 			if (window_pane_scrollbar_reserve(fwp)) {
@@ -1066,7 +1066,7 @@ have_event:
 		    wp != w->active &&
 		    options_get_number(s->options, "focus-follows-mouse")) {
 			window_redraw_active_switch(w, wp);
-			window_set_active_pane(w, wp, 1);
+			window_focus_pane(w, wp, 1);
 			server_redraw_window_borders(w);
 			server_status_window(w);
 		}
@@ -2128,6 +2128,10 @@ server_client_reset_state(struct client *c)
 				if (status_at_line(c) == 0)
 					cy += status_line_size(c);
 			}
+
+			/* A hidden pane has no cursor. */
+			if (!window_pane_is_visible(wp))
+				cursor = 0;
 
 			if (!cursor)
 				mode &= ~MODE_CURSOR;

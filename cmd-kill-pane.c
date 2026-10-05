@@ -78,7 +78,6 @@ cmd_kill_pane_all(struct cmdq_item *item, const char *filter)
 	struct window_pane	*wp = target->wp;
 	struct window_pane	*loopwp, *tmpwp;
 
-	server_unzoom_window(wl->window);
 	TAILQ_FOREACH_SAFE(loopwp, &wl->window->panes, entry, tmpwp) {
 		if (loopwp == wp)
 			continue;

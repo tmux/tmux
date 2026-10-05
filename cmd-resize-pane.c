@@ -41,8 +41,8 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.name = "resize-pane",
 	.alias = "resizep",
 
-	.args = { "D::L::MR::Tt:U::x:y:Z", 0, 1, NULL },
-	.usage = "[-MTZ] [-D lines] [-L columns] [-R columns] [-U lines] "
+	.args = { "aD::HL::MR::Tt:U::x:y:Z", 0, 1, NULL },
+	.usage = "[-aHMTZ] [-D lines] [-L columns] [-R columns] [-U lines] "
 		 "[-x width] [-y height] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -50,6 +50,55 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_resize_pane_exec
 };
+
+/*
+ * Show the desktop: hide every pane above the layout, remembering which, or if
+ * any were hidden like that show just those again: floating panes first, then
+ * zoomed panes.
+ */
+static void
+cmd_resize_pane_desktop(struct window *w)
+{
+	struct window_pane	*wp;
+	int			 shown = 0, zoomed;
+
+	/*
+	 * Panes hidden by an earlier call are marked. Show the marked panes
+	 * that are not zoomed first, then the zoomed ones on the next call; if
+	 * none are left hide every floating and zoomed pane.
+	 */
+	for (zoomed = 0; zoomed <= 1 && !shown; zoomed++) {
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (~wp->flags & PANE_HIDDENALL)
+				continue;
+			if (zoomed != ((wp->flags & PANE_ZOOMED) != 0))
+				continue;
+			window_show_pane(wp);
+			shown = 1;
+		}
+	}
+	if (shown) {
+		/* Do not leave the active pane covered by a pane just shown. */
+		if (!window_pane_is_visible(w->active)) {
+			TAILQ_FOREACH(wp, &w->z_index, zentry) {
+				if (window_pane_is_visible(wp))
+					break;
+			}
+			if (wp != NULL)
+				window_set_active_pane(w, wp, 1);
+		}
+		return;
+	}
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp == w->modal || (wp->flags & PANE_HIDDEN))
+			continue;
+		if (!window_pane_is_raised(wp))
+			continue;
+		window_hide_pane(wp);
+		wp->flags |= PANE_HIDDENALL;
+	}
+}
 
 static enum cmd_retval
 cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
@@ -83,17 +132,34 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'M'))
 		return (cmd_resize_pane_mouse_update(self, item));
 
+	if (args_has(args, 'H')) {
+		if (args_has(args, 'a'))
+			cmd_resize_pane_desktop(w);
+		else if (wp->flags & PANE_HIDDEN) {
+			window_set_active_pane(w, wp, 1);
+			if (wp->flags & PANE_HIDDEN) {
+				cmdq_error(item, "no space to show pane");
+				return (CMD_RETURN_ERROR);
+			}
+		} else
+			window_hide_pane(wp);
+		server_redraw_window(w);
+		return (CMD_RETURN_NORMAL);
+	}
 	if (args_has(args, 'Z')) {
-		if (w->flags & WINDOW_ZOOMED)
+		if (args_has(args, 'a'))
 			window_unzoom(w, 1);
+		else if (wp->flags & PANE_ZOOMED)
+			window_unzoom_pane(wp, 1);
 		else
 			window_zoom(wp);
 		server_redraw_window(w);
 		return (CMD_RETURN_NORMAL);
 	}
-	if (!window_pane_is_floating(wp))
-		server_unzoom_window(w);
-	lc = wp->layout_cell; /* may have been replaced by unzoom */
+	if ((wp->flags & PANE_HIDDEN) && !window_pane_is_floating(wp))
+		window_show_pane(wp);
+	if (wp->flags & PANE_ZOOMED)
+		window_unzoom_pane(wp, 1);
 
 	if (args_has(args, 'x')) {
 		x = args_percentage(args, 'x', 0, PANE_MAXIMUM, w->sx, &cause);
@@ -207,6 +273,8 @@ cmd_resize_pane_mouse_update(__unused struct cmd *self, struct cmdq_item *item)
 	if (wp == NULL || c == NULL || c->session != s)
 		return (CMD_RETURN_NORMAL);
 
+	if (wp->flags & PANE_ZOOMED)
+		return (CMD_RETURN_NORMAL);
 	if (!window_pane_is_floating(wp)) {
 		c->tty.mouse_drag_update = cmd_resize_pane_mouse_resize_tiled;
 		cmd_resize_pane_mouse_resize_tiled(c, &event->m);
