@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-parse.y,v 1.60 2026/09/08 10:20:08 nicm Exp $ */
+/* $OpenBSD: cmd-parse.y,v 1.61 2026/10/05 13:45:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -41,6 +41,7 @@ static char			*yylex_format(void);
 
 struct cmd_parse_scope {
 	int				 flag;
+	int				 taken;
 	TAILQ_ENTRY (cmd_parse_scope)	 entry;
 };
 
@@ -272,6 +273,7 @@ if_open		: IF expanded
 
 			scope = xmalloc(sizeof *scope);
 			$$ = scope->flag = format_true($2);
+			scope->taken = scope->flag;
 			free($2);
 
 			if (ps->scope != NULL)
@@ -285,7 +287,8 @@ if_else		: ELSE
 			struct cmd_parse_scope	*scope;
 
 			scope = xmalloc(sizeof *scope);
-			scope->flag = !ps->scope->flag;
+			scope->flag = !ps->scope->taken;
+			scope->taken = 1;
 
 			free(ps->scope);
 			ps->scope = scope;
@@ -297,7 +300,9 @@ if_elif		: ELIF expanded
 			struct cmd_parse_scope	*scope;
 
 			scope = xmalloc(sizeof *scope);
-			$$ = scope->flag = format_true($2);
+			scope->flag = !ps->scope->taken && format_true($2);
+			scope->taken = ps->scope->taken || scope->flag;
+			$$ = scope->flag;
 			free($2);
 
 			free(ps->scope);
