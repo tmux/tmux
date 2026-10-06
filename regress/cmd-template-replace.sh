@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# Exercise cmd_template_replace through command-prompt, which passes prompt
-# input as argv to args_make_commands. This covers the quoting modes, indexed
-# replacements, and cases where replacements are intentionally not made.
+# Exercise invocation-time template replacement through command-prompt. String
+# and braced templates are parsed before prompting; responses are literal argv
+# values and cannot add arguments or commands to the stored tree.
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -115,6 +115,26 @@ $IN bind -n M-i command-prompt -p 'one,two' 'set -g @double_index "%2%"' ||
 $IN bind -n M-n command-prompt -p '(none)' \
 	"set -g @plain no-template-markers" ||
 	exit 1
+$IN bind -n M-u command-prompt -p '(unmatched)' \
+	"set -g @plain '%9 %0 %'" || exit 1
+
+# Command-valued bodies must have the same replacement behaviour as strings.
+cat >"$TMP/bindings.conf" <<'EOF'
+bind -n M-b command-prompt -p '(braced)' { set -g @r '%%' }
+bind -n M-t command-prompt -p '(first)' {
+  set -g @first '%%'
+  set -g @second '%%'
+}
+bind -n M-v command-prompt -p 'one,two' {
+  set -g @one %1
+  set -g @two %2
+  set -g @two_again %2
+  set -g @r '%%'
+}
+bind -n M-q command-prompt -p '(indexed)' { set -g @r %1 }
+bind -n M-w command-prompt -p '(within)' { set -g @r '%%/%%' }
+EOF
+$IN source-file "$TMP/bindings.conf" || exit 1
 
 $OUT new -d -x80 -y24 || exit 1
 $OUT set -g status off || exit 1
@@ -125,8 +145,7 @@ sleep 1
 
 reset_options
 
-# %% is for templates already inside single quotes. A single quote in the
-# replacement must stay data and must not close the surrounding quotes.
+# Quoting has already been parsed. Quotes in a response stay literal data.
 payload="can't ; set -g @marker changed ; done"
 accept_prompt M-s "$payload"
 wait_option @r "$payload"
@@ -139,18 +158,19 @@ accept_prompt M-f "$payload"
 wait_option @first "$payload"
 wait_option @second %%
 
-# %%% keeps the previous double-quote escaping behaviour.
+# %%% is accepted like %%, without adding quotation escapes to the value.
 reset_options
 payload='a"$;~\z'
 accept_prompt M-d "$payload"
 wait_option @r "$payload"
 
-# %1 is intentionally left raw as an escape hatch.
+# Indexed replacements are also data, so semicolons cannot add commands.
 reset_options
 $IN set -g @raw_tail unchanged || exit 1
-accept_prompt M-r 'raw ; set -g @raw_tail yes'
-wait_option @r raw
-wait_option @raw_tail yes
+payload='raw ; set -g @raw_tail yes'
+accept_prompt M-r "$payload"
+wait_option @r "$payload"
+wait_option @raw_tail unchanged
 
 # All instances of %1 are replaced.
 reset_options
@@ -166,11 +186,55 @@ wait_option @one one
 wait_option @two two
 wait_option @two_again two
 
-# %idx% uses double-quote escaping for indexed replacements.
+# %idx% is accepted like %idx, with no quotation escaping.
 reset_options
 payload='b"$;~\y'
 accept_two_prompts M-i ignored "$payload"
 wait_option @double_index "$payload"
+
+# Responses are not scanned again for markers from later prompt values.
+reset_options
+accept_two_prompts M-m '%2/%%' two
+wait_option @one '%2/%%'
+wait_option @two two
+wait_option @two_again two
+
+# A missing response and invalid or trailing percent markers stay literal.
+reset_options
+accept_prompt M-u unused
+wait_option @plain '%9 %0 %'
+
+# Reuse the stored string tree with a different response. Expansion must not
+# mutate the tree or carry the first-%% state across separate invocations.
+reset_options
+payload="another'quote"
+accept_prompt M-s "$payload"
+wait_option @r "$payload"
+
+# Braced bodies preserve the same first-%% rule across commands and within an
+# argument. Indexed replacements do not consume this first-%% marker.
+reset_options
+payload="brace'quote ; set -g @marker changed"
+accept_prompt M-b "$payload"
+wait_option @r "$payload"
+wait_option @marker unchanged
+accept_prompt M-t "$payload"
+wait_option @first "$payload"
+wait_option @second %%
+accept_prompt M-w value
+wait_option @r 'value/%%'
+
+reset_options
+accept_two_prompts M-v '%2/%%' two
+wait_option @one '%2/%%'
+wait_option @two two
+wait_option @two_again two
+wait_option @r '%2/%%'
+payload="can't ; set -g @marker changed"
+payload="$payload"' ; "$HOME" ~ \ %2'
+accept_prompt M-q "$payload"
+wait_option @r "$payload"
+wait_option @marker unchanged
 
 # A template without replacement markers is left alone.
 reset_options

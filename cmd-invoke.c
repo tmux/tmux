@@ -47,6 +47,7 @@ struct cmd_invoke_state {
 
 	int			 argc;
 	char		       **argv;
+	int			 replaced;
 };
 
 static void	cmd_invoke_push(struct cmd_invoke_state *,
@@ -182,6 +183,47 @@ cmd_invoke_tilde(const char *name)
 	return (pw->pw_dir);
 }
 
+/* Replace template markers in a parsed value without quoting or reparsing. */
+static char *
+cmd_invoke_replace(struct cmd_invoke_state *is, const char *s)
+{
+	const char	*cp = s, *value;
+	char		*buf = NULL, ch[2] = { 0 };
+	size_t		 len = 0;
+	int		 idx;
+
+	if (is->argc == 0 || strchr(s, '%') == NULL)
+		return (xstrdup(s));
+
+	while (*cp != '\0') {
+		value = NULL;
+		if (*cp == '%') {
+			idx = cp[1] - '1';
+			if (idx >= 0 && idx < 9 && idx < is->argc) {
+				value = is->argv[idx];
+				cp += 2;
+				if (*cp == '%')
+					cp++;
+			} else if (cp[1] == '%' && !is->replaced) {
+				is->replaced = 1;
+				value = is->argv[0];
+				cp += 2;
+				if (*cp == '%')
+					cp++;
+			}
+		}
+		if (value != NULL)
+			cmd_invoke_append(&buf, &len, value);
+		else {
+			ch[0] = *cp++;
+			cmd_invoke_append(&buf, &len, ch);
+		}
+	}
+	if (buf == NULL)
+		buf = xstrdup("");
+	return (buf);
+}
+
 /* Expand a parsed string node into an argv string. */
 static int
 cmd_invoke_expand_string(struct cmdq_item *item, struct cmd_invoke_state *is,
@@ -191,7 +233,6 @@ cmd_invoke_expand_string(struct cmdq_item *item, struct cmd_invoke_state *is,
 	const char		*s, *value;
 	char			*buf = NULL, *new;
 	size_t			 len = 0;
-	int			 i;
 
 	child = cmd_parse_node_first_child(node);
 	while (child != NULL) {
@@ -214,8 +255,8 @@ cmd_invoke_expand_string(struct cmdq_item *item, struct cmd_invoke_state *is,
 	}
 	if (buf == NULL)
 		buf = xstrdup("");
-	for (i = 0; i < is->argc; i++) {
-		new = cmd_template_replace(buf, is->argv[i], i + 1);
+	if (is->argc != 0) {
+		new = cmd_invoke_replace(is, buf);
 		free(buf);
 		buf = new;
 	}

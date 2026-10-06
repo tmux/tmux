@@ -8089,10 +8089,17 @@ Up to nine prompt responses may be replaced
 to
 .Ql %9
 .Pc .
+The template is parsed before prompting, and responses are substituted literally
+into its argument values without being parsed again.
+Spaces, quotes and semicolons in a response do not add arguments or commands.
 .Ql %%%
-is like
+is accepted like
 .Ql %%
-but any quotation marks are escaped.
+and
+.Ql %1%
+like
+.Ql %1 ,
+without adding escapes.
 .Pp
 .Fl 1
 makes the prompt only accept one key press, in this case the resulting input
