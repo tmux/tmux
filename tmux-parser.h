@@ -72,6 +72,7 @@ enum cmd_parse_node_type {
 };
 
 #define CMD_PARSE_PRINT_MULTILINE 0x1
+#define CMD_PARSE_PRINT_RAW 0x2
 
 struct cmd_parse_tree	*cmd_parse_from_file(FILE *, struct cmd_parse_input *,
 			    char **);

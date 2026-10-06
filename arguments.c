@@ -114,8 +114,10 @@ args_value_as_string(struct args_value *value)
 	case ARGS_NONE:
 		return ("");
 	case ARGS_COMMANDS:
-		if (value->cached == NULL)
-			value->cached = cmd_parse_print(value->cmd, 0);
+		if (value->cached == NULL) {
+			value->cached = cmd_parse_print(value->cmd,
+			    CMD_PARSE_PRINT_RAW);
+		}
 		return (value->cached);
 	case ARGS_STRING:
 		return (value->string);

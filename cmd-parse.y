@@ -1174,9 +1174,9 @@ cmd_parse_print_string(char **buf, struct cmd_parse_node *string)
 }
 
 static const char *
-cmd_parse_print_separator(u_int depth)
+cmd_parse_print_separator(u_int depth, int flags)
 {
-	if (depth == 0)
+	if (depth == 0 && (~flags & CMD_PARSE_PRINT_RAW))
 		return (" \\; ");
 	return (" ; ");
 }
@@ -1318,7 +1318,7 @@ cmd_parse_print_sequence(char **buf, struct cmd_parse_node *seq, u_int depth,
     int flags)
 {
 	struct cmd_parse_node	*child, *first_child;
-	const char		*sep = cmd_parse_print_separator(depth);
+	const char		*sep = cmd_parse_print_separator(depth, flags);
 	int			 first = 1;
 
 	/*
@@ -1343,6 +1343,7 @@ char *
 cmd_parse_print(struct cmd_parse_tree *tree, int flags)
 {
 	struct cmd_parse_node	*root = tree->root, *child;
+	const char		*sep = cmd_parse_print_separator(0, flags);
 	char			*buf = NULL;
 	int			 first = 1;
 
@@ -1351,7 +1352,7 @@ cmd_parse_print(struct cmd_parse_tree *tree, int flags)
 			if (flags & CMD_PARSE_PRINT_MULTILINE)
 				cmd_parse_strcat(&buf, "\n");
 			else
-				cmd_parse_strcat(&buf, " \\; ");
+				cmd_parse_strcat(&buf, "%s", sep);
 		}
 		first = 0;
 		cmd_parse_print_sequence(&buf, child, 0, flags);
