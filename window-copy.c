@@ -1608,7 +1608,7 @@ window_copy_cmd_select_output(struct window_copy_cmd_state *cs)
 	struct grid_reader		 gr;
 	void				*buf;
 	size_t				 len;
-	u_int				 sx, sy, ex, ey, total;
+	u_int				 sx, sy, ex, ey, total, last;
 	int				 all = args_has(cs->wargs, 'a');
 
 	if (all) {
@@ -1631,6 +1631,9 @@ window_copy_cmd_select_output(struct window_copy_cmd_state *cs)
 	window_copy_start_selection(wme);
 	if (options_get_number(wme->wp->window->options, "mode-keys") ==
 	    MODEKEY_VI) {
+		last = window_copy_find_length(wme, ey);
+		if (ex > last)
+			ex = last;
 		grid_reader_start(&gr, data->backing->grid, ex, ey);
 		grid_reader_cursor_left(&gr, 1);
 		grid_reader_get_cursor(&gr, &ex, &ey);
@@ -6274,6 +6277,13 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 		if (gl->flags & GRID_LINE_START_OUTPUT && in_range) {
 			*sx = od->out_start_col;
 			*sy = y;
+			found_start = 1;
+		}
+		/* Both A and C may have left history while D remains. */
+		if (!found_start && prompt_y == UINT_MAX &&
+		    gl->flags & GRID_LINE_END_OUTPUT &&
+		    (!next_prompt || od->out_end_col <= od->prompt_col)) {
+			*sx = *sy = 0;
 			found_start = 1;
 		}
 		/* An output may end on the same line or the next prompt's. */

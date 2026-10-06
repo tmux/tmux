@@ -142,4 +142,19 @@ check_output below "$expected"
 check_selection below "$expected"
 check_pipe below "$expected"
 
+# Selection trims trailing cells without adding a newline in vi mode.
+for suffix in '   \033]133;D;0\007' '\033[5C\033]133;D;0\007' '   '; do
+	start_pane_history trailing 80 20 \
+	    "${prompt}\033]133;C\007one${suffix}"
+	check_output trailing one
+	check_selection trailing one
+done
+
+# A newline before D is part of the output, including after spaces.
+start_pane_history newline 80 20 \
+    "${prompt}\033]133;C\007one   \n\033]133;D;0\007"
+expected=$(printf 'one\n_')
+check_output newline "${expected%_}"
+check_selection newline "${expected%_}"
+
 exit $exit_status
