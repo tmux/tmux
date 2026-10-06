@@ -5184,7 +5184,7 @@ bind User0 resize\-pane \-L 3
 .Op Ic on | off
 .Xc
 Maintain utmp records for panes using
-.Em utempter .
+.Xr utempter 3 .
 The default is on.
 Turning this option off asks utempter to remove existing records and prevents
 new records from being added.
@@ -5192,7 +5192,7 @@ Turning it on asks utempter to add records for existing panes with running
 commands.
 Empty panes are not recorded.
 Updates to wtmp are performed by
-.Em utempter
+.Xr utempter 3
 according to the system configuration; existing history is not erased.
 This option has no effect if
 .Nm
