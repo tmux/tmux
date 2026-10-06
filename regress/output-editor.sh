@@ -72,4 +72,49 @@ wait_editor selection
 [ "$($TMUX display-message -p -t edit:0 '#{selection_present}')" = 1 ] || exit 1
 
 $TMUX send-keys -t edit:0 -X cancel || exit 1
+
+# Both active and stopped single-character selections use the editor binding.
+printf 'o' >"$DIR/expected" || exit 1
+for keys in emacs vi; do
+	$TMUX set-option -w -t edit:0 mode-keys "$keys" || exit 1
+	case "$keys" in
+	emacs) binding=e ;;
+	vi) binding=M-e ;;
+	esac
+	for state in active stopped; do
+		name="$keys-$state"
+		$TMUX set-option -g editor "sh $DIR/editor.sh $name" || exit 1
+		$TMUX copy-mode -t edit:0 || exit 1
+		$TMUX send-keys -t edit:0 -X search-backward one || exit 1
+		$TMUX send-keys -t edit:0 -X begin-selection || exit 1
+		if [ "$keys" = emacs ]; then
+			$TMUX send-keys -t edit:0 -X cursor-right || exit 1
+		fi
+		if [ "$state" = stopped ]; then
+			$TMUX send-keys -t edit:0 -X stop-selection || exit 1
+		fi
+		[ "$($TMUX display-message -p -t edit:0 \
+		    '#{selection_present}')" = 1 ] || exit 1
+		$TMUX send-keys -t edit:0 "$binding" || exit 1
+		wait_editor "$name"
+		cmp "$DIR/expected" "$DIR/$name" || exit 1
+		[ "$($TMUX show-buffer)" = sentinel ] || exit 1
+		$TMUX send-keys -t edit:0 -X cancel || exit 1
+	done
+done
+
+# An empty emacs selection still opens the output.
+printf 'one\ntwo\n' >"$DIR/expected" || exit 1
+$TMUX set-option -w -t edit:0 mode-keys emacs || exit 1
+$TMUX set-option -g editor "sh $DIR/editor.sh empty" || exit 1
+$TMUX copy-mode -t edit:0 || exit 1
+$TMUX send-keys -t edit:0 -X search-backward one || exit 1
+$TMUX send-keys -t edit:0 -X begin-selection || exit 1
+[ "$($TMUX display-message -p -t edit:0 '#{selection_present}')" = 0 ] ||
+    exit 1
+$TMUX send-keys -t edit:0 e || exit 1
+wait_editor empty
+cmp "$DIR/expected" "$DIR/empty" || exit 1
+$TMUX send-keys -t edit:0 -X cancel || exit 1
+
 exit 0

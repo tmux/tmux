@@ -141,6 +141,8 @@ static void	window_copy_copy_selection(struct window_mode_entry *,
 		    const char *, int, int);
 static void	window_copy_append_selection(struct window_mode_entry *);
 static void	window_copy_clear_selection(struct window_mode_entry *);
+static u_int	window_copy_copy_line_length(struct window_mode_entry *, u_int,
+		    int *);
 static void	window_copy_copy_line(struct window_mode_entry *, char **,
 		    size_t *, u_int, u_int, u_int);
 static int	window_copy_in_set(struct window_mode_entry *, u_int, u_int,
@@ -1123,6 +1125,7 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 	u_int				 position, limit;
 	struct grid_line		*gl;
 	time_t				 t;
+	int				 keys;
 
 	gl = grid_get_line(data->backing->grid, hsize - data->oy);
 	t = grid_line_time(gl);
@@ -1156,7 +1159,9 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 			format_add(ft, "selection_active", "1");
 		else
 			format_add(ft, "selection_active", "0");
-		if (data->endselx != data->selx || data->endsely != data->sely)
+		keys = options_get_number(wme->wp->window->options, "mode-keys");
+		if (keys == MODEKEY_VI || data->endselx != data->selx ||
+		    data->endsely != data->sely)
 			format_add(ft, "selection_present", "1");
 		else
 			format_add(ft, "selection_present", "0");
@@ -1610,6 +1615,7 @@ window_copy_cmd_select_output(struct window_copy_cmd_state *cs)
 	size_t				 len;
 	u_int				 sx, sy, ex, ey, total, last;
 	int				 all = args_has(cs->wargs, 'a');
+	int				 wrapped;
 
 	if (all) {
 		sx = sy = 0;
@@ -1631,12 +1637,19 @@ window_copy_cmd_select_output(struct window_copy_cmd_state *cs)
 	window_copy_start_selection(wme);
 	if (options_get_number(wme->wp->window->options, "mode-keys") ==
 	    MODEKEY_VI) {
-		last = window_copy_find_length(wme, ey);
+		last = window_copy_copy_line_length(wme, ey, NULL);
 		if (ex > last)
 			ex = last;
-		grid_reader_start(&gr, data->backing->grid, ex, ey);
-		grid_reader_cursor_left(&gr, 1);
-		grid_reader_get_cursor(&gr, &ex, &ey);
+		if (ex == 0 && ey > 0) {
+			ey--;
+			ex = window_copy_copy_line_length(wme, ey, &wrapped);
+			if (wrapped && ex > 0)
+				ex--;
+		} else {
+			grid_reader_start(&gr, data->backing->grid, ex, ey);
+			grid_reader_cursor_left(&gr, 1);
+			grid_reader_get_cursor(&gr, &ex, &ey);
+		}
 	}
 	window_copy_scroll_to(wme, ex, ey, 1);
 	return (WINDOW_COPY_CMD_REDRAW);
@@ -6467,7 +6480,7 @@ window_copy_get_selection(struct window_mode_entry *wme, size_t *len)
 	size_t				 off;
 	u_int				 i, xx, yy, sx, sy, ex, ey, ey_last;
 	u_int				 firstsx, lastex, restex, restsx, selx;
-	int				 keys;
+	int				 keys, wrapped;
 
 	if (data->screen.sel == NULL && data->lineflag == LINE_SEL_NONE) {
 		buf = window_copy_match_at_cursor(data);
@@ -6500,7 +6513,7 @@ window_copy_get_selection(struct window_mode_entry *wme, size_t *len)
 	}
 
 	/* Trim ex to end of line. */
-	ey_last = window_copy_find_length(wme, ey);
+	ey_last = window_copy_copy_line_length(wme, ey, &wrapped);
 	if (ex > ey_last)
 		ex = ey_last;
 
@@ -6571,8 +6584,7 @@ window_copy_get_selection(struct window_mode_entry *wme, size_t *len)
 	}
 	 /* Remove final \n (unless at end in vi mode). */
 	if (keys == MODEKEY_EMACS || lastex <= ey_last) {
-		if (~grid_get_line(data->backing->grid, ey)->flags &
-		    GRID_LINE_WRAPPED || lastex != ey_last)
+		if (!wrapped || lastex != ey_last)
 			off -= 1;
 	}
 	*len = off;
@@ -6709,6 +6721,27 @@ window_copy_append_selection(struct window_mode_entry *wme)
 	free(bufname);
 }
 
+/* Get the length for copying, preserving spaces on wrapped lines. */
+static u_int
+window_copy_copy_line_length(struct window_mode_entry *wme, u_int sy,
+    int *wrapped)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->backing->grid;
+	struct grid_line		*gl = grid_get_line(gd, sy);
+	u_int				 length;
+	int				 line_wrapped;
+
+	line_wrapped = (gl->flags & GRID_LINE_WRAPPED && gl->cellsize <= gd->sx);
+	if (wrapped != NULL)
+		*wrapped = line_wrapped;
+	if (line_wrapped)
+		length = gl->cellsize;
+	else
+		length = window_copy_find_length(wme, sy);
+	return (length);
+}
+
 static void
 window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
     u_int sy, u_int sx, u_int ex)
@@ -6716,27 +6749,15 @@ window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*gd = data->backing->grid;
 	struct grid_cell		 gc;
-	struct grid_line		*gl;
 	struct utf8_data		 ud;
-	u_int				 i, xx, wrapped = 0;
+	u_int				 i, xx;
 	const char			*s;
+	int				 wrapped;
 
 	if (sx > ex)
 		return;
 
-	/*
-	 * Work out if the line was wrapped at the screen edge and all of it is
-	 * on screen.
-	 */
-	gl = grid_get_line(gd, sy);
-	if (gl->flags & GRID_LINE_WRAPPED && gl->cellsize <= gd->sx)
-		wrapped = 1;
-
-	/* If the line was wrapped, don't strip spaces (use the full length). */
-	if (wrapped)
-		xx = gl->cellsize;
-	else
-		xx = window_copy_find_length(wme, sy);
+	xx = window_copy_copy_line_length(wme, sy, &wrapped);
 	if (ex > xx)
 		ex = xx;
 	if (sx > xx)

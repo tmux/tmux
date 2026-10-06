@@ -157,4 +157,16 @@ expected=$(printf 'one\n_')
 check_output newline "${expected%_}"
 check_selection newline "${expected%_}"
 
+# Wrapped cells keep spaces, even when D splits a wrapped line.
+for payload in 'one' 'one   ' 'one     ' '        ' 'long-output     '; do
+	seq="${prompt}\033]133;C\007${payload}\033]133;D;0\007"
+	start_pane_history wrapped 8 20 "${seq}        separator"
+	check_output wrapped "$payload"
+	check_selection wrapped "$payload"
+	$TMUX resize-window -t wrapped: -x 80 || exit 1
+	$TMUX resize-window -t wrapped: -x 8 || exit 1
+	check_output wrapped "$payload"
+	check_selection wrapped "$payload"
+done
+
 exit $exit_status
