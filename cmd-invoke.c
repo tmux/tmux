@@ -253,11 +253,20 @@ cmd_invoke_is_true(struct cmdq_item *item,
     struct cmd_invoke_state *is, struct cmd_parse_node *node, int *result)
 {
 	struct format_tree	*ft;
+	struct cmd_find_state	*current, fs;
+	struct client		*c;
 	char			*s, *expanded;
 
 	if (cmd_invoke_expand_string(item, is, node, &s) != 0)
 		return (-1);
-	ft = format_create_from_target(item);
+	c = cmd_find_client(item, NULL, 1);
+	current = cmdq_get_current(item);
+	if (!cmd_find_valid_state(current)) {
+		cmd_find_from_client(&fs, c, 0);
+		current = &fs;
+	}
+	ft = format_create(c, item, FORMAT_NONE, FORMAT_NOJOBS);
+	format_defaults(ft, c, current->s, current->wl, current->wp);
 
 	expanded = format_expand(ft, s);
 	*result = format_true(expanded);
