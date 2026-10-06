@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1175 2026/10/06 08:01:54 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1176 2026/10/06 11:30:31 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -5283,6 +5283,13 @@ If
 .Ic keep\-group ,
 destroy the session unless it is in a group and is the only session in that
 group.
+A session without attached clients is destroyed or kept as follows:
+.Bl -column "in group, NOT last" "keep" "destroy" "keep\-last" "keep\-group"
+.It Sy "Session" Ta Sy "off" Ta Sy "on" Ta Sy "keep\-last" Ta Sy "keep\-group"
+.It Li "NOT in group" Ta keep Ta destroy Ta keep Ta destroy
+.It Li "in group, NOT last" Ta keep Ta destroy Ta destroy Ta destroy
+.It Li "last in group" Ta keep Ta destroy Ta keep Ta keep
+.El
 .It Xo Ic detach\-on\-destroy
 .Op Ic off | on | no\-detached | previous | next
 .Xc
