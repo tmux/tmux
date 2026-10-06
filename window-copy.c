@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.433 2026/10/05 15:52:25 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.434 2026/10/06 07:57:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -7254,13 +7254,16 @@ static void
 window_copy_acquire_cursor_up(struct window_mode_entry *wme, u_int hsize,
     u_int oy, u_int oldy, u_int px, u_int py)
 {
+	struct window_copy_mode_data	*data = wme->data;
 	u_int	cy, yy, ny, nd;
 
 	yy = hsize - oy;
 	if (py < yy) {
 		ny = yy - py;
 		cy = 0;
-		nd = 1;
+		nd = oldy + ny + 1;
+		if (nd > screen_size_y(&data->screen))
+			nd = screen_size_y(&data->screen);
 	} else {
 		ny = 0;
 		cy = py - yy;
@@ -7286,8 +7289,8 @@ window_copy_acquire_cursor_down(struct window_mode_entry *wme, u_int hsize,
 	yy = sy - 1;
 	if (cy > yy) {
 		ny = cy - yy;
-		oldy = yy;
-		nd = 1;
+		oldy = oldy > ny ? oldy - ny : 0;
+		nd = sy - oldy;
 	} else {
 		ny = 0;
 		nd = cy - oldy + 1;
