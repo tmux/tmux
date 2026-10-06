@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1163 2026/09/01 12:49:49 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1175 2026/10/06 08:01:54 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: September 1 2026 $
+.Dd $Mdocdate: October 6 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1016,13 +1016,19 @@ Will run:
 /bin/sh \-c \[aq]vi \[ti]/.tmux.conf\[aq]
 .Ed
 .Pp
+Unless specified, tmux uses the value of
+.Ic default\-shell
+in place of
+.Pa /bin/sh .
+.Pp
 Additionally, the
 .Ic new\-window ,
 .Ic new\-session ,
 .Ic split\-window ,
-.Ic respawn\-window
-and
+.Ic respawn\-window ,
 .Ic respawn\-pane
+and
+.Ic display\-popup
 commands allow
 .Ar shell\-command
 to be given as multiple arguments and executed directly (without
@@ -1138,6 +1144,8 @@ The flags are:
 .Bl -tag -width Ds
 .It ignore\-size
 the client does not affect the size of other clients
+.It new\-layouts
+use the new layout string format
 .It no\-detach\-on\-destroy
 do not detach the client when the session it is attached to is destroyed if
 there are any other sessions
@@ -2721,8 +2729,8 @@ For example:
 .Bd -literal -offset indent
 $ tmux list\-windows
 0: ksh [159x48]
-    layout: bb62,159x48,0,0{79x48,0,0,79x48,80,0}
-$ tmux select\-layout \[aq]bb62,159x48,0,0{79x48,0,0,79x48,80,0}\[aq]
+    layout: {"V":2,"L":{"t":"h","w":159,"h":48,"x":0,"y":0,"c":[{"t":"p","w":79,"h":48,"x":0,"y":0,"l":0,"i":0,"I":"%0"},{"t":"p","w":79,"h":48,"x":80,"y":0,"a":true,"i":1,"I":"%2"}]}}
+$ tmux select\-layout \[aq]{"V":2,"L":{"t":"h","w":159,"h":48,"x":0,"y":0,"c":[{"t":"p","w":79,"h":48,"x":0,"y":0,"l":0,"i":0,"I":"%0"},{"t":"p","w":79,"h":48,"x":80,"y":0,"a":true,"i":1,"I":"%2"}]}}\[aq]
 .Ed
 .Pp
 .Nm
@@ -2810,7 +2818,7 @@ The pane must not already be floating or hidden, and the window must not
 be zoomed.
 .Tg capturep
 .It Xo Ic capture\-pane
-.Op Fl aeFHLpPRqCJMN
+.Op Fl aeFHILpPRqCJMN
 .Op Fl b Ar buffer\-name
 .Op Fl E Ar end\-line
 .Op Fl S Ar start\-line
@@ -2852,6 +2860,8 @@ captures only any output that the pane has received that is the beginning of an
 as-yet incomplete escape sequence.
 .Fl L
 includes the line number at the start of each line and
+.Fl I
+includes the time each line entered the history, or zero if not available.
 .Fl F
 includes the flags (where
 .Ql -
@@ -3612,13 +3622,20 @@ represents the window to be created; if the target already exists an error is
 shown, unless the
 .Fl k
 flag is used, in which case it is destroyed.
+.Ar window\-name
+is the name given to the new window, if any.
+.Pp
 If
 .Fl S
-is given and a window named
-.Ar window\-name
-already exists, it is selected (unless
+is given, an existing window is selected instead of creating a new one
+(unless
 .Fl d
-is also given in which case the command does nothing).
+is also given in which case the command does nothing):
+.Ar target\-window
+is preferred if it already identifies an existing window; otherwise a
+window named
+.Ar window\-name
+is selected if one exists.
 .Pp
 .Ar shell\-command
 is the command to execute.
@@ -3666,7 +3683,7 @@ but a different format may be specified with
 .Fl F .
 .Tg newp
 .It Xo Ic new\-pane
-.Op Fl AbCdefhIkKLMOPvWZ
+.Op Fl AbCDefhIkKLMOPvWZ
 .Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
@@ -3728,6 +3745,13 @@ all keys, including the prefix key, are passed directly to the modal pane.
 With
 .Fl C ,
 the modal pane is closed when the mouse is clicked outside it.
+With
+.Fl D ,
+the modal pane is closed when
+.Ql Escape
+or
+.Ql C-c
+is pressed.
 .Pp
 The
 .Fl L
@@ -4680,6 +4704,9 @@ flag unsets an option, so a session inherits the option from the global
 options (or with
 .Fl g ,
 restores a global option to the default).
+For an array option given with a key,
+.Fl u
+removes only that item.
 .Fl U
 unsets an option (like
 .Fl u )
@@ -5096,6 +5123,9 @@ The available features are:
 .Bl -tag -width Ds
 .It 256
 Supports 256 colours with the SGR escape sequences.
+.It appesc
+Supports application escape key mode, where the Escape key sends a sequence
+that cannot be mistaken for the start of another key.
 .It clipboard
 Allows setting the system clipboard.
 .It ccolour
@@ -5364,10 +5394,16 @@ section on how to specify
 .Ar style .
 .It Ic menu\-border\-lines Ar type
 Set the type of characters used for drawing menu borders.
-See
-.Ic popup\-border\-lines
-for possible values for
-.Ar border\-lines .
+.Ar type
+may be one of
+.Ic single ,
+.Ic rounded ,
+.Ic double ,
+.Ic heavy ,
+.Ic simple ,
+.Ic padded ,
+or
+.Ic none .
 .It Ic message\-command\-style Ar style
 Set status line message command style.
 This is used for the command prompt with
@@ -5541,8 +5577,18 @@ or
 more rows.
 .It Ic status\-format[] Ar format
 Specify the format to be used for each line of the status line.
-The default builds the top status line from the various individual status
-options below.
+The default first status line is built from the various individual status
+options below, the second shows the panes in the current window and the third
+the sessions.
+A default line may be extended rather than replaced by saving its default value
+in a user option and expanding that in the new value, for example:
+.Bd -literal -offset indent
+set \-g status 2
+set \-gu status\-format # start with default status line
+set \-gF @old_status_format1 "#{status\-format[1]}"
+set \-g status\-format[1] "#{E:@old_status_format1}#[nolist align=right]#{pane_current_path}"
+.Ed
+.Pp
 .It Ic status\-interval Ar interval
 Update the status line every
 .Ar interval
@@ -5991,6 +6037,8 @@ single lines using ACS or UTF\-8 characters
 double lines using UTF\-8 characters
 .It heavy
 heavy lines using UTF\-8 characters
+.It rounded
+single lines with rounded corners using UTF\-8 characters
 .It simple
 simple ASCII characters
 .It number
@@ -6024,48 +6072,6 @@ see the
 .Sx STYLES
 section.
 Attributes are ignored.
-.Pp
-.It Ic popup\-style Ar style
-Set the popup style.
-See the
-.Sx STYLES
-section on how to specify
-.Ar style .
-Attributes are ignored.
-.Pp
-.It Ic popup\-border\-style Ar style
-Set the popup border style.
-See the
-.Sx STYLES
-section on how to specify
-.Ar style .
-Attributes are ignored.
-.Pp
-.It Ic popup\-border\-lines Ar type
-Set the type of characters used for drawing popup borders.
-.Ar type
-may be one of:
-.Bl -tag -width Ds
-.It single
-single lines using ACS or UTF\-8 characters (default)
-.It rounded
-variation of single with rounded corners using UTF\-8 characters
-.It double
-double lines using UTF\-8 characters
-.It heavy
-heavy lines using UTF\-8 characters
-.It simple
-simple ASCII characters
-.It padded
-simple ASCII space character
-.It none
-no border
-.El
-.Pp
-.Ql double
-and
-.Ql heavy
-will fall back to standard ACS line drawing when UTF\-8 is not supported.
 .Pp
 .It Xo Ic pane\-scrollbars
 .Op Ic off | modal | on | auto\-hide
@@ -6346,7 +6352,7 @@ uses when the colour with that index is requested.
 The index may be from zero to 255.
 .Pp
 .It Xo Ic remain\-on\-exit
-.Op Ic on | off | failed | key
+.Op Ic on | off | failed | key | failed\-key
 .Xc
 A pane with this flag set is not destroyed when the program running in it
 exits.
@@ -6356,6 +6362,10 @@ then only when the program exit status is not zero.
 If set to
 .Ic key ,
 the pane stays open and closes when a key is pressed.
+If set to
+.Ic failed\-key ,
+the pane stays open and closes when a key is pressed only if the program exit
+status is not zero.
 The pane may be reactivated with the
 .Ic respawn\-pane
 command.
@@ -8209,10 +8219,16 @@ command should be omitted.
 .Pp
 .Fl b
 sets the type of characters used for drawing menu borders.
-See
-.Ic popup\-border\-lines
-for possible values for
-.Ar border\-lines .
+.Ar border\-lines
+may be one of
+.Ic single ,
+.Ic rounded ,
+.Ic double ,
+.Ic heavy ,
+.Ic simple ,
+.Ic padded ,
+or
+.Ic none .
 .Pp
 .Fl H
 sets the style for the selected menu item (see
@@ -8248,15 +8264,18 @@ Both may be a row or column number, or one of the following special values:
 .It Li "S" Ta Fl y Ta "The line above or below the status line"
 .El
 .Pp
-Or a format, which is expanded including the following additional variables:
+Or a format, which is expanded with the following additional variables.
+The
+.Ql popup_
+prefix is retained for compatibility:
 .Bl -column "XXXXXXXXXXXXXXXXXXXXXXXXXX" -offset indent
 .It Sy "Variable name" Ta Sy "Replaced with"
-.It Li "popup_centre_x" Ta "Centered in the client"
-.It Li "popup_centre_y" Ta "Centered in the client"
-.It Li "popup_height" Ta "Height of menu or popup"
+.It Li "popup_centre_x" Ta "Centered in the window"
+.It Li "popup_centre_y" Ta "Centered in the window"
+.It Li "popup_height" Ta "Height of the menu"
 .It Li "popup_last_x" Ta "Left of the last menu"
 .It Li "popup_last_y" Ta "Bottom of the last menu"
-.It Li "popup_mouse_bottom" Ta "Bottom of at the mouse"
+.It Li "popup_mouse_bottom" Ta "Bottom at the mouse"
 .It Li "popup_mouse_centre_x" Ta "Horizontal centre at the mouse"
 .It Li "popup_mouse_centre_y" Ta "Vertical centre at the mouse"
 .It Li "popup_mouse_top" Ta "Top at the mouse"
@@ -8267,7 +8286,7 @@ Or a format, which is expanded including the following additional variables:
 .It Li "popup_pane_right" Ta "Right of the pane"
 .It Li "popup_pane_top" Ta "Top of the pane"
 .It Li "popup_status_line_y" Ta "Above or below the status line"
-.It Li "popup_width" Ta "Width of menu or popup"
+.It Li "popup_width" Ta "Width of the menu"
 .It Li "popup_window_status_line_x" Ta "At the window position in status line"
 .It Li "popup_window_status_line_y" Ta "At the status line showing the window"
 .El
@@ -8299,7 +8318,7 @@ The following keys are available in menus:
 .El
 .Tg display
 .It Xo Ic display\-message
-.Op Fl aCIlNpv
+.Op Fl aCIjlNpv
 .Op Fl c Ar target\-client
 .Op Fl d Ar delay
 .Op Fl t Ar target\-pane
@@ -8339,6 +8358,12 @@ if
 .Fl t
 is given, otherwise the active pane.
 .Pp
+If
+.Fl j
+is given,
+.Ar message
+is parsed as JSON and printed.
+.Pp
 .Fl v
 prints verbose logging as the format is parsed and
 .Fl a
@@ -8347,116 +8372,6 @@ lists the format variables and their values.
 .Fl I
 forwards any input read from stdin to the empty pane given by
 .Ar target\-pane .
-.Tg popup
-.It Xo Ic display\-popup
-.Op Fl BCEkN
-.Op Fl b Ar border\-lines
-.Op Fl c Ar target\-client
-.Op Fl d Ar start\-directory
-.Op Fl e Ar environment
-.Op Fl h Ar height
-.Op Fl s Ar style
-.Op Fl S Ar border\-style
-.Op Fl t Ar target\-pane
-.Op Fl T Ar title
-.Op Fl w Ar width
-.Op Fl x Ar position
-.Op Fl y Ar position
-.Op Ar shell\-command Op Ar argument ...
-.Xc
-.D1 Pq alias: Ic popup
-Display a popup running
-.Ar shell\-command
-(or
-.Ar default\-command
-when omitted) on
-.Ar target\-client .
-A popup is a rectangular box drawn over the top of any panes.
-If the command is run inside an existing popup, that popup is modified.
-Only the
-.Fl b ,
-.Fl B ,
-.Fl C ,
-.Fl E ,
-.Fl EE ,
-.Fl K ,
-.Fl N ,
-.Fl s ,
-and
-.Fl S
-options are accepted in this case;
-all others are ignored.
-.Pp
-.Fl E
-closes the popup automatically when
-.Ar shell\-command
-exits.
-Two
-.Fl E
-closes the popup only if
-.Ar shell\-command
-exited with success.
-.Fl k
-allows any key to dismiss the popup instead of only
-.Ql Escape
-or
-.Ql C\-c .
-.Pp
-.Fl x
-and
-.Fl y
-give the position of the popup, they have the same meaning as for the
-.Ic display\-menu
-command.
-.Fl w
-and
-.Fl h
-give the width and height - both may be a percentage (followed by
-.Ql % ) .
-If omitted, half of the terminal size is used.
-.Pp
-.Fl B
-does not surround the popup by a border.
-.Pp
-.Fl b
-sets the type of characters used for drawing popup borders.
-When
-.Fl B
-is specified, the
-.Fl b
-option is ignored.
-See
-.Ic popup\-border\-lines
-for possible values for
-.Ar border\-lines .
-.Pp
-.Fl s
-sets the style for the popup and
-.Fl S
-sets the style for the popup border (see
-.Sx STYLES ) .
-.Pp
-.Fl e
-takes the form
-.Ql VARIABLE=value
-and sets an environment variable for the popup; it may be specified multiple
-times.
-.Pp
-.Fl T
-is a format for the popup title (see
-.Sx FORMATS ) .
-.Pp
-The
-.Fl C
-flag closes any popup on the client.
-.Pp
-.Fl N
-disables any previously specified
-.Fl E ,
-.Fl EE ,
-or
-.Fl k
-option.
 .Tg showphist
 .It Xo Ic show\-prompt\-history
 .Op Fl T Ar prompt\-type
@@ -8969,6 +8884,8 @@ These are set automatically if the
 capability is present.
 .It Em \&Dseks , \&Eneks
 Disable and enable extended keys.
+.It Em \&Dsesc , \&Enesc
+Disable and enable application escape key mode.
 .It Em \&Dsfcs , \&Enfcs
 Disable and enable focus reporting.
 These are set automatically if the
@@ -9084,7 +9001,7 @@ and flags (currently not used).
 For example:
 .Bd -literal -offset indent
 %begin 1363006971 2 1
-0: ksh* (1 panes) [80x24] [layout b25f,80x24,0,0,2] @2 (active)
+0: ksh* (1 panes) [80x24] [layout {"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"a":true,"i":0,"I":"%2"}}] @2 (active)
 %end 1363006971 2 1
 .Ed
 .Pp
@@ -9145,10 +9062,15 @@ The layout of a window with ID
 .Ar window\-id
 changed.
 The new layout is
-.Ar window\-layout .
-The window's visible layout is
-.Ar window\-visible\-layout
-and the window flags are
+.Ar window\-layout
+and the window's visible layout is
+.Ar window\-visible\-layout .
+If the
+.Ar new\-layouts
+flag is set, both layout fields use the new format string; see
+.Ic refresh\-client
+.Fl f .
+The window flags are
 .Ar window\-flags .
 .It Ic %message Ar message
 A message sent with the
@@ -9312,6 +9234,9 @@ See the
 option for details.
 .It Ev TMUX_TMPDIR
 The parent directory of the directory containing the server sockets.
+It must be an absolute path to an existing directory and must not contain
+.Ql .. ;
+if it is empty it is ignored.
 See the
 .Fl L
 option for details.

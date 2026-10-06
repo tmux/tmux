@@ -7,6 +7,8 @@ TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
+trap '$TMUX kill-server 2>/dev/null' 0
+trap 'exit 1' 1 2 15
 
 # test_format $format $expected_result
 test_format()
@@ -68,6 +70,8 @@ test_format '#{m/p:bash$,bash dev}' ''
 
 # Inverse terms. Plain inverse terms are exact substring tests, not fuzzy.
 test_format '#{m/z:!ssh,dev bash}' '1'
+test_format '#{m/z:!long,x}' '1'
+test_format '#{m/z:!x,}' '1'
 test_format '#{m/z:!ssh,dev ssh}' '0'
 test_format '#{m/z:!ssh,s_s_h}' '1'
 test_format '#{m/z:dev !ssh,dev bash}' '1'

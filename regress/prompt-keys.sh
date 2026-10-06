@@ -217,7 +217,36 @@ $OUT send-keys M-r || exit 1
 settle
 status_line | grep -q '>' || fail "status-line prompt not drawn on the status line"
 
-# --- 11. emacs cursor-marker edit, accept recovers the exact buffer. ---
+# --- 11. Invalid UTF-8 input must not desynchronize the prompt buffer. ---
+$OUT send-keys -H e6 85 5f || exit 1	# invalid UTF-8, then "_"
+settle
+$IN display-message -p '#{version}' >/dev/null 2>&1 || \
+	fail "invalid UTF-8 append killed inner tmux"
+status_line | grep -qF "> _" || \
+	fail "invalid UTF-8 append did not keep prompt usable (got '$(status_line)')"
+$OUT send-keys Enter || exit 1
+settle
+[ "$($IN show -gv @r)" = "_" ] || \
+	fail "invalid UTF-8 append recovered '$($IN show -gv @r)', wanted '_'"
+
+$IN set -g @r "SENTINEL" || exit 1
+$OUT send-keys M-r || exit 1
+settle
+$OUT send-keys -H e6 85 04 || exit 1	# invalid UTF-8, then C-d
+settle
+$IN display-message -p '#{version}' >/dev/null 2>&1 || \
+	fail "invalid UTF-8 delete killed inner tmux"
+status_line | grep -q '>' || \
+	fail "invalid UTF-8 delete closed the prompt (got '$(status_line)')"
+$OUT send-keys Escape || exit 1
+settle
+[ "$($IN show -gv @r)" = "SENTINEL" ] || \
+	fail "invalid UTF-8 delete accepted the prompt"
+
+# --- 12. emacs cursor-marker edit, accept recovers the exact buffer. ---
+$IN set -g @r "" || exit 1
+$OUT send-keys M-r || exit 1
+settle
 $OUT send-keys -l "abc" || exit 1
 $OUT send-keys Home || exit 1
 $OUT send-keys -l "X" || exit 1
@@ -229,7 +258,7 @@ settle
 [ "$($IN show -gv @r)" = "Xabc" ] || \
 	fail "status-line accept recovered '$($IN show -gv @r)', wanted 'Xabc'"
 
-# --- 12. Unicode on the status line: insert, move, delete wide char. ---
+# --- 13. Unicode on the status line: insert, move, delete wide char. ---
 $IN set -g @r "" || exit 1
 $OUT send-keys M-r || exit 1
 settle
@@ -249,7 +278,7 @@ settle
 [ "$($IN show -gv @r)" = "Za" ] || \
 	fail "status-line wide edit recovered '$($IN show -gv @r)', wanted 'Za'"
 
-# --- 13. Overflow: more text than fits stays within the line and is kept. ---
+# --- 14. Overflow: more text than fits stays within the line and is kept. ---
 big="0123456789012345678901234567890123456789012345678901234567890123456789ABCDEFGHIJ"
 $IN set -g @r "" || exit 1
 $OUT send-keys M-r || exit 1
@@ -264,7 +293,7 @@ settle
 # The whole buffer was kept despite only part being visible.
 [ "$($IN show -gv @r)" = "$big" ] || fail "overflowing prompt lost buffer content"
 
-# --- 14. Escape closes the status-line prompt cleanly. ---
+# --- 15. Escape closes the status-line prompt cleanly. ---
 $IN set -g @r "SENTINEL" || exit 1
 $OUT send-keys M-r || exit 1
 settle

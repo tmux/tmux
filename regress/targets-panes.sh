@@ -97,6 +97,10 @@ check "p:.{top-left}" "%0"
 check_ok select-pane -t p:0.%0
 check "p:0.+" "1" '#{pane_index}'	# next pane
 check "p:0.-" "3" '#{pane_index}'	# previous pane (wraps)
+check_fail "can't find pane: +0" "p:0.+0"
+check_fail "can't find pane: +foo" "p:0.+foo"
+check_fail "can't find pane: -0" "p:0.-0"
+check_fail "can't find pane: -foo" "p:0.-foo"
 
 # --- last pane (!) --------------------------------------------------------
 check_ok select-pane -t p:0.%2

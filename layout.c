@@ -1,4 +1,4 @@
-/* $OpenBSD: layout.c,v 1.98 2026/08/25 18:38:05 nicm Exp $ */
+/* $OpenBSD: layout.c,v 1.102 2026/10/02 12:48:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -106,7 +106,7 @@ layout_free_cell(struct layout_cell *lc, int only_nodes)
 		}
 		break;
 	case LAYOUT_WINDOWPANE:
-		if (lc->wp != NULL) {
+		if (lc->wp != NULL && lc->wp->layout_cell != NULL) {
 			lc->wp->layout_cell->parent = NULL;
 			lc->wp->layout_cell = NULL;
 		}
@@ -233,29 +233,6 @@ layout_make_node(struct layout_cell *lc, enum layout_type type)
 	lc->wp = NULL;
 }
 
-/* Fix z-indexes. */
-void
-layout_fix_zindexes(struct window *w, struct layout_cell *lc)
-{
-	struct layout_cell	*lcchild;
-
-	if (lc == NULL)
-		return;
-
-	switch (lc->type) {
-	case LAYOUT_WINDOWPANE:
-		TAILQ_INSERT_TAIL(&w->z_index, lc->wp, zentry);
-		break;
-	case LAYOUT_LEFTRIGHT:
-	case LAYOUT_TOPBOTTOM:
-		TAILQ_FOREACH(lcchild, &lc->cells, entry)
-			layout_fix_zindexes(w, lcchild);
-		return;
-	default:
-		fatalx("bad layout type");
-	}
-}
-
 int
 layout_cell_is_tiled(struct layout_cell *lc)
 {
@@ -265,7 +242,7 @@ layout_cell_is_tiled(struct layout_cell *lc)
 	return is_leaf && !is_floating;
 }
 
-static int
+int
 layout_cell_has_tiled_child(struct layout_cell *lc)
 {
 	struct layout_cell      *lcchild;
@@ -492,7 +469,6 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 					sx = PANE_MINIMUM;
 				else
 					sx = sx - sb_w - sb_pad;
-			wp->flags |= PANE_REDRAWSCROLLBAR;
 		}
 
 		window_pane_resize(wp, sx, sy);
@@ -500,8 +476,11 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		if (wp->xoff != old_xoff ||
 		    wp->yoff != old_yoff ||
 		    wp->sx != old_sx ||
-		    wp->sy != old_sy)
+		    wp->sy != old_sy) {
+			if (window_pane_scrollbar_reserve(wp))
+				wp->flags |= PANE_REDRAWSCROLLBAR;
 			changed = 1;
+		}
 	}
 	if (changed)
 		redraw_invalidate_scene(w);
@@ -509,18 +488,20 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 
 /* Count the number of available cells in a layout. */
 u_int
-layout_count_cells(struct layout_cell *lc)
+layout_count_cells(struct layout_cell *lc, int with_floating)
 {
 	struct layout_cell	*lcchild;
 	u_int			 count = 0;
 
 	switch (lc->type) {
 	case LAYOUT_WINDOWPANE:
+		if (lc->flags & LAYOUT_CELL_FLOATING && !with_floating)
+			return 0;
 		return (1);
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
-			count += layout_count_cells(lcchild);
+			count += layout_count_cells(lcchild, with_floating);
 		return (count);
 	default:
 		fatalx("bad layout type");
@@ -721,7 +702,7 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 	/* If no parent, this is the last pane in a window. */
 	lcparent = lc->parent;
 	if (lcparent == NULL) {
-		if (lc->wp != NULL)
+		if (*lcroot == lc)
 			*lcroot = NULL;
 		layout_free_cell(lc, 0);
 		return;
@@ -789,6 +770,49 @@ layout_free(struct window *w, int only_nodes)
 	layout_free_cell(w->layout_root, only_nodes);
 }
 
+/* Move and resize floating panes so they stay inside the window. */
+static void
+layout_clamp_floating_panes(struct window *w, u_int sx, u_int sy)
+{
+	struct window_pane	*wp;
+	struct layout_cell	*lc;
+	u_int			 pad, avail, csx, csy;
+
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
+		lc = wp->layout_cell;
+		if (lc == NULL || (~lc->flags & LAYOUT_CELL_FLOATING))
+			continue;
+		if (window_pane_get_pane_lines(wp) == PANE_LINES_NONE)
+			pad = 0;
+		else
+			pad = 1;
+
+		csx = lc->g.sx;
+		avail = (sx > 2 * pad) ? sx - 2 * pad : 0;
+		if (csx > avail)
+			csx = (avail > PANE_MINIMUM) ? avail : PANE_MINIMUM;
+		csy = lc->g.sy;
+		avail = (sy > 2 * pad) ? sy - 2 * pad : 0;
+		if (csy > avail)
+			csy = (avail > PANE_MINIMUM) ? avail : PANE_MINIMUM;
+		if (csx != lc->g.sx || csy != lc->g.sy)
+			layout_set_size(lc, csx, csy, lc->g.xoff, lc->g.yoff);
+
+		if (lc->g.xoff + lc->g.sx + pad > sx) {
+			if (lc->g.sx + 2 * pad >= sx)
+				lc->g.xoff = pad;
+			else
+				lc->g.xoff = sx - lc->g.sx - pad;
+		}
+		if (lc->g.yoff + lc->g.sy + pad > sy) {
+			if (lc->g.sy + 2 * pad >= sy)
+				lc->g.yoff = pad;
+			else
+				lc->g.yoff = sy - lc->g.sy - pad;
+		}
+	}
+}
+
 /* Resize the entire layout after window resize. */
 void
 layout_resize(struct window *w, u_int sx, u_int sy)
@@ -809,8 +833,11 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 	 * out proportionately - this should leave the layout fitting the new
 	 * window size.
 	 */
-	if (lc->type == LAYOUT_WINDOWPANE && (lc->flags & LAYOUT_CELL_FLOATING))
+	if (lc->type == LAYOUT_WINDOWPANE && (lc->flags & LAYOUT_CELL_FLOATING)) {
+		layout_clamp_floating_panes(w, sx, sy);
+		layout_fix_panes(w, NULL);
 		return;
+	}
 	xchange = sx - lc->g.sx;
 	xlimit = layout_resize_check(w, lc, LAYOUT_LEFTRIGHT);
 	if (xchange < 0 && xchange < -xlimit)
@@ -840,6 +867,7 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 
 	/* Fix cell offsets. */
 	layout_fix_offsets(w);
+	layout_clamp_floating_panes(w, sx, sy);
 	layout_fix_panes(w, NULL);
 }
 
@@ -1702,7 +1730,7 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
     enum pane_lines lines, struct window *w, struct layout_geometry *lg,
     char **cause)
 {
-	int	 sx, sy, ox, oy;
+	int	 sx, sy, ox, oy, pad;
 	char	*error = NULL;
 
 	sx = lg->sx == UINT_MAX ? w->sx / 2 : lg->sx;
@@ -1751,12 +1779,20 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 		}
 	}
 
+	if (!window_has_floating_panes(w)) {
+		w->last_new_pane_x = 0;
+		w->last_new_pane_y = 0;
+	}
 	if (ox == INT_MAX) {
 		if (w->last_new_pane_x == 0)
 			ox = 4;
 		else {
+			if (lines != PANE_LINES_NONE)
+				pad = 1;
+			else
+				pad = 0;
 			ox = w->last_new_pane_x + 4;
-			if (w->last_new_pane_x > w->sx)
+			if (ox + sx + pad > (int)w->sx)
 				ox = 4;
 		}
 		w->last_new_pane_x = ox;
@@ -1767,8 +1803,12 @@ layout_floating_args_parse(struct cmdq_item *item, struct args *args,
 		if (w->last_new_pane_y == 0)
 			oy = 2;
 		else {
+			if (lines != PANE_LINES_NONE)
+				pad = 1;
+			else
+				pad = 0;
 			oy = w->last_new_pane_y + 2;
-			if (w->last_new_pane_y > w->sy)
+			if (oy + sy + pad > (int)w->sy)
 				oy = 2;
 		}
 		w->last_new_pane_y = oy;

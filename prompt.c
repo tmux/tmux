@@ -1,4 +1,4 @@
-/* $OpenBSD: prompt.c,v 1.6 2026/08/17 06:45:16 nicm Exp $ */
+/* $OpenBSD: prompt.c,v 1.7 2026/09/09 07:53:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1493,9 +1493,11 @@ append_key:
 		utf8_set(&tmp, key);
 		if (key <= 0x1f || key == 0x7f)
 			tmp.width = 2;
-	} else if (KEYC_IS_UNICODE(key))
+	} else if (KEYC_IS_UNICODE(key)) {
 		utf8_to_data(key, &tmp);
-	else
+		if (tmp.size == 0)
+			return (PROMPT_KEY_HANDLED);
+	} else
 		return (PROMPT_KEY_HANDLED);
 
 	pr->buffer = xreallocarray(pr->buffer, size + 2,

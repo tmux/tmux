@@ -19,8 +19,7 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-SOCKET=$(mktemp -u testXXXXXX)
-TMUX="$TEST_TMUX -L$SOCKET"
+TMUX="$TEST_TMUX -Ltest$$"
 $TMUX kill-server 2>/dev/null
 
 DIR=$(mktemp -d)

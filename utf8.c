@@ -1,4 +1,4 @@
-/* $OpenBSD: utf8.c,v 1.72 2026/09/01 12:49:49 nicm Exp $ */
+/* $OpenBSD: utf8.c,v 1.74 2026/10/05 08:32:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -51,12 +51,8 @@ static struct utf8_width_cache utf8_width_cache =
     RB_INITIALIZER(utf8_width_cache);
 
 static struct utf8_width_item utf8_default_width_cache[] = {
-	{ .wc = 0x0261D, .width = 2 },
-	{ .wc = 0x026F9, .width = 2 },
 	{ .wc = 0x0270A, .width = 2 },
 	{ .wc = 0x0270B, .width = 2 },
-	{ .wc = 0x0270C, .width = 2 },
-	{ .wc = 0x0270D, .width = 2 },
 	{ .wc = 0x1F1E6, .width = 1 },
 	{ .wc = 0x1F1E7, .width = 1 },
 	{ .wc = 0x1F1E8, .width = 1 },
@@ -374,8 +370,13 @@ utf8_add_to_width_cache(const char *s)
 			wc_end = wc_start;
 		}
 
-		for (wc = wc_start; wc <= wc_end; wc++)
+		wc = wc_start;
+		for (;;) {
 			utf8_insert_width_cache(wc, width);
+			if (wc == wc_end)
+				break;
+			wc++;
+		}
 	} else {
 		utf8_no_width = 1;
 		ud = utf8_fromcstr(copy);

@@ -1,4 +1,4 @@
-/* $OpenBSD: spawn.c,v 1.52 2026/08/20 09:19:24 nicm Exp $ */
+/* $OpenBSD: spawn.c,v 1.54 2026/10/02 13:20:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -166,8 +166,8 @@ spawn_window(struct spawn_context *sc, char **cause)
 		}
 		if (wl != NULL) {
 			/*
-			 * Can't use session_detach as it will destroy session
-			 * if this makes it empty.
+			 * Can't use session_detach as it won't detach the only
+			 * window.
 			 */
 			wl->flags &= ~WINLINK_ALERTFLAGS;
 			events_fire_winlink("window-unlinked", wl);
@@ -465,14 +465,14 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	new_wp->flags &= ~PANE_EMPTY;
 
 	/* Store current working directory and change to new one. */
-	if (getcwd(path, sizeof path) != NULL) {
-		if (chdir(new_wp->cwd) == 0)
-			actual_cwd = new_wp->cwd;
-		else if (home != NULL && chdir(home) == 0)
-			actual_cwd = home;
-		else if (chdir("/") == 0)
-			actual_cwd = "/";
-	}
+	if (getcwd(path, sizeof path) == NULL)
+		strlcpy(path, "/", sizeof path);
+	if (chdir(new_wp->cwd) == 0)
+		actual_cwd = new_wp->cwd;
+	else if (home != NULL && chdir(home) == 0)
+		actual_cwd = home;
+	else if (chdir("/") == 0)
+		actual_cwd = "/";
 
 	/* Fork the new process. */
 	new_wp->pid = fdforkpty(ptm_fd, &new_wp->fd, new_wp->tty, NULL, &ws);

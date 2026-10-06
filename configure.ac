@@ -1,6 +1,6 @@
 # configure.ac
 
-AC_INIT([tmux], next-3.8)
+AC_INIT([tmux], next-3.9)
 AC_PREREQ([2.60])
 
 AC_CONFIG_AUX_DIR(etc)
@@ -110,6 +110,17 @@ case "x$DEFAULT_TERM" in
 		AC_MSG_ERROR("unsuitable TERM (must be screen* or tmux*)")
 	;;
 esac
+
+# Allow the socket directory list to be set. It is a colon-separated list of
+# directories, tried in order; a leading $ is an environment variable.
+AC_ARG_WITH(
+	socket-path,
+	AS_HELP_STRING(--with-socket-path=PATHS, set socket directory list),
+	[TMUX_SOCK=`echo "$withval" | sed 's/[[$]]/$$/g'`],
+	[TMUX_SOCK=]
+)
+AM_CONDITIONAL(HAVE_TMUX_SOCK, [test "x$TMUX_SOCK" != x])
+AC_SUBST(TMUX_SOCK)
 
 # Do we need fuzzers?
 AM_CONDITIONAL(NEED_FUZZING, test "x$enable_fuzzing" = xyes)

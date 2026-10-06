@@ -4,6 +4,9 @@ TERM=screen
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 
+# Keep panes alive until the next case or cleanup, without reading replies.
+INPUT_HOLD='while :; do sleep 3600; done'
+
 TMP=$(mktemp)
 EXP=$(mktemp)
 trap 'rm -f "$TMP" "$EXP"; $TMUX kill-server 2>/dev/null' 0 1 15
@@ -37,10 +40,10 @@ start_pane_hlimit()
 
 	$TMUX kill-server 2>/dev/null
 	sleep 0.1
-	$TMUX new-session -d -x 1 -y 1 -s test-setup "sleep 2" || exit 1
+	$TMUX new-session -d -x 1 -y 1 -s test-setup "$INPUT_HOLD" || exit 1
 	$TMUX set-option -g history-limit "$hlimit" || exit 1
 	$TMUX new-session -d -x "$sx" -y "$sy" -s "$name" \
-	    "printf '$seq'; sleep 2" || exit 1
+	    "printf '$seq'; $INPUT_HOLD" || exit 1
 	$TMUX kill-session -t test-setup
 	sleep 0.3
 }

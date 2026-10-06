@@ -1,4 +1,4 @@
-/* $OpenBSD: window-switch.c,v 1.3 2026/08/25 07:23:30 nicm Exp $ */
+/* $OpenBSD: window-switch.c,v 1.4 2026/09/01 21:03:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -374,6 +374,9 @@ window_switch_init(struct window_mode_entry *wme,
 	data->prompt = prompt_create(&pd);
 	prompt_update(data->prompt, "(search) ", data->filter);
 
+	s = &data->screen;
+	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
+
 	if (!args_has(args, 'Z'))
 		data->zoomed = -1;
 	else {
@@ -381,9 +384,6 @@ window_switch_init(struct window_mode_entry *wme,
 		if (!data->zoomed && window_zoom(wp) == 0)
 			server_redraw_window(wp->window);
 	}
-
-	s = &data->screen;
-	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
 
 	window_switch_build(data);
 	prompt_incremental_start(data->prompt);

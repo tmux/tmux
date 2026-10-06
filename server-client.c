@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.509 2026/08/28 07:36:01 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.517 2026/10/02 12:48:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -67,77 +67,6 @@ server_client_how_many(void)
 	return (n);
 }
 
-/* Overlay timer callback. */
-static void
-server_client_overlay_timer(__unused int fd, __unused short events, void *data)
-{
-	server_client_clear_overlay(data);
-}
-
-/* Set an overlay on client. */
-void
-server_client_set_overlay(struct client *c, u_int delay,
-    overlay_check_cb checkcb, overlay_mode_cb modecb,
-    overlay_draw_cb drawcb, overlay_key_cb keycb, overlay_free_cb freecb,
-    overlay_resize_cb resizecb, void *data)
-{
-	struct timeval	tv;
-
-	if (c->overlay_draw != NULL)
-		server_client_clear_overlay(c);
-
-	tv.tv_sec = delay / 1000;
-	tv.tv_usec = (delay % 1000) * 1000L;
-
-	if (event_initialized(&c->overlay_timer))
-		evtimer_del(&c->overlay_timer);
-	evtimer_set(&c->overlay_timer, server_client_overlay_timer, c);
-	if (delay != 0)
-		evtimer_add(&c->overlay_timer, &tv);
-
-	c->overlay_check = checkcb;
-	c->overlay_mode = modecb;
-	c->overlay_draw = drawcb;
-	c->overlay_key = keycb;
-	c->overlay_free = freecb;
-	c->overlay_resize = resizecb;
-	c->overlay_data = data;
-
-	if (c->overlay_check == NULL)
-		c->tty.flags |= TTY_FREEZE;
-	if (c->overlay_mode == NULL)
-		c->tty.flags |= TTY_NOCURSOR;
-	window_update_focus(c->session->curw->window);
-	server_redraw_client(c);
-}
-
-/* Clear overlay mode on client. */
-void
-server_client_clear_overlay(struct client *c)
-{
-	if (c->overlay_draw == NULL)
-		return;
-
-	if (event_initialized(&c->overlay_timer))
-		evtimer_del(&c->overlay_timer);
-
-	if (c->overlay_free != NULL)
-		c->overlay_free(c, c->overlay_data);
-
-	c->overlay_check = NULL;
-	c->overlay_mode = NULL;
-	c->overlay_draw = NULL;
-	c->overlay_key = NULL;
-	c->overlay_free = NULL;
-	c->overlay_resize = NULL;
-	c->overlay_data = NULL;
-
-	c->tty.flags &= ~(TTY_FREEZE|TTY_NOCURSOR);
-	if (c->session != NULL)
-		window_update_focus(c->session->curw->window);
-	server_redraw_client(c);
-}
-
 /* Are these ranges empty? That is, nothing is visible. */
 int
 server_client_ranges_is_empty(struct visible_ranges *r)
@@ -159,52 +88,6 @@ server_client_ensure_ranges(struct visible_ranges *r, u_int n)
 		return;
 	r->ranges = xrecallocarray(r->ranges, r->size, n, sizeof *r->ranges);
 	r->size = n;
-}
-
-/*
- * Given overlay position and dimensions, return parts of the input range which
- * are visible.
- */
-void
-server_client_overlay_range(u_int x, u_int y, u_int sx, u_int sy, u_int px,
-    u_int py, u_int nx, struct visible_ranges *r)
-{
-	u_int	ox, onx;
-
-	/* Trivial case of no overlap in the y direction. */
-	if (py < y || py > y + sy - 1) {
-		server_client_ensure_ranges(r, 1);
-		r->ranges[0].px = px;
-		r->ranges[0].nx = nx;
-		r->used = 1;
-		return;
-	}
-	server_client_ensure_ranges(r, 2);
-
-	/* Visible bit to the left of the popup. */
-	if (px < x) {
-		r->ranges[0].px = px;
-		r->ranges[0].nx = x - px;
-		if (r->ranges[0].nx > nx)
-			r->ranges[0].nx = nx;
-	} else {
-		r->ranges[0].px = 0;
-		r->ranges[0].nx = 0;
-	}
-
-	/* Visible bit to the right of the popup. */
-	ox = x + sx;
-	if (px > ox)
-		ox = px;
-	onx = px + nx;
-	if (onx > ox) {
-		r->ranges[1].px = ox;
-		r->ranges[1].nx = onx - ox;
-	} else {
-		r->ranges[1].px = 0;
-		r->ranges[1].nx = 0;
-	}
-	r->used = 2;
 }
 
 /* Check if this client is inside this server. */
@@ -473,7 +356,13 @@ server_client_set_session(struct client *c, struct session *s)
 		tty_update_client_offset(c);
 		status_timer_start(c);
 		server_client_fire_session_changed(c, old);
-		server_redraw_client(c);
+
+		/*
+		 * Redraw if the session or displayed window changed. Use the
+		 * cached scene because the session's current window is already set.
+		 */
+		if (old != s || !redraw_client_has_window(c, s->curw->window))
+			server_redraw_client(c);
 	}
 
 	server_check_unattached();
@@ -486,11 +375,9 @@ server_client_lost(struct client *c)
 {
 	struct client_file	*cf, *cf1;
 
-	if (cfg_client == c)
-		cfg_client = NULL;
+	cfg_client_lost(c);
 	c->flags |= CLIENT_DEAD;
 
-	server_client_clear_overlay(c);
 	status_prompt_clear(c);
 	status_message_clear(c);
 
@@ -501,6 +388,9 @@ server_client_lost(struct client *c)
 
 	TAILQ_REMOVE(&clients, c, entry);
 	log_debug("lost client %p", c);
+
+	cmd_wait_for_client_lost(c);
+	cmdq_next(c);
 
 	if (c->flags & CLIENT_ATTACHED) {
 		server_client_attached_lost(c);
@@ -1391,15 +1281,19 @@ server_client_repeat_time(struct client *c, struct key_binding *bd)
 	return (repeat);
 }
 
-/* Handle a key press on a dead pane waiting for a key. */
+/* Handle a key press which closes a dead pane. */
 static int
 server_client_handle_dead_key(struct window_pane *wp, key_code key)
 {
+	int	remain_on_exit;
+
 	if (wp == NULL ||
 	    (~wp->flags & PANE_EXITED) ||
 	    KEYC_IS_MOUSE(key) ||
-	    KEYC_IS_PASTE(key) ||
-	    options_get_number(wp->options, "remain-on-exit") != 3)
+	    KEYC_IS_PASTE(key))
+		return (0);
+	remain_on_exit = options_get_number(wp->options, "remain-on-exit");
+	if (remain_on_exit != 3 && remain_on_exit != 4)
 		return (0);
 	options_set_number(wp->options, "remain-on-exit", 0);
 	server_destroy_pane(wp, 0);
@@ -1460,10 +1354,11 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 		m->key = key;
 
 		/*
-		 * Mouse drag is in progress, so fire the callback (now that
-		 * the mouse event is valid).
+		 * Synchronize direct drag output with the later damage redraw
+		 * before invoking the drag callback.
 		 */
 		if ((key & KEYC_MASK_KEY) == KEYC_DRAGGING) {
+			tty_sync_start(&c->tty);
 			c->tty.mouse_drag_update(c, m);
 			goto out;
 		}
@@ -1742,10 +1637,6 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
 		return (0);
 
-	/*
-	 * Handle theme reporting keys before overlays so they work even when a
-	 * popup is open.
-	 */
 	if (event->key == KEYC_REPORT_LIGHT_THEME) {
 		server_client_report_theme(c, THEME_LIGHT);
 		return (0);
@@ -1756,9 +1647,9 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 	}
 
 	/*
-	 * Key presses in overlay mode, for panes capturing all keys and in the
-	 * command prompt are a special case. The queue might be blocked so they
-	 * need to be processed immediately rather than queued.
+	 * Dead panes waiting for a key, modal cancel keys, panes capturing all keys
+	 * and the command prompt are special cases. The queue might be blocked so
+	 * they need to be processed immediately rather than queued.
 	 */
 	if (~c->flags & CLIENT_READONLY) {
 		if (c->message_string != NULL) {
@@ -1767,25 +1658,20 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 			status_message_clear(c);
 		}
 
-		if (c->overlay_key != NULL) {
-			switch (c->overlay_key(c, c->overlay_data, event)) {
-			case 0:
-				return (0);
-			case 1:
-				server_client_clear_overlay(c);
-				return (0);
-			}
-		}
-
-		server_client_clear_overlay(c);
-
 		wp = s->curw->window->active;
+		if (server_client_handle_dead_key(wp, event->key))
+			return (0);
+		if (wp != NULL &&
+		    wp == wp->window->modal &&
+		    (wp->flags & PANE_CLOSEONCANCEL) &&
+		    (event->key == '\033' || event->key == ('c'|KEYC_CTRL))) {
+			server_kill_pane(wp);
+			return (0);
+		}
 		if (wp != NULL &&
 		    (wp->flags & PANE_CAPTUREALLKEYS) &&
 		    TAILQ_EMPTY(&wp->modes) &&
 		    !KEYC_IS_MOUSE(event->key)) {
-			if (server_client_handle_dead_key(wp, event->key))
-				return (0);
 			if (~wp->flags & PANE_EXITED) {
 				window_pane_key(wp, c, s, s->curw, event->key,
 				    &event->m);
@@ -1899,8 +1785,8 @@ server_client_loop(void)
 	}
 
 	/*
-	 * Any windows will have been redrawn as part of clients, so clear
-	 * their flags now.
+	 * Clear window redraw state after processing all clients. Deferred
+	 * redraws are preserved in client flags.
 	 */
 	RB_FOREACH(w, windows, &windows) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -1911,6 +1797,8 @@ server_client_loop(void)
 			wp->flags &= ~(PANE_REDRAW|PANE_REDRAWSCROLLBAR|
 			    PANE_ACTIVITY);
 		}
+		redraw_free_damage(w);
+
 		check_window_name(w);
 	}
 
@@ -2166,11 +2054,8 @@ server_client_reset_state(struct client *c)
 	flags = (tty->flags & TTY_BLOCK);
 	tty->flags &= ~TTY_BLOCK;
 
-	/* Get mode from overlay if any, else from screen. */
-	if (c->overlay_draw != NULL) {
-		if (c->overlay_mode != NULL)
-			s = c->overlay_mode(c, c->overlay_data, &cx, &cy);
-	} else if (w->menu != NULL) {
+	/* Get mode from the menu if any, else from the screen. */
+	if (w->menu != NULL) {
 		menu_get_cursor(w->menu, &cx, &cy);
 		s = menu_screen(w->menu);
 	} else if (wp != NULL && c->prompt == NULL)
@@ -2192,7 +2077,7 @@ server_client_reset_state(struct client *c)
 	if (c->prompt != NULL) {
 		prompt = 1;
 		status_prompt_cursor(c, &cx, &cy);
-	} else if (wp != NULL && c->overlay_draw == NULL) {
+	} else if (wp != NULL) {
 		if (w->menu != NULL) {
 			tty_window_offset(tty, &ox, &oy, &sx, &sy);
 			if (cx < ox || cx >= ox + sx ||
@@ -2211,7 +2096,7 @@ server_client_reset_state(struct client *c)
 		}
 		if (!prompt) {
 			cursor = 0;
-			pane_mode = wp->base.mode;
+			pane_mode = s->mode;
 
 			tty_window_offset(tty, &ox, &oy, &sx, &sy);
 			if (wp->xoff + (int)s->cx >= (int)ox &&
@@ -2244,14 +2129,18 @@ server_client_reset_state(struct client *c)
 					cy += status_line_size(c);
 			}
 
-			if ((pane_mode & MODE_SYNC) || !cursor)
+			if (!cursor)
 				mode &= ~MODE_CURSOR;
 		}
-	} else if (c->overlay_mode == NULL || s == NULL)
+	} else if (s == NULL)
 		mode &= ~MODE_CURSOR;
 	if (~pane_mode & MODE_SYNC) {
 		log_debug("%s: cursor to %u,%u", __func__, cx, cy);
 		tty_cursor(tty, cx, cy);
+	} else {
+		mode &= ~CURSOR_MODES;
+		mode |= tty->mode & CURSOR_MODES;
+		s = NULL;
 	}
 
 	/*
@@ -2260,7 +2149,7 @@ server_client_reset_state(struct client *c)
 	 * movement events.
 	 */
 	if (options_get_number(oo, "mouse")) {
-		if (c->overlay_draw == NULL && w->menu == NULL) {
+		if (w->menu == NULL) {
 			mode &= ~ALL_MOUSE_MODES;
 			TAILQ_FOREACH(loop, &w->panes, entry) {
 				if (loop->screen->mode & MODE_MOUSE_ALL)
@@ -2276,7 +2165,7 @@ server_client_reset_state(struct client *c)
 	}
 
 	/* Clear bracketed paste mode if at the prompt. */
-	if (c->overlay_draw == NULL && prompt)
+	if (prompt)
 		mode &= ~MODE_BRACKETPASTE;
 
 	/* Set the terminal mode and reset attributes. */
@@ -2455,6 +2344,8 @@ server_client_any_pane_redraw(struct client *c)
 
 	if (c->flags & CLIENT_REDRAWWINDOW)
 		return (1);
+	if (!TAILQ_EMPTY(&w->damage))
+		return (1);
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (wp->flags & (PANE_REDRAW|PANE_REDRAWSCROLLBAR))
 			return (1);
@@ -2471,6 +2362,7 @@ server_client_check_redraw(struct client *c)
 	struct window		*w = s->curw->window;
 	struct window_pane	*wp;
 	int			 needed, tflags, mode = tty->mode;
+	int			 damaged = !TAILQ_EMPTY(&w->damage);
 	struct timeval		 tv = { .tv_usec = 1000 };
 	static struct event	 ev;
 	size_t			 n;
@@ -2478,11 +2370,10 @@ server_client_check_redraw(struct client *c)
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
 	if (c->flags & CLIENT_ALLREDRAWFLAGS) {
-		log_debug("%s: redraw%s%s%s%s%s", c->name,
+		log_debug("%s: redraw%s%s%s%s", c->name,
 		    (c->flags & CLIENT_REDRAWWINDOW) ? " window" : "",
 		    (c->flags & CLIENT_REDRAWSTATUS) ? " status" : "",
 		    (c->flags & CLIENT_REDRAWBORDERS) ? " borders" : "",
-		    (c->flags & CLIENT_REDRAWOVERLAY) ? " overlay" : "",
 		    (c->flags & CLIENT_REDRAWMENU) ? " menu" : "");
 	}
 
@@ -2497,12 +2388,12 @@ server_client_check_redraw(struct client *c)
 		return;
 	}
 
-	/*
-	 * If there is outstanding data, defer the redraw until it has been
-	 * consumed. We can just add a timer to get out of the event loop and
-	 * end up back here.
-	 */
+	/* Ignore output queued within the current synchronized frame. */
 	n = EVBUFFER_LENGTH(tty->out);
+	if ((tty->flags & TTY_SYNCING) && n > tty->sync_offset)
+		n = tty->sync_offset;
+
+	/* Defer until output drains, preserving damage in client flags. */
 	if (n != 0 || (tty->flags & TTY_BLOCK)) {
 		if (n != 0)
 			log_debug("%s: redraw deferred (%zu left)", c->name, n);
@@ -2513,6 +2404,10 @@ server_client_check_redraw(struct client *c)
 		if (!evtimer_pending(&ev, NULL)) {
 			log_debug("redraw timer started");
 			evtimer_add(&ev, &tv);
+		}
+		if (damaged) {
+			c->flags |= CLIENT_REDRAWWINDOW;
+			return;
 		}
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->flags & PANE_REDRAW) {
@@ -2547,6 +2442,10 @@ server_client_check_redraw(struct client *c)
 				redraw_pane_scrollbar(c, wp);
 			}
 		}
+
+		/* Draw damage here if no client redraw flags will handle it. */
+		if (damaged && (c->flags & CLIENT_ALLREDRAWFLAGS) == 0)
+			redraw_client_damage(c);
 	}
 
 	/*
@@ -2560,6 +2459,7 @@ server_client_check_redraw(struct client *c)
 		}
 		server_client_set_progress_bar(c);
 		redraw_screen(c);
+		redraw_client_damage(c);
 	}
 
 	/* Put the tty back how it was. */
@@ -2690,10 +2590,6 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 		tty_resize(&c->tty);
 		tty_repeat_requests(&c->tty, 0);
 		recalculate_sizes();
-		if (c->overlay_resize == NULL)
-			server_client_clear_overlay(c);
-		else
-			c->overlay_resize(c, c->overlay_data);
 		server_redraw_client(c);
 		if (c->session != NULL)
 			server_client_fire_resized(c, old_sx, old_sy);
@@ -3055,6 +2951,8 @@ server_client_control_flags(struct client *c, const char *next)
 		return (CLIENT_CONTROL_NOOUTPUT);
 	if (strcmp(next, "wait-exit") == 0)
 		return (CLIENT_CONTROL_WAITEXIT);
+	if (strcmp(next, "new-layouts") == 0)
+		return (CLIENT_CONTROL_NEWLAYOUTS);
 	return (0);
 }
 
@@ -3121,6 +3019,8 @@ server_client_get_flags(struct client *c)
 		strlcat(s, "no-output,", sizeof s);
 	if (c->flags & CLIENT_CONTROL_WAITEXIT)
 		strlcat(s, "wait-exit,", sizeof s);
+	if (c->flags & CLIENT_CONTROL_NEWLAYOUTS)
+		strlcat(s, "new-layouts,", sizeof s);
 	if (c->flags & CLIENT_CONTROL_PAUSEAFTER) {
 		xsnprintf(tmp, sizeof tmp, "pause-after=%u,",
 		    c->pause_age / 1000);

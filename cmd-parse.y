@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-parse.y,v 1.59 2026/08/31 07:51:56 nicm Exp $ */
+/* $OpenBSD: cmd-parse.y,v 1.61 2026/10/05 13:45:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>

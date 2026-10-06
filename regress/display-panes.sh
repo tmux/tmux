@@ -153,11 +153,13 @@ wait_format "$p0" '#{pane_in_mode}' '0'
 wait_option @picked "$p1"
 
 # Commands after display-panes run immediately while the mode remains.
+# Record the mode in the same command queue so client startup cannot race
+# the 500ms timeout.
 $TMUX set -g @after none || fail "set @after failed"
-$TMUX display-panes -Nd 500 -t "$p0" \; set -g @after fast ||
+$TMUX display-panes -Nd 500 -t "$p0" \; \
+    set -gF -t "$p0" @after '#{pane_mode}' ||
 	fail "display-panes immediate command failed"
-wait_option @after fast
-wait_format "$p0" '#{pane_mode}' 'panes-mode'
+wait_option @after 'panes-mode'
 wait_format "$p0" '#{pane_in_mode}' '0'
 
 # Existing zoom is restored on exit.

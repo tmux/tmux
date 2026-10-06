@@ -1,4 +1,4 @@
-/* $OpenBSD: fuzzy.c,v 1.1 2026/06/26 14:40:30 nicm Exp $ */
+/* $OpenBSD: fuzzy.c,v 1.2 2026/09/28 16:55:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -245,16 +245,20 @@ fuzzy_column(const struct fuzzy_char *fc, const u_int *start, const u_int *src,
 	return (0);
 }
 
-/* Decode a UTF-8 term into an array of characters. */
-static u_int
-fuzzy_decode(const char *tok, size_t len, struct utf8_data *out)
+/* Decode a UTF-8 term, stopping if it cannot fit in the given limit. */
+static int
+fuzzy_decode(const char *tok, size_t len, struct utf8_data *out, u_int limit,
+    u_int *n)
 {
 	const char	*cp = tok, *end = tok + len;
-	u_int		 n = 0;
 
-	while (cp != end)
-		cp = fuzzy_decode_one(cp, end, &out[n++]);
-	return (n);
+	*n = 0;
+	while (cp != end) {
+		if (*n == limit)
+			return (-1);
+		cp = fuzzy_decode_one(cp, end, &out[(*n)++]);
+	}
+	return (0);
 }
 
 /* Add the score for a fuzzy token matched at the given positions. */
@@ -474,7 +478,8 @@ fuzzy_match_term(const struct fuzzy_term *term, struct utf8_data *tok,
 	u_int	toklen;
 	int	value = 0, matched_term;
 
-	toklen = fuzzy_decode(term->text, term->len, tok);
+	if (fuzzy_decode(term->text, term->len, tok, ncs, &toklen) != 0)
+		return (term->inverse);
 	if (term->exact) {
 		matched_term = fuzzy_match_exact(tok, toklen, cs, ncs, fold,
 		    term->prefix, term->suffix, &value,
@@ -539,6 +544,7 @@ fuzzy_match(const char *pattern, const char *text, u_int width, u_int *score)
 	u_int			 src[STYLE_ALIGN_ABSOLUTE_CENTRE + 1];
 	u_int			 vis[STYLE_ALIGN_ABSOLUTE_CENTRE + 1];
 	u_int			 wl, wc, wr, wa;
+	size_t			 toksize;
 	const char		*cp, *sp;
 	int			 bestscore = 0, groupscore, found = 0, fold;
 
@@ -567,7 +573,12 @@ fuzzy_match(const char *pattern, const char *text, u_int width, u_int *score)
 	cs = fuzzy_scan(text, &ncs, widths);
 	matched = xcalloc(ncs == 0 ? 1 : ncs, sizeof *matched);
 	best = xcalloc(ncs == 0 ? 1 : ncs, sizeof *best);
-	tok = xreallocarray(NULL, strlen(pattern) + 1, sizeof *tok);
+
+	/* A term with more characters than the text cannot match. */
+	toksize = strlen(pattern);
+	if (toksize > ncs)
+		toksize = ncs;
+	tok = xreallocarray(NULL, toksize == 0 ? 1 : toksize, sizeof *tok);
 
 	/* Match each |-separated group and keep the best-scoring one. */
 	cp = pattern;
