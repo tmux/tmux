@@ -713,7 +713,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 			/* Right not visible. */
 			l = 0;
 			x = xoff - ctx->ox;
-			width = size - x;
+			width = ctx->sx - x;
 		}
 
 		r = tty_check_overlay_range(tty, x, yoff, width);
