@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1451 2026/10/02 12:48:52 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1452 2026/10/06 10:55:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1807,6 +1807,7 @@ struct tty {
 	u_int		 mouse_last_y;
 	u_int		 mouse_last_b;
 	int		 mouse_drag_flag;
+	int		 mouse_drag_status;
 	u_int		 mouse_drag_x;
 	u_int		 mouse_drag_y;
 	int		 mouse_scrolling_flag;

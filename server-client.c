@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.517 2026/10/02 12:48:52 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.518 2026/10/06 10:55:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -796,9 +796,14 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 			x = m->x, y = m->y, b = m->b;
 			if (x == m->lx && y == m->ly)
 				return (KEYC_UNKNOWN);
+			if (c->tty.mouse_drag_status) {
+				x = c->tty.mouse_drag_x;
+				y = c->tty.mouse_drag_y;
+			}
 			log_debug("drag update at %u,%u", x, y);
 		} else {
 			x = m->lx, y = m->ly, b = m->lb;
+			c->tty.mouse_drag_status = 0;
 			log_debug("drag start at %u,%u", x, y);
 		}
 	} else if (MOUSE_WHEEL(m->b)) {
@@ -856,6 +861,8 @@ have_event:
 	if (m->statusat != -1 &&
 	    y >= (u_int)m->statusat &&
 	    y < m->statusat + m->statuslines) {
+		if (type == KEYC_TYPE_MOUSEDRAG && c->tty.mouse_drag_flag == 0)
+			c->tty.mouse_drag_status = 1;
 		sr = status_get_range(c, x, y - m->statusat);
 		if (sr == NULL) {
 			loc = KEYC_MOUSE_LOCATION_STATUS_DEFAULT;
@@ -1087,17 +1094,24 @@ have_event:
 		 * where the user grabbed.
 		 */
 		if (c->tty.mouse_drag_flag == 0) {
-			c->tty.mouse_drag_x = px;
-			c->tty.mouse_drag_y = py;
+			if (c->tty.mouse_drag_status) {
+				c->tty.mouse_drag_x = x;
+				c->tty.mouse_drag_y = y;
+			} else {
+				c->tty.mouse_drag_x = px;
+				c->tty.mouse_drag_y = py;
+			}
 		}
 		c->tty.mouse_drag_flag = MOUSE_BUTTONS(b) + 1;
 
-		/* Only change pane if not already dragging a pane border. */
-		if (lwp == NULL) {
+		/* Change the pane if the drag did not start on status line. */
+		if (!c->tty.mouse_drag_status && lwp == NULL) {
 			lwp = wp = window_get_active_at(w, px, py);
 			if (wp != NULL)
 				c->tty.mouse_last_pane = wp->id;
 		}
+
+		/* Change scrollbar position if needed. */
 		if (c->tty.mouse_scrolling_flag == 0 &&
 		    loc == KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER) {
 			c->tty.mouse_scrolling_flag = 1;
