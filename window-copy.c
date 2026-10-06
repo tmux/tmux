@@ -130,8 +130,8 @@ static void    *window_copy_get_grid_range(struct window_mode_entry *, u_int,
 		    u_int, u_int, u_int, size_t *);
 static void	window_copy_copy_buffer(struct window_mode_entry *,
 		    const char *, void *, size_t, int, int);
-static void	window_copy_pipe_buffer(struct session *, const char *, void *,
-		    size_t);
+static void	window_copy_pipe_buffer(struct session *, const char *,
+		    void *, size_t);
 static void	window_copy_pipe(struct window_mode_entry *,
 		    struct session *, const char *);
 static void	window_copy_copy_pipe(struct window_mode_entry *,
@@ -141,8 +141,8 @@ static void	window_copy_copy_selection(struct window_mode_entry *,
 		    const char *, int, int);
 static void	window_copy_append_selection(struct window_mode_entry *);
 static void	window_copy_clear_selection(struct window_mode_entry *);
-static u_int	window_copy_copy_line_length(struct window_mode_entry *, u_int,
-		    int *);
+static u_int	window_copy_copy_line_length(struct window_mode_entry *,
+		    u_int, int *);
 static void	window_copy_copy_line(struct window_mode_entry *, char **,
 		    size_t *, u_int, u_int, u_int);
 static int	window_copy_in_set(struct window_mode_entry *, u_int, u_int,
@@ -1159,7 +1159,8 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 			format_add(ft, "selection_active", "1");
 		else
 			format_add(ft, "selection_active", "0");
-		keys = options_get_number(wme->wp->window->options, "mode-keys");
+		keys = options_get_number(wme->wp->window->options,
+		    "mode-keys");
 		if (keys == MODEKEY_VI || data->endselx != data->selx ||
 		    data->endsely != data->sely)
 			format_add(ft, "selection_present", "1");
@@ -6601,7 +6602,8 @@ window_copy_copy_buffer(struct window_mode_entry *wme, const char *prefix,
 
 	if (set_clip &&
 	    options_get_number(global_options, "set-clipboard") != 0) {
-		if (wp->flags & PANE_REDRAW) {
+		if (window_copy_line_numbers_active(wme) &&
+		    (wp->flags & PANE_REDRAW)) {
 			/* Clear PANE_REDRAW so clipboard write not skipped. */
 			redraw = PANE_REDRAW;
 			wp->flags &= ~PANE_REDRAW;
@@ -6732,7 +6734,8 @@ window_copy_copy_line_length(struct window_mode_entry *wme, u_int sy,
 	u_int				 length;
 	int				 line_wrapped;
 
-	line_wrapped = (gl->flags & GRID_LINE_WRAPPED && gl->cellsize <= gd->sx);
+	line_wrapped = (gl->flags & GRID_LINE_WRAPPED &&
+	    gl->cellsize <= gd->sx);
 	if (wrapped != NULL)
 		*wrapped = line_wrapped;
 	if (line_wrapped)
