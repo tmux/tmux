@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1176 2026/10/06 11:30:31 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1177 2026/10/06 17:45:26 schwarze Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -384,10 +384,11 @@ Change to the pane above, below, to the left, or to the right of the current
 pane.
 .It M\-1 to M\-7
 Arrange panes in one of the seven preset layouts:
-even\-horizontal, even\-vertical,
-main\-horizontal, main\-horizontal\-mirrored,
-main\-vertical, main\-vertical\-mirrored,
-or tiled.
+.Cm even\-horizontal , even\-vertical ,
+.Cm main\-horizontal , main\-horizontal\-mirrored ,
+.Cm main\-vertical , main\-vertical\-mirrored ,
+or
+.Cm tiled .
 .It Space
 Arrange the current window in the next preset layout.
 .It M\-n
@@ -1118,22 +1119,22 @@ detaching the client, typically causing it to exit.
 sets a comma-separated list of client flags.
 The flags are:
 .Bl -tag -width Ds
-.It ignore\-size
+.It Cm ignore\-size
 the client does not affect the size of other clients
-.It new\-layouts
+.It Cm new\-layouts
 use the new layout string format
-.It no\-detach\-on\-destroy
+.It Cm no\-detach\-on\-destroy
 do not detach the client when the session it is attached to is destroyed if
 there are any other sessions
-.It no\-output
+.It Cm no\-output
 the client does not receive pane output in control mode
-.It pause\-after=seconds
+.It Cm pause\-after Ns = Ns Ar seconds
 output is paused once the pane is
 .Ar seconds
 behind in control mode
-.It read\-only
+.It Cm read\-only
 the client is read-only
-.It wait\-exit
+.It Cm wait\-exit
 wait for an empty line input before exiting in control mode
 .El
 .Pp
@@ -1143,7 +1144,7 @@ turns a flag off if the client is already attached.
 .Fl r
 is an alias for
 .Fl f
-.Ar read\-only,ignore\-size .
+.Cm read\-only , Ns Cm ignore\-size .
 When a client is read-only, only keys bound to the
 .Ic detach\-client
 or
@@ -1519,7 +1520,7 @@ If
 .Ql continue ,
 .Nm
 will return to sending output to the pane if it was paused (manually or with the
-.Ar pause\-after
+.Cm pause\-after
 flag).
 If
 .Ql pause ,
@@ -1762,9 +1763,9 @@ to specify the field to sort on: one of
 (time).
 .Fl r
 toggles the client
-.Ic read\-only
+.Cm read\-only
 and
-.Ic ignore\-size
+.Cm ignore\-size
 flags (see the
 .Ic attach\-session
 command).
@@ -2350,7 +2351,7 @@ Scroll down.
 If
 .Ic mode\-keys
 is
-.Ic vi ,
+.Cm vi ,
 the cursor is fixed relative to the text.
 .It Xo
 .Ic scroll\-down\-and\-cancel
@@ -2397,7 +2398,7 @@ Scroll up.
 If
 .Ic mode\-keys
 is
-.Ic vi ,
+.Cm vi ,
 the cursor is fixed relative to the text.
 .It Xo
 .Ic search\-again
@@ -2666,31 +2667,31 @@ as normal.
 .Pp
 The following layouts are supported:
 .Bl -tag -width Ds
-.It Ic even\-horizontal
+.It Cm even\-horizontal
 Panes are spread out evenly from left to right across the window.
-.It Ic even\-vertical
+.It Cm even\-vertical
 Panes are spread evenly from top to bottom.
-.It Ic main\-horizontal
+.It Cm main\-horizontal
 A large (main) pane is shown at the top of the window and the remaining panes
 are spread from left to right in the leftover space at the bottom.
 Use the
 .Em main\-pane\-height
 window option to specify the height of the top pane.
-.It Ic main\-horizontal\-mirrored
+.It Cm main\-horizontal\-mirrored
 The same as
-.Ic main\-horizontal
+.Cm main\-horizontal
 but mirrored so the main pane is at the bottom of the window.
-.It Ic main\-vertical
+.It Cm main\-vertical
 A large (main) pane is shown on the left of the window and the remaining panes
 are spread from top to bottom in the leftover space on the right.
 Use the
 .Em main\-pane\-width
 window option to specify the width of the left pane.
-.It Ic main\-vertical\-mirrored
+.It Cm main\-vertical\-mirrored
 The same as
-.Ic main\-vertical
+.Cm main\-vertical
 but mirrored so the main pane is on the right of the window.
-.It Ic tiled
+.It Cm tiled
 Panes are spread out as evenly as possible over the window in both rows and
 columns.
 .El
@@ -4555,13 +4556,13 @@ or
 .Pc . Values of
 .Em flag Ns -type
 options may be one of:
-.Ic 1 ,
-.Ic on ,
-.Ic yes ,
-.Ic 0 ,
-.Ic off ,
+.Cm 1 ,
+.Cm on ,
+.Cm yes ,
+.Cm 0 ,
+.Cm off ,
 or
-.Ic no ;
+.Cm no ;
 for possible
 .Em choice
 values, see the respective option; for
@@ -4780,7 +4781,7 @@ Set the number of buffers; as new buffers are added to the top of the stack,
 old ones are removed from the bottom if necessary to maintain this maximum
 length.
 .It Xo Ic clear\-on\-attach
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 When enabled (the default), the client terminal switches to the alternate
 screen and clears it when a client is attached.
@@ -4789,7 +4790,7 @@ When disabled,
 does not enter the alternate screen; instead the existing terminal content is
 scrolled into the scrollback buffer so it remains accessible.
 .It Xo Ic command\-alias[]
-.Ar name=value
+.Ar name Ns = Ns Ar value
 .Xc
 This is an array of custom aliases for commands.
 If an unknown command matches
@@ -4826,12 +4827,12 @@ Give the command to pipe to if the
 .Ic copy\-pipe
 copy mode command is used without arguments.
 .It Xo Ic theme
-.Op Ic detect | terminal | light | dark
+.Op Cm detect | terminal | light | dark
 .Xc
 Whether tmux should use the detected client theme
-.Pq Ic detect ,
+.Pq Cm detect ,
 use terminal ANSI colours
-.Pq Ic terminal ,
+.Pq Cm terminal ,
 or force the light or dark theme.
 .It Xo Ic dark\-theme\-black ,
 .Ic dark\-theme\-white ,
@@ -4856,17 +4857,17 @@ or force the light or dark theme.
 .Xc
 Set the theme colours.
 These are the named colours
-.Ic themeblack ,
-.Ic themewhite ,
-.Ic themelightgrey ,
-.Ic themedarkgrey ,
-.Ic themegreen ,
-.Ic themeyellow ,
-.Ic themered ,
-.Ic themeblue ,
-.Ic themecyan
+.Cm THemeblack ,
+.Cm themewhite ,
+.Cm themelightgrey ,
+.Cm themedarkgrey ,
+.Cm themegreen ,
+.Cm themeyellow ,
+.Cm themered ,
+.Cm themeblue ,
+.Cm themecyan
 and
-.Ic thememagenta
+.Cm thememagenta
 which may be used in styles and elsewhere a
 .Ar colour
 is accepted.
@@ -4903,16 +4904,16 @@ Set the command used when
 .Nm
 runs an editor.
 .It Xo Ic exit\-empty
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 If enabled (the default), the server will exit when there are no active
 sessions.
 .It Xo Ic exit\-unattached
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 If enabled, the server will exit when there are no attached clients.
 .It Xo Ic extended\-keys
-.Op Ic on | off | always
+.Op Cm on | off | always
 .Xc
 Controls how modified keys (keys pressed together with Control, Meta, or Shift)
 are reported.
@@ -4922,16 +4923,16 @@ This is the equivalent of the
 resource.
 .Pp
 When set to
-.Ic on ,
+.Cm on ,
 the program inside the pane can request one of two modes: mode 1 which changes
 the sequence for only keys which lack an existing well-known representation; or
 mode 2 which changes the sequence for all keys.
 When set to
-.Ic always ,
+.Cm always ,
 modes 1 and 2 can still be requested by applications, but mode 1 will be forced
 instead of the standard mode.
 When set to
-.Ic off ,
+.Cm off ,
 this feature is disabled and only standard keys are reported.
 .Pp
 .Nm
@@ -4946,7 +4947,7 @@ option and the
 .Ic pane_key_mode
 variable.
 .It Xo Ic extended\-keys\-format
-.Op Ic csi\-u | xterm
+.Op Cm csi\-u | xterm
 .Xc
 Selects one of the two possible formats for reporting modified keys to
 applications.
@@ -4957,13 +4958,13 @@ resource.
 For example, C\-S\-a will be reported as
 .Ql \[ha][[27;6;65\[ti]
 when set to
-.Ic xterm ,
+.Cm xterm ,
 and as
 .Ql \[ha][[65;6u
 when set to
-.Ic csi\-u .
+.Cm csi\-u .
 .It Xo Ic focus\-events
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 When enabled, focus events are requested from the terminal if supported and
 passed through to applications running in
@@ -4971,32 +4972,32 @@ passed through to applications running in
 Attached clients should be detached and attached again after changing this
 option.
 .It Xo Ic focus\-follows\-mouse
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 When enabled and
 .Ic mouse
 is on, moving the mouse into a pane selects it.
 .It Xo Ic get\-clipboard
-.Op Ic both | request | buffer | off
+.Op Cm both | request | buffer | off
 .Xc
 Controls the behaviour when an application requests the clipboard from
 .Nm .
 .Pp
 If
-.Ic off ,
+.Cm off ,
 the request is ignored;
 if
-.Ic buffer ,
+.Cm buffer ,
 .Nm
 responds with the newest paste buffer;
-.Ic request
+.Cm request
 causes
 .Nm
 to request the clipboard from the most recently used client (if possible) and
 send the reply (if any) back to the application;
-.Ic both
+.Cm both
 is the same as
-.Ic request
+.Cm request
 but also creates a paste buffer.
 .Pp
 See also the
@@ -5016,7 +5017,7 @@ each client.
 Set the number of history items to save in the history file for each type of
 command prompt.
 .It Xo Ic set\-clipboard
-.Op Ic on | external | off
+.Op Cm on | external | off
 .Xc
 Attempt to set the terminal clipboard content using the
 .Xr xterm 1
@@ -5029,19 +5030,19 @@ description (see the
 section).
 .Pp
 If set to
-.Ic on ,
+.Cm on ,
 .Nm
 will both accept the escape sequence to create a buffer and attempt to set
 the terminal clipboard.
 If set to
-.Ic external ,
+.Cm external ,
 .Nm
 will attempt to set the terminal clipboard but ignore attempts
 by applications to set
 .Nm
 buffers.
 If
-.Ic off ,
+.Cm off ,
 .Nm
 will neither accept the clipboard escape sequence nor attempt to set the
 clipboard.
@@ -5182,7 +5183,7 @@ set \-s user\-keys[0] "\ee[5;30012\[ti]"
 bind User0 resize\-pane \-L 3
 .Ed
 .It Xo Ic variation\-selector\-always\-wide
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 Always treat Unicode variation selector 16 as marking a wide character.
 This is a feature of some terminals as part of their Unicode 14 support.
@@ -5191,23 +5192,23 @@ This is a feature of some terminals as part of their Unicode 14 support.
 Available session options are:
 .Bl -tag -width Ds
 .It Xo Ic activity\-action
-.Op Ic any | none | current | other
+.Op Cm any | none | current | other
 .Xc
 Set action on window activity when
 .Ic monitor\-activity
 is on.
-.Ic any
+.Cm any
 means activity in any window linked to a session causes a bell or message
 (depending on
 .Ic visual\-activity )
 in the current window of that session,
-.Ic none
+.Cm none
 means all activity is ignored (equivalent to
 .Ic monitor\-activity
 being off),
-.Ic current
+.Cm current
 means only activity in windows other than the current window are ignored and
-.Ic other
+.Cm other
 means activity in the current window is ignored but not those in other windows.
 .It Ic assume\-paste\-time Ar milliseconds
 If keys are entered faster than one in
@@ -5221,7 +5222,7 @@ Set the base index from which an unused index should be searched when a new
 window is created.
 The default is zero.
 .It Xo Ic bell\-action
-.Op Ic any | none | current | other
+.Op Cm any | none | current | other
 .Xc
 Set action on a bell in a window when
 .Ic monitor\-bell
@@ -5256,7 +5257,7 @@ or
 This option should be configured when
 .Nm
 is used as a login shell.
-.It Ic default\-size Ar XxY
+.It Ic default\-size Ar X Ns x Ns Ar Y
 Set the default size of new windows when the
 .Ic window\-size
 option is set to manual or when a session is created with
@@ -5267,48 +5268,48 @@ The value is the width and height separated by an
 character.
 The default is 80x24.
 .It Xo Ic destroy\-unattached
-.Op Ic off | on | keep\-last | keep\-group
+.Op Cm off | on | keep\-last | keep\-group
 .Xc
 If
-.Ic on ,
+.Cm on ,
 destroy the session after the last client has detached.
 If
-.Ic off
+.Cm off
 (the default), leave the session orphaned.
 If
-.Ic keep\-last ,
+.Cm keep\-last ,
 destroy the session only if it is in a group and has other sessions in that
 group.
 If
-.Ic keep\-group ,
+.Cm keep\-group ,
 destroy the session unless it is in a group and is the only session in that
 group.
 A session without attached clients is destroyed or kept as follows:
 .Bl -column "in group, NOT last" "keep" "destroy" "keep\-last" "keep\-group"
-.It Sy "Session" Ta Sy "off" Ta Sy "on" Ta Sy "keep\-last" Ta Sy "keep\-group"
+.It Sy "Session" Ta Cm off Ta Cm on Ta Cm keep\-last Ta Cm keep\-group
 .It Li "NOT in group" Ta keep Ta destroy Ta keep Ta destroy
 .It Li "in group, NOT last" Ta keep Ta destroy Ta destroy Ta destroy
 .It Li "last in group" Ta keep Ta destroy Ta keep Ta keep
 .El
 .It Xo Ic detach\-on\-destroy
-.Op Ic off | on | no\-detached | previous | next
+.Op Cm off | on | no\-detached | previous | next
 .Xc
 If
-.Ic on
+.Cm on
 (the default), the client is detached when the session it is attached to
 is destroyed.
 If
-.Ic off ,
+.Cm off ,
 the client is switched to the most recently active of the remaining
 sessions.
 If
-.Ic no\-detached ,
+.Cm no\-detached ,
 the client is detached only if there are no detached sessions; if detached
 sessions exist, the client is switched to the most recently active.
 If
-.Ic previous
+.Cm previous
 or
-.Ic next ,
+.Cm next ,
 the client is switched to the previous or next session in alphabetical order.
 .It Ic display\-time Ar time
 Set the amount of time for which status line messages and other on-screen
@@ -5372,14 +5373,14 @@ section on how to specify
 Set the type of characters used for drawing menu borders.
 .Ar type
 may be one of
-.Ic single ,
-.Ic rounded ,
-.Ic double ,
-.Ic heavy ,
-.Ic simple ,
-.Ic padded ,
+.Cm single ,
+.Cm rounded ,
+.Cm double ,
+.Cm heavy ,
+.Cm simple ,
+.Cm padded ,
 or
-.Ic none .
+.Cm none .
 .It Ic message\-command\-style Ar style
 Set status line message command style.
 This is used for the command prompt with
@@ -5408,7 +5409,7 @@ The default uses a conditional to select between
 and
 .Ic message\-command\-style .
 .It Xo Ic message\-line
-.Op Ic 0 | 1 | 2 | 3 | 4
+.Op Cm 0 | 1 | 2 | 3 | 4
 .Xc
 Set line on which status line messages and the command prompt are shown.
 .It Ic message\-style Ar style
@@ -5437,7 +5438,7 @@ see the
 .Sx STYLES
 section.
 .It Xo Ic mouse
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 If on,
 .Nm
@@ -5486,7 +5487,7 @@ See the
 .Ic cursor\-style
 options for available styles.
 .It Xo Ic renumber\-windows
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 If on, when a window is closed in a session, automatically renumber the other
 windows in numerical order.
@@ -5510,7 +5511,7 @@ See also the
 .Ic initial\-repeat\-time
 option.
 .It Xo Ic set\-titles
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 Attempt to set the client terminal title using the
 .Em tsl
@@ -5531,7 +5532,7 @@ Formats are expanded, see the
 .Sx FORMATS
 section.
 .It Xo Ic silence\-action
-.Op Ic any | none | current | other
+.Op Cm any | none | current | other
 .Xc
 Set action on window silence when
 .Ic monitor\-silence
@@ -5539,17 +5540,17 @@ is on.
 The values are the same as those for
 .Ic activity\-action .
 .It Xo Ic status
-.Op Ic off | on | 2 | 3 | 4 | 5
+.Op Cm off | on | 2 | 3 | 4 | 5
 .Xc
 Show or hide the status line or specify its size.
 Using
-.Ic on
+.Cm on
 gives a status line one row in height;
-.Ic 2 ,
-.Ic 3 ,
-.Ic 4
+.Cm 2 ,
+.Cm 3 ,
+.Cm 4
 or
-.Ic 5
+.Cm 5
 more rows.
 .It Ic status\-format[] Ar format
 Specify the format to be used for each line of the status line.
@@ -5564,7 +5565,6 @@ set \-gu status\-format # start with default status line
 set \-gF @old_status_format1 "#{status\-format[1]}"
 set \-g status\-format[1] "#{E:@old_status_format1}#[nolist align=right]#{pane_current_path}"
 .Ed
-.Pp
 .It Ic status\-interval Ar interval
 Update the status line every
 .Ar interval
@@ -5572,17 +5572,19 @@ seconds.
 By default, updates will occur every 15 seconds.
 A setting of zero disables redrawing at interval.
 .It Xo Ic status\-justify
-.Op Ic left | centre | right | absolute\-centre
+.Op Cm left | centre | right | absolute\-centre
 .Xc
 Set the position of the window list in the status line: left, centre or right.
 centre puts the window list in the relative centre of the available free space;
 absolute\-centre uses the centre of the entire horizontal space.
 .It Xo Ic status\-keys
-.Op Ic vi | emacs
+.Op Cm vi | emacs
 .Xc
 Use vi or emacs-style
 key bindings in the status line, for example at the command prompt.
-The default is emacs, unless the
+The default is
+.Cm emacs ,
+unless the
 .Ev VISUAL
 or
 .Ev EDITOR
@@ -5626,7 +5628,7 @@ see the
 .Sx STYLES
 section.
 .It Xo Ic status\-position
-.Op Ic top | bottom
+.Op Cm top | bottom
 .Xc
 Set the position of the status line.
 .It Ic status\-right Ar string
@@ -5670,7 +5672,7 @@ was given to the
 .Ic set\-environment
 command).
 .It Xo Ic visual\-activity
-.Op Ic on | off | both
+.Op Cm on | off | both
 .Xc
 If on, display a message instead of sending a bell when activity occurs in a
 window for which the
@@ -5678,7 +5680,7 @@ window for which the
 window option is enabled.
 If set to both, a bell and a message are produced.
 .It Xo Ic visual\-bell
-.Op Ic on | off | both
+.Op Cm on | off | both
 .Xc
 If on, a message is shown on a bell in a window for which the
 .Ic monitor\-bell
@@ -5689,7 +5691,7 @@ Also see the
 .Ic bell\-action
 option.
 .It Xo Ic visual\-silence
-.Op Ic on | off | both
+.Op Cm on | off | both
 .Xc
 If
 .Ic monitor\-silence
@@ -5711,7 +5713,7 @@ Available window options are:
 .Pp
 .Bl -tag -width Ds -compact
 .It Xo Ic aggressive\-resize
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 Aggressively resize the chosen window.
 This means that
@@ -5727,7 +5729,7 @@ session; this option is good for full-screen programs which support
 and poor for interactive programs such as shells.
 .Pp
 .It Xo Ic automatic\-rename
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 Control automatic window renaming.
 When this setting is enabled,
@@ -5758,7 +5760,7 @@ option is enabled.
 Set clock colour.
 .Pp
 .It Xo Ic clock\-mode\-style
-.Op Ic 12 | 24 | 12\-with\-seconds | 24\-with\-seconds
+.Op Cm 12 | 24 | 12\-with\-seconds | 24\-with\-seconds
 .Xc
 Set clock hour format.
 .Pp
@@ -5805,11 +5807,11 @@ set.
 .It Ic main\-pane\-height Ar height
 .It Ic main\-pane\-width Ar width
 Set the width or height of the main (left or top) pane in the
-.Ic main\-horizontal ,
-.Ic main\-horizontal\-mirrored ,
-.Ic main\-vertical ,
+.Cm main\-horizontal ,
+.Cm main\-horizontal\-mirrored ,
+.Cm main\-vertical ,
 or
-.Ic main\-vertical\-mirrored
+.Cm main\-vertical\-mirrored
 layouts.
 If suffixed by
 .Ql % ,
@@ -5883,40 +5885,42 @@ see the
 section.
 .Pp
 .It Xo Ic copy\-mode\-line\-numbers
-.Op Ic off | default | absolute | relative | hybrid
+.Op Cm off | default | absolute | relative | hybrid
 .Xc
 Show line numbers in copy mode.
-.Ic off
+.Cm off
 hides line numbers,
-.Ic default
+.Cm default
 shows line numbers matching the copy mode position indicator and
 .Ic goto\-line ,
-.Ic absolute
+.Cm absolute
 shows absolute line numbers,
-.Ic relative
+.Cm relative
 shows line numbers relative to the cursor, and
-.Ic hybrid
+.Cm hybrid
 shows the current line number as absolute and other line numbers as
 relative.
 With
-.Ic off
+.Cm off
 or
-.Ic default ,
+.Cm default ,
 the position indicator and
 .Ic goto\-line
 use the same numbering;
 with
-.Ic absolute ,
-.Ic relative
+.Cm absolute ,
+.Cm relative
 and
-.Ic hybrid ,
+.Cm hybrid ,
 they use absolute line numbers.
 .Pp
 .It Xo Ic mode\-keys
-.Op Ic vi | emacs
+.Op Cm vi | emacs
 .Xc
 Use vi or emacs-style key bindings in copy mode.
-The default is emacs, unless
+The default is
+.Cm emacs ,
+unless
 .Ev VISUAL
 or
 .Ev EDITOR
@@ -5932,22 +5936,22 @@ see the
 section.
 .Pp
 .It Xo Ic monitor\-activity
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 Monitor for activity in the window.
 Windows with activity are highlighted in the status line.
 .Pp
 .It Xo Ic monitor\-bell
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 Monitor for a bell in the window.
 Windows with a bell are highlighted in the status line.
 .Pp
 .It Xo Ic monitor\-silence
-.Op Ic interval
+.Op Ar interval
 .Xc
 Monitor for silence (no activity) in the window within
-.Ic interval
+.Ar interval
 seconds.
 Windows that have been silent for the interval are highlighted in the
 status line.
@@ -5955,9 +5959,9 @@ An interval of zero disables the monitoring.
 .Pp
 .It Ic other\-pane\-height Ar height
 Set the height of the other panes (not the main pane) in the
-.Ic main\-horizontal
+.Cm main\-horizontal
 and
-.Ic main\-horizontal\-mirrored
+.Cm main\-horizontal\-mirrored
 layouts.
 If this option is set to 0 (the default), it will have no effect.
 If both the
@@ -5974,9 +5978,9 @@ this is a percentage of the window size.
 Like
 .Ic other\-pane\-height ,
 but set the width of other panes in the
-.Ic main\-vertical
+.Cm main\-vertical
 and
-.Ic main\-vertical\-mirrored
+.Cm main\-vertical\-mirrored
 layouts.
 .Pp
 .It Ic pane\-active\-border\-style Ar style
@@ -5997,7 +6001,7 @@ but set the starting index for pane numbers.
 Set the text shown in pane border status lines.
 .Pp
 .It Xo Ic pane\-border\-indicators
-.Op Ic off | colour | arrows | both
+.Op Cm off | colour | arrows | both
 .Xc
 Indicate active pane by colouring only half of the border in windows with
 exactly two panes, by displaying arrow markers, by drawing both or neither.
@@ -6006,38 +6010,39 @@ exactly two panes, by displaying arrow markers, by drawing both or neither.
 Set the type of characters used for drawing pane borders.
 .Ar type
 may be one of:
-.Bl -tag -width Ds
-.It single
+.Pp
+.Bl -tag -width rounded -compact
+.It Cm single
 single lines using ACS or UTF\-8 characters
-.It double
+.It Cm double
 double lines using UTF\-8 characters
-.It heavy
+.It Cm heavy
 heavy lines using UTF\-8 characters
-.It rounded
+.It Cm rounded
 single lines with rounded corners using UTF\-8 characters
-.It simple
+.It Cm simple
 simple ASCII characters
-.It number
+.It Cm number
 the pane number
-.It spaces
+.It Cm spaces
 space characters
-.It none
+.It Cm none
 no border for floating panes
 .El
 .Pp
-.Ql double
+.Cm double
 and
-.Ql heavy
+.Cm heavy
 will fall back to standard ACS line drawing when UTF\-8 is not supported.
 .Pp
 .It Xo Ic pane\-border\-status
-.Op Ic off | top | bottom | top\-floating | bottom\-floating
+.Op Cm off | top | bottom | top\-floating | bottom\-floating
 .Xc
 Turn pane border status lines off or set their position.
 If set to
-.Ic top\-floating
+.Cm top\-floating
 or
-.Ic bottom\-floating ,
+.Cm bottom\-floating ,
 status lines are shown only on floating panes.
 .Pp
 .It Ic pane\-border\-style Ar style
@@ -6050,7 +6055,7 @@ section.
 Attributes are ignored.
 .Pp
 .It Xo Ic pane\-scrollbars
-.Op Ic off | modal | on | auto\-hide
+.Op Cm off | modal | on | auto\-hide
 .Xc
 When enabled, a character based scrollbar appears on the left or right
 of each pane.
@@ -6059,27 +6064,27 @@ A filled section of the scrollbar, known as the
 represents the position and size of the visible part of the pane content.
 .Pp
 If set to
-.Ic on
+.Cm on
 the scrollbar is visible all the time and the pane is narrowed by the width of
 the scrollbar.
 If set to
-.Ic modal
+.Cm modal
 the scrollbar only appears when the pane is in copy mode or view mode and
 auto-hides when not in use.
 If set to
-.Ic auto\-hide
+.Cm auto\-hide
 the scrollbar is available all the time but auto-hides when not in use.
 With
-.Ic modal
+.Cm modal
 and
-.Ic auto\-hide ,
+.Cm auto\-hide ,
 the scrollbar overlays the pane and does not narrow or reflow the pane.
 .Pp
 See also
 .Ic pane\-scrollbars\-style .
 .Pp
 .It Xo Ic pane\-scrollbars\-position
-.Op Ic left | right
+.Op Cm left | right
 .Xc
 Sets which side of the pane to display pane scrollbars on.
 .Pp
@@ -6103,9 +6108,9 @@ Other attributes are ignored.
 Set the time in milliseconds before scrollbars are hidden when
 .Ic pane\-scrollbars
 is
-.Ic modal
+.Cm modal
 or
-.Ic auto\-hide .
+.Cm auto\-hide .
 .Pp
 .It Ic pane\-status\-current\-style Ar style
 Set status line style for the currently active pane.
@@ -6141,7 +6146,7 @@ section.
 .Pp
 .It Ic tiled\-layout\-max\-columns Ar number
 Set the maximum number of columns in the
-.Ic tiled
+.Cm tiled
 layout.
 A value of 0 (the default) means no limit.
 When a limit is set, panes are arranged to not exceed this number of columns,
@@ -6258,7 +6263,7 @@ command and the
 option.
 .Pp
 .It Xo Ic wrap\-search
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 If this option is set, searches will wrap around the end of the pane contents.
 The default is on.
@@ -6268,32 +6273,32 @@ Available pane options are:
 .Pp
 .Bl -tag -width Ds -compact
 .It Xo Ic allow\-passthrough
-.Op Ic on | off | all
+.Op Cm on | off | all
 .Xc
 Allow programs in the pane to bypass
 .Nm
 using a terminal escape sequence (\eePtmux;...\ee\e\e).
 If set to
-.Ic on ,
+.Cm on ,
 passthrough sequences will be allowed only if the pane is visible.
 If set to
-.Ic all ,
+.Cm all ,
 they will be allowed even if the pane is invisible.
 .Pp
 .It Xo Ic allow\-rename
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 Allow programs in the pane to change the window name using a terminal escape
 sequence (\eek...\ee\e\e).
 .Pp
 .It Xo Ic allow\-set\-title
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 Allow programs in the pane to change the title using the terminal escape
 sequences (\ee]2;...\ee\e\e or \ee]0;...\ee\e\e).
 .Pp
 .It Xo Ic alternate\-screen
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 This option configures whether programs running inside the pane may use the
 terminal alternate screen feature, which allows the
@@ -6312,13 +6317,13 @@ Set the colour of the cursor.
 .It Ic cursor\-style Ar style
 Set the style of the cursor.
 Available styles are:
-.Ic default ,
-.Ic blinking\-block ,
-.Ic block ,
-.Ic blinking\-underline ,
-.Ic underline ,
-.Ic blinking\-bar ,
-.Ic bar .
+.Cm default ,
+.Cm blinking\-block ,
+.Cm block ,
+.Cm blinking\-underline ,
+.Cm underline ,
+.Cm blinking\-bar ,
+.Cm bar .
 .Pp
 .It Ic pane\-colours[] Ar colour
 The default colour palette.
@@ -6328,18 +6333,18 @@ uses when the colour with that index is requested.
 The index may be from zero to 255.
 .Pp
 .It Xo Ic remain\-on\-exit
-.Op Ic on | off | failed | key | failed\-key
+.Op Cm on | off | failed | key | failed\-key
 .Xc
 A pane with this flag set is not destroyed when the program running in it
 exits.
 If set to
-.Ic failed ,
+.Cm failed ,
 then only when the program exit status is not zero.
 If set to
-.Ic key ,
+.Cm key ,
 the pane stays open and closes when a key is pressed.
 If set to
-.Ic failed\-key ,
+.Cm failed\-key ,
 the pane stays open and closes when a key is pressed only if the program exit
 status is not zero.
 The pane may be reactivated with the
@@ -6352,7 +6357,7 @@ Set the text shown at the bottom of exited panes when
 is enabled.
 .Pp
 .It Xo Ic scroll\-on\-clear
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 When the entire screen is cleared and this option is on, scroll the contents of
 the screen into history before clearing it.
@@ -6367,7 +6372,7 @@ see the
 section.
 .Pp
 .It Xo Ic synchronize\-panes
-.Op Ic on | off
+.Op Cm on | off
 .Xc
 Duplicate input to all other panes in the same window where this option is also
 on (only for panes that are not in any mode).
@@ -6440,7 +6445,8 @@ itself.
 They are named with an
 .Ql after\-
 prefix.
-For example, the following command adds a hook to select the even\-vertical
+For example, the following command adds a hook to select the
+.Cm even\-vertical
 layout after every
 .Ic split\-window :
 .Bd -literal -offset indent
@@ -8197,14 +8203,14 @@ command should be omitted.
 sets the type of characters used for drawing menu borders.
 .Ar border\-lines
 may be one of
-.Ic single ,
-.Ic rounded ,
-.Ic double ,
-.Ic heavy ,
-.Ic simple ,
-.Ic padded ,
+.Cm single ,
+.Cm rounded ,
+.Cm double ,
+.Cm heavy ,
+.Cm simple ,
+.Cm padded ,
 or
-.Ic none .
+.Cm none .
 .Pp
 .Fl H
 sets the style for the selected menu item (see
@@ -8230,14 +8236,14 @@ and
 give the position of the menu.
 Both may be a row or column number, or one of the following special values:
 .Bl -column "XXXXX" "XXXX" -offset indent
-.It Sy "Value" Ta Sy "Flag" Ta Sy "Meaning"
-.It Li "C" Ta "Both" Ta "The centre of the terminal"
-.It Li "R" Ta Fl x Ta "The right side of the terminal"
-.It Li "P" Ta "Both" Ta "The bottom left of the pane"
-.It Li "M" Ta "Both" Ta "The mouse position"
-.It Li "L" Ta "Both" Ta "The position of the last menu"
-.It Li "W" Ta "Both" Ta "The window position on the status line"
-.It Li "S" Ta Fl y Ta "The line above or below the status line"
+.It Sy Value Ta Sy Flag Ta Sy Meaning
+.It Cm C Ta both Ta "The centre of the terminal"
+.It Cm R Ta Fl x Ta "The right side of the terminal"
+.It Cm P Ta both Ta "The bottom left of the pane"
+.It Cm M Ta both Ta "The mouse position"
+.It Cm L Ta both Ta "The position of the last menu"
+.It Cm W Ta both Ta "The window position on the status line"
+.It Cm S Ta Fl y Ta "The line above or below the status line"
 .El
 .Pp
 Or a format, which is expanded with the following additional variables.
@@ -9004,7 +9010,7 @@ which is named
 An error has happened in a configuration file.
 .It Ic %continue Ar pane\-id
 The pane has been continued after being paused (if the
-.Ar pause\-after
+.Cm pause\-after
 flag is set, see
 .Ic refresh\-client
 .Fl A ) .
@@ -9020,7 +9026,7 @@ describes why the client exited.
 New form of
 .Ic %output
 sent when the
-.Ar pause\-after
+.Cm pause\-after
 flag is set.
 .Ar age
 is the time in milliseconds for which tmux had buffered the output before it
@@ -9042,7 +9048,7 @@ The new layout is
 and the window's visible layout is
 .Ar window\-visible\-layout .
 If the
-.Ar new\-layouts
+.Cm new\-layouts
 flag is set, both layout fields use the new format string; see
 .Ic refresh\-client
 .Fl f .
@@ -9070,7 +9076,7 @@ Paste buffer
 has been deleted.
 .It Ic %pause Ar pane\-id
 The pane has been paused (if the
-.Ar pause\-after
+.Cm pause\-after
 flag is set).
 .It Ic %session\-changed Ar session\-id Ar name
 The client is now attached to the session with ID
