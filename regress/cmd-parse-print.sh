@@ -15,8 +15,7 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-SOCKET=$(mktemp -u testXXXXXX)
-TMUX="$TEST_TMUX -L$SOCKET -f/dev/null"
+TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 TMUX2=
 $TMUX kill-server 2>/dev/null
 
@@ -104,8 +103,7 @@ cmp -s $TMP $EXP || {
 # identical key list.
 $TMUX list-keys -T parsetest >$RT1 || exit 1
 $TMUX kill-server 2>/dev/null
-SOCKET2=$(mktemp -u testXXXXXX)
-TMUX2="$TEST_TMUX -L$SOCKET2 -f/dev/null"
+TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
 $TMUX2 -f/dev/null start \; new-session -d 2>/dev/null || exit 1
 $TMUX2 source-file $RT1 || exit 1
 $TMUX2 list-keys -T parsetest >$RT2 || exit 1

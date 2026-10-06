@@ -13,8 +13,8 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-OUT="$TEST_TMUX -Ltest -f/dev/null"
-IN="$TEST_TMUX -Ltest2 -f/dev/null"
+OUT="$TEST_TMUX -LtestA$$ -f/dev/null"
+IN="$TEST_TMUX -LtestB$$ -f/dev/null"
 
 $OUT kill-server 2>/dev/null
 $IN kill-server 2>/dev/null

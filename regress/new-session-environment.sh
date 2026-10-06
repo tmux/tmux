@@ -8,7 +8,9 @@ PATH=/bin:/usr/bin
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 $TMUX kill-server 2>/dev/null
 
-TERM=$($TMUX start \; show -gv default-terminal)
+# The query starts a server with no sessions which exits asynchronously. Use
+# another socket so the session below cannot connect to that exiting server.
+TERM=$($TEST_TMUX -LtestB$$ -f/dev/null start \; show -gv default-terminal)
 TMP=$(mktemp)
 OUT=$(mktemp)
 SCRIPT=$(mktemp)
