@@ -76,7 +76,8 @@ struct tty_key_parse {
 	size_t			 size;
 	struct mouse_event	 m;
 
-	int			 noprefix; /* an Escape before it is separate */
+	int			 flags;
+#define TTY_KEY_PARSE_NO_PREFIX 0x1 /* an Escape before it is separate */
 };
 static int	tty_keys_next1(struct tty *, const char *, size_t,
 		    struct tty_key_parse *, int);
@@ -704,7 +705,7 @@ tty_keys_next1(struct tty *tty, const char *buf, size_t len,
 	/* Is this a terminal reply, mouse event or extended key? */
 	switch (tty_keys_reply(tty, buf, len, kp)) {
 	case 0:		/* yes */
-		kp->noprefix = 1;
+		kp->flags |= TTY_KEY_PARSE_NO_PREFIX;
 		return (0);
 	case -1:	/* no, or not valid */
 		break;
@@ -724,10 +725,6 @@ tty_keys_next1(struct tty *tty, const char *buf, size_t len,
 		if (tk->next != NULL && !expired)
 			return (1);
 		key = kp->key = tk->key;
-		if ((key & KEYC_MASK_KEY) == KEYC_PASTE_START)
-			tty->flags |= TTY_BRACKETPASTE;
-		else if ((key & KEYC_MASK_KEY) == KEYC_PASTE_END)
-			tty->flags &= ~TTY_BRACKETPASTE;
 
 		/*
 		 * A key with an implied Meta already includes its Escape, and
@@ -738,7 +735,7 @@ tty_keys_next1(struct tty *tty, const char *buf, size_t len,
 		    key == KEYC_FOCUS_OUT ||
 		    key == KEYC_REPORT_DARK_THEME ||
 		    key == KEYC_REPORT_LIGHT_THEME)
-			kp->noprefix = 1;
+			kp->flags |= TTY_KEY_PARSE_NO_PREFIX;
 		return (0);
 	}
 
@@ -912,7 +909,7 @@ first_key:
 		/* Look for a key without the escape. */
 		n = tty_keys_next1(tty, buf + 1, len - 1, &kp, expired);
 		if (n == 0) {	/* found */
-			if (kp.noprefix) {
+			if (kp.flags & TTY_KEY_PARSE_NO_PREFIX) {
 				/*
 				 * We want the escape key as well as the xterm
 				 * key, because the xterm sequence implicitly
@@ -1043,6 +1040,12 @@ complete_key:
 
 	/* Apply terminal replies and mouse state. */
 	tty_keys_apply(tty, buf, &kp);
+
+	/* Check for bracketed paste. */
+	if ((kp.key & KEYC_MASK_KEY) == KEYC_PASTE_START)
+		tty->flags |= TTY_BRACKETPASTE;
+	else if ((kp.key & KEYC_MASK_KEY) == KEYC_PASTE_END)
+		tty->flags &= ~TTY_BRACKETPASTE;
 
 	/* Check for focus events. */
 	if (kp.key == KEYC_FOCUS_OUT) {
