@@ -303,6 +303,24 @@ resize_window_get_manual_size(struct session *s, u_int *sx, u_int *sy)
 }
 
 void
+resize_window_seed_manual_size(struct session *s, struct window *w)
+{
+	u_int	sx, sy;
+
+	if (options_get_number(w->options, "window-size") !=
+	    WINDOW_SIZE_MANUAL_OR_SMALLEST)
+		return;
+	if (w->manual_size_set)
+		return;
+	if (!resize_window_get_manual_size(s, &sx, &sy))
+		return;
+	w->manual_sx = sx;
+	w->manual_sy = sy;
+	log_debug("%s: @%u manual size from default-size %ux%u", __func__,
+	    w->id, sx, sy);
+}
+
+void
 resize_window_update_manual_size(struct cmd_find_state *target,
     struct options *oo, int old)
 {

@@ -157,6 +157,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	layout_close_pane(wp);
 
 	w = wp->window = window_create(w->sx, w->sy, w->xpixel, w->ypixel);
+	resize_window_seed_manual_size(dst_s, w);
 	window_add_ref(w, __func__);
 	options_set_parent(wp->options, w->options);
 	wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);

@@ -196,6 +196,7 @@ spawn_window(struct spawn_context *sc, char **cause)
 			xasprintf(cause, "couldn't create window %d", idx);
 			return (NULL);
 		}
+		resize_window_seed_manual_size(s, w);
 		if (s->curw == NULL)
 			s->curw = sc->wl;
 		sc->wl->session = s;

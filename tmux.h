@@ -3411,6 +3411,7 @@ void	 prompt_save_history(void);
 
 /* resize.c */
 void	 resize_window(struct window *, u_int, u_int, int, int);
+void	 resize_window_seed_manual_size(struct session *, struct window *);
 void	 resize_window_update_manual_size(struct cmd_find_state *,
 	     struct options *, int);
 void	 default_window_size(struct client *, struct session *, struct window *,

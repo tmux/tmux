@@ -20,16 +20,22 @@ fail()
 
 wait_size()
 {
-	expected=$1
+	wait_size_win "test:" "$1"
+}
+
+wait_size_win()
+{
+	target=$1
+	expected=$2
 	n=0
 	while [ $n -lt 50 ]; do
-		actual=$($TMUX display -t test: -p \
+		actual=$($TMUX display -t "$target" -p \
 		    '#{window_width}x#{window_height}' 2>/dev/null)
 		[ "$actual" = "$expected" ] && return 0
 		sleep 0.1
 		n=$((n + 1))
 	done
-	fail "expected size $expected, got $actual"
+	fail "expected $target size $expected, got $actual"
 }
 
 $TMUX new-session -d -s test || exit 1
@@ -77,5 +83,27 @@ manual=$($TMUX display -t test: -p \
 [ "$manual" = "70x20" ] || fail "unexpected resized manual size: $manual"
 $TMUX set -g window-size manual-or-smallest || exit 1
 wait_size 70x20
+
+# A window created while a smaller client is attached takes its manual
+# baseline from default-size, so it returns to that size when the client goes
+# away. A width-only manual resize keeps the manual height.
+$TMUX resize-window -t test: -x 100 -y 40 || exit 1
+$TMUX -C attach -t test <"$FIFO" >"$TMP" 2>&1 &
+client_pid=$!
+exec 3>"$FIFO"
+echo 'refresh-client -C 80,24' >&3 || exit 1
+wait_size 80x24
+$TMUX new-window -d -t test:2 || exit 1
+manual=$($TMUX display -t test:2 -p \
+    '#{window_manual_width}x#{window_manual_height}')
+[ "$manual" = "100x40" ] || fail "unexpected new window manual size: $manual"
+$TMUX resize-window -t test:2 -x 70 || exit 1
+manual=$($TMUX display -t test:2 -p \
+    '#{window_manual_width}x#{window_manual_height}')
+[ "$manual" = "70x40" ] || fail "unexpected width-only manual size: $manual"
+wait_size_win test:2 70x24
+exec 3>&-
+wait "$client_pid" 2>/dev/null || true
+wait_size_win test:2 70x40
 
 exit 0

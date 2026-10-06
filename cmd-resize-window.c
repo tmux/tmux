@@ -65,8 +65,19 @@ cmd_resize_window_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-	sx = w->sx;
-	sy = w->sy;
+	/*
+	 * A manual-or-smallest window's current size can be smaller than its manual
+	 * baseline (capped by the smallest client), so base the manual size on the
+	 * baseline instead of the current size.
+	 */
+	if (options_get_number(w->options, "window-size") ==
+	    WINDOW_SIZE_MANUAL_OR_SMALLEST) {
+		sx = w->manual_sx;
+		sy = w->manual_sy;
+	} else {
+		sx = w->sx;
+		sy = w->sy;
+	}
 
 	if (args_has(args, 'x')) {
 		sx = args_strtonum(args, 'x', WINDOW_MINIMUM, WINDOW_MAXIMUM,
