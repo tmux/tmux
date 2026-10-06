@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1452 2026/10/06 10:55:55 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1453 2026/10/06 17:49:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -401,6 +401,16 @@ enum {
 	/* Theme reporting. */
 	KEYC_REPORT_DARK_THEME,
 	KEYC_REPORT_LIGHT_THEME,
+
+	/* Terminal replies, handled in tty-keys.c and never fired. */
+	KEYC_REPORT_CLIPBOARD,
+	KEYC_REPORT_SYNC,
+	KEYC_REPORT_DA,
+	KEYC_REPORT_DA2,
+	KEYC_REPORT_XDA,
+	KEYC_REPORT_COLOURS,
+	KEYC_REPORT_PALETTE,
+	KEYC_REPORT_WINSZ,
 
 	/* Mouse state. */
 	KEYC_MOUSE, /* unclassified mouse event */
