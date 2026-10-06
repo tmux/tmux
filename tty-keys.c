@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-keys.c,v 1.215 2026/09/25 10:37:05 nicm Exp $ */
+/* $OpenBSD: tty-keys.c,v 1.216 2026/10/06 17:49:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -37,6 +37,20 @@
  * into a ternary tree.
  */
 
+/*
+ * A key or terminal reply parsed from the input buffer. A reply is parsed
+ * without side effects and applied only once it is complete and not part of
+ * a longer key.
+ */
+struct tty_key_parse {
+	key_code		 key;
+	size_t			 size;
+	struct mouse_event	 m;
+
+	int			 flags;
+#define TTY_KEY_PARSE_NO_META 0x1
+};
+
 static void	tty_keys_add1(struct tty_key **, const char *, key_code);
 static void	tty_keys_add(struct tty *, const char *, key_code);
 static void	tty_keys_free1(struct tty_key *);
@@ -44,23 +58,44 @@ static struct tty_key *tty_keys_find1(struct tty_key *, const char *, size_t,
 		    size_t *);
 static struct tty_key *tty_keys_find(struct tty *, const char *, size_t,
 		    size_t *);
-static int	tty_keys_next1(struct tty *, const char *, size_t, key_code *,
-		    size_t *, int);
 static void	tty_keys_callback(int, short, void *);
 static int	tty_keys_extended_key(struct tty *, const char *, size_t,
 		    size_t *, key_code *);
 static int	tty_keys_mouse(struct tty *, const char *, size_t, size_t *,
 		    struct mouse_event *);
 static int	tty_keys_clipboard(struct tty *, const char *, size_t,
-		    size_t *);
+		    size_t *, int);
 static int	tty_keys_device_attributes(struct tty *, const char *, size_t,
-		    size_t *);
+		    size_t *, int);
 static int	tty_keys_device_attributes2(struct tty *, const char *, size_t,
-		    size_t *);
+		    size_t *, int);
 static int	tty_keys_extended_device_attributes(struct tty *, const char *,
-		    size_t, size_t *);
-static int	tty_keys_sync(struct tty *, const char *, size_t, size_t *);
-static int	tty_keys_palette(struct tty *, const char *, size_t, size_t *);
+		    size_t, size_t *, int);
+static int	tty_keys_sync(struct tty *, const char *, size_t, size_t *,
+		    int);
+static int	tty_keys_colours1(struct tty *, const char *, size_t, size_t *,
+		    int);
+static int	tty_keys_palette(struct tty *, const char *, size_t, size_t *,
+		    int);
+static int	tty_keys_winsz(struct tty *, const char *, size_t, size_t *,
+		    int);
+static int	tty_keys_next1(struct tty *, const char *, size_t,
+		    struct tty_key_parse *, int);
+
+/* Terminal replies, in the order they are checked. */
+static const struct {
+	key_code	key;
+	int	      (*fn)(struct tty *, const char *, size_t, size_t *, int);
+} tty_keys_replies[] = {
+	{ KEYC_REPORT_CLIPBOARD, tty_keys_clipboard },
+	{ KEYC_REPORT_SYNC, tty_keys_sync },
+	{ KEYC_REPORT_DA, tty_keys_device_attributes },
+	{ KEYC_REPORT_DA2, tty_keys_device_attributes2 },
+	{ KEYC_REPORT_XDA, tty_keys_extended_device_attributes },
+	{ KEYC_REPORT_COLOURS, tty_keys_colours1 },
+	{ KEYC_REPORT_PALETTE, tty_keys_palette },
+	{ KEYC_REPORT_WINSZ, tty_keys_winsz }
+};
 
 /* A key tree entry. */
 struct tty_key {
@@ -75,8 +110,8 @@ struct tty_key {
 
 /* Default raw keys. */
 struct tty_default_key_raw {
-	const char	       *string;
-	key_code		key;
+	const char	*string;
+	key_code	 key;
 };
 static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	/* Application escape. */
@@ -614,10 +649,45 @@ tty_keys_partial_paste_end(const char *buf, size_t len)
 	return (memcmp(buf, paste_end, len) == 0);
 }
 
+/*
+ * Look for a terminal reply, mouse event or extended key. These sequences
+ * carry their own modifiers, so none can follow an Escape as a Meta prefix.
+ */
+static int
+tty_keys_reply(struct tty *tty, const char *buf, size_t len,
+    struct tty_key_parse *kp)
+{
+	u_int	i;
+	int	n;
+
+	for (i = 0; i < nitems(tty_keys_replies); i++) {
+		n = tty_keys_replies[i].fn(tty, buf, len, &kp->size, 0);
+		if (n == 0)
+			kp->key = tty_keys_replies[i].key;
+		if (n != -1)
+			return (n);
+	}
+
+	switch (tty_keys_mouse(tty, buf, len, &kp->size, &kp->m)) {
+	case 0:		/* yes */
+		kp->key = KEYC_MOUSE;
+		return (0);
+	case -1:	/* no, or not valid */
+		break;
+	case -2:	/* yes, but we don't care */
+		kp->key = KEYC_UNKNOWN;
+		return (0);
+	case 1:		/* partial */
+		return (1);
+	}
+
+	return (tty_keys_extended_key(tty, buf, len, &kp->size, &kp->key));
+}
+
 /* Look up part of the next key. */
 static int
-tty_keys_next1(struct tty *tty, const char *buf, size_t len, key_code *key,
-    size_t *size, int expired)
+tty_keys_next1(struct tty *tty, const char *buf, size_t len,
+    struct tty_key_parse *kp, int expired)
 {
 	struct client		*c = tty->client;
 	struct tty_key		*tk, *tk1;
@@ -625,12 +695,27 @@ tty_keys_next1(struct tty *tty, const char *buf, size_t len, key_code *key,
 	enum utf8_state		 more;
 	utf8_char		 uc;
 	u_int			 i;
+	key_code		 key;
 
 	log_debug("%s: next key is %zu (%.*s) (expired=%d)", c->name, len,
 	    (int)len, buf, expired);
+	memset(kp, 0, sizeof *kp);
+
+	/* Is this a terminal reply, mouse event or extended key? */
+	switch (tty_keys_reply(tty, buf, len, kp)) {
+	case 0:		/* yes */
+		kp->flags |= TTY_KEY_PARSE_NO_META;
+		return (0);
+	case -1:	/* no, or not valid */
+		break;
+	case 1:		/* partial */
+		if (!expired)
+			return (1);
+		break;
+	}
 
 	/* Is this a known key? */
-	tk = tty_keys_find(tty, buf, len, size);
+	tk = tty_keys_find(tty, buf, len, &kp->size);
 	if (tk != NULL && tk->key != KEYC_UNKNOWN) {
 		tk1 = tk;
 		do
@@ -638,18 +723,29 @@ tty_keys_next1(struct tty *tty, const char *buf, size_t len, key_code *key,
 		while ((tk1 = tk1->next) != NULL);
 		if (tk->next != NULL && !expired)
 			return (1);
-		*key = tk->key;
-		if ((*key & KEYC_MASK_KEY) == KEYC_PASTE_START)
-			tty->flags |= TTY_BRACKETPASTE;
-		else if ((*key & KEYC_MASK_KEY) == KEYC_PASTE_END)
-			tty->flags &= ~TTY_BRACKETPASTE;
+		key = kp->key = tk->key;
+
+		/*
+		 * A key with an implied Meta already includes its Escape, and
+		 * focus and theme reports never have a Meta modifier.
+		 */
+		if ((key & KEYC_IMPLIED_META) ||
+		    key == KEYC_FOCUS_IN ||
+		    key == KEYC_FOCUS_OUT ||
+		    key == KEYC_REPORT_DARK_THEME ||
+		    key == KEYC_REPORT_LIGHT_THEME)
+			kp->flags |= TTY_KEY_PARSE_NO_META;
 		return (0);
 	}
+
+	/* Is this the start of a known key? */
+	if (tk != NULL && !expired)
+		return (1);
 
 	/* Is this valid UTF-8? */
 	more = utf8_open(&ud, (u_char)*buf);
 	if (more == UTF8_MORE) {
-		*size = ud.size;
+		kp->size = ud.size;
 		if (len < ud.size) {
 			if (!expired)
 				return (1);
@@ -662,83 +758,37 @@ tty_keys_next1(struct tty *tty, const char *buf, size_t len, key_code *key,
 
 		if (utf8_from_data(&ud, &uc) != UTF8_DONE)
 			return (-1);
-		*key = uc;
+		kp->key = uc;
 
 		log_debug("%s: UTF-8 key %.*s %#llx", c->name, (int)ud.size,
-		    ud.data, *key);
+		    ud.data, kp->key);
 		return (0);
 	}
 
 	return (-1);
 }
 
-/* Process window size change escape sequences. */
-static int
-tty_keys_winsz(struct tty *tty, const char *buf, size_t len, size_t *size)
+/* Apply a complete terminal reply. */
+static void
+tty_keys_apply(struct tty *tty, const char *buf, struct tty_key_parse *kp)
 {
-	struct client	*c = tty->client;
-	size_t		 end;
-	char		 tmp[64];
-	u_int		 sx, sy, xpixel, ypixel, char_x, char_y;
+	size_t	size;
+	u_int	i;
 
-	*size = 0;
-
-	/* If we did not request this, ignore it. */
-	if (!(tty->flags & TTY_WINSIZEQUERY))
-		return (-1);
-
-	/* First two bytes are always \033[. */
-	if (buf[0] != '\033')
-		return (-1);
-	if (len == 1)
-		return (1);
-	if (buf[1] != '[')
-		return (-1);
-	if (len == 2)
-		return (1);
-
-	/*
-	 * Stop at either 't' or anything that isn't a
-	 * number or ';'.
-	 */
-	for (end = 2; end < len && end != sizeof tmp; end++) {
-		if (buf[end] == 't')
-			break;
-		if (!isdigit((u_char)buf[end]) && buf[end] != ';')
-			break;
+	if (kp->key == KEYC_MOUSE) {
+		tty->mouse_last_x = kp->m.x;
+		tty->mouse_last_y = kp->m.y;
+		tty->mouse_last_b = kp->m.b;
+		return;
 	}
-	if (end == len)
-		return (1);
-	if (end == sizeof tmp || buf[end] != 't')
-		return (-1);
-
-	/* Copy to the buffer. */
-	memcpy(tmp, buf + 2, end - 2);
-	tmp[end - 2] = '\0';
-
-	/* Try to parse the window size sequence. */
-	if (sscanf(tmp, "8;%u;%u", &sy, &sx) == 2) {
-		/* Window size in characters. */
-		tty_set_size(tty, sx, sy, tty->xpixel, tty->ypixel);
-
-		*size = end + 1;
-		return (0);
-	} else if (sscanf(tmp, "4;%u;%u", &ypixel, &xpixel) == 2) {
-		/* Window size in pixels. */
-		char_x = (xpixel && tty->sx) ? xpixel / tty->sx : 0;
-		char_y = (ypixel && tty->sy) ? ypixel / tty->sy : 0;
-		tty_set_size(tty, tty->sx, tty->sy, char_x, char_y);
-		tty_invalidate(tty);
-
-		tty->flags &= ~TTY_WINSIZEQUERY;
-		*size = end + 1;
-		return (0);
+	for (i = 0; i < nitems(tty_keys_replies); i++) {
+		if (tty_keys_replies[i].key == kp->key) {
+			tty_keys_replies[i].fn(tty, buf, kp->size, &size, 1);
+			kp->key = KEYC_UNKNOWN;
+			return;
+		}
 	}
-
-	log_debug("%s: unrecognized window size sequence: %s", c->name, tmp);
-	return (-1);
 }
-
 
 /* Process at least one key in the buffer. Return 0 if no keys present. */
 int
@@ -749,9 +799,9 @@ tty_keys_next(struct tty *tty)
 	const char		*buf;
 	size_t			 len, size;
 	cc_t			 bspace;
-	int			 delay, expired = 0, n, bg = tty->bg;
+	int			 delay, expired = 0, n;
 	key_code		 key, onlykey;
-	struct mouse_event	 m = { 0 };
+	struct tty_key_parse	 kp;
 	struct key_event	*event;
 
 	/* Get key buffer. */
@@ -771,127 +821,9 @@ tty_keys_next(struct tty *tty)
 		return (1);
 	}
 
-	/* Is this a clipboard response? */
-	switch (tty_keys_clipboard(tty, buf, len, &size)) {
-	case 0:		/* yes */
-		key = KEYC_UNKNOWN;
-		goto complete_key;
-	case -1:	/* no, or not valid */
-		break;
-	case 1:		/* partial */
-		goto partial_key;
-	}
-
-	/* Is this a synchronized update mode response? */
-	switch (tty_keys_sync(tty, buf, len, &size)) {
-	case 0:		/* yes */
-		key = KEYC_UNKNOWN;
-		goto complete_key;
-	case -1:	/* no, or not valid */
-		break;
-	case 1:		/* partial */
-		goto partial_key;
-	}
-
-	/* Is this a primary device attributes response? */
-	switch (tty_keys_device_attributes(tty, buf, len, &size)) {
-	case 0:		/* yes */
-		key = KEYC_UNKNOWN;
-		goto complete_key;
-	case -1:	/* no, or not valid */
-		break;
-	case 1:		/* partial */
-		goto partial_key;
-	}
-
-	/* Is this a secondary device attributes response? */
-	switch (tty_keys_device_attributes2(tty, buf, len, &size)) {
-	case 0:		/* yes */
-		key = KEYC_UNKNOWN;
-		goto complete_key;
-	case -1:	/* no, or not valid */
-		break;
-	case 1:		/* partial */
-		goto partial_key;
-	}
-
-	/* Is this an extended device attributes response? */
-	switch (tty_keys_extended_device_attributes(tty, buf, len, &size)) {
-	case 0:		/* yes */
-		key = KEYC_UNKNOWN;
-		goto complete_key;
-	case -1:	/* no, or not valid */
-		break;
-	case 1:		/* partial */
-		goto partial_key;
-	}
-
-	/* Is this a colours response? */
-	switch (tty_keys_colours(tty, buf, len, &size, &tty->fg, &tty->bg)) {
-	case 0:		/* yes */
-		key = KEYC_UNKNOWN;
-		if (tty->bg != bg)
-			server_client_update_theme_colours(c);
-		session_theme_changed(c->session);
-		goto complete_key;
-	case -1:	/* no, or not valid */
-		break;
-	case 1:		/* partial */
-		if (tty->bg != bg)
-			server_client_update_theme_colours(c);
-		session_theme_changed(c->session);
-		goto partial_key;
-	}
-
-	/* Is this a palette response? */
-	switch (tty_keys_palette(tty, buf, len, &size)) {
-	case 0:		/* yes */
-		key = KEYC_UNKNOWN;
-		goto complete_key;
-	case -1:	/* no, or not valid */
-		break;
-	case 1:		/* partial */
-		goto partial_key;
-	}
-
-	/* Is this a mouse key press? */
-	switch (tty_keys_mouse(tty, buf, len, &size, &m)) {
-	case 0:		/* yes */
-		key = KEYC_MOUSE;
-		goto complete_key;
-	case -1:	/* no, or not valid */
-		break;
-	case -2:	/* yes, but we don't care. */
-		key = KEYC_MOUSE;
-		goto discard_key;
-	case 1:		/* partial */
-		goto partial_key;
-	}
-
-	/* Is this an extended key press? */
-	switch (tty_keys_extended_key(tty, buf, len, &size, &key)) {
-	case 0:		/* yes */
-		goto complete_key;
-	case -1:	/* no, or not valid */
-		break;
-	case 1:		/* partial */
-		goto partial_key;
-	}
-
-	/* Check for window size query */
-	switch (tty_keys_winsz(tty, buf, len, &size)) {
-	case 0:		/* yes */
-		key = KEYC_UNKNOWN;
-		goto complete_key;
-	case -1:	/* no, or not valid */
-		break;
-	case 1:		/* partial */
-		goto partial_key;
-	}
-
 first_key:
 	/* Try to lookup complete key. */
-	n = tty_keys_next1(tty, buf, len, &key, &size, expired);
+	n = tty_keys_next1(tty, buf, len, &kp, expired);
 	if (n == 0)	/* found */
 		goto complete_key;
 	if (n == 1)
@@ -903,22 +835,25 @@ first_key:
 	 */
 	if (*buf == '\033' && len > 1) {
 		/* Look for a key without the escape. */
-		n = tty_keys_next1(tty, buf + 1, len - 1, &key, &size, expired);
+		n = tty_keys_next1(tty, buf + 1, len - 1, &kp, expired);
 		if (n == 0) {	/* found */
-			if (key & KEYC_IMPLIED_META) {
+			if (kp.flags & TTY_KEY_PARSE_NO_META) {
 				/*
 				 * We want the escape key as well as the xterm
 				 * key, because the xterm sequence implicitly
 				 * includes the escape (so if we see
 				 * \033\033[1;3D we know it is an Escape
-				 * followed by M-Left, not just M-Left).
+				 * followed by M-Left, not just M-Left). The
+				 * same applies to terminal replies, mouse
+				 * events and extended keys.
 				 */
-				key = '\033';
-				size = 1;
+				memset(&kp, 0, sizeof kp);
+				kp.key = '\033';
+				kp.size = 1;
 				goto complete_key;
 			}
-			key |= KEYC_META;
-			size++;
+			kp.key |= KEYC_META;
+			kp.size++;
 			goto complete_key;
 		}
 		if (n == 1)	/* partial */
@@ -974,6 +909,9 @@ first_key:
 		key = onlykey | KEYC_CTRL | (key & KEYC_META);
 	}
 
+	memset(&kp, 0, sizeof kp);
+	kp.key = key;
+	kp.size = size;
 	goto complete_key;
 
 partial_key:
@@ -1020,32 +958,42 @@ partial_key:
 	return (0);
 
 complete_key:
-	log_debug("%s: complete key %.*s %#llx", c->name, (int)size, buf, key);
+	log_debug("%s: complete key %.*s %#llx", c->name, (int)kp.size, buf,
+	    kp.key);
 
 	/* Remove key timer. */
 	if (event_initialized(&tty->key_timer))
 		evtimer_del(&tty->key_timer);
 	tty->flags &= ~TTY_TIMER;
 
+	/* Apply terminal replies and mouse state. */
+	tty_keys_apply(tty, buf, &kp);
+
+	/* Check for bracketed paste. */
+	if ((kp.key & KEYC_MASK_KEY) == KEYC_PASTE_START)
+		tty->flags |= TTY_BRACKETPASTE;
+	else if ((kp.key & KEYC_MASK_KEY) == KEYC_PASTE_END)
+		tty->flags &= ~TTY_BRACKETPASTE;
+
 	/* Check for focus events. */
-	if (key == KEYC_FOCUS_OUT) {
+	if (kp.key == KEYC_FOCUS_OUT) {
 		c->flags &= ~CLIENT_FOCUSED;
 		window_update_focus(c->session->curw->window);
 		events_fire_client("client-focus-out", c);
-	} else if (key == KEYC_FOCUS_IN) {
+	} else if (kp.key == KEYC_FOCUS_IN) {
 		c->flags |= CLIENT_FOCUSED;
 		events_fire_client("client-focus-in", c);
 		window_update_focus(c->session->curw->window);
 	}
 
 	/* Fire the key. */
-	if (key != KEYC_UNKNOWN) {
+	if (kp.key != KEYC_UNKNOWN) {
 		event = xcalloc(1, sizeof *event);
-		event->key = key;
-		memcpy(&event->m, &m, sizeof event->m);
+		event->key = kp.key;
+		memcpy(&event->m, &kp.m, sizeof event->m);
 
-		event->buf = xmalloc(size);
-		event->len = size;
+		event->buf = xmalloc(kp.size);
+		event->len = kp.size;
 		memcpy (event->buf, buf, event->len);
 
 		if (!server_client_handle_key(c, event)) {
@@ -1055,15 +1003,7 @@ complete_key:
 	}
 
 	/* Remove data from buffer. */
-	evbuffer_drain(tty->in, size);
-
-	return (1);
-
-discard_key:
-	log_debug("%s: discard key %.*s %#llx", c->name, (int)size, buf, key);
-
-	/* Remove data from buffer. */
-	evbuffer_drain(tty->in, size);
+	evbuffer_drain(tty->in, kp.size);
 
 	return (1);
 }
@@ -1328,7 +1268,7 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
 	} else
 		return (-1);
 
-	/* Fill mouse event. */
+	/* Fill mouse event. The last mouse state is updated when applied. */
 	m->lx = tty->mouse_last_x;
 	m->x = x;
 	m->ly = tty->mouse_last_y;
@@ -1338,11 +1278,6 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
 	m->sgr_type = sgr_type;
 	m->sgr_b = sgr_b;
 
-	/* Update last mouse state. */
-	tty->mouse_last_x = x;
-	tty->mouse_last_y = y;
-	tty->mouse_last_b = b;
-
 	return (0);
 }
 
@@ -1351,7 +1286,8 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
  * partial.
  */
 static int
-tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size)
+tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size,
+    int apply)
 {
 	struct client				*c = tty->client;
 	size_t					 end, terminator = 0, needed;
@@ -1397,6 +1333,8 @@ tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size)
 	if (end == len)
 		return (1);
 	*size = end + 1;
+	if (!apply)
+		return (0);
 
 	/* Skip the initial part. */
 	buf += 5;
@@ -1466,7 +1404,7 @@ tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size)
  */
 static int
 tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
-    size_t *size)
+    size_t *size, int apply)
 {
 	struct client	*c = tty->client;
 	u_int		 i, n = 0;
@@ -1504,6 +1442,8 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		return (-1);
 	tmp[i] = '\0';
 	*size = 4 + i;
+	if (!apply)
+		return (0);
 
 	/* Convert all arguments to numbers. */
 	cp = tmp;
@@ -1548,7 +1488,8 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
  * failure, 1 for partial.
  */
 static int
-tty_keys_sync(struct tty *tty, const char *buf, size_t len, size_t *size)
+tty_keys_sync(struct tty *tty, const char *buf, size_t len, size_t *size,
+    int apply)
 {
 	struct client		*c = tty->client;
 	static const char	 prefix[] = "\033[?2026;";
@@ -1580,6 +1521,8 @@ tty_keys_sync(struct tty *tty, const char *buf, size_t len, size_t *size)
 	if (buf[i++] != 'y')
 		return (-1);
 	*size = i;
+	if (!apply)
+		return (0);
 
 	if (status == 1 || status == 2 || status == 3) {
 		tty_parse_client_features(c, "sync", ",");
@@ -1597,7 +1540,7 @@ tty_keys_sync(struct tty *tty, const char *buf, size_t len, size_t *size)
  */
 static int
 tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
-    size_t *size)
+    size_t *size, int apply)
 {
 	struct client	*c = tty->client;
 	u_int		 i, n = 0;
@@ -1635,6 +1578,8 @@ tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
 		return (-1);
 	tmp[i] = '\0';
 	*size = 4 + i;
+	if (!apply)
+		return (0);
 
 	/* Convert all arguments to numbers. */
 	cp = tmp;
@@ -1676,7 +1621,7 @@ tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
  */
 static int
 tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
-    size_t len, size_t *size)
+    size_t len, size_t *size, int apply)
 {
 	struct client	*c = tty->client;
 	u_int		 i;
@@ -1715,7 +1660,7 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 	if (i == (sizeof tmp) - 1)
 		return (-1);
 	*size = 5 + i;
-	if (i == 0)
+	if (i == 0 || !apply)
 		return (0);
 	tmp[i - 1] = '\0';
 
@@ -1749,7 +1694,7 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 
 /*
  * Handle foreground or background input. Returns 0 for success, -1 for
- * failure, 1 for partial.
+ * failure, 1 for partial. If fg is NULL, only check the reply.
  */
 int
 tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size,
@@ -1797,7 +1742,7 @@ tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size,
 	if (i == (sizeof tmp) - 1)
 		return (-1);
 	*size = 6 + i;
-	if (i == 0)
+	if (i == 0 || fg == NULL)
 		return (0);
 	if (tmp[i - 1] == '\033')
 		tmp[i - 1] = '\0';
@@ -1825,9 +1770,30 @@ tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size,
 	return (0);
 }
 
+/* Handle foreground or background input from the terminal. */
+static int
+tty_keys_colours1(struct tty *tty, const char *buf, size_t len, size_t *size,
+    int apply)
+{
+	struct client	*c = tty->client;
+	int		 bg = tty->bg, n;
+
+	if (!apply)
+		return (tty_keys_colours(tty, buf, len, size, NULL, NULL));
+
+	n = tty_keys_colours(tty, buf, len, size, &tty->fg, &tty->bg);
+	if (n == 0) {
+		if (tty->bg != bg)
+			server_client_update_theme_colours(c);
+		session_theme_changed(c->session);
+	}
+	return (n);
+}
+
 /* Handle OSC 4 palette colour responses. */
 static int
-tty_keys_palette(struct tty *tty, const char *buf, size_t len, size_t *size)
+tty_keys_palette(struct tty *tty, const char *buf, size_t len, size_t *size,
+    int apply)
 {
 	struct client			 *c = tty->client;
 	u_int				  i;
@@ -1881,6 +1847,8 @@ tty_keys_palette(struct tty *tty, const char *buf, size_t len, size_t *size)
 		return (-1);
 	if (idx < 0 || idx > 255)
 		return (-1);
+	if (!apply)
+		return (0);
 
 	/* Work out the colour. */
 	pd.c = colour_parseX11(endptr + 1);
@@ -1890,4 +1858,77 @@ tty_keys_palette(struct tty *tty, const char *buf, size_t len, size_t *size)
 	input_request_reply(c, INPUT_REQUEST_PALETTE, &pd);
 
 	return (0);
+}
+
+/* Process window size change escape sequences. */
+static int
+tty_keys_winsz(struct tty *tty, const char *buf, size_t len, size_t *size,
+    int apply)
+{
+	struct client	*c = tty->client;
+	size_t		 end;
+	char		 tmp[64];
+	u_int		 sx, sy, xpixel, ypixel, char_x, char_y;
+
+	*size = 0;
+
+	/* If we did not request this, ignore it. */
+	if (!(tty->flags & TTY_WINSIZEQUERY))
+		return (-1);
+
+	/* First two bytes are always \033[. */
+	if (buf[0] != '\033')
+		return (-1);
+	if (len == 1)
+		return (1);
+	if (buf[1] != '[')
+		return (-1);
+	if (len == 2)
+		return (1);
+
+	/*
+	 * Stop at either 't' or anything that isn't a
+	 * number or ';'.
+	 */
+	for (end = 2; end < len && end != sizeof tmp; end++) {
+		if (buf[end] == 't')
+			break;
+		if (!isdigit((u_char)buf[end]) && buf[end] != ';')
+			break;
+	}
+	if (end == len)
+		return (1);
+	if (end == sizeof tmp || buf[end] != 't')
+		return (-1);
+
+	/* Copy to the buffer. */
+	memcpy(tmp, buf + 2, end - 2);
+	tmp[end - 2] = '\0';
+
+	/* Try to parse the window size sequence. */
+	if (sscanf(tmp, "8;%u;%u", &sy, &sx) == 2) {
+		*size = end + 1;
+		if (!apply)
+			return (0);
+
+		/* Window size in characters. */
+		tty_set_size(tty, sx, sy, tty->xpixel, tty->ypixel);
+		return (0);
+	} else if (sscanf(tmp, "4;%u;%u", &ypixel, &xpixel) == 2) {
+		*size = end + 1;
+		if (!apply)
+			return (0);
+
+		/* Window size in pixels. */
+		char_x = (xpixel && tty->sx) ? xpixel / tty->sx : 0;
+		char_y = (ypixel && tty->sy) ? ypixel / tty->sy : 0;
+		tty_set_size(tty, tty->sx, tty->sy, char_x, char_y);
+		tty_invalidate(tty);
+
+		tty->flags &= ~TTY_WINSIZEQUERY;
+		return (0);
+	}
+
+	log_debug("%s: unrecognized window size sequence: %s", c->name, tmp);
+	return (-1);
 }
