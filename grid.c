@@ -1347,6 +1347,53 @@ grid_reflow_move(struct grid *gd, struct grid_line *from)
 	return (to);
 }
 
+/* A portion of a line being moved during reflow. */
+struct grid_reflow_range {
+	u_int	 offset;
+	u_int	 count;
+	int	 last;
+};
+
+/* Move OSC 133 markers and adjust those left on the source line. */
+static void
+grid_reflow_move_osc133(struct grid_line *to, struct grid_line *from,
+    const struct grid_reflow_range *range)
+{
+	struct osc133_data	*src = &from->osc133_data;
+	struct osc133_data	*dst = &to->osc133_data;
+	u_short			*src_col[] = { &src->prompt_col, &src->cmd_col,
+				    &src->out_start_col, &src->out_end_col };
+	u_short			*dst_col[] = { &dst->prompt_col, &dst->cmd_col,
+				    &dst->out_start_col, &dst->out_end_col };
+	u_int			 flags[] = {
+		GRID_LINE_START_PROMPT|GRID_LINE_SECOND_PROMPT,
+		GRID_LINE_START_COMMAND,
+		GRID_LINE_START_OUTPUT,
+		GRID_LINE_END_OUTPUT
+	};
+	u_int			 i, flag;
+
+	if ((from->flags & GRID_LINE_OSC133_FLAGS) == 0)
+		return;
+	for (i = 0; i < nitems(flags); i++) {
+		flag = from->flags & flags[i];
+		if (flag == 0)
+			continue;
+		if (!range->last && *src_col[i] >= range->count) {
+			*src_col[i] -= range->count;
+			continue;
+		}
+		*dst_col[i] = range->offset + *src_col[i];
+		to->flags |= flag;
+		from->flags &= ~flag;
+		*src_col[i] = 0;
+		if (flag == GRID_LINE_END_OUTPUT) {
+			dst->exit_status = src->exit_status;
+			src->exit_status = 0;
+		}
+	}
+}
+
 /* Join line below onto this one. */
 static void
 grid_reflow_join(struct grid *target, struct grid *gd, u_int sx, u_int yy,
@@ -1354,6 +1401,7 @@ grid_reflow_join(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 {
 	struct grid_line	*gl, *from = NULL;
 	struct grid_cell	 gc;
+	struct grid_reflow_range range;
 	u_int			 lines, left, i, to, line, want = 0;
 	u_int			 at;
 	int			 wrapped = 1;
@@ -1383,13 +1431,19 @@ grid_reflow_join(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 			break;
 		line = yy + 1 + lines;
 
-		/* If the next line is empty, skip it. */
+		/* Consume empty lines, including any markers. */
 		if (~gd->linedata[line].flags & GRID_LINE_WRAPPED)
 			wrapped = 0;
 		if (gd->linedata[line].cellused == 0) {
+			from = &gd->linedata[line];
+			want = 0;
+			range.offset = at;
+			range.count = 0;
+			range.last = 1;
+			grid_reflow_move_osc133(gl, from, &range);
+			lines++;
 			if (!wrapped)
 				break;
-			lines++;
 			continue;
 		}
 
@@ -1416,6 +1470,10 @@ grid_reflow_join(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 			grid_set_cell(target, at, to, &gc);
 			at++;
 		}
+		range.offset = at - want;
+		range.count = want;
+		range.last = (want == from->cellused);
+		grid_reflow_move_osc133(gl, from, &range);
 		lines++;
 
 		/*
@@ -1462,6 +1520,7 @@ grid_reflow_split(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 {
 	struct grid_line	*gl = &gd->linedata[yy], *first;
 	struct grid_cell	 gc;
+	struct grid_reflow_range range;
 	u_int			 line, lines, width, i, xx;
 	u_int			 used = gl->cellused;
 	int			 flags = gl->flags;
@@ -1485,6 +1544,15 @@ grid_reflow_split(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 	/* Insert new lines. */
 	line = target->sy + 1;
 	first = grid_reflow_add(target, lines);
+	memcpy(first, gl, sizeof *first);
+	first->cellsize = first->cellused = at;
+	first->flags &= ~GRID_LINE_OSC133_FLAGS;
+	first->flags |= GRID_LINE_WRAPPED;
+	memset(&first->osc133_data, 0, sizeof first->osc133_data);
+	range.offset = 0;
+	range.count = at;
+	range.last = 0;
+	grid_reflow_move_osc133(first, gl, &range);
 
 	/* Copy sections from the original line. */
 	width = 0;
@@ -1493,6 +1561,9 @@ grid_reflow_split(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 		grid_get_cell1(gl, i, &gc);
 		if (width + gc.data.width > sx) {
 			target->linedata[line].flags |= GRID_LINE_WRAPPED;
+			range.count = xx;
+			grid_reflow_move_osc133(&target->linedata[line], gl,
+			    &range);
 
 			line++;
 			width = 0;
@@ -1504,11 +1575,10 @@ grid_reflow_split(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 	}
 	if (flags & GRID_LINE_WRAPPED)
 		target->linedata[line].flags |= GRID_LINE_WRAPPED;
+	range.count = xx;
+	range.last = 1;
+	grid_reflow_move_osc133(&target->linedata[line], gl, &range);
 
-	/* Move the remainder of the original line. */
-	gl->cellsize = gl->cellused = at;
-	gl->flags |= GRID_LINE_WRAPPED;
-	memcpy(first, gl, sizeof *first);
 	grid_reflow_dead(gl);
 
 	/* Adjust the scroll position. */

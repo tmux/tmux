@@ -2577,7 +2577,8 @@ marker up to its matching
 marker.
 If there is no
 .Ql D
-marker, the output ends at the end of the copy-mode buffer.
+marker, the output ends at the last used cell in the copy-mode buffer,
+omitting unused blank rows at the bottom.
 At the following prompt or below it, they use the most recent nonempty output.
 With
 .Fl a ,

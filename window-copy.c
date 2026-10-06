@@ -6387,8 +6387,13 @@ window_copy_find_previous_output_range(struct window_mode_entry *wme,
 static void
 window_copy_output_end(struct screen *s, u_int *x, u_int *y)
 {
-	*x = s->cx;
-	*y = screen_hsize(s) + s->cy;
+	struct grid	*gd = s->grid;
+	u_int		 last = gd->hsize + gd->sy - 1;
+
+	while (last > 0 && grid_get_line(gd, last)->cellused == 0)
+		last--;
+	*x = grid_get_line(gd, last)->cellused;
+	*y = last;
 }
 
 static void *
