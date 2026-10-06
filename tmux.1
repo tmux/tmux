@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1174 2026/09/25 13:44:49 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1175 2026/10/06 08:01:54 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: September 25 2026 $
+.Dd $Mdocdate: October 6 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -4678,6 +4678,9 @@ flag unsets an option, so a session inherits the option from the global
 options (or with
 .Fl g ,
 restores a global option to the default).
+For an array option given with a key,
+.Fl u
+removes only that item.
 .Fl U
 unsets an option (like
 .Fl u )
@@ -5543,8 +5546,18 @@ or
 more rows.
 .It Ic status\-format[] Ar format
 Specify the format to be used for each line of the status line.
-The default builds the top status line from the various individual status
-options below.
+The default first status line is built from the various individual status
+options below, the second shows the panes in the current window and the third
+the sessions.
+A default line may be extended rather than replaced by saving its default value
+in a user option and expanding that in the new value, for example:
+.Bd -literal -offset indent
+set \-g status 2
+set \-gu status\-format # start with default status line
+set \-gF @old_status_format1 "#{status\-format[1]}"
+set \-g status\-format[1] "#{E:@old_status_format1}#[nolist align=right]#{pane_current_path}"
+.Ed
+.Pp
 .It Ic status\-interval Ar interval
 Update the status line every
 .Ar interval
