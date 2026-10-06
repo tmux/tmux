@@ -6252,11 +6252,14 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 	}
 	if (prompt_y == UINT_MAX) {
 		log_debug("%s: no osc133 prompt before cursor", __func__);
-		return (0);
+		y = 0;
+	} else {
+		log_debug("%s: prompt at %u,%u", __func__, prompt_x,
+		    prompt_y);
+		y = prompt_y;
 	}
-	log_debug("%s: prompt at %u,%u", __func__, prompt_x, prompt_y);
 
-	for (y = prompt_y; y < total; y++) {
+	for (; y < total; y++) {
 		gl = grid_get_line(gd, y);
 		od = &gl->osc133_data;
 		next_prompt = (y != prompt_y &&
