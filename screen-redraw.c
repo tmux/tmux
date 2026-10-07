@@ -1838,7 +1838,9 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	if (flags & REDRAW_SIDE_STATUS) {
 		if (status_side_size(c) == 0)
 			flags &= ~REDRAW_SIDE_STATUS;
-		else if (!status_side_redraw(c) && !REDRAW_IS_ALL(flags))
+		else if (!status_side_redraw(c) &&
+		    (~c->flags & CLIENT_REDRAWSTATUSALWAYS) &&
+		    !REDRAW_IS_ALL(flags))
 			flags &= ~REDRAW_SIDE_STATUS;
 		if (flags == 0)
 			return;
