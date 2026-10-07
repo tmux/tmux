@@ -1184,6 +1184,10 @@ tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		return (0);
 	*ry = ctx->yoff + py - ctx->woy;
 
+	/*
+	 * xoff is in window coordinates; ctx->xoff - ctx->rxoff is the width
+	 * of the side status line left of the window on the terminal.
+	 */
 	if (xoff >= (int)ctx->wox && xoff + nx <= ctx->wox + ctx->wsx) {
 		/* All visible. */
 		*i = 0;
@@ -1191,19 +1195,19 @@ tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		*rx = nx;
 	} else if (xoff < (int)ctx->wox && xoff + nx > ctx->wox + ctx->wsx) {
 		/* Both left and right not visible. */
-		*i = ctx->wox;
-		*x = 0;
+		*i = ctx->wox - xoff;
+		*x = ctx->xoff - ctx->rxoff;
 		*rx = ctx->wsx;
 	} else if (xoff < (int)ctx->wox) {
 		/* Left not visible. */
-		*i = ctx->wox - (ctx->xoff + px);
-		*x = 0;
+		*i = ctx->wox - xoff;
+		*x = ctx->xoff - ctx->rxoff;
 		*rx = nx - *i;
 	} else {
 		/* Right not visible. */
 		*i = 0;
 		*x = (ctx->xoff + px) - ctx->wox;
-		*rx = ctx->wsx - *x;
+		*rx = ctx->wox + ctx->wsx - xoff;
 	}
 	if (*rx > nx)
 		fatalx("%s: x too big, %u > %u", __func__, *rx, nx);
@@ -1278,6 +1282,10 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 	if (!tty_is_visible(tty, ctx, px, py, nx, ny))
 		return (0);
 
+	/*
+	 * xoff is in window coordinates; ctx->xoff - ctx->rxoff is the width
+	 * of the side status line left of the window on the terminal.
+	 */
 	if (xoff >= ctx->wox && xoff + nx <= ctx->wox + ctx->wsx) {
 		/* All visible. */
 		*i = 0;
@@ -1285,19 +1293,19 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		*rx = nx;
 	} else if (xoff < ctx->wox && xoff + nx > ctx->wox + ctx->wsx) {
 		/* Both left and right not visible. */
-		*i = ctx->wox;
-		*x = 0;
+		*i = ctx->wox - xoff;
+		*x = ctx->xoff - ctx->rxoff;
 		*rx = ctx->wsx;
 	} else if (xoff < ctx->wox) {
 		/* Left not visible. */
-		*i = ctx->wox - (ctx->xoff + px);
-		*x = 0;
+		*i = ctx->wox - xoff;
+		*x = ctx->xoff - ctx->rxoff;
 		*rx = nx - *i;
 	} else {
 		/* Right not visible. */
 		*i = 0;
 		*x = (ctx->xoff + px) - ctx->wox;
-		*rx = ctx->wsx - *x;
+		*rx = ctx->wox + ctx->wsx - xoff;
 	}
 	if (*rx > nx)
 		fatalx("%s: x too big, %u > %u", __func__, *rx, nx);
@@ -1938,8 +1946,8 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 
 	if ((ctx->flags & TTY_CTX_WINDOW_BIGGER) &&
-	    (ctx->xoff + ctx->ocx < ctx->wox ||
-	    ctx->xoff + ctx->ocx + n > ctx->wox + ctx->wsx)) {
+	    (ctx->rxoff + ctx->ocx < ctx->wox ||
+	    ctx->rxoff + ctx->ocx + n > ctx->wox + ctx->wsx)) {
 		if ((~ctx->flags & TTY_CTX_WRAPPED) ||
 		    !tty_full_width(tty, ctx) ||
 		    (tty->term->flags & TERM_NOAM) ||
@@ -2133,8 +2141,8 @@ tty_margin_pane(struct tty *tty, const struct tty_ctx *ctx)
 {
 	int	l, r;
 
-	l = ctx->xoff - ctx->wox;
-	r = ctx->xoff + ctx->sx - 1 - ctx->wox;
+	l = ctx->rxoff - ctx->wox;
+	r = ctx->rxoff + ctx->sx - 1 - ctx->wox;
 
 	if (l < 0)
 		l = 0;
@@ -2145,7 +2153,7 @@ tty_margin_pane(struct tty *tty, const struct tty_ctx *ctx)
 	if (r > (int)ctx->wsx)
 		r = ctx->wsx;
 
-	tty_margin(tty, l, r);
+	tty_margin(tty, ctx->xoff - ctx->rxoff + l, ctx->xoff - ctx->rxoff + r);
 }
 
 /* Set margin at absolute position. */
