@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-choose-tree.c,v 1.58 2026/07/14 17:17:17 nicm Exp $ */
+/* $OpenBSD: cmd-choose-tree.c,v 1.59 2026/10/07 13:13:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Thomas Adam <thomas@xteddy.org>
@@ -88,8 +88,9 @@ const struct cmd_entry cmd_switch_mode_entry = {
 	.name = "switch-mode",
 	.alias = NULL,
 
-	.args = { "F:kst:wZ", 0, 1, cmd_choose_tree_args_parse },
-	.usage = "[-kswZ] [-F format] " CMD_TARGET_PANE_USAGE " [command]",
+	.args = { "F:kO:rst:wZ", 0, 1, cmd_choose_tree_args_parse },
+	.usage = "[-krsZw] [-F format] [-O sort-order] " CMD_TARGET_PANE_USAGE
+		 " [command]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
