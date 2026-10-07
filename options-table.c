@@ -253,7 +253,9 @@ static const char *options_table_status_format_default[] = {
  * mode. The window rows use the
  * window status styles but not the window status formats, which lay text out
  * for a horizontal line. The current window ends its range before list=on,
- * which would otherwise discard it.
+ * which would otherwise discard it. The list starts after the down marker:
+ * list=on before a marker in its row stops the marker being drawn, and in a
+ * window row it trims that row as a list.
  */
 #define OPTIONS_TABLE_SIDE_STATUS_WINDOW \
 	"#[range=window|#{window_index} #{E:window-status-style}]" \
@@ -271,9 +273,8 @@ static const char *options_table_status_format_default[] = {
 #define OPTIONS_TABLE_SIDE_STATUS_BRANCH \
 	"#[acs]#{?window_end_flag,mq,tq}+#[noacs] "
 #define OPTIONS_TABLE_SIDE_STATUS_FORMAT1 \
-	"#[list=on]" \
 	"#[list=left-marker]#[acs]-#[noacs]#[nl]" \
-	"#[list=right-marker]#[acs].#[noacs]#[nl]" \
+	"#[list=right-marker]#[acs].#[noacs]#[list=on]#[nl]" \
 	"#{?#{e|>:#{server_sessions},1}," \
 		"#{S:" \
 			"#[range=session|#{session_id}]" \
