@@ -95,8 +95,26 @@ sleep 1
 $TMUX copy-mode -t :empty || exit 1
 $TMUX set-buffer sentinel || exit 1
 $TMUX send-keys -t :empty.0 -X copy-output || exit 1
-[ "$($TMUX show-buffer)" = one ] || exit 1
+[ "$($TMUX show-buffer)" = sentinel ] || exit 1
+$TMUX send-keys -t :empty.0 -X select-output || exit 1
+[ "$($TMUX display-message -p -t :empty.0 '#{selection_present}')" = 0 ] || exit 1
 $TMUX send-keys -t :empty.0 -X cancel || exit 1
+
+$TMUX new-window -d -n emptyprompt "printf '\\033]133;A\\007p\\$ \\033]133;B\\007echo\\033]133;C\\007one\\n\\033]133;D;0\\007\\033]133;A\\007p\\$ \\033]133;B\\007true\\n\\033]133;C\\007\\033]133;D;0\\007\\033]133;A\\007p\\$ \\033]133;B\\007'; exec sleep 100" || exit 1
+sleep 1
+$TMUX copy-mode -t :emptyprompt || exit 1
+$TMUX set-buffer sentinel || exit 1
+$TMUX send-keys -t :emptyprompt.0 -X copy-output || exit 1
+[ "$($TMUX show-buffer)" = sentinel ] || exit 1
+$TMUX send-keys -t :emptyprompt.0 -X cancel || exit 1
+
+$TMUX new-window -d -n blank "printf '\\033]133;A\\007p\\$ \\033]133;B\\007echo\\n\\033]133;C\\007\\n\\033]133;D;0\\007\\033]133;A\\007p\\$ \\033]133;B\\007'; exec sleep 100" || exit 1
+sleep 1
+$TMUX copy-mode -t :blank || exit 1
+$TMUX set-buffer sentinel || exit 1
+$TMUX send-keys -t :blank.0 -X copy-output || exit 1
+[ $($TMUX show-buffer | wc -c) -eq 1 ] || exit 1
+$TMUX send-keys -t :blank.0 -X cancel || exit 1
 
 $TMUX new-window -d -n prompt "printf '\\033]133;A\\007p\\$ \\033]133;B\\007echo\\033]133;C\\007one\\n\\033]133;D;0\\007\\033]133;A\\007p\\$ \\033]133;B\\007'; exec sleep 100" || exit 1
 sleep 1

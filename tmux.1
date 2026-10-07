@@ -2579,11 +2579,12 @@ If there is no
 .Ql D
 marker, the output ends at the last used cell in the copy-mode buffer,
 omitting unused blank rows at the bottom.
-At the following prompt or below it, they use the most recent nonempty output.
+At the following prompt or below it, they use the most recent output.
 With
 .Fl a ,
 they use the entire copy-mode buffer instead.
-If no output range can be found, no text is copied, piped or opened.
+If no output range can be found, or the output is empty, no text is copied,
+piped or opened.
 .Pp
 The search commands come in several varieties:
 .Ql search\-forward

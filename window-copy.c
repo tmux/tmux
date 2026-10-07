@@ -6246,8 +6246,6 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 	int				 found_start = 0, found_end = 0;
 	int				 next_prompt, in_range, end_ok;
 	int				 found;
-	void				*buf;
-	size_t				 len;
 
 	cursor_x = data->cx;
 	cursor_y = screen_hsize(data->backing) + data->cy - data->oy;
@@ -6332,14 +6330,6 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 		}
 		window_copy_output_end(data->backing, ex, ey);
 	}
-	buf = window_copy_get_grid_range(wme, *sx, *sy, *ex, *ey, &len);
-	if (buf == NULL) {
-		log_debug("%s: empty output", __func__);
-		found = window_copy_find_previous_output_range(wme, cursor_x,
-		    cursor_y, sx, sy, ex, ey);
-		return (found);
-	}
-	free(buf);
 	log_debug("%s: output from %u,%u to %u,%u", __func__, *sx, *sy,
 	    *ex, *ey);
 	return (1);
@@ -6355,10 +6345,8 @@ window_copy_find_previous_output_range(struct window_mode_entry *wme,
 	struct grid			*gd = data->backing->grid;
 	struct grid_line		*gl;
 	struct osc133_data		*od;
-	void				*buf;
-	u_int				 start_x, start_y, end_x, end_y;
+	u_int				 start_x, start_y;
 	u_int				 y, total;
-	size_t				 len;
 	int				 found = 0, have_prompt = 0;
 	int				 pending = 0;
 	int				 has_start, has_end, end_first;
@@ -6398,18 +6386,11 @@ window_copy_find_previous_output_range(struct window_mode_entry *wme,
 			}
 		}
 		if (pending && has_end) {
-			end_x = od->out_end_col;
-			end_y = y;
-			buf = window_copy_get_grid_range(wme, start_x, start_y,
-			    end_x, end_y, &len);
-			if (buf != NULL) {
-				free(buf);
-				*sx = start_x;
-				*sy = start_y;
-				*ex = end_x;
-				*ey = end_y;
-				found = 1;
-			}
+			*sx = start_x;
+			*sy = start_y;
+			*ex = od->out_end_col;
+			*ey = y;
+			found = 1;
 			pending = 0;
 		}
 		if (has_start && end_first) {
