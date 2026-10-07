@@ -34,15 +34,77 @@
 
 #define STATE_VERSION 1
 
+/*
+ * Names of screen modes. MODE_SYNC is left out because it is ended by a timer
+ * that a new pane does not have.
+ */
+static const struct {
+	const char	*name;
+	int		 mode;
+} state_modes[] = {
+	{ "cursor", MODE_CURSOR },
+	{ "insert", MODE_INSERT },
+	{ "keypad-cursor", MODE_KCURSOR },
+	{ "keypad", MODE_KKEYPAD },
+	{ "wrap", MODE_WRAP },
+	{ "mouse-standard", MODE_MOUSE_STANDARD },
+	{ "mouse-button", MODE_MOUSE_BUTTON },
+	{ "cursor-blinking", MODE_CURSOR_BLINKING },
+	{ "mouse-utf8", MODE_MOUSE_UTF8 },
+	{ "mouse-sgr", MODE_MOUSE_SGR },
+	{ "bracket-paste", MODE_BRACKETPASTE },
+	{ "focus", MODE_FOCUSON },
+	{ "mouse-all", MODE_MOUSE_ALL },
+	{ "origin", MODE_ORIGIN },
+	{ "crlf", MODE_CRLF },
+	{ "extended-keys", MODE_KEYS_EXTENDED },
+	{ "cursor-very-visible", MODE_CURSOR_VERY_VISIBLE },
+	{ "cursor-blinking-set", MODE_CURSOR_BLINKING_SET },
+	{ "extended-keys-2", MODE_KEYS_EXTENDED_2 },
+	{ "theme-updates", MODE_THEME_UPDATES }
+};
+
+/* Names of cursor styles, in the order of enum screen_cursor_style. */
+static const char *state_cursor_styles[] = {
+	"default", "block", "underline", "bar"
+};
+
+/* Number of a hyperlink in a state file and the number it has now. */
+struct state_link {
+	u_int	id;
+	u_int	inner;
+};
+
 /* Screen read from a state file. */
 struct state_screen {
-	struct grid	*grid;
-	u_int		 cx;
-	u_int		 cy;
+	struct grid			*grid;
+	u_int				 cx;
+	u_int				 cy;
 
-	struct grid	*saved_grid;
-	u_int		 saved_cx;
-	u_int		 saved_cy;
+	int				 flags;
+#define STATE_STYLE 0x1
+#define STATE_COLOUR 0x2
+#define STATE_MODES 0x4
+#define STATE_SAVED 0x8
+	u_int				 cstyle;
+	int				 ccolour;
+	int				 mode;
+	u_int				 rupper;
+	u_int				 rlower;
+	bitstr_t			*tabs;
+	char				**titles;
+	u_int				 ntitles;
+	char				*path;
+	struct input_saved_cursor	 saved;
+
+	struct hyperlinks		*links;
+	struct state_link		*link_map;
+	u_int				 nlinks;
+
+	struct grid			*saved_grid;
+	u_int				 saved_cx;
+	u_int				 saved_cy;
+	struct grid_cell		 saved_cell;
 };
 
 /* Pane read from a state file. */
@@ -54,6 +116,7 @@ struct state_pane {
 	int			  zoomed;
 	int			  float_over_zoom;
 	struct options		 *options;
+	struct colour_palette	 *palette;
 	struct state_screen	  screen;
 };
 
@@ -101,8 +164,8 @@ state_add_string(struct evbuffer *evb, int *comma, const char *key,
 }
 
 /*
- * Add a name or title. These are stored encoded with vis(3), so decode them to
- * write them as they were given.
+ * Add a string tmux keeps encoded with vis(3), such as a name, title, path or
+ * hyperlink, decoded so it is written as it was given.
  */
 static void
 state_add_name(struct evbuffer *evb, int *comma, const char *key,
@@ -125,7 +188,8 @@ state_same_style(const struct grid_cell *gc1, const struct grid_cell *gc2)
 	return (gc1->attr == gc2->attr &&
 	    gc1->fg == gc2->fg &&
 	    gc1->bg == gc2->bg &&
-	    gc1->us == gc2->us);
+	    gc1->us == gc2->us &&
+	    gc1->link == gc2->link);
 }
 
 /* Add a number key. */
@@ -183,6 +247,8 @@ state_add_run(struct evbuffer *evb, struct evbuffer *text,
 	if (span != 0)
 		state_add_number(evb, &rcomma, "s", span);
 	state_add_style(evb, &rcomma, gc);
+	if (gc->link != 0)
+		state_add_number(evb, &rcomma, "l", gc->link);
 	evbuffer_add(evb, "}", 1);
 
 	evbuffer_drain(text, EVBUFFER_LENGTH(text));
@@ -209,6 +275,35 @@ state_would_combine(const struct grid_cell *last, const struct grid_cell *gc)
 }
 
 /*
+ * Add the OSC 133 marks of a line, with a key for each mark holding the column
+ * where it was made.
+ */
+static void
+state_add_marks(struct evbuffer *evb, int *comma, struct grid_line *gl)
+{
+	struct osc133_data	*od = &gl->osc133_data;
+	int			 mcomma = 0;
+
+	if ((gl->flags & GRID_LINE_OSC133_FLAGS) == 0)
+		return;
+	state_add_key(evb, comma, "m");
+	evbuffer_add(evb, "{", 1);
+	if (gl->flags & GRID_LINE_START_PROMPT)
+		state_add_number(evb, &mcomma, "p", od->prompt_col);
+	if (gl->flags & GRID_LINE_SECOND_PROMPT)
+		state_add_number(evb, &mcomma, "q", od->prompt_col);
+	if (gl->flags & GRID_LINE_START_COMMAND)
+		state_add_number(evb, &mcomma, "c", od->cmd_col);
+	if (gl->flags & GRID_LINE_START_OUTPUT)
+		state_add_number(evb, &mcomma, "s", od->out_start_col);
+	if (gl->flags & GRID_LINE_END_OUTPUT) {
+		state_add_number(evb, &mcomma, "e", od->out_end_col);
+		state_add_number(evb, &mcomma, "x", od->exit_status);
+	}
+	evbuffer_add(evb, "}", 1);
+}
+
+/*
  * Add a grid line. Cells are written up to the last one used. Padding is left
  * out because the width of the cell before implies it; any that does not
  * follow a wide cell shows as a gap before the "x" of the next run.
@@ -224,6 +319,7 @@ state_add_line(struct evbuffer *evb, struct evbuffer *text, struct grid *gd,
 
 	evbuffer_add(evb, "{", 1);
 	state_add_boolean(evb, &comma, "w", gl->flags & GRID_LINE_WRAPPED);
+	state_add_marks(evb, &comma, gl);
 	if (gl->cellused != 0) {
 		state_add_key(evb, &comma, "c");
 		evbuffer_add(evb, "[", 1);
@@ -291,15 +387,195 @@ state_add_cursor(struct evbuffer *evb, int *comma, const char *key, u_int cx,
 	evbuffer_add_printf(evb, "{\"x\":%u,\"y\":%u}", cx, cy);
 }
 
+/* Add the modes as a list of names. */
+static void
+state_add_modes(struct evbuffer *evb, int *comma, int mode)
+{
+	u_int	i;
+	int	mcomma = 0;
+
+	state_add_key(evb, comma, "modes");
+	evbuffer_add(evb, "[", 1);
+	for (i = 0; i < nitems(state_modes); i++) {
+		if (~mode & state_modes[i].mode)
+			continue;
+		if (mcomma)
+			evbuffer_add(evb, ",", 1);
+		mcomma = 1;
+		evbuffer_add_printf(evb, "{\"name\":\"%s\"}",
+		    state_modes[i].name);
+	}
+	evbuffer_add(evb, "]", 1);
+}
+
+/* Add the columns with a tab stop, or nothing if they are the default. */
+static void
+state_add_tabs(struct evbuffer *evb, int *comma, struct screen *s)
+{
+	u_int	x;
+	int	tcomma = 0;
+
+	/* The default is a tab stop every eight columns. */
+	for (x = 0; x < screen_size_x(s); x++) {
+		if ((bit_test(s->tabs, x) != 0) != (x != 0 && x % 8 == 0))
+			break;
+	}
+	if (x == screen_size_x(s))
+		return;
+
+	state_add_key(evb, comma, "tabs");
+	evbuffer_add(evb, "[", 1);
+	for (x = 0; x < screen_size_x(s); x++) {
+		if (!bit_test(s->tabs, x))
+			continue;
+		if (tcomma)
+			evbuffer_add(evb, ",", 1);
+		tcomma = 1;
+		evbuffer_add_printf(evb, "{\"x\":%u}", x);
+	}
+	evbuffer_add(evb, "]", 1);
+}
+
+/* Add the title stack, the most recently pushed first. */
+static void
+state_add_titles(struct evbuffer *evb, int *comma, struct screen *s)
+{
+	const char	*title;
+	u_int		 i;
+	int		 tcomma;
+
+	if (s->ntitles == 0)
+		return;
+	state_add_key(evb, comma, "titles");
+	evbuffer_add(evb, "[", 1);
+	for (i = 0; (title = screen_get_title(s, i)) != NULL; i++) {
+		if (i != 0)
+			evbuffer_add(evb, ",", 1);
+		evbuffer_add(evb, "{", 1);
+		tcomma = 0;
+		state_add_name(evb, &tcomma, "title", title);
+		evbuffer_add(evb, "}", 1);
+	}
+	evbuffer_add(evb, "]", 1);
+}
+
 /*
- * Add a screen. While the alternate screen is on, the history stays with the
- * visible lines and the normal screen's lines are kept aside, as
- * screen_alternate_on leaves them; "alternate" holds those. The cursor to go
- * back to when the alternate screen ends is kept even after it has ended.
+ * Add the cursor, cell and character sets saved by DECSC, or nothing if they
+ * are as a new pane has them.
  */
 static void
-state_add_screen(struct evbuffer *evb, struct screen *s)
+state_add_saved(struct evbuffer *evb, int *comma, struct input_ctx *ictx)
 {
+	struct input_saved_cursor	isc;
+	int				scomma = 1;
+
+	input_get_saved_cursor(ictx, &isc);
+	if (isc.cx == 0 &&
+	    isc.cy == 0 &&
+	    (~isc.mode & MODE_ORIGIN) &&
+	    !isc.set &&
+	    !isc.g0set &&
+	    !isc.g1set &&
+	    grid_cells_equal(&isc.cell, &grid_default_cell))
+		return;
+
+	state_add_key(evb, comma, "saved");
+	evbuffer_add_printf(evb, "{\"x\":%u,\"y\":%u", isc.cx, isc.cy);
+	state_add_boolean(evb, &scomma, "origin", isc.mode & MODE_ORIGIN);
+	state_add_boolean(evb, &scomma, "g1", isc.set);
+	state_add_boolean(evb, &scomma, "g0-acs", isc.g0set);
+	state_add_boolean(evb, &scomma, "g1-acs", isc.g1set);
+	state_add_style(evb, &scomma, &isc.cell);
+	evbuffer_add(evb, "}", 1);
+}
+
+/* Compare hyperlink numbers for qsort. */
+static int
+state_link_cmp(const void *a, const void *b)
+{
+	u_int	la = *(const u_int *)a, lb = *(const u_int *)b;
+
+	if (la < lb)
+		return (-1);
+	return (la > lb);
+}
+
+/* Add the hyperlinks used in a grid to a list. */
+static void
+state_find_links(struct grid *gd, u_int **links, u_int *nlinks)
+{
+	struct grid_line	*gl;
+	struct grid_cell	 gc;
+	u_int			 px, py;
+
+	for (py = 0; py < gd->hsize + gd->sy; py++) {
+		gl = grid_get_line(gd, py);
+		if (~gl->flags & GRID_LINE_HYPERLINK)
+			continue;
+		for (px = 0; px < gl->cellused; px++) {
+			grid_get_cell(gd, px, py, &gc);
+			if (gc.link == 0)
+				continue;
+			if (*nlinks != 0 && (*links)[*nlinks - 1] == gc.link)
+				continue;
+			*links = xreallocarray(*links, *nlinks + 1,
+			    sizeof **links);
+			(*links)[(*nlinks)++] = gc.link;
+		}
+	}
+}
+
+/*
+ * Add the hyperlinks used by a screen, which runs refer to by number. A link
+ * that has been dropped because there were too many is left out.
+ */
+static void
+state_add_links(struct evbuffer *evb, int *comma, struct screen *s)
+{
+	u_int		*links = NULL, nlinks = 0, i;
+	const char	*uri, *name;
+	int		 lcomma = 0, ncomma;
+
+	state_find_links(s->grid, &links, &nlinks);
+	if (s->saved_grid != NULL)
+		state_find_links(s->saved_grid, &links, &nlinks);
+	if (nlinks == 0)
+		return;
+	qsort(links, nlinks, sizeof *links, state_link_cmp);
+
+	state_add_key(evb, comma, "links");
+	evbuffer_add(evb, "[", 1);
+	for (i = 0; i < nlinks; i++) {
+		if (i != 0 && links[i] == links[i - 1])
+			continue;
+		if (!hyperlinks_get(s->hyperlinks, links[i], &uri, &name,
+		    NULL))
+			continue;
+		if (lcomma)
+			evbuffer_add(evb, ",", 1);
+		lcomma = 1;
+		ncomma = 0;
+		evbuffer_add(evb, "{", 1);
+		state_add_number(evb, &ncomma, "id", links[i]);
+		state_add_name(evb, &ncomma, "uri", uri);
+		state_add_name(evb, &ncomma, "name", name);
+		evbuffer_add(evb, "}", 1);
+	}
+	evbuffer_add(evb, "]", 1);
+	free(links);
+}
+
+/*
+ * Add a pane's screen. While the alternate screen is on, the history stays with
+ * the visible lines and the normal screen's lines are kept aside, as
+ * screen_alternate_on leaves them; "alternate" holds those. The cursor and cell
+ * to go back to when the alternate screen ends are kept even after it has
+ * ended.
+ */
+static void
+state_add_screen(struct evbuffer *evb, struct window_pane *wp)
+{
+	struct screen	*s = &wp->base;
 	struct grid	*gd = s->grid, *sgd = s->saved_grid;
 	struct evbuffer	*text;
 	int		 comma = 1, acomma = 1;
@@ -310,6 +586,26 @@ state_add_screen(struct evbuffer *evb, struct screen *s)
 
 	evbuffer_add_printf(evb, "{\"sx\":%u,\"sy\":%u", gd->sx, gd->sy);
 	state_add_cursor(evb, &comma, "cursor", s->cx, s->cy);
+	if (s->cstyle != SCREEN_CURSOR_DEFAULT) {
+		state_add_string(evb, &comma, "cursor-style",
+		    state_cursor_styles[s->cstyle]);
+	}
+	if (s->ccolour != -1) {
+		state_add_string(evb, &comma, "cursor-colour",
+		    colour_tostring(s->ccolour));
+	}
+	state_add_modes(evb, &comma, s->mode);
+	if (s->rupper != 0 || s->rlower != gd->sy - 1) {
+		state_add_key(evb, &comma, "region");
+		evbuffer_add_printf(evb, "{\"upper\":%u,\"lower\":%u}",
+		    s->rupper, s->rlower);
+	}
+	state_add_tabs(evb, &comma, s);
+	state_add_titles(evb, &comma, s);
+	if (s->path != NULL)
+		state_add_name(evb, &comma, "path", s->path);
+	if (wp->ictx != NULL)
+		state_add_saved(evb, &comma, wp->ictx);
 	state_add_lines(evb, text, &comma, "history", gd, 0, gd->hsize);
 	state_add_lines(evb, text, &comma, "lines", gd, gd->hsize, gd->sy);
 	if (sgd != NULL) {
@@ -320,12 +616,48 @@ state_add_screen(struct evbuffer *evb, struct screen *s)
 		evbuffer_add(evb, "}", 1);
 	}
 	if (s->saved_cx != UINT_MAX && s->saved_cy != UINT_MAX) {
-		state_add_cursor(evb, &comma, "alternate-cursor", s->saved_cx,
+		state_add_key(evb, &comma, "alternate-cursor");
+		evbuffer_add_printf(evb, "{\"x\":%u,\"y\":%u", s->saved_cx,
 		    s->saved_cy);
+		acomma = 1;
+		state_add_style(evb, &acomma, &s->saved_cell);
+		evbuffer_add(evb, "}", 1);
 	}
+	state_add_links(evb, &comma, s);
 	evbuffer_add(evb, "}", 1);
 
 	evbuffer_free(text);
+}
+
+/* Add the colours set in a pane's palette, or nothing if there are none. */
+static void
+state_add_palette(struct evbuffer *evb, int *comma, struct colour_palette *p)
+{
+	u_int	i;
+	int	pcomma = 0, ccomma = 0;
+
+	if (p->fg == 8 && p->bg == 8 && p->palette == NULL)
+		return;
+	state_add_key(evb, comma, "palette");
+	evbuffer_add(evb, "{", 1);
+	state_add_colour(evb, &pcomma, "fg", p->fg);
+	state_add_colour(evb, &pcomma, "bg", p->bg);
+	if (p->palette != NULL) {
+		state_add_key(evb, &pcomma, "colours");
+		evbuffer_add(evb, "[", 1);
+		for (i = 0; i < 256; i++) {
+			if (p->palette[i] == -1)
+				continue;
+			if (ccomma)
+				evbuffer_add(evb, ",", 1);
+			ccomma = 1;
+			evbuffer_add_printf(evb,
+			    "{\"index\":%u,\"colour\":\"%s\"}", i,
+			    colour_tostring(p->palette[i]));
+		}
+		evbuffer_add(evb, "]", 1);
+	}
+	evbuffer_add(evb, "}", 1);
 }
 
 /* Add one option or array item. */
@@ -411,8 +743,9 @@ state_add_pane(struct evbuffer *evb, struct window_pane *wp)
 		evbuffer_add(evb, "]", 1);
 	}
 	state_add_options(evb, &comma, wp->options);
+	state_add_palette(evb, &comma, &wp->palette);
 	state_add_key(evb, &comma, "screen");
-	state_add_screen(evb, &wp->base);
+	state_add_screen(evb, wp);
 	evbuffer_add(evb, "}", 1);
 }
 
@@ -585,17 +918,29 @@ state_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 		grid_set_padding(gd, xx, py, gc->bg);
 }
 
+/* Compare hyperlinks read from a file by their number in the file. */
+static int
+state_link_map_cmp(const void *a, const void *b)
+{
+	const struct state_link	*la = a, *lb = b;
+
+	if (la->id < lb->id)
+		return (-1);
+	return (la->id > lb->id);
+}
+
 /*
  * Read a run of cells into a grid line. Widths come from the current tables,
  * so they may differ from those of the saved line; cells are moved along to
  * fit, and any that end up past the edge are left out.
  */
 static int
-state_read_run(struct json_node *jn, struct grid *gd, u_int py, u_int *px,
-    char **cause)
+state_read_run(struct json_node *jn, struct state_screen *ss, struct grid *gd,
+    u_int py, u_int *px, char **cause)
 {
 	struct grid_cell	 gc, cell;
 	struct utf8_data	*ud;
+	struct state_link	 find, *sl;
 	char			*text = NULL;
 	u_int			 x, span, i;
 	int			 have = 0, force_wide;
@@ -606,6 +951,15 @@ state_read_run(struct json_node *jn, struct grid *gd, u_int py, u_int *px,
 	}
 	if (state_get_style(jn, &gc, cause) != 0)
 		return (-1);
+	if (json_find(jn, "l") != NULL) {
+		if (state_get_number(jn, "l", 1, UINT_MAX, &find.id,
+		    cause) != 0)
+			return (-1);
+		sl = bsearch(&find, ss->link_map, ss->nlinks, sizeof *sl,
+		    state_link_map_cmp);
+		if (sl != NULL)
+			gc.link = sl->inner;
+	}
 	if (state_get_string(jn, "t", &text, cause) != 0)
 		return (-1);
 	if (*text == '\0') {
@@ -681,9 +1035,58 @@ fail:
 	return (-1);
 }
 
+/* Get an optional OSC 133 mark of a line. */
+static int
+state_get_mark(struct json_node *jn, const char *key, int flag, u_short *col,
+    int *flags, char **cause)
+{
+	u_int	n;
+
+	if (json_find(jn, key) == NULL)
+		return (0);
+	if (state_get_number(jn, key, 0, USHRT_MAX, &n, cause) != 0)
+		return (-1);
+	*col = n;
+	*flags |= flag;
+	return (0);
+}
+
+/* Read the OSC 133 marks of a line. */
+static int
+state_read_marks(struct json_node *jn, struct grid_line *gl, char **cause)
+{
+	struct osc133_data	 od;
+	int			 flags = 0;
+	u_int			 status = 0;
+
+	if (json_find_object(jn, "m", &jn, cause) != 0)
+		return (-1);
+	memset(&od, 0, sizeof od);
+	if (state_get_mark(jn, "p", GRID_LINE_START_PROMPT, &od.prompt_col,
+	    &flags, cause) != 0 ||
+	    state_get_mark(jn, "q", GRID_LINE_SECOND_PROMPT, &od.prompt_col,
+	    &flags, cause) != 0 ||
+	    state_get_mark(jn, "c", GRID_LINE_START_COMMAND, &od.cmd_col,
+	    &flags, cause) != 0 ||
+	    state_get_mark(jn, "s", GRID_LINE_START_OUTPUT, &od.out_start_col,
+	    &flags, cause) != 0 ||
+	    state_get_mark(jn, "e", GRID_LINE_END_OUTPUT, &od.out_end_col,
+	    &flags, cause) != 0)
+		return (-1);
+	if (json_find(jn, "x") != NULL &&
+	    state_get_number(jn, "x", 0, UCHAR_MAX, &status, cause) != 0)
+		return (-1);
+	od.exit_status = status;
+
+	memcpy(&gl->osc133_data, &od, sizeof gl->osc133_data);
+	gl->flags |= flags;
+	return (0);
+}
+
 /* Read a grid line. */
 static int
-state_read_line(struct json_node *jn, struct grid *gd, u_int py, char **cause)
+state_read_line(struct json_node *jn, struct state_screen *ss,
+    struct grid *gd, u_int py, char **cause)
 {
 	struct json_node	*array, *member;
 	int			 wrapped;
@@ -700,13 +1103,17 @@ state_read_line(struct json_node *jn, struct grid *gd, u_int py, char **cause)
 			return (-1);
 		member = json_array_first(array);
 		while (member != NULL) {
-			if (state_read_run(member, gd, py, &px, cause) != 0)
+			if (state_read_run(member, ss, gd, py, &px,
+			    cause) != 0)
 				return (-1);
 			member = json_array_next(member);
 		}
 	}
 	if (wrapped)
 		grid_get_line(gd, py)->flags |= GRID_LINE_WRAPPED;
+	if (json_find(jn, "m") != NULL &&
+	    state_read_marks(jn, grid_get_line(gd, py), cause) != 0)
+		return (-1);
 	return (0);
 }
 
@@ -732,8 +1139,9 @@ state_count_array(struct json_node *jn, const char *key, u_int *n,
 
 /* Read the lines in an optional array key into a grid from line py. */
 static int
-state_read_lines(struct json_node *jn, const char *key, struct grid *gd,
-    u_int py, u_int skip, char **cause)
+state_read_lines(struct json_node *jn, const char *key,
+    struct state_screen *ss, struct grid *gd, u_int py, u_int skip,
+    char **cause)
 {
 	struct json_node	*array, *member;
 	u_int			 n = 0;
@@ -744,7 +1152,7 @@ state_read_lines(struct json_node *jn, const char *key, struct grid *gd,
 	member = json_array_first(array);
 	while (member != NULL) {
 		if (n >= skip &&
-		    state_read_line(member, gd, py + n - skip, cause) != 0)
+		    state_read_line(member, ss, gd, py + n - skip, cause) != 0)
 			return (-1);
 		n++;
 		member = json_array_next(member);
@@ -757,7 +1165,8 @@ state_read_lines(struct json_node *jn, const char *key, struct grid *gd,
  * history lines are kept if there are more than hlimit.
  */
 static struct grid *
-state_read_grid(struct json_node *jn, u_int hlimit, char **cause)
+state_read_grid(struct json_node *jn, struct state_screen *ss, u_int hlimit,
+    char **cause)
 {
 	struct grid	*gd;
 	u_int		 sx, sy, nhistory, nlines, hsize;
@@ -786,13 +1195,227 @@ state_read_grid(struct json_node *jn, u_int hlimit, char **cause)
 		memset(gd->linedata, 0, (hsize + sy) * sizeof *gd->linedata);
 		gd->hsize = gd->hscrolled = hsize;
 	}
-	if (state_read_lines(jn, "history", gd, 0, nhistory - hsize,
+	if (state_read_lines(jn, "history", ss, gd, 0, nhistory - hsize,
 	    cause) != 0 ||
-	    state_read_lines(jn, "lines", gd, hsize, 0, cause) != 0) {
+	    state_read_lines(jn, "lines", ss, gd, hsize, 0, cause) != 0) {
 		grid_destroy(gd);
 		return (NULL);
 	}
 	return (gd);
+}
+
+/* Read the cursor style and colour. */
+static int
+state_read_cursor_style(struct json_node *jn, struct state_screen *ss,
+    char **cause)
+{
+	char	*name;
+	u_int	 i;
+
+	if (json_find(jn, "cursor-style") != NULL) {
+		if (state_get_string(jn, "cursor-style", &name, cause) != 0)
+			return (-1);
+		for (i = 0; i < nitems(state_cursor_styles); i++) {
+			if (strcmp(name, state_cursor_styles[i]) == 0)
+				break;
+		}
+		if (i == nitems(state_cursor_styles)) {
+			xasprintf(cause, "unknown cursor style \"%s\"", name);
+			free(name);
+			return (-1);
+		}
+		free(name);
+		ss->cstyle = i;
+		ss->flags |= STATE_STYLE;
+	}
+	if (json_find(jn, "cursor-colour") != NULL) {
+		if (state_get_colour(jn, "cursor-colour", &ss->ccolour,
+		    cause) != 0)
+			return (-1);
+		ss->flags |= STATE_COLOUR;
+	}
+	return (0);
+}
+
+/* Read the modes. */
+static int
+state_read_modes(struct json_node *jn, struct state_screen *ss, char **cause)
+{
+	struct json_node	*array, *member;
+	char			*name;
+	u_int			 i;
+
+	if (json_find(jn, "modes") == NULL)
+		return (0);
+	if (json_find_array(jn, "modes", &array, cause) != 0)
+		return (-1);
+	member = json_array_first(array);
+	while (member != NULL) {
+		if (state_get_string(member, "name", &name, cause) != 0)
+			return (-1);
+		for (i = 0; i < nitems(state_modes); i++) {
+			if (strcmp(name, state_modes[i].name) == 0)
+				break;
+		}
+		if (i == nitems(state_modes)) {
+			xasprintf(cause, "unknown mode \"%s\"", name);
+			free(name);
+			return (-1);
+		}
+		free(name);
+		ss->mode |= state_modes[i].mode;
+		member = json_array_next(member);
+	}
+	ss->flags |= STATE_MODES;
+	return (0);
+}
+
+/* Read the scroll region, which is the whole screen if missing. */
+static int
+state_read_region(struct json_node *jn, struct state_screen *ss, char **cause)
+{
+	struct json_node	*region;
+	u_int			 sy = ss->grid->sy;
+
+	ss->rupper = 0;
+	ss->rlower = sy - 1;
+	if (json_find(jn, "region") == NULL)
+		return (0);
+	if (json_find_object(jn, "region", &region, cause) != 0)
+		return (-1);
+	if (state_get_number(region, "upper", 0, sy - 1, &ss->rupper,
+	    cause) != 0 ||
+	    state_get_number(region, "lower", 0, sy - 1, &ss->rlower,
+	    cause) != 0)
+		return (-1);
+	if (ss->rupper >= ss->rlower) {
+		*cause = xstrdup("invalid scroll region");
+		return (-1);
+	}
+	return (0);
+}
+
+/* Read the tab stops. */
+static int
+state_read_tabs(struct json_node *jn, struct state_screen *ss, char **cause)
+{
+	struct json_node	*array, *member;
+	u_int			 x, sx = ss->grid->sx;
+
+	if (json_find(jn, "tabs") == NULL)
+		return (0);
+	if (json_find_array(jn, "tabs", &array, cause) != 0)
+		return (-1);
+	ss->tabs = bit_alloc(sx);
+	member = json_array_first(array);
+	while (member != NULL) {
+		if (state_get_number(member, "x", 0, sx - 1, &x, cause) != 0)
+			return (-1);
+		bit_set(ss->tabs, x);
+		member = json_array_next(member);
+	}
+	return (0);
+}
+
+/* Read the title stack. */
+static int
+state_read_titles(struct json_node *jn, struct state_screen *ss, char **cause)
+{
+	struct json_node	*array, *member;
+	char			*title;
+
+	if (json_find(jn, "titles") == NULL)
+		return (0);
+	if (json_find_array(jn, "titles", &array, cause) != 0)
+		return (-1);
+	member = json_array_first(array);
+	while (member != NULL) {
+		if (state_get_string(member, "title", &title, cause) != 0)
+			return (-1);
+		ss->titles = xreallocarray(ss->titles, ss->ntitles + 1,
+		    sizeof *ss->titles);
+		ss->titles[ss->ntitles++] = title;
+		if (!check_name(title)) {
+			*cause = xstrdup("invalid title in stack");
+			return (-1);
+		}
+		member = json_array_next(member);
+	}
+	return (0);
+}
+
+/*
+ * Read the cursor, cell and character sets saved by DECSC. A resize does not
+ * change them and DECRC moves the cursor inside the screen, so the position
+ * may be outside it.
+ */
+static int
+state_read_saved(struct json_node *jn, struct state_screen *ss, char **cause)
+{
+	struct input_saved_cursor	*isc = &ss->saved;
+	int				 origin;
+
+	if (json_find(jn, "saved") == NULL)
+		return (0);
+	if (json_find_object(jn, "saved", &jn, cause) != 0)
+		return (-1);
+	if (state_get_number(jn, "x", 0, PANE_MAXIMUM, &isc->cx,
+	    cause) != 0 ||
+	    state_get_number(jn, "y", 0, PANE_MAXIMUM, &isc->cy,
+	    cause) != 0)
+		return (-1);
+	if (state_get_boolean(jn, "origin", &origin, cause) != 0 ||
+	    state_get_boolean(jn, "g1", &isc->set, cause) != 0 ||
+	    state_get_boolean(jn, "g0-acs", &isc->g0set, cause) != 0 ||
+	    state_get_boolean(jn, "g1-acs", &isc->g1set, cause) != 0)
+		return (-1);
+	isc->mode = origin ? MODE_ORIGIN : 0;
+	if (state_get_style(jn, &isc->cell, cause) != 0)
+		return (-1);
+	ss->flags |= STATE_SAVED;
+	return (0);
+}
+
+/*
+ * Read the hyperlinks into a set of their own, with a map from the numbers
+ * runs use in the file to the numbers they have now.
+ */
+static int
+state_read_links(struct json_node *jn, struct state_screen *ss, char **cause)
+{
+	struct json_node	*array, *member;
+	char			*uri, *name;
+	u_int			 id;
+
+	if (json_find(jn, "links") == NULL)
+		return (0);
+	if (json_find_array(jn, "links", &array, cause) != 0)
+		return (-1);
+	ss->links = hyperlinks_init();
+	member = json_array_first(array);
+	while (member != NULL) {
+		if (state_get_number(member, "id", 1, UINT_MAX, &id,
+		    cause) != 0)
+			return (-1);
+		if (state_get_string(member, "uri", &uri, cause) != 0)
+			return (-1);
+		if (state_get_string(member, "name", &name, cause) != 0) {
+			free(uri);
+			return (-1);
+		}
+		ss->link_map = xreallocarray(ss->link_map, ss->nlinks + 1,
+		    sizeof *ss->link_map);
+		ss->link_map[ss->nlinks].id = id;
+		ss->link_map[ss->nlinks].inner = hyperlinks_put(ss->links,
+		    uri, name);
+		ss->nlinks++;
+		free(uri);
+		free(name);
+		member = json_array_next(member);
+	}
+	qsort(ss->link_map, ss->nlinks, sizeof *ss->link_map,
+	    state_link_map_cmp);
+	return (0);
 }
 
 /* Read a screen. */
@@ -806,8 +1429,25 @@ state_read_screen(struct json_node *jn, struct state_screen *ss, u_int hlimit,
 		*cause = xstrdup("screen is not an object");
 		return (-1);
 	}
-	if ((ss->grid = state_read_grid(jn, hlimit, cause)) == NULL)
+	if (state_read_links(jn, ss, cause) != 0)
 		return (-1);
+	if ((ss->grid = state_read_grid(jn, ss, hlimit, cause)) == NULL)
+		return (-1);
+	if (state_read_cursor_style(jn, ss, cause) != 0 ||
+	    state_read_modes(jn, ss, cause) != 0 ||
+	    state_read_region(jn, ss, cause) != 0 ||
+	    state_read_tabs(jn, ss, cause) != 0 ||
+	    state_read_titles(jn, ss, cause) != 0 ||
+	    state_read_saved(jn, ss, cause) != 0)
+		return (-1);
+	if (json_find(jn, "path") != NULL) {
+		if (state_get_string(jn, "path", &ss->path, cause) != 0)
+			return (-1);
+		if (!check_name(ss->path)) {
+			*cause = xstrdup("invalid path");
+			return (-1);
+		}
+	}
 
 	/*
 	 * The cursor can be past the last column, either just past it after
@@ -825,17 +1465,59 @@ state_read_screen(struct json_node *jn, struct state_screen *ss, u_int hlimit,
 	 * used.
 	 */
 	ss->saved_cx = ss->saved_cy = UINT_MAX;
-	if (json_find(jn, "alternate-cursor") != NULL &&
-	    state_get_cursor(jn, "alternate-cursor", PANE_MAXIMUM,
-	    PANE_MAXIMUM, &ss->saved_cx, &ss->saved_cy, cause) != 0)
-		return (-1);
+	memcpy(&ss->saved_cell, &grid_default_cell, sizeof ss->saved_cell);
+	if (json_find(jn, "alternate-cursor") != NULL) {
+		if (state_get_cursor(jn, "alternate-cursor", PANE_MAXIMUM,
+		    PANE_MAXIMUM, &ss->saved_cx, &ss->saved_cy, cause) != 0)
+			return (-1);
+		if (state_get_style(json_find(jn, "alternate-cursor"),
+		    &ss->saved_cell, cause) != 0)
+			return (-1);
+	}
 
 	if (json_find(jn, "alternate") == NULL)
 		return (0);
 	if (json_find_object(jn, "alternate", &alternate, cause) != 0)
 		return (-1);
-	if ((ss->saved_grid = state_read_grid(alternate, 0, cause)) == NULL)
+	if ((ss->saved_grid = state_read_grid(alternate, ss, 0, cause)) == NULL)
 		return (-1);
+	return (0);
+}
+
+/* Read a pane's palette. */
+static int
+state_read_palette(struct json_node *jn, struct colour_palette **out,
+    char **cause)
+{
+	struct json_node	*array, *member;
+	struct colour_palette	*p;
+	u_int			 idx;
+	int			 c;
+
+	if (json_find(jn, "palette") == NULL)
+		return (0);
+	if (json_find_object(jn, "palette", &jn, cause) != 0)
+		return (-1);
+	p = *out = xcalloc(1, sizeof *p);
+	colour_palette_init(p);
+	if (state_get_colour(jn, "fg", &p->fg, cause) != 0 ||
+	    state_get_colour(jn, "bg", &p->bg, cause) != 0)
+		return (-1);
+
+	if (json_find(jn, "colours") == NULL)
+		return (0);
+	if (json_find_array(jn, "colours", &array, cause) != 0)
+		return (-1);
+	member = json_array_first(array);
+	while (member != NULL) {
+		if (state_get_number(member, "index", 0, 255, &idx,
+		    cause) != 0)
+			return (-1);
+		if (state_get_colour(member, "colour", &c, cause) != 0)
+			return (-1);
+		colour_palette_set(p, idx, c);
+		member = json_array_next(member);
+	}
 	return (0);
 }
 
@@ -847,7 +1529,7 @@ static void
 state_apply_screen(struct window_pane *wp, struct state_screen *ss)
 {
 	struct screen	*s = &wp->base;
-	u_int		 sx = screen_size_x(s), sy = screen_size_y(s);
+	u_int		 sx = screen_size_x(s), sy = screen_size_y(s), i;
 
 	if (ss->grid == NULL)
 		return;
@@ -857,11 +1539,22 @@ state_apply_screen(struct window_pane *wp, struct state_screen *ss)
 	ss->grid = NULL;
 	s->cx = ss->cx;
 	s->cy = ss->cy;
-	s->rupper = 0;
-	s->rlower = screen_size_y(s) - 1;
+	s->rupper = ss->rupper;
+	s->rlower = ss->rlower;
+	if (ss->tabs != NULL) {
+		free(s->tabs);
+		s->tabs = ss->tabs;
+		ss->tabs = NULL;
+	}
+	if (ss->links != NULL) {
+		hyperlinks_free(s->hyperlinks);
+		s->hyperlinks = ss->links;
+		ss->links = NULL;
+	}
 
 	s->saved_cx = ss->saved_cx;
 	s->saved_cy = ss->saved_cy;
+	memcpy(&s->saved_cell, &ss->saved_cell, sizeof s->saved_cell);
 	if (ss->saved_grid != NULL) {
 		s->saved_grid = ss->saved_grid;
 		ss->saved_grid = NULL;
@@ -869,11 +1562,49 @@ state_apply_screen(struct window_pane *wp, struct state_screen *ss)
 		s->grid->flags &= ~GRID_HISTORY;
 	}
 
-	/* Only the alternate screen leaves the cursor further out. */
+	/*
+	 * Only the alternate screen leaves the cursor further out. Resizing
+	 * resets the scroll region and tab stops if the size changes.
+	 */
 	if (s->saved_grid == NULL && s->cx > screen_size_x(s))
 		s->cx = screen_size_x(s);
 	screen_resize(s, sx, sy, s->saved_grid == NULL);
+
+	if (ss->flags & STATE_STYLE)
+		s->cstyle = ss->cstyle;
+	if (ss->flags & STATE_COLOUR)
+		s->ccolour = ss->ccolour;
+	if (ss->flags & STATE_MODES)
+		s->mode = ss->mode;
+	if ((ss->flags & STATE_SAVED) && wp->ictx != NULL)
+		input_set_saved_cursor(wp->ictx, &ss->saved);
+
+	/* Push the oldest title first so the newest ends up on top. */
+	for (i = ss->ntitles; i > 0; i--) {
+		screen_set_title(s, ss->titles[i - 1], 0);
+		screen_push_title(s);
+	}
+	if (ss->path != NULL)
+		screen_set_path(s, ss->path, 0);
+
 	wp->flags |= PANE_REDRAW;
+}
+
+/* Give a pane the palette that was read. */
+static void
+state_apply_palette(struct window_pane *wp, struct colour_palette *p)
+{
+	u_int	i;
+
+	if (p == NULL)
+		return;
+	wp->palette.fg = p->fg;
+	wp->palette.bg = p->bg;
+	for (i = 0; p->palette != NULL && i < 256; i++) {
+		if (p->palette[i] != -1)
+			colour_palette_set(&wp->palette, i, p->palette[i]);
+	}
+	wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
 }
 
 /* Read one option or array item into a tree. */
@@ -1021,6 +1752,26 @@ state_apply_options(struct options *oo, struct options *from)
 	}
 }
 
+/* Free a screen read from a state file. */
+static void
+state_free_screen(struct state_screen *ss)
+{
+	u_int	i;
+
+	if (ss->grid != NULL)
+		grid_destroy(ss->grid);
+	if (ss->saved_grid != NULL)
+		grid_destroy(ss->saved_grid);
+	free(ss->tabs);
+	for (i = 0; i < ss->ntitles; i++)
+		free(ss->titles[i]);
+	free(ss->titles);
+	free(ss->path);
+	if (ss->links != NULL)
+		hyperlinks_free(ss->links);
+	free(ss->link_map);
+}
+
 /* Free a window read from a state file. */
 static void
 state_free_window(struct state_window *sw)
@@ -1035,10 +1786,11 @@ state_free_window(struct state_window *sw)
 		cmd_free_argv(sp->argc, sp->argv);
 		if (sp->options != NULL)
 			options_free(sp->options);
-		if (sp->screen.grid != NULL)
-			grid_destroy(sp->screen.grid);
-		if (sp->screen.saved_grid != NULL)
-			grid_destroy(sp->screen.saved_grid);
+		if (sp->palette != NULL) {
+			colour_palette_free(sp->palette);
+			free(sp->palette);
+		}
+		state_free_screen(&sp->screen);
 	}
 	free(sw->panes);
 	free(sw->name);
@@ -1089,6 +1841,8 @@ state_read_pane(struct json_node *jn, struct state_pane *sp, u_int hlimit,
 
 	if (state_read_options(jn, OPTIONS_TABLE_PANE, &sp->options,
 	    cause) != 0)
+		return (-1);
+	if (state_read_palette(jn, &sp->palette, cause) != 0)
 		return (-1);
 	if (json_find(jn, "screen") != NULL &&
 	    state_read_screen(json_find(jn, "screen"), &sp->screen, hlimit,
@@ -1258,6 +2012,7 @@ state_build_window(struct state_window *sw, struct session *s, int idx,
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		sp = &sw->panes[i++];
 		state_apply_screen(wp, &sp->screen);
+		state_apply_palette(wp, sp->palette);
 		screen_set_title(&wp->base, sp->title, 0);
 	}
 

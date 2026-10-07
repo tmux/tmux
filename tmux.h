@@ -1078,6 +1078,18 @@ struct progress_bar {
 	int			progress;
 };
 
+/* Cursor, cell and character sets saved by DECSC. */
+struct input_saved_cursor {
+	u_int			 cx;
+	u_int			 cy;
+	int			 mode;
+
+	struct grid_cell	 cell;
+	int			 set;
+	int			 g0set;
+	int			 g1set;
+};
+
 /* Virtual screen. */
 struct screen_sel;
 struct screen_titles;
@@ -3446,6 +3458,10 @@ void	 input_reply_clipboard(struct bufferevent *, const char *, size_t,
 void	 input_set_buffer_size(size_t);
 void	 input_request_reply(struct client *, enum input_request_type, void *);
 void	 input_cancel_requests(struct client *);
+void	 input_get_saved_cursor(struct input_ctx *,
+	     struct input_saved_cursor *);
+void	 input_set_saved_cursor(struct input_ctx *,
+	     const struct input_saved_cursor *);
 
 /* input-key.c */
 void	 input_key_build(void);
@@ -3679,6 +3695,7 @@ int	 screen_set_title(struct screen *, const char *, int);
 int	 screen_set_path(struct screen *, const char *, int);
 void	 screen_push_title(struct screen *);
 void	 screen_pop_title(struct screen *);
+const char *screen_get_title(struct screen *, u_int);
 void	 screen_set_progress_bar(struct screen *, enum progress_bar_state, int);
 void	 screen_resize(struct screen *, u_int, u_int, int);
 void	 screen_resize_cursor(struct screen *, u_int, u_int, int, int, int);
