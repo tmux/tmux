@@ -53,6 +53,7 @@ struct state_pane {
 	char			**argv;
 	int			  zoomed;
 	int			  float_over_zoom;
+	struct options		 *options;
 	struct state_screen	  screen;
 };
 
@@ -63,6 +64,7 @@ struct state_window {
 	u_int			 sx;
 	u_int			 sy;
 	int			 zoomed;
+	struct options		*options;
 	u_int			 npanes;
 	struct state_pane	*panes;
 };
@@ -326,6 +328,58 @@ state_add_screen(struct evbuffer *evb, struct screen *s)
 	evbuffer_free(text);
 }
 
+/* Add one option or array item. */
+static void
+state_add_option(struct evbuffer *evb, int *comma, const char *name,
+    const char *key, const char *value)
+{
+	int	ocomma = 0;
+
+	if (*comma)
+		evbuffer_add(evb, ",", 1);
+	*comma = 1;
+	evbuffer_add(evb, "{", 1);
+	state_add_string(evb, &ocomma, "name", name);
+	state_add_string(evb, &ocomma, "index", key);
+	state_add_string(evb, &ocomma, "value", value);
+	evbuffer_add(evb, "}", 1);
+}
+
+/*
+ * Add the options set on an object itself rather than inherited, one entry for
+ * each array item and one with no index for an array with no items.
+ */
+static void
+state_add_options(struct evbuffer *evb, int *comma, struct options *oo)
+{
+	struct options_entry		*o;
+	struct options_array_item	*a;
+	const char			*name, *key;
+	char				*value;
+	int				 ocomma = 0;
+
+	state_add_key(evb, comma, "options");
+	evbuffer_add(evb, "[", 1);
+	for (o = options_first(oo); o != NULL; o = options_next(o)) {
+		name = options_name(o);
+		if (!options_is_array(o)) {
+			value = options_to_string(o, NULL, 0);
+			state_add_option(evb, &ocomma, name, NULL, value);
+			free(value);
+			continue;
+		}
+		if ((a = options_array_first(o)) == NULL)
+			state_add_option(evb, &ocomma, name, NULL, NULL);
+		for (; a != NULL; a = options_array_next(a)) {
+			key = options_array_item_key(a);
+			value = options_to_string(o, key, 0);
+			state_add_option(evb, &ocomma, name, key, value);
+			free(value);
+		}
+	}
+	evbuffer_add(evb, "]", 1);
+}
+
 /* Add a pane. */
 static void
 state_add_pane(struct evbuffer *evb, struct window_pane *wp)
@@ -356,6 +410,7 @@ state_add_pane(struct evbuffer *evb, struct window_pane *wp)
 		}
 		evbuffer_add(evb, "]", 1);
 	}
+	state_add_options(evb, &comma, wp->options);
 	state_add_key(evb, &comma, "screen");
 	state_add_screen(evb, &wp->base);
 	evbuffer_add(evb, "}", 1);
@@ -386,6 +441,7 @@ state_add_window(struct evbuffer *evb, struct window *w, char **cause)
 	evbuffer_add(evb, layout, strlen(layout));
 	free(layout);
 	state_add_boolean(evb, &comma, "zoomed", w->flags & WINDOW_ZOOMED);
+	state_add_options(evb, &comma, w->options);
 	state_add_key(evb, &comma, "panes");
 	evbuffer_add(evb, "[", 1);
 	TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -820,6 +876,151 @@ state_apply_screen(struct window_pane *wp, struct state_screen *ss)
 	wp->flags |= PANE_REDRAW;
 }
 
+/* Read one option or array item into a tree. */
+static int
+state_read_option(struct json_node *jn, struct options *oo, int scope,
+    char **cause)
+{
+	const struct options_table_entry	*oe;
+	struct options_entry			*o;
+	char					*name = NULL, *key = NULL;
+	char					*value = NULL;
+	char					*error = NULL;
+	int					 has_key, retval = -1;
+
+	if (json_get_object(jn, &jn) != 0) {
+		*cause = xstrdup("option is not an object");
+		return (-1);
+	}
+	if (state_get_string(jn, "name", &name, cause) != 0 ||
+	    state_get_string(jn, "index", &key, cause) != 0 ||
+	    state_get_string(jn, "value", &value, cause) != 0)
+		goto out;
+	has_key = (json_find(jn, "index") != NULL);
+
+	if (*name == '@') {
+		if (has_key) {
+			xasprintf(cause, "not an array: %s", name);
+			goto out;
+		}
+		options_set_string(oo, name, 0, "%s", value);
+		retval = 0;
+		goto out;
+	}
+
+	oe = options_search(name);
+	if (oe == NULL || (~oe->scope & scope)) {
+		xasprintf(cause, "invalid option: %s", name);
+		goto out;
+	}
+	if (~oe->flags & OPTIONS_TABLE_IS_ARRAY) {
+		if (has_key) {
+			xasprintf(cause, "not an array: %s", name);
+			goto out;
+		}
+		if (options_from_string(oo, oe, name, value, 0, &error) != 0)
+			goto fail;
+		retval = 0;
+		goto out;
+	}
+	if ((o = options_get_only(oo, name)) == NULL)
+		o = options_empty(oo, oe);
+	if (has_key && options_array_set(o, key, value, 0, &error) != 0)
+		goto fail;
+	retval = 0;
+	goto out;
+
+fail:
+	xasprintf(cause, "%s: %s", name, error);
+	free(error);
+out:
+	free(name);
+	free(key);
+	free(value);
+	return (retval);
+}
+
+/*
+ * Read the options set on an object into a tree of their own, which checks
+ * them without changing anything. The tree is NULL if there are none.
+ */
+static int
+state_read_options(struct json_node *jn, int scope, struct options **out,
+    char **cause)
+{
+	struct json_node	*array, *member;
+
+	if (json_find(jn, "options") == NULL)
+		return (0);
+	if (json_find_array(jn, "options", &array, cause) != 0)
+		return (-1);
+	*out = options_create(global_w_options);
+	member = json_array_first(array);
+	while (member != NULL) {
+		if (state_read_option(member, *out, scope, cause) != 0)
+			return (-1);
+		member = json_array_next(member);
+	}
+	return (0);
+}
+
+/*
+ * Replace the options set on an object with those that were read, and apply
+ * them as set-option does.
+ */
+static void
+state_apply_options(struct options *oo, struct options *from)
+{
+	const struct options_table_entry	*oe;
+	struct options_entry			*o, *next, *to;
+	struct options_array_item		*a;
+	const char				*key;
+	char					*name, *value, *error;
+
+	if (from == NULL)
+		return;
+
+	o = options_first(oo);
+	while (o != NULL) {
+		next = options_next(o);
+		name = xstrdup(options_name(o));
+		options_remove_or_default(o, NULL, NULL);
+		options_push_changes(name);
+		free(name);
+		o = next;
+	}
+
+	for (o = options_first(from); o != NULL; o = options_next(o)) {
+		oe = options_table_entry(o);
+		if (oe == NULL) {
+			value = options_to_string(o, NULL, 0);
+			options_set_string(oo, options_name(o), 0, "%s", value);
+			free(value);
+		} else if (!options_is_array(o)) {
+			value = options_to_string(o, NULL, 0);
+			error = NULL;
+			if (options_from_string(oo, oe, options_name(o), value,
+			    0, &error) != 0)
+				free(error);
+			free(value);
+		} else {
+			to = options_empty(oo, oe);
+			a = options_array_first(o);
+			while (a != NULL) {
+				key = options_array_item_key(a);
+				value = options_to_string(o, key, 0);
+				error = NULL;
+				if (options_array_set(to, key, value, 0,
+				    &error) != 0)
+					free(error);
+				free(value);
+				a = options_array_next(a);
+			}
+		}
+		options_push_changes(options_name(o));
+	}
+}
+
 /* Free a window read from a state file. */
 static void
 state_free_window(struct state_window *sw)
@@ -832,6 +1033,8 @@ state_free_window(struct state_window *sw)
 		free(sp->title);
 		free(sp->cwd);
 		cmd_free_argv(sp->argc, sp->argv);
+		if (sp->options != NULL)
+			options_free(sp->options);
 		if (sp->screen.grid != NULL)
 			grid_destroy(sp->screen.grid);
 		if (sp->screen.saved_grid != NULL)
@@ -840,6 +1043,8 @@ state_free_window(struct state_window *sw)
 	free(sw->panes);
 	free(sw->name);
 	free(sw->layout);
+	if (sw->options != NULL)
+		options_free(sw->options);
 }
 
 /* Read a pane. */
@@ -882,6 +1087,9 @@ state_read_pane(struct json_node *jn, struct state_pane *sp, u_int hlimit,
 		}
 	}
 
+	if (state_read_options(jn, OPTIONS_TABLE_PANE, &sp->options,
+	    cause) != 0)
+		return (-1);
 	if (json_find(jn, "screen") != NULL &&
 	    state_read_screen(json_find(jn, "screen"), &sp->screen, hlimit,
 	    cause) != 0)
@@ -904,6 +1112,9 @@ state_read_window(struct json_node *jn, struct state_window *sw, u_int hlimit,
 		return (-1);
 	}
 	if (state_get_boolean(jn, "zoomed", &sw->zoomed, cause) != 0)
+		return (-1);
+	if (state_read_options(jn, OPTIONS_TABLE_WINDOW, &sw->options,
+	    cause) != 0)
 		return (-1);
 
 	if (json_find_object(jn, "layout", &layout, cause) != 0)
@@ -981,6 +1192,12 @@ state_build_window(struct state_window *sw, struct session *s, int idx,
 	w = wl->window;
 
 	/*
+	 * Some options change the size of panes, so set them before the
+	 * layout is applied.
+	 */
+	state_apply_options(w->options, sw->options);
+
+	/*
 	 * Give the other panes floating cells, which need no space. The
 	 * layout replaces them.
 	 */
@@ -1005,6 +1222,9 @@ state_build_window(struct state_window *sw, struct session *s, int idx,
 		if (spawn_pane(&sc, cause) == NULL)
 			goto fail;
 	}
+	i = 0;
+	TAILQ_FOREACH(wp, &w->panes, entry)
+		state_apply_options(wp->options, sw->panes[i++].options);
 
 	/*
 	 * A window with a manual size keeps it, so give it the size of the

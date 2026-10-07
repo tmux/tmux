@@ -3487,12 +3487,16 @@ zoomed if the saved window was zoomed.
 Its panes run nothing, but keep the saved command and working directory, so
 .Ic respawn\-pane
 starts the saved command in the saved directory.
-As with
-.Ic new\-window
-.Fl n ,
-the
+The saved window and pane options replace those of the new window and panes;
+an unknown option or a value that cannot be set makes the command fail without
+creating anything.
+If the file has no options for the window,
 .Ic automatic\-rename
-option is turned off for the new window.
+is turned off for it, as with
+.Ic new\-window
+.Fl n .
+Options can hold hooks and formats that run commands, so a file should be
+trusted as a configuration file would be.
 .Fl d
 and
 .Fl t
@@ -4039,8 +4043,8 @@ to
 .Ar path
 as JSON for
 .Ic load\-state .
-The window's name, layout and zoom are saved, and each pane's title, working
-directory, command and contents.
+The window's name, layout, zoom and options are saved, and each pane's title,
+working directory, command, options and contents.
 Running programs are not saved.
 If
 .Ar path
