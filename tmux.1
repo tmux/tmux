@@ -3482,8 +3482,8 @@ create a new window from the JSON in
 .Ar path
 written by
 .Ic save\-state .
-The window has the saved name, layout and pane titles, and is zoomed if the
-saved window was zoomed.
+The window has the saved name, layout, pane titles and pane contents, and is
+zoomed if the saved window was zoomed.
 Its panes run nothing, but keep the saved command and working directory, so
 .Ic respawn\-pane
 starts the saved command in the saved directory.
@@ -4040,7 +4040,7 @@ to
 as JSON for
 .Ic load\-state .
 The window's name, layout and zoom are saved, and each pane's title, working
-directory and command.
+directory, command and contents.
 Running programs are not saved.
 If
 .Ar path

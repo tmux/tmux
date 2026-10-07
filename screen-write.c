@@ -3014,11 +3014,10 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct window_pane	*wp = ctx->wp;
 	struct grid		*gd = s->grid;
 	const struct utf8_data	*ud = &gc->data;
-	struct options		*oo = global_options;
 	u_int			 i, n, cx = s->cx, cy = s->cy, vis;
 	struct grid_cell	 last;
 	struct tty_ctx		 ttyctx;
-	int			 force_wide = 0, zero_width = 0;
+	int			 force_wide, zero_width;
 	int			 xoff = 0, yoff = 0;
 	struct visible_ranges	*r;
 
@@ -3031,14 +3030,7 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	 * this is true then flag it here and discard the character (return 1)
 	 * if we cannot combine it.
 	 */
-	if (utf8_is_zwj(ud))
-		zero_width = 1;
-	else if (utf8_is_vs(ud)) {
-		zero_width = 1;
-		if (options_get_number(oo, "variation-selector-always-wide"))
-			force_wide = 1;
-	} else if (ud->width == 0)
-		zero_width = 1;
+	zero_width = (utf8_is_zwj(ud) || utf8_is_vs(ud) || ud->width == 0);
 
 	/* Cannot combine empty character or at left. */
 	if (ud->size < 2 || cx == 0)
@@ -3056,28 +3048,12 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	if (n != last.data.width || (last.flags & GRID_FLAG_PADDING))
 		return (zero_width);
 
-	/*
-	 * Check if we need to combine characters. This could be a Korean
-	 * Hangul Jamo character, zero width (set above), a modifier character
-	 * (with an existing Unicode character) or a previous ZWJ.
-	 */
-	if (!zero_width) {
-		switch (hanguljamo_check_state(&last.data, ud)) {
-		case HANGULJAMO_STATE_NOT_COMPOSABLE:
-			return (1);
-		case HANGULJAMO_STATE_CHOSEONG:
-			return (0);
-		case HANGULJAMO_STATE_COMPOSABLE:
-			break;
-		case HANGULJAMO_STATE_NOT_HANGULJAMO:
-			if (utf8_should_combine(&last.data, ud))
-				force_wide = 1;
-			else if (utf8_should_combine(ud, &last.data))
-				force_wide = 1;
-			else if (!utf8_has_zwj(&last.data))
-				return (0);
-			break;
-		}
+	/* Check if we need to combine characters. */
+	switch (utf8_combine(&last.data, ud, &force_wide)) {
+	case -1:
+		return (1);
+	case 0:
+		return (0);
 	}
 
 	/* Check if this combined character would be too long. */
