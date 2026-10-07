@@ -78,7 +78,7 @@ for name, report in reports:
                 if delivery == "expired":
                     run("set-option", "-s", "escape-time", "100")
                 else:
-                    run("set-option", "-s", "escape-time", "5000")
+                    run("set-option", "-s", "escape-time", "60000")
                 run("set-option", "-g", "@seen", "")
                 run("bind-key", "-n", "Escape", "set-option", "-gF",
                     "@seen", "#{@seen}E")

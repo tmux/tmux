@@ -39,6 +39,20 @@ wait_status()
 	fail "status lines were not redrawn"
 }
 
+wait_option()
+{
+	option=$1
+	want=$2
+	i=0
+	while [ "$i" -lt 100 ]; do
+		got=$($TMUX show -gv "$option" 2>/dev/null)
+		[ "$got" = "$want" ] && return
+		sleep 0.05
+		i=$((i + 1))
+	done
+	fail "got $option '$got', expected '$want'"
+}
+
 mouse()
 {
 	seq=$(printf '\033[<%s;%s;%s%s' "$1" "$2" "$3" "$4")
@@ -100,16 +114,17 @@ wait_status
 
 row=1
 for range in window pane control; do
+	$TMUX set -g @status-range '' || exit 1
 	mouse 0 10 "$row" M
 	mouse 0 10 "$row" m
-	got=$($TMUX show -gv @status-range)
-	[ "$got" = "$range" ] || fail "got range '$got', expected '$range'"
+	wait_option @status-range "$range"
+
 	$TMUX set -g @status-drag '' || exit 1
 	check_drag "$row" 9
-	got=$($TMUX show -gv @status-drag)
 	want=status
 	[ "$range" = control ] && want=control
-	[ "$got" = "$want" ] || fail "got drag '$got', expected '$want'"
+	wait_option @status-drag "$want"
+
 	row=$((row + 1))
 done
 
