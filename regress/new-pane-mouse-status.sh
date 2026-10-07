@@ -65,6 +65,8 @@ check_drag()
 	start=$1
 	end=$2
 
+	$TMUX set -g @drag-end '' || exit 1
+
 	# First move along the status line, then into the pane. The first
 	# movement establishes the drag origin without dispatching new-pane.
 	mouse 16 10 "$start" M
@@ -72,6 +74,8 @@ check_drag()
 	mouse 48 16 "$end" M
 	mouse 48 18 "$end" M
 	mouse 16 18 "$end" m
+
+	wait_option @drag-end done
 
 	panes=$($TMUX list-panes -F '#{pane_id}') || fail "server exited"
 	[ "$panes" = "$BASE" ] || fail "status-line drag created a pane: $panes"
@@ -108,6 +112,7 @@ $TMUX set -g 'status-format[1]' "#[range=pane|$BASE]PANE PANE PANE PANE#[norange
 $TMUX set -g 'status-format[2]' '#[range=control|0]CONTROL CONTROL CONTROL#[norange]' || exit 1
 $TMUX bind -n C-MouseDrag1Status set -g @status-drag status || exit 1
 $TMUX bind -n C-MouseDrag1Control0 set -g @status-drag control || exit 1
+$TMUX bind -n C-MouseDragEnd1Pane set -g @drag-end done || exit 1
 wait_status
 
 row=1
