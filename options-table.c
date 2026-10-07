@@ -252,7 +252,8 @@ static const char *options_table_status_format_default[] = {
  * current session's windows below it with tree branch markers like tree
  * mode. The window rows use the
  * window status styles but not the window status formats, which lay text out
- * for a horizontal line.
+ * for a horizontal line. The current window ends its range before list=on,
+ * which would otherwise discard it.
  */
 #define OPTIONS_TABLE_SIDE_STATUS_WINDOW \
 	"#[range=window|#{window_index} #{E:window-status-style}]" \
@@ -266,7 +267,7 @@ static const char *options_table_status_format_default[] = {
 		"}" \
 	"]" \
 	"#I:#W#{?window_flags,#{window_flags}, }" \
-	"#[norange list=on default]#[nl]"
+	"#[norange default]#[list=on]#[nl]"
 #define OPTIONS_TABLE_SIDE_STATUS_BRANCH \
 	"#[acs]#{?window_end_flag,mq,tq}+#[noacs] "
 #define OPTIONS_TABLE_SIDE_STATUS_FORMAT1 \
