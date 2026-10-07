@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.484 2026/10/05 08:45:27 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.485 2026/10/07 07:34:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1276,6 +1276,10 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 	if (*rx > nx)
 		fatalx("%s: x too big, %u > %u", __func__, *rx, nx);
 
+	/*
+	 * yoff is in window coordinates; ctx->yoff - ctx->ryoff is the number
+	 * of status lines above the window on the terminal.
+	 */
 	if (yoff >= ctx->woy && yoff + ny <= ctx->woy + ctx->wsy) {
 		/* All visible. */
 		*j = 0;
@@ -1283,19 +1287,19 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		*ry = ny;
 	} else if (yoff < ctx->woy && yoff + ny > ctx->woy + ctx->wsy) {
 		/* Both top and bottom not visible. */
-		*j = ctx->woy;
-		*y = 0;
+		*j = ctx->woy - yoff;
+		*y = ctx->yoff - ctx->ryoff;
 		*ry = ctx->wsy;
 	} else if (yoff < ctx->woy) {
 		/* Top not visible. */
-		*j = ctx->woy - (ctx->yoff + py);
-		*y = 0;
+		*j = ctx->woy - yoff;
+		*y = ctx->yoff - ctx->ryoff;
 		*ry = ny - *j;
 	} else {
 		/* Bottom not visible. */
 		*j = 0;
 		*y = (ctx->yoff + py) - ctx->woy;
-		*ry = ctx->wsy - *y;
+		*ry = ctx->woy + ctx->wsy - yoff;
 	}
 	if (*ry > ny)
 		fatalx("%s: y too big, %u > %u", __func__, *ry, ny);
