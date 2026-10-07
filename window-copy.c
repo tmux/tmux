@@ -117,6 +117,8 @@ static int	window_copy_set_selection(struct window_mode_entry *, int, int);
 static int	window_copy_update_selection(struct window_mode_entry *, int,
 		    int);
 static void	window_copy_synchronize_cursor(struct window_mode_entry *, int);
+static int	window_copy_get_output_range(struct window_mode_entry *, int,
+		    u_int *, u_int *, u_int *, u_int *);
 static int	window_copy_find_output_range(struct window_mode_entry *,
 		    u_int *, u_int *, u_int *, u_int *);
 static int	window_copy_find_previous_output_range(
@@ -1125,7 +1127,6 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 	u_int				 position, limit;
 	struct grid_line		*gl;
 	time_t				 t;
-	int				 keys;
 
 	gl = grid_get_line(data->backing->grid, hsize - data->oy);
 	t = grid_line_time(gl);
@@ -1159,9 +1160,8 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 			format_add(ft, "selection_active", "1");
 		else
 			format_add(ft, "selection_active", "0");
-		keys = options_get_number(wme->wp->window->options,
-		    "mode-keys");
-		if (keys == MODEKEY_VI || data->endselx != data->selx ||
+		if (data->modekeys == MODEKEY_VI ||
+		    data->endselx != data->selx ||
 		    data->endsely != data->sely)
 			format_add(ft, "selection_present", "1");
 		else
@@ -1614,16 +1614,11 @@ window_copy_cmd_select_output(struct window_copy_cmd_state *cs)
 	struct grid_reader		 gr;
 	void				*buf;
 	size_t				 len;
-	u_int				 sx, sy, ex, ey, total, last;
+	u_int				 sx, sy, ex, ey, last;
 	int				 all = args_has(cs->wargs, 'a');
 	int				 wrapped;
 
-	if (all) {
-		sx = sy = 0;
-		total = data->backing->grid->hsize + data->backing->grid->sy;
-		ey = total - 1;
-		ex = grid_get_line(data->backing->grid, ey)->cellused;
-	} else if (!window_copy_find_output_range(wme, &sx, &sy, &ex, &ey))
+	if (!window_copy_get_output_range(wme, all, &sx, &sy, &ex, &ey))
 		return (WINDOW_COPY_CMD_NOTHING);
 	buf = window_copy_get_grid_range(wme, sx, sy, ex, ey, &len);
 	if (buf == NULL)
@@ -1636,8 +1631,7 @@ window_copy_cmd_select_output(struct window_copy_cmd_state *cs)
 	data->selflag = SEL_CHAR;
 	window_copy_scroll_to(wme, sx, sy, 1);
 	window_copy_start_selection(wme);
-	if (options_get_number(wme->wp->window->options, "mode-keys") ==
-	    MODEKEY_VI) {
+	if (data->modekeys == MODEKEY_VI) {
 		last = window_copy_copy_line_length(wme, ey, NULL);
 		if (ex > last)
 			ex = last;
@@ -1668,17 +1662,18 @@ window_copy_cmd_copy_output(struct window_copy_cmd_state *cs)
 	char				*prefix = NULL;
 	const char			*arg0 = args_string(cs->wargs, 0);
 	size_t				 len;
+	int				 all = args_has(cs->wargs, 'a');
 	int				 set_paste = !args_has(cs->wargs, 'P');
 	int				 set_clip = !args_has(cs->wargs, 'C');
 
 	if (arg0 != NULL)
 		prefix = format_single(NULL, arg0, c, s, wl, wp);
 	if (s != NULL) {
-		buf = window_copy_get_output(wme, &len,
-		    args_has(cs->wargs, 'a'));
-		if (buf != NULL)
+		buf = window_copy_get_output(wme, &len, all);
+		if (buf != NULL) {
 			window_copy_copy_buffer(wme, prefix, buf, len,
 			    set_paste, set_clip);
+		}
 	}
 	free(prefix);
 	window_copy_clear_selection(wme);
@@ -2865,6 +2860,7 @@ window_copy_cmd_copy_pipe_output(struct window_copy_cmd_state *cs)
 	const char			*arg0 = args_string(cs->wargs, 0);
 	const char			*arg1 = args_string(cs->wargs, 1);
 	size_t				 len;
+	int				 all = args_has(cs->wargs, 'a');
 	int				 set_paste = !args_has(cs->wargs, 'P');
 	int				 set_clip = !args_has(cs->wargs, 'C');
 
@@ -2873,8 +2869,7 @@ window_copy_cmd_copy_pipe_output(struct window_copy_cmd_state *cs)
 	if (s != NULL && arg0 != NULL && *arg0 != '\0')
 		command = format_single(NULL, arg0, c, s, wl, wp);
 	if (s != NULL) {
-		buf = window_copy_get_output(wme, &len,
-		    args_has(cs->wargs, 'a'));
+		buf = window_copy_get_output(wme, &len, all);
 		if (buf != NULL) {
 			window_copy_pipe_buffer(s, command, buf, len);
 			window_copy_copy_buffer(wme, prefix, buf, len,
@@ -2899,12 +2894,12 @@ window_copy_cmd_pipe_output(struct window_copy_cmd_state *cs)
 	char				*command = NULL;
 	const char			*arg0 = args_string(cs->wargs, 0);
 	size_t				 len;
+	int				 all = args_has(cs->wargs, 'a');
 
 	if (s != NULL && arg0 != NULL && *arg0 != '\0')
 		command = format_single(NULL, arg0, c, s, wl, wp);
 	if (s != NULL) {
-		buf = window_copy_get_output(wme, &len,
-		    args_has(cs->wargs, 'a'));
+		buf = window_copy_get_output(wme, &len, all);
 		if (buf != NULL) {
 			window_copy_pipe_buffer(s, command, buf, len);
 			free(buf);
@@ -2928,9 +2923,10 @@ window_copy_open_buffer(struct window_copy_cmd_state *cs, void *buf,
 	char		*editor = NULL;
 	const char	*arg0 = args_string(cs->wargs, 0);
 
-	if (arg0 != NULL && *arg0 != '\0')
+	if (arg0 != NULL && *arg0 != '\0') {
 		editor = format_single(NULL, arg0, cs->c, cs->s, cs->wl,
 		    cs->wme->wp);
+	}
 	spawn_editor(cs->c, buf, len, editor, window_copy_open_done, NULL);
 	free(editor);
 }
@@ -2943,8 +2939,9 @@ window_copy_cmd_open_selection(struct window_copy_cmd_state *cs)
 	void				*buf;
 	size_t				 len;
 
-	if (cs->c == NULL ||
-	    (data->screen.sel == NULL && data->lineflag == LINE_SEL_NONE))
+	if (cs->c == NULL)
+		return (WINDOW_COPY_CMD_NOTHING);
+	if (data->screen.sel == NULL && data->lineflag == LINE_SEL_NONE)
 		return (WINDOW_COPY_CMD_NOTHING);
 	buf = window_copy_get_selection(wme, &len);
 	if (buf != NULL) {
@@ -6247,7 +6244,8 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 	u_int				 cursor_x, cursor_y, prompt_x = 0;
 	u_int				 prompt_y = UINT_MAX, y, total;
 	int				 found_start = 0, found_end = 0;
-	int				 next_prompt, in_range, found;
+	int				 next_prompt, in_range, end_ok;
+	int				 found;
 	void				*buf;
 	size_t				 len;
 
@@ -6261,8 +6259,9 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 		od = &gl->osc133_data;
 		if (~gl->flags & GRID_LINE_START_PROMPT)
 			continue;
-		if (y > cursor_y ||
-		    (y == cursor_y && od->prompt_col > cursor_x))
+		if (y > cursor_y)
+			break;
+		if (y == cursor_y && od->prompt_col > cursor_x)
 			break;
 		prompt_y = y;
 		prompt_x = od->prompt_col;
@@ -6279,8 +6278,9 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 	for (; y < total; y++) {
 		gl = grid_get_line(gd, y);
 		od = &gl->osc133_data;
-		next_prompt = (y != prompt_y &&
-		    gl->flags & GRID_LINE_START_PROMPT);
+		next_prompt = 0;
+		if (y != prompt_y && (gl->flags & GRID_LINE_START_PROMPT))
+			next_prompt = 1;
 		/* Output before the next prompt on its line is ours. */
 		if (y == prompt_y)
 			in_range = (od->out_start_col >= prompt_x);
@@ -6295,19 +6295,25 @@ window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
 		}
 		/* Both A and C may have left history while D remains. */
 		if (!found_start && prompt_y == UINT_MAX &&
-		    gl->flags & GRID_LINE_END_OUTPUT &&
-		    (!next_prompt || od->out_end_col <= od->prompt_col)) {
-			*sx = *sy = 0;
-			found_start = 1;
+		    (gl->flags & GRID_LINE_END_OUTPUT)) {
+			if (!next_prompt || od->out_end_col <= od->prompt_col) {
+				*sx = *sy = 0;
+				found_start = 1;
+			}
 		}
 		/* An output may end on the same line or the next prompt's. */
-		if (found_start && gl->flags & GRID_LINE_END_OUTPUT &&
-		    (y != prompt_y || od->out_end_col >= prompt_x) &&
-		    (y != *sy || od->out_end_col >= *sx)) {
-			*ex = od->out_end_col;
-			*ey = y;
-			found_end = 1;
-			break;
+		if (found_start && (gl->flags & GRID_LINE_END_OUTPUT)) {
+			end_ok = 1;
+			if (y == prompt_y && od->out_end_col < prompt_x)
+				end_ok = 0;
+			if (y == *sy && od->out_end_col < *sx)
+				end_ok = 0;
+			if (end_ok) {
+				*ex = od->out_end_col;
+				*ey = y;
+				found_end = 1;
+				break;
+			}
 		}
 		if (next_prompt)
 			break;
@@ -6356,18 +6362,24 @@ window_copy_find_previous_output_range(struct window_mode_entry *wme,
 	int				 found = 0, have_prompt = 0;
 	int				 pending = 0;
 	int				 has_start, has_end, end_first;
+	int				 cleared;
 
 	total = gd->hsize + gd->sy;
 	for (y = 0; y < total && y <= cursor_y; y++) {
 		gl = grid_get_line(gd, y);
 		od = &gl->osc133_data;
-		has_start = (gl->flags & GRID_LINE_START_OUTPUT &&
-		    (y != cursor_y || od->out_start_col <= cursor_x));
-		has_end = (gl->flags & GRID_LINE_END_OUTPUT &&
-		    (y != cursor_y || od->out_end_col <= cursor_x));
+		has_start = has_end = end_first = 0;
+		if (gl->flags & GRID_LINE_START_OUTPUT) {
+			if (y != cursor_y || od->out_start_col <= cursor_x)
+				has_start = 1;
+		}
+		if (gl->flags & GRID_LINE_END_OUTPUT) {
+			if (y != cursor_y || od->out_end_col <= cursor_x)
+				has_end = 1;
+		}
 		/* An end before the start ends the previous output. */
-		end_first = (has_start && has_end &&
-		    od->out_end_col < od->out_start_col);
+		if (has_start && has_end && od->out_end_col < od->out_start_col)
+			end_first = 1;
 		if (has_start && !end_first) {
 			start_x = od->out_start_col;
 			start_y = y;
@@ -6375,11 +6387,15 @@ window_copy_find_previous_output_range(struct window_mode_entry *wme,
 		}
 		/* The output may have cleared its C marker from the screen. */
 		if (!pending && !have_prompt &&
-		    gl->flags & GRID_LINE_END_OUTPUT &&
-		    (~gl->flags & GRID_LINE_START_PROMPT ||
-		    od->out_end_col <= od->prompt_col)) {
-			start_x = start_y = 0;
-			pending = 1;
+		    (gl->flags & GRID_LINE_END_OUTPUT)) {
+			cleared = 1;
+			if ((gl->flags & GRID_LINE_START_PROMPT) &&
+			    od->out_end_col > od->prompt_col)
+				cleared = 0;
+			if (cleared) {
+				start_x = start_y = 0;
+				pending = 1;
+			}
 		}
 		if (pending && has_end) {
 			end_x = od->out_end_col;
@@ -6423,20 +6439,34 @@ window_copy_output_end(struct screen *s, u_int *x, u_int *y)
 	*y = last;
 }
 
-static void *
-window_copy_get_output(struct window_mode_entry *wme, size_t *len, int all)
+/* Get the range of the current output, or the whole buffer with all. */
+static int
+window_copy_get_output_range(struct window_mode_entry *wme, int all,
+    u_int *sx, u_int *sy, u_int *ex, u_int *ey)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*gd = data->backing->grid;
-	void				*buf;
-	u_int				 sx, sy, ex, ey, total;
+	u_int				 total;
+	int				 found;
 
+	if (!all) {
+		found = window_copy_find_output_range(wme, sx, sy, ex, ey);
+		return (found);
+	}
 	total = gd->hsize + gd->sy;
-	if (all) {
-		sx = sy = 0;
-		ey = total - 1;
-		ex = grid_get_line(gd, ey)->cellused;
-	} else if (!window_copy_find_output_range(wme, &sx, &sy, &ex, &ey)) {
+	*sx = *sy = 0;
+	*ey = total - 1;
+	*ex = grid_get_line(gd, *ey)->cellused;
+	return (1);
+}
+
+static void *
+window_copy_get_output(struct window_mode_entry *wme, size_t *len, int all)
+{
+	void	*buf;
+	u_int	 sx, sy, ex, ey;
+
+	if (!window_copy_get_output_range(wme, all, &sx, &sy, &ex, &ey)) {
 		*len = 0;
 		return (NULL);
 	}
@@ -6452,13 +6482,18 @@ window_copy_get_grid_range(struct window_mode_entry *wme, u_int sx, u_int sy,
 	struct grid			*gd = data->backing->grid;
 	char				*buf;
 	size_t				 off;
-	u_int				 i;
+	u_int				 i, first, last;
 
 	buf = xmalloc(1);
 	off = 0;
 	for (i = sy; i <= ey; i++) {
-		window_copy_copy_line(wme, &buf, &off, i, i == sy ? sx : 0,
-		    i == ey ? ex : gd->sx);
+		first = 0;
+		last = gd->sx;
+		if (i == sy)
+			first = sx;
+		if (i == ey)
+			last = ex;
+		window_copy_copy_line(wme, &buf, &off, i, first, last);
 	}
 	if (off != 0 && buf[off - 1] == '\n')
 		off--;
@@ -6734,8 +6769,9 @@ window_copy_copy_line_length(struct window_mode_entry *wme, u_int sy,
 	u_int				 length;
 	int				 line_wrapped;
 
-	line_wrapped = (gl->flags & GRID_LINE_WRAPPED &&
-	    gl->cellsize <= gd->sx);
+	line_wrapped = 0;
+	if ((gl->flags & GRID_LINE_WRAPPED) && gl->cellsize <= gd->sx)
+		line_wrapped = 1;
 	if (wrapped != NULL)
 		*wrapped = line_wrapped;
 	if (line_wrapped)
