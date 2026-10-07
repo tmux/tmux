@@ -68,7 +68,9 @@ def wait_file(path, length, timeout=5):
         time.sleep(0.05)
     return b""
 
-def respawn(command):
+def respawn(command, output):
+    with open(output, "wb"):
+        pass
     run("respawn-window", "-k", "-t", "requests:0", command)
 
 def wait_pane(expected, context):
@@ -123,7 +125,7 @@ try:
                         respawn("stty raw -echo min 1 time 50; "
                             "printf '%s'; dd bs=1 count=%d 2>/dev/null >%s; "
                             "exec cat -v" %
-                            (query, len(expected), shlex.quote(output)))
+                            (query, len(expected), shlex.quote(output)), output)
                         data = read_until(fd, needle)
                         assert b"?" in data, (context, "query missing", data)
 
@@ -181,7 +183,7 @@ try:
                     respawn("stty raw -echo min 1 time 50; "
                         "printf '\\033]%d;?\\033\\\\'; "
                         "dd bs=1 count=%d 2>/dev/null >%s; exec cat -v" %
-                        (colour, len(expected), shlex.quote(output)))
+                        (colour, len(expected), shlex.quote(output)), output)
                     got = wait_file(output, len(expected))
                     assert got == expected, (context, "colour not applied", got)
                     os.write(fd, b"Z")
