@@ -2080,7 +2080,8 @@ redraw_damage_draw_pane_prompt(struct redraw_draw_ctx *dctx,
 		width = span->width;
 		if (width > screen_size_x(&screen) - px)
 			width = screen_size_x(&screen) - px;
-		tty_draw_line(tty, &screen, px, 0, width, span->x, y, NULL);
+		tty_draw_line(tty, &screen, px, 0, width,
+		    dctx->side_left + span->x, y, NULL);
 	}
 	screen_free(&screen);
 }
