@@ -63,6 +63,22 @@ wait_count()
 	fail "found $count '$marker' rows, expected $want"
 }
 
+wait_first()
+{
+	marker=$1
+	want=$2
+	i=0
+	while [ "$i" -lt 50 ]; do
+		got=$(capture | grep -F "$marker" | head -1)
+		case "$got" in
+		"$want"*) return 0 ;;
+		esac
+		sleep 0.1
+		i=$((i + 1))
+	done
+	fail "first '$marker' row is '$got', expected prefix '$want'"
+}
+
 wait_format()
 {
 	target=$1
@@ -149,6 +165,22 @@ case "$picked" in
 =bravo:0.) ;;
 *) fail "window selection produced '$picked', expected '=bravo:0.'" ;;
 esac
+
+# -O selects the sort order and -r reverses it. By name the aaa window is
+# first, by index main is, and by name reversed pick-two is.
+$INNER new-window -d -t alpha: -n aaa 'exec sleep 100' || exit 1
+$INNER switch-mode -w -t alpha:main.0 -F 'ORDER #{window_name}' -O name || exit 1
+wait_first 'ORDER ' 'ORDER aaa'
+$INNER send-keys -t alpha:main.0 Escape || exit 1
+wait_format alpha:main.0 '#{pane_in_mode}' 0
+$INNER switch-mode -w -t alpha:main.0 -F 'ORDER #{window_name}' -O index || exit 1
+wait_first 'ORDER ' 'ORDER last'
+$INNER send-keys -t alpha:main.0 Escape || exit 1
+wait_format alpha:main.0 '#{pane_in_mode}' 0
+$INNER switch-mode -w -t alpha:main.0 -F 'ORDER #{window_name}' -O name -r || exit 1
+wait_first 'ORDER ' 'ORDER pick-two'
+$INNER send-keys -t alpha:main.0 Escape || exit 1
+wait_format alpha:main.0 '#{pane_in_mode}' 0
 
 # Navigation with an empty result set must be harmless, and Escape cancels
 # without running the custom command.
