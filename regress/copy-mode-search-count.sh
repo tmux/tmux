@@ -24,9 +24,25 @@ check_count()
 	    '#{search_count_current}/#{search_count}')" = "$1" ] || exit 1
 }
 
+check_unsearched()
+{
+	check_count /
+	[ -z "$($TMUX display-message -p '#{search_count_present}')" ] ||
+		exit 1
+	case "$($TMUX display-message -p \
+	    '#{E:copy-mode-position-format}')" in
+		*match*|*result*) exit 1 ;;
+	esac
+}
+
 for keys in vi emacs; do
 	$TMUX set -g mode-keys "$keys" || exit 1
 	$TMUX copy-mode || exit 1
+	check_unsearched
+	$TMUX send-keys -X scroll-up || exit 1
+	check_unsearched
+	$TMUX resize-window -x40 -y10 || exit 1
+	check_unsearched
 	$TMUX send-keys -X history-top || exit 1
 	$TMUX send-keys -X start-of-line || exit 1
 
@@ -55,6 +71,7 @@ for keys in vi emacs; do
 
 	$TMUX send-keys -X cancel || exit 1
 	$TMUX copy-mode || exit 1
+	check_unsearched
 	$TMUX send-keys -X history-bottom || exit 1
 	$TMUX send-keys -X search-backward-text needle || exit 1
 	check_count 3/3
@@ -85,6 +102,54 @@ case "$($TMUX display-message -p '#{E:copy-mode-position-format}')" in
 	*'(1 of 1 match)') ;;
 	*) exit 1 ;;
 esac
+$TMUX send-keys -X cancel || exit 1
+
+# Backward searches can find an overlapping start inside a marked match.
+# The index must refer to the match after the cursor moves to its beginning.
+$TMUX new-window -n adjacent "printf 'aaaa'; cat" || exit 1
+for keys in vi emacs; do
+	$TMUX set -g mode-keys "$keys" || exit 1
+	$TMUX copy-mode || exit 1
+	check_unsearched
+	$TMUX send-keys -X search-backward-incremental -- '=aa' || exit 1
+	check_count 2/2
+	$TMUX send-keys -X search-backward-incremental -- '-aa' || exit 1
+	check_count 1/2
+	case "$($TMUX display-message -p \
+	    '#{E:copy-mode-position-format}')" in
+		*'(1 of 2 matches)') ;;
+		*) exit 1 ;;
+	esac
+	$TMUX send-keys -X search-backward-incremental -- '-aa' || exit 1
+	check_count 2/2
+	$TMUX send-keys -X search-backward-incremental -- '-aa' || exit 1
+	check_count 1/2
+	$TMUX send-keys -X search-backward-incremental -- '=' || exit 1
+	check_unsearched
+	$TMUX send-keys -X cancel || exit 1
+
+	$TMUX copy-mode || exit 1
+	check_unsearched
+	$TMUX send-keys -X search-backward-text aa || exit 1
+	check_count 2/2
+	$TMUX send-keys -X search-again || exit 1
+	check_count 1/2
+	$TMUX send-keys -X search-again || exit 1
+	check_count 2/2
+	$TMUX send-keys -X cancel || exit 1
+done
+
+# Scrolling into real history must not create a search count.
+$TMUX new-window -n scroll \
+	'i=0; while [ $i -lt 80 ]; do echo "line $i"; i=$((i + 1)); done; cat' ||
+	exit 1
+$TMUX copy-mode -u || exit 1
+[ "$($TMUX display-message -p '#{scroll_position}')" -gt 0 ] || exit 1
+check_unsearched
+$TMUX send-keys -X history-top || exit 1
+check_unsearched
+$TMUX resize-window -x40 -y10 || exit 1
+check_unsearched
 $TMUX send-keys -X cancel || exit 1
 
 format=$($TMUX show -gv copy-mode-position-format) || exit 1

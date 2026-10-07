@@ -589,6 +589,7 @@ window_copy_common_init(struct window_mode_entry *wme)
 		data->searchstr = NULL;
 	}
 	data->searchx = data->searchy = data->searcho = -1;
+	data->searchcount = -1;
 	data->searchindex = -1;
 	data->searchall = 1;
 
@@ -4784,9 +4785,8 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 			fx = data->cx;
 			fy = screen_hsize(data->backing) - data->oy + data->cy;
 		}
-		window_copy_search_set_index(data, fx, fy);
-
 		if (direction) {
+			window_copy_search_set_index(data, fx, fy);
 			/*
 			 * When in Emacs mode, position the cursor just after
 			 * the mark.
@@ -4820,6 +4820,9 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 					window_copy_move_left(s, &fx, &fy, 0);
 				}
 			}
+			fx = data->cx;
+			fy = screen_hsize(data->backing) - data->oy + data->cy;
+			window_copy_search_set_index(data, fx, fy);
 		}
 	} else if (!visible_only)
 		window_copy_search_marks(wme, &ss, regex, 0);
