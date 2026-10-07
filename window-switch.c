@@ -1,4 +1,4 @@
-/* $OpenBSD: window-switch.c,v 1.4 2026/09/01 21:03:55 nicm Exp $ */
+/* $OpenBSD: window-switch.c,v 1.5 2026/10/07 13:13:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -88,6 +88,8 @@ struct window_switch_modedata {
 	char				 *command;
 
 	enum window_switch_type		  type;
+	enum sort_order			  order;
+	int				  reversed;
 	char				 *filter;
 	struct prompt			 *prompt;
 	u_int				  prompt_cx;
@@ -191,8 +193,9 @@ window_switch_build(struct window_switch_modedata *data)
 	struct winlink			**wl;
 	struct sort_criteria		  sort_crit;
 
-	sort_crit.order = SORT_NAME;
-	sort_crit.reversed = 0;
+	sort_crit.order = data->order;
+	sort_crit.reversed = data->reversed;
+	sort_crit.order_seq = NULL;
 
 	for (i = 0; i < data->item_size; i++)
 		window_switch_free_item(data->item_list[i]);
@@ -345,6 +348,18 @@ window_switch_init(struct window_mode_entry *wme,
 
 	wme->data = data = xcalloc(1, sizeof *data);
 	data->wp = wp;
+
+	data->order = SORT_NAME;
+	data->reversed = 0;
+	if (args != NULL) {
+		if (args_has(args, 'O')) {
+			data->order = sort_order_from_string(args_get(args, 'O'));
+			if (data->order == SORT_END)
+				data->order = SORT_NAME;
+		}
+		if (args_has(args, 'r'))
+			data->reversed = 1;
+	}
 
 	if (args_has(args, 'w'))
 		data->type = WINDOW_SWITCH_TYPE_WINDOW;

@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1179 2026/10/07 12:59:50 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1180 2026/10/07 13:13:49 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -3131,8 +3131,9 @@ The
 command works only if at least one client is attached.
 .It Xo
 .Ic switch\-mode
-.Op Fl kswZ
+.Op Fl krsZw
 .Op Fl F Ar format
+.Op Fl O Ar sort\-order
 .Op Fl t Ar target\-pane
 .Op Ar command
 .Xc
@@ -3145,6 +3146,15 @@ matching and only matching items are shown, sorted by how well they match.
 lists sessions (the default) and
 .Fl w
 lists windows.
+.Fl O
+specifies the initial sort order within matches of equal quality: one of
+.Ql index ,
+.Ql name ,
+or
+.Ql activity
+(time).
+.Fl r
+reverses the sort order.
 .Fl Z
 zooms the pane.
 The following keys may be used in switch mode:
