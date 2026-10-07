@@ -3928,6 +3928,7 @@ int		 layout_insert_tile(struct window *, struct layout_cell *);
 #define LAYOUT_CUSTOM_OLD_FORMAT 0x1
 char		*layout_dump(struct window *, struct layout_cell *, int);
 int		 layout_parse(struct window *, const char *, char **);
+int		 layout_check_string(const char *, u_int, char **);
 
 /* layout-set.c */
 int		 layout_set_lookup(const char *);
@@ -4297,5 +4298,13 @@ int			 json_find_object(struct json_node *, const char *,
 			     struct json_node **, char **);
 int			 json_find_array(struct json_node *, const char *,
 			     struct json_node **, char **);
+void			 json_write_string(struct evbuffer *, const char *);
+char			*json_decode_string(const char *);
+
+/* state.c */
+int		 state_save_window(struct window *, struct evbuffer *,
+		     char **);
+struct winlink	*state_load_window(const char *, struct session *, int,
+		     struct client *, int, char **);
 
 #endif /* TMUX_H */

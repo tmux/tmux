@@ -3470,6 +3470,39 @@ or
 (time).
 .Fl r
 reverses the sort order.
+.It Xo Ic load\-state
+.Fl w
+.Op Fl d
+.Op Fl t Ar target\-window
+.Ar path
+.Xc
+With
+.Fl w ,
+create a new window from the JSON in
+.Ar path
+written by
+.Ic save\-state .
+The window has the saved name, layout and pane titles, and is zoomed if the
+saved window was zoomed.
+Its panes run nothing, but keep the saved command and working directory, so
+.Ic respawn\-pane
+starts the saved command in the saved directory.
+As with
+.Ic new\-window
+.Fl n ,
+the
+.Ic automatic\-rename
+option is turned off for the new window.
+.Fl d
+and
+.Fl t
+are as for
+.Ic new\-window .
+If
+.Ar path
+is
+.Ql \- ,
+the window is read from stdin.
 .Tg movep
 .It Xo Ic move\-pane
 .Op Fl bdfhMv
@@ -3993,6 +4026,27 @@ lower) with
 or downward (numerically higher).
 .Fl Z
 keeps the window zoomed if it was zoomed.
+.It Xo Ic save\-state
+.Fl w
+.Op Fl t Ar target\-window
+.Ar path
+.Xc
+With
+.Fl w ,
+save
+.Ar target\-window
+to
+.Ar path
+as JSON for
+.Ic load\-state .
+The window's name, layout and zoom are saved, and each pane's title, working
+directory and command.
+Running programs are not saved.
+If
+.Ar path
+is
+.Ql \- ,
+the window is written to stdout.
 .Tg selectl
 .It Xo Ic select\-layout
 .Op Fl Enop
