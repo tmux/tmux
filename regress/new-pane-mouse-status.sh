@@ -42,15 +42,14 @@ wait_status()
 wait_option()
 {
 	option=$1
-	want=$2
 	i=0
 	while [ "$i" -lt 100 ]; do
 		got=$($TMUX show -gv "$option" 2>/dev/null)
-		[ "$got" = "$want" ] && return
+		[ "$got" = "$2" ] && return
 		sleep 0.05
 		i=$((i + 1))
 	done
-	fail "got $option '$got', expected '$want'"
+	fail "got $option '$got', expected '$2'"
 }
 
 mouse()
