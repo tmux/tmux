@@ -69,6 +69,22 @@ struct cmd_parse_command {
 };
 TAILQ_HEAD(cmd_parse_commands, cmd_parse_command);
 
+enum cmd_parse_value_type {
+	CMD_PARSE_VALUE_STRING,
+	CMD_PARSE_VALUE_ARGUMENT,
+	CMD_PARSE_VALUE_ARGUMENTS,
+	CMD_PARSE_VALUE_COMMAND,
+	CMD_PARSE_VALUE_COMMANDS
+};
+
+struct cmd_parse_owned_value {
+	enum cmd_parse_value_type		 type;
+	void					*value;
+
+	TAILQ_ENTRY(cmd_parse_owned_value)	 entry;
+};
+TAILQ_HEAD(cmd_parse_owned_values, cmd_parse_owned_value);
+
 struct cmd_parse_state {
 	FILE				*f;
 
@@ -87,10 +103,16 @@ struct cmd_parse_state {
 
 	struct cmd_parse_scope		*scope;
 	TAILQ_HEAD(, cmd_parse_scope)	 stack;
+
+	struct cmd_parse_owned_values	 values;
 };
 static struct cmd_parse_state parse_state;
 
 static char	*cmd_parse_get_error(const char *, u_int, const char *);
+static void	*cmd_parse_own(enum cmd_parse_value_type, void *);
+static struct cmd_parse_commands *cmd_parse_own_commands(void);
+static void	*cmd_parse_take(void *);
+static void	 cmd_parse_drop(void *);
 static void	 cmd_parse_free_command(struct cmd_parse_command *);
 static struct cmd_parse_commands *cmd_parse_new_commands(void);
 static void	 cmd_parse_free_commands(struct cmd_parse_commands *);
@@ -139,7 +161,7 @@ lines		: /* empty */
 		{
 			struct cmd_parse_state	*ps = &parse_state;
 
-			ps->commands = $1;
+			ps->commands = cmd_parse_take($1);
 		}
 
 statements	: statement '\n'
@@ -150,18 +172,16 @@ statements	: statement '\n'
 		{
 			$$ = $1;
 			TAILQ_CONCAT($$, $2, entry);
-			free($2);
+			cmd_parse_drop($2);
 		}
 
 statement	: /* empty */
 		{
-			$$ = xmalloc (sizeof *$$);
-			TAILQ_INIT($$);
+			$$ = cmd_parse_own_commands();
 		}
 		| hidden_assignment
 		{
-			$$ = xmalloc (sizeof *$$);
-			TAILQ_INIT($$);
+			$$ = cmd_parse_own_commands();
 		}
 		| condition
 		{
@@ -170,8 +190,8 @@ statement	: /* empty */
 			if (ps->scope == NULL || ps->scope->flag)
 				$$ = $1;
 			else {
-				$$ = cmd_parse_new_commands();
-				cmd_parse_free_commands($1);
+				$$ = cmd_parse_own_commands();
+				cmd_parse_drop($1);
 			}
 		}
 		| commands
@@ -181,8 +201,8 @@ statement	: /* empty */
 			if (ps->scope == NULL || ps->scope->flag)
 				$$ = $1;
 			else {
-				$$ = cmd_parse_new_commands();
-				cmd_parse_free_commands($1);
+				$$ = cmd_parse_own_commands();
+				cmd_parse_drop($1);
 			}
 		}
 
@@ -214,9 +234,10 @@ expanded	: format
 			ft = format_create(c, pi->item, FORMAT_NONE, flags);
 			format_defaults(ft, c, fsp->s, fsp->wl, fsp->wp);
 
-			$$ = format_expand(ft, $1);
+			$$ = cmd_parse_own(CMD_PARSE_VALUE_STRING,
+			    format_expand(ft, $1));
 			format_free(ft);
-			free($1);
+			cmd_parse_drop($1);
 		}
 
 optional_assignment	: /* empty */
@@ -241,7 +262,7 @@ assignment	: EQUALS
 			}
 			if ((~flags & CMD_PARSE_PARSEONLY) && flag)
 				environ_put(global_environ, $1, 0);
-			free($1);
+			cmd_parse_drop($1);
 		}
 
 hidden_assignment : HIDDEN EQUALS
@@ -263,7 +284,7 @@ hidden_assignment : HIDDEN EQUALS
 			}
 			if ((~flags & CMD_PARSE_PARSEONLY) && flag)
 				environ_put(global_environ, $2, ENVIRON_HIDDEN);
-			free($2);
+			cmd_parse_drop($2);
 		}
 
 if_open		: IF expanded
@@ -274,7 +295,7 @@ if_open		: IF expanded
 			scope = xmalloc(sizeof *scope);
 			$$ = scope->flag = format_true($2);
 			scope->taken = scope->flag;
-			free($2);
+			cmd_parse_drop($2);
 
 			if (ps->scope != NULL)
 				TAILQ_INSERT_HEAD(&ps->stack, ps->scope, entry);
@@ -303,7 +324,7 @@ if_elif		: ELIF expanded
 			scope->flag = !ps->scope->taken && format_true($2);
 			scope->taken = ps->scope->taken || scope->flag;
 			$$ = scope->flag;
-			free($2);
+			cmd_parse_drop($2);
 
 			free(ps->scope);
 			ps->scope = scope;
@@ -324,48 +345,48 @@ condition	: if_open '\n' statements if_close
 			if ($1)
 				$$ = $3;
 			else {
-				$$ = cmd_parse_new_commands();
-				cmd_parse_free_commands($3);
+				$$ = cmd_parse_own_commands();
+				cmd_parse_drop($3);
 			}
 		}
 		| if_open '\n' statements if_else '\n' statements if_close
 		{
 			if ($1) {
 				$$ = $3;
-				cmd_parse_free_commands($6);
+				cmd_parse_drop($6);
 			} else {
 				$$ = $6;
-				cmd_parse_free_commands($3);
+				cmd_parse_drop($3);
 			}
 		}
 		| if_open '\n' statements elif if_close
 		{
 			if ($1) {
 				$$ = $3;
-				cmd_parse_free_commands($4.commands);
+				cmd_parse_drop($4.commands);
 			} else if ($4.flag) {
 				$$ = $4.commands;
-				cmd_parse_free_commands($3);
+				cmd_parse_drop($3);
 			} else {
-				$$ = cmd_parse_new_commands();
-				cmd_parse_free_commands($3);
-				cmd_parse_free_commands($4.commands);
+				$$ = cmd_parse_own_commands();
+				cmd_parse_drop($3);
+				cmd_parse_drop($4.commands);
 			}
 		}
 		| if_open '\n' statements elif if_else '\n' statements if_close
 		{
 			if ($1) {
 				$$ = $3;
-				cmd_parse_free_commands($4.commands);
-				cmd_parse_free_commands($7);
+				cmd_parse_drop($4.commands);
+				cmd_parse_drop($7);
 			} else if ($4.flag) {
 				$$ = $4.commands;
-				cmd_parse_free_commands($3);
-				cmd_parse_free_commands($7);
+				cmd_parse_drop($3);
+				cmd_parse_drop($7);
 			} else {
 				$$ = $7;
-				cmd_parse_free_commands($3);
-				cmd_parse_free_commands($4.commands);
+				cmd_parse_drop($3);
+				cmd_parse_drop($4.commands);
 			}
 		}
 
@@ -376,8 +397,8 @@ elif		: if_elif '\n' statements
 				$$.commands = $3;
 			} else {
 				$$.flag = 0;
-				$$.commands = cmd_parse_new_commands();
-				cmd_parse_free_commands($3);
+				$$.commands = cmd_parse_own_commands();
+				cmd_parse_drop($3);
 			}
 		}
 		| if_elif '\n' statements elif
@@ -385,16 +406,16 @@ elif		: if_elif '\n' statements
 			if ($1) {
 				$$.flag = 1;
 				$$.commands = $3;
-				cmd_parse_free_commands($4.commands);
+				cmd_parse_drop($4.commands);
 			} else if ($4.flag) {
 				$$.flag = 1;
 				$$.commands = $4.commands;
-				cmd_parse_free_commands($3);
+				cmd_parse_drop($3);
 			} else {
 				$$.flag = 0;
-				$$.commands = cmd_parse_new_commands();
-				cmd_parse_free_commands($3);
-				cmd_parse_free_commands($4.commands);
+				$$.commands = cmd_parse_own_commands();
+				cmd_parse_drop($3);
+				cmd_parse_drop($4.commands);
 			}
 		}
 
@@ -402,12 +423,13 @@ commands	: command
 		{
 			struct cmd_parse_state	*ps = &parse_state;
 
-			$$ = cmd_parse_new_commands();
+			$$ = cmd_parse_own_commands();
 			if (!TAILQ_EMPTY(&$1->arguments) &&
-			    (ps->scope == NULL || ps->scope->flag))
+			    (ps->scope == NULL || ps->scope->flag)) {
+				cmd_parse_take($1);
 				TAILQ_INSERT_TAIL($$, $1, entry);
-			else
-				cmd_parse_free_command($1);
+			} else
+				cmd_parse_drop($1);
 		}
 		| commands ';'
 		{
@@ -417,7 +439,7 @@ commands	: command
 		{
 			$$ = $1;
 			TAILQ_CONCAT($$, $3, entry);
-			free($3);
+			cmd_parse_drop($3);
 		}
 		| commands ';' command
 		{
@@ -426,11 +448,12 @@ commands	: command
 			if (!TAILQ_EMPTY(&$3->arguments) &&
 			    (ps->scope == NULL || ps->scope->flag)) {
 				$$ = $1;
+				cmd_parse_take($3);
 				TAILQ_INSERT_TAIL($$, $3, entry);
 			} else {
-				$$ = cmd_parse_new_commands();
-				cmd_parse_free_commands($1);
-				cmd_parse_free_command($3);
+				$$ = cmd_parse_own_commands();
+				cmd_parse_drop($1);
+				cmd_parse_drop($3);
 			}
 		}
 		| condition1
@@ -445,6 +468,7 @@ command		: assignment
 			$$ = xcalloc(1, sizeof *$$);
 			$$->line = ps->input->line;
 			TAILQ_INIT(&$$->arguments);
+			cmd_parse_own(CMD_PARSE_VALUE_COMMAND, $$);
 		}
 		| optional_assignment TOKEN
 		{
@@ -457,8 +481,9 @@ command		: assignment
 
 			arg = xcalloc(1, sizeof *arg);
 			arg->type = CMD_PARSE_STRING;
-			arg->string = $2;
+			arg->string = cmd_parse_take($2);
 			TAILQ_INSERT_HEAD(&$$->arguments, arg, entry);
+			cmd_parse_own(CMD_PARSE_VALUE_COMMAND, $$);
 		}
 		| optional_assignment TOKEN arguments
 		{
@@ -470,12 +495,13 @@ command		: assignment
 			TAILQ_INIT(&$$->arguments);
 
 			TAILQ_CONCAT(&$$->arguments, $3, entry);
-			free($3);
+			cmd_parse_drop($3);
 
 			arg = xcalloc(1, sizeof *arg);
 			arg->type = CMD_PARSE_STRING;
-			arg->string = $2;
+			arg->string = cmd_parse_take($2);
 			TAILQ_INSERT_HEAD(&$$->arguments, arg, entry);
+			cmd_parse_own(CMD_PARSE_VALUE_COMMAND, $$);
 		}
 
 condition1	: if_open commands if_close
@@ -483,48 +509,48 @@ condition1	: if_open commands if_close
 			if ($1)
 				$$ = $2;
 			else {
-				$$ = cmd_parse_new_commands();
-				cmd_parse_free_commands($2);
+				$$ = cmd_parse_own_commands();
+				cmd_parse_drop($2);
 			}
 		}
 		| if_open commands if_else commands if_close
 		{
 			if ($1) {
 				$$ = $2;
-				cmd_parse_free_commands($4);
+				cmd_parse_drop($4);
 			} else {
 				$$ = $4;
-				cmd_parse_free_commands($2);
+				cmd_parse_drop($2);
 			}
 		}
 		| if_open commands elif1 if_close
 		{
 			if ($1) {
 				$$ = $2;
-				cmd_parse_free_commands($3.commands);
+				cmd_parse_drop($3.commands);
 			} else if ($3.flag) {
 				$$ = $3.commands;
-				cmd_parse_free_commands($2);
+				cmd_parse_drop($2);
 			} else {
-				$$ = cmd_parse_new_commands();
-				cmd_parse_free_commands($2);
-				cmd_parse_free_commands($3.commands);
+				$$ = cmd_parse_own_commands();
+				cmd_parse_drop($2);
+				cmd_parse_drop($3.commands);
 			}
 		}
 		| if_open commands elif1 if_else commands if_close
 		{
 			if ($1) {
 				$$ = $2;
-				cmd_parse_free_commands($3.commands);
-				cmd_parse_free_commands($5);
+				cmd_parse_drop($3.commands);
+				cmd_parse_drop($5);
 			} else if ($3.flag) {
 				$$ = $3.commands;
-				cmd_parse_free_commands($2);
-				cmd_parse_free_commands($5);
+				cmd_parse_drop($2);
+				cmd_parse_drop($5);
 			} else {
 				$$ = $5;
-				cmd_parse_free_commands($2);
-				cmd_parse_free_commands($3.commands);
+				cmd_parse_drop($2);
+				cmd_parse_drop($3.commands);
 			}
 		}
 
@@ -535,8 +561,8 @@ elif1		: if_elif commands
 				$$.commands = $2;
 			} else {
 				$$.flag = 0;
-				$$.commands = cmd_parse_new_commands();
-				cmd_parse_free_commands($2);
+				$$.commands = cmd_parse_own_commands();
+				cmd_parse_drop($2);
 			}
 		}
 		| if_elif commands elif1
@@ -544,16 +570,16 @@ elif1		: if_elif commands
 			if ($1) {
 				$$.flag = 1;
 				$$.commands = $2;
-				cmd_parse_free_commands($3.commands);
+				cmd_parse_drop($3.commands);
 			} else if ($3.flag) {
 				$$.flag = 1;
 				$$.commands = $3.commands;
-				cmd_parse_free_commands($2);
+				cmd_parse_drop($2);
 			} else {
 				$$.flag = 0;
-				$$.commands = cmd_parse_new_commands();
-				cmd_parse_free_commands($2);
-				cmd_parse_free_commands($3.commands);
+				$$.commands = cmd_parse_own_commands();
+				cmd_parse_drop($2);
+				cmd_parse_drop($3.commands);
 			}
 		}
 
@@ -562,10 +588,13 @@ arguments	: argument
 			$$ = xcalloc(1, sizeof *$$);
 			TAILQ_INIT($$);
 
+			cmd_parse_take($1);
 			TAILQ_INSERT_HEAD($$, $1, entry);
+			cmd_parse_own(CMD_PARSE_VALUE_ARGUMENTS, $$);
 		}
 		| argument arguments
 		{
+			cmd_parse_take($1);
 			TAILQ_INSERT_HEAD($2, $1, entry);
 			$$ = $2;
 		}
@@ -574,19 +603,22 @@ argument	: TOKEN
 		{
 			$$ = xcalloc(1, sizeof *$$);
 			$$->type = CMD_PARSE_STRING;
-			$$->string = $1;
+			$$->string = cmd_parse_take($1);
+			cmd_parse_own(CMD_PARSE_VALUE_ARGUMENT, $$);
 		}
 		| EQUALS
 		{
 			$$ = xcalloc(1, sizeof *$$);
 			$$->type = CMD_PARSE_STRING;
-			$$->string = $1;
+			$$->string = cmd_parse_take($1);
+			cmd_parse_own(CMD_PARSE_VALUE_ARGUMENT, $$);
 		}
 		| '{' argument_statements
 		{
 			$$ = xcalloc(1, sizeof *$$);
 			$$->type = CMD_PARSE_COMMANDS;
-			$$->commands = $2;
+			$$->commands = cmd_parse_take($2);
+			cmd_parse_own(CMD_PARSE_VALUE_ARGUMENT, $$);
 		}
 
 argument_statements	: statement '}'
@@ -597,7 +629,7 @@ argument_statements	: statement '}'
 			{
 				$$ = $1;
 				TAILQ_CONCAT($$, $2, entry);
-				free($2);
+				cmd_parse_drop($2);
 			}
 
 %%
@@ -686,22 +718,114 @@ cmd_parse_free_commands(struct cmd_parse_commands *cmds)
 	free(cmds);
 }
 
+static void *
+cmd_parse_own(enum cmd_parse_value_type type, void *value)
+{
+	struct cmd_parse_state		*ps = &parse_state;
+	struct cmd_parse_owned_value	*v;
+
+	v = xmalloc(sizeof *v);
+	v->type = type;
+	v->value = value;
+	TAILQ_INSERT_TAIL(&ps->values, v, entry);
+	return (value);
+}
+
+static struct cmd_parse_commands *
+cmd_parse_own_commands(void)
+{
+	return (cmd_parse_own(CMD_PARSE_VALUE_COMMANDS,
+	    cmd_parse_new_commands()));
+}
+
+static struct cmd_parse_owned_value *
+cmd_parse_find_value(void *value)
+{
+	struct cmd_parse_state		*ps = &parse_state;
+	struct cmd_parse_owned_value	*v;
+
+	TAILQ_FOREACH_REVERSE(v, &ps->values, cmd_parse_owned_values, entry) {
+		if (v->value == value)
+			return (v);
+	}
+	fatalx("parser value not owned");
+}
+
+static void *
+cmd_parse_take(void *value)
+{
+	struct cmd_parse_state		*ps = &parse_state;
+	struct cmd_parse_owned_value	*v;
+
+	v = cmd_parse_find_value(value);
+	TAILQ_REMOVE(&ps->values, v, entry);
+	free(v);
+	return (value);
+}
+
+static void
+cmd_parse_free_value(enum cmd_parse_value_type type, void *value)
+{
+	switch (type) {
+	case CMD_PARSE_VALUE_STRING:
+		free(value);
+		break;
+	case CMD_PARSE_VALUE_ARGUMENT:
+		cmd_parse_free_argument(value);
+		break;
+	case CMD_PARSE_VALUE_ARGUMENTS:
+		cmd_parse_free_arguments(value);
+		free(value);
+		break;
+	case CMD_PARSE_VALUE_COMMAND:
+		cmd_parse_free_command(value);
+		break;
+	case CMD_PARSE_VALUE_COMMANDS:
+		cmd_parse_free_commands(value);
+		break;
+	}
+}
+
+static void
+cmd_parse_drop(void *value)
+{
+	struct cmd_parse_state		*ps = &parse_state;
+	struct cmd_parse_owned_value	*v;
+
+	v = cmd_parse_find_value(value);
+	TAILQ_REMOVE(&ps->values, v, entry);
+	cmd_parse_free_value(v->type, v->value);
+	free(v);
+}
+
 static struct cmd_parse_commands *
 cmd_parse_run_parser(char **cause)
 {
-	struct cmd_parse_state	*ps = &parse_state;
-	struct cmd_parse_scope	*scope, *scope1;
-	int			 retval;
+	struct cmd_parse_state		*ps = &parse_state;
+	struct cmd_parse_scope		*scope, *scope1;
+	struct cmd_parse_owned_value	*v, *v1;
+	int				 retval;
 
 	ps->commands = NULL;
 	TAILQ_INIT(&ps->stack);
+	TAILQ_INIT(&ps->values);
 
 	retval = yyparse();
 	TAILQ_FOREACH_SAFE(scope, &ps->stack, entry, scope1) {
 		TAILQ_REMOVE(&ps->stack, scope, entry);
 		free(scope);
 	}
+	free(ps->scope);
+	ps->scope = NULL;
+
+	TAILQ_FOREACH_SAFE(v, &ps->values, entry, v1) {
+		TAILQ_REMOVE(&ps->values, v, entry);
+		cmd_parse_free_value(v->type, v->value);
+		free(v);
+	}
 	if (retval != 0) {
+		if (ps->commands != NULL)
+			cmd_parse_free_commands(ps->commands);
 		*cause = ps->error;
 		return (NULL);
 	}
@@ -1335,6 +1459,8 @@ yylex(void)
 				yylval.token = yylex_format();
 				if (yylval.token == NULL)
 					return (ERROR);
+				cmd_parse_own(CMD_PARSE_VALUE_STRING,
+				    yylval.token);
 				return (FORMAT);
 			}
 			while (next != '\n' && next != EOF)
@@ -1356,8 +1482,11 @@ yylex(void)
 				if (*cp != '%' && !isdigit((u_char)*cp))
 					break;
 			}
-			if (*cp == '\0')
+			if (*cp == '\0') {
+				cmd_parse_own(CMD_PARSE_VALUE_STRING,
+				    yylval.token);
 				return (TOKEN);
+			}
 			ps->condition = 1;
 			if (strcmp(yylval.token, "%hidden") == 0) {
 				free(yylval.token);
@@ -1389,7 +1518,7 @@ yylex(void)
 		token = yylex_token(ch);
 		if (token == NULL)
 			return (ERROR);
-		yylval.token = token;
+		yylval.token = cmd_parse_own(CMD_PARSE_VALUE_STRING, token);
 
 		if (strchr(token, '=') != NULL && yylex_is_var(*token, 1)) {
 			for (cp = token + 1; *cp != '='; cp++) {
