@@ -70,7 +70,6 @@ def wait_file(path, length, timeout=5):
 
 def respawn(command):
     run("respawn-window", "-k", "-t", "requests:0", command)
-    time.sleep(0.2)
 
 def wait_pane(expected, context):
     end = time.monotonic() + 5

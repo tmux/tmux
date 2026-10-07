@@ -23,6 +23,22 @@ fail()
 	exit 1
 }
 
+wait_status()
+{
+	i=0
+	while [ "$i" -lt 100 ]; do
+		screen=$($TMUX2 capture-pane -p -t outer:0.0) || exit 1
+		if printf '%s\n' "$screen" | grep -q 'WINDOW WINDOW WINDOW' &&
+		    printf '%s\n' "$screen" | grep -q 'PANE PANE PANE PANE' &&
+		    printf '%s\n' "$screen" | grep -q 'CONTROL CONTROL CONTROL'; then
+			return
+		fi
+		sleep 0.05
+		i=$((i + 1))
+	done
+	fail "status lines were not redrawn"
+}
+
 mouse()
 {
 	seq=$(printf '\033[<%s;%s;%s%s' "$1" "$2" "$3" "$4")
@@ -80,7 +96,7 @@ $TMUX bind -n MouseDown1Status set -gF @status-range '#{mouse_status_range}' || 
 $TMUX bind -n MouseDown1Control0 set -gF @status-range '#{mouse_status_range}' || exit 1
 $TMUX bind -n C-MouseDrag1Status set -g @status-drag status || exit 1
 $TMUX bind -n C-MouseDrag1Control0 set -g @status-drag control || exit 1
-sleep 0.5
+wait_status
 
 row=1
 for range in window pane control; do

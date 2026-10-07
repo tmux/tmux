@@ -75,7 +75,10 @@ for name, report in reports:
                     "-y", "24", "stty raw -echo; exec cat -v")
                 run("set-option", "-g", "status", "off")
                 run("set-option", "-g", "assume-paste-time", "0")
-                run("set-option", "-s", "escape-time", "1000")
+                if delivery == "expired":
+                    run("set-option", "-s", "escape-time", "100")
+                else:
+                    run("set-option", "-s", "escape-time", "5000")
                 run("set-option", "-g", "@seen", "")
                 run("bind-key", "-n", "Escape", "set-option", "-gF",
                     "@seen", "#{@seen}E")
