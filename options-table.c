@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.249 2026/10/05 09:03:11 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.250 2026/10/07 12:55:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1776,6 +1776,14 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Default style of the active pane."
+	},
+
+	{ .name = "window-default-command",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "",
+	  .text = "Default command to run in new panes. If set, "
+		  "overrides 'default-command'."
 	},
 
 	{ .name = "window-pane-current-status-format",

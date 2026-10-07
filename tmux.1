@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1177 2026/10/06 17:45:26 schwarze Exp $
+.\" $OpenBSD: tmux.1,v 1.1178 2026/10/07 12:55:41 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 6 2026 $
+.Dd $Mdocdate: October 7 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -3619,6 +3619,8 @@ is the command to execute.
 If
 .Ar shell\-command
 is not specified, the value of the
+.Ic window\-default\-command
+or
 .Ic default\-command
 option is used.
 .Fl c
@@ -6178,6 +6180,11 @@ For how to specify
 see the
 .Sx STYLES
 section.
+.Pp
+.It Ic window\-default\-command Ar shell\-command
+Per-window version of the
+.Ic default\-command
+option.
 .Pp
 .It Ic window\-status\-activity\-style Ar style
 Set status line style for windows with an activity alert.

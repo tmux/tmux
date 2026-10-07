@@ -1,4 +1,4 @@
-/* $OpenBSD: spawn.c,v 1.54 2026/10/02 13:20:42 nicm Exp $ */
+/* $OpenBSD: spawn.c,v 1.55 2026/10/07 12:55:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -379,7 +379,9 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	 * directory.
 	 */
 	if (sc->argc == 0 && (~sc->flags & SPAWN_RESPAWN)) {
-		cmd = options_get_string(s->options, "default-command");
+		cmd = options_get_string(w->options, "window-default-command");
+		if (cmd == NULL || *cmd == '\0')
+			cmd = options_get_string(s->options, "default-command");
 		if (cmd != NULL && *cmd != '\0') {
 			argc = 1;
 			argv = (char **)&cmd;
