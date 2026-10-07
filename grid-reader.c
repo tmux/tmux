@@ -465,6 +465,12 @@ grid_reader_previous_output_range(struct grid_reader *gr, u_int *sx,
 	int			 cleared;
 
 	total = gd->hsize + gd->sy;
+
+	/*
+	 * Scan from the top because markers arrive in their natural order, C
+	 * then D. A backward scan would meet D first and need extra state to
+	 * find its C. The last complete output found is the one wanted.
+	 */
 	for (y = 0; y < total && y <= cursor_y; y++) {
 		gl = grid_get_line(gd, y);
 		od = &gl->osc133_data;
