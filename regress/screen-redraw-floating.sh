@@ -48,15 +48,22 @@ wait_for_panes() {
 
 compare() {
 	wait_for_panes
-	sleep 1
-	$TMUX capturep -p $2 >$TMP || exit 1
 	if [ -n "$GENERATE" ]; then
+		sleep 1
+		$TMUX capturep -p $2 >$TMP || exit 1
 		cp $TMP "$RESULTS/$1.result" || exit 1
 		echo "generated $1"
-	else
-		cmp -s $TMP "$RESULTS/$1.result" || \
-			fail "scene $1 differs from $RESULTS/$1.result"
+		return
 	fi
+
+	tries=0
+	while [ "$tries" -lt 100 ]; do
+		$TMUX capturep -p $2 >$TMP || exit 1
+		cmp -s $TMP "$RESULTS/$1.result" && return
+		sleep 0.1
+		tries=$((tries + 1))
+	done
+	fail "scene $1 differs from $RESULTS/$1.result"
 }
 
 # new_scene <width> <height>: fresh inner window of the given window size.

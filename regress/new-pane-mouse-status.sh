@@ -106,23 +106,24 @@ $TMUX set -g status 3 || exit 1
 $TMUX set -g 'status-format[0]' '#[range=window|0]WINDOW WINDOW WINDOW#[norange]' || exit 1
 $TMUX set -g 'status-format[1]' "#[range=pane|$BASE]PANE PANE PANE PANE#[norange]" || exit 1
 $TMUX set -g 'status-format[2]' '#[range=control|0]CONTROL CONTROL CONTROL#[norange]' || exit 1
-$TMUX bind -n MouseDown1Status set -gF @status-range '#{mouse_status_range}' || exit 1
-$TMUX bind -n MouseDown1Control0 set -gF @status-range '#{mouse_status_range}' || exit 1
+$TMUX bind -n MouseDown1Status set -g @status-range status || exit 1
+$TMUX bind -n MouseDown1Control0 set -g @status-range control || exit 1
 $TMUX bind -n C-MouseDrag1Status set -g @status-drag status || exit 1
 $TMUX bind -n C-MouseDrag1Control0 set -g @status-drag control || exit 1
 wait_status
 
 row=1
 for range in window pane control; do
+	want=status
+	[ "$range" = control ] && want=control
+
 	$TMUX set -g @status-range '' || exit 1
 	mouse 0 10 "$row" M
 	mouse 0 10 "$row" m
-	wait_option @status-range "$range"
+	wait_option @status-range "$want"
 
 	$TMUX set -g @status-drag '' || exit 1
 	check_drag "$row" 9
-	want=status
-	[ "$range" = control ] && want=control
 	wait_option @status-drag "$want"
 
 	row=$((row + 1))

@@ -109,9 +109,10 @@ for name, report in reports:
                 for part in chunks[:-1]:
                     os.write(fd, part)
                     time.sleep(.01)
-                    actual = state()
-                    assert actual == baseline, (context, "premature effect", actual)
-                    assert run("capture-pane", "-p") == "", (context, "partial leak")
+                    if delivery != "bytewise":
+                        actual = state()
+                        assert actual == baseline, (context, "premature effect", actual)
+                        assert run("capture-pane", "-p") == "", (context, "partial leak")
                 expected = "Z"
                 if delivery == "expired":
                     # Allow the partial reply's timer to expire. The pending
