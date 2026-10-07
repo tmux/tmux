@@ -78,9 +78,9 @@ cmd_load_buffer_done(__unused struct client *c, const char *path, int error,
 		    tc->session != NULL &&
 		    (~tc->flags & CLIENT_DEAD))
 			tty_set_selection(&tc->tty, "", copy, bsize);
-		if (tc != NULL)
-			server_client_unref(tc);
 	}
+	if (tc != NULL)
+		server_client_unref(tc);
 	cmdq_continue(item);
 
 	free(cdata->name);
