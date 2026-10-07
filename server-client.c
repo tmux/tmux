@@ -940,6 +940,9 @@ have_event:
 		else
 			sidey = 0;
 		if (y >= sidey && y - sidey < status_side_rows(c)) {
+			if (type == KEYC_TYPE_MOUSEDRAG &&
+			    c->tty.mouse_drag_flag == 0)
+				c->tty.mouse_drag_status = 1;
 			sr = status_side_get_range(c, x - m->sideat,
 			    y - sidey);
 			if (sr == NULL)
