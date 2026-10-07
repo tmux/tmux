@@ -119,12 +119,6 @@ static int	window_copy_update_selection(struct window_mode_entry *, int,
 static void	window_copy_synchronize_cursor(struct window_mode_entry *, int);
 static int	window_copy_get_output_range(struct window_mode_entry *, int,
 		    u_int *, u_int *, u_int *, u_int *);
-static int	window_copy_find_output_range(struct window_mode_entry *,
-		    u_int *, u_int *, u_int *, u_int *);
-static int	window_copy_find_previous_output_range(
-		    struct window_mode_entry *, u_int, u_int, u_int *, u_int *,
-		    u_int *, u_int *);
-static void	window_copy_output_end(struct screen *, u_int *, u_int *);
 static void    *window_copy_get_selection(struct window_mode_entry *, size_t *);
 static void    *window_copy_get_output(struct window_mode_entry *, size_t *,
 		    int);
@@ -6232,194 +6226,6 @@ window_copy_set_selection(struct window_mode_entry *wme, int may_redraw,
 	return (1);
 }
 
-/* Find the output range for the command at the cursor. */
-static int
-window_copy_find_output_range(struct window_mode_entry *wme, u_int *sx,
-    u_int *sy, u_int *ex, u_int *ey)
-{
-	struct window_copy_mode_data	*data = wme->data;
-	struct grid			*gd = data->backing->grid;
-	struct grid_line		*gl;
-	struct osc133_data		*od;
-	u_int				 cursor_x, cursor_y, prompt_x = 0;
-	u_int				 prompt_y = UINT_MAX, y, total;
-	int				 found_start = 0, found_end = 0;
-	int				 next_prompt, in_range, end_ok;
-	int				 found;
-
-	cursor_x = data->cx;
-	cursor_y = screen_hsize(data->backing) + data->cy - data->oy;
-	log_debug("%s: cursor at %u,%u", __func__, cursor_x, cursor_y);
-
-	total = gd->hsize + gd->sy;
-	for (y = 0; y < total; y++) {
-		gl = grid_get_line(gd, y);
-		od = &gl->osc133_data;
-		if (~gl->flags & GRID_LINE_START_PROMPT)
-			continue;
-		if (y > cursor_y)
-			break;
-		if (y == cursor_y && od->prompt_col > cursor_x)
-			break;
-		prompt_y = y;
-		prompt_x = od->prompt_col;
-	}
-	if (prompt_y == UINT_MAX) {
-		log_debug("%s: no osc133 prompt before cursor", __func__);
-		y = 0;
-	} else {
-		log_debug("%s: prompt at %u,%u", __func__, prompt_x,
-		    prompt_y);
-		y = prompt_y;
-	}
-
-	for (; y < total; y++) {
-		gl = grid_get_line(gd, y);
-		od = &gl->osc133_data;
-		next_prompt = 0;
-		if (y != prompt_y && (gl->flags & GRID_LINE_START_PROMPT))
-			next_prompt = 1;
-		/* Output before the next prompt on its line is ours. */
-		if (y == prompt_y)
-			in_range = (od->out_start_col >= prompt_x);
-		else if (next_prompt)
-			in_range = (od->out_start_col < od->prompt_col);
-		else
-			in_range = 1;
-		if (gl->flags & GRID_LINE_START_OUTPUT && in_range) {
-			*sx = od->out_start_col;
-			*sy = y;
-			found_start = 1;
-		}
-		/* Both A and C may have left history while D remains. */
-		if (!found_start && prompt_y == UINT_MAX &&
-		    (gl->flags & GRID_LINE_END_OUTPUT)) {
-			if (!next_prompt || od->out_end_col <= od->prompt_col) {
-				*sx = *sy = 0;
-				found_start = 1;
-			}
-		}
-		/* An output may end on the same line or the next prompt's. */
-		if (found_start && (gl->flags & GRID_LINE_END_OUTPUT)) {
-			end_ok = 1;
-			if (y == prompt_y && od->out_end_col < prompt_x)
-				end_ok = 0;
-			if (y == *sy && od->out_end_col < *sx)
-				end_ok = 0;
-			if (end_ok) {
-				*ex = od->out_end_col;
-				*ey = y;
-				found_end = 1;
-				break;
-			}
-		}
-		if (next_prompt)
-			break;
-	}
-	if (!found_start) {
-		log_debug("%s: no output after prompt", __func__);
-		found = window_copy_find_previous_output_range(wme, cursor_x,
-		    cursor_y, sx, sy, ex, ey);
-		return (found);
-	}
-	if (!found_end) {
-		if (y != total) {
-			log_debug("%s: output interrupted by next prompt",
-			    __func__);
-			return (0);
-		}
-		window_copy_output_end(data->backing, ex, ey);
-	}
-	log_debug("%s: output from %u,%u to %u,%u", __func__, *sx, *sy,
-	    *ex, *ey);
-	return (1);
-}
-
-/* Find the most recent complete output at or before a position. */
-static int
-window_copy_find_previous_output_range(struct window_mode_entry *wme,
-    u_int cursor_x, u_int cursor_y, u_int *sx, u_int *sy, u_int *ex,
-    u_int *ey)
-{
-	struct window_copy_mode_data	*data = wme->data;
-	struct grid			*gd = data->backing->grid;
-	struct grid_line		*gl;
-	struct osc133_data		*od;
-	u_int				 start_x, start_y;
-	u_int				 y, total;
-	int				 found = 0, have_prompt = 0;
-	int				 pending = 0;
-	int				 has_start, has_end, end_first;
-	int				 cleared;
-
-	total = gd->hsize + gd->sy;
-	for (y = 0; y < total && y <= cursor_y; y++) {
-		gl = grid_get_line(gd, y);
-		od = &gl->osc133_data;
-		has_start = has_end = end_first = 0;
-		if (gl->flags & GRID_LINE_START_OUTPUT) {
-			if (y != cursor_y || od->out_start_col <= cursor_x)
-				has_start = 1;
-		}
-		if (gl->flags & GRID_LINE_END_OUTPUT) {
-			if (y != cursor_y || od->out_end_col <= cursor_x)
-				has_end = 1;
-		}
-		/* An end before the start ends the previous output. */
-		if (has_start && has_end && od->out_end_col < od->out_start_col)
-			end_first = 1;
-		if (has_start && !end_first) {
-			start_x = od->out_start_col;
-			start_y = y;
-			pending = 1;
-		}
-		/* The output may have cleared its C marker from the screen. */
-		if (!pending && !have_prompt &&
-		    (gl->flags & GRID_LINE_END_OUTPUT)) {
-			cleared = 1;
-			if ((gl->flags & GRID_LINE_START_PROMPT) &&
-			    od->out_end_col > od->prompt_col)
-				cleared = 0;
-			if (cleared) {
-				start_x = start_y = 0;
-				pending = 1;
-			}
-		}
-		if (pending && has_end) {
-			*sx = start_x;
-			*sy = start_y;
-			*ex = od->out_end_col;
-			*ey = y;
-			found = 1;
-			pending = 0;
-		}
-		if (has_start && end_first) {
-			start_x = od->out_start_col;
-			start_y = y;
-			pending = 1;
-		}
-		if (gl->flags & GRID_LINE_START_PROMPT) {
-			/* Output may start after the prompt. */
-			if (!has_start || od->out_start_col < od->prompt_col)
-				pending = 0;
-			have_prompt = 1;
-		}
-	}
-	return (found);
-}
-
-static void
-window_copy_output_end(struct screen *s, u_int *x, u_int *y)
-{
-	struct grid	*gd = s->grid;
-	u_int		 last = gd->hsize + gd->sy - 1;
-
-	while (last > 0 && grid_get_line(gd, last)->cellused == 0)
-		last--;
-	*x = grid_get_line(gd, last)->cellused;
-	*y = last;
-}
-
 /* Get the range of the current output, or the whole buffer with all. */
 static int
 window_copy_get_output_range(struct window_mode_entry *wme, int all,
@@ -6427,11 +6233,14 @@ window_copy_get_output_range(struct window_mode_entry *wme, int all,
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*gd = data->backing->grid;
-	u_int				 total;
+	struct grid_reader		 gr;
+	u_int				 total, cursor_y;
 	int				 found;
 
 	if (!all) {
-		found = window_copy_find_output_range(wme, sx, sy, ex, ey);
+		cursor_y = screen_hsize(data->backing) + data->cy - data->oy;
+		grid_reader_start(&gr, gd, data->cx, cursor_y);
+		found = grid_reader_output_range(&gr, sx, sy, ex, ey);
 		return (found);
 	}
 	total = gd->hsize + gd->sy;
