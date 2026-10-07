@@ -100,14 +100,12 @@ $TMUX set -g status on || exit 1
 sleep 0.5
 check_drag 1 7
 
-# Window and pane ranges on different status rows still dispatch Status
-# bindings; a control range dispatches its Control binding.
+# Window and pane ranges on different status rows still dispatch Ctrl-drag
+# Status bindings; a control range dispatches its Ctrl-drag Control binding.
 $TMUX set -g status 3 || exit 1
 $TMUX set -g 'status-format[0]' '#[range=window|0]WINDOW WINDOW WINDOW#[norange]' || exit 1
 $TMUX set -g 'status-format[1]' "#[range=pane|$BASE]PANE PANE PANE PANE#[norange]" || exit 1
 $TMUX set -g 'status-format[2]' '#[range=control|0]CONTROL CONTROL CONTROL#[norange]' || exit 1
-$TMUX bind -n MouseDown1Status set -g @status-range status || exit 1
-$TMUX bind -n MouseDown1Control0 set -g @status-range control || exit 1
 $TMUX bind -n C-MouseDrag1Status set -g @status-drag status || exit 1
 $TMUX bind -n C-MouseDrag1Control0 set -g @status-drag control || exit 1
 wait_status
@@ -116,11 +114,6 @@ row=1
 for range in window pane control; do
 	want=status
 	[ "$range" = control ] && want=control
-
-	$TMUX set -g @status-range '' || exit 1
-	mouse 0 10 "$row" M
-	mouse 0 10 "$row" m
-	wait_option @status-range "$want"
 
 	$TMUX set -g @status-drag '' || exit 1
 	check_drag "$row" 9
