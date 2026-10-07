@@ -1614,6 +1614,8 @@ window_copy_cmd_select_output(struct window_copy_cmd_state *cs)
 
 	if (!window_copy_get_output_range(wme, all, &sx, &sy, &ex, &ey))
 		return (WINDOW_COPY_CMD_NOTHING);
+
+	/* An empty output selects nothing. */
 	buf = window_copy_get_grid_range(wme, sx, sy, ex, ey, &len);
 	if (buf == NULL)
 		return (WINDOW_COPY_CMD_NOTHING);
@@ -1625,6 +1627,7 @@ window_copy_cmd_select_output(struct window_copy_cmd_state *cs)
 	data->selflag = SEL_CHAR;
 	window_copy_scroll_to(wme, sx, sy, 1);
 	window_copy_start_selection(wme);
+	/* The end is inclusive in vi mode, so step back onto the last cell. */
 	if (data->modekeys == MODEKEY_VI) {
 		last = window_copy_copy_line_length(wme, ey, NULL);
 		if (ex > last)
@@ -6264,6 +6267,7 @@ window_copy_get_output(struct window_mode_entry *wme, size_t *len, int all)
 	return (buf);
 }
 
+/* Get the text from sx,sy up to ex,ey, or NULL if there is none. */
 static void *
 window_copy_get_grid_range(struct window_mode_entry *wme, u_int sx, u_int sy,
     u_int ex, u_int ey, size_t *len)

@@ -1547,6 +1547,7 @@ grid_reflow_split(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 	/* Insert new lines. */
 	line = target->sy + 1;
 	first = grid_reflow_add(target, lines);
+	/* The first line keeps only the markers within its first at cells. */
 	memcpy(first, gl, sizeof *first);
 	first->cellsize = first->cellused = at;
 	first->flags &= ~GRID_LINE_OSC133_FLAGS;
