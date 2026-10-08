@@ -1,4 +1,4 @@
-/* $OpenBSD: spawn.c,v 1.55 2026/10/07 12:55:41 nicm Exp $ */
+/* $OpenBSD: spawn.c,v 1.56 2026/10/08 07:06:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -462,6 +462,8 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	/* If the command is empty, don't fork a child process. */
 	if (sc->flags & SPAWN_EMPTY) {
 		new_wp->flags |= PANE_EMPTY;
+		new_wp->pid = 0;
+		*new_wp->tty = '\0';
 		new_wp->base.mode &= ~MODE_CURSOR;
 		new_wp->base.mode |= MODE_CRLF;
 		goto complete;
