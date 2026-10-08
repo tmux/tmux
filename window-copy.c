@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.436 2026/10/07 12:59:50 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.437 2026/10/08 07:50:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -121,9 +121,17 @@ static int	window_copy_set_selection(struct window_mode_entry *, int, int);
 static int	window_copy_update_selection(struct window_mode_entry *, int,
 		    int);
 static void	window_copy_synchronize_cursor(struct window_mode_entry *, int);
+static int	window_copy_get_output_range(struct window_mode_entry *, int,
+		    u_int *, u_int *, u_int *, u_int *);
 static void    *window_copy_get_selection(struct window_mode_entry *, size_t *);
+static void    *window_copy_get_output(struct window_mode_entry *, size_t *,
+		    int);
+static void    *window_copy_get_grid_range(struct window_mode_entry *, u_int,
+		    u_int, u_int, u_int, size_t *);
 static void	window_copy_copy_buffer(struct window_mode_entry *,
 		    const char *, void *, size_t, int, int);
+static void	window_copy_pipe_buffer(struct session *, const char *,
+		    void *, size_t);
 static void	window_copy_pipe(struct window_mode_entry *,
 		    struct session *, const char *);
 static void	window_copy_copy_pipe(struct window_mode_entry *,
@@ -133,6 +141,8 @@ static void	window_copy_copy_selection(struct window_mode_entry *,
 		    const char *, int, int);
 static void	window_copy_append_selection(struct window_mode_entry *);
 static void	window_copy_clear_selection(struct window_mode_entry *);
+static u_int	window_copy_copy_line_length(struct window_mode_entry *,
+		    u_int, int *);
 static void	window_copy_copy_line(struct window_mode_entry *, char **,
 		    size_t *, u_int, u_int, u_int);
 static int	window_copy_in_set(struct window_mode_entry *, u_int, u_int,
@@ -1155,7 +1165,9 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 			format_add(ft, "selection_active", "1");
 		else
 			format_add(ft, "selection_active", "0");
-		if (data->endselx != data->selx || data->endsely != data->sely)
+		if (data->modekeys == MODEKEY_VI ||
+		    data->endselx != data->selx ||
+		    data->endsely != data->sely)
 			format_add(ft, "selection_present", "1");
 		else
 			format_add(ft, "selection_present", "0");
@@ -1603,6 +1615,84 @@ window_copy_cmd_copy_selection_and_cancel(struct window_copy_cmd_state *cs)
 	window_copy_cmd_copy_selection_no_clear(cs);
 	window_copy_clear_selection(wme);
 	return (WINDOW_COPY_CMD_CANCEL);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_select_output(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct window_copy_mode_data	*data = wme->data;
+	struct grid_reader		 gr;
+	void				*buf;
+	size_t				 len;
+	u_int				 sx, sy, ex, ey, last;
+	int				 all = args_has(cs->wargs, 'a');
+	int				 wrapped;
+
+	if (!window_copy_get_output_range(wme, all, &sx, &sy, &ex, &ey))
+		return (WINDOW_COPY_CMD_NOTHING);
+
+	/* An empty output selects nothing. */
+	buf = window_copy_get_grid_range(wme, sx, sy, ex, ey, &len);
+	if (buf == NULL)
+		return (WINDOW_COPY_CMD_NOTHING);
+	free(buf);
+
+	window_copy_clear_selection(wme);
+	data->lineflag = LINE_SEL_NONE;
+	data->rectflag = 0;
+	data->selflag = SEL_CHAR;
+	window_copy_scroll_to(wme, sx, sy, 1);
+	window_copy_start_selection(wme);
+
+	/* The end is inclusive in vi mode, so step back onto the last cell. */
+	if (data->modekeys == MODEKEY_VI) {
+		last = window_copy_copy_line_length(wme, ey, NULL);
+		if (ex > last)
+			ex = last;
+		if (ex == 0 && ey > 0) {
+			ey--;
+			ex = window_copy_copy_line_length(wme, ey, &wrapped);
+			if (wrapped && ex > 0)
+				ex--;
+		} else {
+			grid_reader_start(&gr, data->backing->grid, ex, ey);
+			grid_reader_cursor_left(&gr, 1);
+			grid_reader_get_cursor(&gr, &ex, &ey);
+		}
+	}
+	window_copy_scroll_to(wme, ex, ey, 1);
+	return (WINDOW_COPY_CMD_REDRAW);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_copy_output(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct client			*c = cs->c;
+	struct session			*s = cs->s;
+	struct winlink			*wl = cs->wl;
+	struct window_pane		*wp = wme->wp;
+	void				*buf;
+	char				*prefix = NULL;
+	const char			*arg0 = args_string(cs->wargs, 0);
+	size_t				 len;
+	int				 all = args_has(cs->wargs, 'a');
+	int				 set_paste = !args_has(cs->wargs, 'P');
+	int				 set_clip = !args_has(cs->wargs, 'C');
+
+	if (arg0 != NULL)
+		prefix = format_single(NULL, arg0, c, s, wl, wp);
+	if (s != NULL) {
+		buf = window_copy_get_output(wme, &len, all);
+		if (buf != NULL) {
+			window_copy_copy_buffer(wme, prefix, buf, len,
+			    set_paste, set_clip);
+		}
+	}
+	free(prefix);
+	window_copy_clear_selection(wme);
+	return (WINDOW_COPY_CMD_REDRAW);
 }
 
 static enum window_copy_cmd_action
@@ -2773,6 +2863,127 @@ window_copy_cmd_pipe_and_cancel(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
+window_copy_cmd_copy_pipe_output(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct client			*c = cs->c;
+	struct session			*s = cs->s;
+	struct winlink			*wl = cs->wl;
+	struct window_pane		*wp = wme->wp;
+	void				*buf;
+	char				*command = NULL, *prefix = NULL;
+	const char			*arg0 = args_string(cs->wargs, 0);
+	const char			*arg1 = args_string(cs->wargs, 1);
+	size_t				 len;
+	int				 all = args_has(cs->wargs, 'a');
+	int				 set_paste = !args_has(cs->wargs, 'P');
+	int				 set_clip = !args_has(cs->wargs, 'C');
+
+	if (arg1 != NULL)
+		prefix = format_single(NULL, arg1, c, s, wl, wp);
+	if (s != NULL && arg0 != NULL && *arg0 != '\0')
+		command = format_single(NULL, arg0, c, s, wl, wp);
+	if (s != NULL) {
+		buf = window_copy_get_output(wme, &len, all);
+		if (buf != NULL) {
+			window_copy_pipe_buffer(s, command, buf, len);
+			window_copy_copy_buffer(wme, prefix, buf, len,
+			    set_paste, set_clip);
+		}
+	}
+	free(command);
+	free(prefix);
+	window_copy_clear_selection(wme);
+	return (WINDOW_COPY_CMD_REDRAW);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_pipe_output(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct client			*c = cs->c;
+	struct session			*s = cs->s;
+	struct winlink			*wl = cs->wl;
+	struct window_pane		*wp = wme->wp;
+	void				*buf;
+	char				*command = NULL;
+	const char			*arg0 = args_string(cs->wargs, 0);
+	size_t				 len;
+	int				 all = args_has(cs->wargs, 'a');
+
+	if (s != NULL && arg0 != NULL && *arg0 != '\0')
+		command = format_single(NULL, arg0, c, s, wl, wp);
+	if (s != NULL) {
+		buf = window_copy_get_output(wme, &len, all);
+		if (buf != NULL) {
+			window_copy_pipe_buffer(s, command, buf, len);
+			free(buf);
+		}
+	}
+	free(command);
+	window_copy_clear_selection(wme);
+	return (WINDOW_COPY_CMD_REDRAW);
+}
+
+static void
+window_copy_open_done(char *buf, __unused size_t len, __unused void *arg)
+{
+	free(buf);
+}
+
+static void
+window_copy_open_buffer(struct window_copy_cmd_state *cs, void *buf,
+    size_t len)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct window_pane		*wp = wme->wp;
+	char				*editor = NULL;
+	const char			*arg0 = args_string(cs->wargs, 0);
+
+	if (arg0 != NULL && *arg0 != '\0')
+		editor = format_single(NULL, arg0, cs->c, cs->s, cs->wl, wp);
+	spawn_editor(cs->c, buf, len, editor, window_copy_open_done, NULL);
+	free(editor);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_open_selection(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct window_copy_mode_data	*data = wme->data;
+	void				*buf;
+	size_t				 len;
+
+	if (cs->c == NULL)
+		return (WINDOW_COPY_CMD_NOTHING);
+	if (data->screen.sel == NULL && data->lineflag == LINE_SEL_NONE)
+		return (WINDOW_COPY_CMD_NOTHING);
+	buf = window_copy_get_selection(wme, &len);
+	if (buf != NULL) {
+		window_copy_open_buffer(cs, buf, len);
+		free(buf);
+	}
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_open_output(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	void				*buf;
+	size_t				 len;
+
+	if (cs->c == NULL)
+		return (WINDOW_COPY_CMD_NOTHING);
+	buf = window_copy_get_output(wme, &len, args_has(cs->wargs, 'a'));
+	if (buf != NULL) {
+		window_copy_open_buffer(cs, buf, len);
+		free(buf);
+	}
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
 window_copy_cmd_goto_line(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
@@ -3426,6 +3637,18 @@ static const struct {
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_pipe_and_cancel
 	},
+	{ .command = "copy-pipe-output",
+	  .args = { "aCP", 0, 2, NULL },
+	  .flags = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_copy_pipe_output
+	},
+	{ .command = "copy-output",
+	  .args = { "aCP", 0, 1, NULL },
+	  .flags = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_copy_output
+	},
 	{ .command = "copy-selection-no-clear",
 	  .args = { "CP", 0, 1, NULL },
 	  .flags = 0,
@@ -3648,6 +3871,18 @@ static const struct {
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_other_end
 	},
+	{ .command = "open-output",
+	  .args = { "a", 0, 1, NULL },
+	  .flags = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_open_output
+	},
+	{ .command = "open-selection",
+	  .args = { "", 0, 1, NULL },
+	  .flags = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_open_selection
+	},
 	{ .command = "page-down",
 	  .args = { "", 0, 0, NULL },
 	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
@@ -3683,6 +3918,18 @@ static const struct {
 	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_pipe_and_cancel
+	},
+	{ .command = "pipe-output",
+	  .args = { "a", 0, 1, NULL },
+	  .flags = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_pipe_output
+	},
+	{ .command = "pipe-selection",
+	  .args = { "", 0, 1, NULL },
+	  .flags = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_pipe
 	},
 	{ .command = "previous-matching-bracket",
 	  .args = { "", 0, 0, NULL },
@@ -3860,6 +4107,12 @@ static const struct {
 	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_search_reverse
+	},
+	{ .command = "select-output",
+	  .args = { "a", 0, 0, NULL },
+	  .flags = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_select_output
 	},
 	{ .command = "select-line",
 	  .args = { "", 0, 0, NULL },
@@ -6054,14 +6307,88 @@ window_copy_set_selection(struct window_mode_entry *wme, int may_redraw,
 				window_copy_redraw_lines(wme, cy, sy - cy + 1);
 		} else {
 			if (endsy < cy) {
-				window_copy_redraw_lines(wme, endsy, cy - endsy + 1);
+				window_copy_redraw_lines(wme, endsy,
+				    cy - endsy + 1);
 			} else {
-				window_copy_redraw_lines(wme, cy, endsy - cy + 1);
+				window_copy_redraw_lines(wme, cy,
+				    endsy - cy + 1);
 			}
 		}
 	}
 
 	return (1);
+}
+
+/* Get the range of the current output, or the whole buffer with all. */
+static int
+window_copy_get_output_range(struct window_mode_entry *wme, int all,
+    u_int *sx, u_int *sy, u_int *ex, u_int *ey)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->backing->grid;
+	struct grid_reader		 gr;
+	u_int				 total, cursor_y;
+	int				 found;
+
+	if (!all) {
+		cursor_y = screen_hsize(data->backing) + data->cy - data->oy;
+		grid_reader_start(&gr, gd, data->cx, cursor_y);
+		found = grid_reader_output_range(&gr, sx, sy, ex, ey);
+		return (found);
+	}
+	total = gd->hsize + gd->sy;
+	*sx = *sy = 0;
+	*ey = total - 1;
+	*ex = grid_get_line(gd, *ey)->cellused;
+	return (1);
+}
+
+/* Get current output. */
+static void *
+window_copy_get_output(struct window_mode_entry *wme, size_t *len, int all)
+{
+	void	*buf;
+	u_int	 sx, sy, ex, ey;
+
+	if (!window_copy_get_output_range(wme, all, &sx, &sy, &ex, &ey)) {
+		*len = 0;
+		return (NULL);
+	}
+	buf = window_copy_get_grid_range(wme, sx, sy, ex, ey, len);
+	return (buf);
+}
+
+/* Get the text from sx,sy up to ex,ey, or NULL if there is none. */
+static void *
+window_copy_get_grid_range(struct window_mode_entry *wme, u_int sx, u_int sy,
+    u_int ex, u_int ey, size_t *len)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->backing->grid;
+	char				*buf;
+	size_t				 off;
+	u_int				 i, first, last;
+
+	buf = xmalloc(1);
+	off = 0;
+	for (i = sy; i <= ey; i++) {
+		first = 0;
+		last = gd->sx;
+		if (i == sy)
+			first = sx;
+		if (i == ey)
+			last = ex;
+		window_copy_copy_line(wme, &buf, &off, i, first, last);
+	}
+	if (off != 0 && buf[off - 1] == '\n')
+		off--;
+	if (off == 0) {
+		free(buf);
+		*len = 0;
+		return (NULL);
+	}
+	*len = off;
+	return (buf);
 }
 
 static void *
@@ -6074,7 +6401,7 @@ window_copy_get_selection(struct window_mode_entry *wme, size_t *len)
 	size_t				 off;
 	u_int				 i, xx, yy, sx, sy, ex, ey, ey_last;
 	u_int				 firstsx, lastex, restex, restsx, selx;
-	int				 keys;
+	int				 keys, wrapped;
 
 	if (data->screen.sel == NULL && data->lineflag == LINE_SEL_NONE) {
 		buf = window_copy_match_at_cursor(data);
@@ -6107,7 +6434,7 @@ window_copy_get_selection(struct window_mode_entry *wme, size_t *len)
 	}
 
 	/* Trim ex to end of line. */
-	ey_last = window_copy_find_length(wme, ey);
+	ey_last = window_copy_copy_line_length(wme, ey, &wrapped);
 	if (ex > ey_last)
 		ex = ey_last;
 
@@ -6178,8 +6505,7 @@ window_copy_get_selection(struct window_mode_entry *wme, size_t *len)
 	}
 	 /* Remove final \n (unless at end in vi mode). */
 	if (keys == MODEKEY_EMACS || lastex <= ey_last) {
-		if (~grid_get_line(data->backing->grid, ey)->flags &
-		    GRID_LINE_WRAPPED || lastex != ey_last)
+		if (!wrapped || lastex != ey_last)
 			off -= 1;
 	}
 	*len = off;
@@ -6220,18 +6546,28 @@ window_copy_pipe_run(struct window_mode_entry *wme, struct session *s,
     const char *cmd, size_t *len)
 {
 	void		*buf;
-	struct job	*job;
 
 	buf = window_copy_get_selection(wme, len);
+	window_copy_pipe_buffer(s, cmd, buf, *len);
+	return (buf);
+}
+
+static void
+window_copy_pipe_buffer(struct session *s, const char *cmd, void *buf,
+    size_t len)
+{
+	struct job	*job;
+
+	if (buf == NULL)
+		return;
 	if (cmd == NULL || *cmd == '\0')
 		cmd = options_get_string(global_options, "copy-command");
 	if (cmd != NULL && *cmd != '\0') {
 		job = job_run(cmd, 0, NULL, NULL, s, NULL, NULL, NULL, NULL,
 		    NULL, JOB_NOWAIT, -1, -1);
 		if (job != NULL)
-			bufferevent_write(job_get_event(job), buf, *len);
+			bufferevent_write(job_get_event(job), buf, len);
 	}
-	return (buf);
 }
 
 static void
@@ -6307,6 +6643,29 @@ window_copy_append_selection(struct window_mode_entry *wme)
 	free(bufname);
 }
 
+/* Get the length for copying, preserving spaces on wrapped lines. */
+static u_int
+window_copy_copy_line_length(struct window_mode_entry *wme, u_int sy,
+    int *wrapped)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->backing->grid;
+	struct grid_line		*gl = grid_get_line(gd, sy);
+	u_int				 length;
+	int				 line_wrapped;
+
+	line_wrapped = 0;
+	if ((gl->flags & GRID_LINE_WRAPPED) && gl->cellsize <= gd->sx)
+		line_wrapped = 1;
+	if (wrapped != NULL)
+		*wrapped = line_wrapped;
+	if (line_wrapped)
+		length = gl->cellsize;
+	else
+		length = window_copy_find_length(wme, sy);
+	return (length);
+}
+
 static void
 window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
     u_int sy, u_int sx, u_int ex)
@@ -6314,27 +6673,15 @@ window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*gd = data->backing->grid;
 	struct grid_cell		 gc;
-	struct grid_line		*gl;
 	struct utf8_data		 ud;
-	u_int				 i, xx, wrapped = 0;
+	u_int				 i, xx;
 	const char			*s;
+	int				 wrapped;
 
 	if (sx > ex)
 		return;
 
-	/*
-	 * Work out if the line was wrapped at the screen edge and all of it is
-	 * on screen.
-	 */
-	gl = grid_get_line(gd, sy);
-	if (gl->flags & GRID_LINE_WRAPPED && gl->cellsize <= gd->sx)
-		wrapped = 1;
-
-	/* If the line was wrapped, don't strip spaces (use the full length). */
-	if (wrapped)
-		xx = gl->cellsize;
-	else
-		xx = window_copy_find_length(wme, sy);
+	xx = window_copy_copy_line_length(wme, sy, &wrapped);
 	if (ex > xx)
 		ex = xx;
 	if (sx > xx)

@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.384 2026/10/02 12:48:52 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.385 2026/10/08 07:06:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1592,13 +1592,15 @@ window_pane_destroy(struct window_pane *wp)
 	window_pane_free_modes(wp);
 	screen_write_sync_clear_dirty(wp);
 
+	if (wp->event != NULL) {
+		bufferevent_free(wp->event);
+		wp->event = NULL;
+	}
 	if (wp->fd != -1) {
 #ifdef HAVE_UTEMPTER
 		utempter_remove_record(wp->fd);
 		kill(getpid(), SIGCHLD);
 #endif
-		bufferevent_free(wp->event);
-		wp->event = NULL;
 		close(wp->fd);
 		wp->fd = -1;
 	}
