@@ -93,8 +93,8 @@ struct kitty_state {
 	u_int	 data_size;
 	int	 more;
 
-	char	*encoded;
-	size_t	 encodedlen;
+	u_char	*raw;
+	size_t	 rawlen;
 };
 
 struct kitty_placement {
@@ -664,7 +664,7 @@ kitty_state_free(struct kitty_state *ks)
 {
 	if (ks == NULL)
 		return;
-	free(ks->encoded);
+	free(ks->raw);
 	free(ks);
 }
 
@@ -892,17 +892,50 @@ kitty_source_get(struct kitty_context *kc, u_int id)
 	return (im);
 }
 
-/* Append encoded payload data to a Kitty graphics command. */
+/* Decode and append one base64-encoded Kitty payload chunk. */
 static int
 kitty_append(struct kitty_state *ks, const u_char *buf, size_t len)
 {
-	if (len > IMAGE_SIZE_LIMIT ||
-	    ks->encodedlen > IMAGE_SIZE_LIMIT - len)
+	static const char base64[] =
+	    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	u_char		*decoded;
+	char		*copy = NULL;
+	const char	*digit;
+	size_t		 decodedlen, offset;
+	u_int		 mask;
+
+	if (len > IMAGE_SIZE_LIMIT)
 		return (-1);
-	ks->encoded = xrealloc(ks->encoded, ks->encodedlen + len + 1);
-	memcpy(ks->encoded + ks->encodedlen, buf, len);
-	ks->encodedlen += len;
-	ks->encoded[ks->encodedlen] = '\0';
+	/* Older Chafa chunks have padding with nonzero unused bits. */
+	if (len >= 4 && len % 4 == 0 && buf[len - 1] == '=') {
+		offset = len - 2;
+		mask = 0x3c;
+		if (buf[offset] == '=') {
+			offset--;
+			mask = 0x30;
+		}
+		digit = strchr(base64, buf[offset]);
+		if (digit == NULL)
+			return (-1);
+		copy = xmalloc(len);
+		memcpy(copy, buf, len);
+		copy[offset] = base64[(digit - base64) & mask];
+		buf = (const u_char *)copy;
+	}
+
+	decoded = image_base64_decode((const char *)buf, len,
+	    IMAGE_SIZE_LIMIT, &decodedlen);
+	free(copy);
+	if (decoded == NULL)
+		return (-1);
+	if (decodedlen > IMAGE_SIZE_LIMIT - ks->rawlen) {
+		free(decoded);
+		return (-1);
+	}
+	ks->raw = xrealloc(ks->raw, ks->rawlen + decodedlen);
+	memcpy(ks->raw + ks->rawlen, decoded, decodedlen);
+	ks->rawlen += decodedlen;
+	free(decoded);
 	return (0);
 }
 
@@ -1167,10 +1200,9 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 	if (ks->action != 'T' && ks->action != 't' && ks->action != 'q')
 		goto fail;
 
-	decoded = image_base64_decode(ks->encoded, ks->encodedlen,
-	    IMAGE_SIZE_LIMIT, &decodedlen);
-	if (decoded == NULL)
-		goto fail;
+	decoded = ks->raw;
+	decodedlen = ks->rawlen;
+	ks->raw = NULL;
 	if (ks->format == 100) {
 		if (ks->compression == 'z') {
 			if (ks->data_size == 0 ||

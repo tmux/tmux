@@ -28,6 +28,25 @@ sleep 1
 [ "$($TMUX display-message -p '#{image_support}')" = 0 ] && exit 0
 [ "$($TMUX display-message -p '#{sixel_support}')" = 1 ] || exit 1
 
+# Older Chafa chunks are independently padded, with nonzero unused bits.
+$TMUX new-window -d -n kitty-chunks "
+	printf '\033_Ga=T,q=2,f=32,s=1,v=1,c=1,r=1,m=1;/wD=\033\\'
+	printf '\033_Gm=1;AP/=\033\\'
+	printf '\033_Gm=0\033\\'
+	sleep 10"
+sleep 1
+[ "$($TMUX display-message -pt:kitty-chunks '#{cursor_y}')" = 1 ] || exit 1
+$TMUX kill-window -t:kitty-chunks || exit 1
+
+# Accept two padding characters too, with pixel data in the final chunk.
+$TMUX new-window -d -n kitty-chunks "
+	printf '\033_Ga=T,q=2,f=32,s=1,v=1,c=1,r=1,m=1;/x==\033\\'
+	printf '\033_Gm=0;AAD/\033\\'
+	sleep 10"
+sleep 1
+[ "$($TMUX display-message -pt:kitty-chunks '#{cursor_y}')" = 1 ] || exit 1
+$TMUX kill-window -t:kitty-chunks || exit 1
+
 # Images scroll as grid cells, while capture output contains ordinary spaces.
 [ "$($TMUX display-message -p '#{history_size}')" -gt 0 ] || exit 1
 $TMUX capture-pane -pS- >$TMP || exit 1
