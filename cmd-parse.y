@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-parse.y,v 1.61 2026/10/05 13:45:49 nicm Exp $ */
+/* $OpenBSD: cmd-parse.y,v 1.62 2026/10/08 06:29:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -423,15 +423,12 @@ commands	: command
 		{
 			struct cmd_parse_state	*ps = &parse_state;
 
+			$$ = $1;
 			if (!TAILQ_EMPTY(&$3->arguments) &&
 			    (ps->scope == NULL || ps->scope->flag)) {
-				$$ = $1;
 				TAILQ_INSERT_TAIL($$, $3, entry);
-			} else {
-				$$ = cmd_parse_new_commands();
-				cmd_parse_free_commands($1);
+			} else
 				cmd_parse_free_command($3);
-			}
 		}
 		| condition1
 		{
