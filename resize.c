@@ -452,7 +452,7 @@ recalculate_sizes_now(int now)
 		s = c->session;
 		if (s != NULL && !(c->flags & CLIENT_UNATTACHEDFLAGS))
 			s->attached++;
-		if (ignore_client_size(c))
+		if (s == NULL)
 			continue;
 		if (c->tty.sy <= s->statuslines || (c->flags & CLIENT_CONTROL))
 			c->flags |= CLIENT_STATUSOFF;
