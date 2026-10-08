@@ -1,413 +1,400 @@
 #!/bin/sh
 
-# Preserve a preferred column while clamping the cursor to shorter lines.
+# Disable EOL following without changing cursor limits or selection rules.
 PATH=/bin:/usr/bin
 TERM=screen
 LC_ALL=C.UTF-8
 export PATH TERM LC_ALL
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -f/dev/null -LtestA$$"
-OUT=$(mktemp -d) || exit 1
+TMUX="$TEST_TMUX -Lsticky-eol-$$ -f/dev/null"
+
+fail()
+{
+	echo "$mode: $*" >&2
+	exit 1
+}
 
 cleanup()
 {
 	$TMUX kill-server 2>/dev/null
-	rm -f "$OUT/actual" "$OUT/expected"
-	rmdir "$OUT"
 }
-trap cleanup 0
-trap 'exit 1' 1 2 3 15
+trap cleanup 0 1 15
 
-fail()
+x()
 {
-	echo "$*" >&2
-	exit 1
-}
-
-send()
-{
-	$TMUX send-keys -X "$@" || exit 1
+	$TMUX send-keys -X "$@" || fail "copy command failed: $*"
 }
 
 check_cursor()
 {
-	actual=$($TMUX display -p '#{copy_cursor_x},#{copy_cursor_y}')
-	[ "$actual" = "$1" ] || fail "$mode: expected cursor $1, got $actual"
+	actual=$($TMUX display-message -p '#{copy_cursor_x},#{copy_cursor_y}')
+	[ "$actual" = "$1" ] || fail "expected cursor $1, got $actual"
 }
 
-check_buffer()
+enter_with_default()
 {
-	printf '%s' "$1" >"$OUT/expected"
-	$TMUX save-buffer "$OUT/actual" || exit 1
-	if ! cmp -s "$OUT/expected" "$OUT/actual"; then
-		od -An -tx1 "$OUT/expected" "$OUT/actual"
-		fail "$mode: incorrect copied text"
-	fi
+	default_eol=$1
+	shift
+	$TMUX set-window-option -g copy-mode-sticky-eol "$default_eol" ||
+		fail "set copy-mode-sticky-eol failed"
+	$TMUX copy-mode "$@" || fail "copy-mode failed"
 }
 
-start()
+wait_cursor()
 {
-	$TMUX copy-mode || exit 1
-	send history-top
+	i=0
+	while [ "$i" -lt 50 ]; do
+		actual=$($TMUX display-message -p '#{cursor_x},#{cursor_y}')
+		[ "$actual" = "$1" ] && return 0
+		sleep 0.1
+		i=$((i + 1))
+	done
+	fail "pane cursor did not reach $1"
 }
 
-check_eol_up()
-{
-	$TMUX send -N3 -X cursor-down || exit 1
-	send end-of-line
-	$TMUX send -N3 -X cursor-up || exit 1
-	check_cursor "$1,0"
-}
-
-$TMUX new -d -x40 -y10 \
-	"printf '%s\n' abcdefghijklmnopqrst abc '' abcdefghij \
-	    abcdefghijklmnopqrst; exec sleep 300" || exit 1
-$TMUX set -g status off || exit 1
-$TMUX set -g window-size manual || exit 1
-
-# Wait for the fixture before entering copy mode.
-i=0
-while [ "$($TMUX capture-pane -p | sed -n 1p)" != abcdefghijklmnopqrst ]; do
-	i=$((i + 1))
-	[ "$i" -lt 100 ] || fail 'fixture did not appear'
-	sleep 0.01
-done
+mode=emacs
+$TMUX new-session -d -x40 -y10 \
+    "printf '%s\r\n' ABCDEFGHIJKLMNOPQRST abc ABCDEFGHIJKLMNOPQRST \
+	abcdefgh ABCDEFGHIJKLMNOP ab 01234567890123456789; \
+	printf '\033[4;9H'; exec cat" ||
+    fail "new-session failed"
+$TMUX set-option -g status off || fail "set status failed"
+$TMUX set-option -g window-size manual || fail "set window-size failed"
+wait_cursor 8,3
 [ "$($TMUX show -gwv copy-mode-sticky-eol)" = on ] ||
-	fail 'option defaults to off'
+	fail "copy-mode-sticky-eol did not default to on"
 
 for mode in emacs vi; do
-	$TMUX set -g mode-keys "$mode" || exit 1
-	if [ "$mode" = vi ]; then
-		end=9
-		short=2
-		follow=2
-		suffix='
-'
+	$TMUX set-window-option -g mode-keys "$mode" ||
+	    fail "set mode-keys failed"
+
+	# The default remains sticky. Turning it off preserves the entry column.
+	for direction in up down; do
+		if [ "$direction" = up ]; then
+			row=2
+			end=20
+		else
+			row=4
+			end=16
+		fi
+		[ "$mode" = emacs ] || end=$((end - 1))
+		enter_with_default on
+		check_cursor 8,3
+		x "cursor-$direction"
+		check_cursor "$end,$row"
+		x cancel
+
+		for entry in '' -e -H; do
+			enter_with_default off $entry
+			check_cursor 8,3
+			x "cursor-$direction"
+			check_cursor "8,$row"
+			x cancel
+		done
+	done
+
+	# Short lines retain the existing emacs and vi movement rules. Emacs
+	# restores the preferred column; vi resumes from its last-character clamp.
+	enter_with_default off
+	x cursor-up
+	check_cursor 8,2
+	x cursor-up
+	if [ "$mode" = emacs ]; then
+		check_cursor 3,1
+		restored=8
 	else
-		end=10
+		check_cursor 2,1
+		restored=2
+	fi
+	x cursor-up
+	check_cursor "$restored,0"
+	x cancel
+
+	enter_with_default off
+	x cursor-down
+	check_cursor 8,4
+	x cursor-down
+	if [ "$mode" = emacs ]; then
+		check_cursor 2,5
+		restored=8
+	else
+		check_cursor 1,5
+		restored=1
+	fi
+	x cursor-down
+	check_cursor "$restored,6"
+	x cancel
+
+	# Horizontal movement before the first vertical move replaces the initial
+	# preference, rather than leaving the entry column permanently fixed.
+	enter_with_default off
+	x cursor-left
+	check_cursor 7,3
+	x cursor-up
+	check_cursor 7,2
+	x cancel
+done
+
+# Commands change the current visit, not the configured default.
+for mode in emacs vi; do
+	$TMUX set-window-option -g mode-keys "$mode" ||
+	    fail "set mode-keys failed"
+	if [ "$mode" = emacs ]; then
+		end=20
 		short=3
-		follow=0
-		suffix=
+		restored=8
+		expected=DEFGH
+	else
+		end=19
+		short=2
+		restored=2
+		expected=DEFGHI
 	fi
 
-	# With the option on, end-of-line retains the existing behavior.
-	$TMUX set -g copy-mode-sticky-eol on || exit 1
-	start
-	check_eol_up "$follow"
-	send cancel
-
-	# Commands override the default only for the current visit.
-	start
-	send sticky-eol-off
-	check_eol_up "$end"
+	enter_with_default on
+	x sticky-eol-off
+	x cursor-up
+	check_cursor 8,2
 	[ "$($TMUX show -gwv copy-mode-sticky-eol)" = on ] ||
-		fail 'sticky-eol-off changed the option'
-	$TMUX copy-mode || exit 1
-	send history-top
-	check_eol_up "$end"
-	send cancel
-	start
-	check_eol_up "$follow"
-	send cancel
+		fail "sticky-eol-off changed the default"
+	x cursor-up
+	check_cursor "$short,1"
+	x sticky-eol-off
+	x cursor-up
+	check_cursor "$restored,0"
+	x cancel
+	$TMUX copy-mode || fail "copy-mode failed"
+	x cursor-up
+	check_cursor "$end,2"
+	x cancel
 
-	start
-	send sticky-eol-toggle
-	check_eol_up "$end"
-	send sticky-eol-toggle
-	send history-top
-	check_eol_up "$follow"
-	send cancel
-
-	$TMUX set -g copy-mode-sticky-eol off || exit 1
-	start
-	send sticky-eol-on
-	check_eol_up "$follow"
+	enter_with_default off
+	x sticky-eol-on
+	x sticky-eol-on
+	x cursor-up
+	check_cursor "$end,2"
 	[ "$($TMUX show -gwv copy-mode-sticky-eol)" = off ] ||
-		fail 'sticky-eol-on changed the option'
-	send cancel
-	start
-	check_eol_up "$end"
-	send cancel
+		fail "sticky-eol-on changed the default"
+	x cancel
+	$TMUX copy-mode || fail "copy-mode failed"
+	x cursor-up
+	check_cursor 8,2
+	x cancel
 
-	start
-	send sticky-eol-toggle
-	check_eol_up "$follow"
-	send sticky-eol-toggle
-	send history-top
-	check_eol_up "$end"
-	send cancel
+	enter_with_default on
+	x sticky-eol-toggle
+	x cursor-up
+	check_cursor 8,2
+	x cancel
+	enter_with_default off
+	x sticky-eol-toggle
+	x cursor-up
+	check_cursor "$end,2"
+	x cancel
+	enter_with_default on
+	x sticky-eol-toggle
+	x sticky-eol-toggle
+	x cursor-up
+	check_cursor "$end,2"
+	x cancel
 
-	# Changing the default does not change an existing visit.
-	$TMUX set -g copy-mode-sticky-eol on || exit 1
-	start
-	$TMUX set -g copy-mode-sticky-eol off || exit 1
-	check_eol_up "$follow"
-	send cancel
-	start
-	check_eol_up "$end"
-	send cancel
+	# Option changes apply only to the next visit, even after copy-mode again.
+	enter_with_default on
+	$TMUX set-window-option -g copy-mode-sticky-eol off ||
+	    fail "set copy-mode-sticky-eol failed"
+	$TMUX copy-mode || fail "copy-mode failed"
+	x cursor-up
+	check_cursor "$end,2"
+	x cancel
+	$TMUX copy-mode || fail "copy-mode failed"
+	x cursor-up
+	check_cursor 8,2
+	x cancel
 
-	$TMUX set -g copy-mode-sticky-eol off || exit 1
-	start
-	$TMUX send -N3 -X cursor-down || exit 1
-	send end-of-line
-	check_cursor "$end,3"
-	send cursor-up
-	check_cursor '0,2'
-	# Repeating sticky-eol-off must not discard the remembered column.
-	send sticky-eol-off
-	send cursor-up
-	check_cursor "$short,1"
-	send cursor-up
-	check_cursor "$end,0"
-	$TMUX send -N3 -X cursor-down || exit 1
-	check_cursor "$end,3"
-
-	# An explicit end-of-line on a clamped row chooses a new column.
-	$TMUX send -N2 -X cursor-up || exit 1
-	send end-of-line
-	send cursor-up
-	check_cursor "$short,0"
-	send cancel
-
-	# Horizontal movement on a clamped row chooses its visible column.
-	start
-	$TMUX send -N8 -X cursor-right || exit 1
-	send cursor-down
-	send cursor-left
-	send cursor-up
-	check_cursor "$((short - 1)),0"
-	send cancel
-
-	# Changing state chooses the visible column, not an old clamped goal.
-	start
-	$TMUX send -N8 -X cursor-right || exit 1
-	send begin-selection
-	send cursor-down
-	send sticky-eol-on
-	send sticky-eol-off
-	send cursor-up
-	check_cursor "$short,0"
-	send copy-selection-no-clear
-	if [ "$mode" = vi ]; then
-		check_buffer cdefghi
-	else
-		check_buffer defgh
-	fi
-	send cancel
-
-	# Enabling sticky EOL mid-line must not use a stale line length.
-	start
-	$TMUX send -N4 -X cursor-down || exit 1
-	$TMUX send -N8 -X cursor-right || exit 1
-	send sticky-eol-on
-	send sticky-eol-on
-	send cursor-up
-	check_cursor '8,3'
-	send cancel
-
-	# Start-of-line resets the column even on an already clamped empty row.
-	start
-	$TMUX send -N8 -X cursor-right || exit 1
-	$TMUX send -N2 -X cursor-down || exit 1
-	send start-of-line
-	$TMUX send -N2 -X cursor-up || exit 1
-	check_cursor '0,0'
-	send cancel
-
-	# Short and empty rows keep their line breaks in the selection.
-	start
-	$TMUX send -N8 -X cursor-right || exit 1
-	send begin-selection
-	$TMUX send -N2 -X cursor-down || exit 1
-	check_cursor '0,2'
-	send copy-selection-no-clear
-	check_buffer "ijklmnopqrst
-abc
-$suffix"
-	# Selection operations on a clamped row must retain the preferred column.
-	send cursor-down
-	check_cursor '8,3'
-	send cancel
-
-	# Switching selection ends uses the existing clamped endpoint rules.
-	start
-	$TMUX send -N8 -X cursor-right || exit 1
-	send begin-selection
-	send cursor-down
-	send copy-selection-no-clear
-	check_buffer "ijklmnopqrst
-abc$suffix"
-	send other-end
-	send other-end
-	send copy-selection-no-clear
-	check_buffer 'ijklmnopqrst
-abc'
-	send cancel
-
-	# Returning from rectangle mode must not revive a stale preferred column.
-	start
-	$TMUX send -N8 -X cursor-right || exit 1
-	send begin-selection
-	send cursor-down
-	send rectangle-on
-	send rectangle-off
-	send cursor-up
-	check_cursor "$short,0"
-	send cancel
-
-	# Starting on a short row must not copy its last character in vi mode.
-	start
-	$TMUX send -N8 -X cursor-right || exit 1
-	send cursor-down
-	send begin-selection
-	$TMUX send -N2 -X cursor-down || exit 1
-	send copy-selection-no-clear
-	if [ "$mode" = vi ]; then
-		check_buffer '
-
-abcdefghi'
-	else
-		check_buffer '
-
-abcdefgh'
-	fi
-	send cancel
-
-	# Rectangle copying retains empty rows without padding them with spaces.
-	start
-	$TMUX send -N8 -X cursor-right || exit 1
-	send cursor-down
-	send rectangle-toggle
-	send begin-selection
-	$TMUX send -N2 -X cursor-down || exit 1
-	send copy-selection-no-clear
-	check_buffer '
-
-d'
-	send cancel
-
-	# Page movement also restores the preferred column after empty rows.
-	$TMUX new-window \
-		"i=0
-		while [ \$i -lt 30 ]; do
-			printf 'abcdefghijklmnopqrst\nabc\n\n'
-			i=\$((i + 1))
-		done
-		printf '\033[9G'
-		exec sleep 300" || exit 1
-	i=0
-	while [ "$($TMUX display -p '#{cursor_x}')" != 8 ]; do
-		i=$((i + 1))
-		[ "$i" -lt 100 ] || fail 'history did not appear'
-		sleep 0.01
+	# Toggling must not move the cursor or reshape an existing selection.
+	enter_with_default off
+	x history-top
+	$TMUX send-keys -N3 -X cursor-right || fail "cursor-right failed"
+	x begin-selection
+	$TMUX send-keys -N5 -X cursor-right || fail "cursor-right failed"
+	selection_format='#{selection_start_x},#{selection_start_y}'
+	selection_format="$selection_format,#{selection_end_x},#{selection_end_y}"
+	selection=$($TMUX display-message -p "$selection_format")
+	for command in sticky-eol-on sticky-eol-off sticky-eol-toggle; do
+		x "$command"
+		check_cursor 8,0
+		[ "$($TMUX display-message -p "$selection_format")" = "$selection" ] ||
+			fail "$command changed the selection"
+		x copy-selection-no-clear
+		[ "$($TMUX show-buffer)" = "$expected" ] ||
+			fail "$command changed the copied text"
 	done
-
-	# The default applies before movement inside the entry command.
-	for entry in '' -u -d -e; do
-		$TMUX copy-mode $entry || exit 1
-		i=0
-		while [ "$($TMUX display -p '#{copy_cursor_line}')" != \
-		    abcdefghijklmnopqrst ]; do
-			send cursor-up
-			i=$((i + 1))
-			[ "$i" -lt 4 ] || fail "$entry: long row not found"
-		done
-		[ "$($TMUX display -p '#{copy_cursor_x}')" = 8 ] ||
-			fail "$mode $entry: entry lost the cursor column"
-		send cancel
+	x rectangle-on
+	for command in sticky-eol-on sticky-eol-off sticky-eol-toggle; do
+		x "$command"
+		[ "$($TMUX display-message -p '#{rectangle_toggle}')" = 1 ] ||
+			fail "$command disabled rectangle selection"
+		x copy-selection-no-clear
+		[ "$($TMUX show-buffer)" = "$expected" ] ||
+			fail "$command changed rectangle copying"
 	done
-
-	start
-	$TMUX send -N8 -X cursor-right || exit 1
-	send page-down
-	check_cursor '0,0'
-	send page-up
-	check_cursor '8,0'
-	send halfpage-down
-	check_cursor '0,0'
-	send halfpage-up
-	check_cursor '8,0'
-	send cancel
-
-	# A wrapped row joins the following row without an extra line break.
-	$TMUX new-window \
-		"printf '%s\n' abcdefghijklmnopqrstuvwxyzABCD abc \
-		    abcdefghijklmnopqrst; exec sleep 300" || exit 1
-	$TMUX resize-window -x20 || exit 1
-	i=0
-	while [ "$($TMUX capture-pane -p -S- | sed -n 1p)" != \
-	    abcdefghijklmnopqrst ]; do
-		i=$((i + 1))
-		[ "$i" -lt 100 ] || fail 'wrapped fixture did not appear'
-		sleep 0.01
-	done
-	start
-	$TMUX send -N8 -X cursor-right || exit 1
-	send begin-selection
-	$TMUX send -N2 -X cursor-down || exit 1
-	send copy-selection-no-clear
-	check_buffer "ijklmnopqrstuvwxyzABCD
-abc$suffix"
-	send cancel
-
-	# End-of-line on wrapped text chooses the end of the logical line.
-	start
-	send end-of-line
-	if [ "$mode" = vi ]; then
-		check_cursor '9,1'
-	else
-		check_cursor '10,1'
-	fi
-	send cursor-down
-	check_cursor "$short,2"
-	send cursor-down
-	if [ "$mode" = vi ]; then
-		check_cursor '9,3'
-	else
-		check_cursor '10,3'
-	fi
-	send cancel
-
-	# Restore the first window and its original width for the next mode.
-	$TMUX select-window -t:0 || exit 1
-	$TMUX resize-window -x40 || exit 1
+	x cancel
 done
 
-# Wide characters must not turn a preferred cell column into a character count.
-$TMUX new-window \
-	"printf 'ab界defghijklmnop\nabc\nabcdefghij\n'; exec sleep 300" || exit 1
-i=0
-while [ "$($TMUX capture-pane -p | sed -n 1p)" != ab界defghijklmnop ]; do
-	i=$((i + 1))
-	[ "$i" -lt 100 ] || fail 'wide-character fixture did not appear'
-	sleep 0.01
+# Repeating copy-mode must not reinitialize the active visit.
+mode=emacs
+$TMUX set-window-option -g mode-keys "$mode" || fail "set mode-keys failed"
+enter_with_default off
+x cursor-left
+x cursor-up
+x cursor-up
+check_cursor 3,1
+enter_with_default off
+check_cursor 3,1
+x cursor-up
+check_cursor 7,0
+x cancel
+
+# Trailing blanks must not replace the initial preference on the first move.
+for entry_line in 'prompt> ' '        '; do
+	$TMUX respawn-pane -k \
+	    "printf '\033[H\033[2J'; \
+		printf '%s\r\n' ABCDEFGHIJKLMNOPQRST abc ABCDEFGHIJKLMNOPQRST \
+		    '$entry_line' ABCDEFGHIJKLMNOP ab 01234567890123456789; \
+		printf '\033[4;9H'; exec cat" || fail "respawn-pane failed"
+	wait_cursor 8,3
+	for mode in emacs vi; do
+		$TMUX set-window-option -g mode-keys "$mode" ||
+		    fail "set mode-keys failed"
+		for direction in up down; do
+			if [ "$direction" = up ]; then
+				row=2
+				end=20
+				short=3
+				last=0
+			else
+				row=4
+				end=16
+				short=2
+				last=6
+			fi
+			[ "$mode" = emacs ] || end=$((end - 1))
+			enter_with_default on
+			x "cursor-$direction"
+			check_cursor "$end,$row"
+			x cancel
+
+			enter_with_default off
+			check_cursor 8,3
+			x "cursor-$direction"
+			check_cursor "8,$row"
+			x "cursor-$direction"
+			x "cursor-$direction"
+			if [ "$mode" = emacs ]; then
+				check_cursor "8,$last"
+			else
+				check_cursor "$((short - 1)),$last"
+			fi
+			x cancel
+		done
+
+		# Returning to the entry mark must not reenable EOL following.
+		enter_with_default off
+		x cursor-up
+		check_cursor 8,2
+		x jump-to-mark
+		check_cursor 8,3
+		enter_with_default on
+		x cursor-up
+		check_cursor 8,2
+		x cancel
+
+		# Changing the default does not change an already active visit.
+		enter_with_default on
+		enter_with_default off
+		x cursor-up
+		end=20
+		[ "$mode" = emacs ] || end=19
+		check_cursor "$end,2"
+		x cancel
+	done
 done
+
+# An empty entry line has a numeric column zero with EOL following off.
+$TMUX respawn-pane -k \
+    "printf '\033[H\033[2JABCDEFGHIJKLMNOPQRST\033[2;1H'; exec cat" ||
+    fail "respawn-pane failed"
+wait_cursor 0,1
 for mode in emacs vi; do
-	$TMUX set -g mode-keys "$mode" || exit 1
-	if [ "$mode" = vi ]; then
-		short=2
-	else
-		short=3
-	fi
-	start
-	$TMUX send -N2 -X cursor-down || exit 1
-	$TMUX send -N8 -X cursor-right || exit 1
-	send begin-selection
-	send cursor-up
-	check_cursor "$short,1"
-	send cursor-up
-	check_cursor '8,0'
-	send copy-selection-no-clear
-	if [ "$mode" = vi ]; then
-		check_buffer 'hijklmnop
-abc
-abcdefghi'
-	else
-		check_buffer 'hijklmnop
-abc
-abcdefgh'
-	fi
-	send cancel
+	$TMUX set-window-option -g mode-keys "$mode" ||
+	    fail "set mode-keys failed"
+	enter_with_default off
+	check_cursor 0,1
+	x cursor-up
+	check_cursor 0,0
+	x cancel
 done
+
+# The initial preference counts terminal columns, not characters.
+$TMUX respawn-pane -k \
+    "printf '\033[H\033[2J'; \
+	printf '%s\r\n' ABCDEFGHIJKLMNOPQRST ABCDEFGHIJKLMNOPQRST; \
+	printf 'abc中def'; exec cat" ||
+    fail "respawn-pane failed"
+wait_cursor 8,2
+for mode in emacs vi; do
+	$TMUX set-window-option -g mode-keys "$mode" ||
+	    fail "set mode-keys failed"
+	enter_with_default off
+	check_cursor 8,2
+	x cursor-up
+	check_cursor 8,1
+	x cancel
+done
+
+# Initialize before the optional entry-time page movement.
+$TMUX respawn-pane -k \
+    "printf '\033[H\033[2JABCDEFGHIJKLMNOPQRST'; \
+	printf '\033[9;1Hprompt> \033[10;1HABCDEFGHIJKLMNOP\033[9;9H'; \
+	exec cat" ||
+    fail "respawn-pane failed"
+wait_cursor 8,8
+for mode in emacs vi; do
+	$TMUX set-window-option -g mode-keys "$mode" ||
+	    fail "set mode-keys failed"
+	enter_with_default off -u
+	check_cursor 8,0
+	x cancel
+	enter_with_default off -d
+	check_cursor 8,9
+	x cancel
+
+	# The same policy applies to page and half-page commands after entry.
+	for command in page-up halfpage-up; do
+		enter_with_default off
+		x "$command"
+		x page-up
+		check_cursor 8,0
+		x cancel
+	done
+	for command in page-down halfpage-down; do
+		enter_with_default off
+		x "$command"
+		check_cursor 8,9
+		x cancel
+	done
+
+	enter_with_default on -u
+	end=20
+	[ "$mode" = emacs ] || end=19
+	check_cursor "$end,0"
+	x cancel
+	enter_with_default on -d
+	end=16
+	[ "$mode" = emacs ] || end=15
+	check_cursor "$end,9"
+	x cancel
+done
+
+exit 0

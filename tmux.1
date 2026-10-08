@@ -2492,8 +2492,8 @@ Turn on the usual end-of-line behaviour when moving vertically.
 .It Xo
 .Ic sticky\-eol\-off
 .Xc
-Keep the cursor column when moving vertically, clamping to the end of shorter
-lines and returning to the remembered column on longer lines.
+Turn off end-of-line following during vertical movement.
+Normal cursor limits and selection behaviour are unchanged.
 .It Xo
 .Ic sticky\-eol\-toggle
 .Xc
@@ -5949,12 +5949,10 @@ they use absolute line numbers.
 .Xc
 When on (the default), use the usual end-of-line behaviour when moving
 vertically in copy mode.
-When off, remember the cursor column, including after moving to the end
-of a line.
-On shorter lines, the cursor is clamped to the end of the line and returns
-to the remembered column on longer lines.
-Selections retain the remembered column without padding copied text.
-Rectangular selections retain their usual movement rules.
+When off, disable end-of-line following during vertical movement.
+The cursor is still clamped on shorter lines, using the usual emacs or vi
+movement rules.
+Selection behaviour is unchanged.
 This option sets the initial state when entering copy mode.
 The
 .Ic sticky\-eol\-on ,
