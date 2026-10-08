@@ -252,10 +252,7 @@ static const char *options_table_status_format_default[] = {
  * current session's windows below it with tree branch markers like tree
  * mode. The window rows use the
  * window status styles but not the window status formats, which lay text out
- * for a horizontal line. The current window ends its range before list=on,
- * which would otherwise discard it. The list starts after the down marker:
- * list=on before a marker in its row stops the marker being drawn, and in a
- * window row it trims that row as a list.
+ * for a horizontal line.
  */
 #define OPTIONS_TABLE_SIDE_STATUS_WINDOW \
 	"#[range=window|#{window_index} #{E:window-status-style}]" \
@@ -269,12 +266,13 @@ static const char *options_table_status_format_default[] = {
 		"}" \
 	"]" \
 	"#I:#W#{?window_flags,#{window_flags}, }" \
-	"#[norange default]#[list=on]#[nl]"
+	"#[norange list=on default]#[nl]"
 #define OPTIONS_TABLE_SIDE_STATUS_BRANCH \
 	"#[acs]#{?window_end_flag,mq,tq}+#[noacs] "
 #define OPTIONS_TABLE_SIDE_STATUS_FORMAT1 \
+	"#[list=on]" \
 	"#[list=left-marker]#[acs]-#[noacs]#[nl]" \
-	"#[list=right-marker]#[acs].#[noacs]#[list=on]#[nl]" \
+	"#[list=right-marker]#[acs].#[noacs]#[nl]" \
 	"#{?#{e|>:#{server_sessions},1}," \
 		"#{S:" \
 			"#[range=session|#{session_id}]" \

@@ -78,4 +78,48 @@ compare "first row" <<EOF
 ↓            │
 EOF
 
+# A format with its list styles in the same order as on the status line, with
+# list=on before the markers, draws the same rows.
+$TMUX set -g side-status-format '#[list=on]#[list=left-marker]^#[nl]'\
+'#[list=right-marker]v#[nl]'\
+'#{W:#[range=window|#{window_index}]#I:#W#[norange]#[nl],'\
+'#[range=window|#{window_index} list=focus]#I:#W*#[norange list=on]#[nl]}' ||
+    exit 1
+$TMUX rename-window -t inner:0 w0 || exit 1
+$TMUX select-window -t inner:7 || exit 1
+sleep 1
+compare "status line order" <<EOF
+^            │
+3:w3         │
+4:w4         │
+5:w5         │
+6:w6         │
+7:w7*        │
+8:w8         │
+9:w9         │
+10:w10       │
+v            │
+EOF
+
+# With list=on at the start of each window row and the focus closed in the
+# current row, a long current window name is still cut on the right.
+$TMUX set -g side-status-format \
+    '#{W:#[list=on]#I:#W#[nl],#[list=on]#[list=focus]#I:#W*#[list=on]#[nl]}' ||
+    exit 1
+$TMUX rename-window -t inner:0 dotfiles-repo || exit 1
+$TMUX select-window -t inner:0 || exit 1
+sleep 1
+compare "list=on rows" <<EOF
+0:dotfiles-re│
+1:w1         │
+2:w2         │
+3:w3         │
+4:w4         │
+5:w5         │
+6:w6         │
+7:w7         │
+8:w8         │
+9:w9         │
+EOF
+
 exit 0
