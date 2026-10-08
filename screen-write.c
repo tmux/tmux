@@ -2073,7 +2073,7 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 	u_int			 y, i, xoff, yoff, ocx, ocy;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
-	struct input_osc_133_ctx	 osc133 = {0};
+	struct osc133_marker	 osc133 = {0};
 
 #ifdef ENABLE_SIXEL
 	if (image_check_line(s, s->cy, sy - s->cy) && ctx->wp != NULL)
@@ -2235,7 +2235,7 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 	u_int			 y, i, xoff, yoff, ocx, ocy;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
-	struct input_osc_133_ctx	 osc133;
+	struct osc133_marker	 osc133;
 
 #ifdef ENABLE_SIXEL
 	if (image_free_all(s) && ctx->wp != NULL)

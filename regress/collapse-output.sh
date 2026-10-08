@@ -80,5 +80,28 @@ hidden=$($TMUX display-message -p '#{copy_cursor_line}')
 [ "$hidden" != empty-separator ] || exit 1
 $TMUX send-keys -X cancel || exit 1
 
+# Shrinking the window must keep the collapsed lines in view.
+$TMUX copy-mode -c || exit 1
+$TMUX resize-window -y8 || exit 1
+sleep 1
+resized=$($TMUX capture-pane -Mp)
+case "$resized" in
+*P0\>*P1\>*) ;;
+*) exit 1 ;;
+esac
+cursor=$($TMUX display-message -p '#{copy_cursor_line}')
+[ "$cursor" = 'P1>' ] || exit 1
+$TMUX send-keys -X cancel || exit 1
+
+# The cursor must stay on the screen when it is below the folded output.
+$TMUX kill-server
+$TMUX new-session -d -x80 -y12 "sh -c 'i=0; while [ \$i -lt 3 ]; do printf \"\\033]133;A\\007p\\$ \\033]133;B\\007cmd\\r\\n\\033]133;C\\007one\\r\\ntwo\\r\\nthree\\r\\nfour\\r\\n\\033]133;D;0\\007\"; i=\$((i + 1)); done; printf \"\\033]133;A\\007p\\$ \"; j=0; while [ \$j -lt 8 ]; do printf \"live\\r\\n\"; j=\$((j + 1)); done; exec sleep 100'" || exit 1
+sleep 1
+
+$TMUX copy-mode -c || exit 1
+cursor=$($TMUX display-message -p '#{copy_cursor_y}')
+[ "$cursor" -lt 12 ] || exit 1
+$TMUX send-keys -X cancel || exit 1
+
 $TMUX kill-server 2>/dev/null
 exit 0

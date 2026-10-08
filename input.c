@@ -3194,13 +3194,13 @@ input_osc_112(struct input_ctx *ictx, const char *p)
 }
 
 /* Save the running command's output start before clearing the screen. */
-struct input_osc_133_ctx
+struct osc133_marker
 input_osc_133_save_marker(struct window_pane *wp, struct screen *s)
 {
 	struct grid		*gd = s->grid;
 	struct grid_line	*gl;
 	struct osc133_data	*od;
-	struct input_osc_133_ctx	 ctx = {0};
+	struct osc133_marker	 ctx = {0};
 	u_int			 y;
 
 	if (wp == NULL)
@@ -3241,7 +3241,7 @@ input_osc_133_save_marker(struct window_pane *wp, struct screen *s)
 /* Restore the running command's output start if a screen clear removed it. */
 void
 input_osc_133_restore_marker(struct screen *s,
-    const struct input_osc_133_ctx *ctx)
+    const struct osc133_marker *ctx)
 {
 	struct grid		*gd = s->grid;
 	struct grid_line	*gl;
