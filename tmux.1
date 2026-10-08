@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1180 2026/10/07 13:13:49 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1181 2026/10/08 07:50:05 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 7 2026 $
+.Dd $Mdocdate: October 8 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -2011,6 +2011,25 @@ Same as
 .Ic copy\-pipe
 but also exit copy mode.
 .It Xo
+.Ic copy\-pipe\-output
+.Op Fl aCP
+.Op Ar command
+.Op Ar prefix
+.Xc
+Copy the current OSC 133 command output, pipe it to
+.Ar command ,
+and clear the selection.
+.Ar prefix
+is used to name the new paste buffer.
+.It Xo
+.Ic copy\-output
+.Op Fl aCP
+.Op Ar prefix
+.Xc
+Copy the current OSC 133 command output and clear the selection.
+.Ar prefix
+is used to name the new paste buffer.
+.It Xo
 .Ic copy\-selection
 .Op Fl CP
 .Op Ar prefix
@@ -2229,6 +2248,31 @@ but treat all non-whitespace characters as part of a word.
 .Xc
 Switch at which end of the selection the cursor sits.
 .It Xo
+.Ic open\-output
+.Op Fl a
+.Op Ar command
+(vi: M\-e)
+(emacs: e)
+.Xc
+Open the current OSC 133 command output in an editor.
+If
+.Ar command
+is given, it is used as the editor command; otherwise, the
+.Ic editor
+option is used.
+.It Xo
+.Ic open\-selection
+.Op Ar command
+(vi: M\-e)
+(emacs: e)
+.Xc
+Open the current selection in an editor.
+If
+.Ar command
+is given, it is used as the editor command; otherwise, the
+.Ic editor
+option is used.
+.It Xo
 .Ic page\-down
 (vi: C\-f)
 (emacs: PageDown)
@@ -2268,6 +2312,21 @@ but do not clear the selection.
 Same as
 .Ic pipe
 but also exit copy mode.
+.It Xo
+.Ic pipe\-output
+.Op Fl a
+.Op Ar command
+.Xc
+Pipe the current OSC 133 command output to
+.Ar command
+and clear the selection.
+.It Xo
+.Ic pipe\-selection
+.Op Ar command
+.Xc
+Pipe the selected text to
+.Ar command
+and clear the selection.
 .It Xo
 .Ic previous\-matching\-bracket
 (emacs: M\-C\-b)
@@ -2457,6 +2516,13 @@ Search forward for the specified plain text.
 .Xc
 Repeat the last search in the reverse direction (forward becomes backward and
 backward becomes forward).
+.It Xo
+.Ic select\-output
+.Op Fl a
+(vi: M\-o)
+(emacs: C\-o)
+.Xc
+Select the current OSC 133 command output.
 .It Xo
 .Ic select\-line
 (vi: V)

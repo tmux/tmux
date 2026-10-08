@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.272 2026/09/21 10:22:31 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.273 2026/10/08 07:50:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3241,7 +3241,6 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 	case 'A':
 	case 'N':
 		if (gl != NULL) {
-			memset(&gl->osc133_data, 0, sizeof gl->osc133_data);
 			gl->osc133_data.prompt_col = s->cx;
 			gl->flags |= GRID_LINE_START_PROMPT;
 		}

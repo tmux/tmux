@@ -1,4 +1,4 @@
-/* $OpenBSD: window-customize.c,v 1.36 2026/07/28 10:35:31 nicm Exp $ */
+/* $OpenBSD: window-customize.c,v 1.37 2026/10/08 07:50:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2011,13 +2011,15 @@ window_customize_edit_close_cb(char *buf, size_t len, void *arg)
 	switch (ed->edit_type) {
 	case WINDOW_CUSTOMIZE_EDIT_OPTION:
 		if (window_customize_option_editable(data, item) &&
-		    window_customize_set_option_value(item, value, &cause) != 0) {
+		    window_customize_set_option_value(item, value,
+		    &cause) != 0) {
 			free(cause);
 			goto out;
 		}
 		break;
 	case WINDOW_CUSTOMIZE_EDIT_KEY_COMMAND:
-		if (window_customize_set_command_value(item, value, &cause) != 0) {
+		if (window_customize_set_command_value(item, value,
+		    &cause) != 0) {
 			free(cause);
 			goto out;
 		}
@@ -2104,8 +2106,8 @@ window_customize_start_edit(struct window_customize_modedata *data,
 		buf = "\n";
 		len = 1;
 	}
-	ed->editor = spawn_editor(c, buf, len, window_customize_edit_close_cb,
-	    ed);
+	ed->editor = spawn_editor(c, buf, len, NULL,
+	    window_customize_edit_close_cb, ed);
 	free(value);
 	if (ed->editor == NULL)
 		window_customize_finish_edit(ed);

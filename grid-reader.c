@@ -1,4 +1,4 @@
-/* $OpenBSD: grid-reader.c,v 1.11 2026/07/29 17:42:56 nicm Exp $ */
+/* $OpenBSD: grid-reader.c,v 1.12 2026/10/08 07:50:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Anindya Mukherjee <anindya49@hotmail.com>
@@ -435,4 +435,209 @@ grid_reader_cursor_back_to_indentation(struct grid_reader *gr)
 	}
 	gr->cx = oldx;
 	gr->cy = oldy;
+}
+
+/* Get the end of the last used line. */
+static void
+grid_reader_output_end(struct grid *gd, u_int *x, u_int *y)
+{
+	u_int	last = gd->hsize + gd->sy - 1;
+
+	while (last > 0 && grid_get_line(gd, last)->cellused == 0)
+		last--;
+	*x = grid_get_line(gd, last)->cellused;
+	*y = last;
+}
+
+/* Find the most recent complete output at or before the cursor. */
+static int
+grid_reader_previous_output_range(struct grid_reader *gr, u_int *sx,
+    u_int *sy, u_int *ex, u_int *ey)
+{
+	struct grid		*gd = gr->gd;
+	struct grid_line	*gl;
+	struct osc133_data	*od;
+	u_int			 cursor_x = gr->cx, cursor_y = gr->cy;
+	u_int			 start_x, start_y, y, total;
+	int			 found = 0, have_prompt = 0;
+	int			 pending = 0;
+	int			 has_start, has_end, end_first;
+	int			 cleared;
+
+	total = gd->hsize + gd->sy;
+
+	/*
+	 * Scan from the top because markers arrive in their natural order, C
+	 * then D. A backward scan would meet D first and need extra state to
+	 * find its C. The last complete output found is the one wanted.
+	 */
+	for (y = 0; y < total && y <= cursor_y; y++) {
+		gl = grid_get_line(gd, y);
+		od = &gl->osc133_data;
+
+		/* On the cursor's line, ignore markers after the cursor. */
+		has_start = has_end = end_first = 0;
+		if (gl->flags & GRID_LINE_START_OUTPUT) {
+			if (y != cursor_y || od->out_start_col <= cursor_x)
+				has_start = 1;
+		}
+		if (gl->flags & GRID_LINE_END_OUTPUT) {
+			if (y != cursor_y || od->out_end_col <= cursor_x)
+				has_end = 1;
+		}
+
+		/* An end before the start ends the previous output. */
+		if (has_start && has_end && od->out_end_col < od->out_start_col)
+			end_first = 1;
+
+		/* A C marker starts an output that is pending until its D. */
+		if (has_start && !end_first) {
+			start_x = od->out_start_col;
+			start_y = y;
+			pending = 1;
+		}
+
+		/* The output may have cleared its C marker from the screen. */
+		if (!pending && !have_prompt &&
+		    (gl->flags & GRID_LINE_END_OUTPUT)) {
+			cleared = 1;
+			if ((gl->flags & GRID_LINE_START_PROMPT) &&
+			    od->out_end_col > od->prompt_col)
+				cleared = 0;
+			if (cleared) {
+				start_x = start_y = 0;
+				pending = 1;
+			}
+		}
+
+		/* A D marker completes the pending output. */
+		if (pending && has_end) {
+			*sx = start_x;
+			*sy = start_y;
+			*ex = od->out_end_col;
+			*ey = y;
+			found = 1;
+			pending = 0;
+		}
+		if (has_start && end_first) {
+			start_x = od->out_start_col;
+			start_y = y;
+			pending = 1;
+		}
+
+		/* A prompt drops an unfinished output. */
+		if (gl->flags & GRID_LINE_START_PROMPT) {
+			if (!has_start || od->out_start_col < od->prompt_col)
+				pending = 0;
+			have_prompt = 1;
+		}
+	}
+	return (found);
+}
+
+/*
+ * Find the output range for the command at the cursor, from its C marker to
+ * its D marker. If the prompt has no output yet, use the previous output.
+ * Returns 0 if there is no usable range.
+ */
+int
+grid_reader_output_range(struct grid_reader *gr, u_int *sx, u_int *sy,
+    u_int *ex, u_int *ey)
+{
+	struct grid		*gd = gr->gd;
+	struct grid_line	*gl;
+	struct osc133_data	*od;
+	u_int			 cursor_x = gr->cx, cursor_y = gr->cy;
+	u_int			 prompt_x = 0, prompt_y = UINT_MAX;
+	u_int			 y, total;
+	int			 found_start = 0, found_end = 0;
+	int			 next_prompt, in_range, end_ok;
+	int			 found;
+
+	/* Find the last prompt at or before the cursor. */
+	total = gd->hsize + gd->sy;
+	for (y = 0; y < total; y++) {
+		gl = grid_get_line(gd, y);
+		od = &gl->osc133_data;
+		if (~gl->flags & GRID_LINE_START_PROMPT)
+			continue;
+		if (y > cursor_y)
+			break;
+		if (y == cursor_y && od->prompt_col > cursor_x)
+			break;
+		prompt_y = y;
+		prompt_x = od->prompt_col;
+	}
+
+	/* With no prompt, its A marker may have left history, so start at 0. */
+	if (prompt_y == UINT_MAX)
+		y = 0;
+	else
+		y = prompt_y;
+
+	/* Walk down from the prompt to its C and D, up to the next prompt. */
+	for (; y < total; y++) {
+		gl = grid_get_line(gd, y);
+		od = &gl->osc133_data;
+		next_prompt = 0;
+		if (y != prompt_y && (gl->flags & GRID_LINE_START_PROMPT))
+			next_prompt = 1;
+
+		/* Output before the next prompt on its line is ours. */
+		if (y == prompt_y)
+			in_range = (od->out_start_col >= prompt_x);
+		else if (next_prompt)
+			in_range = (od->out_start_col < od->prompt_col);
+		else
+			in_range = 1;
+		if (gl->flags & GRID_LINE_START_OUTPUT && in_range) {
+			*sx = od->out_start_col;
+			*sy = y;
+			found_start = 1;
+		}
+
+		/* Both A and C may have left history while D remains. */
+		if (!found_start && prompt_y == UINT_MAX &&
+		    (gl->flags & GRID_LINE_END_OUTPUT)) {
+			if (!next_prompt || od->out_end_col <= od->prompt_col) {
+				*sx = *sy = 0;
+				found_start = 1;
+			}
+		}
+
+		/* An output may end on the same line or the next prompt's. */
+		if (found_start && (gl->flags & GRID_LINE_END_OUTPUT)) {
+			end_ok = 1;
+			if (y == prompt_y && od->out_end_col < prompt_x)
+				end_ok = 0;
+			if (y == *sy && od->out_end_col < *sx)
+				end_ok = 0;
+			if (end_ok) {
+				*ex = od->out_end_col;
+				*ey = y;
+				found_end = 1;
+				break;
+			}
+		}
+		if (next_prompt)
+			break;
+	}
+
+	/* The cursor is on a prompt with no output yet. */
+	if (!found_start) {
+		found = grid_reader_previous_output_range(gr, sx, sy, ex, ey);
+		return (found);
+	}
+
+	/*
+	 * Without a D marker the command is still running, so its output runs
+	 * to the last used line. If the next prompt came first, it has no
+	 * usable end.
+	 */
+	if (!found_end) {
+		if (y != total)
+			return (0);
+		grid_reader_output_end(gd, ex, ey);
+	}
+	return (1);
 }
