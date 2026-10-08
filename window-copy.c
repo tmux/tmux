@@ -1772,8 +1772,11 @@ static enum window_copy_cmd_action
 window_copy_cmd_end_of_line(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
+	struct window_copy_mode_data	*data = wme->data;
 
 	window_copy_cursor_end_of_line(wme);
+	if (!data->eolflag)
+		data->lastcx = data->cx;
 	return (WINDOW_COPY_CMD_MOVE);
 }
 
@@ -6613,6 +6616,8 @@ window_copy_cursor_left(struct window_mode_entry *wme)
 	grid_reader_cursor_left(&gr, 1);
 	grid_reader_get_cursor(&gr, &px, &py);
 	window_copy_acquire_cursor_up(wme, hsize, data->oy, oldy, px, py);
+	if (!data->eolflag)
+		data->lastcx = data->cx;
 }
 
 static void
@@ -6637,6 +6642,8 @@ window_copy_cursor_right(struct window_mode_entry *wme, int all)
 	grid_reader_get_cursor(&gr, &px, &py);
 	window_copy_acquire_cursor_down(wme, hsize, screen_size_y(back_s),
 	    data->oy, oldy, px, py, 0);
+	if (!data->eolflag)
+		data->lastcx = data->cx;
 }
 
 static void

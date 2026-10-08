@@ -134,6 +134,70 @@ for mode in emacs vi; do
 	x cursor-up
 	check_cursor 7,2
 	x cancel
+
+	# Explicit movement to EOL must replace a previous preferred column.
+	end=8
+	steps=2
+	if [ "$mode" = vi ]; then
+		end=7
+		steps=1
+	fi
+	for command in end-of-line cursor-right; do
+		for direction in up down; do
+			enter_with_default off
+			$TMUX send-keys -N2 -X cursor-left ||
+			    fail "cursor-left failed"
+			x cursor-up
+			check_cursor 6,2
+			x cursor-down
+			check_cursor 6,3
+			if [ "$command" = end-of-line ]; then
+				x "$command"
+			else
+				$TMUX send-keys -N"$steps" -X "$command" ||
+				    fail "$command failed"
+			fi
+			check_cursor "$end,3"
+			x "cursor-$direction"
+			row=2
+			[ "$direction" = up ] || row=4
+			check_cursor "$end,$row"
+			x cancel
+		done
+	done
+
+	# Explicit EOL chooses the clamped column even if it does not move.
+	enter_with_default off
+	x cursor-up
+	x cursor-up
+	short=3
+	[ "$mode" = emacs ] || short=2
+	check_cursor "$short,1"
+	x end-of-line
+	x cursor-up
+	check_cursor "$short,0"
+	x cancel
+
+	# Moving left from column zero also chooses a new EOL column.
+	enter_with_default off
+	$TMUX send-keys -N2 -X cursor-left || fail "cursor-left failed"
+	x cursor-up
+	x cursor-down
+	check_cursor 6,3
+	x start-of-line
+	x cursor-left
+	end=20
+	[ "$mode" = emacs ] || end=19
+	check_cursor "$end,2"
+	x cursor-down
+	end=8
+	[ "$mode" = emacs ] || end=7
+	check_cursor "$end,3"
+	x cursor-up
+	end=20
+	[ "$mode" = emacs ] || end=7
+	check_cursor "$end,2"
+	x cancel
 done
 
 # Commands change the current visit, not the configured default.
@@ -394,6 +458,40 @@ for mode in emacs vi; do
 	end=16
 	[ "$mode" = emacs ] || end=15
 	check_cursor "$end,9"
+	x cancel
+done
+
+# Right-arrow movement preserves its EOL column on equal-length lines.
+$TMUX respawn-pane -k \
+    "printf '\033[H\033[2J'; \
+	printf '%s\r\n' ABCDEFGHIJKLMNOPQRST abcdefgh abcdefgh abcdefg \
+	    ABCDEFGHIJKLMNOPQRST; printf '\033[2;4H'; exec cat" ||
+    fail "respawn-pane failed"
+wait_cursor 3,1
+for mode in emacs vi; do
+	$TMUX set-window-option -g mode-keys "$mode" ||
+	    fail "set mode-keys failed"
+	enter_with_default off
+	end=8
+	[ "$mode" = emacs ] || end=7
+	$TMUX send-keys -N"$((end - 4))" -X cursor-right ||
+	    fail "cursor-right failed"
+	check_cursor "$((end - 1)),1"
+	x cursor-up
+	x cursor-down
+	check_cursor "$((end - 1)),1"
+	x cursor-right
+	check_cursor "$end,1"
+	x cursor-down
+	check_cursor "$end,2"
+	x cursor-down
+	short=7
+	[ "$mode" = emacs ] || short=6
+	check_cursor "$short,3"
+	x cursor-down
+	restored=8
+	[ "$mode" = emacs ] || restored=6
+	check_cursor "$restored,4"
 	x cancel
 done
 
