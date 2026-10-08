@@ -1071,7 +1071,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "side-status-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "bg=themeblack,fg=themegreen",
+	  .default_str = "fg=themegreen",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the side status line."
