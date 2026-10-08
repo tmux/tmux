@@ -946,6 +946,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 	struct mouse_event	*m;
 	struct client		*c;
 	struct cmd_find_state	 current;
+	struct cmd_find_state	*previous = cmdq_get_current(item);
 	char			*colon, *period, *copy = NULL, tmp[256];
 	const char		*session, *window, *pane, *s;
 	int			 window_only = 0, pane_only = 0;
@@ -992,9 +993,17 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 	if (server_check_marked() && (flags & CMD_FIND_DEFAULT_MARKED)) {
 		fs->current = &marked_pane;
 		log_debug("%s: current is marked pane", __func__);
-	} else if (cmd_find_valid_state(cmdq_get_current(item))) {
-		fs->current = cmdq_get_current(item);
+	} else if (cmd_find_valid_state(previous)) {
+		fs->current = previous;
 		log_debug("%s: current is from queue", __func__);
+	} else if (previous->s != NULL && previous->w != NULL &&
+	    session_alive(previous->s) &&
+	    winlink_find_by_window(&previous->s->windows, previous->w) != NULL &&
+	    cmd_find_from_session_window(&current, previous->s, previous->w,
+	    flags) == 0 && cmd_find_valid_state(&current)) {
+		/* The pane may have gone while its window is still alive. */
+		fs->current = &current;
+		log_debug("%s: current is from queue window", __func__);
 	} else if (cmd_find_from_client(&current, cmdq_get_client(item),
 	    flags) == 0) {
 		fs->current = &current;
