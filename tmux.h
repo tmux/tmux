@@ -2807,6 +2807,8 @@ void	 events_fire_pane(const char *, struct window_pane *);
 void	 events_fire_winlink(const char *, struct winlink *);
 
 /* format-draw.c */
+#define FORMAT_DRAW_DEFAULT_COLOURS 0x1
+#define FORMAT_DRAW_NOLIST 0x2
 void	 format_draw(struct screen_write_ctx *, const struct grid_cell *,
 	     u_int, const char *, struct style_ranges *, int);
 u_int	 format_draw_lines(struct screen_write_ctx *,

@@ -689,7 +689,7 @@ format_draw_many(struct screen_write_ctx *ctx, struct style *sy, char ch,
 void
 format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
     u_int available, const char *expanded, struct style_ranges *srs,
-    int default_colours)
+    int flags)
 {
 	enum { LEFT,
 	       CENTRE,
@@ -834,10 +834,12 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 		log_debug("%s: style '%s' -> '%s'", __func__, tmp,
 		    style_tostring(&sy));
 		free(tmp);
-		if (default_colours) {
+		if (flags & FORMAT_DRAW_DEFAULT_COLOURS) {
 			sy.gc.bg = base->bg;
 			sy.gc.fg = base->fg;
 		}
+		if (flags & FORMAT_DRAW_NOLIST)
+			sy.list = STYLE_LIST_OFF;
 
 		/*
 		 * Resolve any hyperlink and store it in the cell. The URI
@@ -1309,18 +1311,21 @@ format_draw_lines_split(struct format_lines *fls, const char *expanded,
 static void
 format_draw_lines_row(struct screen_write_ctx *octx,
     const struct grid_cell *base, u_int ox, u_int width, u_int py,
-    const char *chunk, struct style_ranges *srs, int default_colours)
+    const char *chunk, struct style_ranges *srs, int flags)
 {
 	struct style_ranges	 row_srs;
 	struct style_range	*sr, *sr1;
 
+	/* The list styles have already been used to choose the rows. */
+	flags |= FORMAT_DRAW_NOLIST;
+
 	screen_write_cursormove(octx, ox, py, 0);
 	if (srs == NULL) {
-		format_draw(octx, base, width, chunk, NULL, default_colours);
+		format_draw(octx, base, width, chunk, NULL, flags);
 		return;
 	}
 	style_ranges_init(&row_srs);
-	format_draw(octx, base, width, chunk, &row_srs, default_colours);
+	format_draw(octx, base, width, chunk, &row_srs, flags);
 	TAILQ_FOREACH_SAFE(sr, &row_srs, entry, sr1) {
 		TAILQ_REMOVE(&row_srs, sr, entry);
 		sr->y = py;
@@ -1330,14 +1335,15 @@ format_draw_lines_row(struct screen_write_ctx *octx,
 
 /*
  * Draw a multi-row format into no more than height rows starting at column
- * ox, each row drawn by format_draw. The list section is scrolled to keep
- * the focus row visible; ranges get the screen row they were drawn on and
- * columns relative to ox. Returns the number of rows drawn.
+ * ox, each row drawn by format_draw without its list styles. The list
+ * section is scrolled to keep the focus row visible; ranges get the screen
+ * row they were drawn on and columns relative to ox. Returns the number of
+ * rows drawn.
  */
 u_int
 format_draw_lines(struct screen_write_ctx *octx, const struct grid_cell *base,
     u_int ox, u_int width, u_int height, const char *expanded,
-    struct style_ranges *srs, int default_colours)
+    struct style_ranges *srs, int flags)
 {
 	struct format_lines	 fls;
 	struct format_line	*fl;
@@ -1421,7 +1427,7 @@ format_draw_lines(struct screen_write_ctx *octx, const struct grid_cell *base,
 	for (i = 0; i < vis_top; i++) {
 		fl = &fls.lines[top[i]];
 		format_draw_lines_row(octx, base, ox, width, ocy + y, fl->chunk,
-		    srs, default_colours);
+		    srs, flags);
 		y++;
 	}
 	for (i = 0; i < vis_list; i++) {
@@ -1432,13 +1438,13 @@ format_draw_lines(struct screen_write_ctx *octx, const struct grid_cell *base,
 		    down != -1)
 			fl = &fls.lines[down];
 		format_draw_lines_row(octx, base, ox, width, ocy + y, fl->chunk,
-		    srs, default_colours);
+		    srs, flags);
 		y++;
 	}
 	for (i = 0; i < vis_bottom; i++) {
 		fl = &fls.lines[bottom[i]];
 		format_draw_lines_row(octx, base, ox, width, ocy + y, fl->chunk,
-		    srs, default_colours);
+		    srs, flags);
 		y++;
 	}
 
