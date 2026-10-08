@@ -52,6 +52,14 @@ start()
 	send history-top
 }
 
+check_eol_up()
+{
+	$TMUX send -N3 -X cursor-down || exit 1
+	send end-of-line
+	$TMUX send -N3 -X cursor-up || exit 1
+	check_cursor "$1,0"
+}
+
 $TMUX new -d -x40 -y10 \
 	"printf '%s\n' abcdefghijklmnopqrst abc '' abcdefghij \
 	    abcdefghijklmnopqrst; exec sleep 300" || exit 1
@@ -65,43 +73,90 @@ while [ "$($TMUX capture-pane -p | sed -n 1p)" != abcdefghijklmnopqrst ]; do
 	[ "$i" -lt 100 ] || fail 'fixture did not appear'
 	sleep 0.01
 done
-[ "$($TMUX show -gwv copy-mode-eol)" = on ] || fail 'option defaults to off'
+[ "$($TMUX show -gwv copy-mode-sticky-eol)" = on ] ||
+	fail 'option defaults to off'
 
 for mode in emacs vi; do
 	$TMUX set -g mode-keys "$mode" || exit 1
 	if [ "$mode" = vi ]; then
 		end=9
 		short=2
+		follow=2
 		suffix='
 '
 	else
 		end=10
 		short=3
+		follow=0
 		suffix=
 	fi
 
 	# With the option on, end-of-line retains the existing behavior.
-	$TMUX set -g copy-mode-eol on || exit 1
+	$TMUX set -g copy-mode-sticky-eol on || exit 1
 	start
-	$TMUX send -N3 -X cursor-down || exit 1
-	send end-of-line
-	send cursor-up
-	send cursor-up
-	send cursor-up
-	if [ "$mode" = vi ]; then
-		check_cursor '2,0'
-	else
-		check_cursor '0,0'
-	fi
+	check_eol_up "$follow"
 	send cancel
 
-	$TMUX set -g copy-mode-eol off || exit 1
+	# Commands override the default only for the current visit.
+	start
+	send sticky-eol-off
+	check_eol_up "$end"
+	[ "$($TMUX show -gwv copy-mode-sticky-eol)" = on ] ||
+		fail 'sticky-eol-off changed the option'
+	$TMUX copy-mode || exit 1
+	send history-top
+	check_eol_up "$end"
+	send cancel
+	start
+	check_eol_up "$follow"
+	send cancel
+
+	start
+	send sticky-eol-toggle
+	check_eol_up "$end"
+	send sticky-eol-toggle
+	send history-top
+	check_eol_up "$follow"
+	send cancel
+
+	$TMUX set -g copy-mode-sticky-eol off || exit 1
+	start
+	send sticky-eol-on
+	check_eol_up "$follow"
+	[ "$($TMUX show -gwv copy-mode-sticky-eol)" = off ] ||
+		fail 'sticky-eol-on changed the option'
+	send cancel
+	start
+	check_eol_up "$end"
+	send cancel
+
+	start
+	send sticky-eol-toggle
+	check_eol_up "$follow"
+	send sticky-eol-toggle
+	send history-top
+	check_eol_up "$end"
+	send cancel
+
+	# Changing the default does not change an existing visit.
+	$TMUX set -g copy-mode-sticky-eol on || exit 1
+	start
+	$TMUX set -g copy-mode-sticky-eol off || exit 1
+	check_eol_up "$follow"
+	send cancel
+	start
+	check_eol_up "$end"
+	send cancel
+
+	$TMUX set -g copy-mode-sticky-eol off || exit 1
 	start
 	$TMUX send -N3 -X cursor-down || exit 1
 	send end-of-line
 	check_cursor "$end,3"
 	send cursor-up
 	check_cursor '0,2'
+	# Repeating sticky-eol-off must not discard the remembered column.
+	send sticky-eol-off
 	send cursor-up
 	check_cursor "$short,1"
 	send cursor-up
@@ -123,6 +178,33 @@ for mode in emacs vi; do
 	send cursor-left
 	send cursor-up
 	check_cursor "$((short - 1)),0"
+	send cancel
+
+	# Changing state chooses the visible column, not an old clamped goal.
+	start
+	$TMUX send -N8 -X cursor-right || exit 1
+	send begin-selection
+	send cursor-down
+	send sticky-eol-on
+	send sticky-eol-off
+	send cursor-up
+	check_cursor "$short,0"
+	send copy-selection-no-clear
+	if [ "$mode" = vi ]; then
+		check_buffer cdefghi
+	else
+		check_buffer defgh
+	fi
+	send cancel
+
+	# Enabling sticky EOL mid-line must not use a stale line length.
+	start
+	$TMUX send -N4 -X cursor-down || exit 1
+	$TMUX send -N8 -X cursor-right || exit 1
+	send sticky-eol-on
+	send sticky-eol-on
+	send cursor-up
+	check_cursor '8,3'
 	send cancel
 
 	# Start-of-line resets the column even on an already clamped empty row.
@@ -213,13 +295,30 @@ d'
 			printf 'abcdefghijklmnopqrst\nabc\n\n'
 			i=\$((i + 1))
 		done
+		printf '\033[9G'
 		exec sleep 300" || exit 1
 	i=0
-	while [ "$($TMUX display -p '#{history_size}')" -lt 80 ]; do
+	while [ "$($TMUX display -p '#{cursor_x}')" != 8 ]; do
 		i=$((i + 1))
 		[ "$i" -lt 100 ] || fail 'history did not appear'
 		sleep 0.01
 	done
+
+	# The default applies before movement inside the entry command.
+	for entry in '' -u -d -e; do
+		$TMUX copy-mode $entry || exit 1
+		i=0
+		while [ "$($TMUX display -p '#{copy_cursor_line}')" != \
+		    abcdefghijklmnopqrst ]; do
+			send cursor-up
+			i=$((i + 1))
+			[ "$i" -lt 4 ] || fail "$entry: long row not found"
+		done
+		[ "$($TMUX display -p '#{copy_cursor_x}')" = 8 ] ||
+			fail "$mode $entry: entry lost the cursor column"
+		send cancel
+	done
+
 	start
 	$TMUX send -N8 -X cursor-right || exit 1
 	send page-down

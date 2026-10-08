@@ -2486,6 +2486,22 @@ Mark the current line.
 .Xc
 Move the cursor to the start of the line.
 .It Xo
+.Ic sticky\-eol\-on
+.Xc
+Turn on the usual end-of-line behaviour when moving vertically.
+.It Xo
+.Ic sticky\-eol\-off
+.Xc
+Keep the cursor column when moving vertically, clamping to the end of shorter
+lines and returning to the remembered column on longer lines.
+.It Xo
+.Ic sticky\-eol\-toggle
+.Xc
+Toggle the end-of-line behaviour for the current copy mode visit.
+The initial state is set by the
+.Ic copy\-mode\-sticky\-eol
+option.
+.It Xo
 .Ic stop\-selection
 .Xc
 Stop selecting without clearing the current selection.
@@ -5928,8 +5944,8 @@ and
 .Cm hybrid ,
 they use absolute line numbers.
 .Pp
-.It Xo Ic copy\-mode\-eol
-.Op Ic on | off
+.It Xo Ic copy\-mode\-sticky\-eol
+.Op Cm on | off
 .Xc
 When on (the default), use the usual end-of-line behaviour when moving
 vertically in copy mode.
@@ -5939,6 +5955,13 @@ On shorter lines, the cursor is clamped to the end of the line and returns
 to the remembered column on longer lines.
 Selections retain the remembered column without padding copied text.
 Rectangular selections retain their usual movement rules.
+This option sets the initial state when entering copy mode.
+The
+.Ic sticky\-eol\-on ,
+.Ic sticky\-eol\-off
+and
+.Ic sticky\-eol\-toggle
+commands change it for the current copy mode visit without changing the option.
 .Pp
 .It Xo Ic mode\-keys
 .Op Cm vi | emacs

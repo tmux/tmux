@@ -1,7 +1,7 @@
 CHANGES FROM 3.7c TO 3.8
 
-* Add copy-mode-eol to retain the preferred cursor column on short lines,
-  without changing the default copy-mode behaviour.
+* Add copy-mode-sticky-eol and sticky-eol-on, sticky-eol-off and sticky-eol-toggle
+  copy mode commands to control end-of-line behaviour when moving vertically.
 
 * Many improvements to floating panes:
 

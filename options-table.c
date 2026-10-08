@@ -1476,7 +1476,7 @@ const struct options_table_entry options_table[] = {
 	  .text = "Line number mode in copy mode."
 	},
 
-	{ .name = "copy-mode-eol",
+	{ .name = "copy-mode-sticky-eol",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_num = 1,

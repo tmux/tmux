@@ -170,6 +170,7 @@ static void	window_copy_cursor_prompt(struct window_mode_entry *, int,
 		    int);
 static void	window_copy_scroll_up(struct window_mode_entry *, u_int);
 static void	window_copy_scroll_down(struct window_mode_entry *, u_int);
+static void	window_copy_sticky_eol_set(struct window_mode_entry *, int);
 static void	window_copy_rectangle_set(struct window_mode_entry *, int);
 static void	window_copy_move_mouse(struct mouse_event *);
 static void	window_copy_drag_update(struct client *, struct mouse_event *);
@@ -305,6 +306,7 @@ struct window_copy_mode_data {
 		LINE_SEL_RIGHT_LEFT,
 	} lineflag;			/* line selection mode */
 	int		 rectflag;	/* in rectangle copy mode? */
+	int		 eolflag;	/* follow line ends? */
 	int		 scroll_exit;	/* exit on scroll to end? */
 	int		 hide_position;	/* hide position marker */
 	int		 line_numbers;	/* 0 off, 1 from option, 2 default */
@@ -587,6 +589,8 @@ window_copy_common_init(struct window_mode_entry *wme)
 	data->cursordrag = CURSORDRAG_NONE;
 	data->lineflag = LINE_SEL_NONE;
 	data->selflag = SEL_CHAR;
+	data->eolflag = options_get_number(wp->window->options,
+	    "copy-mode-sticky-eol");
 
 	if (wp->searchstr != NULL) {
 		data->searchtype = WINDOW_COPY_SEARCHUP;
@@ -2691,6 +2695,29 @@ window_copy_cmd_start_of_line(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
+window_copy_cmd_sticky_eol_on(struct window_copy_cmd_state *cs)
+{
+	window_copy_sticky_eol_set(cs->wme, 1);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_sticky_eol_off(struct window_copy_cmd_state *cs)
+{
+	window_copy_sticky_eol_set(cs->wme, 0);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_sticky_eol_toggle(struct window_copy_cmd_state *cs)
+{
+	struct window_copy_mode_data	*data = cs->wme->data;
+
+	window_copy_sticky_eol_set(cs->wme, !data->eolflag);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
 window_copy_cmd_top_line(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
@@ -3907,6 +3934,24 @@ static const struct {
 	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_start_of_line
+	},
+	{ .command = "sticky-eol-on",
+	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_sticky_eol_on
+	},
+	{ .command = "sticky-eol-off",
+	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_sticky_eol_off
+	},
+	{ .command = "sticky-eol-toggle",
+	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_sticky_eol_toggle
 	},
 	{ .command = "stop-selection",
 	  .args = { "", 0, 0, NULL },
@@ -5787,8 +5832,12 @@ window_copy_keep_cursor_column(struct window_mode_entry *wme)
 	u_int				 cy;
 	int				 keep;
 
-	keep = !options_get_number(wme->wp->window->options, "copy-mode-eol");
-	if (!keep || (data->screen.sel != NULL && data->rectflag)) {
+	keep = !data->eolflag;
+	if (data->screen.sel != NULL) {
+		if (data->rectflag)
+			keep = 0;
+	}
+	if (!keep) {
 		data->column.valid = 0;
 		data->column.moving = 0;
 		return (0);
@@ -5821,8 +5870,11 @@ window_copy_selection_column(struct window_mode_entry *wme)
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 cx = data->cx, cy;
 
-	if (data->rectflag || data->selflag != SEL_CHAR ||
-	    options_get_number(wme->wp->window->options, "copy-mode-eol"))
+	if (data->rectflag)
+		return (cx);
+	if (data->selflag != SEL_CHAR)
+		return (cx);
+	if (data->eolflag)
 		return (cx);
 	cy = screen_hsize(data->backing) + data->cy - data->oy;
 	if (data->column.moving || (data->column.valid &&
@@ -5998,11 +6050,12 @@ window_copy_adjust_selection(struct window_mode_entry *wme, u_int *selx,
 
 	sx = *selx;
 	sy = *sely;
-	if (!data->rectflag &&
-	    !options_get_number(wme->wp->window->options, "copy-mode-eol")) {
-		length = window_copy_find_length(wme, sy);
-		if (sx > length)
-			sx = length;
+	if (!data->rectflag) {
+		if (!data->eolflag) {
+			length = window_copy_find_length(wme, sy);
+			if (sx > length)
+				sx = length;
+		}
 	}
 
 	ty = screen_hsize(data->backing) - data->oy;
@@ -7217,6 +7270,26 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 	    screen_size_x(s)), data->cy, 0);
 	screen_write_stop(&ctx);
 	window_pane_scrollbar_redraw(wp);
+}
+
+static void
+window_copy_sticky_eol_set(struct window_mode_entry *wme, int eolflag)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	u_int				 py;
+
+	if (data->eolflag == eolflag)
+		return;
+	data->eolflag = eolflag;
+
+	data->column.valid = 0;
+	data->column.moving = 0;
+	data->lastcx = data->cx;
+	py = screen_hsize(data->backing) + data->cy - data->oy;
+	data->lastsx = window_copy_find_length(wme, py);
+
+	if (window_copy_update_selection(wme, 1, 0))
+		window_copy_redraw_screen(wme);
 }
 
 static void
