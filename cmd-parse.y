@@ -445,14 +445,12 @@ commands	: command
 		{
 			struct cmd_parse_state	*ps = &parse_state;
 
+			$$ = $1;
 			if (!TAILQ_EMPTY(&$3->arguments) &&
 			    (ps->scope == NULL || ps->scope->flag)) {
-				$$ = $1;
 				cmd_parse_take($3);
 				TAILQ_INSERT_TAIL($$, $3, entry);
 			} else {
-				$$ = cmd_parse_own_commands();
-				cmd_parse_drop($1);
 				cmd_parse_drop($3);
 			}
 		}
