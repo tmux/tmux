@@ -1285,10 +1285,14 @@ format_draw_lines_split(struct format_lines *fls, const char *expanded,
 		    sy.list != STYLE_LIST_RIGHT_MARKER)
 			nomarker = sy.list;
 
-		/* End the row if the style has a line break. */
+		/*
+		 * End the row after the style if it has a line break, so the
+		 * rest of the style (such as norange) applies to the row.
+		 */
 		if (sy.nl) {
 			sy.nl = 0;
-			format_draw_lines_break(fls, &sy, nomarker, start, cp);
+			format_draw_lines_break(fls, &sy, nomarker, start,
+			    end + 1);
 			cp = end + 1;
 			start = cp;
 			continue;

@@ -60,4 +60,11 @@ click 1 'window zero'
 click 2 'window one'
 click 3 'window two'
 
+# A range closed in the same style as the line break ends on its own row.
+$TMUX set -g side-status-format '#[range=user|foo]one#[norange,nl]two' ||
+    exit 1
+sleep 0.5
+click 1 'foo one'
+click 2 default
+
 exit 0
