@@ -1119,6 +1119,7 @@ struct format_lines {
 	u_int			 nlines;
 
 	char			*prefix;
+	char			*styles;
 	int			 in_list;
 	int			 has_focus;
 	int			 marker;
@@ -1149,9 +1150,6 @@ static void
 format_draw_lines_break(struct format_lines *fls, struct style *sy,
     enum style_list nomarker, const char *start, const char *end)
 {
-	struct style	 carried;
-	const char	*s;
-
 	/* Close any open range at the break; the carried style reopens it. */
 	if (sy->range_type != STYLE_RANGE_NONE)
 		format_draw_lines_add(fls, start, end, "#[norange]");
@@ -1162,16 +1160,9 @@ format_draw_lines_break(struct format_lines *fls, struct style *sy,
 	    sy->list == STYLE_LIST_RIGHT_MARKER)
 		sy->list = nomarker;
 
-	/* List membership is tracked here, not carried into the row. */
-	style_copy(&carried, sy);
-	carried.list = STYLE_LIST_OFF;
-
+	/* Replay every style so far so the next row starts in the same state. */
 	free(fls->prefix);
-	s = style_tostring(&carried);
-	if (*s != '\0')
-		xasprintf(&fls->prefix, "#[%s]", s);
-	else
-		fls->prefix = xstrdup("");
+	fls->prefix = xstrdup(fls->styles);
 
 	fls->in_list = 0;
 	fls->has_focus = 0;
@@ -1215,7 +1206,7 @@ format_draw_lines_split(struct format_lines *fls, const char *expanded,
 	struct style		 sy, saved_sy;
 	enum style_list		 nomarker = STYLE_LIST_OFF;
 	const char		*cp, *start, *end;
-	char			*tmp;
+	char			*tmp, *styles;
 	u_int			 n;
 
 	memcpy(&base_default, base, sizeof base_default);
@@ -1223,6 +1214,7 @@ format_draw_lines_split(struct format_lines *fls, const char *expanded,
 	style_set(&sy, &current_default);
 
 	fls->prefix = xstrdup("");
+	fls->styles = xstrdup("");
 	cp = start = expanded;
 	while (*cp != '\0') {
 		/* Handle sequences of # in the same way as format_draw. */
@@ -1266,6 +1258,9 @@ format_draw_lines_split(struct format_lines *fls, const char *expanded,
 			cp = end + 1;
 			continue;
 		}
+		styles = fls->styles;
+		xasprintf(&fls->styles, "%s#[%s]", styles, tmp);
+		free(styles);
 		free(tmp);
 
 		/* If this style pushed or popped the default, update it. */
@@ -1305,6 +1300,8 @@ format_draw_lines_split(struct format_lines *fls, const char *expanded,
 		format_draw_lines_add(fls, start, cp, "");
 	free(fls->prefix);
 	fls->prefix = NULL;
+	free(fls->styles);
+	fls->styles = NULL;
 }
 
 /* Draw one row and give any ranges it produces the row's y position. */
