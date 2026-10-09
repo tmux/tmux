@@ -795,6 +795,13 @@ else
 	AC_LIBOBJ(daemon)
 fi
 
+# Look for linux/keyctl.h, compat/keyring-linux.c used if found.
+AC_CHECK_HEADER(linux/keyctl.h, found_keyctl=yes, found_keyctl=no)
+if test "x$found_keyctl" = xyes; then
+	AC_DEFINE(HAVE_KEYCTL)
+fi
+AM_CONDITIONAL(HAVE_KEYCTL, [test "x$found_keyctl" = xyes])
+
 # Look for stravis, compat/{vis,unvis}.c used if missing.
 AC_CHECK_FUNC(stravis, found_stravis=yes, found_stravis=no)
 if test "x$found_stravis" = xyes; then

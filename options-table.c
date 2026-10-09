@@ -532,6 +532,14 @@ const struct options_table_entry options_table[] = {
 	  .text = "Maximum number of commands to keep in history."
 	},
 
+	{ .name = "session-keyring",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_num = 1,
+	  .text = "Whether the server should join a new session keyring "
+		  "(Linux only)."
+	},
+
 	{ .name = "set-clipboard",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SERVER,
