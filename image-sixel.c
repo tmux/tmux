@@ -481,7 +481,7 @@ static void
 sixel_print_add(char **buf, size_t *len, size_t *used, const char *s,
     size_t slen)
 {
-	while (*used + slen >= *len + 1) {
+	while (*used + slen + 1 > *len) {
 		*buf = xreallocarray(*buf, 2, *len);
 		(*len) *= 2;
 	}
