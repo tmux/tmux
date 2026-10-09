@@ -1602,6 +1602,7 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 	u_int			 cx = s->cx, cy = s->cy;
 	u_int			 x, y, i, run, sx, sy, lines, origin_y = 0;
 	u_int			 hist_origin_y, region_height, remaining, chunk;
+	u_int			 cursor_x = 0;
 
 	sx = im->sx;
 	if (sx > screen_size_x(s) - cx)
@@ -1678,8 +1679,11 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 	}
 	image_store_prune(gd->images);
 	image_redraw_area(ctx, cx, cy, sx, sy);
-	if (!(im->flags & IMAGE_FLAG_NO_CURSOR))
-		screen_write_cursormove(ctx, 0, cy + sy, 0);
+	if (!(im->flags & IMAGE_FLAG_NO_CURSOR)) {
+		if (input == IMAGE_INPUT_KITTY)
+			cursor_x = cx + sx;
+		screen_write_cursormove(ctx, cursor_x, cy + sy, 0);
+	}
 }
 
 /* Place an image received through SIXEL. */

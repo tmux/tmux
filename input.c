@@ -2803,6 +2803,30 @@ input_enter_apc(struct input_ctx *ictx)
 }
 
 #ifdef ENABLE_IMAGES
+/* Reply to a Kitty graphics command with its image and placement IDs. */
+static void
+input_reply_kitty(struct input_ctx *ictx, struct kitty_parse_result *result,
+    const char *message)
+{
+	if (result->quiet >= 2)
+		return;
+	if (result->quiet == 1) {
+		if (strcmp(message, "OK") == 0)
+			return;
+	}
+	if (result->image_id == 0) {
+		if (result->action != 'q')
+			return;
+	}
+	if (result->placement_id != 0) {
+		input_reply(ictx, 0, "\033_Gi=%u,p=%u;%s\033\\",
+		    result->image_id, result->placement_id, message);
+	} else {
+		input_reply(ictx, 0, "\033_Gi=%u;%s\033\\", result->image_id,
+		    message);
+	}
+}
+
 /* Handle a Kitty graphics command. */
 static int
 input_handle_kitty(struct input_ctx *ictx, const u_char *buf, size_t len)
@@ -2819,14 +2843,10 @@ input_handle_kitty(struct input_ctx *ictx, const u_char *buf, size_t len)
 	if (result.status == KITTY_PARSE_MORE)
 		return (1);
 	if (result.status != KITTY_PARSE_OK) {
-		if (result.quiet < 2 && result.action != '\0') {
-			if (result.status == KITTY_PARSE_MISSING)
-				input_reply(ictx, 0, "\033_Gi=%u;ENOENT\033\\",
-				    result.image_id);
-			else
-				input_reply(ictx, 0, "\033_Gi=%u;EINVAL\033\\",
-				    result.image_id);
-		}
+		if (result.status == KITTY_PARSE_MISSING)
+			input_reply_kitty(ictx, &result, "ENOENT");
+		else
+			input_reply_kitty(ictx, &result, "EINVAL");
 		return (1);
 	}
 	if (result.replace_id != 0)
@@ -2839,14 +2859,12 @@ input_handle_kitty(struct input_ctx *ictx, const u_char *buf, size_t len)
 			image_write_kitty(sctx, im, ictx->cell.cell.bg,
 			    result.image_id, result.placement_id, result.z);
 		image_free(image_get_id(im));
-		if (result.quiet == 0 && result.image_id != 0)
-			input_reply(ictx, 0, "\033_Gi=%u;OK\033\\", result.image_id);
-	} else if (result.action == 'd')
+	} else if (result.action == 'd') {
 		image_clear_kitty(sctx, result.delete, result.image_id,
 		    result.placement_id, result.z);
-	else if ((result.action == 't' || result.action == 'q' ||
-	    result.action == 'u') && result.quiet == 0)
-		input_reply(ictx, 0, "\033_Gi=%u;OK\033\\", result.image_id);
+	}
+	if (result.action != 'd')
+		input_reply_kitty(ictx, &result, "OK");
 	return (1);
 }
 #endif

@@ -1095,6 +1095,7 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 	uint64_t		 canvas_width, canvas_height;
 	struct image		*im = NULL, *source;
 	struct kitty_source	*stored;
+	int			 error;
 
 	if (kc == NULL) {
 		kc = xcalloc(1, sizeof *kc);
@@ -1114,24 +1115,23 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 		ks->medium = 'd';
 	}
 	ks->more = 0;
+	error = kitty_control(ks, buf, controllen);
+	if (ks->image_id == 0)
+		ks->placement_id = 0;
 	result->image_id = ks->image_id;
 	result->quiet = ks->quiet;
 	result->action = ks->action;
 	result->delete = ks->delete;
 	result->placement_id = ks->placement_id;
 	result->z = ks->z;
-	if (kitty_control(ks, buf, controllen) != 0 ||
-	    ks->medium != 'd' ||
-	    (payloadlen != 0 &&
-	    kitty_append(ks, semi + 1, payloadlen) != 0))
+	if (error != 0)
 		goto fail;
-
-	result->image_id = ks->image_id;
-	result->quiet = ks->quiet;
-	result->action = ks->action;
-	result->delete = ks->delete;
-	result->placement_id = ks->placement_id;
-	result->z = ks->z;
+	if (ks->medium != 'd')
+		goto fail;
+	if (payloadlen != 0) {
+		if (kitty_append(ks, semi + 1, payloadlen) != 0)
+			goto fail;
+	}
 	if (ks->more) {
 		kc->transfer = ks;
 		result->status = KITTY_PARSE_MORE;
@@ -1257,7 +1257,9 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 		result->status = KITTY_PARSE_OK;
 		if (ks->action != 'q')
 			result->replace_id = kitty_source_set(kc, ks->image_id, source);
-		if (ks->action == 'T' && !ks->virtual) {
+		if (ks->action == 'q')
+			im = NULL;
+		else if (ks->action == 'T' && !ks->virtual) {
 			im = kitty_place_image(source, ks, xpixel, ypixel);
 			if (im == NULL)
 				result->status = KITTY_PARSE_ERROR;

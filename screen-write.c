@@ -2242,8 +2242,15 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 	    ctx->wp != NULL &&
 	    options_get_number(ctx->wp->options, "scroll-on-clear"))
 		grid_view_clear_history(s->grid, bg);
-	else
+	else {
+#ifdef ENABLE_IMAGES
+		for (y = 0; y < sy; y++) {
+			image_grid_free_line(s->grid,
+			    &s->grid->linedata[s->grid->hsize + y]);
+		}
+#endif
 		grid_view_clear(s->grid, 0, 0, sx, sy, bg);
+	}
 
 	screen_write_collect_clear(ctx, 0, sy);
 
