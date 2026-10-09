@@ -91,6 +91,7 @@ def check(name, command, cursor, expected='', text=None, render=None, resize=Non
                         break
                     time.sleep(0.05)
                 assert re.search(render, actual), (name, 'render', repr(actual), render)
+                return actual
             finally:
                 subprocess.run(outer + ['kill-window', '-t', client], check=True)
     finally:
@@ -121,9 +122,19 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         check('virtual', origin + graphics(placement + ',U=1,i=7', pixel), '5,2')
         check('put', origin + graphics('a=t,q=2,f=32,s=1,v=1,i=7', pixel) +
               graphics('a=p,q=2,i=7,c=3,r=2'), '8,4')
+        check('columns-only', origin + graphics('a=T,q=2,f=32,s=1,v=1,c=2', pixel),
+              '7,3')
+        check('rows-only', origin + graphics('a=T,q=2,f=32,s=1,v=1,r=2', pixel),
+              '9,4')
         check('chunks', graphics(placement + ',m=1', '/wAA') + origin +
               graphics('m=0', '/w=='), '8,4')
+        check('chunks-no-cursor', graphics(placement + ',C=1,m=1', '/wAA') + origin +
+              graphics('m=0', '/w=='), '5,2')
         check('sixel', origin + '\033Pq"1;1;1;1#0;2;100;0;0#0@\033\\', '0,3')
+        sixel = '\033Pq"1;1;8;16#0;2;100;100;100#0!8~-!8~-!8N\033\\'
+        sixel_render = check('sixel-render', sixel, '0,1', render=r'38;2;')
+        check('kitty-delete-preserves-sixel', sixel + graphics('a=d,d=A,q=2'),
+              '0,1', render='^' + re.escape(sixel_render) + '$')
         check('put-reply', origin + graphics('a=t,q=2,f=32,s=1,v=1,i=7', pixel) +
               graphics('a=p,i=7,p=9,c=3,r=2'), '8,4', graphics('i=7,p=9', 'OK'))
         check('missing-reply', origin + graphics('a=p,i=7,p=9'), '5,2',
@@ -199,6 +210,9 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         virtual = graphics('a=T,q=2,U=1,i=7,p=1,f=32,s=24,v=32,c=3,r=2', white)
         ph = '\U0010eeee'
         colours = '\033[38;2;0;0;7m\033[58;2;0;0;1m'
+        check('query-retains-prototype', virtual +
+              graphics('a=q,q=2,U=1,i=7,p=1,f=32,s=1,v=1,c=1,r=1', pixel) +
+              colours + ph + '\u0305\u030e', '1,0', render=r'48;2;255;255;255m')
         check('multiple-virtual', virtual + graphics('a=p,q=2,U=1,i=7,p=2,c=1,r=1') +
               colours + ph + '\u0305\u030e', '1,0', text=ph + '\u0305\u030e',
               render=r'255;255;255m')
@@ -212,6 +226,11 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         check('inherit-high-byte-column', high_virtual + '\033[38;2;0;0;7m' +
               ph + '\u0305\u0305\u030d' + ph + '\u0305\u030d', '2,0',
               render=r'48;2;255;255;255m {2}')
+        red = base64.b64encode(b'\xff\0\0\xff' * (24 * 32)).decode()
+        check('explicit-high-byte', high_virtual +
+              graphics('a=T,q=2,U=1,i=7,f=32,s=24,v=32,c=3,r=2', red) +
+              '\033[38;2;0;0;7m' + ph + '\u0305\u0305\u030d' +
+              ph + '\u0305\u030d\u0305', '2,0', render=r'48;2;255;0;0m')
         for name, change, diacritics in [
                 ('colour', '\033[38;2;0;0;8m', ''),
                 ('placement', '\033[58;2;0;0;1m', ''),
@@ -230,11 +249,31 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         for selector in ['a', 'z']:
             check('virtual-survives-' + selector, virtual + colours + ph +
                   graphics('a=d,d=%s,q=2' % selector), '1,0', render=r'255;255;255m')
+        # Uppercase spatial deletion preserves the display and its prototype.
+        for selector, coordinates in [('A', ''), ('C', ''), ('P', ',x=1,y=1'),
+                                      ('Q', ',x=1,y=1,z=0'), ('X', ',x=1'),
+                                      ('Y', ',y=1'), ('Z', ',z=0')]:
+            check('virtual-survives-' + selector, virtual + colours + ph +
+                  '\033[H' + graphics('a=d,d=%s,q=2%s' % (selector, coordinates)) +
+                  '\033[2G' + ph + '\u0305\u030d', '2,0',
+                  render=r'48;2;255;255;255m(?:\x1b\[[0-9;]+m)* {2}')
         # Deleting a prototype leaves its existing text-backed display intact.
         check('virtual-delete-display', virtual + colours + ph +
               graphics('a=d,d=I,i=7,p=1,q=2'), '1,0', render=r'255;255;255m')
         check('virtual-delete-prototype', virtual + graphics('a=d,d=i,i=7,p=1,q=2') +
               colours + ph, '1,0', render=ph)
+        check('virtual-delete-last', virtual + graphics('a=d,d=I,i=7,p=1,q=2') +
+              graphics('a=p,i=7'), '0,0', graphics('i=7', 'ENOENT'))
+        check('virtual-delete-one', virtual +
+              graphics('a=p,q=2,U=1,i=7,p=2,c=3,r=2') +
+              graphics('a=d,d=I,i=7,p=1,q=2') +
+              '\033[38;2;0;0;7m\033[58;2;0;0;2m' + ph, '1,0',
+              render=r'48;2;255;255;255m')
+        check('virtual-delete-range', virtual + graphics('a=d,d=r,x=7,y=7,q=2') +
+              colours + ph, '1,0', render=ph)
+        # Retransmission removes old displays and prototypes, retaining text.
+        check('virtual-source-replaced', virtual + colours + ph +
+              graphics('a=t,q=2,i=7,f=32,s=1,v=1', pixel), '1,0', text=ph, render=ph)
         check('virtual-replace-display', virtual + colours + ph +
               graphics('a=p,i=7,p=1,q=2,C=1,c=3,r=2'), '1,0',
               render=r'^(?:\x1b\[[0-9;]+m)*\x1b\[48;2;255;255;255m(?:\x1b\[[0-9;]+m)* ')
@@ -245,9 +284,15 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         white_pixel = '/////w=='
         check('letterbox', graphics('a=T,q=2,f=32,s=1,v=1,c=2,r=2,C=1', white_pixel),
               '0,0', render='▄▄')
+        check('pillarbox', graphics('a=T,q=2,f=32,s=1,v=1,c=4,r=1,C=1', white_pixel),
+              '0,0', render=(r'^(?:\x1b\[[0-9;]+m)* '
+                             r'(?:\x1b\[[0-9;]+m)*\x1b\[48;2;255;255;255m {2}'))
         offset_source = base64.b64encode(b'\xff' * (8 * 32 * 4)).decode()
         check('scaled-offset', graphics('a=T,q=2,f=32,s=8,v=32,c=1,r=1,X=4,C=1',
                                        offset_source), '0,0', render=r'12[78];12[78];12[78]m')
+        square = base64.b64encode(b'\xff' * (8 * 8 * 4)).decode()
+        check('vertical-offset', graphics('a=T,q=2,f=32,s=8,v=8,c=1,r=1,Y=8,C=1',
+                                         square), '0,0', render='▄')
         check('offset-clamp', graphics('a=T,q=2,f=32,s=1,v=1,X=4294967295,C=1',
                                       white_pixel), '0,0')
         check('oversized-placement', transmit + graphics('a=p,i=7,c=65534,r=32767'),
@@ -260,6 +305,11 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
                   '0,0', graphics('i=7', 'ENOTSUP'))
         for key in ['P', 'Q', 'H', 'V']:
             check('unsupported-key-' + key, graphics('a=p,i=7,%s=1' % key),
+                  '0,0', graphics('i=7', 'ENOTSUP'))
+        check('negative-relative-offset', graphics('a=p,i=7,H=-1'),
+              '0,0', graphics('i=7', 'ENOTSUP'))
+        for medium in ['f', 't', 's']:
+            check('unsupported-medium-' + medium, graphics('a=t,i=7,t=' + medium),
                   '0,0', graphics('i=7', 'ENOTSUP'))
         check('relative-defaults', transmit + graphics('a=p,i=7,P=0,Q=0,H=0,V=0,C=1'),
               '0,0', graphics('i=7', 'OK'))
