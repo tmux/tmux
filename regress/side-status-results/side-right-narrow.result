@@ -1,0 +1,24 @@
+SERVER                                                              │0:editor
+                                                                    │1:server*
+                                                                    │2:logs-
+                                                                    │
+                                                                    │
+                                                                    │
+                                                                    │
+                                                                    │
+                                                                    │
+                                                                    │
+                                                                    │
+                                                                    │
+                                                                    │
+                                                                    │
+                                                                    │
+                                                                    │
+                                                                    │
+                                                                    │
+                                                                    │
+                                                                    │
+                                                                    │
+                                                                    │
+                                                                    │
+[test]0:editor  1:server* 2:logs-
