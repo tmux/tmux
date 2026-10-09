@@ -17,7 +17,7 @@ static long	keyring_serial;
  * the login session's keyring when it ends).
  */
 void
-keyring_join(void)
+new_session_keyring(void)
 {
 	long	serial;
 
@@ -33,7 +33,7 @@ keyring_join(void)
 }
 
 void
-keyring_revoke(void)
+revoke_session_keyring(void)
 {
 	if (keyring_serial == 0)
 		return;

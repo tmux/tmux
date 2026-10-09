@@ -62,10 +62,6 @@ cfg_done(__unused struct cmdq_item *item, __unused void *data)
 	}
 
 	prompt_load_history();
-#ifdef HAVE_KEYCTL
-	if (options_get_number(global_options, "session-keyring"))
-		keyring_join();
-#endif
 
 	return (CMD_RETURN_NORMAL);
 }
