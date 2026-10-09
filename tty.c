@@ -158,9 +158,10 @@ void
 tty_set_size(struct tty *tty, u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 {
 #ifdef ENABLE_IMAGES
-	int	geometry_changed;
+	int	geometry_changed = 0;
 
-	geometry_changed = (tty->xpixel != xpixel || tty->ypixel != ypixel);
+	if (tty->xpixel != xpixel || tty->ypixel != ypixel)
+		geometry_changed = 1;
 #endif
 	tty->sx = sx;
 	tty->sy = sy;
@@ -1940,14 +1941,12 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	struct grid_cell		 placeholder_cell;
 	struct kitty_placeholder placeholder;
 
-	if (kitty_cell_is_placeholder(cell)) {
-		if (image_grid_get_placeholder(ctx->s->grid, ctx->ocx,
-		    ctx->s->grid->hsize + ctx->ocy, &placeholder)) {
-			memcpy(&placeholder_cell, cell,
-			    sizeof placeholder_cell);
-			utf8_set(&placeholder_cell.data, ' ');
-			cell = &placeholder_cell;
-		}
+	if (kitty_cell_is_placeholder(cell) &&
+	    image_grid_get_placeholder(ctx->s->grid, ctx->ocx,
+	    ctx->s->grid->hsize + ctx->ocy, &placeholder)) {
+		memcpy(&placeholder_cell, cell, sizeof placeholder_cell);
+		utf8_set(&placeholder_cell.data, ' ');
+		cell = &placeholder_cell;
 	}
 #endif
 

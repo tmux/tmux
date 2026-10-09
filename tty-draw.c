@@ -272,18 +272,18 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				/* Get the current cell. */
 				grid_view_get_cell(gd, px + i, py, &gc);
 #ifdef ENABLE_IMAGES
-				if (kitty_cell_is_placeholder(&gc)) {
-					if (image_grid_get_placeholder(gd,
-					    px + i, gd->hsize + py,
-					    &placeholder))
-						utf8_set(&gc.data, ' ');
+				if (kitty_cell_is_placeholder(&gc) &&
+				    image_grid_get_placeholder(gd, px + i,
+				    gd->hsize + py, &placeholder)) {
+					utf8_set(&gc.data, ' ');
 				}
 #endif
 				gcp = &gc;
 #ifdef ENABLE_IMAGES
 				if (image_get_fallback_at(tty, s, px + i, py, &gc,
-				    &image_gc) == 1)
+				    &image_gc) == 1) {
 					gcp = &image_gc;
+				}
 #endif
 
 				/* Work out empty cells. */

@@ -1383,8 +1383,9 @@ grid_reflow_has_image(struct grid_line *gl)
 		/* Kitty Unicode placeholder base character (U+10EEEE). */
 		if (gc.data.size >= 4 && gc.data.data[0] == 0xf4 &&
 		    gc.data.data[1] == 0x8e && gc.data.data[2] == 0xbb &&
-		    gc.data.data[3] == 0xae)
+		    gc.data.data[3] == 0xae) {
 			return (1);
+		}
 	}
 	return (0);
 }

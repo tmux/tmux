@@ -395,12 +395,14 @@ recalculate_size(struct window *w, int now)
 	 */
 	if (w->flags & WINDOW_RESIZE) {
 		if (!now && changed && w->new_sx == sx && w->new_sy == sy &&
-		    w->new_xpixel == xpixel && w->new_ypixel == ypixel)
+		    w->new_xpixel == xpixel && w->new_ypixel == ypixel) {
 			changed = 0;
+		}
 	} else {
 		if (!now && changed && w->sx == sx && w->sy == sy &&
-		    w->xpixel == xpixel && w->ypixel == ypixel)
+		    w->xpixel == xpixel && w->ypixel == ypixel) {
 			changed = 0;
+		}
 	}
 
 	/*

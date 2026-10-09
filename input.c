@@ -2812,15 +2812,11 @@ input_reply_kitty(struct input_ctx *ictx,
 
 	if (result->quiet >= 2)
 		return;
-	if (result->quiet == 1) {
-		if (strcmp(message, "OK") == 0)
-			return;
-	}
-	if (result->image_id == 0) {
-		if (result->image_number == 0) {
-			if (result->action != 'q')
-				return;
-		}
+	if (result->quiet == 1 && strcmp(message, "OK") == 0)
+		return;
+	if (result->image_id == 0 && result->image_number == 0 &&
+	    result->action != 'q') {
+		return;
 	}
 	if (result->image_number != 0) {
 		if (result->image_id != 0) {
@@ -2893,8 +2889,9 @@ input_exit_apc(struct input_ctx *ictx)
 #ifdef ENABLE_IMAGES
 	if (ictx->input_len > 1 && ictx->input_buf[0] == 'G' &&
 	    input_handle_kitty(ictx, ictx->input_buf + 1,
-	    ictx->input_len - 1))
+	    ictx->input_len - 1)) {
 		return;
+	}
 #endif
 
 	if (wp != NULL &&

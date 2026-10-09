@@ -94,6 +94,7 @@ static const struct tty_acs_entry tty_acs_table[] = {
 #ifdef ENABLE_IMAGES
 static char tty_acs_image_sextants[60][5];
 
+/* Encode the Unicode sextant characters used by the image fallback. */
 static void
 tty_acs_image_sextants_init(void)
 {
@@ -110,6 +111,7 @@ tty_acs_image_sextants_init(void)
 	}
 }
 
+/* Return the sextant ACS key for a six-bit foreground mask. */
 u_char
 tty_acs_image_sextant(u_int mask)
 {

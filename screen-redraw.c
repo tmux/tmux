@@ -1171,8 +1171,9 @@ redraw_damage_window_flags(struct window *w, u_int x, u_int y, u_int sx,
 
 	TAILQ_FOREACH(rd, &w->damage, entry) {
 		if (x > rd->x + rd->sx || rd->x > x + sx ||
-		    y > rd->y + rd->sy || rd->y > y + sy)
+		    y > rd->y + rd->sy || rd->y > y + sy) {
 			continue;
+		}
 
 		x0 = (x < rd->x) ? x : rd->x;
 		y0 = (y < rd->y) ? y : rd->y;
@@ -1203,6 +1204,7 @@ redraw_damage_window_flags(struct window *w, u_int x, u_int y, u_int sx,
 		redraw_collapse_damage(w);
 }
 
+/* Record ordinary window damage. */
 void
 redraw_damage_window(struct window *w, u_int x, u_int y, u_int sx, u_int sy)
 {
@@ -1647,12 +1649,7 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 		bottom = scene->sy;
 
 #ifdef ENABLE_IMAGES
-	/*
-	 * Only erase cells this pane currently owns in the scene, not its raw
-	 * geometry - a floating pane may be occluding part of this pane's
-	 * rectangle, and erasing under it would leave those cells blank with
-	 * nothing to redraw them back in.
-	 */
+	/* Erase only pane-owned spans so overlapping panes remain intact. */
 	if (flags & REDRAW_PANE) {
 		for (y = top; y < bottom; y++) {
 			line = &scene->lines[y];
@@ -1671,6 +1668,7 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 	}
 #endif
 
+	/* Draw images behind text, then text, then images above it. */
 	for (phase = REDRAW_IMAGES_BEFORE; phase <= REDRAW_IMAGES_AFTER;
 	    phase++) {
 		for (y = top; y < bottom; y++) {
@@ -1682,18 +1680,20 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 			if (flags & REDRAW_PANE) {
 				spans = &line->spans[REDRAW_SPAN_PANE];
 				TAILQ_FOREACH(span, spans, entry) {
-					if (span->data.p.wp == wp)
+					if (span->data.p.wp == wp) {
 						redraw_draw_span(dctx, span, cy,
 						    phase);
+					}
 				}
 			}
 			if (phase == REDRAW_TEXT &&
 			    (flags & REDRAW_PANE_SCROLLBAR)) {
 				spans = &line->spans[REDRAW_SPAN_SCROLLBAR];
 				TAILQ_FOREACH(span, spans, entry) {
-					if (span->data.sb.wp == wp)
+					if (span->data.sb.wp == wp) {
 						redraw_draw_span(dctx, span, cy,
 						    phase);
+					}
 				}
 			}
 		}
@@ -1718,6 +1718,7 @@ redraw_draw_lines(struct redraw_draw_ctx *dctx, int flags)
 	enum redraw_image_phase phase;
 	u_int			 y, cy, type;
 
+	/* Draw each image layer around the text spans. */
 	for (phase = REDRAW_IMAGES_BEFORE; phase <= REDRAW_IMAGES_AFTER;
 	    phase++) {
 		for (y = 0; y < scene->sy; y++) {
@@ -1728,8 +1729,9 @@ redraw_draw_lines(struct redraw_draw_ctx *dctx, int flags)
 				cy = y;
 			for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
 				if (phase != REDRAW_TEXT &&
-				    type != REDRAW_SPAN_PANE)
+				    type != REDRAW_SPAN_PANE) {
 					continue;
+				}
 				if (!REDRAW_IS_ALL(flags)) {
 					switch (type) {
 					case REDRAW_SPAN_PANE:
@@ -2050,8 +2052,9 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	if ((flags & REDRAW_PANE) &&
 	    (image_backend_flags(tty) &
 	    (IMAGE_BACKEND_GRAPHICAL|IMAGE_BACKEND_CLIPPED)) ==
-	    IMAGE_BACKEND_GRAPHICAL)
+	    IMAGE_BACKEND_GRAPHICAL) {
 		redraw_damage_window_pane_status(scene->w);
+	}
 #endif
 
 	if (flags & REDRAW_PANE) {
@@ -2226,14 +2229,7 @@ redraw_draw_damage_rectangle(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 		return;
 
 #ifdef ENABLE_IMAGES
-	/*
-	 * Remove stale Kitty placements this redraw is about to replace, the
-	 * same as redraw_draw_pane_lines() does for a full pane redraw - a
-	 * placement persists until explicitly deleted, unlike a plain SIXEL
-	 * overwrite. Every span type is included, not just panes, since a
-	 * moved floating pane can leave a placement over cells that now
-	 * belong to something else.
-	 */
+	/* Retire placements on all damaged spans, including uncovered cells. */
 	for (yy = y; yy < y + sy; yy++) {
 		line = &scene->lines[yy];
 		if (dctx->flags & REDRAW_STATUS_TOP)
@@ -2256,6 +2252,7 @@ redraw_draw_damage_rectangle(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 	}
 #endif
 
+	/* Compose image layers and text across the damaged spans. */
 	for (phase = REDRAW_IMAGES_BEFORE; phase <= REDRAW_IMAGES_AFTER;
 	    phase++) {
 		for (yy = y; yy < y + sy; yy++) {
@@ -2266,8 +2263,9 @@ redraw_draw_damage_rectangle(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 				cy = yy;
 			for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
 				if (phase != REDRAW_TEXT &&
-				    type != REDRAW_SPAN_PANE)
+				    type != REDRAW_SPAN_PANE) {
 					continue;
+				}
 				if (type == REDRAW_SPAN_STATUS)
 					continue;
 				spans = &line->spans[type];
@@ -2321,17 +2319,14 @@ redraw_client_damage_rect(struct client *c, struct redraw_draw_ctx *dctx,
 	u_int	x0, y0, x1, y1;
 
 #ifdef ENABLE_IMAGES
-	/*
-	 * A scroll this terminal is trusted to have done itself has already
-	 * moved everything in the region, text and images alike, so there is
-	 * nothing to draw.
-	 */
+	/* Skip scroll damage already handled by this terminal. */
 	if ((rd->flags & REDRAW_DAMAGE_SCROLL) &&
 	    (image_backend_flags(&c->tty) & IMAGE_BACKEND_SCROLLS) &&
 	    c->tty.image_scroll_window == w &&
 	    c->tty.image_scroll_epoch == w->image_scroll_epoch &&
-	    !c->tty.image_scroll_failed)
+	    !c->tty.image_scroll_failed) {
 		return;
+	}
 #endif
 	x0 = (rd->x > ox) ? rd->x : ox;
 	y0 = (rd->y > oy) ? rd->y : oy;

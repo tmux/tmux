@@ -298,7 +298,7 @@ struct window_copy_mode_data {
 	u_int		 oy;		/* number of lines scrolled up */
 
 	u_int		 image_base;	/* hsize - oy images were last drawn for */
-	int		 image_base_set;
+	int		 image_base_set;	/* image_base is valid */
 	int		 image_refresh;	/* current redraw needs image refresh */
 
 	u_int		 selx;		/* beginning of selection */
@@ -5591,13 +5591,7 @@ window_copy_write_one(struct window_mode_entry *wme,
 		grid_get_cell(gd, fx, fy, &gc);
 		if (fx + gc.data.width <= nx) {
 #ifdef ENABLE_IMAGES
-			/*
-			 * Write image-covered cells directly into the grid,
-			 * skipping window_copy_update_style() (a highlight
-			 * must not sweep over the image) and
-			 * screen_write_cell() (its image-damage call would
-			 * re-damage the image on every redraw for nothing).
-			 */
+			/* Write image cells without styling or damage. */
 			if (image_grid_area_has_images(gd, fx, fy, gc.data.width,
 			    1)) {
 				grid_view_set_cell(ctx->s->grid, px + fx, py,
@@ -5856,13 +5850,7 @@ window_copy_write_line(struct window_mode_entry *wme,
 	    content_sx, &mgc, &cgc, &mkgc, &clgc);
 
 #ifdef ENABLE_IMAGES
-	/*
-	 * Copy the backing line's image layers separately: the text write
-	 * above knows nothing about image content. Only redraw them when the
-	 * view has actually moved (data->image_refresh) - otherwise they are
-	 * already correct and redrawing would just flash them on every
-	 * unrelated redraw.
-	 */
+	/* Copy image spans; refresh only when the history view moves. */
 	image_grid_free_line(s->grid,
 	    &s->grid->linedata[s->grid->hsize + py]);
 	image_grid_copy_area(s->grid, width, s->grid->hsize + py,
@@ -5922,31 +5910,21 @@ window_copy_redraw_selection(struct window_mode_entry *wme, u_int old_y)
 }
 
 #ifdef ENABLE_IMAGES
-/*
- * Only rows whose underlying history position has moved since the last
- * call need their images recomposited, to avoid flashing them on every
- * unrelated redraw. Every caller of window_copy_write_line()/
- * window_copy_write_lines() must call this first - it is not implied by
- * them, since some write directly rather than via
- * window_copy_redraw_lines().
- */
+/* Refresh images only when the visible history range has moved. */
 static void
 window_copy_update_image_refresh(struct window_copy_mode_data *data)
 {
 	u_int	base;
 
 	base = screen_hsize(data->backing) - data->oy;
-	data->image_refresh = !data->image_base_set || base != data->image_base;
+	data->image_refresh = 0;
+	if (!data->image_base_set || base != data->image_base)
+		data->image_refresh = 1;
 	data->image_base = base;
 	data->image_base_set = 1;
 }
 
-/*
- * Whether any part of the currently visible backing range carries image
- * data. A scrolled insert/delete-line fast path only shifts character
- * cells, leaving image content stale, so callers should fall back to a
- * full window_copy_redraw_screen() when this returns true.
- */
+/* Return whether the visible backing range contains image spans. */
 static int
 window_copy_visible_has_images(struct window_copy_mode_data *data)
 {

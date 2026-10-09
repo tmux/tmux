@@ -1070,6 +1070,7 @@ struct style {
 #define TTY_ACS_IMAGE_SEXTANT_FIRST 0x92
 #define TTY_ACS_IMAGE_SEXTANT_LAST 0xcd
 
+/* Averaged RGBA colour and brightness used by the text image backend. */
 struct image_sample {
 	u_char			 red;
 	u_char			 green;
@@ -1079,20 +1080,25 @@ struct image_sample {
 };
 #define IMAGE_SAMPLE_COLUMNS 2
 #define IMAGE_SAMPLE_ROWS 6
+/* Whole-cell and subcell samples generated lazily for one image cell. */
 struct image_cell {
 	struct image_sample	 whole;
 	struct image_sample	 samples[IMAGE_SAMPLE_ROWS][IMAGE_SAMPLE_COLUMNS];
 };
+/* Immutable pixels and derived output data shared by image placements. */
 struct image {
 	u_int			 id;
 	u_int			 references;
 	u_int			 flags;
+	/* Retained parent (zero for sources) and original source IDs. */
 	u_int			 parent_id;
 	u_int			 source_id;
+	/* Pixel dimensions, including the logical transparent canvas. */
 	u_int			 width;
 	u_int			 height;
 	u_int			 canvas_width;
 	u_int			 canvas_height;
+	/* Grid dimensions and pixel buffer lengths in bytes. */
 	u_int			 sx;
 	u_int			 sy;
 	size_t			 stride;
@@ -1107,18 +1113,19 @@ struct image {
 RB_HEAD(images, image);
 #define IMAGE_SIZE_LIMIT (64 * 1024 * 1024)
 
+/* Source crop and padded destination canvas for creating an image view. */
 struct image_view {
-	u_int	 x;
+	u_int	 x;		/* Crop origin in source pixels. */
 	u_int	 y;
-	u_int	 width;
+	u_int	 width;		/* Crop size in source pixels. */
 	u_int	 height;
-	u_int	 scaled_width;
+	u_int	 scaled_width;	/* Resampled crop size in pixels. */
 	u_int	 scaled_height;
-	u_int	 canvas_width;
+	u_int	 canvas_width;	/* Padded canvas size in pixels. */
 	u_int	 canvas_height;
-	u_int	 sx;
+	u_int	 sx;		/* Placement size in cells. */
 	u_int	 sy;
-	u_int	 x_offset;
+	u_int	 x_offset;	/* Crop origin in canvas pixels. */
 	u_int	 y_offset;
 };
 
@@ -1130,13 +1137,14 @@ enum kitty_parse_status {
 	KITTY_PARSE_UNSUPPORTED
 };
 
+/* Reply fields and placement actions returned by one Kitty command. */
 struct kitty_parse_result {
 	u_int			 image_id;
 	u_int			 image_number;
-	u_int			 replace_id;
+	u_int			 replace_id;	/* Old server ID, or zero. */
 	u_int			 placement_id;
 	u_int			 quiet;
-	u_int			 x;
+	u_int			 x;		/* Deletion coordinates. */
 	u_int			 y;
 	int32_t			 z;
 	char			 action;
@@ -1144,9 +1152,10 @@ struct kitty_parse_result {
 	enum kitty_parse_status	 status;
 };
 
+/* Resolved source cell and application IDs of one Unicode placeholder. */
 struct kitty_placeholder {
 	struct image		*image;
-	u_int			 source_x;
+	u_int			 source_x;	/* Origin in image cells. */
 	u_int			 source_y;
 	u_int			 image_id;
 	u_int			 placement_id;
@@ -4416,7 +4425,7 @@ void		 image_grid_copy_area(struct grid *, u_int, u_int, struct grid *,
 		     u_int, u_int, u_int, u_int);
 void		 image_grid_resize_width(struct grid *, u_int);
 int		 image_grid_line_has_images(const struct grid_line *);
-	int		 image_grid_area_has_images(struct grid *, u_int, u_int, u_int,
+int		 image_grid_area_has_images(struct grid *, u_int, u_int, u_int,
 		     u_int);
 int		 image_grid_get_placeholder(struct grid *, u_int, u_int,
 		     struct kitty_placeholder *);

@@ -69,57 +69,62 @@ static const uint32_t kitty_diacritics[] = {
 	0x1D244
 };
 
+/* Graphics control values and decoded bytes retained across upload chunks. */
 struct kitty_state {
 	char	 action;
 	char	 delete;
 	u_int	 format;
 	char	 medium;
 	char	 compression;
-	u_int	 width;
+	u_int	 width;		/* Source pixel dimensions. */
 	u_int	 height;
-	u_int	 source_x;
+	u_int	 source_x;	/* Crop origin in source pixels. */
 	u_int	 source_y;
-	u_int	 x_offset;
+	u_int	 x_offset;	/* Pixel offset inside the starting cell. */
 	u_int	 y_offset;
-	u_int	 source_width;
+	u_int	 source_width;	/* Crop dimensions, zero for the remainder. */
 	u_int	 source_height;
-	u_int	 columns;
+	u_int	 columns;	/* Placement cells, zero for automatic size. */
 	u_int	 rows;
 	u_int	 image_id;
 	u_int	 image_number;
 	u_int	 placement_id;
 	int32_t	 z;
 	u_int	 quiet;
-	int	 no_cursor;
-	int	 virtual;
-	u_int	 data_size;
-	int	 more;
-	int	 unsupported;
+	int	 no_cursor;	/* Suppress cursor movement after placement. */
+	int	 virtual;	/* Placement uses Unicode placeholders. */
+	u_int	 data_size;	/* Expected size of a compressed PNG payload. */
+	int	 more;		/* Another upload chunk follows. */
+	int	 unsupported;	/* A requested operation is not implemented. */
 
-	u_char	*raw;
-	size_t	 rawlen;
+	u_char	*raw;		/* Base64-decoded upload bytes. */
+	size_t	 rawlen;		/* Number of accumulated bytes. */
 };
 
+/* An application placement retained by one pane's Kitty parser. */
 struct kitty_placement {
 	u_int			 placement_id;
-	u_int			 server_id;
+	u_int			 server_id;	/* Referenced image view. */
 	int32_t			 z;
 	int			 virtual;
 	struct kitty_placement	*next;
 };
 
+/* Map an application image ID to its source and placement views. */
 struct kitty_source {
-	u_int			 app_id;
-	u_int			 server_id;
+	u_int			 app_id;		/* Application ID. */
+	u_int			 server_id;	/* Referenced source image. */
 	struct kitty_placement	*placements;
 	struct kitty_source	*next;
 };
 
+/* Kitty input state kept for the lifetime of a pane's parser. */
 struct kitty_context {
-	struct kitty_state	*transfer;
+	struct kitty_state	*transfer;	/* Pending upload, or NULL. */
 	struct kitty_source	*sources;
 };
 
+/* An image uploaded to one terminal at its current cell geometry. */
 struct kitty_image_cache {
 	u_int				 server_id;
 	u_int				 kitty_id;
@@ -130,19 +135,22 @@ struct kitty_image_cache {
 	struct kitty_image_cache	*next;
 };
 
+/* One terminal placement, retained until its redraw replacement is ready. */
 struct kitty_placement_cache {
-	u_int				 id;
-	u_int				 x;
+	u_int				 id;	/* Terminal placement ID. */
+	u_int				 x;	/* Origin in terminal cells. */
 	u_int				 y;
-	u_int				 width;
+	u_int				 width;	/* Size in cells. */
 	u_int				 height;
 	u_int				 source_x;
 	u_int				 source_y;
 	int32_t				 z;
+	/* Delete after replacement placements have been drawn. */
 	int				 pending_delete;
 	struct kitty_placement_cache	*next;
 };
 
+/* Image uploads and ID allocation kept for the lifetime of a terminal. */
 struct kitty_output {
 	struct kitty_image_cache	*images;
 	u_int				 next_id;
@@ -203,10 +211,7 @@ kitty_redraw_keep_piece(struct tty *tty, struct kitty_image_cache *entry,
 	    placement->z);
 }
 
-/*
- * Place the parts of a placement outside a redraw area again, since the
- * redraw will not replace them.
- */
+/* Preserve placement pieces outside the redraw area. */
 static void
 kitty_redraw_keep(struct tty *tty, struct kitty_image_cache *entry,
     struct kitty_placement_cache *placement, u_int x, u_int y, u_int width,
@@ -241,14 +246,7 @@ kitty_redraw_keep(struct tty *tty, struct kitty_image_cache *entry,
 	    px1 - ix1, iy1 - iy0);
 }
 
-/*
- * Mark placements intersecting a redraw area as stale rather than deleting
- * them yet (see kitty_redraw_finish()) - some implementations free an
- * image's pixel data once its last placement is gone, so an image only
- * placed here would go blank before its replacement lands. A placement only
- * partly inside the area is deleted as a whole, so place its outside parts
- * again first or they would vanish from cells nothing redraws.
- */
+/* Mark intersecting placements for deletion after their replacements land. */
 void
 kitty_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
     u_int height)
@@ -259,6 +257,8 @@ kitty_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
 
 	if (ko == NULL)
 		return;
+
+	/* Retain pixel data by keeping placements alive until replacement. */
 	for (entry = ko->images; entry != NULL; entry = entry->next) {
 		for (placement = entry->placements; placement != NULL;
 		    placement = placement->next) {
@@ -267,28 +267,26 @@ kitty_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
 			if (placement->x >= x + width ||
 			    placement->x + placement->width <= x ||
 			    placement->y >= y + height ||
-			    placement->y + placement->height <= y)
+			    placement->y + placement->height <= y) {
 				continue;
+			}
 			placement->pending_delete = 1;
+
+			/* Preserve pieces outside the redraw area. */
 			kitty_redraw_keep(tty, entry, placement, x, y, width,
 			    height);
 		}
 	}
 }
 
-/*
- * Delete placements marked stale by kitty_redraw_start() - called once any
- * replacement placements have already been created, so an image already
- * placed elsewhere in the same redraw is never left with none at all in
- * between the two.
- */
+/* Delete stale placements once replacement placements exist. */
 void
 kitty_redraw_finish(struct tty *tty)
 {
 	struct kitty_output		*ko = tty->image_data;
 	struct kitty_image_cache	*entry;
 	struct kitty_placement_cache	**pp, *placement;
-	char				  s[64];
+	char				 s[64];
 
 	if (ko == NULL)
 		return;
@@ -299,8 +297,8 @@ kitty_redraw_finish(struct tty *tty)
 				continue;
 			}
 			xsnprintf(s, sizeof s,
-			    "\033_Ga=d,d=i,i=%u,p=%u,q=2\033\\", entry->kitty_id,
-			    placement->id);
+			    "\033_Ga=d,d=i,i=%u,p=%u,q=2\033\\",
+			    entry->kitty_id, placement->id);
 			tty_puts(tty, s);
 			*pp = placement->next;
 			free(placement);
@@ -350,12 +348,12 @@ kitty_free_stale_images(struct tty *tty)
 		/* Save the successor before this entry may be removed. */
 		next = entry->next;
 		if (image_find(entry->server_id) != NULL) {
-			/* Retained entries become the predecessor of the next one. */
+			/* Retain this entry as the next one's predecessor. */
 			previous = entry;
 			continue;
 		}
 
-		/* Unlink stale entries, including the first entry in the list. */
+		/* Unlink stale entries, including the list head. */
 		if (previous == NULL)
 			ko->images = next;
 		else
@@ -418,7 +416,7 @@ kitty_upload(struct tty *tty, struct image *im)
 	struct kitty_image_cache	*entry;
 	char				 control[128], encoded[4097];
 	const u_char			*pixels;
-	u_char				*padded;
+	u_char				*padded, *padded_row;
 	size_t				 offset, size, row, stride, image_size;
 	int				 encodedlen;
 	u_int				 id, width, height;
@@ -434,12 +432,14 @@ kitty_upload(struct tty *tty, struct image *im)
 	if ((uint64_t)upload_width * upload_height > IMAGE_SIZE_LIMIT / 4)
 		return (NULL);
 
+	/* Reuse uploads only while the terminal cell size is unchanged. */
 	for (entry = ko->images; entry != NULL; entry = entry->next) {
 		if (entry->server_id != image_get_id(im))
 			continue;
 		if (entry->xpixel == tty->xpixel &&
-		    entry->ypixel == tty->ypixel)
+		    entry->ypixel == tty->ypixel) {
 			return (entry);
+		}
 		kitty_delete(tty, entry->kitty_id);
 		kitty_free_placements(entry);
 		entry->server_id = 0;
@@ -450,6 +450,8 @@ kitty_upload(struct tty *tty, struct image *im)
 		entry->next = ko->images;
 		ko->images = entry;
 	}
+
+	/* Allocate a nonzero terminal image ID. */
 	do {
 		id = ++ko->next_id & 0xffffff;
 	} while (id == 0);
@@ -460,21 +462,18 @@ kitty_upload(struct tty *tty, struct image *im)
 	entry->next_placement = 0;
 
 	pixels = image_get_pixels(im, &stride, &image_size);
-	/*
-	 * Pad the upload with duplicate edge pixels. Kitty linearly filters scaled
-	 * textures against transparent border pixels, which otherwise darkens the
-	 * outermost pixels of an opaque image.
-	 */
+
+	/* Duplicate edge pixels to prevent dark borders from filtering. */
 	padded = xcalloc((size_t)upload_width * upload_height, 4);
-	for (row = 0; row < height; row++)
-		memcpy(padded + ((size_t)(row + 1) * upload_width + 1) * 4,
+	for (row = 0; row < height; row++) {
+		memcpy(padded + ((row + 1) * upload_width + 1) * 4,
 		    pixels + row * stride, (size_t)width * 4);
+	}
 	for (row = 1; row <= canvas_height; row++) {
-		memcpy(padded + (size_t)row * upload_width * 4,
-		    padded + ((size_t)row * upload_width + 1) * 4, 4);
-		memcpy(padded + ((size_t)row * upload_width + upload_width - 1) * 4,
-		    padded + ((size_t)row * upload_width + upload_width - 2) * 4,
-		    4);
+		padded_row = padded + row * upload_width * 4;
+		memcpy(padded_row, padded_row + 4, 4);
+		memcpy(padded_row + (upload_width - 1) * 4,
+		    padded_row + (upload_width - 2) * 4, 4);
 	}
 	memcpy(padded, padded + (size_t)upload_width * 4,
 	    (size_t)upload_width * 4);
@@ -485,6 +484,8 @@ kitty_upload(struct tty *tty, struct image *im)
 	width = upload_width;
 	height = upload_height;
 	image_size = (size_t)width * height * 4;
+
+	/* Send base64 chunks, with image controls on the first chunk. */
 	for (offset = 0; offset < image_size; offset += size) {
 		size = image_size - offset;
 		if (size > KITTY_CHUNK_SIZE)
@@ -518,7 +519,8 @@ kitty_draw_rect(struct tty *tty, const struct image_rect *rectangle)
 	struct kitty_image_cache	*entry;
 	struct image			*im;
 	u_int				 source_x, source_y;
-	u_int				 width, height, destination_x, destination_y;
+	u_int				 width, height;
+	u_int				 destination_x, destination_y;
 	int32_t				 z;
 
 	im = image_rect_get_image(rectangle);
@@ -581,6 +583,7 @@ kitty_control(struct kitty_state *ks, const u_char *buf, size_t len)
 	int32_t		 signed_number;
 	char		 key;
 
+	/* Read comma-separated keys and validate each control value. */
 	while (buf < end) {
 		key = *buf++;
 		if (buf == end || *buf++ != '=')
@@ -612,22 +615,25 @@ kitty_control(struct kitty_state *ks, const u_char *buf, size_t len)
 			break;
 		case 'P': case 'Q':
 			if (kitty_number((const char *)value, valuelen,
-			    &number) != 0)
+			    &number) != 0) {
 				return (-1);
+			}
 			if (number != 0)
 				ks->unsupported = 1;
 			break;
 		case 'H': case 'V':
 			if (kitty_signed_number((const char *)value, valuelen,
-			    &signed_number) != 0)
+			    &signed_number) != 0) {
 				return (-1);
+			}
 			if (signed_number != 0)
 				ks->unsupported = 1;
 			break;
 		case 'z':
 			if (kitty_signed_number((const char *)value, valuelen,
-			    &ks->z) != 0)
+			    &ks->z) != 0) {
 				return (-1);
+			}
 			break;
 		case 'f':
 		case 's':
@@ -649,8 +655,9 @@ kitty_control(struct kitty_state *ks, const u_char *buf, size_t len)
 		case 'X':
 		case 'Y':
 			if (kitty_number((const char *)value, valuelen,
-			    &number) != 0)
+			    &number) != 0) {
 				return (-1);
+			}
 			switch (key) {
 			case 'f': ks->format = number; break;
 			case 's': ks->width = number; break;
@@ -857,14 +864,16 @@ kitty_delete_images(void *state, struct screen_write_ctx *ctx,
 
 	if (kc == NULL)
 		return;
-	if (how >= 'A') {
-		if (how <= 'Z') {
-			how += 'a' - 'A';
-			release = 1;
-		}
+
+	/* Uppercase selectors also release unreferenced source image data. */
+	if (how >= 'A' && how <= 'Z') {
+		how += 'a' - 'A';
+		release = 1;
 	}
 	if (how == 'r')
 		placement_id = 0;
+
+	/* Remove grid placements before checking virtual placements. */
 	for (source = kc->sources; source != NULL; source = source->next)
 		(void)kitty_prune_placements(source, gd);
 	image_clear_kitty(ctx, result);
@@ -874,20 +883,18 @@ kitty_delete_images(void *state, struct screen_write_ctx *ctx,
 		if (how == 'i') {
 			if (source->app_id == result->image_id)
 				selected = 1;
-		} else if (how == 'r') {
-			if (source->app_id >= result->x) {
-				if (source->app_id <= result->y)
-					selected = 1;
-			}
+		} else if (how == 'r' && source->app_id >= result->x &&
+		    source->app_id <= result->y) {
+			selected = 1;
 		}
 		if (selected) {
 			for (pp = &source->placements;
 			    (placement = *pp) != NULL; ) {
 				if (!placement->virtual)
 					goto keep_placement;
-				if (placement_id != 0) {
-					if (placement->placement_id != placement_id)
-						goto keep_placement;
+				if (placement_id != 0 &&
+				    placement->placement_id != placement_id) {
+					goto keep_placement;
 				}
 				*pp = placement->next;
 				image_free(placement->server_id);
@@ -900,11 +907,9 @@ keep_placement:
 			if (placement_id == 0)
 				removed++;
 		}
-		if (!release)
-			goto keep_source;
-		if (removed == 0)
-			goto keep_source;
-		if (source->placements != NULL)
+
+		/* Keep source data until every retained placement is gone. */
+		if (!release || removed == 0 || source->placements != NULL)
 			goto keep_source;
 		if (image_grid_has_image(gd, source->server_id))
 			goto keep_source;
@@ -930,6 +935,7 @@ kitty_append(struct kitty_state *ks, const u_char *buf, size_t len)
 
 	if (len > IMAGE_SIZE_LIMIT)
 		return (-1);
+
 	/* Older Chafa chunks have padding with nonzero unused bits. */
 	if (len >= 4 && len % 4 == 0 && buf[len - 1] == '=') {
 		offset = len - 2;
@@ -979,14 +985,14 @@ kitty_raw(struct kitty_state *ks, u_char *data, size_t size)
 	u_int		 bytes;
 
 	bytes = (ks->format == 24 ? 3 : 4);
-	if (ks->width == 0)
-		return (NULL);
-	if (ks->height == 0)
+	if (ks->width == 0 || ks->height == 0)
 		return (NULL);
 	if ((uint64_t)ks->width * ks->height > IMAGE_SIZE_LIMIT / 4)
 		return (NULL);
 	expected = (size_t)ks->width * ks->height * bytes;
 	raw = data;
+
+	/* Decompress before checking the exact raster byte count. */
 	if (ks->compression == 'z') {
 		rawlen = expected;
 		raw = xmalloc(expected);
@@ -1006,6 +1012,7 @@ kitty_raw(struct kitty_state *ks, u_char *data, size_t size)
 	if (bytes == 4)
 		return (raw);
 
+	/* Expand RGB input to the shared RGBA pixel format. */
 	pixels = xmalloc((size_t)ks->width * ks->height * 4);
 	for (i = j = 0; i < expected; i += 3, j += 4) {
 		pixels[j] = raw[i];
@@ -1035,24 +1042,23 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 	image_get_size(source, &source_width, &source_height);
 	view.x = ks->source_x;
 	view.y = ks->source_y;
-	if (view.x >= source_width)
-		return (NULL);
-	if (view.y >= source_height)
+
+	/* Clip the requested source rectangle before scaling it. */
+	if (view.x >= source_width || view.y >= source_height)
 		return (NULL);
 	view.width = source_width - view.x;
-	if (ks->source_width != 0) {
-		if (view.width > ks->source_width)
-			view.width = ks->source_width;
-	}
+	if (ks->source_width != 0 && view.width > ks->source_width)
+		view.width = ks->source_width;
 	view.height = source_height - view.y;
-	if (ks->source_height != 0) {
-		if (view.height > ks->source_height)
-			view.height = ks->source_height;
-	}
+	if (ks->source_height != 0 && view.height > ks->source_height)
+		view.height = ks->source_height;
+
+	/* Choose placement dimensions in cells, preserving the aspect ratio. */
 	cell_width = (xpixel == 0 ? 8 : xpixel);
 	cell_height = (ypixel == 0 ? 16 : ypixel);
 	x_offset = ks->x_offset;
 	y_offset = ks->y_offset;
+
 	/* Match Kitty by clamping offsets to the starting cell. */
 	if (x_offset >= cell_width)
 		x_offset = cell_width - 1;
@@ -1060,19 +1066,15 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 		y_offset = cell_height - 1;
 	view.sx = ks->columns;
 	view.sy = ks->rows;
-	if (view.sx > USHRT_MAX)
+	if (view.sx > USHRT_MAX || view.sy > USHRT_MAX)
 		return (NULL);
-	if (view.sy > USHRT_MAX)
-		return (NULL);
-	if (view.sx == 0) {
-		if (view.sy == 0)
-			natural_size = 1;
-	}
+	if (view.sx == 0 && view.sy == 0)
+		natural_size = 1;
 	if (natural_size) {
-		if (x_offset > UINT_MAX - view.width)
+		if (x_offset > UINT_MAX - view.width ||
+		    y_offset > UINT_MAX - view.height) {
 			return (NULL);
-		if (y_offset > UINT_MAX - view.height)
-			return (NULL);
+		}
 		image_size_in_cells(view.width + x_offset,
 		    view.height + y_offset, cell_width, cell_height,
 		    &view.sx, &view.sy);
@@ -1100,6 +1102,7 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 	}
 	canvas_width = (uint64_t)view.sx * cell_width;
 	canvas_height = (uint64_t)view.sy * cell_height;
+
 	/* Preserve source resolution when shrinking the image. */
 	if (scale < 1)
 		units = 1 / scale;
@@ -1119,49 +1122,38 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 		view.scaled_height = view.height;
 	view.x_offset = floor(x_offset * units);
 	view.y_offset = floor(y_offset * units);
-	if (view.x_offset > view.canvas_width)
+	if (view.x_offset > view.canvas_width ||
+	    view.scaled_width > view.canvas_width - view.x_offset ||
+	    view.y_offset > view.canvas_height ||
+	    view.scaled_height > view.canvas_height - view.y_offset) {
 		return (NULL);
-	if (view.scaled_width > view.canvas_width - view.x_offset)
-		return (NULL);
-	if (view.y_offset > view.canvas_height)
-		return (NULL);
-	if (view.scaled_height > view.canvas_height - view.y_offset)
-		return (NULL);
-	if (ks->columns != 0) {
-		if (ks->rows != 0) {
-			view.x_offset += (view.canvas_width - view.x_offset -
-			    view.scaled_width) / 2;
-			view.y_offset += (view.canvas_height - view.y_offset -
-			    view.scaled_height) / 2;
-		}
+	}
+
+	/* Centre the image when both placement dimensions were specified. */
+	if (ks->columns != 0 && ks->rows != 0) {
+		view.x_offset += (view.canvas_width - view.x_offset -
+		    view.scaled_width) / 2;
+		view.y_offset += (view.canvas_height - view.y_offset -
+		    view.scaled_height) / 2;
 	}
 	/* A matching rectangle needs neither resampling nor padding. */
-	if (x_offset == 0) {
-		if (y_offset == 0) {
-			if ((uint64_t)view.width * canvas_height ==
-			    (uint64_t)view.height * canvas_width) {
-				view.canvas_width = view.width;
-				view.scaled_width = view.width;
-				view.canvas_height = view.height;
-				view.scaled_height = view.height;
-				view.x_offset = 0;
-				view.y_offset = 0;
-			}
-		}
+	if (x_offset == 0 && y_offset == 0 &&
+	    (uint64_t)view.width * canvas_height ==
+	    (uint64_t)view.height * canvas_width) {
+		view.canvas_width = view.width;
+		view.scaled_width = view.width;
+		view.canvas_height = view.height;
+		view.scaled_height = view.height;
+		view.x_offset = 0;
+		view.y_offset = 0;
 	}
 	im = image_create_view(source, &view);
-	if (im != NULL) {
-		if (ks->no_cursor)
-			image_set_no_cursor(im);
-	}
+	if (im != NULL && ks->no_cursor)
+		image_set_no_cursor(im);
 	return (im);
 }
 
-/*
- * Parse one Kitty graphics APC body (without the leading G). Only direct
- * static images are accepted. The returned image retains immutable RGBA
- * pixels for the lifetime of its placement.
- */
+/* Parse a Kitty graphics APC body into a reply and optional image placement. */
 struct image *
 kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
     u_int ypixel, struct kitty_parse_result *result)
@@ -1185,6 +1177,8 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 	}
 	memset(result, 0, sizeof *result);
 	result->status = KITTY_PARSE_ERROR;
+
+	/* Split controls from payload and resume any incomplete upload. */
 	ks = kc->transfer;
 	semi = memchr(buf, ';', len);
 	controllen = (semi == NULL ? len : (size_t)(semi - buf));
@@ -1206,10 +1200,10 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 	}
 	ks->more = 0;
 	error = kitty_control(ks, buf, controllen);
-	if (ks->image_id == 0) {
-		if (ks->image_number == 0)
-			ks->placement_id = 0;
-	}
+	if (ks->image_id == 0 && ks->image_number == 0)
+		ks->placement_id = 0;
+
+	/* Preserve reply fields even when the command cannot be accepted. */
 	result->image_id = ks->image_id;
 	result->image_number = ks->image_number;
 	result->quiet = ks->quiet;
@@ -1235,16 +1229,18 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 		result->status = KITTY_PARSE_UNSUPPORTED;
 		goto fail;
 	}
-	if (payloadlen != 0) {
-		if (kitty_append(ks, semi + 1, payloadlen) != 0)
-			goto fail;
-	}
+
+	/* Accumulate decoded chunks until the final transmission. */
+	if (payloadlen != 0 && kitty_append(ks, semi + 1, payloadlen) != 0)
+		goto fail;
 	if (ks->more) {
 		kc->transfer = ks;
 		result->status = KITTY_PARSE_MORE;
 		return (NULL);
 	}
 	kc->transfer = NULL;
+
+	/* Placement and deletion commands need no new raster data. */
 	if (ks->action == 'p') {
 		source = kitty_source_get(kc, ks->image_id);
 		if (source == NULL) {
@@ -1298,6 +1294,7 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 		goto fail;
 	}
 
+	/* Decode the complete PNG or raw pixel payload. */
 	decoded = ks->raw;
 	decodedlen = ks->rawlen;
 	ks->raw = NULL;
@@ -1338,6 +1335,7 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 	if (pixels == NULL)
 		goto fail;
 
+	/* Pad the source canvas to whole cells before creating placements. */
 	cell_width = (xpixel == 0 ? 8 : xpixel);
 	cell_height = (ypixel == 0 ? 16 : ypixel);
 	image_size_in_cells(ks->width, ks->height, cell_width, cell_height,
@@ -1353,8 +1351,12 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 		free(pixels);
 	else {
 		result->status = KITTY_PARSE_OK;
-		if (ks->action != 'q')
-			result->replace_id = kitty_source_set(kc, ks->image_id, source);
+
+		/* Queries validate the data without retaining an image. */
+		if (ks->action != 'q') {
+			result->replace_id = kitty_source_set(kc,
+			    ks->image_id, source);
+		}
 		if (ks->action == 'q')
 			im = NULL;
 		else if (ks->action == 'T' && !ks->virtual) {
@@ -1487,8 +1489,8 @@ kitty_placeholder_to_image(void *state, struct grid *gd, struct grid_cell *gc,
 	struct kitty_context	*kc = state;
 	struct kitty_source	*source;
 	struct kitty_placement	*placement;
-	struct kitty_placeholder	 left;
-	struct grid_cell		 left_cell;
+	struct kitty_placeholder left;
+	struct grid_cell	 left_cell;
 	struct image		*im;
 	uint32_t		 value;
 	size_t			 offset = 0;
@@ -1498,15 +1500,19 @@ kitty_placeholder_to_image(void *state, struct grid *gd, struct grid_cell *gc,
 
 	if (kc == NULL)
 		return (0);
+
+	/* Decode the placeholder base character and its coordinate marks. */
 	if (!kitty_placeholder_character(gc->data.data, gc->data.size, &offset,
-	    &value))
+	    &value)) {
 		return (0);
+	}
 	if (value != 0x10eeee)
 		return (0);
 	while (offset < gc->data.size && nvalues < nitems(values)) {
 		if (!kitty_placeholder_character(gc->data.data, gc->data.size,
-		    &offset, &value))
+		    &offset, &value)) {
 			return (0);
+		}
 		if (!kitty_placeholder_index(value, &values[nvalues]))
 			return (0);
 		nvalues++;
@@ -1521,23 +1527,19 @@ kitty_placeholder_to_image(void *state, struct grid *gd, struct grid_cell *gc,
 		y = values[0];
 	if (nvalues >= 2)
 		x = values[1];
+
+	/* Inherit missing coordinates from the matching left placeholder. */
 	if (grid_x != 0) {
 		grid_view_get_cell(gd, grid_x - 1, grid_y, &left_cell);
-		if (left_cell.fg == gc->fg) {
-			if (left_cell.us == gc->us) {
-				inherit = image_grid_get_placeholder(gd,
-				    grid_x - 1, gd->hsize + grid_y, &left);
-			}
+		if (left_cell.fg == gc->fg && left_cell.us == gc->us) {
+			inherit = image_grid_get_placeholder(gd,
+			    grid_x - 1, gd->hsize + grid_y, &left);
 		}
 	}
 	if (inherit) {
-		if (nvalues >= 1) {
-			if (left.source_y != y)
-				inherit = 0;
-		}
-		if (nvalues >= 2) {
-			if (left.source_x + 1 != x)
-				inherit = 0;
+		if ((nvalues >= 1 && left.source_y != y) ||
+		    (nvalues >= 2 && left.source_x + 1 != x)) {
+			inherit = 0;
 		}
 	}
 	if (inherit) {
@@ -1553,6 +1555,8 @@ kitty_placeholder_to_image(void *state, struct grid *gd, struct grid_cell *gc,
 			return (0);
 		id |= values[2] << 24;
 	}
+
+	/* Resolve the application image ID and its virtual placement. */
 	source = kitty_source_find(kc, id);
 	if (source == NULL)
 		return (0);
@@ -1560,9 +1564,9 @@ kitty_placeholder_to_image(void *state, struct grid *gd, struct grid_cell *gc,
 	    placement = placement->next) {
 		if (!placement->virtual)
 			continue;
-		if (placement_id != 0) {
-			if (placement->placement_id != placement_id)
-				continue;
+		if (placement_id != 0 &&
+		    placement->placement_id != placement_id) {
+			continue;
 		}
 		break;
 	}
