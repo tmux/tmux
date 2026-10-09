@@ -2084,10 +2084,8 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 	ttyctx.bg = bg;
 
 	/* Erasing to the end clears the whole screen at 0,0. */
-	if (s->cx == 0) {
-		if (s->cy == 0)
-			osc133 = input_osc_133_save_marker(ctx->owner, s);
-	}
+	if (s->cx == 0 && s->cy == 0)
+		osc133 = input_osc_133_save_marker(ctx->owner, s);
 
 	/* Scroll into history if it is enabled and clearing entire screen. */
 	if (s->cx == 0 &&
