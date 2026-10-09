@@ -829,6 +829,7 @@ struct colour_palette {
 #define GRID_LINE_START_OUTPUT 0x40
 #define GRID_LINE_END_OUTPUT 0x80
 #define GRID_LINE_HYPERLINK 0x100
+#define GRID_LINE_END_OUTPUT_STATUS 0x200
 
 /* All OSC 133 flags. */
 #define GRID_LINE_OSC133_FLAGS \
@@ -836,7 +837,8 @@ struct colour_palette {
 	 GRID_LINE_SECOND_PROMPT| \
 	 GRID_LINE_START_COMMAND| \
 	 GRID_LINE_START_OUTPUT| \
-	 GRID_LINE_END_OUTPUT)
+	 GRID_LINE_END_OUTPUT| \
+	 GRID_LINE_END_OUTPUT_STATUS)
 
 /* Grid string flags. */
 #define GRID_STRING_WITH_SEQUENCES 0x1
@@ -912,6 +914,14 @@ struct osc133_data {
 	u_short			 out_start_col;
 	u_short			 out_end_col;
 	u_char			 exit_status;
+};
+
+/* Saved OSC 133 output marker. */
+struct osc133_marker {
+	int			 running;
+	u_int			 start;
+	u_int			 col;
+	u_int			 collected;
 };
 
 /* Grid line. */
@@ -1128,6 +1138,7 @@ typedef void (*screen_write_init_ctx_cb)(struct screen_write_ctx *,
     struct tty_ctx *);
 struct screen_write_ctx {
 	struct window_pane		*wp;
+	struct window_pane		*owner; /* pane for screen metadata */
 	struct screen			*s;
 
 	int				 flags;
@@ -3447,6 +3458,10 @@ void	 input_reply_clipboard(struct bufferevent *, const char *, size_t,
 void	 input_set_buffer_size(size_t);
 void	 input_request_reply(struct client *, enum input_request_type, void *);
 void	 input_cancel_requests(struct client *);
+struct osc133_marker	 input_osc_133_save_marker(struct window_pane *,
+	     struct screen *);
+void	 input_osc_133_restore_marker(struct screen *,
+	     const struct osc133_marker *);
 
 /* input-key.c */
 void	 input_key_build(void);
