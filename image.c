@@ -966,7 +966,7 @@ image_create(u_int width, u_int height, u_int canvas_width,
 	if (width == 0 || height == 0 || canvas_width < width ||
 	    canvas_height < height || sx == 0 || sy == 0 || pixels == NULL)
 		return (NULL);
-	if ((uint64_t)width * height * 4 > SIZE_MAX)
+	if ((uint64_t)width * height > SIZE_MAX / 4)
 		return (NULL);
 	if ((uint64_t)sx * sy > SIZE_MAX / sizeof *im->cells ||
 	    sx > USHRT_MAX || sy > USHRT_MAX)

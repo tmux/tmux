@@ -431,7 +431,7 @@ kitty_upload(struct tty *tty, struct image *im)
 		return (NULL);
 	upload_width = canvas_width + 2;
 	upload_height = canvas_height + 2;
-	if ((uint64_t)upload_width * upload_height * 4 > IMAGE_SIZE_LIMIT)
+	if ((uint64_t)upload_width * upload_height > IMAGE_SIZE_LIMIT / 4)
 		return (NULL);
 
 	for (entry = ko->images; entry != NULL; entry = entry->next) {
