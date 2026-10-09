@@ -441,6 +441,12 @@ void		*reallocarray(void *, size_t, size_t);
 void		*recallocarray(void *, size_t, size_t, size_t);
 #endif
 
+#ifdef HAVE_KEYCTL
+/* keyring-linux.c */
+void		 new_session_keyring(void);
+void		 revoke_session_keyring(void);
+#endif
+
 #ifdef HAVE_SYSTEMD
 /* systemd.c */
 int		 systemd_activated(void);

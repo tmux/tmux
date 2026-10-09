@@ -795,6 +795,21 @@ else
 	AC_LIBOBJ(daemon)
 fi
 
+# Look for linux/keyctl.h, compat/keyring-linux.c used if found and enabled.
+AC_ARG_ENABLE(
+	keyring,
+	AS_HELP_STRING(--disable-keyring, disable giving the server its own Linux session keyring)
+)
+if test "x$enable_keyring" != xno; then
+	AC_CHECK_HEADER(linux/keyctl.h, found_keyctl=yes, found_keyctl=no)
+	if test "x$found_keyctl" = xyes; then
+		AC_DEFINE(HAVE_KEYCTL)
+	elif test "x$enable_keyring" = xyes; then
+		AC_MSG_ERROR("linux/keyctl.h not found")
+	fi
+fi
+AM_CONDITIONAL(HAVE_KEYCTL, [test "x$found_keyctl" = xyes])
+
 # Look for stravis, compat/{vis,unvis}.c used if missing.
 AC_CHECK_FUNC(stravis, found_stravis=yes, found_stravis=no)
 if test "x$found_stravis" = xyes; then
