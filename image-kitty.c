@@ -952,6 +952,12 @@ kitty_append(struct kitty_state *ks, const u_char *buf, size_t len)
 	free(copy);
 	if (decoded == NULL)
 		return (-1);
+
+	/* Empty decoded chunks need no allocation. */
+	if (decodedlen == 0) {
+		free(decoded);
+		return (0);
+	}
 	if (decodedlen > IMAGE_SIZE_LIMIT - ks->rawlen) {
 		free(decoded);
 		return (-1);

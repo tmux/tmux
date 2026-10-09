@@ -142,6 +142,12 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         check('invalid-reply', origin + graphics('a=T,i=7,p=9,f=32,s=1,v=1', '!!!!'),
               '5,2', graphics('i=7,p=9', 'EINVAL'))
         check('quiet-error', origin + graphics('a=T,q=2,i=7,f=32,s=1,v=1', '!!!!'), '5,2')
+        check('empty-decoded-payload', origin +
+              graphics('a=T,i=7,f=32,s=1,v=1', '    '), '5,2',
+              graphics('i=7', 'EINVAL'))
+        check('empty-decoded-chunk',
+              graphics(placement + ',m=1', '    ') + origin +
+              graphics('m=0', pixel), '8,4')
         check('quiet-ok', origin + graphics('a=t,q=1,i=7,f=32,s=1,v=1', pixel), '5,2')
         check('quiet-one-error', origin + graphics('a=t,q=1,i=7,f=32,s=1,v=1', '!!!!'),
               '5,2', graphics('i=7', 'EINVAL'))
