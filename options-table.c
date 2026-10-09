@@ -743,6 +743,15 @@ const struct options_table_entry options_table[] = {
 		  "'User0', 'User1' and so on."
 	},
 
+#ifdef HAVE_UTEMPTER
+	{ .name = "utmp",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_num = 1,
+	  .text = "Whether to maintain utmp records."
+	},
+#endif
+
 	{ .name = "variation-selector-always-wide",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_SERVER,

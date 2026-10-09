@@ -322,6 +322,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 			sc->wp0->event = NULL;
 		}
 		if (sc->wp0->fd != -1) {
+			window_pane_utmp_remove(sc->wp0);
 			close(sc->wp0->fd);
 			sc->wp0->fd = -1;
 		}
@@ -579,16 +580,8 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	_exit(1);
 
 complete:
-#ifdef HAVE_UTEMPTER
-	if (~new_wp->flags & PANE_EMPTY) {
-		xasprintf(&cp, "tmux(%lu).%%%u", (long)getpid(), new_wp->id);
-		utempter_add_record(new_wp->fd, cp);
-		kill(getpid(), SIGCHLD);
-		free(cp);
-	}
-#endif
-
 	new_wp->flags &= ~PANE_EXITED;
+	window_pane_utmp_add(new_wp);
 
 	sigprocmask(SIG_SETMASK, &oldset, NULL);
 	window_pane_set_event(new_wp);
