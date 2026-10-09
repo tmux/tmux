@@ -399,6 +399,9 @@ server_client_lost(struct client *c)
 	if (c->name != NULL && (c->flags & (CLIENT_CONTROL|CLIENT_TERMINAL)))
 		events_fire_client("client-closed", c);
 
+	c->session = NULL;
+	c->last_session = NULL;
+
 	if (c->flags & CLIENT_CONTROL)
 		control_stop(c);
 	if (c->flags & CLIENT_TERMINAL)
