@@ -99,6 +99,44 @@ utf8_regional_count(const struct utf8_data *ud)
 	return (count);
 }
 
+/*
+ * Check if a character is added to the character before it: return 1 if it
+ * is, 0 if it starts a new character, or -1 if it should be dropped. This could
+ * be a Korean Hangul Jamo character, a zero width character, a modifier
+ * character (with an existing Unicode character) or a character after a ZWJ.
+ * Set force_wide if the combined character must be wide.
+ */
+int
+utf8_combine(const struct utf8_data *last, const struct utf8_data *ud,
+    int *force_wide)
+{
+	*force_wide = 0;
+	if (utf8_is_vs(ud)) {
+		if (options_get_number(global_options,
+		    "variation-selector-always-wide"))
+			*force_wide = 1;
+		return (1);
+	}
+	if (utf8_is_zwj(ud) || ud->width == 0)
+		return (1);
+
+	switch (hanguljamo_check_state(last, ud)) {
+	case HANGULJAMO_STATE_NOT_COMPOSABLE:
+		return (-1);
+	case HANGULJAMO_STATE_CHOSEONG:
+		return (0);
+	case HANGULJAMO_STATE_COMPOSABLE:
+		return (1);
+	case HANGULJAMO_STATE_NOT_HANGULJAMO:
+		break;
+	}
+	if (utf8_should_combine(last, ud) || utf8_should_combine(ud, last)) {
+		*force_wide = 1;
+		return (1);
+	}
+	return (utf8_has_zwj(last));
+}
+
 /* Should these two characters combine? */
 int
 utf8_should_combine(const struct utf8_data *with, const struct utf8_data *add)

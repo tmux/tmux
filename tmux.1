@@ -3546,6 +3546,43 @@ or
 (time).
 .Fl r
 reverses the sort order.
+.It Xo Ic load\-state
+.Fl w
+.Op Fl d
+.Op Fl t Ar target\-window
+.Ar path
+.Xc
+With
+.Fl w ,
+create a new window from the JSON in
+.Ar path
+written by
+.Ic save\-state .
+The window has the saved name, layout, pane titles and pane contents, and is
+zoomed if the saved window was zoomed.
+Its panes run nothing, but keep the saved command and working directory, so
+.Ic respawn\-pane
+starts the saved command in the saved directory.
+The saved window and pane options replace those of the new window and panes;
+an unknown option or a value that cannot be set makes the command fail without
+creating anything.
+If the file has no options for the window,
+.Ic automatic\-rename
+is turned off for it, as with
+.Ic new\-window
+.Fl n .
+Options can hold hooks and formats that run commands, so a file should be
+trusted as a configuration file would be.
+.Fl d
+and
+.Fl t
+are as for
+.Ic new\-window .
+If
+.Ar path
+is
+.Ql \- ,
+the window is read from stdin.
 .Tg movep
 .It Xo Ic move\-pane
 .Op Fl bdfhMv
@@ -4071,6 +4108,29 @@ lower) with
 or downward (numerically higher).
 .Fl Z
 keeps the window zoomed if it was zoomed.
+.It Xo Ic save\-state
+.Fl w
+.Op Fl t Ar target\-window
+.Ar path
+.Xc
+With
+.Fl w ,
+save
+.Ar target\-window
+to
+.Ar path
+as JSON for
+.Ic load\-state .
+The window's name, layout, zoom and options are saved, and each pane's title,
+working directory, command, options, palette, contents and terminal state: the
+cursor and its style, modes, scroll region, tab stops, title stack, path,
+hyperlinks and shell prompt marks.
+Running programs and images are not saved.
+If
+.Ar path
+is
+.Ql \- ,
+the window is written to stdout.
 .Tg selectl
 .It Xo Ic select\-layout
 .Op Fl Enop

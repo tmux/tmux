@@ -595,6 +595,48 @@ layout_check(struct layout_cell *lc)
 	return (1);
 }
 
+/*
+ * Correct the size of the top cell and check the layout sizes fit. It appears
+ * older versions of tmux were able to generate layouts with an incorrect top
+ * cell size - if it is larger than the top child then correct that (if this is
+ * still wrong the check code will catch it).
+ */
+static int
+layout_fix_root(struct layout_cell *lc)
+{
+	struct layout_cell	*lcchild;
+	u_int			 sx = 0, sy = 0;
+
+	switch (lc->type) {
+	case LAYOUT_WINDOWPANE:
+		break;
+	case LAYOUT_LEFTRIGHT:
+		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+			if (layout_cell_is_tiled(lcchild) ||
+			    layout_cell_has_tiled_child(lcchild)) {
+				sy = lcchild->g.sy + 1;
+				sx += lcchild->g.sx + 1;
+			}
+		}
+		break;
+	case LAYOUT_TOPBOTTOM:
+		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+			if (layout_cell_is_tiled(lcchild) ||
+			    layout_cell_has_tiled_child(lcchild)) {
+				sx = lcchild->g.sx + 1;
+				sy += lcchild->g.sy + 1;
+			}
+		}
+		break;
+	}
+	if (lc->type != LAYOUT_WINDOWPANE && sx != 0 && sy != 0 &&
+	    (lc->g.sx != sx || lc->g.sy != sy)) {
+		layout_print_cell(lc, __func__, 0);
+		lc->g.sx = sx - 1; lc->g.sy = sy - 1;
+	}
+	return (layout_check(lc));
+}
+
 /* Parse a layout string and arrange window as layout. */
 int
 layout_parse(struct window *w, const char *input, char **cause)
@@ -602,7 +644,7 @@ layout_parse(struct window *w, const char *input, char **cause)
 	struct window_pane	*wp;
 	struct layout_cell	*lcchild, *lc = NULL;
 	struct layout_parse_ctx	 pctx;
-	u_int			 npanes, ncells, sx = 0, sy = 0;
+	u_int			 npanes, ncells;
 	int			 with_floating;
 
 	/* Build the layout. */
@@ -646,41 +688,8 @@ layout_parse(struct window *w, const char *input, char **cause)
 	lc = pctx.root;
 	pctx.root = NULL;
 
-	/*
-	 * It appears older versions of tmux were able to generate layouts with
-	 * an incorrect top cell size - if it is larger than the top child then
-	 * correct that (if this is still wrong the check code will catch it).
-	 */
-	switch (lc->type) {
-	case LAYOUT_WINDOWPANE:
-		break;
-	case LAYOUT_LEFTRIGHT:
-		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (layout_cell_is_tiled(lcchild) ||
-			    layout_cell_has_tiled_child(lcchild)) {
-				sy = lcchild->g.sy + 1;
-				sx += lcchild->g.sx + 1;
-			}
-		}
-		break;
-	case LAYOUT_TOPBOTTOM:
-		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			if (layout_cell_is_tiled(lcchild) ||
-			    layout_cell_has_tiled_child(lcchild)) {
-				sx = lcchild->g.sx + 1;
-				sy += lcchild->g.sy + 1;
-			}
-		}
-		break;
-	}
-	if (lc->type != LAYOUT_WINDOWPANE && sx != 0 && sy != 0 &&
-	    (lc->g.sx != sx || lc->g.sy != sy)) {
-		layout_print_cell(lc, __func__, 0);
-		lc->g.sx = sx - 1; lc->g.sy = sy - 1;
-	}
-
 	/* Check the new layout. */
-	if (!layout_check(lc)) {
+	if (!layout_fix_root(lc)) {
 		*cause = xstrdup("size mismatch after applying layout");
 		goto fail;
 	}
@@ -727,6 +736,36 @@ fail:
 	layout_free_cell(lc, 0);
 	layout_parse_free_ctx(&pctx);
 	return (-1);
+}
+
+/*
+ * Check a layout string would fit a window with a number of panes, without
+ * changing anything.
+ */
+int
+layout_check_string(const char *input, u_int npanes, char **cause)
+{
+	struct layout_parse_ctx	pctx;
+	u_int			ncells;
+	int			retval = -1;
+
+	layout_parse_init_ctx(&pctx, cause);
+	if (layout_construct(input, &pctx) != 0)
+		goto out;
+	ncells = layout_count_cells(pctx.root, pctx.version > 1);
+	if (ncells != npanes) {
+		xasprintf(cause, "have %u panes but need %u", npanes, ncells);
+		goto out;
+	}
+	if (!layout_fix_root(pctx.root)) {
+		*cause = xstrdup("size mismatch after applying layout");
+		goto out;
+	}
+	retval = 0;
+
+out:
+	layout_parse_free_ctx(&pctx);
+	return (retval);
 }
 
 /* Assign panes into cells from the cell contexts. */

@@ -1078,6 +1078,18 @@ struct progress_bar {
 	int			progress;
 };
 
+/* Cursor, cell and character sets saved by DECSC. */
+struct input_saved_cursor {
+	u_int			 cx;
+	u_int			 cy;
+	int			 mode;
+
+	struct grid_cell	 cell;
+	int			 set;
+	int			 g0set;
+	int			 g1set;
+};
+
 /* Virtual screen. */
 struct screen_sel;
 struct screen_titles;
@@ -3446,6 +3458,10 @@ void	 input_reply_clipboard(struct bufferevent *, const char *, size_t,
 void	 input_set_buffer_size(size_t);
 void	 input_request_reply(struct client *, enum input_request_type, void *);
 void	 input_cancel_requests(struct client *);
+void	 input_get_saved_cursor(struct input_ctx *,
+	     struct input_saved_cursor *);
+void	 input_set_saved_cursor(struct input_ctx *,
+	     const struct input_saved_cursor *);
 
 /* input-key.c */
 void	 input_key_build(void);
@@ -3681,6 +3697,7 @@ int	 screen_set_title(struct screen *, const char *, int);
 int	 screen_set_path(struct screen *, const char *, int);
 void	 screen_push_title(struct screen *);
 void	 screen_pop_title(struct screen *);
+const char *screen_get_title(struct screen *, u_int);
 void	 screen_set_progress_bar(struct screen *, enum progress_bar_state, int);
 void	 screen_resize(struct screen *, u_int, u_int, int);
 void	 screen_resize_cursor(struct screen *, u_int, u_int, int, int, int);
@@ -3930,6 +3947,7 @@ int		 layout_insert_tile(struct window *, struct layout_cell *);
 #define LAYOUT_CUSTOM_OLD_FORMAT 0x1
 char		*layout_dump(struct window *, struct layout_cell *, int);
 int		 layout_parse(struct window *, const char *, char **);
+int		 layout_check_string(const char *, u_int, char **);
 
 /* layout-set.c */
 int		 layout_set_lookup(const char *);
@@ -4156,6 +4174,8 @@ int		 utf8_has_zwj(const struct utf8_data *);
 int		 utf8_is_zwj(const struct utf8_data *);
 int		 utf8_is_vs(const struct utf8_data *);
 int		 utf8_is_hangul_filler(const struct utf8_data *);
+int		 utf8_combine(const struct utf8_data *,
+		     const struct utf8_data *, int *);
 int		 utf8_should_combine(const struct utf8_data *,
 		    const struct utf8_data *);
 enum hanguljamo_state hanguljamo_check_state(const struct utf8_data *,
@@ -4299,5 +4319,13 @@ int			 json_find_object(struct json_node *, const char *,
 			     struct json_node **, char **);
 int			 json_find_array(struct json_node *, const char *,
 			     struct json_node **, char **);
+void			 json_write_string(struct evbuffer *, const char *);
+char			*json_decode_string(const char *);
+
+/* state.c */
+int		 state_save_window(struct window *, struct evbuffer *,
+		     char **);
+struct winlink	*state_load_window(const char *, struct session *, int,
+		     struct client *, int, char **);
 
 #endif /* TMUX_H */

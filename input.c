@@ -870,6 +870,33 @@ input_restore_state(struct input_ctx *ictx)
 	screen_write_cursormove(sctx, ictx->old_cx, ictx->old_cy, 0);
 }
 
+/* Get the cursor, cell and character sets saved by DECSC. */
+void
+input_get_saved_cursor(struct input_ctx *ictx, struct input_saved_cursor *isc)
+{
+	isc->cx = ictx->old_cx;
+	isc->cy = ictx->old_cy;
+	isc->mode = ictx->old_mode;
+	memcpy(&isc->cell, &ictx->old_cell.cell, sizeof isc->cell);
+	isc->set = ictx->old_cell.set;
+	isc->g0set = ictx->old_cell.g0set;
+	isc->g1set = ictx->old_cell.g1set;
+}
+
+/* Set the cursor, cell and character sets that DECRC restores. */
+void
+input_set_saved_cursor(struct input_ctx *ictx,
+    const struct input_saved_cursor *isc)
+{
+	ictx->old_cx = isc->cx;
+	ictx->old_cy = isc->cy;
+	ictx->old_mode = isc->mode;
+	memcpy(&ictx->old_cell.cell, &isc->cell, sizeof ictx->old_cell.cell);
+	ictx->old_cell.set = isc->set;
+	ictx->old_cell.g0set = isc->g0set;
+	ictx->old_cell.g1set = isc->g1set;
+}
+
 /* Initialise input parser. */
 struct input_ctx *
 input_init(struct window_pane *wp, struct bufferevent *bev,

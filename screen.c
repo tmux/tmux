@@ -336,6 +336,21 @@ screen_pop_title(struct screen *s)
 	}
 }
 
+/* Get a title from the stack, the most recently pushed first. */
+const char *
+screen_get_title(struct screen *s, u_int idx)
+{
+	struct screen_title_entry	*title_entry;
+
+	if (s->titles == NULL)
+		return (NULL);
+	TAILQ_FOREACH(title_entry, s->titles, entry) {
+		if (idx-- == 0)
+			return (title_entry->text);
+	}
+	return (NULL);
+}
+
 /*
  * Set the progress bar state and progress. The progress will not be updated
  * if p is negative.
