@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-join-pane.c,v 1.77 2026/10/07 12:02:21 nicm Exp $ */
+/* $OpenBSD: cmd-join-pane.c,v 1.78 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 George Nachman <tmux@georgester.com>
@@ -37,6 +37,7 @@ static void		cmd_join_pane_mouse_move(struct client *,
 
 const struct cmd_entry cmd_join_pane_entry = {
 	.name = "join-pane",
+	.description = "Move a pane into another window.",
 	.alias = "joinp",
 
 	.args = { "bdfhvp:l:s:t:", 0, 0, NULL },
@@ -51,6 +52,7 @@ const struct cmd_entry cmd_join_pane_entry = {
 
 const struct cmd_entry cmd_move_pane_entry = {
 	.name = "move-pane",
+	.description = "Move a pane or reposition a floating pane.",
 	.alias = "movep",
 
 	.args = { "bdD::fhMvl:L::P:R::s:t:U::X:Y:z:", 0, 0, NULL },

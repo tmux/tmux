@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-list-keys.c,v 1.78 2026/07/01 13:12:17 nicm Exp $ */
+/* $OpenBSD: cmd-list-keys.c,v 1.79 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -42,6 +42,7 @@ static enum cmd_retval cmd_list_keys_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_list_keys_entry = {
 	.name = "list-keys",
+	.description = "List key bindings.",
 	.alias = "lsk",
 
 	.args = { "1aF:NO:P:rT:", 0, 1, NULL },

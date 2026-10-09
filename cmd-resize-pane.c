@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-resize-pane.c,v 1.70 2026/10/02 12:48:52 nicm Exp $ */
+/* $OpenBSD: cmd-resize-pane.c,v 1.71 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -39,6 +39,7 @@ static void		cmd_resize_pane_mouse_resize_tiled(struct client *,
 
 const struct cmd_entry cmd_resize_pane_entry = {
 	.name = "resize-pane",
+	.description = "Resize or zoom a pane.",
 	.alias = "resizep",
 
 	.args = { "D::L::MR::Tt:U::x:y:Z", 0, 1, NULL },

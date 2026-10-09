@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1181 2026/10/08 07:50:05 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1182 2026/10/09 13:12:14 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 8 2026 $
+.Dd $Mdocdate: October 9 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1269,6 +1269,7 @@ If
 is specified, list only clients connected to that session.
 .Tg lscm
 .It Xo Ic list\-commands
+.Op Fl h
 .Op Fl F Ar format
 .Op Ar command
 .Xc
@@ -1277,6 +1278,11 @@ List the syntax of
 .Ar command
 or - if omitted - of all commands supported by
 .Nm .
+With
+.Fl h ,
+show command names and a short description.
+.Fl h
+twice shows syntax as well.
 .Tg ls
 .It Xo Ic list\-sessions
 .Op Fl r
@@ -7407,7 +7413,9 @@ The following variables are available, where appropriate:
 .It Li "client_written" Ta "" Ta "Bytes written to client"
 .It Li "command" Ta "" Ta "Name of command in use, if any"
 .It Li "command_list_alias" Ta "" Ta "Command alias if listing commands"
+.It Li "command_list_description" Ta "" Ta "Command description if listing commands"
 .It Li "command_list_name" Ta "" Ta "Command name if listing commands"
+.It Li "command_list_name_width" Ta "" Ta "Maximum command name width in list"
 .It Li "command_list_usage" Ta "" Ta "Command usage if listing commands"
 .It Li "config_files" Ta "" Ta "List of configuration files loaded"
 .It Li "cursor_blinking" Ta "" Ta "1 if the cursor is blinking"

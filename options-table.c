@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.251 2026/10/07 12:59:50 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.252 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -330,7 +330,8 @@ const struct options_table_entry options_table[] = {
 			 "server-info=show-messages -JT,"
 			 "info=show-messages -JT,"
 			 "choose-window=choose-tree -w,"
-			 "choose-session=choose-tree -s",
+			 "choose-session=choose-tree -s,"
+			 "help=list-commands -h",
 	  .separator = ",",
 	  .text = "Array of command aliases. "
 		  "Each entry is an alias and a command separated by '='."

@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1454 2026/10/08 07:50:05 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1455 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2033,6 +2033,7 @@ struct cmd_entry_flag {
 /* Command definition. */
 struct cmd_entry {
 	const char		*name;
+	const char		*description;
 	const char		*alias;
 
 	struct args_parse	 args;

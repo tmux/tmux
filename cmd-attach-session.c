@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-attach-session.c,v 1.92 2026/10/02 12:48:52 nicm Exp $ */
+/* $OpenBSD: cmd-attach-session.c,v 1.93 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -35,6 +35,7 @@ static enum cmd_retval	cmd_attach_session_exec(struct cmd *,
 
 const struct cmd_entry cmd_attach_session_entry = {
 	.name = "attach-session",
+	.description = "Attach to an existing session.",
 	.alias = "attach",
 
 	.args = { "c:dEf:rt:x", 0, 0, NULL },

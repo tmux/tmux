@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-save-buffer.c,v 1.57 2025/10/28 07:32:26 nicm Exp $ */
+/* $OpenBSD: cmd-save-buffer.c,v 1.58 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -36,6 +36,7 @@ static enum cmd_retval	cmd_save_buffer_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_save_buffer_entry = {
 	.name = "save-buffer",
+	.description = "Save a paste buffer to a file.",
 	.alias = "saveb",
 
 	.args = { "ab:", 1, 1, NULL },
@@ -47,6 +48,7 @@ const struct cmd_entry cmd_save_buffer_entry = {
 
 const struct cmd_entry cmd_show_buffer_entry = {
 	.name = "show-buffer",
+	.description = "Print a paste buffer.",
 	.alias = "showb",
 
 	.args = { "b:", 0, 0, NULL },

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-display-menu.c,v 1.55 2026/09/21 12:14:32 nicm Exp $ */
+/* $OpenBSD: cmd-display-menu.c,v 1.56 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -37,6 +37,7 @@ static enum cmd_retval		cmd_display_popup_exec(struct cmd *,
 
 const struct cmd_entry cmd_display_menu_entry = {
 	.name = "display-menu",
+	.description = "Display an interactive menu.",
 	.alias = "menu",
 
 	.args = { "b:c:C:H:s:S:MOt:T:x:y:", 1, -1, cmd_display_menu_args_parse },
@@ -53,6 +54,7 @@ const struct cmd_entry cmd_display_menu_entry = {
 
 const struct cmd_entry cmd_display_popup_entry = {
 	.name = "display-popup",
+	.description = "Create a floating pane (compatibility command).",
 	.alias = "popup",
 
 	.args = { "Bb:Cc:d:e:Eh:ks:S:t:T:w:x:y:", 0, -1, NULL },

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-pipe-pane.c,v 1.64 2026/07/27 14:25:46 nicm Exp $ */
+/* $OpenBSD: cmd-pipe-pane.c,v 1.65 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -42,6 +42,7 @@ static void cmd_pipe_pane_error_callback(struct bufferevent *, short, void *);
 
 const struct cmd_entry cmd_pipe_pane_entry = {
 	.name = "pipe-pane",
+	.description = "Pipe pane input or output to a command.",
 	.alias = "pipep",
 
 	.args = { "IOot:", 0, 1, NULL },

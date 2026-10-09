@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-show-messages.c,v 1.37 2025/11/18 08:37:54 nicm Exp $ */
+/* $OpenBSD: cmd-show-messages.c,v 1.38 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -38,6 +38,7 @@ static enum cmd_retval	cmd_show_messages_exec(struct cmd *,
 
 const struct cmd_entry cmd_show_messages_entry = {
 	.name = "show-messages",
+	.description = "Show server and client messages.",
 	.alias = "showmsgs",
 
 	.args = { "JTt:", 0, 0, NULL },

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-new-session.c,v 1.152 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: cmd-new-session.c,v 1.153 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -37,6 +37,7 @@ static enum cmd_retval	cmd_new_session_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_new_session_entry = {
 	.name = "new-session",
+	.description = "Create a new session.",
 	.alias = "new",
 
 	.args = { "Ac:dDe:EF:f:n:Ps:t:x:Xy:", 0, -1, NULL },
@@ -53,6 +54,7 @@ const struct cmd_entry cmd_new_session_entry = {
 
 const struct cmd_entry cmd_has_session_entry = {
 	.name = "has-session",
+	.description = "Check whether a session exists.",
 	.alias = "has",
 
 	.args = { "t:", 0, 0, NULL },

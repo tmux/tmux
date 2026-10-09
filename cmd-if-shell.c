@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-if-shell.c,v 1.87 2026/08/25 06:04:33 nicm Exp $ */
+/* $OpenBSD: cmd-if-shell.c,v 1.88 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -40,6 +40,7 @@ static void	cmd_if_shell_free(void *);
 
 const struct cmd_entry cmd_if_shell_entry = {
 	.name = "if-shell",
+	.description = "Run a command conditionally.",
 	.alias = "if",
 
 	.args = { "bFt:", 2, 3, cmd_if_shell_args_parse },

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-break-pane.c,v 1.76 2026/08/17 07:04:45 nicm Exp $ */
+/* $OpenBSD: cmd-break-pane.c,v 1.77 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -32,6 +32,7 @@ static enum cmd_retval	cmd_break_pane_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_break_pane_entry = {
 	.name = "break-pane",
+	.description = "Move a pane into its own window or make it floating.",
 	.alias = "breakp",
 
 	.args = { "abdPF:n:s:t:Wx:X:y:Y:", 0, 0, NULL },

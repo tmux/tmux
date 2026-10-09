@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-source-file.c,v 1.63 2026/08/18 08:05:05 nicm Exp $ */
+/* $OpenBSD: cmd-source-file.c,v 1.64 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Tiago Cunha <me@tiagocunha.org>
@@ -38,6 +38,7 @@ static enum cmd_retval	cmd_source_file_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_source_file_entry = {
 	.name = "source-file",
+	.description = "Load commands from a configuration file.",
 	.alias = "source",
 
 	.args = { "t:Fnqv", 1, -1, NULL },

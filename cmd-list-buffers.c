@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-list-buffers.c,v 1.41 2026/02/27 08:25:12 nicm Exp $ */
+/* $OpenBSD: cmd-list-buffers.c,v 1.42 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -34,6 +34,7 @@ static enum cmd_retval	cmd_list_buffers_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_list_buffers_entry = {
 	.name = "list-buffers",
+	.description = "List paste buffers.",
 	.alias = "lsb",
 
 	.args = { "F:f:O:r", 0, 0, NULL },

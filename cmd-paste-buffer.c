@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-paste-buffer.c,v 1.44 2026/03/04 07:19:32 tb Exp $ */
+/* $OpenBSD: cmd-paste-buffer.c,v 1.45 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -32,6 +32,7 @@ static enum cmd_retval	cmd_paste_buffer_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_paste_buffer_entry = {
 	.name = "paste-buffer",
+	.description = "Paste a buffer into a pane.",
 	.alias = "pasteb",
 
 	.args = { "db:prSs:t:", 0, 0, NULL },

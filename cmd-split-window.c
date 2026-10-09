@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-split-window.c,v 1.152 2026/10/02 12:48:52 nicm Exp $ */
+/* $OpenBSD: cmd-split-window.c,v 1.153 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -39,6 +39,7 @@ static void		cmd_split_window_mouse_resize(struct client *,
 
 const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
+	.description = "Create a floating pane.",
 	.alias = "newp",
 
 	.args = { "AbB:Cc:Dde:EfF:hIkl:KLMm:Op:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
@@ -58,6 +59,7 @@ const struct cmd_entry cmd_new_pane_entry = {
 
 const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
+	.description = "Create a new pane by splitting a window.",
 	.alias = "splitw",
 
 	.args = { "bB:c:de:EfF:hIkl:m:p:PR:s:S:t:T:vWZ", 0, -1, NULL },

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-bind-key.c,v 1.47 2025/04/09 07:03:04 nicm Exp $ */
+/* $OpenBSD: cmd-bind-key.c,v 1.48 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -34,6 +34,7 @@ static enum cmd_retval		cmd_bind_key_exec(struct cmd *,
 
 const struct cmd_entry cmd_bind_key_entry = {
 	.name = "bind-key",
+	.description = "Bind a key to one or more commands.",
 	.alias = "bind",
 
 	.args = { "nrN:T:", 1, -1, cmd_bind_key_args_parse },
