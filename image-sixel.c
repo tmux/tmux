@@ -244,6 +244,18 @@ sixel_parse_write(struct sixel_image *si, u_int ch)
 	return (0);
 }
 
+/* Parse a number, clamping values too large for u_int so limit checks fail. */
+static u_int
+sixel_parse_number(const char *cp, char **endptr)
+{
+	unsigned long	value;
+
+	value = strtoul(cp, endptr, 10);
+	if (value > UINT_MAX)
+		return (UINT_MAX);
+	return (value);
+}
+
 /* Parse a SIXEL raster attribute sequence. */
 static const char *
 sixel_parse_attributes(struct sixel_image *si, const char *cp, const char *end)
@@ -269,7 +281,7 @@ sixel_parse_attributes(struct sixel_image *si, const char *cp, const char *end)
 		return (NULL);
 	}
 
-	x = strtoul(endptr + 1, &endptr, 10);
+	x = sixel_parse_number(endptr + 1, &endptr);
 	if (endptr == last || *endptr != ';') {
 		log_debug("%s: missing ;", __func__);
 		return (NULL);
@@ -278,7 +290,7 @@ sixel_parse_attributes(struct sixel_image *si, const char *cp, const char *end)
 		log_debug("%s: image is too wide", __func__);
 		return (NULL);
 	}
-	y = strtoul(endptr + 1, &endptr, 10);
+	y = sixel_parse_number(endptr + 1, &endptr);
 	if (endptr != last) {
 		log_debug("%s: extra ;", __func__);
 		return (NULL);
@@ -313,7 +325,7 @@ sixel_parse_colour(struct sixel_image *si, const char *cp, const char *end)
 		last++;
 	}
 
-	c = strtoul(cp, &endptr, 10);
+	c = sixel_parse_number(cp, &endptr);
 	if (c > SIXEL_COLOUR_REGISTERS) {
 		log_debug("%s: too many colours", __func__);
 		return (NULL);
@@ -324,22 +336,22 @@ sixel_parse_colour(struct sixel_image *si, const char *cp, const char *end)
 	if (endptr == last || *endptr != ';')
 		return (last);
 
-	type = strtoul(endptr + 1, &endptr, 10);
+	type = sixel_parse_number(endptr + 1, &endptr);
 	if (endptr == last || *endptr != ';') {
 		log_debug("%s: missing ;", __func__);
 		return (NULL);
 	}
-	c1 = strtoul(endptr + 1, &endptr, 10);
+	c1 = sixel_parse_number(endptr + 1, &endptr);
 	if (endptr == last || *endptr != ';') {
 		log_debug("%s: missing ;", __func__);
 		return (NULL);
 	}
-	c2 = strtoul(endptr + 1, &endptr, 10);
+	c2 = sixel_parse_number(endptr + 1, &endptr);
 	if (endptr == last || *endptr != ';') {
 		log_debug("%s: missing ;", __func__);
 		return (NULL);
 	}
-	c3 = strtoul(endptr + 1, &endptr, 10);
+	c3 = sixel_parse_number(endptr + 1, &endptr);
 	if (endptr != last) {
 		log_debug("%s: missing ;", __func__);
 		return (NULL);
@@ -582,9 +594,9 @@ sixel_to_image(struct sixel_image *si)
 	u_int	 x, y, c, sx, sy;
 	struct image	*im;
 
-	if ((uint64_t)si->sx * si->sy * 4 > SIZE_MAX)
+	if ((uint64_t)si->sx * si->sy > IMAGE_SIZE_LIMIT / 4)
 		return (NULL);
-	pixels = xcalloc(si->sx * si->sy, 4);
+	pixels = xcalloc((size_t)si->sx * si->sy, 4);
 	for (y = 0; y < si->sy; y++) {
 		for (x = 0; x < si->sx; x++) {
 			c = sixel_get_pixel(si, x, y);
