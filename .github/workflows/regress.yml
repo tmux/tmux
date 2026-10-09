@@ -51,7 +51,6 @@ jobs:
             automake \
             bison \
             build-essential \
-            keyutils \
             libevent-dev \
             libncurses-dev \
             libutf8proc-dev \
