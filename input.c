@@ -2805,9 +2805,11 @@ input_enter_apc(struct input_ctx *ictx)
 #ifdef ENABLE_IMAGES
 /* Reply to a Kitty graphics command with its image and placement IDs. */
 static void
-input_reply_kitty(struct input_ctx *ictx, struct kitty_parse_result *result,
-    const char *message)
+input_reply_kitty(struct input_ctx *ictx,
+    const struct kitty_parse_result *result, const char *message)
 {
+	char	ids[96];
+
 	if (result->quiet >= 2)
 		return;
 	if (result->quiet == 1) {
@@ -2815,15 +2817,26 @@ input_reply_kitty(struct input_ctx *ictx, struct kitty_parse_result *result,
 			return;
 	}
 	if (result->image_id == 0) {
-		if (result->action != 'q')
-			return;
+		if (result->image_number == 0) {
+			if (result->action != 'q')
+				return;
+		}
+	}
+	if (result->image_number != 0) {
+		if (result->image_id != 0) {
+			xsnprintf(ids, sizeof ids, "i=%u,I=%u",
+			    result->image_id, result->image_number);
+		} else
+			xsnprintf(ids, sizeof ids, "I=%u",
+			    result->image_number);
+	} else {
+		xsnprintf(ids, sizeof ids, "i=%u", result->image_id);
 	}
 	if (result->placement_id != 0) {
-		input_reply(ictx, 0, "\033_Gi=%u,p=%u;%s\033\\",
-		    result->image_id, result->placement_id, message);
+		input_reply(ictx, 0, "\033_G%s,p=%u;%s\033\\", ids,
+		    result->placement_id, message);
 	} else {
-		input_reply(ictx, 0, "\033_Gi=%u;%s\033\\", result->image_id,
-		    message);
+		input_reply(ictx, 0, "\033_G%s;%s\033\\", ids, message);
 	}
 }
 
@@ -2845,23 +2858,20 @@ input_handle_kitty(struct input_ctx *ictx, const u_char *buf, size_t len)
 	if (result.status != KITTY_PARSE_OK) {
 		if (result.status == KITTY_PARSE_MISSING)
 			input_reply_kitty(ictx, &result, "ENOENT");
+		else if (result.status == KITTY_PARSE_UNSUPPORTED)
+			input_reply_kitty(ictx, &result, "ENOTSUP");
 		else
 			input_reply_kitty(ictx, &result, "EINVAL");
 		return (1);
 	}
 	if (result.replace_id != 0)
 		image_clear(sctx, result.replace_id);
-	if (im != NULL) {
-		if (result.action == 'd')
-			image_clear_kitty(sctx, result.delete, result.image_id,
-			    result.placement_id, result.z);
-		else
-			image_write_kitty(sctx, im, ictx->cell.cell.bg,
-			    result.image_id, result.placement_id, result.z);
+	if (result.action == 'd') {
+		kitty_delete_images(ictx->kitty_state, sctx, &result);
+	} else if (im != NULL) {
+		image_write_kitty(sctx, im, ictx->cell.cell.bg,
+		    result.image_id, result.placement_id, result.z);
 		image_free(image_get_id(im));
-	} else if (result.action == 'd') {
-		image_clear_kitty(sctx, result.delete, result.image_id,
-		    result.placement_id, result.z);
 	}
 	if (result.action != 'd')
 		input_reply_kitty(ictx, &result, "OK");
@@ -2983,9 +2993,10 @@ input_top_bit_set(struct input_ctx *ictx)
 	if (sctx->s->cx != 0) {
 		x = sctx->s->cx - 1; /* cx-1 is the cell just written. */
 		grid_view_get_cell(sctx->s->grid, x, sctx->s->cy, &gc);
+		image_grid_remove_overwritten_spans(sctx->s->grid, x,
+		    sctx->s->grid->hsize + sctx->s->cy, 1, 1);
 		if (kitty_placeholder_to_image(ictx->kitty_state,
 		    sctx->s->grid, &gc, x, sctx->s->cy, &placeholder)) {
-			grid_view_set_cell(sctx->s->grid, x, sctx->s->cy, &gc);
 			image_place_cell_kitty(sctx, placeholder.image, x,
 			    sctx->s->cy, placeholder.source_x,
 			    placeholder.source_y, placeholder.image_id,

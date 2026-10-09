@@ -13,7 +13,7 @@ TMUX2="$TEST_TMUX -Lkitty-clear-outer$$ -f/dev/null"
 trap "$TMUX kill-server 2>/dev/null; $TMUX2 kill-server 2>/dev/null" 0 1 15
 
 $TMUX new-session -d -x 10 -y 4 "
-	printf '\033_Ga=T,q=2,f=24,s=1,v=1,c=1,r=1,C=1;////\033\\'
+	printf '\033_Ga=T,q=2,f=24,s=1,v=2,c=1,r=1,C=1;////////\033\\'
 	read line
 	printf '\033[H\033[2K'
 	read line

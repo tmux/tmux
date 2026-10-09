@@ -739,7 +739,7 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny, u_int bg)
 	if (nx == 0 || ny == 0)
 		return;
 #ifdef ENABLE_IMAGES
-	image_grid_remove_sixel_spans(gd, px, py, nx, ny);
+	image_grid_remove_overwritten_spans(gd, px, py, nx, ny);
 #endif
 
 	if (px == 0 && nx == gd->sx) {
@@ -793,8 +793,8 @@ grid_clear_lines(struct grid *gd, u_int py, u_int ny, u_int bg)
 	for (yy = py; yy < py + ny; yy++) {
 		gl = &gd->linedata[yy];
 #ifdef ENABLE_IMAGES
-		/* Remove any SIXEL spans invalidated by clearing this line. */
-		image_grid_remove_sixel_spans(gd, 0, yy, gd->sx, 1);
+		/* Remove SIXEL and placeholder spans on this line. */
+		image_grid_remove_overwritten_spans(gd, 0, yy, gd->sx, 1);
 		/* Preserve the remaining Kitty spans. */
 		images = gl->images;
 #endif

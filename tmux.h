@@ -1107,18 +1107,37 @@ struct image {
 RB_HEAD(images, image);
 #define IMAGE_SIZE_LIMIT (64 * 1024 * 1024)
 
+struct image_view {
+	u_int	 x;
+	u_int	 y;
+	u_int	 width;
+	u_int	 height;
+	u_int	 scaled_width;
+	u_int	 scaled_height;
+	u_int	 canvas_width;
+	u_int	 canvas_height;
+	u_int	 sx;
+	u_int	 sy;
+	u_int	 x_offset;
+	u_int	 y_offset;
+};
+
 enum kitty_parse_status {
 	KITTY_PARSE_ERROR = -1,
 	KITTY_PARSE_OK,
 	KITTY_PARSE_MORE,
-	KITTY_PARSE_MISSING
+	KITTY_PARSE_MISSING,
+	KITTY_PARSE_UNSUPPORTED
 };
 
 struct kitty_parse_result {
 	u_int			 image_id;
+	u_int			 image_number;
 	u_int			 replace_id;
 	u_int			 placement_id;
 	u_int			 quiet;
+	u_int			 x;
+	u_int			 y;
 	int32_t			 z;
 	char			 action;
 	char			 delete;
@@ -4335,8 +4354,7 @@ char		*regsub(const char *, const char *, const char *, int);
 
 struct image	*image_create(u_int, u_int, u_int, u_int, u_int, u_int,
 		     u_char *);
-struct image	*image_create_view(struct image *, u_int, u_int, u_int,
-		     u_int, u_int, u_int, u_int, u_int, u_int, u_int);
+struct image	*image_create_view(struct image *, const struct image_view *);
 struct image	*image_find(u_int);
 u_int		 image_get_id(const struct image *);
 void		 image_get_size(const struct image *, u_int *, u_int *);
@@ -4383,10 +4401,11 @@ void		 image_rect_get_coords(const struct image_rect *,
 		     u_int *, u_int *, u_int *, u_int *, u_int *, u_int *);
 int32_t		 image_rect_get_z(const struct image_rect *);
 void		 image_clear(struct screen_write_ctx *, u_int);
-void		 image_clear_kitty(struct screen_write_ctx *, char, u_int,
-		     u_int, int32_t);
-	void		 image_grid_remove_sixel_spans(struct grid *, u_int, u_int,
-		     u_int, u_int);
+void		 image_clear_kitty(struct screen_write_ctx *,
+		     const struct kitty_parse_result *);
+int		 image_grid_has_image(struct grid *, u_int);
+void		 image_grid_remove_overwritten_spans(struct grid *, u_int,
+		     u_int, u_int, u_int);
 void		 image_grid_free_line(struct grid *, struct grid_line *);
 void		 image_grid_free(struct grid *);
 void		 image_grid_move_cells(struct grid *, u_int, u_int, u_int,
@@ -4399,8 +4418,8 @@ void		 image_grid_resize_width(struct grid *, u_int);
 int		 image_grid_line_has_images(const struct grid_line *);
 	int		 image_grid_area_has_images(struct grid *, u_int, u_int, u_int,
 		     u_int);
-int		 image_grid_get_source(struct grid *, u_int, u_int,
-		     struct image *, u_int *, u_int *);
+int		 image_grid_get_placeholder(struct grid *, u_int, u_int,
+		     struct kitty_placeholder *);
 void		 image_place_cell_kitty(struct screen_write_ctx *, struct image *,
 		     u_int, u_int, u_int, u_int, u_int, u_int, int32_t);
 /* image-kitty.c */
@@ -4409,6 +4428,9 @@ struct image	*kitty_parse_image(void **, const u_char *, size_t, u_int,
 int		 kitty_placeholder_to_image(void *, struct grid *,
 		     struct grid_cell *, u_int, u_int,
 		     struct kitty_placeholder *);
+int		 kitty_cell_is_placeholder(const struct grid_cell *);
+void		 kitty_delete_images(void *, struct screen_write_ctx *,
+		     const struct kitty_parse_result *);
 void		 kitty_free_state(void *);
 void		 kitty_draw_rect(struct tty *,
 		     const struct image_rect *);

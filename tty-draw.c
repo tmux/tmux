@@ -124,6 +124,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	struct grid_cell	 gc, ngc, last;
 #ifdef ENABLE_IMAGES
 	struct grid_cell	 image_gc;
+	struct kitty_placeholder placeholder;
 	int			 image_status;
 #endif
 	struct grid_line	*gl;
@@ -270,6 +271,14 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			} else {
 				/* Get the current cell. */
 				grid_view_get_cell(gd, px + i, py, &gc);
+#ifdef ENABLE_IMAGES
+				if (kitty_cell_is_placeholder(&gc)) {
+					if (image_grid_get_placeholder(gd,
+					    px + i, gd->hsize + py,
+					    &placeholder))
+						utf8_set(&gc.data, ' ');
+				}
+#endif
 				gcp = &gc;
 #ifdef ENABLE_IMAGES
 				if (image_get_fallback_at(tty, s, px + i, py, &gc,

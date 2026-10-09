@@ -404,8 +404,8 @@ screen_write_image_damage(struct screen_write_ctx *ctx, u_int x, u_int y,
 {
 	image_redraw_area(ctx, x, y, sx, sy);
 	if (ctx->flags & SCREEN_WRITE_INPUT)
-		image_grid_remove_sixel_spans(ctx->s->grid, x, ctx->s->grid->hsize + y,
-		    sx, sy);
+		image_grid_remove_overwritten_spans(ctx->s->grid, x,
+		    ctx->s->grid->hsize + y, sx, sy);
 }
 #endif
 
@@ -1492,7 +1492,7 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 #ifdef ENABLE_IMAGES
 	image_redraw_all(ctx);
 	if (ctx->flags & SCREEN_WRITE_INPUT)
-		image_grid_remove_sixel_spans(s->grid, 0, s->grid->hsize,
+		image_grid_remove_overwritten_spans(s->grid, 0, s->grid->hsize,
 		    screen_size_x(s), screen_size_y(s));
 #endif
 

@@ -61,7 +61,7 @@ $TMUX send-keys -X cancel || exit 1
 # Ordinary text updates the image underlay through the normal grid write path.
 # Deleting the image reveals the newly written text.
 $TMUX new-window -d "
-	printf '\033_Ga=T,q=2,f=32,s=2,v=2,c=2,r=2,i=8;/wAA/wD/AP8AAP///////w==\033\\'
+	printf '\033_Ga=T,q=2,f=32,s=2,v=4,c=2,r=2,i=8;/wAA/wD/AP//AAD/AP8A/wAA////////AAD///////8=\033\\'
 	printf '\033[HXY'
 	printf '\033_Ga=d,d=i,q=2,i=8\033\\'
 	sleep 10"
@@ -148,11 +148,12 @@ grep -q '^#=' $TMP || exit 1
 
 # A retained Kitty image may be placed repeatedly using source rectangles.
 # Crop the green and white right column from a red/green/blue/white image.
+# Each colour spans two source rows to match the cell aspect ratio.
 $TMUX kill-server 2>/dev/null
 $TMUX2 kill-server 2>/dev/null
 $TMUX2 new-session -d -x 10 -y 4 "
-	printf '\033_Ga=t,q=2,f=32,s=2,v=2,i=10;/wAA/wD/AP8AAP///////w==\033\\'
-	printf '\033_Ga=p,q=2,i=10,x=1,y=0,w=1,h=2,c=1,r=2\033\\'
+	printf '\033_Ga=t,q=2,f=32,s=2,v=4,i=10;/wAA/wD/AP//AAD/AP8A/wAA////////AAD///////8=\033\\'
+	printf '\033_Ga=p,q=2,i=10,x=1,y=0,w=1,h=4,c=1,r=2\033\\'
 	sleep 10" || exit 1
 $TMUX2 set -g status off || exit 1
 $TMUX new-session -d -x 10 -y 4 || exit 1
@@ -169,7 +170,7 @@ $TMUX capture-pane -pS0 -E1 >$TMP || exit 1
 # row off screen.
 $TMUX2 new-window -d "
 	printf '\033[2;3H'
-	printf '\033_Ga=T,q=2,C=1,f=32,s=1,v=4,c=1,r=4;AAAA/1VVVf+qqqr//////w==\033\\'
+	printf '\033_Ga=T,q=2,C=1,f=32,s=1,v=8,c=1,r=4;AAAA/wAAAP9VVVX/VVVV/6qqqv+qqqr///////////8=\033\\'
 	sleep 10" || exit 1
 $TMUX2 select-window -t:1 || exit 1
 sleep 1
@@ -183,7 +184,7 @@ $TMUX capture-pane -pS0 -E3 >$TMP || exit 1
 # the bottom three source rows remain visible and the cursor is on the last row.
 $TMUX2 new-window -d "
 	printf '\033[3;1H'
-	printf '\033_Ga=T,q=2,f=32,s=1,v=4,c=1,r=4;AAAA/1VVVf+qqqr//////w==\033\\'
+	printf '\033_Ga=T,q=2,f=32,s=1,v=8,c=1,r=4;AAAA/wAAAP9VVVX/VVVV/6qqqv+qqqr///////////8=\033\\'
 	sleep 10" || exit 1
 $TMUX2 select-window -t:2 || exit 1
 sleep 1
@@ -197,7 +198,7 @@ $TMUX capture-pane -pS0 -E3 >$TMP || exit 1
 # reflow. The ten-column rows are clipped to five columns, not split into four
 # wrapped rows.
 $TMUX2 new-window -d "
-	printf '\033_Ga=T,q=2,C=1,f=32,s=1,v=2,c=10,r=2;/wAA//////8=\033\\'
+	printf '\033_Ga=T,q=2,C=1,f=32,s=5,v=2,c=10,r=2;/wAA//8AAP//AAD//wAA//8AAP///////////////////////////w==\033\\'
 	sleep 10" || exit 1
 $TMUX2 select-window -t:3 || exit 1
 sleep 1
@@ -271,7 +272,7 @@ sleep 1
 # the image. Deleting the placement afterwards reveals the updated text.
 TEXT_WINDOW=$($TMUX2 new-window -dP -F '#{window_id}' "
 	printf 'test\r'
-	printf '\033_Ga=T,q=2,C=1,f=32,s=2,v=2,c=2,r=2,i=14,p=7;/wAA/wD/AP8AAP///////w==\033\\'
+	printf '\033_Ga=T,q=2,C=1,f=32,s=2,v=4,c=2,r=2,i=14,p=7;/wAA/wD/AP//AAD/AP8A/wAA////////AAD///////8=\033\\'
 	printf '\r'
 	printf 'test\n'
 	printf 'test\n'
@@ -295,8 +296,8 @@ $TMUX capture-pane -pS0 -E1 >$TMP || exit 1
 # negative z-indexes cover backgrounds but not text, and very negative ones
 # remain below the background.
 Z_WINDOW=$($TMUX2 new-window -dP -F '#{window_id}' "
-	printf '\033_Ga=t,q=2,f=32,s=1,v=1,i=21;/wAA/w==\033\\'
-	printf '\033_Ga=t,q=2,f=32,s=1,v=1,i=22;/////w==\033\\'
+	printf '\033_Ga=t,q=2,f=32,s=1,v=2,i=21;/wAA//8AAP8=\033\\'
+	printf '\033_Ga=t,q=2,f=32,s=1,v=2,i=22;//////////8=\033\\'
 	printf 'X\r'
 	printf '\033_Ga=p,q=2,C=1,i=21,p=1,z=2,c=1,r=1\033\\'
 	printf '\033_Ga=p,q=2,C=1,i=22,p=2,z=1,c=1,r=1\033\\'

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Kitty cursor movement, acknowledgements and query isolation.
+# Kitty graphics layout, deletion, placeholders and replies.
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -14,6 +14,7 @@ command -v python3 >/dev/null || exit 0
 python3 - <<'PY'
 import base64
 import json
+import re
 import os
 from pathlib import Path
 import shlex
@@ -24,6 +25,8 @@ import zlib
 
 tmux = [os.environ['TEST_TMUX'], '-u', '-Limage-protocol' + str(os.getpid()),
         '-f/dev/null']
+outer = [os.environ['TEST_TMUX'], '-u', '-Limage-protocol-outer' + str(os.getpid()),
+         '-f/dev/null']
 
 def run(*args):
     return subprocess.check_output(tmux + list(args), text=True).strip()
@@ -36,7 +39,8 @@ reader = '''
 import json, os, select, sys, termios, time, tty
 command, output = sys.argv[1:]
 tty.setraw(0)
-os.write(1, command.encode() + b'\\x1b[c')
+with open(command, 'rb') as f:
+    os.write(1, f.read() + b'\\x1b[c')
 reply = b''
 deadline = time.monotonic() + 3
 while time.monotonic() < deadline:
@@ -51,10 +55,12 @@ with open(output, 'w') as f:
 time.sleep(30)
 '''
 
-def check(name, command, cursor, expected='', text=None):
+def check(name, command, cursor, expected='', text=None, render=None, resize=None):
     output = directory / name
+    command_file = directory / (name + '.input')
+    command_file.write_text(command, encoding='utf-8')
     pane_command = 'python3 ' + shlex.quote(str(helper)) + ' ' + \
-        shlex.quote(command) + ' ' + shlex.quote(str(output))
+        shlex.quote(str(command_file)) + ' ' + shlex.quote(str(output))
     pane = run('new-window', '-d', '-P', '-F', '#{pane_id}', pane_command)
     try:
         deadline = time.monotonic() + 5
@@ -64,11 +70,29 @@ def check(name, command, cursor, expected='', text=None):
             time.sleep(0.05)
         reply = json.loads(output.read_text())
         assert reply == expected, (name, 'reply', repr(reply), repr(expected))
+        if resize is not None:
+            run('resize-window', '-t', pane, '-x', str(resize[0]), '-y', str(resize[1]))
         actual = run('display-message', '-pt', pane, '#{cursor_x},#{cursor_y}')
         assert actual == cursor, (name, 'cursor', actual, cursor)
         if text is not None:
             actual = run('capture-pane', '-pt', pane, '-S0', '-E0')
             assert actual == text, (name, 'text', actual, text)
+        if render is not None:
+            run('select-window', '-t', pane)
+            attach = shlex.join(tmux + ['attach-session'])
+            client = subprocess.check_output(outer + ['new-window', '-d', '-P',
+                '-F', '#{pane_id}', attach], text=True).strip()
+            try:
+                deadline = time.monotonic() + 3
+                while time.monotonic() < deadline:
+                    actual = subprocess.check_output(outer + ['capture-pane', '-pe',
+                        '-t', client, '-S0', '-E0'], text=True).rstrip('\n')
+                    if re.search(render, actual):
+                        break
+                    time.sleep(0.05)
+                assert re.search(render, actual), (name, 'render', repr(actual), render)
+            finally:
+                subprocess.run(outer + ['kill-window', '-t', client], check=True)
     finally:
         run('kill-window', '-t', pane)
 
@@ -80,6 +104,12 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         run('new-session', '-d', '-x', '40', '-y', '12')
         if run('display-message', '-p', '#{image_support}') == '0':
             raise SystemExit(0)
+        run('set', '-g', 'status', 'off')
+        run('set', '-as', 'terminal-features', ',*:sixel@')
+        run('set', '-as', 'terminal-features', ',*:kitty@')
+        run('set', '-as', 'terminal-features', ',*:RGB')
+        subprocess.run(outer + ['new-session', '-d', '-x', '40', '-y', '12'], check=True)
+        subprocess.run(outer + ['set', '-g', 'status', 'off'], check=True)
         origin = '\033[3;6H'  # Column 6, row 3 (zero-based 5,2).
         pixel = '/wAA/w=='
         placement = 'a=T,q=2,f=32,s=1,v=1,c=3,r=2'
@@ -123,8 +153,125 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         # valid for the original three-column placement, but not the query.
         check('query-virtual', graphics(placement + ',U=1,i=7', pixel) +
               graphics('a=q,q=2,U=1,i=7,f=32,s=1,v=1,c=1,r=1', pixel) +
-              '\033[38;2;0;0;7m\U0010eeee\u0305\u030e', '1,0', text='')
+              '\033[38;2;0;0;7m\U0010eeee\u0305\u030e', '1,0',
+              text='\U0010eeee\u0305\u030e')
+        # Uppercase deletion must leave other numbered and unnumbered placements.
+        transmit = graphics('a=t,q=2,i=7,f=32,s=1,v=1', pixel)
+        check('delete-one-placement', transmit + graphics('a=p,q=2,i=7,p=1,C=1') +
+              graphics('a=p,q=2,i=7,p=2,C=1') + graphics('a=d,d=I,q=2,i=7,p=1') +
+              graphics('a=p,i=7,p=2,C=1'), '0,0', graphics('i=7,p=2', 'OK'))
+        check('delete-last-placement', transmit + graphics('a=p,q=2,i=7,p=1,C=1') +
+              graphics('a=d,d=I,q=2,i=7,p=1') + graphics('a=p,i=7'), '0,0',
+              graphics('i=7', 'ENOENT'))
+        check('delete-retain-unnumbered', transmit + graphics('a=p,q=2,i=7,p=1,C=1') +
+              graphics('a=p,q=2,i=7,C=1') + graphics('a=d,d=I,q=2,i=7,p=1') +
+              graphics('a=p,i=7,C=1'), '0,0', graphics('i=7', 'OK'))
+        check('delete-soft', transmit + graphics('a=p,q=2,i=7,p=1,C=1') +
+              graphics('a=d,d=i,q=2,i=7,p=1') + graphics('a=p,i=7,C=1'),
+              '0,0', graphics('i=7', 'OK'))
+        for selector in ['A', 'Z']:
+            check('delete-hard-' + selector, transmit + graphics('a=p,q=2,i=7,C=1,z=9') +
+                  graphics('a=d,d=%s,z=9,q=2' % selector) + graphics('a=p,i=7'),
+                  '0,0', graphics('i=7', 'ENOENT'))
+        # A fully historical placement retains its source after visible deletion.
+        check('delete-history', transmit + graphics('a=p,q=2,i=7,C=1') + '\n' * 13 +
+              graphics('a=d,d=A,q=2') + graphics('a=p,i=7,C=1'), '0,11',
+              graphics('i=7', 'OK'))
+        # Delete controls must not inherit an unfinished upload's image ID.
+        check('delete-aborts-upload', transmit +
+              graphics('a=t,q=2,i=7,f=32,s=1,v=1,m=1', '/wAA') +
+              graphics('a=d,d=I') + graphics('a=p,i=7,C=1'), '0,0',
+              graphics('i=7', 'OK'))
+        for selector, coordinates in [('C', ''), ('P', ',x=1,y=1'),
+                                      ('Q', ',x=1,y=1,z=9'), ('X', ',x=1'),
+                                      ('Y', ',y=1'), ('R', ',x=7,y=7')]:
+            check('delete-selector-' + selector, transmit +
+                  graphics('a=p,q=2,i=7,C=1,z=9') +
+                  graphics('a=d,d=%s,q=2%s' % (selector, coordinates)) +
+                  graphics('a=p,i=7'), '0,0', graphics('i=7', 'ENOENT'))
+        check('delete-misses', transmit + graphics('a=p,q=2,i=7,C=1,z=9') +
+              graphics('a=d,d=Q,x=1,y=1,z=8,q=2') +
+              graphics('a=d,d=P,x=2,y=1,q=2') +
+              graphics('a=p,i=7,C=1'), '0,0', graphics('i=7', 'OK'))
+        check('delete-range-unused-source', transmit + graphics('a=d,d=R,x=7,y=7,p=99') +
+              graphics('a=p,i=7'), '0,0', graphics('i=7', 'ENOENT'))
+        white = base64.b64encode(b'\xff' * (24 * 32 * 4)).decode()
+        virtual = graphics('a=T,q=2,U=1,i=7,p=1,f=32,s=24,v=32,c=3,r=2', white)
+        ph = '\U0010eeee'
+        colours = '\033[38;2;0;0;7m\033[58;2;0;0;1m'
+        check('multiple-virtual', virtual + graphics('a=p,q=2,U=1,i=7,p=2,c=1,r=1') +
+              colours + ph + '\u0305\u030e', '1,0', text=ph + '\u0305\u030e',
+              render=r'255;255;255m')
+        high_virtual = graphics('a=T,q=2,U=1,i=16777223,f=32,s=24,v=32,c=3,r=2', white)
+        check('inherit-high-byte', high_virtual + '\033[38;2;0;0;7m' +
+              ph + '\u0305\u0305\u030d' + ph, '2,0',
+              text=ph + '\u0305\u0305\u030d' + ph, render=r'48;2;255;255;255m {2}')
+        check('inherit-high-byte-row', high_virtual + '\033[38;2;0;0;7m' +
+              ph + '\u0305\u0305\u030d' + ph + '\u0305', '2,0',
+              render=r'48;2;255;255;255m {2}')
+        check('inherit-high-byte-column', high_virtual + '\033[38;2;0;0;7m' +
+              ph + '\u0305\u0305\u030d' + ph + '\u0305\u030d', '2,0',
+              render=r'48;2;255;255;255m {2}')
+        for name, change, diacritics in [
+                ('colour', '\033[38;2;0;0;8m', ''),
+                ('placement', '\033[58;2;0;0;1m', ''),
+                ('row', '', '\u030d'),
+                ('column', '', '\u0305\u030e')]:
+            check('inherit-mismatch-' + name, high_virtual + '\033[38;2;0;0;7m' +
+                  ph + '\u0305\u0305\u030d' + change + ph + diacritics, '2,0',
+                  render=ph)
+        check('palette-id', virtual + '\033[38;5;7m\033[58;5;1m' + ph, '1,0',
+              render=r'255;255;255m')
+        check('negative-virtual', virtual + graphics('a=p,q=2,U=1,i=7,p=1,c=3,r=2,z=-1') +
+              colours + ph, '1,0', render=r'255;255;255m')
+        check('placeholder-resize', virtual + colours + ph, '1,0',
+              render=r'48;2;255;255;255m(?:\x1b\[[0-9;]+m)* \x1b\[(?:0|39)m',
+              resize=(50, 12))
+        for selector in ['a', 'z']:
+            check('virtual-survives-' + selector, virtual + colours + ph +
+                  graphics('a=d,d=%s,q=2' % selector), '1,0', render=r'255;255;255m')
+        # Deleting a prototype leaves its existing text-backed display intact.
+        check('virtual-delete-display', virtual + colours + ph +
+              graphics('a=d,d=I,i=7,p=1,q=2'), '1,0', render=r'255;255;255m')
+        check('virtual-delete-prototype', virtual + graphics('a=d,d=i,i=7,p=1,q=2') +
+              colours + ph, '1,0', render=ph)
+        check('virtual-replace-display', virtual + colours + ph +
+              graphics('a=p,i=7,p=1,q=2,C=1,c=3,r=2'), '1,0',
+              render=r'^(?:\x1b\[[0-9;]+m)*\x1b\[48;2;255;255;255m(?:\x1b\[[0-9;]+m)* ')
+        check('placeholder-overwrite', virtual + colours + ph + '\033[HX', '1,0',
+              text='X', render=r'X')
+        check('placeholder-erase', virtual + colours + ph + '\033[H\033[2K', '0,0',
+              text='', render=r'^\s*$')
+        white_pixel = '/////w=='
+        check('letterbox', graphics('a=T,q=2,f=32,s=1,v=1,c=2,r=2,C=1', white_pixel),
+              '0,0', render='▄▄')
+        offset_source = base64.b64encode(b'\xff' * (8 * 32 * 4)).decode()
+        check('scaled-offset', graphics('a=T,q=2,f=32,s=8,v=32,c=1,r=1,X=4,C=1',
+                                       offset_source), '0,0', render=r'12[78];12[78];12[78]m')
+        check('offset-clamp', graphics('a=T,q=2,f=32,s=1,v=1,X=4294967295,C=1',
+                                      white_pixel), '0,0')
+        check('oversized-placement', transmit + graphics('a=p,i=7,c=65534,r=32767'),
+              '0,0', graphics('i=7', 'EINVAL'))
+        large_rgb = base64.b64encode(zlib.compress(b'\0' * (4096 * 4097 * 3))).decode()
+        check('oversized-rgb', graphics('a=t,i=7,f=24,s=4096,v=4097,o=z', large_rgb),
+              '0,0', graphics('i=7', 'EINVAL'))
+        for action in ['f', 'a', 'c']:
+            check('unsupported-action-' + action, graphics('a=%s,i=7' % action),
+                  '0,0', graphics('i=7', 'ENOTSUP'))
+        for key in ['P', 'Q', 'H', 'V']:
+            check('unsupported-key-' + key, graphics('a=p,i=7,%s=1' % key),
+                  '0,0', graphics('i=7', 'ENOTSUP'))
+        check('relative-defaults', transmit + graphics('a=p,i=7,P=0,Q=0,H=0,V=0,C=1'),
+              '0,0', graphics('i=7', 'OK'))
+        check('unsupported-number', graphics('a=t,I=7,f=32,s=1,v=1', pixel),
+              '0,0', graphics('I=7', 'ENOTSUP'))
+        check('id-and-number', graphics('a=t,i=7,I=8,f=32,s=1,v=1', pixel),
+              '0,0', graphics('i=7,I=8', 'EINVAL'))
+        check('unknown-extension', graphics('a=T,q=2,f=32,s=1,v=1,c=3,r=2,k=9', pixel),
+              '3,2')
     finally:
         subprocess.run(tmux + ['kill-server'], stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL)
+        subprocess.run(outer + ['kill-server'], stdout=subprocess.DEVNULL,
                        stderr=subprocess.DEVNULL)
 PY
