@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-show-environment.c,v 1.29 2025/04/09 06:27:43 nicm Exp $ */
+/* $OpenBSD: cmd-show-environment.c,v 1.30 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -36,6 +36,7 @@ static void	 cmd_show_environment_print(struct cmd *, struct cmdq_item *,
 
 const struct cmd_entry cmd_show_environment_entry = {
 	.name = "show-environment",
+	.description = "Show environment variables.",
 	.alias = "showenv",
 
 	.args = { "hgst:", 0, 1, NULL },

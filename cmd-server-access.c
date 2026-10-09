@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-server-access.c,v 1.6 2026/06/09 12:58:40 nicm Exp $ */
+/* $OpenBSD: cmd-server-access.c,v 1.7 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2021 Dallas Lyons <dallasdlyons@gmail.com>
@@ -36,6 +36,7 @@ static enum cmd_retval cmd_server_access_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_server_access_entry = {
 	.name = "server-access",
+	.description = "Manage access to the tmux server.",
 	.alias = NULL,
 
 	.args = { "adglrw", 0, 1, NULL },

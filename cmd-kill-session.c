@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-kill-session.c,v 1.31 2026/06/09 12:57:40 nicm Exp $ */
+/* $OpenBSD: cmd-kill-session.c,v 1.32 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -36,6 +36,7 @@ static int		cmd_kill_session_filter(struct cmdq_item *,
 
 const struct cmd_entry cmd_kill_session_entry = {
 	.name = "kill-session",
+	.description = "Destroy one or more sessions.",
 	.alias = NULL,
 
 	.args = { "aCgf:t:", 0, 0, NULL },
