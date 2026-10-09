@@ -494,6 +494,17 @@ sixel_free(struct sixel_image *si)
 	free(si);
 }
 
+/* Return the cell dimensions occupied by a SIXEL image. */
+static void
+sixel_size_in_cells(struct sixel_image *si, u_int *x, u_int *y)
+{
+	if (si->cell_w == 0)
+		si->cell_w = 8;
+	if (si->cell_h == 0)
+		si->cell_h = 16;
+	image_size_in_cells(si->sx, si->sy, si->cell_w, si->cell_h, x, y);
+}
+
 /* Write a SIXEL image to the debug log. */
 void
 sixel_log(struct sixel_image *si)
@@ -515,21 +526,10 @@ sixel_log(struct sixel_image *si)
 				s[x] = '0' + (sl->pixels[x] - 1) % 10;
 			else
 				s[x] = '.';
-			}
+		}
 		s[x] = '\0';
 		log_debug("%s: %4u: %s", __func__, y, s);
 	}
-}
-
-/* Return the cell dimensions occupied by a SIXEL image. */
-void
-sixel_size_in_cells(struct sixel_image *si, u_int *x, u_int *y)
-{
-	if (si->cell_w == 0)
-		si->cell_w = 8;
-	if (si->cell_h == 0)
-		si->cell_h = 16;
-	image_size_in_cells(si->sx, si->sy, si->cell_w, si->cell_h, x, y);
 }
 
 /* Convert one HLS component to RGB. */
@@ -631,7 +631,7 @@ sixel_to_image(struct sixel_image *si)
 }
 
 /* Scale or crop an indexed SIXEL image. */
-struct sixel_image *
+static struct sixel_image *
 sixel_scale(struct sixel_image *si, u_int cell_w, u_int cell_h, u_int ox,
     u_int oy, u_int sx, u_int sy, int colours)
 {
@@ -913,7 +913,7 @@ sixel_print_compress_colors(struct sixel_image *si, struct sixel_plane *planes,
 }
 
 /* Encode an indexed SIXEL image for terminal output. */
-char *
+static char *
 sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 {
 	char			*buf, tmp[64];

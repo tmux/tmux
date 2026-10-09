@@ -1132,7 +1132,7 @@ image_free(u_int id)
 		image_free(im->parent_id);
 	if (im->sixel != NULL)
 		sixel_free(im->sixel);
-	image_free_fallback(im);
+	fallback_free(im);
 	free(im->cells);
 	free(im);
 }
@@ -1183,7 +1183,7 @@ image_get_fallback_at(struct tty *tty, struct screen *s, u_int x, u_int y,
 			return (-1);
 		}
 	}
-	image_get_fallback_cell(tty, placement->image,
+	fallback_get_cell(tty, placement->image,
 	    found->source_x + x - found->x, found->source_y, gc, out);
 	return (1);
 }

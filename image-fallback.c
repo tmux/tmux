@@ -67,7 +67,7 @@ static const struct image_rgb image_ansi_colours[16] = {
 
 /* Return the squared RGB distance between two colours. */
 static u_int
-image_glyph_distance(struct image_rgb a, struct image_rgb b)
+fallback_distance(struct image_rgb a, struct image_rgb b)
 {
 	int	r = a.r - b.r, g = a.g - b.g, bl = a.b - b.b;
 
@@ -76,7 +76,7 @@ image_glyph_distance(struct image_rgb a, struct image_rgb b)
 
 /* Return whether a colour is close enough to grey to use neutral colours. */
 static int
-image_glyph_low_saturation(struct image_rgb colour)
+fallback_low_saturation(struct image_rgb colour)
 {
 	u_int	minimum, maximum;
 
@@ -94,17 +94,17 @@ image_glyph_low_saturation(struct image_rgb colour)
 
 /* Find the closest ANSI colour, keeping greys on the neutral ramp. */
 static u_int
-image_glyph_nearest_ansi(struct image_rgb colour, u_int colours)
+fallback_nearest_ansi(struct image_rgb colour, u_int colours)
 {
 	u_int	i, distance, best_distance = UINT_MAX, best = 0;
-	int	neutral = image_glyph_low_saturation(colour);
+	int	neutral = fallback_low_saturation(colour);
 
 	for (i = 0; i < colours; i++) {
 		if (neutral && i != 0 && i != 7 &&
 		    (colours != 16 || (i != 8 && i != 15))) {
 			continue;
 		}
-		distance = image_glyph_distance(colour, image_ansi_colours[i]);
+		distance = fallback_distance(colour, image_ansi_colours[i]);
 		if (distance < best_distance) {
 			best_distance = distance;
 			best = i;
@@ -115,7 +115,7 @@ image_glyph_nearest_ansi(struct image_rgb colour, u_int colours)
 
 /* Map an RGB colour to the terminal palette and its output colour code. */
 static struct image_rgb
-image_glyph_quantize(struct image_rgb colour, enum image_glyph_palette palette,
+fallback_quantize(struct image_rgb colour, enum image_glyph_palette palette,
     int *output)
 {
 	struct image_rgb result;
@@ -135,7 +135,7 @@ image_glyph_quantize(struct image_rgb colour, enum image_glyph_palette palette,
 	ncolours = 16;
 	if (palette == IMAGE_GLYPH_PALETTE_8)
 		ncolours = 8;
-	index = image_glyph_nearest_ansi(colour, ncolours);
+	index = fallback_nearest_ansi(colour, ncolours);
 	result = image_ansi_colours[index];
 	if (index < 8)
 		*output = index;
@@ -146,7 +146,7 @@ image_glyph_quantize(struct image_rgb colour, enum image_glyph_palette palette,
 
 /* Fit two colours to a block glyph's pixel samples. */
 static void
-image_glyph_fit_colours(const struct image_rgb *samples, u_int count,
+fallback_fit_colours(const struct image_rgb *samples, u_int count,
     struct image_rgb centres[2])
 {
 	u_int	sum[2][3], counts[2], group, i, j, iteration, distance;
@@ -155,7 +155,7 @@ image_glyph_fit_colours(const struct image_rgb *samples, u_int count,
 	/* Start with the two most widely separated samples. */
 	for (i = 0; i < count; i++) {
 		for (j = i + 1; j < count; j++) {
-			distance = image_glyph_distance(samples[i], samples[j]);
+			distance = fallback_distance(samples[i], samples[j]);
 			if (distance > maximum) {
 				maximum = distance;
 				first = i;
@@ -171,8 +171,8 @@ image_glyph_fit_colours(const struct image_rgb *samples, u_int count,
 		memset(sum, 0, sizeof sum);
 		memset(counts, 0, sizeof counts);
 		for (i = 0; i < count; i++) {
-			group = image_glyph_distance(samples[i], centres[1]) <
-			    image_glyph_distance(samples[i], centres[0]);
+			group = fallback_distance(samples[i], centres[1]) <
+			    fallback_distance(samples[i], centres[0]);
 			sum[group][0] += samples[i].r;
 			sum[group][1] += samples[i].g;
 			sum[group][2] += samples[i].b;
@@ -190,7 +190,7 @@ image_glyph_fit_colours(const struct image_rgb *samples, u_int count,
 
 /* Copy the UTF-8 character for an ACS key into a fallback cell. */
 static int
-image_glyph_set_acs(struct tty *tty, struct utf8_data *data, u_char key)
+fallback_set_acs(struct tty *tty, struct utf8_data *data, u_char key)
 {
 	struct utf8_data	*ud;
 	const char		*s = tty_acs_get(tty, key);
@@ -209,7 +209,7 @@ image_glyph_set_acs(struct tty *tty, struct utf8_data *data, u_char key)
 
 /* Map a block's foreground mask to a half, quadrant or sextant glyph. */
 static u_char
-image_glyph_block_key(enum image_glyph_detail detail, u_int mask)
+fallback_block_key(enum image_glyph_detail detail, u_int mask)
 {
 	static const u_char half[4] = {
 		0, TTY_ACS_IMAGE_HALF_UPPER, TTY_ACS_IMAGE_HALF_LOWER,
@@ -250,7 +250,7 @@ image_glyph_block_key(enum image_glyph_detail detail, u_int mask)
 
 /* Build and cache dithered brightness levels for a shading palette. */
 static u_char *
-image_glyph_make_shades(struct image *im, u_int levels)
+fallback_make_shades(struct image *im, u_int levels)
 {
 	struct image_glyph_data	*data = im->fallback_data;
 	const struct image_cell	*cell;
@@ -334,7 +334,7 @@ image_glyph_make_shades(struct image *im, u_int levels)
 
 /* Choose the richest colour palette supported by this terminal. */
 static enum image_glyph_palette
-image_glyph_get_palette(struct tty *tty)
+fallback_get_palette(struct tty *tty)
 {
 	int	colours;
 
@@ -352,7 +352,7 @@ image_glyph_get_palette(struct tty *tty)
 
 /* Choose the fallback glyph detail supported by this terminal. */
 static enum image_glyph_detail
-image_glyph_get_detail(struct tty *tty, enum image_glyph_palette palette)
+fallback_get_detail(struct tty *tty, enum image_glyph_palette palette)
 {
 	if (tty_acs_needed(tty))
 		return (IMAGE_GLYPH_ASCII);
@@ -369,7 +369,7 @@ image_glyph_get_detail(struct tty *tty, enum image_glyph_palette palette)
 
 /* Render one image cell using a two-colour block glyph. */
 static void
-image_glyph_block(struct tty *tty, struct image *im, u_int x, u_int y,
+fallback_block(struct tty *tty, struct image *im, u_int x, u_int y,
     enum image_glyph_detail detail, enum image_glyph_palette palette,
     struct grid_cell *out)
 {
@@ -408,22 +408,22 @@ image_glyph_block(struct tty *tty, struct image *im, u_int x, u_int y,
 
 	/* Fit the two colours and choose which subcells use the foreground. */
 	n = columns * rows;
-	image_glyph_fit_colours(samples, n, centres);
-	quantized[0] = image_glyph_quantize(centres[0], palette, &colours[0]);
-	quantized[1] = image_glyph_quantize(centres[1], palette, &colours[1]);
+	fallback_fit_colours(samples, n, centres);
+	quantized[0] = fallback_quantize(centres[0], palette, &colours[0]);
+	quantized[1] = fallback_quantize(centres[1], palette, &colours[1]);
 	mask = 0;
 	for (i = 0; i < n; i++) {
-		if (image_glyph_distance(samples[i], quantized[1]) <
-		    image_glyph_distance(samples[i], quantized[0])) {
+		if (fallback_distance(samples[i], quantized[1]) <
+		    fallback_distance(samples[i], quantized[0])) {
 			mask |= (1U << i);
 		}
 	}
-	key = image_glyph_block_key(detail, mask);
+	key = fallback_block_key(detail, mask);
 
 	/* Use a blank cell if the terminal has no matching glyph. */
 	if (key == 0)
 		utf8_set(&out->data, ' ');
-	else if (!image_glyph_set_acs(tty, &out->data, key))
+	else if (!fallback_set_acs(tty, &out->data, key))
 		utf8_set(&out->data, ' ');
 	out->fg = colours[1];
 	out->bg = colours[0];
@@ -431,7 +431,7 @@ image_glyph_block(struct tty *tty, struct image *im, u_int x, u_int y,
 
 /* Render an image cell using the terminal's text and colour capabilities. */
 void
-image_get_fallback_cell(struct tty *tty, struct image *im, u_int x, u_int y,
+fallback_get_cell(struct tty *tty, struct image *im, u_int x, u_int y,
     const struct grid_cell *gc, struct grid_cell *out)
 {
 	static const char	 ascii[] = " .:-=+*#%@";
@@ -457,8 +457,8 @@ image_get_fallback_cell(struct tty *tty, struct image *im, u_int x, u_int y,
 	}
 
 	/* Select the palette and glyph detail for this terminal. */
-	palette = image_glyph_get_palette(tty);
-	detail = image_glyph_get_detail(tty, palette);
+	palette = fallback_get_palette(tty);
+	detail = fallback_get_detail(tty, palette);
 	if (detail == IMAGE_GLYPH_ASCII) {
 		level = cell->whole.brightness * (sizeof ascii - 2) / 255;
 		utf8_set(&out->data, ascii[level]);
@@ -468,13 +468,13 @@ image_get_fallback_cell(struct tty *tty, struct image *im, u_int x, u_int y,
 		nlevels = 8;
 		if (detail == IMAGE_GLYPH_SHADE5)
 			nlevels = 5;
-		levels = image_glyph_make_shades(im, nlevels);
+		levels = fallback_make_shades(im, nlevels);
 		level = levels[(size_t)y * im->sx + x];
 		key = (detail == IMAGE_GLYPH_SHADE5 ? shades[level] :
 		    bold_shades[level]);
 		if (key == 0)
 			utf8_set(&out->data, ' ');
-		else if (!image_glyph_set_acs(tty, &out->data, key))
+		else if (!fallback_set_acs(tty, &out->data, key))
 			utf8_set(&out->data, ' ');
 		out->fg = 7;
 		out->bg = 0;
@@ -485,12 +485,12 @@ image_get_fallback_cell(struct tty *tty, struct image *im, u_int x, u_int y,
 		}
 		return;
 	}
-	image_glyph_block(tty, im, x, y, detail, palette, out);
+	fallback_block(tty, im, x, y, detail, palette, out);
 }
 
 /* Free the brightness levels cached for text image rendering. */
 void
-image_free_fallback(struct image *im)
+fallback_free(struct image *im)
 {
 	struct image_glyph_data	*data = im->fallback_data;
 

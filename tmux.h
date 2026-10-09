@@ -4399,10 +4399,7 @@ void		 image_tty_geometry_changed(struct tty *);
 void		 image_tty_free(struct tty *, int);
 void		 image_draw_line(struct tty *, struct screen *, u_int, u_int,
 		     u_int, u_int, u_int, int);
-void		 image_get_fallback_cell(struct tty *, struct image *, u_int,
-		     u_int, const struct grid_cell *, struct grid_cell *);
 const struct image_cell *image_get_cell(struct image *, u_int, u_int);
-void		 image_free_fallback(struct image *);
 int		 image_get_fallback_at(struct tty *, struct screen *, u_int,
 		     u_int, const struct grid_cell *, struct grid_cell *);
 struct image	*image_rect_get_image(const struct image_rect *);
@@ -4431,6 +4428,12 @@ int		 image_grid_get_placeholder(struct grid *, u_int, u_int,
 		     struct kitty_placeholder *);
 void		 image_place_cell_kitty(struct screen_write_ctx *, struct image *,
 		     u_int, u_int, u_int, u_int, u_int, u_int, int32_t);
+
+/* image-fallback.c */
+void		 fallback_get_cell(struct tty *, struct image *, u_int,
+		     u_int, const struct grid_cell *, struct grid_cell *);
+void		 fallback_free(struct image *);
+
 /* image-kitty.c */
 struct image	*kitty_parse_image(void **, const u_char *, size_t, u_int,
 		     u_int, struct kitty_parse_result *);
@@ -4458,11 +4461,6 @@ struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int,
     u_int);
 void		 sixel_free(struct sixel_image *);
 void		 sixel_log(struct sixel_image *);
-void		 sixel_size_in_cells(struct sixel_image *, u_int *, u_int *);
-struct sixel_image *sixel_scale(struct sixel_image *, u_int, u_int, u_int,
-		     u_int, u_int, u_int, int);
-char		*sixel_print(struct sixel_image *, struct sixel_image *,
-		     size_t *);
 struct image	*sixel_to_image(struct sixel_image *);
 #endif
 
