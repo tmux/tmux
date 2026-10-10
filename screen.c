@@ -759,6 +759,10 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 		return 0;
 	}
 
+	/* The cursor may have been saved on a taller screen. */
+	if (s->cy > screen_size_y(s) - 1)
+		s->cy = screen_size_y(s) - 1;
+
 	/* Restore the saved grid. */
 	grid_duplicate_lines(s->grid, screen_hsize(s), s->saved_grid, 0,
 	    s->saved_grid->sy);
