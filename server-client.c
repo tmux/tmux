@@ -2601,6 +2601,12 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 
 		if (c->flags & CLIENT_CONTROL)
 			break;
+		/*
+		 * A client that is exiting can still send a resize it had
+		 * pending, but MSG_EXITING has closed (and freed) its tty.
+		 */
+		if (~c->tty.flags & TTY_OPENED)
+			break;
 		server_client_update_latest(c);
 		old_sx = c->tty.sx;
 		old_sy = c->tty.sy;
