@@ -152,7 +152,15 @@ clients_calculate_size(int type, int current, struct client *c,
 		*sx = UINT_MAX;
 		*sy = UINT_MAX;
 	}
-	*xpixel = *ypixel = 0;
+	if (w != NULL && type == WINDOW_SIZE_MANUAL) {
+		/*
+		 * Keep the window's pixel size in manual mode to avoid scheduling
+		 * a resize on every recalculation.
+		 */
+		*xpixel = w->xpixel;
+		*ypixel = w->ypixel;
+	} else
+		*xpixel = *ypixel = 0;
 
 	/*
 	 * For latest, count the number of clients with this window. We only
@@ -386,11 +394,15 @@ recalculate_size(struct window *w, int now)
 	 * got a resize scheduled, then use the new size; otherwise the old.
 	 */
 	if (w->flags & WINDOW_RESIZE) {
-		if (!now && changed && w->new_sx == sx && w->new_sy == sy)
+		if (!now && changed && w->new_sx == sx && w->new_sy == sy &&
+		    w->new_xpixel == xpixel && w->new_ypixel == ypixel) {
 			changed = 0;
+		}
 	} else {
-		if (!now && changed && w->sx == sx && w->sy == sy)
+		if (!now && changed && w->sx == sx && w->sy == sy &&
+		    w->xpixel == xpixel && w->ypixel == ypixel) {
 			changed = 0;
+		}
 	}
 
 	/*

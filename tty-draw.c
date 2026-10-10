@@ -122,6 +122,11 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	struct grid		*gd = s->grid;
 	const struct grid_cell	*gcp;
 	struct grid_cell	 gc, ngc, last;
+#ifdef ENABLE_IMAGES
+	struct grid_cell	 image_gc;
+	struct kitty_placeholder placeholder;
+	int			 image_status;
+#endif
 	struct grid_line	*gl;
 	u_int			 i, j, last_i, cx, ex, width;
 	u_int			 cellsize, bg;
@@ -251,20 +256,45 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 
 			if (px >= ex || i >= ex - px) {
 				/* Outside the area being drawn. */
-				empty = nx - i;
 				gcp = &grid_default_cell;
+#ifdef ENABLE_IMAGES
+				image_status = image_get_fallback_at(tty, s, px + i,
+				    py, gcp, &image_gc);
+				if (image_status == 1) {
+					gcp = &image_gc;
+					empty = 0;
+				} else if (image_status == -1)
+					empty = 1;
+				else
+#endif
+					empty = nx - i;
+
+				/* Flush the background before clearing the tail. */
+				if (empty != 0 && gcp->bg != last.bg)
+					empty = 0;
 			} else {
 				/* Get the current cell. */
 				grid_view_get_cell(gd, px + i, py, &gc);
+#ifdef ENABLE_IMAGES
+				if (kitty_cell_is_placeholder(&gc) &&
+				    image_grid_get_placeholder(gd, px + i,
+				    gd->hsize + py, &placeholder)) {
+					utf8_set(&gc.data, ' ');
+				}
+#endif
+				gcp = &gc;
+#ifdef ENABLE_IMAGES
+				if (image_get_fallback_at(tty, s, px + i, py, &gc,
+				    &image_gc) == 1) {
+					gcp = &image_gc;
+				}
+#endif
 
 				/* Work out empty cells. */
-				empty = tty_draw_line_get_empty(&gc, &last,
-				    nx - i);
-				if (empty != 0)
-					gcp = &gc;
-				else {
+				empty = tty_draw_line_get_empty(gcp, &last, nx - i);
+				if (empty == 0) {
 					/* Update for codeset if needed. */
-					gcp = tty_check_codeset(tty, &gc);
+					gcp = tty_check_codeset(tty, gcp);
 
 					/* And for selection. */
 					if (gcp->flags & GRID_FLAG_SELECTED) {

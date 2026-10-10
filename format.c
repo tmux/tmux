@@ -3070,15 +3070,18 @@ format_cb_version(__unused struct format_tree *ft)
 	return (xstrdup(getversion()));
 }
 
-/* Callback for sixel_support. */
+/* Callback for image_support. */
 static void *
-format_cb_sixel_support(__unused struct format_tree *ft)
+format_cb_image_support(__unused struct format_tree *ft)
 {
-#ifdef ENABLE_SIXEL
-	return (xstrdup("1"));
+	char	*value;
+
+#ifdef ENABLE_IMAGES
+	value = xstrdup("1");
 #else
-	return (xstrdup("0"));
+	value = xstrdup("0");
 #endif
+	return (value);
 }
 
 /* Callback for active_window_index. */
@@ -3753,6 +3756,9 @@ static const struct format_table_entry format_table[] = {
 	{ "host_short", FORMAT_TABLE_STRING,
 	  format_cb_host_short
 	},
+	{ "image_support", FORMAT_TABLE_STRING,
+	  format_cb_image_support
+	},
 	{ "insert_flag", FORMAT_TABLE_STRING,
 	  format_cb_insert_flag
 	},
@@ -4090,7 +4096,7 @@ static const struct format_table_entry format_table[] = {
 	  format_cb_session_windows
 	},
 	{ "sixel_support", FORMAT_TABLE_STRING,
-	  format_cb_sixel_support
+	  format_cb_image_support
 	},
 	{ "socket_path", FORMAT_TABLE_STRING,
 	  format_cb_socket_path

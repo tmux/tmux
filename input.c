@@ -144,6 +144,9 @@ struct input_ctx {
 	 */
 	struct evbuffer			*since_ground;
 	struct event			 ground_timer;
+#ifdef ENABLE_IMAGES
+	void				*kitty_state;
+#endif
 };
 
 /* Helper functions. */
@@ -182,6 +185,9 @@ static void	input_enter_osc(struct input_ctx *);
 static void	input_exit_osc(struct input_ctx *);
 static void	input_enter_apc(struct input_ctx *);
 static void	input_exit_apc(struct input_ctx *);
+#ifdef ENABLE_IMAGES
+static int	input_handle_kitty(struct input_ctx *, const u_char *, size_t);
+#endif
 static void	input_enter_rename(struct input_ctx *);
 static void	input_exit_rename(struct input_ctx *);
 
@@ -914,6 +920,9 @@ input_free(struct input_ctx *ictx)
 	event_del(&ictx->request_timer);
 
 	free(ictx->input_buf);
+#ifdef ENABLE_IMAGES
+	kitty_free_state(ictx->kitty_state);
+#endif
 	evbuffer_free(ictx->since_ground);
 	event_del(&ictx->ground_timer);
 
@@ -936,6 +945,7 @@ input_reset(struct input_ctx *ictx, int clear)
 			screen_write_start_pane(sctx, wp, &wp->base);
 		else
 			screen_write_start(sctx, &wp->base);
+		sctx->flags |= SCREEN_WRITE_INPUT;
 		screen_write_reset(sctx);
 		screen_write_stop(sctx);
 	}
@@ -1064,6 +1074,7 @@ input_parse_buffer(struct window_pane *wp, const u_char *buf, size_t len)
 		screen_write_start_pane(sctx, wp, &wp->base);
 	else
 		screen_write_start(sctx, &wp->base);
+	sctx->flags |= SCREEN_WRITE_INPUT;
 
 	log_debug("%s: %%%u %s, %zu bytes: %.*s", __func__, wp->id,
 	    ictx->state->name, len, (int)len, buf);
@@ -1083,6 +1094,7 @@ input_parse_screen(struct input_ctx *ictx, struct screen *s,
 		return;
 
 	screen_write_start_callback(sctx, s, cb, arg);
+	sctx->flags |= SCREEN_WRITE_INPUT;
 	input_parse(ictx, buf, len);
 	screen_write_stop(sctx);
 }
@@ -1582,7 +1594,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case -1:
 			break;
 		case 0:
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 			input_reply(ictx, 1, "\033[?1;2;4c");
 #else
 			input_reply(ictx, 1, "\033[?1;2c");
@@ -2100,7 +2112,7 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 static void
 input_csi_dispatch_sm_graphics(__unused struct input_ctx *ictx)
 {
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	int	n, m, o;
 
 	if (ictx->param_list_len > 3)
@@ -2625,10 +2637,10 @@ input_dcs_dispatch(struct input_ctx *ictx)
 	const char		 prefix[] = "tmux;";
 	const u_int		 prefixlen = (sizeof prefix) - 1;
 	long long		 allow_passthrough = 0;
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	struct window		*w;
 	struct sixel_image	*si;
-	int			 p2;
+	int			 p1, p2;
 #endif
 
 	if (wp == NULL)
@@ -2641,15 +2653,18 @@ input_dcs_dispatch(struct input_ctx *ictx)
 		return (0);
 	}
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	if (wp != NULL && buf[0] == 'q' && ictx->interm_len == 0) {
 		w = wp->window;
 		if (input_split(ictx) != 0)
 			return (0);
+		p1 = input_get(ictx, 0, 0, 0);
+		if (p1 == -1)
+			p1 = 0;
 		p2 = input_get(ictx, 1, 0, 0);
 		if (p2 == -1)
 			p2 = 0;
-		si = sixel_parse(buf, len, p2, w->xpixel, w->ypixel);
+		si = sixel_parse(buf, len, p1, p2, w->xpixel, w->ypixel);
 		if (si != NULL)
 			screen_write_sixelimage(sctx, si, ictx->cell.cell.bg);
 	}
@@ -2787,6 +2802,79 @@ input_enter_apc(struct input_ctx *ictx)
 	ictx->flags &= ~INPUT_LAST;
 }
 
+#ifdef ENABLE_IMAGES
+/* Reply to a Kitty graphics command with its image and placement IDs. */
+static void
+input_reply_kitty(struct input_ctx *ictx,
+    const struct kitty_parse_result *result, const char *message)
+{
+	char	ids[96];
+
+	if (result->quiet >= 2)
+		return;
+	if (result->quiet == 1 && strcmp(message, "OK") == 0)
+		return;
+	if (result->image_id == 0 && result->image_number == 0 &&
+	    result->action != 'q') {
+		return;
+	}
+	if (result->image_number != 0) {
+		if (result->image_id != 0) {
+			xsnprintf(ids, sizeof ids, "i=%u,I=%u",
+			    result->image_id, result->image_number);
+		} else
+			xsnprintf(ids, sizeof ids, "I=%u",
+			    result->image_number);
+	} else {
+		xsnprintf(ids, sizeof ids, "i=%u", result->image_id);
+	}
+	if (result->placement_id != 0) {
+		input_reply(ictx, 0, "\033_G%s,p=%u;%s\033\\", ids,
+		    result->placement_id, message);
+	} else {
+		input_reply(ictx, 0, "\033_G%s;%s\033\\", ids, message);
+	}
+}
+
+/* Handle a Kitty graphics command. */
+static int
+input_handle_kitty(struct input_ctx *ictx, const u_char *buf, size_t len)
+{
+	struct screen_write_ctx	*sctx = &ictx->ctx;
+	struct window_pane	*wp = ictx->wp;
+	struct image		*im;
+	struct kitty_parse_result result;
+
+	if (wp == NULL)
+		return (0);
+	im = kitty_parse_image(&ictx->kitty_state, buf, len,
+	    wp->window->xpixel, wp->window->ypixel, &result);
+	if (result.status == KITTY_PARSE_MORE)
+		return (1);
+	if (result.status != KITTY_PARSE_OK) {
+		if (result.status == KITTY_PARSE_MISSING)
+			input_reply_kitty(ictx, &result, "ENOENT");
+		else if (result.status == KITTY_PARSE_UNSUPPORTED)
+			input_reply_kitty(ictx, &result, "ENOTSUP");
+		else
+			input_reply_kitty(ictx, &result, "EINVAL");
+		return (1);
+	}
+	if (result.replace_id != 0)
+		image_clear(sctx, result.replace_id);
+	if (result.action == 'd') {
+		kitty_delete_images(ictx->kitty_state, sctx, &result);
+	} else if (im != NULL) {
+		image_write_kitty(sctx, im, ictx->cell.cell.bg,
+		    result.image_id, result.placement_id, result.z);
+		image_free(image_get_id(im));
+	}
+	if (result.action != 'd')
+		input_reply_kitty(ictx, &result, "OK");
+	return (1);
+}
+#endif
+
 /* APC terminator (ST) received. */
 static void
 input_exit_apc(struct input_ctx *ictx)
@@ -2797,6 +2885,14 @@ input_exit_apc(struct input_ctx *ictx)
 	if (ictx->flags & INPUT_DISCARD)
 		return;
 	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
+
+#ifdef ENABLE_IMAGES
+	if (ictx->input_len > 1 && ictx->input_buf[0] == 'G' &&
+	    input_handle_kitty(ictx, ictx->input_buf + 1,
+	    ictx->input_len - 1)) {
+		return;
+	}
+#endif
 
 	if (wp != NULL &&
 	    options_get_number(wp->options, "allow-set-title") &&
@@ -2858,6 +2954,11 @@ input_top_bit_set(struct input_ctx *ictx)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct utf8_data	*ud = &ictx->utf8data;
+#ifdef ENABLE_IMAGES
+	struct grid_cell	 gc;
+	struct kitty_placeholder placeholder;
+	u_int			 x;
+#endif
 
 	ictx->flags &= ~INPUT_LAST;
 
@@ -2884,6 +2985,22 @@ input_top_bit_set(struct input_ctx *ictx)
 
 	utf8_copy(&ictx->cell.cell.data, ud);
 	screen_write_collect_add(sctx, &ictx->cell.cell);
+
+#ifdef ENABLE_IMAGES
+	if (sctx->s->cx != 0) {
+		x = sctx->s->cx - 1; /* cx-1 is the cell just written. */
+		grid_view_get_cell(sctx->s->grid, x, sctx->s->cy, &gc);
+		image_grid_remove_overwritten_spans(sctx->s->grid, x,
+		    sctx->s->grid->hsize + sctx->s->cy, 1, 1);
+		if (kitty_placeholder_to_image(ictx->kitty_state,
+		    sctx->s->grid, &gc, x, sctx->s->cy, &placeholder)) {
+			image_place_cell_kitty(sctx, placeholder.image, x,
+			    sctx->s->cy, placeholder.source_x,
+			    placeholder.source_y, placeholder.image_id,
+			    placeholder.placement_id, placeholder.z);
+		}
+	}
+#endif
 
 	utf8_copy(&ictx->last, &ictx->cell.cell.data);
 	ictx->flags |= INPUT_LAST;
