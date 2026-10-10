@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.482 2026/09/22 06:58:06 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.485 2026/10/07 07:34:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1147,7 +1147,7 @@ tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 	 */
 	if (tty_large_region(tty, ctx) || ctx->flags & TTY_CTX_PANE_OBSCURED) {
 		log_debug("%s: %s large region redraw", __func__, c->name);
-		ctx->redraw_cb(ctx);
+		ctx->redraw_cb(ctx, ctx->orupper, ctx->orlower - ctx->orupper + 1);
 		return;
 	}
 
@@ -1313,6 +1313,10 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 	if (*rx > nx)
 		fatalx("%s: x too big, %u > %u", __func__, *rx, nx);
 
+	/*
+	 * yoff is in window coordinates; ctx->yoff - ctx->ryoff is the number
+	 * of status lines above the window on the terminal.
+	 */
 	if (yoff >= ctx->woy && yoff + ny <= ctx->woy + ctx->wsy) {
 		/* All visible. */
 		*j = 0;
@@ -1320,19 +1324,19 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		*ry = ny;
 	} else if (yoff < ctx->woy && yoff + ny > ctx->woy + ctx->wsy) {
 		/* Both top and bottom not visible. */
-		*j = ctx->woy;
-		*y = 0;
+		*j = ctx->woy - yoff;
+		*y = ctx->yoff - ctx->ryoff;
 		*ry = ctx->wsy;
 	} else if (yoff < ctx->woy) {
 		/* Top not visible. */
-		*j = ctx->woy - (ctx->yoff + py);
-		*y = 0;
+		*j = ctx->woy - yoff;
+		*y = ctx->yoff - ctx->ryoff;
 		*ry = ny - *j;
 	} else {
 		/* Bottom not visible. */
 		*j = 0;
 		*y = (ctx->yoff + py) - ctx->woy;
-		*ry = ctx->wsy - *y;
+		*ry = ctx->woy + ctx->wsy - yoff;
 	}
 	if (*ry > ny)
 		fatalx("%s: y too big, %u > %u", __func__, *ry, ny);
@@ -1549,6 +1553,7 @@ tty_sync_start(struct tty *tty)
 	if (tty->flags & TTY_SYNCING)
 		return;
 	tty->flags |= TTY_SYNCING;
+	tty->sync_offset = EVBUFFER_LENGTH(tty->out);
 
 	if (tty_term_has(tty->term, TTYC_SYNC)) {
 		log_debug("%s sync start", tty->client->name);
@@ -1955,7 +1960,7 @@ tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 	u_int		 i, j;
 
 	if (ctx->flags & TTY_CTX_WINDOW_BIGGER) {
-		ctx->redraw_cb(ctx);
+		ctx->redraw_cb(ctx, 0, ctx->sy);
 		return;
 	}
 
@@ -2014,7 +2019,7 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 		    tty->cy == tty->rlower)
 			tty_draw_pane(tty, ctx, ctx->ocy);
 		else
-			ctx->redraw_cb(ctx);
+			ctx->redraw_cb(ctx, ctx->ocy, 1);
 		return;
 	}
 
@@ -2860,7 +2865,7 @@ tty_colours_fg(struct tty *tty, const struct grid_cell *gc)
 	 * reset because some terminals do not clear bright correctly.
 	 */
 	if (tty->cell.fg >= 90 &&
-	    tty->cell.bg <= 97 &&
+	    tty->cell.fg <= 97 &&
 	    (gc->fg < 90 || gc->fg > 97))
 		tty_reset(tty);
 

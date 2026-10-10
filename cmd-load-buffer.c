@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-load-buffer.c,v 1.66 2025/10/28 07:32:26 nicm Exp $ */
+/* $OpenBSD: cmd-load-buffer.c,v 1.68 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -35,6 +35,7 @@ static enum cmd_retval	cmd_load_buffer_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_load_buffer_entry = {
 	.name = "load-buffer",
+	.description = "Load a file into a paste buffer.",
 	.alias = "loadb",
 
 	.args = { "b:t:w", 1, 1, NULL },
@@ -78,9 +79,9 @@ cmd_load_buffer_done(__unused struct client *c, const char *path, int error,
 		    tc->session != NULL &&
 		    (~tc->flags & CLIENT_DEAD))
 			tty_set_selection(&tc->tty, "", copy, bsize);
-		if (tc != NULL)
-			server_client_unref(tc);
 	}
+	if (tc != NULL)
+		server_client_unref(tc);
 	cmdq_continue(item);
 
 	free(cdata->name);

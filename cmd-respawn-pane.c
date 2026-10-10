@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-respawn-pane.c,v 1.40 2026/07/03 16:09:49 nicm Exp $ */
+/* $OpenBSD: cmd-respawn-pane.c,v 1.41 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -32,6 +32,7 @@ static enum cmd_retval	cmd_respawn_pane_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_respawn_pane_entry = {
 	.name = "respawn-pane",
+	.description = "Restart a pane's command.",
 	.alias = "respawnp",
 
 	.args = { "c:e:Ekt:", 0, -1, NULL },

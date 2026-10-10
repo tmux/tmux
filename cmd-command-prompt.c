@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-command-prompt.c,v 1.76 2026/08/25 06:04:33 nicm Exp $ */
+/* $OpenBSD: cmd-command-prompt.c,v 1.77 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -40,6 +40,7 @@ static void	cmd_command_prompt_free(void *);
 
 const struct cmd_entry cmd_command_prompt_entry = {
 	.name = "command-prompt",
+	.description = "Open an interactive command prompt.",
 	.alias = NULL,
 
 	.args = { "1CbeFiklI:NPp:t:T:", 0, 1, cmd_command_prompt_args_parse },

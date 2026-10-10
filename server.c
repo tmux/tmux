@@ -448,6 +448,10 @@ server_signal(int sig)
 		server_child_signal();
 		break;
 	case SIGUSR1:
+#ifdef HAVE_SYSTEMD
+		if (systemd_activated())
+			break;
+#endif
 		event_del(&server_ev_accept);
 		fd = server_create_socket(server_client_flags, NULL);
 		if (fd != -1) {

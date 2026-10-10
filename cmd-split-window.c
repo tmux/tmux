@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-split-window.c,v 1.151 2026/09/10 11:02:18 nicm Exp $ */
+/* $OpenBSD: cmd-split-window.c,v 1.153 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -38,6 +38,7 @@ static void		cmd_split_window_mouse_resize(struct client *,
 
 const struct cmd_entry cmd_new_pane_entry = {
 	.name = "new-pane",
+	.description = "Create a floating pane.",
 	.alias = "newp",
 
 	.args = { "AbB:Cc:Dde:EfF:hIkl:KLMm:Op:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
@@ -57,6 +58,7 @@ const struct cmd_entry cmd_new_pane_entry = {
 
 const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
+	.description = "Create a new pane by splitting a window.",
 	.alias = "splitw",
 
 	.args = { "bB:c:de:EfF:hIkl:m:p:PR:s:S:t:T:vWZ", 0, -1, NULL },
@@ -362,6 +364,7 @@ cmd_split_window_mouse_resize(struct client *c, struct mouse_event *m)
 	enum pane_lines		 lines;
 	u_int			 sx, sy;
 	int			 x, y, xoff, yoff, border;
+	int			 oxoff, oyoff, osx, osy;
 
 	if (c->tty.mouse_last_pane == -1)
 		return;
@@ -417,8 +420,14 @@ cmd_split_window_mouse_resize(struct client *c, struct mouse_event *m)
 	if (sy < PANE_MINIMUM)
 		sy = PANE_MINIMUM;
 
+	oxoff = wp->xoff;
+	oyoff = wp->yoff;
+	osx = wp->sx;
+	osy = wp->sy;
+
 	layout_set_size(lc, sx, sy, xoff, yoff);
 	layout_fix_panes(w, NULL);
-	server_redraw_window(w);
+
+	window_redraw_floating_pane(wp, oxoff, oyoff, osx, osy);
 	server_redraw_window_borders(w);
 }

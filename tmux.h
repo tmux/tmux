@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1449 2026/09/28 10:10:16 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1455 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -69,6 +69,7 @@ struct options_array_item;
 struct options_entry;
 struct prompt;
 struct window_pane_prompt;
+struct redraw_damage;
 struct redraw_scene;
 struct redraw_span;
 struct screen_write_citem;
@@ -482,6 +483,17 @@ enum {
 	/* Theme reporting. */
 	KEYC_REPORT_DARK_THEME,
 	KEYC_REPORT_LIGHT_THEME,
+
+	/* Terminal replies, handled in tty-keys.c and never fired. */
+	KEYC_REPORT_CLIPBOARD,
+	KEYC_REPORT_KITTY,
+	KEYC_REPORT_SYNC,
+	KEYC_REPORT_DA,
+	KEYC_REPORT_DA2,
+	KEYC_REPORT_XDA,
+	KEYC_REPORT_COLOURS,
+	KEYC_REPORT_PALETTE,
+	KEYC_REPORT_WINSZ,
 
 	/* Mouse state. */
 	KEYC_MOUSE, /* unclassified mouse event */
@@ -1434,6 +1446,7 @@ struct window_pane {
 #define PANE_CAPTUREALLKEYS 0x100000
 #define PANE_FLOATOVERZOOM 0x200000
 #define PANE_CLOSEONCANCEL 0x400000
+#define PANE_UTMP 0x800000
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;
@@ -1496,6 +1509,7 @@ struct window_pane {
 	struct screen	 base;
 
 	struct screen	 status_screen;
+	u_int		 status_generation;
 
 	TAILQ_HEAD(, window_mode_entry) modes;
 
@@ -1526,6 +1540,7 @@ struct window_pane {
 TAILQ_HEAD(window_panes, window_pane);
 TAILQ_HEAD(window_panes_zindex, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
+TAILQ_HEAD(redraw_damages, redraw_damage);
 
 /* Window structure. */
 struct window {
@@ -1568,6 +1583,9 @@ struct window {
 	u_int			 new_ypixel;
 
 	uint64_t		 redraw_scene_generation;
+
+	struct redraw_damages	 damage;
+	u_int			 damage_count;
 
 	struct menu_data	*menu;
 	u_int			 menu_last_px;
@@ -1895,6 +1913,8 @@ struct tty {
 	struct event	 timer;
 	size_t		 discarded;
 
+	size_t		 sync_offset;
+
 	struct termios	 tio;
 
 	struct grid_cell cell;
@@ -1930,6 +1950,7 @@ struct tty {
 	u_int		 mouse_last_y;
 	u_int		 mouse_last_b;
 	int		 mouse_drag_flag;
+	int		 mouse_drag_status;
 	u_int		 mouse_drag_x;
 	u_int		 mouse_drag_y;
 	int		 mouse_scrolling_flag;
@@ -1945,7 +1966,7 @@ struct tty {
 };
 
 /* Terminal command context. */
-typedef void (*tty_ctx_redraw_cb)(const struct tty_ctx *);
+typedef void (*tty_ctx_redraw_cb)(const struct tty_ctx *, u_int, u_int);
 typedef int (*tty_ctx_set_client_cb)(struct tty_ctx *, struct client *);
 struct tty_ctx {
 	struct screen		*s;
@@ -2149,6 +2170,7 @@ struct cmd_entry_flag {
 /* Command definition. */
 struct cmd_entry {
 	const char		*name;
+	const char		*description;
 	const char		*alias;
 
 	struct args_parse	 args;
@@ -2705,6 +2727,7 @@ extern char **cfg_files;
 extern u_int cfg_nfiles;
 extern int cfg_quiet;
 void	start_cfg(void);
+void	cfg_client_lost(struct client *);
 int	load_cfg(const char *, struct client *, struct cmdq_item *,
             struct cmd_find_state *, int, struct cmdq_item **);
 int	load_cfg_from_buffer(const void *, size_t, const char *,
@@ -3139,7 +3162,7 @@ int		tty_keys_colours(struct tty *, const char *, size_t, size_t *,
 int		tty_keys_kitty(struct tty *, const char *, size_t, size_t *,
 		     key_code *);
 int		tty_keys_kitty_query(struct tty *, const char *, size_t,
-		     size_t *);
+		     size_t *, int);
 
 /* arguments.c */
 void		 args_set(struct args *, u_char, struct args_value *, int);
@@ -3624,6 +3647,8 @@ void	 grid_reader_start(struct grid_reader *, struct grid *, u_int, u_int);
 void	 grid_reader_get_cursor(struct grid_reader *, u_int *, u_int *);
 u_int	 grid_reader_line_length(struct grid_reader *);
 int	 grid_reader_in_set(struct grid_reader *, const char *);
+int	 grid_reader_output_range(struct grid_reader *, u_int *, u_int *,
+		     u_int *, u_int *);
 void	 grid_reader_cursor_right(struct grid_reader *, int, int, int);
 void	 grid_reader_cursor_left(struct grid_reader *, int);
 void	 grid_reader_cursor_down(struct grid_reader *);
@@ -3749,8 +3774,12 @@ void	 redraw_screen(struct client *);
 void	 redraw_pane(struct client *, struct window_pane *);
 void	 redraw_pane_scrollbar(struct client *, struct window_pane *);
 void	 redraw_free_scene(struct redraw_scene *);
+int	 redraw_client_has_window(struct client *, struct window *);
 void	 redraw_invalidate_scene(struct window *);
 void	 redraw_invalidate_all_scenes(void);
+void	 redraw_damage_window(struct window *, u_int, u_int, u_int, u_int);
+void	 redraw_free_damage(struct window *);
+void	 redraw_client_damage(struct client *);
 int	 redraw_get_status_border_cell_type(struct redraw_span **, u_int);
 
 /* screen.c */
@@ -3810,6 +3839,8 @@ struct window	*window_find_by_id(u_int);
 void		 window_update_activity(struct window *);
 struct window	*window_create(u_int, u_int, u_int, u_int);
 void		 window_pane_set_event(struct window_pane *);
+void		 window_pane_utmp_add(struct window_pane *);
+void		 window_pane_utmp_remove(struct window_pane *);
 void		 window_pane_wait_finish(struct window_pane *);
 struct window_pane *window_get_active_at(struct window *, u_int, u_int);
 struct window_pane *window_find_string(struct window *, const char *);
@@ -3927,6 +3958,8 @@ struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
 		     u_int);
 int		 window_pane_is_floating(struct window_pane *);
 int		 window_pane_is_floating_with_hidden(struct window_pane *);
+void		 window_redraw_floating_pane(struct window_pane *, int, int,
+		     int, int);
 
 /* window-border.c */
 void		 window_set_fill_cells(struct window *);
@@ -4307,7 +4340,7 @@ struct winlink	*spawn_window(struct spawn_context *, char **);
 struct window_pane *spawn_pane(struct spawn_context *, char **);
 typedef void (*spawn_finish_edit_cb)(char *, size_t, void *);
 struct spawn_editor_state *spawn_editor(struct client *, const char *, size_t,
-		     spawn_finish_edit_cb, void *);
+		     const char *, spawn_finish_edit_cb, void *);
 void		 spawn_cancel_editor(struct spawn_editor_state *);
 pid_t		 spawn_get_editor_pid(struct spawn_editor_state *);
 void		 spawn_editor_finish(struct window_pane *);

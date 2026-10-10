@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.383 2026/09/28 10:42:01 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.385 2026/10/08 07:06:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -423,6 +423,7 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 	TAILQ_INIT(&w->panes);
 	TAILQ_INIT(&w->z_index);
 	TAILQ_INIT(&w->last_panes);
+	TAILQ_INIT(&w->damage);
 	w->active = NULL;
 
 	w->lastlayout = -1;
@@ -476,6 +477,7 @@ window_destroy(struct window *w)
 
 	menu_destroy(w);
 	window_destroy_panes(w);
+	redraw_free_damage(w);
 
 	if (event_initialized(&w->name_event))
 		evtimer_del(&w->name_event);
@@ -754,6 +756,7 @@ int
 window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 {
 	struct window_pane *lastwp;
+	int		    unzoomed;
 
 	log_debug("%s: pane %%%u", __func__, wp->id);
 
@@ -761,7 +764,8 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 		return (0);
 	if (w->modal != NULL && wp != w->modal)
 		return (0);
-	if ((w->flags & WINDOW_ZOOMED) && !window_pane_is_visible(wp))
+	unzoomed = (w->flags & WINDOW_ZOOMED) && !window_pane_is_visible(wp);
+	if (unzoomed)
 		window_unzoom(w, 1);
 	lastwp = w->active;
 
@@ -778,7 +782,19 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 	}
 
 	tty_update_window_offset(w);
-	server_redraw_window(w);
+
+	/*
+	 * Unzooming changes every pane's geometry and needs a full window
+	 * redraw. Otherwise, only the previous and new active pane's border
+	 * and status appearance changed, so avoid redrawing unaffected pane
+	 * content.
+	 */
+	if (unzoomed)
+		server_redraw_window(w);
+	else {
+		server_redraw_window_borders(w);
+		server_status_window(w);
+	}
 
 	if (notify)
 		window_fire_pane_changed(w, w->active, lastwp);
@@ -1563,6 +1579,46 @@ window_pane_scrollbar_redraw_visibility(struct window_pane *wp)
 	server_redraw_window(wp->window);
 }
 
+#ifdef HAVE_UTEMPTER
+void
+window_pane_utmp_add(struct window_pane *wp)
+{
+	char	*cp;
+
+	if (wp->fd == -1 ||
+	    (wp->flags & (PANE_EMPTY|PANE_EXITED|PANE_UTMP)) ||
+	    !options_get_number(global_options, "utmp"))
+		return;
+	xasprintf(&cp, "tmux(%lu).%%%u", (long)getpid(), wp->id);
+	utempter_add_record(wp->fd, cp);
+	kill(getpid(), SIGCHLD);
+	wp->flags |= PANE_UTMP;
+	free(cp);
+}
+#else
+void
+window_pane_utmp_add(__unused struct window_pane *wp)
+{
+}
+#endif
+
+#ifdef HAVE_UTEMPTER
+void
+window_pane_utmp_remove(struct window_pane *wp)
+{
+	if (~wp->flags & PANE_UTMP)
+		return;
+	utempter_remove_record(wp->fd);
+	kill(getpid(), SIGCHLD);
+	wp->flags &= ~PANE_UTMP;
+}
+#else
+void
+window_pane_utmp_remove(__unused struct window_pane *wp)
+{
+}
+#endif
+
 static void
 window_pane_destroy(struct window_pane *wp)
 {
@@ -1576,13 +1632,12 @@ window_pane_destroy(struct window_pane *wp)
 	window_pane_free_modes(wp);
 	screen_write_sync_clear_dirty(wp);
 
-	if (wp->fd != -1) {
-#ifdef HAVE_UTEMPTER
-		utempter_remove_record(wp->fd);
-		kill(getpid(), SIGCHLD);
-#endif
+	if (wp->event != NULL) {
 		bufferevent_free(wp->event);
 		wp->event = NULL;
+	}
+	if (wp->fd != -1) {
+		window_pane_utmp_remove(wp);
 		close(wp->fd);
 		wp->fd = -1;
 	}
@@ -2970,4 +3025,41 @@ window_pane_is_floating_with_hidden(struct window_pane *wp)
 	if (lc == NULL || (lc->flags & LAYOUT_CELL_FLOATING) == 0)
 		return (0);
 	return (1);
+}
+
+/* Report damage for a floating pane, including its border and scrollbar. */
+static void
+window_damage_floating_pane(struct window_pane *wp, int xoff, int yoff,
+    int sx, int sy)
+{
+	struct window	*w = wp->window;
+	int		 x0, x1, y0, y1, sb_left = 0, sb_right = 0;
+	struct style	*sb_sy = &wp->scrollbar_style;
+
+	if (window_pane_scrollbar_reserve(wp)) {
+		if (w->sb_pos == PANE_SCROLLBARS_LEFT)
+			sb_left = sb_sy->width + sb_sy->pad;
+		else
+			sb_right = sb_sy->width + sb_sy->pad;
+	}
+	x0 = xoff - 1 - sb_left;
+	x1 = xoff + sx + sb_right;
+	y0 = yoff - 1;
+	y1 = yoff + sy;
+	if (x0 < 0)
+		x0 = 0;
+	if (y0 < 0)
+		y0 = 0;
+	if (x1 >= x0 && y1 >= y0)
+		redraw_damage_window(w, x0, y0, x1 - x0 + 1U, y1 - y0 + 1U);
+}
+
+/* Report damage for a floating pane's old and new areas. */
+void
+window_redraw_floating_pane(struct window_pane *wp, int oxoff, int oyoff,
+    int osx, int osy)
+{
+	window_damage_floating_pane(wp, oxoff, oyoff, osx, osy);
+	window_damage_floating_pane(wp, wp->xoff, wp->yoff, wp->sx, wp->sy);
+	server_status_window(wp->window);
 }

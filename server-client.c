@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.515 2026/09/28 11:25:51 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.519 2026/10/09 10:16:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -356,7 +356,13 @@ server_client_set_session(struct client *c, struct session *s)
 		tty_update_client_offset(c);
 		status_timer_start(c);
 		server_client_fire_session_changed(c, old);
-		server_redraw_client(c);
+
+		/*
+		 * Redraw if the session or displayed window changed. Use the
+		 * cached scene because the session's current window is already set.
+		 */
+		if (old != s || !redraw_client_has_window(c, s->curw->window))
+			server_redraw_client(c);
 	}
 
 	server_check_unattached();
@@ -369,8 +375,7 @@ server_client_lost(struct client *c)
 {
 	struct client_file	*cf, *cf1;
 
-	if (cfg_client == c)
-		cfg_client = NULL;
+	cfg_client_lost(c);
 	c->flags |= CLIENT_DEAD;
 
 	status_prompt_clear(c);
@@ -393,6 +398,9 @@ server_client_lost(struct client *c)
 	}
 	if (c->name != NULL && (c->flags & (CLIENT_CONTROL|CLIENT_TERMINAL)))
 		events_fire_client("client-closed", c);
+
+	c->session = NULL;
+	c->last_session = NULL;
 
 	if (c->flags & CLIENT_CONTROL)
 		control_stop(c);
@@ -786,9 +794,14 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 			x = m->x, y = m->y, b = m->b;
 			if (x == m->lx && y == m->ly)
 				return (KEYC_UNKNOWN);
+			if (c->tty.mouse_drag_status) {
+				x = c->tty.mouse_drag_x;
+				y = c->tty.mouse_drag_y;
+			}
 			log_debug("drag update at %u,%u", x, y);
 		} else {
 			x = m->lx, y = m->ly, b = m->lb;
+			c->tty.mouse_drag_status = 0;
 			log_debug("drag start at %u,%u", x, y);
 		}
 	} else if (MOUSE_WHEEL(m->b)) {
@@ -846,6 +859,8 @@ have_event:
 	if (m->statusat != -1 &&
 	    y >= (u_int)m->statusat &&
 	    y < m->statusat + m->statuslines) {
+		if (type == KEYC_TYPE_MOUSEDRAG && c->tty.mouse_drag_flag == 0)
+			c->tty.mouse_drag_status = 1;
 		sr = status_get_range(c, x, y - m->statusat);
 		if (sr == NULL) {
 			loc = KEYC_MOUSE_LOCATION_STATUS_DEFAULT;
@@ -1077,17 +1092,24 @@ have_event:
 		 * where the user grabbed.
 		 */
 		if (c->tty.mouse_drag_flag == 0) {
-			c->tty.mouse_drag_x = px;
-			c->tty.mouse_drag_y = py;
+			if (c->tty.mouse_drag_status) {
+				c->tty.mouse_drag_x = x;
+				c->tty.mouse_drag_y = y;
+			} else {
+				c->tty.mouse_drag_x = px;
+				c->tty.mouse_drag_y = py;
+			}
 		}
 		c->tty.mouse_drag_flag = MOUSE_BUTTONS(b) + 1;
 
-		/* Only change pane if not already dragging a pane border. */
-		if (lwp == NULL) {
+		/* Change the pane if the drag did not start on status line. */
+		if (!c->tty.mouse_drag_status && lwp == NULL) {
 			lwp = wp = window_get_active_at(w, px, py);
 			if (wp != NULL)
 				c->tty.mouse_last_pane = wp->id;
 		}
+
+		/* Change scrollbar position if needed. */
 		if (c->tty.mouse_scrolling_flag == 0 &&
 		    loc == KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER) {
 			c->tty.mouse_scrolling_flag = 1;
@@ -1349,10 +1371,11 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 		m->key = key;
 
 		/*
-		 * Mouse drag is in progress, so fire the callback (now that
-		 * the mouse event is valid).
+		 * Synchronize direct drag output with the later damage redraw
+		 * before invoking the drag callback.
 		 */
 		if ((key & KEYC_MASK_KEY) == KEYC_DRAGGING) {
+			tty_sync_start(&c->tty);
 			c->tty.mouse_drag_update(c, m);
 			goto out;
 		}
@@ -1779,8 +1802,8 @@ server_client_loop(void)
 	}
 
 	/*
-	 * Any windows will have been redrawn as part of clients, so clear
-	 * their flags now.
+	 * Clear window redraw state after processing all clients. Deferred
+	 * redraws are preserved in client flags.
 	 */
 	RB_FOREACH(w, windows, &windows) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -1791,6 +1814,8 @@ server_client_loop(void)
 			wp->flags &= ~(PANE_REDRAW|PANE_REDRAWSCROLLBAR|
 			    PANE_ACTIVITY);
 		}
+		redraw_free_damage(w);
+
 		check_window_name(w);
 	}
 
@@ -2337,6 +2362,8 @@ server_client_any_pane_redraw(struct client *c)
 
 	if (c->flags & CLIENT_REDRAWWINDOW)
 		return (1);
+	if (!TAILQ_EMPTY(&w->damage))
+		return (1);
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (wp->flags & (PANE_REDRAW|PANE_REDRAWSCROLLBAR))
 			return (1);
@@ -2353,6 +2380,7 @@ server_client_check_redraw(struct client *c)
 	struct window		*w = s->curw->window;
 	struct window_pane	*wp;
 	int			 needed, tflags, mode = tty->mode;
+	int			 damaged = !TAILQ_EMPTY(&w->damage);
 	struct timeval		 tv = { .tv_usec = 1000 };
 	static struct event	 ev;
 	size_t			 n;
@@ -2378,12 +2406,12 @@ server_client_check_redraw(struct client *c)
 		return;
 	}
 
-	/*
-	 * If there is outstanding data, defer the redraw until it has been
-	 * consumed. We can just add a timer to get out of the event loop and
-	 * end up back here.
-	 */
+	/* Ignore output queued within the current synchronized frame. */
 	n = EVBUFFER_LENGTH(tty->out);
+	if ((tty->flags & TTY_SYNCING) && n > tty->sync_offset)
+		n = tty->sync_offset;
+
+	/* Defer until output drains, preserving damage in client flags. */
 	if (n != 0 || (tty->flags & TTY_BLOCK)) {
 		if (n != 0)
 			log_debug("%s: redraw deferred (%zu left)", c->name, n);
@@ -2394,6 +2422,10 @@ server_client_check_redraw(struct client *c)
 		if (!evtimer_pending(&ev, NULL)) {
 			log_debug("redraw timer started");
 			evtimer_add(&ev, &tv);
+		}
+		if (damaged) {
+			c->flags |= CLIENT_REDRAWWINDOW;
+			return;
 		}
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->flags & PANE_REDRAW) {
@@ -2428,6 +2460,10 @@ server_client_check_redraw(struct client *c)
 				redraw_pane_scrollbar(c, wp);
 			}
 		}
+
+		/* Draw damage here if no client redraw flags will handle it. */
+		if (damaged && (c->flags & CLIENT_ALLREDRAWFLAGS) == 0)
+			redraw_client_damage(c);
 	}
 
 	/*
@@ -2441,6 +2477,7 @@ server_client_check_redraw(struct client *c)
 		}
 		server_client_set_progress_bar(c);
 		redraw_screen(c);
+		redraw_client_damage(c);
 	}
 
 	/* Put the tty back how it was. */

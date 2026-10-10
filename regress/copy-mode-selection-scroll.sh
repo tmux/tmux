@@ -110,4 +110,92 @@ wheel 64 5 5
 $TMUX send-keys -X copy-selection-no-clear || exit 1
 expect_buffer "$extended_start"
 
+# Perform a mouse drag across a sequence of col,row coordinates (1-based).
+# SGR mouse format: \033[<btn;col;rowM (btn 0=press, 32=drag) and
+# \033[<0;col;rowm (release).
+drag()
+{
+	# Mouse button 1 down (press) at the starting coordinate.
+	col=${1%,*}
+	row=${1#*,}
+	seq=$(printf '\033[<0;%s;%sM' "$col" "$row")
+	shift
+	# Mouse drag (button 1 held) across each subsequent coordinate.
+	for pos; do
+		col=${pos%,*}
+		row=${pos#*,}
+		seq="$seq$(printf '\033[<32;%s;%sM' "$col" "$row")"
+	done
+	$TMUX2 send-keys -t "$OUTER" -l "$seq" 2>/dev/null
+	# Keep the button held briefly so auto-scrolling can run, and
+	# capture copy-mode state before mouse release exits copy mode.
+	sleep 0.5
+	scroll_pos=$($TMUX display -p '#{scroll_position}')
+	cursor_y=$($TMUX display -p '#{copy_cursor_y}')
+	# Mouse button 1 up (release) at the final coordinate.
+	seq=$(printf '\033[<0;%s;%sm' "$col" "$row")
+	$TMUX2 send-keys -t "$OUTER" -l "$seq" 2>/dev/null
+	sleep 0.2
+}
+
+# Turn off status line so all 10 pane rows are visible in the outer client,
+# and write a 24-char line on the bottom row (row 10, longer than the 18-char
+# line 79 above it).
+$TMUX set -g status off || exit 1
+$TMUX send-keys -X cancel || exit 1
+$TMUX send-keys -l "line 80 xxxxxxxxxxxxxxxx" || exit 1
+sleep 0.2
+
+for mode in emacs vi; do
+	$TMUX setw -g mode-keys "$mode" || exit 1
+
+	# In emacs mode the selection end column is exclusive, so selecting all
+	# characters of an 18- or 24-char line requires placing the cursor one
+	# column past the last character; in vi mode the end column is inclusive.
+	if [ "$mode" = emacs ]; then
+		ecol18=19
+		ecol24=25
+	else
+		ecol18=18
+		ecol24=24
+	fi
+
+	# Drag along the bottom row (row 10) past the end of the line and back
+	# when already at the bottom of history; the selection must stay on
+	# line 80 instead of jumping up to line 79.
+	$TMUX copy-mode || exit 1
+	drag 1,10 "$ecol24,10" "$((ecol24 + 1)),10" "$ecol24,10"
+	expect_buffer "line 80 xxxxxxxxxxxxxxxx"
+
+	# Scroll up 1 line so line 80 is off-screen below, then drag from row 9
+	# to the bottom row (row 10) to auto-scroll down and select lines 78..80.
+	$TMUX copy-mode || exit 1
+	$TMUX send-keys -X scroll-up || exit 1
+	drag 1,9 23,10 "$ecol24,10"
+	expect_buffer "$(printf 'line 78 xxxxxxxxxx\nline 79 xxxxxxxxxx\nline 80 xxxxxxxxxxxxxxxx')"
+
+	# Scroll 1 line below the top of history so line 00 is off-screen above,
+	# then drag from row 2 to the top row (row 1) to auto-scroll up and
+	# select lines 00..02.
+	$TMUX copy-mode || exit 1
+	$TMUX send-keys -X history-top || exit 1
+	$TMUX send-keys -X scroll-down || exit 1
+	drag "$ecol18,2" 1,1
+	expect_buffer "$(printf 'line 00 xxxxxxxxxx\nline 01 xxxxxxxxxx\nline 02 xxxxxxxxxx')"
+
+	# Scroll up 5 lines, then drag onto the bottom row and keep the button
+	# held to auto-scroll all the way to the bottom.
+	$TMUX copy-mode || exit 1
+	$TMUX send-keys -N5 -X scroll-up || exit 1
+	drag 1,9 5,10
+	[ "$scroll_pos" = 0 ] || fail "$mode: drag auto-scroll stopped at $scroll_pos"
+
+	# At the top of history, drag onto the top row and keep the button
+	# held: the cursor must stay on the top row.
+	$TMUX copy-mode || exit 1
+	$TMUX send-keys -X history-top || exit 1
+	drag 5,2 5,1
+	[ "$cursor_y" = 0 ] || fail "$mode: cursor left the top row (row $cursor_y)"
+done
+
 exit 0
