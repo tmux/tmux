@@ -43,6 +43,8 @@ def matches(name, value):
         return "ignorefkeys" in features
     if name == "XDA":
         return kind == "ReplyTest"
+    if name == "XDA-kitty":
+        return kind == "kitty(0.43.0)" and "kitty" in features
     if name == "sync":
         return "sync" in features
     if name == "characters":
@@ -54,6 +56,7 @@ reports = [
     ("DA", b"\033[?65;4;21;28;52c"),
     ("DA2", b"\033[>85;1;0c"),
     ("XDA", b"\033P>|ReplyTest\033\\"),
+    ("XDA-kitty", b"\033P>|kitty(0.43.0)\033\\"),
     ("sync", b"\033[?2026;2$y"),
     ("characters", b"\033[8;17;61t"),
     ("pixels", b"\033[4;480;800t"),

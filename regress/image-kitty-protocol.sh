@@ -18,6 +18,7 @@ import re
 import os
 from pathlib import Path
 import shlex
+import struct
 import subprocess
 import tempfile
 import time
@@ -162,6 +163,29 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
             payload = base64.b64encode(zlib.compress(raw)).decode()
             check('compressed-' + str(format), origin +
                   graphics('a=T,q=2,f=%d,s=1,v=1,c=3,r=2,o=z' % format, payload), '8,4')
+        # Compressed PNG uploads need S to describe the complete PNG byte count.
+        png = b'\x89PNG\r\n\x1a\n'
+        for kind, data in [
+                (b'IHDR', struct.pack('>2I5B', 8, 16, 8, 6, 0, 0, 0)),
+                (b'IDAT', zlib.compress((b'\0' + b'\xff\0\0\xff' * 8) * 16)),
+                (b'IEND', b'')]:
+            png += struct.pack('>I', len(data)) + kind + data + \
+                struct.pack('>I', zlib.crc32(kind + data))
+        payload = base64.b64encode(zlib.compress(png)).decode()
+        control = 'a=T,i=7,f=100,c=3,r=2,o=z'
+        sized = control + ',S=' + str(len(png))
+        png_origin = '\033[1;6H'
+        check('compressed-png', png_origin + graphics(sized, payload), '8,2',
+              graphics('i=7', 'OK'), render=r'48;2;255;0;0m')
+        split = len(payload) // 8 * 4
+        check('compressed-png-chunks', graphics(sized + ',m=1', payload[:split]) +
+              png_origin + graphics('m=0', payload[split:]), '8,2',
+              graphics('i=7', 'OK'), render=r'48;2;255;0;0m')
+        check('compressed-png-missing-size', origin + graphics(control, payload),
+              '5,2', graphics('i=7', 'EINVAL'))
+        check('compressed-png-wrong-size', origin +
+              graphics(control + ',S=' + str(len(png) + 1), payload), '5,2',
+              graphics('i=7', 'EINVAL'))
         check('query', origin + graphics('a=q,f=32,s=1,v=1', pixel), '5,2',
               graphics('i=0', 'OK'))
         check('query-not-stored', origin + graphics('a=q,q=2,i=7,f=32,s=1,v=1', pixel) +
