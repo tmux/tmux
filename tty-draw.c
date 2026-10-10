@@ -268,6 +268,10 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				else
 #endif
 					empty = nx - i;
+
+				/* Flush the background before clearing the tail. */
+				if (empty != 0 && gcp->bg != last.bg)
+					empty = 0;
 			} else {
 				/* Get the current cell. */
 				grid_view_get_cell(gd, px + i, py, &gc);

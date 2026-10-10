@@ -327,14 +327,52 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         check('placeholder-erase', virtual + colours + ph + '\033[H\033[2K', '0,0',
               text='', render=r'^\s*$')
         white_pixel = '/////w=='
-        check('letterbox', graphics('a=T,q=2,f=32,s=1,v=1,c=2,r=2,C=1', white_pixel),
-              '0,0', render='▄▄')
-        check('pillarbox', graphics('a=T,q=2,f=32,s=1,v=1,c=4,r=1,C=1', white_pixel),
-              '0,0', render=(r'^(?:\x1b\[[0-9;]+m)* '
-                             r'(?:\x1b\[[0-9;]+m)*\x1b\[48;2;255;255;255m {2}'))
+        # Ordinary placements stretch; placeholders retain aspect ratio.
+        check('stretch-tall', graphics('a=T,q=2,f=32,s=1,v=1,c=2,r=2,C=1',
+                                      white_pixel),
+              '0,0', render=r'48;2;255;255;255m {2}')
+        check('stretch-wide', graphics('a=T,q=2,f=32,s=1,v=1,c=4,r=1,C=1',
+                                      white_pixel),
+              '0,0', render=r'48;2;255;255;255m {4}')
+        check('stretch-crop', graphics('a=T,q=2,f=32,s=24,v=32,x=4,y=8,w=8,h=8,'
+                                      'c=2,r=2,C=1', white),
+              '0,0', render=r'48;2;255;255;255m {2}')
+        check('virtual-letterbox', graphics('a=T,q=2,U=1,i=7,p=1,f=32,s=1,v=1,'
+                                           'c=2,r=2', white_pixel) + colours +
+              ph + '\u0305\u0305' + ph + '\u0305\u030d',
+              '2,0', render='▄▄')
+        check('virtual-pillarbox', graphics('a=T,q=2,U=1,i=7,p=1,f=32,s=1,v=1,'
+                                           'c=4,r=1', white_pixel) + colours +
+              ph + '\u0305\u0305' + ph + '\u0305\u030d',
+              '2,0', render=(r'^(?:\x1b\[[0-9;]+m)* '
+                             r'(?:\x1b\[[0-9;]+m)*\x1b\[48;2;255;255;255m '))
+        # Equal-z images follow source creation order, even with descending IDs.
+        older = graphics('a=t,q=2,i=200,f=32,s=1,v=1', pixel)
+        newer = graphics('a=t,q=2,i=100,f=32,s=1,v=1', white_pixel)
+        put_older = graphics('a=p,q=2,C=1,i=200,c=1,r=1')
+        put_newer = graphics('a=p,q=2,C=1,i=100,c=1,r=1')
+        check('same-z-descending-ids', older + newer + put_older + put_newer,
+              '0,0', render=r'48;2;255;255;255m ')
+        check('same-z-reversed-placements',
+              older + newer + put_newer + put_older,
+              '0,0', render=r'48;2;255;255;255m ')
+        check('same-z-retransmit',
+              older + newer + put_newer + older + put_older,
+              '0,0', render=r'48;2;255;255;255m ')
+        check('same-z-recreate', older + newer + put_newer +
+              graphics('a=d,d=I,q=2,i=200') + older + put_older,
+              '0,0', render=r'48;2;255;0;0m ')
+        # An empty line tail must not discard the preceding background run.
+        background = '\033[11GX\033[17G\033[42m    \033[0m'
+        check('background-tail', background, '20,0', render=r'42m {4}')
+        check('background-tail-image',
+              graphics('a=T,q=2,C=1,f=32,s=1,v=1,c=20,r=1,z=-1073741825',
+                       white_pixel) +
+              background, '20,0', render=r'42m {4}')
         offset_source = base64.b64encode(b'\xff' * (8 * 32 * 4)).decode()
         check('scaled-offset', graphics('a=T,q=2,f=32,s=8,v=32,c=1,r=1,X=4,C=1',
-                                       offset_source), '0,0', render=r'12[78];12[78];12[78]m')
+                                       offset_source),
+              '0,0', render=r'191;191;191m')
         square = base64.b64encode(b'\xff' * (8 * 8 * 4)).decode()
         check('vertical-offset', graphics('a=T,q=2,f=32,s=8,v=8,c=1,r=1,Y=8,C=1',
                                          square), '0,0', render='▄')

@@ -128,6 +128,8 @@ struct kitty_context {
 struct kitty_image_cache {
 	u_int				 server_id;
 	u_int				 kitty_id;
+	/* Source creation order, independent of terminal upload order. */
+	u_int				 order_id;
 	u_int				 xpixel;
 	u_int				 ypixel;
 	struct kitty_placement_cache	*placements;
@@ -144,16 +146,32 @@ struct kitty_placement_cache {
 	u_int				 height;
 	u_int				 source_x;
 	u_int				 source_y;
-	int32_t				 z;
+	int64_t				 z;	/* Logical layer. */
+	int32_t				 draw_z;	/* Terminal layer. */
 	/* Delete after replacement placements have been drawn. */
 	int				 pending_delete;
 	struct kitty_placement_cache	*next;
+};
+
+/* Cached placements sorted temporarily when their output layers change. */
+struct kitty_layer {
+	struct kitty_image_cache		*entry;
+	struct kitty_placement_cache	*placement;
+};
+
+enum kitty_layer_band {
+	KITTY_LAYER_NONE,
+	KITTY_LAYER_BELOW_BACKGROUND,
+	KITTY_LAYER_BELOW_TEXT,
+	KITTY_LAYER_SIXEL,
+	KITTY_LAYER_ABOVE_TEXT
 };
 
 /* Image uploads and ID allocation kept for the lifetime of a terminal. */
 struct kitty_output {
 	struct kitty_image_cache	*images;
 	u_int				 next_id;
+	int				 layers_changed;
 };
 
 /* Return the Kitty output state for a terminal. */
@@ -196,7 +214,107 @@ kitty_free_placements(struct kitty_image_cache *entry)
 
 static void	kitty_place(struct tty *, struct kitty_image_cache *,
 		    struct image *, u_int, u_int, u_int, u_int, u_int, u_int,
-		    int32_t);
+		    int64_t);
+static void	kitty_send_placement(struct tty *, struct kitty_image_cache *,
+		    struct image *, struct kitty_placement_cache *);
+
+/* Compare output placements by logical z-index and source creation order. */
+static int
+kitty_layer_cmp(const void *left, const void *right)
+{
+	const struct kitty_layer	*a = left, *b = right;
+
+	if (a->placement->z < b->placement->z)
+		return (-1);
+	if (a->placement->z > b->placement->z)
+		return (1);
+	if (a->entry->order_id < b->entry->order_id)
+		return (-1);
+	if (a->entry->order_id > b->entry->order_id)
+		return (1);
+	return (0);
+}
+
+/* Return the output band relative to cell backgrounds, text and SIXEL. */
+static enum kitty_layer_band
+kitty_layer_band(int64_t z)
+{
+	if (z < INT32_MIN / 2)
+		return (KITTY_LAYER_BELOW_BACKGROUND);
+	if (z < 0)
+		return (KITTY_LAYER_BELOW_TEXT);
+	if (z == 0)
+		return (KITTY_LAYER_SIXEL);
+	return (KITTY_LAYER_ABOVE_TEXT);
+}
+
+/* Assign terminal layers without relying on the order images were uploaded. */
+static void
+kitty_update_layers(struct tty *tty, struct kitty_output *ko)
+{
+	struct kitty_image_cache		*entry;
+	struct kitty_placement_cache	*placement;
+	struct kitty_layer		*layers;
+	struct image			*im;
+	size_t				 count = 0, i;
+	enum kitty_layer_band		 band;
+	enum kitty_layer_band		 previous_band = KITTY_LAYER_NONE;
+	int32_t				 draw_z = 0;
+
+	/* Gather surviving placements, including pieces outside the redraw. */
+	for (entry = ko->images; entry != NULL; entry = entry->next) {
+		for (placement = entry->placements; placement != NULL;
+		    placement = placement->next)
+			count++;
+	}
+	if (count == 0)
+		return;
+	layers = xcalloc(count, sizeof *layers);
+	i = 0;
+	for (entry = ko->images; entry != NULL; entry = entry->next) {
+		for (placement = entry->placements; placement != NULL;
+		    placement = placement->next) {
+			layers[i].entry = entry;
+			layers[i++].placement = placement;
+		}
+	}
+	qsort(layers, count, sizeof *layers, kitty_layer_cmp);
+
+	/* Keep each band on the same side of background cells and text. */
+	for (i = 0; i < count; i++) {
+		entry = layers[i].entry;
+		placement = layers[i].placement;
+		band = kitty_layer_band(placement->z);
+		if (band != previous_band) {
+			switch (band) {
+			case KITTY_LAYER_BELOW_BACKGROUND:
+				draw_z = INT32_MIN;
+				break;
+			case KITTY_LAYER_BELOW_TEXT:
+				draw_z = INT32_MIN / 2;
+				break;
+			case KITTY_LAYER_SIXEL:
+				draw_z = 0;
+				break;
+			default:
+				draw_z = 1;
+				break;
+			}
+			previous_band = band;
+		} else if (band != KITTY_LAYER_SIXEL &&
+		    (placement->z != layers[i - 1].placement->z ||
+		    entry->order_id != layers[i - 1].entry->order_id)) {
+			draw_z++;
+		}
+		if (placement->draw_z == draw_z)
+			continue;
+		placement->draw_z = draw_z;
+		im = image_find(entry->server_id);
+		if (im != NULL)
+			kitty_send_placement(tty, entry, im, placement);
+	}
+	free(layers);
+}
 
 /* Place one piece of an existing placement again as a new placement. */
 static void
@@ -271,6 +389,7 @@ kitty_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
 				continue;
 			}
 			placement->pending_delete = 1;
+			ko->layers_changed = 1;
 
 			/* Preserve pieces outside the redraw area. */
 			kitty_redraw_keep(tty, entry, placement, x, y, width,
@@ -303,6 +422,10 @@ kitty_redraw_finish(struct tty *tty)
 			*pp = placement->next;
 			free(placement);
 		}
+	}
+	if (ko->layers_changed) {
+		kitty_update_layers(tty, ko);
+		ko->layers_changed = 0;
 	}
 }
 
@@ -359,32 +482,48 @@ kitty_free_stale_images(struct tty *tty)
 		else
 			previous->next = next;
 		kitty_free_entry(tty, entry, 1);
+		ko->layers_changed = 1;
 	}
+}
+
+/* Send the source rectangle and output layer for a cached placement. */
+static void
+kitty_send_placement(struct tty *tty, struct kitty_image_cache *entry,
+    struct image *im, struct kitty_placement_cache *placement)
+{
+	char				 control[192];
+	u_int				 px, py, pwidth, pheight, sx, sy;
+	u_int				 canvas_width, canvas_height;
+
+	image_get_size_in_cells(im, &sx, &sy);
+	image_get_canvas_size(im, &canvas_width, &canvas_height);
+	px = (uint64_t)placement->source_x * canvas_width / sx;
+	py = (uint64_t)placement->source_y * canvas_height / sy;
+	pwidth = ((uint64_t)(placement->source_x + placement->width) *
+	    canvas_width + sx - 1) / sx - px;
+	pheight = ((uint64_t)(placement->source_y + placement->height) *
+	    canvas_height + sy - 1) / sy - py;
+
+	/* Account for the duplicate-pixel border added by kitty_upload(). */
+	px++;
+	py++;
+	tty_cursor(tty, placement->x, placement->y);
+	xsnprintf(control, sizeof control,
+	    "\033_Ga=p,i=%u,p=%u,x=%u,y=%u,w=%u,h=%u,c=%u,r=%u,z=%d,"
+	    "C=1,q=2\033\\", entry->kitty_id,
+	    placement->id, px, py, pwidth, pheight, placement->width,
+	    placement->height, placement->draw_z);
+	tty_puts(tty, control);
 }
 
 /* Place an image rectangle using the Kitty graphics protocol. */
 static void
 kitty_place(struct tty *tty, struct kitty_image_cache *entry,
     struct image *im, u_int source_x, u_int source_y, u_int width,
-    u_int height, u_int destination_x, u_int destination_y, int32_t z)
+    u_int height, u_int destination_x, u_int destination_y, int64_t z)
 {
-	char				 control[192];
-	u_int				 px, py, pwidth, pheight, sx, sy;
-	u_int				 canvas_width, canvas_height;
 	struct kitty_placement_cache	*placement;
 
-	image_get_size_in_cells(im, &sx, &sy);
-	image_get_canvas_size(im, &canvas_width, &canvas_height);
-	px = (uint64_t)source_x * canvas_width / sx;
-	py = (uint64_t)source_y * canvas_height / sy;
-	pwidth = ((uint64_t)(source_x + width) * canvas_width + sx - 1) /
-	    sx - px;
-	pheight = ((uint64_t)(source_y + height) * canvas_height + sy - 1) /
-	    sy - py;
-
-	/* Account for the duplicate-pixel border added by kitty_upload(). */
-	px++;
-	py++;
 	placement = xcalloc(1, sizeof *placement);
 	do {
 		placement->id = ++entry->next_placement;
@@ -397,15 +536,14 @@ kitty_place(struct tty *tty, struct kitty_image_cache *entry,
 	placement->source_x = source_x;
 	placement->source_y = source_y;
 	placement->z = z;
+	if (z > INT32_MAX)
+		placement->draw_z = INT32_MAX;
+	else
+		placement->draw_z = z;
 	placement->next = entry->placements;
 	entry->placements = placement;
-	tty_cursor(tty, destination_x, destination_y);
-	xsnprintf(control, sizeof control,
-	    "\033_Ga=p,i=%u,p=%u,x=%u,y=%u,w=%u,h=%u,c=%u,r=%u,z=%d,"
-	    "C=1,q=2\033\\", entry->kitty_id,
-	    placement->id, px, py, pwidth, pheight, width,
-	    height, z);
-	tty_puts(tty, control);
+	kitty_get_output(tty)->layers_changed = 1;
+	kitty_send_placement(tty, entry, im, placement);
 }
 
 /* Upload an image to Kitty and return its output cache entry. */
@@ -457,6 +595,7 @@ kitty_upload(struct tty *tty, struct image *im)
 	} while (id == 0);
 	entry->server_id = image_get_id(im);
 	entry->kitty_id = id;
+	entry->order_id = im->order_id;
 	entry->xpixel = tty->xpixel;
 	entry->ypixel = tty->ypixel;
 	entry->next_placement = 0;
@@ -521,7 +660,7 @@ kitty_draw_rect(struct tty *tty, const struct image_rect *rectangle)
 	u_int				 source_x, source_y;
 	u_int				 width, height;
 	u_int				 destination_x, destination_y;
-	int32_t				 z;
+	int64_t				 z;
 
 	im = image_rect_get_image(rectangle);
 	kitty_free_stale_images(tty);
@@ -754,6 +893,7 @@ static u_int
 kitty_source_set(struct kitty_context *kc, u_int id, struct image *im)
 {
 	struct kitty_source	*source;
+	struct image		*old;
 	u_int			 old_id = 0;
 
 	if (id == 0)
@@ -766,6 +906,9 @@ kitty_source_set(struct kitty_context *kc, u_int id, struct image *im)
 		kc->sources = source;
 	} else {
 		old_id = source->server_id;
+		old = image_find(old_id);
+		if (old != NULL)
+			im->order_id = old->order_id;
 		kitty_placements_free(source);
 		image_free(source->server_id);
 	}
@@ -1035,10 +1178,13 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 	u_int		 cell_width, cell_height, source_width, source_height;
 	u_int		 x_offset, y_offset;
 	uint64_t	 canvas_width, canvas_height;
-	double		 width_scale, height_scale, scale = 1, units = 1;
+	double		 width_scale = 1, height_scale = 1;
+	double		 scale = 1, units = 1;
 	double		 value;
 	int		 natural_size = 0;
+	int		 stretch;
 
+	stretch = !ks->virtual && ks->columns != 0 && ks->rows != 0;
 	image_get_size(source, &source_width, &source_height);
 	view.x = ks->source_x;
 	view.y = ks->source_y;
@@ -1053,7 +1199,7 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 	if (ks->source_height != 0 && view.height > ks->source_height)
 		view.height = ks->source_height;
 
-	/* Choose placement dimensions in cells, preserving the aspect ratio. */
+	/* Preserve aspect ratio when computing an automatic cell dimension. */
 	cell_width = (xpixel == 0 ? 8 : xpixel);
 	cell_height = (ypixel == 0 ? 16 : ypixel);
 	x_offset = ks->x_offset;
@@ -1080,6 +1226,7 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 		    &view.sx, &view.sy);
 	} else if (view.sy == 0) {
 		scale = ((double)view.sx * cell_width - x_offset) / view.width;
+		width_scale = height_scale = scale;
 		value = ceil((view.height * scale + y_offset) / cell_height);
 		if (value > USHRT_MAX)
 			return (NULL);
@@ -1087,6 +1234,7 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 	} else if (view.sx == 0) {
 		scale = ((double)view.sy * cell_height - y_offset) /
 		    view.height;
+		width_scale = height_scale = scale;
 		value = ceil((view.width * scale + x_offset) / cell_width);
 		if (value > USHRT_MAX)
 			return (NULL);
@@ -1099,6 +1247,10 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 		scale = width_scale;
 		if (height_scale < scale)
 			scale = height_scale;
+
+		/* Only Unicode placeholders preserve aspect ratio here. */
+		if (ks->virtual)
+			width_scale = height_scale = scale;
 	}
 	canvas_width = (uint64_t)view.sx * cell_width;
 	canvas_height = (uint64_t)view.sy * cell_height;
@@ -1114,10 +1266,10 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 	if (value > UINT_MAX)
 		return (NULL);
 	view.canvas_height = value;
-	view.scaled_width = floor(view.width * scale * units);
+	view.scaled_width = floor(view.width * width_scale * units);
 	if (view.scaled_width < view.width)
 		view.scaled_width = view.width;
-	view.scaled_height = floor(view.height * scale * units);
+	view.scaled_height = floor(view.height * height_scale * units);
 	if (view.scaled_height < view.height)
 		view.scaled_height = view.height;
 	view.x_offset = floor(x_offset * units);
@@ -1129,17 +1281,18 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 		return (NULL);
 	}
 
-	/* Centre the image when both placement dimensions were specified. */
-	if (ks->columns != 0 && ks->rows != 0) {
+	/* Centre Unicode-placeholder images within their rectangle. */
+	if (ks->virtual && ks->columns != 0 && ks->rows != 0) {
 		view.x_offset += (view.canvas_width - view.x_offset -
 		    view.scaled_width) / 2;
 		view.y_offset += (view.canvas_height - view.y_offset -
 		    view.scaled_height) / 2;
 	}
-	/* A matching rectangle needs neither resampling nor padding. */
+	/* Let the output terminal scale unpadded rectangular placements. */
 	if (x_offset == 0 && y_offset == 0 &&
+	    (stretch ||
 	    (uint64_t)view.width * canvas_height ==
-	    (uint64_t)view.height * canvas_width) {
+	    (uint64_t)view.height * canvas_width)) {
 		view.canvas_width = view.width;
 		view.scaled_width = view.width;
 		view.canvas_height = view.height;

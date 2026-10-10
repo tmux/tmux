@@ -1093,6 +1093,7 @@ struct image {
 	/* Retained parent (zero for sources) and original source IDs. */
 	u_int			 parent_id;
 	u_int			 source_id;
+	u_int			 order_id;	/* Original creation order. */
 	/* Pixel dimensions, including the logical transparent canvas. */
 	u_int			 width;
 	u_int			 height;
@@ -4405,7 +4406,7 @@ int		 image_get_fallback_at(struct tty *, struct screen *, u_int,
 struct image	*image_rect_get_image(const struct image_rect *);
 void		 image_rect_get_coords(const struct image_rect *,
 		     u_int *, u_int *, u_int *, u_int *, u_int *, u_int *);
-int32_t		 image_rect_get_z(const struct image_rect *);
+int64_t		 image_rect_get_z(const struct image_rect *);
 void		 image_clear(struct screen_write_ctx *, u_int);
 void		 image_clear_kitty(struct screen_write_ctx *,
 		     const struct kitty_parse_result *);

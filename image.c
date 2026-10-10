@@ -34,7 +34,7 @@
 /* A cell-aligned part of an image to draw at a terminal position. */
 struct image_rect {
 	struct image		*image;
-	int32_t			 z;
+	int64_t			 z;
 	u_int			 source_x;	/* Origin in image cells. */
 	u_int			 source_y;
 	u_int			 sx;		/* Size in cells. */
@@ -270,8 +270,8 @@ image_placement_cmp(const struct image_placement *a,
 	if (a->input == IMAGE_INPUT_KITTY && a->z != b->z)
 		return (a->z < b->z ? -1 : 1);
 	if (a->input == IMAGE_INPUT_KITTY &&
-	    a->app_image_id != b->app_image_id) {
-		return (a->app_image_id < b->app_image_id ? -1 : 1);
+	    a->image->order_id != b->image->order_id) {
+		return (a->image->order_id < b->image->order_id ? -1 : 1);
 	}
 	if (a->serial != b->serial)
 		return (a->serial < b->serial ? -1 : 1);
@@ -940,7 +940,7 @@ image_rect_get_coords(const struct image_rect *rectangle,
 }
 
 /* Return the output z-index for a drawing rectangle. */
-int32_t
+int64_t
 image_rect_get_z(const struct image_rect *rectangle)
 {
 	return (rectangle->z);
@@ -962,6 +962,7 @@ image_alloc(u_int width, u_int height, u_int canvas_width,
 
 	im->references = 1;
 	im->source_id = im->id;
+	im->order_id = im->id;
 	im->width = width;
 	im->height = height;
 	im->canvas_width = canvas_width;
@@ -1096,6 +1097,7 @@ image_create_view(struct image *source, const struct image_view *view)
 	/* Retain the source for both shared pixels and placement identity. */
 	im->parent_id = source->id;
 	im->source_id = source->source_id;
+	im->order_id = source->order_id;
 	image_ref(source->id);
 	return (im);
 }
@@ -1542,8 +1544,8 @@ image_draw_span(const struct image_backend *backend, struct tty *tty,
 	rectangle.image = placement->image;
 	if (placement->input == IMAGE_INPUT_SIXEL)
 		rectangle.z = 0;
-	else if (placement->z >= 0 && placement->z < INT32_MAX)
-		rectangle.z = placement->z + 1;
+	else if (placement->z >= 0)
+		rectangle.z = (int64_t)placement->z + 1;
 	else
 		rectangle.z = placement->z;
 	rectangle.source_x = span->source_x + start - span->x;
