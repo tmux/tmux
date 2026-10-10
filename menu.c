@@ -194,10 +194,19 @@ static void
 menu_reapply_styles(struct menu_data *md)
 {
 	struct options		*o = md->w->options;
+	struct session		*s = NULL;
+	struct winlink		*wl = NULL;
+	struct window_pane	*wp = NULL;
 	struct format_tree	*ft;
 	struct style		 sytmp;
 
-	ft = format_create_defaults(NULL, NULL, md->fs.s, md->fs.wl, md->fs.wp);
+	/* The pane (or session) the menu was opened for may be gone. */
+	if (cmd_find_valid_state(&md->fs)) {
+		s = md->fs.s;
+		wl = md->fs.wl;
+		wp = md->fs.wp;
+	}
+	ft = format_create_defaults(NULL, NULL, s, wl, wp);
 
 	/* Reapply menu style from options. */
 	memcpy(&md->style_gc, &grid_default_cell, sizeof md->style_gc);
