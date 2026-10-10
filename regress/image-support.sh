@@ -35,7 +35,7 @@ $TMUX new-window -d -n kitty-chunks "
 	printf '\033_Gm=0\033\\'
 	sleep 10"
 sleep 1
-[ "$($TMUX display-message -pt:kitty-chunks '#{cursor_y}')" = 1 ] || exit 1
+[ "$($TMUX display-message -pt:kitty-chunks '#{cursor_y}')" = 0 ] || exit 1
 $TMUX kill-window -t:kitty-chunks || exit 1
 
 # Accept two padding characters too, with pixel data in the final chunk.
@@ -44,7 +44,7 @@ $TMUX new-window -d -n kitty-chunks "
 	printf '\033_Gm=0;AAD/\033\\'
 	sleep 10"
 sleep 1
-[ "$($TMUX display-message -pt:kitty-chunks '#{cursor_y}')" = 1 ] || exit 1
+[ "$($TMUX display-message -pt:kitty-chunks '#{cursor_y}')" = 0 ] || exit 1
 $TMUX kill-window -t:kitty-chunks || exit 1
 
 # Images scroll as grid cells, while capture output contains ordinary spaces.
@@ -76,14 +76,14 @@ $TMUX new-window -d "
 	printf '\033_Ga=d,d=I,q=2,i=9\033\\'
 	sleep 10"
 sleep 1
-[ "$($TMUX display-message -pt:2 '#{cursor_y}')" = 1 ] || exit 1
+[ "$($TMUX display-message -pt:2 '#{cursor_y}')" = 0 ] || exit 1
 
 # PNG Kitty input uses the shared image decoder and canonical cell sizing.
 $TMUX new-window -d "
 	printf '\033_Ga=T,q=2,f=100;iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQMAAAAl21bKAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAAGUExURf8AAP///0EdNBEAAAABYktHRAH/Ai3eAAAAB3RJTUUH6ggCDAECH324BwAAAApJREFUCNdjYAAAAAIAAeIhvDMAAAAASUVORK5CYII=\033\\'
 	sleep 10"
 sleep 1
-[ "$($TMUX display-message -pt:3 '#{cursor_y}')" = 1 ] || exit 1
+[ "$($TMUX display-message -pt:3 '#{cursor_y}')" = 0 ] || exit 1
 
 # SIXEL input reaches the same grid layer and copy-mode paths.
 $TMUX new-window -d "cat '$FIXTURE'; sleep 10"
@@ -180,8 +180,8 @@ $TMUX capture-pane -pS0 -E3 >$TMP || exit 1
 [ "$(sed -n 4p $TMP)" = "  *" ] || exit 1
 
 # With normal cursor movement, scrolling is calculated from the full image
-# height. Rows which scrolled above the pane are then cropped from the top, so
-# the bottom three source rows remain visible and the cursor is on the last row.
+# height. Only two rows scroll, leaving the full image visible and the cursor
+# beside its last row.
 $TMUX2 new-window -d "
 	printf '\033[3;1H'
 	printf '\033_Ga=T,q=2,f=32,s=1,v=8,c=1,r=4;AAAA/wAAAP9VVVX/VVVV/6qqqv+qqqr///////////8=\033\\'
@@ -189,10 +189,12 @@ $TMUX2 new-window -d "
 $TMUX2 select-window -t:2 || exit 1
 sleep 1
 [ "$($TMUX2 display-message -p '#{cursor_y}')" = 3 ] || exit 1
+[ "$($TMUX2 display-message -p '#{history_size}')" = 2 ] || exit 1
 $TMUX capture-pane -pS0 -E3 >$TMP || exit 1
-[ "$(sed -n 1p $TMP)" = "-" ] || exit 1
-[ "$(sed -n 2p $TMP)" = "*" ] || exit 1
-[ "$(sed -n 3p $TMP)" = "@" ] || exit 1
+[ "$(sed -n 1p $TMP)" = "" ] || exit 1
+[ "$(sed -n 2p $TMP)" = "-" ] || exit 1
+[ "$(sed -n 3p $TMP)" = "*" ] || exit 1
+[ "$(sed -n 4p $TMP)" = "@" ] || exit 1
 
 # Image rows remain cell-aligned when a narrower terminal causes text
 # reflow. The ten-column rows are clipped to five columns, not split into four

@@ -1817,7 +1817,7 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 	u_int			 cx = s->cx, cy = s->cy;
 	u_int			 x, y, i, run, sx, sy, lines, origin_y = 0;
 	u_int			 hist_origin_y, region_height, remaining, chunk;
-	u_int			 cursor_x = 0;
+	u_int			 cursor_x = 0, cursor_rows;
 
 	sx = im->sx;
 	if (sx > screen_size_x(s) - cx)
@@ -1826,12 +1826,17 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 	if (sx == 0)
 		return;
 
+	/* Kitty advances to the last image row; SIXEL advances past it. */
+	cursor_rows = sy;
+	if (input == IMAGE_INPUT_KITTY)
+		cursor_rows--;
+
 	/* Scroll images that move the cursor, or clip stationary placements. */
 	if (im->flags & IMAGE_FLAG_NO_CURSOR) {
 		if (sy > screen_size_y(s) - cy)
 			sy = screen_size_y(s) - cy;
-	} else if (screen_size_y(s) - cy <= sy) {
-		lines = sy - (screen_size_y(s) - cy) + 1;
+	} else if (screen_size_y(s) - cy <= cursor_rows) {
+		lines = cursor_rows - (screen_size_y(s) - cy) + 1;
 
 		/* screen_write_scrollup() clamps lines per call, so loop it. */
 		region_height = s->rlower - s->rupper + 1;
@@ -1852,6 +1857,7 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 			screen_write_cursormove(ctx, -1, cy - lines, 0);
 		cy = s->cy;
 		sy -= origin_y;
+		cursor_rows -= origin_y;
 	}
 
 	placement = image_placement_create(gd, im, input, app_image_id,
@@ -1899,7 +1905,7 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 	if (!(im->flags & IMAGE_FLAG_NO_CURSOR)) {
 		if (input == IMAGE_INPUT_KITTY)
 			cursor_x = cx + sx;
-		screen_write_cursormove(ctx, cursor_x, cy + sy, 0);
+		screen_write_cursormove(ctx, cursor_x, cy + cursor_rows, 0);
 	}
 }
 

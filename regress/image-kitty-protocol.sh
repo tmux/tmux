@@ -56,7 +56,8 @@ with open(output, 'w') as f:
 time.sleep(30)
 '''
 
-def check(name, command, cursor, expected='', text=None, render=None, resize=None):
+def check(name, command, cursor, expected='', text=None, render=None, resize=None,
+          history=None):
     output = directory / name
     command_file = directory / (name + '.input')
     command_file.write_text(command, encoding='utf-8')
@@ -75,6 +76,9 @@ def check(name, command, cursor, expected='', text=None, render=None, resize=Non
             run('resize-window', '-t', pane, '-x', str(resize[0]), '-y', str(resize[1]))
         actual = run('display-message', '-pt', pane, '#{cursor_x},#{cursor_y}')
         assert actual == cursor, (name, 'cursor', actual, cursor)
+        if history is not None:
+            actual = int(run('display-message', '-pt', pane, '#{history_size}'))
+            assert actual == history, (name, 'history', actual, history)
         if text is not None:
             actual = run('capture-pane', '-pt', pane, '-S0', '-E0')
             assert actual == text, (name, 'text', actual, text)
@@ -115,20 +119,31 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         origin = '\033[3;6H'  # Column 6, row 3 (zero-based 5,2).
         pixel = '/wAA/w=='
         placement = 'a=T,q=2,f=32,s=1,v=1,c=3,r=2'
-        check('placement', origin + graphics(placement, pixel), '8,4')
+        # Kitty leaves the cursor beside the image's last row.
+        check('placement', origin + graphics(placement, pixel), '8,3')
+        one_row = placement.replace('r=2', 'r=1')
+        check('one-row', origin + graphics(one_row, pixel), '8,2')
         check('no-cursor', origin + graphics(placement + ',C=1', pixel), '5,2')
-        check('clipped', '\033[3;39H' + graphics(placement, pixel), '39,4')
-        check('scrolled', '\033[12;6H' + graphics(placement, pixel), '8,11')
+        check('explicit-cursor', origin + graphics(placement + ',C=0', pixel), '8,3')
+        check('clipped', '\033[3;39H' + graphics(placement, pixel), '39,3')
+        check('fits-bottom', '\033[11;6H' + graphics(placement, pixel), '8,11',
+              history=0)
+        check('last-row', '\033[12;6H' + graphics(one_row, pixel), '8,11', history=0)
+        check('scrolled', '\033[12;6H' + graphics(placement, pixel), '8,11', history=1)
+        check('no-cursor-bottom', '\033[12;6H' +
+              graphics(placement + ',C=1', pixel), '5,11', history=0)
+        check('taller-than-screen', '\033[1;6H' +
+              graphics(placement.replace('r=2', 'r=15'), pixel), '8,11', history=3)
         check('transmit', origin + graphics('a=t,q=2,f=32,s=1,v=1,i=7', pixel), '5,2')
         check('virtual', origin + graphics(placement + ',U=1,i=7', pixel), '5,2')
         check('put', origin + graphics('a=t,q=2,f=32,s=1,v=1,i=7', pixel) +
-              graphics('a=p,q=2,i=7,c=3,r=2'), '8,4')
+              graphics('a=p,q=2,i=7,c=3,r=2'), '8,3')
         check('columns-only', origin + graphics('a=T,q=2,f=32,s=1,v=1,c=2', pixel),
-              '7,3')
+              '7,2')
         check('rows-only', origin + graphics('a=T,q=2,f=32,s=1,v=1,r=2', pixel),
-              '9,4')
+              '9,3')
         check('chunks', graphics(placement + ',m=1', '/wAA') + origin +
-              graphics('m=0', '/w=='), '8,4')
+              graphics('m=0', '/w=='), '8,3')
         check('chunks-no-cursor', graphics(placement + ',C=1,m=1', '/wAA') + origin +
               graphics('m=0', '/w=='), '5,2')
         check('sixel', origin + '\033Pq"1;1;1;1#0;2;100;0;0#0@\033\\', '0,3')
@@ -137,7 +152,7 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         check('kitty-delete-preserves-sixel', sixel + graphics('a=d,d=A,q=2'),
               '0,1', render='^' + re.escape(sixel_render) + '$')
         check('put-reply', origin + graphics('a=t,q=2,f=32,s=1,v=1,i=7', pixel) +
-              graphics('a=p,i=7,p=9,c=3,r=2'), '8,4', graphics('i=7,p=9', 'OK'))
+              graphics('a=p,i=7,p=9,c=3,r=2'), '8,3', graphics('i=7,p=9', 'OK'))
         check('missing-reply', origin + graphics('a=p,i=7,p=9'), '5,2',
               graphics('i=7,p=9', 'ENOENT'))
         check('invalid-reply', origin + graphics('a=T,i=7,p=9,f=32,s=1,v=1', '!!!!'),
@@ -148,7 +163,7 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
               graphics('i=7', 'EINVAL'))
         check('empty-decoded-chunk',
               graphics(placement + ',m=1', '    ') + origin +
-              graphics('m=0', pixel), '8,4')
+              graphics('m=0', pixel), '8,3')
         check('quiet-ok', origin + graphics('a=t,q=1,i=7,f=32,s=1,v=1', pixel), '5,2')
         check('quiet-one-error', origin + graphics('a=t,q=1,i=7,f=32,s=1,v=1', '!!!!'),
               '5,2', graphics('i=7', 'EINVAL'))
@@ -156,13 +171,13 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         check('anonymous', origin + graphics('a=t,f=32,s=1,v=1', pixel), '5,2')
         check('anonymous-error', origin + graphics('a=t,f=32,s=1,v=1', '!!!!'), '5,2')
         check('anonymous-placement', origin + graphics('a=T,p=9,f=32,s=1,v=1,c=3,r=2',
-                                                      pixel), '8,4')
+                                                      pixel), '8,3')
         check('delete-no-reply', origin + graphics('a=t,q=2,i=7,f=32,s=1,v=1', pixel) +
               graphics('a=d,d=I,i=7'), '5,2')
         for format, raw in [(24, b'\xff\0\0'), (32, b'\xff\0\0\xff')]:
             payload = base64.b64encode(zlib.compress(raw)).decode()
             check('compressed-' + str(format), origin +
-                  graphics('a=T,q=2,f=%d,s=1,v=1,c=3,r=2,o=z' % format, payload), '8,4')
+                  graphics('a=T,q=2,f=%d,s=1,v=1,c=3,r=2,o=z' % format, payload), '8,3')
         # Compressed PNG uploads need S to describe the complete PNG byte count.
         png = b'\x89PNG\r\n\x1a\n'
         for kind, data in [
@@ -175,11 +190,11 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         control = 'a=T,i=7,f=100,c=3,r=2,o=z'
         sized = control + ',S=' + str(len(png))
         png_origin = '\033[1;6H'
-        check('compressed-png', png_origin + graphics(sized, payload), '8,2',
+        check('compressed-png', png_origin + graphics(sized, payload), '8,1',
               graphics('i=7', 'OK'), render=r'48;2;255;0;0m')
         split = len(payload) // 8 * 4
         check('compressed-png-chunks', graphics(sized + ',m=1', payload[:split]) +
-              png_origin + graphics('m=0', payload[split:]), '8,2',
+              png_origin + graphics('m=0', payload[split:]), '8,1',
               graphics('i=7', 'OK'), render=r'48;2;255;0;0m')
         check('compressed-png-missing-size', origin + graphics(control, payload),
               '5,2', graphics('i=7', 'EINVAL'))
@@ -348,7 +363,7 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         check('id-and-number', graphics('a=t,i=7,I=8,f=32,s=1,v=1', pixel),
               '0,0', graphics('i=7,I=8', 'EINVAL'))
         check('unknown-extension', graphics('a=T,q=2,f=32,s=1,v=1,c=3,r=2,k=9', pixel),
-              '3,2')
+              '3,1')
     finally:
         subprocess.run(tmux + ['kill-server'], stdout=subprocess.DEVNULL,
                        stderr=subprocess.DEVNULL)
