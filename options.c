@@ -1400,6 +1400,10 @@ options_push_changes(const char *name)
 		TAILQ_FOREACH(loop, &clients, entry)
 			server_client_set_key_table(loop, NULL);
 	}
+	if (strcmp(name, "extended-keys") == 0) {
+		TAILQ_FOREACH(loop, &clients, entry)
+			tty_extended_keys_changed(&loop->tty);
+	}
 	if (strcmp(name, "user-keys") == 0) {
 		TAILQ_FOREACH(loop, &clients, entry) {
 			if (loop->tty.flags & TTY_OPENED)

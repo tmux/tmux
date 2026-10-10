@@ -104,7 +104,7 @@ static const char *options_table_extended_keys_list[] = {
 	"off", "on", "always", NULL
 };
 static const char *options_table_extended_keys_format_list[] = {
-	"csi-u", "xterm", NULL
+	"csi-u", "xterm", "kitty", NULL
 };
 static const char *options_table_allow_passthrough_list[] = {
 	"off", "on", "all", NULL
