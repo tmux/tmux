@@ -1574,9 +1574,6 @@ prompt_complete_commands(u_int *size, const char *s, int at_start)
 	for (cmdent = cmd_table; *cmdent != NULL; cmdent++) {
 		if (strncmp((*cmdent)->name, s, slen) == 0)
 			prompt_complete_add(&list, size, (*cmdent)->name);
-		if ((*cmdent)->alias != NULL &&
-		    strncmp((*cmdent)->alias, s, slen) == 0)
-			prompt_complete_add(&list, size, (*cmdent)->alias);
 	}
 	o = options_get_only(global_options, "command-alias");
 	if (o != NULL) {
