@@ -1,4 +1,4 @@
-/* $OpenBSD: input-keys.c,v 1.114 2026/06/15 21:47:01 nicm Exp $ */
+/* $OpenBSD: input-keys.c,v 1.115 2026/10/12 09:37:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -621,7 +621,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 			key = '\011' | (key & ~KEYC_MASK_KEY) | KEYC_SHIFT;
 		} else {
 			/* Otherwise clear modifiers. */
-			key &= ~KEYC_MASK_MODIFIERS;
+			key &= ~(KEYC_MASK_MODIFIERS|KEYC_IMPLIED_META);
 		}
 	}
 
