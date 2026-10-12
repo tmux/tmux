@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.425 2026/10/05 10:59:37 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.426 2026/10/12 10:53:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -5785,6 +5785,17 @@ format_loop_clients(struct format_expand_state *es, const char *fmt)
 	return (value);
 }
 
+/* Truncate a value to a long long, failing if it is NaN or out of range. */
+static int
+format_truncate_integer(double *v)
+{
+	/* (double)LLONG_MAX is 2^63, which does not fit; -2^63 does. */
+	if (isnan(*v) || *v >= (double)LLONG_MAX || *v < (double)LLONG_MIN)
+		return (-1);
+	*v = (long long)*v;
+	return (0);
+}
+
 static char *
 format_replace_expression(struct format_modifier *mexp,
     struct format_expand_state *es, const char *copy)
@@ -5870,9 +5881,11 @@ format_replace_expression(struct format_modifier *mexp,
 		goto fail;
 	}
 
-	if (!use_fp) {
-		mleft = (long long)mleft;
-		mright = (long long)mright;
+	if (!use_fp &&
+	    (format_truncate_integer(&mleft) != 0 ||
+	    format_truncate_integer(&mright) != 0)) {
+		format_log(es, "expression side is out of range");
+		goto fail;
 	}
 	format_log(es, "expression left side is: %.*f", prec, mleft);
 	format_log(es, "expression right side is: %.*f", prec, mright);
@@ -5912,10 +5925,11 @@ format_replace_expression(struct format_modifier *mexp,
 		result = (mleft <= mright);
 		break;
 	}
-	if (use_fp)
-		xasprintf(&value, "%.*f", prec, result);
-	else
-		xasprintf(&value, "%.*f", prec, (double)(long long)result);
+	if (!use_fp && format_truncate_integer(&result) != 0) {
+		format_log(es, "expression result is out of range");
+		goto fail;
+	}
+	xasprintf(&value, "%.*f", prec, result);
 	format_log(es, "expression result is %s", value);
 
 	free(right);
