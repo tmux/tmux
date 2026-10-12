@@ -404,10 +404,15 @@ tty_start_tty(struct tty *tty)
 void
 tty_send_requests(struct tty *tty)
 {
+	int	ek;
+
 	if (~tty->flags & TTY_STARTED)
 		return;
 
 	if (tty->term->flags & TERM_VT100LIKE) {
+		ek = options_get_number(global_options, "extended-keys");
+		if (ek != 0 && (~tty->flags & TTY_HAVEKKB))
+			tty_puts(tty, "\033[?u");
 		if (~tty->flags & TTY_HAVEDA)
 			tty_puts(tty, "\033[c");
 		if (~tty->flags & TTY_HAVEDA2)
@@ -446,6 +451,25 @@ tty_repeat_requests(struct tty *tty, int force)
 		tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\");
 		tty->flags |= (TTY_WAITBG|TTY_WAITFG);
 	}
+	tty_start_start_timer(tty);
+}
+
+/* Ask about Kitty keyboard support if extended-keys was turned on later. */
+void
+tty_extended_keys_changed(struct tty *tty)
+{
+	if (~tty->flags & TTY_STARTED)
+		return;
+	tty_update_features(tty);
+
+	if (options_get_number(global_options, "extended-keys") == 0)
+		return;
+	if (~tty->term->flags & TERM_VT100LIKE)
+		return;
+	if (tty->term->flags & TERM_KITTYKEYS)
+		return;
+	tty->flags &= ~TTY_HAVEKKB;
+	tty_puts(tty, "\033[?u");
 	tty_start_start_timer(tty);
 }
 
@@ -505,6 +529,10 @@ tty_stop_tty(struct tty *tty)
 	tty_raw(tty, tty_term_string(tty->term, TTYC_DSESC));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_DSFCS));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_DSEKS));
+	if (tty->flags & TTY_KKBPUSHED) {
+		tty_raw(tty, "\033[<u");
+		tty->flags &= ~TTY_KKBPUSHED;
+	}
 
 	if (tty_use_margin(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_DSMG));
@@ -555,8 +583,12 @@ tty_update_features(struct tty *tty)
 
 	if (tty_use_margin(tty))
 		tty_putcode(tty, TTYC_ENMG);
-	if (options_get_number(global_options, "extended-keys"))
+	if (options_get_number(global_options, "extended-keys") == 0 ||
+	    (tty->term->flags & TERM_KITTYKEYS))
+		tty_puts(tty, tty_term_string(tty->term, TTYC_DSEKS));
+	else
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENEKS));
+	tty_update_kitty(tty, NULL);
 	if (options_get_number(global_options, "focus-events"))
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENFCS));
 	tty_puts(tty, tty_term_string(tty->term, TTYC_ENESC));
