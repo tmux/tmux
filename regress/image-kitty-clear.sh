@@ -23,7 +23,7 @@ $TMUX new-session -d -x 10 -y 4 "
 $TMUX set -g status off || exit 1
 $TMUX set -g scroll-on-clear off || exit 1
 $TMUX set -as terminal-features ',*:sixel@' || exit 1
-$TMUX set -as terminal-features ',*:kitty@' || exit 1
+$TMUX set -as terminal-features ',*:kittygraphics@' || exit 1
 $TMUX set -as terminal-features ',*:RGB' || exit 1
 $TMUX2 new-session -d -x 10 -y 4 "$TMUX attach-session" || exit 1
 $TMUX2 set -g status off || exit 1

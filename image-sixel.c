@@ -19,6 +19,7 @@
 
 #include <sys/types.h>
 
+#include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -236,19 +237,21 @@ sixel_parse_write(struct sixel_image *si, u_int ch)
 	return (0);
 }
 
-/* Parse a number, clamping values too large for u_int so limit checks fail. */
-static u_int
-sixel_parse_number(const char *cp, char **endptr)
+static int
+sixel_parse_number(const char *cp, char **endptr, u_int *value)
 {
-	unsigned long	value;
+	unsigned long long	number;
 
-	value = strtoul(cp, endptr, 10);
-	if (value > UINT_MAX)
-		return (UINT_MAX);
-	return (value);
+	if (*cp < '0' || *cp > '9')
+		return (1);
+	errno = 0;
+	number = strtoull(cp, endptr, 10);
+	if (errno == ERANGE || number > UINT_MAX)
+		return (1);
+	*value = number;
+	return (0);
 }
 
-/* Parse a SIXEL raster attribute sequence. */
 static const char *
 sixel_parse_attributes(struct sixel_image *si, const char *cp, const char *end)
 {
@@ -274,7 +277,10 @@ sixel_parse_attributes(struct sixel_image *si, const char *cp, const char *end)
 		return (NULL);
 	}
 
-	x = sixel_parse_number(endptr + 1, &endptr);
+	if (sixel_parse_number(endptr + 1, &endptr, &x) != 0) {
+		log_debug("%s: invalid number", __func__);
+		return (NULL);
+	}
 	if (endptr == last || *endptr != ';') {
 		log_debug("%s: missing ;", __func__);
 		return (NULL);
@@ -283,7 +289,10 @@ sixel_parse_attributes(struct sixel_image *si, const char *cp, const char *end)
 		log_debug("%s: image is too wide", __func__);
 		return (NULL);
 	}
-	y = sixel_parse_number(endptr + 1, &endptr);
+	if (sixel_parse_number(endptr + 1, &endptr, &y) != 0) {
+		log_debug("%s: invalid number", __func__);
+		return (NULL);
+	}
 	if (endptr != last) {
 		log_debug("%s: extra ;", __func__);
 		return (NULL);
@@ -319,7 +328,10 @@ sixel_parse_colour(struct sixel_image *si, const char *cp, const char *end)
 		last++;
 	}
 
-	c = sixel_parse_number(cp, &endptr);
+	if (sixel_parse_number(cp, &endptr, &c) != 0) {
+		log_debug("%s: invalid number", __func__);
+		return (NULL);
+	}
 	if (c > SIXEL_COLOUR_REGISTERS) {
 		log_debug("%s: too many colours", __func__);
 		return (NULL);
@@ -330,22 +342,34 @@ sixel_parse_colour(struct sixel_image *si, const char *cp, const char *end)
 	if (endptr == last || *endptr != ';')
 		return (last);
 
-	type = sixel_parse_number(endptr + 1, &endptr);
+	if (sixel_parse_number(endptr + 1, &endptr, &type) != 0) {
+		log_debug("%s: invalid number", __func__);
+		return (NULL);
+	}
 	if (endptr == last || *endptr != ';') {
 		log_debug("%s: missing ;", __func__);
 		return (NULL);
 	}
-	c1 = sixel_parse_number(endptr + 1, &endptr);
+	if (sixel_parse_number(endptr + 1, &endptr, &c1) != 0) {
+		log_debug("%s: invalid number", __func__);
+		return (NULL);
+	}
 	if (endptr == last || *endptr != ';') {
 		log_debug("%s: missing ;", __func__);
 		return (NULL);
 	}
-	c2 = sixel_parse_number(endptr + 1, &endptr);
+	if (sixel_parse_number(endptr + 1, &endptr, &c2) != 0) {
+		log_debug("%s: invalid number", __func__);
+		return (NULL);
+	}
 	if (endptr == last || *endptr != ';') {
 		log_debug("%s: missing ;", __func__);
 		return (NULL);
 	}
-	c3 = sixel_parse_number(endptr + 1, &endptr);
+	if (sixel_parse_number(endptr + 1, &endptr, &c3) != 0) {
+		log_debug("%s: invalid number", __func__);
+		return (NULL);
+	}
 	if (endptr != last) {
 		log_debug("%s: missing ;", __func__);
 		return (NULL);

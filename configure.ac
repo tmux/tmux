@@ -544,18 +544,17 @@ fi
 # Enable image support.
 AC_ARG_ENABLE(
 	images,
-	AS_HELP_STRING(--enable-images, enable Kitty/SIXEL/ASCII images)
+	AS_HELP_STRING(--enable-images, enable image support)
 )
-
-# Keep the old option as an alias for one compatibility cycle.
 AC_ARG_ENABLE(
 	sixel,
-	AS_HELP_STRING(--enable-sixel, deprecated alias for --enable-images)
+	AS_HELP_STRING(--enable-sixel, alias for --enable-images),
+	[
+		if test "x$enable_images" = x; then
+			enable_images=$enable_sixel
+		fi
+	]
 )
-if test "x$enable_sixel" = xyes; then
-	AC_MSG_WARN([--enable-sixel is deprecated, use --enable-images instead to enable.])
-	enable_images=yes
-fi
 if test "x$enable_images" = xyes; then
 	PKG_CHECK_MODULES(
 		IMAGE,

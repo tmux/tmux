@@ -55,12 +55,12 @@ $TMUX new-session -d -s inner -x 40 -y 20 "printf '$HEADER'; exec sh" ||
 sleep 0.3
 
 [ "$($TMUX display-message -p '#{image_support}')" = 0 ] && exit 0
-$TMUX set -as terminal-features ',*:kitty' || exit 1
+$TMUX set -as terminal-features ',*:kittygraphics' || exit 1
 
 $TMUX2 new-session -d -x 40 -y 20 || exit 1
 OUTER=$($TMUX2 list-panes -F '#{pane_id}' | head -1)
 [ -n "$OUTER" ] || fail "No outer pane."
-$TMUX2 set -as terminal-features ',*:kitty@' || fail "disable outer kitty failed"
+$TMUX2 set -as terminal-features ',*:kittygraphics@' || fail "disable outer kitty failed"
 $TMUX2 pipe-pane -t "$OUTER" -O "cat >$TMP" || fail "pipe-pane failed"
 $TMUX2 send-keys -t "$OUTER" -l "$TMUX attach -t inner" || fail "send attach failed"
 $TMUX2 send-keys -t "$OUTER" Enter || fail "send enter failed"

@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.46 2026/09/24 08:16:13 nicm Exp $ */
+/* $OpenBSD: tty-features.c,v 1.48 2026/10/12 12:35:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -236,11 +236,9 @@ static const struct tty_feature tty_feature_strikethrough = {
 	0
 };
 
-#define TTY_FEATURE_SYNC "Sync=\\E[?2026%?%p1%{1}%-%tl%eh%;"
-
 /* Terminal supports synchronized updates. */
 static const char *const tty_feature_sync_capabilities[] = {
-	TTY_FEATURE_SYNC,
+	"Sync=\\E[?2026%?%p1%{1}%-%tl%eh%;",
 	NULL
 };
 static const struct tty_feature tty_feature_sync = {
@@ -371,16 +369,11 @@ static const struct tty_feature tty_feature_sixel = {
 	TERM_SIXEL
 };
 
-/* Terminal has Kitty graphics protocol Unicode placeholder capability. */
-static const char *const tty_feature_kitty_capabilities[] = {
-	"Kty",
-	TTY_FEATURE_SYNC,
-	NULL
-};
-static const struct tty_feature tty_feature_kitty = {
-	"kitty",
-	tty_feature_kitty_capabilities,
-	TERM_KITTY
+/* Terminal supports Kitty graphics Unicode placeholders. */
+static const struct tty_feature tty_feature_kittygraphics = {
+	"kittygraphics",
+	NULL,
+	TERM_KITTYGRAPHICS
 };
 
 #ifdef ENABLE_IMAGES
@@ -439,7 +432,7 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_extkeys,
 	&tty_feature_focus,
 	&tty_feature_ignorefkeys,
-	&tty_feature_kitty,
+	&tty_feature_kittygraphics,
 #ifdef ENABLE_IMAGES
 	&tty_feature_image_quadrants,
 	&tty_feature_image_sextants,
@@ -702,7 +695,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "sync,"
 			      "usstyle,"
 			      "progressbar,"
-			      "kitty"
+			      "kittygraphics"
 		},
 		{ .name = "kitty",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
@@ -715,7 +708,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "osc7,"
 			      "sync,"
 			      "usstyle,"
-			      "kitty"
+			      "kittygraphics"
 		},
 		{ .name = "Rio",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","

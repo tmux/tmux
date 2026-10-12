@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1455 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1457 2026/10/12 12:35:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -643,6 +643,7 @@ enum tty_code_code {
 	TTYC_KUP6,
 	TTYC_KUP7,
 	TTYC_MS,
+	TTYC_NCV,
 	TTYC_NOBR,
 	TTYC_OL,
 	TTYC_OP,
@@ -1871,8 +1872,8 @@ struct tty_term {
 #define TERM_VT100LIKE 0x20
 #define TERM_SIXEL 0x40
 #define TERM_INVALIDMS 0x80
-#define TERM_KITTY 0x100
-#define TERM_NOREPLACE 0x200
+#define TERM_NOREPLACE 0x100
+#define TERM_KITTYGRAPHICS 0x200
 #ifdef ENABLE_IMAGES
 #define TERM_IMAGE_QUADRANTS 0x400
 #define TERM_IMAGE_SEXTANTS 0x800

@@ -138,7 +138,7 @@ static const struct image_backend image_backend_sixel = {
 static const struct image_backend *
 image_tty_find_backend(struct tty *tty)
 {
-	if (tty->term != NULL && tty->term->flags & TERM_KITTY)
+	if (tty->term != NULL && tty->term->flags & TERM_KITTYGRAPHICS)
 		return (&image_backend_kitty);
 	if (tty->term != NULL && tty->term->flags & TERM_SIXEL &&
 	    tty->xpixel != 0 && tty->ypixel != 0) {

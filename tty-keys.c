@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-keys.c,v 1.216 2026/10/06 17:49:45 nicm Exp $ */
+/* $OpenBSD: tty-keys.c,v 1.217 2026/10/12 12:26:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>

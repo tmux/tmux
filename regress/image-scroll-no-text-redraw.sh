@@ -57,7 +57,7 @@ scroll_markers()
 	$TMUX2 new-session -d -x 40 -y 20 || exit 1
 	OUTER=$($TMUX2 list-panes -F '#{pane_id}' | head -1)
 	[ -n "$OUTER" ] || fail "No outer pane."
-	$TMUX2 set -as terminal-features ',*:kitty@' ||
+	$TMUX2 set -as terminal-features ',*:kittygraphics@' ||
 	    fail "disable outer kitty failed"
 	: >"$TMP"
 	$TMUX2 pipe-pane -t "$OUTER" -O "cat >$TMP" || fail "pipe-pane failed"
@@ -76,11 +76,11 @@ scroll_markers()
 	N=$(grep -ac MARKER "$TMP")
 }
 
-scroll_markers ',*:kitty,*:imagescroll'
+scroll_markers ',*:kittygraphics,*:imagescroll'
 [ "$N" -eq 0 ] ||
 	fail "existing text was redrawn ($N lines) scrolling with imagescroll"
 
-scroll_markers ',*:kitty'
+scroll_markers ',*:kittygraphics'
 [ "$N" -gt 0 ] ||
 	fail "text was not redrawn scrolling without imagescroll"
 

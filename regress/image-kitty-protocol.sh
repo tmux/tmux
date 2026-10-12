@@ -112,7 +112,7 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
             raise SystemExit(0)
         run('set', '-g', 'status', 'off')
         run('set', '-as', 'terminal-features', ',*:sixel@')
-        run('set', '-as', 'terminal-features', ',*:kitty@')
+        run('set', '-as', 'terminal-features', ',*:kittygraphics@')
         run('set', '-as', 'terminal-features', ',*:RGB')
         subprocess.run(outer + ['new-session', '-d', '-x', '40', '-y', '12'], check=True)
         subprocess.run(outer + ['set', '-g', 'status', 'off'], check=True)

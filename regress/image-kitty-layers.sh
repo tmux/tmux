@@ -109,7 +109,7 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-layers-') as tmp:
         if run(inner, 'display-message', '-p', '#{image_support}') == '0':
             raise SystemExit(0)
         run(inner, 'set', '-g', 'status', 'off')
-        run(inner, 'set', '-as', 'terminal-features', ',*:kitty')
+        run(inner, 'set', '-as', 'terminal-features', ',*:kittygraphics')
         pane = run(outer, 'new-session', '-dP', '-F', '#{pane_id}',
                    '-x', '40', '-y', '12', 'exec sh')
         run(outer, 'set', '-g', 'status', 'off')
