@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.159 2026/10/08 07:50:05 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.160 2026/10/12 08:08:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -42,7 +42,7 @@ const struct grid_cell grid_default_cell = {
 
 /*
  * Padding grid cell data. Padding cells are the only zero width cell that
- * appears in the grid - because of this, they are always extended cells.
+ * appears in the grid.
  */
 static const struct grid_cell grid_padding_cell = {
 	{ { '!' }, 0, 0, 0 }, 0, GRID_FLAG_PADDING, 8, 8, 8, 0
@@ -591,7 +591,10 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 	if (gce->flags & GRID_FLAG_BG256)
 		gc->bg |= COLOUR_FLAG_256;
 	gc->us = 8;
-	utf8_set(&gc->data, gce->data.data);
+	if (gc->flags & GRID_FLAG_PADDING)
+		memcpy(&gc->data, &grid_padding_cell.data, sizeof gc->data);
+	else
+		utf8_set(&gc->data, gce->data.data);
 	gc->link = 0;
 }
 
