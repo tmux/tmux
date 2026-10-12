@@ -210,6 +210,7 @@ dist_tmux_SOURCES = \
 	style.c \
 	tmux-protocol.h \
 	tmux.c \
+	tmux-image.h \
 	tmux.h \
 	tty-acs.c \
 	tty-draw.c \
@@ -251,7 +252,7 @@ endif
 
 # Enable image support.
 if ENABLE_IMAGES
-dist_tmux_SOURCES += image.c image-sixel.c
+dist_tmux_SOURCES += image.c image-grid.c image-sixel.c
 endif
 
 # Add bits for fuzzing if enabled.

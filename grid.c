@@ -308,6 +308,9 @@ grid_free_line(struct grid *gd, u_int py)
 {
 	struct grid_line	*gl = &gd->linedata[py];
 
+#ifdef ENABLE_IMAGES
+	image_grid_free_line(gd, gl);
+#endif
 	free(gl->celldata);
 	free(gl->extddata);
 	memset(gl, 0, sizeof *gl);
@@ -347,6 +350,9 @@ void
 grid_destroy(struct grid *gd)
 {
 	grid_free_lines(gd, 0, gd->hsize + gd->sy);
+#ifdef ENABLE_IMAGES
+	image_grid_free(gd);
+#endif
 	free(gd->linedata);
 	free(gd);
 }
@@ -692,6 +698,9 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny, u_int bg)
 		return;
 	if (grid_check_y(gd, __func__, py + ny - 1) != 0)
 		return;
+#ifdef ENABLE_IMAGES
+	image_grid_remove(gd, px, py, nx, ny);
+#endif
 
 	for (yy = py; yy < py + ny; yy++) {
 		gl = &gd->linedata[yy];
@@ -794,6 +803,9 @@ grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx,
 
 	grid_expand_line(gd, py, px + nx, 8);
 	grid_expand_line(gd, py, dx + nx, 8);
+#ifdef ENABLE_IMAGES
+	image_grid_move_cells(gd, dx, px, py, nx);
+#endif
 	memmove(&gl->celldata[dx], &gl->celldata[px],
 	    nx * sizeof *gl->celldata);
 	if (dx + nx > gl->cellused)
@@ -1233,6 +1245,9 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 {
 	struct grid_line	*dstl, *srcl;
 	u_int			 yy;
+#ifdef ENABLE_IMAGES
+	u_int			 ody = dy, osy = sy;
+#endif
 
 	if (dy + ny > dst->hsize + dst->sy)
 		ny = dst->hsize + dst->sy - dy;
@@ -1245,6 +1260,9 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 		dstl = &dst->linedata[dy];
 
 		memcpy(dstl, srcl, sizeof *dstl);
+#ifdef ENABLE_IMAGES
+		dstl->images = NULL;
+#endif
 		if (srcl->cellsize != 0) {
 			dstl->celldata = xreallocarray(NULL,
 			    srcl->cellsize, sizeof *dstl->celldata);
@@ -1264,6 +1282,9 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 		sy++;
 		dy++;
 	}
+#ifdef ENABLE_IMAGES
+	image_grid_duplicate_lines(dst, ody, src, osy, ny);
+#endif
 }
 
 /* Mark line as dead. */
@@ -1384,6 +1405,11 @@ grid_reflow_join(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 			break;
 		line = yy + 1 + lines;
 
+#ifdef ENABLE_IMAGES
+		if (image_grid_line_has_images(&gd->linedata[line]))
+			break;
+#endif
+
 		/* Consume empty lines, including any markers. */
 		if (~gd->linedata[line].flags & GRID_LINE_WRAPPED)
 			wrapped = 0;
@@ -1453,8 +1479,7 @@ grid_reflow_join(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 
 	/* Remove the lines that were completely consumed. */
 	for (i = yy + 1; i < yy + 1 + lines; i++) {
-		free(gd->linedata[i].celldata);
-		free(gd->linedata[i].extddata);
+		grid_free_line(gd, i);
 		grid_reflow_dead(&gd->linedata[i]);
 	}
 
@@ -1561,6 +1586,13 @@ grid_reflow(struct grid *gd, u_int sx)
 		gl = &gd->linedata[yy];
 		if (gl->flags & GRID_LINE_DEAD)
 			continue;
+
+#ifdef ENABLE_IMAGES
+		if (image_grid_line_has_images(gl)) {
+			grid_reflow_move(target, gl);
+			continue;
+		}
+#endif
 
 		/*
 		 * Work out the width of this line. at is the point at which

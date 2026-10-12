@@ -1,0 +1,382 @@
+/* $OpenBSD$ */
+
+/*
+ * Copyright (c) 2026 Michael Grant <mgrant@grant.org>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
+ * IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#include <sys/types.h>
+
+#include <limits.h>
+#include <stdlib.h>
+
+#include "tmux.h"
+
+/* A run of cells on one grid line. */
+struct image_span {
+	u_int			 x;
+	u_int			 sx;
+	u_int			 source_x;
+	u_int			 source_y;
+
+	struct image_line	*line;
+	struct image_placement	*placement;
+
+	TAILQ_ENTRY(image_span)	 line_entry;
+	TAILQ_ENTRY(image_span)	 placement_entry;
+};
+TAILQ_HEAD(image_spans, image_span);
+
+/* Spans on one grid line. */
+struct image_line {
+	struct image_spans	 spans;
+};
+
+/* A placement of an image, may be across multiple lines */
+struct image_placement {
+	struct image_store		*store;
+	struct image			*image;
+	struct image_spans		 spans;
+
+	TAILQ_ENTRY(image_placement)	 entry;
+};
+TAILQ_HEAD(image_placements, image_placement);
+
+/* Placements owned by one grid. */
+struct image_store {
+	struct image_placements	 placements;
+};
+
+/* A shared placements copied when duplicating lines. */
+struct image_copy_map {
+	struct image_placement	*source;
+	struct image_placement	*destination;
+};
+
+/* Part of a span waiting to be moved. */
+struct image_move {
+	struct image_placement	*placement;
+	u_int			 x;
+	u_int			 sx;
+	u_int			 source_x;
+	u_int			 source_y;
+};
+
+/* Get the placement store for a grid. */
+static struct image_store *
+image_store_get(struct grid *gd)
+{
+	if (gd->images == NULL) {
+		gd->images = xcalloc(1, sizeof *gd->images);
+		TAILQ_INIT(&gd->images->placements);
+	}
+	return (gd->images);
+}
+
+/* Get the spans for a grid line. */
+static struct image_line *
+image_line_get(struct grid_line *gl)
+{
+	if (gl->images == NULL) {
+		gl->images = xcalloc(1, sizeof *gl->images);
+		TAILQ_INIT(&gl->images->spans);
+	}
+	return (gl->images);
+}
+
+/* Create a placement. Takes a reference to the image. */
+static struct image_placement *
+image_placement_create(struct grid *gd, struct image *im)
+{
+	struct image_store	*store = image_store_get(gd);
+	struct image_placement	*plmt;
+
+	plmt = xcalloc(1, sizeof *plmt);
+	plmt->store = store;
+	plmt->image = im;
+	TAILQ_INIT(&plmt->spans);
+	TAILQ_INSERT_TAIL(&store->placements, plmt, entry);
+	image_ref(im);
+	return (plmt);
+}
+
+/* Free a placement after all its spans have gone. */
+static void
+image_placement_free(struct image_placement *plmt)
+{
+	TAILQ_REMOVE(&plmt->store->placements, plmt, entry);
+	image_free(plmt->image);
+	free(plmt);
+}
+
+/* Attach a span to both its grid line and its placement. */
+static void
+image_span_add(struct image_line *line, struct image_placement *plmt, u_int x,
+    u_int sx, u_int src_x, u_int src_y)
+{
+	struct image_span	*span;
+
+	if (sx == 0)
+		return;
+
+	span = xcalloc(1, sizeof *span);
+	span->x = x;
+	span->sx = sx;
+	span->source_x = src_x;
+	span->source_y = src_y;
+	span->line = line;
+	span->placement = plmt;
+	TAILQ_INSERT_TAIL(&line->spans, span, line_entry);
+	TAILQ_INSERT_TAIL(&plmt->spans, span, placement_entry);
+}
+
+/* Detach and free one span. */
+static void
+image_span_free(struct image_span *span)
+{
+	TAILQ_REMOVE(&span->line->spans, span, line_entry);
+	TAILQ_REMOVE(&span->placement->spans, span, placement_entry);
+	free(span);
+}
+
+/* Free placements with no remaining spans. */
+static void
+image_store_prune(struct image_store *store)
+{
+	struct image_placement	*plmt, *next;
+
+	if (store == NULL)
+		return;
+	TAILQ_FOREACH_SAFE(plmt, &store->placements, entry, next) {
+		if (TAILQ_EMPTY(&plmt->spans))
+			image_placement_free(plmt);
+	}
+}
+
+/* Add a source rectangle at absolute grid coordinates. */
+void
+image_grid_add(struct grid *gd, struct image *im, u_int x, u_int y,
+    u_int src_x, u_int src_y, u_int sx, u_int sy)
+{
+	struct image_placement	*plmt;
+	struct image_line	*line;
+	u_int			 rows = gd->hsize + gd->sy, row;
+	u_int			 image_sx, image_sy;
+
+	if (sx == 0 || sy == 0 || x >= gd->sx || y >= rows)
+		return;
+	image_get_size_in_cells(im, &image_sx, &image_sy);
+	if (src_x >= image_sx || src_y >= image_sy)
+		return;
+
+	if (sx > gd->sx - x)
+		sx = gd->sx - x;
+	if (sx > image_sx - src_x)
+		sx = image_sx - src_x;
+	if (sy > rows - y)
+		sy = rows - y;
+	if (sy > image_sy - src_y)
+		sy = image_sy - src_y;
+
+	plmt = image_placement_create(gd, im);
+	for (row = 0; row < sy; row++) {
+		line = image_line_get(&gd->linedata[y + row]);
+		image_span_add(line, plmt, x, sx, src_x, src_y + row);
+	}
+}
+
+/* Remove the covered part of each span, retaining either side. */
+static void
+image_line_remove(struct image_line *line, u_int x, u_int w)
+{
+	struct image_span	*span, *next;
+	u_int			 end, span_end, right;
+
+	if (line == NULL || w == 0)
+		return;
+	end = x + w;
+	if (end < x)
+		end = UINT_MAX;
+	TAILQ_FOREACH_SAFE(span, &line->spans, line_entry, next) {
+		span_end = span->x + span->sx;
+		if (span_end <= x || span->x >= end)
+			continue;
+		if (span->x < x && span_end > end) {
+			right = span_end - end;
+			span->sx = x - span->x;
+			image_span_add(line, span->placement, end, right,
+			    span->source_x + end - span->x, span->source_y);
+			continue;
+		}
+		if (span->x < x) {
+			span->sx = x - span->x;
+			continue;
+		}
+		if (span_end > end) {
+			span->source_x += end - span->x;
+			span->sx = span_end - end;
+			span->x = end;
+			continue;
+		}
+		image_span_free(span);
+	}
+}
+
+/* Remove a rectangle of image spans from a grid. */
+void
+image_grid_remove(struct grid *gd, u_int x, u_int y, u_int sx, u_int sy)
+{
+	u_int	rows = gd->hsize + gd->sy;
+	u_int	row;
+
+	if (gd->images == NULL || sx == 0 || sy == 0 || y >= rows)
+		return;
+	if (sy > rows - y)
+		sy = rows - y;
+	for (row = y; row < y + sy; row++)
+		image_line_remove(gd->linedata[row].images, x, sx);
+	image_store_prune(gd->images);
+}
+
+/* Free all spans on a grid line. */
+void
+image_grid_free_line(struct grid *gd, struct grid_line *gl)
+{
+	struct image_line	*line = gl->images;
+	struct image_span	*span, *next;
+
+	if (line == NULL)
+		return;
+
+	TAILQ_FOREACH_SAFE(span, &line->spans, line_entry, next)
+		image_span_free(span);
+	free(line);
+
+	gl->images = NULL;
+	image_store_prune(gd->images);
+}
+
+/* Free a grid's empty placement store. */
+void
+image_grid_free(struct grid *gd)
+{
+	if (gd->images != NULL) {
+		image_store_prune(gd->images);
+		free(gd->images);
+		gd->images = NULL;
+	}
+}
+
+/* Move the image spans belonging to a range of text cells. */
+void
+image_grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)
+{
+	struct image_line	*line;
+	struct image_span	*span;
+	struct image_move	*moves = NULL;
+	size_t			 n = 0, i;
+	u_int			 start, end, span_end;
+
+	if (gd->images == NULL ||
+	    nx == 0 ||
+	    px == dx ||
+	    py >= gd->hsize + gd->sy)
+		return;
+	line = gd->linedata[py].images;
+	if (line == NULL)
+		return;
+
+	end = px + nx;
+	TAILQ_FOREACH(span, &line->spans, line_entry) {
+		span_end = span->x + span->sx;
+		start = (span->x > px ? span->x : px);
+		if (start >= end || span_end <= px)
+			continue;
+		if (span_end > end)
+			span_end = end;
+
+		moves = xreallocarray(moves, n + 1, sizeof *moves);
+		moves[n].placement = span->placement;
+		moves[n].x = dx + start - px;
+		moves[n].sx = span_end - start;
+		moves[n].source_x = span->source_x + start - span->x;
+		moves[n].source_y = span->source_y;
+		n++;
+	}
+	image_line_remove(line, px, nx);
+	image_line_remove(line, dx, nx);
+	for (i = 0; i < n; i++) {
+		image_span_add(line, moves[i].placement, moves[i].x,
+		    moves[i].sx, moves[i].source_x, moves[i].source_y);
+	}
+	free(moves);
+	image_store_prune(gd->images);
+}
+
+/* Map one source placement to one destination placement during a copy. */
+static struct image_placement *
+image_copy_placement(struct grid *dst, struct image_placement *src,
+    struct image_copy_map **maps, u_int *nmaps)
+{
+	struct image_placement	*plmt;
+	struct image_copy_map	*map = *maps;
+	u_int			 i, n = *nmaps;
+
+	for (i = 0; i < n; i++) {
+		if (map[i].source == src)
+			return (map[i].destination);
+	}
+	plmt = image_placement_create(dst, src->image);
+
+	map = xreallocarray(map, n + 1, sizeof *map);
+	map[n].source = src;
+	map[n].destination = plmt;
+
+	*maps = map;
+	*nmaps = n + 1;
+	return (plmt);
+}
+
+/* Duplicate image spans and their placements between grid lines. */
+void
+image_grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src,
+    u_int sy, u_int ny)
+{
+	struct image_copy_map	*maps = NULL;
+	struct image_line	*src_line, *dst_line;
+	struct image_span	*span;
+	struct image_placement	*plmt;
+	u_int			 nmaps = 0, row;
+
+	for (row = 0; row < ny; row++) {
+		src_line = src->linedata[sy + row].images;
+		if (src_line == NULL)
+			continue;
+		dst_line = image_line_get(&dst->linedata[dy + row]);
+		TAILQ_FOREACH(span, &src_line->spans, line_entry) {
+			plmt = image_copy_placement(dst, span->placement, &maps,
+			    &nmaps);
+			image_span_add(dst_line, plmt, span->x, span->sx,
+			    span->source_x, span->source_y);
+		}
+	}
+	free(maps);
+}
+
+/* Check whether a grid line has any image spans. */
+int
+image_grid_line_has_images(struct grid_line *gl)
+{
+	return (gl->images != NULL && !TAILQ_EMPTY(&gl->images->spans));
+}
