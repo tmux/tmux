@@ -60,7 +60,11 @@ query_timeout()
 
 query "dsr-ok" '^[[0n' '\033[5n' 4 ''
 query "dsr-cursor" '^[[1;1R' '\033[6n' 6 ''
-query "da-primary" '^[[?1;2c' '\033[c' 7 ''
+if [ "$($TMUX display-message -p '#{image_support}')" = 1 ]; then
+	query "da-primary" '^[[?1;2;4c' '\033[c' 9 ''
+else
+	query "da-primary" '^[[?1;2c' '\033[c' 7 ''
+fi
 query "da-secondary" '^[[>84;0;0c' '\033[>c' 10 ''
 query "decrqm-irm-reset" '^[[4;2$y' '\033[4$p' 7 ''
 query "decrqm-irm-set" '^[[4;1$y' '\033[4$p' 7 '\033[4h'
