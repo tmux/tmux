@@ -1921,7 +1921,7 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 
 	tty_reset(tty);
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	if (wp != NULL)
 		tty_draw_images(c, wp);
 	else {

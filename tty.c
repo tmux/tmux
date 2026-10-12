@@ -68,7 +68,7 @@ static void	tty_emulate_repeat(struct tty *, enum tty_code_code,
 		    enum tty_code_code, u_int);
 static void	tty_draw_pane(struct tty *, const struct tty_ctx *, u_int);
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 static void	tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
 		    struct client *, struct tty_ctx *);
 #endif
@@ -1460,7 +1460,7 @@ tty_check_codeset(struct tty *tty, const struct grid_cell *gc)
 	return (&new);
 }
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 /* Update context for client. */
 static int
 tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
@@ -1588,7 +1588,7 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 	}
 }
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 /* Only write to the incoming tty instead of every client. */
 static void
 tty_write_one(void (*cmdfn)(struct tty *, const struct tty_ctx *),
@@ -2034,7 +2034,7 @@ tty_cmd_rawstring(struct tty *tty, const struct tty_ctx *ctx)
 	tty_invalidate(tty);
 }
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 void
 tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 {
