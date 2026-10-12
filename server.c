@@ -221,7 +221,7 @@ server_start(struct tmuxproc *client, uint64_t flags, struct event_base *base,
 	gettimeofday(&start_time, NULL);
 
 #ifdef HAVE_KEYCTL
-	new_session_keyring();
+	fork_session_keyring();
 #endif
 
 #ifdef HAVE_SYSTEMD
@@ -263,9 +263,6 @@ server_start(struct tmuxproc *client, uint64_t flags, struct event_base *base,
 
 	job_kill_all();
 	prompt_save_history();
-#ifdef HAVE_KEYCTL
-	revoke_session_keyring();
-#endif
 
 	exit(0);
 }

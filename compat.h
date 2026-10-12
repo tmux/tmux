@@ -443,8 +443,7 @@ void		*recallocarray(void *, size_t, size_t, size_t);
 
 #ifdef HAVE_KEYCTL
 /* keyring-linux.c */
-void		 new_session_keyring(void);
-void		 revoke_session_keyring(void);
+void		 fork_session_keyring(void);
 #endif
 
 #ifdef HAVE_SYSTEMD
