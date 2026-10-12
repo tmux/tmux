@@ -650,6 +650,24 @@ tty_keys_partial_paste_end(const char *buf, size_t len)
 }
 
 /*
+ * Is this the start of a mouse sequence, possibly after an Escape? These can
+ * arrive split over a slow connection and the rest must not become keys.
+ */
+static int
+tty_keys_partial_mouse(struct tty *tty, const char *buf, size_t len)
+{
+	if ((tty->mode & ALL_MOUSE_MODES) == 0)
+		return (0);
+	if (len > 1 && buf[0] == '\033' && buf[1] == '\033') {
+		buf++;
+		len--;
+	}
+	if (len < 3 || buf[0] != '\033' || buf[1] != '[')
+		return (0);
+	return (buf[2] == '<' || buf[2] == 'M');
+}
+
+/*
  * Look for a terminal reply, mouse event or extended key. These sequences
  * carry their own modifiers, so none can follow an Escape as a Meta prefix.
  */
@@ -934,6 +952,11 @@ partial_key:
 	if ((tty->flags & TTY_BRACKETPASTE) &&
 	    tty_keys_partial_paste_end(buf, len)) {
 		log_debug("%s: increasing delay (partial paste end)", c->name);
+		if (delay < 500)
+			delay = 500;
+	}
+	if (tty_keys_partial_mouse(tty, buf, len)) {
+		log_debug("%s: increasing delay (partial mouse)", c->name);
 		if (delay < 500)
 			delay = 500;
 	}
