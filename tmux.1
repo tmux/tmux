@@ -5096,6 +5096,14 @@ each client.
 .It Ic prompt\-history\-limit Ar number
 Set the number of history items to save in the history file for each type of
 command prompt.
+.It Xo Ic session\-keyring
+.Op Cm on | off
+.Xc
+On Linux, if enabled (the default), the server joins a new session keyring with
+the user keyring linked into it, rather than keeping the session keyring of the
+login session it was started from, which may be revoked when that session ends.
+The new keyring is revoked when the server exits.
+This option is checked once the configuration file has been loaded.
 .It Xo Ic set\-clipboard
 .Op Cm on | external | off
 .Xc

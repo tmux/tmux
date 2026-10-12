@@ -239,6 +239,11 @@ if NEED_FORKPTY
 nodist_tmux_SOURCES += compat/forkpty-@PLATFORM@.c
 endif
 
+# Add compat file for Linux session keyrings.
+if HAVE_KEYCTL
+nodist_tmux_SOURCES += compat/keyring-linux.c
+endif
+
 # Add compat file for systemd.
 if HAVE_SYSTEMD
 nodist_tmux_SOURCES += compat/systemd.c

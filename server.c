@@ -259,6 +259,9 @@ server_start(struct tmuxproc *client, uint64_t flags, struct event_base *base,
 
 	job_kill_all();
 	prompt_save_history();
+#ifdef HAVE_KEYCTL
+	keyring_revoke();
+#endif
 
 	exit(0);
 }
