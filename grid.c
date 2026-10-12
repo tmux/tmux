@@ -18,9 +18,6 @@
 
 #include <sys/types.h>
 
-#ifdef __APPLE__
-#include <assert.h>
-#endif
 #include <stdlib.h>
 #include <string.h>
 
@@ -58,45 +55,6 @@ static const struct grid_cell grid_cleared_cell = {
 static const struct grid_cell_entry grid_cleared_entry = {
 	{ .data = { 0, 8, 8, ' ' } }, GRID_FLAG_CLEARED
 };
-
-#ifdef __APPLE__
-void
-grid_check_is_clear(struct grid *gd)
-{
-	struct grid_line	*gl;
-	u_int			 yy, ny;
-
-	assert(gd != NULL);
-
-	if (gd->sy == 0) {
-		assert(gd->linedata == NULL);
-		return;
-	}
-
-	assert(gd->linedata != NULL);
-
-	ny = gd->hsize + gd->sy;
-	for (yy = 0; yy < ny; yy++) {
-		gl = &gd->linedata[yy];
-
-		assert(gl->celldata == NULL);
-		assert(gl->cellused == 0);
-		assert(gl->cellsize == 0);
-		assert(gl->extddata == NULL);
-		assert(gl->extdsize == 0);
-		assert(gl->flags == 0);
-		assert(gl->time == 0);
-#ifdef ENABLE_IMAGES
-		assert(gl->images == NULL);
-#endif
-	}
-}
-#else
-void
-grid_check_is_clear(__unused struct grid *gd)
-{
-}
-#endif
 
 /* Store cell in entry. */
 static void
@@ -350,12 +308,6 @@ grid_free_line(struct grid *gd, u_int py)
 {
 	struct grid_line	*gl = &gd->linedata[py];
 
-#ifdef __APPLE__
-	assert(gl->cellused <= gl->cellsize);
-	assert(gl->extdsize == 0 || gl->extddata != NULL);
-	assert(gl->cellsize == 0 || gl->celldata != NULL);
-#endif
-
 #ifdef ENABLE_IMAGES
 	image_grid_free_line(gd, gl);
 #endif
@@ -390,11 +342,6 @@ grid_create(u_int sx, u_int sy, u_int hlimit)
 
 	if (gd->sy != 0)
 		gd->linedata = xcalloc(gd->sy, sizeof *gd->linedata);
-
-#ifdef __APPLE__
-	assert(gd->hsize == 0);
-#endif
-	grid_check_is_clear(gd);
 	return (gd);
 }
 

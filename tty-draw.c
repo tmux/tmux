@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-draw.c,v 1.17 2026/09/22 06:49:47 nicm Exp $ */
+/* $OpenBSD: tty-draw.c,v 1.18 2026/10/12 15:28:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -269,7 +269,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 #endif
 					empty = nx - i;
 
-				/* Flush the background before clearing the tail. */
+				/* Flush the background before clearing. */
 				if (empty != 0 && gcp->bg != last.bg)
 					empty = 0;
 			} else {
