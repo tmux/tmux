@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-switch-client.c,v 1.75 2026/08/20 09:19:24 nicm Exp $ */
+/* $OpenBSD: cmd-switch-client.c,v 1.76 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -33,6 +33,7 @@ static enum cmd_retval	cmd_switch_client_exec(struct cmd *,
 
 const struct cmd_entry cmd_switch_client_entry = {
 	.name = "switch-client",
+	.description = "Switch a client to another session.",
 	.alias = "switchc",
 
 	.args = { "c:EFlnO:pt:rT:Z", 0, 0, NULL },

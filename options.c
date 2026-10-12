@@ -1406,6 +1406,14 @@ options_push_changes(const char *name)
 				tty_keys_build(&loop->tty);
 		}
 	}
+	if (strcmp(name, "utmp") == 0) {
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
+			if (options_get_number(global_options, name))
+				window_pane_utmp_add(wp);
+			else
+				window_pane_utmp_remove(wp);
+		}
+	}
 	if (strcmp(name, "status") == 0 ||
 	    strcmp(name, "status-interval") == 0)
 		status_timer_start_all();

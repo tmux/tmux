@@ -541,15 +541,24 @@ if test "x$enable_cgroups" = xyes; then
 	fi
 fi
 
-# Enable sixel support.
+# Enable image support.
+AC_ARG_ENABLE(
+	images,
+	AS_HELP_STRING(--enable-images, enable image support)
+)
 AC_ARG_ENABLE(
 	sixel,
-	AS_HELP_STRING(--enable-sixel, enable sixel images)
+	AS_HELP_STRING(--enable-sixel, alias for --enable-images),
+	[
+		if test "x$enable_images" = x; then
+			enable_images=$enable_sixel
+		fi
+	]
 )
-if test "x$enable_sixel" = xyes; then
-	AC_DEFINE(ENABLE_SIXEL)
+if test "x$enable_images" = xyes; then
+	AC_DEFINE(ENABLE_IMAGES)
 fi
-AM_CONDITIONAL(ENABLE_SIXEL, [test "x$enable_sixel" = xyes])
+AM_CONDITIONAL(ENABLE_IMAGES, [test "x$enable_images" = xyes])
 
 # Check for b64_ntop. If we have b64_ntop, we assume b64_pton as well.
 AC_MSG_CHECKING(for b64_ntop)
@@ -1163,10 +1172,10 @@ if test "x$enable_asan" = xyes; then
 else
 	AC_MSG_NOTICE([ASAN: off])
 fi
-if test "x$enable_sixel" = xyes; then
-	AC_MSG_NOTICE([SIXEL: on])
+if test "x$enable_images" = xyes; then
+	AC_MSG_NOTICE([images: on])
 else
-	AC_MSG_NOTICE([SIXEL: off])
+	AC_MSG_NOTICE([images: off])
 fi
 if test "x$enable_debug" = xyes; then
 	AC_MSG_NOTICE([debug: on])

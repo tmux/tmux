@@ -1,4 +1,4 @@
-/* $OpenBSD: screen.c,v 1.107 2026/07/26 09:20:54 nicm Exp $ */
+/* $OpenBSD: screen.c,v 1.108 2026/10/12 10:50:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -93,7 +93,7 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->tabs = NULL;
 	s->sel = NULL;
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	TAILQ_INIT(&s->images);
 	TAILQ_INIT(&s->saved_images);
 #endif
@@ -101,12 +101,12 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->write_list = NULL;
 	s->hyperlinks = NULL;
 
-	screen_reinit(s, 1);
+	screen_reinit(s);
 }
 
 /* Reinitialise screen. */
 void
-screen_reinit(struct screen *s, int check)
+screen_reinit(struct screen *s)
 {
 	s->cx = 0;
 	s->cy = 0;
@@ -125,14 +125,12 @@ screen_reinit(struct screen *s, int check)
 	s->saved_cy = UINT_MAX;
 
 	screen_reset_tabs(s);
-	if (check)
-		grid_check_is_clear(s->grid);
 	grid_clear_lines(s->grid, s->grid->hsize, s->grid->sy, 8);
 
 	screen_clear_selection(s);
 	screen_free_titles(s);
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	image_free_all(s);
 #endif
 
@@ -154,7 +152,7 @@ screen_reset_hyperlinks(struct screen *s)
 void
 screen_free(struct screen *s)
 {
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	struct image	*im;
 #endif
 
@@ -174,7 +172,7 @@ screen_free(struct screen *s)
 		hyperlinks_free(s->hyperlinks);
 	screen_free_titles(s);
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	/*
 	 * Images saved when entering the alternate screen stay linked in the
 	 * global list; move them back so they are freed and unlinked here, or
@@ -377,7 +375,7 @@ screen_resize_cursor(struct screen *s, u_int sx, u_int sy, int reflow,
 	if (sy != screen_size_y(s))
 		screen_resize_y(s, sy, eat_empty, &cy);
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	image_free_all(s);
 #endif
 
@@ -692,7 +690,7 @@ int
 screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 {
 	u_int		 sx, sy;
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	struct image	*im;
 #endif
 
@@ -709,7 +707,7 @@ screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 	}
 	memcpy(&s->saved_cell, gc, sizeof s->saved_cell);
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	TAILQ_CONCAT(&s->saved_images, &s->images, entry);
 	TAILQ_FOREACH(im, &s->saved_images, entry)
 	    im->list = &s->saved_images;
@@ -728,7 +726,7 @@ int
 screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 {
 	u_int		 sx = screen_size_x(s), sy = screen_size_y(s);
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	struct image	*im;
 #endif
 
@@ -759,6 +757,10 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 		return 0;
 	}
 
+	/* Clamp cursor to the current screen size. */
+	if (s->cy > screen_size_y(s) - 1)
+		s->cy = screen_size_y(s) - 1;
+
 	/* Restore the saved grid. */
 	grid_duplicate_lines(s->grid, screen_hsize(s), s->saved_grid, 0,
 	    s->saved_grid->sy);
@@ -774,7 +776,7 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 	grid_destroy(s->saved_grid);
 	s->saved_grid = NULL;
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	image_free_all(s);
 	TAILQ_CONCAT(&s->images, &s->saved_images, entry);
 	TAILQ_FOREACH(im, &s->images, entry)

@@ -226,10 +226,24 @@ test_format "#{e|/|f|2:10,3}" "3.33"
 # Default number of decimal places for float is two.
 test_format "#{e|*|f:2.5,2}" "5.00"
 
-# Division by zero must not crash the server (result is unspecified).
-$TMUX display-message -p "#{e|/|:5,0}" >/dev/null 2>&1
-$TMUX display-message -p "#{e|/|f:5,0}" >/dev/null 2>&1
-assert_alive "division by zero"
+# An integer expression with a side or result that is NaN or out of the range
+# of a long long expands to empty: division or modulus by zero, nan or inf, or
+# 1e30. LLONG_MAX written out is 2^63 as a double, which is out of range; the
+# largest double below 2^63 and -2^63 still convert. Comparisons are integer
+# expressions too. Floating point gives inf.
+test_format "#{e|/|:5,0}" ""
+test_format "#{e|m|:0,0}" ""
+test_format "#{e|m|:7,0}" ""
+test_format "#{e|+|:nan,0}" ""
+test_format "#{e|+|:-inf,1}" ""
+test_format "#{e|-|:1e30,1e30}" ""
+test_format "#{e|*|:1e30,1}" ""
+test_format "#{e|+|:9223372036854775807,0}" ""
+test_format "#{e|<|:nan,1}" ""
+test_format "#{e|+|:9223372036854774784,0}" "9223372036854774784"
+test_format "#{e|-|:-9223372036854775808,0}" "-9223372036854775808"
+test_format "#{e|/|f:5,0}" "inf"
+assert_alive "expressions with no integer value"
 
 
 # --- ASCII and repeat ----------------------------------------------------

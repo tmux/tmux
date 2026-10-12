@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.485 2026/10/07 07:34:59 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.486 2026/10/12 10:39:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -51,6 +51,7 @@ static void	tty_check_bg(struct tty *, struct colour_palette *,
 		    struct grid_cell *);
 static void	tty_check_us(struct tty *, struct colour_palette *,
 		    struct grid_cell *);
+static void	tty_check_ncv(struct tty *, struct grid_cell *);
 static int	tty_map_theme_colour(struct tty *, int);
 static void	tty_colours_fg(struct tty *, const struct grid_cell *);
 static void	tty_colours_bg(struct tty *, const struct grid_cell *);
@@ -67,7 +68,7 @@ static void	tty_emulate_repeat(struct tty *, enum tty_code_code,
 		    enum tty_code_code, u_int);
 static void	tty_draw_pane(struct tty *, const struct tty_ctx *, u_int);
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 static void	tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
 		    struct client *, struct tty_ctx *);
 #endif
@@ -1459,7 +1460,7 @@ tty_check_codeset(struct tty *tty, const struct grid_cell *gc)
 	return (&new);
 }
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 /* Update context for client. */
 static int
 tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
@@ -1587,7 +1588,7 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 	}
 }
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 /* Only write to the incoming tty instead of every client. */
 static void
 tty_write_one(void (*cmdfn)(struct tty *, const struct tty_ctx *),
@@ -2033,7 +2034,7 @@ tty_cmd_rawstring(struct tty *tty, const struct tty_ctx *ctx)
 	tty_invalidate(tty);
 }
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 void
 tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 {
@@ -2474,6 +2475,33 @@ tty_dim_default_colour(struct tty *tty, int c, int foreground)
 	return (c);
 }
 
+static void
+tty_check_ncv(struct tty *tty, struct grid_cell *gc)
+{
+	int	n;
+
+	if (COLOUR_DEFAULT(gc->fg) && COLOUR_DEFAULT(gc->bg))
+		return;
+
+	n = tty_term_number(tty->term, TTYC_NCV);
+	if (n & 2)
+		gc->attr &= ~GRID_ATTR_ALL_UNDERSCORE;
+	if (n & 4)
+		gc->attr &= ~GRID_ATTR_REVERSE;
+	if (n & 8)
+		gc->attr &= ~GRID_ATTR_BLINK;
+	if (n & 16)
+		gc->attr &= ~GRID_ATTR_DIM;
+	if (n & 32)
+		gc->attr &= ~GRID_ATTR_BRIGHT;
+	if (n & 64)
+		gc->attr &= ~GRID_ATTR_HIDDEN;
+	if (n & 256)
+		gc->attr &= ~GRID_ATTR_CHARSET;
+	if (n & 32768)
+		gc->attr &= ~GRID_ATTR_ITALICS;
+}
+
 void
 tty_attributes(struct tty *tty, const struct grid_cell *gc,
     const struct tty_style_ctx *style_ctx)
@@ -2544,6 +2572,7 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	tty_check_fg(tty, palette, &gc2);
 	tty_check_bg(tty, palette, &gc2);
 	tty_check_us(tty, palette, &gc2);
+	tty_check_ncv(tty, &gc2);
 
 	/*
 	 * If any bits are being cleared or the underline colour is now default,

@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.46 2026/09/24 08:16:13 nicm Exp $ */
+/* $OpenBSD: tty-features.c,v 1.48 2026/10/12 12:35:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -369,6 +369,13 @@ static const struct tty_feature tty_feature_sixel = {
 	TERM_SIXEL
 };
 
+/* Terminal supports Kitty graphics Unicode placeholders. */
+static const struct tty_feature tty_feature_kittygraphics = {
+	"kittygraphics",
+	NULL,
+	TERM_KITTYGRAPHICS
+};
+
 /* Terminal supports the OSC 9;4 progress bar. */
 static const char *const tty_feature_progressbar_capabilities[] = {
 	"Spb=\\E]9;4;%p1%d;%p2%d\\E\\\\",
@@ -399,6 +406,7 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_extkeys,
 	&tty_feature_focus,
 	&tty_feature_ignorefkeys,
+	&tty_feature_kittygraphics,
 	&tty_feature_margins,
 	&tty_feature_mouse,
 	&tty_feature_osc7,
@@ -638,6 +646,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "focus,"
 		  	      "hyperlinks,"
 			      "margins,"
+			      "sixel,"
 			      "usstyle"
 		},
 		{ .name = "ghostty",
@@ -652,7 +661,20 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "osc7,"
 			      "sync,"
 			      "usstyle,"
-			      "progressbar"
+			      "progressbar,"
+			      "kittygraphics"
+		},
+		{ .name = "kitty",
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","
+			      "ccolour,"
+			      "cstyle,"
+			      "extkeys,"
+			      "focus,"
+			      "hyperlinks,"
+			      "osc7,"
+			      "sync,"
+			      "usstyle,"
+			      "kittygraphics"
 		},
 		{ .name = "Rio",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ","

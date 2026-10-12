@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-resize-window.c,v 1.10 2023/06/30 13:19:32 nicm Exp $ */
+/* $OpenBSD: cmd-resize-window.c,v 1.11 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2018 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -31,6 +31,7 @@ static enum cmd_retval	cmd_resize_window_exec(struct cmd *,
 
 const struct cmd_entry cmd_resize_window_entry = {
 	.name = "resize-window",
+	.description = "Resize a window.",
 	.alias = "resizew",
 
 	.args = { "aADLRt:Ux:y:", 0, 1, NULL },

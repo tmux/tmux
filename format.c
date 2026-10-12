@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.425 2026/10/05 10:59:37 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.427 2026/10/12 12:22:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3070,11 +3070,11 @@ format_cb_version(__unused struct format_tree *ft)
 	return (xstrdup(getversion()));
 }
 
-/* Callback for sixel_support. */
+/* Callback for image_support. */
 static void *
-format_cb_sixel_support(__unused struct format_tree *ft)
+format_cb_image_support(__unused struct format_tree *ft)
 {
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	return (xstrdup("1"));
 #else
 	return (xstrdup("0"));
@@ -3753,6 +3753,9 @@ static const struct format_table_entry format_table[] = {
 	{ "host_short", FORMAT_TABLE_STRING,
 	  format_cb_host_short
 	},
+	{ "image_support", FORMAT_TABLE_STRING,
+	  format_cb_image_support
+	},
 	{ "insert_flag", FORMAT_TABLE_STRING,
 	  format_cb_insert_flag
 	},
@@ -4090,7 +4093,7 @@ static const struct format_table_entry format_table[] = {
 	  format_cb_session_windows
 	},
 	{ "sixel_support", FORMAT_TABLE_STRING,
-	  format_cb_sixel_support
+	  format_cb_image_support
 	},
 	{ "socket_path", FORMAT_TABLE_STRING,
 	  format_cb_socket_path
@@ -5803,6 +5806,17 @@ format_loop_clients(struct format_expand_state *es, const char *fmt)
 	return (value);
 }
 
+/* Truncate a value to a long long, failing if it is NaN or out of range. */
+static int
+format_truncate_integer(double *v)
+{
+	/* (double)LLONG_MAX is 2^63, which does not fit; -2^63 does. */
+	if (isnan(*v) || *v >= (double)LLONG_MAX || *v < (double)LLONG_MIN)
+		return (-1);
+	*v = (long long)*v;
+	return (0);
+}
+
 static char *
 format_replace_expression(struct format_modifier *mexp,
     struct format_expand_state *es, const char *copy)
@@ -5888,9 +5902,11 @@ format_replace_expression(struct format_modifier *mexp,
 		goto fail;
 	}
 
-	if (!use_fp) {
-		mleft = (long long)mleft;
-		mright = (long long)mright;
+	if (!use_fp &&
+	    (format_truncate_integer(&mleft) != 0 ||
+	    format_truncate_integer(&mright) != 0)) {
+		format_log(es, "expression side is out of range");
+		goto fail;
 	}
 	format_log(es, "expression left side is: %.*f", prec, mleft);
 	format_log(es, "expression right side is: %.*f", prec, mright);
@@ -5930,10 +5946,11 @@ format_replace_expression(struct format_modifier *mexp,
 		result = (mleft <= mright);
 		break;
 	}
-	if (use_fp)
-		xasprintf(&value, "%.*f", prec, result);
-	else
-		xasprintf(&value, "%.*f", prec, (double)(long long)result);
+	if (!use_fp && format_truncate_integer(&result) != 0) {
+		format_log(es, "expression result is out of range");
+		goto fail;
+	}
+	xasprintf(&value, "%.*f", prec, result);
 	format_log(es, "expression result is %s", value);
 
 	free(right);
