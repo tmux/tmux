@@ -19,40 +19,59 @@
 
 #include <linux/keyctl.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "tmux.h"
 
-/* Serial of the session keyring we joined, or 0 if none. */
-static long	keyring_serial;
-
 /*
  * Create a new session keyring since the current one belongs to the login
  * session which we're meant to outlive (and pam_keyinit(8) is likely to revoke
- * the login session's keyring when it ends).
+ * the login session's keyring when it ends). Link the keys from the current
+ * session keyring into it so they remain available after that.
  */
 void
-new_session_keyring(void)
+fork_session_keyring(void)
 {
-	long	serial;
+	int32_t	*keys = NULL;
+	long	 size, n = 0, i;
 
-	serial = syscall(SYS_keyctl, KEYCTL_JOIN_SESSION_KEYRING, NULL);
-	if (serial == -1) {
+	size = syscall(SYS_keyctl, KEYCTL_READ, KEY_SPEC_SESSION_KEYRING, NULL,
+	    0);
+	if (size > 0) {
+		keys = xmalloc(size);
+		n = syscall(SYS_keyctl, KEYCTL_READ, KEY_SPEC_SESSION_KEYRING,
+		    keys, size);
+		if (n > size)
+			n = size;
+		n = n > 0 ? n / sizeof *keys : 0;
+	}
+
+	/*
+	 * Link the current session keyring into the thread keyring so we still
+	 * possess its keys (and so are allowed to link them) after leaving it.
+	 */
+	if (syscall(SYS_keyctl, KEYCTL_LINK, KEY_SPEC_SESSION_KEYRING,
+	    KEY_SPEC_THREAD_KEYRING) == -1)
+		log_debug("%s: link failed: %s", __func__, strerror(errno));
+
+	if (syscall(SYS_keyctl, KEYCTL_JOIN_SESSION_KEYRING, NULL) == -1) {
 		log_debug("%s: join failed: %s", __func__, strerror(errno));
-		return;
+		goto out;
+	}
+	for (i = 0; i < n; i++) {
+		if (syscall(SYS_keyctl, KEYCTL_LINK, keys[i],
+		    KEY_SPEC_SESSION_KEYRING) == -1) {
+			log_debug("%s: link %d failed: %s", __func__, keys[i],
+			    strerror(errno));
+		}
 	}
 	if (syscall(SYS_keyctl, KEYCTL_LINK, KEY_SPEC_USER_KEYRING,
 	    KEY_SPEC_SESSION_KEYRING) == -1)
 		log_debug("%s: link failed: %s", __func__, strerror(errno));
-	keyring_serial = serial;
-}
 
-void
-revoke_session_keyring(void)
-{
-	if (keyring_serial == 0)
-		return;
-	if (syscall(SYS_keyctl, KEYCTL_REVOKE, keyring_serial) == -1)
-		log_debug("%s: revoke failed: %s", __func__, strerror(errno));
+out:
+	syscall(SYS_keyctl, KEYCTL_CLEAR, KEY_SPEC_THREAD_KEYRING);
+	free(keys);
 }
