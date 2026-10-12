@@ -619,8 +619,8 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 			/* When in xterm extended mode, remap into S-Tab. */
 			key = '\011' | (key & ~KEYC_MASK_KEY) | KEYC_SHIFT;
 		} else {
-			/* Otherwise clear modifiers. */
-			key &= ~KEYC_MASK_MODIFIERS;
+			/* Otherwise clear modifiers and their implied Meta flag. */
+			key &= ~(KEYC_MASK_MODIFIERS|KEYC_IMPLIED_META);
 		}
 	}
 
