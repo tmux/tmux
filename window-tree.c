@@ -1338,6 +1338,7 @@ window_tree_kill_current_callback(struct client *c, void *modedata,
 {
 	struct window_tree_modedata	*data = modedata;
 	struct mode_tree_data		*mtd = data->data;
+	u_int				 wp_id = data->wp->id;
 
 	if (s == NULL || *s == '\0' || data->dead)
 		return (PROMPT_CLOSE);
@@ -1346,6 +1347,14 @@ window_tree_kill_current_callback(struct client *c, void *modedata,
 
 	window_tree_kill_each(data, mode_tree_get_current(mtd), c, KEYC_NONE);
 	server_renumber_all();
+
+	if (window_pane_find_by_id(wp_id) == NULL) {
+		/*
+		 * The session killed was this one, so the pane and the mode
+		 * are gone - data must not be touched.
+		 */
+		return (PROMPT_CLOSE);
+	}
 
 	data->references++;
 	cmdq_append(c, cmdq_get_callback(window_tree_command_done, data));
@@ -1359,6 +1368,7 @@ window_tree_kill_tagged_callback(struct client *c, void *modedata,
 {
 	struct window_tree_modedata	*data = modedata;
 	struct mode_tree_data		*mtd = data->data;
+	u_int				 wp_id = data->wp->id;
 
 	if (s == NULL || *s == '\0' || data->dead)
 		return (PROMPT_CLOSE);
@@ -1367,6 +1377,14 @@ window_tree_kill_tagged_callback(struct client *c, void *modedata,
 
 	mode_tree_each_tagged(mtd, window_tree_kill_each, c, KEYC_NONE, 1);
 	server_renumber_all();
+
+	if (window_pane_find_by_id(wp_id) == NULL) {
+		/*
+		 * One of the sessions killed was this one, so the pane and
+		 * the mode are gone - data must not be touched.
+		 */
+		return (PROMPT_CLOSE);
+	}
 
 	data->references++;
 	cmdq_append(c, cmdq_get_callback(window_tree_command_done, data));
@@ -1446,13 +1464,22 @@ window_tree_key(struct window_mode_entry *wme, struct client *c,
 	char				*name, *prompt = NULL;
 	struct cmd_find_state		 fs, *fsp = &data->fs;
 	int				 finished;
-	u_int				 tagged, x, y, idx;
+	u_int				 tagged, x, y, idx, wp_id;
 	struct session			*ns;
 	struct winlink			*nwl;
 	struct window_pane		*nwp;
 
+	wp_id = wp->id;
 	item = mode_tree_get_current(data->data);
 	finished = mode_tree_key(data->data, c, &key, m, &x, &y);
+	if (window_pane_find_by_id(wp_id) == NULL) {
+		/*
+		 * The key destroyed this pane (for example, by killing the
+		 * current session), so the mode is gone and there is nothing
+		 * to redraw - wme, data and wp must not be touched.
+		 */
+		return;
+	}
 
 again:
 	if (item != (new_item = mode_tree_get_current(data->data))) {

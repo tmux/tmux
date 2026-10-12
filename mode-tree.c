@@ -544,21 +544,38 @@ mode_tree_each_tagged(struct mode_tree_data *mtd, mode_tree_each_cb cb,
     struct client *c, key_code key, int current)
 {
 	struct mode_tree_item	*mti;
-	u_int			 i;
+	void			*modedata;
+	void			**itemdata;
+	u_int			 i, n;
 	int			 fired;
 
+	/*
+	 * Snapshot the tagged items before invoking any callbacks: a
+	 * callback may destroy the tree (for example, killing the current
+	 * session from choose-tree), after which mtd is unusable.
+	 */
+	modedata = mtd->modedata;
+	n = mtd->line_size;
+	if (n == 0)
+		return;
+	itemdata = xcalloc(n, sizeof *itemdata);
 	fired = 0;
-	for (i = 0; i < mtd->line_size; i++) {
+	for (i = 0; i < n; i++) {
 		mti = mtd->line_list[i].item;
 		if (mti->tagged) {
 			fired = 1;
-			cb(mtd->modedata, mti->itemdata, c, key);
+			itemdata[i] = mti->itemdata;
 		}
 	}
 	if (!fired && current) {
 		mti = mtd->line_list[mtd->current].item;
-		cb(mtd->modedata, mti->itemdata, c, key);
+		itemdata[mtd->current] = mti->itemdata;
 	}
+	for (i = 0; i < n; i++) {
+		if (itemdata[i] != NULL)
+			cb(modedata, itemdata[i], c, key);
+	}
+	free(itemdata);
 }
 
 struct mode_tree_data *
@@ -1509,7 +1526,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 {
 	struct mode_tree_line	*line;
 	struct mode_tree_item	*current, *parent, *mti;
-	u_int			 i, x, y, py, sx;
+	u_int			 i, x, y, py, sx, wp_id;
 	int			 choice, preview;
 	enum prompt_key_result	 result;
 	int			 redraw;
@@ -1528,6 +1545,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		mtp = mtd->prompt_data;
 		if (mtp != NULL)
 			mtp->c = c;
+		wp_id = mtd->wp->id;
 		if (KEYC_IS_MOUSE(*key)) {
 			if (m == NULL ||
 			    MOUSE_BUTTONS(m->b) != MOUSE_BUTTON_1 ||
@@ -1548,6 +1566,15 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 			}
 		} else
 			result = prompt_key(prompt, *key, &redraw);
+		if (window_pane_find_by_id(wp_id) == NULL) {
+			/*
+			 * The prompt callback destroyed this pane (for
+			 * example, by killing the current session), so the
+			 * mode is gone as well and mtd must not be touched.
+			 */
+			*key = KEYC_NONE;
+			return (0);
+		}
 		if (mtd->prompt_data == mtp && mtp != NULL)
 			mtp->c = NULL;
 
