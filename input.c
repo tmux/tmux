@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.274 2026/10/12 17:04:48 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.275 2026/10/12 18:47:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -936,6 +936,7 @@ input_reset(struct input_ctx *ictx, int clear)
 			screen_write_start_pane(sctx, wp, &wp->base);
 		else
 			screen_write_start(sctx, &wp->base);
+		sctx->flags |= SCREEN_WRITE_INPUT;
 		screen_write_reset(sctx);
 		screen_write_stop(sctx);
 	}
@@ -1064,6 +1065,7 @@ input_parse_buffer(struct window_pane *wp, const u_char *buf, size_t len)
 		screen_write_start_pane(sctx, wp, &wp->base);
 	else
 		screen_write_start(sctx, &wp->base);
+	sctx->flags |= SCREEN_WRITE_INPUT;
 
 	log_debug("%s: %%%u %s, %zu bytes: %.*s", __func__, wp->id,
 	    ictx->state->name, len, (int)len, buf);
@@ -1083,6 +1085,7 @@ input_parse_screen(struct input_ctx *ictx, struct screen *s,
 		return;
 
 	screen_write_start_callback(sctx, s, cb, arg);
+	sctx->flags |= SCREEN_WRITE_INPUT;
 	input_parse(ictx, buf, len);
 	screen_write_stop(sctx);
 }
