@@ -101,12 +101,12 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->write_list = NULL;
 	s->hyperlinks = NULL;
 
-	screen_reinit(s, 1);
+	screen_reinit(s);
 }
 
 /* Reinitialise screen. */
 void
-screen_reinit(struct screen *s, int check)
+screen_reinit(struct screen *s)
 {
 	s->cx = 0;
 	s->cy = 0;
@@ -125,8 +125,6 @@ screen_reinit(struct screen *s, int check)
 	s->saved_cy = UINT_MAX;
 
 	screen_reset_tabs(s);
-	if (check)
-		grid_check_is_clear(s->grid);
 	grid_clear_lines(s->grid, s->grid->hsize, s->grid->sy, 8);
 
 	screen_clear_selection(s);
