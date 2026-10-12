@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.160 2026/10/12 08:08:37 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.161 2026/10/12 15:40:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1453,8 +1453,7 @@ grid_reflow_join(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 
 	/* Remove the lines that were completely consumed. */
 	for (i = yy + 1; i < yy + 1 + lines; i++) {
-		free(gd->linedata[i].celldata);
-		free(gd->linedata[i].extddata);
+		grid_free_line(gd, i);
 		grid_reflow_dead(&gd->linedata[i]);
 	}
 

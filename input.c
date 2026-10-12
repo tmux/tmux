@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.273 2026/10/08 07:50:05 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.274 2026/10/12 17:04:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2020,6 +2020,7 @@ static void
 input_csi_dispatch_sm_private(struct input_ctx *ictx)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
+	struct window_pane	*wp = ictx->wp;
 	struct grid_cell	*gc = &ictx->cell.cell;
 	u_int			 i;
 
@@ -2081,13 +2082,13 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 			break;
 		case 2031:
 			screen_write_mode_set(sctx, MODE_THEME_UPDATES);
-			if (ictx->wp != NULL) {
-				ictx->wp->last_theme = window_pane_get_theme(ictx->wp);
-				ictx->wp->flags &= ~PANE_THEMECHANGED;
+			if (wp != NULL) {
+				wp->last_theme = window_pane_get_theme(wp);
+				wp->flags &= ~PANE_THEMECHANGED;
 			}
 			break;
 		case 2026:
-			screen_write_start_sync(ictx->wp);
+			screen_write_start_sync(wp);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
