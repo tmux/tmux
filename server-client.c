@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.519 2026/10/09 10:16:02 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.520 2026/10/12 10:48:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2604,7 +2604,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 		if (datalen != 0)
 			goto bad;
 
-		if (c->flags & CLIENT_CONTROL)
+		if ((c->flags & CLIENT_CONTROL) || (~c->tty.flags & TTY_OPENED))
 			break;
 		server_client_update_latest(c);
 		old_sx = c->tty.sx;
