@@ -1,4 +1,4 @@
-/* $OpenBSD: mode-tree.c,v 1.103 2026/09/24 18:59:00 nicm Exp $ */
+/* $OpenBSD: mode-tree.c,v 1.104 2026/10/12 18:23:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -701,8 +701,17 @@ mode_tree_build(struct mode_tree_data *mtd)
 static void
 mode_tree_remove_ref(struct mode_tree_data *mtd)
 {
-	if (--mtd->references == 0)
-		free(mtd);
+	if (--mtd->references != 0)
+		return;
+
+	mode_tree_clear_prompt(mtd);
+	mode_tree_free_items(&mtd->children);
+	mode_tree_clear_lines(mtd);
+	screen_free(&mtd->screen);
+
+	free(mtd->search);
+	free(mtd->filter);
+	free(mtd);
 }
 
 void
@@ -712,14 +721,6 @@ mode_tree_free(struct mode_tree_data *mtd)
 
 	if (mtd->zoomed == 0)
 		server_unzoom_window(wp->window);
-
-	mode_tree_clear_prompt(mtd);
-	mode_tree_free_items(&mtd->children);
-	mode_tree_clear_lines(mtd);
-	screen_free(&mtd->screen);
-
-	free(mtd->search);
-	free(mtd->filter);
 
 	mtd->dead = 1;
 	mode_tree_remove_ref(mtd);
@@ -1095,7 +1096,7 @@ mode_tree_prompt_accept(struct cmdq_item *item, void *data)
 	struct client		*c = cmdq_get_client(item);
 	key_code		 key = 'y';
 
-	if (mtd->prompt != NULL && c != NULL)
+	if (!mtd->dead && mtd->prompt != NULL && c != NULL)
 		mode_tree_key(mtd, c, &key, NULL, NULL, NULL);
 
 	mode_tree_remove_ref(mtd);
@@ -1122,7 +1123,6 @@ mode_tree_prompt_free_callback(void *data)
 		mtp->mtd->prompt_data = NULL;
 	if (mtp->freecb != NULL)
 		mtp->freecb(mtp->data);
-	mode_tree_remove_ref(mtp->mtd);
 	free(mtp);
 }
 
@@ -1152,8 +1152,6 @@ mode_tree_set_prompt(struct mode_tree_data *mtd, struct client *c,
 	mtp->inputcb = inputcb;
 	mtp->freecb = freecb;
 	mtp->data = data;
-
-	mtd->references++;
 	mtd->prompt_top = options_get_number(oo, "status-position") == 0;
 
 	memset(&pd, 0, sizeof pd);
@@ -1519,6 +1517,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	if (mtd->prompt != NULL) {
 		redraw = 0;
 		prompt = mtd->prompt;
+		mtd->references++;
 
 		mtp = mtd->prompt_data;
 		if (mtp != NULL)
@@ -1543,6 +1542,11 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 			}
 		} else
 			result = prompt_key(prompt, *key, &redraw);
+		if (mtd->dead) {
+			mode_tree_remove_ref(mtd);
+			*key = KEYC_NONE;
+			return (1);
+		}
 		if (mtd->prompt_data == mtp && mtp != NULL)
 			mtp->c = NULL;
 
@@ -1558,6 +1562,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 			mode_tree_draw(mtd);
 			mtd->wp->flags |= PANE_REDRAW;
 		}
+		mode_tree_remove_ref(mtd);
 		if (result != PROMPT_KEY_NOT_HANDLED) {
 			*key = KEYC_NONE;
 			return (0);
