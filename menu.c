@@ -1,4 +1,4 @@
-/* $OpenBSD: menu.c,v 1.70 2026/08/17 07:33:55 nicm Exp $ */
+/* $OpenBSD: menu.c,v 1.72 2026/10/12 10:46:12 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -180,10 +180,19 @@ static void
 menu_reapply_styles(struct menu_data *md)
 {
 	struct options		*o = md->w->options;
+	struct session		*s = NULL;
+	struct winlink		*wl = NULL;
+	struct window_pane	*wp = NULL;
 	struct format_tree	*ft;
 	struct style		 sytmp;
 
-	ft = format_create_defaults(NULL, NULL, md->fs.s, md->fs.wl, md->fs.wp);
+	/* The pane (or session) the menu was opened for may be gone. */
+	if (cmd_find_valid_state(&md->fs)) {
+		s = md->fs.s;
+		wl = md->fs.wl;
+		wp = md->fs.wp;
+	}
+	ft = format_create_defaults(NULL, NULL, s, wl, wp);
 
 	/* Reapply menu style from options. */
 	memcpy(&md->style_gc, &grid_default_cell, sizeof md->style_gc);
