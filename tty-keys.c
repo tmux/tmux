@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-keys.c,v 1.216 2026/10/06 17:49:45 nicm Exp $ */
+/* $OpenBSD: tty-keys.c,v 1.217 2026/10/12 12:26:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1675,6 +1675,8 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 		tty_default_features(c, "mintty", 0);
 	else if (strncmp(tmp, "foot(", 5) == 0)
 		tty_default_features(c, "foot", 0);
+	else if (strncmp(tmp, "kitty(", 6) == 0)
+		tty_default_features(c, "kitty", 0);
 	else if (strncmp(tmp, "WezTerm ", 7) == 0)
 		tty_default_features(c, "WezTerm", 0);
 	else if (strncmp(tmp, "ghostty ", 8) == 0)

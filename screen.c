@@ -1,4 +1,4 @@
-/* $OpenBSD: screen.c,v 1.107 2026/07/26 09:20:54 nicm Exp $ */
+/* $OpenBSD: screen.c,v 1.108 2026/10/12 10:50:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -758,6 +758,10 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 			s->cy = screen_size_y(s) - 1;
 		return 0;
 	}
+
+	/* Clamp cursor to the current screen size. */
+	if (s->cy > screen_size_y(s) - 1)
+		s->cy = screen_size_y(s) - 1;
 
 	/* Restore the saved grid. */
 	grid_duplicate_lines(s->grid, screen_hsize(s), s->saved_grid, 0,

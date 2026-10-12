@@ -1,4 +1,4 @@
-/* $OpenBSD: resize.c,v 1.59 2026/08/20 09:19:24 nicm Exp $ */
+/* $OpenBSD: resize.c,v 1.60 2026/10/12 13:08:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -152,7 +152,13 @@ clients_calculate_size(int type, int current, struct client *c,
 		*sx = UINT_MAX;
 		*sy = UINT_MAX;
 	}
-	*xpixel = *ypixel = 0;
+	if (w != NULL && type == WINDOW_SIZE_MANUAL) {
+		*xpixel = w->xpixel;
+		*ypixel = w->ypixel;
+	} else {
+		*xpixel = 0;
+		*ypixel = 0;
+	}
 
 	/*
 	 * For latest, count the number of clients with this window. We only
@@ -380,16 +386,30 @@ recalculate_size(struct window *w, int now)
 	/* Look for a suitable client and get the new size. */
 	changed = clients_calculate_size(type, current, NULL, NULL, w,
 	    recalculate_size_skip_client, &sx, &sy, &xpixel, &ypixel);
+	if (xpixel == 0)
+		xpixel = DEFAULT_XPIXEL;
+	if (ypixel == 0)
+		ypixel = DEFAULT_YPIXEL;
 
 	/*
 	 * Make sure the size has actually changed. If the window has already
 	 * got a resize scheduled, then use the new size; otherwise the old.
 	 */
 	if (w->flags & WINDOW_RESIZE) {
-		if (!now && changed && w->new_sx == sx && w->new_sy == sy)
+		if (!now &&
+		    changed &&
+		    w->new_sx == sx &&
+		    w->new_sy == sy &&
+		    w->new_xpixel == xpixel &&
+		    w->new_ypixel == ypixel)
 			changed = 0;
 	} else {
-		if (!now && changed && w->sx == sx && w->sy == sy)
+		if (!now &&
+		    changed &&
+		    w->sx == sx &&
+		    w->sy == sy &&
+		    w->xpixel == xpixel &&
+		    w->ypixel == ypixel)
 			changed = 0;
 	}
 
