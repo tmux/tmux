@@ -43,6 +43,22 @@ def matches(name, value):
         return "ignorefkeys" in features
     if name == "XDA":
         return kind == "ReplyTest"
+    if name in ("XDA-kitty", "XDA-kitty-nosync"):
+        required = {
+            "256", "RGB", "bpaste", "clipboard", "mouse",
+            "strikethrough", "title", "ccolour", "cstyle", "extkeys",
+            "focus", "hyperlinks", "osc7", "usstyle", "kittygraphics"}
+        if name == "XDA-kitty":
+            required.add("sync")
+        elif "sync" in features:
+            return False
+        return kind == "kitty(0.43.0)" and required <= features
+    if name == "XDA-ghostty":
+        return kind == "ghostty 1.2.0" and {
+            "kittygraphics", "margins", "sync", "usstyle", "progressbar"} <= features
+    if name == "XDA-WezTerm":
+        return kind == "WezTerm 20240203-110809-5046fc22" and {
+            "sixel", "margins", "usstyle"} <= features
     if name == "sync":
         return "sync" in features
     if name == "characters":
@@ -54,6 +70,10 @@ reports = [
     ("DA", b"\033[?65;4;21;28;52c"),
     ("DA2", b"\033[>85;1;0c"),
     ("XDA", b"\033P>|ReplyTest\033\\"),
+    ("XDA-kitty", b"\033P>|kitty(0.43.0)\033\\"),
+    ("XDA-kitty-nosync", b"\033P>|kitty(0.43.0)\033\\"),
+    ("XDA-ghostty", b"\033P>|ghostty 1.2.0\033\\"),
+    ("XDA-WezTerm", b"\033P>|WezTerm 20240203-110809-5046fc22\033\\"),
     ("sync", b"\033[?2026;2$y"),
     ("characters", b"\033[8;17;61t"),
     ("pixels", b"\033[4;480;800t"),
@@ -80,6 +100,8 @@ for name, report in reports:
                 else:
                     run("set-option", "-s", "escape-time", "60000")
                 run("set-option", "-g", "@seen", "")
+                if name == "XDA-kitty-nosync":
+                    run("set-option", "-as", "terminal-features", ",*:sync@")
                 run("bind-key", "-n", "Escape", "set-option", "-gF",
                     "@seen", "#{@seen}E")
                 pid, fd = os.forkpty()
@@ -140,6 +162,12 @@ for name, report in reports:
                     assert actual == baseline, (context, "unexpected effect", actual)
                 else:
                     assert matches(name, actual), (context, "missing effect", actual)
+                    if name in ("XDA-kitty", "XDA-kitty-nosync", "XDA-ghostty"):
+                        assert run("display-message", "-p", "#{I/f:kittygraphics}") == "1", (
+                            context, "kittygraphics feature lookup failed")
+                    if name == "XDA-kitty-nosync":
+                        assert run("display-message", "-p", "#{I/f:sync}") == "0", (
+                            context, "kitty enabled synchronized updates")
                 assert run("show-option", "-gv", "@seen") == (
                     "E" if prefixed else ""), (context, "Escape count")
                 cases += 1

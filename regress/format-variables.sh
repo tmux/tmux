@@ -79,6 +79,7 @@ history_limit
 history_size
 host
 host_short
+image_support
 insert_flag
 keypad_cursor_flag
 keypad_flag
