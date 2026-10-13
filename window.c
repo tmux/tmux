@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.385 2026/10/08 07:06:26 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.386 2026/10/13 10:21:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1670,6 +1670,7 @@ window_pane_free(struct window_pane *wp)
 	log_debug("pane %%%u freed (%d references)", wp->id, wp->references);
 
 	free(wp->searchstr);
+	free(wp->cmd_line);
 	screen_free(&wp->status_screen);
 	screen_free(&wp->base);
 	free(wp->r.ranges);

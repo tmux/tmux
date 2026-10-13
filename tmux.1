@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1184 2026/10/12 12:35:03 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1185 2026/10/13 10:21:58 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 12 2026 $
+.Dd $Mdocdate: October 13 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -7457,6 +7457,7 @@ The following variables are available, where appropriate:
 .It Li "history_size" Ta "" Ta "Size of history in lines"
 .It Li "hook" Ta "" Ta "Name of running hook, if any"
 .It Li "hook_client" Ta "" Ta "Name of client where hook was run, if any"
+.It Li "hook_command_line" Ta "" Ta "Command line reported for an OSC 133 command hook, if any"
 .It Li "hook_fire_count" Ta "" Ta "Number of times hook has fired"
 .It Li "hook_fire_time" Ta "" Ta "Time hook last fired"
 .It Li "hook_last" Ta "" Ta "Previous value for a monitor hook"
@@ -7525,6 +7526,7 @@ The following variables are available, where appropriate:
 .It Li "pane_bottom" Ta "" Ta "Bottom of pane"
 .It Li "pane_command_duration" Ta "" Ta "Current or most recent OSC 133 command duration in seconds"
 .It Li "pane_command_end_time" Ta "" Ta "Time most recent OSC 133 command ended"
+.It Li "pane_command_line" Ta "" Ta "Current or most recent OSC 133 command line, if reported"
 .It Li "pane_command_running" Ta "" Ta "1 if an OSC 133 command is running"
 .It Li "pane_command_start_time" Ta "" Ta "Time current or most recent OSC 133 command started"
 .It Li "pane_command_status" Ta "" Ta "Exit status from most recent OSC 133 command"

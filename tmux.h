@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1458 2026/10/12 18:47:52 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1459 2026/10/13 10:21:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1390,6 +1390,7 @@ struct window_pane {
 	time_t		 cmd_start_time;
 	time_t		 cmd_end_time;
 	int		 cmd_status;
+	char		*cmd_line;
 
 	int		 fd;
 	struct bufferevent *event;

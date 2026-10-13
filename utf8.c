@@ -1,4 +1,4 @@
-/* $OpenBSD: utf8.c,v 1.74 2026/10/05 08:32:24 nicm Exp $ */
+/* $OpenBSD: utf8.c,v 1.75 2026/10/13 10:21:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -835,7 +835,7 @@ utf8_isvalid(const char *s)
 				continue;
 			return (0);
 		}
-		if (*s < 0x20 || *s > 0x7e)
+		if (*s != '\t' && *s != '\n' && (*s < 0x20 || *s > 0x7e))
 			return (0);
 		s++;
 	}

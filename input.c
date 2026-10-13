@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.275 2026/10/12 18:47:52 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.276 2026/10/13 10:21:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3223,6 +3223,52 @@ input_osc_133_exit_status(const char *p)
 	return (status);
 }
 
+/* Parse and clean the URL-encoded command line from OSC 133 C. */
+static char *
+input_osc_133_command_line(const char *p)
+{
+	const char	*end;
+	char		 line[16385], h[3] = { 0 };
+	size_t		 size = 0;
+	u_char		 ch;
+
+	if (p[1] != ';')
+		return (NULL);
+	p += 2;
+	for (;;) {
+		end = strchr(p, ';');
+		if (end == NULL)
+			end = p + strlen(p);
+		if (end - p >= 12 && strncmp(p, "cmdline_url=", 12) == 0)
+			break;
+		if (*end == '\0')
+			return (NULL);
+		p = end + 1;
+	}
+	p += 12;
+	while (p < end) {
+		if (size == sizeof line - 1)
+			return (NULL);
+		ch = *p++;
+		if (ch == '%') {
+			if (end - p < 2 ||
+			    !isxdigit((u_char)p[0]) ||
+			    !isxdigit((u_char)p[1]))
+				return (NULL);
+			h[0] = p[0];
+			h[1] = p[1];
+
+			ch = strtoul(h, NULL, 16);
+			if (ch == '\0')
+				return (NULL);
+			p += 2;
+		}
+		line[size++] = ch;
+	}
+	line[size] = '\0';
+	return (clean_name(line, 1));
+}
+
 /* Fire an OSC 133 command event. */
 static void
 input_fire_command_event(struct window_pane *wp, const char *name)
@@ -3242,6 +3288,8 @@ input_fire_command_event(struct window_pane *wp, const char *name)
 	event_payload_set_window(ep, "window", wp->window);
 	event_payload_set_pane(ep, "pane", wp);
 
+	if (wp->cmd_line != NULL)
+		event_payload_set_string(ep, "command_line", "%s", wp->cmd_line);
 	if (wp->cmd_status != -1)
 		event_payload_set_int(ep, "command_status", wp->cmd_status);
 	if (tstart != 0)
@@ -3313,6 +3361,8 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 			gl->osc133_data.out_start_col = s->cx;
 		}
 		if (wp != NULL) {
+			free(wp->cmd_line);
+			wp->cmd_line = input_osc_133_command_line(p);
 			wp->cmd_start_time = time(NULL);
 			wp->cmd_end_time = 0;
 			wp->flags |= PANE_CMDRUNNING;
