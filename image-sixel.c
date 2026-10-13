@@ -61,18 +61,25 @@ struct sixel_image {
 	u_int			 dy;
 	u_int			 dc;
 
-	/* Lines of palette indexes. */
+	/* Lines of palette indexes and the bytes allocated for them. */
 	struct sixel_line	*lines;
+	size_t			 allocated;
 };
 
 /* Grow a SIXEL image to contain a line. */
 static int
 sixel_parse_expand_lines(struct sixel_image *si, u_int y)
 {
+	u_int	height = si->y;
+
+	if (y > height)
+		height = y;
+	if (height > SIXEL_HEIGHT_LIMIT)
+		return (1);
+	if (si->x * height > IMAGE_SIZE_LIMIT / 4)
+		return (1);
 	if (y <= si->y)
 		return (0);
-	if (y > SIXEL_HEIGHT_LIMIT)
-		return (1);
 	si->lines = xrecallocarray(si->lines, si->y, y, sizeof *si->lines);
 	si->y = y;
 	return (0);
@@ -82,14 +89,24 @@ sixel_parse_expand_lines(struct sixel_image *si, u_int y)
 static int
 sixel_parse_expand_line(struct sixel_image *si, struct sixel_line *sl, u_int x)
 {
+	u_int	width = si->x;
+	size_t	added;
+
+	if (x > width)
+		width = x;
+	if (width > SIXEL_WIDTH_LIMIT)
+		return (1);
+	if (width * si->y > IMAGE_SIZE_LIMIT / 4)
+		return (1);
 	if (x <= sl->x)
 		return (0);
-	if (x > SIXEL_WIDTH_LIMIT)
+	added = (width - sl->x) * sizeof *sl->data;
+	if (added > IMAGE_SIZE_LIMIT / 2 - si->allocated)
 		return (1);
-	if (x > si->x)
-		si->x = x;
+	si->x = width;
 	sl->data = xrecallocarray(sl->data, sl->x, si->x, sizeof *sl->data);
 	sl->x = si->x;
+	si->allocated += added;
 	return (0);
 }
 
@@ -204,7 +221,10 @@ sixel_parse_attributes(struct sixel_image *si, const char *cp, const char *end)
 	}
 
 	si->x = x;
-	sixel_parse_expand_lines(si, y);
+	if (sixel_parse_expand_lines(si, y) != 0) {
+		log_debug("%s: size limit reached", __func__);
+		return (NULL);
+	}
 
 	return (last);
 }
@@ -320,7 +340,7 @@ sixel_parse_repeat(struct sixel_image *si, const char *cp, const char *end)
 	ch = (*last++) - 0x3f;
 	for (i = 0; i < n; i++) {
 		if (sixel_parse_write(si, ch) != 0) {
-			log_debug("%s: width limit reached", __func__);
+			log_debug("%s: size limit reached", __func__);
 			return (NULL);
 		}
 		si->dx++;
@@ -379,7 +399,7 @@ sixel_parse(const char *buf, size_t len, u_int p1, u_int p2, u_int xpixel,
 			if (ch < 0x3f || ch > 0x7e)
 				goto bad;
 			if (sixel_parse_write(si, ch - 0x3f) != 0) {
-				log_debug("%s: width limit reached", __func__);
+				log_debug("%s: size limit reached", __func__);
 				goto bad;
 			}
 			si->dx++;

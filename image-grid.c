@@ -206,41 +206,47 @@ image_grid_add(struct grid *gd, struct image *im, u_int x, u_int y,
 	}
 }
 
-/* Remove the covered part of a span. */
+/* Remove the covered part of one span. */
+static void
+image_span_remove(struct image_span *span, u_int x, u_int end)
+{
+	u_int	span_end = span->x + span->sx;
+
+	if (span_end <= x || span->x >= end)
+		return;
+	if (span->x < x && span_end > end) {
+		span->sx = x - span->x;
+		image_span_add(span->line, span->placement, end, span_end - end,
+		    span->source_x + end - span->x, span->source_y);
+		return;
+	}
+	if (span->x < x) {
+		span->sx = x - span->x;
+		return;
+	}
+	if (span_end > end) {
+		span->source_x += end - span->x;
+		span->sx = span_end - end;
+		span->x = end;
+		return;
+	}
+	image_span_free(span);
+}
+
+/* Remove a range of cells from every span on a line. */
 static void
 image_line_remove(struct image_line *line, u_int x, u_int w)
 {
 	struct image_span	*span, *next;
-	u_int			 end, span_end, right;
+	u_int			 end;
 
 	if (line == NULL || w == 0)
 		return;
 	end = x + w;
 	if (end < x)
 		end = UINT_MAX;
-	TAILQ_FOREACH_SAFE(span, &line->spans, line_entry, next) {
-		span_end = span->x + span->sx;
-		if (span_end <= x || span->x >= end)
-			continue;
-		if (span->x < x && span_end > end) {
-			right = span_end - end;
-			span->sx = x - span->x;
-			image_span_add(line, span->placement, end, right,
-			    span->source_x + end - span->x, span->source_y);
-			continue;
-		}
-		if (span->x < x) {
-			span->sx = x - span->x;
-			continue;
-		}
-		if (span_end > end) {
-			span->source_x += end - span->x;
-			span->sx = span_end - end;
-			span->x = end;
-			continue;
-		}
-		image_span_free(span);
-	}
+	TAILQ_FOREACH_SAFE(span, &line->spans, line_entry, next)
+		image_span_remove(span, x, end);
 }
 
 /* Remove a rectangle of image spans from a grid. */
@@ -542,13 +548,69 @@ image_cell_has_visible_pixels(struct image *im, u_int x, u_int y)
 	return (0);
 }
 
+/* Return whether a new cell's pixels completely cover an old cell. */
+static int
+image_cell_covers(struct image *new, u_int nx, u_int ny, struct image *old,
+    u_int ox, u_int oy)
+{
+	u_int		 npx, npy, nsx, nsy, opx, opy, osx, osy, xx, yy;
+	u_int		 ncw, nch, ocw, och, ncx, ncy, ocx, ocy;
+	const u_char	*np, *op, *npixels, *opixels;
+	size_t		 nstride, ostride;
+
+	image_get_canvas_size(new, &ncw, &nch);
+	image_get_canvas_size(old, &ocw, &och);
+	image_get_size_in_cells(new, &ncx, &ncy);
+	image_get_size_in_cells(old, &ocx, &ocy);
+	if (ncw / ncx != ocw / ocx || nch / ncy != och / ocy)
+		return (0);
+	image_get_pixel_area(new, nx, ny, 1, 1, &npx, &npy, &nsx, &nsy);
+	image_get_pixel_area(old, ox, oy, 1, 1, &opx, &opy, &osx, &osy);
+
+	npixels = image_get_pixels(new, &nstride, NULL);
+	opixels = image_get_pixels(old, &ostride, NULL);
+	for (yy = 0; yy < osy; yy++) {
+		op = opixels + (opy + yy) * ostride + opx * 4;
+		if (yy < nsy) {
+			np = npixels + (npy + yy) * nstride + npx * 4;
+		}
+		for (xx = 0; xx < osx; xx++) {
+			if (op[xx * 4 + 3] == 0)
+				continue;
+			if (yy >= nsy || xx >= nsx || np[xx * 4 + 3] != 255)
+				return (0);
+		}
+	}
+	return (1);
+}
+
+/* Discard cells of older placements fully covered by a new image. */
+static void
+image_line_cover(struct image_line *line, struct image_placement *plmt,
+    u_int x, u_int src_x, u_int src_y)
+{
+	struct image_span	*span, *next;
+	struct image_placement	*old;
+
+	TAILQ_FOREACH_SAFE(span, &line->spans, line_entry, next) {
+		old = span->placement;
+		if (old == plmt || x < span->x || x >= span->x + span->sx)
+			continue;
+		if (!image_cell_covers(plmt->image, src_x, src_y,
+		    old->image, span->source_x + x - span->x,
+		    span->source_y))
+			continue;
+		image_span_remove(span, x, x + 1);
+	}
+}
+
 /* Attach the visible runs from one image row. */
 static void
 image_add_row(struct image_line *line, struct image_placement *plmt,
     u_int cx, u_int src_y, u_int sx)
 {
 	struct image	*im = plmt->image;
-	u_int		 x, run;
+	u_int		 x, i, run;
 
 	for (x = 0; x < sx; x += run) {
 		if (!image_cell_has_visible_pixels(im, x, src_y)) {
@@ -559,6 +621,8 @@ image_add_row(struct image_line *line, struct image_placement *plmt,
 			if (!image_cell_has_visible_pixels(im, x + run, src_y))
 				break;
 		}
+		for (i = 0; i < run; i++)
+			image_line_cover(line, plmt, cx + x + i, x + i, src_y);
 		image_span_add(line, plmt, cx + x, run, x, src_y);
 	}
 }

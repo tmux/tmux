@@ -5797,6 +5797,9 @@ window_copy_write_line(struct window_mode_entry *wme,
 	char				*expanded;
 	struct format_tree		*ft;
 	int				 current, mode;
+#ifdef ENABLE_IMAGES
+	int				 flags;
+#endif
 
 	width  = window_copy_line_number_width(wme);
 	if (width >= sx)
@@ -5856,6 +5859,8 @@ window_copy_write_line(struct window_mode_entry *wme,
 	    data->backing->grid, 0, hsize - data->oy + py, content_sx, 1);
 	if (data->image_refresh)
 		image_redraw_area(ctx, width, py, content_sx, 1);
+	flags = ctx->flags;
+	ctx->flags |= SCREEN_WRITE_INPUT;
 #endif
 
 	if (py == 0 && s->rupper < s->rlower && !data->hide_position) {
@@ -5877,6 +5882,9 @@ window_copy_write_line(struct window_mode_entry *wme,
 		screen_write_putc(ctx, &grid_default_cell, '$');
 	}
 
+#ifdef ENABLE_IMAGES
+	ctx->flags = flags;
+#endif
 	format_free(ft);
 }
 
