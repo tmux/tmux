@@ -122,4 +122,27 @@ compare "list=on rows" <<EOF
 9:w9         │
 EOF
 
+# With only one or two rows, a marker is not drawn over the current window.
+$TMUX set -gu side-status-format || exit 1
+$TMUX rename-window -t inner:0 w0 || exit 1
+$TMUX select-window -t inner:7 || exit 1
+$TMUX2 resize-window -t outer -y 2 || exit 1
+sleep 1
+compare "two rows" <<EOF
+↑            │
+7:w7*        │
+EOF
+$TMUX select-window -t inner:1 || exit 1
+sleep 1
+compare "two rows at the top" <<EOF
+0:w0         │
+1:w1*        │
+EOF
+$TMUX select-window -t inner:7 || exit 1
+$TMUX2 resize-window -t outer -y 1 || exit 1
+sleep 1
+compare "one row" <<EOF
+7:w7*        │
+EOF
+
 exit 0

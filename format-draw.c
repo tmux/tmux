@@ -1431,13 +1431,16 @@ format_draw_lines(struct screen_write_ctx *octx, const struct grid_cell *base,
 		    srs, flags);
 		y++;
 	}
+	/* Markers replace the first and last list rows but never the focus. */
 	for (i = 0; i < vis_list; i++) {
 		fl = &fls.lines[list[lstart + i]];
-		if (i == 0 && lstart > 0 && up != -1)
-			fl = &fls.lines[up];
-		else if (i == vis_list - 1 && lstart + vis_list < n_list &&
-		    down != -1)
-			fl = &fls.lines[down];
+		if (lstart + i != f) {
+			if (i == 0 && lstart > 0 && up != -1)
+				fl = &fls.lines[up];
+			else if (i == vis_list - 1 &&
+			    lstart + vis_list < n_list && down != -1)
+				fl = &fls.lines[down];
+		}
 		format_draw_lines_row(octx, base, ox, width, ocy + y, fl->chunk,
 		    srs, flags);
 		y++;
