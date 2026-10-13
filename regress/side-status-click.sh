@@ -67,4 +67,11 @@ sleep 0.5
 click 1 'foo one'
 click 2 default
 
+# A range still open at a line break carries on to the next row.
+$TMUX set -g side-status-format '#[range=user|foo]one#[nl]two#[norange]' ||
+    exit 1
+sleep 0.5
+click 1 'foo one'
+click 2 'foo one'
+
 exit 0

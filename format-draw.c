@@ -685,6 +685,24 @@ format_draw_many(struct screen_write_ctx *ctx, struct style *sy, char ch,
 		screen_write_cell(ctx, &sy->gc);
 }
 
+/* The style and defaults at a point in a format. */
+struct format_style {
+	struct style		sy;
+	struct grid_cell	current_default;
+	struct grid_cell	base_default;
+	int			fill;
+};
+
+/* Set up the style at the start of a format. */
+static void
+format_style_init(struct format_style *fs, const struct grid_cell *base)
+{
+	memcpy(&fs->base_default, base, sizeof fs->base_default);
+	memcpy(&fs->current_default, base, sizeof fs->current_default);
+	style_set(&fs->sy, base);
+	fs->fill = -1;
+}
+
 /*
  * Update the defaults if a style pushed, popped or set them. The previous cell
  * is the one in use before the style.
@@ -706,9 +724,9 @@ format_update_defaults(struct style *sy, const struct grid_cell *previous,
 	}
 }
 
-/* Draw a format to a screen. */
-void
-format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
+/* Draw a format to a screen, starting with a style. */
+static void
+format_draw1(struct screen_write_ctx *octx, const struct format_style *fs,
     u_int available, const char *expanded, struct style_ranges *srs,
     int flags)
 {
@@ -740,7 +758,7 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 					   RIGHT,
 					   ABSOLUTE_CENTRE };
 	int			 focus_start = -1, focus_end = -1;
-	int			 list_state = -1, fill = -1, even;
+	int			 list_state = -1, fill, even;
 	enum style_align	 list_align = STYLE_ALIGN_DEFAULT;
 	struct grid_cell	 gc, current_default, base_default;
 	struct style		 sy, saved_sy;
@@ -752,10 +770,11 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	struct format_ranges	 frs;
 	struct style_range	*sr;
 
-	memcpy(&base_default, base, sizeof base_default);
-	memcpy(&current_default, base, sizeof current_default);
-	base = &base_default;
-	style_set(&sy, &current_default);
+	memcpy(&base_default, &fs->base_default, sizeof base_default);
+	memcpy(&current_default, &fs->current_default,
+	    sizeof current_default);
+	memcpy(&sy, &fs->sy, sizeof sy);
+	fill = fs->fill;
 	TAILQ_INIT(&frs);
 	log_debug("%s: %s", __func__, expanded);
 
@@ -769,6 +788,36 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 		screen_write_start(&ctx[i], &s[i]);
 		screen_write_clearendofline(&ctx[i], current_default.bg);
 		width[i] = 0;
+	}
+
+	/*
+	 * Treat the starting style like a parsed style: apply the flags and
+	 * begin in its alignment, hyperlink and range. It is only different
+	 * from the base for a row part way through a multi-row format, which
+	 * is drawn without its list.
+	 */
+	if (flags & FORMAT_DRAW_DEFAULT_COLOURS) {
+		sy.gc.bg = base_default.bg;
+		sy.gc.fg = base_default.fg;
+	}
+	if (flags & FORMAT_DRAW_NOLIST)
+		sy.list = STYLE_LIST_OFF;
+	current = last = map[sy.align];
+	link_uri = style_link(&sy);
+	if (link_uri != NULL && hl != NULL)
+		sy.gc.link = hyperlinks_put(hl, link_uri, link_uri);
+	else
+		sy.gc.link = 0;
+	if (srs != NULL && sy.range_type != STYLE_RANGE_NONE) {
+		fr = xcalloc(1, sizeof *fr);
+		fr->index = current;
+
+		fr->s = &s[current];
+		fr->start = s[current].cx;
+
+		fr->type = sy.range_type;
+		fr->argument = sy.range_argument;
+		strlcpy(fr->string, sy.range_string, sizeof fr->string);
 	}
 
 	/*
@@ -856,8 +905,8 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 		    style_tostring(&sy));
 		free(tmp);
 		if (flags & FORMAT_DRAW_DEFAULT_COLOURS) {
-			sy.gc.bg = base->bg;
-			sy.gc.fg = base->fg;
+			sy.gc.bg = base_default.bg;
+			sy.gc.fg = base_default.fg;
 		}
 		if (flags & FORMAT_DRAW_NOLIST)
 			sy.list = STYLE_LIST_OFF;
@@ -1114,12 +1163,25 @@ out:
 	screen_write_cursormove(octx, ocx, ocy, 0);
 }
 
+/* Draw a format to a screen. */
+void
+format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
+    u_int available, const char *expanded, struct style_ranges *srs,
+    int flags)
+{
+	struct format_style	fs;
+
+	format_style_init(&fs, base);
+	format_draw1(octx, &fs, available, expanded, srs, flags);
+}
+
 /* A single row of a multi-row format. */
 struct format_line {
-	char	*chunk;
-	int	 in_list;
-	int	 has_focus;
-	int	 marker;	/* 0 = none, 1 = up, 2 = down */
+	char			*chunk;
+	struct format_style	 fs;	/* style at the start of the row */
+	int			 in_list;
+	int			 has_focus;
+	int			 marker;	/* 0 = none, 1 = up, 2 = down */
 };
 
 /* State when splitting a format into rows. */
@@ -1127,8 +1189,7 @@ struct format_lines {
 	struct format_line	*lines;
 	u_int			 nlines;
 
-	char			*prefix;
-	char			*styles;
+	struct format_style	 fs;	/* style at the start of this row */
 	int			 in_list;
 	int			 has_focus;
 	int			 marker;
@@ -1144,8 +1205,8 @@ format_draw_lines_add(struct format_lines *fls, const char *start,
 	fls->lines = xreallocarray(fls->lines, fls->nlines + 1,
 	    sizeof *fls->lines);
 	fl = &fls->lines[fls->nlines++];
-	xasprintf(&fl->chunk, "%s%.*s%s", fls->prefix, (int)(end - start),
-	    start, suffix);
+	xasprintf(&fl->chunk, "%.*s%s", (int)(end - start), start, suffix);
+	memcpy(&fl->fs, &fls->fs, sizeof fl->fs);
 	fl->in_list = fls->in_list;
 	fl->has_focus = fls->has_focus;
 	fl->marker = fls->marker;
@@ -1156,22 +1217,21 @@ format_draw_lines_add(struct format_lines *fls, const char *start,
  * the next row. A marker is a single row so marker state does not carry.
  */
 static void
-format_draw_lines_break(struct format_lines *fls, struct style *sy,
+format_draw_lines_break(struct format_lines *fls, struct format_style *fs,
     enum style_list nomarker, const char *start, const char *end)
 {
 	/* Close any open range at the break; the carried style reopens it. */
-	if (sy->range_type != STYLE_RANGE_NONE)
+	if (fs->sy.range_type != STYLE_RANGE_NONE)
 		format_draw_lines_add(fls, start, end, "#[norange]");
 	else
 		format_draw_lines_add(fls, start, end, "");
 
-	if (sy->list == STYLE_LIST_LEFT_MARKER ||
-	    sy->list == STYLE_LIST_RIGHT_MARKER)
-		sy->list = nomarker;
+	if (fs->sy.list == STYLE_LIST_LEFT_MARKER ||
+	    fs->sy.list == STYLE_LIST_RIGHT_MARKER)
+		fs->sy.list = nomarker;
 
-	/* Replay every style so far so the next row starts in the same state. */
-	free(fls->prefix);
-	fls->prefix = xstrdup(fls->styles);
+	/* The next row starts with the style at the break. */
+	memcpy(&fls->fs, fs, sizeof fls->fs);
 
 	fls->in_list = 0;
 	fls->has_focus = 0;
@@ -1211,24 +1271,21 @@ static void
 format_draw_lines_split(struct format_lines *fls, const char *expanded,
     const struct grid_cell *base)
 {
-	struct grid_cell	 current_default, base_default;
-	struct style		 sy, saved_sy;
+	struct format_style	 fs;
+	struct style		 saved_sy;
 	enum style_list		 nomarker = STYLE_LIST_OFF;
 	const char		*cp, *start, *end;
-	char			*tmp, *styles;
+	char			*tmp;
 	u_int			 n;
 
-	memcpy(&base_default, base, sizeof base_default);
-	memcpy(&current_default, base, sizeof current_default);
-	style_set(&sy, &current_default);
+	format_style_init(&fs, base);
+	memcpy(&fls->fs, &fs, sizeof fls->fs);
 
-	fls->prefix = xstrdup("");
-	fls->styles = xstrdup("");
 	cp = start = expanded;
 	while (*cp != '\0') {
 		/* Handle sequences of # in the same way as format_draw. */
 		if (cp[0] == '#' && cp[1] != '[' && cp[1] != '\0') {
-			format_draw_lines_text(fls, &sy);
+			format_draw_lines_text(fls, &fs.sy);
 			for (n = 1; cp[n] == '#'; n++)
 				/* nothing */;
 			if (cp[n] != '[') {
@@ -1243,14 +1300,14 @@ format_draw_lines_split(struct format_lines *fls, const char *expanded,
 		}
 
 		/* Is this not a style? */
-		if (cp[0] != '#' || cp[1] != '[' || sy.ignore) {
+		if (cp[0] != '#' || cp[1] != '[' || fs.sy.ignore) {
 			if (*cp == '\n') {
-				format_draw_lines_break(fls, &sy, nomarker,
+				format_draw_lines_break(fls, &fs, nomarker,
 				    start, cp);
 				cp++;
 				start = cp;
 			} else {
-				format_draw_lines_text(fls, &sy);
+				format_draw_lines_text(fls, &fs.sy);
 				cp++;
 			}
 			continue;
@@ -1261,33 +1318,34 @@ format_draw_lines_split(struct format_lines *fls, const char *expanded,
 		if (end == NULL)
 			break;
 		tmp = xstrndup(cp + 2, end - (cp + 2));
-		style_copy(&saved_sy, &sy);
-		if (style_parse(&sy, &current_default, tmp) != 0) {
+		style_copy(&saved_sy, &fs.sy);
+		if (style_parse(&fs.sy, &fs.current_default, tmp) != 0) {
 			free(tmp);
 			cp = end + 1;
 			continue;
 		}
-		styles = fls->styles;
-		xasprintf(&fls->styles, "%s#[%s]", styles, tmp);
-		free(styles);
 		free(tmp);
 
+		/* If this style has a fill colour, store it for later. */
+		if (fs.sy.fill != 8)
+			fs.fill = fs.sy.fill;
+
 		/* If this style pushed or popped the default, update it. */
-		format_update_defaults(&sy, &saved_sy.gc, &current_default,
-		    &base_default);
+		format_update_defaults(&fs.sy, &saved_sy.gc,
+		    &fs.current_default, &fs.base_default);
 
 		/* Track the last list state that was not a marker. */
-		if (sy.list != STYLE_LIST_LEFT_MARKER &&
-		    sy.list != STYLE_LIST_RIGHT_MARKER)
-			nomarker = sy.list;
+		if (fs.sy.list != STYLE_LIST_LEFT_MARKER &&
+		    fs.sy.list != STYLE_LIST_RIGHT_MARKER)
+			nomarker = fs.sy.list;
 
 		/*
 		 * End the row after the style if it has a line break, so the
 		 * rest of the style (such as norange) applies to the row.
 		 */
-		if (sy.nl) {
-			sy.nl = 0;
-			format_draw_lines_break(fls, &sy, nomarker, start,
+		if (fs.sy.nl) {
+			fs.sy.nl = 0;
+			format_draw_lines_break(fls, &fs, nomarker, start,
 			    end + 1);
 			cp = end + 1;
 			start = cp;
@@ -1298,17 +1356,13 @@ format_draw_lines_split(struct format_lines *fls, const char *expanded,
 	}
 	if (cp != start || fls->nlines == 0)
 		format_draw_lines_add(fls, start, cp, "");
-	free(fls->prefix);
-	fls->prefix = NULL;
-	free(fls->styles);
-	fls->styles = NULL;
 }
 
 /* Draw one row and give any ranges it produces the row's y position. */
 static void
 format_draw_lines_row(struct screen_write_ctx *octx,
-    const struct grid_cell *base, u_int ox, u_int width, u_int py,
-    const char *chunk, struct style_ranges *srs, int flags)
+    const struct format_line *fl, u_int ox, u_int width, u_int py,
+    struct style_ranges *srs, int flags)
 {
 	struct style_ranges	 row_srs;
 	struct style_range	*sr, *sr1;
@@ -1318,11 +1372,11 @@ format_draw_lines_row(struct screen_write_ctx *octx,
 
 	screen_write_cursormove(octx, ox, py, 0);
 	if (srs == NULL) {
-		format_draw(octx, base, width, chunk, NULL, flags);
+		format_draw1(octx, &fl->fs, width, fl->chunk, NULL, flags);
 		return;
 	}
 	style_ranges_init(&row_srs);
-	format_draw(octx, base, width, chunk, &row_srs, flags);
+	format_draw1(octx, &fl->fs, width, fl->chunk, &row_srs, flags);
 	TAILQ_FOREACH_SAFE(sr, &row_srs, entry, sr1) {
 		TAILQ_REMOVE(&row_srs, sr, entry);
 		sr->y = py;
@@ -1332,10 +1386,10 @@ format_draw_lines_row(struct screen_write_ctx *octx,
 
 /*
  * Draw a multi-row format into no more than height rows starting at column
- * ox, each row drawn by format_draw without its list styles. The list
- * section is scrolled to keep the focus row visible; ranges get the screen
- * row they were drawn on and columns relative to ox. Returns the number of
- * rows drawn.
+ * ox, each row drawn from the style at its start and without its list styles.
+ * The list section is scrolled to keep the focus row visible; ranges get the
+ * screen row they were drawn on and columns relative to ox. Returns the number
+ * of rows drawn.
  */
 u_int
 format_draw_lines(struct screen_write_ctx *octx, const struct grid_cell *base,
@@ -1423,8 +1477,7 @@ format_draw_lines(struct screen_write_ctx *octx, const struct grid_cell *base,
 	y = 0;
 	for (i = 0; i < vis_top; i++) {
 		fl = &fls.lines[top[i]];
-		format_draw_lines_row(octx, base, ox, width, ocy + y, fl->chunk,
-		    srs, flags);
+		format_draw_lines_row(octx, fl, ox, width, ocy + y, srs, flags);
 		y++;
 	}
 	/* Markers replace the first and last list rows but never the focus. */
@@ -1437,14 +1490,12 @@ format_draw_lines(struct screen_write_ctx *octx, const struct grid_cell *base,
 			    lstart + vis_list < n_list && down != -1)
 				fl = &fls.lines[down];
 		}
-		format_draw_lines_row(octx, base, ox, width, ocy + y, fl->chunk,
-		    srs, flags);
+		format_draw_lines_row(octx, fl, ox, width, ocy + y, srs, flags);
 		y++;
 	}
 	for (i = 0; i < vis_bottom; i++) {
 		fl = &fls.lines[bottom[i]];
-		format_draw_lines_row(octx, base, ox, width, ocy + y, fl->chunk,
-		    srs, flags);
+		format_draw_lines_row(octx, fl, ox, width, ocy + y, srs, flags);
 		y++;
 	}
 

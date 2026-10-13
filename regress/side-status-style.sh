@@ -2,8 +2,9 @@
 
 # The style at the end of a side status row carries over to the next row, as
 # if the rows were one line: attributes removed from side-status-style stay
-# removed and a pushed default stays pushed. The inner client runs in an
-# outer pane which is captured with its attributes.
+# removed, a pushed or set default stays in place, and the alignment, fill and
+# hyperlink carry on. The inner client runs in an outer pane which is captured
+# with its attributes.
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -57,5 +58,24 @@ $TMUX set -g side-status-format \
     '#[fg=red]#[push-default]one#[nl]#[fg=blue]#[default]two' || exit 1
 sleep 1
 row2 "push-default" "$ESC[31mtwo"
+
+$TMUX set -g side-status-format \
+    '#[fg=red]#[set-default]#[fg=blue]#[push-default]one#[nl]'\
+'#[pop-default]#[default]two' || exit 1
+sleep 1
+row2 "set-default" "$ESC[31mtwo"
+
+$TMUX set -g side-status-format '#[align=right]one#[nl]two' || exit 1
+sleep 1
+row2 "align" "          two"
+
+$TMUX set -g side-status-format '#[fill=red]one#[nl]two' || exit 1
+sleep 1
+row2 "fill" "two$ESC[41m"
+
+$TMUX set -g side-status-format '#[link=https://example.com/]one#[nl]two' ||
+    exit 1
+sleep 1
+row2 "link" "$ESC]8;"
 
 exit 0
