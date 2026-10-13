@@ -4005,6 +4005,7 @@ extern const struct window_mode window_tree_mode;
 
 /* window-switch.c */
 extern const struct window_mode window_switch_mode;
+void	window_switch_set_input(struct window_mode_entry *, struct evbuffer *);
 
 /* window-clock.c */
 extern const struct window_mode window_clock_mode;

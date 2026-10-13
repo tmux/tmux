@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Exercise switch-mode's session and window lists with a real attached client:
+# Exercise switch-mode's session, window and file lists with an attached client:
 # fuzzy filtering, movement and selection, the default and custom commands,
 # no-match cancellation, resize, zoom restoration, and -k mode teardown.
 
@@ -215,6 +215,99 @@ wait_capture 'ZOOMED alpha'
 $INNER send-keys -t alpha:main.0 Escape || exit 1
 wait_format alpha:main.0 '#{window_zoomed_flag}' 1
 $INNER resize-pane -Z -t alpha:main.0 || exit 1
+
+# File choices replace the native list and preserve input order. Blank lines
+# are ignored and the last choice need not have a terminating newline.
+printf 'Zulu,hidden-z\n\nAlpha,hidden-a' >"$DIR/choices"
+$INNER switch-mode -f "$DIR/choices" -t alpha:main.0 \
+	"set-option -g @picked '%%'" || exit 1
+wait_capture 'Zulu,hidden-z'
+wait_capture 'Alpha,hidden-a'
+wait_first ',' 'Zulu,hidden-z'
+$INNER send-keys -t alpha:main.0 Down Enter || exit 1
+wait_format alpha:main.0 '#{@picked}' 'Alpha,hidden-a'
+wait_format alpha:main.0 '#{pane_in_mode}' 0
+
+# -F controls matching as well as display. Hidden payloads must not match,
+# and selection keeps the raw row and its format after the mode is freed.
+$INNER switch-mode -f "$DIR/choices" -t alpha:main.0 \
+	-F 'FILE #{s/,.*$//:switch_item}' \
+	"set-option -g @picked '%%' ; set-option -gF @action '#{s/^[^,]*,//:switch_item}'" || exit 1
+wait_count 'FILE ' 2
+$INNER send-keys -t alpha:main.0 -l hidden || exit 1
+wait_count 'FILE ' 0
+$INNER send-keys -t alpha:main.0 C-u || exit 1
+wait_count 'FILE ' 2
+$INNER send-keys -t alpha:main.0 -l alp || exit 1
+wait_count 'FILE ' 1
+$INNER resize-window -t alpha:main -x55 -y13 || exit 1
+wait_format alpha:main.0 '#{window_width}x#{window_height}' 55x13
+wait_capture 'FILE Alpha'
+$INNER send-keys -t alpha:main.0 Enter || exit 1
+wait_format alpha:main.0 '#{@picked}' 'Alpha,hidden-a'
+wait_format alpha:main.0 '#{@action}' hidden-a
+wait_format alpha:main.0 '#{pane_in_mode}' 0
+
+# Reentering a switch mode beneath another mode brings it to the front without
+# replacing or appending to its existing choices.
+$INNER switch-mode -f "$DIR/choices" -t alpha:main.0 \
+	-F 'STACK #{switch_item}' "set-option -g @picked '%%'" || exit 1
+wait_count 'STACK ' 2
+$INNER clock-mode -t alpha:main.0 || exit 1
+wait_format alpha:main.0 '#{pane_mode}' clock-mode
+$INNER switch-mode -f "$DIR/choices" -t alpha:main.0 || exit 1
+wait_format alpha:main.0 '#{pane_mode}' switch-mode
+wait_count 'STACK ' 2
+$INNER send-keys -t alpha:main.0 Down Enter || exit 1
+wait_format alpha:main.0 '#{@picked}' 'Alpha,hidden-a'
+wait_format alpha:main.0 '#{pane_mode}' clock-mode
+$INNER send-keys -t alpha:main.0 Escape || exit 1
+wait_format alpha:main.0 '#{pane_in_mode}' 0
+
+# Stdin uses the invoking command client's stream and -r reverses input order.
+$INNER switch-mode -f - -r -t alpha:main.0 \
+	-F 'STDIN #{switch_item}' "set-option -g @picked '%%'" \
+	<"$DIR/choices" || exit 1
+wait_count 'STDIN ' 2
+wait_first 'STDIN ' 'STDIN Alpha,hidden-a'
+$INNER send-keys -t alpha:main.0 Enter || exit 1
+wait_format alpha:main.0 '#{@picked}' 'Alpha,hidden-a'
+wait_format alpha:main.0 '#{pane_in_mode}' 0
+
+# Raw substitution must survive quotes, spaces and literal format characters.
+raw="quote's space; \$value #{session_name}"
+printf '%s\n' "$raw" >"$DIR/quoted"
+$INNER switch-mode -Z -f "$DIR/quoted" -t alpha:main.0 \
+	"set-option -g @picked '%%'" || exit 1
+wait_capture "$raw"
+$INNER send-keys -t alpha:main.0 Enter || exit 1
+wait_format alpha:main.0 '#{@picked}' "$raw"
+wait_format alpha:main.0 '#{pane_in_mode}' 0
+
+# Empty input is cancellable; bad files and embedded NULs must not enter mode.
+: >"$DIR/empty"
+$INNER switch-mode -f "$DIR/empty" -t alpha:main.0 || exit 1
+wait_format alpha:main.0 '#{pane_mode}' switch-mode
+$INNER send-keys -t alpha:main.0 Up Down Enter Escape || exit 1
+wait_format alpha:main.0 '#{pane_in_mode}' 0
+if $INNER switch-mode -f "$DIR/missing" -t alpha:main.0 \
+	2>"$DIR/error"; then
+	fail "missing choices file was accepted"
+fi
+grep -Fq "$DIR/missing" "$DIR/error" || fail "missing file error lost path"
+printf 'bad\000choice\n' >"$DIR/nul"
+if $INNER switch-mode -f "$DIR/nul" -t alpha:main.0 \
+	2>"$DIR/error"; then
+	fail "NUL in choices file was accepted"
+fi
+wait_format alpha:main.0 '#{pane_in_mode}' 0
+
+# An attached client's binding has no readable stdin, as with load-buffer -.
+$INNER bind-key -n F12 switch-mode -f - || exit 1
+$OUTER send-keys -t outer:0.0 F12 || exit 1
+wait_capture 'Bad file descriptor'
+wait_format alpha:main.0 '#{pane_in_mode}' 0
+$INNER unbind-key -n F12 || exit 1
 
 # -k uses the shared mode teardown flag. Put it on a disposable pane and make
 # sure exiting the mode removes that pane.
