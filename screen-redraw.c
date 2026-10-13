@@ -83,6 +83,7 @@ enum redraw_span_type {
 #define REDRAW_SCROLLBAR_LEFT 0x2
 #define REDRAW_SCROLLBAR_RIGHT 0x4
 #define REDRAW_SCROLLBAR_OVERLAY 0x8
+#define REDRAW_BORDER_IS_DISCONNECTED 0x10
 
 /* Draw operations. */
 #define REDRAW_PANE 0x1
@@ -196,6 +197,7 @@ struct redraw_line {
 struct redraw_scene {
 	struct client		*c;
 	struct window		*w;
+	struct window_pane	*active;
 	struct redraw_line	*lines;
 
 	uint64_t		 generation;
@@ -217,6 +219,7 @@ static size_t			 redraw_ncells;
 struct redraw_build_ctx {
 	struct client				*c;
 	struct window				*w;
+	struct window_pane			*active;
 
 	u_int					 ox;
 	u_int					 oy;
@@ -294,12 +297,14 @@ redraw_get_window_offset(struct client *c, u_int *ox, u_int *oy, u_int *sx,
 static void
 redraw_set_context(struct client *c, struct redraw_build_ctx *bctx)
 {
-	struct session	*s = c->session;
-	struct window	*w = s->curw->window;
+	struct session		*s = c->session;
+	struct window		*w = s->curw->window;
+	struct window_pane	*active = w->active;
 
 	memset(bctx, 0, sizeof *bctx);
 	bctx->c = c;
 	bctx->w = w;
+	bctx->active = active;
 	redraw_get_window_offset(c, &bctx->ox, &bctx->oy, &bctx->sx, &bctx->sy);
 
 	bctx->ind = options_get_number(w->options, "pane-border-indicators");
@@ -533,10 +538,13 @@ redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
 	struct redraw_build_cell	*bc;
 	u_int				 x, y;
 	int				 reset = 0;
+	int				 connected = !floating;
 
 	if (!redraw_window_to_scene(bctx, wx, wy, &x, &y))
 		return;
 	bc = redraw_get_build_cell(bctx, x, y);
+	if (!options_get_number(wp->options, "pane-border-connect-active"))
+		connected &= wp != bctx->active;
 
 	/*
 	 * If this is a tiled pane, only empty and border cells may be marked.
@@ -546,7 +554,7 @@ redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
 	 * except borders that already belong to this pane, they need to be
 	 * merged.
 	 */
-	if (!floating) {
+	if (connected) {
 		if (bc->data.type == REDRAW_SPAN_EMPTY ||
 		    bc->data.type == REDRAW_SPAN_OUTSIDE)
 			reset = 1;
@@ -561,6 +569,9 @@ redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
 		memset(bc, 0, sizeof *bc);
 		bc->data.type = REDRAW_SPAN_BORDER;
 	}
+
+	if (connected && bc->data.b.flags & REDRAW_BORDER_IS_DISCONNECTED)
+		return;
 
 	if (top_owner) {
 		bc->data.b.top_wp = wp;
@@ -584,6 +595,8 @@ redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
 	mask |= bc->data.b.cell_mask;
 	bc->data.b.cell_mask = mask;
 	bc->data.b.cell_type = redraw_get_cell_type(mask);
+	if (!connected)
+		bc->data.b.flags |= REDRAW_BORDER_IS_DISCONNECTED;
 }
 
 /*
@@ -1080,6 +1093,7 @@ redraw_get_scene(struct client *c)
 {
 	struct redraw_scene	*scene = c->redraw_scene;
 	struct window		*w = c->session->curw->window;
+	struct window_pane	*active = w->active;
 	const char		*reason = NULL;
 	u_int			 ox, oy, sx, sy;
 
@@ -1088,6 +1102,8 @@ redraw_get_scene(struct client *c)
 		reason = "missing";
 	else if (scene->w != w)
 		reason = "window changed";
+	else if (scene->active != active)
+		reason = "active pane changed";
 	else if (scene->generation != w->redraw_scene_generation)
 		reason = "generation changed";
 	else if (scene->ox != ox || scene->oy != oy)
