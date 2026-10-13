@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.299 2026/10/05 08:41:23 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.300 2026/10/12 18:47:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2651,8 +2651,9 @@ screen_write_collect_insert_clear(struct screen_write_ctx *ctx, u_int px,
  * background so the columns it covered do not lose their colour.
  */
 static void
-screen_write_clear_cell(struct grid *gd, u_int px, u_int py)
+screen_write_clear_cell(struct screen_write_ctx *ctx, u_int px, u_int py)
 {
+	struct grid		*gd = ctx->s->grid;
 	struct grid_cell	 gc;
 	int			 bg;
 
@@ -2717,7 +2718,7 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 			grid_view_get_cell(s->grid, xx, s->cy, &gc);
 			if (~gc.flags & GRID_FLAG_PADDING)
 				break;
-			screen_write_clear_cell(s->grid, xx, s->cy);
+			screen_write_clear_cell(ctx, xx, s->cy);
 			log_debug("%s: padding erased (before) at %u (cx %u)",
 			    __func__, xx, s->cx);
 		}
@@ -2726,7 +2727,7 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 				grid_view_get_cell(s->grid, 0, s->cy, &gc);
 			if (gc.data.width > 1 ||
 			    (gc.flags & GRID_FLAG_PADDING)) {
-				screen_write_clear_cell(s->grid, xx, s->cy);
+				screen_write_clear_cell(ctx, xx, s->cy);
 				log_debug("%s: padding erased (before) at %u "
 				    "(cx %u)", __func__, xx, s->cx);
 			}
@@ -2750,7 +2751,7 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 		grid_view_get_cell(s->grid, xx, s->cy, &gc);
 		if (~gc.flags & GRID_FLAG_PADDING)
 			break;
-		screen_write_clear_cell(s->grid, xx, s->cy);
+		screen_write_clear_cell(ctx, xx, s->cy);
 		log_debug("%s: padding erased (after) at %u (cx %u)", __func__,
 		    xx, s->cx);
 	}
@@ -3177,12 +3178,12 @@ screen_write_overwrite(struct screen_write_ctx *ctx, struct grid_cell *gc,
 			if (~tmp_gc.flags & GRID_FLAG_PADDING)
 				break;
 			log_debug("%s: padding at %u,%u", __func__, xx, s->cy);
-			screen_write_clear_cell(gd, xx, s->cy);
+			screen_write_clear_cell(ctx, xx, s->cy);
 		}
 
 		/* Overwrite the character at the start of this padding. */
 		log_debug("%s: character at %u,%u", __func__, xx, s->cy);
-		screen_write_clear_cell(gd, xx, s->cy);
+		screen_write_clear_cell(ctx, xx, s->cy);
 		done = 1;
 	}
 
@@ -3200,7 +3201,7 @@ screen_write_overwrite(struct screen_write_ctx *ctx, struct grid_cell *gc,
 				break;
 			log_debug("%s: overwrite at %u,%u", __func__, xx,
 			    s->cy);
-			screen_write_clear_cell(gd, xx, s->cy);
+			screen_write_clear_cell(ctx, xx, s->cy);
 			done = 1;
 		}
 	}
