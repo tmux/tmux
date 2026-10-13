@@ -59,7 +59,13 @@ os.kill(client, signal.SIGTERM)
 size(master, 23, 61, 0, 0)
 os.kill(client, signal.SIGWINCH)
 os.kill(client, signal.SIGCONT)
+# macOS drains the controlling terminal when its session leader exits.
+# Keep reading output so the client can finish exiting.
 for i in range(200):
+    try:
+        os.read(master, 65536)
+    except OSError:
+        pass
     if os.waitpid(client, os.WNOHANG)[0] != 0:
         break
     time.sleep(0.05)
