@@ -374,6 +374,53 @@ image_grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src,
 	free(maps);
 }
 
+/* Copy clipped image spans between grid areas. */
+void
+image_grid_copy_area(struct grid *dst, u_int dx, u_int dy, struct grid *src,
+    u_int px, u_int py, u_int sx, u_int sy)
+{
+	struct image_copy_map	*maps = NULL;
+	struct image_placement	*plmt;
+	struct image_line	*src_line, *dst_line;
+	struct image_span	*span;
+	u_int			 nmaps = 0, row, start, end, span_end;
+
+	if (dst == src || sx == 0 || sy == 0)
+		return;
+	if (dy >= dst->hsize + dst->sy || py >= src->hsize + src->sy)
+		return;
+	if (sy > dst->hsize + dst->sy - dy)
+		sy = dst->hsize + dst->sy - dy;
+	if (sy > src->hsize + src->sy - py)
+		sy = src->hsize + src->sy - py;
+	end = px + sx;
+	if (end < px)
+		end = UINT_MAX;
+
+	for (row = 0; row < sy; row++) {
+		src_line = src->linedata[py + row].images;
+		if (src_line == NULL)
+			continue;
+		dst_line = NULL;
+		TAILQ_FOREACH(span, &src_line->spans, line_entry) {
+			span_end = span->x + span->sx;
+			start = (span->x > px ? span->x : px);
+			if (start >= end || span_end <= px)
+				continue;
+			if (span_end > end)
+				span_end = end;
+			if (dst_line == NULL)
+				dst_line = image_line_get(&dst->linedata[dy + row]);
+			plmt = image_copy_placement(dst, span->placement, &maps,
+			    &nmaps);
+			image_span_add(dst_line, plmt, dx + start - px,
+			    span_end - start, span->source_x + start - span->x,
+			    span->source_y);
+		}
+	}
+	free(maps);
+}
+
 /* Check whether a grid line has any image spans. */
 int
 image_grid_line_has_images(struct grid_line *gl)
