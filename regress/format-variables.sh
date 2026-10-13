@@ -109,6 +109,7 @@ pane_bg
 pane_bottom
 pane_command_duration
 pane_command_end_time
+pane_command_line
 pane_command_running
 pane_command_start_time
 pane_command_status
