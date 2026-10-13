@@ -302,3 +302,42 @@ image_size_in_cells(u_int w, u_int h, u_int xpixel, u_int ypixel, u_int *sx,
 	*sx = w / xpixel + (w % xpixel != 0);
 	*sy = h / ypixel + (h % ypixel != 0);
 }
+
+/* Find area covered by a rectangle of cells in pixels. */
+void
+image_get_pixel_area(struct image *im, u_int x, u_int y, u_int w, u_int h,
+    u_int *px, u_int *py, u_int *pw, u_int *ph)
+{
+	u_int	left, top, right, bottom;
+
+	*px = *py = *pw = *ph = 0;
+
+	if (im == NULL || x >= im->sx || y >= im->sy || w == 0 || h == 0)
+		return;
+	if (w > im->sx - x)
+		w = im->sx - x;
+	if (h > im->sy - y)
+		h = im->sy - y;
+
+	left = (uint64_t)x * im->canvas_width / im->sx;
+	top = (uint64_t)y * im->canvas_height / im->sy;
+	right = ((uint64_t)(x + w) * im->canvas_width + im->sx - 1) / im->sx;
+	bottom = ((uint64_t)(y + h) * im->canvas_height + im->sy - 1) / im->sy;
+
+	if (left >= im->width || top >= im->height)
+		*px = *py = 0;
+	else {
+		if (right <= left)
+			right = left + 1;
+		if (bottom <= top)
+			bottom = top + 1;
+		if (right > im->width)
+			right = im->width;
+		if (bottom > im->height)
+			bottom = im->height;
+		*px = left;
+		*py = top;
+		*pw = right - left;
+		*ph = bottom - top;
+	}
+}

@@ -196,7 +196,7 @@ image_grid_add(struct grid *gd, struct image *im, u_int x, u_int y,
 	}
 }
 
-/* Remove the covered part of each span, retaining either side. */
+/* Remove the covered part of a span. */
 static void
 image_line_remove(struct image_line *line, u_int x, u_int w)
 {
@@ -458,4 +458,114 @@ image_damage_screen(struct screen_write_ctx *ctx, u_int x, u_int y, u_int sx,
 	image_redraw_area(ctx, x, y, sx, sy);
 	if (ctx->flags & SCREEN_WRITE_INPUT)
 		image_grid_remove(s->grid, x, s->grid->hsize + y, sx, sy);
+}
+
+/* Return whether an image cell has any visible pixels. */
+static int
+image_cell_has_visible_pixels(struct image *im, u_int x, u_int y)
+{
+	u_int		 px, py, sx, sy, xx, yy;
+	const u_char	*pixels;
+	size_t		 stride;
+
+	image_get_pixel_area(im, x, y, 1, 1, &px, &py, &sx, &sy);
+	if (sx == 0 || sy == 0)
+		return (0);
+	pixels = image_get_pixels(im, &stride, NULL);
+	for (yy = py; yy < py + sy; yy++) {
+		for (xx = px; xx < px + sx; xx++) {
+			if (pixels[yy * stride + xx * 4 + 3] != 0)
+				return (1);
+		}
+	}
+	return (0);
+}
+
+/* Attach the visible runs from one image row. */
+static void
+image_add_row(struct image_line *line, struct image_placement *plmt,
+    u_int cx, u_int src_y, u_int sx)
+{
+	struct image	*im = plmt->image;
+	u_int		 x, run;
+
+	for (x = 0; x < sx; x += run) {
+		if (!image_cell_has_visible_pixels(im, x, src_y)) {
+			run = 1;
+			continue;
+		}
+		for (run = 1; x + run < sx; run++) {
+			if (!image_cell_has_visible_pixels(im, x + run, src_y))
+				break;
+		}
+		image_span_add(line, plmt, cx + x, run, x, src_y);
+	}
+}
+
+/* Place a SIXEL image at the cursor. */
+void
+image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
+{
+	struct screen		*s = ctx->s;
+	struct grid		*gd = s->grid;
+	struct image_placement	*plmt;
+	struct grid_line	*gl;
+	struct image_line	*line;
+	u_int			 cx = s->cx, cy = s->cy, y, sx, sy, lines;
+	u_int			 origin_y = 0, h_origin_y, region_height;
+	u_int			 remaining, n;
+
+	image_get_size_in_cells(im, &sx, &sy);
+	if (sx > screen_size_x(s) - cx)
+		sx = screen_size_x(s) - cx;
+	if (sx == 0)
+		return;
+
+	/* Scroll images that move the cursor. */
+	if (screen_size_y(s) - cy <= sy) {
+		lines = sy - (screen_size_y(s) - cy) + 1;
+		region_height = s->rlower - s->rupper + 1;
+
+		remaining = lines;
+		while (remaining > 0) {
+			if (remaining < region_height)
+				n = remaining;
+			else
+				n = region_height;
+			screen_write_scrollup(ctx, n, bg);
+			remaining -= n;
+		}
+
+		if (lines > cy) {
+			origin_y = lines - cy;
+			screen_write_cursormove(ctx, -1, 0, 0);
+		} else {
+			origin_y = 0;
+			screen_write_cursormove(ctx, -1, cy - lines, 0);
+		}
+		cy = s->cy;
+		sy -= origin_y;
+	}
+	plmt = image_placement_create(gd, im);
+
+	/* Attach scrolled image rows to the available history lines. */
+	h_origin_y = origin_y;
+	if (h_origin_y > gd->hsize)
+		h_origin_y = gd->hsize;
+	for (y = 0; y < h_origin_y; y++) {
+		gl = &gd->linedata[gd->hsize - h_origin_y + y];
+		line = image_line_get(gl);
+		image_add_row(line, plmt, cx, origin_y - h_origin_y + y, sx);
+	}
+
+	/* Attach visible image rows. */
+	for (y = 0; y < sy; y++) {
+		line = image_line_get(&gd->linedata[gd->hsize + cy + y]);
+		image_add_row(line, plmt, cx, origin_y + y, sx);
+	}
+
+	/* Schedule a redraw and advance the cursor past the image. */
+	image_store_prune(gd->images);
+	image_redraw_area(ctx, cx, cy, sx, sy);
+	screen_write_cursormove(ctx, 0, cy + sy, 0);
 }

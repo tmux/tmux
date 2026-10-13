@@ -72,6 +72,8 @@ void		 image_get_size_in_cells(struct image *, u_int *, u_int *);
 const u_char	*image_get_pixels(struct image *, size_t *, size_t *);
 void		 image_size_in_cells(u_int, u_int, u_int, u_int, u_int *,
 		     u_int *);
+void		 image_get_pixel_area(struct image *, u_int, u_int, u_int,
+		     u_int, u_int *, u_int *, u_int *, u_int *);
 
 /* image-grid.c */
 void		 image_grid_add(struct grid *, struct image *, u_int, u_int,
@@ -92,6 +94,7 @@ void		 image_redraw_all(struct screen_write_ctx *);
 void		 image_redraw_scroll(struct screen_write_ctx *);
 void		 image_damage_screen(struct screen_write_ctx *, u_int, u_int,
 		     u_int, u_int);
+void		 image_write(struct screen_write_ctx *, struct image *, u_int);
 
 /* image-sixel.c */
 #define SIXEL_COLOUR_REGISTERS 1024

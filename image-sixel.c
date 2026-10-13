@@ -515,10 +515,10 @@ sixel_to_image(struct sixel_image *si)
 	    (uint64_t)sy * si->ypixel > UINT_MAX)
 		return (NULL);
 
-	pixels = xcalloc((size_t)si->x * si->y, 4);
+	pixels = xcalloc(si->x * si->y, 4);
 	for (y = 0; y < si->y; y++) {
 		for (x = 0; x < si->x; x++) {
-			pixel = pixels + ((size_t)y * si->x + x) * 4;
+			pixel = pixels + (y * si->x + x) * 4;
 
 			c = sixel_get_pixel(si, x, y);
 			if (c == 0) {
@@ -545,8 +545,7 @@ sixel_to_image(struct sixel_image *si)
 
 /* Write a SIXEL image. */
 void
-sixel_write(__unused struct screen_write_ctx *ctx, struct sixel_image *si,
-    __unused u_int bg)
+sixel_write(struct screen_write_ctx *ctx, struct sixel_image *si, u_int bg)
 {
 	struct image *im;
 
@@ -554,6 +553,6 @@ sixel_write(__unused struct screen_write_ctx *ctx, struct sixel_image *si,
 	sixel_free(si);
 	if (im == NULL)
 		return;
-	/* XXX image_write_sixel */
+	image_write(ctx, im, bg);
 	image_free(im);
 }
