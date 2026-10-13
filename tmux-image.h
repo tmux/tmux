@@ -81,6 +81,14 @@ void		 image_grid_move_cells(struct grid *, u_int, u_int, u_int,
 void		 image_grid_duplicate_lines(struct grid *, u_int, struct grid *,
 		     u_int, u_int);
 int		 image_grid_line_has_images(struct grid_line *);
+int		 image_grid_area_has_images(struct grid *, u_int, u_int, u_int,
+		     u_int);
+void		 image_redraw_area(struct screen_write_ctx *, u_int, u_int,
+		     u_int, u_int);
+void		 image_redraw_all(struct screen_write_ctx *);
+void		 image_redraw_scroll(struct screen_write_ctx *);
+void		 image_damage_screen(struct screen_write_ctx *, u_int, u_int,
+		     u_int, u_int);
 
 /* image-sixel.c */
 #define SIXEL_COLOUR_REGISTERS 1024

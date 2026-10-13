@@ -1471,6 +1471,10 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	utf8_set(&gc.data, 'E');
 
+#ifdef ENABLE_IMAGES
+	image_damage_screen(ctx, 0, 0, screen_size_x(s), screen_size_y(s));
+#endif
+
 	for (yy = 0; yy < screen_size_y(s); yy++) {
 		for (xx = 0; xx < screen_size_x(s); xx++)
 			grid_view_set_cell(s->grid, xx, yy, &gc);
@@ -1516,6 +1520,10 @@ screen_write_insertcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 	screen_write_initctx(ctx, &ttyctx, 0, 1);
 	ttyctx.bg = bg;
 
+#ifdef ENABLE_IMAGES
+	image_redraw_area(ctx, 0, s->cy, screen_size_x(s), 1);
+#endif
+
 	grid_view_insert_cells(s->grid, s->cx, s->cy, nx, bg);
 
 	screen_write_collect_flush(ctx, 0, __func__);
@@ -1551,6 +1559,10 @@ screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 
 	screen_write_initctx(ctx, &ttyctx, 0, 1);
 	ttyctx.bg = bg;
+
+#ifdef ENABLE_IMAGES
+	image_redraw_area(ctx, 0, s->cy, screen_size_x(s), 1);
+#endif
 
 	grid_view_delete_cells(s->grid, s->cx, s->cy, nx, bg);
 
@@ -1588,6 +1600,10 @@ screen_write_clearcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 	screen_write_initctx(ctx, &ttyctx, 0, 1);
 	ttyctx.bg = bg;
 
+#ifdef ENABLE_IMAGES
+	image_redraw_area(ctx, s->cx, s->cy, nx, 1);
+#endif
+
 	grid_view_clear(s->grid, s->cx, s->cy, nx, 1, bg);
 
 	screen_write_collect_flush(ctx, 0, __func__);
@@ -1624,6 +1640,10 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 		screen_write_initctx(ctx, &ttyctx, 1, 1);
 		ttyctx.bg = bg;
 
+#ifdef ENABLE_IMAGES
+		image_redraw_area(ctx, 0, s->cy, screen_size_x(s), sy - s->cy);
+#endif
+
 		grid_view_insert_lines(gd, s->cy, ny, bg);
 
 		screen_write_collect_flush(ctx, 0, __func__);
@@ -1647,6 +1667,11 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
+
+#ifdef ENABLE_IMAGES
+	image_redraw_area(ctx, 0, s->cy, screen_size_x(s),
+	    s->rlower + 1 - s->cy);
+#endif
 
 	if (s->cy < s->rupper || s->cy > s->rlower)
 		grid_view_insert_lines(gd, s->cy, ny, bg);
@@ -1687,6 +1712,10 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 		screen_write_initctx(ctx, &ttyctx, 1, 1);
 		ttyctx.bg = bg;
 
+#ifdef ENABLE_IMAGES
+		image_redraw_area(ctx, 0, s->cy, screen_size_x(s), sy - s->cy);
+#endif
+
 		grid_view_delete_lines(gd, s->cy, ny, bg);
 
 		screen_write_collect_flush(ctx, 0, __func__);
@@ -1712,6 +1741,10 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
+
+#ifdef ENABLE_IMAGES
+	image_redraw_area(ctx, 0, s->cy, screen_size_x(s), ry);
+#endif
 
 	if (s->cy < s->rupper || s->cy > s->rlower)
 		grid_view_delete_lines(gd, s->cy, ny, bg);
@@ -1743,8 +1776,18 @@ screen_write_clearline(struct screen_write_ctx *ctx, u_int bg)
 	u_int				 flags;
 
 	gl = grid_get_line(s->grid, s->grid->hsize + s->cy);
-	if (gl->cellsize == 0 && COLOUR_DEFAULT(bg))
+	if (gl->cellsize == 0 && COLOUR_DEFAULT(bg)) {
+#ifdef ENABLE_IMAGES
+		if (!image_grid_line_has_images(gl))
+			return;
+#else
 		return;
+#endif
+	}
+
+#ifdef ENABLE_IMAGES
+	image_redraw_area(ctx, 0, s->cy, sx, 1);
+#endif
 
 	flags = gl->flags & GRID_LINE_OSC133_FLAGS;
 	memcpy(&od, &gl->osc133_data, sizeof od);
@@ -1777,8 +1820,21 @@ screen_write_clearendofline(struct screen_write_ctx *ctx, u_int bg)
 	}
 
 	gl = grid_get_line(s->grid, s->grid->hsize + s->cy);
-	if (s->cx > sx - 1 || (s->cx >= gl->cellsize && COLOUR_DEFAULT(bg)))
+	if (s->cx > sx - 1)
 		return;
+	if (s->cx >= gl->cellsize && COLOUR_DEFAULT(bg)) {
+#ifdef ENABLE_IMAGES
+		if (!image_grid_area_has_images(s->grid, s->cx,
+		    s->grid->hsize + s->cy, sx - s->cx, 1))
+			return;
+#else
+		return;
+#endif
+	}
+
+#ifdef ENABLE_IMAGES
+	image_redraw_area(ctx, s->cx, s->cy, sx - s->cx, 1);
+#endif
 
 	grid_view_clear(s->grid, s->cx, s->cy, sx - s->cx, 1, bg);
 
@@ -1801,6 +1857,10 @@ screen_write_clearstartofline(struct screen_write_ctx *ctx, u_int bg)
 		screen_write_clearline(ctx, bg);
 		return;
 	}
+
+#ifdef ENABLE_IMAGES
+	image_redraw_area(ctx, 0, s->cy, s->cx + 1, 1);
+#endif
 
 	if (s->cx > sx - 1)
 		grid_view_clear(s->grid, 0, s->cy, sx, 1, bg);
@@ -1850,6 +1910,10 @@ screen_write_reverseindex(struct screen_write_ctx *ctx, u_int bg)
 			screen_write_set_cursor(ctx, -1, s->cy - 1);
 		return;
 	}
+
+#ifdef ENABLE_IMAGES
+	image_redraw_scroll(ctx);
+#endif
 
 	grid_view_scroll_region_down(s->grid, s->rupper, s->rlower, bg);
 	screen_write_collect_flush(ctx, 0, __func__);
@@ -1918,6 +1982,10 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped, u_int bg)
 		return;
 	}
 
+#ifdef ENABLE_IMAGES
+	image_redraw_scroll(ctx);
+#endif
+
 	grid_view_scroll_region_up(gd, s->rupper, s->rlower, bg);
 	screen_write_collect_scroll(ctx, bg);
 	ctx->scrolled++;
@@ -1940,6 +2008,10 @@ screen_write_scrollup(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 		screen_write_collect_flush(ctx, 1, __func__);
 		ctx->bg = bg;
 	}
+
+#ifdef ENABLE_IMAGES
+	image_redraw_scroll(ctx);
+#endif
 
 	for (i = 0; i < lines; i++) {
 		grid_view_scroll_region_up(gd, s->rupper, s->rlower, bg);
@@ -1964,6 +2036,10 @@ screen_write_scrolldown(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 		lines = 1;
 	else if (lines > s->rlower - s->rupper + 1)
 		lines = s->rlower - s->rupper + 1;
+
+#ifdef ENABLE_IMAGES
+	image_redraw_scroll(ctx);
+#endif
 
 	for (i = 0; i < lines; i++)
 		grid_view_scroll_region_down(gd, s->rupper, s->rlower, bg);
@@ -2003,6 +2079,12 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
+
+#ifdef ENABLE_IMAGES
+	if (s->cx < sx)
+		image_redraw_area(ctx, s->cx, s->cy, sx - s->cx, 1);
+	image_redraw_area(ctx, 0, s->cy + 1, sx, sy - (s->cy + 1));
+#endif
 
 	/* Scroll into history if it is enabled and clearing entire screen. */
 	if (s->cx == 0 &&
@@ -2080,6 +2162,11 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
 
+#ifdef ENABLE_IMAGES
+	image_redraw_area(ctx, 0, 0, sx, s->cy);
+	image_redraw_area(ctx, 0, s->cy, s->cx + 1, 1);
+#endif
+
 	if (s->cy > 0)
 		grid_view_clear(s->grid, 0, 0, sx, s->cy, bg);
 	if (s->cx > sx - 1)
@@ -2147,6 +2234,10 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
+
+#ifdef ENABLE_IMAGES
+	image_redraw_all(ctx);
+#endif
 
 	/* Scroll into history if it is enabled. */
 	if ((s->grid->flags & GRID_HISTORY) &&
@@ -2573,6 +2664,10 @@ screen_write_clear_cell(struct screen_write_ctx *ctx, u_int px, u_int py)
 	grid_view_get_cell(gd, px, py, &gc);
 	bg = gc.bg;
 
+#ifdef ENABLE_IMAGES
+	image_damage_screen(ctx, px, py, 1, 1);
+#endif
+
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.bg = bg;
 	grid_view_set_cell(gd, px, py, &gc);
@@ -2648,6 +2743,10 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 			bnx = s->cx - xx;
 		}
 	}
+
+#ifdef ENABLE_IMAGES
+	image_damage_screen(ctx, s->cx, s->cy, ci->used, 1);
+#endif
 
 	grid_view_set_cells(s->grid, s->cx, s->cy, &ci->gc, cl->data + ci->x,
 	    ci->used);
@@ -2780,6 +2879,11 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	if (s->cx > sx - width || s->cy > sy - 1)
 		return;
 	screen_write_initctx(ctx, &ttyctx, 0, 0);
+
+#ifdef ENABLE_IMAGES
+	/* Mark images as damaged. */
+	image_damage_screen(ctx, s->cx, s->cy, width, 1);
+#endif
 
 	/* Handle overwriting of UTF-8 characters. */
 	gl = grid_get_line(s->grid, s->grid->hsize + s->cy);
@@ -3011,6 +3115,11 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		cx++;
 	} else
 		force_wide = 0;
+
+#ifdef ENABLE_IMAGES
+	/* Mark images as damaged. */
+	image_damage_screen(ctx, cx - n, cy, n, 1);
+#endif
 
 	/* Set the new cell. */
 	grid_view_set_cell(gd, cx - n, cy, &last);

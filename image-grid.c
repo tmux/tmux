@@ -380,3 +380,82 @@ image_grid_line_has_images(struct grid_line *gl)
 {
 	return (gl->images != NULL && !TAILQ_EMPTY(&gl->images->spans));
 }
+
+/* Check whether a grid area has any image spans. */
+int
+image_grid_area_has_images(struct grid *gd, u_int x, u_int y, u_int sx,
+    u_int sy)
+{
+	struct image_line	*line;
+	struct image_span	*span;
+	u_int			 row, end;
+
+	if (gd->images == NULL)
+		return (0);
+	if (sx == 0 || sy == 0 || y >= gd->hsize + gd->sy)
+		return (0);
+
+	end = x + sx;
+	if (end < x)
+		end = UINT_MAX;
+	if (sy > gd->hsize + gd->sy - y)
+		sy = gd->hsize + gd->sy - y;
+
+	for (row = y; row < y + sy; row++) {
+		line = gd->linedata[row].images;
+		if (line == NULL)
+			continue;
+		TAILQ_FOREACH(span, &line->spans, line_entry) {
+			if (span->x < end && span->x + span->sx > x)
+				return (1);
+		}
+	}
+	return (0);
+}
+
+/* Record window damage when an area containing images changes. */
+void
+image_redraw_area(struct screen_write_ctx *ctx, u_int x, u_int y, u_int sx,
+    u_int sy)
+{
+	struct window_pane	*wp = ctx->wp;
+	struct grid		*gd = ctx->s->grid;
+
+	if (wp == NULL)
+		return;
+	if (!image_grid_area_has_images(gd, x, gd->hsize + y, sx, sy))
+		return;
+	redraw_damage_window(wp->window, wp->xoff + x, wp->yoff + y, sx, sy);
+}
+
+/* Record window damage for all visible images. */
+void
+image_redraw_all(struct screen_write_ctx *ctx)
+{
+	struct screen	*s = ctx->s;
+	u_int		 sx = screen_size_x(s), sy = screen_size_y(s);
+
+	image_redraw_area(ctx, 0, 0, sx, sy);
+}
+
+/* Record window damage for images in the scroll region. */
+void
+image_redraw_scroll(struct screen_write_ctx *ctx)
+{
+	struct screen	*s = ctx->s;
+	u_int		 sx = screen_size_x(s), sy = s->rlower - s->rupper + 1;
+
+	image_redraw_area(ctx, 0, s->rupper, sx, sy);
+}
+
+/* Redraw images under changed cells. */
+void
+image_damage_screen(struct screen_write_ctx *ctx, u_int x, u_int y, u_int sx,
+    u_int sy)
+{
+	struct screen	*s = ctx->s;
+
+	image_redraw_area(ctx, x, y, sx, sy);
+	if (ctx->flags & SCREEN_WRITE_INPUT)
+		image_grid_remove(s->grid, x, s->grid->hsize + y, sx, sy);
+}
