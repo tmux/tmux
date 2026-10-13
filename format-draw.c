@@ -685,6 +685,27 @@ format_draw_many(struct screen_write_ctx *ctx, struct style *sy, char ch,
 		screen_write_cell(ctx, &sy->gc);
 }
 
+/*
+ * Update the defaults if a style pushed, popped or set them. The previous cell
+ * is the one in use before the style.
+ */
+static void
+format_update_defaults(struct style *sy, const struct grid_cell *previous,
+    struct grid_cell *current_default, struct grid_cell *base_default)
+{
+	if (sy->default_type == STYLE_DEFAULT_PUSH) {
+		memcpy(current_default, previous, sizeof *current_default);
+		sy->default_type = STYLE_DEFAULT_BASE;
+	} else if (sy->default_type == STYLE_DEFAULT_POP) {
+		memcpy(current_default, base_default, sizeof *current_default);
+		sy->default_type = STYLE_DEFAULT_BASE;
+	} else if (sy->default_type == STYLE_DEFAULT_SET) {
+		memcpy(base_default, previous, sizeof *base_default);
+		memcpy(current_default, previous, sizeof *current_default);
+		sy->default_type = STYLE_DEFAULT_BASE;
+	}
+}
+
 /* Draw a format to a screen. */
 void
 format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
@@ -857,20 +878,8 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 			fill = sy.fill;
 
 		/* If this style pushed or popped the default, update it. */
-		if (sy.default_type == STYLE_DEFAULT_PUSH) {
-			memcpy(&current_default, &saved_sy.gc,
-			    sizeof current_default);
-			sy.default_type = STYLE_DEFAULT_BASE;
-		} else if (sy.default_type == STYLE_DEFAULT_POP) {
-			memcpy(&current_default, base, sizeof current_default);
-			sy.default_type = STYLE_DEFAULT_BASE;
-		} else if (sy.default_type == STYLE_DEFAULT_SET) {
-			memcpy(&base_default, &saved_sy.gc,
-			    sizeof base_default);
-			memcpy(&current_default, &saved_sy.gc,
-			    sizeof current_default);
-			sy.default_type = STYLE_DEFAULT_BASE;
-		}
+		format_update_defaults(&sy, &saved_sy.gc, &current_default,
+		    &base_default);
 
 		/* Check the list state. */
 		switch (sy.list) {
@@ -1264,21 +1273,8 @@ format_draw_lines_split(struct format_lines *fls, const char *expanded,
 		free(tmp);
 
 		/* If this style pushed or popped the default, update it. */
-		if (sy.default_type == STYLE_DEFAULT_PUSH) {
-			memcpy(&current_default, &saved_sy.gc,
-			    sizeof current_default);
-			sy.default_type = STYLE_DEFAULT_BASE;
-		} else if (sy.default_type == STYLE_DEFAULT_POP) {
-			memcpy(&current_default, &base_default,
-			    sizeof current_default);
-			sy.default_type = STYLE_DEFAULT_BASE;
-		} else if (sy.default_type == STYLE_DEFAULT_SET) {
-			memcpy(&base_default, &saved_sy.gc,
-			    sizeof base_default);
-			memcpy(&current_default, &saved_sy.gc,
-			    sizeof current_default);
-			sy.default_type = STYLE_DEFAULT_BASE;
-		}
+		format_update_defaults(&sy, &saved_sy.gc, &current_default,
+		    &base_default);
 
 		/* Track the last list state that was not a marker. */
 		if (sy.list != STYLE_LIST_LEFT_MARKER &&
