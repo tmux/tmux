@@ -120,6 +120,9 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_ERROR);
 		}
 		status = window_get_pane_status(w);
+		if (!window_pane_is_floating(wp) &&
+		    window_border_type_is_separate(w))
+			status = PANE_STATUS_OFF; /* drawn on the border */
 		switch (status) {
 		case PANE_STATUS_TOP:
 			if (y != INT_MAX && wp->yoff == 1)

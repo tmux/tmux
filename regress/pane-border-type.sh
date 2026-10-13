@@ -289,6 +289,53 @@ done <"$TMP/floor.panes"
 $TMUX kill-server
 
 # ---------------------------------------------------------------------------
+# main-* layouts leave room for the borders; resize-pane -y is the pane height
+# ---------------------------------------------------------------------------
+for sb in off on; do
+	for l in main-vertical main-vertical-mirrored main-horizontal \
+	    main-horizontal-mirrored; do
+		$TMUX new-session -d -s main -x 80 -y 24 'cat' || exit 1
+		$TMUX set -g pane-border-type separate &&
+		$TMUX set -g pane-scrollbars "$sb" ||
+			fail "set options failed"
+		$TMUX split-window -t main:0 'cat' &&
+		$TMUX split-window -t main:0 'cat' &&
+		$TMUX select-layout -t main:0 "$l" || fail "$l failed"
+		$TMUX list-panes -t main:0 -F \
+		    '#{pane_left} #{pane_top} #{pane_right} #{pane_bottom}' \
+		    >"$TMP/main.panes"
+		while read -r left top right bottom; do
+			[ "$left" -ge 1 ] && [ "$top" -ge 1 ] &&
+			[ "$right" -le 78 ] && [ "$bottom" -le 22 ] ||
+				fail "$l sb=$sb: pane outside borders ($left,$top-$right,$bottom)"
+		done <"$TMP/main.panes"
+		$TMUX kill-server
+	done
+done
+
+$TMUX new-session -d -s mpw -x 80 -y 24 'cat' || exit 1
+$TMUX set -g pane-border-type separate &&
+$TMUX set -w -t mpw:0 main-pane-width 30 &&
+$TMUX split-window -t mpw:0 'cat' &&
+$TMUX select-layout -t mpw:0 main-vertical || fail "main-pane-width failed"
+must_equal "$(pane_fmt mpw:0.0 '#{pane_width}')" "30" "main-pane-width 30"
+$TMUX kill-server
+
+for st in off top bottom; do
+	for p in 0 1; do
+		$TMUX new-session -d -s ry -x 80 -y 24 'cat' || exit 1
+		$TMUX set -g pane-border-type separate &&
+		$TMUX set -g pane-border-status "$st" &&
+		$TMUX split-window -t ry:0 'cat' &&
+		$TMUX select-layout -t ry:0 even-vertical &&
+		$TMUX resize-pane -t ry:0.$p -y 10 || fail "resize-pane -y failed"
+		must_equal "$(pane_fmt ry:0.$p '#{pane_height}')" "10" \
+			"status $st: resize-pane -t $p -y 10"
+		$TMUX kill-server
+	done
+done
+
+# ---------------------------------------------------------------------------
 # Navigation: select-pane directions and positional targets
 # ---------------------------------------------------------------------------
 

@@ -215,12 +215,32 @@ layout_set_even_v(struct window *w)
 	layout_set_even(w, LAYOUT_TOPBOTTOM);
 }
 
+/*
+ * Separate borders used by the main and other cells: the first cell has a left
+ * or top border and the last cell also has the border on the window edge. The
+ * other cells must also have room for a scrollbar.
+ */
+static void
+layout_set_main_borders(struct window *w, enum layout_type type, int mirrored,
+    u_int *mainb, u_int *otherb)
+{
+	struct style	*sb_style = &w->active->scrollbar_style;
+
+	*mainb = *otherb = 0;
+	if (!window_border_type_is_separate(w))
+		return;
+	*mainb = mirrored ? 2 : 1;
+	*otherb = mirrored ? 1 : 2;
+	if (type == LAYOUT_LEFTRIGHT && w->sb == PANE_SCROLLBARS_ALWAYS)
+		*otherb += sb_style->width + sb_style->pad;
+}
+
 static void
 layout_set_main_h(struct window *w)
 {
 	struct window_pane	*wp, *wpmain;
 	struct layout_cell	*lcroot, *lcmain, *lcother, *lcchild;
-	u_int			 n, mainh, otherh, sx, sy;
+	u_int			 n, mainh, otherh, mainb, otherb, sx, sy;
 	char			*cause;
 	const char		*s;
 
@@ -233,6 +253,11 @@ layout_set_main_h(struct window *w)
 
 	/* Find available height - take off one line for the border. */
 	sy = w->sy - 1;
+	layout_set_main_borders(w, LAYOUT_TOPBOTTOM, 0, &mainb, &otherb);
+	if (sy > mainb + otherb)
+		sy -= mainb + otherb;
+	else
+		sy = 0;
 
 	/* Get the main pane height. */
 	s = options_get_string(w->options, "main-pane-height");
@@ -260,6 +285,9 @@ layout_set_main_h(struct window *w)
 		else
 			mainh = sy - otherh;
 	}
+
+	mainh += mainb;
+	otherh += otherb;
 
 	/* Work out what width is needed. */
 	sx = (n * (PANE_MINIMUM + 1)) - 1;
@@ -319,7 +347,7 @@ layout_set_main_h_mirrored(struct window *w)
 {
 	struct window_pane	*wp, *wpmain;
 	struct layout_cell	*lcroot, *lcmain, *lcother, *lcchild;
-	u_int			 n, mainh, otherh, sx, sy;
+	u_int			 n, mainh, otherh, mainb, otherb, sx, sy;
 	char			*cause;
 	const char		*s;
 
@@ -332,6 +360,11 @@ layout_set_main_h_mirrored(struct window *w)
 
 	/* Find available height - take off one line for the border. */
 	sy = w->sy - 1;
+	layout_set_main_borders(w, LAYOUT_TOPBOTTOM, 1, &mainb, &otherb);
+	if (sy > mainb + otherb)
+		sy -= mainb + otherb;
+	else
+		sy = 0;
 
 	/* Get the main pane height. */
 	s = options_get_string(w->options, "main-pane-height");
@@ -359,6 +392,9 @@ layout_set_main_h_mirrored(struct window *w)
 		else
 			mainh = sy - otherh;
 	}
+
+	mainh += mainb;
+	otherh += otherb;
 
 	/* Work out what width is needed. */
 	sx = (n * (PANE_MINIMUM + 1)) - 1;
@@ -418,7 +454,7 @@ layout_set_main_v(struct window *w)
 {
 	struct window_pane	*wp, *wpmain;
 	struct layout_cell	*lcroot, *lcmain, *lcother, *lcchild;
-	u_int			 n, mainw, otherw, sx, sy;
+	u_int			 n, mainw, otherw, mainb, otherb, sx, sy;
 	char			*cause;
 	const char		*s;
 
@@ -431,6 +467,11 @@ layout_set_main_v(struct window *w)
 
 	/* Find available width - take off one column for the border. */
 	sx = w->sx - 1;
+	layout_set_main_borders(w, LAYOUT_LEFTRIGHT, 0, &mainb, &otherb);
+	if (sx > mainb + otherb)
+		sx -= mainb + otherb;
+	else
+		sx = 0;
 
 	/* Get the main pane width. */
 	s = options_get_string(w->options, "main-pane-width");
@@ -458,6 +499,9 @@ layout_set_main_v(struct window *w)
 		else
 			mainw = sx - otherw;
 	}
+
+	mainw += mainb;
+	otherw += otherb;
 
 	/* Work out what height is needed. */
 	sy = (n * (PANE_MINIMUM + 1)) - 1;
@@ -517,7 +561,7 @@ layout_set_main_v_mirrored(struct window *w)
 {
 	struct window_pane	*wp, *wpmain;
 	struct layout_cell	*lcroot, *lcmain, *lcother, *lcchild;
-	u_int			 n, mainw, otherw, sx, sy;
+	u_int			 n, mainw, otherw, mainb, otherb, sx, sy;
 	char			*cause;
 	const char		*s;
 
@@ -531,6 +575,11 @@ layout_set_main_v_mirrored(struct window *w)
 
 	/* Find available width - take off one column for the border. */
 	sx = w->sx - 1;
+	layout_set_main_borders(w, LAYOUT_LEFTRIGHT, 1, &mainb, &otherb);
+	if (sx > mainb + otherb)
+		sx -= mainb + otherb;
+	else
+		sx = 0;
 
 	/* Get the main pane width. */
 	s = options_get_string(w->options, "main-pane-width");
@@ -558,6 +607,9 @@ layout_set_main_v_mirrored(struct window *w)
 		else
 			mainw = sx - otherw;
 	}
+
+	mainw += mainb;
+	otherw += otherb;
 
 	/* Work out what height is needed. */
 	sy = (n * (PANE_MINIMUM + 1)) - 1;
