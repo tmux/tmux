@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-draw.c,v 1.18 2026/10/12 15:28:45 nicm Exp $ */
+/* $OpenBSD: tty-draw.c,v 1.19 2026/10/13 22:44:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -260,15 +260,14 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			} else {
 				/* Get the current cell. */
 				grid_view_get_cell(gd, px + i, py, &gc);
+				gcp = &gc;
 
 				/* Work out empty cells. */
-				empty = tty_draw_line_get_empty(&gc, &last,
+				empty = tty_draw_line_get_empty(gcp, &last,
 				    nx - i);
-				if (empty != 0)
-					gcp = &gc;
-				else {
+				if (empty == 0) {
 					/* Update for codeset if needed. */
-					gcp = tty_check_codeset(tty, &gc);
+					gcp = tty_check_codeset(tty, gcp);
 
 					/* And for selection. */
 					if (gcp->flags & GRID_FLAG_SELECTED) {
