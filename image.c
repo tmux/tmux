@@ -25,9 +25,6 @@
 
 #include "tmux.h"
 
-/* Maximum image size in bytes. */
-#define IMAGE_SIZE_LIMIT (64 * 1024 * 1024)
-
 /* An image. */
 struct image {
 	u_int			 id;

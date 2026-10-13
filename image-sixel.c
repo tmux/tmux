@@ -2,6 +2,7 @@
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
+ * Copyright (c) 2026 Michael Grant <mgrant@grant.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -19,54 +20,52 @@
 #include <sys/types.h>
 
 #include <errno.h>
+#include <limits.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "tmux.h"
 
+/* Maximum SIXEL width and height */
 #define SIXEL_WIDTH_LIMIT 10000
 #define SIXEL_HEIGHT_LIMIT 10000
 
+/* Line of a SIXEL image. */
 struct sixel_line {
+	/* Number of pixels in this row. */
 	u_int		 x;
+
+	/* Palette index for each pixel in the row. */
 	uint16_t	*data;
 };
 
+/* SIXEL image. */
 struct sixel_image {
+	/* Decoded image dimensions in pixels. */
 	u_int			 x;
 	u_int			 y;
+
+	/* Terminal cell pixel dimensions used for scaling. */
 	u_int			 xpixel;
 	u_int			 ypixel;
 
-	u_int			 set_ra;
-	u_int			 ra_x;
-	u_int			 ra_y;
-
+	/* SIXEL palette. */
 	u_int			*colours;
 	u_int			 ncolours;
-	u_int			 used_colours;
+
+	/* DCS parameters. */
+	u_int			 p1;
 	u_int			 p2;
 
+	/* Current parser position and colour register. */
 	u_int			 dx;
 	u_int			 dy;
 	u_int			 dc;
 
+	/* Lines of palette indexes. */
 	struct sixel_line	*lines;
 };
 
-struct sixel_chunk {
-	u_int	 next_x;
-	u_int	 next_y;
-
-	u_int	 count;
-	char	 pattern;
-	char	 next_pattern;
-
-	size_t	 len;
-	size_t	 used;
-	char	*data;
-};
-
+/* Grow a SIXEL image to contain a line. */
 static int
 sixel_parse_expand_lines(struct sixel_image *si, u_int y)
 {
@@ -79,6 +78,7 @@ sixel_parse_expand_lines(struct sixel_image *si, u_int y)
 	return (0);
 }
 
+/* Grow a SIXEL line to contain a pixel. */
 static int
 sixel_parse_expand_line(struct sixel_image *si, struct sixel_line *sl, u_int x)
 {
@@ -93,6 +93,7 @@ sixel_parse_expand_line(struct sixel_image *si, struct sixel_line *sl, u_int x)
 	return (0);
 }
 
+/* Return a SIXEL palette index at a pixel. */
 static u_int
 sixel_get_pixel(struct sixel_image *si, u_int x, u_int y)
 {
@@ -106,6 +107,7 @@ sixel_get_pixel(struct sixel_image *si, u_int x, u_int y)
 	return (sl->data[x]);
 }
 
+/* Set a SIXEL palette index at a pixel. */
 static int
 sixel_set_pixel(struct sixel_image *si, u_int x, u_int y, u_int c)
 {
@@ -120,6 +122,7 @@ sixel_set_pixel(struct sixel_image *si, u_int x, u_int y, u_int c)
 	return (0);
 }
 
+/* Write a SIXEL column. */
 static int
 sixel_parse_write(struct sixel_image *si, u_int ch)
 {
@@ -134,6 +137,7 @@ sixel_parse_write(struct sixel_image *si, u_int ch)
 	return (0);
 }
 
+/* Parse a number. */
 static int
 sixel_parse_number(const char *cp, char **endptr, u_int *value)
 {
@@ -149,6 +153,7 @@ sixel_parse_number(const char *cp, char **endptr, u_int *value)
 	return (0);
 }
 
+/* Parse SIXEL attributes. */
 static const char *
 sixel_parse_attributes(struct sixel_image *si, const char *cp, const char *end)
 {
@@ -201,13 +206,10 @@ sixel_parse_attributes(struct sixel_image *si, const char *cp, const char *end)
 	si->x = x;
 	sixel_parse_expand_lines(si, y);
 
-	si->set_ra = 1;
-	si->ra_x = x;
-	si->ra_y = y;
-
 	return (last);
 }
 
+/* Parse a SIXEL colour register sequence. */
 static const char *
 sixel_parse_colour(struct sixel_image *si, const char *cp, const char *end)
 {
@@ -230,8 +232,6 @@ sixel_parse_colour(struct sixel_image *si, const char *cp, const char *end)
 		log_debug("%s: too many colours", __func__);
 		return (NULL);
 	}
-	if (si->used_colours <= c)
-		si->used_colours = c + 1;
 	si->dc = c + 1;
 	if (endptr == last || *endptr != ';')
 		return (last);
@@ -286,6 +286,7 @@ sixel_parse_colour(struct sixel_image *si, const char *cp, const char *end)
 	return (last);
 }
 
+/* Parse a SIXEL repeat sequence. */
 static const char *
 sixel_parse_repeat(struct sixel_image *si, const char *cp, const char *end)
 {
@@ -327,8 +328,10 @@ sixel_parse_repeat(struct sixel_image *si, const char *cp, const char *end)
 	return (last);
 }
 
+/* Parse SIXEL data into an indexed image. */
 struct sixel_image *
-sixel_parse(const char *buf, size_t len, u_int p2, u_int xpixel, u_int ypixel)
+sixel_parse(const char *buf, size_t len, u_int p1, u_int p2, u_int xpixel,
+    u_int ypixel)
 {
 	struct sixel_image	*si;
 	const char		*cp = buf, *end = buf + len;
@@ -339,9 +342,10 @@ sixel_parse(const char *buf, size_t len, u_int p2, u_int xpixel, u_int ypixel)
 		return (NULL);
 	}
 
-	si = xcalloc (1, sizeof *si);
+	si = xcalloc(1, sizeof *si);
 	si->xpixel = xpixel;
 	si->ypixel = ypixel;
+	si->p1 = p1;
 	si->p2 = p2;
 
 	while (cp != end) {
@@ -392,6 +396,7 @@ bad:
 	return (NULL);
 }
 
+/* Free a SIXEL image. */
 void
 sixel_free(struct sixel_image *si)
 {
@@ -405,6 +410,18 @@ sixel_free(struct sixel_image *si)
 	free(si);
 }
 
+/* Get the size of a SIXEL image in cells. */
+static void
+sixel_size_in_cells(struct sixel_image *si, u_int *x, u_int *y)
+{
+	if (si->xpixel == 0)
+		si->xpixel = 8;
+	if (si->ypixel == 0)
+		si->ypixel = 16;
+	image_size_in_cells(si->x, si->y, si->xpixel, si->ypixel, x, y);
+}
+
+/* Log a SIXEL image. */
 void
 sixel_log(struct sixel_image *si)
 {
@@ -425,297 +442,118 @@ sixel_log(struct sixel_image *si)
 				s[x] = '0' + (sl->data[x] - 1) % 10;
 			else
 				s[x] = '.';
-			}
+		}
 		s[x] = '\0';
 		log_debug("%s: %4u: %s", __func__, y, s);
 	}
 }
 
-void
-sixel_size_in_cells(struct sixel_image *si, u_int *x, u_int *y)
+/* Convert one HLS component to RGB. */
+static double
+sixel_hue(double p, double q, double t)
 {
-	if ((si->x % si->xpixel) == 0)
-		*x = (si->x / si->xpixel);
-	else
-		*x = 1 + (si->x / si->xpixel);
-	if ((si->y % si->ypixel) == 0)
-		*y = (si->y / si->ypixel);
-	else
-		*y = 1 + (si->y / si->ypixel);
+	if (t < 0)
+		t += 1;
+	if (t > 1)
+		t -= 1;
+	if (t < 1. / 6)
+		return (p + (q - p) * 6 * t);
+	if (t < 1. / 2)
+		return (q);
+	if (t < 2. / 3)
+		return (p + (q - p) * (2. / 3 - t) * 6);
+	return (p);
 }
 
-struct sixel_image *
-sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
-    u_int oy, u_int sx, u_int sy, int colours)
-{
-	struct sixel_image	*new;
-	u_int			 cx, cy, pox, poy, psx, psy, tsx, tsy, px, py;
-	u_int			 x, y, i;
-
-	/*
-	 * We want to get the section of the image at ox,oy in image cells and
-	 * map it onto the same size in terminal cells.
-	 */
-
-	sixel_size_in_cells(si, &cx, &cy);
-	if (ox >= cx)
-		return (NULL);
-	if (oy >= cy)
-		return (NULL);
-	if (ox + sx >= cx)
-		sx = cx - ox;
-	if (oy + sy >= cy)
-		sy = cy - oy;
-
-	if (xpixel == 0)
-		xpixel = si->xpixel;
-	if (ypixel == 0)
-		ypixel = si->ypixel;
-
-	pox = ox * si->xpixel;
-	poy = oy * si->ypixel;
-	psx = sx * si->xpixel;
-	psy = sy * si->ypixel;
-
-	tsx = sx * xpixel;
-	tsy = sy * ypixel;
-
-	new = xcalloc (1, sizeof *si);
-	new->xpixel = xpixel;
-	new->ypixel = ypixel;
-	new->p2 = si->p2;
-
-	new->set_ra = si->set_ra;
-	/* subtract offset */
-	new->ra_x = si->ra_x > pox ? si->ra_x - pox : 0;
-	new->ra_y = si->ra_y > poy ? si->ra_y - poy : 0;
-	/* clamp to size */
-	new->ra_x = new->ra_x < psx ? new->ra_x : psx;
-	new->ra_y = new->ra_y < psy ? new->ra_y : psy;
-	/* resize */
-	new->ra_x = new->ra_x * xpixel / si->xpixel;
-	new->ra_y = new->ra_y * ypixel / si->ypixel;
-
-	new->used_colours = si->used_colours;
-	for (y = 0; y < tsy; y++) {
-		py = poy + ((double)y * psy / tsy);
-		for (x = 0; x < tsx; x++) {
-			px = pox + ((double)x * psx / tsx);
-			sixel_set_pixel(new, x, y, sixel_get_pixel(si, px, py));
-		}
-	}
-
-	if (colours && si->ncolours != 0) {
-		new->colours = xmalloc(si->ncolours * sizeof *new->colours);
-		for (i = 0; i < si->ncolours; i++)
-			new->colours[i] = si->colours[i];
-		new->ncolours = si->ncolours;
-	}
-	return (new);
-}
-
+/* Convert a SIXEL colour register to RGB. */
 static void
-sixel_print_add(char **buf, size_t *len, size_t *used, const char *s,
-    size_t slen)
+sixel_colour_to_rgb(u_int colour, u_char *r, u_char *g, u_char *b)
 {
-	while (*used + slen + 1 > *len) {
-		*buf = xreallocarray(*buf, 2, *len);
-		(*len) *= 2;
+	u_int	type = (colour >> 25);
+	double	h, l, s, p, q;
+
+	if (type == 2) {
+		*r = (((colour >> 16) & 0xff) * 255 + 50) / 100;
+		*g = (((colour >> 8) & 0xff) * 255 + 50) / 100;
+		*b = ((colour & 0xff) * 255 + 50) / 100;
+		return;
 	}
-	memcpy(*buf + *used, s, slen);
-	(*used) += slen;
+	if (type != 1) {
+		*r = *g = *b = 0;
+		return;
+	}
+
+	h = ((colour >> 16) & 0x1ff) / 360.;
+	l = ((colour >> 8) & 0xff) / 100.;
+	s = (colour & 0xff) / 100.;
+	if (s == 0) {
+		*r = *g = *b = l * 255 + 0.5;
+		return;
+	}
+	q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+	p = 2 * l - q;
+
+	/* SIXEL HLS has blue at 0, red at 120 and green at 240 degrees. */
+	*r = sixel_hue(p, q, h) * 255 + 0.5;
+	*g = sixel_hue(p, q, h - 1. / 3) * 255 + 0.5;
+	*b = sixel_hue(p, q, h + 1. / 3) * 255 + 0.5;
 }
 
-static void
-sixel_print_repeat(char **buf, size_t *len, size_t *used, u_int count, char ch)
+/* Convert a SIXEL image into the common RGBA format. */
+struct image *
+sixel_to_image(struct sixel_image *si)
 {
-	char	tmp[16];
-	size_t	tmplen;
+	struct image	*im;
+	u_char		*pixels, *pixel, r, g, b;
+	u_int		 x, y, c, sx, sy;
 
-	if (count == 1)
-		sixel_print_add(buf, len, used, &ch, 1);
-	else if (count == 2) {
-		sixel_print_add(buf, len, used, &ch, 1);
-		sixel_print_add(buf, len, used, &ch, 1);
-	} else if (count == 3) {
-		sixel_print_add(buf, len, used, &ch, 1);
-		sixel_print_add(buf, len, used, &ch, 1);
-		sixel_print_add(buf, len, used, &ch, 1);
-	} else if (count != 0) {
-		tmplen = xsnprintf(tmp, sizeof tmp, "!%u%c", count, ch);
-		sixel_print_add(buf, len, used, tmp, tmplen);
-	}
-}
-
-static void
-sixel_print_compress_colors(struct sixel_image *si, struct sixel_chunk *chunks,
-    u_int y, u_int *active, u_int *nactive)
-{
-	u_int			 i, x, c, dx, colors[6];
-	struct sixel_chunk	*chunk = NULL;
-	struct sixel_line	*sl;
-
-	for (x = 0; x < si->x; x++) {
-		for (i = 0; i < 6; i++) {
-			colors[i] = 0;
-			if (y + i < si->y) {
-				sl = &si->lines[y + i];
-				if (x < sl->x && sl->data[x] != 0) {
-					colors[i] = sl->data[x];
-					c = sl->data[x] - 1;
-					chunks[c].next_pattern |= 1 << i;
-				}
-			}
-		}
-
-		for (i = 0; i < 6; i++) {
-			if (colors[i] == 0)
-				continue;
-
-			c = colors[i] - 1;
-			chunk = &chunks[c];
-			if (chunk->next_x == x + 1)
-				continue;
-
-			if (chunk->next_y < y + 1) {
-				chunk->next_y = y + 1;
-				active[(*nactive)++] = c;
-			}
-
-			dx = x - chunk->next_x;
-			if (chunk->pattern != chunk->next_pattern || dx != 0) {
-				sixel_print_repeat(&chunk->data, &chunk->len,
-				    &chunk->used, chunk->count,
-				    chunk->pattern + 0x3f);
-				sixel_print_repeat(&chunk->data, &chunk->len,
-				    &chunk->used, dx, '?');
-				chunk->pattern = chunk->next_pattern;
-				chunk->count = 0;
-			}
-			chunk->count++;
-			chunk->next_pattern = 0;
-			chunk->next_x = x + 1;
-		}
-	}
-}
-
-char *
-sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
-{
-	char			*buf, tmp[64];
-	size_t			 len, used = 0, tmplen;
-	u_int			*colours, ncolours, used_colours, i, c, y;
-	u_int			*active, nactive;
-	struct sixel_chunk	*chunks, *chunk;
-
-	if (map != NULL) {
-		colours = map->colours;
-		ncolours = map->ncolours;
-	} else {
-		colours = si->colours;
-		ncolours = si->ncolours;
-	}
-
-	used_colours = si->used_colours;
-	if (used_colours == 0)
+	if ((uint64_t)si->x * si->y > IMAGE_SIZE_LIMIT / 4)
 		return (NULL);
-
-	len = 8192;
-	buf = xmalloc(len);
-
-	tmplen = xsnprintf(tmp, sizeof tmp, "\033P9;%uq", si->p2);
-	sixel_print_add(&buf, &len, &used, tmp, tmplen);
-
-	if (si->set_ra) {
-		tmplen = xsnprintf(tmp, sizeof tmp, "\"1;1;%u;%u", si->ra_x,
-		    si->ra_y);
-		sixel_print_add(&buf, &len, &used, tmp, tmplen);
-	}
-
-	chunks = xcalloc(used_colours, sizeof *chunks);
-	active = xcalloc(used_colours, sizeof *active);
-
-	for (i = 0; i < ncolours; i++) {
-		c = colours[i];
-		tmplen = xsnprintf(tmp, sizeof tmp, "#%u;%u;%u;%u;%u",
-		    i, c >> 25, (c >> 16) & 0x1ff, (c >> 8) & 0xff, c & 0xff);
-		sixel_print_add(&buf, &len, &used, tmp, tmplen);
-	}
-
-	for (i = 0; i < used_colours; i++) {
-		chunk = &chunks[i];
-		chunk->len = 8;
-		chunk->data = xmalloc(chunk->len);
-	}
-
-	for (y = 0; y < si->y; y += 6) {
-		nactive = 0;
-		sixel_print_compress_colors(si, chunks, y, active, &nactive);
-
-		for (i = 0; i < nactive; i++) {
-			c = active[i];
-			chunk = &chunks[c];
-			tmplen = xsnprintf(tmp, sizeof tmp, "#%u", c);
-			sixel_print_add(&buf, &len, &used, tmp, tmplen);
-			sixel_print_add(&buf, &len, &used, chunk->data,
-			    chunk->used);
-			sixel_print_repeat(&buf, &len, &used, chunk->count,
-			    chunk->pattern + 0x3f);
-			sixel_print_add(&buf, &len, &used, "$", 1);
-			chunk->used = chunk->next_x = chunk->count = 0;
-		}
-
-		if (buf[used - 1] == '$')
-			used--;
-		sixel_print_add(&buf, &len, &used, "-", 1);
-	}
-	if (buf[used - 1] == '-')
-		used--;
-
-	sixel_print_add(&buf, &len, &used, "\033\\", 2);
-
-	buf[used] = '\0';
-	if (size != NULL)
-		*size = used;
-
-	for (i = 0; i < used_colours; i++)
-		free(chunks[i].data);
-	free(active);
-	free(chunks);
-
-	return (buf);
-}
-
-struct screen *
-sixel_to_screen(struct sixel_image *si)
-{
-	struct screen		*s;
-	struct screen_write_ctx	 ctx;
-	struct grid_cell	 gc;
-	u_int			 x, y, sx, sy;
 
 	sixel_size_in_cells(si, &sx, &sy);
+	if ((uint64_t)sx * si->xpixel > UINT_MAX ||
+	    (uint64_t)sy * si->ypixel > UINT_MAX)
+		return (NULL);
 
-	s = xmalloc(sizeof *s);
-	screen_init(s, sx, sy, 0);
+	pixels = xcalloc((size_t)si->x * si->y, 4);
+	for (y = 0; y < si->y; y++) {
+		for (x = 0; x < si->x; x++) {
+			pixel = pixels + ((size_t)y * si->x + x) * 4;
 
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.attr |= (GRID_ATTR_CHARSET|GRID_ATTR_DIM);
-	utf8_set(&gc.data, '~');
+			c = sixel_get_pixel(si, x, y);
+			if (c == 0) {
+				pixel[3] = (si->p2 == 1 ? 0 : 255);
+				continue;
+			}
+			if (--c < si->ncolours)
+				sixel_colour_to_rgb(si->colours[c], &r, &g, &b);
+			else
+				r = g = b = 0;
 
-	screen_write_start(&ctx, s);
-	if (sx == 1 || sy == 1) {
-		for (y = 0; y < sy; y++) {
-			for (x = 0; x < sx; x++)
-				grid_view_set_cell(s->grid, x, y, &gc);
-		}
-	} else {
-		screen_write_box(&ctx, sx, sy, BOX_LINES_DEFAULT, NULL, NULL);
-		for (y = 1; y < sy - 1; y++) {
-			for (x = 1; x < sx - 1; x++)
-				grid_view_set_cell(s->grid, x, y, &gc);
+			pixel[0] = r;
+			pixel[1] = g;
+			pixel[2] = b;
+			pixel[3] = 255;
 		}
 	}
-	screen_write_stop(&ctx);
-	return (s);
+	im = image_create(si->x, si->y, sx * si->xpixel, sy * si->ypixel, sx,
+	    sy, pixels);
+	if (im == NULL)
+		free(pixels);
+	return (im);
+}
+
+/* Write a SIXEL image. */
+void
+sixel_write(__unused struct screen_write_ctx *ctx, struct sixel_image *si,
+    __unused u_int bg)
+{
+	struct image *im;
+
+	im = sixel_to_image(si);
+	sixel_free(si);
+	if (im == NULL)
+		return;
+	/* XXX image_write_sixel */
+	image_free(im);
 }

@@ -32,6 +32,9 @@ struct screen;
 struct screen_write_ctx;
 struct sixel_image;
 
+/* Maximum image size in bytes. */
+#define IMAGE_SIZE_LIMIT (64 * 1024 * 1024)
+
 /* View of all or part of an image. */
 struct image_view {
 	/* Position and size in the image, in pixels. */
@@ -92,15 +95,13 @@ void		 image_damage_screen(struct screen_write_ctx *, u_int, u_int,
 
 /* image-sixel.c */
 #define SIXEL_COLOUR_REGISTERS 1024
-struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int);
+struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int,
+		     u_int);
 void		 sixel_free(struct sixel_image *);
 void		 sixel_log(struct sixel_image *);
-void		 sixel_size_in_cells(struct sixel_image *, u_int *, u_int *);
-struct sixel_image *sixel_scale(struct sixel_image *, u_int, u_int, u_int,
-		     u_int, u_int, u_int, int);
-char		*sixel_print(struct sixel_image *, struct sixel_image *,
-		     size_t *);
-struct screen	*sixel_to_screen(struct sixel_image *);
+struct image	*sixel_to_image(struct sixel_image *);
+void		 sixel_write(struct screen_write_ctx *, struct sixel_image *,
+		     u_int);
 
 #endif /* ENABLE_IMAGES */
 

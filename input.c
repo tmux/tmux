@@ -2629,6 +2629,11 @@ input_dcs_dispatch(struct input_ctx *ictx)
 	const char		 prefix[] = "tmux;";
 	const u_int		 prefixlen = (sizeof prefix) - 1;
 	long long		 allow_passthrough = 0;
+#ifdef ENABLE_IMAGES
+	struct window		*w;
+	struct sixel_image	*si;
+	int			 p1, p2;
+#endif
 
 	if (wp == NULL)
 		oo = global_w_options;
@@ -2639,6 +2644,23 @@ input_dcs_dispatch(struct input_ctx *ictx)
 		log_debug("%s: %zu bytes (discard)", __func__, len);
 		return (0);
 	}
+
+#ifdef ENABLE_IMAGES
+	if (wp != NULL && buf[0] == 'q' && ictx->interm_len == 0) {
+		w = wp->window;
+		if (input_split(ictx) != 0)
+			return (0);
+		p1 = input_get(ictx, 0, 0, 0);
+		if (p1 == -1)
+			p1 = 0;
+		p2 = input_get(ictx, 1, 0, 0);
+		if (p2 == -1)
+			p2 = 0;
+		si = sixel_parse(buf, len, p1, p2, w->xpixel, w->ypixel);
+		if (si != NULL)
+			sixel_write(sctx, si, ictx->cell.cell.bg);
+	}
+#endif
 
 	/* DCS sequences with intermediate byte '$' (includes DECRQSS). */
 	if (ictx->interm_len == 1 && ictx->interm_buf[0] == '$') {
