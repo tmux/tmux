@@ -89,6 +89,7 @@ void		 image_grid_duplicate_lines(struct grid *, u_int, struct grid *,
 		     u_int, u_int);
 void		 image_grid_copy_area(struct grid *, u_int, u_int, struct grid *,
 		     u_int, u_int, u_int, u_int);
+void		 image_grid_resize_width(struct grid *, u_int);
 int		 image_grid_line_has_images(struct grid_line *);
 int		 image_grid_area_has_images(struct grid *, u_int, u_int, u_int,
 		     u_int);

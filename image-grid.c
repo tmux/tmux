@@ -49,6 +49,10 @@ struct image_placement {
 	struct image			*image;
 	struct image_spans		 spans;
 
+	/* Original column and first source column not yet placed. */
+	u_int				 x;
+	u_int				 recover_from;
+
 	TAILQ_ENTRY(image_placement)	 entry;
 };
 TAILQ_HEAD(image_placements, image_placement);
@@ -70,6 +74,12 @@ struct image_move {
 	u_int			 x;
 	u_int			 sx;
 	u_int			 source_x;
+	u_int			 source_y;
+};
+
+/* One image row to extend after a pane grows. */
+struct image_recover_row {
+	struct image_line	*line;
 	u_int			 source_y;
 };
 
@@ -312,6 +322,7 @@ image_grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)
 		moves[n].sx = span_end - start;
 		moves[n].source_x = span->source_x + start - span->x;
 		moves[n].source_y = span->source_y;
+		span->placement->recover_from = 0;
 		n++;
 	}
 	image_line_remove(line, px, nx);
@@ -338,6 +349,8 @@ image_copy_placement(struct grid *dst, struct image_placement *src,
 			return (map[i].destination);
 	}
 	plmt = image_placement_create(dst, src->image);
+	plmt->x = src->x;
+	plmt->recover_from = src->recover_from;
 
 	map = xreallocarray(map, n + 1, sizeof *map);
 	map[n].source = src;
@@ -413,6 +426,7 @@ image_grid_copy_area(struct grid *dst, u_int dx, u_int dy, struct grid *src,
 				dst_line = image_line_get(&dst->linedata[dy + row]);
 			plmt = image_copy_placement(dst, span->placement, &maps,
 			    &nmaps);
+			plmt->recover_from = 0;
 			image_span_add(dst_line, plmt, dx + start - px,
 			    span_end - start, span->source_x + start - span->x,
 			    span->source_y);
@@ -549,6 +563,74 @@ image_add_row(struct image_line *line, struct image_placement *plmt,
 	}
 }
 
+/* Add newly visible columns from one image row. */
+static void
+image_extend_row(struct image_line *line, struct image_placement *plmt,
+    u_int cx, u_int src_y, u_int from, u_int to)
+{
+	struct image	*im = plmt->image;
+	u_int		 x, run;
+
+	for (x = from; x < to; x += run) {
+		if (!image_cell_has_visible_pixels(im, x, src_y)) {
+			run = 1;
+			continue;
+		}
+		for (run = 1; x + run < to; run++) {
+			if (!image_cell_has_visible_pixels(im, x + run, src_y))
+				break;
+		}
+		image_span_add(line, plmt, cx + x, run, x, src_y);
+	}
+}
+
+/* Extend image rows when grid is resized. */
+void
+image_grid_resize_width(struct grid *gd, u_int new_sx)
+{
+	struct image_placement		*plmt;
+	struct image_span		*span;
+	struct image_recover_row	*rows;
+	u_int				 image_sx, image_sy, from, to;
+	u_int				 nrows, i;
+
+	if (gd->images == NULL)
+		return;
+	TAILQ_FOREACH(plmt, &gd->images->placements, entry) {
+		from = plmt->recover_from;
+		if (from == 0 || plmt->x >= new_sx)
+			continue;
+		image_get_size_in_cells(plmt->image, &image_sx, &image_sy);
+
+		to = new_sx - plmt->x;
+		if (to > image_sx)
+			to = image_sx;
+		if (to <= from)
+			continue;
+
+		rows = NULL;
+		nrows = 0;
+		TAILQ_FOREACH(span, &plmt->spans, placement_entry) {
+			for (i = 0; i < nrows; i++) {
+				if (rows[i].line == span->line)
+					break;
+			}
+			if (i != nrows)
+				continue;
+			rows = xreallocarray(rows, nrows + 1, sizeof *rows);
+			rows[nrows].line = span->line;
+			rows[nrows].source_y = span->source_y;
+			nrows++;
+		}
+		for (i = 0; i < nrows; i++) {
+			image_extend_row(rows[i].line, plmt, plmt->x,
+			    rows[i].source_y, from, to);
+		}
+		free(rows);
+		plmt->recover_from = (to == image_sx ? 0 : to);
+	}
+}
+
 /* Place a SIXEL image at the cursor. */
 void
 image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
@@ -559,10 +641,12 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
 	struct grid_line	*gl;
 	struct image_line	*line;
 	u_int			 cx = s->cx, cy = s->cy, y, sx, sy, lines;
+	u_int			 image_sx;
 	u_int			 origin_y = 0, h_origin_y, region_height;
 	u_int			 remaining, n;
 
 	image_get_size_in_cells(im, &sx, &sy);
+	image_sx = sx;
 	if (sx > screen_size_x(s) - cx)
 		sx = screen_size_x(s) - cx;
 	if (sx == 0)
@@ -594,6 +678,10 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
 		sy -= origin_y;
 	}
 	plmt = image_placement_create(gd, im);
+	if (sx < image_sx) {
+		plmt->x = cx;
+		plmt->recover_from = sx;
+	}
 
 	/* Attach scrolled image rows to the available history lines. */
 	h_origin_y = origin_y;
