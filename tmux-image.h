@@ -24,6 +24,7 @@
 #error image support is not ready yet
 
 struct grid;
+struct grid_cell;
 struct grid_line;
 struct image;
 struct image_line;
@@ -31,6 +32,7 @@ struct image_store;
 struct screen;
 struct screen_write_ctx;
 struct sixel_image;
+struct tty;
 
 /* Maximum image size in bytes. */
 #define IMAGE_SIZE_LIMIT (64 * 1024 * 1024)
@@ -95,6 +97,12 @@ void		 image_redraw_scroll(struct screen_write_ctx *);
 void		 image_damage_screen(struct screen_write_ctx *, u_int, u_int,
 		     u_int, u_int);
 void		 image_write(struct screen_write_ctx *, struct image *, u_int);
+int		 image_grid_get_at(struct grid *, u_int, u_int, struct image **,
+		     u_int *, u_int *);
+
+/* image-fallback.c */
+const struct grid_cell *fallback_map_cell(struct tty *, struct grid *, u_int,
+		     u_int, const struct grid_cell *, struct grid_cell *, int *);
 
 /* image-sixel.c */
 #define SIXEL_COLOUR_REGISTERS 1024

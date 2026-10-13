@@ -460,7 +460,7 @@ image_damage_screen(struct screen_write_ctx *ctx, u_int x, u_int y, u_int sx,
 		image_grid_remove(s->grid, x, s->grid->hsize + y, sx, sy);
 }
 
-/* Return whether an image cell has any visible pixels. */
+/* Check whether an image cell has any visible pixels. */
 static int
 image_cell_has_visible_pixels(struct image *im, u_int x, u_int y)
 {
@@ -568,4 +568,29 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
 	image_store_prune(gd->images);
 	image_redraw_area(ctx, cx, cy, sx, sy);
 	screen_write_cursormove(ctx, 0, cy + sy, 0);
+}
+
+/* Find the cell within an image at a grid position. */
+int
+image_grid_get_at(struct grid *gd, u_int x, u_int y, struct image **im,
+    u_int *src_x, u_int *src_y)
+{
+	struct image_line	*line;
+	struct image_span	*span, *found = NULL;
+
+	if (y >= gd->hsize + gd->sy)
+		return (0);
+	line = gd->linedata[y].images;
+	if (line == NULL)
+		return (0);
+	TAILQ_FOREACH(span, &line->spans, line_entry) {
+		if (x >= span->x && x < span->x + span->sx)
+			found = span;
+	}
+	if (found == NULL)
+		return (-1);
+	*im = found->placement->image;
+	*src_x = found->source_x + x - found->x;
+	*src_y = found->source_y;
+	return (1);
 }

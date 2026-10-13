@@ -86,7 +86,7 @@ image_find(u_int id)
 	return (RB_FIND(images, &images, &find));
 }
 
-/* Return the ID of an image. */
+/* Get the ID of an image. */
 u_int
 image_get_id(struct image *im)
 {
@@ -139,7 +139,7 @@ image_create(u_int w, u_int h, u_int cw, u_int ch, u_int sx, u_int sy,
 		return (NULL);
 	if (sx > USHRT_MAX || sy > USHRT_MAX)
 		return (NULL);
-	if (sx * sy > IMAGE_SIZE_LIMIT)
+	if ((uint64_t)sx * sy > IMAGE_SIZE_LIMIT)
 		return (NULL);
 
 	im = image_alloc(w, h, cw, ch, sx, sy, w * 4, pixels);
@@ -198,7 +198,7 @@ image_create_view(struct image *src, struct image_view *view)
 	    view->height > src->height - view->y ||
 	    view->sx > USHRT_MAX ||
 	    view->sy > USHRT_MAX ||
-	    view->sx * view->sy > IMAGE_SIZE_LIMIT ||
+	    (uint64_t)view->sx * view->sy > IMAGE_SIZE_LIMIT ||
 	    view->canvas_xoff > view->canvas_width ||
 	    view->scaled_width > view->canvas_width - view->canvas_xoff ||
 	    view->canvas_yoff > view->canvas_height ||
@@ -255,7 +255,7 @@ image_free(struct image *im)
 	}
 }
 
-/* Return image size in pixels. */
+/* Get image size in pixels. */
 void
 image_get_size(struct image *im, u_int *w, u_int *h)
 {
@@ -263,7 +263,7 @@ image_get_size(struct image *im, u_int *w, u_int *h)
 	*h = im->height;
 }
 
-/* Return canvas size in pixels. */
+/* Get canvas size in pixels. */
 void
 image_get_canvas_size(struct image *im, u_int *w, u_int *h)
 {
@@ -271,7 +271,7 @@ image_get_canvas_size(struct image *im, u_int *w, u_int *h)
 	*h = im->canvas_height;
 }
 
-/* Return image size in cells. */
+/* Get image size in cells. */
 void
 image_get_size_in_cells(struct image *im, u_int *sx, u_int *sy)
 {
@@ -279,7 +279,7 @@ image_get_size_in_cells(struct image *im, u_int *sx, u_int *sy)
 	*sy = im->sy;
 }
 
-/* Return image pixels. */
+/* Get image pixels. */
 const u_char *
 image_get_pixels(struct image *im, size_t *stride, size_t *size)
 {
