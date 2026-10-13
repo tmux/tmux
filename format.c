@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.427 2026/10/12 12:22:42 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.428 2026/10/13 10:21:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2354,6 +2354,17 @@ format_cb_pane_last_prompt_time(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_command_line. */
+static void *
+format_cb_pane_command_line(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL && wp->cmd_line != NULL)
+		return (xstrdup(wp->cmd_line));
+	return (NULL);
+}
+
 /* Callback for pane_command_start_time. */
 static void *
 format_cb_pane_command_start_time(struct format_tree *ft)
@@ -3842,6 +3853,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_command_end_time", FORMAT_TABLE_TIME,
 	  format_cb_pane_command_end_time
+	},
+	{ "pane_command_line", FORMAT_TABLE_STRING,
+	  format_cb_pane_command_line
 	},
 	{ "pane_command_running", FORMAT_TABLE_STRING,
 	  format_cb_pane_command_running

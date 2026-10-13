@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.273 2026/10/08 07:50:05 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.276 2026/10/13 10:21:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2032,6 +2032,7 @@ static void
 input_csi_dispatch_sm_private(struct input_ctx *ictx)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
+	struct window_pane	*wp = ictx->wp;
 	struct grid_cell	*gc = &ictx->cell.cell;
 	u_int			 i;
 
@@ -2093,13 +2094,13 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 			break;
 		case 2031:
 			screen_write_mode_set(sctx, MODE_THEME_UPDATES);
-			if (ictx->wp != NULL) {
-				ictx->wp->last_theme = window_pane_get_theme(ictx->wp);
-				ictx->wp->flags &= ~PANE_THEMECHANGED;
+			if (wp != NULL) {
+				wp->last_theme = window_pane_get_theme(wp);
+				wp->flags &= ~PANE_THEMECHANGED;
 			}
 			break;
 		case 2026:
-			screen_write_start_sync(ictx->wp);
+			screen_write_start_sync(wp);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
@@ -2666,7 +2667,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 			p2 = 0;
 		si = sixel_parse(buf, len, p1, p2, w->xpixel, w->ypixel);
 		if (si != NULL)
-			screen_write_sixelimage(sctx, si, ictx->cell.cell.bg);
+			sixel_write(sctx, si, ictx->cell.cell.bg);
 	}
 #endif
 
@@ -2867,7 +2868,7 @@ input_handle_kitty(struct input_ctx *ictx, const u_char *buf, size_t len)
 	} else if (im != NULL) {
 		image_write_kitty(sctx, im, ictx->cell.cell.bg,
 		    result.image_id, result.placement_id, result.z);
-		image_free(image_get_id(im));
+		image_free(im);
 	}
 	if (result.action != 'd')
 		input_reply_kitty(ictx, &result, "OK");
@@ -3336,6 +3337,52 @@ input_osc_133_exit_status(const char *p)
 	return (status);
 }
 
+/* Parse and clean the URL-encoded command line from OSC 133 C. */
+static char *
+input_osc_133_command_line(const char *p)
+{
+	const char	*end;
+	char		 line[16385], h[3] = { 0 };
+	size_t		 size = 0;
+	u_char		 ch;
+
+	if (p[1] != ';')
+		return (NULL);
+	p += 2;
+	for (;;) {
+		end = strchr(p, ';');
+		if (end == NULL)
+			end = p + strlen(p);
+		if (end - p >= 12 && strncmp(p, "cmdline_url=", 12) == 0)
+			break;
+		if (*end == '\0')
+			return (NULL);
+		p = end + 1;
+	}
+	p += 12;
+	while (p < end) {
+		if (size == sizeof line - 1)
+			return (NULL);
+		ch = *p++;
+		if (ch == '%') {
+			if (end - p < 2 ||
+			    !isxdigit((u_char)p[0]) ||
+			    !isxdigit((u_char)p[1]))
+				return (NULL);
+			h[0] = p[0];
+			h[1] = p[1];
+
+			ch = strtoul(h, NULL, 16);
+			if (ch == '\0')
+				return (NULL);
+			p += 2;
+		}
+		line[size++] = ch;
+	}
+	line[size] = '\0';
+	return (clean_name(line, 1));
+}
+
 /* Fire an OSC 133 command event. */
 static void
 input_fire_command_event(struct window_pane *wp, const char *name)
@@ -3355,6 +3402,8 @@ input_fire_command_event(struct window_pane *wp, const char *name)
 	event_payload_set_window(ep, "window", wp->window);
 	event_payload_set_pane(ep, "pane", wp);
 
+	if (wp->cmd_line != NULL)
+		event_payload_set_string(ep, "command_line", "%s", wp->cmd_line);
 	if (wp->cmd_status != -1)
 		event_payload_set_int(ep, "command_status", wp->cmd_status);
 	if (tstart != 0)
@@ -3426,6 +3475,8 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 			gl->osc133_data.out_start_col = s->cx;
 		}
 		if (wp != NULL) {
+			free(wp->cmd_line);
+			wp->cmd_line = input_osc_133_command_line(p);
 			wp->cmd_start_time = time(NULL);
 			wp->cmd_end_time = 0;
 			wp->flags |= PANE_CMDRUNNING;

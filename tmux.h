@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1457 2026/10/12 12:35:03 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1459 2026/10/13 10:21:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -19,11 +19,13 @@
 #ifndef TMUX_H
 #define TMUX_H
 
+#include <sys/types.h>
 #include <sys/time.h>
 #include <sys/uio.h>
 
 #include <limits.h>
 #include <stdarg.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <termios.h>
 #include <wchar.h>
@@ -33,6 +35,7 @@
 #endif
 
 #include "compat.h"
+#include "tmux-image.h"
 #include "tmux-protocol.h"
 #include "xmalloc.h"
 
@@ -76,15 +79,6 @@ struct screen_write_citem;
 struct screen_write_cline;
 struct screen_write_ctx;
 struct session;
-
-#ifdef ENABLE_IMAGES
-struct image;
-struct image_backend;
-struct image_rect;
-struct image_line;
-struct image_store;
-struct sixel_image;
-#endif
 
 struct tty_ctx;
 struct tty_code;
@@ -1048,123 +1042,6 @@ struct style {
 	u_int			link;
 };
 
-#ifdef ENABLE_IMAGES
-/* Private ACS keys used by the text image backend. */
-#define TTY_ACS_IMAGE_SHADE_LIGHT 0x80
-#define TTY_ACS_IMAGE_SHADE_MEDIUM 0x81
-#define TTY_ACS_IMAGE_SHADE_DARK 0x82
-#define TTY_ACS_IMAGE_BLOCK 0x83
-#define TTY_ACS_IMAGE_HALF_UPPER 0x84
-#define TTY_ACS_IMAGE_HALF_LOWER 0x85
-#define TTY_ACS_IMAGE_HALF_LEFT 0x86
-#define TTY_ACS_IMAGE_HALF_RIGHT 0x87
-#define TTY_ACS_IMAGE_QUADRANT_LOWER_LEFT 0x88
-#define TTY_ACS_IMAGE_QUADRANT_LOWER_RIGHT 0x89
-#define TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT 0x8a
-#define TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT_LOWER_LEFT_LOWER_RIGHT 0x8b
-#define TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT_LOWER_RIGHT 0x8c
-#define TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT_UPPER_RIGHT_LOWER_LEFT 0x8d
-#define TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT_UPPER_RIGHT_LOWER_RIGHT 0x8e
-#define TTY_ACS_IMAGE_QUADRANT_UPPER_RIGHT 0x8f
-#define TTY_ACS_IMAGE_QUADRANT_UPPER_RIGHT_LOWER_LEFT 0x90
-#define TTY_ACS_IMAGE_QUADRANT_UPPER_RIGHT_LOWER_LEFT_LOWER_RIGHT 0x91
-#define TTY_ACS_IMAGE_SEXTANT_FIRST 0x92
-#define TTY_ACS_IMAGE_SEXTANT_LAST 0xcd
-
-/* Averaged RGBA colour and brightness used by the text image backend. */
-struct image_sample {
-	u_char			 red;
-	u_char			 green;
-	u_char			 blue;
-	u_char			 alpha;
-	u_char			 brightness;
-};
-#define IMAGE_SAMPLE_COLUMNS 2
-#define IMAGE_SAMPLE_ROWS 6
-/* Whole-cell and subcell samples generated lazily for one image cell. */
-struct image_cell {
-	struct image_sample	 whole;
-	struct image_sample	 samples[IMAGE_SAMPLE_ROWS][IMAGE_SAMPLE_COLUMNS];
-};
-/* Immutable pixels and derived output data shared by image placements. */
-struct image {
-	u_int			 id;
-	u_int			 references;
-	u_int			 flags;
-	/* Retained parent (zero for sources) and original source IDs. */
-	u_int			 parent_id;
-	u_int			 source_id;
-	u_int			 order_id;	/* Original creation order. */
-	/* Pixel dimensions, including the logical transparent canvas. */
-	u_int			 width;
-	u_int			 height;
-	u_int			 canvas_width;
-	u_int			 canvas_height;
-	/* Grid dimensions and pixel buffer lengths in bytes. */
-	u_int			 sx;
-	u_int			 sy;
-	size_t			 stride;
-	size_t			 size;
-	u_char			*pixels;
-	struct sixel_image	*sixel;
-	struct image_cell	*cells;
-	void			*fallback_data;
-
-	RB_ENTRY(image)		 entry;
-};
-RB_HEAD(images, image);
-#define IMAGE_SIZE_LIMIT (64 * 1024 * 1024)
-
-/* Source crop and padded destination canvas for creating an image view. */
-struct image_view {
-	u_int	 x;		/* Crop origin in source pixels. */
-	u_int	 y;
-	u_int	 width;		/* Crop size in source pixels. */
-	u_int	 height;
-	u_int	 scaled_width;	/* Resampled crop size in pixels. */
-	u_int	 scaled_height;
-	u_int	 canvas_width;	/* Padded canvas size in pixels. */
-	u_int	 canvas_height;
-	u_int	 sx;		/* Placement size in cells. */
-	u_int	 sy;
-	u_int	 x_offset;	/* Crop origin in canvas pixels. */
-	u_int	 y_offset;
-};
-
-enum kitty_parse_status {
-	KITTY_PARSE_ERROR = -1,
-	KITTY_PARSE_OK,
-	KITTY_PARSE_MORE,
-	KITTY_PARSE_MISSING,
-	KITTY_PARSE_UNSUPPORTED
-};
-
-/* Reply fields and placement actions returned by one Kitty command. */
-struct kitty_parse_result {
-	u_int			 image_id;
-	u_int			 image_number;
-	u_int			 replace_id;	/* Old server ID, or zero. */
-	u_int			 placement_id;
-	u_int			 quiet;
-	u_int			 x;		/* Deletion coordinates. */
-	u_int			 y;
-	int32_t			 z;
-	char			 action;
-	char			 delete;
-	enum kitty_parse_status	 status;
-};
-
-/* Resolved source cell and application IDs of one Unicode placeholder. */
-struct kitty_placeholder {
-	struct image		*image;
-	u_int			 source_x;	/* Origin in image cells. */
-	u_int			 source_y;
-	u_int			 image_id;
-	u_int			 placement_id;
-	int32_t			 z;
-};
-#endif
-
 /* Cursor style. */
 enum screen_cursor_style {
 	SCREEN_CURSOR_DEFAULT,
@@ -1493,6 +1370,7 @@ struct window_pane {
 	time_t		 cmd_start_time;
 	time_t		 cmd_end_time;
 	int		 cmd_status;
+	char		*cmd_line;
 
 	int		 fd;
 	struct bufferevent *event;
@@ -3764,10 +3642,6 @@ void	 screen_write_setselection(struct screen_write_ctx *, const char *,
 	     u_char *, u_int);
 void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int,
 	     int);
-#ifdef ENABLE_IMAGES
-void	 screen_write_sixelimage(struct screen_write_ctx *,
-	     struct sixel_image *, u_int);
-#endif
 void	 screen_write_alternateon(struct screen_write_ctx *,
 	     struct grid_cell *, int);
 void	 screen_write_alternateoff(struct screen_write_ctx *,
@@ -4356,115 +4230,6 @@ void		 spawn_editor_finish(struct window_pane *);
 
 /* regsub.c */
 char		*regsub(const char *, const char *, const char *, int);
-
-#ifdef ENABLE_IMAGES
-/* image.c */
-#define IMAGE_BACKEND_GRAPHICAL 0x1
-#define IMAGE_BACKEND_SCROLLS   0x2
-#define IMAGE_BACKEND_CLIPPED   0x4
-
-struct image	*image_create(u_int, u_int, u_int, u_int, u_int, u_int,
-		     u_char *);
-struct image	*image_create_view(struct image *, const struct image_view *);
-struct image	*image_find(u_int);
-u_int		 image_get_id(const struct image *);
-void		 image_get_size(const struct image *, u_int *, u_int *);
-void		 image_get_canvas_size(const struct image *, u_int *, u_int *);
-void		 image_get_size_in_cells(const struct image *, u_int *, u_int *);
-const u_char	*image_get_pixels(const struct image *, size_t *, size_t *);
-void		 image_set_no_cursor(struct image *);
-struct sixel_image *image_get_sixel(const struct image *);
-void		 image_set_sixel(struct image *, struct sixel_image *);
-void		 image_ref(u_int);
-void		 image_free(u_int);
-void		 image_write_sixel(struct screen_write_ctx *, struct image *,
-		     u_int);
-void		 image_write_kitty(struct screen_write_ctx *, struct image *,
-		     u_int, u_int, u_int, int32_t);
-void		 image_get_pixel_rect(const struct image *, u_int, u_int,
-		     u_int, u_int, u_int *, u_int *, u_int *, u_int *);
-void		 image_size_in_cells(u_int, u_int, u_int, u_int, u_int *,
-		     u_int *);
-u_char		*image_base64_decode(const char *, size_t, size_t, size_t *);
-u_char		*image_png_decode(const u_char *, size_t, size_t, u_int *,
-		     u_int *);
-void		 image_redraw_area(struct screen_write_ctx *, u_int, u_int,
-		     u_int, u_int);
-void		 image_redraw_all(struct screen_write_ctx *);
-void		 image_redraw_scroll(struct screen_write_ctx *);
-void		 image_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
-void		 image_redraw_finish(struct tty *);
-void		 image_draw_flush(struct tty *);
-int		 image_backend_flags(struct tty *);
-int		 image_tty_update(struct tty *);
-void		 image_tty_geometry_changed(struct tty *);
-void		 image_tty_free(struct tty *, int);
-void		 image_draw_line(struct tty *, struct screen *, u_int, u_int,
-		     u_int, u_int, u_int, int);
-const struct image_cell *image_get_cell(struct image *, u_int, u_int);
-int		 image_get_fallback_at(struct tty *, struct screen *, u_int,
-		     u_int, const struct grid_cell *, struct grid_cell *);
-struct image	*image_rect_get_image(const struct image_rect *);
-void		 image_rect_get_coords(const struct image_rect *,
-		     u_int *, u_int *, u_int *, u_int *, u_int *, u_int *);
-int64_t		 image_rect_get_z(const struct image_rect *);
-void		 image_clear(struct screen_write_ctx *, u_int);
-void		 image_clear_kitty(struct screen_write_ctx *,
-		     const struct kitty_parse_result *);
-int		 image_grid_has_image(struct grid *, u_int);
-void		 image_grid_remove_overwritten_spans(struct grid *, u_int,
-		     u_int, u_int, u_int);
-void		 image_grid_free_line(struct grid *, struct grid_line *);
-void		 image_grid_free(struct grid *);
-void		 image_grid_move_cells(struct grid *, u_int, u_int, u_int,
-		     u_int);
-void		 image_grid_duplicate_lines(struct grid *, u_int, struct grid *,
-		     u_int, u_int);
-void		 image_grid_copy_area(struct grid *, u_int, u_int, struct grid *,
-		     u_int, u_int, u_int, u_int);
-void		 image_grid_resize_width(struct grid *, u_int);
-int		 image_grid_line_has_images(const struct grid_line *);
-int		 image_grid_area_has_images(struct grid *, u_int, u_int, u_int,
-		     u_int);
-int		 image_grid_get_placeholder(struct grid *, u_int, u_int,
-		     struct kitty_placeholder *);
-void		 image_place_cell_kitty(struct screen_write_ctx *, struct image *,
-		     u_int, u_int, u_int, u_int, u_int, u_int, int32_t);
-
-/* image-fallback.c */
-void		 fallback_get_cell(struct tty *, struct image *, u_int,
-		     u_int, const struct grid_cell *, struct grid_cell *);
-void		 fallback_free(struct image *);
-
-/* image-kitty.c */
-struct image	*kitty_parse_image(void **, const u_char *, size_t, u_int,
-		     u_int, struct kitty_parse_result *);
-int		 kitty_placeholder_to_image(void *, struct grid *,
-		     struct grid_cell *, u_int, u_int,
-		     struct kitty_placeholder *);
-int		 kitty_cell_is_placeholder(const struct grid_cell *);
-void		 kitty_delete_images(void *, struct screen_write_ctx *,
-		     const struct kitty_parse_result *);
-void		 kitty_free_state(void *);
-void		 kitty_draw_rect(struct tty *,
-		     const struct image_rect *);
-void		 kitty_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
-void		 kitty_redraw_finish(struct tty *);
-void		 kitty_free_output_state(struct tty *, int);
-
-/* image-sixel.c */
-#define SIXEL_COLOUR_REGISTERS 1024
-void		 sixel_draw_rect(struct tty *,
-		     const struct image_rect *);
-void		 sixel_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
-void		 sixel_free_output(struct tty *, int);
-void		 sixel_flush_output(struct tty *);
-struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int,
-    u_int);
-void		 sixel_free(struct sixel_image *);
-void		 sixel_log(struct sixel_image *);
-struct image	*sixel_to_image(struct sixel_image *);
-#endif
 
 /* server-acl.c */
 #define SERVER_ACL_READONLY 0x1

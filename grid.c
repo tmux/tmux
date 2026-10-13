@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.160 2026/10/12 08:08:37 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.161 2026/10/12 15:40:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -701,6 +701,9 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny, u_int bg)
 		return;
 	if (grid_check_y(gd, __func__, py + ny - 1) != 0)
 		return;
+#ifdef ENABLE_IMAGES
+	image_grid_remove(gd, px, py, nx, ny);
+#endif
 
 	for (yy = py; yy < py + ny; yy++) {
 		gl = &gd->linedata[yy];
@@ -1262,17 +1265,13 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 	struct grid_line	*dstl, *srcl;
 	u_int			 yy;
 #ifdef ENABLE_IMAGES
-	u_int			 original_dy, original_sy;
+	u_int			 ody = dy, osy = sy;
 #endif
 
 	if (dy + ny > dst->hsize + dst->sy)
 		ny = dst->hsize + dst->sy - dy;
 	if (sy + ny > src->hsize + src->sy)
 		ny = src->hsize + src->sy - sy;
-#ifdef ENABLE_IMAGES
-	original_dy = dy;
-	original_sy = sy;
-#endif
 	grid_free_lines(dst, dy, ny);
 
 	for (yy = 0; yy < ny; yy++) {
@@ -1303,7 +1302,7 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 		dy++;
 	}
 #ifdef ENABLE_IMAGES
-	image_grid_duplicate_lines(dst, original_dy, src, original_sy, ny);
+	image_grid_duplicate_lines(dst, ody, src, osy, ny);
 #endif
 }
 

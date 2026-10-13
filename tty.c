@@ -1487,7 +1487,6 @@ tty_check_codeset(struct tty *tty, const struct grid_cell *gc)
 	return (&new);
 }
 
-
 void
 tty_sync_start(struct tty *tty)
 {

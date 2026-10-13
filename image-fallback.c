@@ -252,27 +252,31 @@ fallback_block_key(enum image_glyph_detail detail, u_int mask)
 static u_char *
 fallback_make_shades(struct image *im, u_int levels)
 {
-	struct image_glyph_data	*data = im->fallback_data;
+	struct image_glyph_data	*data = image_get_fallback_data(im);
 	const struct image_cell	*cell;
 	int			*values, value, represented, error;
 	size_t			 cells, index;
 	u_int			 x, y, scan, level, minimum = 255, maximum = 0;
+	u_int			 sx, sy;
 	int			 reverse;
 	u_char			*result;
 
-	if (data == NULL)
-		data = im->fallback_data = xcalloc(1, sizeof *data);
+	if (data == NULL) {
+		data = xcalloc(1, sizeof *data);
+		image_set_fallback_data(im, data);
+	}
+	image_get_size_in_cells(im, &sx, &sy);
 	result = (levels == 5 ? data->shade5 : data->shade8);
 	if (result != NULL)
 		return (result);
 
 	/* Collect cell brightness and the range used by this image. */
-	cells = (size_t)im->sx * im->sy;
+	cells = (size_t)sx * sy;
 	values = xcalloc(cells, sizeof *values);
 	result = xcalloc(cells, 1);
-	for (y = 0; y < im->sy; y++) {
-		for (x = 0; x < im->sx; x++) {
-			index = (size_t)y * im->sx + x;
+	for (y = 0; y < sy; y++) {
+		for (x = 0; x < sx; x++) {
+			index = (size_t)y * sx + x;
 			cell = image_get_cell(im, x, y);
 			value = cell->whole.brightness;
 			if ((u_int)value < minimum)
@@ -291,11 +295,11 @@ fallback_make_shades(struct image *im, u_int levels)
 	}
 
 	/* Dither each row, alternating direction to distribute the error. */
-	for (y = 0; y < im->sy; y++) {
+	for (y = 0; y < sy; y++) {
 		reverse = (y & 1);
-		for (scan = 0; scan < im->sx; scan++) {
-			x = (reverse ? im->sx - scan - 1 : scan);
-			index = (size_t)y * im->sx + x;
+		for (scan = 0; scan < sx; scan++) {
+			x = (reverse ? sx - scan - 1 : scan);
+			index = (size_t)y * sx + x;
 			value = values[index];
 			if (value < 0)
 				value = 0;
@@ -305,21 +309,21 @@ fallback_make_shades(struct image *im, u_int levels)
 			result[index] = level;
 			represented = level * 255 / (levels - 1);
 			error = value - represented;
-			if (!reverse && x + 1 < im->sx)
+			if (!reverse && x + 1 < sx)
 				values[index + 1] += error * 7 / 16;
 			if (reverse && x != 0)
 				values[index - 1] += error * 7 / 16;
-			if (y + 1 == im->sy)
+			if (y + 1 == sy)
 				continue;
 			if (!reverse && x != 0)
-				values[index + im->sx - 1] += error * 3 / 16;
-			if (reverse && x + 1 < im->sx)
-				values[index + im->sx + 1] += error * 3 / 16;
-			values[index + im->sx] += error * 5 / 16;
-			if (!reverse && x + 1 < im->sx)
-				values[index + im->sx + 1] += error / 16;
+				values[index + sx - 1] += error * 3 / 16;
+			if (reverse && x + 1 < sx)
+				values[index + sx + 1] += error * 3 / 16;
+			values[index + sx] += error * 5 / 16;
+			if (!reverse && x + 1 < sx)
+				values[index + sx + 1] += error / 16;
 			if (reverse && x != 0)
-				values[index + im->sx - 1] += error / 16;
+				values[index + sx - 1] += error / 16;
 		}
 	}
 	free(values);
@@ -447,7 +451,7 @@ fallback_get_cell(struct tty *tty, struct image *im, u_int x, u_int y,
 	enum image_glyph_palette	 palette;
 	enum image_glyph_detail	 detail;
 	u_char			*levels, key;
-	u_int			 level = 0, nlevels;
+	u_int			 level = 0, nlevels, sx, sy;
 
 	memcpy(out, gc, sizeof *out);
 	cell = image_get_cell(im, x, y);
@@ -469,7 +473,8 @@ fallback_get_cell(struct tty *tty, struct image *im, u_int x, u_int y,
 		if (detail == IMAGE_GLYPH_SHADE5)
 			nlevels = 5;
 		levels = fallback_make_shades(im, nlevels);
-		level = levels[(size_t)y * im->sx + x];
+		image_get_size_in_cells(im, &sx, &sy);
+		level = levels[(size_t)y * sx + x];
 		key = (detail == IMAGE_GLYPH_SHADE5 ? shades[level] :
 		    bold_shades[level]);
 		if (key == 0)
@@ -492,7 +497,7 @@ fallback_get_cell(struct tty *tty, struct image *im, u_int x, u_int y,
 void
 fallback_free(struct image *im)
 {
-	struct image_glyph_data	*data = im->fallback_data;
+	struct image_glyph_data	*data = image_get_fallback_data(im);
 
 	if (data == NULL)
 		return;

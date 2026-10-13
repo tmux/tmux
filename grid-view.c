@@ -74,6 +74,10 @@ grid_view_clear_history(struct grid *gd, u_int bg)
 		gl = grid_get_line(gd, grid_view_y(gd, yy));
 		if (gl->cellused != 0)
 			last = yy + 1;
+#ifdef ENABLE_IMAGES
+		else if (image_grid_line_has_images(gl))
+			last = yy + 1;
+#endif
 	}
 	if (last == 0) {
 		grid_view_clear(gd, 0, 0, gd->sx, gd->sy, bg);

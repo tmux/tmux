@@ -1695,3 +1695,18 @@ sixel_redraw_start(struct tty *tty, u_int x, u_int y, u_int sx, u_int sy)
 			tty_repeat_space(tty, sx);
 	}
 }
+
+/* Write a SIXEL image and release the parsed data. */
+void
+sixel_write(struct screen_write_ctx *ctx, struct sixel_image *si, u_int bg)
+{
+	struct image *im;
+
+	im = sixel_to_image(si);
+	if (im == NULL) {
+		sixel_free(si);
+		return;
+	}
+	image_write_sixel(ctx, im, bg);
+	image_free(im);
+}

@@ -595,7 +595,7 @@ kitty_upload(struct tty *tty, struct image *im)
 	} while (id == 0);
 	entry->server_id = image_get_id(im);
 	entry->kitty_id = id;
-	entry->order_id = im->order_id;
+	entry->order_id = image_get_order_id(im);
 	entry->xpixel = tty->xpixel;
 	entry->ypixel = tty->ypixel;
 	entry->next_placement = 0;
@@ -843,7 +843,7 @@ kitty_placements_free(struct kitty_source *source)
 	for (placement = source->placements; placement != NULL;
 	    placement = next) {
 		next = placement->next;
-		image_free(placement->server_id);
+		image_free(image_find(placement->server_id));
 		free(placement);
 	}
 	source->placements = NULL;
@@ -854,7 +854,7 @@ static void
 kitty_source_free(struct kitty_source *source)
 {
 	kitty_placements_free(source);
-	image_free(source->server_id);
+	image_free(image_find(source->server_id));
 	free(source);
 }
 
@@ -908,11 +908,11 @@ kitty_source_set(struct kitty_context *kc, u_int id, struct image *im)
 		old_id = source->server_id;
 		old = image_find(old_id);
 		if (old != NULL)
-			im->order_id = old->order_id;
+			image_set_order_id(im, image_get_order_id(old));
 		kitty_placements_free(source);
-		image_free(source->server_id);
+		image_free(image_find(source->server_id));
 	}
-	image_ref(image_get_id(im));
+	image_ref(im);
 	source->server_id = image_get_id(im);
 	return (old_id);
 }
@@ -945,10 +945,10 @@ kitty_placement_set(struct kitty_context *kc, const struct kitty_state *ks,
 	old_id = placement->server_id;
 	placement->z = ks->z;
 	placement->virtual = ks->virtual;
-	image_ref(image_get_id(im));
+	image_ref(im);
 	placement->server_id = image_get_id(im);
 	if (old_id != 0)
-		image_free(old_id);
+		image_free(image_find(old_id));
 	return (old_id);
 }
 
@@ -964,7 +964,7 @@ kitty_source_get(struct kitty_context *kc, u_int id)
 		return (NULL);
 	im = image_find(source->server_id);
 	if (im != NULL)
-		image_ref(image_get_id(im));
+		image_ref(im);
 	return (im);
 }
 
@@ -981,7 +981,7 @@ kitty_prune_placements(struct kitty_source *source, struct grid *gd)
 		if (image_grid_has_image(gd, placement->server_id))
 			goto keep;
 		*pp = placement->next;
-		image_free(placement->server_id);
+		image_free(image_find(placement->server_id));
 		free(placement);
 		removed++;
 		continue;
@@ -1040,7 +1040,7 @@ kitty_delete_images(void *state, struct screen_write_ctx *ctx,
 					goto keep_placement;
 				}
 				*pp = placement->next;
-				image_free(placement->server_id);
+				image_free(image_find(placement->server_id));
 				free(placement);
 				removed++;
 				continue;
@@ -1272,20 +1272,20 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 	view.scaled_height = floor(view.height * height_scale * units);
 	if (view.scaled_height < view.height)
 		view.scaled_height = view.height;
-	view.x_offset = floor(x_offset * units);
-	view.y_offset = floor(y_offset * units);
-	if (view.x_offset > view.canvas_width ||
-	    view.scaled_width > view.canvas_width - view.x_offset ||
-	    view.y_offset > view.canvas_height ||
-	    view.scaled_height > view.canvas_height - view.y_offset) {
+	view.canvas_xoff = floor(x_offset * units);
+	view.canvas_yoff = floor(y_offset * units);
+	if (view.canvas_xoff > view.canvas_width ||
+	    view.scaled_width > view.canvas_width - view.canvas_xoff ||
+	    view.canvas_yoff > view.canvas_height ||
+	    view.scaled_height > view.canvas_height - view.canvas_yoff) {
 		return (NULL);
 	}
 
 	/* Centre Unicode-placeholder images within their rectangle. */
 	if (ks->virtual && ks->columns != 0 && ks->rows != 0) {
-		view.x_offset += (view.canvas_width - view.x_offset -
+		view.canvas_xoff += (view.canvas_width - view.canvas_xoff -
 		    view.scaled_width) / 2;
-		view.y_offset += (view.canvas_height - view.y_offset -
+		view.canvas_yoff += (view.canvas_height - view.canvas_yoff -
 		    view.scaled_height) / 2;
 	}
 	/* Let the output terminal scale unpadded rectangular placements. */
@@ -1297,8 +1297,8 @@ kitty_place_image(struct image *source, struct kitty_state *ks, u_int xpixel,
 		view.scaled_width = view.width;
 		view.canvas_height = view.height;
 		view.scaled_height = view.height;
-		view.x_offset = 0;
-		view.y_offset = 0;
+		view.canvas_xoff = 0;
+		view.canvas_yoff = 0;
 	}
 	im = image_create_view(source, &view);
 	if (im != NULL && ks->no_cursor)
@@ -1401,17 +1401,17 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 			im = NULL;
 		} else if (ks->virtual) {
 			im = kitty_place_image(source, ks, xpixel, ypixel);
-			image_free(image_get_id(source));
+			image_free(source);
 			if (im != NULL) {
 				(void)kitty_placement_set(kc, ks, im);
-				image_free(image_get_id(im));
+				image_free(im);
 				im = NULL;
 				result->action = 'u';
 				result->status = KITTY_PARSE_OK;
 			}
 		} else {
 			im = kitty_place_image(source, ks, xpixel, ypixel);
-			image_free(image_get_id(source));
+			image_free(source);
 			if (im != NULL) {
 				result->replace_id =
 				    kitty_placement_set(kc, ks, im);
@@ -1524,14 +1524,14 @@ kitty_parse_image(void **state, const u_char *buf, size_t len, u_int xpixel,
 				result->status = KITTY_PARSE_ERROR;
 			else {
 				(void)kitty_placement_set(kc, ks, im);
-				image_free(image_get_id(im));
+				image_free(im);
 				im = NULL;
 				result->action = 'u';
 			}
 		} else {
 			im = NULL;
 		}
-		image_free(image_get_id(source));
+		image_free(source);
 	}
 	kitty_state_free(ks);
 	return (im);
