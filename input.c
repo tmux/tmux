@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.276 2026/10/13 10:21:58 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.277 2026/10/14 16:23:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2797,15 +2797,17 @@ input_exit_apc(struct input_ctx *ictx)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct window_pane	*wp = ictx->wp;
+	u_char			*buf = ictx->input_buf;
+	size_t			 len = ictx->input_len;
 
 	if (ictx->flags & INPUT_DISCARD)
 		return;
-	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
+	log_debug("%s: \"%s\" (size %zu)", __func__, buf, len);
 
 	if (wp != NULL &&
 	    options_get_number(wp->options, "allow-set-title") &&
-	    screen_set_title(sctx->s, ictx->input_buf, 1)) {
-		input_fire_pane_title_changed(wp, ictx->input_buf);
+	    screen_set_title(sctx->s, buf, 1)) {
+		input_fire_pane_title_changed(wp, buf);
 		server_redraw_window_borders(wp->window);
 		server_status_window(wp->window);
 	}
