@@ -23,6 +23,9 @@
 
 #include "tmux.h"
 
+/* Next image placement index. */
+static uint64_t next_image_placement_index;
+
 /* A run of cells on one grid line. */
 struct image_span {
 	u_int			 x;
@@ -47,9 +50,10 @@ struct image_line {
 struct image_placement {
 	struct image_store		*store;
 	struct image			*image;
+	uint64_t			 index;
+	int				 z;
 	struct image_spans		 spans;
 
-	/* Original column and first source column not yet placed. */
 	u_int				 x;
 	u_int				 recover_from;
 
@@ -282,7 +286,7 @@ image_line_get(struct grid_line *gl)
 
 /* Create a placement. Takes a reference to the image. */
 static struct image_placement *
-image_placement_create(struct grid *gd, struct image *im)
+image_placement_create(struct grid *gd, struct image *im, int z)
 {
 	struct image_store	*store = image_store_get(gd);
 	struct image_placement	*plmt;
@@ -290,6 +294,8 @@ image_placement_create(struct grid *gd, struct image *im)
 	plmt = xcalloc(1, sizeof *plmt);
 	plmt->store = store;
 	plmt->image = im;
+	plmt->index = ++next_image_placement_index;
+	plmt->z = z;
 	TAILQ_INIT(&plmt->spans);
 	TAILQ_INSERT_TAIL(&store->placements, plmt, entry);
 	image_ref(im);
@@ -374,7 +380,7 @@ image_grid_add(struct grid *gd, struct image *im, u_int x, u_int y,
 	if (sy > image_sy - src_y)
 		sy = image_sy - src_y;
 
-	plmt = image_placement_create(gd, im);
+	plmt = image_placement_create(gd, im, 0);
 	for (row = 0; row < sy; row++) {
 		line = image_line_get(&gd->linedata[y + row]);
 		image_span_add(line, plmt, x, sx, src_x, src_y + row);
@@ -529,7 +535,7 @@ image_copy_placement(struct grid *dst, struct image_placement *src,
 		if (map[i].source == src)
 			return (map[i].destination);
 	}
-	plmt = image_placement_create(dst, src->image);
+	plmt = image_placement_create(dst, src->image, src->z);
 	plmt->x = src->x;
 	plmt->recover_from = src->recover_from;
 
@@ -927,7 +933,7 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
 		cy = s->cy;
 		sy -= origin_y;
 	}
-	plmt = image_placement_create(gd, im);
+	plmt = image_placement_create(gd, im, 0);
 	if (sx < image_sx) {
 		plmt->x = cx;
 		plmt->recover_from = sx;

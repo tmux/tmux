@@ -669,8 +669,8 @@ sixel_to_image(struct sixel_image *si)
 			pixel[3] = 255;
 		}
 	}
-	im = image_create(si->x, si->y, sx * si->xpixel, sy * si->ypixel, sx,
-	    sy, pixels);
+	im = image_create(IMAGE_TYPE_SIXEL, si->x, si->y, sx * si->xpixel,
+	    sy * si->ypixel, sx, sy, pixels);
 	if (im == NULL)
 		free(pixels);
 	return (im);

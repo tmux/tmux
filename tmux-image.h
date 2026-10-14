@@ -43,6 +43,12 @@ struct tty;
 /* Backend images move with terminal scrolling. */
 #define IMAGE_BACKEND_SCROLLS 0x2
 
+/* Type of image. */
+enum image_type {
+	IMAGE_TYPE_SIXEL,
+	IMAGE_TYPE_KITTY
+};
+
 /* View of all or part of an image. */
 struct image_view {
 	/* Position and size in the image, in pixels. */
@@ -84,11 +90,12 @@ struct image_rect {
 };
 
 /* image.c */
-struct image	*image_create(u_int, u_int, u_int, u_int, u_int, u_int,
-		     u_char *);
+struct image	*image_create(enum image_type, u_int, u_int, u_int, u_int,
+		     u_int, u_int, u_char *);
 struct image	*image_create_view(struct image *, struct image_view *);
 struct image	*image_find(u_int);
 u_int		 image_get_id(struct image *);
+enum image_type	 image_get_type(struct image *);
 void		 image_ref(struct image *);
 void		 image_free(struct image *);
 void		 image_get_size(struct image *, u_int *, u_int *);

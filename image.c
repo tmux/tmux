@@ -28,12 +28,12 @@
 /* An image. */
 struct image {
 	u_int			 id;
+	enum image_type		 type;
 	u_int			 references;
 	u_int			 flags;
 #define IMAGE_FLAG_OWN_PIXELS 0x1
 
 	struct image		*parent;
-	u_int			 source_id;
 	u_int			 order_id;
 
 	/* Size in cells. */
@@ -93,10 +93,17 @@ image_get_id(struct image *im)
 	return (im->id);
 }
 
+/* Get the type of an image. */
+enum image_type
+image_get_type(struct image *im)
+{
+	return (im->type);
+}
+
 /* Allocate an image and assign a unique ID. */
 static struct image *
-image_alloc(u_int w, u_int h, u_int cw, u_int ch, u_int sx, u_int sy,
-    size_t stride, u_char *pixels)
+image_alloc(enum image_type type, u_int w, u_int h, u_int cw, u_int ch,
+    u_int sx, u_int sy, size_t stride, u_char *pixels)
 {
 	struct image	*im;
 	u_int		 id;
@@ -109,8 +116,9 @@ image_alloc(u_int w, u_int h, u_int cw, u_int ch, u_int sx, u_int sy,
 
 	im = xcalloc(1, sizeof *im);
 	im->id = id;
+	im->type = type;
 	im->references = 1;
-	im->source_id = im->order_id = id;
+	im->order_id = id;
 	im->width = w;
 	im->height = h;
 	im->canvas_width = cw;
@@ -126,8 +134,8 @@ image_alloc(u_int w, u_int h, u_int cw, u_int ch, u_int sx, u_int sy,
 
 /* Create an image with the provided pixels. */
 struct image *
-image_create(u_int w, u_int h, u_int cw, u_int ch, u_int sx, u_int sy,
-    u_char *pixels)
+image_create(enum image_type type, u_int w, u_int h, u_int cw, u_int ch,
+    u_int sx, u_int sy, u_char *pixels)
 {
 	struct image	*im;
 
@@ -142,7 +150,7 @@ image_create(u_int w, u_int h, u_int cw, u_int ch, u_int sx, u_int sy,
 	if ((uint64_t)sx * sy > IMAGE_SIZE_LIMIT)
 		return (NULL);
 
-	im = image_alloc(w, h, cw, ch, sx, sy, w * 4, pixels);
+	im = image_alloc(type, w, h, cw, ch, sx, sy, w * 4, pixels);
 	im->flags |= IMAGE_FLAG_OWN_PIXELS;
 	return (im);
 }
@@ -210,21 +218,20 @@ image_create_view(struct image *src, struct image_view *view)
 	    view->canvas_xoff == 0 &&
 	    view->canvas_yoff == 0) {
 		pixels = src->pixels + view->y * src->stride + view->x * 4;
-		im = image_alloc(view->width, view->height, view->canvas_width,
-		    view->canvas_height, view->sx, view->sy, src->stride,
-		    pixels);
+		im = image_alloc(src->type, view->width, view->height,
+		    view->canvas_width, view->canvas_height, view->sx, view->sy,
+		    src->stride, pixels);
 	} else {
 		w = view->canvas_xoff + view->scaled_width;
 		h = view->canvas_yoff + view->scaled_height;
 		if ((uint64_t)w * h > IMAGE_SIZE_LIMIT / 4)
 			return (NULL);
 		pixels = image_view_resample(src, view, w, h);
-		im = image_alloc(w, h, view->canvas_width, view->canvas_height,
-		    view->sx, view->sy, w * 4, pixels);
+		im = image_alloc(src->type, w, h, view->canvas_width,
+		    view->canvas_height, view->sx, view->sy, w * 4, pixels);
 		im->flags |= IMAGE_FLAG_OWN_PIXELS;
 	}
 	im->parent = src;
-	im->source_id = src->source_id;
 	im->order_id = src->order_id;
 	image_ref(src);
 	return (im);
