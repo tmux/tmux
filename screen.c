@@ -120,6 +120,7 @@ screen_reinit(struct screen *s)
 	s->saved_cy = UINT_MAX;
 
 	screen_reset_tabs(s);
+	grid_free_lines(s->grid, s->grid->hsize, s->grid->sy);
 	grid_clear_lines(s->grid, s->grid->hsize, s->grid->sy, 8);
 
 	screen_clear_selection(s);
@@ -674,6 +675,7 @@ screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 	}
 	memcpy(&s->saved_cell, gc, sizeof s->saved_cell);
 
+	grid_free_lines(s->grid, screen_hsize(s), sy);
 	grid_view_clear(s->grid, 0, 0, sx, sy, 8);
 
 	s->saved_flags = s->grid->flags;

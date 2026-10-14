@@ -81,6 +81,41 @@ with image_test(sys.argv[1]) as test:
         except AssertionError as e:
             raise AssertionError(name) from e
 
+    # Image persistence must not prevent writes and erases of underlying text.
+    test.emit(b'\033[2J' + place + origin + b'ab')
+    assert test.run('capture-pane', '-p') == 'ab'
+    test.emit(origin + b'\033[X')
+    assert test.run('capture-pane', '-p') == 'b'
+    snapshot(test, client, pixels(cells))
+    test.emit(origin + '\u754c'.encode())
+    assert test.run('capture-pane', '-p') == '\u754c'
+    test.emit(origin + b'\033[2K')
+    assert test.run('capture-pane', '-p') == ''
+    snapshot(test, client, pixels(cells))
+
+    # Structural line operations move or remove Kitty rows with the text grid.
+    colours = [red, (0, 255, 0), blue]
+    striped = {(x, y): colours[y - 2] for x, y in cells}
+    data = bytes(c for colour in colours for c in (*colour, 255))
+    display = origin + graphics('a=T,i=8,p=9,f=32,s=1,v=3,c=4,r=3,C=1', data)
+    operations = [
+        ('insert line', b'\033[4;1H\033[L',
+            {(x, y + (y >= 3)): c for (x, y), c in striped.items()}),
+        ('delete line', b'\033[4;1H\033[M',
+            {(x, y - (y > 3)): c for (x, y), c in striped.items() if y != 3}),
+        ('scroll down', b'\033[3;6r\033[T',
+            {(x, y + 1): c for (x, y), c in striped.items()}),
+        ('reverse index', b'\033[3;6r\033[3;1H\033M',
+            {(x, y + 1): c for (x, y), c in striped.items()}),
+    ]
+    for name, operation, wanted in operations:
+        test.emit(b'\033[r\033[2J' + display + operation)
+        try:
+            snapshot(test, client, pixels(wanted))
+        except AssertionError as e:
+            raise AssertionError(name) from e
+    test.emit(b'\033[r')
+
     # Erasing a SIXEL layer reveals the Kitty placement retained beneath it.
     wire = sixel(32, 48, [(0, 0, 100)], [0] * (32 * 48))
     test.emit(b'\033[2J' + place + origin + wire)
@@ -110,6 +145,14 @@ with image_test(sys.argv[1]) as test:
     test.run('send-keys', '-X', 'history-top')
     snapshot(test, client, pixels(cells))
     test.run('send-keys', '-X', 'cancel')
+    # Replacing a source removes its placements even when wholly in history.
+    test.emit(graphics('a=t,i=7,f=32,s=1,v=1', bytes((*blue, 255))))
+    test.run('copy-mode')
+    test.run('send-keys', '-X', 'history-top')
+    snapshot(test, client, {})
+    test.run('send-keys', '-X', 'cancel')
+    # Restore a historical placement before checking explicit history cleanup.
+    test.emit(place + b'\033[2J')
     test.run('clear-history')
     test.run('copy-mode')
     test.run('send-keys', '-X', 'history-top')

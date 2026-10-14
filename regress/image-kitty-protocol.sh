@@ -40,7 +40,13 @@ import json, os, select, sys, time, tty
 command, output = sys.argv[1:]
 tty.setraw(0)
 with open(command, 'rb') as f:
-    os.write(1, f.read() + b'\\x1b[c')
+    while True:
+        data = f.read(65536)
+        if not data:
+            break
+        while data:
+            data = data[os.write(1, data):]
+os.write(1, b'\\x1b[c')
 reply = b''
 deadline = time.monotonic() + 3
 while time.monotonic() < deadline:
@@ -56,23 +62,26 @@ time.sleep(30)
 '''
 
 # Check replies, cursor movement and unchanged text and title.
-def check(name, command, expected=None, cursor='5,2'):
+def check(name, command, expected, cursor='5,2', timeout=5):
     output = directory / name
     command_file = directory / (name + '.input')
-    command_file.write_text(origin + command, encoding='utf-8')
+    with command_file.open('w', encoding='utf-8') as f:
+        f.write(origin)
+        if isinstance(command, str):
+            f.write(command)
+        else:
+            f.writelines(command)
     pane_command = 'python3 -B ' + shlex.quote(str(helper)) + ' ' + \
         shlex.quote(str(command_file)) + ' ' + shlex.quote(str(output))
     pane = run('new-window', '-d', '-P', '-F', '#{pane_id}', pane_command)
     try:
-        deadline = time.monotonic() + 5
+        deadline = time.monotonic() + timeout
         while not output.exists():
             if time.monotonic() >= deadline:
                 raise AssertionError(name + ': missing reply capture')
             time.sleep(0.05)
         reply = json.loads(output.read_text())
-        if expected is not None:
-            assert reply == expected, (name, 'reply', repr(reply),
-                                       repr(expected))
+        assert reply == expected, (name, 'reply', repr(reply), repr(expected))
         actual = run('display-message', '-pt', pane, '#{cursor_x},#{cursor_y}')
         assert actual == cursor, (name, 'cursor', actual, cursor)
         assert run('capture-pane', '-pt', pane) == '', (name, 'text')
@@ -181,33 +190,58 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         check('id-and-number', graphics('a=t,i=7,I=8,f=32,s=1,v=1', pixel),
               graphics('i=7,I=8', 'EINVAL'))
         check('unknown-extension', graphics(transmit + ',k=9', pixel), ok)
+        check('unknown-extension-string',
+              graphics(transmit + ',k=unused', pixel), ok)
+        check('trailing-comma', graphics(transmit + ',', pixel), ok)
+        check('maximum-ids',
+              graphics('a=t,i=4294967295,p=4294967295,f=32,s=1,v=1', pixel),
+              graphics('i=4294967295,p=4294967295', 'OK'))
+        for n, control in enumerate(['s=', 's=-1', 's=1x', 'a=tt', 't=dd',
+                                     'o=zz', '=1', 'ss=1', ',s=1',
+                                     's=1,,v=1']):
+            check('malformed-control-' + str(n),
+                  graphics('i=7,' + control, pixel), invalid)
+        check('failed-control-resets-transfer',
+              graphics(transmit + ',m=1', '/wAA') +
+              graphics('m=0,s=bad') + graphics(transmit, pixel), invalid + ok)
+        check('quiet-resets', graphics(transmit + ',q=2', pixel) +
+              graphics(transmit, pixel), ok)
+        check('oversized-dimensions',
+              graphics('a=t,i=7,f=32,s=4294967295,v=4294967295', pixel),
+              invalid)
         check('delete-aborts-upload', graphics(transmit + ',q=2,m=1', '/wAA') +
               graphics('a=d,d=I,q=2') + graphics(transmit, pixel), ok)
 
-        # zlib is optional; exercise compressed uploads when available.
+        # Abort immediately when chunked data exceeds 64 MiB, then recover.
+        block = base64.b64encode(b'\0' * (512 * 1024)).decode()
+        commands = [graphics(transmit + ',q=1,m=1', block)]
+        commands.extend([graphics('m=1', block)] * 127)
+        commands.extend([graphics('m=1', 'AAAAAA=='),
+            graphics('a=t,i=8,f=32,s=1,v=1', pixel)])
+        check('accumulated-size-limit', commands,
+              invalid + graphics('i=8', 'OK'), timeout=30)
+
+        # Compressed uploads require a test build with zlib.
         compressed = base64.b64encode(zlib.compress(b'\xff\0\0\xff')).decode()
         control = transmit + ',o=z'
-        reply = check('compressed-probe', graphics(control, compressed))
-        assert reply in [ok, invalid], repr(reply)
-        if reply == ok:
-            for format, raw in [(24, b'\xff\0\0'), (32, b'\xff\0\0\xff')]:
-                payload = base64.b64encode(zlib.compress(raw)).decode()
-                check('compressed-' + str(format),
-                      graphics('a=t,i=7,f=%d,s=1,v=1,o=z' % format, payload),
-                      ok)
-            split = len(compressed) // 8 * 4
-            check('compressed-chunks', graphics(control + ',m=1',
-                  compressed[:split]) + graphics('m=0', compressed[split:]), ok)
-            check('compressed-truncated', graphics(control, compressed[:-4]),
-                  invalid)
-            check('compressed-wrong-size',
-                  graphics(control.replace('s=1', 's=2'), compressed), invalid)
-            large = base64.b64encode(zlib.compress(
-                b'\0' * (4096 * 4097 * 3))).decode()
-            check('oversized-rgb',
-                  graphics('a=t,i=7,f=24,s=4096,v=4097,o=z', large), invalid)
+        for format, raw in [(24, b'\xff\0\0'), (32, b'\xff\0\0\xff')]:
+            payload = base64.b64encode(zlib.compress(raw)).decode()
+            check('compressed-' + str(format),
+                  graphics('a=t,i=7,f=%d,s=1,v=1,o=z' % format, payload),
+                  ok)
+        split = len(compressed) // 8 * 4
+        check('compressed-chunks', graphics(control + ',m=1',
+              compressed[:split]) + graphics('m=0', compressed[split:]), ok)
+        check('compressed-truncated', graphics(control, compressed[:-4]),
+              invalid)
+        check('compressed-wrong-size',
+              graphics(control.replace('s=1', 's=2'), compressed), invalid)
+        large = base64.b64encode(zlib.compress(
+            b'\0' * (4096 * 4097 * 3))).decode()
+        check('oversized-rgb',
+              graphics('a=t,i=7,f=24,s=4096,v=4097,o=z', large), invalid)
 
-        # libpng is optional; build a small PNG and check its upload path.
+        # PNG uploads require a test build with libpng.
         png = b'\x89PNG\r\n\x1a\n'
         for kind, data in [
                 (b'IHDR', struct.pack('>2I5B', 8, 16, 8, 6, 0, 0, 0)),
@@ -217,29 +251,35 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
                 struct.pack('>I', zlib.crc32(kind + data))
         payload = base64.b64encode(png).decode()
         control = 'a=t,i=7,f=100'
-        png_reply = check('png-probe', graphics(control, payload))
-        assert png_reply in [ok, invalid], repr(png_reply)
-        if png_reply == ok:
-            check('png', graphics(control, payload), ok)
-            truncated = base64.b64encode(png[:40]).decode()
-            check('png-truncated', graphics(control, truncated), invalid)
-            split = len(payload) // 8 * 4
-            check('png-chunks', graphics(control + ',m=1', payload[:split]) +
-                  graphics('m=0', payload[split:]), ok)
-        if png_reply == ok and reply == ok:
-            payload = base64.b64encode(zlib.compress(png)).decode()
-            control += ',o=z'
-            sized = control + ',S=' + str(len(png))
-            check('compressed-png', graphics(sized, payload), ok)
-            split = len(payload) // 8 * 4
-            check('compressed-png-chunks',
-                  graphics(sized + ',m=1', payload[:split]) +
-                  graphics('m=0', payload[split:]), ok)
-            check('compressed-png-missing-size', graphics(control, payload),
-                  invalid)
-            check('compressed-png-wrong-size',
-                  graphics(control + ',S=' + str(len(png) + 1), payload),
-                  invalid)
+        check('png', graphics(control, payload), ok)
+        truncated = base64.b64encode(png[:40]).decode()
+        check('png-truncated', graphics(control, truncated), invalid)
+        damaged = bytearray(png)
+        damaged[29] ^= 1
+        check('png-bad-header-crc',
+              graphics(control, base64.b64encode(damaged).decode()), invalid)
+        split = len(payload) // 8 * 4
+        check('png-chunks', graphics(control + ',m=1', payload[:split]) +
+              graphics('m=0', payload[split:]), ok)
+        payload = base64.b64encode(zlib.compress(png)).decode()
+        control += ',o=z'
+        sized = control + ',S=' + str(len(png))
+        check('compressed-png', graphics(sized, payload), ok)
+        split = len(payload) // 8 * 4
+        check('compressed-png-chunks',
+              graphics(sized + ',m=1', payload[:split]) +
+              graphics('m=0', payload[split:]), ok)
+        check('compressed-png-missing-size', graphics(control, payload),
+              invalid)
+        check('compressed-png-wrong-size',
+              graphics(control + ',S=' + str(len(png) + 1), payload),
+              invalid)
+        check('compressed-png-oversized',
+              graphics(control + ',S=67108865', payload), invalid)
+        check('compressed-png-truncated', graphics(sized, payload[:-4]),
+              invalid)
+        check('decoder-controls-reset', graphics(sized + ',q=2', payload) +
+              graphics('a=T,i=7,s=1,v=1', pixel), ok, cursor='6,2')
     finally:
         subprocess.run(tmux + ['kill-server'], stdout=subprocess.DEVNULL,
                        stderr=subprocess.DEVNULL)

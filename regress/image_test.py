@@ -1,5 +1,6 @@
 """Helpers for image tests using an attached client on a PTY."""
 
+import base64
 import contextlib
 import colorsys
 import errno
@@ -14,6 +15,7 @@ import subprocess
 import sys
 import termios
 import time
+import zlib
 
 
 class Client:
@@ -210,6 +212,26 @@ def image_test(tmux, sx=40, sy=16):
         yield test
     finally:
         test.close()
+
+
+def kitty(control, data=b''):
+    """Build a Kitty graphics APC with replies suppressed."""
+    return b'\033_Gq=2,' + control.encode() + b';' + \
+        base64.b64encode(data) + b'\033\\'
+
+
+def png(w, h, rows, colour_type=6, chunks=()):
+    """Build an eight-bit PNG from unfiltered rows and optional chunks."""
+    assert len(rows) == h, (len(rows), h)
+    parts = [(b'IHDR', struct.pack('>2I5B', w, h, 8, colour_type, 0, 0, 0))]
+    parts.extend(chunks)
+    parts.append((b'IDAT', zlib.compress(b''.join(b'\0' + row for row in rows))))
+    parts.append((b'IEND', b''))
+    out = b'\x89PNG\r\n\x1a\n'
+    for kind, data in parts:
+        out += struct.pack('>I', len(data)) + kind + data + \
+            struct.pack('>I', zlib.crc32(kind + data))
+    return out
 
 
 def sixel(w, h, palette, pixels, p2=1):
