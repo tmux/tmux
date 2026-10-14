@@ -30,6 +30,7 @@ struct kitty_state {
 	u_int				 format;
 	char				 medium;
 	char				 compression;
+	char				 delete;
 	u_int				 width;
 	u_int				 height;
 	u_int				 source_x;
@@ -98,6 +99,7 @@ kitty_parse_control_data(struct kitty_state *ks, const u_char *data,
 		case 'a':
 		case 't':
 		case 'o':
+		case 'd':
 			if (value[1] != '\0')
 				goto out;
 			switch (key) {
@@ -109,6 +111,9 @@ kitty_parse_control_data(struct kitty_state *ks, const u_char *data,
 				break;
 			case 'o':
 				ks->compression = value[0];
+				break;
+			case 'd':
+				ks->delete = value[0];
 				break;
 			}
 			break;
@@ -291,6 +296,69 @@ kitty_placement_map_set(struct screen_write_ctx *ctx,
 	kpl->image_id = image_get_id(im);
 }
 
+/* Remove mappings for absent placements. */
+static u_int
+kitty_prune_placements(struct kitty_image_map *map, struct screen *s)
+{
+	struct kitty_placement_map	*kpl, *kpl1;
+	u_int				 removed = 0;
+	struct grid			*sgd = s->saved_grid;
+
+	TAILQ_FOREACH_SAFE(kpl, &map->placements, entry, kpl1) {
+		if (image_grid_has_image(s->grid, kpl->image_id))
+			continue;
+		if (sgd != NULL && image_grid_has_image(sgd, kpl->image_id))
+			continue;
+		TAILQ_REMOVE(&map->placements, kpl, entry);
+		free(kpl);
+		removed++;
+	}
+	return (removed);
+}
+
+/* Delete selected Kitty placements. */
+static void
+kitty_delete_images(struct kitty_state *ks, struct screen_write_ctx *ctx)
+{
+	struct screen			*s = ctx->s;
+	struct kitty_image_map		*map, *map1;
+	struct kitty_placement_map	*kpl;
+	u_int				 removed;
+	int				 all, release;
+
+	all = (ks->delete == 'a' || ks->delete == 'A');
+	release = (ks->delete == 'A' || ks->delete == 'I');
+
+	TAILQ_FOREACH(map, &ks->images, entry)
+		kitty_prune_placements(map, s);
+	if (all)
+		image_grid_clear(s->grid, IMAGE_TYPE_KITTY, 0, 1);
+	TAILQ_FOREACH_SAFE(map, &ks->images, entry, map1) {
+		removed = 0;
+		if (!all) {
+			if (map->kitty_id != ks->image_id)
+				continue;
+			TAILQ_FOREACH(kpl, &map->placements, entry) {
+				if (ks->placement_id != 0 &&
+				    kpl->kitty_id != ks->placement_id)
+					continue;
+				removed += image_grid_clear(s->grid,
+				    IMAGE_TYPE_KITTY, kpl->image_id, 0);
+			}
+			if (ks->placement_id == 0)
+				removed++;
+		}
+		removed += kitty_prune_placements(map, s);
+		if (!release || removed == 0 || !TAILQ_EMPTY(&map->placements))
+			continue;
+		TAILQ_REMOVE(&ks->images, map, entry);
+		image_free(image_find(map->image_id));
+		free(map);
+	}
+	if (ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
+}
+
 /* Decode and append one base64-encoded Kitty payload chunk. */
 static int
 kitty_append_data(struct kitty_state *ks, const u_char *data, size_t size)
@@ -330,6 +398,8 @@ kitty_send_reply(struct input_ctx *ictx, struct kitty_state *ks, const char *m)
 	char	p[96] = "";
 
 	if (ks->quiet >= 2)
+		return;
+	if (ks->action == 'd' && strcmp(m, "OK") == 0)
 		return;
 	if (ks->quiet == 1 && strcmp(m, "OK") == 0)
 		return;
@@ -485,6 +555,7 @@ kitty_parse_input(struct input_ctx *ictx, struct window_pane *wp,
 		ks->format = 32;
 		ks->medium = 'd';
 		ks->compression = 'o';
+		ks->delete = 'a';
 		ks->width = 0;
 		ks->height = 0;
 		ks->source_x = 0;
@@ -520,8 +591,23 @@ kitty_parse_input(struct input_ctx *ictx, struct window_pane *wp,
 		goto out;
 	}
 	if (ks->action != 't' && ks->action != 'T' &&
-	    ks->action != 'q' && ks->action != 'p') {
+	    ks->action != 'q' && ks->action != 'p' && ks->action != 'd') {
 		m = "ENOTSUP";
+		goto out;
+	}
+	if (ks->action == 'd') {
+		switch (ks->delete) {
+		case 'a':
+		case 'A':
+		case 'i':
+		case 'I':
+			break;
+		default:
+			m = "ENOTSUP";
+			goto out;
+		}
+		kitty_delete_images(ks, ctx);
+		m = "OK";
 		goto out;
 	}
 	if (psize != 0 && kitty_append_data(ks, found + 1, psize) != 0)

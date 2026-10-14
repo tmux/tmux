@@ -451,31 +451,79 @@ image_grid_overwrite(struct grid *gd, u_int x, u_int y, u_int sx, u_int sy)
 	image_store_prune(gd->images);
 }
 
-/* Remove placements of an image from a grid. */
-static void
-image_grid_clear(struct grid *gd, u_int id)
+/* Check whether a placement has any spans in the visible grid. */
+static int
+image_placement_visible(struct grid *gd, struct image_placement *plmt)
+{
+	struct image_line	*line;
+	struct image_span	*span;
+	u_int			 y;
+
+	for (y = 0; y < gd->sy; y++) {
+		line = gd->linedata[gd->hsize + y].images;
+		if (line == NULL)
+			continue;
+		TAILQ_FOREACH(span, &line->spans, line_entry) {
+			if (span->placement == plmt && span->x < gd->sx)
+				return (1);
+		}
+	}
+	return (0);
+}
+
+/* Check whether a grid retains any placements of an image. */
+int
+image_grid_has_image(struct grid *gd, u_int id)
+{
+	struct image_placement	*plmt;
+
+	if (gd->images == NULL)
+		return (0);
+	TAILQ_FOREACH(plmt, &gd->images->placements, entry) {
+		if (image_get_id(plmt->image) == id)
+			return (1);
+	}
+	return (0);
+}
+
+/* Remove placements of one image or all images of a type from a grid. */
+u_int
+image_grid_clear(struct grid *gd, enum image_type type, u_int id, int visible)
 {
 	struct image_placement	*plmt, *plmt1;
 	struct image_span	*span, *span1;
+	u_int			 removed = 0;
 
 	if (gd->images == NULL)
-		return;
+		return (0);
 	TAILQ_FOREACH_SAFE(plmt, &gd->images->placements, entry, plmt1) {
-		if (image_get_id(plmt->image) != id)
+		if (image_get_type(plmt->image) != type)
+			continue;
+		if (id != 0 && image_get_id(plmt->image) != id)
+			continue;
+		if (visible && !image_placement_visible(gd, plmt))
 			continue;
 		TAILQ_FOREACH_SAFE(span, &plmt->spans, placement_entry, span1)
 			image_span_free(span);
 		image_placement_free(plmt);
+		removed++;
 	}
+	return (removed);
 }
 
 /* Remove placements of an image from a screen. */
 void
 image_clear(struct screen_write_ctx *ctx, u_int id)
 {
-	image_grid_clear(ctx->s->grid, id);
+	struct image	*im = image_find(id);
+	enum image_type	 type;
+
+	if (im == NULL)
+		return;
+	type = image_get_type(im);
+	image_grid_clear(ctx->s->grid, type, id, 0);
 	if (ctx->s->saved_grid != NULL)
-		image_grid_clear(ctx->s->saved_grid, id);
+		image_grid_clear(ctx->s->saved_grid, type, id, 0);
 	if (ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
 }

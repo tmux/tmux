@@ -212,6 +212,48 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         check('delete-aborts-upload', graphics(transmit + ',q=2,m=1', '/wAA') +
               graphics('a=d,d=I,q=2') + graphics(transmit, pixel), ok)
 
+        # Successful deletion sends no reply and never moves the cursor.
+        stored = graphics(transmit + ',q=2', pixel)
+        put = 'a=p,q=2,i=7,C=1'
+        first = graphics(put + ',p=1')
+        second = graphics(put + ',p=2')
+        missing = graphics('i=7', 'ENOENT')
+        check('delete-soft-image', stored + first + graphics('a=d,d=i,i=7') +
+              graphics('a=p,i=7,C=1'), ok)
+        check('delete-hard-image', stored + first + graphics('a=d,d=I,i=7') +
+              graphics('a=p,i=7,C=1'), missing)
+        check('delete-one-placement', stored + first + second +
+              graphics('a=d,d=I,i=7,p=1') + graphics('a=p,i=7,p=2,C=1'),
+              graphics('i=7,p=2', 'OK'))
+        check('delete-last-placement', stored + first +
+              graphics('a=d,d=I,i=7,p=1') + graphics('a=p,i=7,C=1'), missing)
+        check('delete-retain-unnumbered', stored + first + graphics(put) +
+              graphics('a=d,d=I,i=7,p=1') + graphics('a=p,i=7,C=1'), ok)
+        check('delete-missing-placement', stored + first +
+              graphics('a=d,d=I,i=7,p=99') + graphics('a=p,i=7,C=1'), ok)
+        check('delete-upload-only', stored + graphics('a=d,d=I,i=7') +
+              graphics('a=p,i=7,C=1'), missing)
+        check('delete-soft-all', stored + first + graphics('a=d,d=a') +
+              graphics('a=p,i=7,C=1'), ok)
+        check('delete-hard-all', stored + first + graphics('a=d,d=A') +
+              graphics('a=p,i=7,C=1'), missing)
+        check('delete-all-retains-unplaced', stored + graphics('a=d,d=A') +
+              graphics('a=p,i=7,C=1'), ok)
+        check('delete-history-retains-data', stored + first + '\033[12S' +
+              graphics('a=d,d=A') + graphics('a=p,i=7,C=1'), ok)
+        check('delete-history-by-id', stored + first + '\033[12S' +
+              graphics('a=d,d=I,i=7') + graphics('a=p,i=7,C=1'), missing)
+        for selector in ['A', 'I']:
+            check('delete-saved-screen-' + selector, stored + first +
+                  '\033[?1049h' + graphics('a=d,d=' + selector + ',i=7') +
+                  '\033[?1049l' + graphics('a=p,i=7,C=1'), ok)
+        check('delete-abort-does-not-inherit-id', stored +
+              graphics(transmit + ',q=2,m=1', '/wAA') +
+              graphics('a=d,d=I') + graphics('a=p,i=7,C=1'), ok)
+        check('unsupported-delete', stored + graphics('a=d,d=?,i=7'),
+              graphics('i=7', 'ENOTSUP'))
+        check('malformed-delete', stored + graphics('a=d,i=7,d=ii'), invalid)
+
         # Abort immediately when chunked data exceeds 64 MiB, then recover.
         block = base64.b64encode(b'\0' * (512 * 1024)).decode()
         commands = [graphics(transmit + ',q=1,m=1', block)]
