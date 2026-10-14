@@ -1111,6 +1111,7 @@ redraw_free_damage(struct window *w)
 		free(rd);
 	}
 	w->damage_count = 0;
+	w->scroll_pending = 0;
 }
 
 /* Collapse all pending damage for a window into one rectangle. */
@@ -1207,6 +1208,39 @@ void
 redraw_damage_window(struct window *w, u_int x, u_int y, u_int sx, u_int sy)
 {
 	redraw_apply_window_damage(w, x, y, sx, sy, 0);
+}
+
+/* Record damage caused by terminal scrolling. */
+void
+redraw_damage_scroll(struct window *w, u_int x, u_int y, u_int sx, u_int sy)
+{
+	if (!w->scroll_pending) {
+		w->scroll_generation++;
+		w->scroll_pending = 1;
+	}
+	redraw_apply_window_damage(w, x, y, sx, sy, REDRAW_DAMAGE_SCROLL);
+}
+
+/* Remember whether this client used terminal scrolling for the damage. */
+void
+redraw_scroll_result(struct tty *tty, const struct tty_ctx *ctx, int failed)
+{
+	struct window_pane	*wp = ctx->arg;
+	struct window		*w;
+
+	if (wp == NULL)
+		return;
+	w = wp->window;
+	if (!w->scroll_pending)
+		return;
+	if (tty->scroll_window != w ||
+	    tty->scroll_generation != w->scroll_generation) {
+		tty->scroll_window = w;
+		tty->scroll_generation = w->scroll_generation;
+		tty->scroll_failed = 0;
+	}
+	if (failed)
+		tty->scroll_failed = 1;
 }
 
 /* Mark all cached redraw scenes as out of date. */

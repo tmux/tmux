@@ -1479,6 +1479,8 @@ struct window {
 
 	struct redraw_damages	 damage;
 	u_int			 damage_count;
+	uint64_t		 scroll_generation;
+	int			 scroll_pending;
 
 	struct menu_data	*menu;
 	u_int			 menu_last_px;
@@ -1853,6 +1855,10 @@ struct tty {
 
 	struct event	 key_timer;
 	struct tty_key	*key_tree;
+
+	struct window		*scroll_window;
+	uint64_t		 scroll_generation;
+	int			 scroll_failed;
 
 #ifdef ENABLE_IMAGES
 	struct image_backend	*image_backend;
@@ -3645,6 +3651,8 @@ int	 redraw_client_has_window(struct client *, struct window *);
 void	 redraw_invalidate_scene(struct window *);
 void	 redraw_invalidate_all_scenes(void);
 void	 redraw_damage_window(struct window *, u_int, u_int, u_int, u_int);
+void	 redraw_damage_scroll(struct window *, u_int, u_int, u_int, u_int);
+void	 redraw_scroll_result(struct tty *, const struct tty_ctx *, int);
 void	 redraw_free_damage(struct window *);
 void	 redraw_client_damage(struct client *);
 int	 redraw_get_status_border_cell_type(struct redraw_span **, u_int);

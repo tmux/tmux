@@ -1682,10 +1682,12 @@ tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_RIN)) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1) {
+		redraw_scroll_result(tty, ctx, 1);
 		tty_redraw_region(tty, ctx);
 		return;
 	}
 
+	redraw_scroll_result(tty, ctx, 0);
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
@@ -1710,10 +1712,12 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1) {
+		redraw_scroll_result(tty, ctx, 1);
 		tty_redraw_region(tty, ctx);
 		return;
 	}
 
+	redraw_scroll_result(tty, ctx, 0);
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
@@ -1748,10 +1752,12 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1) {
+		redraw_scroll_result(tty, ctx, 1);
 		tty_redraw_region(tty, ctx);
 		return;
 	}
 
+	redraw_scroll_result(tty, ctx, 0);
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
@@ -1786,10 +1792,12 @@ tty_cmd_scrolldown(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_RIN)) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1) {
+		redraw_scroll_result(tty, ctx, 1);
 		tty_redraw_region(tty, ctx);
 		return;
 	}
 
+	redraw_scroll_result(tty, ctx, 0);
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
