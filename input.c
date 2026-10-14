@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.276 2026/10/13 10:21:58 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.277 2026/10/14 16:23:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
