@@ -34,8 +34,12 @@ for keys in emacs vi; do
 		selection_seq="${selection_seq}\033]133;C\007${payload}"
 		selection_seq="${selection_seq}\033]133;D;7\007\r\n"
 		selection_seq="${selection_seq}\033]133;A\007p> \033]133;B\007"
-		for width in 5 20 100; do
-			start_pane_history selection 80 12 "$selection_seq"
+		for sizes in '80 5' '80 20' '80 100' '20 5' '20 80' '20 100'; do
+			set -- $sizes
+			initial_width=$1
+			width=$2
+			start_pane_history selection "$initial_width" 12 \
+				"$selection_seq"
 			$TMUX set -w -t selection: mode-keys "$keys" || exit 1
 			$TMUX copy-mode -t selection: -U || exit 1
 			$TMUX resize-window -t selection: -x "$width" || exit 1
@@ -46,9 +50,53 @@ for keys in emacs vi; do
 			$TMUX save-buffer "$TMP" || exit 1
 			printf '%s' "$payload" >"$EXP"
 			cmp "$TMP" "$EXP" || \
-				fail "$keys $length cells at width $width"
+				fail "$keys $length cells, $initial_width to $width"
 		done
 	done
+done
+
+# Turning folding off must use the same wrapping as ordinary copy mode.
+for sizes in '20 80' '80 5'; do
+	set -- $sizes
+	start_pane_history toggle "$1" 24 "$selection_seq"
+	$TMUX copy-mode -t toggle: -U || exit 1
+	$TMUX resize-window -t toggle: -x "$2" || exit 1
+	$TMUX send -t toggle: -X fold-view-toggle || exit 1
+	$TMUX send -t toggle: -X history-top || exit 1
+	$TMUX capture-pane -t toggle: -Mp >"$TMP" || exit 1
+	$TMUX send -t toggle: -X cancel || exit 1
+	$TMUX copy-mode -t toggle: || exit 1
+	$TMUX send -t toggle: -X history-top || exit 1
+	$TMUX capture-pane -t toggle: -Mp >"$EXP" || exit 1
+	cmp "$TMP" "$EXP" || fail "fold view off from $1 to $2"
+done
+
+# Cursor mapping must work in both directions across joined source rows.
+payload="$(printf '%030d' 0 | tr 0 F)Z$(printf '%029d' 0 | tr 0 F)"
+seq="\033]133;A\007p> \033]133;B\007first\r\n"
+seq="${seq}\033]133;C\007${payload}\033]133;D;7\007\r\n"
+seq="${seq}\033]133;A\007p> \033]133;B\007"
+start_pane_history cursor 20 24 "$seq"
+for width in 80 10 20 80; do
+	$TMUX copy-mode -t cursor: -U || exit 1
+	$TMUX resize-window -t cursor: -x "$width" || exit 1
+	$TMUX send -t cursor: -X search-backward-text Z || exit 1
+	$TMUX set-buffer sentinel || exit 1
+	$TMUX send -t cursor: -X copy-output || exit 1
+	$TMUX save-buffer "$TMP" || exit 1
+	printf '%s' "$payload" >"$EXP"
+	cmp "$TMP" "$EXP" || fail "cursor output at width $width"
+	before=$($TMUX display -p -t cursor: \
+		'#{copy_cursor_x}:#{copy_cursor_line}')
+	$TMUX send -t cursor: -X fold-view-toggle || exit 1
+	after=$($TMUX display -p -t cursor: \
+		'#{copy_cursor_x}:#{copy_cursor_line}')
+	if [ "$before" != "$after" ]; then
+		printf '%s\n' "$before" >"$EXP"
+		printf '%s\n' "$after" >"$TMP"
+		fail "cursor after turning folding off at width $width"
+	fi
+	$TMUX send -t cursor: -X cancel || exit 1
 done
 
 # Refresh must keep a mixture of collapsed and expanded commands.

@@ -317,6 +317,8 @@ struct window_copy_fold_request {
 struct window_copy_fold_ctx {
 	u_int	 source_y;	/* current row in the unfolded source */
 	u_int	 source_x;	/* current column in the unfolded source */
+	u_int	 wrapped_y;	/* first source row of this wrapped line */
+	u_int	 wrapped_x;	/* cells in preceding rows of this line */
 	u_int	 prompt_dy;	/* prompt row in the backing, or UINT_MAX */
 	u_int	 output_line;	/* fold flag's source row, or UINT_MAX */
 	int	 collapsed;	/* current fold is collapsed */
@@ -331,7 +333,8 @@ struct window_copy_fold_ctx {
 /* Source mapping and gutter metadata for one backing row. */
 struct window_copy_line {
 	u_int	 source_line;		/* source row; UINT_MAX if unmapped */
-	u_int	 source_col;		/* source column at mapped boundary */
+	u_int	 wrapped_line;		/* wrap start row, or UINT_MAX */
+	u_int	 source_col;		/* column across wrapped source rows */
 	u_int	 backing_col;		/* backing column at same boundary */
 	u_int	 output_line;		/* source fold flag row, or UINT_MAX */
 	u_char	 flags;			/* WINDOW_COPY_LINE_* bits */
@@ -566,6 +569,7 @@ window_copy_grow_line_info(struct window_copy_mode_data *data, u_int count)
 	    (new_count - old_count) * sizeof *data->lines);
 	for (y = old_count; y < new_count; y++) {
 		data->lines[y].source_line = UINT_MAX;
+		data->lines[y].wrapped_line = UINT_MAX;
 		data->lines[y].output_line = UINT_MAX;
 	}
 	data->line_count = new_count;
@@ -606,8 +610,11 @@ window_copy_map_line(struct window_copy_mode_data *data,
 	line = window_copy_get_line_info(data, y);
 	if (line == NULL)
 		return;
+
+	/* Use one column space for all rows of a wrapped source line. */
 	line->source_line = fold->source_y;
-	line->source_col = fold->source_x;
+	line->wrapped_line = fold->wrapped_y;
+	line->source_col = fold->wrapped_x + fold->source_x;
 	line->backing_col = dst->cx;
 	line->output_line = fold->output_line;
 }
@@ -983,6 +990,10 @@ window_copy_destroy_fold_view(struct window_mode_entry *wme)
 	free(data->backing);
 	data->backing = data->source;
 	data->source = NULL;
+
+	/* The saved source may still be wrapped to an earlier pane size. */
+	screen_resize_cursor(data->backing, screen_size_x(&data->screen),
+	    screen_size_y(&data->screen), 1, 0, 0);
 	free(data->source_flags);
 	data->source_flags = NULL;
 	data->source_line_count = 0;
@@ -1117,6 +1128,14 @@ window_copy_rebuild_backing(struct window_mode_entry *wme)
 			fold.tree = 1;
 			fold.hiding = data->source_flags[0] &
 			    WINDOW_COPY_FOLD_COLLAPSED;
+		}
+
+		/* Keep joined source rows in one mapping coordinate space. */
+		if (sgl->flags & GRID_LINE_WRAPPED)
+			fold.wrapped_x += sgl->cellused;
+		else {
+			fold.wrapped_y = y + 1;
+			fold.wrapped_x = 0;
 		}
 	}
 	screen_write_stop(&ctx);
@@ -4387,16 +4406,21 @@ window_copy_cmd_fold_view_toggle(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
-	u_int				 source_x, source_y;
+	u_int				 source_x, source_y, wx, wy;
 
 	if (data->viewmode)
 		return (WINDOW_COPY_CMD_NOTHING);
 	window_copy_get_cursor_source(wme, &source_x, &source_y);
 	window_copy_clear_selection(wme);
 	window_copy_clear_marks(wme);
-	if (data->fold_view)
+	if (data->fold_view) {
+		/* Reflowing the source also changes the cursor coordinates. */
+		grid_wrap_position(data->source->grid, source_x, source_y,
+		    &wx, &wy);
 		window_copy_destroy_fold_view(wme);
-	else
+		grid_unwrap_position(data->backing->grid, &source_x, &source_y,
+		    wx, wy);
+	} else
 		window_copy_create_fold_view(wme);
 	if (window_copy_restore_cursor(wme, source_x, source_y))
 		return (WINDOW_COPY_CMD_REDRAW);
@@ -4451,6 +4475,40 @@ window_copy_find_fold(struct window_mode_entry *wme, u_int target,
 	return (1);
 }
 
+/* Express a source position relative to its first wrapped row. */
+static void
+window_copy_wrap_source_position(struct window_copy_mode_data *data,
+    u_int *x, u_int *y)
+{
+	struct grid		*gd = data->source->grid;
+	struct grid_line	*gl;
+
+	while (*y > 0) {
+		gl = grid_get_line(gd, *y - 1);
+		if (~gl->flags & GRID_LINE_WRAPPED)
+			break;
+		*x += gl->cellused;
+		(*y)--;
+	}
+}
+
+/* Restore a source position to the row containing its column. */
+static void
+window_copy_unwrap_source_position(struct window_copy_mode_data *data,
+    u_int *x, u_int *y)
+{
+	struct grid		*gd = data->source->grid;
+	struct grid_line	*gl;
+
+	while (*y + 1 < gd->hsize + gd->sy) {
+		gl = grid_get_line(gd, *y);
+		if (~gl->flags & GRID_LINE_WRAPPED || *x < gl->cellused)
+			break;
+		*x -= gl->cellused;
+		(*y)++;
+	}
+}
+
 /* Map the cursor to its position in the unfolded source. */
 static void
 window_copy_get_cursor_source(struct window_mode_entry *wme, u_int *source_x,
@@ -4472,16 +4530,14 @@ window_copy_get_cursor_source(struct window_mode_entry *wme, u_int *source_x,
 		*source_y = data->source_line_count - 1;
 		return;
 	}
-	*source_y = line->source_line;
+	*source_y = line->wrapped_line;
 	if (data->cx >= line->backing_col) {
 		*source_x = line->source_col + data->cx - line->backing_col;
-		return;
-	}
-	if (line->backing_col - data->cx <= line->source_col) {
+	} else if (line->backing_col - data->cx <= line->source_col) {
 		*source_x = line->source_col - (line->backing_col - data->cx);
-		return;
-	}
-	*source_x = 0;
+	} else
+		*source_x = 0;
+	window_copy_unwrap_source_position(data, source_x, source_y);
 }
 
 /* Find the backing position corresponding to a source position. */
@@ -4499,10 +4555,13 @@ window_copy_find_backing_position(struct window_mode_entry *wme, u_int source_x,
 		*backing_y = source_y;
 		return (1);
 	}
+
+	/* Joined source rows share a row and column space in the mappings. */
+	window_copy_wrap_source_position(data, &source_x, &source_y);
 	total = screen_hsize(data->backing) + screen_size_y(data->backing);
 	for (y = 0; y < total; y++) {
 		line = window_copy_get_line_info(data, y);
-		if (line == NULL || line->source_line != source_y)
+		if (line == NULL || line->wrapped_line != source_y)
 			continue;
 		if (source_x >= line->source_col) {
 			x = line->backing_col + source_x - line->source_col;
