@@ -34,7 +34,14 @@ static const struct utf8_data fallback_half_lower = {
 	"\342\226\204", 3, 3, 1
 };
 
-/* Return the average colour and brightness of an area. */
+/* Fallback output is available on every terminal. */
+int
+fallback_select(__unused struct tty *tty)
+{
+	return (1);
+}
+
+/* Get the average colour and brightness of an area. */
 static int
 fallback_sample(struct image *im, uint64_t px, uint64_t py, uint64_t pw,
     uint64_t ph, u_char *brightness)
@@ -142,7 +149,7 @@ fallback_get_cell(struct tty *tty, struct image *im, u_int x, u_int y,
 		out->attr |= GRID_ATTR_BRIGHT;
 }
 
-/* Return a text cell for an image grid cell, if there is one. */
+/* Get a text cell for an image grid cell, if there is one. */
 const struct grid_cell *
 fallback_map_cell(struct tty *tty, struct grid *gd, u_int x, u_int y,
     const struct grid_cell *gc, struct grid_cell *out, int *empty)

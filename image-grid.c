@@ -83,6 +83,105 @@ struct image_recover_row {
 	u_int			 source_y;
 };
 
+/* A backend to draw an image. */
+struct image_backend {
+	const char	*name;
+	int		 flags;
+	int		(*select)(struct tty *);
+	void		(*draw_rect)(struct tty *, struct image_rect *);
+	void		(*start_draw)(struct tty *, u_int, u_int, u_int, u_int);
+	void		(*flush)(struct tty *);
+	void		(*free)(struct tty *);
+};
+
+/* Backend definitions. */
+static struct image_backend image_backend_fallback = {
+	"fallback",
+	IMAGE_BACKEND_SCROLLS,
+	fallback_select,
+	NULL,
+	NULL,
+	NULL,
+	NULL
+};
+static struct image_backend image_backend_sixel = {
+	"sixel",
+	IMAGE_BACKEND_GRAPHICAL,
+	sixel_select,
+	sixel_draw_rect,
+	sixel_start_draw,
+	sixel_flush_pending,
+	sixel_free_pending
+};
+
+/* Backends in order of preference. */
+static struct image_backend *image_backends[] = {
+	&image_backend_sixel,
+	&image_backend_fallback
+};
+
+/* Update the image backend. */
+int
+image_tty_update(struct tty *tty)
+{
+	struct image_backend	*backend;
+	u_int			 i;
+
+	for (i = 0; i < nitems(image_backends); i++) {
+		backend = image_backends[i];
+		if (backend->select(tty))
+			break;
+	}
+	if (tty->image_backend == backend)
+		return (0);
+
+	if (tty->image_backend != NULL && tty->image_backend->free != NULL)
+		tty->image_backend->free(tty);
+	tty->image_data = NULL;
+	tty->image_backend = backend;
+	return (1);
+}
+
+/* Clear old image pixels before redrawing a terminal area. */
+void
+image_redraw_start(struct tty *tty, u_int x, u_int y, u_int w, u_int h)
+{
+	image_tty_update(tty);
+	if (tty->image_backend->start_draw != NULL)
+		tty->image_backend->start_draw(tty, x, y, w, h);
+}
+
+/* Write pending image output to the terminal. */
+void
+image_draw_flush(struct tty *tty)
+{
+	image_tty_update(tty);
+	if (tty->image_backend->flush != NULL)
+		tty->image_backend->flush(tty);
+}
+
+/* Discard image backend state after a terminal size change. */
+void
+image_tty_size_changed(struct tty *tty)
+{
+	if (!image_tty_update(tty)) {
+		if (tty->image_backend->free != NULL)
+			tty->image_backend->free(tty);
+	}
+}
+
+/* Free image backend state for a terminal. */
+void
+image_tty_free(struct tty *tty)
+{
+	if (tty->image_backend != NULL) {
+		if (tty->image_backend->free != NULL)
+			tty->image_backend->free(tty);
+		tty->image_backend = NULL;
+		tty->image_data = NULL;
+	}
+}
+
 /* Get the placement store for a grid. */
 static struct image_store *
 image_store_get(struct grid *gd)
@@ -401,6 +500,7 @@ image_grid_copy_area(struct grid *dst, u_int dx, u_int dy, struct grid *src,
 	struct image_copy_map	*maps = NULL;
 	struct image_placement	*plmt;
 	struct image_line	*src_line, *dst_line;
+	struct grid_line	*gl;
 	struct image_span	*span;
 	u_int			 nmaps = 0, row, start, end, span_end;
 
@@ -428,8 +528,10 @@ image_grid_copy_area(struct grid *dst, u_int dx, u_int dy, struct grid *src,
 				continue;
 			if (span_end > end)
 				span_end = end;
-			if (dst_line == NULL)
-				dst_line = image_line_get(&dst->linedata[dy + row]);
+			if (dst_line == NULL) {
+				gl = &dst->linedata[dy + row];
+				dst_line = image_line_get(gl);
+			}
 			plmt = image_copy_placement(dst, span->placement, &maps,
 			    &nmaps);
 			plmt->recover_from = 0;

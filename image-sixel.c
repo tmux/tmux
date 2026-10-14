@@ -100,6 +100,23 @@ struct sixel_plane {
 	char	*stream;
 };
 
+/* Adjacent placement rows buffered for one SIXEL output sequence. */
+struct sixel_pending {
+	struct image	*image;
+
+	/* Source in image in cells. */
+	u_int		 src_x;
+	u_int		 src_y;
+
+	/* Size in cells. */
+	u_int		 w;
+	u_int		 h;
+
+	/* Destination on terminal in cells. */
+	u_int		 dst_x;
+	u_int		 dst_y;
+};
+
 /* RGB histogram entry. */
 struct sixel_hgram {
 	u_int		count;
@@ -1271,4 +1288,116 @@ sixel_from_image(struct image *im, u_int x, u_int y, u_int sx, u_int sy,
 	data = sixel_print(si, size);
 	sixel_free(si);
 	return (data);
+}
+
+/* Return whether the terminal supports SIXEL. */
+int
+sixel_select(struct tty *tty)
+{
+	if (tty->term != NULL &&
+	    (tty->term->flags & TERM_SIXEL) &&
+	    tty->xpixel != 0 &&
+	    tty->ypixel != 0)
+		return (1);
+	return (0);
+}
+
+/* Get pending SIXEL rows for a terminal. */
+static struct sixel_pending *
+sixel_get_pending(struct tty *tty)
+{
+	struct sixel_pending	*sp = tty->image_data;
+
+	if (sp == NULL) {
+		sp = xcalloc(1, sizeof *sp);
+		tty->image_data = sp;
+	}
+	return (sp);
+}
+
+/* Free pending SIXEL rows for a terminal. */
+void
+sixel_free_pending(struct tty *tty)
+{
+	struct sixel_pending	*sp = tty->image_data;
+
+	if (sp == NULL)
+		return;
+	if (sp->image != NULL)
+		image_free(sp->image);
+	free(sp);
+	tty->image_data = NULL;
+}
+
+/* Write the rows held in the pending run as a single SIXEL. */
+void
+sixel_flush_pending(struct tty *tty)
+{
+	struct sixel_pending	*sp = tty->image_data;
+	struct image		*im;
+	char			*data;
+	size_t			 size;
+
+	if (sp == NULL || sp->image == NULL)
+		return;
+	im = sp->image;
+	sp->image = NULL;
+
+	data = sixel_from_image(im, sp->src_x, sp->src_y, sp->w, sp->h,
+	    tty->xpixel, tty->ypixel, &size);
+	if (data != NULL) {
+		tty_region_off(tty);
+		tty_margin_off(tty);
+		tty_cursor(tty, sp->dst_x, sp->dst_y);
+
+		tty->flags |= TTY_NOBLOCK;
+		tty_putn(tty, data, size, 0);
+		tty->cx = tty->cy = UINT_MAX;
+
+		free(data);
+	}
+	image_free(im);
+}
+
+/* Queue adjacent placement rows for one SIXEL output sequence. */
+void
+sixel_draw_rect(struct tty *tty, struct image_rect *rect)
+{
+	struct sixel_pending	*sp = sixel_get_pending(tty);
+
+	if (sp->image == rect->image &&
+	    sp->src_x == rect->src_x &&
+	    sp->w == rect->sx &&
+	    sp->dst_x == rect->dst_x &&
+	    sp->src_y + sp->h == rect->src_y &&
+	    sp->dst_y + sp->h == rect->dst_y) {
+		sp->h += rect->sy;
+		return;
+	}
+
+	image_ref(rect->image);
+	sixel_flush_pending(tty);
+
+	sp->image = rect->image;
+	sp->src_x = rect->src_x;
+	sp->src_y = rect->src_y;
+	sp->w = rect->sx;
+	sp->h = rect->sy;
+	sp->dst_x = rect->dst_x;
+	sp->dst_y = rect->dst_y;
+}
+
+/* Remove old SIXEL pixels before drawing an image area. */
+void
+sixel_start_draw(struct tty *tty, u_int x, u_int y, u_int sx, u_int sy)
+{
+	u_int	yy;
+
+	for (yy = y; yy < y + sy; yy++) {
+		tty_cursor(tty, x, yy);
+		if (tty_term_has(tty->term, TTYC_ECH))
+			tty_putcode_i(tty, TTYC_ECH, sx);
+		else
+			tty_repeat_space(tty, sx);
+	}
 }

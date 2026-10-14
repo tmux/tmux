@@ -1852,6 +1852,11 @@ struct tty {
 
 	struct event	 key_timer;
 	struct tty_key	*key_tree;
+
+#ifdef ENABLE_IMAGES
+	struct image_backend	*image_backend;
+	void			*image_data;
+#endif
 };
 
 /* Terminal command context. */
@@ -2941,7 +2946,7 @@ void	tty_cell(struct tty *, const struct grid_cell *,
 	    const struct tty_style_ctx *);
 int	tty_init(struct tty *, struct client *);
 void	tty_resize(struct tty *);
-void	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
+int	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
 void	tty_invalidate(struct tty *);
 void	tty_start_tty(struct tty *);
 void	tty_send_requests(struct tty *);
