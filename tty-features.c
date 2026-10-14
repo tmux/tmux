@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.48 2026/10/12 12:35:03 nicm Exp $ */
+/* $OpenBSD: tty-features.c,v 1.49 2026/10/14 12:33:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -366,6 +366,17 @@ static const struct tty_feature tty_feature_kittygraphics = {
 	TERM_KITTYGRAPHICS
 };
 
+/* Terminal moves images with scroll regions. */
+static const char *const tty_feature_imagescroll_capabilities[] = {
+	"Iscrl",
+	NULL
+};
+static const struct tty_feature tty_feature_imagescroll = {
+	"imagescroll",
+	tty_feature_imagescroll_capabilities,
+	0
+};
+
 /* Terminal supports the OSC 9;4 progress bar. */
 static const char *const tty_feature_progressbar_capabilities[] = {
 	"Spb=\\E]9;4;%p1%d;%p2%d\\E\\\\",
@@ -396,6 +407,7 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_extkeys,
 	&tty_feature_focus,
 	&tty_feature_ignorefkeys,
+	&tty_feature_imagescroll,
 	&tty_feature_kittygraphics,
 	&tty_feature_margins,
 	&tty_feature_mouse,
@@ -635,6 +647,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "extkeys,"
 			      "focus,"
 		  	      "hyperlinks,"
+			      "imagescroll,"
 			      "margins,"
 			      "sixel,"
 			      "usstyle"
