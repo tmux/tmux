@@ -28,27 +28,26 @@ for position, row in [('top', 0), ('bottom', 3)]:
         expected = {(x, y): (255, 0, 0) for y in range(64)
             for x in range(32) if y // 16 != row}
 
-        for z in [-1, 0, 2147483647]:
-            client.clear()
-            test.marker += 1
-            title = 'image-%d' % test.marker
-            data = kitty('a=p,i=7,C=1,c=4,r=4,z=%d' % z) + \
-                b'\033]2;' + title.encode() + b'\007'
-            # Feed the pane directly, bypassing its open prompt.
-            test.run('pipe-pane', '-I', 'printf %%s ' +
-                shlex.quote(data.decode('ascii')))
-            test.wait(lambda: test.run('display-message', '-p',
-                '#{pane_title}') == title)
-            client.read(0.2)
-            test.run('pipe-pane')
-            terminal.feed(client.data)
-            terminal.check(expected)
-            assert ''.join(terminal.cells[x, row][0] for x in range(6)) \
-                == 'PROMPT', terminal.cells
-            test.redraw()
-            terminal = Terminal(sy=4)
-            terminal.feed(client.data)
-            terminal.check(expected)
-            assert ''.join(terminal.cells[x, row][0] for x in range(6)) \
-                == 'PROMPT', terminal.cells
+        client.clear()
+        test.marker += 1
+        title = 'image-%d' % test.marker
+        data = kitty('a=p,i=7,C=1,c=4,r=4') + \
+            b'\033]2;' + title.encode() + b'\007'
+        # Feed the pane directly, bypassing its open prompt.
+        test.run('pipe-pane', '-I', 'printf %%s ' +
+            shlex.quote(data.decode('ascii')))
+        test.wait(lambda: test.run('display-message', '-p',
+            '#{pane_title}') == title)
+        client.read(0.2)
+        test.run('pipe-pane')
+        terminal.feed(client.data)
+        terminal.check(expected)
+        assert ''.join(terminal.cells[x, row][0] for x in range(6)) \
+            == 'PROMPT', terminal.cells
+        test.redraw()
+        terminal = Terminal(sy=4)
+        terminal.feed(client.data)
+        terminal.check(expected)
+        assert ''.join(terminal.cells[x, row][0] for x in range(6)) \
+            == 'PROMPT', terminal.cells
 PY

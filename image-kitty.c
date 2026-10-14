@@ -46,7 +46,6 @@ struct kitty_state {
 	u_int				 placement_id;
 	u_int				 quiet;
 	u_int				 data_size;
-	int				 z;
 	int				 no_cursor;
 	int				 more;
 
@@ -76,13 +75,13 @@ struct kitty_image_map {
 /* Parse Kitty graphics control data. */
 static int
 kitty_parse_control_data(struct kitty_state *ks, const u_char *data,
-    size_t size)
+    size_t size, const char **m)
 {
 	char		*copy, *ptr, *next, *value;
 	const char	*errstr;
 	u_int		 number;
 	char		 key;
-	int		 error = -1;
+	int		 error = -1, z;
 
 	copy = ptr = xstrndup(data, size);
 	while ((next = strsep(&ptr, ",")) != NULL) {
@@ -119,9 +118,13 @@ kitty_parse_control_data(struct kitty_state *ks, const u_char *data,
 			}
 			break;
 		case 'z':
-			ks->z = strtonum(value, INT_MIN, INT_MAX, &errstr);
+			z = strtonum(value, INT_MIN, INT_MAX, &errstr);
 			if (errstr != NULL)
 				goto out;
+			if (z != 0) {
+				*m = "ENOTSUP";
+				goto out;
+			}
 			break;
 		case 'f':
 		case 's':
@@ -333,69 +336,30 @@ kitty_delete_images(struct kitty_state *ks, struct screen_write_ctx *ctx)
 	struct grid			*gd = s->grid;
 	struct kitty_image_map		*map, *map1;
 	struct kitty_placement_map	*kpl;
-	u_int				 removed, x = 0, y = 0;
-	u_int				 sx = gd->sx, sy = gd->sy;
+	u_int				 removed;
 	char				 how = ks->delete;
-	int				 spatial, release, *z = NULL;
+	int				 release;
 
 	release = (how >= 'A' && how <= 'Z');
 	if (release)
 		how += 'a' - 'A';
-	spatial = (how != 'i' && how != 'r' && how != 'z');
-
 	TAILQ_FOREACH(map, &ks->images, entry)
 		kitty_prune_placements(map, s);
-	if (how == 'z')
-		image_grid_clear_layer(gd, IMAGE_TYPE_KITTY, ks->z);
-	if (spatial) {
-		switch (how) {
-		case 'c':
-			x = s->cx;
-			y = s->cy;
-			sx = sy = 1;
-			break;
-		case 'q':
-			z = &ks->z;
-			/* FALLTHROUGH */
-		case 'p':
-		case 'x':
-			x = ks->source_x;
-			sx = 1;
-			if (x == 0)
-				sx = 0;
-			else
-				x--;
-			if (how == 'x')
-				break;
-			/* FALLTHROUGH */
-		case 'y':
-			y = ks->source_y;
-			sy = 1;
-			if (y == 0)
-				sy = 0;
-			else
-				y--;
-			break;
-		}
-		image_grid_clear_area(gd, IMAGE_TYPE_KITTY, x, y, sx, sy, z);
-	}
+	if (how == 'a')
+		image_grid_clear_visible(gd, IMAGE_TYPE_KITTY);
+
 	TAILQ_FOREACH_SAFE(map, &ks->images, entry, map1) {
 		removed = 0;
-		if (!spatial && how != 'z') {
-			if (how == 'i' && map->kitty_id != ks->image_id)
-				continue;
-			if (how == 'r' &&
-			    (map->kitty_id < ks->source_x ||
-			    map->kitty_id > ks->source_y))
+		if (how == 'i') {
+			if (map->kitty_id != ks->image_id)
 				continue;
 			TAILQ_FOREACH(kpl, &map->placements, entry) {
-				if (how == 'i' &&
-				    ks->placement_id != 0 &&
+				if (ks->placement_id != 0 &&
 				    kpl->kitty_id != ks->placement_id)
 					continue;
 				removed += image_grid_clear(gd, kpl->image_id);
 			}
-			if (how == 'r' || ks->placement_id == 0)
+			if (ks->placement_id == 0)
 				removed++;
 		}
 		removed += kitty_prune_placements(map, s);
@@ -591,13 +555,14 @@ kitty_parse_input(struct input_ctx *ictx, struct window_pane *wp,
 		psize = len - csize - 1;
 	}
 
-	if (ks->more &&
-	    kitty_parse_control_data(&cks, buf, csize) == 0 &&
-	    cks.action == 'd') {
-		free(ks->data);
-		ks->data = NULL;
-		ks->size = 0;
-		ks->more = 0;
+	if (ks->more) {
+		kitty_parse_control_data(&cks, buf, csize, &m);
+		if (cks.action == 'd') {
+			free(ks->data);
+			ks->data = NULL;
+			ks->size = 0;
+			ks->more = 0;
+		}
 	}
 
 	if (!ks->more) {
@@ -621,12 +586,11 @@ kitty_parse_input(struct input_ctx *ictx, struct window_pane *wp,
 		ks->placement_id = 0;
 		ks->quiet = 0;
 		ks->data_size = 0;
-		ks->z = 0;
 		ks->no_cursor = 0;
 	}
 	ks->more = 0;
 
-	error = kitty_parse_control_data(ks, buf, csize);
+	error = kitty_parse_control_data(ks, buf, csize, &m);
 	if (error != 0)
 		goto out;
 	if (ks->image_id == 0 && ks->image_number == 0)
@@ -652,20 +616,6 @@ kitty_parse_input(struct input_ctx *ictx, struct window_pane *wp,
 		case 'A':
 		case 'i':
 		case 'I':
-		case 'c':
-		case 'C':
-		case 'p':
-		case 'P':
-		case 'q':
-		case 'Q':
-		case 'x':
-		case 'X':
-		case 'y':
-		case 'Y':
-		case 'r':
-		case 'R':
-		case 'z':
-		case 'Z':
 			break;
 		default:
 			m = "ENOTSUP";
@@ -745,7 +695,7 @@ place:
 	if (im != NULL) {
 		image_set_order_id(im, image_get_order_id(src));
 		kitty_placement_map_set(ctx, map, ks->placement_id, im);
-		image_write(ctx, im, bg, ks->no_cursor, ks->z);
+		image_write(ctx, im, bg, ks->no_cursor);
 	}
 	m = "OK";
 

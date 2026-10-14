@@ -196,9 +196,29 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         check('maximum-ids',
               graphics('a=t,i=4294967295,p=4294967295,f=32,s=1,v=1', pixel),
               graphics('i=4294967295,p=4294967295', 'OK'))
-        for z in [-2147483648, -1073741824, -1, 0, 1, 2147483647]:
-            check('signed-layer-' + str(z),
-                  graphics(transmit + ',z=' + str(z), pixel), ok)
+        unsupported = graphics('i=7', 'ENOTSUP')
+        check('default-layer', graphics(transmit + ',z=0', pixel), ok)
+        for z in [-2147483648, -1073741824, -1, 1, 2147483647]:
+            check('unsupported-layer-' + str(z),
+                  graphics(transmit + ',z=' + str(z), pixel), unsupported)
+        for action in ['t', 'T', 'p', 'q', 'd']:
+            check('unsupported-action-layer-' + action,
+                  graphics('a=%s,i=7,p=9,f=32,s=1,v=1,z=-1' % action,
+                           pixel), graphics('i=7,p=9', 'ENOTSUP'))
+        for quiet in [1, 2]:
+            check('unsupported-layer-quiet-' + str(quiet),
+                  graphics(transmit + ',q=%d,z=1' % quiet, pixel),
+                  unsupported if quiet == 1 else '')
+        check('zero-layer-chunks', graphics(transmit + ',z=0,m=1', '/wAA') +
+              graphics('m=0,z=0', '/w=='), ok)
+        check('unsupported-layer-aborts-chunks',
+              graphics(transmit + ',m=1', '/wAA') +
+              graphics('m=0,z=1', '/w==') + graphics(transmit, pixel),
+              unsupported + ok)
+        check('unsupported-layer-does-not-start-chunks',
+              graphics(transmit + ',m=1,z=1', '/wAA') +
+              graphics('m=0', '/w==') + graphics(transmit, pixel),
+              unsupported + ok)
         for z in ['-2147483649', '2147483648', '1x', '', 'bad']:
             check('invalid-layer-' + z,
                   graphics(transmit + ',z=' + z, pixel), invalid)
@@ -260,48 +280,41 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
               graphics('i=7', 'ENOTSUP'))
         check('malformed-delete', stored + graphics('a=d,i=7,d=ii'), invalid)
 
-        # Position selectors use one-based cells; range selectors use image IDs.
-        selectors = [('c', ''), ('p', ',x=6,y=3'), ('x', ',x=6'),
-                     ('y', ',y=3'), ('r', ',x=7,y=7'),
-                     ('q', ',x=6,y=3,z=0'), ('z', ',z=0')]
-        for selector, controls in selectors:
-            for hard in (False, True):
-                how = selector.upper() if hard else selector
-                check('delete-selector-' + how, stored + first +
-                      graphics('a=d,d=' + how + controls) +
-                      graphics('a=p,i=7,C=1'), missing if hard else ok)
-        check('delete-range-unplaced', stored + graphics('a=d,d=R,x=7,y=7') +
-              graphics('a=p,i=7,C=1'), missing)
-        check('delete-soft-range-unplaced', stored +
-              graphics('a=d,d=r,x=7,y=7') + graphics('a=p,i=7,C=1'), ok)
-        check('delete-spatial-retains-other-placement', stored + first +
-              '\033[3;8H' + second + graphics('a=d,d=X,x=6') +
-              graphics('a=p,i=7,C=1'), ok, cursor='7,2')
-        check('delete-spatial-miss-retains-data', stored + first +
-              graphics('a=d,d=P,x=7,y=3') + graphics('a=p,i=7,C=1'), ok)
-        check('delete-spatial-retains-history', stored + first + '\033[12S' +
-              graphics('a=d,d=P,x=6,y=3') + graphics('a=p,i=7,C=1'), ok)
-        check('delete-layer-unplaced', stored + graphics('a=d,d=Z,z=0') +
+        # Unsupported selectors leave uploaded data and placements intact.
+        for selector in 'cCpPqQrRxXyYzZ':
+            control = 'a=d,d=%s,i=7,x=6,y=3,z=0' % selector
+            check('unsupported-delete-' + selector, stored + first +
+                  graphics(control) + graphics('a=p,i=7,C=1'),
+                  unsupported + ok)
+        for quiet in [1, 2]:
+            check('unsupported-delete-quiet-' + str(quiet), stored + first +
+                  graphics('a=d,d=P,i=7,q=%d,x=6,y=3' % quiet) +
+                  graphics('a=p,i=7,C=1'),
+                  (unsupported if quiet == 1 else '') + ok)
+        check('unsupported-delete-named', stored + first +
+              graphics('a=d,d=Z,i=7,p=1') + graphics('a=p,i=7,C=1'),
+              graphics('i=7,p=1', 'ENOTSUP') + ok)
+        check('unsupported-delete-aborts-upload', stored +
+              graphics(transmit + ',q=2,m=1', '/wAA') +
+              graphics('a=d,d=P,i=7') + graphics('a=p,i=7,C=1'),
+              unsupported + ok)
+        check('unsupported-delete-does-not-inherit-id', stored +
+              graphics(transmit + ',m=1', '/wAA') + graphics('a=d,d=P') +
               graphics('a=p,i=7,C=1'), ok)
-        check('delete-layer-miss', stored + first +
-              graphics('a=d,d=Z,z=1') + graphics('a=p,i=7,C=1'), ok)
-        check('delete-cell-layer-miss', stored + first +
-              graphics('a=d,d=Q,x=6,y=3,z=1') +
-              graphics('a=p,i=7,C=1'), ok)
-        check('delete-negative-layer', stored +
-              graphics(put + ',p=1,z=-1') +
-              graphics('a=d,d=Z,z=-1') + graphics('a=p,i=7,C=1'), missing)
-        check('delete-soft-layer-history', stored + first + '\033[12S' +
-              graphics('a=d,d=z,z=0') + graphics('a=p,i=7,C=1'), ok)
-        check('delete-hard-layer-history', stored + first + '\033[12S' +
-              graphics('a=d,d=Z,z=0') + graphics('a=p,i=7,C=1'), missing)
-        check('delete-layer-retains-other-placement', stored + first +
-              graphics(put + ',p=2,z=1') +
-              graphics('a=d,d=Z,z=0') + graphics('a=p,i=7,C=1'), ok)
-        check('delete-layer-saved-screen', stored + first +
-              '\033[?1049h' + graphics(put + ',p=2') +
-              graphics('a=d,d=Z,z=0') + '\033[?1049l' +
-              graphics('a=p,i=7,C=1'), ok)
+        check('unsupported-layer-delete-aborts-upload', stored +
+              graphics(transmit + ',q=2,m=1', '/wAA') +
+              graphics('a=d,d=I,i=7,z=1') + graphics('a=p,i=7,C=1'),
+              unsupported + ok)
+        check('unsupported-layer-delete-does-not-inherit-id', stored +
+              graphics(transmit + ',m=1', '/wAA') +
+              graphics('a=d,d=I,z=-1') + graphics('a=p,i=7,C=1'), ok)
+        for action in ['t', 'T', 'q']:
+            check('unsupported-layer-keeps-source-' + action, stored +
+                  graphics('a=%s,i=7,f=32,s=1,v=1,z=1' % action, pixel) +
+                  graphics('a=p,i=7,C=1'), unsupported + ok)
+        check('unsupported-layer-query-does-not-store',
+              graphics('a=q,i=7,f=32,s=1,v=1,z=1', pixel) +
+              graphics('a=p,i=7,C=1'), unsupported + missing)
 
         # Abort immediately when chunked data exceeds 64 MiB, then recover.
         block = base64.b64encode(b'\0' * (512 * 1024)).decode()
