@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.437 2026/10/08 07:50:05 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.438 2026/10/13 23:17:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -547,7 +547,8 @@ window_copy_sync_backing(struct window_mode_entry *wme)
 		if (collected > 0) {
 			grid_free_lines(dg, 0, collected);
 			memmove(&dg->linedata[0], &dg->linedata[collected],
-			    (old_hsize + sy - collected) * sizeof *dg->linedata);
+			    (old_hsize + sy - collected) *
+			    sizeof *dg->linedata);
 			memset(&dg->linedata[old_hsize + sy - collected], 0,
 			    collected * sizeof *dg->linedata);
 		}
@@ -566,7 +567,7 @@ window_copy_sync_backing(struct window_mode_entry *wme)
 		 */
 		dg->hsize = new_hsize;
 
-		/* Copy the newly scrolled history, then refresh the viewport. */
+		/* Copy the newly scrolled history, then refresh the view. */
 		if (added > 0)
 			grid_duplicate_lines(dg, kept, sg, kept, added);
 		grid_duplicate_lines(dg, new_hsize, sg, new_hsize, sy);
@@ -2330,6 +2331,7 @@ window_copy_cmd_selection_mode(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	struct options			*so = cs->s->options;
+	struct options			*oo = wme->wp->window->options;
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid_reader		 gr;
 	const char			*s = args_string(cs->wargs, 0);
@@ -2349,7 +2351,8 @@ window_copy_cmd_selection_mode(struct window_copy_cmd_state *cs)
 
 	/*
 	 * Set up the reset positions normally initialized by select-word or
-	 * select-line, including when changing the mode of an existing selection.
+	 * select-line, including when changing the mode of an existing
+	 * selection.
 	 */
 	if (data->cursordrag == CURSORDRAG_SEL) {
 		fx = data->endselx;
@@ -2376,8 +2379,7 @@ window_copy_cmd_selection_mode(struct window_copy_cmd_state *cs)
 	grid_reader_start(&gr, data->backing->grid, ex, ey);
 	if (data->selflag == SEL_WORD) {
 		grid_reader_cursor_next_word_end(&gr, data->separators);
-		if (options_get_number(wme->wp->window->options, "mode-keys") ==
-		    MODEKEY_VI)
+		if (options_get_number(oo, "mode-keys") == MODEKEY_VI)
 			grid_reader_cursor_left(&gr, 1);
 	} else
 		grid_reader_cursor_end_of_line(&gr, 1, 0);
@@ -5607,8 +5609,8 @@ window_copy_write_one(struct window_mode_entry *wme,
 			if (gc.flags & GRID_FLAG_PADDING) {
 				if (ctx->s->cy == py && ctx->s->cx <= px + fx) {
 					gc.flags &= ~GRID_FLAG_PADDING;
-					screen_write_cursormove(ctx, px + fx, py,
-					    0);
+					screen_write_cursormove(ctx, px + fx,
+					    py, 0);
 					screen_write_putc(ctx, &gc, ' ');
 				}
 			} else if (gc.flags & GRID_FLAG_TAB) {
@@ -5951,7 +5953,7 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx 	 ctx;
-	u_int				 i;
+	u_int				 i, off;
 
 #ifdef ENABLE_IMAGES
 	window_copy_update_image_refresh(data);
@@ -5975,9 +5977,8 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 		screen_write_start_pane(&ctx, wp, NULL);
 	for (i = py; i < py + ny; i++)
 		window_copy_write_line(wme, &ctx, i);
-	screen_write_cursormove(&ctx,
-	    window_copy_cursor_offset(wme, data->cx, screen_size_x(s)), data->cy,
-	    0);
+	off = window_copy_cursor_offset(wme, data->cx, screen_size_x(s));
+	screen_write_cursormove(&ctx, off, data->cy, 0);
 	screen_write_stop(&ctx);
 
 	window_pane_scrollbar_redraw(wp);
