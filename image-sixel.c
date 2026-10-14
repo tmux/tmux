@@ -22,12 +22,23 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "tmux.h"
 
-/* Maximum SIXEL width and height */
+/* Maximum SIXEL width and height. */
 #define SIXEL_WIDTH_LIMIT 10000
 #define SIXEL_HEIGHT_LIMIT 10000
+
+/* Number of colours in a generated SIXEL palette. */
+#define SIXEL_PALETTE_SIZE 256
+
+/* Number of histogram levels for each RGB component. */
+#define SIXEL_HGRAM_LEVELS 32
+
+/* Number of bins in the RGB histogram. */
+#define SIXEL_HGRAM_SIZE \
+	(SIXEL_HGRAM_LEVELS * SIXEL_HGRAM_LEVELS * SIXEL_HGRAM_LEVELS)
 
 /* Line of a SIXEL image. */
 struct sixel_line {
@@ -51,6 +62,12 @@ struct sixel_image {
 	/* SIXEL palette. */
 	u_int			*colours;
 	u_int			 ncolours;
+	u_int			 used_colours;
+
+	/* SIXEL raster attributes. */
+	u_int			 set_ra;
+	u_int			 ra_x;
+	u_int			 ra_y;
 
 	/* DCS parameters. */
 	u_int			 p1;
@@ -64,6 +81,74 @@ struct sixel_image {
 	/* Lines of palette indexes and the bytes allocated for them. */
 	struct sixel_line	*lines;
 	size_t			 allocated;
+};
+
+/* One colour's encoded columns in the current six-row band. */
+struct sixel_plane {
+	/* Position of the next encoded colour plane. */
+	u_int	 next_x;
+	u_int	 next_y;
+
+	/* State used while encoding SIXEL patterns. */
+	u_int	 count;
+	char	 pattern;
+	char	 next_pattern;
+
+	/* Output buffer and its allocation and used lengths. */
+	size_t	 stream_len;
+	size_t	 stream_used;
+	char	*stream;
+};
+
+/* RGB histogram entry. */
+struct sixel_hgram {
+	u_int		count;
+	uint64_t	r;
+	uint64_t	g;
+	uint64_t	b;
+};
+
+/* Bounds and population of one palette region. */
+struct sixel_box {
+	u_int	rmin;
+	u_int	rmax;
+	u_int	gmin;
+	u_int	gmax;
+	u_int	bmin;
+	u_int	bmax;
+	u_int	count;
+};
+
+/* One generated palette colour. */
+struct sixel_rgb {
+	u_char	r;
+	u_char	g;
+	u_char	b;
+};
+
+/* Pixels and dimensions of the image being encoded. */
+struct sixel_source {
+	/* Source pixels and number of bytes between rows. */
+	const u_char	*pixels;
+	size_t		 stride;
+
+	/* Source image and canvas sizes in pixels and size in cells. */
+	u_int		 width;
+	u_int		 height;
+	u_int		 canvas_width;
+	u_int		 canvas_height;
+	u_int		 sx;
+	u_int		 sy;
+
+	/* Destination canvas size in pixels. */
+	u_int		 dst_w;
+	u_int		 dst_h;
+
+	/* Output position and size in the destination canvas in pixels. */
+	u_int		 dst_x;
+	u_int		 dst_y;
+	u_int		 out_w;
+	u_int		 out_h;
 };
 
 /* Grow a SIXEL image to contain a line. */
@@ -487,15 +572,15 @@ sixel_hue(double p, double q, double t)
 
 /* Convert a SIXEL colour register to RGB. */
 static void
-sixel_colour_to_rgb(u_int colour, u_char *r, u_char *g, u_char *b)
+sixel_colour_to_rgb(u_int c, u_char *r, u_char *g, u_char *b)
 {
-	u_int	type = (colour >> 25);
+	u_int	type = (c >> 25);
 	double	h, l, s, p, q;
 
 	if (type == 2) {
-		*r = (((colour >> 16) & 0xff) * 255 + 50) / 100;
-		*g = (((colour >> 8) & 0xff) * 255 + 50) / 100;
-		*b = ((colour & 0xff) * 255 + 50) / 100;
+		*r = (((c >> 16) & 0xff) * 255 + 50) / 100;
+		*g = (((c >> 8) & 0xff) * 255 + 50) / 100;
+		*b = ((c & 0xff) * 255 + 50) / 100;
 		return;
 	}
 	if (type != 1) {
@@ -503,9 +588,9 @@ sixel_colour_to_rgb(u_int colour, u_char *r, u_char *g, u_char *b)
 		return;
 	}
 
-	h = ((colour >> 16) & 0x1ff) / 360.;
-	l = ((colour >> 8) & 0xff) / 100.;
-	s = (colour & 0xff) / 100.;
+	h = ((c >> 16) & 0x1ff) / 360.;
+	l = ((c >> 8) & 0xff) / 100.;
+	s = (c & 0xff) / 100.;
 	if (s == 0) {
 		*r = *g = *b = l * 255 + 0.5;
 		return;
@@ -575,4 +660,615 @@ sixel_write(struct screen_write_ctx *ctx, struct sixel_image *si, u_int bg)
 		return;
 	image_write(ctx, im, bg);
 	image_free(im);
+}
+
+/* Append data to a growing SIXEL output buffer. */
+static void
+sixel_print_add(char **buf, size_t *len, size_t *used, const char *s,
+    size_t slen)
+{
+	while (*used + slen + 1 > *len) {
+		*buf = xreallocarray(*buf, 2, *len);
+		(*len) *= 2;
+	}
+	memcpy(*buf + *used, s, slen);
+	(*used) += slen;
+}
+
+/* Append a SIXEL character repetition to an output buffer. */
+static void
+sixel_print_repeat(char **buf, size_t *len, size_t *used, u_int count, char ch)
+{
+	char	tmp[16];
+	size_t	tmplen;
+
+	if (count == 1)
+		sixel_print_add(buf, len, used, &ch, 1);
+	else if (count == 2) {
+		sixel_print_add(buf, len, used, &ch, 1);
+		sixel_print_add(buf, len, used, &ch, 1);
+	} else if (count == 3) {
+		sixel_print_add(buf, len, used, &ch, 1);
+		sixel_print_add(buf, len, used, &ch, 1);
+		sixel_print_add(buf, len, used, &ch, 1);
+	} else if (count != 0) {
+		tmplen = xsnprintf(tmp, sizeof tmp, "!%u%c", count, ch);
+		sixel_print_add(buf, len, used, tmp, tmplen);
+	}
+}
+
+/* Build compressed SIXEL output planes for a sixel row. */
+static void
+sixel_print_compress_colors(struct sixel_image *si, struct sixel_plane *planes,
+    u_int y, u_int *active, u_int *nactive)
+{
+	u_int			 i, x, c, dx, pixels[6];
+	struct sixel_plane	*plane = NULL;
+	struct sixel_line	*sl;
+
+	for (x = 0; x < si->x; x++) {
+		/* Collect this column's six-bit pattern for each colour. */
+		for (i = 0; i < 6; i++) {
+			pixels[i] = 0;
+			if (y + i < si->y) {
+				sl = &si->lines[y + i];
+				if (x < sl->x && sl->data[x] != 0) {
+					pixels[i] = sl->data[x];
+					c = sl->data[x] - 1;
+					planes[c].next_pattern |= 1 << i;
+				}
+			}
+		}
+
+		/* Compress patterns and gaps in active colour planes. */
+		for (i = 0; i < 6; i++) {
+			if (pixels[i] == 0)
+				continue;
+
+			c = pixels[i] - 1;
+			plane = &planes[c];
+			if (plane->next_x == x + 1)
+				continue;
+
+			if (plane->next_y < y + 1) {
+				plane->next_y = y + 1;
+				active[(*nactive)++] = c;
+			}
+
+			dx = x - plane->next_x;
+			if (plane->pattern != plane->next_pattern || dx != 0) {
+				sixel_print_repeat(&plane->stream,
+				    &plane->stream_len, &plane->stream_used,
+				    plane->count, plane->pattern + 0x3f);
+				sixel_print_repeat(&plane->stream,
+				    &plane->stream_len, &plane->stream_used,
+				    dx, '?');
+				plane->pattern = plane->next_pattern;
+				plane->count = 0;
+			}
+			plane->count++;
+			plane->next_pattern = 0;
+			plane->next_x = x + 1;
+		}
+	}
+}
+
+/* Encode an indexed SIXEL image for terminal output. */
+static char *
+sixel_print(struct sixel_image *si, size_t *size)
+{
+	char			*buf, tmp[64];
+	size_t			 len, used = 0, tmplen;
+	u_int			 used_colours, i, c, y;
+	u_int			*active, nactive;
+	struct sixel_plane	*planes, *plane;
+
+	used_colours = si->used_colours;
+	if (used_colours == 0)
+		return (NULL);
+
+	len = 8192;
+	buf = xmalloc(len);
+
+	tmplen = xsnprintf(tmp, sizeof tmp, "\033P%u;%uq", si->p1, si->p2);
+	sixel_print_add(&buf, &len, &used, tmp, tmplen);
+
+	if (si->set_ra) {
+		tmplen = xsnprintf(tmp, sizeof tmp, "\"1;1;%u;%u", si->ra_x,
+		    si->ra_y);
+		sixel_print_add(&buf, &len, &used, tmp, tmplen);
+	}
+
+	/* Track colour planes containing pixels in the current six-row band. */
+	planes = xcalloc(used_colours, sizeof *planes);
+	active = xcalloc(used_colours, sizeof *active);
+
+	/* Emit the palette before the encoded colour planes. */
+	for (i = 0; i < si->ncolours; i++) {
+		c = si->colours[i];
+		tmplen = xsnprintf(tmp, sizeof tmp, "#%u;%u;%u;%u;%u",
+		    i, c >> 25, (c >> 16) & 0x1ff, (c >> 8) & 0xff, c & 0xff);
+		sixel_print_add(&buf, &len, &used, tmp, tmplen);
+	}
+
+	for (i = 0; i < used_colours; i++) {
+		plane = &planes[i];
+		plane->stream_len = 8;
+		plane->stream = xmalloc(plane->stream_len);
+	}
+
+	/* Encode each six-row band using only its active colours. */
+	for (y = 0; y < si->y; y += 6) {
+		nactive = 0;
+		sixel_print_compress_colors(si, planes, y, active, &nactive);
+
+		for (i = 0; i < nactive; i++) {
+			c = active[i];
+			plane = &planes[c];
+			tmplen = xsnprintf(tmp, sizeof tmp, "#%u", c);
+			sixel_print_add(&buf, &len, &used, tmp, tmplen);
+			sixel_print_add(&buf, &len, &used, plane->stream,
+			    plane->stream_used);
+			sixel_print_repeat(&buf, &len, &used, plane->count,
+			    plane->pattern + 0x3f);
+			sixel_print_add(&buf, &len, &used, "$", 1);
+			plane->stream_used = plane->next_x = plane->count = 0;
+		}
+
+		if (buf[used - 1] == '$')
+			used--;
+		sixel_print_add(&buf, &len, &used, "-", 1);
+	}
+	if (buf[used - 1] == '-')
+		used--;
+
+	sixel_print_add(&buf, &len, &used, "\033\\", 2);
+
+	buf[used] = '\0';
+	if (size != NULL)
+		*size = used;
+
+	for (i = 0; i < used_colours; i++)
+		free(planes[i].stream);
+	free(active);
+	free(planes);
+
+	return (buf);
+}
+
+/* Update the occupied bounds and pixel count of a colour region. */
+static void
+sixel_box_update(struct sixel_box *box, struct sixel_hgram *hg)
+{
+	struct sixel_hgram	*entry;
+	u_int			 r, g, b, rmax = 0, gmax = 0, bmax = 0;
+	u_int			 rmin = SIXEL_HGRAM_LEVELS;
+	u_int			 gmin = SIXEL_HGRAM_LEVELS;
+	u_int			 bmin = SIXEL_HGRAM_LEVELS;
+	u_int			 count = 0;
+
+	for (r = box->rmin; r <= box->rmax; r++) {
+		for (g = box->gmin; g <= box->gmax; g++) {
+			for (b = box->bmin; b <= box->bmax; b++) {
+				entry = &hg[(r << 10)|(g << 5)|b];
+				if (entry->count != 0) {
+					if (r < rmin)
+						rmin = r;
+					if (r > rmax)
+						rmax = r;
+					if (g < gmin)
+						gmin = g;
+					if (g > gmax)
+						gmax = g;
+					if (b < bmin)
+						bmin = b;
+					if (b > bmax)
+						bmax = b;
+					count += entry->count;
+				}
+			}
+		}
+	}
+	box->count = count;
+	if (count != 0) {
+		box->rmin = rmin;
+		box->rmax = rmax;
+		box->gmin = gmin;
+		box->gmax = gmax;
+		box->bmin = bmin;
+		box->bmax = bmax;
+	}
+}
+
+/* Split a histogram box at its weighted median. */
+static int
+sixel_box_split(struct sixel_box *box, struct sixel_box *new,
+    struct sixel_hgram *hg)
+{
+	u_int	 levels[SIXEL_HGRAM_LEVELS] = { 0 };
+	u_int	 r, g, b, index, channel, first, last, level;
+	u_int	 rrange, grange, brange, count = 0;
+
+	/* Split along the channel with the widest occupied range. */
+	rrange = box->rmax - box->rmin;
+	grange = box->gmax - box->gmin;
+	brange = box->bmax - box->bmin;
+	if (rrange == 0 && grange == 0 && brange == 0)
+		return (0);
+	if (grange >= rrange && grange >= brange)
+		channel = 1;
+	else if (rrange >= brange)
+		channel = 0;
+	else
+		channel = 2;
+	for (r = box->rmin; r <= box->rmax; r++) {
+		for (g = box->gmin; g <= box->gmax; g++) {
+			for (b = box->bmin; b <= box->bmax; b++) {
+				index = (r << 10)|(g << 5)|b;
+				if (channel == 0)
+					levels[r] += hg[index].count;
+				else if (channel == 1)
+					levels[g] += hg[index].count;
+				else
+					levels[b] += hg[index].count;
+			}
+		}
+	}
+	if (channel == 0) {
+		first = box->rmin;
+		last = box->rmax;
+	} else if (channel == 1) {
+		first = box->gmin;
+		last = box->gmax;
+	} else {
+		first = box->bmin;
+		last = box->bmax;
+	}
+
+	/* Find the weighted median without emptying either resulting box. */
+	for (level = first; level < last; level++) {
+		count += levels[level];
+		if (count >= box->count / 2)
+			break;
+	}
+
+	/* Keep the maximum occupied level in the new box. */
+	if (level == last)
+		level--;
+	memcpy(new, box, sizeof *new);
+	if (channel == 0) {
+		box->rmax = level;
+		new->rmin = level + 1;
+	} else if (channel == 1) {
+		box->gmax = level;
+		new->gmin = level + 1;
+	} else {
+		box->bmax = level;
+		new->bmin = level + 1;
+	}
+	sixel_box_update(box, hg);
+	sixel_box_update(new, hg);
+	return (box->count != 0 && new->count != 0);
+}
+
+/* Build an adaptive palette from an RGB histogram. */
+static u_int
+sixel_make_palette(struct sixel_hgram *hg, struct sixel_rgb *palette)
+{
+	struct sixel_box	 boxes[SIXEL_PALETTE_SIZE], new;
+	struct sixel_box	*box;
+	uint64_t		 best_score, score, rsum, gsum, bsum, count;
+	u_int			 i, nbox = 1, best, r, g, b, index;
+	u_int			 rrange, grange, brange;
+
+	/* Initialize the first box. */
+	memset(&boxes[0], 0, sizeof boxes[0]);
+	boxes[0].rmax = boxes[0].gmax = boxes[0].bmax = SIXEL_HGRAM_LEVELS - 1;
+	sixel_box_update(&boxes[0], hg);
+	if (boxes[0].count == 0)
+		return (0);
+
+	/* Repeatedly split the most populated and varied colour region. */
+	while (nbox < SIXEL_PALETTE_SIZE) {
+		best = nbox;
+		best_score = 0;
+		for (i = 0; i < nbox; i++) {
+			box = &boxes[i];
+			rrange = box->rmax - box->rmin;
+			grange = box->gmax - box->gmin;
+			brange = box->bmax - box->bmin;
+			score = (uint64_t)box->count * (rrange * rrange +
+			    grange * grange + brange * brange);
+			if (score > best_score) {
+				best = i;
+				best_score = score;
+			}
+		}
+		if (best == nbox || !sixel_box_split(&boxes[best], &new, hg))
+			break;
+		memcpy(&boxes[nbox++], &new, sizeof new);
+	}
+
+	/* Average each region's colours into one palette entry. */
+	for (i = 0; i < nbox; i++) {
+		box = &boxes[i];
+
+		rsum = gsum = bsum = count = 0;
+		for (r = box->rmin; r <= box->rmax; r++) {
+			for (g = box->gmin; g <= box->gmax; g++) {
+				for (b = box->bmin; b <= box->bmax; b++) {
+					index = (r << 10)|(g << 5)|b;
+					rsum += hg[index].r;
+					gsum += hg[index].g;
+					bsum += hg[index].b;
+					count += hg[index].count;
+				}
+			}
+		}
+		palette[i].r = (rsum + count / 2) / count;
+		palette[i].g = (gsum + count / 2) / count;
+		palette[i].b = (bsum + count / 2) / count;
+	}
+
+	return (nbox);
+}
+
+/* Find the closest adaptive palette entry for an RGB colour. */
+static u_int
+sixel_nearest_colour(struct sixel_rgb *palette, u_int ncolours,
+    uint16_t *cache, u_int r, u_int g, u_int b)
+{
+	uint64_t	 distance, best_distance = UINT64_MAX;
+	int		 dr, dg, db;
+	u_int		 i, best = 0, index;
+
+	index = ((r >> 3) << 10)|((g >> 3) << 5)|(b >> 3);
+	if (cache[index] != UINT16_MAX)
+		return (cache[index]);
+	for (i = 0; i < ncolours; i++) {
+		dr = (int)r - palette[i].r;
+		dg = (int)g - palette[i].g;
+		db = (int)b - palette[i].b;
+		distance = 3ULL * dr * dr + 6ULL * dg * dg + db * db;
+		if (distance < best_distance) {
+			best = i;
+			best_distance = distance;
+		}
+	}
+	cache[index] = best;
+	return (best);
+}
+
+/* Clamp an RGB component to the valid range. */
+static u_int
+sixel_clamp_colour(int colour)
+{
+	if (colour < 0)
+		return (0);
+	if (colour > 255)
+		return (255);
+	return (colour);
+}
+
+/* Return a source pixel mapped to an output SIXEL pixel. */
+static const u_char *
+sixel_from_image_pixel(const struct sixel_source *src, u_int x, u_int y)
+{
+	u_int	 px, py;
+
+	px = ((uint64_t)src->dst_x + x) * src->canvas_width / src->dst_w;
+	py = ((uint64_t)src->dst_y + y) * src->canvas_height / src->dst_h;
+	return (src->pixels + py * src->stride + px * 4);
+}
+
+/* Make a palette from the visible pixels in the output area. */
+static u_int
+sixel_make_image_palette(struct sixel_source *src, struct sixel_rgb *palette)
+{
+	struct sixel_hgram	*hg, *entry;
+	const u_char		*pixel;
+	u_int			 x, y, index, ncolours;
+
+	hg = xcalloc(SIXEL_HGRAM_SIZE, sizeof *hg);
+	for (y = 0; y < src->out_h; y++) {
+		for (x = 0; x < src->out_w; x++) {
+			pixel = sixel_from_image_pixel(src, x, y);
+			if (pixel[3] == 0)
+				continue;
+
+			index = ((pixel[0] >> 3) << 10)| ((pixel[1] >> 3) << 5)|
+			    (pixel[2] >> 3);
+			entry = &hg[index];
+			entry->count++;
+			entry->r += pixel[0];
+			entry->g += pixel[1];
+			entry->b += pixel[2];
+		}
+	}
+	ncolours = sixel_make_palette(hg, palette);
+	free(hg);
+	return (ncolours);
+}
+
+/* Choose an indexed colour for a pixel and diffuse it. */
+static u_int
+sixel_dither_pixel(struct sixel_rgb *palette, u_int ncolours, uint16_t *cache,
+    const u_char *pixel, int *current, int *next)
+{
+	int	 alphaerr, rerr, gerr, berr;
+	u_int	 alpha, r, g, b, c;
+
+	/* Dither alpha to SIXEL's binary transparency. */
+	alpha = sixel_clamp_colour((int)pixel[3] + current[3] / 16);
+	alphaerr = alpha;
+	if (alpha >= 128)
+		alphaerr -= 255;
+	current[7] += alphaerr * 7;
+	next[-1] += alphaerr * 3;
+	next[3] += alphaerr * 5;
+	next[7] += alphaerr;
+	if (alpha < 128)
+		return (0);
+
+	/* Get the RGB colours. */
+	r = sixel_clamp_colour((int)pixel[0] + current[0] / 16);
+	g = sixel_clamp_colour((int)pixel[1] + current[1] / 16);
+	b = sixel_clamp_colour((int)pixel[2] + current[2] / 16);
+	c = sixel_nearest_colour(palette, ncolours, cache, r, g, b);
+
+	/* Find the colour error. */
+	rerr = (int)r - palette[c].r;
+	gerr = (int)g - palette[c].g;
+	berr = (int)b - palette[c].b;
+
+	/* Diffuse error with the 7:3:5:1 kernel. */
+	current[4] += rerr * 7;
+	current[5] += gerr * 7;
+	current[6] += berr * 7;
+	next[-4] += rerr * 3;
+	next[-3] += gerr * 3;
+	next[-2] += berr * 3;
+	next[0] += rerr * 5;
+	next[1] += gerr * 5;
+	next[2] += berr * 5;
+	next[4] += rerr;
+	next[5] += gerr;
+	next[6] += berr;
+	return (c + 1);
+}
+
+/* Make an indexed SIXEL image from part of an image. */
+static struct sixel_image *
+sixel_make_image(struct image *im, u_int cx, u_int cy, u_int csx, u_int csy,
+    u_int cw, u_int ch)
+{
+	struct sixel_image	*si;
+	struct sixel_rgb	 palette[SIXEL_PALETTE_SIZE];
+	struct sixel_source	 src;
+	const u_char		*pixel;
+	uint16_t		*cache;
+	int			*current, *next, *tmp;
+	u_int			 x, y, sx, sy, error_index;
+	u_int			 r, g, b, c, i, nc;
+	uint64_t		 dst_w, dst_h, content_width, content_height;
+	uint64_t		 left, right, top, bottom;
+
+	/* Work out the requested cell crop in destination pixel coordinates. */
+	src.pixels = image_get_pixels(im, &src.stride, NULL);
+	image_get_size(im, &src.width, &src.height);
+	image_get_canvas_size(im, &src.canvas_width, &src.canvas_height);
+	image_get_size_in_cells(im, &src.sx, &src.sy);
+	dst_w = (uint64_t)src.sx * cw;
+	dst_h = (uint64_t)src.sy * ch;
+	if (dst_w > UINT_MAX || dst_h > UINT_MAX)
+		return (NULL);
+	content_width = ((uint64_t)src.width * dst_w +
+	    src.canvas_width - 1) / src.canvas_width;
+	content_height = ((uint64_t)src.height * dst_h +
+	    src.canvas_height - 1) / src.canvas_height;
+
+	/* Clip the requested cell rectangle to output pixel bounds. */
+	left = (uint64_t)cx * cw;
+	top = (uint64_t)cy * ch;
+	right = ((uint64_t)cx + csx) * cw;
+	bottom = ((uint64_t)cy + csy) * ch;
+	if (right > content_width)
+		right = content_width;
+	if (bottom > content_height)
+		bottom = content_height;
+	if (right <= left || bottom <= top)
+		return (NULL);
+
+	/* The clipped output bounds determine the SIXEL image dimensions. */
+	sx = right - left;
+	sy = bottom - top;
+	if (sx == 0 ||
+	    sy == 0 ||
+	    sx > SIXEL_WIDTH_LIMIT ||
+	    sy > SIXEL_HEIGHT_LIMIT) {
+		return (NULL);
+	}
+	if (sx * sy > IMAGE_SIZE_LIMIT / 4)
+		return (NULL);
+
+	/* Map output pixels using their position in the full canvas. */
+	src.dst_w = dst_w;
+	src.dst_h = dst_h;
+	src.dst_x = left;
+	src.dst_y = top;
+	src.out_w = sx;
+	src.out_h = sy;
+
+	/* Build an adaptive palette from the visible nontransparent pixels. */
+	nc = sixel_make_image_palette(&src, palette);
+	if (nc == 0)
+		return (NULL);
+
+	/* Create the indexed image with a SIXEL RGB palette. */
+	si = xcalloc(1, sizeof *si);
+	si->xpixel = cw;
+	si->ypixel = ch;
+	si->p1 = 9;
+	si->p2 = 1;
+	si->set_ra = 1;
+	si->ra_x = sx;
+	si->ra_y = sy;
+	si->ncolours = si->used_colours = nc;
+	si->colours = xcalloc(si->ncolours, sizeof *si->colours);
+	for (i = 0; i < si->ncolours; i++) {
+		r = (palette[i].r * 100 + 127) / 255;
+		g = (palette[i].g * 100 + 127) / 255;
+		b = (palette[i].b * 100 + 127) / 255;
+		si->colours[i] = (2U << 25)|(r << 16)|(g << 8)|b;
+	}
+
+	/* Dither colour and alpha into the indexed image. */
+	cache = xmalloc(SIXEL_HGRAM_SIZE * sizeof *cache);
+	memset(cache, 0xff, SIXEL_HGRAM_SIZE * sizeof *cache);
+	current = xcalloc(((size_t)sx + 2) * 4, sizeof *current);
+	next = xcalloc(((size_t)sx + 2) * 4, sizeof *next);
+	for (y = 0; y < sy; y++) {
+		for (x = 0; x < sx; x++) {
+			pixel = sixel_from_image_pixel(&src, x, y);
+			error_index = (x + 1) * 4;
+			c = sixel_dither_pixel(palette, nc, cache, pixel,
+			    current + error_index, next + error_index);
+			if (c != 0 && sixel_set_pixel(si, x, y, c) != 0)
+				goto fail;
+		}
+
+		/* Advance to the next output row's accumulated error. */
+		tmp = current;
+		current = next;
+		next = tmp;
+		memset(next, 0, ((size_t)sx + 2) * 4 * sizeof *next);
+	}
+
+	free(current);
+	free(next);
+	free(cache);
+	return (si);
+
+fail:
+	free(current);
+	free(next);
+	free(cache);
+	sixel_free(si);
+	return (NULL);
+}
+
+/* Encode part of an image as SIXEL for a terminal cell size. */
+char *
+sixel_from_image(struct image *im, u_int x, u_int y, u_int sx, u_int sy,
+    u_int cw, u_int ch, size_t *size)
+{
+	struct sixel_image	*si;
+	char			*data;
+
+	si = sixel_make_image(im, x, y, sx, sy, cw, ch);
+	if (si == NULL)
+		return (NULL);
+	data = sixel_print(si, size);
+	sixel_free(si);
+	return (data);
 }
