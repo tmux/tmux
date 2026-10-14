@@ -1,6 +1,7 @@
 """Helpers for image tests using an attached client on a PTY."""
 
 import contextlib
+import colorsys
 import errno
 import fcntl
 import itertools
@@ -46,8 +47,13 @@ class Client:
 
     def images(self):
         """Decode complete SIXEL sequences from the terminal output."""
-        return [decode_sixel(body) for body in re.findall(
-            rb"\033P[0-9;]*q(.*?)\033\\", self.data, re.S)]
+        images = []
+        for params, body in re.findall(
+                rb"\033P([0-9;]*)q(.*?)\033\\", self.data, re.S):
+            params = params.split(b";")
+            p2 = int(params[1] or b"0") if len(params) > 1 else 0
+            images.append(decode_sixel(body, p2))
+        return images
 
 
 class ImageTest:
@@ -234,12 +240,12 @@ def sixel(w, h, palette, pixels, p2=1):
     return "".join(out).encode()
 
 
-def decode_sixel(body):
+def decode_sixel(body, p2=1):
     """Read RGB output pixels without using tmux's SIXEL decoder."""
     attributes = re.match(rb'"1;1;(\d+);(\d+)', body)
     assert attributes is not None, ("missing raster attributes", body[:80])
     w, h = map(int, attributes.groups())
-    pixels = [None] * (w * h)
+    pixels = [None if p2 == 1 else (0, 0, 0)] * (w * h)
     palette = {}
     c = x = y = 0
     pos = attributes.end()
@@ -247,13 +253,19 @@ def decode_sixel(body):
         ch = body[pos]
         pos += 1
         if ch == ord("#"):
-            match = re.match(rb"(\d+)(?:;2;(\d+);(\d+);(\d+))?", body[pos:])
+            match = re.match(rb"(\d+)(?:;([12]);(\d+);(\d+);(\d+))?", body[pos:])
             assert match is not None, body[pos:pos + 80]
             c = int(match[1])
             if match[2] is not None:
-                rgb = tuple(int(match[i]) for i in range(2, 5))
-                assert all(v <= 100 for v in rgb), rgb
-                palette[c] = tuple((v * 255 + 50) // 100 for v in rgb)
+                values = tuple(int(match[i]) for i in range(3, 6))
+                if match[2] == b"1":
+                    hue, lightness, saturation = values
+                    rgb = colorsys.hls_to_rgb(((hue + 240) % 360) / 360,
+                        lightness / 100, saturation / 100)
+                    palette[c] = tuple(int(v * 255 + .5) for v in rgb)
+                else:
+                    assert all(v <= 100 for v in values), values
+                    palette[c] = tuple((v * 255 + 50) // 100 for v in values)
             pos += match.end()
             continue
         if ch == ord("$"):

@@ -125,9 +125,11 @@ class Terminal:
                 if match is None:
                     break
                 if match[1] == b'P':
-                    image = re.match(rb'[0-9;]*q(.*)', match[2], re.S)
+                    image = re.match(rb'([0-9;]*)q(.*)', match[2], re.S)
                     if image is not None:
-                        w, h, pixels = decode_sixel(image[1])
+                        params = image[1].split(b';')
+                        p2 = int(params[1] or b'0') if len(params) > 1 else 0
+                        w, h, pixels = decode_sixel(image[2], p2)
                         for i, colour in enumerate(pixels):
                             if colour is not None:
                                 self.pixels[self.x * self.cw + i % w,
