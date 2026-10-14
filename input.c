@@ -209,6 +209,7 @@ static void	input_csi_dispatch_sgr_256(struct input_ctx *, int, u_int *);
 static void	input_csi_dispatch_sgr_rgb(struct input_ctx *, int, u_int *);
 static void	input_csi_dispatch_sgr(struct input_ctx *);
 static int	input_dcs_dispatch(struct input_ctx *);
+static int	input_dcs_escape(struct input_ctx *);
 static int	input_top_bit_set(struct input_ctx *);
 static int	input_end_bel(struct input_ctx *);
 
@@ -699,9 +700,9 @@ static const struct input_transition input_state_dcs_handler_table[] = {
 static const struct input_transition input_state_dcs_escape_table[] = {
 	/* No INPUT_STATE_ANYWHERE */
 
-	{ 0x00, 0x5b, input_input,	  &input_state_dcs_handler },
+	{ 0x00, 0x5b, input_dcs_escape,	  &input_state_dcs_handler },
 	{ 0x5c, 0x5c, input_dcs_dispatch, &input_state_ground },
-	{ 0x5d, 0xff, input_input,	  &input_state_dcs_handler },
+	{ 0x5d, 0xff, input_dcs_escape,	  &input_state_dcs_handler },
 
 	{ -1, -1, NULL, NULL }
 };
@@ -2624,6 +2625,29 @@ not_recognized:
 	/* Unrecognized DECRQSS: send DCS 0 $ r Pt ST. */
 	input_reply(ictx, 1, "\033P0$r\033\\");
 	return (0);
+}
+
+/* Escape in a DCS string followed by anything other than a backslash. */
+static int
+input_dcs_escape(struct input_ctx *ictx)
+{
+	static const struct input_transition	 to_ground = {
+		0, 0, NULL, &input_state_ground
+	};
+	u_char					 buf[2] = { '\033', ictx->ch };
+
+	/*
+	 * Other strings carry the byte as data, but a SIXEL image ends at the
+	 * Escape, which then starts a new sequence as usual.
+	 */
+	if (ictx->input_len == 0 ||
+	    ictx->input_buf[0] != 'q' ||
+	    ictx->interm_len != 0)
+		return (input_input(ictx));
+	input_dcs_dispatch(ictx);
+	input_set_state(ictx, &to_ground);
+	input_parse(ictx, buf, sizeof buf);
+	return (1);
 }
 
 /* DCS terminator (ST) received. */
