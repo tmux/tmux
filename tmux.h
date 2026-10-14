@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1461 2026/10/14 10:34:14 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1463 2026/10/14 12:48:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1856,9 +1856,9 @@ struct tty {
 	struct event	 key_timer;
 	struct tty_key	*key_tree;
 
-	struct window		*scroll_window;
-	uint64_t		 scroll_generation;
-	int			 scroll_failed;
+	struct window	*scroll_window;
+	uint64_t	 scroll_generation;
+	int		 scroll_failed;
 
 #ifdef ENABLE_IMAGES
 	struct image_backend	*image_backend;
