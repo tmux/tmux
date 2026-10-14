@@ -32,7 +32,7 @@ $(TESTS): prepare
 	@base="$@"; base=$${base##*/}; \
 	log="$(LOGDIR)/$${base%.sh}.log"; \
 	start=$$(date +%s); \
-	env -i LC_CTYPE=C.UTF-8 MallocNanoZone=0 \
+	env -i LC_CTYPE=C.UTF-8 MallocNanoZone=0 SHELL=/bin/sh \
 	    sh -x "$@" >"$$log" 2>&1; \
 	result=$$?; \
 	end=$$(date +%s); \
