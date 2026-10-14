@@ -499,6 +499,7 @@ enum tty_code_code {
 	TTYC_IND,
 	TTYC_INDN,
 	TTYC_INVIS,
+	TTYC_ISCRL,
 	TTYC_KCBT,
 	TTYC_KCUB1,
 	TTYC_KCUD1,
