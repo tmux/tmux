@@ -60,7 +60,6 @@ struct image {
 	size_t			 stride;
 	size_t			 size;
 	u_char			*pixels;
-	struct sixel_image	*sixel;
 
 	RB_ENTRY(image)		 entry;
 };
@@ -255,8 +254,6 @@ image_free(struct image *im)
 			free(im->pixels);
 		if (im->parent != NULL)
 			image_free(im->parent);
-		if (im->sixel != NULL)
-			sixel_free(im->sixel);
 		free(im);
 	}
 }
@@ -360,20 +357,6 @@ int
 image_has_no_cursor(struct image *im)
 {
 	return (!!(im->flags & IMAGE_FLAG_NO_CURSOR));
-}
-
-/* Return an image's original SIXEL data. */
-struct sixel_image *
-image_get_sixel(struct image *im)
-{
-	return (im->sixel);
-}
-
-/* Associate original SIXEL data with an image. */
-void
-image_set_sixel(struct image *im, struct sixel_image *si)
-{
-	im->sixel = si;
 }
 
 /* Return the original source image ID. */

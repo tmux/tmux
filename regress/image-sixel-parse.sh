@@ -31,7 +31,7 @@ with image_test(sys.argv[1]) as test:
         assert len(client.images()) == 1
         check_image(client.images()[0], 8, 16, [rgb] * (8 * 16))
 
-    # Undefined registers are black in the shared model and in retained output.
+    # Undefined registers are black in the shared image model.
     test.emit(b'\033[2J\033[H\033P9;1q"1;1;8;16'
         b'#5!8~-!8~-!8N\033\\')
     assert len(client.images()) == 1

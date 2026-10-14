@@ -40,6 +40,9 @@
 #define SIXEL_HGRAM_SIZE \
 	(SIXEL_HGRAM_LEVELS * SIXEL_HGRAM_LEVELS * SIXEL_HGRAM_LEVELS)
 
+/* Maximum number of bytes in the SIXEL cache. */
+#define SIXEL_CACHE_SIZE_LIMIT IMAGE_SIZE_LIMIT
+
 /* Line of a SIXEL image. */
 struct sixel_line {
 	/* Number of pixels in this row. */
@@ -55,11 +58,7 @@ struct sixel_image {
 	u_int			 x;
 	u_int			 y;
 
-	/* Visible pixel size inside a padded output canvas. */
-	u_int			 raster_x;
-	u_int			 raster_y;
-
-	/* Terminal cell pixel dimensions used for scaling. */
+	/* Terminal cell pixel size used for decoding. */
 	u_int			 xpixel;
 	u_int			 ypixel;
 
@@ -69,12 +68,10 @@ struct sixel_image {
 	u_int			 used_colours;
 
 	/* SIXEL raster attributes. */
-	u_int			 set_ra;
 	u_int			 ra_x;
 	u_int			 ra_y;
 
-	/* DCS parameters. */
-	u_int			 p1;
+	/* DCS background parameter. */
 	u_int			 p2;
 
 	/* Current parser position and colour register. */
@@ -121,29 +118,24 @@ struct sixel_pending {
 	u_int		 dst_y;
 };
 
-/* An indexed image cached for one terminal cell size. */
-struct sixel_image_cache {
-	/* Image and terminal geometry associated with this entry. */
-	u_int			 server_id;
-	u_int			 cell_w;
-	u_int			 cell_h;
-	/* Memory and age used for cache eviction. */
-	size_t			 size;
-	uint64_t		 age;
-	/* Cached decoded/scaled image and next entry. */
+/* Item in the cache. */
+struct sixel_item {
+	u_int			 id;
 	struct sixel_image	*si;
-	struct sixel_image_cache	*next;
+	size_t			 size;
+
+	u_int			 cw;
+	u_int			 ch;
+
+	RB_ENTRY(sixel_item)	tree_entry;
+	TAILQ_ENTRY(sixel_item)	entry;
 };
 
-/* Cached images and rows waiting to be sent to a terminal. */
-struct sixel_output {
-	/* Per-terminal cached images and aggregate cache state. */
-	struct sixel_image_cache	*images;
-	size_t			 size;
-	uint64_t		 age;
-	/* Rows waiting to be written as one SIXEL. */
-	struct sixel_pending	 pending;
-};
+RB_HEAD(sixel_tree, sixel_item);
+TAILQ_HEAD(sixel_items, sixel_item);
+static struct sixel_tree sixel_tree = RB_INITIALIZER(&sixel_tree);
+static struct sixel_items sixel_cache = TAILQ_HEAD_INITIALIZER(sixel_cache);
+static size_t sixel_cache_size;
 
 /* RGB histogram entry. */
 struct sixel_hgram {
@@ -195,6 +187,28 @@ struct sixel_source {
 	u_int		 out_w;
 	u_int		 out_h;
 };
+
+static void sixel_free(struct sixel_image *);
+
+/* SIXEL cache item comparison. */
+static int
+sixel_cache_cmp(struct sixel_item *a, struct sixel_item *b)
+{
+	if (a->id < b->id)
+		return (-1);
+	if (a->id > b->id)
+		return (1);
+	if (a->cw < b->cw)
+		return (-1);
+	if (a->cw > b->cw)
+		return (1);
+	if (a->ch < b->ch)
+		return (-1);
+	if (a->ch > b->ch)
+		return (1);
+	return (0);
+}
+RB_GENERATE_STATIC(sixel_tree, sixel_item, tree_entry, sixel_cache_cmp);
 
 /* Grow a SIXEL image to contain a line. */
 static int
@@ -356,10 +370,6 @@ sixel_parse_attributes(struct sixel_image *si, const char *cp, const char *end)
 		return (NULL);
 	}
 
-	si->set_ra = 1;
-	si->ra_x = x;
-	si->ra_y = y;
-
 	return (last);
 }
 
@@ -386,8 +396,6 @@ sixel_parse_colour(struct sixel_image *si, const char *cp, const char *end)
 		log_debug("%s: too many colours", __func__);
 		return (NULL);
 	}
-	if (si->used_colours <= c)
-		si->used_colours = c + 1;
 	si->dc = c + 1;
 	if (endptr == last || *endptr != ';')
 		return (last);
@@ -486,8 +494,7 @@ sixel_parse_repeat(struct sixel_image *si, const char *cp, const char *end)
 
 /* Parse SIXEL data into an indexed image. */
 struct sixel_image *
-sixel_parse(const char *buf, size_t len, u_int p1, u_int p2, u_int xpixel,
-    u_int ypixel)
+sixel_parse(const char *buf, size_t len, u_int p2, u_int xpixel, u_int ypixel)
 {
 	struct sixel_image	*si;
 	const char		*cp = buf, *end = buf + len;
@@ -501,7 +508,6 @@ sixel_parse(const char *buf, size_t len, u_int p1, u_int p2, u_int xpixel,
 	si = xcalloc(1, sizeof *si);
 	si->xpixel = xpixel;
 	si->ypixel = ypixel;
-	si->p1 = p1;
 	si->p2 = p2;
 
 	while (cp != end) {
@@ -551,7 +557,7 @@ bad:
 }
 
 /* Free a SIXEL image. */
-void
+static void
 sixel_free(struct sixel_image *si)
 {
 	u_int	y;
@@ -573,33 +579,6 @@ sixel_size_in_cells(struct sixel_image *si, u_int *x, u_int *y)
 	if (si->ypixel == 0)
 		si->ypixel = 16;
 	image_size_in_cells(si->x, si->y, si->xpixel, si->ypixel, x, y);
-}
-
-/* Log a SIXEL image. */
-void
-sixel_log(struct sixel_image *si)
-{
-	struct sixel_line	*sl;
-	char			 s[SIXEL_WIDTH_LIMIT + 1];
-	u_int			 i, x, y, cx, cy;
-
-	sixel_size_in_cells(si, &cx, &cy);
-	log_debug("%s: image %ux%u (%ux%u)", __func__, si->x, si->y, cx, cy);
-	for (i = 0; i < si->ncolours; i++)
-		log_debug("%s: colour %u is %07x", __func__, i, si->colours[i]);
-	for (y = 0; y < si->y; y++) {
-		sl = &si->lines[y];
-		for (x = 0; x < si->x; x++) {
-			if (x >= sl->x)
-				s[x] = '_';
-			else if (sl->data[x] != 0)
-				s[x] = '0' + (sl->data[x] - 1) % 10;
-			else
-				s[x] = '.';
-		}
-		s[x] = '\0';
-		log_debug("%s: %4u: %s", __func__, y, s);
-	}
 }
 
 /* Convert one HLS component to RGB. */
@@ -654,7 +633,7 @@ sixel_colour_to_rgb(u_int c, u_char *r, u_char *g, u_char *b)
 }
 
 /* Convert a SIXEL image into the common RGBA format. */
-struct image *
+static struct image *
 sixel_to_image(struct sixel_image *si)
 {
 	struct image	*im;
@@ -694,201 +673,21 @@ sixel_to_image(struct sixel_image *si)
 	    sy, pixels);
 	if (im == NULL)
 		free(pixels);
-	if (im != NULL)
-		image_set_sixel(im, si);
 	return (im);
 }
 
-/* Scale or crop an indexed SIXEL image. */
-static struct sixel_image *
-sixel_scale(struct sixel_image *si, u_int cell_w, u_int cell_h, u_int ox,
-    u_int oy, u_int sx, u_int sy, int colours)
+/* Write a SIXEL image. */
+void
+sixel_write(struct screen_write_ctx *ctx, struct sixel_image *si, u_int bg)
 {
-	struct sixel_image	*new;
-	u_int			 cx, cy, raster_sx, raster_sy;
-	u_int			 pox, poy, psx, psy, tsx, tsy, px, py;
-	uint64_t		 source_left, source_right;
-	uint64_t		 source_top, source_bottom;
-	uint64_t		 target_left, target_right;
-	uint64_t		 target_top, target_bottom;
-	u_int			 x, y, i;
+	struct image *im;
 
-	/* Clip image cells before mapping them to terminal cells. */
-	sixel_size_in_cells(si, &cx, &cy);
-	if (ox >= cx || oy >= cy)
-		return (NULL);
-	if (ox + sx >= cx)
-		sx = cx - ox;
-	if (oy + sy >= cy)
-		sy = cy - oy;
-
-	if (cell_w == 0)
-		cell_w = si->xpixel;
-	if (cell_h == 0)
-		cell_h = si->ypixel;
-	raster_sx = (si->raster_x != 0 ? si->raster_x : si->x);
-	raster_sy = (si->raster_y != 0 ? si->raster_y : si->y);
-	if (raster_sx > si->x)
-		raster_sx = si->x;
-	if (raster_sy > si->y)
-		raster_sy = si->y;
-
-	/* Map whole cells at pixel boundaries and clip the final cell. */
-	source_left = (uint64_t)ox * si->xpixel;
-	source_right = (uint64_t)(ox + sx) * si->xpixel;
-	source_top = (uint64_t)oy * si->ypixel;
-	source_bottom = (uint64_t)(oy + sy) * si->ypixel;
-	if (source_right > raster_sx)
-		source_right = raster_sx;
-	if (source_bottom > raster_sy)
-		source_bottom = raster_sy;
-	if (source_right <= source_left || source_bottom <= source_top)
-		return (NULL);
-	pox = source_left;
-	poy = source_top;
-	psx = source_right - source_left;
-	psy = source_bottom - source_top;
-
-	/* Preserve the pixel extent of a partial final cell. */
-	target_right = ((uint64_t)raster_sx * cell_w + si->xpixel - 1) /
-	    si->xpixel;
-	target_bottom = ((uint64_t)raster_sy * cell_h + si->ypixel - 1) /
-	    si->ypixel;
-	if (target_right > UINT_MAX || target_bottom > UINT_MAX)
-		return (NULL);
-	target_left = (uint64_t)ox * cell_w;
-	target_top = (uint64_t)oy * cell_h;
-	if (target_left >= target_right || target_top >= target_bottom)
-		return (NULL);
-	if ((uint64_t)(ox + sx) * cell_w < target_right)
-		target_right = (uint64_t)(ox + sx) * cell_w;
-	if ((uint64_t)(oy + sy) * cell_h < target_bottom)
-		target_bottom = (uint64_t)(oy + sy) * cell_h;
-	tsx = target_right - target_left;
-	tsy = target_bottom - target_top;
-	if (tsx == 0 || tsy == 0)
-		return (NULL);
-
-	if ((uint64_t)tsx * tsy > IMAGE_SIZE_LIMIT / 4)
-		return (NULL);
-
-	/* Resample the crop and preserve its palette and raster attributes. */
-	new = xcalloc(1, sizeof *si);
-	new->xpixel = cell_w;
-	new->ypixel = cell_h;
-	new->p1 = si->p1;
-	new->p2 = si->p2;
-
-	new->set_ra = si->set_ra;
-	/* The raster attributes describe the scaled output rectangle. */
-	new->ra_x = tsx;
-	new->ra_y = tsy;
-
-	new->used_colours = si->used_colours;
-	for (y = 0; y < tsy; y++) {
-		py = poy + ((double)y * psy / tsy);
-		for (x = 0; x < tsx; x++) {
-			px = pox + ((double)x * psx / tsx);
-			if (sixel_set_pixel(new, x, y, sixel_get_pixel(si, px, py)) != 0) {
-				sixel_free(new);
-				return (NULL);
-			}
-		}
-	}
-	/* Keep transparent edges in the scaled raster canvas as well. */
-	if (sixel_parse_expand_lines(new, tsy) != 0) {
-		sixel_free(new);
-		return (NULL);
-	}
-	new->x = tsx;
-
-	if (colours && si->ncolours != 0) {
-		new->colours = xmalloc(si->ncolours * sizeof *new->colours);
-		for (i = 0; i < si->ncolours; i++)
-			new->colours[i] = si->colours[i];
-		new->ncolours = si->ncolours;
-	}
-	return (new);
-}
-
-/* Fit an indexed SIXEL image into a terminal cell canvas. */
-static struct sixel_image *
-sixel_fit(struct sixel_image *si, u_int cell_w, u_int cell_h, u_int cells_x,
-    u_int cells_y)
-{
-	struct sixel_image	*new;
-	uint64_t		 canvas_width, canvas_height;
-	u_int			 width, height, x, y, px, py, i;
-
-	if (si->xpixel == 0)
-		si->xpixel = 8;
-	if (si->ypixel == 0)
-		si->ypixel = 16;
-	if (cell_w == 0)
-		cell_w = si->xpixel;
-	if (cell_h == 0)
-		cell_h = si->ypixel;
-
-	canvas_width = (uint64_t)cells_x * cell_w;
-	canvas_height = (uint64_t)cells_y * cell_h;
-	if (si->x == 0 || si->y == 0 || canvas_width == 0 ||
-	    canvas_height == 0 || canvas_width > SIXEL_WIDTH_LIMIT ||
-	    canvas_height > SIXEL_HEIGHT_LIMIT) {
-		return (NULL);
-	}
-
-	/* Keep the same cell footprint as the RGBA output path. */
-	width = ((uint64_t)si->x * cell_w + si->xpixel - 1) / si->xpixel;
-	height = ((uint64_t)si->y * cell_h + si->ypixel - 1) / si->ypixel;
-	if (width == 0)
-		width = 1;
-	if (height == 0)
-		height = 1;
-	if (width > canvas_width)
-		width = canvas_width;
-	if (height > canvas_height)
-		height = canvas_height;
-
-	if (canvas_width * canvas_height > IMAGE_SIZE_LIMIT / 4)
-		return (NULL);
-
-	/* Resample the raster and pad the unused cell canvas. */
-	new = xcalloc(1, sizeof *new);
-	new->xpixel = cell_w;
-	new->ypixel = cell_h;
-	new->p1 = si->p1;
-	new->p2 = si->p2;
-	new->set_ra = 1;
-	new->ra_x = width;
-	new->ra_y = height;
-	new->raster_x = width;
-	new->raster_y = height;
-	new->used_colours = si->used_colours;
-
-	for (y = 0; y < height; y++) {
-		py = (uint64_t)y * si->y / height;
-		for (x = 0; x < width; x++) {
-			px = (uint64_t)x * si->x / width;
-			if (sixel_set_pixel(new, x, y, sixel_get_pixel(si, px, py)) != 0) {
-				sixel_free(new);
-				return (NULL);
-			}
-		}
-	}
-	/* Keep the unused part of the cell canvas as blank padding. */
-	if (sixel_parse_expand_lines(new, canvas_height) != 0) {
-		sixel_free(new);
-		return (NULL);
-	}
-	new->x = canvas_width;
-
-	if (si->ncolours != 0) {
-		new->colours = xmalloc(si->ncolours * sizeof *new->colours);
-		for (i = 0; i < si->ncolours; i++)
-			new->colours[i] = si->colours[i];
-		new->ncolours = si->ncolours;
-	}
-	return (new);
+	im = sixel_to_image(si);
+	sixel_free(si);
+	if (im == NULL)
+		return;
+	image_write_sixel(ctx, im, bg);
+	image_free(im);
 }
 
 /* Append data to a growing SIXEL output buffer. */
@@ -999,26 +798,19 @@ sixel_print(struct sixel_image *si, size_t *size)
 	len = 8192;
 	buf = xmalloc(len);
 
-	tmplen = xsnprintf(tmp, sizeof tmp, "\033P%u;%uq", si->p1, si->p2);
-	sixel_print_add(&buf, &len, &used, tmp, tmplen);
+	sixel_print_add(&buf, &len, &used, "\033P9;1q", 6);
 
-	if (si->set_ra) {
-		tmplen = xsnprintf(tmp, sizeof tmp, "\"1;1;%u;%u", si->ra_x,
-		    si->ra_y);
-		sixel_print_add(&buf, &len, &used, tmp, tmplen);
-	}
+	tmplen = xsnprintf(tmp, sizeof tmp, "\"1;1;%u;%u", si->ra_x,
+	    si->ra_y);
+	sixel_print_add(&buf, &len, &used, tmp, tmplen);
 
 	/* Track colour planes containing pixels in the current six-row band. */
 	planes = xcalloc(used_colours, sizeof *planes);
 	active = xcalloc(used_colours, sizeof *active);
 
 	/* Emit the palette before the encoded colour planes. */
-	for (i = 0; i < used_colours; i++) {
-		c = 0;
-		if (i < si->ncolours)
-			c = si->colours[i];
-		if (c >> 25 == 0)
-			c = 2U << 25;
+	for (i = 0; i < si->ncolours; i++) {
+		c = si->colours[i];
 		tmplen = xsnprintf(tmp, sizeof tmp, "#%u;%u;%u;%u;%u",
 		    i, c >> 25, (c >> 16) & 0x1ff, (c >> 8) & 0xff, c & 0xff);
 		sixel_print_add(&buf, &len, &used, tmp, tmplen);
@@ -1439,11 +1231,6 @@ sixel_make_image(struct image *im, u_int cx, u_int cy, u_int csx, u_int csy,
 
 	/* Create the indexed image with a SIXEL RGB palette. */
 	si = xcalloc(1, sizeof *si);
-	si->xpixel = cw;
-	si->ypixel = ch;
-	si->p1 = 9;
-	si->p2 = 1;
-	si->set_ra = 1;
 	si->ra_x = sx;
 	si->ra_y = sy;
 	si->ncolours = si->used_colours = nc;
@@ -1490,6 +1277,151 @@ fail:
 	return (NULL);
 }
 
+/* Return the number of bytes allocated for an indexed SIXEL image. */
+static size_t
+sixel_image_size(struct sixel_image *si)
+{
+	return (sizeof *si + si->y * sizeof *si->lines + si->allocated +
+	    si->ncolours * sizeof *si->colours);
+}
+
+/* Remove an image from the global SIXEL output cache. */
+static void
+sixel_remove_cache(struct sixel_item *cache)
+{
+	RB_REMOVE(sixel_tree, &sixel_tree, cache);
+	TAILQ_REMOVE(&sixel_cache, cache, entry);
+	sixel_cache_size -= cache->size;
+	sixel_free(cache->si);
+	free(cache);
+}
+
+/* Drop SIXEL cache entries whose source images have gone away. */
+static void
+sixel_collect_images(void)
+{
+	struct sixel_item	*cache, *next;
+
+	TAILQ_FOREACH_SAFE(cache, &sixel_cache, entry, next) {
+		if (image_find(cache->id) == NULL)
+			sixel_remove_cache(cache);
+	}
+}
+
+/* Get a cached image at the given cell size. */
+static struct sixel_image *
+sixel_get_image(struct image *im, u_int cw, u_int ch)
+{
+	struct sixel_image	*si;
+	size_t			 size;
+	u_int			 id = image_get_id(im), sx, sy;
+	struct sixel_item	*cache, find = { .id = id, .cw = cw, .ch = ch };
+
+	cache = RB_FIND(sixel_tree, &sixel_tree, &find);
+	if (cache != NULL) {
+		TAILQ_REMOVE(&sixel_cache, cache, entry);
+		TAILQ_INSERT_TAIL(&sixel_cache, cache, entry);
+		return (cache->si);
+	}
+	image_get_size_in_cells(im, &sx, &sy);
+
+	si = sixel_make_image(im, 0, 0, sx, sy, cw, ch);
+	if (si == NULL)
+		return (NULL);
+
+	size = (sizeof *cache) + sixel_image_size(si);
+	if (size > SIXEL_CACHE_SIZE_LIMIT) {
+		sixel_free(si);
+		return (NULL);
+	}
+	if (sixel_cache_size > SIXEL_CACHE_SIZE_LIMIT - size)
+		sixel_collect_images();
+	while (sixel_cache_size > SIXEL_CACHE_SIZE_LIMIT - size)
+		sixel_remove_cache(TAILQ_FIRST(&sixel_cache));
+
+	cache = xcalloc(1, sizeof *cache);
+	cache->id = id;
+	cache->cw = cw;
+	cache->ch = ch;
+	cache->size = size;
+	cache->si = si;
+	RB_INSERT(sixel_tree, &sixel_tree, cache);
+	TAILQ_INSERT_TAIL(&sixel_cache, cache, entry);
+
+	sixel_cache_size += size;
+	return (si);
+}
+
+/* Copy a rectangle from a SIXEL image. */
+static struct sixel_image *
+sixel_crop(struct sixel_image *si, u_int cx, u_int cy, u_int csx, u_int csy,
+    u_int cw, u_int ch)
+{
+	struct sixel_image	*new;
+	struct sixel_line	*src, *dst;
+	uint64_t		 left, right, top, bottom;
+	u_int			 x, y, w, h, i;
+
+	left = (uint64_t)cx * cw;
+	top = (uint64_t)cy * ch;
+	right = ((uint64_t)cx + csx) * cw;
+	bottom = ((uint64_t)cy + csy) * ch;
+	if (right > si->ra_x)
+		right = si->ra_x;
+	if (bottom > si->ra_y)
+		bottom = si->ra_y;
+	if (right <= left || bottom <= top)
+		return (NULL);
+	x = left;
+	y = top;
+	w = right - left;
+	h = bottom - top;
+
+	new = xcalloc(1, sizeof *new);
+	new->x = new->ra_x = w;
+	new->y = new->ra_y = h;
+	new->lines = xcalloc(h, sizeof *new->lines);
+	for (i = 0; i < h; i++) {
+		if (y + i >= si->y)
+			break;
+		src = &si->lines[y + i];
+		if (x >= src->x)
+			continue;
+		dst = &new->lines[i];
+		dst->x = src->x - x;
+		if (dst->x > w)
+			dst->x = w;
+		dst->data = xmalloc(dst->x * sizeof *dst->data);
+		memcpy(dst->data, src->data + x, dst->x * sizeof *dst->data);
+		new->allocated += dst->x * sizeof *dst->data;
+	}
+	new->used_colours = si->used_colours;
+	new->ncolours = si->ncolours;
+	new->colours = xmalloc(new->ncolours * sizeof *new->colours);
+	memcpy(new->colours, si->colours, new->ncolours * sizeof *new->colours);
+	return (new);
+}
+
+/* Encode part of an image as SIXEL. */
+static char *
+sixel_from_image(struct image *im, u_int x, u_int y, u_int sx, u_int sy,
+    u_int cw, u_int ch, size_t *size)
+{
+	struct sixel_image	*si, *cached;
+	char			*data;
+
+	cached = sixel_get_image(im, cw, ch);
+	if (cached != NULL)
+		si = sixel_crop(cached, x, y, sx, sy, cw, ch);
+	else
+		si = sixel_make_image(im, x, y, sx, sy, cw, ch);
+	if (si == NULL)
+		return (NULL);
+	data = sixel_print(si, size);
+	sixel_free(si);
+	return (data);
+}
+
 /* Return whether the terminal supports SIXEL. */
 int
 sixel_select(struct tty *tty)
@@ -1513,248 +1445,94 @@ sixel_get_flags(struct tty *tty)
 	return (flags);
 }
 
-/* Return the SIXEL output cache for a terminal. */
-static struct sixel_output *
-sixel_get_output(struct tty *tty)
+/* Get pending SIXEL rows for a terminal. */
+static struct sixel_pending *
+sixel_get_pending(struct tty *tty)
 {
-	struct sixel_output	*so = tty->image_data;
+	struct sixel_pending	*sp = tty->image_data;
 
-	if (so == NULL) {
-		so = xcalloc(1, sizeof *so);
-		tty->image_data = so;
+	if (sp == NULL) {
+		sp = xcalloc(1, sizeof *sp);
+		tty->image_data = sp;
 	}
-	return (so);
+	return (sp);
 }
 
-/* Return the memory used by an indexed SIXEL image. */
-static size_t
-sixel_image_size(struct sixel_image *si)
-{
-	uint64_t	 size;
-
-	if ((uint64_t)si->x * si->y > SIZE_MAX / sizeof(uint16_t))
-		return (0);
-	size = (uint64_t)si->x * si->y * sizeof(uint16_t);
-	if ((uint64_t)si->ncolours * sizeof *si->colours > SIZE_MAX - size)
-		return (0);
-	size += (uint64_t)si->ncolours * sizeof *si->colours;
-	if (size > SIZE_MAX)
-		return (0);
-	return (size);
-}
-
-/* Remove an image from the SIXEL output cache. */
-static void
-sixel_remove_cache(struct sixel_output *so, struct sixel_image_cache **pp)
-{
-	struct sixel_image_cache	*cache = *pp;
-
-	*pp = cache->next;
-	so->size -= cache->size;
-	sixel_free(cache->si);
-	free(cache);
-}
-
-/* Drop SIXEL cache entries whose source images have gone away. */
-static void
-sixel_collect_images(struct sixel_output *so)
-{
-	struct sixel_image_cache	**pp, *cache;
-
-	for (pp = &so->images; (cache = *pp) != NULL; ) {
-		if (image_find(cache->server_id) == NULL)
-			sixel_remove_cache(so, pp);
-		else
-			pp = &cache->next;
-	}
-}
-
-/* Free SIXEL output state for a terminal. */
+/* Free pending SIXEL rows for a terminal. */
 void
-sixel_free_output(struct tty *tty, __unused int send)
+sixel_free_pending(struct tty *tty, __unused int send)
 {
-	struct sixel_output		*so = tty->image_data;
-	struct sixel_image_cache	*cache, *next;
+	struct sixel_pending	*sp = tty->image_data;
 
-	if (so == NULL)
+	if (sp == NULL)
 		return;
-	/* Discard pending rows measured at the old terminal geometry. */
-	so->pending.image = NULL;
-	for (cache = so->images; cache != NULL; cache = next) {
-		next = cache->next;
-		sixel_free(cache->si);
-		free(cache);
-	}
-	if (so->pending.image != NULL)
-		image_free(so->pending.image);
-	free(so);
+	if (sp->image != NULL)
+		image_free(sp->image);
+	free(sp);
 	tty->image_data = NULL;
-}
-
-/* Render an image at a terminal's current pixel geometry. */
-static struct sixel_image *
-sixel_render_image(struct image *im, u_int cell_w, u_int cell_h)
-{
-	struct sixel_image	*original, *si;
-	u_int			 sx, sy;
-
-	image_get_size_in_cells(im, &sx, &sy);
-	/* Preserve the original SIXEL palette and pixels when possible. */
-	original = image_get_sixel(im);
-	if (original != NULL)
-		si = sixel_fit(original, cell_w, cell_h, sx, sy);
-	else
-		si = sixel_make_image(im, 0, 0, sx, sy, cell_w, cell_h);
-	return (si);
-}
-
-/* Return a rendered image from the SIXEL output cache. */
-static struct sixel_image *
-sixel_get_image(struct tty *tty, struct image *im)
-{
-	struct sixel_output		*so = sixel_get_output(tty);
-	struct sixel_image_cache	**pp, *cache, **oldest;
-	struct sixel_image		*si;
-	size_t				 size;
-
-	sixel_collect_images(so);
-	for (cache = so->images; cache != NULL; cache = cache->next) {
-		if (cache->server_id != image_get_id(im) ||
-		    cache->cell_w != tty->xpixel ||
-		    cache->cell_h != tty->ypixel) {
-			continue;
-		}
-		cache->age = ++so->age;
-		return (cache->si);
-	}
-
-	si = sixel_render_image(im, tty->xpixel, tty->ypixel);
-	if (si == NULL)
-		return (NULL);
-	size = sixel_image_size(si);
-	if (size == 0 || size > IMAGE_SIZE_LIMIT) {
-		/* Use the rendered image without caching it. */
-		return (si);
-	}
-	while (so->size > IMAGE_SIZE_LIMIT - size) {
-		oldest = NULL;
-		for (pp = &so->images; (cache = *pp) != NULL;
-		    pp = &cache->next) {
-			if (oldest == NULL || cache->age < (*oldest)->age)
-				oldest = pp;
-		}
-		if (oldest == NULL)
-			break;
-		sixel_remove_cache(so, oldest);
-	}
-	cache = xcalloc(1, sizeof *cache);
-	cache->server_id = image_get_id(im);
-	cache->cell_w = tty->xpixel;
-	cache->cell_h = tty->ypixel;
-	cache->size = size;
-	cache->age = ++so->age;
-	cache->si = si;
-	cache->next = so->images;
-	so->images = cache;
-	so->size += size;
-	return (si);
-}
-
-/* Return if a SIXEL image is held by the output cache. */
-static int
-sixel_image_is_cached(struct tty *tty, struct sixel_image *si)
-{
-	struct sixel_output		*so = tty->image_data;
-	struct sixel_image_cache	*cache;
-
-	if (so == NULL)
-		return (0);
-	for (cache = so->images; cache != NULL; cache = cache->next) {
-		if (cache->si == si)
-			return (1);
-	}
-	return (0);
 }
 
 /* Write the rows held in the pending run as a single SIXEL. */
 void
-sixel_flush_output(struct tty *tty)
+sixel_flush_pending(struct tty *tty)
 {
-	struct sixel_output	*so = tty->image_data;
-	struct sixel_pending	*sp;
-	struct sixel_image	*si, *crop;
+	struct sixel_pending	*sp = tty->image_data;
 	struct image		*im;
 	char			*data;
 	size_t			 size;
 
-	if (so == NULL || so->pending.image == NULL)
+	if (sp == NULL || sp->image == NULL)
 		return;
-	sp = &so->pending;
-
 	im = sp->image;
-	si = sixel_get_image(tty, im);
 	sp->image = NULL;
+
+	data = sixel_from_image(im, sp->src_x, sp->src_y, sp->w, sp->h,
+	    tty->xpixel, tty->ypixel, &size);
+	if (data != NULL) {
+		tty_region_off(tty);
+		tty_margin_off(tty);
+		tty_cursor(tty, sp->dst_x, sp->dst_y);
+
+		tty->flags |= TTY_NOBLOCK;
+		tty_putn(tty, data, size, 0);
+		tty->cx = tty->cy = UINT_MAX;
+
+		free(data);
+	}
 	image_free(im);
-	if (si == NULL)
-		return;
-	crop = sixel_scale(si, tty->xpixel, tty->ypixel, sp->src_x,
-	    sp->src_y, sp->w, sp->h, 1);
-	if (!sixel_image_is_cached(tty, si))
-		sixel_free(si);
-	if (crop == NULL)
-		return;
-	data = sixel_print(crop, &size);
-	sixel_free(crop);
-	if (data == NULL)
-		return;
-	tty_region_off(tty);
-	tty_margin_off(tty);
-	tty_cursor(tty, sp->dst_x, sp->dst_y);
-	tty->flags |= TTY_NOBLOCK;
-	tty_putn(tty, data, size, 0);
-	/* SIXEL moves the cursor, but does not change terminal attributes. */
-	tty->cx = tty->cy = UINT_MAX;
-	free(data);
 }
 
 /* Queue adjacent placement rows for one SIXEL output sequence. */
 void
-sixel_draw_rect(struct tty *tty, const struct image_rect *rectangle)
+sixel_draw_rect(struct tty *tty, const struct image_rect *rect)
 {
-	struct sixel_output	*so = sixel_get_output(tty);
-	struct sixel_pending	*sp = &so->pending;
-	struct image		*im = image_rect_get_image(rectangle);
-	u_int			 source_x, source_y, width, height;
-	u_int			 destination_x, destination_y;
+	struct sixel_pending	*sp = sixel_get_pending(tty);
 
-	image_rect_get_coords(rectangle, &source_x, &source_y, &width,
-	    &height, &destination_x, &destination_y);
-
-	if (sp->image == im &&
-	    sp->src_x == source_x &&
-	    sp->w == width &&
-	    sp->dst_x == destination_x &&
-	    sp->src_y + sp->h == source_y &&
-	    sp->dst_y + sp->h == destination_y) {
-		sp->h += height;
+	if (sp->image == rect->image &&
+	    sp->src_x == rect->src_x &&
+	    sp->w == rect->sx &&
+	    sp->dst_x == rect->dst_x &&
+	    sp->src_y + sp->h == rect->src_y &&
+	    sp->dst_y + sp->h == rect->dst_y) {
+		sp->h += rect->sy;
 		return;
 	}
 
-	/* Flush a completed run before queuing a different rectangle. */
-	image_ref(im);
-	sixel_flush_output(tty);
-	sp->image = im;
-	sp->src_x = source_x;
-	sp->src_y = source_y;
-	sp->w = width;
-	sp->h = height;
-	sp->dst_x = destination_x;
-	sp->dst_y = destination_y;
+	image_ref(rect->image);
+	sixel_flush_pending(tty);
+
+	sp->image = rect->image;
+	sp->src_x = rect->src_x;
+	sp->src_y = rect->src_y;
+	sp->w = rect->sx;
+	sp->h = rect->sy;
+	sp->dst_x = rect->dst_x;
+	sp->dst_y = rect->dst_y;
 }
 
-/* Remove old SIXEL pixels before replaying a dirty image area. */
+/* Remove old SIXEL pixels before drawing an image area. */
 void
-sixel_redraw_start(struct tty *tty, u_int x, u_int y, u_int sx, u_int sy)
+sixel_start_draw(struct tty *tty, u_int x, u_int y, u_int sx, u_int sy)
 {
 	u_int	yy;
 
@@ -1765,19 +1543,4 @@ sixel_redraw_start(struct tty *tty, u_int x, u_int y, u_int sx, u_int sy)
 		else
 			tty_repeat_space(tty, sx);
 	}
-}
-
-/* Write a SIXEL image and release the parsed data. */
-void
-sixel_write(struct screen_write_ctx *ctx, struct sixel_image *si, u_int bg)
-{
-	struct image *im;
-
-	im = sixel_to_image(si);
-	if (im == NULL) {
-		sixel_free(si);
-		return;
-	}
-	image_write_sixel(ctx, im, bg);
-	image_free(im);
 }

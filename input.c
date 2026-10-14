@@ -2665,7 +2665,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 #ifdef ENABLE_IMAGES
 	struct window		*w;
 	struct sixel_image	*si;
-	int			 p1, p2;
+	int			 p2;
 #endif
 
 	if (wp == NULL)
@@ -2683,13 +2683,10 @@ input_dcs_dispatch(struct input_ctx *ictx)
 		w = wp->window;
 		if (input_split(ictx) != 0)
 			return (0);
-		p1 = input_get(ictx, 0, 0, 0);
-		if (p1 == -1)
-			p1 = 0;
 		p2 = input_get(ictx, 1, 0, 0);
 		if (p2 == -1)
 			p2 = 0;
-		si = sixel_parse(buf, len, p1, p2, w->xpixel, w->ypixel);
+		si = sixel_parse(buf, len, p2, w->xpixel, w->ypixel);
 		if (si != NULL)
 			sixel_write(sctx, si, ictx->cell.cell.bg);
 	}

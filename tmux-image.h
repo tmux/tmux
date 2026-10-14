@@ -132,8 +132,6 @@ void		 image_size_in_cells(u_int, u_int, u_int, u_int, u_int *,
 		     u_int *);
 void		 image_set_no_cursor(struct image *);
 int		 image_has_no_cursor(struct image *);
-struct sixel_image *image_get_sixel(struct image *);
-void		 image_set_sixel(struct image *, struct sixel_image *);
 u_int		 image_get_source_id(struct image *);
 u_int		 image_get_order_id(struct image *);
 void		 image_set_order_id(struct image *, u_int);
@@ -222,17 +220,13 @@ void		 kitty_free_output_state(struct tty *, int);
 #define SIXEL_COLOUR_REGISTERS 1024
 int		 sixel_select(struct tty *);
 int		 sixel_get_flags(struct tty *);
-struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int,
-		     u_int);
+struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int);
 void		 sixel_write(struct screen_write_ctx *, struct sixel_image *,
 		     u_int);
 void		 sixel_draw_rect(struct tty *, const struct image_rect *);
-void		 sixel_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
-void		 sixel_free_output(struct tty *, int);
-void		 sixel_flush_output(struct tty *);
-struct image	*sixel_to_image(struct sixel_image *);
-void		 sixel_free(struct sixel_image *);
-void		 sixel_log(struct sixel_image *);
+void		 sixel_start_draw(struct tty *, u_int, u_int, u_int, u_int);
+void		 sixel_free_pending(struct tty *, int);
+void		 sixel_flush_pending(struct tty *);
 
 #endif /* ENABLE_IMAGES */
 

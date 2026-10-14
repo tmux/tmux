@@ -136,10 +136,10 @@ static struct image_backend image_backend_sixel = {
 	sixel_select,
 	NULL,
 	sixel_draw_rect,
-	sixel_redraw_start,
-	sixel_flush_output,
+	sixel_start_draw,
+	sixel_flush_pending,
 	NULL,
-	sixel_free_output
+	sixel_free_pending
 };
 
 /* Kitty backend. */
