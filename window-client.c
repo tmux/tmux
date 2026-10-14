@@ -1,4 +1,4 @@
-/* $OpenBSD: window-client.c,v 1.50 2026/10/12 12:35:03 nicm Exp $ */
+/* $OpenBSD: window-client.c,v 1.51 2026/10/14 12:33:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>

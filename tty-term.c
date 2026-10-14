@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-term.c,v 1.112 2026/10/12 10:39:05 nicm Exp $ */
+/* $OpenBSD: tty-term.c,v 1.113 2026/10/14 12:33:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
