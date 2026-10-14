@@ -68,6 +68,14 @@ $TMUX new-window -d "
 sleep 1
 [ "$($TMUX capture-pane -pt:1 -S0 -E0)" = "XY" ] || exit 1
 
+# Stray characters in SIXEL data are ignored, not fatal to the whole image.
+$TMUX new-window -d -n sixel-stray "
+	printf '\033Pq#0;2;100;0;0#0!8~ \$!8~-!8~\033\\\\'
+	sleep 10"
+sleep 1
+[ "$($TMUX display-message -pt:sixel-stray '#{cursor_y}')" -gt 0 ] || exit 1
+$TMUX kill-window -t:sixel-stray || exit 1
+
 # The protocol default is transmit-only; a later placement uses the retained
 # immutable image and advances by the same canonical one-cell footprint.
 $TMUX new-window -d "
