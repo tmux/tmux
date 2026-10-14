@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1459 2026/10/13 10:21:58 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1460 2026/10/14 08:33:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2922,7 +2922,7 @@ void	tty_cell(struct tty *, const struct grid_cell *,
 	    const struct tty_style_ctx *);
 int	tty_init(struct tty *, struct client *);
 void	tty_resize(struct tty *);
-void	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
+int	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
 void	tty_invalidate(struct tty *);
 void	tty_start_tty(struct tty *);
 void	tty_send_requests(struct tty *);

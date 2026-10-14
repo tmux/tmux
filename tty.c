@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.486 2026/10/12 10:39:05 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.487 2026/10/14 08:33:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -155,13 +155,19 @@ tty_resize(struct tty *tty)
 	tty_invalidate(tty);
 }
 
-void
+int
 tty_set_size(struct tty *tty, u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 {
+ 	if (tty->sx == sx &&
+            tty->sy == sy &&
+            tty->xpixel == xpixel &&
+            tty->ypixel == ypixel)
+                return (0);
 	tty->sx = sx;
 	tty->sy = sy;
 	tty->xpixel = xpixel;
 	tty->ypixel = ypixel;
+	return (1);
 }
 
 static void
