@@ -29,10 +29,12 @@ struct image;
 struct image_backend;
 struct image_line;
 struct image_store;
+struct input_ctx;
 struct screen;
 struct screen_write_ctx;
 struct sixel_image;
 struct tty;
+struct window_pane;
 
 /* Maximum image size in bytes. */
 #define IMAGE_SIZE_LIMIT (64 * 1024 * 1024)
@@ -167,6 +169,11 @@ void		 sixel_draw_rect(struct tty *, struct image_rect *);
 void		 sixel_start_draw(struct tty *, u_int, u_int, u_int, u_int);
 void		 sixel_free_pending(struct tty *);
 void		 sixel_flush_pending(struct tty *);
+
+/* image-kitty.c */
+void		 kitty_parse_input(struct input_ctx *, struct window_pane *,
+		     void **, const u_char *, size_t);
+void		 kitty_free_state(void *);
 
 #endif /* ENABLE_IMAGES */
 

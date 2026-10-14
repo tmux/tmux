@@ -144,6 +144,9 @@ struct input_ctx {
 	 */
 	struct evbuffer			*since_ground;
 	struct event			 ground_timer;
+#ifdef ENABLE_IMAGES
+	void				*kitty_state;
+#endif
 };
 
 /* Helper functions. */
@@ -914,6 +917,9 @@ input_free(struct input_ctx *ictx)
 	event_del(&ictx->request_timer);
 
 	free(ictx->input_buf);
+#ifdef ENABLE_IMAGES
+	kitty_free_state(ictx->kitty_state);
+#endif
 	evbuffer_free(ictx->since_ground);
 	event_del(&ictx->ground_timer);
 
@@ -1173,7 +1179,7 @@ input_send_reply(struct input_ctx *ictx, const char *reply)
 }
 
 /* Reply to terminal query. */
-static void printflike(3, 4)
+void printflike(3, 4)
 input_reply(struct input_ctx *ictx, int add, const char *fmt, ...)
 {
 	struct input_request	*ir;
@@ -2797,15 +2803,24 @@ input_exit_apc(struct input_ctx *ictx)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct window_pane	*wp = ictx->wp;
+	u_char			*buf = ictx->input_buf;
+	size_t			 len = ictx->input_len;
 
 	if (ictx->flags & INPUT_DISCARD)
 		return;
-	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
+	log_debug("%s: \"%s\" (size %zu)", __func__, buf, len);
+
+#ifdef ENABLE_IMAGES
+	if (wp != NULL && len > 1 && buf[0] == 'G') {
+		kitty_parse_input(ictx, wp, &ictx->kitty_state, buf, len);
+		return;
+	}
+#endif
 
 	if (wp != NULL &&
 	    options_get_number(wp->options, "allow-set-title") &&
-	    screen_set_title(sctx->s, ictx->input_buf, 1)) {
-		input_fire_pane_title_changed(wp, ictx->input_buf);
+	    screen_set_title(sctx->s, buf, 1)) {
+		input_fire_pane_title_changed(wp, buf);
 		server_redraw_window_borders(wp->window);
 		server_status_window(wp->window);
 	}

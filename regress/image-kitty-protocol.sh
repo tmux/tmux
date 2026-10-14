@@ -1,0 +1,213 @@
+#!/bin/sh
+
+# Kitty graphics uploads, chunking, queries and replies.
+
+PATH=/bin:/usr/bin
+TERM=screen
+LC_ALL=C.UTF-8
+export TERM LC_ALL
+
+[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+export TEST_TMUX
+command -v python3 >/dev/null || exit 101
+
+python3 -B - <<'PY'
+import base64
+import json
+import os
+from pathlib import Path
+import shlex
+import struct
+import subprocess
+import tempfile
+import time
+import zlib
+
+tmux = [os.environ['TEST_TMUX'], '-u', '-Limage-protocol' + str(os.getpid()),
+        '-f/dev/null']
+
+# Run a command on the test server.
+def run(*args):
+    return subprocess.check_output(tmux + list(args), text=True).strip()
+
+# Build a Kitty graphics APC sequence.
+def graphics(control, payload=''):
+    return '\033_G' + control + (';' + payload if payload else '') + '\033\\'
+
+# Read until a following device-attributes reply, including when q=2 is used.
+reader = '''
+import json, os, select, sys, time, tty
+command, output = sys.argv[1:]
+tty.setraw(0)
+with open(command, 'rb') as f:
+    os.write(1, f.read() + b'\\x1b[c')
+reply = b''
+deadline = time.monotonic() + 3
+while time.monotonic() < deadline:
+    if select.select([0], [], [], 0.1)[0]:
+        reply += os.read(0, 4096)
+        if b'\\x1b[?' in reply and reply.endswith(b'c'):
+            break
+else:
+    raise SystemExit('missing device-attributes reply')
+with open(output, 'w') as f:
+    json.dump(reply.split(b'\\x1b[?')[0].decode(), f)
+time.sleep(30)
+'''
+
+# Check replies and ensure uploads do not change the cursor, text or title.
+def check(name, command, expected=None):
+    output = directory / name
+    command_file = directory / (name + '.input')
+    command_file.write_text(origin + command, encoding='utf-8')
+    pane_command = 'python3 -B ' + shlex.quote(str(helper)) + ' ' + \
+        shlex.quote(str(command_file)) + ' ' + shlex.quote(str(output))
+    pane = run('new-window', '-d', '-P', '-F', '#{pane_id}', pane_command)
+    try:
+        deadline = time.monotonic() + 5
+        while not output.exists():
+            if time.monotonic() >= deadline:
+                raise AssertionError(name + ': missing reply capture')
+            time.sleep(0.05)
+        reply = json.loads(output.read_text())
+        if expected is not None:
+            assert reply == expected, (name, 'reply', repr(reply),
+                                       repr(expected))
+        actual = run('display-message', '-pt', pane, '#{cursor_x},#{cursor_y}')
+        assert actual == '5,2', (name, 'cursor', actual)
+        assert run('capture-pane', '-pt', pane) == '', (name, 'text')
+        title = run('display-message', '-pt', pane, '#{pane_title}')
+        assert title == 'kitty-test', (name, 'title', title)
+        return reply
+    finally:
+        run('kill-window', '-t', pane)
+
+with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
+    directory = Path(tmp)
+    helper = directory / 'read-reply.py'
+    helper.write_text(reader)
+    origin = '\033]2;kitty-test\007\033[3;6H'
+    try:
+        run('new-session', '-d', '-x', '40', '-y', '12')
+        if run('display-message', '-p', '#{image_support}') == '0':
+            raise SystemExit(101)
+        run('set', '-g', 'status', 'off')
+        pixel = '/wAA/w=='
+        transmit = 'a=t,i=7,f=32,s=1,v=1'
+        ok = graphics('i=7', 'OK')
+        invalid = graphics('i=7', 'EINVAL')
+        check('transmit', graphics(transmit, pixel), ok)
+        check('defaults', graphics('i=7,s=1,v=1', pixel), ok)
+        check('rgb', graphics('a=t,i=7,f=24,s=1,v=1', '/wAA'), ok)
+        check('unpadded', graphics(transmit, '/wAA/w'), ok)
+        check('placement-id-reply', graphics(transmit + ',p=9', pixel),
+              graphics('i=7,p=9', 'OK'))
+        check('chunks', graphics(transmit + ',m=1', '/wAA') +
+              graphics('m=0', '/w=='), ok)
+        check('nonzero-padding', graphics(transmit + ',m=1', '/wAA') +
+              graphics('m=0', '/z=='), invalid)
+        check('empty-decoded-chunk', graphics(transmit + ',m=1', '    ') +
+              graphics('m=0', pixel), ok)
+        check('empty-final-chunk', graphics(transmit + ',m=1', pixel) +
+              graphics('m=0'), ok)
+        check('incomplete', graphics(transmit + ',m=1', '/wAA'), '')
+        check('failed-chunk', graphics(transmit + ',m=1', '/wAA') +
+              graphics('m=0', '!!!!') + graphics(transmit, pixel), invalid + ok)
+        check('quiet-ok', graphics(transmit + ',q=1', pixel), '')
+        check('quiet-two', graphics(transmit + ',q=2', pixel), '')
+        check('quiet-one-error', graphics(transmit + ',q=1', '!!!!'), invalid)
+        check('quiet-two-error', graphics(transmit + ',q=2', '!!!!'), '')
+        check('quiet-continuation', graphics(transmit + ',q=2,m=1', '/wAA') +
+              graphics('m=0', '/w=='), '')
+        check('quiet-control-error', graphics('a=t,q=2,i=7,s=bad'), '')
+        check('anonymous', graphics('a=t,f=32,s=1,v=1', pixel), '')
+        check('anonymous-error', graphics('a=t,f=32,s=1,v=1', '!!!!'), '')
+        check('query', graphics('a=q,f=32,s=1,v=1', pixel),
+              graphics('i=0', 'OK'))
+        check('query-chunks', graphics('a=q,i=7,f=32,s=1,v=1,m=1', '/wAA') +
+              graphics('m=0', '/w=='), ok)
+        check('replace', graphics(transmit, pixel) +
+              graphics(transmit, 'AP8A/w=='), ok + ok)
+        for n, payload in enumerate(['', '    ', '!!!!', '====', '/w',
+                                     '/wAA/wAA']):
+            check('invalid-payload-' + str(n),
+                  graphics(transmit, payload), invalid)
+        for control in ['f=12,s=1,v=1', 'f=32,s=0,v=1', 'f=32,s=1,v=0',
+                        'f=32,s=bad,v=1', 'f=32,s=4294967296,v=1',
+                        'f=32,s=1,v=1,o=x']:
+            check('invalid-control-' + control,
+                  graphics('a=t,i=7,' + control, pixel), invalid)
+        for action in ['f', 'a', 'c']:
+            check('unsupported-action-' + action,
+                  graphics('a=%s,i=7' % action), graphics('i=7', 'ENOTSUP'))
+        for medium in ['f', 't', 's']:
+            check('unsupported-medium-' + medium,
+                  graphics('a=t,i=7,t=' + medium), graphics('i=7', 'ENOTSUP'))
+        check('unsupported-number', graphics('a=t,I=7,f=32,s=1,v=1', pixel),
+              graphics('I=7', 'ENOTSUP'))
+        check('id-and-number', graphics('a=t,i=7,I=8,f=32,s=1,v=1', pixel),
+              graphics('i=7,I=8', 'EINVAL'))
+        check('unknown-extension', graphics(transmit + ',k=9', pixel), ok)
+        check('delete-aborts-upload', graphics(transmit + ',q=2,m=1', '/wAA') +
+              graphics('a=d,d=I,q=2') + graphics(transmit, pixel), ok)
+
+        # zlib is optional; exercise compressed uploads when available.
+        compressed = base64.b64encode(zlib.compress(b'\xff\0\0\xff')).decode()
+        control = transmit + ',o=z'
+        reply = check('compressed-probe', graphics(control, compressed))
+        assert reply in [ok, invalid], repr(reply)
+        if reply == ok:
+            for format, raw in [(24, b'\xff\0\0'), (32, b'\xff\0\0\xff')]:
+                payload = base64.b64encode(zlib.compress(raw)).decode()
+                check('compressed-' + str(format),
+                      graphics('a=t,i=7,f=%d,s=1,v=1,o=z' % format, payload),
+                      ok)
+            split = len(compressed) // 8 * 4
+            check('compressed-chunks', graphics(control + ',m=1',
+                  compressed[:split]) + graphics('m=0', compressed[split:]), ok)
+            check('compressed-truncated', graphics(control, compressed[:-4]),
+                  invalid)
+            check('compressed-wrong-size',
+                  graphics(control.replace('s=1', 's=2'), compressed), invalid)
+            large = base64.b64encode(zlib.compress(
+                b'\0' * (4096 * 4097 * 3))).decode()
+            check('oversized-rgb',
+                  graphics('a=t,i=7,f=24,s=4096,v=4097,o=z', large), invalid)
+
+        # libpng is optional; build a small PNG and check its upload path.
+        png = b'\x89PNG\r\n\x1a\n'
+        for kind, data in [
+                (b'IHDR', struct.pack('>2I5B', 8, 16, 8, 6, 0, 0, 0)),
+                (b'IDAT', zlib.compress((b'\0' + b'\xff\0\0\xff' * 8) * 16)),
+                (b'IEND', b'')]:
+            png += struct.pack('>I', len(data)) + kind + data + \
+                struct.pack('>I', zlib.crc32(kind + data))
+        payload = base64.b64encode(png).decode()
+        control = 'a=t,i=7,f=100'
+        png_reply = check('png-probe', graphics(control, payload))
+        assert png_reply in [ok, invalid], repr(png_reply)
+        if png_reply == ok:
+            check('png', graphics(control, payload), ok)
+            truncated = base64.b64encode(png[:40]).decode()
+            check('png-truncated', graphics(control, truncated), invalid)
+            split = len(payload) // 8 * 4
+            check('png-chunks', graphics(control + ',m=1', payload[:split]) +
+                  graphics('m=0', payload[split:]), ok)
+        if png_reply == ok and reply == ok:
+            payload = base64.b64encode(zlib.compress(png)).decode()
+            control += ',o=z'
+            sized = control + ',S=' + str(len(png))
+            check('compressed-png', graphics(sized, payload), ok)
+            split = len(payload) // 8 * 4
+            check('compressed-png-chunks',
+                  graphics(sized + ',m=1', payload[:split]) +
+                  graphics('m=0', payload[split:]), ok)
+            check('compressed-png-missing-size', graphics(control, payload),
+                  invalid)
+            check('compressed-png-wrong-size',
+                  graphics(control + ',S=' + str(len(png) + 1), payload),
+                  invalid)
+    finally:
+        subprocess.run(tmux + ['kill-server'], stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL)
+PY
