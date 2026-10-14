@@ -144,7 +144,7 @@ with image_test(sys.argv[1]) as test:
             4 + (x * 8 - 4 * cw) * 24 // (cw * 12)]
             for y in range(ch // 2, ch * 4) for x in range(cw // 2, cw * 2)}
 
-    def check_clients(erased=False):
+    def check_clients(clipped=False):
         """Check shared-source scaling and alignment on both clients."""
         test.redraw()
         terminals = []
@@ -152,9 +152,9 @@ with image_test(sys.argv[1]) as test:
             term = Terminal(cw=cw, ch=ch)
             term.feed(attached.data)
             wanted = expected(cw, ch)
-            if erased:
+            if clipped:
                 wanted = {point: colour for point, colour in wanted.items()
-                    if not (point[0] < cw and ch <= point[1] < ch * 2)}
+                    if point[0] < cw}
             term.check(wanted)
             terminals.append((attached, cw, ch, term))
         return terminals
@@ -163,16 +163,18 @@ with image_test(sys.argv[1]) as test:
     test.emit(b'\033[2;1H\033[X')
     for attached, cw, ch, term in terminals:
         term.feed(attached.data)
-        term.check({point: colour for point, colour in expected(cw, ch).items()
-            if not (point[0] < cw and ch <= point[1] < ch * 2)})
-    check_clients(erased=True)
+        term.check(expected(cw, ch))
+    check_clients()
+    # Clip the right-hand span without changing either client's cell pixels.
+    test.run('resize-window', '-x', '1')
+    check_clients(clipped=True)
     # Changing cell pixels must retain the same partial-span source origin.
-    test.resize(client, 40, 16, cw=24, ch=24)
+    test.resize(client, 1, 16, cw=24, ch=24)
     test.redraw()
     term = Terminal(cw=24, ch=24)
     term.feed(client.data)
     wanted = {point: colour for point, colour in expected(24, 24).items()
-        if not (point[0] < 24 and 24 <= point[1] < 48)}
+        if point[0] < 24}
     term.check(wanted)
 
 # Offsets and source crops contribute fractional coverage to text fallback.

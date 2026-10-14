@@ -131,7 +131,7 @@ u_char		*image_raw_decode(const u_char *, size_t, size_t, u_int, u_int,
 /* image-grid.c */
 void		 image_grid_add(struct grid *, struct image *, u_int, u_int,
 		     u_int, u_int, u_int, u_int);
-void		 image_grid_remove(struct grid *, u_int, u_int, u_int, u_int);
+void		 image_grid_overwrite(struct grid *, u_int, u_int, u_int, u_int);
 void		 image_grid_free_line(struct grid *, struct grid_line *);
 void		 image_grid_free(struct grid *);
 void		 image_grid_move_cells(struct grid *, u_int, u_int, u_int,

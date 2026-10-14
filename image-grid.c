@@ -414,11 +414,12 @@ image_span_remove(struct image_span *span, u_int x, u_int end)
 	image_span_free(span);
 }
 
-/* Remove a range of cells from every span on a line. */
+/* Remove all or only overwritten image spans in a range of cells. */
 static void
-image_line_remove(struct image_line *line, u_int x, u_int w)
+image_line_remove(struct image_line *line, u_int x, u_int w, int overwrite)
 {
 	struct image_span	*span, *next;
+	enum image_type		 type;
 	u_int			 end;
 
 	if (line == NULL || w == 0)
@@ -426,13 +427,17 @@ image_line_remove(struct image_line *line, u_int x, u_int w)
 	end = x + w;
 	if (end < x)
 		end = UINT_MAX;
-	TAILQ_FOREACH_SAFE(span, &line->spans, line_entry, next)
+	TAILQ_FOREACH_SAFE(span, &line->spans, line_entry, next) {
+		type = image_get_type(span->placement->image);
+		if (overwrite && type == IMAGE_TYPE_KITTY)
+			continue;
 		image_span_remove(span, x, end);
+	}
 }
 
-/* Remove a rectangle of image spans from a grid. */
+/* Remove SIXEL spans overwritten by text writes or erases. */
 void
-image_grid_remove(struct grid *gd, u_int x, u_int y, u_int sx, u_int sy)
+image_grid_overwrite(struct grid *gd, u_int x, u_int y, u_int sx, u_int sy)
 {
 	u_int	rows = gd->hsize + gd->sy;
 	u_int	row;
@@ -442,7 +447,7 @@ image_grid_remove(struct grid *gd, u_int x, u_int y, u_int sx, u_int sy)
 	if (sy > rows - y)
 		sy = rows - y;
 	for (row = y; row < y + sy; row++)
-		image_line_remove(gd->linedata[row].images, x, sx);
+		image_line_remove(gd->linedata[row].images, x, sx, 1);
 	image_store_prune(gd->images);
 }
 
@@ -541,8 +546,8 @@ image_grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)
 		span->placement->recover_from = 0;
 		n++;
 	}
-	image_line_remove(line, px, nx);
-	image_line_remove(line, dx, nx);
+	image_line_remove(line, px, nx, 0);
+	image_line_remove(line, dx, nx, 0);
 	for (i = 0; i < n; i++) {
 		image_span_add(line, moves[i].placement, moves[i].x,
 		    moves[i].sx, moves[i].source_x, moves[i].source_y);
@@ -745,7 +750,7 @@ image_damage_screen(struct screen_write_ctx *ctx, u_int x, u_int y, u_int sx,
 
 	image_redraw_area(ctx, x, y, sx, sy);
 	if (ctx->flags & SCREEN_WRITE_INPUT)
-		image_grid_remove(s->grid, x, s->grid->hsize + y, sx, sy);
+		image_grid_overwrite(s->grid, x, s->grid->hsize + y, sx, sy);
 }
 
 /* Check whether an image cell has any visible pixels. */
