@@ -146,15 +146,9 @@ const struct grid_cell *fallback_map_cell(struct tty *, struct grid *, u_int,
 #define SIXEL_COLOUR_REGISTERS 1024
 int		 sixel_select(struct tty *);
 int		 sixel_get_flags(struct tty *);
-struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int,
-		     u_int);
-void		 sixel_free(struct sixel_image *);
-void		 sixel_log(struct sixel_image *);
-struct image	*sixel_to_image(struct sixel_image *);
+struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int);
 void		 sixel_write(struct screen_write_ctx *, struct sixel_image *,
 		     u_int);
-char		*sixel_from_image(struct image *, u_int, u_int, u_int, u_int,
-		     u_int, u_int, size_t *);
 void		 sixel_draw_rect(struct tty *, struct image_rect *);
 void		 sixel_start_draw(struct tty *, u_int, u_int, u_int, u_int);
 void		 sixel_free_pending(struct tty *);

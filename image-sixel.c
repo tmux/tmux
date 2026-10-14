@@ -55,7 +55,7 @@ struct sixel_image {
 	u_int			 x;
 	u_int			 y;
 
-	/* Terminal cell pixel dimensions used for scaling. */
+	/* Terminal cell pixel size used for decoding. */
 	u_int			 xpixel;
 	u_int			 ypixel;
 
@@ -65,12 +65,10 @@ struct sixel_image {
 	u_int			 used_colours;
 
 	/* SIXEL raster attributes. */
-	u_int			 set_ra;
 	u_int			 ra_x;
 	u_int			 ra_y;
 
-	/* DCS parameters. */
-	u_int			 p1;
+	/* DCS background parameter. */
 	u_int			 p2;
 
 	/* Current parser position and colour register. */
@@ -167,6 +165,8 @@ struct sixel_source {
 	u_int		 out_w;
 	u_int		 out_h;
 };
+
+static void sixel_free(struct sixel_image *);
 
 /* Grow a SIXEL image to contain a line. */
 static int
@@ -452,8 +452,7 @@ sixel_parse_repeat(struct sixel_image *si, const char *cp, const char *end)
 
 /* Parse SIXEL data into an indexed image. */
 struct sixel_image *
-sixel_parse(const char *buf, size_t len, u_int p1, u_int p2, u_int xpixel,
-    u_int ypixel)
+sixel_parse(const char *buf, size_t len, u_int p2, u_int xpixel, u_int ypixel)
 {
 	struct sixel_image	*si;
 	const char		*cp = buf, *end = buf + len;
@@ -467,7 +466,6 @@ sixel_parse(const char *buf, size_t len, u_int p1, u_int p2, u_int xpixel,
 	si = xcalloc(1, sizeof *si);
 	si->xpixel = xpixel;
 	si->ypixel = ypixel;
-	si->p1 = p1;
 	si->p2 = p2;
 
 	while (cp != end) {
@@ -517,7 +515,7 @@ bad:
 }
 
 /* Free a SIXEL image. */
-void
+static void
 sixel_free(struct sixel_image *si)
 {
 	u_int	y;
@@ -539,33 +537,6 @@ sixel_size_in_cells(struct sixel_image *si, u_int *x, u_int *y)
 	if (si->ypixel == 0)
 		si->ypixel = 16;
 	image_size_in_cells(si->x, si->y, si->xpixel, si->ypixel, x, y);
-}
-
-/* Log a SIXEL image. */
-void
-sixel_log(struct sixel_image *si)
-{
-	struct sixel_line	*sl;
-	char			 s[SIXEL_WIDTH_LIMIT + 1];
-	u_int			 i, x, y, cx, cy;
-
-	sixel_size_in_cells(si, &cx, &cy);
-	log_debug("%s: image %ux%u (%ux%u)", __func__, si->x, si->y, cx, cy);
-	for (i = 0; i < si->ncolours; i++)
-		log_debug("%s: colour %u is %07x", __func__, i, si->colours[i]);
-	for (y = 0; y < si->y; y++) {
-		sl = &si->lines[y];
-		for (x = 0; x < si->x; x++) {
-			if (x >= sl->x)
-				s[x] = '_';
-			else if (sl->data[x] != 0)
-				s[x] = '0' + (sl->data[x] - 1) % 10;
-			else
-				s[x] = '.';
-		}
-		s[x] = '\0';
-		log_debug("%s: %4u: %s", __func__, y, s);
-	}
 }
 
 /* Convert one HLS component to RGB. */
@@ -620,7 +591,7 @@ sixel_colour_to_rgb(u_int c, u_char *r, u_char *g, u_char *b)
 }
 
 /* Convert a SIXEL image into the common RGBA format. */
-struct image *
+static struct image *
 sixel_to_image(struct sixel_image *si)
 {
 	struct image	*im;
@@ -785,14 +756,11 @@ sixel_print(struct sixel_image *si, size_t *size)
 	len = 8192;
 	buf = xmalloc(len);
 
-	tmplen = xsnprintf(tmp, sizeof tmp, "\033P%u;%uq", si->p1, si->p2);
-	sixel_print_add(&buf, &len, &used, tmp, tmplen);
+	sixel_print_add(&buf, &len, &used, "\033P9;1q", 6);
 
-	if (si->set_ra) {
-		tmplen = xsnprintf(tmp, sizeof tmp, "\"1;1;%u;%u", si->ra_x,
-		    si->ra_y);
-		sixel_print_add(&buf, &len, &used, tmp, tmplen);
-	}
+	tmplen = xsnprintf(tmp, sizeof tmp, "\"1;1;%u;%u", si->ra_x,
+	    si->ra_y);
+	sixel_print_add(&buf, &len, &used, tmp, tmplen);
 
 	/* Track colour planes containing pixels in the current six-row band. */
 	planes = xcalloc(used_colours, sizeof *planes);
@@ -1221,11 +1189,6 @@ sixel_make_image(struct image *im, u_int cx, u_int cy, u_int csx, u_int csy,
 
 	/* Create the indexed image with a SIXEL RGB palette. */
 	si = xcalloc(1, sizeof *si);
-	si->xpixel = cw;
-	si->ypixel = ch;
-	si->p1 = 9;
-	si->p2 = 1;
-	si->set_ra = 1;
 	si->ra_x = sx;
 	si->ra_y = sy;
 	si->ncolours = si->used_colours = nc;
@@ -1273,7 +1236,7 @@ fail:
 }
 
 /* Encode part of an image as SIXEL for a terminal cell size. */
-char *
+static char *
 sixel_from_image(struct image *im, u_int x, u_int y, u_int sx, u_int sy,
     u_int cw, u_int ch, size_t *size)
 {
