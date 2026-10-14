@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.487 2026/10/14 08:33:19 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.488 2026/10/14 11:54:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -551,9 +551,12 @@ void
 tty_update_features(struct tty *tty)
 {
 	struct client	*c = tty->client;
+	int		 changed = 0;
 
-	if (tty_apply_features(tty->term))
+	if (tty_apply_features(tty->term)) {
 		tty_term_apply_overrides(tty->term);
+		changed = 1;
+	}
 
 	if (tty_use_margin(tty))
 		tty_putcode(tty, TTYC_ENMG);
@@ -563,13 +566,10 @@ tty_update_features(struct tty *tty)
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENFCS));
 	tty_puts(tty, tty_term_string(tty->term, TTYC_ENESC));
 
-	/*
-	 * Features might have changed since the first draw during attach. For
-	 * example, this happens when DA responses are received.
-	 */
-	server_redraw_client(c);
-
-	tty_invalidate(tty);
+	if (changed) {
+		server_redraw_client(c);
+		tty_invalidate(tty);
+	}
 }
 
 void
