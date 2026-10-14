@@ -1407,7 +1407,8 @@ screen_write_sync_redraw_cb(const struct tty_ctx *ttyctx, u_int py, u_int ny)
 {
 	struct window_pane	*wp = ttyctx->arg;
 
-	bit_nset(wp->sync_dirty, py, py + ny - 1);
+	if (ny != 0)
+		bit_nset(wp->sync_dirty, py, py + ny - 1);
 }
 
 /* Send the deferred scroll to the client. */
