@@ -496,10 +496,8 @@ sixel_parse(const char *buf, size_t len, u_int p1, u_int p2, u_int xpixel,
 			si->dx = 0;
 			break;
 		default:
-			if (ch < 0x20)
-				break;
 			if (ch < 0x3f || ch > 0x7e)
-				goto bad;
+				break;
 			if (sixel_parse_write(si, ch - 0x3f) != 0) {
 				log_debug("%s: size limit reached", __func__);
 				goto bad;

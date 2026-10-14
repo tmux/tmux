@@ -79,7 +79,7 @@ jobs:
       - name: build
         run: |
           sh autogen.sh
-          ./configure ${{ matrix.configure }}
+          ./configure --enable-images ${{ matrix.configure }}
           ${{ matrix.make }} -j"$(getconf _NPROCESSORS_ONLN)"
 
       - name: test

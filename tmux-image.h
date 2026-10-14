@@ -21,7 +21,6 @@
 #define TMUX_IMAGE_H
 
 #ifdef ENABLE_IMAGES
-//#error image support is not ready yet
 
 struct grid;
 struct grid_cell;
