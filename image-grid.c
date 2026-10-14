@@ -88,6 +88,9 @@ struct image_backend {
 	const char	*name;
 	int		 flags;
 	int		(*select)(struct tty *);
+	const struct grid_cell *(*map_cell)(struct tty *, struct grid *, u_int,
+			    u_int, const struct grid_cell *, struct grid_cell *,
+			    int *);
 	void		(*draw_rect)(struct tty *, struct image_rect *);
 	void		(*start_draw)(struct tty *, u_int, u_int, u_int, u_int);
 	void		(*flush)(struct tty *);
@@ -99,6 +102,7 @@ static struct image_backend image_backend_fallback = {
 	"fallback",
 	IMAGE_BACKEND_SCROLLS,
 	fallback_select,
+	fallback_map_cell,
 	NULL,
 	NULL,
 	NULL,
@@ -108,6 +112,7 @@ static struct image_backend image_backend_sixel = {
 	"sixel",
 	IMAGE_BACKEND_GRAPHICAL,
 	sixel_select,
+	NULL,
 	sixel_draw_rect,
 	sixel_start_draw,
 	sixel_flush_pending,
@@ -140,6 +145,69 @@ image_tty_update(struct tty *tty)
 	tty->image_data = NULL;
 	tty->image_backend = backend;
 	return (1);
+}
+
+/* Map an image grid cell to text for the selected backend. */
+const struct grid_cell *
+image_map_cell(struct tty *tty, struct grid *gd, u_int x, u_int y,
+    const struct grid_cell *gc, struct grid_cell *out, int *empty)
+{
+	image_tty_update(tty);
+	if (tty->image_backend->map_cell == NULL)
+		return (gc);
+	return (tty->image_backend->map_cell(tty, gd, x, y, gc, out, empty));
+}
+
+/* Draw a clipped part of one image span. */
+static void
+image_draw_span(struct image_backend *backend, struct tty *tty,
+    struct image_span *span, u_int start, u_int end, u_int px, u_int atx,
+    u_int aty)
+{
+	struct image_rect	 rect;
+
+	rect.image = span->placement->image;
+	rect.src_x = span->source_x + start - span->x;
+	rect.src_y = span->source_y;
+	rect.sx = end - start;
+	rect.sy = 1;
+	rect.dst_x = atx + start - px;
+	rect.dst_y = aty;
+	backend->draw_rect(tty, &rect);
+}
+
+/* Draw images in the visible part of one screen line. */
+void
+image_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py,
+    u_int nx, u_int atx, u_int aty)
+{
+	struct image_backend	*backend;
+	struct image_line	*line;
+	struct image_span	*span;
+	u_int			 start, end, span_end;
+
+	image_tty_update(tty);
+	backend = tty->image_backend;
+	if (backend->draw_rect == NULL)
+		return;
+	if (py >= s->grid->sy)
+		return;
+	line = s->grid->linedata[s->grid->hsize + py].images;
+	if (line == NULL)
+		return;
+	end = px + nx;
+	TAILQ_FOREACH(span, &line->spans, line_entry) {
+		span_end = span->x + span->sx;
+		start = span->x;
+		if (start < px)
+			start = px;
+		if (start >= end || span_end <= px)
+			continue;
+		if (span_end > end)
+			span_end = end;
+		image_draw_span(backend, tty, span, start, span_end, px, atx,
+		    aty);
+	}
 }
 
 /* Clear old image pixels before redrawing a terminal area. */

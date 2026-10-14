@@ -126,6 +126,10 @@ void		 image_damage_screen(struct screen_write_ctx *, u_int, u_int,
 void		 image_write(struct screen_write_ctx *, struct image *, u_int);
 int		 image_grid_get_at(struct grid *, u_int, u_int, struct image **,
 		     u_int *, u_int *);
+const struct grid_cell *image_map_cell(struct tty *, struct grid *, u_int,
+		     u_int, const struct grid_cell *, struct grid_cell *, int *);
+void		 image_draw_line(struct tty *, struct screen *, u_int, u_int,
+		     u_int, u_int, u_int);
 void		 image_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
 void		 image_draw_flush(struct tty *);
 int		 image_tty_update(struct tty *);

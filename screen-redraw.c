@@ -1525,6 +1525,12 @@ redraw_draw_span(struct redraw_draw_ctx *dctx, struct redraw_span *span,
 	case REDRAW_SPAN_PANE:
 		if (phase == REDRAW_TEXT)
 			redraw_draw_pane_span(dctx, span, span->x, y, width);
+#ifdef ENABLE_IMAGES
+		else {
+			image_draw_line(&dctx->scene->c->tty, data->p.wp->screen,
+			    data->p.px, data->p.py, width, span->x, y);
+		}
+#endif
 		break;
 	case REDRAW_SPAN_BORDER:
 	case REDRAW_SPAN_EMPTY:
@@ -1565,6 +1571,26 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 	if (bottom > (int)scene->sy)
 		bottom = scene->sy;
 
+#ifdef ENABLE_IMAGES
+	/* Erase only pane-owned spans so overlapping panes remain intact. */
+	if (flags & REDRAW_PANE) {
+		for (y = top; y < bottom; y++) {
+			line = &scene->lines[y];
+			if (dctx->flags & REDRAW_STATUS_TOP)
+				cy = dctx->status_lines + y;
+			else
+				cy = y;
+			spans = &line->spans[REDRAW_SPAN_PANE];
+			TAILQ_FOREACH(span, spans, entry) {
+				if (span->data.p.wp == wp) {
+					image_redraw_start(&scene->c->tty,
+					    span->x, cy, span->width, 1);
+				}
+			}
+		}
+	}
+#endif
+
 	/* Draw each phase. */
 	for (phase = 0; phase < REDRAW_PHASE_COUNT; phase++) {
 		for (y = top; y < bottom; y++) {
@@ -1591,6 +1617,9 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 				}
 			}
 		}
+#ifdef ENABLE_IMAGES
+		image_draw_flush(&scene->c->tty);
+#endif
 	}
 }
 
@@ -1651,6 +1680,9 @@ redraw_draw_lines(struct redraw_draw_ctx *dctx, int flags)
 					redraw_draw_span(dctx, span, cy, phase);
 			}
 		}
+#ifdef ENABLE_IMAGES
+		image_draw_flush(&scene->c->tty);
+#endif
 	}
 }
 
@@ -1906,6 +1938,14 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		}
 	}
 	tty_sync_start(tty); /* end in server_client_reset_state */
+#ifdef ENABLE_IMAGES
+	if (wp == NULL && (flags & REDRAW_PANE)) {
+		y = 0;
+		if (dctx.flags & REDRAW_STATUS_TOP)
+			y = dctx.status_lines;
+		image_redraw_start(tty, 0, y, scene->sx, scene->sy);
+	}
+#endif
 	tty_update_mode(tty, tty->mode & ~CURSOR_MODES, NULL);
 
 	if (wp != NULL)
@@ -2084,6 +2124,30 @@ redraw_draw_damage_rectangle(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 	if (sx == 0 || sy == 0)
 		return;
 
+#ifdef ENABLE_IMAGES
+	/* Clear old image pixels on all damaged spans. */
+	for (yy = y; yy < y + sy; yy++) {
+		line = &scene->lines[yy];
+		if (dctx->flags & REDRAW_STATUS_TOP)
+			cy = dctx->status_lines + yy;
+		else
+			cy = yy;
+		for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
+			if (type == REDRAW_SPAN_STATUS)
+				continue;
+			spans = &line->spans[type];
+			TAILQ_FOREACH(span, spans, entry) {
+				if (span->x >= x + sx)
+					continue;
+				if (span->x + span->width <= x)
+					continue;
+				image_redraw_start(&scene->c->tty,
+				    span->x, cy, span->width, 1);
+			}
+		}
+	}
+#endif
+
 	/* Draw each phase in the damaged spans. */
 	for (phase = 0; phase < REDRAW_PHASE_COUNT; phase++) {
 		for (yy = y; yy < y + sy; yy++) {
@@ -2108,6 +2172,9 @@ redraw_draw_damage_rectangle(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 				}
 			}
 		}
+#ifdef ENABLE_IMAGES
+		image_draw_flush(&scene->c->tty);
+#endif
 	}
 
 	/* Draw prompts and pane status lines last. */
