@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.163 2026/10/02 12:48:52 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.164 2026/10/14 10:34:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
