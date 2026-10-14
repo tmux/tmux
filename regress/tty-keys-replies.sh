@@ -12,6 +12,7 @@ TERM=screen
 python3 - "$TEST_TMUX" <<'PY'
 import fcntl
 import os
+import re
 import select
 import struct
 import subprocess
@@ -94,6 +95,13 @@ for name, report in reports:
                 run("new-session", "-d", "-s", "replies", "-x", "80",
                     "-y", "24", "stty raw -echo; exec cat -v")
                 run("set-option", "-g", "status", "off")
+                if name == "pixels":
+                    # Draw the window cell size so it can be read from the
+                    # client's output without running another command, since
+                    # each command's client recalculates the window sizes.
+                    run("set-option", "-g", "status", "on")
+                    run("set-option", "-g", "status-format[0]",
+                        "W=#{window_cell_width}x#{window_cell_height}")
                 run("set-option", "-g", "assume-paste-time", "0")
                 if delivery == "expired":
                     run("set-option", "-s", "escape-time", "100")
@@ -128,6 +136,7 @@ for name, report in reports:
                     chunks = [wire[:-1], wire[-1:]]
                 else:
                     chunks = [wire[i:i+1] for i in range(len(wire))]
+                output = b""
                 for part in chunks[:-1]:
                     os.write(fd, part)
                     time.sleep(.01)
@@ -151,12 +160,21 @@ for name, report in reports:
                 # A trailing key confirms that the entire reply has been
                 # processed, including cases with no extra Escape.
                 os.write(fd, chunks[-1] + b"Z")
+                if name == "pixels":
+                    # With no command run since the reply, the window must
+                    # have followed the client's new cell size by itself.
+                    time.sleep(.3)
+                    while select.select([fd], [], [], .2)[0]:
+                        output += os.read(fd, 65536)
+                    drawn = re.findall(rb"W=(\d+x\d+)", output)
+                    assert drawn and drawn[-1] == b"10x20", (
+                        context, "window cell size", drawn)
                 deadline = time.monotonic() + 5
                 while run("capture-pane", "-p") != expected:
                     assert time.monotonic() < deadline, (context,
                         "reply leaked or input stalled", run("capture-pane", "-p"))
                     if select.select([fd], [], [], .01)[0]:
-                        os.read(fd, 65536)
+                        output += os.read(fd, 65536)
                 actual = state()
                 if delivery in ("invalid", "expired"):
                     assert actual == baseline, (context, "unexpected effect", actual)
