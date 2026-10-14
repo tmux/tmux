@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1460 2026/10/14 08:33:19 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1461 2026/10/14 10:34:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2352,7 +2352,7 @@ struct client {
 
 	int			 references;
 
-	int		 theme_colours[COLOUR_THEME_COUNT];
+	int			 theme_colours[COLOUR_THEME_COUNT];
 
 	void			*pan_window;
 	u_int			 pan_ox;
