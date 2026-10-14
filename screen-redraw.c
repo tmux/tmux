@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.167 2026/10/14 12:51:00 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.168 2026/10/14 13:03:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2214,7 +2214,7 @@ redraw_client_damage(struct client *c)
 	}
 
 	tty_sync_start(tty);
-	tty_update_mode(tty, c->tty.mode & ~CURSOR_MODES, NULL);
+	tty_update_mode(tty, tty->mode & ~CURSOR_MODES, NULL);
 
 	TAILQ_FOREACH(rd, &w->damage, entry) {
 		x0 = (rd->x > ox) ? rd->x : ox;
