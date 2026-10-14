@@ -143,7 +143,9 @@ void		 image_grid_copy_area(struct grid *, u_int, u_int, struct grid *,
 void		 image_grid_resize_width(struct grid *, u_int);
 int		 image_grid_line_has_images(struct grid_line *);
 int		 image_grid_has_image(struct grid *, u_int);
-u_int		 image_grid_clear(struct grid *, enum image_type, u_int, int);
+u_int		 image_grid_clear(struct grid *, u_int);
+u_int		 image_grid_clear_area(struct grid *, enum image_type, u_int,
+		     u_int, u_int, u_int);
 int		 image_grid_area_has_images(struct grid *, u_int, u_int, u_int,
 		     u_int);
 void		 image_redraw_area(struct screen_write_ctx *, u_int, u_int,

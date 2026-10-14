@@ -451,24 +451,45 @@ image_grid_overwrite(struct grid *gd, u_int x, u_int y, u_int sx, u_int sy)
 	image_store_prune(gd->images);
 }
 
-/* Check whether a placement has any spans in the visible grid. */
+/* Check whether a placement intersects an area of visible cells. */
 static int
-image_placement_visible(struct grid *gd, struct image_placement *plmt)
+image_placement_intersects(struct grid *gd, struct image_placement *plmt,
+    u_int x, u_int y, u_int sx, u_int sy)
 {
 	struct image_line	*line;
 	struct image_span	*span;
-	u_int			 y;
+	u_int			 row, end;
 
-	for (y = 0; y < gd->sy; y++) {
-		line = gd->linedata[gd->hsize + y].images;
+	if (sx == 0 || sy == 0 || x >= gd->sx || y >= gd->sy)
+		return (0);
+	if (sx > gd->sx - x)
+		sx = gd->sx - x;
+	if (sy > gd->sy - y)
+		sy = gd->sy - y;
+	end = x + sx;
+	for (row = y; row < y + sy; row++) {
+		line = gd->linedata[gd->hsize + row].images;
 		if (line == NULL)
 			continue;
 		TAILQ_FOREACH(span, &line->spans, line_entry) {
-			if (span->placement == plmt && span->x < gd->sx)
+			if (span->placement == plmt &&
+			    span->x < end &&
+			    span->x + span->sx > x)
 				return (1);
 		}
 	}
 	return (0);
+}
+
+/* Remove a placement and all of its spans. */
+static void
+image_remove_placement(struct image_placement *plmt)
+{
+	struct image_span	*span, *span1;
+
+	TAILQ_FOREACH_SAFE(span, &plmt->spans, placement_entry, span1)
+		image_span_free(span);
+	image_placement_free(plmt);
 }
 
 /* Check whether a grid retains any placements of an image. */
@@ -486,12 +507,30 @@ image_grid_has_image(struct grid *gd, u_int id)
 	return (0);
 }
 
-/* Remove placements of one image or all images of a type from a grid. */
+/* Remove all placements of an image from a grid. */
 u_int
-image_grid_clear(struct grid *gd, enum image_type type, u_int id, int visible)
+image_grid_clear(struct grid *gd, u_int id)
 {
 	struct image_placement	*plmt, *plmt1;
-	struct image_span	*span, *span1;
+	u_int			 removed = 0;
+
+	if (gd->images == NULL)
+		return (0);
+	TAILQ_FOREACH_SAFE(plmt, &gd->images->placements, entry, plmt1) {
+		if (image_get_id(plmt->image) != id)
+			continue;
+		image_remove_placement(plmt);
+		removed++;
+	}
+	return (removed);
+}
+
+/* Remove whole placements of a type which intersect visible cells. */
+u_int
+image_grid_clear_area(struct grid *gd, enum image_type type, u_int x, u_int y,
+    u_int sx, u_int sy)
+{
+	struct image_placement	*plmt, *plmt1;
 	u_int			 removed = 0;
 
 	if (gd->images == NULL)
@@ -499,13 +538,9 @@ image_grid_clear(struct grid *gd, enum image_type type, u_int id, int visible)
 	TAILQ_FOREACH_SAFE(plmt, &gd->images->placements, entry, plmt1) {
 		if (image_get_type(plmt->image) != type)
 			continue;
-		if (id != 0 && image_get_id(plmt->image) != id)
+		if (!image_placement_intersects(gd, plmt, x, y, sx, sy))
 			continue;
-		if (visible && !image_placement_visible(gd, plmt))
-			continue;
-		TAILQ_FOREACH_SAFE(span, &plmt->spans, placement_entry, span1)
-			image_span_free(span);
-		image_placement_free(plmt);
+		image_remove_placement(plmt);
 		removed++;
 	}
 	return (removed);
@@ -515,15 +550,9 @@ image_grid_clear(struct grid *gd, enum image_type type, u_int id, int visible)
 void
 image_clear(struct screen_write_ctx *ctx, u_int id)
 {
-	struct image	*im = image_find(id);
-	enum image_type	 type;
-
-	if (im == NULL)
-		return;
-	type = image_get_type(im);
-	image_grid_clear(ctx->s->grid, type, id, 0);
+	image_grid_clear(ctx->s->grid, id);
 	if (ctx->s->saved_grid != NULL)
-		image_grid_clear(ctx->s->saved_grid, type, id, 0);
+		image_grid_clear(ctx->s->saved_grid, id);
 	if (ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
 }

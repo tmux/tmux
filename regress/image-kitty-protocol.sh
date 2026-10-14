@@ -254,6 +254,27 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
               graphics('i=7', 'ENOTSUP'))
         check('malformed-delete', stored + graphics('a=d,i=7,d=ii'), invalid)
 
+        # Position selectors use one-based cells; range selectors use image IDs.
+        selectors = [('c', ''), ('p', ',x=6,y=3'), ('x', ',x=6'),
+                     ('y', ',y=3'), ('r', ',x=7,y=7')]
+        for selector, controls in selectors:
+            for hard in (False, True):
+                how = selector.upper() if hard else selector
+                check('delete-selector-' + how, stored + first +
+                      graphics('a=d,d=' + how + controls) +
+                      graphics('a=p,i=7,C=1'), missing if hard else ok)
+        check('delete-range-unplaced', stored + graphics('a=d,d=R,x=7,y=7') +
+              graphics('a=p,i=7,C=1'), missing)
+        check('delete-soft-range-unplaced', stored +
+              graphics('a=d,d=r,x=7,y=7') + graphics('a=p,i=7,C=1'), ok)
+        check('delete-spatial-retains-other-placement', stored + first +
+              '\033[3;8H' + second + graphics('a=d,d=X,x=6') +
+              graphics('a=p,i=7,C=1'), ok, cursor='7,2')
+        check('delete-spatial-miss-retains-data', stored + first +
+              graphics('a=d,d=P,x=7,y=3') + graphics('a=p,i=7,C=1'), ok)
+        check('delete-spatial-retains-history', stored + first + '\033[12S' +
+              graphics('a=d,d=P,x=6,y=3') + graphics('a=p,i=7,C=1'), ok)
+
         # Abort immediately when chunked data exceeds 64 MiB, then recover.
         block = base64.b64encode(b'\0' * (512 * 1024)).decode()
         commands = [graphics(transmit + ',q=1,m=1', block)]

@@ -321,31 +321,67 @@ static void
 kitty_delete_images(struct kitty_state *ks, struct screen_write_ctx *ctx)
 {
 	struct screen			*s = ctx->s;
+	struct grid			*gd = s->grid;
 	struct kitty_image_map		*map, *map1;
 	struct kitty_placement_map	*kpl;
-	u_int				 removed;
-	int				 all, release;
+	u_int				 removed, x = 0, y = 0;
+	u_int				 sx = gd->sx, sy = gd->sy;
+	char				 how = ks->delete;
+	int				 spatial, release;
 
-	all = (ks->delete == 'a' || ks->delete == 'A');
-	release = (ks->delete == 'A' || ks->delete == 'I');
+	release = (how >= 'A' && how <= 'Z');
+	if (release)
+		how += 'a' - 'A';
+	spatial = (how != 'i' && how != 'r');
 
 	TAILQ_FOREACH(map, &ks->images, entry)
 		kitty_prune_placements(map, s);
-	if (all)
-		image_grid_clear(s->grid, IMAGE_TYPE_KITTY, 0, 1);
+	if (spatial) {
+		switch (how) {
+		case 'c':
+			x = s->cx;
+			y = s->cy;
+			sx = sy = 1;
+			break;
+		case 'p':
+		case 'x':
+			x = ks->source_x;
+			sx = 1;
+			if (x == 0)
+				sx = 0;
+			else
+				x--;
+			if (how == 'x')
+				break;
+			/* FALLTHROUGH */
+		case 'y':
+			y = ks->source_y;
+			sy = 1;
+			if (y == 0)
+				sy = 0;
+			else
+				y--;
+			break;
+		}
+		image_grid_clear_area(gd, IMAGE_TYPE_KITTY, x, y, sx, sy);
+	}
 	TAILQ_FOREACH_SAFE(map, &ks->images, entry, map1) {
 		removed = 0;
-		if (!all) {
-			if (map->kitty_id != ks->image_id)
+		if (!spatial) {
+			if (how == 'i' && map->kitty_id != ks->image_id)
+				continue;
+			if (how == 'r' &&
+			    (map->kitty_id < ks->source_x ||
+			    map->kitty_id > ks->source_y))
 				continue;
 			TAILQ_FOREACH(kpl, &map->placements, entry) {
-				if (ks->placement_id != 0 &&
+				if (how == 'i' &&
+				    ks->placement_id != 0 &&
 				    kpl->kitty_id != ks->placement_id)
 					continue;
-				removed += image_grid_clear(s->grid,
-				    IMAGE_TYPE_KITTY, kpl->image_id, 0);
+				removed += image_grid_clear(gd, kpl->image_id);
 			}
-			if (ks->placement_id == 0)
+			if (how == 'r' || ks->placement_id == 0)
 				removed++;
 		}
 		removed += kitty_prune_placements(map, s);
@@ -601,6 +637,16 @@ kitty_parse_input(struct input_ctx *ictx, struct window_pane *wp,
 		case 'A':
 		case 'i':
 		case 'I':
+		case 'c':
+		case 'C':
+		case 'p':
+		case 'P':
+		case 'x':
+		case 'X':
+		case 'y':
+		case 'Y':
+		case 'r':
+		case 'R':
 			break;
 		default:
 			m = "ENOTSUP";
