@@ -100,6 +100,13 @@ void		 image_size_in_cells(u_int, u_int, u_int, u_int, u_int *,
 void		 image_get_pixel_area(struct image *, u_int, u_int, u_int,
 		     u_int, u_int *, u_int *, u_int *, u_int *);
 
+/* image-decode.c */
+u_char		*image_base64_decode(const char *, size_t, size_t, size_t *);
+u_char		*image_png_decode(const u_char *, size_t, size_t, int, size_t,
+		     u_int *, u_int *);
+u_char		*image_raw_decode(const u_char *, size_t, size_t, u_int, u_int,
+		     u_int, int);
+
 /* image-grid.c */
 void		 image_grid_add(struct grid *, struct image *, u_int, u_int,
 		     u_int, u_int, u_int, u_int);

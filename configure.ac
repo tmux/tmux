@@ -542,6 +542,8 @@ if test "x$enable_cgroups" = xyes; then
 fi
 
 # Enable image support.
+libpng_version=off
+libz_version=off
 AC_ARG_ENABLE(
 	images,
 	AS_HELP_STRING(--enable-images, enable image support)
@@ -556,6 +558,32 @@ AC_ARG_ENABLE(
 	]
 )
 if test "x$enable_images" = xyes; then
+	PKG_CHECK_MODULES(
+		LIBZ,
+		zlib,
+		[
+			AM_CPPFLAGS="$LIBZ_CFLAGS $AM_CPPFLAGS"
+			CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
+			LIBS="$LIBZ_LIBS $LIBS"
+			AC_DEFINE(HAVE_LIBZ)
+			libz_version=`$PKG_CONFIG --modversion zlib 2>/dev/null`
+			test "x$libz_version" = x && libz_version=on
+		],
+		[:]
+	)
+	PKG_CHECK_MODULES(
+		LIBPNG,
+		[libpng >= 1.6],
+		[
+			AM_CPPFLAGS="$LIBPNG_CFLAGS $AM_CPPFLAGS"
+			CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
+			LIBS="$LIBPNG_LIBS $LIBS"
+			AC_DEFINE(HAVE_LIBPNG)
+			libpng_version=`$PKG_CONFIG --modversion libpng 2>/dev/null`
+			test "x$libpng_version" = x && libpng_version=on
+		],
+		[:]
+	)
 	AC_DEFINE(ENABLE_IMAGES)
 fi
 AM_CONDITIONAL(ENABLE_IMAGES, [test "x$enable_images" = xyes])
@@ -1169,6 +1197,8 @@ else
 fi
 AC_MSG_NOTICE([jemalloc: $jemalloc_version])
 AC_MSG_NOTICE([libevent: $libevent_version])
+AC_MSG_NOTICE([libpng: $libpng_version])
+AC_MSG_NOTICE([libz: $libz_version])
 AC_MSG_NOTICE([ncurses: $ncurses_version])
 AC_MSG_NOTICE([systemd: $systemd_version])
 AC_MSG_NOTICE([utempter: $utempter_version])
