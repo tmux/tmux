@@ -46,6 +46,7 @@ struct kitty_state {
 	u_int				 placement_id;
 	u_int				 quiet;
 	u_int				 data_size;
+	int				 z;
 	int				 no_cursor;
 	int				 more;
 
@@ -116,6 +117,11 @@ kitty_parse_control_data(struct kitty_state *ks, const u_char *data,
 				ks->delete = value[0];
 				break;
 			}
+			break;
+		case 'z':
+			ks->z = strtonum(value, INT_MIN, INT_MAX, &errstr);
+			if (errstr != NULL)
+				goto out;
 			break;
 		case 'f':
 		case 's':
@@ -247,11 +253,14 @@ kitty_image_map_set(struct kitty_state *ks, struct screen_write_ctx *ctx,
 {
 	struct kitty_image_map		*map;
 	struct kitty_placement_map	*kpl;
+	struct image			*old;
 
 	if (id == 0)
 		return (NULL);
 	map = kitty_image_map_find(ks, id);
 	if (map != NULL) {
+		old = image_find(map->image_id);
+		image_set_order_id(im, image_get_order_id(old));
 		while ((kpl = TAILQ_FIRST(&map->placements)) != NULL) {
 			TAILQ_REMOVE(&map->placements, kpl, entry);
 			image_clear(ctx, kpl->image_id);
@@ -327,15 +336,17 @@ kitty_delete_images(struct kitty_state *ks, struct screen_write_ctx *ctx)
 	u_int				 removed, x = 0, y = 0;
 	u_int				 sx = gd->sx, sy = gd->sy;
 	char				 how = ks->delete;
-	int				 spatial, release;
+	int				 spatial, release, *z = NULL;
 
 	release = (how >= 'A' && how <= 'Z');
 	if (release)
 		how += 'a' - 'A';
-	spatial = (how != 'i' && how != 'r');
+	spatial = (how != 'i' && how != 'r' && how != 'z');
 
 	TAILQ_FOREACH(map, &ks->images, entry)
 		kitty_prune_placements(map, s);
+	if (how == 'z')
+		image_grid_clear_layer(gd, IMAGE_TYPE_KITTY, ks->z);
 	if (spatial) {
 		switch (how) {
 		case 'c':
@@ -343,6 +354,9 @@ kitty_delete_images(struct kitty_state *ks, struct screen_write_ctx *ctx)
 			y = s->cy;
 			sx = sy = 1;
 			break;
+		case 'q':
+			z = &ks->z;
+			/* FALLTHROUGH */
 		case 'p':
 		case 'x':
 			x = ks->source_x;
@@ -363,11 +377,11 @@ kitty_delete_images(struct kitty_state *ks, struct screen_write_ctx *ctx)
 				y--;
 			break;
 		}
-		image_grid_clear_area(gd, IMAGE_TYPE_KITTY, x, y, sx, sy);
+		image_grid_clear_area(gd, IMAGE_TYPE_KITTY, x, y, sx, sy, z);
 	}
 	TAILQ_FOREACH_SAFE(map, &ks->images, entry, map1) {
 		removed = 0;
-		if (!spatial) {
+		if (!spatial && how != 'z') {
 			if (how == 'i' && map->kitty_id != ks->image_id)
 				continue;
 			if (how == 'r' &&
@@ -607,6 +621,7 @@ kitty_parse_input(struct input_ctx *ictx, struct window_pane *wp,
 		ks->placement_id = 0;
 		ks->quiet = 0;
 		ks->data_size = 0;
+		ks->z = 0;
 		ks->no_cursor = 0;
 	}
 	ks->more = 0;
@@ -641,12 +656,16 @@ kitty_parse_input(struct input_ctx *ictx, struct window_pane *wp,
 		case 'C':
 		case 'p':
 		case 'P':
+		case 'q':
+		case 'Q':
 		case 'x':
 		case 'X':
 		case 'y':
 		case 'Y':
 		case 'r':
 		case 'R':
+		case 'z':
+		case 'Z':
 			break;
 		default:
 			m = "ENOTSUP";
@@ -724,8 +743,9 @@ kitty_parse_input(struct input_ctx *ictx, struct window_pane *wp,
 
 place:
 	if (im != NULL) {
+		image_set_order_id(im, image_get_order_id(src));
 		kitty_placement_map_set(ctx, map, ks->placement_id, im);
-		image_write(ctx, im, bg, ks->no_cursor);
+		image_write(ctx, im, bg, ks->no_cursor, ks->z);
 	}
 	m = "OK";
 

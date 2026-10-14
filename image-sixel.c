@@ -683,7 +683,7 @@ sixel_write(struct screen_write_ctx *ctx, struct sixel_image *si, u_int bg)
 	sixel_free(si);
 	if (im == NULL)
 		return;
-	image_write(ctx, im, bg, 0);
+	image_write(ctx, im, bg, 0, 0);
 	image_free(im);
 }
 

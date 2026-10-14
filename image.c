@@ -83,6 +83,20 @@ image_get_id(struct image *im)
 	return (im->id);
 }
 
+/* Get order ID of an image. */
+u_int
+image_get_order_id(struct image *im)
+{
+	return (im->order_id);
+}
+
+/* Set the order ID on an image. */
+void
+image_set_order_id(struct image *im, u_int id)
+{
+	im->order_id = id;
+}
+
 /* Get the type of an image. */
 enum image_type
 image_get_type(struct image *im)

@@ -33,8 +33,8 @@ uploads = kitty('a=t,i=7,f=32,s=1,v=1', bytes((*red, 255))) + \
     kitty('a=t,i=8,f=32,s=1,v=1', bytes((*green, 255)))
 put = 'a=p,i=7,C=1,c=1,r=2'
 display = b'\033[H' + kitty(put + ',p=1') + b'\033[1;3H' + \
-    kitty(put + ',p=2') + b'\033[1;5H' + \
-    kitty('a=p,i=8,p=1,C=1,c=1,r=2') + b'\033[1;7H' + \
+    kitty(put + ',p=2,z=1') + b'\033[1;5H' + \
+    kitty('a=p,i=8,p=1,C=1,c=1,r=2,z=1') + b'\033[1;7H' + \
     kitty('a=T,f=32,s=1,v=1,C=1,c=1,r=2', bytes((*blue, 255))) + \
     b'\033[1;9H' + sixel(8, 32, [(100, 100, 100)], [0] * 256) + b'\033[2;3H'
 pictures = dict(first=rectangle(red), second=rectangle(red, 16),
@@ -77,10 +77,24 @@ cases = [
     ('reversed range', kitty('a=d,d=R,x=8,y=7'), list(pictures)),
     ('spatial selection ignores IDs', kitty('a=d,d=P,x=1,y=1,i=8,p=99'),
         ['second', 'other', 'anonymous', 'sixel']),
+    ('cell and layer', kitty('a=d,d=q,x=3,y=2,z=1'),
+        ['first', 'other', 'anonymous', 'sixel']),
+    ('cell and default layer', kitty('a=d,d=Q,x=1,y=1'),
+        ['second', 'other', 'anonymous', 'sixel']),
+    ('cell layer mismatch', kitty('a=d,d=Q,x=1,y=1,z=1'), list(pictures)),
+    ('anonymous cell and layer', kitty('a=d,d=Q,x=7,y=1,z=0'),
+        ['first', 'second', 'other', 'sixel']),
+    ('layer', kitty('a=d,d=z,z=1'), ['first', 'anonymous', 'sixel']),
+    ('default layer preserves SIXEL', kitty('a=d,d=Z'),
+        ['second', 'other', 'sixel']),
+    ('missing layer', kitty('a=d,d=Z,z=-2147483648'), list(pictures)),
+    ('layer ignores image and placement IDs', kitty('a=d,d=Z,z=1,i=7,p=1'),
+        ['first', 'anonymous', 'sixel']),
 ]
 for position in ['d=P,x=0,y=1', 'd=P,x=1,y=0', 'd=P,x=1', 'd=P,y=1',
                  'd=P,x=41,y=1', 'd=P,x=1,y=17', 'd=X,x=4294967295',
-                 'd=Y,y=4294967295']:
+                 'd=Y,y=4294967295', 'd=Q,x=0,y=1,z=0',
+                 'd=Q,x=1,y=0,z=0', 'd=Q,x=41,y=1,z=0']:
     cases.append(('invalid position ' + position, kitty('a=d,' + position),
         list(pictures)))
 with image_test(sys.argv[1]) as test:
@@ -114,6 +128,13 @@ with image_test(sys.argv[1]) as test:
     terminal.feed(client.data)
     terminal.check(rectangle(red, 16))
     snapshot(test, client, rectangle(red, 16))
+
+    # Cell-and-layer deletion selects covered images and every matching overlap.
+    test.emit(b'\033[2J\033[H' + uploads + kitty(put + ',p=1,z=0') +
+        kitty(put + ',p=2,z=0') + kitty('a=p,i=8,C=1,c=1,r=2,z=1'))
+    snapshot(test, client, rectangle(green))
+    test.emit(kitty('a=d,d=q,x=1,y=1,z=0') + kitty('a=d,d=i,i=8'))
+    snapshot(test, client, {})
 
     # Deleting an image restores the text which was updated beneath it.
     test.emit(b'\033[2J\033[H' + uploads + kitty(put + ',p=1') + b'\033[HX')
@@ -150,4 +171,15 @@ with image_test(sys.argv[1]) as test:
     snapshot(test, client, rectangle(red))
     test.emit(b'\033[1;3H' + kitty(put + ',p=2'))
     snapshot(test, client, rectangle(red) | rectangle(red, 16))
+
+# Layer deletion includes placements which have scrolled entirely into history.
+with image_test(sys.argv[1]) as test:
+    client = test.attach()
+    test.emit(uploads + b'\033[H' + kitty(put + ',p=1,z=5') + b'\033[16S')
+    snapshot(test, client, {})
+    test.emit(kitty('a=d,d=Z,z=5'))
+    test.run('copy-mode')
+    test.run('send-keys', '-X', 'history-top')
+    snapshot(test, client, {})
+    test.run('send-keys', '-X', 'cancel')
 PY

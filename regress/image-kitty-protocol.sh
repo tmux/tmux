@@ -196,6 +196,12 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         check('maximum-ids',
               graphics('a=t,i=4294967295,p=4294967295,f=32,s=1,v=1', pixel),
               graphics('i=4294967295,p=4294967295', 'OK'))
+        for z in [-2147483648, -1073741824, -1, 0, 1, 2147483647]:
+            check('signed-layer-' + str(z),
+                  graphics(transmit + ',z=' + str(z), pixel), ok)
+        for z in ['-2147483649', '2147483648', '1x', '', 'bad']:
+            check('invalid-layer-' + z,
+                  graphics(transmit + ',z=' + z, pixel), invalid)
         for n, control in enumerate(['s=', 's=-1', 's=1x', 'a=tt', 't=dd',
                                      'o=zz', '=1', 'ss=1', ',s=1',
                                      's=1,,v=1']):
@@ -256,7 +262,8 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
 
         # Position selectors use one-based cells; range selectors use image IDs.
         selectors = [('c', ''), ('p', ',x=6,y=3'), ('x', ',x=6'),
-                     ('y', ',y=3'), ('r', ',x=7,y=7')]
+                     ('y', ',y=3'), ('r', ',x=7,y=7'),
+                     ('q', ',x=6,y=3,z=0'), ('z', ',z=0')]
         for selector, controls in selectors:
             for hard in (False, True):
                 how = selector.upper() if hard else selector
@@ -274,6 +281,27 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
               graphics('a=d,d=P,x=7,y=3') + graphics('a=p,i=7,C=1'), ok)
         check('delete-spatial-retains-history', stored + first + '\033[12S' +
               graphics('a=d,d=P,x=6,y=3') + graphics('a=p,i=7,C=1'), ok)
+        check('delete-layer-unplaced', stored + graphics('a=d,d=Z,z=0') +
+              graphics('a=p,i=7,C=1'), ok)
+        check('delete-layer-miss', stored + first +
+              graphics('a=d,d=Z,z=1') + graphics('a=p,i=7,C=1'), ok)
+        check('delete-cell-layer-miss', stored + first +
+              graphics('a=d,d=Q,x=6,y=3,z=1') +
+              graphics('a=p,i=7,C=1'), ok)
+        check('delete-negative-layer', stored +
+              graphics(put + ',p=1,z=-1') +
+              graphics('a=d,d=Z,z=-1') + graphics('a=p,i=7,C=1'), missing)
+        check('delete-soft-layer-history', stored + first + '\033[12S' +
+              graphics('a=d,d=z,z=0') + graphics('a=p,i=7,C=1'), ok)
+        check('delete-hard-layer-history', stored + first + '\033[12S' +
+              graphics('a=d,d=Z,z=0') + graphics('a=p,i=7,C=1'), missing)
+        check('delete-layer-retains-other-placement', stored + first +
+              graphics(put + ',p=2,z=1') +
+              graphics('a=d,d=Z,z=0') + graphics('a=p,i=7,C=1'), ok)
+        check('delete-layer-saved-screen', stored + first +
+              '\033[?1049h' + graphics(put + ',p=2') +
+              graphics('a=d,d=Z,z=0') + '\033[?1049l' +
+              graphics('a=p,i=7,C=1'), ok)
 
         # Abort immediately when chunked data exceeds 64 MiB, then recover.
         block = base64.b64encode(b'\0' * (512 * 1024)).decode()
