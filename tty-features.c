@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.49 2026/10/14 12:33:46 nicm Exp $ */
+/* $OpenBSD: tty-features.c,v 1.50 2026/10/14 13:36:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
