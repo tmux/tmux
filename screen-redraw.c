@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.164 2026/10/14 10:34:14 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.165 2026/10/14 12:38:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -218,7 +218,10 @@ struct redraw_damage {
 	u_int				 sx;
 	u_int				 sy;
 
-	TAILQ_ENTRY(redraw_damage)	entry;
+	int				 flags;
+#define REDRAW_DAMAGE_SCROLL 0x1
+
+	TAILQ_ENTRY(redraw_damage)	 entry;
 };
 
 /*
@@ -1134,6 +1137,7 @@ redraw_collapse_damage(struct window *w)
 			x1 = rd->x + rd->sx;
 		if (rd->y + rd->sy > y1)
 			y1 = rd->y + rd->sy;
+		first->flags &= rd->flags;
 		if (rd != first) {
 			TAILQ_REMOVE(&w->damage, rd, entry);
 			free(rd);
@@ -1148,8 +1152,9 @@ redraw_collapse_damage(struct window *w)
 }
 
 /* Record window damage, merging nearby rectangles and limiting the count. */
-void
-redraw_damage_window(struct window *w, u_int x, u_int y, u_int sx, u_int sy)
+static void
+redraw_apply_window_damage(struct window *w, u_int x, u_int y, u_int sx,
+    u_int sy, int flags)
 {
 	struct redraw_damage	*rd;
 	u_int			 x0, y0, x1, y1, area, union_area;
@@ -1182,6 +1187,7 @@ redraw_damage_window(struct window *w, u_int x, u_int y, u_int sx, u_int sy)
 		rd->y = y0;
 		rd->sx = x1 - x0;
 		rd->sy = y1 - y0;
+		rd->flags &= flags;
 		return;
 	}
 
@@ -1190,9 +1196,17 @@ redraw_damage_window(struct window *w, u_int x, u_int y, u_int sx, u_int sy)
 	rd->y = y;
 	rd->sx = sx;
 	rd->sy = sy;
+	rd->flags = flags;
 	TAILQ_INSERT_TAIL(&w->damage, rd, entry);
 	if (++w->damage_count > REDRAW_DAMAGE_MAX)
 		redraw_collapse_damage(w);
+}
+
+/* Record ordinary window damage. */
+void
+redraw_damage_window(struct window *w, u_int x, u_int y, u_int sx, u_int sy)
+{
+	redraw_apply_window_damage(w, x, y, sx, sy, 0);
 }
 
 /* Mark all cached redraw scenes as out of date. */
