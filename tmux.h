@@ -2352,7 +2352,7 @@ struct client {
 
 	int			 references;
 
-	int		 theme_colours[COLOUR_THEME_COUNT];
+	int			 theme_colours[COLOUR_THEME_COUNT];
 
 	void			*pan_window;
 	u_int			 pan_ox;
