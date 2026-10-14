@@ -35,18 +35,18 @@ void
 fork_session_keyring(void)
 {
 	int32_t	*keys = NULL;
-	long	 size, n = 0, i;
+	long	 size = 0, n, i;
 
-	size = syscall(SYS_keyctl, KEYCTL_READ, KEY_SPEC_SESSION_KEYRING, NULL,
-	    0);
-	if (size > 0) {
-		keys = xmalloc(size);
+	/* KEYCTL_READ returns the full size; retry if keys were added. */
+	for (;;) {
 		n = syscall(SYS_keyctl, KEYCTL_READ, KEY_SPEC_SESSION_KEYRING,
 		    keys, size);
-		if (n > size)
-			n = size;
-		n = n > 0 ? n / sizeof *keys : 0;
+		if (n <= size)
+			break;
+		size = n;
+		keys = xrealloc(keys, size);
 	}
+	n = n > 0 ? n / sizeof *keys : 0;
 
 	/*
 	 * Link the current session keyring into the thread keyring so we still
