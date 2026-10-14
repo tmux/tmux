@@ -2274,7 +2274,7 @@ server_client_check_exit(struct client *c, int force)
 	if (~c->flags & CLIENT_EXIT)
 		return;
 
-	if (c->flags & CLIENT_CONTROL) {
+	if ((c->flags & CLIENT_CONTROL) && c->control_state != NULL) {
 		if (force)
 			control_discard_all(c);
 		else {
