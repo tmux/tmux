@@ -41,6 +41,13 @@ fallback_select(__unused struct tty *tty)
 	return (1);
 }
 
+/* Text images move with terminal scrolling. */
+int
+fallback_get_flags(__unused struct tty *tty)
+{
+	return (IMAGE_BACKEND_SCROLLS);
+}
+
 /* Get the average colour and brightness of an area. */
 static int
 fallback_sample(struct image *im, uint64_t px, uint64_t py, uint64_t pw,

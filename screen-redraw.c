@@ -2257,6 +2257,7 @@ void
 redraw_client_damage(struct client *c)
 {
 	struct window		*w = c->session->curw->window;
+	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
 	struct redraw_scene	*scene;
 	struct redraw_draw_ctx	 dctx;
@@ -2278,10 +2279,18 @@ redraw_client_damage(struct client *c)
 		wp->active_border_gc_set = 0;
 	}
 
-	tty_sync_start(&c->tty);
-	tty_update_mode(&c->tty, c->tty.mode & ~CURSOR_MODES, NULL);
+	tty_sync_start(tty);
+	tty_update_mode(tty, tty->mode & ~CURSOR_MODES, NULL);
 
 	TAILQ_FOREACH(rd, &w->damage, entry) {
+#ifdef ENABLE_IMAGES
+		if ((rd->flags & REDRAW_DAMAGE_SCROLL) &&
+		    (image_backend_get_flags(tty) & IMAGE_BACKEND_SCROLLS) &&
+		    tty->scroll_window == w &&
+		    tty->scroll_generation == w->scroll_generation &&
+		    !tty->scroll_failed)
+			continue;
+#endif
 		x0 = (rd->x > ox) ? rd->x : ox;
 		y0 = (rd->y > oy) ? rd->y : oy;
 		x1 = (rd->x + rd->sx < ox + sx) ? rd->x + rd->sx : ox + sx;

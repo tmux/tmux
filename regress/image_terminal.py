@@ -150,7 +150,10 @@ class Terminal:
                 if rest[0] == 13:
                     self.x = 0
                 elif rest[0] == 10:
-                    self.y += 1
+                    if self.y == self.bottom:
+                        self.scroll(self.top, self.bottom, 1)
+                    else:
+                        self.y += 1
                 elif rest[0] == 8:
                     self.x = max(0, self.x - 1)
                 pos += 1

@@ -86,7 +86,7 @@ struct image_recover_row {
 /* A backend to draw an image. */
 struct image_backend {
 	const char	*name;
-	int		 flags;
+	int		(*get_flags)(struct tty *);
 	int		(*select)(struct tty *);
 	const struct grid_cell *(*map_cell)(struct tty *, struct grid *, u_int,
 			    u_int, const struct grid_cell *, struct grid_cell *,
@@ -100,7 +100,7 @@ struct image_backend {
 /* Backend definitions. */
 static struct image_backend image_backend_fallback = {
 	"fallback",
-	IMAGE_BACKEND_SCROLLS,
+	fallback_get_flags,
 	fallback_select,
 	fallback_map_cell,
 	NULL,
@@ -110,7 +110,7 @@ static struct image_backend image_backend_fallback = {
 };
 static struct image_backend image_backend_sixel = {
 	"sixel",
-	IMAGE_BACKEND_GRAPHICAL,
+	sixel_get_flags,
 	sixel_select,
 	NULL,
 	sixel_draw_rect,
@@ -145,6 +145,14 @@ image_tty_update(struct tty *tty)
 	tty->image_data = NULL;
 	tty->image_backend = backend;
 	return (1);
+}
+
+/* Get the flags for a terminal's image backend. */
+int
+image_backend_get_flags(struct tty *tty)
+{
+	image_tty_update(tty);
+	return (tty->image_backend->get_flags(tty));
 }
 
 /* Map an image grid cell to text for the selected backend. */
@@ -679,10 +687,18 @@ image_redraw_all(struct screen_write_ctx *ctx)
 void
 image_redraw_scroll(struct screen_write_ctx *ctx)
 {
-	struct screen	*s = ctx->s;
-	u_int		 sx = screen_size_x(s), sy = s->rlower - s->rupper + 1;
+	struct screen		*s = ctx->s;
+	struct window_pane	*wp = ctx->wp;
+	u_int			 sx = screen_size_x(s);
+	u_int			 sy = s->rlower - s->rupper + 1;
 
-	image_redraw_area(ctx, 0, s->rupper, sx, sy);
+	if (wp == NULL)
+		return;
+	if (!image_grid_area_has_images(s->grid, 0,
+	    s->grid->hsize + s->rupper, sx, sy))
+		return;
+	redraw_damage_scroll(wp->window, wp->xoff,
+	    wp->yoff + s->rupper, sx, sy);
 }
 
 /* Redraw images under changed cells. */

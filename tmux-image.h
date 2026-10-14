@@ -132,17 +132,20 @@ void		 image_draw_line(struct tty *, struct screen *, u_int, u_int,
 void		 image_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
 void		 image_draw_flush(struct tty *);
 int		 image_tty_update(struct tty *);
+int		 image_backend_get_flags(struct tty *);
 void		 image_tty_size_changed(struct tty *);
 void		 image_tty_free(struct tty *);
 
 /* image-fallback.c */
 int		 fallback_select(struct tty *);
+int		 fallback_get_flags(struct tty *);
 const struct grid_cell *fallback_map_cell(struct tty *, struct grid *, u_int,
 		     u_int, const struct grid_cell *, struct grid_cell *, int *);
 
 /* image-sixel.c */
 #define SIXEL_COLOUR_REGISTERS 1024
 int		 sixel_select(struct tty *);
+int		 sixel_get_flags(struct tty *);
 struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int,
 		     u_int);
 void		 sixel_free(struct sixel_image *);

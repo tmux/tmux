@@ -1300,6 +1300,17 @@ sixel_select(struct tty *tty)
 	return (0);
 }
 
+/* Get SIXEL backend flags. */
+int
+sixel_get_flags(struct tty *tty)
+{
+	int	flags = IMAGE_BACKEND_GRAPHICAL;
+
+	if (tty_term_flag(tty->term, TTYC_ISCRL))
+		flags |= IMAGE_BACKEND_SCROLLS;
+	return (flags);
+}
+
 /* Get pending SIXEL rows for a terminal. */
 static struct sixel_pending *
 sixel_get_pending(struct tty *tty)
