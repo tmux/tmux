@@ -1243,32 +1243,6 @@ redraw_scroll_result(struct tty *tty, const struct tty_ctx *ctx, int failed)
 		tty->scroll_failed = 1;
 }
 
-#ifdef ENABLE_IMAGES
-/* XXX not sure if they is needed */
-/* Record damage for every pane border-status row in a window. */
-static void
-redraw_damage_window_pane_status(struct window *w)
-{
-	struct window_pane	*wp;
-	u_int			 y;
-	int			 status;
-
-	TAILQ_FOREACH(wp, &w->panes, entry) {
-		status = window_pane_get_pane_status(wp);
-		if (status == PANE_STATUS_TOP) {
-			if (wp->yoff == 0)
-				continue;
-			y = wp->yoff - 1;
-		} else if (status == PANE_STATUS_BOTTOM)
-			y = wp->yoff + wp->sy;
-		else
-			continue;
-		if (y < w->sy)
-			redraw_damage_window(w, 0, y, w->sx, 1);
-	}
-}
-#endif
-
 /* Mark all cached redraw scenes as out of date. */
 void
 redraw_invalidate_all_scenes(void)
@@ -2036,14 +2010,6 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 			image_redraw_finish(tty);
 #endif
 	}
-#ifdef ENABLE_IMAGES
-	if ((flags & REDRAW_PANE) &&
-	    (image_backend_get_flags(tty) &
-	    (IMAGE_BACKEND_GRAPHICAL|IMAGE_BACKEND_CLIPPED)) ==
-	    IMAGE_BACKEND_GRAPHICAL) {
-		redraw_damage_window_pane_status(scene->w);
-	}
-#endif
 
 	if (flags & REDRAW_PANE) {
 		if (wp != NULL)
