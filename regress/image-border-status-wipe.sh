@@ -3,6 +3,8 @@
 # A tiled pane's border title must reappear after a floating pane moves away.
 # Start the drag below row zero so its initial press hits the floating pane.
 
+. ./image-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 LC_ALL=C.UTF-8
@@ -69,6 +71,7 @@ TMP=$(mktemp)
 trap "cleanup; rm -f $TMP" 0 1 15
 
 $TMUX new-session -d -s inner -x 60 -y 20 'sh -c "sleep 100"' || exit 1
+image_check_support $TMUX
 $TMUX set -g mouse on
 $TMUX set -g pane-border-status top
 $TMUX set -g default-command 'sh -c "sleep 100"'
@@ -116,7 +119,6 @@ while [ "$row" != "$FTOP" ]; do
 	waypoints="$waypoints $row"
 done
 drag $((GRABCOL + 1)) $waypoints
-drag $((GRABCOL + 1)) 1 $((GRABCOL + 1)) "$FTOP"
 
 $TMUX2 capturep -p -t "$OUTER" >$TMP || fail "capture failed"
 

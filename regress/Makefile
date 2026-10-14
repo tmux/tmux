@@ -32,13 +32,18 @@ $(TESTS): prepare
 	@base="$@"; base=$${base##*/}; \
 	log="$(LOGDIR)/$${base%.sh}.log"; \
 	start=$$(date +%s); \
-	if env -i LC_CTYPE=C.UTF-8 MallocNanoZone=0 \
-	    sh -x "$@" >"$$log" 2>&1; then \
-		end=$$(date +%s); \
+	env -i LC_CTYPE=C.UTF-8 MallocNanoZone=0 \
+	    sh -x "$@" >"$$log" 2>&1; \
+	result=$$?; \
+	end=$$(date +%s); \
+	case $$result in \
+	0) \
 		rm -f "$$log"; \
-		printf '%-40s PASS (%ss)\n' "$@" "$$((end - start))"; \
-	else \
-		end=$$(date +%s); \
+		printf '%-40s PASS (%ss)\n' "$@" "$$((end - start))" ;; \
+	101) \
+		rm -f "$$log"; \
+		printf '%-40s SKIP (%ss)\n' "$@" "$$((end - start))" ;; \
+	*) \
 		printf '%-40s FAIL (%ss)\n log: %s\n' \
-		    "$@" "$$((end - start))" "$$log"; \
-	fi
+		    "$@" "$$((end - start))" "$$log" ;; \
+	esac

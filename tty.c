@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.486 2026/10/12 10:39:05 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.487 2026/10/14 08:33:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -155,25 +155,22 @@ tty_resize(struct tty *tty)
 	tty_invalidate(tty);
 }
 
-void
+int
 tty_set_size(struct tty *tty, u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 {
-#ifdef ENABLE_IMAGES
-	int	geometry_changed = 0;
-
-	if (tty->xpixel != xpixel || tty->ypixel != ypixel)
-		geometry_changed = 1;
-#endif
+	if (tty->sx == sx &&
+	    tty->sy == sy &&
+	    tty->xpixel == xpixel &&
+	    tty->ypixel == ypixel)
+		return (0);
 	tty->sx = sx;
 	tty->sy = sy;
 	tty->xpixel = xpixel;
 	tty->ypixel = ypixel;
 #ifdef ENABLE_IMAGES
-	if (geometry_changed) {
-		image_tty_geometry_changed(tty);
-		server_redraw_client(tty->client);
-	}
+	image_tty_size_changed(tty);
 #endif
+	return (1);
 }
 
 static void
@@ -586,16 +583,10 @@ tty_update_features(struct tty *tty)
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENFCS));
 	tty_puts(tty, tty_term_string(tty->term, TTYC_ENESC));
 
-	/*
-	 * Redraw only for changed features; repeated DA replies must not erase
-	 * images sent through DCS passthrough.
-	 */
-	if (!changed)
-		return;
-
-	server_redraw_client(c);
-
-	tty_invalidate(tty);
+	if (changed) {
+		server_redraw_client(c);
+		tty_invalidate(tty);
+	}
 }
 
 void
@@ -1695,17 +1686,12 @@ tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_RIN)) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1) {
-#ifdef ENABLE_IMAGES
-		redraw_image_scroll_result(tty, ctx, 1);
-#endif
+		redraw_scroll_result(tty, ctx, 1);
 		tty_redraw_region(tty, ctx);
 		return;
 	}
 
-#ifdef ENABLE_IMAGES
-	redraw_image_scroll_result(tty, ctx, 0);
-#endif
-
+	redraw_scroll_result(tty, ctx, 0);
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
@@ -1730,17 +1716,12 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1) {
-#ifdef ENABLE_IMAGES
-		redraw_image_scroll_result(tty, ctx, 1);
-#endif
+		redraw_scroll_result(tty, ctx, 1);
 		tty_redraw_region(tty, ctx);
 		return;
 	}
 
-#ifdef ENABLE_IMAGES
-	redraw_image_scroll_result(tty, ctx, 0);
-#endif
-
+	redraw_scroll_result(tty, ctx, 0);
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
@@ -1775,17 +1756,12 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1) {
-#ifdef ENABLE_IMAGES
-		redraw_image_scroll_result(tty, ctx, 1);
-#endif
+		redraw_scroll_result(tty, ctx, 1);
 		tty_redraw_region(tty, ctx);
 		return;
 	}
 
-#ifdef ENABLE_IMAGES
-	redraw_image_scroll_result(tty, ctx, 0);
-#endif
-
+	redraw_scroll_result(tty, ctx, 0);
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
@@ -1820,17 +1796,12 @@ tty_cmd_scrolldown(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_RIN)) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1) {
-#ifdef ENABLE_IMAGES
-		redraw_image_scroll_result(tty, ctx, 1);
-#endif
+		redraw_scroll_result(tty, ctx, 1);
 		tty_redraw_region(tty, ctx);
 		return;
 	}
 
-#ifdef ENABLE_IMAGES
-	redraw_image_scroll_result(tty, ctx, 0);
-#endif
-
+	redraw_scroll_result(tty, ctx, 0);
 	tty_default_attributes(tty, ctx->bg, &ctx->style_ctx);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);

@@ -8,9 +8,9 @@ export TERM
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 export TEST_TMUX
-command -v python3 >/dev/null || exit 0
+command -v python3 >/dev/null || exit 101
 
-python3 - <<'PY'
+python3 -B - <<'PY'
 import base64
 import os
 from pathlib import Path
@@ -105,9 +105,9 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-layers-') as tmp:
                       'time.sleep(30)\n')
     try:
         run(inner, 'new-session', '-d', '-x', '40', '-y', '12',
-            shlex.join(['python3', str(helper)]))
+            shlex.join(['python3', '-B', str(helper)]))
         if run(inner, 'display-message', '-p', '#{image_support}') == '0':
-            raise SystemExit(0)
+            raise SystemExit(101)
         run(inner, 'set', '-g', 'status', 'off')
         run(inner, 'set', '-as', 'terminal-features', ',*:kittygraphics')
         pane = run(outer, 'new-session', '-dP', '-F', '#{pane_id}',

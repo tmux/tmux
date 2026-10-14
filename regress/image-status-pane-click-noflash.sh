@@ -34,7 +34,7 @@ $TMUX split-window -h -t inner 'exec sh' || fail "split-window failed"
 $TMUX select-pane -t inner.0 || fail "select-pane failed"
 sleep 0.3
 
-[ "$($TMUX display-message -p '#{image_support}')" = 0 ] && exit 0
+image_check_support $TMUX
 $TMUX set -as terminal-features ',*:sixel' || exit 1
 
 start_capture 60 12

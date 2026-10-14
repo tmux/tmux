@@ -376,31 +376,16 @@ static const struct tty_feature tty_feature_kittygraphics = {
 	TERM_KITTYGRAPHICS
 };
 
-#ifdef ENABLE_IMAGES
-static const char *const tty_feature_image_capabilities[] = {
+/* Terminal moves images with scroll regions. */
+static const char *const tty_feature_imagescroll_capabilities[] = {
+	"Iscrl",
 	NULL
 };
-static const struct tty_feature tty_feature_image_quadrants = {
-	"image-quadrants",
-	tty_feature_image_capabilities,
-	TERM_IMAGE_QUADRANTS
-};
-static const struct tty_feature tty_feature_image_sextants = {
-	"image-sextants",
-	tty_feature_image_capabilities,
-	TERM_IMAGE_SEXTANTS
-};
-
-/*
- * Terminal moves images with a scrolling region. Text margin support does
- * not imply this capability.
- */
 static const struct tty_feature tty_feature_imagescroll = {
 	"imagescroll",
-	tty_feature_image_capabilities,
-	TERM_IMAGESCROLL
+	tty_feature_imagescroll_capabilities,
+	0
 };
-#endif
 
 /* Terminal supports the OSC 9;4 progress bar. */
 static const char *const tty_feature_progressbar_capabilities[] = {
@@ -432,12 +417,8 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_extkeys,
 	&tty_feature_focus,
 	&tty_feature_ignorefkeys,
-	&tty_feature_kittygraphics,
-#ifdef ENABLE_IMAGES
-	&tty_feature_image_quadrants,
-	&tty_feature_image_sextants,
 	&tty_feature_imagescroll,
-#endif
+	&tty_feature_kittygraphics,
 	&tty_feature_margins,
 	&tty_feature_mouse,
 	&tty_feature_osc7,

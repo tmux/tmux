@@ -2,6 +2,8 @@
 # keyboard interaction that must not retransmit an unrelated pane's image,
 # checked by counting DCS (\033P) sequences in the client's raw output.
 
+. ./image-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 LC_ALL=C.UTF-8
@@ -64,6 +66,6 @@ assert_image_reached()
 # see that test's header comment.
 assert_no_retransmit()
 {
-	n=$(grep -ac "$(printf '\033P')" $TMP)
+	n=$(grep -aoE "$(printf '\033P')[0-9;]*q" $TMP | wc -l)
 	[ "$n" -eq 0 ] || fail "image was retransmitted ($n times) $1"
 }

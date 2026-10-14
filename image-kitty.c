@@ -26,6 +26,25 @@
 
 #include "tmux.h"
 
+/* Return whether the terminal supports Kitty graphics. */
+int
+kitty_select(struct tty *tty)
+{
+	return (tty->term != NULL &&
+	    (tty->term->flags & TERM_KITTYGRAPHICS));
+}
+
+/* Get Kitty backend flags. */
+int
+kitty_get_flags(struct tty *tty)
+{
+	int	flags = IMAGE_BACKEND_GRAPHICAL|IMAGE_BACKEND_CLIPPED;
+
+	if (tty_term_flag(tty->term, TTYC_ISCRL))
+		flags |= IMAGE_BACKEND_SCROLLS;
+	return (flags);
+}
+
 #define KITTY_CHUNK_SIZE 3072
 
 static const uint32_t kitty_diacritics[] = {

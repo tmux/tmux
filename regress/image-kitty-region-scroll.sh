@@ -54,7 +54,7 @@ $TMUX new-session -d -s inner -x 40 -y 20 "printf '$HEADER'; exec sh" ||
 	exit 1
 sleep 0.3
 
-[ "$($TMUX display-message -p '#{image_support}')" = 0 ] && exit 0
+[ "$($TMUX display-message -p '#{image_support}')" = 0 ] && exit 101
 $TMUX set -as terminal-features ',*:kittygraphics' || exit 1
 
 $TMUX2 new-session -d -x 40 -y 20 || exit 1

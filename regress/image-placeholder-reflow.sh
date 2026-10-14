@@ -20,6 +20,7 @@ $TMUX2 new-session -d -x 10 -y 4 "
 		i=\$((i + 1))
 	done
 	sleep 30" || exit 1
+[ "$($TMUX2 display-message -p '#{image_support}')" = 0 ] && exit 101
 $TMUX2 set -g status off || exit 1
 $TMUX new-session -d -x 10 -y 4 "$TMUX2 attach-session" || exit 1
 $TMUX set -g status off || exit 1

@@ -2,6 +2,8 @@
 
 # Images scrolled off-screen must reappear when copy mode scrolls back up.
 
+. ./image-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 LC_ALL=C.UTF-8
@@ -37,7 +39,7 @@ FIXTURE=$(pwd)/monkey-2.sixel.txt
 $TMUX new-session -d -s inner -x 30 -y 5 "cat '$FIXTURE'; exec sh" || exit 1
 sleep 0.5
 
-[ "$($TMUX display-message -p '#{image_support}')" = 0 ] && exit 0
+image_check_support $TMUX
 $TMUX set -as terminal-features ',*:sixel' || exit 1
 
 # Start the outer session with a plain shell, then start capturing before

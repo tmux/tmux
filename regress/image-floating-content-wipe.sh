@@ -3,6 +3,8 @@
 # A SIXEL pane redraw must erase only cells owned by that pane, preserving
 # content in an overlapping floating pane when leaving copy mode.
 
+. ./image-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 LC_ALL=C.UTF-8
@@ -21,7 +23,7 @@ $TMUX2 new-session -d -x 60 -y 20 "sh -c 'i=0; while [ \$i -lt 30 ]; do printf \
 	|| exit 1
 $TMUX2 new-pane -x20 -y6 -X8 -Y3 -T FLOATTITLE "sh -c 'printf FLOATCONTENT; exec sleep 100'" \
 	|| exit 1
-[ "$($TMUX2 display-message -p '#{image_support}')" = 0 ] && exit 0
+image_check_support $TMUX2
 
 # The attaching client must be detected as SIXEL-capable - this bug does
 # not reproduce on a fallback or Kitty client.

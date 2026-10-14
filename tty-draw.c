@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-draw.c,v 1.18 2026/10/12 15:28:45 nicm Exp $ */
+/* $OpenBSD: tty-draw.c,v 1.19 2026/10/13 22:44:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -122,11 +122,6 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	struct grid		*gd = s->grid;
 	const struct grid_cell	*gcp;
 	struct grid_cell	 gc, ngc, last;
-#ifdef ENABLE_IMAGES
-	struct grid_cell	 image_gc;
-	struct kitty_placeholder placeholder;
-	int			 image_status;
-#endif
 	struct grid_line	*gl;
 	u_int			 i, j, last_i, cx, ex, width;
 	u_int			 cellsize, bg;
@@ -136,6 +131,11 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	enum tty_draw_line_state current_state, next_state;
 	struct tty_style_ctx	 default_style_ctx = { 0 };
 	const struct grid_cell	*defaults;
+#ifdef ENABLE_IMAGES
+	struct image		*im;
+	struct kitty_placeholder placeholder;
+	u_int			 x, y;
+#endif
 
 	if (style_ctx == NULL) {
 		default_style_ctx.defaults = &grid_default_cell;
@@ -193,6 +193,10 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		grid_view_get_cell(gd, i, py, &gc);
 		if (~gc.flags & GRID_FLAG_PADDING)
 			break;
+#ifdef ENABLE_IMAGES
+		if (image_grid_get_at(gd, i, gd->hsize + py, &im, &x, &y) == 1)
+			break;
+#endif
 		cx++;
 	}
 	if (cx != 0) {
@@ -256,18 +260,14 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 
 			if (px >= ex || i >= ex - px) {
 				/* Outside the area being drawn. */
+				empty = nx - i;
 				gcp = &grid_default_cell;
+
 #ifdef ENABLE_IMAGES
-				image_status = image_get_fallback_at(tty, s, px + i,
-				    py, gcp, &image_gc);
-				if (image_status == 1) {
-					gcp = &image_gc;
-					empty = 0;
-				} else if (image_status == -1)
-					empty = 1;
-				else
+				/* Map an image cell if needed. */
+				gcp = image_map_cell(tty, gd, px + i,
+				    gd->hsize + py, gcp, &gc, &empty);
 #endif
-					empty = nx - i;
 
 				/* Flush the background before clearing. */
 				if (empty != 0 && gcp->bg != last.bg)
@@ -283,15 +283,16 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				}
 #endif
 				gcp = &gc;
+
 #ifdef ENABLE_IMAGES
-				if (image_get_fallback_at(tty, s, px + i, py, &gc,
-				    &image_gc) == 1) {
-					gcp = &image_gc;
-				}
+				/* Map an image cell if needed. */
+				gcp = image_map_cell(tty, gd, px + i,
+				    gd->hsize + py, gcp, &gc, NULL);
 #endif
 
 				/* Work out empty cells. */
-				empty = tty_draw_line_get_empty(gcp, &last, nx - i);
+				empty = tty_draw_line_get_empty(gcp, &last,
+				    nx - i);
 				if (empty == 0) {
 					/* Update for codeset if needed. */
 					gcp = tty_check_codeset(tty, gcp);

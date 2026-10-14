@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1459 2026/10/13 10:21:58 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1461 2026/10/14 10:34:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -499,6 +499,7 @@ enum tty_code_code {
 	TTYC_IND,
 	TTYC_INDN,
 	TTYC_INVIS,
+	TTYC_ISCRL,
 	TTYC_KCBT,
 	TTYC_KCUB1,
 	TTYC_KCUD1,
@@ -1478,10 +1479,8 @@ struct window {
 
 	struct redraw_damages	 damage;
 	u_int			 damage_count;
-#ifdef ENABLE_IMAGES
-	uint64_t		 image_scroll_epoch;
-	int			 image_scroll_pending;
-#endif
+	uint64_t		 scroll_generation;
+	int			 scroll_pending;
 
 	struct menu_data	*menu;
 	u_int			 menu_last_px;
@@ -1752,11 +1751,6 @@ struct tty_term {
 #define TERM_INVALIDMS 0x80
 #define TERM_NOREPLACE 0x100
 #define TERM_KITTYGRAPHICS 0x200
-#ifdef ENABLE_IMAGES
-#define TERM_IMAGE_QUADRANTS 0x400
-#define TERM_IMAGE_SEXTANTS 0x800
-#define TERM_IMAGESCROLL 0x1000
-#endif
 	int		 flags;
 
 	LIST_ENTRY(tty_term) entry;
@@ -1861,12 +1855,14 @@ struct tty {
 
 	struct event	 key_timer;
 	struct tty_key	*key_tree;
+
+	struct window		*scroll_window;
+	uint64_t		 scroll_generation;
+	int			 scroll_failed;
+
 #ifdef ENABLE_IMAGES
-	const struct image_backend *image_backend;
-	void		*image_data;
-	struct window	*image_scroll_window;
-	uint64_t	 image_scroll_epoch;
-	int		 image_scroll_failed;
+	struct image_backend	*image_backend;
+	void			*image_data;
 #endif
 };
 
@@ -2363,7 +2359,7 @@ struct client {
 
 	int			 references;
 
-	int		 theme_colours[COLOUR_THEME_COUNT];
+	int			 theme_colours[COLOUR_THEME_COUNT];
 
 	void			*pan_window;
 	u_int			 pan_ox;
@@ -2957,7 +2953,7 @@ void	tty_cell(struct tty *, const struct grid_cell *,
 	    const struct tty_style_ctx *);
 int	tty_init(struct tty *, struct client *);
 void	tty_resize(struct tty *);
-void	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
+int	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
 void	tty_invalidate(struct tty *);
 void	tty_start_tty(struct tty *);
 void	tty_send_requests(struct tty *);
@@ -3042,7 +3038,6 @@ void		 tty_default_features(struct client *, const char *, u_int);
 /* tty-acs.c */
 int		 tty_acs_needed(struct tty *);
 const char	*tty_acs_get(struct tty *, u_char);
-u_char		 tty_acs_image_sextant(u_int);
 int		 tty_acs_reverse_get(struct tty *, const char *, size_t);
 const struct utf8_data *tty_acs_double_borders(int);
 const struct utf8_data *tty_acs_heavy_borders(int);
@@ -3656,11 +3651,8 @@ int	 redraw_client_has_window(struct client *, struct window *);
 void	 redraw_invalidate_scene(struct window *);
 void	 redraw_invalidate_all_scenes(void);
 void	 redraw_damage_window(struct window *, u_int, u_int, u_int, u_int);
-#ifdef ENABLE_IMAGES
-void	 redraw_damage_window_scroll(struct window *, u_int, u_int, u_int,
-	     u_int);
-void	 redraw_image_scroll_result(struct tty *, const struct tty_ctx *, int);
-#endif
+void	 redraw_damage_scroll(struct window *, u_int, u_int, u_int, u_int);
+void	 redraw_scroll_result(struct tty *, const struct tty_ctx *, int);
 void	 redraw_free_damage(struct window *);
 void	 redraw_client_damage(struct client *);
 int	 redraw_get_status_border_cell_type(struct redraw_span **, u_int);

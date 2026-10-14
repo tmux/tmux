@@ -9,7 +9,7 @@ TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 
-python3 - "$TEST_TMUX" <<'PY'
+python3 -B - "$TEST_TMUX" <<'PY'
 import fcntl
 import os
 import re

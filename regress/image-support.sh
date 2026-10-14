@@ -25,7 +25,7 @@ $TMUX new-session -d -x 20 -y 8 "
 	sleep 10"
 
 sleep 1
-[ "$($TMUX display-message -p '#{image_support}')" = 0 ] && exit 0
+[ "$($TMUX display-message -p '#{image_support}')" = 0 ] && exit 101
 [ "$($TMUX display-message -p '#{sixel_support}')" = 1 ] || exit 1
 
 # Older Chafa chunks are independently padded, with nonzero unused bits.

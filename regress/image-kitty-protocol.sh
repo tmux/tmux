@@ -9,9 +9,9 @@ export TERM LC_ALL
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 export TEST_TMUX
-command -v python3 >/dev/null || exit 0
+command -v python3 >/dev/null || exit 101
 
-python3 - <<'PY'
+python3 -B - <<'PY'
 import base64
 import json
 import re
@@ -61,7 +61,7 @@ def check(name, command, cursor, expected='', text=None, render=None, resize=Non
     output = directory / name
     command_file = directory / (name + '.input')
     command_file.write_text(command, encoding='utf-8')
-    pane_command = 'python3 ' + shlex.quote(str(helper)) + ' ' + \
+    pane_command = 'python3 -B ' + shlex.quote(str(helper)) + ' ' + \
         shlex.quote(str(command_file)) + ' ' + shlex.quote(str(output))
     pane = run('new-window', '-d', '-P', '-F', '#{pane_id}', pane_command)
     try:
@@ -109,7 +109,7 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
     try:
         run('new-session', '-d', '-x', '40', '-y', '12')
         if run('display-message', '-p', '#{image_support}') == '0':
-            raise SystemExit(0)
+            raise SystemExit(101)
         run('set', '-g', 'status', 'off')
         run('set', '-as', 'terminal-features', ',*:sixel@')
         run('set', '-as', 'terminal-features', ',*:kittygraphics@')
@@ -264,13 +264,13 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         high_virtual = graphics('a=T,q=2,U=1,i=16777223,f=32,s=24,v=32,c=3,r=2', white)
         check('inherit-high-byte', high_virtual + '\033[38;2;0;0;7m' +
               ph + '\u0305\u0305\u030d' + ph, '2,0',
-              text=ph + '\u0305\u0305\u030d' + ph, render=r'48;2;255;255;255m {2}')
+              text=ph + '\u0305\u0305\u030d' + ph, render=r'48;2;255;255;255m[ ▄]{2}')
         check('inherit-high-byte-row', high_virtual + '\033[38;2;0;0;7m' +
               ph + '\u0305\u0305\u030d' + ph + '\u0305', '2,0',
-              render=r'48;2;255;255;255m {2}')
+              render=r'48;2;255;255;255m[ ▄]{2}')
         check('inherit-high-byte-column', high_virtual + '\033[38;2;0;0;7m' +
               ph + '\u0305\u0305\u030d' + ph + '\u0305\u030d', '2,0',
-              render=r'48;2;255;255;255m {2}')
+              render=r'48;2;255;255;255m[ ▄]{2}')
         red = base64.b64encode(b'\xff\0\0\xff' * (24 * 32)).decode()
         check('explicit-high-byte', high_virtual +
               graphics('a=T,q=2,U=1,i=7,f=32,s=24,v=32,c=3,r=2', red) +
@@ -289,7 +289,7 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         check('negative-virtual', virtual + graphics('a=p,q=2,U=1,i=7,p=1,c=3,r=2,z=-1') +
               colours + ph, '1,0', render=r'255;255;255m')
         check('placeholder-resize', virtual + colours + ph, '1,0',
-              render=r'48;2;255;255;255m(?:\x1b\[[0-9;]+m)* \x1b\[(?:0|39)m',
+              render=r'48;2;255;255;255m(?:\x1b\[[0-9;]+m)*[ ▄]\x1b\[(?:0|39)m',
               resize=(50, 12))
         for selector in ['a', 'z']:
             check('virtual-survives-' + selector, virtual + colours + ph +
@@ -301,7 +301,7 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
             check('virtual-survives-' + selector, virtual + colours + ph +
                   '\033[H' + graphics('a=d,d=%s,q=2%s' % (selector, coordinates)) +
                   '\033[2G' + ph + '\u0305\u030d', '2,0',
-                  render=r'48;2;255;255;255m(?:\x1b\[[0-9;]+m)* {2}')
+                  render=r'48;2;255;255;255m(?:\x1b\[[0-9;]+m)*[ ▄]{2}')
         # Deleting a prototype leaves its existing text-backed display intact.
         check('virtual-delete-display', virtual + colours + ph +
               graphics('a=d,d=I,i=7,p=1,q=2'), '1,0', render=r'255;255;255m')
@@ -321,7 +321,7 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
               graphics('a=t,q=2,i=7,f=32,s=1,v=1', pixel), '1,0', text=ph, render=ph)
         check('virtual-replace-display', virtual + colours + ph +
               graphics('a=p,i=7,p=1,q=2,C=1,c=3,r=2'), '1,0',
-              render=r'^(?:\x1b\[[0-9;]+m)*\x1b\[48;2;255;255;255m(?:\x1b\[[0-9;]+m)* ')
+              render=r'^(?:\x1b\[[0-9;]+m)*\x1b\[48;2;255;255;255m(?:\x1b\[[0-9;]+m)*[ ▄]')
         check('placeholder-overwrite', virtual + colours + ph + '\033[HX', '1,0',
               text='X', render=r'X')
         check('placeholder-erase', virtual + colours + ph + '\033[H\033[2K', '0,0',
@@ -330,13 +330,13 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         # Ordinary placements stretch; placeholders retain aspect ratio.
         check('stretch-tall', graphics('a=T,q=2,f=32,s=1,v=1,c=2,r=2,C=1',
                                       white_pixel),
-              '0,0', render=r'48;2;255;255;255m {2}')
+              '0,0', render=r'48;2;255;255;255m[ ▄]{2}')
         check('stretch-wide', graphics('a=T,q=2,f=32,s=1,v=1,c=4,r=1,C=1',
                                       white_pixel),
-              '0,0', render=r'48;2;255;255;255m {4}')
+              '0,0', render=r'48;2;255;255;255m[ ▄]{4}')
         check('stretch-crop', graphics('a=T,q=2,f=32,s=24,v=32,x=4,y=8,w=8,h=8,'
                                       'c=2,r=2,C=1', white),
-              '0,0', render=r'48;2;255;255;255m {2}')
+              '0,0', render=r'48;2;255;255;255m[ ▄]{2}')
         check('virtual-letterbox', graphics('a=T,q=2,U=1,i=7,p=1,f=32,s=1,v=1,'
                                            'c=2,r=2', white_pixel) + colours +
               ph + '\u0305\u0305' + ph + '\u0305\u030d',
@@ -344,24 +344,24 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         check('virtual-pillarbox', graphics('a=T,q=2,U=1,i=7,p=1,f=32,s=1,v=1,'
                                            'c=4,r=1', white_pixel) + colours +
               ph + '\u0305\u0305' + ph + '\u0305\u030d',
-              '2,0', render=(r'^(?:\x1b\[[0-9;]+m)* '
-                             r'(?:\x1b\[[0-9;]+m)*\x1b\[48;2;255;255;255m '))
+              '2,0', render=(r'^(?:\x1b\[[0-9;]+m)*[ ▄]'
+                             r'(?:\x1b\[[0-9;]+m)*\x1b\[48;2;255;255;255m[ ▄]'))
         # Equal-z images follow source creation order, even with descending IDs.
         older = graphics('a=t,q=2,i=200,f=32,s=1,v=1', pixel)
         newer = graphics('a=t,q=2,i=100,f=32,s=1,v=1', white_pixel)
         put_older = graphics('a=p,q=2,C=1,i=200,c=1,r=1')
         put_newer = graphics('a=p,q=2,C=1,i=100,c=1,r=1')
         check('same-z-descending-ids', older + newer + put_older + put_newer,
-              '0,0', render=r'48;2;255;255;255m ')
+              '0,0', render=r'48;2;255;255;255m[ ▄]')
         check('same-z-reversed-placements',
               older + newer + put_newer + put_older,
-              '0,0', render=r'48;2;255;255;255m ')
+              '0,0', render=r'48;2;255;255;255m[ ▄]')
         check('same-z-retransmit',
               older + newer + put_newer + older + put_older,
-              '0,0', render=r'48;2;255;255;255m ')
+              '0,0', render=r'48;2;255;255;255m[ ▄]')
         check('same-z-recreate', older + newer + put_newer +
               graphics('a=d,d=I,q=2,i=200') + older + put_older,
-              '0,0', render=r'48;2;255;0;0m ')
+              '0,0', render=r'48;2;255;0;0m[ ▄]')
         # An empty line tail must not discard the preceding background run.
         background = '\033[11GX\033[17G\033[42m    \033[0m'
         check('background-tail', background, '20,0', render=r'42m {4}')

@@ -11,7 +11,7 @@ FLOAT=$($TMUX new-pane -d -PF '#{pane_id}' -x 16 -y 5 -X 30 -Y 5) ||
 	fail "new-pane -X -Y failed"
 sleep 0.3
 
-[ "$($TMUX display-message -p '#{image_support}')" = 0 ] && exit 0
+image_check_support $TMUX
 $TMUX set -as terminal-features ',*:sixel' || exit 1
 
 start_capture 60 20

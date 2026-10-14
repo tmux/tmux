@@ -12,7 +12,7 @@ $TMUX new-session -d -s inner -x 40 -y 20 \
 	exit 1
 sleep 0.5
 
-[ "$($TMUX display-message -p '#{image_support}')" = 0 ] && exit 0
+image_check_support $TMUX
 $TMUX set -as terminal-features ',*:sixel' || exit 1
 
 start_capture 40 20

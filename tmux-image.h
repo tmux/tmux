@@ -32,52 +32,15 @@ struct screen_write_ctx;
 struct sixel_image;
 struct tty;
 struct grid_cell;
-struct image_rect;
 struct image_backend;
 
+/* Maximum image size in bytes. */
 #define IMAGE_SIZE_LIMIT (64 * 1024 * 1024)
+/* Backend draws images as graphics. */
 #define IMAGE_BACKEND_GRAPHICAL 0x1
+/* Backend images move with terminal scrolling. */
 #define IMAGE_BACKEND_SCROLLS 0x2
 #define IMAGE_BACKEND_CLIPPED 0x4
-
-/* Private ACS keys used by the text image backend. */
-#define TTY_ACS_IMAGE_SHADE_LIGHT 0x80
-#define TTY_ACS_IMAGE_SHADE_MEDIUM 0x81
-#define TTY_ACS_IMAGE_SHADE_DARK 0x82
-#define TTY_ACS_IMAGE_BLOCK 0x83
-#define TTY_ACS_IMAGE_HALF_UPPER 0x84
-#define TTY_ACS_IMAGE_HALF_LOWER 0x85
-#define TTY_ACS_IMAGE_HALF_LEFT 0x86
-#define TTY_ACS_IMAGE_HALF_RIGHT 0x87
-#define TTY_ACS_IMAGE_QUADRANT_LOWER_LEFT 0x88
-#define TTY_ACS_IMAGE_QUADRANT_LOWER_RIGHT 0x89
-#define TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT 0x8a
-#define TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT_LOWER_LEFT_LOWER_RIGHT 0x8b
-#define TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT_LOWER_RIGHT 0x8c
-#define TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT_UPPER_RIGHT_LOWER_LEFT 0x8d
-#define TTY_ACS_IMAGE_QUADRANT_UPPER_LEFT_UPPER_RIGHT_LOWER_RIGHT 0x8e
-#define TTY_ACS_IMAGE_QUADRANT_UPPER_RIGHT 0x8f
-#define TTY_ACS_IMAGE_QUADRANT_UPPER_RIGHT_LOWER_LEFT 0x90
-#define TTY_ACS_IMAGE_QUADRANT_UPPER_RIGHT_LOWER_LEFT_LOWER_RIGHT 0x91
-#define TTY_ACS_IMAGE_SEXTANT_FIRST 0x92
-#define TTY_ACS_IMAGE_SEXTANT_LAST 0xcd
-
-/* Averaged RGBA colour and brightness used by the text image backend. */
-struct image_sample {
-	u_char	red;
-	u_char	green;
-	u_char	blue;
-	u_char	alpha;
-	u_char	brightness;
-};
-#define IMAGE_SAMPLE_COLUMNS 2
-#define IMAGE_SAMPLE_ROWS 6
-
-/* Whole-cell and subcell samples generated lazily for one image cell. */
-struct image_cell {
-	struct image_sample whole;
-	struct image_sample samples[IMAGE_SAMPLE_ROWS][IMAGE_SAMPLE_COLUMNS];
-};
 
 enum kitty_parse_status {
 	KITTY_PARSE_ERROR = -1,
@@ -135,6 +98,24 @@ struct image_view {
 	u_int	 sy;
 };
 
+/* A part of an image to draw. */
+struct image_rect {
+	struct image	*image;
+	int64_t		 z;
+
+	/* Size in cells. */
+	u_int		 sx;
+	u_int		 sy;
+
+	/* Source in image in cells. */
+	u_int		 src_x;
+	u_int		 src_y;
+
+	/* Destination on terminal in cells. */
+	u_int		 dst_x;
+	u_int		 dst_y;
+};
+
 /* image.c */
 struct image	*image_create(u_int, u_int, u_int, u_int, u_int, u_int,
 		     u_char *);
@@ -156,10 +137,7 @@ void		 image_set_sixel(struct image *, struct sixel_image *);
 u_int		 image_get_source_id(struct image *);
 u_int		 image_get_order_id(struct image *);
 void		 image_set_order_id(struct image *, u_int);
-void		*image_get_fallback_data(struct image *);
-void		 image_set_fallback_data(struct image *, void *);
-const struct image_cell *image_get_cell(struct image *, u_int, u_int);
-void		 image_get_pixel_rect(struct image *, u_int, u_int, u_int,
+void		 image_get_pixel_area(struct image *, u_int, u_int, u_int,
 		     u_int, u_int *, u_int *, u_int *, u_int *);
 u_char		*image_base64_decode(const char *, size_t, size_t, size_t *);
 u_char		*image_png_decode(const u_char *, size_t, size_t, u_int *,
@@ -200,8 +178,10 @@ void		 image_write_kitty(struct screen_write_ctx *, struct image *, u_int,
 void		 image_clear(struct screen_write_ctx *, u_int);
 void		 image_clear_kitty(struct screen_write_ctx *,
 		     const struct kitty_parse_result *);
-int		 image_get_fallback_at(struct tty *, struct screen *, u_int, u_int,
-		     const struct grid_cell *, struct grid_cell *);
+int		 image_grid_get_at(struct grid *, u_int, u_int, struct image **,
+		     u_int *, u_int *);
+const struct grid_cell *image_map_cell(struct tty *, struct grid *, u_int,
+		     u_int, const struct grid_cell *, struct grid_cell *, int *);
 struct image	*image_rect_get_image(const struct image_rect *);
 void		 image_rect_get_coords(const struct image_rect *, u_int *, u_int *,
 		     u_int *, u_int *, u_int *, u_int *);
@@ -211,15 +191,16 @@ void		 image_draw_line(struct tty *, struct screen *, u_int, u_int, u_int,
 void		 image_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
 void		 image_redraw_finish(struct tty *);
 void		 image_draw_flush(struct tty *);
-int		 image_backend_flags(struct tty *);
+int		 image_backend_get_flags(struct tty *);
 int		 image_tty_update(struct tty *);
-void		 image_tty_geometry_changed(struct tty *);
+void		 image_tty_size_changed(struct tty *);
 void		 image_tty_free(struct tty *, int);
 
 /* image-fallback.c */
-void		 fallback_get_cell(struct tty *, struct image *, u_int, u_int,
-		     const struct grid_cell *, struct grid_cell *);
-void		 fallback_free(struct image *);
+int		 fallback_select(struct tty *);
+int		 fallback_get_flags(struct tty *);
+const struct grid_cell *fallback_map_cell(struct tty *, struct grid *, u_int,
+		     u_int, const struct grid_cell *, struct grid_cell *, int *);
 
 /* image-kitty.c */
 struct image	*kitty_parse_image(void **, const u_char *, size_t, u_int,
@@ -230,6 +211,8 @@ int		 kitty_cell_is_placeholder(const struct grid_cell *);
 void		 kitty_delete_images(void *, struct screen_write_ctx *,
 		     const struct kitty_parse_result *);
 void		 kitty_free_state(void *);
+int		 kitty_select(struct tty *);
+int		 kitty_get_flags(struct tty *);
 void		 kitty_draw_rect(struct tty *, const struct image_rect *);
 void		 kitty_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
 void		 kitty_redraw_finish(struct tty *);
@@ -237,6 +220,8 @@ void		 kitty_free_output_state(struct tty *, int);
 
 /* image-sixel.c */
 #define SIXEL_COLOUR_REGISTERS 1024
+int		 sixel_select(struct tty *);
+int		 sixel_get_flags(struct tty *);
 struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int,
 		     u_int);
 void		 sixel_write(struct screen_write_ctx *, struct sixel_image *,

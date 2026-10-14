@@ -27,18 +27,6 @@
 
 #define IMAGE_Z_BELOW_BACKGROUND (INT32_MIN / 2)
 
-/* A cell-aligned part of an image to draw at a terminal position. */
-struct image_rect {
-	struct image		*image;
-	int64_t			 z;
-	u_int			 source_x;	/* Origin in image cells. */
-	u_int			 source_y;
-	u_int			 sx;		/* Size in cells. */
-	u_int			 sy;
-	u_int			 destination_x;	/* Origin in terminal cells. */
-	u_int			 destination_y;
-};
-
 /* One contiguous row of a placement in the grid. */
 struct image_span {
 	u_int			 x;		/* Owning grid column. */
@@ -74,10 +62,18 @@ struct image_placement {
 	u_int			 app_placement_id;
 	int32_t			 z;
 	uint64_t		 serial;	/* Layer order. */
+	u_int			 x;
+	u_int			 recover_from;
 	struct image_spans	 spans;
 	TAILQ_ENTRY(image_placement) entry;
 };
 TAILQ_HEAD(image_placements, image_placement);
+
+/* One image row to extend after a pane grows. */
+struct image_recover_row {
+	struct image_line	*line;
+	u_int			 source_y;
+};
 
 /* Placements belonging to one grid. */
 struct image_store {
@@ -104,49 +100,80 @@ struct image_placement_map {
 struct image_copy_ctx {
 	struct grid			*destination;
 	struct image_placement_map	*maps;
-	size_t				 count;	/* Placement mapping count. */
+	u_int				 count;	/* Placement mapping count. */
 };
 
+/* A backend to draw an image. */
 struct image_backend {
 	const char	*name;
-	int		 flags;
+	int		(*get_flags)(struct tty *);
+	int		(*select)(struct tty *);
+	const struct grid_cell *(*map_cell)(struct tty *, struct grid *, u_int,
+			    u_int, const struct grid_cell *, struct grid_cell *,
+			    int *);
 	void		(*draw_rect)(struct tty *, const struct image_rect *);
+	void		(*start_draw)(struct tty *, u_int, u_int, u_int, u_int);
+	void		(*flush)(struct tty *);
+	void		(*finish_draw)(struct tty *);
 	void		(*free)(struct tty *, int);
 };
 
-static const struct image_backend image_backend_fallback = {
-	"fallback", IMAGE_BACKEND_SCROLLS, NULL, NULL
+/* Backend definitions. */
+static struct image_backend image_backend_fallback = {
+	"fallback",
+	fallback_get_flags,
+	fallback_select,
+	fallback_map_cell,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL
 };
-static const struct image_backend image_backend_kitty = {
+static struct image_backend image_backend_sixel = {
+	"sixel",
+	sixel_get_flags,
+	sixel_select,
+	NULL,
+	sixel_draw_rect,
+	sixel_redraw_start,
+	sixel_flush_output,
+	NULL,
+	sixel_free_output
+};
+
+/* Kitty backend. */
+static struct image_backend image_backend_kitty = {
 	"kitty",
-	IMAGE_BACKEND_GRAPHICAL|IMAGE_BACKEND_CLIPPED,
-	kitty_draw_rect, kitty_free_output_state
-};
-static const struct image_backend image_backend_sixel = {
-	"sixel", IMAGE_BACKEND_GRAPHICAL,
-	sixel_draw_rect, sixel_free_output
+	kitty_get_flags,
+	kitty_select,
+	NULL,
+	kitty_draw_rect,
+	kitty_redraw_start,
+	NULL,
+	kitty_redraw_finish,
+	kitty_free_output_state
 };
 
-/* Find the image backend supported by a terminal. */
-static const struct image_backend *
-image_tty_find_backend(struct tty *tty)
-{
-	if (tty->term != NULL && tty->term->flags & TERM_KITTYGRAPHICS)
-		return (&image_backend_kitty);
-	if (tty->term != NULL && tty->term->flags & TERM_SIXEL &&
-	    tty->xpixel != 0 && tty->ypixel != 0) {
-		return (&image_backend_sixel);
-	}
-	return (&image_backend_fallback);
-}
+/* Backends in order of preference. */
+static struct image_backend *image_backends[] = {
+	&image_backend_kitty,
+	&image_backend_sixel,
+	&image_backend_fallback
+};
 
-/* Update the image backend and return whether it changed. */
+/* Update the image backend. */
 int
 image_tty_update(struct tty *tty)
 {
-	const struct image_backend	*backend;
+	struct image_backend	*backend;
+	u_int			 i;
 
-	backend = image_tty_find_backend(tty);
+	for (i = 0; i < nitems(image_backends); i++) {
+		backend = image_backends[i];
+		if (backend->select(tty))
+			break;
+	}
 	if (tty->image_backend == backend)
 		return (0);
 
@@ -154,76 +181,74 @@ image_tty_update(struct tty *tty)
 		tty->image_backend->free(tty, !!(tty->flags & TTY_OPENED));
 	tty->image_data = NULL;
 	tty->image_backend = backend;
-	log_debug("%s: %s image backend is %s", __func__,
-	    tty->client->name, backend->name);
 	return (1);
 }
 
-/* Prepare the image backend to replace a redraw area. */
-void
-image_redraw_start(struct tty *tty, u_int x, u_int y, u_int width,
-    u_int height)
+/* Get the flags for a terminal's image backend. */
+int
+image_backend_get_flags(struct tty *tty)
 {
 	image_tty_update(tty);
-	if (tty->image_backend == &image_backend_kitty)
-		kitty_redraw_start(tty, x, y, width, height);
-	else if (tty->image_backend == &image_backend_sixel)
-		sixel_redraw_start(tty, x, y, width, height);
+	return (tty->image_backend->get_flags(tty));
 }
 
-/* Delete stale Kitty placements after their replacements have been drawn. */
-void
-image_redraw_finish(struct tty *tty)
+/* Map an image grid cell to text for the selected backend. */
+const struct grid_cell *
+image_map_cell(struct tty *tty, struct grid *gd, u_int x, u_int y,
+    const struct grid_cell *gc, struct grid_cell *out, int *empty)
 {
-	if (tty->image_backend == &image_backend_kitty)
-		kitty_redraw_finish(tty);
+	image_tty_update(tty);
+	if (tty->image_backend->map_cell == NULL)
+		return (gc);
+	return (tty->image_backend->map_cell(tty, gd, x, y, gc, out, empty));
 }
 
-/* Write out any image output the backend is still holding back. */
+/* Clear old image pixels before redrawing a terminal area. */
+void
+image_redraw_start(struct tty *tty, u_int x, u_int y, u_int w, u_int h)
+{
+	image_tty_update(tty);
+	if (tty->image_backend->start_draw != NULL)
+		tty->image_backend->start_draw(tty, x, y, w, h);
+}
+
+/* Write pending image output to the terminal. */
 void
 image_draw_flush(struct tty *tty)
 {
 	image_tty_update(tty);
-	if (tty->image_backend == &image_backend_sixel)
-		sixel_flush_output(tty);
+	if (tty->image_backend->flush != NULL)
+		tty->image_backend->flush(tty);
 }
 
-/* Return the flags for a terminal's image backend. */
-int
-image_backend_flags(struct tty *tty)
-{
-	int	flags;
-
-	image_tty_update(tty);
-	flags = tty->image_backend->flags;
-
-	/* Image scrolling is granted separately from text margin support. */
-	if ((tty->image_backend == &image_backend_sixel ||
-	    tty->image_backend == &image_backend_kitty) &&
-	    (tty->term->flags & TERM_IMAGESCROLL)) {
-		flags |= IMAGE_BACKEND_SCROLLS;
-	}
-
-	return (flags);
-}
-
-/* Discard image backend state after a terminal geometry change. */
+/* Discard image backend state after a terminal size change. */
 void
-image_tty_geometry_changed(struct tty *tty)
+image_tty_size_changed(struct tty *tty)
 {
-	image_tty_update(tty);
-	if (tty->image_backend->free != NULL)
-		tty->image_backend->free(tty, !!(tty->flags & TTY_OPENED));
+	if (!image_tty_update(tty)) {
+		if (tty->image_backend->free != NULL)
+			tty->image_backend->free(tty, !!(tty->flags & TTY_OPENED));
+	}
 }
 
 /* Free image backend state for a terminal. */
 void
 image_tty_free(struct tty *tty, int send)
 {
-	if (tty->image_backend != NULL && tty->image_backend->free != NULL)
-		tty->image_backend->free(tty, send);
-	tty->image_backend = NULL;
-	tty->image_data = NULL;
+	if (tty->image_backend != NULL) {
+		if (tty->image_backend->free != NULL)
+			tty->image_backend->free(tty, send);
+		tty->image_backend = NULL;
+		tty->image_data = NULL;
+	}
+}
+
+/* Finish drawing image placements for this terminal. */
+void
+image_redraw_finish(struct tty *tty)
+{
+	if (tty->image_backend->finish_draw != NULL)
+		tty->image_backend->finish_draw(tty);
 }
 
 /* Return the ordering band for a placement. */
@@ -362,6 +387,34 @@ image_span_free(struct image_span *span)
 	free(span);
 }
 
+/* Remove the covered part of one span. */
+static void
+image_span_remove(struct image_span *span, u_int x, u_int end)
+{
+	u_int	span_end = span->x + span->sx;
+
+	if (span_end <= x || span->x >= end)
+		return;
+	if (span->x < x && span_end > end) {
+		span->sx = x - span->x;
+		image_span_add(span->line, span->placement, end, span_end - end,
+		    span->source_x + end - span->x, span->source_y);
+		return;
+	}
+	if (span->x < x) {
+		span->sx = x - span->x;
+		return;
+	}
+	if (span_end > end) {
+		span->source_x += end - span->x;
+		span->sx = span_end - end;
+		span->x = end;
+		return;
+	}
+	image_span_free(span);
+}
+
+
 /* Remove a cell range from one placement or the selected input type. */
 static void
 image_line_remove(struct image_line *line, u_int x, u_int width,
@@ -369,7 +422,7 @@ image_line_remove(struct image_line *line, u_int x, u_int width,
     struct image_placement *only)
 {
 	struct image_span	*span, *next;
-	u_int			 end, span_end, right;
+	u_int			 end;
 
 	if (line == NULL || width == 0)
 		return;
@@ -389,32 +442,9 @@ image_line_remove(struct image_line *line, u_int x, u_int width,
 			if (span->placement->input != input)
 				continue;
 		}
-		span_end = span->x + span->sx;
-		if (span_end <= x || span->x >= end)
-			continue;
-
-		/* Preserve pieces on either side of the removed cell range. */
-		if (span->x < x && span_end > end) {
-			right = span_end - end;
-			span->sx = x - span->x;
-			image_span_add(line, span->placement, end, right,
-			    span->source_x + end - span->x, span->source_y);
-			continue;
-		}
-		if (span->x < x) {
-			span->sx = x - span->x;
-			continue;
-		}
-		if (span_end > end) {
-			span->source_x += end - span->x;
-			span->sx = span_end - end;
-			span->x = end;
-			continue;
-		}
-		image_span_free(span);
+		image_span_remove(span, x, end);
 	}
 }
-
 /* Remove placement records which have no remaining spans. */
 static void
 image_store_prune(struct image_store *store)
@@ -512,6 +542,7 @@ image_grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py,
 		moves[count].sx = span_end - start;
 		moves[count].source_x = span->source_x + start - span->x;
 		moves[count].source_y = span->source_y;
+		span->placement->recover_from = 0;
 		count++;
 	}
 
@@ -532,7 +563,7 @@ image_copy_placement(struct image_copy_ctx *ctx,
     struct image_placement *source)
 {
 	struct image_placement	*placement;
-	size_t			 i;
+	u_int			 i;
 
 	for (i = 0; i < ctx->count; i++) {
 		if (ctx->maps[i].source == source)
@@ -542,6 +573,8 @@ image_copy_placement(struct image_copy_ctx *ctx,
 	    source->input, source->app_image_id, source->app_placement_id,
 	    source->z);
 	placement->placeholder = source->placeholder;
+	placement->x = source->x;
+	placement->recover_from = source->recover_from;
 	ctx->maps = xreallocarray(ctx->maps, ctx->count + 1,
 	    sizeof *ctx->maps);
 	ctx->maps[ctx->count].source = source;
@@ -617,6 +650,7 @@ image_grid_copy_area(struct grid *dst, u_int destination_x,
 				span_end = end;
 
 			placement = image_copy_placement(&ctx, span->placement);
+			placement->recover_from = 0;
 			image_span_add(destination_line, placement,
 			    destination_x + start - source_x, span_end - start,
 			    span->source_x + start - span->x, span->source_y);
@@ -752,12 +786,12 @@ image_rect_get_coords(const struct image_rect *rectangle,
     u_int *source_x, u_int *source_y, u_int *width, u_int *height,
     u_int *destination_x, u_int *destination_y)
 {
-	*source_x = rectangle->source_x;
-	*source_y = rectangle->source_y;
+	*source_x = rectangle->src_x;
+	*source_y = rectangle->src_y;
 	*width = rectangle->sx;
 	*height = rectangle->sy;
-	*destination_x = rectangle->destination_x;
-	*destination_y = rectangle->destination_y;
+	*destination_x = rectangle->dst_x;
+	*destination_y = rectangle->dst_y;
 }
 
 /* Return the output z-index for a drawing rectangle. */
@@ -767,20 +801,19 @@ image_rect_get_z(const struct image_rect *rectangle)
 	return (rectangle->z);
 }
 
-/* Return one for a fallback cell, minus one to continue along an image line. */
+/* Get the image covering a grid cell and its position in that image. */
 int
-image_get_fallback_at(struct tty *tty, struct screen *s, u_int x, u_int y,
-    const struct grid_cell *gc, struct grid_cell *out)
+image_grid_get_at(struct grid *gd, u_int x, u_int y, struct image **im,
+    u_int *src_x, u_int *src_y)
 {
 	struct image_line	*line;
 	struct image_span	*span, *found = NULL;
 	struct image_placement	*placement;
+	struct grid_cell	 gc;
 
-	if (image_backend_flags(tty) & IMAGE_BACKEND_GRAPHICAL ||
-	    y >= s->grid->sy) {
+	if (y >= gd->hsize + gd->sy)
 		return (0);
-	}
-	line = s->grid->linedata[s->grid->hsize + y].images;
+	line = gd->linedata[y].images;
 	if (line == NULL)
 		return (0);
 	TAILQ_FOREACH(span, &line->spans, line_entry) {
@@ -791,22 +824,20 @@ image_get_fallback_at(struct tty *tty, struct screen *s, u_int x, u_int y,
 		return (-1);
 	placement = found->placement;
 	if (placement->input == IMAGE_INPUT_KITTY && placement->z < 0) {
-		if (!kitty_cell_is_placeholder(gc)) {
-			if (gc->data.size != 1)
-				return (-1);
-			if (gc->data.data[0] != ' ')
+		grid_get_cell(gd, x, y, &gc);
+		if (!kitty_cell_is_placeholder(&gc)) {
+			if (gc.data.size != 1 || gc.data.data[0] != ' ')
 				return (-1);
 		}
 		if (placement->z < IMAGE_Z_BELOW_BACKGROUND &&
-		    !COLOUR_DEFAULT(gc->bg)) {
+		    !COLOUR_DEFAULT(gc.bg))
 			return (-1);
-		}
 	}
-	fallback_get_cell(tty, placement->image,
-	    found->source_x + x - found->x, found->source_y, gc, out);
+	*im = placement->image;
+	*src_x = found->source_x + x - found->x;
+	*src_y = found->source_y;
 	return (1);
 }
-
 /* Remove one placement and all of its spans. */
 static void
 image_remove_placement(struct image_placement *placement)
@@ -1007,22 +1038,22 @@ image_redraw_all(struct screen_write_ctx *ctx)
 	    screen_size_y(ctx->s));
 }
 
-/* Record image damage within the current scroll region. */
+/* Record window damage for images in the scroll region. */
 void
 image_redraw_scroll(struct screen_write_ctx *ctx)
 {
 	struct screen		*s = ctx->s;
 	struct window_pane	*wp = ctx->wp;
+	u_int			 sx = screen_size_x(s);
+	u_int			 sy = s->rlower - s->rupper + 1;
 
 	if (wp == NULL)
 		return;
-	if (!image_grid_area_has_images(s->grid, 0, s->grid->hsize + s->rupper,
-	    screen_size_x(s), s->rlower - s->rupper + 1)) {
+	if (!image_grid_area_has_images(s->grid, 0,
+	    s->grid->hsize + s->rupper, sx, sy))
 		return;
-	}
-	redraw_damage_window_scroll(wp->window, wp->xoff,
-	    wp->yoff + s->rupper, screen_size_x(s),
-	    s->rlower - s->rupper + 1);
+	redraw_damage_scroll(wp->window, wp->xoff,
+	    wp->yoff + s->rupper, sx, sy);
 }
 
 /* Draw a clipped part of one image span. */
@@ -1041,12 +1072,12 @@ image_draw_span(const struct image_backend *backend, struct tty *tty,
 		rectangle.z = (int64_t)placement->z + 1;
 	else
 		rectangle.z = placement->z;
-	rectangle.source_x = span->source_x + start - span->x;
-	rectangle.source_y = span->source_y;
+	rectangle.src_x = span->source_x + start - span->x;
+	rectangle.src_y = span->source_y;
 	rectangle.sx = end - start;
 	rectangle.sy = 1;
-	rectangle.destination_x = atx + start - px;
-	rectangle.destination_y = aty;
+	rectangle.dst_x = atx + start - px;
+	rectangle.dst_y = aty;
 	backend->draw_rect(tty, &rectangle);
 }
 
@@ -1078,7 +1109,7 @@ image_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py,
 
 	image_tty_update(tty);
 	backend = tty->image_backend;
-	if (~backend->flags & IMAGE_BACKEND_GRAPHICAL)
+	if (~backend->get_flags(tty) & IMAGE_BACKEND_GRAPHICAL)
 		return;
 	if (py >= s->grid->sy)
 		return;
@@ -1131,30 +1162,28 @@ image_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py,
 	}
 }
 
-/* Return whether an image cell contains at least one nontransparent pixel. */
+/* Check whether an image cell has any visible pixels. */
 static int
-image_cell_has_alpha(struct image *im, u_int x, u_int y)
+image_cell_has_visible_pixels(struct image *im, u_int x, u_int y)
 {
 	u_int		 px, py, sx, sy, xx, yy;
 	const u_char	*pixels;
 	size_t		 stride;
 
-	image_get_pixel_rect(im, x, y, 1, 1, &px, &py, &sx, &sy);
+	image_get_pixel_area(im, x, y, 1, 1, &px, &py, &sx, &sy);
 	if (sx == 0 || sy == 0)
 		return (0);
 	pixels = image_get_pixels(im, &stride, NULL);
 	for (yy = py; yy < py + sy; yy++) {
 		for (xx = px; xx < px + sx; xx++) {
-			if (pixels[(size_t)yy * stride +
-			    (size_t)xx * 4 + 3] != 0) {
+			if (pixels[yy * stride + xx * 4 + 3] != 0)
 				return (1);
-			}
 		}
 	}
 	return (0);
 }
 
-/* Return whether a new cell's pixels completely cover the old cell. */
+/* Return whether a new cell's pixels completely cover an old cell. */
 static int
 image_cell_covers(struct image *new, u_int nx, u_int ny, struct image *old,
     u_int ox, u_int oy)
@@ -1168,20 +1197,17 @@ image_cell_covers(struct image *new, u_int nx, u_int ny, struct image *old,
 	image_get_canvas_size(old, &ocw, &och);
 	image_get_size_in_cells(new, &ncx, &ncy);
 	image_get_size_in_cells(old, &ocx, &ocy);
-	if (ncw / ncx != ocw / ocx || nch / ncy != och / ocy) {
+	if (ncw / ncx != ocw / ocx || nch / ncy != och / ocy)
 		return (0);
-	}
-	image_get_pixel_rect(new, nx, ny, 1, 1, &npx, &npy, &nsx, &nsy);
-	image_get_pixel_rect(old, ox, oy, 1, 1, &opx, &opy, &osx, &osy);
+	image_get_pixel_area(new, nx, ny, 1, 1, &npx, &npy, &nsx, &nsy);
+	image_get_pixel_area(old, ox, oy, 1, 1, &opx, &opy, &osx, &osy);
 
 	npixels = image_get_pixels(new, &nstride, NULL);
 	opixels = image_get_pixels(old, &ostride, NULL);
 	for (yy = 0; yy < osy; yy++) {
-		op = opixels + (size_t)(opy + yy) * ostride +
-		    (size_t)opx * 4;
+		op = opixels + (opy + yy) * ostride + opx * 4;
 		if (yy < nsy) {
-			np = npixels + (size_t)(npy + yy) * nstride +
-			    (size_t)npx * 4;
+			np = npixels + (npy + yy) * nstride + npx * 4;
 		}
 		for (xx = 0; xx < osx; xx++) {
 			if (op[xx * 4 + 3] == 0)
@@ -1224,91 +1250,63 @@ image_extend_row(struct image_line *line, struct image_placement *placement,
 	u_int		 x, run;
 
 	for (x = old_end; x < new_end; x += run) {
-		if (!image_cell_has_alpha(im, x, source_y)) {
+		if (!image_cell_has_visible_pixels(im, x, source_y)) {
 			run = 1;
 			continue;
 		}
 		for (run = 1; x + run < new_end; run++) {
-			if (!image_cell_has_alpha(im, x + run, source_y))
+			if (!image_cell_has_visible_pixels(im, x + run, source_y))
 				break;
 		}
 		image_span_add(line, placement, cx + x, run, x, source_y);
 	}
 }
 
-/* Extend image placements to reveal clipped columns when a pane grows. */
+/* Extend image rows when grid is resized. */
 void
 image_grid_resize_width(struct grid *gd, u_int new_sx)
 {
-	struct grid_line		*gl;
-	struct image_line		*line;
+	struct image_placement		*plmt;
 	struct image_span		*span;
-	struct image_placement		*placement;
-	struct image_placement		**seen = NULL;
-	size_t				 nseen, i;
-	u_int				 row, cx, end_x, avail, image_sx, image_sy;
-	u_int				 source_y;
-	int				 found;
+	struct image_recover_row	*rows;
+	u_int				 image_sx, image_sy, from, to;
+	u_int				 nrows, i;
 
 	if (gd->images == NULL)
 		return;
-	for (row = 0; row < gd->hsize + gd->sy; row++) {
-		gl = &gd->linedata[row];
-		line = gl->images;
-		if (line == NULL)
+	TAILQ_FOREACH(plmt, &gd->images->placements, entry) {
+		from = plmt->recover_from;
+		if (from == 0 || plmt->x >= new_sx)
+			continue;
+		image_get_size_in_cells(plmt->image, &image_sx, &image_sy);
+
+		to = new_sx - plmt->x;
+		if (to > image_sx)
+			to = image_sx;
+		if (to <= from)
 			continue;
 
-		/* Collect placements before modifying their spans. */
-		nseen = 0;
-		TAILQ_FOREACH(span, &line->spans, line_entry) {
-			found = 0;
-			for (i = 0; i < nseen; i++) {
-				if (seen[i] == span->placement) {
-					found = 1;
+		rows = NULL;
+		nrows = 0;
+		TAILQ_FOREACH(span, &plmt->spans, placement_entry) {
+			for (i = 0; i < nrows; i++) {
+				if (rows[i].line == span->line)
 					break;
-				}
 			}
-			if (!found) {
-				seen = xreallocarray(seen, nseen + 1,
-				    sizeof *seen);
-				seen[nseen++] = span->placement;
-			}
+			if (i != nrows)
+				continue;
+			rows = xreallocarray(rows, nrows + 1, sizeof *rows);
+			rows[nrows].line = span->line;
+			rows[nrows].source_y = span->source_y;
+			nrows++;
 		}
-
-		for (i = 0; i < nseen; i++) {
-			placement = seen[i];
-			if (placement->placeholder)
-				continue;
-
-			/* Recover the origin and last visible source column. */
-			cx = end_x = source_y = 0;
-			found = 0;
-			TAILQ_FOREACH(span, &line->spans, line_entry) {
-				if (span->placement != placement)
-					continue;
-				if (!found) {
-					cx = span->x - span->source_x;
-					source_y = span->source_y;
-					found = 1;
-				}
-				if (span->source_x + span->sx > end_x)
-					end_x = span->source_x + span->sx;
-			}
-			if (!found || cx >= new_sx)
-				continue;
-
-			avail = new_sx - cx;
-			image_get_size_in_cells(placement->image, &image_sx,
-			    &image_sy);
-			if (avail > image_sx)
-				avail = image_sx;
-			if (avail <= end_x)
-				continue;
-			image_extend_row(line, placement, cx, source_y, end_x,
-			    avail);
+		for (i = 0; i < nrows; i++) {
+			image_extend_row(rows[i].line, plmt, plmt->x,
+			    rows[i].source_y, from, to);
 		}
+		free(rows);
+		plmt->recover_from = (to == image_sx ? 0 : to);
 	}
-	free(seen);
 }
 
 /* Place an image at the cursor using the supplied input semantics. */
@@ -1324,9 +1322,10 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 	u_int			 cx = s->cx, cy = s->cy;
 	u_int			 x, y, i, run, sx, sy, lines, origin_y = 0;
 	u_int			 hist_origin_y, region_height, remaining, chunk;
-	u_int			 cursor_x = 0, cursor_rows;
+	u_int			 cursor_x = 0, cursor_rows, image_sx;
 
 	image_get_size_in_cells(im, &sx, &sy);
+	image_sx = sx;
 	if (sx > screen_size_x(s) - cx)
 		sx = screen_size_x(s) - cx;
 	if (sx == 0)
@@ -1368,6 +1367,10 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 
 	placement = image_placement_create(gd, im, input, app_image_id,
 	    app_placement_id, z);
+	if (sx < image_sx) {
+		placement->x = cx;
+		placement->recover_from = sx;
+	}
 
 	/* Attach scrolled-off image rows to the available history lines. */
 	hist_origin_y = origin_y;
@@ -1384,12 +1387,12 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
 	for (y = 0; y < sy; y++) {
 		line = image_line_get(&gd->linedata[gd->hsize + cy + y]);
 		for (x = 0; x < sx; x += run) {
-			if (!image_cell_has_alpha(im, x, origin_y + y)) {
+			if (!image_cell_has_visible_pixels(im, x, origin_y + y)) {
 				run = 1;
 				continue;
 			}
 			for (run = 1; x + run < sx; run++) {
-				if (!image_cell_has_alpha(im, x + run,
+				if (!image_cell_has_visible_pixels(im, x + run,
 				    origin_y + y)) {
 					break;
 				}

@@ -10,6 +10,8 @@
 # covered must survive, so a second case draws a narrower image over a wider
 # one and expects both.
 
+. ./image-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 LC_ALL=C.UTF-8
@@ -43,7 +45,7 @@ count_images()
 	$TMUX new-session -d -s inner -x 40 -y 10 "printf '$1'; exec sh" ||
 		exit 1
 	sleep 0.3
-	[ "$($TMUX display-message -p '#{image_support}')" = 0 ] && exit 0
+	image_check_support $TMUX
 	$TMUX set -as terminal-features ',*:sixel' || exit 1
 
 	$TMUX2 new-session -d -x 40 -y 10 || exit 1

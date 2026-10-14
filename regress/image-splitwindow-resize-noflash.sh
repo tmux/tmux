@@ -10,7 +10,7 @@ $TMUX new-session -d -s inner -x 60 -y 20 "printf '$SIXEL_HEADER'; exec sh" ||
 $TMUX set -g mouse on || fail "set mouse failed"
 sleep 0.3
 
-[ "$($TMUX display-message -p '#{image_support}')" = 0 ] && exit 0
+image_check_support $TMUX
 $TMUX set -as terminal-features ',*:sixel' || exit 1
 
 start_capture 60 20

@@ -19,7 +19,7 @@ $TMUX new-session -d -x 10 -y 4 "
 	read line
 	printf '\033[H\033[2J'
 	sleep 30" || exit 1
-[ "$($TMUX display-message -p '#{image_support}')" = 0 ] && exit 0
+[ "$($TMUX display-message -p '#{image_support}')" = 0 ] && exit 101
 $TMUX set -g status off || exit 1
 $TMUX set -g scroll-on-clear off || exit 1
 $TMUX set -as terminal-features ',*:sixel@' || exit 1

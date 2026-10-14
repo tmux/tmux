@@ -730,6 +730,10 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 			grid_get_cell(gd, xx, yy, &gc);
 			if (xx + gc.data.width > px + nx)
 				break;
+#ifdef ENABLE_IMAGES
+			if (ctx->flags & SCREEN_WRITE_INPUT)
+				image_damage_screen(ctx, s->cx, s->cy, 1, 1);
+#endif
 			grid_view_set_cell(s->grid, s->cx, s->cy, &gc);
 
 			if (!window_position_is_visible(r, xoff + s->cx))

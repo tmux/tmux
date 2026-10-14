@@ -4,6 +4,8 @@
 # pane-border-status text. Exercise the same queued new; newp; send-keys path
 # used by the reported reproduction, then repeat it with two tiled panes.
 
+. ./image-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 LC_ALL=C.UTF-8
@@ -38,7 +40,7 @@ missing_titles=
 trap "cleanup; rm -f $TMP" 0 1 15
 
 $TMUX new-session -d -s inner -x 100 -y 30 sh || fail "new session failed"
-[ "$($TMUX display-message -p '#{image_support}')" = 0 ] && exit 0
+image_check_support $TMUX
 $TMUX set -g status off
 $TMUX set -g pane-border-status top
 $TMUX set -g pane-border-format '#{pane_title}'
