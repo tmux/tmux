@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.300 2026/10/12 18:47:52 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.301 2026/10/14 13:36:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1407,7 +1407,8 @@ screen_write_sync_redraw_cb(const struct tty_ctx *ttyctx, u_int py, u_int ny)
 {
 	struct window_pane	*wp = ttyctx->arg;
 
-	bit_nset(wp->sync_dirty, py, py + ny - 1);
+	if (ny != 0)
+		bit_nset(wp->sync_dirty, py, py + ny - 1);
 }
 
 /* Send the deferred scroll to the client. */
