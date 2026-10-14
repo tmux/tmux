@@ -51,27 +51,38 @@ enum image_type {
 	IMAGE_TYPE_KITTY
 };
 
-/* View of all or part of an image. */
-struct image_view {
-	/* Position and size in the image, in pixels. */
-	u_int	 x;
-	u_int	 y;
-	u_int	 width;
-	u_int	 height;
+/* Source image and placement geometry. */
+struct image_geom {
+	/* Position and size within the source RGBA pixels. */
+	u_int	 src_x;
+	u_int	 src_y;
+	u_int	 src_w;
+	u_int	 src_h;
 
-	/* Size after scaling, in pixels. */
-	u_int	 scaled_width;
-	u_int	 scaled_height;
-
-	/* Destination canvas size and offset in pixels. */
+	/* Actual image size in pixels, including padding. */
 	u_int	 canvas_width;
 	u_int	 canvas_height;
+
+	/* Content offset within the canvas, in pixels. */
 	u_int	 canvas_xoff;
 	u_int	 canvas_yoff;
 
-	/* Destination size in terminal cells. */
+	/* Scaled source size in pixels, excluding padding. */
+	double	 scaled_width;
+	double	 scaled_height;
+
+	/* Actual image size in cells, including padding. */
 	u_int	 sx;
 	u_int	 sy;
+};
+
+/* Bounds within a source image, in pixels. */
+struct image_bounds {
+	double	 left;
+	double	 top;
+	double	 right;
+	double	 bottom;
+	double	 area;
 };
 
 /* A part of an image to draw. */
@@ -92,18 +103,19 @@ struct image_rect {
 };
 
 /* image.c */
-struct image	*image_create(enum image_type, u_int, u_int, u_int, u_int,
-		     u_int, u_int, u_char *);
-struct image	*image_create_view(struct image *, struct image_view *);
+struct image	*image_create(enum image_type, struct image_geom *, u_char *);
+struct image	*image_create_with_parent(enum image_type, struct image *,
+		     struct image_geom *, size_t, u_char *);
 struct image	*image_find(u_int);
 u_int		 image_get_id(struct image *);
 enum image_type	 image_get_type(struct image *);
 void		 image_ref(struct image *);
 void		 image_free(struct image *);
-void		 image_get_size(struct image *, u_int *, u_int *);
-void		 image_get_canvas_size(struct image *, u_int *, u_int *);
-void		 image_get_size_in_cells(struct image *, u_int *, u_int *);
-const u_char	*image_get_pixels(struct image *, size_t *, size_t *);
+struct image_geom *image_get_geometry(struct image *);
+u_char		*image_get_pixels(struct image *, size_t *, size_t *);
+int		 image_get_bounds(struct image_geom *, u_int, u_int, u_int,
+		     u_int, u_int, u_int, struct image_bounds *);
+u_char		*image_get_pixel(struct image *, u_int, u_int, u_int, u_int);
 void		 image_size_in_cells(u_int, u_int, u_int, u_int, u_int *,
 		     u_int *);
 void		 image_get_pixel_area(struct image *, u_int, u_int, u_int,
@@ -138,7 +150,9 @@ void		 image_redraw_all(struct screen_write_ctx *);
 void		 image_redraw_scroll(struct screen_write_ctx *);
 void		 image_damage_screen(struct screen_write_ctx *, u_int, u_int,
 		     u_int, u_int);
-void		 image_write(struct screen_write_ctx *, struct image *, u_int);
+void		 image_write(struct screen_write_ctx *, struct image *, u_int,
+		     int);
+void		 image_clear(struct screen_write_ctx *, u_int);
 int		 image_grid_get_at(struct grid *, u_int, u_int, struct image **,
 		     u_int *, u_int *);
 const struct grid_cell *image_map_cell(struct tty *, struct grid *, u_int,
@@ -172,7 +186,8 @@ void		 sixel_flush_pending(struct tty *);
 
 /* image-kitty.c */
 void		 kitty_parse_input(struct input_ctx *, struct window_pane *,
-		     void **, const u_char *, size_t);
+		     struct screen_write_ctx *, u_int, void **, const u_char *,
+		     size_t);
 void		 kitty_free_state(void *);
 
 #endif /* ENABLE_IMAGES */

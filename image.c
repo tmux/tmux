@@ -20,6 +20,7 @@
 #include <sys/types.h>
 
 #include <limits.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -30,23 +31,10 @@ struct image {
 	u_int			 id;
 	enum image_type		 type;
 	u_int			 references;
-	u_int			 flags;
-#define IMAGE_FLAG_OWN_PIXELS 0x1
+	struct image_geom	 geom;
 
 	struct image		*parent;
 	u_int			 order_id;
-
-	/* Size in cells. */
-	u_int			 sx;
-	u_int			 sy;
-
-	/* Size in pixels. */
-	u_int			 width;
-	u_int			 height;
-
-	/* Canvas size in pixels. */
-	u_int			 canvas_width;
-	u_int			 canvas_height;
 
 	/*
 	 * RGBA pixels use four bytes each. Stride is the number of bytes
@@ -62,6 +50,8 @@ struct image {
 };
 RB_HEAD(images, image);
 static struct images images = RB_INITIALIZER(&images);
+
+/* Next image ID. */
 static u_int image_next_id;
 
 /* Compare images by IDs. */
@@ -102,8 +92,8 @@ image_get_type(struct image *im)
 
 /* Allocate an image and assign a unique ID. */
 static struct image *
-image_alloc(enum image_type type, u_int w, u_int h, u_int cw, u_int ch,
-    u_int sx, u_int sy, size_t stride, u_char *pixels)
+image_alloc(enum image_type type, struct image_geom *ig, size_t stride,
+    u_char *pixels)
 {
 	struct image	*im;
 	u_int		 id;
@@ -119,14 +109,9 @@ image_alloc(enum image_type type, u_int w, u_int h, u_int cw, u_int ch,
 	im->type = type;
 	im->references = 1;
 	im->order_id = id;
-	im->width = w;
-	im->height = h;
-	im->canvas_width = cw;
-	im->canvas_height = ch;
-	im->sx = sx;
-	im->sy = sy;
+	im->geom = *ig;
 	im->stride = stride;
-	im->size = (h - 1) * stride + w * 4;
+	im->size = (ig->src_h - 1) * stride + ig->src_w * 4;
 	im->pixels = pixels;
 	RB_INSERT(images, &images, im);
 	return (im);
@@ -134,106 +119,41 @@ image_alloc(enum image_type type, u_int w, u_int h, u_int cw, u_int ch,
 
 /* Create an image with the provided pixels. */
 struct image *
-image_create(enum image_type type, u_int w, u_int h, u_int cw, u_int ch,
-    u_int sx, u_int sy, u_char *pixels)
+image_create(enum image_type type, struct image_geom *ig, u_char *pixels)
 {
-	struct image	*im;
+	size_t	stride = ig->src_w * 4;
 
-	if (w == 0 || h == 0 || cw < w || ch < h)
-		return (NULL);
-	if (sx == 0 || sy == 0 || pixels == NULL)
-		return (NULL);
-	if ((uint64_t)w * h > IMAGE_SIZE_LIMIT / 4)
-		return (NULL);
-	if (sx > USHRT_MAX || sy > USHRT_MAX)
-		return (NULL);
-	if ((uint64_t)sx * sy > IMAGE_SIZE_LIMIT)
-		return (NULL);
-
-	im = image_alloc(type, w, h, cw, ch, sx, sy, w * 4, pixels);
-	im->flags |= IMAGE_FLAG_OWN_PIXELS;
-	return (im);
+	return (image_create_with_parent(type, NULL, ig, stride, pixels));
 }
 
-/* Resample the crop into transparent, padded RGBA pixels. */
-static u_char *
-image_view_resample(struct image *src, struct image_view *view, u_int w,
-    u_int h)
-{
-	u_char		*pixels, *row, *src_row;
-	u_int		 src_x, src_y;
-	uint64_t	 x, y, off;
-
-	pixels = xcalloc(w * h, 4);
-	for (y = 0; y < view->scaled_height; y++) {
-		src_y = view->y + y * view->height / view->scaled_height;
-		src_row = src->pixels + src_y * src->stride + view->x * 4;
-
-		off = ((y + view->canvas_yoff) * w + view->canvas_xoff) * 4;
-		row = pixels + off;
-
-		if (view->scaled_width == view->width)
-			memcpy(row, src_row, view->width * 4);
-		else {
-			for (x = 0; x < view->scaled_width; x++) {
-				src_x = x * view->width / view->scaled_width;
-				memcpy(row + x * 4, src_row + src_x * 4, 4);
-			}
-		}
-	}
-	return (pixels);
-}
-
-/* Crop and resample an image. The view takes a reference to the image. */
+/* Create an image based on a parent image. */
 struct image *
-image_create_view(struct image *src, struct image_view *view)
+image_create_with_parent(enum image_type type, struct image *parent,
+    struct image_geom *ig, size_t stride, u_char *pixels)
 {
 	struct image	*im;
-	u_char		*pixels;
-	u_int		 w, h;
 
-	if (src == NULL ||
-	    view == NULL ||
-	    view->x >= src->width ||
-	    view->y >= src->height ||
-	    view->width == 0 ||
-	    view->height == 0 ||
-	    view->scaled_width == 0 ||
-	    view->scaled_height == 0 ||
-	    view->sx == 0 ||
-	    view->sy == 0 ||
-	    view->width > src->width - view->x ||
-	    view->height > src->height - view->y ||
-	    view->sx > USHRT_MAX ||
-	    view->sy > USHRT_MAX ||
-	    (uint64_t)view->sx * view->sy > IMAGE_SIZE_LIMIT ||
-	    view->canvas_xoff > view->canvas_width ||
-	    view->scaled_width > view->canvas_width - view->canvas_xoff ||
-	    view->canvas_yoff > view->canvas_height ||
-	    view->scaled_height > view->canvas_height - view->canvas_yoff)
+	if (ig->src_w == 0 || ig->src_h == 0)
+		return (NULL);
+	if (ig->canvas_width == 0 || ig->canvas_height == 0)
+		return (NULL);
+	if (ig->sx == 0 || ig->sy == 0 || pixels == NULL)
+		return (NULL);
+	if ((uint64_t)ig->src_w * ig->src_h > IMAGE_SIZE_LIMIT / 4)
+		return (NULL);
+	if (ig->sx > USHRT_MAX || ig->sy > USHRT_MAX)
+		return (NULL);
+	if (ig->sx * ig->sy > IMAGE_SIZE_LIMIT || stride < ig->src_w * 4)
+		return (NULL);
+	if (ig->scaled_width <= 0 || ig->scaled_height <= 0)
 		return (NULL);
 
-	if (view->scaled_width == view->width &&
-	    view->scaled_height == view->height &&
-	    view->canvas_xoff == 0 &&
-	    view->canvas_yoff == 0) {
-		pixels = src->pixels + view->y * src->stride + view->x * 4;
-		im = image_alloc(src->type, view->width, view->height,
-		    view->canvas_width, view->canvas_height, view->sx, view->sy,
-		    src->stride, pixels);
-	} else {
-		w = view->canvas_xoff + view->scaled_width;
-		h = view->canvas_yoff + view->scaled_height;
-		if ((uint64_t)w * h > IMAGE_SIZE_LIMIT / 4)
-			return (NULL);
-		pixels = image_view_resample(src, view, w, h);
-		im = image_alloc(src->type, w, h, view->canvas_width,
-		    view->canvas_height, view->sx, view->sy, w * 4, pixels);
-		im->flags |= IMAGE_FLAG_OWN_PIXELS;
+	im = image_alloc(type, ig, stride, pixels);
+	im->parent = parent;
+	if (parent != NULL) {
+		im->order_id = parent->order_id;
+		image_ref(parent);
 	}
-	im->parent = src;
-	im->order_id = src->order_id;
-	image_ref(src);
 	return (im);
 }
 
@@ -254,47 +174,104 @@ image_free(struct image *im)
 		fatalx("invalid image reference %u", im->id);
 	if (--im->references == 0) {
 		RB_REMOVE(images, &images, im);
-		if (im->flags & IMAGE_FLAG_OWN_PIXELS)
+		if (im->parent == NULL)
 			free(im->pixels);
-		if (im->parent != NULL)
+		else
 			image_free(im->parent);
 		free(im);
 	}
 }
 
-/* Get image size in pixels. */
-void
-image_get_size(struct image *im, u_int *w, u_int *h)
+/* Get the image geometry. */
+struct image_geom *
+image_get_geometry(struct image *im)
 {
-	*w = im->width;
-	*h = im->height;
+	return (&im->geom);
 }
 
-/* Get canvas size in pixels. */
-void
-image_get_canvas_size(struct image *im, u_int *w, u_int *h)
-{
-	*w = im->canvas_width;
-	*h = im->canvas_height;
-}
-
-/* Get image size in cells. */
-void
-image_get_size_in_cells(struct image *im, u_int *sx, u_int *sy)
-{
-	*sx = im->sx;
-	*sy = im->sy;
-}
-
-/* Get image pixels. */
-const u_char *
+/* Get the image pixels. */
+u_char *
 image_get_pixels(struct image *im, size_t *stride, size_t *size)
 {
 	if (stride != NULL)
 		*stride = im->stride;
 	if (size != NULL)
 		*size = im->size;
-	return (im->pixels);
+	return (im->pixels + im->geom.src_y * im->stride + im->geom.src_x * 4);
+}
+
+/* Convert an output X position to a source image position in pixels. */
+static double
+image_map_x(struct image_geom *ig, u_int x, u_int w)
+{
+	double	p;
+
+	p = (double)x * ig->canvas_width;
+	p -= (double)ig->canvas_xoff * w;
+	p *= ig->src_w;
+	return (p / (w * ig->scaled_width));
+}
+
+/* Convert an output Y position to a source image position in pixels. */
+static double
+image_map_y(struct image_geom *ig, u_int y, u_int h)
+{
+	double	p;
+
+	p = ((double)y * ig->canvas_height) - ((double)ig->canvas_yoff * h);
+	return ((p * ig->src_h) / (h * ig->scaled_height));
+}
+
+/* Find source image bounds for part of an output. */
+int
+image_get_bounds(struct image_geom *ig, u_int x, u_int y, u_int w, u_int h,
+    u_int sx, u_int sy, struct image_bounds *ib)
+{
+	if (x >= sx || y >= sy || w == 0 || h == 0)
+		return (0);
+	if (w > sx - x)
+		w = sx - x;
+	if (h > sy - y)
+		h = sy - y;
+
+	ib->left = image_map_x(ig, x, sx);
+	ib->top = image_map_y(ig, y, sy);
+	ib->right = image_map_x(ig, x + w, sx);
+	ib->bottom = image_map_y(ig, y + h, sy);
+	if (ib->left >= ig->src_w ||
+	    ib->top >= ig->src_h ||
+	    ib->right <= 0 ||
+	    ib->bottom <= 0)
+		return (0);
+	ib->area = (ib->right - ib->left) * (ib->bottom - ib->top);
+
+	if (ib->left < 0)
+		ib->left = 0;
+	if (ib->top < 0)
+		ib->top = 0;
+	if (ib->right > ig->src_w)
+		ib->right = ig->src_w;
+	if (ib->bottom > ig->src_h)
+		ib->bottom = ig->src_h;
+	return (1);
+}
+
+/* Map a pixel in the full output canvas to the original source pixels. */
+u_char *
+image_get_pixel(struct image *im, u_int x, u_int y, u_int w, u_int h)
+{
+	static u_char		 empty[4];
+	struct image_geom	*ig = &im->geom;
+	double			 px, py;
+	u_int			 sx, sy;
+
+	px = image_map_x(ig, x, w);
+	py = image_map_y(ig, y, h);
+	if (px < 0 || py < 0 || px >= ig->src_w || py >= ig->src_h)
+		return (empty);
+	sx = px;
+	sy = py;
+	return (image_get_pixels(im, NULL, NULL) + sy * im->stride + sx * 4);
 }
 
 /* Calculate the cell size. */
@@ -310,41 +287,23 @@ image_size_in_cells(u_int w, u_int h, u_int xpixel, u_int ypixel, u_int *sx,
 	*sy = h / ypixel + (h % ypixel != 0);
 }
 
-/* Find area covered by a rectangle of cells in pixels. */
+/* Find the source pixels covered by a rectangle of placement cells. */
 void
 image_get_pixel_area(struct image *im, u_int x, u_int y, u_int w, u_int h,
     u_int *px, u_int *py, u_int *pw, u_int *ph)
 {
-	u_int	left, top, right, bottom;
+	struct image_geom	*ig;
+	struct image_bounds	 ib;
 
 	*px = *py = *pw = *ph = 0;
 
-	if (im == NULL || x >= im->sx || y >= im->sy || w == 0 || h == 0)
-		return;
-	if (w > im->sx - x)
-		w = im->sx - x;
-	if (h > im->sy - y)
-		h = im->sy - y;
-
-	left = (uint64_t)x * im->canvas_width / im->sx;
-	top = (uint64_t)y * im->canvas_height / im->sy;
-	right = ((uint64_t)(x + w) * im->canvas_width + im->sx - 1) / im->sx;
-	bottom = ((uint64_t)(y + h) * im->canvas_height + im->sy - 1) / im->sy;
-
-	if (left >= im->width || top >= im->height)
-		*px = *py = 0;
-	else {
-		if (right <= left)
-			right = left + 1;
-		if (bottom <= top)
-			bottom = top + 1;
-		if (right > im->width)
-			right = im->width;
-		if (bottom > im->height)
-			bottom = im->height;
-		*px = left;
-		*py = top;
-		*pw = right - left;
-		*ph = bottom - top;
+	if (im != NULL) {
+		ig = &im->geom;
+		if (image_get_bounds(ig, x, y, w, h, ig->sx, ig->sy, &ib)) {
+			*px = floor(ib.left);
+			*py = floor(ib.top);
+			*pw = ceil(ib.right) - *px;
+			*ph = ceil(ib.bottom) - *py;
+		}
 	}
 }

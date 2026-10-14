@@ -2812,7 +2812,8 @@ input_exit_apc(struct input_ctx *ictx)
 
 #ifdef ENABLE_IMAGES
 	if (wp != NULL && len > 1 && buf[0] == 'G') {
-		kitty_parse_input(ictx, wp, &ictx->kitty_state, buf, len);
+		kitty_parse_input(ictx, wp, sctx, ictx->cell.cell.bg,
+		    &ictx->kitty_state, buf, len);
 		return;
 	}
 #endif

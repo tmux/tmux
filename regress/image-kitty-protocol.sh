@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Kitty graphics uploads, chunking, queries and replies.
+# Kitty graphics uploads, chunking, queries, placements and replies.
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -55,8 +55,8 @@ with open(output, 'w') as f:
 time.sleep(30)
 '''
 
-# Check replies and ensure uploads do not change the cursor, text or title.
-def check(name, command, expected=None):
+# Check replies, cursor movement and unchanged text and title.
+def check(name, command, expected=None, cursor='5,2'):
     output = directory / name
     command_file = directory / (name + '.input')
     command_file.write_text(origin + command, encoding='utf-8')
@@ -74,7 +74,7 @@ def check(name, command, expected=None):
             assert reply == expected, (name, 'reply', repr(reply),
                                        repr(expected))
         actual = run('display-message', '-pt', pane, '#{cursor_x},#{cursor_y}')
-        assert actual == '5,2', (name, 'cursor', actual)
+        assert actual == cursor, (name, 'cursor', actual, cursor)
         assert run('capture-pane', '-pt', pane) == '', (name, 'text')
         title = run('display-message', '-pt', pane, '#{pane_title}')
         assert title == 'kitty-test', (name, 'title', title)
@@ -128,6 +128,39 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
               graphics('m=0', '/w=='), ok)
         check('replace', graphics(transmit, pixel) +
               graphics(transmit, 'AP8A/w=='), ok + ok)
+        check('transmit-and-place',
+              graphics('a=T,i=7,f=32,s=1,v=1', pixel), ok, cursor='6,2')
+        check('transmit-and-place-sized',
+              graphics('a=T,i=7,f=32,s=1,v=1,c=3,r=2', pixel),
+              ok, cursor='8,3')
+        check('place-stored', graphics(transmit + ',q=2', pixel) +
+              graphics('a=p,i=7'), ok, cursor='6,2')
+        check('place-no-cursor', graphics(transmit + ',q=2', pixel) +
+              graphics('a=p,i=7,C=1,c=3,r=2'), ok)
+        check('place-named', graphics(transmit + ',q=2', pixel) +
+              graphics('a=p,i=7,p=9,C=1'), graphics('i=7,p=9', 'OK'))
+        check('place-missing', graphics('a=p,i=7'),
+              graphics('i=7', 'ENOENT'))
+        check('query-does-not-store',
+              graphics('a=q,q=2,i=7,f=32,s=1,v=1', pixel) +
+              graphics('a=p,i=7'), graphics('i=7', 'ENOENT'))
+        check('place-chunks', graphics('a=T,i=7,f=32,s=1,v=1,'
+              'c=3,r=2,C=1,m=1', '/wAA') + graphics('m=0', '/w=='), ok)
+        for n, geometry in enumerate(['x=1', 'y=1', 'c=65536', 'r=65536',
+                                      'c=65534,r=32767']):
+            check('invalid-placement-' + str(n),
+                  graphics(transmit + ',q=2', pixel) +
+                  graphics('a=p,i=7,C=1,' + geometry), invalid)
+        check('failed-transmit-keeps-source',
+              graphics(transmit + ',q=2', pixel) +
+              graphics('a=T,i=7,f=32,s=1,v=1,x=1,C=1', pixel) +
+              graphics('a=p,i=7,C=1'), invalid + ok)
+        check('place-at-bottom', '\033[12;6H' +
+              graphics('a=T,i=7,f=32,s=1,v=1,c=3,r=2', pixel),
+              ok, cursor='8,11')
+        check('stationary-at-bottom', '\033[12;6H' +
+              graphics('a=T,i=7,f=32,s=1,v=1,c=3,r=2,C=1', pixel),
+              ok, cursor='5,11')
         for n, payload in enumerate(['', '    ', '!!!!', '====', '/w',
                                      '/wAA/wAA']):
             check('invalid-payload-' + str(n),
