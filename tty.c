@@ -537,7 +537,7 @@ tty_close(struct tty *tty)
 
 	if (tty->flags & TTY_OPENED) {
 #ifdef ENABLE_IMAGES
-		image_tty_free(tty);
+		image_tty_free(tty, 1);
 #endif
 		evbuffer_free(tty->in);
 		event_del(&tty->event_in);
@@ -556,7 +556,7 @@ tty_free(struct tty *tty)
 {
 	tty_close(tty);
 #ifdef ENABLE_IMAGES
-	image_tty_free(tty);
+	image_tty_free(tty, 0);
 #endif
 }
 
@@ -1907,6 +1907,20 @@ tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 {
+	const struct grid_cell	*cell = ctx->cell;
+#ifdef ENABLE_IMAGES
+	struct grid_cell		 placeholder_cell;
+	struct kitty_placeholder placeholder;
+
+	if (kitty_cell_is_placeholder(cell) &&
+	    image_grid_get_placeholder(ctx->s->grid, ctx->ocx,
+	    ctx->s->grid->hsize + ctx->ocy, &placeholder)) {
+		memcpy(&placeholder_cell, cell, sizeof placeholder_cell);
+		utf8_set(&placeholder_cell.data, ' ');
+		cell = &placeholder_cell;
+	}
+#endif
+
 	if (!tty_is_visible(tty, ctx, ctx->ocx, ctx->ocy, 1, 1))
 		return;
 
@@ -1920,7 +1934,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 		tty_invalidate(tty);
 	tty_cursor_pane_unless_wrap(tty, ctx, ctx->ocx, ctx->ocy);
 
-	tty_cell(tty, ctx->cell, &ctx->style_ctx);
+	tty_cell(tty, cell, &ctx->style_ctx);
 
 	if (ctx->flags & TTY_CTX_CELL_INVALIDATE)
 		tty_invalidate(tty);

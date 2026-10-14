@@ -5,7 +5,8 @@ CLEANFILES = tmux.1.mdoc tmux.1.man cmd-parse.c
 # Distribution tarball options.
 EXTRA_DIST = \
 	CHANGES README COPYING example_tmux.conf \
-	osdep-*.c mdoc2man.awk tmux.1
+	osdep-*.c mdoc2man.awk tmux.1 \
+	tools/generate-image-diacritics.sh
 dist_EXTRA_tmux_SOURCES = compat/*.[ch]
 
 # Preprocessor flags.
@@ -256,6 +257,7 @@ dist_tmux_SOURCES += \
 	image.c \
 	image-grid.c \
 	image-sixel.c \
+	image-kitty.c \
 	image-fallback.c
 endif
 

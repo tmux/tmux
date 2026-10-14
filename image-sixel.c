@@ -686,7 +686,7 @@ sixel_write(struct screen_write_ctx *ctx, struct sixel_image *si, u_int bg)
 	sixel_free(si);
 	if (im == NULL)
 		return;
-	image_write(ctx, im, bg);
+	image_write_sixel(ctx, im, bg);
 	image_free(im);
 }
 
@@ -1460,7 +1460,7 @@ sixel_get_pending(struct tty *tty)
 
 /* Free pending SIXEL rows for a terminal. */
 void
-sixel_free_pending(struct tty *tty)
+sixel_free_pending(struct tty *tty, __unused int send)
 {
 	struct sixel_pending	*sp = tty->image_data;
 
@@ -1504,7 +1504,7 @@ sixel_flush_pending(struct tty *tty)
 
 /* Queue adjacent placement rows for one SIXEL output sequence. */
 void
-sixel_draw_rect(struct tty *tty, struct image_rect *rect)
+sixel_draw_rect(struct tty *tty, const struct image_rect *rect)
 {
 	struct sixel_pending	*sp = sixel_get_pending(tty);
 

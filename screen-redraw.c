@@ -72,13 +72,6 @@ enum redraw_span_type {
 };
 #define REDRAW_SPAN_TYPES 7
 
-/* Draw phases. */
-enum redraw_phase {
-	REDRAW_TEXT,
-	REDRAW_IMAGES
-};
-#define REDRAW_PHASE_COUNT 2
-
 /* Border connections to adjacent cells. */
 #define REDRAW_BORDER_L 0x1
 #define REDRAW_BORDER_R 0x2
@@ -104,6 +97,13 @@ enum redraw_phase {
 /* Draw everything. */
 #define REDRAW_ALL 0x7fffffff
 #define REDRAW_IS_ALL(flags) ((flags) == REDRAW_ALL)
+
+enum redraw_phase {
+	REDRAW_IMAGES_BEFORE,
+	REDRAW_TEXT,
+	REDRAW_IMAGES_AFTER
+};
+#define REDRAW_PHASE_COUNT 3
 
 /* UTF-8 isolate characters. */
 #define REDRAW_START_ISOLATE "\342\201\246"
@@ -1576,7 +1576,8 @@ redraw_draw_span(struct redraw_draw_ctx *dctx, struct redraw_span *span,
 #ifdef ENABLE_IMAGES
 		else {
 			image_draw_line(&dctx->scene->c->tty, data->p.wp->screen,
-			    data->p.px, data->p.py, width, span->x, y);
+			    data->p.px, data->p.py, width, span->x, y,
+			    phase == REDRAW_IMAGES_BEFORE);
 		}
 #endif
 		break;
@@ -1639,7 +1640,7 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 	}
 #endif
 
-	/* Draw each phase. */
+	/* Draw images behind text, then text, then images above it. */
 	for (phase = 0; phase < REDRAW_PHASE_COUNT; phase++) {
 		for (y = top; y < bottom; y++) {
 			line = &scene->lines[y];
@@ -1669,6 +1670,10 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 		image_draw_flush(&scene->c->tty);
 #endif
 	}
+#ifdef ENABLE_IMAGES
+	if (flags & REDRAW_PANE)
+		image_redraw_finish(&scene->c->tty);
+#endif
 }
 
 /* Return whether to draw a span type in this phase for these flags. */
@@ -1998,8 +2003,13 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 
 	if (wp != NULL)
 		redraw_draw_pane_lines(&dctx, wp, flags);
-	else
+	else {
 		redraw_draw_lines(&dctx, flags);
+#ifdef ENABLE_IMAGES
+		if (flags & REDRAW_PANE)
+			image_redraw_finish(tty);
+#endif
+	}
 
 	if (flags & REDRAW_PANE) {
 		if (wp != NULL)
@@ -2173,7 +2183,7 @@ redraw_draw_damage_rectangle(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 		return;
 
 #ifdef ENABLE_IMAGES
-	/* Clear old image pixels on all damaged spans. */
+	/* Retire placements on all damaged spans, including uncovered cells. */
 	for (yy = y; yy < y + sy; yy++) {
 		line = &scene->lines[yy];
 		if (dctx->flags & REDRAW_STATUS_TOP)
@@ -2196,7 +2206,7 @@ redraw_draw_damage_rectangle(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 	}
 #endif
 
-	/* Draw each phase in the damaged spans. */
+	/* Compose image layers and text across the damaged spans. */
 	for (phase = 0; phase < REDRAW_PHASE_COUNT; phase++) {
 		for (yy = y; yy < y + sy; yy++) {
 			line = &scene->lines[yy];
@@ -2217,6 +2227,11 @@ redraw_draw_damage_rectangle(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 					if (span->x + span->width <= x)
 						continue;
 					redraw_draw_span(dctx, span, cy, phase);
+					if (phase == REDRAW_TEXT &&
+					    type == REDRAW_SPAN_PANE) {
+						redraw_damage_draw_pane_prompt(
+						    dctx, span, cy);
+					}
 				}
 			}
 		}
@@ -2224,22 +2239,17 @@ redraw_draw_damage_rectangle(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 		image_draw_flush(&scene->c->tty);
 #endif
 	}
+#ifdef ENABLE_IMAGES
+	image_redraw_finish(&scene->c->tty);
+#endif
 
-	/* Draw prompts and pane status lines last. */
+	/* SIXEL image output may disturb status cells; compose them last. */
 	for (yy = y; yy < y + sy; yy++) {
 		line = &scene->lines[yy];
 		if (dctx->flags & REDRAW_STATUS_TOP)
 			cy = dctx->status_lines + yy;
 		else
 			cy = yy;
-		spans = &line->spans[REDRAW_SPAN_PANE];
-		TAILQ_FOREACH(span, spans, entry) {
-			if (span->x >= x + sx)
-				continue;
-			if (span->x + span->width <= x)
-				continue;
-			redraw_damage_draw_pane_prompt(dctx, span, cy);
-		}
 		spans = &line->spans[REDRAW_SPAN_STATUS];
 		TAILQ_FOREACH(span, spans, entry) {
 			if (span->x >= x + sx)

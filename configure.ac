@@ -556,6 +556,16 @@ AC_ARG_ENABLE(
 	]
 )
 if test "x$enable_images" = xyes; then
+	PKG_CHECK_MODULES(
+		IMAGE,
+		[libpng >= 1.6 zlib],
+		[
+			AM_CPPFLAGS="$IMAGE_CFLAGS $AM_CPPFLAGS"
+			CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
+			LIBS="$IMAGE_LIBS $LIBS"
+		],
+		AC_MSG_ERROR("image support requires libpng 1.6 and zlib")
+	)
 	AC_DEFINE(ENABLE_IMAGES)
 fi
 AM_CONDITIONAL(ENABLE_IMAGES, [test "x$enable_images" = xyes])

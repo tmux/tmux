@@ -20,6 +20,8 @@
 #include <sys/types.h>
 
 #include <limits.h>
+#include <png.h>
+#include <resolv.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -31,6 +33,7 @@ struct image {
 	u_int			 references;
 	u_int			 flags;
 #define IMAGE_FLAG_OWN_PIXELS 0x1
+#define IMAGE_FLAG_NO_CURSOR 0x2
 
 	struct image		*parent;
 	u_int			 source_id;
@@ -340,4 +343,108 @@ image_get_pixel_area(struct image *im, u_int x, u_int y, u_int w, u_int h,
 		*pw = right - left;
 		*ph = bottom - top;
 	}
+}
+
+/* Suppress cursor movement when writing an image. */
+void
+image_set_no_cursor(struct image *im)
+{
+	im->flags |= IMAGE_FLAG_NO_CURSOR;
+}
+
+/* Return whether writing the image should leave the cursor in place. */
+int
+image_has_no_cursor(struct image *im)
+{
+	return (!!(im->flags & IMAGE_FLAG_NO_CURSOR));
+}
+
+/* Return the original source image ID. */
+u_int
+image_get_source_id(struct image *im)
+{
+	return (im->source_id);
+}
+
+/* Return the image's original ordering ID. */
+u_int
+image_get_order_id(struct image *im)
+{
+	return (im->order_id);
+}
+
+/* Set the original ordering ID after replacing an image. */
+void
+image_set_order_id(struct image *im, u_int id)
+{
+	im->order_id = id;
+}
+
+/* Decode a base64 payload with a size limit. */
+u_char *
+image_base64_decode(const char *data, size_t len, size_t limit, size_t *size)
+{
+	char	*copy;
+	u_char	*out;
+	size_t	 needed, padded, padding;
+	int	 result;
+
+	if (len > SIZE_MAX - 3)
+		return (NULL);
+	padding = (4 - len % 4) % 4;
+	if (padding == 3)
+		return (NULL);
+	padded = len + padding;
+	needed = padded / 4 * 3;
+	if (needed > limit || needed > INT_MAX)
+		return (NULL);
+
+	copy = xmalloc(padded + 1);
+	memcpy(copy, data, len);
+	memset(copy + len, '=', padding);
+	copy[padded] = '\0';
+	if (needed == 0)
+		out = xmalloc(1);
+	else
+		out = xmalloc(needed);
+	result = b64_pton(copy, out, needed);
+	free(copy);
+	if (result < 0) {
+		free(out);
+		return (NULL);
+	}
+	*size = result;
+	return (out);
+}
+
+/* Decode a PNG payload into RGBA pixels. */
+u_char *
+image_png_decode(const u_char *data, size_t size, size_t limit, u_int *width,
+    u_int *height)
+{
+	png_image	 pi;
+	u_char		*pixels;
+
+	if (size == 0 || size > limit)
+		return (NULL);
+	memset(&pi, 0, sizeof pi);
+	pi.version = PNG_IMAGE_VERSION;
+	if (!png_image_begin_read_from_memory(&pi, data, size))
+		return (NULL);
+	pi.format = PNG_FORMAT_RGBA;
+	if (pi.width == 0 || pi.height == 0 ||
+	    (uint64_t)pi.width * pi.height * 4 > limit) {
+		png_image_free(&pi);
+		return (NULL);
+	}
+	pixels = xmalloc(PNG_IMAGE_SIZE(pi));
+	if (!png_image_finish_read(&pi, NULL, pixels, 0, NULL)) {
+		free(pixels);
+		png_image_free(&pi);
+		return (NULL);
+	}
+	*width = pi.width;
+	*height = pi.height;
+	png_image_free(&pi);
+	return (pixels);
 }
