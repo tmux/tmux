@@ -354,25 +354,25 @@ void
 image_grid_add(struct grid *gd, struct image *im, u_int x, u_int y,
     u_int src_x, u_int src_y, u_int sx, u_int sy)
 {
+	struct image_geom	*ig;
 	struct image_placement	*plmt;
 	struct image_line	*line;
 	u_int			 rows = gd->hsize + gd->sy, row;
-	u_int			 image_sx, image_sy;
 
 	if (sx == 0 || sy == 0 || x >= gd->sx || y >= rows)
 		return;
-	image_get_size_in_cells(im, &image_sx, &image_sy);
-	if (src_x >= image_sx || src_y >= image_sy)
+	ig = image_get_geometry(im);
+	if (src_x >= ig->sx || src_y >= ig->sy)
 		return;
 
 	if (sx > gd->sx - x)
 		sx = gd->sx - x;
-	if (sx > image_sx - src_x)
-		sx = image_sx - src_x;
+	if (sx > ig->sx - src_x)
+		sx = ig->sx - src_x;
 	if (sy > rows - y)
 		sy = rows - y;
-	if (sy > image_sy - src_y)
-		sy = image_sy - src_y;
+	if (sy > ig->sy - src_y)
+		sy = ig->sy - src_y;
 
 	plmt = image_placement_create(gd, im);
 	for (row = 0; row < sy; row++) {
@@ -739,16 +739,14 @@ static int
 image_cell_covers(struct image *new, u_int nx, u_int ny, struct image *old,
     u_int ox, u_int oy)
 {
-	u_int		 npx, npy, nsx, nsy, opx, opy, osx, osy, xx, yy;
-	u_int		 ncw, nch, ocw, och, ncx, ncy, ocx, ocy;
-	const u_char	*np, *op, *npixels, *opixels;
-	size_t		 nstride, ostride;
+	struct image_geom	*ng = image_get_geometry(new);
+	struct image_geom	*og = image_get_geometry(old);
+	u_int			 npx, npy, nsx, nsy, opx, opy, osx, osy, xx, yy;
+	const u_char		*np, *op, *npixels, *opixels;
+	size_t			 nstride, ostride;
 
-	image_get_canvas_size(new, &ncw, &nch);
-	image_get_canvas_size(old, &ocw, &och);
-	image_get_size_in_cells(new, &ncx, &ncy);
-	image_get_size_in_cells(old, &ocx, &ocy);
-	if (ncw / ncx != ocw / ocx || nch / ncy != och / ocy)
+	if (ng->canvas_width / ng->sx != og->canvas_width / og->sx ||
+	    ng->canvas_height / ng->sy != og->canvas_height / og->sy)
 		return (0);
 	image_get_pixel_area(new, nx, ny, 1, 1, &npx, &npy, &nsx, &nsy);
 	image_get_pixel_area(old, ox, oy, 1, 1, &opx, &opy, &osx, &osy);
@@ -838,10 +836,11 @@ image_extend_row(struct image_line *line, struct image_placement *plmt,
 void
 image_grid_resize_width(struct grid *gd, u_int new_sx)
 {
+	struct image_geom		*ig;
 	struct image_placement		*plmt;
 	struct image_span		*span;
 	struct image_recover_row	*rows;
-	u_int				 image_sx, image_sy, from, to;
+	u_int				 from, to;
 	u_int				 nrows, i;
 
 	if (gd->images == NULL)
@@ -850,11 +849,11 @@ image_grid_resize_width(struct grid *gd, u_int new_sx)
 		from = plmt->recover_from;
 		if (from == 0 || plmt->x >= new_sx)
 			continue;
-		image_get_size_in_cells(plmt->image, &image_sx, &image_sy);
+		ig = image_get_geometry(plmt->image);
 
 		to = new_sx - plmt->x;
-		if (to > image_sx)
-			to = image_sx;
+		if (to > ig->sx)
+			to = ig->sx;
 		if (to <= from)
 			continue;
 
@@ -877,7 +876,7 @@ image_grid_resize_width(struct grid *gd, u_int new_sx)
 			    rows[i].source_y, from, to);
 		}
 		free(rows);
-		plmt->recover_from = (to == image_sx ? 0 : to);
+		plmt->recover_from = (to == ig->sx ? 0 : to);
 	}
 }
 
@@ -885,18 +884,17 @@ image_grid_resize_width(struct grid *gd, u_int new_sx)
 void
 image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
 {
+	struct image_geom	*ig = image_get_geometry(im);
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct image_placement	*plmt;
 	struct grid_line	*gl;
 	struct image_line	*line;
-	u_int			 cx = s->cx, cy = s->cy, y, sx, sy, lines;
-	u_int			 image_sx;
+	u_int			 cx = s->cx, cy = s->cy, y, lines;
+	u_int			 sx = ig->sx, sy = ig->sy;
 	u_int			 origin_y = 0, h_origin_y, region_height;
 	u_int			 remaining, n;
 
-	image_get_size_in_cells(im, &sx, &sy);
-	image_sx = sx;
 	if (sx > screen_size_x(s) - cx)
 		sx = screen_size_x(s) - cx;
 	if (sx == 0)
@@ -928,7 +926,7 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
 		sy -= origin_y;
 	}
 	plmt = image_placement_create(gd, im);
-	if (sx < image_sx) {
+	if (sx < ig->sx) {
 		plmt->x = cx;
 		plmt->recover_from = sx;
 	}

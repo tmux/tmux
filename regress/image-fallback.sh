@@ -105,4 +105,16 @@ for nobr in (False, True):
         else:
             assert chars == ' \u2591\u2591\u2592\u2592\u2593\u2588\u2588', chars
             assert bold == [False, False, True, False, True, False, False, True], bold
+# Odd cell heights split a source pixel between the two fallback samples.
+with image_test(sys.argv[1]) as test:
+    test.run('set-option', '-as', 'terminal-features', 'screen-256color:RGB')
+    client = test.attach(graphical=False, ch=15)
+    test.emit(sixel(8, 15, [(100, 0, 0), (0, 0, 100)],
+        [y >= 8 for y in range(15) for x in range(8)]))
+    test.redraw()
+    terminal = Terminal(ch=15)
+    terminal.feed(client.data)
+    char, fg, bg, bold = terminal.cells[0, 0]
+    assert char == '\u2584' and not bold, (char, bold)
+    assert (fg, bg) == ((17, 0, 238), (255, 0, 0)), (fg, bg)
 PY

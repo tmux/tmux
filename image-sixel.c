@@ -21,6 +21,7 @@
 
 #include <errno.h>
 #include <limits.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -165,17 +166,7 @@ struct sixel_rgb {
 
 /* Pixels and dimensions of the image being encoded. */
 struct sixel_source {
-	/* Source pixels and number of bytes between rows. */
-	const u_char	*pixels;
-	size_t		 stride;
-
-	/* Source image and canvas sizes in pixels and size in cells. */
-	u_int		 width;
-	u_int		 height;
-	u_int		 canvas_width;
-	u_int		 canvas_height;
-	u_int		 sx;
-	u_int		 sy;
+	struct image	*image;
 
 	/* Destination canvas size in pixels. */
 	u_int		 dst_w;
@@ -636,9 +627,10 @@ sixel_colour_to_rgb(u_int c, u_char *r, u_char *g, u_char *b)
 static struct image *
 sixel_to_image(struct sixel_image *si)
 {
-	struct image	*im;
-	u_char		*pixels, *pixel, r, g, b;
-	u_int		 x, y, c, sx, sy;
+	struct image		*im;
+	struct image_geom	 ig = { 0 };
+	u_char			*pixels, *pixel, r, g, b;
+	u_int			 x, y, c, sx, sy;
 
 	if ((uint64_t)si->x * si->y > IMAGE_SIZE_LIMIT / 4)
 		return (NULL);
@@ -669,8 +661,13 @@ sixel_to_image(struct sixel_image *si)
 			pixel[3] = 255;
 		}
 	}
-	im = image_create(si->x, si->y, sx * si->xpixel, sy * si->ypixel, sx,
-	    sy, pixels);
+	ig.src_w = ig.scaled_width = si->x;
+	ig.src_h = ig.scaled_height = si->y;
+	ig.canvas_width = sx * si->xpixel;
+	ig.canvas_height = sy * si->ypixel;
+	ig.sx = sx;
+	ig.sy = sy;
+	im = image_create(&ig, pixels);
 	if (im == NULL)
 		free(pixels);
 	return (im);
@@ -1077,13 +1074,11 @@ sixel_clamp_colour(int colour)
 
 /* Return a source pixel mapped to an output SIXEL pixel. */
 static const u_char *
-sixel_from_image_pixel(const struct sixel_source *src, u_int x, u_int y)
+sixel_from_image_pixel(struct sixel_source *src, u_int x, u_int y)
 {
-	u_int	 px, py;
+	u_int	px = src->dst_x + x, py = src->dst_y + y;
 
-	px = ((uint64_t)src->dst_x + x) * src->canvas_width / src->dst_w;
-	py = ((uint64_t)src->dst_y + y) * src->canvas_height / src->dst_h;
-	return (src->pixels + py * src->stride + px * 4);
+	return (image_get_pixel(src->image, px, py, src->dst_w, src->dst_h));
 }
 
 /* Make a palette from the visible pixels in the output area. */
@@ -1170,6 +1165,7 @@ sixel_make_image(struct image *im, u_int cx, u_int cy, u_int csx, u_int csy,
 	struct sixel_image	*si;
 	struct sixel_rgb	 palette[SIXEL_PALETTE_SIZE];
 	struct sixel_source	 src;
+	struct image_geom	*ig = image_get_geometry(im);
 	const u_char		*pixel;
 	uint16_t		*cache;
 	int			*current, *next, *tmp;
@@ -1179,18 +1175,19 @@ sixel_make_image(struct image *im, u_int cx, u_int cy, u_int csx, u_int csy,
 	uint64_t		 left, right, top, bottom;
 
 	/* Work out the requested cell crop in destination pixel coordinates. */
-	src.pixels = image_get_pixels(im, &src.stride, NULL);
-	image_get_size(im, &src.width, &src.height);
-	image_get_canvas_size(im, &src.canvas_width, &src.canvas_height);
-	image_get_size_in_cells(im, &src.sx, &src.sy);
-	dst_w = (uint64_t)src.sx * cw;
-	dst_h = (uint64_t)src.sy * ch;
+	src.image = im;
+	dst_w = (uint64_t)ig->sx * cw;
+	dst_h = (uint64_t)ig->sy * ch;
 	if (dst_w > UINT_MAX || dst_h > UINT_MAX)
 		return (NULL);
-	content_width = ((uint64_t)src.width * dst_w +
-	    src.canvas_width - 1) / src.canvas_width;
-	content_height = ((uint64_t)src.height * dst_h +
-	    src.canvas_height - 1) / src.canvas_height;
+	content_width = ceil((ig->canvas_xoff + ig->scaled_width) * dst_w /
+	    ig->canvas_width);
+	content_height = ceil((ig->canvas_yoff + ig->scaled_height) * dst_h /
+	    ig->canvas_height);
+	if (content_width > dst_w)
+		content_width = dst_w;
+	if (content_height > dst_h)
+		content_height = dst_h;
 
 	/* Clip the requested cell rectangle to output pixel bounds. */
 	left = (uint64_t)cx * cw;
@@ -1313,8 +1310,9 @@ static struct sixel_image *
 sixel_get_image(struct image *im, u_int cw, u_int ch)
 {
 	struct sixel_image	*si;
+	struct image_geom	*ig = image_get_geometry(im);
 	size_t			 size;
-	u_int			 id = image_get_id(im), sx, sy;
+	u_int			 id = image_get_id(im);
 	struct sixel_item	*cache, find = { .id = id, .cw = cw, .ch = ch };
 
 	cache = RB_FIND(sixel_tree, &sixel_tree, &find);
@@ -1323,9 +1321,8 @@ sixel_get_image(struct image *im, u_int cw, u_int ch)
 		TAILQ_INSERT_TAIL(&sixel_cache, cache, entry);
 		return (cache->si);
 	}
-	image_get_size_in_cells(im, &sx, &sy);
 
-	si = sixel_make_image(im, 0, 0, sx, sy, cw, ch);
+	si = sixel_make_image(im, 0, 0, ig->sx, ig->sy, cw, ch);
 	if (si == NULL)
 		return (NULL);
 

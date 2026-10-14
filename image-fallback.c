@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <math.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -50,52 +51,47 @@ fallback_get_flags(__unused struct tty *tty)
 
 /* Get the average colour and brightness of an area. */
 static int
-fallback_sample(struct image *im, uint64_t px, uint64_t py, uint64_t pw,
-    uint64_t ph, u_char *brightness)
+fallback_sample(struct image *im, u_int px, u_int py, u_int pw, u_int ph,
+    u_char *brightness)
 {
-	const u_char	*pixels, *p;
-	uint64_t	 red = 0, green = 0, blue = 0, sum = 0, count;
-	u_int		 w, h, cw, ch, x0, x1, y0, y1, x, y;
-	size_t		 stride;
+	struct image_geom	*ig = image_get_geometry(im);
+	struct image_bounds	 ib;
+	const u_char		*pixels, *p;
+	double			 red = 0, green = 0, blue = 0, sum = 0;
+	double			 wx, wy, weight, area;
+	u_int			 x0, x1, y0, y1, x, y;
+	size_t			 stride;
 
-	image_get_size(im, &w, &h);
-	image_get_canvas_size(im, &cw, &ch);
-	pixels = image_get_pixels(im, &stride, NULL);
-
-	x0 = px * cw / pw;
-	x1 = ((px + 1) * cw + pw - 1) / pw;
-	y0 = py * ch / ph;
-	y1 = ((py + 1) * ch + ph - 1) / ph;
-	if (x1 <= x0)
-		x1 = x0 + 1;
-	if (y1 <= y0)
-		y1 = y0 + 1;
-	if (x0 >= w || y0 >= h) {
+	if (!image_get_bounds(ig, px, py, 1, 1, pw, ph, &ib)) {
 		if (brightness != NULL)
 			*brightness = 0;
 		return (colour_join_rgb(0, 0, 0));
 	}
-	count = (uint64_t)(x1 - x0) * (y1 - y0);
+	area = ib.area;
+	pixels = image_get_pixels(im, &stride, NULL);
 
-	if (x1 > w)
-		x1 = w;
-	if (y1 > h)
-		y1 = h;
+	x0 = floor(ib.left);
+	x1 = ceil(ib.right);
+	y0 = floor(ib.top);
+	y1 = ceil(ib.bottom);
 	for (y = y0; y < y1; y++) {
+		wy = fmin(y + 1, ib.bottom) - fmax(y, ib.top);
 		for (x = x0; x < x1; x++) {
 			p = pixels + y * stride + x * 4;
+			wx = fmin(x + 1, ib.right) - fmax(x, ib.left);
+			weight = wx * wy;
 
-			red += p[0] * p[3] / 255;
-			green += p[1] * p[3] / 255;
-			blue += p[2] * p[3] / 255;
+			red += (p[0] * p[3] / 255) * weight;
+			green += (p[1] * p[3] / 255) * weight;
+			blue += (p[2] * p[3] / 255) * weight;
 
 			sum += ((2126ULL * p[0] + 7152ULL * p[1] +
-			    722ULL * p[2]) / 10000) * p[3] / 255;
+			    722ULL * p[2]) / 10000) * p[3] / 255 * weight;
 		}
 	}
 	if (brightness != NULL)
-		*brightness = sum / count;
-	return (colour_join_rgb(red / count, green / count, blue / count));
+		*brightness = sum / area;
+	return (colour_join_rgb(red / area, green / area, blue / area));
 }
 
 /* Set a cell to a character representing part of an image. */
@@ -105,7 +101,9 @@ fallback_get_cell(struct tty *tty, struct image *im, u_int x, u_int y,
 {
 	static const char	 a[] = " .:-=+*#%@";
 	static const u_char	 bold_shades[8] = { 0, 1, 1, 2, 2, 3, 4, 4 };
-	u_int			 ch, level, nlevels, sx, sy, colours;
+	struct image_geom	*ig = image_get_geometry(im);
+	u_int			 ch, level, nlevels, colours;
+	u_int			 sx = ig->sx, sy = ig->sy;
 	u_char			 brightness;
 
 	if (out != gc)
@@ -113,7 +111,6 @@ fallback_get_cell(struct tty *tty, struct image *im, u_int x, u_int y,
 	out->flags &= GRID_FLAG_SELECTED;
 	out->attr = 0;
 	out->link = 0;
-	image_get_size_in_cells(im, &sx, &sy);
 	if (x >= sx || y >= sy) {
 		utf8_set(&out->data, ' ');
 		return;
