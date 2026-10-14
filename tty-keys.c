@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-keys.c,v 1.218 2026/10/14 08:33:19 nicm Exp $ */
+/* $OpenBSD: tty-keys.c,v 1.219 2026/10/14 13:03:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1928,6 +1928,7 @@ tty_keys_winsz(struct tty *tty, const char *buf, size_t len, size_t *size,
 		if (tty_set_size(tty, tty->sx, tty->sy, char_x, char_y))
 			server_redraw_client(c);
 		tty_invalidate(tty);
+		recalculate_sizes();
 
 		tty->flags &= ~TTY_WINSIZEQUERY;
 		return (0);
