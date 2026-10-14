@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-term.c,v 1.112 2026/10/12 10:39:05 nicm Exp $ */
+/* $OpenBSD: tty-term.c,v 1.113 2026/10/14 12:33:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -116,6 +116,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_IND] = { TTYCODE_STRING, "ind" },
 	[TTYC_INDN] = { TTYCODE_STRING, "indn" },
 	[TTYC_INVIS] = { TTYCODE_STRING, "invis" },
+	[TTYC_ISCRL] = { TTYCODE_FLAG, "Iscrl" },
 	[TTYC_KCBT] = { TTYCODE_STRING, "kcbt" },
 	[TTYC_KCUB1] = { TTYCODE_STRING, "kcub1" },
 	[TTYC_KCUD1] = { TTYCODE_STRING, "kcud1" },

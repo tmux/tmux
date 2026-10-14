@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1185 2026/10/13 10:21:58 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1186 2026/10/14 12:33:46 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 13 2026 $
+.Dd $Mdocdate: October 14 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -5194,6 +5194,8 @@ Supports extended keys.
 Supports focus reporting.
 .It hyperlinks
 Supports OSC 8 hyperlinks.
+.It imagescroll
+Moves image content with scroll regions.
 .It ignorefkeys
 Ignore function keys from
 .Xr terminfo 5
@@ -8984,6 +8986,8 @@ These are set automatically if the
 capability is present.
 .It Em \&Hls
 Set or clear a hyperlink annotation.
+.It Em \&Iscrl
+Indicates that the terminal moves image content with scroll regions.
 .It Em \&Nobr
 Tell
 .Nm
