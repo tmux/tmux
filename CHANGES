@@ -1,3 +1,18 @@
+CHANGES FROM 3.8 TO 3.8a
+
+* Fix a crash when killing the session containing a tree mode pane (issue
+  5728).
+
+* Fix a crash when redrawing a menu after its target pane or session has been
+  destroyed (issue 5722).
+
+* Fix inconsistent zoom state when creating floating panes, including with
+  new-pane -Z (issue 5747).
+
+* Restore command prompt completion for option and layout names (issue 5731).
+
+* Swap the default black and white colours in the light theme.
+
 CHANGES FROM 3.7c TO 3.8
 
 * Many improvements to floating panes:
