@@ -1,4 +1,4 @@
-/* $OpenBSD: menu.c,v 1.72 2026/10/12 10:46:12 nicm Exp $ */
+/* $OpenBSD: menu.c,v 1.73 2026/10/15 22:16:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -191,6 +191,7 @@ menu_reapply_styles(struct menu_data *md)
 		s = md->fs.s;
 		wl = md->fs.wl;
 		wp = md->fs.wp;
+		o = md->fs.w->options;
 	}
 	ft = format_create_defaults(NULL, NULL, s, wl, wp);
 
@@ -587,18 +588,23 @@ menu_display(struct menu *menu, int flags, int starting_choice,
     void *data)
 {
 	struct menu_data	*md;
-	struct key_event	*event;
+	struct key_event	*event = NULL;
 	int			 choice;
 	const char		*name;
 	u_int			 sx, sy;
 	struct window		*w;
 	struct options		*o;
 
-	if (fs == NULL)
+	if (item != NULL)
+		event = cmdq_get_event(item);
+	if (fs == NULL || (event != NULL && event->m.valid))
 		w = c->session->curw->window;
 	else
 		w = fs->w;
-	o = w->options;
+	if (fs != NULL)
+		o = fs->w->options;
+	else
+		o = w->options;
 
 	sx = menu->width + 4;
 	sy = menu->count + 2;
@@ -622,8 +628,7 @@ menu_display(struct menu *menu, int flags, int starting_choice,
 	md->border_lines = lines;
 	md->key = KEYC_NONE;
 
-	if (item != NULL) {
-		event = cmdq_get_event(item);
+	if (event != NULL) {
 		md->key = event->key;
 		memcpy(&md->m, &event->m, sizeof md->m);
 	}
