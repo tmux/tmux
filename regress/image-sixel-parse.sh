@@ -41,8 +41,8 @@ with image_test(sys.argv[1]) as test:
 
     # Deliver the terminator in two pieces. No image is placed before it.
     test.emit(b'\033[2J\033[H')
-    for byte in valid[:-1]:
-        test.send(bytes([byte]))
+    # One command keeps process startup overhead within the DCS timeout.
+    test.send(valid[:-1])
     client.read()
     assert not client.images(), 'image placed before the DCS terminator'
     assert test.run('display-message', '-p', '#{cursor_y}') == '0'
