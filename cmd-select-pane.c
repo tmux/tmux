@@ -163,6 +163,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*style;
 	struct options_entry	*o;
 	int			 visible, Zflag = args_has(args, 'Z');
+	int			 wrap;
 
 	if (entry == &cmd_last_pane_entry || args_has(args, 'l')) {
 		/*
@@ -223,21 +224,23 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
+	wrap = options_get_number(w->options, "pane-select-wrap");
+
 	if (args_has(args, 'L')) {
 		window_push_zoom(w, 0, 1);
-		wp = window_pane_find_left(wp);
+		wp = window_pane_find_left(wp, wrap);
 		window_pop_zoom(w);
 	} else if (args_has(args, 'R')) {
 		window_push_zoom(w, 0, 1);
-		wp = window_pane_find_right(wp);
+		wp = window_pane_find_right(wp, wrap);
 		window_pop_zoom(w);
 	} else if (args_has(args, 'U')) {
 		window_push_zoom(w, 0, 1);
-		wp = window_pane_find_up(wp);
+		wp = window_pane_find_up(wp, wrap);
 		window_pop_zoom(w);
 	} else if (args_has(args, 'D')) {
 		window_push_zoom(w, 0, 1);
-		wp = window_pane_find_down(wp);
+		wp = window_pane_find_down(wp, wrap);
 		window_pop_zoom(w);
 	}
 	if (wp == NULL)

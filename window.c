@@ -2276,7 +2276,7 @@ window_pane_full_size_offset(struct window_pane *wp, int *xoff, int *yoff,
  * top edge and then choose the best.
  */
 struct window_pane *
-window_pane_find_up(struct window_pane *wp)
+window_pane_find_up(struct window_pane *wp, int wrap)
 {
 	struct window		*w;
 	struct window_pane	*next, *best, **list;
@@ -2296,14 +2296,23 @@ window_pane_find_up(struct window_pane *wp)
 
 	edge = yoff;
 	if (status == PANE_STATUS_TOP) {
-		if (edge == 1)
+		if (edge == 1) {
+			if (!wrap)
+				return (NULL);
 			edge = (int)w->sy + 1;
+		}
 	} else if (status == PANE_STATUS_BOTTOM) {
-		if (edge == 0)
+		if (edge == 0) {
+			if (!wrap)
+				return (NULL);
 			edge = (int)w->sy;
+		}
 	} else {
-		if (edge == 0)
+		if (edge == 0) {
+			if (!wrap)
+				return (NULL);
 			edge = (int)w->sy + 1;
+		}
 	}
 
 	left = xoff;
@@ -2337,7 +2346,7 @@ window_pane_find_up(struct window_pane *wp)
 
 /* Find the pane directly below another. */
 struct window_pane *
-window_pane_find_down(struct window_pane *wp)
+window_pane_find_down(struct window_pane *wp, int wrap)
 {
 	struct window		*w;
 	struct window_pane	*next, *best, **list;
@@ -2357,14 +2366,23 @@ window_pane_find_down(struct window_pane *wp)
 
 	edge = yoff + (int)sy + 1;
 	if (status == PANE_STATUS_TOP) {
-		if (edge >= (int)w->sy)
+		if (edge >= (int)w->sy) {
+			if (!wrap)
+				return (NULL);
 			edge = 1;
+		}
 	} else if (status == PANE_STATUS_BOTTOM) {
-		if (edge >= (int)w->sy - 1)
+		if (edge >= (int)w->sy - 1) {
+			if (!wrap)
+				return (NULL);
 			edge = 0;
+		}
 	} else {
-		if (edge >= (int)w->sy)
+		if (edge >= (int)w->sy) {
+			if (!wrap)
+				return (NULL);
 			edge = 0;
+		}
 	}
 
 	left = wp->xoff;
@@ -2398,7 +2416,7 @@ window_pane_find_down(struct window_pane *wp)
 
 /* Find the pane directly to the left of another. */
 struct window_pane *
-window_pane_find_left(struct window_pane *wp)
+window_pane_find_left(struct window_pane *wp, int wrap)
 {
 	struct window		*w;
 	struct window_pane	*next, *best, **list;
@@ -2416,8 +2434,11 @@ window_pane_find_left(struct window_pane *wp)
 	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
 
 	edge = xoff;
-	if (edge == 0)
+	if (edge == 0) {
+		if (!wrap)
+			return (NULL);
 		edge = (int)w->sx + 1;
+	}
 
 	top = yoff;
 	bottom = yoff + (int)sy;
@@ -2450,7 +2471,7 @@ window_pane_find_left(struct window_pane *wp)
 
 /* Find the pane directly to the right of another. */
 struct window_pane *
-window_pane_find_right(struct window_pane *wp)
+window_pane_find_right(struct window_pane *wp, int wrap)
 {
 	struct window		*w;
 	struct window_pane	*next, *best, **list;
@@ -2468,8 +2489,11 @@ window_pane_find_right(struct window_pane *wp)
 	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
 
 	edge = xoff + (int)sx + 1;
-	if (edge >= (int)w->sx)
+	if (edge >= (int)w->sx) {
+		if (!wrap)
+			return (NULL);
 		edge = 0;
+	}
 
 	top = wp->yoff;
 	bottom = wp->yoff + (int)wp->sy;

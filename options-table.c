@@ -1684,6 +1684,14 @@ const struct options_table_entry options_table[] = {
 	  .text = "Pane scrollbar position."
 	},
 
+	{ .name = "pane-select-wrap",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_num = 1,
+	  .text = "Whether directional pane selection wraps around at the "
+			  "edge of the window."
+	},
+
 	{ .name = "remain-on-exit",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,

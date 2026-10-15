@@ -605,22 +605,26 @@ cmd_find_get_pane_with_window(struct cmd_find_state *fs, const char *pane)
 			return (-1);
 		return (0);
 	} else if (strcmp(pane, "{up-of}") == 0) {
-		fs->wp = window_pane_find_up(fs->w->active);
+		fs->wp = window_pane_find_up(fs->w->active,
+		    options_get_number(fs->w->options, "pane-select-wrap"));
 		if (fs->wp == NULL)
 			return (-1);
 		return (0);
 	} else if (strcmp(pane, "{down-of}") == 0) {
-		fs->wp = window_pane_find_down(fs->w->active);
+		fs->wp = window_pane_find_down(fs->w->active,
+		    options_get_number(fs->w->options, "pane-select-wrap"));
 		if (fs->wp == NULL)
 			return (-1);
 		return (0);
 	} else if (strcmp(pane, "{left-of}") == 0) {
-		fs->wp = window_pane_find_left(fs->w->active);
+		fs->wp = window_pane_find_left(fs->w->active,
+		    options_get_number(fs->w->options, "pane-select-wrap"));
 		if (fs->wp == NULL)
 			return (-1);
 		return (0);
 	} else if (strcmp(pane, "{right-of}") == 0) {
-		fs->wp = window_pane_find_right(fs->w->active);
+		fs->wp = window_pane_find_right(fs->w->active,
+		    options_get_number(fs->w->options, "pane-select-wrap"));
 		if (fs->wp == NULL)
 			return (-1);
 		return (0);

@@ -3786,10 +3786,10 @@ u_int		 window_pane_search(struct window_pane *, const char *, int,
 		     int);
 const char	*window_printable_flags(struct winlink *, int);
 const char      *window_pane_printable_flags(struct window_pane *);
-struct window_pane *window_pane_find_up(struct window_pane *);
-struct window_pane *window_pane_find_down(struct window_pane *);
-struct window_pane *window_pane_find_left(struct window_pane *);
-struct window_pane *window_pane_find_right(struct window_pane *);
+struct window_pane *window_pane_find_up(struct window_pane *, int);
+struct window_pane *window_pane_find_down(struct window_pane *, int);
+struct window_pane *window_pane_find_left(struct window_pane *, int);
+struct window_pane *window_pane_find_right(struct window_pane *, int);
 void		 window_pane_stack_push(struct window_panes *,
 		     struct window_pane *);
 void		 window_pane_stack_remove(struct window_panes *,
