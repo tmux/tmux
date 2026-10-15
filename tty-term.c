@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-term.c,v 1.113 2026/10/14 12:33:46 nicm Exp $ */
+/* $OpenBSD: tty-term.c,v 1.114 2026/10/15 08:21:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -415,6 +415,8 @@ tty_term_apply(struct tty_term *term, const char *capabilities, int quiet,
 				continue;
 
 			if (remove) {
+				if (code->type == TTYCODE_STRING)
+					free(code->value.string);
 				code->type = TTYCODE_NONE;
 				continue;
 			}

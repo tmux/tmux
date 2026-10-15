@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.428 2026/10/13 10:21:58 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.429 2026/10/15 07:25:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -4289,7 +4289,10 @@ format_create_add_item(struct format_tree *ft, struct cmdq_item *item)
 {
 	struct key_event	*event = cmdq_get_event(item);
 	struct mouse_event	*m = &event->m;
+	struct client		*c = cmdq_get_client(item);
 
+	if (c != NULL && (c->flags & CLIENT_READONLY))
+		ft->flags |= FORMAT_NOJOBS;
 	cmdq_merge_formats(item, ft);
 	memcpy(&ft->m, m, sizeof ft->m);
 }

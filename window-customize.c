@@ -1,4 +1,4 @@
-/* $OpenBSD: window-customize.c,v 1.37 2026/10/08 07:50:05 nicm Exp $ */
+/* $OpenBSD: window-customize.c,v 1.38 2026/10/15 08:21:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1430,6 +1430,7 @@ monitor:
 	if (wo != NULL && options_owner(o) != wo) {
 		parent = options_get_only(wo, name);
 		if (parent != NULL) {
+			free(value);
 			value = options_to_string(parent, NULL, 0);
 			xsnprintf(label, sizeof label,
 			    "Window value (from window %u): ", fs.wl->idx);
@@ -1442,6 +1443,7 @@ monitor:
 	if (go != NULL && options_owner(o) != go) {
 		parent = options_get_only(go, name);
 		if (parent != NULL) {
+			free(value);
 			value = options_to_string(parent, NULL, 0);
 			if (!window_customize_write_value(ctx, s->cx, sx,
 			    sy - (s->cy - cy), 0, "Global value: ", "%s%s%s",

@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1463 2026/10/14 12:48:50 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1464 2026/10/15 08:07:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3989,6 +3989,7 @@ extern const struct window_mode window_tree_mode;
 
 /* window-switch.c */
 extern const struct window_mode window_switch_mode;
+void	window_switch_set_input(struct window_mode_entry *, struct evbuffer *);
 
 /* window-clock.c */
 extern const struct window_mode window_clock_mode;
