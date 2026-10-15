@@ -1808,6 +1808,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 			break;
 
 		m = screen_size_x(s) - s->cx;
+		if (s->mode & MODE_WRAP)
+			m += screen_size_x(s);
 		if (n > m)
 			n = m;
 
