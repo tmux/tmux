@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.249 2026/10/05 09:03:11 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.253 2026/10/15 13:08:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -655,7 +655,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "#{?#{e|>=:#{client_colours},256},gray10,black}",
+	  .default_str = "#{?#{e|>=:#{client_colours},256},gray95,black}",
 	  .text = "Light theme colour for black."
 	},
 
@@ -663,7 +663,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "#{?#{e|>=:#{client_colours},256},gray95,white}",
+	  .default_str = "#{?#{e|>=:#{client_colours},256},gray10,white}",
 	  .text = "Light theme colour for white."
 	},
 
