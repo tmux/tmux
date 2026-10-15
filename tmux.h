@@ -1300,6 +1300,12 @@ struct visible_ranges {
 	u_int			 size;    /* allocated capacity of ranges */
 };
 
+/* Columns of a line changed during a synchronized update. */
+struct sync_span {
+	u_int		 x;
+	u_int		 nx;
+};
+
 /* Child window structure. */
 struct window_pane {
 	u_int		 id;
@@ -1345,6 +1351,7 @@ struct window_pane {
 #define PANE_UTMP 0x800000
 
 	bitstr_t	*sync_dirty;
+	struct sync_span *sync_spans;
 	u_int		 sync_dirty_size;
 	u_int		 sync_scrolled;
 	u_int		 sync_rupper;

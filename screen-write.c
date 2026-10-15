@@ -247,6 +247,8 @@ screen_write_sync_allocate_dirty(struct window_pane *wp, u_int sy)
 	bs = wp->sync_dirty = bit_alloc(sy);
 	if (bs == NULL)
 		fatal("bit_alloc failed");
+	free(wp->sync_spans);
+	wp->sync_spans = xcalloc(sy, sizeof *wp->sync_spans);
 	if (wp->sync_dirty_size != 0) {
 		bit_nset(bs, 0, sy - 1);
 		wp->sync_scrolled = 0;
@@ -283,6 +285,94 @@ static int
 screen_write_should_draw_line(struct screen_write_ctx *ctx, u_int y)
 {
 	return (screen_write_should_draw_lines(ctx, y, 1));
+}
+
+/* Like screen_write_should_draw_line but only mark these cells if syncing. */
+static int
+screen_write_should_draw_cells(struct screen_write_ctx *ctx, u_int x, u_int y,
+    u_int nx)
+{
+	struct window_pane	*wp = ctx->wp;
+	struct screen		*s = ctx->s;
+	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
+	u_int			 end;
+	struct sync_span	*sp;
+
+	if (wp == NULL || (~s->mode & MODE_SYNC) || x >= sx || nx == 0)
+		return (screen_write_should_draw_line(ctx, y));
+	if (wp->flags & (PANE_REDRAW|PANE_DROP))
+		return (0);
+	if (y >= sy)
+		return (0);
+	if (bit_test(screen_write_sync_allocate_dirty(wp, sy), y))
+		return (0);
+
+	if (nx > sx - x)
+		nx = sx - x;
+	sp = &wp->sync_spans[y];
+	if (sp->nx == 0) {
+		sp->x = x;
+		sp->nx = nx;
+	} else {
+		end = sp->x + sp->nx;
+		if (x + nx > end)
+			end = x + nx;
+		if (x < sp->x)
+			sp->x = x;
+		sp->nx = end - sp->x;
+	}
+	return (0);
+}
+
+/* Mark dirty cells in a region as whole dirty lines, before it is scrolled. */
+static void
+screen_write_sync_spans_to_lines(struct window_pane *wp, u_int upper,
+    u_int lower)
+{
+	u_int	y;
+
+	if (wp->sync_dirty == NULL)
+		return;
+	for (y = upper; y <= lower && y < wp->sync_dirty_size; y++) {
+		if (wp->sync_spans[y].nx != 0) {
+			bit_set(wp->sync_dirty, y);
+			wp->sync_spans[y].nx = 0;
+		}
+	}
+}
+
+/* Widen dirty cells so redrawing them looks the same as redrawing the line. */
+static void
+screen_write_sync_widen_span(struct screen *s, u_int y, struct sync_span *sp)
+{
+	struct grid		*gd = s->grid;
+	struct grid_cell	 gc;
+	u_int			 x, end = sp->x + sp->nx, sx = screen_size_x(s);
+
+	/* Only whole lines let the terminal keep lines joined by a wrap. */
+	if ((grid_get_line(gd, gd->hsize + y)->flags & GRID_LINE_WRAPPED) ||
+	    (y != 0 &&
+	    (grid_get_line(gd, gd->hsize + y - 1)->flags & GRID_LINE_WRAPPED))) {
+		sp->x = 0;
+		sp->nx = sx;
+		return;
+	}
+
+	/* A terminal clears all of a wide character if part is overwritten. */
+	for (x = sp->x; x > 0; x--) {
+		grid_view_get_cell(gd, x - 1, y, &gc);
+		if (~gc.flags & GRID_FLAG_PADDING) {
+			if (x - 1 + gc.data.width > sp->x)
+				sp->x = x - 1;
+			break;
+		}
+	}
+	grid_view_get_cell(gd, end - 1, y, &gc);
+	if ((~gc.flags & GRID_FLAG_PADDING) && gc.data.width > 1)
+		end += gc.data.width - 1;
+	if (end > sx)
+		end = sx;
+	sp->nx = end - sp->x;
 }
 
 /* Set up context for TTY command. */
@@ -1317,7 +1407,8 @@ screen_write_sync_flush_dirty(struct window_pane *wp)
 	struct screen_write_ctx	 ctx;
 	struct tty_ctx		 ttyctx;
 	struct screen		*s = &wp->base;
-	u_int			 y, sy = screen_size_y(s), lines = 0;
+	struct sync_span	*sp;
+	u_int			 y, sy = screen_size_y(s), lines = 0, spans = 0;
 
 	if (wp->sync_dirty == NULL)
 		return;
@@ -1333,10 +1424,19 @@ screen_write_sync_flush_dirty(struct window_pane *wp)
 			if (bit_test(wp->sync_dirty, y)) {
 				screen_write_redraw_line(&ctx, &ttyctx, y);
 				lines++;
+				continue;
+			}
+			sp = &wp->sync_spans[y];
+			if (sp->nx != 0) {
+				screen_write_sync_widen_span(s, y, sp);
+				screen_write_redraw_cells(&ctx, &ttyctx, sp->x,
+				    y, sp->nx);
+				spans++;
 			}
 		}
 	}
-	log_debug("%s: %%%u had %u dirty lines", __func__, wp->id, lines);
+	log_debug("%s: %%%u had %u dirty lines and %u dirty spans", __func__,
+	    wp->id, lines, spans);
 
 	screen_write_stop(&ctx);
 	screen_write_sync_clear_dirty(wp);
@@ -1349,6 +1449,8 @@ screen_write_sync_clear_dirty(struct window_pane *wp)
 	if (wp != NULL) {
 		free(wp->sync_dirty);
 		wp->sync_dirty = NULL;
+		free(wp->sync_spans);
+		wp->sync_spans = NULL;
 		wp->sync_dirty_size = 0;
 		wp->sync_scrolled = 0;
 	}
@@ -1376,6 +1478,7 @@ screen_write_sync_scroll_dirty(struct screen_write_ctx *ctx)
 	if (wp->flags & (PANE_REDRAW|PANE_DROP))
 		return;
 	bs = screen_write_sync_allocate_dirty(wp, sy);
+	screen_write_sync_spans_to_lines(wp, s->rupper, s->rlower);
 
 	if (wp->sync_scrolled != 0 &&
 	    (wp->sync_rupper != s->rupper ||
@@ -2518,6 +2621,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	u_int				 y, cx, cy, items = 0;
 	struct screen_write_citem	*ci, *tmp;
 	struct screen_write_cline	*cl;
+	u_int				 minx, maxx;
 
 	if (wp != NULL && (wp->flags & (PANE_REDRAW|PANE_DROP)))
 		goto discard;
@@ -2526,8 +2630,18 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 			screen_write_sync_scroll_dirty(ctx);
 		for (y = 0; y < screen_size_y(s); y++) {
 			cl = &s->write_list[y];
-			if (!TAILQ_EMPTY(&cl->items))
-				screen_write_should_draw_line(ctx, y);
+			if (TAILQ_EMPTY(&cl->items))
+				continue;
+			minx = UINT_MAX;
+			maxx = 0;
+			TAILQ_FOREACH(ci, &cl->items, entry) {
+				if (ci->x < minx)
+					minx = ci->x;
+				if (ci->x + ci->used > maxx)
+					maxx = ci->x + ci->used;
+			}
+			screen_write_should_draw_cells(ctx, minx, y,
+			    maxx - minx);
 		}
 		goto discard;
 	}
@@ -2922,7 +3036,13 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	}
 
 	/* If not writing, done now. */
-	if (skip || !screen_write_should_draw_line(ctx, s->cy))
+	if (skip)
+		return;
+	if (redraw) {
+		if (!screen_write_should_draw_line(ctx, s->cy))
+			return;
+	} else if (!screen_write_should_draw_cells(ctx, ttyctx.ocx, s->cy,
+	    width))
 		return;
 
 	/* Do a full line redraw if needed. */
