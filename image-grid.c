@@ -931,6 +931,10 @@ image_add_row(struct image_line *line, struct image_placement *plmt,
 	struct image	*im = plmt->image;
 	u_int		 x, i, run;
 
+	if (image_get_type(im) == IMAGE_TYPE_KITTY) {
+		image_span_add(line, plmt, cx, sx, 0, src_y);
+		return;
+	}
 	for (x = 0; x < sx; x += run) {
 		if (!image_cell_has_visible_pixels(im, x, src_y)) {
 			run = 1;
@@ -941,10 +945,6 @@ image_add_row(struct image_line *line, struct image_placement *plmt,
 				break;
 		}
 
-		if (image_get_type(im) != IMAGE_TYPE_SIXEL) {
-			image_span_add(line, plmt, cx + x, run, x, src_y);
-			continue;
-		}
 		for (i = 0; i < run; i++)
 			image_line_cover(line, plmt, cx + x + i, x + i, src_y);
 		image_span_add(line, plmt, cx + x, run, x, src_y);
@@ -959,6 +959,10 @@ image_extend_row(struct image_line *line, struct image_placement *plmt,
 	struct image	*im = plmt->image;
 	u_int		 x, run;
 
+	if (image_get_type(im) == IMAGE_TYPE_KITTY) {
+		image_span_add(line, plmt, cx + from, to - from, from, src_y);
+		return;
+	}
 	for (x = from; x < to; x += run) {
 		if (!image_cell_has_visible_pixels(im, x, src_y)) {
 			run = 1;
@@ -1115,6 +1119,8 @@ image_grid_get_at(struct grid *gd, u_int x, u_int y, struct image **im,
 {
 	struct image_line	*line;
 	struct image_span	*span, *found = NULL;
+	struct image		*pim;
+	u_int			 px;
 
 	if (y >= gd->hsize + gd->sy)
 		return (0);
@@ -1122,8 +1128,13 @@ image_grid_get_at(struct grid *gd, u_int x, u_int y, struct image **im,
 	if (line == NULL)
 		return (0);
 	TAILQ_FOREACH(span, &line->spans, line_entry) {
-		if (x >= span->x && x < span->x + span->sx)
-			found = span;
+		if (x < span->x || x >= span->x + span->sx)
+			continue;
+		pim = span->placement->image;
+		px = span->source_x + x - span->x;
+		if (!image_cell_has_visible_pixels(pim, px, span->source_y))
+			continue;
+		found = span;
 	}
 	if (found == NULL)
 		return (-1);

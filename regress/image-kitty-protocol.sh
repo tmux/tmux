@@ -285,6 +285,16 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
               graphics('i=7,p=2', 'OK'))
         check('delete-last-placement', stored + first +
               graphics('a=d,d=I,i=7,p=1') + graphics('a=p,i=7,C=1'), missing)
+        transparent = graphics('a=T,i=7,p=1,q=2,C=1,f=32,s=1,v=1',
+                               '/wAAAA==')
+        for selector in ['a', 'i', 'A', 'I']:
+            check('delete-transparent-' + selector, transparent +
+                  graphics('a=d,d=%s,i=7,p=1' % selector) +
+                  graphics('a=p,i=7,C=1'),
+                  missing if selector.isupper() else ok)
+        check('delete-transparent-retains-other-placement', transparent +
+              second + graphics('a=d,d=I,i=7,p=1') +
+              graphics('a=p,i=7,C=1'), ok)
         check('delete-retain-unnumbered', stored + first + graphics(put) +
               graphics('a=d,d=I,i=7,p=1') + graphics('a=p,i=7,C=1'), ok)
         check('delete-missing-placement', stored + first +
