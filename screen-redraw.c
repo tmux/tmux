@@ -1579,7 +1579,7 @@ redraw_draw_span(struct redraw_draw_ctx *dctx, struct redraw_span *span,
 #ifdef ENABLE_IMAGES
 		else {
 			image_draw_line(&dctx->scene->c->tty, data->p.wp->screen,
-			    data->p.px, data->p.py, width, span->x, y);
+			    data->p.px, data->p.py, width, x, y);
 		}
 #endif
 		break;
@@ -1635,7 +1635,8 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 			TAILQ_FOREACH(span, spans, entry) {
 				if (span->data.p.wp == wp) {
 					image_redraw_start(&scene->c->tty,
-					    span->x, cy, span->width, 1);
+					    dctx->side_left + span->x, cy,
+					    span->width, 1);
 				}
 			}
 		}
@@ -2009,7 +2010,8 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		y = 0;
 		if (dctx.flags & REDRAW_STATUS_TOP)
 			y = dctx.status_lines;
-		image_redraw_start(tty, 0, y, scene->sx, scene->sy);
+		image_redraw_start(tty, dctx.side_left, y, scene->sx,
+		    scene->sy);
 	}
 #endif
 	tty_update_mode(tty, tty->mode & ~CURSOR_MODES, NULL);
@@ -2225,7 +2227,8 @@ redraw_draw_damage_rectangle(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 				if (span->x + span->width <= x)
 					continue;
 				image_redraw_start(&scene->c->tty,
-				    span->x, cy, span->width, 1);
+				    dctx->side_left + span->x, cy,
+				    span->width, 1);
 			}
 		}
 	}
