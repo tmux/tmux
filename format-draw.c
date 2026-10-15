@@ -1,4 +1,4 @@
-/* $OpenBSD: format-draw.c,v 1.35 2026/10/15 22:27:24 nicm Exp $ */
+/* $OpenBSD: format-draw.c,v 1.36 2026/10/15 22:34:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -223,6 +223,31 @@ format_draw_none(struct screen_write_ctx *octx, u_int available, u_int ocx,
 	    width_abs_centre);
 }
 
+/* Append the text after a list to its alignment screen. */
+static void
+format_draw_merge(struct screen *s, u_int width, struct screen *after,
+    u_int width_after, struct format_ranges *frs)
+{
+	struct screen_write_ctx	 ctx;
+	struct format_range	*fr;
+
+	format_update_ranges(frs, s, 0, 0, width);
+	format_update_ranges(frs, after, width, 0, width_after);
+
+	if (frs != NULL) {
+		TAILQ_FOREACH(fr, frs, entry) {
+			if (fr->s == after)
+				fr->s = s;
+		}
+	}
+
+	screen_write_start(&ctx, s);
+	screen_write_cursormove(&ctx, width, 0, 0);
+	screen_write_fast_copy(&ctx, after, 0, 0, width_after, 1);
+	screen_write_cursormove(&ctx, width + width_after, 0, 0);
+	screen_write_stop(&ctx);
+}
+
 /* Draw format with list on the left. */
 static void
 format_draw_left(struct screen_write_ctx *octx, u_int available, u_int ocx,
@@ -231,9 +256,8 @@ format_draw_left(struct screen_write_ctx *octx, u_int available, u_int ocx,
     struct screen *list_right, struct screen *after, int focus_start,
     int focus_end, struct format_ranges *frs)
 {
-	u_int			width_left, width_centre, width_right;
-	u_int			width_list, width_after, width_abs_centre;
-	struct screen_write_ctx	ctx;
+	u_int	width_left, width_centre, width_right;
+	u_int	width_list, width_after, width_abs_centre;
 
 	width_left = left->cx;
 	width_centre = centre->cx;
@@ -265,9 +289,8 @@ format_draw_left(struct screen_write_ctx *octx, u_int available, u_int ocx,
 
 	/* If there is no list left, pass off to the no list function. */
 	if (width_list == 0) {
-		screen_write_start(&ctx, left);
-		screen_write_fast_copy(&ctx, after, 0, 0, width_after, 1);
-		screen_write_stop(&ctx);
+		format_update_ranges(frs, list, 0, 0, 0);
+		format_draw_merge(left, width_left, after, width_after, frs);
 
 		format_draw_none(octx, available, ocx, ocy, left, centre,
 		    right, abs_centre, frs);
@@ -334,9 +357,8 @@ format_draw_centre(struct screen_write_ctx *octx, u_int available, u_int ocx,
     struct screen *list_right, struct screen *after, int focus_start,
     int focus_end, struct format_ranges *frs)
 {
-	u_int			width_left, width_centre, width_right, middle;
-	u_int			width_list, width_after, width_abs_centre;
-	struct screen_write_ctx	ctx;
+	u_int	width_left, width_centre, width_right, middle;
+	u_int	width_list, width_after, width_abs_centre;
 
 	width_left = left->cx;
 	width_centre = centre->cx;
@@ -368,9 +390,8 @@ format_draw_centre(struct screen_write_ctx *octx, u_int available, u_int ocx,
 
 	/* If there is no list left, pass off to the no list function. */
 	if (width_list == 0) {
-		screen_write_start(&ctx, centre);
-		screen_write_fast_copy(&ctx, after, 0, 0, width_after, 1);
-		screen_write_stop(&ctx);
+		format_update_ranges(frs, list, 0, 0, 0);
+		format_draw_merge(centre, width_centre, after, width_after, frs);
 
 		format_draw_none(octx, available, ocx, ocy, left, centre,
 		    right, abs_centre, frs);
@@ -442,9 +463,8 @@ format_draw_right(struct screen_write_ctx *octx, u_int available, u_int ocx,
     struct screen *list_left, struct screen *list_right, struct screen *after,
     int focus_start, int focus_end, struct format_ranges *frs)
 {
-	u_int			width_left, width_centre, width_right;
-	u_int			width_list, width_after, width_abs_centre;
-	struct screen_write_ctx	ctx;
+	u_int	width_left, width_centre, width_right;
+	u_int	width_list, width_after, width_abs_centre;
 
 	width_left = left->cx;
 	width_centre = centre->cx;
@@ -476,9 +496,8 @@ format_draw_right(struct screen_write_ctx *octx, u_int available, u_int ocx,
 
 	/* If there is no list left, pass off to the no list function. */
 	if (width_list == 0) {
-		screen_write_start(&ctx, right);
-		screen_write_fast_copy(&ctx, after, 0, 0, width_after, 1);
-		screen_write_stop(&ctx);
+		format_update_ranges(frs, list, 0, 0, 0);
+		format_draw_merge(right, width_right, after, width_after, frs);
 
 		format_draw_none(octx, available, ocx, ocy, left, centre,
 		    right, abs_centre, frs);
