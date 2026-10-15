@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-display-menu.c,v 1.56 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-display-menu.c,v 1.57 2026/10/15 22:16:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -94,6 +94,30 @@ cmd_display_menu_args_parse(struct args *args, u_int idx, __unused char **cause)
 	return (type);
 }
 
+static void
+cmd_display_menu_set_mouse_pos(struct client *tc, struct mouse_event *m,
+    struct format_tree *ft, long *mouse_x, long *mouse_y)
+{
+	u_int	ox, oy, sx, sy;
+
+	if (!m->valid)
+		return;
+	tty_window_offset(&tc->tty, &ox, &oy, &sx, &sy);
+
+	*mouse_x = m->x + ox;
+	if (m->statusat == 0) {
+		if (m->y >= m->statuslines)
+			*mouse_y = m->y - m->statuslines + oy;
+		else
+			*mouse_y = oy;
+	} else if (m->statusat > 0 && m->y >= (u_int)m->statusat)
+		*mouse_y = oy + sy - 1;
+	else
+		*mouse_y = m->y + oy;
+	format_add(ft, "popup_mouse_x", "%ld", *mouse_x);
+	format_add(ft, "popup_mouse_y", "%ld", *mouse_y);
+}
+
 static int
 cmd_display_menu_get_menu_pos(struct client *tc, struct cmdq_item *item,
     struct args *args, u_int *px, u_int *py, u_int w, u_int h)
@@ -112,27 +136,15 @@ cmd_display_menu_get_menu_pos(struct client *tc, struct cmdq_item *item,
 	long			 n, max_x, max_y, mouse_x = 0, mouse_y = 0;
 	struct format_tree	*ft;
 
+	if (event->m.valid)
+		window = tc->session->curw->window;
 	max_x = window->sx > w ? window->sx - w : 0;
 	max_y = window->sy > h ? window->sy - h : 0;
 
 	tty_window_offset(&tc->tty, &ox, &oy, &sx, &sy);
 
 	ft = format_create_from_target(item);
-	if (event->m.valid) {
-		mouse_x = event->m.x + ox;
-		if (event->m.statusat == 0) {
-			if (event->m.y >= event->m.statuslines)
-				mouse_y = event->m.y - event->m.statuslines + oy;
-			else
-				mouse_y = oy;
-		} else if (event->m.statusat > 0 &&
-		    event->m.y >= (u_int)event->m.statusat) {
-			mouse_y = oy + sy - 1;
-		} else
-			mouse_y = event->m.y + oy;
-		format_add(ft, "popup_mouse_x", "%ld", mouse_x);
-		format_add(ft, "popup_mouse_y", "%ld", mouse_y);
-	}
+	cmd_display_menu_set_mouse_pos(tc, &event->m, ft, &mouse_x, &mouse_y);
 
 	format_add(ft, "popup_last_x", "%u", window->menu_last_px);
 	format_add(ft, "popup_last_y", "%u", window->menu_last_py + h);
