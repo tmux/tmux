@@ -51,6 +51,7 @@ struct kitty_state {
 
 	u_char				*data;
 	size_t				 size;
+	size_t				 allocated;
 
 	TAILQ_HEAD(, kitty_image_map)	 images;
 };
@@ -378,7 +379,7 @@ static int
 kitty_append_data(struct kitty_state *ks, const u_char *data, size_t size)
 {
 	u_char	*d;
-	size_t	 dsize;
+	size_t	 dsize, allocated;
 
 	if (size > IMAGE_SIZE_LIMIT)
 		return (-1);
@@ -395,7 +396,15 @@ kitty_append_data(struct kitty_state *ks, const u_char *data, size_t size)
 		return (-1);
 	}
 
-	ks->data = xrealloc(ks->data, ks->size + dsize);
+	if (ks->size + dsize > ks->allocated) {
+		allocated = ks->allocated;
+		if (allocated == 0)
+			allocated = 4096;
+		while (allocated < ks->size + dsize)
+			allocated *= 2;
+		ks->data = xrealloc(ks->data, allocated);
+		ks->allocated = allocated;
+	}
 	memcpy(ks->data + ks->size, d, dsize);
 	ks->size += dsize;
 
@@ -561,6 +570,7 @@ kitty_parse_input(struct input_ctx *ictx, struct window_pane *wp,
 			free(ks->data);
 			ks->data = NULL;
 			ks->size = 0;
+			ks->allocated = 0;
 			ks->more = 0;
 		}
 	}
@@ -709,5 +719,6 @@ out:
 	free(ks->data);
 	ks->data = NULL;
 	ks->size = 0;
+	ks->allocated = 0;
 	ks->more = 0;
 }
