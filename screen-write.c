@@ -1251,10 +1251,10 @@ screen_write_cell_is_single(const struct grid_cell *gc)
 	return (1);
 }
 
-/* Redraw all visible cells on a line. */
+/* Redraw visible cells from px to px + nx - 1 on a line. */
 static void
-screen_write_redraw_line(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
-    u_int yy)
+screen_write_redraw_cells(struct screen_write_ctx *ctx,
+    struct tty_ctx *ttyctx, u_int px, u_int yy, u_int nx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = ctx->s;
@@ -1264,7 +1264,7 @@ screen_write_redraw_line(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
-	r = window_visible_ranges(wp, xoff, yoff + yy, sx, NULL);
+	r = window_visible_ranges(wp, xoff + px, yoff + yy, nx, NULL);
 	for (i = 0; i < r->used; i++) {
 		ri = &r->ranges[i];
 		if (ri->nx == 0)
@@ -1300,6 +1300,14 @@ screen_write_redraw_line(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 		}
 		tty_write(tty_cmd_cell, ttyctx);
 	}
+}
+
+/* Redraw all visible cells on a line. */
+static void
+screen_write_redraw_line(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
+    u_int yy)
+{
+	screen_write_redraw_cells(ctx, ttyctx, 0, yy, screen_size_x(ctx->s));
 }
 
 /* Redraw dirty lines. */
