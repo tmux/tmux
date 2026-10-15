@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.489 2026/10/14 12:48:50 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.490 2026/10/15 22:29:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1172,7 +1172,7 @@ tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		*rx = nx;
 	} else if (xoff < (int)ctx->wox && xoff + nx > ctx->wox + ctx->wsx) {
 		/* Both left and right not visible. */
-		*i = ctx->wox;
+		*i = ctx->wox - xoff;
 		*x = 0;
 		*rx = ctx->wsx;
 	} else if (xoff < (int)ctx->wox) {
@@ -1266,7 +1266,7 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		*rx = nx;
 	} else if (xoff < ctx->wox && xoff + nx > ctx->wox + ctx->wsx) {
 		/* Both left and right not visible. */
-		*i = ctx->wox;
+		*i = ctx->wox - xoff;
 		*x = 0;
 		*rx = ctx->wsx;
 	} else if (xoff < ctx->wox) {
