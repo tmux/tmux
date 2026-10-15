@@ -53,8 +53,10 @@ jobs:
             build-essential \
             libevent-dev \
             libncurses-dev \
+            libpng-dev \
             libutf8proc-dev \
-            pkg-config
+            pkg-config \
+            zlib1g-dev
 
       - name: dependencies
         if: runner.os == 'macOS'
@@ -64,6 +66,7 @@ jobs:
             automake \
             bison \
             libevent \
+            libpng \
             jemalloc \
             make \
             ncurses \

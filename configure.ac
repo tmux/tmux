@@ -569,7 +569,15 @@ if test "x$enable_images" = xyes; then
 			libz_version=`$PKG_CONFIG --modversion zlib 2>/dev/null`
 			test "x$libz_version" = x && libz_version=on
 		],
-		[:]
+		[
+			AC_CHECK_HEADER(zlib.h, [
+				AC_CHECK_LIB(z, uncompress, [
+					LIBS="-lz $LIBS"
+					AC_DEFINE(HAVE_LIBZ)
+					libz_version=on
+				])
+			])
+		]
 	)
 	PKG_CHECK_MODULES(
 		LIBPNG,
