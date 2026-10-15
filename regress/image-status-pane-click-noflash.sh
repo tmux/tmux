@@ -30,6 +30,10 @@ $TMUX new-session -d -s inner -x 60 -y 12 "printf '$SIXEL_HEADER'; exec sh" ||
 	exit 1
 $TMUX set -g mouse on || fail "set mouse failed"
 $TMUX set -g status 2 || fail "set status failed"
+# Keep both entries visible regardless of the hostname or pane title.
+$TMUX set -g window-pane-status-format '#P:[pane]' || fail "set pane format failed"
+$TMUX set -g window-pane-current-status-format '#P:[pane]' ||
+	fail "set current pane format failed"
 $TMUX split-window -h -t inner 'exec sh' || fail "split-window failed"
 $TMUX select-pane -t inner.0 || fail "select-pane failed"
 sleep 0.3
@@ -47,7 +51,7 @@ assert_image_reached
 : >$TMP
 
 # Locate pane 1's clickable entry in the second (bottom) status line - the
-# default window-pane-status-format starts with the pane index, so its
+# window-pane-status-format starts with the pane index, so its
 # entry is identifiable by the literal text "1:[".
 STATUSLINE=$($TMUX2 capture-pane -p -t "$OUTER" | tail -1)
 COL=$(echo "$STATUSLINE" | awk '{print index($0, "1:[")}')
