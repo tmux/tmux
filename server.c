@@ -220,6 +220,10 @@ server_start(struct tmuxproc *client, uint64_t flags, struct event_base *base,
 	TAILQ_INIT(&message_log);
 	gettimeofday(&start_time, NULL);
 
+#ifdef HAVE_KEYCTL
+	fork_session_keyring();
+#endif
+
 #ifdef HAVE_SYSTEMD
 	server_fd = systemd_create_socket(flags, &cause);
 #else
