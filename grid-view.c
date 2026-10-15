@@ -110,6 +110,11 @@ void
 grid_view_scroll_region_up(struct grid *gd, u_int rupper, u_int rlower,
     u_int bg)
 {
+#ifdef ENABLE_IMAGES
+	struct image_saved	*saved;
+#endif
+	u_int			 n = rlower - rupper;
+
 	if (gd->flags & GRID_HISTORY) {
 		grid_collect_history(gd, 0);
 		if (rupper == 0 && rlower == gd->sy - 1)
@@ -117,12 +122,24 @@ grid_view_scroll_region_up(struct grid *gd, u_int rupper, u_int rlower,
 		else {
 			rupper = grid_view_y(gd, rupper);
 			rlower = grid_view_y(gd, rlower);
+#ifdef ENABLE_IMAGES
+			saved = image_grid_save_lines(gd, rupper, rupper + 1, n, 1);
+#endif
 			grid_scroll_history_region(gd, rupper, rlower, bg);
+#ifdef ENABLE_IMAGES
+			image_grid_restore_lines(gd, saved);
+#endif
 		}
 	} else {
 		rupper = grid_view_y(gd, rupper);
 		rlower = grid_view_y(gd, rlower);
-		grid_move_lines(gd, rupper, rupper + 1, rlower - rupper, bg);
+#ifdef ENABLE_IMAGES
+		saved = image_grid_save_lines(gd, rupper, rupper + 1, n, 1);
+#endif
+		grid_move_lines(gd, rupper, rupper + 1, n, bg);
+#ifdef ENABLE_IMAGES
+		image_grid_restore_lines(gd, saved);
+#endif
 	}
 }
 
@@ -131,23 +148,42 @@ void
 grid_view_scroll_region_down(struct grid *gd, u_int rupper, u_int rlower,
     u_int bg)
 {
+#ifdef ENABLE_IMAGES
+	struct image_saved	*saved;
+#endif
+
 	rupper = grid_view_y(gd, rupper);
 	rlower = grid_view_y(gd, rlower);
 
+#ifdef ENABLE_IMAGES
+	saved = image_grid_save_lines(gd, rupper + 1, rupper, rlower - rupper, 1);
+#endif
 	grid_move_lines(gd, rupper + 1, rupper, rlower - rupper, bg);
+#ifdef ENABLE_IMAGES
+	image_grid_restore_lines(gd, saved);
+#endif
 }
 
 /* Insert lines. */
 void
 grid_view_insert_lines(struct grid *gd, u_int py, u_int ny, u_int bg)
 {
-	u_int	sy;
+#ifdef ENABLE_IMAGES
+	struct image_saved	*saved;
+#endif
+	u_int			 sy;
 
 	py = grid_view_y(gd, py);
 
 	sy = grid_view_y(gd, gd->sy);
 
+#ifdef ENABLE_IMAGES
+	saved = image_grid_save_lines(gd, py + ny, py, sy - py - ny, 0);
+#endif
 	grid_move_lines(gd, py + ny, py, sy - py - ny, bg);
+#ifdef ENABLE_IMAGES
+	image_grid_restore_lines(gd, saved);
+#endif
 }
 
 /* Insert lines in region. */
@@ -155,14 +191,23 @@ void
 grid_view_insert_lines_region(struct grid *gd, u_int rlower, u_int py,
     u_int ny, u_int bg)
 {
-	u_int	ny2;
+#ifdef ENABLE_IMAGES
+	struct image_saved	*saved;
+#endif
+	u_int			 ny2;
 
 	rlower = grid_view_y(gd, rlower);
 
 	py = grid_view_y(gd, py);
 
 	ny2 = rlower + 1 - py - ny;
+#ifdef ENABLE_IMAGES
+	saved = image_grid_save_lines(gd, rlower + 1 - ny2, py, ny2, 0);
+#endif
 	grid_move_lines(gd, rlower + 1 - ny2, py, ny2, bg);
+#ifdef ENABLE_IMAGES
+	image_grid_restore_lines(gd, saved);
+#endif
 	grid_clear(gd, 0, py + ny2, gd->sx, ny - ny2, bg);
 }
 
@@ -170,13 +215,22 @@ grid_view_insert_lines_region(struct grid *gd, u_int rlower, u_int py,
 void
 grid_view_delete_lines(struct grid *gd, u_int py, u_int ny, u_int bg)
 {
-	u_int	sy;
+#ifdef ENABLE_IMAGES
+	struct image_saved	*saved;
+#endif
+	u_int			 sy;
 
 	py = grid_view_y(gd, py);
 
 	sy = grid_view_y(gd, gd->sy);
 
+#ifdef ENABLE_IMAGES
+	saved = image_grid_save_lines(gd, py, py + ny, sy - py - ny, 0);
+#endif
 	grid_move_lines(gd, py, py + ny, sy - py - ny, bg);
+#ifdef ENABLE_IMAGES
+	image_grid_restore_lines(gd, saved);
+#endif
 	grid_clear(gd, 0, sy - ny, gd->sx, ny, bg);
 }
 
@@ -185,14 +239,23 @@ void
 grid_view_delete_lines_region(struct grid *gd, u_int rlower, u_int py,
     u_int ny, u_int bg)
 {
-	u_int	ny2;
+#ifdef ENABLE_IMAGES
+	struct image_saved	*saved;
+#endif
+	u_int			 ny2;
 
 	rlower = grid_view_y(gd, rlower);
 
 	py = grid_view_y(gd, py);
 
 	ny2 = rlower + 1 - py - ny;
+#ifdef ENABLE_IMAGES
+	saved = image_grid_save_lines(gd, py, py + ny, ny2, 0);
+#endif
 	grid_move_lines(gd, py, py + ny, ny2, bg);
+#ifdef ENABLE_IMAGES
+	image_grid_restore_lines(gd, saved);
+#endif
 	grid_clear(gd, 0, py + ny2, gd->sx, ny - ny2, bg);
 }
 

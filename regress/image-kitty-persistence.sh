@@ -48,6 +48,17 @@ def pixels(cells):
 cases = [
     ('ASCII text', origin + b'ab'),
     ('wide text', origin + '\u754c'.encode()),
+    ('insert characters', origin + b'\033[2@'),
+    ('delete characters', b'\033[3;4H\033[2P'),
+    ('insert mode', origin + b'\033[4hX\033[4l'),
+    ('wide insert mode', origin + b'\033[4h' +
+        '\u754c'.encode() + b'\033[4l'),
+    ('insert line', b'\033[4;1H\033[L'),
+    ('delete line', b'\033[4;1H\033[M'),
+    ('insert lines', b'\033[4;1H\033[2L'),
+    ('delete lines', b'\033[4;1H\033[2M'),
+    ('insert all remaining lines', b'\033[4;1H\033[99L'),
+    ('line edit outside margins', b'\033[6;12r\033[4;1H\033[L\033[r'),
     ('erase characters', b'\033[3;4H\033[2X'),
     ('erase line end', b'\033[4;5H\033[K'),
     ('erase line start', b'\033[4;4H\033[1K'),
@@ -93,16 +104,14 @@ with image_test(sys.argv[1]) as test:
     assert test.run('capture-pane', '-p') == ''
     snapshot(test, client, pixels(cells))
 
-    # Structural line operations move or remove Kitty rows with the text grid.
+    # Text line edits preserve images; complete images follow scrolling.
     colours = [red, (0, 255, 0), blue]
     striped = {(x, y): colours[y - 2] for x, y in cells}
     data = bytes(c for colour in colours for c in (*colour, 255))
     display = origin + graphics('a=T,i=8,p=9,f=32,s=1,v=3,c=4,r=3,C=1', data)
     operations = [
-        ('insert line', b'\033[4;1H\033[L',
-            {(x, y + (y >= 3)): c for (x, y), c in striped.items()}),
-        ('delete line', b'\033[4;1H\033[M',
-            {(x, y - (y > 3)): c for (x, y), c in striped.items() if y != 3}),
+        ('insert line', b'\033[4;1H\033[L', striped),
+        ('delete line', b'\033[4;1H\033[M', striped),
         ('scroll down', b'\033[3;6r\033[T',
             {(x, y + 1): c for (x, y), c in striped.items()}),
         ('reverse index', b'\033[3;6r\033[3;1H\033M',
@@ -127,12 +136,37 @@ with image_test(sys.argv[1]) as test:
     terminal.check(wanted)
     snapshot(test, client, wanted)
 
-    # Kitty rows move with a scroll region, without moving the rows outside it.
+    # An image crossing a scroll margin stays intact and stationary.
     test.emit(b'\033[2J' + place + b'\033[4;7r\033[S')
-    wanted = pixels({(x, y - (y >= 3)): red
-        for x, y in cells if y != 3})
+    wanted = pixels(cells)
     snapshot(test, client, wanted)
     test.emit(b'\033[r')
+
+    # Complete images scroll and clip; images crossing either margin stay.
+    operations = [
+        ('clip all', b'\033[3;6r\033[3S', {}),
+        ('clip top', b'\033[3;6r\033[S',
+            {(x, y - 1): c for (x, y), c in striped.items() if y > 2}),
+        ('clip bottom', b'\033[3;5r\033[T',
+            {(x, y + 1): c for (x, y), c in striped.items() if y < 4}),
+        ('cross top', b'\033[4;7r\033[S', striped),
+        ('cross bottom', b'\033[1;4r\033[T', striped),
+        ('cross top reverse index', b'\033[4;7r\033[4;1H\033M', striped),
+    ]
+    for name, operation, wanted in operations:
+        test.emit(b'\033[r\033[2J' + display + operation)
+        try:
+            snapshot(test, client, pixels(wanted))
+        except AssertionError as e:
+            raise AssertionError(name) from e
+    test.emit(b'\033[r')
+
+    # Two placements of the same image can scroll differently at a margin.
+    other = b'\033[5;9H' + graphics(
+        'a=p,i=8,p=10,c=4,r=3,C=1')
+    test.emit(b'\033[2J' + display + other + b'\033[4;7r\033[S\033[r')
+    wanted = striped | {(x + 6, y + 1): c for (x, y), c in striped.items()}
+    snapshot(test, client, pixels(wanted))
 
     # With scroll-on-clear enabled, Kitty images move into history.
     test.emit(b'\033[2J')
@@ -141,6 +175,8 @@ with image_test(sys.argv[1]) as test:
     test.emit(place + b'\033[2J')
     snapshot(test, client, {})
     assert int(test.run('display-message', '-p', '#{history_size}')) > 0
+    # Scrolling a region must leave images already in history in place.
+    test.emit(b'\033[4;7r\033[S\033[r')
     test.run('copy-mode')
     test.run('send-keys', '-X', 'history-top')
     snapshot(test, client, pixels(cells))
@@ -157,4 +193,15 @@ with image_test(sys.argv[1]) as test:
     test.run('copy-mode')
     test.run('send-keys', '-X', 'history-top')
     snapshot(test, client, {})
+
+    # The alternate screen has no history, but uses the same image rules.
+    test.run('send-keys', '-X', 'cancel')
+    test.emit(b'\033[?1049h')
+    for name, operation, wanted in operations:
+        test.emit(b'\033[r\033[2J' + display + operation)
+        try:
+            snapshot(test, client, pixels(wanted))
+        except AssertionError as e:
+            raise AssertionError('alternate screen: ' + name) from e
+    test.emit(b'\033[r\033[?1049l')
 PY

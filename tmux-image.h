@@ -28,6 +28,7 @@ struct grid_line;
 struct image;
 struct image_backend;
 struct image_line;
+struct image_saved;
 struct image_store;
 struct input_ctx;
 struct screen;
@@ -139,6 +140,9 @@ void		 image_grid_free_line(struct grid *, struct grid_line *);
 void		 image_grid_free(struct grid *);
 void		 image_grid_move_cells(struct grid *, u_int, u_int, u_int,
 		     u_int);
+struct image_saved *image_grid_save_lines(struct grid *, u_int, u_int, u_int,
+		     int);
+void		 image_grid_restore_lines(struct grid *, struct image_saved *);
 void		 image_grid_duplicate_lines(struct grid *, u_int, struct grid *,
 		     u_int, u_int);
 void		 image_grid_copy_area(struct grid *, u_int, u_int,
