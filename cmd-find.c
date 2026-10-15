@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-find.c,v 1.88 2026/09/07 12:05:12 nicm Exp $ */
+/* $OpenBSD: cmd-find.c,v 1.89 2026/10/15 07:51:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2015 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1020,6 +1020,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 			cmdq_error(item, "no current client");
 			goto error;
 		}
+		fs->s = c->session;
 		fs->wl = c->session->curw;
 		fs->wp = c->session->curw->window->active;
 		fs->w = c->session->curw->window;
