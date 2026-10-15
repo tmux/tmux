@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.520 2026/10/12 10:48:05 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.521 2026/10/15 07:48:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2274,7 +2274,7 @@ server_client_check_exit(struct client *c, int force)
 	if (~c->flags & CLIENT_EXIT)
 		return;
 
-	if (c->flags & CLIENT_CONTROL) {
+	if ((c->flags & CLIENT_CONTROL) && c->control_state != NULL) {
 		if (force)
 			control_discard_all(c);
 		else {
