@@ -407,6 +407,12 @@ screen_resize_y(struct screen *s, u_int sy, int eat_empty, u_int *cy)
 			if (available > 0) {
 				if (available > needed)
 					available = needed;
+#ifdef ENABLE_IMAGES
+				for (i = oldy - available; i < oldy; i++) {
+					image_grid_free_line(gd,
+					    &gd->linedata[gd->hsize + i]);
+				}
+#endif
 				grid_view_delete_lines(gd, oldy - available,
 				    available, 8);
 			}
