@@ -82,18 +82,23 @@ kitty_parse_control_data(struct kitty_state *ks, const u_char *data,
 	const char	*errstr;
 	u_int		 number;
 	char		 key;
-	int		 error = -1, z;
+	int		 z;
+
+	*m = NULL;
 
 	copy = ptr = xstrndup(data, size);
 	while ((next = strsep(&ptr, ",")) != NULL) {
 		if (*next == '\0') {
 			if (ptr == NULL)
 				break;
-			goto out;
+			*m = (*m == NULL ? "EINVAL" : *m);
+			continue;
 		}
 		key = next[0];
-		if (next[1] != '=' || next[2] == '\0')
-			goto out;
+		if (next[1] != '=' || next[2] == '\0') {
+			*m = (*m == NULL ? "EINVAL" : *m);
+			continue;
+		}
 		value = next + 2;
 
 		switch (key) {
@@ -101,8 +106,10 @@ kitty_parse_control_data(struct kitty_state *ks, const u_char *data,
 		case 't':
 		case 'o':
 		case 'd':
-			if (value[1] != '\0')
-				goto out;
+			if (value[1] != '\0') {
+				*m = (*m == NULL ? "EINVAL" : *m);
+				break;
+			}
 			switch (key) {
 			case 'a':
 				ks->action = value[0];
@@ -121,11 +128,19 @@ kitty_parse_control_data(struct kitty_state *ks, const u_char *data,
 		case 'z':
 			z = strtonum(value, INT_MIN, INT_MAX, &errstr);
 			if (errstr != NULL)
-				goto out;
-			if (z != 0) {
-				*m = "ENOTSUP";
-				goto out;
-			}
+				*m = (*m == NULL ? "EINVAL" : *m);
+			else if (z != 0)
+				*m = (*m == NULL ? "ENOTSUP" : *m);
+			break;
+		case 'U':
+		case 'P':
+		case 'Q':
+		case 'H':
+		case 'V':
+			if (strtonum(value, INT_MIN, UINT_MAX, &errstr) != 0)
+				*m = (*m == NULL ? "ENOTSUP" : *m);
+			else if (errstr != NULL)
+				*m = (*m == NULL ? "ENOTSUP" : *m);
 			break;
 		case 'f':
 		case 's':
@@ -146,8 +161,10 @@ kitty_parse_control_data(struct kitty_state *ks, const u_char *data,
 		case 'r':
 		case 'C':
 			number = strtonum(value, 0, UINT_MAX, &errstr);
-			if (errstr != NULL)
-				goto out;
+			if (errstr != NULL) {
+				*m = (*m == NULL ? "EINVAL" : *m);
+				break;
+			}
 			switch (key) {
 			case 'f':
 				ks->format = number;
@@ -207,11 +224,10 @@ kitty_parse_control_data(struct kitty_state *ks, const u_char *data,
 			break;
 		}
 	}
-	error = 0;
-
-out:
 	free(copy);
-	return (error);
+	if (*m != NULL)
+		return (-1);
+	return (0);
 }
 
 /* Free Kitty graphics parser state. */
@@ -538,7 +554,7 @@ kitty_parse_input(struct input_ctx *ictx, struct window_pane *wp,
 	struct image_geom	 ig = { 0 };
 	struct kitty_image_map	*map = NULL;
 	const u_char		*found;
-	const char		*m = "EINVAL";
+	const char		*m;
 	u_char			*p = NULL;
 	size_t			 csize, psize;
 	u_int			 sx, sy;
@@ -603,6 +619,7 @@ kitty_parse_input(struct input_ctx *ictx, struct window_pane *wp,
 	error = kitty_parse_control_data(ks, buf, csize, &m);
 	if (error != 0)
 		goto out;
+	m = "EINVAL";
 	if (ks->image_id == 0 && ks->image_number == 0)
 		ks->placement_id = 0;
 	if (ks->image_number != 0) {

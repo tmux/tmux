@@ -219,6 +219,38 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
               graphics(transmit + ',m=1,z=1', '/wAA') +
               graphics('m=0', '/w==') + graphics(transmit, pixel),
               unsupported + ok)
+        # Reply controls must be read even after an unsupported field.
+        check('quiet-after-layer',
+              graphics(transmit + ',z=1,q=2', pixel), '')
+        check('id-after-layer',
+              graphics('a=q,z=1,i=7,f=32,s=1,v=1', pixel), unsupported)
+        check('placement-after-layer',
+              graphics('z=-1,a=q,i=7,p=9,q=1', pixel),
+              graphics('i=7,p=9', 'ENOTSUP'))
+        check('quiet-after-invalid-control',
+              graphics('a=t,i=7,s=bad,q=2', pixel), '')
+        check('id-after-invalid-control',
+              graphics('s=bad,a=t,i=7,p=9', pixel),
+              graphics('i=7,p=9', 'EINVAL'))
+        check('id-after-malformed-control',
+              graphics('broken,a=q,i=7,p=9', pixel),
+              graphics('i=7,p=9', 'EINVAL'))
+        check('quiet-after-malformed-control',
+              graphics('broken,a=t,i=7,q=2', pixel), '')
+        check('first-error-invalid',
+              graphics('s=bad,z=1,a=q,i=7,p=9', pixel),
+              graphics('i=7,p=9', 'EINVAL'))
+        check('first-error-unsupported',
+              graphics('z=1,s=bad,a=q,i=7,p=9', pixel),
+              graphics('i=7,p=9', 'ENOTSUP'))
+        for control in ['U=1', 'P=99', 'Q=9', 'H=1', 'H=-1', 'V=1', 'V=-1']:
+            check('unsupported-placement-' + control,
+                  graphics('a=T,i=7,f=32,s=1,v=1,' + control, pixel),
+                  unsupported)
+            check('quiet-unsupported-placement-' + control,
+                  graphics('a=T,i=7,' + control + ',q=2', pixel), '')
+        check('zero-placement-extensions', graphics(transmit +
+              ',U=0,P=0,Q=0,H=0,V=0', pixel), ok)
         for z in ['-2147483649', '2147483648', '1x', '', 'bad']:
             check('invalid-layer-' + z,
                   graphics(transmit + ',z=' + z, pixel), invalid)
