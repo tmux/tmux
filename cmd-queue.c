@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-queue.c,v 1.124 2026/09/22 06:46:50 nicm Exp $ */
+/* $OpenBSD: cmd-queue.c,v 1.125 2026/10/15 07:25:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2013 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -594,6 +594,15 @@ cmdq_fire_command(struct cmdq_item *item)
 
 	flags = !!(state->flags & CMDQ_STATE_CONTROL);
 	cmdq_guard(item, "begin", flags);
+
+	if (flags &&
+	    saved != NULL &&
+	    (saved->flags & CLIENT_READONLY) &&
+	    (~entry->flags & CMD_READONLY)) {
+		cmdq_error(item, "client is read-only");
+		retval = CMD_RETURN_ERROR;
+		goto out;
+	}
 
 	if (item->client == NULL)
 		item->client = cmd_find_client(item, NULL, 1);

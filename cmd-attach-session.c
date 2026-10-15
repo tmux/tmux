@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-attach-session.c,v 1.93 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-attach-session.c,v 1.94 2026/10/15 07:25:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -55,7 +55,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	 target;
 	enum cmd_find_type	 type;
-	int			 flags;
+	int			 flags, ro = 0;
 	struct client		*c = cmdq_get_client(item), *c_loop;
 	struct session		*s;
 	struct winlink		*wl;
@@ -71,6 +71,14 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 
 	if (c == NULL)
 		return (CMD_RETURN_NORMAL);
+
+	if (c->flags & CLIENT_READONLY) {
+		if (dflag || xflag || cflag != NULL) {
+			cmdq_error(item, "client is read-only");
+			return (CMD_RETURN_ERROR);
+		}
+		ro = 1;
+	}
 
 	if (server_client_check_nested(c)) {
 		cmdq_error(item, "sessions should be nested with care, "
@@ -90,6 +98,11 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 	s = target.s;
 	wl = target.wl;
 	wp = target.wp;
+
+	if (ro && (wl != s->curw || (wp != NULL && wp != wp->window->active))) {
+		cmdq_error(item, "client is read-only");
+		return (CMD_RETURN_ERROR);
+	}
 
 	if (wl != NULL) {
 		if (wp != NULL) {
@@ -111,7 +124,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 	if (fflag)
 		server_client_set_flags(c, fflag);
 	if (rflag) {
-		if (c->flags & CLIENT_READONLY) {
+		if (ro) {
 			uid = proc_get_peer_uid(c->peer);
 			if (uid != getuid()) {
 				cmdq_error(item, "client is read-only");
@@ -134,7 +147,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 				server_client_detach(c_loop, msgtype);
 			}
 		}
-		if (!Eflag)
+		if (!Eflag && (~c->flags & CLIENT_READONLY))
 			environ_update(s->options, c->environ, s->environ);
 
 		server_client_set_session(c, s);
@@ -158,7 +171,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 				server_client_detach(c_loop, msgtype);
 			}
 		}
-		if (!Eflag)
+		if (!Eflag && (~c->flags & CLIENT_READONLY))
 			environ_update(s->options, c->environ, s->environ);
 
 		server_client_set_session(c, s);
