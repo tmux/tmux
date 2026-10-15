@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-split-window.c,v 1.153 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-split-window.c,v 1.154 2026/10/15 15:42:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -291,13 +291,8 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (~flags & SPAWN_DETACHED)
 		cmd_find_from_winlink_pane(current, wl, new_wp, 0);
 
-	if (restore_zoom) {
-		window_pop_zoom(wp->window);
-		server_redraw_window(wp->window);
-	} else if ((~flags & SPAWN_FLOATING) && !args_has(args, 'O')) {
-		window_pop_zoom(wp->window);
-		server_redraw_window(wp->window);
-	}
+	window_pop_zoom(w);
+	server_redraw_window(w);
 	server_redraw_session(s);
 
 	if (args_has(args, 'M') && is_floating) {
@@ -346,8 +341,7 @@ fail:
 			layout_close_pane(new_wp);
 		window_remove_pane(wp->window, new_wp);
 	}
-	if (restore_zoom || (~flags & SPAWN_FLOATING))
-		window_pop_zoom(wp->window);
+	window_pop_zoom(w);
 	if (sc.argv != NULL)
 		cmd_free_argv(sc.argc, sc.argv);
 	environ_free(sc.environ);
