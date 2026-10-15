@@ -1345,8 +1345,12 @@ struct window_pane {
 #define PANE_CLOSEONCANCEL 0x400000
 #define PANE_UTMP 0x800000
 
-	bitstr_t	*sync_dirty;
-	u_int		 sync_dirty_size;
+	bitstr_t	**sync_dirty;
+	bitstr_t	 *sync_dirty_all;
+	u_int		 sync_dirty_sx;
+	u_int		 sync_dirty_sy;
+	u_int		 sync_dirty_left;
+	u_int		 sync_dirty_right;
 	u_int		 sync_scrolled;
 	u_int		 sync_rupper;
 	u_int		 sync_rlower;
