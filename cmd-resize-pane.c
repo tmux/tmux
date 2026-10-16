@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-resize-pane.c,v 1.71 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-resize-pane.c,v 1.72 2026/10/16 07:59:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -267,11 +267,19 @@ cmd_resize_pane_mouse_resize_move_floating(struct client *c,
 		y -= m->statuslines;
 	else if (m->statusat > 0 && y >= m->statusat)
 		y = m->statusat - 1;
+	if (m->sideat == 0 && x >= (int)m->sidewidth)
+		x -= m->sidewidth;
+	else if (m->sideat > 0 && x >= m->sideat)
+		x = m->sideat - 1;
 	ly = m->ly + m->oy; lx = m->lx + m->ox;
 	if (m->statusat == 0 && ly >= (int)m->statuslines)
 		ly -= m->statuslines;
 	else if (m->statusat > 0 && ly >= m->statusat)
 		ly = m->statusat - 1;
+	if (m->sideat == 0 && lx >= (int)m->sidewidth)
+		lx -= m->sidewidth;
+	else if (m->sideat > 0 && lx >= m->sideat)
+		lx = m->sideat - 1;
 
 	if ((lx == left || lx == left + 1) && ly == wp->yoff - 1) {
 		/* Top left corner. */
@@ -381,11 +389,19 @@ cmd_resize_pane_mouse_resize_tiled(struct client *c, struct mouse_event *m)
 		y -= m->statuslines;
 	else if (m->statusat > 0 && y >= (u_int)m->statusat)
 		y = m->statusat - 1;
+	if (m->sideat == 0 && x >= m->sidewidth)
+		x -= m->sidewidth;
+	else if (m->sideat > 0 && x >= (u_int)m->sideat)
+		x = m->sideat - 1;
 	ly = m->ly + m->oy; lx = m->lx + m->ox;
 	if (m->statusat == 0 && ly >= m->statuslines)
 		ly -= m->statuslines;
 	else if (m->statusat > 0 && ly >= (u_int)m->statusat)
 		ly = m->statusat - 1;
+	if (m->sideat == 0 && lx >= m->sidewidth)
+		lx -= m->sidewidth;
+	else if (m->sideat > 0 && lx >= (u_int)m->sideat)
+		lx = m->sideat - 1;
 
 	for (i = 0; i < nitems(cells); i++) {
 		lc = layout_search_by_border(w->layout_root, lx + offsets[i][0],

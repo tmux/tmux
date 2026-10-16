@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.301 2026/10/14 13:36:37 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.302 2026/10/16 07:59:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -185,6 +185,8 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 
 	if (status_at_line(c) == 0)
 		ttyctx->yoff += status_line_size(c);
+	if (status_side_at_column(c) == 0)
+		ttyctx->xoff += status_side_size(c);
 
 	return (1);
 }

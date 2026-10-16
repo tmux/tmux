@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1187 2026/10/15 08:07:17 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1188 2026/10/16 07:59:06 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 15 2026 $
+.Dd $Mdocdate: October 16 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -5650,6 +5650,41 @@ is on.
 Formats are expanded, see the
 .Sx FORMATS
 section.
+.It Xo Ic side\-status
+.Op Cm off | left | right
+.Xc
+Show a vertical status line at the left or right of the terminal.
+The side status line uses the
+.Ic side\-status\-style
+colours, draws a vertical line on the edge next to the window area and is
+updated every
+.Ic status\-interval
+seconds like the status line.
+.It Ic side\-status\-format Ar format
+Specify the format used for the side status line.
+The format may produce multiple rows using the
+.Ic nl
+style or a newline character.
+.Pp
+Rows drawn with
+.Ic list=on
+are trimmed to the available height and scrolled to keep the row drawn with
+.Ic list=focus
+visible; rows drawn with
+.Ic list=left\-marker
+and
+.Ic list=right\-marker
+replace the first and last visible list row when rows are hidden above or
+below.
+.It Ic side\-status\-style Ar style
+Set the style of the side status line.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.It Ic side\-status\-width Ar width
+Set the width of the side status line.
 .It Xo Ic silence\-action
 .Op Cm any | none | current | other
 .Xc
@@ -7510,6 +7545,8 @@ The following variables are available, where appropriate:
 .It Li "line" Ta "" Ta "Line number in the list"
 .It Li "loop_index" Ta "" Ta "Index of item in the W:, P:, S:, or L: loop"
 .It Li "loop_last_flag" Ta "" Ta "1 if last window, pane, session, client in the W:, P:, S:, or L: loop"
+.It Li "mouse_absolute_x" Ta "" Ta "Mouse X position in terminal, if any"
+.It Li "mouse_absolute_y" Ta "" Ta "Mouse Y position in terminal, if any"
 .It Li "mouse_all_flag" Ta "" Ta "Pane mouse all flag"
 .It Li "mouse_any_flag" Ta "" Ta "Pane mouse any flag"
 .It Li "mouse_button_flag" Ta "" Ta "Pane mouse button flag"
@@ -7826,6 +7863,8 @@ and
 .Ic list=right\-marker
 mark the text to be used to mark that text has been trimmed from the left or
 right of the list if there is not enough space.
+.It Ic nl
+End the current row when drawn over multiple rows
 .It Ic noattr
 Do not copy attributes from the default style.
 .It Xo Ic push\-default ,

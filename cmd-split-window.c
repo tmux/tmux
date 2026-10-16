@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-split-window.c,v 1.154 2026/10/15 15:42:35 nicm Exp $ */
+/* $OpenBSD: cmd-split-window.c,v 1.155 2026/10/16 07:59:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -376,6 +376,10 @@ cmd_split_window_mouse_resize(struct client *c, struct mouse_event *m)
 		y -= m->statuslines;
 	else if (m->statusat > 0 && y >= m->statusat)
 		y = m->statusat - 1;
+	if (m->sideat == 0 && x >= (int)m->sidewidth)
+		x -= m->sidewidth;
+	else if (m->sideat > 0 && x >= m->sideat)
+		x = m->sideat - 1;
 
 	lines = window_pane_get_pane_lines(wp);
 	border = (lines != PANE_LINES_NONE);

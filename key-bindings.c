@@ -1,4 +1,4 @@
-/* $OpenBSD: key-bindings.c,v 1.194 2026/10/08 07:50:05 nicm Exp $ */
+/* $OpenBSD: key-bindings.c,v 1.195 2026/10/16 07:59:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -533,6 +533,10 @@ key_bindings_init(void)
 		/* Mouse button 1 down on status line. */
 		"bind -n MouseDown1Status { switch-client -t= }",
 		"bind -n C-MouseDown1Status { swap-window -t@ }",
+
+		/* Mouse button 1 drag on side status border. */
+		"bind -n MouseDrag1StatusBorder { if -F '#{e|>=:#{client_width},3}' { run -C \"set -t '#{session_id}' side-status-width #{?#{==:#{side-status},left},#{e|+:#{?#{e|<:#{mouse_absolute_x},1},1,#{?#{e|>:#{mouse_absolute_x},#{e|-:#{client_width},2}},#{e|-:#{client_width},2},#{mouse_absolute_x}}},1},#{e|-:#{client_width},#{?#{e|<:#{mouse_absolute_x},1},1,#{?#{e|>:#{mouse_absolute_x},#{e|-:#{client_width},2}},#{e|-:#{client_width},2},#{mouse_absolute_x}}}}}\" } }",
+		"bind -n DoubleClick1StatusBorder { set -u side-status-width }",
 
 		/* Mouse button 1 down on default pane-border-format */
 		"bind -n MouseDown1Control9 { display-menu -t= -xM -yM -O -T 'Kill pane #{pane_index}?' 'Yes' 'y' { kill-pane -t= } 'No' 'n' {}}",

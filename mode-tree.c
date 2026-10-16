@@ -1,4 +1,4 @@
-/* $OpenBSD: mode-tree.c,v 1.104 2026/10/12 18:23:25 nicm Exp $ */
+/* $OpenBSD: mode-tree.c,v 1.105 2026/10/16 07:59:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -957,16 +957,19 @@ mode_tree_draw(struct mode_tree_data *mtd)
 			}
 		} else {
 			screen_write_clearendofline(&ctx, gc.bg);
-			format_draw(&ctx, &gc, prefix_width, prefix, NULL, 1);
+			format_draw(&ctx, &gc, prefix_width, prefix, NULL,
+			    FORMAT_DRAW_DEFAULT_COLOURS);
 			if (left != 0) {
 				screen_write_cursormove(&ctx, prefix_width,
 				    i - mtd->offset, 0);
-				format_draw(&ctx, &gc, left, text, NULL, 1);
+				format_draw(&ctx, &gc, left, text, NULL,
+				    FORMAT_DRAW_DEFAULT_COLOURS);
 				if (mti->text != NULL && width < w) {
 					screen_write_cursormove(&ctx, width,
 					    i - mtd->offset, 0);
 					format_draw(&ctx, &gc, w - width,
-					    mti->text, NULL, 1);
+					    mti->text, NULL,
+					    FORMAT_DRAW_DEFAULT_COLOURS);
 				}
 			}
 		}
