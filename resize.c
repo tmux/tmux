@@ -1,4 +1,4 @@
-/* $OpenBSD: resize.c,v 1.60 2026/10/12 13:08:19 nicm Exp $ */
+/* $OpenBSD: resize.c,v 1.61 2026/10/15 22:28:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -472,7 +472,7 @@ recalculate_sizes_now(int now)
 		s = c->session;
 		if (s != NULL && !(c->flags & CLIENT_UNATTACHEDFLAGS))
 			s->attached++;
-		if (ignore_client_size(c))
+		if (s == NULL)
 			continue;
 		if (c->tty.sy <= s->statuslines || (c->flags & CLIENT_CONTROL))
 			c->flags |= CLIENT_STATUSOFF;
