@@ -54,7 +54,12 @@ struct kitty_state {
 	size_t				 allocated;
 
 	TAILQ_HEAD(, kitty_image_map)	 images;
+	TAILQ_ENTRY(kitty_state)	 entry;
 };
+TAILQ_HEAD(kitty_states, kitty_state);
+
+/* Kitty input states holding uploaded images. */
+static struct kitty_states kitty_states = TAILQ_HEAD_INITIALIZER(kitty_states);
 
 /* Map a Kitty placement ID to an image ID. */
 struct kitty_placement_map {
@@ -72,6 +77,13 @@ struct kitty_image_map {
 
 	TAILQ_ENTRY(kitty_image_map)		 entry;
 };
+
+/* Select Kitty output. */
+int
+kitty_select(__unused struct tty *tty)
+{
+	return (0);
+}
 
 /* Parse Kitty graphics control data. */
 static int
@@ -240,6 +252,7 @@ kitty_free_state(void *state)
 
 	if (ks == NULL)
 		return;
+	TAILQ_REMOVE(&kitty_states, ks, entry);
 	while ((map = TAILQ_FIRST(&ks->images)) != NULL) {
 		TAILQ_REMOVE(&ks->images, map, entry);
 		while ((kpl = TAILQ_FIRST(&map->placements)) != NULL) {
@@ -251,6 +264,32 @@ kitty_free_state(void *state)
 	}
 	free(ks->data);
 	free(ks);
+}
+
+/* Remove a Kitty image. */
+void
+kitty_remove_image(struct image *im)
+{
+	struct kitty_state		*ks;
+	struct kitty_image_map		*map, *next;
+	struct kitty_placement_map	*kpl, *kpl1;
+	u_int				 id = image_get_id(im);
+
+	TAILQ_FOREACH(ks, &kitty_states, entry) {
+		TAILQ_FOREACH_SAFE(map, &ks->images, entry, next) {
+			TAILQ_FOREACH_SAFE(kpl, &map->placements, entry, kpl1) {
+				if (map->image_id != id && kpl->image_id != id)
+					continue;
+				TAILQ_REMOVE(&map->placements, kpl, entry);
+				free(kpl);
+			}
+			if (map->image_id != id)
+				continue;
+			TAILQ_REMOVE(&ks->images, map, entry);
+			image_free(im);
+			free(map);
+		}
+	}
 }
 
 /* Find an image mapping by Kitty image ID. */
@@ -568,6 +607,7 @@ kitty_parse_input(struct input_ctx *ictx, struct window_pane *wp,
 	if (ks == NULL) {
 		ks = xcalloc(1, sizeof *ks);
 		TAILQ_INIT(&ks->images);
+		TAILQ_INSERT_TAIL(&kitty_states, ks, entry);
 		*state = ks;
 	}
 

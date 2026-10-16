@@ -103,7 +103,7 @@ struct image_recover_row {
 	u_int			 source_y;
 };
 
-/* A backend to draw an image. */
+/* Image backend callbacks. */
 struct image_backend {
 	const char	*name;
 	int		(*get_flags)(struct tty *);
@@ -115,6 +115,7 @@ struct image_backend {
 	void		(*start_draw)(struct tty *, u_int, u_int, u_int, u_int);
 	void		(*flush)(struct tty *);
 	void		(*free)(struct tty *);
+	void		(*remove_image)(struct image *);
 };
 
 /* Backend definitions. */
@@ -123,6 +124,7 @@ static struct image_backend image_backend_fallback = {
 	fallback_get_flags,
 	fallback_select,
 	fallback_map_cell,
+	NULL,
 	NULL,
 	NULL,
 	NULL,
@@ -136,11 +138,24 @@ static struct image_backend image_backend_sixel = {
 	sixel_draw_rect,
 	sixel_start_draw,
 	sixel_flush_pending,
-	sixel_free_pending
+	sixel_free_pending,
+	NULL
+};
+static struct image_backend image_backend_kitty = {
+	"kitty",
+	NULL,
+	kitty_select,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	kitty_remove_image
 };
 
 /* Backends in order of preference. */
 static struct image_backend *image_backends[] = {
+	&image_backend_kitty,
 	&image_backend_sixel,
 	&image_backend_fallback
 };
@@ -603,12 +618,17 @@ image_grid_remove_all(struct image *im)
 {
 	struct image_store	*store;
 	struct image_placement	*plmt, *next;
+	u_int			 i;
 
 	TAILQ_FOREACH(store, &image_stores, entry) {
 		TAILQ_FOREACH_SAFE(plmt, &store->placements, entry, next) {
 			if (plmt->image == im)
 				image_remove_placement(plmt);
 		}
+	}
+	for (i = 0; i < nitems(image_backends); i++) {
+		if (image_backends[i]->remove_image != NULL)
+			image_backends[i]->remove_image(im);
 	}
 }
 

@@ -197,10 +197,12 @@ void		 sixel_free_pending(struct tty *);
 void		 sixel_flush_pending(struct tty *);
 
 /* image-kitty.c */
+int		 kitty_select(struct tty *);
 void		 kitty_parse_input(struct input_ctx *, struct window_pane *,
 		     struct screen_write_ctx *, u_int, void **, const u_char *,
 		     size_t);
 void		 kitty_free_state(void *);
+void		 kitty_remove_image(struct image *);
 
 #endif /* ENABLE_IMAGES */
 
