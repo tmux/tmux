@@ -456,7 +456,7 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 	return (w);
 }
 
-static void
+void
 window_destroy(struct window *w)
 {
 	struct window_pane	*wp;

@@ -40,9 +40,9 @@ const struct cmd_entry cmd_new_session_entry = {
 	.description = "Create a new session.",
 	.alias = "new",
 
-	.args = { "Ac:dDe:EF:f:n:Ps:t:x:Xy:", 0, -1, NULL },
+	.args = { "Ac:dDe:EF:f:n:O:Ps:t:x:Xy:", 0, -1, NULL },
 	.usage = "[-AdDEPX] [-c start-directory] [-e environment] [-F format] "
-		 "[-f flags] [-n window-name] [-s session-name] "
+		 "[-f flags] [-n window-name] [-O option] [-s session-name] "
 		 CMD_TARGET_SESSION_USAGE " [-x width] [-y height] "
 		 "[shell-command [argument ...]]",
 
@@ -291,6 +291,19 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		environ_put(env, av->string, 0);
 		av = args_next_value(av);
 	}
+	av = args_first_value(args, 'O');
+	while (av != NULL) {
+		sc.options = xreallocarray(sc.options, sc.noptions+1,
+				           sizeof *sc.options);
+		sc.options[sc.noptions++] = xstrdup(av->string);
+		av = args_next_value(av);
+	}
+	if (options_collect(oo, OPTIONS_TABLE_SESSION, sc.options, sc.noptions,
+			    &cause) != 0) {
+		cmdq_error(item, "setting session options failed: %s", cause);
+		free(cause);
+		goto fail;
+	}
 	s = session_create(prefix, sname, cwd, env, oo, tiop);
 
 	/* Spawn the initial window. */
@@ -376,6 +389,9 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (sc.argv != NULL)
 		cmd_free_argv(sc.argc, sc.argv);
+	while (sc.noptions > 0)
+		free(sc.options[--sc.noptions]);
+	free(sc.options);
 	free(cwd);
 	free(wname);
 	free(sname);
@@ -385,6 +401,9 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 fail:
 	if (sc.argv != NULL)
 		cmd_free_argv(sc.argc, sc.argv);
+	while (sc.noptions > 0)
+		free(sc.options[--sc.noptions]);
+	free(sc.options);
 	free(cwd);
 	free(wname);
 	free(sname);
