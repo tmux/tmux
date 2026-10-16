@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.253 2026/10/15 13:08:43 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.254 2026/10/16 07:59:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -53,6 +53,9 @@ static const char *options_table_status_justify_list[] = {
 };
 static const char *options_table_status_position_list[] = {
 	"top", "bottom", NULL
+};
+static const char *options_table_side_status_list[] = {
+	"off", "left", "right", NULL
 };
 static const char *options_table_bell_action_list[] = {
 	"none", "any", "current", "other", NULL
@@ -243,6 +246,50 @@ static const char *options_table_status_format_default[] = {
 	OPTIONS_TABLE_STATUS_FORMAT3,
 	NULL
 };
+
+/* Side status line format. */
+#define OPTIONS_TABLE_SIDE_STATUS_WINDOW \
+	"#[range=window|#{window_index} #{E:window-status-style}]" \
+	"#I:#W#{?window_flags,#{window_flags}, }" \
+	"#[norange default]#[nl]"
+#define OPTIONS_TABLE_SIDE_STATUS_CURRENT \
+	"#[range=window|#{window_index} list=focus " \
+		"#{?#{!=:#{E:window-status-current-style},default}," \
+			"#{E:window-status-current-style}," \
+			"#{E:window-status-style}" \
+		"}" \
+	"]" \
+	"#I:#W#{?window_flags,#{window_flags}, }" \
+	"#[norange list=on default]#[nl]"
+#define OPTIONS_TABLE_SIDE_STATUS_BRANCH \
+	"#[acs fg=themelightgrey]#{?window_end_flag,mq,tq}+" \
+	"#[noacs default] "
+#define OPTIONS_TABLE_SIDE_STATUS_FORMAT1 \
+	"#[list=on]" \
+	"#[list=left-marker]#[acs]-#[noacs]#[nl]" \
+	"#[list=right-marker]#[acs].#[noacs]#[nl]" \
+	"#{?#{e|>:#{server_sessions},1}," \
+		"#{S:" \
+			"#[range=session|#{session_id}]" \
+			"#{session_name}" \
+			"#[norange]#[nl]" \
+			"#{?#{==:#{session_name},#{client_session}}," \
+				"#{W:" \
+					OPTIONS_TABLE_SIDE_STATUS_BRANCH \
+					OPTIONS_TABLE_SIDE_STATUS_WINDOW \
+				"," \
+					OPTIONS_TABLE_SIDE_STATUS_BRANCH \
+					OPTIONS_TABLE_SIDE_STATUS_CURRENT \
+				"}" \
+			",}" \
+		"}" \
+	"," \
+		"#{W:" \
+			OPTIONS_TABLE_SIDE_STATUS_WINDOW \
+		"," \
+			OPTIONS_TABLE_SIDE_STATUS_CURRENT \
+		"}" \
+	"}"
 
 /* Helpers for hook options. */
 #define OPTIONS_TABLE_HOOK(hook_name, default_value, hook_text) \
@@ -996,6 +1043,40 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .default_str = "#S:#I:#W - \"#T\" #{session_alerts}",
 	  .text = "Format of the terminal title to set."
+	},
+
+	{ .name = "side-status",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_side_status_list,
+	  .default_num = 0,
+	  .text = "Whether to draw a vertical status line at the left or "
+		  "right of the terminal."
+	},
+
+	{ .name = "side-status-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = OPTIONS_TABLE_SIDE_STATUS_FORMAT1,
+	  .text = "Format for the side status line."
+	},
+
+	{ .name = "side-status-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = "fg=themegreen",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of the side status line."
+	},
+
+	{ .name = "side-status-width",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .minimum = 1,
+	  .maximum = SHRT_MAX,
+	  .default_num = 14,
+	  .text = "Width of the side status line."
 	},
 
 	{ .name = "silence-action",

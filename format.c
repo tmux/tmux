@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.429 2026/10/15 07:25:07 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.430 2026/10/16 07:59:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1366,27 +1366,44 @@ format_cb_mouse_line(struct format_tree *ft)
 	return (format_grid_line(gd, gd->hsize + y));
 }
 
+/* Get mouse status position: 0 horizontal, 1 side, -1 unavailable. */
+static int
+format_mouse_status_at(struct format_tree *ft, u_int *x, u_int *y)
+{
+	struct mouse_event	*m = &ft->m;
+
+	if (!m->valid)
+		return (-1);
+	if (ft->c == NULL || (~ft->c->tty.flags & TTY_STARTED))
+		return (-1);
+
+	*x = m->x;
+	*y = m->y;
+	if (m->statusat == 0 && m->y < m->statuslines)
+		return (0);
+	if (m->statusat > 0 && m->y >= (u_int)m->statusat) {
+		*y -= m->statusat;
+		return (0);
+	}
+	if (m->sideat == -1 ||
+	    m->x < (u_int)m->sideat ||
+	    m->x >= m->sideat + m->sidewidth)
+		return (-1);
+	*x -= m->sideat;
+	if (m->statusat == 0)
+		*y -= m->statuslines;
+	return (1);
+}
+
 /* Callback for mouse_status_line. */
 static void *
 format_cb_mouse_status_line(struct format_tree *ft)
 {
-	char	*value;
-	u_int	 y;
+	u_int	x, y;
 
-	if (!ft->m.valid)
+	if (format_mouse_status_at(ft, &x, &y) == -1)
 		return (NULL);
-	if (ft->c == NULL || (~ft->c->tty.flags & TTY_STARTED))
-		return (NULL);
-
-	if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines) {
-		y = ft->m.y;
-	} else if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat) {
-		y = ft->m.y - ft->m.statusat;
-	} else
-		return (NULL);
-	xasprintf(&value, "%u", y);
-	return (value);
-
+	return (format_printf("%u", y));
 }
 
 /* Callback for mouse_status_range. */
@@ -1395,22 +1412,16 @@ format_cb_mouse_status_range(struct format_tree *ft)
 {
 	struct style_range	*sr;
 	u_int			 x, y;
+	int			 side;
 
-	if (!ft->m.valid)
+	side = format_mouse_status_at(ft, &x, &y);
+	if (side == -1)
 		return (NULL);
-	if (ft->c == NULL || (~ft->c->tty.flags & TTY_STARTED))
-		return (NULL);
+	if (side)
+		sr = status_side_get_range(ft->c, x, y);
+	else
+		sr = status_get_range(ft->c, x, y);
 
-	if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines) {
-		x = ft->m.x;
-		y = ft->m.y;
-	} else if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat) {
-		x = ft->m.x;
-		y = ft->m.y - ft->m.statusat;
-	} else
-		return (NULL);
-
-	sr = status_get_range(ft->c, x, y);
 	if (sr == NULL)
 		return (NULL);
 	switch (sr->type) {
@@ -2064,6 +2075,24 @@ format_cb_mouse_utf8_flag(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for mouse_absolute_x. */
+static void *
+format_cb_mouse_absolute_x(struct format_tree *ft)
+{
+	if (!ft->m.valid)
+		return (NULL);
+	return (format_printf("%u", ft->m.x));
+}
+
+/* Callback for mouse_absolute_y. */
+static void *
+format_cb_mouse_absolute_y(struct format_tree *ft)
+{
+	if (!ft->m.valid)
+		return (NULL);
+	return (format_printf("%u", ft->m.y));
+}
+
 /* Callback for mouse_x. */
 static void *
 format_cb_mouse_x(struct format_tree *ft)
@@ -2073,15 +2102,11 @@ format_cb_mouse_x(struct format_tree *ft)
 
 	if (!ft->m.valid)
 		return (NULL);
+	if (format_mouse_status_at(ft, &x, &y) != -1)
+		return (format_printf("%u", x));
 	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
 	if (wp != NULL && cmd_mouse_at(wp, &ft->m, &x, &y, 0) == 0)
 		return (format_printf("%u", x));
-	if (ft->c != NULL && (ft->c->tty.flags & TTY_STARTED)) {
-		if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines)
-			return (format_printf("%u", ft->m.x));
-		if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat)
-			return (format_printf("%u", ft->m.x));
-	}
 	return (NULL);
 }
 
@@ -2094,15 +2119,11 @@ format_cb_mouse_y(struct format_tree *ft)
 
 	if (!ft->m.valid)
 		return (NULL);
+	if (format_mouse_status_at(ft, &x, &y) != -1)
+		return (format_printf("%u", y));
 	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
 	if (wp != NULL && cmd_mouse_at(wp, &ft->m, &x, &y, 0) == 0)
 		return (format_printf("%u", y));
-	if (ft->c != NULL && (ft->c->tty.flags & TTY_STARTED)) {
-		if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines)
-			return (format_printf("%u", ft->m.y));
-		if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat)
-			return (format_printf("%u", ft->m.y - ft->m.statusat));
-	}
 	return (NULL);
 }
 
@@ -3760,6 +3781,12 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "last_window_index", FORMAT_TABLE_STRING,
 	  format_cb_last_window_index
+	},
+	{ "mouse_absolute_x", FORMAT_TABLE_STRING,
+	  format_cb_mouse_absolute_x
+	},
+	{ "mouse_absolute_y", FORMAT_TABLE_STRING,
+	  format_cb_mouse_absolute_y
 	},
 	{ "mouse_all_flag", FORMAT_TABLE_STRING,
 	  format_cb_mouse_all_flag

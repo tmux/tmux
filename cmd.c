@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd.c,v 1.189 2026/07/17 08:29:34 nicm Exp $ */
+/* $OpenBSD: cmd.c,v 1.190 2026/10/16 07:59:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -778,6 +778,8 @@ cmd_mouse_at(struct window_pane *wp, struct mouse_event *m, u_int *xp,
 
 	if (m->statusat == 0 && y >= m->statuslines)
 		y -= m->statuslines;
+	if (m->sideat == 0 && x >= m->sidewidth)
+		x -= m->sidewidth;
 
 	if ((int)x < wp->xoff || (int)x >= wp->xoff + (int)wp->sx)
 		return (-1);

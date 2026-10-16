@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1464 2026/10/15 08:07:17 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1465 2026/10/16 07:59:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -179,6 +179,7 @@ enum key_code_mouse_location {
 	KEYC_MOUSE_LOCATION_STATUS_LEFT,
 	KEYC_MOUSE_LOCATION_STATUS_RIGHT,
 	KEYC_MOUSE_LOCATION_STATUS_DEFAULT,
+	KEYC_MOUSE_LOCATION_STATUS_BORDER,
 	KEYC_MOUSE_LOCATION_BORDER,
 	KEYC_MOUSE_LOCATION_SCROLLBAR_UP,
 	KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER,
@@ -236,6 +237,7 @@ enum key_code_mouse_location {
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS_LEFT),      \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS_RIGHT),     \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS_DEFAULT),   \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS_BORDER),    \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, BORDER),           \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_UP),     \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_SLIDER), \
@@ -272,6 +274,7 @@ enum key_code_mouse_location {
 	{ #s "StatusLeft", KEYC_ ## name ## _STATUS_LEFT },	      \
 	{ #s "StatusRight", KEYC_ ## name ## _STATUS_RIGHT },	      \
 	{ #s "StatusDefault", KEYC_ ## name ## _STATUS_DEFAULT },     \
+	{ #s "StatusBorder", KEYC_ ## name ## _STATUS_BORDER },       \
 	{ #s "ScrollbarUp", KEYC_ ## name ## _SCROLLBAR_UP },         \
 	{ #s "ScrollbarSlider", KEYC_ ## name ## _SCROLLBAR_SLIDER }, \
 	{ #s "ScrollbarDown", KEYC_ ## name ## _SCROLLBAR_DOWN },     \
@@ -983,6 +986,7 @@ struct style_range {
 
 	u_int			 start;
 	u_int			 end; /* not included */
+	u_int			 y; /* row for multi-row areas */
 
 	TAILQ_ENTRY(style_range) entry;
 };
@@ -1023,10 +1027,10 @@ struct style {
 	int			width;
 	int			width_percentage;
 	int			pad;
+	int			nl;
+	u_int			link;
 
 	enum style_default_type	default_type;
-
-	u_int			link;
 };
 
 /* Cursor style. */
@@ -1626,6 +1630,8 @@ struct session {
 
 	int		 statusat;
 	u_int		 statuslines;
+	int		 sidestatusat; /* -1 off, 0 left, 1 right */
+	u_int		 sidestatuswidth;
 
 	struct options	*options;
 
@@ -1685,6 +1691,8 @@ struct mouse_event {
 
 	int		statusat;
 	u_int		statuslines;
+	int		sideat;
+	u_int		sidewidth;
 
 	u_int		x;
 	u_int		y;
@@ -1825,6 +1833,7 @@ struct tty {
 	u_int		 mouse_last_b;
 	int		 mouse_drag_flag;
 	int		 mouse_drag_status;
+	enum key_code_mouse_location mouse_drag_location;
 	u_int		 mouse_drag_x;
 	u_int		 mouse_drag_y;
 	int		 mouse_scrolling_flag;
@@ -2074,9 +2083,18 @@ struct status_line {
 	int			 references;
 
 	u_int			 prompt_cx;
+	struct grid_cell	 style;
+	struct style_line_entry	 entries[STATUS_LINES_LIMIT];
+};
+
+/* Side status line. */
+struct side_status_line {
+	struct screen		 screen;
 
 	struct grid_cell	 style;
-	struct style_line_entry entries[STATUS_LINES_LIMIT];
+	char			*expanded;
+	int			 linex;
+	struct style_ranges	 ranges;
 };
 
 /* File in client. */
@@ -2245,6 +2263,7 @@ struct client {
 	struct mouse_event	 click_event;
 
 	struct status_line	 status;
+	struct side_status_line	 side_status;
 	struct event		 cycle_timer;
 	enum client_theme	 theme;
 
@@ -2291,6 +2310,7 @@ struct client {
 #define CLIENT_WRITE_ACK 0x4000000000ULL
 #define CLIENT_NO_DETACH_ON_DESTROY 0x8000000000ULL
 #define CLIENT_CONTROL_DISCARD 0x10000000000ULL
+#define CLIENT_SIDESTATUSOFF 0x20000000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
@@ -2759,8 +2779,13 @@ void	 events_fire_pane(const char *, struct window_pane *);
 void	 events_fire_winlink(const char *, struct winlink *);
 
 /* format-draw.c */
+#define FORMAT_DRAW_DEFAULT_COLOURS 0x1
+#define FORMAT_DRAW_NO_LIST 0x2
 void	 format_draw(struct screen_write_ctx *, const struct grid_cell *,
 	     u_int, const char *, struct style_ranges *, int);
+u_int	 format_draw_lines(struct screen_write_ctx *,
+	     const struct grid_cell *, u_int, u_int, u_int, const char *,
+	     struct style_ranges *, int);
 u_int	 format_width(const char *);
 char	*format_trim_left(const char *, u_int);
 char	*format_trim_right(const char *, u_int);
@@ -3347,6 +3372,13 @@ void	 status_update_cache(struct session *);
 u_int	 status_prompt_line_at(struct client *);
 int	 status_at_line(struct client *);
 u_int	 status_line_size(struct client *);
+u_int	 status_side_size(struct client *);
+int	 status_side_at_column(struct client *);
+u_int	 status_side_rows(struct client *);
+void	 status_side_init(struct client *);
+void	 status_side_free(struct client *);
+int	 status_side_redraw(struct client *);
+struct style_range *status_side_get_range(struct client *, u_int, u_int);
 struct style_range *status_get_range(struct client *, u_int, u_int);
 void	 status_init(struct client *);
 void	 status_free(struct client *);
@@ -4182,6 +4214,8 @@ void		 style_set_scrollbar_style_from_option(struct style *,
 void		 style_ranges_init(struct style_ranges *);
 void		 style_ranges_free(struct style_ranges *);
 struct style_range *style_ranges_get_range(struct style_ranges *, u_int);
+struct style_range *style_ranges_get_range_at(struct style_ranges *, u_int,
+		     u_int);
 
 /* spawn.c */
 struct winlink	*spawn_window(struct spawn_context *, char **);
