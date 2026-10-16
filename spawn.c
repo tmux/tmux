@@ -1,4 +1,4 @@
-/* $OpenBSD: spawn.c,v 1.57 2026/10/08 07:50:05 nicm Exp $ */
+/* $OpenBSD: spawn.c,v 1.58 2026/10/16 14:26:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -140,6 +140,7 @@ spawn_window(struct spawn_context *sc, char **cause)
 			}
 		}
 
+		window_unzoom(w, 1);
 		sc->wp0 = TAILQ_FIRST(&w->panes);
 		TAILQ_REMOVE(&w->panes, sc->wp0, entry);
 
