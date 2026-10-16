@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.50 2026/10/14 13:36:37 nicm Exp $ */
+/* $OpenBSD: tty-features.c,v 1.51 2026/10/16 16:49:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -359,7 +359,7 @@ static const struct tty_feature tty_feature_sixel = {
 	TERM_SIXEL
 };
 
-/* Terminal supports Kitty graphics Unicode placeholders. */
+/* Terminal supports the Kitty graphics protocol. */
 static const struct tty_feature tty_feature_kittygraphics = {
 	"kittygraphics",
 	NULL,
