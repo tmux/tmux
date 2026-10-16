@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.386 2026/10/13 10:21:58 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.387 2026/10/16 11:34:49 bket Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2719,7 +2719,6 @@ window_pane_scrollbar_start_timer(struct window_pane *wp)
 	    "pane-scrollbars-timeout");
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
-	evtimer_del(&wp->sb_auto_timer);
 	evtimer_add(&wp->sb_auto_timer, &tv);
 }
 
