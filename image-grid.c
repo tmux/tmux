@@ -59,8 +59,13 @@ TAILQ_HEAD(image_placements, image_placement);
 
 /* Placements owned by one grid. */
 struct image_store {
-	struct image_placements	 placements;
+	struct image_placements		 placements;
+	TAILQ_ENTRY(image_store)	 entry;
 };
+TAILQ_HEAD(image_stores, image_store);
+
+/* All current placements. */
+static struct image_stores image_stores = TAILQ_HEAD_INITIALIZER(image_stores);
 
 /* A shared placements copied when duplicating lines. */
 struct image_copy_map {
@@ -175,6 +180,7 @@ image_draw_span(struct image_backend *backend, struct tty *tty,
 	struct image_rect	 rect;
 
 	rect.image = span->placement->image;
+	image_touch(rect.image);
 	rect.src_x = span->source_x + start - span->x;
 	rect.src_y = span->source_y;
 	rect.sx = end - start;
@@ -265,6 +271,7 @@ image_store_get(struct grid *gd)
 	if (gd->images == NULL) {
 		gd->images = xcalloc(1, sizeof *gd->images);
 		TAILQ_INIT(&gd->images->placements);
+		TAILQ_INSERT_TAIL(&image_stores, gd->images, entry);
 	}
 	return (gd->images);
 }
@@ -293,6 +300,7 @@ image_placement_create(struct grid *gd, struct image *im)
 	TAILQ_INIT(&plmt->spans);
 	TAILQ_INSERT_TAIL(&store->placements, plmt, entry);
 	image_ref(im);
+	image_touch(im);
 	return (plmt);
 }
 
@@ -440,6 +448,32 @@ image_grid_remove(struct grid *gd, u_int x, u_int y, u_int sx, u_int sy)
 	image_store_prune(gd->images);
 }
 
+/* Remove a placement and all of its spans. */
+static void
+image_remove_placement(struct image_placement *plmt)
+{
+	struct image_span	*span, *span1;
+
+	TAILQ_FOREACH_SAFE(span, &plmt->spans, placement_entry, span1)
+		image_span_free(span);
+	image_placement_free(plmt);
+}
+
+/* Remove every placement for an image. */
+void
+image_grid_remove_all(struct image *im)
+{
+	struct image_store	*store;
+	struct image_placement	*plmt, *next;
+
+	TAILQ_FOREACH(store, &image_stores, entry) {
+		TAILQ_FOREACH_SAFE(plmt, &store->placements, entry, next) {
+			if (plmt->image == im)
+				image_remove_placement(plmt);
+		}
+	}
+}
+
 /* Free all spans on a grid line. */
 void
 image_grid_free_line(struct grid *gd, struct grid_line *gl)
@@ -464,6 +498,7 @@ image_grid_free(struct grid *gd)
 {
 	if (gd->images != NULL) {
 		image_store_prune(gd->images);
+		TAILQ_REMOVE(&image_stores, gd->images, entry);
 		free(gd->images);
 		gd->images = NULL;
 	}
@@ -973,6 +1008,7 @@ image_grid_get_at(struct grid *gd, u_int x, u_int y, struct image **im,
 	if (found == NULL)
 		return (-1);
 	*im = found->placement->image;
+	image_touch(*im);
 	*src_x = found->source_x + x - found->x;
 	*src_y = found->source_y;
 	return (1);

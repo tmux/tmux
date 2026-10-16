@@ -102,6 +102,7 @@ struct image	*image_find(u_int);
 u_int		 image_get_id(struct image *);
 void		 image_ref(struct image *);
 void		 image_free(struct image *);
+void		 image_touch(struct image *);
 struct image_geom *image_get_geometry(struct image *);
 u_char		*image_get_pixels(struct image *, size_t *, size_t *);
 int		 image_get_bounds(struct image_geom *, u_int, u_int, u_int,
@@ -118,6 +119,7 @@ void		 image_grid_add(struct grid *, struct image *, u_int, u_int,
 void		 image_grid_remove(struct grid *, u_int, u_int, u_int, u_int);
 void		 image_grid_free_line(struct grid *, struct grid_line *);
 void		 image_grid_free(struct grid *);
+void		 image_grid_remove_all(struct image *);
 void		 image_grid_move_cells(struct grid *, u_int, u_int, u_int,
 		     u_int);
 void		 image_grid_duplicate_lines(struct grid *, u_int, struct grid *,

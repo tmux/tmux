@@ -26,13 +26,19 @@
 
 #include "tmux.h"
 
+/* Maximum number of images and total bytes. */
+#define IMAGE_MAX_IMAGES 1000
+#define IMAGE_MAX_BYTES (1024 * 1024 * 1024)
+
 /* An image. */
+TAILQ_HEAD(image_list, image);
 struct image {
 	u_int			 id;
 	u_int			 references;
 	struct image_geom	 geom;
 
 	struct image		*parent;
+	struct image_list	 children;
 	u_int			 order_id;
 
 	/*
@@ -46,9 +52,18 @@ struct image {
 	u_char			*pixels;
 
 	RB_ENTRY(image)		 entry;
+	TAILQ_ENTRY(image)	 all_entry;
+	TAILQ_ENTRY(image)	 child_entry;
 };
 RB_HEAD(images, image);
 static struct images images = RB_INITIALIZER(&images);
+
+/* All images, most recently used first. */
+static struct image_list all_images = TAILQ_HEAD_INITIALIZER(all_images);
+
+/* Number of images and size. */
+static u_int image_count;
+static size_t image_size;
 
 /* Next image ID. */
 static u_int image_next_id;
@@ -65,6 +80,18 @@ image_cmp(struct image *a, struct image *b)
 }
 RB_GENERATE_STATIC(images, image, entry, image_cmp);
 
+/* Record use of an image and its parents. */
+void
+image_touch(struct image *im)
+{
+	for (; im != NULL; im = im->parent) {
+		if (TAILQ_FIRST(&all_images) != im) {
+			TAILQ_REMOVE(&all_images, im, all_entry);
+			TAILQ_INSERT_HEAD(&all_images, im, all_entry);
+		}
+	}
+}
+
 /* Find an image by its ID. */
 struct image *
 image_find(u_int id)
@@ -80,6 +107,76 @@ u_int
 image_get_id(struct image *im)
 {
 	return (im->id);
+}
+
+/* Remove an image and children. */
+static void
+image_remove_all(struct image *im)
+{
+	struct image *child;
+
+	image_ref(im);
+	while ((child = TAILQ_FIRST(&im->children)) != NULL)
+		image_remove_all(child);
+	image_grid_remove_all(im);
+	image_free(im);
+}
+
+/* Find the oldest image. */
+static struct image *
+image_find_oldest(struct image *keep, size_t size)
+{
+	struct image *im, *parent;
+
+	TAILQ_FOREACH_REVERSE(im, &all_images, image_list, all_entry) {
+		if (image_size + size > IMAGE_MAX_BYTES && im->parent != NULL)
+			continue;
+		for (parent = keep; parent != NULL; parent = parent->parent) {
+			if (parent == im)
+				break;
+		}
+		if (parent == NULL)
+			return (im);
+	}
+	return (NULL);
+}
+
+/* Is there enough space for this image? */
+static int
+image_can_add(size_t size)
+{
+	if (image_count >= IMAGE_MAX_IMAGES)
+		return (0);
+	if (image_size + size > IMAGE_MAX_BYTES)
+		return (0);
+	return (1);
+}
+
+/* Check limits and remove images if needed. */
+static int
+image_check_limits(struct image *keep, size_t size)
+{
+	struct image	*oldest;
+	struct client	*c;
+
+	if (size > IMAGE_MAX_BYTES)
+		return (-1);
+	if (image_can_add(size))
+		return (0);
+
+	TAILQ_FOREACH(c, &clients, entry)
+		image_tty_free(&c->tty);
+	while (!image_can_add(size)) {
+		oldest = image_find_oldest(keep, size);
+		if (oldest == NULL)
+			break;
+		image_remove_all(oldest);
+	}
+	TAILQ_FOREACH(c, &clients, entry)
+		server_redraw_client(c);
+	if (!image_can_add(size))
+		return (-1);
+	return (0);
 }
 
 /* Allocate an image and assign a unique ID. */
@@ -103,7 +200,9 @@ image_alloc(struct image_geom *ig, size_t stride, u_char *pixels)
 	im->stride = stride;
 	im->size = (ig->src_h - 1) * stride + ig->src_w * 4;
 	im->pixels = pixels;
+	TAILQ_INIT(&im->children);
 	RB_INSERT(images, &images, im);
+	image_count++;
 	return (im);
 }
 
@@ -122,6 +221,7 @@ image_create_with_parent(struct image *parent, struct image_geom *ig,
     size_t stride, u_char *pixels)
 {
 	struct image	*im;
+	size_t		 size = 0;
 
 	if (ig->src_w == 0 || ig->src_h == 0)
 		return (NULL);
@@ -138,12 +238,22 @@ image_create_with_parent(struct image *parent, struct image_geom *ig,
 	if (ig->scaled_width <= 0 || ig->scaled_height <= 0)
 		return (NULL);
 
+	if (parent == NULL)
+		size = (ig->src_h - 1) * stride + ig->src_w * 4;
+	if (image_check_limits(parent, size) != 0)
+		return (NULL);
+
 	im = image_alloc(ig, stride, pixels);
 	im->parent = parent;
-	if (parent != NULL) {
+	if (parent == NULL)
+		image_size += im->size;
+	else {
 		im->order_id = parent->order_id;
+		TAILQ_INSERT_TAIL(&parent->children, im, child_entry);
 		image_ref(parent);
 	}
+	TAILQ_INSERT_HEAD(&all_images, im, all_entry);
+	image_touch(im);
 	return (im);
 }
 
@@ -164,10 +274,15 @@ image_free(struct image *im)
 		fatalx("invalid image reference %u", im->id);
 	if (--im->references == 0) {
 		RB_REMOVE(images, &images, im);
-		if (im->parent == NULL)
+		TAILQ_REMOVE(&all_images, im, all_entry);
+		image_count--;
+		if (im->parent == NULL) {
+			image_size -= im->size;
 			free(im->pixels);
-		else
+		} else {
+			TAILQ_REMOVE(&im->parent->children, im, child_entry);
 			image_free(im->parent);
+		}
 		free(im);
 	}
 }
