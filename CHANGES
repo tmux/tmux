@@ -13,6 +13,9 @@ CHANGES FROM 3.8 TO 3.8a
 
 * Swap the default black and white colours in the light theme.
 
+* Respect the ncv terminal capability when combining attributes and colours
+  (issue 5727).
+
 CHANGES FROM 3.7c TO 3.8
 
 * Many improvements to floating panes:
