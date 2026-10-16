@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.493 2026/10/16 16:49:13 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.494 2026/10/16 16:56:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -422,6 +422,7 @@ tty_send_requests(struct tty *tty)
 		tty_puts(tty, "\033[>q");
 	if (~flags & TTY_HAVESYNC)
 		tty_puts(tty, "\033[?2026$p");
+	tty->flags |= TTY_HAVEKITTYGRAPHICS;
 
 	tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\");
 	tty->flags |= (TTY_WAITBG|TTY_WAITFG);
