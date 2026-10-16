@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.430 2026/10/16 07:59:06 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.431 2026/10/16 12:21:12 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -5084,11 +5084,13 @@ format_match_fuzzy(const char *pattern, const char *text, int positions)
 	bitstr_t	*bs;
 	char		*value;
 	size_t		 size;
-	u_int		 i, width;
+	u_int		 i, width = 1;
 
-	width = format_width(text);
-	if (width == 0)
-		width = 1;
+	if (positions) {
+		width = format_width(text);
+		if (width == 0)
+			width = 1;
+	}
 	bs = fuzzy_match(pattern, text, width, NULL);
 	if (bs == NULL)
 		return (xstrdup(positions ? "" : "0"));
