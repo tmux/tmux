@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.277 2026/10/14 16:23:43 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.278 2026/10/16 11:34:49 bket Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -826,7 +826,6 @@ input_start_ground_timer(struct input_ctx *ictx)
 {
 	struct timeval	tv = { .tv_sec = 5, .tv_usec = 0 };
 
-	event_del(&ictx->ground_timer);
 	event_add(&ictx->ground_timer, &tv);
 }
 
@@ -3551,7 +3550,6 @@ input_start_request_timer(struct input_ctx *ictx)
 {
 	struct timeval	tv = { .tv_sec = 0, .tv_usec = 100000 };
 
-	event_del(&ictx->request_timer);
 	event_add(&ictx->request_timer, &tv);
 }
 

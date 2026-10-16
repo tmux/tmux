@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.491 2026/10/16 07:59:06 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.492 2026/10/16 11:34:49 bket Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -330,7 +330,6 @@ tty_start_start_timer(struct tty *tty)
 	struct timeval	 tv = { .tv_sec = TTY_QUERY_TIMEOUT };
 
 	log_debug("%s: start timer started", c->name);
-	evtimer_del(&tty->start_timer);
 	evtimer_add(&tty->start_timer, &tv);
 }
 
