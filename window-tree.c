@@ -1,4 +1,4 @@
-/* $OpenBSD: window-tree.c,v 1.97 2026/10/12 18:23:25 nicm Exp $ */
+/* $OpenBSD: window-tree.c,v 1.98 2026/10/16 17:28:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1224,17 +1224,17 @@ window_tree_get_target(struct window_tree_itemdata *item,
 	case WINDOW_TREE_SESSION:
 		if (s == NULL)
 			break;
-		xasprintf(&target, "=%s:", s->name);
+		xasprintf(&target, "$%u:", s->id);
 		break;
 	case WINDOW_TREE_WINDOW:
 		if (s == NULL || wl == NULL)
 			break;
-		xasprintf(&target, "=%s:%u.", s->name, wl->idx);
+		xasprintf(&target, "$%u:%u.", s->id, wl->idx);
 		break;
 	case WINDOW_TREE_PANE:
 		if (s == NULL || wl == NULL || wp == NULL)
 			break;
-		xasprintf(&target, "=%s:%u.%%%u", s->name, wl->idx, wp->id);
+		xasprintf(&target, "$%u:%u.%%%u", s->id, wl->idx, wp->id);
 		break;
 	}
 	if (target == NULL)

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-new-session.c,v 1.154 2026/10/12 07:52:05 nicm Exp $ */
+/* $OpenBSD: cmd-new-session.c,v 1.155 2026/10/16 17:28:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -128,10 +128,12 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		else
 			as = target->s;
 		if (as != NULL) {
-			retval = cmd_attach_session(item, as->name,
+			xasprintf(&cp, "$%u", as->id);
+			retval = cmd_attach_session(item, cp,
 			    args_has(args, 'D'), args_has(args, 'X'), 0,
 			    args_get(args, 'c'), args_has(args, 'E'),
 			    args_get(args, 'f'));
+			free(cp);
 			free(wname);
 			free(sname);
 			return (retval);
