@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1188 2026/10/16 07:59:06 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1189 2026/10/16 08:11:03 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -3763,7 +3763,7 @@ but a different format may be specified with
 .Fl F .
 .Tg newp
 .It Xo Ic new\-pane
-.Op Fl AbCDefhIkKLMOPvWZ
+.Op Fl AbCDdEfhIkKLMOPvWZ
 .Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment
@@ -4187,7 +4187,7 @@ the command behaves like
 .Ic last\-window .
 .Tg splitw
 .It Xo Ic split\-window
-.Op Fl bdefhIkPvZ
+.Op Fl bdEfhIkPvWZ
 .Op Fl B Ar border\-lines
 .Op Fl c Ar start\-directory
 .Op Fl e Ar environment

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-split-window.c,v 1.155 2026/10/16 07:59:06 nicm Exp $ */
+/* $OpenBSD: cmd-split-window.c,v 1.156 2026/10/16 08:11:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -43,7 +43,7 @@ const struct cmd_entry cmd_new_pane_entry = {
 	.alias = "newp",
 
 	.args = { "AbB:Cc:Dde:EfF:hIkl:KLMm:Op:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
-	.usage = "[-AbCDefhIkKLMOPvWZ] [-B border-lines] "
+	.usage = "[-AbCDdEfhIkKLMOPvWZ] [-B border-lines] "
 		 "[-c start-directory] [-e environment] "
 		 "[-F format] [-l size] [-m message] [-p percentage] "
 		 "[-s style] [-S active-border-style] "
@@ -63,7 +63,7 @@ const struct cmd_entry cmd_split_window_entry = {
 	.alias = "splitw",
 
 	.args = { "bB:c:de:EfF:hIkl:m:p:PR:s:S:t:T:vWZ", 0, -1, NULL },
-	.usage = "[-bdefhIklPvWZ] [-B border-lines] [-c start-directory] "
+	.usage = "[-bdEfhIkPvWZ] [-B border-lines] [-c start-directory] "
 		 "[-e environment] [-F format] [-l size] [-m message] "
 		 "[-p percentage] [-s style] [-S active-border-style] "
 		 "[-R inactive-border-style] [-T title] "
