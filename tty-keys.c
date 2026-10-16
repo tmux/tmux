@@ -1785,8 +1785,12 @@ tty_keys_colours1(struct tty *tty, const char *buf, size_t len, size_t *size,
 
 	n = tty_keys_colours(tty, buf, len, size, &tty->fg, &tty->bg);
 	if (n == 0) {
-		if (tty->bg != bg)
+		if (tty->bg != bg) {
 			server_client_update_theme_colours(c);
+			if (tty->flags & TTY_OPENED)
+				tty_invalidate(tty);
+			server_redraw_client(c);
+		}
 		session_theme_changed(c->session);
 	}
 	return (n);
