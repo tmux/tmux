@@ -40,9 +40,9 @@ const struct cmd_entry cmd_new_session_entry = {
 	.description = "Create a new session.",
 	.alias = "new",
 
-	.args = { "Ac:dDe:EF:f:n:Ps:t:x:Xy:", 0, -1, NULL },
+	.args = { "Ac:dDe:EF:f:n:O:Ps:t:x:Xy:", 0, -1, NULL },
 	.usage = "[-AdDEPX] [-c start-directory] [-e environment] [-F format] "
-		 "[-f flags] [-n window-name] [-s session-name] "
+		 "[-f flags] [-n window-name] [-O option] [-s session-name] "
 		 CMD_TARGET_SESSION_USAGE " [-x width] [-y height] "
 		 "[shell-command [argument ...]]",
 
@@ -88,6 +88,9 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	enum cmd_retval		 retval;
 	struct cmd_find_state    fs;
 	struct args_value	*av;
+	char 			*okey, *oname, *oval;
+	int			 ambiguous;
+	struct options_entry	*oe;
 
 	if (cmd_get_entry(self) == &cmd_has_session_entry) {
 		/*
@@ -289,6 +292,48 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		environ_put(env, av->string, 0);
 		av = args_next_value(av);
 	}
+	av = args_first_value(args, 'O');
+	while (av != NULL) {
+		sc.options = xreallocarray(sc.options, sc.noptions+1, sizeof *sc.options);
+		sc.options[sc.noptions++] = av->string;
+		av = args_next_value(av);
+	}
+	for (int i = 0; i < sc.noptions; i++) {
+		oname = sc.options[i];
+
+		if ((oval = strchr(oname, '=')) == NULL) {
+			cmdq_error(item, "expected option value: %s", oname);
+			goto fail;
+		}
+		*oval++ = '\0';
+
+		oe = options_match_get(oo, oname, &okey, 0, &ambiguous);
+		if (oe == NULL) {
+			if (ambiguous) {
+				cmdq_error(item, "ambiguous option: %s", oname);
+				goto fail;
+			}
+
+			/* If nothing matched, it might be a window/pane option, or invalid.
+			 * Let spawn_window handle it in either case. Patch the '=' back in.
+			 */
+			oval[-1] = '=';
+			continue;
+		}
+
+		if (options_from_string(oo, options_table_entry(oe), options_table_entry(oe)->name, oval, 0, &cause) != 0) {
+			cmdq_error(item, "failed to set option %s: %s", options_table_entry(oe)->name, cause);
+			free(cause);
+			goto fail;
+		}
+
+		/* Remove the successfully set option from the spawn_context. */
+		sc.options[i] = NULL;
+
+		/* The session options that may need changes pushed don't care about any windows. */
+		options_push_changes(options_table_entry(oe)->name);
+	}
+
 	s = session_create(prefix, sname, cwd, env, oo, tiop);
 
 	/* Spawn the initial window. */
@@ -374,6 +419,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (sc.argv != NULL)
 		cmd_free_argv(sc.argc, sc.argv);
+	free(sc.options);
 	free(cwd);
 	free(wname);
 	free(sname);
@@ -383,6 +429,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 fail:
 	if (sc.argv != NULL)
 		cmd_free_argv(sc.argc, sc.argv);
+	free(sc.options);
 	free(cwd);
 	free(wname);
 	free(sname);
