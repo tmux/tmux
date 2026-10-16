@@ -140,6 +140,7 @@ spawn_window(struct spawn_context *sc, char **cause)
 			}
 		}
 
+		window_unzoom(w, 1);
 		sc->wp0 = TAILQ_FIRST(&w->panes);
 		TAILQ_REMOVE(&w->panes, sc->wp0, entry);
 

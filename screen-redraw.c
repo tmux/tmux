@@ -1096,11 +1096,17 @@ redraw_client_has_window(struct client *c, struct window *w)
 	return (c->redraw_scene != NULL && c->redraw_scene->w == w);
 }
 
-/* Mark a window's cached redraw scenes as out of date. */
+/*
+ * Mark a window's cached redraw scenes as out of date. Generations are unique
+ * across all windows so a scene can never match a new window that reuses the
+ * address of a freed one.
+ */
 void
 redraw_invalidate_scene(struct window *w)
 {
-	w->redraw_scene_generation++;
+	static uint64_t	next_generation;
+
+	w->redraw_scene_generation = ++next_generation;
 }
 
 /* Free all pending damage for a window. */
