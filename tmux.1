@@ -1333,6 +1333,7 @@ Lock all clients attached to
 .Op Fl f Ar flags
 .Op Fl F Ar format
 .Op Fl n Ar window\-name
+.Op Fl O Ar option
 .Op Fl s Ar session\-name
 .Op Fl t Ar group\-name
 .Op Fl x Ar width
@@ -1448,6 +1449,12 @@ takes the form
 .Ql VARIABLE=value
 and sets an environment variable for the newly created session; it may be
 specified multiple times.
+.Pp
+.Fl O
+takes the form
+.Ql option=value
+and sets a session, window or pane option for the newly created session;
+it may be specified multiple times.
 .Tg refresh
 .It Xo Ic refresh\-client
 .Op Fl cDlLRSU
@@ -3675,6 +3682,7 @@ option.
 .Op Fl e Ar environment
 .Op Fl F Ar format
 .Op Fl n Ar window\-name
+.Op Fl O Ar option
 .Op Fl t Ar target\-window
 .Op Ar shell\-command Op Ar argument ...
 .Xc
@@ -3738,6 +3746,12 @@ option to change this behaviour.
 takes the form
 .Ql VARIABLE=value
 and sets an environment variable for the newly created window; it may be
+specified multiple times.
+.Pp
+.Fl O
+takes the form
+.Ql option=value
+and sets a window or pane option for the newly created window; it may be
 specified multiple times.
 .Pp
 The
