@@ -1,4 +1,4 @@
-/* $OpenBSD: window-switch.c,v 1.6 2026/10/15 08:07:17 nicm Exp $ */
+/* $OpenBSD: window-switch.c,v 1.7 2026/10/16 17:28:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -530,7 +530,7 @@ window_switch_run_command(struct window_switch_modedata *data, struct client *c)
 	case WINDOW_SWITCH_TYPE_SESSION:
 		s = session_find_by_id(item->session);
 		if (s != NULL) {
-			xasprintf(&target, "=%s:", s->name);
+			xasprintf(&target, "$%u:", s->id);
 			cmd_find_from_session(&fs, s, 0);
 		}
 		break;
@@ -539,7 +539,7 @@ window_switch_run_command(struct window_switch_modedata *data, struct client *c)
 		if (s != NULL) {
 			wl = winlink_find_by_index(&s->windows, item->winlink);
 			if (s != NULL && wl != NULL) {
-				xasprintf(&target, "=%s:%u.", s->name, wl->idx);
+				xasprintf(&target, "$%u:%u.", s->id, wl->idx);
 				cmd_find_from_winlink(&fs, wl, 0);
 			}
 		}

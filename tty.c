@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.492 2026/10/16 11:34:49 bket Exp $ */
+/* $OpenBSD: tty.c,v 1.494 2026/10/16 16:56:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -390,11 +390,8 @@ tty_start_tty(struct tty *tty)
 	}
 	if (tty_term_has(tty->term, TTYC_ENBP))
 		tty_putcode(tty, TTYC_ENBP);
-
-	if (tty->term->flags & TERM_VT100LIKE) {
-		/* Subscribe to theme changes and request theme now. */
+	if (tty->term->flags & TERM_VT100LIKE)
 		tty_puts(tty, "\033[?2031h\033[?996n");
-	}
 
 	tty_start_start_timer(tty);
 
@@ -412,22 +409,31 @@ tty_start_tty(struct tty *tty)
 void
 tty_send_requests(struct tty *tty)
 {
-	if (~tty->flags & TTY_STARTED)
+	struct tty_term	*term = tty->term;
+	int		 flags = tty->flags;
+
+	if (~flags & TTY_STARTED)
 		return;
 
-	if (tty->term->flags & TERM_VT100LIKE) {
-		if (~tty->flags & TTY_HAVEDA)
-			tty_puts(tty, "\033[c");
-		if (~tty->flags & TTY_HAVEDA2)
-			tty_puts(tty, "\033[>c");
-		if (~tty->flags & TTY_HAVEXDA)
-			tty_puts(tty, "\033[>q");
-		if (~tty->flags & TTY_HAVESYNC)
-			tty_puts(tty, "\033[?2026$p");
-		tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\");
-		tty->flags |= (TTY_WAITBG|TTY_WAITFG);
-	} else
+	if (~term->flags & TERM_VT100LIKE) {
 		tty->flags |= TTY_ALL_REQUEST_FLAGS;
+		tty->last_requests = time(NULL);
+		return;
+	}
+
+	if (~flags & TTY_HAVEDA)
+		tty_puts(tty, "\033[c");
+	if (~flags & TTY_HAVEDA2)
+		tty_puts(tty, "\033[>c");
+	if (~flags & TTY_HAVEXDA)
+		tty_puts(tty, "\033[>q");
+	if (~flags & TTY_HAVESYNC)
+		tty_puts(tty, "\033[?2026$p");
+	tty->flags |= TTY_HAVEKITTYGRAPHICS;
+
+	tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\");
+	tty->flags |= (TTY_WAITBG|TTY_WAITFG);
+
 	tty->last_requests = time(NULL);
 }
 

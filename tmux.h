@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1465 2026/10/16 07:59:06 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1466 2026/10/16 16:51:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -416,6 +416,7 @@ enum {
 	/* Terminal replies, handled in tty-keys.c and never fired. */
 	KEYC_REPORT_CLIPBOARD,
 	KEYC_REPORT_SYNC,
+	KEYC_REPORT_KITTY_GRAPHICS,
 	KEYC_REPORT_DA,
 	KEYC_REPORT_DA2,
 	KEYC_REPORT_XDA,
@@ -1840,8 +1841,9 @@ struct tty {
 #define TTY_WAITBG 0x4000
 #define TTY_BRACKETPASTE 0x8000
 #define TTY_HAVESYNC 0x10000
+#define TTY_HAVEKITTYGRAPHICS 0x20000
 #define TTY_ALL_REQUEST_FLAGS \
-	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVESYNC)
+	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVESYNC|TTY_HAVEKITTYGRAPHICS)
 	int		 flags;
 
 	struct tty_term	*term;
