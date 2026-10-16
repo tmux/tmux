@@ -23,6 +23,9 @@
 
 #include "tmux.h"
 
+/* Next image placement index. */
+static uint64_t next_image_placement_index;
+
 /* A run of cells on one grid line. */
 struct image_span {
 	u_int			 x;
@@ -41,17 +44,19 @@ TAILQ_HEAD(image_spans, image_span);
 /* Spans on one grid line. */
 struct image_line {
 	struct image_spans	 spans;
+	int			 in_region; /* Inside the current scroll region. */
 };
 
 /* A placement of an image, may be across multiple lines */
 struct image_placement {
 	struct image_store		*store;
 	struct image			*image;
+	uint64_t			 index;
 	struct image_spans		 spans;
 
-	/* Original column and first source column not yet placed. */
 	u_int				 x;
 	u_int				 recover_from;
+	int				 scroll; /* -1 unchecked, 0 fixed, 1 moving. */
 
 	TAILQ_ENTRY(image_placement)	 entry;
 };
@@ -66,6 +71,16 @@ TAILQ_HEAD(image_stores, image_store);
 
 /* All current placements. */
 static struct image_stores image_stores = TAILQ_HEAD_INITIALIZER(image_stores);
+
+/* Images saved while grid lines are moved. */
+struct image_saved {
+	u_int			  dy;
+	u_int			  py;
+	u_int			  ny;
+	u_int			  hsize;
+	int			  scroll;
+	struct image_line	**lines;
+};
 
 /* A shared placements copied when duplicating lines. */
 struct image_copy_map {
@@ -88,7 +103,7 @@ struct image_recover_row {
 	u_int			 source_y;
 };
 
-/* A backend to draw an image. */
+/* Image backend callbacks. */
 struct image_backend {
 	const char	*name;
 	int		(*get_flags)(struct tty *);
@@ -100,6 +115,7 @@ struct image_backend {
 	void		(*start_draw)(struct tty *, u_int, u_int, u_int, u_int);
 	void		(*flush)(struct tty *);
 	void		(*free)(struct tty *);
+	void		(*remove_image)(struct image *);
 };
 
 /* Backend definitions. */
@@ -108,6 +124,7 @@ static struct image_backend image_backend_fallback = {
 	fallback_get_flags,
 	fallback_select,
 	fallback_map_cell,
+	NULL,
 	NULL,
 	NULL,
 	NULL,
@@ -121,11 +138,24 @@ static struct image_backend image_backend_sixel = {
 	sixel_draw_rect,
 	sixel_start_draw,
 	sixel_flush_pending,
-	sixel_free_pending
+	sixel_free_pending,
+	NULL
+};
+static struct image_backend image_backend_kitty = {
+	"kitty",
+	NULL,
+	kitty_select,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	kitty_remove_image
 };
 
 /* Backends in order of preference. */
 static struct image_backend *image_backends[] = {
+	&image_backend_kitty,
 	&image_backend_sixel,
 	&image_backend_fallback
 };
@@ -190,7 +220,7 @@ image_draw_span(struct image_backend *backend, struct tty *tty,
 	backend->draw_rect(tty, &rect);
 }
 
-/* Draw images in the visible part of one screen line. */
+/* Draw images after text on one screen line. */
 void
 image_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py,
     u_int nx, u_int atx, u_int aty)
@@ -198,7 +228,7 @@ image_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py,
 	struct image_backend	*backend;
 	struct image_line	*line;
 	struct image_span	*span;
-	u_int			 start, end, span_end;
+	u_int			 start, end, span_end, gy;
 
 	image_tty_update(tty);
 	backend = tty->image_backend;
@@ -206,7 +236,8 @@ image_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py,
 		return;
 	if (py >= s->grid->sy)
 		return;
-	line = s->grid->linedata[s->grid->hsize + py].images;
+	gy = s->grid->hsize + py;
+	line = s->grid->linedata[gy].images;
 	if (line == NULL)
 		return;
 	end = px + nx;
@@ -297,6 +328,7 @@ image_placement_create(struct grid *gd, struct image *im)
 	plmt = xcalloc(1, sizeof *plmt);
 	plmt->store = store;
 	plmt->image = im;
+	plmt->index = ++next_image_placement_index;
 	TAILQ_INIT(&plmt->spans);
 	TAILQ_INSERT_TAIL(&store->placements, plmt, entry);
 	image_ref(im);
@@ -313,7 +345,42 @@ image_placement_free(struct image_placement *plmt)
 	free(plmt);
 }
 
-/* Attach a span to both its grid line and its placement. */
+/* Draw images in source order, then placement order. */
+static int
+image_compare_placements(struct image_placement *a, struct image_placement *b)
+{
+	u_int		aorder, border;
+
+	aorder = image_get_order_id(a->image);
+	border = image_get_order_id(b->image);
+	if (aorder != border)
+		return (aorder < border ? -1 : 1);
+	if (a->index != b->index)
+		return (a->index < b->index ? -1 : 1);
+	return (0);
+}
+
+/* Insert a span into a grid line. */
+static void
+image_span_insert(struct image_line *line, struct image_span *span)
+{
+	struct image_placement	*plmt = span->placement;
+	struct image_span	*at;
+	int			 c;
+
+	span->line = line;
+	TAILQ_FOREACH(at, &line->spans, line_entry) {
+		c = image_compare_placements(plmt, at->placement);
+		if (c < 0 || (plmt == at->placement && span->x < at->x)) {
+			TAILQ_INSERT_BEFORE(at, span, line_entry);
+			break;
+		}
+	}
+	if (at == NULL)
+		TAILQ_INSERT_TAIL(&line->spans, span, line_entry);
+}
+
+/* Attach a span in drawing order to its grid line and placement. */
 static void
 image_span_add(struct image_line *line, struct image_placement *plmt, u_int x,
     u_int sx, u_int src_x, u_int src_y)
@@ -322,15 +389,13 @@ image_span_add(struct image_line *line, struct image_placement *plmt, u_int x,
 
 	if (sx == 0)
 		return;
-
 	span = xcalloc(1, sizeof *span);
 	span->x = x;
 	span->sx = sx;
 	span->source_x = src_x;
 	span->source_y = src_y;
-	span->line = line;
 	span->placement = plmt;
-	TAILQ_INSERT_TAIL(&line->spans, span, line_entry);
+	image_span_insert(line, span);
 	TAILQ_INSERT_TAIL(&plmt->spans, span, placement_entry);
 }
 
@@ -416,11 +481,12 @@ image_span_remove(struct image_span *span, u_int x, u_int end)
 	image_span_free(span);
 }
 
-/* Remove a range of cells from every span on a line. */
+/* Remove overwritten spans. */
 static void
-image_line_remove(struct image_line *line, u_int x, u_int w)
+image_line_overwrite(struct image_line *line, u_int x, u_int w)
 {
 	struct image_span	*span, *next;
+	enum image_type		 type;
 	u_int			 end;
 
 	if (line == NULL || w == 0)
@@ -428,13 +494,16 @@ image_line_remove(struct image_line *line, u_int x, u_int w)
 	end = x + w;
 	if (end < x)
 		end = UINT_MAX;
-	TAILQ_FOREACH_SAFE(span, &line->spans, line_entry, next)
-		image_span_remove(span, x, end);
+	TAILQ_FOREACH_SAFE(span, &line->spans, line_entry, next) {
+		type = image_get_type(span->placement->image);
+		if (type != IMAGE_TYPE_KITTY)
+			image_span_remove(span, x, end);
+	}
 }
 
-/* Remove a rectangle of image spans from a grid. */
+/* Remove SIXEL spans overwritten by text writes or erases. */
 void
-image_grid_remove(struct grid *gd, u_int x, u_int y, u_int sx, u_int sy)
+image_grid_overwrite(struct grid *gd, u_int x, u_int y, u_int sx, u_int sy)
 {
 	u_int	rows = gd->hsize + gd->sy;
 	u_int	row;
@@ -444,8 +513,28 @@ image_grid_remove(struct grid *gd, u_int x, u_int y, u_int sx, u_int sy)
 	if (sy > rows - y)
 		sy = rows - y;
 	for (row = y; row < y + sy; row++)
-		image_line_remove(gd->linedata[row].images, x, sx);
+		image_line_overwrite(gd->linedata[row].images, x, sx);
 	image_store_prune(gd->images);
+}
+
+/* Check whether a placement has any spans in the visible cells. */
+static int
+image_placement_visible(struct grid *gd, struct image_placement *plmt)
+{
+	struct image_line	*line;
+	struct image_span	*span;
+	u_int			 row;
+
+	for (row = gd->hsize; row < gd->hsize + gd->sy; row++) {
+		line = gd->linedata[row].images;
+		if (line == NULL)
+			continue;
+		TAILQ_FOREACH(span, &line->spans, line_entry) {
+			if (span->placement == plmt && span->x < gd->sx)
+				return (1);
+		}
+	}
+	return (0);
 }
 
 /* Remove a placement and all of its spans. */
@@ -459,18 +548,87 @@ image_remove_placement(struct image_placement *plmt)
 	image_placement_free(plmt);
 }
 
+/* Check whether a grid retains any placements of an image. */
+int
+image_grid_has_image(struct grid *gd, u_int id)
+{
+	struct image_placement	*plmt;
+
+	if (gd->images == NULL)
+		return (0);
+	TAILQ_FOREACH(plmt, &gd->images->placements, entry) {
+		if (image_get_id(plmt->image) == id)
+			return (1);
+	}
+	return (0);
+}
+
+/* Remove all placements of an image from a grid. */
+u_int
+image_grid_clear(struct grid *gd, u_int id)
+{
+	struct image_placement	*plmt, *plmt1;
+	u_int			 removed = 0;
+
+	if (gd->images == NULL)
+		return (0);
+	TAILQ_FOREACH_SAFE(plmt, &gd->images->placements, entry, plmt1) {
+		if (image_get_id(plmt->image) != id)
+			continue;
+		image_remove_placement(plmt);
+		removed++;
+	}
+	return (removed);
+}
+
+/* Remove whole placements of a type which have visible spans. */
+u_int
+image_grid_clear_visible(struct grid *gd, enum image_type type)
+{
+	struct image_placement	*plmt, *plmt1;
+	u_int			 removed = 0;
+
+	if (gd->images == NULL)
+		return (0);
+	TAILQ_FOREACH_SAFE(plmt, &gd->images->placements, entry, plmt1) {
+		if (image_get_type(plmt->image) != type)
+			continue;
+		if (!image_placement_visible(gd, plmt))
+			continue;
+		image_remove_placement(plmt);
+		removed++;
+	}
+	return (removed);
+}
+
+/* Remove placements of an image from a screen. */
+void
+image_clear(struct screen_write_ctx *ctx, u_int id)
+{
+	image_grid_clear(ctx->s->grid, id);
+	if (ctx->s->saved_grid != NULL)
+		image_grid_clear(ctx->s->saved_grid, id);
+	if (ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
+}
+
 /* Remove every placement for an image. */
 void
 image_grid_remove_all(struct image *im)
 {
 	struct image_store	*store;
 	struct image_placement	*plmt, *next;
+	u_int			 i;
 
 	TAILQ_FOREACH(store, &image_stores, entry) {
 		TAILQ_FOREACH_SAFE(plmt, &store->placements, entry, next) {
 			if (plmt->image == im)
 				image_remove_placement(plmt);
 		}
+	}
+	for (i = 0; i < nitems(image_backends); i++) {
+		if (image_backends[i]->remove_image != NULL)
+			image_backends[i]->remove_image(im);
 	}
 }
 
@@ -532,6 +690,8 @@ image_grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)
 		if (span_end > end)
 			span_end = end;
 
+		if (image_get_type(span->placement->image) == IMAGE_TYPE_KITTY)
+			continue;
 		moves = xreallocarray(moves, n + 1, sizeof *moves);
 		moves[n].placement = span->placement;
 		moves[n].x = dx + start - px;
@@ -541,8 +701,8 @@ image_grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)
 		span->placement->recover_from = 0;
 		n++;
 	}
-	image_line_remove(line, px, nx);
-	image_line_remove(line, dx, nx);
+	image_line_overwrite(line, px, nx);
+	image_line_overwrite(line, dx, nx);
 	for (i = 0; i < n; i++) {
 		image_span_add(line, moves[i].placement, moves[i].x,
 		    moves[i].sx, moves[i].source_x, moves[i].source_y);
@@ -551,7 +711,175 @@ image_grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)
 	image_store_prune(gd->images);
 }
 
-/* Map one source placement to one destination placement during a copy. */
+/* Mark placements to scroll, except those crossing a scroll region edge. */
+static void
+image_grid_mark_scroll(struct grid *gd, u_int upper, u_int lower)
+{
+	struct image_line	*line;
+	struct image_placement	*plmt;
+	struct image_span	*span, *at;
+	u_int			 y, hsize = gd->hsize;
+
+	for (y = upper; y <= lower; y++) {
+		line = gd->linedata[y].images;
+		if (line == NULL)
+			continue;
+		line->in_region = 1;
+		TAILQ_FOREACH(span, &line->spans, line_entry)
+			span->placement->scroll = -1;
+	}
+	for (y = upper; y <= lower; y++) {
+		line = gd->linedata[y].images;
+		if (line == NULL)
+			continue;
+		TAILQ_FOREACH(span, &line->spans, line_entry) {
+			plmt = span->placement;
+			if (plmt->scroll != -1)
+				continue;
+			plmt->scroll = 1;
+			if (upper == hsize && lower == hsize + gd->sy - 1)
+				continue;
+			TAILQ_FOREACH(at, &plmt->spans, placement_entry) {
+				if (!at->line->in_region) {
+					plmt->scroll = 0;
+					break;
+				}
+			}
+		}
+	}
+}
+
+/* Move spans between lines. */
+static void
+image_line_move(struct grid_line *dst, struct grid_line *src, int scroll)
+{
+	struct image_line	*line = src->images, *to = NULL;
+	struct image_span	*span, *next;
+	enum image_type		 type;
+
+	if (line == NULL)
+		return;
+	TAILQ_FOREACH_SAFE(span, &line->spans, line_entry, next) {
+		type = image_get_type(span->placement->image);
+		if (type == IMAGE_TYPE_KITTY &&
+		    (!scroll || !span->placement->scroll))
+			continue;
+		if (dst == NULL)
+			image_span_free(span);
+		else {
+			if (to == NULL)
+				to = image_line_get(dst);
+			TAILQ_REMOVE(&line->spans, span, line_entry);
+			image_span_insert(to, span);
+		}
+	}
+}
+
+/* Move spans if needed. */
+static void
+image_grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny, int scroll)
+{
+	struct image_line	*line;
+	u_int			 rows = gd->hsize + gd->sy;
+	u_int			 upper, lower, y, dst, src;
+
+	if (gd->images == NULL ||
+	    ny == 0 ||
+	    dy == py ||
+	    dy >= rows ||
+	    py >= rows ||
+	    ny > rows - dy ||
+	    ny > rows - py)
+		return;
+	upper = (dy < py ? dy : py);
+	lower = (dy > py ? dy : py) + ny - 1;
+	if (scroll)
+		image_grid_mark_scroll(gd, upper, lower);
+
+	for (y = dy; y < dy + ny; y++) {
+		if (y < py || y >= py + ny)
+			image_line_move(NULL, &gd->linedata[y], scroll);
+	}
+	for (y = 0; y < ny; y++) {
+		if (dy < py) {
+			dst = dy + y;
+			src = py + y;
+		} else {
+			dst = dy + ny - 1 - y;
+			src = py + ny - 1 - y;
+		}
+		image_line_move(&gd->linedata[dst], &gd->linedata[src], scroll);
+	}
+	if (scroll) {
+		for (y = upper; y <= lower; y++) {
+			line = gd->linedata[y].images;
+			if (line != NULL)
+				line->in_region = 0;
+		}
+	}
+	image_store_prune(gd->images);
+}
+
+/* Detach images before moving lines. */
+struct image_saved *
+image_grid_save_lines(struct grid *gd, u_int dy, u_int py, u_int ny, int scroll)
+{
+	struct image_saved	*saved;
+	u_int			 rows = gd->hsize + gd->sy;
+	u_int			 upper, lower, y, n;
+
+	if (gd->images == NULL || ny == 0 || dy == py ||
+	    dy >= rows || py >= rows || ny > rows - dy || ny > rows - py)
+		return (NULL);
+	upper = (dy < py ? dy : py);
+	lower = (dy > py ? dy : py) + ny - 1;
+	for (y = upper; y <= lower; y++) {
+		if (gd->linedata[y].images != NULL)
+			break;
+	}
+	if (y > lower)
+		return (NULL);
+
+	n = lower - upper + 1;
+	saved = xcalloc(1, sizeof *saved);
+	saved->lines = xcalloc(n, sizeof *saved->lines);
+	saved->dy = dy;
+	saved->py = py;
+	saved->ny = ny;
+	saved->hsize = gd->hsize;
+	saved->scroll = scroll;
+	for (y = upper; y <= lower; y++) {
+		saved->lines[y - upper] = gd->linedata[y].images;
+		gd->linedata[y].images = NULL;
+	}
+	return (saved);
+}
+
+/* Restore images and move if needed. */
+void
+image_grid_restore_lines(struct grid *gd, struct image_saved *saved)
+{
+	u_int	dy, py, upper, lower, y, offset;
+
+	if (saved == NULL)
+		return;
+
+	offset = gd->hsize - saved->hsize;
+	dy = saved->dy + offset;
+	py = saved->py + offset;
+	upper = (dy < py ? dy : py);
+	lower = (dy > py ? dy : py) + saved->ny - 1;
+	for (y = upper; y <= lower; y++)
+		gd->linedata[y].images = saved->lines[y - upper];
+
+	if (offset != 0)
+		image_grid_move_lines(gd, saved->hsize, dy, 1, 0);
+	image_grid_move_lines(gd, dy, py, saved->ny, saved->scroll);
+	free(saved->lines);
+	free(saved);
+}
+
+/* Map placements during a copy. */
 static struct image_placement *
 image_copy_placement(struct grid *dst, struct image_placement *src,
     struct image_copy_map **maps, u_int *nmaps)
@@ -565,6 +893,7 @@ image_copy_placement(struct grid *dst, struct image_placement *src,
 			return (map[i].destination);
 	}
 	plmt = image_placement_create(dst, src->image);
+	plmt->index = src->index;
 	plmt->x = src->x;
 	plmt->recover_from = src->recover_from;
 
@@ -745,7 +1074,7 @@ image_damage_screen(struct screen_write_ctx *ctx, u_int x, u_int y, u_int sx,
 
 	image_redraw_area(ctx, x, y, sx, sy);
 	if (ctx->flags & SCREEN_WRITE_INPUT)
-		image_grid_remove(s->grid, x, s->grid->hsize + y, sx, sy);
+		image_grid_overwrite(s->grid, x, s->grid->hsize + y, sx, sy);
 }
 
 /* Check whether an image cell has any visible pixels. */
@@ -803,7 +1132,7 @@ image_cell_covers(struct image *new, u_int nx, u_int ny, struct image *old,
 	return (1);
 }
 
-/* Discard cells of older placements fully covered by a new image. */
+/* Discard older SIXEL cells fully covered by a new SIXEL image. */
 static void
 image_line_cover(struct image_line *line, struct image_placement *plmt,
     u_int x, u_int src_x, u_int src_y)
@@ -813,7 +1142,11 @@ image_line_cover(struct image_line *line, struct image_placement *plmt,
 
 	TAILQ_FOREACH_SAFE(span, &line->spans, line_entry, next) {
 		old = span->placement;
-		if (old == plmt || x < span->x || x >= span->x + span->sx)
+		if (old == plmt)
+			continue;
+		if (image_get_type(old->image) != IMAGE_TYPE_SIXEL)
+			continue;
+		if (x < span->x || x >= span->x + span->sx)
 			continue;
 		if (!image_cell_covers(plmt->image, src_x, src_y,
 		    old->image, span->source_x + x - span->x,
@@ -831,6 +1164,10 @@ image_add_row(struct image_line *line, struct image_placement *plmt,
 	struct image	*im = plmt->image;
 	u_int		 x, i, run;
 
+	if (image_get_type(im) == IMAGE_TYPE_KITTY) {
+		image_span_add(line, plmt, cx, sx, 0, src_y);
+		return;
+	}
 	for (x = 0; x < sx; x += run) {
 		if (!image_cell_has_visible_pixels(im, x, src_y)) {
 			run = 1;
@@ -840,6 +1177,7 @@ image_add_row(struct image_line *line, struct image_placement *plmt,
 			if (!image_cell_has_visible_pixels(im, x + run, src_y))
 				break;
 		}
+
 		for (i = 0; i < run; i++)
 			image_line_cover(line, plmt, cx + x + i, x + i, src_y);
 		image_span_add(line, plmt, cx + x, run, x, src_y);
@@ -854,6 +1192,10 @@ image_extend_row(struct image_line *line, struct image_placement *plmt,
 	struct image	*im = plmt->image;
 	u_int		 x, run;
 
+	if (image_get_type(im) == IMAGE_TYPE_KITTY) {
+		image_span_add(line, plmt, cx + from, to - from, from, src_y);
+		return;
+	}
 	for (x = from; x < to; x += run) {
 		if (!image_cell_has_visible_pixels(im, x, src_y)) {
 			run = 1;
@@ -915,9 +1257,10 @@ image_grid_resize_width(struct grid *gd, u_int new_sx)
 	}
 }
 
-/* Place a SIXEL image at the cursor. */
+/* Place an image at the cursor. */
 void
-image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
+image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg,
+    int no_cursor)
 {
 	struct image_geom	*ig = image_get_geometry(im);
 	struct screen		*s = ctx->s;
@@ -927,6 +1270,7 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
 	struct image_line	*line;
 	u_int			 cx = s->cx, cy = s->cy, y, lines;
 	u_int			 sx = ig->sx, sy = ig->sy;
+	u_int			 cursor_x = 0, cursor_rows;
 	u_int			 origin_y = 0, h_origin_y, region_height;
 	u_int			 remaining, n;
 
@@ -935,9 +1279,17 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
 	if (sx == 0)
 		return;
 
+	/* Kitty moves to the last image row; SIXEL advances past it. */
+	cursor_rows = sy;
+	if (image_get_type(im) == IMAGE_TYPE_KITTY)
+		cursor_rows--;
+
 	/* Scroll images that move the cursor. */
-	if (screen_size_y(s) - cy <= sy) {
-		lines = sy - (screen_size_y(s) - cy) + 1;
+	if (no_cursor) {
+		if (sy > screen_size_y(s) - cy)
+			sy = screen_size_y(s) - cy;
+	} else if (screen_size_y(s) - cy <= cursor_rows) {
+		lines = cursor_rows - (screen_size_y(s) - cy) + 1;
 		region_height = s->rlower - s->rupper + 1;
 
 		remaining = lines;
@@ -959,6 +1311,7 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
 		}
 		cy = s->cy;
 		sy -= origin_y;
+		cursor_rows -= origin_y;
 	}
 	plmt = image_placement_create(gd, im);
 	if (sx < ig->sx) {
@@ -982,10 +1335,14 @@ image_write(struct screen_write_ctx *ctx, struct image *im, u_int bg)
 		image_add_row(line, plmt, cx, origin_y + y, sx);
 	}
 
-	/* Schedule a redraw and advance the cursor past the image. */
+	/* Schedule a redraw and move the cursor. */
 	image_store_prune(gd->images);
 	image_redraw_area(ctx, cx, cy, sx, sy);
-	screen_write_cursormove(ctx, 0, cy + sy, 0);
+	if (!no_cursor) {
+		if (image_get_type(im) == IMAGE_TYPE_KITTY)
+			cursor_x = cx + sx;
+		screen_write_cursormove(ctx, cursor_x, cy + cursor_rows, 0);
+	}
 }
 
 /* Find the cell within an image at a grid position. */
@@ -995,6 +1352,8 @@ image_grid_get_at(struct grid *gd, u_int x, u_int y, struct image **im,
 {
 	struct image_line	*line;
 	struct image_span	*span, *found = NULL;
+	struct image		*pim;
+	u_int			 px;
 
 	if (y >= gd->hsize + gd->sy)
 		return (0);
@@ -1002,8 +1361,13 @@ image_grid_get_at(struct grid *gd, u_int x, u_int y, struct image **im,
 	if (line == NULL)
 		return (0);
 	TAILQ_FOREACH(span, &line->spans, line_entry) {
-		if (x >= span->x && x < span->x + span->sx)
-			found = span;
+		if (x < span->x || x >= span->x + span->sx)
+			continue;
+		pim = span->placement->image;
+		px = span->source_x + x - span->x;
+		if (!image_cell_has_visible_pixels(pim, px, span->source_y))
+			continue;
+		found = span;
 	}
 	if (found == NULL)
 		return (-1);

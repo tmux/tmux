@@ -68,6 +68,20 @@ class Terminal:
         self.pixels.update(moved)
         self.cells.update(cells)
 
+    def shift(self, x, y, n):
+        """Move pixels and text when characters are inserted or deleted."""
+        moved = {}
+        for (px, py), colour in list(self.pixels.items()):
+            if x * self.cw <= px < self.sx * self.cw and \
+                y * self.ch <= py < (y + 1) * self.ch:
+                if x * self.cw <= px - n * self.cw < self.sx * self.cw:
+                    moved[px - n * self.cw, py] = colour
+        cells = {(cx - n, cy): cell for (cx, cy), cell in self.cells.items()
+            if cy == y and x <= cx < self.sx and x <= cx - n < self.sx}
+        self.erase(x, y, self.sx - x, 1)
+        self.pixels.update(moved)
+        self.cells.update(cells)
+
     def csi(self, params, command):
         """Apply cursor movement and erases; ignore terminal mode controls."""
         if params.startswith((b'?', b'>', b'=')) or b' ' in params:
@@ -88,6 +102,8 @@ class Terminal:
             self.y = max(0, self.y + dy)
         elif command == ord('X'):
             self.erase(self.x, self.y, n, 1)
+        elif command in b'@P':
+            self.shift(self.x, self.y, n if command == ord('P') else -n)
         elif command == ord('K'):
             start = self.x if args[0] == 0 else 0
             end = self.x + 1 if args[0] == 1 else self.sx

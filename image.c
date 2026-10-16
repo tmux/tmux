@@ -34,6 +34,7 @@
 TAILQ_HEAD(image_list, image);
 struct image {
 	u_int			 id;
+	enum image_type		 type;
 	u_int			 references;
 	struct image_geom	 geom;
 
@@ -109,6 +110,27 @@ image_get_id(struct image *im)
 	return (im->id);
 }
 
+/* Get order ID of an image. */
+u_int
+image_get_order_id(struct image *im)
+{
+	return (im->order_id);
+}
+
+/* Set the order ID on an image. */
+void
+image_set_order_id(struct image *im, u_int id)
+{
+	im->order_id = id;
+}
+
+/* Get the type of an image. */
+enum image_type
+image_get_type(struct image *im)
+{
+	return (im->type);
+}
+
 /* Remove an image and children. */
 static void
 image_remove_all(struct image *im)
@@ -181,7 +203,8 @@ image_check_limits(struct image *keep, size_t size)
 
 /* Allocate an image and assign a unique ID. */
 static struct image *
-image_alloc(struct image_geom *ig, size_t stride, u_char *pixels)
+image_alloc(enum image_type type, struct image_geom *ig, size_t stride,
+    u_char *pixels)
 {
 	struct image	*im;
 	u_int		 id;
@@ -194,6 +217,7 @@ image_alloc(struct image_geom *ig, size_t stride, u_char *pixels)
 
 	im = xcalloc(1, sizeof *im);
 	im->id = id;
+	im->type = type;
 	im->references = 1;
 	im->order_id = id;
 	im->geom = *ig;
@@ -208,17 +232,17 @@ image_alloc(struct image_geom *ig, size_t stride, u_char *pixels)
 
 /* Create an image with the provided pixels. */
 struct image *
-image_create(struct image_geom *ig, u_char *pixels)
+image_create(enum image_type type, struct image_geom *ig, u_char *pixels)
 {
 	size_t	stride = ig->src_w * 4;
 
-	return (image_create_with_parent(NULL, ig, stride, pixels));
+	return (image_create_with_parent(type, NULL, ig, stride, pixels));
 }
 
 /* Create an image based on a parent image. */
 struct image *
-image_create_with_parent(struct image *parent, struct image_geom *ig,
-    size_t stride, u_char *pixels)
+image_create_with_parent(enum image_type type, struct image *parent,
+    struct image_geom *ig, size_t stride, u_char *pixels)
 {
 	struct image	*im;
 	size_t		 size = 0;
@@ -243,7 +267,7 @@ image_create_with_parent(struct image *parent, struct image_geom *ig,
 	if (image_check_limits(parent, size) != 0)
 		return (NULL);
 
-	im = image_alloc(ig, stride, pixels);
+	im = image_alloc(type, ig, stride, pixels);
 	im->parent = parent;
 	if (parent == NULL)
 		image_size += im->size;

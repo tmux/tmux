@@ -259,8 +259,10 @@ endif
 if ENABLE_IMAGES
 dist_tmux_SOURCES += \
 	image.c \
+	image-decode.c \
 	image-grid.c \
 	image-sixel.c \
+	image-kitty.c \
 	image-fallback.c
 endif
 

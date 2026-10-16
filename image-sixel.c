@@ -667,7 +667,7 @@ sixel_to_image(struct sixel_image *si)
 	ig.canvas_height = sy * si->ypixel;
 	ig.sx = sx;
 	ig.sy = sy;
-	im = image_create(&ig, pixels);
+	im = image_create(IMAGE_TYPE_SIXEL, &ig, pixels);
 	if (im == NULL)
 		free(pixels);
 	return (im);
@@ -683,7 +683,7 @@ sixel_write(struct screen_write_ctx *ctx, struct sixel_image *si, u_int bg)
 	sixel_free(si);
 	if (im == NULL)
 		return;
-	image_write(ctx, im, bg);
+	image_write(ctx, im, bg, 0);
 	image_free(im);
 }
 

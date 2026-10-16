@@ -1648,6 +1648,11 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
 
+#ifdef ENABLE_IMAGES
+	image_redraw_area(ctx, 0, s->cy, screen_size_x(s),
+	    s->rlower + 1 - s->cy);
+#endif
+
 	grid_view_insert_lines_region(gd, s->rlower, s->cy, ny, bg);
 
 	screen_write_collect_flush(ctx, 0, __func__);
@@ -1686,6 +1691,10 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 
 	screen_write_initctx(ctx, &ttyctx, 1, 1);
 	ttyctx.bg = bg;
+
+#ifdef ENABLE_IMAGES
+	image_redraw_area(ctx, 0, s->cy, screen_size_x(s), ry);
+#endif
 
 	grid_view_delete_lines_region(gd, s->rlower, s->cy, ny, bg);
 
@@ -2182,8 +2191,15 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 	    ctx->wp != NULL &&
 	    options_get_number(ctx->wp->options, "scroll-on-clear"))
 		grid_view_clear_history(s->grid, bg);
-	else
+	else {
+#ifdef ENABLE_IMAGES
+		for (y = 0; y < sy; y++) {
+			image_grid_free_line(s->grid,
+			    &s->grid->linedata[s->grid->hsize + y]);
+		}
+#endif
 		grid_view_clear(s->grid, 0, 0, sx, sy, bg);
+	}
 
 	screen_write_collect_clear(ctx, 0, sy);
 

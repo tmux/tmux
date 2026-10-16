@@ -699,7 +699,7 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny, u_int bg)
 	if (grid_check_y(gd, __func__, py + ny - 1) != 0)
 		return;
 #ifdef ENABLE_IMAGES
-	image_grid_remove(gd, px, py, nx, ny);
+	image_grid_overwrite(gd, px, py, nx, ny);
 #endif
 
 	for (yy = py; yy < py + ny; yy++) {
@@ -726,7 +726,10 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny, u_int bg)
 void
 grid_clear_lines(struct grid *gd, u_int py, u_int ny, u_int bg)
 {
-	u_int	yy;
+#ifdef ENABLE_IMAGES
+	struct image_line	*images;
+#endif
+	u_int			 yy;
 
 	if (ny == 0)
 		return;
@@ -737,8 +740,16 @@ grid_clear_lines(struct grid *gd, u_int py, u_int ny, u_int bg)
 		return;
 
 	for (yy = py; yy < py + ny; yy++) {
+#ifdef ENABLE_IMAGES
+		image_grid_overwrite(gd, 0, yy, gd->sx, 1);
+		images = gd->linedata[yy].images;
+		gd->linedata[yy].images = NULL;
+#endif
 		grid_free_line(gd, yy);
 		grid_empty_line(gd, yy, bg);
+#ifdef ENABLE_IMAGES
+		gd->linedata[yy].images = images;
+#endif
 	}
 	if (py != 0)
 		gd->linedata[py - 1].flags &= ~GRID_LINE_WRAPPED;
