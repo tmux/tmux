@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.387 2026/10/16 11:34:49 bket Exp $ */
+/* $OpenBSD: window.c,v 1.388 2026/10/16 14:26:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -447,6 +447,7 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 
 	w->id = next_window_id++;
 	RB_INSERT(windows, &windows, w);
+	redraw_invalidate_scene(w);
 
 	if (gettimeofday(&w->creation_time, NULL) != 0)
 		fatal("gettimeofday failed");
@@ -1189,6 +1190,19 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 	return (wp);
 }
 
+static void
+window_forget_pane(struct window *w, struct window_pane *wp)
+{
+	if (wp == marked_pane.wp)
+		server_clear_marked();
+	if (wp == w->modal_last)
+		w->modal_last = NULL;
+	if (wp == w->was_zoomed)
+		w->was_zoomed = NULL;
+	window_pane_stack_remove(&w->last_panes, wp);
+	redraw_invalidate_scene(w);
+}
+
 void
 window_lost_pane(struct window *w, struct window_pane *wp)
 {
@@ -1196,14 +1210,8 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 
 	log_debug("%s: @%u pane %%%u", __func__, w->id, wp->id);
 
-	if (wp == marked_pane.wp)
-		server_clear_marked();
-	if (wp == w->modal_last)
-		w->modal_last = NULL;
-	if (wp == w->was_zoomed)
-		w->was_zoomed = NULL;
+	window_forget_pane(w, wp);
 
-	window_pane_stack_remove(&w->last_panes, wp);
 	if (wp == w->active) {
 		lastwp = NULL;
 		if (wp == w->modal) {
@@ -1226,10 +1234,8 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 			window_fire_pane_changed(w, w->active, wp);
 			window_update_focus(w);
 		}
-	} else if (wp == w->modal) {
+	} else if (wp == w->modal)
 		w->modal = w->modal_last = NULL;
-	}
-	redraw_invalidate_scene(w);
 }
 
 void
@@ -1357,6 +1363,11 @@ window_destroy_panes(struct window *w)
 
 	while (!TAILQ_EMPTY(&w->panes)) {
 		wp = TAILQ_FIRST(&w->panes);
+		window_forget_pane(w, wp);
+		if (wp == w->active)
+			w->active = NULL;
+		if (wp == w->modal)
+			w->modal = NULL;
 		TAILQ_REMOVE(&w->panes, wp, entry);
 		TAILQ_REMOVE(&w->z_index, wp, zentry);
 		window_pane_destroy(wp);
