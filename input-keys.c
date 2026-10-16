@@ -427,7 +427,7 @@ input_key_extended(struct bufferevent *bev, key_code key)
 {
 	char		 tmp[64], modifier;
 	struct utf8_data ud;
-	wchar_t		 wc;
+	utf8_codepoint	 wc;
 
 	switch (key & KEYC_MASK_MODIFIERS) {
 	case KEYC_SHIFT:
