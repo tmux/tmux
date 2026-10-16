@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.522 2026/10/15 08:21:11 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.524 2026/10/16 11:34:49 bket Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -187,6 +187,7 @@ server_client_create(int fd)
 	c->theme = THEME_UNKNOWN;
 
 	status_init(c);
+	status_side_init(c);
 	c->flags |= CLIENT_FOCUSED;
 
 	c->keytable = key_bindings_get_table("root", 1);
@@ -414,6 +415,7 @@ server_client_lost(struct client *c)
 	tty_term_free_list(c->term_caps, c->term_ncaps);
 
 	status_free(c);
+	status_side_free(c);
 	input_cancel_requests(c);
 
 	free(c->title);
@@ -743,15 +745,123 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 	return (KEYC_MOUSE_LOCATION_NOWHERE);
 }
 
+/* Check for mouse events on the status lines. */
+static int
+server_client_check_mouse_status(struct client *c, struct mouse_event *m,
+    enum key_code_type type, u_int x, u_int y,
+    enum key_code_mouse_location *loc)
+{
+	struct winlink		*fwl;
+	struct window_pane	*fwp;
+	struct session		*s = c->session, *fs;
+	struct style_range	*sr;
+	u_int			 n, sidey, separator;
+
+	*loc = KEYC_MOUSE_LOCATION_NOWHERE;
+
+	m->statusat = status_at_line(c);
+	m->statuslines = status_line_size(c);
+	m->sideat = status_side_at_column(c);
+	m->sidewidth = status_side_size(c);
+	if (c->tty.mouse_drag_flag != 0 &&
+	    c->tty.mouse_drag_location == KEYC_MOUSE_LOCATION_STATUS_BORDER) {
+		*loc = KEYC_MOUSE_LOCATION_STATUS_BORDER;
+		return (0);
+	}
+
+	if (m->statusat != -1 &&
+	    y >= (u_int)m->statusat &&
+	    y < m->statusat + m->statuslines) {
+		sr = status_get_range(c, x, y - m->statusat);
+	} else {
+		if (m->sideat == -1 ||
+		    x < (u_int)m->sideat ||
+		    x >= m->sideat + m->sidewidth)
+			return (0);
+		if (m->statusat == 0)
+			sidey = m->statuslines;
+		else
+			sidey = 0;
+		if (y < sidey || y - sidey >= status_side_rows(c))
+			return (0);
+		separator = m->sideat;
+		if (separator == 0)
+			separator = m->sidewidth - 1;
+		if (m->sidewidth > 1 && x == separator) {
+			*loc = KEYC_MOUSE_LOCATION_STATUS_BORDER;
+			if (type == KEYC_TYPE_MOUSEDRAG &&
+			    c->tty.mouse_drag_flag == 0)
+				c->tty.mouse_drag_status = 1;
+			return (0);
+		}
+		sr = status_side_get_range(c, x - m->sideat, y - sidey);
+	}
+	if (type == KEYC_TYPE_MOUSEDRAG && c->tty.mouse_drag_flag == 0)
+		c->tty.mouse_drag_status = 1;
+	if (sr == NULL) {
+		*loc = KEYC_MOUSE_LOCATION_STATUS_DEFAULT;
+		return (0);
+	}
+
+	switch (sr->type) {
+	case STYLE_RANGE_NONE:
+		return (-1);
+	case STYLE_RANGE_LEFT:
+		log_debug("mouse range: left");
+		*loc = KEYC_MOUSE_LOCATION_STATUS_LEFT;
+		break;
+	case STYLE_RANGE_RIGHT:
+		log_debug("mouse range: right");
+		*loc = KEYC_MOUSE_LOCATION_STATUS_RIGHT;
+		break;
+	case STYLE_RANGE_PANE:
+		fwp = window_pane_find_by_id(sr->argument);
+		if (fwp == NULL)
+			return (-1);
+		m->wp = sr->argument;
+
+		log_debug("mouse range: pane %%%u", m->wp);
+		*loc = KEYC_MOUSE_LOCATION_STATUS;
+		break;
+	case STYLE_RANGE_WINDOW:
+		fwl = winlink_find_by_index(&s->windows, sr->argument);
+		if (fwl == NULL)
+			return (-1);
+		m->w = fwl->window->id;
+
+		log_debug("mouse range: window @%u", m->w);
+		*loc = KEYC_MOUSE_LOCATION_STATUS;
+		break;
+	case STYLE_RANGE_SESSION:
+		fs = session_find_by_id(sr->argument);
+		if (fs == NULL)
+			return (-1);
+		m->s = sr->argument;
+
+		log_debug("mouse range: session $%u", m->s);
+		*loc = KEYC_MOUSE_LOCATION_STATUS;
+		break;
+	case STYLE_RANGE_USER:
+		log_debug("mouse range: user");
+		*loc = KEYC_MOUSE_LOCATION_STATUS;
+		break;
+	case STYLE_RANGE_CONTROL:
+		n = sr->argument; /* parsing keeps this < 10 */
+		log_debug("mouse range: control %u", n);
+		*loc = KEYC_MOUSE_LOCATION_CONTROL0 + n;
+		break;
+	}
+	return (0);
+}
+
 /* Check for mouse keys. */
 static key_code
 server_client_check_mouse(struct client *c, struct key_event *event)
 {
 	struct mouse_event		*m = &event->m;
-	struct session			*s = c->session, *fs;
+	struct session			*s = c->session;
 	struct window			*w = s->curw->window;
-	struct winlink			*fwl;
-	struct window_pane		*wp, *fwp, *lwp = NULL;
+	struct window_pane		*wp, *lwp = NULL;
 	u_int				 x, y, sx, sy, px, py, n, sl_mpos = 0;
 	u_int				 b, bn;
 	int				 ignore = 0;
@@ -853,69 +963,8 @@ have_event:
 	m->wp = -1;
 	m->ignore = ignore;
 
-	/* Is this on the status line? */
-	m->statusat = status_at_line(c);
-	m->statuslines = status_line_size(c);
-	if (m->statusat != -1 &&
-	    y >= (u_int)m->statusat &&
-	    y < m->statusat + m->statuslines) {
-		if (type == KEYC_TYPE_MOUSEDRAG && c->tty.mouse_drag_flag == 0)
-			c->tty.mouse_drag_status = 1;
-		sr = status_get_range(c, x, y - m->statusat);
-		if (sr == NULL) {
-			loc = KEYC_MOUSE_LOCATION_STATUS_DEFAULT;
-		} else {
-			switch (sr->type) {
-			case STYLE_RANGE_NONE:
-				return (KEYC_UNKNOWN);
-			case STYLE_RANGE_LEFT:
-				log_debug("mouse range: left");
-				loc = KEYC_MOUSE_LOCATION_STATUS_LEFT;
-				break;
-			case STYLE_RANGE_RIGHT:
-				log_debug("mouse range: right");
-				loc = KEYC_MOUSE_LOCATION_STATUS_RIGHT;
-				break;
-			case STYLE_RANGE_PANE:
-				fwp = window_pane_find_by_id(sr->argument);
-				if (fwp == NULL)
-					return (KEYC_UNKNOWN);
-				m->wp = sr->argument;
-
-				log_debug("mouse range: pane %%%u", m->wp);
-				loc = KEYC_MOUSE_LOCATION_STATUS;
-				break;
-			case STYLE_RANGE_WINDOW:
-				fwl = winlink_find_by_index(&s->windows,
-				    sr->argument);
-				if (fwl == NULL)
-					return (KEYC_UNKNOWN);
-				m->w = fwl->window->id;
-
-				log_debug("mouse range: window @%u", m->w);
-				loc = KEYC_MOUSE_LOCATION_STATUS;
-				break;
-			case STYLE_RANGE_SESSION:
-				fs = session_find_by_id(sr->argument);
-				if (fs == NULL)
-					return (KEYC_UNKNOWN);
-				m->s = sr->argument;
-
-				log_debug("mouse range: session $%u", m->s);
-				loc = KEYC_MOUSE_LOCATION_STATUS;
-				break;
-			case STYLE_RANGE_USER:
-				log_debug("mouse range: user");
-				loc = KEYC_MOUSE_LOCATION_STATUS;
-				break;
-			case STYLE_RANGE_CONTROL:
-				n = sr->argument; /* parsing keeps this < 10 */
-				log_debug("mouse range: control %u", n);
-				loc = KEYC_MOUSE_LOCATION_CONTROL0 + n;
-				break;
-			}
-		}
-	}
+	if (server_client_check_mouse_status(c, m, type, x, y, &loc) != 0)
+		return (KEYC_UNKNOWN);
 
 	/*
 	 * Not on status line. Adjust position and check for border, pane, or
@@ -928,7 +977,12 @@ have_event:
 			m->w = lwp->window->id;
 		}
 	} else if (loc == KEYC_MOUSE_LOCATION_NOWHERE) {
-		px = x;
+		if (m->sideat == 0 && x >= m->sidewidth)
+			px = x - m->sidewidth;
+		else if (m->sideat > 0 && x >= (u_int)m->sideat)
+			px = m->sideat - 1;
+		else
+			px = x;
 		if (m->statusat == 0 && y >= m->statuslines)
 			py = y - m->statuslines;
 		else if (m->statusat > 0 && y >= (u_int)m->statusat)
@@ -1038,7 +1092,6 @@ have_event:
 			log_debug("click timer started");
 			tv.tv_sec = KEYC_CLICK_TIMEOUT / 1000;
 			tv.tv_usec = (KEYC_CLICK_TIMEOUT % 1000) * 1000L;
-			evtimer_del(&c->click_timer);
 			evtimer_add(&c->click_timer, &tv);
 		}
 	}
@@ -1092,6 +1145,7 @@ have_event:
 		 * where the user grabbed.
 		 */
 		if (c->tty.mouse_drag_flag == 0) {
+			c->tty.mouse_drag_location = loc;
 			if (c->tty.mouse_drag_status) {
 				c->tty.mouse_drag_x = x;
 				c->tty.mouse_drag_y = y;
@@ -1517,7 +1571,6 @@ try_again:
 
 			tv.tv_sec = repeat / 1000;
 			tv.tv_usec = (repeat % 1000) * 1000L;
-			evtimer_del(&c->repeat_timer);
 			evtimer_add(&c->repeat_timer, &tv);
 		} else {
 			c->flags &= ~CLIENT_REPEAT;
@@ -1622,18 +1675,29 @@ server_client_handle_menu_key(struct client *c, struct key_event *event)
 		m = &new_event.m;
 		m->statusat = status_at_line(c);
 		m->statuslines = status_line_size(c);
+		m->sideat = status_side_at_column(c);
+		m->sidewidth = status_side_size(c);
 
 		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
-		m->x += ox;
-		if (m->statusat == 0) {
-			if (m->y < m->statuslines)
+		if (m->sideat == 0 && m->x < m->sidewidth)
+			m->x = m->y = UINT_MAX;
+		else if (m->sideat > 0 && m->x >= (u_int)m->sideat)
+			m->x = m->y = UINT_MAX;
+		else {
+			if (m->sideat == 0)
+				m->x -= m->sidewidth;
+			m->x += ox;
+			if (m->statusat == 0) {
+				if (m->y < m->statuslines)
+					m->x = m->y = UINT_MAX;
+				else
+					m->y = m->y - m->statuslines + oy;
+			} else if (m->statusat > 0 &&
+			    m->y >= (u_int)m->statusat)
 				m->x = m->y = UINT_MAX;
 			else
-				m->y = m->y - m->statuslines + oy;
-		} else if (m->statusat > 0 && m->y >= (u_int)m->statusat)
-			m->x = m->y = UINT_MAX;
-		else
-			m->y += oy;
+				m->y += oy;
+		}
 	}
 
 	if (menu_key(c, w->menu, &new_event) == 1)
@@ -2037,6 +2101,8 @@ server_client_prompt_cursor(struct client *c, struct window_pane *wp, int *mode,
 	if (window_position_is_visible(r, *cx)) {
 		if (status_at_line(c) == 0)
 			*cy += status_line_size(c);
+		if (status_side_at_column(c) == 0)
+			*cx += status_side_size(c);
 		*mode |= MODE_CURSOR;
 	}
 	return (1);
@@ -2105,6 +2171,8 @@ server_client_reset_state(struct client *c)
 				cy -= oy;
 				if (status_at_line(c) == 0)
 					cy += status_line_size(c);
+				if (status_side_at_column(c) == 0)
+					cx += status_side_size(c);
 			}
 			prompt = 1;
 		} else {
@@ -2144,6 +2212,8 @@ server_client_reset_state(struct client *c)
 
 				if (status_at_line(c) == 0)
 					cy += status_line_size(c);
+				if (status_side_at_column(c) == 0)
+					cx += status_side_size(c);
 			}
 
 			if (!cursor)

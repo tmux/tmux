@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-join-pane.c,v 1.78 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-join-pane.c,v 1.79 2026/10/16 07:59:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 George Nachman <tmux@georgester.com>
@@ -324,11 +324,19 @@ cmd_join_pane_mouse_move(struct client *c, struct mouse_event *m)
 		y -= m->statuslines;
 	else if (m->statusat > 0 && y >= m->statusat)
 		y = m->statusat - 1;
+	if (m->sideat == 0 && x >= (int)m->sidewidth)
+		x -= m->sidewidth;
+	else if (m->sideat > 0 && x >= m->sideat)
+		x = m->sideat - 1;
 	ly = m->ly + m->oy; lx = m->lx + m->ox;
 	if (m->statusat == 0 && ly >= (int)m->statuslines)
 		ly -= m->statuslines;
 	else if (m->statusat > 0 && ly >= m->statusat)
 		ly = m->statusat - 1;
+	if (m->sideat == 0 && lx >= (int)m->sidewidth)
+		lx -= m->sidewidth;
+	else if (m->sideat > 0 && lx >= m->sideat)
+		lx = m->sideat - 1;
 
 	if (x != lx || y != ly) {
 		oxoff = wp->xoff;
