@@ -37,6 +37,12 @@ start_pane flag 10 3 '\360\237\207\254\360\237\207\247X\n'
 check_capture flag '🇬🇧X'
 check_cursor flag '0,1'
 
+start_pane tonebefore 10 3 '\360\237\217\275\360\237\221\215'
+check_cursor tonebefore '4,0'
+
+start_pane toneafter 10 3 '\360\237\221\215\360\237\217\275'
+check_cursor toneafter '2,0'
+
 start_pane combining-left 10 3 '\314\201A\n'
 check_capture combining-left 'A'
 check_cursor combining-left '0,1'
