@@ -678,6 +678,11 @@ utf8_fromwc(wchar_t wc, struct utf8_data *ud)
 
 	memset(ud, 0, sizeof *ud);
 
+	/* wctomb may still encode the old range up to 0x7fffffff. */
+	if ((u_int)wc > 0x10ffff ||
+	    ((u_int)wc >= 0xd800 && (u_int)wc <= 0xdfff))
+		return (UTF8_ERROR);
+
 #ifdef HAVE_UTF8PROC
 	size = utf8proc_wctomb(ud->data, wc);
 #else
