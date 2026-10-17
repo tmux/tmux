@@ -133,7 +133,8 @@ $INNER switch-mode -s -t alpha:main.0 -F 'SESSION #{session_name}' \
 	"set-option -g @picked '%%'" || exit 1
 wait_count 'SESSION ' 3
 $INNER send-keys -t alpha:main.0 Up Enter || exit 1
-wait_format alpha:main.0 '#{@picked}' '=charlie:'
+charlie=$($INNER display-message -p -t charlie: '#{session_id}')
+wait_format alpha:main.0 '#{@picked}' "$charlie:"
 wait_format alpha:main.0 '#{pane_in_mode}' 0
 
 # Fuzzy filtering keeps only bravo for "brv". The default command switches the
@@ -161,10 +162,9 @@ $INNER send-keys -t alpha:main.0 -l pick || exit 1
 wait_count 'WINDOW ' 2
 $INNER send-keys -t alpha:main.0 Down Enter || exit 1
 picked=$($INNER show-option -gv @picked)
-case "$picked" in
-=bravo:0.) ;;
-*) fail "window selection produced '$picked', expected '=bravo:0.'" ;;
-esac
+bravo=$($INNER display-message -p -t bravo: '#{session_id}')
+[ "$picked" = "$bravo:0." ] || \
+	fail "window selection produced '$picked', expected '$bravo:0.'"
 
 # -O selects the sort order and -r reverses it. By name the aaa window is
 # first, by index main is, and by name reversed pick-two is.

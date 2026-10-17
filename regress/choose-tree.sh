@@ -357,8 +357,9 @@ while [ "$i" -lt 50 ]; do
 	i=$((i + 1))
 done
 [ "$i" -lt 50 ] || fail "window tree entered command did not run"
+sid=$($TMUX display-message -p -t aaa: '#{session_id}')
 case "$value" in
-=aaa:*.) ;;
+"$sid":*.) ;;
 *) fail "window tree command target was '$value'" ;;
 esac
 

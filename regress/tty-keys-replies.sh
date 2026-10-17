@@ -62,6 +62,8 @@ def matches(name, value):
             "sixel", "margins", "usstyle"} <= features
     if name == "sync":
         return "sync" in features
+    if name.startswith("kitty-graphics"):
+        return "kittygraphics" in features
     if name == "characters":
         return size == "61x17"
     if name == "pixels":
@@ -76,15 +78,30 @@ reports = [
     ("XDA-ghostty", b"\033P>|ghostty 1.2.0\033\\"),
     ("XDA-WezTerm", b"\033P>|WezTerm 20240203-110809-5046fc22\033\\"),
     ("sync", b"\033[?2026;2$y"),
+    ("kitty-graphics", b"\033_Gi=31;OK\033\\"),
+    ("kitty-graphics-disabled", b"\033_Gi=31;OK\033\\"),
+    ("kitty-graphics-error", b"\033_Gi=31;EINVAL:invalid image data\033\\"),
+    ("kitty-graphics-near-ok", b"\033_Gi=31;OKAY\033\\"),
+    ("kitty-graphics-no-query", b""),
     ("characters", b"\033[8;17;61t"),
     ("pixels", b"\033[4;480;800t"),
 ]
+images = None
 cases = 0
 for name, report in reports:
+    if name.startswith("kitty-graphics") and images is False and \
+        name != "kitty-graphics-no-query":
+        continue
     for prefixed in (False, True):
         deliveries = ["whole", "split", "bytewise"]
+        if name == "kitty-graphics-no-query":
+            if prefixed:
+                continue
+            deliveries = ["whole"]
         if name == "sync" and not prefixed:
             deliveries += ["invalid", "expired"]
+        if name == "kitty-graphics" and not prefixed:
+            deliveries += ["invalid", "unanswered"]
         for delivery in deliveries:
             context = (name, prefixed, delivery)
             pid = fd = None
@@ -94,6 +111,8 @@ for name, report in reports:
             try:
                 run("new-session", "-d", "-s", "replies", "-x", "80",
                     "-y", "24", "stty raw -echo; exec cat -v")
+                if images is None:
+                    images = run("display-message", "-p", "#{image_support}") == "1"
                 run("set-option", "-g", "status", "off")
                 if name == "pixels":
                     # Draw the window cell size so it can be read from the
@@ -110,6 +129,11 @@ for name, report in reports:
                 run("set-option", "-g", "@seen", "")
                 if name == "XDA-kitty-nosync":
                     run("set-option", "-as", "terminal-features", ",*:sync@")
+                if name == "kitty-graphics-disabled":
+                    run("set-option", "-as", "terminal-features",
+                        ",*:kittygraphics@")
+                if name == "kitty-graphics-no-query" and images:
+                    run("set-option", "-as", "terminal-overrides", ",*:XT@")
                 run("bind-key", "-n", "Escape", "set-option", "-gF",
                     "@seen", "#{@seen}E")
                 pid, fd = os.forkpty()
@@ -120,17 +144,30 @@ for name, report in reports:
                     os.execv(tmux, server + ["attach-session", "-t", "replies"])
                 output = b""
                 deadline = time.monotonic() + 5
-                while b"\033[?2026$p" not in output:
+                while b"\033]11;?\033\\" not in output:
                     assert time.monotonic() < deadline, (context, "missing query")
                     if select.select([fd], [], [], .01)[0]:
                         output += os.read(fd, 65536)
+                if name.startswith("kitty-graphics"):
+                    query = b"\033_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\033\\"
+                    if name == "kitty-graphics-no-query":
+                        assert query not in output, (context, "unexpected graphics query")
+                    else:
+                        assert query in output, (context, "missing graphics query")
                 baseline = state()
                 assert not matches(name, baseline), (context, baseline)
                 wire = (b"\033" if prefixed else b"") + report
                 if delivery == "invalid":
                     # A near match must fall back to ordinary key parsing.
-                    wire = b"\033[?2026;5$y"
-                if delivery in ("whole", "invalid"):
+                    if name == "kitty-graphics":
+                        wire = b"\033_Gi=32;OK\033\\"
+                    else:
+                        wire = b"\033[?2026;5$y"
+                if delivery == "unanswered":
+                    # An unanswered graphics query uses the startup timeout.
+                    wire = b""
+                    time.sleep(5.1)
+                if delivery in ("whole", "invalid", "unanswered"):
                     chunks = [wire]
                 elif delivery in ("split", "expired"):
                     chunks = [wire[:-1], wire[-1:]]
@@ -176,11 +213,14 @@ for name, report in reports:
                     if select.select([fd], [], [], .01)[0]:
                         output += os.read(fd, 65536)
                 actual = state()
-                if delivery in ("invalid", "expired"):
+                if delivery in ("invalid", "expired", "unanswered") or \
+                    name in ("kitty-graphics-disabled", "kitty-graphics-error",
+                             "kitty-graphics-near-ok", "kitty-graphics-no-query"):
                     assert actual == baseline, (context, "unexpected effect", actual)
                 else:
                     assert matches(name, actual), (context, "missing effect", actual)
-                    if name in ("XDA-kitty", "XDA-kitty-nosync", "XDA-ghostty"):
+                    if name in ("XDA-kitty", "XDA-kitty-nosync", "XDA-ghostty",
+                                "kitty-graphics"):
                         assert run("display-message", "-p", "#{I/f:kittygraphics}") == "1", (
                             context, "kittygraphics feature lookup failed")
                     if name == "XDA-kitty-nosync":

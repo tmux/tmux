@@ -73,6 +73,10 @@ static int	tty_keys_extended_device_attributes(struct tty *, const char *,
 		    size_t, size_t *, int);
 static int	tty_keys_sync(struct tty *, const char *, size_t, size_t *,
 		    int);
+#ifdef ENABLE_IMAGES
+static int	tty_keys_kitty_graphics(struct tty *, const char *, size_t,
+		    size_t *, int);
+#endif
 static int	tty_keys_colours1(struct tty *, const char *, size_t, size_t *,
 		    int);
 static int	tty_keys_palette(struct tty *, const char *, size_t, size_t *,
@@ -94,7 +98,10 @@ static const struct {
 	{ KEYC_REPORT_XDA, tty_keys_extended_device_attributes },
 	{ KEYC_REPORT_COLOURS, tty_keys_colours1 },
 	{ KEYC_REPORT_PALETTE, tty_keys_palette },
-	{ KEYC_REPORT_WINSZ, tty_keys_winsz }
+	{ KEYC_REPORT_WINSZ, tty_keys_winsz },
+#ifdef ENABLE_IMAGES
+	{ KEYC_REPORT_KITTY_GRAPHICS, tty_keys_kitty_graphics }
+#endif
 };
 
 /* A key tree entry. */
@@ -1533,6 +1540,55 @@ tty_keys_sync(struct tty *tty, const char *buf, size_t len, size_t *size,
 
 	return (0);
 }
+
+#ifdef ENABLE_IMAGES
+/*
+ * Handle a Kitty graphics query response. Returns 0 for success, -1 for
+ * failure, 1 for partial.
+ */
+static int
+tty_keys_kitty_graphics(struct tty *tty, const char *buf, size_t len,
+    size_t *size, int apply)
+{
+	struct client		*c = tty->client;
+	static const char	 prefix[] = "\033_Gi=31;";
+	size_t			 i, end;
+
+	*size = 0;
+	if (tty->flags & TTY_HAVEKITTYGRAPHICS)
+		return (-1);
+
+	for (i = 0; i < (sizeof prefix) - 1; i++) {
+		if (i == len)
+			return (1);
+		if (buf[i] != prefix[i])
+			return (-1);
+	}
+	for (end = i; end < len; end++) {
+		if (buf[end] == '\033')
+			break;
+		if (buf[end] < ' ' || buf[end] > '~')
+			return (-1);
+	}
+	if (end == len || end + 1 == len)
+		return (1);
+	if (end == i || buf[end + 1] != '\\')
+		return (-1);
+	*size = end + 2;
+	if (!apply)
+		return (0);
+
+	if (end - i == 2 && memcmp(buf + i, "OK", 2) == 0) {
+		tty_parse_client_features(c, "kittygraphics", ",");
+		tty_update_features(tty);
+	}
+	log_debug("%s: received Kitty graphics response %.*s", c->name,
+	    (int)*size, buf);
+	tty->flags |= TTY_HAVEKITTYGRAPHICS;
+
+	return (0);
+}
+#endif
 
 /*
  * Handle secondary device attributes input. Returns 0 for success, -1 for

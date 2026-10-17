@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.303 2026/10/16 11:33:44 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.304 2026/10/16 17:21:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2779,9 +2779,10 @@ screen_write_collect_add(struct screen_write_ctx *ctx,
 	ctx->s->write_list[s->cy].data[s->cx + ci->used++] = gc->data.data[0];
 }
 
-/* Write cell data. */
-void
-screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
+/* Write a cell, replacing any columns already written for its base. */
+static void
+screen_write_cell1(struct screen_write_ctx *ctx, const struct grid_cell *gc,
+    u_int old_width)
 {
 	struct screen		*s = ctx->s;
 	struct window_pane	*wp = ctx->wp;
@@ -2793,17 +2794,14 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
 	u_int			 width = ud->width, xx, not_wrap, i, n, vis;
+	u_int			 insert_width = width;
 	int			 selected, skip = 1, redraw = 0;
 	int			 yoff = 0, xoff = 0;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 
-	/* Ignore padding cells. */
-	if (gc->flags & GRID_FLAG_PADDING)
-		return;
-
-	/* Get the previous cell to check for combining. */
-	if (screen_write_combine(ctx, gc) != 0)
+	/* If this character is wider than the screen, ignore it. */
+	if (width > sx)
 		return;
 
 	/* Flush any existing scrolling. */
@@ -2812,14 +2810,13 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	/* If this character doesn't fit, ignore it. */
 	if ((~s->mode & MODE_WRAP) &&
 	    width > 1 &&
-	    (width > sx || (s->cx != sx && s->cx > sx - width)))
+	    s->cx != sx &&
+	    s->cx > sx - width)
 		return;
 
-	/* If in insert mode, make space for the cells. */
-	if (s->mode & MODE_INSERT) {
-		grid_view_insert_cells(s->grid, s->cx, s->cy, width, 8);
-		skip = 0;
-	}
+	/* Do not insert again for columns already written on this line. */
+	if (s->cx <= sx - width)
+		insert_width -= old_width;
 
 	/* Check this will fit on the current line and wrap if not. */
 	if ((s->mode & MODE_WRAP) && s->cx > sx - width) {
@@ -2832,7 +2829,16 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	/* Sanity check cursor position. */
 	if (s->cx > sx - width || s->cy > sy - 1)
 		return;
+
+	/* If in insert mode, make space for the new columns. */
+	if ((s->mode & MODE_INSERT) && insert_width != 0) {
+		grid_view_insert_cells(s->grid, s->cx + width - insert_width,
+		    s->cy, insert_width, 8);
+		skip = 0;
+	}
 	screen_write_initctx(ctx, &ttyctx, 0, 0);
+	if (old_width != 0)
+		ttyctx.flags |= TTY_CTX_CELL_INVALIDATE;
 
 #ifdef ENABLE_IMAGES
 	/* Mark images as damaged. */
@@ -2911,22 +2917,24 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	 * replace it.
 	 */
 	not_wrap = !(s->mode & MODE_WRAP);
-	if (s->cx <= sx - not_wrap - width)
+	if (width <= sx - not_wrap && s->cx <= sx - not_wrap - width)
 		screen_write_set_cursor(ctx, s->cx + width, -1);
 	else
 		screen_write_set_cursor(ctx, sx - not_wrap, -1);
 
 	/* Create space for character in insert mode. */
-	if (s->mode & MODE_INSERT) {
+	if ((s->mode & MODE_INSERT) && insert_width != 0) {
 		screen_write_collect_flush(ctx, 0, __func__);
 		if (wp != NULL && screen_write_pane_is_obscured(ctx)) {
 			if (screen_write_should_draw_line(ctx, s->cy))
 				screen_write_redraw_line(ctx, &ttyctx, s->cy);
 			return;
 		}
-		ttyctx.n = width;
+		ttyctx.ocx += width - insert_width;
+		ttyctx.n = insert_width;
 		if (screen_write_should_draw_line(ctx, s->cy))
 			tty_write(tty_cmd_insertcharacter, &ttyctx);
+		ttyctx.ocx -= width - insert_width;
 	}
 
 	/* If not writing, done now. */
@@ -2973,6 +2981,17 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	}
 }
 
+/* Write cell data. */
+void
+screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
+{
+	if (gc->flags & GRID_FLAG_PADDING)
+		return;
+	if (screen_write_combine(ctx, gc) != 0)
+		return;
+	screen_write_cell1(ctx, gc, 0);
+}
+
 /* Combine a UTF-8 zero-width character onto the previous if necessary. */
 static int
 screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
@@ -2983,7 +3002,8 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	const struct utf8_data	*ud = &gc->data;
 	struct options		*oo = global_options;
 	u_int			 i, n, cx = s->cx, cy = s->cy, vis;
-	struct grid_cell	 last;
+	u_int			 sx = screen_size_x(s);
+	struct grid_cell	 last, tmp_gc;
 	struct tty_ctx		 ttyctx;
 	int			 force_wide = 0, zero_width = 0;
 	int			 xoff = 0, yoff = 0;
@@ -3064,11 +3084,23 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 
 	/* Force the width to 2 for modifiers and variation selector. */
 	if (last.data.width == 1 && force_wide) {
+		if (sx < 2 || (cx == sx && (~s->mode & MODE_WRAP)))
+			return (1);
 		last.data.width = 2;
-		n = 2;
-		cx++;
-	} else
-		force_wide = 0;
+
+		/* Clear the old character before moving to the next line. */
+		if (cx == sx) {
+			memcpy(&tmp_gc, &last, sizeof tmp_gc);
+			utf8_set(&tmp_gc.data, ' ');
+			screen_write_set_cursor(ctx, cx - 1, cy);
+			screen_write_cell1(ctx, &tmp_gc, 1);
+		}
+
+		/* Write through the normal path. */
+		screen_write_set_cursor(ctx, cx - 1, cy);
+		screen_write_cell1(ctx, &last, 1);
+		return (1);
+	}
 
 #ifdef ENABLE_IMAGES
 	/* Mark images as damaged. */
@@ -3077,8 +3109,6 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 
 	/* Set the new cell. */
 	grid_view_set_cell(gd, cx - n, cy, &last);
-	if (force_wide)
-		grid_view_set_padding(gd, cx - 1, cy, last.bg);
 
 	/*
 	 * Check if all of this character is visible. No character will be
@@ -3100,17 +3130,10 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		return (1);
 	}
 
-	/*
-	 * Redraw the combined cell. If forcing the cell to width 2, reset the
-	 * cached cursor position in the tty, since we don't really know
-	 * whether the terminal thought the character was width 1 or width 2
-	 * and what it is going to do now.
-	 */
+	/* Redraw the combined cell. */
 	screen_write_set_cursor(ctx, cx - n, cy);
 	screen_write_initctx(ctx, &ttyctx, 0, 0);
 	ttyctx.cell = &last;
-	if (force_wide)
-		ttyctx.flags |= TTY_CTX_CELL_INVALIDATE;
 	if (screen_write_should_draw_line(ctx, cy))
 		tty_write(tty_cmd_cell, &ttyctx);
 	screen_write_set_cursor(ctx, cx, cy);
