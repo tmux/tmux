@@ -1722,6 +1722,15 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of the pane status lines."
 	},
 
+	{
+		.name = "pane-border-connect-active",
+		.type = OPTIONS_TABLE_FLAG,
+		.scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+		.default_num = 1,
+		.text = "Whether the borders of the active pane should connect with the "
+			"borders of inactive panes.",
+	},
+
 	{ .name = "pane-colours",
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
