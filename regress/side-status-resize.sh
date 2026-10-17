@@ -55,7 +55,7 @@ check()
 			row=$($TMUX2 capture-pane -p -t "$target:0.0" |
 			    sed -n "$((offset + 2))p")
 			case "$row" in
-			"$padding│"*) break ;;
+			"${padding}│"*) break ;;
 			esac
 			sleep 0.1
 			i=$((i + 1))
