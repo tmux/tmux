@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.431 2026/10/16 12:21:12 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.432 2026/10/17 11:53:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1090,9 +1090,13 @@ static void *
 format_cb_pane_floating_flag(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
+	struct layout_cell	*lc;
 
 	if (wp != NULL) {
-		if (window_pane_is_floating(wp))
+		lc = wp->saved_layout_cell;
+		if (lc == NULL)
+			lc = wp->layout_cell;
+		if (lc != NULL && (lc->flags & LAYOUT_CELL_FLOATING))
 			return (xstrdup("1"));
 		return (xstrdup("0"));
 	}
