@@ -1,4 +1,4 @@
-# $OpenBSD: Makefile,v 1.125 2026/09/21 10:22:31 nicm Exp $
+# $OpenBSD: Makefile,v 1.126 2026/10/17 11:27:40 nicm Exp $
 
 PROG=	tmux
 SRCS=	alerts.c \
@@ -152,8 +152,6 @@ CFLAGS += -I${.CURDIR}
 
 LDADD=	-lutil -lcurses -levent -lm
 DPADD=	${LIBUTIL} ${LIBCURSES} ${LIBEVENT} ${LIBM}
-
-DEBUG=	-g
 
 .if "${MACHINE_ARCH}" == "sh"
 screen-redraw.o:
