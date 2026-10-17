@@ -20,6 +20,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,7 +35,7 @@
  * - Numbers are 64-bit signed integers in base 10; there are no fractions and
  *   no exponents.
  * - There is no null, and a string may not be empty.
- * - Escapes are validated but not decoded.
+ * - Escapes are validated but not decoded; json_decode_string decodes them.
  * - A key may not appear twice in the same object. Note that because escapes
  *   are not decoded, duplicate keys may go undetected.
  * - Objects may only be parsed to a fixed maximum depth.
@@ -156,6 +157,10 @@ json_parse(const char *input, char **cause)
 
 	if (*input == '\0') {
 		json_error(cause, "empty input", NULL);
+		return (NULL);
+	}
+	if (strlen(input) > INT_MAX) {
+		json_error(cause, "input too long", NULL);
 		return (NULL);
 	}
 
@@ -998,4 +1003,156 @@ json_to_string(struct json_node *node)
 	out = xmemdup(EVBUFFER_DATA(buffer), EVBUFFER_LENGTH(buffer));
 	evbuffer_free(buffer);
 	return (out);
+}
+
+/*
+ * Append a string as a quoted JSON string. Bytes 0x80 and above are written as
+ * they are, so a UTF-8 string stays UTF-8.
+ */
+void
+json_write_string(struct evbuffer *buffer, const char *s)
+{
+	const u_char	*cp, *start;
+	const char	*esc;
+	char		 tmp[7];
+
+	evbuffer_add(buffer, "\"", 1);
+	for (start = cp = s; *cp != '\0'; cp++) {
+		switch (*cp) {
+		case '"':
+			esc = "\\\"";
+			break;
+		case '\\':
+			esc = "\\\\";
+			break;
+		case '\n':
+			esc = "\\n";
+			break;
+		case '\r':
+			esc = "\\r";
+			break;
+		case '\t':
+			esc = "\\t";
+			break;
+		default:
+			if (*cp >= 0x20 && *cp != 0x7f)
+				continue;
+			xsnprintf(tmp, sizeof tmp, "\\u%04x", *cp);
+			esc = tmp;
+			break;
+		}
+		evbuffer_add(buffer, start, cp - start);
+		evbuffer_add(buffer, esc, strlen(esc));
+		start = cp + 1;
+	}
+	evbuffer_add(buffer, start, cp - start);
+	evbuffer_add(buffer, "\"", 1);
+}
+
+/* Read the four hexadecimal digits of a \u escape. */
+static int
+json_decode_hex(const char *s, u_int *c)
+{
+	u_int	i;
+
+	*c = 0;
+	for (i = 0; i < 4; i++) {
+		if (!isxdigit((u_char)s[i]))
+			return (-1);
+		*c <<= 4;
+		if (isdigit((u_char)s[i]))
+			*c |= s[i] - '0';
+		else
+			*c |= tolower((u_char)s[i]) - 'a' + 10;
+	}
+	return (0);
+}
+
+/*
+ * Decode the escapes in a string returned by json_get_string. Returns NULL if
+ * an escape is invalid or would decode to a NUL byte or an unpaired surrogate.
+ */
+char *
+json_decode_string(const char *s)
+{
+	char	*out, *cp;
+	u_int	 c, c2;
+
+	out = cp = xmalloc(strlen(s) + 1);
+	while (*s != '\0') {
+		if (*s != '\\') {
+			*cp++ = *s++;
+			continue;
+		}
+		s++;
+		switch (*s++) {
+		case '"':
+			*cp++ = '"';
+			break;
+		case '\\':
+			*cp++ = '\\';
+			break;
+		case '/':
+			*cp++ = '/';
+			break;
+		case 'b':
+			*cp++ = '\b';
+			break;
+		case 'f':
+			*cp++ = '\f';
+			break;
+		case 'n':
+			*cp++ = '\n';
+			break;
+		case 'r':
+			*cp++ = '\r';
+			break;
+		case 't':
+			*cp++ = '\t';
+			break;
+		case 'u':
+			if (json_decode_hex(s, &c) != 0)
+				goto fail;
+			s += 4;
+			if (c >= 0xdc00 && c <= 0xdfff)
+				goto fail;
+			if (c >= 0xd800 && c <= 0xdbff) {
+				if (s[0] != '\\' || s[1] != 'u')
+					goto fail;
+				if (json_decode_hex(s + 2, &c2) != 0)
+					goto fail;
+				if (c2 < 0xdc00 || c2 > 0xdfff)
+					goto fail;
+				s += 6;
+				c = 0x10000 + ((c - 0xd800) << 10) +
+				    (c2 - 0xdc00);
+			}
+			if (c == 0)
+				goto fail;
+			if (c < 0x80)
+				*cp++ = c;
+			else if (c < 0x800) {
+				*cp++ = 0xc0 | (c >> 6);
+				*cp++ = 0x80 | (c & 0x3f);
+			} else if (c < 0x10000) {
+				*cp++ = 0xe0 | (c >> 12);
+				*cp++ = 0x80 | ((c >> 6) & 0x3f);
+				*cp++ = 0x80 | (c & 0x3f);
+			} else {
+				*cp++ = 0xf0 | (c >> 18);
+				*cp++ = 0x80 | ((c >> 12) & 0x3f);
+				*cp++ = 0x80 | ((c >> 6) & 0x3f);
+				*cp++ = 0x80 | (c & 0x3f);
+			}
+			break;
+		default:
+			goto fail;
+		}
+	}
+	*cp = '\0';
+	return (out);
+
+fail:
+	free(out);
+	return (NULL);
 }
