@@ -172,14 +172,29 @@ window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
     u_int osx, u_int osy, u_int dsx, u_int dsy, u_int *xp, u_int *yp,
     u_int *sxp, u_int *syp)
 {
+	struct window		*w = wp->window;
 	struct layout_cell	*lc = wp->saved_layout_cell;
-	int			 status;
+	int			 status, xoff, yoff;
 	u_int			 x, y, sx, sy, x2, y2;
 
 	if (lc == NULL)
 		lc = wp->layout_cell;
 	if (lc == NULL || osx == 0 || osy == 0 || dsx == 0 || dsy == 0)
 		return (0);
+
+	/*
+	 * Single pane cannot zoom; the mode screen is already inside the
+	 * border, so fill it.
+	 */
+	if (wp->saved_layout_cell == NULL &&
+	    window_border_type_is_separate(w) &&
+	    window_count_panes(w, 0) == 1) {
+		*xp = 0;
+		*yp = 0;
+		*sxp = dsx;
+		*syp = dsy;
+		return (1);
+	}
 
 	if (osx <= dsx && osy <= dsy) {
 		x = lc->g.xoff;
@@ -209,8 +224,15 @@ window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
 	if (sx == 0 || sy == 0)
 		return (0);
 
-	status = window_get_pane_status(wp->window);
-	if (layout_add_horizontal_border(root, lc, status) && sy > 1) {
+	xoff = x;
+	yoff = y;
+	layout_apply_pane_border_type(w, root, lc, &xoff, &yoff, &sx, &sy);
+	x = xoff;
+	y = yoff;
+
+	status = window_get_pane_status(w);
+	if (layout_add_horizontal_border(root, lc, status) &&
+	    !window_border_type_is_separate(w) && sy > 1) {
 		if (status == PANE_STATUS_TOP)
 			y++;
 		sy--;
@@ -395,6 +417,46 @@ window_panes_mark_pane_status_borders(u_char *map, struct window *w,
 			y = y2 - 1;
 		}
 		window_panes_mark_hline(map, dsx, dsy, x, x2, y);
+	}
+}
+
+/* Mark a full rectangle around each tiled pane for separate borders. */
+static void
+window_panes_mark_pane_border_separate(u_char *map, struct window *w,
+    struct layout_cell *root, u_int osx, u_int osy, u_int dsx, u_int dsy)
+{
+	struct window_pane	*wp;
+	u_int			 x, y, sx, sy;
+	int			 left, right, top, bottom;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (window_panes_pane_floating(wp))
+			continue;
+		if (!window_panes_get_geometry(wp, root, osx, osy, dsx, dsy, &x,
+		    &y, &sx, &sy))
+			continue;
+
+		left = (int)x - 1;
+		right = (int)x + (int)sx;
+		top = (int)y - 1;
+		bottom = (int)y + (int)sy;
+
+		if (top >= 0) {
+			window_panes_mark_hline(map, dsx, dsy, left, right + 1,
+			    top);
+		}
+		if (bottom < (int)dsy) {
+			window_panes_mark_hline(map, dsx, dsy, left, right + 1,
+			    bottom);
+		}
+		if (left >= 0) {
+			window_panes_mark_vline(map, dsx, dsy, left, top,
+			    bottom + 1);
+		}
+		if (right < (int)dsx) {
+			window_panes_mark_vline(map, dsx, dsy, right, top,
+			    bottom + 1);
+		}
 	}
 }
 
@@ -588,10 +650,16 @@ window_panes_draw_borders(struct screen_write_ctx *ctx, struct window *w,
 		return;
 
 	map = xcalloc(dsx, dsy);
-	window_panes_mark_borders_cell(map, lc, osx, osy, dsx, dsy);
-	window_panes_mark_pane_status_borders(map, w, lc, osx, osy, dsx,
-	    dsy);
-	window_panes_mark_border_joins_cell(map, lc, osx, osy, dsx, dsy);
+	if (window_border_type_is_separate(w) &&
+	    window_count_panes(w, 0) > 1) {
+		window_panes_mark_pane_border_separate(map, w, lc, osx, osy, dsx,
+		    dsy);
+	} else if (!window_border_type_is_separate(w)) {
+		window_panes_mark_borders_cell(map, lc, osx, osy, dsx, dsy);
+		window_panes_mark_pane_status_borders(map, w, lc, osx, osy, dsx,
+		    dsy);
+		window_panes_mark_border_joins_cell(map, lc, osx, osy, dsx, dsy);
+	}
 
 	for (yy = 0; yy < dsy; yy++) {
 		for (xx = 0; xx < dsx; xx++) {
