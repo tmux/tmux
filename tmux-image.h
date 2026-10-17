@@ -37,9 +37,6 @@ struct sixel_image;
 struct tty;
 struct window_pane;
 
-/* Maximum image size in bytes. */
-#define IMAGE_SIZE_LIMIT (64 * 1024 * 1024)
-
 /* Backend draws images as graphics. */
 #define IMAGE_BACKEND_GRAPHICAL 0x1
 

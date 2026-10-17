@@ -13,6 +13,7 @@ import sys
 from image_test import image_test, sixel, check_image
 
 with image_test(sys.argv[1]) as test:
+    test.run('set-option', '-s', 'image-size-limit', '4096')
     client = test.attach()
     red = (255, 0, 0)
     valid = sixel(8, 16, [(100, 0, 0)], [0] * (8 * 16))
@@ -54,10 +55,10 @@ with image_test(sys.argv[1]) as test:
         b'q', b'q#0;2;100', b'q!0~', b'q!10001~', b'q#1025~',
         b'q#0;2;101;0;0~', b'q#0;1;361;50;100~',
         b'q"1;1;10001;1', b'q"1;1;1;10001',
-        b'q"1;1;4096;4097',
+        b'q"1;1;32;33',
         b'q"1;1;18446744073709551616;1',
-        b'q"1;1;10000;1#0;2;100;0;0@' + b'-' * 300 + b'@',
-        b'q"1;1;1;10000#0;2;100;0;0!2000@',
+        b'q"1;1;32;1#0;2;100;0;0@' + b'-' * 6 + b'@',
+        b'q"1;1;1;32#0;2;100;0;0!33@',
     ]
     for body in rejected:
         test.emit(b'\033[2J\033[H\033P9;1' + body + b'\033\\')

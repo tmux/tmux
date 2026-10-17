@@ -103,6 +103,8 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         if run('display-message', '-p', '#{image_support}') == '0':
             raise SystemExit(101)
         run('set', '-g', 'status', 'off')
+        size_limit = 64 * 1024
+        run('set', '-s', 'image-size-limit', str(size_limit))
         pixel = '/wAA/w=='
         transmit = 'a=t,i=7,f=32,s=1,v=1'
         ok = graphics('i=7', 'OK')
@@ -360,14 +362,14 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
               graphics('a=q,i=7,f=32,s=1,v=1,z=1', pixel) +
               graphics('a=p,i=7,C=1'), unsupported + missing)
 
-        # Abort immediately when chunked data exceeds 64 MiB, then recover.
-        block = base64.b64encode(b'\0' * (512 * 1024)).decode()
+        # Abort immediately when chunked data exceeds the limit, then recover.
+        block = base64.b64encode(b'\0' * 4096).decode()
         commands = [graphics(transmit + ',q=1,m=1', block)]
-        commands.extend([graphics('m=1', block)] * 127)
+        commands.extend([graphics('m=1', block)] * 15)
         commands.extend([graphics('m=1', 'AAAAAA=='),
             graphics('a=t,i=8,f=32,s=1,v=1', pixel)])
         check('accumulated-size-limit', commands,
-              invalid + graphics('i=8', 'OK'), timeout=90)
+              invalid + graphics('i=8', 'OK'))
 
         # Compressed uploads require a test build with zlib.
         compressed = base64.b64encode(zlib.compress(b'\xff\0\0\xff')).decode()
@@ -385,9 +387,9 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         check('compressed-wrong-size',
               graphics(control.replace('s=1', 's=2'), compressed), invalid)
         large = base64.b64encode(zlib.compress(
-            b'\0' * (4096 * 4097 * 3))).decode()
+            b'\0' * (128 * 129 * 3))).decode()
         check('oversized-rgb',
-              graphics('a=t,i=7,f=24,s=4096,v=4097,o=z', large), invalid)
+              graphics('a=t,i=7,f=24,s=128,v=129,o=z', large), invalid)
 
         # PNG uploads require a test build with libpng.
         png = b'\x89PNG\r\n\x1a\n'
@@ -423,7 +425,7 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
               graphics(control + ',S=' + str(len(png) + 1), payload),
               invalid)
         check('compressed-png-oversized',
-              graphics(control + ',S=67108865', payload), invalid)
+              graphics(control + ',S=' + str(size_limit + 1), payload), invalid)
         check('compressed-png-truncated', graphics(sized, payload[:-4]),
               invalid)
         check('decoder-controls-reset', graphics(sized + ',q=2', payload) +

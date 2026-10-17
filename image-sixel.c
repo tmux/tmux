@@ -42,7 +42,7 @@
 	(SIXEL_HGRAM_LEVELS * SIXEL_HGRAM_LEVELS * SIXEL_HGRAM_LEVELS)
 
 /* Maximum number of bytes in the SIXEL cache. */
-#define SIXEL_CACHE_SIZE_LIMIT IMAGE_SIZE_LIMIT
+#define SIXEL_CACHE_SIZE_LIMIT (64 * 1024 * 1024)
 
 /* Line of a SIXEL image. */
 struct sixel_line {
@@ -80,9 +80,10 @@ struct sixel_image {
 	u_int			 dy;
 	u_int			 dc;
 
-	/* Lines of palette indexes and the bytes allocated for them. */
+	/* Lines of palette indexes, allocated bytes and size limit. */
 	struct sixel_line	*lines;
 	size_t			 allocated;
+	size_t			 limit;
 };
 
 /* One colour's encoded columns in the current six-row band. */
@@ -211,7 +212,7 @@ sixel_parse_expand_lines(struct sixel_image *si, u_int y)
 		height = y;
 	if (height > SIXEL_HEIGHT_LIMIT)
 		return (1);
-	if (si->x * height > IMAGE_SIZE_LIMIT / 4)
+	if (si->x * height > si->limit / 4)
 		return (1);
 	if (y <= si->y)
 		return (0);
@@ -231,12 +232,12 @@ sixel_parse_expand_line(struct sixel_image *si, struct sixel_line *sl, u_int x)
 		width = x;
 	if (width > SIXEL_WIDTH_LIMIT)
 		return (1);
-	if (width * si->y > IMAGE_SIZE_LIMIT / 4)
+	if (width * si->y > si->limit / 4)
 		return (1);
 	if (x <= sl->x)
 		return (0);
 	added = (width - sl->x) * sizeof *sl->data;
-	if (added > IMAGE_SIZE_LIMIT / 2 - si->allocated)
+	if (added > si->limit / 2 - si->allocated)
 		return (1);
 	si->x = width;
 	sl->data = xrecallocarray(sl->data, sl->x, si->x, sizeof *sl->data);
@@ -497,6 +498,7 @@ sixel_parse(const char *buf, size_t len, u_int p2, u_int xpixel, u_int ypixel)
 	}
 
 	si = xcalloc(1, sizeof *si);
+	si->limit = options_get_number(global_options, "image-size-limit");
 	si->xpixel = xpixel;
 	si->ypixel = ypixel;
 	si->p2 = p2;
@@ -632,7 +634,7 @@ sixel_to_image(struct sixel_image *si)
 	u_char			*pixels, *pixel, r, g, b;
 	u_int			 x, y, c, sx, sy;
 
-	if ((uint64_t)si->x * si->y > IMAGE_SIZE_LIMIT / 4)
+	if ((uint64_t)si->x * si->y > si->limit / 4)
 		return (NULL);
 
 	sixel_size_in_cells(si, &sx, &sy);
@@ -1173,6 +1175,7 @@ sixel_make_image(struct image *im, u_int cx, u_int cy, u_int csx, u_int csy,
 	u_int			 r, g, b, c, i, nc;
 	uint64_t		 dst_w, dst_h, content_width, content_height;
 	uint64_t		 left, right, top, bottom;
+	size_t			 limit;
 
 	/* Work out the requested cell crop in destination pixel coordinates. */
 	src.image = im;
@@ -1210,7 +1213,8 @@ sixel_make_image(struct image *im, u_int cx, u_int cy, u_int csx, u_int csy,
 	    sy > SIXEL_HEIGHT_LIMIT) {
 		return (NULL);
 	}
-	if (sx * sy > IMAGE_SIZE_LIMIT / 4)
+	limit = options_get_number(global_options, "image-size-limit");
+	if (sx * sy > limit / 4)
 		return (NULL);
 
 	/* Map output pixels using their position in the full canvas. */
@@ -1228,6 +1232,7 @@ sixel_make_image(struct image *im, u_int cx, u_int cy, u_int csx, u_int csy,
 
 	/* Create the indexed image with a SIXEL RGB palette. */
 	si = xcalloc(1, sizeof *si);
+	si->limit = limit;
 	si->ra_x = sx;
 	si->ra_y = sy;
 	si->ncolours = si->used_colours = nc;

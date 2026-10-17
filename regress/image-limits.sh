@@ -39,38 +39,42 @@ def snapshot(test, client, expected):
 
 
 red, green, blue = (255, 0, 0), (0, 255, 0), (0, 0, 255)
+limit = 16
 with image_test(sys.argv[1]) as test:
+    test.run('set-option', '-s', 'image-total-count-limit', str(limit))
     client = test.attach()
     test.emit(upload(1, red) +
-        b''.join(upload(i, green) for i in range(2, 1001)))
-    test.emit(upload(1001, blue))
+        b''.join(upload(i, green) for i in range(2, limit + 1)))
+    test.emit(upload(limit + 1, blue))
     # The oldest upload is evicted and its application ID no longer resolves.
     test.emit(place(1))
     snapshot(test, client, {})
-    test.emit(place(1001))
+    test.emit(place(limit + 1))
     snapshot(test, client, cell(blue))
     test.emit(b'\033[3;1H' + place(2))
     snapshot(test, client, cell(blue))
-    test.emit(place(1000))
+    test.emit(place(limit))
     snapshot(test, client, cell(blue) | cell(green, y=2))
 
 with image_test(sys.argv[1]) as test:
+    test.run('set-option', '-s', 'image-total-count-limit', str(limit))
     client = test.attach()
     test.emit(upload(1, red) + place(1, 1))
     test.emit(upload(2, green))
     test.emit(kitty('a=d,d=i,i=1,p=1'))
     # Losing the last placement keeps the source's original last use order.
-    test.emit(b''.join(upload(i, blue) for i in range(3, 1002)))
+    test.emit(b''.join(upload(i, blue) for i in range(3, limit + 2)))
     test.emit(place(2))
     snapshot(test, client, cell(green))
     test.emit(b'\033[3;1H' + place(1))
     snapshot(test, client, cell(green))
 
 with image_test(sys.argv[1]) as test:
+    test.run('set-option', '-s', 'image-total-count-limit', str(limit))
     client = test.attach()
     test.emit(upload(1, red) + b'\033[7;1H' + place(1, 1) +
         b'\033[H' + place(1, 2) + b'\033[3;1H' + place(1, 3) +
-        b'\033[5;1H' + b''.join(place(1, p) for p in range(4, 1000)))
+        b'\033[5;1H' + b''.join(place(1, p) for p in range(4, limit)))
     snapshot(test, client,
         cell(red) | cell(red, y=2) | cell(red, y=4) | cell(red, y=6))
     # Redraw order differs from creation order: the top view is oldest.
@@ -78,30 +82,33 @@ with image_test(sys.argv[1]) as test:
     snapshot(test, client, cell(red, y=2) | cell(red, y=4) | cell(red, y=6))
 
 with image_test(sys.argv[1]) as test:
+    test.run('set-option', '-s', 'image-total-count-limit', str(limit))
     client = test.attach()
-    test.emit(upload(1, red) + b''.join(place(1, p) for p in range(1, 1000)))
+    test.emit(upload(1, red) + b''.join(place(1, p) for p in range(1, limit)))
     test.emit(upload(2, green) + place(2, 1))
     snapshot(test, client, cell(green))
     # The shared source survives; only its two oldest views were evicted.
     test.emit(kitty('a=d,d=I,i=2'))
     snapshot(test, client, cell(red))
     test.emit(b''.join(kitty('a=d,d=i,i=1,p=%d' % p)
-        for p in range(3, 1000)))
+        for p in range(3, limit)))
     snapshot(test, client, {})
 
 with image_test(sys.argv[1]) as test:
+    test.run('set-option', '-s', 'image-total-count-limit', str(limit))
     client = test.attach()
     test.emit(sixel(8, 16, [(100, 0, 0)], [0] * (8 * 16)))
     # Kitty views share the same limit as the older SIXEL source.
     test.emit(b'\033[3;1H' + upload(1, green) +
-        b''.join(place(1, p) for p in range(1, 1000)))
+        b''.join(place(1, p) for p in range(1, limit)))
     snapshot(test, client, cell(green, y=2))
 
 with image_test(sys.argv[1]) as test:
+    test.run('set-option', '-s', 'image-total-count-limit', str(limit))
     client = test.attach()
     test.emit(upload(1, red) + place(1))
     test.emit(b'\033[3;1H' + upload(2, green) +
-        b''.join(place(2, p) for p in range(1, 998)))
+        b''.join(place(2, p) for p in range(1, limit - 2)))
     snapshot(test, client, cell(red) | cell(green, y=2))
     # SIXEL input also evicts Kitty placements and their uploaded image IDs.
     test.emit(b'\033[5;1H' +
@@ -114,10 +121,11 @@ with image_test(sys.argv[1]) as test:
     snapshot(test, client, cell(green, y=2) | cell(blue, y=4) | cell(blue, y=6))
 
 with image_test(sys.argv[1]) as test:
+    test.run('set-option', '-s', 'image-total-count-limit', str(limit))
     client = test.attach()
     test.emit(upload(1, red) + place(1))
     test.emit(b'\033[?1049h\033[H' + upload(2, green) +
-        b''.join(place(2, p) for p in range(1, 1000)))
+        b''.join(place(2, p) for p in range(1, limit)))
     # Eviction reaches the saved primary grid and removes its Kitty ID.
     test.emit(b'\033[?1049l')
     snapshot(test, client, {})
@@ -125,6 +133,7 @@ with image_test(sys.argv[1]) as test:
     snapshot(test, client, {})
 
 with image_test(sys.argv[1]) as test:
+    test.run('set-option', '-s', 'image-total-count-limit', str(limit))
     client = test.attach()
     test.emit(sixel(8, 16, [(100, 0, 0)], [0] * (8 * 16)))
     test.run('copy-mode')
@@ -133,7 +142,7 @@ with image_test(sys.argv[1]) as test:
         "stty raw -echo; printf '\033]2;QUOTA\007'; exec cat")
     test.wait(lambda: test.run('display-message', '-p',
         '#{pane_title}') == 'QUOTA')
-    test.emit(upload(1, green) + b''.join(place(1, p) for p in range(1, 1000)))
+    test.emit(upload(1, green) + b''.join(place(1, p) for p in range(1, limit)))
     test.run('select-window', '-t', 'image:0')
     snapshot(test, client, {})
     test.run('send-keys', '-X', 'cancel')
