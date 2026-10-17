@@ -63,8 +63,9 @@ time.sleep(30)
 
 # Check replies, cursor movement and unchanged text and title.
 def check(name, command, expected, cursor='5,2', timeout=5):
-    output = directory / name
-    command_file = directory / (name + '.input')
+    case = Path(tempfile.mkdtemp(dir=directory))
+    output = case / 'reply'
+    command_file = case / 'input'
     with command_file.open('w', encoding='utf-8') as f:
         f.write(origin)
         if isinstance(command, str):
