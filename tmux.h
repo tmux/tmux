@@ -2547,6 +2547,8 @@ struct spawn_context {
 	char			**argv;
 	int			  argc;
 	struct environ		 *environ;
+	char			**options;
+	int			  noptions;
 
 	int			  idx;
 	const char		 *cwd;

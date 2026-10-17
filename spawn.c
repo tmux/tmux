@@ -119,6 +119,9 @@ spawn_window(struct spawn_context *sc, char **cause)
 	struct winlink		*wl;
 	int			 idx = sc->idx;
 	u_int			 sx, sy, xpixel, ypixel;
+	char			*okey, *oname, *oval;
+	int			 ambiguous;
+	struct options_entry 	*oe;
 
 	spawn_log(__func__, sc);
 
@@ -197,6 +200,38 @@ spawn_window(struct spawn_context *sc, char **cause)
 			xasprintf(cause, "couldn't create window %d", idx);
 			return (NULL);
 		}
+		for (int i = 0; i < sc->noptions; i++) {
+			oname = sc->options[i];
+
+			/* sc->options is a "sparse" array. */
+			if (oname == NULL)
+				continue;
+
+			if ((oval = strchr(oname, '=')) == NULL) {
+				winlink_remove(&s->windows, sc->wl);
+				xasprintf(cause, "expected option value: %s", oname);
+				return (NULL);
+			}
+			*oval++ = '\0';
+
+			oe = options_match_get(w->options, oname, &okey, 0, &ambiguous);
+			if (oe == NULL) {
+				winlink_remove(&s->windows, sc->wl);
+				if (ambiguous)
+					xasprintf(cause, "ambiguous option: %s", oname);
+				else
+					xasprintf(cause, "invalid option: %s", oname);
+				return (NULL);
+			}
+
+			if (options_from_string(w->options, options_table_entry(oe), options_table_entry(oe)->name, oval, 0, cause) != 0) {
+				winlink_remove(&s->windows, sc->wl);
+				return (NULL);
+			}
+
+			/* Option handled, replace entry with the resolved name. */
+			sc->options[i] = options_table_entry(oe)->name;
+		}
 		if (s->curw == NULL)
 			s->curw = sc->wl;
 		sc->wl->session = s;
@@ -237,6 +272,15 @@ spawn_window(struct spawn_context *sc, char **cause)
 	}
 
 	session_group_synchronize_from(s);
+
+	/* Push changes only once the pane is also properly spawned. */
+	for (int i = 0; i < sc->noptions; i++) {
+		if (sc->options[i] == NULL)
+			continue;
+
+		options_push_changes(sc->options[i]);
+	}
+
 	return (sc->wl);
 }
 
