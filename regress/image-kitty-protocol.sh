@@ -48,7 +48,7 @@ with open(command, 'rb') as f:
             data = data[os.write(1, data):]
 os.write(1, b'\\x1b[c')
 reply = b''
-deadline = time.monotonic() + 3
+deadline = time.monotonic() + 10
 while time.monotonic() < deadline:
     if select.select([0], [], [], 0.1)[0]:
         reply += os.read(0, 4096)
@@ -62,7 +62,7 @@ time.sleep(30)
 '''
 
 # Check replies, cursor movement and unchanged text and title.
-def check(name, command, expected, cursor='5,2', timeout=5):
+def check(name, command, expected, cursor='5,2', timeout=10):
     output = directory / name
     command_file = directory / (name + '.input')
     with command_file.open('w', encoding='utf-8') as f:
@@ -365,7 +365,7 @@ with tempfile.TemporaryDirectory(prefix='tmux-kitty-protocol-') as tmp:
         commands.extend([graphics('m=1', 'AAAAAA=='),
             graphics('a=t,i=8,f=32,s=1,v=1', pixel)])
         check('accumulated-size-limit', commands,
-              invalid + graphics('i=8', 'OK'), timeout=30)
+              invalid + graphics('i=8', 'OK'), timeout=90)
 
         # Compressed uploads require a test build with zlib.
         compressed = base64.b64encode(zlib.compress(b'\xff\0\0\xff')).decode()

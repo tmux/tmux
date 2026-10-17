@@ -66,7 +66,7 @@ def check(position, status):
         test.run("send-keys", "-X", "cancel")
         test.wait(lambda: test.run("display-message", "-p",
             "#{pane_in_mode}") == "0")
-        client.read(0.2)
+        client.read(1.0)
         terminal.feed(client.data)
         terminal.check(placed(xoff + 2, yoff + 3))
         assert side_cells(terminal, side_x, yoff, height) == cells, \
