@@ -158,6 +158,10 @@ CHANGES FROM 3.7c TO 3.8
 * Copy mode no longer exits at the bottom while a selection is in progress
   (issue 5349).
 
+* Add copy-mode-keep-column to keep the cursor in the same column when moving
+  vertically in copy mode, rather than moving it to the end of a shorter line,
+  as in screen.
+
 * Add copy-mode-current-line-style to set the style of the line containing the
   cursor in copy mode (issue 5391).
 
