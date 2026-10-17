@@ -30,6 +30,7 @@ def check(position, status):
     with image_test(sys.argv[1]) as test:
         test.run("set-option", "-g", "side-status", position)
         test.run("set-option", "-g", "side-status-width", str(side))
+        test.run("set-option", "-g", "side-status-format", "image test")
         if status != "off":
             test.run("set-option", "-g", "status", "2")
             test.run("set-option", "-g", "status-position", status)
