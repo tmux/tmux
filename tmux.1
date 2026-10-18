@@ -1450,7 +1450,7 @@ and sets an environment variable for the newly created session; it may be
 specified multiple times.
 .Tg refresh
 .It Xo Ic refresh\-client
-.Op Fl cDlLRSU
+.Op Fl cDlLqRSU
 .Op Fl A Ar pane:state
 .Op Fl B Ar name:what:format
 .Op Fl C Ar size
@@ -1576,6 +1576,33 @@ a colon, then a report escape sequence.
 requests the clipboard from the client using the
 .Xr xterm 1
 escape sequence and stores it in a new paste buffer.
+.Pp
+.Fl q
+queries the client terminal for its size using the
+.Ic CSI 18 t
+and
+.Ic CSI 14 t
+escape sequences and, if the reported size differs from the current one,
+resizes as though
+.Dv SIGWINCH
+had been received.
+This allows terminals on serial lines, where
+.Dv SIGWINCH
+is not delivered to the
+.Nm
+client process, to be resized by a periodic script or hook, for example:
+.Bd -literal -offset indent
+while :; do tmux refresh-client \-q; sleep 1; done
+.Ed
+While a query is waiting for its reply, further
+.Fl q
+requests do nothing and the delay before
+.Nm
+treats an escape as a lone Escape key may increase;
+if the terminal does not reply, the query is abandoned after five
+seconds.
+.Fl q
+has no effect on a control mode client.
 .Pp
 .Fl L ,
 .Fl R ,

@@ -1774,6 +1774,9 @@ struct tty_style_ctx {
 	struct hyperlinks	*hyperlinks;
 };
 
+/* Maximum sane terminal size accepted from a size report. */
+#define CLIENT_MAX_TERM_SIZE 10000
+
 /* Client terminal. */
 struct tty {
 	struct client	*client;
@@ -1842,6 +1845,8 @@ struct tty {
 #define TTY_BRACKETPASTE 0x8000
 #define TTY_HAVESYNC 0x10000
 #define TTY_HAVEKITTYGRAPHICS 0x20000
+#define TTY_WINSZQUERY_PX 0x40000
+#define TTY_WINSZQUERY_APPLY 0x80000
 #define TTY_ALL_REQUEST_FLAGS \
 	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVESYNC|TTY_HAVEKITTYGRAPHICS)
 	int		 flags;
@@ -2981,6 +2986,7 @@ void	tty_cell(struct tty *, const struct grid_cell *,
 int	tty_init(struct tty *, struct client *);
 void	tty_resize(struct tty *);
 int	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
+void	tty_size_query(struct tty *);
 void	tty_invalidate(struct tty *);
 void	tty_start_tty(struct tty *);
 void	tty_send_requests(struct tty *);
@@ -3361,6 +3367,7 @@ void	 server_client_exec(struct client *, const char *);
 void	 server_client_loop(void);
 const char *server_client_get_cwd(struct client *, struct session *);
 void	 server_client_set_flags(struct client *, const char *);
+void	 server_client_size_changed(struct client *, u_int, u_int);
 const char *server_client_get_flags(struct client *);
 void	 server_client_remove_pane(struct window_pane *);
 void	 server_client_print(struct client *, int, struct evbuffer *);

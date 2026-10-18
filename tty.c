@@ -38,6 +38,7 @@ static int	tty_log_fd = -1;
 static void	tty_start_timer_callback(int, short, void *);
 static void	tty_start_start_timer(struct tty *);
 static void	tty_clipboard_query_callback(int, short, void *);
+static void	tty_send_size_query(struct tty *, int);
 static void	tty_set_italics(struct tty *);
 static int	tty_try_colour(struct tty *, int, const char *);
 static void	tty_force_cursor_colour(struct tty *, int);
@@ -116,6 +117,23 @@ tty_init(struct tty *tty, struct client *c)
 	return (0);
 }
 
+/* Send XTWINOPS size queries and wait for the replies. */
+static void
+tty_send_size_query(struct tty *tty, int apply)
+{
+	tty_puts(tty, "\033[18t\033[14t");
+	tty->flags |= (TTY_WINSZQUERY|TTY_WINSZQUERY_PX);
+	if (apply)
+		tty->flags |= TTY_WINSZQUERY_APPLY;
+
+	/*
+	 * Callers only send when nothing is outstanding; share the
+	 * start timer so an unanswered query is abandoned like the
+	 * other requests (see tty_start_timer_callback()).
+	 */
+	tty_start_start_timer(tty);
+}
+
 void
 tty_resize(struct tty *tty)
 {
@@ -139,12 +157,10 @@ tty_resize(struct tty *tty)
 
 		if ((xpixel == 0 || ypixel == 0) &&
 		    (tty->flags & TTY_STARTED) &&
-		    !(tty->flags & TTY_WINSZQUERY) &&
-		    (tty->term->flags & TERM_VT100LIKE)) {
-			tty_puts(tty, "\033[18t\033[14t");
-			tty->flags |= TTY_WINSZQUERY;
-			tty_start_start_timer(tty);
-		}
+		    !(tty->flags & (TTY_WINSZQUERY|
+		    TTY_WINSZQUERY_PX)) &&
+		    (tty->term->flags & TERM_VT100LIKE))
+			tty_send_size_query(tty, 0);
 	} else {
 		sx = 80;
 		sy = 24;
@@ -329,7 +345,11 @@ tty_start_timer_callback(__unused int fd, __unused short events, void *data)
 		tty_update_features(tty);
 	tty->flags |= TTY_ALL_REQUEST_FLAGS;
 
-	tty->flags &= ~(TTY_WAITBG|TTY_WAITFG|TTY_WINSZQUERY);
+	if (tty->flags & TTY_WINSZQUERY)
+		log_debug("%s: size query timed out", c->name);
+
+	tty->flags &= ~(TTY_WAITBG|TTY_WAITFG|TTY_WINSZQUERY|
+	    TTY_WINSZQUERY_PX|TTY_WINSZQUERY_APPLY);
 }
 
 static void
@@ -484,7 +504,14 @@ tty_stop_tty(struct tty *tty)
 
 	evtimer_del(&tty->start_timer);
 	evtimer_del(&tty->clipboard_timer);
-	tty->flags &= ~TTY_WINSZQUERY;
+
+	/*
+	 * The start timer can no longer fire, so drop any pending
+	 * size-query state with it; otherwise a later -q would wait
+	 * forever for replies that can never time out.
+	 */
+	tty->flags &= ~(TTY_WINSZQUERY|TTY_WINSZQUERY_PX|
+	    TTY_WINSZQUERY_APPLY);
 
 	event_del(&tty->timer);
 	tty->flags &= ~TTY_BLOCK;
@@ -3012,6 +3039,35 @@ tty_clipboard_query(struct tty *tty)
 		tty->flags |= TTY_OSC52QUERY;
 		evtimer_add(&tty->clipboard_timer, &tv);
 	}
+}
+
+/*
+ * Query the terminal for its size.  If a reply arrives with a different
+ * size, it is applied as though SIGWINCH had been received (see
+ * server_client_size_changed()); this is how a resize can be seen on a
+ * serial line where the client is never sent SIGWINCH.
+ */
+void
+tty_size_query(struct tty *tty)
+{
+	if (!(tty->flags & TTY_STARTED) || tty->out == NULL ||
+	    (tty->client->flags & CLIENT_CONTROL) ||
+	    !(tty->term->flags & TERM_VT100LIKE))
+		return;
+
+	/*
+	 * Do not pile queries up while one is outstanding: resending
+	 * would start the terminal answering the same query twice, and
+	 * a second reply would reach the pane as key input.
+	 */
+	if (tty->flags & (TTY_WINSZQUERY|TTY_WINSZQUERY_PX)) {
+		log_debug("%s: size query already outstanding",
+		    tty->client->name);
+		return;
+	}
+
+	log_debug("%s: querying terminal size", tty->client->name);
+	tty_send_size_query(tty, 1);
 }
 
 void
