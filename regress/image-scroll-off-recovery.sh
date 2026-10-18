@@ -27,6 +27,29 @@ fail()
 
 cleanup
 
+# Wait for the outer pane's output to contain an image raster and then not
+# change for a second.
+wait_image()
+{
+	previous=-1
+	stable=0
+	i=0
+	while [ "$i" -lt 100 ]; do
+		current=$(wc -c <$TMP)
+		if grep -aq '"1;1;[0-9]*;[0-9]*' $TMP &&
+		    [ "$current" -eq "$previous" ]; then
+			stable=$((stable + 1))
+			[ "$stable" -eq 10 ] && return 0
+		else
+			stable=0
+		fi
+		previous=$current
+		sleep 0.1
+		i=$((i + 1))
+	done
+	return 1
+}
+
 TMP=$(mktemp)
 trap "cleanup; rm -f $TMP" 0 1 15
 
@@ -37,10 +60,15 @@ FIXTURE=$(pwd)/monkey-2.sixel.txt
 # exercised, and short enough that most of the image is scrolled off
 # screen while it is still being displayed.
 $TMUX new-session -d -s inner -x 30 -y 5 "cat '$FIXTURE'; exec sh" || exit 1
-sleep 0.5
-
 image_check_support $TMUX
 $TMUX set -as terminal-features ',*:sixel' || exit 1
+i=0
+while [ "$i" -lt 100 ]; do
+	[ "$($TMUX display-message -p '#{history_size}')" -gt 0 ] && break
+	sleep 0.1
+	i=$((i + 1))
+done
+[ "$i" -lt 100 ] || fail "inner pane has no history"
 
 # Start the outer session with a plain shell, then start capturing before
 # triggering the attach - starting the attach as the outer pane's initial
@@ -58,7 +86,7 @@ $TMUX2 set -as terminal-features ',*:sixel@' || fail "disable outer sixel failed
 $TMUX2 pipe-pane -t "$OUTER" -O "cat >$TMP" || fail "pipe-pane failed"
 $TMUX2 send-keys -t "$OUTER" -l "$TMUX attach -t inner" || fail "send attach failed"
 $TMUX2 send-keys -t "$OUTER" Enter || fail "send enter failed"
-sleep 1
+wait_image || fail "no image, or output did not stop, after attach"
 
 [ "$($TMUX display-message -p '#{history_size}')" -gt 0 ] ||
 	fail "sanity: image did not push anything into history - pane wasn't short enough"
@@ -67,7 +95,7 @@ sleep 1
 # (redrawing whatever's still on screen), without having scrolled yet.
 : >$TMP
 $TMUX copy-mode -t inner || fail "copy-mode failed"
-sleep 1
+wait_image || fail "no image, or output did not stop, after entering copy mode"
 baseline=$(grep -oac '"1;1;[0-9]*;[0-9]*' $TMP)
 
 # Scroll all the way to the top of history - this is expected to fail
@@ -75,7 +103,7 @@ baseline=$(grep -oac '"1;1;[0-9]*;[0-9]*' $TMP)
 # scrolled-off rows were left blank) - see the header comment.
 : >$TMP
 $TMUX send-keys -t inner -X history-top || fail "history-top failed"
-sleep 1
+wait_image
 after=$(grep -oac '"1;1;[0-9]*;[0-9]*' $TMP)
 
 [ "$after" -gt 0 ] ||
