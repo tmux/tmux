@@ -3244,6 +3244,7 @@ void printflike(4, 5) cmdq_insert_hook(struct session *, struct cmdq_item *,
 void		 cmdq_continue(struct cmdq_item *);
 u_int		 cmdq_next(struct client *);
 struct cmdq_item *cmdq_running(struct client *);
+int		 cmdq_has_queued_keys(struct cmdq_item *);
 void		 cmdq_guard(struct cmdq_item *, const char *, int);
 void printflike(2, 3) cmdq_print(struct cmdq_item *, const char *, ...);
 void 		 cmdq_print_data(struct cmdq_item *, struct evbuffer *);
@@ -3349,6 +3350,7 @@ int	 server_client_check_nested(struct client *);
 int	 server_client_handle_key(struct client *, struct key_event *);
 int	 server_client_handle_key_after(struct client *, struct key_event *,
 	     struct cmdq_item *, struct cmdq_item **);
+enum cmd_retval	 server_client_key_callback(struct cmdq_item *, void *);
 struct client *server_client_create(int);
 int	 server_client_open(struct client *, char **);
 void	 server_client_unref(struct client *);

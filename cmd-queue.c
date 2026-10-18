@@ -422,6 +422,25 @@ cmdq_continue(struct cmdq_item *item)
 	item->flags &= ~CMDQ_WAITING;
 }
 
+/*
+ * Return 1 if a key callback is queued after item. This means the keys were
+ * typed in the same input batch as the current item.
+ */
+int
+cmdq_has_queued_keys(struct cmdq_item *item)
+{
+	struct cmdq_item	*next;
+
+	for (next = TAILQ_NEXT(item, entry); next != NULL;
+	    next = TAILQ_NEXT(next, entry)) {
+		if (next->type != CMDQ_CALLBACK)
+			break;
+		if (next->cb == server_client_key_callback)
+			return (1);
+	}
+	return (0);
+}
+
 /* Remove an item. */
 static void
 cmdq_remove(struct cmdq_item *item)

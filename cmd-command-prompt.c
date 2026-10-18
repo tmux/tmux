@@ -192,6 +192,14 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (!wait)
 		return (CMD_RETURN_NORMAL);
+	/*
+	 * Keys typed in the same input batch are queued behind this item, so
+	 * waiting here would block them: let them run and reach the prompt.
+	 */
+	if (cmdq_has_queued_keys(item)) {
+		cdata->item = NULL;
+		return (CMD_RETURN_NORMAL);
+	}
 	return (CMD_RETURN_WAIT);
 }
 

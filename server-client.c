@@ -1375,7 +1375,7 @@ server_client_handle_dead_key(struct window_pane *wp, key_code key)
  * Handle data key input from client. This owns and can modify the key event it
  * is given and is responsible for freeing it.
  */
-static enum cmd_retval
+enum cmd_retval
 server_client_key_callback(struct cmdq_item *item, void *data)
 {
 	struct key_event		*event = data;
@@ -1403,6 +1403,19 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
 		goto out;
+
+	/* Deliver keys queued before the prompt opened to the prompt. */
+	if (c->prompt != NULL) {
+		switch (status_prompt_key(c, key, m)) {
+		case PROMPT_KEY_HANDLED:
+		case PROMPT_KEY_CLOSE:
+			goto out;
+		case PROMPT_KEY_NOT_HANDLED:
+		case PROMPT_KEY_MOVE:
+			break;
+		}
+	}
+
 	wl = s->curw;
 
 	/* Update the activity timer. */
