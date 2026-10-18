@@ -2484,12 +2484,23 @@ Search backwards for the specified text.
 .Ar text
 (emacs: C\-r)
 .Xc
-Search backwards incrementally for the specified text.
+Search backwards incrementally for the specified plain text.
 Is expected to be used with the
 .Fl i
 flag to the
 .Ic command\-prompt
 command.
+.It Xo
+.Ic search\-backward\-incremental\-regex
+.Ar regex
+.Xc
+Search backwards incrementally for the specified regular expression.
+Is expected to be used with the
+.Fl i
+flag to the
+.Ic command\-prompt
+command.
+A term without regular expression metacharacters is matched as plain text.
 .It Xo
 .Ic search\-backward\-text
 .Ar text
@@ -2506,12 +2517,23 @@ Search forward for the specified text.
 .Ar text
 (emacs: C\-s)
 .Xc
-Search forward incrementally for the specified text.
+Search forward incrementally for the specified plain text.
 Is expected to be used with the
 .Fl i
 flag to the
 .Ic command\-prompt
 command.
+.It Xo
+.Ic search\-forward\-incremental\-regex
+.Ar regex
+.Xc
+Search forward incrementally for the specified regular expression.
+Is expected to be used with the
+.Fl i
+flag to the
+.Ic command\-prompt
+command.
+A term without regular expression metacharacters is matched as plain text.
 .It Xo
 .Ic search\-forward\-text
 .Ar text
@@ -2584,11 +2606,15 @@ the
 .Ql \-text
 variants search for a plain text string rather than a regular expression;
 .Ql \-incremental
-perform an incremental search and expect to be used with the
+perform an incremental search for a plain text string and expect to be used
+with the
 .Fl i
 flag to the
 .Ic command\-prompt
-command.
+command;
+the
+.Ql \-incremental\-regex
+variants do the same but search for a regular expression.
 .Ql search\-again
 repeats the last search and
 .Ql search\-reverse

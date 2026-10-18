@@ -3193,8 +3193,15 @@ window_copy_cmd_search_forward_text(struct window_copy_cmd_state *cs)
 	return (WINDOW_COPY_CMD_MOVE);
 }
 
+/*
+ * Run an incremental search. The argument is prefixed with a character added
+ * by an incremental prompt: "+" searches for the next occurrence below, "-"
+ * searches above and "=" searches in the default direction. If regex is true,
+ * the search term is treated as a regular expression.
+ */
 static enum window_copy_cmd_action
-window_copy_cmd_search_backward_incremental(struct window_copy_cmd_state *cs)
+window_copy_cmd_search_incremental(struct window_copy_cmd_state *cs,
+    int direction, int regex)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
@@ -3226,76 +3233,56 @@ window_copy_cmd_search_backward_incremental(struct window_copy_cmd_state *cs)
 	}
 	switch (prefix) {
 	case '=':
-	case '-':
-		data->searchtype = WINDOW_COPY_SEARCHUP;
-		data->searchregex = 0;
-		free(data->searchstr);
-		data->searchstr = xstrdup(arg0);
-		if (!window_copy_search_up(wme, 0))
-			return (WINDOW_COPY_CMD_REDRAW);
+		data->searchtype = direction;
 		break;
 	case '+':
 		data->searchtype = WINDOW_COPY_SEARCHDOWN;
-		data->searchregex = 0;
-		free(data->searchstr);
-		data->searchstr = xstrdup(arg0);
-		if (!window_copy_search_down(wme, 0))
-			return (WINDOW_COPY_CMD_REDRAW);
 		break;
+	case '-':
+		data->searchtype = WINDOW_COPY_SEARCHUP;
+		break;
+	default:
+		return (action);
 	}
+	data->searchregex = regex;
+	free(data->searchstr);
+	data->searchstr = xstrdup(arg0);
+	if (data->searchtype == WINDOW_COPY_SEARCHUP) {
+		if (!window_copy_search_up(wme, regex))
+			return (WINDOW_COPY_CMD_REDRAW);
+	} else if (!window_copy_search_down(wme, regex))
+		return (WINDOW_COPY_CMD_REDRAW);
 	return (action);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_search_backward_incremental(struct window_copy_cmd_state *cs)
+{
+	return (window_copy_cmd_search_incremental(cs,
+	    WINDOW_COPY_SEARCHUP, 0));
 }
 
 static enum window_copy_cmd_action
 window_copy_cmd_search_forward_incremental(struct window_copy_cmd_state *cs)
 {
-	struct window_mode_entry	*wme = cs->wme;
-	struct window_copy_mode_data	*data = wme->data;
-	const char			*arg0 = args_string(cs->wargs, 0);
-	const char			*ss = data->searchstr;
-	char				 prefix;
-	enum window_copy_cmd_action	 action = WINDOW_COPY_CMD_MOVE;
+	return (window_copy_cmd_search_incremental(cs,
+	    WINDOW_COPY_SEARCHDOWN, 0));
+}
 
-	data->timeout = 0;
+static enum window_copy_cmd_action
+window_copy_cmd_search_backward_incremental_regex(
+    struct window_copy_cmd_state *cs)
+{
+	return (window_copy_cmd_search_incremental(cs,
+	    WINDOW_COPY_SEARCHUP, 1));
+}
 
-	log_debug("%s: %s", __func__, arg0);
-
-	prefix = *arg0++;
-	if (data->searchx == -1 || data->searchy == -1) {
-		data->searchx = data->cx;
-		data->searchy = data->cy;
-		data->searcho = data->oy;
-	} else if (ss != NULL && strcmp(arg0, ss) != 0) {
-		data->cx = data->searchx;
-		data->cy = data->searchy;
-		data->oy = data->searcho;
-		data->cx = window_copy_cursor_limit(wme,
-		    screen_hsize(data->backing) + data->cy - data->oy, 0);
-		action = WINDOW_COPY_CMD_REDRAW;
-	}
-	if (*arg0 == '\0') {
-		window_copy_clear_marks(wme);
-		return (WINDOW_COPY_CMD_REDRAW);
-	}
-	switch (prefix) {
-	case '=':
-	case '+':
-		data->searchtype = WINDOW_COPY_SEARCHDOWN;
-		data->searchregex = 0;
-		free(data->searchstr);
-		data->searchstr = xstrdup(arg0);
-		if (!window_copy_search_down(wme, 0))
-			return (WINDOW_COPY_CMD_REDRAW);
-		break;
-	case '-':
-		data->searchtype = WINDOW_COPY_SEARCHUP;
-		data->searchregex = 0;
-		free(data->searchstr);
-		data->searchstr = xstrdup(arg0);
-		if (!window_copy_search_up(wme, 0))
-			return (WINDOW_COPY_CMD_REDRAW);
-	}
-	return (action);
+static enum window_copy_cmd_action
+window_copy_cmd_search_forward_incremental_regex(
+    struct window_copy_cmd_state *cs)
+{
+	return (window_copy_cmd_search_incremental(cs,
+	    WINDOW_COPY_SEARCHDOWN, 1));
 }
 
 /*
@@ -4104,6 +4091,12 @@ static const struct {
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_search_backward_incremental
 	},
+	{ .command = "search-backward-incremental-regex",
+	  .args = { "", 1, 1, NULL },
+	  .flags = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_search_backward_incremental_regex
+	},
 	{ .command = "search-forward",
 	  .args = { "", 0, 1, NULL },
 	  .flags = 0,
@@ -4121,6 +4114,12 @@ static const struct {
 	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_search_forward_incremental
+	},
+	{ .command = "search-forward-incremental-regex",
+	  .args = { "", 1, 1, NULL },
+	  .flags = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_search_forward_incremental_regex
 	},
 	{ .command = "search-reverse",
 	  .args = { "", 0, 0, NULL },
