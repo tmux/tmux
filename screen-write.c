@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.304 2026/10/16 17:21:30 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.305 2026/10/19 08:10:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3057,9 +3057,7 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		case HANGULJAMO_STATE_COMPOSABLE:
 			break;
 		case HANGULJAMO_STATE_NOT_HANGULJAMO:
-			if (utf8_should_combine(&last.data, ud))
-				force_wide = 1;
-			else if (utf8_should_combine(ud, &last.data))
+			if (utf8_should_combine(ud, &last.data))
 				force_wide = 1;
 			else if (!utf8_has_zwj(&last.data))
 				return (0);

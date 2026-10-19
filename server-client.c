@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.524 2026/10/16 11:34:49 bket Exp $ */
+/* $OpenBSD: server-client.c,v 1.525 2026/10/19 08:14:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -965,6 +965,8 @@ have_event:
 
 	if (server_client_check_mouse_status(c, m, type, x, y, &loc) != 0)
 		return (KEYC_UNKNOWN);
+	if (w->modal != NULL && loc != KEYC_MOUSE_LOCATION_NOWHERE)
+		return (KEYC_UNKNOWN);
 
 	/*
 	 * Not on status line. Adjust position and check for border, pane, or
@@ -1711,8 +1713,10 @@ server_client_handle_key0(struct client *c, struct key_event *event,
     struct cmdq_item *after, struct cmdq_item **next)
 {
 	struct session		*s = c->session;
+	struct mouse_event	*m = &event->m;
 	struct cmdq_item	*item;
 	struct window_pane	*wp;
+	key_code		 key;
 
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
@@ -1751,13 +1755,19 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 		}
 		if (wp != NULL &&
 		    (wp->flags & PANE_CAPTUREALLKEYS) &&
+		    (~wp->flags & PANE_EXITED) &&
 		    TAILQ_EMPTY(&wp->modes) &&
-		    !KEYC_IS_MOUSE(event->key)) {
-			if (~wp->flags & PANE_EXITED) {
-				window_pane_key(wp, c, s, s->curw, event->key,
-				    &event->m);
-				return (0);
+		    (!KEYC_IS_MOUSE(event->key) || wp->wait_item != NULL)) {
+			key = event->key;
+			if (KEYC_IS_MOUSE(key)) {
+				key = server_client_check_mouse(c, event);
+				if (key == KEYC_UNKNOWN || (u_int)m->wp != wp->id)
+					return (0);
+				m->valid = 1;
+				m->key = key;
 			}
+			window_pane_key(wp, c, s, s->curw, key, m);
+			return (0);
 		}
 
 		if (server_client_handle_menu_key(c, event))
