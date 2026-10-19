@@ -230,12 +230,12 @@ systemd_new_scope_message(sd_bus *bus, int oom_policy, sd_bus_message **mp,
 	}
 
 	/*
-	 * Try locating systemd unit that started the server, and mark pane units
-	 * as dependent on it. Use "Before" to make sure systemd will not try to
-	 * kill them first.
+	 * Try locating the user unit that started the server, and mark pane
+	 * units as dependent on it. System units cannot be referenced from the
+	 * user manager. Use "Before" to make sure systemd will not try to kill
+	 * the panes first.
 	 */
-	if (sd_pid_get_user_unit(parent_pid, &unit) == 0 ||
-	    sd_pid_get_unit(parent_pid, &unit) == 0) {
+	if (sd_pid_get_user_unit(parent_pid, &unit) == 0) {
 		r = sd_bus_message_append(*mp, "(sv)", "Before", "as", 1,
 		    unit);
 		if (r >= 0) {
