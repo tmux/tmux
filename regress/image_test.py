@@ -186,7 +186,6 @@ class ImageTest:
         client.clear()
         fcntl.ioctl(client.fd, termios.TIOCSWINSZ,
             struct.pack("HHHH", sy, sx, sx * cw, sy * ch))
-        os.kill(client.pid, signal.SIGWINCH)
         self.wait(lambda: self.client_size(client) ==
             "%dx%d:%dx%d" % (sx, sy, cw, ch))
         self.wait(lambda: self.run("display-message", "-p",

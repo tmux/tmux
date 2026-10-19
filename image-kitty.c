@@ -434,19 +434,20 @@ static int
 kitty_append_data(struct kitty_state *ks, const u_char *data, size_t size)
 {
 	u_char	*d;
-	size_t	 dsize, allocated;
+	size_t	 dsize, allocated, limit;
 
-	if (size > IMAGE_SIZE_LIMIT)
+	limit = options_get_number(global_options, "image-size-limit");
+	if (size > limit || ks->size > limit)
 		return (-1);
 
-	d = image_base64_decode(data, size, IMAGE_SIZE_LIMIT, &dsize);
+	d = image_base64_decode(data, size, limit, &dsize);
 	if (d == NULL)
 		return (-1);
 	if (dsize == 0) {
 		free(d);
 		return (0);
 	}
-	if (dsize > IMAGE_SIZE_LIMIT - ks->size) {
+	if (dsize > limit - ks->size) {
 		free(d);
 		return (-1);
 	}
@@ -455,8 +456,12 @@ kitty_append_data(struct kitty_state *ks, const u_char *data, size_t size)
 		allocated = ks->allocated;
 		if (allocated == 0)
 			allocated = 4096;
-		while (allocated < ks->size + dsize)
-			allocated *= 2;
+		while (allocated < ks->size + dsize) {
+			if (allocated > limit / 2)
+				allocated = limit;
+			else
+				allocated *= 2;
+		}
 		ks->data = xrealloc(ks->data, allocated);
 		ks->allocated = allocated;
 	}
@@ -505,7 +510,7 @@ kitty_place_image(struct image *src, struct kitty_state *ks, u_int xpixel,
 	enum image_type		 type = image_get_type(src);
 	struct image_geom	 ig = { 0 };
 	u_char			*pixels;
-	size_t			 stride;
+	size_t			 stride, limit;
 	uint64_t		 cw, ch;
 	double			 size;
 
@@ -565,9 +570,10 @@ kitty_place_image(struct image *src, struct kitty_state *ks, u_int xpixel,
 		ig.scaled_width = (double)ig.sx * xpixel - ig.canvas_xoff;
 		ig.scaled_height = (double)ig.sy * ypixel - ig.canvas_yoff;
 	}
+	limit = options_get_number(global_options, "image-size-limit");
 	if (ig.sx > USHRT_MAX ||
 	    ig.sy > USHRT_MAX ||
-	    ig.sx * ig.sy > IMAGE_SIZE_LIMIT)
+	    ig.sx * ig.sy > limit)
 		return (NULL);
 
 	/* Record geometry in the input terminal's pixel coordinates. */
@@ -595,7 +601,7 @@ kitty_parse_input(struct input_ctx *ictx, struct window_pane *wp,
 	const u_char		*found;
 	const char		*m;
 	u_char			*p = NULL;
-	size_t			 csize, psize;
+	size_t			 csize, psize, limit;
 	u_int			 sx, sy;
 	uint64_t		 cw, ch;
 	struct image		*src = NULL, *im = NULL;
@@ -714,14 +720,15 @@ kitty_parse_input(struct input_ctx *ictx, struct window_pane *wp,
 
 	if (ks->compression != 'o' && ks->compression != 'z')
 		goto out;
+	limit = options_get_number(global_options, "image-size-limit");
 	switch (ks->format) {
 	case 24:
 	case 32:
-		p = image_raw_decode(ks->data, ks->size, IMAGE_SIZE_LIMIT,
+		p = image_raw_decode(ks->data, ks->size, limit,
 		    ks->format, ks->width, ks->height, ks->compression == 'z');
 		break;
 	case 100:
-		p = image_png_decode(ks->data, ks->size, IMAGE_SIZE_LIMIT,
+		p = image_png_decode(ks->data, ks->size, limit,
 		    ks->compression == 'z', ks->data_size, &ks->width,
 		    &ks->height);
 		break;

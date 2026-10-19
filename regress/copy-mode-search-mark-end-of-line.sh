@@ -7,6 +7,7 @@ TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -f/dev/null -Ltest$$"
+n=0
 $TMUX kill-server 2>/dev/null
 
 cleanup()
@@ -19,6 +20,8 @@ trap cleanup 0 1 15
 check()
 {
 	$TMUX kill-server 2>/dev/null
+	n=$((n + 1))
+	TMUX="$TEST_TMUX -f/dev/null -Ltest$$-$n"
 	$TMUX new -d -x20 -y5 "printf '$1%.0s' 1 2 3 4 5; cat" || exit 1
 	sleep 1
 	$TMUX set -g mode-keys vi || exit 1

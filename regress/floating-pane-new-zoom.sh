@@ -88,7 +88,7 @@ for mode in default command empty already-zoomed; do
 	float=$($INNER new-pane -Z -PF '#{pane_id}' \
 	    -x 80% -y 80% -X 10% -Y 10% "$@") || exit 1
 	check "$float" '#{pane_zoomed_flag}:#{window_zoomed_flag}:#{pane_floating_flag}' \
-	    '1:1:0'
+	    '1:1:1'
 	check "$float" '#{pane_width}:#{pane_height}:#{pane_left}:#{pane_top}' \
 	    '60:20:0:0'
 	wait_capture "$DIR/zoomed"

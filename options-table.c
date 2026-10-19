@@ -506,6 +506,37 @@ const struct options_table_entry options_table[] = {
 		  "Empty does not write a history file."
 	},
 
+#ifdef ENABLE_IMAGES
+	{ .name = "image-size-limit",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .minimum = 1,
+	  .maximum = UINT_MAX,
+	  .default_num = 64 * 1024 * 1024,
+	  .unit = "bytes",
+	  .text = "Maximum size of an uploaded or decoded image."
+	},
+
+	{ .name = "image-total-count-limit",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .minimum = 1,
+	  .maximum = INT_MAX,
+	  .default_num = 1000,
+	  .text = "Maximum number of stored images."
+	},
+
+	{ .name = "image-total-size-limit",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .minimum = 1,
+	  .maximum = UINT_MAX,
+	  .default_num = 1024 * 1024 * 1024,
+	  .unit = "bytes",
+	  .text = "Maximum total image pixel memory."
+	},
+#endif
+
 	{ .name = "input-buffer-size",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_SERVER,

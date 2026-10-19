@@ -11,9 +11,6 @@ LC_ALL=C.UTF-8
 export PATH TERM LC_ALL
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
-TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
-
 DIR=$(mktemp -d) || exit 1
 TRIGGER=$DIR/trigger
 OUT=$DIR/out
@@ -37,8 +34,8 @@ fail()
 # margins sent are $2.
 check()
 {
-	$TMUX kill-server >/dev/null 2>&1
-	$TMUX2 kill-server >/dev/null 2>&1
+	TMUX="$TEST_TMUX -LtestA$1$$ -f/dev/null"
+	TMUX2="$TEST_TMUX -LtestB$1$$ -f/dev/null"
 	rm -f "$TRIGGER" "$OUT"
 
 	$TMUX new-session -d -s inner -x 60 -y 10 "sh -c '
@@ -61,6 +58,9 @@ check()
 	got=$(tr '\033' E <"$OUT" | grep -o 'E\[[0-9]*;[0-9]*s' | sort -u |
 	    tr -d 'E[s' | tr '\n' ' ')
 	[ "$got" = "$2 " ] || fail "side-status $1: margins '$got', expected '$2'"
+
+	$TMUX2 kill-server >/dev/null 2>&1
+	$TMUX kill-server >/dev/null 2>&1
 }
 
 # Pane in columns 15 to 60 after a left side status line of width 14.

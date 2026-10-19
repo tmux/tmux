@@ -26,10 +26,6 @@
 
 #include "tmux.h"
 
-/* Maximum number of images and total bytes. */
-#define IMAGE_MAX_IMAGES 1000
-#define IMAGE_MAX_BYTES (1024 * 1024 * 1024)
-
 /* An image. */
 TAILQ_HEAD(image_list, image);
 struct image {
@@ -148,10 +144,13 @@ image_remove_all(struct image *im)
 static struct image *
 image_find_oldest(struct image *keep, size_t size)
 {
-	struct image *im, *parent;
+	struct image	*im, *parent;
+	size_t		 limit;
 
+	limit = options_get_number(global_options, "image-total-size-limit");
 	TAILQ_FOREACH_REVERSE(im, &all_images, image_list, all_entry) {
-		if (image_size + size > IMAGE_MAX_BYTES && im->parent != NULL)
+		if (im->parent != NULL &&
+		    (image_size > limit || size > limit - image_size))
 			continue;
 		for (parent = keep; parent != NULL; parent = parent->parent) {
 			if (parent == im)
@@ -167,9 +166,14 @@ image_find_oldest(struct image *keep, size_t size)
 static int
 image_can_add(size_t size)
 {
-	if (image_count >= IMAGE_MAX_IMAGES)
+	u_int	count;
+	size_t	limit;
+
+	count = options_get_number(global_options, "image-total-count-limit");
+	if (image_count >= count)
 		return (0);
-	if (image_size + size > IMAGE_MAX_BYTES)
+	limit = options_get_number(global_options, "image-total-size-limit");
+	if (image_size > limit || size > limit - image_size)
 		return (0);
 	return (1);
 }
@@ -180,8 +184,10 @@ image_check_limits(struct image *keep, size_t size)
 {
 	struct image	*oldest;
 	struct client	*c;
+	size_t		 limit;
 
-	if (size > IMAGE_MAX_BYTES)
+	limit = options_get_number(global_options, "image-total-size-limit");
+	if (size > limit)
 		return (-1);
 	if (image_can_add(size))
 		return (0);
@@ -245,19 +251,20 @@ image_create_with_parent(enum image_type type, struct image *parent,
     struct image_geom *ig, size_t stride, u_char *pixels)
 {
 	struct image	*im;
-	size_t		 size = 0;
+	size_t		 size = 0, limit;
 
+	limit = options_get_number(global_options, "image-size-limit");
 	if (ig->src_w == 0 || ig->src_h == 0)
 		return (NULL);
 	if (ig->canvas_width == 0 || ig->canvas_height == 0)
 		return (NULL);
 	if (ig->sx == 0 || ig->sy == 0 || pixels == NULL)
 		return (NULL);
-	if ((uint64_t)ig->src_w * ig->src_h > IMAGE_SIZE_LIMIT / 4)
+	if ((uint64_t)ig->src_w * ig->src_h > limit / 4)
 		return (NULL);
 	if (ig->sx > USHRT_MAX || ig->sy > USHRT_MAX)
 		return (NULL);
-	if (ig->sx * ig->sy > IMAGE_SIZE_LIMIT || stride < ig->src_w * 4)
+	if (ig->sx * ig->sy > limit || stride < ig->src_w * 4)
 		return (NULL);
 	if (ig->scaled_width <= 0 || ig->scaled_height <= 0)
 		return (NULL);

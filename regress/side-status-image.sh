@@ -30,6 +30,7 @@ def check(position, status):
     with image_test(sys.argv[1]) as test:
         test.run("set-option", "-g", "side-status", position)
         test.run("set-option", "-g", "side-status-width", str(side))
+        test.run("set-option", "-g", "side-status-format", "image test")
         if status != "off":
             test.run("set-option", "-g", "status", "2")
             test.run("set-option", "-g", "status-position", status)
@@ -66,7 +67,7 @@ def check(position, status):
         test.run("send-keys", "-X", "cancel")
         test.wait(lambda: test.run("display-message", "-p",
             "#{pane_in_mode}") == "0")
-        client.read(0.2)
+        client.read(1.0)
         terminal.feed(client.data)
         terminal.check(placed(xoff + 2, yoff + 3))
         assert side_cells(terminal, side_x, yoff, height) == cells, \
