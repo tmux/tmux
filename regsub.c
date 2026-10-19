@@ -64,7 +64,7 @@ regsub(const char *pattern, const char *with, const char *text, int flags)
 	regex_t		 r;
 	regmatch_t	 m[10];
 	ssize_t		 start, end, last, len = 0;
-	int		 empty = 0;
+	int		 empty, eflags;
 	char		*buf = NULL;
 
 	if (*text == '\0')
@@ -78,9 +78,14 @@ regsub(const char *pattern, const char *with, const char *text, int flags)
 	last = 0;
 	end = strlen(text);
 
+	/* An empty match at the start is only replaced if anchored. */
+	empty = (*pattern == '^');
+
 	while (start <= end) {
-		if (regexec(&r, text + start, nitems(m), m, 0) != 0) {
-			regsub_copy(&buf, &len, text, start, end);
+		/* Only the start of the text may match ^. */
+		eflags = (start == 0) ? 0 : REG_NOTBOL;
+		if (regexec(&r, text + start, nitems(m), m, eflags) != 0) {
+			regsub_copy(&buf, &len, text, last, end);
 			break;
 		}
 
@@ -89,15 +94,6 @@ regsub(const char *pattern, const char *with, const char *text, int flags)
 		 * last match).
 		 */
 		regsub_copy(&buf, &len, text, last, m[0].rm_so + start);
-
-		/* For anchored patterns, replace the first match only. */
-		if (*pattern == '^') {
-			regsub_expand(&buf, &len, with, text + start, m,
-			    nitems(m));
-			last = start + m[0].rm_eo;
-			regsub_copy(&buf, &len, text, last, end);
-			break;
-		}
 
 		/*
 		 * If the last match was empty and this one isn't (it is either
