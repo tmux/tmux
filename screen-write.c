@@ -36,6 +36,8 @@ static void	screen_write_collect_flush(struct screen_write_ctx *, int,
 		    const char *);
 static int	screen_write_overwrite(struct screen_write_ctx *,
 		    struct grid_cell *, u_int);
+static void	screen_write_clear_cell(struct screen_write_ctx *, u_int,
+		    u_int);
 static int	screen_write_combine(struct screen_write_ctx *,
 		    const struct grid_cell *);
 static void	screen_write_sync_flush_dirty(struct window_pane *);
@@ -1506,6 +1508,44 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 	screen_write_redraw_pane(ctx, &ttyctx);
 }
 
+/*
+ * If the cell at px is padding, it belongs to a tab or wide character that
+ * starts to its left and is about to be cut in two by an insert, delete or
+ * clear. Replace the whole span with blank cells, keeping the background.
+ */
+static void
+screen_write_break_span(struct screen_write_ctx *ctx, u_int px)
+{
+	struct screen		*s = ctx->s;
+	struct grid		*gd = s->grid;
+	struct grid_cell	 gc;
+	u_int			 xx, sx = screen_size_x(s);
+
+	if (px >= sx)
+		return;
+	grid_view_get_cell(gd, px, s->cy, &gc);
+	if (~gc.flags & GRID_FLAG_PADDING)
+		return;
+
+	/* Find the cell that starts the span. */
+	for (xx = px; xx > 0; xx--) {
+		grid_view_get_cell(gd, xx - 1, s->cy, &gc);
+		if (~gc.flags & GRID_FLAG_PADDING) {
+			xx--;
+			break;
+		}
+	}
+
+	/* Clear it and the padding that follows. */
+	screen_write_clear_cell(ctx, xx, s->cy);
+	while (++xx < sx) {
+		grid_view_get_cell(gd, xx, s->cy, &gc);
+		if (~gc.flags & GRID_FLAG_PADDING)
+			break;
+		screen_write_clear_cell(ctx, xx, s->cy);
+	}
+}
+
 /* Insert nx characters. */
 void
 screen_write_insertcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
@@ -1531,6 +1571,8 @@ screen_write_insertcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 	image_redraw_area(ctx, 0, s->cy, screen_size_x(s), 1);
 #endif
 
+	screen_write_break_span(ctx, s->cx);
+	screen_write_break_span(ctx, screen_size_x(s) - nx);
 	grid_view_insert_cells(s->grid, s->cx, s->cy, nx, bg);
 
 	screen_write_collect_flush(ctx, 0, __func__);
@@ -1571,6 +1613,8 @@ screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 	image_redraw_area(ctx, 0, s->cy, screen_size_x(s), 1);
 #endif
 
+	screen_write_break_span(ctx, s->cx);
+	screen_write_break_span(ctx, s->cx + nx);
 	grid_view_delete_cells(s->grid, s->cx, s->cy, nx, bg);
 
 	screen_write_collect_flush(ctx, 0, __func__);
@@ -1611,6 +1655,8 @@ screen_write_clearcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 	image_redraw_area(ctx, s->cx, s->cy, nx, 1);
 #endif
 
+	screen_write_break_span(ctx, s->cx);
+	screen_write_break_span(ctx, s->cx + nx);
 	grid_view_clear(s->grid, s->cx, s->cy, nx, 1, bg);
 
 	screen_write_collect_flush(ctx, 0, __func__);
