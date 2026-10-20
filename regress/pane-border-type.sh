@@ -406,6 +406,27 @@ must_equal "$($TMUX display-message -p -t mixed:0.1 '#{pane_width}')" "1" \
 	"narrow-scrollbar pane content width"
 $TMUX kill-server
 
+# Enabling or widening scrollbars after creating a minimum-sized layout must
+# refit it immediately rather than leaving the scrollbar over pane content.
+$TMUX new-session -d -s dynamic -x 6 -y 5 'cat' || exit 1
+$TMUX set -g status off &&
+$TMUX set -g pane-border-type separate || fail "set dynamic options failed"
+$TMUX split-window -h -t dynamic:0 'cat' &&
+$TMUX select-layout -t dynamic:0 even-horizontal ||
+	fail "create dynamic layout failed"
+must_equal "$($TMUX display-message -p -t dynamic:0 '#{window_width}')" "6" \
+	"dynamic initial width"
+$TMUX set -g pane-scrollbars on || fail "enable dynamic scrollbars failed"
+layout=$($TMUX display-message -p -t dynamic:0 '#{window_layout}')
+layout_cell_w "$layout" 8 ||
+	fail "enabling scrollbars must refit layout to 8: $layout"
+$TMUX set -p -t dynamic:0.0 pane-scrollbars-style 'width=5,pad=3' ||
+	fail "widen dynamic scrollbar failed"
+layout=$($TMUX display-message -p -t dynamic:0 '#{window_layout}')
+layout_cell_w "$layout" 15 ||
+	fail "widening scrollbar must refit layout to 15: $layout"
+$TMUX kill-server
+
 for st in off top bottom; do
 	for p in 0 1; do
 		$TMUX new-session -d -s ry -x 80 -y 24 'cat' || exit 1

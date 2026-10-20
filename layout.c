@@ -596,8 +596,8 @@ layout_fit_cell(struct window *w, struct layout_cell *lc)
 }
 
 /*
- * Make sure every cell of a new layout is big enough for separate borders,
- * growing the layout if there is not enough space.
+ * Make sure every cell is big enough for separate borders, growing the layout
+ * if there is not enough space.
  */
 void
 layout_fit(struct window *w)

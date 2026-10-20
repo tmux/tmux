@@ -1455,6 +1455,10 @@ options_push_changes(const char *name)
 			    "pane-scrollbars");
 			w->sb_pos = options_get_number(w->options,
 			    "pane-scrollbars-position");
+			if (strcmp(name, "pane-scrollbars") == 0) {
+				layout_fit(w);
+				layout_fix_offsets(w);
+			}
 			if (layout_fix_panes(w, NULL))
 				events_fire_window("window-layout-changed", w);
 		}
@@ -1469,6 +1473,8 @@ options_push_changes(const char *name)
 			    &wp->scrollbar_style, wp->options);
 		}
 		RB_FOREACH(w, windows, &windows) {
+			layout_fit(w);
+			layout_fix_offsets(w);
 			if (layout_fix_panes(w, NULL))
 				events_fire_window("window-layout-changed", w);
 		}
