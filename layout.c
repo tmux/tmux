@@ -435,17 +435,27 @@ layout_separate_borders(struct window *w, struct layout_cell *root,
 }
 
 /* Smallest size of a pane cell including scrollbar, status and borders. */
+/* Return the space reserved by the scrollbar for a layout cell. */
+static u_int
+layout_cell_scrollbar_size(struct window *w, struct layout_cell *lc)
+{
+	struct window_pane	*wp = lc->wp;
+
+	if (wp == NULL)
+		wp = w->active;
+	return (wp->scrollbar_style.width + wp->scrollbar_style.pad);
+}
+
 static u_int
 layout_pane_minimum_size(struct window *w, struct layout_cell *lc,
     enum layout_type type)
 {
 	struct layout_cell	*root = w->layout_root;
-	struct style		*sb_style = &w->active->scrollbar_style;
 	u_int			 minimum = PANE_MINIMUM;
 
 	if (type == LAYOUT_LEFTRIGHT) {
 		if (w->sb == PANE_SCROLLBARS_ALWAYS)
-			minimum += sb_style->width + sb_style->pad;
+			minimum += layout_cell_scrollbar_size(w, lc);
 	} else if (!window_border_type_is_separate(w) &&
 	    layout_add_horizontal_border(root, lc, window_get_pane_status(w)))
 		minimum++;
@@ -1604,10 +1614,8 @@ layout_split_sizes(struct window *w, struct layout_cell *lc, int size,
 	if (borders != 0) {
 		if (type == LAYOUT_LEFTRIGHT &&
 		    w->sb == PANE_SCROLLBARS_ALWAYS) {
-			min1 += w->active->scrollbar_style.width +
-			    w->active->scrollbar_style.pad;
-			min2 += w->active->scrollbar_style.width +
-			    w->active->scrollbar_style.pad;
+			min1 += layout_cell_scrollbar_size(w, lc);
+			min2 += layout_cell_scrollbar_size(w, lc);
 		}
 		/* -l is the size inside the borders. */
 		min1 += 1;

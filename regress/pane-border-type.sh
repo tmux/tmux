@@ -352,6 +352,60 @@ while read -r top bottom; do
 done <"$TMP/grow.panes"
 $TMUX kill-server
 
+# Every preset must grow a small window enough to keep pane content inside the
+# outer separate border. This covers both axes and nested cells in tiled.
+for sb in off on; do
+	for l in even-horizontal even-vertical main-horizontal \
+	    main-horizontal-mirrored main-vertical main-vertical-mirrored tiled; do
+		$TMUX new-session -d -s preset -x 80 -y 24 'cat' || exit 1
+		$TMUX set -g status off &&
+		$TMUX set -g pane-border-type separate &&
+		$TMUX set -g pane-scrollbars "$sb" || fail "set options failed"
+		for i in 1 2 3 4; do
+			$TMUX split-window -h -t preset:0 'cat' ||
+				fail "split $i failed"
+		done
+		$TMUX resize-window -t preset:0 -x 5 -y 5 ||
+			fail "$l sb=$sb: resize failed"
+		$TMUX select-layout -t preset:0 "$l" || fail "$l sb=$sb failed"
+		win_w=$($TMUX display-message -p -t preset:0 '#{window_width}')
+		win_h=$($TMUX display-message -p -t preset:0 '#{window_height}')
+		$TMUX list-panes -t preset:0 -F \
+		    '#{pane_width} #{pane_height} #{pane_left} #{pane_top} #{pane_right} #{pane_bottom}' \
+		    >"$TMP/preset.panes"
+		while read -r width height left top right bottom; do
+			[ "$width" -ge 1 ] && [ "$height" -ge 1 ] &&
+			    [ "$left" -ge 1 ] && [ "$top" -ge 1 ] &&
+			    [ "$right" -lt $((win_w - 1)) ] &&
+			    [ "$bottom" -lt $((win_h - 1)) ] ||
+				fail "$l sb=$sb: pane outside borders ($left,$top-$right,$bottom in ${win_w}x${win_h})"
+		done <"$TMP/preset.panes"
+		$TMUX kill-server
+	done
+done
+
+# Pane-scoped scrollbar widths must be included for their own layout cell, not
+# taken from whichever pane happens to be active.
+$TMUX new-session -d -s mixed -x 30 -y 10 'cat' || exit 1
+$TMUX set -g status off &&
+$TMUX set -g pane-border-type separate &&
+$TMUX set -g pane-scrollbars on || fail "set mixed scrollbar options failed"
+$TMUX split-window -h -t mixed:0 'cat' || fail "mixed scrollbar split failed"
+$TMUX set -p -t mixed:0.0 pane-scrollbars-style 'width=5,pad=3' &&
+$TMUX set -p -t mixed:0.1 pane-scrollbars-style 'width=1,pad=0' ||
+	fail "set mixed scrollbar styles failed"
+$TMUX select-pane -t mixed:0.1 || fail "select narrow-scrollbar pane failed"
+$TMUX resize-window -t mixed:0 -x 5 -y 5 || fail "mixed resize failed"
+$TMUX select-layout -t mixed:0 even-horizontal ||
+	fail "mixed even-horizontal failed"
+must_equal "$($TMUX display-message -p -t mixed:0 '#{window_width}')" "15" \
+	"mixed scrollbar widths must clamp window to 15"
+must_equal "$($TMUX display-message -p -t mixed:0.0 '#{pane_width}')" "1" \
+	"wide-scrollbar pane content width"
+must_equal "$($TMUX display-message -p -t mixed:0.1 '#{pane_width}')" "1" \
+	"narrow-scrollbar pane content width"
+$TMUX kill-server
+
 for st in off top bottom; do
 	for p in 0 1; do
 		$TMUX new-session -d -s ry -x 80 -y 24 'cat' || exit 1
@@ -595,4 +649,3 @@ done <"$TMP/evsb.panes"
 $TMUX kill-server
 
 exit 0
-
