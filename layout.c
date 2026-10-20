@@ -434,7 +434,6 @@ layout_separate_borders(struct window *w, struct layout_cell *root,
 	return (1 + layout_cell_is_bottom(root, lc));
 }
 
-/* Smallest size of a pane cell including scrollbar, status and borders. */
 /* Return the space reserved by the scrollbar for a layout cell. */
 static u_int
 layout_cell_scrollbar_size(struct window *w, struct layout_cell *lc)
@@ -446,6 +445,7 @@ layout_cell_scrollbar_size(struct window *w, struct layout_cell *lc)
 	return (wp->scrollbar_style.width + wp->scrollbar_style.pad);
 }
 
+/* Smallest size of a pane cell including scrollbar, status and borders. */
 static u_int
 layout_pane_minimum_size(struct window *w, struct layout_cell *lc,
     enum layout_type type)

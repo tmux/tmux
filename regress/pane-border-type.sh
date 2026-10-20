@@ -427,6 +427,22 @@ layout_cell_w "$layout" 15 ||
 	fail "widening scrollbar must refit layout to 15: $layout"
 $TMUX kill-server
 
+# A custom layout may have been created for joined borders and be too small for
+# separate borders. Applying it must grow the tree before fixing pane geometry.
+$TMUX new-session -d -s custom -x 3 -y 5 'cat' || exit 1
+$TMUX set -g status off || fail "custom status off failed"
+$TMUX split-window -h -t custom:0 'cat' || fail "custom split failed"
+custom_layout=$($TMUX display-message -p -t custom:0 '#{window_layout}')
+$TMUX set -g pane-border-type separate || fail "custom separate failed"
+$TMUX select-layout -t custom:0 "$custom_layout" ||
+	fail "apply undersized custom layout failed"
+layout=$($TMUX display-message -p -t custom:0 '#{window_layout}')
+layout_cell_w "$layout" 6 ||
+	fail "custom layout must grow to separate minimum 6: $layout"
+must_equal "$($TMUX list-panes -t custom:0 -F '#{pane_width}' | tr '\n' ' ')" \
+	"1 1 " "custom layout content widths"
+$TMUX kill-server
+
 for st in off top bottom; do
 	for p in 0 1; do
 		$TMUX new-session -d -s ry -x 80 -y 24 'cat' || exit 1

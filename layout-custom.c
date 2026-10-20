@@ -709,6 +709,7 @@ layout_parse(struct window *w, const char *input, char **cause)
 	layout_assign(w, &pctx);
 
 	/* Update pane attributes. */
+	layout_fit(w);
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 	if (pctx.version > 1)

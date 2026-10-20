@@ -150,6 +150,15 @@ layout_set_link_floating(struct window *w, struct layout_cell *lcroot)
 	}
 }
 
+/* Fit a new preset layout and update the panes. */
+static void
+layout_set_fix(struct window *w)
+{
+	layout_fit(w);
+	layout_fix_offsets(w);
+	layout_fix_panes(w, NULL);
+}
+
 static void
 layout_set_even(struct window *w, enum layout_type type)
 {
@@ -192,9 +201,7 @@ layout_set_even(struct window *w, enum layout_type type)
 
 	layout_spread_cell(w, lcroot);
 
-	layout_fit(w);
-	layout_fix_offsets(w);
-	layout_fix_panes(w, NULL);
+	layout_set_fix(w);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -327,9 +334,7 @@ layout_set_main_h(struct window *w)
 		layout_spread_cell(w, lcother);
 	}
 
-	layout_fit(w);
-	layout_fix_offsets(w);
-	layout_fix_panes(w, NULL);
+	layout_set_fix(w);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -435,9 +440,7 @@ layout_set_main_h_mirrored(struct window *w)
 		layout_spread_cell(w, lcother);
 	}
 
-	layout_fit(w);
-	layout_fix_offsets(w);
-	layout_fix_panes(w, NULL);
+	layout_set_fix(w);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -543,9 +546,7 @@ layout_set_main_v(struct window *w)
 		layout_spread_cell(w, lcother);
 	}
 
-	layout_fit(w);
-	layout_fix_offsets(w);
-	layout_fix_panes(w, NULL);
+	layout_set_fix(w);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -652,9 +653,7 @@ layout_set_main_v_mirrored(struct window *w)
 		layout_spread_cell(w, lcother);
 	}
 
-	layout_fit(w);
-	layout_fix_offsets(w);
-	layout_fix_panes(w, NULL);
+	layout_set_fix(w);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -776,9 +775,7 @@ layout_set_tiled(struct window *w)
 	}
 
 	layout_set_link_floating(w, lcroot);
-	layout_fit(w);
-	layout_fix_offsets(w);
-	layout_fix_panes(w, NULL);
+	layout_set_fix(w);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
