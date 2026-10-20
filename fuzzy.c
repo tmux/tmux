@@ -1,4 +1,4 @@
-/* $OpenBSD: fuzzy.c,v 1.1 2026/06/26 14:40:30 nicm Exp $ */
+/* $OpenBSD: fuzzy.c,v 1.3 2026/10/16 12:28:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -59,6 +59,23 @@
 #define FUZZY_PENALTY_LEADING 1
 #define FUZZY_PENALTY_LEADING_MAX 10
 #define FUZZY_PENALTY_GAP 1
+#define FUZZY_TIME_LIMIT 100
+#define FUZZY_TIME_LOOP_CHECK 10000
+
+/* State for matching. */
+struct fuzzy_state {
+	uint64_t		 end_time;
+	u_int			 check;
+	int			 stopped;
+	struct fuzzy_char	*cs;
+	u_int			 ncs;
+	u_int			 alloc;
+	u_int			 widths[STYLE_ALIGN_ABSOLUTE_CENTRE + 1];
+	struct utf8_data	*tok;
+	u_int			 toklen;
+	int			 fold;
+	char			*matched;
+};
 
 /* A single visible character of the text. */
 struct fuzzy_char {
@@ -78,9 +95,21 @@ struct fuzzy_term {
 	size_t			 len;
 };
 
+/* Check whether a match has taken too long. */
+static int
+fuzzy_check_time(struct fuzzy_state *fs)
+{
+	if (++fs->check % FUZZY_TIME_LOOP_CHECK != 0)
+		return (1);
+	if (get_timer() < fs->end_time)
+		return (1);
+	fs->stopped = 1;
+	return (0);
+}
+
 /* Is this character a word boundary, so a match after it scores higher? */
 static int
-fuzzy_is_boundary(const struct utf8_data *ud)
+fuzzy_is_boundary(struct utf8_data *ud)
 {
 	static const char	*boundary = " -_/.:";
 
@@ -94,7 +123,7 @@ fuzzy_is_boundary(const struct utf8_data *ud)
  * directly without case folding.
  */
 static int
-fuzzy_char_equal(const struct utf8_data *a, const struct utf8_data *b, int fold)
+fuzzy_char_equal(struct utf8_data *a, struct utf8_data *b, int fold)
 {
 	if (fold &&
 	    a->size == 1 &&
@@ -116,21 +145,20 @@ fuzzy_align(enum style_align align)
 
 /* Add a visible character to the array, updating the alignment width. */
 static void
-fuzzy_add(struct fuzzy_char **cs, u_int *ncs, u_int *alloc, enum style_align a,
-    const struct utf8_data *ud, u_int *widths)
+fuzzy_add(struct fuzzy_state *fs, enum style_align a, struct utf8_data *ud)
 {
 	struct fuzzy_char	*fc;
 
-	if (*ncs == *alloc) {
-		*alloc = (*alloc == 0) ? 64 : *alloc * 2;
-		*cs = xreallocarray(*cs, *alloc, sizeof **cs);
+	if (fs->ncs == fs->alloc) {
+		fs->alloc = (fs->alloc == 0) ? 64 : fs->alloc * 2;
+		fs->cs = xreallocarray(fs->cs, fs->alloc, sizeof *fs->cs);
 	}
-	fc = &(*cs)[(*ncs)++];
+	fc = &fs->cs[fs->ncs++];
 	fc->align = a;
 	memcpy(&fc->ud, ud, sizeof fc->ud);
 	fc->width = ud->width;
-	fc->offset = widths[a];
-	widths[a] += ud->width;
+	fc->offset = fs->widths[a];
+	fs->widths[a] += ud->width;
 }
 
 /* Decode a character as UTF-8. */
@@ -153,14 +181,13 @@ fuzzy_decode_one(const char *cp, const char *end, struct utf8_data *ud)
 
 /*
  * Scan the text into an array of visible characters, skipping styles and
- * recording the alignment and intra-alignment offset of each. Returns the
- * array and its length and fills in the per-alignment widths.
+ * recording the alignment and intra-alignment offset of each. Fills in the
+ * array, its length and the per-alignment widths in the match state.
  */
-static struct fuzzy_char *
-fuzzy_scan(const char *text, u_int *ncs, u_int *widths)
+static void
+fuzzy_scan(struct fuzzy_state *fs, const char *text)
 {
-	struct fuzzy_char	*cs = NULL;
-	u_int			 alloc = 0, n, leading, i;
+	u_int			 n, leading, i;
 	enum style_align	 current = STYLE_ALIGN_LEFT;
 	struct style		 sy;
 	const char		*cp = text, *textend = text + strlen(text);
@@ -168,35 +195,39 @@ fuzzy_scan(const char *text, u_int *ncs, u_int *widths)
 	struct utf8_data	 ud, hash, bracket;
 	char			*tmp;
 
-	*ncs = 0;
-	memset(widths, 0, sizeof *widths * (STYLE_ALIGN_ABSOLUTE_CENTRE + 1));
 	style_set(&sy, &grid_default_cell);
 	utf8_set(&hash, '#');
 	utf8_set(&bracket, '[');
 
 	while (*cp != '\0') {
+		if (!fuzzy_check_time(fs))
+			break;
 		/* Handle a run of #s, which may introduce a style. */
 		if (*cp == '#') {
-			for (n = 0; cp[n] == '#'; n++)
-				/* nothing */;
+			for (n = 0; cp[n] == '#'; n++) {
+				if (!fuzzy_check_time(fs))
+					return;
+			}
 			if (cp[n] != '[') {
 				/* Escaped #s: ##->#, so half (rounded up). */
 				leading = (n % 2 == 0) ? n / 2 : n / 2 + 1;
 				for (i = 0; i < leading; i++) {
-					fuzzy_add(&cs, ncs, &alloc, current,
-					    &hash, widths);
+					if (!fuzzy_check_time(fs))
+						return;
+					fuzzy_add(fs, current, &hash);
 				}
 				cp += n;
 				continue;
 			}
 
 			/* Even count: all #s escaped, the [ is literal. */
-			for (i = 0; i < n / 2; i++)
-				fuzzy_add(&cs, ncs, &alloc, current, &hash,
-				    widths);
+			for (i = 0; i < n / 2; i++) {
+				if (!fuzzy_check_time(fs))
+					return;
+				fuzzy_add(fs, current, &hash);
+			}
 			if (n % 2 == 0) {
-				fuzzy_add(&cs, ncs, &alloc, current, &bracket,
-				    widths);
+				fuzzy_add(fs, current, &bracket);
 				cp += n + 1;
 				continue;
 			}
@@ -223,9 +254,8 @@ fuzzy_scan(const char *text, u_int *ncs, u_int *widths)
 		 */
 		if (ud.size == 1 && (ud.data[0] <= 0x1f || ud.data[0] >= 0x7f))
 			continue;
-		fuzzy_add(&cs, ncs, &alloc, current, &ud, widths);
+		fuzzy_add(fs, current, &ud);
 	}
-	return (cs);
 }
 
 /*
@@ -234,8 +264,8 @@ fuzzy_scan(const char *text, u_int *ncs, u_int *widths)
  * character is visible, otherwise returns -1.
  */
 static int
-fuzzy_column(const struct fuzzy_char *fc, const u_int *start, const u_int *src,
-    const u_int *vis, u_int *column)
+fuzzy_column(struct fuzzy_char *fc, u_int *start, u_int *src, u_int *vis,
+    u_int *column)
 {
 	enum style_align	a = fc->align;
 
@@ -245,31 +275,34 @@ fuzzy_column(const struct fuzzy_char *fc, const u_int *start, const u_int *src,
 	return (0);
 }
 
-/* Decode a UTF-8 term into an array of characters. */
-static u_int
-fuzzy_decode(const char *tok, size_t len, struct utf8_data *out)
+/* Decode a UTF-8 term, stopping if it has more characters than the text. */
+static int
+fuzzy_decode(struct fuzzy_state *fs, const char *tok, size_t len)
 {
 	const char	*cp = tok, *end = tok + len;
-	u_int		 n = 0;
 
-	while (cp != end)
-		cp = fuzzy_decode_one(cp, end, &out[n++]);
-	return (n);
+	fs->toklen = 0;
+	while (cp != end) {
+		if (fs->toklen == fs->ncs)
+			return (-1);
+		cp = fuzzy_decode_one(cp, end, &fs->tok[fs->toklen++]);
+	}
+	return (0);
 }
 
 /* Add the score for a fuzzy token matched at the given positions. */
 static int
-fuzzy_score_positions(const u_int *pos, u_int npos, const struct fuzzy_char *cs)
+fuzzy_score_positions(struct fuzzy_state *fs, u_int *pos)
 {
 	u_int	i, gap, span;
 	int	score = 0;
 
-	if (npos == 0)
+	if (fs->toklen == 0)
 		return (0);
 	if (pos[0] == 0)
 		score += FUZZY_BONUS_START;
 	else {
-		if (fuzzy_is_boundary(&cs[pos[0] - 1].ud))
+		if (fuzzy_is_boundary(&fs->cs[pos[0] - 1].ud))
 			score += FUZZY_BONUS_BOUNDARY;
 		if (pos[0] < FUZZY_PENALTY_LEADING_MAX)
 			score -= pos[0] * FUZZY_PENALTY_LEADING;
@@ -278,14 +311,14 @@ fuzzy_score_positions(const u_int *pos, u_int npos, const struct fuzzy_char *cs)
 			    FUZZY_PENALTY_LEADING;
 		}
 	}
-	for (i = 1; i < npos; i++) {
+	for (i = 1; i < fs->toklen; i++) {
 		if (pos[i] == pos[i - 1] + 1)
 			score += FUZZY_BONUS_CONSECUTIVE;
-		else if (fuzzy_is_boundary(&cs[pos[i] - 1].ud))
+		else if (fuzzy_is_boundary(&fs->cs[pos[i] - 1].ud))
 			score += FUZZY_BONUS_BOUNDARY;
 	}
-	span = pos[npos - 1] - pos[0] + 1;
-	gap = span - npos;
+	span = pos[fs->toklen - 1] - pos[0] + 1;
+	gap = span - fs->toklen;
 	score -= gap * FUZZY_PENALTY_GAP;
 	return (score);
 }
@@ -295,23 +328,27 @@ fuzzy_score_positions(const u_int *pos, u_int npos, const struct fuzzy_char *cs)
  * token matches.
  */
 static int
-fuzzy_match_fuzzy(const struct utf8_data *tok, u_int toklen,
-    struct fuzzy_char *cs, u_int ncs, int fold, int *score, char *matched)
+fuzzy_match_fuzzy(struct fuzzy_state *fs, int *score)
 {
 	u_int	pi, ci, *pos;
 	int	found, value;
 
-	if (toklen == 0 || ncs == 0)
+	if (fs->toklen == 0 || fs->ncs == 0)
 		return (0);
-	pos = xcalloc(toklen, sizeof *pos);
+	pos = xcalloc(fs->toklen, sizeof *pos);
 
 	/* First find a subsequence from the start. */
 	ci = 0;
-	for (pi = 0; pi < toklen; pi++) {
-		while (ci != ncs &&
-		    !fuzzy_char_equal(&tok[pi], &cs[ci].ud, fold))
+	for (pi = 0; pi < fs->toklen; pi++) {
+		while (ci != fs->ncs &&
+		    !fuzzy_char_equal(&fs->tok[pi], &fs->cs[ci].ud, fs->fold)) {
+			if (!fuzzy_check_time(fs)) {
+				free(pos);
+				return (0);
+			}
 			ci++;
-		if (ci == ncs) {
+		}
+		if (ci == fs->ncs) {
 			free(pos);
 			return (0);
 		}
@@ -319,11 +356,16 @@ fuzzy_match_fuzzy(const struct utf8_data *tok, u_int toklen,
 	}
 
 	/* Then compact it backwards to prefer a shorter span. */
-	ci = pos[toklen - 1];
-	for (pi = toklen; pi > 0; pi--) {
+	ci = pos[fs->toklen - 1];
+	for (pi = fs->toklen; pi > 0; pi--) {
 		found = 0;
 		for (;;) {
-			if (fuzzy_char_equal(&tok[pi - 1], &cs[ci].ud, fold)) {
+			if (!fuzzy_check_time(fs)) {
+				free(pos);
+				return (0);
+			}
+			if (fuzzy_char_equal(&fs->tok[pi - 1], &fs->cs[ci].ud,
+			    fs->fold)) {
 				pos[pi - 1] = ci;
 				found = 1;
 				break;
@@ -340,78 +382,78 @@ fuzzy_match_fuzzy(const struct utf8_data *tok, u_int toklen,
 			ci--;
 	}
 
-	value = fuzzy_score_positions(pos, toklen, cs);
+	value = fuzzy_score_positions(fs, pos);
 	*score += value;
-	for (pi = 0; pi < toklen; pi++)
-		matched[pos[pi]] = 1;
+	for (pi = 0; pi < fs->toklen; pi++)
+		fs->matched[pos[pi]] = 1;
 	free(pos);
 	return (1);
 }
 
 /* Score an exact, prefix or suffix match. */
 static int
-fuzzy_score_exact(u_int start, u_int toklen, u_int ncs,
-    const struct fuzzy_char *cs, int prefix, int suffix)
+fuzzy_score_exact(struct fuzzy_state *fs, struct fuzzy_term *term, u_int start)
 {
 	int	score;
 
-	score = FUZZY_BONUS_EXACT + toklen * FUZZY_BONUS_CONSECUTIVE;
-	if (prefix)
+	score = FUZZY_BONUS_EXACT + fs->toklen * FUZZY_BONUS_CONSECUTIVE;
+	if (term->prefix)
 		score += FUZZY_BONUS_PREFIX;
-	if (suffix)
+	if (term->suffix)
 		score += FUZZY_BONUS_SUFFIX;
 	if (start == 0)
 		score += FUZZY_BONUS_START;
-	else if (fuzzy_is_boundary(&cs[start - 1].ud))
+	else if (fuzzy_is_boundary(&fs->cs[start - 1].ud))
 		score += FUZZY_BONUS_BOUNDARY;
 	if (start < FUZZY_PENALTY_LEADING_MAX)
 		score -= start * FUZZY_PENALTY_LEADING;
 	else
 		score -= FUZZY_PENALTY_LEADING_MAX * FUZZY_PENALTY_LEADING;
-	if (!prefix && !suffix)
-		score -= ncs - (start + toklen);
+	if (!term->prefix && !term->suffix)
+		score -= fs->ncs - (start + fs->toklen);
 	return (score);
 }
 
 /* Match an exact, prefix or suffix term against the visible characters. */
 static int
-fuzzy_match_exact(const struct utf8_data *tok, u_int toklen,
-    struct fuzzy_char *cs, u_int ncs, int fold, int prefix, int suffix,
-    int *score, char *matched)
+fuzzy_match_exact(struct fuzzy_state *fs, struct fuzzy_term *term, int *score)
 {
 	u_int	start, end, i, j, best = 0;
 	int	ok, found = 0, value, bestscore = 0;
 
-	if (toklen == 0 || toklen > ncs)
+	if (fs->toklen == 0 || fs->toklen > fs->ncs)
 		return (0);
 
-	if (prefix && suffix) {
-		if (toklen != ncs)
+	if (term->prefix && term->suffix) {
+		if (fs->toklen != fs->ncs)
 			return (0);
 		start = 0;
 		end = 1;
-	} else if (prefix) {
+	} else if (term->prefix) {
 		start = 0;
 		end = 1;
-	} else if (suffix) {
-		start = ncs - toklen;
+	} else if (term->suffix) {
+		start = fs->ncs - fs->toklen;
 		end = start + 1;
 	} else {
 		start = 0;
-		end = ncs - toklen + 1;
+		end = fs->ncs - fs->toklen + 1;
 	}
 
 	for (i = start; i < end; i++) {
 		ok = 1;
-		for (j = 0; j < toklen; j++) {
-			if (!fuzzy_char_equal(&tok[j], &cs[i + j].ud, fold)) {
+		for (j = 0; j < fs->toklen; j++) {
+			if (!fuzzy_check_time(fs))
+				return (0);
+			if (!fuzzy_char_equal(&fs->tok[j], &fs->cs[i + j].ud,
+			    fs->fold)) {
 				ok = 0;
 				break;
 			}
 		}
 		if (!ok)
 			continue;
-		value = fuzzy_score_exact(i, toklen, ncs, cs, prefix, suffix);
+		value = fuzzy_score_exact(fs, term, i);
 		if (!found || value > bestscore) {
 			found = 1;
 			best = i;
@@ -421,9 +463,9 @@ fuzzy_match_exact(const struct utf8_data *tok, u_int toklen,
 	if (!found)
 		return (0);
 	*score += bestscore;
-	if (matched != NULL) {
-		for (i = 0; i < toklen; i++)
-			matched[best + i] = 1;
+	if (!term->inverse) {
+		for (i = 0; i < fs->toklen; i++)
+			fs->matched[best + i] = 1;
 	}
 	return (1);
 }
@@ -468,21 +510,18 @@ fuzzy_parse_term(const char *start, const char *end, struct fuzzy_term *term)
 
 /* Match one parsed term. */
 static int
-fuzzy_match_term(const struct fuzzy_term *term, struct utf8_data *tok,
-    struct fuzzy_char *cs, u_int ncs, int fold, int *score, char *matched)
+fuzzy_match_term(struct fuzzy_state *fs, struct fuzzy_term *term, int *score)
 {
-	u_int	toklen;
 	int	value = 0, matched_term;
 
-	toklen = fuzzy_decode(term->text, term->len, tok);
-	if (term->exact) {
-		matched_term = fuzzy_match_exact(tok, toklen, cs, ncs, fold,
-		    term->prefix, term->suffix, &value,
-		    term->inverse ? NULL : matched);
-	} else {
-		matched_term = fuzzy_match_fuzzy(tok, toklen, cs, ncs, fold,
-		    &value, term->inverse ? NULL : matched);
-	}
+	if (fuzzy_decode(fs, term->text, term->len) != 0)
+		return (term->inverse);
+	if (term->exact)
+		matched_term = fuzzy_match_exact(fs, term, &value);
+	else
+		matched_term = fuzzy_match_fuzzy(fs, &value);
+	if (fs->stopped)
+		return (0);
 
 	if (term->inverse)
 		return (!matched_term);
@@ -494,8 +533,8 @@ fuzzy_match_term(const struct fuzzy_term *term, struct utf8_data *tok,
 
 /* Match one AND group of terms. */
 static int
-fuzzy_match_group(const char *start, const char *end, struct utf8_data *tok,
-    struct fuzzy_char *cs, u_int ncs, int fold, int *score, char *matched)
+fuzzy_match_group(struct fuzzy_state *fs, const char *start, const char *end,
+    int *score)
 {
 	const char		*cp = start, *sp;
 	struct fuzzy_term	 term;
@@ -513,8 +552,7 @@ fuzzy_match_group(const char *start, const char *end, struct utf8_data *tok,
 		if (!fuzzy_parse_term(sp, cp, &term))
 			return (0);
 		any = 1;
-		if (!fuzzy_match_term(&term, tok, cs, ncs, fold, score,
-		    matched))
+		if (!fuzzy_match_term(fs, &term, score))
 			return (0);
 	}
 	return (any);
@@ -529,18 +567,20 @@ fuzzy_match_group(const char *start, const char *end, struct utf8_data *tok,
 bitstr_t *
 fuzzy_match(const char *pattern, const char *text, u_int width, u_int *score)
 {
-	struct fuzzy_char	*cs;
-	char			*matched = NULL, *best = NULL, *groupmatched;
-	struct utf8_data	*tok;
-	bitstr_t		*mask;
-	u_int			 ncs, i, j, column;
-	u_int			 widths[STYLE_ALIGN_ABSOLUTE_CENTRE + 1];
+	struct fuzzy_state	 fs;
+	char			*best = NULL;
+	bitstr_t		*mask = NULL;
+	u_int			 i, j, column;
 	u_int			 start[STYLE_ALIGN_ABSOLUTE_CENTRE + 1];
 	u_int			 src[STYLE_ALIGN_ABSOLUTE_CENTRE + 1];
 	u_int			 vis[STYLE_ALIGN_ABSOLUTE_CENTRE + 1];
 	u_int			 wl, wc, wr, wa;
+	size_t			 toksize, size;
 	const char		*cp, *sp;
-	int			 bestscore = 0, groupscore, found = 0, fold;
+	int			 bestscore = 0, groupscore, found = 0;
+
+	memset(&fs, 0, sizeof fs);
+	fs.end_time = get_timer() + FUZZY_TIME_LIMIT;
 
 	if (width == 0)
 		return (NULL);
@@ -555,19 +595,27 @@ fuzzy_match(const char *pattern, const char *text, u_int width, u_int *score)
 	}
 
 	/* Smart-case: fold unless the pattern has an uppercase character. */
-	fold = 1;
+	fs.fold = 1;
 	for (cp = pattern; *cp != '\0'; cp++) {
 		if (*cp >= 'A' && *cp <= 'Z') {
-			fold = 0;
+			fs.fold = 0;
 			break;
 		}
 	}
 
 	/* Scan the text into visible characters. */
-	cs = fuzzy_scan(text, &ncs, widths);
-	matched = xcalloc(ncs == 0 ? 1 : ncs, sizeof *matched);
-	best = xcalloc(ncs == 0 ? 1 : ncs, sizeof *best);
-	tok = xreallocarray(NULL, strlen(pattern) + 1, sizeof *tok);
+	fuzzy_scan(&fs, text);
+	if (fs.stopped)
+		goto fail;
+	size = fs.ncs == 0 ? 1 : fs.ncs;
+	fs.matched = xcalloc(size, sizeof *fs.matched);
+	best = xcalloc(size, sizeof *best);
+
+	/* A term with more characters than the text cannot match. */
+	toksize = strlen(pattern);
+	if (toksize > fs.ncs)
+		toksize = fs.ncs;
+	fs.tok = xreallocarray(NULL, toksize == 0 ? 1 : toksize, sizeof *fs.tok);
 
 	/* Match each |-separated group and keep the best-scoring one. */
 	cp = pattern;
@@ -579,34 +627,31 @@ fuzzy_match(const char *pattern, const char *text, u_int width, u_int *score)
 		sp = cp;
 		while (*cp != '\0' && *cp != '|')
 			cp++;
-		memset(matched, 0, ncs == 0 ? 1 : ncs);
-		groupmatched = matched;
-		if (fuzzy_match_group(sp, cp, tok, cs, ncs, fold,
-		    &groupscore, groupmatched)) {
+		memset(fs.matched, 0, size);
+		if (fuzzy_match_group(&fs, sp, cp, &groupscore)) {
 			if (!found || groupscore > bestscore) {
 				found = 1;
 				bestscore = groupscore;
-				memcpy(best, matched, ncs == 0 ? 1 : ncs);
+				memcpy(best, fs.matched, size);
 			}
 		}
+		if (fs.stopped)
+			break;
 	}
-	free(tok);
-	if (!found) {
-		free(best);
-		free(matched);
-		free(cs);
-		return (NULL);
-	}
+	if (fs.stopped || !found)
+		goto fail;
 
 	/*
 	 * Work out the trimmed widths and start columns of each alignment,
 	 * mirroring format_draw_none.
 	 */
-	wl = widths[STYLE_ALIGN_LEFT];
-	wc = widths[STYLE_ALIGN_CENTRE];
-	wr = widths[STYLE_ALIGN_RIGHT];
-	wa = widths[STYLE_ALIGN_ABSOLUTE_CENTRE];
+	wl = fs.widths[STYLE_ALIGN_LEFT];
+	wc = fs.widths[STYLE_ALIGN_CENTRE];
+	wr = fs.widths[STYLE_ALIGN_RIGHT];
+	wa = fs.widths[STYLE_ALIGN_ABSOLUTE_CENTRE];
 	while (wl + wc + wr > width) {
+		if (!fuzzy_check_time(&fs))
+			goto fail;
 		if (wc > 0)
 			wc--;
 		else if (wr > 0)
@@ -622,12 +667,12 @@ fuzzy_match(const char *pattern, const char *text, u_int width, u_int *score)
 	vis[STYLE_ALIGN_LEFT] = wl;
 
 	start[STYLE_ALIGN_RIGHT] = width - wr;
-	src[STYLE_ALIGN_RIGHT] = widths[STYLE_ALIGN_RIGHT] - wr;
+	src[STYLE_ALIGN_RIGHT] = fs.widths[STYLE_ALIGN_RIGHT] - wr;
 	vis[STYLE_ALIGN_RIGHT] = wr;
 
 	start[STYLE_ALIGN_CENTRE] =
 	    wl + ((width - wr) - wl) / 2 - wc / 2;
-	src[STYLE_ALIGN_CENTRE] = widths[STYLE_ALIGN_CENTRE] / 2 - wc / 2;
+	src[STYLE_ALIGN_CENTRE] = fs.widths[STYLE_ALIGN_CENTRE] / 2 - wc / 2;
 	vis[STYLE_ALIGN_CENTRE] = wc;
 
 	start[STYLE_ALIGN_ABSOLUTE_CENTRE] = (width - wa) / 2;
@@ -636,20 +681,31 @@ fuzzy_match(const char *pattern, const char *text, u_int width, u_int *score)
 
 	/* Set a bit for each column of each matched character. */
 	mask = bit_alloc(width);
-	for (i = 0; i < ncs; i++) {
+	for (i = 0; i < fs.ncs; i++) {
+		if (!fuzzy_check_time(&fs))
+			goto fail;
 		if (!best[i])
 			continue;
-		if (fuzzy_column(&cs[i], start, src, vis, &column) != 0)
+		if (fuzzy_column(&fs.cs[i], start, src, vis, &column) != 0)
 			continue;
-		for (j = 0; j < cs[i].width && column + j < width; j++)
+		for (j = 0; j < fs.cs[i].width && column + j < width; j++)
 			bit_set(mask, column + j);
 	}
 
 	free(best);
-	free(matched);
-	free(cs);
+	free(fs.tok);
+	free(fs.matched);
+	free(fs.cs);
 
 	if (score != NULL)
 		*score = (bestscore < 0) ? 0 : (u_int)bestscore;
 	return (mask);
+
+fail:
+	free(mask);
+	free(best);
+	free(fs.tok);
+	free(fs.matched);
+	free(fs.cs);
+	return (NULL);
 }

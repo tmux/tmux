@@ -357,8 +357,9 @@ while [ "$i" -lt 50 ]; do
 	i=$((i + 1))
 done
 [ "$i" -lt 50 ] || fail "window tree entered command did not run"
+sid=$($TMUX display-message -p -t aaa: '#{session_id}')
 case "$value" in
-=aaa:*.) ;;
+"$sid":*.) ;;
 *) fail "window tree command target was '$value'" ;;
 esac
 
@@ -377,5 +378,24 @@ while [ "$i" -lt 50 ]; do
 done
 [ "$i" -lt 50 ] || fail "tagged windows were not killed"
 exit_mode q
+
+# --- killing the mode's own session -----------------------------------------
+# Killing the attached session also destroys the pane hosting the tree. The
+# confirmation callback must finish without redrawing the destroyed mode.
+$TMUX set-option -g detach-on-destroy off || exit 1
+$TMUX choose-tree -s -t aaa:0 -F 'G7' -O name || exit 1
+wait_count ': G7' 2
+$TMUX send-keys -t aaa:0 g x || fail "send-keys session kill failed"
+wait_for 'Kill session aaa'
+$TMUX send-keys -t aaa:0 y || fail "session kill confirmation failed"
+i=0
+while [ "$i" -lt 50 ]; do
+	sessions=$($TMUX list-sessions -F '#{session_name}' 2>/dev/null)
+	client_session=$($TMUX list-clients -F '#{client_session}' 2>/dev/null)
+	[ "$sessions" = 'zzz' ] && [ "$client_session" = 'zzz' ] && break
+	sleep 0.2
+	i=$((i + 1))
+done
+[ "$i" -lt 50 ] || fail "killing the tree session killed the server"
 
 exit 0

@@ -1,4 +1,4 @@
-/* $OpenBSD: window-tree.c,v 1.96 2026/08/25 07:23:30 nicm Exp $ */
+/* $OpenBSD: window-tree.c,v 1.98 2026/10/16 17:28:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1224,17 +1224,17 @@ window_tree_get_target(struct window_tree_itemdata *item,
 	case WINDOW_TREE_SESSION:
 		if (s == NULL)
 			break;
-		xasprintf(&target, "=%s:", s->name);
+		xasprintf(&target, "$%u:", s->id);
 		break;
 	case WINDOW_TREE_WINDOW:
 		if (s == NULL || wl == NULL)
 			break;
-		xasprintf(&target, "=%s:%u.", s->name, wl->idx);
+		xasprintf(&target, "$%u:%u.", s->id, wl->idx);
 		break;
 	case WINDOW_TREE_PANE:
 		if (s == NULL || wl == NULL || wp == NULL)
 			break;
-		xasprintf(&target, "=%s:%u.%%%u", s->name, wl->idx, wp->id);
+		xasprintf(&target, "$%u:%u.%%%u", s->id, wl->idx, wp->id);
 		break;
 	}
 	if (target == NULL)
@@ -1344,12 +1344,10 @@ window_tree_kill_current_callback(struct client *c, void *modedata,
 	if (tolower((u_char) s[0]) != 'y' || s[1] != '\0')
 		return (PROMPT_CLOSE);
 
+	data->references++;
 	window_tree_kill_each(data, mode_tree_get_current(mtd), c, KEYC_NONE);
 	server_renumber_all();
-
-	data->references++;
 	cmdq_append(c, cmdq_get_callback(window_tree_command_done, data));
-
 	return (PROMPT_CLOSE);
 }
 
@@ -1365,12 +1363,10 @@ window_tree_kill_tagged_callback(struct client *c, void *modedata,
 	if (tolower((u_char) s[0]) != 'y' || s[1] != '\0')
 		return (PROMPT_CLOSE);
 
+	data->references++;
 	mode_tree_each_tagged(mtd, window_tree_kill_each, c, KEYC_NONE, 1);
 	server_renumber_all();
-
-	data->references++;
 	cmdq_append(c, cmdq_get_callback(window_tree_command_done, data));
-
 	return (PROMPT_CLOSE);
 }
 
@@ -1453,6 +1449,8 @@ window_tree_key(struct window_mode_entry *wme, struct client *c,
 
 	item = mode_tree_get_current(data->data);
 	finished = mode_tree_key(data->data, c, &key, m, &x, &y);
+	if (data->dead)
+		return;
 
 again:
 	if (item != (new_item = mode_tree_get_current(data->data))) {

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-confirm-before.c,v 1.61 2026/06/24 10:55:39 nicm Exp $ */
+/* $OpenBSD: cmd-confirm-before.c,v 1.62 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -39,6 +39,7 @@ static void	cmd_confirm_before_free(void *);
 
 const struct cmd_entry cmd_confirm_before_entry = {
 	.name = "confirm-before",
+	.description = "Ask for confirmation before a command.",
 	.alias = "confirm",
 
 	.args = { "bc:p:t:y", 1, 1, cmd_confirm_before_args_parse },

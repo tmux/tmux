@@ -6,7 +6,7 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -LtestRWL$$"
+TMUX="$TEST_TMUX -LtestRWLA$$"
 $TMUX kill-server 2>/dev/null
 
 TMP=$(mktemp)
@@ -27,6 +27,9 @@ $TMUX killw -t a:11
 echo $($TMUX lsw -t a -F'#{window_index}') >$TMP
 (echo "10 11"|cmp -s - $TMP) || exit 1
 $TMUX kill-server 2>/dev/null
+
+# Use a different socket because the previous server may still be exiting.
+TMUX="$TEST_TMUX -LtestRWLB$$"
 
 cat <<EOF >$CONF
 set -g base-index 2147483646

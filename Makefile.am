@@ -210,6 +210,7 @@ dist_tmux_SOURCES = \
 	style.c \
 	tmux-protocol.h \
 	tmux.c \
+	tmux-image.h \
 	tmux.h \
 	tty-acs.c \
 	tty-draw.c \
@@ -239,6 +240,11 @@ if NEED_FORKPTY
 nodist_tmux_SOURCES += compat/forkpty-@PLATFORM@.c
 endif
 
+# Add compat file for Linux session keyrings.
+if HAVE_KEYCTL
+nodist_tmux_SOURCES += compat/keyring-linux.c
+endif
+
 # Add compat file for systemd.
 if HAVE_SYSTEMD
 nodist_tmux_SOURCES += compat/systemd.c
@@ -249,9 +255,15 @@ if HAVE_UTF8PROC
 nodist_tmux_SOURCES += compat/utf8proc.c
 endif
 
-# Enable sixel support.
-if ENABLE_SIXEL
-dist_tmux_SOURCES += image.c image-sixel.c
+# Enable image support.
+if ENABLE_IMAGES
+dist_tmux_SOURCES += \
+	image.c \
+	image-decode.c \
+	image-grid.c \
+	image-sixel.c \
+	image-kitty.c \
+	image-fallback.c
 endif
 
 # Add bits for fuzzing if enabled.

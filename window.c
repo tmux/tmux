@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.379 2026/09/25 08:46:06 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.388 2026/10/16 14:26:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -92,7 +92,11 @@ struct window_pane_prompt {
 int
 window_cmp(struct window *w1, struct window *w2)
 {
-	return (w1->id - w2->id);
+	if (w1->id < w2->id)
+		return (-1);
+	if (w1->id > w2->id)
+		return (1);
+	return (0);
 }
 
 static void
@@ -199,7 +203,11 @@ winlink_cmp(struct winlink *wl1, struct winlink *wl2)
 int
 window_pane_cmp(struct window_pane *wp1, struct window_pane *wp2)
 {
-	return (wp1->id - wp2->id);
+	if (wp1->id < wp2->id)
+		return (-1);
+	if (wp1->id > wp2->id)
+		return (1);
+	return (0);
 }
 
 struct winlink *
@@ -415,6 +423,7 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 	TAILQ_INIT(&w->panes);
 	TAILQ_INIT(&w->z_index);
 	TAILQ_INIT(&w->last_panes);
+	TAILQ_INIT(&w->damage);
 	w->active = NULL;
 
 	w->lastlayout = -1;
@@ -436,6 +445,7 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 
 	w->id = next_window_id++;
 	RB_INSERT(windows, &windows, w);
+	redraw_invalidate_scene(w);
 
 	if (gettimeofday(&w->creation_time, NULL) != 0)
 		fatal("gettimeofday failed");
@@ -468,6 +478,7 @@ window_destroy(struct window *w)
 
 	menu_destroy(w);
 	window_destroy_panes(w);
+	redraw_free_damage(w);
 
 	if (event_initialized(&w->name_event))
 		evtimer_del(&w->name_event);
@@ -667,6 +678,34 @@ window_pane_contains(struct window_pane *wp, u_int x, u_int y)
 	return (1);
 }
 
+/*
+ * Does floating pane, including its borders and scrollbar, overlap any cell of
+ * another pane, including its scrollbar?
+ */
+int
+window_pane_floating_overlaps(struct window_pane *fwp, struct window_pane *wp)
+{
+	int	fxoff, fyoff, xoff, yoff, border = 0;
+	u_int	fsx, fsy, sx, sy;
+
+	if (!window_pane_is_floating(fwp))
+		return (0);
+
+	window_pane_full_size_offset(fwp, &fxoff, &fyoff, &fsx, &fsy);
+	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
+
+	if (window_pane_get_pane_lines(fwp) != PANE_LINES_NONE)
+		border = 1;
+
+	if (fxoff - border >= xoff + (int)sx ||
+	    fxoff + (int)fsx + border <= xoff)
+		return (0);
+	if (fyoff - border >= yoff + (int)sy ||
+	    fyoff + (int)fsy + border <= yoff)
+		return (0);
+	return (1);
+}
+
 void
 window_update_focus(struct window *w)
 {
@@ -718,6 +757,7 @@ int
 window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 {
 	struct window_pane *lastwp;
+	int		    unzoomed;
 
 	log_debug("%s: pane %%%u", __func__, wp->id);
 
@@ -725,7 +765,8 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 		return (0);
 	if (w->modal != NULL && wp != w->modal)
 		return (0);
-	if ((w->flags & WINDOW_ZOOMED) && !window_pane_is_visible(wp))
+	unzoomed = (w->flags & WINDOW_ZOOMED) && !window_pane_is_visible(wp);
+	if (unzoomed)
 		window_unzoom(w, 1);
 	lastwp = w->active;
 
@@ -742,7 +783,19 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 	}
 
 	tty_update_window_offset(w);
-	server_redraw_window(w);
+
+	/*
+	 * Unzooming changes every pane's geometry and needs a full window
+	 * redraw. Otherwise, only the previous and new active pane's border
+	 * and status appearance changed, so avoid redrawing unaffected pane
+	 * content.
+	 */
+	if (unzoomed)
+		server_redraw_window(w);
+	else {
+		server_redraw_window_borders(w);
+		server_status_window(w);
+	}
 
 	if (notify)
 		window_fire_pane_changed(w, w->active, lastwp);
@@ -821,6 +874,16 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 		if (window_pane_contains(w->modal, x, y))
 			return (w->modal);
 		return (NULL);
+	}
+
+	/*
+	 * A floating pane is above every tiled pane, including their status
+	 * lines, so check those first.
+	 */
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
+		if (window_pane_is_floating(wp) &&
+		    window_pane_contains(wp, x, y))
+			return (wp);
 	}
 
 	if (pane_status == PANE_STATUS_TOP) {
@@ -1134,6 +1197,19 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 	return (wp);
 }
 
+static void
+window_forget_pane(struct window *w, struct window_pane *wp)
+{
+	if (wp == marked_pane.wp)
+		server_clear_marked();
+	if (wp == w->modal_last)
+		w->modal_last = NULL;
+	if (wp == w->was_zoomed)
+		w->was_zoomed = NULL;
+	window_pane_stack_remove(&w->last_panes, wp);
+	redraw_invalidate_scene(w);
+}
+
 void
 window_lost_pane(struct window *w, struct window_pane *wp)
 {
@@ -1141,14 +1217,8 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 
 	log_debug("%s: @%u pane %%%u", __func__, w->id, wp->id);
 
-	if (wp == marked_pane.wp)
-		server_clear_marked();
-	if (wp == w->modal_last)
-		w->modal_last = NULL;
-	if (wp == w->was_zoomed)
-		w->was_zoomed = NULL;
+	window_forget_pane(w, wp);
 
-	window_pane_stack_remove(&w->last_panes, wp);
 	if (wp == w->active) {
 		lastwp = NULL;
 		if (wp == w->modal) {
@@ -1171,10 +1241,8 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 			window_fire_pane_changed(w, w->active, wp);
 			window_update_focus(w);
 		}
-	} else if (wp == w->modal) {
+	} else if (wp == w->modal)
 		w->modal = w->modal_last = NULL;
-	}
-	redraw_invalidate_scene(w);
 }
 
 void
@@ -1302,6 +1370,11 @@ window_destroy_panes(struct window *w)
 
 	while (!TAILQ_EMPTY(&w->panes)) {
 		wp = TAILQ_FIRST(&w->panes);
+		window_forget_pane(w, wp);
+		if (wp == w->active)
+			w->active = NULL;
+		if (wp == w->modal)
+			w->modal = NULL;
 		TAILQ_REMOVE(&w->panes, wp, entry);
 		TAILQ_REMOVE(&w->z_index, wp, zentry);
 		window_pane_destroy(wp);
@@ -1440,7 +1513,7 @@ window_pane_wait_finish(struct window_pane *wp)
 {
 	struct cmdq_item	*item = wp->wait_item;
 	struct client		*c;
-	int			 retval = 0;
+	int			 retval = 128 + SIGHUP;
 
 	if (item == NULL)
 		return;
@@ -1517,6 +1590,46 @@ window_pane_scrollbar_redraw_visibility(struct window_pane *wp)
 	server_redraw_window(wp->window);
 }
 
+#ifdef HAVE_UTEMPTER
+void
+window_pane_utmp_add(struct window_pane *wp)
+{
+	char	*cp;
+
+	if (wp->fd == -1 ||
+	    (wp->flags & (PANE_EMPTY|PANE_EXITED|PANE_UTMP)) ||
+	    !options_get_number(global_options, "utmp"))
+		return;
+	xasprintf(&cp, "tmux(%lu).%%%u", (long)getpid(), wp->id);
+	utempter_add_record(wp->fd, cp);
+	kill(getpid(), SIGCHLD);
+	wp->flags |= PANE_UTMP;
+	free(cp);
+}
+#else
+void
+window_pane_utmp_add(__unused struct window_pane *wp)
+{
+}
+#endif
+
+#ifdef HAVE_UTEMPTER
+void
+window_pane_utmp_remove(struct window_pane *wp)
+{
+	if (~wp->flags & PANE_UTMP)
+		return;
+	utempter_remove_record(wp->fd);
+	kill(getpid(), SIGCHLD);
+	wp->flags &= ~PANE_UTMP;
+}
+#else
+void
+window_pane_utmp_remove(__unused struct window_pane *wp)
+{
+}
+#endif
+
 static void
 window_pane_destroy(struct window_pane *wp)
 {
@@ -1530,13 +1643,12 @@ window_pane_destroy(struct window_pane *wp)
 	window_pane_free_modes(wp);
 	screen_write_sync_clear_dirty(wp);
 
-	if (wp->fd != -1) {
-#ifdef HAVE_UTEMPTER
-		utempter_remove_record(wp->fd);
-		kill(getpid(), SIGCHLD);
-#endif
+	if (wp->event != NULL) {
 		bufferevent_free(wp->event);
 		wp->event = NULL;
+	}
+	if (wp->fd != -1) {
+		window_pane_utmp_remove(wp);
 		close(wp->fd);
 		wp->fd = -1;
 	}
@@ -1569,6 +1681,7 @@ window_pane_free(struct window_pane *wp)
 	log_debug("pane %%%u freed (%d references)", wp->id, wp->references);
 
 	free(wp->searchstr);
+	free(wp->cmd_line);
 	screen_free(&wp->status_screen);
 	screen_free(&wp->base);
 	free(wp->r.ranges);
@@ -1676,6 +1789,10 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 
 	log_debug("%s: %%%u resize %ux%u", __func__, wp->id, sx, sy);
 	screen_resize(&wp->base, sx, sy, wp->base.saved_grid == NULL);
+#ifdef ENABLE_IMAGES
+	if (sx > r->osx)
+		image_grid_resize_width(wp->base.grid, sx);
+#endif
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL && wme->mode->resize != NULL)
@@ -2613,7 +2730,6 @@ window_pane_scrollbar_start_timer(struct window_pane *wp)
 	    "pane-scrollbars-timeout");
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
-	evtimer_del(&wp->sb_auto_timer);
 	evtimer_add(&wp->sb_auto_timer, &tv);
 }
 
@@ -2924,4 +3040,41 @@ window_pane_is_floating_with_hidden(struct window_pane *wp)
 	if (lc == NULL || (lc->flags & LAYOUT_CELL_FLOATING) == 0)
 		return (0);
 	return (1);
+}
+
+/* Report damage for a floating pane, including its border and scrollbar. */
+static void
+window_damage_floating_pane(struct window_pane *wp, int xoff, int yoff,
+    int sx, int sy)
+{
+	struct window	*w = wp->window;
+	int		 x0, x1, y0, y1, sb_left = 0, sb_right = 0;
+	struct style	*sb_sy = &wp->scrollbar_style;
+
+	if (window_pane_scrollbar_reserve(wp)) {
+		if (w->sb_pos == PANE_SCROLLBARS_LEFT)
+			sb_left = sb_sy->width + sb_sy->pad;
+		else
+			sb_right = sb_sy->width + sb_sy->pad;
+	}
+	x0 = xoff - 1 - sb_left;
+	x1 = xoff + sx + sb_right;
+	y0 = yoff - 1;
+	y1 = yoff + sy;
+	if (x0 < 0)
+		x0 = 0;
+	if (y0 < 0)
+		y0 = 0;
+	if (x1 >= x0 && y1 >= y0)
+		redraw_damage_window(w, x0, y0, x1 - x0 + 1U, y1 - y0 + 1U);
+}
+
+/* Report damage for a floating pane's old and new areas. */
+void
+window_redraw_floating_pane(struct window_pane *wp, int oxoff, int oyoff,
+    int osx, int osy)
+{
+	window_damage_floating_pane(wp, oxoff, oyoff, osx, osy);
+	window_damage_floating_pane(wp, wp->xoff, wp->yoff, wp->sx, wp->sy);
+	server_status_window(wp->window);
 }

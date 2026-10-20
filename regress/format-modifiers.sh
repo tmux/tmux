@@ -122,6 +122,8 @@ $TMUX set -g @sq "a'b" || exit 1       # a single quote for q/s:
 $TMUX set -g @sub 'abABab' || exit 1
 $TMUX set -g @slash 'foo/bar foo/' || exit 1
 $TMUX set -g @nl "$(printf 'a\nb')" || exit 1
+$TMUX set -g @pad '  ab  ' || exit 1
+$TMUX set -g @ff 'foofoo' || exit 1
 q_s_nl=$(printf "'a\nb'")
 
 
@@ -226,10 +228,24 @@ test_format "#{e|/|f|2:10,3}" "3.33"
 # Default number of decimal places for float is two.
 test_format "#{e|*|f:2.5,2}" "5.00"
 
-# Division by zero must not crash the server (result is unspecified).
-$TMUX display-message -p "#{e|/|:5,0}" >/dev/null 2>&1
-$TMUX display-message -p "#{e|/|f:5,0}" >/dev/null 2>&1
-assert_alive "division by zero"
+# An integer expression with a side or result that is NaN or out of the range
+# of a long long expands to empty: division or modulus by zero, nan or inf, or
+# 1e30. LLONG_MAX written out is 2^63 as a double, which is out of range; the
+# largest double below 2^63 and -2^63 still convert. Comparisons are integer
+# expressions too. Floating point gives inf.
+test_format "#{e|/|:5,0}" ""
+test_format "#{e|m|:0,0}" ""
+test_format "#{e|m|:7,0}" ""
+test_format "#{e|+|:nan,0}" ""
+test_format "#{e|+|:-inf,1}" ""
+test_format "#{e|-|:1e30,1e30}" ""
+test_format "#{e|*|:1e30,1}" ""
+test_format "#{e|+|:9223372036854775807,0}" ""
+test_format "#{e|<|:nan,1}" ""
+test_format "#{e|+|:9223372036854774784,0}" "9223372036854774784"
+test_format "#{e|-|:-9223372036854775808,0}" "-9223372036854775808"
+test_format "#{e|/|f:5,0}" "inf"
+assert_alive "expressions with no integer value"
 
 
 # --- ASCII and repeat ----------------------------------------------------
@@ -245,6 +261,19 @@ test_format "#{R:a,3}" "aaa"
 test_format "#{R:ab,2}" "abab"
 # A long repeat exercises output-buffer growth during expansion.
 test_format "#{n:#{R:x,300}}" "300"
+# Limit the result size as well as the repeat count, including nested repeats.
+test_format "#{n:#{R:abcdefgh,8192}}" "65536"
+test_format "#{R:abcdefgh,8193}" ""
+test_format "#{R:,10000}" ""
+test_format "#{n:#{R:#{R:x,256},256}}" "65536"
+test_format "#{R:#{R:x,256},257}" ""
+test_format "#{R:#{R:abcdefgh,8192}x,1}" ""
+test_format "#{n:#{R:中文中,7281}}" "65529"
+test_format "#{R:中文中,7282}" ""
+test_format "#{n:#{R:x,10000}}" "10000"
+test_format "#{R:x,10001}" ""
+# Fuzzy matching must not receive an enormous string from nested repeats.
+test_format "#{m/p:a,#{R:#{R:#{R:a,353},38},90}}" ""
 
 
 # --- Width, padding and truncation ---------------------------------------
@@ -479,6 +508,9 @@ test_format "#{s/^x*/X/:@s}" "Xabcdefghij"
 test_format "#{s/$/X/:@s}" "abcdefghijX"
 test_format "#{s/x*//:@s}" "abcdefghij"
 test_format "#{s/x*/X/:@s}" "aXbXcXdXeXfXgXhXiXjX"
+# ^ matches only at the start, including after an alternation or in a group.
+test_format "#{s/^ +| +$//:@pad}" "ab"
+test_format "#{s/(^| )foo/X/:@ff}" "Xfoo"
 # An invalid regular expression leaves the text unchanged.
 test_format "#{s/[/X/:@s}" "abcdefghij"
 

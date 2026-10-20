@@ -131,6 +131,14 @@ printf '%s\n' "$captured" | grep -Fq 'show-buffer' ||
 printf '%s\n' "$captured" | grep -Fq 'show-environment' ||
 	fail "ambiguous completion list was incomplete"
 $OUTER send-keys Escape || exit 1
+# Wait until Escape has closed the prompt before sending another Meta key.
+# Otherwise the two can be parsed together as a single escape sequence.
+i=0
+while capture | grep -Fq '(word)'; do
+	[ "$i" -lt 50 ] || fail "completion prompt did not close"
+	sleep 0.1
+	i=$((i + 1))
+done
 
 # Add entries to both history rings through real prompts.
 bind_prompt 'history-command'

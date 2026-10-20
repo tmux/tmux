@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-find-window.c,v 1.57 2026/07/14 17:17:17 nicm Exp $ */
+/* $OpenBSD: cmd-find-window.c,v 1.58 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -30,6 +30,7 @@ static enum cmd_retval	cmd_find_window_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_find_window_entry = {
 	.name = "find-window",
+	.description = "Find windows by content or name.",
 	.alias = "findw",
 
 	.args = { "CiNrt:TZ", 1, 1, NULL },

@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.247 2026/09/21 10:22:31 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.254 2026/10/16 07:59:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -52,6 +52,9 @@ static const char *options_table_status_justify_list[] = {
 };
 static const char *options_table_status_position_list[] = {
 	"top", "bottom", NULL
+};
+static const char *options_table_side_status_list[] = {
+	"off", "left", "right", NULL
 };
 static const char *options_table_bell_action_list[] = {
 	"none", "any", "current", "other", NULL
@@ -183,7 +186,8 @@ static const char *options_table_copy_mode_line_numbers_list[] = {
 	"#[pop-default]" \
 	"#[norange default]"
 #define OPTIONS_TABLE_STATUS_FORMAT2 \
-	"#[align=left]#{R: ,#{n:#{session_name}}}P: " \
+	"#[align=left]" \
+	"#{R: ,#{e|-:#{w;T;=/#{status-left-length}:status-left},3}}P: " \
 	"#[norange default]" \
 	"#[list=on align=#{status-justify}]" \
 	"#[list=left-marker]<#[list=right-marker]>#[list=on]" \
@@ -194,7 +198,8 @@ static const char *options_table_copy_mode_line_numbers_list[] = {
 		"#[push-default]" \
 		"#{T:window-pane-status-format}" \
 		"#[pop-default]" \
-		"#[norange list=on default]  " \
+		"#[norange list=on default]" \
+		"#{?loop_last_flag,,#{E:window-status-separator}}" \
 	"," \
 		"#[range=pane|#{pane_id} list=focus " \
 			"#{?#{!=:#{E:pane-status-current-style},default}," \
@@ -205,10 +210,12 @@ static const char *options_table_copy_mode_line_numbers_list[] = {
 		"#[push-default]" \
 		"#{T:window-pane-current-status-format}" \
 		"#[pop-default]" \
-		"#[norange list=on default] " \
+		"#[norange list=on default]" \
+		"#{?loop_last_flag,,#{E:window-status-separator}}" \
 	"}"
 #define OPTIONS_TABLE_STATUS_FORMAT3 \
-	"#[align=left]#{R: ,#{n:#{session_name}}}S: " \
+	"#[align=left]" \
+	"#{R: ,#{e|-:#{w;T;=/#{status-left-length}:status-left},3}}S: " \
 	"#[norange default]" \
 	"#[list=on align=#{status-justify}]" \
 	"#[list=left-marker]<#[list=right-marker]>#[list=on]" \
@@ -217,7 +224,7 @@ static const char *options_table_copy_mode_line_numbers_list[] = {
 			"#{E:session-status-style}" \
 		"]" \
 		"#[push-default]" \
-		"#S#{session_alert}" \
+		"#S#{q/h:session_alert}" \
 		"#[pop-default]" \
 		"#[norange list=on default]  " \
 	"," \
@@ -228,7 +235,7 @@ static const char *options_table_copy_mode_line_numbers_list[] = {
 			"}" \
 		"]" \
 		"#[push-default]" \
-		"#S*#{session_alert}" \
+		"#S*#{q/h:session_alert}" \
 		"#[pop-default]" \
 		"#[norange list=on default] " \
 	"}"
@@ -238,6 +245,50 @@ static const char *options_table_status_format_default[] = {
 	OPTIONS_TABLE_STATUS_FORMAT3,
 	NULL
 };
+
+/* Side status line format. */
+#define OPTIONS_TABLE_SIDE_STATUS_WINDOW \
+	"#[range=window|#{window_index} #{E:window-status-style}]" \
+	"#I:#W#{?window_flags,#{window_flags}, }" \
+	"#[norange default]#[nl]"
+#define OPTIONS_TABLE_SIDE_STATUS_CURRENT \
+	"#[range=window|#{window_index} list=focus " \
+		"#{?#{!=:#{E:window-status-current-style},default}," \
+			"#{E:window-status-current-style}," \
+			"#{E:window-status-style}" \
+		"}" \
+	"]" \
+	"#I:#W#{?window_flags,#{window_flags}, }" \
+	"#[norange list=on default]#[nl]"
+#define OPTIONS_TABLE_SIDE_STATUS_BRANCH \
+	"#[acs fg=themelightgrey]#{?window_end_flag,mq,tq}+" \
+	"#[noacs default] "
+#define OPTIONS_TABLE_SIDE_STATUS_FORMAT1 \
+	"#[list=on]" \
+	"#[list=left-marker]#[acs]-#[noacs]#[nl]" \
+	"#[list=right-marker]#[acs].#[noacs]#[nl]" \
+	"#{?#{e|>:#{server_sessions},1}," \
+		"#{S:" \
+			"#[range=session|#{session_id}]" \
+			"#{session_name}" \
+			"#[norange]#[nl]" \
+			"#{?#{==:#{session_name},#{client_session}}," \
+				"#{W:" \
+					OPTIONS_TABLE_SIDE_STATUS_BRANCH \
+					OPTIONS_TABLE_SIDE_STATUS_WINDOW \
+				"," \
+					OPTIONS_TABLE_SIDE_STATUS_BRANCH \
+					OPTIONS_TABLE_SIDE_STATUS_CURRENT \
+				"}" \
+			",}" \
+		"}" \
+	"," \
+		"#{W:" \
+			OPTIONS_TABLE_SIDE_STATUS_WINDOW \
+		"," \
+			OPTIONS_TABLE_SIDE_STATUS_CURRENT \
+		"}" \
+	"}"
 
 /* Helpers for hook options. */
 #define OPTIONS_TABLE_HOOK(hook_name, default_value, hook_text) \
@@ -325,7 +376,8 @@ const struct options_table_entry options_table[] = {
 			 "server-info=show-messages -JT,"
 			 "info=show-messages -JT,"
 			 "choose-window=choose-tree -w,"
-			 "choose-session=choose-tree -s",
+			 "choose-session=choose-tree -s,"
+			 "help=list-commands -h",
 	  .separator = ",",
 	  .text = "Array of command aliases. "
 		  "Each entry is an alias and a command separated by '='."
@@ -453,6 +505,37 @@ const struct options_table_entry options_table[] = {
 	  .text = "Location of the command prompt history file. "
 		  "Empty does not write a history file."
 	},
+
+#ifdef ENABLE_IMAGES
+	{ .name = "image-size-limit",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .minimum = 1,
+	  .maximum = UINT_MAX,
+	  .default_num = 64 * 1024 * 1024,
+	  .unit = "bytes",
+	  .text = "Maximum size of an uploaded or decoded image."
+	},
+
+	{ .name = "image-total-count-limit",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .minimum = 1,
+	  .maximum = INT_MAX,
+	  .default_num = 1000,
+	  .text = "Maximum number of stored images."
+	},
+
+	{ .name = "image-total-size-limit",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .minimum = 1,
+	  .maximum = UINT_MAX,
+	  .default_num = 1024 * 1024 * 1024,
+	  .unit = "bytes",
+	  .text = "Maximum total image pixel memory."
+	},
+#endif
 
 	{ .name = "input-buffer-size",
 	  .type = OPTIONS_TABLE_NUMBER,
@@ -652,7 +735,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "#{?#{e|>=:#{client_colours},256},gray10,black}",
+	  .default_str = "#{?#{e|>=:#{client_colours},256},gray95,black}",
 	  .text = "Light theme colour for black."
 	},
 
@@ -660,7 +743,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_COLOUR,
-	  .default_str = "#{?#{e|>=:#{client_colours},256},gray95,white}",
+	  .default_str = "#{?#{e|>=:#{client_colours},256},gray10,white}",
 	  .text = "Light theme colour for white."
 	},
 
@@ -738,6 +821,15 @@ const struct options_table_entry options_table[] = {
 		  "Each sequence in the list is translated into a key: "
 		  "'User0', 'User1' and so on."
 	},
+
+#ifdef HAVE_UTEMPTER
+	{ .name = "utmp",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_num = 1,
+	  .text = "Whether to maintain utmp records."
+	},
+#endif
 
 	{ .name = "variation-selector-always-wide",
 	  .type = OPTIONS_TABLE_FLAG,
@@ -990,6 +1082,40 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .default_str = "#S:#I:#W - \"#T\" #{session_alerts}",
 	  .text = "Format of the terminal title to set."
+	},
+
+	{ .name = "side-status",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_side_status_list,
+	  .default_num = 0,
+	  .text = "Whether to draw a vertical status line at the left or "
+		  "right of the terminal."
+	},
+
+	{ .name = "side-status-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = OPTIONS_TABLE_SIDE_STATUS_FORMAT1,
+	  .text = "Format for the side status line."
+	},
+
+	{ .name = "side-status-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = "fg=themegreen",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of the side status line."
+	},
+
+	{ .name = "side-status-width",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .minimum = 1,
+	  .maximum = SHRT_MAX,
+	  .default_num = 14,
+	  .text = "Width of the side status line."
 	},
 
 	{ .name = "silence-action",
@@ -1410,8 +1536,12 @@ const struct options_table_entry options_table[] = {
 			 "#{t/p:top_line_time}#{?#{e|>:#{top_line_time},0}, ,}"
 			 "[#{copy_position}/#{copy_position_limit}]"
 			 "#{?search_timed_out, (timed out),"
-			 "#{?search_count, (#{search_count}"
-			 "#{?search_count_partial,+,} results),}}",
+			 "#{?search_count_present, ("
+			 "#{?#{==:#{search_count},0},0 matches,"
+			 "#{?search_count_partial,#{search_count}+ matches,"
+			 "#{?#{==:#{search_count},1},1 of 1 match,"
+			 "#{?search_count_current,#{search_count_current} of "
+			 "#{search_count} matches,#{search_count} matches}}}}),}}",
 	  .text = "Format of the position indicator in copy mode."
 	},
 
@@ -1771,6 +1901,14 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Default style of the active pane."
+	},
+
+	{ .name = "window-default-command",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "",
+	  .text = "Default command to run in new panes. If set, "
+		  "overrides 'default-command'."
 	},
 
 	{ .name = "window-pane-current-status-format",

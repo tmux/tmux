@@ -70,6 +70,8 @@ test_format '#{m/p:bash$,bash dev}' ''
 
 # Inverse terms. Plain inverse terms are exact substring tests, not fuzzy.
 test_format '#{m/z:!ssh,dev bash}' '1'
+test_format '#{m/z:!long,x}' '1'
+test_format '#{m/z:!x,}' '1'
 test_format '#{m/z:!ssh,dev ssh}' '0'
 test_format '#{m/z:!ssh,s_s_h}' '1'
 test_format '#{m/z:dev !ssh,dev bash}' '1'

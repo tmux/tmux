@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-choose-tree.c,v 1.58 2026/07/14 17:17:17 nicm Exp $ */
+/* $OpenBSD: cmd-choose-tree.c,v 1.61 2026/10/15 08:07:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Thomas Adam <thomas@xteddy.org>
@@ -18,6 +18,9 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "tmux.h"
 
 /*
@@ -28,9 +31,13 @@ static enum args_parse_type	cmd_choose_tree_args_parse(struct args *args,
 				    u_int idx, char **cause);
 static enum cmd_retval		cmd_choose_tree_exec(struct cmd *,
     				    struct cmdq_item *);
+static void			cmd_choose_tree_read_done(struct client *,
+				    const char *, int, int, struct evbuffer *,
+				    void *);
 
 const struct cmd_entry cmd_choose_tree_entry = {
 	.name = "choose-tree",
+	.description = "Browse sessions and windows interactively.",
 	.alias = NULL,
 
 	.args = { "F:f:GhK:kNO:rst:wyZ", 0, 1, cmd_choose_tree_args_parse },
@@ -45,6 +52,7 @@ const struct cmd_entry cmd_choose_tree_entry = {
 
 const struct cmd_entry cmd_choose_client_entry = {
 	.name = "choose-client",
+	.description = "Choose a client interactively.",
 	.alias = NULL,
 
 	.args = { "F:f:hiK:kNO:rt:yZ", 0, 1, cmd_choose_tree_args_parse },
@@ -59,6 +67,7 @@ const struct cmd_entry cmd_choose_client_entry = {
 
 const struct cmd_entry cmd_choose_buffer_entry = {
 	.name = "choose-buffer",
+	.description = "Choose a paste buffer interactively.",
 	.alias = NULL,
 
 	.args = { "F:f:K:kNO:rt:yZ", 0, 1, cmd_choose_tree_args_parse },
@@ -73,6 +82,7 @@ const struct cmd_entry cmd_choose_buffer_entry = {
 
 const struct cmd_entry cmd_customize_mode_entry = {
 	.name = "customize-mode",
+	.description = "Browse and edit options and key bindings.",
 	.alias = NULL,
 
 	.args = { "F:f:kNt:yZ", 0, 0, NULL },
@@ -86,10 +96,12 @@ const struct cmd_entry cmd_customize_mode_entry = {
 
 const struct cmd_entry cmd_switch_mode_entry = {
 	.name = "switch-mode",
+	.description = "Switch the active pane mode.",
 	.alias = NULL,
 
-	.args = { "F:kst:wZ", 0, 1, cmd_choose_tree_args_parse },
-	.usage = "[-kswZ] [-F format] " CMD_TARGET_PANE_USAGE " [command]",
+	.args = { "F:f:kO:rst:wZ", 0, 1, cmd_choose_tree_args_parse },
+	.usage = "[-krsZw] [-F format] [-f path] [-O sort-order] "
+		 CMD_TARGET_PANE_USAGE " [command]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -99,6 +111,7 @@ const struct cmd_entry cmd_switch_mode_entry = {
 
 const struct cmd_entry cmd_display_panes_entry = {
 	.name = "display-panes",
+	.description = "Display pane numbers.",
 	.alias = "displayp",
 
 	.args = { "d:kNs:t:Z", 0, 1, cmd_choose_tree_args_parse },
@@ -124,9 +137,11 @@ cmd_choose_tree_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = cmd_get_args(self);
 	struct cmd_find_state		*target = cmdq_get_target(item);
+	struct client			*c = cmdq_get_client(item);
 	struct window_pane		*wp = target->wp;
 	const struct window_mode	*mode;
 	enum sort_order			 order;
+	char				*path;
 
 	order = sort_order_from_string(args_get(args, 'O'));
 	if (order == SORT_END && args_has(args, 'O')) {
@@ -151,6 +166,53 @@ cmd_choose_tree_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		mode = &window_tree_mode;
 
+	if (mode == &window_switch_mode && args_has(args, 'f')) {
+		path = format_single_from_target(item, args_get(args, 'f'));
+		file_read(c, path, cmd_choose_tree_read_done, item);
+		free(path);
+		return (CMD_RETURN_WAIT);
+	}
 	window_pane_set_mode(wp, NULL, mode, item, target, args);
 	return (CMD_RETURN_NORMAL);
+}
+
+static void
+cmd_choose_tree_read_done(__unused struct client *c, const char *path,
+    int error, int closed, struct evbuffer *buffer, void *data)
+{
+	struct cmdq_item		*item = data;
+	struct cmd			*cmd = cmdq_get_cmd(item);
+	struct args			*args = cmd_get_args(cmd);
+	struct cmd_find_state		*target = cmdq_get_target(item);
+	struct window_pane		*wp = target->wp;
+	struct window_mode_entry	*wme;
+	char				*buf = EVBUFFER_DATA(buffer);
+	size_t				 len = EVBUFFER_LENGTH(buffer);
+
+	if (!closed)
+		return;
+
+	if (error != 0) {
+		cmdq_error(item, "%s: %s", strerror(error), path);
+		goto out;
+	}
+	if (len != 0 && memchr(buf, '\0', len) != NULL) {
+		cmdq_error(item, "%s: contains binary data", path);
+		goto out;
+	}
+	if (!cmd_find_valid_state(target)) {
+		cmdq_error(item, "target pane no longer exists");
+		goto out;
+	}
+
+	TAILQ_FOREACH(wme, &wp->modes, entry) {
+		if (wme->mode == &window_switch_mode)
+			break;
+	}
+	if (window_pane_set_mode(wp, NULL, &window_switch_mode, item, target,
+	    args) == 0 && wme == NULL)
+		window_switch_set_input(TAILQ_FIRST(&wp->modes), buffer);
+
+out:
+	cmdq_continue(item);
 }

@@ -53,8 +53,10 @@ jobs:
             build-essential \
             libevent-dev \
             libncurses-dev \
+            libpng-dev \
             libutf8proc-dev \
-            pkg-config
+            pkg-config \
+            zlib1g-dev
 
       - name: dependencies
         if: runner.os == 'macOS'
@@ -64,16 +66,23 @@ jobs:
             automake \
             bison \
             libevent \
+            libpng \
             jemalloc \
             make \
             ncurses \
             utf8proc \
             pkg-config
 
+      - name: increase pty limit
+        if: runner.os == 'macOS'
+        run: |
+          sysctl kern.tty.ptmx_max
+          sudo sysctl -w kern.tty.ptmx_max=999
+
       - name: build
         run: |
           sh autogen.sh
-          ./configure ${{ matrix.configure }}
+          ./configure --enable-images ${{ matrix.configure }}
           ${{ matrix.make }} -j"$(getconf _NPROCESSORS_ONLN)"
 
       - name: test

@@ -1,4 +1,4 @@
-/* $OpenBSD: window-switch.c,v 1.4 2026/09/01 21:03:55 nicm Exp $ */
+/* $OpenBSD: window-switch.c,v 1.7 2026/10/16 17:28:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -63,7 +63,8 @@ const struct window_mode window_switch_mode = {
 
 enum window_switch_type {
 	WINDOW_SWITCH_TYPE_SESSION,
-	WINDOW_SWITCH_TYPE_WINDOW
+	WINDOW_SWITCH_TYPE_WINDOW,
+	WINDOW_SWITCH_TYPE_INPUT
 };
 
 struct window_switch_itemdata {
@@ -73,6 +74,7 @@ struct window_switch_itemdata {
 
 	uint64_t		 tag;
 	char			*text;
+	const char		*value;
 	bitstr_t		*match;
 
 	u_int			 score;
@@ -87,7 +89,12 @@ struct window_switch_modedata {
 	char				 *format;
 	char				 *command;
 
+	char				**lines;
+	u_int				  lines_size;
+
 	enum window_switch_type		  type;
+	enum sort_order			  order;
+	int				  reversed;
 	char				 *filter;
 	struct prompt			 *prompt;
 	u_int				  prompt_cx;
@@ -163,6 +170,20 @@ window_switch_add_window(struct window_switch_modedata *data,
 	format_free(ft);
 }
 
+static void
+window_switch_add_input(struct window_switch_modedata *data, u_int idx,
+    struct format_tree *ft)
+{
+	struct window_switch_itemdata	*item;
+
+	item = window_switch_add_item(data);
+	item->type = WINDOW_SWITCH_TYPE_INPUT;
+	item->value = data->lines[idx];
+	item->order = data->reversed ? data->lines_size - idx - 1 : idx;
+	format_add(ft, "switch_item", "%s", item->value);
+	item->text = format_expand(ft, data->format);
+}
+
 static int
 window_switch_compare(const void *a0, const void *b0)
 {
@@ -190,9 +211,12 @@ window_switch_build(struct window_switch_modedata *data)
 	struct session			**sl;
 	struct winlink			**wl;
 	struct sort_criteria		  sort_crit;
+	struct cmd_find_state		  fs;
+	struct format_tree		 *ft;
 
-	sort_crit.order = SORT_NAME;
-	sort_crit.reversed = 0;
+	sort_crit.order = data->order;
+	sort_crit.reversed = data->reversed;
+	sort_crit.order_seq = NULL;
 
 	for (i = 0; i < data->item_size; i++)
 		window_switch_free_item(data->item_list[i]);
@@ -210,6 +234,14 @@ window_switch_build(struct window_switch_modedata *data)
 		wl = sort_get_winlinks(&nw, &sort_crit);
 		for (i = 0; i < nw; i++)
 			window_switch_add_window(data, wl[i], &order);
+		break;
+	case WINDOW_SWITCH_TYPE_INPUT:
+		cmd_find_from_pane(&fs, data->wp, 0);
+		ft = format_create(NULL, NULL, FORMAT_NONE, 0);
+		format_defaults(ft, NULL, fs.s, fs.wl, fs.wp);
+		for (i = 0; i < data->lines_size; i++)
+			window_switch_add_input(data, i, ft);
+		format_free(ft);
 		break;
 	}
 
@@ -346,15 +378,32 @@ window_switch_init(struct window_mode_entry *wme,
 	wme->data = data = xcalloc(1, sizeof *data);
 	data->wp = wp;
 
+	data->order = SORT_NAME;
+	data->reversed = 0;
+	if (args != NULL) {
+		if (args_has(args, 'O')) {
+			data->order = sort_order_from_string(args_get(args, 'O'));
+			if (data->order == SORT_END)
+				data->order = SORT_NAME;
+		}
+		if (args_has(args, 'r'))
+			data->reversed = 1;
+	}
+
 	if (args_has(args, 'w'))
 		data->type = WINDOW_SWITCH_TYPE_WINDOW;
 	else
 		data->type = WINDOW_SWITCH_TYPE_SESSION;
+	if (args_has(args, 'f'))
+		data->type = WINDOW_SWITCH_TYPE_INPUT;
 
 	data->filter = xstrdup("");
-	if (args == NULL || !args_has(args, 'F'))
-		data->format = xstrdup(WINDOW_SWITCH_DEFAULT_FORMAT);
-	else
+	if (args == NULL || !args_has(args, 'F')) {
+		if (data->type == WINDOW_SWITCH_TYPE_INPUT)
+			data->format = xstrdup("#{switch_item}");
+		else
+			data->format = xstrdup(WINDOW_SWITCH_DEFAULT_FORMAT);
+	} else
 		data->format = xstrdup(args_get(args, 'F'));
 	if (args == NULL || args_count(args) == 0)
 		data->command = xstrdup(WINDOW_SWITCH_DEFAULT_COMMAND);
@@ -392,6 +441,36 @@ window_switch_init(struct window_mode_entry *wme,
 	return (s);
 }
 
+void
+window_switch_set_input(struct window_mode_entry *wme, struct evbuffer *buffer)
+{
+	struct window_switch_modedata	*data = wme->data;
+	char				*line;
+	size_t				 size;
+
+	for (;;) {
+		line = evbuffer_readln(buffer, NULL, EVBUFFER_EOL_LF);
+		if (line == NULL) {
+			size = EVBUFFER_LENGTH(buffer);
+			if (size == 0)
+				break;
+			line = xmemdup(EVBUFFER_DATA(buffer), size);
+			evbuffer_drain(buffer, size);
+		}
+		if (*line == '\0') {
+			free(line);
+			continue;
+		}
+		data->lines = xreallocarray(data->lines, data->lines_size + 1,
+		    sizeof *data->lines);
+		data->lines[data->lines_size++] = line;
+	}
+	window_switch_build(data);
+	window_switch_set_current(data, 0);
+	window_switch_draw_screen(wme);
+	wme->wp->flags |= PANE_REDRAW;
+}
+
 static void
 window_switch_free(struct window_mode_entry *wme)
 {
@@ -404,6 +483,9 @@ window_switch_free(struct window_mode_entry *wme)
 	for (i = 0; i < data->item_size; i++)
 		window_switch_free_item(data->item_list[i]);
 	free(data->item_list);
+	for (i = 0; i < data->lines_size; i++)
+		free(data->lines[i]);
+	free(data->lines);
 
 	free(data->matches);
 	free(data->filter);
@@ -448,7 +530,7 @@ window_switch_run_command(struct window_switch_modedata *data, struct client *c)
 	case WINDOW_SWITCH_TYPE_SESSION:
 		s = session_find_by_id(item->session);
 		if (s != NULL) {
-			xasprintf(&target, "=%s:", s->name);
+			xasprintf(&target, "$%u:", s->id);
 			cmd_find_from_session(&fs, s, 0);
 		}
 		break;
@@ -457,10 +539,14 @@ window_switch_run_command(struct window_switch_modedata *data, struct client *c)
 		if (s != NULL) {
 			wl = winlink_find_by_index(&s->windows, item->winlink);
 			if (s != NULL && wl != NULL) {
-				xasprintf(&target, "=%s:%u.", s->name, wl->idx);
+				xasprintf(&target, "$%u:%u.", s->id, wl->idx);
 				cmd_find_from_winlink(&fs, wl, 0);
 			}
 		}
+		break;
+	case WINDOW_SWITCH_TYPE_INPUT:
+		target = xstrdup(item->value);
+		cmd_find_from_pane(&fs, data->wp, 0);
 		break;
 	}
 	if (target == NULL)
@@ -469,6 +555,8 @@ window_switch_run_command(struct window_switch_modedata *data, struct client *c)
 	command = cmd_template_replace(data->command, target, 1);
 	if (command != NULL && *command != '\0') {
 		state = cmdq_new_state(&fs, NULL, 0);
+		if (item->type == WINDOW_SWITCH_TYPE_INPUT)
+			cmdq_add_format(state, "switch_item", "%s", item->value);
 		status = cmd_parse_and_append(command, NULL, c, state, &error);
 		if (status == CMD_PARSE_ERROR) {
 			if (c != NULL) {
@@ -524,7 +612,8 @@ window_switch_key(struct window_mode_entry *wme, struct client *c,
 			return;
 		if (data->prompt != NULL && screen_size_y(&data->screen) != 0 &&
 		    y == screen_size_y(&data->screen) - 1 &&
-		    MOUSE_BUTTONS(m->b) == MOUSE_BUTTON_1 && !MOUSE_DRAG(m->b) &&
+		    MOUSE_BUTTONS(m->b) == MOUSE_BUTTON_1 &&
+		    !MOUSE_DRAG(m->b) &&
 		    !MOUSE_RELEASE(m->b)) {
 			result = prompt_mouse(data->prompt, x, 0,
 			    screen_size_x(&data->screen), &redraw);

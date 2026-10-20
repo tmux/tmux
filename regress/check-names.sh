@@ -5,6 +5,15 @@
 PATH=/bin:/usr/bin
 TERM=screen
 
+# The pane's shell must not be the user's own interactive shell: a custom
+# PS1/PROMPT_COMMAND that sets the terminal title (as many do, for tmux/xterm
+# TERM types) would redraw over the titles this test sets and checks on
+# every prompt, regardless of how long it waits first.
+shell=
+if command -v bash >/dev/null 2>&1; then
+	shell='bash --noprofile --norc +o history'
+fi
+
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 $TMUX kill-server 2>/dev/null
@@ -30,7 +39,7 @@ must_equal()
 	[ "$got" = "$want" ] || fail "got '$got', expected '$want'"
 }
 
-$TMUX new-session -d -x 80 -y 24 || exit 1
+$TMUX new-session -d -x 80 -y 24 -- $shell || exit 1
 $TMUX set-option -qg allow-set-title on || exit 1
 $TMUX set-option -qg allow-rename on || exit 1
 $TMUX set-option -qg automatic-rename off || exit 1

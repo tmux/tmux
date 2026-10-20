@@ -32,6 +32,7 @@
 #endif
 
 #ifdef HAVE_JEMALLOC
+#define JEMALLOC_MANGLE
 #include <jemalloc/jemalloc.h>
 #endif
 

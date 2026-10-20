@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.162 2026/09/24 11:19:39 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.170 2026/10/16 14:26:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -72,6 +72,13 @@ enum redraw_span_type {
 };
 #define REDRAW_SPAN_TYPES 7
 
+/* Draw phases. */
+enum redraw_phase {
+	REDRAW_TEXT,
+	REDRAW_IMAGES
+};
+#define REDRAW_PHASE_COUNT 2
+
 /* Border connections to adjacent cells. */
 #define REDRAW_BORDER_L 0x1
 #define REDRAW_BORDER_R 0x2
@@ -93,6 +100,7 @@ enum redraw_span_type {
 #define REDRAW_PANE_SCROLLBAR 0x20
 #define REDRAW_STATUS 0x40
 #define REDRAW_MENU 0x80
+#define REDRAW_SIDE_STATUS 0x100
 
 /* Draw everything. */
 #define REDRAW_ALL 0x7fffffff
@@ -204,13 +212,38 @@ struct redraw_scene {
 	u_int			 oy;
 };
 
+/* A damaged rectangle in a window. */
+struct redraw_damage {
+	u_int				 x;
+	u_int				 y;
+	u_int				 sx;
+	u_int				 sy;
+
+	int				 flags;
+#define REDRAW_DAMAGE_SCROLL 0x1
+
+	TAILQ_ENTRY(redraw_damage)	 entry;
+};
+
+/*
+ * If there are more damage rectangles than this, they are collapsed into
+ * one.
+ */
+#define REDRAW_DAMAGE_MAX 16
+
 /* Cell for building the scene. */
 struct redraw_build_cell {
 	struct redraw_span_data	 data;
 };
-
 static struct redraw_build_cell	*redraw_cells;
 static size_t			 redraw_ncells;
+
+/*
+ * We can reuse the same pane status lines during one damage redraw, but when
+ * we enter a new one, the client or format variables may have changed, so we
+ * need to make them again. The generation is increased so this happens.
+ */
+static u_int	redraw_status_generation;
 
 /* Context for building the scene. */
 struct redraw_build_ctx {
@@ -235,6 +268,7 @@ struct redraw_draw_ctx {
 	struct window_pane	*marked;
 
 	u_int			 status_lines;
+	u_int			 side_left;
 	enum pane_lines		 pane_lines;
 	struct grid_cell	 default_gc;
 
@@ -279,7 +313,7 @@ redraw_get_window_offset(struct client *c, u_int *ox, u_int *oy, u_int *sx,
 
 	tty_window_offset(&c->tty, ox, oy, sx, sy);
 
-	tty_sx = c->tty.sx;
+	tty_sx = c->tty.sx - status_side_size(c);
 	tty_sy = c->tty.sy - status_line_size(c);
 	if (*sx < tty_sx)
 		*sx = tty_sx;
@@ -772,23 +806,24 @@ redraw_mark_pane_borders(struct redraw_build_ctx *bctx, struct window_pane *wp,
 static void
 redraw_mark_pane(struct redraw_build_ctx *bctx, struct window_pane *wp)
 {
-	int	sb_w = 0, sb_left = 0, overlay = 0;
+	struct style	*sb_style = &wp->scrollbar_style;
+	int		 sb_w = 0, sb_left = 0, overlay = 0;
 
 	if (!window_pane_is_visible(wp))
 		return;
 
 	if (window_pane_scrollbar_visible(wp)) {
 		overlay = window_pane_scrollbar_overlay(wp);
-		if (overlay) {
-			sb_w = wp->scrollbar_style.width +
-			    wp->scrollbar_style.pad;
+		if (!overlay)
+			sb_w = sb_style->width + sb_style->pad;
+		else {
+			sb_w = sb_style->width + sb_style->pad;
 			if (sb_w > (int)wp->sx) {
-				sb_w = wp->scrollbar_style.width;
+				sb_w = sb_style->width;
 				if (sb_w > (int)wp->sx)
 					sb_w = wp->sx;
 			}
-		} else
-			sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
+		}
 	}
 	if (sb_w != 0 && bctx->w->sb_pos == PANE_SCROLLBARS_LEFT)
 		sb_left = 1;
@@ -1054,11 +1089,167 @@ redraw_free_scene(struct redraw_scene *scene)
 	free(scene);
 }
 
-/* Mark a window's cached redraw scenes as out of date. */
+/* Does a client's cached scene show this window? */
+int
+redraw_client_has_window(struct client *c, struct window *w)
+{
+	return (c->redraw_scene != NULL && c->redraw_scene->w == w);
+}
+
+/*
+ * Mark a window's cached redraw scenes as out of date. Generations are unique
+ * across all windows so a scene can never match a new window that reuses the
+ * address of a freed one.
+ */
 void
 redraw_invalidate_scene(struct window *w)
 {
-	w->redraw_scene_generation++;
+	static uint64_t	next_generation;
+
+	w->redraw_scene_generation = ++next_generation;
+}
+
+/* Free all pending damage for a window. */
+void
+redraw_free_damage(struct window *w)
+{
+	struct redraw_damage	*rd, *rd1;
+
+	TAILQ_FOREACH_SAFE(rd, &w->damage, entry, rd1) {
+		TAILQ_REMOVE(&w->damage, rd, entry);
+		free(rd);
+	}
+	w->damage_count = 0;
+	w->scroll_pending = 0;
+}
+
+/* Collapse all pending damage for a window into one rectangle. */
+static void
+redraw_collapse_damage(struct window *w)
+{
+	struct redraw_damage	*rd, *rd1, *first;
+	u_int			 x0, y0, x1, y1;
+
+	first = TAILQ_FIRST(&w->damage);
+	if (first == NULL)
+		return;
+	x0 = first->x;
+	y0 = first->y;
+	x1 = first->x + first->sx;
+	y1 = first->y + first->sy;
+
+	TAILQ_FOREACH_SAFE(rd, &w->damage, entry, rd1) {
+		if (rd->x < x0)
+			x0 = rd->x;
+		if (rd->y < y0)
+			y0 = rd->y;
+		if (rd->x + rd->sx > x1)
+			x1 = rd->x + rd->sx;
+		if (rd->y + rd->sy > y1)
+			y1 = rd->y + rd->sy;
+		first->flags &= rd->flags;
+		if (rd != first) {
+			TAILQ_REMOVE(&w->damage, rd, entry);
+			free(rd);
+		}
+	}
+
+	first->x = x0;
+	first->y = y0;
+	first->sx = x1 - x0;
+	first->sy = y1 - y0;
+	w->damage_count = 1;
+}
+
+/* Record window damage, merging nearby rectangles and limiting the count. */
+static void
+redraw_apply_window_damage(struct window *w, u_int x, u_int y, u_int sx,
+    u_int sy, int flags)
+{
+	struct redraw_damage	*rd;
+	u_int			 x0, y0, x1, y1, area, union_area;
+
+	if (x >= w->sx || y >= w->sy)
+		return;
+	if (x + sx > w->sx)
+		sx = w->sx - x;
+	if (y + sy > w->sy)
+		sy = w->sy - y;
+	if (sx == 0 || sy == 0)
+		return;
+
+	TAILQ_FOREACH(rd, &w->damage, entry) {
+		if (x > rd->x + rd->sx || rd->x > x + sx ||
+		    y > rd->y + rd->sy || rd->y > y + sy)
+			continue;
+
+		x0 = (x < rd->x) ? x : rd->x;
+		y0 = (y < rd->y) ? y : rd->y;
+		x1 = (x + sx > rd->x + rd->sx) ? x + sx : rd->x + rd->sx;
+		y1 = (y + sy > rd->y + rd->sy) ? y + sy : rd->y + rd->sy;
+
+		area = sx * sy + rd->sx * rd->sy;
+		union_area = (x1 - x0) * (y1 - y0);
+		if (union_area > 2 * area)
+			continue;
+
+		rd->x = x0;
+		rd->y = y0;
+		rd->sx = x1 - x0;
+		rd->sy = y1 - y0;
+		rd->flags &= flags;
+		return;
+	}
+
+	rd = xcalloc(1, sizeof *rd);
+	rd->x = x;
+	rd->y = y;
+	rd->sx = sx;
+	rd->sy = sy;
+	rd->flags = flags;
+	TAILQ_INSERT_TAIL(&w->damage, rd, entry);
+	if (++w->damage_count > REDRAW_DAMAGE_MAX)
+		redraw_collapse_damage(w);
+}
+
+/* Record ordinary window damage. */
+void
+redraw_damage_window(struct window *w, u_int x, u_int y, u_int sx, u_int sy)
+{
+	redraw_apply_window_damage(w, x, y, sx, sy, 0);
+}
+
+/* Record damage caused by terminal scrolling. */
+void
+redraw_damage_scroll(struct window *w, u_int x, u_int y, u_int sx, u_int sy)
+{
+	if (!w->scroll_pending) {
+		w->scroll_generation++;
+		w->scroll_pending = 1;
+	}
+	redraw_apply_window_damage(w, x, y, sx, sy, REDRAW_DAMAGE_SCROLL);
+}
+
+/* Remember whether this client used terminal scrolling for the damage. */
+void
+redraw_scroll_result(struct tty *tty, const struct tty_ctx *ctx, int failed)
+{
+	struct window_pane	*wp = ctx->arg;
+	struct window		*w;
+
+	if (wp == NULL)
+		return;
+	w = wp->window;
+	if (!w->scroll_pending)
+		return;
+	if (tty->scroll_window != w ||
+	    tty->scroll_generation != w->scroll_generation) {
+		tty->scroll_window = w;
+		tty->scroll_generation = w->scroll_generation;
+		tty->scroll_failed = 0;
+	}
+	if (failed)
+		tty->scroll_failed = 1;
 }
 
 /* Mark all cached redraw scenes as out of date. */
@@ -1119,7 +1310,7 @@ redraw_draw_pane_span(struct redraw_draw_ctx *dctx,
 	style_ctx.palette = &wp->palette;
 	style_ctx.hyperlinks = s->hyperlinks;
 
-	px = span->data.p.px + (x - span->x);
+	px = span->data.p.px + (x - dctx->side_left - span->x);
 	py = span->data.p.py;
 	tty_draw_line(tty, s, px, py, n, x, y, &style_ctx);
 }
@@ -1273,7 +1464,7 @@ redraw_draw_status_span(struct redraw_draw_ctx *dctx,
 	struct screen		*s = &wp->status_screen;
 	u_int			 px, sx = screen_size_x(s);
 
-	px = span->data.st.offset + (x - span->x);
+	px = span->data.st.offset + (x - dctx->side_left - span->x);
 	if (px < sx) {
 		if (n > sx - px)
 			n = sx - px;
@@ -1335,7 +1526,7 @@ redraw_draw_scrollbar_span(struct redraw_draw_ctx *dctx,
 
 	sb_w = sb_style->width;
 	sb_pad = sb_style->pad;
-	off = x - span->x;
+	off = x - dctx->side_left - span->x;
 
 	tty_cursor(tty, x, y);
 	for (i = 0; i < n; i++) {
@@ -1369,38 +1560,49 @@ redraw_draw_menu_span(struct redraw_draw_ctx *dctx,
 	struct screen		*s = menu_screen(span->data.m.md);
 	u_int			 px;
 
-	px = span->data.m.px + (x - span->x);
+	px = span->data.m.px + (x - dctx->side_left - span->x);
 	tty_draw_line(tty, s, px, span->data.m.py, n, x, y, NULL);
 }
 
 /* Draw a span. */
 static void
 redraw_draw_span(struct redraw_draw_ctx *dctx, struct redraw_span *span,
-    u_int y)
+    u_int y, enum redraw_phase phase)
 {
 	struct redraw_span_data	*data = &span->data;
 	enum redraw_span_type	 type = data->type;
+	u_int			 x = dctx->side_left + span->x;
+	u_int			 width = span->width;
 
 	if (type == REDRAW_SPAN_STATUS && ~data->st.wp->flags & PANE_NEWSTATUS)
+		return;
+	if (phase != REDRAW_TEXT && type != REDRAW_SPAN_PANE)
 		return;
 
 	switch (span->data.type) {
 	case REDRAW_SPAN_PANE:
-		redraw_draw_pane_span(dctx, span, span->x, y, span->width);
+		if (phase == REDRAW_TEXT)
+			redraw_draw_pane_span(dctx, span, x, y, width);
+#ifdef ENABLE_IMAGES
+		else {
+			image_draw_line(&dctx->scene->c->tty, data->p.wp->screen,
+			    data->p.px, data->p.py, width, x, y);
+		}
+#endif
 		break;
 	case REDRAW_SPAN_BORDER:
 	case REDRAW_SPAN_EMPTY:
 	case REDRAW_SPAN_OUTSIDE:
-		redraw_draw_border_span(dctx, span, span->x, y, span->width);
+		redraw_draw_border_span(dctx, span, x, y, width);
 		break;
 	case REDRAW_SPAN_STATUS:
-		redraw_draw_status_span(dctx, span, span->x, y, span->width);
+		redraw_draw_status_span(dctx, span, x, y, width);
 		break;
 	case REDRAW_SPAN_SCROLLBAR:
-		redraw_draw_scrollbar_span(dctx, span, span->x, y, span->width);
+		redraw_draw_scrollbar_span(dctx, span, x, y, width);
 		break;
 	case REDRAW_SPAN_MENU:
-		redraw_draw_menu_span(dctx, span, span->x, y, span->width);
+		redraw_draw_menu_span(dctx, span, x, y, width);
 		break;
 	}
 }
@@ -1414,6 +1616,7 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 	struct redraw_line	*line;
 	struct redraw_spans	*spans;
 	struct redraw_span	*span;
+	enum redraw_phase	 phase;
 	u_int			 cy;
 	int			 y, top, bottom;
 
@@ -1426,26 +1629,86 @@ redraw_draw_pane_lines(struct redraw_draw_ctx *dctx, struct window_pane *wp,
 	if (bottom > (int)scene->sy)
 		bottom = scene->sy;
 
-	for (y = top; y < bottom; y++) {
-		line = &scene->lines[y];
-		if (dctx->flags & REDRAW_STATUS_TOP)
-			cy = dctx->status_lines + y;
-		else
-			cy = y;
-		if (flags & REDRAW_PANE) {
+#ifdef ENABLE_IMAGES
+	/* Erase only pane-owned spans so overlapping panes remain intact. */
+	if (flags & REDRAW_PANE) {
+		for (y = top; y < bottom; y++) {
+			line = &scene->lines[y];
+			if (dctx->flags & REDRAW_STATUS_TOP)
+				cy = dctx->status_lines + y;
+			else
+				cy = y;
 			spans = &line->spans[REDRAW_SPAN_PANE];
 			TAILQ_FOREACH(span, spans, entry) {
-				if (span->data.p.wp == wp)
-					redraw_draw_span(dctx, span, cy);
+				if (span->data.p.wp == wp) {
+					image_redraw_start(&scene->c->tty,
+					    dctx->side_left + span->x, cy,
+					    span->width, 1);
+				}
 			}
 		}
-		if (flags & REDRAW_PANE_SCROLLBAR) {
-			spans = &line->spans[REDRAW_SPAN_SCROLLBAR];
-			TAILQ_FOREACH(span, spans, entry) {
-				if (span->data.sb.wp == wp)
-					redraw_draw_span(dctx, span, cy);
+	}
+#endif
+
+	/* Draw each phase. */
+	for (phase = 0; phase < REDRAW_PHASE_COUNT; phase++) {
+		for (y = top; y < bottom; y++) {
+			line = &scene->lines[y];
+			if (dctx->flags & REDRAW_STATUS_TOP)
+				cy = dctx->status_lines + y;
+			else
+				cy = y;
+			if (flags & REDRAW_PANE) {
+				spans = &line->spans[REDRAW_SPAN_PANE];
+				TAILQ_FOREACH(span, spans, entry) {
+					if (span->data.p.wp != wp)
+						continue;
+					redraw_draw_span(dctx, span, cy, phase);
+				}
+			}
+			if (phase == REDRAW_TEXT &&
+			    (flags & REDRAW_PANE_SCROLLBAR)) {
+				spans = &line->spans[REDRAW_SPAN_SCROLLBAR];
+				TAILQ_FOREACH(span, spans, entry) {
+					if (span->data.sb.wp != wp)
+						continue;
+					redraw_draw_span(dctx, span, cy, phase);
+				}
 			}
 		}
+#ifdef ENABLE_IMAGES
+		image_draw_flush(&scene->c->tty);
+#endif
+	}
+}
+
+/* Return whether to draw a span type in this phase for these flags. */
+static int
+redraw_should_draw(enum redraw_span_type type, int flags,
+    enum redraw_phase phase)
+{
+	if (phase != REDRAW_TEXT && type != REDRAW_SPAN_PANE)
+		return (0);
+	if (REDRAW_IS_ALL(flags))
+		return (1);
+
+	switch (type) {
+	case REDRAW_SPAN_PANE:
+		return (flags & REDRAW_PANE);
+	case REDRAW_SPAN_OUTSIDE:
+		return (flags & REDRAW_OUTSIDE);
+	case REDRAW_SPAN_EMPTY:
+		return (flags & REDRAW_EMPTY);
+	case REDRAW_SPAN_BORDER:
+		return (flags & REDRAW_PANE_BORDER);
+	case REDRAW_SPAN_STATUS:
+		return (flags & REDRAW_PANE_STATUS);
+	case REDRAW_SPAN_SCROLLBAR:
+		return (flags & REDRAW_PANE_SCROLLBAR);
+	case REDRAW_SPAN_MENU:
+		return (flags & REDRAW_MENU);
+	default:
+		return (0);
 	}
 }
 
@@ -1457,53 +1720,28 @@ redraw_draw_lines(struct redraw_draw_ctx *dctx, int flags)
 	struct redraw_line	*line;
 	struct redraw_spans	*spans;
 	struct redraw_span	*span;
+	enum redraw_phase	 phase;
 	u_int			 y, cy, type;
 
-	for (y = 0; y < scene->sy; y++) {
-		line = &scene->lines[y];
-		if (dctx->flags & REDRAW_STATUS_TOP)
-			cy = dctx->status_lines + y;
-		else
-			cy = y;
-		for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
-			if (!REDRAW_IS_ALL(flags)) {
-				switch (type) {
-				case REDRAW_SPAN_PANE:
-					if (~flags & REDRAW_PANE)
-						continue;
-					break;
-				case REDRAW_SPAN_OUTSIDE:
-					if (~flags & REDRAW_OUTSIDE)
-						continue;
-					break;
-				case REDRAW_SPAN_EMPTY:
-					if (~flags & REDRAW_EMPTY)
-						continue;
-					break;
-				case REDRAW_SPAN_BORDER:
-					if (~flags & REDRAW_PANE_BORDER)
-						continue;
-					break;
-				case REDRAW_SPAN_STATUS:
-					if (~flags & REDRAW_PANE_STATUS)
-						continue;
-					break;
-				case REDRAW_SPAN_SCROLLBAR:
-					if (~flags & REDRAW_PANE_SCROLLBAR)
-						continue;
-					break;
-				case REDRAW_SPAN_MENU:
-					if (~flags & REDRAW_MENU)
-						continue;
-					break;
-				default:
+	/* Draw each phase. */
+	for (phase = 0; phase < REDRAW_PHASE_COUNT; phase++) {
+		for (y = 0; y < scene->sy; y++) {
+			line = &scene->lines[y];
+			if (dctx->flags & REDRAW_STATUS_TOP)
+				cy = dctx->status_lines + y;
+			else
+				cy = y;
+			for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
+				if (!redraw_should_draw(type, flags, phase))
 					continue;
-				}
+				spans = &line->spans[type];
+				TAILQ_FOREACH(span, spans, entry)
+					redraw_draw_span(dctx, span, cy, phase);
 			}
-			spans = &line->spans[type];
-			TAILQ_FOREACH(span, spans, entry)
-				redraw_draw_span(dctx, span, cy);
 		}
+#ifdef ENABLE_IMAGES
+		image_draw_flush(&scene->c->tty);
+#endif
 	}
 }
 
@@ -1523,7 +1761,7 @@ redraw_draw_menu_lines(struct redraw_draw_ctx *dctx)
 		else
 			cy = y;
 		TAILQ_FOREACH(span, &line->spans[REDRAW_SPAN_MENU], entry)
-			redraw_draw_span(dctx, span, cy);
+			redraw_draw_span(dctx, span, cy, REDRAW_TEXT);
 	}
 }
 
@@ -1599,8 +1837,29 @@ redraw_set_draw_context(struct redraw_draw_ctx *dctx,
 		dctx->flags |= REDRAW_STATUS_TOP;
 	dctx->status_lines = lines;
 
+	if (status_side_at_column(c) == 0)
+		dctx->side_left = status_side_size(c);
+
 	if ((c->flags & CLIENT_UTF8) && tty_term_has(tty->term, TTYC_BIDI))
 		dctx->flags |= REDRAW_ISOLATES;
+}
+
+/* Build a pane prompt. */
+static void
+redraw_make_pane_prompt(struct window_pane *wp, struct screen *screen)
+{
+	struct screen_write_ctx	 ctx;
+	struct prompt_draw_data	 pdd;
+
+	screen_init(screen, wp->sx, 1, 0);
+	screen_write_start(&ctx, screen);
+	pdd.ctx = &ctx;
+	pdd.cursor_x = &wp->prompt_cx;
+	pdd.area_x = 0;
+	pdd.area_width = wp->sx;
+	pdd.prompt_line = 0;
+	prompt_draw(wp->prompt, &pdd);
+	screen_write_stop(&ctx);
 }
 
 /* Draw a pane's prompt over its content. */
@@ -1611,11 +1870,10 @@ redraw_draw_pane_prompt(struct redraw_draw_ctx *dctx, struct window_pane *wp)
 	struct client		*c = scene->c;
 	struct tty		*tty = &c->tty;
 	struct screen		 screen;
-	struct screen_write_ctx	 ctx;
-	struct prompt_draw_data	 pdd;
 	int			 ox = scene->ox, oy = scene->oy;
 	int			 sx = scene->sx, sy = scene->sy;
 	int			 line, cy, px, offset, width, wy;
+	u_int			 side_left = dctx->side_left;
 
 	if (wp->prompt == NULL || wp->sx == 0 || wp->sy == 0)
 		return;
@@ -1645,17 +1903,8 @@ redraw_draw_pane_prompt(struct redraw_draw_ctx *dctx, struct window_pane *wp)
 	if (px + width > sx)
 		width = sx - px;
 
-	screen_init(&screen, wp->sx, 1, 0);
-	screen_write_start(&ctx, &screen);
-	pdd.ctx = &ctx;
-	pdd.cursor_x = &wp->prompt_cx;
-	pdd.area_x = 0;
-	pdd.area_width = wp->sx;
-	pdd.prompt_line = 0;
-	prompt_draw(wp->prompt, &pdd);
-	screen_write_stop(&ctx);
-
-	tty_draw_line(tty, &screen, offset, 0, width, px, cy, NULL);
+	redraw_make_pane_prompt(wp, &screen);
+	tty_draw_line(tty, &screen, offset, 0, width, side_left + px, cy, NULL);
 	screen_free(&screen);
 }
 
@@ -1670,7 +1919,8 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	struct screen		*sl;
 	struct redraw_scene	*scene;
 	struct window_pane	*loop;
-	u_int			 width, i, y, lines;
+	u_int			 width, i, y, lines, side_width;
+	int			 side_x;
 	struct redraw_span	*first;
 	int			 redraw;
 
@@ -1684,8 +1934,20 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 			redraw = status_prompt_redraw(c);
 		else
 			redraw = status_redraw(c);
-		if (!redraw && !REDRAW_IS_ALL(flags)) {
+		if (!redraw &&
+		    (~c->flags & CLIENT_REDRAWSTATUSALWAYS) &&
+		    !REDRAW_IS_ALL(flags)) {
 			flags &= ~REDRAW_STATUS;
+			if (flags == 0)
+				return;
+		}
+	}
+
+	if (flags & REDRAW_SIDE_STATUS) {
+		if (!status_side_redraw(c) &&
+		    (~c->flags & CLIENT_REDRAWSTATUSALWAYS) &&
+		    !REDRAW_IS_ALL(flags)) {
+			flags &= ~REDRAW_SIDE_STATUS;
 			if (flags == 0)
 				return;
 		}
@@ -1750,6 +2012,15 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 		}
 	}
 	tty_sync_start(tty); /* end in server_client_reset_state */
+#ifdef ENABLE_IMAGES
+	if (wp == NULL && (flags & REDRAW_PANE)) {
+		y = 0;
+		if (dctx.flags & REDRAW_STATUS_TOP)
+			y = dctx.status_lines;
+		image_redraw_start(tty, dctx.side_left, y, scene->sx,
+		    scene->sy);
+	}
+#endif
 	tty_update_mode(tty, tty->mode & ~CURSOR_MODES, NULL);
 
 	if (wp != NULL)
@@ -1770,6 +2041,21 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	if (w->menu != NULL && (flags & REDRAW_MENU))
 		redraw_draw_menu_lines(&dctx);
 
+	if (flags & REDRAW_SIDE_STATUS) {
+		side_width = status_side_size(c);
+		side_x = status_side_at_column(c);
+		if (side_width != 0 && side_x != -1) {
+			if (dctx.flags & REDRAW_STATUS_TOP)
+				y = dctx.status_lines;
+			else
+				y = 0;
+			for (i = 0; i < status_side_rows(c); i++) {
+				tty_draw_line(tty, &c->side_status.screen, 0, i,
+				    side_width, side_x, y + i, NULL);
+			}
+		}
+	}
+
 	if (flags & REDRAW_STATUS) {
 		lines = dctx.status_lines;
 		if (c->message_string != NULL || c->prompt != NULL)
@@ -1784,15 +2070,6 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 	}
 
 	tty_reset(tty);
-
-#ifdef ENABLE_SIXEL
-	if (wp != NULL)
-		tty_draw_images(c, wp);
-	else {
-		TAILQ_FOREACH(loop, &scene->w->panes, entry)
-			tty_draw_images(c, loop);
-	}
-#endif
 
 	log_debug("%s: finished @%u redraw", c->name, scene->w->id);
 }
@@ -1842,8 +2119,9 @@ redraw_screen(struct client *c)
 	else {
 		if (c->flags & CLIENT_REDRAWBORDERS)
 			flags |= (REDRAW_PANE_BORDER|REDRAW_PANE_STATUS);
-		if (c->flags & CLIENT_REDRAWSTATUS)
-			flags |= (REDRAW_STATUS|REDRAW_PANE_STATUS);
+		if (c->flags & (CLIENT_REDRAWSTATUS|CLIENT_REDRAWSTATUSALWAYS))
+			flags |= (REDRAW_STATUS|REDRAW_PANE_STATUS|
+			    REDRAW_SIDE_STATUS);
 		if (c->flags & CLIENT_REDRAWMENU)
 			flags |= REDRAW_MENU;
 		if (c->session->curw->window->menu != NULL)
@@ -1867,4 +2145,204 @@ void
 redraw_pane_scrollbar(struct client *c, struct window_pane *wp)
 {
 	redraw_draw(c, wp, REDRAW_PANE_SCROLLBAR);
+}
+
+/* Rebuild damaged pane status. */
+static void
+redraw_damage_refresh_status(struct redraw_draw_ctx *dctx,
+    struct window_pane *wp)
+{
+	struct redraw_span	*first;
+	u_int			 g = wp->status_generation, width;
+
+	if ((wp->flags & PANE_NEWSTATUS) && g == redraw_status_generation)
+		return;
+	width = redraw_pane_status_width(dctx, wp, &first);
+	if (width != 0) {
+		window_make_pane_status(wp, dctx->scene->c, width, first);
+		wp->flags |= PANE_NEWSTATUS;
+		wp->status_generation = redraw_status_generation;
+	}
+}
+
+/* Draw a pane's prompt over a damaged span. */
+static void
+redraw_damage_draw_pane_prompt(struct redraw_draw_ctx *dctx,
+    struct redraw_span *span, u_int y)
+{
+	struct redraw_scene	*scene = dctx->scene;
+	struct window_pane	*wp = span->data.p.wp;
+	struct tty		*tty = &scene->c->tty;
+	struct screen		 screen;
+	u_int			 px = span->data.p.px, width, prompt_y;
+	u_int			 x = dctx->side_left + span->x;
+
+	if (wp->prompt == NULL || wp->sx == 0 || wp->sy == 0)
+		return;
+	if (dctx->flags & REDRAW_STATUS_TOP)
+		prompt_y = 0;
+	else
+		prompt_y = wp->sy - 1;
+	if (span->data.p.py != prompt_y)
+		return;
+	redraw_make_pane_prompt(wp, &screen);
+	if (px < screen_size_x(&screen)) {
+		width = span->width;
+		if (width > screen_size_x(&screen) - px)
+			width = screen_size_x(&screen) - px;
+		tty_draw_line(tty, &screen, px, 0, width, x, y, NULL);
+	}
+	screen_free(&screen);
+}
+
+/* Draw the spans intersecting a damaged rectangle. */
+static void
+redraw_draw_damage_rectangle(struct redraw_draw_ctx *dctx, u_int x, u_int y,
+    u_int sx, u_int sy)
+{
+	struct redraw_scene	*scene = dctx->scene;
+	struct redraw_line	*line;
+	struct redraw_spans	*spans;
+	struct redraw_span	*span;
+	enum redraw_phase	 phase;
+	u_int			 cy, yy, type;
+
+	if (x >= scene->sx || y >= scene->sy)
+		return;
+	if (x + sx > scene->sx)
+		sx = scene->sx - x;
+	if (y + sy > scene->sy)
+		sy = scene->sy - y;
+	if (sx == 0 || sy == 0)
+		return;
+
+#ifdef ENABLE_IMAGES
+	/* Clear old image pixels on all damaged spans. */
+	for (yy = y; yy < y + sy; yy++) {
+		line = &scene->lines[yy];
+		if (dctx->flags & REDRAW_STATUS_TOP)
+			cy = dctx->status_lines + yy;
+		else
+			cy = yy;
+		for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
+			if (type == REDRAW_SPAN_STATUS)
+				continue;
+			spans = &line->spans[type];
+			TAILQ_FOREACH(span, spans, entry) {
+				if (span->x >= x + sx)
+					continue;
+				if (span->x + span->width <= x)
+					continue;
+				image_redraw_start(&scene->c->tty,
+				    dctx->side_left + span->x, cy,
+				    span->width, 1);
+			}
+		}
+	}
+#endif
+
+	/* Draw each phase in the damaged spans. */
+	for (phase = 0; phase < REDRAW_PHASE_COUNT; phase++) {
+		for (yy = y; yy < y + sy; yy++) {
+			line = &scene->lines[yy];
+			if (dctx->flags & REDRAW_STATUS_TOP)
+				cy = dctx->status_lines + yy;
+			else
+				cy = yy;
+			for (type = 0; type < REDRAW_SPAN_TYPES; type++) {
+				if (phase != REDRAW_TEXT &&
+				    type != REDRAW_SPAN_PANE)
+					continue;
+				if (type == REDRAW_SPAN_STATUS)
+					continue;
+				spans = &line->spans[type];
+				TAILQ_FOREACH(span, spans, entry) {
+					if (span->x >= x + sx)
+						continue;
+					if (span->x + span->width <= x)
+						continue;
+					redraw_draw_span(dctx, span, cy, phase);
+				}
+			}
+		}
+#ifdef ENABLE_IMAGES
+		image_draw_flush(&scene->c->tty);
+#endif
+	}
+
+	/* Draw prompts and pane status lines last. */
+	for (yy = y; yy < y + sy; yy++) {
+		line = &scene->lines[yy];
+		if (dctx->flags & REDRAW_STATUS_TOP)
+			cy = dctx->status_lines + yy;
+		else
+			cy = yy;
+		spans = &line->spans[REDRAW_SPAN_PANE];
+		TAILQ_FOREACH(span, spans, entry) {
+			if (span->x >= x + sx)
+				continue;
+			if (span->x + span->width <= x)
+				continue;
+			redraw_damage_draw_pane_prompt(dctx, span, cy);
+		}
+		spans = &line->spans[REDRAW_SPAN_STATUS];
+		TAILQ_FOREACH(span, spans, entry) {
+			if (span->x >= x + sx)
+				continue;
+			if (span->x + span->width <= x)
+				continue;
+			redraw_damage_refresh_status(dctx, span->data.st.wp);
+			redraw_draw_span(dctx, span, cy, REDRAW_TEXT);
+		}
+	}
+}
+
+/* Draw pending window damage on this client. */
+void
+redraw_client_damage(struct client *c)
+{
+	struct window		*w = c->session->curw->window;
+	struct tty		*tty = &c->tty;
+	struct window_pane	*wp;
+	struct redraw_scene	*scene;
+	struct redraw_draw_ctx	 dctx;
+	struct redraw_damage	*rd;
+	u_int			 ox, oy, sx, sy, x0, y0, x1, y1;
+
+	if (TAILQ_EMPTY(&w->damage))
+		return;
+	redraw_status_generation++;
+
+	scene = redraw_get_scene(c);
+	if (scene == NULL)
+		return;
+	redraw_set_draw_context(&dctx, scene);
+	redraw_get_window_offset(c, &ox, &oy, &sx, &sy);
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		wp->border_gc_set = 0;
+		wp->active_border_gc_set = 0;
+	}
+
+	tty_sync_start(tty);
+	tty_update_mode(tty, tty->mode & ~CURSOR_MODES, NULL);
+
+	TAILQ_FOREACH(rd, &w->damage, entry) {
+#ifdef ENABLE_IMAGES
+		if ((rd->flags & REDRAW_DAMAGE_SCROLL) &&
+		    (image_backend_get_flags(tty) & IMAGE_BACKEND_SCROLLS) &&
+		    tty->scroll_window == w &&
+		    tty->scroll_generation == w->scroll_generation &&
+		    !tty->scroll_failed)
+			continue;
+#endif
+		x0 = (rd->x > ox) ? rd->x : ox;
+		y0 = (rd->y > oy) ? rd->y : oy;
+		x1 = (rd->x + rd->sx < ox + sx) ? rd->x + rd->sx : ox + sx;
+		y1 = (rd->y + rd->sy < oy + sy) ? rd->y + rd->sy : oy + sy;
+		if (x0 < x1 && y0 < y1) {
+			redraw_draw_damage_rectangle(&dctx, x0 - ox, y0 - oy,
+			    x1 - x0, y1 - y0);
+		}
+	}
 }

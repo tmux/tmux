@@ -1,4 +1,4 @@
-/* $OpenBSD: options.c,v 1.92 2026/07/27 19:15:58 nicm Exp $ */
+/* $OpenBSD: options.c,v 1.93 2026/10/16 07:59:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1406,11 +1406,22 @@ options_push_changes(const char *name)
 				tty_keys_build(&loop->tty);
 		}
 	}
+	if (strcmp(name, "utmp") == 0) {
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
+			if (options_get_number(global_options, name))
+				window_pane_utmp_add(wp);
+			else
+				window_pane_utmp_remove(wp);
+		}
+	}
 	if (strcmp(name, "status") == 0 ||
-	    strcmp(name, "status-interval") == 0)
+	    strcmp(name, "status-interval") == 0 ||
+	    strcmp(name, "side-status") == 0)
 		status_timer_start_all();
 	if (strcmp(name, "status") == 0 ||
 	    strcmp(name, "status-position") == 0 ||
+	    strcmp(name, "side-status") == 0 ||
+	    strcmp(name, "side-status-width") == 0 ||
 	    strcmp(name, "pane-border-indicators") == 0 ||
 	    strcmp(name, "pane-border-lines") == 0 ||
 	    strcmp(name, "pane-border-status") == 0 ||

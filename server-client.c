@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.514 2026/09/22 06:46:50 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.525 2026/10/19 08:14:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -187,6 +187,7 @@ server_client_create(int fd)
 	c->theme = THEME_UNKNOWN;
 
 	status_init(c);
+	status_side_init(c);
 	c->flags |= CLIENT_FOCUSED;
 
 	c->keytable = key_bindings_get_table("root", 1);
@@ -356,7 +357,13 @@ server_client_set_session(struct client *c, struct session *s)
 		tty_update_client_offset(c);
 		status_timer_start(c);
 		server_client_fire_session_changed(c, old);
-		server_redraw_client(c);
+
+		/*
+		 * Redraw if the session or displayed window changed. Use the
+		 * cached scene because the session's current window is already set.
+		 */
+		if (old != s || !redraw_client_has_window(c, s->curw->window))
+			server_redraw_client(c);
 	}
 
 	server_check_unattached();
@@ -369,8 +376,7 @@ server_client_lost(struct client *c)
 {
 	struct client_file	*cf, *cf1;
 
-	if (cfg_client == c)
-		cfg_client = NULL;
+	cfg_client_lost(c);
 	c->flags |= CLIENT_DEAD;
 
 	status_prompt_clear(c);
@@ -394,6 +400,9 @@ server_client_lost(struct client *c)
 	if (c->name != NULL && (c->flags & (CLIENT_CONTROL|CLIENT_TERMINAL)))
 		events_fire_client("client-closed", c);
 
+	c->session = NULL;
+	c->last_session = NULL;
+
 	if (c->flags & CLIENT_CONTROL)
 		control_stop(c);
 	if (c->flags & CLIENT_TERMINAL)
@@ -406,6 +415,7 @@ server_client_lost(struct client *c)
 	tty_term_free_list(c->term_caps, c->term_ncaps);
 
 	status_free(c);
+	status_side_free(c);
 	input_cancel_requests(c);
 
 	free(c->title);
@@ -735,15 +745,123 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 	return (KEYC_MOUSE_LOCATION_NOWHERE);
 }
 
+/* Check for mouse events on the status lines. */
+static int
+server_client_check_mouse_status(struct client *c, struct mouse_event *m,
+    enum key_code_type type, u_int x, u_int y,
+    enum key_code_mouse_location *loc)
+{
+	struct winlink		*fwl;
+	struct window_pane	*fwp;
+	struct session		*s = c->session, *fs;
+	struct style_range	*sr;
+	u_int			 n, sidey, separator;
+
+	*loc = KEYC_MOUSE_LOCATION_NOWHERE;
+
+	m->statusat = status_at_line(c);
+	m->statuslines = status_line_size(c);
+	m->sideat = status_side_at_column(c);
+	m->sidewidth = status_side_size(c);
+	if (c->tty.mouse_drag_flag != 0 &&
+	    c->tty.mouse_drag_location == KEYC_MOUSE_LOCATION_STATUS_BORDER) {
+		*loc = KEYC_MOUSE_LOCATION_STATUS_BORDER;
+		return (0);
+	}
+
+	if (m->statusat != -1 &&
+	    y >= (u_int)m->statusat &&
+	    y < m->statusat + m->statuslines) {
+		sr = status_get_range(c, x, y - m->statusat);
+	} else {
+		if (m->sideat == -1 ||
+		    x < (u_int)m->sideat ||
+		    x >= m->sideat + m->sidewidth)
+			return (0);
+		if (m->statusat == 0)
+			sidey = m->statuslines;
+		else
+			sidey = 0;
+		if (y < sidey || y - sidey >= status_side_rows(c))
+			return (0);
+		separator = m->sideat;
+		if (separator == 0)
+			separator = m->sidewidth - 1;
+		if (m->sidewidth > 1 && x == separator) {
+			*loc = KEYC_MOUSE_LOCATION_STATUS_BORDER;
+			if (type == KEYC_TYPE_MOUSEDRAG &&
+			    c->tty.mouse_drag_flag == 0)
+				c->tty.mouse_drag_status = 1;
+			return (0);
+		}
+		sr = status_side_get_range(c, x - m->sideat, y - sidey);
+	}
+	if (type == KEYC_TYPE_MOUSEDRAG && c->tty.mouse_drag_flag == 0)
+		c->tty.mouse_drag_status = 1;
+	if (sr == NULL) {
+		*loc = KEYC_MOUSE_LOCATION_STATUS_DEFAULT;
+		return (0);
+	}
+
+	switch (sr->type) {
+	case STYLE_RANGE_NONE:
+		return (-1);
+	case STYLE_RANGE_LEFT:
+		log_debug("mouse range: left");
+		*loc = KEYC_MOUSE_LOCATION_STATUS_LEFT;
+		break;
+	case STYLE_RANGE_RIGHT:
+		log_debug("mouse range: right");
+		*loc = KEYC_MOUSE_LOCATION_STATUS_RIGHT;
+		break;
+	case STYLE_RANGE_PANE:
+		fwp = window_pane_find_by_id(sr->argument);
+		if (fwp == NULL)
+			return (-1);
+		m->wp = sr->argument;
+
+		log_debug("mouse range: pane %%%u", m->wp);
+		*loc = KEYC_MOUSE_LOCATION_STATUS;
+		break;
+	case STYLE_RANGE_WINDOW:
+		fwl = winlink_find_by_index(&s->windows, sr->argument);
+		if (fwl == NULL)
+			return (-1);
+		m->w = fwl->window->id;
+
+		log_debug("mouse range: window @%u", m->w);
+		*loc = KEYC_MOUSE_LOCATION_STATUS;
+		break;
+	case STYLE_RANGE_SESSION:
+		fs = session_find_by_id(sr->argument);
+		if (fs == NULL)
+			return (-1);
+		m->s = sr->argument;
+
+		log_debug("mouse range: session $%u", m->s);
+		*loc = KEYC_MOUSE_LOCATION_STATUS;
+		break;
+	case STYLE_RANGE_USER:
+		log_debug("mouse range: user");
+		*loc = KEYC_MOUSE_LOCATION_STATUS;
+		break;
+	case STYLE_RANGE_CONTROL:
+		n = sr->argument; /* parsing keeps this < 10 */
+		log_debug("mouse range: control %u", n);
+		*loc = KEYC_MOUSE_LOCATION_CONTROL0 + n;
+		break;
+	}
+	return (0);
+}
+
 /* Check for mouse keys. */
 static key_code
 server_client_check_mouse(struct client *c, struct key_event *event)
 {
 	struct mouse_event		*m = &event->m;
-	struct session			*s = c->session, *fs;
+	struct session			*s = c->session;
 	struct window			*w = s->curw->window;
-	struct winlink			*fwl;
-	struct window_pane		*wp, *fwp, *lwp = NULL;
+	struct window_pane		*wp, *lwp = NULL;
 	u_int				 x, y, sx, sy, px, py, n, sl_mpos = 0;
 	u_int				 b, bn;
 	int				 ignore = 0;
@@ -786,9 +904,14 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 			x = m->x, y = m->y, b = m->b;
 			if (x == m->lx && y == m->ly)
 				return (KEYC_UNKNOWN);
+			if (c->tty.mouse_drag_status) {
+				x = c->tty.mouse_drag_x;
+				y = c->tty.mouse_drag_y;
+			}
 			log_debug("drag update at %u,%u", x, y);
 		} else {
 			x = m->lx, y = m->ly, b = m->lb;
+			c->tty.mouse_drag_status = 0;
 			log_debug("drag start at %u,%u", x, y);
 		}
 	} else if (MOUSE_WHEEL(m->b)) {
@@ -840,67 +963,10 @@ have_event:
 	m->wp = -1;
 	m->ignore = ignore;
 
-	/* Is this on the status line? */
-	m->statusat = status_at_line(c);
-	m->statuslines = status_line_size(c);
-	if (m->statusat != -1 &&
-	    y >= (u_int)m->statusat &&
-	    y < m->statusat + m->statuslines) {
-		sr = status_get_range(c, x, y - m->statusat);
-		if (sr == NULL) {
-			loc = KEYC_MOUSE_LOCATION_STATUS_DEFAULT;
-		} else {
-			switch (sr->type) {
-			case STYLE_RANGE_NONE:
-				return (KEYC_UNKNOWN);
-			case STYLE_RANGE_LEFT:
-				log_debug("mouse range: left");
-				loc = KEYC_MOUSE_LOCATION_STATUS_LEFT;
-				break;
-			case STYLE_RANGE_RIGHT:
-				log_debug("mouse range: right");
-				loc = KEYC_MOUSE_LOCATION_STATUS_RIGHT;
-				break;
-			case STYLE_RANGE_PANE:
-				fwp = window_pane_find_by_id(sr->argument);
-				if (fwp == NULL)
-					return (KEYC_UNKNOWN);
-				m->wp = sr->argument;
-
-				log_debug("mouse range: pane %%%u", m->wp);
-				loc = KEYC_MOUSE_LOCATION_STATUS;
-				break;
-			case STYLE_RANGE_WINDOW:
-				fwl = winlink_find_by_index(&s->windows,
-				    sr->argument);
-				if (fwl == NULL)
-					return (KEYC_UNKNOWN);
-				m->w = fwl->window->id;
-
-				log_debug("mouse range: window @%u", m->w);
-				loc = KEYC_MOUSE_LOCATION_STATUS;
-				break;
-			case STYLE_RANGE_SESSION:
-				fs = session_find_by_id(sr->argument);
-				if (fs == NULL)
-					return (KEYC_UNKNOWN);
-				m->s = sr->argument;
-
-				log_debug("mouse range: session $%u", m->s);
-				loc = KEYC_MOUSE_LOCATION_STATUS;
-				break;
-			case STYLE_RANGE_USER:
-				log_debug("mouse range: user");
-				loc = KEYC_MOUSE_LOCATION_STATUS;
-				break;
-			case STYLE_RANGE_CONTROL:
-				n = sr->argument; /* parsing keeps this < 10 */
-				log_debug("mouse range: control %u", n);
-				loc = KEYC_MOUSE_LOCATION_CONTROL0 + n;
-				break;
-			}
-		}
-	}
+	if (server_client_check_mouse_status(c, m, type, x, y, &loc) != 0)
+		return (KEYC_UNKNOWN);
+	if (w->modal != NULL && loc != KEYC_MOUSE_LOCATION_NOWHERE)
+		return (KEYC_UNKNOWN);
 
 	/*
 	 * Not on status line. Adjust position and check for border, pane, or
@@ -913,7 +979,12 @@ have_event:
 			m->w = lwp->window->id;
 		}
 	} else if (loc == KEYC_MOUSE_LOCATION_NOWHERE) {
-		px = x;
+		if (m->sideat == 0 && x >= m->sidewidth)
+			px = x - m->sidewidth;
+		else if (m->sideat > 0 && x >= (u_int)m->sideat)
+			px = m->sideat - 1;
+		else
+			px = x;
 		if (m->statusat == 0 && y >= m->statuslines)
 			py = y - m->statuslines;
 		else if (m->statusat > 0 && y >= (u_int)m->statusat)
@@ -1023,7 +1094,6 @@ have_event:
 			log_debug("click timer started");
 			tv.tv_sec = KEYC_CLICK_TIMEOUT / 1000;
 			tv.tv_usec = (KEYC_CLICK_TIMEOUT % 1000) * 1000L;
-			evtimer_del(&c->click_timer);
 			evtimer_add(&c->click_timer, &tv);
 		}
 	}
@@ -1077,17 +1147,25 @@ have_event:
 		 * where the user grabbed.
 		 */
 		if (c->tty.mouse_drag_flag == 0) {
-			c->tty.mouse_drag_x = px;
-			c->tty.mouse_drag_y = py;
+			c->tty.mouse_drag_location = loc;
+			if (c->tty.mouse_drag_status) {
+				c->tty.mouse_drag_x = x;
+				c->tty.mouse_drag_y = y;
+			} else {
+				c->tty.mouse_drag_x = px;
+				c->tty.mouse_drag_y = py;
+			}
 		}
 		c->tty.mouse_drag_flag = MOUSE_BUTTONS(b) + 1;
 
-		/* Only change pane if not already dragging a pane border. */
-		if (lwp == NULL) {
+		/* Change the pane if the drag did not start on status line. */
+		if (!c->tty.mouse_drag_status && lwp == NULL) {
 			lwp = wp = window_get_active_at(w, px, py);
 			if (wp != NULL)
 				c->tty.mouse_last_pane = wp->id;
 		}
+
+		/* Change scrollbar position if needed. */
 		if (c->tty.mouse_scrolling_flag == 0 &&
 		    loc == KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER) {
 			c->tty.mouse_scrolling_flag = 1;
@@ -1349,10 +1427,11 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 		m->key = key;
 
 		/*
-		 * Mouse drag is in progress, so fire the callback (now that
-		 * the mouse event is valid).
+		 * Synchronize direct drag output with the later damage redraw
+		 * before invoking the drag callback.
 		 */
 		if ((key & KEYC_MASK_KEY) == KEYC_DRAGGING) {
+			tty_sync_start(&c->tty);
 			c->tty.mouse_drag_update(c, m);
 			goto out;
 		}
@@ -1494,7 +1573,6 @@ try_again:
 
 			tv.tv_sec = repeat / 1000;
 			tv.tv_usec = (repeat % 1000) * 1000L;
-			evtimer_del(&c->repeat_timer);
 			evtimer_add(&c->repeat_timer, &tv);
 		} else {
 			c->flags &= ~CLIENT_REPEAT;
@@ -1599,18 +1677,29 @@ server_client_handle_menu_key(struct client *c, struct key_event *event)
 		m = &new_event.m;
 		m->statusat = status_at_line(c);
 		m->statuslines = status_line_size(c);
+		m->sideat = status_side_at_column(c);
+		m->sidewidth = status_side_size(c);
 
 		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
-		m->x += ox;
-		if (m->statusat == 0) {
-			if (m->y < m->statuslines)
+		if (m->sideat == 0 && m->x < m->sidewidth)
+			m->x = m->y = UINT_MAX;
+		else if (m->sideat > 0 && m->x >= (u_int)m->sideat)
+			m->x = m->y = UINT_MAX;
+		else {
+			if (m->sideat == 0)
+				m->x -= m->sidewidth;
+			m->x += ox;
+			if (m->statusat == 0) {
+				if (m->y < m->statuslines)
+					m->x = m->y = UINT_MAX;
+				else
+					m->y = m->y - m->statuslines + oy;
+			} else if (m->statusat > 0 &&
+			    m->y >= (u_int)m->statusat)
 				m->x = m->y = UINT_MAX;
 			else
-				m->y = m->y - m->statuslines + oy;
-		} else if (m->statusat > 0 && m->y >= (u_int)m->statusat)
-			m->x = m->y = UINT_MAX;
-		else
-			m->y += oy;
+				m->y += oy;
+		}
 	}
 
 	if (menu_key(c, w->menu, &new_event) == 1)
@@ -1624,8 +1713,10 @@ server_client_handle_key0(struct client *c, struct key_event *event,
     struct cmdq_item *after, struct cmdq_item **next)
 {
 	struct session		*s = c->session;
+	struct mouse_event	*m = &event->m;
 	struct cmdq_item	*item;
 	struct window_pane	*wp;
+	key_code		 key;
 
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
@@ -1664,13 +1755,19 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 		}
 		if (wp != NULL &&
 		    (wp->flags & PANE_CAPTUREALLKEYS) &&
+		    (~wp->flags & PANE_EXITED) &&
 		    TAILQ_EMPTY(&wp->modes) &&
-		    !KEYC_IS_MOUSE(event->key)) {
-			if (~wp->flags & PANE_EXITED) {
-				window_pane_key(wp, c, s, s->curw, event->key,
-				    &event->m);
-				return (0);
+		    (!KEYC_IS_MOUSE(event->key) || wp->wait_item != NULL)) {
+			key = event->key;
+			if (KEYC_IS_MOUSE(key)) {
+				key = server_client_check_mouse(c, event);
+				if (key == KEYC_UNKNOWN || (u_int)m->wp != wp->id)
+					return (0);
+				m->valid = 1;
+				m->key = key;
 			}
+			window_pane_key(wp, c, s, s->curw, key, m);
+			return (0);
 		}
 
 		if (server_client_handle_menu_key(c, event))
@@ -1779,8 +1876,8 @@ server_client_loop(void)
 	}
 
 	/*
-	 * Any windows will have been redrawn as part of clients, so clear
-	 * their flags now.
+	 * Clear window redraw state after processing all clients. Deferred
+	 * redraws are preserved in client flags.
 	 */
 	RB_FOREACH(w, windows, &windows) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -1791,6 +1888,8 @@ server_client_loop(void)
 			wp->flags &= ~(PANE_REDRAW|PANE_REDRAWSCROLLBAR|
 			    PANE_ACTIVITY);
 		}
+		redraw_free_damage(w);
+
 		check_window_name(w);
 	}
 
@@ -2012,6 +2111,8 @@ server_client_prompt_cursor(struct client *c, struct window_pane *wp, int *mode,
 	if (window_position_is_visible(r, *cx)) {
 		if (status_at_line(c) == 0)
 			*cy += status_line_size(c);
+		if (status_side_at_column(c) == 0)
+			*cx += status_side_size(c);
 		*mode |= MODE_CURSOR;
 	}
 	return (1);
@@ -2080,6 +2181,8 @@ server_client_reset_state(struct client *c)
 				cy -= oy;
 				if (status_at_line(c) == 0)
 					cy += status_line_size(c);
+				if (status_side_at_column(c) == 0)
+					cx += status_side_size(c);
 			}
 			prompt = 1;
 		} else {
@@ -2088,7 +2191,7 @@ server_client_reset_state(struct client *c)
 		}
 		if (!prompt) {
 			cursor = 0;
-			pane_mode = wp->base.mode;
+			pane_mode = s->mode;
 
 			tty_window_offset(tty, &ox, &oy, &sx, &sy);
 			if (wp->xoff + (int)s->cx >= (int)ox &&
@@ -2119,6 +2222,8 @@ server_client_reset_state(struct client *c)
 
 				if (status_at_line(c) == 0)
 					cy += status_line_size(c);
+				if (status_side_at_column(c) == 0)
+					cx += status_side_size(c);
 			}
 
 			if (!cursor)
@@ -2249,7 +2354,7 @@ server_client_check_exit(struct client *c, int force)
 	if (~c->flags & CLIENT_EXIT)
 		return;
 
-	if (c->flags & CLIENT_CONTROL) {
+	if ((c->flags & CLIENT_CONTROL) && c->control_state != NULL) {
 		if (force)
 			control_discard_all(c);
 		else {
@@ -2336,6 +2441,8 @@ server_client_any_pane_redraw(struct client *c)
 
 	if (c->flags & CLIENT_REDRAWWINDOW)
 		return (1);
+	if (!TAILQ_EMPTY(&w->damage))
+		return (1);
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (wp->flags & (PANE_REDRAW|PANE_REDRAWSCROLLBAR))
 			return (1);
@@ -2352,6 +2459,7 @@ server_client_check_redraw(struct client *c)
 	struct window		*w = s->curw->window;
 	struct window_pane	*wp;
 	int			 needed, tflags, mode = tty->mode;
+	int			 damaged = !TAILQ_EMPTY(&w->damage);
 	struct timeval		 tv = { .tv_usec = 1000 };
 	static struct event	 ev;
 	size_t			 n;
@@ -2377,12 +2485,12 @@ server_client_check_redraw(struct client *c)
 		return;
 	}
 
-	/*
-	 * If there is outstanding data, defer the redraw until it has been
-	 * consumed. We can just add a timer to get out of the event loop and
-	 * end up back here.
-	 */
+	/* Ignore output queued within the current synchronized frame. */
 	n = EVBUFFER_LENGTH(tty->out);
+	if ((tty->flags & TTY_SYNCING) && n > tty->sync_offset)
+		n = tty->sync_offset;
+
+	/* Defer until output drains, preserving damage in client flags. */
 	if (n != 0 || (tty->flags & TTY_BLOCK)) {
 		if (n != 0)
 			log_debug("%s: redraw deferred (%zu left)", c->name, n);
@@ -2393,6 +2501,10 @@ server_client_check_redraw(struct client *c)
 		if (!evtimer_pending(&ev, NULL)) {
 			log_debug("redraw timer started");
 			evtimer_add(&ev, &tv);
+		}
+		if (damaged) {
+			c->flags |= CLIENT_REDRAWWINDOW;
+			return;
 		}
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->flags & PANE_REDRAW) {
@@ -2427,6 +2539,10 @@ server_client_check_redraw(struct client *c)
 				redraw_pane_scrollbar(c, wp);
 			}
 		}
+
+		/* Draw damage here if no client redraw flags will handle it. */
+		if (damaged && (c->flags & CLIENT_ALLREDRAWFLAGS) == 0)
+			redraw_client_damage(c);
 	}
 
 	/*
@@ -2440,6 +2556,7 @@ server_client_check_redraw(struct client *c)
 		}
 		server_client_set_progress_bar(c);
 		redraw_screen(c);
+		redraw_client_damage(c);
 	}
 
 	/* Put the tty back how it was. */
@@ -2562,7 +2679,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 		if (datalen != 0)
 			goto bad;
 
-		if (c->flags & CLIENT_CONTROL)
+		if ((c->flags & CLIENT_CONTROL) || (~c->tty.flags & TTY_OPENED))
 			break;
 		server_client_update_latest(c);
 		old_sx = c->tty.sx;
@@ -2715,6 +2832,8 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	} else {
 		values = args_from_vector(argc, argv);
 		pr = cmd_parse_from_arguments(values, argc, NULL);
+		args_free_values(values, argc);
+		free(values);
 		switch (pr->status) {
 		case CMD_PARSE_ERROR:
 			cause = pr->error;
@@ -2722,8 +2841,6 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 		case CMD_PARSE_SUCCESS:
 			break;
 		}
-		args_free_values(values, argc);
-		free(values);
 		cmd_free_argv(argc, argv);
 		if ((c->flags & CLIENT_READONLY) &&
 		    !cmd_list_all_have(pr->cmdlist, CMD_READONLY)) {
