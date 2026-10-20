@@ -1,4 +1,4 @@
-/* $OpenBSD: key-bindings.c,v 1.195 2026/10/16 07:59:06 nicm Exp $ */
+/* $OpenBSD: key-bindings.c,v 1.196 2026/10/20 06:45:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -583,7 +583,9 @@ key_bindings_init(void)
 		"bind -Tcopy-mode C-o { send -X select-output }",
 		"bind -Tcopy-mode C-p { send -X cursor-up }",
 		"bind -Tcopy-mode C-r { command-prompt -P -T search -ip'(search up)' -I'#{pane_search_string}' { send -X search-backward-incremental -- '%%' } }",
+		"bind -Tcopy-mode C-M-r { command-prompt -P -T search -ip'(regex search up)' -I'#{pane_search_string}' { send -X search-backward-incremental-regex -- '%%' } }",
 		"bind -Tcopy-mode C-s { command-prompt -P -T search -ip'(search down)' -I'#{pane_search_string}' { send -X search-forward-incremental -- '%%' } }",
+		"bind -Tcopy-mode C-M-s { command-prompt -P -T search -ip'(regex search down)' -I'#{pane_search_string}' { send -X search-forward-incremental-regex -- '%%' } }",
 		"bind -Tcopy-mode C-v { send -X page-down }",
 		"bind -Tcopy-mode C-w { send -X copy-pipe-and-cancel }",
 		"bind -Tcopy-mode Escape { send -X cancel }",
