@@ -4281,6 +4281,8 @@ window_copy_scroll_to(struct window_mode_entry *wme, u_int px, u_int py,
 		data->cy = py - (gd->hsize - data->oy);
 	else {
 		gap = gd->sy / 4;
+		if (gap == 0)
+			gap = 1;
 		if (py < gd->sy) {
 			offset = 0;
 			data->cy = py;
