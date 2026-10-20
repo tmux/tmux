@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Search match with the copy mode cursor after the last column.
 
 PATH=/bin:/usr/bin
@@ -7,23 +9,20 @@ TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -f/dev/null -Ltest$$"
-n=0
-$TMUX kill-server 2>/dev/null
+stop_server $TMUX || exit 1
 
 cleanup()
 {
-	$TMUX kill-server 2>/dev/null
+	stop_server $TMUX || exit 1
 }
 trap cleanup 0 1 15
 
 # $1 is the text of each line, $2 the expected match.
 check()
 {
-	$TMUX kill-server 2>/dev/null
-	n=$((n + 1))
-	TMUX="$TEST_TMUX -f/dev/null -Ltest$$-$n"
-	$TMUX new -d -x20 -y5 "printf '$1%.0s' 1 2 3 4 5; cat" || exit 1
-	sleep 1
+	stop_server $TMUX || exit 1
+	$TMUX new -d -x20 -y5 "printf '$1%.0s' 1 2 3 4 5; printf '\\033]2;ready\\007'; cat" || exit 1
+	wait_for_output ready $TMUX display -p '#{pane_title}' || exit 1
 	$TMUX set -g mode-keys vi || exit 1
 	$TMUX copy-mode || exit 1
 	$TMUX send -X begin-selection || exit 1

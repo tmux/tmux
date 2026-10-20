@@ -24,7 +24,7 @@ tmux = sys.argv[1]
 server = [tmux, "", "-f/dev/null"]
 
 def run(*args, check=True):
-    p = subprocess.run(server + list(args), capture_output=True)
+    p = subprocess.run(server + list(args), capture_output=True, timeout=10)
     if check and p.returncode != 0:
         raise RuntimeError("%r: %s" % (args, p.stderr.decode()))
     return p.stdout.decode().strip()
@@ -107,35 +107,39 @@ for name, report in reports:
             pid = fd = None
             # Each case needs fresh one-shot startup reply flags. A new
             # socket also avoids racing shutdown of the previous server.
-            server[1] = "-LtestReplies%d-%d" % (os.getpid(), cases)
+            server[1] = "-Ltr%d-%d" % (os.getpid(), cases)
             try:
-                run("new-session", "-d", "-s", "replies", "-x", "80",
-                    "-y", "24", "stty raw -echo; exec cat -v")
+                setup = ["new-session", "-d", "-s", "replies", "-x", "80",
+                    "-y", "24", "stty raw -echo; printf '\033]2;ready\007'; exec cat -v",
+                    ";", "set-option", "-g", "status", "off",
+                    ";", "set-option", "-g", "assume-paste-time", "0",
+                    ";", "set-option", "-s", "escape-time",
+                        "100" if delivery == "expired" else "60000",
+                    ";", "set-option", "-g", "@seen", "",
+                    ";", "bind-key", "-n", "Escape", "set-option", "-gF",
+                        "@seen", "#{@seen}E"]
+                if name == "pixels":
+                    # Draw the window cell size without running a command
+                    # after the reply, which could recalculate window sizes.
+                    setup += [";", "set-option", "-g", "status", "on",
+                        ";", "set-option", "-g", "status-format[0]",
+                        "W=#{window_cell_width}x#{window_cell_height}"]
+                if name == "XDA-kitty-nosync":
+                    setup += [";", "set-option", "-as", "terminal-features",
+                        ",*:sync@"]
+                if name == "kitty-graphics-disabled":
+                    setup += [";", "set-option", "-as", "terminal-features",
+                        ",*:kittygraphics@"]
+                if name == "kitty-graphics-no-query" and images:
+                    setup += [";", "set-option", "-as", "terminal-overrides",
+                        ",*:XT@"]
+                run(*setup)
                 if images is None:
                     images = run("display-message", "-p", "#{image_support}") == "1"
-                run("set-option", "-g", "status", "off")
-                if name == "pixels":
-                    # Draw the window cell size so it can be read from the
-                    # client's output without running another command, since
-                    # each command's client recalculates the window sizes.
-                    run("set-option", "-g", "status", "on")
-                    run("set-option", "-g", "status-format[0]",
-                        "W=#{window_cell_width}x#{window_cell_height}")
-                run("set-option", "-g", "assume-paste-time", "0")
-                if delivery == "expired":
-                    run("set-option", "-s", "escape-time", "100")
-                else:
-                    run("set-option", "-s", "escape-time", "60000")
-                run("set-option", "-g", "@seen", "")
-                if name == "XDA-kitty-nosync":
-                    run("set-option", "-as", "terminal-features", ",*:sync@")
-                if name == "kitty-graphics-disabled":
-                    run("set-option", "-as", "terminal-features",
-                        ",*:kittygraphics@")
-                if name == "kitty-graphics-no-query" and images:
-                    run("set-option", "-as", "terminal-overrides", ",*:XT@")
-                run("bind-key", "-n", "Escape", "set-option", "-gF",
-                    "@seen", "#{@seen}E")
+                deadline = time.monotonic() + 10
+                while run("display-message", "-p", "#{pane_title}") != "ready":
+                    assert time.monotonic() < deadline, (context, "pane not ready")
+                    time.sleep(.01)
                 pid, fd = os.forkpty()
                 if pid == 0:
                     os.environ["TERM"] = "xterm-256color"
@@ -143,7 +147,7 @@ for name, report in reports:
                         struct.pack("HHHH", 24, 80, 0, 0))
                     os.execv(tmux, server + ["attach-session", "-t", "replies"])
                 output = b""
-                deadline = time.monotonic() + 5
+                deadline = time.monotonic() + 10
                 while b"\033]11;?\033\\" not in output:
                     assert time.monotonic() < deadline, (context, "missing query")
                     if select.select([fd], [], [], .01)[0]:
@@ -187,7 +191,7 @@ for name, report in reports:
                     # query extends it to at least 500ms; wait for fallback
                     # rather than assuming a fixed expiration time.
                     expected = wire[:-1].replace(b"\033", b"^[").decode()
-                    deadline = time.monotonic() + 5
+                    deadline = time.monotonic() + 10
                     while run("capture-pane", "-p") != expected:
                         assert time.monotonic() < deadline, (context, "timer stalled")
                         if select.select([fd], [], [], .01)[0]:
@@ -206,7 +210,7 @@ for name, report in reports:
                     drawn = re.findall(rb"W=(\d+x\d+)", output)
                     assert drawn and drawn[-1] == b"10x20", (
                         context, "window cell size", drawn)
-                deadline = time.monotonic() + 5
+                deadline = time.monotonic() + 10
                 while run("capture-pane", "-p") != expected:
                     assert time.monotonic() < deadline, (context,
                         "reply leaked or input stalled", run("capture-pane", "-p"))

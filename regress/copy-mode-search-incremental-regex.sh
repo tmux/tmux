@@ -1,28 +1,35 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestB$$ -f/dev/null"
-$TMUX kill-server 2>/dev/null
+stop_server $TMUX || exit 1
 
 cleanup()
 {
-	$TMUX kill-server 2>/dev/null
+	stop_server $TMUX || exit 1
 }
 trap cleanup 0
 trap 'exit 1' 1 2 3 15
 
 $TMUX new -d -x40 -y10 \
-	"printf 'foo1 bar\nfoo2 baz\nplain foo\n'; cat" || exit 1
+	"printf 'foo1 bar\nfoo2 baz\nplain foo\n\033]2;ready\007'; exec cat" ||
+	exit 1
+wait_for_output ready $TMUX display-message -p '#{pane_title}' || exit 1
 $TMUX set -g window-size manual || exit 1
 
 check_count()
 {
-	[ "$($TMUX display-message -p \
-	    '#{search_present} #{search_count_current}/#{search_count}')" \
-	    = "$1" ] || exit 1
+	got=$($TMUX display-message -p \
+	    '#{search_present} #{search_count_current}/#{search_count}') || exit 1
+	if [ "$got" != "$1" ]; then
+		echo "$keys: expected search count '$1', got '$got'" >&2
+		exit 1
+	fi
 }
 
 for keys in vi emacs; do
@@ -87,5 +94,5 @@ for keys in vi emacs; do
 	$TMUX send-keys -X cancel || exit 1
 done
 
-$TMUX kill-server || exit 1
+stop_server $TMUX || exit 1
 exit 0

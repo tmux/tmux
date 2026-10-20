@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # A client narrower than the window must clamp pane output to its visible
 # part, including a pane cut off at both sides after panning. Each inner
 # client runs in an outer pane of its size.
@@ -19,8 +21,8 @@ CAPTURE=$DIR/capture
 
 cleanup()
 {
-	$TMUX2 kill-server >/dev/null 2>&1
-	$TMUX kill-server >/dev/null 2>&1
+	stop_server $TMUX2 || exit 1
+	stop_server $TMUX || exit 1
 	rm -f "$TRIGGER" "$CAPTURE"
 	rmdir "$DIR"
 }
@@ -36,8 +38,8 @@ fail()
 # Start the inner server with one pane running $1.
 start()
 {
-	$TMUX kill-server >/dev/null 2>&1
-	$TMUX2 kill-server >/dev/null 2>&1
+	stop_server $TMUX || exit 1
+	stop_server $TMUX2 || exit 1
 	rm -f "$TRIGGER"
 
 	$TMUX new-session -d -s inner -x 200 -y 50 "$1" || exit 1

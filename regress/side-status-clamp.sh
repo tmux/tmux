@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # With side-status left, a client narrower than the window must clamp pane
 # output to its visible part without killing the server or drawing over the
 # side status line. Each inner client runs in an outer pane of its size.
@@ -19,8 +21,8 @@ CAPTURE=$DIR/capture
 
 cleanup()
 {
-	$TMUX2 kill-server >/dev/null 2>&1
-	$TMUX kill-server >/dev/null 2>&1
+	stop_server $TMUX2 || exit 1
+	stop_server $TMUX || exit 1
 	rm -f "$TRIGGER" "$CAPTURE"
 	rmdir "$DIR"
 }
@@ -37,8 +39,8 @@ fail()
 # small client from outer panes of sizes $2 and $3 (WxH).
 start()
 {
-	$TMUX kill-server >/dev/null 2>&1
-	$TMUX2 kill-server >/dev/null 2>&1
+	stop_server $TMUX || exit 1
+	stop_server $TMUX2 || exit 1
 	rm -f "$TRIGGER"
 
 	$TMUX new-session -d -s inner -x 200 -y 50 "$1" || exit 1

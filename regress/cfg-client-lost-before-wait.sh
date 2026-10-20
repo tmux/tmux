@@ -48,7 +48,7 @@ def wait_for(predicate):
         time.sleep(0.05)
     raise AssertionError("timed out waiting for client cleanup")
 
-with tempfile.TemporaryDirectory(prefix="tmux-cfg-early-") as tmp:
+with tempfile.TemporaryDirectory(prefix="tmux-cfg-early-", dir="/tmp") as tmp:
     root = Path(tmp)
     sockpath = root / "socket"
     go = root / "go"

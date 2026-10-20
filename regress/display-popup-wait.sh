@@ -9,7 +9,7 @@ export PATH TERM
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
-. ./server-common.inc
+. ./regress-common.inc
 TESTDIR=$(mktemp -d) || exit 1
 GATE=$TESTDIR/gate
 READY=$TESTDIR/ready

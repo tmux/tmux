@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # On a terminal with left and right margins, scrolling a pane beside the side
 # status line sets the margins to the pane's columns. The inner client is
 # told the terminal has margins and its output is recorded raw from the outer
@@ -17,8 +19,8 @@ OUT=$DIR/out
 
 cleanup()
 {
-	$TMUX2 kill-server >/dev/null 2>&1
-	$TMUX kill-server >/dev/null 2>&1
+	stop_server $TMUX2 || exit 1
+	stop_server $TMUX || exit 1
 	rm -f "$TRIGGER" "$OUT"
 	rmdir "$DIR"
 }
@@ -59,8 +61,8 @@ check()
 	    tr -d 'E[s' | tr '\n' ' ')
 	[ "$got" = "$2 " ] || fail "side-status $1: margins '$got', expected '$2'"
 
-	$TMUX2 kill-server >/dev/null 2>&1
-	$TMUX kill-server >/dev/null 2>&1
+	stop_server $TMUX2 || exit 1
+	stop_server $TMUX || exit 1
 }
 
 # Pane in columns 15 to 60 after a left side status line of width 14.

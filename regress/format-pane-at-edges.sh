@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # pane_at_left/right include reserved scrollbar width and padding, but not
 # overlay scrollbars. Use current geometry when a pane is zoomed.
 
@@ -9,7 +11,7 @@ export TERM
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
-trap '$TMUX kill-server 2>/dev/null' 0
+trap 'stop_server $TMUX || exit 1' 0
 trap 'exit 1' 1 2 15
 
 fail()

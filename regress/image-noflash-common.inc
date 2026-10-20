@@ -1,3 +1,5 @@
+. ./regress-common.inc
+
 # Shared setup for the image-*-noflash.sh tests: each drives some mouse or
 # keyboard interaction that must not retransmit an unrelated pane's image,
 # checked by counting DCS (\033P) sequences in the client's raw output.
@@ -19,8 +21,8 @@ SIXEL_HEADER='\033Pq"1;1;26;26#0;2;100;100;100#0!26~-!26~-!26~-!26~-!26B\033\\'
 
 cleanup()
 {
-	$TMUX kill-server >/dev/null 2>&1
-	$TMUX2 kill-server >/dev/null 2>&1
+	stop_server $TMUX || exit 1
+	stop_server $TMUX2 || exit 1
 }
 fail()
 {

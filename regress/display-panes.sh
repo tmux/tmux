@@ -1,12 +1,14 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Tests for display-panes as panes-mode.
 
 PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMP=$(mktemp -d) || exit 1
+TMP=$(test_tmpdir) || exit 1
 TMUX_TMPDIR="$TMP"
 export TMUX_TMPDIR
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
@@ -14,8 +16,8 @@ TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
 
 cleanup()
 {
-	$TMUX kill-server 2>/dev/null
-	$TMUX2 kill-server 2>/dev/null
+	stop_server $TMUX || exit 1
+	stop_server $TMUX2 || exit 1
 	rm -rf "$TMP"
 }
 trap cleanup EXIT
@@ -59,14 +61,7 @@ wait_option()
 
 wait_clients()
 {
-	i=0
-	while [ "$i" -lt 50 ]; do
-		c=$($TMUX list-clients -F x 2>/dev/null | grep -c x)
-		[ "$c" -eq "$1" ] && return 0
-		sleep 0.2
-		i=$((i + 1))
-	done
-	fail "expected $1 clients, have $c"
+	wait_for_clients "$1" $TMUX || fail "expected $1 clients"
 }
 
 $TMUX new-session -d -s m -x 80 -y 24 'cat' || exit 1

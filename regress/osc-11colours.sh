@@ -1,22 +1,27 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
-$TMUX kill-server 2>/dev/null
+trap 'stop_server $TMUX' 0
+trap 'exit 1' 1 2 15
 
-$TMUX new -d
-$TMUX set -g remain-on-exit on
+$TMUX new -d "stty raw -echo; printf '\\033]2;ready\\007'; exec cat" || exit 1
+wait_for_output ready $TMUX display -p '#{pane_title}' || exit 1
+colour_case=0
 
 do_test() {
-	$TMUX splitw "printf '$1'"
-	sleep 0.25
-	c="$($TMUX display -p '#{pane_bg}')"
-	$TMUX kill-pane
-	[ "$c" != "$2" ] && return 1
-	return 0
+	colour_case=$((colour_case + 1))
+	# Reset the previous case and append a unique parser completion marker.
+	wire=$(printf '\033]111\007'; printf "$1";
+	    printf '\033]2;colour-%s\007' "$colour_case")
+	$TMUX send-keys -l "$wire" || return 1
+	wait_for_output "colour-$colour_case:$2" $TMUX display -p \
+	    '#{pane_title}:#{pane_bg}'
 }
 
 do_test '\033]11;rgb:ff/ff/ff\007' '#ffffff' || exit 1
@@ -240,5 +245,5 @@ do_test '\033]11;gray98\007' '#fafafa' || exit 1
 do_test '\033]11;gray99\007' '#fcfcfc' || exit 1
 do_test '\033]11;gray100\007' '#ffffff' || exit 1
 
-$TMUX -f/dev/null kill-server 2>/dev/null
+stop_server $TMUX || exit 1
 exit 0

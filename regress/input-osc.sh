@@ -32,8 +32,7 @@ $TMUX respawn-pane -k -t title-stack: \
 sleep 0.3
 check_capture title-stack 'Y'
 
-$TMUX kill-server 2>/dev/null
-sleep 0.1
+stop_server $TMUX || exit 1
 $TMUX new-session -d -x 20 -y 3 -s osc52 "sleep 2" || exit 1
 $TMUX set-option -s set-clipboard on || exit 1
 $TMUX respawn-pane -k -t osc52: \
@@ -43,5 +42,5 @@ $TMUX save-buffer -b buffer0 - >"$TMP"
 printf "Hello" >"$EXP"
 cmp "$TMP" "$EXP" || fail "osc52"
 
-$TMUX kill-server 2>/dev/null
+stop_server $TMUX || exit 1
 exit $exit_status

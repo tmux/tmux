@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Spreading must include split cells containing tiled panes, but exclude
 # floating leaves and subtrees containing only floating panes.
 
@@ -8,12 +10,12 @@ TERM=screen
 export PATH TERM
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-DIR=$(mktemp -d) || exit 1
+DIR=$(test_tmpdir) || exit 1
 TMUX="$TEST_TMUX -S$DIR/socket -f/dev/null"
 
 cleanup()
 {
-	$TMUX kill-server 2>/dev/null
+	stop_server $TMUX || exit 1
 	rm -rf "$DIR"
 }
 trap cleanup 0 1 15
@@ -45,33 +47,33 @@ for axis in h v; do
 		for floating in no yes; do
 			session=spread-$axis-$number-$floating
 			p0=$($TMUX new-session -dP -F '#{pane_id}' \
-			    -s "$session" -x200 -y200 'exec sleep 100') || exit 1
+			    -s "$session" -x200 -y200 'exec cat') || exit 1
 			p1=$($TMUX split-window -dP -F '#{pane_id}' \
-			    -"$axis" -t "$p0" 'exec sleep 100') || exit 1
+			    -"$axis" -t "$p0" 'exec cat') || exit 1
 			target=$p1
 			first=100
 			last=99
 			if [ "$number" = 3 ]; then
 				target=$($TMUX split-window -dP -F '#{pane_id}' \
-				    -"$axis" -t "$p1" 'exec sleep 100') || exit 1
+				    -"$axis" -t "$p1" 'exec cat') || exit 1
 				first=66
 				last=66
 			fi
 			p2=$($TMUX split-window -dP -F '#{pane_id}' \
-			    -"$cross" -t "$p0" 'exec sleep 100') || exit 1
+			    -"$cross" -t "$p0" 'exec cat') || exit 1
 
 			if [ "$floating" = yes ]; then
 				# Floating leaves at the root and inside the tiled split.
 				for pane in "$target" "$p0"; do
 					$TMUX new-pane -d -t "$pane" -x20 -y8 \
-					    -X10 -Y5 'exec sleep 100' || exit 1
+					    -X10 -Y5 'exec cat' || exit 1
 				done
 				# Retain an extra split at the root, then float all its
 				# panes so it must not be counted or resized.
 				f0=$($TMUX split-window -dP -F '#{pane_id}' \
-				    -"$axis" -t "$target" 'exec sleep 100') || exit 1
+				    -"$axis" -t "$target" 'exec cat') || exit 1
 				f1=$($TMUX split-window -dP -F '#{pane_id}' \
-				    -"$cross" -t "$f0" 'exec sleep 100') || exit 1
+				    -"$cross" -t "$f0" 'exec cat') || exit 1
 				for pane in "$f0" "$f1"; do
 					$TMUX break-pane -dW -s "$pane" \
 					    -x20 -y8 -X30 -Y15 || exit 1

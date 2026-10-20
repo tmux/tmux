@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Exercise switch-mode's session and window lists with a real attached client:
 # fuzzy filtering, movement and selection, the default and custom commands,
 # no-match cancellation, resize, zoom restoration, and -k mode teardown.
@@ -10,7 +12,7 @@ LC_ALL=C.UTF-8
 export PATH TERM LC_ALL
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-DIR=$(mktemp -d) || exit 1
+DIR=$(test_tmpdir) || exit 1
 TMUX_TMPDIR=$DIR
 export TMUX_TMPDIR
 INNER="$TEST_TMUX -LtestI$$ -f/dev/null"
@@ -24,8 +26,8 @@ fail()
 
 cleanup()
 {
-	$OUTER kill-server 2>/dev/null
-	$INNER kill-server 2>/dev/null
+	stop_server $OUTER || exit 1
+	stop_server $INNER || exit 1
 	rm -rf "$DIR"
 }
 trap cleanup 0 1 15

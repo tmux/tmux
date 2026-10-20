@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Exercise drawing of window menus in the screen-redraw.c scene. Menus are
 # window-owned and drawn as REDRAW_MENU spans over panes. Captures use -e so
 # menu-style, menu-selected-style, and menu-border-style are included.
@@ -46,16 +48,22 @@ trim() {
 	mv "$TMP2" "$TMP" || exit 1
 }
 
-compare() {
-	sleep 1
-	$TMUX capturep -pe >$TMP || exit 1
+scene_matches() {
+	$TMUX capturep -pe >"$TMP" || return 1
 	trim
+	cmp -s "$TMP" "$RESULTS/$1.result"
+}
+
+compare() {
 	if [ -n "$GENERATE" ]; then
-		cp $TMP "$RESULTS/$1.result" || exit 1
+		sleep 1
+		$TMUX capturep -pe >"$TMP" || exit 1
+		trim
+		cp "$TMP" "$RESULTS/$1.result" || exit 1
 		echo "generated $1"
 	else
-		cmp -s $TMP "$RESULTS/$1.result" || \
-			fail "scene $1 differs from $RESULTS/$1.result"
+		wait_until scene_matches "$1" ||
+		    fail "scene $1 differs from $RESULTS/$1.result"
 	fi
 }
 
