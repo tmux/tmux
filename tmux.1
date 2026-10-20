@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1190 2026/10/16 16:49:13 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1191 2026/10/20 06:45:56 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 16 2026 $
+.Dd $Mdocdate: October 20 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -2489,6 +2489,17 @@ flag to the
 .Ic command\-prompt
 command.
 .It Xo
+.Ic search\-backward\-incremental\-regex
+.Ar regex
+(emacs: C\-M\-r)
+.Xc
+Search backwards incrementally for the specified regular expression.
+Is expected to be used with the
+.Fl i
+flag to the
+.Ic command\-prompt
+command.
+.It Xo
 .Ic search\-backward\-text
 .Ar text
 .Xc
@@ -2505,6 +2516,17 @@ Search forward for the specified text.
 (emacs: C\-s)
 .Xc
 Search forward incrementally for the specified text.
+Is expected to be used with the
+.Fl i
+flag to the
+.Ic command\-prompt
+command.
+.It Xo
+.Ic search\-forward\-incremental\-regex
+.Ar regex
+(emacs: C\-M\-s)
+.Xc
+Search forward incrementally for the specified regular expression.
 Is expected to be used with the
 .Fl i
 flag to the
@@ -2587,6 +2609,9 @@ perform an incremental search and expect to be used with the
 flag to the
 .Ic command\-prompt
 command.
+The
+.Ql \-incremental\-regex
+variants do the same but search for a regular expression.
 .Ql search\-again
 repeats the last search and
 .Ql search\-reverse
