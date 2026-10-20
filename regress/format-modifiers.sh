@@ -122,6 +122,8 @@ $TMUX set -g @sq "a'b" || exit 1       # a single quote for q/s:
 $TMUX set -g @sub 'abABab' || exit 1
 $TMUX set -g @slash 'foo/bar foo/' || exit 1
 $TMUX set -g @nl "$(printf 'a\nb')" || exit 1
+$TMUX set -g @pad '  ab  ' || exit 1
+$TMUX set -g @ff 'foofoo' || exit 1
 q_s_nl=$(printf "'a\nb'")
 
 
@@ -506,6 +508,9 @@ test_format "#{s/^x*/X/:@s}" "Xabcdefghij"
 test_format "#{s/$/X/:@s}" "abcdefghijX"
 test_format "#{s/x*//:@s}" "abcdefghij"
 test_format "#{s/x*/X/:@s}" "aXbXcXdXeXfXgXhXiXjX"
+# ^ matches only at the start, including after an alternation or in a group.
+test_format "#{s/^ +| +$//:@pad}" "ab"
+test_format "#{s/(^| )foo/X/:@ff}" "Xfoo"
 # An invalid regular expression leaves the text unchanged.
 test_format "#{s/[/X/:@s}" "abcdefghij"
 
