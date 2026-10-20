@@ -20,11 +20,11 @@ export TERM LC_ALL
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
+. ./server-common.inc
 
 cleanup()
 {
-	$TMUX kill-server >/dev/null 2>&1
-	$TMUX2 kill-server >/dev/null 2>&1
+	stop_servers
 }
 fail()
 {

@@ -9,6 +9,7 @@ export PATH TERM
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
+. ./server-common.inc
 TESTDIR=$(mktemp -d) || exit 1
 GATE=$TESTDIR/gate
 READY=$TESTDIR/ready
@@ -16,8 +17,7 @@ OUT=$TESTDIR/status
 
 stop()
 {
-	$TMUX kill-server >/dev/null 2>&1
-	$TMUX2 kill-server >/dev/null 2>&1
+	stop_servers
 }
 
 cleanup()
