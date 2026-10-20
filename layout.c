@@ -462,23 +462,148 @@ layout_cell_minimum(struct window *w, struct layout_cell *lc,
 	return (layout_pane_minimum_size(w, lc, type));
 }
 
-/* Minimum size of all tiled children plus separators. */
-u_int
-layout_cell_tree_minimum(struct window *w, struct layout_cell *parent,
+/* Minimum size of a cell including all its tiled children and separators. */
+static u_int
+layout_cell_tree_minimum(struct window *w, struct layout_cell *lc,
     enum layout_type type)
 {
-	struct layout_cell	*lc;
-	u_int			 n = 0, total = 0;
+	struct layout_cell	*lcchild;
+	u_int			 n = 0, size, total = 0;
 
-	TAILQ_FOREACH(lc, &parent->cells, entry) {
-		if (!layout_cell_is_tiled(lc))
+	if (lc->type == LAYOUT_WINDOWPANE)
+		return (layout_cell_minimum(w, lc, type));
+	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+		if (!layout_cell_is_tiled(lcchild) &&
+		    !layout_cell_has_tiled_child(lcchild))
 			continue;
-		total += layout_cell_minimum(w, lc, type);
+		size = layout_cell_tree_minimum(w, lcchild, type);
+		if (lc->type == type)
+			total += size;
+		else if (size > total)
+			total = size;
 		n++;
 	}
-	if (n <= 1)
-		return (0);
-	return (total + (n - 1));
+	if (lc->type == type && n > 1)
+		total += n - 1;
+	return (total);
+}
+
+/* Size of a cell in one direction. */
+static u_int *
+layout_cell_size(struct layout_cell *lc, enum layout_type type)
+{
+	if (type == LAYOUT_LEFTRIGHT)
+		return (&lc->g.sx);
+	return (&lc->g.sy);
+}
+
+/* Find the child with the most space above its minimum. */
+static struct layout_cell *
+layout_fit_spare(struct window *w, struct layout_cell *lc,
+    struct layout_cell *except, u_int *most)
+{
+	struct layout_cell	*lcchild, *found = NULL;
+	u_int			 size, min;
+
+	*most = 0;
+	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+		if (lcchild == except ||
+		    (!layout_cell_is_tiled(lcchild) &&
+		    !layout_cell_has_tiled_child(lcchild)))
+			continue;
+		size = *layout_cell_size(lcchild, lc->type);
+		min = layout_cell_tree_minimum(w, lcchild, lc->type);
+		if (size > min && size - min > *most) {
+			*most = size - min;
+			found = lcchild;
+		}
+	}
+	return (found);
+}
+
+/* Make the children of a cell fill it, keeping each above its minimum. */
+static void
+layout_fit_cell(struct window *w, struct layout_cell *lc)
+{
+	struct layout_cell	*lcchild, *lcspare, *last = NULL;
+	enum layout_type	 type = lc->type, cross;
+	u_int			 size, min, need, most, total = 0;
+
+	if (type == LAYOUT_WINDOWPANE)
+		return;
+	if (type == LAYOUT_LEFTRIGHT)
+		cross = LAYOUT_TOPBOTTOM;
+	else
+		cross = LAYOUT_LEFTRIGHT;
+	size = *layout_cell_size(lc, type);
+
+	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+		if (!layout_cell_is_tiled(lcchild) &&
+		    !layout_cell_has_tiled_child(lcchild))
+			continue;
+		*layout_cell_size(lcchild, cross) =
+		    *layout_cell_size(lc, cross);
+		if (last != NULL)
+			total++;
+		total += *layout_cell_size(lcchild, type);
+		last = lcchild;
+	}
+	if (last == NULL)
+		return;
+	if (total < size)
+		*layout_cell_size(last, type) += size - total;
+	while (total > size) {
+		lcspare = layout_fit_spare(w, lc, NULL, &most);
+		if (lcspare == NULL)
+			break;
+		need = total - size;
+		if (need > most)
+			need = most;
+		*layout_cell_size(lcspare, type) -= need;
+		total -= need;
+	}
+
+	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+		if (!layout_cell_is_tiled(lcchild) &&
+		    !layout_cell_has_tiled_child(lcchild))
+			continue;
+		min = layout_cell_tree_minimum(w, lcchild, type);
+		while (*layout_cell_size(lcchild, type) < min) {
+			lcspare = layout_fit_spare(w, lc, lcchild, &most);
+			if (lcspare == NULL)
+				break;
+			need = min - *layout_cell_size(lcchild, type);
+			if (need > most)
+				need = most;
+			*layout_cell_size(lcspare, type) -= need;
+			*layout_cell_size(lcchild, type) += need;
+		}
+	}
+	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+		if (layout_cell_has_tiled_child(lcchild))
+			layout_fit_cell(w, lcchild);
+	}
+}
+
+/*
+ * Make sure every cell of a new layout is big enough for separate borders,
+ * growing the layout if there is not enough space.
+ */
+void
+layout_fit(struct window *w)
+{
+	struct layout_cell	*root = w->layout_root;
+	u_int			 min;
+
+	if (root == NULL || !window_border_type_is_separate(w))
+		return;
+	min = layout_cell_tree_minimum(w, root, LAYOUT_LEFTRIGHT);
+	if (root->g.sx < min)
+		root->g.sx = min;
+	min = layout_cell_tree_minimum(w, root, LAYOUT_TOPBOTTOM);
+	if (root->g.sy < min)
+		root->g.sy = min;
+	layout_fit_cell(w, root);
 }
 
 /*
@@ -1690,13 +1815,15 @@ layout_close_pane(struct window_pane *wp)
 	events_fire_window("window-layout-changed", w);
 }
 
-/* Minimum cell size when spreading; top to bottom also counts status lines. */
+/* Minimum cell size when spreading; joined top to bottom counts status lines. */
 static u_int
 layout_spread_minimum(struct window *w, struct layout_cell *lc,
     enum layout_type type)
 {
+	if (window_border_type_is_separate(w))
+		return (layout_cell_tree_minimum(w, lc, type));
 	if (type == LAYOUT_LEFTRIGHT)
-		return (layout_cell_minimum(w, lc, type));
+		return (PANE_MINIMUM);
 	return (layout_pane_minimum_size(w, lc, type));
 }
 

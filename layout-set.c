@@ -163,9 +163,21 @@ layout_set_even(struct window *w, enum layout_type type)
 	if (n <= 1)
 		return;
 
+	if (type == LAYOUT_LEFTRIGHT) {
+		sx = (n * (PANE_MINIMUM + 1)) - 1;
+		if (sx < w->sx)
+			sx = w->sx;
+		sy = w->sy;
+	} else {
+		sy = (n * (PANE_MINIMUM + 1)) - 1;
+		if (sy < w->sy)
+			sy = w->sy;
+		sx = w->sx;
+	}
+
 	layout_free(w, 1);
 	lcroot = w->layout_root = layout_create_cell(NULL);
-	layout_set_size(lcroot, w->sx, w->sy, 0, 0);
+	layout_set_size(lcroot, sx, sy, 0, 0);
 	layout_make_node(lcroot, type);
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -178,21 +190,9 @@ layout_set_even(struct window *w, enum layout_type type)
 		}
 	}
 
-	if (type == LAYOUT_LEFTRIGHT) {
-		sx = layout_cell_tree_minimum(w, lcroot, type);
-		if (sx < w->sx)
-			sx = w->sx;
-		sy = w->sy;
-	} else {
-		sy = layout_cell_tree_minimum(w, lcroot, type);
-		if (sy < w->sy)
-			sy = w->sy;
-		sx = w->sx;
-	}
-	layout_set_size(lcroot, sx, sy, 0, 0);
-
 	layout_spread_cell(w, lcroot);
 
+	layout_fit(w);
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 
@@ -217,22 +217,17 @@ layout_set_even_v(struct window *w)
 
 /*
  * Separate borders used by the main and other cells: the first cell has a left
- * or top border and the last cell also has the border on the window edge. The
- * other cells must also have room for a scrollbar.
+ * or top border and the last cell also has the border on the window edge.
  */
 static void
-layout_set_main_borders(struct window *w, enum layout_type type, int mirrored,
-    u_int *mainb, u_int *otherb)
+layout_set_main_borders(struct window *w, int mirrored, u_int *mainb,
+    u_int *otherb)
 {
-	struct style	*sb_style = &w->active->scrollbar_style;
-
 	*mainb = *otherb = 0;
 	if (!window_border_type_is_separate(w))
 		return;
 	*mainb = mirrored ? 2 : 1;
 	*otherb = mirrored ? 1 : 2;
-	if (type == LAYOUT_LEFTRIGHT && w->sb == PANE_SCROLLBARS_ALWAYS)
-		*otherb += sb_style->width + sb_style->pad;
 }
 
 static void
@@ -253,7 +248,7 @@ layout_set_main_h(struct window *w)
 
 	/* Find available height - take off one line for the border. */
 	sy = w->sy - 1;
-	layout_set_main_borders(w, LAYOUT_TOPBOTTOM, 0, &mainb, &otherb);
+	layout_set_main_borders(w, 0, &mainb, &otherb);
 	if (sy > mainb + otherb)
 		sy -= mainb + otherb;
 	else
@@ -332,6 +327,7 @@ layout_set_main_h(struct window *w)
 		layout_spread_cell(w, lcother);
 	}
 
+	layout_fit(w);
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 
@@ -360,7 +356,7 @@ layout_set_main_h_mirrored(struct window *w)
 
 	/* Find available height - take off one line for the border. */
 	sy = w->sy - 1;
-	layout_set_main_borders(w, LAYOUT_TOPBOTTOM, 1, &mainb, &otherb);
+	layout_set_main_borders(w, 1, &mainb, &otherb);
 	if (sy > mainb + otherb)
 		sy -= mainb + otherb;
 	else
@@ -439,6 +435,7 @@ layout_set_main_h_mirrored(struct window *w)
 		layout_spread_cell(w, lcother);
 	}
 
+	layout_fit(w);
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 
@@ -467,7 +464,7 @@ layout_set_main_v(struct window *w)
 
 	/* Find available width - take off one column for the border. */
 	sx = w->sx - 1;
-	layout_set_main_borders(w, LAYOUT_LEFTRIGHT, 0, &mainb, &otherb);
+	layout_set_main_borders(w, 0, &mainb, &otherb);
 	if (sx > mainb + otherb)
 		sx -= mainb + otherb;
 	else
@@ -546,6 +543,7 @@ layout_set_main_v(struct window *w)
 		layout_spread_cell(w, lcother);
 	}
 
+	layout_fit(w);
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 
@@ -575,7 +573,7 @@ layout_set_main_v_mirrored(struct window *w)
 
 	/* Find available width - take off one column for the border. */
 	sx = w->sx - 1;
-	layout_set_main_borders(w, LAYOUT_LEFTRIGHT, 1, &mainb, &otherb);
+	layout_set_main_borders(w, 1, &mainb, &otherb);
 	if (sx > mainb + otherb)
 		sx -= mainb + otherb;
 	else
@@ -654,6 +652,7 @@ layout_set_main_v_mirrored(struct window *w)
 		layout_spread_cell(w, lcother);
 	}
 
+	layout_fit(w);
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 
@@ -777,6 +776,7 @@ layout_set_tiled(struct window *w)
 	}
 
 	layout_set_link_floating(w, lcroot);
+	layout_fit(w);
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 

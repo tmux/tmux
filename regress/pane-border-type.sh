@@ -321,6 +321,37 @@ $TMUX select-layout -t mpw:0 main-vertical || fail "main-pane-width failed"
 must_equal "$(pane_fmt mpw:0.0 '#{pane_width}')" "30" "main-pane-width 30"
 $TMUX kill-server
 
+# A small main-pane-width with scrollbars still leaves both borders.
+$TMUX new-session -d -s mpw -x 80 -y 24 'cat' || exit 1
+$TMUX set -g pane-border-type separate &&
+$TMUX set -g pane-scrollbars on &&
+$TMUX set -w -t mpw:0 main-pane-width 1 &&
+$TMUX split-window -t mpw:0 'cat' &&
+$TMUX select-layout -t mpw:0 main-vertical || fail "main-pane-width 1 failed"
+must_equal "$(pane_fmt mpw:0.1 '#{pane_left}')" "5" "main-pane-width 1 borders"
+$TMUX kill-server
+
+# Too many stacked panes grow the window so each keeps its borders.
+$TMUX new-session -d -s grow -x 80 -y 10 'cat' || exit 1
+$TMUX set -g pane-border-type separate || fail "set separate failed"
+for i in 1 2 3 4; do
+	$TMUX split-window -h -t grow:0 'cat' || fail "split $i failed"
+done
+$TMUX select-layout -t grow:0 main-vertical || fail "main-vertical failed"
+must_equal "$($TMUX display -p -t grow:0 '#{window_height}')" "12" \
+	"main-vertical grows window"
+must_equal "$($TMUX list-panes -t grow:0 -F '#{pane_top}' | tr '\n' ' ')" \
+	"1 1 4 7 10 " "main-vertical stacked panes"
+$TMUX resize-window -t grow:0 -x 12 -y 8 &&
+$TMUX select-layout -t grow:0 even-vertical || fail "even-vertical failed"
+$TMUX list-panes -t grow:0 -F '#{pane_top} #{pane_bottom}' >"$TMP/grow.panes"
+last=-2
+while read -r top bottom; do
+	[ "$top" -eq $((last + 3)) ] || fail "even-vertical overlap at $top"
+	last=$bottom
+done <"$TMP/grow.panes"
+$TMUX kill-server
+
 for st in off top bottom; do
 	for p in 0 1; do
 		$TMUX new-session -d -s ry -x 80 -y 24 'cat' || exit 1
