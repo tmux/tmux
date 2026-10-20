@@ -31,6 +31,8 @@
  *
  * Each hyperlink and ID combination is assigned a number ("inner" in this
  * file) which is stored in an extended grid cell and maps into a tree here.
+ * Numbers are not reused, even by another screen, so a number means the same
+ * hyperlink on every screen drawn to a terminal.
  *
  * Each URI has one inner number and one external ID (which tmux uses to send
  * the hyperlink to the terminal) and one internal ID (which is received from
@@ -44,6 +46,7 @@
 #define MAX_HYPERLINK_URI 1024
 
 static long long hyperlinks_next_external_id = 1;
+static u_int hyperlinks_next_inner = 1;
 static u_int global_hyperlinks_count;
 
 struct hyperlinks_uri {
@@ -66,7 +69,6 @@ static struct hyperlinks_list global_hyperlinks =
     TAILQ_HEAD_INITIALIZER(global_hyperlinks);
 
 struct hyperlinks {
-	u_int				next_inner;
 	struct hyperlinks_by_inner_tree	by_inner;
 	struct hyperlinks_by_uri_tree	by_uri;
 	u_int				references;
@@ -171,10 +173,16 @@ hyperlinks_put(struct hyperlinks *hl, const char *uri_in,
 			return (hlu->inner);
 		}
 	}
+	/* Numbers are not reused, so once they run out add no more. */
+	if (hyperlinks_next_inner == 0) {
+		free(uri);
+		free(internal_id);
+		return (0);
+	}
 	xasprintf(&external_id, "tmux%llX", hyperlinks_next_external_id++);
 
 	hlu = xcalloc(1, sizeof *hlu);
-	hlu->inner = hl->next_inner++;
+	hlu->inner = hyperlinks_next_inner++;
 	hlu->internal_id = internal_id;
 	hlu->external_id = external_id;
 	hlu->uri = uri;
@@ -216,7 +224,6 @@ hyperlinks_init(void)
 	struct hyperlinks	*hl;
 
 	hl = xcalloc(1, sizeof *hl);
-	hl->next_inner = 1;
 	RB_INIT(&hl->by_uri);
 	RB_INIT(&hl->by_inner);
 	hl->references = 1;
