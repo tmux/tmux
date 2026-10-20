@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.432 2026/10/17 11:53:33 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.433 2026/10/20 06:32:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2232,24 +2232,36 @@ format_cb_pane_active(struct format_tree *ft)
 static void *
 format_cb_pane_at_left(struct format_tree *ft)
 {
-	if (ft->wp != NULL) {
-		if (ft->wp->xoff == 0)
-			return (xstrdup("1"));
-		return (xstrdup("0"));
-	}
-	return (NULL);
+	struct window_pane	*wp = ft->wp;
+	int			 xoff;
+
+	if (wp == NULL)
+		return (NULL);
+	xoff = wp->xoff;
+	if (wp->window->sb_pos == PANE_SCROLLBARS_LEFT &&
+	    window_pane_scrollbar_reserve(wp))
+		xoff -= wp->scrollbar_style.width + wp->scrollbar_style.pad;
+	if (xoff == 0)
+		return (xstrdup("1"));
+	return (xstrdup("0"));
 }
 
 /* Callback for pane_at_right. */
 static void *
 format_cb_pane_at_right(struct format_tree *ft)
 {
-	if (ft->wp != NULL) {
-		if (ft->wp->xoff + (int)ft->wp->sx == (int)ft->wp->window->sx)
-			return (xstrdup("1"));
-		return (xstrdup("0"));
-	}
-	return (NULL);
+	struct window_pane	*wp = ft->wp;
+	int			 right;
+
+	if (wp == NULL)
+		return (NULL);
+	right = wp->xoff + (int)wp->sx;
+	if (wp->window->sb_pos == PANE_SCROLLBARS_RIGHT &&
+	    window_pane_scrollbar_reserve(wp))
+		right += wp->scrollbar_style.width + wp->scrollbar_style.pad;
+	if (right == (int)wp->window->sx)
+		return (xstrdup("1"));
+	return (xstrdup("0"));
 }
 
 /* Callback for pane_bottom. */
