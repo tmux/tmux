@@ -1476,12 +1476,11 @@ const struct options_table_entry options_table[] = {
 	  .text = "Line number mode in copy mode."
 	},
 
-	{ .name = "copy-mode-sticky-eol",
+	{ .name = "copy-mode-keep-column",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 1,
-	  .text = "Use the usual end-of-line behaviour when moving vertically "
-		  "in copy mode."
+	  .default_num = 0,
+	  .text = "Keep the cursor column when moving vertically in copy mode."
 	},
 
 	{ .name = "fill-character",
