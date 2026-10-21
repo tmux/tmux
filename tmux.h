@@ -187,7 +187,32 @@ enum key_code_mouse_location {
 	KEYC_MOUSE_LOCATION_STATUS_LEFT,
 	KEYC_MOUSE_LOCATION_STATUS_RIGHT,
 	KEYC_MOUSE_LOCATION_STATUS_DEFAULT,
-	KEYC_MOUSE_LOCATION_STATUS_BORDER,
+	KEYC_MOUSE_LOCATION_STATUS_CONTROL0, /* keep order */
+	KEYC_MOUSE_LOCATION_STATUS_CONTROL1,
+	KEYC_MOUSE_LOCATION_STATUS_CONTROL2,
+	KEYC_MOUSE_LOCATION_STATUS_CONTROL3,
+	KEYC_MOUSE_LOCATION_STATUS_CONTROL4,
+	KEYC_MOUSE_LOCATION_STATUS_CONTROL5,
+	KEYC_MOUSE_LOCATION_STATUS_CONTROL6,
+	KEYC_MOUSE_LOCATION_STATUS_CONTROL7,
+	KEYC_MOUSE_LOCATION_STATUS_CONTROL8,
+	KEYC_MOUSE_LOCATION_STATUS_CONTROL9,
+	/* Keep side locations in the same order as horizontal locations. */
+	KEYC_MOUSE_LOCATION_SIDE_STATUS,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_LEFT,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_RIGHT,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_DEFAULT,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL0,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL1,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL2,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL3,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL4,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL5,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL6,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL7,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL8,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL9,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_BORDER,
 	KEYC_MOUSE_LOCATION_BORDER,
 	KEYC_MOUSE_LOCATION_SCROLLBAR_UP,
 	KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER,
@@ -205,6 +230,16 @@ enum key_code_mouse_location {
 	KEYC_MOUSE_LOCATION_CONTROL9,
 	KEYC_MOUSE_LOCATION_NOWHERE /* end */
 };
+
+/* Is this location on either status area? */
+#define KEYC_MOUSE_LOCATION_IS_STATUS(l) \
+	((l) >= KEYC_MOUSE_LOCATION_STATUS && \
+	 (l) <= KEYC_MOUSE_LOCATION_SIDE_STATUS_BORDER)
+
+/* Is this location on the side status area? */
+#define KEYC_MOUSE_LOCATION_IS_SIDE_STATUS(l) \
+	((l) >= KEYC_MOUSE_LOCATION_SIDE_STATUS && \
+	 (l) <= KEYC_MOUSE_LOCATION_SIDE_STATUS_BORDER)
 
 /* Is this a Unicode key? */
 #define KEYC_IS_UNICODE(key) \
@@ -239,27 +274,41 @@ enum key_code_mouse_location {
 #define KEYC_MOUSE_BUTTON_SHIFT 8
 
 /* Mouse key codes. */
-#define KEYC_MOUSE_KEYS(t)                                             \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, PANE),             \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS),           \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS_LEFT),      \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS_RIGHT),     \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS_DEFAULT),   \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS_BORDER),    \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, BORDER),           \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_UP),     \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_SLIDER), \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_DOWN),   \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, EMPTY),            \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL0),         \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL1),         \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL2),         \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL3),         \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL4),         \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL5),         \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL6),         \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL7),         \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL8),         \
+#define KEYC_MOUSE_KEYS(t)                                                   \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, PANE),                   \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS),                 \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS_LEFT),            \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS_RIGHT),           \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS_DEFAULT),         \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS),            \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_LEFT),       \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_RIGHT),      \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_DEFAULT),    \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL0),   \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL1),   \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL2),   \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL3),   \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL4),   \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL5),   \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL6),   \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL7),   \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL8),   \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL9),   \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_BORDER),     \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, BORDER),                 \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_UP),           \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_SLIDER),       \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_DOWN),         \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, EMPTY),                  \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL0),               \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL1),               \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL2),               \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL3),               \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL4),               \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL5),               \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL6),               \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL7),               \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL8),               \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL9)
 #define KEYC_MOUSE_KEY(p, t, l)                                                \
 	p ## _ ## l = KEYC_MAKE_MOUSE_KEY(t, 0, KEYC_MOUSE_LOCATION_ ## l),    \
@@ -276,27 +325,41 @@ enum key_code_mouse_location {
 	((KEYC_SHIFT_TYPE(t)) |                                 \
 	 ((unsigned long long)(b) << KEYC_MOUSE_BUTTON_SHIFT) |	\
          ((unsigned long long)(l) << KEYC_MOUSE_LOCATION_SHIFT))
-#define KEYC_MOUSE_STRING(name, s)				      \
-	{ #s "Pane", KEYC_ ## name ## _PANE },			      \
-	{ #s "Status", KEYC_ ## name ## _STATUS },		      \
-	{ #s "StatusLeft", KEYC_ ## name ## _STATUS_LEFT },	      \
-	{ #s "StatusRight", KEYC_ ## name ## _STATUS_RIGHT },	      \
-	{ #s "StatusDefault", KEYC_ ## name ## _STATUS_DEFAULT },     \
-	{ #s "StatusBorder", KEYC_ ## name ## _STATUS_BORDER },       \
-	{ #s "ScrollbarUp", KEYC_ ## name ## _SCROLLBAR_UP },         \
-	{ #s "ScrollbarSlider", KEYC_ ## name ## _SCROLLBAR_SLIDER }, \
-	{ #s "ScrollbarDown", KEYC_ ## name ## _SCROLLBAR_DOWN },     \
-	{ #s "Empty", KEYC_ ## name ## _EMPTY },		      \
-	{ #s "Border", KEYC_ ## name ## _BORDER },		      \
-	{ #s "Control0", KEYC_ ## name ## _CONTROL0 },		      \
-	{ #s "Control1", KEYC_ ## name ## _CONTROL1 },		      \
-	{ #s "Control2", KEYC_ ## name ## _CONTROL2 },		      \
-	{ #s "Control3", KEYC_ ## name ## _CONTROL3 },		      \
-	{ #s "Control4", KEYC_ ## name ## _CONTROL4 },		      \
-	{ #s "Control5", KEYC_ ## name ## _CONTROL5 },		      \
-	{ #s "Control6", KEYC_ ## name ## _CONTROL6 },		      \
-	{ #s "Control7", KEYC_ ## name ## _CONTROL7 },		      \
-	{ #s "Control8", KEYC_ ## name ## _CONTROL8 },		      \
+#define KEYC_MOUSE_STRING(name, s)                                           \
+	{ #s "Pane", KEYC_ ## name ## _PANE },                               \
+	{ #s "Status", KEYC_ ## name ## _STATUS },                           \
+	{ #s "StatusLeft", KEYC_ ## name ## _STATUS_LEFT },                  \
+	{ #s "StatusRight", KEYC_ ## name ## _STATUS_RIGHT },                \
+	{ #s "StatusDefault", KEYC_ ## name ## _STATUS_DEFAULT },            \
+	{ #s "SideStatus", KEYC_ ## name ## _SIDE_STATUS },                  \
+	{ #s "SideStatusLeft", KEYC_ ## name ## _SIDE_STATUS_LEFT },         \
+	{ #s "SideStatusRight", KEYC_ ## name ## _SIDE_STATUS_RIGHT },       \
+	{ #s "SideStatusDefault", KEYC_ ## name ## _SIDE_STATUS_DEFAULT },   \
+	{ #s "SideStatusControl0", KEYC_ ## name ## _SIDE_STATUS_CONTROL0 }, \
+	{ #s "SideStatusControl1", KEYC_ ## name ## _SIDE_STATUS_CONTROL1 }, \
+	{ #s "SideStatusControl2", KEYC_ ## name ## _SIDE_STATUS_CONTROL2 }, \
+	{ #s "SideStatusControl3", KEYC_ ## name ## _SIDE_STATUS_CONTROL3 }, \
+	{ #s "SideStatusControl4", KEYC_ ## name ## _SIDE_STATUS_CONTROL4 }, \
+	{ #s "SideStatusControl5", KEYC_ ## name ## _SIDE_STATUS_CONTROL5 }, \
+	{ #s "SideStatusControl6", KEYC_ ## name ## _SIDE_STATUS_CONTROL6 }, \
+	{ #s "SideStatusControl7", KEYC_ ## name ## _SIDE_STATUS_CONTROL7 }, \
+	{ #s "SideStatusControl8", KEYC_ ## name ## _SIDE_STATUS_CONTROL8 }, \
+	{ #s "SideStatusControl9", KEYC_ ## name ## _SIDE_STATUS_CONTROL9 }, \
+	{ #s "SideStatusBorder", KEYC_ ## name ## _SIDE_STATUS_BORDER },     \
+	{ #s "ScrollbarUp", KEYC_ ## name ## _SCROLLBAR_UP },                \
+	{ #s "ScrollbarSlider", KEYC_ ## name ## _SCROLLBAR_SLIDER },        \
+	{ #s "ScrollbarDown", KEYC_ ## name ## _SCROLLBAR_DOWN },            \
+	{ #s "Empty", KEYC_ ## name ## _EMPTY },                             \
+	{ #s "Border", KEYC_ ## name ## _BORDER },                           \
+	{ #s "Control0", KEYC_ ## name ## _CONTROL0 },                       \
+	{ #s "Control1", KEYC_ ## name ## _CONTROL1 },                       \
+	{ #s "Control2", KEYC_ ## name ## _CONTROL2 },                       \
+	{ #s "Control3", KEYC_ ## name ## _CONTROL3 },                       \
+	{ #s "Control4", KEYC_ ## name ## _CONTROL4 },                       \
+	{ #s "Control5", KEYC_ ## name ## _CONTROL5 },                       \
+	{ #s "Control6", KEYC_ ## name ## _CONTROL6 },                       \
+	{ #s "Control7", KEYC_ ## name ## _CONTROL7 },                       \
+	{ #s "Control8", KEYC_ ## name ## _CONTROL8 },                       \
 	{ #s "Control9", KEYC_ ## name ## _CONTROL9 }
 
 /*
@@ -1727,6 +1790,8 @@ struct mouse_event {
 
 	u_int		sgr_type;
 	u_int		sgr_b;
+
+	enum key_code_mouse_location location; /* Status target or drag origin. */
 };
 
 /* Key event. */
@@ -1852,7 +1917,6 @@ struct tty {
 	u_int		 mouse_last_y;
 	u_int		 mouse_last_b;
 	int		 mouse_drag_flag;
-	int		 mouse_drag_status;
 	enum key_code_mouse_location mouse_drag_location;
 	u_int		 mouse_drag_x;
 	u_int		 mouse_drag_y;
@@ -1988,7 +2052,7 @@ enum args_parse_type {
 /* Arguments parsing state. */
 typedef enum args_parse_type (*args_parse_cb)(struct args *, u_int, char **);
 struct args_parse {
-	const char	*template;
+	const char	*template; /* Leading - permits negative arguments. */
 	int		 lower;
 	int		 upper;
 	args_parse_cb	 cb;
@@ -2111,6 +2175,15 @@ struct status_line {
 	u_int			 prompt_cx;
 	struct grid_cell	 style;
 	struct style_line_entry	 entries[STATUS_LINES_LIMIT];
+};
+
+/* Starting state, valid while the status resize mouse callback is set. */
+struct status_resize {
+	u_int		 session_id; /* Session whose status is being resized. */
+	u_int		 sx, sy;     /* Terminal size at the start of the drag. */
+	int		 size;       /* Initial number of rows or columns. */
+	int		 position;   /* 0 for top/left, 1 for bottom/right. */
+	int		 active;     /* Resize has not been cancelled. */
 };
 
 /* Side status line. */
@@ -2289,6 +2362,7 @@ struct client {
 	struct mouse_event	 click_event;
 
 	struct status_line	 status;
+	struct status_resize	 status_resize;
 	struct side_status_line	 side_status;
 	struct event		 cycle_timer;
 	enum client_theme	 theme;
@@ -3395,6 +3469,7 @@ void	 server_unzoom_window(struct window *);
 void	 status_timer_start(struct client *);
 void	 status_timer_start_all(void);
 void	 status_update_cache(struct session *);
+void	 status_resize_start(struct client *, struct mouse_event *);
 u_int	 status_prompt_line_at(struct client *);
 int	 status_at_line(struct client *);
 u_int	 status_line_size(struct client *);

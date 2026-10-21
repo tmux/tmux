@@ -4018,6 +4018,45 @@ begins mouse resizing (only valid if bound to a mouse key binding, see
 .Fl T
 trims all lines below the current cursor position and moves lines out of the
 history to replace them.
+.Tg resizes
+.It Xo Ic resize\-status
+.Op Fl t Ar target\-session
+.Op Ar adjustment
+.Xc
+.D1 Pq alias: Ic resizes
+Resize a status line.
+With an
+.Ar adjustment ,
+increase or decrease the horizontal status height by that many rows, keeping
+between one and five rows visible.
+For example, bind the prefix followed by
+.Ql +
+or
+.Ql -
+to show more or fewer rows:
+.Bd -literal -offset indent
+bind + resize-status +1
+bind - resize-status -1
+.Ed
+.Pp
+To bind mouse dragging to the background of the horizontal status area:
+.Bd -literal -offset indent
+bind -n MouseDrag1StatusDefault resize-status
+.Ed
+.Pp
+To bind mouse dragging to the vertical status border:
+.Bd -literal -offset indent
+bind -n MouseDrag1SideStatusBorder resize-status
+.Ed
+.Pp
+To bind mouse dragging to the background of the vertical status area:
+.Bd -literal -offset indent
+bind -n MouseDrag1SideStatusDefault resize-status
+.Ed
+.Pp
+To restrict resizing to a specific status row, check the zero-based
+.Ic mouse_status_line
+format in the binding.
 .Tg resizew
 .It Xo Ic resize\-window
 .Op Fl aADLRU
@@ -6872,23 +6911,50 @@ allows mouse events to be bound as keys.
 The name of each key is made up of a mouse event (such as
 .Ql MouseUp1 )
 and a location suffix, one of the following:
-.Bl -column "XXXXXXXXXXXXX" -offset indent
+.Bl -column "SideStatusControlN" -offset indent
 .It Li "Pane" Ta "the contents of a pane"
 .It Li "Border" Ta "a pane border"
 .It Li "Status" Ta "the status line window list"
 .It Li "StatusLeft" Ta "the left part of the status line"
 .It Li "StatusRight" Ta "the right part of the status line"
 .It Li "StatusDefault" Ta "any other part of the status line"
+.It Li "SideStatus" Ta "a session, window, pane or user range in side status"
+.It Li "SideStatusLeft" Ta "a left range in side status"
+.It Li "SideStatusRight" Ta "a right range in side status"
+.It Li "SideStatusDefault" Ta "any other part of side status"
+.It Li "SideStatusBorder" Ta "the separator between side status and the window"
+.It Li "SideStatusControlN" Ta "control range N in side status"
 .It Li "ScrollbarSlider" Ta "the scrollbar slider"
 .It Li "ScrollbarUp" Ta "above the scrollbar slider"
 .It Li "ScrollbarDown" Ta "below the scrollbar slider"
 .It Li "Empty" Ta "empty space in the window"
-.It Li "ControlN" Ta "on control range N"
+.It Li "ControlN" Ta "control range N in panes or horizontal status"
 .El
+.Pp
+The
+.Ql Status
+suffixes refer to the horizontal status area, and the
+.Ql SideStatus
+suffixes to side status.
+A drag keeps its starting area's bindings when crossing into the other status
+area.
 .Pp
 See the
 .Sx STYLES
 section for information on control ranges.
+.Pp
+The
+.Ic mouse_status_side
+format is
+.Ql 0
+for a horizontal status event,
+.Ql 1
+for a side status event, or empty for an event outside status areas.
+During a drag starting on status, it retains the starting area until release,
+even when the pointer moves into another area.
+The coordinate formats and
+.Ic mouse_status_line
+continue to describe the current pointer position.
 .Pp
 The following mouse events are available:
 .Bl -column "MouseDown1" "MouseDrag1" "WheelDown" -offset indent
@@ -7587,6 +7653,7 @@ The following variables are available, where appropriate:
 .It Li "mouse_standard_flag" Ta "" Ta "Pane mouse standard flag"
 .It Li "mouse_status_line" Ta "" Ta "Status line on which mouse event took place"
 .It Li "mouse_status_range" Ta "" Ta "Range type or argument of mouse event on status line"
+.It Li "mouse_status_side" Ta "" Ta "1 for side status, 0 for horizontal status"
 .It Li "mouse_utf8_flag" Ta "" Ta "Pane mouse UTF\-8 flag"
 .It Li "mouse_word" Ta "" Ta "Word under mouse, if any"
 .It Li "mouse_x" Ta "" Ta "Mouse X position, if any"

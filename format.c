@@ -1413,6 +1413,21 @@ format_mouse_status_at(struct format_tree *ft, u_int *x, u_int *y)
 	return (1);
 }
 
+/* Callback for mouse_status_side. */
+static void *
+format_cb_mouse_status_side(struct format_tree *ft)
+{
+	char	*value;
+
+	if (!ft->m.valid || !KEYC_MOUSE_LOCATION_IS_STATUS(ft->m.location))
+		return (NULL);
+	if (KEYC_MOUSE_LOCATION_IS_SIDE_STATUS(ft->m.location))
+		value = xstrdup("1");
+	else
+		value = xstrdup("0");
+	return (value);
+}
+
 /* Callback for mouse_status_line. */
 static void *
 format_cb_mouse_status_line(struct format_tree *ft)
@@ -3851,6 +3866,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "mouse_status_range", FORMAT_TABLE_STRING,
 	  format_cb_mouse_status_range
+	},
+	{ "mouse_status_side", FORMAT_TABLE_STRING,
+	  format_cb_mouse_status_side
 	},
 	{ "mouse_utf8_flag", FORMAT_TABLE_STRING,
 	  format_cb_mouse_utf8_flag

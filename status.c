@@ -32,6 +32,7 @@
 static void	 status_message_area(struct client *, u_int *, u_int *);
 static void	 status_message_callback(int, short, void *);
 static void	 status_timer_callback(int, short, void *);
+static void	 status_resize_update(struct client *, struct mouse_event *);
 
 /* Status timer callback. */
 static void
@@ -136,6 +137,124 @@ status_line_size(struct client *c)
 	if (s == NULL)
 		return (options_get_number(global_s_options, "status"));
 	return (s->statuslines);
+}
+
+/* Begin resizing from status background or a side separator. */
+void
+status_resize_start(struct client *c, struct mouse_event *m)
+{
+	struct status_resize		*resize;
+	struct tty			*tty;
+	enum key_code_mouse_location	 location;
+
+	if (c == NULL || !m->valid)
+		return;
+	tty = &c->tty;
+	if (c->session == NULL || tty->mouse_drag_flag == 0) {
+		return;
+	}
+
+	location = tty->mouse_drag_location;
+	if (location != KEYC_MOUSE_LOCATION_STATUS_DEFAULT &&
+	    location != KEYC_MOUSE_LOCATION_SIDE_STATUS_DEFAULT &&
+	    location != KEYC_MOUSE_LOCATION_SIDE_STATUS_BORDER) {
+		return;
+	}
+
+	/* Use the saved drag area to choose which dimension to resize. */
+	resize = &c->status_resize;
+	if (location == KEYC_MOUSE_LOCATION_STATUS_DEFAULT) {
+		if (m->statusat == -1 || tty->sy < 2)
+			return;
+		resize->size = m->statuslines;
+		resize->position = c->session->statusat;
+	} else {
+		if (m->sideat == -1 || tty->sx < 3)
+			return;
+		resize->size = m->sidewidth;
+		resize->position = c->session->sidestatusat;
+	}
+	resize->session_id = c->session->id;
+	resize->sx = tty->sx;
+	resize->sy = tty->sy;
+	resize->active = 1;
+
+	tty->mouse_drag_update = status_resize_update;
+	tty->mouse_drag_release = status_resize_update;
+	status_resize_update(c, m);
+}
+
+/* Resize relative to the original grab point, preserving its edge offset. */
+static void
+status_resize_update(struct client *c, struct mouse_event *m)
+{
+	struct status_resize	*resize = &c->status_resize;
+	struct session		*s = c->session;
+	struct tty		*tty = &c->tty;
+	const char		*name;
+	u_int			 coordinate, extent;
+	int			 position, start, size, current, minimum, limit;
+
+	if (!resize->active)
+		return;
+
+	/* Stop if the client changes session or terminal geometry. */
+	if (s == NULL || s->id != resize->session_id ||
+	    tty->sx != resize->sx || tty->sy != resize->sy) {
+		goto cancel;
+	}
+
+	/* Changing or hiding the status area also cancels the resize. */
+	if (tty->mouse_drag_location == KEYC_MOUSE_LOCATION_STATUS_DEFAULT) {
+		if (status_line_size(c) == 0 || s->statusat != resize->position)
+			goto cancel;
+		name = "status";
+		coordinate = m->y;
+		extent = tty->sy;
+		start = tty->mouse_drag_y;
+		current = s->statuslines;
+		minimum = 1;
+		limit = STATUS_LINES_LIMIT;
+	} else {
+		if (status_side_size(c) == 0 ||
+		    s->sidestatusat != resize->position) {
+			goto cancel;
+		}
+		name = "side-status-width";
+		coordinate = m->x;
+		extent = tty->sx;
+		start = tty->mouse_drag_x;
+		current = s->sidestatuswidth;
+		minimum = 2;
+		limit = SHRT_MAX;
+	}
+
+	/* Clamp reports outside the terminal before calculating the delta. */
+	if (coordinate >= extent)
+		coordinate = extent - 1;
+	position = coordinate;
+	if (resize->position == 0)
+		size = resize->size + position - start;
+	else
+		size = resize->size + start - position;
+
+	/* Keep a row or separator to grab and some room for the window. */
+	if ((u_int)limit >= extent)
+		limit = extent - 1;
+	if (size < minimum)
+		size = minimum;
+	else if (size > limit)
+		size = limit;
+	if (size == current)
+		return;
+
+	options_set_number(s->options, name, size);
+	options_push_changes(name);
+	return;
+
+cancel:
+	/* Keep the drag captured until release so it cannot restart elsewhere. */
+	resize->active = 0;
 }
 
 /* Get width of side status line for client's session. 0 means off. */

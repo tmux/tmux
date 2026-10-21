@@ -220,6 +220,8 @@ args_parse_flags(const struct args_parse *parse, struct args_value *values,
 	log_debug("%s: next %s", __func__, string);
 	if (*string++ != '-' || *string == '\0')
 		return (1);
+	if (parse->template[0] == '-' && isdigit((u_char)*string))
+		return (1);
 	(*i)++;
 	if (string[0] == '-' && string[1] == '\0')
 		return (1);
