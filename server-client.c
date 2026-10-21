@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.525 2026/10/19 08:14:22 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.526 2026/10/21 08:04:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -781,14 +781,15 @@ server_client_check_mouse_status(struct client *c, struct mouse_event *m,
 	} else {
 		if (m->sideat == -1 ||
 		    x < (u_int)m->sideat ||
-		    x >= m->sideat + m->sidewidth)
-			return (0);
+		    x >= m->sideat + m->sidewidth) {
+			goto not_on_status;
+		}
 		if (m->statusat == 0)
 			sidey = m->statuslines;
 		else
 			sidey = 0;
 		if (y < sidey || y - sidey >= status_side_rows(c))
-			return (0);
+			goto not_on_status;
 		separator = m->sideat;
 		if (separator == 0)
 			separator = m->sidewidth - 1;
@@ -857,6 +858,12 @@ server_client_check_mouse_status(struct client *c, struct mouse_event *m,
 		break;
 	}
 	return (0);
+
+not_on_status:
+	/* Keep drags started on status lines from triggering pane bindings. */
+	if (type == KEYC_TYPE_MOUSEDRAG && c->tty.mouse_drag_status)
+		*loc = c->tty.mouse_drag_location;
+	return (0);
 }
 
 /* Check for mouse keys. */
@@ -909,10 +916,6 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 			x = m->x, y = m->y, b = m->b;
 			if (x == m->lx && y == m->ly)
 				return (KEYC_UNKNOWN);
-			if (c->tty.mouse_drag_status) {
-				x = c->tty.mouse_drag_x;
-				y = c->tty.mouse_drag_y;
-			}
 			log_debug("drag update at %u,%u", x, y);
 		} else {
 			x = m->lx, y = m->ly, b = m->lb;
