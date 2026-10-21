@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.494 2026/10/16 16:56:03 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.495 2026/10/21 09:47:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2454,6 +2454,9 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 			changed = colour_palette_get(palette, gc2.bg);
 			if (changed != -1)
 				gc2.bg = changed;
+			changed = colour_palette_get(palette, gc2.us);
+			if (changed != -1)
+				gc2.us = changed;
 		}
 	}
 	gc2.fg = tty_map_theme_colour(tty, gc2.fg);
