@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.441 2026/10/21 07:42:49 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.442 2026/10/21 13:45:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -701,7 +701,7 @@ window_copy_view_init(struct window_mode_entry *wme,
 
 	data->backing = xmalloc(sizeof *data->backing);
 	screen_init(data->backing, sx, screen_size_y(base), UINT_MAX);
-	data->ictx = input_init(NULL, NULL, NULL);
+	data->ictx = input_init(NULL, NULL);
 	data->mx = data->cx;
 	data->my = screen_hsize(data->backing) + data->cy - data->oy;
 	data->showmark = 0;
