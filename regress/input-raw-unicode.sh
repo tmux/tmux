@@ -72,6 +72,18 @@ check_raw_matches overwrite-wide-with-wide \
 	'C 0,2 data=\(0,0,\) flags=PADDING\[[0-9a-f]+\] attr=NONE\[0\]' \
 	'C 0,3 data=\(1,1,B\) flags=NONE\[0\]'
 
+start_pane erase-below-wide-pad 10 3 'A\343\201\202B\r\033[2C\033[J'
+check_raw_matches erase-below-wide-pad \
+	'C 0,0 data=\(1,1,A\) flags=NONE\[0\]' \
+	'C 0,1 data=\(1,1, \) flags=NONE\[0\]'
+check_raw_no_matches erase-below-wide-pad 'PADDING'
+
+start_pane erase-above-wide-left 10 3 'A\343\201\202B\r\033[1C\033[1J'
+check_raw_matches erase-above-wide-left \
+	'C 0,2 data=\(1,1, \) flags=NONE\[0\]' \
+	'C 0,3 data=\(1,1,B\) flags=NONE\[0\]'
+check_raw_no_matches erase-above-wide-left 'PADDING'
+
 start_pane wide-right-edge 4 3 'ABC\343\201\202Z'
 check_raw_matches wide-right-edge \
 	'L 0 \(0\) flags=WRAPPED\[[0-9a-f]+\]' \
