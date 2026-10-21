@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.278 2026/10/16 11:34:49 bket Exp $ */
+/* $OpenBSD: input.c,v 1.279 2026/10/21 07:31:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1798,6 +1798,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 			break;
 
 		m = screen_size_x(s) - s->cx;
+		if (s->mode & MODE_WRAP)
+			m += screen_size_x(s);
 		if (n > m)
 			n = m;
 
