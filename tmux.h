@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1466 2026/10/16 16:51:19 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1467 2026/10/21 13:45:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3433,8 +3433,7 @@ void	 recalculate_sizes_now(int);
 
 /* input.c */
 #define INPUT_BUF_DEFAULT_SIZE 1048576
-struct input_ctx *input_init(struct window_pane *, struct bufferevent *,
-	     struct colour_palette *);
+struct input_ctx *input_init(struct window_pane *, struct colour_palette *);
 void	 input_free(struct input_ctx *);
 void	 input_reset(struct input_ctx *, int);
 struct evbuffer *input_pending(struct input_ctx *);
