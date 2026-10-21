@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.440 2026/10/20 06:45:56 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.441 2026/10/21 07:42:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -4265,6 +4265,8 @@ window_copy_scroll_to(struct window_mode_entry *wme, u_int px, u_int py,
 		data->cy = py - (gd->hsize - data->oy);
 	else {
 		gap = gd->sy / 4;
+		if (gap == 0)
+			gap = 1;
 		if (py < gd->sy) {
 			offset = 0;
 			data->cy = py;
