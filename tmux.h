@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1467 2026/10/21 13:45:20 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1468 2026/10/22 07:16:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1818,7 +1818,7 @@ struct tty {
 #define TTY_HAVEXDA 0x200
 #define TTY_SYNCING 0x400
 #define TTY_HAVEDA2 0x800
-#define TTY_WINSIZEQUERY 0x1000
+#define TTY_WINSZQUERY 0x1000
 #define TTY_WAITFG 0x2000
 #define TTY_WAITBG 0x4000
 #define TTY_BRACKETPASTE 0x8000
