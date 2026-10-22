@@ -793,7 +793,7 @@ format_draw1(struct screen_write_ctx *octx, const struct format_style *fs,
 					   RIGHT,
 					   ABSOLUTE_CENTRE };
 	int			 focus_start = -1, focus_end = -1;
-	int			 list_state = -1, fill, even;
+	int			 list_state = -1, fill, even, error = 0;
 	enum style_align	 list_align = STYLE_ALIGN_DEFAULT;
 	struct grid_cell	 gc, cur_def, base_def;
 	struct style		 sy, saved_sy;
@@ -923,9 +923,8 @@ format_draw1(struct screen_write_ctx *octx, const struct format_style *fs,
 		if (end == NULL) {
 			log_debug("%s: no terminating ] at '%s'", __func__,
 			    cp + 2);
-			TAILQ_FOREACH_SAFE(fr, &frs, entry, fr1)
-			    format_free_range(&frs, fr);
-			goto out;
+			error = 1;
+			break;
 		}
 		tmp = xstrndup(cp + 2, end - (cp + 2));
 		style_copy(&saved_sy, &sy);
@@ -1078,6 +1077,11 @@ format_draw1(struct screen_write_ctx *octx, const struct format_style *fs,
 	for (i = 0; i < TOTAL; i++) {
 		screen_write_stop(&ctx[i]);
 		log_debug("%s: width %s is %u", __func__, names[i], width[i]);
+	}
+	if (error) {
+		TAILQ_FOREACH_SAFE(fr, &frs, entry, fr1)
+		    format_free_range(&frs, fr);
+		goto out;
 	}
 	if (focus_start != -1 && focus_end != -1)
 		log_debug("%s: focus %d-%d", __func__, focus_start, focus_end);
