@@ -1,4 +1,4 @@
-/* $OpenBSD: layout.c,v 1.103 2026/10/20 06:51:29 nicm Exp $ */
+/* $OpenBSD: layout.c,v 1.104 2026/10/22 07:51:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -416,7 +416,7 @@ layout_add_horizontal_border(struct layout_cell *root, struct layout_cell *lc,
 }
 
 /* Update pane offsets and sizes based on their cells. */
-void
+int
 layout_fix_panes(struct window *w, struct window_pane *skip)
 {
 	struct window_pane	*wp;
@@ -484,6 +484,7 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 	}
 	if (changed)
 		redraw_invalidate_scene(w);
+	return (changed);
 }
 
 /* Count the number of available cells in a layout. */

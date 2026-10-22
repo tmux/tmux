@@ -1,4 +1,4 @@
-/* $OpenBSD: options.c,v 1.93 2026/10/16 07:59:06 nicm Exp $ */
+/* $OpenBSD: options.c,v 1.94 2026/10/22 07:51:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1445,7 +1445,8 @@ options_push_changes(const char *name)
 			    "pane-scrollbars");
 			w->sb_pos = options_get_number(w->options,
 			    "pane-scrollbars-position");
-			layout_fix_panes(w, NULL);
+			if (layout_fix_panes(w, NULL))
+				events_fire_window("window-layout-changed", w);
 		}
 	}
 	if (strcmp(name, "pane-scrollbars") == 0) {
@@ -1457,8 +1458,10 @@ options_push_changes(const char *name)
 			style_set_scrollbar_style_from_option(
 			    &wp->scrollbar_style, wp->options);
 		}
-		RB_FOREACH(w, windows, &windows)
-			layout_fix_panes(w, NULL);
+		RB_FOREACH(w, windows, &windows) {
+			if (layout_fix_panes(w, NULL))
+				events_fire_window("window-layout-changed", w);
+		}
 	}
 	if (strcmp(name, "codepoint-widths") == 0)
 		utf8_update_width_cache();
