@@ -1032,7 +1032,11 @@ control_start(struct client *c)
 void
 control_ready(struct client *c)
 {
-	bufferevent_enable(c->control_state->read_event, EV_READ);
+	struct control_state	*cs = c->control_state;
+
+	if (cs == NULL)
+		return;
+	bufferevent_enable(cs->read_event, EV_READ);
 }
 
 /* Discard all output for a client. */

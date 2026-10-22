@@ -52,6 +52,9 @@ static int	server_client_dispatch_identify(struct client *, struct imsg *);
 static int	server_client_dispatch_shell(struct client *);
 static void	server_client_report_theme(struct client *, enum client_theme);
 
+/* Clients that have been lost but not yet freed. */
+static struct clients dead_clients = TAILQ_HEAD_INITIALIZER(dead_clients);
+
 /* Number of attached clients. */
 u_int
 server_client_how_many(void)
@@ -388,6 +391,7 @@ server_client_lost(struct client *c)
 	}
 
 	TAILQ_REMOVE(&clients, c, entry);
+	TAILQ_INSERT_TAIL(&dead_clients, c, entry);
 	log_debug("lost client %p", c);
 
 	cmd_wait_for_client_lost(c);
@@ -458,6 +462,18 @@ server_client_lost(struct client *c)
 	server_update_socket();
 }
 
+/* Run the queues of lost clients, which may still have work to finish. */
+u_int
+server_client_run_dead(void)
+{
+	struct client	*c;
+	u_int		 items = 0;
+
+	TAILQ_FOREACH(c, &dead_clients, entry)
+		items += cmdq_next(c);
+	return (items);
+}
+
 /* Remove reference from a client. */
 void
 server_client_unref(struct client *c)
@@ -477,6 +493,7 @@ server_client_free(__unused int fd, __unused short events, void *arg)
 
 	log_debug("free client %p (%d references)", c, c->references);
 
+	TAILQ_REMOVE(&dead_clients, c, entry);
 	redraw_free_scene(c->redraw_scene);
 	cmdq_free(c->queue);
 
