@@ -1355,6 +1355,20 @@ options_from_string(struct options *oo, const struct options_table_entry *oe,
 	return (-1);
 }
 
+static void
+options_fit_window(struct window *w)
+{
+	struct layout_cell	*lc;
+
+	lc = layout_fit(w);
+	if (lc == NULL)
+		return;
+	if (lc->g.sx > w->sx || lc->g.sy > w->sy)
+		resize_window(w, lc->g.sx, lc->g.sy, -1, -1);
+	else if (layout_fix_panes(w, NULL))
+		events_fire_window("window-layout-changed", w);
+}
+
 void
 options_push_changes(const char *name)
 {
@@ -1455,11 +1469,10 @@ options_push_changes(const char *name)
 			    "pane-scrollbars");
 			w->sb_pos = options_get_number(w->options,
 			    "pane-scrollbars-position");
-			if (strcmp(name, "pane-scrollbars") == 0) {
-				layout_fit(w);
-				layout_fix_offsets(w);
-			}
-			if (layout_fix_panes(w, NULL))
+			if (strcmp(name, "pane-scrollbars") == 0 ||
+			    strcmp(name, "pane-border-type") == 0)
+				options_fit_window(w);
+			else if (layout_fix_panes(w, NULL))
 				events_fire_window("window-layout-changed", w);
 		}
 	}
@@ -1472,12 +1485,8 @@ options_push_changes(const char *name)
 			style_set_scrollbar_style_from_option(
 			    &wp->scrollbar_style, wp->options);
 		}
-		RB_FOREACH(w, windows, &windows) {
-			layout_fit(w);
-			layout_fix_offsets(w);
-			if (layout_fix_panes(w, NULL))
-				events_fire_window("window-layout-changed", w);
-		}
+		RB_FOREACH(w, windows, &windows)
+			options_fit_window(w);
 	}
 	if (strcmp(name, "codepoint-widths") == 0)
 		utf8_update_width_cache();

@@ -685,11 +685,6 @@ layout_parse(struct window *w, const char *input, char **cause)
 		goto fail;
 	}
 
-	/* Resize window to the layout size. */
-	if (layout_cell_is_tiled(lc) ||
-	    layout_cell_has_tiled_child(lc))
-		window_resize(w, lc->g.sx, lc->g.sy, -1, -1);
-
 	/* Preserve floating panes for version 1. */
 	if (pctx.version == 1) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -710,6 +705,8 @@ layout_parse(struct window *w, const char *input, char **cause)
 
 	/* Update pane attributes. */
 	layout_fit(w);
+	if (layout_cell_is_tiled(lc) || layout_cell_has_tiled_child(lc))
+		window_resize(w, lc->g.sx, lc->g.sy, -1, -1);
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 	if (pctx.version > 1)

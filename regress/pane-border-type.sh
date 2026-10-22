@@ -406,6 +406,51 @@ must_equal "$($TMUX display-message -p -t mixed:0.1 '#{pane_width}')" "1" \
 	"narrow-scrollbar pane content width"
 $TMUX kill-server
 
+# Style changes which do not grow the layout must not report a window resize.
+$TMUX new-session -d -s noresize -x 20 -y 5 'cat' || exit 1
+$TMUX set-hook -g window-resized 'set -g @unexpected-resize yes' ||
+	fail "set resize hook failed"
+$TMUX set -p -t noresize:0.0 pane-scrollbars-style 'width=2,pad=1' ||
+	fail "set unused scrollbar style failed"
+must_equal "$($TMUX show -gv @unexpected-resize 2>/dev/null || true)" "" \
+	"unused scrollbar style must not resize window"
+$TMUX kill-server
+
+# A fit which redistributes a saved zoom layout without growing it must also
+# update cell offsets before the layout is restored.
+$TMUX new-session -d -s zoomfit -x 20 -y 5 'cat' || exit 1
+$TMUX set -g status off &&
+$TMUX set -g pane-border-type separate &&
+$TMUX set -g pane-scrollbars on || fail "set no-growth zoom options failed"
+$TMUX split-window -h -t zoomfit:0 'cat' &&
+$TMUX select-layout -t zoomfit:0 even-horizontal ||
+	fail "create no-growth zoom layout failed"
+$TMUX resize-pane -Z -t zoomfit:0.0 || fail "zoom no-growth pane failed"
+$TMUX set -p -t zoomfit:0.1 pane-scrollbars-style 'width=8,pad=0' ||
+	fail "widen hidden scrollbar without growth failed"
+must_equal "$($TMUX display -p -t zoomfit:0 '#{window_width}')" "20" \
+	"saved layout redistribution must not grow window"
+$TMUX resize-pane -Z -t zoomfit:0.0 || fail "unzoom no-growth pane failed"
+must_equal "$($TMUX list-panes -t zoomfit:0 -F '#{pane_width} #{pane_left}' | tr '\n' ',')" \
+	"6 1,1 10," "saved layout redistribution pane geometry"
+$TMUX kill-server
+
+# Changing a minimum-width joined layout to separate borders must grow both
+# the layout and its window.
+$TMUX new-session -d -s dynamicborder -x 3 -y 5 'cat' || exit 1
+$TMUX set -g status off || fail "disable dynamic border status failed"
+$TMUX split-window -h -t dynamicborder:0 'cat' &&
+$TMUX select-layout -t dynamicborder:0 even-horizontal ||
+	fail "create dynamic border layout failed"
+$TMUX set -g pane-border-type separate ||
+	fail "enable dynamic separate borders failed"
+layout=$($TMUX display-message -p -t dynamicborder:0 '#{window_layout}')
+layout_cell_w "$layout" 6 ||
+	fail "enabling separate borders must refit layout to 6: $layout"
+must_equal "$($TMUX display-message -p -t dynamicborder:0 '#{window_width}')" \
+	"6" "enabling separate borders must grow window"
+$TMUX kill-server
+
 # Enabling or widening scrollbars after creating a minimum-sized layout must
 # refit it immediately rather than leaving the scrollbar over pane content.
 $TMUX new-session -d -s dynamic -x 6 -y 5 'cat' || exit 1
@@ -420,11 +465,39 @@ $TMUX set -g pane-scrollbars on || fail "enable dynamic scrollbars failed"
 layout=$($TMUX display-message -p -t dynamic:0 '#{window_layout}')
 layout_cell_w "$layout" 8 ||
 	fail "enabling scrollbars must refit layout to 8: $layout"
+must_equal "$($TMUX display-message -p -t dynamic:0 '#{window_width}')" "8" \
+	"enabling scrollbars must grow window"
 $TMUX set -p -t dynamic:0.0 pane-scrollbars-style 'width=5,pad=3' ||
 	fail "widen dynamic scrollbar failed"
 layout=$($TMUX display-message -p -t dynamic:0 '#{window_layout}')
 layout_cell_w "$layout" 15 ||
 	fail "widening scrollbar must refit layout to 15: $layout"
+must_equal "$($TMUX display-message -p -t dynamic:0 '#{window_width}')" "15" \
+	"widening scrollbar must grow window"
+$TMUX kill-server
+
+# Scrollbar changes while zoomed must fit the saved full layout, not only the
+# temporary one-pane zoom layout.
+$TMUX new-session -d -s zoomopt -x 6 -y 5 'cat' || exit 1
+$TMUX set -g status off &&
+$TMUX set -g pane-border-type separate || fail "set zoom options failed"
+$TMUX split-window -h -t zoomopt:0 'cat' &&
+$TMUX select-layout -t zoomopt:0 even-horizontal ||
+	fail "create zoom option layout failed"
+$TMUX resize-pane -Z -t zoomopt:0.0 || fail "zoom option pane failed"
+$TMUX set -g pane-scrollbars on || fail "enable zoomed scrollbars failed"
+must_equal "$($TMUX display-message -p -t zoomopt:0 '#{window_width}')" "8" \
+	"zoomed scrollbar change must grow window"
+$TMUX set -p -t zoomopt:0.1 pane-scrollbars-style 'width=5,pad=3' ||
+	fail "widen zoomed scrollbar failed"
+must_equal "$($TMUX display-message -p -t zoomopt:0 '#{window_width}')" "15" \
+	"zoomed scrollbar style change must grow window"
+$TMUX resize-pane -Z -t zoomopt:0.0 || fail "unzoom option pane failed"
+layout=$($TMUX display-message -p -t zoomopt:0 '#{window_layout}')
+layout_cell_w "$layout" 15 ||
+	fail "zoomed scrollbar change must refit saved layout: $layout"
+must_equal "$($TMUX list-panes -t zoomopt:0 -F '#{pane_width}' | tr '\n' ' ')" \
+	"1 1 " "zoomed scrollbar change content widths"
 $TMUX kill-server
 
 # A custom layout may have been created for joined borders and be too small for
@@ -439,6 +512,8 @@ $TMUX select-layout -t custom:0 "$custom_layout" ||
 layout=$($TMUX display-message -p -t custom:0 '#{window_layout}')
 layout_cell_w "$layout" 6 ||
 	fail "custom layout must grow to separate minimum 6: $layout"
+must_equal "$($TMUX display-message -p -t custom:0 '#{window_width}')" "6" \
+	"custom layout must grow window"
 must_equal "$($TMUX list-panes -t custom:0 -F '#{pane_width}' | tr '\n' ' ')" \
 	"1 1 " "custom layout content widths"
 $TMUX kill-server
