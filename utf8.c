@@ -676,6 +676,7 @@ utf8_fromwc(wchar_t wc, struct utf8_data *ud)
 {
 	int	size, width;
 
+	memset(ud, 0, sizeof *ud);
 #ifdef HAVE_UTF8PROC
 	size = utf8proc_wctomb(ud->data, wc);
 #else
