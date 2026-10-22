@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1468 2026/10/22 07:16:40 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1469 2026/10/22 07:51:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3906,7 +3906,7 @@ int		 layout_cell_has_tiled_child(struct layout_cell *);
 int		 layout_add_horizontal_border(struct layout_cell *,
 		     struct layout_cell *, int);
 void		 layout_fix_offsets(struct window *);
-void		 layout_fix_panes(struct window *, struct window_pane *);
+int		 layout_fix_panes(struct window *, struct window_pane *);
 void		 layout_resize_adjust(struct window *, struct layout_cell *,
 		     enum layout_type, int);
 void		 layout_resize_set_size(struct window *, struct layout_cell *,
