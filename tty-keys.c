@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-keys.c,v 1.220 2026/10/16 12:01:33 nicm Exp $ */
+/* $OpenBSD: tty-keys.c,v 1.221 2026/10/22 07:16:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -945,7 +945,7 @@ partial_key:
 			delay = 500;
 	}
 	if (tty->flags & (TTY_WAITFG|TTY_WAITBG) ||
-	    tty->flags & (TTY_OSC52QUERY|TTY_WINSIZEQUERY) ||
+	    tty->flags & (TTY_OSC52QUERY|TTY_WINSZQUERY) ||
 	    (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS ||
 	    !TAILQ_EMPTY(&c->input_requests)) {
 		log_debug("%s: increasing delay (active query)", c->name);
@@ -1935,7 +1935,7 @@ tty_keys_winsz(struct tty *tty, const char *buf, size_t len, size_t *size,
 	*size = 0;
 
 	/* If we did not request this, ignore it. */
-	if (!(tty->flags & TTY_WINSIZEQUERY))
+	if (!(tty->flags & TTY_WINSZQUERY))
 		return (-1);
 
 	/* First two bytes are always \033[. */
@@ -1990,7 +1990,7 @@ tty_keys_winsz(struct tty *tty, const char *buf, size_t len, size_t *size,
 		tty_invalidate(tty);
 		recalculate_sizes();
 
-		tty->flags &= ~TTY_WINSIZEQUERY;
+		tty->flags &= ~TTY_WINSZQUERY;
 		return (0);
 	}
 
