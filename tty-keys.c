@@ -1029,14 +1029,15 @@ tty_keys_callback(__unused int fd, __unused short events, void *data)
 
 /*
  * Handle extended key input. This has two forms: \033[27;m;k~ and \033[k;mu,
- * where k is key as a number and m is a modifier. Returns 0 for success, -1
- * for failure, 1 for partial;
+ * where k is key as a number and m is a modifier (optional for CSI u, default
+ * 1). Returns 0 for success, -1 for failure, 1 for partial;
  */
 static int
 tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
     size_t *size, key_code *key)
 {
 	struct client	*c = tty->client;
+	const char	*errstr;
 	size_t		 end;
 	u_int		 number, modifiers;
 	char		 tmp[64];
@@ -1080,6 +1081,11 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	if (buf[end] == '~') {
 		if (sscanf(tmp, "27;%u;%u", &modifiers, &number) != 2)
 			return (-1);
+	} else if (strchr(tmp, ';') == NULL) {
+		number = strtonum(tmp, 0, UINT_MAX, &errstr);
+		if (errstr != NULL)
+			return (-1);
+		modifiers = 1;
 	} else {
 		if (sscanf(tmp ,"%u;%u", &number, &modifiers) != 2)
 			return (-1);
