@@ -3227,6 +3227,12 @@ const char	 *cmdq_get_name(struct cmdq_item *);
 struct cmd	 *cmdq_get_cmd(struct cmdq_item *);
 struct client	 *cmdq_get_client(struct cmdq_item *);
 struct client	 *cmdq_get_target_client(struct cmdq_item *);
+/* Command queue item flags. */
+#define CMDQ_FIRED 0x1
+#define CMDQ_WAITING 0x2
+#define CMDQ_KEY 0x4
+#define CMDQ_PROMPT 0x8
+
 struct cmdq_state *cmdq_get_state(struct cmdq_item *);
 struct cmd_find_state *cmdq_get_target(struct cmdq_item *);
 struct cmd_find_state *cmdq_get_source(struct cmdq_item *);
@@ -3244,6 +3250,7 @@ void printflike(4, 5) cmdq_insert_hook(struct session *, struct cmdq_item *,
 void		 cmdq_continue(struct cmdq_item *);
 u_int		 cmdq_next(struct client *);
 struct cmdq_item *cmdq_running(struct client *);
+void		 cmdq_add_flags(struct cmdq_item *, int);
 void		 cmdq_guard(struct cmdq_item *, const char *, int);
 void printflike(2, 3) cmdq_print(struct cmdq_item *, const char *, ...);
 void 		 cmdq_print_data(struct cmdq_item *, struct evbuffer *);
