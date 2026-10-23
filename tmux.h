@@ -1733,6 +1733,11 @@ struct mouse_event {
 struct key_event {
 	struct client		*client;
 
+	u_int			 target_session;
+	u_int			 target_window;
+	u_int			 target_pane;
+	int			 target_valid;
+
 	key_code		 key;
 	struct mouse_event	 m;
 
@@ -2240,6 +2245,8 @@ struct client {
 	struct tmuxpeer		*peer;
 	const char		*user;
 	struct cmdq_list	*queue;
+	struct cmdq_list	*queue_input;
+	struct cmdq_list	*queue_active;
 
 	struct control_state	*control_state;
 	u_int			 pause_age;
@@ -3239,11 +3246,13 @@ struct cmdq_item *cmdq_get_callback1(const char *, cmdq_cb, void *);
 struct cmdq_item *cmdq_get_error(const char *);
 struct cmdq_item *cmdq_insert_after(struct cmdq_item *, struct cmdq_item *);
 struct cmdq_item *cmdq_append(struct client *, struct cmdq_item *);
+struct cmdq_item *cmdq_append_input(struct client *, struct cmdq_item *);
 void printflike(4, 5) cmdq_insert_hook(struct session *, struct cmdq_item *,
 		     struct cmd_find_state *, const char *, ...);
 void		 cmdq_continue(struct cmdq_item *);
 u_int		 cmdq_next(struct client *);
 struct cmdq_item *cmdq_running(struct client *);
+int		  cmdq_waiting_for(struct client *, const char *);
 void		 cmdq_guard(struct cmdq_item *, const char *, int);
 void printflike(2, 3) cmdq_print(struct cmdq_item *, const char *, ...);
 void 		 cmdq_print_data(struct cmdq_item *, struct evbuffer *);

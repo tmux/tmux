@@ -158,4 +158,62 @@ case "$(screen)" in
 *) bad "4b: click inside externally opened popup did not reach program" ;;
 esac
 
+# Keys queued after switching away from a popup target the window where they
+# arrived, even if the client switches back before the popup closes.
+setup
+RIGHT=$(fmt s:one '#{pane_id}')
+$TMUX2 send-keys -t "$OUTER" C-b P
+sleep 1
+popup_shown || bad "5: popup did not open"
+$TMUX select-window -t s:one
+sleep 1
+$TMUX2 send-keys -t "$OUTER" -l 'typed-text'
+sleep 1
+case "$($TMUX capture-pane -p -t "$RIGHT")" in
+*typed-text*) ;;
+*) bad "5: input was not processed while the popup remained open" ;;
+esac
+$TMUX select-window -t s:zero
+sleep 1
+$TMUX2 send-keys -t "$OUTER" C-c
+sleep 1
+case "$($TMUX capture-pane -p -t "$LEFT")" in
+*typed-text*) bad "5: queued input was replayed into the window active after popup closed" ;;
+esac
+case "$($TMUX capture-pane -p -t "$RIGHT")" in
+*typed-text*) ;;
+*) bad "5: queued input was not delivered to the window where it arrived" ;;
+esac
+
+# Opening a popup through run-shell must also let input reach a window
+# selected while the popup is still open.
+cat >"$PROG" <<EOF2
+$TMUX display-popup -w 30 -h 6 -E "sh -c 'printf POPUP-%s HERE; exec cat'"
+exit 0
+EOF2
+setup
+$TMUX bind R run-shell "sh $PROG"
+$TMUX2 send-keys -t "$OUTER" C-b R
+sleep 1
+popup_shown || bad "6: popup did not open"
+$TMUX select-window -t s:one
+sleep 1
+$TMUX2 send-keys -t "$OUTER" -l 'typed-text'
+sleep 1
+case "$($TMUX capture-pane -p -t "$RIGHT")" in
+*typed-text*) ;;
+*) bad "6: input was not processed while the popup remained open" ;;
+esac
+$TMUX select-window -t s:zero
+sleep 1
+$TMUX2 send-keys -t "$OUTER" C-c
+sleep 1
+case "$($TMUX capture-pane -p -t "$LEFT")" in
+*typed-text*) bad "6: queued input was replayed into the window active after popup closed" ;;
+esac
+case "$($TMUX capture-pane -p -t "$RIGHT")" in
+*typed-text*) ;;
+*) bad "6: queued input was not delivered to the window where it arrived" ;;
+esac
+
 exit $FAILED
