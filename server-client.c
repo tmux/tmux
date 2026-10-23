@@ -750,60 +750,16 @@ server_client_check_mouse_in_pane(struct window_pane *wp, int px, int py,
 	return (KEYC_MOUSE_LOCATION_NOWHERE);
 }
 
-/* Check for mouse events on the status lines. */
+/* Resolve a status range to a location and mouse target. */
 static int
-server_client_check_mouse_status(struct client *c, struct mouse_event *m,
-    enum key_code_type type, u_int x, u_int y,
-    enum key_code_mouse_location *loc)
+server_client_check_mouse_status_range(struct client *c, struct mouse_event *m,
+    struct style_range *sr, enum key_code_mouse_location *loc)
 {
+	struct session		*s = c->session, *fs;
 	struct winlink		*fwl;
 	struct window_pane	*fwp;
-	struct session		*s = c->session, *fs;
-	struct style_range	*sr;
-	u_int			 n, sidey, separator;
+	u_int			 n;
 
-	*loc = KEYC_MOUSE_LOCATION_NOWHERE;
-
-	m->statusat = status_at_line(c);
-	m->statuslines = status_line_size(c);
-	m->sideat = status_side_at_column(c);
-	m->sidewidth = status_side_size(c);
-	if (c->tty.mouse_drag_flag != 0 &&
-	    c->tty.mouse_drag_location == KEYC_MOUSE_LOCATION_STATUS_BORDER) {
-		*loc = KEYC_MOUSE_LOCATION_STATUS_BORDER;
-		return (0);
-	}
-
-	if (m->statusat != -1 &&
-	    y >= (u_int)m->statusat &&
-	    y < m->statusat + m->statuslines) {
-		sr = status_get_range(c, x, y - m->statusat);
-	} else {
-		if (m->sideat == -1 ||
-		    x < (u_int)m->sideat ||
-		    x >= m->sideat + m->sidewidth) {
-			goto not_on_status;
-		}
-		if (m->statusat == 0)
-			sidey = m->statuslines;
-		else
-			sidey = 0;
-		if (y < sidey || y - sidey >= status_side_rows(c))
-			goto not_on_status;
-		separator = m->sideat;
-		if (separator == 0)
-			separator = m->sidewidth - 1;
-		if (m->sidewidth > 1 && x == separator) {
-			*loc = KEYC_MOUSE_LOCATION_STATUS_BORDER;
-			if (type == KEYC_TYPE_MOUSEDRAG &&
-			    c->tty.mouse_drag_flag == 0)
-				c->tty.mouse_drag_status = 1;
-			return (0);
-		}
-		sr = status_side_get_range(c, x - m->sideat, y - sidey);
-	}
-	if (type == KEYC_TYPE_MOUSEDRAG && c->tty.mouse_drag_flag == 0)
-		c->tty.mouse_drag_status = 1;
 	if (sr == NULL) {
 		*loc = KEYC_MOUSE_LOCATION_STATUS_DEFAULT;
 		return (0);
@@ -854,15 +810,88 @@ server_client_check_mouse_status(struct client *c, struct mouse_event *m,
 	case STYLE_RANGE_CONTROL:
 		n = sr->argument; /* parsing keeps this < 10 */
 		log_debug("mouse range: control %u", n);
-		*loc = KEYC_MOUSE_LOCATION_CONTROL0 + n;
+		*loc = KEYC_MOUSE_LOCATION_STATUS_CONTROL0 + n;
 		break;
+	}
+	return (0);
+}
+
+/* Check for mouse events on the status lines. */
+static int
+server_client_check_mouse_status(struct client *c, struct mouse_event *m,
+    enum key_code_type type, u_int x, u_int y,
+    enum key_code_mouse_location *loc)
+{
+	struct tty		*tty = &c->tty;
+	struct style_range	*sr;
+	u_int			 sidey, separator;
+	int			 side = 0, retval;
+
+	*loc = KEYC_MOUSE_LOCATION_NOWHERE;
+
+	m->statusat = status_at_line(c);
+	m->statuslines = status_line_size(c);
+	m->sideat = status_side_at_column(c);
+	m->sidewidth = status_side_size(c);
+
+	/* Keep separator drags bound while the side status width changes. */
+	if (tty->mouse_drag_flag != 0 &&
+	    tty->mouse_drag_location == KEYC_MOUSE_LOCATION_SIDE_STATUS_BORDER) {
+		*loc = tty->mouse_drag_location;
+		return (0);
+	}
+
+	if (m->statusat != -1 &&
+	    y >= (u_int)m->statusat &&
+	    y < m->statusat + m->statuslines) {
+		sr = status_get_range(c, x, y - m->statusat);
+	} else {
+		if (m->sideat == -1 ||
+		    x < (u_int)m->sideat ||
+		    x >= m->sideat + m->sidewidth) {
+			goto not_on_status;
+		}
+		if (m->statusat == 0)
+			sidey = m->statuslines;
+		else
+			sidey = 0;
+		if (y < sidey || y - sidey >= status_side_rows(c))
+			goto not_on_status;
+		separator = m->sideat;
+		if (separator == 0)
+			separator = m->sidewidth - 1;
+		if (m->sidewidth > 1 && x == separator) {
+			*loc = KEYC_MOUSE_LOCATION_SIDE_STATUS_BORDER;
+			goto out;
+		}
+		sr = status_side_get_range(c, x - m->sideat, y - sidey);
+		side = 1;
+	}
+
+	retval = server_client_check_mouse_status_range(c, m, sr, loc);
+	if (retval != 0)
+		return (retval);
+	if (side) {
+		*loc += KEYC_MOUSE_LOCATION_SIDE_STATUS -
+		    KEYC_MOUSE_LOCATION_STATUS;
+	}
+
+out:
+	/* Crossing status areas must not invoke the other area's bindings. */
+	if (tty->mouse_drag_flag != 0 &&
+	    KEYC_MOUSE_LOCATION_IS_STATUS(tty->mouse_drag_location) &&
+	    KEYC_MOUSE_LOCATION_IS_SIDE_STATUS(*loc) !=
+	    KEYC_MOUSE_LOCATION_IS_SIDE_STATUS(tty->mouse_drag_location)) {
+		*loc = tty->mouse_drag_location;
 	}
 	return (0);
 
 not_on_status:
 	/* Keep drags started on status lines from triggering pane bindings. */
-	if (type == KEYC_TYPE_MOUSEDRAG && c->tty.mouse_drag_status)
-		*loc = c->tty.mouse_drag_location;
+	if (type == KEYC_TYPE_MOUSEDRAG &&
+	    KEYC_MOUSE_LOCATION_IS_STATUS(tty->mouse_drag_location)) {
+		*loc = tty->mouse_drag_location;
+	}
 	return (0);
 }
 
@@ -919,7 +948,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 			log_debug("drag update at %u,%u", x, y);
 		} else {
 			x = m->lx, y = m->ly, b = m->lb;
-			c->tty.mouse_drag_status = 0;
+			c->tty.mouse_drag_location = KEYC_MOUSE_LOCATION_NOWHERE;
 			log_debug("drag start at %u,%u", x, y);
 		}
 	} else if (MOUSE_WHEEL(m->b)) {
@@ -1156,7 +1185,7 @@ have_event:
 		 */
 		if (c->tty.mouse_drag_flag == 0) {
 			c->tty.mouse_drag_location = loc;
-			if (c->tty.mouse_drag_status) {
+			if (KEYC_MOUSE_LOCATION_IS_STATUS(loc)) {
 				c->tty.mouse_drag_x = x;
 				c->tty.mouse_drag_y = y;
 			} else {
@@ -1167,7 +1196,8 @@ have_event:
 		c->tty.mouse_drag_flag = MOUSE_BUTTONS(b) + 1;
 
 		/* Change the pane if the drag did not start on status line. */
-		if (!c->tty.mouse_drag_status && lwp == NULL) {
+		if (!KEYC_MOUSE_LOCATION_IS_STATUS(c->tty.mouse_drag_location) &&
+		    lwp == NULL) {
 			lwp = wp = window_get_active_at(w, px, py);
 			if (wp != NULL)
 				c->tty.mouse_last_pane = wp->id;
@@ -1207,6 +1237,13 @@ have_event:
 			bn = 11;
 		else
 			bn = 0;
+
+		/* Keep horizontal status controls bound to ControlN. */
+		if (loc >= KEYC_MOUSE_LOCATION_STATUS_CONTROL0 &&
+		    loc <= KEYC_MOUSE_LOCATION_STATUS_CONTROL9) {
+			loc = KEYC_MOUSE_LOCATION_CONTROL0 +
+			    (loc - KEYC_MOUSE_LOCATION_STATUS_CONTROL0);
+		}
 		key = KEYC_MAKE_MOUSE_KEY(type, bn, loc);
 	}
 
@@ -1606,12 +1643,7 @@ try_again:
 	 * Binding movement keys is useless since we only turn them on when the
 	 * application requests, so don't let them exit the prefix table.
 	 */
-	if (key == KEYC_MOUSEMOVE_PANE ||
-	    key == KEYC_MOUSEMOVE_STATUS ||
-	    key == KEYC_MOUSEMOVE_STATUS_LEFT ||
-	    key == KEYC_MOUSEMOVE_STATUS_RIGHT ||
-	    key == KEYC_MOUSEMOVE_STATUS_DEFAULT ||
-	    key == KEYC_MOUSEMOVE_BORDER)
+	if (KEYC_IS_TYPE(key, KEYC_TYPE_MOUSEMOVE))
 		goto forward_key;
 
 	/*

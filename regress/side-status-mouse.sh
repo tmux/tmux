@@ -53,8 +53,8 @@ $TMUX set -g 'status-format[1]' 'second' || exit 1
 format='#{mouse_status_range}|#{mouse_status_line}|#{mouse_x}|#{mouse_y}'
 format=$format'|#{session_name}|#{window_name}'
 format=$format'|#{mouse_absolute_x}|#{mouse_absolute_y}'
-for key in MouseDown1Status MouseDown1StatusDefault MouseDown1StatusBorder \
-    MouseDown1Pane; do
+for key in MouseDown1Status MouseDown1StatusDefault MouseDown1SideStatus \
+    MouseDown1SideStatusDefault MouseDown1SideStatusBorder MouseDown1Pane; do
 	$TMUX bind -n "$key" set -gF @mouse "$format" || exit 1
 done
 $TMUX2 new-session -d -s outer -x 80 -y 20 'sleep 100' || exit 1
