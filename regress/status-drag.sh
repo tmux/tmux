@@ -65,10 +65,16 @@ $TMUX set -g window-status-format '#W' || exit 1
 $TMUX set -g window-status-current-format '#W' || exit 1
 
 # The interactive reordering workaround from GitHub issue 4549.
-$TMUX bind -n MouseDown1Status \
-    'selectw ; set -F @drag_window "#{window_id}"' || exit 1
-$TMUX bind -n MouseDrag1Status run -C 'swapw -ds#{@drag_window}' || exit 1
-$TMUX bind -n MouseDragEnd1Status set -u @drag_window || exit 1
+for location in Status SideStatus; do
+	# Rapid test drags can start with a second or third click.
+	for event in MouseDown SecondClick TripleClick; do
+		$TMUX bind -n "${event}1$location" \
+		    'selectw ; set -F @drag_window "#{window_id}"' || exit 1
+	done
+	$TMUX bind -n "MouseDrag1$location" \
+	    run -C 'swapw -ds#{@drag_window}' || exit 1
+	$TMUX bind -n "MouseDragEnd1$location" set -u @drag_window || exit 1
+done
 $TMUX2 new-session -d -s outer -x 60 -y 20 'sleep 180' || exit 1
 $TMUX2 set -g status off || exit 1
 $TMUX2 respawn-pane -k -t outer:0.0 "$TMUX attach -t inner" || exit 1
@@ -106,7 +112,7 @@ for side in left right; do
 	column=2
 	[ "$side" = right ] && column=48
 	start=1
-	[ "$side" = right ] && start=49
+	[ "$side" = right ] && start=48
 	wait_for_output "$(printf 'AAA\nBBB\nCCC')" side_drawn "$start" ||
 	    fail 'side status did not draw'
 	mouse 0 "$column" 1 M

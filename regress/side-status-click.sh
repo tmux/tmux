@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Clicking a window on the side status line, including the current window,
-# dispatches the Status binding with that window.
+# dispatches the SideStatus binding with that window.
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -42,9 +42,9 @@ $TMUX new-window -d -n two 'sleep 100' || exit 1
 $TMUX set -g mouse on || exit 1
 $TMUX set -g status off || exit 1
 $TMUX set -g side-status left || exit 1
-$TMUX bind -n MouseDown1Status \
+$TMUX bind -n MouseDown1SideStatus \
     set -gF @click '#{mouse_status_range} #{window_name}' || exit 1
-$TMUX bind -n MouseDown1StatusDefault set -g @click default || exit 1
+$TMUX bind -n MouseDown1SideStatusDefault set -g @click default || exit 1
 $TMUX2 new-session -d -s outer -x 60 -y 20 'sleep 100' || exit 1
 $TMUX2 set -g status off || exit 1
 $TMUX2 respawn-pane -k -t outer:0.0 "$TMUX attach -t inner" || exit 1

@@ -6872,19 +6872,33 @@ allows mouse events to be bound as keys.
 The name of each key is made up of a mouse event (such as
 .Ql MouseUp1 )
 and a location suffix, one of the following:
-.Bl -column "XXXXXXXXXXXXX" -offset indent
+.Bl -column "SideStatusControlN" -offset indent
 .It Li "Pane" Ta "the contents of a pane"
 .It Li "Border" Ta "a pane border"
 .It Li "Status" Ta "the status line window list"
 .It Li "StatusLeft" Ta "the left part of the status line"
 .It Li "StatusRight" Ta "the right part of the status line"
 .It Li "StatusDefault" Ta "any other part of the status line"
+.It Li "SideStatus" Ta "a session, window, pane or user range in side status"
+.It Li "SideStatusLeft" Ta "a left range in side status"
+.It Li "SideStatusRight" Ta "a right range in side status"
+.It Li "SideStatusDefault" Ta "any other part of side status"
+.It Li "SideStatusBorder" Ta "the separator between side status and the window"
+.It Li "SideStatusControlN" Ta "control range N in side status"
 .It Li "ScrollbarSlider" Ta "the scrollbar slider"
 .It Li "ScrollbarUp" Ta "above the scrollbar slider"
 .It Li "ScrollbarDown" Ta "below the scrollbar slider"
 .It Li "Empty" Ta "empty space in the window"
-.It Li "ControlN" Ta "on control range N"
+.It Li "ControlN" Ta "control range N in panes or horizontal status"
 .El
+.Pp
+The
+.Ql Status
+suffixes refer to the horizontal status area, and the
+.Ql SideStatus
+suffixes to side status.
+A drag keeps its starting area's bindings when crossing into the other status
+area.
 .Pp
 See the
 .Sx STYLES
