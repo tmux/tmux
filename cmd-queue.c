@@ -27,10 +27,6 @@
 
 #include "tmux.h"
 
-/* Command queue flags. */
-#define CMDQ_FIRED 0x1
-#define CMDQ_WAITING 0x2
-
 /* Command queue item type. */
 enum cmdq_type {
 	CMDQ_COMMAND,
@@ -208,6 +204,13 @@ int
 cmdq_get_flags(struct cmdq_item *item)
 {
 	return (item->state->flags);
+}
+
+/* Add flags to an item. */
+void
+cmdq_add_flags(struct cmdq_item *item, int flags)
+{
+	item->flags |= flags;
 }
 
 /* Create a new state. */
@@ -420,6 +423,29 @@ void
 cmdq_continue(struct cmdq_item *item)
 {
 	item->flags &= ~CMDQ_WAITING;
+}
+
+/*
+ * A prompt consumes keys which are already queued behind it. Move the next one
+ * in front so it can be run, but only one at a time and only while the prompt
+ * is still waiting: a key left over once it has finished stays behind it and
+ * runs after its command.
+ */
+static int
+cmdq_move_next_key(struct cmdq_item *item, struct cmdq_list *queue)
+{
+	struct cmdq_item	*next;
+
+	if (~item->flags & CMDQ_PROMPT)
+		return (0);
+	next = TAILQ_NEXT(item, entry);
+	while (next != NULL && (~next->flags & CMDQ_KEY))
+		next = TAILQ_NEXT(next, entry);
+	if (next == NULL)
+		return (0);
+	TAILQ_REMOVE(&queue->list, next, entry);
+	TAILQ_INSERT_HEAD(&queue->list, next, entry);
+	return (1);
 }
 
 /* Remove an item. */
@@ -726,8 +752,10 @@ cmdq_next(struct client *c)
 		return (0);
 	}
 	if (TAILQ_FIRST(&queue->list)->flags & CMDQ_WAITING) {
-		log_debug("%s %s: waiting", __func__, name);
-		return (0);
+		if (!cmdq_move_next_key(TAILQ_FIRST(&queue->list), queue)) {
+			log_debug("%s %s: waiting", __func__, name);
+			return (0);
+		}
 	}
 
 	log_debug("%s %s: enter", __func__, name);
