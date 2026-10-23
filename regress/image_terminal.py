@@ -161,8 +161,14 @@ class Terminal:
                 match = re.match(rb'\033(?:[()][0-~]|.)', rest, re.S)
                 if match is None:
                     break
-                assert match[0] in (b'\033(B', b'\033(0', b'\033)B',
-                    b'\033=', b'\033>', b'\033\\'), match[0]
+                if match[0] == b'\033M':
+                    if self.y == self.top:
+                        self.scroll(self.top, self.bottom, -1)
+                    else:
+                        self.y = max(0, self.y - 1)
+                else:
+                    assert match[0] in (b'\033(B', b'\033(0', b'\033)B',
+                        b'\033=', b'\033>', b'\033\\'), match[0]
                 pos += match.end()
             elif rest[0] < 32 or rest[0] == 127:
                 if rest[0] == 13:

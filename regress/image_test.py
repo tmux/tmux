@@ -194,7 +194,9 @@ class ImageTest:
 
     def close(self):
         """Stop the server and reap every attached client."""
-        self.run("kill-server", check=False)
+        subprocess.run(["/bin/sh", "-c",
+            '. ./regress-common.inc; stop_server "$@"', "image-test",
+            *self.server], check=True, timeout=15)
         for client in self.clients:
             os.close(client.fd)
             if os.waitpid(client.pid, os.WNOHANG) == (0, 0):

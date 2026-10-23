@@ -114,7 +114,9 @@ struct image_backend {
 	void		(*draw_rect)(struct tty *, struct image_rect *);
 	void		(*start_draw)(struct tty *, u_int, u_int, u_int, u_int);
 	void		(*flush)(struct tty *);
-	void		(*free)(struct tty *);
+	void		(*finish_draw)(struct tty *);
+	void		(*scroll)(struct tty *, u_int, u_int, u_int, u_int, int);
+	void		(*free)(struct tty *, int);
 	void		(*remove_image)(struct image *);
 };
 
@@ -124,6 +126,8 @@ static struct image_backend image_backend_fallback = {
 	fallback_get_flags,
 	fallback_select,
 	fallback_map_cell,
+	NULL,
+	NULL,
 	NULL,
 	NULL,
 	NULL,
@@ -138,6 +142,8 @@ static struct image_backend image_backend_sixel = {
 	sixel_draw_rect,
 	sixel_start_draw,
 	sixel_flush_pending,
+	NULL,
+	NULL,
 	sixel_free_pending,
 	NULL
 };
@@ -145,6 +151,8 @@ static struct image_backend image_backend_kitty = {
 	"kitty",
 	NULL,
 	kitty_select,
+	NULL,
+	NULL,
 	NULL,
 	NULL,
 	NULL,
@@ -176,7 +184,7 @@ image_tty_update(struct tty *tty)
 		return (0);
 
 	if (tty->image_backend != NULL && tty->image_backend->free != NULL)
-		tty->image_backend->free(tty);
+		tty->image_backend->free(tty, 1);
 	tty->image_data = NULL;
 	tty->image_backend = backend;
 	return (1);
@@ -273,23 +281,41 @@ image_draw_flush(struct tty *tty)
 		tty->image_backend->flush(tty);
 }
 
+/* Finish replacing image placements after a redraw. */
+void
+image_redraw_finish(struct tty *tty)
+{
+	image_tty_update(tty);
+	if (tty->image_backend->finish_draw != NULL)
+		tty->image_backend->finish_draw(tty);
+}
+
+/* Update cached image positions after the terminal scrolls. */
+void
+image_scroll(struct tty *tty, u_int x, u_int y, u_int sx, u_int sy, int n)
+{
+	image_tty_update(tty);
+	if (tty->image_backend->scroll != NULL)
+		tty->image_backend->scroll(tty, x, y, sx, sy, n);
+}
+
 /* Discard image backend state after a terminal size change. */
 void
 image_tty_size_changed(struct tty *tty)
 {
 	if (!image_tty_update(tty)) {
 		if (tty->image_backend->free != NULL)
-			tty->image_backend->free(tty);
+			tty->image_backend->free(tty, 1);
 	}
 }
 
 /* Free image backend state for a terminal. */
 void
-image_tty_free(struct tty *tty)
+image_tty_free(struct tty *tty, int send)
 {
 	if (tty->image_backend != NULL) {
 		if (tty->image_backend->free != NULL)
-			tty->image_backend->free(tty);
+			tty->image_backend->free(tty, send);
 		tty->image_backend = NULL;
 		tty->image_data = NULL;
 	}
@@ -711,14 +737,16 @@ image_grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)
 	image_store_prune(gd->images);
 }
 
-/* Mark placements to scroll, except those crossing a scroll region edge. */
-static void
+/* Mark placements to scroll. */
+static int
 image_grid_mark_scroll(struct grid *gd, u_int upper, u_int lower)
 {
 	struct image_line	*line;
 	struct image_placement	*plmt;
 	struct image_span	*span, *at;
+	enum image_type		 type;
 	u_int			 y, hsize = gd->hsize;
+	int			 redraw = 0;
 
 	for (y = upper; y <= lower; y++) {
 		line = gd->linedata[y].images;
@@ -742,11 +770,20 @@ image_grid_mark_scroll(struct grid *gd, u_int upper, u_int lower)
 			TAILQ_FOREACH(at, &plmt->spans, placement_entry) {
 				if (!at->line->in_region) {
 					plmt->scroll = 0;
+					type = image_get_type(plmt->image);
+					if (type == IMAGE_TYPE_KITTY)
+						redraw = 1;
 					break;
 				}
 			}
 		}
 	}
+	for (y = upper; y <= lower; y++) {
+		line = gd->linedata[y].images;
+		if (line != NULL)
+			line->in_region = 0;
+	}
+	return (redraw);
 }
 
 /* Move spans between lines. */
@@ -779,9 +816,8 @@ image_line_move(struct grid_line *dst, struct grid_line *src, int scroll)
 static void
 image_grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny, int scroll)
 {
-	struct image_line	*line;
-	u_int			 rows = gd->hsize + gd->sy;
-	u_int			 upper, lower, y, dst, src;
+	u_int	rows = gd->hsize + gd->sy;
+	u_int	upper, lower, y, dst, src;
 
 	if (gd->images == NULL ||
 	    ny == 0 ||
@@ -809,13 +845,6 @@ image_grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny, int scroll)
 			src = py + ny - 1 - y;
 		}
 		image_line_move(&gd->linedata[dst], &gd->linedata[src], scroll);
-	}
-	if (scroll) {
-		for (y = upper; y <= lower; y++) {
-			line = gd->linedata[y].images;
-			if (line != NULL)
-				line->in_region = 0;
-		}
 	}
 	image_store_prune(gd->images);
 }
@@ -1053,16 +1082,23 @@ image_redraw_scroll(struct screen_write_ctx *ctx)
 {
 	struct screen		*s = ctx->s;
 	struct window_pane	*wp = ctx->wp;
-	u_int			 sx = screen_size_x(s);
-	u_int			 sy = s->rlower - s->rupper + 1;
+	struct grid		*gd = s->grid;
+	u_int			 rlower = s->rlower, rupper = s->rupper;
+	u_int			 xoff, yoff;
+	u_int			 sx = screen_size_x(s), hsize = gd->hsize;
+	u_int			 sy = rlower - rupper + 1;
 
 	if (wp == NULL)
 		return;
-	if (!image_grid_area_has_images(s->grid, 0,
-	    s->grid->hsize + s->rupper, sx, sy))
+	xoff = wp->xoff;
+	yoff = wp->yoff;
+	if (!image_grid_area_has_images(gd, 0, hsize + rupper, sx, sy))
 		return;
-	redraw_damage_scroll(wp->window, wp->xoff,
-	    wp->yoff + s->rupper, sx, sy);
+
+	if (image_grid_mark_scroll(gd, hsize + rupper, hsize + rlower))
+		redraw_damage_window(wp->window, xoff, yoff + rupper, sx, sy);
+	else
+		redraw_damage_scroll(wp->window, xoff, yoff + rupper, sx, sy);
 }
 
 /* Redraw images under changed cells. */

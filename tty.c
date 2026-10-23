@@ -530,6 +530,10 @@ tty_stop_tty(struct tty *tty)
 	tty_raw(tty, tty_term_string(tty->term, TTYC_DSFCS));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_DSEKS));
 
+#ifdef ENABLE_IMAGES
+	image_tty_free(tty, 1);
+#endif
+
 	if (tty_use_margin(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_DSMG));
 	if (options_get_number(global_options, "clear-on-attach"))
@@ -552,7 +556,7 @@ tty_close(struct tty *tty)
 
 	if (tty->flags & TTY_OPENED) {
 #ifdef ENABLE_IMAGES
-		image_tty_free(tty);
+		image_tty_free(tty, 0);
 #endif
 		evbuffer_free(tty->in);
 		event_del(&tty->event_in);
@@ -571,7 +575,7 @@ tty_free(struct tty *tty)
 {
 	tty_close(tty);
 #ifdef ENABLE_IMAGES
-	image_tty_free(tty);
+	image_tty_free(tty, 0);
 #endif
 }
 
@@ -1722,6 +1726,10 @@ tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 		tty_putcode(tty, TTYC_RI);
 	else
 		tty_putcode_i(tty, TTYC_RIN, 1);
+#ifdef ENABLE_IMAGES
+	image_scroll(tty, ctx->xoff, ctx->yoff + ctx->orupper, ctx->sx,
+	    ctx->orlower - ctx->orupper + 1, -1);
+#endif
 }
 
 void
@@ -1763,6 +1771,10 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 		tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
 	tty_putc(tty, '\n');
+#ifdef ENABLE_IMAGES
+	image_scroll(tty, ctx->xoff, ctx->yoff + ctx->orupper, ctx->sx,
+	    ctx->orlower - ctx->orupper + 1, 1);
+#endif
 }
 
 void
@@ -1801,6 +1813,10 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 			tty_cursor(tty, 0, tty->cy);
 		tty_putcode_i(tty, TTYC_INDN, ctx->n);
 	}
+#ifdef ENABLE_IMAGES
+	image_scroll(tty, ctx->xoff, ctx->yoff + ctx->orupper, ctx->sx,
+	    ctx->orlower - ctx->orupper + 1, ctx->n);
+#endif
 }
 
 void
@@ -1834,6 +1850,10 @@ tty_cmd_scrolldown(struct tty *tty, const struct tty_ctx *ctx)
 		for (i = 0; i < ctx->n; i++)
 			tty_putcode(tty, TTYC_RI);
 	}
+#ifdef ENABLE_IMAGES
+	image_scroll(tty, ctx->xoff, ctx->yoff + ctx->orupper, ctx->sx,
+	    ctx->orlower - ctx->orupper + 1, -(int)ctx->n);
+#endif
 }
 
 void

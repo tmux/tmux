@@ -170,10 +170,12 @@ void		 image_draw_line(struct tty *, struct screen *, u_int, u_int,
 		     u_int, u_int, u_int);
 void		 image_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
 void		 image_draw_flush(struct tty *);
+void		 image_redraw_finish(struct tty *);
+void		 image_scroll(struct tty *, u_int, u_int, u_int, u_int, int);
 int		 image_tty_update(struct tty *);
 int		 image_backend_get_flags(struct tty *);
 void		 image_tty_size_changed(struct tty *);
-void		 image_tty_free(struct tty *);
+void		 image_tty_free(struct tty *, int);
 
 /* image-fallback.c */
 int		 fallback_select(struct tty *);
@@ -190,7 +192,7 @@ void		 sixel_write(struct screen_write_ctx *, struct sixel_image *,
 		     u_int);
 void		 sixel_draw_rect(struct tty *, struct image_rect *);
 void		 sixel_start_draw(struct tty *, u_int, u_int, u_int, u_int);
-void		 sixel_free_pending(struct tty *);
+void		 sixel_free_pending(struct tty *, int);
 void		 sixel_flush_pending(struct tty *);
 
 /* image-kitty.c */

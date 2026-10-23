@@ -1462,7 +1462,7 @@ sixel_get_pending(struct tty *tty)
 
 /* Free pending SIXEL rows for a terminal. */
 void
-sixel_free_pending(struct tty *tty)
+sixel_free_pending(struct tty *tty, __unused int send)
 {
 	struct sixel_pending	*sp = tty->image_data;
 
