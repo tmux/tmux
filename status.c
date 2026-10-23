@@ -553,7 +553,7 @@ status_message_set(struct client *c, int delay, int ignore_styles,
 
 	log_debug("%s: %s", __func__, s);
 
-	if (c == NULL) {
+	if (c == NULL || c->session == NULL) {
 		server_add_message("message: %s", s);
 		free(s);
 		return;
