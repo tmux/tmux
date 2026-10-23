@@ -216,4 +216,23 @@ case "$($TMUX capture-pane -p -t "$RIGHT")" in
 *) bad "6: queued input was not delivered to the window where it arrived" ;;
 esac
 
+# Commands queued after display-popup still run only after it exits.
+setup
+$TMUX bind Q display-popup -E 'printf POPUP-HERE; exec cat' '\;' set -g @after yes
+$TMUX2 send-keys -t "$OUTER" C-b Q
+sleep 1
+popup_shown || bad "7: popup did not open"
+$TMUX select-window -t s:one
+sleep 1
+$TMUX2 send-keys -t "$OUTER" -l 'typed-text'
+sleep 1
+[ -z "$($TMUX show -gqv @after)" ] ||
+	bad "7: command after display-popup ran before the popup closed"
+$TMUX select-window -t s:zero
+sleep 1
+$TMUX2 send-keys -t "$OUTER" C-c
+sleep 1
+[ "$($TMUX show -gqv @after)" = yes ] ||
+	bad "7: command after display-popup did not run after the popup closed"
+
 exit $FAILED
