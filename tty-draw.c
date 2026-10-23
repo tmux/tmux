@@ -178,10 +178,12 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	tty_region_off(tty);
 	tty_margin_off(tty);
 
-	/* Start with the default cell as the last cell. */
+	/*
+	 * Start with the default cell as the last cell, but leave the
+	 * attributes as they are: each cell drawn changes only those it needs.
+	 */
 	memcpy(&last, &grid_default_cell, sizeof last);
 	last.bg = defaults->bg;
-	tty_default_attributes(tty, 8, style_ctx);
 
 	/*
 	 * If there is padding at the start, we must have truncated a wide
