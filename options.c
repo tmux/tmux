@@ -1363,7 +1363,8 @@ options_fit_window(struct window *w)
 	lc = layout_fit(w);
 	if (lc == NULL)
 		return;
-	if (lc->g.sx > w->sx || lc->g.sy > w->sy)
+	if ((layout_cell_is_tiled(lc) || layout_cell_has_tiled_child(lc)) &&
+	    (lc->g.sx > w->sx || lc->g.sy > w->sy))
 		resize_window(w, lc->g.sx, lc->g.sy, -1, -1);
 	else if (layout_fix_panes(w, NULL))
 		events_fire_window("window-layout-changed", w);

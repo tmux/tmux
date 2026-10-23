@@ -406,6 +406,38 @@ must_equal "$($TMUX display-message -p -t mixed:0.1 '#{pane_width}')" "1" \
 	"narrow-scrollbar pane content width"
 $TMUX kill-server
 
+# Changing scrollbar style with no tiled panes must not resize or reposition
+# the floating pane.
+$TMUX new-session -d -s floatonly -x 80 -y 24 'cat' || exit 1
+$TMUX set -g status off &&
+$TMUX resize-window -t floatonly:0 -x 40 -y 12 &&
+$TMUX new-pane -t floatonly:0 -x 60 -y 6 -X 0 -Y 2 'cat' &&
+$TMUX kill-pane -t floatonly:0.0 || fail "create floating-only layout failed"
+before=$($TMUX list-panes -t floatonly:0 \
+	-F '#{pane_width}x#{pane_height}@#{pane_left},#{pane_top}')
+$TMUX set -g pane-scrollbars-style fg=red ||
+	fail "change floating-only scrollbar style failed"
+after=$($TMUX list-panes -t floatonly:0 \
+	-F '#{pane_width}x#{pane_height}@#{pane_left},#{pane_top}')
+must_equal "$after" "$before" "scrollbar style moved floating-only pane"
+must_equal "$($TMUX display -p -t floatonly:0 '#{window_width}x#{window_height}')" \
+	"40x12" "scrollbar style resized floating-only window"
+$TMUX kill-server
+
+# Fitting scrollbar minimums must not enlarge a small floating-only cell.
+$TMUX new-session -d -s floattiny -x 40 -y 12 'cat' || exit 1
+$TMUX set -g status off &&
+$TMUX new-pane -t floattiny:0 -x 3 -y 3 -X 5 -Y 2 'cat' &&
+$TMUX kill-pane -t floattiny:0.0 &&
+$TMUX set -g pane-border-type separate ||
+	fail "create small floating-only layout failed"
+before=$($TMUX display -p -t floattiny:0 '#{window_layout}')
+$TMUX set -g pane-scrollbars-style 'width=5,pad=0' &&
+$TMUX set -g pane-scrollbars on || fail "enable small floating scrollbar failed"
+after=$($TMUX display -p -t floattiny:0 '#{window_layout}')
+must_equal "$after" "$before" "fitting enlarged small floating-only cell"
+$TMUX kill-server
+
 # Style changes which do not grow the layout must not report a window resize.
 $TMUX new-session -d -s noresize -x 20 -y 5 'cat' || exit 1
 $TMUX set-hook -g window-resized 'set -g @unexpected-resize yes' ||

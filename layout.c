@@ -618,7 +618,9 @@ layout_fit(struct window *w)
 	struct layout_cell	*root = layout_full_root(w);
 	u_int			 min;
 
-	if (root == NULL || !window_border_type_is_separate(w))
+	if (root == NULL || !window_border_type_is_separate(w) ||
+	    (!layout_cell_is_tiled(root) &&
+	    !layout_cell_has_tiled_child(root)))
 		return (root);
 	min = layout_cell_tree_minimum(w, root, root, LAYOUT_LEFTRIGHT);
 	if (root->g.sx < min)
