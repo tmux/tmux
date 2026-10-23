@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Tests of client mode (window-client.c) as driven by choose-client: that the
 # -f filter removes clients that do not match, that a filter matching nothing
 # falls back to showing everything, and that Enter runs the default command
@@ -16,7 +18,7 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMP=$(mktemp -d) || exit 1
+TMP=$(test_tmpdir) || exit 1
 TMUX_TMPDIR="$TMP"
 export TMUX_TMPDIR
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
@@ -24,8 +26,8 @@ TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
 
 cleanup()
 {
-	$TMUX kill-server 2>/dev/null
-	$TMUX2 kill-server 2>/dev/null
+	stop_server $TMUX || exit 1
+	stop_server $TMUX2 || exit 1
 	rm -rf "$TMP"
 }
 trap cleanup EXIT
@@ -99,14 +101,7 @@ wait_count()
 # Wait (up to ~10s) until the test server has exactly $n clients attached.
 wait_clients()
 {
-	i=0
-	while [ "$i" -lt 10 ]; do
-		c=$($TMUX list-clients -F x 2>/dev/null | grep -c x)
-		[ "$c" -eq "$1" ] && return 0
-		sleep 1
-		i=$((i + 1))
-	done
-	return 1
+	wait_for_clients "$1" $TMUX || fail "expected $1 clients"
 }
 
 # wait_mode $target $state

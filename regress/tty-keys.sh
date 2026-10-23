@@ -1,13 +1,15 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
-$TMUX kill-server 2>/dev/null
+stop_server $TMUX || exit 1
 TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
-$TMUX2 kill-server 2>/dev/null
+stop_server $TMUX2 || exit 1
 
 TMP=$(mktemp) || exit 1
 prompt_pid=
@@ -17,8 +19,8 @@ cleanup () {
 		kill "$prompt_pid" 2>/dev/null
 		wait "$prompt_pid" 2>/dev/null
 	fi
-	$TMUX kill-server 2>/dev/null
-	$TMUX2 kill-server 2>/dev/null
+	stop_server $TMUX || exit 1
+	stop_server $TMUX2 || exit 1
 	rm -f "$TMP"
 }
 trap cleanup 0
@@ -31,12 +33,7 @@ fail () {
 
 $TMUX2 -f/dev/null new -d || exit 1
 $TMUX -f/dev/null new -d "$TMUX2 attach" || exit 1
-i=0
-while [ -z "$($TMUX2 list-clients -F '#{client_name}')" ]; do
-	[ "$i" -lt 100 ] || fail "inner client did not attach"
-	sleep 0.05
-	i=$((i + 1))
-done
+wait_for_clients 1 $TMUX2 || fail "inner client did not attach"
 
 exit_status=0
 assertion=0
@@ -63,30 +60,17 @@ assert_key () {
 	$TMUX2 command-prompt -k -p "$prompt" \
 	    'display-message -pl '"$format_string" > "$TMP" &
 	prompt_pid=$!
-	i=0
-	while ! $TMUX capture-pane -p | grep -Fq "$prompt"; do
-		kill -0 "$prompt_pid" 2>/dev/null || \
-		    fail "$keys -> $expected_name: prompt exited before becoming ready"
-		[ "$i" -lt 100 ] || \
-		    fail "$keys -> $expected_name: timed out waiting for prompt"
-		sleep 0.05
-		i=$((i + 1))
-	done
+	wait_for_text "$prompt" $TMUX capture-pane -p ||
+	    fail "$keys -> $expected_name: timed out waiting for prompt"
 
 	$TMUX send-keys $keys || fail "could not send $keys"
 
-	i=0
-	while kill -0 "$prompt_pid" 2>/dev/null; do
-		[ "$i" -lt 100 ] || \
-		    fail "$keys -> $expected_name: timed out waiting for key"
-		sleep 0.05
-		i=$((i + 1))
-	done
+	wait_for_exit "$prompt_pid" ||
+	    fail "$keys -> $expected_name: timed out waiting for key"
 	wait "$prompt_pid" || fail "$keys -> $expected_name: prompt failed"
 	prompt_pid=
 
-	keys=$(printf '%s' "$keys" | sed -e 's/Escape/\\\\033/g' | tr -d '[:space:]')
-	actual_name=$(tr -d '[:space:]' < "$TMP")
+	IFS= read -r actual_name <"$TMP"
 
 	if [ "$actual_name" = "$expected_name" ]; then
 		if [ -n "$VERBOSE" ]; then

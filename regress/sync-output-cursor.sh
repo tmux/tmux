@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # A synchronized update elsewhere in the pane must not hide a stationary
 # cursor while tmux waits for the end of the update.
 
@@ -20,7 +22,7 @@ pane|prompt) MODE=$1 ;;
 *) echo "usage: $0 [pane|prompt]" >&2; exit 1 ;;
 esac
 
-DIR=$(mktemp -d) || exit 1
+DIR=$(test_tmpdir) || exit 1
 TMUX_TMPDIR=$DIR
 export TMUX_TMPDIR
 
@@ -39,8 +41,8 @@ fail()
 
 cleanup()
 {
-	$OUTER kill-server 2>/dev/null
-	$INNER kill-server 2>/dev/null
+	stop_server $OUTER || exit 1
+	stop_server $INNER || exit 1
 	rm -rf "$DIR"
 }
 trap cleanup 0 1 15

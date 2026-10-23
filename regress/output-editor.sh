@@ -1,12 +1,14 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Output and selection editors use either the default or an explicit command.
 
 PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-DIR=$(mktemp -d) || exit 1
+DIR=$(test_tmpdir) || exit 1
 TMUX_TMPDIR=$DIR
 export TMUX_TMPDIR
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
@@ -14,8 +16,8 @@ OUT="$TEST_TMUX -LtestB$$ -f/dev/null"
 
 cleanup()
 {
-	$OUT kill-server 2>/dev/null
-	$TMUX kill-server 2>/dev/null
+	stop_server $OUT || exit 1
+	stop_server $TMUX || exit 1
 	rm -rf "$DIR"
 }
 trap cleanup EXIT HUP INT TERM

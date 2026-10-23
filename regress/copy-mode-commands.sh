@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Exercise the broad non-mouse copy-mode command surface: navigation, search,
 # jumps, state toggles, line/end-of-line copies, append, and pipe variants.
 
@@ -9,7 +11,7 @@ LC_ALL=C.UTF-8
 export PATH TERM LC_ALL
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-DIR=$(mktemp -d) || exit 1
+DIR=$(test_tmpdir) || exit 1
 TMUX_TMPDIR=$DIR
 export TMUX_TMPDIR
 TMUX="$TEST_TMUX -Ltest$$ -f/dev/null"
@@ -22,7 +24,7 @@ fail()
 
 cleanup()
 {
-	$TMUX kill-server 2>/dev/null
+	stop_server $TMUX || exit 1
 	rm -rf "$DIR"
 }
 trap cleanup 0 1 15

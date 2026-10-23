@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Cover prompt word movement in emacs and vi modes, ambiguous inline command
 # completion, and the show/clear-prompt-history command surface.
 
@@ -9,7 +11,7 @@ LC_ALL=C.UTF-8
 export PATH TERM LC_ALL
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-DIR=$(mktemp -d) || exit 1
+DIR=$(test_tmpdir) || exit 1
 TMUX_TMPDIR=$DIR
 export TMUX_TMPDIR
 INNER="$TEST_TMUX -LtestI$$ -f/dev/null"
@@ -23,8 +25,8 @@ fail()
 
 cleanup()
 {
-	$OUTER kill-server 2>/dev/null
-	$INNER kill-server 2>/dev/null
+	stop_server $OUTER || exit 1
+	stop_server $INNER || exit 1
 	rm -rf "$DIR"
 }
 trap cleanup 0 1 15

@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # The socket directory must be an existing absolute path without "..". An
 # empty $TMUX_TMPDIR is skipped.
 
@@ -9,15 +11,15 @@ TERM=screen
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 unset TMUX TMUX_TMPDIR
 
-TMP=$(mktemp -d)
+TMP=$(test_tmpdir)
 TMP=$(cd "$TMP" && pwd -P)
 L="testSP$$"
 DEFAULT="$(cd /tmp && pwd -P)/tmux-$(id -u)/$L"
 
 cleanup()
 {
-	"$TEST_TMUX" -S "$DEFAULT" kill-server 2>/dev/null
-	"$TEST_TMUX" -S "$TMP/tmux-$(id -u)/$L" kill-server 2>/dev/null
+	stop_server "$TEST_TMUX" -S "$DEFAULT" || exit 1
+	stop_server "$TEST_TMUX" -S "$TMP/tmux-$(id -u)/$L" || exit 1
 	rm -rf "$TMP" "$DEFAULT" "$DEFAULT.lock"
 }
 trap cleanup 0 1 15
@@ -28,7 +30,7 @@ check_path()
 	expected=$1; shift
 	env "$@" "$TEST_TMUX" -L"$L" -f/dev/null new -d 'sleep 60' || exit 1
 	actual=$(env "$@" "$TEST_TMUX" -L"$L" display -p '#{socket_path}')
-	env "$@" "$TEST_TMUX" -L"$L" kill-server
+	stop_server "$TEST_TMUX" -S "$actual" || exit 1
 	[ "$actual" = "$expected" ] || exit 1
 }
 

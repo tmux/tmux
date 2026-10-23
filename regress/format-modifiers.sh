@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Tests of format modifiers as described in tmux(1) FORMATS.
 #
 # This complements format-strings.sh (which covers escapes, conditionals,
@@ -31,7 +33,7 @@ cleanup()
 		kill "$pid" 2>/dev/null
 		wait "$pid" 2>/dev/null
 	done
-	$TMUX kill-server 2>/dev/null
+	stop_server $TMUX || exit 1
 	rm -f "$FIFO1" "$FIFO2"
 }
 trap cleanup 0
@@ -98,8 +100,7 @@ assert_alive()
 	fi
 }
 
-$TMUX kill-server 2>/dev/null
-sleep 0.1
+stop_server $TMUX || exit 1
 $TMUX new-session -d -s main -x 80 -y 24 || exit 1
 
 # Single-window session used by test_expand for format_expand-context tests.
@@ -122,6 +123,8 @@ $TMUX set -g @sq "a'b" || exit 1       # a single quote for q/s:
 $TMUX set -g @sub 'abABab' || exit 1
 $TMUX set -g @slash 'foo/bar foo/' || exit 1
 $TMUX set -g @nl "$(printf 'a\nb')" || exit 1
+$TMUX set -g @pad '  ab  ' || exit 1
+$TMUX set -g @ff 'foofoo' || exit 1
 q_s_nl=$(printf "'a\nb'")
 
 
@@ -506,6 +509,9 @@ test_format "#{s/^x*/X/:@s}" "Xabcdefghij"
 test_format "#{s/$/X/:@s}" "abcdefghijX"
 test_format "#{s/x*//:@s}" "abcdefghij"
 test_format "#{s/x*/X/:@s}" "aXbXcXdXeXfXgXhXiXjX"
+# ^ matches only at the start, including after an alternation or in a group.
+test_format "#{s/^ +| +$//:@pad}" "ab"
+test_format "#{s/(^| )foo/X/:@ff}" "Xfoo"
 # An invalid regular expression leaves the text unchanged.
 test_format "#{s/[/X/:@s}" "abcdefghij"
 
@@ -558,8 +564,7 @@ assert_alive "verbose expansion"
 # These need a fully controlled server so the set of sessions, windows and
 # panes (and their order) is known, so start from a clean server.  This must be
 # the last section as it discards the setup above.
-$TMUX kill-server 2>/dev/null
-sleep 0.1
+stop_server $TMUX || exit 1
 
 # Sessions, created in this order, so session ids (and hence creation order)
 # are zeta=$0, alpha=$1, mike=$2.

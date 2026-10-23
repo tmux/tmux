@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-choose-tree.c,v 1.61 2026/10/15 08:07:17 nicm Exp $ */
+/* $OpenBSD: cmd-choose-tree.c,v 1.62 2026/10/20 12:00:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Thomas Adam <thomas@xteddy.org>
@@ -114,8 +114,8 @@ const struct cmd_entry cmd_display_panes_entry = {
 	.description = "Display pane numbers.",
 	.alias = "displayp",
 
-	.args = { "d:kNs:t:Z", 0, 1, cmd_choose_tree_args_parse },
-	.usage = "[-kNZ] [-d duration] [-s source-window] "
+	.args = { "d:kNPs:t:Z", 0, 1, cmd_choose_tree_args_parse },
+	.usage = "[-kNPZ] [-d duration] [-s source-window] "
 		 CMD_TARGET_PANE_USAGE " [template]",
 
 	.source = { 's', CMD_FIND_WINDOW, 0 },
@@ -172,7 +172,11 @@ cmd_choose_tree_exec(struct cmd *self, struct cmdq_item *item)
 		free(path);
 		return (CMD_RETURN_WAIT);
 	}
-	window_pane_set_mode(wp, NULL, mode, item, target, args);
+	if (window_pane_set_mode(wp, NULL, mode, item, target, args) == 0 &&
+	    mode == &window_panes_mode &&
+	    args_has(args, 'P') &&
+	    (c == NULL || c->session == NULL || (c->flags & CLIENT_CONTROL)))
+		return (CMD_RETURN_WAIT);
 	return (CMD_RETURN_NORMAL);
 }
 

@@ -465,7 +465,7 @@ if test "x$try_utf8proc" = xyes; then
 		libutf8proc,
 		[
 			AM_CPPFLAGS="$LIBUTF8PROC_CFLAGS $AM_CPPFLAGS"
-			CPPFLAGS="$LIBUTF8PROC_CFLAGS $SAVED_CPPFLAGS"
+			CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
 			LIBS="$LIBUTF8PROC_LIBS $LIBS"
 			utf8proc_version=`$PKG_CONFIG --modversion libutf8proc 2>/dev/null`
 			test "x$utf8proc_version" = x && utf8proc_version=on

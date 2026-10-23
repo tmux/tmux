@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # The server cannot create its socket, so it sets the control client to exit
 # before the client completes identification. The exit check must not use the
 # control state before MSG_IDENTIFY_DONE creates it. The client must get the
@@ -10,7 +12,7 @@ TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 
-DIR=$(mktemp -d)
+DIR=$(test_tmpdir)
 SOCK=$DIR/missing/sock
 
 OUT=$($TEST_TMUX -f/dev/null -S$SOCK -C new-session </dev/null 2>&1)

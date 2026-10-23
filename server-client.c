@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.524 2026/10/16 11:34:49 bket Exp $ */
+/* $OpenBSD: server-client.c,v 1.527 2026/10/23 06:45:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -51,6 +51,9 @@ static int	server_client_dispatch_command(struct client *, struct imsg *);
 static int	server_client_dispatch_identify(struct client *, struct imsg *);
 static int	server_client_dispatch_shell(struct client *);
 static void	server_client_report_theme(struct client *, enum client_theme);
+
+/* Clients that have been lost but not yet freed. */
+struct clients dead_clients = TAILQ_HEAD_INITIALIZER(dead_clients);
 
 /* Number of attached clients. */
 u_int
@@ -388,6 +391,7 @@ server_client_lost(struct client *c)
 	}
 
 	TAILQ_REMOVE(&clients, c, entry);
+	TAILQ_INSERT_TAIL(&dead_clients, c, entry);
 	log_debug("lost client %p", c);
 
 	cmd_wait_for_client_lost(c);
@@ -477,6 +481,7 @@ server_client_free(__unused int fd, __unused short events, void *arg)
 
 	log_debug("free client %p (%d references)", c, c->references);
 
+	TAILQ_REMOVE(&dead_clients, c, entry);
 	redraw_free_scene(c->redraw_scene);
 	cmdq_free(c->queue);
 
@@ -776,14 +781,15 @@ server_client_check_mouse_status(struct client *c, struct mouse_event *m,
 	} else {
 		if (m->sideat == -1 ||
 		    x < (u_int)m->sideat ||
-		    x >= m->sideat + m->sidewidth)
-			return (0);
+		    x >= m->sideat + m->sidewidth) {
+			goto not_on_status;
+		}
 		if (m->statusat == 0)
 			sidey = m->statuslines;
 		else
 			sidey = 0;
 		if (y < sidey || y - sidey >= status_side_rows(c))
-			return (0);
+			goto not_on_status;
 		separator = m->sideat;
 		if (separator == 0)
 			separator = m->sidewidth - 1;
@@ -852,6 +858,12 @@ server_client_check_mouse_status(struct client *c, struct mouse_event *m,
 		break;
 	}
 	return (0);
+
+not_on_status:
+	/* Keep drags started on status lines from triggering pane bindings. */
+	if (type == KEYC_TYPE_MOUSEDRAG && c->tty.mouse_drag_status)
+		*loc = c->tty.mouse_drag_location;
+	return (0);
 }
 
 /* Check for mouse keys. */
@@ -904,10 +916,6 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 			x = m->x, y = m->y, b = m->b;
 			if (x == m->lx && y == m->ly)
 				return (KEYC_UNKNOWN);
-			if (c->tty.mouse_drag_status) {
-				x = c->tty.mouse_drag_x;
-				y = c->tty.mouse_drag_y;
-			}
 			log_debug("drag update at %u,%u", x, y);
 		} else {
 			x = m->lx, y = m->ly, b = m->lb;
@@ -964,6 +972,8 @@ have_event:
 	m->ignore = ignore;
 
 	if (server_client_check_mouse_status(c, m, type, x, y, &loc) != 0)
+		return (KEYC_UNKNOWN);
+	if (w->modal != NULL && loc != KEYC_MOUSE_LOCATION_NOWHERE)
 		return (KEYC_UNKNOWN);
 
 	/*
@@ -1711,8 +1721,10 @@ server_client_handle_key0(struct client *c, struct key_event *event,
     struct cmdq_item *after, struct cmdq_item **next)
 {
 	struct session		*s = c->session;
+	struct mouse_event	*m = &event->m;
 	struct cmdq_item	*item;
 	struct window_pane	*wp;
+	key_code		 key;
 
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
@@ -1751,13 +1763,19 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 		}
 		if (wp != NULL &&
 		    (wp->flags & PANE_CAPTUREALLKEYS) &&
+		    (~wp->flags & PANE_EXITED) &&
 		    TAILQ_EMPTY(&wp->modes) &&
-		    !KEYC_IS_MOUSE(event->key)) {
-			if (~wp->flags & PANE_EXITED) {
-				window_pane_key(wp, c, s, s->curw, event->key,
-				    &event->m);
-				return (0);
+		    (!KEYC_IS_MOUSE(event->key) || wp->wait_item != NULL)) {
+			key = event->key;
+			if (KEYC_IS_MOUSE(key)) {
+				key = server_client_check_mouse(c, event);
+				if (key == KEYC_UNKNOWN || (u_int)m->wp != wp->id)
+					return (0);
+				m->valid = 1;
+				m->key = key;
 			}
+			window_pane_key(wp, c, s, s->curw, key, m);
+			return (0);
 		}
 
 		if (server_client_handle_menu_key(c, event))

@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Internally generated targets must identify sessions independently of their
 # names. Exercise tree and switch modes and new-session -A with empty names,
 # target separators and a name that looks like another session's id.
@@ -9,7 +11,7 @@ TERM=screen
 export PATH TERM
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-DIR=$(mktemp -d) || exit 1
+DIR=$(test_tmpdir) || exit 1
 TMUX_TMPDIR=$DIR
 export TMUX_TMPDIR
 INNER="$TEST_TMUX -LtestI$$ -f/dev/null"
@@ -17,8 +19,8 @@ OUTER="$TEST_TMUX -LtestO$$ -f/dev/null"
 
 cleanup()
 {
-	$OUTER kill-server 2>/dev/null
-	$INNER kill-server 2>/dev/null
+	stop_server $OUTER || exit 1
+	stop_server $INNER || exit 1
 	rm -rf "$DIR"
 }
 trap cleanup 0 1 15

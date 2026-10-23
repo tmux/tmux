@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.278 2026/10/16 11:34:49 bket Exp $ */
+/* $OpenBSD: input.c,v 1.280 2026/10/21 13:45:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -98,7 +98,6 @@ struct input_param {
 /* Input parser context. */
 struct input_ctx {
 	struct window_pane	       *wp;
-	struct bufferevent	       *event;
 	struct screen_write_ctx		ctx;
 	struct colour_palette	       *palette;
 
@@ -874,14 +873,12 @@ input_restore_state(struct input_ctx *ictx)
 
 /* Initialise input parser. */
 struct input_ctx *
-input_init(struct window_pane *wp, struct bufferevent *bev,
-    struct colour_palette *palette)
+input_init(struct window_pane *wp, struct colour_palette *palette)
 {
 	struct input_ctx	*ictx;
 
 	ictx = xcalloc(1, sizeof *ictx);
 	ictx->wp = wp;
-	ictx->event = bev;
 	ictx->palette = palette;
 
 	ictx->input_space = INPUT_BUF_START;
@@ -1167,13 +1164,24 @@ input_get(struct input_ctx *ictx, u_int validx, int minval, int defval)
 	return (retval);
 }
 
+/* Get the pane's bufferevent to send replies to. */
+static struct bufferevent *
+input_get_event(struct input_ctx *ictx)
+{
+	if (ictx->wp == NULL)
+		return (NULL);
+	return (ictx->wp->event);
+}
+
 /* Send reply. */
 static void
 input_send_reply(struct input_ctx *ictx, const char *reply)
 {
-	if (ictx->event != NULL) {
+	struct bufferevent	*bev = input_get_event(ictx);
+
+	if (bev != NULL) {
 		log_debug("%s: %s", __func__, reply);
-		bufferevent_write(ictx->event, reply, strlen(reply));
+		bufferevent_write(bev, reply, strlen(reply));
 	}
 }
 
@@ -1808,6 +1816,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 			break;
 
 		m = screen_size_x(s) - s->cx;
+		if (s->mode & MODE_WRAP)
+			m += screen_size_x(s);
 		if (n > m)
 			n = m;
 
@@ -3406,7 +3416,7 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 static void
 input_osc_52_reply(struct input_ctx *ictx, char clip)
 {
-	struct bufferevent	*ev = ictx->event;
+	struct bufferevent	*ev = input_get_event(ictx);
 	struct paste_buffer	*pb;
 	int			 state;
 	const char		*buf;
@@ -3546,6 +3556,9 @@ input_reply_clipboard(struct bufferevent *bev, const char *buf, size_t len,
 {
 	char	*out = NULL;
 	int	 outlen = 0;
+
+	if (bev == NULL)
+		return;
 
 	if (buf != NULL && len != 0) {
 		if (len >= ((size_t)INT_MAX * 3 / 4) - 1)
@@ -3702,7 +3715,7 @@ static void
 input_request_clipboard_reply(struct input_request *ir, void *data)
 {
 	struct input_ctx			*ictx = ir->ictx;
-	struct bufferevent			*ev = ictx->event;
+	struct bufferevent			*ev = input_get_event(ictx);
 	struct input_request_clipboard_data	*cd = data;
 	int					 state;
 	char					*copy;

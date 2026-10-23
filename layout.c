@@ -1,4 +1,4 @@
-/* $OpenBSD: layout.c,v 1.102 2026/10/02 12:48:52 nicm Exp $ */
+/* $OpenBSD: layout.c,v 1.104 2026/10/22 07:51:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -416,7 +416,7 @@ layout_add_horizontal_border(struct layout_cell *root, struct layout_cell *lc,
 }
 
 /* Update pane offsets and sizes based on their cells. */
-void
+int
 layout_fix_panes(struct window *w, struct window_pane *skip)
 {
 	struct window_pane	*wp;
@@ -484,6 +484,7 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 	}
 	if (changed)
 		redraw_invalidate_scene(w);
+	return (changed);
 }
 
 /* Count the number of available cells in a layout. */
@@ -1560,7 +1561,7 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 
 	number = 0;
 	TAILQ_FOREACH (lc, &parent->cells, entry)
-		if (layout_cell_is_tiled(lc))
+		if (layout_cell_is_tiled(lc) || layout_cell_has_tiled_child(lc))
 			number++;
 	if (number <= 1)
 		return (0);
@@ -1589,7 +1590,7 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 
 	changed = 0;
 	TAILQ_FOREACH (lc, &parent->cells, entry) {
-		if (!layout_cell_is_tiled(lc))
+		if (!layout_cell_is_tiled(lc) && !layout_cell_has_tiled_child(lc))
 			continue;
 		change = 0;
 		if (parent->type == LAYOUT_LEFTRIGHT) {

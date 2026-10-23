@@ -1,24 +1,24 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 
-$TMUX kill-server 2>/dev/null
-sleep 0.5
+stop_server $TMUX || exit 1
 
 TMP=$(mktemp)
 EXP=$(mktemp)
-trap 'rm -f "$TMP" "$EXP"; $TMUX kill-server 2>/dev/null' 0 1 15
+trap 'rm -f "$TMP" "$EXP"; stop_server $TMUX || exit 1' 0 1 15
 
 $TMUX new-session -d -x 80 -y 24 -s replies \; \
     set-window-option -t replies:0 remain-on-exit on || exit 1
 $TMUX set-option -s set-clipboard on || exit 1
 $TMUX set-option -s get-clipboard buffer || exit 1
 printf Hello | $TMUX load-buffer -
-sleep 0.5
 
 exit_status=0
 
@@ -39,7 +39,10 @@ query()
 
 	$TMUX respawn-window -k -t replies:0 \
 	    "stty raw -echo min 1 time 20; printf '$setup'; printf '$seq'; dd bs=1 count=$count 2>/dev/null | cat -v >$TMP"
-	sleep 0.5
+	wait_for_output 1 $TMUX display -p -t replies:0 '#{pane_dead}' || {
+		fail "$name (reply reader did not exit)"
+		return
+	}
 	printf "%s" "$expected" >"$EXP"
 	cmp "$TMP" "$EXP" || fail "$name"
 }
@@ -53,7 +56,10 @@ query_timeout()
 
 	$TMUX respawn-window -k -t replies:0 \
 	    "stty raw -echo min 0 time 5; printf '$setup'; printf '$seq'; sleep 0.1; dd bs=1 count=128 2>/dev/null | cat -v >$TMP"
-	sleep 1
+	wait_for_output 1 $TMUX display -p -t replies:0 '#{pane_dead}' || {
+		fail "$name (reply reader did not exit)"
+		return
+	}
 	printf "%s" "$expected" >"$EXP"
 	cmp "$TMP" "$EXP" || fail "$name"
 }
@@ -94,5 +100,5 @@ query_timeout "osc-4-query" '^[]4;1;rgb:ffff/0000/0000^G' '\033]4;1;?\007' '\033
 query_timeout "osc-104-reset-query" '' '\033]4;1;?\007' '\033]4;1;red\007\033]104;1\007'
 query_timeout "osc-52-query" '^[]52;c;SGVsbG8=^G' '\033]52;c;?\007' ''
 
-$TMUX kill-server 2>/dev/null
+stop_server $TMUX || exit 1
 exit $exit_status

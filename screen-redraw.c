@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-redraw.c,v 1.170 2026/10/16 14:26:08 nicm Exp $ */
+/* $OpenBSD: screen-redraw.c,v 1.171 2026/10/21 07:38:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -563,7 +563,7 @@ redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
 {
 	struct redraw_build_cell	*bc;
 	u_int				 x, y;
-	int				 reset = 0;
+	int				 reset = 0, side_owner, above, left;
 
 	if (!redraw_window_to_scene(bctx, wx, wy, &x, &y))
 		return;
@@ -593,6 +593,26 @@ redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
 		bc->data.type = REDRAW_SPAN_BORDER;
 	}
 
+	/*
+	 * A corner cell can be shared by four tiled panes, two on each side,
+	 * and only one pane is kept for each side. So that none is lost
+	 * whatever order panes are marked in, a pane keeps its corner only on
+	 * the side clockwise from it: a pane above and to the left of the cell
+	 * is the top pane, above and to the right is the right pane, and so on.
+	 */
+	side_owner = (mask & (REDRAW_BORDER_U|REDRAW_BORDER_D));
+	if (!floating &&
+	    (mask == REDRAW_BORDER_L ||
+	    mask == REDRAW_BORDER_R ||
+	    mask == REDRAW_BORDER_U ||
+	    mask == REDRAW_BORDER_D)) {
+		above = (wy >= wp->yoff + (int)wp->sy);
+		left = (wx >= wp->xoff + (int)wp->sx);
+		top_owner = (above && left);
+		bottom_owner = (!above && !left);
+		side_owner = (above != left);
+	}
+
 	if (top_owner) {
 		bc->data.b.top_wp = wp;
 		bc->data.b.top_lines = pane_lines;
@@ -602,7 +622,7 @@ redraw_mark_border_cell(struct redraw_build_ctx *bctx, int wx, int wy,
 		bc->data.b.bottom_lines = pane_lines;
 	}
 
-	if (mask & (REDRAW_BORDER_U|REDRAW_BORDER_D)) {
+	if (side_owner) {
 		if (wx < wp->xoff) {
 			bc->data.b.right_wp = wp;
 			bc->data.b.right_lines = pane_lines;

@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # The side status line must refresh every status-interval seconds on its own,
 # whether or not the horizontal status line is on, and whether it was on when
 # the client attached or turned on afterwards. The client status timer drives
@@ -23,8 +25,8 @@ TMUX2="$TEST_TMUX -LtestB$$ -f/dev/null"
 
 COUNT1=$(mktemp)
 COUNT2=$(mktemp)
-trap "rm -f $COUNT1 $COUNT2; $TMUX kill-server 2>/dev/null; \
-	$TMUX2 kill-server 2>/dev/null" 0 1 15
+trap "rm -f $COUNT1 $COUNT2; stop_server $TMUX || exit 1; \
+	stop_server $TMUX2 || exit 1" 0 1 15
 
 fail() {
 	echo "$*" >&2
@@ -50,8 +52,8 @@ refreshes() {
 	    fail "$2: side status ran $before then $after times, did not refresh"
 }
 
-$TMUX kill-server 2>/dev/null
-$TMUX2 kill-server 2>/dev/null
+stop_server $TMUX || exit 1
+stop_server $TMUX2 || exit 1
 
 # Side status on before the client attaches, with status off.
 $TMUX2 new -d -x30 -y8 "sh -c 'exec sleep 100'" || exit 1
@@ -64,8 +66,7 @@ refreshes "$COUNT1" "on at attach"
 
 # Side status turned on after the client attached, with status off. A new
 # inner server so the client timer starts from nothing.
-$TMUX2 kill-server || exit 1
-sleep 1
+stop_server $TMUX2 || exit 1
 $TMUX2 new -d -x30 -y8 "sh -c 'exec sleep 100'" || exit 1
 $TMUX2 set -g status off || exit 1
 $TMUX2 set -g status-interval 1 || exit 1
