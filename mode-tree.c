@@ -1,4 +1,4 @@
-/* $OpenBSD: mode-tree.c,v 1.105 2026/10/16 07:59:06 nicm Exp $ */
+/* $OpenBSD: mode-tree.c,v 1.106 2026/10/23 12:18:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1364,7 +1364,7 @@ mode_tree_menu_callback(__unused struct menu *menu, __unused u_int idx,
 	struct mode_tree_menu	*mtm = data;
 	struct mode_tree_data	*mtd = mtm->data;
 
-	if (mtd->dead || key == KEYC_NONE)
+	if (mtd->dead || (mtm->c->flags & CLIENT_DEAD) || key == KEYC_NONE)
 		goto out;
 
 	if (mtm->line >= mtd->line_size)
@@ -1373,6 +1373,7 @@ mode_tree_menu_callback(__unused struct menu *menu, __unused u_int idx,
 	mtd->menucb(mtd->modedata, mtm->c, key);
 
 out:
+	server_client_unref(mtm->c);
 	mode_tree_remove_ref(mtd);
 	free(mtm);
 }
@@ -1410,6 +1411,7 @@ mode_tree_display_menu(struct mode_tree_data *mtd, struct client *c, u_int x,
 	mtm = xmalloc(sizeof *mtm);
 	mtm->data = mtd;
 	mtm->c = c;
+	mtm->c->references++;
 	mtm->line = line;
 	mtd->references++;
 
@@ -1424,6 +1426,7 @@ mode_tree_display_menu(struct mode_tree_data *mtd, struct client *c, u_int x,
 
 	if (menu_display(menu, 0, 0, NULL, x, y, c, lines, NULL, NULL, NULL,
 	    NULL, mode_tree_menu_callback, mtm) != 0) {
+		server_client_unref(mtm->c);
 		mode_tree_remove_ref(mtd);
 		free(mtm);
 		menu_free(menu);
