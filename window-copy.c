@@ -6597,7 +6597,7 @@ window_copy_other_end(struct window_mode_entry *wme)
 		data->cy = cy + sely - yy;
 	yy = screen_hsize(data->backing) + data->cy - data->oy;
 	hsize = window_copy_cursor_limit(wme, yy, data->rectflag);
-	if (data->cx > hsize)
+	if (!data->keepflag && data->cx > hsize)
 		data->cx = hsize;
 
 	window_copy_update_selection(wme, 1, 1);

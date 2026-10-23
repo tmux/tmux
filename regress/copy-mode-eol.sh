@@ -512,6 +512,32 @@ for mode in emacs vi; do
 	x cancel
 done
 
+# Swapping endpoints beyond EOL must preserve the selection and cursor column.
+$TMUX respawn-pane -k \
+    "printf '\033[H\033[2Jfoo\r\nbar\033[1;9H'; exec cat" ||
+    fail "respawn-pane failed"
+wait_cursor 8,0
+for mode in vi emacs; do
+	$TMUX set-window-option -g mode-keys "$mode" ||
+	    fail "set mode-keys failed"
+	enter_with_default on
+	x begin-selection
+	x cursor-down
+	check_cursor 8,1
+	expected=$(printf '\nbar')
+	x copy-selection-no-clear
+	[ "$($TMUX show-buffer)" = "$expected" ] ||
+	    fail "selection beyond EOL copied unexpected text"
+	for row in 0 1 0 1; do
+		x other-end
+		x copy-selection-no-clear
+		[ "$($TMUX show-buffer)" = "$expected" ] ||
+		    fail "other-end changed the copied text"
+		check_cursor "8,$row"
+	done
+	x cancel
+done
+
 # Cross the top of the viewport into history without losing the column.
 $TMUX respawn-pane -k \
     "printf '\033[H\033[2J'; i=0; while [ \$i -lt 20 ]; do \
