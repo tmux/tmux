@@ -1,4 +1,4 @@
-/* $OpenBSD: spawn.c,v 1.58 2026/10/16 14:26:08 nicm Exp $ */
+/* $OpenBSD: spawn.c,v 1.59 2026/10/23 06:33:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -485,6 +485,10 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	new_wp->pid = fdforkpty(ptm_fd, &new_wp->fd, new_wp->tty, NULL, &ws);
 	if (new_wp->pid == -1) {
 		xasprintf(cause, "fork failed: %s", strerror(errno));
+		if (actual_cwd != NULL &&
+		    chdir(path) != 0 &&
+		    (home == NULL || chdir(home) != 0))
+			chdir("/");
 		new_wp->fd = -1;
 		if (~sc->flags & SPAWN_RESPAWN) {
 			server_client_remove_pane(new_wp);
