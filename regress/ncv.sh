@@ -2,6 +2,8 @@
 
 # Check that attributes listed in ncv are not used with colours.
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 LC_ALL=C.UTF-8
@@ -30,10 +32,9 @@ $TMUX2 set -g status-format[0] \
 	'#[fg=black,bg=green,underscore,dim]MARK' || exit 1
 $TMUX2 set -as terminal-overrides ',screen:ncv=18' || exit 1
 
-$TMUX new -d -x20 -y5 || exit 1
+$TMUX new -d -x20 -y5 "$TMUX2 attach" || exit 1
 $TMUX set -g status off || exit 1
-$TMUX send -l "$TMUX2 attach" || exit 1
-$TMUX send Enter || exit 1
+wait_for_clients 1 $TMUX2 || fail "inner client did not attach"
 sleep 1
 
 $TMUX capturep -pe >$TMP || exit 1
