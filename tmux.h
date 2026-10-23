@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1469 2026/10/22 07:51:38 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1470 2026/10/23 06:45:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3316,6 +3316,7 @@ void printflike(1, 2) server_add_message(const char *, ...);
 int	 server_create_socket(uint64_t, char **);
 
 /* server-client.c */
+extern struct clients dead_clients;
 u_int	 server_client_how_many(void);
 void	 server_client_ensure_ranges(struct visible_ranges *, u_int);
 int	 server_client_ranges_is_empty(struct visible_ranges *);

@@ -1,4 +1,4 @@
-/* $OpenBSD: server.c,v 1.216 2026/08/18 07:24:49 nicm Exp $ */
+/* $OpenBSD: server.c,v 1.217 2026/10/23 06:45:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -272,6 +272,8 @@ server_loop(void)
 			if (c->flags & CLIENT_IDENTIFIED)
 				items += cmdq_next(c);
 		}
+		TAILQ_FOREACH(c, &dead_clients, entry)
+			items += cmdq_next(c);
 	} while (items != 0);
 
 	server_client_loop();
