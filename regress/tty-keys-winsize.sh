@@ -8,6 +8,7 @@ TERM=screen
 export PATH TERM
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+command -v python3 >/dev/null || exit 101
 
 python3 -B - "$TEST_TMUX" <<'PY'
 import fcntl
@@ -25,7 +26,7 @@ server = [tmux, "-LtestWinsize%d" % os.getpid(), "-f/dev/null"]
 pid = fd = None
 
 def run(*args, check=True):
-    p = subprocess.run(server + list(args), capture_output=True)
+    p = subprocess.run(server + list(args), capture_output=True, timeout=10)
     if check and p.returncode != 0:
         raise RuntimeError("%r: %s" % (args, p.stderr.decode()))
     return p.stdout.decode().strip()
@@ -59,9 +60,13 @@ def check_escape(context):
     os.write(fd, b"\033")
     pump(.15)
     os.write(fd, b"\r")
-    pump(.1)
-    actual = run("show-option", "-gv", "@seen")
-    assert actual == "EER", (context, "expected EER", actual)
+    deadline = time.monotonic() + 1
+    while True:
+        pump(.01)
+        actual = run("show-option", "-gv", "@seen")
+        if actual == "EER":
+            break
+        assert time.monotonic() < deadline, (context, "expected EER", actual)
 
 try:
     run("new-session", "-d", "-s", "winsize", "-x80", "-y24", "sleep 60")
@@ -92,9 +97,11 @@ try:
     # A successful reply must release the delay without waiting five seconds.
     resize(26, 82)
     os.write(fd, b"\033[8;26;82t\033[4;520;820t")
-    pump(.1)
-    assert run("list-clients", "-F",
-        "#{client_cell_width}x#{client_cell_height}") == "10x20"
+    deadline = time.monotonic() + 1
+    while run("list-clients", "-F",
+            "#{client_cell_width}x#{client_cell_height}") != "10x20":
+        assert time.monotonic() < deadline, "window size reply not handled"
+        pump(.01)
     check_escape("answered resize query")
 
     # Disconnect while a query is pending. Its timer must not outlive the

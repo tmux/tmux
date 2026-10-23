@@ -10,6 +10,7 @@ LC_ALL=C.UTF-8
 export PATH TERM LC_ALL
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+command -v python3 >/dev/null || exit 101
 
 python3 - "$TEST_TMUX" <<'PY'
 import re

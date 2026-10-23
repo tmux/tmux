@@ -11,6 +11,7 @@ LC_ALL=C.UTF-8
 export PATH TERM LC_ALL
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+command -v python3 >/dev/null || exit 101
 DIR=$(test_tmpdir) || exit 1
 TMUX_TMPDIR=$DIR
 export TMUX_TMPDIR

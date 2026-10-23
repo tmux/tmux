@@ -10,6 +10,7 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+command -v python3 >/dev/null || exit 101
 
 python3 - "$TEST_TMUX" <<'PY'
 import os
@@ -25,7 +26,7 @@ server = [tmux, "-L" + label, "-f/dev/null"]
 
 def run(*args, check=True):
     return subprocess.run(server + list(args), check=check,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
 
 def attach():
     pid, fd = os.forkpty()
@@ -37,9 +38,9 @@ def attach():
     return pid, fd
 
 def read_until(fd, needle, timeout=5):
-    end = time.time() + timeout
+    end = time.monotonic() + timeout
     data = b""
-    while time.time() < end:
+    while time.monotonic() < end:
         r, _, _ = select.select([fd], [], [], 0.05)
         if fd in r:
             try:
@@ -87,7 +88,10 @@ run("kill-server", check=False)
 run("new-session", "-d", "-x", "80", "-y", "24", "-s", "dead", "sleep 60")
 pid, fd = attach()
 try:
-    time.sleep(0.5)
+    deadline = time.monotonic() + 10
+    while not run("list-clients").stdout.strip():
+        assert time.monotonic() < deadline, "client did not attach"
+        time.sleep(.05)
     run("set-option", "-g", "remain-on-exit", "on")
     run("set-option", "-s", "set-clipboard", "on")
     run("set-option", "-s", "get-clipboard", "request")
@@ -104,6 +108,8 @@ try:
     # waiting; if it timed out before the answer arrived, try again.
     run("set-option", "-s", "get-clipboard", "both")
     for attempt in range(5):
+        # A previous attempt must not make a timed-out reply look successful.
+        run("delete-buffer", check=False)
         request(query)
         os.write(fd, b"\033]52;c;UmVwbHk=\033\\")
         end = time.monotonic() + 1

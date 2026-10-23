@@ -8,6 +8,7 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+command -v python3 >/dev/null || exit 101
 
 python3 -B - "$TEST_TMUX" <<'PY'
 import fcntl

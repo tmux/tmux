@@ -11,6 +11,8 @@ TERM=screen
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 stop_server $TMUX || exit 1
+trap 'stop_server $TMUX || exit 1' 0
+trap 'exit 1' 1 2 15
 
 # The only pane of the only session: the server must not exit.
 $TMUX new -d 'sleep 1000' || exit 1

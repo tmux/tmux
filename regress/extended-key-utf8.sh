@@ -16,22 +16,18 @@ OUTER="$TEST_TMUX -LtestO$$ -f/dev/null"
 
 cleanup()
 {
-	$OUTER kill-server 2>/dev/null
-	$INNER kill-server 2>/dev/null
+	stop_server $OUTER || exit 1
+	stop_server $INNER || exit 1
 }
-trap cleanup 0 1 15
-
-has_client()
-{
-	[ -n "$($INNER list-clients -F x 2>/dev/null)" ]
-}
+trap cleanup 0
+trap 'exit 1' 1 2 15
 
 cleanup
 $INNER new-session -d -s inner -x40 -y10 'exec sleep 100' || exit 1
 $INNER set-option -g status off || exit 1
 $OUTER new-session -d -s outer -x40 -y10 "$INNER attach -t inner" || exit 1
 $OUTER set-option -g status off || exit 1
-wait_until has_client || exit 1
+wait_for_clients 1 $INNER || exit 1
 
 # U+00E4 is two bytes in UTF-8, U+20AC three.
 $INNER bind-key -n ä set-option -g @a yes || exit 1
