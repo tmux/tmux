@@ -1,5 +1,9 @@
 CHANGES FROM 3.7c TO 3.8
 
+* Add copy-mode-keep-column and keep-column-on, keep-column-off and
+  keep-column-toggle copy mode commands to keep the cursor column when moving
+  vertically.
+
 * Many improvements to floating panes:
 
   - new-pane and split-window can now set the title with -T and border lines

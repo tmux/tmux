@@ -116,6 +116,8 @@ static int	window_copy_search_down(struct window_mode_entry *, int);
 static void	window_copy_goto_line(struct window_mode_entry *, const char *);
 static void	window_copy_update_cursor(struct window_mode_entry *, u_int,
 		    u_int);
+static void	window_copy_update_cursor1(struct window_mode_entry *, u_int,
+		    u_int, int);
 static void	window_copy_start_selection(struct window_mode_entry *);
 static int	window_copy_mouse_in_selection(struct window_mode_entry *,
 		    u_int, u_int, int *, int *);
@@ -159,6 +161,7 @@ static u_int	window_copy_cursor_limit(struct window_mode_entry *, u_int,
 static void	window_copy_cursor_start_of_line(struct window_mode_entry *);
 static void	window_copy_cursor_back_to_indentation(
 		    struct window_mode_entry *);
+static int	window_copy_follow_end_of_line(struct window_mode_entry *, u_int);
 static void	window_copy_cursor_end_of_line(struct window_mode_entry *);
 static void	window_copy_other_end(struct window_mode_entry *);
 static void	window_copy_cursor_left(struct window_mode_entry *);
@@ -183,6 +186,7 @@ static void	window_copy_cursor_prompt(struct window_mode_entry *, int,
 		    int);
 static void	window_copy_scroll_up(struct window_mode_entry *, u_int);
 static void	window_copy_scroll_down(struct window_mode_entry *, u_int);
+static void	window_copy_keep_column_set(struct window_mode_entry *, int);
 static void	window_copy_rectangle_set(struct window_mode_entry *, int);
 static void	window_copy_move_mouse(struct mouse_event *);
 static void	window_copy_drag_update(struct client *, struct mouse_event *);
@@ -324,6 +328,7 @@ struct window_copy_mode_data {
 		LINE_SEL_RIGHT_LEFT,
 	} lineflag;			/* line selection mode */
 	int		 rectflag;	/* in rectangle copy mode? */
+	int		 keepflag;	/* keep column on vertical movement? */
 	int		 scroll_exit;	/* exit on scroll to end? */
 	int		 hide_position;	/* hide position marker */
 	int		 line_numbers;	/* 0 off, 1 from option, 2 default */
@@ -601,6 +606,8 @@ window_copy_common_init(struct window_mode_entry *wme)
 	data->cursordrag = CURSORDRAG_NONE;
 	data->lineflag = LINE_SEL_NONE;
 	data->selflag = SEL_CHAR;
+	data->keepflag = options_get_number(wp->window->options,
+	    "copy-mode-keep-column");
 
 	if (wp->searchstr != NULL) {
 		data->searchtype = WINDOW_COPY_SEARCHUP;
@@ -864,7 +871,7 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 	oy = screen_hsize(data->backing) + data->cy - data->oy;
 	ox = window_copy_find_length(wme, oy);
 
-	if (data->cx != ox) {
+	if (data->keepflag || data->cx != ox) {
 		data->lastcx = data->cx;
 		data->lastsx = ox;
 	}
@@ -898,8 +905,7 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 	if (data->screen.sel == NULL || !data->rectflag) {
 		py = screen_hsize(data->backing) + data->cy - data->oy;
 		px = window_copy_find_length(wme, py);
-		if ((data->cx >= data->lastsx && data->cx != px) ||
-		    data->cx > px)
+		if (window_copy_follow_end_of_line(wme, px))
 			window_copy_cursor_end_of_line(wme);
 	}
 
@@ -931,7 +937,7 @@ window_copy_pageup1(struct window_mode_entry *wme, int half_page)
 	oy = screen_hsize(data->backing) + data->cy - data->oy;
 	ox = window_copy_find_length(wme, oy);
 
-	if (data->cx != ox) {
+	if (data->keepflag || data->cx != ox) {
 		data->lastcx = data->cx;
 		data->lastsx = ox;
 	}
@@ -957,8 +963,7 @@ window_copy_pageup1(struct window_mode_entry *wme, int half_page)
 	if (data->screen.sel == NULL || !data->rectflag) {
 		py = screen_hsize(data->backing) + data->cy - data->oy;
 		px = window_copy_find_length(wme, py);
-		if ((data->cx >= data->lastsx && data->cx != px) ||
-		    data->cx > px)
+		if (window_copy_follow_end_of_line(wme, px))
 			window_copy_cursor_end_of_line(wme);
 	}
 
@@ -990,7 +995,7 @@ window_copy_pagedown1(struct window_mode_entry *wme, int half_page,
 	oy = screen_hsize(data->backing) + data->cy - data->oy;
 	ox = window_copy_find_length(wme, oy);
 
-	if (data->cx != ox) {
+	if (data->keepflag || data->cx != ox) {
 		data->lastcx = data->cx;
 		data->lastsx = ox;
 	}
@@ -1016,8 +1021,7 @@ window_copy_pagedown1(struct window_mode_entry *wme, int half_page,
 	if (data->screen.sel == NULL || !data->rectflag) {
 		py = screen_hsize(data->backing) + data->cy - data->oy;
 		px = window_copy_find_length(wme, py);
-		if ((data->cx >= data->lastsx && data->cx != px) ||
-		    data->cx > px)
+		if (window_copy_follow_end_of_line(wme, px))
 			window_copy_cursor_end_of_line(wme);
 	}
 
@@ -3498,6 +3502,32 @@ window_copy_cmd_recentre_top_bottom(struct window_copy_cmd_state *cs)
 	return (WINDOW_COPY_CMD_REDRAW);
 }
 
+/* Enable column preservation for this copy mode visit. */
+static enum window_copy_cmd_action
+window_copy_cmd_keep_column_on(struct window_copy_cmd_state *cs)
+{
+	window_copy_keep_column_set(cs->wme, 1);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+/* Disable column preservation for this copy mode visit. */
+static enum window_copy_cmd_action
+window_copy_cmd_keep_column_off(struct window_copy_cmd_state *cs)
+{
+	window_copy_keep_column_set(cs->wme, 0);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+/* Toggle column preservation for this copy mode visit. */
+static enum window_copy_cmd_action
+window_copy_cmd_keep_column_toggle(struct window_copy_cmd_state *cs)
+{
+	struct window_copy_mode_data	*data = cs->wme->data;
+
+	window_copy_keep_column_set(cs->wme, !data->keepflag);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
 static enum window_copy_cmd_action
 window_copy_cmd_line_numbers_on(struct window_copy_cmd_state *cs)
 {
@@ -3795,6 +3825,24 @@ static const struct {
 	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_jump_to_mark
+	},
+	{ .command = "keep-column-on",
+	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_keep_column_on
+	},
+	{ .command = "keep-column-off",
+	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_keep_column_off
+	},
+	{ .command = "keep-column-toggle",
+	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_keep_column_toggle
 	},
 	{ .command = "line-numbers-on",
 	  .args = { "", 0, 0, NULL },
@@ -6108,8 +6156,17 @@ window_copy_synchronize_cursor(struct window_mode_entry *wme, int no_reset)
 	}
 }
 
+/* Update the cursor using the usual line limits. */
 static void
 window_copy_update_cursor(struct window_mode_entry *wme, u_int cx, u_int cy)
+{
+	window_copy_update_cursor1(wme, cx, cy, 0);
+}
+
+/* Update and draw the cursor, optionally keeping its column on short lines. */
+static void
+window_copy_update_cursor1(struct window_mode_entry *wme, u_int cx, u_int cy,
+    int keep_column)
 {
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
@@ -6120,10 +6177,10 @@ window_copy_update_cursor(struct window_mode_entry *wme, u_int cx, u_int cy)
 	int				 allow_onemore;
 
 	/*
-	 * Allow rectangle selection to extend past end of current line to
-	 * behave the same as vi with virtualedit=block set.
+	 * Allow column preservation and rectangle selection to extend past
+	 * the end of the current line.
 	 */
-	if (!data->rectflag && cy < screen_size_y(s)) {
+	if (!keep_column && !data->rectflag && cy < screen_size_y(s)) {
 		allow_onemore = (data->screen.sel != NULL && data->rectflag);
 		py = screen_hsize(data->backing) + cy - data->oy;
 		maxx = window_copy_cursor_limit(wme, py, allow_onemore);
@@ -6896,6 +6953,17 @@ window_copy_cursor_back_to_indentation(struct window_mode_entry *wme)
 	window_copy_acquire_cursor_up(wme, hsize, data->oy, oldy, px, py);
 }
 
+/* Decide whether vertical movement should follow the line end. */
+static int
+window_copy_follow_end_of_line(struct window_mode_entry *wme, u_int px)
+{
+	struct window_copy_mode_data	*data = wme->data;
+
+	if (data->keepflag || data->cx == px)
+		return (0);
+	return (data->cx >= data->lastsx || data->cx > px);
+}
+
 static void
 window_copy_cursor_end_of_line(struct window_mode_entry *wme)
 {
@@ -6969,7 +7037,7 @@ window_copy_other_end(struct window_mode_entry *wme)
 		data->cy = cy + sely - yy;
 	yy = screen_hsize(data->backing) + data->cy - data->oy;
 	hsize = window_copy_cursor_limit(wme, yy, data->rectflag);
-	if (data->cx > hsize)
+	if (!data->keepflag && data->cx > hsize)
 		data->cx = hsize;
 
 	window_copy_update_selection(wme, 1, 1);
@@ -7031,7 +7099,7 @@ window_copy_cursor_up(struct window_mode_entry *wme, int scroll_only)
 	norectsel = data->screen.sel == NULL || !data->rectflag;
 	oy = screen_hsize(data->backing) + data->cy - data->oy;
 	ox = window_copy_find_length(wme, oy);
-	if (norectsel && data->cx != ox) {
+	if (norectsel && (data->keepflag || data->cx != ox)) {
 		data->lastcx = data->cx;
 		data->lastsx = ox;
 	}
@@ -7042,8 +7110,10 @@ window_copy_cursor_up(struct window_mode_entry *wme, int scroll_only)
 	/* In vi mode, keep cursor on the same line unless dragging. */
 	if (scroll_only && data->cursordrag == CURSORDRAG_NONE &&
 	    options_get_number(oo, "mode-keys") == MODEKEY_VI) {
-		if (data->cy < screen_size_y(s) - 1)
-			window_copy_update_cursor(wme, data->cx, data->cy + 1);
+		if (data->cy < screen_size_y(s) - 1) {
+			window_copy_update_cursor1(wme, data->cx, data->cy + 1,
+			    data->keepflag);
+		}
 	}
 
 	if (scroll_only || data->cy == 0) {
@@ -7058,8 +7128,8 @@ window_copy_cursor_up(struct window_mode_entry *wme, int scroll_only)
 		}
 	} else {
 		if (norectsel) {
-			window_copy_update_cursor(wme, data->lastcx,
-			    data->cy - 1);
+			window_copy_update_cursor1(wme, data->lastcx,
+			    data->cy - 1, data->keepflag);
 		} else
 			window_copy_update_cursor(wme, data->cx, data->cy - 1);
 		if (window_copy_update_selection(wme, 1, 0)) {
@@ -7073,9 +7143,7 @@ window_copy_cursor_up(struct window_mode_entry *wme, int scroll_only)
 	if (norectsel) {
 		py = screen_hsize(data->backing) + data->cy - data->oy;
 		px = window_copy_find_length(wme, py);
-		if ((data->cx >= data->lastsx && data->cx != px) ||
-		    data->cx > px)
-		{
+		if (window_copy_follow_end_of_line(wme, px)) {
 			window_copy_update_cursor(wme, px, data->cy);
 			if (window_copy_update_selection(wme, 1, 0))
 				window_copy_redraw_lines(wme, data->cy, 1);
@@ -7113,7 +7181,7 @@ window_copy_cursor_down(struct window_mode_entry *wme, int scroll_only)
 	norectsel = data->screen.sel == NULL || !data->rectflag;
 	oy = screen_hsize(data->backing) + data->cy - data->oy;
 	ox = window_copy_find_length(wme, oy);
-	if (norectsel && data->cx != ox) {
+	if (norectsel && (data->keepflag || data->cx != ox)) {
 		data->lastcx = data->cx;
 		data->lastsx = ox;
 	}
@@ -7124,8 +7192,10 @@ window_copy_cursor_down(struct window_mode_entry *wme, int scroll_only)
 	/* In vi mode, keep cursor on the same line unless dragging. */
 	if (scroll_only && data->cursordrag == CURSORDRAG_NONE &&
 	    options_get_number(oo, "mode-keys") == MODEKEY_VI) {
-		if (data->cy > 0)
-			window_copy_update_cursor(wme, data->cx, data->cy - 1);
+		if (data->cy > 0) {
+			window_copy_update_cursor1(wme, data->cx, data->cy - 1,
+			    data->keepflag);
+		}
 	}
 
 	if (scroll_only || data->cy == screen_size_y(s) - 1) {
@@ -7136,8 +7206,8 @@ window_copy_cursor_down(struct window_mode_entry *wme, int scroll_only)
 			window_copy_redraw_lines(wme, data->cy - 1, 2);
 	} else {
 		if (norectsel) {
-			window_copy_update_cursor(wme, data->lastcx,
-			    data->cy + 1);
+			window_copy_update_cursor1(wme, data->lastcx,
+			    data->cy + 1, data->keepflag);
 		} else
 			window_copy_update_cursor(wme, data->cx, data->cy + 1);
 		if (window_copy_update_selection(wme, 1, 0))
@@ -7147,9 +7217,7 @@ window_copy_cursor_down(struct window_mode_entry *wme, int scroll_only)
 	if (norectsel) {
 		py = screen_hsize(data->backing) + data->cy - data->oy;
 		px = window_copy_find_length(wme, py);
-		if ((data->cx >= data->lastsx && data->cx != px) ||
-		    data->cx > px)
-		{
+		if (window_copy_follow_end_of_line(wme, px)) {
 			window_copy_update_cursor(wme, px, data->cy);
 			if (window_copy_update_selection(wme, 1, 0))
 				window_copy_redraw_lines(wme, data->cy, 1);
@@ -7588,6 +7656,22 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 	    screen_size_x(s)), data->cy, 0);
 	screen_write_stop(&ctx);
 	window_pane_scrollbar_redraw(wp);
+}
+
+/* Set column preservation and reset the remembered position. */
+static void
+window_copy_keep_column_set(struct window_mode_entry *wme, int keepflag)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	u_int				 py;
+
+	if (data->keepflag == keepflag)
+		return;
+	data->keepflag = keepflag;
+
+	data->lastcx = data->cx;
+	py = screen_hsize(data->backing) + data->cy - data->oy;
+	data->lastsx = window_copy_find_length(wme, py);
 }
 
 static void
