@@ -36,6 +36,7 @@ mouse()
 {
 	seq=$(printf '\033[<%s;%s;%s%s' "$1" "$2" "$3" "$4")
 	$TMUX2 send-keys -t outer:0.0 -l "$seq" || fail 'send mouse failed'
+	sleep 0.2
 }
 
 # Check the window order after each drag update.
@@ -46,12 +47,21 @@ check_order()
 	    fail "window order did not become '$*'"
 }
 
-# Check the actual terminal columns before sending mouse input to a side line.
+# Check that the side status is drawn before sending mouse input.
+# Do not slice by column since the captured border contains UTF-8.
 side_drawn()
 {
 	$TMUX2 capture-pane -p -S0 -E2 >"$CAPTURE" || return 1
-	awk -v column="$1" '
-	    { text = substr($0, column, 12); gsub(/[^A-Z]/, "", text); print text }
+	LC_ALL=C awk -v side="$1" '
+	    {
+		if (!match($0, /AAA|BBB|CCC/))
+		    next
+		if (side == "left" && RSTART > 12)
+		    next
+		if (side == "right" && RSTART < 40)
+		    next
+		print substr($0, RSTART, RLENGTH)
+	    }
 	' "$CAPTURE"
 }
 
@@ -105,9 +115,7 @@ for side in left right; do
 	$TMUX set -g side-status "$side" || exit 1
 	column=2
 	[ "$side" = right ] && column=48
-	start=1
-	[ "$side" = right ] && start=49
-	wait_for_output "$(printf 'AAA\nBBB\nCCC')" side_drawn "$start" ||
+	wait_for_output "$(printf 'AAA\nBBB\nCCC')" side_drawn "$side" ||
 	    fail 'side status did not draw'
 	mouse 0 "$column" 1 M
 	mouse 32 "$((column + 1))" 1 M
