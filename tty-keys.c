@@ -945,7 +945,8 @@ partial_key:
 			delay = 500;
 	}
 	if (tty->flags & (TTY_WAITFG|TTY_WAITBG) ||
-	    tty->flags & (TTY_OSC52QUERY|TTY_WINSZQUERY) ||
+	    tty->flags & (TTY_OSC52QUERY|TTY_WINSZQUERY|
+	    TTY_WINSZQUERY_PX) ||
 	    (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS ||
 	    !TAILQ_EMPTY(&c->input_requests)) {
 		log_debug("%s: increasing delay (active query)", c->name);
@@ -1931,11 +1932,12 @@ tty_keys_winsz(struct tty *tty, const char *buf, size_t len, size_t *size,
 	size_t		 end;
 	char		 tmp[64];
 	u_int		 sx, sy, xpixel, ypixel, char_x, char_y;
+	int		 resize;
 
 	*size = 0;
 
 	/* If we did not request this, ignore it. */
-	if (!(tty->flags & TTY_WINSZQUERY))
+	if (!(tty->flags & (TTY_WINSZQUERY|TTY_WINSZQUERY_PX)))
 		return (-1);
 
 	/* First two bytes are always \033[. */
@@ -1969,28 +1971,63 @@ tty_keys_winsz(struct tty *tty, const char *buf, size_t len, size_t *size,
 
 	/* Try to parse the window size sequence. */
 	if (sscanf(tmp, "8;%u;%u", &sy, &sx) == 2) {
+		/* Ignore unless this reply is still outstanding. */
+		if (!(tty->flags & TTY_WINSZQUERY))
+			return (-1);
 		*size = end + 1;
 		if (!apply)
 			return (0);
 
-		/* Window size in characters. */
-		if (tty_set_size(tty, sx, sy, tty->xpixel, tty->ypixel))
+		/*
+		 * Window size in characters.  Clear only this reply's
+		 * flags: the pixel-size reply is tracked and answered
+		 * independently.
+		 *
+		 * When the query was sent on request (refresh-client
+		 * -q), the report may be the only way a size change is
+		 * seen (for example on a serial line where SIGWINCH is
+		 * not delivered), so apply a changed size as though
+		 * SIGWINCH had been received.  Otherwise just update the
+		 * size and redraw if it changed.
+		 */
+		resize = (tty->flags & TTY_WINSZQUERY_APPLY);
+		tty->flags &= ~(TTY_WINSZQUERY|TTY_WINSZQUERY_APPLY);
+
+		if (sx == 0 || sy == 0 ||
+		    sx > CLIENT_MAX_TERM_SIZE || sy > CLIENT_MAX_TERM_SIZE) {
+			log_debug("%s: ignoring reported size %ux%u",
+			    c->name, sx, sy);
+			return (0);
+		}
+		if (resize)
+			server_client_size_changed(c, sx, sy);
+		else if (tty_set_size(tty, sx, sy, tty->xpixel,
+		    tty->ypixel))
 			server_redraw_client(c);
 		return (0);
 	} else if (sscanf(tmp, "4;%u;%u", &ypixel, &xpixel) == 2) {
+		/* Ignore unless this reply is still outstanding. */
+		if (!(tty->flags & TTY_WINSZQUERY_PX))
+			return (-1);
 		*size = end + 1;
 		if (!apply)
 			return (0);
 
-		/* Window size in pixels. */
+		/*
+		 * Window size in pixels.  Clear only this reply's flag:
+		 * the two replies are tracked independently, so replies
+		 * that arrive out of order neither lose the other nor
+		 * arrive unasked for, and an unanswered reply is cleared
+		 * by the query timeout.
+		 */
+		tty->flags &= ~TTY_WINSZQUERY_PX;
+
 		char_x = (xpixel && tty->sx) ? xpixel / tty->sx : 0;
 		char_y = (ypixel && tty->sy) ? ypixel / tty->sy : 0;
 		if (tty_set_size(tty, tty->sx, tty->sy, char_x, char_y))
 			server_redraw_client(c);
 		tty_invalidate(tty);
 		recalculate_sizes();
-
-		tty->flags &= ~TTY_WINSZQUERY;
 		return (0);
 	}
 

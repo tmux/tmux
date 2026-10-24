@@ -333,6 +333,40 @@ server_client_fire_resized(struct client *c, u_int old_sx, u_int old_sy)
 	events_fire("client-resized", ep);
 }
 
+/* A client terminal changed size: recalculate, redraw and notify. */
+static void
+server_client_apply_resized(struct client *c, u_int old_sx, u_int old_sy)
+{
+	recalculate_sizes();
+	server_redraw_client(c);
+	if (c->session != NULL)
+		server_client_fire_resized(c, old_sx, old_sy);
+}
+
+/*
+ * The terminal reported a new size in an XTWINOPS reply (see
+ * tty_size_query): do what SIGWINCH does.  The size is taken from the
+ * reply rather than tty_resize(), because the kernel winsize is exactly
+ * what is stale when SIGWINCH is not delivered to the client.
+ */
+void
+server_client_size_changed(struct client *c, u_int sx, u_int sy)
+{
+	u_int	old_sx = c->tty.sx, old_sy = c->tty.sy;
+
+	/* Sizes are sanity-checked by the sole caller (tty_keys_winsz). */
+	if ((c->flags & CLIENT_CONTROL) || sx == 0 || sy == 0 ||
+	    (sx == old_sx && sy == old_sy))
+		return;
+
+	log_debug("%s: reported size %ux%u (was %ux%u)", c->name, sx, sy,
+	    old_sx, old_sy);
+	server_client_update_latest(c);
+	tty_set_size(&c->tty, sx, sy, c->tty.xpixel, c->tty.ypixel);
+	tty_invalidate(&c->tty);
+	server_client_apply_resized(c, old_sx, old_sy);
+}
+
 /* Set client session. */
 void
 server_client_set_session(struct client *c, struct session *s)
@@ -2694,10 +2728,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 		old_sy = c->tty.sy;
 		tty_resize(&c->tty);
 		tty_repeat_requests(&c->tty, 0);
-		recalculate_sizes();
-		server_redraw_client(c);
-		if (c->session != NULL)
-			server_client_fire_resized(c, old_sx, old_sy);
+		server_client_apply_resized(c, old_sx, old_sy);
 		break;
 	case MSG_EXITING:
 		if (datalen != 0)
