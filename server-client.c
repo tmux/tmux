@@ -180,6 +180,7 @@ server_client_create(int fd)
 	c->out_fd = -1;
 
 	c->queue = cmdq_new();
+	c->queue_input = cmdq_new();
 	RB_INIT(&c->files);
 
 	c->tty.sx = 80;
@@ -484,6 +485,7 @@ server_client_free(__unused int fd, __unused short events, void *arg)
 	TAILQ_REMOVE(&dead_clients, c, entry);
 	redraw_free_scene(c->redraw_scene);
 	cmdq_free(c->queue);
+	cmdq_free(c->queue_input);
 
 	if (c->references == 0) {
 		free((void *)c->name);
@@ -1394,6 +1396,7 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	struct mouse_event		*m = &event->m;
 	struct session			*s;
 	struct winlink			*wl;
+	struct window			*w;
 	struct window_pane		*wp;
 	struct window_mode_entry	*wme;
 	struct timeval			 tv;
@@ -1447,9 +1450,24 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	}
 
 	/* Find affected pane. */
-	if (!KEYC_IS_MOUSE(key) || cmd_find_from_mouse(&fs, m, 0) != 0)
-		cmd_find_from_client(&fs, c, 0);
-	wp = fs.wp;
+	if (event->target_valid) {
+		s = session_find_by_id(event->target_session);
+		if (s == NULL ||
+		    (w = window_find_by_id(event->target_window)) == NULL ||
+		    (wl = winlink_find_by_window(&s->windows, w)) == NULL ||
+		    (wp = window_pane_find_by_id(event->target_pane)) == NULL ||
+		    wp->window != w)
+			goto out;
+		cmd_find_clear_state(&fs, 0);
+		fs.s = s;
+		fs.wl = wl;
+		fs.w = w;
+		fs.wp = wp;
+	} else {
+		if (!KEYC_IS_MOUSE(key) || cmd_find_from_mouse(&fs, m, 0) != 0)
+			cmd_find_from_client(&fs, c, 0);
+		wp = fs.wp;
+	}
 
 	/* Forward mouse keys if disabled. */
 	if (KEYC_IS_MOUSE(key) && !options_get_number(s->options, "mouse"))
@@ -1715,7 +1733,25 @@ server_client_handle_menu_key(struct client *c, struct key_event *event)
 	return (1);
 }
 
-/* Handle a key event. */
+/* Check if a modal pane is waiting in another window in this session. */
+static int
+server_client_popup_elsewhere(struct client *c)
+{
+	struct winlink		*wl;
+	struct window_pane	*wp;
+
+	if (c->session == NULL || c->session->curw == NULL)
+		return (0);
+	RB_FOREACH(wl, winlinks, &c->session->windows) {
+		if (wl->window == c->session->curw->window)
+			continue;
+		wp = wl->window->modal;
+		if (wp != NULL && wp->wait_item != NULL)
+			return (1);
+	}
+	return (0);
+}
+
 static int
 server_client_handle_key0(struct client *c, struct key_event *event,
     struct cmdq_item *after, struct cmdq_item **next)
@@ -1829,7 +1865,19 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 			*next = item;
 		return (1);
 	}
-	cmdq_append(c, item);
+	if (!KEYC_IS_MOUSE(event->key) &&
+	    (cmdq_waiting_for(c, "display-popup") ||
+	    (cmdq_waiting_for(c, "run-shell") &&
+	    server_client_popup_elsewhere(c))) && s != NULL &&
+	    s->curw != NULL && s->curw->window->modal == NULL &&
+	    s->curw->window->active != NULL) {
+		event->target_session = s->id;
+		event->target_window = s->curw->window->id;
+		event->target_pane = s->curw->window->active->id;
+		event->target_valid = 1;
+		cmdq_append_input(c, item);
+	} else
+		cmdq_append(c, item);
 	return (1);
 }
 
