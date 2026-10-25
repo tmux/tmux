@@ -977,6 +977,79 @@ format_cb_current_command(struct format_tree *ft)
 	return (value);
 }
 
+/*
+ * Get the path last reported by the program in a pane (OSC 7), if it is on
+ * this host: a file:// URI with an empty host, localhost or this host's name,
+ * or a plain absolute path. The program is not trusted, so the path may not
+ * have control characters or #( (which clean_name removes, but %XX could put
+ * back).
+ */
+static char *
+format_reported_path(struct window_pane *wp)
+{
+	char		 host[HOST_NAME_MAX + 1], hex[3], *copy, *path, *out;
+	const char	*cp, *end;
+	size_t		 n;
+	u_int		 c;
+
+	if (wp->base.path == NULL)
+		return (NULL);
+
+	/* The path is stored escaped by clean_name. */
+	copy = xmalloc(strlen(wp->base.path) + 1);
+	if (strunvis(copy, wp->base.path) == -1)
+		goto fail;
+	if (*copy == '/')
+		end = copy;
+	else {
+		if (strncmp(copy, "file://", 7) != 0)
+			goto fail;
+		cp = copy + 7;
+		if ((end = strchr(cp, '/')) == NULL)
+			goto fail;
+		n = end - cp;
+		if (n != 0 &&
+		    (n != 9 || strncasecmp(cp, "localhost", 9) != 0)) {
+			if (gethostname(host, sizeof host) != 0)
+				goto fail;
+			host[sizeof host - 1] = '\0';
+			if (strlen(host) != n || strncasecmp(cp, host, n) != 0)
+				goto fail;
+		}
+	}
+
+	out = path = xmalloc(strlen(end) + 1);
+	for (cp = end; *cp != '\0'; cp++) {
+		if (*cp == '%' && copy != end) {
+			if (!isxdigit((u_char)cp[1]) ||
+			    !isxdigit((u_char)cp[2]))
+				break;
+			hex[0] = cp[1];
+			hex[1] = cp[2];
+			hex[2] = '\0';
+			c = strtoul(hex, NULL, 16);
+			cp += 2;
+		} else
+			c = (u_char)*cp;
+		if (c < 0x20 || c == 0x7f)
+			break;
+		if (c == '(' && out != path && out[-1] == '#')
+			break;
+		*out++ = c;
+	}
+	*out = '\0';
+	if (*cp != '\0' || !utf8_isvalid(path)) {
+		free(path);
+		goto fail;
+	}
+	free(copy);
+	return (path);
+
+fail:
+	free(copy);
+	return (NULL);
+}
+
 /* Callback for pane_current_path. */
 static void *
 format_cb_current_path(struct format_tree *ft)
@@ -987,9 +1060,10 @@ format_cb_current_path(struct format_tree *ft)
 	if (wp == NULL)
 		return (NULL);
 
+	/* If the system cannot tell, use the path the pane reported. */
 	cwd = osdep_get_cwd(wp->fd);
 	if (cwd == NULL)
-		return (NULL);
+		return (format_reported_path(wp));
 	return (xstrdup(cwd));
 }
 
