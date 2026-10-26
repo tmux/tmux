@@ -1598,7 +1598,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 			else
 				clip = "";
 #ifdef ENABLE_IMAGES
-			input_reply(ictx, 1, "\033[?1;2;4%sc");
+			input_reply(ictx, 1, "\033[?1;2;4%sc", clip);
 #else
 			input_reply(ictx, 1, "\033[?1;2%sc", clip);
 #endif
