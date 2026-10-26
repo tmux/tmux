@@ -346,6 +346,7 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 			    strerror(errno));
 			return (1);
 		}
+		tio = saved_tio;
 		cfmakeraw(&tio);
 		tio.c_iflag = ICRNL|IXANY;
 		tio.c_oflag = OPOST|ONLCR;
