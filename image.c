@@ -193,7 +193,7 @@ image_check_limits(struct image *keep, size_t size)
 		return (0);
 
 	TAILQ_FOREACH(c, &clients, entry)
-		image_tty_free(&c->tty);
+		image_tty_free(&c->tty, 1);
 	while (!image_can_add(size)) {
 		oldest = image_find_oldest(keep, size);
 		if (oldest == NULL)

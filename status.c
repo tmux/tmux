@@ -1,4 +1,4 @@
-/* $OpenBSD: status.c,v 1.275 2026/10/16 07:59:06 nicm Exp $ */
+/* $OpenBSD: status.c,v 1.276 2026/10/23 12:17:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -553,7 +553,7 @@ status_message_set(struct client *c, int delay, int ignore_styles,
 
 	log_debug("%s: %s", __func__, s);
 
-	if (c == NULL) {
+	if (c == NULL || c->session == NULL) {
 		server_add_message("message: %s", s);
 		free(s);
 		return;

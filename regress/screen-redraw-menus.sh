@@ -83,12 +83,11 @@ setup() {
 	$TMUX2 setw menu-selected-style "fg=colour16,bg=colour220" || exit 1
 	$TMUX2 setw menu-border-style "fg=colour45,bg=colour235" || exit 1
 
-	$TMUX new -d -x"$1" -y"$2" || exit 1
+	$TMUX new -d -x"$1" -y"$2" "$TMUX2 attach" || exit 1
 	$TMUX set -g status off || exit 1
 	$TMUX set -g window-size manual || exit 1
 	$TMUX set -g default-terminal "tmux-256color" || exit 1
-	$TMUX send -l "$TMUX2 attach" || exit 1
-	$TMUX send Enter || exit 1
+	wait_for_clients 1 $TMUX2 || fail "inner client did not attach"
 	sleep 1
 }
 

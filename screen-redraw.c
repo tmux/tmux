@@ -1580,6 +1580,9 @@ redraw_draw_menu_span(struct redraw_draw_ctx *dctx,
 	struct screen		*s = menu_screen(span->data.m.md);
 	u_int			 px;
 
+#ifdef ENABLE_IMAGES
+	image_redraw_start(tty, x, y, n, 1);
+#endif
 	px = span->data.m.px + (x - dctx->side_left - span->x);
 	tty_draw_line(tty, s, px, span->data.m.py, n, x, y, NULL);
 }
@@ -1923,6 +1926,9 @@ redraw_draw_pane_prompt(struct redraw_draw_ctx *dctx, struct window_pane *wp)
 	if (px + width > sx)
 		width = sx - px;
 
+#ifdef ENABLE_IMAGES
+	image_redraw_start(tty, side_left + px, cy, width, 1);
+#endif
 	redraw_make_pane_prompt(wp, &screen);
 	tty_draw_line(tty, &screen, offset, 0, width, side_left + px, cy, NULL);
 	screen_free(&screen);
@@ -2089,6 +2095,10 @@ redraw_draw(struct client *c, struct window_pane *wp, int flags)
 			tty_draw_line(tty, sl, 0, i, tty->sx, 0, y + i, NULL);
 	}
 
+#ifdef ENABLE_IMAGES
+	image_redraw_finish(tty);
+#endif
+
 	tty_reset(tty);
 
 	log_debug("%s: finished @%u redraw", c->name, scene->w->id);
@@ -2210,6 +2220,9 @@ redraw_damage_draw_pane_prompt(struct redraw_draw_ctx *dctx,
 		width = span->width;
 		if (width > screen_size_x(&screen) - px)
 			width = screen_size_x(&screen) - px;
+#ifdef ENABLE_IMAGES
+		image_redraw_start(tty, x, y, width, 1);
+#endif
 		tty_draw_line(tty, &screen, px, 0, width, x, y, NULL);
 	}
 	screen_free(&screen);
@@ -2315,6 +2328,9 @@ redraw_draw_damage_rectangle(struct redraw_draw_ctx *dctx, u_int x, u_int y,
 			redraw_draw_span(dctx, span, cy, REDRAW_TEXT);
 		}
 	}
+#ifdef ENABLE_IMAGES
+	image_redraw_finish(&scene->c->tty);
+#endif
 }
 
 /* Draw pending window damage on this client. */

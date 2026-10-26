@@ -4,6 +4,7 @@
 # content in an overlapping floating pane when leaving copy mode.
 
 . ./image-common.inc
+. ./regress-common.inc
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -29,9 +30,8 @@ image_check_support $TMUX2
 # not reproduce on a fallback or Kitty client.
 $TMUX2 set -as terminal-features ',*:sixel' || exit 1
 
-$TMUX new-session -d -x 60 -y 20 || exit 1
-$TMUX send-keys -l "$TMUX2 attach-session" || exit 1
-$TMUX send-keys Enter || exit 1
+$TMUX new-session -d -x 60 -y 20 "$TMUX2 attach-session" || exit 1
+wait_for_clients 1 $TMUX2 || exit 1
 sleep 1
 
 # Sanity check: the floating pane's content is visible before anything
