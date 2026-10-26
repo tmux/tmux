@@ -791,6 +791,7 @@ server_client_check_mouse_status(struct client *c, struct mouse_event *m,
 	struct session		*s = c->session, *fs;
 	struct style_range	*sr;
 	u_int			 n, sidey, separator;
+	int			 side = 0;
 
 	*loc = KEYC_MOUSE_LOCATION_NOWHERE;
 
@@ -799,8 +800,9 @@ server_client_check_mouse_status(struct client *c, struct mouse_event *m,
 	m->sideat = status_side_at_column(c);
 	m->sidewidth = status_side_size(c);
 	if (c->tty.mouse_drag_flag != 0 &&
-	    c->tty.mouse_drag_location == KEYC_MOUSE_LOCATION_STATUS_BORDER) {
-		*loc = KEYC_MOUSE_LOCATION_STATUS_BORDER;
+	    c->tty.mouse_drag_location ==
+	    KEYC_MOUSE_LOCATION_SIDE_STATUS_BORDER) {
+		*loc = KEYC_MOUSE_LOCATION_SIDE_STATUS_BORDER;
 		return (0);
 	}
 
@@ -824,31 +826,45 @@ server_client_check_mouse_status(struct client *c, struct mouse_event *m,
 		if (separator == 0)
 			separator = m->sidewidth - 1;
 		if (m->sidewidth > 1 && x == separator) {
-			*loc = KEYC_MOUSE_LOCATION_STATUS_BORDER;
+			*loc = KEYC_MOUSE_LOCATION_SIDE_STATUS_BORDER;
 			if (type == KEYC_TYPE_MOUSEDRAG &&
 			    c->tty.mouse_drag_flag == 0)
 				c->tty.mouse_drag_status = 1;
 			return (0);
 		}
+		side = 1;
 		sr = status_side_get_range(c, x - m->sideat, y - sidey);
 	}
 	if (type == KEYC_TYPE_MOUSEDRAG && c->tty.mouse_drag_flag == 0)
 		c->tty.mouse_drag_status = 1;
 	if (sr == NULL) {
-		*loc = KEYC_MOUSE_LOCATION_STATUS_DEFAULT;
+		if (side)
+			*loc = KEYC_MOUSE_LOCATION_SIDE_STATUS_DEFAULT;
+		else
+			*loc = KEYC_MOUSE_LOCATION_STATUS_DEFAULT;
 		return (0);
 	}
 
+	if (side)
+		*loc = KEYC_MOUSE_LOCATION_SIDE_STATUS;
+	else
+		*loc = KEYC_MOUSE_LOCATION_STATUS;
 	switch (sr->type) {
 	case STYLE_RANGE_NONE:
 		return (-1);
 	case STYLE_RANGE_LEFT:
 		log_debug("mouse range: left");
-		*loc = KEYC_MOUSE_LOCATION_STATUS_LEFT;
+		if (side)
+			*loc = KEYC_MOUSE_LOCATION_SIDE_STATUS_LEFT;
+		else
+			*loc = KEYC_MOUSE_LOCATION_STATUS_LEFT;
 		break;
 	case STYLE_RANGE_RIGHT:
 		log_debug("mouse range: right");
-		*loc = KEYC_MOUSE_LOCATION_STATUS_RIGHT;
+		if (side)
+			*loc = KEYC_MOUSE_LOCATION_SIDE_STATUS_RIGHT;
+		else
+			*loc = KEYC_MOUSE_LOCATION_STATUS_RIGHT;
 		break;
 	case STYLE_RANGE_PANE:
 		fwp = window_pane_find_by_id(sr->argument);
@@ -857,7 +873,6 @@ server_client_check_mouse_status(struct client *c, struct mouse_event *m,
 		m->wp = sr->argument;
 
 		log_debug("mouse range: pane %%%u", m->wp);
-		*loc = KEYC_MOUSE_LOCATION_STATUS;
 		break;
 	case STYLE_RANGE_WINDOW:
 		fwl = winlink_find_by_index(&s->windows, sr->argument);
@@ -866,7 +881,6 @@ server_client_check_mouse_status(struct client *c, struct mouse_event *m,
 		m->w = fwl->window->id;
 
 		log_debug("mouse range: window @%u", m->w);
-		*loc = KEYC_MOUSE_LOCATION_STATUS;
 		break;
 	case STYLE_RANGE_SESSION:
 		fs = session_find_by_id(sr->argument);
@@ -875,16 +889,17 @@ server_client_check_mouse_status(struct client *c, struct mouse_event *m,
 		m->s = sr->argument;
 
 		log_debug("mouse range: session $%u", m->s);
-		*loc = KEYC_MOUSE_LOCATION_STATUS;
 		break;
 	case STYLE_RANGE_USER:
 		log_debug("mouse range: user");
-		*loc = KEYC_MOUSE_LOCATION_STATUS;
 		break;
 	case STYLE_RANGE_CONTROL:
 		n = sr->argument; /* parsing keeps this < 10 */
 		log_debug("mouse range: control %u", n);
-		*loc = KEYC_MOUSE_LOCATION_CONTROL0 + n;
+		if (side)
+			*loc = KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL0 + n;
+		else
+			*loc = KEYC_MOUSE_LOCATION_CONTROL0 + n;
 		break;
 	}
 	return (0);
@@ -1641,6 +1656,10 @@ try_again:
 	    key == KEYC_MOUSEMOVE_STATUS_LEFT ||
 	    key == KEYC_MOUSEMOVE_STATUS_RIGHT ||
 	    key == KEYC_MOUSEMOVE_STATUS_DEFAULT ||
+	    key == KEYC_MOUSEMOVE_SIDE_STATUS ||
+	    key == KEYC_MOUSEMOVE_SIDE_STATUS_LEFT ||
+	    key == KEYC_MOUSEMOVE_SIDE_STATUS_RIGHT ||
+	    key == KEYC_MOUSEMOVE_SIDE_STATUS_DEFAULT ||
 	    key == KEYC_MOUSEMOVE_BORDER)
 		goto forward_key;
 

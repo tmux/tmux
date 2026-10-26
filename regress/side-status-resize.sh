@@ -69,8 +69,8 @@ $TMUX set -g mouse on || exit 1
 $TMUX set -g status off || exit 1
 $TMUX set -g side-status-format \
     '#[range=window|0]window#[norange]' || exit 1
-$TMUX bind -n MouseDrag1Status set -g @text-drag yes || exit 1
-$TMUX bind -n MouseDrag1StatusDefault set -g @blank-drag yes || exit 1
+$TMUX bind -n MouseDrag1SideStatus set -g @text-drag yes || exit 1
+$TMUX bind -n MouseDrag1SideStatusDefault set -g @blank-drag yes || exit 1
 $TMUX2 new-session -d -s outer -x 80 -y 20 'sleep 180' || exit 1
 $TMUX2 set -g status off || exit 1
 $TMUX2 new-session -d -s other -x 80 -y 20 'sleep 180' || exit 1
@@ -176,9 +176,9 @@ $TMUX set -t inner side-status-width 20 || exit 1
 check 20
 $TMUX set -g @border-drag no || exit 1
 $TMUX set -g @border-end no || exit 1
-$TMUX bind -n MouseDrag1StatusBorder \
+$TMUX bind -n MouseDrag1SideStatusBorder \
     set -gF @border-drag '#{mouse_absolute_x},#{mouse_absolute_y}' || exit 1
-$TMUX bind -n MouseDragEnd1StatusBorder set -g @border-end yes || exit 1
+$TMUX bind -n MouseDragEnd1SideStatusBorder set -g @border-end yes || exit 1
 mouse 0 61 6 M
 mouse 32 40 6 M
 mouse 32 42 6 M
@@ -188,7 +188,7 @@ check 20
     fail "custom border binding did not get the terminal coordinates"
 [ "$($TMUX show -gv @border-end)" = yes ] ||
     fail "border drag end binding did not fire"
-$TMUX unbind -n MouseDrag1StatusBorder || exit 1
+$TMUX unbind -n MouseDrag1SideStatusBorder || exit 1
 mouse 0 61 6 M
 mouse 32 40 6 M
 mouse 0 40 6 m
