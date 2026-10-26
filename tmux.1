@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1192 2026/10/26 10:14:59 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1193 2026/10/26 10:38:16 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -2190,6 +2190,18 @@ before the target.
 (emacs: M\-x)
 .Xc
 Jump to the last mark.
+.It Xo
+.Ic keep\-column\-on
+.Xc
+Keep the cursor column when moving vertically.
+.It Xo
+.Ic keep\-column\-off
+.Xc
+Do not keep the cursor column when moving vertically.
+.It Xo
+.Ic keep\-column\-toggle
+.Xc
+Toggle keeping the cursor column when moving vertically.
 .It Xo
 .Ic line\-numbers\-on
 .Xc
@@ -6083,6 +6095,11 @@ with
 and
 .Cm hybrid ,
 they use absolute line numbers.
+.Pp
+.It Xo Ic copy\-mode\-keep\-column
+.Op Cm on | off
+.Xc
+When on, keep the cursor column when moving vertically in copy mode.
 .Pp
 .It Xo Ic mode\-keys
 .Op Cm vi | emacs
