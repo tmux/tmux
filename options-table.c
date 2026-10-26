@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.254 2026/10/16 07:59:06 nicm Exp $ */
+/* $OpenBSD: options-table.c,v 1.255 2026/10/26 10:38:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1596,6 +1596,13 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_copy_mode_line_numbers_list,
 	  .default_num = 0,
 	  .text = "Line number mode in copy mode."
+	},
+
+	{ .name = "copy-mode-keep-column",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_num = 0,
+	  .text = "Keep the cursor column when moving vertically in copy mode."
 	},
 
 	{ .name = "fill-character",
