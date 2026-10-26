@@ -1,4 +1,4 @@
-/* $OpenBSD: layout-custom.c,v 1.44 2026/09/28 09:32:06 nicm Exp $ */
+/* $OpenBSD: layout-custom.c,v 1.45 2026/10/26 09:39:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2010 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -259,10 +259,14 @@ layout_parse_remove_cctx(struct layout_parse_ctx *pctx, struct layout_cell *lc)
 static struct layout_cell *
 layout_find_bottomright(struct layout_cell *lc)
 {
+	struct layout_cell	*last;
+
 	if (lc->type == LAYOUT_WINDOWPANE)
 		return (lc);
-	lc = TAILQ_LAST(&lc->cells, layout_cells);
-	return (layout_find_bottomright(lc));
+	last = TAILQ_LAST(&lc->cells, layout_cells);
+	if (last == NULL)
+		return (lc);
+	return (layout_find_bottomright(last));
 }
 
 /* Calculate layout checksum. */
@@ -620,6 +624,10 @@ layout_parse(struct window *w, const char *input, char **cause)
 		goto fail;
 	}
 	for (;;) {
+		if (pctx.root == NULL) {
+			*cause = xstrdup("layout has no cells");
+			goto fail;
+		}
 		ncells = layout_count_cells(pctx.root, with_floating);
 		if (npanes > ncells) {
 			xasprintf(cause, "have %u panes but need %u", npanes,
