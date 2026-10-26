@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-refresh-client.c,v 1.56 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-refresh-client.c,v 1.57 2026/10/26 10:14:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -35,8 +35,8 @@ const struct cmd_entry cmd_refresh_client_entry = {
 	.description = "Refresh or resize a client.",
 	.alias = "refresh",
 
-	.args = { "A:B:cC:Df:r:F:lLRSt:U", 0, 1, NULL },
-	.usage = "[-cDlLRSU] [-A pane:state] [-B name:what:format] "
+	.args = { "A:B:cC:Df:r:F:lLqRSt:U", 0, 1, NULL },
+	.usage = "[-cDlLqRSU] [-A pane:state] [-B name:what:format] "
 		 "[-C XxY] [-f flags] [-r pane:report] " CMD_TARGET_CLIENT_USAGE
 		 " [adjustment]",
 
@@ -237,6 +237,11 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (args_has(args, 'l')) {
 		tty_clipboard_query(&tc->tty);
+		return (CMD_RETURN_NORMAL);
+	}
+
+	if (args_has(args, 'q')) {
+		tty_size_query(&tc->tty);
 		return (CMD_RETURN_NORMAL);
 	}
 

@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.527 2026/10/23 06:45:15 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.528 2026/10/26 10:14:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -336,6 +336,36 @@ server_client_fire_resized(struct client *c, u_int old_sx, u_int old_sy)
 	event_payload_set_uint(ep, "old_width", old_sx);
 	event_payload_set_uint(ep, "old_height", old_sy);
 	events_fire("client-resized", ep);
+}
+
+/* Recalculate sizes and notify a resized client. */
+static void
+server_client_apply_resize(struct client *c, u_int old_sx, u_int old_sy)
+{
+	if (c->session != NULL) {
+		recalculate_sizes();
+		server_redraw_client(c);
+		server_client_fire_resized(c, old_sx, old_sy);
+	}
+}
+
+/* Apply a new reported size. */
+void
+server_client_size_changed(struct client *c, u_int sx, u_int sy)
+{
+	u_int	old_sx = c->tty.sx, old_sy = c->tty.sy;
+
+	if (c->flags & CLIENT_CONTROL)
+		return;
+	if (sx == 0 || sy == 0 || (sx == old_sx && sy == old_sy))
+		return;
+
+	log_debug("%s: reported size %ux%u (was %ux%u)", c->name, sx, sy,
+	    old_sx, old_sy);
+	server_client_update_latest(c);
+	tty_set_size(&c->tty, sx, sy, c->tty.xpixel, c->tty.ypixel);
+	tty_invalidate(&c->tty);
+	server_client_apply_resize(c, old_sx, old_sy);
 }
 
 /* Set client session. */
@@ -2699,10 +2729,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 		old_sy = c->tty.sy;
 		tty_resize(&c->tty);
 		tty_repeat_requests(&c->tty, 0);
-		recalculate_sizes();
-		server_redraw_client(c);
-		if (c->session != NULL)
-			server_client_fire_resized(c, old_sx, old_sy);
+		server_client_apply_resize(c, old_sx, old_sy);
 		break;
 	case MSG_EXITING:
 		if (datalen != 0)

@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-keys.c,v 1.221 2026/10/22 07:16:40 nicm Exp $ */
+/* $OpenBSD: tty-keys.c,v 1.222 2026/10/26 10:14:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -937,8 +937,8 @@ partial_key:
 		if (delay < 500)
 			delay = 500;
 	}
-	if (tty->flags & (TTY_WAITFG|TTY_WAITBG) ||
-	    tty->flags & (TTY_OSC52QUERY|TTY_WINSZQUERY) ||
+	if (tty->flags & (TTY_WAITFG|TTY_WAITBG|TTY_OSC52QUERY) ||
+	    tty->flags & (TTY_WINSZQUERY|TTY_WINSZPIXELS) ||
 	    (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS ||
 	    !TAILQ_EMPTY(&c->input_requests)) {
 		log_debug("%s: increasing delay (active query)", c->name);
@@ -1875,11 +1875,12 @@ tty_keys_winsz(struct tty *tty, const char *buf, size_t len, size_t *size,
 	size_t		 end;
 	char		 tmp[64];
 	u_int		 sx, sy, xpixel, ypixel, char_x, char_y;
+	int		 resize;
 
 	*size = 0;
 
 	/* If we did not request this, ignore it. */
-	if (!(tty->flags & TTY_WINSZQUERY))
+	if (!(tty->flags & (TTY_WINSZQUERY|TTY_WINSZPIXELS)))
 		return (-1);
 
 	/* First two bytes are always \033[. */
@@ -1892,10 +1893,7 @@ tty_keys_winsz(struct tty *tty, const char *buf, size_t len, size_t *size,
 	if (len == 2)
 		return (1);
 
-	/*
-	 * Stop at either 't' or anything that isn't a
-	 * number or ';'.
-	 */
+	/* Stop at either 't' or anything that isn't a number or ';'. */
 	for (end = 2; end < len && end != sizeof tmp; end++) {
 		if (buf[end] == 't')
 			break;
@@ -1913,28 +1911,42 @@ tty_keys_winsz(struct tty *tty, const char *buf, size_t len, size_t *size,
 
 	/* Try to parse the window size sequence. */
 	if (sscanf(tmp, "8;%u;%u", &sy, &sx) == 2) {
+		if (!(tty->flags & TTY_WINSZQUERY))
+			return (-1);
 		*size = end + 1;
 		if (!apply)
 			return (0);
 
-		/* Window size in characters. */
-		if (tty_set_size(tty, sx, sy, tty->xpixel, tty->ypixel))
+		resize = (tty->flags & TTY_WINSZAPPLY);
+		tty->flags &= ~(TTY_WINSZQUERY|TTY_WINSZAPPLY);
+
+		if (sx == 0 ||
+		    sy == 0 ||
+		    sx > CLIENT_MAX_TERM_SIZE ||
+		    sy > CLIENT_MAX_TERM_SIZE) {
+			log_debug("%s: ignoring reported size %ux%u",
+			    c->name, sx, sy);
+			return (0);
+		}
+		if (resize)
+			server_client_size_changed(c, sx, sy);
+		else if (tty_set_size(tty, sx, sy, tty->xpixel, tty->ypixel))
 			server_redraw_client(c);
 		return (0);
 	} else if (sscanf(tmp, "4;%u;%u", &ypixel, &xpixel) == 2) {
+		if (!(tty->flags & TTY_WINSZPIXELS))
+			return (-1);
 		*size = end + 1;
 		if (!apply)
 			return (0);
+		tty->flags &= ~TTY_WINSZPIXELS;
 
-		/* Window size in pixels. */
 		char_x = (xpixel && tty->sx) ? xpixel / tty->sx : 0;
 		char_y = (ypixel && tty->sy) ? ypixel / tty->sy : 0;
 		if (tty_set_size(tty, tty->sx, tty->sy, char_x, char_y))
 			server_redraw_client(c);
 		tty_invalidate(tty);
 		recalculate_sizes();
-
-		tty->flags &= ~TTY_WINSZQUERY;
 		return (0);
 	}
 
