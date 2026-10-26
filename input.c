@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.280 2026/10/21 13:45:20 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.281 2026/10/26 10:23:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1482,8 +1482,10 @@ input_csi_dispatch(struct input_ctx *ictx)
 	struct screen			*s = sctx->s;
 	const struct input_table_entry	*entry;
 	struct options			*oo;
+	const char			*clip;
 	int				 i, n, m, ek, set, p;
 	u_int				 cx, bg = ictx->cell.cell.bg;
+	int64_t				 v;
 
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
@@ -1544,10 +1546,6 @@ input_csi_dispatch(struct input_ctx *ictx)
 			break;
 		m = input_get(ictx, 1, 0, 0);
 
-		/*
-		 * Set the extended key reporting mode as per the client
-		 * request, unless "extended-keys" is set to "off".
-		 */
 		ek = options_get_number(global_options, "extended-keys");
 		if (ek == 0)
 			break;
@@ -1562,12 +1560,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 		if (n != 4)
 			break;
 
-		/*
-		 * Clear the extended key reporting mode as per the client
-		 * request, unless "extended-keys always" forces into mode 1.
-		 */
-		screen_write_mode_clear(sctx,
-		    MODE_KEYS_EXTENDED|MODE_KEYS_EXTENDED_2);
+		screen_write_mode_clear(sctx, MODE_KEYS_EXTENDED|
+		    MODE_KEYS_EXTENDED_2);
 		if (options_get_number(global_options, "extended-keys") == 2)
 			screen_write_mode_set(sctx, MODE_KEYS_EXTENDED);
 		break;
@@ -1598,10 +1592,15 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case -1:
 			break;
 		case 0:
+			v = options_get_number(global_options, "set-clipboard");
+			if (v == 2)
+				clip = ";52";
+			else
+				clip = "";
 #ifdef ENABLE_IMAGES
-			input_reply(ictx, 1, "\033[?1;2;4c");
+			input_reply(ictx, 1, "\033[?1;2;4%sc");
 #else
-			input_reply(ictx, 1, "\033[?1;2c");
+			input_reply(ictx, 1, "\033[?1;2%sc", clip);
 #endif
 			break;
 		default:

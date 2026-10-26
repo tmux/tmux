@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1191 2026/10/20 06:45:56 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1192 2026/10/26 10:14:59 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 20 2026 $
+.Dd $Mdocdate: October 26 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1450,7 +1450,7 @@ and sets an environment variable for the newly created session; it may be
 specified multiple times.
 .Tg refresh
 .It Xo Ic refresh\-client
-.Op Fl cDlLRSU
+.Op Fl cDlLqRSU
 .Op Fl A Ar pane:state
 .Op Fl B Ar name:what:format
 .Op Fl C Ar size
@@ -1576,6 +1576,9 @@ a colon, then a report escape sequence.
 requests the clipboard from the client using the
 .Xr xterm 1
 escape sequence and stores it in a new paste buffer.
+.Pp
+.Fl q
+queries the client terminal for its size.
 .Pp
 .Fl L ,
 .Fl R ,
