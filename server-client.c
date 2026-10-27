@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.529 2026/10/27 09:00:29 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.530 2026/10/27 13:00:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -51,6 +51,9 @@ static void	server_client_set_progress_bar(struct client *);
 static void	server_client_reset_state(struct client *);
 static void	server_client_update_latest(struct client *);
 static int	server_client_handle_dead_key(struct window_pane *, key_code);
+static int	server_client_handle_key0(struct client *, struct key_event *,
+		    struct cmdq_item *, struct cmdq_item **, int);
+static enum cmd_retval	server_client_key_callback(struct cmdq_item *, void *);
 static void	server_client_dispatch(struct imsg *, void *);
 static int	server_client_dispatch_command(struct client *, struct imsg *);
 static int	server_client_dispatch_identify(struct client *, struct imsg *);
@@ -1465,6 +1468,11 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
 		goto out;
+
+	/* Recheck input handlers opened by earlier queued commands. */
+	if (server_client_handle_key0(c, event, NULL, NULL, 1) == 0)
+		goto out;
+
 	wl = s->curw;
 
 	/* Update the activity timer. */
@@ -1762,16 +1770,21 @@ server_client_handle_menu_key(struct client *c, struct key_event *event)
 	return (1);
 }
 
-/* Handle a key event. */
+/* Handle a key; check skips queueing. Returns 0 if used, 1 otherwise. */
 static int
 server_client_handle_key0(struct client *c, struct key_event *event,
-    struct cmdq_item *after, struct cmdq_item **next)
+    struct cmdq_item *after, struct cmdq_item **next, int check)
 {
 	struct session		*s = c->session;
 	struct mouse_event	*m = &event->m;
 	struct cmdq_item	*item;
 	struct window_pane	*wp;
 	key_code		 key;
+	enum key_event_delivery	 d = event->delivered;
+
+	/* A consumed key only needs to be freed by the callback. */
+	if (check && d == KEY_EVENT_CONSUMED)
+		return (0);
 
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
@@ -1787,9 +1800,9 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 	}
 
 	/*
-	 * Dead panes waiting for a key, modal cancel keys, panes capturing all keys
-	 * and the command prompt are special cases. The queue might be blocked so
-	 * they need to be processed immediately rather than queued.
+	 * Dead panes waiting for a key, modal cancel keys, panes capturing all
+	 * keys and the command prompt are special cases. The queue might be
+	 * blocked so they need to be processed immediately rather than queued.
 	 */
 	if (~c->flags & CLIENT_READONLY) {
 		if (c->message_string != NULL) {
@@ -1816,7 +1829,8 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 			key = event->key;
 			if (KEYC_IS_MOUSE(key)) {
 				key = server_client_check_mouse(c, event);
-				if (key == KEYC_UNKNOWN || (u_int)m->wp != wp->id)
+				if (key == KEYC_UNKNOWN ||
+				    (u_int)m->wp != wp->id)
 					return (0);
 				m->valid = 1;
 				m->key = key;
@@ -1827,7 +1841,7 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 
 		if (server_client_handle_menu_key(c, event))
 			return (0);
-		if (c->prompt != NULL) {
+		if (d == KEY_EVENT_NOT_OFFERED && c->prompt != NULL) {
 			switch (status_prompt_key(c, event->key, &event->m)) {
 			case PROMPT_KEY_HANDLED:
 			case PROMPT_KEY_CLOSE:
@@ -1846,7 +1860,8 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 					break;
 			}
 		}
-		if (wp != NULL &&
+		if (d == KEY_EVENT_NOT_OFFERED &&
+		    wp != NULL &&
 		    window_pane_has_prompt(wp) &&
 		    window_pane_is_visible(wp)) {
 			switch (window_pane_prompt_key(wp, c, event->key,
@@ -1862,12 +1877,15 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 			}
 		}
 	}
+	if (check)
+		return (1);
 
 	/*
-	 * Add the key to the queue so it happens after any commands queued by
-	 * previous keys.
+	 * Queue after earlier commands. Mark injected keys too, so waiting
+	 * prompts can consume them.
 	 */
 	item = cmdq_get_callback(server_client_key_callback, event);
+	cmdq_add_flags(item, CMDQ_KEY);
 	if (after != NULL) {
 		event->client = c;
 		c->references++;
@@ -1880,11 +1898,36 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 	return (1);
 }
 
+/* Offer a queued key once. Returns 0 if used, 1 otherwise. */
+int
+server_client_key_prompt(struct cmdq_item *item, void *data)
+{
+	struct key_event	*event = data;
+	struct client		*c = event->client;
+	int			 ret;
+
+	if (event->delivered != KEY_EVENT_NOT_OFFERED) {
+		if (event->delivered == KEY_EVENT_CONSUMED)
+			return (0);
+		return (1);
+	}
+	if (c == NULL)
+		c = cmdq_get_client(item);
+	if (c == NULL)
+		return (1);
+	ret = server_client_handle_key0(c, event, NULL, NULL, 1);
+	if (ret == 0)
+		event->delivered = KEY_EVENT_CONSUMED;
+	else
+		event->delivered = KEY_EVENT_NOT_CONSUMED;
+	return (ret);
+}
+
 /* Handle key and insert at end of queue. */
 int
 server_client_handle_key(struct client *c, struct key_event *event)
 {
-	return (server_client_handle_key0(c, event, NULL, NULL));
+	return (server_client_handle_key0(c, event, NULL, NULL, 0));
 }
 
 /* Handle key and insert after another item. */
@@ -1892,7 +1935,7 @@ int
 server_client_handle_key_after(struct client *c, struct key_event *event,
     struct cmdq_item *after, struct cmdq_item **next)
 {
-	return (server_client_handle_key0(c, event, after, next));
+	return (server_client_handle_key0(c, event, after, next, 0));
 }
 
 /* Client functions that need to happen every loop. */

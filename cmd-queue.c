@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-queue.c,v 1.125 2026/10/15 07:25:07 nicm Exp $ */
+/* $OpenBSD: cmd-queue.c,v 1.126 2026/10/27 13:00:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2013 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -27,10 +27,6 @@
 #include <vis.h>
 
 #include "tmux.h"
-
-/* Command queue flags. */
-#define CMDQ_FIRED 0x1
-#define CMDQ_WAITING 0x2
 
 /* Command queue item type. */
 enum cmdq_type {
@@ -209,6 +205,13 @@ int
 cmdq_get_flags(struct cmdq_item *item)
 {
 	return (item->state->flags);
+}
+
+/* Add flags to an item. */
+void
+cmdq_add_flags(struct cmdq_item *item, int flags)
+{
+	item->flags |= flags;
 }
 
 /* Create a new state. */
@@ -421,6 +424,41 @@ void
 cmdq_continue(struct cmdq_item *item)
 {
 	item->flags &= ~CMDQ_WAITING;
+}
+
+/* Find the next key behind a prompt that has not been offered. */
+static struct cmdq_item *
+cmdq_prompt_key(struct cmdq_item *item)
+{
+	struct cmdq_item	*next;
+	int			 flags;
+
+	if (~item->flags & CMDQ_PROMPT)
+		return (NULL);
+	next = TAILQ_NEXT(item, entry);
+	while (next != NULL) {
+		flags = next->flags;
+		if (flags & CMDQ_WAITING)
+			return (NULL);
+		if ((flags & CMDQ_KEY) && (~flags & CMDQ_KEYOFFERED))
+			return (next);
+		next = TAILQ_NEXT(next, entry);
+	}
+	return (NULL);
+}
+
+/* Offer a key to a prompt if it is waiting. */
+static int
+cmdq_offer_key(struct cmdq_item *item)
+{
+	int	r;
+
+	if (item->data == NULL)
+		r = 1;
+	else
+		r = server_client_key_prompt(item, item->data);
+	cmdq_add_flags(item, CMDQ_KEYOFFERED);
+	return (r);
 }
 
 /* Remove an item. */
@@ -717,7 +755,7 @@ cmdq_next(struct client *c)
 {
 	struct cmdq_list	*queue = cmdq_get(c);
 	const char		*name = cmdq_name(c);
-	struct cmdq_item	*item;
+	struct cmdq_item	*item, *next;
 	enum cmd_retval		 retval;
 	u_int			 items = 0;
 	static u_int		 number;
@@ -726,26 +764,26 @@ cmdq_next(struct client *c)
 		log_debug("%s %s: empty", __func__, name);
 		return (0);
 	}
-	if (TAILQ_FIRST(&queue->list)->flags & CMDQ_WAITING) {
-		log_debug("%s %s: waiting", __func__, name);
-		return (0);
-	}
 
 	log_debug("%s %s: enter", __func__, name);
 	for (;;) {
 		item = queue->item = TAILQ_FIRST(&queue->list);
 		if (item == NULL)
 			break;
-		log_debug("%s %s: %s (%d), flags %x", __func__, name,
-		    item->name, item->type, item->flags);
 
 		/*
-		 * Any item with the waiting flag set waits until an external
-		 * event clears the flag (for example, a job - look at
-		 * run-shell).
+		 * Waiting prompts can consume queued keys; unconsumed keys keep
+		 * their place. Other waits need an external event to continue.
 		 */
-		if (item->flags & CMDQ_WAITING)
-			goto waiting;
+		if (item->flags & CMDQ_WAITING) {
+			if ((next = cmdq_prompt_key(item)) == NULL)
+				goto waiting;
+			if (cmdq_offer_key(next) != 0)
+				continue;
+			item = queue->item = next;
+		}
+		log_debug("%s %s: %s (%d), flags %x", __func__, name,
+		    item->name, item->type, item->flags);
 
 		/*
 		 * Items are only fired once, once the fired flag is set, a
