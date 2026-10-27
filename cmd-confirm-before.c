@@ -116,6 +116,8 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (!wait)
 		return (CMD_RETURN_NORMAL);
+	/* Keys typed in the same batch are queued behind this item. */
+	cmdq_add_flags(item, CMDQ_PROMPT);
 	return (CMD_RETURN_WAIT);
 }
 

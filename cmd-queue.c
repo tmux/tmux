@@ -27,10 +27,6 @@
 
 #include "tmux.h"
 
-/* Command queue flags. */
-#define CMDQ_FIRED 0x1
-#define CMDQ_WAITING 0x2
-
 /* Command queue item type. */
 enum cmdq_type {
 	CMDQ_COMMAND,
@@ -208,6 +204,13 @@ int
 cmdq_get_flags(struct cmdq_item *item)
 {
 	return (item->state->flags);
+}
+
+/* Add flags to an item. */
+void
+cmdq_add_flags(struct cmdq_item *item, int flags)
+{
+	item->flags |= flags;
 }
 
 /* Create a new state. */
@@ -420,6 +423,56 @@ void
 cmdq_continue(struct cmdq_item *item)
 {
 	item->flags &= ~CMDQ_WAITING;
+}
+
+/*
+ * Find the key which is due next behind a prompt waiting for input: the first
+ * one queued behind it which has not been offered to the prompt yet, with
+ * anything else passed over. A key is offered to the prompt before a command
+ * queued behind it, because the prompt may not be answered for a long time
+ * and the key would not reach it otherwise. A key which has already been
+ * offered is passed over, so that the keys after it can still reach the
+ * prompt. A waiting item ends the search, since it has to run before anything
+ * after it.
+ */
+static struct cmdq_item *
+cmdq_prompt_key(struct cmdq_item *item)
+{
+	struct cmdq_item	*next;
+
+	if (~item->flags & CMDQ_PROMPT)
+		return (NULL);
+	for (next = TAILQ_NEXT(item, entry); next != NULL;
+	    next = TAILQ_NEXT(next, entry)) {
+		if (next->flags & CMDQ_WAITING)
+			return (NULL);
+		if (next->flags & CMDQ_KEY) {
+			if (next->flags & CMDQ_KEYOFFERED)
+				continue;
+			return (next);
+		}
+	}
+	return (NULL);
+}
+
+/* Offer a key to whatever is waiting for one. */
+static int
+cmdq_offer_key(struct cmdq_item *item)
+{
+	int	ret;
+
+	if (item->data == NULL)
+		ret = 1;
+	else
+		ret = server_client_key_prompt(item, item->data);
+
+	/*
+	 * The key has been offered now, so it must not be offered again: a
+	 * prompt which does not use it may still use one of the keys after
+	 * it, and those must be offered too.
+	 */
+	cmdq_add_flags(item, CMDQ_KEYOFFERED);
+	return (ret);
 }
 
 /* Remove an item. */
@@ -716,7 +769,7 @@ cmdq_next(struct client *c)
 {
 	struct cmdq_list	*queue = cmdq_get(c);
 	const char		*name = cmdq_name(c);
-	struct cmdq_item	*item;
+	struct cmdq_item	*item, *next;
 	enum cmd_retval		 retval;
 	u_int			 items = 0;
 	static u_int		 number;
@@ -725,26 +778,42 @@ cmdq_next(struct client *c)
 		log_debug("%s %s: empty", __func__, name);
 		return (0);
 	}
-	if (TAILQ_FIRST(&queue->list)->flags & CMDQ_WAITING) {
-		log_debug("%s %s: waiting", __func__, name);
-		return (0);
-	}
 
 	log_debug("%s %s: enter", __func__, name);
 	for (;;) {
 		item = queue->item = TAILQ_FIRST(&queue->list);
 		if (item == NULL)
 			break;
-		log_debug("%s %s: %s (%d), flags %x", __func__, name,
-		    item->name, item->type, item->flags);
 
 		/*
 		 * Any item with the waiting flag set waits until an external
 		 * event clears the flag (for example, a job - look at
-		 * run-shell).
+		 * run-shell). A prompt waiting for input is the exception: a
+		 * key queued behind it is offered to it where it is, so the
+		 * item which runs may be behind the front of the queue.
 		 */
-		if (item->flags & CMDQ_WAITING)
-			goto waiting;
+		if (item->flags & CMDQ_WAITING) {
+			/*
+			 * Offer the keys queued behind the prompt to it, one
+			 * at a time. A prompt which uses a key has dealt with
+			 * it and the key runs. A prompt which does not use a
+			 * key leaves it in the queue: it runs when the queue
+			 * reaches it, after the commands which are already
+			 * queued. The next key must be offered too, since a
+			 * prompt which does not use one key may well use the
+			 * next one, and a prompt which ends on a key lets the
+			 * queue run.
+			 */
+			if ((next = cmdq_prompt_key(item)) == NULL)
+				goto waiting;
+			if (cmdq_offer_key(next) != 0) {
+				/* The prompt did not use the key. */
+				continue;
+			}
+			item = queue->item = next;
+		}
+		log_debug("%s %s: %s (%d), flags %x", __func__, name,
+		    item->name, item->type, item->flags);
 
 		/*
 		 * Items are only fired once, once the fired flag is set, a

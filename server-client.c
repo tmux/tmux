@@ -46,6 +46,9 @@ static void	server_client_set_progress_bar(struct client *);
 static void	server_client_reset_state(struct client *);
 static void	server_client_update_latest(struct client *);
 static int	server_client_handle_dead_key(struct window_pane *, key_code);
+static int	server_client_handle_key0(struct client *, struct key_event *,
+		    struct cmdq_item *, struct cmdq_item **, int);
+static enum cmd_retval	server_client_key_callback(struct cmdq_item *, void *);
 static void	server_client_dispatch(struct imsg *, void *);
 static int	server_client_dispatch_command(struct client *, struct imsg *);
 static int	server_client_dispatch_identify(struct client *, struct imsg *);
@@ -1443,6 +1446,16 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
 		goto out;
+
+	/*
+	 * The queue may have blocked since this key was read, so the checks
+	 * which cannot wait for it are made again. A prompt or a menu which
+	 * uses the key has taken it; one which does not leave it to be handled
+	 * below.
+	 */
+	if (server_client_handle_key0(c, event, NULL, NULL, 1) == 0)
+		goto out;
+
 	wl = s->curw;
 
 	/* Update the activity timer. */
@@ -1745,16 +1758,29 @@ server_client_handle_menu_key(struct client *c, struct key_event *event)
 	return (1);
 }
 
-/* Handle a key event. */
+/*
+ * Handle a key event. Returns 0 if the key was used, 1 if it was not. With
+ * check set the special cases below are still handled - a message or a menu
+ * may be cleared, a prompt may take the key - but the key is not queued.
+ */
 static int
 server_client_handle_key0(struct client *c, struct key_event *event,
-    struct cmdq_item *after, struct cmdq_item **next)
+    struct cmdq_item *after, struct cmdq_item **next, int check)
 {
 	struct session		*s = c->session;
 	struct mouse_event	*m = &event->m;
 	struct cmdq_item	*item;
 	struct window_pane	*wp;
 	key_code		 key;
+
+	/*
+	 * The key has already been offered to whatever was waiting for one.
+	 * If it was used there is nothing left to do with it. If it was not,
+	 * it must not be offered again, but the other checks below still
+	 * apply to it.
+	 */
+	if (check && event->delivered == 2)
+		return (0);
 
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
@@ -1810,7 +1836,7 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 
 		if (server_client_handle_menu_key(c, event))
 			return (0);
-		if (c->prompt != NULL) {
+		if (event->delivered == 0 && c->prompt != NULL) {
 			switch (status_prompt_key(c, event->key, &event->m)) {
 			case PROMPT_KEY_HANDLED:
 			case PROMPT_KEY_CLOSE:
@@ -1829,7 +1855,8 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 					break;
 			}
 		}
-		if (wp != NULL &&
+		if (event->delivered == 0 &&
+		    wp != NULL &&
 		    window_pane_has_prompt(wp) &&
 		    window_pane_is_visible(wp)) {
 			switch (window_pane_prompt_key(wp, c, event->key,
@@ -1845,12 +1872,17 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 			}
 		}
 	}
+	if (check)
+		return (1);
 
 	/*
 	 * Add the key to the queue so it happens after any commands queued by
-	 * previous keys.
+	 * previous keys. A key placed with send-keys -K is queued in the same
+	 * way: it is a key like any other, so it is flagged as one and a
+	 * prompt waiting for input is offered it like any other key.
 	 */
 	item = cmdq_get_callback(server_client_key_callback, event);
+	cmdq_add_flags(item, CMDQ_KEY);
 	if (after != NULL) {
 		event->client = c;
 		c->references++;
@@ -1863,11 +1895,35 @@ server_client_handle_key0(struct client *c, struct key_event *event,
 	return (1);
 }
 
+/*
+ * Offer a key which is queued behind a prompt to whatever is waiting for a
+ * key now, so that the queue can find out whether the prompt used it before
+ * it runs the key. Returns 0 if the key was used and 1 if it was not; the key
+ * is marked so that it is not offered again when it runs.
+ */
+int
+server_client_key_prompt(struct cmdq_item *item, void *data)
+{
+	struct key_event	*event = data;
+	struct client		*c = event->client;
+	int			 ret;
+
+	if (event->delivered)
+		return (event->delivered == 2 ? 0 : 1);
+	if (c == NULL)
+		c = cmdq_get_client(item);
+	if (c == NULL)
+		return (1);
+	ret = server_client_handle_key0(c, event, NULL, NULL, 1);
+	event->delivered = (ret == 0 ? 2 : 1);
+	return (ret);
+}
+
 /* Handle key and insert at end of queue. */
 int
 server_client_handle_key(struct client *c, struct key_event *event)
 {
-	return (server_client_handle_key0(c, event, NULL, NULL));
+	return (server_client_handle_key0(c, event, NULL, NULL, 0));
 }
 
 /* Handle key and insert after another item. */
@@ -1875,7 +1931,7 @@ int
 server_client_handle_key_after(struct client *c, struct key_event *event,
     struct cmdq_item *after, struct cmdq_item **next)
 {
-	return (server_client_handle_key0(c, event, after, next));
+	return (server_client_handle_key0(c, event, after, next, 0));
 }
 
 /* Client functions that need to happen every loop. */

@@ -1736,6 +1736,10 @@ struct key_event {
 	key_code		 key;
 	struct mouse_event	 m;
 
+	int			 delivered;	/* 0 offered to nothing, 1
+						 * offered and not used, 2 offered
+						 * and used */
+
 	char			*buf;
 	size_t			 len;
 };
@@ -3217,6 +3221,13 @@ struct cmd_parse_result *cmd_parse_from_arguments(struct args_value *, u_int,
 		     struct cmd_parse_input *);
 
 /* cmd-queue.c */
+/* Command queue item flags. */
+#define CMDQ_FIRED 0x1
+#define CMDQ_WAITING 0x2
+#define CMDQ_KEY 0x4	/* a key which has not been run yet */
+#define CMDQ_PROMPT 0x8	/* waiting for input, not for the queue */
+#define CMDQ_KEYOFFERED 0x10	/* a key which has been offered to a prompt */
+
 struct cmdq_state *cmdq_new_state(struct cmd_find_state *, struct key_event *,
 		     int);
 struct cmdq_state *cmdq_link_state(struct cmdq_state *);
@@ -3250,6 +3261,7 @@ void printflike(4, 5) cmdq_insert_hook(struct session *, struct cmdq_item *,
 void		 cmdq_continue(struct cmdq_item *);
 u_int		 cmdq_next(struct client *);
 struct cmdq_item *cmdq_running(struct client *);
+void		 cmdq_add_flags(struct cmdq_item *, int);
 void		 cmdq_guard(struct cmdq_item *, const char *, int);
 void printflike(2, 3) cmdq_print(struct cmdq_item *, const char *, ...);
 void 		 cmdq_print_data(struct cmdq_item *, struct evbuffer *);
@@ -3356,6 +3368,7 @@ int	 server_client_check_nested(struct client *);
 int	 server_client_handle_key(struct client *, struct key_event *);
 int	 server_client_handle_key_after(struct client *, struct key_event *,
 	     struct cmdq_item *, struct cmdq_item **);
+int	 server_client_key_prompt(struct cmdq_item *, void *);
 struct client *server_client_create(int);
 int	 server_client_open(struct client *, char **);
 void	 server_client_unref(struct client *);
