@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-confirm-before.c,v 1.62 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-confirm-before.c,v 1.63 2026/10/27 13:00:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -116,6 +116,7 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (!wait)
 		return (CMD_RETURN_NORMAL);
+	cmdq_add_flags(item, CMDQ_PROMPT);
 	return (CMD_RETURN_WAIT);
 }
 

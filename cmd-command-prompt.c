@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-command-prompt.c,v 1.77 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-command-prompt.c,v 1.78 2026/10/27 13:00:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -192,6 +192,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (!wait)
 		return (CMD_RETURN_NORMAL);
+	cmdq_add_flags(item, CMDQ_PROMPT);
 	return (CMD_RETURN_WAIT);
 }
 
