@@ -1,4 +1,4 @@
-/* $OpenBSD: menu.c,v 1.73 2026/10/15 22:16:32 nicm Exp $ */
+/* $OpenBSD: menu.c,v 1.74 2026/10/27 08:49:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -371,6 +371,7 @@ menu_key(struct client *c, struct menu_data *md, struct key_event *event)
 	char				*error;
 	key_code			 key;
 	u_int				 border;
+	menu_choice_cb			 cb;
 
 	if (KEYC_IS_MOUSE(event->key)) {
 		/*
@@ -548,8 +549,9 @@ chosen:
 		return (1);
 	}
 	if (md->cb != NULL) {
-		md->cb(md->menu, md->choice, item->key, md->data);
+		cb = md->cb;
 		md->cb = NULL;
+		cb(md->menu, md->choice, item->key, md->data);
 		return (1);
 	}
 

@@ -1,4 +1,4 @@
-/* $OpenBSD: client.c,v 1.168 2026/08/17 20:14:31 nicm Exp $ */
+/* $OpenBSD: client.c,v 1.169 2026/10/27 08:38:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -346,6 +346,7 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 			    strerror(errno));
 			return (1);
 		}
+		memcpy(&tio, &saved_tio, sizeof tio);
 		cfmakeraw(&tio);
 		tio.c_iflag = ICRNL|IXANY;
 		tio.c_oflag = OPOST|ONLCR;
