@@ -191,6 +191,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (!wait)
 		return (CMD_RETURN_NORMAL);
+	cmdq_add_flags(item, CMDQ_PROMPT);
 	return (CMD_RETURN_WAIT);
 }
 
