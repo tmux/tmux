@@ -1574,9 +1574,10 @@ error:
 static int
 yylex_token_escape(char **buf, size_t *len)
 {
-	int	 ch, type, o2, o3, mlen;
-	u_int	 size, i, tmp;
-	char	 s[9], m[MB_LEN_MAX];
+	struct utf8_data	 ud;
+	int			 ch, type, o2, o3;
+	u_int			 size, i, tmp;
+	char			 s[9];
 
 	ch = yylex_getc();
 
@@ -1661,12 +1662,21 @@ unicode:
 		yyerror("invalid \\%c argument", type);
 		return (0);
 	}
-	mlen = wctomb(m, tmp);
-	if (mlen <= 0 || mlen > (int)sizeof m) {
+	/* NUL would end the string. */
+	if (tmp == 0) {
 		yyerror("invalid \\%c argument", type);
 		return (0);
 	}
-	yylex_append(buf, len, m, mlen);
+	/*
+	 * The character may have no width, which utf8_fromwc also reports as
+	 * an error but with the conversion done (ud.size is set), so only a
+	 * failed conversion is an error.
+	 */
+	if (utf8_fromwc(tmp, &ud) != UTF8_DONE && ud.size == 0) {
+		yyerror("invalid \\%c argument", type);
+		return (0);
+	}
+	yylex_append(buf, len, ud.data, ud.size);
 	return (1);
 }
 
