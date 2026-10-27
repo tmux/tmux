@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1193 2026/10/26 10:38:16 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1194 2026/10/27 09:00:29 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 26 2026 $
+.Dd $Mdocdate: October 27 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -6892,13 +6892,19 @@ allows mouse events to be bound as keys.
 The name of each key is made up of a mouse event (such as
 .Ql MouseUp1 )
 and a location suffix, one of the following:
-.Bl -column "XXXXXXXXXXXXX" -offset indent
+.Bl -column "SideStatusControlN" -offset indent
 .It Li "Pane" Ta "the contents of a pane"
 .It Li "Border" Ta "a pane border"
 .It Li "Status" Ta "the status line window list"
 .It Li "StatusLeft" Ta "the left part of the status line"
 .It Li "StatusRight" Ta "the right part of the status line"
 .It Li "StatusDefault" Ta "any other part of the status line"
+.It Li "SideStatus" Ta "a tagged range in the side status line"
+.It Li "SideStatusLeft" Ta "a left range in the side status line"
+.It Li "SideStatusRight" Ta "a right range in the side status line"
+.It Li "SideStatusDefault" Ta "any other part of the side status line"
+.It Li "SideStatusBorder" Ta "the border between the side status line and panes"
+.It Li "SideStatusControlN" Ta "control range N in the side status line"
 .It Li "ScrollbarSlider" Ta "the scrollbar slider"
 .It Li "ScrollbarUp" Ta "above the scrollbar slider"
 .It Li "ScrollbarDown" Ta "below the scrollbar slider"
@@ -7943,7 +7949,22 @@ replaces the previous saved default).
 .Xc
 Mark a range for mouse events in the
 .Ic status\-format
+or
+.Ic side\-status\-format
 option.
+In the side status line, the bindings described below use
+.Ql SideStatus ,
+.Ql SideStatusLeft ,
+.Ql SideStatusRight
+and
+.Ql SideStatusControlN
+instead of
+.Ql Status ,
+.Ql StatusLeft ,
+.Ql StatusRight
+and
+.Ql ControlN .
+.Pp
 When a mouse event occurs in the
 .Ic range=left
 or

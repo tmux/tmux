@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.528 2026/10/26 10:14:59 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.529 2026/10/27 09:00:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -786,11 +786,14 @@ server_client_check_mouse_status(struct client *c, struct mouse_event *m,
     enum key_code_type type, u_int x, u_int y,
     enum key_code_mouse_location *loc)
 {
-	struct winlink		*fwl;
-	struct window_pane	*fwp;
-	struct session		*s = c->session, *fs;
-	struct style_range	*sr;
-	u_int			 n, sidey, separator;
+	struct tty			*tty = &c->tty;
+	struct winlink			*fwl;
+	struct window_pane		*fwp;
+	struct session			*s = c->session, *fs;
+	struct style_range		*sr;
+	u_int				 n, sidey, separator;
+	int				 side = 0, mflag = tty->mouse_drag_flag;
+	enum key_code_mouse_location	 mloc = tty->mouse_drag_location;
 
 	*loc = KEYC_MOUSE_LOCATION_NOWHERE;
 
@@ -798,9 +801,9 @@ server_client_check_mouse_status(struct client *c, struct mouse_event *m,
 	m->statuslines = status_line_size(c);
 	m->sideat = status_side_at_column(c);
 	m->sidewidth = status_side_size(c);
-	if (c->tty.mouse_drag_flag != 0 &&
-	    c->tty.mouse_drag_location == KEYC_MOUSE_LOCATION_STATUS_BORDER) {
-		*loc = KEYC_MOUSE_LOCATION_STATUS_BORDER;
+
+	if (mflag != 0 && mloc == KEYC_MOUSE_LOCATION_SIDE_STATUS_BORDER) {
+		*loc = KEYC_MOUSE_LOCATION_SIDE_STATUS_BORDER;
 		return (0);
 	}
 
@@ -824,31 +827,44 @@ server_client_check_mouse_status(struct client *c, struct mouse_event *m,
 		if (separator == 0)
 			separator = m->sidewidth - 1;
 		if (m->sidewidth > 1 && x == separator) {
-			*loc = KEYC_MOUSE_LOCATION_STATUS_BORDER;
-			if (type == KEYC_TYPE_MOUSEDRAG &&
-			    c->tty.mouse_drag_flag == 0)
-				c->tty.mouse_drag_status = 1;
+			*loc = KEYC_MOUSE_LOCATION_SIDE_STATUS_BORDER;
+			if (type == KEYC_TYPE_MOUSEDRAG && mflag == 0)
+				tty->mouse_drag_status = 1;
 			return (0);
 		}
+		side = 1;
 		sr = status_side_get_range(c, x - m->sideat, y - sidey);
 	}
-	if (type == KEYC_TYPE_MOUSEDRAG && c->tty.mouse_drag_flag == 0)
-		c->tty.mouse_drag_status = 1;
+	if (type == KEYC_TYPE_MOUSEDRAG && mflag == 0)
+		tty->mouse_drag_status = 1;
 	if (sr == NULL) {
-		*loc = KEYC_MOUSE_LOCATION_STATUS_DEFAULT;
+		if (side)
+			*loc = KEYC_MOUSE_LOCATION_SIDE_STATUS_DEFAULT;
+		else
+			*loc = KEYC_MOUSE_LOCATION_STATUS_DEFAULT;
 		return (0);
 	}
 
+	if (side)
+		*loc = KEYC_MOUSE_LOCATION_SIDE_STATUS;
+	else
+		*loc = KEYC_MOUSE_LOCATION_STATUS;
 	switch (sr->type) {
 	case STYLE_RANGE_NONE:
 		return (-1);
 	case STYLE_RANGE_LEFT:
 		log_debug("mouse range: left");
-		*loc = KEYC_MOUSE_LOCATION_STATUS_LEFT;
+		if (side)
+			*loc = KEYC_MOUSE_LOCATION_SIDE_STATUS_LEFT;
+		else
+			*loc = KEYC_MOUSE_LOCATION_STATUS_LEFT;
 		break;
 	case STYLE_RANGE_RIGHT:
 		log_debug("mouse range: right");
-		*loc = KEYC_MOUSE_LOCATION_STATUS_RIGHT;
+		if (side)
+			*loc = KEYC_MOUSE_LOCATION_SIDE_STATUS_RIGHT;
+		else
+			*loc = KEYC_MOUSE_LOCATION_STATUS_RIGHT;
 		break;
 	case STYLE_RANGE_PANE:
 		fwp = window_pane_find_by_id(sr->argument);
@@ -857,7 +873,6 @@ server_client_check_mouse_status(struct client *c, struct mouse_event *m,
 		m->wp = sr->argument;
 
 		log_debug("mouse range: pane %%%u", m->wp);
-		*loc = KEYC_MOUSE_LOCATION_STATUS;
 		break;
 	case STYLE_RANGE_WINDOW:
 		fwl = winlink_find_by_index(&s->windows, sr->argument);
@@ -866,7 +881,6 @@ server_client_check_mouse_status(struct client *c, struct mouse_event *m,
 		m->w = fwl->window->id;
 
 		log_debug("mouse range: window @%u", m->w);
-		*loc = KEYC_MOUSE_LOCATION_STATUS;
 		break;
 	case STYLE_RANGE_SESSION:
 		fs = session_find_by_id(sr->argument);
@@ -875,24 +889,25 @@ server_client_check_mouse_status(struct client *c, struct mouse_event *m,
 		m->s = sr->argument;
 
 		log_debug("mouse range: session $%u", m->s);
-		*loc = KEYC_MOUSE_LOCATION_STATUS;
 		break;
 	case STYLE_RANGE_USER:
 		log_debug("mouse range: user");
-		*loc = KEYC_MOUSE_LOCATION_STATUS;
 		break;
 	case STYLE_RANGE_CONTROL:
 		n = sr->argument; /* parsing keeps this < 10 */
 		log_debug("mouse range: control %u", n);
-		*loc = KEYC_MOUSE_LOCATION_CONTROL0 + n;
+		if (side)
+			*loc = KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL0 + n;
+		else
+			*loc = KEYC_MOUSE_LOCATION_CONTROL0 + n;
 		break;
 	}
 	return (0);
 
 not_on_status:
 	/* Keep drags started on status lines from triggering pane bindings. */
-	if (type == KEYC_TYPE_MOUSEDRAG && c->tty.mouse_drag_status)
-		*loc = c->tty.mouse_drag_location;
+	if (type == KEYC_TYPE_MOUSEDRAG && tty->mouse_drag_status)
+		*loc = mloc;
 	return (0);
 }
 
@@ -1217,7 +1232,9 @@ have_event:
 
 	if (key == KEYC_UNKNOWN) {
 		/* Adjust the button number. */
-		if (MOUSE_BUTTONS(b) == MOUSE_BUTTON_1)
+		if (type == KEYC_TYPE_MOUSEMOVE)
+			bn = 0;
+		else if (MOUSE_BUTTONS(b) == MOUSE_BUTTON_1)
 			bn = 1;
 		else if (MOUSE_BUTTONS(b) == MOUSE_BUTTON_2)
 			bn = 2;
@@ -1636,12 +1653,7 @@ try_again:
 	 * Binding movement keys is useless since we only turn them on when the
 	 * application requests, so don't let them exit the prefix table.
 	 */
-	if (key == KEYC_MOUSEMOVE_PANE ||
-	    key == KEYC_MOUSEMOVE_STATUS ||
-	    key == KEYC_MOUSEMOVE_STATUS_LEFT ||
-	    key == KEYC_MOUSEMOVE_STATUS_RIGHT ||
-	    key == KEYC_MOUSEMOVE_STATUS_DEFAULT ||
-	    key == KEYC_MOUSEMOVE_BORDER)
+	if (KEYC_IS_TYPE(key, KEYC_TYPE_MOUSEMOVE))
 		goto forward_key;
 
 	/*
