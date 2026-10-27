@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1471 2026/10/26 10:14:59 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1472 2026/10/27 09:00:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -179,7 +179,7 @@ enum key_code_mouse_location {
 	KEYC_MOUSE_LOCATION_STATUS_LEFT,
 	KEYC_MOUSE_LOCATION_STATUS_RIGHT,
 	KEYC_MOUSE_LOCATION_STATUS_DEFAULT,
-	KEYC_MOUSE_LOCATION_STATUS_BORDER,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_BORDER,
 	KEYC_MOUSE_LOCATION_BORDER,
 	KEYC_MOUSE_LOCATION_SCROLLBAR_UP,
 	KEYC_MOUSE_LOCATION_SCROLLBAR_SLIDER,
@@ -195,6 +195,20 @@ enum key_code_mouse_location {
 	KEYC_MOUSE_LOCATION_CONTROL7,
 	KEYC_MOUSE_LOCATION_CONTROL8,
 	KEYC_MOUSE_LOCATION_CONTROL9,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_LEFT,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_RIGHT,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_DEFAULT,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL0, /* keep order */
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL1,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL2,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL3,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL4,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL5,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL6,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL7,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL8,
+	KEYC_MOUSE_LOCATION_SIDE_STATUS_CONTROL9,
 	KEYC_MOUSE_LOCATION_NOWHERE /* end */
 };
 
@@ -237,7 +251,7 @@ enum key_code_mouse_location {
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS_LEFT),      \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS_RIGHT),     \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS_DEFAULT),   \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, STATUS_BORDER),    \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_BORDER),      \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, BORDER),           \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_UP),     \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SCROLLBAR_SLIDER), \
@@ -252,7 +266,21 @@ enum key_code_mouse_location {
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL6),         \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL7),         \
 	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL8),         \
-	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL9)
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, CONTROL9),                \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS),             \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_LEFT),        \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_RIGHT),       \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_DEFAULT),     \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL0),    \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL1),    \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL2),    \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL3),    \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL4),    \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL5),    \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL6),    \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL7),    \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL8),    \
+	KEYC_MOUSE_KEY(KEYC_ ## t, KEYC_TYPE_ ## t, SIDE_STATUS_CONTROL9)
 #define KEYC_MOUSE_KEY(p, t, l)                                                \
 	p ## _ ## l = KEYC_MAKE_MOUSE_KEY(t, 0, KEYC_MOUSE_LOCATION_ ## l),    \
 	p ## 1_ ## l = KEYC_MAKE_MOUSE_KEY(t, 1, KEYC_MOUSE_LOCATION_ ## l),   \
@@ -274,7 +302,7 @@ enum key_code_mouse_location {
 	{ #s "StatusLeft", KEYC_ ## name ## _STATUS_LEFT },	      \
 	{ #s "StatusRight", KEYC_ ## name ## _STATUS_RIGHT },	      \
 	{ #s "StatusDefault", KEYC_ ## name ## _STATUS_DEFAULT },     \
-	{ #s "StatusBorder", KEYC_ ## name ## _STATUS_BORDER },       \
+	{ #s "SideStatusBorder", KEYC_ ## name ## _SIDE_STATUS_BORDER },      \
 	{ #s "ScrollbarUp", KEYC_ ## name ## _SCROLLBAR_UP },         \
 	{ #s "ScrollbarSlider", KEYC_ ## name ## _SCROLLBAR_SLIDER }, \
 	{ #s "ScrollbarDown", KEYC_ ## name ## _SCROLLBAR_DOWN },     \
@@ -289,7 +317,21 @@ enum key_code_mouse_location {
 	{ #s "Control6", KEYC_ ## name ## _CONTROL6 },		      \
 	{ #s "Control7", KEYC_ ## name ## _CONTROL7 },		      \
 	{ #s "Control8", KEYC_ ## name ## _CONTROL8 },		      \
-	{ #s "Control9", KEYC_ ## name ## _CONTROL9 }
+	{ #s "Control9", KEYC_ ## name ## _CONTROL9 },                        \
+	{ #s "SideStatus", KEYC_ ## name ## _SIDE_STATUS },                   \
+	{ #s "SideStatusLeft", KEYC_ ## name ## _SIDE_STATUS_LEFT },          \
+	{ #s "SideStatusRight", KEYC_ ## name ## _SIDE_STATUS_RIGHT },        \
+	{ #s "SideStatusDefault", KEYC_ ## name ## _SIDE_STATUS_DEFAULT },    \
+	{ #s "SideStatusControl0", KEYC_ ## name ## _SIDE_STATUS_CONTROL0 },  \
+	{ #s "SideStatusControl1", KEYC_ ## name ## _SIDE_STATUS_CONTROL1 },  \
+	{ #s "SideStatusControl2", KEYC_ ## name ## _SIDE_STATUS_CONTROL2 },  \
+	{ #s "SideStatusControl3", KEYC_ ## name ## _SIDE_STATUS_CONTROL3 },  \
+	{ #s "SideStatusControl4", KEYC_ ## name ## _SIDE_STATUS_CONTROL4 },  \
+	{ #s "SideStatusControl5", KEYC_ ## name ## _SIDE_STATUS_CONTROL5 },  \
+	{ #s "SideStatusControl6", KEYC_ ## name ## _SIDE_STATUS_CONTROL6 },  \
+	{ #s "SideStatusControl7", KEYC_ ## name ## _SIDE_STATUS_CONTROL7 },  \
+	{ #s "SideStatusControl8", KEYC_ ## name ## _SIDE_STATUS_CONTROL8 },  \
+	{ #s "SideStatusControl9", KEYC_ ## name ## _SIDE_STATUS_CONTROL9 }
 
 /*
  * A single key. This can be ASCII or Unicode or one of the keys between
