@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # A Ctrl-drag starting on the side status line must not create a floating
-# pane, and must still dispatch Status bindings. Ctrl-clicking a window on the
+# pane, and must still dispatch SideStatus bindings. Ctrl-clicking a window on the
 # side status line swaps windows, so panes are compared across the session.
 
 PATH=/bin:/usr/bin
@@ -80,8 +80,8 @@ $TMUX set -g status on || exit 1
 sleep 0.5
 check_drag 3 10 30 12
 
-# A drag starting on a window range dispatches the Status binding.
-$TMUX bind -n C-MouseDrag1Status set -g @status-drag status || exit 1
+# A drag starting on a window range dispatches the SideStatus binding.
+$TMUX bind -n C-MouseDrag1SideStatus set -g @status-drag status || exit 1
 $TMUX set -g @status-drag '' || exit 1
 check_drag 2 2 30 12
 got=$($TMUX show -gv @status-drag)

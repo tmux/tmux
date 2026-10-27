@@ -108,6 +108,10 @@ for position in bottom top; do
 done
 
 # The same targeting must work vertically on either side status line.
+$TMUX bind -n MouseDown1SideStatus \
+    'selectw ; set -F @drag_window "#{window_id}"' || exit 1
+$TMUX bind -n MouseDrag1SideStatus run -C 'swapw -ds#{@drag_window}' || exit 1
+$TMUX bind -n MouseDragEnd1SideStatus set -u @drag_window || exit 1
 $TMUX set -g status off || exit 1
 $TMUX set -g side-status-format \
     '#{W:#[range=window|#{window_index}]#W#[norange]#[nl]}' || exit 1

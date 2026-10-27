@@ -53,9 +53,9 @@ $TMUX set -g 'status-format[1]' 'second' || exit 1
 format='#{mouse_status_range}|#{mouse_status_line}|#{mouse_x}|#{mouse_y}'
 format=$format'|#{session_name}|#{window_name}'
 format=$format'|#{mouse_absolute_x}|#{mouse_absolute_y}'
-for key in MouseDown1Status MouseDown1StatusDefault MouseDown1StatusBorder \
-    MouseDown1Pane; do
-	$TMUX bind -n "$key" set -gF @mouse "$format" || exit 1
+for key in MouseDown1Status MouseDown1StatusDefault MouseDown1SideStatus \
+    MouseDown1SideStatusDefault MouseDown1SideStatusBorder MouseDown1Pane; do
+	$TMUX bind -n "$key" set -gF @mouse "$key|$format" || exit 1
 done
 $TMUX2 new-session -d -s outer -x 80 -y 20 'sleep 100' || exit 1
 $TMUX2 set -g status off || exit 1
@@ -87,21 +87,29 @@ for side in left right; do
 		sleep 0.5
 
 		# The current session's windows are between the session headers.
-		click "$column" "$((offset + 1))" 'session|0|2|0|inner|zero'
+		click "$column" "$((offset + 1))" \
+		    'MouseDown1SideStatus|session|0|2|0|inner|zero'
 		click "$((column + 3))" "$((offset + 3))" \
-		    'window|2|5|2|inner|one'
-		click "$column" "$((offset + 4))" 'session|3|2|3|beta|other'
+		    'MouseDown1SideStatus|window|2|5|2|inner|one'
+		click "$column" "$((offset + 4))" \
+		    'MouseDown1SideStatus|session|3|2|3|beta|other'
 		click "$separator" "$((offset + 6))" \
-		    "|5|$separator_x|5|inner|zero"
-		click "$pane_column" "$((offset + 7))" '||2|6|inner|zero'
+		    "MouseDown1SideStatusBorder||5|$separator_x|5|inner|zero"
+		click "$pane_column" "$((offset + 7))" \
+		    'MouseDown1Pane|||2|6|inner|zero'
+
+		click "$column" "$((offset + 8))" \
+		    'MouseDown1SideStatusDefault||7|2|7|inner|zero'
 
 		# Horizontal status coordinates are relative to its first line,
 		# even if the clicked window's pane extends behind the status.
 		if [ "$status" != off ]; then
 			line=1
 			[ "$status" = bottom ] && line=19
-			click 3 "$line" 'window|0|2|0|inner|one'
-			click 3 "$((line + 1))" '|1|2|1|inner|zero'
+			click 3 "$line" \
+			    'MouseDown1Status|window|0|2|0|inner|one'
+			click 3 "$((line + 1))" \
+			    'MouseDown1StatusDefault||1|2|1|inner|zero'
 		fi
 	done
 done
