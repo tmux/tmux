@@ -1,4 +1,4 @@
-/* $OpenBSD: utf8.c,v 1.76 2026/10/23 06:30:50 nicm Exp $ */
+/* $OpenBSD: utf8.c,v 1.77 2026/10/27 15:36:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -677,6 +677,9 @@ utf8_fromwc(wchar_t wc, struct utf8_data *ud)
 	int	size, width;
 
 	memset(ud, 0, sizeof *ud);
+
+	if (wc < 0 || wc > 0x10ffff || (wc >= 0xd800 && wc <= 0xdfff))
+		return (UTF8_ERROR);
 
 #ifdef HAVE_UTF8PROC
 	size = utf8proc_wctomb(ud->data, wc);
