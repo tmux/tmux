@@ -95,7 +95,8 @@ for range in left right control\|0 control\|9; do
 done
 $TMUX bind -n MouseDown1SideStatus \
     set -gF @click '#{mouse_status_range}' || exit 1
-$TMUX set -g side-status-format '#[range=pane|%0]one#[norange]' || exit 1
+$TMUX set -g side-status-format '#[range=pane|#{pane_id}]one#[norange]' ||
+    exit 1
 sleep 0.5
 click 1 pane
 
