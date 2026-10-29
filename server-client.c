@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.530 2026/10/27 13:00:14 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.531 2026/10/29 12:59:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -191,6 +191,7 @@ server_client_create(int fd)
 	for (i = 0; i < COLOUR_THEME_COUNT; i++)
 		c->theme_colours[i] = 8;
 	c->theme = THEME_UNKNOWN;
+	c->active_theme = THEME_UNKNOWN;
 
 	status_init(c);
 	status_side_init(c);
@@ -378,6 +379,11 @@ server_client_set_session(struct client *c, struct session *s)
 		c->last_session = NULL;
 	c->session = s;
 	c->flags |= CLIENT_FOCUSED;
+
+	if (old == NULL && s != NULL && (c->tty.flags & TTY_OPENED)) {
+		c->active_theme = THEME_UNKNOWN;
+		server_client_update_theme_colours(c);
+	}
 
 	if (old != NULL && old->curw != NULL)
 		window_update_focus(old->curw->window);
@@ -1279,7 +1285,7 @@ server_client_update_theme_colours(struct client *c)
 {
 	struct format_tree	*ft;
 	const char		*name, *value;
-	enum client_theme	 theme;
+	enum client_theme	 theme, old;
 	char			*expanded;
 	u_int			 i;
 	int			 colour, option;
@@ -1289,13 +1295,11 @@ server_client_update_theme_colours(struct client *c)
 
 	option = options_get_number(global_options, "theme");
 	if (option == 1) {
+		c->active_theme = THEME_UNKNOWN;
 		for (i = 0; i < COLOUR_THEME_COUNT; i++)
 			c->theme_colours[i] = colour_theme_terminal_colour(i);
 		return;
 	}
-
-	ft = format_create(c, NULL, FORMAT_NONE, FORMAT_NOJOBS);
-	format_defaults(ft, c, NULL, NULL, NULL);
 
 	theme = c->theme;
 	if (theme == THEME_UNKNOWN)
@@ -1304,6 +1308,16 @@ server_client_update_theme_colours(struct client *c)
 		theme = THEME_LIGHT;
 	else if (option == 3)
 		theme = THEME_DARK;
+	if (theme == THEME_UNKNOWN)
+		theme = THEME_DARK;
+
+	/* Set the active theme before expanding the colour options. */
+	old = c->active_theme;
+	c->active_theme = theme;
+
+	ft = format_create(c, NULL, FORMAT_NONE, FORMAT_NOJOBS);
+	format_defaults(ft, c, NULL, NULL, NULL);
+
 	for (i = 0; i < COLOUR_THEME_COUNT; i++) {
 		c->theme_colours[i] = 8;
 		name = colour_theme_option(i, theme);
@@ -1319,6 +1333,13 @@ server_client_update_theme_colours(struct client *c)
 	}
 
 	format_free(ft);
+
+	if (theme != old && c->session != NULL && (c->tty.flags & TTY_OPENED)) {
+		if (theme == THEME_LIGHT)
+			events_fire_client("client-light-theme", c);
+		else
+			events_fire_client("client-dark-theme", c);
+	}
 }
 
 /* Is this a bracket paste key? */
@@ -3340,13 +3361,7 @@ server_client_report_theme(struct client *c, enum client_theme theme)
 {
 	enum client_theme	 old = c->theme;
 
-	if (theme == THEME_LIGHT) {
-		c->theme = THEME_LIGHT;
-		events_fire_client("client-light-theme", c);
-	} else {
-		c->theme = THEME_DARK;
-		events_fire_client("client-dark-theme", c);
-	}
+	c->theme = theme;
 
 	/*
 	 * If the theme has changed, update the theme colours and redraw the

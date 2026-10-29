@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1194 2026/10/27 09:00:29 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1195 2026/10/29 12:59:16 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 27 2026 $
+.Dd $Mdocdate: October 29 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -4979,6 +4979,11 @@ Whether tmux should use the detected client theme
 use terminal ANSI colours
 .Pq Cm terminal ,
 or force the light or dark theme.
+With
+.Cm detect ,
+the theme reported by the terminal is used if available, otherwise the theme is
+derived from the terminal background colour.
+If neither is available, the dark theme is used.
 .It Xo Ic dark\-theme\-black ,
 .Ic dark\-theme\-white ,
 .Ic dark\-theme\-light\-grey ,
@@ -7513,6 +7518,7 @@ The following variables are available, where appropriate:
 .It Li "buffer_name" Ta "" Ta "Name of buffer"
 .It Li "buffer_sample" Ta "" Ta "Sample of start of buffer"
 .It Li "buffer_size" Ta "" Ta "Size of the specified buffer in bytes"
+.It Li "client_active_theme" Ta "" Ta "Theme in use"
 .It Li "client_activity" Ta "" Ta "Time client last had activity"
 .It Li "client_cell_height" Ta "" Ta "Height of each client cell in pixels"
 .It Li "client_cell_width" Ta "" Ta "Width of each client cell in pixels"
@@ -7532,6 +7538,7 @@ The following variables are available, where appropriate:
 .It Li "client_termfeatures" Ta "" Ta "Terminal features of client, if any"
 .It Li "client_termname" Ta "" Ta "Terminal name of client"
 .It Li "client_termtype" Ta "" Ta "Terminal type of client, if available"
+.It Li "client_theme" Ta "" Ta "Theme reported by the terminal (light or dark), if any"
 .It Li "client_tty" Ta "" Ta "Pseudo terminal of client"
 .It Li "client_uid" Ta "" Ta "UID of client process"
 .It Li "client_user" Ta "" Ta "User of client process"
