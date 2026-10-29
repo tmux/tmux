@@ -169,14 +169,43 @@ wait_format "$p0" '#{window_zoomed_flag}' '1'
 $TMUX resize-pane -Z -t "$p0" || fail "unzoom cleanup failed"
 
 # Panes mode can be stacked above another mode and returns to it on exit.
+$TMUX respawn-pane -k -t "$p0" \
+    'seq 1 200; printf "COPY-READY\n"; exec cat' ||
+	fail "write copy-mode history failed"
+wait_capture 'COPY-READY'
 $TMUX copy-mode -t "$p0" || fail "copy-mode failed"
 wait_format "$p0" '#{pane_mode}' 'copy-mode'
+$TMUX send-keys -t "$p0" -X page-up || fail "scroll copy-mode failed"
+$TMUX send-keys -t "$p0" -X begin-selection || fail "begin selection failed"
+$TMUX send-keys -t "$p0" -X cursor-up || fail "extend selection failed"
+copy_format='#{scroll_position}:#{copy_cursor_x}:#{copy_cursor_y}:#{selection_present}:#{selection_start_x}:#{selection_start_y}:#{selection_end_x}:#{selection_end_y}'
+copy_state=$($TMUX display-message -p -t "$p0" "$copy_format")
+wait_format "$p0" '#{selection_present}' '1'
+copy_top=$(capture | sed -n '2p')
 $TMUX display-panes -d 0 -t "$p0" 'set -g @picked %%' ||
 	fail "display-panes over copy-mode failed"
 wait_format "$p0" '#{pane_mode}' 'panes-mode'
+wait_capture "$copy_top"
 $TMUX send-keys -t "$p0" 1 || fail "select from stacked mode failed"
 wait_format "$p0" '#{pane_mode}' 'copy-mode'
+wait_format "$p0" "$copy_format" "$copy_state"
 wait_option @picked "$p1"
+
+# Returning at the original size must preserve state on timeout too.
+$TMUX display-panes -Nd 200 -t "$p0" || fail "timed panes mode failed"
+wait_format "$p0" '#{pane_mode}' 'copy-mode'
+wait_format "$p0" "$copy_format" "$copy_state"
+
+# Cancellation and drawing a different pane's mode use the same visible view.
+for target in "$p0" "$p1"; do
+	$TMUX display-panes -d 0 -t "$target" ||
+		fail "copy-mode preview failed"
+	wait_format "$target" '#{pane_mode}' 'panes-mode'
+	wait_capture "$copy_top"
+	$TMUX send-keys -t "$target" q || fail "cancel preview failed"
+	wait_format "$p0" '#{pane_mode}' 'copy-mode'
+	wait_format "$p0" "$copy_format" "$copy_state"
+done
 $TMUX send-keys -t "$p0" -X cancel || fail "copy-mode cancel failed"
 wait_format "$p0" '#{pane_in_mode}' '0'
 
