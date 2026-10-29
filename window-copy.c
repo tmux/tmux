@@ -1217,6 +1217,9 @@ window_copy_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 	u_int				 cx, cy, wx, wy;
 	int				 reflow;
 
+	if (screen_size_x(s) == sx && screen_size_y(s) == sy)
+		return;
+
 	screen_resize(s, sx, sy, 0);
 	cx = data->cx;
 	if (data->oy > gd->hsize + data->cy)
