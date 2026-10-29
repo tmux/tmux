@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.281 2026/10/26 10:23:50 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.282 2026/10/29 12:16:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
@@ -161,8 +162,10 @@ static void	input_set_state(struct input_ctx *,
 static void	input_reset_cell(struct input_ctx *);
 static void	input_report_current_theme(struct input_ctx *);
 static void	input_osc_4(struct input_ctx *, const char *);
+static void	input_osc_7(struct input_ctx *, const char *);
 static void	input_osc_8(struct input_ctx *, const char *);
 static void	input_osc_9(struct input_ctx *, const char *);
+static void	input_osc_9_9(struct input_ctx *, const char *);
 static void	input_osc_10(struct input_ctx *, const char *);
 static void	input_osc_11(struct input_ctx *, const char *);
 static void	input_osc_12(struct input_ctx *, const char *);
@@ -2707,10 +2710,7 @@ input_exit_osc(struct input_ctx *ictx)
 		input_osc_4(ictx, p);
 		break;
 	case 7:
-		if (wp != NULL && screen_set_path(sctx->s, p, 1)) {
-			server_redraw_window_borders(wp->window);
-			server_status_window(wp->window);
-		}
+		input_osc_7(ictx, p);
 		break;
 	case 8:
 		input_osc_8(ictx, p);
@@ -3000,7 +3000,59 @@ input_set_progress_bar(struct input_ctx *ictx, enum progress_bar_state state,
 	}
 }
 
-/* Handle the OSC 9;4 sequence for progress bars. */
+/* Handle the OSC 7 sequence for the working directory. */
+static void
+input_osc_7(struct input_ctx *ictx, const char *p)
+{
+	struct window_pane	*wp = ictx->wp;
+
+	if (wp != NULL && screen_set_path(ictx->ctx.s, p, 1)) {
+		server_redraw_window_borders(wp->window);
+		server_status_window(wp->window);
+	}
+}
+
+/*
+ * Handle the OSC 9;9 sequence for the working directory. This is a path, which
+ * may be in double quotes, so make it a file:// URI as from OSC 7.
+ */
+static void
+input_osc_9_9(struct input_ctx *ictx, const char *p)
+{
+	char	 host[HOST_NAME_MAX + 1], *uri, *out;
+	size_t	 len, size, i;
+	u_char	 ch;
+
+	if (gethostname(host, sizeof host) != 0)
+		return;
+	host[sizeof host - 1] = '\0';
+
+	len = strlen(p);
+	if (len >= 2 && p[0] == '"' && p[len - 1] == '"') {
+		p++;
+		len -= 2;
+	}
+	if (len == 0 || *p != '/')
+		return;
+
+	size = (sizeof "file://") + strlen(host) + len * 3;
+	uri = xmalloc(size);
+	out = uri + xsnprintf(uri, size, "file://%s", host);
+
+	for (i = 0; i < len; i++) {
+		ch = p[i];
+		if ((ch < 0x80 && isalnum(ch)) || strchr("-._~/", ch) != NULL)
+			*out++ = ch;
+		else
+			out += xsnprintf(out, 4, "%%%02X", ch);
+	}
+	*out = '\0';
+
+	input_osc_7(ictx, uri);
+	free(uri);
+}
+
+/* Handle the OSC 9;4 sequence for progress bars and pass on OSC 9;9. */
 static void
 input_osc_9(struct input_ctx *ictx, const char *p)
 {
@@ -3008,6 +3060,10 @@ input_osc_9(struct input_ctx *ictx, const char *p)
 	enum progress_bar_state	 state;
 	int			 progress = 0;
 
+	if (pb[0] == '9' && pb[1] == ';') {
+		input_osc_9_9(ictx, pb + 2);
+		return;
+	}
 	if (*pb++ != '4')
 		return;
 	if (*pb == '\0' || (*pb == ';' && pb[1] == '\0'))
