@@ -27,6 +27,21 @@
 
 #include "tmux.h"
 
+/*
+ * Decode SIXEL input and draw common images as SIXEL output.
+ *
+ * The parser builds rows of palette indexes, applying raster attributes,
+ * colour definitions and repeat commands as they arrive. sixel_write
+ * converts the result to RGBA pixels, records its size using the input cell
+ * pixel size, and passes it to image_write to attach it to the grid.
+ *
+ * Output combines adjacent image rows before converting them at the client's
+ * cell pixel size. The conversion maps output pixels back to the source
+ * image, builds a palette from the visible colours, then dithers colour and
+ * alpha into palette indexes. The encoder turns those indexes into SIXEL
+ * colour planes and repeat runs.
+ */
+
 /* Maximum SIXEL width and height. */
 #define SIXEL_WIDTH_LIMIT 10000
 #define SIXEL_HEIGHT_LIMIT 10000
@@ -1412,6 +1427,7 @@ sixel_from_image(struct image *im, u_int x, u_int y, u_int sx, u_int sy,
 	struct sixel_image	*si, *cached;
 	char			*data;
 
+	/* Get a cached image, or convert just the requested cells. */
 	cached = sixel_get_image(im, cw, ch);
 	if (cached != NULL)
 		si = sixel_crop(cached, x, y, sx, sy, cw, ch);

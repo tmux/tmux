@@ -129,14 +129,17 @@ class Terminal:
         else:
             assert command in b'hlcqnt', (params, chr(command))
 
+    def apc(self, data):
+        """Ignore application controls unless a subclass handles them."""
+
     def feed(self, data):
         """Apply complete output sequences, keeping any unfinished sequence."""
         data = self.pending + bytes(data)
         pos = 0
         while pos < len(data):
             rest = data[pos:]
-            if rest.startswith((b'\033P', b'\033]')):
-                match = re.match(rb'\033([P\]])(.*?)(?:\007|\033\\)',
+            if rest.startswith((b'\033P', b'\033]', b'\033_')):
+                match = re.match(rb'\033([P\]_])(.*?)(?:\007|\033\\)',
                     rest, re.S)
                 if match is None:
                     break
@@ -150,6 +153,8 @@ class Terminal:
                             if colour is not None:
                                 self.pixels[self.x * self.cw + i % w,
                                     self.y * self.ch + i // w] = colour
+                if match[1] == b'_':
+                    self.apc(match[2])
                 pos += match.end()
             elif rest.startswith(b'\033['):
                 match = re.match(rb'\033\[([0-?]*[ -/]*)([@-~])', rest)

@@ -66,11 +66,24 @@ query_timeout()
 
 query "dsr-ok" '^[[0n' '\033[5n' 4 ''
 query "dsr-cursor" '^[[1;1R' '\033[6n' 6 ''
-if [ "$($TMUX display-message -p '#{image_support}')" = 1 ]; then
-	query "da-primary" '^[[?1;2;4;52c' '\033[c' 12 ''
-else
-	query "da-primary" '^[[?1;2;52c' '\033[c' 10 ''
-fi
+image_support=$($TMUX display-message -p '#{image_support}')
+for clipboard in on external off; do
+	$TMUX set-option -s set-clipboard "$clipboard" || exit 1
+	if [ "$image_support" = 1 ]; then
+		da='^[[?1;2;4'
+		da_count=9
+	else
+		da='^[[?1;2'
+		da_count=7
+	fi
+	if [ "$clipboard" = on ]; then
+		da="${da};52"
+		da_count=$((da_count + 3))
+	fi
+	query "da-primary-$clipboard" "${da}c" '\033[c' "$da_count" ''
+	query "da-primary-zero-$clipboard" "${da}c" '\033[0c' "$da_count" ''
+done
+$TMUX set-option -s set-clipboard on || exit 1
 query "da-secondary" '^[[>84;0;0c' '\033[>c' 10 ''
 query "decrqm-irm-reset" '^[[4;2$y' '\033[4$p' 7 ''
 query "decrqm-irm-set" '^[[4;1$y' '\033[4$p' 7 '\033[4h'

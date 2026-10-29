@@ -87,6 +87,9 @@ struct image_bounds {
 struct image_rect {
 	struct image	*image;
 
+	/* Placement creation order. */
+	uint64_t	 index;
+
 	/* Size in cells. */
 	u_int		 sx;
 	u_int		 sy;
@@ -197,6 +200,12 @@ void		 sixel_flush_pending(struct tty *);
 
 /* image-kitty.c */
 int		 kitty_select(struct tty *);
+int		 kitty_get_flags(struct tty *);
+void		 kitty_draw_rect(struct tty *, struct image_rect *);
+void		 kitty_redraw_start(struct tty *, u_int, u_int, u_int, u_int);
+void		 kitty_redraw_finish(struct tty *);
+void		 kitty_scroll(struct tty *, u_int, u_int, u_int, u_int, int);
+void		 kitty_free_output_state(struct tty *, int);
 void		 kitty_parse_input(struct input_ctx *, struct window_pane *,
 		     struct screen_write_ctx *, u_int, void **, const u_char *,
 		     size_t);

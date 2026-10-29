@@ -23,6 +23,12 @@
 
 #include "tmux.h"
 
+/*
+ * Draw images with text when a graphical backend is unavailable. The average
+ * brightness and colour of the area of the image covering each cell is used to
+ * pick the colour and character used.
+ */
+
 /* UTF-8 characters used for image fallback. */
 static const struct utf8_data fallback_shades[5] = {
 	{ " ", 1, 1, 1 },

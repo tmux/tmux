@@ -105,11 +105,13 @@ class ImageTest:
         self.wait(lambda: self.run("display-message", "-p",
             "#{pane_title}") == "READY")
 
-    def attach(self, graphical=True, utf8=True, cw=8, ch=16, term=None):
+    def attach(self, graphical=True, utf8=True, cw=8, ch=16, term=None,
+            kitty_graphics=False):
         """Attach a client with a known cell pixel size and image feature."""
         if term is None:
             term = "xterm-256color" if graphical else "screen-256color"
         features = term + (":sixel" if graphical else ":sixel@")
+        features += ":kittygraphics" if kitty_graphics else ":kittygraphics@"
         self.run("set-option", "-as", "terminal-features", features)
         pid, fd = os.forkpty()
         if pid == 0:

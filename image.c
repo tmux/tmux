@@ -26,6 +26,20 @@
 
 #include "tmux.h"
 
+/*
+ * Store decoded images and map their pixels for drawing.
+ *
+ * An image contains RGBA pixels and geometry describing which part of the
+ * source image to use, its size in cells, and any scaling or padding. Child
+ * images can share a parent's pixels with different geometry. Each image has a
+ * unique ID.
+ *
+ * Scaling and offsets are recorded in the geometry. The drawing backends use
+ * the helpers here to map output cells or pixels back to the source image.
+ * This lets clients with different cell pixel sizes draw the same image
+ * without changing its stored pixels.
+ */
+
 /* An image. */
 TAILQ_HEAD(image_list, image);
 struct image {
@@ -269,6 +283,7 @@ image_create_with_parent(enum image_type type, struct image *parent,
 	if (ig->scaled_width <= 0 || ig->scaled_height <= 0)
 		return (NULL);
 
+	/* Check limits before allocating the image. */
 	if (parent == NULL)
 		size = (ig->src_h - 1) * stride + ig->src_w * 4;
 	if (image_check_limits(parent, size) != 0)
@@ -370,6 +385,7 @@ image_get_bounds(struct image_geom *ig, u_int x, u_int y, u_int w, u_int h,
 	if (h > sy - y)
 		h = sy - y;
 
+	/* Map the requested area and clip it to the source image. */
 	ib->left = image_map_x(ig, x, sx);
 	ib->top = image_map_y(ig, y, sy);
 	ib->right = image_map_x(ig, x + w, sx);

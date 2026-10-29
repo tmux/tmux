@@ -23,6 +23,19 @@
 
 #include "tmux.h"
 
+/*
+ * Keep image placements in the grid and draw their visible parts.
+ *
+ * Each grid has a store of placements, each of which refers to an image and
+ * links all of its spans together. Each span describes a horizontal run of
+ * image cells on one grid line.
+ *
+ * Each client has an output backend: Kitty, SIXEL or text fallback. Graphical
+ * redraws clip each visible span and pass a rectangle one cell high to the
+ * backend. The start, flush and finish callbacks let the backend do anything
+ * it needs at points during redraw.
+ */
+
 /* Next image placement index. */
 static uint64_t next_image_placement_index;
 
@@ -149,15 +162,15 @@ static struct image_backend image_backend_sixel = {
 };
 static struct image_backend image_backend_kitty = {
 	"kitty",
-	NULL,
+	kitty_get_flags,
 	kitty_select,
 	NULL,
+	kitty_draw_rect,
+	kitty_redraw_start,
 	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
+	kitty_redraw_finish,
+	kitty_scroll,
+	kitty_free_output_state,
 	kitty_remove_image
 };
 
@@ -218,13 +231,15 @@ image_draw_span(struct image_backend *backend, struct tty *tty,
 	struct image_rect	 rect;
 
 	rect.image = span->placement->image;
-	image_touch(rect.image);
+	rect.index = span->placement->index;
 	rect.src_x = span->source_x + start - span->x;
 	rect.src_y = span->source_y;
 	rect.sx = end - start;
 	rect.sy = 1;
 	rect.dst_x = atx + start - px;
 	rect.dst_y = aty;
+
+	image_touch(rect.image);
 	backend->draw_rect(tty, &rect);
 }
 
@@ -748,6 +763,7 @@ image_grid_mark_scroll(struct grid *gd, u_int upper, u_int lower)
 	u_int			 y, hsize = gd->hsize;
 	int			 redraw = 0;
 
+	/* Mark lines inside the scroll region. */
 	for (y = upper; y <= lower; y++) {
 		line = gd->linedata[y].images;
 		if (line == NULL)
@@ -756,6 +772,8 @@ image_grid_mark_scroll(struct grid *gd, u_int upper, u_int lower)
 		TAILQ_FOREACH(span, &line->spans, line_entry)
 			span->placement->scroll = -1;
 	}
+
+	/* Mark placements which can move with the scroll region. */
 	for (y = upper; y <= lower; y++) {
 		line = gd->linedata[y].images;
 		if (line == NULL)
@@ -778,6 +796,8 @@ image_grid_mark_scroll(struct grid *gd, u_int upper, u_int lower)
 			}
 		}
 	}
+
+	/* Clear the temporary marks. */
 	for (y = upper; y <= lower; y++) {
 		line = gd->linedata[y].images;
 		if (line != NULL)
