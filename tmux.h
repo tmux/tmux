@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1473 2026/10/27 13:00:14 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1474 2026/10/29 12:59:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2330,6 +2330,7 @@ struct client {
 	struct side_status_line	 side_status;
 	struct event		 cycle_timer;
 	enum client_theme	 theme;
+	enum client_theme	 active_theme;
 
 	struct input_requests	 input_requests;
 
