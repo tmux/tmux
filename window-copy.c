@@ -1,4 +1,4 @@
-/* $OpenBSD: window-copy.c,v 1.443 2026/10/26 10:38:16 nicm Exp $ */
+/* $OpenBSD: window-copy.c,v 1.444 2026/10/29 09:45:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1277,6 +1277,9 @@ window_copy_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 	struct grid			*gd = data->backing->grid;
 	u_int				 cx, cy, wx, wy;
 	int				 reflow;
+
+	if (screen_size_x(s) == sx && screen_size_y(s) == sy)
+		return;
 
 	screen_resize(s, sx, sy, 0);
 	cx = data->cx;
