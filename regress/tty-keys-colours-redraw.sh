@@ -49,8 +49,10 @@ try:
     run("new-session", "-d", "-s", "colours", "-x", "80", "-y", "24",
         "sleep 100")
     run("set-option", "-s", "theme", "detect")
-    run("set-option", "-s", "dark-theme-dark-grey", "red")
-    run("set-option", "-s", "light-theme-dark-grey", "green")
+    run("set-option", "-s", "dark-theme-dark-grey",
+        "#{?#{==:#{client_active_theme},dark},red,blue}")
+    run("set-option", "-s", "light-theme-dark-grey",
+        "#{?#{==:#{client_active_theme},light},green,blue}")
     run("set-option", "-g", "automatic-rename", "off")
     run("set-option", "-g", "status-interval", "0")
     run("set-option", "-g", "status-style", "bg=themedarkgrey,fg=white")

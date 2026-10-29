@@ -34,6 +34,7 @@ buffer_mode_format
 buffer_name
 buffer_sample
 buffer_size
+client_active_theme
 client_activity
 client_cell_height
 client_cell_width
