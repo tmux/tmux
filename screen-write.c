@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.306 2026/10/20 12:47:57 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.307 2026/10/30 12:24:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1776,6 +1776,7 @@ screen_write_clearendofline(struct screen_write_ctx *ctx, u_int bg)
 	if (s->cx > sx - 1 || (s->cx >= gl->cellsize && COLOUR_DEFAULT(bg)))
 		return;
 
+	screen_write_clear_padding(ctx, s->cx);
 	grid_view_clear(s->grid, s->cx, s->cy, sx - s->cx, 1, bg);
 
 	ci->x = s->cx;
@@ -1800,8 +1801,10 @@ screen_write_clearstartofline(struct screen_write_ctx *ctx, u_int bg)
 
 	if (s->cx > sx - 1)
 		grid_view_clear(s->grid, 0, s->cy, sx, 1, bg);
-	else
+	else {
+		screen_write_clear_padding(ctx, s->cx + 1);
 		grid_view_clear(s->grid, 0, s->cy, s->cx + 1, 1, bg);
+	}
 
 	ci->x = 0;
 	ci->used = s->cx + 1;
@@ -2008,8 +2011,10 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 	    options_get_number(ctx->wp->options, "scroll-on-clear"))
 		grid_view_clear_history(gd, bg);
 	else {
-		if (s->cx <= sx - 1)
+		if (s->cx <= sx - 1) {
+			screen_write_clear_padding(ctx, s->cx);
 			grid_view_clear(gd, s->cx, s->cy, sx - s->cx, 1, bg);
+		}
 		grid_view_clear(gd, 0, s->cy + 1, sx, sy - (s->cy + 1), bg);
 	}
 
@@ -2080,8 +2085,10 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 		grid_view_clear(s->grid, 0, 0, sx, s->cy, bg);
 	if (s->cx > sx - 1)
 		grid_view_clear(s->grid, 0, s->cy, sx, 1, bg);
-	else
+	else {
+		screen_write_clear_padding(ctx, s->cx + 1);
 		grid_view_clear(s->grid, 0, s->cy, s->cx + 1, 1, bg);
+	}
 
 	screen_write_collect_clear(ctx, 0, s->cy);
 	screen_write_collect_flush(ctx, 0, __func__);
