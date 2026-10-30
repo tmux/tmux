@@ -1507,3 +1507,96 @@ options_remove_or_default(struct options_entry *o, const char *key,
 		return (-1);
 	return (0);
 }
+
+int
+options_collect(struct options *oo, int scope, char **ov, int nv, char **cause)
+{
+	char					*oldcause;
+	char					*key, *name, *oname, *val;
+	int					 ambiguous, i, r;
+	struct options_entry			*o, *parent;
+	const struct options_table_entry 	*ot;
+
+	for (i = 0; i < nv; i++) {
+		/* ov may be a sparse array. Skip NULL. */
+		if (ov[i] == NULL)
+			continue;
+
+		name = ov[i];
+
+		if ((val = strchr(name, '=')) == NULL) {
+			xasprintf(cause, "expected option value: %s", name);
+			return (-1);
+		}
+		*val++ = '\0';
+
+		key = NULL;
+		oname = options_match(name, &key, &ambiguous);
+		if (oname == NULL || *oname == '@') {
+			if (ambiguous)
+				xasprintf(cause, "ambiguous option: %s", name);
+			else
+				xasprintf(cause, "invalid option: %s", name);
+
+			goto fail;
+		}
+
+		ot = options_search(oname);
+
+		/* When looking for session options, error on server options,
+		 * when looking for window options, error on session options,
+		 * etc..
+		 */
+		if (ot->scope < scope) {
+			xasprintf(cause, "invalid option: %s", oname);
+			goto fail;
+		}
+
+		/* Wrong scope, skip. */
+		if ((ot->scope & scope) == 0) {
+			free(oname);
+			free(key);
+			val[-1] = '=';
+			continue;
+		}
+
+		o = options_get_only(oo, oname);
+		parent = options_get(oo, oname);
+
+		if (key != NULL && !options_is_array(parent)) {
+			xasprintf(cause, "not an array: %s", oname);
+			goto fail;
+		}
+
+		if (key != NULL) {
+			if (o == NULL)
+				o = options_empty(oo, ot);
+
+			r = options_array_set(o, key, val, 0, cause);
+		} else
+			r = options_from_string(oo, ot, oname, val, 0, cause);
+
+		if (r != 0) {
+			oldcause = *cause;
+			xasprintf(cause, "failed to set option %s: %s",
+				  oname, oldcause);
+			free(oldcause);
+			goto fail;
+		}
+
+		/* Remove item from array. */
+		free(ov[i]);
+		ov[i] = NULL;
+
+		options_push_changes(oname);
+		free(oname);
+		free(key);
+	}
+
+	return (0);
+
+fail:
+	free(oname);
+	free(key);
+	return (-1);
+}

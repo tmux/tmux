@@ -39,9 +39,9 @@ const struct cmd_entry cmd_new_window_entry = {
 	.description = "Create a window.",
 	.alias = "neww",
 
-	.args = { "abc:de:EF:kn:PSt:", 0, -1, NULL },
+	.args = { "abc:de:EF:kn:O:PSt:", 0, -1, NULL },
 	.usage = "[-abdEkPS] [-c start-directory] [-e environment] [-F format] "
-		 "[-n window-name] " CMD_TARGET_WINDOW_USAGE
+		 "[-n window-name] [-O option] " CMD_TARGET_WINDOW_USAGE
 		 " [shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_WINDOW_INDEX },
@@ -148,6 +148,13 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 		av = args_next_value(av);
 	}
 
+	av = args_first_value(args, 'O');
+	while (av != NULL) {
+		sc.options = xreallocarray(sc.options, sc.noptions+1, sizeof *sc.options);
+		sc.options[sc.noptions++] = xstrdup(av->string);
+		av = args_next_value(av);
+	}
+
 	sc.idx = idx;
 	sc.cwd = args_get(args, 'c');
 
@@ -185,6 +192,9 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (sc.argv != NULL)
 		cmd_free_argv(sc.argc, sc.argv);
 	environ_free(sc.environ);
+	while (sc.noptions > 0)
+		free(sc.options[--sc.noptions]);
+	free(sc.options);
 	free(wname);
 	return (CMD_RETURN_NORMAL);
 
@@ -192,6 +202,9 @@ fail:
 	if (sc.argv != NULL)
 		cmd_free_argv(sc.argc, sc.argv);
 	environ_free(sc.environ);
+	while (sc.noptions > 0)
+		free(sc.options[--sc.noptions]);
+	free(sc.options);
 	free(wname);
 	return (CMD_RETURN_ERROR);
 }

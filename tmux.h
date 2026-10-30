@@ -2610,6 +2610,8 @@ struct spawn_context {
 	char			**argv;
 	int			  argc;
 	struct environ		 *environ;
+	char			**options;
+	int			  noptions;
 
 	int			  idx;
 	const char		 *cwd;
@@ -2964,6 +2966,8 @@ int	 	 options_find_choice(const struct options_table_entry *,
 void		 options_push_changes(const char *);
 int		 options_remove_or_default(struct options_entry *, const char *,
 		     char **);
+int		 options_collect(struct options *oo, int scope, char **ov,
+		     int nv, char **cause);
 
 /* options-table.c */
 extern const struct options_table_entry	options_table[];
@@ -3856,6 +3860,7 @@ int		 window_pane_index(struct window_pane *, u_int *);
 int		 window_pane_zindex(struct window_pane *, u_int *);
 int		 window_pane_last_index(struct window_pane *, u_int *);
 u_int		 window_count_panes(struct window *, int);
+void		 window_destroy(struct window *);
 void		 window_destroy_panes(struct window *);
 struct window_pane *window_pane_find_by_id_str(const char *);
 struct window_pane *window_pane_find_by_id(u_int);
