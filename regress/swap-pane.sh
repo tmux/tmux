@@ -124,11 +124,11 @@ run resize-pane -Z -t $a
 checkwin :0 1:3 'zoom a'
 run swap-pane -s $a -t $b
 check $a 0:0:0:0 'zoomed-tiled swap'
-check $b 0:1:0:0 'zoomed-tiled swap'
+check $b 1:1:0:0 'zoomed-tiled swap'
 checkgeom $b 80x24+0+0 'zoomed-tiled swap'
 checkwin :0 1:3 'zoomed-tiled swap'
 run swap-pane -s $b -t $a
-check $a 0:1:0:0 'zoomed-tiled swap back'
+check $a 1:1:0:0 'zoomed-tiled swap back'
 check $b 0:0:0:0 'zoomed-tiled swap back'
 
 # With -d the active pane stays active, unless the swap covers it with the
@@ -137,11 +137,11 @@ check $b 0:0:0:0 'zoomed-tiled swap back'
 run select-pane -t $a
 run swap-pane -d -s $a -t $b
 check $a 0:0:0:0 'zoomed swap -d'
-check $b 0:1:0:0 'zoomed swap -d'
+check $b 1:1:0:0 'zoomed swap -d'
 checkwin :0 1:3 'zoomed swap -d'
 checkactive :0 $b 'zoomed swap -d'
 run swap-pane -d -s $b -t $a
-check $a 0:1:0:0 'zoomed swap -d back'
+check $a 1:1:0:0 'zoomed swap -d back'
 check $b 0:0:0:0 'zoomed swap -d back'
 checkwin :0 1:3 'zoomed swap -d back'
 checkactive :0 $a 'zoomed swap -d back'
@@ -150,12 +150,12 @@ checkactive :0 $a 'zoomed swap -d back'
 # becomes the float.
 run swap-pane -s $a -t $f
 check $a 1:0:0:0 'zoomed-float swap'
-check $f 0:1:0:0 'zoomed-float swap'
+check $f 1:1:0:0 'zoomed-float swap'
 checkgeom $a 18x6+9+4 'zoomed-float swap'
 checkgeom $f 80x24+0+0 'zoomed-float swap'
 checkwin :0 1:3 'zoomed-float swap'
 run swap-pane -s $f -t $a
-check $a 0:1:0:0 'zoomed-float swap back'
+check $a 1:1:0:0 'zoomed-float swap back'
 check $f 1:0:0:0 'zoomed-float swap back'
 run resize-pane -Z -t $a
 checkwin :0 0:3 'unzoom a'
@@ -178,7 +178,7 @@ checkwin :0 0:3 'unzoom f'
 run resize-pane -Z -t $a
 run swap-pane -s $a -t $c
 check $a 0:0:0:1 'zoom across windows'
-check $c 0:1:0:0 'zoom across windows'
+check $c 1:1:0:0 'zoom across windows'
 checkgeom $c 80x24+0+0 'zoom across windows'
 checkgeom $a 80x12+0+0 'zoom across windows'
 checkwin :0 1:3 'zoom across windows'
@@ -188,7 +188,7 @@ checklayout :1 'zoom across windows'
 
 # And back, this time with the unzoomed pane as the source.
 run swap-pane -s $c -t $a
-check $a 0:1:0:0 'zoom across windows back'
+check $a 1:1:0:0 'zoom across windows back'
 check $c 0:0:0:1 'zoom across windows back'
 checkwin :0 1:3 'zoom across windows back'
 checkwin :1 0:2 'zoom across windows back'
@@ -197,8 +197,8 @@ checkwin :1 0:2 'zoom across windows back'
 run resize-pane -Z -t $c
 checkwin :1 1:2 'zoom both'
 run swap-pane -s $a -t $c
-check $a 0:1:0:1 'zoomed both swap'
-check $c 0:1:0:0 'zoomed both swap'
+check $a 1:1:0:1 'zoomed both swap'
+check $c 1:1:0:0 'zoomed both swap'
 checkwin :0 1:3 'zoomed both swap'
 checkwin :1 1:2 'zoomed both swap'
 run swap-pane -s $c -t $a
@@ -211,7 +211,7 @@ checkwin :1 0:2 'unzoom all'
 run resize-pane -Z -t $a
 run swap-pane -s $a -t $d
 check $a 0:0:0:1 'zoomed-tiled with other window'
-check $d 0:1:0:0 'zoomed-tiled with other window'
+check $d 1:1:0:0 'zoomed-tiled with other window'
 checkwin :0 1:3 'zoomed-tiled with other window'
 checkwin :1 0:2 'zoomed-tiled with other window'
 run swap-pane -s $d -t $a
@@ -266,11 +266,11 @@ $TMUX swap-pane -U -t $f 2>/dev/null && fail '-U on a float succeeded'
 # With -Z, a window that was zoomed ends up with just the active pane zoomed.
 run resize-pane -Z -t $a
 run resize-pane -Z -t $f
-check $a 0:1:0:0 'two zooms'
+check $a 1:1:0:0 'two zooms'
 check $f 1:1:0:0 'two zooms'
 run select-pane -t $a
 run swap-pane -Z -s $a -t $b
-check $b 0:1:0:0 '-Z'
+check $b 1:1:0:0 '-Z'
 check $f 1:0:0:0 '-Z'
 checkwin :0 1:3 '-Z'
 got=$(run list-panes -t :0 -F '#{pane_zoomed_flag}' | grep -c 1) || exit 1

@@ -58,16 +58,19 @@ resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 	layout_resize(w, sx, sy);
 
 	/* Resize the window, it can be no smaller than the layout. */
-	if (sx < w->layout_root->g.sx)
-		sx = w->layout_root->g.sx;
-	if (sy < w->layout_root->g.sy)
-		sy = w->layout_root->g.sy;
+	if (layout_cell_is_tiled(w->layout_root) ||
+	    layout_cell_has_tiled_child(w->layout_root)) {
+		if (sx < w->layout_root->g.sx)
+			sx = w->layout_root->g.sx;
+		if (sy < w->layout_root->g.sy)
+			sy = w->layout_root->g.sy;
+	}
 	window_resize(w, sx, sy, xpixel, ypixel);
 	log_debug("%s: @%u resized to %ux%u; layout %ux%u", __func__, w->id,
 	    sx, sy, w->layout_root->g.sx, w->layout_root->g.sy);
 
 	/* Zoomed panes follow the window size. */
-	if (w->flags & WINDOW_ZOOMED)
+	if (window_zoomed_pane(w) != NULL)
 		layout_fix_panes(w, NULL);
 
 	tty_update_window_offset(w);

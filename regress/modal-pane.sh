@@ -181,13 +181,15 @@ under=$($TMUX split-window -PF '#{pane_id}' -t "$p0" 'cat') ||
 sleep 1
 must_equal "$(fmt modal:0 '#{pane_id}')" "$modal"
 must_equal "$(fmt "$under" '#{pane_active}')" 0
-must_equal "$(fmt modal:0 '#{window_zoomed_flag}')" 1
+must_equal "$(fmt modal:0 '#{window_zoomed_flag}')" 0
 
 float=$($TMUX new-pane -PF '#{pane_id}' -x 10 -y 4 -X 5 -Y 3 'cat') ||
 	fail "new floating pane under modal failed"
 sleep 1
 must_equal "$(fmt modal:0 '#{pane_id}')" "$modal"
 must_equal "$(fmt "$float" '#{pane_active}')" 0
+# Splitting restored the tile; reestablish fullscreen under the modal.
+check_ok resize-pane -Z -t "$p0"
 must_equal "$(fmt modal:0 '#{window_zoomed_flag}')" 1
 
 check_ok new-window -d -t modal: -n other 'cat'
@@ -269,6 +271,7 @@ must_equal "$(fmt modal:0 '#{pane_id}')" "$p0"
 must_equal "$(fmt modal:0 '#{window_zoomed_flag}')" 1
 check_ok resize-pane -Z -t "$p0"
 must_equal "$(fmt modal:0 '#{window_zoomed_flag}')" 0
+check_ok kill-pane -t "$float"
 
 $TMUX set -g editor 'sh -c "sleep 10" sh'
 check_ok resize-pane -Z -t "$p0"
@@ -296,7 +299,8 @@ must_equal "$(fmt modal:0 '#{window_modal_pane}')" "$detached"
 check_ok kill-pane -t "$detached"
 sleep 1
 must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
-must_equal "$(fmt modal:0 '#{pane_id}')" "$p0"
+must_equal "$(fmt modal:0 '#{pane_id}')" "$p1"
+check_ok select-pane -t "$p0"
 
 $TMUX set -g @modal-custom old
 check_ok customize-mode -t "$p0" \
@@ -326,8 +330,9 @@ must_equal "$(fmt modal:0 '#{pane_id}')" "$modal"
 check_ok kill-pane -t "$modal"
 sleep 1
 must_equal "$(fmt modal:0 '#{window_modal_pane}')" ''
-must_equal "$(fmt modal:0 '#{pane_id}')" "$p0"
+must_equal "$(fmt modal:0 '#{pane_id}')" "$p1"
 must_equal "$(fmt "$p0" '#{window_zoomed_flag}:#{pane_zoomed_flag}')" 0:0
+check_ok select-pane -t "$p0"
 
 ignored=$($TMUX new-pane -KdPF '#{pane_id}' -t "$p0" 'cat') ||
 	fail "new-pane -K without -O failed"

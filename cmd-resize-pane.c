@@ -42,8 +42,8 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.description = "Resize or zoom a pane.",
 	.alias = "resizep",
 
-	.args = { "aD::HL::MR::Tt:U::x:y:Z", 0, 1, NULL },
-	.usage = "[-aHMTZ] [-D lines] [-L columns] [-R columns] [-U lines] "
+	.args = { "adD::hHL::MR::Tt:U::x:y:Z", 0, 1, NULL },
+	.usage = "[-adhHMTZ] [-D lines] [-L columns] [-R columns] [-U lines] "
 		 "[-x width] [-y height] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -94,9 +94,9 @@ cmd_resize_pane_desktop(struct window *w)
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (wp == w->modal || (wp->flags & PANE_HIDDEN))
 			continue;
-		if (!window_pane_is_raised(wp))
+		if (!window_pane_is_floating(wp))
 			continue;
-		window_hide_pane(wp);
+		window_hide_pane(wp, 1);
 		wp->flags |= PANE_HIDDENALL;
 	}
 }
@@ -133,17 +133,30 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'M'))
 		return (cmd_resize_pane_mouse_update(self, item));
 
+	if (args_has(args, 'h')) {
+		wp = window_get_hidden_pane(w);
+		if (wp == NULL)
+			return (CMD_RETURN_NORMAL);
+		window_show_pane(wp);
+
+		/* Restoring a covered tile must not hide fullscreen panes again. */
+		if (!args_has(args, 'd') &&
+		    (window_pane_is_floating(wp) || window_pane_is_visible(wp))) {
+			window_set_active_pane(w, wp, 1);
+		}
+		server_redraw_window(w);
+		return (CMD_RETURN_NORMAL);
+	}
 	if (args_has(args, 'H')) {
 		if (args_has(args, 'a'))
 			cmd_resize_pane_desktop(w);
 		else if (wp->flags & PANE_HIDDEN) {
-			window_set_active_pane(w, wp, 1);
-			if (wp->flags & PANE_HIDDEN) {
-				cmdq_error(item, "no space to show pane");
-				return (CMD_RETURN_ERROR);
-			}
+			if (args_has(args, 'd'))
+				window_show_pane(wp);
+			else
+				window_set_active_pane(w, wp, 1);
 		} else
-			window_hide_pane(wp);
+			window_hide_pane(wp, 1);
 		server_redraw_window(w);
 		return (CMD_RETURN_NORMAL);
 	}
@@ -157,10 +170,12 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		server_redraw_window(w);
 		return (CMD_RETURN_NORMAL);
 	}
-	if ((wp->flags & PANE_HIDDEN) && !window_pane_is_floating(wp))
+	if (wp->flags & PANE_ZOOMED) {
+		cmdq_error(item, "pane is zoomed");
+		return (CMD_RETURN_ERROR);
+	}
+	if (!window_pane_is_floating(wp) && (wp->flags & PANE_HIDDEN))
 		window_show_pane(wp);
-	if (wp->flags & PANE_ZOOMED)
-		window_unzoom_pane(wp, 1);
 
 	if (args_has(args, 'x')) {
 		x = args_percentage(args, 'x', 0, PANE_MAXIMUM, w->sx, &cause);

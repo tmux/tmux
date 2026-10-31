@@ -325,11 +325,13 @@ run kill-pane -t "$A"
 run display-message -p -t "$B" ok >/dev/null
 check "$B" '#{window_panes}' 2
 
-# Splitting a hidden tiled pane shows it first.
+# Splitting a hidden tiled pane with -d leaves both panes hidden.
 reset
 run resize-pane -H -t "$B"
-run split-window -d -t "$B"
-hidden "$B" 0
+C=$(run split-window -dPF '#{pane_id}' -t "$B") || exit 1
+hidden "$B" 1
+hidden "$C" 1
+check "$A" '#{pane_active}' 1
 check "$B" '#{window_panes}' 3
 
 # Resizing a hidden tiled pane shows it first, but a hidden float is resized

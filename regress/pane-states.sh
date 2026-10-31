@@ -19,8 +19,7 @@
 # by side, and for three panes stacked, in a row or nested.
 #
 # It also checks properties that must hold after every command: the active pane
-# is not hidden if any pane is not, there is one active pane, a window with one
-# pane is not zoomed, window_zoomed_flag matches the visible zoomed panes and visible panes have
+# is not hidden if any pane is not, there is one active pane, window_zoomed_flag matches the visible zoomed panes and visible panes have
 # a size. The status line clicks and the cursor are in other tests.
 
 PATH=/bin:/usr/bin
@@ -55,6 +54,20 @@ function fail(msg)
 	printf "%s %s (exit %s): %s\n", op, tgt, rc, msg
 	bad = 1
 	exit 1
+}
+function normalF(id,    p)
+{
+	p = substr(id, 2) + 0
+	return int(origins / (2 ^ (3 * p))) % 2
+}
+function restoredF(skip,    i, id, want)
+{
+	for (i = 1; i <= nb; i++) {
+		id = bid[i]
+		if (id == skip || !(id in ina)) continue
+		want = bZ[id] ? normalF(id) : bF[id]
+		if (aF[id] != want) fail("pane " id " restored floating " aF[id] ", wanted " want)
+	}
 }
 function sameF(skip,    i, id)
 {
@@ -175,9 +188,7 @@ END {
 		if (!aH[id] && (aW[id] < 1 || aT[id] < 1))
 			fail("pane " id " is " aW[id] "x" aT[id])
 	}
-	if (na == 1 && anyZ)
-		fail("the only pane is zoomed")
-	if (anyvis && aH[act])
+	if (op != "split" && op != "newpane" && anyvis && aH[act])
 		fail("active pane " act " is hidden but others are not")
 
 	# A command that failed changed nothing.
@@ -195,8 +206,17 @@ END {
 		if (covered(T)) hideZoomed(T)
 		else { sameZ(""); sameH(T) }
 		sameF("")
+	} else if (op == "selectZ") {
+		if (!aA[T] || aH[T]) fail("target not shown and active")
+		for (i = 1; i <= nb; i++) {
+			id = bid[i]
+			if (aZ[id] && !bZ[id] && id != T) fail("another pane was zoomed")
+			if (aF[id] != bF[id] && aF[id] != (aZ[id] ? 1 : normalF(id)))
+				fail("wrong floating state after transferring zoom")
+		}
 	} else if (op == "zoom") {
-		sameF("")
+		sameF(T)
+		if (aF[T] != (bZ[T] ? normalF(T) : 1)) fail("wrong floating state after zoom")
 		if (bZ[T]) {
 			if (aZ[T]) fail("not unzoomed")
 			sameZ(T); sameH("")
@@ -252,35 +272,32 @@ END {
 				    " after " op " (floats " nf ", zooms " nz ")")
 		}
 	} else if (op == "unzoomall") {
-		sameF(""); sameH(""); noZoom()
+		restoredF(""); sameH(""); noZoom()
 	} else if (op == "break") {
-		if (bF[T] || !aF[T]) fail("not floated")
-		sameF(T); sameZ(""); sameH("")
+		if (!aF[T]) fail("not floated")
+		sameF(T); sameZ(T); sameH("")
 	} else if (op == "join") {
-		if (!bF[T] || aF[T]) fail("not tiled")
-		sameF(T); sameZ(""); sameH("")
+		if (aF[T] || aZ[T]) fail("not tiled")
+		sameF(T); sameZ(T); sameH("")
 	} else if (op == "kill") {
 		if (T in ina) fail("not killed")
 		if (na != nb - 1) fail("pane count " nb " became " na)
 		sameF(T); sameH(T)
-		if (na == 1) noZoom(); else sameZ(T)
+		sameZ(T)
 	} else if (op == "split") {
 		newPane()
-		if (aF[created] != bF[T]) fail("new pane floating " aF[created])
-		if (aZ[created] || aH[created]) fail("new pane zoomed or hidden")
-		sameF(""); sameZ("")
-		if (bH[T] && !bF[T]) {
-			if (aH[T]) fail("tiled target not shown")
-			sameH(T)
-		} else
-			sameH("")
+		want = bZ[T] ? normalF(T) : bF[T]
+		if (aF[created] != want || aF[T] != want) fail("wrong floating state after split")
+		if (aZ[created] || aZ[T]) fail("split pane zoomed")
+		if (aH[created] != bH[T] || aH[T] != bH[T]) fail("wrong hidden state after detached split")
+		sameF(T); sameZ(T); sameH(T)
 	} else if (op == "newpane") {
 		newPane()
 		if (!aF[created]) fail("new pane is not floating")
 		if (aZ[created] || aH[created]) fail("new pane zoomed or hidden")
 		sameF(""); sameZ(""); sameH("")
-	} else if (op == "nextlayout" || op == "tiled") {
-		sameF(""); sameH(""); noZoom()
+	} else if (op == "nextlayout" || op == "tiled" || op == "rotate") {
+		restoredF(""); sameH(""); noZoom()
 	} else {
 		# Moving around or changing layout: floating panes stay floating
 		# and only a zoomed pane is hidden, when a covered pane is made
@@ -360,7 +377,7 @@ run_one()
 	i=0
 	while [ $i -lt "$n" ]; do
 		bits=$(( (s >> (3 * i)) & 7 ))
-		want="$want $((bits & 1)) $(((bits >> 1) & 1)) $(((bits >> 2) & 1))"
+		want="$want $(((bits & 1) != 0 || (bits & 2) != 0)) $(((bits >> 1) & 1)) $(((bits >> 2) & 1))"
 		i=$((i + 1))
 	done
 	set -- "$@" ';' list-panes -F "B $FMT"
@@ -411,7 +428,7 @@ run_one()
 
 	after=$(tm list-panes -F "A $FMT" 2>&1)
 	result=$( (echo "$before"; echo "$after") |
-	    awk -v mode=check -v op="$op" -v tgt="$tgt" -v rc="$rc" "$ORACLE")
+	    awk -v mode=check -v origins="$s" -v op="$op" -v tgt="$tgt" -v rc="$rc" "$ORACLE")
 	if [ $? -ne 0 ] || [ -n "$result" ]; then
 		echo "FAILED with $n panes, start $(describe "$n" "$s"):"
 		echo "  $result"

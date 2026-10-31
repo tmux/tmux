@@ -80,9 +80,9 @@
 	" 'Kill' 'X' {kill-pane}" \
 	" 'Respawn' 'R' {respawn-pane -k}" \
 	" '#{?pane_marked,Unmark,Mark}' 'm' {select-pane -m}" \
-	" '#{?#{>:#{window_panes},1},,-}#{?pane_zoomed_flag,Unzoom,Zoom}' 'z' {resize-pane -Z}" \
+	" '#{?pane_zoomed_flag,Unzoom,Zoom}' 'z' {resize-pane -Z}" \
 	" 'Hide' 'H' {resize-pane -H}" \
-	" '#{?#{||:#{pane_floating_flag},#{pane_zoomed_flag}},Bring To Front,}' 'F' {move-pane -P front}"
+	" '#{?pane_floating_flag,Bring To Front,}' 'F' {move-pane -P front}"
 #define DEFAULT_MOVE_MENU \
 	" 'Centre' 'c' {move-pane -P centre}" \
 	" ''" \
@@ -399,7 +399,9 @@ key_bindings_init(void)
 		"bind -N 'Kill current window' & { confirm-before -p\"kill-window #W? (y/n)\" kill-window }",
 		"bind -N 'Prompt for window index to select' \"'\" { command-prompt -pindex { select-window -t ':%%' } }",
 		"bind -N 'New floating pane' * { new-pane }",
-		"bind -N 'Hide pane' _ { resize-pane -H }",
+		"bind -N 'Show desktop' _ { resize-pane -aH }",
+		"bind -N 'Hide pane' h { if -F '#{!:#{pane_hidden_flag}}' { resize-pane -H } }",
+		"bind -N 'Show last hidden pane' H { resize-pane -h }",
 		"bind -N 'Toggle pane between floating and tiled' @ { if -F '#{pane_floating_flag}' { join-pane } { break-pane -W } }",
 		"bind -N 'Switch to previous client' ( { switch-client -p }",
 		"bind -N 'Switch to next client' ) { switch-client -n }",
@@ -527,7 +529,7 @@ key_bindings_init(void)
 		"bind -n TripleClick1Pane { select-pane -t=; if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { copy-mode -H; send -X select-line; run -d0.3; send -X copy-pipe-and-cancel } }",
 
 		/* Mouse button 1 on border. */
-		"bind -n MouseDown1Border { select-pane -t=; if -Ft= '#{||:#{pane_floating_flag},#{pane_zoomed_flag}}' { move-pane -t= -P front } }",
+		"bind -n MouseDown1Border { select-pane -t=; if -Ft= '#{pane_floating_flag}' { move-pane -t= -P front } }",
 
 		/* Mouse button 1 drag on border. */
 		"bind -n MouseDrag1Border { resize-pane -M }",

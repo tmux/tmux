@@ -65,6 +65,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (args_has(args, 'Z'))
 		zwp = window_zoomed_pane(w);
+	window_unzoom(w, 1);
 
 	/*
 	 * Only tiled panes rotate. Floating panes keep their place in the

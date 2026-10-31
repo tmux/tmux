@@ -319,25 +319,18 @@ check_fmt "$p0" '#{window_zoomed_flag}:#{pane_width}x#{pane_height}' \
 check_ok resize-pane -Z -t "$p0"
 check_fmt "$p0" '#{window_zoomed_flag}' '0'
 
-# Splitting while zoomed with -d leaves the zoom alone; without -d the new
-# pane is active and covered, so selecting it hides the zoomed pane.
+# Splitting a fullscreen pane first restores its normal tiled placement.
 check_ok resize-pane -Z -t "$p0"
-check_fmt 'P:0' '#{window_zoomed_flag}' '1'
-check_ok split-window -d -v -t "$p0"
-check_fmt 'P:0' '#{window_zoomed_flag}' '1'
+p6=$($TMUX split-window -dPF '#{pane_id}' -v -t "$p0")
+check_fmt "$p0" '#{pane_zoomed_flag}:#{pane_floating_flag}' '0:0'
 check_fmt 'P:0' '#{window_panes}' '5'
-p6=$($TMUX display-message -p -t P:0.2 '#{pane_id}')
 check_ok kill-pane -t "$p6"
-check_fmt 'P:0' '#{window_zoomed_flag}' '1'
-check_ok resize-pane -Z -t "$p0"
-check_fmt 'P:0' '#{window_zoomed_flag}' '0'
 check_ok resize-pane -Z -t "$p0"
 check_ok split-window -v -t "$p0"
 check_fmt 'P:0' '#{window_zoomed_flag}' '0'
-check_fmt "$p0" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '1:1'
+check_fmt "$p0" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '0:0'
 p6=$($TMUX display-message -p -t P:0 '#{pane_id}')
 check_ok kill-pane -t "$p6"
-check_ok resize-pane -a -H -t "$p0"
 check_ok resize-pane -a -Z -t "$p0"
 
 # Zoom and unzoom preserve the exact tiled layout. Selecting another pane
@@ -441,7 +434,7 @@ while [ "$($TMUX display-message -p -t P:13 '#{window_panes}')" != 1 ]; do
 	[ $i -gt 50 ] && { echo "Zoomed pane did not exit."; exit 1; }
 	sleep 0.1
 done
-check_fmt "$ze0" '#{window_zoomed_flag}:#{pane_zoomed_flag}' '0:0'
+check_fmt "$ze0" '#{window_zoomed_flag}:#{pane_zoomed_flag}' '1:1'
 check_ok kill-window -t P:13
 
 # resize-window restores both tiled and floating zoom targets after rebuilding
@@ -479,7 +472,9 @@ check_panes P:0 "0:$p0 1:$p2 2:$p1"
 check_ok resize-pane -Z -t "$p0"
 check_ok kill-pane -a -t "$p0"
 check_panes P:0 "0:$p0"
-check_fmt "$p0" '#{window_zoomed_flag}:#{pane_zoomed_flag}' '0:0'
+check_fmt "$p0" '#{window_zoomed_flag}:#{pane_zoomed_flag}' '1:1'
+
+check_ok resize-pane -Z -t "$p0"
 
 # Killing the last pane in a window kills the window.
 check_ok new-window -d -t P:7 -n goner

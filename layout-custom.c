@@ -390,6 +390,7 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 {
 	struct layout_cell	*lcchild;
 	struct window_pane	*wp;
+	struct layout_geometry	 g;
 	enum layout_type	 type;
 	char			 c;
 	u_int			 i, n, z;
@@ -407,8 +408,22 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 	else
 		return (-1);
 
+	/* Store the normal rectangle so fullscreen can be reversed after loading. */
+	memcpy(&g, &lc->g, sizeof g);
+	wp = lc->wp;
+	if (wp != NULL && wp->layout_cell == lc &&
+	    (wp->flags & PANE_ZOOMED)) {
+		if (lc->flags & LAYOUT_CELL_ZOOMEDTILED)
+			memcpy(&g, &lc->saved.g, sizeof g);
+		else
+			memcpy(&g, &lc->fg, sizeof g);
+	}
+	if (g.sx == 0)
+		g.sx = PANE_MINIMUM;
+	if (g.sy == 0)
+		g.sy = PANE_MINIMUM;
 	layout_string_write(ls, "{\"t\":\"%c\",\"w\":%u,\"h\":%u,\"x\":%d"
-	    ",\"y\":%d", c, lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff);
+	    ",\"y\":%d", c, g.sx, g.sy, g.xoff, g.yoff);
 	if (type != LAYOUT_WINDOWPANE) {
 		layout_string_write(ls, ",\"c\":[");
 		n = 0;
@@ -433,8 +448,11 @@ layout_append_v2(struct layout_cell *lc, struct layout_string *ls)
 		if (window_pane_index(wp, &i) != 0)
 			return (-1);
 		layout_string_write(ls, ",\"i\":%u", i);
-		if (wp->flags & PANE_ZOOMED)
+		if (wp->flags & PANE_ZOOMED) {
 			layout_string_write(ls, ",\"Z\":true");
+			if (lc->flags & LAYOUT_CELL_ZOOMEDTILED)
+				layout_string_write(ls, ",\"T\":true");
+		}
 		if (wp->flags & PANE_HIDDEN)
 			layout_string_write(ls, ",\"H\":true");
 		if (lc->flags & LAYOUT_CELL_FLOATING) {
@@ -514,6 +532,13 @@ layout_custom_copy_layout(struct layout_cell *lc, int keep_floating)
 	if (lc->type == LAYOUT_WINDOWPANE)
 		lcnew->wp = lc->wp;
 	layout_set_size(lcnew, lc->g.sx, lc->g.sy, lc->g.xoff, lc->g.yoff);
+	if (lc->wp != NULL && lc->wp->layout_cell == lc &&
+	    (lc->wp->flags & PANE_ZOOMED)) {
+		if (lc->flags & LAYOUT_CELL_ZOOMEDTILED)
+			memcpy(&lcnew->g, &lc->saved.g, sizeof lcnew->g);
+		else
+			memcpy(&lcnew->g, &lc->fg, sizeof lcnew->g);
+	}
 
 	switch (lc->type) {
 	case LAYOUT_WINDOWPANE:
@@ -1151,6 +1176,15 @@ layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
 			hidden = boolean;
 		}
 
+		if (json_find(node, "T") != NULL) {
+			if (json_find_boolean(node, "T", &boolean, cause) != 0)
+				goto fail;
+			if (boolean && zoomed) {
+				lc->flags |= LAYOUT_CELL_ZOOMEDTILED;
+				memcpy(&lc->saved.g, &lc->g, sizeof lc->saved.g);
+			}
+		}
+
 		layout_parse_add_cctx(pctx, lc, active, last, index, zindex,
 		    zoomed, hidden);
 	} else {
@@ -1273,7 +1307,7 @@ layout_parse_apply_ctx(struct window *w, struct layout_parse_ctx *pctx)
 		cctx = &pctx->cctxs[i];
 		wp = cctx->lc->wp;
 		if (cctx->hidden && window_pane_is_floating(wp))
-			window_hide_pane(wp);
+			window_hide_pane(wp, 1);
 	}
 
 	/* Set the active pane. */
