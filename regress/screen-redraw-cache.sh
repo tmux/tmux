@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Exercise the scene caching in screen-redraw.c. A scene is built once and reused
 # until it is invalidated; redraw_get_scene rebuilds it when the window changes,
 # the generation number is bumped (panes moved/resized/swapped), or the offset
@@ -32,14 +34,14 @@ fail() {
 }
 
 compare() {
-	sleep 1
-	$TMUX capturep -p >$TMP || exit 1
 	if [ -n "$GENERATE" ]; then
-		cp $TMP "$RESULTS/$1.result" || exit 1
+		sleep 1
+		$TMUX capturep -p >"$TMP" || exit 1
+		cp "$TMP" "$RESULTS/$1.result" || exit 1
 		echo "generated $1"
 	else
-		cmp -s $TMP "$RESULTS/$1.result" || \
-			fail "scene $1 differs from $RESULTS/$1.result"
+		wait_until capture_matches_file "$RESULTS/$1.result" "$TMP" $TMUX capturep -p ||
+		    fail "scene $1 differs from $RESULTS/$1.result"
 	fi
 }
 

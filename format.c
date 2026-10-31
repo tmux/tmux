@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.424 2026/09/29 14:12:21 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.434 2026/10/29 12:59:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1101,9 +1101,11 @@ static void *
 format_cb_pane_floating_flag(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
+	struct layout_cell	*lc;
 
 	if (wp != NULL) {
-		if (window_pane_is_floating(wp))
+		lc = wp->layout_cell;
+		if (lc != NULL && (lc->flags & LAYOUT_CELL_FLOATING))
 			return (xstrdup("1"));
 		return (xstrdup("0"));
 	}
@@ -1377,27 +1379,44 @@ format_cb_mouse_line(struct format_tree *ft)
 	return (format_grid_line(gd, gd->hsize + y));
 }
 
+/* Get mouse status position: 0 horizontal, 1 side, -1 unavailable. */
+static int
+format_mouse_status_at(struct format_tree *ft, u_int *x, u_int *y)
+{
+	struct mouse_event	*m = &ft->m;
+
+	if (!m->valid)
+		return (-1);
+	if (ft->c == NULL || (~ft->c->tty.flags & TTY_STARTED))
+		return (-1);
+
+	*x = m->x;
+	*y = m->y;
+	if (m->statusat == 0 && m->y < m->statuslines)
+		return (0);
+	if (m->statusat > 0 && m->y >= (u_int)m->statusat) {
+		*y -= m->statusat;
+		return (0);
+	}
+	if (m->sideat == -1 ||
+	    m->x < (u_int)m->sideat ||
+	    m->x >= m->sideat + m->sidewidth)
+		return (-1);
+	*x -= m->sideat;
+	if (m->statusat == 0)
+		*y -= m->statuslines;
+	return (1);
+}
+
 /* Callback for mouse_status_line. */
 static void *
 format_cb_mouse_status_line(struct format_tree *ft)
 {
-	char	*value;
-	u_int	 y;
+	u_int	x, y;
 
-	if (!ft->m.valid)
+	if (format_mouse_status_at(ft, &x, &y) == -1)
 		return (NULL);
-	if (ft->c == NULL || (~ft->c->tty.flags & TTY_STARTED))
-		return (NULL);
-
-	if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines) {
-		y = ft->m.y;
-	} else if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat) {
-		y = ft->m.y - ft->m.statusat;
-	} else
-		return (NULL);
-	xasprintf(&value, "%u", y);
-	return (value);
-
+	return (format_printf("%u", y));
 }
 
 /* Callback for mouse_status_range. */
@@ -1406,22 +1425,16 @@ format_cb_mouse_status_range(struct format_tree *ft)
 {
 	struct style_range	*sr;
 	u_int			 x, y;
+	int			 side;
 
-	if (!ft->m.valid)
+	side = format_mouse_status_at(ft, &x, &y);
+	if (side == -1)
 		return (NULL);
-	if (ft->c == NULL || (~ft->c->tty.flags & TTY_STARTED))
-		return (NULL);
+	if (side)
+		sr = status_side_get_range(ft->c, x, y);
+	else
+		sr = status_get_range(ft->c, x, y);
 
-	if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines) {
-		x = ft->m.x;
-		y = ft->m.y;
-	} else if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat) {
-		x = ft->m.x;
-		y = ft->m.y - ft->m.statusat;
-	} else
-		return (NULL);
-
-	sr = status_get_range(ft->c, x, y);
 	if (sr == NULL)
 		return (NULL);
 	switch (sr->type) {
@@ -1793,6 +1806,23 @@ format_cb_client_written(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for client_active_theme. */
+static void *
+format_cb_client_active_theme(struct format_tree *ft)
+{
+	if (ft->c != NULL) {
+		switch (ft->c->active_theme) {
+		case THEME_DARK:
+			return (xstrdup("dark"));
+		case THEME_LIGHT:
+			return (xstrdup("light"));
+		case THEME_UNKNOWN:
+			return (NULL);
+		}
+	}
+	return (NULL);
+}
+
 /* Callback for client_theme. */
 static void *
 format_cb_client_theme(struct format_tree *ft)
@@ -2075,6 +2105,24 @@ format_cb_mouse_utf8_flag(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for mouse_absolute_x. */
+static void *
+format_cb_mouse_absolute_x(struct format_tree *ft)
+{
+	if (!ft->m.valid)
+		return (NULL);
+	return (format_printf("%u", ft->m.x));
+}
+
+/* Callback for mouse_absolute_y. */
+static void *
+format_cb_mouse_absolute_y(struct format_tree *ft)
+{
+	if (!ft->m.valid)
+		return (NULL);
+	return (format_printf("%u", ft->m.y));
+}
+
 /* Callback for mouse_x. */
 static void *
 format_cb_mouse_x(struct format_tree *ft)
@@ -2084,15 +2132,11 @@ format_cb_mouse_x(struct format_tree *ft)
 
 	if (!ft->m.valid)
 		return (NULL);
+	if (format_mouse_status_at(ft, &x, &y) != -1)
+		return (format_printf("%u", x));
 	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
 	if (wp != NULL && cmd_mouse_at(wp, &ft->m, &x, &y, 0) == 0)
 		return (format_printf("%u", x));
-	if (ft->c != NULL && (ft->c->tty.flags & TTY_STARTED)) {
-		if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines)
-			return (format_printf("%u", ft->m.x));
-		if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat)
-			return (format_printf("%u", ft->m.x));
-	}
 	return (NULL);
 }
 
@@ -2105,15 +2149,11 @@ format_cb_mouse_y(struct format_tree *ft)
 
 	if (!ft->m.valid)
 		return (NULL);
+	if (format_mouse_status_at(ft, &x, &y) != -1)
+		return (format_printf("%u", y));
 	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
 	if (wp != NULL && cmd_mouse_at(wp, &ft->m, &x, &y, 0) == 0)
 		return (format_printf("%u", y));
-	if (ft->c != NULL && (ft->c->tty.flags & TTY_STARTED)) {
-		if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines)
-			return (format_printf("%u", ft->m.y));
-		if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat)
-			return (format_printf("%u", ft->m.y - ft->m.statusat));
-	}
 	return (NULL);
 }
 
@@ -2218,24 +2258,36 @@ format_cb_pane_active(struct format_tree *ft)
 static void *
 format_cb_pane_at_left(struct format_tree *ft)
 {
-	if (ft->wp != NULL) {
-		if (ft->wp->xoff == 0)
-			return (xstrdup("1"));
-		return (xstrdup("0"));
-	}
-	return (NULL);
+	struct window_pane	*wp = ft->wp;
+	int			 xoff;
+
+	if (wp == NULL)
+		return (NULL);
+	xoff = wp->xoff;
+	if (wp->window->sb_pos == PANE_SCROLLBARS_LEFT &&
+	    window_pane_scrollbar_reserve(wp))
+		xoff -= wp->scrollbar_style.width + wp->scrollbar_style.pad;
+	if (xoff == 0)
+		return (xstrdup("1"));
+	return (xstrdup("0"));
 }
 
 /* Callback for pane_at_right. */
 static void *
 format_cb_pane_at_right(struct format_tree *ft)
 {
-	if (ft->wp != NULL) {
-		if (ft->wp->xoff + (int)ft->wp->sx == (int)ft->wp->window->sx)
-			return (xstrdup("1"));
-		return (xstrdup("0"));
-	}
-	return (NULL);
+	struct window_pane	*wp = ft->wp;
+	int			 right;
+
+	if (wp == NULL)
+		return (NULL);
+	right = wp->xoff + (int)wp->sx;
+	if (wp->window->sb_pos == PANE_SCROLLBARS_RIGHT &&
+	    window_pane_scrollbar_reserve(wp))
+		right += wp->scrollbar_style.width + wp->scrollbar_style.pad;
+	if (right == (int)wp->window->sx)
+		return (xstrdup("1"));
+	return (xstrdup("0"));
 }
 
 /* Callback for pane_bottom. */
@@ -2348,6 +2400,17 @@ format_cb_pane_last_prompt_time(struct format_tree *ft)
 		tv.tv_usec = 0;
 		return (&tv);
 	}
+	return (NULL);
+}
+
+/* Callback for pane_command_line. */
+static void *
+format_cb_pane_command_line(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL && wp->cmd_line != NULL)
+		return (xstrdup(wp->cmd_line));
 	return (NULL);
 }
 
@@ -3019,11 +3082,11 @@ format_cb_version(__unused struct format_tree *ft)
 	return (xstrdup(getversion()));
 }
 
-/* Callback for sixel_support. */
+/* Callback for image_support. */
 static void *
-format_cb_sixel_support(__unused struct format_tree *ft)
+format_cb_image_support(__unused struct format_tree *ft)
 {
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_IMAGES
 	return (xstrdup("1"));
 #else
 	return (xstrdup("0"));
@@ -3567,6 +3630,9 @@ static const struct format_table_entry format_table[] = {
 	{ "buffer_size", FORMAT_TABLE_STRING,
 	  format_cb_buffer_size
 	},
+	{ "client_active_theme", FORMAT_TABLE_STRING,
+	  format_cb_client_active_theme
+	},
 	{ "client_activity", FORMAT_TABLE_TIME,
 	  format_cb_client_activity
 	},
@@ -3702,6 +3768,9 @@ static const struct format_table_entry format_table[] = {
 	{ "host_short", FORMAT_TABLE_STRING,
 	  format_cb_host_short
 	},
+	{ "image_support", FORMAT_TABLE_STRING,
+	  format_cb_image_support
+	},
 	{ "insert_flag", FORMAT_TABLE_STRING,
 	  format_cb_insert_flag
 	},
@@ -3713,6 +3782,12 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "last_window_index", FORMAT_TABLE_STRING,
 	  format_cb_last_window_index
+	},
+	{ "mouse_absolute_x", FORMAT_TABLE_STRING,
+	  format_cb_mouse_absolute_x
+	},
+	{ "mouse_absolute_y", FORMAT_TABLE_STRING,
+	  format_cb_mouse_absolute_y
 	},
 	{ "mouse_all_flag", FORMAT_TABLE_STRING,
 	  format_cb_mouse_all_flag
@@ -3788,6 +3863,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_command_end_time", FORMAT_TABLE_TIME,
 	  format_cb_pane_command_end_time
+	},
+	{ "pane_command_line", FORMAT_TABLE_STRING,
+	  format_cb_pane_command_line
 	},
 	{ "pane_command_running", FORMAT_TABLE_STRING,
 	  format_cb_pane_command_running
@@ -4039,7 +4117,7 @@ static const struct format_table_entry format_table[] = {
 	  format_cb_session_windows
 	},
 	{ "sixel_support", FORMAT_TABLE_STRING,
-	  format_cb_sixel_support
+	  format_cb_image_support
 	},
 	{ "socket_path", FORMAT_TABLE_STRING,
 	  format_cb_socket_path
@@ -4221,7 +4299,10 @@ format_create_add_item(struct format_tree *ft, struct cmdq_item *item)
 {
 	struct key_event	*event = cmdq_get_event(item);
 	struct mouse_event	*m = &event->m;
+	struct client		*c = cmdq_get_client(item);
 
+	if (c != NULL && (c->flags & CLIENT_READONLY))
+		ft->flags |= FORMAT_NOJOBS;
 	cmdq_merge_formats(item, ft);
 	memcpy(&ft->m, m, sizeof ft->m);
 }
@@ -4780,6 +4861,9 @@ format_skip1(struct format_expand_state *es, const char *s, const char *end)
 	int	brackets = 0;
 	u_int	check = 0;
 
+	if (es != NULL && !format_check_time(es, NULL))
+		return (NULL);
+
 	for (; *s != '\0'; s++) {
 		if (es != NULL && !format_check_time(es, &check))
 			return (NULL);
@@ -5001,11 +5085,13 @@ format_match_fuzzy(const char *pattern, const char *text, int positions)
 	bitstr_t	*bs;
 	char		*value;
 	size_t		 size;
-	u_int		 i, width;
+	u_int		 i, width = 1;
 
-	width = format_width(text);
-	if (width == 0)
-		width = 1;
+	if (positions) {
+		width = format_width(text);
+		if (width == 0)
+			width = 1;
+	}
 	bs = fuzzy_match(pattern, text, width, NULL);
 	if (bs == NULL)
 		return (xstrdup(positions ? "" : "0"));
@@ -5749,6 +5835,17 @@ format_loop_clients(struct format_expand_state *es, const char *fmt)
 	return (value);
 }
 
+/* Truncate a value to a long long, failing if it is NaN or out of range. */
+static int
+format_truncate_integer(double *v)
+{
+	/* (double)LLONG_MAX is 2^63, which does not fit; -2^63 does. */
+	if (isnan(*v) || *v >= (double)LLONG_MAX || *v < (double)LLONG_MIN)
+		return (-1);
+	*v = (long long)*v;
+	return (0);
+}
+
 static char *
 format_replace_expression(struct format_modifier *mexp,
     struct format_expand_state *es, const char *copy)
@@ -5834,9 +5931,11 @@ format_replace_expression(struct format_modifier *mexp,
 		goto fail;
 	}
 
-	if (!use_fp) {
-		mleft = (long long)mleft;
-		mright = (long long)mright;
+	if (!use_fp &&
+	    (format_truncate_integer(&mleft) != 0 ||
+	    format_truncate_integer(&mright) != 0)) {
+		format_log(es, "expression side is out of range");
+		goto fail;
 	}
 	format_log(es, "expression left side is: %.*f", prec, mleft);
 	format_log(es, "expression right side is: %.*f", prec, mright);
@@ -5876,10 +5975,11 @@ format_replace_expression(struct format_modifier *mexp,
 		result = (mleft <= mright);
 		break;
 	}
-	if (use_fp)
-		xasprintf(&value, "%.*f", prec, result);
-	else
-		xasprintf(&value, "%.*f", prec, (double)(long long)result);
+	if (!use_fp && format_truncate_integer(&result) != 0) {
+		format_log(es, "expression result is out of range");
+		goto fail;
+	}
+	xasprintf(&value, "%.*f", prec, result);
 	format_log(es, "expression result is %s", value);
 
 	free(right);

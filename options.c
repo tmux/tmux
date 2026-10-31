@@ -1,4 +1,4 @@
-/* $OpenBSD: options.c,v 1.92 2026/07/27 19:15:58 nicm Exp $ */
+/* $OpenBSD: options.c,v 1.94 2026/10/22 07:51:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1406,11 +1406,22 @@ options_push_changes(const char *name)
 				tty_keys_build(&loop->tty);
 		}
 	}
+	if (strcmp(name, "utmp") == 0) {
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
+			if (options_get_number(global_options, name))
+				window_pane_utmp_add(wp);
+			else
+				window_pane_utmp_remove(wp);
+		}
+	}
 	if (strcmp(name, "status") == 0 ||
-	    strcmp(name, "status-interval") == 0)
+	    strcmp(name, "status-interval") == 0 ||
+	    strcmp(name, "side-status") == 0)
 		status_timer_start_all();
 	if (strcmp(name, "status") == 0 ||
 	    strcmp(name, "status-position") == 0 ||
+	    strcmp(name, "side-status") == 0 ||
+	    strcmp(name, "side-status-width") == 0 ||
 	    strcmp(name, "pane-border-indicators") == 0 ||
 	    strcmp(name, "pane-border-lines") == 0 ||
 	    strcmp(name, "pane-border-status") == 0 ||
@@ -1442,7 +1453,8 @@ options_push_changes(const char *name)
 			    "pane-scrollbars");
 			w->sb_pos = options_get_number(w->options,
 			    "pane-scrollbars-position");
-			layout_fix_panes(w, NULL);
+			if (layout_fix_panes(w, NULL))
+				events_fire_window("window-layout-changed", w);
 		}
 	}
 	if (strcmp(name, "pane-scrollbars") == 0) {
@@ -1454,8 +1466,10 @@ options_push_changes(const char *name)
 			style_set_scrollbar_style_from_option(
 			    &wp->scrollbar_style, wp->options);
 		}
-		RB_FOREACH(w, windows, &windows)
-			layout_fix_panes(w, NULL);
+		RB_FOREACH(w, windows, &windows) {
+			if (layout_fix_panes(w, NULL))
+				events_fire_window("window-layout-changed", w);
+		}
 	}
 	if (strcmp(name, "codepoint-widths") == 0)
 		utf8_update_width_cache();

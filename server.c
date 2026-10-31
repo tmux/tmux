@@ -1,4 +1,4 @@
-/* $OpenBSD: server.c,v 1.216 2026/08/18 07:24:49 nicm Exp $ */
+/* $OpenBSD: server.c,v 1.217 2026/10/23 06:45:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -220,6 +220,10 @@ server_start(struct tmuxproc *client, uint64_t flags, struct event_base *base,
 	TAILQ_INIT(&message_log);
 	gettimeofday(&start_time, NULL);
 
+#ifdef HAVE_KEYCTL
+	fork_session_keyring();
+#endif
+
 #ifdef HAVE_SYSTEMD
 	server_fd = systemd_create_socket(flags, &cause);
 #else
@@ -278,6 +282,8 @@ server_loop(void)
 			if (c->flags & CLIENT_IDENTIFIED)
 				items += cmdq_next(c);
 		}
+		TAILQ_FOREACH(c, &dead_clients, entry)
+			items += cmdq_next(c);
 	} while (items != 0);
 
 	server_client_loop();
@@ -448,6 +454,10 @@ server_signal(int sig)
 		server_child_signal();
 		break;
 	case SIGUSR1:
+#ifdef HAVE_SYSTEMD
+		if (systemd_activated())
+			break;
+#endif
 		event_del(&server_ev_accept);
 		fd = server_create_socket(server_client_flags, NULL);
 		if (fd != -1) {

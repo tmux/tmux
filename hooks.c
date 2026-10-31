@@ -1,4 +1,4 @@
-/* $OpenBSD: hooks.c,v 1.16 2026/07/27 19:15:58 nicm Exp $ */
+/* $OpenBSD: hooks.c,v 1.17 2026/10/15 08:21:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -164,6 +164,7 @@ hooks_insert(struct cmdq_item *item, struct hooks_data *hd)
 			break;
 		case CMD_PARSE_SUCCESS:
 			hooks_insert_one(item, hd, pr->cmdlist, state);
+			cmd_list_free(pr->cmdlist);
 			break;
 		}
 	} else {
@@ -178,10 +179,12 @@ hooks_insert(struct cmdq_item *item, struct hooks_data *hd)
 						cmdq_error(item, "%s",
 						    pr->error);
 					}
+					free(pr->error);
 					break;
 				case CMD_PARSE_SUCCESS:
 					item = hooks_insert_one(item, hd,
 					    pr->cmdlist, state);
+					cmd_list_free(pr->cmdlist);
 					break;
 				}
 			} else {

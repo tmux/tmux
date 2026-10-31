@@ -1,4 +1,4 @@
-/* $OpenBSD: window-panes.c,v 1.5 2026/08/25 06:04:33 nicm Exp $ */
+/* $OpenBSD: window-panes.c,v 1.7 2026/10/29 09:45:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2026 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -62,6 +62,8 @@ struct window_panes_modedata {
 
 	struct event			 timer;
 
+	struct cmdq_item			*item;
+	struct client			*client;
 	struct args_command_state	*state;
 	u_int				 delay;
 	int				 ignore_keys;
@@ -106,17 +108,41 @@ window_panes_get_source(struct window_panes_modedata *data, struct session **sp,
 }
 
 static void
+window_panes_copy_screen(struct screen_write_ctx *ctx, struct screen *src,
+    u_int sx, u_int sy)
+{
+	struct grid_cell	gc, sel;
+	u_int			x, y, cx = ctx->s->cx, cy = ctx->s->cy;
+
+	screen_write_fast_copy(ctx, src, 0, src->grid->hsize, sx, sy);
+	if (src->sel == NULL)
+		return;
+	for (y = 0; y < sy && y < screen_size_y(src); y++) {
+		for (x = 0; x < sx && x < screen_size_x(src); x++) {
+			if (!screen_check_selection(src, x, y))
+				continue;
+			grid_view_get_cell(src->grid, x, y, &gc);
+			if (!screen_select_cell(src, &sel, &gc))
+				continue;
+			sel.flags &= ~GRID_FLAG_SELECTED;
+			grid_view_set_cell(ctx->s->grid, cx + x, cy + y, &sel);
+		}
+	}
+}
+
+static void
 window_panes_set_preview(struct window_panes_modedata *data)
 {
 	struct window_pane	*wp = data->wp;
-	struct screen		*src = &wp->base, *dst;
+	struct screen		*src = wp->screen, *dst;
 	struct screen_write_ctx	 ctx;
-	u_int			 sx = screen_size_x(src), sy = screen_size_y(src);
+	u_int			 sx = screen_size_x(src);
+	u_int			 sy = screen_size_y(src);
 
 	data->preview = dst = xmalloc(sizeof *data->preview);
 	screen_init(dst, sx, sy, 0);
 	screen_write_start(&ctx, dst);
-	screen_write_fast_copy(&ctx, src, 0, src->grid->hsize, sx, sy);
+	window_panes_copy_screen(&ctx, src, sx, sy);
 	screen_write_stop(&ctx);
 	dst->mode = src->mode;
 	dst->cx = src->cx;
@@ -769,7 +795,7 @@ window_panes_draw_pane(struct window_panes_modedata *data,
     struct screen_write_ctx *ctx, struct window_pane *wp,
     struct layout_cell *root, u_int osx, u_int osy, u_int dsx, u_int dsy)
 {
-	struct screen		*s = &wp->base;
+	struct screen		*s = (wp == data->wp ? &wp->base : wp->screen);
 	u_int			 pane, x, y, sx, sy;
 
 	if (!window_panes_get_geometry(wp, root, osx, osy, dsx, dsy, &x, &y,
@@ -789,7 +815,7 @@ window_panes_draw_pane(struct window_panes_modedata *data,
 	    sy <= screen_size_y(data->preview))
 		s = data->preview;
 	if (osx <= dsx && osy <= dsy)
-		screen_write_fast_copy(ctx, s, 0, s->grid->hsize, sx, sy);
+		window_panes_copy_screen(ctx, s, sx, sy);
 	else
 		screen_write_preview(ctx, s, sx, sy);
 	window_panes_draw_number(data, ctx, wp, pane, x, y, sx, sy);
@@ -857,8 +883,10 @@ window_panes_init(struct window_mode_entry *wme, struct cmdq_item *item,
 	struct window_panes_modedata	*data;
 	struct cmd			*self;
 	struct cmd_find_state		*source, *target;
+	struct client			*c;
 	struct session			*s;
 	struct timeval			 tv;
+	const char			*template;
 	char				*cause;
 	u_int				 sx = screen_size_x(&wp->base);
 	u_int				 sy = screen_size_y(&wp->base);
@@ -870,6 +898,7 @@ window_panes_init(struct window_mode_entry *wme, struct cmdq_item *item,
 	if (self == NULL)
 		return (NULL);
 
+	c = cmdq_get_client(item);
 	source = cmdq_get_source(item);
 	target = cmdq_get_target(item);
 	s = target->s;
@@ -892,8 +921,18 @@ window_panes_init(struct window_mode_entry *wme, struct cmdq_item *item,
 	screen_init(&data->screen, sx, sy, 0);
 	data->screen.mode &= ~MODE_CURSOR;
 
-	data->state = args_make_commands_prepare(self, item, 0,
-	    "select-pane -t \"%%%\"", 0, 0);
+	if (args_has(args, 'P')) {
+		data->client = c;
+		if (c != NULL)
+			c->references++;
+		if (c == NULL || c->session == NULL ||
+		    (c->flags & CLIENT_CONTROL))
+			data->item = item;
+		template = "";
+	} else
+		template = "select-pane -t \"%%%\"";
+	data->state = args_make_commands_prepare(self, item, 0, template,
+	    data->item != NULL, 0);
 	if (args_has(args, 's')) {
 		data->source_session = source->s->id;
 		data->source_window = source->w->id;
@@ -905,12 +944,11 @@ window_panes_init(struct window_mode_entry *wme, struct cmdq_item *item,
 	data->delay = delay;
 	data->ignore_keys = args_has(args, 'N');
 
+	window_panes_set_preview(data);
 	if (args_has(args, 'Z'))
 		data->zoomed = -1;
 	else {
 		data->zoomed = (wp->flags & PANE_ZOOMED);
-		if (!data->zoomed)
-			window_panes_set_preview(data);
 		if (!data->zoomed && window_zoom(wp) == 0)
 			server_redraw_window(w);
 	}
@@ -948,6 +986,10 @@ window_panes_free(struct window_mode_entry *wme)
 		free(data->preview);
 	}
 	screen_free(&data->screen);
+	if (data->item != NULL)
+		cmdq_continue(data->item);
+	if (data->client != NULL)
+		server_client_unref(data->client);
 	free(data);
 }
 
@@ -960,24 +1002,49 @@ window_panes_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 	window_panes_draw_screen(wme);
 }
 
+static enum cmd_retval
+window_panes_print(struct cmdq_item *item, void *data)
+{
+	char	*pane = data;
+
+	cmdq_print(item, "%s", pane);
+	free(pane);
+	return (CMD_RETURN_NORMAL);
+}
+
 static void
 window_panes_run_command(struct window_panes_modedata *data, struct client *c,
 	struct window_pane *wp)
 {
-	struct cmdq_item	*new_item;
+	struct cmdq_item	*item = data->item, *new_item;
+	struct cmdq_state	*state = NULL;
 	struct cmd_list		*cmdlist;
 	char			*expanded, *error;
 
+	if (data->client != NULL)
+		c = data->client;
 	xasprintf(&expanded, "%%%u", wp->id);
+	if (item != NULL || data->client != NULL) {
+		new_item = cmdq_get_callback(window_panes_print,
+		    xstrdup(expanded));
+		if (item != NULL) {
+			state = cmdq_get_state(item);
+			item = cmdq_insert_after(item, new_item);
+		} else
+			cmdq_append(c, new_item);
+	}
 	cmdlist = args_make_commands(data->state, 1, &expanded, &error);
 	if (cmdlist == NULL) {
-		cmdq_append(c, cmdq_get_error(error));
+		new_item = cmdq_get_error(error);
 		free(error);
 	} else {
-		new_item = cmdq_get_command(cmdlist, NULL);
-		cmdq_append(c, new_item);
+		new_item = cmdq_get_command(cmdlist, state);
 		cmd_list_free(cmdlist);
 	}
+	if (item != NULL)
+		cmdq_insert_after(item, new_item);
+	else
+		cmdq_append(c, new_item);
 	free(expanded);
 }
 

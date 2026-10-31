@@ -1,14 +1,19 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -f/dev/null -LtestA$$"
-$TMUX kill-server 2>/dev/null
+stop_server $TMUX || exit 1
+trap 'stop_server $TMUX' 0
+trap 'exit 1' 1 2 15
 
 $TMUX new -d -x40 -y10 \
-      "cat copy-mode-test.txt; printf '\e[9;15H'; cat" || exit 1
+      "cat copy-mode-test.txt; printf '\e[9;15H\033]2;ready\007'; cat" || exit 1
+wait_for_output ready $TMUX display -p '#{pane_title}' || exit 1
 $TMUX set -g window-size manual || exit 1
 
 # Enter copy mode and go to the first column of the first row.
@@ -116,10 +121,10 @@ $TMUX send-keys -X copy-selection
 
 # Test that vi cursor movement does not stop on the padding cell of a wide
 # character at the end of a line.
-$TMUX kill-server 2>/dev/null
-sleep 1
+stop_server $TMUX || exit 1
 $TMUX new -d -x20 -y5 \
-      "printf 'abc中\nxyz\n'; exec cat" || exit 1
+      "printf 'abc中\nxyz\n\033]2;ready\007'; exec cat" || exit 1
+wait_for_output ready $TMUX display -p '#{pane_title}' || exit 1
 $TMUX set-window-option -g mode-keys vi
 $TMUX copy-mode
 $TMUX send-keys -X history-top
@@ -139,5 +144,5 @@ $TMUX send-keys -X cursor-left
 [ "$($TMUX display -p '#{copy_cursor_x},#{copy_cursor_y}')" = "2,0" ] ||
     exit 1
 
-$TMUX kill-server 2>/dev/null
+stop_server $TMUX || exit 1
 exit 0

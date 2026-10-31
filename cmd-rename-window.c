@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-rename-window.c,v 1.30 2026/06/29 18:17:28 nicm Exp $ */
+/* $OpenBSD: cmd-rename-window.c,v 1.31 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -31,6 +31,7 @@ static enum cmd_retval	cmd_rename_window_exec(struct cmd *,
 
 const struct cmd_entry cmd_rename_window_entry = {
 	.name = "rename-window",
+	.description = "Rename a window.",
 	.alias = "renamew",
 
 	.args = { "t:", 1, 1, NULL },

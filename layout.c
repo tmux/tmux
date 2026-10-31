@@ -1,4 +1,4 @@
-/* $OpenBSD: layout.c,v 1.101 2026/09/20 08:42:46 nicm Exp $ */
+/* $OpenBSD: layout.c,v 1.104 2026/10/22 07:51:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -488,7 +488,7 @@ layout_get_pane_geometry(struct window_pane *wp, int layout, int *xoff,
 }
 
 /* Update pane offsets and sizes based on their cells. */
-void
+int
 layout_fix_panes(struct window *w, struct window_pane *skip)
 {
 	struct window_pane	*wp;
@@ -508,19 +508,21 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		layout_get_pane_geometry(wp, 0, &xoff, &yoff, &sx, &sy);
 		wp->xoff = xoff;
 		wp->yoff = yoff;
-		if (window_pane_scrollbar_reserve(wp))
-			wp->flags |= PANE_REDRAWSCROLLBAR;
 
 		window_pane_resize(wp, sx, sy);
 
 		if (wp->xoff != old_xoff ||
 		    wp->yoff != old_yoff ||
 		    wp->sx != old_sx ||
-		    wp->sy != old_sy)
+		    wp->sy != old_sy) {
+			if (window_pane_scrollbar_reserve(wp))
+				wp->flags |= PANE_REDRAWSCROLLBAR;
 			changed = 1;
+		}
 	}
 	if (changed)
 		redraw_invalidate_scene(w);
+	return (changed);
 }
 
 /* Count the number of available cells in a layout. */
@@ -1597,7 +1599,7 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 
 	number = 0;
 	TAILQ_FOREACH (lc, &parent->cells, entry)
-		if (layout_cell_is_tiled(lc))
+		if (layout_cell_is_tiled(lc) || layout_cell_has_tiled_child(lc))
 			number++;
 	if (number <= 1)
 		return (0);
@@ -1626,7 +1628,7 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 
 	changed = 0;
 	TAILQ_FOREACH (lc, &parent->cells, entry) {
-		if (!layout_cell_is_tiled(lc))
+		if (!layout_cell_is_tiled(lc) && !layout_cell_has_tiled_child(lc))
 			continue;
 		change = 0;
 		if (parent->type == LAYOUT_LEFTRIGHT) {

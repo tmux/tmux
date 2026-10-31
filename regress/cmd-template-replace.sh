@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Exercise cmd_template_replace through command-prompt, which passes prompt
 # input as argv to args_make_commands. This covers the quoting modes, indexed
 # replacements, and cases where replacements are intentionally not made.
@@ -11,7 +13,7 @@ LANG=C.UTF-8
 export TERM LC_ALL LANG
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMP=$(mktemp -d) || exit 1
+TMP=$(test_tmpdir) || exit 1
 TMUX_TMPDIR="$TMP"
 export TMUX_TMPDIR
 
@@ -20,8 +22,8 @@ IN="$TEST_TMUX -LtestB$$ -f/dev/null"
 
 cleanup()
 {
-	$OUT kill-server 2>/dev/null
-	$IN kill-server 2>/dev/null
+	stop_server $OUT || exit 1
+	stop_server $IN || exit 1
 	rm -rf "$TMP"
 }
 trap cleanup EXIT

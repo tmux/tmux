@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-display-message.c,v 1.66 2026/09/08 08:33:10 nicm Exp $ */
+/* $OpenBSD: cmd-display-message.c,v 1.68 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -37,6 +37,7 @@ static enum cmd_retval	cmd_display_message_exec(struct cmd *,
 
 const struct cmd_entry cmd_display_message_entry = {
 	.name = "display-message",
+	.description = "Display a message or expand formats.",
 	.alias = "display",
 
 	.args = { "aCc:d:jlINpt:F:v", 0, 1, NULL },
@@ -114,12 +115,10 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 		template = DISPLAY_MESSAGE_TEMPLATE;
 
 	/*
-	 * -c is intended to be the client where the message should be
-	 * displayed if -p is not given. But it makes sense to use it for the
-	 * formats too, assuming it matches the session. If it doesn't, use the
-	 * best client for the session.
+	 * -c is also used for the client formats. If it was not given, tc is
+	 * only the current client, so use it only if it matches the session.
 	 */
-	if (tc != NULL && tc->session == s)
+	if (tc != NULL && (args_has(args, 'c') || tc->session == s))
 		c = tc;
 	else if (s != NULL)
 		c = cmd_find_best_client(s);

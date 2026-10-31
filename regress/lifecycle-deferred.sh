@@ -189,15 +189,15 @@ while [ "$i" -le 20 ]; do
 	idx=$((50 + i))
 
 	run_tmux new-session -d -s "$s" -n base 'sleep 1000' >/dev/null
-	run_tmux split-window -t "$s:base" 'sleep 1000' >/dev/null
-	run_tmux respawn-pane -k -t "$s:base.1" 'sleep 1000' >/dev/null
+	run_tmux split-window -E -t "$s:base" >/dev/null
+	run_tmux respawn-pane -k -E -t "$s:base.1" >/dev/null
 	run_tmux kill-pane -t "$s:base.1" >/dev/null
 
-	run_tmux new-window -t "$s" -n second 'sleep 1000' >/dev/null
+	run_tmux new-window -E -t "$s" -n second >/dev/null
 	run_tmux link-window -s "$s:second" -t "life:$idx" >/dev/null
 	run_tmux unlink-window -t "life:$idx" >/dev/null
 
-	run_tmux new-window -t "$s" -n single 'sleep 1000' >/dev/null
+	run_tmux new-window -E -t "$s" -n single >/dev/null
 	run_tmux kill-pane -t "$s:single.0" >/dev/null
 	run_tmux kill-window -t "$s:base" >/dev/null
 

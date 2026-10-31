@@ -4,6 +4,8 @@
 # client so OUTSIDE spans exist, then the only tiled pane is removed so EMPTY
 # spans exist inside the window around a floating pane.
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 LC_ALL=C.UTF-8
@@ -41,12 +43,11 @@ tiled=$($TMUX2 list-panes -F '#{pane_floating_flag} #{pane_id}' | \
 	awk '$1==0{print $2; exit}') || exit 1
 $TMUX2 kill-pane -t "$tiled" || exit 1
 
-$TMUX new -d -x40 -y12 || exit 1
+$TMUX new -d -x40 -y12 "$TMUX2 attach" || exit 1
 $TMUX set -g status off || exit 1
 $TMUX set -g window-size manual || exit 1
 $TMUX set -g default-terminal "tmux-256color" || exit 1
-$TMUX send -l "$TMUX2 attach" || exit 1
-$TMUX send Enter || exit 1
+wait_for_clients 1 $TMUX2 || fail "inner client did not attach"
 sleep 1
 
 $TMUX capturep -p >$TMP || exit 1

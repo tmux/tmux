@@ -103,11 +103,16 @@ done
 # Put an ordinary (hidden while zoomed) float between two over-zoom floats
 # in the stacking order. Reordering must skip it when counting visible
 # positions, but keep all floats ahead of the tiled panes after unzoom.
+check "$base" '#{pane_zoomed_flag}:#{pane_floating_flag}' '0:0'
 back=$(run new-pane -AdPF '#{pane_id}' -t "$base" '') || exit 1
 hidden=$(run new-pane -dPF '#{pane_id}' -t "$base" '') || exit 1
 float=$(run new-pane -AdPF '#{pane_id}' -t "$base" '') || exit 1
+check "$float" '#{pane_zoomed_flag}:#{pane_floating_flag}' '0:1'
 active=0
 run resize-pane -Z -t "$base"
+check "$base" '#{pane_zoomed_flag}:#{pane_floating_flag}' '1:0'
+check "$other" '#{pane_zoomed_flag}:#{pane_floating_flag}' '0:0'
+check "$hidden" '#{pane_zoomed_flag}:#{pane_floating_flag}' '0:1'
 run set -gu @unzoomed
 
 for position in backward back forward-loop; do

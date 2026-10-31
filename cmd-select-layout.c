@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-select-layout.c,v 1.45 2026/09/09 07:03:39 nicm Exp $ */
+/* $OpenBSD: cmd-select-layout.c,v 1.46 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -31,6 +31,7 @@ static enum cmd_retval	cmd_select_layout_exec(struct cmd *,
 
 const struct cmd_entry cmd_select_layout_entry = {
 	.name = "select-layout",
+	.description = "Choose or apply a layout.",
 	.alias = "selectl",
 
 	.args = { "Enopt:", 0, 1, NULL },
@@ -44,6 +45,7 @@ const struct cmd_entry cmd_select_layout_entry = {
 
 const struct cmd_entry cmd_next_layout_entry = {
 	.name = "next-layout",
+	.description = "Select the next layout.",
 	.alias = "nextl",
 
 	.args = { "t:", 0, 0, NULL },
@@ -57,6 +59,7 @@ const struct cmd_entry cmd_next_layout_entry = {
 
 const struct cmd_entry cmd_previous_layout_entry = {
 	.name = "previous-layout",
+	.description = "Select the previous layout.",
 	.alias = "prevl",
 
 	.args = { "t:", 0, 0, NULL },

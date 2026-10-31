@@ -78,4 +78,59 @@ expected=$(printf 'alpha\nbeta\ngamma')
 [ "$($TMUX show-buffer)" = "$expected" ] ||
 	fail "reversed line-mode selection did not keep complete lines"
 
+# Word mode must initialize its reset boundaries from the existing selection,
+# rather than extending it back to the origin on the next cursor movement.
+for mode in emacs vi; do
+	$TMUX send-keys -X cancel || exit 1
+	$TMUX set-window-option -g mode-keys "$mode" || exit 1
+	$TMUX copy-mode || exit 1
+	$TMUX send-keys -X history-top || exit 1
+	$TMUX send-keys -X cursor-down || exit 1
+	$TMUX send-keys -N2 -X cursor-right || exit 1
+	$TMUX send-keys -X begin-selection || exit 1
+	$TMUX send-keys -X cursor-right || exit 1
+	$TMUX send-keys -X selection-mode word || exit 1
+	$TMUX send-keys -X copy-selection-no-clear -C || exit 1
+	[ "$($TMUX show-buffer)" = beta ] ||
+		fail "$mode: word-mode selection did not expand to the current word"
+	$TMUX send-keys -X cursor-right || exit 1
+	$TMUX send-keys -X copy-selection-no-clear -C || exit 1
+	expected=$(printf 'beta\ngamma')
+	[ "$($TMUX show-buffer)" = "$expected" ] ||
+		fail "$mode: word-mode movement reset the selection to the origin"
+
+	# Reversing the character selection before changing mode must keep the
+	# fixed end and its containing word when the cursor moves further back.
+	$TMUX send-keys -X cancel || exit 1
+	$TMUX copy-mode || exit 1
+	$TMUX send-keys -X history-top || exit 1
+	$TMUX send-keys -N2 -X cursor-down || exit 1
+	$TMUX send-keys -N2 -X cursor-right || exit 1
+	$TMUX send-keys -X begin-selection || exit 1
+	$TMUX send-keys -X cursor-up || exit 1
+	$TMUX send-keys -X selection-mode word || exit 1
+	$TMUX send-keys -X cursor-left || exit 1
+	$TMUX send-keys -X copy-selection-no-clear -C || exit 1
+	expected=$(printf 'alpha\nbeta\ngamma')
+	[ "$($TMUX show-buffer)" = "$expected" ] ||
+		fail "$mode: reversed word-mode selection lost its fixed end"
+
+	# A stopped selection should expand to words without moving its cursor.
+	$TMUX send-keys -X cancel || exit 1
+	$TMUX copy-mode || exit 1
+	$TMUX send-keys -X history-top || exit 1
+	$TMUX send-keys -X cursor-down || exit 1
+	$TMUX send-keys -N2 -X cursor-right || exit 1
+	$TMUX send-keys -X begin-selection || exit 1
+	$TMUX send-keys -X cursor-right || exit 1
+	$TMUX send-keys -X stop-selection || exit 1
+	before=$($TMUX display-message -p '#{copy_cursor_x},#{copy_cursor_y}')
+	$TMUX send-keys -X selection-mode word || exit 1
+	[ "$($TMUX display-message -p '#{copy_cursor_x},#{copy_cursor_y}')" = \
+	    "$before" ] || fail "$mode: word-mode switch moved a stopped cursor"
+	$TMUX send-keys -X copy-selection-no-clear -C || exit 1
+	[ "$($TMUX show-buffer)" = beta ] ||
+		fail "$mode: stopped word-mode selection did not contain the whole word"
+done
+
 exit 0

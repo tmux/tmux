@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-attach-session.c,v 1.91 2026/07/10 13:38:45 nicm Exp $ */
+/* $OpenBSD: cmd-attach-session.c,v 1.94 2026/10/15 07:25:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -35,6 +35,7 @@ static enum cmd_retval	cmd_attach_session_exec(struct cmd *,
 
 const struct cmd_entry cmd_attach_session_entry = {
 	.name = "attach-session",
+	.description = "Attach to an existing session.",
 	.alias = "attach",
 
 	.args = { "c:dEf:rt:x", 0, 0, NULL },
@@ -54,7 +55,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	 target;
 	enum cmd_find_type	 type;
-	int			 flags;
+	int			 flags, ro = 0;
 	struct client		*c = cmdq_get_client(item), *c_loop;
 	struct session		*s;
 	struct winlink		*wl;
@@ -70,6 +71,14 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 
 	if (c == NULL)
 		return (CMD_RETURN_NORMAL);
+
+	if (c->flags & CLIENT_READONLY) {
+		if (dflag || xflag || cflag != NULL) {
+			cmdq_error(item, "client is read-only");
+			return (CMD_RETURN_ERROR);
+		}
+		ro = 1;
+	}
 
 	if (server_client_check_nested(c)) {
 		cmdq_error(item, "sessions should be nested with care, "
@@ -90,9 +99,16 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 	wl = target.wl;
 	wp = target.wp;
 
+	if (ro && (wl != s->curw || (wp != NULL && wp != wp->window->active))) {
+		cmdq_error(item, "client is read-only");
+		return (CMD_RETURN_ERROR);
+	}
+
 	if (wl != NULL) {
-		if (wp != NULL)
+		if (wp != NULL) {
+			window_redraw_active_switch(wp->window, wp);
 			window_set_active_pane(wp->window, wp, 1);
+		}
 		session_set_current(s, wl);
 		if (wp != NULL)
 			cmd_find_from_winlink_pane(current, wl, wp, 0);
@@ -108,7 +124,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 	if (fflag)
 		server_client_set_flags(c, fflag);
 	if (rflag) {
-		if (c->flags & CLIENT_READONLY) {
+		if (ro) {
 			uid = proc_get_peer_uid(c->peer);
 			if (uid != getuid()) {
 				cmdq_error(item, "client is read-only");
@@ -131,7 +147,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 				server_client_detach(c_loop, msgtype);
 			}
 		}
-		if (!Eflag)
+		if (!Eflag && (~c->flags & CLIENT_READONLY))
 			environ_update(s->options, c->environ, s->environ);
 
 		server_client_set_session(c, s);
@@ -155,7 +171,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 				server_client_detach(c_loop, msgtype);
 			}
 		}
-		if (!Eflag)
+		if (!Eflag && (~c->flags & CLIENT_READONLY))
 			environ_update(s->options, c->environ, s->environ);
 
 		server_client_set_session(c, s);

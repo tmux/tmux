@@ -176,7 +176,7 @@ test_conditional_with_pane_in_mode "#{?pane_in_mode,abc,#{?#{==:#{session_name},
 test_conditional_with_session_name "#{?pane_in_mode,abc,#{?#{==:#{session_name},Summer},ABC,XYZ}}" "ABC" "XYZ"
 
 # Some fancy stackings
-test_conditional_with_pane_in_mode "#{?#{==:#{?pane_in_mode,#{session_name},#(echo Spring)},Summer},abc,xyz}" "abc" "xyz"
+test_conditional_with_pane_in_mode "#{?#{==:#{?pane_in_mode,#{session_name},#{@cold}},Summer},abc,xyz}" "abc" "xyz"
 
 
 

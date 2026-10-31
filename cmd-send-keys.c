@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-send-keys.c,v 1.81 2026/06/11 19:13:34 nicm Exp $ */
+/* $OpenBSD: cmd-send-keys.c,v 1.83 2026/10/15 07:25:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -31,6 +31,7 @@ static enum cmd_retval	cmd_send_keys_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_send_keys_entry = {
 	.name = "send-keys",
+	.description = "Send keys to a pane or client.",
 	.alias = "send",
 
 	.args = { "c:FHKlMN:Rt:X", 0, -1, NULL },
@@ -46,6 +47,7 @@ const struct cmd_entry cmd_send_keys_entry = {
 
 const struct cmd_entry cmd_send_prefix_entry = {
 	.name = "send-prefix",
+	.description = "Send the prefix key to a pane.",
 	.alias = NULL,
 
 	.args = { "2t:", 0, 0, NULL },
@@ -162,6 +164,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = cmd_get_args(self);
 	struct cmd_find_state		*target = cmdq_get_target(item);
+	struct client			*c = cmdq_get_client(item);
 	struct client			*tc = cmdq_get_target_client(item);
 	struct session			*s = target->s;
 	struct winlink			*wl = target->wl;
@@ -175,7 +178,8 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 	u_int				 count = args_count(args);
 	char				*cause = NULL;
 
-	if (tc != NULL && tc->flags & CLIENT_READONLY && !args_has(args, 'X')) {
+	if ((c != NULL && (c->flags & CLIENT_READONLY) && c != tc) ||
+	    (tc != NULL && (tc->flags & CLIENT_READONLY) && !args_has(args, 'X'))) {
 		cmdq_error(item, "client is read-only");
 		return (CMD_RETURN_ERROR);
 	}

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-run-shell.c,v 1.95 2026/09/20 07:59:55 nicm Exp $ */
+/* $OpenBSD: cmd-run-shell.c,v 1.96 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -42,6 +42,7 @@ static void	cmd_run_shell_print(struct job *, const char *);
 
 const struct cmd_entry cmd_run_shell_entry = {
 	.name = "run-shell",
+	.description = "Run a shell command.",
 	.alias = "run",
 
 	.args = { "bd:Ct:Es:c:", 0, -1, cmd_run_shell_args_parse },

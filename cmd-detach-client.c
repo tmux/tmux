@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-detach-client.c,v 1.39 2026/05/22 15:22:43 nicm Exp $ */
+/* $OpenBSD: cmd-detach-client.c,v 1.40 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -31,6 +31,7 @@ static enum cmd_retval	cmd_detach_client_exec(struct cmd *,
 
 const struct cmd_entry cmd_detach_client_entry = {
 	.name = "detach-client",
+	.description = "Detach one or more clients.",
 	.alias = "detach",
 
 	.args = { "aE:s:t:P", 0, 0, NULL },
@@ -45,6 +46,7 @@ const struct cmd_entry cmd_detach_client_entry = {
 
 const struct cmd_entry cmd_suspend_client_entry = {
 	.name = "suspend-client",
+	.description = "Suspend a client.",
 	.alias = "suspendc",
 
 	.args = { "t:", 0, 0, NULL },

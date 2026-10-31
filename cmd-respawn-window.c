@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-respawn-window.c,v 1.51 2026/07/03 16:09:49 nicm Exp $ */
+/* $OpenBSD: cmd-respawn-window.c,v 1.52 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -32,6 +32,7 @@ static enum cmd_retval	cmd_respawn_window_exec(struct cmd *,
 
 const struct cmd_entry cmd_respawn_window_entry = {
 	.name = "respawn-window",
+	.description = "Restart every pane in a window.",
 	.alias = "respawnw",
 
 	.args = { "c:e:Ekt:", 0, -1, NULL },

@@ -1,4 +1,4 @@
-/* $OpenBSD: key-bindings.c,v 1.193 2026/09/21 20:45:48 nicm Exp $ */
+/* $OpenBSD: key-bindings.c,v 1.197 2026/10/27 09:00:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -53,6 +53,7 @@
 	" '#{?#{m/r:(copy|view)-mode,#{pane_mode}},Go To Bottom,}' '>' {send -X history-bottom}" \
 	" ''" \
 	" '#{?#{==:#{pane_mode},copy-mode},#{?copy_line_numbers,Hide Line Numbers,Show Line Numbers},}' 'L' {send -X line-numbers-toggle}" \
+	" '#{?#{==:#{pane_mode},copy-mode},Edit,}' 'e' {if -F '#{selection_present}' {send -X open-selection} {send -X open-output}}" \
 	" '#{?#{==:#{pane_mode},copy-mode},#{?refresh_active,Refresh Off,Refresh On},}' 'r' {send -X refresh-toggle}" \
 	" ''" \
 	" '#{?#{&&:#{buffer_size},#{!:#{pane_in_mode}}},Paste #[underscore]#{=/9/...:buffer_sample},}' 'p' {paste-buffer}" \
@@ -532,7 +533,13 @@ key_bindings_init(void)
 
 		/* Mouse button 1 down on status line. */
 		"bind -n MouseDown1Status { switch-client -t= }",
+		"bind -n MouseDown1SideStatus { switch-client -t= }",
 		"bind -n C-MouseDown1Status { swap-window -t@ }",
+		"bind -n C-MouseDown1SideStatus { swap-window -t@ }",
+
+		/* Mouse button 1 drag on side status border. */
+		"bind -n MouseDrag1SideStatusBorder { if -F '#{e|>=:#{client_width},3}' { run -C \"set -t '#{session_id}' side-status-width #{?#{==:#{side-status},left},#{e|+:#{?#{e|<:#{mouse_absolute_x},1},1,#{?#{e|>:#{mouse_absolute_x},#{e|-:#{client_width},2}},#{e|-:#{client_width},2},#{mouse_absolute_x}}},1},#{e|-:#{client_width},#{?#{e|<:#{mouse_absolute_x},1},1,#{?#{e|>:#{mouse_absolute_x},#{e|-:#{client_width},2}},#{e|-:#{client_width},2},#{mouse_absolute_x}}}}}\" } }",
+		"bind -n DoubleClick1SideStatusBorder { set -u side-status-width }",
 
 		/* Mouse button 1 down on default pane-border-format */
 		"bind -n MouseDown1Control9 { display-menu -t= -xM -yM -O -T 'Kill pane #{pane_index}?' 'Yes' 'y' { kill-pane -t= } 'No' 'n' {}}",
@@ -543,17 +550,23 @@ key_bindings_init(void)
 
 		/* Mouse wheel down on status line. */
 		"bind -n WheelDownStatus { next-window }",
+		"bind -n WheelDownSideStatus { next-window }",
 
 		/* Mouse wheel up on status line. */
 		"bind -n WheelUpStatus { previous-window }",
+		"bind -n WheelUpSideStatus { previous-window }",
 
 		/* Mouse button 3 down on status left. */
 		"bind -n MouseDown3StatusLeft { run -C \"display-menu -t= -xM -yW -T '#[align=centre]#{session_name}' " DEFAULT_SESSION_MENU "\" }",
+		"bind -n MouseDown3SideStatusLeft { run -C \"display-menu -t= -xM -yW -T '#[align=centre]#{session_name}' " DEFAULT_SESSION_MENU "\" }",
 		"bind -n M-MouseDown3StatusLeft { run -C \"display-menu -t= -xM -yW -T '#[align=centre]#{session_name}' " DEFAULT_SESSION_MENU "\" }",
+		"bind -n M-MouseDown3SideStatusLeft { run -C \"display-menu -t= -xM -yW -T '#[align=centre]#{session_name}' " DEFAULT_SESSION_MENU "\" }",
 
 		/* Mouse button 3 down on status line. */
 		"bind -n MouseDown3Status { display-menu -t= -xW -yW -T '#[align=centre]#{window_index}:#{window_name}' " DEFAULT_WINDOW_MENU "}",
+		"bind -n MouseDown3SideStatus { display-menu -t= -xW -yW -T '#[align=centre]#{window_index}:#{window_name}' " DEFAULT_WINDOW_MENU "}",
 		"bind -n M-MouseDown3Status { display-menu -t= -xW -yW -T '#[align=centre]#{window_index}:#{window_name}' " DEFAULT_WINDOW_MENU "}",
+		"bind -n M-MouseDown3SideStatus { display-menu -t= -xW -yW -T '#[align=centre]#{window_index}:#{window_name}' " DEFAULT_WINDOW_MENU "}",
 
 		/* Mouse button 3 down on pane. */
 		"bind -n MouseDown3Pane { if -Ft= '#{||:#{mouse_any_flag},#{&&:#{pane_in_mode},#{?#{m/r:(copy|view)-mode,#{pane_mode}},0,1}}}' { select-pane -t=; send -M } { display-menu -t= -xM -yM -T '#[align=centre]#{pane_index} (#{pane_id})' " DEFAULT_PANE_MENU " } }",
@@ -578,9 +591,12 @@ key_bindings_init(void)
 		"bind -Tcopy-mode C-l { send -X recentre-top-bottom }",
 		"bind -Tcopy-mode M-l { send -X cursor-centre-horizontal }",
 		"bind -Tcopy-mode C-n { send -X cursor-down }",
+		"bind -Tcopy-mode C-o { send -X select-output }",
 		"bind -Tcopy-mode C-p { send -X cursor-up }",
 		"bind -Tcopy-mode C-r { command-prompt -P -T search -ip'(search up)' -I'#{pane_search_string}' { send -X search-backward-incremental -- '%%' } }",
+		"bind -Tcopy-mode C-M-r { command-prompt -P -T search -ip'(regex search up)' -I'#{pane_search_string}' { send -X search-backward-incremental-regex -- '%%' } }",
 		"bind -Tcopy-mode C-s { command-prompt -P -T search -ip'(search down)' -I'#{pane_search_string}' { send -X search-forward-incremental -- '%%' } }",
+		"bind -Tcopy-mode C-M-s { command-prompt -P -T search -ip'(regex search down)' -I'#{pane_search_string}' { send -X search-forward-incremental-regex -- '%%' } }",
 		"bind -Tcopy-mode C-v { send -X page-down }",
 		"bind -Tcopy-mode C-w { send -X copy-pipe-and-cancel }",
 		"bind -Tcopy-mode Escape { send -X cancel }",
@@ -595,6 +611,7 @@ key_bindings_init(void)
 		"bind -Tcopy-mode R { send -X rectangle-toggle }",
 		"bind -Tcopy-mode T { command-prompt -P -1p'(jump to backward)' { send -X jump-to-backward -- '%%' } }",
 		"bind -Tcopy-mode X { send -X set-mark }",
+		"bind -Tcopy-mode e { if -F '#{selection_present}' { send -X open-selection } { send -X open-output } }",
 		"bind -Tcopy-mode f { command-prompt -P -1p'(jump forward)' { send -X jump-forward -- '%%' } }",
 		"bind -Tcopy-mode g { command-prompt -P -p'(goto line)' { send -X goto-line -- '%%' } }",
 		"bind -Tcopy-mode n { send -X search-again }",
@@ -690,6 +707,8 @@ key_bindings_init(void)
 		"bind -Tcopy-mode-vi K { send -X scroll-up }",
 		"bind -Tcopy-mode-vi L { send -X bottom-line }",
 		"bind -Tcopy-mode-vi M { send -X middle-line }",
+		"bind -Tcopy-mode-vi M-e { if -F '#{selection_present}' { send -X open-selection } { send -X open-output } }",
+		"bind -Tcopy-mode-vi M-o { send -X select-output }",
 		"bind -Tcopy-mode-vi N { send -X search-reverse }",
 		"bind -Tcopy-mode-vi P { send -X toggle-position }",
 		"bind -Tcopy-mode-vi T { command-prompt -P -1p'(jump to backward)' { send -X jump-to-backward -- '%%' } }",

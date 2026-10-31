@@ -1,4 +1,4 @@
-/* $OpenBSD: control.c,v 1.68 2026/09/09 08:30:05 nicm Exp $ */
+/* $OpenBSD: control.c,v 1.69 2026/10/23 06:45:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1032,7 +1032,11 @@ control_start(struct client *c)
 void
 control_ready(struct client *c)
 {
-	bufferevent_enable(c->control_state->read_event, EV_READ);
+	struct control_state	*cs = c->control_state;
+
+	if (cs == NULL)
+		return;
+	bufferevent_enable(cs->read_event, EV_READ);
 }
 
 /* Discard all output for a client. */
