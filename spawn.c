@@ -378,6 +378,12 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	 * process. Work out the command and arguments and store the working
 	 * directory.
 	 */
+	new_wp->base.grid->hlimit_bytes = options_get_number(s->options,
+	    "history-byte-limit");
+	new_wp->base.grid->hbytes_valid = 0;
+	if (new_wp->base.grid->hlimit_bytes != 0)
+		grid_collect_history(new_wp->base.grid, 1);
+
 	if (sc->argc == 0 && (~sc->flags & SPAWN_RESPAWN)) {
 		cmd = options_get_string(w->options, "window-default-command");
 		if (cmd == NULL || *cmd == '\0')

@@ -328,7 +328,7 @@ void
 screen_resize_cursor(struct screen *s, u_int sx, u_int sy, int reflow,
     int eat_empty, int cursor)
 {
-	u_int	cx = s->cx, cy = s->grid->hsize + s->cy;
+	u_int	cx = s->cx, cy = s->grid->hsize + s->cy, removed;
 
 	if (s->write_list != NULL)
 		screen_write_free_list(s);
@@ -353,6 +353,13 @@ screen_resize_cursor(struct screen *s, u_int sx, u_int sy, int reflow,
 
 	if (reflow)
 		screen_reflow(s, sx, &cx, &cy, cursor);
+
+	if (s->grid->hlimit_bytes != 0) {
+		removed = s->grid->hsize;
+		grid_collect_history(s->grid, 1);
+		removed -= s->grid->hsize;
+		cy = cy >= removed ? cy - removed : 0;
+	}
 
 	if (cy >= s->grid->hsize) {
 		s->cx = cx;
