@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.384 2026/10/02 12:48:52 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.389 2026/10/21 13:45:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -449,6 +449,7 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 
 	w->id = next_window_id++;
 	RB_INSERT(windows, &windows, w);
+	redraw_invalidate_scene(w);
 
 	if (gettimeofday(&w->creation_time, NULL) != 0)
 		fatal("gettimeofday failed");
@@ -1396,6 +1397,18 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 	return (wp);
 }
 
+/* Remove references to a pane from the window's saved state. */
+static void
+window_forget_pane(struct window *w, struct window_pane *wp)
+{
+	if (wp == marked_pane.wp)
+		server_clear_marked();
+	if (wp == w->modal_last)
+		w->modal_last = NULL;
+	window_pane_stack_remove(&w->last_panes, wp);
+	redraw_invalidate_scene(w);
+}
+
 void
 window_lost_pane(struct window *w, struct window_pane *wp)
 {
@@ -1403,10 +1416,7 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 
 	log_debug("%s: @%u pane %%%u", __func__, w->id, wp->id);
 
-	if (wp == marked_pane.wp)
-		server_clear_marked();
-	if (wp == w->modal_last)
-		w->modal_last = NULL;
+	window_forget_pane(w, wp);
 
 	/* Remove zoom now so the panes it covered are visible again. */
 	if (wp->flags & PANE_ZOOMED) {
@@ -1416,7 +1426,6 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 			events_fire_window("window-unzoomed", w);
 	}
 
-	window_pane_stack_remove(&w->last_panes, wp);
 	if (wp == w->active) {
 		lastwp = NULL;
 		if (wp == w->modal) {
@@ -1449,10 +1458,8 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 			window_fire_pane_changed(w, w->active, wp);
 			window_update_focus(w);
 		}
-	} else if (wp == w->modal) {
+	} else if (wp == w->modal)
 		w->modal = w->modal_last = NULL;
-	}
-	redraw_invalidate_scene(w);
 }
 
 void
@@ -1598,6 +1605,11 @@ window_destroy_panes(struct window *w)
 
 	while (!TAILQ_EMPTY(&w->panes)) {
 		wp = TAILQ_FIRST(&w->panes);
+		window_forget_pane(w, wp);
+		if (wp == w->active)
+			w->active = NULL;
+		if (wp == w->modal)
+			w->modal = NULL;
 		TAILQ_REMOVE(&w->panes, wp, entry);
 		TAILQ_REMOVE(&w->z_index, wp, zentry);
 		window_pane_destroy(wp);
@@ -1815,6 +1827,46 @@ window_pane_scrollbar_redraw_visibility(struct window_pane *wp)
 	server_redraw_window(wp->window);
 }
 
+#ifdef HAVE_UTEMPTER
+void
+window_pane_utmp_add(struct window_pane *wp)
+{
+	char	*cp;
+
+	if (wp->fd == -1 ||
+	    (wp->flags & (PANE_EMPTY|PANE_EXITED|PANE_UTMP)) ||
+	    !options_get_number(global_options, "utmp"))
+		return;
+	xasprintf(&cp, "tmux(%lu).%%%u", (long)getpid(), wp->id);
+	utempter_add_record(wp->fd, cp);
+	kill(getpid(), SIGCHLD);
+	wp->flags |= PANE_UTMP;
+	free(cp);
+}
+#else
+void
+window_pane_utmp_add(__unused struct window_pane *wp)
+{
+}
+#endif
+
+#ifdef HAVE_UTEMPTER
+void
+window_pane_utmp_remove(struct window_pane *wp)
+{
+	if (~wp->flags & PANE_UTMP)
+		return;
+	utempter_remove_record(wp->fd);
+	kill(getpid(), SIGCHLD);
+	wp->flags &= ~PANE_UTMP;
+}
+#else
+void
+window_pane_utmp_remove(__unused struct window_pane *wp)
+{
+}
+#endif
+
 static void
 window_pane_destroy(struct window_pane *wp)
 {
@@ -1828,13 +1880,12 @@ window_pane_destroy(struct window_pane *wp)
 	window_pane_free_modes(wp);
 	screen_write_sync_clear_dirty(wp);
 
-	if (wp->fd != -1) {
-#ifdef HAVE_UTEMPTER
-		utempter_remove_record(wp->fd);
-		kill(getpid(), SIGCHLD);
-#endif
+	if (wp->event != NULL) {
 		bufferevent_free(wp->event);
 		wp->event = NULL;
+	}
+	if (wp->fd != -1) {
+		window_pane_utmp_remove(wp);
 		close(wp->fd);
 		wp->fd = -1;
 	}
@@ -1867,6 +1918,7 @@ window_pane_free(struct window_pane *wp)
 	log_debug("pane %%%u freed (%d references)", wp->id, wp->references);
 
 	free(wp->searchstr);
+	free(wp->cmd_line);
 	screen_free(&wp->status_screen);
 	screen_free(&wp->base);
 	free(wp->r.ranges);
@@ -1930,7 +1982,7 @@ window_pane_set_event(struct window_pane *wp)
 	    NULL, window_pane_error_callback, wp);
 	if (wp->event == NULL)
 		fatalx("out of memory");
-	wp->ictx = input_init(wp, wp->event, &wp->palette);
+	wp->ictx = input_init(wp, &wp->palette);
 
 	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 }
@@ -1974,6 +2026,10 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 
 	log_debug("%s: %%%u resize %ux%u", __func__, wp->id, sx, sy);
 	screen_resize(&wp->base, sx, sy, wp->base.saved_grid == NULL);
+#ifdef ENABLE_IMAGES
+	if (sx > r->osx)
+		image_grid_resize_width(wp->base.grid, sx);
+#endif
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL && wme->mode->resize != NULL)
@@ -2955,7 +3011,6 @@ window_pane_scrollbar_start_timer(struct window_pane *wp)
 	    "pane-scrollbars-timeout");
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
-	evtimer_del(&wp->sb_auto_timer);
 	evtimer_add(&wp->sb_auto_timer, &tv);
 }
 

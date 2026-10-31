@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Exercise every predefined layout, next/previous cycling, lookup and restore
 # paths, one-pane early returns, minimum-size handling and floating panes.
 
@@ -8,7 +10,7 @@ TERM=screen
 export PATH TERM
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-DIR=$(mktemp -d) || exit 1
+DIR=$(test_tmpdir) || exit 1
 TMUX_TMPDIR=$DIR
 export TMUX_TMPDIR
 TMUX="$TEST_TMUX -Ltest$$ -f/dev/null"
@@ -22,7 +24,7 @@ fail()
 
 cleanup()
 {
-	$TMUX kill-server 2>/dev/null
+	stop_server $TMUX || exit 1
 	rm -rf "$DIR"
 }
 trap cleanup 0 1 15

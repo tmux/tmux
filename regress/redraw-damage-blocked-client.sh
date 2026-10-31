@@ -70,7 +70,7 @@ for my $row (1 .. 20) {
 print "\e[20;1HDONE";
 sleep 100;
 PERL
-$INNER new-session -d -s inner -x 160 -y 80 \
+$INNER new-session -d -s inner -x 240 -y 120 \
     "TRIGGER='$DIR/trigger' perl '$DIR/emitter.pl'" || exit 1
 $INNER set -g status off || exit 1
 $INNER set -g window-size manual || exit 1
@@ -81,7 +81,7 @@ $INNER set -g pane-border-lines simple || exit 1
 FLOAT=$($INNER new-pane -PF '#{pane_id}' -x 16 -y 5 -X 5 -Y 5 \
     'printf FLOAT; exec sleep 100') || exit 1
 for terminal in "$FAST" "$SLOW"; do
-	$terminal new-session -d -x 160 -y 80 'sleep 100' || exit 1
+	$terminal new-session -d -x 240 -y 120 'sleep 100' || exit 1
 	$terminal set -g status off || exit 1
 	$terminal set -g window-size manual || exit 1
 	$terminal set -g default-terminal screen || exit 1

@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # copy-mode -S can be called from a hook without an attached client.
 
 PATH=/bin:/usr/bin
@@ -7,7 +9,7 @@ TERM=screen
 export PATH TERM
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-OUT=$(mktemp -d) || exit 1
+OUT=$(test_tmpdir) || exit 1
 TMUX_TMPDIR=$OUT
 export TMUX_TMPDIR
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
@@ -20,7 +22,7 @@ fail()
 
 cleanup()
 {
-	$TMUX kill-server 2>/dev/null || true
+	stop_server $TMUX || exit 1
 	rm -rf "$OUT"
 }
 trap cleanup EXIT

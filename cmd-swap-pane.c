@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-swap-pane.c,v 1.56 2026/10/02 12:23:44 nicm Exp $ */
+/* $OpenBSD: cmd-swap-pane.c,v 1.57 2026/10/09 13:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -30,6 +30,7 @@ static enum cmd_retval	cmd_swap_pane_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_swap_pane_entry = {
 	.name = "swap-pane",
+	.description = "Swap two panes.",
 	.alias = "swapp",
 
 	.args = { "dDs:t:UZ", 0, 0, NULL },

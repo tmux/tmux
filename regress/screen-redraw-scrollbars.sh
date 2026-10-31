@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 # Exercise screen-redraw.c drawing of pane scrollbars: position (right/left),
 # width, and pad (which is handled separately from width). Scrollbars are drawn
 # as styled (coloured) cells rather than glyphs, so these scenes are captured
@@ -31,14 +33,14 @@ fail() {
 
 # compare <name>: capture the outer pane with escapes and compare (or generate).
 compare() {
-	sleep 1
-	$TMUX capturep -pe >$TMP || exit 1
 	if [ -n "$GENERATE" ]; then
-		cp $TMP "$RESULTS/$1.result" || exit 1
+		sleep 1
+		$TMUX capturep -pe >"$TMP" || exit 1
+		cp "$TMP" "$RESULTS/$1.result" || exit 1
 		echo "generated $1"
 	else
-		cmp -s $TMP "$RESULTS/$1.result" || \
-			fail "scene $1 differs from $RESULTS/$1.result"
+		wait_until capture_matches_file "$RESULTS/$1.result" "$TMP" $TMUX capturep -pe ||
+		    fail "scene $1 differs from $RESULTS/$1.result"
 	fi
 }
 

@@ -6,6 +6,7 @@ PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+command -v python3 >/dev/null || exit 101
 
 python3 - "$TEST_TMUX" "$(dirname "$0")/../tmux-protocol.h" <<'PY'
 import os
@@ -48,7 +49,7 @@ def wait_for(predicate):
         time.sleep(0.05)
     raise AssertionError("timed out waiting for client cleanup")
 
-with tempfile.TemporaryDirectory(prefix="tmux-cfg-early-") as tmp:
+with tempfile.TemporaryDirectory(prefix="tmux-cfg-early-", dir="/tmp") as tmp:
     root = Path(tmp)
     sockpath = root / "socket"
     go = root / "go"

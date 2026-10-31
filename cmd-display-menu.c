@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-display-menu.c,v 1.55 2026/09/21 12:14:32 nicm Exp $ */
+/* $OpenBSD: cmd-display-menu.c,v 1.58 2026/10/16 07:59:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2019 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -36,6 +36,7 @@ static enum cmd_retval		cmd_display_popup_exec(struct cmd *,
 
 const struct cmd_entry cmd_display_menu_entry = {
 	.name = "display-menu",
+	.description = "Display an interactive menu.",
 	.alias = "menu",
 
 	.args = { "b:c:C:H:s:S:MOt:T:x:y:", 1, -1, cmd_display_menu_args_parse },
@@ -52,6 +53,7 @@ const struct cmd_entry cmd_display_menu_entry = {
 
 const struct cmd_entry cmd_display_popup_entry = {
 	.name = "display-popup",
+	.description = "Create a floating pane (compatibility command).",
 	.alias = "popup",
 
 	.args = { "Bb:Cc:d:e:Eh:ks:S:t:T:w:x:y:", 0, -1, NULL },
@@ -91,52 +93,56 @@ cmd_display_menu_args_parse(struct args *args, u_int idx, __unused char **cause)
 	return (type);
 }
 
-static int
-cmd_display_menu_get_menu_pos(struct client *tc, struct cmdq_item *item,
-    struct args *args, u_int *px, u_int *py, u_int w, u_int h)
+static void
+cmd_display_menu_set_mouse_pos(struct client *tc, struct mouse_event *m,
+    struct format_tree *ft, long *mouse_x, long *mouse_y)
 {
-	struct cmd_find_state	*target = cmdq_get_target(item);
-	struct key_event	*event = cmdq_get_event(item);
-	struct session		*s = tc->session;
-	struct winlink		*wl = target->wl;
-	struct window		*window = target->w;
-	struct window_pane	*wp = target->wp;
-	struct style_ranges	*ranges = NULL;
-	struct style_range	*sr = NULL;
-	const char		*xp, *yp;
-	char			*p;
-	u_int			 line, ox, oy, sx, sy, lines, position;
-	long			 n, max_x, max_y, mouse_x = 0, mouse_y = 0;
-	struct format_tree	*ft;
+	u_int	ox, oy, sx, sy;
 
-	max_x = window->sx > w ? window->sx - w : 0;
-	max_y = window->sy > h ? window->sy - h : 0;
-
+	if (!m->valid)
+		return;
 	tty_window_offset(&tc->tty, &ox, &oy, &sx, &sy);
 
-	ft = format_create_from_target(item);
-	if (event->m.valid) {
-		mouse_x = event->m.x + ox;
-		if (event->m.statusat == 0) {
-			if (event->m.y >= event->m.statuslines)
-				mouse_y = event->m.y - event->m.statuslines + oy;
-			else
-				mouse_y = oy;
-		} else if (event->m.statusat > 0 &&
-		    event->m.y >= (u_int)event->m.statusat) {
-			mouse_y = oy + sy - 1;
-		} else
-			mouse_y = event->m.y + oy;
-		format_add(ft, "popup_mouse_x", "%ld", mouse_x);
-		format_add(ft, "popup_mouse_y", "%ld", mouse_y);
-	}
+	if (m->sideat == 0) {
+		if (m->x >= m->sidewidth)
+			*mouse_x = m->x - m->sidewidth + ox;
+		else
+			*mouse_x = ox;
+	} else if (m->sideat > 0 && m->x >= (u_int)m->sideat)
+		*mouse_x = ox + sx - 1;
+	else
+		*mouse_x = m->x + ox;
+	if (m->statusat == 0) {
+		if (m->y >= m->statuslines)
+			*mouse_y = m->y - m->statuslines + oy;
+		else
+			*mouse_y = oy;
+	} else if (m->statusat > 0 && m->y >= (u_int)m->statusat)
+		*mouse_y = oy + sy - 1;
+	else
+		*mouse_y = m->y + oy;
+	format_add(ft, "popup_mouse_x", "%ld", *mouse_x);
+	format_add(ft, "popup_mouse_y", "%ld", *mouse_y);
+}
 
-	format_add(ft, "popup_last_x", "%u", window->menu_last_px);
-	format_add(ft, "popup_last_y", "%u", window->menu_last_py + h);
+static void
+cmd_display_menu_set_status_pos(struct client *tc, struct cmdq_item *item,
+    struct format_tree *ft, u_int w, u_int h)
+{
+	struct mouse_event	*m = &cmdq_get_event(item)->m;
+	struct winlink		*wl = cmdq_get_target(item)->wl;
+	struct window		*window = wl->window;
+	struct style_ranges	*ranges;
+	struct style_range	*sr = NULL, *clicked;
+	u_int			 line, lines, ox, oy, sx, sy, x, y, sidey;
+	int			 position, side;
 
+	tty_window_offset(&tc->tty, &ox, &oy, &sx, &sy);
+	if (m->valid)
+		window = tc->session->curw->window;
 	lines = status_line_size(tc);
-	position = options_get_number(s->options, "status-position");
-	if (status_at_line(tc) != -1 && lines != 0) {
+	position = status_at_line(tc);
+	if (position != -1 && lines != 0) {
 		for (line = 0; line < lines; line++) {
 			ranges = &tc->status.entries[line].ranges;
 			TAILQ_FOREACH(sr, ranges, entry) {
@@ -148,22 +154,74 @@ cmd_display_menu_get_menu_pos(struct client *tc, struct cmdq_item *item,
 			if (sr != NULL)
 				break;
 		}
+		if (position == 0)
+			y = h;
+		else
+			y = window->sy;
 		if (sr != NULL) {
 			format_add(ft, "popup_window_status_line_x", "%u",
 			    sr->start + ox);
-			if (position == 0) {
-				format_add(ft, "popup_window_status_line_y",
-				    "%u", h);
-			} else {
-				format_add(ft, "popup_window_status_line_y",
-				    "%u", window->sy);
-			}
+			format_add(ft, "popup_window_status_line_y", "%u", y);
 		}
-		if (position == 0)
-			format_add(ft, "popup_status_line_y", "%u", h);
-		else
-			format_add(ft, "popup_status_line_y", "%u", window->sy);
+		format_add(ft, "popup_status_line_y", "%u", y);
 	}
+
+	side = status_side_at_column(tc);
+	if (side == -1)
+		return;
+	sidey = (position == 0 ? lines : 0);
+	if (m->valid && m->x >= (u_int)side &&
+	    m->x < side + status_side_size(tc) &&
+	    m->y >= sidey && m->y - sidey < status_side_rows(tc)) {
+		y = m->y - sidey;
+		clicked = status_side_get_range(tc, m->x - side, y);
+		if (clicked == NULL || clicked->type != STYLE_RANGE_WINDOW ||
+		    clicked->argument != (u_int)wl->idx)
+			return;
+		sr = clicked;
+	} else {
+		if (sr != NULL)
+			return;
+		ranges = &tc->side_status.ranges;
+		TAILQ_FOREACH(sr, ranges, entry) {
+			if (sr->type == STYLE_RANGE_WINDOW &&
+			    sr->argument == (u_int)wl->idx)
+				break;
+		}
+		if (sr == NULL)
+			return;
+	}
+	x = ox;
+	if (side != 0 && sx > w)
+		x += sx - w;
+	format_add(ft, "popup_window_status_line_x", "%u", x);
+	format_add(ft, "popup_window_status_line_y", "%u", oy + sr->y + h);
+}
+
+static int
+cmd_display_menu_get_menu_pos(struct client *tc, struct cmdq_item *item,
+    struct args *args, u_int *px, u_int *py, u_int w, u_int h)
+{
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct key_event	*event = cmdq_get_event(item);
+	struct window		*window = target->w;
+	struct window_pane	*wp = target->wp;
+	const char		*xp, *yp;
+	char			*p;
+	long			 n, max_x, max_y, mouse_x = 0, mouse_y = 0;
+	struct format_tree	*ft;
+
+	if (event->m.valid)
+		window = tc->session->curw->window;
+	max_x = window->sx > w ? window->sx - w : 0;
+	max_y = window->sy > h ? window->sy - h : 0;
+
+	ft = format_create_from_target(item);
+	cmd_display_menu_set_mouse_pos(tc, &event->m, ft, &mouse_x, &mouse_y);
+	format_add(ft, "popup_last_x", "%u", window->menu_last_px);
+	format_add(ft, "popup_last_y", "%u", window->menu_last_py + h);
+
+	cmd_display_menu_set_status_pos(tc, item, ft, w, h);
 
 	format_add(ft, "popup_width", "%u", w);
 	format_add(ft, "popup_height", "%u", h);

@@ -47,8 +47,7 @@ start_pane nel 5 3 'AA\033EBC\n'
 check_capture nel 'AA
 BC'
 
-$TMUX kill-server 2>/dev/null
-sleep 0.1
+stop_server $TMUX || exit 1
 $TMUX new-session -d -x 5 -y 3 -s history \; \
     set-option -g history-limit 3 \; \
     respawn-pane -k "printf '01\n02\n03\n04\n05\n06'; $INPUT_HOLD" || exit 1
@@ -69,5 +68,5 @@ printf "%s\n" '04
 06' >"$EXP"
 cmp "$TMP" "$EXP" || fail "clear-history"
 
-$TMUX kill-server 2>/dev/null
+stop_server $TMUX || exit 1
 exit $exit_status

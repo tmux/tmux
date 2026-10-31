@@ -40,7 +40,7 @@ start_pane tabs 12 3 'A\tB\033[2g\r\033[IC'
 check_raw_matches tabs \
 	'L 0 \(0\) flags=EXTENDED\[[0-9a-f]+\]' \
 	'C 0,1 data=\(7,7,       \) flags=TAB\[[0-9a-f]+\]' \
-	'C 0,2 data=\(1,1,!\) flags=PADDING\[[0-9a-f]+\]' \
+	'C 0,2 data=\(0,0,\) flags=PADDING\[[0-9a-f]+\]' \
 	'C 0,8 data=\(1,1,B\) flags=NONE\[0\]' \
 	'C 0,0 data=\(1,1,C\) flags=NONE\[0\]'
 

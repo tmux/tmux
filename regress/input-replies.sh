@@ -1,24 +1,24 @@
 #!/bin/sh
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -LtestA$$ -f/dev/null"
 
-$TMUX kill-server 2>/dev/null
-sleep 0.5
+stop_server $TMUX || exit 1
 
 TMP=$(mktemp)
 EXP=$(mktemp)
-trap 'rm -f "$TMP" "$EXP"; $TMUX kill-server 2>/dev/null' 0 1 15
+trap 'rm -f "$TMP" "$EXP"; stop_server $TMUX || exit 1' 0 1 15
 
 $TMUX new-session -d -x 80 -y 24 -s replies \; \
     set-window-option -t replies:0 remain-on-exit on || exit 1
 $TMUX set-option -s set-clipboard on || exit 1
 $TMUX set-option -s get-clipboard buffer || exit 1
 printf Hello | $TMUX load-buffer -
-sleep 0.5
 
 exit_status=0
 
@@ -39,7 +39,10 @@ query()
 
 	$TMUX respawn-window -k -t replies:0 \
 	    "stty raw -echo min 1 time 20; printf '$setup'; printf '$seq'; dd bs=1 count=$count 2>/dev/null | cat -v >$TMP"
-	sleep 0.5
+	wait_for_output 1 $TMUX display -p -t replies:0 '#{pane_dead}' || {
+		fail "$name (reply reader did not exit)"
+		return
+	}
 	printf "%s" "$expected" >"$EXP"
 	cmp "$TMP" "$EXP" || fail "$name"
 }
@@ -53,14 +56,34 @@ query_timeout()
 
 	$TMUX respawn-window -k -t replies:0 \
 	    "stty raw -echo min 0 time 5; printf '$setup'; printf '$seq'; sleep 0.1; dd bs=1 count=128 2>/dev/null | cat -v >$TMP"
-	sleep 1
+	wait_for_output 1 $TMUX display -p -t replies:0 '#{pane_dead}' || {
+		fail "$name (reply reader did not exit)"
+		return
+	}
 	printf "%s" "$expected" >"$EXP"
 	cmp "$TMP" "$EXP" || fail "$name"
 }
 
 query "dsr-ok" '^[[0n' '\033[5n' 4 ''
 query "dsr-cursor" '^[[1;1R' '\033[6n' 6 ''
-query "da-primary" '^[[?1;2c' '\033[c' 7 ''
+image_support=$($TMUX display-message -p '#{image_support}')
+for clipboard in on external off; do
+	$TMUX set-option -s set-clipboard "$clipboard" || exit 1
+	if [ "$image_support" = 1 ]; then
+		da='^[[?1;2;4'
+		da_count=9
+	else
+		da='^[[?1;2'
+		da_count=7
+	fi
+	if [ "$clipboard" = on ]; then
+		da="${da};52"
+		da_count=$((da_count + 3))
+	fi
+	query "da-primary-$clipboard" "${da}c" '\033[c' "$da_count" ''
+	query "da-primary-zero-$clipboard" "${da}c" '\033[0c' "$da_count" ''
+done
+$TMUX set-option -s set-clipboard on || exit 1
 query "da-secondary" '^[[>84;0;0c' '\033[>c' 10 ''
 query "decrqm-irm-reset" '^[[4;2$y' '\033[4$p' 7 ''
 query "decrqm-irm-set" '^[[4;1$y' '\033[4$p' 7 '\033[4h'
@@ -90,5 +113,5 @@ query_timeout "osc-4-query" '^[]4;1;rgb:ffff/0000/0000^G' '\033]4;1;?\007' '\033
 query_timeout "osc-104-reset-query" '' '\033]4;1;?\007' '\033]4;1;red\007\033]104;1\007'
 query_timeout "osc-52-query" '^[]52;c;SGVsbG8=^G' '\033]52;c;?\007' ''
 
-$TMUX kill-server 2>/dev/null
+stop_server $TMUX || exit 1
 exit $exit_status
