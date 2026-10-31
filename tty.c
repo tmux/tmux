@@ -420,6 +420,21 @@ tty_start_tty(struct tty *tty)
 	tty->mouse_drag_release = NULL;
 }
 
+/* Ask the terminal for its ANSI colours so dimming can use them. */
+static void
+tty_query_palette(struct tty *tty)
+{
+	char	tmp[256];
+	size_t	off = 0;
+	u_int	i;
+
+	for (i = 0; i < nitems(tty->ansi); i++) {
+		off += xsnprintf(tmp + off, sizeof tmp - off,
+		    "\033]4;%u;?\033\\", i);
+	}
+	tty_puts(tty, tmp);
+}
+
 void
 tty_send_requests(struct tty *tty)
 {
@@ -454,6 +469,7 @@ tty_send_requests(struct tty *tty)
 
 	tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\");
 	tty->flags |= (TTY_WAITBG|TTY_WAITFG);
+	tty_query_palette(tty);
 
 	tty->last_requests = time(NULL);
 }
@@ -480,6 +496,7 @@ tty_repeat_requests(struct tty *tty, int force)
 	if (tty->term->flags & TERM_VT100LIKE) {
 		tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\");
 		tty->flags |= (TTY_WAITBG|TTY_WAITFG);
+		tty_query_palette(tty);
 	}
 	tty_start_start_timer(tty);
 }
@@ -2414,6 +2431,23 @@ tty_hyperlink(struct tty *tty, const struct grid_cell *gc,
 		tty_putcode_ss(tty, TTYC_HLS, id, uri);
 }
 
+/* Use the terminal's own value for an ANSI colour if it has reported it. */
+static int
+tty_ansi_colour(struct tty *tty, int c)
+{
+	int	i = -1;
+
+	if (c >= 0 && c <= 7)
+		i = c;
+	else if (c >= 90 && c <= 97)
+		i = 8 + c - 90;
+	else if ((c & COLOUR_FLAG_256) && (c & 0xff) < 16)
+		i = c & 0xff;
+	if (i == -1 || tty->ansi[i] == 0)
+		return (c);
+	return (tty->ansi[i]);
+}
+
 static int
 tty_dim_default_colour(struct tty *tty, int c, int foreground)
 {
@@ -2499,7 +2533,9 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	gc2.us = tty_map_theme_colour(tty, gc2.us);
 	if (style_ctx->dim != 0) {
 		gc2.fg = tty_dim_default_colour(tty, gc2.fg, 1);
+		gc2.fg = tty_ansi_colour(tty, gc2.fg);
 		gc2.bg = tty_dim_default_colour(tty, gc2.bg, 0);
+		gc2.bg = tty_ansi_colour(tty, gc2.bg);
 		changed = colour_dim(gc2.fg, style_ctx->dim);
 		if (changed != -1)
 			gc2.fg = changed;
