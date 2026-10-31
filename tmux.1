@@ -2849,6 +2849,8 @@ Break
 .Ar src\-pane
 off from its containing window to make it the only pane in
 .Ar dst\-window .
+A zoomed pane is first restored to its normal tiled or floating position.
+A floating pane keeps its floating size and position in the new window.
 With
 .Fl a
 or
@@ -2907,7 +2909,7 @@ If
 .Fl d
 is given, the active pane is not changed.
 The pane must not already be floating.
-A zoomed pane stays zoomed.
+Zoomed panes are floating and must be unzoomed first.
 .Tg capturep
 .It Xo Ic capture\-pane
 .Op Fl aeFHILpPRqCJMN
@@ -3452,6 +3454,8 @@ is returned to its previous position in the layout.
 .Xc
 .D1 Pq alias: Ic killp
 Destroy the given pane.
+If it is active, the visible pane at the front of the stacking order becomes
+active.
 If no panes remain in the containing window, it is also destroyed.
 The
 .Fl a
@@ -3687,6 +3691,8 @@ move it to an absolute position.
 moves the pane to the given
 .Ar z-index ,
 where zero is the front.
+A zoomed pane may be moved in the stacking order, but its size and position
+cannot be changed.
 .Pp
 .Fl M
 begins a mouse drag (only valid if bound to a mouse key binding, see
@@ -3889,6 +3895,10 @@ behave like
 All other options have the same meaning as for the
 .Ic split\-window
 command.
+In particular,
+.Fl Z
+zooms and selects the new pane, overriding
+.Fl d .
 .Tg nextl
 .It Ic next\-layout Op Fl t Ar target\-window
 .D1 Pq alias: Ic nextl
@@ -4032,6 +4042,10 @@ above the layout and above any panes behind it in the stacking order) and
 unzoomed (its normal position).
 Zooming a tiled pane floats it and gives its tiled space to the other panes.
 Unzooming restores its tiled position or its previous floating rectangle.
+If the tiled layout has not changed, the pane regains its previous allocation.
+Otherwise, space is shared equally among the panes in its layout group.
+Floating panes retain their places in the tiled layout without taking any
+tiled space; a window may contain only floating panes.
 Any number of panes may be zoomed, with ordinary floating panes above or
 between them in the stacking order.
 Zoomed panes cannot be moved or resized.
@@ -4148,9 +4162,10 @@ Rotate the positions of the panes within a window, either upward (numerically
 lower) with
 .Fl U
 or downward (numerically higher).
+Zoomed panes are first restored to their normal positions and only tiled
+panes are rotated.
 .Fl Z
-moves the zoom to the pane selected if it was covered by a zoomed pane,
-instead of the window being unzoomed.
+zooms the pane selected after rotating if the window was zoomed.
 .Tg selectl
 .It Xo Ic select\-layout
 .Op Fl Enop
@@ -4184,6 +4199,8 @@ spreads the current pane and any panes next to it out evenly.
 Make pane
 .Ar target\-pane
 the active pane in its window.
+Selecting an ordinary floating pane brings it to the front.
+Selecting an exposed zoomed pane leaves floating panes above it in place.
 If one of
 .Fl D ,
 .Fl L ,
@@ -4267,8 +4284,12 @@ Create a new pane by splitting
 If
 .Fl d
 is given, the session does not make the new pane the current pane.
+A zoomed target is first restored to its normal tiled or floating position.
+Splitting a floating pane creates another floating pane beside it, reducing
+their sizes if necessary to fit.
 .Fl Z
-zooms if the window is not zoomed, or keeps it zoomed if already zoomed.
+zooms and selects the new pane, overriding
+.Fl d .
 .Fl s
 sets the style for the pane content.
 .Fl S
@@ -4374,6 +4395,8 @@ $ make 2>&1|tmux new\-pane \-dI &
 .Xc
 .D1 Pq alias: Ic swapp
 Swap two panes.
+The tiled or floating position, floating geometry, stacking order and zoom
+state belong to each position and are taken over by the pane swapped into it.
 If
 .Fl U
 is used and no source pane is specified with
@@ -5145,6 +5168,9 @@ option.
 When enabled and
 .Ic mouse
 is on, moving the mouse into a pane selects it.
+This does not raise floating panes.
+With the default mouse bindings, clicking inside an ordinary floating pane
+selects it and brings it to the front.
 .It Xo Ic get\-clipboard
 .Op Cm both | request | buffer | off
 .Xc
@@ -6272,6 +6298,9 @@ If set to
 or
 .Cm bottom\-floating ,
 status lines are shown only on floating panes.
+A zoomed pane has no surrounding border.
+If this option is enabled, its status line is shown at the top, without corner
+characters, regardless of the position selected by this option.
 .Pp
 .It Ic pane\-border\-style Ar style
 Set the pane border style for panes aside from the active pane.
@@ -7678,7 +7707,7 @@ The following variables are available, where appropriate:
 .It Li "pane_dead_time" Ta "" Ta "Exit time of process in dead pane"
 .It Li "pane_fg" Ta "" Ta "Pane foreground colour"
 .It Li "pane_flags" Ta "" Ta "Pane flags"
-.It Li "pane_floating_flag" Ta "" Ta "1 if pane is floating"
+.It Li "pane_floating_flag" Ta "" Ta "1 if pane is floating, including zoomed panes"
 .It Li "pane_format" Ta "" Ta "1 if format is for a pane"
 .It Li "pane_height" Ta "" Ta "Height of pane"
 .It Li "pane_id" Ta "#D" Ta "Unique pane ID"
