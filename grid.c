@@ -429,8 +429,8 @@ grid_history_bytes(struct grid *gd)
  * Collect oldest history at either limit. Leave 10% headroom during output
  * so collecting and shifting the line array is amortized across many scrolls.
  */
-void
-grid_collect_history(struct grid *gd, int all)
+static void
+grid_collect_history1(struct grid *gd, int all, int lines)
 {
 	u_int	 ny = 0, yy;
 	size_t	 bytes = 0, target;
@@ -438,7 +438,7 @@ grid_collect_history(struct grid *gd, int all)
 	if (gd->hsize == 0)
 		return;
 
-	if (gd->hsize >= gd->hlimit) {
+	if (lines && gd->hsize >= gd->hlimit) {
 		if (all)
 			ny = gd->hsize - gd->hlimit;
 		else
@@ -477,6 +477,20 @@ grid_collect_history(struct grid *gd, int all)
 	gd->scroll_collected += ny;
 	if (gd->hscrolled > gd->hsize)
 		gd->hscrolled = gd->hsize;
+}
+
+/* Collect history at either limit before scrolling or after option changes. */
+void
+grid_collect_history(struct grid *gd, int all)
+{
+	grid_collect_history1(gd, all, 1);
+}
+
+/* Enforce the byte limit after scrolling without collecting at the line limit. */
+void
+grid_collect_history_bytes(struct grid *gd)
+{
+	grid_collect_history1(gd, 0, 0);
 }
 
 /* Remove lines from the bottom of the history. */
@@ -1552,6 +1566,8 @@ grid_reflow_join(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 	if (left != 0) {
 		grid_move_cells(gd, 0, want, yy + lines, left, 8);
 		from->cellsize = from->cellused = left;
+		from->celldata = xreallocarray(from->celldata, from->cellsize,
+		    sizeof *from->celldata);
 		lines--;
 	} else if (!wrapped)
 		gl->flags &= ~GRID_LINE_WRAPPED;
@@ -1629,6 +1645,13 @@ grid_reflow_split(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 	if (flags & GRID_LINE_WRAPPED)
 		target->linedata[line].flags |= GRID_LINE_WRAPPED;
 	grid_reflow_move_osc133(&target->linedata[line], gl, 0, xx, 1);
+	if (first->cellsize != 0) {
+		first->celldata = xreallocarray(first->celldata, first->cellsize,
+		    sizeof *first->celldata);
+	} else {
+		free(first->celldata);
+		first->celldata = NULL;
+	}
 	grid_reflow_dead(gl);
 
 	/* Adjust the scroll position. */

@@ -64,15 +64,18 @@ done >"$TD/plain"
 
 MAIN=$($TMUX new-session -d -P -F '#{pane_id}' -s bounded \
     -x 80 -y 10 "$HOLD") || exit 1
-$TMUX set-option -g history-limit 100000 || exit 1
+$TMUX set-option -g history-limit 0 || exit 1
 VIEW=$($TMUX new-session -d -P -F '#{pane_id}' -s view \
     -x 80 -y 10 "$HOLD") || exit 1
 $TMUX set-option -t view history-limit 0 || exit 1
+$TMUX set-option -g history-limit 100000 || exit 1
 
 # The default is disabled; enabling a byte cap trims existing history.
 [ "$($TMUX show-options -gv history-byte-limit)" = 0 ] || exit 1
 write_output "$MAIN" "$TD/plain" plain-main
 write_output "$VIEW" "$TD/plain" plain-view
+[ "$(value "$VIEW" history_size)" = 0 ] ||
+	fail 'reference pane retained history'
 [ "$(value "$MAIN" history_bytes)" -gt "$LIMIT" ] ||
     fail 'fixture did not exceed the byte budget'
 $TMUX set-option -t bounded history-byte-limit "$LIMIT" || exit 1
@@ -109,6 +112,13 @@ LIMIT=4096
 $TMUX set-option -t bounded history-byte-limit "$LIMIT" || exit 1
 check_budget "$MAIN" "$LIMIT"
 check_budget "$NEW" "$LIMIT"
+
+# Byte collection must preserve a line that still fits both limits.
+$TMUX set-option -t bounded history-limit 1 || exit 1
+write_output "$MAIN" "$TD/colour" one-line
+[ "$(value "$MAIN" history_size)" = 1 ] ||
+	fail 'byte collection discarded the permitted history line'
+$TMUX set-option -t bounded history-limit 100000 || exit 1
 
 # Resizing invalidates the cached byte count, including after reflow.
 $TMUX resize-window -t "$MAIN" -x 20 -y 6 || exit 1

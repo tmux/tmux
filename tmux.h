@@ -3598,6 +3598,7 @@ const char *grid_cell_flags_string(int);
 const char *grid_cell_attr_string(int);
 time_t	 grid_line_time(const struct grid_line *);
 void	 grid_collect_history(struct grid *, int);
+void	 grid_collect_history_bytes(struct grid *);
 void	 grid_remove_history(struct grid *, u_int );
 void	 grid_scroll_history(struct grid *, u_int);
 void	 grid_scroll_history_region(struct grid *, u_int, u_int, u_int);
