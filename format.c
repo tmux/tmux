@@ -881,6 +881,7 @@ format_cb_window_visible_layout(struct format_tree *ft)
 {
 	struct client	*c = ft->client;
 	struct window	*w = ft->w;
+	char		*layout;
 	int		 flags = 0;
 
 	if (w == NULL)
@@ -890,7 +891,8 @@ format_cb_window_visible_layout(struct format_tree *ft)
 	    (c->flags & CLIENT_CONTROL) &&
 	    (~c->flags & CLIENT_CONTROL_NEWLAYOUTS))
 		flags |= LAYOUT_CUSTOM_OLD_FORMAT;
-	return (layout_dump_visible(w, flags));
+	layout = layout_dump_visible(w, flags);
+	return (layout);
 }
 
 /* Callback for pane_start_command. */

@@ -60,6 +60,10 @@ mouse '\033[<35;12;12M\033[<35;14;13M'
 check "$X" '#{pane_active}' 1
 check "$Y" '#{pane_z}' 0
 
+# Clicking the same pane after hover still raises it.
+mouse '\033[<0;14;12M\033[<0;14;12m'
+check "$X" '#{pane_active}:#{pane_z}' '1:0'
+
 # Clicking inside a pane still raises a floating pane, as before.
 mouse '\033[<0;54;12M\033[<0;54;12m'
 check "$Y" '#{pane_active}:#{pane_z}' '1:0'

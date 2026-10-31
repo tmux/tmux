@@ -200,12 +200,18 @@ layout_search_by_border(struct layout_cell *lc, u_int x, u_int y)
 void
 layout_set_size(struct layout_cell *lc, u_int sx, u_int sy, int xoff, int yoff)
 {
+	struct layout_cell	*parent = lc->parent;
+
 	if (lc->g.sx != sx || lc->g.sy != sy) {
-		if (lc->type != LAYOUT_WINDOWPANE)
+		if ((lc->type == LAYOUT_LEFTRIGHT && lc->g.sx != sx) ||
+		    (lc->type == LAYOUT_TOPBOTTOM && lc->g.sy != sy)) {
 			lc->generation++;
-		if (lc->parent != NULL &&
-		    (layout_cell_is_tiled(lc) || layout_cell_has_tiled_child(lc))) {
-			lc->parent->generation++;
+		}
+		if (parent != NULL &&
+		    (layout_cell_is_tiled(lc) || layout_cell_has_tiled_child(lc)) &&
+		    ((parent->type == LAYOUT_LEFTRIGHT && lc->g.sx != sx) ||
+		    (parent->type == LAYOUT_TOPBOTTOM && lc->g.sy != sy))) {
+			parent->generation++;
 		}
 	}
 	lc->g.sx = sx;
@@ -633,9 +639,9 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 
 	/* A changed child allocation invalidates a saved tiled size. */
 	if (change != 0) {
-		if (lc->type != LAYOUT_WINDOWPANE)
+		if (lc->type == type)
 			lc->generation++;
-		if (lc->parent != NULL)
+		if (lc->parent != NULL && lc->parent->type == type)
 			lc->parent->generation++;
 	}
 
@@ -2029,6 +2035,7 @@ layout_remove_tile(struct window *w, struct layout_cell *lc)
 {
 	struct layout_cell	*neighbour, *parent = lc->parent;
 	enum layout_type	 type;
+	u_int			 generation = lc->generation;
 	int			 change;
 
 	if (lc->flags & LAYOUT_CELL_FLOATING)
@@ -2050,6 +2057,7 @@ layout_remove_tile(struct window *w, struct layout_cell *lc)
 	}
 	if (parent != NULL) {
 		layout_set_size(lc, 0, 0, 0, 0);
+		lc->generation = generation;
 		lc->saved.generation = parent->generation;
 	}
 }
@@ -2096,6 +2104,7 @@ layout_insert_tile(struct window *w, struct layout_cell *lc)
 	struct layout_cell	*neighbour, *parent = lc->parent, *tiled;
 	enum layout_type	 type;
 	u_int			 size, available, other, old;
+	u_int			 generation = lc->generation;
 	int			 unchanged;
 
 	if (parent == NULL) {
@@ -2133,6 +2142,13 @@ layout_insert_tile(struct window *w, struct layout_cell *lc)
 			layout_set_size(lc, parent->g.sx, size, 0, 0);
 	}
 	lc->flags &= ~LAYOUT_CELL_FLOATING;
+
+	/* Collapsing and expanding an unchanged group preserves its children. */
+	if (unchanged &&
+	    ((lc->type == LAYOUT_LEFTRIGHT && lc->g.sx == lc->saved.g.sx) ||
+	    (lc->type == LAYOUT_TOPBOTTOM && lc->g.sy == lc->saved.g.sy))) {
+		lc->generation = generation;
+	}
 
 	/* Unwinding unchanged removals also restores the earlier revisions. */
 	if (unchanged)

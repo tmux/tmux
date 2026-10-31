@@ -165,4 +165,24 @@ run resize-window -x 80 -y 24
 X=$(run new-pane -dZPF '#{pane_id}' '') || exit 1
 check "$X" '#{pane_zoomed_flag}:#{pane_active}' '1:1'
 
+# Collapsed groups restore uneven widths after changes to their outer height.
+run kill-server
+run new-session -d -x 80 -y 24 'sleep 100'
+run set -g default-command 'sleep 100'
+run split-window -vd -t %0
+run split-window -vd -t %1
+run split-window -vd -t %2
+run split-window -hd -t %1
+run split-window -hd -t %1
+before=$(geometry)
+restore=
+for p in %0 %1 %2 %3 %4; do
+	run break-pane -Wd -s "$p"
+	restore="$p $restore"
+done
+for p in $restore; do
+	run join-pane -d -s "$p" -t "$p"
+done
+[ "$(geometry)" = "$before" ] || fail 'collapsed group widths were not restored'
+
 exit 0

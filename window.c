@@ -3217,9 +3217,12 @@ window_pane_is_floating(struct window_pane *wp)
 int
 window_pane_is_unzoomed_float(struct window_pane *wp)
 {
+	int	floating;
+
 	if (wp->flags & PANE_ZOOMED)
 		return (0);
-	return (window_pane_is_floating(wp));
+	floating = window_pane_is_floating(wp);
+	return (floating);
 }
 
 /* Report damage for a floating pane, including its border and scrollbar. */
