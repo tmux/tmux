@@ -5487,6 +5487,21 @@ indicators are displayed.
 If set to 0, messages and indicators are displayed until a key is pressed.
 .Ar time
 is in milliseconds.
+.It Ic history\-byte\-limit Ar bytes
+Set an additional limit on the allocated grid storage held in each pane's
+history.
+The default is zero, which disables the byte limit.
+When either this limit or
+.Ic history\-limit
+is reached, the oldest history is discarded.
+Changes apply to existing panes as well as new panes.
+.Pp
+The byte count includes the retained lines and their allocated cell and extended
+cell arrays.
+It excludes the visible screen, images, copy mode snapshots, allocator overhead,
+and other server memory, so it is not a limit on the server's resident memory.
+During output, history is collected in batches to leave approximately ten percent
+headroom.
 .It Ic history\-limit Ar lines
 Set the maximum number of lines held in pane history.
 .It Ic initial\-repeat\-time Ar time

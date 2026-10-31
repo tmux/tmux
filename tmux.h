@@ -989,6 +989,9 @@ struct grid {
 	u_int			 hscrolled;
 	u_int			 hsize;
 	u_int			 hlimit;
+	size_t			 hbytes;
+	size_t			 hlimit_bytes;
+	int			 hbytes_valid;
 
 	u_int			 scroll_added;
 	u_int			 scroll_collected;

@@ -836,6 +836,9 @@ session_update_history(struct session *s)
 
 			osize = gd->hsize;
 			gd->hlimit = limit;
+			gd->hlimit_bytes = options_get_number(s->options,
+			    "history-byte-limit");
+			gd->hbytes_valid = 0;
 			grid_collect_history(gd, 1);
 
 			if (gd->hsize != osize) {

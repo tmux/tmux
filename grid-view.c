@@ -88,6 +88,8 @@ grid_view_clear_history(struct grid *gd, u_int bg)
 	for (yy = 0; yy < last; yy++) {
 		grid_collect_history(gd, 0);
 		grid_scroll_history(gd, bg);
+		if (gd->hlimit_bytes != 0)
+			grid_collect_history(gd, 0);
 	}
 	if (last < gd->sy)
 		grid_view_clear(gd, 0, 0, gd->sx, gd->sy - last, bg);
@@ -130,6 +132,8 @@ grid_view_scroll_region_up(struct grid *gd, u_int rupper, u_int rlower,
 			image_grid_restore_lines(gd, saved);
 #endif
 		}
+		if (gd->hlimit_bytes != 0)
+			grid_collect_history(gd, 0);
 	} else {
 		rupper = grid_view_y(gd, rupper);
 		rlower = grid_view_y(gd, rlower);

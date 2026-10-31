@@ -218,6 +218,7 @@ void
 grid_adjust_lines(struct grid *gd, u_int lines)
 {
 	gd->linedata = xreallocarray(gd->linedata, lines, sizeof *gd->linedata);
+	gd->hbytes_valid = 0;
 }
 
 /* Copy default into a cell. */
@@ -230,6 +231,8 @@ grid_clear_cell(struct grid *gd, u_int px, u_int py, u_int bg, int moved)
 	u_int			 old_offset = gce->offset;
 	int			 had_extd = (gce->flags & GRID_FLAG_EXTENDED);
 
+	if (py < gd->hsize)
+		gd->hbytes_valid = 0;
 	memcpy(gce, &grid_cleared_entry, sizeof *gce);
 	if (!moved && had_extd && old_offset < gl->extdsize) {
 		gce->flags |= GRID_FLAG_EXTENDED;
@@ -308,6 +311,8 @@ grid_free_line(struct grid *gd, u_int py)
 {
 	struct grid_line	*gl = &gd->linedata[py];
 
+	if (py < gd->hsize)
+		gd->hbytes_valid = 0;
 #ifdef ENABLE_IMAGES
 	image_grid_free_line(gd, gl);
 #endif
@@ -397,26 +402,64 @@ grid_trim_history(struct grid *gd, u_int ny)
 	memset(&gd->linedata[remaining], 0, ny * (sizeof *gd->linedata));
 }
 
+/* Allocated storage for one line, excluding image and allocator storage. */
+static size_t
+grid_line_size(const struct grid_line *gl)
+{
+	return (sizeof *gl + gl->cellsize * sizeof *gl->celldata +
+	    gl->extdsize * sizeof *gl->extddata);
+}
+
+/* History is immutable during normal output; rescan only after grid edits. */
+static size_t
+grid_history_bytes(struct grid *gd)
+{
+	u_int	yy;
+
+	if (!gd->hbytes_valid) {
+		gd->hbytes = 0;
+		for (yy = 0; yy < gd->hsize; yy++)
+			gd->hbytes += grid_line_size(&gd->linedata[yy]);
+		gd->hbytes_valid = 1;
+	}
+	return (gd->hbytes);
+}
+
 /*
- * Collect lines from the history if at the limit. Free the top (oldest) 10%
- * and shift up.
+ * Collect oldest history at either limit. Leave 10% headroom during output
+ * so collecting and shifting the line array is amortized across many scrolls.
  */
 void
 grid_collect_history(struct grid *gd, int all)
 {
-	u_int	ny;
+	u_int	 ny = 0, yy;
+	size_t	 bytes = 0, target;
 
-	if (gd->hsize == 0 || gd->hsize < gd->hlimit)
+	if (gd->hsize == 0)
 		return;
 
-	if (all)
-		ny = gd->hsize - gd->hlimit;
-	else
-		ny = gd->hlimit / 10;
-	if (ny < 1)
-		ny = 1;
-	if (ny > gd->hsize)
-		ny = gd->hsize;
+	if (gd->hsize >= gd->hlimit) {
+		if (all)
+			ny = gd->hsize - gd->hlimit;
+		else
+			ny = gd->hlimit / 10;
+		if (ny < 1)
+			ny = 1;
+		if (ny > gd->hsize)
+			ny = gd->hsize;
+	}
+	if (gd->hlimit_bytes != 0) {
+		bytes = grid_history_bytes(gd);
+		target = gd->hlimit_bytes;
+		if (!all && bytes > target)
+			target -= target / 10;
+		for (yy = 0; yy < gd->hsize && (yy < ny || bytes > target);
+		    yy++)
+			bytes -= grid_line_size(&gd->linedata[yy]);
+		ny = yy;
+	}
+	if (ny == 0)
+		return;
 
 	/*
 	 * Free the lines from 0 to ny then move the remaining lines over
@@ -425,6 +468,12 @@ grid_collect_history(struct grid *gd, int all)
 	grid_trim_history(gd, ny);
 
 	gd->hsize -= ny;
+	if (gd->hlimit_bytes != 0) {
+		gd->hbytes = bytes;
+		gd->hbytes_valid = 1;
+		gd->linedata = xreallocarray(gd->linedata,
+		    gd->hsize + gd->sy, sizeof *gd->linedata);
+	}
 	gd->scroll_collected += ny;
 	if (gd->hscrolled > gd->hsize)
 		gd->hscrolled = gd->hsize;
@@ -443,6 +492,7 @@ grid_remove_history(struct grid *gd, u_int ny)
 		grid_free_line(gd, start + yy);
 	memset(&gd->linedata[start], 0, ny * sizeof *gd->linedata);
 	gd->hsize -= ny;
+	gd->hbytes_valid = 0;
 }
 
 /*
@@ -454,6 +504,8 @@ grid_scroll_history(struct grid *gd, u_int bg)
 {
 	u_int	yy;
 
+	if (gd->hlimit_bytes != 0)
+		grid_history_bytes(gd);
 	yy = gd->hsize + gd->sy;
 	gd->linedata = xreallocarray(gd->linedata, yy + 1,
 	    sizeof *gd->linedata);
@@ -462,6 +514,8 @@ grid_scroll_history(struct grid *gd, u_int bg)
 	gd->hscrolled++;
 	grid_compact_line(&gd->linedata[gd->hsize]);
 	grid_line_set_time(&gd->linedata[gd->hsize]);
+	if (gd->hlimit_bytes != 0)
+		gd->hbytes += grid_line_size(&gd->linedata[gd->hsize]);
 	gd->hsize++;
 	gd->scroll_added++;
 }
@@ -474,6 +528,8 @@ grid_clear_history(struct grid *gd)
 
 	gd->hscrolled = 0;
 	gd->hsize = 0;
+	gd->hbytes = 0;
+	gd->hbytes_valid = 1;
 	gd->scroll_generation++;
 
 	gd->linedata = xreallocarray(gd->linedata, gd->sy,
@@ -487,6 +543,8 @@ grid_scroll_history_region(struct grid *gd, u_int upper, u_int lower, u_int bg)
 	struct grid_line	*gl_history, *gl_upper;
 	u_int			 yy;
 
+	if (gd->hlimit_bytes != 0)
+		grid_history_bytes(gd);
 	/* Create a space for a new line. */
 	yy = gd->hsize + gd->sy;
 	gd->linedata = xreallocarray(gd->linedata, yy + 1,
@@ -504,6 +562,8 @@ grid_scroll_history_region(struct grid *gd, u_int upper, u_int lower, u_int bg)
 	/* Move the line into the history. */
 	memcpy(gl_history, gl_upper, sizeof *gl_history);
 	grid_line_set_time(gl_history);
+	if (gd->hlimit_bytes != 0)
+		gd->hbytes += grid_line_size(gl_history);
 
 	/* Then move the region up and clear the bottom line. */
 	memmove(gl_upper, gl_upper + 1, (lower - upper) * sizeof *gl_upper);
@@ -548,6 +608,8 @@ grid_expand_line(struct grid *gd, u_int py, u_int sx, u_int bg)
 void
 grid_empty_line(struct grid *gd, u_int py, u_int bg)
 {
+	if (py < gd->hsize)
+		gd->hbytes_valid = 0;
 	memset(&gd->linedata[py], 0, sizeof gd->linedata[py]);
 	if (!COLOUR_DEFAULT(bg))
 		grid_expand_line(gd, py, gd->sx, bg);
@@ -625,6 +687,8 @@ grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 
 	if (grid_check_y(gd, __func__, py) != 0)
 		return;
+	if (py < gd->hsize)
+		gd->hbytes_valid = 0;
 
 	grid_expand_line(gd, py, px + 1, 8);
 
@@ -662,6 +726,8 @@ grid_set_cells(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc,
 
 	if (grid_check_y(gd, __func__, py) != 0)
 		return;
+	if (py < gd->hsize)
+		gd->hbytes_valid = 0;
 
 	grid_expand_line(gd, py, px + slen, 8);
 
@@ -763,6 +829,8 @@ grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny, u_int bg)
 
 	if (ny == 0 || py == dy)
 		return;
+	if (py < gd->hsize || dy < gd->hsize)
+		gd->hbytes_valid = 0;
 
 	if (grid_check_y(gd, __func__, py) != 0)
 		return;
@@ -1665,6 +1733,7 @@ grid_reflow(struct grid *gd, u_int sx)
 	free(gd->linedata);
 	gd->linedata = target->linedata;
 	free(target);
+	gd->hbytes_valid = 0;
 	gd->scroll_generation++;
 }
 
