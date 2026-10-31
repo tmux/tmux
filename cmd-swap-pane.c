@@ -59,6 +59,7 @@ cmd_swap_pane_prev_tiled_pane(struct window_pane *wp)
 	return (wp);
 }
 
+/* Move a window's fullscreen state to its active pane after a swap. */
 static void
 cmd_swap_pane_zoom(struct window *w)
 {
@@ -90,7 +91,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-	dst_zoomed = (args_has(args, 'Z') && (dst_w->flags & WINDOW_ZOOMED));
+	dst_zoomed = (args_has(args, 'Z') && (window_zoomed_pane(dst_w) != NULL));
 
 	if (args_has(args, 'D')) {
 		if (window_pane_is_floating(dst_wp)) {
@@ -118,7 +119,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-	src_zoomed = (args_has(args, 'Z') && (src_w->flags & WINDOW_ZOOMED));
+	src_zoomed = (args_has(args, 'Z') && (window_zoomed_pane(src_w) != NULL));
 
 	if (src_wp == dst_wp)
 		goto out;

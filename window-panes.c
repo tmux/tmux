@@ -173,12 +173,75 @@ window_panes_add_area(struct window_panes_modedata *data,
 	area->sy = sy;
 }
 
+/* Copy layout cells for a preview without changing their panes. */
+static struct layout_cell *
+window_panes_copy_layout(struct layout_cell *lc, struct layout_cell *parent)
+{
+	struct layout_cell	*copy, *child, *new;
+
+	copy = layout_create_cell(parent);
+	copy->type = lc->type;
+	copy->flags = lc->flags;
+	copy->wp = lc->wp;
+	copy->generation = lc->generation;
+	memcpy(&copy->g, &lc->g, sizeof copy->g);
+	memcpy(&copy->fg, &lc->fg, sizeof copy->fg);
+	memcpy(&copy->saved, &lc->saved, sizeof copy->saved);
+	TAILQ_FOREACH(child, &lc->cells, entry) {
+		new = window_panes_copy_layout(child, copy);
+		TAILQ_INSERT_TAIL(&copy->cells, new, entry);
+	}
+	return (copy);
+}
+
+/* Find a pane's cell in the temporary preview layout. */
+static struct layout_cell *
+window_panes_find_cell(struct layout_cell *lc, struct window_pane *wp)
+{
+	struct layout_cell	*child, *found;
+
+	if (lc->wp == wp)
+		return (lc);
+	TAILQ_FOREACH(child, &lc->cells, entry) {
+		found = window_panes_find_cell(child, wp);
+		if (found != NULL)
+			return (found);
+	}
+	return (NULL);
+}
+
+/* Preview normal placements without resizing the processes behind the panes. */
+static struct layout_cell *
+window_panes_get_layout(struct window *w)
+{
+	struct window		 preview;
+	struct window_pane	*wp;
+	struct layout_cell	*lc;
+
+	memcpy(&preview, w, sizeof preview);
+	preview.menu = NULL;
+	preview.layout_root = window_panes_copy_layout(w->layout_root, NULL);
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
+		if (~wp->flags & PANE_ZOOMED)
+			continue;
+		lc = window_panes_find_cell(preview.layout_root, wp);
+		if (lc->flags & LAYOUT_CELL_ZOOMEDTILED) {
+			layout_insert_tile(&preview, lc);
+			lc->flags &= ~LAYOUT_CELL_ZOOMEDTILED;
+		} else
+			memcpy(&lc->g, &lc->fg, sizeof lc->g);
+	}
+	layout_fix_offsets(&preview);
+	return (preview.layout_root);
+}
+
+/* Get the pane rectangle within the preview. */
 static int
-window_panes_get_geometry(struct window_pane *wp, struct layout_cell *root,
+window_panes_get_geometry(struct layout_cell *lc, struct layout_cell *root,
     u_int osx, u_int osy, u_int dsx, u_int dsy, u_int *xp, u_int *yp,
     u_int *sxp, u_int *syp)
 {
-	struct layout_cell	*lc = wp->layout_cell;
+	struct window_pane	*wp = lc->wp;
 	int			 status;
 	u_int			 x, y, sx, sy, x2, y2;
 
@@ -379,7 +442,7 @@ window_panes_mark_pane_status_borders(u_char *map, struct window *w,
 		return;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		lc = wp->layout_cell;
+		lc = window_panes_find_cell(root, wp);
 		if (lc == NULL ||
 		    !layout_add_horizontal_border(root, lc, status))
 			continue;
@@ -398,12 +461,9 @@ window_panes_mark_pane_status_borders(u_char *map, struct window *w,
 }
 
 static int
-window_panes_get_floating_borders(struct window_pane *wp, u_int osx, u_int osy,
+window_panes_get_floating_borders(struct layout_cell *lc, u_int osx, u_int osy,
     u_int dsx, u_int dsy, int *xp, int *yp, int *x2p, int *y2p)
 {
-	struct layout_cell	*lc;
-
-	lc = wp->layout_cell;
 	if (lc == NULL || (~lc->flags & LAYOUT_CELL_FLOATING))
 		return (0);
 
@@ -421,12 +481,12 @@ window_panes_get_floating_borders(struct window_pane *wp, u_int osx, u_int osy,
 }
 
 static int
-window_panes_clip_floating_pane(struct window_pane *wp, u_int osx, u_int osy,
+window_panes_clip_floating_pane(struct layout_cell *lc, u_int osx, u_int osy,
     u_int dsx, u_int dsy, u_int *xp, u_int *yp, u_int *sxp, u_int *syp)
 {
 	int	x, y, x2, y2, bx, by, bx2, by2;
 
-	if (!window_panes_get_floating_borders(wp, osx, osy, dsx, dsy, &x, &y,
+	if (!window_panes_get_floating_borders(lc, osx, osy, dsx, dsy, &x, &y,
 	    &x2, &y2))
 		return (1);
 
@@ -608,7 +668,7 @@ window_panes_draw_borders(struct screen_write_ctx *ctx, struct window *w,
 
 static void
 window_panes_draw_floating_border(struct screen_write_ctx *ctx,
-    struct window_pane *wp, const struct grid_cell *gc, u_int osx, u_int osy,
+    struct layout_cell *lc, const struct grid_cell *gc, u_int osx, u_int osy,
     u_int dsx, u_int dsy)
 {
 	struct grid_cell	 border_gc;
@@ -618,7 +678,7 @@ window_panes_draw_floating_border(struct screen_write_ctx *ctx,
 
 	if (dsx == 0 || dsy == 0)
 		return;
-	if (!window_panes_get_floating_borders(wp, osx, osy, dsx, dsy, &x, &y,
+	if (!window_panes_get_floating_borders(lc, osx, osy, dsx, dsy, &x, &y,
 	    &x2, &y2))
 		return;
 
@@ -646,12 +706,12 @@ window_panes_draw_floating_border(struct screen_write_ctx *ctx,
 
 static void
 window_panes_clear_floating_area(struct screen_write_ctx *ctx,
-    struct window_pane *wp, u_int osx, u_int osy, u_int dsx, u_int dsy)
+    struct layout_cell *lc, u_int osx, u_int osy, u_int dsx, u_int dsy)
 {
 	struct grid_cell	gc;
 	int			x, y, x2, y2, xx, yy;
 
-	if (!window_panes_get_floating_borders(wp, osx, osy, dsx, dsy, &x, &y,
+	if (!window_panes_get_floating_borders(lc, osx, osy, dsx, dsy, &x, &y,
 	    &x2, &y2))
 		return;
 
@@ -792,16 +852,17 @@ window_panes_draw_number(struct window_panes_modedata *data,
 
 static void
 window_panes_draw_pane(struct window_panes_modedata *data,
-    struct screen_write_ctx *ctx, struct window_pane *wp,
+    struct screen_write_ctx *ctx, struct layout_cell *lc,
     struct layout_cell *root, u_int osx, u_int osy, u_int dsx, u_int dsy)
 {
+	struct window_pane	*wp = lc->wp;
 	struct screen		*s = (wp == data->wp ? &wp->base : wp->screen);
 	u_int			 pane, x, y, sx, sy;
 
-	if (!window_panes_get_geometry(wp, root, osx, osy, dsx, dsy, &x, &y,
+	if (!window_panes_get_geometry(lc, root, osx, osy, dsx, dsy, &x, &y,
 	    &sx, &sy))
 		return;
-	if (!window_panes_clip_floating_pane(wp, osx, osy, dsx, dsy, &x, &y,
+	if (!window_panes_clip_floating_pane(lc, osx, osy, dsx, dsy, &x, &y,
 	    &sx, &sy))
 		return;
 	if (window_pane_index(wp, &pane) != 0)
@@ -828,15 +889,15 @@ window_panes_draw_screen(struct window_mode_entry *wme)
 	struct window			*w;
 	struct window_pane		*wp;
 	struct screen_write_ctx		 ctx;
-	struct layout_cell		*root;
+	struct layout_cell		*root, *lc;
 	struct grid_cell		 border_gc;
 	u_int				 osx, osy, sx, sy;
 
 	if (!window_panes_get_source(data, NULL, NULL, &w))
 		return;
-	root = w->layout_root;
-	if (root == NULL)
+	if (w->layout_root == NULL)
 		return;
+	root = window_panes_get_layout(w);
 
 	osx = root->g.sx;
 	osy = root->g.sy;
@@ -847,21 +908,24 @@ window_panes_draw_screen(struct window_mode_entry *wme)
 	screen_write_start(&ctx, &data->screen);
 	screen_write_clearscreen(&ctx, 8);
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (window_pane_is_floating(wp))
+		lc = window_panes_find_cell(root, wp);
+		if (lc->flags & LAYOUT_CELL_FLOATING)
 			continue;
-		window_panes_draw_pane(data, &ctx, wp, root, osx, osy, sx, sy);
+		window_panes_draw_pane(data, &ctx, lc, root, osx, osy, sx, sy);
 	}
 	window_panes_get_border_cell(data, &border_gc);
 	window_panes_draw_borders(&ctx, w, root, &border_gc, osx, osy, sx, sy);
 	TAILQ_FOREACH_REVERSE(wp, &w->z_index, window_panes_zindex, zentry) {
-		if (!window_pane_is_floating(wp))
+		lc = window_panes_find_cell(root, wp);
+		if (~lc->flags & LAYOUT_CELL_FLOATING)
 			continue;
-		window_panes_clear_floating_area(&ctx, wp, osx, osy, sx, sy);
-		window_panes_draw_pane(data, &ctx, wp, root, osx, osy, sx, sy);
-		window_panes_draw_floating_border(&ctx, wp, &border_gc, osx,
+		window_panes_clear_floating_area(&ctx, lc, osx, osy, sx, sy);
+		window_panes_draw_pane(data, &ctx, lc, root, osx, osy, sx, sy);
+		window_panes_draw_floating_border(&ctx, lc, &border_gc, osx,
 		    osy, sx, sy);
 	}
 	screen_write_stop(&ctx);
+	layout_free_cell(root, 0);
 
 	data->wp->flags |= PANE_REDRAW;
 }

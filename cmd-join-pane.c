@@ -117,7 +117,7 @@ cmd_join_pane_backward(struct window_pane *wp)
 	do {
 		owp = TAILQ_NEXT(owp, zentry);
 	} while (owp != NULL && !window_pane_is_visible(owp));
-	if (owp != NULL && !window_pane_is_raised(owp))
+	if (owp != NULL && !window_pane_is_floating(owp))
 		owp = NULL;
 	if (owp != NULL && cmd_join_pane_group(owp) != group)
 		owp = NULL;
@@ -130,7 +130,7 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 {
 	struct window		*w = wl->window;
 	struct layout_cell	*lc = wp->layout_cell;
-	struct window_pane	*owp;
+	struct window_pane	*owp, *previous;
 	int			 wx = w->sx, wy = w->sy;
 	int			 px = lc->g.sx, py = lc->g.sy;
 	int			 xoff = lc->g.xoff, yoff = lc->g.yoff;
@@ -138,6 +138,7 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 
 	if (window_pane_get_pane_lines(wp) == PANE_LINES_NONE)
 		border = 0;
+	previous = TAILQ_PREV(wp, window_panes_zindex, zentry);
 
 	if (strcmp(position, "top-left") == 0) {
 		xoff = border;
@@ -222,6 +223,11 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 		return (CMD_RETURN_ERROR);
 	}
 
+	/* Raising or lowering an already positioned pane needs no redraw. */
+	if (xoff == lc->g.xoff && yoff == lc->g.yoff &&
+	    previous == TAILQ_PREV(wp, window_panes_zindex, zentry)) {
+		return (CMD_RETURN_NORMAL);
+	}
 	if (xoff != lc->g.xoff || yoff != lc->g.yoff) {
 		lc->g.xoff = xoff;
 		lc->g.yoff = yoff;
@@ -408,7 +414,7 @@ cmd_join_pane_zindex(struct cmdq_item *item, struct winlink *wl,
 		if (cmd_join_pane_group(owp) < group)
 			continue;
 		if (cmd_join_pane_group(owp) > group ||
-		    !window_pane_is_raised(owp))
+		    !window_pane_is_floating(owp))
 			break;
 		if (!window_pane_is_visible(owp))
 			continue;
@@ -429,6 +435,7 @@ cmd_join_pane_zindex(struct cmdq_item *item, struct winlink *wl,
 	return (CMD_RETURN_NORMAL);
 }
 
+/* Return a floating pane to its retained place in the tiled layout. */
 static enum cmd_retval
 cmd_join_pane_tile(struct cmdq_item *item, struct args *args, struct window *w,
     struct window_pane *wp)
@@ -445,11 +452,7 @@ cmd_join_pane_tile(struct cmdq_item *item, struct args *args, struct window *w,
 	lc->fg.xoff = lc->g.xoff;
 	lc->fg.yoff = lc->g.yoff;
 
-	if (layout_insert_tile(w, lc) != 0) {
-		cmdq_error(item, "no space for a new pane");
-		return (CMD_RETURN_ERROR);
-	}
-	lc->flags &= ~LAYOUT_CELL_FLOATING;
+	layout_insert_tile(w, lc);
 
 	if (~wp->flags & PANE_ZOOMED) {
 		TAILQ_REMOVE(&w->z_index, wp, zentry);
@@ -480,7 +483,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*src_wp, *dst_wp;
 	const char		*s;
 	char			*cause = NULL;
-	int			 flags = 0, dst_idx, raised, stacking;
+	int			 flags = 0, dst_idx, stacking;
 	struct layout_cell	*lc;
 
 	dst_s = target->s;
@@ -504,17 +507,14 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 			stacking = args_has(args, 'z');
 			if (s != NULL && cmd_join_pane_is_stacking(s))
 				stacking = 1;
-			if (stacking)
-				raised = window_pane_is_raised(dst_wp);
-			else
-				raised = window_pane_is_floating(dst_wp);
-			if (!raised) {
+			if (!window_pane_is_floating(dst_wp)) {
 				cmdq_error(item, "pane is not floating");
 				return (CMD_RETURN_ERROR);
 			}
-			/* Moving unzooms a zoomed pane; reordering does not. */
-			if (!stacking && (dst_wp->flags & PANE_ZOOMED))
-				window_unzoom_pane(dst_wp, 1);
+			if (!stacking && (dst_wp->flags & PANE_ZOOMED)) {
+				cmdq_error(item, "pane is zoomed");
+				return (CMD_RETURN_ERROR);
+			}
 			if (s != NULL)
 				return (cmd_join_pane_place(item, dst_wl, dst_wp, s));
 			if ((s = args_get(args, 'z')) != NULL)
@@ -533,6 +533,11 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (src_wp == dst_wp) {
+		if (src_wp->flags & PANE_ZOOMED) {
+			window_unzoom_pane(src_wp, 1);
+			if (!window_pane_is_floating(src_wp))
+				return (CMD_RETURN_NORMAL);
+		}
 		if (window_pane_is_floating(src_wp))
 			return (cmd_join_pane_tile(item, args, src_w, src_wp));
 		cmdq_error(item, "source and target panes must be different");
@@ -546,6 +551,10 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'f'))
 		flags |= SPAWN_FULLSIZE;
 
+	if (src_wp->flags & PANE_ZOOMED)
+		window_unzoom_pane(src_wp, 1);
+	if (dst_wp->flags & PANE_ZOOMED)
+		window_unzoom_pane(dst_wp, 1);
 	lc = layout_get_tiled_cell(item, args, dst_w, dst_wp, flags, &cause);
 	if (cause != NULL) {
 		cmdq_error(item, "size or position %s", cause);

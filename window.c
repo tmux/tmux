@@ -680,7 +680,7 @@ window_pane_floating_overlaps(struct window_pane *fwp, struct window_pane *wp)
 	int	fxoff, fyoff, xoff, yoff, border = 0;
 	u_int	fsx, fsy, sx, sy;
 
-	if (!window_pane_is_raised(fwp))
+	if (!window_pane_is_floating(fwp))
 		return (0);
 
 	window_pane_full_size_offset(fwp, &fxoff, &fyoff, &fsx, &fsy);
@@ -745,19 +745,27 @@ window_pane_update_focus(struct window_pane *wp)
 	}
 }
 
+/* Select a pane and raise it when explicit selection requires it. */
 int
 window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 {
-	return (window_activate_pane(w, wp, notify, 1));
+	int	changed;
+
+	changed = window_activate_pane(w, wp, notify, 1);
+	return (changed);
 }
 
 /* Make a pane active without raising it, as when the mouse moves onto it. */
 int
 window_focus_pane(struct window *w, struct window_pane *wp, int notify)
 {
-	return (window_activate_pane(w, wp, notify, 0));
+	int	changed;
+
+	changed = window_activate_pane(w, wp, notify, 0);
+	return (changed);
 }
 
+/* Activate a pane, raising ordinary floats only for explicit selection. */
 static int
 window_activate_pane(struct window *w, struct window_pane *wp, int notify,
     int raise)
@@ -767,8 +775,11 @@ window_activate_pane(struct window *w, struct window_pane *wp, int notify,
 
 	log_debug("%s: pane %%%u", __func__, wp->id);
 
-	if (wp == w->active)
+	if (wp == w->active) {
+		if (raise && window_pane_is_unzoomed_float(wp))
+			window_raise_pane(wp);
 		return (0);
+	}
 	if (w->modal != NULL && wp != w->modal)
 		return (0);
 	if (!window_pane_is_visible(wp)) {
@@ -777,25 +788,15 @@ window_activate_pane(struct window *w, struct window_pane *wp, int notify,
 		 * not zoomed can only be reached by unzooming (any floats
 		 * stay); anything else can be raised above the zoom.
 		 */
-		if (window_pane_is_raised(wp))
+		if (window_pane_is_floating(wp))
 			window_raise_pane(wp);
 		else {
 			window_unzoom(w, 1);
 			unzoomed = 1;
 		}
-	} else if (raise) {
-		/* Raise the pane if the option says to. */
-		switch (options_get_number(w->options, "pane-raise-on-focus")) {
-		case PANE_RAISE_FLOATING:
-			if (window_pane_is_unzoomed_float(wp))
-				window_raise_pane(wp);
-			break;
-		case PANE_RAISE_ALL:
-			if (window_pane_is_raised(wp))
-				window_raise_pane(wp);
-			break;
-		}
-	}
+	} else if (raise && window_pane_is_unzoomed_float(wp))
+		window_raise_pane(wp);
+
 	lastwp = w->active;
 
 	window_pane_stack_remove(&w->last_panes, wp);
@@ -901,7 +902,7 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 	 * their status lines, so check those first. They are in stacking order.
 	 */
 	TAILQ_FOREACH(wp, &w->z_index, zentry) {
-		if (window_pane_is_raised(wp) &&
+		if (window_pane_is_floating(wp) &&
 		    window_pane_contains(wp, x, y))
 			return (wp);
 	}
@@ -1011,8 +1012,11 @@ void
 window_raise_pane(struct window_pane *wp)
 {
 	struct window		*w = wp->window;
-	struct window_pane	*wp1;
+	struct window_pane	*wp1, *previous;
 
+	if (wp->layout_cell != NULL && !window_pane_is_floating(wp))
+		return;
+	previous = TAILQ_PREV(wp, window_panes_zindex, zentry);
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
 	TAILQ_FOREACH(wp1, &w->z_index, zentry) {
 		if (wp1 == w->modal)
@@ -1026,7 +1030,9 @@ window_raise_pane(struct window_pane *wp)
 		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 	else
 		TAILQ_INSERT_BEFORE(wp1, wp, zentry);
-	wp->flags |= PANE_REDRAW;
+	if (previous == TAILQ_PREV(wp, window_panes_zindex, zentry))
+		return;
+	window_redraw_floating_pane(wp, wp->xoff, wp->yoff, wp->sx, wp->sy);
 	redraw_invalidate_scene(w);
 }
 
@@ -1047,7 +1053,7 @@ window_lower_pane(struct window_pane *wp)
 		if (wp->flags & PANE_FLOATOVERZOOM) {
 			if (~wp1->flags & PANE_FLOATOVERZOOM)
 				break;
-		} else if (!window_pane_is_raised(wp1))
+		} else if (!window_pane_is_floating(wp1))
 			break;
 	}
 	if (wp1 == NULL)
@@ -1058,70 +1064,81 @@ window_lower_pane(struct window_pane *wp)
 	redraw_invalidate_scene(w);
 }
 
-/* Set or clear WINDOW_ZOOMED depending on whether any pane is zoomed. */
-static void
-window_update_zoomed(struct window *w)
+/* Get the first visible pane in stacking order, excluding a departing pane. */
+struct window_pane *
+window_get_top_pane(struct window *w, struct window_pane *exclude)
 {
 	struct window_pane	*wp;
 
-	w->flags &= ~WINDOW_ZOOMED;
-	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (wp->flags & PANE_ZOOMED) {
-			w->flags |= WINDOW_ZOOMED;
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
+		if (wp != exclude && window_pane_is_visible(wp))
 			break;
-		}
 	}
+	return (wp);
 }
 
-/* Clear the zoomed flag on a pane and put it back behind the floats. */
+/* Restore one fullscreen pane's normal placement. */
 static void
 window_unzoom_one(struct window_pane *wp)
 {
-	struct window	*w = wp->window;
+	struct window		*w = wp->window;
+	struct layout_cell	*lc = wp->layout_cell;
 
 	wp->flags &= ~PANE_ZOOMED;
-	if (!window_pane_is_floating(wp)) {
+	if (lc->flags & LAYOUT_CELL_ZOOMEDTILED) {
+		lc->flags &= ~LAYOUT_CELL_ZOOMEDTILED;
+		layout_insert_tile(w, lc);
 		TAILQ_REMOVE(&w->z_index, wp, zentry);
 		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
-	}
-	window_update_zoomed(w);
+	} else
+		memcpy(&lc->g, &lc->fg, sizeof lc->g);
 }
 
-/* Fix the panes and fire the events after panes have been unzoomed. */
+/* Finish restoring panes and move focus above any remaining fullscreen pane. */
 static void
 window_unzoom_finish(struct window *w, int notify)
 {
+	struct window_pane	*wp;
+
+	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
+	if (w->active != NULL && !window_pane_is_visible(w->active)) {
+		wp = window_get_top_pane(w, NULL);
+		if (wp != NULL)
+			window_focus_pane(w, wp, 1);
+	}
 	if (notify) {
-		if (~w->flags & WINDOW_ZOOMED)
+		if (window_zoomed_pane(w) == NULL)
 			events_fire_window("window-unzoomed", w);
 		events_fire_window("window-layout-changed", w);
 	}
 	redraw_invalidate_scene(w);
 }
 
-/*
- * Zoom a pane. A zoomed pane is shown at the size of the window above the
- * layout, and above any panes behind it in the stacking order; other panes can
- * be zoomed on top of it.
- */
+/* Float a pane fullscreen, remembering whether to return it to the tiles. */
 int
 window_zoom(struct window_pane *wp)
 {
-	struct window	*w = wp->window;
-	int		 was_zoomed = (w->flags & WINDOW_ZOOMED);
+	struct window		*w = wp->window;
+	struct layout_cell	*lc = wp->layout_cell;
+	int			 was_zoomed;
 
-	if (wp->flags & PANE_ZOOMED)
+	if ((wp->flags & PANE_ZOOMED) || lc == NULL)
 		return (-1);
-	if (window_count_panes(w, 1) == 1)
-		return (-1);
-
+	was_zoomed = (window_zoomed_pane(w) != NULL);
+	if (window_pane_is_floating(wp))
+		memcpy(&lc->fg, &lc->g, sizeof lc->fg);
+	else {
+		layout_remove_tile(w, lc);
+		lc->flags |= LAYOUT_CELL_FLOATING;
+		lc->flags |= LAYOUT_CELL_ZOOMEDTILED;
+	}
 	wp->flags |= PANE_ZOOMED;
-	w->flags |= WINDOW_ZOOMED;
+	layout_set_size(lc, w->sx, w->sy, 0, 0);
 	window_raise_pane(wp);
+	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
-	if (w->active != wp)
-		window_set_active_pane(w, wp, 1);
+	window_set_active_pane(w, wp, 1);
 
 	if (!was_zoomed)
 		events_fire_window("window-zoomed", w);
@@ -1136,42 +1153,43 @@ window_unzoom_pane(struct window_pane *wp, int notify)
 {
 	struct window	*w = wp->window;
 
-	if (~wp->flags & PANE_ZOOMED)
+	if ((~wp->flags & PANE_ZOOMED) || wp->layout_cell == NULL)
 		return (-1);
 	window_unzoom_one(wp);
 	window_unzoom_finish(w, notify);
 	return (0);
 }
 
-/* Unzoom every pane. */
+/* Unzoom every pane without changing the relative order of ordinary floats. */
 int
 window_unzoom(struct window *w, int notify)
 {
-	struct window_pane	*wp, *wp1;
+	struct window_pane	*wp, *next;
+	int			 changed = 0;
 
-	if (~w->flags & WINDOW_ZOOMED)
-		return (-1);
-	TAILQ_FOREACH_SAFE(wp, &w->panes, entry, wp1) {
-		if (wp->flags & PANE_ZOOMED)
+	TAILQ_FOREACH_SAFE(wp, &w->z_index, zentry, next) {
+		if (wp->flags & PANE_ZOOMED) {
 			window_unzoom_one(wp);
+			changed = 1;
+		}
 	}
+	if (!changed)
+		return (-1);
 	window_unzoom_finish(w, notify);
 	return (0);
 }
 
-/* Get the zoomed pane at the front of the stacking order. */
+/* Get the first fullscreen pane in stacking order. */
 struct window_pane *
 window_zoomed_pane(struct window *w)
 {
 	struct window_pane	*wp;
 
-	if (~w->flags & WINDOW_ZOOMED)
-		return (NULL);
 	TAILQ_FOREACH(wp, &w->z_index, zentry) {
 		if (wp->flags & PANE_ZOOMED)
-			return (wp);
+			break;
 	}
-	return (NULL);
+	return (wp);
 }
 
 /* Move the zoom from one pane to another. */
@@ -1229,8 +1247,6 @@ window_forget_pane(struct window *w, struct window_pane *wp)
 {
 	if (wp == marked_pane.wp)
 		server_clear_marked();
-	if (wp == w->modal_last)
-		w->modal_last = NULL;
 	window_pane_stack_remove(&w->last_panes, wp);
 	redraw_invalidate_scene(w);
 }
@@ -1238,8 +1254,6 @@ window_forget_pane(struct window *w, struct window_pane *wp)
 void
 window_lost_pane(struct window *w, struct window_pane *wp)
 {
-	struct window_pane	*lastwp;
-
 	log_debug("%s: @%u pane %%%u", __func__, w->id, wp->id);
 
 	window_forget_pane(w, wp);
@@ -1247,37 +1261,15 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 	/* Remove zoom now so the panes it covered are visible again. */
 	if (wp->flags & PANE_ZOOMED) {
 		wp->flags &= ~PANE_ZOOMED;
-		window_update_zoomed(w);
-		if (~w->flags & WINDOW_ZOOMED)
+		if (window_zoomed_pane(w) == NULL)
 			events_fire_window("window-unzoomed", w);
 	}
 
 	if (wp == w->active) {
-		lastwp = NULL;
 		if (wp == w->modal) {
-			lastwp = w->modal_last;
 			w->modal = NULL;
-			w->modal_last = NULL;
 		}
-		if (lastwp != NULL && window_has_pane(w, lastwp))
-			w->active = lastwp;
-		else
-			w->active = TAILQ_FIRST(&w->last_panes);
-		if (w->active != NULL && !window_pane_is_visible(w->active)) {
-			/* Use the topmost pane that can be seen. */
-			TAILQ_FOREACH(lastwp, &w->z_index, zentry) {
-				if (lastwp != wp &&
-				    window_pane_is_visible(lastwp))
-					break;
-			}
-			if (lastwp != NULL)
-				w->active = lastwp;
-		}
-		if (w->active == NULL) {
-			w->active = TAILQ_PREV(wp, window_panes, entry);
-			if (w->active == NULL)
-				w->active = TAILQ_NEXT(wp, entry);
-		}
+		w->active = window_get_top_pane(w, wp);
 		if (w->active != NULL) {
 			window_pane_stack_remove(&w->last_panes, w->active);
 			w->active->flags |= PANE_CHANGED;
@@ -1285,7 +1277,7 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 			window_update_focus(w);
 		}
 	} else if (wp == w->modal)
-		w->modal = w->modal_last = NULL;
+		w->modal = NULL;
 }
 
 void
@@ -1296,10 +1288,6 @@ window_remove_pane(struct window *w, struct window_pane *wp)
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
 	redraw_invalidate_scene(w);
 	window_pane_destroy(wp);
-
-	/* A window with one pane left has nothing to zoom. */
-	if ((w->flags & WINDOW_ZOOMED) && window_count_panes(w, 1) == 1)
-		window_unzoom(w, 1);
 }
 
 struct window_pane *
@@ -1366,11 +1354,11 @@ window_pane_zindex(struct window_pane *wp, u_int *i)
 	*i = 0;
 	TAILQ_FOREACH(wq, &w->z_index, zentry) {
 		if (wq == wp) {
-			if (!window_pane_is_raised(wp))
+			if (!window_pane_is_floating(wp))
 				(*i)++;
 			return (0);
 		}
-		if (window_pane_is_raised(wq) && window_pane_is_visible(wq))
+		if (window_pane_is_floating(wq) && window_pane_is_visible(wq))
 			(*i)++;
 	}
 
@@ -1452,7 +1440,7 @@ window_printable_flags(struct winlink *wl, int escape)
 		flags[pos++] = 'M';
 	if (wl->window->modal != NULL)
 		flags[pos++] = 'O';
-	if (wl->window->flags & WINDOW_ZOOMED)
+	if (window_zoomed_pane(wl->window) != NULL)
 		flags[pos++] = 'Z';
 	flags[pos] = '\0';
 	return (flags);
@@ -1811,16 +1799,37 @@ window_pane_clear_resizes(struct window_pane *wp,
 	}
 }
 
+/* Resize an exposed mode only when its screen differs from the pane. */
+static void
+window_pane_resize_mode(struct window_pane *wp)
+{
+	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
+	struct screen		*s;
+
+	if (wme == NULL || wme->mode->resize == NULL ||
+	    !window_pane_is_visible(wp)) {
+		return;
+	}
+	s = wme->screen;
+	if (s != NULL && screen_size_x(s) == wp->sx &&
+	    screen_size_y(s) == wp->sy) {
+		return;
+	}
+	wme->mode->resize(wme, wp->sx, wp->sy);
+}
+
+/* Resize pane contents, deferring covered mode views until they are exposed. */
 void
 window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
-	struct window_mode_entry	*wme;
 	struct window_pane_resize	*r;
 	struct event_payload		*ep;
 	struct cmd_find_state		 fs;
 
-	if (sx == wp->sx && sy == wp->sy)
+	if (sx == wp->sx && sy == wp->sy) {
+		window_pane_resize_mode(wp);
 		return;
+	}
 
 	screen_write_stop_sync(wp);
 
@@ -1841,9 +1850,7 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 		image_grid_resize_width(wp->base.grid, sx);
 #endif
 
-	wme = TAILQ_FIRST(&wp->modes);
-	if (wme != NULL && wme->mode->resize != NULL)
-		wme->mode->resize(wme, sx, sy);
+	window_pane_resize_mode(wp);
 
 	ep = event_payload_create();
 	cmd_find_from_pane(&fs, wp, 0);
@@ -2228,8 +2235,8 @@ window_pane_is_visible(struct window_pane *wp)
 	struct window		*w = wp->window;
 	struct window_pane	*wp1;
 
-	if (~w->flags & WINDOW_ZOOMED)
-		return (1);
+	if (wp->layout_cell == NULL)
+		return (0);
 
 	/* A pane is covered by any zoomed pane in front of it. */
 	TAILQ_FOREACH(wp1, &w->z_index, zentry) {
@@ -2371,6 +2378,66 @@ window_pane_layout_size_offset(struct window_pane *wp, int *xoff, int *yoff,
 	*sy = psy;
 }
 
+/* Find the tiled leaf at the near edge of a neighbouring subtree. */
+static struct window_pane *
+window_pane_find_tiled_leaf(struct layout_cell *lc, enum layout_type type,
+    int forward)
+{
+	struct layout_cell	*child;
+	struct window_pane	*wp;
+
+	if (layout_cell_is_tiled(lc))
+		return (lc->wp);
+	if (lc->type == LAYOUT_WINDOWPANE)
+		return (NULL);
+	if (lc->type == type && !forward) {
+		TAILQ_FOREACH_REVERSE(child, &lc->cells, layout_cells, entry) {
+			wp = window_pane_find_tiled_leaf(child, type, forward);
+			if (wp != NULL)
+				return (wp);
+		}
+	} else {
+		TAILQ_FOREACH(child, &lc->cells, entry) {
+			wp = window_pane_find_tiled_leaf(child, type, forward);
+			if (wp != NULL)
+				return (wp);
+		}
+	}
+	return (NULL);
+}
+
+/* Follow a fullscreen tile's retained position to its nearest tiled neighbour. */
+static struct window_pane *
+window_pane_find_tiled_neighbour(struct window_pane *wp, enum layout_type type,
+    int forward)
+{
+	struct layout_cell	*lc = wp->layout_cell, *parent, *other;
+	struct window_pane	*found;
+
+	parent = lc->parent;
+	while (parent != NULL) {
+		if (parent->type == type) {
+			other = lc;
+			for (;;) {
+				if (forward)
+					other = TAILQ_NEXT(other, entry);
+				else
+					other = TAILQ_PREV(other, layout_cells, entry);
+				if (other == NULL)
+					break;
+				found = window_pane_find_tiled_leaf(other, type,
+				    forward);
+				if (found != NULL)
+					return (found);
+			}
+		}
+		lc = parent;
+		parent = lc->parent;
+	}
+	found = window_pane_find_tiled_leaf(lc, type, forward);
+	return (found);
+}
+
 /*
  * Find the pane directly above another. We build a list of those adjacent to
  * top edge and then choose the best.
@@ -2386,6 +2453,10 @@ window_pane_find_up(struct window_pane *wp)
 
 	if (wp == NULL)
 		return (NULL);
+	if (wp->layout_cell->flags & LAYOUT_CELL_ZOOMEDTILED) {
+		best = window_pane_find_tiled_neighbour(wp, LAYOUT_TOPBOTTOM, 0);
+		return (best);
+	}
 	w = wp->window;
 	status = window_get_pane_status(w);
 
@@ -2447,6 +2518,10 @@ window_pane_find_down(struct window_pane *wp)
 
 	if (wp == NULL)
 		return (NULL);
+	if (wp->layout_cell->flags & LAYOUT_CELL_ZOOMEDTILED) {
+		best = window_pane_find_tiled_neighbour(wp, LAYOUT_TOPBOTTOM, 1);
+		return (best);
+	}
 	w = wp->window;
 	status = window_get_pane_status(w);
 
@@ -2508,6 +2583,10 @@ window_pane_find_left(struct window_pane *wp)
 
 	if (wp == NULL)
 		return (NULL);
+	if (wp->layout_cell->flags & LAYOUT_CELL_ZOOMEDTILED) {
+		best = window_pane_find_tiled_neighbour(wp, LAYOUT_LEFTRIGHT, 0);
+		return (best);
+	}
 	w = wp->window;
 
 	list = NULL;
@@ -2560,6 +2639,10 @@ window_pane_find_right(struct window_pane *wp)
 
 	if (wp == NULL)
 		return (NULL);
+	if (wp->layout_cell->flags & LAYOUT_CELL_ZOOMEDTILED) {
+		best = window_pane_find_tiled_neighbour(wp, LAYOUT_LEFTRIGHT, 1);
+		return (best);
+	}
 	w = wp->window;
 
 	list = NULL;
@@ -2765,7 +2848,7 @@ window_pane_show_scrollbar(struct window_pane *wp)
 
 	if (SCREEN_IS_ALTERNATE(&wp->base))
 		return (0);
-	if ((w->flags & WINDOW_ZOOMED) && w->active != NULL) {
+	if (w->active != NULL && (w->active->flags & PANE_ZOOMED)) {
 		wme = TAILQ_FIRST(&w->active->modes);
 		if (wme != NULL &&
 		    (wme->mode->flags & WINDOW_MODE_HIDE_SCROLLBARS)) {
@@ -3096,8 +3179,16 @@ window_pane_get_pane_status(struct window_pane *wp)
 	    (wp->flags & PANE_ZOOMED))
 		return (PANE_STATUS_OFF);
 
-	if (!window_pane_is_unzoomed_float(wp))
-		return (window_get_pane_status(wp->window));
+	if (wp->flags & PANE_ZOOMED) {
+		status = options_get_number(wp->options, "pane-border-status");
+		if (status != PANE_STATUS_OFF)
+			status = PANE_STATUS_TOP;
+		return (status);
+	}
+	if (!window_pane_is_floating(wp)) {
+		status = window_get_pane_status(wp->window);
+		return (status);
+	}
 	if (window_pane_get_pane_lines(wp) == PANE_LINES_NONE)
 		return (PANE_STATUS_OFF);
 
@@ -3128,15 +3219,6 @@ window_pane_is_unzoomed_float(struct window_pane *wp)
 {
 	if (wp->flags & PANE_ZOOMED)
 		return (0);
-	return (window_pane_is_floating(wp));
-}
-
-/* Is the pane a float or a zoomed pane, that is above the tiled panes? */
-int
-window_pane_is_raised(struct window_pane *wp)
-{
-	if (wp->flags & PANE_ZOOMED)
-		return (1);
 	return (window_pane_is_floating(wp));
 }
 

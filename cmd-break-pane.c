@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "tmux.h"
 
@@ -47,6 +48,7 @@ const struct cmd_entry cmd_break_pane_entry = {
 	.exec = cmd_break_pane_exec
 };
 
+/* Float a tiled pane, saving its place in the tiled layout. */
 static enum cmd_retval
 cmd_break_pane_float(struct cmdq_item *item, struct args *args,
     struct window *w, struct window_pane *wp)
@@ -67,9 +69,9 @@ cmd_break_pane_float(struct cmdq_item *item, struct args *args,
 		return (CMD_RETURN_ERROR);
 	}
 	layout_remove_tile(w, lc);
+	lc->flags |= LAYOUT_CELL_FLOATING;
 	layout_set_size(lc, fg->sx, fg->sy, fg->xoff, fg->yoff);
 
-	lc->flags |= LAYOUT_CELL_FLOATING;
 	window_raise_pane(wp);
 
 	if (!args_has(args, 'd'))
@@ -97,6 +99,8 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window		*w = wl->window, *old_w = w;
 	char			*cause, *cp;
 	int			 idx = target->idx, before, old_idx = wl->idx;
+	struct layout_geometry	 floating;
+	int			 is_floating;
 	const char		*template, *name = args_get(args, 'n');
 
 	if (wp == w->modal) {
@@ -106,6 +110,9 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (args_has(args, 'W'))
 		return (cmd_break_pane_float(item, args, w, wp));
+
+	if (wp->flags & PANE_ZOOMED)
+		window_unzoom_pane(wp, 1);
 
 	if (name != NULL && !check_name(name)) {
 		cmdq_error(item, "invalid window name: %s", name);
@@ -144,6 +151,9 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
+	is_floating = window_pane_is_floating(wp);
+	memcpy(&floating, &wp->layout_cell->g, sizeof floating);
+
 	TAILQ_REMOVE(&w->panes, wp, entry);
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
 	server_client_remove_pane(wp);
@@ -173,6 +183,11 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	wl = session_attach(dst_s, w, idx, &cause); /* can't fail */
 
 	layout_init(w, wp);
+	if (is_floating) {
+		wp->layout_cell->flags |= LAYOUT_CELL_FLOATING;
+		memcpy(&wp->layout_cell->g, &floating, sizeof floating);
+		layout_fix_panes(w, NULL);
+	}
 	wp->flags |= PANE_CHANGED;
 	colour_palette_from_option(&wp->palette, wp->options);
 

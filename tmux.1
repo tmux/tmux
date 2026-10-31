@@ -4030,8 +4030,11 @@ With
 the target pane is toggled between zoomed (occupying the whole of the window
 above the layout and above any panes behind it in the stacking order) and
 unzoomed (its normal position).
-Any number of panes may be zoomed and a zoomed pane may be floating or tiled;
-floating panes in front of a zoomed pane stay visible above it.
+Zooming a tiled pane floats it and gives its tiled space to the other panes.
+Unzooming restores its tiled position or its previous floating rectangle.
+Any number of panes may be zoomed, with ordinary floating panes above or
+between them in the stacking order.
+Zoomed panes cannot be moved or resized.
 .Fl a
 with
 .Fl Z
@@ -4209,6 +4212,7 @@ and
 are used to set and clear the
 .Em marked pane .
 There is one marked pane at a time, setting a new marked pane clears the last.
+Marking a pane does not activate, raise or show it.
 The marked pane is the default target for
 .Fl s
 to
@@ -6277,28 +6281,6 @@ see the
 .Sx STYLES
 section.
 Attributes are ignored.
-.Pp
-.It Xo Ic pane\-raise\-on\-focus
-.Op Ic floating | all | off
-.Xc
-Which panes are raised to the front when they are made active.
-.Ic floating
-raises floating panes, so that activating a floating pane brings it to the
-front, but not zoomed panes, so that the active pane of a zoomed window can be
-used without floating panes above it being covered.
-.Ic all
-also raises zoomed panes and
-.Ic off
-raises none.
-A floating or zoomed pane that is covered by a zoomed pane is always raised
-when it is made active; a tiled pane that is covered unzooms every pane
-instead.
-Moving the mouse onto a pane with
-.Ic focus\-follows\-mouse
-makes it active without raising it, so
-.Ic all
-is usually wanted with that option, and clicking on the border of a floating or
-zoomed pane always raises it.
 .Pp
 .It Xo Ic pane\-scrollbars
 .Op Cm off | modal | on | auto\-hide

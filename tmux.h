@@ -1197,11 +1197,6 @@ enum pane_lines {
 	PANE_LINES_ROUNDED
 };
 
-/* Panes raised when they are made active. */
-#define PANE_RAISE_FLOATING 0
-#define PANE_RAISE_ALL 1
-#define PANE_RAISE_OFF 2
-
 /* Pane border indicator option. */
 #define PANE_BORDER_OFF 0
 #define PANE_BORDER_COLOUR 1
@@ -1503,7 +1498,6 @@ struct window {
 
 	struct window_pane	*active;
 	struct window_pane	*modal;
-	struct window_pane	*modal_last;
 	struct window_panes 	 last_panes;
 	struct window_panes      z_index;
 	struct window_panes	 panes;
@@ -1547,7 +1541,7 @@ struct window {
 #define WINDOW_BELL 0x1
 #define WINDOW_ACTIVITY 0x2
 #define WINDOW_SILENCE 0x4
-#define WINDOW_ZOOMED 0x8
+/* 0x8 unused */
 #define WINDOW_RESIZE 0x20
 #define WINDOW_ALERTFLAGS (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_SILENCE)
 
@@ -1629,6 +1623,13 @@ struct layout_geometry {
 	int	yoff;
 };
 
+/* Saved tiled allocation; g.sx is UINT_MAX if no rectangle was saved. */
+struct layout_saved {
+	struct layout_geometry	 g;		/* previous tiled rectangle */
+	u_int			 generation;	/* parent's revision after removal */
+	u_int			 previous;	/* parent's revision before removal */
+};
+
 /* Layout cells queue. */
 TAILQ_HEAD(layout_cells, layout_cell);
 
@@ -1638,11 +1639,14 @@ struct layout_cell {
 
 	int			 flags;
 #define LAYOUT_CELL_FLOATING 0x1
+#define LAYOUT_CELL_ZOOMEDTILED 0x2 /* return to tiles when unzoomed */
 
 	struct layout_cell	*parent;
 
 	struct layout_geometry	 g;
 	struct layout_geometry	 fg; /* saved floating pane */
+	struct layout_saved	 saved;
+	u_int			 generation; /* revision of tiled allocations */
 
 	struct window_pane	*wp;
 	struct layout_cells	 cells;
@@ -3843,6 +3847,7 @@ void		 window_resize(struct window *, u_int, u_int, int, int);
 void		 window_pane_send_resize(struct window_pane *, u_int, u_int);
 void		 window_raise_pane(struct window_pane *);
 void		 window_lower_pane(struct window_pane *);
+struct window_pane *window_get_top_pane(struct window *, struct window_pane *);
 int		 window_zoom(struct window_pane *);
 int		 window_unzoom_pane(struct window_pane *, int);
 int		 window_unzoom(struct window *, int);
@@ -3939,7 +3944,6 @@ struct style_range *window_pane_status_get_range(struct window_pane *, u_int,
 		     u_int);
 int		 window_pane_is_floating(struct window_pane *);
 int		 window_pane_is_unzoomed_float(struct window_pane *);
-int		 window_pane_is_raised(struct window_pane *);
 void		 window_redraw_floating_pane(struct window_pane *, int, int,
 		     int, int);
 
@@ -4023,8 +4027,8 @@ int		 layout_floating_args_parse(struct cmdq_item *, struct args *,
 int		 layout_split_floating_cell(struct layout_cell *,
 		     struct window *, struct layout_geometry *, enum pane_lines,
 		     int, char **);
-int		 layout_remove_tile(struct window *, struct layout_cell *);
-int		 layout_insert_tile(struct window *, struct layout_cell *);
+void		 layout_remove_tile(struct window *, struct layout_cell *);
+void		 layout_insert_tile(struct window *, struct layout_cell *);
 
 /* layout-custom.c */
 #define LAYOUT_CUSTOM_OLD_FORMAT 0x1

@@ -53,7 +53,7 @@ OUTER=$($TMUX2 list-panes -F '#{pane_id}' | head -1)
 [ -n "$OUTER" ] || fail "No outer pane."
 
 # Moving onto a floating pane that is behind another one focuses it but does not
-# raise it, whatever pane-raise-on-focus says.
+# raise it without raising panes merely because the mouse moves onto them.
 check "$A" '#{pane_active}' 1
 check "$Y" '#{pane_z}' 0
 mouse '\033[<35;12;12M\033[<35;14;13M'

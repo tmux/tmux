@@ -98,6 +98,11 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	enum pane_lines		 lines;
 	u_int			 count = args_count(args);
 
+	if (cmd_get_entry(self) == &cmd_split_window_entry &&
+	    (wp->flags & PANE_ZOOMED)) {
+		window_unzoom_pane(wp, 1);
+	}
+
 	if (cmd_get_entry(self) == &cmd_new_pane_entry)
 		is_floating = !args_has(args, 'L');
 	else {
@@ -131,8 +136,10 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		flags |= SPAWN_FULLSIZE;
 	if (args_has(args, 'd'))
 		flags |= SPAWN_DETACHED;
-	if (args_has(args, 'Z'))
+	if (args_has(args, 'Z')) {
+		flags &= ~SPAWN_DETACHED;
 		flags |= SPAWN_ZOOM;
+	}
 	if (args_has(args, 'O'))
 		flags |= SPAWN_MODAL|SPAWN_FLOATOVERZOOM;
 	if (is_floating && args_has(args, 'A'))

@@ -10,8 +10,7 @@
 #   every zoom;
 # - activating a covered float raising it, and activating a tiled pane that is
 #   not zoomed unzooming everything but leaving the floats floating;
-# - pane-raise-on-focus deciding whether activating a visible zoomed pane
-#   raises it;
+# - selecting a visible fullscreen pane leaving ordinary floats above it;
 # - new-pane -A staying above everything raised later;
 # - commands that only change the tiled layout leaving zooms alone, and
 #   select-layout/next-layout still unzooming;
@@ -162,7 +161,7 @@ zoomed "$A" 1
 window_zoomed "$A" 1
 run resize-pane -a -Z -t "$A"
 
-# pane-raise-on-focus: by default only floats are raised.
+# Selecting a visible fullscreen pane leaves the ordinary floats above it.
 reset
 run resize-pane -Z -t "$A"
 X=$(run new-pane -PF '#{pane_id}' -t "$A" -x 20 -y 8 -X 8 -Y 3 '') || exit 1
@@ -173,16 +172,6 @@ front "$Y"
 ahead "$X" "$A"
 run select-pane -t "$X"
 front "$X"
-run set -w -t "$A" pane-raise-on-focus off
-run select-pane -t "$Y"
-ahead "$X" "$Y"
-run set -w -t "$A" pane-raise-on-focus all
-run select-pane -t "$A"
-front "$A"
-run select-pane -t "$Y"
-front "$Y"
-run set -wu -t "$A" pane-raise-on-focus
-
 # new-pane -A stays above everything raised later.
 reset
 run resize-pane -Z -t "$A"
@@ -219,14 +208,12 @@ run resize-pane -Z -t "$A"
 run select-layout -t "$A" even-horizontal
 window_zoomed "$A" 0
 
-# A zoomed pane can be floated and a float can be zoomed and tiled again.
+# Tiling a fullscreen pane first restores its normal tiled placement.
 reset
 run resize-pane -Z -t "$B"
-run break-pane -W -s "$B"
 check "$B" '#{pane_floating_flag}:#{pane_zoomed_flag}' '1:1'
 run join-pane -s "$B" -t "$B"
-check "$B" '#{pane_floating_flag}:#{pane_zoomed_flag}' '0:1'
-run resize-pane -Z -t "$B"
+check "$B" '#{pane_floating_flag}:#{pane_zoomed_flag}' '0:0'
 
 # A float covered by a zoomed pane can still be moved and resized without
 # unzooming anything.

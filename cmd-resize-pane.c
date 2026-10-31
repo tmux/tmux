@@ -94,8 +94,10 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		server_redraw_window(w);
 		return (CMD_RETURN_NORMAL);
 	}
-	if (wp->flags & PANE_ZOOMED)
-		window_unzoom_pane(wp, 1);
+	if (wp->flags & PANE_ZOOMED) {
+		cmdq_error(item, "pane is zoomed");
+		return (CMD_RETURN_ERROR);
+	}
 
 	if (args_has(args, 'x')) {
 		x = args_percentage(args, 'x', 0, PANE_MAXIMUM, w->sx, &cause);

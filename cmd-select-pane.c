@@ -93,8 +93,6 @@ cmd_select_pane_marked_pane(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*wp = target->wp, *lwp = NULL, *mwp;
 	struct session		*s = target->s;
 
-	if (args_has(args, 'm') && !window_pane_is_visible(wp))
-		return (CMD_RETURN_NORMAL);
 	if (server_check_marked())
 		lwp = marked_pane.wp;
 
@@ -137,10 +135,6 @@ cmd_select_pane_marked_pane(struct cmd *self, struct cmdq_item *item)
 		mwp->flags |= (PANE_REDRAW|PANE_STYLECHANGED|PANE_THEMECHANGED);
 		server_redraw_window_borders(mwp->window);
 		server_status_window(mwp->window);
-	}
-	if (window_pane_is_floating(wp)) {
-		window_redraw_active_switch(wp->window, wp);
-		window_set_active_pane(wp->window, wp, 1);
 	}
 	return (CMD_RETURN_NORMAL);
 }

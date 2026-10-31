@@ -589,7 +589,6 @@ complete:
 	if (sc->flags & SPAWN_RESPAWN)
 		return (new_wp);
 	if (sc->flags & SPAWN_MODAL) {
-		w->modal_last = w->active;
 		w->modal = new_wp;
 		window_redraw_active_switch(w, new_wp);
 		if (sc->flags & SPAWN_NONOTIFY)

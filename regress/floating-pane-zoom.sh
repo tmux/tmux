@@ -97,7 +97,9 @@ for mode in before after detached modal; do
 	check "$float" '#{pane_left}:#{pane_top}:#{pane_width}:#{pane_height}' \
 	    '25:7:30:9'
 	run kill-pane -t "$float"
-	check "$base" '#{window_layout}' "$layout"
+	run select-pane -t "$base"
+	got=$(run display-message -p -t "$base" '#{window_layout}' | sed 's/"l":[0-9]*,//g')
+	[ "$got" = "$layout" ] || fail 'tiled layout was not restored'
 done
 
 # Put an ordinary (hidden while zoomed) float between two over-zoom floats
@@ -110,7 +112,7 @@ float=$(run new-pane -AdPF '#{pane_id}' -t "$base" '') || exit 1
 check "$float" '#{pane_zoomed_flag}:#{pane_floating_flag}' '0:1'
 active=0
 run resize-pane -Z -t "$base"
-check "$base" '#{pane_zoomed_flag}:#{pane_floating_flag}' '1:0'
+check "$base" '#{pane_zoomed_flag}:#{pane_floating_flag}' '1:1'
 check "$other" '#{pane_zoomed_flag}:#{pane_floating_flag}' '0:0'
 check "$hidden" '#{pane_zoomed_flag}:#{pane_floating_flag}' '0:1'
 run set -gu @unzoomed
@@ -143,13 +145,13 @@ check "$base" '#{pane_z}' 4
 run kill-pane -t "$hidden"
 run kill-pane -t "$back"
 
-# Zooming a float keeps it floating. Resizing a zoomed float unzooms just that
-# pane, but operations on other panes leave a zoom alone.
+# Fullscreen panes cannot be resized; operations on other panes leave zoom alone.
 run resize-pane -Z -t "$float"
 check "$float" '#{pane_zoomed_flag}:#{pane_floating_flag}' '1:1'
-run resize-pane -t "$float" -x 25
-check "$float" '#{window_zoomed_flag}:#{pane_floating_flag}:#{pane_width}' \
-    '0:1:23'
+$TMUX resize-pane -t "$float" -x 25 2>/dev/null && fail 'resized fullscreen pane'
+check "$float" '#{pane_zoomed_flag}:#{pane_floating_flag}:#{pane_width}' \
+    '1:1:80'
+run resize-pane -Z -t "$float"
 run resize-pane -Z -t "$base"
 run resize-pane -t "$other" -D 1
 check "$base" '#{window_zoomed_flag}' 1
