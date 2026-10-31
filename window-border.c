@@ -153,31 +153,37 @@ window_pane_get_border_cell(struct window_pane *wp, int cell_type,
 /* Get pane border style. */
 void
 window_pane_get_border_style(struct window_pane *wp, struct client *c,
-    struct grid_cell *gc)
+    struct grid_cell *gc, u_int *dim)
 {
 	struct session		*s = c->session;
 	struct format_tree	*ft;
 	const char		*option;
 	struct grid_cell	*saved;
+	u_int			*saved_dim;
 	int			*flag;
 
 	if (wp == c->session->curw->window->active) {
 		flag = &wp->active_border_gc_set;
 		saved = &wp->active_border_gc;
+		saved_dim = &wp->active_border_dim;
 		option = "pane-active-border-style";
 	} else {
 		flag = &wp->border_gc_set;
 		saved = &wp->border_gc;
+		saved_dim = &wp->border_dim;
 		option = "pane-border-style";
 	}
 
 	if (!*flag) {
 		ft = format_create_defaults(NULL, c, s, s->curw, wp);
-		style_apply(saved, wp->options, option, ft);
+		memcpy(saved, &grid_default_cell, sizeof *saved);
+		*saved_dim = style_add(saved, wp->options, option, ft)->dim;
 		format_free(ft);
 		*flag = 1;
 	}
 	memcpy(gc, saved, sizeof *gc);
+	if (dim != NULL)
+		*dim = *saved_dim;
 }
 
 /* Build pane status line. */
@@ -211,7 +217,7 @@ window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
 	wp->status_screen.mode = 0;
 	screen_write_start(&ctx, &wp->status_screen);
 
-	window_pane_get_border_style(wp, c, &gc);
+	window_pane_get_border_style(wp, c, &gc, NULL);
 	pane_lines = window_pane_get_pane_lines(wp);
 	for (i = 0; i < width; i++) {
 		cell_type = redraw_get_status_border_cell_type(&span, i);

@@ -1916,6 +1916,12 @@ tty_keys_palette(struct tty *tty, const char *buf, size_t len, size_t *size,
 	pd.c = colour_parseX11(endptr + 1);
 	if (pd.c == -1)
 		return (0);
+	if (idx < 16 && tty->ansi[idx] != pd.c) {
+		tty->ansi[idx] = pd.c;
+		if (tty->flags & TTY_OPENED)
+			tty_invalidate(tty);
+		server_redraw_client(c);
+	}
 	pd.idx = idx;
 	input_request_reply(c, INPUT_REQUEST_PALETTE, &pd);
 
