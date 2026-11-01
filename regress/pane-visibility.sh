@@ -71,7 +71,23 @@ run resize-pane -h
 check "$A" '#{pane_hidden_flag}' 1
 run resize-pane -H
 check "$A" '#{pane_hidden_flag}:#{pane_active}' 0:1
-run select-pane -H
+run resize-pane -H
 check "$A" '#{pane_active}' 1
+
+# An unhide alias uses resize-pane for explicit targets and history.
+run set -s 'command-alias[unhide-pane]' 'unhide-pane=resize-pane -H'
+run resize-pane -h -t "$B"
+run unhide-pane -t "$B"
+check "$B" '#{pane_hidden_flag}:#{pane_active}' 0:1
+run resize-pane -h -t "$B"
+run unhide-pane
+check "$B" '#{pane_hidden_flag}:#{pane_active}' 0:1
+
+# Selection has no separate history-unhide flag.
+for flag in -h -H; do
+	if $TMUX select-pane "$flag" >/dev/null 2>&1; then
+		fail "select-pane unexpectedly accepted $flag"
+	fi
+done
 
 exit 0

@@ -3850,7 +3850,7 @@ void		 window_resize(struct window *, u_int, u_int, int, int);
 void		 window_pane_send_resize(struct window_pane *, u_int, u_int);
 void		 window_hide_pane(struct window_pane *, int);
 void		 window_show_pane(struct window_pane *);
-struct window_pane *window_show_last_hidden_pane(struct window *, int);
+void		 window_show_last_hidden_pane(struct window *, int);
 void		 window_raise_pane(struct window_pane *);
 void		 window_lower_pane(struct window_pane *);
 struct window_pane *window_get_top_pane(struct window *, struct window_pane *);

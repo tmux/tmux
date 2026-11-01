@@ -4079,9 +4079,11 @@ shows and selects the pane specified by
 .Fl t .
 Without
 .Fl t ,
-it restores the most recently hidden pane, as with
-.Ic select\-pane
-.Fl H .
+it restores the most recently hidden pane and makes it active.
+Repeated calls show hidden panes in reverse order of hiding.
+Selecting a restored tiled pane hides any zoomed panes covering it, as with
+ordinary selection; those panes may then be restored by another call.
+If no panes are hidden, this does nothing.
 .Fl d
 with
 .Fl H
@@ -4248,7 +4250,7 @@ applies the last set layout if possible (undoes the most recent layout change).
 spreads the current pane and any panes next to it out evenly.
 .Tg selectp
 .It Xo Ic select\-pane
-.Op Fl DdeHLlMmRUZ
+.Op Fl DdeLlMmRUZ
 .Op Fl T Ar title
 .Op Fl t Ar target\-pane
 .Xc
@@ -4268,18 +4270,6 @@ or
 .Fl U
 is used, respectively the pane below, to the left, to the right, or above the
 target pane is used.
-.Pp
-.Fl H
-shows the most recently hidden pane in the window containing
-.Ar target\-pane
-and makes it active.
-Repeated calls show hidden panes in reverse order of hiding.
-Selecting a restored tiled pane hides any zoomed panes covering it, as with
-ordinary selection; those panes may then be restored by another call.
-If no panes are hidden, this does nothing.
-To restore a pane without changing focus, use
-.Ic resize\-pane
-.Fl dH .
 .Pp
 .Fl Z
 moves the zoom to the pane selected if it was covered by a zoomed pane,

@@ -1104,7 +1104,7 @@ window_show_pane(struct window_pane *wp)
 }
 
 /* Show the most recently hidden pane, optionally making it active. */
-struct window_pane *
+void
 window_show_last_hidden_pane(struct window *w, int activate)
 {
 	struct window_pane	*wp, *last = NULL;
@@ -1120,12 +1120,11 @@ window_show_last_hidden_pane(struct window *w, int activate)
 		}
 	}
 	if (last == NULL)
-		return (NULL);
+		return;
 	window_show_pane(last);
 
 	if (activate)
 		window_set_active_pane(w, last, 1);
-	return (last);
 }
 
 /* Move a pane to the back of the panes it is stacked with. */
