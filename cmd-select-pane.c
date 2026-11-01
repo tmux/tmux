@@ -34,8 +34,8 @@ const struct cmd_entry cmd_select_pane_entry = {
 	.description = "Select or mark a pane.",
 	.alias = "selectp",
 
-	.args = { "DdegLlMmP:RT:t:UZ", 0, 0, NULL }, /* -P and -g deprecated */
-	.usage = "[-DdeLlMmRUZ] [-T title] " CMD_TARGET_PANE_USAGE,
+	.args = { "DdeghLlMmP:RT:t:UZ", 0, 0, NULL }, /* -P and -g deprecated */
+	.usage = "[-DdehLlMmRUZ] [-T title] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -258,6 +258,17 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 			server_status_window(wp->window);
 		}
 		free(title);
+		return (CMD_RETURN_NORMAL);
+	}
+
+	if (args_has(args, 'h')) {
+		wp = window_show_last_hidden_pane(w, 1);
+		if (wp != NULL) {
+			if (wp == w->active)
+				cmd_find_from_winlink_pane(current, wl, wp, 0);
+			cmd_find_from_winlink_pane(&fs, wl, wp, 0);
+			cmdq_insert_hook(s, item, &fs, "after-select-pane");
+		}
 		return (CMD_RETURN_NORMAL);
 	}
 

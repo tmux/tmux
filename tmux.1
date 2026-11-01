@@ -4074,11 +4074,9 @@ All panes may be hidden, leaving the window background visible.
 Modal panes cannot be hidden.
 Selecting a hidden pane shows it.
 .Fl h
-shows the most recently hidden pane in the window.
-Repeated calls show the remaining hidden panes in reverse order of hiding.
-If no panes are hidden, it does nothing.
-The pane is made active unless it is a tiled pane covered by a zoomed pane;
-in that case focus stays on the exposed pane.
+has the same restoration behaviour as
+.Ic select\-pane
+.Fl h .
 .Fl d
 with
 .Fl h
@@ -4241,7 +4239,7 @@ applies the last set layout if possible (undoes the most recent layout change).
 spreads the current pane and any panes next to it out evenly.
 .Tg selectp
 .It Xo Ic select\-pane
-.Op Fl DdeLlMmRUZ
+.Op Fl DdehLlMmRUZ
 .Op Fl T Ar title
 .Op Fl t Ar target\-pane
 .Xc
@@ -4261,6 +4259,19 @@ or
 .Fl U
 is used, respectively the pane below, to the left, to the right, or above the
 target pane is used.
+.Pp
+.Fl h
+shows the most recently hidden pane in the window containing
+.Ar target\-pane
+and makes it active.
+Repeated calls show hidden panes in reverse order of hiding.
+Selecting a restored tiled pane hides any zoomed panes covering it, as with
+ordinary selection; those panes may then be restored by another call.
+If no panes are hidden, this does nothing.
+To restore a pane without changing focus, use
+.Ic resize\-pane
+.Fl dh .
+.Pp
 .Fl Z
 moves the zoom to the pane selected if it was covered by a zoomed pane,
 instead of hiding the zoomed panes.

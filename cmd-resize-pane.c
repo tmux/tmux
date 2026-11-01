@@ -134,17 +134,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (cmd_resize_pane_mouse_update(self, item));
 
 	if (args_has(args, 'h')) {
-		wp = window_get_hidden_pane(w);
-		if (wp == NULL)
-			return (CMD_RETURN_NORMAL);
-		window_show_pane(wp);
-
-		/* Restoring a covered tile must not hide fullscreen panes again. */
-		if (!args_has(args, 'd') &&
-		    (window_pane_is_floating(wp) || window_pane_is_visible(wp))) {
-			window_set_active_pane(w, wp, 1);
-		}
-		server_redraw_window(w);
+		window_show_last_hidden_pane(w, !args_has(args, 'd'));
 		return (CMD_RETURN_NORMAL);
 	}
 	if (args_has(args, 'H')) {

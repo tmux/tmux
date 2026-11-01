@@ -401,7 +401,7 @@ key_bindings_init(void)
 		"bind -N 'New floating pane' * { new-pane }",
 		"bind -N 'Show desktop' _ { resize-pane -aH }",
 		"bind -N 'Hide pane' h { if -F '#{!:#{pane_hidden_flag}}' { resize-pane -H } }",
-		"bind -N 'Show last hidden pane' H { resize-pane -h }",
+		"bind -N 'Show last hidden pane' H { select-pane -h }",
 		"bind -N 'Toggle pane between floating and tiled' @ { if -F '#{pane_floating_flag}' { join-pane } { break-pane -W } }",
 		"bind -N 'Switch to previous client' ( { switch-client -p }",
 		"bind -N 'Switch to next client' ) { switch-client -n }",

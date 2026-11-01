@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Restore hidden panes in reverse order without hiding fullscreen covers again.
+# Restore hidden panes in reverse order and activate each restored pane.
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -38,18 +38,21 @@ run resize-pane -H -t "$B"
 run resize-pane -H -t "$X"
 run resize-pane -Z -t "$A"
 run resize-pane -H -t "$A"
-run resize-pane -h
+run select-pane -h
 check "$A" '#{pane_hidden_flag}:#{pane_zoomed_flag}:#{pane_active}' 0:1:1
 check "$X" '#{pane_hidden_flag}' 1
 check "$B" '#{pane_hidden_flag}' 1
 run resize-pane -h
 check "$X" '#{pane_hidden_flag}:#{pane_active}' 0:1
-run resize-pane -h
-check "$B" '#{pane_hidden_flag}:#{pane_active}' 0:0
-check "$A" '#{pane_hidden_flag}:#{pane_zoomed_flag}' 0:1
-check "$X" '#{pane_active}' 1
-run resize-pane -h
-check "$X" '#{pane_active}' 1
+run select-pane -h
+check "$B" '#{pane_hidden_flag}:#{pane_active}' 0:1
+check "$A" '#{pane_hidden_flag}:#{pane_zoomed_flag}' 1:1
+
+# Selecting the restored tile hid its fullscreen cover; the next call restores it.
+run select-pane -h
+check "$A" '#{pane_hidden_flag}:#{pane_active}' 0:1
+run select-pane -h
+check "$A" '#{pane_active}' 1
 
 # Selecting a covered tile still hides its fullscreen covers.
 run select-pane -t "$B"
@@ -67,10 +70,10 @@ C=$(run split-window -dPF '#{pane_id}' -t "$A") || exit 1
 check "$A" '#{pane_hidden_flag}:#{pane_zoomed_flag}:#{pane_floating_flag}' 1:0:0
 check "$C" '#{pane_hidden_flag}:#{pane_active}' 1:0
 check "$B" '#{pane_active}' 1
-run resize-pane -h
+run select-pane -h
 check "$C" '#{pane_hidden_flag}:#{pane_active}' 0:1
 check "$A" '#{pane_hidden_flag}' 1
-run resize-pane -h
+run select-pane -h
 check "$A" '#{pane_hidden_flag}:#{pane_active}' 0:1
 
 # Deletion drops history; swapping carries it with the hidden position.
@@ -80,7 +83,7 @@ run resize-pane -H -t "$B"
 run swap-pane -d -s "$A" -t "$B"
 check "$A" '#{pane_hidden_flag}' 1
 check "$B" '#{pane_hidden_flag}' 0
-run resize-pane -h
+run select-pane -h
 check "$A" '#{pane_hidden_flag}:#{pane_active}' 0:1
 
 # Desktop restoration leaves independently hidden panes in the history.
@@ -90,7 +93,7 @@ check "$X" '#{pane_hidden_flag}' 1
 run resize-pane -aH
 check "$X" '#{pane_hidden_flag}' 0
 check "$B" '#{pane_hidden_flag}' 1
-run resize-pane -h
+run select-pane -h
 check "$B" '#{pane_hidden_flag}:#{pane_active}' 0:1
 
 # Detached restoration leaves focus alone and removes the pane from history.
@@ -102,5 +105,31 @@ run resize-pane -H -t "$A"
 run resize-pane -dH -t "$A"
 check "$A" '#{pane_hidden_flag}:#{pane_active}' 0:0
 check "$B" '#{pane_active}' 1
+
+# Selection updates the command target and fires the usual selection hook.
+run set-hook -g after-select-pane 'set -gF @restored-pane "#{pane_id}"'
+run resize-pane -H -t "$A"
+got=$(run select-pane -h ';' display-message -p '#{pane_id}') || exit 1
+[ "$got" = "$A" ] || fail "restored command target is '$got', expected '$A'"
+check "$A" '#{@restored-pane}' "$A"
+
+# The target chooses the window whose hidden history is used.
+run resize-pane -H -t "$B"
+Y=$(run new-window -dPF '#{pane_id}' -n other) || exit 1
+run resize-pane -H -t "$Y"
+run select-pane -h -t "$Y"
+check "$Y" '#{pane_hidden_flag}:#{pane_active}' 0:1
+check "$B" '#{pane_hidden_flag}' 1
+run select-pane -h -t "$A"
+check "$B" '#{pane_hidden_flag}:#{pane_active}' 0:1
+
+# -d retains its existing input-disabling meaning on select-pane.
+run resize-pane -H -t "$A"
+run select-pane -dh -t "$A"
+check "$A" '#{pane_hidden_flag}:#{pane_input_off}' 1:1
+check "$B" '#{pane_active}' 1
+run select-pane -e -t "$A"
+run select-pane -h
+check "$A" '#{pane_hidden_flag}:#{pane_input_off}:#{pane_active}' 0:0:1
 
 exit 0

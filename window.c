@@ -1103,20 +1103,28 @@ window_show_pane(struct window_pane *wp)
 	server_redraw_window(w);
 }
 
-/* Find the most recently hidden pane in this window. */
+/* Show the most recently hidden pane, optionally making it active. */
 struct window_pane *
-window_get_hidden_pane(struct window *w)
+window_show_last_hidden_pane(struct window *w, int activate)
 {
 	struct window_pane	*wp, *last = NULL;
+	struct layout_cell	*lc;
 	uint64_t		 point = 0;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if ((wp->flags & PANE_HIDDEN) && wp->layout_cell != NULL &&
-		    wp->layout_cell->hidden_point > point) {
+		lc = wp->layout_cell;
+		if ((wp->flags & PANE_HIDDEN) && lc != NULL &&
+		    lc->hidden_point > point) {
 			last = wp;
-			point = wp->layout_cell->hidden_point;
+			point = lc->hidden_point;
 		}
 	}
+	if (last == NULL)
+		return (NULL);
+	window_show_pane(last);
+
+	if (activate)
+		window_set_active_pane(w, last, 1);
 	return (last);
 }
 
