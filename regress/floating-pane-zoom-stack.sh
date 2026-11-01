@@ -12,8 +12,8 @@
 #   not zoomed unzooming everything but leaving the floats floating;
 # - selecting a visible fullscreen pane leaving ordinary floats above it;
 # - new-pane -A staying above everything raised later;
-# - commands that only change the tiled layout leaving zooms alone, and
-#   select-layout/next-layout still unzooming;
+# - commands that change the tiled layout, including select-layout and
+#   next-layout, leaving zooms alone;
 # - break-pane -W, move-pane and kill-pane working while panes are zoomed.
 
 PATH=/bin:/usr/bin
@@ -216,12 +216,11 @@ run kill-pane -t "$B"
 zoomed "$A" 1
 window_zoomed "$A" 1
 
-# ... but select-layout and next-layout still unzoom.
+# Applying a named layout also leaves fullscreen panes in place.
 run next-layout -t "$A"
-window_zoomed "$A" 0
-run resize-pane -Z -t "$A"
+window_zoomed "$A" 1
 run select-layout -t "$A" even-horizontal
-window_zoomed "$A" 0
+window_zoomed "$A" 1
 
 # Tiling a fullscreen pane first restores its normal tiled placement.
 reset

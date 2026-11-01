@@ -160,8 +160,17 @@ layout_set_even(struct window *w, enum layout_type type)
 	layout_print_cell(w->layout_root, __func__, 1);
 
 	n = window_count_panes(w, 0);
-	if (n <= 1)
+	if (n <= 1) {
+		/* Reset collapsed groups even when no tiled split can be shown. */
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			lcchild = wp->layout_cell->parent;
+			while (lcchild != NULL) {
+				lcchild->flags &= ~LAYOUT_CELL_MANUAL;
+				lcchild = lcchild->parent;
+			}
+		}
 		return;
+	}
 
 	if (type == LAYOUT_LEFTRIGHT) {
 		sx = (n * (PANE_MINIMUM + 1)) - 1;

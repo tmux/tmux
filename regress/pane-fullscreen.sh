@@ -70,6 +70,7 @@ run resize-pane -aZ
 [ "$(geometry)" = "$before" ] || fail 'fullscreen stack changed tiled allocation'
 
 # A window with no tiled panes still follows the normal window-size policy.
+run select-layout -E -t "$A"
 run resize-pane -Z -t "$A"
 run resize-pane -Z -t "$B"
 run resize-pane -Z -t "$C"
@@ -82,13 +83,12 @@ for p in "$B" "$C"; do
 done
 run resize-window -x 80 -y 24
 
-# A changed group is shared equally when a fullscreen tile returns.
+# Manual changes below fullscreen are preserved when the tile returns.
 run resize-pane -Z -t "$C"
 run resize-pane -x 40 -t "$B"
+width=$(run display-message -p -t "$A" '#{pane_width}')
 run resize-pane -Z -t "$C"
-for p in "$A" "$B" "$C"; do
-	check "$p" '#{pane_width}' 26
-done
+check "$A" '#{pane_width}' "$width"
 
 # A float can sit between fullscreen panes, then be raised above both.
 run resize-pane -Z -t "$A"
@@ -174,6 +174,10 @@ run split-window -vd -t %1
 run split-window -vd -t %2
 run split-window -hd -t %1
 run split-window -hd -t %1
+run resize-pane -D 1 -t %0
+run resize-pane -U 1 -t %0
+run resize-pane -R 1 -t %1
+run resize-pane -L 1 -t %1
 before=$(geometry)
 restore=
 for p in %0 %1 %2 %3 %4; do

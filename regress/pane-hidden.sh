@@ -491,8 +491,8 @@ run select-pane -L -t "$A"
 check "$A" '#{pane_active}' 1
 hidden "$X" 1
 
-# Mixed vertical and horizontal splits, including three or more panes side by
-# side. Hiding and showing each pane puts every pane back where it was. Hiding
+# Manually sized mixed splits, including three or more panes side by side.
+# Hiding and showing each pane puts every pane back where it was. Hiding
 # several panes and showing them again in the reverse order they were hidden
 # leaves every pane within two cells of where it was. In the same order the panes
 # have the wrong neighbours when they are shown so their sizes cannot be exact,
@@ -548,7 +548,7 @@ build()
 	$TMUX kill-server 2>/dev/null
 	run new-session -d -x "${size%x*}" -y "${size#*x}" cat
 	while [ $# -gt 0 ]; do
-		run split-window -d "$1" -t "$2" ''
+		run split-window -d "$1" -l 50% -t "$2" ''
 		shift 2
 	done
 }

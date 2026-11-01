@@ -1076,6 +1076,8 @@ layout_resize_layout(struct window *w, struct layout_cell *lc,
 		if (size == 0)	/* no more change possible */
 			break;
 	}
+	if (needed != change)
+		lc->parent->flags |= LAYOUT_CELL_MANUAL;
 
 	/* Fix cell offsets. */
 	layout_fix_offsets(w);
@@ -1463,6 +1465,7 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 	u_int			 new_size, saved_size, resize_first = 0;
 	int			 full_size = (flags & SPAWN_FULLSIZE);
 	int			 before = (flags & SPAWN_BEFORE);
+	int			 manual = (size != -1);
 
 	/*
 	 * If full_size is specified, add a new cell at the top of the window
@@ -1579,6 +1582,8 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 		layout_fix_offsets(wp->window);
 	} else
 		layout_make_leaf(lc, wp);
+	if (manual)
+		lcnew->parent->flags |= LAYOUT_CELL_MANUAL;
 
 	return (lcnew);
 }
@@ -1703,23 +1708,32 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 	return (changed);
 }
 
-/* Spread out cells evenly. */
+/* Spread out cells, optionally limited to the parent or automatic sizes. */
 void
-layout_spread_out(struct window_pane *wp)
+layout_spread_out(struct window_pane *wp, int flags)
 {
 	struct layout_cell	*parent;
 	struct window		*w = wp->window;
+	int			 changed;
 
 	parent = wp->layout_cell->parent;
 	if (parent == NULL)
 		return;
 
 	do {
-		if (layout_spread_cell(w, parent)) {
+		if ((flags & LAYOUT_SPREAD_PRESERVE) &&
+		    (parent->flags & LAYOUT_CELL_MANUAL)) {
+			break;
+		}
+		changed = layout_spread_cell(w, parent);
+		parent->flags &= ~LAYOUT_CELL_MANUAL;
+		if (changed) {
 			layout_fix_offsets(w);
 			layout_fix_panes(w, NULL);
 			break;
 		}
+		if (flags & LAYOUT_SPREAD_PARENT)
+			break;
 	} while ((parent = parent->parent) != NULL);
 }
 
@@ -2033,7 +2047,7 @@ layout_split_floating_cell(struct layout_cell *lc, struct window *w,
 	return (0);
 }
 
-/* Save a tiled allocation and give its space to the nearest neighbour. */
+/* Save a tiled allocation and release its space to the remaining tiles. */
 void
 layout_remove_tile(struct window *w, struct layout_cell *lc)
 {
@@ -2048,6 +2062,9 @@ layout_remove_tile(struct window *w, struct layout_cell *lc)
 	if (parent != NULL)
 		lc->saved.previous = parent->generation;
 	neighbour = layout_cell_get_neighbour(lc);
+
+	/* Exclude the departing tile while collapsing or spreading its group. */
+	lc->flags |= LAYOUT_CELL_FLOATING;
 	if (neighbour == NULL) {
 		if (parent != NULL)
 			layout_remove_tile(w, parent);
@@ -2058,7 +2075,10 @@ layout_remove_tile(struct window *w, struct layout_cell *lc)
 		else
 			change = lc->g.sx + 1;
 		layout_resize_adjust(w, neighbour, type, change);
+		if (~parent->flags & LAYOUT_CELL_MANUAL)
+			layout_spread_cell(w, parent);
 	}
+	lc->flags &= ~LAYOUT_CELL_FLOATING;
 	if (parent != NULL) {
 		layout_set_size(lc, 0, 0, 0, 0);
 		lc->generation = generation;
@@ -2101,7 +2121,7 @@ layout_grow_cell(struct window *w, struct layout_cell *lc,
 	}
 }
 
-/* Restore a tiled allocation, sharing the group equally if it has changed. */
+/* Restore a tiled allocation, preserving explicitly sized groups. */
 void
 layout_insert_tile(struct window *w, struct layout_cell *lc)
 {
@@ -2157,8 +2177,8 @@ layout_insert_tile(struct window *w, struct layout_cell *lc)
 	/* Unwinding unchanged removals also restores the earlier revisions. */
 	if (unchanged)
 		parent->generation = lc->saved.previous;
-	else {
+	else
 		parent->generation++;
+	if (~parent->flags & LAYOUT_CELL_MANUAL)
 		layout_spread_cell(w, parent);
-	}
 }

@@ -34,8 +34,8 @@ const struct cmd_entry cmd_select_layout_entry = {
 	.description = "Choose or apply a layout.",
 	.alias = "selectl",
 
-	.args = { "Enopt:", 0, 1, NULL },
-	.usage = "[-Enop] " CMD_TARGET_PANE_USAGE " [layout-name]",
+	.args = { "EmnopPt:", 0, 1, NULL },
+	.usage = "[-EmnopP] " CMD_TARGET_PANE_USAGE " [layout-name]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -83,8 +83,13 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*layoutname;
 	char			*oldlayout, *cause = NULL;
 	int			 next, previous, layout, flags = 0;
+	int			 spread_flags = 0;
 
-	server_unzoom_window(w);
+	if ((args_has(args, 'm') || args_has(args, 'P')) &&
+	    !args_has(args, 'E')) {
+		cmdq_error(item, "-m and -P require -E");
+		return (CMD_RETURN_ERROR);
+	}
 
 	next = (cmd_get_entry(self) == &cmd_next_layout_entry);
 	if (args_has(args, 'n'))
@@ -109,7 +114,11 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(args, 'E')) {
-		layout_spread_out(wp);
+		if (args_has(args, 'P'))
+			spread_flags |= LAYOUT_SPREAD_PARENT;
+		if (args_has(args, 'm'))
+			spread_flags |= LAYOUT_SPREAD_PRESERVE;
+		layout_spread_out(wp, spread_flags);
 		goto changed;
 	}
 
@@ -132,6 +141,8 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (layoutname != NULL) {
+		/* Layout strings also specify fullscreen pane placement. */
+		server_unzoom_window(w);
 		if (layout_parse(w, layoutname, &cause) == -1) {
 			cmdq_error(item, "%s: %s", cause, layoutname);
 			free(cause);

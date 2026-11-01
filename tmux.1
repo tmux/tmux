@@ -4227,12 +4227,14 @@ panes are rotated.
 zooms the pane selected after rotating if the window was zoomed.
 .Tg selectl
 .It Xo Ic select\-layout
-.Op Fl Enop
+.Op Fl EmnopP
 .Op Fl t Ar target\-pane
 .Op Ar layout\-name
 .Xc
 .D1 Pq alias: Ic selectl
 Choose a specific layout for a window.
+Named layouts rearrange tiles without changing pane visibility or zoom state.
+Saved layout strings restore the pane states they describe.
 If
 .Ar layout\-name
 is not given, the last preset layout used (if any) is reapplied.
@@ -4248,6 +4250,49 @@ commands.
 applies the last set layout if possible (undoes the most recent layout change).
 .Fl E
 spreads the current pane and any panes next to it out evenly.
+It starts at the pane's parent layout cell and tries enclosing cells until
+one changes.
+With
+.Fl P ,
+only the immediate parent is redistributed.
+Hidden and floating panes do not take tiled space, and redistributing does not
+change pane visibility or zoom state.
+.Pp
+Explicitly resizing tiled panes, or splitting with an explicit size, marks the
+affected layout cell as manually sized.
+Floating, tiling, hiding or showing panes redistributes cells without this mark
+evenly; marked cells preserve their allocation as far as space permits.
+Automatic window resizing does not change the mark.
+.Fl E
+clears the mark on each cell it visits, including cells already evenly sized.
+With
+.Fl m ,
+it stops at a marked cell without changing it or clearing its mark.
+Both
+.Fl m
+and
+.Fl P
+require
+.Fl E .
+Applying an
+.Cm even\-horizontal
+or
+.Cm even\-vertical
+layout also clears manual sizing in the resulting layout.
+Loading a saved layout treats its specified allocations as manually sized.
+.Pp
+The pane menu's
+.Ql Redistribute Panes
+item runs
+.Ic select-layout -EP
+to redistribute the immediate parent and clear its manual sizing.
+For example, the following hooks redistribute the affected pane's parent
+after floating or tiling, while respecting manual sizing:
+.Bd -literal -offset indent
+set-hook -g pane-floated 'select-layout -EPm'
+set-hook -g pane-tiled 'select-layout -EPm'
+.Ed
+These hooks target the pane whose state changed, even if another pane is active.
 .Tg selectp
 .It Xo Ic select\-pane
 .Op Fl DdeLlMmRUZ
@@ -6865,6 +6910,9 @@ Run when the program running in a pane exits, but
 is on so the pane has not closed.
 .It pane\-exited
 Run when the program running in a pane exits.
+.It pane\-floated
+Run when a tiled pane is made floating.
+Zooming a tiled pane does not fire this hook.
 .It pane\-focus\-in
 Run when the focus enters a pane, if the
 .Ic focus\-events
@@ -6873,6 +6921,9 @@ option is on.
 Run when the focus exits a pane, if the
 .Ic focus\-events
 option is on.
+.It pane\-hidden
+Run when a shown pane is hidden, including by desktop cycling or selecting
+a tiled pane underneath zoomed panes.
 .It pane\-mode\-changed
 Run when a pane changes mode.
 .It pane\-mode\-entered
@@ -6893,6 +6944,14 @@ Run when the terminal clipboard is set using the
 escape sequence.
 .It pane\-shell\-prompt
 Run when an OSC 133 shell prompt starts in a pane.
+.It pane\-shown
+Run when a hidden pane is shown, including by selecting it.
+.It pane\-tiled
+Run when a floating pane is tiled by
+.Ic join-pane
+or
+.Ic move-pane .
+Unzooming a pane does not fire this hook.
 .It pane\-title\-changed
 Run when a pane title is changed.
 .It session\-closed

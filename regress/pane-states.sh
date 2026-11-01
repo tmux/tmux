@@ -294,7 +294,9 @@ END {
 		if (!aF[created]) fail("new pane is not floating")
 		if (aZ[created] || aH[created]) fail("new pane zoomed or hidden")
 		sameF(""); sameZ(""); sameH("")
-	} else if (op == "nextlayout" || op == "tiled" || op == "rotate") {
+	} else if (op == "nextlayout" || op == "tiled") {
+		sameF(""); sameZ(""); sameH("")
+	} else if (op == "rotate") {
 		restoredF(""); sameH(""); noZoom()
 	} else {
 		# Moving around or changing layout: floating panes stay floating

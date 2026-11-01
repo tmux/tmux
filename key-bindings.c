@@ -72,6 +72,7 @@
 	" '#{?#{!:#{pane_floating_flag}},Float,}' 'f' { break-pane -W }" \
 	" '#{?#{!:#{pane_floating_flag}},Horizontal Split,}' 'h' {split-window -h}" \
 	" '#{?#{!:#{pane_floating_flag}},Vertical Split,}' 'v' {split-window -v}" \
+	" 'Redistribute Panes' 'E' {select-layout -EP}" \
 	" ''" \
 	" '#{?#{&&:#{!:#{pane_floating_flag}},#{>:#{window_panes},1}},Swap Up,}' 'u' {swap-pane -U}" \
 	" '#{?#{&&:#{!:#{pane_floating_flag}},#{>:#{window_panes},1}},Swap Down,}' 'd' {swap-pane -D}" \

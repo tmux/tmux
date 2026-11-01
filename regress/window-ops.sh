@@ -337,9 +337,10 @@ check_fmt 'R:0' '#{pane_index}:#{pane_id}' "0:$p1"
 check_ok rotate-window -D -t R:0
 check_fmt 'R:0' '#{pane_index}:#{pane_id}' "0:$p0"
 
-# Rotation without -Z hides the zoomed pane until the desktop shows it. With -Z
-# it preserves zoom and transfers it to the pane which arrives at the active
-# position.
+# Preserve a manually sized layout through zooming and rotation. With -Z,
+# rotation transfers zoom to the pane arriving at the active position.
+check_ok resize-pane -D 1 -t "$p0"
+check_ok resize-pane -U 1 -t "$p0"
 layout=$($TMUX display-message -p -t R:0 '#{window_layout}')
 check_ok resize-pane -Z -t "$p0"
 check_ok rotate-window -U -t R:0

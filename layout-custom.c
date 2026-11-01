@@ -995,6 +995,7 @@ layout_construct_v1(struct layout_cell *lcparent, const char **layout, u_int dep
 	default:
 		goto fail;
 	}
+	lc->flags |= LAYOUT_CELL_MANUAL;
 
 	do {
 		(*layout)++;
@@ -1188,6 +1189,7 @@ layout_parse_json_layout(struct json_node *node, struct layout_cell *lcparent,
 		layout_parse_add_cctx(pctx, lc, active, last, index, zindex,
 		    zoomed, hidden);
 	} else {
+		lc->flags |= LAYOUT_CELL_MANUAL;
 		if (json_find_array(node, "c", &array, cause) != 0)
 			goto fail;
 		if ((member = json_array_first(array)) == NULL ||

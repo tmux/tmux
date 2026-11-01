@@ -870,10 +870,8 @@ window_panes_draw_pane(struct window_panes_modedata *data,
 	window_panes_add_area(data, wp, x, y, sx, sy);
 
 	screen_write_cursormove(ctx, x, y, 0);
-	if (data->preview != NULL &&
-	    wp == data->wp &&
-	    sx <= screen_size_x(data->preview) &&
-	    sy <= screen_size_y(data->preview))
+	/* Redistribution may enlarge the area beyond the saved screen. */
+	if (data->preview != NULL && wp == data->wp)
 		s = data->preview;
 	if (osx <= dsx && osy <= dsy)
 		window_panes_copy_screen(ctx, s, sx, sy);
