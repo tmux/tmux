@@ -4262,6 +4262,7 @@ Explicitly resizing tiled panes, or splitting with an explicit size, marks the
 affected layout cell as manually sized.
 Floating, tiling, hiding or showing panes redistributes cells without this mark
 evenly; marked cells preserve their allocation as far as space permits.
+This redistribution is built in and does not require hooks.
 Automatic window resizing does not change the mark.
 .Fl E
 clears the mark on each cell it visits, including cells already evenly sized.

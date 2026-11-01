@@ -59,7 +59,7 @@ reset()
 	C=$(run split-window -hdP -F '#{pane_id}' -t "$B" '') || exit 1
 }
 
-# Default splits keep their normal sizes, then membership changes equalize.
+# Default splits keep their normal sizes, then membership changes redistribute.
 reset
 check "$A" '#{pane_width}' 61
 check "$B" '#{pane_width}' 30
@@ -183,13 +183,13 @@ run select-layout even-horizontal
 check "$C" '#{pane_zoomed_flag}' 1
 check "$F" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '1:1'
 
-# Existing after-split-window hooks can still explicitly equalize all siblings.
+# Existing after-split-window hooks can still redistribute all siblings.
 reset
 run set-hook -g after-split-window 'select-layout -E'
 run resize-pane -x 80 -t "$A"
 D=$(run split-window -hdP -F '#{pane_id}' -t "$C" '') || exit 1
 wait_for_output 30 $TMUX display -p -t "$A" '#{pane_width}' ||
-	fail 'after-split-window did not equalize panes'
+	fail 'after-split-window did not redistribute panes'
 for p in "$B" "$C"; do
 	check "$p" '#{pane_width}' 30
 done
@@ -201,7 +201,7 @@ run list-keys -T prefix '>' > "$DIR/menu"
 grep -q 'Redistribute Panes.*select-layout -EP' "$DIR/menu" ||
 	fail 'pane menu is missing redistribution'
 
-# The modifiers require an equalization request.
+# The modifiers require a redistribution request.
 $TMUX select-layout -P 2>/dev/null && fail '-P accepted without -E'
 $TMUX select-layout -m 2>/dev/null && fail '-m accepted without -E'
 
