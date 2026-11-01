@@ -8,8 +8,8 @@
 # result is compared with what the command should do, using awk to work out the
 # expectation from the state before. This covers:
 # - select-pane, including -Z and moving to the next, last or a directional pane;
-# - resize-pane -Z (toggle a zoom), -H (hide or show), -a -Z (unzoom all) and
-#   -a -H (show desktop), which is run once, twice and three times to check
+# - resize-pane -Z (toggle a zoom), -h/-H (hide or show), -a -Z (unzoom all) and
+#   -C (show desktop), which is run once, twice and three times to check
 #   the hide, floats and zoomed panes steps;
 # - break-pane -W and join-pane to float and tile panes;
 # - split-window, new-pane and kill-pane;
@@ -227,16 +227,14 @@ END {
 			sameZ(T); sameH(T)
 		}
 	} else if (op == "hide") {
+		sameF(""); sameZ(""); sameH(T)
+		if (!aH[T]) fail("not hidden")
+	} else if (op == "show") {
 		sameF("")
-		if (bH[T]) {
-			if (aH[T]) fail("not shown")
-			if (aA[T] != 1) fail("not active when shown")
-			if (covered(T)) hideZoomed(T)
-			else { sameZ(""); sameH(T) }
-		} else {
-			if (!aH[T]) fail("not hidden")
-			sameZ(""); sameH(T)
-		}
+		if (aH[T]) fail("not shown")
+		if (aA[T] != 1) fail("not active when shown")
+		if (covered(T)) hideZoomed(T)
+		else { sameZ(""); sameH(T) }
 	} else if (op == "desktop") {
 		sameF(""); sameZ("")
 		for (i = 1; i <= nb; i++) {
@@ -368,7 +366,7 @@ run_one()
 				case $stage in
 				1) set -- "$@" ';' break-pane -d -W -s "%$i" ;;
 				2) set -- "$@" ';' resize-pane -Z -t "%$i" ;;
-				4) set -- "$@" ';' resize-pane -H -t "%$i" ;;
+				4) set -- "$@" ';' resize-pane -h -t "%$i" ;;
 				esac
 			fi
 			i=$((i + 1))
@@ -396,21 +394,22 @@ run_one()
 	select) tm select-pane -t "$tgt" || rc=$? ;;
 	selectZ) tm select-pane -Z -t "$tgt" || rc=$? ;;
 	zoom) tm resize-pane -Z -t "$tgt" || rc=$? ;;
-	hide) tm resize-pane -H -t "$tgt" || rc=$? ;;
+	hide) tm resize-pane -h -t "$tgt" || rc=$? ;;
+	show) tm resize-pane -H -t "$tgt" || rc=$? ;;
 	break) tm break-pane -d -W -s "$tgt" || rc=$? ;;
 	join) tm join-pane -d -s "$tgt" -t "$tgt" || rc=$? ;;
 	kill) tm kill-pane -t "$tgt" || rc=$? ;;
 	split) tm split-window -d -t "$tgt" '' || rc=$? ;;
 	newpane) tm new-pane -d -t "$tgt" -x 20 -y 6 '' || rc=$? ;;
-	desktop) tm resize-pane -a -H -t %0 || rc=$? ;;
+	desktop) tm resize-pane -C -t %0 || rc=$? ;;
 	desktop2)
-		tm resize-pane -a -H -t %0 || rc=$?
-		tm resize-pane -a -H -t %0 || rc=$?
+		tm resize-pane -C -t %0 || rc=$?
+		tm resize-pane -C -t %0 || rc=$?
 		;;
 	desktop3)
-		tm resize-pane -a -H -t %0 || rc=$?
-		tm resize-pane -a -H -t %0 || rc=$?
-		tm resize-pane -a -H -t %0 || rc=$?
+		tm resize-pane -C -t %0 || rc=$?
+		tm resize-pane -C -t %0 || rc=$?
+		tm resize-pane -C -t %0 || rc=$?
 		;;
 	unzoomall) tm resize-pane -a -Z -t %0 || rc=$? ;;
 	nextlayout) tm next-layout -t %0 || rc=$? ;;
@@ -440,7 +439,7 @@ run_one()
 	cleanup
 }
 
-PER_PANE="select selectZ zoom hide break join kill split newpane"
+PER_PANE="select selectZ zoom hide show break join kill split newpane"
 GLOBAL="desktop desktop2 desktop3 unzoomall nextlayout tiled rotate nextpane lastpane \
     left right up down resize"
 

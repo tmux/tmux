@@ -342,7 +342,7 @@ check_ok resize-pane -Z -t "$p0"
 check_ok select-pane -t "$p2"
 check_fmt "$p2" '#{window_zoomed_flag}:#{pane_active}' '0:1'
 check_fmt "$p0" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '1:1'
-check_ok resize-pane -a -H -t "$p0"
+check_ok resize-pane -C -t "$p0"
 check_fmt "$p0" '#{window_zoomed_flag}:#{pane_zoomed_flag}:#{pane_active}' \
 	'1:1:1'
 check_ok resize-pane -a -Z -t "$p0"
@@ -366,7 +366,7 @@ check_fmt "$p0" '#{window_zoomed_flag}:#{pane_zoomed_flag}:#{pane_active}' \
 check_ok select-pane -D -t "$p0"
 check_fmt "$p2" '#{window_zoomed_flag}:#{pane_active}' '0:1'
 check_fmt "$p0" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '1:1'
-check_ok resize-pane -a -H -t "$p0"
+check_ok resize-pane -C -t "$p0"
 check_ok resize-pane -a -Z -t "$p0"
 
 check_ok select-pane -t "$p0"
@@ -385,7 +385,7 @@ check_ok select-pane -l -t P:0
 check_fmt "$p0" '#{window_zoomed_flag}:#{pane_zoomed_flag}:#{pane_active}' \
 	'0:0:1'
 check_fmt "$p2" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '1:1'
-check_ok resize-pane -a -H -t "$p0"
+check_ok resize-pane -C -t "$p0"
 check_ok resize-pane -a -Z -t "$p0"
 
 check_ok select-pane -t "$p0"

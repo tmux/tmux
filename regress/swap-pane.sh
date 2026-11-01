@@ -219,7 +219,7 @@ run resize-pane -Z -t $a
 checkwin :0 0:3 'unzoom a again'
 
 # Hidden state also stays with the position.
-run resize-pane -H -t $f
+run resize-pane -h -t $f
 check $f 1:0:1:0 'hide f'
 run swap-pane -d -s $f -t $b
 check $f 0:0:0:0 'hidden float swap'

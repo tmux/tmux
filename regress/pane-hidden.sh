@@ -4,12 +4,12 @@
 # previous state: tiled, floating and zoomed panes alike.
 #
 # This exercises:
-# - resize-pane -H toggling a tiled pane, with its space given to a neighbour
+# - resize-pane -h/-H hiding and showing a tiled pane, with its space given to a neighbour
 #   and returned unchanged when it is shown;
 # - hiding floating and zoomed panes and hiding every pane in a window;
 # - activating a hidden pane showing it, and next/previous skipping hidden
 #   panes;
-# - resize-pane -a -H hiding every visible float and zoomed pane and showing
+# - resize-pane -C hiding every visible float and zoomed pane and showing
 #   only the panes it hid;
 # - floating, tiling, swapping and killing hidden panes.
 
@@ -78,7 +78,7 @@ reset()
 # A tiled pane gives its space away and gets it back unchanged.
 reset
 hidden "$B" 0
-run resize-pane -H -t "$B"
+run resize-pane -h -t "$B"
 hidden "$B" 1
 check "$A" '#{pane_height}' 24
 run resize-pane -H -t "$B"
@@ -86,21 +86,21 @@ hidden "$B" 0
 same_layout "$A"
 
 # Selecting a hidden pane shows it and makes it active.
-run resize-pane -H -t "$B"
+run resize-pane -h -t "$B"
 run select-pane -t "$B"
 hidden "$B" 0
 check "$B" '#{pane_active}' 1
 same_layout "$A"
 
 # Hiding the active pane moves the focus to a visible pane.
-run resize-pane -H -t "$B"
+run resize-pane -h -t "$B"
 check "$A" '#{pane_active}' 1
 
 # Next and previous skip hidden panes.
 reset
 C=$(run split-window -dPF '#{pane_id}') || exit 1
 run select-pane -t "$A"
-run resize-pane -H -t "$B"
+run resize-pane -h -t "$B"
 run select-pane -t :.+
 check "$C" '#{pane_active}' 1
 run select-pane -t :.-
@@ -108,8 +108,8 @@ check "$A" '#{pane_active}' 1
 
 # Every tiled pane can be hidden and shown again.
 reset
-run resize-pane -H -t "$B"
-run resize-pane -H -t "$A"
+run resize-pane -h -t "$B"
+run resize-pane -h -t "$A"
 hidden "$A" 1
 hidden "$B" 1
 run display-message -p ok >/dev/null
@@ -125,7 +125,7 @@ X=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 20 -y 8 -X 8 -Y 3 '') || exit 1
 Y=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 20 -y 8 -X 30 -Y 6 '') || exit 1
 gx=$(run display-message -p -t "$X" '#{pane_left}:#{pane_top}:#{pane_width}:#{pane_height}')
 zx=$(run display-message -p -t "$X" '#{pane_z}')
-run resize-pane -H -t "$X"
+run resize-pane -h -t "$X"
 hidden "$X" 1
 check "$X" '#{pane_floating_flag}' 1
 run select-pane -t "$X"
@@ -137,7 +137,7 @@ check "$Y" '#{pane_z}' 1
 # A zoomed pane stays zoomed while hidden and when shown.
 reset
 run resize-pane -Z -t "$A"
-run resize-pane -H -t "$A"
+run resize-pane -h -t "$A"
 hidden "$A" 1
 check "$A" '#{pane_zoomed_flag}' 1
 run resize-pane -H -t "$A"
@@ -149,7 +149,7 @@ check "$A" '#{pane_zoomed_flag}:#{window_zoomed_flag}' '1:1'
 reset
 X=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 20 -y 8 -X 8 -Y 3 '') || exit 1
 for p in "$X" "$A" "$B"; do
-	run resize-pane -H -t "$p"
+	run resize-pane -h -t "$p"
 done
 for p in "$X" "$A" "$B"; do
 	hidden "$p" 1
@@ -159,29 +159,29 @@ run select-pane -t "$B"
 hidden "$B" 0
 check "$B" '#{pane_active}' 1
 
-# resize-pane -a -H hides every visible float and zoomed pane and later calls
+# resize-pane -C hides every visible float and zoomed pane and later calls
 # show only those, floats first, leaving panes that were already hidden alone.
 reset
 X=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 20 -y 8 -X 8 -Y 3 '') || exit 1
 Y=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 20 -y 8 -X 30 -Y 6 '') || exit 1
-run resize-pane -H -t "$Y"
-run resize-pane -a -H -t "$A"
+run resize-pane -h -t "$Y"
+run resize-pane -C -t "$A"
 hidden "$X" 1
 hidden "$Y" 1
 hidden "$A" 0
 hidden "$B" 0
-run resize-pane -a -H -t "$A"
+run resize-pane -C -t "$A"
 hidden "$X" 0
 hidden "$Y" 1
 hidden "$A" 0
 run resize-pane -Z -t "$B"
-run resize-pane -a -H -t "$A"
+run resize-pane -C -t "$A"
 hidden "$B" 1
 hidden "$X" 1
-run resize-pane -a -H -t "$A"
+run resize-pane -C -t "$A"
 hidden "$X" 0
 hidden "$B" 1
-run resize-pane -a -H -t "$A"
+run resize-pane -C -t "$A"
 hidden "$B" 0
 check "$B" '#{pane_zoomed_flag}' 1
 
@@ -193,18 +193,18 @@ run resize-pane -Z -t "$B"
 X=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 20 -y 8 -X 8 -Y 3 '') || exit 1
 check "$A" '#{window_zoomed_flag}' 1
 for i in 1 2; do
-	run resize-pane -a -H -t "$A"
+	run resize-pane -C -t "$A"
 	for p in "$A" "$B" "$X"; do
 		hidden "$p" 1
 	done
 	check "$A" '#{window_zoomed_flag}:#{pane_zoomed_flag}' '0:1'
 	check "$A" '#{window_flags}' '*'
-	run resize-pane -a -H -t "$A"
+	run resize-pane -C -t "$A"
 	hidden "$X" 0
 	hidden "$A" 1
 	hidden "$B" 1
 	check "$A" '#{window_zoomed_flag}' 0
-	run resize-pane -a -H -t "$A"
+	run resize-pane -C -t "$A"
 	for p in "$A" "$B" "$X"; do
 		hidden "$p" 0
 	done
@@ -214,26 +214,26 @@ done
 # A stage with nothing to show is skipped, so every call changes something.
 reset
 run resize-pane -Z -t "$A"
-run resize-pane -a -H -t "$A"
+run resize-pane -C -t "$A"
 hidden "$A" 1
-run resize-pane -a -H -t "$A"
+run resize-pane -C -t "$A"
 hidden "$A" 0
 reset
 X=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 20 -y 8 -X 8 -Y 3 '') || exit 1
-run resize-pane -a -H -t "$A"
+run resize-pane -C -t "$A"
 hidden "$X" 1
-run resize-pane -a -H -t "$A"
+run resize-pane -C -t "$A"
 hidden "$X" 0
 
 # Showing a pane by hand takes it out of the cycle.
 reset
 run resize-pane -Z -t "$A"
 X=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 20 -y 8 -X 8 -Y 3 '') || exit 1
-run resize-pane -a -H -t "$A"
+run resize-pane -C -t "$A"
 run select-pane -t "$X"
 hidden "$X" 0
 hidden "$A" 1
-run resize-pane -a -H -t "$A"
+run resize-pane -C -t "$A"
 hidden "$A" 0
 hidden "$X" 0
 
@@ -256,7 +256,7 @@ run select-pane -l
 check "$B" '#{pane_active}:#{pane_hidden_flag}:#{window_zoomed_flag}' '1:0:1'
 # The desktop shows the others, and the active pane is not left covered.
 run select-pane -t "$C"
-run resize-pane -a -H -t "$A"
+run resize-pane -C -t "$A"
 for p in "$A" "$B"; do
 	hidden "$p" 0
 done
@@ -284,7 +284,7 @@ check "$B" '#{pane_hidden_flag}' 0
 reset
 C=$(run split-window -dPF '#{pane_id}') || exit 1
 for p in "$A" "$B" "$C"; do
-	run resize-pane -H -t "$p"
+	run resize-pane -h -t "$p"
 done
 for p in "$A" "$B"; do
 	run select-pane -t "$p"
@@ -296,13 +296,13 @@ check "$C" '#{window_panes}' 1
 run select-pane -t "$C"
 hidden "$C" 0
 check "$C" '#{pane_active}:#{pane_width}x#{pane_height}' '1:80x24'
-run resize-pane -H -t "$C"
+run resize-pane -h -t "$C"
 run resize-pane -H -t "$C"
 hidden "$C" 0
 
 # Floating and tiling a hidden pane keeps it hidden.
 reset
-run resize-pane -H -t "$B"
+run resize-pane -h -t "$B"
 run break-pane -W -s "$B"
 hidden "$B" 1
 check "$B" '#{pane_floating_flag}' 1
@@ -317,7 +317,7 @@ check "$B" '#{pane_floating_flag}' 0
 # position in the layout.
 reset
 C=$(run split-window -dPF '#{pane_id}') || exit 1
-run resize-pane -H -t "$B"
+run resize-pane -h -t "$B"
 run swap-pane -s "$A" -t "$B"
 hidden "$A" 1
 hidden "$B" 0
@@ -327,7 +327,7 @@ check "$B" '#{window_panes}' 2
 
 # Splitting a hidden tiled pane with -d leaves both panes hidden.
 reset
-run resize-pane -H -t "$B"
+run resize-pane -h -t "$B"
 C=$(run split-window -dPF '#{pane_id}' -t "$B") || exit 1
 hidden "$B" 1
 hidden "$C" 1
@@ -337,11 +337,11 @@ check "$B" '#{window_panes}' 3
 # Resizing a hidden tiled pane shows it first, but a hidden float is resized
 # without being shown.
 reset
-run resize-pane -H -t "$B"
+run resize-pane -h -t "$B"
 run resize-pane -t "$B" -y 5
 hidden "$B" 0
 X=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 20 -y 8 -X 8 -Y 3 '') || exit 1
-run resize-pane -H -t "$X"
+run resize-pane -h -t "$X"
 run resize-pane -t "$X" -x 30
 hidden "$X" 1
 run select-pane -t "$X"
@@ -350,7 +350,7 @@ check "$X" '#{pane_width}' 28
 # A hidden pane moved to another window is shown there.
 reset
 C=$(run split-window -dPF '#{pane_id}') || exit 1
-run resize-pane -H -t "$C"
+run resize-pane -h -t "$C"
 run break-pane -d -s "$C"
 hidden "$C" 0
 check "$C" '#{window_panes}' 1
@@ -360,7 +360,7 @@ check "$A" '#{window_panes}' 2
 # saved layout puts the hidden state back.
 reset
 X=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 20 -y 8 -X 8 -Y 3 '') || exit 1
-run resize-pane -H -t "$X"
+run resize-pane -h -t "$X"
 saved=$(run display-message -p -t "$A" '#{window_layout}') || exit 1
 case "$saved" in
 *'"H":true'*) ;;
@@ -370,7 +370,7 @@ run select-pane -t "$X"
 hidden "$X" 0
 run select-layout -t "$A" "$saved"
 hidden "$X" 1
-run resize-pane -H -t "$B"
+run resize-pane -h -t "$B"
 out=$(run display-message -p -t "$A" '#{window_layout}') || exit 1
 case "$out" in
 *"\"$B\""*) fail "hidden tiled pane in layout: $out" ;;
@@ -382,7 +382,7 @@ esac
 reset
 X=$(run new-pane -dPF '#{pane_id}' -t "$A" -x 20 -y 8 -X 8 -Y 3 '') || exit 1
 run kill-pane -t "$B"
-run resize-pane -H -t "$A"
+run resize-pane -h -t "$A"
 run swap-pane -D -t "$A"
 run swap-pane -U -t "$A"
 hidden "$A" 1
@@ -392,7 +392,7 @@ check "$X" '#{window_panes}' 2
 # hidden ones hidden.
 reset
 C=$(run split-window -dPF '#{pane_id}') || exit 1
-run resize-pane -H -t "$B"
+run resize-pane -h -t "$B"
 for layout in tiled even-horizontal even-vertical main-horizontal \
     main-vertical; do
 	run select-layout -t "$A" $layout
@@ -402,7 +402,7 @@ for layout in tiled even-horizontal even-vertical main-horizontal \
 done
 run next-layout -t "$A"
 hidden "$B" 1
-run resize-pane -H -t "$C"
+run resize-pane -h -t "$C"
 run select-layout -t "$A" tiled
 run next-layout -t "$A"
 hidden "$C" 1
@@ -418,7 +418,7 @@ B=$(run split-window -dPF '#{pane_id}') || exit 1
 C=$(run split-window -dPF '#{pane_id}') || exit 1
 run select-layout even-vertical
 before=$(run display-message -p -t "$B" '#{pane_height}') || exit 1
-run resize-pane -H -t "$B"
+run resize-pane -h -t "$B"
 run resize-window -x 80 -y 16
 run select-pane -t "$B"
 hidden "$B" 0
@@ -434,7 +434,7 @@ run resize-window -x 80 -y 30
 run select-layout even-vertical
 run resize-pane -t "$A" -y 6
 sizes=$(run list-panes -F '#{pane_id}:#{pane_height}') || exit 1
-run resize-pane -H -t "$B"
+run resize-pane -h -t "$B"
 run resize-pane -H -t "$B"
 check "$A" '#{pane_height}' 6
 after=$(run list-panes -F '#{pane_id}:#{pane_height}') || exit 1
@@ -449,7 +449,7 @@ B=$(run split-window -dPF '#{pane_id}') || exit 1
 sizes=$(run list-panes -F '#{pane_id}:#{pane_height}') || exit 1
 run set -g @count 0
 run set-hook -g window-layout-changed "set -gF @count '#{e|+:#{@count},1}'"
-run resize-pane -H -t "$B"
+run resize-pane -h -t "$B"
 count=$(run show -gv @count) || exit 1
 run resize-pane -H -t "$B"
 got=$(run show -gv @count) || exit 1
@@ -461,8 +461,8 @@ run set-hook -gu window-layout-changed
 
 # Zooming a pane shows it, even if it is hidden and already the active pane.
 reset
-run resize-pane -H -t "$A"
-run resize-pane -H -t "$B"
+run resize-pane -h -t "$A"
+run resize-pane -h -t "$B"
 act=$(run display-message -p -t "$A" '#{?pane_active,1,0}') || exit 1
 if [ "$act" = 1 ]; then
 	p=$A
@@ -486,7 +486,7 @@ run select-pane -t "$A"
 run select-pane -L -t "$A"
 check "$X" '#{pane_active}' 1
 run select-pane -t "$A"
-run resize-pane -H -t "$X"
+run resize-pane -h -t "$X"
 run select-pane -L -t "$A"
 check "$A" '#{pane_active}' 1
 hidden "$X" 1
@@ -567,7 +567,7 @@ mixed()
 
 	# Each pane in turn.
 	for p in $ids; do
-		run resize-pane -H -t "$p"
+		run resize-pane -h -t "$p"
 		hidden "$p" 1
 		run resize-pane -H -t "$p"
 		hidden "$p" 0
@@ -580,7 +580,7 @@ mixed()
 		for p in $ids; do
 			[ "$p" = "$last" ] && continue
 			hide="$hide $p"
-			run resize-pane -H -t "$p"
+			run resize-pane -h -t "$p"
 		done
 		show=$hide
 		if [ "$order" = reverse ]; then
@@ -609,8 +609,8 @@ mixed()
 			for q in $ids; do
 				[ "$p" = "$q" ] && continue
 				build $size $splits
-				run resize-pane -H -t "$p"
-				run resize-pane -H -t "$q"
+				run resize-pane -h -t "$p"
+				run resize-pane -h -t "$q"
 				run resize-pane -H -t "$p"
 				run resize-pane -H -t "$q"
 				usable "$name hiding $p and $q" "$ids" 2
@@ -624,7 +624,7 @@ mixed()
 	f=$(run new-pane -dPF '#{pane_id}' -x 20 -y 6 -X 5 -Y 5 '') || exit 1
 	base=$(geom)
 	for p in $ids $f; do
-		run resize-pane -H -t "$p"
+		run resize-pane -h -t "$p"
 		run resize-pane -H -t "$p"
 		near "$name with a float, hiding $p" "$base" "$(geom)" 0
 	done
@@ -645,7 +645,7 @@ mixed()
 		build $size $splits
 		f=$(run new-pane -dPF '#{pane_id}' -x 20 -y 6 -X 5 -Y 5 '') || exit 1
 		run break-pane -d -W -s "$p"
-		run resize-pane -H -t "$last"
+		run resize-pane -h -t "$last"
 		run resize-pane -H -t "$last"
 		run join-pane -d -s "$p" -t "$p"
 		run join-pane -d -s "$f" -t "$f"

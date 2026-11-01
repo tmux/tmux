@@ -54,8 +54,8 @@ OUTER=$($TMUX2 list-panes -F '#{pane_id}' | head -1)
 $TMUX resize-pane -Z -t "$a" || fail "zoom failed"
 $TMUX select-pane -t "$f" || fail "select failed"
 cursor 1
-$TMUX resize-pane -a -H || fail "show desktop failed"
-$TMUX resize-pane -H -t "$b" || fail "hide failed"
+$TMUX resize-pane -C || fail "show desktop failed"
+$TMUX resize-pane -h -t "$b" || fail "hide failed"
 for p in "$a" "$b" "$f"; do
 	[ "$($TMUX display-message -p -t "$p" '#{pane_hidden_flag}')" = 1 ] ||
 	    fail "$p is not hidden"

@@ -88,14 +88,14 @@ $TMUX select-pane -t "$F" -T float-F || exit 1
 click_hide float-F
 check "$F" '#{pane_hidden_flag}:#{pane_floating_flag}' 1:1
 check "$A" '#{pane_zoomed_flag}:#{pane_active}' 1:1
-$TMUX resize-pane -h || exit 1
+$TMUX resize-pane -H || exit 1
 click_hide tile-A
 check "$A" '#{pane_hidden_flag}:#{pane_zoomed_flag}' 1:1
 check "$F" '#{pane_hidden_flag}:#{pane_active}' 0:1
 
 # The same control works on a bottom pane-border status line.
 $TMUX resize-pane -aZ || exit 1
-$TMUX resize-pane -H -t "$F" || exit 1
+$TMUX resize-pane -h -t "$F" || exit 1
 $TMUX select-pane -t "$A" || exit 1
 $TMUX select-pane -t "$B" || exit 1
 $TMUX set -g pane-border-status bottom || exit 1

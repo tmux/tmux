@@ -3997,7 +3997,7 @@ if specified, to
 .Ar new\-name .
 .Tg resizep
 .It Xo Ic resize\-pane
-.Op Fl adhHMTZ
+.Op Fl aCdhHMTZ
 .Op Fl D Ar lines
 .Op Fl L Ar columns
 .Op Fl R Ar columns
@@ -4061,8 +4061,9 @@ with
 .Fl Z
 unzooms every pane in the window.
 .Pp
-.Fl H
-hides the target pane, or shows it if it is hidden.
+.Fl h
+hides the target pane.
+If it is already hidden, this does nothing.
 A hidden pane is not shown, cannot be selected with the mouse and is skipped
 when moving to the next or previous pane, but it is otherwise unchanged: a
 hidden tiled pane gives its space to a neighbour and takes it back when shown,
@@ -4073,20 +4074,22 @@ order, if one remains.
 All panes may be hidden, leaving the window background visible.
 Modal panes cannot be hidden.
 Selecting a hidden pane shows it.
-.Fl h
-has the same restoration behaviour as
+.Fl H
+shows and selects the pane specified by
+.Fl t .
+Without
+.Fl t ,
+it restores the most recently hidden pane, as with
 .Ic select\-pane
-.Fl h .
+.Fl H .
 .Fl d
 with
-.Fl h
-or
 .Fl H
-shows a pane without making it active.
-.Fl a
-with
-.Fl H
-hides every floating or zoomed pane in the window, or, if any were hidden in
+shows the pane without making it active.
+.Pp
+.Fl C
+cycles desktop visibility: it hides every floating or zoomed pane in the
+window, or, if any were hidden in
 this way, shows just those again: ordinary floating panes first, then zoomed
 panes on the next call.
 Steps with no panes to restore are skipped.
@@ -4096,6 +4099,12 @@ With the default bindings, this is also done by the prefix key followed by
 or by clicking the
 .Ql [_]
 button in the status line pane list.
+The button uses the
+.Ql MouseDown1Control5 ,
+.Ql SecondClick1Control5
+and
+.Ql TripleClick1Control5
+bindings.
 The default prefix bindings
 .Ql h
 and
@@ -4239,7 +4248,7 @@ applies the last set layout if possible (undoes the most recent layout change).
 spreads the current pane and any panes next to it out evenly.
 .Tg selectp
 .It Xo Ic select\-pane
-.Op Fl DdehLlMmRUZ
+.Op Fl DdeHLlMmRUZ
 .Op Fl T Ar title
 .Op Fl t Ar target\-pane
 .Xc
@@ -4260,7 +4269,7 @@ or
 is used, respectively the pane below, to the left, to the right, or above the
 target pane is used.
 .Pp
-.Fl h
+.Fl H
 shows the most recently hidden pane in the window containing
 .Ar target\-pane
 and makes it active.
@@ -4270,7 +4279,7 @@ ordinary selection; those panes may then be restored by another call.
 If no panes are hidden, this does nothing.
 To restore a pane without changing focus, use
 .Ic resize\-pane
-.Fl dh .
+.Fl dH .
 .Pp
 .Fl Z
 moves the zoom to the pane selected if it was covered by a zoomed pane,
@@ -6744,7 +6753,7 @@ The
 .Ql [_]
 button cycles the desktop as described under
 .Ic resize\-pane
-.Fl aH .
+.Fl C .
 See the
 .Sx FORMATS
 and

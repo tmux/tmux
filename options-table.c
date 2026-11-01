@@ -213,7 +213,7 @@ static const char *options_table_copy_mode_line_numbers_list[] = {
 		"#[norange list=on default]" \
 		"#{?loop_last_flag,,#{E:window-status-separator}}" \
 	"}" \
-	"#[nolist align=right range=user|desktop]" \
+	"#[nolist align=right range=control|5]" \
 	"[_]" \
 	"#[norange default]"
 #define OPTIONS_TABLE_STATUS_FORMAT3 \

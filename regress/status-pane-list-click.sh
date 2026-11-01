@@ -5,6 +5,8 @@
 # button at the right hides every floating and zoomed pane and, clicked again,
 # shows just those.
 
+. ./regress-common.inc
+
 PATH=/bin:/usr/bin
 TERM=screen
 
@@ -107,11 +109,41 @@ $TMUX resize-pane -aZ || fail "unzoom failed"
 # must still show it.
 $TMUX select-pane -t "$b" || fail "select failed"
 for p in "$f" "$a" "$b"; do
-	$TMUX resize-pane -H -t "$p" || fail "hide failed"
+	$TMUX resize-pane -h -t "$p" || fail "hide failed"
 done
 check "$b" '#{pane_hidden_flag}:#{pane_active}' '1:1'
 click $entry_b $row
 check "$b" '#{pane_hidden_flag}:#{pane_active}' '0:1'
+
+# The default desktop control is independent of a custom status-click binding.
+$TMUX bind -n MouseDown1Status set -g @generic-click yes || exit 1
+$TMUX bind -n SecondClick1Status set -g @generic-click yes || exit 1
+$TMUX bind -n TripleClick1Status set -g @generic-click yes || exit 1
+for position in bottom top; do
+	$TMUX set -g status-position "$position" || exit 1
+	row=12
+	[ "$position" = top ] && row=2
+	wait_for_text '[_]' $TMUX2 capture-pane -p \
+	    -S "$((row - 1))" -E "$((row - 1))" || fail 'desktop not drawn'
+	$TMUX resize-pane -aZ || exit 1
+	$TMUX resize-pane -Z -t "$a" || exit 1
+	$TMUX resize-pane -H -t "$f" || exit 1
+	$TMUX set -g @generic-click no || exit 1
+	$TMUX set -g @desktop-clicks 0 || exit 1
+	$TMUX set-hook -g after-resize-pane \
+	    'set -gF @desktop-clicks "#{e|+:#{@desktop-clicks},1}"' || exit 1
+
+	# Three quick presses must perform all three desktop stages.
+	seq=$(printf '\033[<0;%s;%sM\033[<0;%s;%sm' \
+	    "$button" "$row" "$button" "$row")
+	$TMUX2 send-keys -t "$OUTER" -l "$seq$seq$seq" || exit 1
+	wait_for_output 3 $TMUX show -gv @desktop-clicks ||
+	    fail 'rapid desktop clicks did not run all three stages'
+	check "$a" '#{pane_hidden_flag}:#{pane_zoomed_flag}' 0:1
+	check "$f" '#{pane_hidden_flag}' 0
+	check "$a" '#{@generic-click}' no
+	$TMUX set-hook -gu after-resize-pane || exit 1
+done
 
 cleanup
 exit 0

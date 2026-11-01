@@ -161,7 +161,7 @@ check "$X" '#{pane_floating_flag}' 1
 check "$Y" '#{pane_floating_flag}' 1
 
 # The desktop shows them again.
-run resize-pane -a -H -t "$A"
+run resize-pane -C -t "$A"
 for p in "$A" "$Y"; do
 	zoomed "$p" 1
 	check "$p" '#{pane_hidden_flag}' 0

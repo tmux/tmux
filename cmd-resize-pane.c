@@ -42,8 +42,8 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.description = "Resize or zoom a pane.",
 	.alias = "resizep",
 
-	.args = { "adD::hHL::MR::Tt:U::x:y:Z", 0, 1, NULL },
-	.usage = "[-adhHMTZ] [-D lines] [-L columns] [-R columns] [-U lines] "
+	.args = { "aCdD::hHL::MR::Tt:U::x:y:Z", 0, 1, NULL },
+	.usage = "[-aCdhHMTZ] [-D lines] [-L columns] [-R columns] [-U lines] "
 		 "[-x width] [-y height] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -133,21 +133,22 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'M'))
 		return (cmd_resize_pane_mouse_update(self, item));
 
+	if (args_has(args, 'C')) {
+		cmd_resize_pane_desktop(w);
+		server_redraw_window(w);
+		return (CMD_RETURN_NORMAL);
+	}
 	if (args_has(args, 'h')) {
-		window_show_last_hidden_pane(w, !args_has(args, 'd'));
+		window_hide_pane(wp, 1);
 		return (CMD_RETURN_NORMAL);
 	}
 	if (args_has(args, 'H')) {
-		if (args_has(args, 'a'))
-			cmd_resize_pane_desktop(w);
-		else if (wp->flags & PANE_HIDDEN) {
-			if (args_has(args, 'd'))
-				window_show_pane(wp);
-			else
+		if (args_has(args, 't')) {
+			window_show_pane(wp);
+			if (!args_has(args, 'd'))
 				window_set_active_pane(w, wp, 1);
 		} else
-			window_hide_pane(wp, 1);
-		server_redraw_window(w);
+			window_show_last_hidden_pane(w, !args_has(args, 'd'));
 		return (CMD_RETURN_NORMAL);
 	}
 	if (args_has(args, 'Z')) {
