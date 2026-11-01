@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "tmux.h"
 
@@ -47,6 +48,7 @@ const struct cmd_entry cmd_break_pane_entry = {
 	.exec = cmd_break_pane_exec
 };
 
+/* Float a tiled pane, saving its place in the tiled layout. */
 static enum cmd_retval
 cmd_break_pane_float(struct cmdq_item *item, struct args *args,
     struct window *w, struct window_pane *wp)
@@ -60,10 +62,6 @@ cmd_break_pane_float(struct cmdq_item *item, struct args *args,
 		cmdq_error(item, "pane is already floating");
 		return (CMD_RETURN_ERROR);
 	}
-	if (w->flags & WINDOW_ZOOMED) {
-		cmdq_error(item, "can't float a pane while window is zoomed");
-		return (CMD_RETURN_ERROR);
-	}
 
 	if (layout_floating_args_parse(item, args, lines, w, fg, &cause) != 0) {
 		cmdq_error(item, "failed to float pane: %s", cause);
@@ -71,11 +69,10 @@ cmd_break_pane_float(struct cmdq_item *item, struct args *args,
 		return (CMD_RETURN_ERROR);
 	}
 	layout_remove_tile(w, lc);
+	lc->flags |= LAYOUT_CELL_FLOATING;
 	layout_set_size(lc, fg->sx, fg->sy, fg->xoff, fg->yoff);
 
-	lc->flags |= LAYOUT_CELL_FLOATING;
-	TAILQ_REMOVE(&w->z_index, wp, zentry);
-	TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
+	window_raise_pane(wp);
 
 	if (!args_has(args, 'd'))
 		window_set_active_pane(w, wp, 1);
@@ -102,6 +99,8 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window		*w = wl->window, *old_w = w;
 	char			*cause, *cp;
 	int			 idx = target->idx, before, old_idx = wl->idx;
+	struct layout_geometry	 floating;
+	int			 is_floating;
 	const char		*template, *name = args_get(args, 'n');
 
 	if (wp == w->modal) {
@@ -111,6 +110,9 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (args_has(args, 'W'))
 		return (cmd_break_pane_float(item, args, w, wp));
+
+	if (wp->flags & PANE_ZOOMED)
+		window_unzoom_pane(wp, 1);
 
 	if (name != NULL && !check_name(name)) {
 		cmdq_error(item, "invalid window name: %s", name);
@@ -126,8 +128,6 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 		if (idx == -1)
 			return (CMD_RETURN_ERROR);
 	}
-	server_unzoom_window(w);
-
 	if (window_count_panes(w, 1) == 1) {
 		if (server_link_window(src_s, wl, dst_s, idx, 0,
 		    !args_has(args, 'd'), &cause) != 0) {
@@ -150,6 +150,9 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 		cmdq_error(item, "index in use: %d", idx);
 		return (CMD_RETURN_ERROR);
 	}
+
+	is_floating = window_pane_is_floating(wp);
+	memcpy(&floating, &wp->layout_cell->g, sizeof floating);
 
 	TAILQ_REMOVE(&w->panes, wp, entry);
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
@@ -180,6 +183,11 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	wl = session_attach(dst_s, w, idx, &cause); /* can't fail */
 
 	layout_init(w, wp);
+	if (is_floating) {
+		wp->layout_cell->flags |= LAYOUT_CELL_FLOATING;
+		memcpy(&wp->layout_cell->g, &floating, sizeof floating);
+		layout_fix_panes(w, NULL);
+	}
 	wp->flags |= PANE_CHANGED;
 	colour_palette_from_option(&wp->palette, wp->options);
 

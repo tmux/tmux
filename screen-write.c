@@ -158,7 +158,7 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 
 	if (c->session->curw->window != wp->window)
 		return (0);
-	if (wp->layout_cell == NULL)
+	if (!window_pane_is_visible(wp))
 		return (0);
 
 	if (wp->flags & (PANE_REDRAW|PANE_DROP))
