@@ -2704,6 +2704,33 @@ format_cb_pane_pb_state(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_program_message. */
+static void *
+format_cb_pane_program_message(struct format_tree *ft)
+{
+	if (ft->wp == NULL || ft->wp->program_message == NULL)
+		return (NULL);
+	return (xstrdup(ft->wp->program_message));
+}
+
+/* Callback for pane_program_name. */
+static void *
+format_cb_pane_program_name(struct format_tree *ft)
+{
+	if (ft->wp == NULL || ft->wp->program_name == NULL)
+		return (NULL);
+	return (xstrdup(ft->wp->program_name));
+}
+
+/* Callback for pane_program_state. */
+static void *
+format_cb_pane_program_state(struct format_tree *ft)
+{
+	if (ft->wp == NULL || ft->wp->program_state == NULL)
+		return (NULL);
+	return (xstrdup(ft->wp->program_state));
+}
+
 /* Callback for pane_right. */
 static void *
 format_cb_pane_right(struct format_tree *ft)
@@ -4024,6 +4051,15 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_private_modes", FORMAT_TABLE_STRING,
 	  format_cb_pane_private_modes
+	},
+	{ "pane_program_message", FORMAT_TABLE_STRING,
+	  format_cb_pane_program_message
+	},
+	{ "pane_program_name", FORMAT_TABLE_STRING,
+	  format_cb_pane_program_name
+	},
+	{ "pane_program_state", FORMAT_TABLE_STRING,
+	  format_cb_pane_program_state
 	},
 	{ "pane_right", FORMAT_TABLE_STRING,
 	  format_cb_pane_right

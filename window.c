@@ -1638,6 +1638,7 @@ window_pane_destroy(struct window_pane *wp)
 
 	RB_REMOVE(window_pane_tree, &all_window_panes, wp);
 	wp->flags |= PANE_DESTROYED;
+	window_pane_clear_program_status(wp);
 	window_pane_clear_prompt(wp);
 
 	window_pane_free_modes(wp);
@@ -1984,6 +1985,18 @@ window_pane_set_prompt(struct window_pane *wp, struct client *c,
 
 	prompt_incremental_start(wp->prompt);
 	window_fire_pane_prompt("pane-prompt-opened", wp, type);
+}
+
+/* Clear the retained root program status. */
+void
+window_pane_clear_program_status(struct window_pane *wp)
+{
+	free(wp->program_state);
+	free(wp->program_name);
+	free(wp->program_message);
+	wp->program_state = NULL;
+	wp->program_name = NULL;
+	wp->program_message = NULL;
 }
 
 /* Close a pane prompt. */

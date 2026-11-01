@@ -1432,6 +1432,10 @@ struct window_pane {
 
 	struct input_ctx *ictx;
 
+	char		*program_state;
+	char		*program_name;
+	char		*program_message;
+
 	struct grid_cell cached_gc;
 	struct grid_cell cached_active_gc;
 	u_int		 cached_dim;
@@ -3878,6 +3882,7 @@ void		 window_pane_set_prompt(struct window_pane *, struct client *,
 		     status_prompt_input_cb, prompt_free_cb, void *, int,
 		     enum prompt_type);
 void		 window_pane_clear_prompt(struct window_pane *);
+void		 window_pane_clear_program_status(struct window_pane *);
 int		 window_pane_has_prompt(struct window_pane *);
 void		 window_pane_update_prompt(struct window_pane *, const char *,
 		     const char *);

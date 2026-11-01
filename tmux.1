@@ -7684,6 +7684,9 @@ The following variables are available, where appropriate:
 .It Li "pane_private_modes" Ta "" Ta "List of enabled DECSET private modes"
 .It Li "pane_pb_state" Ta "" Ta "Pane progress bar state, one of hidden, normal, error, indeterminate, paused (can be set by application)"
 .It Li "pane_pb_progress" Ta "" Ta "Pane progress bar progress percentage (can be set by application)"
+.It Li "pane_program_message" Ta "" Ta "Decoded OSC 7501 program status message"
+.It Li "pane_program_name" Ta "" Ta "OSC 7501 application name"
+.It Li "pane_program_state" Ta "" Ta "OSC 7501 state: idle, working, done, blocked or error"
 .It Li "pane_right" Ta "" Ta "Right of pane"
 .It Li "pane_search_string" Ta "" Ta "Last search string in copy mode"
 .It Li "pane_start_command" Ta "" Ta "Command pane started with"
@@ -7795,6 +7798,25 @@ The following variables are available, where appropriate:
 .It Li "window_zoomed_flag" Ta "" Ta "1 if window is zoomed"
 .It Li "wrap_flag" Ta "" Ta "Pane wrap flag"
 .El
+.Pp
+.Nm
+retains one OSC 7501 root program status record per pane and answers its
+capability query.
+Reports with an
+.Li id
+are ignored.
+Each accepted report replaces the state, application name and decoded message.
+Omitted fields become empty.
+Other fields, including kind, title and progress, are ignored.
+The record is cleared by
+.Li state=clear ,
+a new shell prompt (OSC 133 A), a full terminal reset (RIS), or pane respawn.
+This also clears completed and error states.
+A process exiting in a retained dead pane does not clear its record.
+Switching screens, a soft reset, moving the pane and detaching clients preserve
+status.
+These records are independent of OSC 9;4 progress and are not forwarded to
+attached terminals.
 .Sh STYLES
 .Nm
 offers various options to specify the colour and attributes of aspects of the

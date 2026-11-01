@@ -119,6 +119,7 @@ struct input_ctx {
 	size_t				input_len;
 	size_t				input_space;
 	enum input_end_type		input_end;
+	size_t				osc_start;
 
 	struct input_param		param_list[24];
 	u_int				param_list_len;
@@ -133,6 +134,7 @@ struct input_ctx {
 	int				flags;
 #define INPUT_DISCARD 0x1
 #define INPUT_LAST 0x2
+#define INPUT_OSC_7501_ST 0x4
 
 	struct input_requests		 requests;
 	u_int				 request_count;
@@ -178,6 +180,7 @@ static void	input_osc_110(struct input_ctx *, const char *);
 static void	input_osc_111(struct input_ctx *, const char *);
 static void	input_osc_112(struct input_ctx *, const char *);
 static void	input_osc_133(struct input_ctx *, const char *);
+static void	input_osc_7501(struct input_ctx *);
 
 /* Transition entry/exit handlers. */
 static void	input_clear(struct input_ctx *);
@@ -983,6 +986,13 @@ input_parse(struct input_ctx *ictx, const u_char *buf, size_t len)
 	while (off < len) {
 		ictx->ch = buf[off++];
 
+		if (ictx->flags & INPUT_OSC_7501_ST) {
+			ictx->flags &= ~INPUT_OSC_7501_ST;
+			if (ictx->ch == '\\' &&
+			    ictx->state == &input_state_esc_enter)
+				input_osc_7501(ictx);
+		}
+
 		/* Find the transition. */
 		if (ictx->state != state ||
 		    itr == NULL ||
@@ -1422,6 +1432,11 @@ input_esc_dispatch(struct input_ctx *ictx)
 
 	switch (entry->type) {
 	case INPUT_ESC_RIS:
+		if (ictx->wp != NULL && ictx->wp->program_state != NULL) {
+			window_pane_clear_program_status(ictx->wp);
+			server_status_window(ictx->wp->window);
+			server_redraw_window_borders(ictx->wp->window);
+		}
 		colour_palette_clear(ictx->palette);
 		input_reset_cell(ictx);
 		screen_write_reset(sctx);
@@ -2706,9 +2721,14 @@ input_dcs_dispatch(struct input_ctx *ictx)
 static void
 input_enter_osc(struct input_ctx *ictx)
 {
+	size_t	 len = EVBUFFER_LENGTH(ictx->since_ground);
+
 	log_debug("%s", __func__);
 
 	input_clear(ictx);
+	ictx->osc_start = SIZE_MAX;
+	if (len != 0 && EVBUFFER_DATA(ictx->since_ground)[len - 1] == '\033')
+		ictx->osc_start = len - 1;
 	input_start_ground_timer(ictx);
 	ictx->flags &= ~INPUT_LAST;
 }
@@ -2788,10 +2808,198 @@ input_exit_osc(struct input_ctx *ictx)
 	case 133:
 		input_osc_133(ictx, p);
 		break;
+	case 7501:
+		input_osc_7501(ictx);
+		break;
 	default:
 		log_debug("%s: unknown '%u'", __func__, option);
 		break;
 	}
+}
+
+/* Decode a bounded, single-line UTF-8 program status message. */
+static char *
+input_program_message(const u_char *value, size_t len)
+{
+	char		 encoded[2737];
+	u_char		 decoded[2049];
+	struct utf8_data	 ud;
+	enum utf8_state	 more;
+	size_t		 i;
+	int		 size;
+	wchar_t		 wc;
+
+	memcpy(encoded, value, len);
+	if (memchr(value, '=', len) == NULL) {
+		while (len % 4 != 0)
+			encoded[len++] = '=';
+	}
+	encoded[len] = '\0';
+	size = b64_pton(encoded, decoded, sizeof decoded);
+	if (size == -1 || size > 2048)
+		return (NULL);
+	for (i = 0; i < (size_t)size;) {
+		wc = decoded[i++];
+		if (wc >= 0x80) {
+			more = utf8_open(&ud, wc);
+			if (more != UTF8_MORE)
+				return (NULL);
+			while (i < (size_t)size && more == UTF8_MORE)
+				more = utf8_append(&ud, decoded[i++]);
+			if (more != UTF8_DONE ||
+			    utf8_towc(&ud, &wc) != UTF8_DONE)
+				return (NULL);
+		}
+		if (wc < 0x20 || (wc >= 0x7f && wc <= 0x9f) ||
+		    (wc >= 0xd800 && wc <= 0xdfff) || wc > 0x10ffff)
+			return (NULL);
+	}
+	return (xstrndup(decoded, size));
+}
+
+/* Parse with lengths: C0 bytes discarded by the OSC parser are significant. */
+static void
+input_program_status(struct window_pane *wp, const u_char *buf, size_t len)
+{
+	static const char *keys[] = { "state", "app", "msg" };
+	static const char *states[] = {
+		"idle", "working", "done", "blocked", "error", "clear"
+	};
+	const u_char	*end = buf + len, *next, *eq, *key, *keyend;
+	const u_char	*value, *valueend;
+	char		*values[3] = { NULL, NULL, NULL }, *copy;
+	const char	*old[3];
+	size_t		 keylen, valuelen, i;
+	u_int		 field;
+
+	while (buf < end) {
+		next = memchr(buf, ':', end - buf);
+		if (next == NULL)
+			next = end;
+		eq = memchr(buf, '=', next - buf);
+		key = buf;
+		keyend = eq != NULL ? eq : next;
+		while (key < keyend && isspace(*key))
+			key++;
+		while (keyend > key && isspace(keyend[-1]))
+			keyend--;
+		keylen = keyend - key;
+		buf = next == end ? end : next + 1;
+		if (keylen > 16 || (keylen == 2 && memcmp(key, "id", 2) == 0))
+			goto out;
+		if (eq == NULL || keylen == 0)
+			continue;
+		for (field = 0; field < nitems(keys); field++) {
+			if (strlen(keys[field]) == keylen &&
+			    memcmp(keys[field], key, keylen) == 0)
+				break;
+		}
+		if (field == nitems(keys))
+			continue;
+		value = eq + 1;
+		valueend = next;
+		while (value < valueend && isspace(*value))
+			value++;
+		while (valueend > value && isspace(valueend[-1]))
+			valueend--;
+		valuelen = valueend - value;
+		if ((field == 1 && valuelen > 32) ||
+		    (field == 2 && valuelen > 2732))
+			goto out;
+		for (i = 0; i < valuelen; i++) {
+			if (!((value[i] >= 'a' && value[i] <= 'z') ||
+			    (value[i] >= 'A' && value[i] <= 'Z') ||
+			    (value[i] >= '0' && value[i] <= '9') ||
+			    (value[i] != '\0' &&
+			    strchr("_.,+/=-", value[i]) != NULL)))
+				break;
+		}
+		if (i != valuelen)
+			continue;
+		if (field == 2) {
+			copy = input_program_message(value, valuelen);
+			if (copy == NULL)
+				goto out;
+		} else
+			copy = xstrndup(value, valuelen);
+		free(values[field]);
+		values[field] = copy;
+	}
+	if (values[0] == NULL)
+		goto out;
+	for (i = 0; i < nitems(states); i++) {
+		if (strcmp(values[0], states[i]) == 0)
+			break;
+	}
+	if (i == nitems(states))
+		goto out;
+	if (values[1] != NULL && (*values[1] == '\0' ||
+	    strspn(values[1], "abcdefghijklmnopqrstuvwxyz"
+	    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.+-") != strlen(values[1]))) {
+		free(values[1]);
+		values[1] = NULL;
+	}
+	if (strcmp(values[0], "clear") == 0) {
+		for (i = 0; i < nitems(values); i++) {
+			free(values[i]);
+			values[i] = NULL;
+		}
+	}
+	old[0] = wp->program_state;
+	old[1] = wp->program_name;
+	old[2] = wp->program_message;
+	for (i = 0; i < nitems(values); i++) {
+		if ((old[i] == NULL) != (values[i] == NULL) ||
+		    (old[i] != NULL && strcmp(old[i], values[i]) != 0))
+			break;
+	}
+	if (i == nitems(values))
+		goto out;
+	window_pane_clear_program_status(wp);
+	wp->program_state = values[0];
+	wp->program_name = values[1];
+	wp->program_message = values[2];
+	server_status_window(wp->window);
+	server_redraw_window_borders(wp->window);
+	return;
+
+out:
+	for (i = 0; i < nitems(values); i++)
+		free(values[i]);
+}
+
+/* Use raw bytes and defer ST until its backslash actually arrives. */
+static void
+input_osc_7501(struct input_ctx *ictx)
+{
+	const u_char	*raw;
+	size_t		 len = EVBUFFER_LENGTH(ictx->since_ground);
+
+	if (ictx->osc_start > len)
+		return;
+	len -= ictx->osc_start;
+	if (len < 7 || len >= 4096)
+		return;
+	raw = EVBUFFER_DATA(ictx->since_ground) + ictx->osc_start;
+	if (memcmp(raw, "\033]7501;", 7) != 0)
+		return;
+	if (ictx->ch == '\033') {
+		if (len < 4095)
+			ictx->flags |= INPUT_OSC_7501_ST;
+		return;
+	}
+	if (ictx->ch == '\\') {
+		if (len < 8 || raw[len - 1] != '\033')
+			return;
+		len--;
+	} else if (ictx->ch != '\007')
+		return;
+	raw += 7;
+	len -= 7;
+	if (len == 1 && *raw == '?')
+		input_reply(ictx, 1, "\033]7501;?\033\\");
+	else if (ictx->wp != NULL)
+		input_program_status(ictx->wp, raw, len);
 }
 
 /* APC string started. */
@@ -3414,6 +3622,11 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 			gl->flags |= GRID_LINE_START_PROMPT;
 		}
 		if (wp != NULL) {
+			if (*p == 'A' && wp->program_state != NULL) {
+				window_pane_clear_program_status(wp);
+				server_status_window(wp->window);
+				server_redraw_window_borders(wp->window);
+			}
 			wp->last_prompt_time = time(NULL);
 			events_fire_pane("pane-shell-prompt", wp);
 		}
