@@ -546,6 +546,7 @@ key_bindings_init(void)
 		"bind -n DoubleClick1SideStatusBorder { set -u side-status-width }",
 
 		/* Mouse button 1 down on default pane-border-format */
+		"bind -n MouseDown1Control6 { resize-pane -H -t= }",
 		"bind -n MouseDown1Control9 { display-menu -t= -xM -yM -O -T 'Kill pane #{pane_index}?' 'Yes' 'y' { kill-pane -t= } 'No' 'n' {}}",
 		"bind -n MouseDown1Control8 { resize-pane -Z }",
 		"bind -n M-MouseDown1Control8 { move-pane -P front }",

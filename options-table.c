@@ -1717,6 +1717,7 @@ const struct options_table_entry options_table[] = {
 			 "\"#{pane_title}\""
 			 "#{?#{mouse},"
 				"#[align=right]"
+				"#[range=control|6][h]#[norange]"
 				"#[range=control|7]["
 					"#{?#{pane_floating_flag},t,f}"
 				"]#[norange]"

@@ -88,6 +88,21 @@ check "$b" '#{pane_hidden_flag}' 0
 click $button $row
 check "$f" '#{pane_hidden_flag}' 0
 
+# With a fullscreen pane, the same button restores floats before fullscreen.
+$TMUX resize-pane -Z -t "$a" || fail "zoom failed"
+$TMUX select-pane -t "$f" || fail "select failed"
+click $button $row
+check "$a" '#{pane_hidden_flag}:#{pane_zoomed_flag}' 1:1
+check "$f" '#{pane_hidden_flag}' 1
+check "$b" '#{pane_hidden_flag}' 0
+click $button $row
+check "$f" '#{pane_hidden_flag}' 0
+check "$a" '#{pane_hidden_flag}' 1
+click $button $row
+check "$a" '#{pane_hidden_flag}:#{pane_zoomed_flag}' 0:1
+check "$f" '#{pane_hidden_flag}' 0
+$TMUX resize-pane -aZ || fail "unzoom failed"
+
 # With every pane hidden the active pane is a hidden one; clicking its entry
 # must still show it.
 $TMUX select-pane -t "$b" || fail "select failed"

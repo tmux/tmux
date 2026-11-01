@@ -6353,6 +6353,15 @@ will fall back to standard ACS line drawing when UTF\-8 is not supported.
 .Op Cm off | top | bottom | top\-floating | bottom\-floating
 .Xc
 Turn pane border status lines off or set their position.
+With the default
+.Ic pane\-border\-format
+and mouse enabled, the
+.Ql [h]
+button hides the pane whose border was clicked.
+It is bound through
+.Ql MouseDown1Control6
+and may be rebound with
+.Ic bind\-key .
 If set to
 .Cm top\-floating
 or
