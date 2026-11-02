@@ -165,17 +165,86 @@ run select-layout -E -t "$A"
 check "$A" '#{pane_width}' 61
 check "$B" '#{pane_width}' 60
 
+# Whole-tree redistribution visits every nested row and column, even when
+# the root is already evenly divided, and does not depend on its target.
+reset
+run kill-pane -t "$C"
+C=$(run split-window -vdP -F '#{pane_id}' -t "$A" '') || exit 1
+D=$(run split-window -vdP -F '#{pane_id}' -t "$A" '') || exit 1
+E=$(run split-window -vdP -F '#{pane_id}' -t "$B" '') || exit 1
+F=$(run split-window -hdP -F '#{pane_id}' -t "$E" '') || exit 1
+run resize-pane -x 80 -t "$A"
+run resize-pane -y 20 -t "$A"
+run resize-pane -y 30 -t "$B"
+run resize-pane -x 10 -t "$E"
+before=$(geometry)
+run select-layout -aEm -t "$F"
+[ "$(geometry)" = "$before" ] || fail '-aEm changed manual sizing'
+run select-layout -aE -t "$F"
+check "$A" '#{pane_left},#{pane_top},#{pane_width},#{pane_height}' '0,0,61,14'
+check "$D" '#{pane_left},#{pane_top},#{pane_width},#{pane_height}' '0,15,61,13'
+check "$C" '#{pane_left},#{pane_top},#{pane_width},#{pane_height}' '0,29,61,13'
+check "$B" '#{pane_left},#{pane_top},#{pane_width},#{pane_height}' '62,0,60,21'
+check "$E" '#{pane_left},#{pane_top},#{pane_width},#{pane_height}' '62,22,30,20'
+check "$F" '#{pane_left},#{pane_top},#{pane_width},#{pane_height}' '93,22,29,20'
+before=$(geometry)
+run select-layout -aE -t "$A"
+[ "$(geometry)" = "$before" ] || fail '-aE depends on its target pane'
+run resize-pane -y 20 -t "$A"
+run select-layout -aE -t "$A"
+[ "$(geometry)" = "$before" ] || fail '-aE stopped at an unchanged root'
+
+# Clearing all markers restores automatic redistribution in nested groups.
+run resize-pane -h -t "$C"
+check "$A" '#{pane_height}' 21
+run resize-pane -dH -t "$C"
+[ "$(geometry)" = "$before" ] || fail '-aE did not clear nested markers'
+
+# Collapsed groups are visited so showing them resumes automatic sizing.
+run resize-pane -y 20 -t "$A"
+for p in "$A" "$D" "$C"; do
+	run resize-pane -h -t "$p"
+done
+run select-layout -aE -t "$B"
+for p in "$A" "$D" "$C"; do
+	run resize-pane -dH -t "$p"
+done
+check "$A" '#{pane_height}' 14
+
+# -aEm skips a manual outer cell but still visits its automatic children.
+run resize-pane -x 80 -t "$A"
+run split-window -vd -t "$A" ''
+run select-layout -aEm -t "$B"
+check "$A" '#{pane_width}:#{pane_height}' '80:10'
+check "$B" '#{pane_width}' 41
+
+# Uneven minimum widths in nested splits must fit the existing viewport.
+reset
+run kill-pane -t "$C"
+C=$(run split-window -vdP -F '#{pane_id}' -t "$B" '') || exit 1
+D=$(run split-window -hdP -F '#{pane_id}' -t "$B" '') || exit 1
+run split-window -hd -t "$B" ''
+run resize-window -x 7 -y 5
+run select-layout -aE -t "$A"
+check "$A" '#{pane_width}:#{window_width}' '1:7'
+check "$C" '#{pane_width}' 5
+check "$D" '#{pane_left}:#{pane_width}' '6:1'
+
 # Redistributing underneath fullscreen panes preserves their state and stack.
 reset
 run resize-pane -Z -t "$C"
 F=$(run new-pane -dP -F '#{pane_id}' -x 20 -y 8 '') || exit 1
 run resize-pane -Z -t "$F"
 run resize-pane -h -t "$F"
+G=$(run new-pane -dP -F '#{pane_id}' -x 17 -y 5 '') || exit 1
+floating=$(run display -p -t "$G" '#{pane_left},#{pane_top},#{pane_width},#{pane_height}')
 active=$(run display -p '#{pane_id}')
 stack=$(run list-panes -F '#{pane_id}:#{pane_z}')
 run select-layout -EP -t "$A"
+run select-layout -aE -t "$F"
 check "$C" '#{pane_zoomed_flag}:#{pane_floating_flag}' '1:1'
 check "$F" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '1:1'
+check "$G" '#{pane_left},#{pane_top},#{pane_width},#{pane_height}' "$floating"
 [ "$(run list-panes -F '#{pane_id}:#{pane_z}')" = "$stack" ] ||
 	fail 'redistribution changed stacking'
 check "$active" '#{pane_active}' 1
@@ -196,17 +265,19 @@ done
 check "$D" '#{pane_width}' 29
 run set-hook -gu after-split-window
 
-# The menu offers an explicit local reset.
+# The menu offers an explicit whole-window reset.
 run list-keys -T prefix '>' > "$DIR/menu"
-grep -q 'Redistribute Panes.*select-layout -EP' "$DIR/menu" ||
+grep -Eq 'Redistribute Panes.*select-layout -(aE|Ea)' "$DIR/menu" ||
 	fail 'pane menu is missing redistribution'
 
 # The modifiers require a redistribution request.
 $TMUX select-layout -P 2>/dev/null && fail '-P accepted without -E'
 $TMUX select-layout -m 2>/dev/null && fail '-m accepted without -E'
+$TMUX select-layout -a 2>/dev/null && fail '-a accepted without -E'
+$TMUX select-layout -aEP 2>/dev/null && fail '-a accepted with -P'
 
-# Right-clicking an inactive pane redistributes its own parent, not the
-# active pane's parent, and leaves focus and the outer divider unchanged.
+# Right-clicking an inactive pane redistributes the entire tree and leaves
+# focus unchanged.
 reset
 run kill-pane -t "$C"
 run resize-pane -x 80 -t "$A"
@@ -230,9 +301,9 @@ wait_for_text 'Redistribute Panes' $OUTER capture-pane -p ||
 	fail 'pane menu did not open'
 $OUTER send-keys E || fail 'could not choose redistribution'
 wait_for_output "$((height / 2))" $TMUX display -p -t "$A" '#{pane_height}' ||
-	fail 'menu did not redistribute the clicked parent'
+	fail 'menu did not redistribute the window'
 check "$C" '#{pane_height}' "$(((height - 1) / 2))"
-check "$A" '#{pane_width}' 80
+check "$A" '#{pane_width}' 61
 check "$B" '#{pane_active}' 1
 
 exit 0

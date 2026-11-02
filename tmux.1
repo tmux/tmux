@@ -4227,7 +4227,7 @@ panes are rotated.
 zooms the pane selected after rotating if the window was zoomed.
 .Tg selectl
 .It Xo Ic select\-layout
-.Op Fl EmnopP
+.Op Fl aEmnopP
 .Op Fl t Ar target\-pane
 .Op Ar layout\-name
 .Xc
@@ -4255,6 +4255,19 @@ one changes.
 With
 .Fl P ,
 only the immediate parent is redistributed.
+With
+.Fl a ,
+every layout cell in the window is redistributed, starting at the root and
+then visiting its children.
+The existing arrangement of rows and columns is preserved; equal shares apply
+within each dividing cell, so panes in different nested cells need not have
+equal sizes.
+If a cell cannot be divided evenly without violating pane minimum sizes, its
+current allocation is retained.
+.Fl a
+and
+.Fl P
+are mutually exclusive.
 Hidden and floating panes do not take tiled space, and redistributing does not
 change pane visibility or zoom state.
 .Pp
@@ -4269,7 +4282,11 @@ clears the mark on each cell it visits, including cells already evenly sized.
 With
 .Fl m ,
 it stops at a marked cell without changing it or clearing its mark.
-Both
+With
+.Fl a ,
+marked cells are skipped but their children are still visited.
+The flags
+.Fl a ,
 .Fl m
 and
 .Fl P
@@ -4285,8 +4302,8 @@ Loading a saved layout treats its specified allocations as manually sized.
 The pane menu's
 .Ql Redistribute Panes
 item runs
-.Ic select-layout -EP
-to redistribute the immediate parent and clear its manual sizing.
+.Ic select-layout -aE
+to redistribute the whole window and clear manual sizing throughout the tree.
 For example, the following hooks redistribute the affected pane's parent
 after floating or tiling, while respecting manual sizing:
 .Bd -literal -offset indent

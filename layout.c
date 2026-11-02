@@ -1647,6 +1647,7 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 {
 	struct layout_cell	*lc, *root = w->layout_root;
 	u_int			 number, each, size, this, remainder;
+	u_int			 minimum, left;
 	int			 change, changed, status;
 
 	number = 0;
@@ -1678,6 +1679,28 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 	 */
 	remainder = size - (number * (each + 1)) + 1;
 
+	/* Check all targets before shrinking any subtree below its minimum. */
+	left = remainder;
+	TAILQ_FOREACH(lc, &parent->cells, entry) {
+		if (!layout_cell_is_tiled(lc) && !layout_cell_has_tiled_child(lc))
+			continue;
+		this = each;
+		if (left > 0) {
+			this++;
+			left--;
+		}
+		minimum = layout_resize_check(w, lc, parent->type);
+		if (parent->type == LAYOUT_LEFTRIGHT)
+			minimum = lc->g.sx - minimum;
+		else {
+			minimum = lc->g.sy - minimum;
+			if (layout_add_horizontal_border(root, lc, status))
+				this++;
+		}
+		if (this < minimum)
+			return (0);
+	}
+
 	changed = 0;
 	TAILQ_FOREACH (lc, &parent->cells, entry) {
 		if (!layout_cell_is_tiled(lc) && !layout_cell_has_tiled_child(lc))
@@ -1708,13 +1731,39 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 	return (changed);
 }
 
-/* Spread out cells, optionally limited to the parent or automatic sizes. */
+/* Redistribute each dividing cell before its children. */
+static void
+layout_spread_tree(struct window *w, struct layout_cell *lc, int flags)
+{
+	struct layout_cell	*child;
+
+	if (lc->type == LAYOUT_WINDOWPANE)
+		return;
+	if ((~flags & LAYOUT_SPREAD_PRESERVE) ||
+	    (~lc->flags & LAYOUT_CELL_MANUAL)) {
+		layout_spread_cell(w, lc);
+		lc->flags &= ~LAYOUT_CELL_MANUAL;
+	}
+
+	/* Visit marked and collapsed groups to handle their children too. */
+	TAILQ_FOREACH(child, &lc->cells, entry)
+		layout_spread_tree(w, child, flags);
+}
+
+/* Redistribute the whole tree or cells around a pane. */
 void
 layout_spread_out(struct window_pane *wp, int flags)
 {
 	struct layout_cell	*parent;
 	struct window		*w = wp->window;
 	int			 changed;
+
+	if (flags & LAYOUT_SPREAD_ALL) {
+		layout_spread_tree(w, w->layout_root, flags);
+		layout_fix_offsets(w);
+		layout_fix_panes(w, NULL);
+		return;
+	}
 
 	parent = wp->layout_cell->parent;
 	if (parent == NULL)
