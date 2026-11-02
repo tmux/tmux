@@ -1733,33 +1733,30 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 
 /* Redistribute each dividing cell before its children. */
 static void
-layout_spread_tree(struct window *w, struct layout_cell *lc, int flags)
+layout_spread_tree(struct window *w, struct layout_cell *lc)
 {
 	struct layout_cell	*child;
 
 	if (lc->type == LAYOUT_WINDOWPANE)
 		return;
-	if ((~flags & LAYOUT_SPREAD_PRESERVE) ||
-	    (~lc->flags & LAYOUT_CELL_MANUAL)) {
-		layout_spread_cell(w, lc);
-		lc->flags &= ~LAYOUT_CELL_MANUAL;
-	}
+	layout_spread_cell(w, lc);
+	lc->flags &= ~LAYOUT_CELL_MANUAL;
 
-	/* Visit marked and collapsed groups to handle their children too. */
+	/* Visit collapsed groups to clear their children's markers too. */
 	TAILQ_FOREACH(child, &lc->cells, entry)
-		layout_spread_tree(w, child, flags);
+		layout_spread_tree(w, child);
 }
 
 /* Redistribute the whole tree or cells around a pane. */
 void
-layout_spread_out(struct window_pane *wp, int flags)
+layout_spread_out(struct window_pane *wp, int all)
 {
 	struct layout_cell	*parent;
 	struct window		*w = wp->window;
 	int			 changed;
 
-	if (flags & LAYOUT_SPREAD_ALL) {
-		layout_spread_tree(w, w->layout_root, flags);
+	if (all) {
+		layout_spread_tree(w, w->layout_root);
 		layout_fix_offsets(w);
 		layout_fix_panes(w, NULL);
 		return;
@@ -1770,10 +1767,6 @@ layout_spread_out(struct window_pane *wp, int flags)
 		return;
 
 	do {
-		if ((flags & LAYOUT_SPREAD_PRESERVE) &&
-		    (parent->flags & LAYOUT_CELL_MANUAL)) {
-			break;
-		}
 		changed = layout_spread_cell(w, parent);
 		parent->flags &= ~LAYOUT_CELL_MANUAL;
 		if (changed) {
@@ -1781,8 +1774,6 @@ layout_spread_out(struct window_pane *wp, int flags)
 			layout_fix_panes(w, NULL);
 			break;
 		}
-		if (flags & LAYOUT_SPREAD_PARENT)
-			break;
 	} while ((parent = parent->parent) != NULL);
 }
 

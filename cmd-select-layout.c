@@ -34,8 +34,8 @@ const struct cmd_entry cmd_select_layout_entry = {
 	.description = "Choose or apply a layout.",
 	.alias = "selectl",
 
-	.args = { "aEmnopPt:", 0, 1, NULL },
-	.usage = "[-aEmnopP] " CMD_TARGET_PANE_USAGE " [layout-name]",
+	.args = { "aEnopt:", 0, 1, NULL },
+	.usage = "[-aEnop] " CMD_TARGET_PANE_USAGE " [layout-name]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -83,16 +83,9 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*layoutname;
 	char			*oldlayout, *cause = NULL;
 	int			 next, previous, layout, flags = 0;
-	int			 spread_flags = 0;
 
-	if ((args_has(args, 'a') || args_has(args, 'm') ||
-	    args_has(args, 'P')) &&
-	    !args_has(args, 'E')) {
-		cmdq_error(item, "-a, -m and -P require -E");
-		return (CMD_RETURN_ERROR);
-	}
-	if (args_has(args, 'a') && args_has(args, 'P')) {
-		cmdq_error(item, "-a and -P are mutually exclusive");
+	if (args_has(args, 'a') && !args_has(args, 'E')) {
+		cmdq_error(item, "-a requires -E");
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -119,13 +112,7 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(args, 'E')) {
-		if (args_has(args, 'a'))
-			spread_flags |= LAYOUT_SPREAD_ALL;
-		if (args_has(args, 'P'))
-			spread_flags |= LAYOUT_SPREAD_PARENT;
-		if (args_has(args, 'm'))
-			spread_flags |= LAYOUT_SPREAD_PRESERVE;
-		layout_spread_out(wp, spread_flags);
+		layout_spread_out(wp, args_has(args, 'a'));
 		goto changed;
 	}
 

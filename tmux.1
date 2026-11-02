@@ -4227,7 +4227,7 @@ panes are rotated.
 zooms the pane selected after rotating if the window was zoomed.
 .Tg selectl
 .It Xo Ic select\-layout
-.Op Fl aEmnopP
+.Op Fl aEnop
 .Op Fl t Ar target\-pane
 .Op Ar layout\-name
 .Xc
@@ -4253,9 +4253,6 @@ spreads the current pane and any panes next to it out evenly.
 It starts at the pane's parent layout cell and tries enclosing cells until
 one changes.
 With
-.Fl P ,
-only the immediate parent is redistributed.
-With
 .Fl a ,
 every layout cell in the window is redistributed, starting at the root and
 then visiting its children.
@@ -4264,10 +4261,6 @@ within each dividing cell, so panes in different nested cells need not have
 equal sizes.
 If a cell cannot be divided evenly without violating pane minimum sizes, its
 current allocation is retained.
-.Fl a
-and
-.Fl P
-are mutually exclusive.
 Hidden and floating panes do not take tiled space, and redistributing does not
 change pane visibility or zoom state.
 .Pp
@@ -4279,18 +4272,8 @@ This redistribution is built in and does not require hooks.
 Automatic window resizing does not change the mark.
 .Fl E
 clears the mark on each cell it visits, including cells already evenly sized.
-With
-.Fl m ,
-it stops at a marked cell without changing it or clearing its mark.
-With
-.Fl a ,
-marked cells are skipped but their children are still visited.
-The flags
-.Fl a ,
-.Fl m
-and
-.Fl P
-require
+.Fl a
+requires
 .Fl E .
 Applying an
 .Cm even\-horizontal
@@ -4304,13 +4287,6 @@ The pane menu's
 item runs
 .Ic select-layout -aE
 to redistribute the whole window and clear manual sizing throughout the tree.
-For example, the following hooks redistribute the affected pane's parent
-after floating or tiling, while respecting manual sizing:
-.Bd -literal -offset indent
-set-hook -g pane-floated 'select-layout -EPm'
-set-hook -g pane-tiled 'select-layout -EPm'
-.Ed
-These hooks target the pane whose state changed, even if another pane is active.
 .Tg selectp
 .It Xo Ic select\-pane
 .Op Fl DdeLlMmRUZ

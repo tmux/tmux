@@ -4022,9 +4022,6 @@ struct layout_cell *layout_floating_pane(struct window *, struct window_pane *,
 		     struct layout_geometry *);
 void		 layout_close_pane(struct window_pane *);
 int		 layout_spread_cell(struct window *, struct layout_cell *);
-#define LAYOUT_SPREAD_PARENT 0x1
-#define LAYOUT_SPREAD_PRESERVE 0x2
-#define LAYOUT_SPREAD_ALL 0x4
 void		 layout_spread_out(struct window_pane *, int);
 struct layout_cell *layout_get_tiled_cell(struct cmdq_item *, struct args *,
 		     struct window *, struct window_pane *, int, char **);

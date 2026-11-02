@@ -93,10 +93,10 @@ run resize-pane -C
 events "pane-hidden:$B;pane-shown:$B;"
 run resize-pane -Z -t "$B"
 
-# Hook commands can redistribute locally without reentering transition hooks.
+# Hook commands can redistribute without reentering transition hooks.
 run set -g @events ''
-run set-hook -g pane-floated[redistribute] 'select-layout -EPm'
-run set-hook -g pane-tiled[redistribute] 'select-layout -EPm'
+run set-hook -g pane-floated[redistribute] 'select-layout -aE'
+run set-hook -g pane-tiled[redistribute] 'select-layout -aE'
 run break-pane -Wd -s "$B"
 run join-pane -d -s "$B" -t "$B"
 events "pane-floated:$B;pane-tiled:$B;"

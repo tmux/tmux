@@ -1,7 +1,7 @@
 #!/bin/sh
 
-# Automatic redistribution respects explicit sizing; local redistribution
-# resets it without changing enclosing groups or pane states.
+# Automatic redistribution respects explicit sizing; explicit redistribution
+# resets it without changing pane states or layout topology.
 
 . ./regress-common.inc
 
@@ -84,14 +84,9 @@ run break-pane -Wd -s "$C"
 check "$A" '#{pane_width}' 40
 run join-pane -d -s "$C" -t "$C"
 [ "$(geometry)" = "$before" ] || fail 'manual allocation was not restored'
-run select-layout -EPm -t "$A"
-[ "$(geometry)" = "$before" ] || fail '-m changed manual sizing'
-run break-pane -Wd -s "$C"
-check "$A" '#{pane_width}' 40
-run join-pane -d -s "$C" -t "$C"
 
 # Explicit redistribution clears the marker even if nothing needs resizing.
-run select-layout -EP -t "$A"
+run select-layout -E -t "$A"
 run break-pane -Wd -s "$C"
 check "$A" '#{pane_width}' 61
 check "$B" '#{pane_width}' 60
@@ -150,17 +145,15 @@ check "$A" '#{pane_height}' 14
 check "$B" '#{pane_height}' 13
 check "$C" '#{pane_height}' 13
 
-# The local form stops at an already equal parent; ordinary -E still ascends.
+# Ordinary -E stops at the first changed cell and ascends past even cells.
 reset
 run kill-pane -t "$C"
 run resize-pane -x 80 -t "$A"
 C=$(run split-window -vdP -F '#{pane_id}' -t "$A" '') || exit 1
-run select-layout -EP -t "$A"
-before=$(geometry)
-run select-layout -EP -t "$A"
-[ "$(geometry)" = "$before" ] || fail 'local redistribution changed outer sizes'
-run select-layout -Em -t "$A"
-[ "$(geometry)" = "$before" ] || fail '-m crossed a manual outer group'
+run resize-pane -y 28 -t "$A"
+run select-layout -E -t "$A"
+check "$A" '#{pane_width}:#{pane_height}' '80:21'
+check "$C" '#{pane_height}' 20
 run select-layout -E -t "$A"
 check "$A" '#{pane_width}' 61
 check "$B" '#{pane_width}' 60
@@ -177,9 +170,6 @@ run resize-pane -x 80 -t "$A"
 run resize-pane -y 20 -t "$A"
 run resize-pane -y 30 -t "$B"
 run resize-pane -x 10 -t "$E"
-before=$(geometry)
-run select-layout -aEm -t "$F"
-[ "$(geometry)" = "$before" ] || fail '-aEm changed manual sizing'
 run select-layout -aE -t "$F"
 check "$A" '#{pane_left},#{pane_top},#{pane_width},#{pane_height}' '0,0,61,14'
 check "$D" '#{pane_left},#{pane_top},#{pane_width},#{pane_height}' '0,15,61,13'
@@ -211,13 +201,6 @@ for p in "$A" "$D" "$C"; do
 done
 check "$A" '#{pane_height}' 14
 
-# -aEm skips a manual outer cell but still visits its automatic children.
-run resize-pane -x 80 -t "$A"
-run split-window -vd -t "$A" ''
-run select-layout -aEm -t "$B"
-check "$A" '#{pane_width}:#{pane_height}' '80:10'
-check "$B" '#{pane_width}' 41
-
 # Uneven minimum widths in nested splits must fit the existing viewport.
 reset
 run kill-pane -t "$C"
@@ -240,7 +223,7 @@ G=$(run new-pane -dP -F '#{pane_id}' -x 17 -y 5 '') || exit 1
 floating=$(run display -p -t "$G" '#{pane_left},#{pane_top},#{pane_width},#{pane_height}')
 active=$(run display -p '#{pane_id}')
 stack=$(run list-panes -F '#{pane_id}:#{pane_z}')
-run select-layout -EP -t "$A"
+run select-layout -E -t "$A"
 run select-layout -aE -t "$F"
 check "$C" '#{pane_zoomed_flag}:#{pane_floating_flag}' '1:1'
 check "$F" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '1:1'
@@ -270,11 +253,8 @@ run list-keys -T prefix '>' > "$DIR/menu"
 grep -Eq 'Redistribute Panes.*select-layout -(aE|Ea)' "$DIR/menu" ||
 	fail 'pane menu is missing redistribution'
 
-# The modifiers require a redistribution request.
-$TMUX select-layout -P 2>/dev/null && fail '-P accepted without -E'
-$TMUX select-layout -m 2>/dev/null && fail '-m accepted without -E'
+# The whole-window modifier requires a redistribution request.
 $TMUX select-layout -a 2>/dev/null && fail '-a accepted without -E'
-$TMUX select-layout -aEP 2>/dev/null && fail '-a accepted with -P'
 
 # Right-clicking an inactive pane redistributes the entire tree and leaves
 # focus unchanged.
