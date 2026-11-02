@@ -433,6 +433,9 @@ server_client_lost(struct client *c)
 	TAILQ_INSERT_TAIL(&dead_clients, c, entry);
 	log_debug("lost client %p", c);
 
+	if (c->session != NULL && c->session->curw != NULL)
+		window_update_focus(c->session->curw->window);
+
 	cmd_wait_for_client_lost(c);
 	cmdq_next(c);
 
