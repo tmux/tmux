@@ -40,8 +40,8 @@ const struct cmd_entry cmd_choose_tree_entry = {
 	.description = "Browse sessions and windows interactively.",
 	.alias = NULL,
 
-	.args = { "F:f:GhK:kNO:rst:wyZ", 0, 1, cmd_choose_tree_args_parse },
-	.usage = "[-GhkNrswZ] [-F format] [-f filter] [-K key-format] "
+	.args = { "F:f:GhiK:kNO:rst:wyZ", 0, 1, cmd_choose_tree_args_parse },
+	.usage = "[-GhikNrswZ] [-F format] [-f filter] [-K key-format] "
 		 "[-O sort-order] " CMD_TARGET_PANE_USAGE " [template]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
