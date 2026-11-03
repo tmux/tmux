@@ -313,6 +313,14 @@ wait_for 'Session'
 $TMUX send-keys -t aaa:0 i || fail "send-keys preview failed"
 exit_mode q
 
+# -i starts with the information view and the i key goes back to the preview.
+$TMUX choose-tree -i -t aaa:0 -F 'GI' -O index || fail "choose-tree -i failed"
+wait_count ': GI' 7
+wait_for '(view: info)'
+$TMUX send-keys -t aaa:0 i || fail "send-keys preview failed"
+wait_for '(view: preview)'
+exit_mode q
+
 # --- window swapping and command prompt for current/tagged items -------------
 # Restrict a window-only tree to two disposable windows in aaa. J (the
 # Shift-Down equivalent) swaps their window objects while leaving their indexes
