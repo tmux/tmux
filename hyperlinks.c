@@ -41,7 +41,7 @@
  */
 
 #define MAX_HYPERLINKS 5000
-#define MAX_HYPERLINK_URI 1024
+#define MAX_HYPERLINK_URI 4096
 
 static long long hyperlinks_next_external_id = 1;
 static u_int global_hyperlinks_count;
