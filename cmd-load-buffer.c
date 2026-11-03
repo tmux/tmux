@@ -39,7 +39,7 @@ const struct cmd_entry cmd_load_buffer_entry = {
 	.alias = "loadb",
 
 	.args = { "b:t:w", 1, 1, NULL },
-	.usage = CMD_BUFFER_USAGE " " CMD_TARGET_CLIENT_USAGE " path",
+	.usage = "[-w] " CMD_BUFFER_USAGE " " CMD_TARGET_CLIENT_USAGE " path",
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG|CMD_CLIENT_CANFAIL,
 	.exec = cmd_load_buffer_exec

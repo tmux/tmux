@@ -47,7 +47,7 @@ const struct cmd_entry cmd_list_windows_entry = {
 	.alias = "lsw",
 
 	.args = { "aF:f:O:rt:", 0, 0, NULL },
-	.usage = "[-ar] [-F format] [-f filter] [-O order]"
+	.usage = "[-ar] [-F format] [-f filter] [-O order] "
 		 CMD_TARGET_SESSION_USAGE,
 
 	.target = { 't', CMD_FIND_SESSION, 0 },

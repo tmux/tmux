@@ -40,7 +40,7 @@ const struct cmd_entry cmd_list_panes_entry = {
 	.alias = "lsp",
 
 	.args = { "aF:f:O:rst:", 0, 0, NULL },
-	.usage = "[-asr] [-F format] [-f filter] [-O order]"
+	.usage = "[-asr] [-F format] [-f filter] [-O order] "
 		 CMD_TARGET_WINDOW_USAGE,
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },

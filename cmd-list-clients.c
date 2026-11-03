@@ -43,7 +43,8 @@ const struct cmd_entry cmd_list_clients_entry = {
 	.alias = "lsc",
 
 	.args = { "F:f:O:rt:", 0, 0, NULL },
-	.usage = "[-F format] [-f filter] [-O order]" CMD_TARGET_SESSION_USAGE,
+	.usage = "[-r] [-F format] [-f filter] [-O order] "
+		 CMD_TARGET_SESSION_USAGE,
 
 	.target = { 't', CMD_FIND_SESSION, 0 },
 
