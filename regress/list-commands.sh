@@ -45,4 +45,16 @@ esac
 
 $TMUX list-commands tmux-no-command-$$ >/dev/null 2>&1 && exit 1
 $TMUX list-commands list >/dev/null 2>&1 && exit 1
+
+# Options in usage strings are separated by spaces.
+printf '%s\n' "$all" | grep -F '][' && exit 1
+
+# Usage strings show the flags each command accepts.
+for i in list-buffers:r list-clients:r load-buffer:w choose-buffer:y \
+    choose-client:y choose-tree:y customize-mode:y; do
+	usage=$($TMUX list-commands -F '#{command_list_usage}' "${i%:*}") ||
+		exit 1
+	printf '%s\n' "$usage" | grep -o '\[-[[:alnum:]]*\]' |
+		grep -q "${i#*:}" || exit 1
+done
 exit 0

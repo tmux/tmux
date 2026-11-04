@@ -38,7 +38,7 @@ const struct cmd_entry cmd_list_buffers_entry = {
 	.alias = "lsb",
 
 	.args = { "F:f:O:r", 0, 0, NULL },
-	.usage = "[-F format] [-f filter] [-O order]",
+	.usage = "[-r] [-F format] [-f filter] [-O order]",
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_list_buffers_exec

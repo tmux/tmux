@@ -2909,7 +2909,7 @@ The pane must not already be floating or hidden, and the window must not
 be zoomed.
 .Tg capturep
 .It Xo Ic capture\-pane
-.Op Fl aeFHILpPRqCJMN
+.Op Fl aeFHILpPRqCJMNT
 .Op Fl b Ar buffer\-name
 .Op Fl E Ar end\-line
 .Op Fl S Ar start\-line
@@ -3186,17 +3186,18 @@ The
 command works only if at least one client is attached.
 .It Xo
 .Ic customize\-mode
-.Op Fl kNZ
+.Op Fl kNyZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl t Ar target\-pane
-.Op Ar template
 .Xc
 Put a pane into customize mode, where options and key bindings may be browsed
 and modified from a list.
 Option values in the list are shown for the active pane in the current window.
 .Fl Z
 zooms the pane.
+.Fl y
+disables any confirmation prompts.
 The following keys may be used in customize mode:
 .Bl -column "KeyXXXXXX" "Function" -offset indent
 .It Sy "Key" Ta Sy "Function"

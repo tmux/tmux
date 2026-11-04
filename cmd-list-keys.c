@@ -46,7 +46,7 @@ const struct cmd_entry cmd_list_keys_entry = {
 	.alias = "lsk",
 
 	.args = { "1aF:NO:P:rT:", 0, 1, NULL },
-	.usage = "[-1aNr] [-F format] [-O order] [-P prefix-string]"
+	.usage = "[-1aNr] [-F format] [-O order] [-P prefix-string] "
 		 "[-T key-table] [key]",
 
 	.flags = CMD_STARTSERVER|CMD_AFTERHOOK,
