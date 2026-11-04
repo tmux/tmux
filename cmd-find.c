@@ -54,6 +54,7 @@ static const char *cmd_find_window_table[][2] = {
 	{ "{end}", "$" },
 	{ "{next}", "+" },
 	{ "{previous}", "-" },
+	{ "{current}", "@" },
 	{ NULL, NULL }
 };
 static const char *cmd_find_pane_table[][2] = {
@@ -329,8 +330,11 @@ cmd_find_get_window(struct cmd_find_state *fs, const char *window, int only)
 {
 	log_debug("%s: %s", __func__, window);
 
-	/* Check for window ids starting with @. */
-	if (*window == '@') {
+	/*
+	 * Check for window ids starting with @. A bare @ is the current window
+	 * token, which is handled in cmd_find_get_window_with_session.
+	 */
+	if (*window == '@' && window[1] != '\0') {
 		fs->w = window_find_by_id_str(window);
 		if (fs->w == NULL)
 			return (-1);
@@ -377,6 +381,13 @@ cmd_find_get_window_with_session(struct cmd_find_state *fs, const char *window)
 	 */
 	fs->wl = fs->s->curw;
 	fs->w = fs->wl->window;
+
+	/*
+	 * A bare @ is the current window, which is already the default. This
+	 * must come before the window ID check. {current} maps to @.
+	 */
+	if (!exact && strcmp(window, "@") == 0)
+		return (0);
 
 	/* Check for window ids starting with @. */
 	if (*window == '@') {
