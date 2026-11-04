@@ -170,6 +170,8 @@ server_client_create(int fd)
 	setblocking(fd, 0);
 
 	c = xcalloc(1, sizeof *c);
+	/* Control clients do not pass through tty_init(). */
+	c->tty.fg = c->tty.bg = -1;
 	c->references = 1;
 	c->peer = proc_add_peer(server_proc, fd, server_client_dispatch, c);
 
