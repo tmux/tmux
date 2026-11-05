@@ -1799,6 +1799,7 @@ struct tty_term {
 	char		 acs[UCHAR_MAX + 1][2];
 
 	struct tty_code	*codes;
+	char		***cache_i;
 
 #define TERM_256COLOURS 0x1
 #define TERM_NOAM 0x2
