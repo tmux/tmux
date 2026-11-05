@@ -1147,6 +1147,8 @@ struct screen {
 	struct screen_sel		*sel;
 
 	struct screen_write_cline	*write_list;
+	u_int				 write_lo;
+	u_int				 write_hi;
 
 	struct hyperlinks		*hyperlinks;
 	struct progress_bar		 progress_bar;
