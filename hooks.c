@@ -100,6 +100,42 @@ hooks_parse(struct hooks_data *hd, struct cmd_find_state *fs,
 	return (pr);
 }
 
+/* Find the option holding a hook's commands. */
+static struct options_entry *
+hooks_find(struct hooks_data *hd, struct cmd_find_state *fs,
+    struct options **oop)
+{
+	struct options		*oo;
+	struct options_entry	*o;
+
+	cmd_find_clear_state(fs, 0);
+	if (cmd_find_empty_state(&hd->fs) || !cmd_find_valid_state(&hd->fs))
+		cmd_find_from_nothing(fs, 0);
+	else
+		cmd_find_copy_state(fs, &hd->fs);
+
+	if (hd->oo != NULL) {
+		oo = hd->oo;
+		o = options_get_only(oo, hd->name);
+	} else {
+		if (fs->s == NULL)
+			oo = global_s_options;
+		else
+			oo = fs->s->options;
+		o = options_get(oo, hd->name);
+		if (o == NULL && fs->wp != NULL) {
+			oo = fs->wp->options;
+			o = options_get(oo, hd->name);
+		}
+		if (o == NULL && fs->wl != NULL) {
+			oo = fs->wl->window->options;
+			o = options_get(oo, hd->name);
+		}
+	}
+	*oop = oo;
+	return (o);
+}
+
 /* Insert commands for a hook. */
 static void
 hooks_insert(struct cmdq_item *item, struct hooks_data *hd)
@@ -115,30 +151,7 @@ hooks_insert(struct cmdq_item *item, struct hooks_data *hd)
 
 	log_debug("%s: inserting hook %s", __func__, hd->name);
 
-	cmd_find_clear_state(&fs, 0);
-	if (cmd_find_empty_state(&hd->fs) || !cmd_find_valid_state(&hd->fs))
-		cmd_find_from_nothing(&fs, 0);
-	else
-		cmd_find_copy_state(&fs, &hd->fs);
-
-	if (hd->oo != NULL) {
-		oo = hd->oo;
-		o = options_get_only(oo, hd->name);
-	} else {
-		if (fs.s == NULL)
-			oo = global_s_options;
-		else
-			oo = fs.s->options;
-		o = options_get(oo, hd->name);
-		if (o == NULL && fs.wp != NULL) {
-			oo = fs.wp->options;
-			o = options_get(oo, hd->name);
-		}
-		if (o == NULL && fs.wl != NULL) {
-			oo = fs.wl->window->options;
-			o = options_get(oo, hd->name);
-		}
-	}
+	o = hooks_find(hd, &fs, &oo);
 	if (o == NULL) {
 		log_debug("%s: hook %s not found", __func__, hd->name);
 		return;
@@ -207,9 +220,26 @@ hooks_insert_event(struct cmdq_item *item, const char *name,
 	struct hooks_data	 hd;
 	struct format_tree	*ft;
 	struct client		*c;
+	struct cmd_find_state	 fs;
+	struct options		*hoo;
+	struct options_entry	*o;
 
 	if (item != NULL && (cmdq_get_flags(item) & CMDQ_STATE_NOHOOKS))
 		return;
+
+	/* Don't build the formats if there is nothing to run. */
+	memset(&hd, 0, sizeof hd);
+	hd.name = name;
+	hd.oo = oo;
+	cmd_find_clear_state(&hd.fs, 0);
+	event_payload_get_target(ep, &hd.fs);
+	o = hooks_find(&hd, &fs, &hoo);
+	if (o == NULL)
+		return;
+	if (*name != '@' && options_array_first(o) == NULL) {
+		options_hook_fired(o);
+		return;
+	}
 
 	c = event_payload_get_client(ep, "client");
 	ft = format_create(c, item, FORMAT_NONE, FORMAT_NOJOBS);
