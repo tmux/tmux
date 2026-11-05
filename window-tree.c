@@ -1047,9 +1047,9 @@ window_tree_swap(void *cur_itemdata, void *other_itemdata,
 	TAILQ_INSERT_TAIL(&other_window->winlinks, cur_winlink, wentry);
 
 	if (cur_session->curw == cur_winlink)
-		session_set_current(cur_session, other_winlink);
+		session_set_current(cur_session, other_winlink, 0);
 	else if (cur_session->curw == other_winlink)
-		session_set_current(cur_session, cur_winlink);
+		session_set_current(cur_session, cur_winlink, 0);
 	session_group_synchronize_from(cur_session);
 	server_redraw_session_group(cur_session);
 	recalculate_sizes();

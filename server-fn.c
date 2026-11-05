@@ -378,6 +378,13 @@ server_destroy_pane(struct window_pane *wp, int notify)
 
 	if (~wp->flags & PANE_STATUSREADY)
 		return;
+	if (wp->program_state != NULL &&
+	    (strcmp(wp->program_state, "working") == 0 ||
+	    strcmp(wp->program_state, "blocked") == 0)) {
+		window_pane_clear_program_status(wp);
+		server_status_window(w);
+		server_redraw_window_borders(w);
+	}
 	remain_on_exit = options_get_number(wp->options, "remain-on-exit");
 	switch (remain_on_exit) {
 	case 0:

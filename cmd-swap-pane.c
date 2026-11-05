@@ -170,6 +170,9 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 			tmp_wp = dst_wp;
 			window_set_active_pane(src_w, tmp_wp, 1);
 		}
+	} else if (src_w == dst_w) {
+		if (src_w->active == src_wp || src_w->active == dst_wp)
+			window_set_active_pane(src_w, src_wp, 1);
 	} else {
 		if (src_w->active == src_wp)
 			window_set_active_pane(src_w, dst_wp, 1);

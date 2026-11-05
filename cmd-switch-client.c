@@ -163,7 +163,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 				server_redraw_window(w);
 		}
 		if (wl != NULL) {
-			session_set_current(s, wl);
+			session_set_current(s, wl, 1);
 			cmd_find_from_session(current, s, 0);
 		}
 	}

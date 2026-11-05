@@ -774,6 +774,7 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 	window_pane_stack_push(&w->last_panes, lastwp);
 
 	w->active = wp;
+	window_pane_acknowledge_program_result(wp);
 	w->active->active_point = next_active_point++;
 	w->active->flags |= PANE_CHANGED;
 
@@ -1236,6 +1237,7 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 				w->active = TAILQ_NEXT(wp, entry);
 		}
 		if (w->active != NULL) {
+			window_pane_acknowledge_program_result(w->active);
 			window_pane_stack_remove(&w->last_panes, w->active);
 			w->active->flags |= PANE_CHANGED;
 			window_fire_pane_changed(w, w->active, wp);
@@ -1987,6 +1989,17 @@ window_pane_set_prompt(struct window_pane *wp, struct client *c,
 	window_fire_pane_prompt("pane-prompt-opened", wp, type);
 }
 
+/* Acknowledge a result without changing the retained report. */
+void
+window_pane_acknowledge_program_result(struct window_pane *wp)
+{
+	if (!wp->program_result_unseen)
+		return;
+	wp->program_result_unseen = 0;
+	server_status_window(wp->window);
+	server_redraw_window_borders(wp->window);
+}
+
 /* Clear the retained root program status. */
 void
 window_pane_clear_program_status(struct window_pane *wp)
@@ -1997,6 +2010,7 @@ window_pane_clear_program_status(struct window_pane *wp)
 	wp->program_state = NULL;
 	wp->program_name = NULL;
 	wp->program_message = NULL;
+	wp->program_result_unseen = 0;
 }
 
 /* Close a pane prompt. */

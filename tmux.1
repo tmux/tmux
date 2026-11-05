@@ -7686,6 +7686,7 @@ The following variables are available, where appropriate:
 .It Li "pane_pb_progress" Ta "" Ta "Pane progress bar progress percentage (can be set by application)"
 .It Li "pane_program_message" Ta "" Ta "Decoded OSC 7501 program status message"
 .It Li "pane_program_name" Ta "" Ta "OSC 7501 application name"
+.It Li "pane_program_result_unseen" Ta "" Ta "1 if an OSC 7501 done or error result is unacknowledged"
 .It Li "pane_program_state" Ta "" Ta "OSC 7501 state: idle, working, done, blocked or error"
 .It Li "pane_right" Ta "" Ta "Right of pane"
 .It Li "pane_search_string" Ta "" Ta "Last search string in copy mode"
@@ -7810,13 +7811,33 @@ Omitted fields become empty.
 Other fields, including kind, title and progress, are ignored.
 The record is cleared by
 .Li state=clear ,
-a new shell prompt (OSC 133 A), a full terminal reset (RIS), or pane respawn.
-This also clears completed and error states.
-A process exiting in a retained dead pane does not clear its record.
+a full terminal reset (RIS), or pane respawn.
+A new shell prompt (OSC 133 A) clears idle, working and blocked records,
+but retains done and error results.
+OSC 133 N preserves all records.
+Process exit clears working and blocked records before exit hooks run,
+including in retained dead panes, and preserves idle, done and error records.
 Switching screens, a soft reset, moving the pane and detaching clients preserve
 status.
-These records are independent of OSC 9;4 progress and are not forwarded to
-attached terminals.
+.Pp
+Each accepted done or error report sets
+.Li pane_program_result_unseen
+to 1, including an identical report after acknowledgement.
+Other accepted reports set it to 0.
+Selecting a pane or window, attaching a client, or switching its session
+acknowledges the selected pane's result by setting unseen to 0.
+Only an actual selection change acknowledges a result.
+A result arriving in the selected pane stays unseen through redraws and input.
+Acknowledgement preserves the state, name and message and is shared by all
+clients because the flag belongs to the pane.
+For example, this format displays blocked records and unseen results:
+.Bd -literal -offset indent
+#{?#{||:#{==:#{pane_program_state},blocked},#{pane_program_result_unseen}},#{pane_program_name}: #{pane_program_state} #{pane_program_message},}
+.Ed
+.Pp
+These records work without an outer terminal consumer.
+They are independent of OSC 9;4 progress and are not forwarded to attached
+terminals.
 .Sh STYLES
 .Nm
 offers various options to specify the colour and attributes of aspects of the

@@ -2871,6 +2871,7 @@ input_program_status(struct window_pane *wp, const u_char *buf, size_t len)
 	const char	*old[3];
 	size_t		 keylen, valuelen, i;
 	u_int		 field;
+	int		 unseen;
 
 	while (buf < end) {
 		next = memchr(buf, ':', end - buf);
@@ -2945,6 +2946,9 @@ input_program_status(struct window_pane *wp, const u_char *buf, size_t len)
 			values[i] = NULL;
 		}
 	}
+	unseen = values[0] != NULL &&
+	    (strcmp(values[0], "done") == 0 ||
+	    strcmp(values[0], "error") == 0);
 	old[0] = wp->program_state;
 	old[1] = wp->program_name;
 	old[2] = wp->program_message;
@@ -2953,12 +2957,13 @@ input_program_status(struct window_pane *wp, const u_char *buf, size_t len)
 		    (old[i] != NULL && strcmp(old[i], values[i]) != 0))
 			break;
 	}
-	if (i == nitems(values))
+	if (i == nitems(values) && wp->program_result_unseen == unseen)
 		goto out;
 	window_pane_clear_program_status(wp);
 	wp->program_state = values[0];
 	wp->program_name = values[1];
 	wp->program_message = values[2];
+	wp->program_result_unseen = unseen;
 	server_status_window(wp->window);
 	server_redraw_window_borders(wp->window);
 	return;
@@ -3622,7 +3627,9 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 			gl->flags |= GRID_LINE_START_PROMPT;
 		}
 		if (wp != NULL) {
-			if (*p == 'A' && wp->program_state != NULL) {
+			if (*p == 'A' && wp->program_state != NULL &&
+			    strcmp(wp->program_state, "done") != 0 &&
+			    strcmp(wp->program_state, "error") != 0) {
 				window_pane_clear_program_status(wp);
 				server_status_window(wp->window);
 				server_redraw_window_borders(wp->window);
