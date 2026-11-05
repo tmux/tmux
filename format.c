@@ -491,7 +491,40 @@ format_job_tidy(struct format_job_tree *jobs, int force)
 static size_t
 format_strftime(char *s, size_t max, const char *fmt, const struct tm *tm)
 {
-	return (strftime(s, max, fmt, tm));
+	static struct {
+		char		*fmt;
+		struct tm	 tm;
+		char		*out;
+		size_t		 len;
+	}			 cache[8];
+	static u_int		 next;
+	u_int			 i;
+	size_t			 len;
+
+	/*
+	 * strftime can be slow (macOS rereads the zone file every call) and the
+	 * same status formats are expanded many times a second, so cache.
+	 */
+	for (i = 0; i < nitems(cache); i++) {
+		if (cache[i].fmt == NULL || cache[i].len >= max)
+			continue;
+		if (memcmp(&cache[i].tm, tm, sizeof *tm) != 0 ||
+		    strcmp(cache[i].fmt, fmt) != 0)
+			continue;
+		memcpy(s, cache[i].out, cache[i].len + 1);
+		return (cache[i].len);
+	}
+	len = strftime(s, max, fmt, tm);
+	if (len == 0)
+		return (0);
+	i = next++ % nitems(cache);
+	free(cache[i].fmt);
+	free(cache[i].out);
+	cache[i].fmt = xstrdup(fmt);
+	cache[i].tm = *tm;
+	cache[i].out = xstrdup(s);
+	cache[i].len = len;
+	return (len);
 }
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
@@ -6802,6 +6835,24 @@ fail:
 	return (-1);
 }
 
+/*
+ * Convert to local time, caching the result for the current second. Some
+ * libcs (macOS) reread the zone file on every call, which is costly as status
+ * lines are expanded on every redraw.
+ */
+static void
+format_localtime(time_t t, struct tm *tm)
+{
+	static time_t		last = -1;
+	static struct tm	last_tm;
+
+	if (t != last) {
+		localtime_r(&t, &last_tm);
+		last = t;
+	}
+	memcpy(tm, &last_tm, sizeof *tm);
+}
+
 /* Expand keys in a template. */
 static char *
 format_expand1(struct format_expand_state *es, const char *fmt)
@@ -6827,7 +6878,7 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 	if ((es->flags & FORMAT_EXPAND_TIME) && strchr(fmt, '%') != NULL) {
 		if (es->time == 0) {
 			es->time = time(NULL);
-			localtime_r(&es->time, &es->tm);
+			format_localtime(es->time, &es->tm);
 		}
 		if (format_strftime(expanded, sizeof expanded, fmt,
 		    &es->tm) == 0) {
