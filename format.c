@@ -6802,6 +6802,9 @@ fail:
 	return (-1);
 }
 
+static time_t		format_last_time;
+static struct tm	format_last_tm;
+
 /* Expand keys in a template. */
 static char *
 format_expand1(struct format_expand_state *es, const char *fmt)
@@ -6827,7 +6830,11 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 	if ((es->flags & FORMAT_EXPAND_TIME) && strchr(fmt, '%') != NULL) {
 		if (es->time == 0) {
 			es->time = time(NULL);
-			localtime_r(&es->time, &es->tm);
+			if (format_last_time != es->time) {
+				localtime_r(&es->time, &format_last_tm);
+				format_last_time = es->time;
+			}
+			memcpy(&es->tm, &format_last_tm, sizeof es->tm);
 		}
 		if (format_strftime(expanded, sizeof expanded, fmt,
 		    &es->tm) == 0) {
