@@ -32,6 +32,9 @@
 
 static char	*tty_term_strip(const char *);
 static void	 tty_term_validate(struct tty_term *);
+static void	 tty_term_free_cache(struct tty_term *);
+
+#define TTY_TERM_CACHE_SIZE 256
 
 struct tty_terms tty_terms = LIST_HEAD_INITIALIZER(tty_terms);
 
@@ -377,6 +380,7 @@ tty_term_apply(struct tty_term *term, const char *capabilities, int quiet,
 	u_int					 i;
 	int					 n, remove;
 
+	tty_term_free_cache(term);
 	while ((s = tty_term_override_next(capabilities, &offset)) != NULL) {
 		if (*s == '\0')
 			continue;
@@ -445,6 +449,25 @@ tty_term_apply(struct tty_term *term, const char *capabilities, int quiet,
 
 		free(value);
 	}
+}
+
+/* Free cached expansions of single-argument capabilities. */
+static void
+tty_term_free_cache(struct tty_term *term)
+{
+	u_int	i, j;
+
+	if (term->cache_i == NULL)
+		return;
+	for (i = 0; i < tty_term_ncodes(); i++) {
+		if (term->cache_i[i] == NULL)
+			continue;
+		for (j = 0; j < TTY_TERM_CACHE_SIZE; j++)
+			free(term->cache_i[i][j]);
+		free(term->cache_i[i]);
+	}
+	free(term->cache_i);
+	term->cache_i = NULL;
 }
 
 void
@@ -713,6 +736,7 @@ tty_term_free(struct tty_term *term)
 			free(term->codes[i].value.string);
 	}
 	free(term->codes);
+	tty_term_free_cache(term);
 
 	LIST_REMOVE(term, entry);
 	free(term->name);
@@ -835,6 +859,20 @@ const char *
 tty_term_string_i(struct tty_term *term, enum tty_code_code code, int a)
 {
 	const char	*x = tty_term_string(term, code), *s;
+	char		**slot = NULL;
+
+	/* Expanding is slow, so cache small arguments (colours, counts). */
+	if (a >= 0 && a < TTY_TERM_CACHE_SIZE && *x != '\0') {
+		if (term->cache_i == NULL)
+			term->cache_i = xcalloc(tty_term_ncodes(),
+			    sizeof *term->cache_i);
+		if (term->cache_i[code] == NULL)
+			term->cache_i[code] = xcalloc(TTY_TERM_CACHE_SIZE,
+			    sizeof **term->cache_i);
+		slot = &term->cache_i[code][a];
+		if (*slot != NULL)
+			return (*slot);
+	}
 
 #if defined(HAVE_TIPARM_S)
 	s = tiparm_s(1, 0, x, a);
@@ -847,6 +885,8 @@ tty_term_string_i(struct tty_term *term, enum tty_code_code code, int a)
 		log_debug("could not expand %s", tty_term_codes[code].name);
 		return ("");
 	}
+	if (slot != NULL)
+		return (*slot = xstrdup(s));
 	return (s);
 }
 
