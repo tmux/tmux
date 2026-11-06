@@ -35,6 +35,13 @@ geometry()
 	    -F '#{pane_id}:#{pane_left},#{pane_top},#{pane_width},#{pane_height}'
 }
 
+# Capture a rectangle for comparisons between fresh test windows.
+rectangle()
+{
+	run display -p -t "$1" \
+	    '#{pane_left},#{pane_top},#{pane_width},#{pane_height}'
+}
+
 # Compare a pane format with its expected value.
 check()
 {
@@ -49,6 +56,18 @@ reset()
 	A=$(run new-session -dP -F '#{pane_id}' -x 121 -y 61 'exec cat') || exit 1
 	B=$(run split-window -dP -F '#{pane_id}' -"$axis" -t "$A" -l 40 '') || exit 1
 	C=$(run split-window -dP -F '#{pane_id}' -"$axis" -t "$B" -l 15 '') || exit 1
+}
+
+# Select the neighbours according to the observed closing preference.
+neighbours()
+{
+	if [ "$preference" = preceding ]; then
+		neighbour=$A
+		other=$C
+	else
+		neighbour=$C
+		other=$A
+	fi
 }
 
 # Remove the middle pane from the tiles using the selected operation.
@@ -79,14 +98,33 @@ for axis in h v; do
 		dimension='#{pane_height}'
 		size=y
 	fi
+
+	# Use closing as the reference so restoration follows the same neighbour
+	# preference without prescribing which sibling must be chosen.
+	operation=close
+	reset
+	first=$(run display -p -t "$A" "$dimension")
+	middle=$(run display -p -t "$B" "$dimension")
+	last=$(run display -p -t "$C" "$dimension")
+	run kill-pane -t "$B"
+	if [ "$(run display -p -t "$A" "$dimension")" = "$first" ]; then
+		preference=following
+		check "$C" "$dimension" "$((last + middle + 1))"
+	else
+		preference=preceding
+		check "$A" "$dimension" "$((first + middle + 1))"
+		check "$C" "$dimension" "$last"
+	fi
+	closed_first=$(rectangle "$A")
+	closed_last=$(rectangle "$C")
+
 	for operation in float hide zoom; do
-		# The following neighbour gets the space, exactly as on closing.
+		# Every removal must match the normal closing behaviour.
 		reset
 		before=$(geometry)
-		first=$(run display -p -t "$A" "$dimension")
 		leave
-		check "$A" "$dimension" "$first"
-		check "$C" "$dimension" 40
+		[ "$(rectangle "$A")" = "$closed_first" ] || fail 'first tile differs from closing'
+		[ "$(rectangle "$C")" = "$closed_last" ] || fail 'last tile differs from closing'
 		released=$(geometry)
 		restore
 		[ "$(geometry)" = "$before" ] || fail 'original allocation was not restored'
@@ -99,24 +137,26 @@ for axis in h v; do
 		# Changes while absent invalidate the saved allocation. Only the
 		# neighbour is split; the other tile keeps its adjusted size.
 		reset
+		neighbours
 		leave
-		run resize-pane -"$size" 30 -t "$C"
-		first=$(run display -p -t "$A" "$dimension")
+		run resize-pane -"$size" 30 -t "$neighbour"
+		untouched=$(rectangle "$other")
 		restore
-		check "$A" "$dimension" "$first"
 		check "$B" "$dimension" 15
-		check "$C" "$dimension" 14
+		check "$neighbour" "$dimension" 14
+		[ "$(rectangle "$other")" = "$untouched" ] || fail 'unrelated tile changed'
 
-		# Closing the following neighbour makes restoration use the previous.
+		# Closing the preferred neighbour makes restoration use the other.
 		reset
+		neighbours
 		leave
-		run kill-pane -t "$C"
-		remaining=$(run display -p -t "$A" "$dimension")
+		run kill-pane -t "$neighbour"
+		remaining=$(run display -p -t "$other" "$dimension")
 		restore
-		first=$(run display -p -t "$A" "$dimension")
+		other_size=$(run display -p -t "$other" "$dimension")
 		middle=$(run display -p -t "$B" "$dimension")
-		[ "$((first + middle + 1))" -eq "$remaining" ] ||
-		    fail 'previous neighbour was not split'
+		[ "$((other_size + middle + 1))" -eq "$remaining" ] ||
+		    fail 'remaining neighbour was not split'
 	done
 
 	# A pane created floating can be tiled and floated without changing

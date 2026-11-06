@@ -3458,7 +3458,7 @@ Its previous allocation is restored if the tiled layout has not changed and
 there is enough space.
 Otherwise, a neighbouring tiled allocation is split, leaving the other tiles
 unchanged as far as space permits.
-The following tiled sibling is preferred, or the preceding one if none follows.
+The neighbour is chosen using the same preference as when a tiled pane is closed.
 .Tg killp
 .It Xo Ic kill\-pane
 .Op Fl a
