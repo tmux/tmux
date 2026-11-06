@@ -468,6 +468,7 @@ cmd_join_pane_tile(struct cmdq_item *item, struct args *args, struct window *w,
 	layout_fix_panes(w, NULL);
 	redraw_invalidate_scene(w);
 	events_fire_window("window-layout-changed", w);
+	events_fire_pane("pane-tiled", wp);
 	server_redraw_window(w);
 
 	return (CMD_RETURN_NORMAL);
@@ -487,6 +488,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*s;
 	char			*cause = NULL;
 	int			 flags = 0, dst_idx, stacking;
+	int			 was_floating, was_hidden;
 	struct layout_cell	*lc;
 
 	dst_s = target->s;
@@ -558,6 +560,8 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 		window_unzoom_pane(src_wp, 1);
 	if (dst_wp->flags & PANE_ZOOMED)
 		window_unzoom_pane(dst_wp, 1);
+	was_floating = window_pane_is_floating(src_wp);
+	was_hidden = (src_wp->flags & PANE_HIDDEN);
 	lc = layout_get_tiled_cell(item, args, dst_w, dst_wp, flags, &cause);
 	if (cause != NULL) {
 		cmdq_error(item, "size or position %s", cause);
@@ -604,6 +608,10 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		events_fire_window("window-layout-changed", src_w);
 	events_fire_window("window-layout-changed", dst_w);
+	if (was_floating)
+		events_fire_pane("pane-tiled", src_wp);
+	if (was_hidden)
+		events_fire_pane("pane-unhidden", src_wp);
 
 	return (CMD_RETURN_NORMAL);
 }

@@ -80,6 +80,7 @@ cmd_break_pane_float(struct cmdq_item *item, struct args *args,
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
 	events_fire_window("window-layout-changed", w);
+	events_fire_pane("pane-floated", wp);
 	server_redraw_window(w);
 
 	return (CMD_RETURN_NORMAL);
@@ -101,7 +102,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	char			*cause, *cp;
 	int			 idx = target->idx, before, old_idx = wl->idx;
 	struct layout_geometry	 floating;
-	int			 is_floating;
+	int			 is_floating, was_hidden;
 	const char		*template, *name = args_get(args, 'n');
 
 	if (wp == w->modal) {
@@ -154,6 +155,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	is_floating = window_pane_is_floating(wp);
+	was_hidden = (wp->flags & PANE_HIDDEN);
 	memcpy(&floating, &wp->layout_cell->g, sizeof floating);
 
 	TAILQ_REMOVE(&w->panes, wp, entry);
@@ -197,6 +199,8 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	window_remove_ref(w, __func__);
 	events_fire_window("window-created", w);
 	window_fire_pane_moved(wp, old_w, old_idx, w, wl->idx);
+	if (was_hidden)
+		events_fire_pane("pane-unhidden", wp);
 	if (!args_has(args, 'd')) {
 		session_select(dst_s, wl->idx);
 		cmd_find_from_session(current, dst_s, 0);
