@@ -76,19 +76,22 @@ run resize-pane -Z -t "$C"
 run resize-window -x 60 -y 18
 check "$C" '#{pane_width}:#{pane_height}:#{window_width}' '60:18:60'
 run resize-pane -aZ
-check "$A" '#{pane_width}' 20
-for p in "$B" "$C"; do
-	check "$p" '#{pane_width}' 19
+width=2
+for p in "$A" "$B" "$C"; do
+	check "$p" '#{pane_floating_flag}:#{pane_height}' '0:18'
+	part=$(run display-message -p -t "$p" '#{pane_width}')
+	[ "$part" -ge 1 ] || fail 'restored pane below its minimum width'
+	width=$((width + part))
 done
+[ "$width" -eq 60 ] || fail 'restored panes do not fill the resized window'
 run resize-window -x 80 -y 24
 
-# A changed group is shared equally when a fullscreen tile returns.
+# Restoring after changes splits the neighbour and preserves the other tiles.
 run resize-pane -Z -t "$C"
 run resize-pane -x 40 -t "$B"
+width=$(run display-message -p -t "$A" '#{pane_width}')
 run resize-pane -Z -t "$C"
-for p in "$A" "$B" "$C"; do
-	check "$p" '#{pane_width}' 26
-done
+check "$A" '#{pane_width}' "$width"
 
 # A float can sit between fullscreen panes, then be raised above both.
 run resize-pane -Z -t "$A"

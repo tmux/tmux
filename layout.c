@@ -2101,7 +2101,7 @@ layout_grow_cell(struct window *w, struct layout_cell *lc,
 	}
 }
 
-/* Restore a tiled allocation, sharing the group equally if it has changed. */
+/* Restore a tiled allocation, or split its neighbour if it has changed. */
 void
 layout_insert_tile(struct window *w, struct layout_cell *lc)
 {
@@ -2157,8 +2157,6 @@ layout_insert_tile(struct window *w, struct layout_cell *lc)
 	/* Unwinding unchanged removals also restores the earlier revisions. */
 	if (unchanged)
 		parent->generation = lc->saved.previous;
-	else {
+	else
 		parent->generation++;
-		layout_spread_cell(w, parent);
-	}
 }
