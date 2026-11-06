@@ -123,9 +123,10 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	const struct grid_cell	*gcp;
 	struct grid_cell	 gc, ngc, last;
 	struct grid_line	*gl;
+	struct utf8_data	 ud;
 	u_int			 i, j, last_i, cx, ex, width;
 	u_int			 cellsize, bg;
-	int			 flags, empty, wrapped = 0;
+	int			 flags, empty, force, can_wrap, wrapped = 0;
 	char			 buf[1000];
 	size_t			 len;
 	enum tty_draw_line_state current_state, next_state;
@@ -178,6 +179,27 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	tty_region_off(tty);
 	tty_margin_off(tty);
 
+	can_wrap = px == 0 && nx == tty->sx && nx == screen_size_x(s) &&
+	    (~tty->term->flags & TERM_NOAM);
+
+	/* Did the previous line wrap on to this one? */
+	if (py != 0 &&
+	    tty->cx >= tty->sx &&
+	    tty->cy != UINT_MAX &&
+	    tty->cy + 1 == aty &&
+	    nx == tty->sx) {
+		gl = grid_get_line(gd, gd->hsize + py - 1);
+		wrapped = (gl->flags & GRID_LINE_WRAPPED);
+	}
+	/* Complete the native wrap before clearing any cells on this line. */
+	if (wrapped && can_wrap && aty < tty->sy) {
+		/* VS16 may have left one unused column before wrapping. */
+		tty_puts(tty, tty->cx == UINT_MAX ? "  " : " ");
+		tty->cx = tty->cy = UINT_MAX;
+	}
+	if (tty->cx == UINT_MAX)
+		wrapped = 0;
+
 	/* Start with the default cell as the last cell. */
 	memcpy(&last, &grid_default_cell, sizeof last);
 	last.bg = defaults->bg;
@@ -223,18 +245,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		atx += cx;
 		px += cx;
 		nx -= cx;
-	}
-
-	/* Did the previous line wrap on to this one? */
-	if (py != 0 &&
-	    atx == 0 &&
-	    tty->cx >= tty->sx &&
-	    tty->cy != UINT_MAX &&
-	    tty->cy + 1 == aty &&
-	    nx == tty->sx) {
-		gl = grid_get_line(gd, gd->hsize + py - 1);
-		if (gl->flags & GRID_LINE_WRAPPED)
-			wrapped = 1;
+		wrapped = can_wrap = 0;
 	}
 
 	/* Loop over each character in the range. */
@@ -321,16 +332,25 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			    tty_draw_line_states[next_state]);
 		}
 
+		/* The terminal may disagree about VS16 width. Reposition after it. */
+		force = len != 0 && last.data.width == 2 &&
+		    memmem(last.data.data, last.data.size, "\357\270\217", 3) != NULL;
+
 		/* If the state has changed, flush any collected data. */
-		if (next_state != current_state) {
+		if (next_state != current_state || force) {
 			if (current_state == TTY_DRAW_LINE_EMPTY) {
 				tty_attributes(tty, &last, style_ctx);
 				tty_draw_line_clear(tty, atx + last_i, aty,
 				    i - last_i, defaults, last.bg, wrapped);
 				wrapped = 0;
-			} else if (next_state != TTY_DRAW_LINE_SAME &&
+			} else if ((next_state != TTY_DRAW_LINE_SAME || force) &&
 			    len != 0) {
 				tty_attributes(tty, &last, style_ctx);
+				if (force) {
+					tty_cursor(tty, atx + i - last.data.width, aty);
+					tty_putn(tty, "  ", 2, 2);
+					wrapped = 0;
+				}
 				if (atx + i - width != 0 || !wrapped)
 					tty_cursor(tty, atx + i - width, aty);
 				if (~last.attr & GRID_ATTR_CHARSET)
@@ -338,6 +358,17 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				else {
 					for (j = 0; j < len; j++)
 						tty_putc(tty, buf[j]);
+				}
+				if (force) {
+					/* Only a single base plus VS16 has a known row. */
+					if (utf8_open(&ud, last.data.data[0]) != UTF8_MORE)
+						utf8_set(&ud, last.data.data[0]);
+					tty->cx = UINT_MAX;
+					if (!can_wrap || i != nx ||
+					    last.data.size != ud.size + 3 ||
+					    memcmp(last.data.data + ud.size,
+					    "\357\270\217", 3) != 0)
+						tty->cy = UINT_MAX;
 				}
 				len = 0;
 				width = 0;
