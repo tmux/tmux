@@ -126,7 +126,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	struct utf8_data	 ud;
 	u_int			 i, j, last_i, cx, ex, width;
 	u_int			 cellsize, bg;
-	int			 flags, empty, force, wrapped = 0;
+	int			 flags, empty, force, can_wrap, wrapped = 0;
 	char			 buf[1000];
 	size_t			 len;
 	enum tty_draw_line_state current_state, next_state;
@@ -179,24 +179,26 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	tty_region_off(tty);
 	tty_margin_off(tty);
 
-	/* Complete the native wrap before clearing any cells on this line. */
+	can_wrap = px == 0 && nx == tty->sx && nx == screen_size_x(s) &&
+	    (~tty->term->flags & TERM_NOAM);
+
+	/* Did the previous line wrap on to this one? */
 	if (py != 0 &&
-	    px == 0 && atx == 0 &&
-	    nx == tty->sx && nx == screen_size_x(s) &&
-	    aty < tty->sy &&
-	    (~tty->term->flags & TERM_NOAM) &&
 	    tty->cx >= tty->sx &&
-	    tty->cy != UINT_MAX && tty->cy + 1 == aty) {
+	    tty->cy != UINT_MAX &&
+	    tty->cy + 1 == aty &&
+	    nx == tty->sx) {
 		gl = grid_get_line(gd, gd->hsize + py - 1);
-		if (gl->flags & GRID_LINE_WRAPPED) {
-			/* VS16 may have left one unused column before wrapping. */
-			if (tty->cx == UINT_MAX)
-				tty_puts(tty, "  ");
-			else
-				tty_puts(tty, " ");
-			tty->cx = tty->cy = UINT_MAX;
-		}
+		wrapped = (gl->flags & GRID_LINE_WRAPPED);
 	}
+	/* Complete the native wrap before clearing any cells on this line. */
+	if (wrapped && can_wrap && aty < tty->sy) {
+		/* VS16 may have left one unused column before wrapping. */
+		tty_puts(tty, tty->cx == UINT_MAX ? "  " : " ");
+		tty->cx = tty->cy = UINT_MAX;
+	}
+	if (tty->cx == UINT_MAX)
+		wrapped = 0;
 
 	/* Start with the default cell as the last cell. */
 	memcpy(&last, &grid_default_cell, sizeof last);
@@ -243,19 +245,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		atx += cx;
 		px += cx;
 		nx -= cx;
-	}
-
-	/* Did the previous line wrap on to this one? */
-	if (py != 0 &&
-	    atx == 0 &&
-	    tty->cx != UINT_MAX &&
-	    tty->cx >= tty->sx &&
-	    tty->cy != UINT_MAX &&
-	    tty->cy + 1 == aty &&
-	    nx == tty->sx) {
-		gl = grid_get_line(gd, gd->hsize + py - 1);
-		if (gl->flags & GRID_LINE_WRAPPED)
-			wrapped = 1;
+		wrapped = can_wrap = 0;
 	}
 
 	/* Loop over each character in the range. */
@@ -374,12 +364,10 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 					if (utf8_open(&ud, last.data.data[0]) != UTF8_MORE)
 						utf8_set(&ud, last.data.data[0]);
 					tty->cx = UINT_MAX;
-					if (px != 0 || atx != 0 || i != tty->sx ||
-					    nx != screen_size_x(s) ||
+					if (!can_wrap || i != nx ||
 					    last.data.size != ud.size + 3 ||
 					    memcmp(last.data.data + ud.size,
-					    "\357\270\217", 3) != 0 ||
-					    (tty->term->flags & TERM_NOAM))
+					    "\357\270\217", 3) != 0)
 						tty->cy = UINT_MAX;
 				}
 				len = 0;
