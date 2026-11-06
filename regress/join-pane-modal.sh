@@ -51,20 +51,19 @@ for command in join-pane move-pane; do
 		check_ok "$command" $detached -h -s "$p2" -t "$p0"
 		check_active modal:0 "$modal"
 		check_ok kill-pane -t "$modal"
-		check_active modal:0 "$p2"
+		check_active modal:0 "$p0"
 	done
 done
 
-# Moving a different pane must also preserve the return target.
+# Moving a different pane also leaves the modal active until it closes.
 modal=$($TMUX new-pane -OPF '#{pane_id}' -t "$p0" \
     -x 80 -y 10 'cat') || fail "new modal failed"
 check_ok join-pane -h -s "$p1" -t "$p0"
 check_active modal:0 "$modal"
 check_ok kill-pane -t "$modal"
-check_active modal:0 "$p2"
+check_active modal:0 "$p0"
 
-# Moving the return target to another window must still forget it, so
-# closing the modal selects a pane remaining in its own window.
+# Closing the modal selects the top pane remaining in its own window.
 check_ok new-window -d -t modal:1 'cat'
 modal=$($TMUX new-pane -OPF '#{pane_id}' -t "$p0" \
     -x 80 -y 10 'cat') || fail "new modal failed"

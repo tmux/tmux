@@ -212,7 +212,10 @@ static const char *options_table_copy_mode_line_numbers_list[] = {
 		"#[pop-default]" \
 		"#[norange list=on default]" \
 		"#{?loop_last_flag,,#{E:window-status-separator}}" \
-	"}"
+	"}" \
+	"#[nolist align=right range=control|5]" \
+	"[_]" \
+	"#[norange default]"
 #define OPTIONS_TABLE_STATUS_FORMAT3 \
 	"#[align=left]" \
 	"#{R: ,#{e|-:#{w;T;=/#{status-left-length}:status-left},3}}S: " \
@@ -1714,11 +1717,12 @@ const struct options_table_entry options_table[] = {
 			 "\"#{pane_title}\""
 			 "#{?#{mouse},"
 				"#[align=right]"
+				"#[range=control|6][h]#[norange]"
 				"#[range=control|7]["
 					"#{?#{pane_floating_flag},t,f}"
 				"]#[norange]"
 				"#[range=control|8]["
-					"#{?#{window_zoomed_flag},u,z}"
+					"#{?#{pane_zoomed_flag},u,z}"
 				"]#[norange]"
 				"#[range=control|9][x]#[norange]"
 			",}",
@@ -1767,6 +1771,7 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_ARRAY,
 	  .text = "The default colour palette for colours zero to 255."
 	},
+
 
 	{ .name = "pane-scrollbars",
 	  .type = OPTIONS_TABLE_CHOICE,

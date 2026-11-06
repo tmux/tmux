@@ -528,12 +528,9 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		lg.yoff++;
 	}
 
-	window_push_zoom(w, 0, 1);
 	lc = layout_floating_pane(w, wp, &lg);
-	if (lc == NULL) {
-		window_pop_zoom(w);
+	if (lc == NULL)
 		goto out;
-	}
 
 	sc.item = item;
 	sc.s = s;
@@ -559,10 +556,8 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		cmdq_error(item, "create pane failed: %s", cause);
 		free(cause);
 		cause = NULL;
-		window_pop_zoom(w);
 		goto fail;
 	}
-	window_pop_zoom(w);
 	new_wp->flags |= PANE_CAPTUREALLKEYS;
 	if (!args_has(args, 'E'))
 		new_wp->flags |= PANE_CLOSEONCANCEL;

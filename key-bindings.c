@@ -80,7 +80,9 @@
 	" 'Kill' 'X' {kill-pane}" \
 	" 'Respawn' 'R' {respawn-pane -k}" \
 	" '#{?pane_marked,Unmark,Mark}' 'm' {select-pane -m}" \
-	" '#{?#{>:#{window_panes},1},,-}#{?window_zoomed_flag,Unzoom,Zoom}' 'z' {resize-pane -Z}"
+	" '#{?pane_zoomed_flag,Unzoom,Zoom}' 'z' {resize-pane -Z}" \
+	" 'Hide' 'H' {resize-pane -h}" \
+	" '#{?pane_floating_flag,Bring To Front,}' 'F' {move-pane -P front}"
 #define DEFAULT_MOVE_MENU \
 	" 'Centre' 'c' {move-pane -P centre}" \
 	" ''" \
@@ -397,6 +399,9 @@ key_bindings_init(void)
 		"bind -N 'Kill current window' & { confirm-before -p\"kill-window #W? (y/n)\" kill-window }",
 		"bind -N 'Prompt for window index to select' \"'\" { command-prompt -pindex { select-window -t ':%%' } }",
 		"bind -N 'New floating pane' * { new-pane }",
+		"bind -N 'Show desktop' _ { resize-pane -C }",
+		"bind -N 'Hide pane' h { resize-pane -h }",
+		"bind -N 'Show last hidden pane' H { resize-pane -H }",
 		"bind -N 'Toggle pane between floating and tiled' @ { if -F '#{pane_floating_flag}' { join-pane } { break-pane -W } }",
 		"bind -N 'Switch to previous client' ( { switch-client -p }",
 		"bind -N 'Switch to next client' ) { switch-client -n }",
@@ -524,14 +529,14 @@ key_bindings_init(void)
 		"bind -n TripleClick1Pane { select-pane -t=; if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { copy-mode -H; send -X select-line; run -d0.3; send -X copy-pipe-and-cancel } }",
 
 		/* Mouse button 1 on border. */
-		"bind -n MouseDown1Border { select-pane -t= }",
+		"bind -n MouseDown1Border { select-pane -t=; if -Ft= '#{pane_floating_flag}' { move-pane -t= -P front } }",
 
 		/* Mouse button 1 drag on border. */
 		"bind -n MouseDrag1Border { resize-pane -M }",
 		"bind -n M-MouseDrag1Border { move-pane -M }",
 
 		/* Mouse button 1 down on status line. */
-		"bind -n MouseDown1Status { switch-client -t= }",
+		"bind -n MouseDown1Status { if -F '#{==:#{mouse_status_range},desktop}' { resize-pane -C } { if -Ft= '#{&&:#{==:#{mouse_status_range},pane},#{&&:#{pane_active},#{!:#{pane_hidden_flag}}}}' { resize-pane -h -t= } { switch-client -t= } } }",
 		"bind -n MouseDown1SideStatus { switch-client -t= }",
 		"bind -n C-MouseDown1Status { swap-window -t@ }",
 		"bind -n C-MouseDown1SideStatus { swap-window -t@ }",
@@ -540,9 +545,17 @@ key_bindings_init(void)
 		"bind -n MouseDrag1SideStatusBorder { if -F '#{e|>=:#{client_width},3}' { run -C \"set -t '#{session_id}' side-status-width #{?#{==:#{side-status},left},#{e|+:#{?#{e|<:#{mouse_absolute_x},1},1,#{?#{e|>:#{mouse_absolute_x},#{e|-:#{client_width},2}},#{e|-:#{client_width},2},#{mouse_absolute_x}}},1},#{e|-:#{client_width},#{?#{e|<:#{mouse_absolute_x},1},1,#{?#{e|>:#{mouse_absolute_x},#{e|-:#{client_width},2}},#{e|-:#{client_width},2},#{mouse_absolute_x}}}}}\" } }",
 		"bind -n DoubleClick1SideStatusBorder { set -u side-status-width }",
 
+		/* Mouse button 1 on the desktop control in the second status line. */
+		"bind -n MouseDown1Control5 { resize-pane -C }",
+		"bind -n SecondClick1Control5 { resize-pane -C }",
+		"bind -n TripleClick1Control5 { resize-pane -C }",
+
 		/* Mouse button 1 down on default pane-border-format */
+		"bind -n MouseDown1Control6 { resize-pane -h -t= }",
 		"bind -n MouseDown1Control9 { display-menu -t= -xM -yM -O -T 'Kill pane #{pane_index}?' 'Yes' 'y' { kill-pane -t= } 'No' 'n' {}}",
 		"bind -n MouseDown1Control8 { resize-pane -Z }",
+		"bind -n M-MouseDown1Control8 { move-pane -P front }",
+		"bind -n S-MouseDown1Control8 { move-pane -P front }",
 		"bind -n MouseDown1Control7 { if -Ft= '#{pane_floating_flag}' { join-pane } { break-pane -W } }",
 
 		/* Mouse wheel down on status line. */

@@ -59,6 +59,14 @@ cmd_swap_pane_prev_tiled_pane(struct window_pane *wp)
 	return (wp);
 }
 
+/* Move a window's fullscreen state to its active pane after a swap. */
+static void
+cmd_swap_pane_zoom(struct window *w)
+{
+	window_unzoom(w, 1);
+	window_zoom(w->active);
+}
+
 static enum cmd_retval
 cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -69,7 +77,8 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*tmp_wp, *src_wp, *dst_wp;
 	struct layout_cell	*src_lc, *dst_lc;
 	u_int			 sx, sy, xoff, yoff;
-	int			 src_idx, dst_idx;
+	int			 src_idx, dst_idx, flags;
+	int			 src_zoomed, dst_zoomed;
 
 	dst_w = target->wl->window;
 	dst_wp = target->wp;
@@ -83,13 +92,12 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-	if (window_push_zoom(dst_w, 0, args_has(args, 'Z')))
-		server_redraw_window(dst_w);
+	dst_zoomed = (args_has(args, 'Z') && (window_zoomed_pane(dst_w) != NULL));
 
 	if (args_has(args, 'D')) {
 		if (window_pane_is_floating(dst_wp)) {
 			cmdq_error(item, "cannot swap down on floating pane");
-			goto error;
+			return (CMD_RETURN_ERROR);
 		}
 		src_w = dst_w;
 		src_wp = TAILQ_NEXT(dst_wp, entry);
@@ -101,7 +109,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	} else if (args_has(args, 'U')) {
 		if (window_pane_is_floating(dst_wp)) {
 			cmdq_error(item, "cannot swap up on floating pane");
-			goto error;
+			return (CMD_RETURN_ERROR);
 		}
 		src_w = dst_w;
 		src_wp = TAILQ_PREV(dst_wp, window_panes, entry);
@@ -112,10 +120,9 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-	if (src_w != dst_w && window_push_zoom(src_w, 0, args_has(args, 'Z')))
-		server_redraw_window(src_w);
+	src_zoomed = (args_has(args, 'Z') && (window_zoomed_pane(src_w) != NULL));
 
-	if (src_wp == dst_wp)
+	if (src_wp == NULL || src_wp == dst_wp)
 		goto out;
 
 	server_client_remove_pane(src_wp);
@@ -140,6 +147,12 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 		TAILQ_INSERT_HEAD(&dst_w->z_index, src_wp, zentry);
 	else
 		TAILQ_INSERT_AFTER(&dst_w->z_index, tmp_wp, src_wp, zentry);
+
+	/* Zoom and being hidden belong to the position, like the cell. */
+	flags = (src_wp->flags ^ dst_wp->flags) &
+	    (PANE_ZOOMED|PANE_HIDDEN|PANE_HIDDENALL);
+	src_wp->flags ^= flags;
+	dst_wp->flags ^= flags;
 
 	src_lc = src_wp->layout_cell;
 	dst_lc = dst_wp->layout_cell;
@@ -171,9 +184,15 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 			window_set_active_pane(src_w, tmp_wp, 1);
 		}
 	} else {
+		/*
+		 * Keep the same pane active, unless the swap has covered it
+		 * with a zoomed pane: activating it would hide the zoom. With
+		 * -Z the zoom moves to the active pane afterwards instead.
+		 */
 		if (src_w->active == src_wp)
 			window_set_active_pane(src_w, dst_wp, 1);
-		if (dst_w->active == dst_wp)
+		if (dst_w->active == dst_wp &&
+		    (args_has(args, 'Z') || window_pane_is_visible(src_wp)))
 			window_set_active_pane(dst_w, src_wp, 1);
 	}
 	if (src_w != dst_w) {
@@ -198,14 +217,10 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 		events_fire_window("window-layout-changed", dst_w);
 
 out:
-	if (window_pop_zoom(src_w))
-		server_redraw_window(src_w);
-	if (src_w != dst_w && window_pop_zoom(dst_w))
-		server_redraw_window(dst_w);
+	/* With -Z, leave the active pane zoomed if the window was. */
+	if (src_zoomed)
+		cmd_swap_pane_zoom(src_w);
+	if (src_w != dst_w && dst_zoomed)
+		cmd_swap_pane_zoom(dst_w);
 	return (CMD_RETURN_NORMAL);
-
-error:
-	if (window_pop_zoom(dst_w))
-		server_redraw_window(dst_w);
-	return (CMD_RETURN_ERROR);
 }

@@ -90,8 +90,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct event_payload	*ep;
 	struct cmd_find_state	 fs;
 	struct key_event	*event = cmdq_get_event(item);
-	int			 input, empty, is_floating, flags = 0;
-	int			 restore_zoom = 0;
+	int			 input, empty, is_floating, hidden, flags = 0;
 	const char		*template, *style, *value;
 	char			*cause = NULL, *cp, *title;
 	const struct options_table_entry *oe;
@@ -99,16 +98,17 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	enum pane_lines		 lines;
 	u_int			 count = args_count(args);
 
-	if (window_active_pane_is_over_zoom(w))
-		restore_zoom = 1;
+	hidden = 0;
+	if (cmd_get_entry(self) == &cmd_split_window_entry)
+		hidden = (wp->flags & PANE_HIDDEN) != 0;
+	if (cmd_get_entry(self) == &cmd_split_window_entry &&
+	    (wp->flags & PANE_ZOOMED)) {
+		window_unzoom_pane(wp, 1);
+	}
 
 	if (cmd_get_entry(self) == &cmd_new_pane_entry)
 		is_floating = !args_has(args, 'L');
 	else {
-		if (!window_pane_is_visible(wp))
-			restore_zoom = 0;
-		if (!restore_zoom)
-			window_unzoom(w, 1);
 		is_floating = window_pane_is_floating(wp);
 		flags |= SPAWN_SPLIT;
 	}
@@ -139,14 +139,14 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		flags |= SPAWN_FULLSIZE;
 	if (args_has(args, 'd'))
 		flags |= SPAWN_DETACHED;
-	if (args_has(args, 'Z'))
+	if (args_has(args, 'Z')) {
+		flags &= ~SPAWN_DETACHED;
 		flags |= SPAWN_ZOOM;
+	}
 	if (args_has(args, 'O'))
 		flags |= SPAWN_MODAL|SPAWN_FLOATOVERZOOM;
 	if (is_floating && args_has(args, 'A'))
 		flags |= SPAWN_FLOATOVERZOOM;
-	if ((w->flags & WINDOW_ZOOMED) && (flags & SPAWN_FLOATOVERZOOM))
-		restore_zoom = 1;
 
 	input = args_has(args, 'I');
 	if (input || (count == 1 && *args_string(args, 0) == '\0'))
@@ -174,16 +174,18 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
+	if (hidden)
+		window_show_pane(wp);
 	if (flags & SPAWN_FLOATING) {
 		lc = layout_get_floating_cell(item, args, lines, w, wp, flags,
 		    &cause);
 	} else
 		lc = layout_get_tiled_cell(item, args, w, wp, flags, &cause);
 	if (cause != NULL) {
+		if (hidden)
+			window_hide_pane(wp, 0);
 		cmdq_error(item, "%s", cause);
 		free(cause);
-		if (restore_zoom)
-			window_pop_zoom(w);
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -287,10 +289,13 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 			break;
 		}
 	}
+	if (hidden && (flags & SPAWN_DETACHED)) {
+		window_hide_pane(wp, 0);
+		window_hide_pane(new_wp, 0);
+	}
 	if (~flags & SPAWN_DETACHED)
 		cmd_find_from_winlink_pane(current, wl, new_wp, 0);
 
-	window_pop_zoom(w);
 	server_redraw_window(w);
 	server_redraw_session(s);
 
@@ -340,11 +345,12 @@ fail:
 			layout_close_pane(new_wp);
 		window_remove_pane(wp->window, new_wp);
 	}
-	window_pop_zoom(w);
 	if (sc.argv != NULL)
 		cmd_free_argv(sc.argc, sc.argv);
 	environ_free(sc.environ);
 
+	if (hidden)
+		window_hide_pane(wp, 0);
 	return (CMD_RETURN_ERROR);
 
 }
