@@ -21,16 +21,27 @@ The dirty row must contain no d between the heart and the following marker.
 The comparison must exit zero. Pane captures must contain the original
 codepoints without an added space between the heart and its marker.
 
-Check a cluster ending at the right margin, followed by Q on the next row:
+Check a cluster ending at the right margin and one starting the next row:
 
     cols=$("$TEST_TMUX" display-message -p '#{pane_width}')
-    printf '\033[2K\r\033[%dG\342\235\244\357\270\217Q\r\n' "$((cols - 1))"
+    printf '\033[2J\033[HE|'
+    printf '%*s' "$((cols - 4))" '' | tr ' ' .
+    printf '\342\235\244\357\270\217Q\r\nL|'
+    printf '%*s' "$((cols - 2))" '' | tr ' ' .
+    printf '\342\235\244\357\270\217Q\r\n'
     "$TEST_TMUX" refresh-client
 
-Also select across that boundary with the outer terminal's native selection.
-Known limitation: forced cursor positioning can replace soft wrapping with a
-hard boundary, including when the terminal's width agrees with tmux. A narrow
-terminal can copy the reserved blank as a space. Check tmux copy mode separately.
+After refresh, each fixture must form one logical line in the outer terminal.
+For Rex, run this from another terminal, using the test block's ID:
+
+    rex capture -b "$TEST_BLOCK" --trim --unwrap |
+        awk '/^E\|.*Q$/ { e = 1 } /^L\|.*Q$/ { l = 1 } END { exit !(e && l) }'
+
+The check must exit zero. Before this repair the E line split after VS16.
+Also select across both boundaries with the outer terminal's native selection.
+Neither selection may add a newline at the wrap. A narrow terminal can copy
+the reserved blank as a space. Check exact input bytes with tmux copy mode
+separately. Initial incremental drawing can still lose the native join.
 
 With an 80-column client, check a glyph clipped by a 100-column window:
 

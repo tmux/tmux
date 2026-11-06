@@ -123,6 +123,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	const struct grid_cell	*gcp;
 	struct grid_cell	 gc, ngc, last;
 	struct grid_line	*gl;
+	struct utf8_data	 ud;
 	u_int			 i, j, last_i, cx, ex, width;
 	u_int			 cellsize, bg;
 	int			 flags, empty, force, wrapped = 0;
@@ -178,6 +179,25 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	tty_region_off(tty);
 	tty_margin_off(tty);
 
+	/* Complete the native wrap before clearing any cells on this line. */
+	if (py != 0 &&
+	    px == 0 && atx == 0 &&
+	    nx == tty->sx && nx == screen_size_x(s) &&
+	    aty < tty->sy &&
+	    (~tty->term->flags & TERM_NOAM) &&
+	    tty->cx >= tty->sx &&
+	    tty->cy != UINT_MAX && tty->cy + 1 == aty) {
+		gl = grid_get_line(gd, gd->hsize + py - 1);
+		if (gl->flags & GRID_LINE_WRAPPED) {
+			/* VS16 may have left one unused column before wrapping. */
+			if (tty->cx == UINT_MAX)
+				tty_puts(tty, "  ");
+			else
+				tty_puts(tty, " ");
+			tty->cx = tty->cy = UINT_MAX;
+		}
+	}
+
 	/* Start with the default cell as the last cell. */
 	memcpy(&last, &grid_default_cell, sizeof last);
 	last.bg = defaults->bg;
@@ -228,6 +248,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	/* Did the previous line wrap on to this one? */
 	if (py != 0 &&
 	    atx == 0 &&
+	    tty->cx != UINT_MAX &&
 	    tty->cx >= tty->sx &&
 	    tty->cy != UINT_MAX &&
 	    tty->cy + 1 == aty &&
@@ -348,8 +369,19 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 					for (j = 0; j < len; j++)
 						tty_putc(tty, buf[j]);
 				}
-				if (force)
-					tty->cx = tty->cy = UINT_MAX;
+				if (force) {
+					/* Only a single base plus VS16 has a known row. */
+					if (utf8_open(&ud, last.data.data[0]) != UTF8_MORE)
+						utf8_set(&ud, last.data.data[0]);
+					tty->cx = UINT_MAX;
+					if (px != 0 || atx != 0 || i != tty->sx ||
+					    nx != screen_size_x(s) ||
+					    last.data.size != ud.size + 3 ||
+					    memcmp(last.data.data + ud.size,
+					    "\357\270\217", 3) != 0 ||
+					    (tty->term->flags & TERM_NOAM))
+						tty->cy = UINT_MAX;
+				}
 				len = 0;
 				width = 0;
 				wrapped = 0;

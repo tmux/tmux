@@ -2010,6 +2010,7 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 		    (tty->term->flags & TERM_NOAM) ||
 		    ctx->xoff + ctx->ocx != 0 ||
 		    ctx->yoff + ctx->ocy != tty->cy + 1 ||
+		    tty->cx == UINT_MAX ||
 		    tty->cx < tty->sx ||
 		    tty->cy == tty->rlower)
 			tty_draw_pane(tty, ctx, ctx->ocy);
@@ -2248,6 +2249,7 @@ tty_cursor_pane_unless_wrap(struct tty *tty, const struct tty_ctx *ctx,
 	    (tty->term->flags & TERM_NOAM) ||
 	    ctx->xoff + cx != 0 ||
 	    ctx->yoff + cy != tty->cy + 1 ||
+	    tty->cx == UINT_MAX ||
 	    tty->cx < tty->sx ||
 	    tty->cy == tty->rlower)
 		tty_cursor_pane(tty, ctx, cx, cy);
