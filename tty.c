@@ -1959,6 +1959,8 @@ tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 {
+	u_int	i, x, rx, ry;
+
 	if (!tty_is_visible(tty, ctx, ctx->ocx, ctx->ocy, 1, 1))
 		return;
 
@@ -1972,6 +1974,19 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 		tty_invalidate(tty);
 	tty_cursor_pane_unless_wrap(tty, ctx, ctx->ocx, ctx->ocy);
 
+	/* Clear padding which a narrower rendering would leave untouched. */
+	if ((ctx->flags & TTY_CTX_CELL_INVALIDATE) &&
+	    ctx->cell->data.width == 2 &&
+	    tty_clamp_line(tty, ctx, ctx->ocx, ctx->ocy, 2, &i, &x, &rx, &ry)) {
+		tty_attributes(tty, ctx->cell, &ctx->style_ctx);
+		tty_cursor(tty, x, ry);
+		tty_putn(tty, "  ", rx, rx);
+		if (rx != ctx->cell->data.width) {
+			tty_invalidate(tty);
+			return;
+		}
+		tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
+	}
 	tty_cell(tty, ctx->cell, &ctx->style_ctx);
 
 	if (ctx->flags & TTY_CTX_CELL_INVALIDATE)

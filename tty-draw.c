@@ -125,7 +125,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	struct grid_line	*gl;
 	u_int			 i, j, last_i, cx, ex, width;
 	u_int			 cellsize, bg;
-	int			 flags, empty, wrapped = 0;
+	int			 flags, empty, force, wrapped = 0;
 	char			 buf[1000];
 	size_t			 len;
 	enum tty_draw_line_state current_state, next_state;
@@ -321,16 +321,25 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			    tty_draw_line_states[next_state]);
 		}
 
+		/* The terminal may disagree about VS16 width. Reposition after it. */
+		force = len != 0 && last.data.width == 2 &&
+		    memmem(last.data.data, last.data.size, "\357\270\217", 3) != NULL;
+
 		/* If the state has changed, flush any collected data. */
-		if (next_state != current_state) {
+		if (next_state != current_state || force) {
 			if (current_state == TTY_DRAW_LINE_EMPTY) {
 				tty_attributes(tty, &last, style_ctx);
 				tty_draw_line_clear(tty, atx + last_i, aty,
 				    i - last_i, defaults, last.bg, wrapped);
 				wrapped = 0;
-			} else if (next_state != TTY_DRAW_LINE_SAME &&
+			} else if ((next_state != TTY_DRAW_LINE_SAME || force) &&
 			    len != 0) {
 				tty_attributes(tty, &last, style_ctx);
+				if (force) {
+					tty_cursor(tty, atx + i - last.data.width, aty);
+					tty_putn(tty, "  ", 2, 2);
+					wrapped = 0;
+				}
 				if (atx + i - width != 0 || !wrapped)
 					tty_cursor(tty, atx + i - width, aty);
 				if (~last.attr & GRID_ATTR_CHARSET)
@@ -339,6 +348,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 					for (j = 0; j < len; j++)
 						tty_putc(tty, buf[j]);
 				}
+				if (force)
+					tty->cx = tty->cy = UINT_MAX;
 				len = 0;
 				width = 0;
 				wrapped = 0;

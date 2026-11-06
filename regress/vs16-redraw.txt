@@ -1,0 +1,43 @@
+Compare VS16 painting before and after a redraw in a real UTF-8 terminal.
+This is a manual check. Use a terminal that counts heart + VS16 as one column
+to expose the disagreement, then repeat with a terminal that counts it as two.
+
+Start a disposable server with the binary under review, outside tmux:
+
+    export TEST_TMUX=/absolute/path/to/tmux
+    "$TEST_TMUX" -Lvs16-redraw-$$ -f/dev/null new-session
+
+Inside that session, print an ASCII control, adjacent VS16 clusters, and a
+heart over existing text. The octal escapes encode U+2764, U+1F3D6 and U+FE0F.
+
+    printf '\033[2J\033[HC|1234|X\r\nR|\342\235\244\357\270\217\360\237\217\226\357\270\217|X\r\nddddddddddddd\rD|\342\235\244\357\270\217|X\033[K\r\n'
+    before=$("$TEST_TMUX" capture-pane -p -S 0 -E 2)
+    "$TEST_TMUX" refresh-client
+    after=$("$TEST_TMUX" capture-pane -p -S 0 -E 2)
+    test "$before" = "$after"
+
+Compare the two views. The markers must keep their columns after refresh.
+The dirty row must contain no d between the heart and the following marker.
+The comparison must exit zero. Pane captures must contain the original
+codepoints without an added space between the heart and its marker.
+
+Check a cluster ending at the right margin, followed by Q on the next row:
+
+    cols=$("$TEST_TMUX" display-message -p '#{pane_width}')
+    printf '\033[2K\r\033[%dG\342\235\244\357\270\217Q\r\n' "$((cols - 1))"
+    "$TEST_TMUX" refresh-client
+
+Also select across that boundary with the outer terminal's native selection.
+Known limitation: forced cursor positioning can replace soft wrapping with a
+hard boundary, including when the terminal's width agrees with tmux. A narrow
+terminal can copy the reserved blank as a space. Check tmux copy mode separately.
+
+With an 80-column client, check a glyph clipped by a 100-column window:
+
+    "$TEST_TMUX" resize-window -x 100
+    printf '\033[2J\033[H\033[2;1HSENTINEL\033[1;80H\342\235\244\357\270\217\033[3;1H'
+    "$TEST_TMUX" refresh-client
+
+The clipped glyph must leave a space in column 80. SENTINEL on row 2 must stay
+intact before and after refresh, including when the terminal counts VS16 as two.
+Exit the disposable session when finished.
