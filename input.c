@@ -1432,7 +1432,7 @@ input_esc_dispatch(struct input_ctx *ictx)
 
 	switch (entry->type) {
 	case INPUT_ESC_RIS:
-		if (ictx->wp != NULL && ictx->wp->program_state != NULL) {
+		if (ictx->wp != NULL && ictx->wp->program_status != NULL) {
 			window_pane_clear_program_status(ictx->wp);
 			server_status_window(ictx->wp->window);
 			server_redraw_window_borders(ictx->wp->window);
@@ -2854,7 +2854,7 @@ input_program_message(const u_char *value, size_t len)
 		    (wc >= 0xd800 && wc <= 0xdfff) || wc > 0x10ffff)
 			return (NULL);
 	}
-	return (xstrndup(decoded, size));
+	return (xmemdup(decoded, size));
 }
 
 /* Parse with lengths: C0 bytes discarded by the OSC parser are significant. */
@@ -2868,10 +2868,9 @@ input_program_status(struct window_pane *wp, const u_char *buf, size_t len)
 	const u_char	*end = buf + len, *next, *eq, *key, *keyend;
 	const u_char	*value, *valueend;
 	char		*values[3] = { NULL, NULL, NULL }, *copy;
-	const char	*old[3];
+	struct program_status *ps;
 	size_t		 keylen, valuelen, i;
 	u_int		 field;
-	int		 unseen;
 
 	while (buf < end) {
 		next = memchr(buf, ':', end - buf);
@@ -2922,7 +2921,7 @@ input_program_status(struct window_pane *wp, const u_char *buf, size_t len)
 			if (copy == NULL)
 				goto out;
 		} else
-			copy = xstrndup(value, valuelen);
+			copy = xmemdup(value, valuelen);
 		free(values[field]);
 		values[field] = copy;
 	}
@@ -2941,31 +2940,18 @@ input_program_status(struct window_pane *wp, const u_char *buf, size_t len)
 		values[1] = NULL;
 	}
 	if (strcmp(values[0], "clear") == 0) {
-		for (i = 0; i < nitems(values); i++) {
-			free(values[i]);
-			values[i] = NULL;
+		if (wp->program_status != NULL) {
+			window_pane_clear_program_status(wp);
+			server_status_window(wp->window);
+			server_redraw_window_borders(wp->window);
 		}
-	}
-	unseen = values[0] != NULL &&
-	    (strcmp(values[0], "done") == 0 ||
-	    strcmp(values[0], "error") == 0);
-	old[0] = wp->program_state;
-	old[1] = wp->program_name;
-	old[2] = wp->program_message;
-	for (i = 0; i < nitems(values); i++) {
-		if ((old[i] == NULL) != (values[i] == NULL) ||
-		    (old[i] != NULL && strcmp(old[i], values[i]) != 0))
-			break;
-	}
-	if (i == nitems(values) && wp->program_result_unseen == unseen)
 		goto out;
-	window_pane_clear_program_status(wp);
-	wp->program_state = values[0];
-	wp->program_name = values[1];
-	wp->program_message = values[2];
-	wp->program_result_unseen = unseen;
-	server_status_window(wp->window);
-	server_redraw_window_borders(wp->window);
+	}
+	ps = xcalloc(1, sizeof *ps);
+	ps->state = values[0];
+	ps->app = values[1];
+	ps->msg = values[2];
+	window_pane_set_program_status(wp, ps);
 	return;
 
 out:
@@ -3627,9 +3613,9 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 			gl->flags |= GRID_LINE_START_PROMPT;
 		}
 		if (wp != NULL) {
-			if (*p == 'A' && wp->program_state != NULL &&
-			    strcmp(wp->program_state, "done") != 0 &&
-			    strcmp(wp->program_state, "error") != 0) {
+			if (*p == 'A' && wp->program_status != NULL &&
+			    strcmp(wp->program_status->state, "done") != 0 &&
+			    strcmp(wp->program_status->state, "error") != 0) {
 				window_pane_clear_program_status(wp);
 				server_status_window(wp->window);
 				server_redraw_window_borders(wp->window);

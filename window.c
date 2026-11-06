@@ -2000,16 +2000,43 @@ window_pane_acknowledge_program_result(struct window_pane *wp)
 	server_redraw_window_borders(wp->window);
 }
 
-/* Clear the retained root program status. */
+/* Replace a completely validated retained report. */
+void
+window_pane_set_program_status(struct window_pane *wp, struct program_status *ps)
+{
+	struct program_status *old = wp->program_status;
+	int unseen, changed;
+
+	unseen = strcmp(ps->state, "done") == 0 ||
+	    strcmp(ps->state, "error") == 0;
+	changed = old == NULL || strcmp(old->state, ps->state) != 0 ||
+	    ((old->app == NULL) != (ps->app == NULL)) ||
+	    (old->app != NULL && strcmp(old->app, ps->app) != 0) ||
+	    ((old->msg == NULL) != (ps->msg == NULL)) ||
+	    (old->msg != NULL && strcmp(old->msg, ps->msg) != 0) ||
+	    wp->program_result_unseen != unseen;
+	window_pane_clear_program_status(wp);
+	wp->program_status = ps;
+	wp->program_result_unseen = unseen;
+	if (changed) {
+		server_status_window(wp->window);
+		server_redraw_window_borders(wp->window);
+	}
+}
+
+/* Clear the retained program status. */
 void
 window_pane_clear_program_status(struct window_pane *wp)
 {
-	free(wp->program_state);
-	free(wp->program_name);
-	free(wp->program_message);
-	wp->program_state = NULL;
-	wp->program_name = NULL;
-	wp->program_message = NULL;
+	struct program_status *ps = wp->program_status;
+
+	if (ps != NULL) {
+		free(ps->state);
+		free(ps->app);
+		free(ps->msg);
+		free(ps);
+		wp->program_status = NULL;
+	}
 	wp->program_result_unseen = 0;
 }
 

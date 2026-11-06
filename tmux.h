@@ -1343,6 +1343,13 @@ struct visible_ranges {
 	u_int			 size;    /* allocated capacity of ranges */
 };
 
+/* Retained program status. */
+struct program_status {
+	char		*state;
+	char		*app;
+	char		*msg;
+};
+
 /* Child window structure. */
 struct window_pane {
 	u_int		 id;
@@ -1433,9 +1440,7 @@ struct window_pane {
 	struct input_ctx *ictx;
 
 	int		 program_result_unseen;
-	char		*program_state;
-	char		*program_name;
-	char		*program_message;
+	struct program_status *program_status;
 
 	struct grid_cell cached_gc;
 	struct grid_cell cached_active_gc;
@@ -3884,6 +3889,8 @@ void		 window_pane_set_prompt(struct window_pane *, struct client *,
 		     enum prompt_type);
 void		 window_pane_clear_prompt(struct window_pane *);
 void		 window_pane_acknowledge_program_result(struct window_pane *);
+void		 window_pane_set_program_status(struct window_pane *,
+		     struct program_status *);
 void		 window_pane_clear_program_status(struct window_pane *);
 int		 window_pane_has_prompt(struct window_pane *);
 void		 window_pane_update_prompt(struct window_pane *, const char *,
