@@ -6874,6 +6874,9 @@ Run when the program running in a pane exits, but
 is on so the pane has not closed.
 .It pane\-exited
 Run when the program running in a pane exits.
+.It pane\-floated
+Run when a tiled pane is made floating.
+Zooming a tiled pane does not fire this hook.
 .It pane\-focus\-in
 Run when the focus enters a pane, if the
 .Ic focus\-events
@@ -6882,6 +6885,9 @@ option is on.
 Run when the focus exits a pane, if the
 .Ic focus\-events
 option is on.
+.It pane\-hidden
+Run when a shown pane is hidden, including by desktop cycling or selecting
+a tiled pane underneath zoomed panes.
 .It pane\-mode\-changed
 Run when a pane changes mode.
 .It pane\-mode\-entered
@@ -6902,6 +6908,14 @@ Run when the terminal clipboard is set using the
 escape sequence.
 .It pane\-shell\-prompt
 Run when an OSC 133 shell prompt starts in a pane.
+.It pane\-shown
+Run when a hidden pane is shown, including by selecting it.
+.It pane\-tiled
+Run when a floating pane is tiled by
+.Ic join-pane
+or
+.Ic move-pane .
+Unzooming a pane does not fire this hook.
 .It pane\-title\-changed
 Run when a pane title is changed.
 .It session\-closed
@@ -6940,6 +6954,22 @@ Run when a window is zoomed.
 .It window\-unlinked
 Run when a window is unlinked from a session.
 .El
+.Pp
+The
+.Ic pane-floated ,
+.Ic pane-tiled ,
+.Ic pane-hidden
+and
+.Ic pane-shown
+hooks target the pane whose state changed, even if another pane is active.
+The
+.Ql hook_pane
+format identifies that pane.
+For example, redistribution after tiling or showing a pane may be requested with:
+.Bd -literal -offset indent
+set-hook -g pane-tiled 'select-layout -E'
+set-hook -g pane-shown 'select-layout -E'
+.Ed
 .Pp
 Hooks are managed with these commands:
 .Bl -tag -width Ds

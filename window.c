@@ -1062,6 +1062,7 @@ window_hide_pane(struct window_pane *wp, int refocus)
 	events_fire_window("window-layout-changed", w);
 	redraw_invalidate_scene(w);
 	server_redraw_window(w);
+	events_fire_pane("pane-hidden", wp);
 }
 
 /* Hide the shown fullscreen panes so a tile can be selected underneath them. */
@@ -1101,6 +1102,7 @@ window_show_pane(struct window_pane *wp)
 	events_fire_window("window-layout-changed", w);
 	redraw_invalidate_scene(w);
 	server_redraw_window(w);
+	events_fire_pane("pane-shown", wp);
 }
 
 /* Show the most recently hidden pane, optionally making it active. */
