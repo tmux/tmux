@@ -200,7 +200,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	events_fire_window("window-created", w);
 	window_fire_pane_moved(wp, old_w, old_idx, w, wl->idx);
 	if (was_hidden)
-		events_fire_pane("pane-shown", wp);
+		events_fire_pane("pane-unhidden", wp);
 	if (!args_has(args, 'd')) {
 		session_select(dst_s, wl->idx);
 		cmd_find_from_session(current, dst_s, 0);

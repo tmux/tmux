@@ -6908,8 +6908,6 @@ Run when the terminal clipboard is set using the
 escape sequence.
 .It pane\-shell\-prompt
 Run when an OSC 133 shell prompt starts in a pane.
-.It pane\-shown
-Run when a hidden pane is shown, including by selecting it.
 .It pane\-tiled
 Run when a floating pane is tiled by
 .Ic join-pane
@@ -6918,6 +6916,8 @@ or
 Unzooming a pane does not fire this hook.
 .It pane\-title\-changed
 Run when a pane title is changed.
+.It pane\-unhidden
+Run when a pane is unhidden, including by selecting it.
 .It session\-closed
 Run when a session is closed.
 .It session\-created
@@ -6960,15 +6960,15 @@ The
 .Ic pane-tiled ,
 .Ic pane-hidden
 and
-.Ic pane-shown
+.Ic pane-unhidden
 hooks target the pane whose state changed, even if another pane is active.
 The
 .Ql hook_pane
 format identifies that pane.
-For example, redistribution after tiling or showing a pane may be requested with:
+For example, redistribution after tiling or unhiding a pane may be requested with:
 .Bd -literal -offset indent
 set-hook -g pane-tiled 'select-layout -E'
-set-hook -g pane-shown 'select-layout -E'
+set-hook -g pane-unhidden 'select-layout -E'
 .Ed
 .Pp
 Hooks are managed with these commands:

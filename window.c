@@ -1102,7 +1102,7 @@ window_show_pane(struct window_pane *wp)
 	events_fire_window("window-layout-changed", w);
 	redraw_invalidate_scene(w);
 	server_redraw_window(w);
-	events_fire_pane("pane-shown", wp);
+	events_fire_pane("pane-unhidden", wp);
 }
 
 /* Show the most recently hidden pane, optionally making it active. */

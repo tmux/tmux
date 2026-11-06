@@ -611,7 +611,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (was_floating)
 		events_fire_pane("pane-tiled", src_wp);
 	if (was_hidden)
-		events_fire_pane("pane-shown", src_wp);
+		events_fire_pane("pane-unhidden", src_wp);
 
 	return (CMD_RETURN_NORMAL);
 }

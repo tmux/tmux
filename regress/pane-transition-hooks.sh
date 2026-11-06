@@ -38,7 +38,7 @@ events()
 A=$(run new-session -dP -F '#{pane_id}' -x 120 -y 40 'exec cat') || exit 1
 B=$(run split-window -hdP -F '#{pane_id}' -t "$A" '') || exit 1
 run set -g @events ''
-for hook in pane-floated pane-tiled pane-hidden pane-shown; do
+for hook in pane-floated pane-tiled pane-hidden pane-unhidden; do
 	run set-hook -g "$hook" \
 	    'set -agF @events "#{hook}:#{hook_pane};"'
 done
@@ -50,21 +50,21 @@ run join-pane -d -s "$B" -t "$B"
 events "pane-floated:$B;pane-tiled:$B;"
 [ "$(run display -p '#{pane_id}')" = "$A" ] || fail 'focus changed'
 
-# Repeating hide or show does not fire another transition.
+# Repeating hide or unhide does not fire another transition.
 run set -g @events ''
 run resize-pane -h -t "$B"
 run resize-pane -h -t "$B"
 run resize-pane -dH -t "$B"
 run resize-pane -dH -t "$B"
-events "pane-hidden:$B;pane-shown:$B;"
+events "pane-hidden:$B;pane-unhidden:$B;"
 
-# Selecting a hidden pane fires pane-shown, marking it does not.
+# Selecting a hidden pane fires pane-unhidden, marking it does not.
 run set -g @events ''
 run resize-pane -h -t "$B"
 run select-pane -m -t "$B"
 events "pane-hidden:$B;"
 run select-pane -t "$B"
-events "pane-hidden:$B;pane-shown:$B;"
+events "pane-hidden:$B;pane-unhidden:$B;"
 
 # Refocusing after hiding the active pane does not change hook_pane.
 run set -g @events ''
@@ -72,7 +72,7 @@ run resize-pane -h -t "$B"
 events "pane-hidden:$B;"
 [ "$(run display -p '#{pane_id}')" = "$A" ] || fail 'hide did not refocus'
 run resize-pane -H
-events "pane-hidden:$B;pane-shown:$B;"
+events "pane-hidden:$B;pane-unhidden:$B;"
 
 # Zoom/unzoom are separate operations, not float/tile hook transitions.
 run set -g @events ''
@@ -85,12 +85,12 @@ run resize-pane -Z -t "$B"
 run select-pane -t "$A"
 events "pane-hidden:$B;"
 run resize-pane -H
-events "pane-hidden:$B;pane-shown:$B;"
+events "pane-hidden:$B;pane-unhidden:$B;"
 run set -g @events ''
 run resize-pane -C
 events "pane-hidden:$B;"
 run resize-pane -C
-events "pane-hidden:$B;pane-shown:$B;"
+events "pane-hidden:$B;pane-unhidden:$B;"
 run resize-pane -Z -t "$B"
 
 # Hook commands can redistribute without reentering transition hooks.
@@ -106,13 +106,13 @@ run set -g @events ''
 run break-pane -Wd -s "$B"
 run resize-pane -h -t "$B"
 run join-pane -d -s "$B" -t "$A"
-events "pane-floated:$B;pane-hidden:$B;pane-tiled:$B;pane-shown:$B;"
+events "pane-floated:$B;pane-hidden:$B;pane-tiled:$B;pane-unhidden:$B;"
 
-# Breaking a hidden pane into its own window also shows it.
+# Breaking a hidden pane into its own window also unhides it.
 run set -g @events ''
 run resize-pane -h -t "$B"
 run break-pane -d -s "$B"
-events "pane-hidden:$B;pane-shown:$B;"
+events "pane-hidden:$B;pane-unhidden:$B;"
 
 # Redistribution can be requested explicitly after a transition. The hooks
 # target the affected window even while another window remains selected.
