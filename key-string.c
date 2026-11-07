@@ -343,7 +343,7 @@ key_string_lookup_key(key_code key, int with_flags)
 {
 	key_code		 saved = key;
 	static char		 out[64];
-	char			 tmp[8];
+	char			 tmp[16];
 	const char		*s;
 	u_int			 i;
 	struct utf8_data	 ud;
