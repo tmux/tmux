@@ -388,6 +388,8 @@ server_client_set_session(struct client *c, struct session *s)
 	if (old != NULL && old->curw != NULL)
 		window_update_focus(old->curw->window);
 	if (s != NULL) {
+		if (old != s)
+			window_pane_acknowledge_program_result(s->curw->window->active);
 		s->curw->window->latest = c;
 		recalculate_sizes();
 		window_update_focus(s->curw->window);

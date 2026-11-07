@@ -119,7 +119,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 		free(wname);
 		if (args_has(args, 'd'))
 			return (CMD_RETURN_NORMAL);
-		if (session_set_current(s, new_wl) == 0)
+		if (session_set_current(s, new_wl, 1) == 0)
 			server_redraw_session(s);
 		if (c != NULL && c->session != NULL)
 			s->curw->window->latest = c;

@@ -417,7 +417,7 @@ session_next(struct session *s, int alert)
 		if (alert && ((wl = session_next_alert(wl)) == NULL))
 			return (-1);
 	}
-	return (session_set_current(s, wl));
+	return (session_set_current(s, wl, 1));
 }
 
 static struct winlink *
@@ -448,7 +448,7 @@ session_previous(struct session *s, int alert)
 		if (alert && (wl = session_previous_alert(wl)) == NULL)
 			return (-1);
 	}
-	return (session_set_current(s, wl));
+	return (session_set_current(s, wl, 1));
 }
 
 /* Move session to specific window. */
@@ -458,7 +458,7 @@ session_select(struct session *s, int idx)
 	struct winlink	*wl;
 
 	wl = winlink_find_by_index(&s->windows, idx);
-	return (session_set_current(s, wl));
+	return (session_set_current(s, wl, 1));
 }
 
 /* Move session to last used window. */
@@ -473,7 +473,7 @@ session_last(struct session *s)
 	if (wl == s->curw)
 		return (1);
 
-	return (session_set_current(s, wl));
+	return (session_set_current(s, wl, 1));
 }
 
 /* Fire session window changed. */
@@ -501,7 +501,7 @@ session_fire_window_changed(struct session *s, struct winlink *wl,
 
 /* Set current winlink to wl .*/
 int
-session_set_current(struct session *s, struct winlink *wl)
+session_set_current(struct session *s, struct winlink *wl, int acknowledge)
 {
 	struct winlink	*old = s->curw;
 
@@ -513,6 +513,8 @@ session_set_current(struct session *s, struct winlink *wl)
 	winlink_stack_remove(&s->lastw, wl);
 	winlink_stack_push(&s->lastw, s->curw);
 	s->curw = wl;
+	if (acknowledge)
+		window_pane_acknowledge_program_result(wl->window->active);
 	if (options_get_number(global_options, "focus-events")) {
 		if (old != NULL)
 			window_update_focus(old->window);
@@ -686,6 +688,7 @@ session_group_synchronize1(struct session *target, struct session *s)
 	struct winlinks		 old_windows, *ww;
 	struct winlink_stack	 old_lastw;
 	struct winlink		*wl, *wl2;
+	struct window		*old_current = s->curw != NULL ? s->curw->window : NULL;
 
 	/* Don't do anything if the session is empty (it'll be destroyed). */
 	ww = &target->windows;
@@ -694,9 +697,16 @@ session_group_synchronize1(struct session *target, struct session *s)
 
 	/* If the current window has vanished, move to the next now. */
 	if (s->curw != NULL &&
-	    winlink_find_by_index(ww, s->curw->idx) == NULL &&
-	    session_last(s) != 0 && session_previous(s, 0) != 0)
-		session_next(s, 0);
+	    winlink_find_by_index(ww, s->curw->idx) == NULL) {
+		wl = TAILQ_FIRST(&s->lastw);
+		if (wl == NULL || wl == s->curw) {
+			wl = winlink_previous(s->curw);
+			if (wl == NULL)
+				wl = RB_MAX(winlinks, &s->windows);
+		}
+		/* Acknowledge only the final underlying window below. */
+		session_set_current(s, wl, 0);
+	}
 
 	/* Save the old pointer and reset it. */
 	memcpy(&old_windows, &s->windows, sizeof old_windows);
@@ -718,6 +728,9 @@ session_group_synchronize1(struct session *target, struct session *s)
 		s->curw = winlink_find_by_index(&s->windows, target->curw->idx);
 	if (s->curw == NULL)
 		s->curw = RB_MIN(winlinks, &s->windows);
+
+	if (s->curw->window != old_current)
+		window_pane_acknowledge_program_result(s->curw->window->active);
 
 	/* Fix up the last window stack. */
 	memcpy(&old_lastw, &s->lastw, sizeof old_lastw);

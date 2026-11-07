@@ -774,6 +774,7 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 	window_pane_stack_push(&w->last_panes, lastwp);
 
 	w->active = wp;
+	window_pane_acknowledge_program_result(wp);
 	w->active->active_point = next_active_point++;
 	w->active->flags |= PANE_CHANGED;
 
@@ -1236,6 +1237,7 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 				w->active = TAILQ_NEXT(wp, entry);
 		}
 		if (w->active != NULL) {
+			window_pane_acknowledge_program_result(w->active);
 			window_pane_stack_remove(&w->last_panes, w->active);
 			w->active->flags |= PANE_CHANGED;
 			window_fire_pane_changed(w, w->active, wp);
@@ -1638,6 +1640,7 @@ window_pane_destroy(struct window_pane *wp)
 
 	RB_REMOVE(window_pane_tree, &all_window_panes, wp);
 	wp->flags |= PANE_DESTROYED;
+	window_pane_clear_program_status(wp);
 	window_pane_clear_prompt(wp);
 
 	window_pane_free_modes(wp);
@@ -1984,6 +1987,57 @@ window_pane_set_prompt(struct window_pane *wp, struct client *c,
 
 	prompt_incremental_start(wp->prompt);
 	window_fire_pane_prompt("pane-prompt-opened", wp, type);
+}
+
+/* Acknowledge a result without changing the retained report. */
+void
+window_pane_acknowledge_program_result(struct window_pane *wp)
+{
+	if (!wp->program_result_unseen)
+		return;
+	wp->program_result_unseen = 0;
+	server_status_window(wp->window);
+	server_redraw_window_borders(wp->window);
+}
+
+/* Replace a completely validated retained report. */
+void
+window_pane_set_program_status(struct window_pane *wp, struct program_status *ps)
+{
+	struct program_status *old = wp->program_status;
+	int unseen, changed;
+
+	unseen = strcmp(ps->state, "done") == 0 ||
+	    strcmp(ps->state, "error") == 0;
+	changed = old == NULL || strcmp(old->state, ps->state) != 0 ||
+	    ((old->app == NULL) != (ps->app == NULL)) ||
+	    (old->app != NULL && strcmp(old->app, ps->app) != 0) ||
+	    ((old->msg == NULL) != (ps->msg == NULL)) ||
+	    (old->msg != NULL && strcmp(old->msg, ps->msg) != 0) ||
+	    wp->program_result_unseen != unseen;
+	window_pane_clear_program_status(wp);
+	wp->program_status = ps;
+	wp->program_result_unseen = unseen;
+	if (changed) {
+		server_status_window(wp->window);
+		server_redraw_window_borders(wp->window);
+	}
+}
+
+/* Clear the retained program status. */
+void
+window_pane_clear_program_status(struct window_pane *wp)
+{
+	struct program_status *ps = wp->program_status;
+
+	if (ps != NULL) {
+		free(ps->state);
+		free(ps->app);
+		free(ps->msg);
+		free(ps);
+		wp->program_status = NULL;
+	}
+	wp->program_result_unseen = 0;
 }
 
 /* Close a pane prompt. */
