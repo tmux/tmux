@@ -109,6 +109,7 @@ static void
 cmd_refresh_client_update_offset(struct client *tc, const char *value)
 {
 	struct window_pane	*wp;
+	const char*     *errstr;
 	char			*copy, *split;
 	u_int			 pane;
 
@@ -119,8 +120,9 @@ cmd_refresh_client_update_offset(struct client *tc, const char *value)
 		goto out;
 	*split++ = '\0';
 
-	if (sscanf(copy, "%%%u", &pane) != 1)
-		goto out;
+	pane = strtonum(copy + 1, 0, UINT_MAX, &errstr);
+	if (errstr != NULL)
+        goto out;
 	wp = window_pane_find_by_id(pane);
 	if (wp == NULL)
 		goto out;
@@ -145,6 +147,7 @@ cmd_refresh_report(struct tty *tty, const char *value)
 	u_int			 pane;
 	int			 fg, bg;
 	size_t			 size = 0;
+	const char      *errstr;
 	char			*copy, *split;
 
 	if (*value != '%')
@@ -154,8 +157,9 @@ cmd_refresh_report(struct tty *tty, const char *value)
 		goto out;
 	*split++ = '\0';
 
-	if (sscanf(copy, "%%%u", &pane) != 1)
-		goto out;
+	pane = strtonum(copy + 1, 0, UINT_MAX, &errstr);
+	if (errstr != NULL)
+        goto out;
 	wp = window_pane_find_by_id(pane);
 	if (wp == NULL)
 		goto out;

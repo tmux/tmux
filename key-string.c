@@ -217,8 +217,13 @@ key_string_search_table(const char *string)
 			return (key_string_table[i].key);
 	}
 
-	if (sscanf(string, "User%u", &user) == 1 && user <= KEYC_NUSER)
-		return (KEYC_USER + user);
+	if (strncmp(string, "User", 4) == 0) {
+			const char *errstr;
+
+			user = strtonum(string + 4, 0, KEYC_NUSER, &errstr);
+			if (errstr == NULL)
+					return (KEYC_USER + user);
+	}
 
 	return (KEYC_UNKNOWN);
 }

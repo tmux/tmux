@@ -139,6 +139,15 @@ send "set-option -g @fake-end '%end 1 2 3'"
 send "new-session -d -P -F '#{@fake-end}' -s fake-end"
 wait_for_count '%sessions-changed' 2
 
+# A pane ID with trailing junk must be rejected.
+send "refresh-client -A '${pane}abc:pause'"
+send "display-message -p 'malformed-pane-check-done'"
+wait_for 'malformed-pane-check-done'
+
+if grep -F "%pause $pane" "$OUT" >/dev/null 2>&1; then
+        fail "malformed pane ID was accepted by refresh-client -A"
+fi
+
 # Exercise notification paths outside control-notify.c.
 send "refresh-client -A '$pane:pause'"
 wait_for "%pause $pane"

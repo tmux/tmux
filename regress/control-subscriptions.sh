@@ -169,4 +169,12 @@ send "refresh-client -B 'missing-window:@999999:#{window_id}'"
 reject_for '%subscription-changed missing-pane' || exit 1
 reject_for '%subscription-changed missing-window' || exit 1
 
+# Malformed pane and window IDs must not create subscriptions.
+send "refresh-client -B 'malformed-pane:${pane}abc:#{pane_id}'"
+send "refresh-client -B 'malformed-window:@${awid}abc:#{window_id}'"
+# Trigger events for the existing pane and window.
+send "split-window -t $pane"
+send "new-window -n malformed-window-trigger"
+reject_for '%subscription-changed malformed-pane' || exit 1
+reject_for '%subscription-changed malformed-window' || exit 1
 exit 0
