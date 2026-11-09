@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-list-panes.c,v 1.42 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-list-panes.c,v 1.43 2026/11/09 12:27:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -40,7 +40,7 @@ const struct cmd_entry cmd_list_panes_entry = {
 	.alias = "lsp",
 
 	.args = { "aF:f:O:rst:", 0, 0, NULL },
-	.usage = "[-asr] [-F format] [-f filter] [-O order]"
+	.usage = "[-asr] [-F format] [-f filter] [-O order] "
 		 CMD_TARGET_WINDOW_USAGE,
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },
