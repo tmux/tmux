@@ -2708,39 +2708,27 @@ format_cb_pane_pb_state(struct format_tree *ft)
 static void *
 format_cb_pane_program_message(struct format_tree *ft)
 {
-	if (ft->wp == NULL || ft->wp->program_status == NULL ||
-	    ft->wp->program_status->msg == NULL)
+	if (ft->wp == NULL || ft->wp->program_message == NULL)
 		return (NULL);
-	return (xstrdup(ft->wp->program_status->msg));
+	return (xstrdup(ft->wp->program_message));
 }
 
 /* Callback for pane_program_name. */
 static void *
 format_cb_pane_program_name(struct format_tree *ft)
 {
-	if (ft->wp == NULL || ft->wp->program_status == NULL ||
-	    ft->wp->program_status->app == NULL)
+	if (ft->wp == NULL || ft->wp->program_name == NULL)
 		return (NULL);
-	return (xstrdup(ft->wp->program_status->app));
-}
-
-/* Callback for pane_program_result_unseen. */
-static void *
-format_cb_pane_program_result_unseen(struct format_tree *ft)
-{
-	if (ft->wp == NULL)
-		return (NULL);
-	return (format_printf("%d", ft->wp->program_result_unseen));
+	return (xstrdup(ft->wp->program_name));
 }
 
 /* Callback for pane_program_state. */
 static void *
 format_cb_pane_program_state(struct format_tree *ft)
 {
-	if (ft->wp == NULL || ft->wp->program_status == NULL ||
-	    ft->wp->program_status->state == NULL)
+	if (ft->wp == NULL || ft->wp->program_state == NULL)
 		return (NULL);
-	return (xstrdup(ft->wp->program_status->state));
+	return (xstrdup(ft->wp->program_state));
 }
 
 /* Callback for pane_right. */
@@ -4069,9 +4057,6 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_program_name", FORMAT_TABLE_STRING,
 	  format_cb_pane_program_name
-	},
-	{ "pane_program_result_unseen", FORMAT_TABLE_STRING,
-	  format_cb_pane_program_result_unseen
 	},
 	{ "pane_program_state", FORMAT_TABLE_STRING,
 	  format_cb_pane_program_state

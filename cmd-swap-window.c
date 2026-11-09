@@ -53,8 +53,6 @@ cmd_swap_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct session_group	*sg_src, *sg_dst;
 	struct winlink		*wl_src = source->wl, *wl_dst = target->wl;
 	struct window		*w_src, *w_dst;
-	struct window		*src_current = src->curw->window;
-	struct window		*dst_current = dst->curw->window;
 
 	sg_src = session_group_contains(src);
 	sg_dst = session_group_contains(dst);
@@ -83,15 +81,10 @@ cmd_swap_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (marked_pane.wl == wl_src)
 		marked_pane.wl = wl_dst;
 	if (args_has(args, 'd')) {
-		/* Compare final windows before acknowledging either selection. */
-		session_set_current(dst, wl_dst, 0);
+		session_select(dst, wl_dst->idx);
 		if (src != dst)
-			session_set_current(src, wl_src, 0);
+			session_select(src, wl_src->idx);
 	}
-	if (src->curw->window != src_current)
-		window_pane_acknowledge_program_result(src->curw->window->active);
-	if (src != dst && dst->curw->window != dst_current)
-		window_pane_acknowledge_program_result(dst->curw->window->active);
 	session_group_synchronize_from(src);
 	server_redraw_session_group(src);
 	if (src != dst) {

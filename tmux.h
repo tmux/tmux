@@ -1343,13 +1343,6 @@ struct visible_ranges {
 	u_int			 size;    /* allocated capacity of ranges */
 };
 
-/* Retained program status. */
-struct program_status {
-	char		*state;
-	char		*app;
-	char		*msg;
-};
-
 /* Child window structure. */
 struct window_pane {
 	u_int		 id;
@@ -1439,8 +1432,9 @@ struct window_pane {
 
 	struct input_ctx *ictx;
 
-	int		 program_result_unseen;
-	struct program_status *program_status;
+	char		*program_state;
+	char		*program_name;
+	char		*program_message;
 
 	struct grid_cell cached_gc;
 	struct grid_cell cached_active_gc;
@@ -3888,9 +3882,6 @@ void		 window_pane_set_prompt(struct window_pane *, struct client *,
 		     status_prompt_input_cb, prompt_free_cb, void *, int,
 		     enum prompt_type);
 void		 window_pane_clear_prompt(struct window_pane *);
-void		 window_pane_acknowledge_program_result(struct window_pane *);
-void		 window_pane_set_program_status(struct window_pane *,
-		     struct program_status *);
 void		 window_pane_clear_program_status(struct window_pane *);
 int		 window_pane_has_prompt(struct window_pane *);
 void		 window_pane_update_prompt(struct window_pane *, const char *,
@@ -4216,7 +4207,7 @@ int		 session_next(struct session *, int);
 int		 session_previous(struct session *, int);
 int		 session_select(struct session *, int);
 int		 session_last(struct session *);
-int		 session_set_current(struct session *, struct winlink *, int);
+int		 session_set_current(struct session *, struct winlink *);
 struct session_group *session_group_contains(struct session *);
 struct session_group *session_group_find(const char *);
 struct session_group *session_group_new(const char *);
