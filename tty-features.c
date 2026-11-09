@@ -688,6 +688,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "hyperlinks,"
 			      "imagescroll,"
 			      "osc7,"
+			      "progressbar,"
 			      "sync,"
 			      "usstyle,"
 			      "kittygraphics"
