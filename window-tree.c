@@ -1,4 +1,4 @@
-/* $OpenBSD: window-tree.c,v 1.98 2026/10/16 17:28:19 nicm Exp $ */
+/* $OpenBSD: window-tree.c,v 1.99 2026/11/09 13:49:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -1138,6 +1138,7 @@ window_tree_init(struct window_mode_entry *wme,
 		data->command = xstrdup(args_string(args, 0));
 	data->squash_groups = !args_has(args, 'G');
 	data->hide_preview_this_pane = args_has(args, 'h');
+	data->preview_is_info = args_has(args, 'i');
 	if (args_has(args, 'y'))
 		data->prompt_flags = PROMPT_ACCEPT;
 
@@ -1146,7 +1147,11 @@ window_tree_init(struct window_mode_entry *wme,
 	    window_tree_get_key, window_tree_swap, window_tree_sort,
 	    window_tree_help, data, window_tree_menu_items, &s);
 	mode_tree_zoom(data->data, args);
-	mode_tree_view_name(data->data, "preview");
+
+	if (data->preview_is_info)
+		mode_tree_view_name(data->data, "info");
+	else
+		mode_tree_view_name(data->data, "preview");
 
 	mode_tree_build(data->data);
 	mode_tree_draw(data->data);

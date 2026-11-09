@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.531 2026/10/29 12:59:16 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.533 2026/11/09 14:04:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -170,6 +170,7 @@ server_client_create(int fd)
 	setblocking(fd, 0);
 
 	c = xcalloc(1, sizeof *c);
+	c->tty.fg = c->tty.bg = -1;
 	c->references = 1;
 	c->peer = proc_add_peer(server_proc, fd, server_client_dispatch, c);
 
@@ -432,6 +433,9 @@ server_client_lost(struct client *c)
 	TAILQ_REMOVE(&clients, c, entry);
 	TAILQ_INSERT_TAIL(&dead_clients, c, entry);
 	log_debug("lost client %p", c);
+
+	if (c->session != NULL && c->session->curw != NULL)
+		window_update_focus(c->session->curw->window);
 
 	cmd_wait_for_client_lost(c);
 	cmdq_next(c);
