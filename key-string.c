@@ -1,4 +1,4 @@
-/* $OpenBSD: key-string.c,v 1.78 2026/10/27 09:00:29 nicm Exp $ */
+/* $OpenBSD: key-string.c,v 1.79 2026/11/09 12:30:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -343,7 +343,7 @@ key_string_lookup_key(key_code key, int with_flags)
 {
 	key_code		 saved = key;
 	static char		 out[64];
-	char			 tmp[8];
+	char			 tmp[16];
 	const char		*s;
 	u_int			 i;
 	struct utf8_data	 ud;
