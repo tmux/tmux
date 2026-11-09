@@ -271,6 +271,7 @@ struct redraw_draw_ctx {
 	u_int			 side_left;
 	enum pane_lines		 pane_lines;
 	struct grid_cell	 default_gc;
+	u_int			 default_dim;
 
 	int			 flags;
 #define REDRAW_ISOLATES 0x1
@@ -1350,7 +1351,8 @@ redraw_get_default_border_style(struct redraw_draw_ctx *dctx,
 	if (~dctx->flags & REDRAW_DEFAULT_SET) {
 		ft = format_create_defaults(NULL, c, s, s->curw, NULL);
 		memcpy(dgc, &grid_default_cell, sizeof *dgc);
-		style_add(dgc, oo, "pane-border-style", ft);
+		dctx->default_dim = style_add(dgc, oo, "pane-border-style",
+		    ft)->dim;
 		format_free(ft);
 		dctx->pane_lines = options_get_number(oo, "pane-border-lines");
 		dctx->flags |= REDRAW_DEFAULT_SET;
@@ -1428,6 +1430,9 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 	struct window		*w = scene->w;
 	struct window_pane	*wp = NULL;
 	struct grid_cell	 gc;
+	struct tty_style_ctx	 style_ctx = {
+		&grid_default_cell, NULL, 0, NULL
+	};
 	enum pane_lines		 pane_lines;
 	u_int			 i, cell_type;
 	int			 isolates = 0;
@@ -1441,6 +1446,7 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 
 	if (wp == NULL) {
 		redraw_get_default_border_style(dctx, &gc, &pane_lines);
+		style_ctx.dim = dctx->default_dim;
 		if (span->data.type == REDRAW_SPAN_OUTSIDE)
 			window_get_fill_cell(w, 0, &gc);
 		else if (span->data.type == REDRAW_SPAN_EMPTY)
@@ -1451,7 +1457,7 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 			window_get_border_cell(NULL, pane_lines, cell_type, &gc);
 		}
 	} else {
-		window_pane_get_border_style(wp, c, &gc);
+		window_pane_get_border_style(wp, c, &gc, &style_ctx.dim);
 		window_pane_get_border_cell(wp, cell_type, &gc);
 	}
 
@@ -1467,7 +1473,7 @@ redraw_draw_border_span(struct redraw_draw_ctx *dctx,
 	if (isolates)
 		tty_puts(tty, REDRAW_END_ISOLATE);
 	for (i = 0; i < n; i++)
-		tty_cell(tty, &gc, NULL);
+		tty_cell(tty, &gc, &style_ctx);
 	if (isolates)
 		tty_puts(tty, REDRAW_START_ISOLATE);
 }
