@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1196 2026/11/09 12:27:36 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1197 2026/11/09 13:49:07 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -2986,7 +2986,7 @@ the end of the visible pane.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose\-client
-.Op Fl hkNryZ
+.Op Fl hikNryZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key\-format
@@ -3062,6 +3062,8 @@ a format for each shortcut key; both are evaluated once for each line.
 .Pp
 .Fl N
 starts without the preview or if given twice with the larger preview.
+.Fl i
+starts showing client information instead of the preview.
 .Fl h
 hides the pane containing the mode.
 .Fl k
@@ -3166,7 +3168,7 @@ first.
 .Fl N
 starts without the preview or if given twice with the larger preview.
 .Fl i
-starts showing client information instead of the preview.
+starts showing session, window and pane information instead of the preview.
 .Fl h
 hides the pane containing the mode.
 .Fl k

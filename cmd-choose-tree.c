@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-choose-tree.c,v 1.63 2026/11/09 12:27:36 nicm Exp $ */
+/* $OpenBSD: cmd-choose-tree.c,v 1.64 2026/11/09 13:49:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2012 Thomas Adam <thomas@xteddy.org>
@@ -40,8 +40,8 @@ const struct cmd_entry cmd_choose_tree_entry = {
 	.description = "Browse sessions and windows interactively.",
 	.alias = NULL,
 
-	.args = { "F:f:GhK:kNO:rst:wyZ", 0, 1, cmd_choose_tree_args_parse },
-	.usage = "[-GhkNrswyZ] [-F format] [-f filter] [-K key-format] "
+	.args = { "F:f:GhiK:kNO:rst:wyZ", 0, 1, cmd_choose_tree_args_parse },
+	.usage = "[-GhikNrswyZ] [-F format] [-f filter] [-K key-format] "
 		 "[-O sort-order] " CMD_TARGET_PANE_USAGE " [template]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
