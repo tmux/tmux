@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.532 2026/11/09 13:19:21 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.533 2026/11/09 14:04:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -175,6 +175,7 @@ server_client_create(int fd)
 	setblocking(fd, 0);
 
 	c = xcalloc(1, sizeof *c);
+	c->tty.fg = c->tty.bg = -1;
 	c->references = 1;
 	c->peer = proc_add_peer(server_proc, fd, server_client_dispatch, c);
 
