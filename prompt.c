@@ -297,6 +297,8 @@ prompt_update(struct prompt *pr, const char *msg, const char *input)
 		tmp = format_expand_time(ft, input);
 	pr->buffer = utf8_fromcstr(tmp);
 	pr->index = utf8_strlen(pr->buffer);
+	if (pr->flags & PROMPT_COMMANDMODE && pr->index != 0)
+		pr->index--;
 	free(tmp);
 
 	memset(pr->hindex, 0, sizeof pr->hindex);
@@ -701,6 +703,9 @@ prompt_mouse(struct prompt *pr, u_int x, u_int ax, u_int aw, int *redraw)
 			break;
 		width += ud->width;
 	}
+	if (pr->flags & PROMPT_COMMANDMODE && idx != 0 &&
+	    pr->buffer[idx].size == 0)
+		idx--;
 	if (idx == pr->index)
 		return (PROMPT_KEY_HANDLED);
 
@@ -1485,6 +1490,9 @@ process_key:
 		goto append_key;
 	}
 
+	if (pr->flags & PROMPT_COMMANDMODE && pr->index != 0 &&
+	    pr->buffer[pr->index].size == 0)
+		pr->index--;
 	*redraw = 1;
 	return (PROMPT_KEY_HANDLED);
 
@@ -1528,6 +1536,9 @@ append_key:
 	}
 
 changed:
+	if (pr->flags & PROMPT_COMMANDMODE && pr->index != 0 &&
+	    pr->buffer[pr->index].size == 0)
+		pr->index--;
 	*redraw = 1;
 	if (pr->flags & PROMPT_INCREMENTAL) {
 		s = utf8_tocstr(pr->buffer);
