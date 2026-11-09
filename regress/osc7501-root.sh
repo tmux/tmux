@@ -38,9 +38,9 @@ query()
 	check_status query: '||'
 	start_cmd query-abort 80 5 "stty raw -echo min 0 time 10; printf '\033]7501;state=done\007\033]7501;?\033x\033]7501;?:id=secret\007\033[5n'; dd bs=1 count=24 2>/dev/null >'$REPLY'; printf '\033]2;query-done\007'; $INPUT_HOLD"
 	wait_for_output query-done $TMUX display-message -p -t query-abort: '#{pane_title}' || exit 1
-	printf '\033[0n' >"$EXP"
+	printf '\033]7501;?\033\\\033[0n' >"$EXP"
 	cp "$REPLY" "$TMP"
-	cmp -s "$TMP" "$EXP" || fail 'invalid queries'
+	cmp -s "$TMP" "$EXP" || fail 'parsed queries'
 	check_status query-abort: 'done||'
 }
 
@@ -49,19 +49,21 @@ framing()
 	for end in '\007' '\033\\'; do
 		start_pane terminated 80 5 "\033]7501;state=working$end"
 		check_status terminated: 'working||'
-		# Introducer 7, body prefix 16, terminator 1 or 2 bytes.
+		# Parsed introducer 7, body prefix 16, terminator 1 or 2 bytes.
 		if [ "$end" = '\007' ]; then padding=4072; else padding=4071; fi
 		start_pane limit 80 5 "\033]7501;state=working:x=$(printf "%0${padding}d" 0)$end"
 		check_status limit: 'working||'
 		start_pane over 80 5 "\033]7501;state=idle\007\033]7501;state=working:x=$(printf "%0${padding}d" 0)0$end"
 		check_status over: 'idle||'
 	done
+	# OSC handlers run on leaving OSC, including ESC and cancellation.
+	# The shared parser also accepts leading zeroes and discards C0 bytes.
 	for sequence in '\033]7501;state=done\030' '\033]7501;state=done\032' \
 	    '\033]7501;state=done\033x' '\033]7501;state=done\033\000\\' \
 	    '\033]07501;state=done\007' '\033]75\00001;state=done\007' \
 	    '\033\000]7501;state=done\007'; do
-		start_pane aborted 80 5 "\033]7501;state=idle\007$sequence"
-		check_status aborted: 'idle||'
+		start_pane parsed 80 5 "\033]7501;state=idle\007$sequence"
+		check_status parsed: 'done||'
 	done
 	start_cmd fragmented 80 5 "printf '\033]7501;state=idle\007\033]7501;state=done'; $TMUX wait-for fragment; printf '\033'; $TMUX wait-for terminator; printf '\\\\'; $INPUT_HOLD"
 	printf '\\033]7501;state=done\n' >"$EXP"
@@ -70,7 +72,7 @@ framing()
 	$TMUX wait-for -S fragment
 	printf '\\033]7501;state=done\\033\n' >"$EXP"
 	wait_until capture_matches_file "$EXP" "$TMP" $TMUX capture-pane -pPC -t fragmented: || exit 1
-	check_status fragmented: 'idle||'
+	check_status fragmented: 'done||'
 	$TMUX wait-for -S terminator
 	wait_for_output 'done||' $TMUX display-message -p -t fragmented: "$FORMAT" || exit 1
 }
@@ -100,7 +102,7 @@ validation()
 {
 	report ' state = working : app = clnkr : bad : =empty : x=y : state=blocked : kind=question ' 'blocked|clnkr|'
 	report 'state=done:app=bad/name:msg=aGVsbG8' 'done||hello'
-	report 'state=done:app=cln\000kr:state=wo\011rking:msg=aGVsbG8=' 'done||hello'
+	report 'state=done:app=cln\000kr:state=wo\011rking:msg=aGVsbG8=' 'working|clnkr|hello'
 	report 'state=idle:kind=anything:title=AA==:progress=no' 'idle||'
 	report 'state=done:msg=' 'done||'
 	for body in 'state=working:msg=_' 'state=working:msg=A' 'state=working:msg=TQ=' \

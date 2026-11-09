@@ -119,7 +119,6 @@ struct input_ctx {
 	size_t				input_len;
 	size_t				input_space;
 	enum input_end_type		input_end;
-	size_t				osc_start;
 
 	struct input_param		param_list[24];
 	u_int				param_list_len;
@@ -134,7 +133,6 @@ struct input_ctx {
 	int				flags;
 #define INPUT_DISCARD 0x1
 #define INPUT_LAST 0x2
-#define INPUT_OSC_7501_ST 0x4
 
 	struct input_requests		 requests;
 	u_int				 request_count;
@@ -180,7 +178,7 @@ static void	input_osc_110(struct input_ctx *, const char *);
 static void	input_osc_111(struct input_ctx *, const char *);
 static void	input_osc_112(struct input_ctx *, const char *);
 static void	input_osc_133(struct input_ctx *, const char *);
-static void	input_osc_7501(struct input_ctx *);
+static void	input_osc_7501(struct input_ctx *, const char *);
 
 /* Transition entry/exit handlers. */
 static void	input_clear(struct input_ctx *);
@@ -985,13 +983,6 @@ input_parse(struct input_ctx *ictx, const u_char *buf, size_t len)
 	/* Parse the input. */
 	while (off < len) {
 		ictx->ch = buf[off++];
-
-		if (ictx->flags & INPUT_OSC_7501_ST) {
-			ictx->flags &= ~INPUT_OSC_7501_ST;
-			if (ictx->ch == '\\' &&
-			    ictx->state == &input_state_esc_enter)
-				input_osc_7501(ictx);
-		}
 
 		/* Find the transition. */
 		if (ictx->state != state ||
@@ -2721,14 +2712,9 @@ input_dcs_dispatch(struct input_ctx *ictx)
 static void
 input_enter_osc(struct input_ctx *ictx)
 {
-	size_t	 len = EVBUFFER_LENGTH(ictx->since_ground);
-
 	log_debug("%s", __func__);
 
 	input_clear(ictx);
-	ictx->osc_start = SIZE_MAX;
-	if (len != 0 && EVBUFFER_DATA(ictx->since_ground)[len - 1] == '\033')
-		ictx->osc_start = len - 1;
 	input_start_ground_timer(ictx);
 	ictx->flags &= ~INPUT_LAST;
 }
@@ -2809,7 +2795,7 @@ input_exit_osc(struct input_ctx *ictx)
 		input_osc_133(ictx, p);
 		break;
 	case 7501:
-		input_osc_7501(ictx);
+		input_osc_7501(ictx, p);
 		break;
 	default:
 		log_debug("%s: unknown '%u'", __func__, option);
@@ -2857,7 +2843,7 @@ input_program_message(const u_char *value, size_t len)
 	return (xstrndup(decoded, size));
 }
 
-/* Parse with lengths: C0 bytes discarded by the OSC parser are significant. */
+/* Validate a root program status report before replacing the pane record. */
 static void
 input_program_status(struct window_pane *wp, const u_char *buf, size_t len)
 {
@@ -2968,38 +2954,19 @@ out:
 		free(values[i]);
 }
 
-/* Use raw bytes and defer ST until its backslash actually arrives. */
+/* Handle the OSC 7501 sequence for root program status. */
 static void
-input_osc_7501(struct input_ctx *ictx)
+input_osc_7501(struct input_ctx *ictx, const char *p)
 {
-	const u_char	*raw;
-	size_t		 len = EVBUFFER_LENGTH(ictx->since_ground);
+	size_t	 len = strlen(p);
 
-	if (ictx->osc_start > len)
+	/* Include ESC ] and the terminator in the parsed sequence limit. */
+	if (ictx->input_len + (ictx->input_end == INPUT_END_BEL ? 3 : 4) > 4096)
 		return;
-	len -= ictx->osc_start;
-	if (len < 7 || len >= 4096)
-		return;
-	raw = EVBUFFER_DATA(ictx->since_ground) + ictx->osc_start;
-	if (memcmp(raw, "\033]7501;", 7) != 0)
-		return;
-	if (ictx->ch == '\033') {
-		if (len < 4095)
-			ictx->flags |= INPUT_OSC_7501_ST;
-		return;
-	}
-	if (ictx->ch == '\\') {
-		if (len < 8 || raw[len - 1] != '\033')
-			return;
-		len--;
-	} else if (ictx->ch != '\007')
-		return;
-	raw += 7;
-	len -= 7;
-	if (len == 1 && *raw == '?')
+	if (len == 1 && *p == '?')
 		input_reply(ictx, 1, "\033]7501;?\033\\");
 	else if (ictx->wp != NULL)
-		input_program_status(ictx->wp, raw, len);
+		input_program_status(ictx->wp, p, len);
 }
 
 /* APC string started. */
