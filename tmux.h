@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.1474 2026/10/29 12:59:16 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.1475 2026/11/10 10:36:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -3472,6 +3472,7 @@ void	 prompt_set_options(struct prompt_create_data *, struct session *);
 struct prompt *prompt_create(const struct prompt_create_data *);
 void	 prompt_free(struct prompt *);
 void	 prompt_incremental_start(struct prompt *);
+void	 prompt_set_cursor(struct prompt *, struct screen *);
 void	 prompt_draw(struct prompt *, struct prompt_draw_data *);
 enum prompt_key_result prompt_key(struct prompt *, key_code, int *);
 enum prompt_key_result prompt_mouse(struct prompt *, u_int, u_int, u_int,

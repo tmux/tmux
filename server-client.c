@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.533 2026/11/09 14:04:13 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.534 2026/11/10 10:36:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -2256,7 +2256,7 @@ server_client_reset_state(struct client *c)
 	struct tty		*tty = &c->tty;
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp = w->active, *loop;
-	struct screen		*s = NULL;
+	struct screen		*s = NULL, prompt_screen;
 	struct options		*oo = c->session->options;
 	int			 mode = 0, cursor, flags, pane_mode = 0;
 	u_int			 cx = 0, cy = 0, ox, oy, sx, sy, prompt = 0;
@@ -2311,6 +2311,13 @@ server_client_reset_state(struct client *c)
 		} else {
 			prompt = server_client_prompt_cursor(c, wp, &mode, &cx,
 			    &cy);
+			if (prompt) {
+				memset(&prompt_screen, 0, sizeof prompt_screen);
+				prompt_screen.ccolour = -1;
+				prompt_set_cursor(wp->prompt, &prompt_screen);
+				s = &prompt_screen;
+				mode &= ~MODE_CURSOR_BLINKING_SET;
+			}
 		}
 		if (!prompt) {
 			cursor = 0;
