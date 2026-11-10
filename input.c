@@ -2803,170 +2803,119 @@ input_exit_osc(struct input_ctx *ictx)
 	}
 }
 
-/* Decode a bounded, single-line UTF-8 program status message. */
+/* Decode and clean a program status message. */
 static char *
-input_program_message(const u_char *value, size_t len)
+input_program_message(const char *value)
 {
-	char		 encoded[2737];
-	u_char		 decoded[2049];
-	struct utf8_data	 ud;
-	enum utf8_state	 more;
-	size_t		 i;
-	int		 size;
-	wchar_t		 wc;
+	char	 encoded[2737];
+	u_char	 decoded[2049];
+	size_t	 len = strlen(value);
+	int	 size;
 
+	if (len > 2732)
+		return (NULL);
 	memcpy(encoded, value, len);
-	if (memchr(value, '=', len) == NULL) {
+	if (strchr(value, '=') == NULL) {
 		while (len % 4 != 0)
 			encoded[len++] = '=';
 	}
 	encoded[len] = '\0';
 	size = b64_pton(encoded, decoded, sizeof decoded);
-	if (size == -1 || size > 2048)
+	if (size == -1 || size > 2048 || memchr(decoded, '\0', size) != NULL)
 		return (NULL);
-	for (i = 0; i < (size_t)size;) {
-		wc = decoded[i++];
-		if (wc >= 0x80) {
-			more = utf8_open(&ud, wc);
-			if (more != UTF8_MORE)
-				return (NULL);
-			while (i < (size_t)size && more == UTF8_MORE)
-				more = utf8_append(&ud, decoded[i++]);
-			if (more != UTF8_DONE ||
-			    utf8_towc(&ud, &wc) != UTF8_DONE)
-				return (NULL);
-		}
-		if (wc < 0x20 || (wc >= 0x7f && wc <= 0x9f) ||
-		    (wc >= 0xd800 && wc <= 0xdfff) || wc > 0x10ffff)
-			return (NULL);
-	}
-	return (xstrndup(decoded, size));
+	decoded[size] = '\0';
+	return (clean_name(decoded, 1));
 }
 
 /* Validate a root program status report before replacing the pane record. */
 static void
-input_program_status(struct window_pane *wp, const u_char *buf, size_t len)
+input_program_status(struct window_pane *wp, const char *p)
 {
-	static const char *keys[] = { "state", "app", "msg" };
-	static const char *states[] = {
-		"idle", "working", "done", "blocked", "error", "clear"
-	};
-	const u_char	*end = buf + len, *next, *eq, *key, *keyend;
-	const u_char	*value, *valueend;
-	char		*values[3] = { NULL, NULL, NULL }, *copy;
-	const char	*old[3];
-	size_t		 keylen, valuelen, i;
-	u_int		 field;
+	char		*copy, *next, *key, *value, *end;
+	char		*state = NULL, *name = NULL, *message = NULL;
+	const char	*old_state, *old_name, *old_message;
 
-	while (buf < end) {
-		next = memchr(buf, ':', end - buf);
-		if (next == NULL)
-			next = end;
-		eq = memchr(buf, '=', next - buf);
-		key = buf;
-		keyend = eq != NULL ? eq : next;
-		while (key < keyend && isspace(*key))
+	copy = next = xstrdup(p);
+	while ((value = strsep(&next, ":")) != NULL) {
+		key = strsep(&value, "=");
+		while (isspace((u_char)*key))
 			key++;
-		while (keyend > key && isspace(keyend[-1]))
-			keyend--;
-		keylen = keyend - key;
-		buf = next == end ? end : next + 1;
-		if (keylen > 16 || (keylen == 2 && memcmp(key, "id", 2) == 0))
+		end = key + strlen(key);
+		while (end > key && isspace((u_char)end[-1]))
+			*--end = '\0';
+		if (strcmp(key, "id") == 0)
 			goto out;
-		if (eq == NULL || keylen == 0)
+		if (value == NULL)
 			continue;
-		for (field = 0; field < nitems(keys); field++) {
-			if (strlen(keys[field]) == keylen &&
-			    memcmp(keys[field], key, keylen) == 0)
-				break;
-		}
-		if (field == nitems(keys))
-			continue;
-		value = eq + 1;
-		valueend = next;
-		while (value < valueend && isspace(*value))
+		while (isspace((u_char)*value))
 			value++;
-		while (valueend > value && isspace(valueend[-1]))
-			valueend--;
-		valuelen = valueend - value;
-		if ((field == 1 && valuelen > 32) ||
-		    (field == 2 && valuelen > 2732))
-			goto out;
-		for (i = 0; i < valuelen; i++) {
-			if (!((value[i] >= 'a' && value[i] <= 'z') ||
-			    (value[i] >= 'A' && value[i] <= 'Z') ||
-			    (value[i] >= '0' && value[i] <= '9') ||
-			    (value[i] != '\0' &&
-			    strchr("_.,+/=-", value[i]) != NULL)))
-				break;
-		}
-		if (i != valuelen)
-			continue;
-		if (field == 2) {
-			copy = input_program_message(value, valuelen);
-			if (copy == NULL)
+		end = value + strlen(value);
+		while (end > value && isspace((u_char)end[-1]))
+			*--end = '\0';
+		if (strcmp(key, "state") == 0)
+			state = value;
+		else if (strcmp(key, "app") == 0) {
+			if (strlen(value) > 32)
 				goto out;
-		} else
-			copy = xstrndup(value, valuelen);
-		free(values[field]);
-		values[field] = copy;
-	}
-	if (values[0] == NULL)
-		goto out;
-	for (i = 0; i < nitems(states); i++) {
-		if (strcmp(values[0], states[i]) == 0)
-			break;
-	}
-	if (i == nitems(states))
-		goto out;
-	if (values[1] != NULL && (*values[1] == '\0' ||
-	    strspn(values[1], "abcdefghijklmnopqrstuvwxyz"
-	    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.+-") != strlen(values[1]))) {
-		free(values[1]);
-		values[1] = NULL;
-	}
-	if (strcmp(values[0], "clear") == 0) {
-		for (i = 0; i < nitems(values); i++) {
-			free(values[i]);
-			values[i] = NULL;
+			free(name);
+			name = clean_name(value, 1);
+		} else if (strcmp(key, "msg") == 0) {
+			free(message);
+			message = input_program_message(value);
+			if (message == NULL)
+				goto out;
 		}
 	}
-	old[0] = wp->program_state;
-	old[1] = wp->program_name;
-	old[2] = wp->program_message;
-	for (i = 0; i < nitems(values); i++) {
-		if ((old[i] == NULL) != (values[i] == NULL) ||
-		    (old[i] != NULL && strcmp(old[i], values[i]) != 0))
-			break;
+	if (state == NULL)
+		goto out;
+	if (strcmp(state, "idle") != 0 &&
+	    strcmp(state, "working") != 0 &&
+	    strcmp(state, "done") != 0 &&
+	    strcmp(state, "blocked") != 0 &&
+	    strcmp(state, "error") != 0 &&
+	    strcmp(state, "clear") != 0)
+		goto out;
+	if (strcmp(state, "clear") == 0) {
+		state = NULL;
+		free(name);
+		name = NULL;
+		free(message);
+		message = NULL;
 	}
-	if (i == nitems(values))
+	old_state = wp->program_state;
+	old_name = wp->program_name;
+	old_message = wp->program_message;
+	if ((state == NULL) == (old_state == NULL) &&
+	    (state == NULL || strcmp(state, old_state) == 0) &&
+	    (name == NULL) == (old_name == NULL) &&
+	    (name == NULL || strcmp(name, old_name) == 0) &&
+	    (message == NULL) == (old_message == NULL) &&
+	    (message == NULL || strcmp(message, old_message) == 0))
 		goto out;
 	window_pane_clear_program_status(wp);
-	wp->program_state = values[0];
-	wp->program_name = values[1];
-	wp->program_message = values[2];
+	if (state != NULL)
+		wp->program_state = xstrdup(state);
+	wp->program_name = name;
+	wp->program_message = message;
 	server_status_window(wp->window);
 	server_redraw_window_borders(wp->window);
+	free(copy);
 	return;
 
 out:
-	for (i = 0; i < nitems(values); i++)
-		free(values[i]);
+	free(name);
+	free(message);
+	free(copy);
 }
 
 /* Handle the OSC 7501 sequence for root program status. */
 static void
 input_osc_7501(struct input_ctx *ictx, const char *p)
 {
-	size_t	 len = strlen(p);
-
-	/* Include ESC ] and the terminator in the parsed sequence limit. */
-	if (ictx->input_len + (ictx->input_end == INPUT_END_BEL ? 3 : 4) > 4096)
-		return;
-	if (len == 1 && *p == '?')
+	if (strcmp(p, "?") == 0)
 		input_reply(ictx, 1, "\033]7501;?\033\\");
 	else if (ictx->wp != NULL)
-		input_program_status(ictx->wp, p, len);
+		input_program_status(ictx->wp, p);
 }
 
 /* APC string started. */

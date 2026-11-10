@@ -49,12 +49,8 @@ framing()
 	for end in '\007' '\033\\'; do
 		start_pane terminated 80 5 "\033]7501;state=working$end"
 		check_status terminated: 'working||'
-		# Parsed introducer 7, body prefix 16, terminator 1 or 2 bytes.
-		if [ "$end" = '\007' ]; then padding=4072; else padding=4071; fi
-		start_pane limit 80 5 "\033]7501;state=working:x=$(printf "%0${padding}d" 0)$end"
-		check_status limit: 'working||'
-		start_pane over 80 5 "\033]7501;state=idle\007\033]7501;state=working:x=$(printf "%0${padding}d" 0)0$end"
-		check_status over: 'idle||'
+		start_pane long 80 5 "\033]7501;state=working:x=$(printf '%04096d' 0)$end"
+		check_status long: 'working||'
 	done
 	# OSC handlers run on leaving OSC, including ESC and cancellation.
 	# The shared parser also accepts leading zeroes and discards C0 bytes.
@@ -101,16 +97,17 @@ replacement()
 validation()
 {
 	report ' state = working : app = clnkr : bad : =empty : x=y : state=blocked : kind=question ' 'blocked|clnkr|'
-	report 'state=done:app=bad/name:msg=aGVsbG8' 'done||hello'
+	report 'state=done:app=some/name:msg=aGVsbG8' 'done|some/name|hello'
 	report 'state=done:app=cln\000kr:state=wo\011rking:msg=aGVsbG8=' 'working|clnkr|hello'
 	report 'state=idle:kind=anything:title=AA==:progress=no' 'idle||'
 	report 'state=done:msg=' 'done||'
+	report 'state=done:msg=Cgk=' 'done||\n\t'
+	report 'state=done:app=#(name):msg=Iyhtc2cp' 'done|_(name)|_(msg)'
 	for body in 'state=working:msg=_' 'state=working:msg=A' 'state=working:msg=TQ=' \
-	    'state=working:msg=AA==' 'state=working:msg=Cg==' 'state=working:msg=fw==' \
-	    'state=working:msg=woA=' 'state=working:msg=wp8=' 'state=working:msg=wK8=' \
-	    'state=working:msg=7aCA' 'state=working:msg=9JCAgA==' 'state=working:msg=4pg=' \
-	    'state=working:msg=AA==:msg=b2s=' 'state=working:abcdefghijklmnopq=x'; do reject "$body"; done
-	report 'state=working:abcdefghijklmnop=x' 'working||'
+	    'state=working:msg=AA==' 'state=working:msg=YQBi' 'state=working:msg=fw==' \
+	    'state=working:msg=wK8=' 'state=working:msg=7aCA' 'state=working:msg=4pg=' \
+	    'state=working:msg=AA==:msg=b2s='; do reject "$body"; done
+	report 'state=working:abcdefghijklmnopq=x' 'working||'
 	app=$(printf '%032d' 0)
 	report "state=done:app=$app" "done|$app|"
 	reject "state=working:app=${app}x:app=ok"
@@ -126,7 +123,7 @@ formats()
 {
 	start_pane empty 80 5 ''
 	check_status empty: '||'
-	report 'state=done:msg=4piDICJcIiAje3BhbmVfaWR9' 'done||☃ "\" #{pane_id}'
+	report 'state=done:msg=4piDICJcIiAje3BhbmVfaWR9' 'done||☃ "\\" #{pane_id}'
 }
 
 lifecycle()
