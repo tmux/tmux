@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-features.c,v 1.52 2026/10/20 07:04:58 nicm Exp $ */
+/* $OpenBSD: tty-features.c,v 1.53 2026/11/10 10:47:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2020 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -678,6 +678,7 @@ tty_default_features(struct client *c, const char *name, u_int version)
 			      "hyperlinks,"
 			      "imagescroll,"
 			      "osc7,"
+			      "progressbar,"
 			      "sync,"
 			      "usstyle,"
 			      "kittygraphics"
