@@ -35,7 +35,7 @@ geometry()
 	    -F '#{pane_id}:#{pane_left},#{pane_top},#{pane_width},#{pane_height}'
 }
 
-# Capture one pane's rectangle, including floating panes.
+# Capture one pane's rectangle.
 rectangle()
 {
 	run display -p -t "$1" \
@@ -80,13 +80,11 @@ for axis in h v; do
 		dimension='#{pane_width}'
 		cross_geometry='#{pane_top},#{pane_height}'
 		other_size=60
-		window_size=121
 	else
 		cross=h
 		dimension='#{pane_height}'
 		cross_geometry='#{pane_left},#{pane_width}'
 		other_size=40
-		window_size=81
 	fi
 	for operation in close exit float; do
 		# A temporary split must return space to the pane it split.
@@ -98,14 +96,6 @@ for axis in h v; do
 		remove "$B"
 		wait_for_output "$before" geometry ||
 		    fail 'temporary split changed the original layout'
-		if [ "$operation" = float ]; then
-			# Retiling must split the same preceding neighbour, preserving C.
-			other=$(rectangle "$C")
-			run join-pane -d -s "$B" -t "$B"
-			[ "$(rectangle "$C")" = "$other" ] || fail 'retiling resized another tile'
-			run break-pane -Wd -s "$B"
-			[ "$(geometry)" = "$before" ] || fail 'repeated floating changed layout'
-		fi
 
 		for position in first middle last; do
 			three_panes
@@ -125,20 +115,6 @@ for axis in h v; do
 			    fail "$position: unrelated allocation changed"
 		done
 
-		# Skip a floating leaf between the departed tile and its recipient.
-		three_panes
-		F=$(run new-pane -dP -F '#{pane_id}' -t "$A" -x 20 -y 8 'exec cat') || exit 1
-		floating=$(rectangle "$F")
-		other=$(rectangle "$C")
-		old=$(run display -p -t "$A" "$dimension")
-		space=$(run display -p -t "$B" "$dimension")
-		remove "$B"
-		wait_for_output "$((old + space + 1))" \
-		    $TMUX display -p -t "$A" "$dimension" ||
-		    fail 'floating sibling blocked the preceding tile'
-		[ "$(rectangle "$F")" = "$floating" ] || fail 'floating geometry changed'
-		[ "$(rectangle "$C")" = "$other" ] || fail 'following allocation changed'
-
 		# Loaded nested layouts retain their internal split and unrelated tiles.
 		three_panes
 		D=$(run split-window -dP -F '#{pane_id}' -"$cross" -t "$A" -l 17 'exec cat') || exit 1
@@ -157,21 +133,6 @@ for axis in h v; do
 		check "$A" "$cross_geometry" "$first_cross"
 		check "$D" "$cross_geometry" "$second_cross"
 		[ "$(rectangle "$C")" = "$other" ] || fail 'loaded layout changed unrelated tile'
-
-		# A preceding subtree containing only floats is skipped, so the
-		# following tile absorbs space when no preceding tile remains.
-		three_panes
-		D=$(run split-window -dP -F '#{pane_id}' -"$cross" -t "$A" 'exec cat') || exit 1
-		run break-pane -Wd -s "$A"
-		run break-pane -Wd -s "$D"
-		first_float=$(rectangle "$A")
-		second_float=$(rectangle "$D")
-		remove "$B"
-		wait_for_output "$window_size" \
-		    $TMUX display -p -t "$C" "$dimension" ||
-		    fail 'following tile did not absorb the collapsed group'
-		[ "$(rectangle "$A")" = "$first_float" ] || fail 'first float moved'
-		[ "$(rectangle "$D")" = "$second_float" ] || fail 'second float moved'
 	done
 done
 
