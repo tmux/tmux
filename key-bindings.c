@@ -1,4 +1,4 @@
-/* $OpenBSD: key-bindings.c,v 1.197 2026/10/27 09:00:29 nicm Exp $ */
+/* $OpenBSD: key-bindings.c,v 1.198 2026/11/10 10:34:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -398,8 +398,8 @@ key_bindings_init(void)
 		"bind -N 'Prompt for window index to select' \"'\" { command-prompt -pindex { select-window -t ':%%' } }",
 		"bind -N 'New floating pane' * { new-pane }",
 		"bind -N 'Toggle pane between floating and tiled' @ { if -F '#{pane_floating_flag}' { join-pane } { break-pane -W } }",
-		"bind -N 'Switch to previous client' ( { switch-client -p }",
-		"bind -N 'Switch to next client' ) { switch-client -n }",
+		"bind -N 'Switch client to previous session' ( { switch-client -p }",
+		"bind -N 'Switch client to next session' ) { switch-client -n }",
 		"bind -N 'Rename current window' , { command-prompt -I'#W' { rename-window -- '%%' } }",
 		"bind -N 'Delete the most recent paste buffer' - { delete-buffer }",
 		"bind -N 'Move the current window' . { command-prompt { move-window -t '%%' } }",
