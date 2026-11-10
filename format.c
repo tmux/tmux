@@ -1,4 +1,4 @@
-/* $OpenBSD: format.c,v 1.434 2026/10/29 12:59:16 nicm Exp $ */
+/* $OpenBSD: format.c,v 1.435 2026/11/10 10:32:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -167,8 +167,14 @@ enum format_type {
 	FORMAT_TYPE_PANE
 };
 
+/* Sort criteria. */
 static struct sort_criteria sort_crit;
 
+/* Cached time. */
+static time_t format_last_time;
+static struct tm format_last_tm;
+
+/* Format tree. */
 struct format_tree {
 	enum format_type	 type;
 
@@ -6809,7 +6815,11 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 	if ((es->flags & FORMAT_EXPAND_TIME) && strchr(fmt, '%') != NULL) {
 		if (es->time == 0) {
 			es->time = time(NULL);
-			localtime_r(&es->time, &es->tm);
+			if (format_last_time != es->time) {
+				localtime_r(&es->time, &format_last_tm);
+				format_last_time = es->time;
+			}
+			memcpy(&es->tm, &format_last_tm, sizeof es->tm);
 		}
 		if (strftime(expanded, sizeof expanded, fmt, &es->tm) == 0) {
 			format_log(es, "format is too long");
