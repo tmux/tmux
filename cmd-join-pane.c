@@ -66,16 +66,16 @@ const struct cmd_entry cmd_move_pane_entry = {
 	.exec = cmd_join_pane_exec
 };
 
-/* Stacking groups, ordered from front to back. */
-enum cmd_join_pane_group {
+/* Stacking classes, ordered from front to back. */
+enum cmd_join_pane_stack_class {
 	CMD_JOIN_PANE_MODAL,
 	CMD_JOIN_PANE_ALWAYS_ON_TOP,
 	CMD_JOIN_PANE_NORMAL
 };
 
-/* Get the stacking group of a pane. */
-static enum cmd_join_pane_group
-cmd_join_pane_group(struct window_pane *wp)
+/* Get the stacking class of a pane. */
+static enum cmd_join_pane_stack_class
+cmd_join_pane_stack_class(struct window_pane *wp)
 {
 	if (wp == wp->window->modal)
 		return (CMD_JOIN_PANE_MODAL);
@@ -84,33 +84,33 @@ cmd_join_pane_group(struct window_pane *wp)
 	return (CMD_JOIN_PANE_NORMAL);
 }
 
-/* Get the visible pane just in front of a pane in its group, if any. */
+/* Get the visible pane just in front in the same stacking class, if any. */
 static struct window_pane *
 cmd_join_pane_forward(struct window_pane *wp)
 {
 	struct window_pane		*owp = wp;
-	enum cmd_join_pane_group	 group = cmd_join_pane_group(wp);
+	enum cmd_join_pane_stack_class	 class = cmd_join_pane_stack_class(wp);
 
 	do {
 		owp = TAILQ_PREV(owp, window_panes_zindex, zentry);
 	} while (owp != NULL && !window_pane_is_visible(owp));
-	if (owp != NULL && cmd_join_pane_group(owp) != group)
+	if (owp != NULL && cmd_join_pane_stack_class(owp) != class)
 		owp = NULL;
 	return (owp);
 }
 
-/* Get the visible pane just behind a pane in its group, if any. */
+/* Get the visible pane just behind in the same stacking class, if any. */
 static struct window_pane *
 cmd_join_pane_backward(struct window_pane *wp)
 {
 	struct window_pane		*owp = wp;
-	enum cmd_join_pane_group	 group = cmd_join_pane_group(wp);
+	enum cmd_join_pane_stack_class	 class = cmd_join_pane_stack_class(wp);
 
 	do {
 		owp = TAILQ_NEXT(owp, zentry);
 	} while (owp != NULL && !window_pane_is_visible(owp));
 	if (owp != NULL && (!window_pane_is_floating(owp) ||
-	    cmd_join_pane_group(owp) != group)) {
+	    cmd_join_pane_stack_class(owp) != class)) {
 		owp = NULL;
 	}
 	return (owp);
@@ -409,7 +409,7 @@ cmd_join_pane_zindex(struct cmdq_item *item, struct winlink *wl,
 	struct window_pane		*owp;
 	const char			*errstr;
 	u_int				 n, z;
-	enum cmd_join_pane_group	 group, other_group;
+	enum cmd_join_pane_stack_class	 class, other_class;
 
 	z = strtonum(s, 0, UINT_MAX, &errstr);
 	if (errstr != NULL) {
@@ -418,14 +418,14 @@ cmd_join_pane_zindex(struct cmdq_item *item, struct winlink *wl,
 	}
 	TAILQ_REMOVE(&w->z_index, wp, zentry);
 
-	/* The pane stays in front of or behind panes of the other groups. */
-	group = cmd_join_pane_group(wp);
+	/* Keep the pane ordered relative to the other stacking classes. */
+	class = cmd_join_pane_stack_class(wp);
 	n = 0;
 	TAILQ_FOREACH(owp, &w->z_index, zentry) {
-		other_group = cmd_join_pane_group(owp);
-		if (other_group < group)
+		other_class = cmd_join_pane_stack_class(owp);
+		if (other_class < class)
 			continue;
-		if (other_group > group ||
+		if (other_class > class ||
 		    !window_pane_is_floating(owp)) {
 			break;
 		}
