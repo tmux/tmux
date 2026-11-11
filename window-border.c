@@ -185,6 +185,7 @@ int
 window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
     struct redraw_span *span)
 {
+	struct window		*w = wp->window;
 	struct grid_cell	 gc;
 	const char		*fmt;
 	struct format_tree	*ft;
@@ -194,7 +195,7 @@ window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
 	char			*expanded;
 	u_int			 i;
 	enum pane_lines		 pane_lines;
-	int			 pane_status, cell_type;
+	int			 pane_status, cell_type, border_type;
 
 	pane_status = window_pane_get_pane_status(wp);
 	if (pane_status == PANE_STATUS_OFF || width == 0)
@@ -213,6 +214,9 @@ window_make_pane_status(struct window_pane *wp, struct client *c, u_int width,
 
 	window_pane_get_border_style(wp, c, &gc);
 	pane_lines = window_pane_get_pane_lines(wp);
+	border_type = options_get_number(w->options, "pane-border-type");
+	if (border_type == PANE_BORDER_TYPE_SEPARATE_ACTIVE && wp != w->active)
+		pane_lines = PANE_LINES_SPACES;
 	for (i = 0; i < width; i++) {
 		cell_type = redraw_get_status_border_cell_type(&span, i);
 		window_get_border_cell(wp, pane_lines, cell_type, &gc);
