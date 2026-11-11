@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-list-keys.c,v 1.79 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-list-keys.c,v 1.80 2026/11/09 12:27:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -46,7 +46,7 @@ const struct cmd_entry cmd_list_keys_entry = {
 	.alias = "lsk",
 
 	.args = { "1aF:NO:P:rT:", 0, 1, NULL },
-	.usage = "[-1aNr] [-F format] [-O order] [-P prefix-string]"
+	.usage = "[-1aNr] [-F format] [-O order] [-P prefix-string] "
 		 "[-T key-table] [key]",
 
 	.flags = CMD_STARTSERVER|CMD_AFTERHOOK,

@@ -1,4 +1,4 @@
-/* $OpenBSD: layout.c,v 1.104 2026/10/22 07:51:38 nicm Exp $ */
+/* $OpenBSD: layout.c,v 1.105 2026/11/11 12:45:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -734,26 +734,18 @@ layout_cell_get_neighbour_dir(struct layout_cell *lc, int direction)
 	}
 }
 
-/*
- * Find and return the nearest neighbour. Prefers cells "after" the specified
- * cell. This behavior defines how cell dimensions are redistributed when a cell
- * is hidden/shown and floated/tiled.
- */
+/* Find a tiled sibling, preferring the preceding cell. */
 struct layout_cell *
 layout_cell_get_neighbour(struct layout_cell *lc)
 {
-	struct layout_cell	*lcother, *lcparent = lc->parent;
-	int			 direction = 1;
+	struct layout_cell	*lcother;
 
-	if (lcparent == NULL)
+	if (lc->parent == NULL)
 		return (NULL);
 
-	if (lc == TAILQ_LAST(&lcparent->cells, layout_cells))
-		direction = !direction;
-
-	lcother = layout_cell_get_neighbour_dir(lc, direction);
+	lcother = layout_cell_get_neighbour_dir(lc, 0);
 	if (lcother == NULL)
-		lcother = layout_cell_get_neighbour_dir(lc, !direction);
+		lcother = layout_cell_get_neighbour_dir(lc, 1);
 
 	return (lcother);
 }

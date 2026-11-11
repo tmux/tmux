@@ -1,4 +1,4 @@
-/* $OpenBSD: server-client.c,v 1.531 2026/10/29 12:59:16 nicm Exp $ */
+/* $OpenBSD: server-client.c,v 1.534 2026/11/10 10:36:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -170,6 +170,7 @@ server_client_create(int fd)
 	setblocking(fd, 0);
 
 	c = xcalloc(1, sizeof *c);
+	c->tty.fg = c->tty.bg = -1;
 	c->references = 1;
 	c->peer = proc_add_peer(server_proc, fd, server_client_dispatch, c);
 
@@ -432,6 +433,9 @@ server_client_lost(struct client *c)
 	TAILQ_REMOVE(&clients, c, entry);
 	TAILQ_INSERT_TAIL(&dead_clients, c, entry);
 	log_debug("lost client %p", c);
+
+	if (c->session != NULL && c->session->curw != NULL)
+		window_update_focus(c->session->curw->window);
 
 	cmd_wait_for_client_lost(c);
 	cmdq_next(c);
@@ -2247,7 +2251,7 @@ server_client_reset_state(struct client *c)
 	struct tty		*tty = &c->tty;
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp = w->active, *loop;
-	struct screen		*s = NULL;
+	struct screen		*s = NULL, prompt_screen;
 	struct options		*oo = c->session->options;
 	int			 mode = 0, cursor, flags, pane_mode = 0;
 	u_int			 cx = 0, cy = 0, ox, oy, sx, sy, prompt = 0;
@@ -2302,6 +2306,13 @@ server_client_reset_state(struct client *c)
 		} else {
 			prompt = server_client_prompt_cursor(c, wp, &mode, &cx,
 			    &cy);
+			if (prompt) {
+				memset(&prompt_screen, 0, sizeof prompt_screen);
+				prompt_screen.ccolour = -1;
+				prompt_set_cursor(wp->prompt, &prompt_screen);
+				s = &prompt_screen;
+				mode &= ~MODE_CURSOR_BLINKING_SET;
+			}
 		}
 		if (!prompt) {
 			cursor = 0;

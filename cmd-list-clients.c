@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-list-clients.c,v 1.43 2026/10/09 13:12:14 nicm Exp $ */
+/* $OpenBSD: cmd-list-clients.c,v 1.44 2026/11/09 12:27:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
@@ -43,7 +43,8 @@ const struct cmd_entry cmd_list_clients_entry = {
 	.alias = "lsc",
 
 	.args = { "F:f:O:rt:", 0, 0, NULL },
-	.usage = "[-F format] [-f filter] [-O order]" CMD_TARGET_SESSION_USAGE,
+	.usage = "[-r] [-F format] [-f filter] [-O order] "
+		 CMD_TARGET_SESSION_USAGE,
 
 	.target = { 't', CMD_FIND_SESSION, 0 },
 

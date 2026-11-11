@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.1195 2026/10/29 12:59:16 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.1197 2026/11/09 13:49:07 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 29 2026 $
+.Dd $Mdocdate: November 9 2026 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -2912,7 +2912,7 @@ The pane must not already be floating.
 Zoomed panes are floating and must be unzoomed first.
 .Tg capturep
 .It Xo Ic capture\-pane
-.Op Fl aeFHILpPRqCJMN
+.Op Fl aeFHILpPRqCJMNT
 .Op Fl b Ar buffer\-name
 .Op Fl E Ar end\-line
 .Op Fl S Ar start\-line
@@ -2991,7 +2991,7 @@ the end of the visible pane.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose\-client
-.Op Fl hkNryZ
+.Op Fl hikNryZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key\-format
@@ -3067,6 +3067,8 @@ a format for each shortcut key; both are evaluated once for each line.
 .Pp
 .Fl N
 starts without the preview or if given twice with the larger preview.
+.Fl i
+starts showing client information instead of the preview.
 .Fl h
 hides the pane containing the mode.
 .Fl k
@@ -3171,7 +3173,7 @@ first.
 .Fl N
 starts without the preview or if given twice with the larger preview.
 .Fl i
-starts showing client information instead of the preview.
+starts showing session, window and pane information instead of the preview.
 .Fl h
 hides the pane containing the mode.
 .Fl k
@@ -3189,17 +3191,18 @@ The
 command works only if at least one client is attached.
 .It Xo
 .Ic customize\-mode
-.Op Fl kNZ
+.Op Fl kNyZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl t Ar target\-pane
-.Op Ar template
 .Xc
 Put a pane into customize mode, where options and key bindings may be browsed
 and modified from a list.
 Option values in the list are shown for the active pane in the current window.
 .Fl Z
 zooms the pane.
+.Fl y
+disables any confirmation prompts.
 The following keys may be used in customize mode:
 .Bl -column "KeyXXXXXX" "Function" -offset indent
 .It Sy "Key" Ta Sy "Function"
