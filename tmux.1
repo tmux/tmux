@@ -3323,7 +3323,7 @@ option.
 .It Xo
 .Tg displayp
 .Ic display\-panes
-.Op Fl kNZ
+.Op Fl kNPZ
 .Op Fl d Ar duration
 .Op Fl s Ar source\-window
 .Op Fl t Ar target\-pane
@@ -3376,6 +3376,9 @@ substituted by the pane ID.
 The default
 .Ar template
 is "select\-pane \-t \[aq]%%\[aq]".
+If
+.Fl P
+is given, the selected pane ID is printed.
 .Tg findw
 .It Xo Ic find\-window
 .Op Fl iCNrTZ
