@@ -32,9 +32,8 @@
 
 static char	*tty_term_strip(const char *);
 static void	 tty_term_validate(struct tty_term *);
-static void	 tty_term_free_cache(struct tty_term *);
-
-#define TTY_TERM_CACHE_SIZE 256
+static void	 tty_term_free_colours(struct tty_term *);
+static void	 tty_term_build_colours(struct tty_term *);
 
 struct tty_terms tty_terms = LIST_HEAD_INITIALIZER(tty_terms);
 
@@ -380,7 +379,6 @@ tty_term_apply(struct tty_term *term, const char *capabilities, int quiet,
 	u_int					 i;
 	int					 n, remove;
 
-	tty_term_free_cache(term);
 	while ((s = tty_term_override_next(capabilities, &offset)) != NULL) {
 		if (*s == '\0')
 			continue;
@@ -449,25 +447,6 @@ tty_term_apply(struct tty_term *term, const char *capabilities, int quiet,
 
 		free(value);
 	}
-}
-
-/* Free cached expansions of single-argument capabilities. */
-static void
-tty_term_free_cache(struct tty_term *term)
-{
-	u_int	i, j;
-
-	if (term->cache_i == NULL)
-		return;
-	for (i = 0; i < tty_term_ncodes(); i++) {
-		if (term->cache_i[i] == NULL)
-			continue;
-		for (j = 0; j < TTY_TERM_CACHE_SIZE; j++)
-			free(term->cache_i[i][j]);
-		free(term->cache_i[i]);
-	}
-	free(term->cache_i);
-	term->cache_i = NULL;
 }
 
 void
@@ -555,7 +534,53 @@ tty_term_apply_overrides(struct tty_term *term)
 	for (; acs[0] != '\0' && acs[1] != '\0'; acs += 2)
 		term->acs[(u_char) acs[0]][0] = acs[1];
 
+	tty_term_build_colours(term);
 	tty_term_validate(term);
+}
+
+static void
+tty_term_free_colours(struct tty_term *term)
+{
+	u_int	i;
+
+	for (i = 0; i < nitems(term->setaf); i++) {
+		free(term->setaf[i]);
+		term->setaf[i] = NULL;
+		free(term->setab[i]);
+		term->setab[i] = NULL;
+	}
+}
+
+static int
+tty_term_can_build_colours(struct tty_term *term, enum tty_code_code code)
+{
+	const char	*s;
+
+	if (!tty_term_has(term, code))
+		return (0);
+	s = tty_term_string(term, code);
+	return (strstr(s, "%P") == NULL && strstr(s, "%g") == NULL);
+}
+
+static void
+tty_term_build_colours(struct tty_term *term)
+{
+	u_int	i;
+	int	setaf, setab;
+
+	tty_term_free_colours(term);
+	setaf = tty_term_can_build_colours(term, TTYC_SETAF);
+	setab = tty_term_can_build_colours(term, TTYC_SETAB);
+	for (i = 0; i < nitems(term->setaf); i++) {
+		if (setaf) {
+			term->setaf[i] = xstrdup(tty_term_string_i(term,
+			    TTYC_SETAF, i));
+		}
+		if (setab) {
+			term->setab[i] = xstrdup(tty_term_string_i(term,
+			    TTYC_SETAB, i));
+		}
+	}
 }
 
 static void
@@ -736,7 +761,7 @@ tty_term_free(struct tty_term *term)
 			free(term->codes[i].value.string);
 	}
 	free(term->codes);
-	tty_term_free_cache(term);
+	tty_term_free_colours(term);
 
 	LIST_REMOVE(term, entry);
 	free(term->name);
@@ -858,21 +883,15 @@ tty_term_string(struct tty_term *term, enum tty_code_code code)
 const char *
 tty_term_string_i(struct tty_term *term, enum tty_code_code code, int a)
 {
-	const char	*x = tty_term_string(term, code), *s;
-	char		**slot = NULL;
+	const char	*x, *s;
 
-	/* Expanding is slow, so cache small arguments (colours, counts). */
-	if (a >= 0 && a < TTY_TERM_CACHE_SIZE && *x != '\0') {
-		if (term->cache_i == NULL)
-			term->cache_i = xcalloc(tty_term_ncodes(),
-			    sizeof *term->cache_i);
-		if (term->cache_i[code] == NULL)
-			term->cache_i[code] = xcalloc(TTY_TERM_CACHE_SIZE,
-			    sizeof **term->cache_i);
-		slot = &term->cache_i[code][a];
-		if (*slot != NULL)
-			return (*slot);
+	if (a >= 0 && (u_int)a < nitems(term->setaf)) {
+		if (code == TTYC_SETAF && term->setaf[a] != NULL)
+			return (term->setaf[a]);
+		if (code == TTYC_SETAB && term->setab[a] != NULL)
+			return (term->setab[a]);
 	}
+	x = tty_term_string(term, code);
 
 #if defined(HAVE_TIPARM_S)
 	s = tiparm_s(1, 0, x, a);
@@ -885,8 +904,6 @@ tty_term_string_i(struct tty_term *term, enum tty_code_code code, int a)
 		log_debug("could not expand %s", tty_term_codes[code].name);
 		return ("");
 	}
-	if (slot != NULL)
-		return (*slot = xstrdup(s));
 	return (s);
 }
 
