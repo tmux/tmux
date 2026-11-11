@@ -587,7 +587,12 @@ complete:
 
 	if (sc->flags & SPAWN_RESPAWN)
 		return (new_wp);
-	if (sc->flags & SPAWN_MODAL) {
+
+	/* Zoom restricted panes before activation to preserve existing zooms. */
+	if ((sc->flags & SPAWN_ZOOM) &&
+	    (new_wp->flags & PANE_NEVER_ABOVE_ZOOM) && w->modal == NULL) {
+		window_zoom(new_wp);
+	} else if (sc->flags & SPAWN_MODAL) {
 		w->modal = new_wp;
 		window_redraw_active_switch(w, new_wp);
 		if (sc->flags & SPAWN_NONOTIFY)
@@ -601,7 +606,7 @@ complete:
 		else
 			window_set_active_pane(w, new_wp, 1);
 	}
-	if (sc->flags & SPAWN_ZOOM)
+	if ((sc->flags & SPAWN_ZOOM) && (~new_wp->flags & PANE_ZOOMED))
 		window_zoom(w->active);
 	if (~sc->flags & SPAWN_NONOTIFY)
 		events_fire_window("window-layout-changed", w);

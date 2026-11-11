@@ -138,18 +138,21 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 		if (owp != NULL) {
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_BEFORE(owp, wp, zentry);
+			window_constrain_pane_stacking(wp);
 		}
 	} else if (strcmp(position, "backward") == 0) {
 		owp = cmd_join_pane_backward(wp);
 		if (owp != NULL) {
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_AFTER(&w->z_index, owp, wp, zentry);
+			window_constrain_pane_stacking(wp);
 		}
 	} else if (strcmp(position, "forward-loop") == 0) {
 		owp = cmd_join_pane_forward(wp);
 		if (owp != NULL) {
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_BEFORE(owp, wp, zentry);
+			window_constrain_pane_stacking(wp);
 		} else
 			window_lower_pane(wp);
 	} else if (strcmp(position, "backward-loop") == 0) {
@@ -157,6 +160,7 @@ cmd_join_pane_place(struct cmdq_item *item, struct winlink *wl,
 		if (owp != NULL) {
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_AFTER(&w->z_index, owp, wp, zentry);
+			window_constrain_pane_stacking(wp);
 		} else
 			window_raise_pane(wp);
 	} else {
@@ -441,6 +445,7 @@ cmd_join_pane_zindex(struct cmdq_item *item, struct winlink *wl,
 	else
 		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 
+	window_constrain_pane_stacking(wp);
 	redraw_invalidate_scene(w);
 	events_fire_window("window-layout-changed", w);
 	server_redraw_window(w);

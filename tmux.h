@@ -1385,6 +1385,7 @@ struct window_pane {
 #define PANE_ALWAYS_ON_TOP 0x200000
 #define PANE_CLOSEONCANCEL 0x400000
 #define PANE_UTMP 0x800000
+#define PANE_NEVER_ABOVE_ZOOM 0x4000000
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;
@@ -2642,6 +2643,7 @@ struct spawn_context {
 #define SPAWN_SPLIT 0x400
 #define SPAWN_MODAL 0x800
 #define SPAWN_ALWAYS_ON_TOP 0x1000
+#define SPAWN_NEVER_ABOVE_ZOOM 0x2000
 };
 
 /* Paste buffer. */
@@ -3856,6 +3858,7 @@ struct window_pane *window_add_pane(struct window *, struct window_pane *,
 void		 window_resize(struct window *, u_int, u_int, int, int);
 void		 window_pane_send_resize(struct window_pane *, u_int, u_int);
 void		 window_raise_pane(struct window_pane *);
+void		 window_constrain_pane_stacking(struct window_pane *);
 void		 window_lower_pane(struct window_pane *);
 struct window_pane *window_get_top_pane(struct window *, struct window_pane *);
 int		 window_zoom(struct window_pane *);

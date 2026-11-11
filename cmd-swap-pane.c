@@ -174,6 +174,9 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	dst_wp->xoff = xoff; dst_wp->yoff = yoff;
 	window_pane_resize(dst_wp, sx, sy);
 
+	window_constrain_pane_stacking(src_wp);
+	window_constrain_pane_stacking(dst_wp);
+
 	if (!args_has(args, 'd')) {
 		if (src_w != dst_w) {
 			window_set_active_pane(src_w, dst_wp, 1);

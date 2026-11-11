@@ -41,8 +41,8 @@ const struct cmd_entry cmd_new_pane_entry = {
 	.description = "Create a floating pane.",
 	.alias = "newp",
 
-	.args = { "AbB:Cc:Dde:EfF:hIkl:KLMm:Op:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
-	.usage = "[-AbCDdEfhIkKLMOPvWZ] [-B border-lines] "
+	.args = { "AbB:Cc:Dde:EfF:hIkl:KLMm:NOp:PR:s:S:t:T:vWx:X:y:Y:Z", 0, -1, NULL },
+	.usage = "[-AbCDdEfhIkKLMNOPvWZ] [-B border-lines] "
 		 "[-c start-directory] [-e environment] "
 		 "[-F format] [-l size] [-m message] [-p percentage] "
 		 "[-s style] [-S active-border-style] "
@@ -98,6 +98,12 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	enum pane_lines		 lines;
 	u_int			 count = args_count(args);
 
+	if (args_has(args, 'N') &&
+	    (args_has(args, 'A') || args_has(args, 'O'))) {
+		cmdq_error(item, "-N cannot be used with -A or -O");
+		return (CMD_RETURN_ERROR);
+	}
+
 	if (cmd_get_entry(self) == &cmd_split_window_entry &&
 	    (wp->flags & PANE_ZOOMED)) {
 		window_unzoom_pane(wp, 1);
@@ -144,6 +150,8 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		flags |= SPAWN_MODAL|SPAWN_ALWAYS_ON_TOP;
 	if (is_floating && args_has(args, 'A'))
 		flags |= SPAWN_ALWAYS_ON_TOP;
+	if (is_floating && args_has(args, 'N'))
+		flags |= SPAWN_NEVER_ABOVE_ZOOM;
 
 	input = args_has(args, 'I');
 	if (input || (count == 1 && *args_string(args, 0) == '\0'))
