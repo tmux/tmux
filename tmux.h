@@ -1385,6 +1385,8 @@ struct window_pane {
 #define PANE_ALWAYS_ON_TOP 0x200000
 #define PANE_CLOSEONCANCEL 0x400000
 #define PANE_UTMP 0x800000
+#define PANE_HIDDEN 0x1000000
+#define PANE_DESKTOP_UNHIDE 0x2000000 /* Hidden by desktop cycle. */
 
 	bitstr_t	*sync_dirty;
 	u_int		 sync_dirty_size;
@@ -1652,6 +1654,7 @@ struct layout_cell {
 
 	struct layout_geometry	 g;
 	struct layout_geometry	 fg;	/* saved floating rectangle */
+	uint64_t		 hidden_point;	/* hide order; zero when shown */
 	struct layout_saved	 saved;
 	u_int			 generation;	/* tiled allocation revision */
 
@@ -3855,6 +3858,9 @@ struct window_pane *window_add_pane(struct window *, struct window_pane *,
 		     u_int, int);
 void		 window_resize(struct window *, u_int, u_int, int, int);
 void		 window_pane_send_resize(struct window_pane *, u_int, u_int);
+void		 window_hide_pane(struct window_pane *, int);
+void		 window_show_pane(struct window_pane *);
+void		 window_show_last_hidden_pane(struct window *, int);
 void		 window_raise_pane(struct window_pane *);
 void		 window_lower_pane(struct window_pane *);
 struct window_pane *window_get_top_pane(struct window *, struct window_pane *);

@@ -462,14 +462,17 @@ cmd_join_pane_tile(struct cmdq_item *item, struct args *args, struct window *w,
 
 	memcpy(&lc->fg, &lc->g, sizeof lc->fg);
 
-	layout_insert_tile(w, lc);
+	if (wp->flags & PANE_HIDDEN)
+		lc->flags &= ~LAYOUT_CELL_FLOATING;
+	else
+		layout_insert_tile(w, lc);
 
 	if (~wp->flags & PANE_ZOOMED) {
 		TAILQ_REMOVE(&w->z_index, wp, zentry);
 		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 	}
 
-	if (!args_has(args, 'd'))
+	if (!args_has(args, 'd') && (~wp->flags & PANE_HIDDEN))
 		window_set_active_pane(w, wp, 1);
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
@@ -583,6 +586,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	TAILQ_REMOVE(&src_w->z_index, src_wp, zentry);
 
 	src_wp->window = dst_w;
+	src_wp->flags &= ~(PANE_HIDDEN|PANE_DESKTOP_UNHIDE);
 	options_set_parent(src_wp->options, dst_w->options);
 	src_wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
 	if (flags & SPAWN_BEFORE)

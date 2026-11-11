@@ -328,16 +328,24 @@ check_ok kill-pane -t "$p6"
 check_ok resize-pane -Z -t "$p0"
 check_ok split-window -v -t "$p0"
 check_fmt 'P:0' '#{window_zoomed_flag}' '0'
+check_fmt "$p0" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '0:0'
 p6=$($TMUX display-message -p -t P:0 '#{pane_id}')
 check_ok kill-pane -t "$p6"
+check_ok resize-pane -a -Z -t "$p0"
 
 # Zoom and unzoom preserve the exact tiled layout. Selecting another pane
-# without -Z unzooms, while -Z transfers zoom to the selected pane.
+# without -Z hides the zoomed pane until the desktop shows it, while -Z
+# transfers zoom to the selected pane.
 layout=$(pane_layout P:0)
 check_ok select-pane -t "$p0"
 check_ok resize-pane -Z -t "$p0"
 check_ok select-pane -t "$p2"
 check_fmt "$p2" '#{window_zoomed_flag}:#{pane_active}' '0:1'
+check_fmt "$p0" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '1:1'
+check_ok resize-pane -C -t "$p0"
+check_fmt "$p0" '#{window_zoomed_flag}:#{pane_zoomed_flag}:#{pane_active}' \
+	'1:1:1'
+check_ok resize-pane -a -Z -t "$p0"
 check_layout P:0 "$layout"
 
 check_ok select-pane -t "$p0"
@@ -349,7 +357,7 @@ check_ok resize-pane -Z -t "$p2"
 check_layout P:0 "$layout"
 
 # Directional selection temporarily restores the full layout to find its
-# neighbour, then follows the same unzoom or -Z transfer rules.
+# neighbour, then follows the same hide or -Z transfer rules.
 check_ok select-pane -t "$p0"
 check_ok resize-pane -Z -t "$p0"
 check_ok select-pane -t "$p0"
@@ -357,6 +365,9 @@ check_fmt "$p0" '#{window_zoomed_flag}:#{pane_zoomed_flag}:#{pane_active}' \
 	'1:1:1'
 check_ok select-pane -D -t "$p0"
 check_fmt "$p2" '#{window_zoomed_flag}:#{pane_active}' '0:1'
+check_fmt "$p0" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '1:1'
+check_ok resize-pane -C -t "$p0"
+check_ok resize-pane -a -Z -t "$p0"
 
 check_ok select-pane -t "$p0"
 check_ok resize-pane -Z -t "$p0"
@@ -373,6 +384,9 @@ check_ok resize-pane -Z -t "$p2"
 check_ok select-pane -l -t P:0
 check_fmt "$p0" '#{window_zoomed_flag}:#{pane_zoomed_flag}:#{pane_active}' \
 	'0:0:1'
+check_fmt "$p2" '#{pane_zoomed_flag}:#{pane_hidden_flag}' '1:1'
+check_ok resize-pane -C -t "$p0"
+check_ok resize-pane -a -Z -t "$p0"
 
 check_ok select-pane -t "$p0"
 check_ok select-pane -t "$p2"

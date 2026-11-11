@@ -68,13 +68,14 @@ cmd_break_pane_float(struct cmdq_item *item, struct args *args,
 		free(cause);
 		return (CMD_RETURN_ERROR);
 	}
-	layout_remove_tile(w, lc);
+	if (~wp->flags & PANE_HIDDEN)
+		layout_remove_tile(w, lc);
 	lc->flags |= LAYOUT_CELL_FLOATING;
 	layout_set_size(lc, fg->sx, fg->sy, fg->xoff, fg->yoff);
 
 	window_raise_pane(wp);
 
-	if (!args_has(args, 'd'))
+	if (!args_has(args, 'd') && (~wp->flags & PANE_HIDDEN))
 		window_set_active_pane(w, wp, 1);
 	layout_fix_offsets(w);
 	layout_fix_panes(w, NULL);
@@ -129,6 +130,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_ERROR);
 	}
 	if (window_count_panes(w, 1) == 1) {
+		window_show_pane(wp);
 		if (server_link_window(src_s, wl, dst_s, idx, 0,
 		    !args_has(args, 'd'), &cause) != 0) {
 			cmdq_error(item, "%s", cause);
@@ -161,6 +163,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	window_lost_pane(w, wp);
 	layout_close_pane(wp);
 
+	wp->flags &= ~(PANE_HIDDEN|PANE_DESKTOP_UNHIDE);
 	w = wp->window = window_create(w->sx, w->sy, w->xpixel, w->ypixel);
 	window_add_ref(w, __func__);
 	options_set_parent(wp->options, w->options);
