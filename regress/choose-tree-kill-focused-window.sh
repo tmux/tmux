@@ -73,7 +73,10 @@ while [ "$i" -lt 50 ]; do
 	sessions=$($TMUX list-sessions -F '#{session_name}' 2>/dev/null) || {
 		fail "server exited after killing the focused window"
 	}
-	nclients=$($TMUX list-clients 2>/dev/null | wc -l)
+	clients=$($TMUX list-clients 2>/dev/null) || {
+		fail "server exited after killing the focused window"
+	}
+	nclients=$(printf '%s' "$clients" | grep -c .)
 	[ "$sessions" = 'b' ] && [ "$nclients" -eq 0 ] && break
 	sleep 0.2
 	i=$((i + 1))
@@ -90,7 +93,9 @@ while [ "$i" -lt 50 ]; do
 	sessions=$($TMUX list-sessions -F '#{session_name}' 2>/dev/null) || {
 		fail "server exited after killing the focused window"
 	}
-	client_session=$($TMUX list-clients -F '#{client_session}' 2>/dev/null)
+	client_session=$($TMUX list-clients -F '#{client_session}' 2>/dev/null) || {
+		fail "server exited after killing the focused window"
+	}
 	[ "$sessions" = 'b' ] && [ "$client_session" = 'b' ] && break
 	sleep 0.2
 	i=$((i + 1))
